@@ -29,10 +29,10 @@ func createApp(conn *db.Storage, name, state string) {
 
 func createApps(conn *db.Storage) {
 	for _, name := range buildingApps {
-		createApp(conn, name, string(provision.StatusBuilding))
+		createApp(conn, name, provision.StatusBuilding.String())
 	}
 	for _, name := range runningApps {
-		createApp(conn, name, string(provision.StatusStarted))
+		createApp(conn, name, provision.StatusStarted.String())
 	}
 }
 

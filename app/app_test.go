@@ -649,12 +649,12 @@ var HasUnit gocheck.Checker = &hasUnitChecker{}
 
 func (s *S) TestRemoveUnitsPriority(c *gocheck.C) {
 	unitList := []Unit{
-		{Name: "ble/0", State: string(provision.StatusStarted)},
-		{Name: "ble/1", State: string(provision.StatusDown)},
-		{Name: "ble/2", State: string(provision.StatusCreating)},
-		{Name: "ble/3", State: string(provision.StatusError)},
-		{Name: "ble/4", State: string(provision.StatusInstalling)},
-		{Name: "ble/5", State: string(provision.StatusBuilding)},
+		{Name: "ble/0", State: provision.StatusStarted.String()},
+		{Name: "ble/1", State: provision.StatusDown.String()},
+		{Name: "ble/2", State: provision.StatusCreating.String()},
+		{Name: "ble/3", State: provision.StatusError.String()},
+		{Name: "ble/4", State: provision.StatusInstalling.String()},
+		{Name: "ble/5", State: provision.StatusBuilding.String()},
 	}
 	a := App{Name: "ble", Units: unitList}
 	err := s.conn.Apps().Insert(a)
@@ -683,12 +683,12 @@ func (s *S) TestRemoveUnitsWithQuota(c *gocheck.C) {
 	err = quota.Reserve("ble", "ble-0", "ble-1", "ble-2", "ble-3", "ble-4", "ble-5")
 	c.Assert(err, gocheck.IsNil)
 	units := []Unit{
-		{Name: "ble/0", State: string(provision.StatusStarted), QuotaItem: "ble-0"},
-		{Name: "ble/1", State: string(provision.StatusDown), QuotaItem: "ble-1"},
-		{Name: "ble/2", State: string(provision.StatusCreating), QuotaItem: "ble-2"},
-		{Name: "ble/3", State: string(provision.StatusBuilding), QuotaItem: "ble-3"},
-		{Name: "ble/4", State: string(provision.StatusStarted), QuotaItem: "ble-4"},
-		{Name: "ble/5", State: string(provision.StatusInstalling), QuotaItem: "ble-5"},
+		{Name: "ble/0", State: provision.StatusStarted.String(), QuotaItem: "ble-0"},
+		{Name: "ble/1", State: provision.StatusDown.String(), QuotaItem: "ble-1"},
+		{Name: "ble/2", State: provision.StatusCreating.String(), QuotaItem: "ble-2"},
+		{Name: "ble/3", State: provision.StatusBuilding.String(), QuotaItem: "ble-3"},
+		{Name: "ble/4", State: provision.StatusStarted.String(), QuotaItem: "ble-4"},
+		{Name: "ble/5", State: provision.StatusInstalling.String(), QuotaItem: "ble-5"},
 	}
 	a := App{Name: "ble", Units: units}
 	err = s.conn.Apps().Insert(a)

@@ -35,7 +35,7 @@ func (s *S) TestAppIsAvailableHandlerShouldReturnErrorWhenAppStatusIsnotStarted(
 		Name:     "someapp",
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
-		Units:    []app.Unit{{Name: "someapp/0", Type: "django", State: string(provision.StatusBuilding)}},
+		Units:    []app.Unit{{Name: "someapp/0", Type: "django", State: provision.StatusBuilding.String()}},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -54,7 +54,7 @@ func (s *S) TestAppIsAvailableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c
 		Name:     "someapp",
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
-		Units:    []app.Unit{{Name: "someapp/0", Type: "django", State: string(provision.StatusStarted)}},
+		Units:    []app.Unit{{Name: "someapp/0", Type: "django", State: provision.StatusStarted.String()}},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)

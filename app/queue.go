@@ -147,7 +147,7 @@ type unitList []Unit
 // Started returns true if all units in the list is started.
 func (l unitList) Started() bool {
 	for _, unit := range l {
-		if unit.State != string(provision.StatusStarted) {
+		if unit.State != provision.StatusStarted.String() {
 			return false
 		}
 	}

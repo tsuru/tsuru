@@ -52,12 +52,12 @@ func (s *S) TestUnitSliceLen(c *gocheck.C) {
 
 func (s *S) TestUnitSliceLess(c *gocheck.C) {
 	units := UnitSlice{
-		Unit{Name: "a", State: string(provision.StatusError)},
-		Unit{Name: "b", State: string(provision.StatusDown)},
-		Unit{Name: "c", State: string(provision.StatusCreating)},
-		Unit{Name: "d", State: string(provision.StatusInstalling)},
-		Unit{Name: "e", State: string(provision.StatusBuilding)},
-		Unit{Name: "f", State: string(provision.StatusStarted)},
+		Unit{Name: "a", State: provision.StatusError.String()},
+		Unit{Name: "b", State: provision.StatusDown.String()},
+		Unit{Name: "c", State: provision.StatusCreating.String()},
+		Unit{Name: "d", State: provision.StatusInstalling.String()},
+		Unit{Name: "e", State: provision.StatusBuilding.String()},
+		Unit{Name: "f", State: provision.StatusStarted.String()},
 	}
 	c.Assert(units.Less(0, 1), gocheck.Equals, true)
 	c.Assert(units.Less(1, 2), gocheck.Equals, true)
@@ -68,12 +68,12 @@ func (s *S) TestUnitSliceLess(c *gocheck.C) {
 
 func (s *S) TestUnitSliceSwap(c *gocheck.C) {
 	units := UnitSlice{
-		Unit{Name: "b", State: string(provision.StatusDown)},
-		Unit{Name: "a", State: string(provision.StatusError)},
-		Unit{Name: "d", State: string(provision.StatusCreating)},
-		Unit{Name: "e", State: string(provision.StatusInstalling)},
-		Unit{Name: "f", State: string(provision.StatusBuilding)},
-		Unit{Name: "g", State: string(provision.StatusStarted)},
+		Unit{Name: "b", State: provision.StatusDown.String()},
+		Unit{Name: "a", State: provision.StatusError.String()},
+		Unit{Name: "d", State: provision.StatusCreating.String()},
+		Unit{Name: "e", State: provision.StatusInstalling.String()},
+		Unit{Name: "f", State: provision.StatusBuilding.String()},
+		Unit{Name: "g", State: provision.StatusStarted.String()},
 	}
 	units.Swap(0, 1)
 	c.Assert(units[0].State, gocheck.Equals, provision.StatusError.String())
@@ -82,12 +82,12 @@ func (s *S) TestUnitSliceSwap(c *gocheck.C) {
 
 func (s *S) TestUnitSliceSort(c *gocheck.C) {
 	units := UnitSlice{
-		Unit{Name: "b", State: string(provision.StatusDown)},
-		Unit{Name: "a", State: string(provision.StatusError)},
-		Unit{Name: "d", State: string(provision.StatusCreating)},
-		Unit{Name: "e", State: string(provision.StatusInstalling)},
-		Unit{Name: "f", State: string(provision.StatusBuilding)},
-		Unit{Name: "g", State: string(provision.StatusStarted)},
+		Unit{Name: "b", State: provision.StatusDown.String()},
+		Unit{Name: "a", State: provision.StatusError.String()},
+		Unit{Name: "d", State: provision.StatusCreating.String()},
+		Unit{Name: "e", State: provision.StatusInstalling.String()},
+		Unit{Name: "f", State: provision.StatusBuilding.String()},
+		Unit{Name: "g", State: provision.StatusStarted.String()},
 	}
 	c.Assert(sort.IsSorted(units), gocheck.Equals, false)
 	sort.Sort(units)
