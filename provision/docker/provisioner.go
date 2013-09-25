@@ -200,7 +200,7 @@ func (*dockerProvisioner) AddUnits(a provision.App, units uint) ([]provision.Uni
 			AppName: a.GetName(),
 			Type:    a.GetPlatform(),
 			Ip:      container.IP,
-			Status:  provision.StatusInstalling,
+			Status:  provision.StatusBuilding,
 		}
 	}
 	return result, nil

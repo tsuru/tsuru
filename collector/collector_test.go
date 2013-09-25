@@ -152,7 +152,7 @@ func (s *S) TestUpdateWithMultipleApps(c *gocheck.C) {
 			Machine: i + 1,
 			Type:    "python",
 			Ip:      appDict["ip"],
-			Status:  provision.StatusInstalling,
+			Status:  provision.StatusBuilding,
 		}
 	}
 	update(units)

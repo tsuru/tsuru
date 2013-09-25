@@ -495,7 +495,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 			Machine:    107,
 			InstanceId: "i-0000043e",
 			Ip:         "10.10.10.168",
-			Status:     provision.StatusInstalling,
+			Status:     provision.StatusBuilding,
 		},
 	}
 	units, err := p.CollectStatus()
@@ -557,7 +557,7 @@ func (s *S) TestCollectStatusDirtyOutput(c *gocheck.C) {
 			Machine:    107,
 			InstanceId: "i-0000043e",
 			Ip:         "10.10.10.168",
-			Status:     provision.StatusInstalling,
+			Status:     provision.StatusBuilding,
 		},
 	}
 	p := JujuProvisioner{}
@@ -734,7 +734,7 @@ func (s *S) TestUnitStatus(c *gocheck.C) {
 		{"error", "install-error", "start-error", provision.StatusError},
 		{"started", "start-error", "running", provision.StatusError},
 		{"started", "charm-upgrade-error", "running", provision.StatusError},
-		{"running", "pending", "running", provision.StatusInstalling},
+		{"running", "pending", "running", provision.StatusBuilding},
 		{"running", "started", "running", provision.StatusStarted},
 		{"running", "down", "running", provision.StatusDown},
 	}

@@ -64,7 +64,7 @@ func collectUnit(container container, units chan<- provision.Unit, wg *sync.Wait
 	addr := strings.Replace(container.getAddress(), "http://", "", 1)
 	conn, err := net.Dial("tcp", addr)
 	if err != nil {
-		unit.Status = provision.StatusInstalling
+		unit.Status = provision.StatusBuilding
 	} else {
 		conn.Close()
 		unit.Status = provision.StatusStarted

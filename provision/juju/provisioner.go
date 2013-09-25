@@ -622,7 +622,7 @@ func unitStatus(instanceState, agentState, machineAgentState string) provision.S
 		return provision.StatusBuilding
 	}
 	if machineAgentState == "running" && instanceState == "running" && agentState == "pending" {
-		return provision.StatusInstalling
+		return provision.StatusBuilding
 	}
 	if machineAgentState == "running" && agentState == "started" && instanceState == "running" {
 		return provision.StatusStarted

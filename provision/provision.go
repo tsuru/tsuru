@@ -23,7 +23,6 @@ const (
 	StatusBuilding    = Status("building")
 	StatusDown        = Status("down")
 	StatusError       = Status("error")
-	StatusInstalling  = Status("installing")
 	StatusUnreachable = Status("unreachable")
 )
 
