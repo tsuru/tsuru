@@ -28,6 +28,7 @@ func (s *S) TestUnitGetStatus(c *gocheck.C) {
 	}{
 		{"started", provision.StatusStarted},
 		{"pending", provision.StatusPending},
+		{"building", provision.StatusBuilding},
 		{"creating", provision.StatusCreating},
 		{"down", provision.StatusDown},
 		{"error", provision.StatusError},
@@ -37,9 +38,7 @@ func (s *S) TestUnitGetStatus(c *gocheck.C) {
 	for _, test := range tests {
 		u := Unit{State: test.input}
 		got := u.GetStatus()
-		if got != test.expected {
-			c.Errorf("u.GetStatus(): want %q, got %q.", test.expected, got)
-		}
+		c.Assert(got, gocheck.Equals, test.expected)
 	}
 }
 
@@ -59,13 +58,15 @@ func (s *S) TestUnitSliceLess(c *gocheck.C) {
 		Unit{Name: "c", State: string(provision.StatusPending)},
 		Unit{Name: "d", State: string(provision.StatusCreating)},
 		Unit{Name: "e", State: string(provision.StatusInstalling)},
-		Unit{Name: "f", State: string(provision.StatusStarted)},
+		Unit{Name: "f", State: string(provision.StatusBuilding)},
+		Unit{Name: "g", State: string(provision.StatusStarted)},
 	}
 	c.Assert(units.Less(0, 1), gocheck.Equals, true)
 	c.Assert(units.Less(1, 2), gocheck.Equals, true)
 	c.Assert(units.Less(2, 3), gocheck.Equals, true)
 	c.Assert(units.Less(4, 5), gocheck.Equals, true)
-	c.Assert(units.Less(5, 0), gocheck.Equals, false)
+	c.Assert(units.Less(5, 6), gocheck.Equals, true)
+	c.Assert(units.Less(6, 0), gocheck.Equals, false)
 }
 
 func (s *S) TestUnitSliceSwap(c *gocheck.C) {
@@ -75,7 +76,8 @@ func (s *S) TestUnitSliceSwap(c *gocheck.C) {
 		Unit{Name: "a", State: string(provision.StatusError)},
 		Unit{Name: "d", State: string(provision.StatusCreating)},
 		Unit{Name: "e", State: string(provision.StatusInstalling)},
-		Unit{Name: "f", State: string(provision.StatusStarted)},
+		Unit{Name: "f", State: string(provision.StatusBuilding)},
+		Unit{Name: "g", State: string(provision.StatusStarted)},
 	}
 	units.Swap(0, 2)
 	c.Assert(units.Less(0, 2), gocheck.Equals, true)
@@ -88,7 +90,8 @@ func (s *S) TestUnitSliceSort(c *gocheck.C) {
 		Unit{Name: "a", State: string(provision.StatusError)},
 		Unit{Name: "d", State: string(provision.StatusCreating)},
 		Unit{Name: "e", State: string(provision.StatusInstalling)},
-		Unit{Name: "f", State: string(provision.StatusStarted)},
+		Unit{Name: "f", State: string(provision.StatusBuilding)},
+		Unit{Name: "g", State: string(provision.StatusStarted)},
 	}
 	c.Assert(sort.IsSorted(units), gocheck.Equals, false)
 	sort.Sort(units)
