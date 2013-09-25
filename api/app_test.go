@@ -35,7 +35,7 @@ func (s *S) TestAppIsAvailableHandlerShouldReturnErrorWhenAppStatusIsnotStarted(
 		Name:     "someapp",
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
-		Units:    []app.Unit{{Name: "someapp/0", Type: "django", State: string(provision.StatusPending)}},
+		Units:    []app.Unit{{Name: "someapp/0", Type: "django", State: string(provision.StatusBuilding)}},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
