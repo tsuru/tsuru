@@ -135,7 +135,7 @@ func (s *ActionsSuite) TestAddUserToTeamInGandalfActionForward(c *gocheck.C) {
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	t := &auth.Team{Name: "myteam"}
 	ctx := action.FWContext{
-		Params: []interface{}{u.Email, u, t},
+		Params: []interface{}{u, t},
 	}
 	result, err := addUserToTeamInGandalfAction.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
@@ -154,7 +154,7 @@ func (s *ActionsSuite) TestAddUserToTeamInGandalfActionBackward(c *gocheck.C) {
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	t := &auth.Team{Name: "myteam"}
 	ctx := action.BWContext{
-		Params: []interface{}{u.Email, u, t},
+		Params: []interface{}{u, t},
 	}
 	addUserToTeamInGandalfAction.Backward(ctx)
 	c.Assert(len(h.url), gocheck.Equals, 1)
@@ -162,7 +162,6 @@ func (s *ActionsSuite) TestAddUserToTeamInGandalfActionBackward(c *gocheck.C) {
 }
 
 func (s *ActionsSuite) TestAddUserToTeamInDatabaseActionForward(c *gocheck.C) {
-	u := &auth.User{Email: "nobody@gmail.com", Password: "123456"} // it's not used in this action
 	newUser := &auth.User{Email: "me@gmail.com", Password: "123456"}
 	err := newUser.Create()
 	c.Assert(err, gocheck.IsNil)
@@ -172,7 +171,7 @@ func (s *ActionsSuite) TestAddUserToTeamInDatabaseActionForward(c *gocheck.C) {
 	defer s.conn.Teams().RemoveId(t.Name)
 	defer s.conn.Users().Remove(bson.M{"email": newUser.Email})
 	ctx := action.FWContext{
-		Params: []interface{}{newUser.Email, u, t},
+		Params: []interface{}{newUser, t},
 	}
 	result, err := addUserToTeamInDatabaseAction.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
@@ -192,7 +191,7 @@ func (s *ActionsSuite) TestAddUserToTeamInDatabaseActionBackward(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Teams().RemoveId(t.Name)
 	ctx := action.BWContext{
-		Params: []interface{}{u.Email, u, t},
+		Params: []interface{}{u, t},
 	}
 	addUserToTeamInDatabaseAction.Backward(ctx)
 	err = s.conn.Teams().FindId(t.Name).One(&t)

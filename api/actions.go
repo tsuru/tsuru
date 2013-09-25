@@ -44,18 +44,13 @@ var addKeyInDatabaseAction = action.Action{
 var addUserToTeamInGandalfAction = action.Action{
 	Name: "add-user-to-team-in-gandalf",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		email := ctx.Params[0].(string)
-		u := ctx.Params[1].(*auth.User)
-		t := ctx.Params[2].(*auth.Team)
-		return nil, addUserToTeamInGandalf(email, u, t)
+		u := ctx.Params[0].(*auth.User)
+		t := ctx.Params[1].(*auth.Team)
+		return nil, addUserToTeamInGandalf(u, t)
 	},
 	Backward: func(ctx action.BWContext) {
-		email := ctx.Params[0].(string)
-		u, err := auth.GetUserByEmail(email)
-		if err != nil {
-			return
-		}
-		team := ctx.Params[2].(*auth.Team)
+		u := ctx.Params[0].(*auth.User)
+		team := ctx.Params[1].(*auth.Team)
 		removeUserFromTeamInGandalf(u, team)
 	},
 }
@@ -63,21 +58,13 @@ var addUserToTeamInGandalfAction = action.Action{
 var addUserToTeamInDatabaseAction = action.Action{
 	Name: "add-user-to-team-in-database",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		email := ctx.Params[0].(string)
-		u, err := auth.GetUserByEmail(email)
-		if err != nil {
-			return nil, err
-		}
-		t := ctx.Params[2].(*auth.Team)
+		u := ctx.Params[0].(*auth.User)
+		t := ctx.Params[1].(*auth.Team)
 		return nil, addUserToTeamInDatabase(u, t)
 	},
 	Backward: func(ctx action.BWContext) {
-		email := ctx.Params[0].(string)
-		u, err := auth.GetUserByEmail(email)
-		if err != nil {
-			return
-		}
-		t := ctx.Params[2].(*auth.Team)
+		u := ctx.Params[0].(*auth.User)
+		t := ctx.Params[1].(*auth.Team)
 		removeUserFromTeamInDatabase(u, t)
 	},
 }

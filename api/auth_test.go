@@ -815,7 +815,7 @@ func (s *AuthSuite) TestAddUserToTeamInGandalfShouldCallGandalfAPI(c *gocheck.C)
 	ts := s.startGandalfTestServer(&h)
 	defer ts.Close()
 	u := auth.User{Email: "nonee@me.me", Password: "none"}
-	err := addUserToTeamInGandalf("me@gmail.com", &u, s.team)
+	err := addUserToTeamInGandalf(&u, s.team)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(len(h.url), gocheck.Equals, 1)
 	c.Assert(h.url[0], gocheck.Equals, "/repository/grant")

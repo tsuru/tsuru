@@ -277,13 +277,13 @@ func addUserToTeamInDatabase(user *auth.User, team *auth.Team) error {
 	return conn.Teams().UpdateId(team.Name, team)
 }
 
-func addUserToTeamInGandalf(email string, u *auth.User, t *auth.Team) error {
+func addUserToTeamInGandalf(user *auth.User, t *auth.Team) error {
 	gURL := repository.ServerURL()
-	alwdApps, err := u.AllowedApps()
+	alwdApps, err := t.AllowedApps()
 	if err != nil {
 		return fmt.Errorf("Failed to obtain allowed apps to grant: %s", err.Error())
 	}
-	if err := (&gandalf.Client{Endpoint: gURL}).GrantAccess(alwdApps, []string{email}); err != nil {
+	if err := (&gandalf.Client{Endpoint: gURL}).GrantAccess(alwdApps, []string{user.Email}); err != nil {
 		return fmt.Errorf("Failed to grant access to git repositories: %s", err)
 	}
 	return nil
@@ -319,7 +319,7 @@ func addUserToTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error 
 		&addUserToTeamInDatabaseAction,
 	}
 	pipeline := action.NewPipeline(actions...)
-	return pipeline.Execute(user.Email, u, team)
+	return pipeline.Execute(user, team)
 }
 
 func removeUserFromTeamInDatabase(u *auth.User, team *auth.Team) error {
