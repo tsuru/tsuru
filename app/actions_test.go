@@ -11,6 +11,7 @@ import (
 	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/auth"
+	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/quota"
 	"labix.org/v2/mgo/bson"
@@ -1030,6 +1031,7 @@ func (s *S) TestSaveNewUnitsInDatabaseForward(c *gocheck.C) {
 	for i, unit := range app.Units {
 		c.Assert(unit.Name, gocheck.Equals, units[i].Name)
 		c.Assert(unit.QuotaItem, gocheck.Equals, ids[i])
+		c.Assert(unit.State, gocheck.Equals, provision.StatusBuilding.String())
 		messages := []queue.Message{
 			{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}},
 			{Action: BindService, Args: []string{app.Name, unit.Name}},

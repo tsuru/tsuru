@@ -464,7 +464,7 @@ var saveNewUnitsInDatabase = action.Action{
 				Type:       unit.Type,
 				Ip:         unit.Ip,
 				Machine:    unit.Machine,
-				State:      provision.StatusPending.String(),
+				State:      provision.StatusBuilding.String(),
 				InstanceId: unit.InstanceId,
 				QuotaItem:  prev.ids[i],
 			}
