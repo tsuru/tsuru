@@ -66,3 +66,7 @@ func (ProvisionSuite) TestStatusString(c *gocheck.C) {
 func (ProvisionSuite) TestStatusUnreachable(c *gocheck.C) {
 	c.Assert(StatusUnreachable.String(), gocheck.Equals, "unreachable")
 }
+
+func (ProvisionSuite) TestStatusBuilding(c *gocheck.C) {
+	c.Assert(StatusBuilding.String(), gocheck.Equals, "building")
+}
