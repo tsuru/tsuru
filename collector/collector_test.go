@@ -92,7 +92,7 @@ func (s *S) TestUpdateWithDownMachine(c *gocheck.C) {
 			Type:    "python",
 			Machine: 2,
 			Ip:      "",
-			Status:  provision.StatusPending,
+			Status:  provision.StatusBuilding,
 		},
 	}
 	update(units)

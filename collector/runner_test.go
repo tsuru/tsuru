@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-var pendingApps = []string{"as_i_rise", "the_infanta"}
+var buildingApps = []string{"as_i_rise", "the_infanta"}
 var runningApps = []string{"caravan", "bu2b", "carnies"}
 
 func createApp(conn *db.Storage, name, state string) {
@@ -28,8 +28,8 @@ func createApp(conn *db.Storage, name, state string) {
 }
 
 func createApps(conn *db.Storage) {
-	for _, name := range pendingApps {
-		createApp(conn, name, string(provision.StatusPending))
+	for _, name := range buildingApps {
+		createApp(conn, name, string(provision.StatusBuilding))
 	}
 	for _, name := range runningApps {
 		createApp(conn, name, string(provision.StatusStarted))
@@ -37,7 +37,7 @@ func createApps(conn *db.Storage) {
 }
 
 func destroyApps(conn *db.Storage) {
-	allApps := append(pendingApps, runningApps...)
+	allApps := append(buildingApps, runningApps...)
 	conn.Apps().Remove(bson.M{"name": bson.M{"$in": allApps}})
 }
 
