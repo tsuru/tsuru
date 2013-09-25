@@ -725,7 +725,7 @@ func (s *S) TestUnitStatus(c *gocheck.C) {
 		machineAgent string
 		expected     provision.Status
 	}{
-		{"something", "nothing", "wut", provision.StatusPending},
+		{"something", "nothing", "wut", provision.StatusBuilding},
 		{"", "", "", provision.StatusCreating},
 		{"", "", "pending", provision.StatusCreating},
 		{"", "", "not-started", provision.StatusCreating},
@@ -740,9 +740,7 @@ func (s *S) TestUnitStatus(c *gocheck.C) {
 	}
 	for _, t := range tests {
 		got := unitStatus(t.instance, t.agent, t.machineAgent)
-		if got != t.expected {
-			c.Errorf("unitStatus(%q, %q, %q): Want %q. Got %q.", t.instance, t.agent, t.machineAgent, t.expected, got)
-		}
+		c.Assert(got, gocheck.Equals, t.expected)
 	}
 }
 
