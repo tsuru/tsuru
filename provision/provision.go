@@ -24,7 +24,6 @@ const (
 	StatusDown        = Status("down")
 	StatusError       = Status("error")
 	StatusInstalling  = Status("installing")
-	StatusCreating    = Status("creating")
 	StatusUnreachable = Status("unreachable")
 )
 

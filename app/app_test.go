@@ -651,7 +651,6 @@ func (s *S) TestRemoveUnitsPriority(c *gocheck.C) {
 	unitList := []Unit{
 		{Name: "ble/0", State: provision.StatusStarted.String()},
 		{Name: "ble/1", State: provision.StatusDown.String()},
-		{Name: "ble/2", State: provision.StatusCreating.String()},
 		{Name: "ble/3", State: provision.StatusError.String()},
 		{Name: "ble/4", State: provision.StatusInstalling.String()},
 		{Name: "ble/5", State: provision.StatusBuilding.String()},
@@ -666,7 +665,7 @@ func (s *S) TestRemoveUnitsPriority(c *gocheck.C) {
 	for _, unit := range units {
 		c.Assert(&a, HasUnit, unit)
 	}
-	removeUnits := []int{3, 1, 2, 4, 5}
+	removeUnits := []int{2, 1, 3, 4}
 	for _, unit := range removeUnits {
 		err = a.RemoveUnits(1)
 		c.Assert(err, gocheck.IsNil)
@@ -685,7 +684,7 @@ func (s *S) TestRemoveUnitsWithQuota(c *gocheck.C) {
 	units := []Unit{
 		{Name: "ble/0", State: provision.StatusStarted.String(), QuotaItem: "ble-0"},
 		{Name: "ble/1", State: provision.StatusDown.String(), QuotaItem: "ble-1"},
-		{Name: "ble/2", State: provision.StatusCreating.String(), QuotaItem: "ble-2"},
+		{Name: "ble/2", State: provision.StatusBuilding.String(), QuotaItem: "ble-2"},
 		{Name: "ble/3", State: provision.StatusBuilding.String(), QuotaItem: "ble-3"},
 		{Name: "ble/4", State: provision.StatusStarted.String(), QuotaItem: "ble-4"},
 		{Name: "ble/5", State: provision.StatusInstalling.String(), QuotaItem: "ble-5"},

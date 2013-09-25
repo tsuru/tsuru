@@ -28,11 +28,9 @@ func (s *S) TestUnitGetStatus(c *gocheck.C) {
 	}{
 		{"started", provision.StatusStarted},
 		{"building", provision.StatusBuilding},
-		{"creating", provision.StatusCreating},
 		{"down", provision.StatusDown},
 		{"error", provision.StatusError},
 		{"installing", provision.StatusInstalling},
-		{"creating", provision.StatusCreating},
 	}
 	for _, test := range tests {
 		u := Unit{State: test.input}
@@ -54,23 +52,21 @@ func (s *S) TestUnitSliceLess(c *gocheck.C) {
 	units := UnitSlice{
 		Unit{Name: "a", State: provision.StatusError.String()},
 		Unit{Name: "b", State: provision.StatusDown.String()},
-		Unit{Name: "c", State: provision.StatusCreating.String()},
-		Unit{Name: "d", State: provision.StatusInstalling.String()},
-		Unit{Name: "e", State: provision.StatusBuilding.String()},
-		Unit{Name: "f", State: provision.StatusStarted.String()},
+		Unit{Name: "c", State: provision.StatusInstalling.String()},
+		Unit{Name: "d", State: provision.StatusBuilding.String()},
+		Unit{Name: "e", State: provision.StatusStarted.String()},
 	}
 	c.Assert(units.Less(0, 1), gocheck.Equals, true)
 	c.Assert(units.Less(1, 2), gocheck.Equals, true)
 	c.Assert(units.Less(2, 3), gocheck.Equals, true)
-	c.Assert(units.Less(4, 5), gocheck.Equals, true)
-	c.Assert(units.Less(5, 0), gocheck.Equals, false)
+	c.Assert(units.Less(3, 4), gocheck.Equals, true)
+	c.Assert(units.Less(4, 0), gocheck.Equals, false)
 }
 
 func (s *S) TestUnitSliceSwap(c *gocheck.C) {
 	units := UnitSlice{
 		Unit{Name: "b", State: provision.StatusDown.String()},
 		Unit{Name: "a", State: provision.StatusError.String()},
-		Unit{Name: "d", State: provision.StatusCreating.String()},
 		Unit{Name: "e", State: provision.StatusInstalling.String()},
 		Unit{Name: "f", State: provision.StatusBuilding.String()},
 		Unit{Name: "g", State: provision.StatusStarted.String()},
@@ -84,7 +80,6 @@ func (s *S) TestUnitSliceSort(c *gocheck.C) {
 	units := UnitSlice{
 		Unit{Name: "b", State: provision.StatusDown.String()},
 		Unit{Name: "a", State: provision.StatusError.String()},
-		Unit{Name: "d", State: provision.StatusCreating.String()},
 		Unit{Name: "e", State: provision.StatusInstalling.String()},
 		Unit{Name: "f", State: provision.StatusBuilding.String()},
 		Unit{Name: "g", State: provision.StatusStarted.String()},

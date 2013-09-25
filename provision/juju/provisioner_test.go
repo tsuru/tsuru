@@ -726,11 +726,11 @@ func (s *S) TestUnitStatus(c *gocheck.C) {
 		expected     provision.Status
 	}{
 		{"something", "nothing", "wut", provision.StatusBuilding},
-		{"", "", "", provision.StatusCreating},
-		{"", "", "pending", provision.StatusCreating},
-		{"", "", "not-started", provision.StatusCreating},
-		{"pending", "", "", provision.StatusCreating},
-		{"", "not-started", "running", provision.StatusCreating},
+		{"", "", "", provision.StatusBuilding},
+		{"", "", "pending", provision.StatusBuilding},
+		{"", "", "not-started", provision.StatusBuilding},
+		{"pending", "", "", provision.StatusBuilding},
+		{"", "not-started", "running", provision.StatusBuilding},
 		{"error", "install-error", "start-error", provision.StatusError},
 		{"started", "start-error", "running", provision.StatusError},
 		{"started", "charm-upgrade-error", "running", provision.StatusError},
