@@ -46,7 +46,7 @@ func collectUnit(container container, units chan<- provision.Unit, wg *sync.Wait
 	}
 	switch container.Status {
 	case "error":
-		unit.Status = provision.StatusError
+		unit.Status = provision.StatusDown
 		units <- unit
 		return
 	case "created":

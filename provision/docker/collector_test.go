@@ -45,7 +45,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 			Name:    "9930c24f1c6f",
 			AppName: "make-up",
 			Type:    "python",
-			Status:  provision.StatusError,
+			Status:  provision.StatusDown,
 		},
 	}
 	var p dockerProvisioner
