@@ -44,33 +44,32 @@ func collectUnit(container container, units chan<- provision.Unit, wg *sync.Wait
 		AppName: container.AppName,
 		Type:    container.Type,
 	}
-	switch container.Status {
-	case "error":
+	if container.Status == "error" {
 		unit.Status = provision.StatusDown
 		units <- unit
 		return
-	case "created":
-		return
 	}
-	unit.Ip = container.HostAddr
-	if ip, hostPort, err := container.networkInfo(); err == nil &&
-		(hostPort != container.HostPort || ip != container.IP) {
-		err = fixContainer(&container, ip, hostPort)
-		if err != nil {
-			log.Printf("error on fix container hostport for [container %s]", container.ID)
-			return
+	if container.Status == "running" {
+		unit.Ip = container.HostAddr
+		if ip, hostPort, err := container.networkInfo(); err == nil &&
+			(hostPort != container.HostPort || ip != container.IP) {
+			err = fixContainer(&container, ip, hostPort)
+			if err != nil {
+				log.Printf("error on fix container hostport for [container %s]", container.ID)
+				return
+			}
 		}
+		addr := strings.Replace(container.getAddress(), "http://", "", 1)
+		conn, err := net.Dial("tcp", addr)
+		if err != nil {
+			unit.Status = provision.StatusBuilding
+		} else {
+			conn.Close()
+			unit.Status = provision.StatusStarted
+		}
+		log.Printf("collected data for [container %s] - [app %s]", container.ID, container.AppName)
+		units <- unit
 	}
-	addr := strings.Replace(container.getAddress(), "http://", "", 1)
-	conn, err := net.Dial("tcp", addr)
-	if err != nil {
-		unit.Status = provision.StatusBuilding
-	} else {
-		conn.Close()
-		unit.Status = provision.StatusStarted
-	}
-	log.Printf("collected data for [container %s] - [app %s]", container.ID, container.AppName)
-	units <- unit
 }
 
 func buildResult(maxSize int, units <-chan provision.Unit) <-chan []provision.Unit {
