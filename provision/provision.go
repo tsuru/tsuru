@@ -19,11 +19,20 @@ func (s Status) String() string {
 }
 
 const (
-	StatusStarted     = Status("started")
-	StatusBuilding    = Status("building")
-	StatusDown        = Status("down")
-	StatusError       = Status("error")
+	// building - is while the unit is been provisioned,
+	// it occurs during a deploy.
+	StatusBuilding = Status("building")
+	// error - when an error occurs caused by the application code.
+	StatusError = Status("error")
+	// is when an error occurs caused by tsuru internal problems.
+	StatusDown = Status("down")
+	// is when the app process is up but it is not binded to the
+	// right host ("0.0.0.0") and right port ($PORT).
+	// If your process is a worker its state will be unreachable.
 	StatusUnreachable = Status("unreachable")
+	// Is when the app process is up and binded to the right
+	// host ("0.0.0.0") and right port ($PORT).
+	StatusStarted = Status("started")
 )
 
 // Unit represents a provision unit. Can be a machine, container or anything
