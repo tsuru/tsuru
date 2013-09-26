@@ -58,6 +58,33 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 	port, err := getPort()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cont.Port, gocheck.Equals, port)
+	user, err := config.GetString("docker:ssh:user")
+	c.Assert(err, gocheck.IsNil)
+	dcli, _ := dockerClient.NewClient(s.server.URL())
+	container, err := dcli.InspectContainer(cont.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(container.Config.User, gocheck.Equals, user)
+}
+
+func (s *S) TestNewContainerUndefinedUser(c *gocheck.C) {
+	oldUser, _ := config.Get("docker:ssh:user")
+	defer config.Set("docker:ssh:user", oldUser)
+	config.Unset("docker:ssh:user")
+	oldClusterNodes := clusterNodes
+	clusterNodes = map[string]string{"server": s.server.URL()}
+	defer func() { clusterNodes = oldClusterNodes }()
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	app := testing.NewFakeApp("app-name", "python", 1)
+	rtesting.FakeRouter.AddBackend(app.GetName())
+	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
+	cont, err := newContainer(app, getImage(app), []string{"docker", "run"})
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(&cont)
+	dcli, _ := dockerClient.NewClient(s.server.URL())
+	container, err := dcli.InspectContainer(cont.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(container.Config.User, gocheck.Equals, "")
 }
 
 func (s *S) TestGetSSHCommandsDefaultSSHDPath(c *gocheck.C) {

@@ -131,9 +131,11 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 		log.Printf("error on getting port for container %s - %s", cont.AppName, port)
 		return container{}, err
 	}
+	user, _ := config.GetString("docker:ssh:user")
 	config := docker.Config{
 		Image:        imageId,
 		Cmd:          cmds,
+		User:         user,
 		PortSpecs:    []string{port},
 		AttachStdin:  false,
 		AttachStdout: false,
