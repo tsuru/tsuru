@@ -607,7 +607,7 @@ func unitStatus(instanceState, agentState, machineAgentState string) provision.S
 	if instanceState == "error" ||
 		machineAgentState == "start-error" ||
 		strings.Contains(agentState, "error") {
-		return provision.StatusError
+		return provision.StatusDown
 	}
 	if machineAgentState == "pending" || machineAgentState == "not-started" || machineAgentState == "" {
 		return provision.StatusBuilding

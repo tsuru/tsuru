@@ -12,6 +12,7 @@ import (
 	"github.com/globocom/tsuru/app"
 	etesting "github.com/globocom/tsuru/exec/testing"
 	"github.com/globocom/tsuru/heal"
+	"github.com/globocom/tsuru/provision"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/ec2"
@@ -666,12 +667,18 @@ func (s *S) TestELBInstanceHealerCheckInstancesDisabledELB(c *gocheck.C) {
 
 func (s *ELBSuite) TestELBInstanceHealerGetUnhealthyApps(c *gocheck.C) {
 	apps := []interface{}{
-		app.App{Name: "when", Units: []app.Unit{{Name: "when/0", State: "started"}}},
-		app.App{Name: "what", Units: []app.Unit{{Name: "what/0", State: "error"}}},
-		app.App{Name: "why", Units: []app.Unit{{Name: "why/0", State: "down"}}},
+		app.App{Name: "when", Units: []app.Unit{
+			{Name: "when/0", State: provision.StatusStarted.String()},
+		}},
+		app.App{Name: "what", Units: []app.Unit{
+			{Name: "what/0", State: provision.StatusDown.String()},
+		}},
+		app.App{Name: "why", Units: []app.Unit{
+			{Name: "why/0", State: provision.StatusDown.String()},
+		}},
 		app.App{Name: "how", Units: []app.Unit{
-			{Name: "how/0", State: "started"},
-			{Name: "how/1", State: "down"},
+			{Name: "how/0", State: provision.StatusStarted.String()},
+			{Name: "how/1", State: provision.StatusDown.String()},
 		}},
 	}
 	err := s.conn.Apps().Insert(apps...)

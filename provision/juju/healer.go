@@ -427,8 +427,7 @@ func (h elbInstanceHealer) getUnhealthyApps() map[string]app.App {
 	}
 	for _, a := range all {
 		for _, u := range a.ProvisionedUnits() {
-			if u.GetStatus() == provision.StatusDown ||
-				u.GetStatus() == provision.StatusError {
+			if u.GetStatus() == provision.StatusDown {
 				apps[a.Name] = a
 				break
 			}
