@@ -25,11 +25,7 @@ func deployCmds(app provision.App, version string) ([]string, error) {
 		return nil, err
 	}
 	appRepo := repository.ReadOnlyURL(app.GetName())
-	user, err := config.GetString("docker:ssh:user")
-	if err != nil {
-		return nil, err
-	}
-	cmds := []string{"sudo", "-u", user, deployCmd, appRepo, version}
+	cmds := []string{deployCmd, appRepo, version}
 	return cmds, nil
 }
 
