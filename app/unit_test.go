@@ -29,7 +29,6 @@ func (s *S) TestUnitGetStatus(c *gocheck.C) {
 		{"started", provision.StatusStarted},
 		{"building", provision.StatusBuilding},
 		{"down", provision.StatusDown},
-		{"error", provision.StatusError},
 	}
 	for _, test := range tests {
 		u := Unit{State: test.input}
@@ -49,35 +48,31 @@ func (s *S) TestUnitSliceLen(c *gocheck.C) {
 
 func (s *S) TestUnitSliceLess(c *gocheck.C) {
 	units := UnitSlice{
-		Unit{Name: "a", State: provision.StatusError.String()},
 		Unit{Name: "b", State: provision.StatusDown.String()},
 		Unit{Name: "d", State: provision.StatusBuilding.String()},
 		Unit{Name: "e", State: provision.StatusStarted.String()},
 	}
 	c.Assert(units.Less(0, 1), gocheck.Equals, true)
 	c.Assert(units.Less(1, 2), gocheck.Equals, true)
-	c.Assert(units.Less(2, 3), gocheck.Equals, true)
-	c.Assert(units.Less(3, 0), gocheck.Equals, false)
+	c.Assert(units.Less(2, 0), gocheck.Equals, false)
 }
 
 func (s *S) TestUnitSliceSwap(c *gocheck.C) {
 	units := UnitSlice{
 		Unit{Name: "b", State: provision.StatusDown.String()},
-		Unit{Name: "a", State: provision.StatusError.String()},
 		Unit{Name: "f", State: provision.StatusBuilding.String()},
 		Unit{Name: "g", State: provision.StatusStarted.String()},
 	}
 	units.Swap(0, 1)
-	c.Assert(units[0].State, gocheck.Equals, provision.StatusError.String())
+	c.Assert(units[0].State, gocheck.Equals, provision.StatusBuilding.String())
 	c.Assert(units[1].State, gocheck.Equals, provision.StatusDown.String())
 }
 
 func (s *S) TestUnitSliceSort(c *gocheck.C) {
 	units := UnitSlice{
-		Unit{Name: "b", State: provision.StatusDown.String()},
-		Unit{Name: "a", State: provision.StatusError.String()},
 		Unit{Name: "f", State: provision.StatusBuilding.String()},
 		Unit{Name: "g", State: provision.StatusStarted.String()},
+		Unit{Name: "b", State: provision.StatusDown.String()},
 	}
 	c.Assert(sort.IsSorted(units), gocheck.Equals, false)
 	sort.Sort(units)
