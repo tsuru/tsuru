@@ -39,7 +39,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 			Type:    "python",
 			Machine: 0,
 			Ip:      "127.0.0.1",
-			Status:  provision.StatusBuilding,
+			Status:  provision.StatusUnreachable,
 		},
 		{
 			Name:    "9930c24f1c6f",
