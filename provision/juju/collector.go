@@ -113,3 +113,9 @@ func unitStatus(instanceState, agentState, machineAgentState string) provision.S
 	}
 	return provision.StatusBuilding
 }
+
+// isReachable returns true if the web application deploy in the
+// unit is accessible via http in the port 80.
+func IsReachable(unit provision.AppUnit) (bool, error) {
+	return false, nil
+}

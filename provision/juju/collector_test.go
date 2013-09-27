@@ -343,3 +343,11 @@ func (s *ELBSuite) TestCollectStatusWithELBAndIDChange(c *gocheck.C) {
 	c.Assert(instances[0].InstanceId, gocheck.Equals, id2)
 	c.Assert(instances[1].InstanceId, gocheck.Equals, id1)
 }
+
+func (s *S) TestIsUnreachable(c *gocheck.C) {
+	app := testing.NewFakeApp("almah", "static", 1)
+	units := app.ProvisionedUnits()
+	reachable, err := IsReachable(units[0])
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(reachable, gocheck.Equals, false)
+}
