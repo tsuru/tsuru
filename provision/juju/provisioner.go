@@ -23,7 +23,6 @@ import (
 	"github.com/globocom/tsuru/safe"
 	"io"
 	"labix.org/v2/mgo/bson"
-	"launchpad.net/goyaml"
 	osexec "os/exec"
 	"regexp"
 	"strconv"
@@ -387,68 +386,6 @@ func (p *JujuProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 	return nil
 }
 
-func (p *JujuProvisioner) getOutput() (jujuOutput, error) {
-	output, err := execWithTimeout(30e9, "juju", "status")
-	if err != nil {
-		return jujuOutput{}, cmdError(string(output), err, []string{"juju", "status"})
-	}
-	var out jujuOutput
-	err = goyaml.Unmarshal(output, &out)
-	if err != nil {
-		reason := fmt.Sprintf("%q returned invalid data: %s", "juju status", output)
-		return jujuOutput{}, &provision.Error{Reason: reason, Err: err}
-	}
-	return out, nil
-}
-
-func (p *JujuProvisioner) saveBootstrapMachine(m machine) error {
-	collection := p.bootstrapCollection()
-	defer collection.Close()
-	_, err := collection.Upsert(nil, &m)
-	return err
-}
-
-func (p *JujuProvisioner) bootstrapCollection() *db.Collection {
-	name, err := config.GetString("juju:bootstrap-collection")
-	if err != nil {
-		log.Fatalf("FATAL: %s.", err)
-	}
-	conn, err := db.Conn()
-	if err != nil {
-		log.Fatalf("Failed to connect to the database: %s", err)
-	}
-	return conn.Collection(name)
-}
-
-func (p *JujuProvisioner) collectStatus() ([]provision.Unit, error) {
-	out, err := p.getOutput()
-	if err != nil {
-		return nil, err
-	}
-	var units []provision.Unit
-	for name, service := range out.Services {
-		for unitName, u := range service.Units {
-			machine := out.Machines[u.Machine]
-			unit := provision.Unit{
-				Name:       unitName,
-				AppName:    name,
-				Machine:    u.Machine,
-				InstanceId: machine.InstanceID,
-				Ip:         machine.IPAddress,
-			}
-			typeRegexp := regexp.MustCompile(`^(local:)?(\w+)/(\w+)-\d+$`)
-			matchs := typeRegexp.FindStringSubmatch(service.Charm)
-			if len(matchs) > 3 {
-				unit.Type = matchs[3]
-			}
-			unit.Status = unitStatus(machine.InstanceState, u.AgentState, machine.AgentState)
-			units = append(units, unit)
-		}
-	}
-	p.saveBootstrapMachine(out.Machines[0])
-	return units, err
-}
-
 func (p *JujuProvisioner) heal(units []provision.Unit) {
 	var inst instance
 	coll := p.unitsCollection()
@@ -486,15 +423,6 @@ func (p *JujuProvisioner) heal(units []provision.Unit) {
 			coll.UpdateId(unit.Name, inst)
 		}
 	}
-}
-
-func (p *JujuProvisioner) CollectStatus() ([]provision.Unit, error) {
-	units, err := p.collectStatus()
-	if err != nil {
-		return nil, err
-	}
-	go p.heal(units)
-	return units, err
 }
 
 func (p *JujuProvisioner) Addr(app provision.App) (string, error) {
@@ -601,31 +529,4 @@ func unitNotFound(unitName string, output []byte) bool {
 		}
 	}
 	return false
-}
-
-func unitStatus(instanceState, agentState, machineAgentState string) provision.Status {
-	if instanceState == "error" ||
-		machineAgentState == "start-error" ||
-		strings.Contains(agentState, "error") {
-		return provision.StatusDown
-	}
-	if machineAgentState == "pending" || machineAgentState == "not-started" || machineAgentState == "" {
-		return provision.StatusBuilding
-	}
-	if instanceState == "pending" || instanceState == "" {
-		return provision.StatusBuilding
-	}
-	if agentState == "down" {
-		return provision.StatusDown
-	}
-	if machineAgentState == "running" && agentState == "not-started" {
-		return provision.StatusBuilding
-	}
-	if machineAgentState == "running" && instanceState == "running" && agentState == "pending" {
-		return provision.StatusBuilding
-	}
-	if machineAgentState == "running" && agentState == "started" && instanceState == "running" {
-		return provision.StatusStarted
-	}
-	return provision.StatusBuilding
 }
