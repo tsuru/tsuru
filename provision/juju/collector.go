@@ -12,6 +12,7 @@ import (
 	"github.com/globocom/tsuru/provision"
 	_ "github.com/globocom/tsuru/router/elb"
 	"launchpad.net/goyaml"
+	"net/http"
 	"regexp"
 	"strings"
 )
@@ -117,5 +118,10 @@ func unitStatus(instanceState, agentState, machineAgentState string) provision.S
 // isReachable returns true if the web application deploy in the
 // unit is accessible via http in the port 80.
 func IsReachable(unit provision.AppUnit) (bool, error) {
+	url := fmt.Sprintf("http://%s", unit.GetIp())
+	_, err := http.Get(url)
+	if err != nil {
+		return false, err
+	}
 	return false, nil
 }
