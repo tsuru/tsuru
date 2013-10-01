@@ -10,6 +10,8 @@ import (
 	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
+	"net/http"
+	"net/http/httptest"
 	"runtime"
 	"strings"
 	"sync"
@@ -348,5 +350,15 @@ func (s *S) TestIsUnreachable(c *gocheck.C) {
 	app := testing.NewFakeApp("almah", "static", 1)
 	units := app.ProvisionedUnits()
 	reachable, _ := IsReachable(units[0])
+	c.Assert(reachable, gocheck.Equals, false)
+}
+
+func (s *S) TestIsUnreachableOnBadGateway(c *gocheck.C) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "", http.StatusBadGateway)
+	}))
+	defer server.Close()
+	unit := testing.FakeUnit{Ip: server.URL}
+	reachable, _ := IsReachable(&unit)
 	c.Assert(reachable, gocheck.Equals, false)
 }
