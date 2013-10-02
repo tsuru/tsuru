@@ -71,7 +71,7 @@ func (p *JujuProvisioner) collectStatus() ([]provision.Unit, error) {
 			if len(matchs) > 3 {
 				unit.Type = matchs[3]
 			}
-			unit.Status = unitStatus(machine.InstanceState, u.AgentState, machine.AgentState)
+			unit.Status = unitStatus(machine, u)
 			units = append(units, unit)
 		}
 	}
@@ -88,7 +88,10 @@ func (p *JujuProvisioner) CollectStatus() ([]provision.Unit, error) {
 	return units, err
 }
 
-func unitStatus(instanceState, agentState, machineAgentState string) provision.Status {
+func unitStatus(m machine, u unit) provision.Status {
+	instanceState := m.InstanceState
+	agentState := u.AgentState
+	machineAgentState := m.AgentState
 	if instanceState == "error" ||
 		machineAgentState == "start-error" ||
 		strings.Contains(agentState, "error") {

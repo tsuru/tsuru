@@ -283,7 +283,9 @@ func (s *S) TestUnitStatus(c *gocheck.C) {
 		{"running", "down", "running", provision.StatusDown},
 	}
 	for _, t := range tests {
-		got := unitStatus(t.instance, t.agent, t.machineAgent)
+		m := machine{AgentState: t.machineAgent, InstanceState: t.instance}
+		u := unit{AgentState: t.agent}
+		got := unitStatus(m, u)
 		c.Assert(got, gocheck.Equals, t.expected)
 	}
 }
