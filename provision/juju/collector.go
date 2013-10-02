@@ -71,7 +71,7 @@ func (p *JujuProvisioner) collectStatus() ([]provision.Unit, error) {
 			if len(matchs) > 3 {
 				unit.Type = matchs[3]
 			}
-			unit.Status = unitStatus(machine, u)
+			unit.Status = unitStatus(machine, u, unit)
 			units = append(units, unit)
 		}
 	}
@@ -88,7 +88,7 @@ func (p *JujuProvisioner) CollectStatus() ([]provision.Unit, error) {
 	return units, err
 }
 
-func unitStatus(m machine, u unit) provision.Status {
+func unitStatus(m machine, u unit, unit provision.Unit) provision.Status {
 	instanceState := m.InstanceState
 	agentState := u.AgentState
 	machineAgentState := m.AgentState
@@ -113,15 +113,20 @@ func unitStatus(m machine, u unit) provision.Status {
 		return provision.StatusBuilding
 	}
 	if machineAgentState == "running" && agentState == "started" && instanceState == "running" {
-		return provision.StatusStarted
+		reachable, _ := IsReachable(unit)
+		if reachable {
+			return provision.StatusStarted
+		} else {
+			return provision.StatusUnreachable
+		}
 	}
 	return provision.StatusBuilding
 }
 
 // isReachable returns true if the web application deploy in the
 // unit is accessible via http in the port 80.
-func IsReachable(unit provision.AppUnit) (bool, error) {
-	url := fmt.Sprintf("http://%s", unit.GetIp())
+func IsReachable(unit provision.Unit) (bool, error) {
+	url := fmt.Sprintf("http://%s", unit.Ip)
 	response, err := http.Get(url)
 	if err != nil {
 		return false, err

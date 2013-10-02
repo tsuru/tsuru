@@ -69,7 +69,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 			Machine:    105,
 			InstanceId: "i-00000439",
 			Ip:         "10.10.10.163",
-			Status:     provision.StatusStarted,
+			Status:     provision.StatusUnreachable,
 		},
 		{
 			Name:       "the_infanta/0",
@@ -131,7 +131,7 @@ func (s *S) TestCollectStatusDirtyOutput(c *gocheck.C) {
 			Machine:    105,
 			InstanceId: "i-00000439",
 			Ip:         "10.10.10.163",
-			Status:     provision.StatusStarted,
+			Status:     provision.StatusUnreachable,
 		},
 		{
 			Name:       "the_infanta/1",
@@ -282,10 +282,15 @@ func (s *S) TestUnitStatus(c *gocheck.C) {
 		{"running", "started", "running", provision.StatusStarted},
 		{"running", "down", "running", provision.StatusDown},
 	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	}))
+	defer server.Close()
+	url := strings.Replace(server.URL, "http://", "", -1)
 	for _, t := range tests {
 		m := machine{AgentState: t.machineAgent, InstanceState: t.instance}
 		u := unit{AgentState: t.agent}
-		got := unitStatus(m, u)
+		unit := provision.Unit{Ip: url}
+		got := unitStatus(m, u, unit)
 		c.Assert(got, gocheck.Equals, t.expected)
 	}
 }
@@ -349,9 +354,8 @@ func (s *ELBSuite) TestCollectStatusWithELBAndIDChange(c *gocheck.C) {
 }
 
 func (s *S) TestIsUnreachable(c *gocheck.C) {
-	app := testing.NewFakeApp("almah", "static", 1)
-	units := app.ProvisionedUnits()
-	reachable, _ := IsReachable(units[0])
+	unit := provision.Unit{Ip: "127.0.0.1:1234"}
+	reachable, _ := IsReachable(unit)
 	c.Assert(reachable, gocheck.Equals, false)
 }
 
@@ -360,8 +364,8 @@ func (s *S) TestIsUnreachableOnBadGateway(c *gocheck.C) {
 		http.Error(w, "", http.StatusBadGateway)
 	}))
 	defer server.Close()
-	unit := testing.FakeUnit{Ip: server.URL}
-	reachable, _ := IsReachable(&unit)
+	unit := provision.Unit{Ip: server.URL}
+	reachable, _ := IsReachable(unit)
 	c.Assert(reachable, gocheck.Equals, false)
 }
 
@@ -370,8 +374,20 @@ func (s *S) TestIsNotUnreachable(c *gocheck.C) {
 	}))
 	defer server.Close()
 	url := strings.Replace(server.URL, "http://", "", -1)
-	unit := testing.FakeUnit{Ip: url}
-	reachable, err := IsReachable(&unit)
+	unit := provision.Unit{Ip: url}
+	reachable, err := IsReachable(unit)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(reachable, gocheck.Equals, true)
+}
+
+func (s *S) TestUnitStatusUnreachable(c *gocheck.C) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "", http.StatusBadGateway)
+	}))
+	defer server.Close()
+	m := machine{AgentState: "running", InstanceState: "running"}
+	u := unit{AgentState: "started"}
+	unit := provision.Unit{Ip: server.URL}
+	got := unitStatus(m, u, unit)
+	c.Assert(got, gocheck.Equals, provision.StatusUnreachable)
 }
