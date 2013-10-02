@@ -12,7 +12,7 @@ First, you must have a `MariaDB server <https://downloads.mariadb.org/mariadb/re
 
 ::
 
-    # Ubuntu
+    # Ubuntu 13.04
     $ sudo apt-get install software-properties-common
     $ sudo gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys CBCB082A1BB943DB
     $ sudo gpg -a --export CBCB082A1BB943DB | apt-key add -
