@@ -362,3 +362,14 @@ func (s *S) TestIsUnreachableOnBadGateway(c *gocheck.C) {
 	reachable, _ := IsReachable(&unit)
 	c.Assert(reachable, gocheck.Equals, false)
 }
+
+func (s *S) TestIsNotUnreachable(c *gocheck.C) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	}))
+	defer server.Close()
+	url := strings.Replace(server.URL, "http://", "", -1)
+	unit := testing.FakeUnit{Ip: url}
+	reachable, err := IsReachable(&unit)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(reachable, gocheck.Equals, true)
+}

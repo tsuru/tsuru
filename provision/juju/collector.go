@@ -119,9 +119,12 @@ func unitStatus(instanceState, agentState, machineAgentState string) provision.S
 // unit is accessible via http in the port 80.
 func IsReachable(unit provision.AppUnit) (bool, error) {
 	url := fmt.Sprintf("http://%s", unit.GetIp())
-	_, err := http.Get(url)
+	response, err := http.Get(url)
 	if err != nil {
 		return false, err
 	}
-	return false, nil
+	if response.StatusCode == http.StatusBadGateway {
+		return false, nil
+	}
+	return true, nil
 }
