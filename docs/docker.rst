@@ -8,7 +8,7 @@ Build your own PaaS with tsuru and Docker
 
 This document describes how to create a private PaaS service using tsuru and docker.
 
-This document assumes that tsuru is being installed on a Ubuntu (13.04+) machine. You
+This document assumes that tsuru is being installed on a Ubuntu (12.04.3+) machine. You
 can use equivalent packages for beanstalkd, git, MongoDB and other tsuru
 dependencies. Please make sure you satisfy minimal version requirements.
 
@@ -26,7 +26,6 @@ DNS server
 ----------
 You can integrate any DNS server with tsuru. Here: `<http://docs.tsuru.io/en/latest/misc/dns-forwarders.html>`_ you can find a example of how to install a DNS server integrated with tsuru
 
-
 docker
 ------
 
@@ -37,7 +36,7 @@ Install docker:
 
 ::
 
-    $ sudo sh -c "echo 'deb http://ppa.launchpad.net/dotcloud/lxc-docker/ubuntu precise main' >> /etc/apt/sources.list"
+    $ sudo echo 'deb http://ppa.launchpad.net/dotcloud/lxc-docker/ubuntu precise main' >> /etc/apt/sources.list
     $ sudo apt-get update -y
     $ sudo apt-get install lxc-docker -y
 
@@ -194,7 +193,7 @@ Now that you have ``tsr`` properly installed, and you
 :doc:`configured tsuru </config>`, you're three steps away from running it.
 
 
-Start api and collector
+Start api, collector and docker-ssh-agent
 
 .. highlight:: bash
 
@@ -214,7 +213,7 @@ You can see the logs in:
 
 
 Creating Docker Images
-~~~~~~~~~~~~~~~~~~~~~~
+======================
 
 Now it's time to install the docker images for your neededs platform. You can build your own docker image, or you can use ours own images as following
 
