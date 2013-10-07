@@ -157,20 +157,14 @@ func (s *S) TestConn(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 }
 
-func (s *S) TestConnMissingDatabaseURL(c *gocheck.C) {
+func (s *S) TestConnMissingConfiguration(c *gocheck.C) {
 	storage, err := Conn()
-	c.Assert(storage, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, `configuration error: key "database:url" not found`)
-}
-
-func (s *S) TestConnMissingDatabaseName(c *gocheck.C) {
-	config.Set("database:url", "127.0.0.1:27017")
-	defer config.Unset("database:url")
-	storage, err := Conn()
-	c.Assert(storage, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, `configuration error: key "database:name" not found`)
+	c.Assert(err, gocheck.IsNil)
+	defer storage.session.Close()
+	err = storage.session.Ping()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(storage.dbname, gocheck.Equals, "tsuru")
+	c.Assert(storage.session.LiveServers(), gocheck.DeepEquals, []string{"127.0.0.1:27017"})
 }
 
 func (s *S) TestCollection(c *gocheck.C) {
