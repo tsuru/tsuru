@@ -257,7 +257,7 @@ func (s *S) TestCreateTokenRemoveOldTokens(c *gocheck.C) {
 	}
 }
 
-func (s *S) TestCreateTokenReturnsErrorWhenHashCostIsUndefined(c *gocheck.C) {
+func (s *S) TestCreateTokenUsesDefaultCostWhenHasCostIsUndefined(c *gocheck.C) {
 	err := config.Unset("auth:hash-cost")
 	c.Assert(err, gocheck.IsNil)
 	defer config.Set("auth:hash-cost", bcrypt.MinCost)
@@ -268,7 +268,7 @@ func (s *S) TestCreateTokenReturnsErrorWhenHashCostIsUndefined(c *gocheck.C) {
 	cost = 0
 	tokenExpire = 0
 	_, err = u.CreateToken("123456")
-	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TestCreateTokenShouldReturnErrorIfTheProvidedUserDoesNotHaveEmailDefined(c *gocheck.C) {
@@ -365,7 +365,8 @@ func (s *S) TestLoadConfigCostUndefined(c *gocheck.C) {
 	config.Unset(key)
 	defer config.Set(key, oldConfig)
 	err = loadConfig()
-	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(cost, gocheck.Equals, bcrypt.DefaultCost)
 }
 
 func (s *S) TestLoadConfigCostInvalid(c *gocheck.C) {

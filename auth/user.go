@@ -46,7 +46,7 @@ func loadConfig() error {
 			tokenExpire = defaultExpiration
 		}
 		if cost, err = config.GetInt("auth:hash-cost"); err != nil {
-			return stderrors.New(`Setting "auth:hash-cost" is undefined.`)
+			cost = bcrypt.DefaultCost
 		}
 		if cost < bcrypt.MinCost || cost > bcrypt.MaxCost {
 			return fmt.Errorf("Invalid value for setting %q: it must be between %d and %d.", "auth:hash-cost", bcrypt.MinCost, bcrypt.MaxCost)
