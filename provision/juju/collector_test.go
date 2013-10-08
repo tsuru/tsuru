@@ -36,7 +36,12 @@ func (s *S) TestSaveBootstrapMachine(c *gocheck.C) {
 }
 
 func (s *S) TestCollectStatusShouldNotAddBootstraTwice(c *gocheck.C) {
-	tmpdir, err := commandmocker.Add("juju", collectOutput)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "", http.StatusBadGateway)
+	}))
+	defer server.Close()
+	url := strings.Replace(server.URL, "http://", "", -1)
+	tmpdir, err := commandmocker.Add("juju", generateOutput(url))
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	p := JujuProvisioner{}
@@ -52,7 +57,12 @@ func (s *S) TestCollectStatusShouldNotAddBootstraTwice(c *gocheck.C) {
 }
 
 func (s *S) TestCollectStatus(c *gocheck.C) {
-	tmpdir, err := commandmocker.Add("juju", collectOutput)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "", http.StatusBadGateway)
+	}))
+	defer server.Close()
+	url := strings.Replace(server.URL, "http://", "", -1)
+	tmpdir, err := commandmocker.Add("juju", generateOutput(url))
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	p := JujuProvisioner{}
@@ -68,7 +78,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 			Type:       "django",
 			Machine:    105,
 			InstanceId: "i-00000439",
-			Ip:         "10.10.10.163",
+			Ip:         url,
 			Status:     provision.StatusUnreachable,
 		},
 		{
@@ -77,7 +87,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 			Type:       "gunicorn",
 			Machine:    107,
 			InstanceId: "i-0000043e",
-			Ip:         "10.10.10.168",
+			Ip:         url,
 			Status:     provision.StatusBuilding,
 		},
 	}
@@ -120,7 +130,12 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 }
 
 func (s *S) TestCollectStatusDirtyOutput(c *gocheck.C) {
-	tmpdir, err := commandmocker.Add("juju", dirtyCollectOutput)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "", http.StatusBadGateway)
+	}))
+	defer server.Close()
+	url := strings.Replace(server.URL, "http://", "", -1)
+	tmpdir, err := commandmocker.Add("juju", generateDirtyOutput(url))
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	expected := []provision.Unit{
@@ -130,7 +145,7 @@ func (s *S) TestCollectStatusDirtyOutput(c *gocheck.C) {
 			Type:       "django",
 			Machine:    105,
 			InstanceId: "i-00000439",
-			Ip:         "10.10.10.163",
+			Ip:         url,
 			Status:     provision.StatusUnreachable,
 		},
 		{
@@ -139,7 +154,7 @@ func (s *S) TestCollectStatusDirtyOutput(c *gocheck.C) {
 			Type:       "gunicorn",
 			Machine:    107,
 			InstanceId: "i-0000043e",
-			Ip:         "10.10.10.168",
+			Ip:         url,
 			Status:     provision.StatusBuilding,
 		},
 	}
@@ -172,7 +187,12 @@ func (s *S) TestCollectStatusDirtyOutput(c *gocheck.C) {
 }
 
 func (s *S) TestCollectStatusIDChangeDisabledELB(c *gocheck.C) {
-	tmpdir, err := commandmocker.Add("juju", collectOutput)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "", http.StatusBadGateway)
+	}))
+	defer server.Close()
+	url := strings.Replace(server.URL, "http://", "", -1)
+	tmpdir, err := commandmocker.Add("juju", generateOutput(url))
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	p := JujuProvisioner{}
@@ -204,7 +224,12 @@ func (s *S) TestCollectStatusIDChangeDisabledELB(c *gocheck.C) {
 }
 
 func (s *S) TestCollectStatusIDChangeFromPending(c *gocheck.C) {
-	tmpdir, err := commandmocker.Add("juju", collectOutput)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "", http.StatusBadGateway)
+	}))
+	defer server.Close()
+	url := strings.Replace(server.URL, "http://", "", -1)
+	tmpdir, err := commandmocker.Add("juju", generateOutput(url))
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	p := JujuProvisioner{}
@@ -364,7 +389,8 @@ func (s *S) TestIsUnreachableOnBadGateway(c *gocheck.C) {
 		http.Error(w, "", http.StatusBadGateway)
 	}))
 	defer server.Close()
-	unit := provision.Unit{Ip: server.URL}
+	url := strings.Replace(server.URL, "http://", "", -1)
+	unit := provision.Unit{Ip: url}
 	reachable, _ := IsReachable(unit)
 	c.Assert(reachable, gocheck.Equals, false)
 }
@@ -387,7 +413,8 @@ func (s *S) TestUnitStatusUnreachable(c *gocheck.C) {
 	defer server.Close()
 	m := machine{AgentState: "running", InstanceState: "running"}
 	u := unit{AgentState: "started"}
-	unit := provision.Unit{Ip: server.URL}
+	url := strings.Replace(server.URL, "http://", "", -1)
+	unit := provision.Unit{Ip: url}
 	got := unitStatus(m, u, unit)
 	c.Assert(got, gocheck.Equals, provision.StatusUnreachable)
 }
