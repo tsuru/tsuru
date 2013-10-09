@@ -36,11 +36,8 @@ func (s *S) TestSaveBootstrapMachine(c *gocheck.C) {
 }
 
 func (s *S) TestCollectStatusShouldNotAddBootstraTwice(c *gocheck.C) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "", http.StatusBadGateway)
-	}))
+	server, url := badGatewayServer()
 	defer server.Close()
-	url := strings.Replace(server.URL, "http://", "", -1)
 	tmpdir, err := commandmocker.Add("juju", generateOutput(url))
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -57,11 +54,8 @@ func (s *S) TestCollectStatusShouldNotAddBootstraTwice(c *gocheck.C) {
 }
 
 func (s *S) TestCollectStatus(c *gocheck.C) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "", http.StatusBadGateway)
-	}))
+	server, url := badGatewayServer()
 	defer server.Close()
-	url := strings.Replace(server.URL, "http://", "", -1)
 	tmpdir, err := commandmocker.Add("juju", generateOutput(url))
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -130,11 +124,8 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 }
 
 func (s *S) TestCollectStatusDirtyOutput(c *gocheck.C) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "", http.StatusBadGateway)
-	}))
+	server, url := badGatewayServer()
 	defer server.Close()
-	url := strings.Replace(server.URL, "http://", "", -1)
 	tmpdir, err := commandmocker.Add("juju", generateDirtyOutput(url))
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -186,12 +177,17 @@ func (s *S) TestCollectStatusDirtyOutput(c *gocheck.C) {
 	wg.Wait()
 }
 
-func (s *S) TestCollectStatusIDChangeDisabledELB(c *gocheck.C) {
+func badGatewayServer() (*httptest.Server, string) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "", http.StatusBadGateway)
 	}))
-	defer server.Close()
 	url := strings.Replace(server.URL, "http://", "", -1)
+	return server, url
+}
+
+func (s *S) TestCollectStatusIDChangeDisabledELB(c *gocheck.C) {
+	server, url := badGatewayServer()
+	defer server.Close()
 	tmpdir, err := commandmocker.Add("juju", generateOutput(url))
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -224,11 +220,8 @@ func (s *S) TestCollectStatusIDChangeDisabledELB(c *gocheck.C) {
 }
 
 func (s *S) TestCollectStatusIDChangeFromPending(c *gocheck.C) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "", http.StatusBadGateway)
-	}))
+	server, url := badGatewayServer()
 	defer server.Close()
-	url := strings.Replace(server.URL, "http://", "", -1)
 	tmpdir, err := commandmocker.Add("juju", generateOutput(url))
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -385,11 +378,8 @@ func (s *S) TestIsUnreachable(c *gocheck.C) {
 }
 
 func (s *S) TestIsUnreachableOnBadGateway(c *gocheck.C) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "", http.StatusBadGateway)
-	}))
+	server, url := badGatewayServer()
 	defer server.Close()
-	url := strings.Replace(server.URL, "http://", "", -1)
 	unit := provision.Unit{Ip: url}
 	reachable, _ := IsReachable(unit)
 	c.Assert(reachable, gocheck.Equals, false)
@@ -407,13 +397,10 @@ func (s *S) TestIsNotUnreachable(c *gocheck.C) {
 }
 
 func (s *S) TestUnitStatusUnreachable(c *gocheck.C) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "", http.StatusBadGateway)
-	}))
+	server, url := badGatewayServer()
 	defer server.Close()
 	m := machine{AgentState: "running", InstanceState: "running"}
 	u := unit{AgentState: "started"}
-	url := strings.Replace(server.URL, "http://", "", -1)
 	unit := provision.Unit{Ip: url}
 	got := unitStatus(m, u, unit)
 	c.Assert(got, gocheck.Equals, provision.StatusUnreachable)
