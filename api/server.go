@@ -115,6 +115,8 @@ func RunServer(dry bool) {
 
 	m.Put("/swap", authorizationRequiredHandler(swap))
 
+	m.Get("/healthcheck/", http.HandlerFunc(healthcheck))
+
 	if !dry {
 		provisioner, err := getProvisioner()
 		if err != nil {
