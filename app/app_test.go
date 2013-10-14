@@ -1871,6 +1871,18 @@ func (s *S) TestAppAvailableShouldReturnsTrueWhenOneUnitIsStarted(c *gocheck.C) 
 	c.Assert(a.Available(), gocheck.Equals, true)
 }
 
+func (s *S) TestAppAvailableShouldReturnsTrueWhenOneUnitIsUnreachable(c *gocheck.C) {
+	a := App{
+		Name: "anycolor",
+		Units: []Unit{
+			{Name: "i-0800", State: "unreachable"},
+			{Name: "i-0900", State: "pending"},
+			{Name: "i-a00", State: "stopped"},
+		},
+	}
+	c.Assert(a.Available(), gocheck.Equals, true)
+}
+
 func (s *S) TestSwap(c *gocheck.C) {
 	app1 := &App{}
 	app2 := &App{}
