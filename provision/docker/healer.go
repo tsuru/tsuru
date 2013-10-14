@@ -25,8 +25,8 @@ func (h ContainerHealer) Heal() error {
 	unhealthy := h.unhealthyRunningContainers(containers)
 	for _, c := range unhealthy {
 		log.Printf("Attempting to heal container %s", c.ID)
-		if err := dockerCluster().KillContainer(c.ID); err != nil {
-			log.Printf("Caught error while killing container %s for healing: %s", c.ID, err.Error())
+		if err := dockerCluster().StopContainer(c.ID, 10); err != nil {
+			log.Printf("Caught error while stopping container %s for healing: %s", c.ID, err.Error())
 			continue
 		}
 		if err := dockerCluster().StartContainer(c.ID, nil); err != nil {
