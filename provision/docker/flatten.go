@@ -39,8 +39,9 @@ func flatten(imageID string) error {
 		log.Printf("Flatten: Caugh error while exporting container %s: %s", c.ID, err.Error())
 		return err
 	}
+	out := &bytes.Buffer{}
 	opts := dcli.ImportImageOptions{Repository: imageID, Source: "-"}
-	if err := dockerCluster().ImportImage(opts, buf); err != nil {
+	if err := dockerCluster().ImportImage(opts, buf, out); err != nil {
 		log.Printf("Flatten: Caugh error while importing image from container %s: %s", c.ID, err.Error())
 		return err
 	}
