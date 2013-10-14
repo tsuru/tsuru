@@ -338,7 +338,8 @@ func (*JujuProvisioner) startedUnits(app provision.App) []provision.AppUnit {
 	units := []provision.AppUnit{}
 	allUnits := app.ProvisionedUnits()
 	for _, unit := range allUnits {
-		if status := unit.GetStatus(); status == provision.StatusStarted {
+		status := unit.GetStatus()
+		if status == provision.StatusStarted || status == provision.StatusUnreachable {
 			units = append(units, unit)
 		}
 	}

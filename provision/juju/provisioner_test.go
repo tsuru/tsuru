@@ -685,3 +685,11 @@ func (s *S) TestStartedUnits(c *gocheck.C) {
 	units := p.startedUnits(app)
 	c.Assert(units, gocheck.HasLen, 1)
 }
+
+func (s *S) TestStartedUnitsShouldReturnTrueForUnreachable(c *gocheck.C) {
+	app := testing.NewFakeApp("almah", "static", 1)
+	app.SetUnitStatus(provision.StatusUnreachable, 0)
+	p := JujuProvisioner{}
+	units := p.startedUnits(app)
+	c.Assert(units, gocheck.HasLen, 1)
+}
