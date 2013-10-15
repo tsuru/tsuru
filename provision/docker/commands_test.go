@@ -44,7 +44,7 @@ func (s *S) TestSSHCmds(c *gocheck.C) {
 	addKeyCommand, err := config.GetString("docker:ssh:add-key-cmd")
 	c.Assert(err, gocheck.IsNil)
 	keyContent := "key-content"
-	sshdPath := "/usr/sbin/sshd"
+	sshdPath := "sudo /usr/sbin/sshd"
 	expected := []string{
 		fmt.Sprintf("%s %s", addKeyCommand, keyContent),
 		sshdPath + " -D",
@@ -69,7 +69,7 @@ func (s *S) TestSSHCmdsDefaultSSHDPath(c *gocheck.C) {
 	defer config.Unset("docker:ssh:public-key")
 	commands, err := sshCmds()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(commands[1], gocheck.Equals, "/usr/sbin/sshd -D")
+	c.Assert(commands[1], gocheck.Equals, "sudo /usr/sbin/sshd -D")
 }
 
 func (s *S) TestSSHCmdsDefaultKeyFile(c *gocheck.C) {

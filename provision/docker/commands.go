@@ -69,12 +69,12 @@ func sshCmds() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	sshdPath, err := config.GetString("docker:ssh:sshd-path")
+	sshdCommand, err := config.GetString("docker:ssh:sshd-path")
 	if err != nil {
-		sshdPath = "/usr/sbin/sshd"
+		sshdCommand = "sudo /usr/sbin/sshd"
 	}
 	return []string{
 		fmt.Sprintf("%s %s", addKeyCommand, bytes.TrimSpace(keyContent)),
-		sshdPath + " -D",
+		sshdCommand + " -D",
 	}, nil
 }

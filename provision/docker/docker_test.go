@@ -102,7 +102,7 @@ func (s *S) TestGetSSHCommandsDefaultSSHDPath(c *gocheck.C) {
 	defer config.Unset("docker:ssh:public-key")
 	commands, err := sshCmds()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(commands[1], gocheck.Equals, "/usr/sbin/sshd -D")
+	c.Assert(commands[1], gocheck.Equals, "sudo /usr/sbin/sshd -D")
 }
 
 func (s *S) TestGetSSHCommandsDefaultKeyFile(c *gocheck.C) {
