@@ -23,6 +23,7 @@ func collect(ticker <-chan time.Time) {
 			continue
 		}
 		update(units)
+		log.Print("Collecting status from provisioner finished")
 	}
 }
 
