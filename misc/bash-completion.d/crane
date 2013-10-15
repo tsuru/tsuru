@@ -2,38 +2,9 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-shopt -s progcomp
-
 _crane() {
-    local cur cmds cmdIdx cmd i
-    local curOpt optEnums
-    local IFS=$' \n'
-
-    COMPREPLY=()
-    cur=${COMP_WORDS[COMP_CWORD]}
-    cmds='change-password create doc-add doc-get help list login logout remove reset-password target target-add target-set target-remove team-create team-list team-remove team-user-add team-user-list team-user-remove template update user-create user-remove version'
-
-    # do ordinary expansion if we are anywhere after a -- argument
-    for ((i = 1; i < COMP_CWORD; ++i)); do
-        [[ ${COMP_WORDS[i]} == "--" ]] && return 0
-    done
-
-    # find the command; it's the first word not starting in -
-    cmd=
-    for ((cmdIdx = 1; cmdIdx < ${#COMP_WORDS[@]}; ++cmdIdx)); do
-        if [[ ${COMP_WORDS[cmdIdx]} != -* ]]; then
-            cmd=${COMP_WORDS[cmdIdx]}
-            break
-        fi
-    done
-
-    # complete command name if we are not already past the command
-    if [[ $COMP_CWORD -le cmdIdx ]]; then
-        COMPREPLY=( $( compgen -W "$cmds" -- "$cur" ) )
-        return 0
-    fi
-
-    return 0
+    local current=${COMP_WORDS[COMP_CWORD]}
+    local tasks=`crane | egrep "^[  ]" | awk -F ' ' '{print $1}'`
+    COMPREPLY=( $(compgen -W "$tasks" $current) )
 }
-
-complete -F _crane -o default crane
+complete -F _crane crane
