@@ -59,7 +59,7 @@ func Run(dryMode bool) {
 		}
 		fmt.Printf("Using %q provisioner.\n\n", provisioner)
 
-		ticker := time.Tick(time.Minute)
+		ticker := time.Tick(10 * time.Minute)
 		fmt.Println("tsuru collector agent started...")
 		collect(ticker)
 	}
