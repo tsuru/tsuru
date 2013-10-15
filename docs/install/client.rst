@@ -25,6 +25,8 @@ binaries or building them from source.
 
 `Using homebrew (Mac OS X only)`_
 
+`Using the PPA (Ubuntu only)`_
+
 `Pre-built binaries (Linux and Mac OS X)`_
 
 `Build from source (Linux and Mac OS X)`_
@@ -66,6 +68,30 @@ For more details on taps, check `homebrew documentation
 
 **NOTE:** Tsuru requires Go 1.1 or higher. Make sure you have the last version
 of Go installed in your system.
+
+Using the PPA (Ubuntu only)
+===========================
+
+Ubuntu users can install Tsuru clients using ``apt-get`` and the `Tsuru PPA
+<https://launchpad.net/~tsuru/+archive/ppa>`_. You'll need to add the PPA
+repository locally and run an ``apt-get update``:
+
+.. highlight:: bash
+
+::
+
+    $ sudo apt-add-repository ppa:tsuru/ppa
+    $ sudo apt-get update
+
+Now you can install Tsuru's clients:
+
+.. highlight:: bash
+
+::
+
+    $ sudo apt-get install tsuru
+    $ sudo apt-get install crane
+    $ sudo apt-get install tsuru-admin
 
 Pre-built binaries (Linux and Mac OS X)
 =======================================
