@@ -42,7 +42,7 @@ function install_beanstalkd() {
 
 function install_tsuru() {
     echo "Downloading tsuru binary and copying to /usr/bin"
-    curl -sL https://s3.amazonaws.com/tsuru/dist-server/tsr.tar.gz | sudo tar -xz -C /usr/bin
+    curl -sL https://s3.amazonaws.com/tsuru/dist-server/tsr-master.tar.gz | sudo tar -xz -C /usr/bin
 }
 
 function main() {
