@@ -52,6 +52,8 @@ func removeHostHandler(w http.ResponseWriter, r *http.Request) {
 
 type sshAgentCmd struct {
 	listen string
+	user   string
+	pkey   string
 }
 
 func (*sshAgentCmd) Info() *cmd.Info {
@@ -68,7 +70,7 @@ specify the address to listen on.
 }
 
 func (cmd *sshAgentCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
-	var handler sshHandler
+	handler := sshHandler{user: cmd.user, pkey: cmd.pkey}
 	m := pat.New()
 	m.Post("/container/:ip/cmd", &handler)
 	m.Del("/container/:ip", http.HandlerFunc(removeHostHandler))
@@ -84,6 +86,10 @@ func (cmd *sshAgentCmd) Flags() *gnuflag.FlagSet {
 	flags := gnuflag.NewFlagSet("docker-ssh-agent", gnuflag.ExitOnError)
 	flags.StringVar(&cmd.listen, "listen", "0.0.0.0:4545", "Address to listen on")
 	flags.StringVar(&cmd.listen, "l", "0.0.0.0:4545", "Address to listen on")
+	flags.StringVar(&cmd.user, "user", "ubuntu", "User to connect on SSH sessions")
+	flags.StringVar(&cmd.user, "u", "ubuntu", "User to connect on SSH sessions")
+	flags.StringVar(&cmd.pkey, "pkey", "/home/ubuntu/.ssh/id_rsa", "Private key to use on SSH sessions")
+	flags.StringVar(&cmd.pkey, "k", "/home/ubuntu/.ssh/id_rsa", "Private key to use on SSH sessions")
 	return flags
 }
 

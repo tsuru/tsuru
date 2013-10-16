@@ -87,7 +87,7 @@ specify the address to listen on.
 func (SSHSuite) TestSSHAgentCmdFlags(c *gocheck.C) {
 	cmd := sshAgentCmd{}
 	flags := cmd.Flags()
-	flags.Parse(true, []string{})
+	flags.Parse(true, []string{"-u", "root", "-k", "/home/ubuntu/.ssh/id_dsa"})
 	flag := flags.Lookup("l")
 	c.Check(flag.Name, gocheck.Equals, "l")
 	c.Check(flag.DefValue, gocheck.Equals, "0.0.0.0:4545")
@@ -97,6 +97,24 @@ func (SSHSuite) TestSSHAgentCmdFlags(c *gocheck.C) {
 	c.Check(flag.DefValue, gocheck.Equals, "0.0.0.0:4545")
 	c.Check(flag.Usage, gocheck.Equals, "Address to listen on")
 	c.Check(cmd.listen, gocheck.Equals, "0.0.0.0:4545")
+	flag = flags.Lookup("user")
+	c.Check(flag.Name, gocheck.Equals, "user")
+	c.Check(flag.DefValue, gocheck.Equals, "ubuntu")
+	c.Check(flag.Usage, gocheck.Equals, "User to connect on SSH sessions")
+	flag = flags.Lookup("u")
+	c.Check(flag.Name, gocheck.Equals, "u")
+	c.Check(flag.DefValue, gocheck.Equals, "ubuntu")
+	c.Check(flag.Usage, gocheck.Equals, "User to connect on SSH sessions")
+	c.Check(cmd.user, gocheck.Equals, "root")
+	flag = flags.Lookup("pkey")
+	c.Check(flag.Name, gocheck.Equals, "pkey")
+	c.Check(flag.DefValue, gocheck.Equals, "/home/ubuntu/.ssh/id_rsa")
+	c.Check(flag.Usage, gocheck.Equals, "Private key to use on SSH sessions")
+	flag = flags.Lookup("k")
+	c.Check(flag.Name, gocheck.Equals, "k")
+	c.Check(flag.DefValue, gocheck.Equals, "/home/ubuntu/.ssh/id_rsa")
+	c.Check(flag.Usage, gocheck.Equals, "Private key to use on SSH sessions")
+	c.Check(cmd.pkey, gocheck.Equals, "/home/ubuntu/.ssh/id_dsa")
 }
 
 type FakeSSHServer struct {
