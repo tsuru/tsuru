@@ -29,12 +29,14 @@ func (SSHSuite) TestExecuteCommandHandler(c *gocheck.C) {
 	request, _ := http.NewRequest("POST", "/container/10.10.10.10/cmd?:ip=10.10.10.10", body)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-	sshHandler(recorder, request)
+	handler := &sshHandler{user: "root", pkey: "/home/ubuntu/.ssh/id_rsa"}
+	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	c.Assert(recorder.Body.String(), gocheck.Equals, string(output))
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
 	args := []string{
-		"10.10.10.10", "-l", "ubuntu", "-q",
+		"10.10.10.10", "-l", "root",
+		"-i", "/home/ubuntu/.ssh/id_rsa", "-q",
 		"-o", "StrictHostKeyChecking no",
 		"--", "ls", "-l", "-a",
 	}
@@ -47,7 +49,8 @@ func (SSHSuite) TestExecuteCommandHandlerInvalidJSON(c *gocheck.C) {
 	request, _ := http.NewRequest("POST", "/container/10.10.10.10/cmd?:ip=10.10.10.10", body)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
-	sshHandler(recorder, request)
+	handler := &sshHandler{}
+	handler.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), gocheck.Equals, "Invalid JSON\n")
 }

@@ -20,7 +20,12 @@ type cmdInput struct {
 	Args []string
 }
 
-func sshHandler(w http.ResponseWriter, r *http.Request) {
+type sshHandler struct {
+	user string
+	pkey string
+}
+
+func (h *sshHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text")
 	var input cmdInput
 	defer r.Body.Close()
@@ -32,7 +37,7 @@ func sshHandler(w http.ResponseWriter, r *http.Request) {
 	w = &io.FlushingWriter{ResponseWriter: w}
 	sshArgs := []string{
 		r.URL.Query().Get(":ip"),
-		"-l", "ubuntu", "-q",
+		"-l", h.user, "-i", h.pkey, "-q",
 		"-o", "StrictHostKeyChecking no",
 		"--", input.Cmd,
 	}
@@ -63,8 +68,9 @@ specify the address to listen on.
 }
 
 func (cmd *sshAgentCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
+	var handler sshHandler
 	m := pat.New()
-	m.Post("/container/:ip/cmd", http.HandlerFunc(sshHandler))
+	m.Post("/container/:ip/cmd", &handler)
 	m.Del("/container/:ip", http.HandlerFunc(removeHostHandler))
 	listener, err := net.Listen("tcp", cmd.listen)
 	if err != nil {
