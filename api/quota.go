@@ -10,6 +10,7 @@ import (
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/quota"
 	"net/http"
+	"strconv"
 )
 
 func quotaByOwner(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
@@ -22,4 +23,18 @@ func quotaByOwner(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	result["items"] = items
 	result["available"] = available
 	return json.NewEncoder(w).Encode(result)
+}
+
+func changeQuota(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	owner := r.URL.Query().Get(":owner")
+	q, err := strconv.Atoi(r.PostFormValue("quota"))
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusInternalServerError, Message: "invalid parameter"}
+	}
+	err = quota.Set(owner, uint(q))
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	w.Write([]byte("Quota changed sucessfully."))
+	return nil
 }

@@ -14,6 +14,7 @@ import (
 	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 )
 
 type QuotaSuite struct{}
@@ -35,6 +36,7 @@ func (QuotaSuite) TearDownSuite(c *gocheck.C) {
 func (QuotaSuite) TestQuotaByOwner(c *gocheck.C) {
 	err := quota.Create("tank@elp.com", 3)
 	c.Assert(err, gocheck.IsNil)
+	defer quota.Delete("tank@elp.com")
 	err = quota.Reserve("tank@elp.com", "tank/1")
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -62,4 +64,51 @@ func (QuotaSuite) TestQuotaNotFound(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
 	c.Assert(e, gocheck.ErrorMatches, "^Quota not found$")
+}
+
+func (QuotaSuite) TestChangeQuota(c *gocheck.C) {
+	err := quota.Create("tank@elp.com", 3)
+	c.Assert(err, gocheck.IsNil)
+	defer quota.Delete("tank@elp.com")
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("PUT", "/quota/tank@elp.com?:owner=tank@elp.com", strings.NewReader("quota=1"))
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	err = changeQuota(recorder, request, nil)
+	c.Assert(err, gocheck.IsNil)
+	_, qtd, err := quota.Items("tank@elp.com")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(int(qtd), gocheck.Equals, 1)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(string(body), gocheck.Equals, "Quota changed sucessfully.")
+}
+
+func (QuotaSuite) TestChangeQuotaWhenUserNotFound(c *gocheck.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("PUT", "/quota/tank@elp.com?:owner=tank@elp.com", strings.NewReader("quota=1"))
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	err = changeQuota(recorder, request, nil)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(e, gocheck.ErrorMatches, "^Quota not found$")
+}
+
+//strconv.ParseInt: parsing "": invalid syntax
+
+func (QuotaSuite) TestChangeQuotaWhenAtoiParameterNotFound(c *gocheck.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("PUT", "/quota/tank@elp.com?:owner=tank@elp.com", strings.NewReader("====="))
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	err = changeQuota(recorder, request, nil)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusInternalServerError)
+	c.Assert(e, gocheck.ErrorMatches, "^invalid parameter$")
 }
