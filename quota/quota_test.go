@@ -221,6 +221,7 @@ func (Suite) TestReleaseIsSafe(c *gocheck.C) {
 func (Suite) TestReleaseMultiple(c *gocheck.C) {
 	err := Create("tank@elp.com", 3)
 	c.Assert(err, gocheck.IsNil)
+	defer Delete("tank@elp.com")
 	err = Reserve("tank@elp.com", "tank/0", "tank/1", "tank/2")
 	c.Assert(err, gocheck.IsNil)
 	err = Release("tank@elp.com", "tank/0", "tank/2")
