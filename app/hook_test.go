@@ -21,6 +21,8 @@ func (s *S) TestYAMLHookLoadConfig(c *gocheck.C) {
       - python manage.py download-manifest
     after:
       - python manage.py clear-cache
+  build:
+    - python manage.py validate
 `
 	s.provisioner.PrepareOutput([]byte(output))
 	var runner yamlHookRunner
@@ -35,6 +37,7 @@ func (s *S) TestYAMLHookLoadConfig(c *gocheck.C) {
 			},
 			After: []string{"python manage.py clear-cache"},
 		},
+		Build: []string{"python manage.py validate"},
 	}
 	c.Assert(*runner.config, gocheck.DeepEquals, expected)
 	cmds := s.provisioner.GetCmds("cat /home/application/current/app.yaml", &app)

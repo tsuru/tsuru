@@ -26,6 +26,7 @@ type yamlHookRunner struct {
 
 type appConfig struct {
 	Restart hook
+	Build   []string
 }
 
 type hook struct {
