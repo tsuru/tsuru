@@ -59,9 +59,9 @@ func (s *S) TestDeleteService(c *gocheck.C) {
 	err := s.service.Delete()
 	defer s.conn.Services().Remove(bson.M{"_id": s.service.Name})
 	c.Assert(err, gocheck.IsNil)
-	var se Service
-	err = s.conn.Services().Find(bson.M{"_id": s.service.Name}).One(&se)
-	c.Assert(se.Status, gocheck.Equals, "deleted")
+	l, err := s.conn.Services().Find(bson.M{"_id": s.service.Name}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(l, gocheck.Equals, 0)
 }
 
 func (s *S) TestGetClient(c *gocheck.C) {

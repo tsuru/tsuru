@@ -57,8 +57,8 @@ func (s *Service) Delete() error {
 		return err
 	}
 	defer conn.Close()
-	s.Status = "deleted"
-	return conn.Services().Update(bson.M{"_id": s.Name}, s)
+	_, err = conn.Services().RemoveAll(bson.M{"_id": s.Name})
+	return err
 }
 
 func (s *Service) getClient(endpoint string) (cli *Client, err error) {
