@@ -262,7 +262,7 @@ func (s *ProvisionSuite) TestUpdateHandlerReturns404WhenTheServiceDoesNotExist(c
 }
 
 func (s *ProvisionSuite) TestUpdateHandlerReturns404WhenTheServicesIsDeleted(c *gocheck.C) {
-	se := service.Service{Name: "mysqlapi", OwnerTeams: []string{s.team.Name}, Status: "deleted"}
+	se := service.Service{Name: "mysqlapi", OwnerTeams: []string{s.team.Name}}
 	err := s.conn.Services().Insert(se)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
@@ -313,7 +313,6 @@ func (s *ProvisionSuite) TestDeleteHandler(c *gocheck.C) {
 	query := bson.M{"_id": se.Name}
 	err = s.conn.Services().Find(query).One(&se)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(se.Status, gocheck.Equals, "deleted")
 	action := testing.Action{
 		Action: "delete-service",
 		User:   s.user.Email,
@@ -335,7 +334,7 @@ func (s *ProvisionSuite) TestDeleteHandlerReturns404WhenTheServiceDoesNotExist(c
 }
 
 func (s *ProvisionSuite) TestDeleteHandlerReturns404WhenTheServicesIsDeleted(c *gocheck.C) {
-	se := service.Service{Name: "mysql", OwnerTeams: []string{s.team.Name}, Status: "deleted"}
+	se := service.Service{Name: "mysql", OwnerTeams: []string{s.team.Name}}
 	err := s.conn.Services().Insert(se)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
