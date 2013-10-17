@@ -383,7 +383,7 @@ func (app *App) unbindUnit(unit provision.AppUnit) error {
 // Available returns true if at least one of N units is started or unreachable.
 func (app *App) Available() bool {
 	for _, unit := range app.ProvisionedUnits() {
-		if unit.GetStatus() == provision.StatusStarted || unit.GetStatus() == provision.StatusUnreachable {
+		if unit.Available() {
 			return true
 		}
 	}
