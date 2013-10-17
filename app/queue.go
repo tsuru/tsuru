@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
-	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/service"
 	"io/ioutil"
@@ -147,7 +146,7 @@ type unitList []Unit
 // Started returns true if all units in the list is started.
 func (l unitList) Started() bool {
 	for _, unit := range l {
-		if unit.State != provision.StatusStarted.String() {
+		if !unit.Available() {
 			return false
 		}
 	}

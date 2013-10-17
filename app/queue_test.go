@@ -279,6 +279,13 @@ func (s *S) TestUnitListStarted(c *gocheck.C) {
 			},
 			false,
 		},
+		{
+			[]Unit{
+				{State: "started"},
+				{State: "unreachable"},
+			},
+			true,
+		},
 	}
 	for _, t := range tests {
 		l := unitList(t.input)
