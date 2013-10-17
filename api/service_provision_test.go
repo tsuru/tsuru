@@ -261,26 +261,6 @@ func (s *ProvisionSuite) TestUpdateHandlerReturns404WhenTheServiceDoesNotExist(c
 	c.Assert(e, gocheck.ErrorMatches, "^Service not found$")
 }
 
-func (s *ProvisionSuite) TestUpdateHandlerReturns404WhenTheServicesIsDeleted(c *gocheck.C) {
-	se := service.Service{Name: "mysqlapi", OwnerTeams: []string{s.team.Name}}
-	err := s.conn.Services().Insert(se)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
-	p, err := filepath.Abs("testdata/manifest.yml")
-	c.Assert(err, gocheck.IsNil)
-	manifest, err := ioutil.ReadFile(p)
-	c.Assert(err, gocheck.IsNil)
-	request, err := http.NewRequest("PUT", "/services", bytes.NewBuffer(manifest))
-	c.Assert(err, gocheck.IsNil)
-	recorder := httptest.NewRecorder()
-	err = serviceUpdate(recorder, request, s.token)
-	c.Assert(err, gocheck.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
-	c.Assert(e, gocheck.ErrorMatches, "^Service not found$")
-}
-
 func (s *ProvisionSuite) TestUpdateHandlerReturns403WhenTheUserIsNotOwnerOfTheTeam(c *gocheck.C) {
 	se := service.Service{Name: "mysqlapi", Teams: []string{s.team.Name}}
 	se.Create()
@@ -312,7 +292,9 @@ func (s *ProvisionSuite) TestDeleteHandler(c *gocheck.C) {
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusNoContent)
 	query := bson.M{"_id": se.Name}
 	err = s.conn.Services().Find(query).One(&se)
+	count, err := s.conn.Services().Find(query).Count()
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 0)
 	action := testing.Action{
 		Action: "delete-service",
 		User:   s.user.Email,
@@ -323,22 +305,6 @@ func (s *ProvisionSuite) TestDeleteHandler(c *gocheck.C) {
 
 func (s *ProvisionSuite) TestDeleteHandlerReturns404WhenTheServiceDoesNotExist(c *gocheck.C) {
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/services/%s?:name=%s", "mongodb", "mongodb"), nil)
-	c.Assert(err, gocheck.IsNil)
-	recorder := httptest.NewRecorder()
-	err = serviceDelete(recorder, request, s.token)
-	c.Assert(err, gocheck.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
-	c.Assert(e, gocheck.ErrorMatches, "^Service not found$")
-}
-
-func (s *ProvisionSuite) TestDeleteHandlerReturns404WhenTheServicesIsDeleted(c *gocheck.C) {
-	se := service.Service{Name: "mysql", OwnerTeams: []string{s.team.Name}}
-	err := s.conn.Services().Insert(se)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
-	request, err := http.NewRequest("DELETE", fmt.Sprintf("/services/%s?:name=%s", se.Name, se.Name), nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = serviceDelete(recorder, request, s.token)
