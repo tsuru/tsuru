@@ -6,7 +6,7 @@
 
 status=0
 
-for email in `git log --format=%ae | sort | uniq | grep -v globo@Mac-2.local`
+for email in `git log --format=%ae | sort | uniq | grep -v \\\.local$`
 do
 	grep -q $email CONTRIBUTORS
 	if [ $? != 0  ]
