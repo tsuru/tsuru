@@ -5,13 +5,13 @@
 package quota
 
 import (
-	/* "fmt" */
+	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
-	/* "runtime" */
-	/* "sync" */
+	"runtime"
+	"sync"
 	"testing"
 )
 
@@ -95,29 +95,29 @@ func (Suite) TestReserve(c *gocheck.C) {
 	c.Assert(u.Items, gocheck.DeepEquals, []string{"dt/1", "dt/0"})
 }
 
-// func (Suite) TestReserveIsSafe(c *gocheck.C) {
-// 	items := 300
-// 	err := Create("spirit@dreamtheater.com", uint(items-items/2))
-// 	c.Assert(err, gocheck.IsNil)
-// 	defer Delete("spirit@dreamtheater.com")
-// 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(8))
-// 	var wg sync.WaitGroup
-// 	wg.Add(items)
-// 	for i := 0; i < items; i++ {
-// 		go func(i int) {
-// 			Reserve("spirit@dreamtheater.com", fmt.Sprintf("spirit/%d", i))
-// 			wg.Done()
-// 		}(i)
-// 	}
-// 	wg.Wait()
-// 	conn, err := db.Conn()
-// 	c.Assert(err, gocheck.IsNil)
-// 	defer conn.Close()
-// 	var u usage
-// 	err = conn.Quota().Find(bson.M{"owner": "spirit@dreamtheater.com"}).One(&u)
-// 	c.Assert(err, gocheck.IsNil)
-// 	c.Assert(u.Items, gocheck.HasLen, items-items/2)
-// }
+func (Suite) TestReserveIsSafe(c *gocheck.C) {
+	items := 300
+	err := Create("spirit@dreamtheater.com", uint(items-items/2))
+	c.Assert(err, gocheck.IsNil)
+	defer Delete("spirit@dreamtheater.com")
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(8))
+	var wg sync.WaitGroup
+	wg.Add(items)
+	for i := 0; i < items; i++ {
+		go func(i int) {
+			Reserve("spirit@dreamtheater.com", fmt.Sprintf("spirit/%d", i))
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	var u usage
+	err = conn.Quota().Find(bson.M{"owner": "spirit@dreamtheater.com"}).One(&u)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(u.Items, gocheck.HasLen, items-items/2)
+}
 
 func (Suite) TestReserveRepeatedItems(c *gocheck.C) {
 	err := Create("spirit@dreamtheater.com", 500)
@@ -190,33 +190,33 @@ func (Suite) TestReleaseQuotaNotFound(c *gocheck.C) {
 	c.Assert(err, gocheck.Equals, ErrQuotaNotFound)
 }
 
-// func (Suite) TestReleaseIsSafe(c *gocheck.C) {
-// 	items := 50
-// 	err := Create("looking@yes.com", uint(items))
-// 	c.Assert(err, gocheck.IsNil)
-// 	defer Delete("looking@yes.com")
-// 	for i := 0; i < items; i++ {
-// 		Reserve("looking@yes.com", fmt.Sprintf("looking/%d", i))
-// 	}
-// 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(8))
-// 	var wg sync.WaitGroup
-// 	for i := 0; i < items+items/2; i++ {
-// 		wg.Add(1)
-// 		go func(i int) {
-// 			err := Release("looking@yes.com", fmt.Sprintf("looking/%d", i))
-// 			c.Check(err, gocheck.IsNil)
-// 			wg.Done()
-// 		}(i)
-// 	}
-// 	wg.Wait()
-// 	conn, err := db.Conn()
-// 	c.Assert(err, gocheck.IsNil)
-// 	defer conn.Close()
-// 	var u usage
-// 	err = conn.Quota().Find(bson.M{"owner": "looking@yes.com"}).One(&u)
-// 	c.Assert(err, gocheck.IsNil)
-// 	c.Assert(u.Items, gocheck.HasLen, 0)
-// }
+func (Suite) TestReleaseIsSafe(c *gocheck.C) {
+	items := 50
+	err := Create("looking@yes.com", uint(items))
+	c.Assert(err, gocheck.IsNil)
+	defer Delete("looking@yes.com")
+	for i := 0; i < items; i++ {
+		Reserve("looking@yes.com", fmt.Sprintf("looking/%d", i))
+	}
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(8))
+	var wg sync.WaitGroup
+	for i := 0; i < items+items/2; i++ {
+		wg.Add(1)
+		go func(i int) {
+			err := Release("looking@yes.com", fmt.Sprintf("looking/%d", i))
+			c.Check(err, gocheck.IsNil)
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	var u usage
+	err = conn.Quota().Find(bson.M{"owner": "looking@yes.com"}).One(&u)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(u.Items, gocheck.HasLen, 0)
+}
 
 func (Suite) TestReleaseMultiple(c *gocheck.C) {
 	err := Create("tank@elp.com", 3)
