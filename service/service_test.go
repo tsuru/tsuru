@@ -23,11 +23,8 @@ func (s *S) TestGetService(c *gocheck.C) {
 }
 
 func (s *S) TestGetServiceReturnsErrorIfTheServiceIsDeleted(c *gocheck.C) {
-	se := Service{Name: "anything", Status: "deleted"}
-	err := s.conn.Services().Insert(se)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
-	err = se.Get()
+	se := Service{Name: "anything"}
+	err := se.Get()
 	c.Assert(err, gocheck.NotNil)
 }
 
@@ -50,7 +47,6 @@ func (s *S) TestCreateService(c *gocheck.C) {
 	c.Assert(se.Endpoint["production"], gocheck.Equals, endpt["production"])
 	c.Assert(se.Endpoint["test"], gocheck.Equals, endpt["test"])
 	c.Assert(se.OwnerTeams, gocheck.DeepEquals, []string{s.team.Name})
-	c.Assert(se.Status, gocheck.Equals, "created")
 	c.Assert(se.IsRestricted, gocheck.Equals, false)
 }
 
@@ -139,15 +135,15 @@ func (s *S) TestGetServicesNames(c *gocheck.C) {
 }
 
 func (s *S) TestUpdateService(c *gocheck.C) {
-	service := Service{Name: "something", Status: "created"}
+	service := Service{Name: "something"}
 	err := service.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": service.Name})
-	service.Status = "destroyed"
+	service.Doc = "doc"
 	err = service.Update()
 	c.Assert(err, gocheck.IsNil)
 	err = s.conn.Services().Find(bson.M{"_id": service.Name}).One(&service)
-	c.Assert(service.Status, gocheck.Equals, "destroyed")
+	c.Assert(service.Doc, gocheck.Equals, "doc")
 }
 
 func (s *S) TestUpdateServiceReturnErrorIfServiceDoesNotExist(c *gocheck.C) {
@@ -157,7 +153,7 @@ func (s *S) TestUpdateServiceReturnErrorIfServiceDoesNotExist(c *gocheck.C) {
 }
 
 func (s *S) TestServiceByTeamKindFilteringByOwnerTeamsAndRetrievingNotRestrictedServices(c *gocheck.C) {
-	srvc := Service{Name: "mysql", OwnerTeams: []string{s.team.Name}, Status: "created"}
+	srvc := Service{Name: "mysql", OwnerTeams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, gocheck.IsNil)
 	srvc2 := Service{Name: "mongodb", IsRestricted: false}
@@ -170,7 +166,7 @@ func (s *S) TestServiceByTeamKindFilteringByOwnerTeamsAndRetrievingNotRestricted
 }
 
 func (s *S) TestServiceByTeamKindFilteringByTeamsAndNotRetrieveRestrictedServices(c *gocheck.C) {
-	srvc := Service{Name: "mysql", Teams: []string{s.team.Name}, Status: "created"}
+	srvc := Service{Name: "mysql", Teams: []string{s.team.Name}}
 	err := srvc.Create()
 	c.Assert(err, gocheck.IsNil)
 	srvc2 := Service{Name: "mongodb", IsRestricted: true}

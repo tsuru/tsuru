@@ -17,7 +17,6 @@ type Service struct {
 	Endpoint     map[string]string
 	OwnerTeams   []string `bson:"owner_teams"`
 	Teams        []string
-	Status       string
 	Doc          string
 	IsRestricted bool `bson:"is_restricted"`
 }
@@ -28,7 +27,7 @@ func (s *Service) Get() error {
 		return err
 	}
 	defer conn.Close()
-	query := bson.M{"_id": s.Name, "status": bson.M{"$ne": "deleted"}}
+	query := bson.M{"_id": s.Name}
 	return conn.Services().Find(query).One(&s)
 }
 
@@ -38,7 +37,6 @@ func (s *Service) Create() error {
 		return err
 	}
 	defer conn.Close()
-	s.Status = "created"
 	return conn.Services().Insert(s)
 }
 
@@ -126,9 +124,7 @@ func GetServicesByTeamKindAndNoRestriction(teamKind string, u *auth.User) ([]Ser
 	q := bson.M{"$or": []bson.M{
 		{teamKind: bson.M{"$in": teamsNames}},
 		{"is_restricted": false},
-	},
-		"status": bson.M{"$ne": "deleted"},
-	}
+	}}
 	var services []Service
 	err = conn.Services().Find(q).Select(bson.M{"name": 1}).All(&services)
 	return services, err
@@ -145,7 +141,7 @@ func GetServicesByOwnerTeams(teamKind string, u *auth.User) ([]Service, error) {
 	}
 	defer conn.Close()
 	teamsNames := auth.GetTeamsNames(teams)
-	q := bson.M{teamKind: bson.M{"$in": teamsNames}, "status": bson.M{"$ne": "deleted"}}
+	q := bson.M{teamKind: bson.M{"$in": teamsNames}}
 	var services []Service
 	err = conn.Services().Find(q).All(&services)
 	return services, err
