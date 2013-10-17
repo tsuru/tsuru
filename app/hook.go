@@ -41,6 +41,16 @@ func (r *yamlHookRunner) Build(app *App, w io.Writer) error {
 	} else if err != nil {
 		return err
 	}
+	cmds := r.config.Build
+	if len(cmds) > 0 {
+		fmt.Fprintf(w, " ---> Running build hooks:\n\n")
+		for _, cmd := range cmds {
+			err := app.sourced(cmd, w, true)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	return nil
 }
 

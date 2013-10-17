@@ -223,6 +223,30 @@ func (s *S) TestBuildRunnerFailureInLoadConfig(c *gocheck.C) {
 	c.Assert(buf.String(), gocheck.Equals, "")
 }
 
+func (s *S) TestBuildRunner(c *gocheck.C) {
+	app := App{
+		Name: "kn",
+		Units: []Unit{
+			{Name: "kn/0"}, {Name: "kn/1"}, {Name: "kn/2"},
+		},
+	}
+	s.provisioner.PrepareOutput([]byte(". .."))
+	s.provisioner.PrepareOutput([]byte("nothing"))
+	runner := yamlHookRunner{
+		config: &appConfig{
+			Build: []string{"ls -a", "cat /home/application/apprc"},
+		},
+	}
+	var buf bytes.Buffer
+	err := runner.Build(&app, &buf)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(buf.String(), gocheck.Equals, " ---> Running build hooks:\n\n. ..nothing")
+	cmds := s.provisioner.GetCmds("", &app)
+	c.Assert(cmds, gocheck.HasLen, 2)
+	c.Check(cmds[0].Cmd, gocheck.Matches, `.*source /home/application/apprc.*ls -a$`)
+	c.Check(cmds[1].Cmd, gocheck.Matches, `.*source /home/application/apprc.*cat /home/application/apprc$`)
+}
+
 type fakeHookRunner struct {
 	calls  map[string]int
 	result func(string) error
