@@ -198,6 +198,31 @@ func (s *S) TestYAMLRunnerFailureInLoadConfig(c *gocheck.C) {
 	c.Assert(buf.String(), gocheck.Equals, "")
 }
 
+func (s *S) TestBuildRunnerAbortsWhenCantLoadAppConfig(c *gocheck.C) {
+	app := App{Name: "kn"}
+	output := "not really an yaml"
+	s.provisioner.PrepareOutput([]byte(output))
+	var runner yamlHookRunner
+	var buf bytes.Buffer
+	err := runner.Build(&app, &buf)
+	c.Assert(err, gocheck.IsNil)
+	cmds := s.provisioner.GetCmds("", &app)
+	c.Assert(cmds, gocheck.HasLen, 2)
+	c.Assert(buf.String(), gocheck.Equals, "")
+}
+
+func (s *S) TestBuildRunnerFailureInLoadConfig(c *gocheck.C) {
+	app := App{Name: "shot"}
+	old, _ := config.Get("git:unit-repo")
+	config.Unset("git:unit-repo")
+	defer config.Set("git:unit-repo", old)
+	var runner yamlHookRunner
+	var buf bytes.Buffer
+	err := runner.Build(&app, &buf)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(buf.String(), gocheck.Equals, "")
+}
+
 type fakeHookRunner struct {
 	calls  map[string]int
 	result func(string) error

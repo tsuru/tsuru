@@ -34,6 +34,16 @@ type hook struct {
 	After  []string
 }
 
+func (r *yamlHookRunner) Build(app *App, w io.Writer) error {
+	err := r.loadConfig(app)
+	if err == errCannotLoadAppYAML {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (r *yamlHookRunner) Restart(app *App, w io.Writer, kind string) error {
 	err := r.loadConfig(app)
 	if err == errCannotLoadAppYAML {
