@@ -47,6 +47,11 @@ func (u *Unit) GetInstanceId() string {
 	return u.InstanceId
 }
 
+func (u *Unit) Available() bool {
+	return u.State == provision.StatusStarted.String() ||
+		u.State == provision.StatusUnreachable.String()
+}
+
 // UnitSlice attaches the methods of sort.Interface to []Unit, sorting in increasing order.
 type UnitSlice []Unit
 

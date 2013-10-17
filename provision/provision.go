@@ -59,6 +59,7 @@ type AppUnit interface {
 	GetStatus() Status
 	GetIp() string
 	GetInstanceId() string
+	Available() bool
 }
 
 // App represents a tsuru app.

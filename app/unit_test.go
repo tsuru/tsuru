@@ -37,6 +37,23 @@ func (s *S) TestUnitGetStatus(c *gocheck.C) {
 	}
 }
 
+func (s *S) TestUnitAvailable(c *gocheck.C) {
+	var tests = []struct {
+		input    provision.Status
+		expected bool
+	}{
+		{provision.StatusStarted, true},
+		{provision.StatusUnreachable, true},
+		{provision.StatusBuilding, false},
+		{provision.StatusDown, false},
+		{provision.StatusError, false},
+	}
+	for _, test := range tests {
+		u := Unit{State: test.input.String()}
+		c.Check(u.Available(), gocheck.Equals, test.expected)
+	}
+}
+
 func (s *S) TestUnitShouldBeABinderUnit(c *gocheck.C) {
 	var _ bind.Unit = &Unit{}
 }

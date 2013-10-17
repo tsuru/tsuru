@@ -47,6 +47,10 @@ func (u *FakeUnit) GetInstanceId() string {
 	return u.InstanceId
 }
 
+func (u *FakeUnit) Available() bool {
+	return u.Status == provision.StatusStarted || u.Status == provision.StatusUnreachable
+}
+
 func (u *FakeUnit) GetIp() string {
 	return u.Ip
 }
