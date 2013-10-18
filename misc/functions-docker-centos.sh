@@ -75,7 +75,7 @@ function use_https_in_git() {
 
 function install_tsuru() {
     echo "Downloading tsuru binary and copying to TSURU_BIN"
-    curl -sL https://s3.amazonaws.com/tsuru/dist-server/tsr.tar.gz | tar -xz -C $TSURU_BIN
+    curl -sL https://s3.amazonaws.com/tsuru/dist-server/tsr-master.tar.gz | tar -xz -C $TSURU_BIN
 }
 
 function configure_tsuru() {

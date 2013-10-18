@@ -160,7 +160,7 @@ Then download and install the tsr binary:
 
 ::
 
-    $ curl -sL https://s3.amazonaws.com/tsuru/dist-server/tsr.tar.gz | sudo tar -xz -C /usr/bin
+    $ curl -sL https://s3.amazonaws.com/tsuru/dist-server/tsr-master.tar.gz | sudo tar -xz -C /usr/bin
 
 These commands will install ``tsr`` command in ``/usr/bin``
 (you will need to be a sudoer and provide your password). You may install this
