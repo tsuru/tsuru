@@ -8,8 +8,9 @@ Build your own PaaS with tsuru and Docker
 
 This document describes how to create a private PaaS service using tsuru and docker.
 
-This document assumes that tsuru is being installed on a Ubuntu (12.04.3+) machine. You
-can use equivalent packages for beanstalkd, git, MongoDB and other tsuru
+This document assumes that tsuru is being installed on a Ubuntu 13.04 64-bit machine. If
+you want to use Ubuntu LTS vesion see `docker documentation <http://docs.docker.io/en/latest/installation/ubuntulinux/#ubuntu-precise-12-04-lts-64-bit>`_ on how to install it.
+You can use equivalent packages for beanstalkd, git, MongoDB and other tsuru
 dependencies. Please make sure you satisfy minimal version requirements.
 
 You can use the scripts bellow to quick install tsuru with docker:
