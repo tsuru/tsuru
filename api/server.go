@@ -42,6 +42,7 @@ func RunServer(dry bool) {
 	m.Get("/schema/services", authorizationRequiredHandler(servicesSchema))
 
 	m.Get("/quota/:owner", authorizationRequiredHandler(quotaByOwner))
+	m.Put("/quota/:owner", adminRequiredHandler(changeQuota))
 
 	m.Get("/services/instances", authorizationRequiredHandler(serviceInstances))
 	m.Get("/services/instances/:name", authorizationRequiredHandler(serviceInstance))
