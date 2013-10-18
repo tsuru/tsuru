@@ -106,7 +106,7 @@ func (r hipacheRouter) AddRoute(name, address string) error {
 	}
 	domain, err := config.GetString("hipache:domain")
 	if err != nil {
-		log.Printf("error on getting hipache domin in add route for %s - %s", backendName, address)
+		log.Printf("error on getting hipache domain in add route for %s - %s", backendName, address)
 		return &routeError{"add", err}
 	}
 	frontend := "frontend:" + backendName + "." + domain
