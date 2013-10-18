@@ -45,11 +45,12 @@ func (c *Client) issueRequest(path, method string, params map[string][]string) (
 	}
 	url := strings.TrimRight(c.endpoint, "/") + "/" + strings.Trim(path, "/") + suffix
 	req, err := http.NewRequest(method, url, body)
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	if err != nil {
 		log.Printf("Got error while creating request: %s", err)
 		return nil, err
 	}
+	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Add("Accept", "application/json")
 	return http.DefaultClient.Do(req)
 }
 
