@@ -23,6 +23,11 @@ var (
 	ticker *time.Ticker                // for garbage collection
 )
 
+const (
+	DefaultDatabaseURL  = "127.0.0.1:27017"
+	DefaultDatabaseName = "tsuru"
+)
+
 const period time.Duration = 7 * 24 * time.Hour
 
 type session struct {
@@ -98,11 +103,11 @@ func Open(addr, dbname string) (storage *Storage, err error) {
 func Conn() (*Storage, error) {
 	url, _ := config.GetString("database:url")
 	if url == "" {
-		url = "127.0.0.1:27017"
+		url = DefaultDatabaseURL
 	}
 	dbname, _ := config.GetString("database:name")
 	if dbname == "" {
-		dbname = "tsuru"
+		dbname = DefaultDatabaseName
 	}
 	return Open(url, dbname)
 }
