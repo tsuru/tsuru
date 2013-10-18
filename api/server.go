@@ -9,6 +9,7 @@ import (
 	"github.com/bmizerany/pat"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
+	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"net"
@@ -26,11 +27,11 @@ func RunServer(dry bool) {
 	log.Init()
 	connString, err := config.GetString("database:url")
 	if err != nil {
-		fatal(err)
+		connString = db.DefaultDatabaseURL
 	}
 	dbName, err := config.GetString("database:name")
 	if err != nil {
-		fatal(err)
+		dbName = db.DefaultDatabaseName
 	}
 	fmt.Printf("Using the database %q from the server %q.\n\n", dbName, connString)
 
