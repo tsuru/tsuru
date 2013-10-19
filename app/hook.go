@@ -26,32 +26,11 @@ type yamlHookRunner struct {
 
 type appConfig struct {
 	Restart hook
-	Build   []string
 }
 
 type hook struct {
 	Before []string
 	After  []string
-}
-
-func (r *yamlHookRunner) Build(app *App, w io.Writer) error {
-	err := r.loadConfig(app)
-	if err == errCannotLoadAppYAML {
-		return nil
-	} else if err != nil {
-		return err
-	}
-	cmds := r.config.Build
-	if len(cmds) > 0 {
-		fmt.Fprintf(w, " ---> Running build hooks:\n\n")
-		for _, cmd := range cmds {
-			err := app.sourced(cmd, w, true)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
 }
 
 func (r *yamlHookRunner) Restart(app *App, w io.Writer, kind string) error {

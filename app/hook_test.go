@@ -1,5 +1,3 @@
-// Copyright 2013 tsuru authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 package app
@@ -21,8 +19,6 @@ func (s *S) TestYAMLHookLoadConfig(c *gocheck.C) {
       - python manage.py download-manifest
     after:
       - python manage.py clear-cache
-  build:
-    - python manage.py validate
 `
 	s.provisioner.PrepareOutput([]byte(output))
 	var runner yamlHookRunner
@@ -37,7 +33,6 @@ func (s *S) TestYAMLHookLoadConfig(c *gocheck.C) {
 			},
 			After: []string{"python manage.py clear-cache"},
 		},
-		Build: []string{"python manage.py validate"},
 	}
 	c.Assert(*runner.config, gocheck.DeepEquals, expected)
 	cmds := s.provisioner.GetCmds("cat /home/application/current/app.yaml", &app)
@@ -196,55 +191,6 @@ func (s *S) TestYAMLRunnerFailureInLoadConfig(c *gocheck.C) {
 	err := runner.Restart(&app, &buf, "before")
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(buf.String(), gocheck.Equals, "")
-}
-
-func (s *S) TestBuildRunnerAbortsWhenCantLoadAppConfig(c *gocheck.C) {
-	app := App{Name: "kn"}
-	output := "not really an yaml"
-	s.provisioner.PrepareOutput([]byte(output))
-	var runner yamlHookRunner
-	var buf bytes.Buffer
-	err := runner.Build(&app, &buf)
-	c.Assert(err, gocheck.IsNil)
-	cmds := s.provisioner.GetCmds("", &app)
-	c.Assert(cmds, gocheck.HasLen, 2)
-	c.Assert(buf.String(), gocheck.Equals, "")
-}
-
-func (s *S) TestBuildRunnerFailureInLoadConfig(c *gocheck.C) {
-	app := App{Name: "shot"}
-	old, _ := config.Get("git:unit-repo")
-	config.Unset("git:unit-repo")
-	defer config.Set("git:unit-repo", old)
-	var runner yamlHookRunner
-	var buf bytes.Buffer
-	err := runner.Build(&app, &buf)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(buf.String(), gocheck.Equals, "")
-}
-
-func (s *S) TestBuildRunner(c *gocheck.C) {
-	app := App{
-		Name: "kn",
-		Units: []Unit{
-			{Name: "kn/0"}, {Name: "kn/1"}, {Name: "kn/2"},
-		},
-	}
-	s.provisioner.PrepareOutput([]byte(". .."))
-	s.provisioner.PrepareOutput([]byte("nothing"))
-	runner := yamlHookRunner{
-		config: &appConfig{
-			Build: []string{"ls -a", "cat /home/application/apprc"},
-		},
-	}
-	var buf bytes.Buffer
-	err := runner.Build(&app, &buf)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(buf.String(), gocheck.Equals, " ---> Running build hooks:\n\n. ..nothing")
-	cmds := s.provisioner.GetCmds("", &app)
-	c.Assert(cmds, gocheck.HasLen, 2)
-	c.Check(cmds[0].Cmd, gocheck.Matches, `.*source /home/application/apprc.*ls -a$`)
-	c.Check(cmds[1].Cmd, gocheck.Matches, `.*source /home/application/apprc.*cat /home/application/apprc$`)
 }
 
 type fakeHookRunner struct {
