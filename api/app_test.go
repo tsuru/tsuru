@@ -250,7 +250,7 @@ func (s *S) TestDelete(c *gocheck.C) {
 	err := app.CreateApp(&myApp, s.user)
 	c.Assert(err, gocheck.IsNil)
 	myApp.Get()
-	defer app.ForceDestroy(&myApp)
+	defer app.Delete(&myApp)
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:app="+myApp.Name, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -376,7 +376,7 @@ func (s *S) TestCreateAppHandler(c *gocheck.C) {
 	defer func() {
 		err := a.Get()
 		c.Assert(err, gocheck.IsNil)
-		err = app.ForceDestroy(&a)
+		err = app.Delete(&a)
 		c.Assert(err, gocheck.IsNil)
 	}()
 	b := strings.NewReader(`{"name":"someapp","platform":"zend"}`)
@@ -2365,7 +2365,7 @@ func (s *S) TestUnbindHandler(c *gocheck.C) {
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, gocheck.IsNil)
 	a.Get()
-	defer app.ForceDestroy(&a)
+	defer app.Delete(&a)
 	a.Env["DATABASE_HOST"] = bind.EnvVar{
 		Name:         "DATABASE_HOST",
 		Value:        "arrea",

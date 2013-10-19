@@ -174,16 +174,16 @@ func (app *App) unbind() error {
 	return nil
 }
 
-// ForceDestroy destroys an app with force.
+// Delete deletes an app.
 //
-// Destroying an app is a process composed of four steps:
+// Delete an app is a process composed of four steps:
 //
 //       1. Destroy the bucket and S3 credentials (if bucket-support is
 //       enabled).
 //       2. Destroy the app unit using juju
 //       3. Unbind all service instances from the app
 //       4. Remove the app from the database
-func ForceDestroy(app *App) error {
+func Delete(app *App) error {
 	gURL := repository.ServerURL()
 	(&gandalf.Client{Endpoint: gURL}).RemoveRepository(app.Name)
 	useS3, _ := config.GetBool("bucket-support")

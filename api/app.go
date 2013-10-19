@@ -94,7 +94,7 @@ func appDelete(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
-	app.ForceDestroy(&a)
+	app.Delete(&a)
 	fmt.Fprint(w, "success")
 	return nil
 }
