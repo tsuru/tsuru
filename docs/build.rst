@@ -42,14 +42,14 @@ Requirements
 1. Operating System
 -------------------
 
-At the moment, tsuru server is fully supported and tested on Ubuntu 12.04 and
-the steps below will guide you throught the install process.
+The steps below will guide you throught the install process on Ubuntu Server
+12.04.
 
 If you try to build tsuru server on most Linux systems, you should have few
 problems and if there are problems, we are able to help you. Just
 ask on #tsuru channel on irc.freenode.net.
 
-* *Have you tried tsuru server on other systems? Let us know 
+* *Have you tried tsuru server on other systems? Let us know
   and* :doc:`contribute </community>` *to the project.*
 
 2. Hardware
@@ -110,7 +110,42 @@ Install the latest version, by doing this:
 
 **3.4 Gandalf**
 
-Tsuru uses `Gandalf <https://github.com/globocom/gandalf>`_ to manage git repositories, to get it installed `follow this steps <https://gandalf.readthedocs.org/en/latest/install.html>`_
+Tsuru uses `Gandalf <https://github.com/globocom/gandalf>`_ to manage git
+repositories, to get it installed `follow this steps
+<https://gandalf.readthedocs.org/en/latest/install.html>`_
+
+Installing from PPA
+===================
+
+You can use ``apt-get`` to install Gandalf using `Tsuru's ppa
+<https://launchpad.net/~tsuru/+archive/ppa>`_:
+
+.. highlight:: bash
+
+::
+
+    $ sudo apt-add-repository ppa:tsuru/ppa -y
+    $ sudo apt-get update
+    $ sudo apt-get install tsuru-server
+
+Then you will need to edit the file ``/etc/default/tsuru-server`` and enable the API and the colletor:
+
+.. highlight:: bash
+
+::
+
+    TSR_API_ENABLED=yes
+    TSR_COLLECTOR_ENABLED=yes
+
+Make sure you edit the configuration file (see `Configuring tsuru`_) and then
+start API and collector using upstart:
+
+.. highlight:: bash
+
+::
+
+    $ sudo start tsuru-server-api
+    $ sudo start tsuru-server-collector
 
 Installing pre-built binaries
 =============================
