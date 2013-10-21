@@ -609,6 +609,11 @@ func (app *App) ProvisionedUnits() []provision.AppUnit {
 	return units
 }
 
+// Env returns app.Env
+func (app *App) Envs() map[string]bind.EnvVar {
+	return app.Env
+}
+
 // SerializeEnvVars serializes the environment variables of the app. The
 // environment variables will be written the the file /home/application/apprc
 // in all units of the app.

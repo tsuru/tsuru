@@ -1724,6 +1724,21 @@ func (s *S) TestRunWithoutEnv(c *gocheck.C) {
 	c.Assert(cmds, gocheck.HasLen, 1)
 }
 
+func (s *S) TestEnvs(c *gocheck.C) {
+	app := App{
+		Name:  "time",
+		Env: map[string]bind.EnvVar{
+			"http_proxy": {
+				Name:   "http_proxy",
+				Value:  "http://theirproxy.com:3128/",
+				Public: true,
+			},
+		},
+	}
+	env := app.Envs()
+	c.Assert(env, gocheck.DeepEquals, app.Env)
+}
+
 func (s *S) TestSerializeEnvVars(c *gocheck.C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
 	app := App{
