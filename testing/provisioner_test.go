@@ -61,18 +61,21 @@ func (s *S) TestFakeAppSerializeEnvVars(c *gocheck.C) {
 }
 
 func (s *S) TestEnvs(c *gocheck.C) {
-	app := FakeApp{
-		name: "time",
-		env: map[string]bind.EnvVar{
-			"http_proxy": {
-				Name:   "http_proxy",
-				Value:  "http://theirproxy.com:3128/",
-				Public: true,
-			},
+	app := FakeApp{name: "time"}
+	env := bind.EnvVar{
+		Name:   "http_proxy",
+		Value:  "http://theirproxy.com:3128/",
+		Public: true,
+	}
+	app.SetEnv(env)
+	envs := map[string]bind.EnvVar{
+		"http_proxy": {
+			Name:   "http_proxy",
+			Value:  "http://theirproxy.com:3128/",
+			Public: true,
 		},
 	}
-	env := app.Envs()
-	c.Assert(env, gocheck.DeepEquals, app.env)
+	c.Assert(envs, gocheck.DeepEquals, app.env)
 }
 
 func (s *S) TestFakeAppLogs(c *gocheck.C) {

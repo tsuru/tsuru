@@ -175,6 +175,13 @@ func (a *FakeApp) SetUnitStatus(s provision.Status, index int) {
 	}
 }
 
+func (a *FakeApp) SetEnv(env bind.EnvVar) {
+	if a.env == nil {
+		a.env = map[string]bind.EnvVar{}
+	}
+	a.env[env.Name] = env
+}
+
 // Env returns app.Env
 func (a *FakeApp) Envs() map[string]bind.EnvVar {
 	return a.env
