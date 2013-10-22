@@ -1726,7 +1726,7 @@ func (s *S) TestRunWithoutEnv(c *gocheck.C) {
 
 func (s *S) TestEnvs(c *gocheck.C) {
 	app := App{
-		Name:  "time",
+		Name: "time",
 		Env: map[string]bind.EnvVar{
 			"http_proxy": {
 				Name:   "http_proxy",
