@@ -43,5 +43,5 @@ Tsuru supports the following hooks:
 * ``restart:after-each``: this hook is like before-each, but runs after restarting a
   unit.
 * ``restart:after``: this hook is like before, but runs after restarting an app.
-* ``build``: this hook list commands that will run on deploy, when the image will be
-  generated. (only for docker provisioner)
+* ``build``: this hook lists commands that will be run during deploy, when the image is
+  being generated. (only for docker provisioner)
