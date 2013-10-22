@@ -239,23 +239,10 @@ func rebindWhenNeed(appName string, container *container) error {
 }
 
 func removeContainer(c *container) error {
-    forceKill, err := config.GetString("docker:force-kill")
+	err := c.stop()
 	if err != nil {
-		return "", nil, err
+		log.Printf("error on stop unit %s - %s", c.ID, err)
 	}
-
-    if forceKill != false {
-	    err := c.kill()
-	    if err != nil {
-		    log.Printf("error on kill unit %s - %s", c.ID, err)
-	    }
-    } else {
-	    err := c.stop()
-	    if err != nil {
-		    log.Printf("error on stop unit %s - %s", c.ID, err)
-	    }
-    }
-
 	err = c.remove()
 	if err != nil {
 		log.Printf("error on remove container %s - %s", c.ID, err)
