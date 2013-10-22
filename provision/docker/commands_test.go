@@ -28,7 +28,7 @@ func (s *S) TestDeployCmds(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	version := "version"
 	appRepo := repository.ReadOnlyURL(app.GetName())
-	expected := []string{deployCmd, appRepo, version, "http_proxy=http://theirproxy.com:3128/ "}
+	expected := []string{deployCmd, appRepo, version, `"http_proxy='http://theirproxy.com:3128/' "`}
 	cmds, err := deployCmds(app, version)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cmds, gocheck.DeepEquals, expected)

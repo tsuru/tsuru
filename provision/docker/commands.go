@@ -25,10 +25,11 @@ func deployCmds(app provision.App, version string) ([]string, error) {
 		return nil, err
 	}
 	appRepo := repository.ReadOnlyURL(app.GetName())
-	envs := ""
+	envs := `"`
 	for _, env := range app.Envs() {
-		envs += fmt.Sprintf("%s=%s ", env.Name, env.Value)
+		envs += fmt.Sprintf("%s='%s' ", env.Name, env.Value)
 	}
+	envs += `"`
 	cmds := []string{deployCmd, appRepo, version, envs}
 	return cmds, nil
 }
