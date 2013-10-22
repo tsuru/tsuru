@@ -8,6 +8,7 @@ package provision
 
 import (
 	"fmt"
+	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/cmd"
 	"io"
 )
@@ -88,6 +89,8 @@ type App interface {
 	Restart(io.Writer) error
 
 	SerializeEnvVars() error
+
+	Envs() map[string]bind.EnvVar
 
 	// Ready marks the app as ready for deployment.
 	Ready() error
