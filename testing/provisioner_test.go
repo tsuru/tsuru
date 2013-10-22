@@ -7,6 +7,7 @@ package testing
 import (
 	"bytes"
 	"errors"
+	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/provision"
 	"launchpad.net/gocheck"
 	"testing"
@@ -57,6 +58,21 @@ func (s *S) TestFakeAppSerializeEnvVars(c *gocheck.C) {
 	err := app.SerializeEnvVars()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Commands, gocheck.DeepEquals, []string{"serialize"})
+}
+
+func (s *S) TestEnvs(c *gocheck.C) {
+	app := FakeApp{
+		name: "time",
+		env: map[string]bind.EnvVar{
+			"http_proxy": {
+				Name:   "http_proxy",
+				Value:  "http://theirproxy.com:3128/",
+				Public: true,
+			},
+		},
+	}
+	env := app.Envs()
+	c.Assert(env, gocheck.DeepEquals, app.env)
 }
 
 func (s *S) TestFakeAppLogs(c *gocheck.C) {

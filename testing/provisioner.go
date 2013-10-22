@@ -7,6 +7,7 @@ package testing
 import (
 	"errors"
 	"fmt"
+	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/provision"
 	"io"
@@ -66,6 +67,7 @@ type FakeApp struct {
 	commMut  sync.Mutex
 	ready    bool
 	deploys  uint
+	env      map[string]bind.EnvVar
 }
 
 func NewFakeApp(name, platform string, units int) *FakeApp {
@@ -171,6 +173,11 @@ func (a *FakeApp) SetUnitStatus(s provision.Status, index int) {
 	if index < len(a.units) {
 		a.units[index].(*FakeUnit).Status = s
 	}
+}
+
+// Env returns app.Env
+func (a *FakeApp) Envs() map[string]bind.EnvVar {
+	return a.env
 }
 
 func (a *FakeApp) SerializeEnvVars() error {
