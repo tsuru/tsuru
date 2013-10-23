@@ -38,7 +38,7 @@ func (s *S) TestChangeQuotaRun(c *gocheck.C) {
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	command := changeQuota{}
-	command.Flags().Parse(true, []string{"--owner","qwertyuiop","--quota", "1"})
+	command.Flags().Parse(true, []string{"--owner", "qwertyuiop", "--quota", "1"})
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)

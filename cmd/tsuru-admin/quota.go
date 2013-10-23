@@ -5,27 +5,27 @@
 package main
 
 import (
-	"fmt"
 	"errors"
+	"fmt"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/cmd/tsuru-base"
-	"net/http"
 	"launchpad.net/gnuflag"
+	"net/http"
 	"strings"
 )
 
 type changeQuota struct {
 	tsuru.GuessingCommand
-	fs     *gnuflag.FlagSet
+	fs    *gnuflag.FlagSet
 	quota int
 	owner string
 }
 
 func (c *changeQuota) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:	"quota-update",
-		Usage:	"quota-update [--owner/-o owner's name] [--quota/-q number of quotas]",
-		Desc:	`Update quotas.`,
+		Name:    "quota-update",
+		Usage:   "quota-update [--owner/-o owner's name] [--quota/-q number of quotas]",
+		Desc:    `Update quotas.`,
 		MinArgs: 0,
 	}
 }
@@ -39,7 +39,7 @@ func (c *changeQuota) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-		if c.quota == 0 {
+	if c.quota == 0 {
 		return errors.New("Number of quotas required.")
 	}
 	body := fmt.Sprintf("quota=%d", c.quota)
