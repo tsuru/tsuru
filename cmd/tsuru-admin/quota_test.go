@@ -15,7 +15,7 @@ import (
 func (s *S) TestChangeQuotaInfo(c *gocheck.C) {
 	expected := &cmd.Info{
 		Name:    "quota-update",
-		Usage:   "quota-update [owner, q]",
+		Usage:   "quota-update [--owner/-o owner's name] [--quota/-q number of quotas]",
 		Desc:    `Update quotas.`,
 		MinArgs: 0,
 	}
