@@ -23,6 +23,7 @@ func buildManager(name string) *cmd.Manager {
 	m.Register(&tsuru.UnsetCName{})
 	m.Register(&tokenGen{})
 	m.Register(&logRemove{})
+	m.Register(&changeQuota{})
 	return m
 }
 

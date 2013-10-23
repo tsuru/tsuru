@@ -45,6 +45,13 @@ func (s *S) TestLogRemoveIsRegistered(c *gocheck.C) {
 	c.Assert(token, gocheck.FitsTypeOf, &logRemove{})
 }
 
+func (s *S) TestChangeQuotaIsRegistered(c *gocheck.C) {
+	manager := buildManager("tsuru-admin")
+	token, ok := manager.Commands["quota-update"]
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(token, gocheck.FitsTypeOf, &changeQuota{})
+}
+
 func (s *S) TestCommandsFromBaseManagerAreRegistered(c *gocheck.C) {
 	baseManager := cmd.BuildBaseManager("tsuru", version, header)
 	manager := buildManager("tsuru")
