@@ -6,6 +6,7 @@ package main
 
 import (
 	"fmt"
+	"errors"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/cmd/tsuru-base"
 	"net/http"
@@ -30,10 +31,16 @@ func (c *changeQuota) Info() *cmd.Info {
 }
 
 func (c *changeQuota) Run(context *cmd.Context, client *cmd.Client) error {
+	if c.owner == "" {
+		return errors.New("The owner's name required.")
+	}
 	uri := "/quota/" + c.owner
 	url, err := cmd.GetURL(uri)
 	if err != nil {
 		return err
+	}
+		if c.quota == 0 {
+		return errors.New("Number of quotas required.")
 	}
 	body := fmt.Sprintf("quota=%d", c.quota)
 	request, err := http.NewRequest("PUT", url, strings.NewReader(body))
