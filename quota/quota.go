@@ -33,7 +33,6 @@ type usage struct {
 	Items []string
 	// Maximum length of Items.
 	Limit uint
-	mut   sync.Mutex
 }
 
 // Create stores a new quota in the database.
