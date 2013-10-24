@@ -24,6 +24,7 @@ func (l *multiLocker) Lock(name string) {
 
 func (l *multiLocker) Unlock(name string) {
 	l.mut.Lock()
-	defer l.mut.Unlock()
-	l.m[name].Unlock()
+	mutex := l.m[name]
+	l.mut.Unlock()
+	mutex.Unlock()
 }
