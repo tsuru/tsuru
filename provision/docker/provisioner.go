@@ -106,6 +106,8 @@ func startInBackground(a provision.App, c container, imageId string, w io.Writer
 	newContainer, err := start(a, imageId, w)
 	if err != nil {
 		log.Printf("error on start the app %s - %s", a.GetName(), err)
+		started <- false
+		return
 	}
 	msg := queue.Message{Action: app.BindService, Args: []string{a.GetName(), newContainer.ID}}
 	go app.Enqueue(msg)
@@ -140,8 +142,10 @@ func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer)
 		go startInBackground(a, container{}, imageId, w, started)
 	}
 	if <-started {
-		fmt.Fprint(w, "\n ---> App will be restarted, please check its log for more details...\n\n")
+		fmt.Fprint(w, "\n ---> App will be restarted, please check its logs for more details...\n\n")
 		go injectEnvsAndRestart(a)
+	} else {
+		fmt.Fprint(w, "\n ---> App failed to start, please check its logs for more details...\n\n")
 	}
 	return nil
 }
