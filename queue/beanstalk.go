@@ -13,6 +13,7 @@ import (
 	"github.com/globocom/tsuru/log"
 	"github.com/kr/beanstalk"
 	"io"
+	"net"
 	"regexp"
 	"sync"
 	"time"
@@ -102,6 +103,9 @@ func (b beanstalkdFactory) Handler(f func(*Message), name ...string) (Handler, e
 				}(message)
 			} else {
 				log.Printf("Failed to get message from the queue: %s. Trying again...", err)
+				if e, ok := err.(*net.OpError); ok && e.Op == "dial" {
+					time.Sleep(5e9)
+				}
 			}
 		},
 	}, nil
