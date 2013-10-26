@@ -333,6 +333,15 @@ func (c *container) stop() error {
 	return err
 }
 
+// kill kills the container.
+func (c *container) kill() error {
+	err := dockerCluster().KillContainer(c.ID)
+	if err != nil {
+		log.Printf("error on kill container %s: %s", c.ID, err)
+	}
+	return err
+}
+
 // logs returns logs for the container.
 func (c *container) logs(w io.Writer) error {
 	opts := dclient.AttachToContainerOptions{

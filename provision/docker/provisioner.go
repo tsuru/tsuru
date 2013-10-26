@@ -243,9 +243,9 @@ func rebindWhenNeed(appName string, container *container) error {
 }
 
 func removeContainer(c *container) error {
-	err := c.stop()
+	err := c.kill()
 	if err != nil {
-		log.Printf("error on stop unit %s - %s", c.ID, err)
+		log.Printf("error on kill unit %s - %s", c.ID, err)
 	}
 	err = c.remove()
 	if err != nil {

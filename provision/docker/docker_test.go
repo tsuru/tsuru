@@ -602,6 +602,23 @@ func (s *S) TestContainerStop(c *gocheck.C) {
 	c.Assert(dockerContainer.State.Running, gocheck.Equals, false)
 }
 
+func (s *S) TestContainerKill(c *gocheck.C) {
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	cont, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(cont)
+	client, err := dockerClient.NewClient(s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	err = client.StartContainer(cont.ID, nil)
+	c.Assert(err, gocheck.IsNil)
+	err = cont.kill()
+	c.Assert(err, gocheck.IsNil)
+	dockerContainer, err := dockerCluster().InspectContainer(cont.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dockerContainer.State.Running, gocheck.Equals, false)
+}
+
 func (s *S) TestContainerLogs(c *gocheck.C) {
 	_, cleanup := startSSHAgentServer("")
 	defer cleanup()
