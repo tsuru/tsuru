@@ -20,13 +20,15 @@ git checkout $REVISION
 echo "ok"
 
 BUILD_FLAGS="-x -a -o"
+POSTFIX=""
 
 if [ $PPROF = true ]
 then
 	BUILD_FLAGS="-tags pprof $BUILD_FLAGS"
+	POSTFIX="-pprof"
 fi
 
 echo "Building tsr-${REVISION}... "
 go build $BUILD_FLAGS $destination_dir/tsr github.com/globocom/tsuru/cmd/tsr
-tar -C $destination_dir -czf $destination_dir/tsr-${REVISION}.tar.gz tsr
+tar -C $destination_dir -czf $destination_dir/tsr-${REVISION}${POSTFIX}.tar.gz tsr
 rm $destination_dir/tsr
