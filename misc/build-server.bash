@@ -19,7 +19,14 @@ echo -n "Checking out $REVISION... "
 git checkout $REVISION
 echo "ok"
 
+BUILD_FLAGS="-x -a -o"
+
+if [ $PPROF = true ]
+then
+	BUILD_FLAGS="-tags pprof $BUILD_FLAGS"
+fi
+
 echo "Building tsr-${REVISION}... "
-go build -x -a -o $destination_dir/tsr github.com/globocom/tsuru/cmd/tsr
+go build $BUILD_FLAGS $destination_dir/tsr github.com/globocom/tsuru/cmd/tsr
 tar -C $destination_dir -czf $destination_dir/tsr-${REVISION}.tar.gz tsr
 rm $destination_dir/tsr
