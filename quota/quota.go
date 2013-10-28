@@ -22,7 +22,7 @@ var (
 	ErrQuotaNotFound      = errors.New("Quota not found")
 )
 
-var locker sync.Mutex
+var locker = multiLocker{m: make(map[string]*sync.Mutex)}
 
 // Usage represents the usage of a user/app. It contains information about the
 // limit of items, and the current amount of items in use by the user.
@@ -74,8 +74,8 @@ func Reserve(owner string, items ...string) error {
 		return err
 	}
 	defer conn.Close()
-	locker.Lock()
-	defer locker.Unlock()
+	locker.Lock(owner)
+	defer locker.Unlock(owner)
 	var u usage
 	err = conn.Quota().Find(bson.M{"owner": owner}).One(&u)
 	if err != nil {
