@@ -18,6 +18,13 @@ import (
 	"sync"
 )
 
+type Logger interface {
+	Error(string)
+	Errorf(string, ...interface{})
+	Debug(string)
+	Debugf(string, ...interface{})
+}
+
 func getSysLogger() *log.Logger {
 	logger, err := syslog.NewLogger(syslog.LOG_INFO, log.LstdFlags)
 	if err != nil {
