@@ -4,12 +4,14 @@
 package log
 
 import (
+	"fmt"
 	"log"
 	"os"
 )
 
 var (
 	errorPrefix = "ERROR: %s"
+	debugPrefix = "DEBUG: %s"
 )
 
 func newFileLogger(fileName string) Logger {
@@ -26,6 +28,14 @@ func (l *fileLogger) Error(o string) {
 	l.logger.Printf(errorPrefix, o)
 }
 
-func (l *fileLogger) Errorf(format string, o ...interface{}) {}
-func (l *fileLogger) Debug(o string)                         {}
-func (l *fileLogger) Debugf(format string, o ...interface{}) {}
+func (l *fileLogger) Errorf(format string, o ...interface{}) {
+	l.Error(fmt.Sprintf(format, o...))
+}
+
+func (l *fileLogger) Debug(o string) {
+	l.logger.Printf(debugPrefix, o)
+}
+
+func (l *fileLogger) Debugf(format string, o ...interface{}) {
+	l.Debug(fmt.Sprintf(format, o...))
+}
