@@ -141,9 +141,13 @@ func (s *Storage) Platforms() *Collection {
 func (s *Storage) Logs() *Collection {
 	appNameIndex := mgo.Index{Key: []string{"appname"}}
 	sourceIndex := mgo.Index{Key: []string{"source"}}
+	dateAscIndex := mgo.Index{Key: []string{"date"}}
+	dateDescIndex := mgo.Index{Key: []string{"-date"}}
 	c := s.Collection("logs")
 	c.EnsureIndex(appNameIndex)
 	c.EnsureIndex(sourceIndex)
+	c.EnsureIndex(dateAscIndex)
+	c.EnsureIndex(dateDescIndex)
 	return c
 }
 

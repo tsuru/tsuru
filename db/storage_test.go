@@ -223,6 +223,34 @@ func (s *S) TestLogs(c *gocheck.C) {
 	c.Assert(logs, gocheck.DeepEquals, logsc)
 }
 
+func (s *S) TestLogsAppNameIndex(c *gocheck.C) {
+	storage, _ := Open("127.0.0.1", "tsuru_storage_test")
+	defer storage.session.Close()
+	logs := storage.Logs()
+	c.Assert(logs, HasIndex, []string{"appname"})
+}
+
+func (s *S) TestLogsSourceIndex(c *gocheck.C) {
+	storage, _ := Open("127.0.0.1", "tsuru_storage_test")
+	defer storage.session.Close()
+	logs := storage.Logs()
+	c.Assert(logs, HasIndex, []string{"source"})
+}
+
+func (s *S) TestLogsDateAscendingIndex(c *gocheck.C) {
+	storage, _ := Open("127.0.0.1", "tsuru_storage_test")
+	defer storage.session.Close()
+	logs := storage.Logs()
+	c.Assert(logs, HasIndex, []string{"date"})
+}
+
+func (s *S) TestLogsDateDescendingIndex(c *gocheck.C) {
+	storage, _ := Open("127.0.0.1", "tsuru_storage_test")
+	defer storage.session.Close()
+	logs := storage.Logs()
+	c.Assert(logs, HasIndex, []string{"-date"})
+}
+
 func (s *S) TestServices(c *gocheck.C) {
 	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
 	defer storage.session.Close()
@@ -260,20 +288,6 @@ func (s *S) TestQuotaOwnerIsUnique(c *gocheck.C) {
 	defer storage.session.Close()
 	quota := storage.Quota()
 	c.Assert(quota, HasUniqueIndex, []string{"owner"})
-}
-
-func (s *S) TestLogAppNameIndex(c *gocheck.C) {
-	storage, _ := Open("127.0.0.1", "tsuru_storage_test")
-	defer storage.session.Close()
-	logs := storage.Logs()
-	c.Assert(logs, HasIndex, []string{"appname"})
-}
-
-func (s *S) TestLogSourceIndex(c *gocheck.C) {
-	storage, _ := Open("127.0.0.1", "tsuru_storage_test")
-	defer storage.session.Close()
-	logs := storage.Logs()
-	c.Assert(logs, HasIndex, []string{"source"})
 }
 
 func (s *S) TestRetire(c *gocheck.C) {
