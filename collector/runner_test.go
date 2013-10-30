@@ -54,7 +54,7 @@ func (s *S) TestJujuCollect(c *gocheck.C) {
 	go collect(ch)
 	ch <- time.Now()
 	close(ch)
-	time.Sleep(1e6)
+	time.Sleep(time.Second)
 	var apps []app.App
 	err := s.conn.Apps().Find(bson.M{"name": bson.M{"$in": []string{"as_i_rise", "the_infanta"}}}).Sort("name").All(&apps)
 	c.Assert(err, gocheck.IsNil)
