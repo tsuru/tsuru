@@ -442,12 +442,19 @@ func (s *S) TestAddUnitPlaceHolder(c *gocheck.C) {
 	c.Assert(u.QuotaItem, gocheck.Equals, "appName-0")
 }
 
-func (s *S) TestAddUnitKeepsQuotaItem(c *gocheck.C) {
+func (s *S) TestAddUnitKeepsQuotaItemOnUpdate(c *gocheck.C) {
 	a := App{Name: "myapp", Units: []Unit{{Name: "myapp/0", QuotaItem: "myapp-1"}}}
 	u := Unit{Name: "myapp/0", Machine: 1}
 	a.AddUnit(&u)
 	c.Assert(len(a.Units), gocheck.Equals, 1)
 	c.Assert(u.QuotaItem, gocheck.Equals, "myapp-1")
+}
+
+func (s *S) TestAddUnitDoesntReplacePredefinedQuotaItem(c *gocheck.C) {
+	a := App{Name: "myapp"}
+	u := Unit{Name: "myapp/0", Machine: 1, QuotaItem: "waaaaat"}
+	a.AddUnit(&u)
+	c.Assert(u.QuotaItem, gocheck.Equals, "waaaaat")
 }
 
 func (s *S) TestAddUnits(c *gocheck.C) {

@@ -222,7 +222,9 @@ func (app *App) AddUnit(u *Unit) {
 			return
 		}
 	}
-	u.QuotaItem = generateUnitQuotaItems(app, 1)[0]
+	if u.QuotaItem == "" {
+		u.QuotaItem = generateUnitQuotaItems(app, 1)[0]
+	}
 	app.Units = append(app.Units, *u)
 }
 
