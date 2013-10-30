@@ -453,13 +453,10 @@ var saveNewUnitsInDatabase = action.Action{
 		if err != nil {
 			return nil, errors.New("App not found")
 		}
-		length := len(app.Units)
-		appUnits := make([]Unit, len(prev.units))
-		app.Units = append(app.Units, appUnits...)
 		messages := make([]queue.Message, len(prev.units)*2)
 		mCount := 0
 		for i, unit := range prev.units {
-			app.Units[i+length] = Unit{
+			unit := Unit{
 				Name:       unit.Name,
 				Type:       unit.Type,
 				Ip:         unit.Ip,
@@ -468,6 +465,7 @@ var saveNewUnitsInDatabase = action.Action{
 				InstanceId: unit.InstanceId,
 				QuotaItem:  prev.ids[i],
 			}
+			app.AddUnit(&unit)
 			messages[mCount] = queue.Message{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}}
 			messages[mCount+1] = queue.Message{Action: BindService, Args: []string{app.Name, unit.Name}}
 			mCount += 2
