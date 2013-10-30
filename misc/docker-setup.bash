@@ -21,15 +21,21 @@ function configure_tsuru() {
     sudo -u ubuntu ssh-keygen -t rsa -f /home/ubuntu/.ssh/id_rsa -N ""
 }
 
+
 function install_docker() {
-    sudo apt-get install lxc wget bsdtar curl -y --force-yes
+    sudo apt-get install bsdtar curl -y --force-yes
     # are you on AWS? if not, comment the line below or get an extra pkg
     sudo apt-get install linux-image-extra-`uname -r` -y --force-yes
-    wget -q http://get.docker.io/builds/Linux/x86_64/docker-latest.tgz
-    tar -xf docker-latest.tgz
-    sudo cp docker-latest/docker /usr/local/bin
+    # adding docker repository
+    curl https://get.docker.io/gpg | apt-key add -
+    echo deb http://get.docker.io/ubuntu docker main > /etc/apt/sources.list.d/docker.list
+    sudo apt-get install lxc-docker -y --force-yes
     # runs docker daemon, it must be running in order to tsuru work
-    sudo -E docker -d -H 0.0.0.0:4243 &
+    # Configuring and starting Docker
+    sed -i.old -e 's;/usr/bin/docker -d;/usr/bin/docker -H tcp://127.0.0.1:4243 -d;' /etc/init/docker.conf
+    rm /etc/init/docker.conf.old
+    stop docker
+    start docker
 }
 
 function start_tsuru() {
