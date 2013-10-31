@@ -11,7 +11,7 @@
 function update_ubuntu() {
     echo "Updating and upgrading"
     sudo apt-get update
-    sudo apt-get upgrade -y
+    sudo apt-get upgrade -qqy
 }
 
 function install_mongodb() {
@@ -19,7 +19,7 @@ function install_mongodb() {
     sudo -E apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
     sudo bash -c 'echo "deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen" > /etc/apt/sources.list.d/10gen.list'
     sudo apt-get update -y
-    sudo apt-get install mongodb-10gen -y --force-yes
+    sudo apt-get install mongodb-10gen -qqy
 }
 
 function setup_platforms() {
@@ -34,15 +34,18 @@ function setup_platforms() {
 
 function install_beanstalkd() {
     echo "Installing beanstalkd"
-    sudo apt-get install -y beanstalkd --force-yes
+    sudo apt-get install beanstalkd -qqy
     sudo sed -i s/#START=yes/START=yes/ /etc/default/beanstalkd
     echo "starting beanstalkd"
     sudo service beanstalkd start
 }
 
 function install_tsuru() {
-    echo "Downloading tsuru binary and copying to /usr/bin"
-    curl -sL https://s3.amazonaws.com/tsuru/dist-server/tsr-master.tar.gz | sudo tar -xz -C /usr/bin
+    echo "Adding Tsuru repository"
+    sudo apt-add-repository ppa:tsuru/ppa -y
+    sudo apt-get update
+    echo "Installing tsuru"
+    sudo apt-get install tsuru-server -qqy
 }
 
 function main() {
