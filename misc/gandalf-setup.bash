@@ -17,10 +17,11 @@ function update_ubuntu() {
 function install_gandalf() {
     echo "Installing git"
     sudo apt-get install git -y
-    echo "Installing gandalf-wrapper"
-    curl -sL https://s3.amazonaws.com/tsuru/dist-server/gandalf-bin.tar.gz | sudo tar -xz -C /usr/bin
-    echo "Installing gandalf-webserver"
-    curl -sL https://s3.amazonaws.com/tsuru/dist-server/gandalf-webserver.tar.gz | sudo tar -xz -C /usr/bin
+    echo "Adding Tsuru repository"
+    sudo apt-add-repository ppa:tsuru/ppa -y
+    sudo apt-get update
+    echo "Installing gandalf"
+    sudo apt-get install gandalf-server -qqy
 }
 
 function configure_gandalf() {
@@ -56,9 +57,9 @@ webserver:
 
 function start_gandalf() {
     echo "starting gandalf webserver"
-    sudo -u git -i gandalf-webserver &
+    start gandalf-server
     echo "starting git daemon"
-    sudo -u git -i git daemon --base-path=/var/repositories --syslog --export-all &
+    start git-daemon
 }
 
 function main() {
