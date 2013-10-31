@@ -86,6 +86,18 @@ database:name
 ``database:name`` is the name of the database that tsuru uses. It is a
 mandatory setting and has no default value. An example of value is "tsuru".
 
+Collector
+---------
+
+Collector is a tsuru agent responsible for collecting information about app units,
+interacting with the provisioner. This agent runs a loop in configurable interval.
+
+collector:ticker-time
++++++++++++++++++++++
+
+``collector:ticker-time`` is interval for running the loop, specified in seconds.
+Default value: 60 seconds.
+
 Email configuration
 -------------------
 
