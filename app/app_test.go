@@ -712,8 +712,7 @@ func (s *S) TestRemoveUnitsWithQuota(c *gocheck.C) {
 func (s *S) TestRemoveUnits(c *gocheck.C) {
 	var calls int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		v := atomic.LoadInt32(&calls)
-		atomic.StoreInt32(&calls, v+1)
+		atomic.AddInt32(&calls, 1)
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
@@ -802,23 +801,6 @@ func (s *S) TestRemoveUnitsInvalidValues(c *gocheck.C) {
 		c.Check(err, gocheck.NotNil)
 		c.Check(err.Error(), gocheck.Equals, test.expected)
 	}
-}
-
-func (s *S) TestRemoveUnitsFailureInProvisioner(c *gocheck.C) {
-	s.provisioner.PrepareFailure("RemoveUnit", stderr.New("Cannot remove this unit."))
-	app := App{
-		Name:     "paradisum",
-		Platform: "python",
-		Units:    []Unit{{Name: "paradisum/0"}, {Name: "paradisum/1"}},
-	}
-	err := s.conn.Apps().Insert(app)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	s.provisioner.Provision(&app)
-	defer s.provisioner.Destroy(&app)
-	err = app.RemoveUnits(1)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Cannot remove this unit.")
 }
 
 func (s *S) TestRemoveUnitsFromIndicesSlice(c *gocheck.C) {

@@ -332,10 +332,9 @@ func (app *App) RemoveUnits(n uint) error {
 	sort.Sort(units)
 	items := make([]string, int(n))
 	for i := 0; i < int(n); i++ {
-		err = Provisioner.RemoveUnit(app, units[i].GetName())
-		if err == nil {
-			removed = append(removed, i)
-		}
+		name := units[i].GetName()
+		go Provisioner.RemoveUnit(app, name)
+		removed = append(removed, i)
 		app.unbindUnit(&units[i])
 		items[i] = units[i].QuotaItem
 	}
@@ -374,10 +373,12 @@ func (app *App) unbindUnit(unit provision.AppUnit) error {
 		return err
 	}
 	for _, instance := range instances {
-		err = instance.UnbindUnit(unit)
-		if err != nil {
-			log.Printf("Error unbinding the unit %s with the service instance %s.", unit.GetIp(), instance.Name)
-		}
+		go func(instance service.ServiceInstance) {
+			err = instance.UnbindUnit(unit)
+			if err != nil {
+				log.Printf("Error unbinding the unit %s with the service instance %s.", unit.GetIp(), instance.Name)
+			}
+		}(instance)
 	}
 	return nil
 }
