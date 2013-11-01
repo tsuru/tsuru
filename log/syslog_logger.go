@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"log/syslog"
+	"os"
 )
 
 func newSyslogLogger() Logger {
@@ -27,6 +28,15 @@ func (l *syslogLogger) Error(o string) {
 
 func (l *syslogLogger) Errorf(format string, o ...interface{}) {
 	l.w.Err(fmt.Sprintf(format, o...))
+}
+
+func (l *syslogLogger) Fatal(o string) {
+	l.w.Err(fmt.Sprintf(fatalPrefix, o))
+	os.Exit(1)
+}
+
+func (l *syslogLogger) Fatalf(format string, o ...interface{}) {
+	l.Fatal(fmt.Sprintf(format, o...))
 }
 
 func (l *syslogLogger) Debug(o string) {

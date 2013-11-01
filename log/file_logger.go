@@ -11,6 +11,7 @@ import (
 
 var (
 	errorPrefix = "ERROR: %s"
+	fatalPrefix = "FATAL: %s"
 	debugPrefix = "DEBUG: %s"
 )
 
@@ -30,6 +31,15 @@ func (l *fileLogger) Error(o string) {
 
 func (l *fileLogger) Errorf(format string, o ...interface{}) {
 	l.Error(fmt.Sprintf(format, o...))
+}
+
+func (l *fileLogger) Fatal(o string) {
+	l.logger.Printf(fmt.Sprintf(fatalPrefix, o))
+	os.Exit(1)
+}
+
+func (l *fileLogger) Fatalf(format string, o ...interface{}) {
+	l.Fatal(fmt.Sprintf(format, o...))
 }
 
 func (l *fileLogger) Debug(o string) {
