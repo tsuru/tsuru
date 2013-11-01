@@ -74,6 +74,18 @@ Tsuru needs MongoDB stable, distributed by 10gen. `It's pretty easy to get it
 running on Ubuntu
 <http://docs.mongodb.org/manual/tutorial/install-mongodb-on-ubuntu/>`_
 
+Redis
+-----
+
+Tsuru uses Redis to communicate new routes. By default it points to a locally installed Redis server. 
+Install on Ubuntu via `apt-get`:
+
+::
+
+	$ sudo apt-get install redis-server
+
+If you will use a remote Redis server, skip this and point your server on `/etc/tsuru/tsuru.conf`
+
 Beanstalkd
 ----------
 
