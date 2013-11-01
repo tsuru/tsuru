@@ -17,72 +17,57 @@ type S struct{}
 
 var _ = gocheck.Suite(&S{})
 
-func (s *S) TestLogPanic(c *gocheck.C) {
-	buf := &bytes.Buffer{}
-	defer buf.Reset()
-	SetLogger(log.New(buf, "", 0))
-	defer func() {
-		c.Assert(recover(), gocheck.Equals, "log anything")
-	}()
-	Panic("log anything")
+func newFakeLogger() *bytes.Buffer {
+	l := newFileLogger("/dev/null")
+	fl, _ := l.(*fileLogger)
+	b := &bytes.Buffer{}
+	fl.logger = log.New(b, "", 0)
+	SetLogger(l)
+	return b
 }
 
-func (s *S) TestLogPanicf(c *gocheck.C) {
-	buf := &bytes.Buffer{}
+func (s *S) TestLogError(c *gocheck.C) {
+	buf := newFakeLogger()
 	defer buf.Reset()
-	SetLogger(log.New(buf, "", 0))
-	defer func() {
-		c.Assert(recover(), gocheck.Equals, "log anything formatted")
-	}()
-	Panicf("log anything %s", "formatted")
+	Error("log anything")
+	c.Assert(buf.String(), gocheck.Equals, "ERROR: log anything\n")
 }
 
-func (s *S) TestLogPrint(c *gocheck.C) {
-	buf := &bytes.Buffer{}
+func (s *S) TestLogErrorf(c *gocheck.C) {
+	buf := newFakeLogger()
 	defer buf.Reset()
-	SetLogger(log.New(buf, "", 0))
-	Print("log anything")
-	c.Assert(buf.String(), gocheck.Equals, "log anything\n")
+	Errorf("log anything %d", 1)
+	c.Assert(buf.String(), gocheck.Equals, "ERROR: log anything 1\n")
 }
 
-func (s *S) TestLogPrintf(c *gocheck.C) {
-	buf := &bytes.Buffer{}
-	defer buf.Reset()
-	SetLogger(log.New(buf, "", 0))
-	Printf("log anything %d", 1)
-	c.Assert(buf.String(), gocheck.Equals, "log anything 1\n")
-}
-
-func (s *S) TestLogFatalWithoutTarget(c *gocheck.C) {
-	SetLogger(nil)
+func (s *S) TestLogErrorWithoutTarget(c *gocheck.C) {
+	_ = newFakeLogger()
 	defer func() {
 		c.Assert(recover(), gocheck.IsNil)
 	}()
-	Fatal("log anything")
+	Error("log anything")
 }
 
-func (s *S) TestLogPanicWithoutTarget(c *gocheck.C) {
-	SetLogger(nil)
+func (s *S) TestLogErrorfWithoutTarget(c *gocheck.C) {
+	_ = newFakeLogger()
 	defer func() {
 		c.Assert(recover(), gocheck.IsNil)
 	}()
-	Panic("log anything")
+	Errorf("log anything %d", 1)
 }
 
-func (s *S) TestLogPrintWithoutTarget(c *gocheck.C) {
-	SetLogger(nil)
-	defer func() {
-		c.Assert(recover(), gocheck.IsNil)
-	}()
-	Print("log anything")
+func (s *S) TestLogDebug(c *gocheck.C) {
+	buf := newFakeLogger()
+	defer buf.Reset()
+	Debug("log anything")
+	c.Assert(buf.String(), gocheck.Equals, "DEBUG: log anything\n")
 }
 
-func (s *S) TestLogPrintfWithoutTarget(c *gocheck.C) {
-	SetLogger(nil)
-	defer func() {
-		c.Assert(recover(), gocheck.IsNil)
-	}()
-	Printf("log anything %d", 1)
+func (s *S) TestLogDebugf(c *gocheck.C) {
+	buf := newFakeLogger()
+	defer buf.Reset()
+	Debugf("log anything %d", 1)
+	c.Assert(buf.String(), gocheck.Equals, "DEBUG: log anything 1\n")
 }
 
 func (s *S) TestWrite(c *gocheck.C) {
@@ -93,10 +78,9 @@ func (s *S) TestWrite(c *gocheck.C) {
 }
 
 func BenchmarkLogging(b *testing.B) {
-	var buf bytes.Buffer
 	target := new(Target)
-	target.SetLogger(log.New(&buf, "", 0))
+	_ = newFakeLogger()
 	for i := 0; i < b.N; i++ {
-		target.Printf("Log message number %d.", i+1)
+		target.Debugf("Log message number %d.", i+1)
 	}
 }

@@ -12,71 +12,76 @@ package log
 import (
 	"github.com/globocom/config"
 	"io"
-	"log"
-	"log/syslog"
-	"os"
 	"sync"
 )
 
 type Logger interface {
 	Error(string)
 	Errorf(string, ...interface{})
+	Fatal(string)
+	Fatalf(string, ...interface{})
 	Debug(string)
 	Debugf(string, ...interface{})
 }
 
-func getSysLogger() *log.Logger {
-	logger, err := syslog.NewLogger(syslog.LOG_INFO, log.LstdFlags)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return logger
-}
-
-func getFileLogger(fileName string) *log.Logger {
-	file, err := os.OpenFile(fileName, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
-	if err != nil {
-		log.Fatal(err)
-	}
-	return log.New(file, "", log.LstdFlags)
-}
-
 func Init() {
 	logFileName, err := config.GetString("log:file")
-	var logger *log.Logger
+	var logger Logger
 	if err != nil {
-		logger = getSysLogger()
+		logger = newSyslogLogger()
 	} else {
-		logger = getFileLogger(logFileName)
+		logger = newFileLogger(logFileName)
 	}
 	SetLogger(logger)
 }
 
 // Target is the current target for the log package.
 type Target struct {
-	logger *log.Logger
+	logger Logger
 	mut    sync.RWMutex
 }
 
 // SetLogger defines a new logger for the current target.
 //
 // See the builtin log package for more details.
-func (t *Target) SetLogger(l *log.Logger) {
+func (t *Target) SetLogger(l Logger) {
 	t.mut.Lock()
 	defer t.mut.Unlock()
 	t.logger = l
 }
 
-// Fatal is equivalent to Print() followed by os.Exit(1).
-func (t *Target) Fatal(v ...interface{}) {
+// Error writes the given values to the Target
+// logger.
+func (t *Target) Error(v string) {
 	t.mut.RLock()
 	defer t.mut.RUnlock()
 	if t.logger != nil {
-		t.logger.Fatal(v...)
+		t.logger.Error(v)
 	}
 }
 
-// Fatalf is equivalent to Printf followed by os.Exit(1).
+// Errorf writes the formatted string to the Target
+// logger.
+func (t *Target) Errorf(format string, v ...interface{}) {
+	t.mut.RLock()
+	defer t.mut.RUnlock()
+	if t.logger != nil {
+		t.logger.Errorf(format, v...)
+	}
+}
+
+// Fatal writes the given values to the Target
+// logger.
+func (t *Target) Fatal(v string) {
+	t.mut.RLock()
+	defer t.mut.RUnlock()
+	if t.logger != nil {
+		t.logger.Fatal(v)
+	}
+}
+
+// Fatalf writes the formatted string to the Target
+// logger.
 func (t *Target) Fatalf(format string, v ...interface{}) {
 	t.mut.RLock()
 	defer t.mut.RUnlock()
@@ -85,77 +90,60 @@ func (t *Target) Fatalf(format string, v ...interface{}) {
 	}
 }
 
-// Print is similar to fmt.Print, writing the given values to the Target
+// Debug writes the value to the Target
 // logger.
-func (t *Target) Print(v ...interface{}) {
+func (t *Target) Debug(v string) {
 	t.mut.RLock()
 	defer t.mut.RUnlock()
 	if t.logger != nil {
-		t.logger.Print(v...)
+		t.logger.Debug(v)
 	}
 }
 
-// Printf is similar to fmt.Printf, writing the formatted string to the Target
+// Debugf writes the formatted string to the Target
 // logger.
-func (t *Target) Printf(format string, v ...interface{}) {
+func (t *Target) Debugf(format string, v ...interface{}) {
 	t.mut.RLock()
 	defer t.mut.RUnlock()
 	if t.logger != nil {
-		t.logger.Printf(format, v...)
-	}
-}
-
-// Panic is equivalent to Print() followed by panic().
-func (t *Target) Panic(v ...interface{}) {
-	t.mut.RLock()
-	defer t.mut.RUnlock()
-	if t.logger != nil {
-		t.logger.Panic(v...)
-	}
-}
-
-func (t *Target) Panicf(format string, v ...interface{}) {
-	t.mut.RLock()
-	defer t.mut.RUnlock()
-	if t.logger != nil {
-		t.logger.Panicf(format, v...)
+		t.logger.Debugf(format, v...)
 	}
 }
 
 var DefaultTarget = new(Target)
 
-// Fatal is a wrapper for DefaultTarget.Fatal.
-func Fatal(v ...interface{}) {
-	DefaultTarget.Fatal(v...)
+// Error is a wrapper for DefaultTarget.Error.
+func Error(v string) {
+	DefaultTarget.Error(v)
 }
 
-// Fatalf is a wrapper for DefaultTarget.Fatalf.
+// Errorf is a wrapper for DefaultTarget.Errorf.
+func Errorf(format string, v ...interface{}) {
+	DefaultTarget.Errorf(format, v...)
+}
+
+// Fatal is a wrapper for DefaultTarget.Fatal.
+func Fatal(v string) {
+	DefaultTarget.Fatal(v)
+}
+
+// Fatalf is a wrapper for DefaultTarget.Errorf.
 func Fatalf(format string, v ...interface{}) {
 	DefaultTarget.Fatalf(format, v...)
 }
 
-// Print is a wrapper for DefaultTarget.Print.
-func Print(v ...interface{}) {
-	DefaultTarget.Print(v...)
+// Debug is a wrapper for DefaultTarget.Debug.
+func Debug(v string) {
+	DefaultTarget.Debug(v)
 }
 
-// Printf is a wrapper for DefaultTarget.Printf.
-func Printf(format string, v ...interface{}) {
-	DefaultTarget.Printf(format, v...)
-}
-
-// Panic is a wrapper for DefaultTarget.Panic.
-func Panic(v ...interface{}) {
-	DefaultTarget.Panic(v...)
-}
-
-// Panicf is a wrapper for DefaultTarget.Panicf.
-func Panicf(format string, v ...interface{}) {
-	DefaultTarget.Panicf(format, v...)
+// Debugf is a wrapper for DefaultTarget.Debugf.
+func Debugf(format string, v ...interface{}) {
+	DefaultTarget.Debugf(format, v...)
 }
 
 // SetLogger is a wrapper for DefaultTarget.SetLogger.
-func SetLogger(logger *log.Logger) {
+func SetLogger(logger Logger) {
 	DefaultTarget.SetLogger(logger)
 }
 
