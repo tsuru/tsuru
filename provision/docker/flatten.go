@@ -36,17 +36,17 @@ func flatten(imageID string) error {
 	}
 	buf := &bytes.Buffer{}
 	if err := dockerCluster().ExportContainer(c.ID, buf); err != nil {
-		log.Printf("Flatten: Caugh error while exporting container %s: %s", c.ID, err.Error())
+		log.Errorf("Flatten: Caugh error while exporting container %s: %s", c.ID, err.Error())
 		return err
 	}
 	out := &bytes.Buffer{}
 	opts := dcli.ImportImageOptions{Repository: imageID, Source: "-"}
 	if err := dockerCluster().ImportImage(opts, buf, out); err != nil {
-		log.Printf("Flatten: Caugh error while importing image from container %s: %s", c.ID, err.Error())
+		log.Errorf("Flatten: Caugh error while importing image from container %s: %s", c.ID, err.Error())
 		return err
 	}
 	if err := dockerCluster().RemoveContainer(c.ID); err != nil {
-		log.Printf("Flatten: Caugh error while removing container %s: %s", c.ID, err.Error())
+		log.Errorf("Flatten: Caugh error while removing container %s: %s", c.ID, err.Error())
 	}
 	removeFromRegistry(imageID)
 	return nil
@@ -57,11 +57,11 @@ func flatten(imageID string) error {
 func Flatten(a provision.App) {
 	if needsFlatten(a) {
 		image := getImage(a)
-		log.Printf("Flatten: attempting to flatten image %s.", image)
+		log.Debugf("Flatten: attempting to flatten image %s.", image)
 		if err := flatten(image); err != nil {
-			log.Printf("Flatten: Caugh error while flattening image %s: %s", image, err.Error())
+			log.Errorf("Flatten: Caugh error while flattening image %s: %s", image, err.Error())
 			return
 		}
-		log.Printf("Flatten: successfully flattened image %s.", image)
+		log.Debugf("Flatten: successfully flattened image %s.", image)
 	}
 }

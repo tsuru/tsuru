@@ -376,7 +376,7 @@ func (app *App) unbindUnit(unit provision.AppUnit) error {
 		go func(instance service.ServiceInstance) {
 			err = instance.UnbindUnit(unit)
 			if err != nil {
-				log.Printf("Error unbinding the unit %s with the service instance %s.", unit.GetIp(), instance.Name)
+                log.Errorf("Error unbinding the unit %s with the service instance %s.", unit.GetIp(), instance.Name)
 			}
 		}(instance)
 	}
@@ -439,7 +439,7 @@ func (app *App) GetTeams() []auth.Team {
 	var teams []auth.Team
 	conn, err := db.Conn()
 	if err != nil {
-		log.Printf("Failed to connect to the database: %s", err)
+		log.Errorf("Failed to connect to the database: %s", err)
 		return nil
 	}
 	defer conn.Close()
@@ -543,12 +543,12 @@ func (app *App) Restart(w io.Writer) error {
 	}
 	err = log.Write(w, []byte("\n ---> Restarting your app\n"))
 	if err != nil {
-		log.Printf("[restart] error on write app log for the app %s - %s", app.Name, err)
+		log.Errorf("[restart] error on write app log for the app %s - %s", app.Name, err)
 		return err
 	}
 	err = Provisioner.Restart(app)
 	if err != nil {
-		log.Printf("[restart] error on restart the app %s - %s", app.Name, err)
+		log.Errorf("[restart] error on restart the app %s - %s", app.Name, err)
 		return err
 	}
 	return app.hookRunner().Restart(app, w, "after")

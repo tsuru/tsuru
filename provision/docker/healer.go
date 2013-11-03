@@ -24,13 +24,13 @@ func (h ContainerHealer) Heal() error {
 	}
 	unhealthy := h.unhealthyRunningContainers(containers)
 	for _, c := range unhealthy {
-		log.Printf("Attempting to heal container %s", c.ID)
+		log.Debugf("Attempting to heal container %s", c.ID)
 		if err := dockerCluster().StopContainer(c.ID, 10); err != nil {
-			log.Printf("Caught error while stopping container %s for healing: %s", c.ID, err.Error())
+			log.Errorf("Caught error while stopping container %s for healing: %s", c.ID, err.Error())
 			continue
 		}
 		if err := dockerCluster().StartContainer(c.ID, nil); err != nil {
-			log.Printf("Caught error while starting container %s for healing: %s", c.ID, err.Error())
+			log.Errorf("Caught error while starting container %s for healing: %s", c.ID, err.Error())
 		}
 	}
 	return nil
@@ -42,7 +42,7 @@ func (h ContainerHealer) collectContainers() ([]container, error) {
 	opts := dockerClient.ListContainersOptions{All: true}
 	apiContainers, err := dockerCluster().ListContainers(opts)
 	if err != nil {
-		log.Printf("Caught error while listing containers: %s", err.Error())
+		log.Errorf("Caught error while listing containers: %s", err.Error())
 		return nil, err
 	}
 	containers := make([]container, len(apiContainers))

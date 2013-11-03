@@ -38,7 +38,7 @@ type bootstrapInstanceIDHealer struct {
 
 func (h bootstrapInstanceIDHealer) Heal() error {
 	if h.needsHeal() {
-		log.Print("healing bootstrap instance id")
+		log.Debug("healing bootstrap instance id")
 		jujuBucket, err := config.GetString("juju:bucket")
 		if err != nil {
 			return err
@@ -85,11 +85,11 @@ func (h *bootstrapInstanceIDHealer) s3() *s3.S3 {
 func (bootstrapInstanceIDHealer) getS3Endpoint() *s3.S3 {
 	access, err := config.GetString("aws:access-key-id")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err.Error())
 	}
 	secret, err := config.GetString("aws:secret-access-key")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err.Error())
 	}
 	auth := aws.Auth{AccessKey: access, SecretKey: secret}
 	return s3.New(auth, aws.USEast)
@@ -143,15 +143,15 @@ func (h *instanceAgentsConfigHealer) ec2() *ec2.EC2 {
 func getEC2Endpoint() *ec2.EC2 {
 	access, err := config.GetString("aws:access-key-id")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err.Error())
 	}
 	secret, err := config.GetString("aws:secret-access-key")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err.Error())
 	}
 	endpoint, err := config.GetString("aws:ec2:endpoint")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err.Error())
 	}
 	auth := aws.Auth{AccessKey: access, SecretKey: secret}
 	return ec2.New(auth, aws.Region{EC2Endpoint: endpoint})
@@ -159,11 +159,11 @@ func getEC2Endpoint() *ec2.EC2 {
 
 // getPrivateDns returns the private dns for an instance.
 func (h *instanceAgentsConfigHealer) getPrivateDns(instanceId string) (string, error) {
-	log.Printf("getting dns for %s", instanceId)
+	log.Debugf("getting dns for %s", instanceId)
 	resp, err := h.ec2().Instances([]string{instanceId}, nil)
 	if err != nil {
-		log.Printf("error in gettings dns for %s", instanceId)
-		log.Print(err)
+		log.Errorf("error in gettings dns for %s", instanceId)
+		log.Error(err.Error())
 		return "", err
 	}
 	dns := resp.Reservations[0].Instances[0].PrivateDNSName
@@ -199,7 +199,7 @@ func (h instanceAgentsConfigHealer) Heal() error {
 			args := []string{"-o", "StrictHostKeyChecking no", "-q", "-l", "ubuntu", u.GetIp(), "grep", dns, "/etc/init/juju-machine-agent.conf"}
 			err := executor().Execute("ssh", args, nil, nil, nil)
 			if err != nil {
-				log.Printf("Injecting bootstrap private dns for machine %d", u.GetMachine())
+				log.Debugf("Injecting bootstrap private dns for machine %d", u.GetMachine())
 				args = []string{"-o", "StrictHostKeyChecking no", "-q", "-l", "ubuntu", u.GetIp(), "sudo", "sed", "-i", "'s/env JUJU_ZOOKEEPER=.*/env JUJU_ZOOKEEPER=\"" + dns + ":2181\"/g'", "/etc/init/juju-machine-agent.conf"}
 				executor().Execute("ssh", args, nil, nil, nil)
 			}
@@ -207,7 +207,7 @@ func (h instanceAgentsConfigHealer) Heal() error {
 			args = []string{"-o", "StrictHostKeyChecking no", "-q", "-l", "ubuntu", u.GetIp(), "grep", dns, agent}
 			err = executor().Execute("ssh", args, nil, nil, nil)
 			if err != nil {
-				log.Printf("Injecting bootstrap private dns for agent %s", agent)
+				log.Debugf("Injecting bootstrap private dns for agent %s", agent)
 				args = []string{"-o", "StrictHostKeyChecking no", "-q", "-l", "ubuntu", u.GetIp(), "sudo", "sed", "-i", "'s/env JUJU_ZOOKEEPER=.*/env JUJU_ZOOKEEPER=\"" + dns + ":2181\"/g'", agent}
 				executor().Execute("ssh", args, nil, nil, nil)
 			}
@@ -237,7 +237,7 @@ func (h instanceUnitHealer) Heal() error {
 		for _, u := range app.ProvisionedUnits() {
 			agent := fmt.Sprintf("juju-%s", strings.Join(strings.Split(u.GetName(), "/"), "-"))
 			if u.GetStatus() == provision.StatusDown {
-				log.Printf("Healing %s", agent)
+				log.Debugf("Healing %s", agent)
 				upStartCmd("stop", agent, u.GetIp())
 				upStartCmd("start", agent, u.GetIp())
 			}
@@ -257,11 +257,11 @@ func (h instanceMachineHealer) Heal() error {
 	output, _ := p.getOutput()
 	for _, machine := range output.Machines {
 		if machine.AgentState == "down" {
-			log.Printf("Healing juju-machine-agent in machine %s", machine.InstanceID)
+			log.Debugf("Healing juju-machine-agent in machine %s", machine.InstanceID)
 			upStartCmd("stop", "juju-machine-agent", machine.IPAddress)
 			upStartCmd("start", "juju-machine-agent", machine.IPAddress)
 		} else {
-			log.Printf("juju-machine-agent for machine %s needs no cure, skipping...", machine.InstanceID)
+			log.Debugf("juju-machine-agent for machine %s needs no cure, skipping...", machine.InstanceID)
 		}
 	}
 	return nil
@@ -288,11 +288,11 @@ func (h zookeeperHealer) needsHeal() bool {
 func (h zookeeperHealer) Heal() error {
 	if h.needsHeal() {
 		bootstrapMachine := getBootstrapMachine()
-		log.Printf("Healing zookeeper")
+		log.Debug("Healing zookeeper")
 		upStartCmd("stop", "zookeeper", bootstrapMachine.IPAddress)
 		return upStartCmd("start", "zookeeper", bootstrapMachine.IPAddress)
 	}
-	log.Printf("Zookeeper needs no cure, skipping...")
+	log.Debug("Zookeeper needs no cure, skipping...")
 	return nil
 }
 
@@ -303,7 +303,7 @@ type bootstrapProvisionHealer struct{}
 // Heal starts the juju-provision-agent using upstart.
 func (h bootstrapProvisionHealer) Heal() error {
 	bootstrapMachine := getBootstrapMachine()
-	log.Printf("Healing bootstrap juju-provision-agent")
+	log.Debug("Healing bootstrap juju-provision-agent")
 	return upStartCmd("start", "juju-provision-agent", bootstrapMachine.IPAddress)
 }
 
@@ -339,7 +339,7 @@ func upStartCmd(cmd, daemon, machine string) error {
 		cmd,
 		daemon,
 	}
-	log.Printf(strings.Join(args, " "))
+	log.Debug(strings.Join(args, " "))
 	return executor().Execute("ssh", args, nil, nil, nil)
 }
 
@@ -347,11 +347,11 @@ func upStartCmd(cmd, daemon, machine string) error {
 func (h bootstrapMachineHealer) Heal() error {
 	if h.needsHeal() {
 		bootstrapMachine := getBootstrapMachine()
-		log.Printf("Healing bootstrap juju-machine-agent")
+		log.Debug("Healing bootstrap juju-machine-agent")
 		upStartCmd("stop", "juju-machine-agent", bootstrapMachine.IPAddress)
 		return upStartCmd("start", "juju-machine-agent", bootstrapMachine.IPAddress)
 	}
-	log.Printf("Bootstrap juju-machine-agent needs no cure, skipping...")
+	log.Debug("Bootstrap juju-machine-agent needs no cure, skipping...")
 	return nil
 }
 
@@ -360,7 +360,7 @@ type elbInstanceHealer struct{}
 func (h elbInstanceHealer) Heal() error {
 	apps := h.getUnhealthyApps()
 	if len(apps) == 0 {
-		log.Print("No app is down.")
+		log.Debug("No app is down.")
 		return nil
 	}
 	names := make([]string, len(apps))
@@ -408,7 +408,7 @@ func (h elbInstanceHealer) checkInstances(names []string) ([]elbInstance, error)
 			}
 		}
 	}
-	log.Printf("Found %d unhealthy instances.", len(unhealthy))
+	log.Debugf("Found %d unhealthy instances.", len(unhealthy))
 	return unhealthy, nil
 }
 

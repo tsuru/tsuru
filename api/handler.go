@@ -41,7 +41,7 @@ func (fn handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		} else {
 			http.Error(&fw, err.Error(), http.StatusInternalServerError)
 		}
-		log.Print(err)
+		log.Error(err.Error())
 	}
 }
 
@@ -87,7 +87,7 @@ func (fn authorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.
 		} else {
 			http.Error(&fw, err.Error(), code)
 		}
-		log.Print(err)
+		log.Error(err.Error())
 	}
 }
 
@@ -118,6 +118,6 @@ func (fn adminRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		} else {
 			http.Error(&fw, err.Error(), code)
 		}
-		log.Print(err)
+		log.Error(err.Error())
 	}
 }

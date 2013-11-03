@@ -13,14 +13,12 @@ import (
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/exec"
 	etesting "github.com/globocom/tsuru/exec/testing"
-	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
 	rtesting "github.com/globocom/tsuru/router/testing"
 	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
-	stdlog "log"
 	"net"
 	"net/http/httptest"
 	"runtime"
@@ -243,9 +241,6 @@ func (s *S) TestProvisionerDestroyEmptyUnit(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)
 	defer setExecut(nil)
-	w := new(bytes.Buffer)
-	l := stdlog.New(w, "", stdlog.LstdFlags)
-	log.SetLogger(l)
 	app := testing.NewFakeApp("myapp", "python", 0)
 	app.AddUnit(&testing.FakeUnit{})
 	var p dockerProvisioner

@@ -241,12 +241,12 @@ func (u *User) sendResetPassword(t *passwordToken) {
 	var body bytes.Buffer
 	err := resetEmailData.Execute(&body, t)
 	if err != nil {
-		log.Printf("Failed to send password token to user %q: %s", u.Email, err)
+		log.Errorf("Failed to send password token to user %q: %s", u.Email, err)
 		return
 	}
 	err = sendEmail(u.Email, body.Bytes())
 	if err != nil {
-		log.Printf("Failed to send password token for user %q: %s", u.Email, err)
+		log.Errorf("Failed to send password token for user %q: %s", u.Email, err)
 	}
 }
 
@@ -285,12 +285,12 @@ func (u *User) sendNewPassword(password string) {
 	var body bytes.Buffer
 	err := passwordResetConfirm.Execute(&body, m)
 	if err != nil {
-		log.Printf("Failed to send new password to user %q: %s", u.Email, err)
+		log.Errorf("Failed to send new password to user %q: %s", u.Email, err)
 		return
 	}
 	err = sendEmail(u.Email, body.Bytes())
 	if err != nil {
-		log.Printf("Failed to send new password to user %q: %s", u.Email, err)
+		log.Errorf("Failed to send new password to user %q: %s", u.Email, err)
 	}
 }
 

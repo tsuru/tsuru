@@ -40,14 +40,14 @@ func (l *AppList) Add(a *app.App, index int) {
 }
 
 func update(units []provision.Unit) {
-	log.Print("updating status from provisioner")
+	log.Debug("updating status from provisioner")
 	var l AppList
 	for _, unit := range units {
 		a, index := l.Search(unit.AppName)
 		if index > -1 {
 			err := a.Get()
 			if err != nil {
-				log.Printf("collector: app %q not found. Skipping.\n", unit.AppName)
+				log.Errorf("collector: app %q not found. Skipping.\n", unit.AppName)
 				continue
 			}
 			l.Add(a, index)
@@ -66,14 +66,14 @@ func update(units []provision.Unit) {
 	}
 	conn, err := db.Conn()
 	if err != nil {
-		log.Printf("collector failed to connect to the database: %s", err)
+		log.Errorf("collector failed to connect to the database: %s", err)
 		return
 	}
 	defer conn.Close()
 	for _, a := range l {
 		a.Ip, err = app.Provisioner.Addr(a)
 		if err != nil {
-			log.Printf("collector failed to get app (%q) address: %s", a.Name, err)
+			log.Errorf("collector failed to get app (%q) address: %s", a.Name, err)
 		}
 		conn.Apps().Update(bson.M{"name": a.Name}, a)
 	}

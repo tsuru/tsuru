@@ -136,7 +136,7 @@ func CheckUserAccess(teamNames []string, u *User) bool {
 	var teams []Team
 	conn, err := db.Conn()
 	if err != nil {
-		log.Printf("Failed to connect to the database: %s", err)
+		log.Errorf("Failed to connect to the database: %s", err)
 		return false
 	}
 	defer conn.Close()

@@ -16,7 +16,7 @@ import (
 func ServerURL() string {
 	server, err := config.GetString("git:api-server")
 	if err != nil {
-		log.Print("git:api-server config not found")
+		log.Error("git:api-server config not found")
 		panic(err)
 	}
 	return server
@@ -26,7 +26,7 @@ func ServerURL() string {
 func ReadWriteURL(app string) string {
 	publicHost, err := config.GetString("git:rw-host")
 	if err != nil {
-		log.Print("git:rw-host config not found")
+		log.Error("git:rw-host config not found")
 		panic(err)
 	}
 	return fmt.Sprintf("git@%s:%s.git", publicHost, app)
@@ -36,7 +36,7 @@ func ReadWriteURL(app string) string {
 func ReadOnlyURL(app string) string {
 	roHost, err := config.GetString("git:ro-host")
 	if err != nil {
-		log.Print("git:ro-host config not found")
+		log.Error("git:ro-host config not found")
 		panic(err)
 	}
 	return fmt.Sprintf("git://%s/%s.git", roHost, app)

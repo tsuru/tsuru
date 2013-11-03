@@ -55,7 +55,7 @@ func collectUnit(container container, units chan<- provision.Unit, wg *sync.Wait
 			(hostPort != container.HostPort || ip != container.IP) {
 			err = fixContainer(&container, ip, hostPort)
 			if err != nil {
-				log.Printf("error on fix container hostport for [container %s]", container.ID)
+				log.Errorf("error on fix container hostport for [container %s]", container.ID)
 				return
 			}
 		}
@@ -67,7 +67,7 @@ func collectUnit(container container, units chan<- provision.Unit, wg *sync.Wait
 			conn.Close()
 			unit.Status = provision.StatusStarted
 		}
-		log.Printf("collected data for [container %s] - [app %s]", container.ID, container.AppName)
+		log.Debugf("collected data for [container %s] - [app %s]", container.ID, container.AppName)
 		units <- unit
 	}
 }
@@ -78,7 +78,7 @@ func buildResult(maxSize int, units <-chan provision.Unit) <-chan []provision.Un
 		result := make([]provision.Unit, 0, maxSize)
 		for unit := range units {
 			result = append(result, unit)
-			log.Printf("result for [container %s] - [app %s]", unit.Name, unit.AppName)
+			log.Debugf("result for [container %s] - [app %s]", unit.Name, unit.AppName)
 		}
 		ch <- result
 	}()

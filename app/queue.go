@@ -84,7 +84,7 @@ func bindUnit(msg *queue.Message) error {
 	for _, instance := range instances {
 		_, err = instance.BindUnit(&a, &unit)
 		if err != nil {
-			log.Printf("Error binding the unit %s with the service instance %s.", unit.Name, instance.Name)
+			log.Errorf("Error binding the unit %s with the service instance %s.", unit.Name, instance.Name)
 		}
 	}
 	return nil
@@ -97,13 +97,13 @@ func handle(msg *queue.Message) {
 		fallthrough
 	case regenerateApprc:
 		if len(msg.Args) < 1 {
-			log.Printf("Error handling %q: this action requires at least 1 argument.", msg.Action)
+			log.Errorf("Error handling %q: this action requires at least 1 argument.", msg.Action)
 			msg.Delete()
 			return
 		}
 		app, err := ensureAppIsStarted(msg)
 		if err != nil {
-			log.Print(err)
+			log.Error(err.Error())
 			return
 		}
 		msg.Delete()
@@ -114,28 +114,28 @@ func handle(msg *queue.Message) {
 			break
 		}
 		if len(msg.Args) < 1 {
-			log.Printf("Error handling %q: this action requires at least 1 argument.", msg.Action)
+			log.Errorf("Error handling %q: this action requires at least 1 argument.", msg.Action)
 		}
 		app, err := ensureAppIsStarted(msg)
 		if err != nil {
-			log.Print(err)
+			log.Error(err.Error())
 			return
 		}
 		err = app.Restart(ioutil.Discard)
 		if err != nil {
-			log.Printf("Error handling %q. App failed to start:\n%s.", msg.Action, err)
+			log.Errorf("Error handling %q. App failed to start:\n%s.", msg.Action, err)
 			return
 		}
 		msg.Delete()
 	case BindService:
 		err := bindUnit(msg)
 		if err != nil {
-			log.Print(err)
+			log.Error(err.Error())
 			return
 		}
 		msg.Delete()
 	default:
-		log.Printf("Error handling %q: invalid action.", msg.Action)
+		log.Errorf("Error handling %q: invalid action.", msg.Action)
 		msg.Delete()
 	}
 }
@@ -196,15 +196,15 @@ func setQueue() {
 	var err error
 	qfactory, err = queue.Factory()
 	if err != nil {
-		log.Fatalf("Failed to get the queue instance: %s", err)
+		log.Errorf("Failed to get the queue instance: %s", err)
 	}
 	_handler, err = qfactory.Handler(handle, queueName)
 	if err != nil {
-		log.Fatalf("Failed to create the queue handler: %s", err)
+		log.Errorf("Failed to create the queue handler: %s", err)
 	}
 	_queue, err = qfactory.Get(queueName)
 	if err != nil {
-		log.Fatalf("Failed to get the queue instance: %s", err)
+		log.Errorf("Failed to get the queue instance: %s", err)
 	}
 }
 

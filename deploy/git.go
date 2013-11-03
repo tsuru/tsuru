@@ -24,7 +24,7 @@ func clone(p provision.Provisioner, app provision.App) ([]byte, error) {
 	cmd := fmt.Sprintf("git clone %s %s --depth 1", repository.ReadOnlyURL(app.GetName()), path)
 	err = p.ExecuteCommand(&buf, &buf, app, cmd)
 	b := buf.Bytes()
-	log.Printf(`"git clone" output: %s`, b)
+	log.Debugf(`"git clone" output: %s`, b)
 	return b, err
 }
 
@@ -40,7 +40,7 @@ func fetch(p provision.Provisioner, app provision.App) ([]byte, error) {
 	cmd := fmt.Sprintf("cd %s && git fetch origin", path)
 	err = p.ExecuteCommand(&buf, &buf, app, cmd)
 	b := buf.Bytes()
-	log.Printf(`"git fetch" output: %s`, b)
+	log.Debugf(`"git fetch" output: %s`, b)
 	return b, err
 }
 

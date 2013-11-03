@@ -106,17 +106,17 @@ func (r hipacheRouter) AddRoute(name, address string) error {
 	}
 	domain, err := config.GetString("hipache:domain")
 	if err != nil {
-		log.Printf("error on getting hipache domain in add route for %s - %s", backendName, address)
+		log.Errorf("error on getting hipache domain in add route for %s - %s", backendName, address)
 		return &routeError{"add", err}
 	}
 	frontend := "frontend:" + backendName + "." + domain
 	if err := r.addRoute(frontend, address); err != nil {
-		log.Printf("error on add route for %s - %s", backendName, address)
+		log.Errorf("error on add route for %s - %s", backendName, address)
 		return &routeError{"add", err}
 	}
 	cname, err := r.getCName(backendName)
 	if err != nil {
-		log.Printf("error on get cname in add route for %s - %s", backendName, address)
+		log.Errorf("error on get cname in add route for %s - %s", backendName, address)
 		return err
 	}
 	if cname == "" {
@@ -130,7 +130,7 @@ func (hipacheRouter) addRoute(name, address string) error {
 	defer conn.Close()
 	_, err := conn.Do("RPUSH", name, address)
 	if err != nil {
-		log.Printf("error on store in redis in add route for %s - %s", name, address)
+		log.Errorf("error on store in redis in add route for %s - %s", name, address)
 		return &routeError{"add", err}
 	}
 	return nil

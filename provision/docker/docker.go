@@ -85,7 +85,7 @@ func filesystem() fs.Fs {
 func runCmd(cmd string, args ...string) (string, error) {
 	out := bytes.Buffer{}
 	err := executor().Execute(cmd, args, nil, &out, &out)
-	log.Printf("running the cmd: %s with the args: %s", cmd, args)
+	log.Debugf("running the cmd: %s with the args: %s", cmd, args)
 	if err != nil {
 		return "", &cmdError{cmd: cmd, args: args, err: err, out: out.String()}
 	}
@@ -128,7 +128,7 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 	}
 	port, err := getPort()
 	if err != nil {
-		log.Printf("error on getting port for container %s - %s", cont.AppName, port)
+		log.Errorf("error on getting port for container %s - %s", cont.AppName, port)
 		return container{}, err
 	}
 	user, _ := config.GetString("docker:ssh:user")
@@ -143,7 +143,7 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 	}
 	hostID, c, err := dockerCluster().CreateContainer(&config)
 	if err != nil {
-		log.Printf("error on creating container in docker %s - %s", cont.AppName, err.Error())
+		log.Errorf("error on creating container in docker %s - %s", cont.AppName, err.Error())
 		return container{}, err
 	}
 	cont.ID = c.ID
@@ -204,23 +204,23 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 	pipeline := action.NewPipeline(actions...)
 	err = pipeline.Execute(app, imageId, commands)
 	if err != nil {
-		log.Printf("error on execute deploy pipeline for app %s - %s", app.GetName(), err.Error())
+		log.Errorf("error on execute deploy pipeline for app %s - %s", app.GetName(), err.Error())
 		return "", err
 	}
 	c := pipeline.Result().(container)
 	_, err = dockerCluster().WaitContainer(c.ID)
 	if err != nil {
-		log.Printf("Process failed for container %q: %s", c.ID, err)
+		log.Errorf("Process failed for container %q: %s", c.ID, err)
 		return "", err
 	}
 	err = c.logs(w)
 	if err != nil {
-		log.Printf("error on get logs for container %s - %s", c.ID, err)
+		log.Errorf("error on get logs for container %s - %s", c.ID, err)
 		return "", err
 	}
 	imageId, err = c.commit()
 	if err != nil {
-		log.Printf("error on commit container %s - %s", c.ID, err)
+		log.Errorf("error on commit container %s - %s", c.ID, err)
 		return "", err
 	}
 	c.remove()
@@ -253,24 +253,24 @@ func start(app provision.App, imageId string, w io.Writer) (*container, error) {
 // remove removes a docker container.
 func (c *container) remove() error {
 	address := c.getAddress()
-	log.Printf("Removing container %s from docker", c.ID)
+	log.Debugf("Removing container %s from docker", c.ID)
 	err := dockerCluster().RemoveContainer(c.ID)
 	if err != nil {
-		log.Printf("Failed to remove container from docker: %s", err)
+		log.Errorf("Failed to remove container from docker: %s", err)
 	}
 	c.removeHost()
-	log.Printf("Removing container %s from database", c.ID)
+	log.Debugf("Removing container %s from database", c.ID)
 	coll := collection()
 	defer coll.Close()
 	if err := coll.RemoveId(c.ID); err != nil {
-		log.Printf("Failed to remove container from database: %s", err)
+		log.Errorf("Failed to remove container from database: %s", err)
 	}
 	r, err := getRouter()
 	if err != nil {
-		log.Printf("Failed to obtain router: %s", err)
+		log.Errorf("Failed to obtain router: %s", err)
 	}
 	if err := r.RemoveRoute(c.AppName, address); err != nil {
-		log.Printf("Failed to remove route: %s", err)
+		log.Errorf("Failed to remove route: %s", err)
 	}
 	return nil
 }
@@ -311,15 +311,15 @@ func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) er
 // commit commits an image in docker based in the container
 // and returns the image repository.
 func (c *container) commit() (string, error) {
-	log.Printf("commiting container %s", c.ID)
+	log.Debugf("commiting container %s", c.ID)
 	repository := assembleImageName(c.AppName)
 	opts := dclient.CommitContainerOptions{Container: c.ID, Repository: repository}
 	image, err := dockerCluster().CommitContainer(opts)
 	if err != nil {
-		log.Printf("Could not commit docker image: %s", err.Error())
+		log.Errorf("Could not commit docker image: %s", err.Error())
 		return "", err
 	}
-	log.Printf("image %s generated from container %s", image.ID, c.ID)
+	log.Debugf("image %s generated from container %s", image.ID, c.ID)
 	replicateImage(repository)
 	return repository, nil
 }
@@ -328,7 +328,7 @@ func (c *container) commit() (string, error) {
 func (c *container) stop() error {
 	err := dockerCluster().StopContainer(c.ID, 10)
 	if err != nil {
-		log.Printf("error on stop container %s: %s", c.ID, err)
+		log.Errorf("error on stop container %s: %s", c.ID, err)
 	}
 	return err
 }
@@ -432,7 +432,7 @@ func replicateImage(name string) error {
 				buf.Reset()
 				break
 			}
-			log.Printf("[docker] Failed to push image %q (%s): %s", name, err, buf.String())
+			log.Errorf("[docker] Failed to push image %q (%s): %s", name, err, buf.String())
 			buf.Reset()
 		}
 		if err != nil {
@@ -447,7 +447,7 @@ func replicateImage(name string) error {
 			buf.Reset()
 		}
 		if err != nil {
-			log.Printf("[docker] Failed to replicate image %q through nodes (%s): %s", name, err, buf.String())
+			log.Errorf("[docker] Failed to replicate image %q through nodes (%s): %s", name, err, buf.String())
 			return err
 		}
 	}

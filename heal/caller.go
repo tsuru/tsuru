@@ -38,7 +38,7 @@ func getHealers() map[string]*healer {
 }
 
 func (h *healer) heal() error {
-	log.Printf("healing tsuru healer with endpoint %s...", h.url)
+	log.Debugf("healing tsuru healer with endpoint %s...", h.url)
 	r, err := request("GET", h.url, nil)
 	if err == nil {
 		r.Body.Close()
@@ -88,17 +88,17 @@ func request(method, url string, body io.Reader) (*http.Response, error) {
 
 // HealTicker execute the registered healers registered by RegisterHealerTicker.
 func HealTicker(ticker <-chan time.Time) {
-	log.Print("running heal ticker")
+	log.Debug("running heal ticker")
 	var wg sync.WaitGroup
 	for _ = range ticker {
 		healers := getHealers()
 		wg.Add(len(healers))
 		for name, h := range healers {
-			log.Printf("running verification/heal for %s", name)
+			log.Debugf("running verification/heal for %s", name)
 			go func(healer *healer) {
 				err := healer.heal()
 				if err != nil {
-					log.Print(err.Error())
+					log.Debug(err.Error())
 				}
 				wg.Done()
 			}(h)
@@ -110,7 +110,7 @@ func HealTicker(ticker <-chan time.Time) {
 // RegisterHealerTicker register healers from resource.
 func RegisterHealerTicker(ticker <-chan time.Time, endpoint string) {
 	var registerHealer = func() {
-		log.Print("running register ticker")
+		log.Debug("running register ticker")
 		if healers, err := healersFromResource(endpoint); err == nil {
 			setHealers(healers)
 		}

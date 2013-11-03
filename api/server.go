@@ -17,7 +17,7 @@ import (
 )
 
 func fatal(err error) {
-	log.Fatal(err)
+	log.Fatal(err.Error())
 }
 
 // RunServer starts Tsuru API server. The dry parameter indicates whether the

@@ -122,7 +122,7 @@ var insertApp = action.Action{
 		app := ctx.FWResult.(*App)
 		conn, err := db.Conn()
 		if err != nil {
-			log.Printf("Could not connect to the database: %s", err)
+			log.Errorf("Could not connect to the database: %s", err)
 			return
 		}
 		defer conn.Close()

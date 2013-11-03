@@ -30,15 +30,15 @@ func (r *elbRouter) elb() *elb.ELB {
 func getELBEndpoint() *elb.ELB {
 	access, err := config.GetString("aws:access-key-id")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err.Error())
 	}
 	secret, err := config.GetString("aws:secret-access-key")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err.Error())
 	}
 	endpoint, err := config.GetString("juju:elb-endpoint")
 	if err != nil {
-		log.Fatal(err)
+		log.Error(err.Error())
 	}
 	auth := aws.Auth{AccessKey: access, SecretKey: secret}
 	region := aws.Region{ELBEndpoint: endpoint}

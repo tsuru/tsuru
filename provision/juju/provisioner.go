@@ -156,7 +156,7 @@ func (p *JujuProvisioner) Deploy(a provision.App, version string, w io.Writer) e
 	var buf bytes.Buffer
 	setOption := []string{"set", a.GetName(), "app-version=" + version}
 	if err := runCmd(true, &buf, &buf, setOption...); err != nil {
-		log.Printf("juju: Failed to set app-version. Error: %s.\nCommand output: %s", err, &buf)
+		log.Errorf("juju: Failed to set app-version. Error: %s.\nCommand output: %s", err, &buf)
 	}
 	return deploy.Git(p, a, version, w)
 }
@@ -198,7 +198,7 @@ func (p *JujuProvisioner) terminateMachines(app provision.App, units ...provisio
 		if err != nil {
 			msg := fmt.Sprintf("Failed to destroy unit %s: %s", u.GetName(), out)
 			app.Log(msg, "tsuru")
-			log.Printf("Failed to destroy unit %q from the app %q: %s", u.GetName(), app.GetName(), out)
+			log.Errorf("Failed to destroy unit %q from the app %q: %s", u.GetName(), app.GetName(), out)
 			return cmdError(out, err, []string{"terminate-machine", strconv.Itoa(u.GetMachine())})
 		}
 	}
@@ -352,7 +352,7 @@ func (*JujuProvisioner) executeCommandViaSSH(stdout, stderr io.Writer, machine i
 	err := runCmd(true, stdout, stderr, arguments...)
 	fmt.Fprintln(stdout)
 	if err != nil {
-		log.Printf("error on execute cmd %s on machine %d", cmd, machine)
+		log.Errorf("error on execute cmd %s on machine %d", cmd, machine)
 		return err
 	}
 	return nil
@@ -369,7 +369,7 @@ func (p *JujuProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provi
 
 func (p *JujuProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
 	units := p.startedUnits(app)
-	log.Printf("[execute cmd] - provisioned unit %#v", units)
+	log.Debugf("[execute cmd] - provisioned unit %#v", units)
 	length := len(units)
 	for i, unit := range units {
 		if length > 1 {
@@ -398,7 +398,7 @@ func (p *JujuProvisioner) heal(units []provision.Unit) {
 			continue
 		} else {
 			format := "[juju] instance-id of unit %q changed from %q to %q. Healing."
-			log.Printf(format, unit.Name, inst.InstanceID, unit.InstanceId)
+			log.Debugf(format, unit.Name, inst.InstanceID, unit.InstanceId)
 			if p.elbSupport() {
 				router, err := Router()
 				if err != nil {
@@ -408,7 +408,7 @@ func (p *JujuProvisioner) heal(units []provision.Unit) {
 				err = router.AddRoute(unit.AppName, unit.InstanceId)
 				if err != nil {
 					format := "[juju] Could not register instance %q in the load balancer: %s."
-					log.Printf(format, unit.InstanceId, err)
+					log.Errorf(format, unit.InstanceId, err)
 					continue
 				}
 			}
@@ -482,7 +482,7 @@ func runCmd(filter bool, stdout, stderr io.Writer, args ...string) error {
 }
 
 func cmdError(output string, err error, cmd []string) error {
-	log.Printf("[juju] Failed to run cmd %q (%s):\n%s", strings.Join(cmd, " "), err, output)
+	log.Errorf("[juju] Failed to run cmd %q (%s):\n%s", strings.Join(cmd, " "), err, output)
 	return &provision.Error{Reason: output, Err: err}
 }
 

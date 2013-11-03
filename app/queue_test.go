@@ -5,14 +5,12 @@
 package app
 
 import (
-	"bytes"
 	"github.com/globocom/tsuru/app/bind"
-	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/log/testing"
 	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/service"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
-	stdlog "log"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -150,7 +148,6 @@ func (s *S) TestHandleMessageErrors(c *gocheck.C) {
 				` units are in "down" state.`,
 		},
 	}
-	var buf bytes.Buffer
 	a := App{Name: "nemesis"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -173,7 +170,7 @@ func (s *S) TestHandleMessageErrors(c *gocheck.C) {
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	log.SetLogger(stdlog.New(&buf, "", 0))
+    logger := testing.NewFakeLogger().(*testing.FakeLogger)
 	for _, d := range data {
 		message := queue.Message{Action: d.action}
 		if len(d.args) > 0 {
@@ -182,19 +179,12 @@ func (s *S) TestHandleMessageErrors(c *gocheck.C) {
 		handle(&message)
 		defer message.Delete() // Sanity
 	}
-	content := buf.String()
+	content := logger.Buf.String()
 	lines := strings.Split(content, "\n")
 	for i, d := range data {
-		var found bool
-		for j := i; j < len(lines); j++ {
-			if lines[j] == d.expectedLog {
-				found = true
-				break
-			}
-		}
-		if !found {
-			c.Errorf("\nWant: %q.\nGot:\n%s", d.expectedLog, content)
-		}
+        if lines[i] != d.expectedLog {
+            c.Errorf("\nWant: %q.\nGot:\n%s", d.expectedLog, content)
+        }
 	}
 }
 

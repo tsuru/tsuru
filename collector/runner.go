@@ -17,14 +17,14 @@ import (
 
 func collect(ticker <-chan time.Time) {
 	for _ = range ticker {
-		log.Print("Collecting status from provisioner")
+		log.Debug("Collecting status from provisioner")
 		units, err := app.Provisioner.CollectStatus()
 		if err != nil {
-			log.Printf("Failed to collect status within the provisioner: %s.", err)
+			log.Errorf("Failed to collect status within the provisioner: %s.", err)
 			continue
 		}
 		update(units)
-		log.Print("Collecting status from provisioner finished")
+		log.Debug("Collecting status from provisioner finished")
 	}
 }
 
