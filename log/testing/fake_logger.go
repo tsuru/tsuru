@@ -10,8 +10,8 @@ import (
 )
 
 func NewFakeLogger() log.Logger {
-    l := &FakeLogger{Buf: bytes.Buffer{}}
-    log.SetLogger(l)
+	l := &FakeLogger{Buf: bytes.Buffer{}}
+	log.SetLogger(l)
 	return l
 }
 

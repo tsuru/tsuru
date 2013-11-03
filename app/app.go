@@ -376,7 +376,7 @@ func (app *App) unbindUnit(unit provision.AppUnit) error {
 		go func(instance service.ServiceInstance) {
 			err = instance.UnbindUnit(unit)
 			if err != nil {
-                log.Errorf("Error unbinding the unit %s with the service instance %s.", unit.GetIp(), instance.Name)
+				log.Errorf("Error unbinding the unit %s with the service instance %s.", unit.GetIp(), instance.Name)
 			}
 		}(instance)
 	}

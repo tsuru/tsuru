@@ -170,7 +170,7 @@ func (s *S) TestHandleMessageErrors(c *gocheck.C) {
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-    logger := testing.NewFakeLogger().(*testing.FakeLogger)
+	logger := testing.NewFakeLogger().(*testing.FakeLogger)
 	for _, d := range data {
 		message := queue.Message{Action: d.action}
 		if len(d.args) > 0 {
@@ -182,9 +182,9 @@ func (s *S) TestHandleMessageErrors(c *gocheck.C) {
 	content := logger.Buf.String()
 	lines := strings.Split(content, "\n")
 	for i, d := range data {
-        if lines[i] != d.expectedLog {
-            c.Errorf("\nWant: %q.\nGot:\n%s", d.expectedLog, content)
-        }
+		if lines[i] != d.expectedLog {
+			c.Errorf("\nWant: %q.\nGot:\n%s", d.expectedLog, content)
+		}
 	}
 }
 
