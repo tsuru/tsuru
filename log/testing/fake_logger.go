@@ -10,33 +10,35 @@ import (
 )
 
 func NewFakeLogger() log.Logger {
-	return &fakeLogger{Buf: bytes.Buffer{}}
+    l := &FakeLogger{Buf: bytes.Buffer{}}
+    log.SetLogger(l)
+	return l
 }
 
-type fakeLogger struct {
+type FakeLogger struct {
 	Buf bytes.Buffer
 }
 
-func (l *fakeLogger) Error(o string) {
-	l.Buf.WriteString(o)
+func (l *FakeLogger) Error(o string) {
+	l.Buf.WriteString(fmt.Sprintf("%s\n", o))
 }
 
-func (l *fakeLogger) Errorf(format string, o ...interface{}) {
-	l.Buf.WriteString(fmt.Sprintf(format, o...))
+func (l *FakeLogger) Errorf(format string, o ...interface{}) {
+	l.Error(fmt.Sprintf(format, o...))
 }
 
-func (l *fakeLogger) Fatal(o string) {
-	l.Buf.WriteString(o)
+func (l *FakeLogger) Fatal(o string) {
+	l.Error(o)
 }
 
-func (l *fakeLogger) Fatalf(format string, o ...interface{}) {
-	l.Buf.WriteString(fmt.Sprintf(format, o...))
+func (l *FakeLogger) Fatalf(format string, o ...interface{}) {
+	l.Error(fmt.Sprintf(format, o...))
 }
 
-func (l *fakeLogger) Debug(o string) {
-	l.Buf.WriteString(o)
+func (l *FakeLogger) Debug(o string) {
+	l.Error(o)
 }
 
-func (l *fakeLogger) Debugf(format string, o ...interface{}) {
-	l.Buf.WriteString(fmt.Sprintf(format, o...))
+func (l *FakeLogger) Debugf(format string, o ...interface{}) {
+	l.Error(fmt.Sprintf(format, o...))
 }

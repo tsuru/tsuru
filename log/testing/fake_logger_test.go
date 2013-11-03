@@ -11,7 +11,7 @@ import (
 
 type FakeLoggerSuite struct {
 	l  log.Logger
-	fl *fakeLogger
+	fl *FakeLogger
 }
 
 var _ = gocheck.Suite(&FakeLoggerSuite{})
@@ -20,7 +20,7 @@ func Test(t *testing.T) { gocheck.TestingT(t) }
 
 func (s *FakeLoggerSuite) SetUpSuite(c *gocheck.C) {
 	s.l = NewFakeLogger()
-	s.fl = s.l.(*fakeLogger)
+	s.fl = s.l.(*FakeLogger)
 }
 
 func (s *FakeLoggerSuite) TearDownTest(c *gocheck.C) {
@@ -34,30 +34,30 @@ func (s *FakeLoggerSuite) TestNewFakeLoggerImplementsLoggerInterface(c *gocheck.
 
 func (s *FakeLoggerSuite) TestErrorWritesOnBuffer(c *gocheck.C) {
 	s.l.Error("some error")
-	c.Assert(s.fl.Buf.String(), gocheck.Equals, "some error")
+	c.Assert(s.fl.Buf.String(), gocheck.Equals, "some error\n")
 }
 
 func (s *FakeLoggerSuite) TestErrorfWritesOnBuffer(c *gocheck.C) {
 	s.l.Errorf("some error %d", 1)
-	c.Assert(s.fl.Buf.String(), gocheck.Equals, "some error 1")
+	c.Assert(s.fl.Buf.String(), gocheck.Equals, "some error 1\n")
 }
 
 func (s *FakeLoggerSuite) TestDebugWritesOnBuffer(c *gocheck.C) {
 	s.l.Debug("some info")
-	c.Assert(s.fl.Buf.String(), gocheck.Equals, "some info")
+	c.Assert(s.fl.Buf.String(), gocheck.Equals, "some info\n")
 }
 
 func (s *FakeLoggerSuite) TestDebugfWritesOnBuffer(c *gocheck.C) {
 	s.l.Debugf("some info %d", 1)
-	c.Assert(s.fl.Buf.String(), gocheck.Equals, "some info 1")
+	c.Assert(s.fl.Buf.String(), gocheck.Equals, "some info 1\n")
 }
 
 func (s *FakeLoggerSuite) TestFatalWritesOnBuffer(c *gocheck.C) {
 	s.l.Fatal("some fatal error")
-	c.Assert(s.fl.Buf.String(), gocheck.Equals, "some fatal error")
+	c.Assert(s.fl.Buf.String(), gocheck.Equals, "some fatal error\n")
 }
 
 func (s *FakeLoggerSuite) TestFatalfWritesOnBuffer(c *gocheck.C) {
 	s.l.Fatalf("some fatal error %d", 1)
-	c.Assert(s.fl.Buf.String(), gocheck.Equals, "some fatal error 1")
+	c.Assert(s.fl.Buf.String(), gocheck.Equals, "some fatal error 1\n")
 }
