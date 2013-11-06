@@ -24,6 +24,7 @@ import (
 	"labix.org/v2/mgo/bson"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 func getApp(name string, u *auth.User) (app.App, error) {
@@ -62,6 +63,13 @@ func cloneRepository(w http.ResponseWriter, r *http.Request, t *auth.Token) erro
 func incrementAppDeploy(instance *app.App) error {
 	conn, err := db.Conn()
 	if err != nil {
+		return err
+	}
+	var result = map[string]interface{}{
+		"app":       instance.Name,
+		"timestamp": time.Now(),
+	}
+	if err := conn.Deploys().Insert(result); err != nil {
 		return err
 	}
 	defer conn.Close()
