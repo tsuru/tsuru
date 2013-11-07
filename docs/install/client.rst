@@ -34,6 +34,10 @@ binaries or building them from source.
 Using homebrew (Mac OS X only)
 ==============================
 
+    **Mavericks note:** Go 1.1 fails to compile with clang. In order to install
+    Tsuru on Mavericks, you will need to install Go 1.2rc, running ``brew
+    install go --devel``.
+
 If you use Mac OS X and `homebrew <http://mxcl.github.com/homebrew/>`_, you may
 use a custom tap to install ``tsuru``, ``crane`` and ``tsuru-admin``. First you
 need to add the tap:
