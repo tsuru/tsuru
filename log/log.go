@@ -25,12 +25,16 @@ type Logger interface {
 }
 
 func Init() {
+	debug, err := config.GetBool("debug")
+	if err != nil {
+		debug = false
+	}
 	logFileName, err := config.GetString("log:file")
 	var logger Logger
 	if err != nil {
-		logger = newSyslogLogger()
+		logger = newSyslogLogger(debug)
 	} else {
-		logger = newFileLogger(logFileName)
+		logger = newFileLogger(logFileName, debug)
 	}
 	SetLogger(logger)
 }

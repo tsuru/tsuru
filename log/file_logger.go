@@ -15,14 +15,15 @@ var (
 	debugPrefix = "DEBUG: %s"
 )
 
-func newFileLogger(fileName string) Logger {
+func newFileLogger(fileName string, debug bool) Logger {
 	file, _ := os.OpenFile(fileName, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
 	logger := log.New(file, "", log.LstdFlags)
-	return &fileLogger{logger}
+	return &fileLogger{logger: logger, debug: debug}
 }
 
 type fileLogger struct {
 	logger *log.Logger
+	debug  bool
 }
 
 func (l *fileLogger) Error(o string) {
@@ -43,7 +44,9 @@ func (l *fileLogger) Fatalf(format string, o ...interface{}) {
 }
 
 func (l *fileLogger) Debug(o string) {
-	l.logger.Printf(debugPrefix, o)
+	if l.debug {
+		l.logger.Printf(debugPrefix, o)
+	}
 }
 
 func (l *fileLogger) Debugf(format string, o ...interface{}) {

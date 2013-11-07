@@ -16,7 +16,7 @@ type SyslogLoggerSuite struct {
 var _ = gocheck.Suite(&SyslogLoggerSuite{})
 
 func (s *SyslogLoggerSuite) SetUpSuite(c *gocheck.C) {
-	s.l = newSyslogLogger()
+	s.l = newSyslogLogger(true)
 	s.sl = s.l.(*syslogLogger)
 }
 

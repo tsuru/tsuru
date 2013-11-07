@@ -18,7 +18,7 @@ type FileLoggerSuite struct {
 var _ = gocheck.Suite(&FileLoggerSuite{})
 
 func (s *FileLoggerSuite) SetUpSuite(c *gocheck.C) {
-	s.l = newFileLogger("/dev/null")
+	s.l = newFileLogger("/dev/null", true)
 	s.fl, _ = s.l.(*fileLogger)
 }
 
@@ -54,4 +54,24 @@ func (s *FileLoggerSuite) TestDebugShouldPrefixMessage(c *gocheck.C) {
 func (s *FileLoggerSuite) TestDebugfShouldFormatAndPrefixMessage(c *gocheck.C) {
 	s.l.Debugf(`message is "%s"`, "some debug message")
 	c.Assert(s.b.String(), gocheck.Matches, `.* DEBUG: message is "some debug message"\n$`)
+}
+
+func (s *FileLoggerSuite) TestDebugShouldNotWriteDebugIsSetToFalse(c *gocheck.C) {
+	l := newFileLogger("/dev/null", false)
+	fl, _ := l.(*fileLogger)
+	b := &bytes.Buffer{}
+	fl.logger = log.New(b, "", log.LstdFlags)
+	l.Debug("sould not log this")
+	c.Assert(b.String(), gocheck.Equals, "")
+	l.Debugf("sould not log this either %d", 1)
+	c.Assert(b.String(), gocheck.Equals, "")
+}
+
+func (s *FileLoggerSuite) TestErrorShouldWriteWhenDebugIsFalse(c *gocheck.C) {
+	l := newFileLogger("/dev/null", false)
+	fl, _ := l.(*fileLogger)
+	b := &bytes.Buffer{}
+	fl.logger = log.New(b, "", log.LstdFlags)
+	l.Error("should write this")
+	c.Assert(b.String(), gocheck.Matches, `.* ERROR: should write this\n$`)
 }

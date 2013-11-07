@@ -18,7 +18,7 @@ type S struct{}
 var _ = gocheck.Suite(&S{})
 
 func newFakeLogger() *bytes.Buffer {
-	l := newFileLogger("/dev/null")
+	l := newFileLogger("/dev/null", true)
 	fl, _ := l.(*fileLogger)
 	b := &bytes.Buffer{}
 	fl.logger = log.New(b, "", 0)

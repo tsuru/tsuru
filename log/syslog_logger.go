@@ -10,16 +10,17 @@ import (
 	"os"
 )
 
-func newSyslogLogger() Logger {
+func newSyslogLogger(debug bool) Logger {
 	w, err := syslog.New(syslog.LOG_INFO, "tsuru")
 	if err != nil {
 		log.Fatal(err)
 	}
-	return &syslogLogger{w}
+	return &syslogLogger{w: w, debug: debug}
 }
 
 type syslogLogger struct {
-	w *syslog.Writer
+	w     *syslog.Writer
+	debug bool
 }
 
 func (l *syslogLogger) Error(o string) {
@@ -40,9 +41,11 @@ func (l *syslogLogger) Fatalf(format string, o ...interface{}) {
 }
 
 func (l *syslogLogger) Debug(o string) {
-	l.w.Debug(o)
+	if l.debug {
+		l.w.Debug(o)
+	}
 }
 
 func (l *syslogLogger) Debugf(format string, o ...interface{}) {
-	l.w.Debug(fmt.Sprintf(format, o...))
+	l.Debug(fmt.Sprintf(format, o...))
 }
