@@ -88,7 +88,7 @@ _go_test:
 	@godep go test ./...
 
 _tsr_dry:
-	@go build -o tsr ./cmd/tsr
+	@godep go build -o tsr ./cmd/tsr
 	@./tsr api --dry --config ./etc/tsuru.conf
 	@./tsr collector --dry --config ./etc/tsuru.conf
 	@rm -f tsr
