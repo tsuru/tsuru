@@ -32,9 +32,9 @@ func Init() {
 	logFileName, err := config.GetString("log:file")
 	var logger Logger
 	if err != nil {
-		logger = newSyslogLogger("tsr", debug)
+		logger = NewSyslogLogger("tsr", debug)
 	} else {
-		logger = newFileLogger(logFileName, debug)
+		logger = NewFileLogger(logFileName, debug)
 	}
 	SetLogger(logger)
 }

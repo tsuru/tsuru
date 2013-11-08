@@ -15,7 +15,7 @@ var (
 	debugPrefix = "DEBUG: %s"
 )
 
-func newFileLogger(fileName string, debug bool) Logger {
+func NewFileLogger(fileName string, debug bool) Logger {
 	file, _ := os.OpenFile(fileName, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0644)
 	logger := log.New(file, "", log.LstdFlags)
 	return &fileLogger{logger: logger, debug: debug}

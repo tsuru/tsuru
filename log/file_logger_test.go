@@ -18,7 +18,7 @@ type FileLoggerSuite struct {
 var _ = gocheck.Suite(&FileLoggerSuite{})
 
 func (s *FileLoggerSuite) SetUpSuite(c *gocheck.C) {
-	s.l = newFileLogger("/dev/null", true)
+	s.l = NewFileLogger("/dev/null", true)
 	s.fl, _ = s.l.(*fileLogger)
 }
 
@@ -57,7 +57,7 @@ func (s *FileLoggerSuite) TestDebugfShouldFormatAndPrefixMessage(c *gocheck.C) {
 }
 
 func (s *FileLoggerSuite) TestDebugShouldNotWriteDebugIsSetToFalse(c *gocheck.C) {
-	l := newFileLogger("/dev/null", false)
+	l := NewFileLogger("/dev/null", false)
 	fl, _ := l.(*fileLogger)
 	b := &bytes.Buffer{}
 	fl.logger = log.New(b, "", log.LstdFlags)
@@ -68,7 +68,7 @@ func (s *FileLoggerSuite) TestDebugShouldNotWriteDebugIsSetToFalse(c *gocheck.C)
 }
 
 func (s *FileLoggerSuite) TestErrorShouldWriteWhenDebugIsFalse(c *gocheck.C) {
-	l := newFileLogger("/dev/null", false)
+	l := NewFileLogger("/dev/null", false)
 	fl, _ := l.(*fileLogger)
 	b := &bytes.Buffer{}
 	fl.logger = log.New(b, "", log.LstdFlags)
