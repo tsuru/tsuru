@@ -48,9 +48,7 @@ ifneq ($(subst ~,$(HOME),$(GOPATH))/src/github.com/globocom/tsuru, $(PWD))
 	@exit 1
 endif
 
-get: hg git bzr get-prod get-test
-	go get github.com/kr/godep
-	godep restore ./...
+get: hg git bzr get-prod get-test godep
 
 hg:
 	$(if $(shell hg), , $(error $(HG_ERROR)))
@@ -77,6 +75,10 @@ get-prod:
 	@go get -u -d ./... 1>/tmp/.get-prod 2>&1 || (cat /tmp/.get-prod && exit 1)
 	@/bin/echo "ok"
 	@rm -f /tmp/.get-prod
+
+godep:
+	go get github.com/kr/godep
+	godep restore ./...
 
 check-test-services:
 	$(call check-service,MongoDB,27017)

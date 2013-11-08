@@ -11,7 +11,7 @@ install:
   - sleep 1
   - nc -z 127.0.0.1 11300
   - popd
-  - make get-test
+  - make get-test godep
 before_script:
   - go get code.google.com/p/go.tools/cmd/vet
   - ./check-fmt.sh
