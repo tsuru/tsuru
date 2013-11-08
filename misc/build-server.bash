@@ -4,8 +4,8 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
-# This script is used to build tsr.
 destination_dir="dist-server"
+destination_dir=${DESTINATION_DIR:-$destination_dir}
 
 echo -n "Creating \"$destination_dir\" directory... "
 mkdir -p $destination_dir
