@@ -29,6 +29,6 @@ then
 fi
 
 echo "Building tsr-${REVISION}... "
-go build $BUILD_FLAGS $destination_dir/tsr github.com/globocom/tsuru/cmd/tsr
+godep go build $BUILD_FLAGS $destination_dir/tsr github.com/globocom/tsuru/cmd/tsr
 tar -C $destination_dir -czf $destination_dir/tsr-${REVISION}${POSTFIX}.tar.gz tsr
 rm $destination_dir/tsr

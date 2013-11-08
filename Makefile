@@ -48,7 +48,10 @@ ifneq ($(subst ~,$(HOME),$(GOPATH))/src/github.com/globocom/tsuru, $(PWD))
 	@exit 1
 endif
 
-get: hg git bzr get-test get-prod
+get: hg git bzr get-prod get-test
+	@/bin/echo -n "Installing godep... "
+	@go get github.com/kr/godep
+	@/bin/echo "ok"
 
 hg:
 	$(if $(shell hg), , $(error $(HG_ERROR)))
@@ -62,19 +65,17 @@ bzr:
 get-test:
 	@/bin/echo -n "Installing test dependencies... "
 	@go list -f '{{range .TestImports}}{{.}} {{end}}' ./... | tr ' ' '\n' |\
-		grep '^.*\..*/.*$$' | grep -v 'github.com/globocom/tsuru' |\
-		sort | uniq | xargs go get -u >/tmp/.get-test 2>&1 || (cat /tmp/.get-test && exit 1)
+	       grep '^.*\..*/.*$$' | grep -v 'github.com/globocom/tsuru' |\
+	       sort | uniq | xargs go get -u -d >/tmp/.get-test 2>&1 || (cat /tmp/.get-test && exit 1)
 	@go list -f '{{range .XTestImports}}{{.}} {{end}}' ./... | tr ' ' '\n' |\
-		grep '^.*\..*/.*$$' | grep -v 'github.com/globocom/tsuru' |\
-		sort | uniq | xargs go get -u >/tmp/.get-test 2>&1 || (cat /tmp/.get-test && exit 1)
+	       grep '^.*\..*/.*$$' | grep -v 'github.com/globocom/tsuru' |\
+	       sort | uniq | xargs go get -u -d >/tmp/.get-test 2>&1 || (cat /tmp/.get-test && exit 1)
 	@/bin/echo "ok"
 	@rm -f /tmp/.get-test
 
 get-prod:
 	@/bin/echo -n "Installing production dependencies... "
-	@go list -f '{{range .Imports}}{{.}} {{end}}' ./... | tr ' ' '\n' |\
-		grep '^.*\..*/.*$$' | grep -v 'github.com/globocom/tsuru' |\
-		sort | uniq | xargs go get -u >/tmp/.get-prod 2>&1 || (cat /tmp/.get-prod && exit 1)
+	@go get -u -d ./... 1>/tmp/.get-prod 2>&1 || (cat /tmp/.get-prod && exit 1)
 	@/bin/echo "ok"
 	@rm -f /tmp/.get-prod
 
@@ -84,8 +85,8 @@ check-test-services:
 	$(call check-service,Beanstalk,11300)
 
 _go_test:
-	@go test -i ./...
-	@go test ./...
+	@go clean ./...
+	@godep go test ./...
 
 _tsr_dry:
 	@go build -o tsr ./cmd/tsr
@@ -106,11 +107,7 @@ deadcode: _install_deadcode
 	@go list ./... | sed -e 's;github.com/globocom/tsuru/;;' | xargs deadcode
 
 race:
-	@for pkg in `go list ./...`; do go test -race -i $$pkg; go test -race $$pkg; done
+	@for pkg in `go list ./...`; do godep go test -race -i $$pkg; go test -race $$pkg; done
 
 doc:
 	@cd docs && make html SPHINXOPTS="-N -W"
-
-client:
-	@go build -o tsuru ./cmd/tsuru
-	@echo "Copy tsuru to your binary path"
