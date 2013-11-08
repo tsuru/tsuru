@@ -61,11 +61,6 @@
 			"Rev": "7860251e851672e43e2252297f12bf858d7e7c99"
 		},
 		{
-			"ImportPath": "github.com/globocom/tsuru/action",
-			"Comment": "0.2.6-33-g289bd6c",
-			"Rev": "289bd6c244e059e012c9c27b103899fb871e646c"
-		},
-		{
 			"ImportPath": "github.com/gorilla/context",
 			"Rev": "708054d61e5a2918b9f4e9700000ee611dcf03f5"
 		},
