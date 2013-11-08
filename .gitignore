@@ -10,3 +10,4 @@ cmd/tsuru/tsuru
 cmd/tsr/tsr
 docs/_build
 Godeps/_workspace
+Godeps/Readme
