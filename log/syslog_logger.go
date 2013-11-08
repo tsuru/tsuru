@@ -10,8 +10,8 @@ import (
 	"os"
 )
 
-func newSyslogLogger(debug bool) Logger {
-	w, err := syslog.New(syslog.LOG_INFO, "tsuru")
+func newSyslogLogger(tag string, debug bool) Logger {
+	w, err := syslog.New(syslog.LOG_INFO, tag)
 	if err != nil {
 		log.Fatal(err)
 	}
