@@ -20,6 +20,7 @@ then
 fi
 
 destination_dir="dist-cmd"
+destination_dir=${DESTINATION_DIR:-$destination_dir}
 
 function build_and_package {
 	echo -n "Building $2 for $1... "
