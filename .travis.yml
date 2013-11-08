@@ -33,3 +33,4 @@ notifications:
 services:
   - mongodb
   - redis
+env: PATH=$GOPATH/bin:$PATH
