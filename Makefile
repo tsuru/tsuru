@@ -49,9 +49,8 @@ ifneq ($(subst ~,$(HOME),$(GOPATH))/src/github.com/globocom/tsuru, $(PWD))
 endif
 
 get: hg git bzr get-prod get-test
-	@/bin/echo -n "Installing godep... "
-	@go get github.com/kr/godep
-	@/bin/echo "ok"
+	go get github.com/kr/godep
+	godep restore ./...
 
 hg:
 	$(if $(shell hg), , $(error $(HG_ERROR)))
