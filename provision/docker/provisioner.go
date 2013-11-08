@@ -203,7 +203,7 @@ func (*dockerProvisioner) AddUnits(a provision.App, units uint) ([]provision.Uni
 			Name:    container.ID,
 			AppName: a.GetName(),
 			Type:    a.GetPlatform(),
-			Ip:      container.IP,
+			Ip:      container.HostAddr,
 			Status:  provision.StatusBuilding,
 		}
 	}
