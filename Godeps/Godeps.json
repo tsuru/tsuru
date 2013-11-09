@@ -1,17 +1,12 @@
 {
 	"ImportPath": "github.com/globocom/tsuru",
-	"GoVersion": "devel +e6794866ebeb Thu Nov 07 15:24:51 2013 -0500",
+	"GoVersion": "devel +9fe43a708b89 Fri Nov 08 15:23:12 2013 -0500",
 	"Packages": [
 		"./..."
 	],
 	"Deps": [
 		{
 			"ImportPath": "code.google.com/p/go.crypto/bcrypt",
-			"Comment": "null-184",
-			"Rev": "cd1eea1eb82851fe9cde1d062406ca60c935ce24"
-		},
-		{
-			"ImportPath": "code.google.com/p/go.crypto/blowfish",
 			"Comment": "null-184",
 			"Rev": "cd1eea1eb82851fe9cde1d062406ca60c935ce24"
 		},
@@ -34,26 +29,6 @@
 			"Rev": "b0a49a30c78e8cafecac455aa0a306ac1792a644"
 		},
 		{
-			"ImportPath": "github.com/dotcloud/docker/auth",
-			"Comment": "v0.6.3",
-			"Rev": "b0a49a30c78e8cafecac455aa0a306ac1792a644"
-		},
-		{
-			"ImportPath": "github.com/dotcloud/docker/registry",
-			"Comment": "v0.6.3",
-			"Rev": "b0a49a30c78e8cafecac455aa0a306ac1792a644"
-		},
-		{
-			"ImportPath": "github.com/dotcloud/docker/term",
-			"Comment": "v0.6.3",
-			"Rev": "b0a49a30c78e8cafecac455aa0a306ac1792a644"
-		},
-		{
-			"ImportPath": "github.com/dotcloud/docker/utils",
-			"Comment": "v0.6.3",
-			"Rev": "b0a49a30c78e8cafecac455aa0a306ac1792a644"
-		},
-		{
 			"ImportPath": "github.com/dotcloud/tar",
 			"Rev": "e5ea6bb21a3294bbbb8019a6cdcb1360f1c0a797"
 		},
@@ -62,19 +37,7 @@
 			"Rev": "cf2b00bae0a0e4444486ff232d441ba838935462"
 		},
 		{
-			"ImportPath": "github.com/flaviamissi/go-elb/elb",
-			"Rev": "cf2b00bae0a0e4444486ff232d441ba838935462"
-		},
-		{
-			"ImportPath": "github.com/flaviamissi/go-elb/elb/elbtest",
-			"Rev": "cf2b00bae0a0e4444486ff232d441ba838935462"
-		},
-		{
 			"ImportPath": "github.com/fsouza/go-dockerclient",
-			"Rev": "958d3afe3bd4a27498b2d84adfd3ca379cd591d9"
-		},
-		{
-			"ImportPath": "github.com/fsouza/go-dockerclient/testing",
 			"Rev": "958d3afe3bd4a27498b2d84adfd3ca379cd591d9"
 		},
 		{
@@ -91,10 +54,6 @@
 		},
 		{
 			"ImportPath": "github.com/globocom/docker-cluster/cluster",
-			"Rev": "8dee933f8a4af6e3606d7fd11e1122e7b7c249de"
-		},
-		{
-			"ImportPath": "github.com/globocom/docker-cluster/storage",
 			"Rev": "8dee933f8a4af6e3606d7fd11e1122e7b7c249de"
 		},
 		{
@@ -128,47 +87,12 @@
 			"Rev": "gustavo@niemeyer.net-20130906162000-1oo19qtbrtr6xk98"
 		},
 		{
-			"ImportPath": "labix.org/v2/mgo/bson",
-			"Comment": "246",
-			"Rev": "gustavo@niemeyer.net-20130906162000-1oo19qtbrtr6xk98"
-		},
-		{
 			"ImportPath": "launchpad.net/gnuflag",
 			"Comment": "12",
 			"Rev": "roger.peppe@canonical.com-20121003093437-zcyyw0lpvj2nifpk"
 		},
 		{
 			"ImportPath": "launchpad.net/goamz/aws",
-			"Comment": "43",
-			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
-		},
-		{
-			"ImportPath": "launchpad.net/goamz/ec2",
-			"Comment": "43",
-			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
-		},
-		{
-			"ImportPath": "launchpad.net/goamz/ec2/ec2test",
-			"Comment": "43",
-			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
-		},
-		{
-			"ImportPath": "launchpad.net/goamz/iam",
-			"Comment": "43",
-			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
-		},
-		{
-			"ImportPath": "launchpad.net/goamz/iam/iamtest",
-			"Comment": "43",
-			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
-		},
-		{
-			"ImportPath": "launchpad.net/goamz/s3",
-			"Comment": "43",
-			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
-		},
-		{
-			"ImportPath": "launchpad.net/goamz/s3/s3test",
 			"Comment": "43",
 			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
 		},
