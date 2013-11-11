@@ -88,7 +88,7 @@ func (s *DeploySuite) TestDeployList(c *gocheck.C) {
 	err = json.Unmarshal(body, &result)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result[0].App, gocheck.Equals, "g1")
-	c.Assert(result[0].Timestamp, gocheck.Equals, timestamp)
+	c.Assert(result[0].Timestamp.In(time.UTC), gocheck.DeepEquals, timestamp.In(time.UTC))
 }
 
 func (s *DeploySuite) TestAppNotFoundListDeploy(c *gocheck.C) {
