@@ -47,7 +47,6 @@ func (s *LogSuite) SetUpSuite(c *gocheck.C) {
 
 func (s *LogSuite) TearDownSuite(c *gocheck.C) {
 	s.conn.Apps().Database.DropDatabase()
-	s.conn.Logs().Database.DropDatabase()
 }
 
 func (s *LogSuite) TestLogRemoveAll(c *gocheck.C) {

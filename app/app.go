@@ -600,6 +600,26 @@ func (app *App) GetDeploys() uint {
 	return app.Deploys
 }
 
+type Deploy struct {
+	App       string
+	Timestamp time.Time
+}
+
+func (app *App) ListDeploys() ([]Deploy, error) {
+	var list []Deploy
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	if err := conn.Deploys().Find(nil).All(&list); err != nil {
+		return []Deploy{}, err
+	}
+	if err := conn.Deploys().Find(bson.M{"app": app.Name}).All(&list); err != nil {
+		return []Deploy{}, err
+	}
+	return list, nil
+}
+
 // ProvisionedUnits returns the internal list of units converted to
 // provision.AppUnit.
 func (app *App) ProvisionedUnits() []provision.AppUnit {

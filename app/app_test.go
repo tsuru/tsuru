@@ -1853,6 +1853,29 @@ func (s *S) TestGetDeploys(c *gocheck.C) {
 	c.Assert(a.GetDeploys(), gocheck.Equals, a.Deploys)
 }
 
+func (s *S) TestListDeploys(c *gocheck.C) {
+	a := App{Name: "g1"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	insert := []interface{}{
+		Deploy{App: "g1", Timestamp: time.Now().Add(-60 * time.Second)},
+		Deploy{App: "g1", Timestamp: time.Now()},
+	}
+	s.conn.Deploys().Insert(insert...)
+	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
+	expected := []Deploy{insert[0].(Deploy), insert[1].(Deploy)}
+	deploys, err := a.ListDeploys()
+	c.Assert(err, gocheck.IsNil)
+	for i := 0; i < 2; i++ {
+		ts := expected[i].Timestamp
+		expected[i].Timestamp = time.Date(ts.Year(), ts.Month(), ts.Day(), ts.Hour(), ts.Minute(), ts.Second(), 0, time.UTC)
+		ts = deploys[i].Timestamp
+		deploys[i].Timestamp = time.Date(ts.Year(), ts.Month(), ts.Day(), ts.Hour(), ts.Minute(), ts.Second(), 0, time.UTC)
+	}
+	c.Assert(deploys, gocheck.DeepEquals, expected)
+}
+
 func (s *S) TestGetProvisionedUnits(c *gocheck.C) {
 	a := App{Name: "anycolor", Units: []Unit{{Name: "i-0800"}, {Name: "i-0900"}, {Name: "i-a00"}}}
 	gotUnits := a.ProvisionedUnits()

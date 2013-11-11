@@ -132,6 +132,10 @@ func (s *Storage) Apps() *Collection {
 	return c
 }
 
+func (s *Storage) Deploys() *Collection {
+	return s.Collection("deploys")
+}
+
 // Platforms returns the platforms collection from MongoDB.
 func (s *Storage) Platforms() *Collection {
 	return s.Collection("platforms")

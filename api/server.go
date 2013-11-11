@@ -79,6 +79,7 @@ func RunServer(dry bool) {
 	m.Del("/apps/:app/:team", authorizationRequiredHandler(revokeAppAccess))
 	m.Get("/apps/:app/log", authorizationRequiredHandler(appLog))
 	m.Post("/apps/:app/log", authorizationRequiredHandler(addLog))
+	m.Get("/apps/:app/deploys", adminRequiredHandler(deploysList))
 
 	m.Get("/platforms", authorizationRequiredHandler(platformList))
 
