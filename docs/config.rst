@@ -343,6 +343,15 @@ quota:apps-per-user
 users will have at most the number of apps specified by this setting. This
 setting is optional, and defaults to "unlimited".
 
+Log level
+---------
+
+debug
++++++
+
+``false`` is the default value, so you won't see any
+noises on logs, to turn it on set it to true, e.g.: ``debug: true``
+
 Defining the provisioner
 ------------------------
 
