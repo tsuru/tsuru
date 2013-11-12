@@ -8,10 +8,12 @@ package docker
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/dotcloud/docker"
 	dcli "github.com/fsouza/go-dockerclient"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
+	"os"
 )
 
 func needsFlatten(a provision.App) bool {
@@ -39,6 +41,10 @@ func flatten(imageID string) error {
 		log.Errorf("Flatten: Caugh error while exporting container %s: %s", c.ID, err.Error())
 		return err
 	}
+	// code to debug import issue
+	f, _ := os.Create(fmt.Sprintf("/tmp/container-%s", c.ID))
+	f.Write(buf.Bytes())
+	f.Close()
 	out := &bytes.Buffer{}
 	opts := dcli.ImportImageOptions{Repository: imageID, Source: "-"}
 	if err := dockerCluster().ImportImage(opts, buf, out); err != nil {
