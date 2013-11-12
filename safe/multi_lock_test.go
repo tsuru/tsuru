@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package quota
+package safe
 
 import (
 	"launchpad.net/gocheck"
@@ -10,7 +10,7 @@ import (
 	"sync"
 )
 
-func (Suite) TestMultiLocker(c *gocheck.C) {
+func (*S) TestMultiLocker(c *gocheck.C) {
 	locker := multiLocker{m: make(map[string]*sync.Mutex)}
 	locker.Lock("user@tsuru.io")
 	locker.Lock("another.user@tsuru.io")
@@ -18,7 +18,7 @@ func (Suite) TestMultiLocker(c *gocheck.C) {
 	locker.Unlock("another.user@tsuru.io")
 }
 
-func (Suite) TestMultiLockerSingle(c *gocheck.C) {
+func (*S) TestMultiLockerSingle(c *gocheck.C) {
 	locker := multiLocker{m: make(map[string]*sync.Mutex)}
 	locker.Lock("user@tsuru.io")
 	locker.Unlock("user@tsuru.io")
@@ -26,7 +26,7 @@ func (Suite) TestMultiLockerSingle(c *gocheck.C) {
 	locker.Unlock("user@tsuru.io")
 }
 
-func (Suite) TestMultiLockerUsage(c *gocheck.C) {
+func (*S) TestMultiLockerUsage(c *gocheck.C) {
 	locker := multiLocker{m: make(map[string]*sync.Mutex)}
 	locker.Lock("user@tsuru.io")
 	count := 0
@@ -45,11 +45,17 @@ func (Suite) TestMultiLockerUsage(c *gocheck.C) {
 	c.Assert(count, gocheck.Equals, -1)
 }
 
-func (Suite) TestMultiLockerUnlocked(c *gocheck.C) {
+func (*S) TestMultiLockerUnlocked(c *gocheck.C) {
 	defer func() {
 		r := recover()
 		c.Assert(r, gocheck.NotNil)
 	}()
 	locker := multiLocker{m: make(map[string]*sync.Mutex)}
 	locker.Unlock("user@tsuru.io")
+}
+
+func (*S) TestMultiLockerFunction(c *gocheck.C) {
+	locker := MultiLocker()
+	locker.Lock("user@tsuru.io")
+	defer locker.Unlock("user@tsuru.io")
 }

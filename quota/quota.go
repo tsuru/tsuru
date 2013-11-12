@@ -12,9 +12,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/safe"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
-	"sync"
 )
 
 var (
@@ -22,7 +22,7 @@ var (
 	ErrQuotaNotFound      = errors.New("Quota not found")
 )
 
-var locker = multiLocker{m: make(map[string]*sync.Mutex)}
+var locker = safe.MultiLocker()
 
 // Usage represents the usage of a user/app. It contains information about the
 // limit of items, and the current amount of items in use by the user.
