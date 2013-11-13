@@ -19,7 +19,7 @@ var createContainer = action.Action{
 		log.Debugf("create container for app %s, based on image %s, with cmds %s", app.GetName(), imageId, cmds)
 		cont, err := newContainer(app, imageId, cmds)
 		if err != nil {
-			log.Errorf("error on create container for app %s - %s", app.GetName(), err.Error())
+			log.Errorf("error on create container for app %s - %s", app.GetName(), err)
 			return nil, err
 		}
 		return cont, nil
@@ -52,7 +52,7 @@ var insertContainer = action.Action{
 		coll := collection()
 		defer coll.Close()
 		if err := coll.Insert(c); err != nil {
-			log.Errorf("error on inserting container into database %s - %s", c.ID, err.Error())
+			log.Errorf("error on inserting container into database %s - %s", c.ID, err)
 			return nil, err
 		}
 		return c, nil

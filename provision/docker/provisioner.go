@@ -57,7 +57,7 @@ type dockerProvisioner struct{}
 func (p *dockerProvisioner) Provision(app provision.App) error {
 	r, err := getRouter()
 	if err != nil {
-		log.Fatalf("Failed to get router: %s", err.Error())
+		log.Fatalf("Failed to get router: %s", err)
 		return err
 	}
 	err = app.Ready()
@@ -160,7 +160,7 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 	go removeImage(assembleImageName(app.GetName()))
 	r, err := getRouter()
 	if err != nil {
-		log.Errorf("Failed to get router: %s", err.Error())
+		log.Errorf("Failed to get router: %s", err)
 		return err
 	}
 	return r.RemoveBackend(app.GetName())
@@ -169,12 +169,12 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 func (*dockerProvisioner) Addr(app provision.App) (string, error) {
 	r, err := getRouter()
 	if err != nil {
-		log.Errorf("Failed to get router: %s", err.Error())
+		log.Errorf("Failed to get router: %s", err)
 		return "", err
 	}
 	addr, err := r.Addr(app.GetName())
 	if err != nil {
-		log.Errorf("Failed to obtain app %s address: %s", app.GetName(), err.Error())
+		log.Errorf("Failed to obtain app %s address: %s", app.GetName(), err)
 		return "", err
 	}
 	return addr, nil

@@ -143,7 +143,7 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 	}
 	hostID, c, err := dockerCluster().CreateContainer(&config)
 	if err != nil {
-		log.Errorf("error on creating container in docker %s - %s", cont.AppName, err.Error())
+		log.Errorf("error on creating container in docker %s - %s", cont.AppName, err)
 		return container{}, err
 	}
 	cont.ID = c.ID
@@ -204,7 +204,7 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 	pipeline := action.NewPipeline(actions...)
 	err = pipeline.Execute(app, imageId, commands)
 	if err != nil {
-		log.Errorf("error on execute deploy pipeline for app %s - %s", app.GetName(), err.Error())
+		log.Errorf("error on execute deploy pipeline for app %s - %s", app.GetName(), err)
 		return "", err
 	}
 	c := pipeline.Result().(container)
@@ -316,7 +316,7 @@ func (c *container) commit() (string, error) {
 	opts := dclient.CommitContainerOptions{Container: c.ID, Repository: repository}
 	image, err := dockerCluster().CommitContainer(opts)
 	if err != nil {
-		log.Errorf("Could not commit docker image: %s", err.Error())
+		log.Errorf("Could not commit docker image: %s", err)
 		return "", err
 	}
 	log.Debugf("image %s generated from container %s", image.ID, c.ID)

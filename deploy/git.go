@@ -66,7 +66,7 @@ func Git(provisioner provision.Provisioner, app provision.App, objID string, w i
 		out, err = fetch(provisioner, app)
 	}
 	if err != nil {
-		msg := fmt.Sprintf("Got error while cloning/fetching repository: %s -- \n%s", err.Error(), string(out))
+		msg := fmt.Sprintf("Got error while cloning/fetching repository: %s -- \n%s", err, string(out))
 		log.Write(w, []byte(msg))
 		return errors.New(msg)
 	}

@@ -127,7 +127,7 @@ func (p *Pipeline) Execute(params ...interface{}) error {
 			fwCtx.Previous = r
 		}
 		if err != nil {
-			log.Debugf("[pipeline] error running the Forward for the %s action - %s", a.Name, err.Error())
+			log.Debugf("[pipeline] error running the Forward for the %s action - %s", a.Name, err)
 			p.rollback(i-1, params)
 			return err
 		}

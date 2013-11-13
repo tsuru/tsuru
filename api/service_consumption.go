@@ -112,7 +112,7 @@ func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t *auth.Token
 	rec.Log(u.Email, "service-instance-status", siName)
 	var b string
 	if b, err = si.Status(); err != nil {
-		msg := fmt.Sprintf("Could not retrieve status of service instance, error: %s", err.Error())
+		msg := fmt.Sprintf("Could not retrieve status of service instance, error: %s", err)
 		return &errors.HTTP{Code: http.StatusInternalServerError, Message: msg}
 	}
 	b = fmt.Sprintf(`Service instance "%s" is %s`, siName, b)

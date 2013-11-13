@@ -281,7 +281,7 @@ func addUserToTeamInGandalf(user *auth.User, t *auth.Team) error {
 	gURL := repository.ServerURL()
 	alwdApps, err := t.AllowedApps()
 	if err != nil {
-		return fmt.Errorf("Failed to obtain allowed apps to grant: %s", err.Error())
+		return fmt.Errorf("Failed to obtain allowed apps to grant: %s", err)
 	}
 	if err := (&gandalf.Client{Endpoint: gURL}).GrantAccess(alwdApps, []string{user.Email}); err != nil {
 		return fmt.Errorf("Failed to grant access to git repositories: %s", err)
@@ -533,7 +533,7 @@ func listKeys(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	}
 	b, err := json.Marshal(keys)
 	if err != nil {
-		return fmt.Errorf("Failed to marshal keys into json: %s", err.Error())
+		return fmt.Errorf("Failed to marshal keys into json: %s", err)
 	}
 	n, err := w.Write(b)
 	if err != nil {
