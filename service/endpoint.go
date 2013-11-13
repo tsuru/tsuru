@@ -128,7 +128,7 @@ func (c *Client) Unbind(instance *ServiceInstance, unit bind.Unit) error {
 	url := "/resources/" + instance.Name + "/hostname/" + unit.GetIp()
 	resp, err := c.issueRequest(url, "DELETE", nil)
 	if err == nil && resp.StatusCode > 299 {
-		msg := "Failed to unbind instance " + instance.Name + " from the unit " + unit.GetIp() + ": " + c.buildErrorMessage(err, resp)
+		msg := fmt.Sprintf("Failed to unbind (%q): %s", url, c.buildErrorMessage(err, resp))
 		log.Error(msg)
 		return &errors.HTTP{Code: http.StatusInternalServerError, Message: msg}
 	}

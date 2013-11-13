@@ -268,7 +268,8 @@ func (s *S) TestUnbindReturnsErrorIfTheRequestFails(c *gocheck.C) {
 	client := &Client{endpoint: ts.URL}
 	err := client.Unbind(&instance, a.GetUnits()[0])
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.ErrorMatches, "^Failed to unbind instance heaven-can-wait from the unit 2.2.2.2: Server failed to do its job.$")
+	expected := `Failed to unbind ("/resources/heaven-can-wait/hostname/2.2.2.2"): Server failed to do its job.`
+	c.Assert(err.Error(), gocheck.Equals, expected)
 }
 
 func (s *S) TestBuildErrorMessageWithNilResponse(c *gocheck.C) {
