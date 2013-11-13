@@ -171,6 +171,7 @@ func (si *ServiceInstance) BindApp(app bind.App) error {
 	var envVars []bind.EnvVar
 	select {
 	case envs := <-envsChan:
+		envVars = make([]bind.EnvVar, 0, len(envs))
 		for k, v := range envs {
 			envVars = append(envVars, bind.EnvVar{
 				Name:         k,
