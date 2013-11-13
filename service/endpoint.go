@@ -93,7 +93,7 @@ func (c *Client) Destroy(instance *ServiceInstance) error {
 
 func (c *Client) Bind(instance *ServiceInstance, app bind.App, unit bind.Unit) (map[string]string, error) {
 	log.Debugf("Calling bind of instance %q and unit %q at %q API",
-		instace.Name, unit.GetIp(), instance.ServiceName)
+		instance.Name, unit.GetIp(), instance.ServiceName)
 	var resp *http.Response
 	params := map[string][]string{
 		"unit-host": {unit.GetIp()},
