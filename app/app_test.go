@@ -1606,9 +1606,18 @@ func (s *S) TestSetTeamsSortTeamNames(c *gocheck.C) {
 }
 
 func (s *S) TestGetUnits(c *gocheck.C) {
-	app := App{Units: []Unit{{Ip: "1.1.1.1"}}}
-	expected := []bind.Unit{bind.Unit(&Unit{Ip: "1.1.1.1", app: &app})}
-	c.Assert(app.GetUnits(), gocheck.DeepEquals, expected)
+	ips := []string{"1.1.1.1", "2.2.2.2", "3.3.3.3"}
+	units := make([]Unit, len(ips))
+	got := make([]string, len(ips))
+	for i, ip := range ips {
+		unit := Unit{Ip: ip}
+		units[i] = unit
+	}
+	app := App{Units: units}
+	for i, unit := range app.GetUnits() {
+		got[i] = unit.GetIp()
+	}
+	c.Assert(got, gocheck.DeepEquals, ips)
 }
 
 func (s *S) TestAppMarshalJSON(c *gocheck.C) {

@@ -574,9 +574,10 @@ func (app *App) Ready() error {
 // GetUnits returns the internal list of units converted to bind.Unit.
 func (app *App) GetUnits() []bind.Unit {
 	var units []bind.Unit
-	for _, u := range app.Units {
-		u.app = app
-		units = append(units, &u)
+	for _, unit := range app.Units {
+		copy := unit
+		copy.app = app
+		units = append(units, &copy)
 	}
 	return units
 }
