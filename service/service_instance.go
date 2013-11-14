@@ -7,6 +7,7 @@ package service
 import (
 	"encoding/json"
 	stderrors "errors"
+	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
@@ -269,26 +270,9 @@ func CreateServiceInstance(name string, service *Service, user *auth.User) error
 			instance.Teams = append(instance.Teams, team.Name)
 		}
 	}
-	endpoint, err := service.getClient("production")
-	if err != nil {
-		return err
-	}
-	err = endpoint.Create(&instance)
-	if err != nil {
-		return err
-	}
-	conn, err := db.Conn()
-	if err != nil {
-		endpoint.Destroy(&instance)
-		return err
-	}
-	defer conn.Close()
-	err = conn.ServiceInstances().Insert(instance)
-	if err != nil {
-		endpoint.Destroy(&instance)
-		return err
-	}
-	return nil
+	actions := []*action.Action{&createServiceInstance, &insertServiceInstance}
+	pipeline := action.NewPipeline(actions...)
+	return pipeline.Execute(*service, instance)
 }
 
 func GetServiceInstancesByServices(services []Service) ([]ServiceInstance, error) {
