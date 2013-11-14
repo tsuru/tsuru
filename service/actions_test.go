@@ -99,3 +99,7 @@ func (s *S) TestCreateServiceInstanceBackwardParams(c *gocheck.C) {
 	createServiceInstance.Backward(ctx)
 	c.Assert(atomic.LoadInt32(&requests), gocheck.Equals, int32(0))
 }
+
+func (s *S) TestInsertServiceInstancName(c *gocheck.C) {
+	c.Assert(insertServiceInstance.Name, gocheck.Equals, "insert-service-instance")
+}

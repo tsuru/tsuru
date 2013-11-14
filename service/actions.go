@@ -52,3 +52,16 @@ var createServiceInstance = action.Action{
 	},
 	MinParams: 2,
 }
+
+// insertServiceInstance is an action that inserts an instance in the database.
+//
+// The first argument in the context must be a Service Instance.
+var insertServiceInstance = action.Action{
+	Name: "insert-service-instance",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		return nil, nil
+	},
+	Backward: func(ctx action.BWContext) {
+	},
+	MinParams: 1,
+}
