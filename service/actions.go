@@ -17,25 +17,17 @@ import (
 var createServiceInstance = action.Action{
 	Name: "create-service-instance",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var (
-			service  Service
-			instance ServiceInstance
-		)
-		switch ctx.Params[0].(type) {
-		case Service:
-			service = ctx.Params[0].(Service)
-		default:
+		service, ok := ctx.Params[0].(Service)
+		if !ok {
 			return nil, errors.New("First parameter must be a Service.")
-		}
-		switch ctx.Params[1].(type) {
-		case ServiceInstance:
-			instance = ctx.Params[1].(ServiceInstance)
-		default:
-			return nil, errors.New("Second parameter must be a ServiceInstance.")
 		}
 		endpoint, err := service.getClient("production")
 		if err != nil {
 			return nil, err
+		}
+		instance, ok := ctx.Params[1].(ServiceInstance)
+		if !ok {
+			return nil, errors.New("Second parameter must be a ServiceInstance.")
 		}
 		err = endpoint.Create(&instance)
 		if err != nil {
