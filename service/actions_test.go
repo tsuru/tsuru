@@ -124,3 +124,16 @@ func (s *S) TestInsertServiceInstanceForwardParams(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Second parameter must be a ServiceInstance.")
 }
+
+func (s *S) TestInsertServiceInstanceBackward(c *gocheck.C) {
+	srv := Service{Name: "mongodb"}
+	instance := ServiceInstance{Name: "mysql"}
+	err := s.conn.ServiceInstances().Insert(&instance)
+	c.Assert(err, gocheck.IsNil)
+	ctx := action.BWContext{
+		Params: []interface{}{srv, instance},
+	}
+	insertServiceInstance.Backward(ctx)
+	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
+	c.Assert(err, gocheck.NotNil)
+}

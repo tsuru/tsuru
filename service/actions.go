@@ -8,6 +8,7 @@ import (
 	"errors"
 	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/db"
+	"labix.org/v2/mgo/bson"
 )
 
 // createServiceInstance in an action that calls the service endpoint
@@ -76,6 +77,16 @@ var insertServiceInstance = action.Action{
 		return nil, nil
 	},
 	Backward: func(ctx action.BWContext) {
+		instance, ok := ctx.Params[1].(ServiceInstance)
+		if !ok {
+			return
+		}
+		conn, err := db.Conn()
+		if err != nil {
+			return
+		}
+		defer conn.Close()
+		conn.ServiceInstances().Remove(bson.M{"name": instance.Name})
 	},
 	MinParams: 1,
 }
