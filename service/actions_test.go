@@ -12,6 +12,10 @@ import (
 	"sync/atomic"
 )
 
+func (s *S) TestCreateServiceInstancMinParams(c *gocheck.C) {
+	c.Assert(createServiceInstance.MinParams, gocheck.Equals, 2)
+}
+
 func (s *S) TestCreateServiceInstancName(c *gocheck.C) {
 	c.Assert(createServiceInstance.Name, gocheck.Equals, "create-service-instance")
 }
