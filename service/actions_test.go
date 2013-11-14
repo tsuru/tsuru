@@ -38,3 +38,24 @@ func (s *S) TestCreateServiceInstanceForward(c *gocheck.C) {
 	c.Assert(a.Name, gocheck.Equals, instance.Name)
 	c.Assert(atomic.LoadInt32(&requests), gocheck.Equals, int32(1))
 }
+
+func (s *S) TestCreateServiceInstanceForwardInvalidParams(c *gocheck.C) {
+	var requests int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+		atomic.AddInt32(&requests, 1)
+	}))
+	defer ts.Close()
+	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().RemoveId(srv.Name)
+	ctx := action.FWContext{Params: []interface{}{"", ""}}
+	_, err = createServiceInstance.Forward(ctx)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "First parameter must be a Service.")
+	ctx = action.FWContext{Params: []interface{}{srv, ""}}
+	_, err = createServiceInstance.Forward(ctx)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Second parameter must be a ServiceInstance.")
+}

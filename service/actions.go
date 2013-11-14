@@ -25,13 +25,13 @@ var createServiceInstance = action.Action{
 		case Service:
 			service = ctx.Params[0].(Service)
 		default:
-			return nil, errors.New("First parameter must be a Service")
+			return nil, errors.New("First parameter must be a Service.")
 		}
 		switch ctx.Params[1].(type) {
 		case ServiceInstance:
 			instance = ctx.Params[1].(ServiceInstance)
 		default:
-			return nil, errors.New("Second parameter must be a ServiceInstance")
+			return nil, errors.New("Second parameter must be a ServiceInstance.")
 		}
 		endpoint, err := service.getClient("production")
 		if err != nil {
