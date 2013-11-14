@@ -7,6 +7,7 @@ package service
 import (
 	"errors"
 	"github.com/globocom/tsuru/action"
+	"github.com/globocom/tsuru/db"
 )
 
 // createServiceInstance in an action that calls the service endpoint
@@ -59,6 +60,19 @@ var createServiceInstance = action.Action{
 var insertServiceInstance = action.Action{
 	Name: "insert-service-instance",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
+		instance, ok := ctx.Params[1].(ServiceInstance)
+		if !ok {
+			return nil, errors.New("Second parameter must be a ServiceInstance.")
+		}
+		conn, err := db.Conn()
+		if err != nil {
+			return nil, err
+		}
+		defer conn.Close()
+		err = conn.ServiceInstances().Insert(&instance)
+		if err != nil {
+			return nil, err
+		}
 		return nil, nil
 	},
 	Backward: func(ctx action.BWContext) {

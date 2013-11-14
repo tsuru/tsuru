@@ -6,6 +6,7 @@ package service
 
 import (
 	"github.com/globocom/tsuru/action"
+	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
@@ -102,4 +103,16 @@ func (s *S) TestCreateServiceInstanceBackwardParams(c *gocheck.C) {
 
 func (s *S) TestInsertServiceInstancName(c *gocheck.C) {
 	c.Assert(insertServiceInstance.Name, gocheck.Equals, "insert-service-instance")
+}
+
+func (s *S) TestInsertServiceInstanceForward(c *gocheck.C) {
+	srv := Service{Name: "mongodb"}
+	instance := ServiceInstance{Name: "mysql"}
+	ctx := action.FWContext{
+		Params: []interface{}{srv, instance},
+	}
+	_, err := insertServiceInstance.Forward(ctx)
+	c.Assert(err, gocheck.IsNil)
+	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
+	c.Assert(err, gocheck.IsNil)
 }
