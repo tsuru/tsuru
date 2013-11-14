@@ -44,6 +44,19 @@ var createServiceInstance = action.Action{
 		return instance, nil
 	},
 	Backward: func(ctx action.BWContext) {
+		service, ok := ctx.Params[0].(Service)
+		if !ok {
+			return
+		}
+		endpoint, err := service.getClient("production")
+		if err != nil {
+			return
+		}
+		instance, ok := ctx.Params[1].(ServiceInstance)
+		if !ok {
+			return
+		}
+		endpoint.Destroy(&instance)
 	},
 	MinParams: 2,
 }
