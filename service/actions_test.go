@@ -105,6 +105,10 @@ func (s *S) TestInsertServiceInstancName(c *gocheck.C) {
 	c.Assert(insertServiceInstance.Name, gocheck.Equals, "insert-service-instance")
 }
 
+func (s *S) TestInsertServiceInstancMinParams(c *gocheck.C) {
+	c.Assert(insertServiceInstance.MinParams, gocheck.Equals, 2)
+}
+
 func (s *S) TestInsertServiceInstanceForward(c *gocheck.C) {
 	srv := Service{Name: "mongodb"}
 	instance := ServiceInstance{Name: "mysql"}
