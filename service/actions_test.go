@@ -113,6 +113,7 @@ func (s *S) TestInsertServiceInstanceForward(c *gocheck.C) {
 	}
 	_, err := insertServiceInstance.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": instance.Name})
 	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
 	c.Assert(err, gocheck.IsNil)
 }
