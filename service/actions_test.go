@@ -117,3 +117,10 @@ func (s *S) TestInsertServiceInstanceForward(c *gocheck.C) {
 	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
 	c.Assert(err, gocheck.IsNil)
 }
+
+func (s *S) TestInsertServiceInstanceForwardParams(c *gocheck.C) {
+	ctx := action.FWContext{Params: []interface{}{"", ""}}
+	_, err := insertServiceInstance.Forward(ctx)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Second parameter must be a ServiceInstance.")
+}
