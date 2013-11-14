@@ -141,3 +141,16 @@ func (s *S) TestInsertServiceInstanceBackward(c *gocheck.C) {
 	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
 	c.Assert(err, gocheck.NotNil)
 }
+
+func (s *S) TestInsertServiceInstanceBackwardParams(c *gocheck.C) {
+	instance := ServiceInstance{Name: "mysql"}
+	err := s.conn.ServiceInstances().Insert(&instance)
+	c.Assert(err, gocheck.IsNil)
+	ctx := action.BWContext{
+		Params: []interface{}{"", ""},
+	}
+	insertServiceInstance.Backward(ctx)
+	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": instance.Name})
+}
