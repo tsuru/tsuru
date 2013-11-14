@@ -80,3 +80,22 @@ func (s *S) TestCreateServiceInstanceBackward(c *gocheck.C) {
 	createServiceInstance.Backward(ctx)
 	c.Assert(atomic.LoadInt32(&requests), gocheck.Equals, int32(1))
 }
+
+func (s *S) TestCreateServiceInstanceBackwardParams(c *gocheck.C) {
+	var requests int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+		atomic.AddInt32(&requests, 1)
+	}))
+	defer ts.Close()
+	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().RemoveId(srv.Name)
+	ctx := action.BWContext{Params: []interface{}{srv, ""}}
+	createServiceInstance.Backward(ctx)
+	c.Assert(atomic.LoadInt32(&requests), gocheck.Equals, int32(0))
+	ctx = action.BWContext{Params: []interface{}{"", ""}}
+	createServiceInstance.Backward(ctx)
+	c.Assert(atomic.LoadInt32(&requests), gocheck.Equals, int32(0))
+}
