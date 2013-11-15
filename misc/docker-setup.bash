@@ -46,8 +46,9 @@ function install_docker() {
     # are you on AWS? if not, comment the line below or get an extra pkg
     sudo apt-get install linux-image-extra-`uname -r` -y --force-yes
     # adding docker repository
-    curl https://get.docker.io/gpg | apt-key add -
+    curl https://get.docker.io/gpg | sudo apt-key add -
     sudo /bin/bash -c "echo deb http://get.docker.io/ubuntu docker main > /etc/apt/sources.list.d/docker.list"
+    sudo apt-get update
     sudo apt-get install lxc-docker -y --force-yes
     # runs docker daemon, it must be running in order to tsuru work
     # Configuring and starting Docker
