@@ -9,6 +9,7 @@ Documentation
 Using Tsuru
 -----------
 
+* :doc:`Why Tsuru? </why>`.
 * :doc:`Overview </overview>`
 * :doc:`FAQ </faq>`.
 
@@ -25,7 +26,7 @@ CLI
 +++
 
 * :doc:`clients installation guide </install/client>`
-* :doc:`tsuru client usage guide </apps/client/usage>`
+* :doc:`Tsuru client usage guide </apps/client/usage>`
 
 Services
 ++++++++
@@ -39,26 +40,29 @@ Deploy Tsuru
 ++++++++++++
 
 * :doc:`Tsuru and juju </build>`
+
+* :doc:`docker provisioner architecture </provisioners/docker/architecture>`
 * :doc:`Tsuru and docker on ubuntu </docker>`
 * :doc:`Tsuru and docker on centos </docker-centos>`
-* :doc:`configuration </config>`
-* :doc:`backing up tsuru </server/backup>`
 
-* :doc:`tsuru api reference </api>`
+* :doc:`configuration </config>`
+* :doc:`backing up Tsuru </server/backup>`
+
+* :doc:`api reference </api>`
 
 Services
 ++++++++
 
 * :doc:`building your service </services/build>`
 * :doc:`crane usage guide </services/usage>`
-* :doc:`tsuru services api workflow </services/api>`
+* :doc:`services api workflow </services/api>`
 
 Get Involved
 ------------
 
 * :doc:`how to contribute </contribute>`
 * :doc:`coding style </contribute/coding-style>`
-* :doc:`setting up your tsuru development environment </contribute/setting-up-your-tsuru-development-environment>`
+* :doc:`setting up your development environment </contribute/setting-up-your-tsuru-development-environment>`
 * :doc:`community </community>`
 
 .. toctree::
