@@ -6,19 +6,52 @@
 Documentation
 +++++++++++++
 
-What is Tsuru?
---------------
+Using Tsuru
+-----------
 
-Tsuru is an open source polyglot cloud application platform (paas). With tsuru, you don’t need to think about servers at all. You can write apps in the programming language of your choice, back it with add-on resources such as SQL and NoSQL databases, memcached, redis, and many others. You manage your app using the tsuru command-line tool and you deploy code using the Git revision control system, all running on the tsuru infrastructure.
+* :doc:`Overview </overview>`
+* :doc:`FAQ </faq>`.
 
-Learn more in :doc:`Tsuru's Overview </overview>` or check out our :doc:`FAQ </faq>`.
+Application Deployment
+++++++++++++++++++++++
 
-* `Build your own PaaS with Tsuru <http://docs.tsuru.io/en/latest/#for-tsuru-ops>`_
-* :doc:`Deploy your application on Tsuru </apps/quickstart>`
-    * :doc:`python/django </apps/quickstart/python>`
-    * :doc:`ruby/rails </apps/quickstart/ruby>`
-    * :doc:`php </apps/quickstart/php>`
-* :doc:`Provide services on Tsuru </services/build>`
+* :doc:`building your application </apps/quickstart>`
+* :doc:`python/django </apps/quickstart/python>`
+* :doc:`ruby/rails </apps/quickstart/ruby>`
+* :doc:`php </apps/quickstart/php>`
+* :doc:`understanding deployment hooks </apps/deploy-hooks>`
+
+CLI
++++
+
+* :doc:`clients installation guide </install/client>`
+* :doc:`tsuru client usage guide </apps/client/usage>`
+
+Services
+++++++++
+
+* :doc:`using services </apps/client/services>`
+
+Running Tsuru
+-------------
+
+Deploy Tsuru
+++++++++++++
+
+* :doc:`Tsuru and juju </build>`
+* :doc:`Tsuru and docker on ubuntu </docker>`
+* :doc:`Tsuru and docker on centos </docker-centos>`
+* :doc:`configuration </config>`
+* :doc:`backing up tsuru </server/backup>`
+
+* :doc:`tsuru api reference </api>`
+
+Services
+++++++++
+
+* :doc:`building your service </services/build>`
+* :doc:`crane usage guide </services/usage>`
+* :doc:`tsuru services api workflow </services/api>`
 
 More documentation
 ------------------
@@ -26,33 +59,8 @@ More documentation
 For tsuru users
 +++++++++++++++
 
-* :doc:`clients installation guide </install/client>`
-* :doc:`tsuru client usage guide </apps/client/usage>`
-* :doc:`using services </apps/client/services>`
-* :doc:`building your application </apps/quickstart>`
-    * :doc:`python/django </apps/quickstart/python>`
-    * :doc:`ruby/rails </apps/quickstart/ruby>`
-    * :doc:`php </apps/quickstart/php>`
-* :doc:`understanding deployment hooks </apps/deploy-hooks>`
-
-For tsuru ops
-+++++++++++++
-
-* build your own PaaS
-    * :doc:`with juju </build>`
-    * :doc:`with docker </docker>`
-    * :doc:`with docker on centos </docker-centos>`
-* :doc:`tsuru configuration </config>`
-* :doc:`backing up tsuru </server/backup>`
-* :doc:`tsuru api reference </api>`
-* create your own service
-    * :doc:`building your service tutorial </services/build>`
-    * :doc:`crane usage guide </services/usage>`
-    * :doc:`tsuru services api workflow </services/api>`
-
-
-Contributions and Feedback
-++++++++++++++++++++++++++
+Get Involved
+------------
 
 * :doc:`how to contribute </contribute>`
 * :doc:`coding style </contribute/coding-style>`
