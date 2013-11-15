@@ -15,7 +15,7 @@ function extra_kenel() {
 function add_packages() {
 	echo Adding Docker repository
 	curl https://get.docker.io/gpg | sudo apt-key add -
-	sudo /bin/bash -c "echo deb http://get.docker.io/ubuntu docker main > /etc/apt/sources.list.d/docker.list"
+	echo "deb http://get.docker.io/ubuntu docker main" | sudo tee /etc/apt/sources.list.d/docker.list
 
 	echo Installing python software properties
 	sudo apt-get install python-software-properties -y
@@ -50,7 +50,7 @@ function install_docker() {
     sudo apt-get install linux-image-extra-`uname -r` -y --force-yes
     # adding docker repository
     curl https://get.docker.io/gpg | sudo apt-key add -
-    sudo /bin/bash -c "echo deb http://get.docker.io/ubuntu docker main > /etc/apt/sources.list.d/docker.list"
+    echo "deb http://get.docker.io/ubuntu docker main" | sudo tee /etc/apt/sources.list.d/docker.list
     sudo apt-get update
     sudo apt-get install lxc-docker -y --force-yes
     # runs docker daemon, it must be running in order to tsuru work
