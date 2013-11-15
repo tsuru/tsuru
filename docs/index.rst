@@ -53,12 +53,6 @@ Services
 * :doc:`crane usage guide </services/usage>`
 * :doc:`tsuru services api workflow </services/api>`
 
-More documentation
-------------------
-
-For tsuru users
-+++++++++++++++
-
 Get Involved
 ------------
 
