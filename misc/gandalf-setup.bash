@@ -17,6 +17,8 @@ function update_ubuntu() {
 function install_gandalf() {
     echo "Installing git"
     sudo apt-get install git -y
+    echo Installing python software properties
+    sudo apt-get install python-software-properties -y
     echo "Adding Tsuru repository"
     sudo apt-add-repository ppa:tsuru/ppa -y
     sudo apt-get update

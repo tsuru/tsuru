@@ -17,6 +17,9 @@ function add_packages() {
 	curl https://get.docker.io/gpg | sudo apt-key add -
 	sudo /bin/bash -c "echo deb http://get.docker.io/ubuntu docker main > /etc/apt/sources.list.d/docker.list"
 
+	echo Installing python software properties
+	sudo apt-get install python-software-properties -y
+
 	echo Adding Tsuru repository
 	apt-add-repository ppa:tsuru/ppa -y
 
