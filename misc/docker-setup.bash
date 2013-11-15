@@ -15,15 +15,14 @@ function extra_kenel() {
 function add_packages() {
 	echo Adding Docker repository
 	curl https://get.docker.io/gpg | apt-key add -
-	echo deb http://get.docker.io/ubuntu docker main > /etc/apt/sources.list.d/docker.list
+	sudo /bin/bash -c "echo deb http://get.docker.io/ubuntu docker main > /etc/apt/sources.list.d/docker.list"
 
 	echo Adding Tsuru repository
 	apt-add-repository ppa:tsuru/ppa -y
 
 	echo Adding MongoDB repository
 	apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
-	echo deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen > /etc/apt/sources.list.d/mongodb.list
-
+	sudo /bin/bash -c "echo deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen > /etc/apt/sources.list.d/mongodb.list"
 }
 
 function configure_tsuru() {
@@ -48,7 +47,7 @@ function install_docker() {
     sudo apt-get install linux-image-extra-`uname -r` -y --force-yes
     # adding docker repository
     curl https://get.docker.io/gpg | apt-key add -
-    echo deb http://get.docker.io/ubuntu docker main > /etc/apt/sources.list.d/docker.list
+    sudo /bin/bash -c "echo deb http://get.docker.io/ubuntu docker main > /etc/apt/sources.list.d/docker.list"
     sudo apt-get install lxc-docker -y --force-yes
     # runs docker daemon, it must be running in order to tsuru work
     # Configuring and starting Docker
