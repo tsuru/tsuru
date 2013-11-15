@@ -14,7 +14,7 @@ function extra_kenel() {
 
 function add_packages() {
 	echo Adding Docker repository
-	curl https://get.docker.io/gpg | apt-key add -
+	curl https://get.docker.io/gpg | sudo apt-key add -
 	sudo /bin/bash -c "echo deb http://get.docker.io/ubuntu docker main > /etc/apt/sources.list.d/docker.list"
 
 	echo Adding Tsuru repository
