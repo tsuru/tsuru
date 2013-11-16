@@ -86,7 +86,7 @@ func (segregatedScheduler) handle(cfg *docker.Config, nodes []node) (string, *do
 	if err != nil {
 		return node.ID, nil, err
 	}
-	container, err := client.CreateContainer(cfg)
+	container, err := client.CreateContainer(dcli.CreateContainerOptions{}, cfg)
 	return node.ID, container, err
 }
 

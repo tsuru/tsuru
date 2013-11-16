@@ -219,7 +219,7 @@ func (s *S) newContainer(opts *newContainerOpts) (*container, error) {
 		Cmd:       []string{"ps"},
 		PortSpecs: []string{"8888"},
 	}
-	c, err := client.CreateContainer(&config)
+	c, err := client.CreateContainer(dockerClient.CreateContainerOptions{}, &config)
 	if err != nil {
 		return nil, err
 	}
