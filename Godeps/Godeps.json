@@ -54,7 +54,7 @@
 		},
 		{
 			"ImportPath": "github.com/globocom/docker-cluster/cluster",
-			"Rev": "8ac08974873287103c9c25afd538411be169d1c6"
+			"Rev": "d9550a3f1ac79f551da906d2d85136ede69d1f24"
 		},
 		{
 			"ImportPath": "github.com/globocom/go-gandalfclient",
