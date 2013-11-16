@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/globocom/tsuru",
-	"GoVersion": "devel +9fe43a708b89 Fri Nov 08 15:23:12 2013 -0500",
+	"GoVersion": "devel +c8d3de543c1b Fri Nov 15 11:01:54 2013 -0800",
 	"Packages": [
 		"./..."
 	],
@@ -38,7 +38,7 @@
 		},
 		{
 			"ImportPath": "github.com/fsouza/go-dockerclient",
-			"Rev": "958d3afe3bd4a27498b2d84adfd3ca379cd591d9"
+			"Rev": "cf791086fadc90b3f9e2077f01a9e7a07cf36244"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
@@ -54,7 +54,7 @@
 		},
 		{
 			"ImportPath": "github.com/globocom/docker-cluster/cluster",
-			"Rev": "8dee933f8a4af6e3606d7fd11e1122e7b7c249de"
+			"Rev": "8ac08974873287103c9c25afd538411be169d1c6"
 		},
 		{
 			"ImportPath": "github.com/globocom/go-gandalfclient",
