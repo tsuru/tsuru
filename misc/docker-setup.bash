@@ -6,28 +6,6 @@
 
 # This script is used to install tsuru with docker provisioner.
 
-function extra_kenel() {
-	echo Installing kernel extra package
-	sudo apt-get update
-	sudo apt-get install linux-image-extra-`uname -r` -qqy
-}
-
-function add_packages() {
-	echo Adding Docker repository
-	curl https://get.docker.io/gpg | sudo apt-key add -
-	echo "deb http://get.docker.io/ubuntu docker main" | sudo tee /etc/apt/sources.list.d/docker.list
-
-	echo Installing python software properties
-	sudo apt-get install python-software-properties -y
-
-	echo Adding Tsuru repository
-	apt-add-repository ppa:tsuru/ppa -y
-
-	echo Adding MongoDB repository
-	apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
-	sudo /bin/bash -c "echo deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen > /etc/apt/sources.list.d/mongodb.list"
-}
-
 function configure_tsuru() {
     echo "Configuring tsuru"
     sudo mkdir -p /etc/tsuru
@@ -42,7 +20,6 @@ function configure_tsuru() {
     fi
     sudo -u ubuntu ssh-keygen -t rsa -f /home/ubuntu/.ssh/id_rsa -N ""
 }
-
 
 function install_docker() {
     sudo apt-get install bsdtar curl -y --force-yes
