@@ -152,13 +152,15 @@ func (s *S) TestDestroyShouldReturnErrorIfTheRequestFails(c *gocheck.C) {
 	c.Assert(err, gocheck.ErrorMatches, "^Failed to destroy the instance "+instance.Name+": Server failed to do its job.$")
 }
 
-func (s *S) TestBindWithEndopintDown(c *gocheck.C) {
+func (s *S) TestBindWithEndpointDown(c *gocheck.C) {
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
 	a := FakeApp{
 		name: "her-app",
 		ip:   "10.0.10.1",
 	}
-	client := &Client{endpoint: "http://naoexites.com"}
+	// Use http://tools.ietf.org/html/rfc5737 'TEST-NET' to avoid broken
+	// resolvers redirecting to a search page.
+	client := &Client{endpoint: "http://192.0.2.42"}
 	_, err := client.Bind(&instance, &a, a.GetUnits()[0])
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err, gocheck.ErrorMatches, "^her-redis api is down.$")
