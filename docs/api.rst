@@ -629,6 +629,7 @@ Example:
 ::
 
     POST /users/user@email.com/tokens HTTP/1.1
+    {"token":"e275317394fb099f62b3993fd09e5f23b258d55f"}
 
 Logout
 ******
