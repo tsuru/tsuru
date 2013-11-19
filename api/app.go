@@ -56,8 +56,7 @@ func cloneRepository(w http.ResponseWriter, r *http.Request, t *auth.Token) erro
 	if err := incrementAppDeploy(instance); err != nil {
 		return err
 	}
-	logger := app.LogWriter{App: instance, Writer: w}
-	return app.Provisioner.Deploy(instance, version, &logger)
+	return app.DeployApp(instance, version, w)
 }
 
 func incrementAppDeploy(instance *app.App) error {
