@@ -68,7 +68,7 @@ func (s *DeploySuite) TestDeployList(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": a.Name})
 	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
-	err = s.conn.Deploys().Insert(app.Deploy{App: "g1", Timestamp: timestamp, User: "fulano"})
+	err = s.conn.Deploys().Insert(app.Deploy{App: "g1", Timestamp: timestamp})
 	err = deploysList(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	body, err := ioutil.ReadAll(recorder.Body)
@@ -77,7 +77,6 @@ func (s *DeploySuite) TestDeployList(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result[0].App, gocheck.Equals, "g1")
 	c.Assert(result[0].Timestamp.In(time.UTC), gocheck.DeepEquals, timestamp.In(time.UTC))
-	c.Assert(result[0].User, gocheck.Equals, "fulano")
 }
 
 func (s *DeploySuite) TestAppNotFoundListDeploy(c *gocheck.C) {
