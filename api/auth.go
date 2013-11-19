@@ -576,7 +576,7 @@ func removeUser(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 		if len(team.Users) < 2 {
 			msg := fmt.Sprintf(`This user is the last member of the team "%s", so it cannot be removed.
 
-Please remove the team, them remove the user.`, team.Name)
+Please remove the team, then remove the user.`, team.Name)
 			return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 		}
 		err = team.RemoveUser(u)
