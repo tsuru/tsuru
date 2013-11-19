@@ -47,6 +47,10 @@ func cloneRepository(w http.ResponseWriter, r *http.Request, t *auth.Token) erro
 	if version == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Missing parameter version"}
 	}
+	user := r.PostFormValue("user")
+	if user == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Missing parameter user"}
+	}
 	w.Header().Set("Content-Type", "text")
 	instance := &app.App{Name: r.URL.Query().Get(":appname")}
 	err := instance.Get()

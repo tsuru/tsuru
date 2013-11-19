@@ -604,6 +604,7 @@ func (app *App) GetDeploys() uint {
 type Deploy struct {
 	App       string
 	Timestamp time.Time
+	User 	  string
 }
 
 func (app *App) ListDeploys() ([]Deploy, error) {
