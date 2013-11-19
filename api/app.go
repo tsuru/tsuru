@@ -24,7 +24,6 @@ import (
 	"labix.org/v2/mgo/bson"
 	"net/http"
 	"strconv"
-	"time"
 )
 
 func getApp(name string, u *auth.User) (app.App, error) {
