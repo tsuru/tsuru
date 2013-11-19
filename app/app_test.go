@@ -1933,11 +1933,39 @@ func (s *S) TestDeployApp(c *gocheck.C) {
 		Teams:    []string{s.team.Name},
 		Units:    []Unit{{Name: "i-0800", State: "started"}},
 	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
-	err := DeployApp(&a, "version", writer)
+	err = DeployApp(&a, "version", writer)
 	c.Assert(err, gocheck.IsNil)
 	logs := writer.String()
 	c.Assert(logs, gocheck.Equals, "Deploy called")
+}
+
+func (s *S) TestDeployAppIncrementDeployNumber(c *gocheck.C) {
+	a := App{
+		Name:     "otherapp",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+		Units:    []Unit{{Name: "i-0800", State: "started"}},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	writer := &bytes.Buffer{}
+	err = DeployApp(&a, "version", writer)
+	c.Assert(err, gocheck.IsNil)
+	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
+	c.Assert(a.Deploys, gocheck.Equals, uint(1))
+	var result map[string]interface{}
+	s.conn.Deploys().Find(bson.M{"app": a.Name}).One(&result)
+	c.Assert(result["app"], gocheck.Equals, a.Name)
+	now := time.Now()
+	diff := now.Sub(result["timestamp"].(time.Time))
+	c.Assert(diff < 60*time.Second, gocheck.Equals, true)
 }

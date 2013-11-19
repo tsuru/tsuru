@@ -873,5 +873,28 @@ func Swap(app1, app2 *App) error {
 // DeployApp calls the Provisioner.Deploy
 func DeployApp(app *App, version string, writer io.Writer) error {
 	logWriter := LogWriter{App: app, Writer: writer}
-	return Provisioner.Deploy(app, version, &logWriter)
+	err := Provisioner.Deploy(app, version, &logWriter)
+	if err != nil {
+		return err
+	}
+	return incrementDeploy(app)
+}
+
+func incrementDeploy(app *App) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	deploy := Deploy{
+		App:       app.Name,
+		Timestamp: time.Now(),
+	}
+	if err := conn.Deploys().Insert(deploy); err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.Apps().Update(
+		bson.M{"name": app.Name},
+		bson.M{"$inc": bson.M{"deploys": 1}},
+	)
 }
