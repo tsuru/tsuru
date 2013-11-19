@@ -1925,3 +1925,19 @@ func (s *S) TestSwap(c *gocheck.C) {
 	err := Swap(app1, app2)
 	c.Assert(err, gocheck.IsNil)
 }
+
+func (s *S) TestDeployApp(c *gocheck.C) {
+	a := App{
+		Name:     "someApp",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
+		Units:    []Unit{{Name: "i-0800", State: "started"}},
+	}
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	writer := &bytes.Buffer{}
+	err := DeployApp(&a, "version", writer)
+	c.Assert(err, gocheck.IsNil)
+	logs := writer.String()
+	c.Assert(logs, gocheck.Equals, "Deploy called")
+}

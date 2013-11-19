@@ -869,3 +869,9 @@ func List(u *auth.User) ([]App, error) {
 func Swap(app1, app2 *App) error {
 	return Provisioner.Swap(app1, app2)
 }
+
+// DeployApp calls the Provisioner.Deploy
+func DeployApp(app *App, version string, writer io.Writer) error {
+	logWriter := LogWriter{App: app, Writer: writer}
+	return Provisioner.Deploy(app, version, &logWriter)
+}
