@@ -488,9 +488,18 @@ var saveNewUnitsInDatabase = action.Action{
 var ProvisionerDeploy = action.Action{
 	Name: "provisioner-deploy",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app := ctx.Params[0].(*App)
-		version := ctx.Params[1].(string)
-		logWriter := ctx.Params[2].(io.Writer)
+		app, ok := ctx.Params[0].(*App)
+		if !ok {
+			return nil, errors.New("First parameter must be a *App.")
+		}
+		version, ok := ctx.Params[1].(string)
+		if !ok {
+			return nil, errors.New("Second parameter must be a string.")
+		}
+		logWriter, ok := ctx.Params[2].(io.Writer)
+		if !ok {
+			return nil, errors.New("Third parameter must be a io.Writer.")
+		}
 		err := Provisioner.Deploy(app, version, logWriter)
 		return nil, err
 	},
