@@ -507,3 +507,14 @@ var ProvisionerDeploy = action.Action{
 	},
 	MinParams: 3,
 }
+
+// Increment is an actions that increments the deploy number.
+var IncrementDeploy = action.Action{
+	Name: "increment-deploy",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		return nil, nil
+	},
+	Backward: func(ctx action.BWContext) {
+	},
+	MinParams: 3,
+}

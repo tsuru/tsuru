@@ -1173,3 +1173,7 @@ func (s *S) TestProvisionerDeployParams(c *gocheck.C) {
 	_, err = ProvisionerDeploy.Forward(ctx)
 	c.Assert(err.Error(), gocheck.Equals, "First parameter must be a *App.")
 }
+
+func (s *S) TestIncrementDeployName(c *gocheck.C) {
+	c.Assert(IncrementDeploy.Name, gocheck.Equals, "increment-deploy")
+}
