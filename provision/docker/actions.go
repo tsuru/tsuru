@@ -111,8 +111,8 @@ var injectEnvirons = action.Action{
 	},
 }
 
-var saveContainers = action.Action{
-	Name: "save-containers",
+var saveUnits = action.Action{
+	Name: "save-units",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		return nil, nil
 	},

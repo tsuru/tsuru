@@ -164,6 +164,6 @@ func (s *S) TestInjectEnvironsParams(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, "First parameter must be a provision.App.")
 }
 
-func (s *S) TestSaveContainers(c *gocheck.C) {
-	c.Assert(saveContainers.Name, gocheck.Equals, "save-containers")
+func (s *S) TestSaveUnitsName(c *gocheck.C) {
+	c.Assert(saveUnits.Name, gocheck.Equals, "save-units")
 }
