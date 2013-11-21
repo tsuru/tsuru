@@ -482,3 +482,14 @@ var saveNewUnitsInDatabase = action.Action{
 	},
 	MinParams: 1,
 }
+
+// ProvisionerDeploy is an actions that call the Provisioner.Deploy.
+var ProvisionerDeploy = action.Action{
+	Name: "provisioner-deploy",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		return nil, nil
+	},
+	Backward: func(ctx action.BWContext) {
+	},
+	MinParams: 1,
+}

@@ -1121,3 +1121,7 @@ func (s *S) TestSaveNewUnitsInDatabaseBackward(c *gocheck.C) {
 func (s *S) TestSaveNewUnitsMinParams(c *gocheck.C) {
 	c.Assert(saveNewUnitsInDatabase.MinParams, gocheck.Equals, 1)
 }
+
+func (s *S) TestProvisionerDeployName(c *gocheck.C) {
+	c.Assert(ProvisionerDeploy.Name, gocheck.Equals, "provisioner-deploy")
+}
