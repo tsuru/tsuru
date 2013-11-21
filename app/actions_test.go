@@ -1206,3 +1206,9 @@ func (s *S) TestIncrementDeployForward(c *gocheck.C) {
 	diff := now.Sub(result["timestamp"].(time.Time))
 	c.Assert(diff < 60*time.Second, gocheck.Equals, true)
 }
+
+func (s *S) TestIncrementDeployParams(c *gocheck.C) {
+	ctx := action.FWContext{Params: []interface{}{"", "", ""}}
+	_, err := IncrementDeploy.Forward(ctx)
+	c.Assert(err.Error(), gocheck.Equals, "First parameter must be a *App.")
+}
