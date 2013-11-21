@@ -95,3 +95,12 @@ var startContainer = action.Action{
 	Backward: func(ctx action.BWContext) {
 	},
 }
+
+var injectEnvirons = action.Action{
+	Name: "inject-environs",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		return nil, nil
+	},
+	Backward: func(ctx action.BWContext) {
+	},
+}

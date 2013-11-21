@@ -255,7 +255,6 @@ func (p *FakeProvisioner) DeployPipeline() *action.Pipeline {
 			},
 			Backward: func(ctx action.BWContext) {
 			},
-			MinParams: 0,
 		}
 		actions := []*action.Action{&act}
 		pipeline := action.NewPipeline(actions...)

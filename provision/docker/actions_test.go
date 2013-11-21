@@ -143,3 +143,7 @@ func (s *S) TestStartContainer(c *gocheck.C) {
 	cont = r.(container)
 	c.Assert(cont, gocheck.FitsTypeOf, container{})
 }
+
+func (s *S) TestInjectEnvironsName(c *gocheck.C) {
+	c.Assert(injectEnvirons.Name, gocheck.Equals, "inject-environs")
+}
