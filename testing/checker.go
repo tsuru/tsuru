@@ -17,7 +17,7 @@ type Action struct {
 	Extra  []interface{}
 }
 
-type action struct {
+type userAction struct {
 	Action
 	Date time.Time
 }
@@ -50,7 +50,7 @@ func (isRecordedChecker) Check(params []interface{}, names []string) (bool, stri
 	if len(a.Extra) > 0 {
 		query["extra"] = a.Extra
 	}
-	done := make(chan action, 1)
+	done := make(chan userAction, 1)
 	quit := make(chan int8)
 	defer close(quit)
 	go func() {
@@ -59,7 +59,7 @@ func (isRecordedChecker) Check(params []interface{}, names []string) (bool, stri
 			case <-quit:
 				runtime.Goexit()
 			default:
-				var a action
+				var a userAction
 				if err := conn.UserActions().Find(query).One(&a); err == nil {
 					done <- a
 					return
@@ -68,7 +68,7 @@ func (isRecordedChecker) Check(params []interface{}, names []string) (bool, stri
 			}
 		}
 	}()
-	var got action
+	var got userAction
 	select {
 	case got = <-done:
 	case <-time.After(2e9):

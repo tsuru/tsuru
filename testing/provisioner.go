@@ -7,7 +7,7 @@ package testing
 import (
 	"errors"
 	"fmt"
-	tsuruAction "github.com/globocom/tsuru/action"
+	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/provision"
@@ -239,7 +239,7 @@ func NewFakeProvisioner() *FakeProvisioner {
 	return &p
 }
 
-func (p *FakeProvisioner) DeployPipeline() *tsuruAction.Pipeline {
+func (p *FakeProvisioner) DeployPipeline() *action.Pipeline {
 	return nil
 }
 
