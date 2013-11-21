@@ -873,11 +873,9 @@ func Swap(app1, app2 *App) error {
 // DeployApp calls the Provisioner.Deploy
 func DeployApp(app *App, version string, writer io.Writer) error {
 	logWriter := LogWriter{App: app, Writer: writer}
-	err := Provisioner.Deploy(app, version, &logWriter)
-	if err != nil {
-		return err
-	}
-	return incrementDeploy(app)
+	actions := []*action.Action{&ProvisionerDeploy, &IncrementDeploy}
+	defaultPipeline := action.NewPipeline(actions...)
+	return defaultPipeline.Execute(app, version, &logWriter)
 }
 
 func incrementDeploy(app *App) error {
