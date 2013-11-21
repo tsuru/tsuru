@@ -512,7 +512,9 @@ var ProvisionerDeploy = action.Action{
 var IncrementDeploy = action.Action{
 	Name: "increment-deploy",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		return nil, nil
+		app := ctx.Params[0].(*App)
+		err := incrementDeploy(app)
+		return nil, err
 	},
 	Backward: func(ctx action.BWContext) {
 	},
