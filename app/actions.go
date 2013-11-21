@@ -18,6 +18,7 @@ import (
 	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/quota"
 	"github.com/globocom/tsuru/repository"
+	"io"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/iam"
@@ -487,7 +488,11 @@ var saveNewUnitsInDatabase = action.Action{
 var ProvisionerDeploy = action.Action{
 	Name: "provisioner-deploy",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		return nil, nil
+		app := ctx.Params[0].(*App)
+		version := ctx.Params[1].(string)
+		logWriter := ctx.Params[2].(io.Writer)
+		err := Provisioner.Deploy(app, version, logWriter)
+		return nil, err
 	},
 	Backward: func(ctx action.BWContext) {
 	},

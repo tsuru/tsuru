@@ -5,6 +5,7 @@
 package app
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"github.com/globocom/config"
@@ -1128,4 +1129,24 @@ func (s *S) TestProvisionerDeployName(c *gocheck.C) {
 
 func (s *S) TestProvisionerDeployMinParams(c *gocheck.C) {
 	c.Assert(ProvisionerDeploy.MinParams, gocheck.Equals, 3)
+}
+
+func (s *S) TestProvisionerDeployForward(c *gocheck.C) {
+	a := App{
+		Name:     "someApp",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
+		Units:    []Unit{{Name: "i-0800", State: "started"}},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	writer := &bytes.Buffer{}
+	ctx := action.FWContext{Params: []interface{}{&a, "version", writer}}
+	_, err = ProvisionerDeploy.Forward(ctx)
+	c.Assert(err, gocheck.IsNil)
+	logs := writer.String()
+	c.Assert(logs, gocheck.Equals, "Deploy called")
 }
