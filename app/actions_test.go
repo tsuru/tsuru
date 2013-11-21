@@ -1177,3 +1177,7 @@ func (s *S) TestProvisionerDeployParams(c *gocheck.C) {
 func (s *S) TestIncrementDeployName(c *gocheck.C) {
 	c.Assert(IncrementDeploy.Name, gocheck.Equals, "increment-deploy")
 }
+
+func (s *S) TestIncrementDeployMinParams(c *gocheck.C) {
+	c.Assert(IncrementDeploy.MinParams, gocheck.Equals, 3)
+}
