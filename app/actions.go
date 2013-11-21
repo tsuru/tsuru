@@ -521,5 +521,5 @@ var IncrementDeploy = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 	},
-	MinParams: 3,
+	MinParams: 1,
 }

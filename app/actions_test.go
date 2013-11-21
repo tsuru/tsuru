@@ -1180,7 +1180,7 @@ func (s *S) TestIncrementDeployName(c *gocheck.C) {
 }
 
 func (s *S) TestIncrementDeployMinParams(c *gocheck.C) {
-	c.Assert(IncrementDeploy.MinParams, gocheck.Equals, 3)
+	c.Assert(IncrementDeploy.MinParams, gocheck.Equals, 1)
 }
 
 func (s *S) TestIncrementDeployForward(c *gocheck.C) {
