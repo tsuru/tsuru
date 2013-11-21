@@ -1969,3 +1969,25 @@ func (s *S) TestDeployAppIncrementDeployNumber(c *gocheck.C) {
 	diff := now.Sub(result["timestamp"].(time.Time))
 	c.Assert(diff < 60*time.Second, gocheck.Equals, true)
 }
+
+func (s *S) TestDeployCustomPipeline(c *gocheck.C) {
+	a := App{
+		Name:     "otherapp",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+		Units:    []Unit{{Name: "i-0800", State: "started"}},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	writer := &bytes.Buffer{}
+	err = DeployApp(&a, "version", writer)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(s.provisioner.ExecutedPipeline(), gocheck.Equals, false)
+	s.provisioner.CustomPipeline = true
+	err = DeployApp(&a, "version", writer)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(s.provisioner.ExecutedPipeline(), gocheck.Equals, true)
+}
