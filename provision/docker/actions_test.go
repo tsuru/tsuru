@@ -7,8 +7,11 @@ package docker
 import (
 	dockerClient "github.com/fsouza/go-dockerclient"
 	"github.com/globocom/tsuru/action"
+	"github.com/globocom/tsuru/app"
+	"github.com/globocom/tsuru/db"
 	rtesting "github.com/globocom/tsuru/router/testing"
 	"github.com/globocom/tsuru/testing"
+	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"time"
 )
@@ -166,4 +169,32 @@ func (s *S) TestInjectEnvironsParams(c *gocheck.C) {
 
 func (s *S) TestSaveUnitsName(c *gocheck.C) {
 	c.Assert(saveUnits.Name, gocheck.Equals, "save-units")
+}
+
+func (s *S) TestSaveUnitsForward(c *gocheck.C) {
+	app := app.App{
+		Name:     "otherapp",
+		Platform: "zend",
+	}
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	err = conn.Apps().Insert(app)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": app.Name})
+	container := container{
+		ID:       "id",
+		Type:     "python",
+		HostAddr: "",
+		AppName:  app.Name,
+	}
+	coll := collection()
+	c.Assert(err, gocheck.IsNil)
+	coll.Insert(&container)
+	context := action.FWContext{Params: []interface{}{&app}}
+	_, err = saveUnits.Forward(context)
+	c.Assert(err, gocheck.IsNil)
+	err = app.Get()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.Units[0].Name, gocheck.Equals, "id")
 }
