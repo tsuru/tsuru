@@ -693,3 +693,8 @@ func (s *S) TestStartedUnitsShouldReturnTrueForUnreachable(c *gocheck.C) {
 	units := p.startedUnits(app)
 	c.Assert(units, gocheck.HasLen, 1)
 }
+
+func (s *S) TestDeployPipeline(c *gocheck.C) {
+	p := JujuProvisioner{}
+	c.Assert(p.DeployPipeline(), gocheck.IsNil)
+}

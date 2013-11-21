@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/db"
@@ -322,4 +323,8 @@ func collection() *db.Collection {
 		log.Errorf("Failed to connect to the database: %s", err)
 	}
 	return conn.Collection(name)
+}
+
+func (p *dockerProvisioner) DeployPipeline() *action.Pipeline {
+	return nil
 }

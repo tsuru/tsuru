@@ -570,3 +570,8 @@ func (s *S) TestExecuteCommandOnceWithoutContainers(c *gocheck.C) {
 	err := p.ExecuteCommandOnce(&stdout, &stderr, app, "ls", "-lh")
 	c.Assert(err, gocheck.Not(gocheck.IsNil))
 }
+
+func (s *S) TestDeployPipeline(c *gocheck.C) {
+	p := dockerProvisioner{}
+	c.Assert(p.DeployPipeline(), gocheck.IsNil)
+}

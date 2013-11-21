@@ -7,6 +7,7 @@ package testing
 import (
 	"errors"
 	"fmt"
+	tsuruAction "github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/provision"
@@ -236,6 +237,10 @@ func NewFakeProvisioner() *FakeProvisioner {
 	p.failures = make(chan failure, 8)
 	p.apps = make(map[string]provisionedApp)
 	return &p
+}
+
+func (p *FakeProvisioner) DeployPipeline() *tsuruAction.Pipeline {
+	return nil
 }
 
 func (p *FakeProvisioner) getError(method string) error {
