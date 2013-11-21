@@ -230,6 +230,7 @@ type FakeProvisioner struct {
 	apps             map[string]provisionedApp
 	mut              sync.RWMutex
 	executedPipeline bool
+	CustomPipeline   bool
 }
 
 func NewFakeProvisioner() *FakeProvisioner {
@@ -245,19 +246,22 @@ func (p *FakeProvisioner) ExecutedPipeline() bool {
 }
 
 func (p *FakeProvisioner) DeployPipeline() *action.Pipeline {
-	act := action.Action{
-		Name: "change-executed-pipeline",
-		Forward: func(ctx action.FWContext) (action.Result, error) {
-			p.executedPipeline = true
-			return nil, nil
-		},
-		Backward: func(ctx action.BWContext) {
-		},
-		MinParams: 0,
+	if p.CustomPipeline {
+		act := action.Action{
+			Name: "change-executed-pipeline",
+			Forward: func(ctx action.FWContext) (action.Result, error) {
+				p.executedPipeline = true
+				return nil, nil
+			},
+			Backward: func(ctx action.BWContext) {
+			},
+			MinParams: 0,
+		}
+		actions := []*action.Action{&act}
+		pipeline := action.NewPipeline(actions...)
+		return pipeline
 	}
-	actions := []*action.Action{&act}
-	pipeline := action.NewPipeline(actions...)
-	return pipeline
+	return nil
 }
 
 func (p *FakeProvisioner) getError(method string) error {
