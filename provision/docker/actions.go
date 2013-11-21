@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"errors"
 	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
@@ -99,7 +100,10 @@ var startContainer = action.Action{
 var injectEnvirons = action.Action{
 	Name: "inject-environs",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app := ctx.Params[0].(provision.App)
+		app, ok := ctx.Params[0].(provision.App)
+		if !ok {
+			return nil, errors.New("First parameter must be a provision.App.")
+		}
 		go injectEnvsAndRestart(app)
 		return nil, nil
 	},

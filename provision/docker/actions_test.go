@@ -157,3 +157,9 @@ func (s *S) TestInjectEnvironsForward(c *gocheck.C) {
 	time.Sleep(6e9)
 	c.Assert(app.Commands, gocheck.DeepEquals, []string{"serialize", "restart"})
 }
+
+func (s *S) TestInjectEnvironsParams(c *gocheck.C) {
+	ctx := action.FWContext{Params: []interface{}{""}}
+	_, err := injectEnvirons.Forward(ctx)
+	c.Assert(err.Error(), gocheck.Equals, "First parameter must be a provision.App.")
+}
