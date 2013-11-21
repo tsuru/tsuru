@@ -1125,3 +1125,7 @@ func (s *S) TestSaveNewUnitsMinParams(c *gocheck.C) {
 func (s *S) TestProvisionerDeployName(c *gocheck.C) {
 	c.Assert(ProvisionerDeploy.Name, gocheck.Equals, "provisioner-deploy")
 }
+
+func (s *S) TestProvisionerDeployMinParams(c *gocheck.C) {
+	c.Assert(ProvisionerDeploy.MinParams, gocheck.Equals, 3)
+}

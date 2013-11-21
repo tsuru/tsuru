@@ -491,5 +491,5 @@ var ProvisionerDeploy = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 	},
-	MinParams: 1,
+	MinParams: 3,
 }
