@@ -10,6 +10,7 @@ import (
 	rtesting "github.com/globocom/tsuru/router/testing"
 	"github.com/globocom/tsuru/testing"
 	"launchpad.net/gocheck"
+	"time"
 )
 
 func (s *S) TestCreateContainerName(c *gocheck.C) {
@@ -146,4 +147,13 @@ func (s *S) TestStartContainer(c *gocheck.C) {
 
 func (s *S) TestInjectEnvironsName(c *gocheck.C) {
 	c.Assert(injectEnvirons.Name, gocheck.Equals, "inject-environs")
+}
+
+func (s *S) TestInjectEnvironsForward(c *gocheck.C) {
+	app := testing.NewFakeApp("myapp", "python", 1)
+	context := action.FWContext{Params: []interface{}{app}}
+	_, err := injectEnvirons.Forward(context)
+	c.Assert(err, gocheck.IsNil)
+	time.Sleep(6e9)
+	c.Assert(app.Commands, gocheck.DeepEquals, []string{"serialize", "restart"})
 }

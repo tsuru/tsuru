@@ -99,6 +99,8 @@ var startContainer = action.Action{
 var injectEnvirons = action.Action{
 	Name: "inject-environs",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
+		app := ctx.Params[0].(provision.App)
+		go injectEnvsAndRestart(app)
 		return nil, nil
 	},
 	Backward: func(ctx action.BWContext) {
