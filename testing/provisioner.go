@@ -223,12 +223,13 @@ type failure struct {
 
 // Fake implementation for provision.Provisioner.
 type FakeProvisioner struct {
-	cmds     []Cmd
-	cmdMut   sync.Mutex
-	outputs  chan []byte
-	failures chan failure
-	apps     map[string]provisionedApp
-	mut      sync.RWMutex
+	cmds             []Cmd
+	cmdMut           sync.Mutex
+	outputs          chan []byte
+	failures         chan failure
+	apps             map[string]provisionedApp
+	mut              sync.RWMutex
+	executedPipeline bool
 }
 
 func NewFakeProvisioner() *FakeProvisioner {
@@ -239,8 +240,24 @@ func NewFakeProvisioner() *FakeProvisioner {
 	return &p
 }
 
+func (p *FakeProvisioner) ExecutedPipeline() bool {
+	return p.executedPipeline
+}
+
 func (p *FakeProvisioner) DeployPipeline() *action.Pipeline {
-	return nil
+	act := action.Action{
+		Name: "change-executed-pipeline",
+		Forward: func(ctx action.FWContext) (action.Result, error) {
+			p.executedPipeline = true
+			return nil, nil
+		},
+		Backward: func(ctx action.BWContext) {
+		},
+		MinParams: 0,
+	}
+	actions := []*action.Action{&act}
+	pipeline := action.NewPipeline(actions...)
+	return pipeline
 }
 
 func (p *FakeProvisioner) getError(method string) error {

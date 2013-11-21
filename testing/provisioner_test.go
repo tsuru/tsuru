@@ -588,7 +588,11 @@ func (s *S) TestExecuteCommandOnce(c *gocheck.C) {
 	c.Assert(buf.String(), gocheck.Equals, string(output))
 }
 
-func (s *S) TestDeployPipeline(c *gocheck.C) {
+func (s *S) TestExecutedPipeline(c *gocheck.C) {
 	p := FakeProvisioner{}
-	c.Assert(p.DeployPipeline(), gocheck.IsNil)
+	c.Assert(p.ExecutedPipeline(), gocheck.Equals, false)
+	pipeline := p.DeployPipeline()
+	err := pipeline.Execute()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(p.ExecutedPipeline(), gocheck.Equals, true)
 }
