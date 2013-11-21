@@ -1159,13 +1159,8 @@ func (s *S) TestProvisionerDeployParams(c *gocheck.C) {
 		Teams:    []string{s.team.Name},
 		Units:    []Unit{{Name: "i-0800", State: "started"}},
 	}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
 	ctx := action.FWContext{Params: []interface{}{&a, "version", ""}}
-	_, err = ProvisionerDeploy.Forward(ctx)
+	_, err := ProvisionerDeploy.Forward(ctx)
 	c.Assert(err.Error(), gocheck.Equals, "Third parameter must be a io.Writer.")
 	ctx = action.FWContext{Params: []interface{}{&a, 0, ""}}
 	_, err = ProvisionerDeploy.Forward(ctx)
