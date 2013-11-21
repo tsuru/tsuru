@@ -121,8 +121,6 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	message, err := q.Get(1e6)
 	c.Assert(err, gocheck.IsNil)
 	defer message.Delete()
-	c.Assert(app.GetCommands(), gocheck.DeepEquals, []string{"serialize", "restart"})
-	c.Assert(app.HasLog("tsuru", "Restarting app..."), gocheck.Equals, true)
 }
 
 func getQueue() (queue.Q, error) {
@@ -573,5 +571,5 @@ func (s *S) TestExecuteCommandOnceWithoutContainers(c *gocheck.C) {
 
 func (s *S) TestDeployPipeline(c *gocheck.C) {
 	p := dockerProvisioner{}
-	c.Assert(p.DeployPipeline(), gocheck.IsNil)
+	c.Assert(p.DeployPipeline(), gocheck.NotNil)
 }

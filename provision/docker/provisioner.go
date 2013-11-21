@@ -144,7 +144,6 @@ func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer)
 	}
 	if <-started {
 		fmt.Fprint(w, "\n ---> App will be restarted, please check its logs for more details...\n\n")
-		go injectEnvsAndRestart(a)
 	} else {
 		fmt.Fprint(w, "\n ---> App failed to start, please check its logs for more details...\n\n")
 	}
@@ -326,5 +325,12 @@ func collection() *db.Collection {
 }
 
 func (p *dockerProvisioner) DeployPipeline() *action.Pipeline {
-	return nil
+	actions := []*action.Action{
+		&app.ProvisionerDeploy,
+		&app.IncrementDeploy,
+		&saveUnits,
+		&injectEnvirons,
+	}
+	pipeline := action.NewPipeline(actions...)
+	return pipeline
 }
