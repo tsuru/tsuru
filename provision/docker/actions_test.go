@@ -218,3 +218,9 @@ func (s *S) TestbindServiceForward(c *gocheck.C) {
 	c.Assert(message.Args[0], gocheck.Equals, a.GetName())
 	c.Assert(message.Args[1], gocheck.Not(gocheck.Equals), "")
 }
+
+func (s *S) TestbindServiceParams(c *gocheck.C) {
+	context := action.FWContext{Params: []interface{}{""}}
+	_, err := bindService.Forward(context)
+	c.Assert(err.Error(), gocheck.Equals, "First parameter must be a provision.App.")
+}

@@ -158,7 +158,10 @@ var saveUnits = action.Action{
 var bindService = action.Action{
 	Name: "bind-service",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		a := ctx.Params[0].(provision.App)
+		a, ok := ctx.Params[0].(provision.App)
+		if !ok {
+			return nil, errors.New("First parameter must be a provision.App.")
+		}
 		for _, u := range a.ProvisionedUnits() {
 			msg := queue.Message{
 				Action: app.BindService,
