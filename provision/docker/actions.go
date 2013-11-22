@@ -120,7 +120,10 @@ var injectEnvirons = action.Action{
 var saveUnits = action.Action{
 	Name: "save-units",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		a := ctx.Params[0].(*app.App)
+		a, ok := ctx.Params[0].(*app.App)
+		if !ok {
+			return nil, errors.New("First parameter must be a *app.App.")
+		}
 		containers, err := listAppContainers(a.GetName())
 		if err != nil {
 			return nil, err

@@ -199,6 +199,12 @@ func (s *S) TestSaveUnitsForward(c *gocheck.C) {
 	c.Assert(app.Units[0].Name, gocheck.Equals, "id")
 }
 
+func (s *S) TestSaveUnitsParams(c *gocheck.C) {
+	context := action.FWContext{Params: []interface{}{""}}
+	_, err := saveUnits.Forward(context)
+	c.Assert(err.Error(), gocheck.Equals, "First parameter must be a *app.App.")
+}
+
 func (s *S) TestbindServiceName(c *gocheck.C) {
 	c.Assert(bindService.Name, gocheck.Equals, "bind-service")
 }
