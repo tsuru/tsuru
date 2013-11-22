@@ -198,3 +198,7 @@ func (s *S) TestSaveUnitsForward(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Units[0].Name, gocheck.Equals, "id")
 }
+
+func (s *S) TestbindServiceName(c *gocheck.C) {
+	c.Assert(bindService.Name, gocheck.Equals, "bind-service")
+}
