@@ -330,6 +330,7 @@ func (p *dockerProvisioner) DeployPipeline() *action.Pipeline {
 		&app.IncrementDeploy,
 		&saveUnits,
 		&injectEnvirons,
+		&bindService,
 	}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline
