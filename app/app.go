@@ -621,6 +621,18 @@ func (app *App) ListDeploys() ([]Deploy, error) {
 	return list, nil
 }
 
+func ListDeploys() ([]Deploy, error) {
+	var list []Deploy
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	if err := conn.Deploys().Find(nil).All(&list); err != nil {
+		return []Deploy{}, err
+	}
+	return list, err
+}
+
 // ProvisionedUnits returns the internal list of units converted to
 // provision.AppUnit.
 func (app *App) ProvisionedUnits() []provision.AppUnit {
