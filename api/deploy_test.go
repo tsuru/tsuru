@@ -10,9 +10,7 @@ import (
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
-	"github.com/globocom/tsuru/errors"
 	"io/ioutil"
-	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
@@ -60,15 +58,15 @@ func (s *DeploySuite) TestDeployList(c *gocheck.C) {
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
-	a := app.App{Name: "g1", Teams: []string{s.team.Name}}
-	request, err := http.NewRequest("GET", "/deploys?:app=g1", nil)
+	request, err := http.NewRequest("GET", "/deploys", nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = s.conn.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": a.Name})
 	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
 	err = s.conn.Deploys().Insert(app.Deploy{App: "g1", Timestamp: timestamp})
+	c.Assert(err, gocheck.IsNil)
+	err = s.conn.Deploys().Insert(app.Deploy{App: "ge", Timestamp: timestamp})
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Deploys().RemoveAll(nil)
 	err = deploysList(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	body, err := ioutil.ReadAll(recorder.Body)
@@ -77,16 +75,6 @@ func (s *DeploySuite) TestDeployList(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result[0].App, gocheck.Equals, "g1")
 	c.Assert(result[0].Timestamp.In(time.UTC), gocheck.DeepEquals, timestamp.In(time.UTC))
-}
-
-func (s *DeploySuite) TestAppNotFoundListDeploy(c *gocheck.C) {
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/deploys?:app=g1", nil)
-	c.Assert(err, gocheck.IsNil)
-	err = deploysList(recorder, request, s.token)
-	c.Assert(err, gocheck.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
-	c.Assert(e, gocheck.ErrorMatches, "^App g1 not found.$")
+	c.Assert(result[1].App, gocheck.Equals, "ge")
+	c.Assert(result[1].Timestamp.In(time.UTC), gocheck.DeepEquals, timestamp.In(time.UTC))
 }
