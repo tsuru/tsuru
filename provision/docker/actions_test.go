@@ -202,3 +202,19 @@ func (s *S) TestSaveUnitsForward(c *gocheck.C) {
 func (s *S) TestbindServiceName(c *gocheck.C) {
 	c.Assert(bindService.Name, gocheck.Equals, "bind-service")
 }
+
+func (s *S) TestbindServiceForward(c *gocheck.C) {
+	a := testing.NewFakeApp("cribcaged", "python", 1)
+	context := action.FWContext{Params: []interface{}{a}}
+	_, err := bindService.Forward(context)
+	c.Assert(err, gocheck.IsNil)
+	q, err := getQueue()
+	c.Assert(err, gocheck.IsNil)
+	message, err := q.Get(1e6)
+	c.Assert(err, gocheck.IsNil)
+	defer message.Delete()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(message.Action, gocheck.Equals, app.BindService)
+	c.Assert(message.Args[0], gocheck.Equals, a.GetName())
+	c.Assert(message.Args[1], gocheck.Not(gocheck.Equals), "")
+}

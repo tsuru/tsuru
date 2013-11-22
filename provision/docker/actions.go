@@ -11,6 +11,7 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
+	"github.com/globocom/tsuru/queue"
 	"labix.org/v2/mgo/bson"
 	"net"
 	"strings"
@@ -157,6 +158,14 @@ var saveUnits = action.Action{
 var bindService = action.Action{
 	Name: "bind-service",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
+		a := ctx.Params[0].(provision.App)
+		for _, u := range a.ProvisionedUnits() {
+			msg := queue.Message{
+				Action: app.BindService,
+				Args:   []string{a.GetName(), u.GetName()},
+			}
+			go app.Enqueue(msg)
+		}
 		return nil, nil
 	},
 	Backward: func(ctx action.BWContext) {
