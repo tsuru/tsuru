@@ -104,14 +104,12 @@ func injectEnvsAndRestart(a provision.App) {
 }
 
 func startInBackground(a provision.App, c container, imageId string, w io.Writer, started chan bool) {
-	newContainer, err := start(a, imageId, w)
+	_, err := start(a, imageId, w)
 	if err != nil {
 		log.Errorf("error on start the app %s - %s", a.GetName(), err)
 		started <- false
 		return
 	}
-	msg := queue.Message{Action: app.BindService, Args: []string{a.GetName(), newContainer.ID}}
-	go app.Enqueue(msg)
 	if c.ID != "" {
 		if a.RemoveUnit(c.ID) != nil {
 			removeContainer(&c)
