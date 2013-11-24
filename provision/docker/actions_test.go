@@ -158,7 +158,7 @@ func (s *S) TestInjectEnvironsForward(c *gocheck.C) {
 	_, err := injectEnvirons.Forward(context)
 	c.Assert(err, gocheck.IsNil)
 	time.Sleep(6e9)
-	c.Assert(app.Commands, gocheck.DeepEquals, []string{"serialize", "restart"})
+	c.Assert(app.GetCommands(), gocheck.DeepEquals, []string{"serialize", "restart"})
 }
 
 func (s *S) TestInjectEnvironsParams(c *gocheck.C) {
