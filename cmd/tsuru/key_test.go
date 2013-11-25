@@ -6,6 +6,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/cmd/testing"
@@ -63,7 +64,7 @@ func (s *S) TestKeyAddReturnErrorIfTheKeyDoesNotExist(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	fs := fs_test.FailureFs{RecordingFs: fs_test.RecordingFs{}}
+	fs := fs_test.FileNotFoundFs{RecordingFs: fs_test.RecordingFs{}}
 	command := KeyAdd{keyReader{fsystem: &fs}}
 	err := command.Run(&context, nil)
 	c.Assert(err, gocheck.NotNil)
@@ -77,12 +78,29 @@ func (s *S) TestKeyAddReturnsProperErrorIfTheGivenKeyFileDoesNotExist(c *gocheck
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	fs := fs_test.FailureFs{RecordingFs: fs_test.RecordingFs{}}
+	fs := fs_test.FileNotFoundFs{RecordingFs: fs_test.RecordingFs{}}
 	command := KeyAdd{keyReader{fsystem: &fs}}
 	err := command.Run(&context, nil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "File /unknown/key.pub does not exist!")
 	c.Assert(context.Stderr.(*bytes.Buffer).String(), gocheck.Equals, "File /unknown/key.pub does not exist!\n")
+}
+
+func (s *S) TestKeyAddError(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	context := cmd.Context{
+		Args:   []string{"/unknown/key.pub"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	fs := fs_test.FailureFs{
+		RecordingFs: fs_test.RecordingFs{},
+		Err:         errors.New("what happened?"),
+	}
+	command := KeyAdd{keyReader{fsystem: &fs}}
+	err := command.Run(&context, nil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "what happened?")
 }
 
 func (s *S) TestInfoKeyAdd(c *gocheck.C) {
@@ -142,7 +160,7 @@ func (s *S) TestKeyRemoveReturnErrorIfTheKeyDoesNotExist(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	fs := fs_test.FailureFs{RecordingFs: fs_test.RecordingFs{}}
+	fs := fs_test.FileNotFoundFs{RecordingFs: fs_test.RecordingFs{}}
 	command := KeyRemove{keyReader{fsystem: &fs}}
 	err := command.Run(&context, nil)
 	c.Assert(err, gocheck.NotNil)
@@ -156,12 +174,29 @@ func (s *S) TestKeyRemoveReturnProperErrorIfTheGivenKeyFileDoesNotExist(c *goche
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	fs := fs_test.FailureFs{RecordingFs: fs_test.RecordingFs{}}
+	fs := fs_test.FileNotFoundFs{RecordingFs: fs_test.RecordingFs{}}
 	command := KeyRemove{keyReader{fsystem: &fs}}
 	err := command.Run(&context, nil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "File /unknown/key.pub does not exist!")
 	c.Assert(context.Stderr.(*bytes.Buffer).String(), gocheck.Equals, err.Error()+"\n")
+}
+
+func (s *S) TestKeyRemoveError(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	context := cmd.Context{
+		Args:   []string{"/unknown/key.pub"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	fs := fs_test.FailureFs{
+		RecordingFs: fs_test.RecordingFs{},
+		Err:         errors.New("what happened?"),
+	}
+	command := KeyRemove{keyReader{fsystem: &fs}}
+	err := command.Run(&context, nil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "what happened?")
 }
 
 func (s *S) TestInfoKeyRemove(c *gocheck.C) {
