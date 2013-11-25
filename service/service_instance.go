@@ -183,6 +183,7 @@ func (si *ServiceInstance) BindApp(app bind.App) error {
 		}
 		return app.SetEnvs(envVars, false)
 	case err = <-errChan:
+		log.Error(err.Error())
 	}
 	return err
 }
