@@ -49,7 +49,7 @@ func (s *S) TestShouldReturnErrorWhenServerIsDown(c *gocheck.C) {
 }
 
 func (s *S) TestShouldNotIncludeTheHeaderAuthorizationWhenTheTsuruTokenFileIsMissing(c *gocheck.C) {
-	fsystem = &testing.FailureFs{}
+	fsystem = &testing.FileNotFoundFs{}
 	defer func() {
 		fsystem = nil
 	}()

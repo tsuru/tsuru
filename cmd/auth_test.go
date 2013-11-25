@@ -95,7 +95,7 @@ func (s *S) TestLogout(c *gocheck.C) {
 }
 
 func (s *S) TestLogoutWhenNotLoggedIn(c *gocheck.C) {
-	fsystem = &testing.FailureFs{}
+	fsystem = &testing.FileNotFoundFs{}
 	defer func() {
 		fsystem = nil
 	}()
