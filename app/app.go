@@ -612,10 +612,7 @@ func (app *App) ListDeploys() ([]Deploy, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := conn.Deploys().Find(nil).All(&list); err != nil {
-		return []Deploy{}, err
-	}
-	if err := conn.Deploys().Find(bson.M{"app": app.Name}).All(&list); err != nil {
+	if err := conn.Deploys().Find(bson.M{"app": app.Name}).Sort("-timestamp").All(&list); err != nil {
 		return []Deploy{}, err
 	}
 	return list, nil
@@ -627,7 +624,7 @@ func ListDeploys() ([]Deploy, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := conn.Deploys().Find(nil).All(&list); err != nil {
+	if err := conn.Deploys().Find(nil).Sort("-timestamp").All(&list); err != nil {
 		return []Deploy{}, err
 	}
 	return list, err

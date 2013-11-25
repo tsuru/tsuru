@@ -1862,19 +1862,19 @@ func (s *S) TestGetDeploys(c *gocheck.C) {
 	c.Assert(a.GetDeploys(), gocheck.Equals, a.Deploys)
 }
 
-func (s *S) TestListDeploys(c *gocheck.C) {
+func (s *S) TestListAppDeploys(c *gocheck.C) {
 	s.conn.Deploys().RemoveAll(nil)
 	a := App{Name: "g1"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	insert := []interface{}{
-		Deploy{App: "g1", Timestamp: time.Now().Add(-60 * time.Second)},
+		Deploy{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
 		Deploy{App: "g1", Timestamp: time.Now()},
 	}
 	s.conn.Deploys().Insert(insert...)
 	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
-	expected := []Deploy{insert[0].(Deploy), insert[1].(Deploy)}
+	expected := []Deploy{insert[1].(Deploy), insert[0].(Deploy)}
 	deploys, err := a.ListDeploys()
 	c.Assert(err, gocheck.IsNil)
 	for i := 0; i < 2; i++ {
@@ -1889,12 +1889,12 @@ func (s *S) TestListDeploys(c *gocheck.C) {
 func (s *S) TestListAllDeploys(c *gocheck.C) {
 	s.conn.Deploys().RemoveAll(nil)
 	insert := []interface{}{
-		Deploy{App: "g1", Timestamp: time.Now()},
+		Deploy{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
 		Deploy{App: "ge", Timestamp: time.Now()},
 	}
 	s.conn.Deploys().Insert(insert...)
 	defer s.conn.Deploys().RemoveAll(nil)
-	expected := []Deploy{insert[0].(Deploy), insert[1].(Deploy)}
+	expected := []Deploy{insert[1].(Deploy), insert[0].(Deploy)}
 	deploys, err := ListDeploys()
 	c.Assert(err, gocheck.IsNil)
 	for i := 0; i < 2; i++ {
