@@ -607,25 +607,26 @@ type Deploy struct {
 }
 
 func (app *App) ListDeploys() ([]Deploy, error) {
-	var list []Deploy
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	if err := conn.Deploys().Find(bson.M{"app": app.Name}).Sort("-timestamp").All(&list); err != nil {
-		return []Deploy{}, err
-	}
-	return list, nil
+	return listDeploys(app)
 }
 
 func ListDeploys() ([]Deploy, error) {
+	return listDeploys(nil)
+}
+
+func listDeploys(app *App) ([]Deploy, error) {
 	var list []Deploy
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
-	if err := conn.Deploys().Find(nil).Sort("-timestamp").All(&list); err != nil {
-		return []Deploy{}, err
+	defer conn.Close()
+	var qr interface{}
+	if app != nil {
+		qr = bson.M{"app": app.Name}
+	}
+	if err := conn.Deploys().Find(qr).Sort("-timestamp").All(&list); err != nil {
+		return nil, err
 	}
 	return list, err
 }
