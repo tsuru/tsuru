@@ -124,6 +124,10 @@ var saveUnits = action.Action{
 		if !ok {
 			return nil, errors.New("First parameter must be a *app.App.")
 		}
+		err := a.Get()
+		if err != nil {
+			return nil, err
+		}
 		containers, err := listAppContainers(a.GetName())
 		if err != nil {
 			return nil, err
