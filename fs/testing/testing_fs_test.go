@@ -362,11 +362,11 @@ func (s *S) TestRecordingFsStat(c *gocheck.C) {
 }
 
 func (s *S) TestFailureFsPointerImplementsFsInterface(c *gocheck.C) {
-	var _ fs.Fs = &FailureFs{}
+	var _ fs.Fs = &FileNotFoundFs{}
 }
 
 func (s *S) TestFailureFsOpen(c *gocheck.C) {
-	fs := FailureFs{}
+	fs := FileNotFoundFs{}
 	f, err := fs.Open("/my/file")
 	c.Assert(f, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
@@ -377,7 +377,7 @@ func (s *S) TestFailureFsOpen(c *gocheck.C) {
 }
 
 func (s *S) TestFailureFsRemove(c *gocheck.C) {
-	fs := FailureFs{}
+	fs := FileNotFoundFs{}
 	err := fs.Remove("/my/file")
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err, gocheck.FitsTypeOf, &os.PathError{})
@@ -387,7 +387,7 @@ func (s *S) TestFailureFsRemove(c *gocheck.C) {
 }
 
 func (s *S) TestFailureFsOpenFile(c *gocheck.C) {
-	fs := FailureFs{}
+	fs := FileNotFoundFs{}
 	f, err := fs.OpenFile("/my/file", 0, 0600)
 	c.Assert(f, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
@@ -398,7 +398,7 @@ func (s *S) TestFailureFsOpenFile(c *gocheck.C) {
 }
 
 func (s *S) TestFailureFsRemoveAll(c *gocheck.C) {
-	fs := FailureFs{}
+	fs := FileNotFoundFs{}
 	err := fs.RemoveAll("/my/file")
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err, gocheck.FitsTypeOf, &os.PathError{})
