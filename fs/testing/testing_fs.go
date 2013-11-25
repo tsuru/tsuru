@@ -295,3 +295,15 @@ func (r *FileNotFoundFs) OpenFile(name string, flag int, perm os.FileMode) (fs.F
 	r.RecordingFs.OpenFile(name, flag, perm)
 	return r.Open(name)
 }
+
+// FailureFs is like RecordingFs, except the it returns an arbitrary error on
+// operations.
+type FailureFs struct {
+	RecordingFs
+	Err error
+}
+
+func (r *FailureFs) Open(name string) (fs.File, error) {
+	r.RecordingFs.Open(name)
+	return nil, r.Err
+}
