@@ -100,6 +100,11 @@ var startContainer = action.Action{
 		return c, nil
 	},
 	Backward: func(ctx action.BWContext) {
+		c := ctx.FWResult.(container)
+		err := dockerCluster().StopContainer(c.ID, 10)
+		if err != nil {
+			log.Errorf("Failed to stop the container %q: %s", c.ID, err)
+		}
 	},
 }
 

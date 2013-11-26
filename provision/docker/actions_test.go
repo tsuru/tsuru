@@ -134,7 +134,7 @@ func (s *S) TestSetImage(c *gocheck.C) {
 	c.Assert(cont.HostPort, gocheck.Not(gocheck.Equals), "")
 }
 
-func (s *S) TestStartContainer(c *gocheck.C) {
+func (s *S) TestStartContainerForward(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	conta, err := s.newContainer(nil)
@@ -146,6 +146,25 @@ func (s *S) TestStartContainer(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	cont = r.(container)
 	c.Assert(cont, gocheck.FitsTypeOf, container{})
+}
+
+func (s *S) TestStartContainerBackward(c *gocheck.C) {
+	dcli, err := dockerClient.NewClient(s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	err = newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	defer dcli.RemoveImage("tsuru/python")
+	conta, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(conta)
+	cont := *conta
+	err = dcli.StartContainer(cont.ID, nil)
+	c.Assert(err, gocheck.IsNil)
+	context := action.BWContext{FWResult: cont}
+	startContainer.Backward(context)
+	cc, err := dcli.InspectContainer(cont.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(cc.State.Running, gocheck.Equals, false)
 }
 
 func (s *S) TestInjectEnvironsName(c *gocheck.C) {
