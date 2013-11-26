@@ -13,7 +13,6 @@ import (
 	dcli "github.com/fsouza/go-dockerclient"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
-	"io/ioutil"
 	"os"
 )
 
@@ -48,7 +47,7 @@ func flatten(imageID string) error {
 	f.Close()
 	out := &bytes.Buffer{}
 	opts := dcli.ImportImageOptions{Repository: imageID, Source: "-"}
-	if err := dockerCluster().ImportImage(opts, r, out); err != nil {
+	if err := dockerCluster().ImportImage(opts, buf, out); err != nil {
 		log.Errorf("Flatten: Caugh error while importing image from container %s: %s", c.ID, err)
 		return err
 	}
