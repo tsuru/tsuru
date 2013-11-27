@@ -263,7 +263,7 @@ func (app *App) RemoveUnit(id string) error {
 		return stderr.New("Unit not found.")
 	}
 	if err := Provisioner.RemoveUnit(app, unit.GetName()); err != nil {
-		return err
+		log.Error(err.Error())
 	}
 	app.removeUnits([]int{i})
 	app.unbindUnit(&unit)
