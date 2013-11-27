@@ -41,6 +41,7 @@ func connect() redis.Conn {
 			return redis.Dial("tcp", srv)
 		}, 10)
 	}
+	pool.IdleTimeout = 180e9
 	return pool.Get()
 }
 
