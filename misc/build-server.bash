@@ -19,7 +19,7 @@ echo -n "Checking out $REVISION... "
 git checkout $REVISION
 echo "ok"
 
-BUILD_FLAGS="-x -a -o"
+BUILD_FLAGS="-a -o"
 POSTFIX=""
 
 if [ $PPROF = true ]
