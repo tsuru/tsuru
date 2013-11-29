@@ -15,9 +15,17 @@ echo -n "Downloading dependencies... "
 go get -u -d github.com/globocom/tsuru/cmd/tsr
 echo "ok"
 
+pushd $GOPATH/src/github.com/globocom/tsuru
+
 echo -n "Checking out $REVISION... "
 git checkout $REVISION
 echo "ok"
+
+echo -n "Restoring dependencies version... "
+godep restore ./...
+echo "ok"
+
+popd
 
 BUILD_FLAGS="-a -o"
 POSTFIX=""
