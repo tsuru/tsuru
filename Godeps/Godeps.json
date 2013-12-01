@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/globocom/tsuru",
-	"GoVersion": "devel +bddf2a72f5e1 Wed Nov 27 19:32:15 2013 +1100",
+	"GoVersion": "devel +1d23464b2d2f Thu Oct 17 11:48:27 2013 +1100",
 	"Packages": [
 		"./..."
 	],
@@ -30,8 +30,8 @@
 		},
 		{
 			"ImportPath": "github.com/dotcloud/docker",
-			"Comment": "v0.6.3",
-			"Rev": "b0a49a30c78e8cafecac455aa0a306ac1792a644"
+			"Comment": "v0.6.4",
+			"Rev": "e8da76605f11c10d964c251a944ca5cbcdf1518a"
 		},
 		{
 			"ImportPath": "github.com/dotcloud/tar",
@@ -47,7 +47,7 @@
 		},
 		{
 			"ImportPath": "github.com/fsouza/go-dockerclient",
-			"Rev": "8774c0b9482d4ed1e51b3e188a75bc63dfc79fa6"
+			"Rev": "a036123c63e7781fc7ecb1dd01db2a537de57b98"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
