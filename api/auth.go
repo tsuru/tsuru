@@ -50,11 +50,12 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 	if _, err := c.NewUser(u.Email, keyToMap(u.Keys)); err != nil {
 		return fmt.Errorf("Failed to create user in the git server: %s", err)
 	}
+	u.Quota = -1
+	if limit, err := config.GetInt("quota:apps-per-user"); err == nil && limit > -1 {
+		u.Quota = limit
+	}
 	if err := u.Create(); err == nil {
 		rec.Log(u.Email, "create-user")
-		if limit, err := config.GetUint("quota:apps-per-user"); err == nil {
-			quota.Create(u.Email, uint(limit))
-		}
 		w.WriteHeader(http.StatusCreated)
 		return nil
 	}
