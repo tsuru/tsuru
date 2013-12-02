@@ -1487,31 +1487,6 @@ func (s *AuthSuite) TestRemoveUser(c *gocheck.C) {
 	c.Assert(action, testing.IsRecorded)
 }
 
-func (s *AuthSuite) TestRemoveUserWithQuota(c *gocheck.C) {
-	// The setting doesn't matter, it must always delete the quota.
-	err := quota.Create("clap@yes.com", 10)
-	c.Assert(err, gocheck.IsNil)
-	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
-	defer ts.Close()
-	conn, _ := db.Conn()
-	defer conn.Close()
-	u := auth.User{Email: "clap@yes.com", Password: "clapyes"}
-	err = u.Create()
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Users().Remove(bson.M{"email": u.Email})
-	token, err := u.CreateToken("clapyes")
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Tokens().Remove(bson.M{"token": token.Token})
-	request, err := http.NewRequest("DELETE", "/users", nil)
-	c.Assert(err, gocheck.IsNil)
-	recorder := httptest.NewRecorder()
-	err = removeUser(recorder, request, token)
-	c.Assert(err, gocheck.IsNil)
-	err = quota.Reserve("clap@yes.com", "something")
-	c.Assert(err, gocheck.Equals, quota.ErrQuotaNotFound)
-}
-
 func (s *AuthSuite) TestRemoveUserWithTheUserBeingLastMemberOfATeam(c *gocheck.C) {
 	h := testHandler{}
 	ts := s.startGandalfTestServer(&h)

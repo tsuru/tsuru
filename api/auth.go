@@ -16,7 +16,6 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/log"
-	"github.com/globocom/tsuru/quota"
 	"github.com/globocom/tsuru/rec"
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/validation"
@@ -595,7 +594,6 @@ Please remove the team, then remove the user.`, team.Name)
 		log.Errorf("Failed to remove user from gandalf: %s", err)
 		return fmt.Errorf("Failed to remove the user from the git server: %s", err)
 	}
-	quota.Delete(u.Email)
 	return conn.Users().Remove(bson.M{"email": u.Email})
 }
 
