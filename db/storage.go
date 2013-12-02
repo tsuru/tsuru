@@ -5,22 +5,15 @@
 // Package db encapsulates tsuru connection with MongoDB.
 //
 // The function Open dials to MongoDB and returns a connection (represented by
-// the Storage type). It manages an internal pool of connections, and
+// the storage.Storage type). It manages an internal pool of connections, and
 // reconnects in case of failures. That means that you should not store
 // references to the connection, but always call Open.
 package db
 
 import (
+	"github.com/globocom/go-mgo"
 	"github.com/globocom/config"
 	"labix.org/v2/mgo"
-	"sync"
-	"time"
-)
-
-var (
-	conn   = make(map[string]*session) // pool of connections
-	mut    sync.RWMutex                // for pool thread safety
-	ticker *time.Ticker                // for garbage collection
 )
 
 const (
@@ -28,79 +21,13 @@ const (
 	DefaultDatabaseName = "tsuru"
 )
 
-const period time.Duration = 7 * 24 * time.Hour
-
-type session struct {
-	s    *mgo.Session
-	used time.Time
-}
-
-// Storage holds the connection with the database.
-type Storage struct {
-	session *mgo.Session
-	dbname  string
-}
-
-// Collection represents a database collection. It embeds mgo.Collection for
-// operations, and holds a session to MongoDB. The user may close the session
-// using the method close.
-type Collection struct {
-	*mgo.Collection
-}
-
-// Close closes the session with the database.
-func (c *Collection) Close() {
-	c.Collection.Database.Session.Close()
-}
-
-func open(addr, dbname string) (*Storage, error) {
-	sess, err := mgo.Dial(addr)
-	if err != nil {
-		return nil, err
-	}
-	copy := sess.Clone()
-	storage := &Storage{session: copy, dbname: dbname}
-	mut.Lock()
-	conn[addr] = &session{s: sess, used: time.Now()}
-	mut.Unlock()
-	return storage, nil
-}
-
-// Open dials to the MongoDB database, and return the connection (represented
-// by the type Storage).
-//
-// addr is a MongoDB connection URI, and dbname is the name of the database.
-//
-// This function returns a pointer to a Storage, or a non-nil error in case of
-// any failure.
-func Open(addr, dbname string) (storage *Storage, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			storage, err = open(addr, dbname)
-		}
-	}()
-	mut.RLock()
-	if session, ok := conn[addr]; ok {
-		mut.RUnlock()
-		if err = session.s.Ping(); err == nil {
-			mut.Lock()
-			session.used = time.Now()
-			conn[addr] = session
-			mut.Unlock()
-			copy := session.s.Clone()
-			return &Storage{copy, dbname}, nil
-		}
-		return open(addr, dbname)
-	}
-	mut.RUnlock()
-	return open(addr, dbname)
-}
+type tsrStorage storage.Storage
 
 // Conn reads the tsuru config and calls Open to get a database connection.
 //
 // Most tsuru packages should probably use this function. Open is intended for
 // use when supporting more than one database.
-func Conn() (*Storage, error) {
+func Conn() (*storage.Storage, error) {
 	url, _ := config.GetString("database:url")
 	if url == "" {
 		url = DefaultDatabaseURL
@@ -109,45 +36,41 @@ func Conn() (*Storage, error) {
 	if dbname == "" {
 		dbname = DefaultDatabaseName
 	}
-	return Open(url, dbname)
-}
-
-// Close closes the storage, releasing the connection.
-func (s *Storage) Close() {
-	s.session.Close()
-}
-
-// Collection returns a collection by its name.
-//
-// If the collection does not exist, MongoDB will create it.
-func (s *Storage) Collection(name string) *Collection {
-	return &Collection{s.session.DB(s.dbname).C(name)}
+	return storage.Open(url, dbname)
 }
 
 // Apps returns the apps collection from MongoDB.
-func (s *Storage) Apps() *Collection {
+func (s *tsrStorage) Apps() *storage.Collection {
 	nameIndex := mgo.Index{Key: []string{"name"}, Unique: true}
-	c := s.Collection("apps")
+    var strg interface{}
+    strg = s
+	c := strg.(*storage.Storage).Collection("apps")
 	c.EnsureIndex(nameIndex)
 	return c
 }
 
-func (s *Storage) Deploys() *Collection {
-	return s.Collection("deploys")
+func (s *tsrStorage) Deploys() *storage.Collection {
+    var strg interface{}
+    strg = s
+	return strg.(*storage.Storage).Collection("deploys")
 }
 
 // Platforms returns the platforms collection from MongoDB.
-func (s *Storage) Platforms() *Collection {
-	return s.Collection("platforms")
+func (s *tsrStorage) Platforms() *storage.Collection {
+    var strg interface{}
+    strg = s
+	return strg.(*storage.Storage).Collection("platforms")
 }
 
 // Logs returns the logs collection from MongoDB.
-func (s *Storage) Logs() *Collection {
+func (s *tsrStorage) Logs() *storage.Collection {
 	appNameIndex := mgo.Index{Key: []string{"appname"}}
 	sourceIndex := mgo.Index{Key: []string{"source"}}
 	dateAscIndex := mgo.Index{Key: []string{"date"}}
 	dateDescIndex := mgo.Index{Key: []string{"-date"}}
-	c := s.Collection("logs")
+    var strg interface{}
+    strg = s
+	c := strg.(*storage.Storage).Collection("logs")
 	c.EnsureIndex(appNameIndex)
 	c.EnsureIndex(sourceIndex)
 	c.EnsureIndex(dateAscIndex)
@@ -156,71 +79,60 @@ func (s *Storage) Logs() *Collection {
 }
 
 // Services returns the services collection from MongoDB.
-func (s *Storage) Services() *Collection {
-	c := s.Collection("services")
-	return c
+func (s *tsrStorage) Services() *storage.Collection {
+    var strg interface{}
+    strg = s
+	return strg.(*storage.Storage).Collection("services")
 }
 
 // ServiceInstances returns the services_instances collection from MongoDB.
-func (s *Storage) ServiceInstances() *Collection {
-	return s.Collection("service_instances")
+func (s *tsrStorage) ServiceInstances() *storage.Collection {
+    var strg interface{}
+    strg = s
+	return strg.(*storage.Storage).Collection("service_instances")
 }
 
 // Users returns the users collection from MongoDB.
-func (s *Storage) Users() *Collection {
+func (s *tsrStorage) Users() *storage.Collection {
 	emailIndex := mgo.Index{Key: []string{"email"}, Unique: true}
-	c := s.Collection("users")
+    var strg interface{}
+    strg = s
+    c := strg.(*storage.Storage).Collection("users")
 	c.EnsureIndex(emailIndex)
 	return c
 }
 
-func (s *Storage) Tokens() *Collection {
-	return s.Collection("tokens")
+func (s *tsrStorage) Tokens() *storage.Collection {
+    var strg interface{}
+    strg = s
+	return strg.(*storage.Storage).Collection("tokens")
 }
 
-func (s *Storage) PasswordTokens() *Collection {
-	return s.Collection("password_tokens")
+func (s *tsrStorage) PasswordTokens() *storage.Collection {
+    var strg interface{}
+    strg = s
+	return strg.(*storage.Storage).Collection("password_tokens")
 }
 
-func (s *Storage) UserActions() *Collection {
-	return s.Collection("user_actions")
+func (s *tsrStorage) UserActions() *storage.Collection {
+    var strg interface{}
+    strg = s
+	return strg.(*storage.Storage).Collection("user_actions")
 }
 
 // Teams returns the teams collection from MongoDB.
-func (s *Storage) Teams() *Collection {
-	return s.Collection("teams")
+func (s *tsrStorage) Teams() *storage.Collection {
+    var strg interface{}
+    strg = s
+	return strg.(*storage.Storage).Collection("teams")
 }
 
 // Quota returns the quota collection from MongoDB.
-func (s *Storage) Quota() *Collection {
+func (s *tsrStorage) Quota() *storage.Collection {
 	userIndex := mgo.Index{Key: []string{"owner"}, Unique: true}
-	c := s.Collection("quota")
+    var strg interface{}
+    strg = s
+	c := strg.(*storage.Storage).Collection("quota")
 	c.EnsureIndex(userIndex)
 	return c
-}
-
-func init() {
-	ticker = time.NewTicker(time.Hour)
-	go retire(ticker)
-}
-
-// retire retires old connections
-func retire(t *time.Ticker) {
-	for _ = range t.C {
-		now := time.Now()
-		var old []string
-		mut.RLock()
-		for k, v := range conn {
-			if now.Sub(v.used) >= period {
-				old = append(old, k)
-			}
-		}
-		mut.RUnlock()
-		mut.Lock()
-		for _, c := range old {
-			conn[c].s.Close()
-			delete(conn, c)
-		}
-		mut.Unlock()
-	}
 }
