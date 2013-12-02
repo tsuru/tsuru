@@ -416,6 +416,22 @@ func (s *InstanceSuite) TestCreateServiceInstance(c *gocheck.C) {
 	c.Assert(atomic.LoadInt32(&requests), gocheck.Equals, int32(1))
 }
 
+func (s *InstanceSuite) TestCreateServiceInstanceNameShouldBeUnique(c *gocheck.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer ts.Close()
+	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().RemoveId(srv.Name)
+	err = CreateServiceInstance("instance", &srv, s.user)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
+	err = CreateServiceInstance("instance", &srv, s.user)
+	c.Assert(err, gocheck.Equals, ErrInstanceNameAlreadyExists)
+}
+
 func (s *InstanceSuite) TestCreateServiceInstanceRestrictedService(c *gocheck.C) {
 	var requests int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

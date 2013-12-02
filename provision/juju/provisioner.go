@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/deploy"
@@ -529,4 +530,8 @@ func unitNotFound(unitName string, output []byte) bool {
 		}
 	}
 	return false
+}
+
+func (p *JujuProvisioner) DeployPipeline() *action.Pipeline {
+	return nil
 }

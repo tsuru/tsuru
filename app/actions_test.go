@@ -5,6 +5,7 @@
 package app
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"github.com/globocom/config"
@@ -21,6 +22,7 @@ import (
 	"launchpad.net/gocheck"
 	"sort"
 	"strings"
+	"time"
 )
 
 func (s *S) TestReserveUserAppName(c *gocheck.C) {
@@ -1120,4 +1122,88 @@ func (s *S) TestSaveNewUnitsInDatabaseBackward(c *gocheck.C) {
 
 func (s *S) TestSaveNewUnitsMinParams(c *gocheck.C) {
 	c.Assert(saveNewUnitsInDatabase.MinParams, gocheck.Equals, 1)
+}
+
+func (s *S) TestProvisionerDeployName(c *gocheck.C) {
+	c.Assert(ProvisionerDeploy.Name, gocheck.Equals, "provisioner-deploy")
+}
+
+func (s *S) TestProvisionerDeployMinParams(c *gocheck.C) {
+	c.Assert(ProvisionerDeploy.MinParams, gocheck.Equals, 3)
+}
+
+func (s *S) TestProvisionerDeployForward(c *gocheck.C) {
+	a := App{
+		Name:     "someApp",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
+		Units:    []Unit{{Name: "i-0800", State: "started"}},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	writer := &bytes.Buffer{}
+	ctx := action.FWContext{Params: []interface{}{&a, "version", writer}}
+	_, err = ProvisionerDeploy.Forward(ctx)
+	c.Assert(err, gocheck.IsNil)
+	logs := writer.String()
+	c.Assert(logs, gocheck.Equals, "Deploy called")
+}
+
+func (s *S) TestProvisionerDeployParams(c *gocheck.C) {
+	a := App{
+		Name:     "someApp",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
+		Units:    []Unit{{Name: "i-0800", State: "started"}},
+	}
+	ctx := action.FWContext{Params: []interface{}{&a, "version", ""}}
+	_, err := ProvisionerDeploy.Forward(ctx)
+	c.Assert(err.Error(), gocheck.Equals, "Third parameter must be a io.Writer.")
+	ctx = action.FWContext{Params: []interface{}{&a, 0, ""}}
+	_, err = ProvisionerDeploy.Forward(ctx)
+	c.Assert(err.Error(), gocheck.Equals, "Second parameter must be a string.")
+	ctx = action.FWContext{Params: []interface{}{"", 0, ""}}
+	_, err = ProvisionerDeploy.Forward(ctx)
+	c.Assert(err.Error(), gocheck.Equals, "First parameter must be a *App.")
+}
+
+func (s *S) TestIncrementDeployName(c *gocheck.C) {
+	c.Assert(IncrementDeploy.Name, gocheck.Equals, "increment-deploy")
+}
+
+func (s *S) TestIncrementDeployMinParams(c *gocheck.C) {
+	c.Assert(IncrementDeploy.MinParams, gocheck.Equals, 1)
+}
+
+func (s *S) TestIncrementDeployForward(c *gocheck.C) {
+	a := App{
+		Name:     "otherapp",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+		Units:    []Unit{{Name: "i-0800", State: "started"}},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	writer := &bytes.Buffer{}
+	ctx := action.FWContext{Params: []interface{}{&a, "version", writer}}
+	_, err = IncrementDeploy.Forward(ctx)
+	c.Assert(err, gocheck.IsNil)
+	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
+	c.Assert(a.Deploys, gocheck.Equals, uint(1))
+	var result map[string]interface{}
+	s.conn.Deploys().Find(bson.M{"app": a.Name}).One(&result)
+	c.Assert(result["app"], gocheck.Equals, a.Name)
+	now := time.Now()
+	diff := now.Sub(result["timestamp"].(time.Time))
+	c.Assert(diff < 60*time.Second, gocheck.Equals, true)
+}
+
+func (s *S) TestIncrementDeployParams(c *gocheck.C) {
+	ctx := action.FWContext{Params: []interface{}{"", "", ""}}
+	_, err := IncrementDeploy.Forward(ctx)
+	c.Assert(err.Error(), gocheck.Equals, "First parameter must be a *App.")
 }

@@ -5,6 +5,7 @@
 package testing
 
 import (
+	"errors"
 	"github.com/globocom/tsuru/fs"
 	"io/ioutil"
 	"launchpad.net/gocheck"
@@ -361,12 +362,12 @@ func (s *S) TestRecordingFsStat(c *gocheck.C) {
 	c.Assert(fs.HasAction("stat /my/file"), gocheck.Equals, true)
 }
 
-func (s *S) TestFailureFsPointerImplementsFsInterface(c *gocheck.C) {
-	var _ fs.Fs = &FailureFs{}
+func (s *S) TestFileNotFoundFsPointerImplementsFsInterface(c *gocheck.C) {
+	var _ fs.Fs = &FileNotFoundFs{}
 }
 
-func (s *S) TestFailureFsOpen(c *gocheck.C) {
-	fs := FailureFs{}
+func (s *S) TestFileNotFoundFsOpen(c *gocheck.C) {
+	fs := FileNotFoundFs{}
 	f, err := fs.Open("/my/file")
 	c.Assert(f, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
@@ -376,8 +377,8 @@ func (s *S) TestFailureFsOpen(c *gocheck.C) {
 	c.Assert(fs.HasAction("open /my/file"), gocheck.Equals, true)
 }
 
-func (s *S) TestFailureFsRemove(c *gocheck.C) {
-	fs := FailureFs{}
+func (s *S) TestFileNotFoundFsRemove(c *gocheck.C) {
+	fs := FileNotFoundFs{}
 	err := fs.Remove("/my/file")
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err, gocheck.FitsTypeOf, &os.PathError{})
@@ -386,8 +387,8 @@ func (s *S) TestFailureFsRemove(c *gocheck.C) {
 	c.Assert(fs.HasAction("remove /my/file"), gocheck.Equals, true)
 }
 
-func (s *S) TestFailureFsOpenFile(c *gocheck.C) {
-	fs := FailureFs{}
+func (s *S) TestFileNotFoundFsOpenFile(c *gocheck.C) {
+	fs := FileNotFoundFs{}
 	f, err := fs.OpenFile("/my/file", 0, 0600)
 	c.Assert(f, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
@@ -397,12 +398,20 @@ func (s *S) TestFailureFsOpenFile(c *gocheck.C) {
 	c.Assert(fs.HasAction("open /my/file"), gocheck.Equals, true)
 }
 
-func (s *S) TestFailureFsRemoveAll(c *gocheck.C) {
-	fs := FailureFs{}
+func (s *S) TestFileNotFoundFsRemoveAll(c *gocheck.C) {
+	fs := FileNotFoundFs{}
 	err := fs.RemoveAll("/my/file")
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err, gocheck.FitsTypeOf, &os.PathError{})
 	c.Assert(err.(*os.PathError).Err, gocheck.DeepEquals, syscall.ENOENT)
 	c.Assert(err.(*os.PathError).Path, gocheck.Equals, "/my/file")
 	c.Assert(fs.HasAction("removeall /my/file"), gocheck.Equals, true)
+}
+
+func (s *S) TestFailureFsOpen(c *gocheck.C) {
+	origErr := errors.New("something went wrong")
+	fs := FailureFs{Err: origErr}
+	file, gotErr := fs.Open("/wat")
+	c.Assert(file, gocheck.IsNil)
+	c.Assert(gotErr, gocheck.Equals, origErr)
 }

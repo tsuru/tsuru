@@ -1540,7 +1540,7 @@ func (s *AuthSuite) TestRemoveUserWithTheUserBeingLastMemberOfATeam(c *gocheck.C
 	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
 	expected := `This user is the last member of the team "painofsalvation", so it cannot be removed.
 
-Please remove the team, them remove the user.`
+Please remove the team, then remove the user.`
 	c.Assert(e.Message, gocheck.Equals, expected)
 }
 

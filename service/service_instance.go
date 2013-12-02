@@ -20,9 +20,10 @@ import (
 )
 
 var (
-	ErrServiceInstanceNotFound = stderrors.New("Service instance not found")
-	ErrInvalidInstanceName     = stderrors.New("Invalid service instance name")
-	ErrAccessNotAllowed        = stderrors.New("User does not have access to this service instance")
+	ErrServiceInstanceNotFound   = stderrors.New("Service instance not found")
+	ErrInvalidInstanceName       = stderrors.New("Invalid service instance name")
+	ErrInstanceNameAlreadyExists = stderrors.New("Instance name already exists.")
+	ErrAccessNotAllowed          = stderrors.New("User does not have access to this service instance")
 
 	instanceNameRegexp = regexp.MustCompile(`^[A-Za-z][-a-zA-Z0-9_]+$`)
 )
@@ -183,6 +184,7 @@ func (si *ServiceInstance) BindApp(app bind.App) error {
 		}
 		return app.SetEnvs(envVars, false)
 	case err = <-errChan:
+		log.Error(err.Error())
 	}
 	return err
 }
@@ -252,9 +254,26 @@ func genericServiceInstancesFilter(services interface{}, teams []string) (q, f b
 	return
 }
 
-func CreateServiceInstance(name string, service *Service, user *auth.User) error {
+func validateServiceInstanceName(name string) error {
 	if !instanceNameRegexp.MatchString(name) {
 		return ErrInvalidInstanceName
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return nil
+	}
+	defer conn.Close()
+	length, err := conn.ServiceInstances().Find(bson.M{"name": name}).Count()
+	if length > 0 {
+		return ErrInstanceNameAlreadyExists
+	}
+	return nil
+}
+
+func CreateServiceInstance(name string, service *Service, user *auth.User) error {
+	err := validateServiceInstanceName(name)
+	if err != nil {
+		return err
 	}
 	instance := ServiceInstance{
 		Name:        name,

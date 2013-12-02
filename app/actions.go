@@ -18,6 +18,7 @@ import (
 	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/quota"
 	"github.com/globocom/tsuru/repository"
+	"io"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/iam"
@@ -479,6 +480,46 @@ var saveNewUnitsInDatabase = action.Action{
 		}
 		go Enqueue(messages...)
 		return nil, nil
+	},
+	MinParams: 1,
+}
+
+// ProvisionerDeploy is an actions that call the Provisioner.Deploy.
+var ProvisionerDeploy = action.Action{
+	Name: "provisioner-deploy",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		app, ok := ctx.Params[0].(*App)
+		if !ok {
+			return nil, errors.New("First parameter must be a *App.")
+		}
+		version, ok := ctx.Params[1].(string)
+		if !ok {
+			return nil, errors.New("Second parameter must be a string.")
+		}
+		logWriter, ok := ctx.Params[2].(io.Writer)
+		if !ok {
+			return nil, errors.New("Third parameter must be a io.Writer.")
+		}
+		err := Provisioner.Deploy(app, version, logWriter)
+		return nil, err
+	},
+	Backward: func(ctx action.BWContext) {
+	},
+	MinParams: 3,
+}
+
+// Increment is an actions that increments the deploy number.
+var IncrementDeploy = action.Action{
+	Name: "increment-deploy",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		app, ok := ctx.Params[0].(*App)
+		if !ok {
+			return nil, errors.New("First parameter must be a *App.")
+		}
+		err := incrementDeploy(app)
+		return nil, err
+	},
+	Backward: func(ctx action.BWContext) {
 	},
 	MinParams: 1,
 }

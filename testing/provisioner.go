@@ -7,6 +7,7 @@ package testing
 import (
 	"errors"
 	"fmt"
+	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/provision"
@@ -222,12 +223,14 @@ type failure struct {
 
 // Fake implementation for provision.Provisioner.
 type FakeProvisioner struct {
-	cmds     []Cmd
-	cmdMut   sync.Mutex
-	outputs  chan []byte
-	failures chan failure
-	apps     map[string]provisionedApp
-	mut      sync.RWMutex
+	cmds             []Cmd
+	cmdMut           sync.Mutex
+	outputs          chan []byte
+	failures         chan failure
+	apps             map[string]provisionedApp
+	mut              sync.RWMutex
+	executedPipeline bool
+	CustomPipeline   bool
 }
 
 func NewFakeProvisioner() *FakeProvisioner {
@@ -236,6 +239,28 @@ func NewFakeProvisioner() *FakeProvisioner {
 	p.failures = make(chan failure, 8)
 	p.apps = make(map[string]provisionedApp)
 	return &p
+}
+
+func (p *FakeProvisioner) ExecutedPipeline() bool {
+	return p.executedPipeline
+}
+
+func (p *FakeProvisioner) DeployPipeline() *action.Pipeline {
+	if p.CustomPipeline {
+		act := action.Action{
+			Name: "change-executed-pipeline",
+			Forward: func(ctx action.FWContext) (action.Result, error) {
+				p.executedPipeline = true
+				return nil, nil
+			},
+			Backward: func(ctx action.BWContext) {
+			},
+		}
+		actions := []*action.Action{&act}
+		pipeline := action.NewPipeline(actions...)
+		return pipeline
+	}
+	return nil
 }
 
 func (p *FakeProvisioner) getError(method string) error {

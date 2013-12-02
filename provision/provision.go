@@ -8,6 +8,7 @@ package provision
 
 import (
 	"fmt"
+	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/cmd"
 	"io"
@@ -154,6 +155,9 @@ type Provisioner interface {
 
 	// Swap change the router between two apps.
 	Swap(App, App) error
+
+	// DeployPipeline returns actions that should be executed on deploy.
+	DeployPipeline() *action.Pipeline
 }
 
 // Commandable is a provisioner that provides commands to extend the tsr

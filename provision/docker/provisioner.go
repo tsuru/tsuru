@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/db"
@@ -103,14 +104,12 @@ func injectEnvsAndRestart(a provision.App) {
 }
 
 func startInBackground(a provision.App, c container, imageId string, w io.Writer, started chan bool) {
-	newContainer, err := start(a, imageId, w)
+	_, err := start(a, imageId, w)
 	if err != nil {
 		log.Errorf("error on start the app %s - %s", a.GetName(), err)
 		started <- false
 		return
 	}
-	msg := queue.Message{Action: app.BindService, Args: []string{a.GetName(), newContainer.ID}}
-	go app.Enqueue(msg)
 	if c.ID != "" {
 		if a.RemoveUnit(c.ID) != nil {
 			removeContainer(&c)
@@ -143,7 +142,6 @@ func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer)
 	}
 	if <-started {
 		fmt.Fprint(w, "\n ---> App will be restarted, please check its logs for more details...\n\n")
-		go injectEnvsAndRestart(a)
 	} else {
 		fmt.Fprint(w, "\n ---> App failed to start, please check its logs for more details...\n\n")
 	}
@@ -322,4 +320,16 @@ func collection() *db.Collection {
 		log.Errorf("Failed to connect to the database: %s", err)
 	}
 	return conn.Collection(name)
+}
+
+func (p *dockerProvisioner) DeployPipeline() *action.Pipeline {
+	actions := []*action.Action{
+		&app.ProvisionerDeploy,
+		&app.IncrementDeploy,
+		&saveUnits,
+		&injectEnvirons,
+		&bindService,
+	}
+	pipeline := action.NewPipeline(actions...)
+	return pipeline
 }

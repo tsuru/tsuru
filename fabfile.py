@@ -20,8 +20,8 @@ def build(flags="", tags=""):
         abort("tsuru must be built on linux_amd64 for deployment, " +
               "you're on %s_%s" % (goos, goarch))
     local("mkdir -p dist")
-    local("go clean ./...")
-    local("go build %s -a -o dist/tsr ./cmd/tsr" % flags)
+    local("godep go clean ./...")
+    local("godep go build %s -a -o dist/tsr ./cmd/tsr" % flags)
 
 
 def clean():

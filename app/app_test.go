@@ -1862,19 +1862,40 @@ func (s *S) TestGetDeploys(c *gocheck.C) {
 	c.Assert(a.GetDeploys(), gocheck.Equals, a.Deploys)
 }
 
-func (s *S) TestListDeploys(c *gocheck.C) {
+func (s *S) TestListAppDeploys(c *gocheck.C) {
+	s.conn.Deploys().RemoveAll(nil)
 	a := App{Name: "g1"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	insert := []interface{}{
-		Deploy{App: "g1", Timestamp: time.Now().Add(-60 * time.Second)},
+		Deploy{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
 		Deploy{App: "g1", Timestamp: time.Now()},
 	}
 	s.conn.Deploys().Insert(insert...)
 	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
-	expected := []Deploy{insert[0].(Deploy), insert[1].(Deploy)}
+	expected := []Deploy{insert[1].(Deploy), insert[0].(Deploy)}
 	deploys, err := a.ListDeploys()
+	c.Assert(err, gocheck.IsNil)
+	for i := 0; i < 2; i++ {
+		ts := expected[i].Timestamp
+		expected[i].Timestamp = time.Date(ts.Year(), ts.Month(), ts.Day(), ts.Hour(), ts.Minute(), ts.Second(), 0, time.UTC)
+		ts = deploys[i].Timestamp
+		deploys[i].Timestamp = time.Date(ts.Year(), ts.Month(), ts.Day(), ts.Hour(), ts.Minute(), ts.Second(), 0, time.UTC)
+	}
+	c.Assert(deploys, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestListAllDeploys(c *gocheck.C) {
+	s.conn.Deploys().RemoveAll(nil)
+	insert := []interface{}{
+		Deploy{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
+		Deploy{App: "ge", Timestamp: time.Now()},
+	}
+	s.conn.Deploys().Insert(insert...)
+	defer s.conn.Deploys().RemoveAll(nil)
+	expected := []Deploy{insert[1].(Deploy), insert[0].(Deploy)}
+	deploys, err := ListDeploys()
 	c.Assert(err, gocheck.IsNil)
 	for i := 0; i < 2; i++ {
 		ts := expected[i].Timestamp
@@ -1924,4 +1945,70 @@ func (s *S) TestSwap(c *gocheck.C) {
 	app2 := &App{}
 	err := Swap(app1, app2)
 	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestDeployApp(c *gocheck.C) {
+	a := App{
+		Name:     "someApp",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
+		Units:    []Unit{{Name: "i-0800", State: "started"}},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	writer := &bytes.Buffer{}
+	err = DeployApp(&a, "version", writer)
+	c.Assert(err, gocheck.IsNil)
+	logs := writer.String()
+	c.Assert(logs, gocheck.Equals, "Deploy called")
+}
+
+func (s *S) TestDeployAppIncrementDeployNumber(c *gocheck.C) {
+	a := App{
+		Name:     "otherapp",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+		Units:    []Unit{{Name: "i-0800", State: "started"}},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	writer := &bytes.Buffer{}
+	err = DeployApp(&a, "version", writer)
+	c.Assert(err, gocheck.IsNil)
+	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
+	c.Assert(a.Deploys, gocheck.Equals, uint(1))
+	var result map[string]interface{}
+	s.conn.Deploys().Find(bson.M{"app": a.Name}).One(&result)
+	c.Assert(result["app"], gocheck.Equals, a.Name)
+	now := time.Now()
+	diff := now.Sub(result["timestamp"].(time.Time))
+	c.Assert(diff < 60*time.Second, gocheck.Equals, true)
+}
+
+func (s *S) TestDeployCustomPipeline(c *gocheck.C) {
+	a := App{
+		Name:     "otherapp",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+		Units:    []Unit{{Name: "i-0800", State: "started"}},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	writer := &bytes.Buffer{}
+	err = DeployApp(&a, "version", writer)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(s.provisioner.ExecutedPipeline(), gocheck.Equals, false)
+	s.provisioner.CustomPipeline = true
+	err = DeployApp(&a, "version", writer)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(s.provisioner.ExecutedPipeline(), gocheck.Equals, true)
 }

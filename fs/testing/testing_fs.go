@@ -269,30 +269,41 @@ func (r *RecordingFs) Stat(name string) (os.FileInfo, error) {
 	return nil, nil
 }
 
-// FailureFs is like RecordingFs, except that it returns ENOENT on Open,
+// FileNotFoundFs is like RecordingFs, except that it returns ENOENT on Open,
 // OpenFile and Remove.
-type FailureFs struct {
+type FileNotFoundFs struct {
 	RecordingFs
 }
 
-// Open is used to simulate ENOENT.
-func (r *FailureFs) Open(name string) (fs.File, error) {
+func (r *FileNotFoundFs) Open(name string) (fs.File, error) {
 	r.RecordingFs.Open(name)
 	err := os.PathError{Err: syscall.ENOENT, Path: name}
 	return nil, &err
 }
 
-func (r *FailureFs) Remove(name string) error {
+func (r *FileNotFoundFs) Remove(name string) error {
 	r.RecordingFs.Remove(name)
 	return &os.PathError{Err: syscall.ENOENT, Path: name}
 }
 
-func (r *FailureFs) RemoveAll(path string) error {
+func (r *FileNotFoundFs) RemoveAll(path string) error {
 	r.RecordingFs.RemoveAll(path)
 	return &os.PathError{Err: syscall.ENOENT, Path: path}
 }
 
-func (r *FailureFs) OpenFile(name string, flag int, perm os.FileMode) (fs.File, error) {
+func (r *FileNotFoundFs) OpenFile(name string, flag int, perm os.FileMode) (fs.File, error) {
 	r.RecordingFs.OpenFile(name, flag, perm)
 	return r.Open(name)
+}
+
+// FailureFs is like RecordingFs, except the it returns an arbitrary error on
+// operations.
+type FailureFs struct {
+	RecordingFs
+	Err error
+}
+
+func (r *FailureFs) Open(name string) (fs.File, error) {
+	r.RecordingFs.Open(name)
+	return nil, r.Err
 }

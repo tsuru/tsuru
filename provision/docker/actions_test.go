@@ -7,9 +7,13 @@ package docker
 import (
 	dockerClient "github.com/fsouza/go-dockerclient"
 	"github.com/globocom/tsuru/action"
+	"github.com/globocom/tsuru/app"
+	"github.com/globocom/tsuru/db"
 	rtesting "github.com/globocom/tsuru/router/testing"
 	"github.com/globocom/tsuru/testing"
+	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
+	"time"
 )
 
 func (s *S) TestCreateContainerName(c *gocheck.C) {
@@ -130,7 +134,7 @@ func (s *S) TestSetImage(c *gocheck.C) {
 	c.Assert(cont.HostPort, gocheck.Not(gocheck.Equals), "")
 }
 
-func (s *S) TestStartContainer(c *gocheck.C) {
+func (s *S) TestStartContainerForward(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	conta, err := s.newContainer(nil)
@@ -142,4 +146,139 @@ func (s *S) TestStartContainer(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	cont = r.(container)
 	c.Assert(cont, gocheck.FitsTypeOf, container{})
+}
+
+func (s *S) TestStartContainerBackward(c *gocheck.C) {
+	dcli, err := dockerClient.NewClient(s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	err = newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	defer dcli.RemoveImage("tsuru/python")
+	conta, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(conta)
+	cont := *conta
+	err = dcli.StartContainer(cont.ID, nil)
+	c.Assert(err, gocheck.IsNil)
+	context := action.BWContext{FWResult: cont}
+	startContainer.Backward(context)
+	cc, err := dcli.InspectContainer(cont.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(cc.State.Running, gocheck.Equals, false)
+}
+
+func (s *S) TestInjectEnvironsName(c *gocheck.C) {
+	c.Assert(injectEnvirons.Name, gocheck.Equals, "inject-environs")
+}
+
+func (s *S) TestInjectEnvironsForward(c *gocheck.C) {
+	app := testing.NewFakeApp("myapp", "python", 1)
+	context := action.FWContext{Params: []interface{}{app}}
+	_, err := injectEnvirons.Forward(context)
+	c.Assert(err, gocheck.IsNil)
+	time.Sleep(6e9)
+	c.Assert(app.GetCommands(), gocheck.DeepEquals, []string{"serialize", "restart"})
+}
+
+func (s *S) TestInjectEnvironsParams(c *gocheck.C) {
+	ctx := action.FWContext{Params: []interface{}{""}}
+	_, err := injectEnvirons.Forward(ctx)
+	c.Assert(err.Error(), gocheck.Equals, "First parameter must be a provision.App.")
+}
+
+func (s *S) TestSaveUnitsName(c *gocheck.C) {
+	c.Assert(saveUnits.Name, gocheck.Equals, "save-units")
+}
+
+func (s *S) TestSaveUnitsForward(c *gocheck.C) {
+	app := app.App{
+		Name:     "otherapp",
+		Platform: "zend",
+	}
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	err = conn.Apps().Insert(app)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": app.Name})
+	container := container{
+		ID:       "id",
+		Type:     "python",
+		HostAddr: "",
+		AppName:  app.Name,
+	}
+	coll := collection()
+	c.Assert(err, gocheck.IsNil)
+	coll.Insert(&container)
+	context := action.FWContext{Params: []interface{}{&app}}
+	_, err = saveUnits.Forward(context)
+	c.Assert(err, gocheck.IsNil)
+	err = app.Get()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.Units[0].Name, gocheck.Equals, "id")
+}
+
+func (s *S) TestSaveUnitsForwardShouldMaintainData(c *gocheck.C) {
+	app := app.App{
+		Name:     "otherapp",
+		Platform: "zend",
+		Deploys:  10,
+	}
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	err = conn.Apps().Insert(app)
+	c.Assert(err, gocheck.IsNil)
+	app.Deploys = 0
+	defer conn.Apps().Remove(bson.M{"name": app.Name})
+	container := container{
+		ID:       "id",
+		Type:     "python",
+		HostAddr: "",
+		AppName:  app.Name,
+	}
+	coll := collection()
+	c.Assert(err, gocheck.IsNil)
+	coll.Insert(&container)
+	context := action.FWContext{Params: []interface{}{&app}}
+	_, err = saveUnits.Forward(context)
+	c.Assert(err, gocheck.IsNil)
+	err = app.Get()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.Units[0].Name, gocheck.Equals, "id")
+	c.Assert(int(app.Deploys), gocheck.Equals, 10)
+}
+
+func (s *S) TestSaveUnitsParams(c *gocheck.C) {
+	context := action.FWContext{Params: []interface{}{""}}
+	_, err := saveUnits.Forward(context)
+	c.Assert(err.Error(), gocheck.Equals, "First parameter must be a *app.App.")
+}
+
+func (s *S) TestbindServiceName(c *gocheck.C) {
+	c.Assert(bindService.Name, gocheck.Equals, "bind-service")
+}
+
+func (s *S) TestbindServiceForward(c *gocheck.C) {
+	a := testing.NewFakeApp("cribcaged", "python", 1)
+	context := action.FWContext{Params: []interface{}{a}}
+	_, err := bindService.Forward(context)
+	c.Assert(err, gocheck.IsNil)
+	q, err := getQueue()
+	c.Assert(err, gocheck.IsNil)
+	for _, u := range a.ProvisionedUnits() {
+		message, err := q.Get(1e6)
+		c.Assert(err, gocheck.IsNil)
+		defer message.Delete()
+		c.Assert(err, gocheck.IsNil)
+		c.Assert(message.Action, gocheck.Equals, app.BindService)
+		c.Assert(message.Args[0], gocheck.Equals, a.GetName())
+		c.Assert(message.Args[1], gocheck.Equals, u.GetName())
+	}
+}
+
+func (s *S) TestbindServiceParams(c *gocheck.C) {
+	context := action.FWContext{Params: []interface{}{""}}
+	_, err := bindService.Forward(context)
+	c.Assert(err.Error(), gocheck.Equals, "First parameter must be a provision.App.")
 }

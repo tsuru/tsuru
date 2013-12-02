@@ -263,7 +263,7 @@ func (app *App) RemoveUnit(id string) error {
 		return stderr.New("Unit not found.")
 	}
 	if err := Provisioner.RemoveUnit(app, unit.GetName()); err != nil {
-		return err
+		log.Error(err.Error())
 	}
 	app.removeUnits([]int{i})
 	app.unbindUnit(&unit)
@@ -612,13 +612,22 @@ func (app *App) ListDeploys() ([]Deploy, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := conn.Deploys().Find(nil).All(&list); err != nil {
-		return []Deploy{}, err
-	}
-	if err := conn.Deploys().Find(bson.M{"app": app.Name}).All(&list); err != nil {
+	if err := conn.Deploys().Find(bson.M{"app": app.Name}).Sort("-timestamp").All(&list); err != nil {
 		return []Deploy{}, err
 	}
 	return list, nil
+}
+
+func ListDeploys() ([]Deploy, error) {
+	var list []Deploy
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	if err := conn.Deploys().Find(nil).Sort("-timestamp").All(&list); err != nil {
+		return []Deploy{}, err
+	}
+	return list, err
 }
 
 // ProvisionedUnits returns the internal list of units converted to
@@ -868,4 +877,34 @@ func List(u *auth.User) ([]App, error) {
 // Swap calls the Provisioner.Swap.
 func Swap(app1, app2 *App) error {
 	return Provisioner.Swap(app1, app2)
+}
+
+// DeployApp calls the Provisioner.Deploy
+func DeployApp(app *App, version string, writer io.Writer) error {
+	pipeline := Provisioner.DeployPipeline()
+	if pipeline == nil {
+		actions := []*action.Action{&ProvisionerDeploy, &IncrementDeploy}
+		pipeline = action.NewPipeline(actions...)
+	}
+	logWriter := LogWriter{App: app, Writer: writer}
+	return pipeline.Execute(app, version, &logWriter)
+}
+
+func incrementDeploy(app *App) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	deploy := Deploy{
+		App:       app.Name,
+		Timestamp: time.Now(),
+	}
+	if err := conn.Deploys().Insert(deploy); err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.Apps().Update(
+		bson.M{"name": app.Name},
+		bson.M{"$inc": bson.M{"deploys": 1}},
+	)
 }

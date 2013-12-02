@@ -1,12 +1,17 @@
 {
 	"ImportPath": "github.com/globocom/tsuru",
-	"GoVersion": "devel +c8d3de543c1b Fri Nov 15 11:01:54 2013 -0800",
+	"GoVersion": "devel +1d23464b2d2f Thu Oct 17 11:48:27 2013 +1100",
 	"Packages": [
 		"./..."
 	],
 	"Deps": [
 		{
 			"ImportPath": "code.google.com/p/go.crypto/bcrypt",
+			"Comment": "null-184",
+			"Rev": "cd1eea1eb82851fe9cde1d062406ca60c935ce24"
+		},
+		{
+			"ImportPath": "code.google.com/p/go.crypto/blowfish",
 			"Comment": "null-184",
 			"Rev": "cd1eea1eb82851fe9cde1d062406ca60c935ce24"
 		},
@@ -25,8 +30,8 @@
 		},
 		{
 			"ImportPath": "github.com/dotcloud/docker",
-			"Comment": "v0.6.3",
-			"Rev": "b0a49a30c78e8cafecac455aa0a306ac1792a644"
+			"Comment": "v0.6.4",
+			"Rev": "e8da76605f11c10d964c251a944ca5cbcdf1518a"
 		},
 		{
 			"ImportPath": "github.com/dotcloud/tar",
@@ -37,8 +42,12 @@
 			"Rev": "cf2b00bae0a0e4444486ff232d441ba838935462"
 		},
 		{
+			"ImportPath": "github.com/flaviamissi/go-elb/elb",
+			"Rev": "cf2b00bae0a0e4444486ff232d441ba838935462"
+		},
+		{
 			"ImportPath": "github.com/fsouza/go-dockerclient",
-			"Rev": "cf791086fadc90b3f9e2077f01a9e7a07cf36244"
+			"Rev": "a036123c63e7781fc7ecb1dd01db2a537de57b98"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
@@ -54,7 +63,11 @@
 		},
 		{
 			"ImportPath": "github.com/globocom/docker-cluster/cluster",
-			"Rev": "d9550a3f1ac79f551da906d2d85136ede69d1f24"
+			"Rev": "2f53e8661bea4b5c9d4a99e95483ac0cdad1aca4"
+		},
+		{
+			"ImportPath": "github.com/globocom/docker-cluster/storage",
+			"Rev": "2f53e8661bea4b5c9d4a99e95483ac0cdad1aca4"
 		},
 		{
 			"ImportPath": "github.com/globocom/go-gandalfclient",
@@ -93,6 +106,21 @@
 		},
 		{
 			"ImportPath": "launchpad.net/goamz/aws",
+			"Comment": "43",
+			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
+		},
+		{
+			"ImportPath": "launchpad.net/goamz/ec2",
+			"Comment": "43",
+			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
+		},
+		{
+			"ImportPath": "launchpad.net/goamz/iam",
+			"Comment": "43",
+			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
+		},
+		{
+			"ImportPath": "launchpad.net/goamz/s3",
 			"Comment": "43",
 			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
 		},

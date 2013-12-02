@@ -57,7 +57,7 @@ func (s *S) TestReadTarget(c *gocheck.C) {
 }
 
 func (s *S) TestReadTargetReturnsEmptyStringIfTheFileDoesNotExist(c *gocheck.C) {
-	fsystem = &testing.FailureFs{}
+	fsystem = &testing.FileNotFoundFs{}
 	defer func() {
 		fsystem = nil
 	}()
@@ -124,7 +124,7 @@ func (s *S) TestGetURLShouldNotPrependHTTPIfTheTargetIsHTTPs(c *gocheck.C) {
 }
 
 func (s *S) TestGetURLUndefinedTarget(c *gocheck.C) {
-	rfs := &testing.FailureFs{}
+	rfs := &testing.FileNotFoundFs{}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
