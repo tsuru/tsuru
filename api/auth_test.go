@@ -162,7 +162,7 @@ func (s *AuthSuite) TestCreateUserHandlerSavesTheUserInTheDatabase(c *gocheck.C)
 		User:   "nobody@globo.com",
 	}
 	c.Assert(action, testing.IsRecorded)
-	c.Assert(user.Quota, gocheck.Equals, -1)
+	c.Assert(user.Quota, gocheck.Equals, auth.UnlimitedQuota)
 }
 
 func (s *AuthSuite) TestCreateUserQuota(c *gocheck.C) {
@@ -194,6 +194,9 @@ func (s *AuthSuite) TestCreateUserUnlimitedQuota(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = createUser(recorder, request)
 	c.Assert(err, gocheck.IsNil)
+	user, err := auth.GetUserByEmail("nobody@globo.com")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(user.Quota, gocheck.Equals, auth.UnlimitedQuota)
 }
 
 func (s *AuthSuite) TestCreateUserNegativeQuota(c *gocheck.C) {

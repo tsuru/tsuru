@@ -30,6 +30,7 @@ const (
 	passwordError     = "Password length should be least 6 characters and at most 50 characters."
 	passwordMinLen    = 6
 	passwordMaxLen    = 50
+	UnlimitedQuota    = -1
 )
 
 var ErrUserNotFound = stderrors.New("User not found")
