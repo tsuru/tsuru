@@ -64,6 +64,7 @@ type User struct {
 	Email    string
 	Password string
 	Keys     []Key
+	Quota    int
 }
 
 func GetUserByEmail(email string) (*User, error) {
