@@ -22,7 +22,14 @@ var (
 	ErrQuotaNotFound      = errors.New("Quota not found")
 )
 
+var Unlimited = Quota{Limit: -1, InUse: 0}
+
 var locker = safe.MultiLocker()
+
+type Quota struct {
+	Limit int
+	InUse int
+}
 
 // Usage represents the usage of a user/app. It contains information about the
 // limit of items, and the current amount of items in use by the user.

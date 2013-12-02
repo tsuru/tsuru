@@ -16,6 +16,7 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/quota"
 	"github.com/globocom/tsuru/rec"
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/validation"
@@ -49,9 +50,9 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 	if _, err := c.NewUser(u.Email, keyToMap(u.Keys)); err != nil {
 		return fmt.Errorf("Failed to create user in the git server: %s", err)
 	}
-	u.Quota = -1
+	u.Quota = quota.Unlimited
 	if limit, err := config.GetInt("quota:apps-per-user"); err == nil && limit > -1 {
-		u.Quota = limit
+		u.Quota.Limit = limit
 	}
 	if err := u.Create(); err == nil {
 		rec.Log(u.Email, "create-user")

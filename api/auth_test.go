@@ -13,6 +13,7 @@ import (
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
+	"github.com/globocom/tsuru/quota"
 	"github.com/globocom/tsuru/testing"
 	"io"
 	"io/ioutil"
@@ -161,7 +162,7 @@ func (s *AuthSuite) TestCreateUserHandlerSavesTheUserInTheDatabase(c *gocheck.C)
 		User:   "nobody@globo.com",
 	}
 	c.Assert(action, testing.IsRecorded)
-	c.Assert(user.Quota, gocheck.Equals, auth.UnlimitedQuota)
+	c.Assert(user.Quota, gocheck.DeepEquals, quota.Unlimited)
 }
 
 func (s *AuthSuite) TestCreateUserQuota(c *gocheck.C) {
@@ -179,7 +180,8 @@ func (s *AuthSuite) TestCreateUserQuota(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	user, err := auth.GetUserByEmail("nobody@globo.com")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(user.Quota, gocheck.Equals, 1)
+	c.Assert(user.Quota.Limit, gocheck.Equals, 1)
+	c.Assert(user.Quota.InUse, gocheck.Equals, 0)
 }
 
 func (s *AuthSuite) TestCreateUserUnlimitedQuota(c *gocheck.C) {
@@ -195,7 +197,7 @@ func (s *AuthSuite) TestCreateUserUnlimitedQuota(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	user, err := auth.GetUserByEmail("nobody@globo.com")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(user.Quota, gocheck.Equals, auth.UnlimitedQuota)
+	c.Assert(user.Quota, gocheck.DeepEquals, quota.Unlimited)
 }
 
 func (s *AuthSuite) TestCreateUserHandlerReturnsStatus201AfterCreateTheUser(c *gocheck.C) {

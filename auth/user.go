@@ -14,6 +14,7 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/quota"
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/validation"
 	"labix.org/v2/mgo/bson"
@@ -30,7 +31,6 @@ const (
 	passwordError     = "Password length should be least 6 characters and at most 50 characters."
 	passwordMinLen    = 6
 	passwordMaxLen    = 50
-	UnlimitedQuota    = -1
 )
 
 var ErrUserNotFound = stderrors.New("User not found")
@@ -65,7 +65,7 @@ type User struct {
 	Email    string
 	Password string
 	Keys     []Key
-	Quota    int
+	quota.Quota
 }
 
 func GetUserByEmail(email string) (*User, error) {
