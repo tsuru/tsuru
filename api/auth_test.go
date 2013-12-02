@@ -13,7 +13,6 @@ import (
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
-	"github.com/globocom/tsuru/quota"
 	"github.com/globocom/tsuru/testing"
 	"io"
 	"io/ioutil"
@@ -197,23 +196,6 @@ func (s *AuthSuite) TestCreateUserUnlimitedQuota(c *gocheck.C) {
 	user, err := auth.GetUserByEmail("nobody@globo.com")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(user.Quota, gocheck.Equals, auth.UnlimitedQuota)
-}
-
-func (s *AuthSuite) TestCreateUserNegativeQuota(c *gocheck.C) {
-	config.Set("quota:apps-per-user", -20)
-	defer config.Unset("quota:apps-per-user")
-	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
-	defer ts.Close()
-	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
-	request, err := http.NewRequest("POST", "/users", b)
-	c.Assert(err, gocheck.IsNil)
-	request.Header.Set("Content-type", "application/json")
-	recorder := httptest.NewRecorder()
-	err = createUser(recorder, request)
-	c.Assert(err, gocheck.IsNil)
-	err = quota.Reserve("nobody@globo.com", "something/0")
-	c.Assert(err, gocheck.Equals, quota.ErrQuotaNotFound)
 }
 
 func (s *AuthSuite) TestCreateUserHandlerReturnsStatus201AfterCreateTheUser(c *gocheck.C) {
