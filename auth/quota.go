@@ -5,6 +5,7 @@
 package auth
 
 import (
+	"errors"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/quota"
 	"labix.org/v2/mgo"
@@ -52,4 +53,40 @@ func checkUser(email string) (*User, error) {
 		}
 	}
 	return user, nil
+}
+
+// ReleaseApp releases an app from the user list, releasing the quota spot for
+// another app.
+func ReleaseApp(user *User) error {
+	errCantRelease := errors.New("Cannot release unreserved app")
+	user, err := GetUserByEmail(user.Email)
+	if err != nil {
+		return err
+	}
+	if user.Quota.InUse == 0 {
+		return errCantRelease
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	err = conn.Users().Update(
+		bson.M{"email": user.Email, "quota.inuse": user.InUse},
+		bson.M{"$inc": bson.M{"quota.inuse": -1}},
+	)
+	for err == mgo.ErrNotFound {
+		user, err = GetUserByEmail(user.Email)
+		if err != nil {
+			return err
+		}
+		if user.Quota.InUse == 0 {
+			return errCantRelease
+		}
+		err = conn.Users().Update(
+			bson.M{"email": user.Email, "quota.inuse": user.InUse},
+			bson.M{"$inc": bson.M{"quota.inuse": -1}},
+		)
+	}
+	return err
 }

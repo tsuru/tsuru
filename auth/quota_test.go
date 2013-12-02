@@ -77,7 +77,7 @@ func (s *S) TestReserveAppQuotaExceeded(c *gocheck.C) {
 	c.Assert(e.Requested, gocheck.Equals, uint(1))
 }
 
-func (s *S) TestReserveAppIsAtomic(c *gocheck.C) {
+func (s *S) TestReserveAppIsSafe(c *gocheck.C) {
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(runtime.NumCPU()))
 	email := "seven@corp.globo.com"
 	user := &User{
@@ -102,4 +102,101 @@ func (s *S) TestReserveAppIsAtomic(c *gocheck.C) {
 	user, err = GetUserByEmail(email)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(user.Quota.InUse, gocheck.Equals, 10)
+}
+
+func (s *S) TestReleaseApp(c *gocheck.C) {
+	email := "seven@corp.globo.com"
+	user := &User{
+		Email: email, Password: "123456",
+		Quota: quota.Quota{Limit: 4, InUse: 0},
+	}
+	err := user.Create()
+	c.Assert(err, gocheck.IsNil)
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	defer conn.Users().Remove(bson.M{"email": user.Email})
+	err = ReserveApp(user)
+	c.Assert(err, gocheck.IsNil)
+	err = ReleaseApp(user)
+	c.Assert(err, gocheck.IsNil)
+	user, err = GetUserByEmail(email)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(user.Quota.InUse, gocheck.Equals, 0)
+}
+
+func (s *S) TestReleaseAppUserNotFound(c *gocheck.C) {
+	email := "seven@corp.globo.com"
+	user := &User{
+		Email: email, Password: "123456",
+		Quota: quota.Quota{Limit: 4, InUse: 0},
+	}
+	err := ReleaseApp(user)
+	c.Assert(err, gocheck.Equals, ErrUserNotFound)
+}
+
+func (s *S) TestReleaseAppAlwaysRefreshFromDatabase(c *gocheck.C) {
+	email := "seven@corp.globo.com"
+	user := &User{
+		Email: email, Password: "123456",
+		Quota: quota.Quota{Limit: 4, InUse: 0},
+	}
+	err := user.Create()
+	c.Assert(err, gocheck.IsNil)
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	defer conn.Users().Remove(bson.M{"email": user.Email})
+	err = ReserveApp(user)
+	c.Assert(err, gocheck.IsNil)
+	user.InUse = 4
+	err = ReleaseApp(user)
+	c.Assert(err, gocheck.IsNil)
+	user, err = GetUserByEmail(email)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(user.Quota.InUse, gocheck.Equals, 0)
+}
+
+func (s *S) TestReleaseAppNonReserved(c *gocheck.C) {
+	email := "seven@corp.globo.com"
+	user := &User{
+		Email: email, Password: "123456",
+		Quota: quota.Quota{Limit: 4, InUse: 0},
+	}
+	err := user.Create()
+	c.Assert(err, gocheck.IsNil)
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	defer conn.Users().Remove(bson.M{"email": user.Email})
+	err = ReleaseApp(user)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Cannot release unreserved app")
+}
+
+func (s *S) TestReleaseAppIsSafe(c *gocheck.C) {
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(runtime.NumCPU()))
+	email := "seven@corp.globo.com"
+	user := &User{
+		Email: email, Password: "123456",
+		Quota: quota.Quota{Limit: 10, InUse: 10},
+	}
+	err := user.Create()
+	c.Assert(err, gocheck.IsNil)
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	defer conn.Users().Remove(bson.M{"email": user.Email})
+	var wg sync.WaitGroup
+	for i := 0; i < 24; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			ReleaseApp(user)
+		}()
+	}
+	wg.Wait()
+	user, err = GetUserByEmail(email)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(user.Quota.InUse, gocheck.Equals, 0)
 }
