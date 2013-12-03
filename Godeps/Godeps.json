@@ -47,7 +47,7 @@
 		},
 		{
 			"ImportPath": "github.com/fsouza/go-dockerclient",
-			"Rev": "a036123c63e7781fc7ecb1dd01db2a537de57b98"
+			"Rev": "8170ec1a85d27c12c54bdcca796f1eba3ff239da"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
@@ -83,7 +83,7 @@
 		},
 		{
 			"ImportPath": "github.com/howeyc/fsnotify",
-			"Rev": "6258bb8183757d12ef2260ac4a18a7665c0ca4c4"
+			"Rev": "5102fde921d31f59c6e45d835aa01f0213aade0f"
 		},
 		{
 			"ImportPath": "github.com/kr/beanstalk",
@@ -96,7 +96,7 @@
 		},
 		{
 			"ImportPath": "labix.org/v2/mgo",
-			"Comment": "246",
+			"Comment": "252",
 			"Rev": "gustavo@niemeyer.net-20130906162000-1oo19qtbrtr6xk98"
 		},
 		{
@@ -131,7 +131,7 @@
 		},
 		{
 			"ImportPath": "launchpad.net/goyaml",
-			"Comment": "47",
+			"Comment": "50",
 			"Rev": "gustavo@niemeyer.net-20130620163049-221erv1tss39x0xe"
 		}
 	]
