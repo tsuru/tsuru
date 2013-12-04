@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/globocom/tsuru",
-	"GoVersion": "devel +1d23464b2d2f Thu Oct 17 11:48:27 2013 +1100",
+	"GoVersion": "devel +6ec0276dad0e Mon Dec 02 18:03:25 2013 -0800",
 	"Packages": [
 		"./..."
 	],
@@ -21,6 +21,11 @@
 			"Rev": "55437409069bb181ad562b1ad1e5f361c44aff17"
 		},
 		{
+			"ImportPath": "code.google.com/p/gosqlite/sqlite3",
+			"Comment": "null-16",
+			"Rev": "74691fb6f83716190870cde1b658538dd4b18eb0"
+		},
+		{
 			"ImportPath": "github.com/bmizerany/pat",
 			"Rev": "51b7af73e39f6dc59846b22d56ca886d105ef0c3"
 		},
@@ -30,8 +35,8 @@
 		},
 		{
 			"ImportPath": "github.com/dotcloud/docker",
-			"Comment": "v0.6.4",
-			"Rev": "e8da76605f11c10d964c251a944ca5cbcdf1518a"
+			"Comment": "v0.7.0-rc6-362-g258d707",
+			"Rev": "258d707548619eae7517b39ff0bc9541ebec566c"
 		},
 		{
 			"ImportPath": "github.com/dotcloud/tar",
@@ -47,7 +52,7 @@
 		},
 		{
 			"ImportPath": "github.com/fsouza/go-dockerclient",
-			"Rev": "8170ec1a85d27c12c54bdcca796f1eba3ff239da"
+			"Rev": "270abd956f2f0e3216a02014ed502a1694e08478"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
@@ -63,11 +68,11 @@
 		},
 		{
 			"ImportPath": "github.com/globocom/docker-cluster/cluster",
-			"Rev": "2f53e8661bea4b5c9d4a99e95483ac0cdad1aca4"
+			"Rev": "00b8740722f32c314a757660fead910ef7de031b"
 		},
 		{
 			"ImportPath": "github.com/globocom/docker-cluster/storage",
-			"Rev": "2f53e8661bea4b5c9d4a99e95483ac0cdad1aca4"
+			"Rev": "00b8740722f32c314a757660fead910ef7de031b"
 		},
 		{
 			"ImportPath": "github.com/globocom/go-gandalfclient",
