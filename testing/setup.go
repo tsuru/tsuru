@@ -7,6 +7,7 @@ package testing
 
 import (
 	"github.com/globocom/config"
+	"io/ioutil"
 	"launchpad.net/goamz/iam/iamtest"
 	"launchpad.net/goamz/s3/s3test"
 	"launchpad.net/gocheck"
@@ -55,6 +56,23 @@ func (t *T) RollbackGitConfs(c *gocheck.C) {
 	config.Set("git:api-server", t.GitAPIServer)
 	config.Set("git:ro-host", t.GitROHost)
 	config.Set("git:rw-host", t.GitRWHost)
+}
+
+type TestHandler struct {
+	body    []byte
+	method  string
+	url     string
+	content string
+	header  http.Header
+}
+
+func (h *TestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.method = r.Method
+	h.url = r.URL.String()
+	b, _ := ioutil.ReadAll(r.Body)
+	h.body = b
+	h.header = r.Header
+	w.Write([]byte(h.content))
 }
 
 // starts a new httptest.Server and returns it
