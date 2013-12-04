@@ -132,11 +132,13 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 		return container{}, err
 	}
 	user, _ := config.GetString("docker:ssh:user")
+	ports := make(map[docker.Port]struct{})
+	ports[docker.Port(port)] = struct{}{}
 	config := docker.Config{
 		Image:        imageId,
 		Cmd:          cmds,
 		User:         user,
-		PortSpecs:    []string{port},
+		ExposedPorts: ports,
 		AttachStdin:  false,
 		AttachStdout: false,
 		AttachStderr: false,
@@ -163,9 +165,11 @@ func (c *container) networkInfo() (string, string, error) {
 	}
 	if dockerContainer.NetworkSettings != nil {
 		ip := dockerContainer.NetworkSettings.IPAddress
-		mappedPorts := dockerContainer.NetworkSettings.PortMapping
-		if port, ok := mappedPorts["Tcp"][c.Port]; ok {
-			return ip, port, nil
+		p := docker.Port(c.Port)
+		for _, port := range dockerContainer.NetworkSettings.Ports[p] {
+			if port.HostPort != "" && port.HostIp != "" {
+				return ip, port.HostPort, nil
+			}
 		}
 	}
 	return "", "", fmt.Errorf("Container port %s is not mapped to any host port", c.Port)

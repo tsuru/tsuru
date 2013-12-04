@@ -32,7 +32,14 @@ var inspectOut = `
 		"IpAddress": "10.10.10.10",
 		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
-		"PortMapping": {"8888": "34233"}
+		"Ports": {
+			"8888/tcp": [
+				{
+					"HostIp": "0.0.0.0",
+					"HostPort": "34233"
+				}
+			]
+		}
 	}
 }`
 
@@ -100,8 +107,13 @@ func startDockerTestServer(containerPort string, calls *int) (func(), *httptest.
 		"IpAddress": "127.0.0.4",
 		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
-		"PortMapping": {
-			"Tcp": {"8888": "%s"}
+		"Ports": {
+			"8888/tcp": [
+				{
+					"HostIp": "0.0.0.0",
+					"HostPort": "%s"
+				}
+			]
 		}
 	}
 }`, containerPort)
@@ -118,8 +130,13 @@ func startDockerTestServer(containerPort string, calls *int) (func(), *httptest.
 		"IpAddress": "127.0.0.1",
 		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
-		"PortMapping": {
-			"Tcp": {"8889": "9024"}
+		"Ports": {
+			"8889/tcp": [
+				{
+					"HostIp": "0.0.0.0",
+					"HostPort": "9024"
+				}
+			]
 		}
 	}
 }`
@@ -176,12 +193,12 @@ func insertContainers(containerPort string) func() {
 	err := coll.Insert(
 		container{
 			ID: "9930c24f1c5f", AppName: "ashamed", Type: "python",
-			Port: "8888", Status: "running", IP: "127.0.0.3",
+			Port: "8888/tcp", Status: "running", IP: "127.0.0.3",
 			HostPort: "9023", HostAddr: "127.0.0.1",
 		},
 		container{
 			ID: "9930c24f1c4f", AppName: "make-up", Type: "python",
-			Port: "8889", Status: "running", IP: "127.0.0.4",
+			Port: "8889/tcp", Status: "running", IP: "127.0.0.4",
 			HostPort: "9025", HostAddr: "127.0.0.1",
 		},
 		container{ID: "9930c24f1c6f", AppName: "make-up", Type: "python", Port: "9090", Status: "error", HostAddr: "127.0.0.1"},

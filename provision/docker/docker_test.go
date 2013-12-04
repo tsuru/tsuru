@@ -30,7 +30,7 @@ import (
 )
 
 func (s *S) TestContainerGetAddress(c *gocheck.C) {
-	container := container{ID: "id123", Port: "8888", HostAddr: "10.10.10.10", HostPort: "49153"}
+	container := container{ID: "id123", Port: "8888/tcp", HostAddr: "10.10.10.10", HostPort: "49153"}
 	address := container.getAddress()
 	expected := "http://10.10.10.10:49153"
 	c.Assert(address, gocheck.Equals, expected)
@@ -205,7 +205,7 @@ func (s *S) newContainer(opts *newContainerOpts) (*container, error) {
 		ID:       "id",
 		IP:       "10.10.10.10",
 		HostPort: "3333",
-		Port:     "8888",
+		Port:     "8888/tcp",
 		HostAddr: "127.0.0.1",
 	}
 	rtesting.FakeRouter.AddBackend(container.AppName)
@@ -214,10 +214,16 @@ func (s *S) newContainer(opts *newContainerOpts) (*container, error) {
 	if err != nil {
 		return nil, err
 	}
+	port, err := getPort()
+	if err != nil {
+		return nil, err
+	}
+	ports := make(map[docker.Port]struct{})
+	ports[docker.Port(port)] = struct{}{}
 	config := docker.Config{
-		Image:     "tsuru/python",
-		Cmd:       []string{"ps"},
-		PortSpecs: []string{"8888"},
+		Image:        "tsuru/python",
+		Cmd:          []string{"ps"},
+		ExposedPorts: ports,
 	}
 	c, err := client.CreateContainer(dockerClient.CreateContainerOptions{}, &config)
 	if err != nil {
@@ -342,9 +348,7 @@ func (s *S) TestContainerNetworkInfoNotFound(c *gocheck.C) {
 		"IpAddress": "10.10.10.10",
 		"IpPrefixLen": 8,
 		"Gateway": "10.65.41.1",
-		"PortMapping": {
-			"Tcp": {"8889": "59322"}
-		}
+		"Ports": {}
 	}
 }`
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -362,12 +366,12 @@ func (s *S) TestContainerNetworkInfoNotFound(c *gocheck.C) {
 	defer func() {
 		dCluster = oldCluster
 	}()
-	container := container{ID: "c-01", Port: "8888"}
+	container := container{ID: "c-01", Port: "8888/tcp"}
 	ip, port, err := container.networkInfo()
 	c.Assert(ip, gocheck.Equals, "")
 	c.Assert(port, gocheck.Equals, "")
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Container port 8888 is not mapped to any host port")
+	c.Assert(err.Error(), gocheck.Equals, "Container port 8888/tcp is not mapped to any host port")
 }
 
 func (s *S) TestContainerSSH(c *gocheck.C) {
