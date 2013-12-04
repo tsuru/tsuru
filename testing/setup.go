@@ -59,20 +59,20 @@ func (t *T) RollbackGitConfs(c *gocheck.C) {
 }
 
 type TestHandler struct {
-	body    []byte
-	method  string
-	url     string
-	content string
-	header  http.Header
+	Body    []byte
+	Method  string
+	Url     string
+	Content string
+	Header  http.Header
 }
 
 func (h *TestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.method = r.Method
-	h.url = r.URL.String()
+	h.Method = r.Method
+	h.Url = r.URL.String()
 	b, _ := ioutil.ReadAll(r.Body)
-	h.body = b
-	h.header = r.Header
-	w.Write([]byte(h.content))
+	h.Body = b
+	h.Header = r.Header
+	w.Write([]byte(h.Content))
 }
 
 // starts a new httptest.Server and returns it
