@@ -17,7 +17,7 @@ import (
 )
 
 func (s *S) TestDeployCmds(c *gocheck.C) {
-	h := &testHandler{}
+	h := &testing.TestHandler{}
 	t := &testing.T{}
 	gandalfServer := t.StartGandalfTestServer(h)
 	defer gandalfServer.Close()

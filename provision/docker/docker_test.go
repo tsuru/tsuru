@@ -531,7 +531,7 @@ func (s *S) TestRemoveImageCallsRegistry(c *gocheck.C) {
 }
 
 func (s *S) TestContainerDeploy(c *gocheck.C) {
-	h := &testHandler{}
+	h := &testing.TestHandler{}
 	t := &testing.T{}
 	gandalfServer := t.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
@@ -547,7 +547,7 @@ func (s *S) TestContainerDeploy(c *gocheck.C) {
 }
 
 func (s *S) TestBuild(c *gocheck.C) {
-	h := &testHandler{}
+	h := &testing.TestHandler{}
 	t := &testing.T{}
 	gandalfServer := t.StartGandalfTestServer(h)
 	defer gandalfServer.Close()

@@ -103,7 +103,7 @@ func (s *S) stopContainers(n uint) {
 }
 
 func (s *S) TestDeploy(c *gocheck.C) {
-	h := &testHandler{}
+	h := &tsrTesting.TestHandler{}
 	t := &tsrTesting.T{}
 	gandalfServer := t.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
@@ -155,7 +155,7 @@ func getQueue() (queue.Q, error) {
 }
 
 func (s *S) TestDeployEnqueuesBindService(c *gocheck.C) {
-	h := &testHandler{}
+	h := &tsrTesting.TestHandler{}
 	t := &tsrTesting.T{}
 	gandalfServer := t.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
@@ -207,7 +207,7 @@ func (w *writer) Write(c []byte) (int, error) {
 }
 
 func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *gocheck.C) {
-	h := &testHandler{}
+	h := &tsrTesting.TestHandler{}
 	t := &tsrTesting.T{}
 	gandalfServer := t.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
