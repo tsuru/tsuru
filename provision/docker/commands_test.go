@@ -17,6 +17,10 @@ import (
 )
 
 func (s *S) TestDeployCmds(c *gocheck.C) {
+	h := &testHandler{}
+	t := &testing.T{}
+	gandalfServer := t.StartGandalfTestServer(h)
+	defer gandalfServer.Close()
 	app := testing.NewFakeApp("app-name", "python", 1)
 	env := bind.EnvVar{
 		Name:   "http_proxy",

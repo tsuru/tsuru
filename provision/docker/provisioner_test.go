@@ -18,6 +18,7 @@ import (
 	"github.com/globocom/tsuru/queue"
 	rtesting "github.com/globocom/tsuru/router/testing"
 	"github.com/globocom/tsuru/testing"
+	tsrTesting "github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"net"
@@ -102,6 +103,10 @@ func (s *S) stopContainers(n uint) {
 }
 
 func (s *S) TestDeploy(c *gocheck.C) {
+	h := &testHandler{}
+	t := &tsrTesting.T{}
+	gandalfServer := t.StartGandalfTestServer(h)
+	defer gandalfServer.Close()
 	go s.stopContainers(1)
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
@@ -150,6 +155,10 @@ func getQueue() (queue.Q, error) {
 }
 
 func (s *S) TestDeployEnqueuesBindService(c *gocheck.C) {
+	h := &testHandler{}
+	t := &tsrTesting.T{}
+	gandalfServer := t.StartGandalfTestServer(h)
+	defer gandalfServer.Close()
 	go s.stopContainers(1)
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
@@ -198,6 +207,10 @@ func (w *writer) Write(c []byte) (int, error) {
 }
 
 func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *gocheck.C) {
+	h := &testHandler{}
+	t := &tsrTesting.T{}
+	gandalfServer := t.StartGandalfTestServer(h)
+	defer gandalfServer.Close()
 	go s.stopContainers(3)
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)

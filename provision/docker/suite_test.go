@@ -11,7 +11,10 @@ import (
 	ftesting "github.com/globocom/tsuru/fs/testing"
 	"github.com/globocom/tsuru/provision"
 	_ "github.com/globocom/tsuru/testing"
+	"io/ioutil"
 	"launchpad.net/gocheck"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"sort"
 	"testing"
@@ -30,9 +33,27 @@ type S struct {
 	port          string
 	sshUser       string
 	server        *dtesting.DockerServer
+	gandalfServer *httptest.Server
 }
 
 var _ = gocheck.Suite(&S{})
+
+type testHandler struct {
+	body    []byte
+	method  string
+	url     string
+	content string
+	header  http.Header
+}
+
+func (h *testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.method = r.Method
+	h.url = r.URL.String()
+	b, _ := ioutil.ReadAll(r.Body)
+	h.body = b
+	h.header = r.Header
+	w.Write([]byte(h.content))
+}
 
 func (s *S) SetUpSuite(c *gocheck.C) {
 	s.collName = "docker_unit"
