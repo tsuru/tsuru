@@ -11,15 +11,15 @@ import (
 
 func (s *S) TestGetRepositoryURLCallsGandalfGetRepository(c *gocheck.C) {
 	url := ReadWriteURL("foobar")
-	c.Assert(s.h.url, gocheck.Equals, "/repository/foobar?:name=foobar")
-	c.Assert(s.h.method, gocheck.Equals, "GET")
+	c.Assert(s.h.Url, gocheck.Equals, "/repository/foobar?:name=foobar")
+	c.Assert(s.h.Method, gocheck.Equals, "GET")
 	c.Assert(url, gocheck.Equals, "git@git.tsuru.io:foobar.git")
 }
 
 func (s *S) TestGetReadOnlyURL(c *gocheck.C) {
 	url := ReadOnlyURL("foobar")
-	c.Assert(s.h.url, gocheck.Equals, "/repository/foobar?:name=foobar")
-	c.Assert(s.h.method, gocheck.Equals, "GET")
+	c.Assert(s.h.Url, gocheck.Equals, "/repository/foobar?:name=foobar")
+	c.Assert(s.h.Method, gocheck.Equals, "GET")
 	expected := "git://git.tsuru.io/foobar.git"
 	c.Assert(url, gocheck.Equals, expected)
 }
