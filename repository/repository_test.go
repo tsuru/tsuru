@@ -9,38 +9,19 @@ import (
 	"launchpad.net/gocheck"
 )
 
-func (s *S) TestGetRepositoryURL(c *gocheck.C) {
+func (s *S) TestGetRepositoryURLCallsGandalfGetRepository(c *gocheck.C) {
 	url := ReadWriteURL("foobar")
-	expected := "git@public.mygithost:foobar.git"
-	c.Assert(url, gocheck.Equals, expected)
-}
-
-func (s *S) TestGetRepositoryURLWithoutSetting(c *gocheck.C) {
-	old, _ := config.Get("git:rw-host")
-	defer config.Set("git:rw-host", old)
-	config.Unset("git:rw-host")
-	defer func() {
-		r := recover()
-		c.Assert(r, gocheck.NotNil)
-	}()
-	ReadWriteURL("foobar")
+	c.Assert(s.h.url, gocheck.Equals, "/repository/foobar?:name=foobar")
+	c.Assert(s.h.method, gocheck.Equals, "GET")
+	c.Assert(url, gocheck.Equals, "git@git.tsuru.io:foobar.git")
 }
 
 func (s *S) TestGetReadOnlyURL(c *gocheck.C) {
 	url := ReadOnlyURL("foobar")
-	expected := "git://private.mygithost/foobar.git"
+	c.Assert(s.h.url, gocheck.Equals, "/repository/foobar?:name=foobar")
+	c.Assert(s.h.method, gocheck.Equals, "GET")
+	expected := "git://git.tsuru.io/foobar.git"
 	c.Assert(url, gocheck.Equals, expected)
-}
-
-func (s *S) TestGetReadOnlyURLNoSetting(c *gocheck.C) {
-	old, _ := config.Get("git:ro-host")
-	defer config.Set("git:ro-host", old)
-	config.Unset("git:ro-host")
-	defer func() {
-		r := recover()
-		c.Assert(r, gocheck.NotNil)
-	}()
-	ReadOnlyURL("foobar")
 }
 
 func (s *S) TestGetPath(c *gocheck.C) {

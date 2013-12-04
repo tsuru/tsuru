@@ -7,8 +7,8 @@
 package repository
 
 import (
-	"fmt"
 	"github.com/globocom/config"
+	"github.com/globocom/go-gandalfclient"
 	"github.com/globocom/tsuru/log"
 )
 
@@ -24,22 +24,24 @@ func ServerURL() string {
 
 // ReadWriteURL returns the SSH URL, for writing and reading operations.
 func ReadWriteURL(app string) string {
-	publicHost, err := config.GetString("git:rw-host")
+	c := gandalf.Client{Endpoint: ServerURL()}
+	repository, err := c.GetRepository(app)
 	if err != nil {
-		log.Error("git:rw-host config not found")
-		panic(err)
+		log.Errorf("Caught error while retrieving repository: %s", err.Error())
+		return ""
 	}
-	return fmt.Sprintf("git@%s:%s.git", publicHost, app)
+	return repository.GitURL
 }
 
 // ReadOnlyURL returns the url for communication with git-daemon.
 func ReadOnlyURL(app string) string {
-	roHost, err := config.GetString("git:ro-host")
+	c := gandalf.Client{Endpoint: ServerURL()}
+	repository, err := c.GetRepository(app)
 	if err != nil {
-		log.Error("git:ro-host config not found")
-		panic(err)
+		log.Errorf("Caught error while retrieving repository: %s", err.Error())
+		return ""
 	}
-	return fmt.Sprintf("git://%s/%s.git", roHost, app)
+	return repository.SshURL
 }
 
 // GetPath returns the path to the repository where the app code is in its
