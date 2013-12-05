@@ -118,6 +118,10 @@ var insertApp = action.Action{
 			return nil, err
 		}
 		defer conn.Close()
+		app.Quota = quota.Unlimited
+		if limit, err := config.GetInt("quota:units-per-app"); err == nil {
+			app.Quota.Limit = limit
+		}
 		app.Units = append(app.Units, Unit{QuotaItem: app.Name + "-0"})
 		err = conn.Apps().Insert(app)
 		if err != nil && strings.HasPrefix(err.Error(), "E11000") {

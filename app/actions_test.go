@@ -97,6 +97,33 @@ func (s *S) TestInsertAppForward(c *gocheck.C) {
 	c.Assert(app.Units, gocheck.HasLen, 1)
 	c.Assert(app.Units[0].Name, gocheck.Equals, "")
 	c.Assert(app.Units[0].QuotaItem, gocheck.Equals, a.Name+"-0")
+	c.Assert(app.Quota, gocheck.DeepEquals, quota.Unlimited)
+}
+
+func (s *S) TestInsertAppForwardWithQuota(c *gocheck.C) {
+	config.Set("quota:units-per-app", 2)
+	defer config.Unset("quota:units-per-app")
+	app := App{Name: "come", Platform: "beatles"}
+	ctx := action.FWContext{
+		Params: []interface{}{app},
+	}
+	r, err := insertApp.Forward(ctx)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	a, ok := r.(*App)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(a.Name, gocheck.Equals, app.Name)
+	c.Assert(a.Platform, gocheck.Equals, app.Platform)
+	c.Assert(a.Units, gocheck.HasLen, 1)
+	c.Assert(a.Units[0].Name, gocheck.Equals, "")
+	c.Assert(a.Units[0].QuotaItem, gocheck.Equals, a.Name+"-0")
+	err = app.Get()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.Units, gocheck.HasLen, 1)
+	c.Assert(app.Units[0].Name, gocheck.Equals, "")
+	c.Assert(app.Units[0].QuotaItem, gocheck.Equals, a.Name+"-0")
+	expected := quota.Quota{Limit: 2}
+	c.Assert(app.Quota, gocheck.DeepEquals, expected)
 }
 
 func (s *S) TestInsertAppForwardAppPointer(c *gocheck.C) {
