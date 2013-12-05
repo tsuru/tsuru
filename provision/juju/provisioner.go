@@ -145,6 +145,17 @@ func (p *JujuProvisioner) Restart(app provision.App) error {
 	return nil
 }
 
+func (p *JujuProvisioner) Stop(app provision.App) error {
+	var buf bytes.Buffer
+	err := p.ExecuteCommand(&buf, &buf, app, "/var/lib/tsuru/hooks/stop")
+	if err != nil {
+		msg := fmt.Sprintf("Failed to stop the app (%s): %s", err, buf.String())
+		app.Log(msg, "tsuru-provisioner")
+		return &provision.Error{Reason: buf.String(), Err: err}
+	}
+	return nil
+}
+
 func (JujuProvisioner) Swap(app1, app2 provision.App) error {
 	r, err := Router()
 	if err != nil {
