@@ -240,7 +240,6 @@ func (s *S) TestCreateAppUserQuotaExceeded(c *gocheck.C) {
 	err := CreateApp(&app, s.user)
 	e, ok := err.(*AppCreationError)
 	c.Assert(ok, gocheck.Equals, true)
-	fmt.Println(err)
 	_, ok = e.Err.(*quota.QuotaExceededError)
 	c.Assert(ok, gocheck.Equals, true)
 }
