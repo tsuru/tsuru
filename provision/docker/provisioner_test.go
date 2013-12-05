@@ -624,3 +624,64 @@ func (s *S) TestDeployPipeline(c *gocheck.C) {
 	p := dockerProvisioner{}
 	c.Assert(p.DeployPipeline(), gocheck.NotNil)
 }
+
+func (s *S) TestProvisionerStop(c *gocheck.C) {
+	dcli, _ := dockerClient.NewClient(s.server.URL())
+	app := testing.NewFakeApp("almah", "static", 2)
+	p := dockerProvisioner{}
+
+	container, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(container)
+	err = dcli.StartContainer(container.ID, nil)
+	c.Assert(err, gocheck.IsNil)
+
+	dockerContainer, err := dcli.InspectContainer(container.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dockerContainer.State.Running, gocheck.Equals, true)
+
+	err = p.Stop(app)
+	c.Assert(err, gocheck.IsNil)
+
+	dockerContainer, err = dcli.InspectContainer(container.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dockerContainer.State.Running, gocheck.Equals, false)
+}
+
+func (s *S) TestProvisionerStopSkipAlreadyStoppedContainers(c *gocheck.C) {
+	dcli, _ := dockerClient.NewClient(s.server.URL())
+	app := testing.NewFakeApp("almah", "static", 2)
+	p := dockerProvisioner{}
+
+	container, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(container)
+	err = dcli.StartContainer(container.ID, nil)
+	c.Assert(err, gocheck.IsNil)
+	dockerContainer, err := dcli.InspectContainer(container.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dockerContainer.State.Running, gocheck.Equals, true)
+
+	container2, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(container2)
+	err = dcli.StartContainer(container2.ID, nil)
+	c.Assert(err, gocheck.IsNil)
+	err = dcli.StopContainer(container2.ID, 1)
+	c.Assert(err, gocheck.IsNil)
+	container2.setStatus(provision.StatusStopped.String())
+	dockerContainer2, err := dcli.InspectContainer(container2.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dockerContainer2.State.Running, gocheck.Equals, false)
+
+	err = p.Stop(app)
+	c.Assert(err, gocheck.IsNil)
+
+	dockerContainer, err = dcli.InspectContainer(container.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dockerContainer.State.Running, gocheck.Equals, false)
+
+	dockerContainer2, err = dcli.InspectContainer(container2.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dockerContainer2.State.Running, gocheck.Equals, false)
+}

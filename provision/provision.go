@@ -35,6 +35,8 @@ const (
 	// Is when the app process is up and binded to the right
 	// host ("0.0.0.0") and right port ($PORT).
 	StatusStarted = Status("started")
+	// stopped - is when the Docker container is stopped
+	StatusStopped = Status("stopped")
 )
 
 // Unit represents a provision unit. Can be a machine, container or anything
@@ -137,6 +139,7 @@ type Provisioner interface {
 	ExecuteCommandOnce(stdout, stderr io.Writer, app App, cmd string, args ...string) error
 
 	Restart(App) error
+	Stop(App) error
 
 	// CollectStatus returns information about all provisioned units. It's used
 	// by tsuru collector when updating the status of apps in the database.

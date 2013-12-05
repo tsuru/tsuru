@@ -89,6 +89,22 @@ func (p *dockerProvisioner) Restart(app provision.App) error {
 	return nil
 }
 
+func (p *dockerProvisioner) Stop(app provision.App) error {
+	containers, err := listAppContainers(app.GetName())
+	if err != nil {
+		log.Errorf("Got error while getting app containers: %s", err)
+		return nil
+	}
+	for _, c := range containers {
+		err := c.stop()
+		if err != nil {
+			log.Errorf("Failed to stop %q: %s", app.GetName(), err)
+			return err
+		}
+	}
+	return nil
+}
+
 func injectEnvsAndRestart(a provision.App) {
 	time.Sleep(5e9)
 	err := a.SerializeEnvVars()
