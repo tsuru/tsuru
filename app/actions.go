@@ -26,7 +26,10 @@ import (
 	"strings"
 )
 
-var ErrAppAlreadyExists = errors.New("there is already an app with this name.")
+var (
+	ErrAppAlreadyExists = errors.New("there is already an app with this name.")
+	ErrAppNotFound = errors.New("App not found")
+)
 
 // reserveUserApp reserves the app for the user, only if the user has a quota
 // of apps. If the user does not have a quota, meaning that it's unlimited,
@@ -377,7 +380,7 @@ var reserveUnitsToAdd = action.Action{
 		defer conn.Close()
 		err = app.Get()
 		if err != nil {
-			return nil, errors.New("App not found")
+			return nil, ErrAppNotFound
 		}
 		ids := generateUnitQuotaItems(&app, int(n))
 		err = quota.Reserve(app.Name, ids...)
@@ -462,7 +465,7 @@ var saveNewUnitsInDatabase = action.Action{
 		defer conn.Close()
 		err = app.Get()
 		if err != nil {
-			return nil, errors.New("App not found")
+			return nil, ErrAppNotFound
 		}
 		messages := make([]queue.Message, len(prev.units)*2)
 		mCount := 0
