@@ -402,17 +402,11 @@ func (c ServiceRemove) Run(ctx *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	resp, err := client.Do(request)
+	_, err = client.Do(request)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-	result, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-	result = append(result, []byte("\n")...)
-	ctx.Stdout.Write(result)
+	fmt.Fprintf(ctx.Stdout, `Service "%s" successfully removed!`+"\n", name)
 	return nil
 }
 

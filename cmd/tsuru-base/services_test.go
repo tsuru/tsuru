@@ -439,7 +439,8 @@ func (s *S) TestServiceRemoveRun(c *gocheck.C) {
 		Stderr: &stderr,
 		Stdin:  strings.NewReader("y\n"),
 	}
-	expected := `Are you sure you want to remove service "some-service-instance"? (y/n)` + " \n"
+	expected := `Are you sure you want to remove service "some-service-instance"? (y/n) `
+	expected += `Service "some-service-instance" successfully removed!` + "\n"
 	transport := testing.ConditionalTransport{
 		Transport: testing.Transport{
 			Message: "",
@@ -459,14 +460,14 @@ func (s *S) TestServiceRemoveRun(c *gocheck.C) {
 
 func (s *S) TestServiceRemoveWithoutAsking(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	expected := "success\n"
+	expected := `Service "ble" successfully removed!` + "\n"
 	context := cmd.Context{
 		Args:   []string{"ble"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 		Stdin:  strings.NewReader("y\n"),
 	}
-	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: "success", Status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: "", Status: http.StatusOK}}, nil, manager)
 	command := ServiceRemove{}
 	command.Flags().Parse(true, []string{"ble", "-y"})
 	err := command.Run(&context, client)
