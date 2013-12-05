@@ -10,6 +10,7 @@ import (
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/queue"
+	"github.com/globocom/tsuru/quota"
 	ttesting "github.com/globocom/tsuru/testing"
 	"io"
 	"io/ioutil"
@@ -63,7 +64,10 @@ func (c *greaterChecker) Check(params []interface{}, names []string) (bool, stri
 var Greater gocheck.Checker = &greaterChecker{}
 
 func (s *S) createUserAndTeam(c *gocheck.C) {
-	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123"}
+	s.user = &auth.User{
+		Email: "whydidifall@thewho.com", Password: "123",
+		Quota: quota.Unlimited,
+	}
 	err := s.user.Create()
 	c.Assert(err, gocheck.IsNil)
 	s.team = auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
