@@ -47,9 +47,14 @@ func (s *S) TestGet(c *gocheck.C) {
 }
 
 func (s *S) TestDelete(c *gocheck.C) {
-	err := quota.Create(s.user.Email, 1)
-	c.Assert(err, gocheck.IsNil)
-	defer quota.Delete(s.user.Email)
+	s.conn.Users().Update(
+		bson.M{"email": s.user.Email},
+		bson.M{"$set": bson.M{"quota.limit": 1, "quota.inuse": 1}},
+	)
+	defer s.conn.Users().Update(
+		bson.M{"email": s.user.Email},
+		bson.M{"$set": bson.M{"quota": quota.Unlimited}},
+	)
 	h := testHandler{}
 	ts := s.t.StartGandalfTestServer(&h)
 	defer ts.Close()
@@ -59,9 +64,7 @@ func (s *S) TestDelete(c *gocheck.C) {
 		Units:    []Unit{{Name: "duvido", Machine: 3}},
 		Owner:    s.user.Email,
 	}
-	err = s.conn.Apps().Insert(&a)
-	c.Assert(err, gocheck.IsNil)
-	err = quota.Reserve(s.user.Email, a.Name)
+	err := s.conn.Apps().Insert(&a)
 	c.Assert(err, gocheck.IsNil)
 	err = quota.Create(a.Name, 1)
 	c.Assert(err, gocheck.IsNil)
@@ -74,7 +77,7 @@ func (s *S) TestDelete(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(qt, gocheck.Equals, 0)
 	c.Assert(s.provisioner.Provisioned(&a), gocheck.Equals, false)
-	err = quota.Reserve(s.user.Email, a.Name)
+	err = auth.ReserveApp(s.user)
 	c.Assert(err, gocheck.IsNil)
 	err = quota.Reserve(a.Name, "something")
 	c.Assert(err, gocheck.Equals, quota.ErrQuotaNotFound)

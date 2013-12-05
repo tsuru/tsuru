@@ -196,7 +196,9 @@ func Delete(app *App) error {
 	}
 	token := app.Env["TSURU_APP_TOKEN"].Value
 	auth.DeleteToken(token)
-	quota.Release(app.Owner, app.Name)
+	if owner, err := auth.GetUserByEmail(app.Owner); err == nil {
+		auth.ReleaseApp(owner)
+	}
 	conn, err := db.Conn()
 	if err != nil {
 		return err
