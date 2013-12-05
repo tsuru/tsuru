@@ -30,7 +30,7 @@ func ReadWriteURL(app string) string {
 		log.Errorf("Caught error while retrieving repository: %s", err.Error())
 		return ""
 	}
-	return repository.GitURL
+	return repository.SshURL
 }
 
 // ReadOnlyURL returns the url for communication with git-daemon.
@@ -41,7 +41,7 @@ func ReadOnlyURL(app string) string {
 		log.Errorf("Caught error while retrieving repository: %s", err.Error())
 		return ""
 	}
-	return repository.SshURL
+	return repository.GitURL
 }
 
 // GetPath returns the path to the repository where the app code is in its

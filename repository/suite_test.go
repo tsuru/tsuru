@@ -26,7 +26,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("git:rw-host", "public.mygithost")
 	config.Set("git:ro-host", "private.mygithost")
 	config.Set("git:unit-repo", "/home/application/current")
-	content := `{"ssh_url":"git://git.tsuru.io/foobar.git","git_url":"git@git.tsuru.io:foobar.git"}`
+	content := `{"git_url":"git://git.tsuru.io/foobar.git","ssh_url":"git@git.tsuru.io:foobar.git"}`
 	s.h = &tsrTesting.TestHandler{Content: content}
 	t := &tsrTesting.T{}
 	s.ts = t.StartGandalfTestServer(s.h)
