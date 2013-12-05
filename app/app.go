@@ -561,6 +561,31 @@ func (app *App) hookRunner() hookRunner {
 	return app.hr
 }
 
+func (app *App) Stop(w io.Writer) error {
+	// FIXME make this action atomic
+	log.Write(w, []byte("\n ---> Stopping your app\n"))
+
+	err := Provisioner.Stop(app)
+	if err != nil {
+		log.Errorf("[stop] error on stop the app %s - %s", app.Name, err)
+		return err
+	}
+
+	units := make([]Unit, len(app.Units))
+	for i, u := range app.Units {
+		u.State = provision.StatusStopped.String()
+		units[i] = u
+	}
+	app.Units = units
+
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.Apps().Update(bson.M{"name": app.Name}, app)
+}
+
 func (app *App) Ready() error {
 	app.State = "ready"
 	conn, err := db.Conn()
