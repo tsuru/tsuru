@@ -52,7 +52,7 @@ type App struct {
 	Owner    string
 	State    string
 	Deploys  uint
-	Quota    quota.Quota
+	quota.Quota
 
 	hr hookRunner
 }
