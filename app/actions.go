@@ -52,14 +52,20 @@ var reserveUserApp = action.Action{
 		default:
 			return nil, errors.New("Third parameter must be auth.User or *auth.User.")
 		}
-		if err := quota.Reserve(user.Email, app.Name); err != nil && err != quota.ErrQuotaNotFound {
+		usr, err := auth.GetUserByEmail(user.Email)
+		if err != nil {
+			return nil, err
+		}
+		if err := auth.ReserveApp(usr); err != nil {
 			return nil, err
 		}
 		return map[string]string{"app": app.Name, "user": user.Email}, nil
 	},
 	Backward: func(ctx action.BWContext) {
 		m := ctx.FWResult.(map[string]string)
-		quota.Release(m["user"], m["app"])
+		if user, err := auth.GetUserByEmail(m["user"]); err == nil {
+			auth.ReleaseApp(user)
+		}
 	},
 	MinParams: 2,
 }

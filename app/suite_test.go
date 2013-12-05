@@ -101,6 +101,10 @@ func (s *S) TearDownTest(c *gocheck.C) {
 	s.t.RollbackGitConfs(c)
 	s.provisioner.Reset()
 	s.conn.Logs().RemoveAll(nil)
+	s.conn.Users().Update(
+		bson.M{"email": s.user.Email},
+		bson.M{"$set": bson.M{"quota": quota.Unlimited}},
+	)
 }
 
 func (s *S) getTestData(p ...string) io.ReadCloser {

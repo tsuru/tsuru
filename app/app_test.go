@@ -171,6 +171,8 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
+	s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": 1}})
+	defer s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": -1}})
 	err := quota.Create(s.user.Email, 1)
 	c.Assert(err, gocheck.IsNil)
 	defer quota.Delete(s.user.Email)
@@ -218,7 +220,7 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 	c.Assert(message.Action, gocheck.Equals, expectedMessage.Action)
 	c.Assert(message.Args, gocheck.DeepEquals, expectedMessage.Args)
 	c.Assert(s.provisioner.GetUnits(&a), gocheck.HasLen, 1)
-	err = quota.Reserve(s.user.Email, a.Name)
+	err = auth.ReserveApp(s.user)
 	_, ok = err.(*quota.QuotaExceededError)
 	c.Assert(ok, gocheck.Equals, true)
 	_, _, err = quota.Items(retrievedApp.Name)
@@ -227,14 +229,18 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 
 func (s *S) TestCreateAppUserQuotaExceeded(c *gocheck.C) {
 	app := App{Name: "america", Platform: "python"}
-	err := quota.Create(s.user.Email, 1)
-	c.Assert(err, gocheck.IsNil)
-	defer quota.Delete(s.user.Email)
-	err = quota.Reserve(s.user.Email, app.Name)
-	c.Assert(err, gocheck.IsNil)
-	err = CreateApp(&app, s.user)
+	s.conn.Users().Update(
+		bson.M{"email": s.user.Email},
+		bson.M{"$set": bson.M{"quota.limit": 0}},
+	)
+	defer s.conn.Users().Update(
+		bson.M{"email": s.user.Email},
+		bson.M{"$set": bson.M{"quota.limit": -1}},
+	)
+	err := CreateApp(&app, s.user)
 	e, ok := err.(*AppCreationError)
 	c.Assert(ok, gocheck.Equals, true)
+	fmt.Println(err)
 	_, ok = e.Err.(*quota.QuotaExceededError)
 	c.Assert(ok, gocheck.Equals, true)
 }

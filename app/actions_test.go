@@ -561,10 +561,13 @@ func (s *S) TestProvisionAppMinParams(c *gocheck.C) {
 }
 
 func (s *S) TestReserveUserAppForward(c *gocheck.C) {
-	user := auth.User{Email: "clap@yes.com"}
-	err := quota.Create(user.Email, 1)
+	user := auth.User{
+		Email: "clap@yes.com", Password: "123456",
+		Quota: quota.Quota{Limit: 1},
+	}
+	err := user.Create()
 	c.Assert(err, gocheck.IsNil)
-	defer quota.Delete(user.Email)
+	defer s.conn.Users().Remove(bson.M{"email": user.Email})
 	app := App{
 		Name:     "clap",
 		Platform: "django",
@@ -573,20 +576,23 @@ func (s *S) TestReserveUserAppForward(c *gocheck.C) {
 	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{&app, &user}})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(previous, gocheck.DeepEquals, expected)
-	err = quota.Reserve(user.Email, "another-app")
+	err = auth.ReserveApp(&user)
 	_, ok := err.(*quota.QuotaExceededError)
 	c.Assert(ok, gocheck.Equals, true)
-	err = quota.Release(user.Email, app.Name)
+	err = auth.ReleaseApp(&user)
 	c.Assert(err, gocheck.IsNil)
-	err = quota.Reserve(user.Email, "another-app")
+	err = auth.ReserveApp(&user)
 	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TestReserveUserAppForwardNonPointer(c *gocheck.C) {
-	user := auth.User{Email: "clap@yes.com"}
-	err := quota.Create(user.Email, 1)
+	user := auth.User{
+		Email: "clap@yes.com",
+		Quota: quota.Quota{Limit: 1},
+	}
+	err := user.Create()
 	c.Assert(err, gocheck.IsNil)
-	defer quota.Delete(user.Email)
+	defer s.conn.Users().Remove(bson.M{"email": user.Email})
 	app := App{
 		Name:     "clap",
 		Platform: "django",
@@ -595,20 +601,23 @@ func (s *S) TestReserveUserAppForwardNonPointer(c *gocheck.C) {
 	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{&app, user}})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(previous, gocheck.DeepEquals, expected)
-	err = quota.Reserve(user.Email, "another-app")
+	err = auth.ReserveApp(&user)
 	_, ok := err.(*quota.QuotaExceededError)
 	c.Assert(ok, gocheck.Equals, true)
-	err = quota.Release(user.Email, app.Name)
+	err = auth.ReleaseApp(&user)
 	c.Assert(err, gocheck.IsNil)
-	err = quota.Reserve(user.Email, "another-app")
+	err = auth.ReserveApp(&user)
 	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TestReserveUserAppForwardAppNotPointer(c *gocheck.C) {
-	user := auth.User{Email: "clap@yes.com"}
-	err := quota.Create(user.Email, 1)
+	user := auth.User{
+		Email: "clap@yes.com",
+		Quota: quota.Quota{Limit: 1},
+	}
+	err := user.Create()
 	c.Assert(err, gocheck.IsNil)
-	defer quota.Delete(user.Email)
+	defer s.conn.Users().Remove(bson.M{"email": user.Email})
 	app := App{
 		Name:     "clap",
 		Platform: "django",
@@ -617,12 +626,12 @@ func (s *S) TestReserveUserAppForwardAppNotPointer(c *gocheck.C) {
 	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{app, user}})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(previous, gocheck.DeepEquals, expected)
-	err = quota.Reserve(user.Email, "another-app")
+	err = auth.ReserveApp(&user)
 	_, ok := err.(*quota.QuotaExceededError)
 	c.Assert(ok, gocheck.Equals, true)
-	err = quota.Release(user.Email, app.Name)
+	err = auth.ReleaseApp(&user)
 	c.Assert(err, gocheck.IsNil)
-	err = quota.Reserve(user.Email, "another-app")
+	err = auth.ReserveApp(&user)
 	c.Assert(err, gocheck.IsNil)
 }
 
@@ -646,12 +655,13 @@ func (s *S) TestReserveUserAppForwardInvalidUser(c *gocheck.C) {
 }
 
 func (s *S) TestReserveUserAppForwardQuotaExceeded(c *gocheck.C) {
-	user := auth.User{Email: "clap@yes.com"}
-	err := quota.Create(user.Email, 1)
+	user := auth.User{
+		Email: "clap@yes.com",
+		Quota: quota.Quota{Limit: 1, InUse: 1},
+	}
+	err := user.Create()
 	c.Assert(err, gocheck.IsNil)
-	defer quota.Delete(user.Email)
-	err = quota.Reserve(user.Email, "anything")
-	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Users().Remove(bson.M{"email": user.Email})
 	app := App{
 		Name:     "clap",
 		Platform: "django",
@@ -662,29 +672,18 @@ func (s *S) TestReserveUserAppForwardQuotaExceeded(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 }
 
-func (s *S) TestReserveUserAppForwardQuotaNotFound(c *gocheck.C) {
-	user := auth.User{Email: "south@yes.com"}
-	app := App{
-		Name:     "clap",
-		Platform: "django",
-	}
-	expected := map[string]string{"app": app.Name, "user": user.Email}
-	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{app, user}})
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(previous, gocheck.DeepEquals, expected)
-}
-
 func (s *S) TestReserveUserAppBackward(c *gocheck.C) {
-	user := auth.User{Email: "clap@yes.com"}
-	err := quota.Create(user.Email, 1)
+	user := auth.User{
+		Email: "clap@yes.com",
+		Quota: quota.Quota{Limit: 1, InUse: 1},
+	}
+	err := user.Create()
 	c.Assert(err, gocheck.IsNil)
-	defer quota.Delete(user.Email)
+	defer s.conn.Users().Remove(bson.M{"email": user.Email})
 	app := App{
 		Name:     "clap",
 		Platform: "django",
 	}
-	err = quota.Reserve(user.Email, app.Name)
-	c.Assert(err, gocheck.IsNil)
 	ctx := action.BWContext{
 		FWResult: map[string]string{
 			"app":  app.Name,
@@ -692,7 +691,7 @@ func (s *S) TestReserveUserAppBackward(c *gocheck.C) {
 		},
 	}
 	reserveUserApp.Backward(ctx)
-	err = quota.Reserve(user.Email, app.Name)
+	err = auth.ReserveApp(&user)
 	c.Assert(err, gocheck.IsNil)
 }
 
