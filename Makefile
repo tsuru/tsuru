@@ -79,6 +79,7 @@ get-prod:
 godep:
 	go get github.com/kr/godep
 	godep restore ./...
+	godep go clean ./...
 
 check-test-services:
 	$(call check-service,MongoDB,27017)
