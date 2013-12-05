@@ -11,6 +11,7 @@ import (
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/auth"
+	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/quota"
@@ -417,9 +418,12 @@ func (s *S) TestCreateAppHandler(c *gocheck.C) {
 }
 
 func (s *S) TestCreateAppQuotaExceeded(c *gocheck.C) {
-	err := quota.Create(s.user.Email, 0)
+	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
-	defer quota.Delete(s.user.Email)
+	defer conn.Close()
+	var limited quota.Quota
+	conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota": limited}})
+	defer conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota": quota.Unlimited}})
 	b := strings.NewReader(`{"name":"someapp","platform":"zend"}`)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, gocheck.IsNil)
