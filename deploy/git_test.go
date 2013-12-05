@@ -15,6 +15,11 @@ import (
 )
 
 func (s *S) TestDeploy(c *gocheck.C) {
+	content := `{"ssh_url": "git://tsuruhost.com/cribcaged.git"}`
+	h := &testing.TestHandler{Content: content}
+	t := &testing.T{}
+	gandalfServer := t.StartGandalfTestServer(h)
+	defer gandalfServer.Close()
 	provisioner := testing.NewFakeProvisioner()
 	provisioner.PrepareOutput([]byte("cloned"))
 	provisioner.PrepareOutput([]byte("updated"))
@@ -33,6 +38,10 @@ func (s *S) TestDeploy(c *gocheck.C) {
 }
 
 func (s *S) TestDeployLogsActions(c *gocheck.C) {
+	h := &testing.TestHandler{}
+	t := &testing.T{}
+	gandalfServer := t.StartGandalfTestServer(h)
+	defer gandalfServer.Close()
 	provisioner := testing.NewFakeProvisioner()
 	provisioner.PrepareOutput([]byte(""))
 	provisioner.PrepareOutput([]byte("updated"))
@@ -58,6 +67,10 @@ Restarting app...
 }
 
 func (s *S) TestCloneRepository(c *gocheck.C) {
+	h := &testing.TestHandler{}
+	t := &testing.T{}
+	gandalfServer := t.StartGandalfTestServer(h)
+	defer gandalfServer.Close()
 	p := testing.NewFakeProvisioner()
 	p.PrepareOutput([]byte("something"))
 	app := testing.NewFakeApp("your", "python", 1)
