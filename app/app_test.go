@@ -46,6 +46,12 @@ func (s *S) TestGet(c *gocheck.C) {
 	c.Assert(myApp.Name, gocheck.Equals, newApp.Name)
 }
 
+func (s *S) TestGetNotFound(c *gocheck.C) {
+	app := App{Name: "wat"}
+	err := app.Get()
+	c.Assert(err, gocheck.Equals, ErrAppNotFound)
+}
+
 func (s *S) TestDelete(c *gocheck.C) {
 	s.conn.Users().Update(
 		bson.M{"email": s.user.Email},

@@ -23,6 +23,7 @@ import (
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/service"
 	"io"
+	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"os"
 	"regexp"
@@ -93,7 +94,11 @@ func (app *App) Get() error {
 		return err
 	}
 	defer conn.Close()
-	return conn.Apps().Find(bson.M{"name": app.Name}).One(app)
+	err = conn.Apps().Find(bson.M{"name": app.Name}).One(app)
+	if err == mgo.ErrNotFound {
+		return ErrAppNotFound
+	}
+	return err
 }
 
 // CreateApp creates a new app.
