@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/globocom/tsuru",
-	"GoVersion": "devel +6ec0276dad0e Mon Dec 02 18:03:25 2013 -0800",
+	"GoVersion": "devel +c67a1d0df694 Wed Oct 16 09:22:57 2013 -0700",
 	"Packages": [
 		"./..."
 	],
@@ -76,7 +76,7 @@
 		},
 		{
 			"ImportPath": "github.com/globocom/go-gandalfclient",
-			"Rev": "7860251e851672e43e2252297f12bf858d7e7c99"
+			"Rev": "874ca26886fc17186993bb02d66655145e0e1c0b"
 		},
 		{
 			"ImportPath": "github.com/gorilla/context",
@@ -101,7 +101,7 @@
 		},
 		{
 			"ImportPath": "labix.org/v2/mgo",
-			"Comment": "252",
+			"Comment": "246",
 			"Rev": "gustavo@niemeyer.net-20130906162000-1oo19qtbrtr6xk98"
 		},
 		{
@@ -136,7 +136,7 @@
 		},
 		{
 			"ImportPath": "launchpad.net/goyaml",
-			"Comment": "50",
+			"Comment": "47",
 			"Rev": "gustavo@niemeyer.net-20130620163049-221erv1tss39x0xe"
 		}
 	]
