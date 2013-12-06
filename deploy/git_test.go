@@ -15,7 +15,7 @@ import (
 )
 
 func (s *S) TestDeploy(c *gocheck.C) {
-	content := `{"ssh_url": "git://tsuruhost.com/cribcaged.git"}`
+	content := `{"git_url": "git://tsuruhost.com/cribcaged.git"}`
 	h := &testing.TestHandler{Content: content}
 	t := &testing.T{}
 	gandalfServer := t.StartGandalfTestServer(h)
