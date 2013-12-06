@@ -5,6 +5,7 @@
 package app
 
 import (
+	"errors"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/quota"
 	"labix.org/v2/mgo"
@@ -53,5 +54,39 @@ func checkAppLimit(app *App, quantity int) error {
 }
 
 func releaseUnits(app *App, quantity int) error {
+	err := checkAppUsage(app, quantity)
+	if err != nil {
+		return err
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	err = conn.Apps().Update(
+		bson.M{"name": app.Name, "quota.inuse": app.Quota.InUse},
+		bson.M{"$inc": bson.M{"quota.inuse": -1 * quantity}},
+	)
+	for err == mgo.ErrNotFound {
+		err = checkAppUsage(app, quantity)
+		if err != nil {
+			return err
+		}
+		err = conn.Apps().Update(
+			bson.M{"name": app.Name, "quota.inuse": app.Quota.InUse},
+			bson.M{"$inc": bson.M{"quota.inuse": -1 * quantity}},
+		)
+	}
+	return err
+}
+
+func checkAppUsage(app *App, quantity int) error {
+	err := app.Get()
+	if err != nil {
+		return err
+	}
+	if app.Quota.InUse-quantity < 0 {
+		return errors.New("Not enough reserved units")
+	}
 	return nil
 }
