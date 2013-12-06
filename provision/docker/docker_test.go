@@ -40,9 +40,7 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 	oldClusterNodes := clusterNodes
 	clusterNodes = map[string]string{"server": s.server.URL()}
 	defer func() { clusterNodes = oldClusterNodes }()
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
-	app := testing.NewFakeApp("app-name", "python", 1)
+	app := testing.NewFakeApp("app-name", "brainfuck", 1)
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	cont, err := newContainer(app, getImage(app), []string{"docker", "run"})
