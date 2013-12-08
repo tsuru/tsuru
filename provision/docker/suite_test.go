@@ -48,14 +48,14 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("docker:collection", s.collName)
 	config.Set("docker:deploy-cmd", "/var/lib/tsuru/deploy")
 	config.Set("docker:run-cmd:bin", "/usr/local/bin/circusd /etc/circus/circus.ini")
-	config.Set("docker:run-cmd:port", "8888/tcp")
+	config.Set("docker:run-cmd:port", "8888")
 	config.Set("docker:ssh:add-key-cmd", "/var/lib/tsuru/add-key")
 	config.Set("docker:ssh:user", s.sshUser)
 	config.Set("queue", "fake")
 	s.deployCmd = "/var/lib/tsuru/deploy"
 	s.runBin = "/usr/local/bin/circusd"
 	s.runArgs = "/etc/circus/circus.ini"
-	s.port = "8888/tcp"
+	s.port = "8888"
 	fsystem = &ftesting.RecordingFs{}
 	f, err := fsystem.Create(os.ExpandEnv("${HOME}/.ssh/id_rsa.pub"))
 	c.Assert(err, gocheck.IsNil)

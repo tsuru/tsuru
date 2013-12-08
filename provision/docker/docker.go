@@ -132,13 +132,14 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 		return container{}, err
 	}
 	user, _ := config.GetString("docker:ssh:user")
-	ports := make(map[docker.Port]struct{})
-	ports[docker.Port(port)] = struct{}{}
+	exposedPorts := make(map[docker.Port]struct{}, 1)
+	p := docker.Port(fmt.Sprintf("%s/tcp", port))
+	exposedPorts[p] = struct{}{}
 	config := docker.Config{
 		Image:        imageId,
 		Cmd:          cmds,
 		User:         user,
-		ExposedPorts: ports,
+		ExposedPorts: exposedPorts,
 		AttachStdin:  false,
 		AttachStdout: false,
 		AttachStderr: false,
@@ -171,7 +172,7 @@ func (c *container) networkInfo() (string, string, error) {
 	}
 	if dockerContainer.NetworkSettings != nil {
 		ip := dockerContainer.NetworkSettings.IPAddress
-		p := docker.Port(c.Port)
+		p := docker.Port(fmt.Sprintf("%s/tcp", c.Port))
 		for _, port := range dockerContainer.NetworkSettings.Ports[p] {
 			if port.HostPort != "" && port.HostIp != "" {
 				return ip, port.HostPort, nil

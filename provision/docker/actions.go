@@ -6,6 +6,8 @@ package docker
 
 import (
 	"errors"
+	"fmt"
+	"github.com/dotcloud/docker"
 	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
@@ -92,7 +94,21 @@ var startContainer = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		c := ctx.Previous.(container)
 		log.Debugf("starting container %s", c.ID)
-		err := dockerCluster().StartContainer(c.ID, nil)
+
+		port, err := getPort()
+		if err != nil {
+			return nil, err
+		}
+		config := docker.HostConfig{}
+		bindings := make(map[docker.Port][]docker.PortBinding)
+		bindings[docker.Port(fmt.Sprintf("%s/tcp", port))] = []docker.PortBinding{
+			docker.PortBinding{
+				HostIp:   "",
+				HostPort: "",
+			},
+		}
+		config.PortBindings = bindings
+		err = dockerCluster().StartContainer(c.ID, &config)
 		if err != nil {
 			log.Errorf("error on start container %s - %s", c.ID, err)
 			return nil, err
