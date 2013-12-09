@@ -90,6 +90,16 @@ func (p *dockerProvisioner) Restart(app provision.App) error {
 }
 
 func (*dockerProvisioner) Start(app provision.App) error {
+	containers, err := listAppContainers(app.GetName())
+	if err != nil {
+		return errors.New(fmt.Sprintf("Got error while getting app containers: %s", err))
+	}
+	for _, c := range containers {
+		err := c.start()
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

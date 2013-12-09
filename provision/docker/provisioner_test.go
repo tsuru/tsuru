@@ -621,3 +621,21 @@ func (s *S) TestDeployPipeline(c *gocheck.C) {
 	p := dockerProvisioner{}
 	c.Assert(p.DeployPipeline(), gocheck.NotNil)
 }
+
+func (s *S) TestProvisionerStart(c *gocheck.C) {
+	var p dockerProvisioner
+	app := testing.NewFakeApp("almah", "static", 1)
+	container, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(container)
+	dcli, err := dockerClient.NewClient(s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	dockerContainer, err := dcli.InspectContainer(container.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dockerContainer.State.Running, gocheck.Equals, false)
+	err = p.Start(app)
+	c.Assert(err, gocheck.IsNil)
+	dockerContainer, err = dcli.InspectContainer(container.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dockerContainer.State.Running, gocheck.Equals, true)
+}
