@@ -17,6 +17,7 @@ import (
 	"labix.org/v2/mgo/bson"
 	"net/http"
 	"regexp"
+	"sync"
 )
 
 var (
@@ -161,8 +162,11 @@ func (si *ServiceInstance) BindApp(app bind.App) error {
 	}
 	envsChan := make(chan map[string]string, len(units)+1)
 	errChan := make(chan error, len(units)+1)
+	var wg sync.WaitGroup
+	wg.Add(len(units))
 	for _, unit := range units {
 		go func(unit bind.Unit) {
+			defer wg.Done()
 			vars, err := si.BindUnit(app, unit)
 			if err != nil {
 				errChan <- err
@@ -171,23 +175,25 @@ func (si *ServiceInstance) BindApp(app bind.App) error {
 			envsChan <- vars
 		}(unit)
 	}
-	var envVars []bind.EnvVar
-	select {
-	case envs := <-envsChan:
-		envVars = make([]bind.EnvVar, 0, len(envs))
-		for k, v := range envs {
-			envVars = append(envVars, bind.EnvVar{
-				Name:         k,
-				Value:        v,
-				Public:       false,
-				InstanceName: si.Name,
-			})
-		}
-		return app.SetEnvs(envVars, false)
-	case err = <-errChan:
+	wg.Wait()
+	close(errChan)
+	err, ok := <-errChan
+	if ok {
 		log.Error(err.Error())
+		return err
 	}
-	return err
+	var envVars []bind.EnvVar
+	envs := <-envsChan
+	envVars = make([]bind.EnvVar, 0, len(envs))
+	for k, v := range envs {
+		envVars = append(envVars, bind.EnvVar{
+			Name:         k,
+			Value:        v,
+			Public:       false,
+			InstanceName: si.Name,
+		})
+	}
+	return app.SetEnvs(envVars, false)
 }
 
 // BindUnit makes the bind between the binder and an unit.
