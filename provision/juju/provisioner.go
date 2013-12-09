@@ -145,6 +145,10 @@ func (p *JujuProvisioner) Restart(app provision.App) error {
 	return nil
 }
 
+func (*JujuProvisioner) Start(app provision.App) error {
+	return nil
+}
+
 func (JujuProvisioner) Swap(app1, app2 provision.App) error {
 	r, err := Router()
 	if err != nil {

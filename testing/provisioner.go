@@ -430,6 +430,10 @@ func (p *FakeProvisioner) Restart(app provision.App) error {
 	return nil
 }
 
+func (*FakeProvisioner) Start(app provision.App) error {
+	return nil
+}
+
 func (p *FakeProvisioner) Destroy(app provision.App) error {
 	if err := p.getError("Destroy"); err != nil {
 		return err

@@ -89,6 +89,10 @@ func (p *dockerProvisioner) Restart(app provision.App) error {
 	return nil
 }
 
+func (*dockerProvisioner) Start(app provision.App) error {
+	return nil
+}
+
 func injectEnvsAndRestart(a provision.App) {
 	time.Sleep(5e9)
 	err := a.SerializeEnvVars()
