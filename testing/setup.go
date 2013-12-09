@@ -7,6 +7,7 @@ package testing
 
 import (
 	"github.com/globocom/config"
+	"github.com/globocom/gandalf/testing"
 	"io/ioutil"
 	"launchpad.net/goamz/iam/iamtest"
 	"launchpad.net/goamz/s3/s3test"
@@ -77,8 +78,8 @@ func (h *TestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 // starts a new httptest.Server and returns it
 // Also changes git:host, git:port and git:protocol to match the server's url
-func (t *T) StartGandalfTestServer(h http.Handler) *httptest.Server {
-	ts := httptest.NewServer(h)
+func StartGandalfTestServer(h http.Handler) *httptest.Server {
+	ts := testing.TestServer(h)
 	config.Set("git:api-server", ts.URL)
 	return ts
 }
