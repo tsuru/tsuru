@@ -17,8 +17,7 @@ import (
 func (s *S) TestDeploy(c *gocheck.C) {
 	content := `{"git_url": "git://tsuruhost.com/cribcaged.git"}`
 	h := &testing.TestHandler{Content: content}
-	t := &testing.T{}
-	gandalfServer := t.StartGandalfTestServer(h)
+	gandalfServer := testing.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	provisioner := testing.NewFakeProvisioner()
 	provisioner.PrepareOutput([]byte("cloned"))
@@ -39,8 +38,7 @@ func (s *S) TestDeploy(c *gocheck.C) {
 
 func (s *S) TestDeployLogsActions(c *gocheck.C) {
 	h := &testing.TestHandler{}
-	t := &testing.T{}
-	gandalfServer := t.StartGandalfTestServer(h)
+	gandalfServer := testing.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	provisioner := testing.NewFakeProvisioner()
 	provisioner.PrepareOutput([]byte(""))
@@ -68,8 +66,7 @@ Restarting app...
 
 func (s *S) TestCloneRepository(c *gocheck.C) {
 	h := &testing.TestHandler{}
-	t := &testing.T{}
-	gandalfServer := t.StartGandalfTestServer(h)
+	gandalfServer := testing.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	p := testing.NewFakeProvisioner()
 	p.PrepareOutput([]byte("something"))

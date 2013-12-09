@@ -10,10 +10,9 @@ import (
 	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
-	"net/http"
-	"net/http/httptest"
 )
 
 type ActionsSuite struct {
@@ -37,12 +36,6 @@ func (s *ActionsSuite) TearDownSuite(c *gocheck.C) {
 	conn.Apps().Database.DropDatabase()
 }
 
-func (s *ActionsSuite) startGandalfTestServer(h http.Handler) *httptest.Server {
-	ts := httptest.NewServer(h)
-	config.Set("git:api-server", ts.URL)
-	return ts
-}
-
 func (s *ActionsSuite) TestAddKeyInGandalf(c *gocheck.C) {
 	c.Assert(addKeyInGandalfAction.Name, gocheck.Equals, "add-key-in-gandalf")
 }
@@ -61,7 +54,7 @@ func (s *ActionsSuite) TestAddUserToTeamInDatabase(c *gocheck.C) {
 
 func (s *ActionsSuite) TestAddKeyInGandalfActionForward(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	key := &auth.Key{Name: "mysshkey", Content: "my-ssh-key"}
 	u := &auth.User{Email: "me@gmail.com", Password: "123456"}
@@ -78,7 +71,7 @@ func (s *ActionsSuite) TestAddKeyInGandalfActionForward(c *gocheck.C) {
 
 func (s *ActionsSuite) TestAddKeyInGandalfActionBackward(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	key := &auth.Key{Name: "mysshkey", Content: "my-ssh-key"}
 	u := &auth.User{Email: "me@gmail.com", Password: "123456"}
@@ -127,7 +120,7 @@ func (s *ActionsSuite) TestAddKeyInDatabaseActionBackward(c *gocheck.C) {
 
 func (s *ActionsSuite) TestAddUserToTeamInGandalfActionForward(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	u := &auth.User{Email: "nobody@gmail.com", Password: "123456"}
 	err := u.Create()
@@ -146,7 +139,7 @@ func (s *ActionsSuite) TestAddUserToTeamInGandalfActionForward(c *gocheck.C) {
 
 func (s *ActionsSuite) TestAddUserToTeamInGandalfActionBackward(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	u := &auth.User{Email: "nobody@gmail.com", Password: "123456"}
 	err := u.Create()

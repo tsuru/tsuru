@@ -9,6 +9,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/iam"
@@ -134,7 +135,7 @@ func (s *S) TestCreateIAMUserPolicy(c *gocheck.C) {
 
 func (s *S) TestDestroyBucket(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	app := App{
 		Name:     "battery",

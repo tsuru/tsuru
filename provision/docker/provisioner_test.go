@@ -104,8 +104,7 @@ func (s *S) stopContainers(n uint) {
 
 func (s *S) TestDeploy(c *gocheck.C) {
 	h := &tsrTesting.TestHandler{}
-	t := &tsrTesting.T{}
-	gandalfServer := t.StartGandalfTestServer(h)
+	gandalfServer := tsrTesting.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(1)
 	err := newImage("tsuru/python", s.server.URL())
@@ -156,8 +155,7 @@ func getQueue() (queue.Q, error) {
 
 func (s *S) TestDeployEnqueuesBindService(c *gocheck.C) {
 	h := &tsrTesting.TestHandler{}
-	t := &tsrTesting.T{}
-	gandalfServer := t.StartGandalfTestServer(h)
+	gandalfServer := tsrTesting.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(1)
 	err := newImage("tsuru/python", s.server.URL())
@@ -208,8 +206,7 @@ func (w *writer) Write(c []byte) (int, error) {
 
 func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *gocheck.C) {
 	h := &tsrTesting.TestHandler{}
-	t := &tsrTesting.T{}
-	gandalfServer := t.StartGandalfTestServer(h)
+	gandalfServer := tsrTesting.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(3)
 	err := newImage("tsuru/python", s.server.URL())

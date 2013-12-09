@@ -28,8 +28,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("git:unit-repo", "/home/application/current")
 	content := `{"git_url":"git://git.tsuru.io/foobar.git","ssh_url":"git@git.tsuru.io:foobar.git"}`
 	s.h = &tsrTesting.TestHandler{Content: content}
-	t := &tsrTesting.T{}
-	s.ts = t.StartGandalfTestServer(s.h)
+	s.ts = tsrTesting.StartGandalfTestServer(s.h)
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {

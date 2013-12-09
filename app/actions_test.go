@@ -15,6 +15,7 @@ import (
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/quota"
+	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/iam"
@@ -467,7 +468,7 @@ func (s *S) TestExportEnvironmentsMinParams(c *gocheck.C) {
 
 func (s *S) TestCreateRepositoryForward(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	app := App{Name: "someapp", Teams: []string{s.team.Name}}
 	ctx := action.FWContext{Params: []interface{}{app}}
@@ -484,7 +485,7 @@ func (s *S) TestCreateRepositoryForward(c *gocheck.C) {
 
 func (s *S) TestCreateRepositoryForwardAppPointer(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	app := App{Name: "someapp", Teams: []string{s.team.Name}}
 	ctx := action.FWContext{Params: []interface{}{&app}}
@@ -508,7 +509,7 @@ func (s *S) TestCreateRepositoryForwardInvalidType(c *gocheck.C) {
 
 func (s *S) TestCreateRepositoryBackward(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	app := App{Name: "someapp"}
 	ctx := action.BWContext{FWResult: &app, Params: []interface{}{app}}

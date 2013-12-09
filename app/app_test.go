@@ -62,7 +62,7 @@ func (s *S) TestDelete(c *gocheck.C) {
 		bson.M{"$set": bson.M{"quota": quota.Unlimited}},
 	)
 	h := testHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	a := App{
 		Name:     "ritual",
@@ -91,7 +91,7 @@ func (s *S) TestDelete(c *gocheck.C) {
 
 func (s *S) TestDestroy(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	a := App{
 		Name:     "ritual",
@@ -127,7 +127,7 @@ func (s *S) TestDestroyWithoutBucketSupport(c *gocheck.C) {
 	config.Unset("bucket-support")
 	defer config.Set("bucket-support", true)
 	h := testHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	a := App{
 		Name:     "blinded",
@@ -153,7 +153,7 @@ func (s *S) TestDestroyWithoutBucketSupport(c *gocheck.C) {
 
 func (s *S) TestDestroyWithoutUnits(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	app := App{Name: "x4", Platform: "python"}
 	err := CreateApp(&app, s.user)
@@ -171,7 +171,7 @@ func (s *S) TestDestroyWithoutUnits(c *gocheck.C) {
 func (s *S) TestCreateApp(c *gocheck.C) {
 	patchRandomReader()
 	defer unpatchRandomReader()
-	ts := s.t.StartGandalfTestServer(&testHandler{})
+	ts := testing.StartGandalfTestServer(&testHandler{})
 	defer ts.Close()
 	a := App{
 		Name:     "appname",
@@ -257,7 +257,7 @@ func (s *S) TestCreateWithoutBucketSupport(c *gocheck.C) {
 	config.Unset("bucket-support")
 	defer config.Set("bucket-support", true)
 	h := testHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	a := App{
 		Name:     "sorry",
@@ -338,7 +338,7 @@ func (s *S) TestCantCreateAppWithInvalidName(c *gocheck.C) {
 
 func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfProvisionerFail(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	s.provisioner.PrepareFailure("Provision", stderr.New("exit status 1"))
 	a := App{
@@ -361,7 +361,7 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfProvisionerFail(c *gocheck.C) {
 
 func (s *S) TestDeletesIAMCredentialsAndS3BucketIfProvisionerFail(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	s.provisioner.PrepareFailure("Provision", stderr.New("exit status 1"))
 	source := patchRandomReader()
@@ -390,7 +390,7 @@ func (s *S) TestDeletesIAMCredentialsAndS3BucketIfProvisionerFail(c *gocheck.C) 
 
 func (s *S) TestCreateAppCreatesRepositoryInGandalf(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	a := App{
 		Name:     "someapp",
@@ -413,7 +413,7 @@ func (s *S) TestCreateAppCreatesRepositoryInGandalf(c *gocheck.C) {
 }
 
 func (s *S) TestCreateAppDoesNotSaveTheAppWhenGandalfFailstoCreateTheRepository(c *gocheck.C) {
-	ts := s.t.StartGandalfTestServer(&testBadHandler{msg: "could not create the repository"})
+	ts := testing.StartGandalfTestServer(&testBadHandler{msg: "could not create the repository"})
 	defer ts.Close()
 	a := App{Name: "otherapp", Platform: "python"}
 	err := CreateApp(&a, s.user)

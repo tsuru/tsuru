@@ -56,8 +56,7 @@ func (s *S) TestUnitsCollection(c *gocheck.C) {
 
 func (s *S) TestProvision(c *gocheck.C) {
 	h := &testing.TestHandler{}
-	t := &testing.T{}
-	gandalfServer := t.StartGandalfTestServer(h)
+	gandalfServer := testing.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)
@@ -120,8 +119,7 @@ func (s *S) TestRestart(c *gocheck.C) {
 
 func (s *S) TestRestartFailure(c *gocheck.C) {
 	h := &testing.TestHandler{}
-	t := &testing.T{}
-	gandalfServer := t.StartGandalfTestServer(h)
+	gandalfServer := testing.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	tmpdir, err := commandmocker.Error("juju", "juju failed to run command", 25)
 	c.Assert(err, gocheck.IsNil)
@@ -490,8 +488,7 @@ func (s *S) TestAddr(c *gocheck.C) {
 
 func (s *S) TestAddrWithoutUnits(c *gocheck.C) {
 	h := &testing.TestHandler{}
-	t := &testing.T{}
-	gandalfServer := t.StartGandalfTestServer(h)
+	gandalfServer := testing.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	app := testing.NewFakeApp("squeeze", "who", 0)
 	p := JujuProvisioner{}
@@ -503,8 +500,7 @@ func (s *S) TestAddrWithoutUnits(c *gocheck.C) {
 
 func (s *ELBSuite) TestProvisionWithELB(c *gocheck.C) {
 	h := &testing.TestHandler{}
-	t := &testing.T{}
-	gandalfServer := t.StartGandalfTestServer(h)
+	gandalfServer := testing.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)
@@ -530,8 +526,7 @@ func (s *ELBSuite) TestProvisionWithELB(c *gocheck.C) {
 
 func (s *ELBSuite) TestDestroyWithELB(c *gocheck.C) {
 	h := &testing.TestHandler{}
-	t := &testing.T{}
-	gandalfServer := t.StartGandalfTestServer(h)
+	gandalfServer := testing.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	config.Set("juju:charms-path", "/home/charms")
 	defer config.Unset("juju:charms-path")

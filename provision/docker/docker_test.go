@@ -530,8 +530,7 @@ func (s *S) TestRemoveImageCallsRegistry(c *gocheck.C) {
 
 func (s *S) TestContainerDeploy(c *gocheck.C) {
 	h := &testing.TestHandler{}
-	t := &testing.T{}
-	gandalfServer := t.StartGandalfTestServer(h)
+	gandalfServer := testing.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(1)
 	err := newImage("tsuru/python", s.server.URL())
@@ -546,8 +545,7 @@ func (s *S) TestContainerDeploy(c *gocheck.C) {
 
 func (s *S) TestBuild(c *gocheck.C) {
 	h := &testing.TestHandler{}
-	t := &testing.T{}
-	gandalfServer := t.StartGandalfTestServer(h)
+	gandalfServer := testing.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(1)
 	err := newImage("tsuru/python", s.server.URL())
