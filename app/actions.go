@@ -73,33 +73,6 @@ var reserveUserApp = action.Action{
 	MinParams: 2,
 }
 
-var createAppQuota = action.Action{
-	Name: "create-app-quota",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var app App
-		switch ctx.Params[0].(type) {
-		case App:
-			app = ctx.Params[0].(App)
-		case *App:
-			app = *ctx.Params[0].(*App)
-		default:
-			return nil, errors.New("First parameter must be App or *App.")
-		}
-		if limit, err := config.GetUint("quota:units-per-app"); err == nil {
-			if limit == 0 {
-				return nil, errors.New("app creation is disallowed")
-			}
-			quota.Create(app.Name, uint(limit))
-			quota.Reserve(app.Name, app.Name+"-0")
-		}
-		return app.Name, nil
-	},
-	Backward: func(ctx action.BWContext) {
-		quota.Delete(ctx.FWResult.(string))
-	},
-	MinParams: 1,
-}
-
 // insertApp is an action that inserts an app in the database in Forward and
 // removes it in the Backward.
 //

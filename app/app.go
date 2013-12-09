@@ -129,7 +129,7 @@ func CreateApp(app *App, user *auth.User) error {
 			"starting with a letter."
 		return &errors.ValidationError{Message: msg}
 	}
-	actions := []*action.Action{&reserveUserApp, &createAppQuota, &insertApp}
+	actions := []*action.Action{&reserveUserApp, &insertApp}
 	useS3, _ := config.GetBool("bucket-support")
 	if useS3 {
 		actions = append(actions, &createIAMUserAction,
@@ -210,7 +210,6 @@ func Delete(app *App) error {
 		return err
 	}
 	defer conn.Close()
-	quota.Delete(app.Name)
 	return conn.Apps().Remove(bson.M{"name": app.Name})
 }
 
