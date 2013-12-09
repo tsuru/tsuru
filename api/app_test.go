@@ -502,6 +502,7 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 		Name:     "armorandsword",
 		Platform: "python",
 		Teams:    []string{s.team.Name},
+		Quota:    quota.Unlimited,
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -597,13 +598,11 @@ func (s *S) TestAddUnitsQuotaExceeded(c *gocheck.C) {
 		Name:     "armorandsword",
 		Platform: "python",
 		Teams:    []string{s.team.Name},
+		Quota:    quota.Quota{Limit: 2},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	err = quota.Create(a.Name, 2)
-	c.Assert(err, gocheck.IsNil)
-	defer quota.Delete(a.Name)
 	err = s.provisioner.Provision(&a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.provisioner.Destroy(&a)
