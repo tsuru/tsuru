@@ -102,7 +102,7 @@ var startContainer = action.Action{
 		config := docker.HostConfig{}
 		bindings := make(map[docker.Port][]docker.PortBinding)
 		bindings[docker.Port(fmt.Sprintf("%s/tcp", port))] = []docker.PortBinding{
-			docker.PortBinding{
+			{
 				HostIp:   "",
 				HostPort: "",
 			},
