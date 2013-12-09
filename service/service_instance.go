@@ -155,12 +155,13 @@ func (si *ServiceInstance) BindApp(app bind.App) error {
 	if err != nil {
 		return err
 	}
-	if len(app.GetUnits()) == 0 {
+	units := app.GetUnits()
+	if len(units) == 0 {
 		return &errors.HTTP{Code: http.StatusPreconditionFailed, Message: "This app does not have an IP yet."}
 	}
-	envsChan := make(chan map[string]string, len(app.GetUnits())+1)
-	errChan := make(chan error, len(app.GetUnits())+1)
-	for _, unit := range app.GetUnits() {
+	envsChan := make(chan map[string]string, len(units)+1)
+	errChan := make(chan error, len(units)+1)
+	for _, unit := range units {
 		go func(unit bind.Unit) {
 			vars, err := si.BindUnit(app, unit)
 			if err != nil {
