@@ -746,3 +746,19 @@ func (s *S) TestBuildImageNameWithRegistry(c *gocheck.C) {
 	expected := "localhost:3030/" + s.repoNamespace + "/raising"
 	c.Assert(repository, gocheck.Equals, expected)
 }
+
+func (s *S) TestContainerStart(c *gocheck.C) {
+	cont, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(cont)
+	client, err := dockerClient.NewClient(s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	dockerContainer, err := client.InspectContainer(cont.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dockerContainer.State.Running, gocheck.Equals, false)
+	err = cont.start()
+	c.Assert(err, gocheck.IsNil)
+	dockerContainer, err = client.InspectContainer(cont.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dockerContainer.State.Running, gocheck.Equals, true)
+}

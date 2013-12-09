@@ -344,6 +344,23 @@ func (c *container) stop() error {
 	return err
 }
 
+func (c *container) start() error {
+	port, err := getPort()
+	if err != nil {
+		return err
+	}
+	config := docker.HostConfig{}
+	bindings := make(map[docker.Port][]docker.PortBinding)
+	bindings[docker.Port(fmt.Sprintf("%s/tcp", port))] = []docker.PortBinding{
+		{
+			HostIp:   "",
+			HostPort: "",
+		},
+	}
+	config.PortBindings = bindings
+	return dockerCluster().StartContainer(c.ID, &config)
+}
+
 // logs returns logs for the container.
 func (c *container) logs(w io.Writer) error {
 	opts := dclient.AttachToContainerOptions{
