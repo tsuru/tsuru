@@ -221,17 +221,12 @@ func Delete(app *App) error {
 func (app *App) AddUnit(u *Unit) {
 	for i, unt := range app.Units {
 		if unt.Name == u.Name {
-			u.QuotaItem = unt.QuotaItem
 			app.Units[i] = *u
 			return
-		} else if unt.Name == "" && unt.QuotaItem == app.Name+"-0" {
-			u.QuotaItem = unt.QuotaItem
+		} else if unt.Name == "" {
 			app.Units[i] = *u
 			return
 		}
-	}
-	if u.QuotaItem == "" {
-		u.QuotaItem = generateUnitQuotaItems(app, 1)[0]
 	}
 	app.Units = append(app.Units, *u)
 }
@@ -338,13 +333,11 @@ func (app *App) RemoveUnits(n uint) error {
 	)
 	units := UnitSlice(app.Units)
 	sort.Sort(units)
-	items := make([]string, int(n))
 	for i := 0; i < int(n); i++ {
 		name := units[i].GetName()
 		go Provisioner.RemoveUnit(app, name)
 		removed = append(removed, i)
 		app.unbindUnit(&units[i])
-		items[i] = units[i].QuotaItem
 	}
 	if len(removed) == 0 {
 		return err
@@ -357,9 +350,13 @@ func (app *App) RemoveUnits(n uint) error {
 	app.removeUnits(removed)
 	dbErr := conn.Apps().Update(
 		bson.M{"name": app.Name},
-		bson.M{"$set": bson.M{"units": app.Units}},
+		bson.M{
+			"$set": bson.M{
+				"units":       app.Units,
+				"quota.inuse": len(app.Units),
+			},
+		},
 	)
-	quota.Release(app.Name, items...)
 	if err == nil {
 		return dbErr
 	}

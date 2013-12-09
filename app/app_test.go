@@ -72,8 +72,6 @@ func (s *S) TestDelete(c *gocheck.C) {
 	}
 	err := s.conn.Apps().Insert(&a)
 	c.Assert(err, gocheck.IsNil)
-	err = quota.Create(a.Name, 1)
-	c.Assert(err, gocheck.IsNil)
 	a.Get()
 	err = Delete(&a)
 	c.Assert(err, gocheck.IsNil)
@@ -85,8 +83,6 @@ func (s *S) TestDelete(c *gocheck.C) {
 	c.Assert(s.provisioner.Provisioned(&a), gocheck.Equals, false)
 	err = auth.ReserveApp(s.user)
 	c.Assert(err, gocheck.IsNil)
-	err = quota.Reserve(a.Name, "something")
-	c.Assert(err, gocheck.Equals, quota.ErrQuotaNotFound)
 }
 
 func (s *S) TestDestroy(c *gocheck.C) {
@@ -182,13 +178,10 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 	config.Set("host", expectedHost)
 	s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": 1}})
 	defer s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": -1}})
-	err := quota.Create(s.user.Email, 1)
-	c.Assert(err, gocheck.IsNil)
-	defer quota.Delete(s.user.Email)
 	config.Set("quota:units-per-app", 3)
 	defer config.Unset("quota:units-per-app")
 
-	err = CreateApp(&a, s.user)
+	err := CreateApp(&a, s.user)
 	c.Assert(err, gocheck.IsNil)
 	defer Delete(&a)
 	err = a.Get()
@@ -232,8 +225,6 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 	err = auth.ReserveApp(s.user)
 	_, ok = err.(*quota.QuotaExceededError)
 	c.Assert(ok, gocheck.Equals, true)
-	_, _, err = quota.Items(retrievedApp.Name)
-	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TestCreateAppUserQuotaExceeded(c *gocheck.C) {
@@ -434,7 +425,6 @@ func (s *S) TestAppendOrUpdate(c *gocheck.C) {
 	u := Unit{Name: "i-00000zz8", Ip: "", Machine: 1}
 	a.AddUnit(&u)
 	c.Assert(len(a.Units), gocheck.Equals, 1)
-	c.Assert(u.QuotaItem, gocheck.Equals, "appName-0")
 	u = Unit{
 		Name: "i-00000zz8",
 		Ip:   "192.168.0.12",
@@ -448,31 +438,18 @@ func (s *S) TestAddUnitPlaceHolder(c *gocheck.C) {
 	a := App{
 		Name:     "appName",
 		Platform: "django",
-		Units:    []Unit{{QuotaItem: "appName-0"}},
+		Units:    []Unit{{}},
 	}
 	u := Unit{Name: "i-000000zzz8", Machine: 1}
 	a.AddUnit(&u)
 	c.Assert(len(a.Units), gocheck.Equals, 1)
-	c.Assert(u.QuotaItem, gocheck.Equals, "appName-0")
-}
-
-func (s *S) TestAddUnitKeepsQuotaItemOnUpdate(c *gocheck.C) {
-	a := App{Name: "myapp", Units: []Unit{{Name: "myapp/0", QuotaItem: "myapp-1"}}}
-	u := Unit{Name: "myapp/0", Machine: 1}
-	a.AddUnit(&u)
-	c.Assert(len(a.Units), gocheck.Equals, 1)
-	c.Assert(u.QuotaItem, gocheck.Equals, "myapp-1")
-}
-
-func (s *S) TestAddUnitDoesntReplacePredefinedQuotaItem(c *gocheck.C) {
-	a := App{Name: "myapp"}
-	u := Unit{Name: "myapp/0", Machine: 1, QuotaItem: "waaaaat"}
-	a.AddUnit(&u)
-	c.Assert(u.QuotaItem, gocheck.Equals, "waaaaat")
 }
 
 func (s *S) TestAddUnits(c *gocheck.C) {
-	app := App{Name: "warpaint", Platform: "python"}
+	app := App{
+		Name: "warpaint", Platform: "python",
+		Quota: quota.Unlimited,
+	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
@@ -498,8 +475,6 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	for i, unit := range app.Units {
 		expectedName := fmt.Sprintf("%s/%d", app.Name, i+1)
 		c.Check(unit.Name, gocheck.Equals, expectedName)
-		expectedItem := fmt.Sprintf("%s-%d", app.Name, i)
-		c.Check(unit.QuotaItem, gocheck.Equals, expectedItem)
 		messages := []queue.Message{
 			{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}},
 			{Action: BindService, Args: []string{app.Name, unit.Name}},
@@ -522,11 +497,11 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 }
 
 func (s *S) TestAddUnitsQuota(c *gocheck.C) {
-	err := quota.Create("warpaint", 7)
-	c.Assert(err, gocheck.IsNil)
-	defer quota.Delete("warpaint")
-	app := App{Name: "warpaint", Platform: "python"}
-	err = s.conn.Apps().Insert(app)
+	app := App{
+		Name: "warpaint", Platform: "python",
+		Quota: quota.Quota{Limit: 7},
+	}
+	err := s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	s.provisioner.Provision(&app)
@@ -551,8 +526,6 @@ func (s *S) TestAddUnitsQuota(c *gocheck.C) {
 	for i, unit := range app.Units {
 		expectedName := fmt.Sprintf("%s/%d", app.Name, i+1)
 		c.Assert(unit.Name, gocheck.Equals, expectedName)
-		expectedItem := fmt.Sprintf("%s-%d", app.Name, i)
-		c.Assert(unit.QuotaItem, gocheck.Equals, expectedItem)
 		messages := []queue.Message{
 			{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}},
 			{Action: BindService, Args: []string{app.Name, unit.Name}},
@@ -572,27 +545,16 @@ func (s *S) TestAddUnitsQuota(c *gocheck.C) {
 	sort.Sort(expectedMessages)
 	sort.Sort(gotMessages)
 	c.Assert(gotMessages, gocheck.DeepEquals, expectedMessages)
-	err = quota.Reserve("warpaint", "war/0")
+	err = reserveUnits(&app, 1)
 	_, ok := err.(*quota.QuotaExceededError)
 	c.Assert(ok, gocheck.Equals, true)
-	items, available, err := quota.Items("warpaint")
-	c.Assert(err, gocheck.IsNil)
-	expected := []string{
-		"warpaint-0", "warpaint-1", "warpaint-2", "warpaint-3",
-		"warpaint-4", "warpaint-5", "warpaint-6",
-	}
-	c.Assert(items, gocheck.DeepEquals, expected)
-	c.Assert(available, gocheck.Equals, uint(0))
 }
 
 func (s *S) TestAddUnitsQuotaExceeded(c *gocheck.C) {
-	err := quota.Create("warpaint", 0)
-	c.Assert(err, gocheck.IsNil)
-	defer quota.Delete("warpaint")
 	app := App{Name: "warpaint", Platform: "ruby"}
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	err = app.AddUnits(1)
+	err := app.AddUnits(1)
 	e, ok := err.(*quota.QuotaExceededError)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Available, gocheck.Equals, uint(0))
@@ -602,13 +564,13 @@ func (s *S) TestAddUnitsQuotaExceeded(c *gocheck.C) {
 }
 
 func (s *S) TestAddUnitsMultiple(c *gocheck.C) {
-	err := quota.Create("warpaint", 10)
-	c.Assert(err, gocheck.IsNil)
-	defer quota.Delete("warpaint")
-	app := App{Name: "warpaint", Platform: "ruby"}
+	app := App{
+		Name: "warpaint", Platform: "ruby",
+		Quota: quota.Quota{Limit: 10},
+	}
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	err = app.AddUnits(11)
+	err := app.AddUnits(11)
 	e, ok := err.(*quota.QuotaExceededError)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Available, gocheck.Equals, uint(10))
@@ -623,7 +585,7 @@ func (s *S) TestAddZeroUnits(c *gocheck.C) {
 }
 
 func (s *S) TestAddUnitsFailureInProvisioner(c *gocheck.C) {
-	app := App{Name: "scars", Platform: "golang"}
+	app := App{Name: "scars", Platform: "golang", Quota: quota.Unlimited}
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	err := app.AddUnits(2)
@@ -632,15 +594,14 @@ func (s *S) TestAddUnitsFailureInProvisioner(c *gocheck.C) {
 }
 
 func (s *S) TestAddUnitsIsAtomic(c *gocheck.C) {
-	err := quota.Create("warpaint", 7)
-	c.Assert(err, gocheck.IsNil)
-	defer quota.Delete("warpaint")
-	app := App{Name: "warpaint", Platform: "golang"}
-	err = app.AddUnits(2)
+	app := App{
+		Name: "warpaint", Platform: "golang",
+		Quota: quota.Unlimited,
+	}
+	err := app.AddUnits(2)
 	c.Assert(err, gocheck.NotNil)
-	_, avail, err := quota.Items("warpaint")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(avail, gocheck.Equals, uint(7))
+	err = app.Get()
+	c.Assert(err, gocheck.Equals, ErrAppNotFound)
 }
 
 type hasUnitChecker struct{}
@@ -695,21 +656,19 @@ func (s *S) TestRemoveUnitsPriority(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveUnitsWithQuota(c *gocheck.C) {
-	err := quota.Create("ble", 6)
-	c.Assert(err, gocheck.IsNil)
-	defer quota.Delete("ble")
-	err = quota.Reserve("ble", "ble-0", "ble-1", "ble-2", "ble-3", "ble-4", "ble-5")
-	c.Assert(err, gocheck.IsNil)
 	units := []Unit{
-		{Name: "ble/0", State: provision.StatusStarted.String(), QuotaItem: "ble-0"},
-		{Name: "ble/1", State: provision.StatusDown.String(), QuotaItem: "ble-1"},
-		{Name: "ble/2", State: provision.StatusBuilding.String(), QuotaItem: "ble-2"},
-		{Name: "ble/3", State: provision.StatusBuilding.String(), QuotaItem: "ble-3"},
-		{Name: "ble/4", State: provision.StatusStarted.String(), QuotaItem: "ble-4"},
-		{Name: "ble/5", State: provision.StatusBuilding.String(), QuotaItem: "ble-5"},
+		{Name: "ble/0", State: provision.StatusStarted.String()},
+		{Name: "ble/1", State: provision.StatusDown.String()},
+		{Name: "ble/2", State: provision.StatusBuilding.String()},
+		{Name: "ble/3", State: provision.StatusBuilding.String()},
+		{Name: "ble/4", State: provision.StatusStarted.String()},
+		{Name: "ble/5", State: provision.StatusBuilding.String()},
 	}
-	a := App{Name: "ble", Units: units}
-	err = s.conn.Apps().Insert(a)
+	a := App{
+		Name: "ble", Units: units,
+		Quota: quota.Quota{Limit: 6, InUse: 6},
+	}
+	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(&a)
@@ -717,10 +676,9 @@ func (s *S) TestRemoveUnitsWithQuota(c *gocheck.C) {
 	defer s.provisioner.Destroy(&a)
 	err = a.RemoveUnits(4)
 	c.Assert(err, gocheck.IsNil)
-	items, available, err := quota.Items(a.Name)
+	err = a.Get()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(items, gocheck.DeepEquals, []string{"ble-0", "ble-4"})
-	c.Assert(available, gocheck.Equals, uint(4))
+	c.Assert(a.Quota.InUse, gocheck.Equals, 2)
 }
 
 func (s *S) TestRemoveUnits(c *gocheck.C) {
@@ -736,6 +694,7 @@ func (s *S) TestRemoveUnits(c *gocheck.C) {
 	app := App{
 		Name:     "chemistry",
 		Platform: "python",
+		Quota:    quota.Unlimited,
 	}
 	instance := service.ServiceInstance{
 		Name:        "my-inst",
@@ -769,6 +728,7 @@ func (s *S) TestRemoveUnits(c *gocheck.C) {
 	c.Assert(app.Units, gocheck.HasLen, 2)
 	c.Assert(app.Units[0].Name, gocheck.Equals, "chemistry/3")
 	c.Assert(app.Units[1].Name, gocheck.Equals, "chemistry/4")
+	c.Assert(app.Quota.InUse, gocheck.Equals, 2)
 	ok := make(chan int8)
 	go func() {
 		for _ = range time.Tick(1e3) {
@@ -863,6 +823,7 @@ func (s *S) TestRemoveUnitByNameOrInstanceID(c *gocheck.C) {
 		Units: []Unit{
 			{Name: "physics/0"},
 		},
+		Quota: quota.Unlimited,
 	}
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
@@ -925,6 +886,7 @@ func (s *S) TestRemoveAbsentUnit(c *gocheck.C) {
 		Units: []Unit{
 			{Name: "chemistry/0"},
 		},
+		Quota: quota.Unlimited,
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
