@@ -145,8 +145,9 @@ func (p *JujuProvisioner) Restart(app provision.App) error {
 	return nil
 }
 
-func (*JujuProvisioner) Start(app provision.App) error {
-	return nil
+func (p *JujuProvisioner) Start(app provision.App) error {
+	var buf bytes.Buffer
+	return p.ExecuteCommand(&buf, &buf, app, "/var/lib/tsuru/hooks/start")
 }
 
 func (JujuProvisioner) Swap(app1, app2 provision.App) error {

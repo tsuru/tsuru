@@ -713,3 +713,17 @@ func (s *S) TestDeployPipeline(c *gocheck.C) {
 	p := JujuProvisioner{}
 	c.Assert(p.DeployPipeline(), gocheck.IsNil)
 }
+
+func (s *S) TestStart(c *gocheck.C) {
+	fexec := &etesting.FakeExecutor{}
+	setExecut(fexec)
+	defer setExecut(nil)
+	app := testing.NewFakeApp("cribcaged", "python", 1)
+	p := JujuProvisioner{}
+	err := p.Start(app)
+	c.Assert(err, gocheck.IsNil)
+	args := []string{
+		"ssh", "-o", "StrictHostKeyChecking no", "-q", "1", "/var/lib/tsuru/hooks/start",
+	}
+	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
+}
