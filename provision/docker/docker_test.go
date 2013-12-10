@@ -473,10 +473,6 @@ func (s *S) TestGetImageAppWith20Deploys(c *gocheck.C) {
 	imageRepo := u.Host + "/tsuru/python"
 	err := newImage(imageRepo, s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	client, err := dockerClient.NewClient(s.server.URL())
-	c.Assert(err, gocheck.IsNil)
-	images, err := client.ListImages(true)
-	c.Assert(err, gocheck.IsNil)
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
