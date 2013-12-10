@@ -494,3 +494,11 @@ func assembleImageName(appName string) string {
 	parts = append(parts, repoNamespace, appName)
 	return strings.Join(parts, "/")
 }
+
+func usePlatformImage(app provision.App) bool {
+	deploys := app.GetDeploys()
+	if deploys != 0 && deploys%20 == 0 {
+		return true
+	}
+	return false
+}

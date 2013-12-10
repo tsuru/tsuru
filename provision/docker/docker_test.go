@@ -12,6 +12,7 @@ import (
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
+	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	etesting "github.com/globocom/tsuru/exec/testing"
 	ftesting "github.com/globocom/tsuru/fs/testing"
@@ -761,4 +762,31 @@ func (s *S) TestContainerStart(c *gocheck.C) {
 	dockerContainer, err = client.InspectContainer(cont.ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(dockerContainer.State.Running, gocheck.Equals, true)
+}
+
+func (s *S) TestUsePlatformImage(c *gocheck.C) {
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	units := []app.Unit{{Name: "4fa6e0f0c678"}, {Name: "e90e34656806"}}
+	app1 := &app.App{Name: "app1", Platform: "python", Deploys: 40, Units: units}
+	err = conn.Apps().Insert(app1)
+	c.Assert(err, gocheck.IsNil)
+	ok := usePlatformImage(app1)
+	c.Assert(ok, gocheck.Equals, true)
+	app2 := &app.App{Name: "app2", Platform: "python", Deploys: 20, Units: units}
+	err = conn.Apps().Insert(app2)
+	c.Assert(err, gocheck.IsNil)
+	ok = usePlatformImage(app2)
+	c.Assert(ok, gocheck.Equals, true)
+	app3 := &app.App{Name: "app3", Platform: "python", Deploys: 0, Units: units}
+	err = conn.Apps().Insert(app3)
+	c.Assert(err, gocheck.IsNil)
+	ok = usePlatformImage(app3)
+	c.Assert(ok, gocheck.Equals, false)
+	app4 := &app.App{Name: "app4", Platform: "python", Deploys: 19, Units: units}
+	err = conn.Apps().Insert(app4)
+	c.Assert(err, gocheck.IsNil)
+	ok = usePlatformImage(app4)
+	c.Assert(ok, gocheck.Equals, false)
 }
