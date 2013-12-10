@@ -183,6 +183,12 @@ func (a *FakeApp) SetEnv(env bind.EnvVar) {
 	a.env[env.Name] = env
 }
 
+func (a *FakeApp) SetEnvs(envs []bind.EnvVar) {
+	for _, env := range envs {
+		a.SetEnv(env)
+	}
+}
+
 // Env returns app.Env
 func (a *FakeApp) Envs() map[string]bind.EnvVar {
 	return a.env

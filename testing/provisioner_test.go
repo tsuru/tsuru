@@ -78,6 +78,36 @@ func (s *S) TestEnvs(c *gocheck.C) {
 	c.Assert(envs, gocheck.DeepEquals, app.env)
 }
 
+func (s *S) TestSetEnvs(c *gocheck.C) {
+	app := FakeApp{name: "time"}
+	envs := []bind.EnvVar{
+		{
+			Name:   "http_proxy",
+			Value:  "http://theirproxy.com:3128/",
+			Public: true,
+		},
+		{
+			Name:   "https_proxy",
+			Value:  "http://theirproxy.com:3128/",
+			Public: true,
+		},
+	}
+	app.SetEnvs(envs)
+	expected := map[string]bind.EnvVar{
+		"http_proxy": {
+			Name:   "http_proxy",
+			Value:  "http://theirproxy.com:3128/",
+			Public: true,
+		},
+		"https_proxy": {
+			Name:   "https_proxy",
+			Value:  "http://theirproxy.com:3128/",
+			Public: true,
+		},
+	}
+	c.Assert(app.env, gocheck.DeepEquals, expected)
+}
+
 func (s *S) TestFakeAppLogs(c *gocheck.C) {
 	app := NewFakeApp("sou", "otm", 0)
 	app.Log("something happened", "[tsuru]")
