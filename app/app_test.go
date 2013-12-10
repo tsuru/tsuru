@@ -741,7 +741,7 @@ func (s *S) TestRemoveUnits(c *gocheck.C) {
 	select {
 	case <-ok:
 	case <-time.After(10e9):
-		c.Fatal("Did not call service endpoint twice.")
+		c.Fatal("Did not call service endpoint twice after 10 seconds.")
 	}
 }
 
