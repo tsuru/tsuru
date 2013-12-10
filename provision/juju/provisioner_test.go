@@ -727,3 +727,20 @@ func (s *S) TestStart(c *gocheck.C) {
 	}
 	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
 }
+
+func (s *S) TestStartFailure(c *gocheck.C) {
+	// h := &testing.TestHandler{}
+	// gandalfServer := testing.StartGandalfTestServer(h)
+	// defer gandalfServer.Close()
+	tmpdir, err := commandmocker.Error("juju", "juju failed to run command", 25)
+	c.Assert(err, gocheck.IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := testing.NewFakeApp("cribcaged", "python", 1)
+	p := JujuProvisioner{}
+	err = p.Start(app)
+	c.Assert(err, gocheck.NotNil)
+	pErr, ok := err.(*provision.Error)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(pErr.Reason, gocheck.Equals, "juju failed to run command\n")
+	c.Assert(pErr.Err.Error(), gocheck.Equals, "exit status 25")
+}

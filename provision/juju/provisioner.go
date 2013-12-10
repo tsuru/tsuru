@@ -147,7 +147,13 @@ func (p *JujuProvisioner) Restart(app provision.App) error {
 
 func (p *JujuProvisioner) Start(app provision.App) error {
 	var buf bytes.Buffer
-	return p.ExecuteCommand(&buf, &buf, app, "/var/lib/tsuru/hooks/start")
+	err := p.ExecuteCommand(&buf, &buf, app, "/var/lib/tsuru/hooks/start")
+	if err != nil {
+		msg := fmt.Sprintf("Failed to start the app (%s): %s", err, buf.String())
+		app.Log(msg, "tsuru-provisioner")
+		return &provision.Error{Reason: buf.String(), Err: err}
+	}
+	return nil
 }
 
 func (JujuProvisioner) Swap(app1, app2 provision.App) error {
