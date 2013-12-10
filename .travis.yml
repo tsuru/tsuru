@@ -32,6 +32,7 @@ before_script:
   - echo http://localhost > $HOME/.tsuru_target
 script:
   - export PATH="$HOME/gopath/bin:$PATH"
+  - rm -rf src
   - make test
 notifications:
   irc:
