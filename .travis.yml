@@ -37,11 +37,6 @@ script:
   - export PATH="$HOME/gopath/bin:$PATH"
   - make test
 notifications:
-  irc:
-    channels:
-      - "irc.freenode.net#tsuru"
-    on_success: change
-    on_failure: always
   email:
     recipients:
       - tsuru@corp.globo.com
