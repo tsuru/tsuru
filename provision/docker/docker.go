@@ -410,7 +410,14 @@ func getImage(app provision.App) string {
 	coll := collection()
 	defer coll.Close()
 	coll.Find(bson.M{"appname": app.GetName()}).One(&c)
-	if c.Image == "" || usePlatformImage(app) {
+	if c.Image == "" {
+		return assembleImageName(app.GetPlatform())
+	}
+	if usePlatformImage(app) {
+		err := removeImage(c.Image)
+		if err != nil {
+			log.Error(err.Error())
+		}
 		return assembleImageName(app.GetPlatform())
 	}
 	return c.Image

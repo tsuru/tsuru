@@ -464,6 +464,19 @@ func (s *S) TestGetImageFromAppPlatform(c *gocheck.C) {
 }
 
 func (s *S) TestGetImageAppWith20Deploys(c *gocheck.C) {
+	var request http.Request
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		request = *r
+	}))
+	defer server.Close()
+	u, _ := url.Parse(server.URL)
+	imageRepo := u.Host + "/tsuru/python"
+	err := newImage(imageRepo, s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	client, err := dockerClient.NewClient(s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	images, err := client.ListImages(true)
+	c.Assert(err, gocheck.IsNil)
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
@@ -472,7 +485,7 @@ func (s *S) TestGetImageAppWith20Deploys(c *gocheck.C) {
 	err = conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": "app1"})
-	cont := container{ID: "bleble", Type: "python", AppName: "app1", Image: "someimageid"}
+	cont := container{ID: "bleble", Type: "python", AppName: "app1", Image: imageRepo}
 	coll := collection()
 	err = coll.Insert(cont)
 	c.Assert(err, gocheck.IsNil)
@@ -483,6 +496,9 @@ func (s *S) TestGetImageAppWith20Deploys(c *gocheck.C) {
 	repoNamespace, err := config.GetString("docker:repository-namespace")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(img, gocheck.Equals, fmt.Sprintf("%s/python", repoNamespace))
+	c.Assert(request.Method, gocheck.Equals, "DELETE")
+	path := "/v1/repositories/tsuru/python/tags"
+	c.Assert(request.URL.Path, gocheck.Equals, path)
 }
 
 func (s *S) TestGetImageFromDatabase(c *gocheck.C) {
