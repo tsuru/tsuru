@@ -1,5 +1,6 @@
 language: go
 go:
+  - 1.1.2
   - 1.2
   - tip
 env:
@@ -19,7 +20,6 @@ install:
   - popd
   - make get-test godep
 before_script:
-  - go get code.google.com/p/go.tools/cmd/vet
   - git clean -dfX
   - make get-prod
   - echo http://localhost > $HOME/.tsuru_target
