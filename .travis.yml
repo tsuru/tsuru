@@ -25,14 +25,14 @@ install:
   - sleep 1
   - nc -z 127.0.0.1 11300
   - popd
-  - make get-test godep
+  - make get-test
 before_script:
   - git clean -dfX
-  - make get-prod
+  - make get-prod godep
+  - rm -rf src
   - echo http://localhost > $HOME/.tsuru_target
 script:
   - export PATH="$HOME/gopath/bin:$PATH"
-  - rm -rf src
   - make test
 notifications:
   irc:
