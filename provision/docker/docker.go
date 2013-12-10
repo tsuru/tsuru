@@ -411,10 +411,10 @@ func getImage(app provision.App) string {
 	coll := collection()
 	defer coll.Close()
 	coll.Find(bson.M{"appname": app.GetName()}).One(&c)
-	if c.Image != "" {
-		return c.Image
+	if c.Image == "" || usePlatformImage(app) {
+		return assembleImageName(app.GetPlatform())
 	}
-	return assembleImageName(app.GetPlatform())
+	return c.Image
 }
 
 // removeImage removes an image from docker registry

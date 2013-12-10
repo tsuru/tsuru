@@ -463,6 +463,28 @@ func (s *S) TestGetImageFromAppPlatform(c *gocheck.C) {
 	c.Assert(img, gocheck.Equals, fmt.Sprintf("%s/python", repoNamespace))
 }
 
+func (s *S) TestGetImageAppWith20Deploys(c *gocheck.C) {
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	units := []app.Unit{{Name: "4fa6e0f0c678"}, {Name: "e90e34656806"}}
+	app := &app.App{Name: "app1", Platform: "python", Deploys: 20, Units: units}
+	err = conn.Apps().Insert(app)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": "app1"})
+	cont := container{ID: "bleble", Type: "python", AppName: "app1", Image: "someimageid"}
+	coll := collection()
+	err = coll.Insert(cont)
+	c.Assert(err, gocheck.IsNil)
+	defer coll.Close()
+	c.Assert(err, gocheck.IsNil)
+	defer coll.RemoveAll(bson.M{"_id": "bleble"})
+	img := getImage(app)
+	repoNamespace, err := config.GetString("docker:repository-namespace")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(img, gocheck.Equals, fmt.Sprintf("%s/python", repoNamespace))
+}
+
 func (s *S) TestGetImageFromDatabase(c *gocheck.C) {
 	cont := container{ID: "bleble", Type: "python", AppName: "myapp", Image: "someimageid"}
 	coll := collection()
@@ -774,19 +796,23 @@ func (s *S) TestUsePlatformImage(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	ok := usePlatformImage(app1)
 	c.Assert(ok, gocheck.Equals, true)
+	defer conn.Apps().Remove(bson.M{"name": "app1"})
 	app2 := &app.App{Name: "app2", Platform: "python", Deploys: 20, Units: units}
 	err = conn.Apps().Insert(app2)
 	c.Assert(err, gocheck.IsNil)
 	ok = usePlatformImage(app2)
 	c.Assert(ok, gocheck.Equals, true)
+	defer conn.Apps().Remove(bson.M{"name": "app2"})
 	app3 := &app.App{Name: "app3", Platform: "python", Deploys: 0, Units: units}
 	err = conn.Apps().Insert(app3)
 	c.Assert(err, gocheck.IsNil)
 	ok = usePlatformImage(app3)
 	c.Assert(ok, gocheck.Equals, false)
+	defer conn.Apps().Remove(bson.M{"name": "app3"})
 	app4 := &app.App{Name: "app4", Platform: "python", Deploys: 19, Units: units}
 	err = conn.Apps().Insert(app4)
 	c.Assert(err, gocheck.IsNil)
 	ok = usePlatformImage(app4)
 	c.Assert(ok, gocheck.Equals, false)
+	defer conn.Apps().Remove(bson.M{"name": "app4"})
 }
