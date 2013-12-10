@@ -21,7 +21,6 @@ install:
 before_script:
   - go get code.google.com/p/go.tools/cmd/vet
   - git clean -dfX
-  - ./check-fmt.sh
   - make get-prod
   - echo http://localhost > $HOME/.tsuru_target
 script:
