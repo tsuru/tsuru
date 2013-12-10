@@ -729,20 +729,6 @@ func (s *S) TestRemoveUnits(c *gocheck.C) {
 	c.Assert(app.Units[0].Name, gocheck.Equals, "chemistry/3")
 	c.Assert(app.Units[1].Name, gocheck.Equals, "chemistry/4")
 	c.Assert(app.Quota.InUse, gocheck.Equals, 2)
-	ok := make(chan int8)
-	go func() {
-		for _ = range time.Tick(1e3) {
-			if atomic.LoadInt32(&calls) == 2 {
-				ok <- 1
-				return
-			}
-		}
-	}()
-	select {
-	case <-ok:
-	case <-time.After(10e9):
-		c.Fatal("Did not call service endpoint twice after 10 seconds.")
-	}
 }
 
 func (s *S) TestRemoveUnitsInvalidValues(c *gocheck.C) {
