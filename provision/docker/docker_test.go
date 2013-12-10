@@ -808,6 +808,16 @@ func (s *S) TestContainerStartWithoutPort(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 }
 
+func (s *S) TestContainerStartStartedUnits(c *gocheck.C) {
+	cont, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(cont)
+	err = cont.start()
+	c.Assert(err, gocheck.IsNil)
+	err = cont.start()
+	c.Assert(err, gocheck.NotNil)
+}
+
 func (s *S) TestUsePlatformImage(c *gocheck.C) {
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
