@@ -377,12 +377,12 @@ func (app *App) unbindUnit(unit provision.AppUnit) error {
 		return err
 	}
 	for _, instance := range instances {
-		go func(instance service.ServiceInstance) {
+		go func(instance service.ServiceInstance, unit provision.AppUnit) {
 			err = instance.UnbindUnit(unit)
 			if err != nil {
 				log.Errorf("Error unbinding the unit %s with the service instance %s.", unit.GetIp(), instance.Name)
 			}
-		}(instance)
+		}(instance, unit)
 	}
 	return nil
 }
