@@ -797,6 +797,17 @@ func (s *S) TestContainerStart(c *gocheck.C) {
 	c.Assert(dockerContainer.State.Running, gocheck.Equals, true)
 }
 
+func (s *S) TestContainerStartWithoutPort(c *gocheck.C) {
+	cont, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(cont)
+	oldUser, _ := config.Get("docker:run-cmd:port")
+	defer config.Set("docker:run-cmd:port", oldUser)
+	config.Unset("docker:run-cmd:port")
+	err = cont.start()
+	c.Assert(err, gocheck.NotNil)
+}
+
 func (s *S) TestUsePlatformImage(c *gocheck.C) {
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
