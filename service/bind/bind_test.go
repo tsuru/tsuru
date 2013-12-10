@@ -91,7 +91,7 @@ func (s *S) TestBindUnit(c *gocheck.C) {
 	c.Assert(envs, gocheck.DeepEquals, expectedEnvs)
 }
 
-func (s *S) TestBindAddsWhenEndpointIsDown(c *gocheck.C) {
+func (s *S) TestBindAppFailsWhenEndpointIsDown(c *gocheck.C) {
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ""}}
 	err := srvc.Create()
 	c.Assert(err, gocheck.IsNil)
