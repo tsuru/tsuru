@@ -6,6 +6,7 @@ package service
 
 import (
 	"github.com/globocom/tsuru/action"
+	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"net/http"
@@ -153,4 +154,83 @@ func (s *S) TestInsertServiceInstanceBackwardParams(c *gocheck.C) {
 	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": instance.Name})
+}
+
+func (s *S) TestAddAppToServiceInstanceForward(c *gocheck.C) {
+	si := ServiceInstance{Name: "mysql"}
+	err := s.conn.ServiceInstances().Insert(&si)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": si.Name})
+	a := testing.NewFakeApp("myapp", "static", 1)
+	defer s.conn.Apps().Remove(bson.M{"name": a.GetName()})
+	ctx := action.FWContext{
+		Params: []interface{}{a, si},
+	}
+	_, err = addAppToServiceInstance.Forward(ctx)
+	c.Assert(err, gocheck.IsNil)
+	err = s.conn.ServiceInstances().Find(bson.M{"name": si.Name}).One(&si)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(len(si.Apps), gocheck.Equals, 1)
+}
+
+func (s *S) TestAddAppToServiceInstanceForwardInvalidServiceInstance(c *gocheck.C) {
+	a := testing.NewFakeApp("myapp", "static", 1)
+	defer s.conn.Apps().Remove(bson.M{"name": a.GetName()})
+	ctx := action.FWContext{
+		Params: []interface{}{a, "wrong parameter"},
+	}
+	_, err := addAppToServiceInstance.Forward(ctx)
+	c.Assert(err, gocheck.Not(gocheck.IsNil))
+	c.Assert(err, gocheck.ErrorMatches, "^Second parameter must be a ServiceInstance.$")
+}
+
+func (s *S) TestAddAppToServiceInstanceForwardInvalidApp(c *gocheck.C) {
+	si := ServiceInstance{Name: "mysql"}
+	err := s.conn.ServiceInstances().Insert(&si)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": si.Name})
+	ctx := action.FWContext{
+		Params: []interface{}{"wrong parameter", si},
+	}
+	_, err = addAppToServiceInstance.Forward(ctx)
+	c.Assert(err, gocheck.Not(gocheck.IsNil))
+	c.Assert(err, gocheck.ErrorMatches, "^First parameter must be a provision.App.$")
+}
+
+func (s *S) TestAddAppToServiceInstanceForwardTwice(c *gocheck.C) {
+	si := ServiceInstance{Name: "mysql"}
+	err := s.conn.ServiceInstances().Insert(&si)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": si.Name})
+	a := testing.NewFakeApp("myapp", "static", 1)
+	defer s.conn.Apps().Remove(bson.M{"name": a.GetName()})
+	ctx := action.FWContext{
+		Params: []interface{}{a, si},
+	}
+	_, err = addAppToServiceInstance.Forward(ctx)
+	c.Assert(err, gocheck.IsNil)
+	_, err = addAppToServiceInstance.Forward(ctx)
+	c.Assert(err, gocheck.Not(gocheck.IsNil))
+	c.Assert(err, gocheck.ErrorMatches, "^This app is already bound to this service instance.$")
+}
+
+func (s *S) TestAddAppToServiceInstanceBackwardRemovesAppFromServiceInstance(c *gocheck.C) {
+	si := ServiceInstance{Name: "mysql"}
+	err := s.conn.ServiceInstances().Insert(&si)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": si.Name})
+	a := testing.NewFakeApp("myapp", "static", 1)
+	defer s.conn.Apps().Remove(bson.M{"name": a.GetName()})
+	err = si.AddApp(a.GetName())
+	c.Assert(err, gocheck.IsNil)
+	err = si.update()
+	c.Assert(err, gocheck.IsNil)
+	ctx := action.BWContext{
+		Params: []interface{}{a, si},
+	}
+	addAppToServiceInstance.Backward(ctx)
+	c.Assert(err, gocheck.IsNil)
+	err = s.conn.ServiceInstances().Find(bson.M{"name": si.Name}).One(&si)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(len(si.Apps), gocheck.Equals, 0)
 }
