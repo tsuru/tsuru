@@ -553,7 +553,6 @@ func (s *S) TestRemoveImageCallsRegistry(c *gocheck.C) {
 	var request http.Request
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		request = *r
-		w.Write([]byte("true"))
 	}))
 	defer server.Close()
 	u, _ := url.Parse(server.URL)
