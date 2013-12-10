@@ -27,8 +27,10 @@ install:
   - popd
   - make get-test
 before_script:
+  - make get-prod
+  - go get github.com/dotcloud/tar
+  - make godep
   - git clean -dfX
-  - make get-prod godep
   - rm -rf src
   - echo http://localhost > $HOME/.tsuru_target
 script:
