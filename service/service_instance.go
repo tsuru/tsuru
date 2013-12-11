@@ -17,7 +17,6 @@ import (
 	"labix.org/v2/mgo/bson"
 	"net/http"
 	"regexp"
-	"sync"
 )
 
 var (
@@ -148,52 +147,12 @@ func (si *ServiceInstance) update() error {
 
 // BindApp makes the bind between the service instance and an app.
 func (si *ServiceInstance) BindApp(app bind.App) error {
-	err := si.AddApp(app.GetName())
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusConflict, Message: "This app is already bound to this service instance."}
+	actions := []*action.Action{
+		&addAppToServiceInstance,
+		&setEnvironVariablesToApp,
 	}
-	err = si.update()
-	if err != nil {
-		return err
-	}
-	units := app.GetUnits()
-	if len(units) == 0 {
-		return &errors.HTTP{Code: http.StatusPreconditionFailed, Message: "This app does not have an IP yet."}
-	}
-	envsChan := make(chan map[string]string, len(units)+1)
-	errChan := make(chan error, len(units)+1)
-	var wg sync.WaitGroup
-	wg.Add(len(units))
-	for _, unit := range units {
-		go func(unit bind.Unit) {
-			defer wg.Done()
-			vars, err := si.BindUnit(app, unit)
-			if err != nil {
-				errChan <- err
-				return
-			}
-			envsChan <- vars
-		}(unit)
-	}
-	wg.Wait()
-	close(errChan)
-	err, ok := <-errChan
-	if ok {
-		log.Error(err.Error())
-		return err
-	}
-	var envVars []bind.EnvVar
-	envs := <-envsChan
-	envVars = make([]bind.EnvVar, 0, len(envs))
-	for k, v := range envs {
-		envVars = append(envVars, bind.EnvVar{
-			Name:         k,
-			Value:        v,
-			Public:       false,
-			InstanceName: si.Name,
-		})
-	}
-	return app.SetEnvs(envVars, false)
+	pipeline := action.NewPipeline(actions...)
+	return pipeline.Execute(app, *si)
 }
 
 // BindUnit makes the bind between the binder and an unit.
