@@ -6,6 +6,7 @@ package service
 
 import (
 	"github.com/globocom/tsuru/action"
+	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
@@ -194,7 +195,7 @@ func (s *S) TestAddAppToServiceInstanceForwardInvalidApp(c *gocheck.C) {
 	}
 	_, err = addAppToServiceInstance.Forward(ctx)
 	c.Assert(err, gocheck.Not(gocheck.IsNil))
-	c.Assert(err, gocheck.ErrorMatches, "^First parameter must be a provision.App.$")
+	c.Assert(err, gocheck.ErrorMatches, "^First parameter must be a bind.App.$")
 }
 
 func (s *S) TestAddAppToServiceInstanceForwardTwice(c *gocheck.C) {
@@ -233,4 +234,113 @@ func (s *S) TestAddAppToServiceInstanceBackwardRemovesAppFromServiceInstance(c *
 	err = s.conn.ServiceInstances().Find(bson.M{"name": si.Name}).One(&si)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(len(si.Apps), gocheck.Equals, 0)
+}
+
+func (s *S) TestSetEnvironVariablesToAppForward(c *gocheck.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
+	}))
+	defer ts.Close()
+	service := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := service.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().RemoveId(service.Name)
+	si := ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+	}
+	err = si.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().RemoveId(si.Name)
+	a := testing.NewFakeApp("myapp", "static", 1)
+	ctx := action.FWContext{
+		Params: []interface{}{a, si},
+	}
+	_, err = setEnvironVariablesToApp.Forward(ctx)
+	c.Assert(err, gocheck.IsNil)
+	expected := map[string]bind.EnvVar{
+		"DATABASE_USER": {
+			Name:         "DATABASE_USER",
+			Value:        "root",
+			Public:       false,
+			InstanceName: si.Name,
+		},
+		"DATABASE_PASSWORD": {
+			Name:         "DATABASE_PASSWORD",
+			Value:        "s3cr3t",
+			Public:       false,
+			InstanceName: si.Name,
+		},
+	}
+	c.Assert(a.Envs(), gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestSetEnvironVariablesToAppForwardReturnsEnvVars(c *gocheck.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
+	}))
+	defer ts.Close()
+	service := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := service.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().RemoveId(service.Name)
+	si := ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+	}
+	err = si.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().RemoveId(si.Name)
+	a := testing.NewFakeApp("myapp", "static", 1)
+	ctx := action.FWContext{
+		Params: []interface{}{a, si},
+	}
+	result, err := setEnvironVariablesToApp.Forward(ctx)
+	c.Assert(err, gocheck.IsNil)
+	expected := []bind.EnvVar{
+		{Name: "DATABASE_USER",
+			Value:        "root",
+			Public:       false,
+			InstanceName: si.Name,
+		},
+		{Name: "DATABASE_PASSWORD",
+			Value:        "s3cr3t",
+			Public:       false,
+			InstanceName: si.Name,
+		},
+	}
+	c.Assert(result.([]bind.EnvVar), gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestSetEnvironVariablesToAppBackward(c *gocheck.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
+	}))
+	defer ts.Close()
+	service := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := service.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().RemoveId(service.Name)
+	si := ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+	}
+	err = si.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().RemoveId(si.Name)
+	a := testing.NewFakeApp("myapp", "static", 1)
+	ctx := action.FWContext{
+		Params: []interface{}{a, si},
+	}
+	r, err := setEnvironVariablesToApp.Forward(ctx)
+	c.Assert(err, gocheck.IsNil)
+	bwCtx := action.BWContext{
+		Params:   []interface{}{a},
+		FWResult: r,
+	}
+	setEnvironVariablesToApp.Backward(bwCtx)
+	c.Assert(a.Envs(), gocheck.DeepEquals, map[string]bind.EnvVar{})
 }
