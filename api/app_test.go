@@ -2701,3 +2701,33 @@ func (s *S) TestSwap(c *gocheck.C) {
 	action := testing.Action{Action: "swap", User: s.user.Email, Extra: []interface{}{"app1", "app2"}}
 	c.Assert(action, testing.IsRecorded)
 }
+
+func (s *S) TestStartHandler(c *gocheck.C) {
+	s.provisioner.PrepareOutput(nil) // loadHooks
+	s.provisioner.PrepareOutput([]byte("started"))
+	a := app.App{
+		Name:  "stress",
+		Teams: []string{s.team.Name},
+		Units: []app.Unit{{Name: "i-0800", State: "started"}},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	url := fmt.Sprintf("/apps/%s/start?:app=%s", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = start(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	starts := s.provisioner.Starts(&a)
+	c.Assert(starts, gocheck.Equals, 1)
+	action := testing.Action{
+		Action: "start",
+		User:   s.user.Email,
+		Extra:  []interface{}{a.Name},
+	}
+	c.Assert(action, testing.IsRecorded)
+}
