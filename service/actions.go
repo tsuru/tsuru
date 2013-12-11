@@ -145,7 +145,7 @@ var setEnvironVariablesToApp = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		si, ok := ctx.Params[1].(ServiceInstance)
 		if !ok {
-			msg := "First parameter must be a ServiceInstance."
+			msg := "Second parameter must be a ServiceInstance."
 			log.Error(msg)
 			return nil, stderrors.New(msg)
 		}
