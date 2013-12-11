@@ -21,6 +21,7 @@ import (
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/validation"
 	"io"
+	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"net/http"
 )
@@ -228,7 +229,7 @@ Please remove the apps or revoke these accesses, and try again.`
 	}
 	query := bson.M{"_id": name, "users": t.UserEmail}
 	err = conn.Teams().Remove(query)
-	if err != nil && err.Error() == "not found" {
+	if err == mgo.ErrNotFound {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf(`Team "%s" not found.`, name)}
 	}
 	return err
