@@ -103,8 +103,8 @@ _sh_tests:
 test: _go_test _tsr_dry _sh_tests
 
 _travis_go_test:
-	@go clean ./...
-	@for pkg in `go list ./...`; do go test -gocheck.v $pkg; done
+	go clean ./...
+	for pkg in `go list ./...`; do go test -v $$pkg; done
 
 travis_test: _travis_go_test _tsr_dry _sh_tests
 
