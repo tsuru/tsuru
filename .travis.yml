@@ -34,7 +34,7 @@ before_script:
   - echo http://localhost > $HOME/.tsuru_target
 script:
   - export PATH="$HOME/gopath/bin:$PATH"
-  - make test
+  - make travis_test
 notifications:
   email:
     recipients:
