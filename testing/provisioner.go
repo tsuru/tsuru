@@ -183,10 +183,34 @@ func (a *FakeApp) SetEnv(env bind.EnvVar) {
 	a.env[env.Name] = env
 }
 
-func (a *FakeApp) SetEnvs(envs []bind.EnvVar) {
+func (a *FakeApp) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
 	for _, env := range envs {
 		a.SetEnv(env)
 	}
+	return nil
+}
+
+func (a *FakeApp) UnsetEnvs(envs []string, publicOnly bool) error {
+	for _, env := range envs {
+		delete(a.env, env)
+	}
+	return nil
+}
+
+func (a *FakeApp) GetIp() string {
+	return ""
+}
+
+func (a *FakeApp) GetUnits() []bind.Unit {
+	units := make([]bind.Unit, len(a.units))
+	for i, unit := range a.units {
+		units[i] = unit.(bind.Unit)
+	}
+	return units
+}
+
+func (a *FakeApp) InstanceEnv(env string) map[string]bind.EnvVar {
+	return nil
 }
 
 // Env returns app.Env

@@ -92,7 +92,7 @@ func (s *S) TestSetEnvs(c *gocheck.C) {
 			Public: true,
 		},
 	}
-	app.SetEnvs(envs)
+	app.SetEnvs(envs, false)
 	expected := map[string]bind.EnvVar{
 		"http_proxy": {
 			Name:   "http_proxy",
@@ -106,6 +106,24 @@ func (s *S) TestSetEnvs(c *gocheck.C) {
 		},
 	}
 	c.Assert(app.env, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestGetUnitsReturnUnits(c *gocheck.C) {
+	a := NewFakeApp("foo", "static", 1)
+	units := a.GetUnits()
+	c.Assert(len(units), gocheck.Equals, 1)
+}
+
+func (s *S) TestUnsetEnvs(c *gocheck.C) {
+	app := FakeApp{name: "time"}
+	env := bind.EnvVar{
+		Name:   "http_proxy",
+		Value:  "http://theirproxy.com:3128/",
+		Public: true,
+	}
+	app.SetEnv(env)
+	app.UnsetEnvs([]string{"http_proxy"}, false)
+	c.Assert(app.env, gocheck.DeepEquals, map[string]bind.EnvVar{})
 }
 
 func (s *S) TestFakeAppLogs(c *gocheck.C) {
