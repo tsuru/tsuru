@@ -99,7 +99,13 @@ func getPort() (string, error) {
 }
 
 func getHostAddr(hostID string) string {
-	fullAddress := clusterNodes[hostID]
+	var fullAddress string
+	if seg, _ := config.GetBool("docker:segregate"); seg {
+		node, _ := segScheduler.GetNode(hostID)
+		fullAddress = node.Address
+	} else {
+		fullAddress = clusterNodes[hostID]
+	}
 	url, _ := url.Parse(fullAddress)
 	host, _, _ := net.SplitHostPort(url.Host)
 	return host

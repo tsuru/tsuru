@@ -658,6 +658,76 @@ func (s *S) TestContainerLogs(c *gocheck.C) {
 	c.Assert(buff.String(), gocheck.Not(gocheck.Equals), "")
 }
 
+func (s *S) TestGetHostAddr(c *gocheck.C) {
+	cmutext.Lock()
+	old := clusterNodes
+	clusterNodes = map[string]string{
+		"server0":  "http://localhost:8081",
+		"server20": "http://localhost:3234",
+		"server21": "http://10.10.10.10:4243",
+	}
+	cmutext.Unlock()
+	defer func() {
+		cmutext.Lock()
+		clusterNodes = old
+		cmutext.Unlock()
+	}()
+	var tests = []struct {
+		input    string
+		expected string
+	}{
+		{"server0", "localhost"},
+		{"server20", "localhost"},
+		{"server21", "10.10.10.10"},
+		{"server33", ""},
+	}
+	for _, t := range tests {
+		c.Check(getHostAddr(t.input), gocheck.Equals, t.expected)
+	}
+}
+
+func (s *S) TestGetHostAddrWithSegregatedScheduler(c *gocheck.C) {
+	config.Set("docker:segregate", true)
+	defer config.Unset("docker:segregate")
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	coll := conn.Collection(schedulerCollection)
+	err = coll.Insert(
+		node{ID: "server0", Address: "http://remotehost:8080", Team: "tsuru"},
+		node{ID: "server20", Address: "http://remotehost:8081", Team: "tsuru"},
+		node{ID: "server21", Address: "http://10.10.10.1:8082", Team: "tsuru"},
+	)
+	c.Assert(err, gocheck.IsNil)
+	defer coll.RemoveAll(bson.M{"_id": bson.M{"$in": []string{"server0", "server1", "server2"}}})
+	cmutext.Lock()
+	old := clusterNodes
+	clusterNodes = map[string]string{
+		"server0":  "http://localhost:8081",
+		"server20": "http://localhost:3234",
+		"server21": "http://10.10.10.10:4243",
+		"server33": "http://10.10.10.11:4243",
+	}
+	cmutext.Unlock()
+	defer func() {
+		cmutext.Lock()
+		clusterNodes = old
+		cmutext.Unlock()
+	}()
+	var tests = []struct {
+		input    string
+		expected string
+	}{
+		{"server0", "remotehost"},
+		{"server20", "remotehost"},
+		{"server21", "10.10.10.1"},
+		{"server33", ""},
+	}
+	for _, t := range tests {
+		c.Check(getHostAddr(t.input), gocheck.Equals, t.expected)
+	}
+}
+
 func (s *S) TestDockerCluster(c *gocheck.C) {
 	config.Set("docker:servers", []string{"http://localhost:4243", "http://10.10.10.10:4243"})
 	defer config.Unset("docker:servers")
