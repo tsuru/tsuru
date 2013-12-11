@@ -133,7 +133,7 @@ func removeNodeFromScheduler(n cluster.Node) error {
 	}
 	defer conn.Close()
 	err = conn.Collection(schedulerCollection).RemoveId(n.ID)
-	if err != nil && err.Error() == "not found" {
+	if err == mgo.ErrNotFound {
 		return errNodeNotFound
 	}
 	return err
