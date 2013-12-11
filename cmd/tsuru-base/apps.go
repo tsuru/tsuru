@@ -18,6 +18,17 @@ type AppInfo struct {
 	GuessingCommand
 }
 
+func (c *AppStart) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:  "start",
+		Usage: "start [--app appname]",
+		Desc: `starts an app.
+
+If you don't provide the app name, tsuru will try to guess it.`,
+		MinArgs: 0,
+	}
+}
+
 func (c *AppInfo) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "app-info",
@@ -255,6 +266,8 @@ func (c AppList) Info() *cmd.Info {
 		Desc:  "list all your apps.",
 	}
 }
+
+type AppStart struct{}
 
 type AppRestart struct {
 	GuessingCommand

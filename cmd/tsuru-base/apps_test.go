@@ -640,3 +640,15 @@ func (s *S) TestUnsetCNameInfo(c *gocheck.C) {
 func (s *S) TestUnsetCNameIsAFlaggedCommand(c *gocheck.C) {
 	var _ cmd.FlaggedCommand = &UnsetCName{}
 }
+
+func (s *S) TestAppStartInfo(c *gocheck.C) {
+	expected := &cmd.Info{
+		Name:  "start",
+		Usage: "start [--app appname]",
+		Desc: `starts an app.
+
+If you don't provide the app name, tsuru will try to guess it.`,
+		MinArgs: 0,
+	}
+	c.Assert((&AppStart{}).Info(), gocheck.DeepEquals, expected)
+}
