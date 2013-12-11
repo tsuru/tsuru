@@ -913,3 +913,8 @@ func incrementDeploy(app *App) error {
 		bson.M{"$inc": bson.M{"deploys": 1}},
 	)
 }
+
+// Start starts the app.
+func (app *App) Start(w io.Writer) error {
+	return Provisioner.Start(app)
+}

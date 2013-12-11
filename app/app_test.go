@@ -1974,3 +1974,20 @@ func (s *S) TestDeployCustomPipeline(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(s.provisioner.ExecutedPipeline(), gocheck.Equals, true)
 }
+
+func (s *S) TestStart(c *gocheck.C) {
+	s.provisioner.PrepareOutput([]byte("not yaml")) // loadConf
+	a := App{
+		Name:     "someApp",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
+		Units:    []Unit{{Name: "i-0800", State: "started"}},
+	}
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	var b bytes.Buffer
+	err := a.Start(&b)
+	c.Assert(err, gocheck.IsNil)
+	starts := s.provisioner.Starts(&a)
+	c.Assert(starts, gocheck.Equals, 1)
+}
