@@ -19,11 +19,11 @@ import (
 	"github.com/globocom/tsuru/quota"
 	"github.com/globocom/tsuru/repository"
 	"io"
+	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/iam"
 	"strconv"
-	"strings"
 )
 
 var (
@@ -100,7 +100,7 @@ var insertApp = action.Action{
 		}
 		app.Units = append(app.Units, Unit{})
 		err = conn.Apps().Insert(app)
-		if err != nil && strings.HasPrefix(err.Error(), "E11000") {
+		if mgo.IsDup(err) {
 			return nil, ErrAppAlreadyExists
 		}
 		return &app, err
