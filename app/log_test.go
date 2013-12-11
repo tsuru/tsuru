@@ -96,6 +96,19 @@ func (s *S) TestNotify(c *gocheck.C) {
 	c.Assert(logs.l, gocheck.DeepEquals, ms)
 }
 
+func (s *S) TestNotifySendOnClosedChannel(c *gocheck.C) {
+	defer func() {
+		c.Assert(recover(), gocheck.IsNil)
+	}()
+	app := App{Name: "fade"}
+	l := NewLogListener(&app)
+	close(l.c)
+	ms := []interface{}{
+		Applog{Date: time.Now(), Message: "Something went wrong. Check it out:", Source: "tsuru"},
+	}
+	notify(app.Name, ms)
+}
+
 func (s *S) TestLogRemove(c *gocheck.C) {
 	a := App{Name: "newApp"}
 	err := s.conn.Apps().Insert(a)

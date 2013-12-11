@@ -82,6 +82,9 @@ func notify(appName string, messages []interface{}) {
 				case <-l.quit:
 					return
 				default:
+					defer func() {
+						recover()
+					}()
 					l.c <- msg.(Applog)
 				}
 			}
