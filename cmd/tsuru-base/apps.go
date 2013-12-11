@@ -18,17 +18,6 @@ type AppInfo struct {
 	GuessingCommand
 }
 
-func (c *AppStart) Info() *cmd.Info {
-	return &cmd.Info{
-		Name:  "start",
-		Usage: "start [--app appname]",
-		Desc: `starts an app.
-
-If you don't provide the app name, tsuru will try to guess it.`,
-		MinArgs: 0,
-	}
-}
-
 func (c *AppInfo) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "app-info",
@@ -267,7 +256,45 @@ func (c AppList) Info() *cmd.Info {
 	}
 }
 
-type AppStart struct{}
+type AppStart struct {
+	GuessingCommand
+}
+
+func (c *AppStart) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:  "start",
+		Usage: "start [--app appname]",
+		Desc: `starts an app.
+
+If you don't provide the app name, tsuru will try to guess it.`,
+		MinArgs: 0,
+	}
+}
+
+func (c *AppStart) Run(context *cmd.Context, client *cmd.Client) error {
+	appName, err := c.Guess()
+	if err != nil {
+		return err
+	}
+	url, err := cmd.GetURL(fmt.Sprintf("/apps/%s/start", appName))
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	_, err = io.Copy(context.Stdout, response.Body)
+	if err != nil {
+		return err
+	}
+	return nil
+}
 
 type AppRestart struct {
 	GuessingCommand

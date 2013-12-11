@@ -652,3 +652,58 @@ If you don't provide the app name, tsuru will try to guess it.`,
 	}
 	c.Assert((&AppStart{}).Info(), gocheck.DeepEquals, expected)
 }
+
+func (s *S) TestAppStart(c *gocheck.C) {
+	var (
+		called         bool
+		stdout, stderr bytes.Buffer
+	)
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: "Started", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			called = true
+			return req.URL.Path == "/apps/handful_of_nothing/start" && req.Method == "GET"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	command := AppStart{}
+	command.Flags().Parse(true, []string{"--app", "handful_of_nothing"})
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(called, gocheck.Equals, true)
+	c.Assert(stdout.String(), gocheck.Equals, "Started")
+}
+
+func (s *S) TestAppStartWithoutTheFlag(c *gocheck.C) {
+	var (
+		called         bool
+		stdout, stderr bytes.Buffer
+	)
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: "Started", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			called = true
+			return req.URL.Path == "/apps/motorbreath/start" && req.Method == "GET"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	fake := &FakeGuesser{name: "motorbreath"}
+	command := AppStart{GuessingCommand: GuessingCommand{G: fake}}
+	command.Flags().Parse(true, nil)
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(called, gocheck.Equals, true)
+	c.Assert(stdout.String(), gocheck.Equals, "Started")
+}
+
+func (s *S) TestAppStartIsAFlaggedCommand(c *gocheck.C) {
+	var _ cmd.FlaggedCommand = &AppStart{}
+}
