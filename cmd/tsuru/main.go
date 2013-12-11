@@ -28,6 +28,7 @@ func buildManager(name string) *cmd.Manager {
 	m.Register(&tsuru.AppGrant{})
 	m.Register(&tsuru.AppRevoke{})
 	m.Register(&tsuru.AppRestart{})
+	m.Register(&tsuru.AppStart{})
 	m.Register(&tsuru.SetCName{})
 	m.Register(&tsuru.UnsetCName{})
 	m.Register(&tsuru.EnvGet{})
