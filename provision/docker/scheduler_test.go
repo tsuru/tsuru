@@ -162,6 +162,33 @@ func (s *SchedulerSuite) TestSchedulerNodes(c *gocheck.C) {
 	c.Assert(nodes, gocheck.DeepEquals, expected)
 }
 
+func (s *SchedulerSuite) TestSchedulerGetNode(c *gocheck.C) {
+	coll := s.storage.Collection(schedulerCollection)
+	err := coll.Insert(
+		node{ID: "server0", Address: "http://localhost:8080", Team: "tsuru"},
+		node{ID: "server1", Address: "http://localhost:8081", Team: "tsuru"},
+		node{ID: "server2", Address: "http://localhost:8082", Team: "tsuru"},
+	)
+	c.Assert(err, gocheck.IsNil)
+	defer coll.RemoveAll(bson.M{"_id": bson.M{"$in": []string{"server0", "server1", "server2"}}})
+	var tests = []struct {
+		input    string
+		expected node
+		err      error
+	}{
+		{"server0", node{ID: "server0", Address: "http://localhost:8080", Team: "tsuru"}, nil},
+		{"server1", node{ID: "server1", Address: "http://localhost:8081", Team: "tsuru"}, nil},
+		{"server2", node{ID: "server2", Address: "http://localhost:8082", Team: "tsuru"}, nil},
+		{"server102", node{}, errNodeNotFound},
+	}
+	var scheduler segregatedScheduler
+	for _, t := range tests {
+		nd, err := scheduler.GetNode(t.input)
+		c.Check(err, gocheck.Equals, t.err)
+		c.Check(nd, gocheck.DeepEquals, t.expected)
+	}
+}
+
 func (s *SchedulerSuite) TestAddNodeToScheduler(c *gocheck.C) {
 	coll := s.storage.Collection(schedulerCollection)
 	nd := cluster.Node{ID: "server0", Address: "http://localhost:8080"}

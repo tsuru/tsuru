@@ -108,6 +108,20 @@ func (segregatedScheduler) Nodes() ([]cluster.Node, error) {
 	return result, nil
 }
 
+func (segregatedScheduler) GetNode(id string) (node, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return node{}, err
+	}
+	defer conn.Close()
+	var n node
+	err = conn.Collection(schedulerCollection).FindId(id).One(&n)
+	if err == mgo.ErrNotFound {
+		return node{}, errNodeNotFound
+	}
+	return n, nil
+}
+
 // AddNodeToScheduler adds a new node to the scheduler, registering for use in
 // the given team. The team parameter is optional, when set to "", the node
 // will be used as a fallback node.
