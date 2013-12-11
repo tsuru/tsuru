@@ -29,7 +29,7 @@ import (
 
 var (
 	dCluster *cluster.Cluster
-	cmutext  sync.Mutex
+	cmutex   sync.Mutex
 	fsystem  fs.Fs
 )
 
@@ -41,8 +41,8 @@ var (
 )
 
 func dockerCluster() *cluster.Cluster {
-	cmutext.Lock()
-	defer cmutext.Unlock()
+	cmutex.Lock()
+	defer cmutex.Unlock()
 	if dCluster == nil {
 		if segregate, _ := config.GetBool("docker:segregate"); segregate {
 			dCluster, _ = cluster.New(segScheduler)

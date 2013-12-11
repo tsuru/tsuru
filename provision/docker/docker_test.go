@@ -659,18 +659,18 @@ func (s *S) TestContainerLogs(c *gocheck.C) {
 }
 
 func (s *S) TestGetHostAddr(c *gocheck.C) {
-	cmutext.Lock()
+	cmutex.Lock()
 	old := clusterNodes
 	clusterNodes = map[string]string{
 		"server0":  "http://localhost:8081",
 		"server20": "http://localhost:3234",
 		"server21": "http://10.10.10.10:4243",
 	}
-	cmutext.Unlock()
+	cmutex.Unlock()
 	defer func() {
-		cmutext.Lock()
+		cmutex.Lock()
 		clusterNodes = old
-		cmutext.Unlock()
+		cmutex.Unlock()
 	}()
 	var tests = []struct {
 		input    string
@@ -700,7 +700,7 @@ func (s *S) TestGetHostAddrWithSegregatedScheduler(c *gocheck.C) {
 	)
 	c.Assert(err, gocheck.IsNil)
 	defer coll.RemoveAll(bson.M{"_id": bson.M{"$in": []string{"server0", "server1", "server2"}}})
-	cmutext.Lock()
+	cmutex.Lock()
 	old := clusterNodes
 	clusterNodes = map[string]string{
 		"server0":  "http://localhost:8081",
@@ -708,11 +708,11 @@ func (s *S) TestGetHostAddrWithSegregatedScheduler(c *gocheck.C) {
 		"server21": "http://10.10.10.10:4243",
 		"server33": "http://10.10.10.11:4243",
 	}
-	cmutext.Unlock()
+	cmutex.Unlock()
 	defer func() {
-		cmutext.Lock()
+		cmutex.Lock()
 		clusterNodes = old
-		cmutext.Unlock()
+		cmutex.Unlock()
 	}()
 	var tests = []struct {
 		input    string
@@ -736,12 +736,12 @@ func (s *S) TestDockerCluster(c *gocheck.C) {
 		cluster.Node{ID: "server1", Address: "http://10.10.10.10:4243"},
 	)
 	oldDockerCluster := dCluster
-	cmutext.Lock()
+	cmutex.Lock()
 	dCluster = nil
-	cmutext.Unlock()
+	cmutex.Unlock()
 	defer func() {
-		cmutext.Lock()
-		defer cmutext.Unlock()
+		cmutex.Lock()
+		defer cmutex.Unlock()
 		dCluster = oldDockerCluster
 	}()
 	cluster := dockerCluster()
@@ -753,12 +753,12 @@ func (s *S) TestDockerClusterSegregated(c *gocheck.C) {
 	defer config.Unset("docker:segregate")
 	expected, _ := cluster.New(segScheduler)
 	oldDockerCluster := dCluster
-	cmutext.Lock()
+	cmutex.Lock()
 	dCluster = nil
-	cmutext.Unlock()
+	cmutex.Unlock()
 	defer func() {
-		cmutext.Lock()
-		defer cmutext.Unlock()
+		cmutex.Lock()
+		defer cmutex.Unlock()
 		dCluster = oldDockerCluster
 	}()
 	cluster := dockerCluster()
@@ -778,13 +778,13 @@ func (s *S) TestReplicateImage(c *gocheck.C) {
 	defer server.Stop()
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
-	cmutext.Lock()
+	cmutex.Lock()
 	oldDockerCluster := dCluster
 	dCluster, _ = cluster.New(nil, cluster.Node{ID: "server0", Address: server.URL()})
-	cmutext.Unlock()
+	cmutex.Unlock()
 	defer func() {
-		cmutext.Lock()
-		defer cmutext.Unlock()
+		cmutex.Lock()
+		defer cmutex.Unlock()
 		dCluster = oldDockerCluster
 	}()
 	var buf bytes.Buffer
@@ -813,13 +813,13 @@ func (s *S) TestReplicateImageWithoutRegistryInTheImageName(c *gocheck.C) {
 	defer server.Stop()
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
-	cmutext.Lock()
+	cmutex.Lock()
 	oldDockerCluster := dCluster
 	dCluster, _ = cluster.New(nil, cluster.Node{ID: "server0", Address: server.URL()})
-	cmutext.Unlock()
+	cmutex.Unlock()
 	defer func() {
-		cmutext.Lock()
-		defer cmutext.Unlock()
+		cmutex.Lock()
+		defer cmutex.Unlock()
 		dCluster = oldDockerCluster
 	}()
 	var buf bytes.Buffer
@@ -842,13 +842,13 @@ func (s *S) TestReplicateImageNoRegistry(c *gocheck.C) {
 	})
 	c.Assert(err, gocheck.IsNil)
 	defer server.Stop()
-	cmutext.Lock()
+	cmutex.Lock()
 	oldDockerCluster := dCluster
 	dCluster, _ = cluster.New(nil, cluster.Node{ID: "server0", Address: server.URL()})
-	cmutext.Unlock()
+	cmutex.Unlock()
 	defer func() {
-		cmutext.Lock()
-		defer cmutext.Unlock()
+		cmutex.Lock()
+		defer cmutex.Unlock()
 		dCluster = oldDockerCluster
 	}()
 	err = replicateImage("tsuru/python")
