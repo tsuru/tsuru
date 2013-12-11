@@ -660,10 +660,28 @@ func (s *S) TestContainerLogs(c *gocheck.C) {
 
 func (s *S) TestDockerCluster(c *gocheck.C) {
 	config.Set("docker:servers", []string{"http://localhost:4243", "http://10.10.10.10:4243"})
+	defer config.Unset("docker:servers")
 	expected, _ := cluster.New(nil,
 		cluster.Node{ID: "server0", Address: "http://localhost:4243"},
 		cluster.Node{ID: "server1", Address: "http://10.10.10.10:4243"},
 	)
+	oldDockerCluster := dCluster
+	cmutext.Lock()
+	dCluster = nil
+	cmutext.Unlock()
+	defer func() {
+		cmutext.Lock()
+		defer cmutext.Unlock()
+		dCluster = oldDockerCluster
+	}()
+	cluster := dockerCluster()
+	c.Assert(cluster, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestDockerClusterSegregated(c *gocheck.C) {
+	config.Set("docker:segregate", true)
+	defer config.Unset("docker:segregate")
+	expected, _ := cluster.New(segScheduler)
 	oldDockerCluster := dCluster
 	cmutext.Lock()
 	dCluster = nil

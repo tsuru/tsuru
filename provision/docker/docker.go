@@ -35,31 +35,33 @@ var (
 
 const maxTry = 5
 
-var clusterNodes map[string]string
+var (
+	clusterNodes map[string]string
+	segScheduler segregatedScheduler
+)
 
 func dockerCluster() *cluster.Cluster {
 	cmutext.Lock()
 	defer cmutext.Unlock()
 	if dCluster == nil {
-		clusterNodes = make(map[string]string)
-		servers, _ := config.GetList("docker:servers")
-		if len(servers) < 1 {
-			log.Fatal(`Tsuru is misconfigured. Setting "docker:servers" is mandatory`)
-		}
-		nodes := make([]cluster.Node, len(servers))
-		for index, server := range servers {
-			id := fmt.Sprintf("server%d", index)
-			node := cluster.Node{
-				ID:      id,
-				Address: server,
-			}
-			nodes[index] = node
-			clusterNodes[id] = server
-		}
 		if segregate, _ := config.GetBool("docker:segregate"); segregate {
-			var scheduler segregatedScheduler
-			dCluster, _ = cluster.New(&scheduler, nodes...)
+			dCluster, _ = cluster.New(segScheduler)
 		} else {
+			clusterNodes = make(map[string]string)
+			servers, _ := config.GetList("docker:servers")
+			if len(servers) < 1 {
+				log.Fatal(`Tsuru is misconfigured. Setting "docker:servers" is mandatory`)
+			}
+			nodes := make([]cluster.Node, len(servers))
+			for index, server := range servers {
+				id := fmt.Sprintf("server%d", index)
+				node := cluster.Node{
+					ID:      id,
+					Address: server,
+				}
+				nodes[index] = node
+				clusterNodes[id] = server
+			}
 			dCluster, _ = cluster.New(nil, nodes...)
 		}
 		if redisServer, err := config.GetString("docker:scheduler:redis-server"); err == nil {
