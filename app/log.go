@@ -76,6 +76,7 @@ func notify(appName string, messages []interface{}) {
 	for _, l := range ls {
 		wg.Add(1)
 		go func(l *LogListener) {
+			defer wg.Done()
 			for _, msg := range messages {
 				select {
 				case <-l.quit:
@@ -84,7 +85,6 @@ func notify(appName string, messages []interface{}) {
 					l.c <- msg.(Applog)
 				}
 			}
-			wg.Done()
 		}(l)
 	}
 	wg.Wait()
