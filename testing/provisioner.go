@@ -312,6 +312,13 @@ func (p *FakeProvisioner) Restarts(app provision.App) int {
 	return p.apps[app.GetName()].restarts
 }
 
+// Starts returns the number of starts for a given app.
+func (p *FakeProvisioner) Starts(app provision.App) int {
+	p.mut.RLock()
+	defer p.mut.RUnlock()
+	return p.apps[app.GetName()].starts
+}
+
 // InstalledDeps returns the number of InstallDeps calls for the given app.
 func (p *FakeProvisioner) InstalledDeps(app provision.App) int {
 	p.mut.RLock()
@@ -460,7 +467,15 @@ func (p *FakeProvisioner) Restart(app provision.App) error {
 	return nil
 }
 
-func (*FakeProvisioner) Start(app provision.App) error {
+func (p *FakeProvisioner) Start(app provision.App) error {
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	pApp, ok := p.apps[app.GetName()]
+	if !ok {
+		return errNotProvisioned
+	}
+	pApp.starts++
+	p.apps[app.GetName()] = pApp
 	return nil
 }
 
@@ -722,6 +737,7 @@ type provisionedApp struct {
 	units       []provision.Unit
 	app         provision.App
 	restarts    int
+	starts      int
 	installDeps int
 	version     string
 	cname       string

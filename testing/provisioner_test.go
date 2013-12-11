@@ -162,6 +162,19 @@ func (s *S) TestRestarts(c *gocheck.C) {
 	c.Assert(p.Restarts(NewFakeApp("pride", "shaman", 1)), gocheck.Equals, 0)
 }
 
+func (s *S) TestStarts(c *gocheck.C) {
+	app1 := NewFakeApp("fairy-tale", "shaman", 1)
+	app2 := NewFakeApp("unfairy-tale", "shaman", 1)
+	p := NewFakeProvisioner()
+	p.apps = map[string]provisionedApp{
+		app1.GetName(): {app: app1, starts: 10},
+		app2.GetName(): {app: app1, starts: 0},
+	}
+	c.Assert(p.Starts(app1), gocheck.Equals, 10)
+	c.Assert(p.Starts(app2), gocheck.Equals, 0)
+	c.Assert(p.Starts(NewFakeApp("pride", "shaman", 1)), gocheck.Equals, 0)
+}
+
 func (s *S) TestGetCmds(c *gocheck.C) {
 	app := NewFakeApp("enemy-within", "rush", 1)
 	p := NewFakeProvisioner()
@@ -299,6 +312,15 @@ func (s *S) TestRestart(c *gocheck.C) {
 	err := p.Restart(app)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.Restarts(app), gocheck.Equals, 1)
+}
+
+func (s *S) TestStart(c *gocheck.C) {
+	app := NewFakeApp("kid-gloves", "rush", 1)
+	p := NewFakeProvisioner()
+	p.Provision(app)
+	err := p.Start(app)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(p.Starts(app), gocheck.Equals, 1)
 }
 
 func (s *S) TestRestartNotProvisioned(c *gocheck.C) {
