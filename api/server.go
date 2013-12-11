@@ -65,6 +65,7 @@ func RunServer(dry bool) {
 	m.Del("/apps/:app/cname", authorizationRequiredHandler(unsetCName))
 	m.Post("/apps/:app/run", authorizationRequiredHandler(runCommand))
 	m.Get("/apps/:app/restart", authorizationRequiredHandler(restart))
+	m.Get("/apps/:app/start", authorizationRequiredHandler(start))
 	m.Get("/apps/:app/env", authorizationRequiredHandler(getEnv))
 	m.Post("/apps/:app/env", authorizationRequiredHandler(setEnv))
 	m.Del("/apps/:app/env", authorizationRequiredHandler(unsetEnv))
