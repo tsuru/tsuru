@@ -70,7 +70,7 @@ func (s *S) TestAppIsAvailableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 }
 
-func (s *S) TestCloneRepositoryHandler(c *gocheck.C) {
+func (s *S) TestDeployHandler(c *gocheck.C) {
 	a := app.App{
 		Name:     "otherapp",
 		Platform: "zend",
@@ -87,7 +87,7 @@ func (s *S) TestCloneRepositoryHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	err = cloneRepository(recorder, request, s.token)
+	err = deploy(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
@@ -114,7 +114,7 @@ func (s *S) TestCloneRepositoryShouldIncrementDeployNumberOnApp(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	err = cloneRepository(recorder, request, s.token)
+	err = deploy(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(a.Deploys, gocheck.Equals, uint(1))
@@ -131,7 +131,7 @@ func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *gochec
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	err = cloneRepository(recorder, request, s.token)
+	err = deploy(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
@@ -144,7 +144,7 @@ func (s *S) TestCloneRepositoryWithoutVersion(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	err = cloneRepository(recorder, request, s.token)
+	err = deploy(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)

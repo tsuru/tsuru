@@ -41,7 +41,7 @@ func getApp(name string, u *auth.User) (app.App, error) {
 	return app, nil
 }
 
-func cloneRepository(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func deploy(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	version := r.PostFormValue("version")
 	if version == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Missing parameter version"}
