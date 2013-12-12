@@ -166,14 +166,21 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 	containers, _ := listAppContainers(app.GetName())
 	go func(c []container) {
 		var containersGroup sync.WaitGroup
+		containersGroup.Add(len(containers))
 		for _, c := range containers {
-			containersGroup.Add(1)
 			go func(c container) {
-				removeContainer(&c)
+				defer containersGroup.Done()
+				err := removeContainer(&c)
+				if err != nil {
+					log.Error(err.Error())
+				}
 			}(c)
 		}
 		containersGroup.Wait()
-		removeImage(assembleImageName(app.GetName()))
+		err := removeImage(assembleImageName(app.GetName()))
+		if err != nil {
+			log.Error(err.Error())
+		}
 	}(containers)
 	r, err := getRouter()
 	if err != nil {
