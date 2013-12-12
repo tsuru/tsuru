@@ -233,29 +233,17 @@ func (s *S) TestBindReturnConflictIfTheAppIsAlreadyBound(c *gocheck.C) {
 	c.Assert(e, gocheck.ErrorMatches, "^This app is already bound to this service instance.$")
 }
 
-//func (s *S) TestBindReturnsPreconditionFailedIfTheAppDoesNotHaveAnUnitAndServiceHasEndpoint(c *gocheck.C) {
-//	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-//		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
-//	}))
-//	defer ts.Close()
-//	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
-//	err := srvc.Create()
-//	c.Assert(err, gocheck.IsNil)
-//	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
-//	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-//	err = instance.Create()
-//	c.Assert(err, gocheck.IsNil)
-//	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
-//	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{})
-//	c.Assert(err, gocheck.IsNil)
-//	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-//	err = instance.BindApp(&a)
-//	c.Assert(err, gocheck.NotNil)
-//	e, ok := err.(*errors.HTTP)
-//	c.Assert(ok, gocheck.Equals, true)
-//	c.Assert(e.Code, gocheck.Equals, http.StatusPreconditionFailed)
-//	c.Assert(e.Message, gocheck.Equals, "This app does not have an IP yet.")
-//}
+func (s *S) TestBindDoesNotFailsAndStopsWhenAppDoesNotHaveAnUnit(c *gocheck.C) {
+	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
+	err := instance.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
+	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{})
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = instance.BindApp(&a)
+	c.Assert(err, gocheck.IsNil)
+}
 
 func (s *S) TestUnbindUnit(c *gocheck.C) {
 	called := false

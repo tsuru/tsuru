@@ -157,7 +157,7 @@ var setEnvironVariablesToApp = action.Action{
 		}
 		units := app.GetUnits()
 		if len(units) == 0 {
-			return nil, &errors.HTTP{Code: http.StatusPreconditionFailed, Message: "This app does not have an IP yet."}
+			return nil, nil
 		}
 		envsChan := make(chan map[string]string, len(units)+1)
 		errChan := make(chan error, len(units)+1)
