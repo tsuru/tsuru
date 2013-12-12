@@ -1,16 +1,16 @@
-=============================================
-Tsuru 0.3.0 release notes - UNDER DEVELOPMENT
-=============================================
+===========================================
+tsr 0.3.0 release notes - UNDER DEVELOPMENT
+===========================================
 
-Welcome to Tsuru 0.3.0!
+Welcome to tsr 0.3.0!
 
 These release notes cover the `new features`_ you'll want to be aware of when
 upgrading from Tsuru 0.2.x or older versions.
 
-What's new in Tsuru 0.3.0
-=========================
+What's new in tsr 0.3.0
+=======================
 
-Support Docker 0.7.x and other improvments
+Support Docker 0.7.x and other improvements
 -------------------------------------------
 
     * Fixed the 42 layers problem.
@@ -20,26 +20,34 @@ Support Docker 0.7.x and other improvments
     * Fixed some bugs on `collector`.
     * Fixed units losing access to services on deploy bug.
 
-Improvments related to Services
--------------------------------
+Improvements related to Services
+--------------------------------
 
     * Added confirmation on `service-remove` command.
     * `bind` is atomic.
     * `service-add` is atomic 
     * Service instance name is unique.
-
-New lisp platform
------------------
+    * Add support to bind an app without units.
 
 Collector ticker time is configurable
 -------------------------------------
 
-Refactored quota backend
-------------------------
+Now you can define the collector ticker time. To do it just set on tsuru.conf:
 
-Other improvments and bugfixes
-------------------------------
+.. highlight:: bash
+
+::
+
+    colletor:
+        ticker-time: 120
+
+The default value is 60 seconds.
+
+Other improvements and bugfixes
+-------------------------------
 
     * `unit-remove` does not block util all units are removed.
-    * Fixed send on closed channel bug.
+    * BUGFIX: send on closed channel: https://github.com/globocom/tsuru/issues/624.
     * Api handler that returns information about all deploys.
+    * Refactored quota backend.
+    * New lisp platform. Thanks to Nick Ricketts.
