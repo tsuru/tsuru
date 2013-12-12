@@ -1,3 +1,45 @@
 =============================================
 Tsuru 0.3.0 release notes - UNDER DEVELOPMENT
 =============================================
+
+Welcome to Tsuru 0.3.0!
+
+These release notes cover the `new features`_ you'll want to be aware of when
+upgrading from Tsuru 0.2.x or older versions.
+
+What's new in Tsuru 0.3.0
+=========================
+
+Support Docker 0.7.x and other improvments
+-------------------------------------------
+
+    * Fixed the 42 layers problem.
+    * Support all Docker storages.
+    * Pull image on creation if it does not exists.
+    * Fixed some bugs on `segregatedScheduler`.
+    * Fixed some bugs on `collector`.
+    * Fixed units losing access to services on deploy bug.
+
+Improvments related to Services
+-------------------------------
+
+    * Added confirmation on `service-remove` command.
+    * `bind` is atomic.
+    * `service-add` is atomic 
+    * Service instance name is unique.
+
+New lisp platform
+-----------------
+
+Collector ticker time is configurable
+-------------------------------------
+
+Refactored quota backend
+------------------------
+
+Other improvments and bugfixes
+------------------------------
+
+    * `unit-remove` does not block util all units are removed.
+    * Fixed send on closed channel bug.
+    * Api handler that returns information about all deploys.
