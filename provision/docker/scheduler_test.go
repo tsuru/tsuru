@@ -219,7 +219,7 @@ func (s *SchedulerSuite) TestRemoveNodeFromScheduler(c *gocheck.C) {
 	err := Register(nd, "team1")
 	c.Assert(err, gocheck.IsNil)
 	defer coll.RemoveAll(bson.M{"_id": "server0"})
-	err = removeNodeFromScheduler(nd)
+	err = Unregister(nd)
 	c.Assert(err, gocheck.IsNil)
 	n, err := coll.Find(bson.M{"_id": "server0"}).Count()
 	c.Assert(err, gocheck.IsNil)
@@ -228,7 +228,7 @@ func (s *SchedulerSuite) TestRemoveNodeFromScheduler(c *gocheck.C) {
 
 func (s *SchedulerSuite) TesteRemoveUnknownNodeFromScheduler(c *gocheck.C) {
 	nd := cluster.Node{ID: "server0", Address: "http://localhost:8080"}
-	err := removeNodeFromScheduler(nd)
+	err := Unregister(nd)
 	c.Assert(err, gocheck.Equals, errNodeNotFound)
 }
 

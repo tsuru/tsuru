@@ -140,7 +140,7 @@ func Register(n cluster.Node, team string) error {
 }
 
 // RemoveNodeFromScheduler removes a node from the scheduler.
-func removeNodeFromScheduler(n cluster.Node) error {
+func Unregister(n cluster.Node) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -205,7 +205,7 @@ func (removeNodeFromSchedulerCmd) Info() *cmd.Info {
 
 func (removeNodeFromSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
 	nd := cluster.Node{ID: ctx.Args[0]}
-	err := removeNodeFromScheduler(nd)
+	err := Unregister(nd)
 	if err != nil {
 		return err
 	}
