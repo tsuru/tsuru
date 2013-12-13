@@ -50,6 +50,21 @@ func (s *S) TestGitGuesser(c *gocheck.C) {
 	c.Assert(name, gocheck.Equals, "gopher")
 }
 
+func (s *S) TestGitGuesserNonGitUser(c *gocheck.C) {
+	p := writeConfig("testdata/gitconfig-ok-nongit-user", c)
+	defer os.RemoveAll(p)
+	dirPath := path.Join(p, "somepath")
+	err := os.MkdirAll(dirPath, 0700) // Will be removed when p is removed.
+	c.Assert(err, gocheck.IsNil)
+	g := GitGuesser{}
+	name, err := g.GuessName(p) // repository root
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(name, gocheck.Equals, "gopher")
+	name, err = g.GuessName(dirPath) // subdirectory
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(name, gocheck.Equals, "gopher")
+}
+
 // This test may fail if you have a git repository in /tmp. By the way, if you
 // do have a repository in the temporary file hierarchy, please kill yourself.
 func (s *S) TestGitGuesserWhenTheDirectoryIsNotAGitRepository(c *gocheck.C) {
@@ -78,7 +93,7 @@ func (s *S) TestGitGuesserWithTsuruRemoteNotMatchingTsuruPattern(c *gocheck.C) {
 	name, err := GitGuesser{}.GuessName(p)
 	c.Assert(name, gocheck.Equals, "")
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, `"tsuru" remote did not match the pattern. Want something like git@<host>:<app-name>.git, got me@myhost.com:gopher.git`)
+	c.Assert(err.Error(), gocheck.Equals, `"tsuru" remote did not match the pattern. Want something like <user>@<host>:<app-name>.git, got git://myhost.com/gopher.git`)
 }
 
 func (s *S) TestGuessingCommandGuesserNil(c *gocheck.C) {

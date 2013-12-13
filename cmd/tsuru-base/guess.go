@@ -21,7 +21,7 @@ type AppGuesser interface {
 // GitGuesser uses git to guess the name of the app.
 //
 // It reads the "tsuru" remote from git config file. If the remote does not
-// exist, or does not match the tsuru pattern (git@<something>:<app-name>.git),
+// exist, or does not match the tsuru pattern (<user>@<somehost>:<app-name>.git),
 // GuessName will return an error.
 type GitGuesser struct{}
 
@@ -38,10 +38,10 @@ func (g GitGuesser) GuessName(path string) (string, error) {
 	if err != nil {
 		return "", errors.New("tsuru remote not declared.")
 	}
-	re := regexp.MustCompile(`^git@.*:(.*)\.git$`)
+	re := regexp.MustCompile(`^.*@.*:(.*)\.git$`)
 	matches := re.FindStringSubmatch(remoteURL)
 	if len(matches) < 2 {
-		return "", fmt.Errorf(`"tsuru" remote did not match the pattern. Want something like git@<host>:<app-name>.git, got %s`, remoteURL)
+		return "", fmt.Errorf(`"tsuru" remote did not match the pattern. Want something like <user>@<host>:<app-name>.git, got %s`, remoteURL)
 	}
 	return matches[1], nil
 }
