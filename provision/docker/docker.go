@@ -95,7 +95,11 @@ func runCmd(cmd string, args ...string) (string, error) {
 }
 
 func getPort() (string, error) {
-	return config.GetString("docker:run-cmd:port")
+	port, err := config.Get("docker:run-cmd:port")
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprint(port), nil
 }
 
 func getHostAddr(hostID string) string {

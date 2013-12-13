@@ -156,6 +156,15 @@ func (s *S) TestGetPortUndefined(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 }
 
+func (s *S) TestGetPortInteger(c *gocheck.C) {
+	old, _ := config.Get("docker:run-cmd:port")
+	defer config.Set("docker:run-cmd:port", old)
+	config.Set("docker:run-cmd:port", 8888)
+	port, err := getPort()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(port, gocheck.Equals, "8888")
+}
+
 func (s *S) TestContainerSetStatus(c *gocheck.C) {
 	container := container{ID: "something-300"}
 	coll := collection()
