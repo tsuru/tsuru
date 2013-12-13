@@ -25,7 +25,7 @@ Improvements related to Services
 
     * Added confirmation on `service-remove` command.
     * `bind` is atomic.
-    * `service-add` is atomic 
+    * `service-add` is atomic
     * Service instance name is unique.
     * Add support to bind an app without units.
 
@@ -38,7 +38,7 @@ Now you can define the collector ticker time. To do it just set on tsuru.conf:
 
 ::
 
-    colletor:
+    collector:
         ticker-time: 120
 
 The default value is 60 seconds.
