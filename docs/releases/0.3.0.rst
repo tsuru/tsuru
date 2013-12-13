@@ -7,6 +7,8 @@ Welcome to tsr 0.3.0!
 These release notes cover the new features you'll want to be aware of when
 upgrading from Tsuru 0.2.x or older versions.
 
+.. _`new features`: `What's new in tsr 0.3.0`_
+
 What's new in tsr 0.3.0
 =======================
 
