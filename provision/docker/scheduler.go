@@ -122,10 +122,10 @@ func (segregatedScheduler) GetNode(id string) (node, error) {
 	return n, nil
 }
 
-// AddNodeToScheduler adds a new node to the scheduler, registering for use in
+// Register adds a new node to the scheduler, registering for use in
 // the given team. The team parameter is optional, when set to "", the node
 // will be used as a fallback node.
-func addNodeToScheduler(n cluster.Node, team string) error {
+func Register(n cluster.Node, team string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -184,7 +184,7 @@ func (addNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
 	if len(ctx.Args) > 2 {
 		team = ctx.Args[2]
 	}
-	err := addNodeToScheduler(nd, team)
+	err := Register(nd, team)
 	if err != nil {
 		return err
 	}
