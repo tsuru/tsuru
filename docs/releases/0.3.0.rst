@@ -4,7 +4,7 @@ tsr 0.3.0 release notes - UNDER DEVELOPMENT
 
 Welcome to tsr 0.3.0!
 
-These release notes cover the `new features`_ you'll want to be aware of when
+These release notes cover the new features you'll want to be aware of when
 upgrading from Tsuru 0.2.x or older versions.
 
 What's new in tsr 0.3.0
