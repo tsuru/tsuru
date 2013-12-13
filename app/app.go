@@ -608,6 +608,7 @@ func (app *App) GetDeploys() uint {
 type Deploy struct {
 	App       string
 	Timestamp time.Time
+	Duration  time.Duration
 }
 
 func (app *App) ListDeploys() ([]Deploy, error) {
@@ -886,25 +887,38 @@ func Swap(app1, app2 *App) error {
 
 // DeployApp calls the Provisioner.Deploy
 func DeployApp(app *App, version string, writer io.Writer) error {
+	start := time.Now()
 	pipeline := Provisioner.DeployPipeline()
 	if pipeline == nil {
 		actions := []*action.Action{&ProvisionerDeploy, &IncrementDeploy}
 		pipeline = action.NewPipeline(actions...)
 	}
 	logWriter := LogWriter{App: app, Writer: writer}
-	return pipeline.Execute(app, version, &logWriter)
+	err := pipeline.Execute(app, version, &logWriter)
+	if err != nil {
+		return err
+	}
+	elapsed := time.Since(start)
+	return saveDeployData(app.Name, elapsed)
+}
+
+func saveDeployData(appName string, duration time.Duration) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	deploy := Deploy{
+		App:       appName,
+		Timestamp: time.Now(),
+		Duration:  duration,
+	}
+	return conn.Deploys().Insert(deploy)
 }
 
 func incrementDeploy(app *App) error {
 	conn, err := db.Conn()
 	if err != nil {
-		return err
-	}
-	deploy := Deploy{
-		App:       app.Name,
-		Timestamp: time.Now(),
-	}
-	if err := conn.Deploys().Insert(deploy); err != nil {
 		return err
 	}
 	defer conn.Close()
