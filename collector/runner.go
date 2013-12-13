@@ -61,7 +61,7 @@ func Run(dryMode bool) {
 		}
 		fmt.Printf("Using %q provisioner.\n\n", provisioner)
 
-		timer, err := config.GetInt("colletor:ticker-time")
+		timer, err := config.GetInt("collector:ticker-time")
 		if err != nil {
 			timer = 60
 		}
