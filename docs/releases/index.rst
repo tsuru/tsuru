@@ -9,7 +9,6 @@ tsr
 ===
 
 `tsr` is the tsuru server daemon.
-.. _development_release_notes:
 
 0.3.0 release
 -------------
@@ -22,8 +21,6 @@ tsuru
 =====
 
 `tsuru` is the tsuru client.
-
-.. _development_release_notes:
 
 0.8.6 release
 -------------
