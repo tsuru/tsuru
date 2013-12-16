@@ -192,13 +192,14 @@ func (s *SchedulerSuite) TestSchedulerGetNode(c *gocheck.C) {
 func (s *SchedulerSuite) TestAddNodeToScheduler(c *gocheck.C) {
 	coll := s.storage.Collection(schedulerCollection)
 	nd := cluster.Node{ID: "server0", Address: "http://localhost:8080"}
-	err := Register(nd, "team1")
+	var scheduler segregatedScheduler
+	err := scheduler.Register(map[string]string{"ID": nd.ID, "address": nd.Address, "team": "team1"})
 	c.Assert(err, gocheck.IsNil)
-	defer coll.RemoveAll(bson.M{"_id": "server0"})
+	defer coll.RemoveAll(bson.M{"_id": nd.ID})
 	var n node
-	err = coll.Find(bson.M{"_id": "server0"}).One(&n)
+	err = coll.Find(bson.M{"_id": nd.ID}).One(&n)
 	c.Assert(err, gocheck.IsNil)
-	c.Check(n.ID, gocheck.Equals, "server0")
+	c.Check(n.ID, gocheck.Equals, nd.ID)
 	c.Check(n.Team, gocheck.Equals, "team1")
 	c.Check(n.Address, gocheck.Equals, "http://localhost:8080")
 }
@@ -206,20 +207,22 @@ func (s *SchedulerSuite) TestAddNodeToScheduler(c *gocheck.C) {
 func (s *SchedulerSuite) TestAddNodeDuplicated(c *gocheck.C) {
 	coll := s.storage.Collection(schedulerCollection)
 	nd := cluster.Node{ID: "server0", Address: "http://localhost:8080"}
-	err := Register(nd, "team1")
+	var scheduler segregatedScheduler
+	err := scheduler.Register(map[string]string{"ID": nd.ID, "address": nd.Address, "team": "team1"})
 	c.Assert(err, gocheck.IsNil)
-	defer coll.RemoveAll(bson.M{"_id": "server0"})
-	err = Register(nd, "team2")
+	defer coll.RemoveAll(bson.M{"_id": nd.ID})
+	err = scheduler.Register(map[string]string{"ID": nd.ID, "address": nd.Address, "team": "team2"})
 	c.Assert(err, gocheck.Equals, errNodeAlreadyRegister)
 }
 
 func (s *SchedulerSuite) TestRemoveNodeFromScheduler(c *gocheck.C) {
 	coll := s.storage.Collection(schedulerCollection)
 	nd := cluster.Node{ID: "server0", Address: "http://localhost:8080"}
-	err := Register(nd, "team1")
+	var scheduler segregatedScheduler
+	err := scheduler.Register(map[string]string{"ID": nd.ID, "address": nd.Address, "team": "team1"})
 	c.Assert(err, gocheck.IsNil)
 	defer coll.RemoveAll(bson.M{"_id": "server0"})
-	err = Unregister(nd)
+	err = scheduler.Unregister(map[string]string{"ID": nd.ID})
 	c.Assert(err, gocheck.IsNil)
 	n, err := coll.Find(bson.M{"_id": "server0"}).Count()
 	c.Assert(err, gocheck.IsNil)
@@ -227,21 +230,19 @@ func (s *SchedulerSuite) TestRemoveNodeFromScheduler(c *gocheck.C) {
 }
 
 func (s *SchedulerSuite) TesteRemoveUnknownNodeFromScheduler(c *gocheck.C) {
-	nd := cluster.Node{ID: "server0", Address: "http://localhost:8080"}
-	err := Unregister(nd)
+	var scheduler segregatedScheduler
+	err := scheduler.Unregister(map[string]string{"ID": "server0"})
 	c.Assert(err, gocheck.Equals, errNodeNotFound)
 }
 
 func (s *SchedulerSuite) TestListNodesInTheScheduler(c *gocheck.C) {
 	coll := s.storage.Collection(schedulerCollection)
-	nd1 := cluster.Node{ID: "server0", Address: "http://localhost:8080"}
-	nd2 := cluster.Node{ID: "server1", Address: "http://localhost:9090"}
-	nd3 := cluster.Node{ID: "server2", Address: "http://localhost:9090"}
-	err := Register(nd1, "team1")
+	var scheduler segregatedScheduler
+	err := scheduler.Register(map[string]string{"ID": "server0", "address": "http://localhost:8080", "team": "team1"})
 	c.Assert(err, gocheck.IsNil)
-	err = Register(nd2, "team1")
+	err = scheduler.Register(map[string]string{"ID": "server1", "address": "http://localhost:9090", "team": "team1"})
 	c.Assert(err, gocheck.IsNil)
-	err = Register(nd3, "team1")
+	err = scheduler.Register(map[string]string{"ID": "server2", "address": "http://localhost:9090", "team": "team1"})
 	c.Assert(err, gocheck.IsNil)
 	defer coll.RemoveAll(bson.M{"_id": bson.M{"$in": []string{"server0", "server1", "server2"}}})
 	nodes, err := listNodesInTheScheduler()
@@ -302,7 +303,8 @@ func (s *SchedulerSuite) TestAddNodeToTheSchedulerCmdRunWithTeam(c *gocheck.C) {
 func (s *SchedulerSuite) TestAddNodeToTheSchedulerCmdFailure(c *gocheck.C) {
 	var buf bytes.Buffer
 	coll := s.storage.Collection(schedulerCollection)
-	err := Register(cluster.Node{ID: "server0", Address: "http://localhost:4243"}, "")
+	var scheduler segregatedScheduler
+	err := scheduler.Register(map[string]string{"ID": "server0", "address": "http://localhost:4243", "team": ""})
 	c.Assert(err, gocheck.IsNil)
 	defer coll.Remove(bson.M{"_id": "server0"})
 	context := cmd.Context{Args: []string{"server0", "http://localhost:8080", "team1"}, Stdout: &buf}
@@ -325,8 +327,8 @@ func (s *SchedulerSuite) TestRemoveNodeFromTheSchedulerCmdInfo(c *gocheck.C) {
 func (s *SchedulerSuite) TestRemoveNodeFromTheSchedulerCmdRun(c *gocheck.C) {
 	var buf bytes.Buffer
 	coll := s.storage.Collection(schedulerCollection)
-	nd := cluster.Node{ID: "server0", Address: "http://localhost:8080"}
-	err := Register(nd, "team1")
+	var scheduler segregatedScheduler
+	err := scheduler.Register(map[string]string{"ID": "server0", "address": "http://localhost:8080", "team": "team1"})
 	c.Assert(err, gocheck.IsNil)
 	defer coll.Remove(bson.M{"_id": "server0"})
 	context := cmd.Context{Args: []string{"server0"}, Stdout: &buf}
@@ -357,14 +359,12 @@ func (s *SchedulerSuite) TestListNodesInTheSchedulerCmdInfo(c *gocheck.C) {
 
 func (s *SchedulerSuite) TestListNodesInTheSchedulerCmdRun(c *gocheck.C) {
 	coll := s.storage.Collection(schedulerCollection)
-	nd1 := cluster.Node{ID: "server0", Address: "http://localhost:8080"}
-	nd2 := cluster.Node{ID: "server1", Address: "http://localhost:9090"}
-	nd3 := cluster.Node{ID: "server2", Address: "http://localhost:9090"}
-	err := Register(nd1, "team1")
+	var scheduler segregatedScheduler
+	err := scheduler.Register(map[string]string{"ID": "server0", "address": "http://localhost:8080", "team": "team1"})
 	c.Assert(err, gocheck.IsNil)
-	err = Register(nd3, "")
+	err = scheduler.Register(map[string]string{"ID": "server1", "address": "http://localhost:9090", "team": "team1"})
 	c.Assert(err, gocheck.IsNil)
-	err = Register(nd2, "team1")
+	err = scheduler.Register(map[string]string{"ID": "server2", "address": "http://localhost:9090", "team": ""})
 	c.Assert(err, gocheck.IsNil)
 	defer coll.RemoveAll(bson.M{"_id": bson.M{"$in": []string{"server0", "server1", "server2"}}})
 	var buf bytes.Buffer

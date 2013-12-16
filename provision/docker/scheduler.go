@@ -125,13 +125,13 @@ func (segregatedScheduler) GetNode(id string) (node, error) {
 // Register adds a new node to the scheduler, registering for use in
 // the given team. The team parameter is optional, when set to "", the node
 // will be used as a fallback node.
-func Register(n cluster.Node, team string) error {
+func (segregatedScheduler) Register(params map[string]string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	node := node{ID: n.ID, Address: n.Address, Team: team}
+	node := node{ID: params["ID"], Address: params["address"], Team: params["team"]}
 	err = conn.Collection(schedulerCollection).Insert(node)
 	if mgo.IsDup(err) {
 		return errNodeAlreadyRegister
@@ -140,13 +140,13 @@ func Register(n cluster.Node, team string) error {
 }
 
 // Unregister removes a node from the scheduler.
-func Unregister(n cluster.Node) error {
+func (segregatedScheduler) Unregister(params map[string]string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	err = conn.Collection(schedulerCollection).RemoveId(n.ID)
+	err = conn.Collection(schedulerCollection).RemoveId(params["ID"])
 	if err == mgo.ErrNotFound {
 		return errNodeNotFound
 	}
@@ -184,7 +184,8 @@ func (addNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
 	if len(ctx.Args) > 2 {
 		team = ctx.Args[2]
 	}
-	err := Register(nd, team)
+	var scheduler segregatedScheduler
+	err := scheduler.Register(map[string]string{"ID": nd.ID, "address": nd.Address, "team": team})
 	if err != nil {
 		return err
 	}
@@ -204,8 +205,8 @@ func (removeNodeFromSchedulerCmd) Info() *cmd.Info {
 }
 
 func (removeNodeFromSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
-	nd := cluster.Node{ID: ctx.Args[0]}
-	err := Unregister(nd)
+	var scheduler segregatedScheduler
+	err := scheduler.Unregister(map[string]string{"ID": ctx.Args[0]})
 	if err != nil {
 		return err
 	}
