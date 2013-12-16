@@ -15,7 +15,7 @@ tsr
 .. toctree::
    :maxdepth: 1
 
-   0.3.0
+   tsr/0.3.0
 
 tsuru
 =====
@@ -27,4 +27,4 @@ tsuru
 .. toctree::
    :maxdepth: 1
 
-   0.8.6
+   tsuru/0.8.6
