@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/globocom/tsuru",
-	"GoVersion": "devel +3dbc26e90c59 Mon Dec 09 13:02:56 2013 -0500",
+	"GoVersion": "devel +cfd85d12efea Sun Dec 15 21:03:12 2013 -0500",
 	"Packages": [
 		"./..."
 	],
@@ -68,11 +68,11 @@
 		},
 		{
 			"ImportPath": "github.com/globocom/docker-cluster/cluster",
-			"Rev": "32de233474db78b6b063e0cda3327e0eaad0825f"
+			"Rev": "641bca2f4b5d28666e6bbfecf7a568eefbc6d967"
 		},
 		{
 			"ImportPath": "github.com/globocom/docker-cluster/storage",
-			"Rev": "32de233474db78b6b063e0cda3327e0eaad0825f"
+			"Rev": "641bca2f4b5d28666e6bbfecf7a568eefbc6d967"
 		},
 		{
 			"ImportPath": "github.com/globocom/gandalf/testing",
@@ -106,7 +106,7 @@
 		},
 		{
 			"ImportPath": "labix.org/v2/mgo",
-			"Comment": "246",
+			"Comment": "252",
 			"Rev": "gustavo@niemeyer.net-20130906162000-1oo19qtbrtr6xk98"
 		},
 		{
@@ -141,7 +141,7 @@
 		},
 		{
 			"ImportPath": "launchpad.net/goyaml",
-			"Comment": "47",
+			"Comment": "50",
 			"Rev": "gustavo@niemeyer.net-20130620163049-221erv1tss39x0xe"
 		}
 	]
