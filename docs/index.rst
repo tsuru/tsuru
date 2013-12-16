@@ -64,7 +64,7 @@ Get Involved
 * :doc:`coding style </contribute/coding-style>`
 * :doc:`setting up your development environment </contribute/setting-up-your-tsuru-development-environment>`
 * :doc:`community </community>`
-* :doc:`releases </releases>`
+* :doc:`releases </releases/index>`
 
 .. toctree::
     :hidden:
