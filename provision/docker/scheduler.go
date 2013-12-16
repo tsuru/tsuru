@@ -139,7 +139,7 @@ func Register(n cluster.Node, team string) error {
 	return err
 }
 
-// RemoveNodeFromScheduler removes a node from the scheduler.
+// Unregister removes a node from the scheduler.
 func Unregister(n cluster.Node) error {
 	conn, err := db.Conn()
 	if err != nil {
