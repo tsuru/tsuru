@@ -8,6 +8,7 @@ tell you what's new in each version.
 tsr
 ===
 
+`tsr` is the tsuru server daemon.
 .. _development_release_notes:
 
 0.3.0 release
@@ -16,3 +17,17 @@ tsr
    :maxdepth: 1
 
    0.3.0
+
+tsuru
+=====
+
+`tsuru` is the tsuru client.
+
+.. _development_release_notes:
+
+0.8.6 release
+-------------
+.. toctree::
+   :maxdepth: 1
+
+   0.8.6

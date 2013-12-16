@@ -18,14 +18,13 @@ Support Docker 0.7.x and other improvements
     * Fixed the 42 layers problem.
     * Support all Docker storages.
     * Pull image on creation if it does not exists.
-    * Fixed some bugs on `segregatedScheduler`.
-    * Fixed some bugs on `collector`.
-    * Fixed units losing access to services on deploy bug.
+    * BUGFIX: when using segregatedScheduler, the provisioner fails to get
+      the proper host address.
+    * BUGFIX: units losing access to services on deploy bug.
 
 Improvements related to Services
 --------------------------------
 
-    * Added confirmation on `service-remove` command.
     * `bind` is atomic.
     * `service-add` is atomic
     * Service instance name is unique.
