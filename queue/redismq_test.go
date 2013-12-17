@@ -38,3 +38,17 @@ func (s *RedismqSuite) TestGet(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(*got, gocheck.DeepEquals, msg)
 }
+
+func (s *RedismqSuite) TestRelease(c *gocheck.C) {
+	msg := Message{
+		Action: "regenerate-apprc",
+		Args:   []string{"myapp"},
+	}
+	q := redismqQ{name: "default"}
+	err := q.Release(&msg, 0)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(msg.id, gocheck.Not(gocheck.Equals), 0)
+	got, err := q.Get(1e6)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(*got, gocheck.DeepEquals, msg)
+}
