@@ -27,6 +27,22 @@ func (s *RedismqSuite) TestPut(c *gocheck.C) {
 	c.Assert(*got, gocheck.DeepEquals, msg)
 }
 
+func (s *RedismqSuite) TestPutWithDelay(c *gocheck.C) {
+	msg := Message{
+		Action: "regenerate-apprc",
+		Args:   []string{"myapp"},
+	}
+	q := redismqQ{name: "default"}
+	err := q.Put(&msg, 1e9)
+	c.Assert(err, gocheck.IsNil)
+	_, err = q.Get(1e6)
+	c.Assert(err, gocheck.NotNil)
+	time.Sleep(1e9)
+	got, err := q.Get(1e6)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(*got, gocheck.DeepEquals, msg)
+}
+
 func (s *RedismqSuite) TestGet(c *gocheck.C) {
 	msg := Message{
 		Action: "regenerate-apprc",

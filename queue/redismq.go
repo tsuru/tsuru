@@ -42,8 +42,15 @@ func (r *redismqQ) Put(m *Message, delay time.Duration) error {
 	if err != nil {
 		return err
 	}
-	content := buf.String()
-	return redisQueue.Put(content)
+	if delay > 0 {
+		go func() {
+			time.Sleep(delay)
+			redisQueue.Put(buf.String())
+		}()
+		return nil
+	} else {
+		return redisQueue.Put(buf.String())
+	}
 }
 
 func (r *redismqQ) Get(timeout time.Duration) (*Message, error) {
