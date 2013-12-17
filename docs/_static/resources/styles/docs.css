@@ -31,11 +31,15 @@
     font-weight: bold;
 }
 
-.highlight-bash,
-.highlight-yaml,
-.highlight-python,
-.highlight-text {
-    margin: 40px 0;
+.highlight {
+    margin: 20px 0;
+}
+
+.highlight pre {
+    background-color: #EEE;
+    border-radius: 3px;
+    font-family: monospace;
+    padding: 10px;
 }
 
 .footer {
