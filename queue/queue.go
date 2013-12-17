@@ -112,3 +112,11 @@ type Message struct {
 func (m *Message) Delete() {
 	m.delete = true
 }
+
+type timeoutError struct {
+	timeout time.Duration
+}
+
+func (err *timeoutError) Error() string {
+	return fmt.Sprintf("Timed out waiting for message after %s.", err.timeout)
+}

@@ -57,3 +57,9 @@ func (s *S) TestRegister(c *gocheck.C) {
 	_, err := Factory()
 	c.Assert(err, gocheck.IsNil)
 }
+
+func (s *S) TestTimeoutError(c *gocheck.C) {
+	var err error = &timeoutError{timeout: 5e9}
+	expected := "Timed out waiting for message after 5s."
+	c.Assert(err.Error(), gocheck.Equals, expected)
+}

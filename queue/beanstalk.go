@@ -147,7 +147,7 @@ func get(timeout time.Duration, queues ...string) (*Message, error) {
 	id, body, err := ts.Reserve(timeout)
 	if err != nil {
 		if timeoutRegexp.MatchString(err.Error()) {
-			return nil, fmt.Errorf("Timed out waiting for message after %s.", timeout)
+			return nil, &timeoutError{timeout: timeout}
 		}
 		return nil, err
 	}
