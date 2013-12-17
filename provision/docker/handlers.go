@@ -24,3 +24,17 @@ func AddNodeHandler(w http.ResponseWriter, r *http.Request) error {
 	var scheduler segregatedScheduler
 	return scheduler.Register(params)
 }
+
+func RemoveNodeHandler(w http.ResponseWriter, r *http.Request) error {
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	params := map[string]string{}
+	err = json.Unmarshal(b, &params)
+	if err != nil {
+		return err
+	}
+	var scheduler segregatedScheduler
+	return scheduler.Unregister(params)
+}

@@ -41,3 +41,21 @@ func (s *HandlersSuite) TestAddNodeHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, 1)
 }
+
+func (s *HandlersSuite) TestRemoveNodeHandler(c *gocheck.C) {
+	err := s.conn.Collection(schedulerCollection).Insert(map[string]string{"address": "host.com:4243", "_id": "server01", "teams": "myteam"})
+	c.Assert(err, gocheck.IsNil)
+	n, err := s.conn.Collection(schedulerCollection).FindId("server01").Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, 1)
+	b := bytes.NewBufferString(`{"ID": "server01"}`)
+	req, err := http.NewRequest("POST", "/node/remove", b)
+	c.Assert(err, gocheck.IsNil)
+	rec := httptest.NewRecorder()
+	err = RemoveNodeHandler(rec, req)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Collection(schedulerCollection).RemoveId("server01")
+	n, err = s.conn.Collection(schedulerCollection).FindId("server01").Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, 0)
+}
