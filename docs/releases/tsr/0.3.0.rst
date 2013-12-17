@@ -93,7 +93,7 @@ db.users.update({quota: null}, {$set: {quota: {limit: -1}}});
 db.quota.remove()
 
 The best way to run it is saving it to a file and invoke MongoDB with the file
-param:
+parameter:
 
 .. highlight:: bash
 
