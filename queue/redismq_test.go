@@ -6,6 +6,7 @@ package queue
 
 import (
 	"launchpad.net/gocheck"
+	"time"
 )
 
 type RedismqSuite struct{}
@@ -37,6 +38,16 @@ func (s *RedismqSuite) TestGet(c *gocheck.C) {
 	got, err := q.Get(1e6)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(*got, gocheck.DeepEquals, msg)
+}
+
+func (s *RedismqSuite) TestGetTimeout(c *gocheck.C) {
+	q := redismqQ{name: "default"}
+	got, err := q.Get(1e6)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(got, gocheck.IsNil)
+	e, ok := err.(*timeoutError)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.timeout, gocheck.Equals, time.Duration(1e6))
 }
 
 func (s *RedismqSuite) TestRelease(c *gocheck.C) {

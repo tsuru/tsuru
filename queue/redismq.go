@@ -47,14 +47,39 @@ func (r *redismqQ) Put(m *Message, delay time.Duration) error {
 }
 
 func (r *redismqQ) Get(timeout time.Duration) (*Message, error) {
-	pack, err := consumer.Get()
-	if err != nil {
+	packChan := make(chan *redismq.Package)
+	errChan := make(chan error)
+	quit := make(chan int)
+	go func() {
+		var pack *redismq.Package
+		var err error
+		for pack == nil {
+			select {
+			case <-quit:
+				return
+			default:
+				pack, err = consumer.NoWaitGet()
+				if err != nil {
+					errChan <- err
+					return
+				}
+			}
+		}
+		packChan <- pack
+	}()
+	var pack *redismq.Package
+	select {
+	case pack = <-packChan:
+	case err := <-errChan:
 		return nil, err
+	case <-time.After(timeout):
+		close(quit)
+		return nil, &timeoutError{timeout: timeout}
 	}
 	defer pack.Ack()
 	reader := strings.NewReader(pack.Payload)
 	var msg Message
-	if err = json.NewDecoder(reader).Decode(&msg); err != nil && err != io.EOF {
+	if err := json.NewDecoder(reader).Decode(&msg); err != nil && err != io.EOF {
 		return nil, fmt.Errorf("Invalid message: %q", pack.Payload)
 	}
 	return &msg, nil
