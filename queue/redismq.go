@@ -7,33 +7,17 @@ package queue
 import (
 	"bytes"
 	"encoding/json"
-	// "errors"
 	"fmt"
-	// "github.com/globocom/config"
 	"github.com/adeven/redismq"
-	"github.com/globocom/tsuru/log"
 	"io"
-	// "net"
-	// "regexp"
-	// "sync"
 	"strings"
 	"time"
-	// "fmt"
 )
 
 type redismqQ struct {
-	name string
-}
-
-var redisQueue = redismq.CreateQueue("localhost", "6379", "", 9, "clicks")
-var consumer *redismq.Consumer
-
-func init() {
-	var err error
-	consumer, err = redisQueue.AddConsumer("testconsumer")
-	if err != nil {
-		log.Errorf("Failed to create the consumer: %s", err)
-	}
+	name      string
+	queue     *redismq.Queue
+	consumer *redismq.Consumer
 }
 
 func (r *redismqQ) Put(m *Message, delay time.Duration) error {
@@ -45,11 +29,11 @@ func (r *redismqQ) Put(m *Message, delay time.Duration) error {
 	if delay > 0 {
 		go func() {
 			time.Sleep(delay)
-			redisQueue.Put(buf.String())
+			r.queue.Put(buf.String())
 		}()
 		return nil
 	} else {
-		return redisQueue.Put(buf.String())
+		return r.queue.Put(buf.String())
 	}
 }
 
@@ -65,7 +49,7 @@ func (r *redismqQ) Get(timeout time.Duration) (*Message, error) {
 			case <-quit:
 				return
 			default:
-				pack, err = consumer.NoWaitGet()
+				pack, err = r.consumer.NoWaitGet()
 				if err != nil {
 					errChan <- err
 					return
