@@ -6,18 +6,14 @@ package docker
 
 import (
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"net/http"
 )
 
 // AddNodeHandler calls cluster.Register registering a node into it.
 func AddNodeHandler(w http.ResponseWriter, r *http.Request) error {
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-	params := map[string]string{}
-	err = json.Unmarshal(b, &params)
+	params, err := unmarshal(r.Body)
 	if err != nil {
 		return err
 	}
@@ -26,15 +22,23 @@ func AddNodeHandler(w http.ResponseWriter, r *http.Request) error {
 }
 
 func RemoveNodeHandler(w http.ResponseWriter, r *http.Request) error {
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-	params := map[string]string{}
-	err = json.Unmarshal(b, &params)
+	params, err := unmarshal(r.Body)
 	if err != nil {
 		return err
 	}
 	var scheduler segregatedScheduler
 	return scheduler.Unregister(params)
+}
+
+func unmarshal(body io.ReadCloser) (map[string]string, error) {
+	b, err := ioutil.ReadAll(body)
+	if err != nil {
+		return nil, err
+	}
+	params := map[string]string{}
+	err = json.Unmarshal(b, &params)
+	if err != nil {
+		return nil, err
+	}
+	return params, nil
 }
