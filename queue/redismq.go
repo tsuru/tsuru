@@ -15,8 +15,8 @@ import (
 )
 
 type redismqQ struct {
-	name      string
-	queue     *redismq.Queue
+	name     string
+	queue    *redismq.Queue
 	consumer *redismq.Consumer
 }
 

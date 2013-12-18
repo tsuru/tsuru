@@ -11,7 +11,7 @@ import (
 )
 
 type RedismqSuite struct {
-	queue *redismq.Queue
+	queue    *redismq.Queue
 	consumer *redismq.Consumer
 }
 
