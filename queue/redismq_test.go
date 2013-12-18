@@ -36,7 +36,6 @@ func (s *RedismqSuite) TestPut(c *gocheck.C) {
 	q := redismqQ{name: "default", queue: s.queue, consumer: s.consumer}
 	err := q.Put(&msg, 0)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(msg.id, gocheck.Not(gocheck.Equals), 0)
 	got, err := q.Get(1e6)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(*got, gocheck.DeepEquals, msg)
@@ -79,18 +78,4 @@ func (s *RedismqSuite) TestGetTimeout(c *gocheck.C) {
 	e, ok := err.(*timeoutError)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.timeout, gocheck.Equals, time.Duration(1e6))
-}
-
-func (s *RedismqSuite) TestRelease(c *gocheck.C) {
-	msg := Message{
-		Action: "regenerate-apprc",
-		Args:   []string{"myapp"},
-	}
-	q := redismqQ{name: "default", queue: s.queue, consumer: s.consumer}
-	err := q.Release(&msg, 0)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(msg.id, gocheck.Not(gocheck.Equals), 0)
-	got, err := q.Get(1e6)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(*got, gocheck.DeepEquals, msg)
 }

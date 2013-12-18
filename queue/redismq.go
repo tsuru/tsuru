@@ -75,11 +75,3 @@ func (r *redismqQ) Get(timeout time.Duration) (*Message, error) {
 	}
 	return &msg, nil
 }
-
-func (r *redismqQ) Delete(m *Message) error {
-	return nil
-}
-
-func (r *redismqQ) Release(m *Message, delay time.Duration) error {
-	return r.Put(m, delay)
-}
