@@ -18,11 +18,11 @@ type S struct{}
 
 var _ = gocheck.Suite(&S{})
 
-func (s *S) TestMessageDelete(c *gocheck.C) {
+func (s *S) TestMessageFail(c *gocheck.C) {
 	m := Message{}
-	c.Assert(m.delete, gocheck.Equals, false)
-	m.Delete()
-	c.Assert(m.delete, gocheck.Equals, true)
+	c.Assert(m.fail, gocheck.Equals, false)
+	m.Fail()
+	c.Assert(m.fail, gocheck.Equals, true)
 }
 
 func (s *S) TestFactory(c *gocheck.C) {
