@@ -33,6 +33,7 @@ func RegisterHandler(path string, method string, h http.Handler) {
 	}
 }
 
+// RunAdminServer starts tsuru administrative api
 func RunAdminServer(dry bool) {
 	log.Init()
 	connString, err := config.GetString("database:url")
