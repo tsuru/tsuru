@@ -136,8 +136,6 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	for _, u := range a.ProvisionedUnits() {
 		message, err := q.Get(1e6)
 		c.Assert(err, gocheck.IsNil)
-		defer message.Delete()
-		c.Assert(err, gocheck.IsNil)
 		c.Assert(message.Action, gocheck.Equals, app.BindService)
 		c.Assert(message.Args[0], gocheck.Equals, a.GetName())
 		c.Assert(message.Args[1], gocheck.Equals, u.GetName())
@@ -184,8 +182,6 @@ func (s *S) TestDeployEnqueuesBindService(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	for _, u := range a.ProvisionedUnits() {
 		message, err := q.Get(1e6)
-		c.Assert(err, gocheck.IsNil)
-		defer message.Delete()
 		c.Assert(err, gocheck.IsNil)
 		c.Assert(message.Action, gocheck.Equals, app.BindService)
 		c.Assert(message.Args[0], gocheck.Equals, a.GetName())
@@ -241,8 +237,6 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 	c.Assert(err, gocheck.IsNil)
 	for _, u := range a.ProvisionedUnits() {
 		message, err := q.Get(1e6)
-		c.Assert(err, gocheck.IsNil)
-		defer message.Delete()
 		c.Assert(err, gocheck.IsNil)
 		c.Assert(message.Action, gocheck.Equals, app.BindService)
 		c.Assert(message.Args[0], gocheck.Equals, a.GetName())
