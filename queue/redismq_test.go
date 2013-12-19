@@ -20,12 +20,9 @@ var _ = gocheck.Suite(&RedismqSuite{})
 func (s *RedismqSuite) SetUpSuite(c *gocheck.C) {
 	var err error
 	s.queue = redismq.CreateQueue("localhost", "6379", "", 3, "redismq_tests")
+	s.queue.Delete()
 	s.consumer, err = s.queue.AddConsumer("redismq_tests")
 	c.Assert(err, gocheck.IsNil)
-}
-
-func (s *RedismqSuite) TearDownSuite(c *gocheck.C) {
-	s.queue.Delete()
 }
 
 func (s *RedismqSuite) TestPut(c *gocheck.C) {
