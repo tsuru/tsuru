@@ -6,13 +6,19 @@ package docker
 
 import (
 	"encoding/json"
+	"github.com/globocom/tsuru/api"
 	"io"
 	"io/ioutil"
 	"net/http"
 )
 
+func init() {
+	api.RegisterHandler("/node/add", "POST", api.Handler(addNodeHandler))
+	api.RegisterHandler("/node/remove", "DELETE", api.Handler(removeNodeHandler))
+}
+
 // AddNodeHandler calls cluster.Register registering a node into it.
-func AddNodeHandler(w http.ResponseWriter, r *http.Request) error {
+func addNodeHandler(w http.ResponseWriter, r *http.Request) error {
 	params, err := unmarshal(r.Body)
 	if err != nil {
 		return err
@@ -21,7 +27,7 @@ func AddNodeHandler(w http.ResponseWriter, r *http.Request) error {
 	return scheduler.Register(params)
 }
 
-func RemoveNodeHandler(w http.ResponseWriter, r *http.Request) error {
+func removeNodeHandler(w http.ResponseWriter, r *http.Request) error {
 	params, err := unmarshal(r.Body)
 	if err != nil {
 		return err
