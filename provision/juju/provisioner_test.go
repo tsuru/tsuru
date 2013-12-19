@@ -519,7 +519,6 @@ func (s *ELBSuite) TestProvisionWithELB(c *gocheck.C) {
 	c.Assert(addr, gocheck.Not(gocheck.Equals), "")
 	msg, err := getQueue(queueName).Get(1e9)
 	c.Assert(err, gocheck.IsNil)
-	defer msg.Delete()
 	c.Assert(msg.Action, gocheck.Equals, addUnitToLoadBalancer)
 	c.Assert(msg.Args, gocheck.DeepEquals, []string{"jimmy"})
 }
@@ -549,10 +548,8 @@ func (s *ELBSuite) TestDestroyWithELB(c *gocheck.C) {
 	q := getQueue(queueName)
 	msg, err := q.Get(1e9)
 	c.Assert(err, gocheck.IsNil)
-	if msg.Action == addUnitToLoadBalancer && msg.Args[0] == "jimmy" {
-		msg.Delete()
-	} else {
-		q.Release(msg, 0)
+	if msg.Action != addUnitToLoadBalancer {
+		q.Put(msg, 0)
 	}
 }
 
@@ -570,7 +567,6 @@ func (s *ELBSuite) TestAddUnitsWithELB(c *gocheck.C) {
 	}
 	msg, err := getQueue(queueName).Get(1e9)
 	c.Assert(err, gocheck.IsNil)
-	defer msg.Delete()
 	c.Assert(msg.Action, gocheck.Equals, addUnitToLoadBalancer)
 	c.Assert(msg.Args, gocheck.DeepEquals, expected)
 }
