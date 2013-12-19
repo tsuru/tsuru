@@ -59,25 +59,6 @@ func (s *S) TestFakeQPutWithTimeout(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 }
 
-func (s *S) TestFakeQDelete(c *gocheck.C) {
-	q := FakeQ{}
-	err := q.Delete(nil)
-	c.Assert(err, gocheck.IsNil)
-}
-
-func (s *S) TestFakeQRelease(c *gocheck.C) {
-	q := FakeQ{}
-	msg := queue.Message{Action: "do-something"}
-	err := q.Put(&msg, 0)
-	c.Assert(err, gocheck.IsNil)
-	m, err := q.Get(1e6)
-	c.Assert(err, gocheck.IsNil)
-	err = q.Release(m, 0)
-	c.Assert(err, gocheck.IsNil)
-	_, err = q.Get(1e6)
-	c.Assert(err, gocheck.IsNil)
-}
-
 func (s *S) TestFakeHandlerStart(c *gocheck.C) {
 	h := fakeHandler{}
 	c.Assert(h.running, gocheck.Equals, int32(0))
@@ -133,7 +114,6 @@ func (s *S) TestCleanQ(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	_, err = q2.Get(1e6)
 	c.Assert(err, gocheck.NotNil)
-	m, err := q3.Get(1e6)
+	_, err = q3.Get(1e6)
 	c.Assert(err, gocheck.IsNil)
-	q3.Delete(m)
 }

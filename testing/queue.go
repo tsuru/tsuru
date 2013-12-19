@@ -79,14 +79,6 @@ func (q *FakeQ) Put(m *queue.Message, delay time.Duration) error {
 	return nil
 }
 
-func (q *FakeQ) Delete(m *queue.Message) error {
-	return nil
-}
-
-func (q *FakeQ) Release(m *queue.Message, delay time.Duration) error {
-	return q.Put(m, delay)
-}
-
 type FakeQFactory struct {
 	queues map[string]*FakeQ
 	sync.Mutex
@@ -164,11 +156,10 @@ func CleanQ(names ...string) {
 			defer wg.Done()
 			q, _ := factory.Get(name)
 			for {
-				msg, err := q.Get(1e6)
+				_, err := q.Get(1e6)
 				if err != nil {
 					break
 				}
-				q.Delete(msg)
 			}
 		}(name)
 	}
