@@ -18,9 +18,9 @@ type RedismqSuite struct {
 var _ = gocheck.Suite(&RedismqSuite{})
 
 func (s *RedismqSuite) SetUpSuite(c *gocheck.C) {
-	var err error
 	s.queue = redismq.CreateQueue("localhost", "6379", "", 3, "redismq_tests")
-	s.queue.Delete()
+	err := s.queue.Delete()
+	c.Assert(err, gocheck.IsNil)
 	s.consumer, err = s.queue.AddConsumer("redismq_tests")
 	c.Assert(err, gocheck.IsNil)
 }
