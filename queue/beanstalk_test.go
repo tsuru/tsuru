@@ -138,6 +138,8 @@ func (s *BeanstalkSuite) TestGet(c *gocheck.C) {
 	got, err := q.Get(1e6)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(*got, gocheck.DeepEquals, msg)
+	_, err = q.Get(1e6)
+	c.Assert(err, gocheck.NotNil)
 }
 
 func (s *BeanstalkSuite) TestGetFromEmptyQueue(c *gocheck.C) {

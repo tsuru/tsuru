@@ -123,10 +123,10 @@ func get(timeout time.Duration, queues ...string) (*Message, error) {
 		}
 		return nil, err
 	}
+	defer conn.Delete(id)
 	r := bytes.NewReader(body)
 	var msg Message
 	if err = gob.NewDecoder(r).Decode(&msg); err != nil && err != io.EOF {
-		conn.Delete(id)
 		return nil, fmt.Errorf("Invalid message: %q", body)
 	}
 	return &msg, nil
