@@ -90,11 +90,11 @@ func RunServer(dry bool) {
 	m.Post("/apps/:appname/deploy", authorizationRequiredHandler(deploy))
 
 	if registrationEnabled, _ := config.GetBool("auth:user-registration"); registrationEnabled {
-		m.Post("/users", handler(createUser))
+		m.Post("/users", Handler(createUser))
 	}
 
-	m.Post("/users/:email/password", handler(resetPassword))
-	m.Post("/users/:email/tokens", handler(login))
+	m.Post("/users/:email/password", Handler(resetPassword))
+	m.Post("/users/:email/tokens", Handler(login))
 	m.Del("/users/tokens", authorizationRequiredHandler(logout))
 	m.Put("/users/password", authorizationRequiredHandler(changePassword))
 	m.Del("/users", authorizationRequiredHandler(removeUser))
