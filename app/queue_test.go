@@ -177,7 +177,6 @@ func (s *S) TestHandleMessageErrors(c *gocheck.C) {
 			message.Args = d.args
 		}
 		handle(&message)
-		defer message.Delete() // Sanity
 	}
 	content := logger.Buf.String()
 	lines := strings.Split(content, "\n")
@@ -320,7 +319,6 @@ func (s *S) TestEnqueueUsesInternalQueue(c *gocheck.C) {
 	msg, err := aqueue().Get(1e6)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(msg.Action, gocheck.Equals, "do-something")
-	msg.Delete()
 }
 
 func (s *S) TestHandleBindServiceMessage(c *gocheck.C) {

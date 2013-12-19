@@ -162,5 +162,4 @@ func (s *S) TestDestroyBucket(c *gocheck.C) {
 	msg, err := aqueue().Get(1e6)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(msg.Args, gocheck.DeepEquals, []string{app.Name})
-	msg.Delete()
 }

@@ -114,7 +114,6 @@ func (s *S) TestDestroy(c *gocheck.C) {
 	msg, err := aqueue().Get(1e6)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(msg.Args, gocheck.DeepEquals, []string{a.Name})
-	msg.Delete()
 	_, err = auth.GetToken("bearer " + token)
 	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
 }
@@ -144,7 +143,6 @@ func (s *S) TestDestroyWithoutBucketSupport(c *gocheck.C) {
 	msg, err := aqueue().Get(1e6)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(msg.Args, gocheck.DeepEquals, []string{a.Name})
-	msg.Delete()
 }
 
 func (s *S) TestDestroyWithoutUnits(c *gocheck.C) {
@@ -161,7 +159,6 @@ func (s *S) TestDestroyWithoutUnits(c *gocheck.C) {
 	msg, err := aqueue().Get(1e6)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(msg.Args, gocheck.DeepEquals, []string{app.Name})
-	msg.Delete()
 }
 
 func (s *S) TestCreateApp(c *gocheck.C) {
@@ -218,7 +215,6 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 	}
 	message, err := aqueue().Get(1e6)
 	c.Assert(err, gocheck.IsNil)
-	defer message.Delete()
 	c.Assert(message.Action, gocheck.Equals, expectedMessage.Action)
 	c.Assert(message.Args, gocheck.DeepEquals, expectedMessage.Args)
 	c.Assert(s.provisioner.GetUnits(&a), gocheck.HasLen, 1)
@@ -272,7 +268,6 @@ func (s *S) TestCreateWithoutBucketSupport(c *gocheck.C) {
 	c.Assert(env, gocheck.DeepEquals, map[string]bind.EnvVar{})
 	message, err := aqueue().Get(1e6)
 	c.Assert(err, gocheck.IsNil)
-	defer message.Delete()
 	c.Assert(message.Action, gocheck.Equals, regenerateApprc)
 	c.Assert(message.Args, gocheck.DeepEquals, []string{a.Name})
 	c.Assert(s.provisioner.GetUnits(&a), gocheck.HasLen, 1)
@@ -347,7 +342,6 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfProvisionerFail(c *gocheck.C) {
 	msg, err := aqueue().Get(1e6)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(msg.Args, gocheck.DeepEquals, []string{a.Name})
-	msg.Delete()
 }
 
 func (s *S) TestDeletesIAMCredentialsAndS3BucketIfProvisionerFail(c *gocheck.C) {
@@ -376,7 +370,6 @@ func (s *S) TestDeletesIAMCredentialsAndS3BucketIfProvisionerFail(c *gocheck.C) 
 	msg, err := aqueue().Get(1e6)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(msg.Args, gocheck.DeepEquals, []string{a.Name})
-	msg.Delete()
 }
 
 func (s *S) TestCreateAppCreatesRepositoryInGandalf(c *gocheck.C) {
@@ -485,7 +478,6 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	for i := range expectedMessages {
 		message, err := aqueue().Get(1e6)
 		c.Check(err, gocheck.IsNil)
-		defer message.Delete()
 		gotMessages[i] = queue.Message{
 			Action: message.Action,
 			Args:   message.Args,
@@ -536,7 +528,6 @@ func (s *S) TestAddUnitsQuota(c *gocheck.C) {
 	for i := range expectedMessages {
 		message, err := aqueue().Get(1e6)
 		c.Assert(err, gocheck.IsNil)
-		defer message.Delete()
 		gotMessages[i] = queue.Message{
 			Action: message.Action,
 			Args:   message.Args,

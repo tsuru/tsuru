@@ -53,5 +53,4 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *gocheck.C) {
 	msg, err := aqueue().Get(1e6)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(msg.Args, gocheck.DeepEquals, []string{a.Name})
-	msg.Delete()
 }

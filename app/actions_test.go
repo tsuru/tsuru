@@ -392,7 +392,6 @@ func (s *S) TestExportEnvironmentsForward(c *gocheck.C) {
 	c.Assert(t.AppName, gocheck.Equals, app.Name)
 	message, err := aqueue().Get(2e9)
 	c.Assert(err, gocheck.IsNil)
-	defer message.Delete()
 	c.Assert(message.Action, gocheck.Equals, regenerateApprc)
 	c.Assert(message.Args, gocheck.DeepEquals, []string{app.Name})
 }
@@ -958,7 +957,6 @@ func (s *S) TestSaveNewUnitsInDatabaseForward(c *gocheck.C) {
 	for i := range expectedMessages {
 		message, err := aqueue().Get(1e6)
 		c.Assert(err, gocheck.IsNil)
-		defer message.Delete()
 		gotMessages[i] = queue.Message{
 			Action: message.Action,
 			Args:   message.Args,
@@ -1002,7 +1000,6 @@ func (s *S) TestSaveNewUnitsInDatabaseForwardNoPointer(c *gocheck.C) {
 	for i := range expectedMessages {
 		message, err := aqueue().Get(1e6)
 		c.Assert(err, gocheck.IsNil)
-		defer message.Delete()
 		gotMessages[i] = queue.Message{
 			Action: message.Action,
 			Args:   message.Args,
