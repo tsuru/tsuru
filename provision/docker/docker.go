@@ -230,14 +230,14 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 		return "", err
 	}
 	c := pipeline.Result().(container)
-	_, err = dockerCluster().WaitContainer(c.ID)
-	if err != nil {
-		log.Errorf("Process failed for container %q: %s", c.ID, err)
-		return "", err
-	}
 	err = c.logs(w)
 	if err != nil {
 		log.Errorf("error on get logs for container %s - %s", c.ID, err)
+		return "", err
+	}
+	_, err = dockerCluster().WaitContainer(c.ID)
+	if err != nil {
+		log.Errorf("Process failed for container %q: %s", c.ID, err)
 		return "", err
 	}
 	imageId, err = c.commit()
@@ -381,6 +381,7 @@ func (c *container) logs(w io.Writer) error {
 		OutputStream: w,
 		ErrorStream:  w,
 		RawTerminal:  false,
+		Stream:       true,
 	}
 	err := dockerCluster().AttachToContainer(opts)
 	if err != nil {
