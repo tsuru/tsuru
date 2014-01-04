@@ -41,7 +41,7 @@ func getApp(name string, u *auth.User) (app.App, error) {
 	return app, nil
 }
 
-func cloneRepository(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func deploy(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	version := r.PostFormValue("version")
 	if version == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Missing parameter version"}
@@ -698,4 +698,19 @@ func swap(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	}
 	rec.Log(u.Email, "swap", app1Name, app2Name)
 	return app.Swap(&app1, &app2)
+}
+
+func start(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	w.Header().Set("Content-Type", "text")
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
+	appName := r.URL.Query().Get(":app")
+	rec.Log(u.Email, "start", appName)
+	app, err := getApp(appName, u)
+	if err != nil {
+		return err
+	}
+	return app.Start(w)
 }

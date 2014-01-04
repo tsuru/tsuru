@@ -9,5 +9,5 @@
 	url = git@github.com:globocom/tsuru-django-sample.git
 	fetch = +refs/heads/*:refs/remotes/origin/*
 [remote "tsuru"]
-	url = me@myhost.com:gopher.git
+	url = git://myhost.com/gopher.git
 	fetch = +refs/heads/*:refs/remotes/tsuru/*

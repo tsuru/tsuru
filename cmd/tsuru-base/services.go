@@ -12,6 +12,7 @@ import (
 	"github.com/globocom/tsuru/cmd"
 	"io"
 	"io/ioutil"
+	"launchpad.net/gnuflag"
 	"net/http"
 	"sort"
 	"strings"
@@ -366,12 +367,16 @@ func (ServiceDoc) Run(ctx *cmd.Context, client *cmd.Client) error {
 	return nil
 }
 
-type ServiceRemove struct{}
+type ServiceRemove struct {
+	GuessingCommand
+	yes bool
+	fs  *gnuflag.FlagSet
+}
 
 func (c ServiceRemove) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "service-remove",
-		Usage:   "service-remove <serviceinstancename>",
+		Usage:   "service-remove <serviceinstancename> [--assume-yes]",
 		Desc:    "Removes a service instance",
 		MinArgs: 1,
 	}
@@ -379,6 +384,15 @@ func (c ServiceRemove) Info() *cmd.Info {
 
 func (c ServiceRemove) Run(ctx *cmd.Context, client *cmd.Client) error {
 	name := ctx.Args[0]
+	var answer string
+	if !c.yes {
+		fmt.Fprintf(ctx.Stdout, `Are you sure you want to remove service "%s"? (y/n) `, name)
+		fmt.Fscanf(ctx.Stdin, "%s", &answer)
+		if answer != "y" {
+			fmt.Fprintln(ctx.Stdout, "Abort.")
+			return nil
+		}
+	}
 	url := fmt.Sprintf("/services/instances/%s", name)
 	url, err := cmd.GetURL(url)
 	if err != nil {
@@ -388,13 +402,19 @@ func (c ServiceRemove) Run(ctx *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	resp, err := client.Do(request)
+	_, err = client.Do(request)
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-	result, _ := ioutil.ReadAll(resp.Body)
-	result = append(result, []byte("\n")...)
-	ctx.Stdout.Write(result)
+	fmt.Fprintf(ctx.Stdout, `Service "%s" successfully removed!`+"\n", name)
 	return nil
+}
+
+func (c *ServiceRemove) Flags() *gnuflag.FlagSet {
+	if c.fs == nil {
+		c.fs = c.GuessingCommand.Flags()
+		c.fs.BoolVar(&c.yes, "assume-yes", false, "Don't ask for confirmation, just remove the service.")
+		c.fs.BoolVar(&c.yes, "y", false, "Don't ask for confirmation, just remove the service.")
+	}
+	return c.fs
 }

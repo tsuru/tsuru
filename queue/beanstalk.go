@@ -7,7 +7,6 @@ package queue
 import (
 	"bytes"
 	"encoding/gob"
-	"errors"
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/log"
@@ -48,36 +47,7 @@ func (b *beanstalkdQ) Put(m *Message, delay time.Duration) error {
 		return err
 	}
 	tube := beanstalk.Tube{Conn: conn, Name: b.name}
-	id, err := tube.Put(buf.Bytes(), 1, delay, ttr)
-	m.id = id
-	return err
-}
-
-func (b *beanstalkdQ) Delete(m *Message) error {
-	if m.id == 0 {
-		return errors.New("Unknown message.")
-	}
-	conn, err := connection()
-	if err != nil {
-		return err
-	}
-	if err = conn.Delete(m.id); err != nil && notFoundRegexp.MatchString(err.Error()) {
-		return errors.New("Message not found.")
-	}
-	return err
-}
-
-func (b *beanstalkdQ) Release(m *Message, delay time.Duration) error {
-	if m.id == 0 {
-		return errors.New("Unknown message.")
-	}
-	conn, err := connection()
-	if err != nil {
-		return err
-	}
-	if err = conn.Release(m.id, 1, delay); err != nil && notFoundRegexp.MatchString(err.Error()) {
-		return errors.New("Message not found.")
-	}
+	_, err = tube.Put(buf.Bytes(), 1, delay, ttr)
 	return err
 }
 
@@ -87,18 +57,20 @@ func (b beanstalkdFactory) Get(name string) (Q, error) {
 	return &beanstalkdQ{name: name}, nil
 }
 
-func (b beanstalkdFactory) Handler(f func(*Message), name ...string) (Handler, error) {
+func (b beanstalkdFactory) Handler(f func(*Message), names ...string) (Handler, error) {
+	name := "default"
+	if len(names) > 0 {
+		name = names[0]
+	}
 	return &executor{
 		inner: func() {
-			if message, err := get(5e9, name...); err == nil {
+			if message, err := get(5e9, names...); err == nil {
 				log.Debugf("Dispatching %q message to handler function.", message.Action)
 				go func(m *Message) {
 					f(m)
-					q := beanstalkdQ{}
-					if m.delete {
-						q.Delete(m)
-					} else {
-						q.Release(m, 0)
+					if m.fail {
+						q := beanstalkdQ{name: name}
+						q.Put(m, 0)
 					}
 				}(message)
 			} else {
@@ -147,16 +119,15 @@ func get(timeout time.Duration, queues ...string) (*Message, error) {
 	id, body, err := ts.Reserve(timeout)
 	if err != nil {
 		if timeoutRegexp.MatchString(err.Error()) {
-			return nil, fmt.Errorf("Timed out waiting for message after %s.", timeout)
+			return nil, &timeoutError{timeout: timeout}
 		}
 		return nil, err
 	}
+	defer conn.Delete(id)
 	r := bytes.NewReader(body)
 	var msg Message
 	if err = gob.NewDecoder(r).Decode(&msg); err != nil && err != io.EOF {
-		conn.Delete(id)
 		return nil, fmt.Errorf("Invalid message: %q", body)
 	}
-	msg.id = id
 	return &msg, nil
 }

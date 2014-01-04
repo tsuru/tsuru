@@ -12,6 +12,7 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
+	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"runtime"
@@ -540,7 +541,7 @@ func (s *S) TestGeneratePassword(c *gocheck.C) {
 
 func (s *S) TestListKeysShouldCallGandalfAPI(c *gocheck.C) {
 	h := testHandler{content: `{"mypckey":"ssh-rsa keystuff keycomment"}`}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
 	err := u.Create()
@@ -556,7 +557,7 @@ func (s *S) TestListKeysShouldCallGandalfAPI(c *gocheck.C) {
 
 func (s *S) TestListKeysGandalfAPIError(c *gocheck.C) {
 	h := testBadHandler{content: "some terrible error"}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
 	err := u.Create()

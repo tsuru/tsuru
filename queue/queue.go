@@ -28,16 +28,6 @@ type Q interface {
 	// Put sends a message to the queue after the given delay. When delay
 	// is 0, the message is sent immediately to the queue.
 	Put(m *Message, delay time.Duration) error
-
-	// Delete deletes a message from the queue.
-	Delete(m *Message) error
-
-	// Release puts a message back in the queue the given delay. When delay
-	// is 0, the message is released immediately.
-	//
-	// This method should be used when handling a message that you cannot
-	// handle, maximizing throughput.
-	Release(m *Message, delay time.Duration) error
 }
 
 // Handler represents a runnable routine. It can be started and stopped.
@@ -104,11 +94,18 @@ func Factory() (QFactory, error) {
 type Message struct {
 	Action string
 	Args   []string
-	id     uint64
-	delete bool
+	fail   bool
 }
 
-// Delete deletes the message from the queue.
-func (m *Message) Delete() {
-	m.delete = true
+// Fail marks the message as failed, telling the handler to requeue it.
+func (m *Message) Fail() {
+	m.fail = true
+}
+
+type timeoutError struct {
+	timeout time.Duration
+}
+
+func (err *timeoutError) Error() string {
+	return fmt.Sprintf("Timed out waiting for message after %s.", err.timeout)
 }

@@ -13,7 +13,6 @@ import (
 	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"
-	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -112,14 +111,6 @@ func (s *S) getTestData(path ...string) io.ReadCloser {
 	p := filepath.Join(path...)
 	f, _ := os.OpenFile(p, os.O_RDONLY, 0)
 	return f
-}
-
-// starts a new httptest.Server and returns it
-// Also changes git:api-server to match the server's url
-func (s *S) startGandalfTestServer(h http.Handler) *httptest.Server {
-	ts := httptest.NewServer(h)
-	config.Set("git:api-server", ts.URL)
-	return ts
 }
 
 type testHandler struct {

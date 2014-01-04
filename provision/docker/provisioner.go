@@ -89,6 +89,20 @@ func (p *dockerProvisioner) Restart(app provision.App) error {
 	return nil
 }
 
+func (*dockerProvisioner) Start(app provision.App) error {
+	containers, err := listAppContainers(app.GetName())
+	if err != nil {
+		return errors.New(fmt.Sprintf("Got error while getting app containers: %s", err))
+	}
+	for _, c := range containers {
+		err := c.start()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func injectEnvsAndRestart(a provision.App) {
 	time.Sleep(5e9)
 	err := a.SerializeEnvVars()
@@ -150,12 +164,24 @@ func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer)
 
 func (p *dockerProvisioner) Destroy(app provision.App) error {
 	containers, _ := listAppContainers(app.GetName())
-	for _, c := range containers {
-		go func(c container) {
-			removeContainer(&c)
-		}(c)
-	}
-	go removeImage(assembleImageName(app.GetName()))
+	go func(c []container) {
+		var containersGroup sync.WaitGroup
+		containersGroup.Add(len(containers))
+		for _, c := range containers {
+			go func(c container) {
+				defer containersGroup.Done()
+				err := removeContainer(&c)
+				if err != nil {
+					log.Error(err.Error())
+				}
+			}(c)
+		}
+		containersGroup.Wait()
+		err := removeImage(assembleImageName(app.GetName()))
+		if err != nil {
+			log.Error(err.Error())
+		}
+	}(containers)
 	r, err := getRouter()
 	if err != nil {
 		log.Errorf("Failed to get router: %s", err)

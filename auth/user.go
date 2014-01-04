@@ -14,6 +14,7 @@ import (
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/quota"
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/validation"
 	"labix.org/v2/mgo/bson"
@@ -64,6 +65,7 @@ type User struct {
 	Email    string
 	Password string
 	Keys     []Key
+	quota.Quota
 }
 
 func GetUserByEmail(email string) (*User, error) {

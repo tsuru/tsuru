@@ -78,6 +78,54 @@ func (s *S) TestEnvs(c *gocheck.C) {
 	c.Assert(envs, gocheck.DeepEquals, app.env)
 }
 
+func (s *S) TestSetEnvs(c *gocheck.C) {
+	app := FakeApp{name: "time"}
+	envs := []bind.EnvVar{
+		{
+			Name:   "http_proxy",
+			Value:  "http://theirproxy.com:3128/",
+			Public: true,
+		},
+		{
+			Name:   "https_proxy",
+			Value:  "http://theirproxy.com:3128/",
+			Public: true,
+		},
+	}
+	app.SetEnvs(envs, false)
+	expected := map[string]bind.EnvVar{
+		"http_proxy": {
+			Name:   "http_proxy",
+			Value:  "http://theirproxy.com:3128/",
+			Public: true,
+		},
+		"https_proxy": {
+			Name:   "https_proxy",
+			Value:  "http://theirproxy.com:3128/",
+			Public: true,
+		},
+	}
+	c.Assert(app.env, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestGetUnitsReturnUnits(c *gocheck.C) {
+	a := NewFakeApp("foo", "static", 1)
+	units := a.GetUnits()
+	c.Assert(len(units), gocheck.Equals, 1)
+}
+
+func (s *S) TestUnsetEnvs(c *gocheck.C) {
+	app := FakeApp{name: "time"}
+	env := bind.EnvVar{
+		Name:   "http_proxy",
+		Value:  "http://theirproxy.com:3128/",
+		Public: true,
+	}
+	app.SetEnv(env)
+	app.UnsetEnvs([]string{"http_proxy"}, false)
+	c.Assert(app.env, gocheck.DeepEquals, map[string]bind.EnvVar{})
+}
+
 func (s *S) TestFakeAppLogs(c *gocheck.C) {
 	app := NewFakeApp("sou", "otm", 0)
 	app.Log("something happened", "[tsuru]")
@@ -112,6 +160,19 @@ func (s *S) TestRestarts(c *gocheck.C) {
 	c.Assert(p.Restarts(app1), gocheck.Equals, 10)
 	c.Assert(p.Restarts(app2), gocheck.Equals, 0)
 	c.Assert(p.Restarts(NewFakeApp("pride", "shaman", 1)), gocheck.Equals, 0)
+}
+
+func (s *S) TestStarts(c *gocheck.C) {
+	app1 := NewFakeApp("fairy-tale", "shaman", 1)
+	app2 := NewFakeApp("unfairy-tale", "shaman", 1)
+	p := NewFakeProvisioner()
+	p.apps = map[string]provisionedApp{
+		app1.GetName(): {app: app1, starts: 10},
+		app2.GetName(): {app: app1, starts: 0},
+	}
+	c.Assert(p.Starts(app1), gocheck.Equals, 10)
+	c.Assert(p.Starts(app2), gocheck.Equals, 0)
+	c.Assert(p.Starts(NewFakeApp("pride", "shaman", 1)), gocheck.Equals, 0)
 }
 
 func (s *S) TestGetCmds(c *gocheck.C) {
@@ -251,6 +312,15 @@ func (s *S) TestRestart(c *gocheck.C) {
 	err := p.Restart(app)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.Restarts(app), gocheck.Equals, 1)
+}
+
+func (s *S) TestStart(c *gocheck.C) {
+	app := NewFakeApp("kid-gloves", "rush", 1)
+	p := NewFakeProvisioner()
+	p.Provision(app)
+	err := p.Start(app)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(p.Starts(app), gocheck.Equals, 1)
 }
 
 func (s *S) TestRestartNotProvisioned(c *gocheck.C) {

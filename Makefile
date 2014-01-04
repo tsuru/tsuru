@@ -79,6 +79,7 @@ get-prod:
 godep:
 	go get github.com/kr/godep
 	godep restore ./...
+	godep go clean ./...
 
 check-test-services:
 	$(call check-service,MongoDB,27017)
@@ -100,6 +101,12 @@ _sh_tests:
 	@misc/test-hooks.bash
 
 test: _go_test _tsr_dry _sh_tests
+
+_travis_go_test:
+	go clean ./...
+	for pkg in `go list ./...`; do go test -v $$pkg; done
+
+travis_test: _travis_go_test _tsr_dry _sh_tests
 
 _install_deadcode: git
 	@go get github.com/remyoudompheng/go-misc/deadcode

@@ -55,6 +55,9 @@ func (s *S) TestUnitsCollection(c *gocheck.C) {
 }
 
 func (s *S) TestProvision(c *gocheck.C) {
+	h := &testing.TestHandler{}
+	gandalfServer := testing.StartGandalfTestServer(h)
+	defer gandalfServer.Close()
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)
 	defer setExecut(nil)
@@ -115,6 +118,9 @@ func (s *S) TestRestart(c *gocheck.C) {
 }
 
 func (s *S) TestRestartFailure(c *gocheck.C) {
+	h := &testing.TestHandler{}
+	gandalfServer := testing.StartGandalfTestServer(h)
+	defer gandalfServer.Close()
 	tmpdir, err := commandmocker.Error("juju", "juju failed to run command", 25)
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -481,6 +487,9 @@ func (s *S) TestAddr(c *gocheck.C) {
 }
 
 func (s *S) TestAddrWithoutUnits(c *gocheck.C) {
+	h := &testing.TestHandler{}
+	gandalfServer := testing.StartGandalfTestServer(h)
+	defer gandalfServer.Close()
 	app := testing.NewFakeApp("squeeze", "who", 0)
 	p := JujuProvisioner{}
 	addr, err := p.Addr(app)
@@ -490,6 +499,9 @@ func (s *S) TestAddrWithoutUnits(c *gocheck.C) {
 }
 
 func (s *ELBSuite) TestProvisionWithELB(c *gocheck.C) {
+	h := &testing.TestHandler{}
+	gandalfServer := testing.StartGandalfTestServer(h)
+	defer gandalfServer.Close()
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)
 	defer setExecut(nil)
@@ -507,12 +519,14 @@ func (s *ELBSuite) TestProvisionWithELB(c *gocheck.C) {
 	c.Assert(addr, gocheck.Not(gocheck.Equals), "")
 	msg, err := getQueue(queueName).Get(1e9)
 	c.Assert(err, gocheck.IsNil)
-	defer msg.Delete()
 	c.Assert(msg.Action, gocheck.Equals, addUnitToLoadBalancer)
 	c.Assert(msg.Args, gocheck.DeepEquals, []string{"jimmy"})
 }
 
 func (s *ELBSuite) TestDestroyWithELB(c *gocheck.C) {
+	h := &testing.TestHandler{}
+	gandalfServer := testing.StartGandalfTestServer(h)
+	defer gandalfServer.Close()
 	config.Set("juju:charms-path", "/home/charms")
 	defer config.Unset("juju:charms-path")
 	fexec := &etesting.FakeExecutor{}
@@ -534,10 +548,8 @@ func (s *ELBSuite) TestDestroyWithELB(c *gocheck.C) {
 	q := getQueue(queueName)
 	msg, err := q.Get(1e9)
 	c.Assert(err, gocheck.IsNil)
-	if msg.Action == addUnitToLoadBalancer && msg.Args[0] == "jimmy" {
-		msg.Delete()
-	} else {
-		q.Release(msg, 0)
+	if msg.Action != addUnitToLoadBalancer {
+		q.Put(msg, 0)
 	}
 }
 
@@ -555,7 +567,6 @@ func (s *ELBSuite) TestAddUnitsWithELB(c *gocheck.C) {
 	}
 	msg, err := getQueue(queueName).Get(1e9)
 	c.Assert(err, gocheck.IsNil)
-	defer msg.Delete()
 	c.Assert(msg.Action, gocheck.Equals, addUnitToLoadBalancer)
 	c.Assert(msg.Args, gocheck.DeepEquals, expected)
 }
@@ -697,4 +708,35 @@ func (s *S) TestStartedUnitsShouldReturnTrueForUnreachable(c *gocheck.C) {
 func (s *S) TestDeployPipeline(c *gocheck.C) {
 	p := JujuProvisioner{}
 	c.Assert(p.DeployPipeline(), gocheck.IsNil)
+}
+
+func (s *S) TestStart(c *gocheck.C) {
+	fexec := &etesting.FakeExecutor{}
+	setExecut(fexec)
+	defer setExecut(nil)
+	app := testing.NewFakeApp("cribcaged", "python", 1)
+	p := JujuProvisioner{}
+	err := p.Start(app)
+	c.Assert(err, gocheck.IsNil)
+	args := []string{
+		"ssh", "-o", "StrictHostKeyChecking no", "-q", "1", "/var/lib/tsuru/hooks/start",
+	}
+	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
+}
+
+func (s *S) TestStartFailure(c *gocheck.C) {
+	// h := &testing.TestHandler{}
+	// gandalfServer := testing.StartGandalfTestServer(h)
+	// defer gandalfServer.Close()
+	tmpdir, err := commandmocker.Error("juju", "juju failed to run command", 25)
+	c.Assert(err, gocheck.IsNil)
+	defer commandmocker.Remove(tmpdir)
+	app := testing.NewFakeApp("cribcaged", "python", 1)
+	p := JujuProvisioner{}
+	err = p.Start(app)
+	c.Assert(err, gocheck.NotNil)
+	pErr, ok := err.(*provision.Error)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(pErr.Reason, gocheck.Equals, "juju failed to run command\n")
+	c.Assert(pErr.Err.Error(), gocheck.Equals, "exit status 25")
 }

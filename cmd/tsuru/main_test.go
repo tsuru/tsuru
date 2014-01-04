@@ -215,3 +215,10 @@ func (s *S) TestSwapIsRegistered(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(cmd, gocheck.FitsTypeOf, swap{})
 }
+
+func (s *S) TestAppStartIsRegistered(c *gocheck.C) {
+	manager := buildManager("tsuru")
+	start, ok := manager.Commands["start"]
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(start, gocheck.FitsTypeOf, &tsuru.AppStart{})
+}

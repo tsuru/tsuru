@@ -1,0 +1,102 @@
+=======================
+tsr 0.3.0 release notes
+=======================
+
+Welcome to tsr 0.3.0!
+
+These release notes cover the `new features`_ and `backwards incompatible
+changes`_ you'll want to be aware of when upgrading from Tsuru 0.2.x or older
+versions.
+
+.. _`new features`: `What's new in tsr 0.3.0`_
+
+What's new in tsr 0.3.0
+=======================
+
+Support Docker 0.7.x and other improvements
+-------------------------------------------
+
+    * Fixed the 42 layers problem.
+    * Support all Docker storages.
+    * Pull image on creation if it does not exists.
+    * BUGFIX: when using segregatedScheduler, the provisioner fails to get
+      the proper host address.
+    * BUGFIX: units losing access to services on deploy bug.
+
+Improvements related to Services
+--------------------------------
+
+    * `bind` is atomic.
+    * `service-add` is atomic
+    * Service instance name is unique.
+    * Add support to bind an app without units.
+
+Collector ticker time is configurable
+-------------------------------------
+
+Now you can define the collector ticker time. To do it just set on tsuru.conf:
+
+.. highlight:: bash
+
+::
+
+    collector:
+        ticker-time: 120
+
+The default value is 60 seconds.
+
+Other improvements and bugfixes
+-------------------------------
+
+    * `unit-remove` does not block util all units are removed.
+    * BUGFIX: send on closed channel: https://github.com/globocom/tsuru/issues/624.
+    * Api handler that returns information about all deploys.
+    * Refactored quota backend.
+    * New lisp platform. Thanks to Nick Ricketts.
+
+Backwards incompatible changes
+==============================
+
+Tsuru 0.3.0 handles quota in a brand new way. Users upgrading from 0.2.x need
+to run a migration script in the database. There are two scripts available: one
+for installations with quota enabled and other for installations without quota.
+
+The easiest script is recommended for environments where quota is disabled,
+you'll need to run just a couple of commands in MongoDB:
+
+.. highlight:: bash
+
+::
+
+    % mongo tsuru
+    MongoDB shell version: x.x.x
+    connecting to: tsuru
+    > db.users.update({}, {$set: {quota: {limit: -1}}});
+    > db.apps.update({}, {$set: {quota: {limit: -1}}});
+
+In environments where quota is enabled, the script is longer, but still simple:
+
+.. highlight:: javascript
+
+::
+
+    db.quota.find().forEach(function(quota) {
+        if(quota.owner.indexOf("@") > -1) {
+            db.users.update({email: quota.owner}, {$set: {quota: {limit: quota.limit, inuse: quota.items.length}}});
+        } else {
+            db.apps.update({name: quota.owner}, {$set: {quota: {limit: quota.limit, inuse: quota.items.length}}});
+        }
+    });
+
+db.apps.update({quota: null}, {$set: {quota: {limit: -1}}});
+db.users.update({quota: null}, {$set: {quota: {limit: -1}}});
+db.quota.remove()
+
+The best way to run it is saving it to a file and invoke MongoDB with the file
+parameter:
+
+.. highlight:: bash
+
+::
+
+    % mongo tsuru <filename.js>

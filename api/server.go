@@ -41,9 +41,6 @@ func RunServer(dry bool) {
 	m.Get("/schema/service", authorizationRequiredHandler(serviceSchema))
 	m.Get("/schema/services", authorizationRequiredHandler(servicesSchema))
 
-	m.Get("/quota/:owner", authorizationRequiredHandler(quotaByOwner))
-	m.Put("/quota/:owner", adminRequiredHandler(changeQuota))
-
 	m.Get("/services/instances", authorizationRequiredHandler(serviceInstances))
 	m.Get("/services/instances/:name", authorizationRequiredHandler(serviceInstance))
 	m.Del("/services/instances/:name", authorizationRequiredHandler(removeServiceInstance))
@@ -68,6 +65,7 @@ func RunServer(dry bool) {
 	m.Del("/apps/:app/cname", authorizationRequiredHandler(unsetCName))
 	m.Post("/apps/:app/run", authorizationRequiredHandler(runCommand))
 	m.Get("/apps/:app/restart", authorizationRequiredHandler(restart))
+	m.Get("/apps/:app/start", authorizationRequiredHandler(start))
 	m.Get("/apps/:app/env", authorizationRequiredHandler(getEnv))
 	m.Post("/apps/:app/env", authorizationRequiredHandler(setEnv))
 	m.Del("/apps/:app/env", authorizationRequiredHandler(unsetEnv))
@@ -88,14 +86,15 @@ func RunServer(dry bool) {
 	// the token generate for the given app is valid, but these handlers
 	// use a token generated for Gandalf.
 	m.Get("/apps/:appname/available", authorizationRequiredHandler(appIsAvailable))
-	m.Post("/apps/:appname/repository/clone", authorizationRequiredHandler(cloneRepository))
+	m.Post("/apps/:appname/repository/clone", authorizationRequiredHandler(deploy))
+	m.Post("/apps/:appname/deploy", authorizationRequiredHandler(deploy))
 
 	if registrationEnabled, _ := config.GetBool("auth:user-registration"); registrationEnabled {
-		m.Post("/users", handler(createUser))
+		m.Post("/users", Handler(createUser))
 	}
 
-	m.Post("/users/:email/password", handler(resetPassword))
-	m.Post("/users/:email/tokens", handler(login))
+	m.Post("/users/:email/password", Handler(resetPassword))
+	m.Post("/users/:email/tokens", Handler(login))
 	m.Del("/users/tokens", authorizationRequiredHandler(logout))
 	m.Put("/users/password", authorizationRequiredHandler(changePassword))
 	m.Del("/users", authorizationRequiredHandler(removeUser))

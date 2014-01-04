@@ -776,6 +776,7 @@ Example:
 ::
 
     POST /teams HTTP/1.1
+    {"name": "teamname"}
 
 Remove a team
 *************

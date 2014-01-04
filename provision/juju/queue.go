@@ -29,7 +29,6 @@ func handle(msg *queue.Message) {
 	if msg.Action == addUnitToLoadBalancer {
 		if len(msg.Args) < 1 {
 			log.Errorf("Failed to handle %q: it requires at least one argument.", msg.Action)
-			msg.Delete()
 			return
 		}
 		a := qApp{name: msg.Args[0]}
@@ -53,7 +52,6 @@ func handle(msg *queue.Message) {
 		}
 		if len(units) == 0 {
 			log.Errorf("Failed to handle %q: units not found.", msg.Action)
-			msg.Delete()
 			return
 		}
 		var noID []string
@@ -66,13 +64,12 @@ func handle(msg *queue.Message) {
 			}
 		}
 		if len(noID) == len(units) {
-			getQueue(queueName).Release(msg, 0)
+			getQueue(queueName).Put(msg, 0)
 		} else {
 			router, _ := Router()
 			for _, u := range units {
 				router.AddRoute(a.GetName(), u.InstanceId)
 			}
-			msg.Delete()
 			if len(noID) > 0 {
 				args := []string{a.name}
 				args = append(args, noID...)
@@ -83,8 +80,6 @@ func handle(msg *queue.Message) {
 				getQueue(queueName).Put(&msg, 1e9)
 			}
 		}
-	} else {
-		msg.Delete()
 	}
 }
 

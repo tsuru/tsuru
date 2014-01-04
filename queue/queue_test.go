@@ -18,11 +18,11 @@ type S struct{}
 
 var _ = gocheck.Suite(&S{})
 
-func (s *S) TestMessageDelete(c *gocheck.C) {
+func (s *S) TestMessageFail(c *gocheck.C) {
 	m := Message{}
-	c.Assert(m.delete, gocheck.Equals, false)
-	m.Delete()
-	c.Assert(m.delete, gocheck.Equals, true)
+	c.Assert(m.fail, gocheck.Equals, false)
+	m.Fail()
+	c.Assert(m.fail, gocheck.Equals, true)
 }
 
 func (s *S) TestFactory(c *gocheck.C) {
@@ -56,4 +56,10 @@ func (s *S) TestRegister(c *gocheck.C) {
 	Register("unregistered", beanstalkdFactory{})
 	_, err := Factory()
 	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestTimeoutError(c *gocheck.C) {
+	var err error = &timeoutError{timeout: 5e9}
+	expected := "Timed out waiting for message after 5s."
+	c.Assert(err.Error(), gocheck.Equals, expected)
 }

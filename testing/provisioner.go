@@ -183,6 +183,36 @@ func (a *FakeApp) SetEnv(env bind.EnvVar) {
 	a.env[env.Name] = env
 }
 
+func (a *FakeApp) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
+	for _, env := range envs {
+		a.SetEnv(env)
+	}
+	return nil
+}
+
+func (a *FakeApp) UnsetEnvs(envs []string, publicOnly bool) error {
+	for _, env := range envs {
+		delete(a.env, env)
+	}
+	return nil
+}
+
+func (a *FakeApp) GetIp() string {
+	return ""
+}
+
+func (a *FakeApp) GetUnits() []bind.Unit {
+	units := make([]bind.Unit, len(a.units))
+	for i, unit := range a.units {
+		units[i] = unit.(bind.Unit)
+	}
+	return units
+}
+
+func (a *FakeApp) InstanceEnv(env string) map[string]bind.EnvVar {
+	return nil
+}
+
 // Env returns app.Env
 func (a *FakeApp) Envs() map[string]bind.EnvVar {
 	return a.env
@@ -280,6 +310,13 @@ func (p *FakeProvisioner) Restarts(app provision.App) int {
 	p.mut.RLock()
 	defer p.mut.RUnlock()
 	return p.apps[app.GetName()].restarts
+}
+
+// Starts returns the number of starts for a given app.
+func (p *FakeProvisioner) Starts(app provision.App) int {
+	p.mut.RLock()
+	defer p.mut.RUnlock()
+	return p.apps[app.GetName()].starts
 }
 
 // InstalledDeps returns the number of InstallDeps calls for the given app.
@@ -426,6 +463,18 @@ func (p *FakeProvisioner) Restart(app provision.App) error {
 		return errNotProvisioned
 	}
 	pApp.restarts++
+	p.apps[app.GetName()] = pApp
+	return nil
+}
+
+func (p *FakeProvisioner) Start(app provision.App) error {
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	pApp, ok := p.apps[app.GetName()]
+	if !ok {
+		return errNotProvisioned
+	}
+	pApp.starts++
 	p.apps[app.GetName()] = pApp
 	return nil
 }
@@ -688,6 +737,7 @@ type provisionedApp struct {
 	units       []provision.Unit
 	app         provision.App
 	restarts    int
+	starts      int
 	installDeps int
 	version     string
 	cname       string

@@ -424,7 +424,7 @@ func (s *S) TestServiceRemoveInfo(c *gocheck.C) {
 	i := (&ServiceRemove{}).Info()
 	expected := &cmd.Info{
 		Name:    "service-remove",
-		Usage:   "service-remove <serviceinstancename>",
+		Usage:   "service-remove <serviceinstancename> [--assume-yes]",
 		Desc:    "Removes a service instance",
 		MinArgs: 1,
 	}
@@ -437,11 +437,13 @@ func (s *S) TestServiceRemoveRun(c *gocheck.C) {
 		Args:   []string{"some-service-instance"},
 		Stdout: &stdout,
 		Stderr: &stderr,
+		Stdin:  strings.NewReader("y\n"),
 	}
-	result := "service instance successfuly removed"
+	expected := `Are you sure you want to remove service "some-service-instance"? (y/n) `
+	expected += `Service "some-service-instance" successfully removed!` + "\n"
 	transport := testing.ConditionalTransport{
 		Transport: testing.Transport{
-			Message: result,
+			Message: "",
 			Status:  http.StatusOK,
 		},
 		CondFunc: func(r *http.Request) bool {
@@ -453,5 +455,42 @@ func (s *S) TestServiceRemoveRun(c *gocheck.C) {
 	err := (&ServiceRemove{}).Run(&ctx, client)
 	c.Assert(err, gocheck.IsNil)
 	obtained := stdout.String()
-	c.Assert(obtained, gocheck.Equals, result+"\n")
+	c.Assert(obtained, gocheck.Equals, expected)
+}
+
+func (s *S) TestServiceRemoveWithoutAsking(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	expected := `Service "ble" successfully removed!` + "\n"
+	context := cmd.Context{
+		Args:   []string{"ble"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Stdin:  strings.NewReader("y\n"),
+	}
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: "", Status: http.StatusOK}}, nil, manager)
+	command := ServiceRemove{}
+	command.Flags().Parse(true, []string{"ble", "-y"})
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestServiceRemoveFlags(c *gocheck.C) {
+	command := ServiceRemove{}
+	flagset := command.Flags()
+	c.Assert(flagset, gocheck.NotNil)
+	flagset.Parse(true, []string{"-y"})
+	assume := flagset.Lookup("assume-yes")
+	c.Check(assume, gocheck.NotNil)
+	c.Check(assume.Name, gocheck.Equals, "assume-yes")
+	c.Check(assume.Usage, gocheck.Equals, "Don't ask for confirmation, just remove the service.")
+	c.Check(assume.Value.String(), gocheck.Equals, "true")
+	c.Check(assume.DefValue, gocheck.Equals, "false")
+	sassume := flagset.Lookup("y")
+	c.Check(sassume, gocheck.NotNil)
+	c.Check(sassume.Name, gocheck.Equals, "y")
+	c.Check(sassume.Usage, gocheck.Equals, "Don't ask for confirmation, just remove the service.")
+	c.Check(sassume.Value.String(), gocheck.Equals, "true")
+	c.Check(sassume.DefValue, gocheck.Equals, "false")
+	c.Check(command.yes, gocheck.Equals, true)
 }

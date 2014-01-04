@@ -7,6 +7,7 @@ package app
 import (
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/service"
+	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"net/http"
@@ -19,7 +20,7 @@ func (s *S) TestAppIsABinderApp(c *gocheck.C) {
 
 func (s *S) TestDestroyShouldUnbindAppFromInstance(c *gocheck.C) {
 	h := testHandler{}
-	tsg := s.t.StartGandalfTestServer(&h)
+	tsg := testing.StartGandalfTestServer(&h)
 	defer tsg.Close()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
@@ -52,5 +53,4 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *gocheck.C) {
 	msg, err := aqueue().Get(1e6)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(msg.Args, gocheck.DeepEquals, []string{a.Name})
-	msg.Delete()
 }

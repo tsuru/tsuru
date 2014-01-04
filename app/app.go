@@ -23,6 +23,7 @@ import (
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/service"
 	"io"
+	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"os"
 	"regexp"
@@ -52,6 +53,7 @@ type App struct {
 	Owner    string
 	State    string
 	Deploys  uint
+	quota.Quota
 
 	hr hookRunner
 }
@@ -92,7 +94,11 @@ func (app *App) Get() error {
 		return err
 	}
 	defer conn.Close()
-	return conn.Apps().Find(bson.M{"name": app.Name}).One(app)
+	err = conn.Apps().Find(bson.M{"name": app.Name}).One(app)
+	if err == mgo.ErrNotFound {
+		return ErrAppNotFound
+	}
+	return err
 }
 
 // CreateApp creates a new app.
@@ -123,7 +129,7 @@ func CreateApp(app *App, user *auth.User) error {
 			"starting with a letter."
 		return &errors.ValidationError{Message: msg}
 	}
-	actions := []*action.Action{&reserveUserApp, &createAppQuota, &insertApp}
+	actions := []*action.Action{&reserveUserApp, &insertApp}
 	useS3, _ := config.GetBool("bucket-support")
 	if useS3 {
 		actions = append(actions, &createIAMUserAction,
@@ -196,13 +202,14 @@ func Delete(app *App) error {
 	}
 	token := app.Env["TSURU_APP_TOKEN"].Value
 	auth.DeleteToken(token)
-	quota.Release(app.Owner, app.Name)
+	if owner, err := auth.GetUserByEmail(app.Owner); err == nil {
+		auth.ReleaseApp(owner)
+	}
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	quota.Delete(app.Name)
 	return conn.Apps().Remove(bson.M{"name": app.Name})
 }
 
@@ -213,17 +220,12 @@ func Delete(app *App) error {
 func (app *App) AddUnit(u *Unit) {
 	for i, unt := range app.Units {
 		if unt.Name == u.Name {
-			u.QuotaItem = unt.QuotaItem
 			app.Units[i] = *u
 			return
-		} else if unt.Name == "" && unt.QuotaItem == app.Name+"-0" {
-			u.QuotaItem = unt.QuotaItem
+		} else if unt.Name == "" {
 			app.Units[i] = *u
 			return
 		}
-	}
-	if u.QuotaItem == "" {
-		u.QuotaItem = generateUnitQuotaItems(app, 1)[0]
 	}
 	app.Units = append(app.Units, *u)
 }
@@ -330,13 +332,11 @@ func (app *App) RemoveUnits(n uint) error {
 	)
 	units := UnitSlice(app.Units)
 	sort.Sort(units)
-	items := make([]string, int(n))
 	for i := 0; i < int(n); i++ {
 		name := units[i].GetName()
 		go Provisioner.RemoveUnit(app, name)
 		removed = append(removed, i)
 		app.unbindUnit(&units[i])
-		items[i] = units[i].QuotaItem
 	}
 	if len(removed) == 0 {
 		return err
@@ -349,9 +349,13 @@ func (app *App) RemoveUnits(n uint) error {
 	app.removeUnits(removed)
 	dbErr := conn.Apps().Update(
 		bson.M{"name": app.Name},
-		bson.M{"$set": bson.M{"units": app.Units}},
+		bson.M{
+			"$set": bson.M{
+				"units":       app.Units,
+				"quota.inuse": len(app.Units),
+			},
+		},
 	)
-	quota.Release(app.Name, items...)
 	if err == nil {
 		return dbErr
 	}
@@ -373,12 +377,12 @@ func (app *App) unbindUnit(unit provision.AppUnit) error {
 		return err
 	}
 	for _, instance := range instances {
-		go func(instance service.ServiceInstance) {
+		go func(instance service.ServiceInstance, unit provision.AppUnit) {
 			err = instance.UnbindUnit(unit)
 			if err != nil {
 				log.Errorf("Error unbinding the unit %s with the service instance %s.", unit.GetIp(), instance.Name)
 			}
-		}(instance)
+		}(instance, unit)
 	}
 	return nil
 }
@@ -604,28 +608,30 @@ func (app *App) GetDeploys() uint {
 type Deploy struct {
 	App       string
 	Timestamp time.Time
+	Duration  time.Duration
 }
 
 func (app *App) ListDeploys() ([]Deploy, error) {
-	var list []Deploy
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	if err := conn.Deploys().Find(bson.M{"app": app.Name}).Sort("-timestamp").All(&list); err != nil {
-		return []Deploy{}, err
-	}
-	return list, nil
+	return listDeploys(app)
 }
 
 func ListDeploys() ([]Deploy, error) {
+	return listDeploys(nil)
+}
+
+func listDeploys(app *App) ([]Deploy, error) {
 	var list []Deploy
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
-	if err := conn.Deploys().Find(nil).Sort("-timestamp").All(&list); err != nil {
-		return []Deploy{}, err
+	defer conn.Close()
+	var qr interface{}
+	if app != nil {
+		qr = bson.M{"app": app.Name}
+	}
+	if err := conn.Deploys().Find(qr).Sort("-timestamp").All(&list); err != nil {
+		return nil, err
 	}
 	return list, err
 }
@@ -881,13 +887,33 @@ func Swap(app1, app2 *App) error {
 
 // DeployApp calls the Provisioner.Deploy
 func DeployApp(app *App, version string, writer io.Writer) error {
+	start := time.Now()
 	pipeline := Provisioner.DeployPipeline()
 	if pipeline == nil {
 		actions := []*action.Action{&ProvisionerDeploy, &IncrementDeploy}
 		pipeline = action.NewPipeline(actions...)
 	}
 	logWriter := LogWriter{App: app, Writer: writer}
-	return pipeline.Execute(app, version, &logWriter)
+	err := pipeline.Execute(app, version, &logWriter)
+	if err != nil {
+		return err
+	}
+	elapsed := time.Since(start)
+	return saveDeployData(app.Name, elapsed)
+}
+
+func saveDeployData(appName string, duration time.Duration) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	deploy := Deploy{
+		App:       appName,
+		Timestamp: time.Now(),
+		Duration:  duration,
+	}
+	return conn.Deploys().Insert(deploy)
 }
 
 func incrementDeploy(app *App) error {
@@ -895,16 +921,14 @@ func incrementDeploy(app *App) error {
 	if err != nil {
 		return err
 	}
-	deploy := Deploy{
-		App:       app.Name,
-		Timestamp: time.Now(),
-	}
-	if err := conn.Deploys().Insert(deploy); err != nil {
-		return err
-	}
 	defer conn.Close()
 	return conn.Apps().Update(
 		bson.M{"name": app.Name},
 		bson.M{"$inc": bson.M{"deploys": 1}},
 	)
+}
+
+// Start starts the app.
+func (app *App) Start(w io.Writer) error {
+	return Provisioner.Start(app)
 }

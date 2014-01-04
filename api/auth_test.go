@@ -85,13 +85,6 @@ func (s *AuthSuite) createUserAndTeam(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 }
 
-// starts a new httptest.Server and returns it
-func (s *AuthSuite) startGandalfTestServer(h http.Handler) *httptest.Server {
-	ts := httptest.NewServer(h)
-	config.Set("git:api-server", ts.URL)
-	return ts
-}
-
 func (s *AuthSuite) getTestData(p ...string) io.ReadCloser {
 	p = append([]string{}, ".", "testdata")
 	fp := path.Join(p...)
@@ -146,7 +139,7 @@ var ContainsUser gocheck.Checker = &userPresenceChecker{}
 
 func (s *AuthSuite) TestCreateUserHandlerSavesTheUserInTheDatabase(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users", b)
@@ -155,20 +148,21 @@ func (s *AuthSuite) TestCreateUserHandlerSavesTheUserInTheDatabase(c *gocheck.C)
 	recorder := httptest.NewRecorder()
 	err = createUser(recorder, request)
 	c.Assert(err, gocheck.IsNil)
-	_, err = auth.GetUserByEmail("nobody@globo.com")
+	user, err := auth.GetUserByEmail("nobody@globo.com")
 	c.Assert(err, gocheck.IsNil)
 	action := testing.Action{
 		Action: "create-user",
 		User:   "nobody@globo.com",
 	}
 	c.Assert(action, testing.IsRecorded)
+	c.Assert(user.Quota, gocheck.DeepEquals, quota.Unlimited)
 }
 
 func (s *AuthSuite) TestCreateUserQuota(c *gocheck.C) {
 	config.Set("quota:apps-per-user", 1)
 	defer config.Unset("quota:apps-per-user")
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users", b)
@@ -177,17 +171,15 @@ func (s *AuthSuite) TestCreateUserQuota(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = createUser(recorder, request)
 	c.Assert(err, gocheck.IsNil)
-	defer quota.Delete("nobody@globo.com")
-	err = quota.Reserve("nobody@globo.com", "something/0")
+	user, err := auth.GetUserByEmail("nobody@globo.com")
 	c.Assert(err, gocheck.IsNil)
-	err = quota.Reserve("nobody@globo.com", "something/1")
-	_, ok := err.(*quota.QuotaExceededError)
-	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(user.Quota.Limit, gocheck.Equals, 1)
+	c.Assert(user.Quota.InUse, gocheck.Equals, 0)
 }
 
 func (s *AuthSuite) TestCreateUserUnlimitedQuota(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users", b)
@@ -196,30 +188,14 @@ func (s *AuthSuite) TestCreateUserUnlimitedQuota(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = createUser(recorder, request)
 	c.Assert(err, gocheck.IsNil)
-	err = quota.Reserve("nobody@globo.com", "something/0")
-	c.Assert(err, gocheck.Equals, quota.ErrQuotaNotFound)
-}
-
-func (s *AuthSuite) TestCreateUserNegativeQuota(c *gocheck.C) {
-	config.Set("quota:apps-per-user", -20)
-	defer config.Unset("quota:apps-per-user")
-	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
-	defer ts.Close()
-	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
-	request, err := http.NewRequest("POST", "/users", b)
+	user, err := auth.GetUserByEmail("nobody@globo.com")
 	c.Assert(err, gocheck.IsNil)
-	request.Header.Set("Content-type", "application/json")
-	recorder := httptest.NewRecorder()
-	err = createUser(recorder, request)
-	c.Assert(err, gocheck.IsNil)
-	err = quota.Reserve("nobody@globo.com", "something/0")
-	c.Assert(err, gocheck.Equals, quota.ErrQuotaNotFound)
+	c.Assert(user.Quota, gocheck.DeepEquals, quota.Unlimited)
 }
 
 func (s *AuthSuite) TestCreateUserHandlerReturnsStatus201AfterCreateTheUser(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users", b)
@@ -259,7 +235,7 @@ func (s *AuthSuite) TestCreateUserHandlerReturnErrorAndBadRequestIfInvalidJSONIs
 
 func (s *AuthSuite) TestCreateUserHandlerReturnErrorAndConflictIfItFailsToCreateUser(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	u := auth.User{Email: "nobody@globo.com", Password: "123456"}
 	u.Create()
@@ -309,7 +285,7 @@ func (s *AuthSuite) TestCreateUserHandlerReturnsBadRequestIfPasswordHasLessThan6
 
 func (s *AuthSuite) TestCreateUserCreatesUserInGandalf(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	b := bytes.NewBufferString(`{"email":"nobody@me.myself","password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users", b)
@@ -667,7 +643,7 @@ func (s *AuthSuite) TestAddUserToTeam(c *gocheck.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	u := &auth.User{Email: "wolverine@xmen.com", Password: "123456"}
 	err := u.Create()
@@ -693,7 +669,7 @@ func (s *AuthSuite) TestAddUserToTeam(c *gocheck.C) {
 
 func (s *AuthSuite) TestAddUserToTeamShouldReturnNotFoundIfThereIsNoTeamWithTheGivenName(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	request, err := http.NewRequest("PUT", "/teams/abc/me@me.me?:team=abc&:user=me@me.me", nil)
 	c.Assert(err, gocheck.IsNil)
@@ -708,7 +684,7 @@ func (s *AuthSuite) TestAddUserToTeamShouldReturnNotFoundIfThereIsNoTeamWithTheG
 
 func (s *AuthSuite) TestAddUserToTeamShouldReturnUnauthorizedIfTheGivenUserIsNotInTheGivenTeam(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	u := &auth.User{Email: "hi@me.me", Password: "123456"}
 	err := u.Create()
@@ -732,7 +708,7 @@ func (s *AuthSuite) TestAddUserToTeamShouldReturnUnauthorizedIfTheGivenUserIsNot
 
 func (s *AuthSuite) TestAddUserToTeamShouldReturnNotFoundIfTheEmailInTheBodyDoesNotExistInTheDatabase(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	request, err := http.NewRequest("PUT", "/teams/tsuruteam/hi2@me.me?:team=tsuruteam&:user=hi2@me.me", nil)
 	c.Assert(err, gocheck.IsNil)
@@ -747,7 +723,7 @@ func (s *AuthSuite) TestAddUserToTeamShouldReturnNotFoundIfTheEmailInTheBodyDoes
 
 func (s *AuthSuite) TestAddUserToTeamShouldReturnConflictIfTheUserIsAlreadyInTheGroup(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	url := fmt.Sprintf("/teams/%s/%s?:team=%s&:user=%s", s.team.Name, s.user.Email, s.team.Name, s.user.Email)
 	request, err := http.NewRequest("PUT", url, nil)
@@ -762,7 +738,7 @@ func (s *AuthSuite) TestAddUserToTeamShouldReturnConflictIfTheUserIsAlreadyInThe
 
 func (s *AuthSuite) TestAddUserToTeamShoulGrantAccessInGandalf(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	u := &auth.User{Email: "marathon@rush.com", Password: "123456"}
 	err := u.Create()
@@ -812,7 +788,7 @@ func (s *AuthSuite) TestAddUserToTeamInDatabase(c *gocheck.C) {
 
 func (s *AuthSuite) TestAddUserToTeamInGandalfShouldCallGandalfAPI(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	u := auth.User{Email: "nonee@me.me", Password: "none"}
 	err := addUserToTeamInGandalf(&u, s.team)
@@ -823,7 +799,7 @@ func (s *AuthSuite) TestAddUserToTeamInGandalfShouldCallGandalfAPI(c *gocheck.C)
 
 func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExistAndTheUserIsMemberOfTheTeam(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	u := auth.User{Email: "nonee@me.me", Password: "none"}
 	err := u.Create()
@@ -851,7 +827,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExi
 
 func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveOnlyAppsInThatTeamInGandalfWhenUserIsInMoreThanOneTeam(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	conn, _ := db.Conn()
 	defer conn.Close()
@@ -888,7 +864,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveOnlyAppsInThatTeamInGandal
 
 func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnNotFoundIfTheTeamDoesNotExist(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	request, err := http.NewRequest("DELETE", "/teams/tsuruteam/none@me.me?:team=unknown&:user=none@me.me", nil)
 	c.Assert(err, gocheck.IsNil)
@@ -903,7 +879,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnNotFoundIfTheTeamDoesNotEx
 
 func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnUnauthorizedIfTheGivenUserIsNotMemberOfTheTeam(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	request, err := http.NewRequest("DELETE", "/teams/tsuruteam/none@me.me?:team=tsuruteam&:user=none@me.me", nil)
 	c.Assert(err, gocheck.IsNil)
@@ -926,7 +902,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnUnauthorizedIfTheGivenUser
 
 func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnNotFoundWhenTheUserIsNotMemberOfTheTeam(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	conn, _ := db.Conn()
 	defer conn.Close()
@@ -949,7 +925,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnNotFoundWhenTheUserIsNotMe
 
 func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnForbiddenIfTheUserIsTheLastInTheTeam(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	url := "/teams/tsuruteam/whydidifall@thewho.com?:team=tsuruteam&:user=whydidifall@thewho.com"
 	request, err := http.NewRequest("DELETE", url, nil)
@@ -965,7 +941,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnForbiddenIfTheUserIsTheLas
 
 func (s *AuthSuite) TestRemoveUserFromTeamRevokesAccessInGandalf(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	conn, _ := db.Conn()
 	defer conn.Close()
@@ -1025,7 +1001,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamInDatabase(c *gocheck.C) {
 
 func (s *AuthSuite) TestRemoveUserFromTeamInGandalf(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	u := &auth.User{Email: "nobody@gmail.com"}
 	err := removeUserFromTeamInGandalf(u, &auth.Team{Name: "someteam"})
@@ -1090,7 +1066,7 @@ func (s *AuthSuite) TestGetTeamForbidden(c *gocheck.C) {
 
 func (s *AuthSuite) TestAddKeyToUserAddsAKeyToTheUser(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	conn, _ := db.Conn()
 	defer conn.Close()
@@ -1117,7 +1093,7 @@ func (s *AuthSuite) TestAddKeyToUserAddsAKeyToTheUser(c *gocheck.C) {
 
 func (s *AuthSuite) TestAddKeyToUserReturnsErrorIfTheReadingOfTheBodyFails(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	b := s.getTestData("bodyToBeClosed.txt")
 	b.Close()
@@ -1130,7 +1106,7 @@ func (s *AuthSuite) TestAddKeyToUserReturnsErrorIfTheReadingOfTheBodyFails(c *go
 
 func (s *AuthSuite) TestAddKeyToUserReturnsBadRequestIfTheJSONIsInvalid(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	b := bytes.NewBufferString(`"aaaa}`)
 	request, err := http.NewRequest("POST", "/users/key", b)
@@ -1146,7 +1122,7 @@ func (s *AuthSuite) TestAddKeyToUserReturnsBadRequestIfTheJSONIsInvalid(c *goche
 
 func (s *AuthSuite) TestAddKeyToUserReturnsBadRequestIfTheKeyIsNotPresent(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	b := bytes.NewBufferString(`{}`)
 	request, err := http.NewRequest("POST", "/users/key", b)
@@ -1162,7 +1138,7 @@ func (s *AuthSuite) TestAddKeyToUserReturnsBadRequestIfTheKeyIsNotPresent(c *goc
 
 func (s *AuthSuite) TestAddKeyToUserReturnsBadRequestIfTheKeyIsEmpty(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	b := bytes.NewBufferString(`{"key":""}`)
 	request, err := http.NewRequest("POST", "/users/key", b)
@@ -1178,7 +1154,7 @@ func (s *AuthSuite) TestAddKeyToUserReturnsBadRequestIfTheKeyIsEmpty(c *gocheck.
 
 func (s *AuthSuite) TestAddKeyToUserReturnsConflictIfTheKeyIsAlreadyPresent(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	conn, _ := db.Conn()
 	defer conn.Close()
@@ -1202,7 +1178,7 @@ func (s *AuthSuite) TestAddKeyToUserReturnsConflictIfTheKeyIsAlreadyPresent(c *g
 
 func (s *AuthSuite) TestAddKeyAddKeyToUserInGandalf(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	conn, _ := db.Conn()
 	defer conn.Close()
@@ -1271,7 +1247,7 @@ func (s *AuthSuite) TestAddKeyInDatabaseShouldStoreUsersKeyInDB(c *gocheck.C) {
 
 func (s *AuthSuite) TestAddKeyInGandalfShouldCallGandalfAPI(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	conn, _ := db.Conn()
 	defer conn.Close()
@@ -1294,7 +1270,7 @@ func (s *AuthSuite) TestRemoveKeyFromGandalfCallsGandalfAPI(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Users().Remove(bson.M{"email": u.Email})
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	key := auth.Key{Name: "mykey", Content: "my-ssh-key"}
 	err = addKeyInGandalf(&key, u)
@@ -1325,7 +1301,7 @@ func (s *AuthSuite) TestRemoveKeyFromDatabase(c *gocheck.C) {
 
 func (s *AuthSuite) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	b := bytes.NewBufferString(`{"key":"my-key"}`)
 	request, err := http.NewRequest("POST", "/users/keys", b)
@@ -1351,7 +1327,7 @@ func (s *AuthSuite) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *gocheck.C) {
 
 func (s *AuthSuite) TestRemoveKeyHandlerCallsGandalfRemoveKey(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	b := bytes.NewBufferString(`{"key":"my-key"}`)
 	request, err := http.NewRequest("POST", "/users/keys", b)
@@ -1436,7 +1412,7 @@ func (s *AuthSuite) TestListKeysHandler(c *gocheck.C) {
 	h := testHandler{
 		content: `{"homekey": "lol somekey somecomment", "workkey": "lol someotherkey someothercomment"}`,
 	}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/users/cartman@south.park/keys?email=cartman@south.park", nil)
@@ -1455,7 +1431,7 @@ func (s *AuthSuite) TestListKeysHandler(c *gocheck.C) {
 
 func (s *AuthSuite) TestListKeysRepassesGandalfsErrors(c *gocheck.C) {
 	h := testBadHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/users/cartman@south.park/keys?email=cartman@south.park", nil)
@@ -1465,7 +1441,7 @@ func (s *AuthSuite) TestListKeysRepassesGandalfsErrors(c *gocheck.C) {
 
 func (s *AuthSuite) TestRemoveUser(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	conn, _ := db.Conn()
 	defer conn.Close()
@@ -1488,34 +1464,9 @@ func (s *AuthSuite) TestRemoveUser(c *gocheck.C) {
 	c.Assert(action, testing.IsRecorded)
 }
 
-func (s *AuthSuite) TestRemoveUserWithQuota(c *gocheck.C) {
-	// The setting doesn't matter, it must always delete the quota.
-	err := quota.Create("clap@yes.com", 10)
-	c.Assert(err, gocheck.IsNil)
-	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
-	defer ts.Close()
-	conn, _ := db.Conn()
-	defer conn.Close()
-	u := auth.User{Email: "clap@yes.com", Password: "clapyes"}
-	err = u.Create()
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Users().Remove(bson.M{"email": u.Email})
-	token, err := u.CreateToken("clapyes")
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Tokens().Remove(bson.M{"token": token.Token})
-	request, err := http.NewRequest("DELETE", "/users", nil)
-	c.Assert(err, gocheck.IsNil)
-	recorder := httptest.NewRecorder()
-	err = removeUser(recorder, request, token)
-	c.Assert(err, gocheck.IsNil)
-	err = quota.Reserve("clap@yes.com", "something")
-	c.Assert(err, gocheck.Equals, quota.ErrQuotaNotFound)
-}
-
 func (s *AuthSuite) TestRemoveUserWithTheUserBeingLastMemberOfATeam(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	conn, _ := db.Conn()
 	defer conn.Close()
@@ -1546,7 +1497,7 @@ Please remove the team, then remove the user.`
 
 func (s *AuthSuite) TestRemoveUserShouldRemoveTheUserFromAllTeamsThatHeIsMember(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	conn, _ := db.Conn()
 	defer conn.Close()
@@ -1579,7 +1530,7 @@ type App struct {
 
 func (s *AuthSuite) TestRemoveUserRevokesAccessInGandalf(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.startGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	conn, _ := db.Conn()
 	defer conn.Close()

@@ -29,37 +29,39 @@ import (
 
 var (
 	dCluster *cluster.Cluster
-	cmutext  sync.Mutex
+	cmutex   sync.Mutex
 	fsystem  fs.Fs
 )
 
 const maxTry = 5
 
-var clusterNodes map[string]string
+var (
+	clusterNodes map[string]string
+	segScheduler segregatedScheduler
+)
 
 func dockerCluster() *cluster.Cluster {
-	cmutext.Lock()
-	defer cmutext.Unlock()
+	cmutex.Lock()
+	defer cmutex.Unlock()
 	if dCluster == nil {
-		clusterNodes = make(map[string]string)
-		servers, _ := config.GetList("docker:servers")
-		if len(servers) < 1 {
-			log.Fatal(`Tsuru is misconfigured. Setting "docker:servers" is mandatory`)
-		}
-		nodes := make([]cluster.Node, len(servers))
-		for index, server := range servers {
-			id := fmt.Sprintf("server%d", index)
-			node := cluster.Node{
-				ID:      id,
-				Address: server,
-			}
-			nodes[index] = node
-			clusterNodes[id] = server
-		}
 		if segregate, _ := config.GetBool("docker:segregate"); segregate {
-			var scheduler segregatedScheduler
-			dCluster, _ = cluster.New(&scheduler, nodes...)
+			dCluster, _ = cluster.New(segScheduler)
 		} else {
+			clusterNodes = make(map[string]string)
+			servers, _ := config.GetList("docker:servers")
+			if len(servers) < 1 {
+				log.Fatal(`Tsuru is misconfigured. Setting "docker:servers" is mandatory`)
+			}
+			nodes := make([]cluster.Node, len(servers))
+			for index, server := range servers {
+				id := fmt.Sprintf("server%d", index)
+				node := cluster.Node{
+					ID:      id,
+					Address: server,
+				}
+				nodes[index] = node
+				clusterNodes[id] = server
+			}
 			dCluster, _ = cluster.New(nil, nodes...)
 		}
 		if redisServer, err := config.GetString("docker:scheduler:redis-server"); err == nil {
@@ -93,11 +95,21 @@ func runCmd(cmd string, args ...string) (string, error) {
 }
 
 func getPort() (string, error) {
-	return config.GetString("docker:run-cmd:port")
+	port, err := config.Get("docker:run-cmd:port")
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprint(port), nil
 }
 
 func getHostAddr(hostID string) string {
-	fullAddress := clusterNodes[hostID]
+	var fullAddress string
+	if seg, _ := config.GetBool("docker:segregate"); seg {
+		node, _ := segScheduler.GetNode(hostID)
+		fullAddress = node.Address
+	} else {
+		fullAddress = clusterNodes[hostID]
+	}
 	url, _ := url.Parse(fullAddress)
 	host, _, _ := net.SplitHostPort(url.Host)
 	return host
@@ -132,16 +144,25 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 		return container{}, err
 	}
 	user, _ := config.GetString("docker:ssh:user")
+	exposedPorts := make(map[docker.Port]struct{}, 1)
+	p := docker.Port(fmt.Sprintf("%s/tcp", port))
+	exposedPorts[p] = struct{}{}
 	config := docker.Config{
 		Image:        imageId,
 		Cmd:          cmds,
 		User:         user,
-		PortSpecs:    []string{port},
+		ExposedPorts: exposedPorts,
 		AttachStdin:  false,
 		AttachStdout: false,
 		AttachStderr: false,
 	}
 	hostID, c, err := dockerCluster().CreateContainer(&config)
+	if err == dclient.ErrNoSuchImage {
+		var buf bytes.Buffer
+		pullOpts := dclient.PullImageOptions{Repository: imageId}
+		dockerCluster().PullImage(pullOpts, &buf)
+		hostID, c, err = dockerCluster().CreateContainer(&config)
+	}
 	if err != nil {
 		log.Errorf("error on creating container in docker %s - %s", cont.AppName, err)
 		return container{}, err
@@ -163,9 +184,11 @@ func (c *container) networkInfo() (string, string, error) {
 	}
 	if dockerContainer.NetworkSettings != nil {
 		ip := dockerContainer.NetworkSettings.IPAddress
-		mappedPorts := dockerContainer.NetworkSettings.PortMapping
-		if port, ok := mappedPorts["Tcp"][c.Port]; ok {
-			return ip, port, nil
+		p := docker.Port(fmt.Sprintf("%s/tcp", c.Port))
+		for _, port := range dockerContainer.NetworkSettings.Ports[p] {
+			if port.HostPort != "" && port.HostIp != "" {
+				return ip, port.HostPort, nil
+			}
 		}
 	}
 	return "", "", fmt.Errorf("Container port %s is not mapped to any host port", c.Port)
@@ -190,7 +213,6 @@ func build(a provision.App, version string, w io.Writer) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	go Flatten(a)
 	return imageID, nil
 }
 
@@ -208,14 +230,14 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 		return "", err
 	}
 	c := pipeline.Result().(container)
-	_, err = dockerCluster().WaitContainer(c.ID)
-	if err != nil {
-		log.Errorf("Process failed for container %q: %s", c.ID, err)
-		return "", err
-	}
 	err = c.logs(w)
 	if err != nil {
 		log.Errorf("error on get logs for container %s - %s", c.ID, err)
+		return "", err
+	}
+	_, err = dockerCluster().WaitContainer(c.ID)
+	if err != nil {
+		log.Errorf("Process failed for container %q: %s", c.ID, err)
 		return "", err
 	}
 	imageId, err = c.commit()
@@ -333,6 +355,23 @@ func (c *container) stop() error {
 	return err
 }
 
+func (c *container) start() error {
+	port, err := getPort()
+	if err != nil {
+		return err
+	}
+	config := docker.HostConfig{}
+	bindings := make(map[docker.Port][]docker.PortBinding)
+	bindings[docker.Port(fmt.Sprintf("%s/tcp", port))] = []docker.PortBinding{
+		{
+			HostIp:   "",
+			HostPort: "",
+		},
+	}
+	config.PortBindings = bindings
+	return dockerCluster().StartContainer(c.ID, &config)
+}
+
 // logs returns logs for the container.
 func (c *container) logs(w io.Writer) error {
 	opts := dclient.AttachToContainerOptions{
@@ -341,7 +380,8 @@ func (c *container) logs(w io.Writer) error {
 		Stdout:       true,
 		OutputStream: w,
 		ErrorStream:  w,
-		RawTerminal:  true,
+		RawTerminal:  false,
+		Stream:       true,
 	}
 	err := dockerCluster().AttachToContainer(opts)
 	if err != nil {
@@ -353,7 +393,7 @@ func (c *container) logs(w io.Writer) error {
 		Stderr:       true,
 		OutputStream: w,
 		ErrorStream:  w,
-		RawTerminal:  true,
+		RawTerminal:  false,
 	}
 	return dockerCluster().AttachToContainer(opts)
 }
@@ -383,10 +423,17 @@ func getImage(app provision.App) string {
 	coll := collection()
 	defer coll.Close()
 	coll.Find(bson.M{"appname": app.GetName()}).One(&c)
-	if c.Image != "" {
-		return c.Image
+	if c.Image == "" {
+		return assembleImageName(app.GetPlatform())
 	}
-	return assembleImageName(app.GetPlatform())
+	if usePlatformImage(app) {
+		err := removeImage(c.Image)
+		if err != nil {
+			log.Error(err.Error())
+		}
+		return assembleImageName(app.GetPlatform())
+	}
+	return c.Image
 }
 
 // removeImage removes an image from docker registry
@@ -465,4 +512,12 @@ func assembleImageName(appName string) string {
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
 	parts = append(parts, repoNamespace, appName)
 	return strings.Join(parts, "/")
+}
+
+func usePlatformImage(app provision.App) bool {
+	deploys := app.GetDeploys()
+	if deploys != 0 && deploys%20 == 0 {
+		return true
+	}
+	return false
 }

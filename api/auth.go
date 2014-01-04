@@ -21,6 +21,7 @@ import (
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/validation"
 	"io"
+	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"net/http"
 )
@@ -50,11 +51,12 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 	if _, err := c.NewUser(u.Email, keyToMap(u.Keys)); err != nil {
 		return fmt.Errorf("Failed to create user in the git server: %s", err)
 	}
+	u.Quota = quota.Unlimited
+	if limit, err := config.GetInt("quota:apps-per-user"); err == nil && limit > -1 {
+		u.Quota.Limit = limit
+	}
 	if err := u.Create(); err == nil {
 		rec.Log(u.Email, "create-user")
-		if limit, err := config.GetUint("quota:apps-per-user"); err == nil {
-			quota.Create(u.Email, uint(limit))
-		}
 		w.WriteHeader(http.StatusCreated)
 		return nil
 	}
@@ -227,7 +229,7 @@ Please remove the apps or revoke these accesses, and try again.`
 	}
 	query := bson.M{"_id": name, "users": t.UserEmail}
 	err = conn.Teams().Remove(query)
-	if err != nil && err.Error() == "not found" {
+	if err == mgo.ErrNotFound {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf(`Team "%s" not found.`, name)}
 	}
 	return err
@@ -594,7 +596,6 @@ Please remove the team, then remove the user.`, team.Name)
 		log.Errorf("Failed to remove user from gandalf: %s", err)
 		return fmt.Errorf("Failed to remove the user from the git server: %s", err)
 	}
-	quota.Delete(u.Email)
 	return conn.Users().Remove(bson.M{"email": u.Email})
 }
 

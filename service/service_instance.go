@@ -147,46 +147,12 @@ func (si *ServiceInstance) update() error {
 
 // BindApp makes the bind between the service instance and an app.
 func (si *ServiceInstance) BindApp(app bind.App) error {
-	err := si.AddApp(app.GetName())
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusConflict, Message: "This app is already bound to this service instance."}
+	actions := []*action.Action{
+		&addAppToServiceInstance,
+		&setEnvironVariablesToApp,
 	}
-	err = si.update()
-	if err != nil {
-		return err
-	}
-	if len(app.GetUnits()) == 0 {
-		return &errors.HTTP{Code: http.StatusPreconditionFailed, Message: "This app does not have an IP yet."}
-	}
-	envsChan := make(chan map[string]string, len(app.GetUnits())+1)
-	errChan := make(chan error, len(app.GetUnits())+1)
-	for _, unit := range app.GetUnits() {
-		go func(unit bind.Unit) {
-			vars, err := si.BindUnit(app, unit)
-			if err != nil {
-				errChan <- err
-				return
-			}
-			envsChan <- vars
-		}(unit)
-	}
-	var envVars []bind.EnvVar
-	select {
-	case envs := <-envsChan:
-		envVars = make([]bind.EnvVar, 0, len(envs))
-		for k, v := range envs {
-			envVars = append(envVars, bind.EnvVar{
-				Name:         k,
-				Value:        v,
-				Public:       false,
-				InstanceName: si.Name,
-			})
-		}
-		return app.SetEnvs(envVars, false)
-	case err = <-errChan:
-		log.Error(err.Error())
-	}
-	return err
+	pipeline := action.NewPipeline(actions...)
+	return pipeline.Execute(app, *si)
 }
 
 // BindUnit makes the bind between the binder and an unit.

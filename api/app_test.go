@@ -11,6 +11,7 @@ import (
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/auth"
+	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/quota"
@@ -69,7 +70,7 @@ func (s *S) TestAppIsAvailableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 }
 
-func (s *S) TestCloneRepositoryHandler(c *gocheck.C) {
+func (s *S) TestDeployHandler(c *gocheck.C) {
 	a := app.App{
 		Name:     "otherapp",
 		Platform: "zend",
@@ -86,7 +87,7 @@ func (s *S) TestCloneRepositoryHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	err = cloneRepository(recorder, request, s.token)
+	err = deploy(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
@@ -113,7 +114,7 @@ func (s *S) TestCloneRepositoryShouldIncrementDeployNumberOnApp(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	err = cloneRepository(recorder, request, s.token)
+	err = deploy(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(a.Deploys, gocheck.Equals, uint(1))
@@ -130,7 +131,7 @@ func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *gochec
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	err = cloneRepository(recorder, request, s.token)
+	err = deploy(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
@@ -143,7 +144,7 @@ func (s *S) TestCloneRepositoryWithoutVersion(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	err = cloneRepository(recorder, request, s.token)
+	err = deploy(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
@@ -243,7 +244,7 @@ func (s *S) TestListShouldReturnStatusNoContentWhenAppListIsNil(c *gocheck.C) {
 
 func (s *S) TestDelete(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	myApp := app.App{
 		Name:     "myapptodelete",
@@ -376,7 +377,7 @@ func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *gocheck.C) {
 
 func (s *S) TestCreateAppHandler(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	a := app.App{Name: "someapp"}
 	defer func() {
@@ -417,9 +418,12 @@ func (s *S) TestCreateAppHandler(c *gocheck.C) {
 }
 
 func (s *S) TestCreateAppQuotaExceeded(c *gocheck.C) {
-	err := quota.Create(s.user.Email, 0)
+	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
-	defer quota.Delete(s.user.Email)
+	defer conn.Close()
+	var limited quota.Quota
+	conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota": limited}})
+	defer conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota": quota.Unlimited}})
 	b := strings.NewReader(`{"name":"someapp","platform":"zend"}`)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, gocheck.IsNil)
@@ -498,6 +502,7 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 		Name:     "armorandsword",
 		Platform: "python",
 		Teams:    []string{s.team.Name},
+		Quota:    quota.Unlimited,
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -593,13 +598,11 @@ func (s *S) TestAddUnitsQuotaExceeded(c *gocheck.C) {
 		Name:     "armorandsword",
 		Platform: "python",
 		Teams:    []string{s.team.Name},
+		Quota:    quota.Quota{Limit: 2},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	err = quota.Create(a.Name, 2)
-	c.Assert(err, gocheck.IsNil)
-	defer quota.Delete(a.Name)
 	err = s.provisioner.Provision(&a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.provisioner.Destroy(&a)
@@ -718,7 +721,7 @@ func (s *S) TestRemoveUnitsReturns400IfNumberIsInvalid(c *gocheck.C) {
 
 func (s *S) TestAddTeamToTheApp(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	t := auth.Team{Name: "itshardteam", Users: []string{s.user.Email}}
 	err := s.conn.Teams().Insert(t)
@@ -829,7 +832,7 @@ func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *g
 
 func (s *S) TestGrantAccessToTeamCallsGandalf(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	t := &auth.Team{Name: "anything", Users: []string{s.user.Email}}
 	err := s.conn.Teams().Insert(t)
@@ -858,7 +861,7 @@ func (s *S) TestGrantAccessToTeamCallsGandalf(c *gocheck.C) {
 
 func (s *S) TestRevokeAccessFromTeam(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	t := auth.Team{Name: "abcd"}
 	err := s.conn.Teams().Insert(t)
@@ -892,7 +895,7 @@ func (s *S) TestRevokeAccessFromTeam(c *gocheck.C) {
 
 func (s *S) TestRevokeAccessFromTeamReturn404IfTheAppDoesNotExist(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	request, err := http.NewRequest("DELETE", "/apps/a/b?:app=a&:team=b", nil)
 	c.Assert(err, gocheck.IsNil)
@@ -1000,7 +1003,7 @@ func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheAp
 
 func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromGandalf(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	u := auth.User{Email: "again@live.com", Password: "123456"}
 	u.HashPassword()
@@ -1041,7 +1044,7 @@ func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromGandalf(c *gocheck.C) {
 
 func (s *S) TestRevokeAccessFromTeamDontRemoveTheUserIfItHasAccesToTheAppThroughAnotherTeam(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	u := auth.User{Email: "burning@angel.com"}
 	err := s.conn.Users().Insert(u)
@@ -1079,7 +1082,7 @@ func (s *S) TestRevokeAccessFromTeamDontRemoveTheUserIfItHasAccesToTheAppThrough
 
 func (s *S) TestRevokeAccessFromTeamDontCallGandalfIfNoUserNeedToBeRevoked(c *gocheck.C) {
 	h := testHandler{}
-	ts := s.t.StartGandalfTestServer(&h)
+	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	t := auth.Team{Name: "anything", Users: []string{s.user.Email}}
 	err := s.conn.Teams().Insert(t)
@@ -2340,7 +2343,7 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *goche
 
 func (s *S) TestUnbindHandler(c *gocheck.C) {
 	h := testHandler{}
-	gts := s.t.StartGandalfTestServer(&h)
+	gts := testing.StartGandalfTestServer(&h)
 	defer gts.Close()
 	var called int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -2696,5 +2699,35 @@ func (s *S) TestSwap(c *gocheck.C) {
 	err = swap(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	action := testing.Action{Action: "swap", User: s.user.Email, Extra: []interface{}{"app1", "app2"}}
+	c.Assert(action, testing.IsRecorded)
+}
+
+func (s *S) TestStartHandler(c *gocheck.C) {
+	s.provisioner.PrepareOutput(nil) // loadHooks
+	s.provisioner.PrepareOutput([]byte("started"))
+	a := app.App{
+		Name:  "stress",
+		Teams: []string{s.team.Name},
+		Units: []app.Unit{{Name: "i-0800", State: "started"}},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	url := fmt.Sprintf("/apps/%s/start?:app=%s", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = start(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	starts := s.provisioner.Starts(&a)
+	c.Assert(starts, gocheck.Equals, 1)
+	action := testing.Action{
+		Action: "start",
+		User:   s.user.Email,
+		Extra:  []interface{}{a.Name},
+	}
 	c.Assert(action, testing.IsRecorded)
 }

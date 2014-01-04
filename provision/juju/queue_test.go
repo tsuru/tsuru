@@ -107,7 +107,6 @@ func (s *ELBSuite) TestHandleMessagesWithPendingUnits(c *gocheck.C) {
 	c.Assert(instances[0].InstanceId, gocheck.Equals, id)
 	msg, err := getQueue(queueName).Get(5e9)
 	c.Assert(err, gocheck.IsNil)
-	defer msg.Delete()
 	c.Assert(msg.Action, gocheck.Equals, addUnitToLoadBalancer)
 	c.Assert(msg.Args, gocheck.DeepEquals, []string{"2112", "2112/1"})
 }
@@ -135,19 +134,13 @@ func (s *ELBSuite) TestHandleMessagesAllPendingUnits(c *gocheck.C) {
 	got, err := getQueue(queueName).Get(1e6)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(*got, gocheck.DeepEquals, msg)
-	got.Delete()
 }
 
 func (s *ELBSuite) TestEnqueuePutMessagesInSpecificQueue(c *gocheck.C) {
 	enqueue(&queue.Message{Action: "clean-everything"})
 	msg, err := getQueue("default").Get(1e6)
-	if err == nil {
-		// cleaning up if the test fail
-		defer msg.Delete()
-		c.Fatalf("Expected non-nil error, got <nil>.")
-	}
+	c.Assert(err, gocheck.NotNil)
 	msg, err = getQueue(queueName).Get(1e6)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(msg.Action, gocheck.Equals, "clean-everything")
-	msg.Delete()
 }

@@ -32,12 +32,10 @@ func ensureAppIsStarted(msg *queue.Message) (App, error) {
 	a := App{Name: msg.Args[0]}
 	err := a.Get()
 	if err != nil {
-		msg.Delete()
 		return a, fmt.Errorf("Error handling %q: app %q does not exist.", msg.Action, a.Name)
 	}
 	units := getUnits(&a, msg.Args[1:])
 	if len(msg.Args) > 1 && len(units) == 0 {
-		msg.Delete()
 		format := "Error handling %q for the app %q: unknown units in the message. Deleting it..."
 		return a, fmt.Errorf(format, msg.Action, a.Name)
 	}
@@ -46,8 +44,8 @@ func ensureAppIsStarted(msg *queue.Message) (App, error) {
 		uState := units.State()
 		if uState == "error" || uState == "down" {
 			format += fmt.Sprintf(" units are in %q state.", uState)
-			msg.Delete()
 		} else {
+			msg.Fail()
 			format += " all units must be started."
 		}
 		return a, fmt.Errorf(format, msg.Action, a.Name)
@@ -61,7 +59,6 @@ func bindUnit(msg *queue.Message) error {
 	a := App{Name: msg.Args[0]}
 	err := a.Get()
 	if err != nil {
-		msg.Delete()
 		return fmt.Errorf("Error handling %q: app %q does not exist.", msg.Action, a.Name)
 	}
 	conn, err := db.Conn()
@@ -71,7 +68,6 @@ func bindUnit(msg *queue.Message) error {
 	defer conn.Close()
 	units := getUnits(&a, msg.Args[1:])
 	if len(units) == 0 {
-		msg.Delete()
 		return errors.New("Unknown unit in the message.")
 	}
 	unit := units[0]
@@ -98,7 +94,6 @@ func handle(msg *queue.Message) {
 	case regenerateApprc:
 		if len(msg.Args) < 1 {
 			log.Errorf("Error handling %q: this action requires at least 1 argument.", msg.Action)
-			msg.Delete()
 			return
 		}
 		app, err := ensureAppIsStarted(msg)
@@ -106,7 +101,6 @@ func handle(msg *queue.Message) {
 			log.Error(err.Error())
 			return
 		}
-		msg.Delete()
 		app.SerializeEnvVars()
 		fallthrough
 	case startApp:
@@ -126,17 +120,14 @@ func handle(msg *queue.Message) {
 			log.Errorf("Error handling %q. App failed to start:\n%s.", msg.Action, err)
 			return
 		}
-		msg.Delete()
 	case BindService:
 		err := bindUnit(msg)
 		if err != nil {
 			log.Error(err.Error())
 			return
 		}
-		msg.Delete()
 	default:
 		log.Errorf("Error handling %q: invalid action.", msg.Action)
-		msg.Delete()
 	}
 }
 

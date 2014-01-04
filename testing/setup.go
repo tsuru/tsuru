@@ -7,6 +7,8 @@ package testing
 
 import (
 	"github.com/globocom/config"
+	"github.com/globocom/gandalf/testing"
+	"io/ioutil"
 	"launchpad.net/goamz/iam/iamtest"
 	"launchpad.net/goamz/s3/s3test"
 	"launchpad.net/gocheck"
@@ -57,10 +59,27 @@ func (t *T) RollbackGitConfs(c *gocheck.C) {
 	config.Set("git:rw-host", t.GitRWHost)
 }
 
+type TestHandler struct {
+	Body    []byte
+	Method  string
+	Url     string
+	Content string
+	Header  http.Header
+}
+
+func (h *TestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.Method = r.Method
+	h.Url = r.URL.String()
+	b, _ := ioutil.ReadAll(r.Body)
+	h.Body = b
+	h.Header = r.Header
+	w.Write([]byte(h.Content))
+}
+
 // starts a new httptest.Server and returns it
 // Also changes git:host, git:port and git:protocol to match the server's url
-func (t *T) StartGandalfTestServer(h http.Handler) *httptest.Server {
-	ts := httptest.NewServer(h)
+func StartGandalfTestServer(h http.Handler) *httptest.Server {
+	ts := testing.TestServer(h)
 	config.Set("git:api-server", ts.URL)
 	return ts
 }
