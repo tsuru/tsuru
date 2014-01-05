@@ -58,6 +58,11 @@ Services
 * :doc:`crane usage guide </services/usage>`
 * :doc:`services api workflow </services/api>`
 
+Installing services
++++++++++++++++++++
+
+* :doc:`mysql </services/mysql-example>`
+
 Get Involved
 ------------
 

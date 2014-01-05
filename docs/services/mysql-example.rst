@@ -15,7 +15,7 @@ First, you must have a `MariaDB server <https://downloads.mariadb.org/mariadb/re
     # Ubuntu 13.04
     $ sudo apt-get install software-properties-common
     $ sudo gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys CBCB082A1BB943DB
-    $ sudo gpg -a --export CBCB082A1BB943DB | apt-key add -
+    $ sudo gpg -a --export CBCB082A1BB943DB | sudo apt-key add -
     $ sudo add-apt-repository 'deb http://mirror.aarnet.edu.au/pub/MariaDB/repo/10.0/ubuntu raring main'
     $ sudo apt-get update
     $ sudo apt-get install mariadb-server
