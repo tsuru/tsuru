@@ -21,9 +21,10 @@ install:
   - nc -z 127.0.0.1 11300
   - popd
   - go get github.com/dotcloud/tar
+  - echo http://localhost > $HOME/.tsuru_target
   - make get
 script:
-  - make test
+  - make travis-test
 notifications:
   email:
     recipients:
