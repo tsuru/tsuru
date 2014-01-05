@@ -8,7 +8,7 @@ env:
 before_install:
   - sudo apt-get update -qq > apt-get.out 2>&1  || (cat apt-get.out && exit 1)
   - sudo apt-get install bzr mercurial git -qq > apt-get.out 2>&1 || (cat apt-get.out && exit 1)
-  - sudo add-apt-repository ppa:tsuru/lvm2
+  - sudo add-apt-repository ppa:tsuru/lvm2 -y
   - sudo apt-get update
   - sudo apt-get install -q libdevmapper-dev
 install:
