@@ -21,6 +21,7 @@ Application Deployment
 * :doc:`ruby/rails </apps/quickstart/ruby>`
 * :doc:`php </apps/quickstart/php>`
 * :doc:`understanding deployment hooks </apps/deploy-hooks>`
+* :doc:`recovery and troubleshooting </apps/recovery>`
 
 CLI
 +++
