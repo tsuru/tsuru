@@ -133,7 +133,7 @@ func (c *container) getAddress() string {
 }
 
 // newContainer creates a new container in Docker and stores it in the database.
-func newContainer(app provision.App, imageId string, cmds []string) (container, error) {
+func newContainer(app provision.App, imageId string, cmds []string, envs []string) (container, error) {
 	cont := container{
 		AppName: app.GetName(),
 		Type:    app.GetPlatform(),
@@ -155,6 +155,7 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 		AttachStdin:  false,
 		AttachStdout: false,
 		AttachStderr: false,
+		Env:          envs,
 	}
 	hostID, c, err := dockerCluster().CreateContainer(&config)
 	if err == dclient.ErrNoSuchImage {
