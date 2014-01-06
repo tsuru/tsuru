@@ -225,7 +225,11 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 	imageId := getImage(app)
 	actions := []*action.Action{&createContainer, &startContainer, &insertContainer}
 	pipeline := action.NewPipeline(actions...)
-	err = pipeline.Execute(app, imageId, commands)
+	envs := []string{}
+	for _, env := range app.Envs() {
+		envs = append(envs, fmt.Sprintf("%s=%s", env.Name, env.Value))
+	}
+	err = pipeline.Execute(app, imageId, commands, envs)
 	if err != nil {
 		log.Errorf("error on execute deploy pipeline for app %s - %s", app.GetName(), err)
 		return "", err

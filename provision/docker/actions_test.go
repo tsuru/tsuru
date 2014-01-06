@@ -42,6 +42,33 @@ func (s *S) TestCreateContainerForward(c *gocheck.C) {
 	c.Assert(cont.Port, gocheck.Equals, port)
 }
 
+func (s *S) TestCreateContainerInjectingEnvsForward(c *gocheck.C) {
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	client, err := dockerClient.NewClient(s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	images, err := client.ListImages(true)
+	c.Assert(err, gocheck.IsNil)
+	cmds := []string{"ps", "-ef"}
+	app := testing.NewFakeApp("myapp", "python", 1)
+	envs := []string{"some", "envs"}
+	context := action.FWContext{Params: []interface{}{app, images[0].ID, cmds, envs}}
+	r, err := createContainer.Forward(context)
+	c.Assert(err, gocheck.IsNil)
+	cont := r.(container)
+	defer cont.remove()
+	c.Assert(cont, gocheck.FitsTypeOf, container{})
+	c.Assert(cont.AppName, gocheck.Equals, app.GetName())
+	c.Assert(cont.Type, gocheck.Equals, app.GetPlatform())
+	port, err := getPort()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(cont.Port, gocheck.Equals, port)
+	dcli, _ := dockerClient.NewClient(s.server.URL())
+	container, err := dcli.InspectContainer(cont.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(container.Config.Env, gocheck.DeepEquals, envs)
+}
+
 func (s *S) TestCreateContainerBackward(c *gocheck.C) {
 	cont := container{ID: "ble"}
 	context := action.BWContext{FWResult: cont}
