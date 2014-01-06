@@ -11,7 +11,7 @@
 package db
 
 import (
-	"github.com/globocom/go-mgo"
+	"github.com/globocom/tsuru/db/storage"
 	"github.com/globocom/config"
 	"labix.org/v2/mgo"
 )
@@ -21,11 +21,13 @@ const (
 	DefaultDatabaseName = "tsuru"
 )
 
-type tsrStorage storage.Storage
+type tsrStorage struct {
+    storage *storage.Storage
+}
 
-// Conn reads the tsuru config and calls Open to get a database connection.
+// Conn reads the tsuru config and calls storage.Open to get a database connection.
 //
-// Most tsuru packages should probably use this function. Open is intended for
+// Most tsuru packages should probably use this function. storage.Open is intended for
 // use when supporting more than one database.
 func Conn() (*storage.Storage, error) {
 	url, _ := config.GetString("database:url")
@@ -39,27 +41,28 @@ func Conn() (*storage.Storage, error) {
 	return storage.Open(url, dbname)
 }
 
+func NewStorage() (*tsrStorage, error) {
+    strg := &tsrStorage{}
+    var err error
+    strg.storage, err = Conn()
+    return strg, err
+}
+
 // Apps returns the apps collection from MongoDB.
 func (s *tsrStorage) Apps() *storage.Collection {
 	nameIndex := mgo.Index{Key: []string{"name"}, Unique: true}
-    var strg interface{}
-    strg = s
-	c := strg.(*storage.Storage).Collection("apps")
+	c := s.storage.Collection("apps")
 	c.EnsureIndex(nameIndex)
 	return c
 }
 
 func (s *tsrStorage) Deploys() *storage.Collection {
-    var strg interface{}
-    strg = s
-	return strg.(*storage.Storage).Collection("deploys")
+	return s.storage.Collection("deploys")
 }
 
 // Platforms returns the platforms collection from MongoDB.
 func (s *tsrStorage) Platforms() *storage.Collection {
-    var strg interface{}
-    strg = s
-	return strg.(*storage.Storage).Collection("platforms")
+	return s.storage.Collection("platforms")
 }
 
 // Logs returns the logs collection from MongoDB.
@@ -68,9 +71,7 @@ func (s *tsrStorage) Logs() *storage.Collection {
 	sourceIndex := mgo.Index{Key: []string{"source"}}
 	dateAscIndex := mgo.Index{Key: []string{"date"}}
 	dateDescIndex := mgo.Index{Key: []string{"-date"}}
-    var strg interface{}
-    strg = s
-	c := strg.(*storage.Storage).Collection("logs")
+	c := s.storage.Collection("logs")
 	c.EnsureIndex(appNameIndex)
 	c.EnsureIndex(sourceIndex)
 	c.EnsureIndex(dateAscIndex)
@@ -80,59 +81,43 @@ func (s *tsrStorage) Logs() *storage.Collection {
 
 // Services returns the services collection from MongoDB.
 func (s *tsrStorage) Services() *storage.Collection {
-    var strg interface{}
-    strg = s
-	return strg.(*storage.Storage).Collection("services")
+	return s.storage.Collection("services")
 }
 
 // ServiceInstances returns the services_instances collection from MongoDB.
 func (s *tsrStorage) ServiceInstances() *storage.Collection {
-    var strg interface{}
-    strg = s
-	return strg.(*storage.Storage).Collection("service_instances")
+	return s.storage.Collection("service_instances")
 }
 
 // Users returns the users collection from MongoDB.
 func (s *tsrStorage) Users() *storage.Collection {
 	emailIndex := mgo.Index{Key: []string{"email"}, Unique: true}
-    var strg interface{}
-    strg = s
-    c := strg.(*storage.Storage).Collection("users")
+    c := s.storage.Collection("users")
 	c.EnsureIndex(emailIndex)
 	return c
 }
 
 func (s *tsrStorage) Tokens() *storage.Collection {
-    var strg interface{}
-    strg = s
-	return strg.(*storage.Storage).Collection("tokens")
+	return s.storage.Collection("tokens")
 }
 
 func (s *tsrStorage) PasswordTokens() *storage.Collection {
-    var strg interface{}
-    strg = s
-	return strg.(*storage.Storage).Collection("password_tokens")
+	return s.storage.Collection("password_tokens")
 }
 
 func (s *tsrStorage) UserActions() *storage.Collection {
-    var strg interface{}
-    strg = s
-	return strg.(*storage.Storage).Collection("user_actions")
+	return s.storage.Collection("user_actions")
 }
 
 // Teams returns the teams collection from MongoDB.
 func (s *tsrStorage) Teams() *storage.Collection {
-    var strg interface{}
-    strg = s
-	return strg.(*storage.Storage).Collection("teams")
+	return s.storage.Collection("teams")
 }
 
 // Quota returns the quota collection from MongoDB.
 func (s *tsrStorage) Quota() *storage.Collection {
 	userIndex := mgo.Index{Key: []string{"owner"}, Unique: true}
-    var strg interface{}
-    strg = s
-	c := strg.(*storage.Storage).Collection("quota")
+	c := s.storage.Collection("quota")
 	c.EnsureIndex(userIndex)
 	return c
 }

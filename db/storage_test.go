@@ -5,12 +5,11 @@
 package db
 
 import (
-	"github.com/globocom/go-mgo"
+	"github.com/globocom/tsuru/db/storage"
+    "github.com/globocom/config"
 	"launchpad.net/gocheck"
 	"reflect"
-	"sync"
 	"testing"
-	"time"
 )
 
 type hasIndexChecker struct{}
@@ -77,142 +76,149 @@ type S struct{}
 
 var _ = gocheck.Suite(&S{})
 
+func (s *S) SetUpSuite(c *gocheck.C) {
+    config.Set("database:url", "127.0.0.1:27017")
+    config.Set("database:name", "tsuru_storage_test")
+}
+
 func (s *S) TearDownSuite(c *gocheck.C) {
-	strg, err := storage.Open("127.0.0.1:27017", "tsuru_storage_test")
-	c.Assert(err, gocheck.IsNil)
-	defer strg.Close()
+	//strg, err := storage.Open("127.0.0.1:27017", "tsuru_storage_test")
+	//c.Assert(err, gocheck.IsNil)
+	//defer strg.Close()
+    config.Unset("database:url")
+    config.Unset("database:name")
 	//s.session.DB("tsuru_storage_test").DropDatabase()
 }
 
 func (s *S) TestUsers(c *gocheck.C) {
-	storage, _ := storage.Open("127.0.0.1:27017", "tsuru_storage_test")
-	defer storage.Close()
-	users := storage.Users()
-	usersc := storage.Collection("users")
+    strg, err := NewStorage()
+    c.Assert(err, gocheck.IsNil)
+    users := strg.Users()
+    usersc := strg.storage.Collection("users")
 	c.Assert(users, gocheck.DeepEquals, usersc)
 	c.Assert(users, HasUniqueIndex, []string{"email"})
 }
 
 func (s *S) TestTokens(c *gocheck.C) {
-	storage, _ := storage.Open("127.0.0.1:27017", "tsuru_storage_test")
-	defer storage.Close()
-	tokens := storage.Tokens()
-	tokensc := storage.Collection("tokens")
+    strg, err := NewStorage()
+    c.Assert(err, gocheck.IsNil)
+	tokens := strg.Tokens()
+	tokensc := strg.storage.Collection("tokens")
 	c.Assert(tokens, gocheck.DeepEquals, tokensc)
 }
 
 func (s *S) TestPasswordTokens(c *gocheck.C) {
-	storage, _ := storage.Open("127.0.0.1:27017", "tsuru_storage_test")
-	defer storage.Close()
-	tokens := storage.PasswordTokens()
-	tokensc := storage.Collection("password_tokens")
+    strg, err := NewStorage()
+    c.Assert(err, gocheck.IsNil)
+	tokens := strg.PasswordTokens()
+	tokensc := strg.storage.Collection("password_tokens")
 	c.Assert(tokens, gocheck.DeepEquals, tokensc)
 }
 
 func (s *S) TestUserActions(c *gocheck.C) {
-	storage, _ := storage.Open("127.0.0.1:27017", "tsuru_storage_test")
-	defer storage.Close()
-	actions := storage.UserActions()
-	actionsc := storage.Collection("user_actions")
+    strg, err := NewStorage()
+    c.Assert(err, gocheck.IsNil)
+    actions := strg.UserActions()
+	actionsc := strg.storage.Collection("user_actions")
 	c.Assert(actions, gocheck.DeepEquals, actionsc)
 }
 
 func (s *S) TestApps(c *gocheck.C) {
-	storage, _ := storage.Open("127.0.0.1:27017", "tsuru_storage_test")
-	defer storage.Close()
-	apps := storage.Apps()
-	appsc := storage.Collection("apps")
+    strg, err := NewStorage()
+    c.Assert(err, gocheck.IsNil)
+	apps := strg.Apps()
+	appsc := strg.storage.Collection("apps")
 	c.Assert(apps, gocheck.DeepEquals, appsc)
 	c.Assert(apps, HasUniqueIndex, []string{"name"})
 }
 
 func (s *S) TestDeploys(c *gocheck.C) {
-	storage, _ := storage.Open("127.0.0.1:27017", "tsuru_storage_test")
-	defer storage.Close()
-	deploys := storage.Deploys()
-	deploysc := storage.Collection("deploys")
+    strg, err := NewStorage()
+    c.Assert(err, gocheck.IsNil)
+	deploys := strg.Deploys()
+	deploysc := strg.storage.Collection("deploys")
 	c.Assert(deploys, gocheck.DeepEquals, deploysc)
 }
 
 func (s *S) TestPlatforms(c *gocheck.C) {
-	storage, _ := storage.Open("127.0.0.1:27017", "tsuru_storage_test")
-	defer storage.Close()
-	plats := storage.Platforms()
-	platsc := storage.Collection("platforms")
+    strg, err := NewStorage()
+    c.Assert(err, gocheck.IsNil)
+	plats := strg.Platforms()
+	platsc := strg.storage.Collection("platforms")
 	c.Assert(plats, gocheck.DeepEquals, platsc)
 }
 
 func (s *S) TestLogs(c *gocheck.C) {
-	storage, _ := storage.Open("127.0.0.1:27017", "tsuru_storage_test")
-	defer storage.Close()
-	logs := storage.Logs()
-	logsc := storage.Collection("logs")
+    strg, err := NewStorage()
+    c.Assert(err, gocheck.IsNil)
+	logs := strg.Logs()
+	logsc := strg.storage.Collection("logs")
 	c.Assert(logs, gocheck.DeepEquals, logsc)
 }
 
 func (s *S) TestLogsAppNameIndex(c *gocheck.C) {
-	storage, _ := storage.Open("127.0.0.1", "tsuru_storage_test")
-	defer storage.Close()
-	logs := storage.Logs()
+    strg, err := NewStorage()
+    c.Assert(err, gocheck.IsNil)
+	logs := strg.Logs()
 	c.Assert(logs, HasIndex, []string{"appname"})
 }
 
 func (s *S) TestLogsSourceIndex(c *gocheck.C) {
-	storage, _ := storage.Open("127.0.0.1", "tsuru_storage_test")
-	defer storage.Close()
-	logs := storage.Logs()
+    strg, err := NewStorage()
+    c.Assert(err, gocheck.IsNil)
+	logs := strg.Logs()
 	c.Assert(logs, HasIndex, []string{"source"})
 }
 
 func (s *S) TestLogsDateAscendingIndex(c *gocheck.C) {
-	storage, _ := storage.Open("127.0.0.1", "tsuru_storage_test")
-	defer storage.Close()
-	logs := storage.Logs()
+    strg, err := NewStorage()
+    c.Assert(err, gocheck.IsNil)
+	logs := strg.Logs()
 	c.Assert(logs, HasIndex, []string{"date"})
 }
 
 func (s *S) TestLogsDateDescendingIndex(c *gocheck.C) {
-	storage, _ := storage.Open("127.0.0.1", "tsuru_storage_test")
-	defer storage.Close()
-	logs := storage.Logs()
+    strg, err := NewStorage()
+    c.Assert(err, gocheck.IsNil)
+	logs := strg.Logs()
 	c.Assert(logs, HasIndex, []string{"-date"})
 }
 
 func (s *S) TestServices(c *gocheck.C) {
-	storage, _ := storage.Open("127.0.0.1:27017", "tsuru_storage_test")
-	defer storage.Close()
-	services := storage.Services()
-	servicesc := storage.Collection("services")
+    strg, err := NewStorage()
+    c.Assert(err, gocheck.IsNil)
+	services := strg.Services()
+	servicesc := strg.storage.Collection("services")
 	c.Assert(services, gocheck.DeepEquals, servicesc)
 }
 
 func (s *S) TestServiceInstances(c *gocheck.C) {
-	storage, _ := storage.Open("127.0.0.1:27017", "tsuru_storage_test")
-	defer storage.Close()
-	serviceInstances := storage.ServiceInstances()
-	serviceInstancesc := storage.Collection("service_instances")
+    strg, err := NewStorage()
+    c.Assert(err, gocheck.IsNil)
+	serviceInstances := strg.ServiceInstances()
+	serviceInstancesc := strg.storage.Collection("service_instances")
 	c.Assert(serviceInstances, gocheck.DeepEquals, serviceInstancesc)
 }
 
 func (s *S) TestMethodTeamsShouldReturnTeamsCollection(c *gocheck.C) {
-	storage, _ := storage.Open("127.0.0.1:27017", "tsuru_storage_test")
-	defer storage.Close()
-	teams := storage.Teams()
-	teamsc := storage.Collection("teams")
+    strg, err := NewStorage()
+    c.Assert(err, gocheck.IsNil)
+	teams := strg.Teams()
+	teamsc := strg.storage.Collection("teams")
 	c.Assert(teams, gocheck.DeepEquals, teamsc)
 }
 
 func (s *S) TestQuota(c *gocheck.C) {
-	storage, _ := storage.Open("127.0.0.1", "tsuru_storage_test")
-	defer storage.Close()
-	quota := storage.Quota()
-	quotac := storage.Collection("quota")
+    strg, err := NewStorage()
+    c.Assert(err, gocheck.IsNil)
+	quota := strg.Quota()
+	quotac := strg.storage.Collection("quota")
 	c.Assert(quota, gocheck.DeepEquals, quotac)
 }
 
 func (s *S) TestQuotaOwnerIsUnique(c *gocheck.C) {
-	storage, _ := storage.Open("127.0.0.1", "tsuru_storage_test")
-	defer storage.Close()
-	quota := storage.Quota()
+    strg, err := NewStorage()
+    c.Assert(err, gocheck.IsNil)
+	quota := strg.Quota()
 	c.Assert(quota, HasUniqueIndex, []string{"owner"})
 }
