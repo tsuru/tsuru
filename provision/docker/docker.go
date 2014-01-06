@@ -133,7 +133,7 @@ func (c *container) getAddress() string {
 }
 
 // newContainer creates a new container in Docker and stores it in the database.
-func newContainer(app provision.App, imageId string, cmds []string, envs []string) (container, error) {
+func newContainer(app provision.App, imageId string, cmds []string) (container, error) {
 	cont := container{
 		AppName: app.GetName(),
 		Type:    app.GetPlatform(),
@@ -155,7 +155,6 @@ func newContainer(app provision.App, imageId string, cmds []string, envs []strin
 		AttachStdin:  false,
 		AttachStdout: false,
 		AttachStderr: false,
-		Env:          envs,
 	}
 	hostID, c, err := dockerCluster().CreateContainer(&config)
 	if err == dclient.ErrNoSuchImage {
@@ -225,11 +224,7 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 	imageId := getImage(app)
 	actions := []*action.Action{&createContainer, &startContainer, &insertContainer}
 	pipeline := action.NewPipeline(actions...)
-	envs := []string{}
-	for _, env := range app.Envs() {
-		envs = append(envs, fmt.Sprintf("%s=%s", env.Name, env.Value))
-	}
-	err = pipeline.Execute(app, imageId, commands, envs)
+	err = pipeline.Execute(app, imageId, commands)
 	if err != nil {
 		log.Errorf("error on execute deploy pipeline for app %s - %s", app.GetName(), err)
 		return "", err

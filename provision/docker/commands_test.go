@@ -7,6 +7,7 @@ package docker
 import (
 	"fmt"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/app/bind"
 	ftesting "github.com/globocom/tsuru/fs/testing"
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/testing"
@@ -20,11 +21,17 @@ func (s *S) TestDeployCmds(c *gocheck.C) {
 	gandalfServer := testing.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	app := testing.NewFakeApp("app-name", "python", 1)
+	env := bind.EnvVar{
+		Name:   "http_proxy",
+		Value:  "http://theirproxy.com:3128/",
+		Public: true,
+	}
+	app.SetEnv(env)
 	deployCmd, err := config.GetString("docker:deploy-cmd")
 	c.Assert(err, gocheck.IsNil)
 	version := "version"
 	appRepo := repository.ReadOnlyURL(app.GetName())
-	expected := []string{deployCmd, appRepo, version}
+	expected := []string{deployCmd, appRepo, version, `http_proxy=http://theirproxy.com:3128/ `}
 	cmds, err := deployCmds(app, version)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cmds, gocheck.DeepEquals, expected)

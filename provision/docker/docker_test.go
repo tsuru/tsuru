@@ -44,8 +44,7 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 	app := testing.NewFakeApp("app-name", "brainfuck", 1)
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
-	envs := []string{"some", "envs"}
-	cont, err := newContainer(app, getImage(app), []string{"docker", "run"}, envs)
+	cont, err := newContainer(app, getImage(app), []string{"docker", "run"})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(&cont)
 	c.Assert(cont.ID, gocheck.Not(gocheck.Equals), "")
@@ -64,7 +63,6 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 	container, err := dcli.InspectContainer(cont.ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(container.Config.User, gocheck.Equals, user)
-	c.Assert(container.Config.Env, gocheck.DeepEquals, envs)
 }
 
 func (s *S) TestNewContainerUndefinedUser(c *gocheck.C) {
@@ -79,7 +77,7 @@ func (s *S) TestNewContainerUndefinedUser(c *gocheck.C) {
 	app := testing.NewFakeApp("app-name", "python", 1)
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
-	cont, err := newContainer(app, getImage(app), []string{"docker", "run"}, nil)
+	cont, err := newContainer(app, getImage(app), []string{"docker", "run"})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(&cont)
 	dcli, _ := dockerClient.NewClient(s.server.URL())

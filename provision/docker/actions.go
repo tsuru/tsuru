@@ -23,13 +23,8 @@ var createContainer = action.Action{
 		app := ctx.Params[0].(provision.App)
 		imageId := ctx.Params[1].(string)
 		cmds := ctx.Params[2].([]string)
-		var envs []string
-		if len(ctx.Params) > 3 {
-			envs = ctx.Params[3].([]string)
-		}
 		log.Debugf("create container for app %s, based on image %s, with cmds %s", app.GetName(), imageId, cmds)
-		log.Debugf("create container for app %s, based on image %s, with cmds %s", app.GetName(), imageId, cmds)
-		cont, err := newContainer(app, imageId, cmds, envs)
+		cont, err := newContainer(app, imageId, cmds)
 		if err != nil {
 			log.Errorf("error on create container for app %s - %s", app.GetName(), err)
 			return nil, err
