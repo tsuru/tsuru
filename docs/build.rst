@@ -124,6 +124,7 @@ You can use ``apt-get`` to install Gandalf using `Tsuru's ppa
 
 ::
 
+    $ sudo apt-add-repository ppa:tsuru/lvm2 -y
     $ sudo apt-add-repository ppa:tsuru/ppa -y
     $ sudo apt-get update
     $ sudo apt-get install tsuru-server
