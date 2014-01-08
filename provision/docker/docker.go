@@ -40,6 +40,33 @@ var (
 	segScheduler segregatedScheduler
 )
 
+func getDockerServers() []cluster.Node {
+	servers, _ := config.GetList("docker:servers")
+	nodes := []cluster.Node{}
+	for index, server := range servers {
+		id := fmt.Sprintf("server%d", index)
+		node := cluster.Node{
+			ID:      id,
+			Address: server,
+		}
+		nodes = append(nodes, node)
+	}
+	n, err := listNodesInTheScheduler()
+	if err != nil {
+		log.Error(err.Error())
+	}
+	for _, node := range n {
+		if node.Team == "" {
+			node := cluster.Node{
+				ID:      node.ID,
+				Address: node.Address,
+			}
+			nodes = append(nodes, node)
+		}
+	}
+	return nodes
+}
+
 func dockerCluster() *cluster.Cluster {
 	cmutex.Lock()
 	defer cmutex.Unlock()
