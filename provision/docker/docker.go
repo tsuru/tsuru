@@ -43,6 +43,7 @@ var (
 func getDockerServers() []cluster.Node {
 	servers, _ := config.GetList("docker:servers")
 	nodes := []cluster.Node{}
+	clusterNodes = make(map[string]string)
 	for index, server := range servers {
 		id := fmt.Sprintf("server%d", index)
 		node := cluster.Node{
@@ -50,6 +51,7 @@ func getDockerServers() []cluster.Node {
 			Address: server,
 		}
 		nodes = append(nodes, node)
+		clusterNodes[id] = server
 	}
 	n, err := listNodesInTheScheduler()
 	if err != nil {
@@ -62,6 +64,7 @@ func getDockerServers() []cluster.Node {
 				Address: node.Address,
 			}
 			nodes = append(nodes, node)
+			clusterNodes[node.ID] = node.Address
 		}
 	}
 	return nodes
@@ -74,21 +77,7 @@ func dockerCluster() *cluster.Cluster {
 		if segregate, _ := config.GetBool("docker:segregate"); segregate {
 			dCluster, _ = cluster.New(segScheduler)
 		} else {
-			clusterNodes = make(map[string]string)
-			servers, _ := config.GetList("docker:servers")
-			if len(servers) < 1 {
-				log.Fatal(`Tsuru is misconfigured. Setting "docker:servers" is mandatory`)
-			}
-			nodes := make([]cluster.Node, len(servers))
-			for index, server := range servers {
-				id := fmt.Sprintf("server%d", index)
-				node := cluster.Node{
-					ID:      id,
-					Address: server,
-				}
-				nodes[index] = node
-				clusterNodes[id] = server
-			}
+			nodes := getDockerServers()
 			dCluster, _ = cluster.New(nil, nodes...)
 		}
 		if redisServer, err := config.GetString("docker:scheduler:redis-server"); err == nil {
