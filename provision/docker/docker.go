@@ -58,7 +58,7 @@ func getDockerServers() []cluster.Node {
 		log.Error(err.Error())
 	}
 	for _, node := range n {
-		if node.Team == "" {
+		if len(node.Teams) == 0 {
 			node := cluster.Node{
 				ID:      node.ID,
 				Address: node.Address,

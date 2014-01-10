@@ -33,7 +33,7 @@ const schedulerCollection = "docker_scheduler"
 type node struct {
 	ID      string `bson:"_id"`
 	Address string
-	Team    string
+	Teams   []string
 }
 
 type segregatedScheduler struct{}
@@ -55,15 +55,13 @@ func (s segregatedScheduler) Schedule(cfg *docker.Config) (string, *docker.Conta
 	if err != nil {
 		return s.fallback(cfg)
 	}
-	if len(app.Teams) == 1 {
-		var nodes []node
-		err = conn.Collection(schedulerCollection).Find(bson.M{"team": app.Teams[0]}).All(&nodes)
-		if err != nil || len(nodes) < 1 {
-			return s.fallback(cfg)
-		}
-		return s.handle(cfg, nodes)
+	var nodes []node
+	query := bson.M{"teams": bson.M{"$in": app.Teams}}
+	err = conn.Collection(schedulerCollection).Find(query).All(&nodes)
+	if err != nil || len(nodes) < 1 {
+		return s.fallback(cfg)
 	}
-	return s.fallback(cfg)
+	return s.handle(cfg, nodes)
 }
 
 func (s segregatedScheduler) fallback(cfg *docker.Config) (string, *docker.Container, error) {
@@ -73,7 +71,7 @@ func (s segregatedScheduler) fallback(cfg *docker.Config) (string, *docker.Conta
 	}
 	defer conn.Close()
 	var nodes []node
-	err = conn.Collection(schedulerCollection).Find(bson.M{"team": ""}).All(&nodes)
+	err = conn.Collection(schedulerCollection).Find(bson.M{"teams": bson.M{"$size": 0}}).All(&nodes)
 	if err != nil || len(nodes) < 1 {
 		return "", nil, errNoFallback
 	}
@@ -131,7 +129,7 @@ func (segregatedScheduler) Register(params map[string]string) error {
 		return err
 	}
 	defer conn.Close()
-	node := node{ID: params["ID"], Address: params["address"], Team: params["team"]}
+	node := node{ID: params["ID"], Address: params["address"], Teams: []string{params["team"]}}
 	err = conn.Collection(schedulerCollection).Insert(node)
 	if mgo.IsDup(err) {
 		return errNodeAlreadyRegister
@@ -231,7 +229,7 @@ func (listNodesInTheSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) erro
 		return err
 	}
 	for _, n := range nodes {
-		t.AddRow(cmd.Row([]string{n.ID, n.Address, n.Team}))
+		t.AddRow(cmd.Row([]string{n.ID, n.Address, strings.Join(n.Teams, ", ")}))
 	}
 	t.Sort()
 	ctx.Stdout.Write(t.Bytes())
