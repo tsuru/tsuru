@@ -53,19 +53,13 @@ func getDockerServers() []cluster.Node {
 		nodes = append(nodes, node)
 		clusterNodes[id] = server
 	}
-	n, err := listNodesInTheScheduler()
+	n, err := segScheduler.Nodes()
 	if err != nil {
 		log.Error(err.Error())
 	}
 	for _, node := range n {
-		if len(node.Teams) == 0 {
-			node := cluster.Node{
-				ID:      node.ID,
-				Address: node.Address,
-			}
-			nodes = append(nodes, node)
-			clusterNodes[node.ID] = node.Address
-		}
+        nodes = append(nodes, node)
+        clusterNodes[node.ID] = node.Address
 	}
 	return nodes
 }
