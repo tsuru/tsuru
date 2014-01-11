@@ -21,6 +21,7 @@ Application Deployment
 * :doc:`ruby/rails </apps/quickstart/ruby>`
 * :doc:`php </apps/quickstart/php>`
 * :doc:`understanding deployment hooks </apps/deploy-hooks>`
+* :doc:`recovery and troubleshooting </apps/recovery>`
 
 CLI
 +++
@@ -56,6 +57,11 @@ Services
 * :doc:`building your service </services/build>`
 * :doc:`crane usage guide </services/usage>`
 * :doc:`services api workflow </services/api>`
+
+Installing services
++++++++++++++++++++
+
+* :doc:`mysql </services/mysql-example>`
 
 Get Involved
 ------------

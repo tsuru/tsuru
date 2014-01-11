@@ -127,9 +127,9 @@ means that you're using an old version of Go. You'll have to `install
 
 If you're using Homebrew on Mac OS, just run:
 
-.. highlight: bash
+.. highlight:: bash
 
 ::
 
-    % brew update
-    % brew upgrade go
+    $ brew update
+    $ brew upgrade go

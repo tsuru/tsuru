@@ -72,8 +72,8 @@ func (s *SchedulerSuite) TestSchedulerSchedule(c *gocheck.C) {
 	defer s.storage.Apps().Remove(bson.M{"name": bson.M{"$in": []string{a1.Name, a2.Name, a3.Name}}})
 	coll := s.storage.Collection(schedulerCollection)
 	err = coll.Insert(
-		node{ID: "server0", Address: server0.URL(), Team: "tsuruteam"},
-		node{ID: "server1", Address: server1.URL(), Team: "tsuruteam"},
+		node{ID: "server0", Address: server0.URL(), Teams: []string{"tsuruteam"}},
+		node{ID: "server1", Address: server1.URL(), Teams: []string{"tsuruteam"}},
 		node{ID: "server2", Address: server2.URL()},
 	)
 	c.Assert(err, gocheck.IsNil)
@@ -82,7 +82,7 @@ func (s *SchedulerSuite) TestSchedulerSchedule(c *gocheck.C) {
 	config := docker.Config{Cmd: []string{"/usr/sbin/sshd", "-D"}, Image: "tsuru/impius"}
 	node, _, err := scheduler.Schedule(&config)
 	c.Assert(err, gocheck.IsNil)
-	c.Check(node, gocheck.Equals, "server2")
+	c.Check(node, gocheck.Equals, "server1")
 	config = docker.Config{Cmd: []string{"/usr/sbin/sshd", "-D"}, Image: "tsuru/mirror"}
 	node, _, err = scheduler.Schedule(&config)
 	c.Assert(err, gocheck.IsNil)
@@ -131,7 +131,7 @@ func (s *SchedulerSuite) TestSchedulerInvalidEndpoint(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.storage.Apps().Remove(bson.M{"name": app.Name})
 	coll := s.storage.Collection(schedulerCollection)
-	err = coll.Insert(node{ID: "server0", Address: "", Team: "jean"})
+	err = coll.Insert(node{ID: "server0", Address: "", Teams: []string{"jean"}})
 	c.Assert(err, gocheck.IsNil)
 	defer coll.Remove(bson.M{"_id": "server0"})
 	config := docker.Config{Cmd: []string{"/usr/sbin/sshd", "-D"}, Image: "tsuru/bill"}
@@ -145,9 +145,9 @@ func (s *SchedulerSuite) TestSchedulerInvalidEndpoint(c *gocheck.C) {
 func (s *SchedulerSuite) TestSchedulerNodes(c *gocheck.C) {
 	coll := s.storage.Collection(schedulerCollection)
 	err := coll.Insert(
-		node{ID: "server0", Address: "http://localhost:8080", Team: "tsuru"},
-		node{ID: "server1", Address: "http://localhost:8081", Team: "tsuru"},
-		node{ID: "server2", Address: "http://localhost:8082", Team: "tsuru"},
+		node{ID: "server0", Address: "http://localhost:8080", Teams: []string{"tsuru"}},
+		node{ID: "server1", Address: "http://localhost:8081", Teams: []string{"tsuru"}},
+		node{ID: "server2", Address: "http://localhost:8082", Teams: []string{"tsuru"}},
 	)
 	c.Assert(err, gocheck.IsNil)
 	defer coll.RemoveAll(bson.M{"_id": bson.M{"$in": []string{"server0", "server1", "server2"}}})
@@ -165,9 +165,9 @@ func (s *SchedulerSuite) TestSchedulerNodes(c *gocheck.C) {
 func (s *SchedulerSuite) TestSchedulerGetNode(c *gocheck.C) {
 	coll := s.storage.Collection(schedulerCollection)
 	err := coll.Insert(
-		node{ID: "server0", Address: "http://localhost:8080", Team: "tsuru"},
-		node{ID: "server1", Address: "http://localhost:8081", Team: "tsuru"},
-		node{ID: "server2", Address: "http://localhost:8082", Team: "tsuru"},
+		node{ID: "server0", Address: "http://localhost:8080", Teams: []string{"tsuru"}},
+		node{ID: "server1", Address: "http://localhost:8081", Teams: []string{"tsuru"}},
+		node{ID: "server2", Address: "http://localhost:8082", Teams: []string{"tsuru"}},
 	)
 	c.Assert(err, gocheck.IsNil)
 	defer coll.RemoveAll(bson.M{"_id": bson.M{"$in": []string{"server0", "server1", "server2"}}})
@@ -176,9 +176,9 @@ func (s *SchedulerSuite) TestSchedulerGetNode(c *gocheck.C) {
 		expected node
 		err      error
 	}{
-		{"server0", node{ID: "server0", Address: "http://localhost:8080", Team: "tsuru"}, nil},
-		{"server1", node{ID: "server1", Address: "http://localhost:8081", Team: "tsuru"}, nil},
-		{"server2", node{ID: "server2", Address: "http://localhost:8082", Team: "tsuru"}, nil},
+		{"server0", node{ID: "server0", Address: "http://localhost:8080", Teams: []string{"tsuru"}}, nil},
+		{"server1", node{ID: "server1", Address: "http://localhost:8081", Teams: []string{"tsuru"}}, nil},
+		{"server2", node{ID: "server2", Address: "http://localhost:8082", Teams: []string{"tsuru"}}, nil},
 		{"server102", node{}, errNodeNotFound},
 	}
 	var scheduler segregatedScheduler
@@ -200,7 +200,7 @@ func (s *SchedulerSuite) TestAddNodeToScheduler(c *gocheck.C) {
 	err = coll.Find(bson.M{"_id": nd.ID}).One(&n)
 	c.Assert(err, gocheck.IsNil)
 	c.Check(n.ID, gocheck.Equals, nd.ID)
-	c.Check(n.Team, gocheck.Equals, "team1")
+	c.Check(n.Teams, gocheck.DeepEquals, []string{"team1"})
 	c.Check(n.Address, gocheck.Equals, "http://localhost:8080")
 }
 
@@ -248,9 +248,9 @@ func (s *SchedulerSuite) TestListNodesInTheScheduler(c *gocheck.C) {
 	nodes, err := listNodesInTheScheduler()
 	c.Assert(err, gocheck.IsNil)
 	expected := []node{
-		{ID: "server0", Address: "http://localhost:8080", Team: "team1"},
-		{ID: "server1", Address: "http://localhost:9090", Team: "team1"},
-		{ID: "server2", Address: "http://localhost:9090", Team: "team1"},
+		{ID: "server0", Address: "http://localhost:8080", Teams: []string{"team1"}},
+		{ID: "server1", Address: "http://localhost:9090", Teams: []string{"team1"}},
+		{ID: "server2", Address: "http://localhost:9090", Teams: []string{"team1"}},
 	}
 	c.Assert(nodes, gocheck.DeepEquals, expected)
 }
@@ -278,7 +278,7 @@ func (s *SchedulerSuite) TestAddNodeToTheSchedulerCmdRun(c *gocheck.C) {
 	err = coll.Find(bson.M{"_id": "server0"}).One(&n)
 	c.Assert(err, gocheck.IsNil)
 	c.Check(n.ID, gocheck.Equals, "server0")
-	c.Check(n.Team, gocheck.Equals, "")
+	c.Check(n.Teams, gocheck.DeepEquals, []string{""})
 	c.Check(n.Address, gocheck.Equals, "http://localhost:8080")
 	c.Assert(buf.String(), gocheck.Equals, "Node successfully registered.\n")
 }
@@ -295,7 +295,7 @@ func (s *SchedulerSuite) TestAddNodeToTheSchedulerCmdRunWithTeam(c *gocheck.C) {
 	err = coll.Find(bson.M{"_id": "server0"}).One(&n)
 	c.Assert(err, gocheck.IsNil)
 	c.Check(n.ID, gocheck.Equals, "server0")
-	c.Check(n.Team, gocheck.Equals, "team1")
+	c.Check(n.Teams, gocheck.DeepEquals, []string{"team1"})
 	c.Check(n.Address, gocheck.Equals, "http://localhost:8080")
 	c.Assert(buf.String(), gocheck.Equals, "Node successfully registered.\n")
 }

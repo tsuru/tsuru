@@ -63,3 +63,12 @@ dt:hover > a.headerlink {
 	color: #000;
 	visibility: visible;
 }
+
+#content ol, #content ul {
+	list-style-type: disc;
+	padding: 15px;
+}
+
+#content a {
+	text-decoration: underline;
+}

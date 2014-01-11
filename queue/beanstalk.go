@@ -22,10 +22,9 @@ import (
 const ttr = 180e9
 
 var (
-	conn           *beanstalk.Conn
-	mut            sync.Mutex // for conn access
-	timeoutRegexp  = regexp.MustCompile(`(TIMED_OUT|timeout)$`)
-	notFoundRegexp = regexp.MustCompile(`not found$`)
+	conn          *beanstalk.Conn
+	mut           sync.Mutex // for conn access
+	timeoutRegexp = regexp.MustCompile(`(TIMED_OUT|timeout)$`)
 )
 
 type beanstalkdQ struct {
