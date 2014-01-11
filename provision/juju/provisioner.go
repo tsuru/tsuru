@@ -13,6 +13,7 @@ import (
 	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/db/storage"
 	"github.com/globocom/tsuru/deploy"
 	"github.com/globocom/tsuru/exec"
 	"github.com/globocom/tsuru/log"
@@ -77,7 +78,7 @@ func Router() (router.Router, error) {
 	return router.Get("elb")
 }
 
-func (p *JujuProvisioner) unitsCollection() *db.Collection {
+func (p *JujuProvisioner) unitsCollection() *storage.Collection {
 	name, err := config.GetString("juju:units-collection")
 	if err != nil {
 		log.Fatalf("FATAL: %s.", err)

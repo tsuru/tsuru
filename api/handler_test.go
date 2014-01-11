@@ -18,7 +18,7 @@ import (
 )
 
 type HandlerSuite struct {
-	conn  *db.Storage
+	conn  *db.TsrStorage
 	token *auth.Token
 }
 
@@ -30,7 +30,7 @@ func (s *HandlerSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("database:name", "tsuru_api_handler_test")
 	config.Set("auth:salt", "tsuru-salt")
 	config.Set("auth:hash-cost", 4)
-	s.conn, err = db.Conn()
+	s.conn, err = db.NewStorage()
 	c.Assert(err, gocheck.IsNil)
 	user := &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
 	err = user.Create()
@@ -38,7 +38,7 @@ func (s *HandlerSuite) SetUpSuite(c *gocheck.C) {
 	s.token, err = user.CreateToken("123456")
 	c.Assert(err, gocheck.IsNil)
 	team := auth.Team{Name: "tsuruteam", Users: []string{user.Email}}
-	conn, _ := db.Conn()
+	conn, _ := db.NewStorage()
 	defer conn.Close()
 	err = conn.Teams().Insert(team)
 	c.Assert(err, gocheck.IsNil)

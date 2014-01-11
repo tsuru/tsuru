@@ -22,7 +22,7 @@ import (
 )
 
 type ConsumptionSuite struct {
-	conn  *db.Storage
+	conn  *db.TsrStorage
 	team  *auth.Team
 	user  *auth.User
 	token *auth.Token
@@ -35,7 +35,7 @@ func (s *ConsumptionSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_consumption_test")
 	config.Set("auth:hash-cost", 4)
-	s.conn, err = db.Conn()
+	s.conn, err = db.NewStorage()
 	c.Assert(err, gocheck.IsNil)
 	s.createUserAndTeam(c)
 }

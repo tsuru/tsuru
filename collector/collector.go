@@ -65,7 +65,7 @@ func update(units []provision.Unit) {
 		u.State = string(unit.Status)
 		a.AddUnit(&u)
 	}
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		log.Errorf("collector failed to connect to the database: %s", err)
 		return

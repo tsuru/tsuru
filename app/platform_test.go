@@ -20,7 +20,7 @@ func (s *PlatformSuite) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *PlatformSuite) TearDownSuite(c *gocheck.C) {
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	c.Assert(err, gocheck.IsNil)
 	conn.Apps().Database.DropDatabase()
 	conn.Close()
@@ -34,7 +34,7 @@ func (s *PlatformSuite) TestPlatforms(c *gocheck.C) {
 		{Name: "raise"},
 		{Name: "glass"},
 	}
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	for _, p := range want {
@@ -53,7 +53,7 @@ func (s *PlatformSuite) TestPlatformsEmpty(c *gocheck.C) {
 }
 
 func (s *PlatformSuite) TestGetPlatform(c *gocheck.C) {
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	p := Platform{Name: "dea"}

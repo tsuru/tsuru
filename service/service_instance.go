@@ -45,7 +45,7 @@ func DeleteInstance(si *ServiceInstance) error {
 	if err == nil {
 		endpoint.Destroy(si)
 	}
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func (si *ServiceInstance) Info() (map[string]string, error) {
 }
 
 func (si *ServiceInstance) Create() error {
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}
@@ -95,7 +95,7 @@ func (si *ServiceInstance) Create() error {
 }
 
 func (si *ServiceInstance) Service() *Service {
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		log.Errorf("Failed to connect to the database: %s", err)
 		return nil
@@ -137,7 +137,7 @@ func (si *ServiceInstance) RemoveApp(appName string) error {
 }
 
 func (si *ServiceInstance) update() error {
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}
@@ -224,7 +224,7 @@ func validateServiceInstanceName(name string) error {
 	if !instanceNameRegexp.MatchString(name) {
 		return ErrInvalidInstanceName
 	}
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return nil
 	}
@@ -262,7 +262,7 @@ func CreateServiceInstance(name string, service *Service, user *auth.User) error
 
 func GetServiceInstancesByServices(services []Service) ([]ServiceInstance, error) {
 	var instances []ServiceInstance
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return nil, err
 	}
@@ -282,7 +282,7 @@ func GetServiceInstancesByServicesAndTeams(services []Service, u *auth.User) ([]
 	if len(teams) == 0 {
 		return nil, nil
 	}
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +293,7 @@ func GetServiceInstancesByServicesAndTeams(services []Service, u *auth.User) ([]
 }
 
 func GetServiceInstance(name string, u *auth.User) (*ServiceInstance, error) {
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return nil, err
 	}

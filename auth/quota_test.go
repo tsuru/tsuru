@@ -21,7 +21,7 @@ func (s *S) TestReserveApp(c *gocheck.C) {
 	}
 	err := user.Create()
 	c.Assert(err, gocheck.IsNil)
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	defer conn.Users().Remove(bson.M{"email": user.Email})
@@ -46,7 +46,7 @@ func (s *S) TestReserveAppAlwaysRefreshFromDatabase(c *gocheck.C) {
 	}
 	err := user.Create()
 	c.Assert(err, gocheck.IsNil)
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	defer conn.Users().Remove(bson.M{"email": user.Email})
@@ -66,7 +66,7 @@ func (s *S) TestReserveAppQuotaExceeded(c *gocheck.C) {
 	}
 	err := user.Create()
 	c.Assert(err, gocheck.IsNil)
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	defer conn.Users().Remove(bson.M{"email": user.Email})
@@ -86,7 +86,7 @@ func (s *S) TestReserveAppIsSafe(c *gocheck.C) {
 	}
 	err := user.Create()
 	c.Assert(err, gocheck.IsNil)
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	defer conn.Users().Remove(bson.M{"email": user.Email})
@@ -112,7 +112,7 @@ func (s *S) TestReleaseApp(c *gocheck.C) {
 	}
 	err := user.Create()
 	c.Assert(err, gocheck.IsNil)
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	defer conn.Users().Remove(bson.M{"email": user.Email})
@@ -143,7 +143,7 @@ func (s *S) TestReleaseAppAlwaysRefreshFromDatabase(c *gocheck.C) {
 	}
 	err := user.Create()
 	c.Assert(err, gocheck.IsNil)
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	defer conn.Users().Remove(bson.M{"email": user.Email})
@@ -165,7 +165,7 @@ func (s *S) TestReleaseAppNonReserved(c *gocheck.C) {
 	}
 	err := user.Create()
 	c.Assert(err, gocheck.IsNil)
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	defer conn.Users().Remove(bson.M{"email": user.Email})
@@ -183,7 +183,7 @@ func (s *S) TestReleaseAppIsSafe(c *gocheck.C) {
 	}
 	err := user.Create()
 	c.Assert(err, gocheck.IsNil)
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	defer conn.Users().Remove(bson.M{"email": user.Email})

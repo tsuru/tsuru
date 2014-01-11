@@ -250,7 +250,7 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t *auth.Token) error
 	if err != nil {
 		return err
 	}
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}
@@ -310,7 +310,7 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t *auth.Token) erro
 	if err != nil {
 		return err
 	}
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}
@@ -566,7 +566,7 @@ func appLog(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 
 func getServiceInstance(instanceName, appName string, u *auth.User) (*service.ServiceInstance, *app.App, error) {
 	var app app.App
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return nil, nil, err
 	}

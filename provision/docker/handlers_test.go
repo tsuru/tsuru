@@ -13,14 +13,14 @@ import (
 )
 
 type HandlersSuite struct {
-	conn *db.Storage
+	conn *db.TsrStorage
 }
 
 var _ = gocheck.Suite(&HandlersSuite{})
 
 func (s *HandlersSuite) SetUpSuite(c *gocheck.C) {
 	var err error
-	s.conn, err = db.Conn()
+	s.conn, err = db.NewStorage()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Collection(schedulerCollection).RemoveAll(nil)
 }

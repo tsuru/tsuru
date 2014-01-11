@@ -19,7 +19,7 @@ import (
 type ELBSuite struct {
 	server      *elbtest.Server
 	client      *elb.ELB
-	conn        *db.Storage
+	conn        *db.TsrStorage
 	cName       string
 	provisioner *testing.FakeProvisioner
 }
@@ -30,7 +30,7 @@ func (s *ELBSuite) SetUpSuite(c *gocheck.C) {
 	var err error
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "juju_elb_tests")
-	s.conn, err = db.Conn()
+	s.conn, err = db.NewStorage()
 	s.server, err = elbtest.NewServer()
 	c.Assert(err, gocheck.IsNil)
 	config.Set("juju:elb-endpoint", s.server.URL())

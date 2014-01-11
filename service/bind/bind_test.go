@@ -23,7 +23,7 @@ import (
 )
 
 type S struct {
-	conn   *db.Storage
+	conn   *db.TsrStorage
 	user   auth.User
 	team   auth.Team
 	tmpdir string
@@ -40,7 +40,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_service_bind_test")
 	config.Set("auth:salt", "test_salt")
-	s.conn, err = db.Conn()
+	s.conn, err = db.NewStorage()
 	c.Assert(err, gocheck.IsNil)
 	s.user = auth.User{Email: "sad-but-true@metallica.com"}
 	s.user.Create()
@@ -53,7 +53,7 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 	s.conn.Apps().Database.DropDatabase()
 }
 
-func createTestApp(conn *db.Storage, name, framework string, teams []string, units []app.Unit) (app.App, error) {
+func createTestApp(conn *db.TsrStorage, name, framework string, teams []string, units []app.Unit) (app.App, error) {
 	a := app.App{
 		Name:     name,
 		Platform: framework,

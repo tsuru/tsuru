@@ -195,7 +195,7 @@ func (s *S) TestSaveUnitsForward(c *gocheck.C) {
 		Name:     "otherapp",
 		Platform: "zend",
 	}
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	err = conn.Apps().Insert(app)
@@ -224,7 +224,7 @@ func (s *S) TestSaveUnitsForwardShouldMaintainData(c *gocheck.C) {
 		Platform: "zend",
 		Deploys:  10,
 	}
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	err = conn.Apps().Insert(app)

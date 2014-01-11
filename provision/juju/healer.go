@@ -180,7 +180,7 @@ func (h *instanceAgentsConfigHealer) bootstrapPrivateDns() (string, error) {
 // private dns setted into agents for each machine.
 // If the bootstrap private dns is wrong, Heal will injects the correct value.
 func (h instanceAgentsConfigHealer) Heal() error {
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}
@@ -223,7 +223,7 @@ type instanceUnitHealer struct{}
 // Heal iterates through all juju units verifying if
 // a juju-unit-agent is down and heal these machines.
 func (h instanceUnitHealer) Heal() error {
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}
@@ -413,7 +413,7 @@ func (h elbInstanceHealer) checkInstances(names []string) ([]elbInstance, error)
 }
 
 func (h elbInstanceHealer) getUnhealthyApps() map[string]app.App {
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return nil
 	}

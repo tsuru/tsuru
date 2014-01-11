@@ -20,7 +20,7 @@ func ReserveApp(user *User) error {
 	if err != nil {
 		return err
 	}
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}
@@ -66,7 +66,7 @@ func ReleaseApp(user *User) error {
 	if user.Quota.InUse == 0 {
 		return errCantRelease
 	}
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}

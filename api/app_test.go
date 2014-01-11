@@ -418,7 +418,7 @@ func (s *S) TestCreateAppHandler(c *gocheck.C) {
 }
 
 func (s *S) TestCreateAppQuotaExceeded(c *gocheck.C) {
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	var limited quota.Quota

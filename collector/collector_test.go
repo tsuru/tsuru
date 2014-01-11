@@ -26,7 +26,7 @@ func getOutput() []provision.Unit {
 	}
 }
 
-func getApp(conn *db.Storage, c *gocheck.C) *app.App {
+func getApp(conn *db.TsrStorage, c *gocheck.C) *app.App {
 	a := &app.App{Name: "umaappqq"}
 	err := conn.Apps().Insert(&a)
 	c.Assert(err, gocheck.IsNil)

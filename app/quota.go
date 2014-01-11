@@ -17,7 +17,7 @@ func reserveUnits(app *App, quantity int) error {
 	if err != nil {
 		return err
 	}
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}
@@ -58,7 +58,7 @@ func releaseUnits(app *App, quantity int) error {
 	if err != nil {
 		return err
 	}
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}

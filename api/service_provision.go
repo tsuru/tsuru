@@ -60,7 +60,7 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t *auth.Token) error 
 		return err
 	}
 	rec.Log(u.Email, "create-service", sy.Id, sy.Endpoint)
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}
@@ -130,7 +130,7 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t *auth.Token) error 
 	if err != nil {
 		return err
 	}
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}
@@ -161,7 +161,7 @@ func getServiceAndTeam(serviceName string, teamName string, u *auth.User) (*serv
 		return nil, nil, &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 	}
 	t := new(auth.Team)
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -188,7 +188,7 @@ func grantServiceAccess(w http.ResponseWriter, r *http.Request, t *auth.Token) e
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 	}
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}
@@ -215,7 +215,7 @@ func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t *auth.Token) 
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}

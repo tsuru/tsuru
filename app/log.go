@@ -95,10 +95,11 @@ func notify(appName string, messages []interface{}) {
 
 // LogRemove removes the app log.
 func LogRemove(a *App) error {
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}
+    //defer conn.Close()
 	if a != nil {
 		_, err = conn.Logs().RemoveAll(bson.M{"appname": a.Name})
 	} else {

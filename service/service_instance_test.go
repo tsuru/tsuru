@@ -19,7 +19,7 @@ import (
 )
 
 type InstanceSuite struct {
-	conn            *db.Storage
+	conn            *db.TsrStorage
 	service         *Service
 	serviceInstance *ServiceInstance
 	team            *auth.Team
@@ -32,7 +32,7 @@ func (s *InstanceSuite) SetUpSuite(c *gocheck.C) {
 	var err error
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_service_instance_test")
-	s.conn, err = db.Conn()
+	s.conn, err = db.NewStorage()
 	c.Assert(err, gocheck.IsNil)
 	s.user = &auth.User{Email: "cidade@raul.com", Password: "123"}
 	s.team = &auth.Team{Name: "Raul", Users: []string{s.user.Email}}

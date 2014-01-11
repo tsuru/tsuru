@@ -45,7 +45,7 @@ var HasKey gocheck.Checker = &hasKeyChecker{}
 func Test(t *testing.T) { gocheck.TestingT(t) }
 
 type S struct {
-	conn    *db.Storage
+	conn    *db.TsrStorage
 	hashed  string
 	user    *User
 	team    *Team
@@ -65,7 +65,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("admin-team", "admin")
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_auth_test")
-	s.conn, _ = db.Conn()
+	s.conn, _ = db.NewStorage()
 	s.user = &User{Email: "timeredbull@globo.com", Password: "123456"}
 	s.user.Create()
 	s.hashed = s.user.Password
@@ -85,7 +85,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	err = conn.Apps().Database.DropDatabase()

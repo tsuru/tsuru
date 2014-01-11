@@ -15,7 +15,7 @@ import (
 func Test(t *testing.T) { gocheck.TestingT(t) }
 
 type S struct {
-	conn *db.Storage
+	conn *db.TsrStorage
 }
 
 var _ = gocheck.Suite(&S{})
@@ -24,7 +24,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	var err error
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "router_fake_tests")
-	s.conn, err = db.Conn()
+	s.conn, err = db.NewStorage()
 	c.Assert(err, gocheck.IsNil)
 }
 

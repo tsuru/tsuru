@@ -25,7 +25,7 @@ type S struct {
 	server      *elbtest.Server
 	client      *elb.ELB
 	provisioner *testing.FakeProvisioner
-	conn        *db.Storage
+	conn        *db.TsrStorage
 }
 
 var _ = gocheck.Suite(&S{})
@@ -47,7 +47,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	app.Provisioner = s.provisioner
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "router_elb_tests")
-	s.conn, err = db.Conn()
+	s.conn, err = db.NewStorage()
 	c.Assert(err, gocheck.IsNil)
 }
 

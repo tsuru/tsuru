@@ -155,7 +155,7 @@ var saveUnits = action.Action{
 			}
 			a.AddUnit(&u)
 		}
-		conn, err := db.Conn()
+		conn, err := db.NewStorage()
 		if err != nil {
 			return nil, err
 		}

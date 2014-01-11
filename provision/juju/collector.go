@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/db/storage"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	_ "github.com/globocom/tsuru/router/elb"
@@ -38,7 +39,7 @@ func (p *JujuProvisioner) saveBootstrapMachine(m machine) error {
 	return err
 }
 
-func (p *JujuProvisioner) bootstrapCollection() *db.Collection {
+func (p *JujuProvisioner) bootstrapCollection() *storage.Collection {
 	name, err := config.GetString("juju:bootstrap-collection")
 	if err != nil {
 		log.Fatalf("FATAL: %s.", err)

@@ -70,7 +70,7 @@ var insertServiceInstance = action.Action{
 		if !ok {
 			return nil, stderrors.New("Second parameter must be a ServiceInstance.")
 		}
-		conn, err := db.Conn()
+		conn, err := db.NewStorage()
 		if err != nil {
 			return nil, err
 		}
@@ -86,7 +86,7 @@ var insertServiceInstance = action.Action{
 		if !ok {
 			return
 		}
-		conn, err := db.Conn()
+		conn, err := db.NewStorage()
 		if err != nil {
 			return
 		}
@@ -103,7 +103,7 @@ var addAppToServiceInstance = action.Action{
 		if !ok {
 			return nil, stderrors.New("Second parameter must be a ServiceInstance.")
 		}
-		conn, err := db.Conn()
+		conn, err := db.NewStorage()
 		if err != nil {
 			return nil, err
 		}

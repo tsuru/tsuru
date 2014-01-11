@@ -89,7 +89,7 @@ type Applog struct {
 //     err := app.Get()
 //     // do something with the app
 func (app *App) Get() error {
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}
@@ -151,7 +151,7 @@ func CreateApp(app *App, user *auth.User) error {
 // all service instances). Refer to Destroy docs for more details.
 func (app *App) unbind() error {
 	var instances []service.ServiceInstance
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}
@@ -205,7 +205,7 @@ func Delete(app *App) error {
 	if owner, err := auth.GetUserByEmail(app.Owner); err == nil {
 		auth.ReleaseApp(owner)
 	}
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}
@@ -269,7 +269,7 @@ func (app *App) RemoveUnit(id string) error {
 	}
 	app.removeUnits([]int{i})
 	app.unbindUnit(&unit)
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}
@@ -341,7 +341,7 @@ func (app *App) RemoveUnits(n uint) error {
 	if len(removed) == 0 {
 		return err
 	}
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}
@@ -365,7 +365,7 @@ func (app *App) RemoveUnits(n uint) error {
 // unbindUnit unbinds a unit from all service instances that are bound to the
 // app. It is used by RemoveUnit and RemoveUnits methods.
 func (app *App) unbindUnit(unit provision.AppUnit) error {
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}
@@ -441,7 +441,7 @@ func (app *App) Revoke(team *auth.Team) error {
 // GetTeams returns a slice of teams that have access to the app.
 func (app *App) GetTeams() []auth.Team {
 	var teams []auth.Team
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		log.Errorf("Failed to connect to the database: %s", err)
 		return nil
@@ -567,7 +567,7 @@ func (app *App) hookRunner() hookRunner {
 
 func (app *App) Ready() error {
 	app.State = "ready"
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}
@@ -621,7 +621,7 @@ func ListDeploys() ([]Deploy, error) {
 
 func listDeploys(app *App) ([]Deploy, error) {
 	var list []Deploy
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return nil, err
 	}
@@ -707,7 +707,7 @@ func (app *App) setEnvsToApp(envs []bind.EnvVar, publicOnly, useQueue bool) erro
 				app.setEnv(env)
 			}
 		}
-		conn, err := db.Conn()
+		conn, err := db.NewStorage()
 		if err != nil {
 			return err
 		}
@@ -743,7 +743,7 @@ func (app *App) UnsetEnvs(variableNames []string, publicOnly bool) error {
 				delete(app.Env, name)
 			}
 		}
-		conn, err := db.Conn()
+		conn, err := db.NewStorage()
 		if err != nil {
 			return err
 		}
@@ -770,7 +770,7 @@ func (app *App) SetCName(cname string) error {
 			return err
 		}
 	}
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}
@@ -788,7 +788,7 @@ func (app *App) UnsetCName() error {
 			return err
 		}
 	}
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}
@@ -818,7 +818,7 @@ func (app *App) Log(message, source string) error {
 	}
 	if len(logs) > 0 {
 		go notify(app.Name, logs)
-		conn, err := db.Conn()
+		conn, err := db.NewStorage()
 		if err != nil {
 			return err
 		}
@@ -831,7 +831,7 @@ func (app *App) Log(message, source string) error {
 // LastLogs returns a list of the last `lines` log of the app, matching the
 // given source.
 func (app *App) LastLogs(lines int, source string) ([]Applog, error) {
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return nil, err
 	}
@@ -858,7 +858,7 @@ func (app *App) LastLogs(lines int, source string) ([]Applog, error) {
 // list and a nil error.
 func List(u *auth.User) ([]App, error) {
 	var apps []App
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return nil, err
 	}
@@ -903,7 +903,7 @@ func DeployApp(app *App, version string, writer io.Writer) error {
 }
 
 func saveDeployData(appName string, duration time.Duration) error {
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}
@@ -917,7 +917,7 @@ func saveDeployData(appName string, duration time.Duration) error {
 }
 
 func incrementDeploy(app *App) error {
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}

@@ -13,6 +13,7 @@ import (
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/db/storage"
 	"github.com/globocom/tsuru/exec"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
@@ -336,12 +337,12 @@ func (p *dockerProvisioner) Commands() []cmd.Command {
 	}
 }
 
-func collection() *db.Collection {
+func collection() *storage.Collection {
 	name, err := config.GetString("docker:collection")
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		log.Errorf("Failed to connect to the database: %s", err)
 	}

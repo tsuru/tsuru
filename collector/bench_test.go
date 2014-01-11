@@ -30,7 +30,7 @@ func getFakeUnits(apps []string) []provision.Unit {
 	return units
 }
 
-func getFakeApps(conn *db.Storage) ([]app.App, []string) {
+func getFakeApps(conn *db.TsrStorage) ([]app.App, []string) {
 	apps := make([]app.App, 20)
 	names := make([]string, len(apps))
 	for i := range apps {
@@ -52,7 +52,7 @@ func BenchmarkUpdate(b *testing.B) {
 	b.StopTimer()
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "collector-benchmark")
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		panic(err)
 	}

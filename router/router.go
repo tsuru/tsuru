@@ -9,6 +9,7 @@ package router
 import (
 	"fmt"
 	"github.com/globocom/tsuru/db"
+	"github.com/globocom/tsuru/db/storage"
 	"labix.org/v2/mgo/bson"
 )
 
@@ -46,8 +47,8 @@ type Router interface {
 	Routes(name string) ([]string, error)
 }
 
-func collection() (*db.Collection, error) {
-	conn, err := db.Conn()
+func collection() (*storage.Collection, error) {
+	conn, err := db.NewStorage()
 	if err != nil {
 		return nil, err
 	}

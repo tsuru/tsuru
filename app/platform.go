@@ -16,7 +16,7 @@ type Platform struct {
 // Platforms returns the list of available platforms.
 func Platforms() ([]Platform, error) {
 	var platforms []Platform
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return nil, err
 	}
@@ -26,7 +26,7 @@ func Platforms() ([]Platform, error) {
 
 func getPlatform(name string) (*Platform, error) {
 	var p Platform
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return nil, err
 	}

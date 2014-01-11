@@ -16,7 +16,7 @@ import (
 )
 
 type ActionsSuite struct {
-	conn *db.Storage
+	conn *db.TsrStorage
 }
 
 var _ = gocheck.Suite(&ActionsSuite{})
@@ -26,12 +26,12 @@ func (s *ActionsSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("database:name", "tsuru_api_actions_test")
 	config.Set("auth:salt", "tsuru-salt")
 	var err error
-	s.conn, err = db.Conn()
+	s.conn, err = db.NewStorage()
 	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *ActionsSuite) TearDownSuite(c *gocheck.C) {
-	conn, _ := db.Conn()
+	conn, _ := db.NewStorage()
 	defer conn.Close()
 	conn.Apps().Database.DropDatabase()
 }
