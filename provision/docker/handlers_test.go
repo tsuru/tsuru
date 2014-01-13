@@ -6,6 +6,7 @@ package docker
 
 import (
 	"bytes"
+	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
 	"launchpad.net/gocheck"
 	"net/http"
@@ -29,7 +30,9 @@ func (s *HandlersSuite) TearDownSuite(c *gocheck.C) {
 	s.conn.Close()
 }
 
-func (s *HandlersSuite) TestaddNodeHandler(c *gocheck.C) {
+func (s *HandlersSuite) TestAddNodeHandler(c *gocheck.C) {
+	config.Set("docker:segregate", true)
+	defer config.Unset("docker:segregate")
 	b := bytes.NewBufferString(`{"address": "host.com:4243", "ID": "server01", "teams": "myteam"}`)
 	req, err := http.NewRequest("POST", "/node/add", b)
 	c.Assert(err, gocheck.IsNil)
@@ -42,7 +45,9 @@ func (s *HandlersSuite) TestaddNodeHandler(c *gocheck.C) {
 	c.Assert(n, gocheck.Equals, 1)
 }
 
-func (s *HandlersSuite) TestremoveNodeHandler(c *gocheck.C) {
+func (s *HandlersSuite) TestRemoveNodeHandler(c *gocheck.C) {
+	config.Set("docker:segregate", true)
+	defer config.Unset("docker:segregate")
 	err := s.conn.Collection(schedulerCollection).Insert(map[string]string{"address": "host.com:4243", "_id": "server01", "teams": "myteam"})
 	c.Assert(err, gocheck.IsNil)
 	n, err := s.conn.Collection(schedulerCollection).FindId("server01").Count()
