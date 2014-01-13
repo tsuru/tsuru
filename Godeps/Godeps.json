@@ -114,7 +114,7 @@
 		},
 		{
 			"ImportPath": "github.com/vmihailenco/bufio",
-			"Rev": "77549187b2c18cc26f0127a8afd40c379dd99ab2"
+			"Rev": "5a6706bb583bf168d886202cb376c877e9c85521"
 		},
 		{
 			"ImportPath": "labix.org/v2/mgo",
