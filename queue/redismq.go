@@ -14,13 +14,13 @@ import (
 	"time"
 )
 
-type redismqQ struct {
+type RedismqQ struct {
 	name     string
 	queue    *redismq.Queue
 	consumer *redismq.Consumer
 }
 
-func (r *redismqQ) Put(m *Message, delay time.Duration) error {
+func (r *RedismqQ) Put(m *Message, delay time.Duration) error {
 	var buf bytes.Buffer
 	err := json.NewEncoder(&buf).Encode(m)
 	if err != nil {
@@ -37,7 +37,7 @@ func (r *redismqQ) Put(m *Message, delay time.Duration) error {
 	}
 }
 
-func (r *redismqQ) Get(timeout time.Duration) (*Message, error) {
+func (r *RedismqQ) Get(timeout time.Duration) (*Message, error) {
 	packChan := make(chan *redismq.Package)
 	errChan := make(chan error)
 	quit := make(chan int)

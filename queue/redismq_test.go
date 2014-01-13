@@ -30,7 +30,7 @@ func (s *RedismqSuite) TestPut(c *gocheck.C) {
 		Action: "regenerate-apprc",
 		Args:   []string{"myapp"},
 	}
-	q := redismqQ{name: "default", queue: s.queue, consumer: s.consumer}
+	q := RedismqQ{name: "default", queue: s.queue, consumer: s.consumer}
 	err := q.Put(&msg, 0)
 	c.Assert(err, gocheck.IsNil)
 	got, err := q.Get(1e6)
@@ -43,7 +43,7 @@ func (s *RedismqSuite) TestPutWithDelay(c *gocheck.C) {
 		Action: "regenerate-apprc",
 		Args:   []string{"myapp"},
 	}
-	q := redismqQ{name: "default", queue: s.queue, consumer: s.consumer}
+	q := RedismqQ{name: "default", queue: s.queue, consumer: s.consumer}
 	err := q.Put(&msg, 1e9)
 	c.Assert(err, gocheck.IsNil)
 	_, err = q.Get(1e6)
@@ -59,7 +59,7 @@ func (s *RedismqSuite) TestGet(c *gocheck.C) {
 		Action: "regenerate-apprc",
 		Args:   []string{"myapp"},
 	}
-	q := redismqQ{name: "default", queue: s.queue, consumer: s.consumer}
+	q := RedismqQ{name: "default", queue: s.queue, consumer: s.consumer}
 	err := q.Put(&msg, 0)
 	c.Assert(err, gocheck.IsNil)
 	got, err := q.Get(1e6)
@@ -68,7 +68,7 @@ func (s *RedismqSuite) TestGet(c *gocheck.C) {
 }
 
 func (s *RedismqSuite) TestGetTimeout(c *gocheck.C) {
-	q := redismqQ{name: "default", queue: s.queue, consumer: s.consumer}
+	q := RedismqQ{name: "default", queue: s.queue, consumer: s.consumer}
 	got, err := q.Get(1e6)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(got, gocheck.IsNil)
