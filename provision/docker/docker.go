@@ -53,27 +53,35 @@ func getDockerServers() []cluster.Node {
 		nodes = append(nodes, node)
 		clusterNodes[id] = server
 	}
-	n, err := segScheduler.Nodes()
+	n, err := getScheduler().Nodes()
 	if err != nil {
 		log.Error(err.Error())
 	}
 	for _, node := range n {
-        nodes = append(nodes, node)
-        clusterNodes[node.ID] = node.Address
+		nodes = append(nodes, node)
+		clusterNodes[node.ID] = node.Address
 	}
 	return nodes
+}
+
+func getScheduler() cluster.Scheduler {
+	var scheduler cluster.Scheduler
+	if segregate, _ := config.GetBool("docker:segregate"); segregate {
+		scheduler = segScheduler
+	} else {
+		scheduler = &cluster.RoundRobin{}
+	}
+	return scheduler
 }
 
 func dockerCluster() *cluster.Cluster {
 	cmutex.Lock()
 	defer cmutex.Unlock()
 	if dCluster == nil {
-		if segregate, _ := config.GetBool("docker:segregate"); segregate {
-			dCluster, _ = cluster.New(segScheduler)
-		} else {
-			nodes := getDockerServers()
-			dCluster, _ = cluster.New(nil, nodes...)
-		}
+		var nodes []cluster.Node
+		scheduler := getScheduler()
+		nodes = getDockerServers()
+		dCluster, _ = cluster.New(scheduler, nodes...)
 		if redisServer, err := config.GetString("docker:scheduler:redis-server"); err == nil {
 			prefix, _ := config.GetString("docker:scheduler:redis-prefix")
 			if password, err := config.GetString("docker:scheduler:redis-password"); err == nil {

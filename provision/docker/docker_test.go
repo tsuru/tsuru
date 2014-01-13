@@ -786,6 +786,8 @@ func (s *S) TestGetDockerServersShouldSearchFromConfig(c *gocheck.C) {
 }
 
 func (s *S) TestGetDockerServerShouldSearchFromDatabase(c *gocheck.C) {
+	config.Set("docker:segregate", true)
+	defer config.Unset("docker:segregate")
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
@@ -802,24 +804,6 @@ func (s *S) TestGetDockerServerShouldSearchFromDatabase(c *gocheck.C) {
 	c.Assert(servers, gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestGetDockerServerShouldNotAppendServersWithTeams(c *gocheck.C) {
-	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Close()
-	err = conn.Collection(schedulerCollection).Insert(
-		bson.M{"_id": "server01", "address": "http://server01.com:4243"})
-	c.Assert(err, gocheck.IsNil)
-	err = conn.Collection(schedulerCollection).Insert(
-		bson.M{"_id": "server02", "address": "http://server02.com:4243", "teams": []string{"foo"}})
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Collection(schedulerCollection).RemoveAll(nil)
-	servers := getDockerServers()
-	expected := []cluster.Node{
-		{ID: "server01", Address: "http://server01.com:4243"},
-	}
-	c.Assert(servers, gocheck.DeepEquals, expected)
-}
-
 func (s *S) TestGetDockerServerShouldMergeServersFromConfWithDatabase(c *gocheck.C) {
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
@@ -829,6 +813,8 @@ func (s *S) TestGetDockerServerShouldMergeServersFromConfWithDatabase(c *gocheck
 	defer conn.Collection(schedulerCollection).RemoveAll(nil)
 	config.Set("docker:servers", []string{"http://server0.com:4243"})
 	defer config.Unset("docker:servers")
+	config.Set("docker:segregate", true)
+	defer config.Unset("docker:segregate")
 	servers := getDockerServers()
 	expected := []cluster.Node{
 		{ID: "server0", Address: "http://server0.com:4243"},
