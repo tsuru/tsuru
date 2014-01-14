@@ -51,6 +51,8 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 	c.Assert(cont, gocheck.FitsTypeOf, container{})
 	c.Assert(cont.AppName, gocheck.Equals, app.GetName())
 	c.Assert(cont.Type, gocheck.Equals, app.GetPlatform())
+	c.Assert(cont.Name, gocheck.Not(gocheck.Equals), "")
+	c.Assert(cont.Name, gocheck.HasLen, 20)
 	u, _ := url.Parse(s.server.URL())
 	host, _, _ := net.SplitHostPort(u.Host)
 	c.Assert(cont.HostAddr, gocheck.Equals, host)

@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,6 +6,7 @@ package docker
 
 import (
 	"bytes"
+	"crypto"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,6 +26,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 )
 
 var (
@@ -129,10 +131,17 @@ type container struct {
 	Status   string
 	Version  string
 	Image    string
+	Name     string
 }
 
 func (c *container) getAddress() string {
 	return fmt.Sprintf("http://%s:%s", c.HostAddr, c.HostPort)
+}
+
+func containerName() string {
+	h := crypto.MD5.New()
+	h.Write([]byte(time.Now().Format(time.RFC3339Nano)))
+	return fmt.Sprintf("%x", h.Sum(nil))[:20]
 }
 
 // newContainer creates a new container in Docker and stores it in the database.
@@ -140,6 +149,7 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 	cont := container{
 		AppName: app.GetName(),
 		Type:    app.GetPlatform(),
+		Name:    containerName(),
 	}
 	port, err := getPort()
 	if err != nil {
