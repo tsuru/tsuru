@@ -63,6 +63,9 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	f.Close()
 	s.server, err = dtesting.NewServer(nil)
 	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) SetUpTest(c *gocheck.C) {
 	dCluster, _ = cluster.New(nil,
 		cluster.Node{ID: "server", Address: s.server.URL()},
 	)
@@ -74,11 +77,6 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 	err := coll.Database.DropDatabase()
 	c.Assert(err, gocheck.IsNil)
 	fsystem = nil
-}
-
-func (s *S) SetUp(c *gocheck.C) {
-	clusterNodes = map[string]string{"server": s.server.URL()}
-	config.Unset("docker:registry")
 }
 
 type unitSlice []provision.Unit

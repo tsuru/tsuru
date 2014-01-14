@@ -6,7 +6,6 @@ package docker
 
 import (
 	"encoding/json"
-	"github.com/globocom/docker-cluster/cluster"
 	"github.com/globocom/tsuru/api"
 	"io"
 	"io/ioutil"
@@ -24,11 +23,7 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	scheduler := getScheduler()
-	if r, ok := scheduler.(cluster.Registrable); ok {
-		return r.Register(params)
-	}
-	return nil
+	return dCluster.Register(params)
 }
 
 func removeNodeHandler(w http.ResponseWriter, r *http.Request) error {
@@ -36,11 +31,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	scheduler := getScheduler()
-	if r, ok := scheduler.(cluster.Registrable); ok {
-		return r.Unregister(params)
-	}
-	return nil
+	return dCluster.Unregister(params)
 }
 
 func unmarshal(body io.ReadCloser) (map[string]string, error) {
