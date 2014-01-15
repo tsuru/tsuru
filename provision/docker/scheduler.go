@@ -38,7 +38,7 @@ type node struct {
 
 type segregatedScheduler struct{}
 
-func (s segregatedScheduler) Schedule(cfg *docker.Config) (string, *docker.Container, error) {
+func (s segregatedScheduler) Schedule(opts dcli.CreateContainerOptions, cfg *docker.Config) (string, *docker.Container, error) {
 	image := cfg.Image
 	namespace, err := config.GetString("docker:repository-namespace")
 	if err != nil {
@@ -53,18 +53,18 @@ func (s segregatedScheduler) Schedule(cfg *docker.Config) (string, *docker.Conta
 	app := app.App{Name: appname}
 	err = app.Get()
 	if err != nil {
-		return s.fallback(cfg)
+		return s.fallback(opts, cfg)
 	}
 	var nodes []node
 	query := bson.M{"teams": bson.M{"$in": app.Teams}}
 	err = conn.Collection(schedulerCollection).Find(query).All(&nodes)
 	if err != nil || len(nodes) < 1 {
-		return s.fallback(cfg)
+		return s.fallback(opts, cfg)
 	}
-	return s.handle(cfg, nodes)
+	return s.handle(opts, cfg, nodes)
 }
 
-func (s segregatedScheduler) fallback(cfg *docker.Config) (string, *docker.Container, error) {
+func (s segregatedScheduler) fallback(opts dcli.CreateContainerOptions, cfg *docker.Config) (string, *docker.Container, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return "", nil, err
@@ -75,16 +75,16 @@ func (s segregatedScheduler) fallback(cfg *docker.Config) (string, *docker.Conta
 	if err != nil || len(nodes) < 1 {
 		return "", nil, errNoFallback
 	}
-	return s.handle(cfg, nodes)
+	return s.handle(opts, cfg, nodes)
 }
 
-func (segregatedScheduler) handle(cfg *docker.Config, nodes []node) (string, *docker.Container, error) {
+func (segregatedScheduler) handle(opts dcli.CreateContainerOptions, cfg *docker.Config, nodes []node) (string, *docker.Container, error) {
 	node := nodes[rand.Intn(len(nodes))]
 	client, err := dcli.NewClient(node.Address)
 	if err != nil {
 		return node.ID, nil, err
 	}
-	container, err := client.CreateContainer(dcli.CreateContainerOptions{}, cfg)
+	container, err := client.CreateContainer(opts, cfg)
 	return node.ID, container, err
 }
 

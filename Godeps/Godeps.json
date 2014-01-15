@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/globocom/tsuru",
-	"GoVersion": "devel +7e1a4e190b02 Thu Dec 19 13:02:06 2013 +0900",
+	"GoVersion": "devel +6ec0276dad0e Mon Dec 02 18:03:25 2013 -0800",
 	"Packages": [
 		"./..."
 	],
@@ -76,11 +76,11 @@
 		},
 		{
 			"ImportPath": "github.com/globocom/docker-cluster/cluster",
-			"Rev": "14ea591dd1cf66c8d6523f8817108d17a8d19b2e"
+			"Rev": "b43ea570c351131857ab70dd124ace9dcc72a74e"
 		},
 		{
 			"ImportPath": "github.com/globocom/docker-cluster/storage",
-			"Rev": "14ea591dd1cf66c8d6523f8817108d17a8d19b2e"
+			"Rev": "b43ea570c351131857ab70dd124ace9dcc72a74e"
 		},
 		{
 			"ImportPath": "github.com/globocom/gandalf/testing",
@@ -128,22 +128,22 @@
 		},
 		{
 			"ImportPath": "launchpad.net/goamz/aws",
-			"Comment": "43",
+			"Comment": "44",
 			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
 		},
 		{
 			"ImportPath": "launchpad.net/goamz/ec2",
-			"Comment": "43",
+			"Comment": "44",
 			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
 		},
 		{
 			"ImportPath": "launchpad.net/goamz/iam",
-			"Comment": "43",
+			"Comment": "44",
 			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
 		},
 		{
 			"ImportPath": "launchpad.net/goamz/s3",
-			"Comment": "43",
+			"Comment": "44",
 			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
 		},
 		{

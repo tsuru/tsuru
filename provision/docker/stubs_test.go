@@ -162,7 +162,7 @@ func startDockerTestServer(containerPort string, calls *int) (func(), *httptest.
 	}))
 	var err error
 	oldCluster := dockerCluster()
-	dCluster, err = cluster.New(nil,
+	dCluster, err = cluster.New(nil, nil,
 		cluster.Node{ID: "server", Address: server.URL},
 	)
 	if err != nil {

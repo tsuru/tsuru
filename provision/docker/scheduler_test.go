@@ -80,23 +80,24 @@ func (s *SchedulerSuite) TestSchedulerSchedule(c *gocheck.C) {
 	defer coll.Remove(bson.M{"_id": bson.M{"$in": []string{"server0", "server1", "server2"}}})
 	var scheduler segregatedScheduler
 	config := docker.Config{Cmd: []string{"/usr/sbin/sshd", "-D"}, Image: "tsuru/impius"}
-	node, _, err := scheduler.Schedule(&config)
+	opts := dcli.CreateContainerOptions{}
+	node, _, err := scheduler.Schedule(opts, &config)
 	c.Assert(err, gocheck.IsNil)
 	c.Check(node, gocheck.Equals, "server1")
 	config = docker.Config{Cmd: []string{"/usr/sbin/sshd", "-D"}, Image: "tsuru/mirror"}
-	node, _, err = scheduler.Schedule(&config)
+	node, _, err = scheduler.Schedule(opts, &config)
 	c.Assert(err, gocheck.IsNil)
 	c.Check(node == "server0" || node == "server1", gocheck.Equals, true)
 	config = docker.Config{Cmd: []string{"/usr/sbin/sshd", "-D"}, Image: "tsuru/python"}
-	node, _, err = scheduler.Schedule(&config)
+	node, _, err = scheduler.Schedule(opts, &config)
 	c.Assert(err, gocheck.IsNil)
 	c.Check(node, gocheck.Equals, "server2")
 	config = docker.Config{Cmd: []string{"/usr/sbin/sshd", "-D"}, Image: "tsuru/dedication"}
-	node, _, err = scheduler.Schedule(&config)
+	node, _, err = scheduler.Schedule(opts, &config)
 	c.Assert(err, gocheck.IsNil)
 	c.Check(node, gocheck.Equals, "server2")
 	config = docker.Config{Cmd: []string{"/usr/sbin/sshd", "-D"}}
-	node, _, _ = scheduler.Schedule(&config)
+	node, _, _ = scheduler.Schedule(opts, &config)
 	c.Check(node, gocheck.Equals, "server2")
 }
 
@@ -107,7 +108,8 @@ func (s *SchedulerSuite) TestSchedulerNoFallback(c *gocheck.C) {
 	defer s.storage.Apps().Remove(bson.M{"name": app.Name})
 	config := docker.Config{Cmd: []string{"/usr/sbin/sshd", "-D"}, Image: "tsuru/python"}
 	var scheduler segregatedScheduler
-	node, container, err := scheduler.Schedule(&config)
+	opts := dcli.CreateContainerOptions{}
+	node, container, err := scheduler.Schedule(opts, &config)
 	c.Assert(node, gocheck.Equals, "")
 	c.Assert(container, gocheck.IsNil)
 	c.Assert(err, gocheck.Equals, errNoFallback)
@@ -119,7 +121,8 @@ func (s *SchedulerSuite) TestSchedulerNoNamespace(c *gocheck.C) {
 	config.Unset("docker:repository-namespace")
 	config := docker.Config{Cmd: []string{"/usr/sbin/sshd", "-D"}, Image: "tsuru/python"}
 	var scheduler segregatedScheduler
-	node, container, err := scheduler.Schedule(&config)
+	opts := dcli.CreateContainerOptions{}
+	node, container, err := scheduler.Schedule(opts, &config)
 	c.Assert(node, gocheck.Equals, "")
 	c.Assert(container, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
@@ -136,7 +139,8 @@ func (s *SchedulerSuite) TestSchedulerInvalidEndpoint(c *gocheck.C) {
 	defer coll.Remove(bson.M{"_id": "server0"})
 	config := docker.Config{Cmd: []string{"/usr/sbin/sshd", "-D"}, Image: "tsuru/bill"}
 	var scheduler segregatedScheduler
-	node, container, err := scheduler.Schedule(&config)
+	opts := dcli.CreateContainerOptions{}
+	node, container, err := scheduler.Schedule(opts, &config)
 	c.Assert(node, gocheck.Equals, "server0")
 	c.Assert(container, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)

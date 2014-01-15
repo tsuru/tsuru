@@ -31,7 +31,7 @@ func (s *HandlersSuite) TearDownSuite(c *gocheck.C) {
 }
 
 func (s *HandlersSuite) TestAddNodeHandler(c *gocheck.C) {
-	dCluster, _ = cluster.New(segScheduler)
+	dCluster, _ = cluster.New(segScheduler, nil)
 	b := bytes.NewBufferString(`{"address": "host.com:4243", "ID": "server01", "teams": "myteam"}`)
 	req, err := http.NewRequest("POST", "/node/add", b)
 	c.Assert(err, gocheck.IsNil)
@@ -45,7 +45,7 @@ func (s *HandlersSuite) TestAddNodeHandler(c *gocheck.C) {
 }
 
 func (s *HandlersSuite) TestRemoveNodeHandler(c *gocheck.C) {
-	dCluster, _ = cluster.New(segScheduler)
+	dCluster, _ = cluster.New(segScheduler, nil)
 	err := s.conn.Collection(schedulerCollection).Insert(map[string]string{"address": "host.com:4243", "_id": "server01", "teams": "myteam"})
 	c.Assert(err, gocheck.IsNil)
 	n, err := s.conn.Collection(schedulerCollection).FindId("server01").Count()

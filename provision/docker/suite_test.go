@@ -66,7 +66,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *S) SetUpTest(c *gocheck.C) {
-	dCluster, _ = cluster.New(nil,
+	dCluster, _ = cluster.New(nil, nil,
 		cluster.Node{ID: "server", Address: s.server.URL()},
 	)
 }

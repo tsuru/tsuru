@@ -61,21 +61,22 @@ func getDockerServers() []cluster.Node {
 func dockerCluster() *cluster.Cluster {
 	cmutex.Lock()
 	defer cmutex.Unlock()
+	var clusterStorage cluster.Storage
 	if dCluster == nil {
-		var nodes []cluster.Node
-		if segregate, _ := config.GetBool("docker:segregate"); segregate {
-			dCluster, _ = cluster.New(segScheduler)
-		} else {
-			nodes = getDockerServers()
-			dCluster, _ = cluster.New(nil, nodes...)
-		}
 		if redisServer, err := config.GetString("docker:scheduler:redis-server"); err == nil {
 			prefix, _ := config.GetString("docker:scheduler:redis-prefix")
 			if password, err := config.GetString("docker:scheduler:redis-password"); err == nil {
-				dCluster.SetStorage(storage.AuthenticatedRedis(redisServer, password, prefix))
+				clusterStorage = storage.AuthenticatedRedis(redisServer, password, prefix)
 			} else {
-				dCluster.SetStorage(storage.Redis(redisServer, prefix))
+				clusterStorage = storage.Redis(redisServer, prefix)
 			}
+		}
+		var nodes []cluster.Node
+		if segregate, _ := config.GetBool("docker:segregate"); segregate {
+			dCluster, _ = cluster.New(segScheduler, clusterStorage)
+		} else {
+			nodes = getDockerServers()
+			dCluster, _ = cluster.New(nil, clusterStorage, nodes...)
 		}
 	}
 	return dCluster
@@ -169,12 +170,13 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 		AttachStdout: false,
 		AttachStderr: false,
 	}
-	hostID, c, err := dockerCluster().CreateContainer(&config)
+	opts := dclient.CreateContainerOptions{}
+	hostID, c, err := dockerCluster().CreateContainer(opts, &config)
 	if err == dclient.ErrNoSuchImage {
 		var buf bytes.Buffer
 		pullOpts := dclient.PullImageOptions{Repository: imageId}
 		dockerCluster().PullImage(pullOpts, &buf)
-		hostID, c, err = dockerCluster().CreateContainer(&config)
+		hostID, c, err = dockerCluster().CreateContainer(opts, &config)
 	}
 	if err != nil {
 		log.Errorf("error on creating container in docker %s - %s", cont.AppName, err)

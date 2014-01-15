@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -369,7 +369,7 @@ func (s *S) TestContainerNetworkInfoNotFound(c *gocheck.C) {
 	defer server.Close()
 	oldCluster := dockerCluster()
 	var err error
-	dCluster, err = cluster.New(nil,
+	dCluster, err = cluster.New(nil, nil,
 		cluster.Node{ID: "server", Address: server.URL},
 	)
 	c.Assert(err, gocheck.IsNil)
@@ -742,7 +742,7 @@ func (s *S) TestGetHostAddrWithSegregatedScheduler(c *gocheck.C) {
 func (s *S) TestDockerCluster(c *gocheck.C) {
 	config.Set("docker:servers", []string{"http://localhost:4243", "http://10.10.10.10:4243"})
 	defer config.Unset("docker:servers")
-	expected, _ := cluster.New(nil,
+	expected, _ := cluster.New(nil, nil,
 		cluster.Node{ID: "server0", Address: "http://localhost:4243"},
 		cluster.Node{ID: "server1", Address: "http://10.10.10.10:4243"},
 	)
@@ -762,7 +762,7 @@ func (s *S) TestDockerCluster(c *gocheck.C) {
 func (s *S) TestDockerClusterSegregated(c *gocheck.C) {
 	config.Set("docker:segregate", true)
 	defer config.Unset("docker:segregate")
-	expected, _ := cluster.New(segScheduler)
+	expected, _ := cluster.New(segScheduler, nil)
 	oldDockerCluster := dCluster
 	cmutex.Lock()
 	dCluster = nil
@@ -779,7 +779,6 @@ func (s *S) TestDockerClusterSegregated(c *gocheck.C) {
 func (s *S) TestGetDockerServersShouldSearchFromConfig(c *gocheck.C) {
 	config.Set("docker:servers", []string{"http://server01.com:4243", "http://server02.com:4243"})
 	defer config.Unset("docker:servers")
-	dCluster, _ = cluster.New(nil)
 	servers := getDockerServers()
 	expected := []cluster.Node{
 		{ID: "server0", Address: "http://server01.com:4243"},
@@ -803,7 +802,7 @@ func (s *S) TestReplicateImage(c *gocheck.C) {
 	defer config.Unset("docker:registry")
 	cmutex.Lock()
 	oldDockerCluster := dCluster
-	dCluster, _ = cluster.New(nil, cluster.Node{ID: "server0", Address: server.URL()})
+	dCluster, _ = cluster.New(nil, nil, cluster.Node{ID: "server0", Address: server.URL()})
 	cmutex.Unlock()
 	defer func() {
 		cmutex.Lock()
@@ -838,7 +837,7 @@ func (s *S) TestReplicateImageWithoutRegistryInTheImageName(c *gocheck.C) {
 	defer config.Unset("docker:registry")
 	cmutex.Lock()
 	oldDockerCluster := dCluster
-	dCluster, _ = cluster.New(nil, cluster.Node{ID: "server0", Address: server.URL()})
+	dCluster, _ = cluster.New(nil, nil, cluster.Node{ID: "server0", Address: server.URL()})
 	cmutex.Unlock()
 	defer func() {
 		cmutex.Lock()
@@ -867,7 +866,7 @@ func (s *S) TestReplicateImageNoRegistry(c *gocheck.C) {
 	defer server.Stop()
 	cmutex.Lock()
 	oldDockerCluster := dCluster
-	dCluster, _ = cluster.New(nil, cluster.Node{ID: "server0", Address: server.URL()})
+	dCluster, _ = cluster.New(nil, nil, cluster.Node{ID: "server0", Address: server.URL()})
 	cmutex.Unlock()
 	defer func() {
 		cmutex.Lock()
