@@ -147,10 +147,11 @@ func containerName() string {
 
 // newContainer creates a new container in Docker and stores it in the database.
 func newContainer(app provision.App, imageId string, cmds []string) (container, error) {
+	contName := containerName()
 	cont := container{
 		AppName: app.GetName(),
 		Type:    app.GetPlatform(),
-		Name:    containerName(),
+		Name:    contName,
 	}
 	port, err := getPort()
 	if err != nil {
@@ -170,7 +171,7 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 		AttachStdout: false,
 		AttachStderr: false,
 	}
-	opts := dclient.CreateContainerOptions{}
+	opts := dclient.CreateContainerOptions{Name: contName}
 	hostID, c, err := dockerCluster().CreateContainer(opts, &config)
 	if err == dclient.ErrNoSuchImage {
 		var buf bytes.Buffer
