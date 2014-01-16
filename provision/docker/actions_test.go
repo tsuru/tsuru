@@ -40,45 +40,19 @@ func (s *S) TestCreateContainerForward(c *gocheck.C) {
 	port, err := getPort()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cont.Port, gocheck.Equals, port)
+	coll := collection()
+	defer coll.Close()
+	defer coll.Remove(bson.M{"id": cont.ID})
+	retrieved, err := getContainer(cont.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(retrieved.ID, gocheck.Equals, cont.ID)
+	c.Assert(retrieved.Status, gocheck.Equals, "created")
 }
 
 func (s *S) TestCreateContainerBackward(c *gocheck.C) {
 	cont := container{ID: "ble"}
 	context := action.BWContext{FWResult: cont}
 	createContainer.Backward(context)
-}
-
-func (s *S) TestInsertContainerName(c *gocheck.C) {
-	c.Assert(insertContainer.Name, gocheck.Equals, "insert-container")
-}
-
-func (s *S) TestInsertContainerForward(c *gocheck.C) {
-	cont := container{ID: "someid"}
-	context := action.FWContext{Previous: cont}
-	r, err := insertContainer.Forward(context)
-	c.Assert(err, gocheck.IsNil)
-	coll := collection()
-	defer coll.Close()
-	defer coll.Remove(bson.M{"id": cont.ID})
-	cont = r.(container)
-	var retrieved container
-	err = coll.Find(bson.M{"id": cont.ID}).One(&retrieved)
-	c.Assert(retrieved.ID, gocheck.Equals, cont.ID)
-	c.Assert(retrieved.Status, gocheck.Equals, "created")
-	c.Assert(cont, gocheck.FitsTypeOf, container{})
-}
-
-func (s *S) TestInsertContainerBackward(c *gocheck.C) {
-	cont := container{ID: "someid"}
-	coll := collection()
-	defer coll.Close()
-	err := coll.Insert(&cont)
-	c.Assert(err, gocheck.IsNil)
-	context := action.BWContext{FWResult: cont}
-	insertContainer.Backward(context)
-	err = coll.Find(bson.M{"id": cont.ID}).One(&cont)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "not found")
 }
 
 func (s *S) TestAddRouteName(c *gocheck.C) {

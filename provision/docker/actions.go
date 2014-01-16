@@ -51,27 +51,6 @@ var setNetworkInfo = action.Action{
 	},
 }
 
-var insertContainer = action.Action{
-	Name: "insert-container",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		c := ctx.Previous.(container)
-		c.Status = "created"
-		coll := collection()
-		defer coll.Close()
-		if err := coll.Insert(c); err != nil {
-			log.Errorf("error on inserting container into database %s - %s", c.ID, err)
-			return nil, err
-		}
-		return c, nil
-	},
-	Backward: func(ctx action.BWContext) {
-		c := ctx.FWResult.(container)
-		coll := collection()
-		defer coll.Close()
-		coll.Remove(bson.M{"id": c.ID})
-	},
-}
-
 var addRoute = action.Action{
 	Name: "add-route",
 	Forward: func(ctx action.FWContext) (action.Result, error) {

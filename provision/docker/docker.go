@@ -152,6 +152,13 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 		AppName: app.GetName(),
 		Type:    app.GetPlatform(),
 		Name:    contName,
+		Status:  "created",
+	}
+	coll := collection()
+	defer coll.Close()
+	if err := coll.Insert(cont); err != nil {
+		log.Errorf("error on inserting container into database %s - %s", cont.Name, err)
+		return container{}, err
 	}
 	port, err := getPort()
 	if err != nil {
@@ -186,6 +193,11 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 	cont.ID = c.ID
 	cont.Port = port
 	cont.HostAddr = getHostAddr(hostID)
+	err = coll.Update(bson.M{"name": cont.Name}, cont)
+	if err != nil {
+		log.Errorf("error on updating container into database %s - %s", cont.ID, err)
+		return container{}, err
+	}
 	return cont, nil
 }
 
@@ -238,7 +250,7 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 		return "", err
 	}
 	imageId := getImage(app)
-	actions := []*action.Action{&createContainer, &startContainer, &insertContainer}
+	actions := []*action.Action{&createContainer, &startContainer}
 	pipeline := action.NewPipeline(actions...)
 	err = pipeline.Execute(app, imageId, commands)
 	if err != nil {
@@ -270,7 +282,7 @@ func start(app provision.App, imageId string, w io.Writer) (*container, error) {
 	if err != nil {
 		return nil, err
 	}
-	actions := []*action.Action{&createContainer, &startContainer, &setNetworkInfo, &insertContainer, &addRoute}
+	actions := []*action.Action{&createContainer, &startContainer, &setNetworkInfo, &addRoute}
 	pipeline := action.NewPipeline(actions...)
 	err = pipeline.Execute(app, imageId, commands)
 	if err != nil {
