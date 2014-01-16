@@ -9,6 +9,7 @@ import (
 	"github.com/globocom/tsuru/provision"
 	_ "github.com/globocom/tsuru/router/hipache"
 	_ "github.com/globocom/tsuru/router/testing"
+	"labix.org/v2/mgo/bson"
 	"net"
 	"strings"
 	"sync"
@@ -97,5 +98,5 @@ func fixContainer(container *container, ip, port string) error {
 	router.AddRoute(container.AppName, container.getAddress())
 	coll := collection()
 	defer coll.Close()
-	return coll.UpdateId(container.ID, container)
+	return coll.Update(bson.M{"id": container.ID}, container)
 }

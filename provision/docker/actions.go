@@ -68,7 +68,7 @@ var insertContainer = action.Action{
 		c := ctx.FWResult.(container)
 		coll := collection()
 		defer coll.Close()
-		coll.RemoveId(c.ID)
+		coll.Remove(bson.M{"id": c.ID})
 	},
 }
 

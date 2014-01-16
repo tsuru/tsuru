@@ -59,10 +59,10 @@ func (s *S) TestInsertContainerForward(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	coll := collection()
 	defer coll.Close()
-	defer coll.RemoveId(cont.ID)
+	defer coll.Remove(bson.M{"id": cont.ID})
 	cont = r.(container)
 	var retrieved container
-	err = coll.FindId(cont.ID).One(&retrieved)
+	err = coll.Find(bson.M{"id": cont.ID}).One(&retrieved)
 	c.Assert(retrieved.ID, gocheck.Equals, cont.ID)
 	c.Assert(retrieved.Status, gocheck.Equals, "created")
 	c.Assert(cont, gocheck.FitsTypeOf, container{})
@@ -76,7 +76,7 @@ func (s *S) TestInsertContainerBackward(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	context := action.BWContext{FWResult: cont}
 	insertContainer.Backward(context)
-	err = coll.FindId(cont.ID).One(&cont)
+	err = coll.Find(bson.M{"id": cont.ID}).One(&cont)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "not found")
 }

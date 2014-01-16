@@ -67,7 +67,7 @@ func (s *S) TestProvisionerRestartCallsTheRestartHook(c *gocheck.C) {
 	cont.HostAddr = host
 	coll := collection()
 	defer coll.Close()
-	err = coll.UpdateId(cont.ID, cont)
+	err = coll.Update(bson.M{"id": cont.ID}, cont)
 	c.Assert(err, gocheck.IsNil)
 	err = p.Restart(app)
 	c.Assert(err, gocheck.IsNil)
@@ -334,7 +334,7 @@ func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
 	coll := collection()
 	defer coll.Close()
 	coll.Insert(container{ID: "c-89320", AppName: app.GetName(), Version: "a345fe"})
-	defer coll.RemoveId("c-89320")
+	defer coll.RemoveId(bson.M{"id": "c-89320"})
 	units, err := p.AddUnits(app, 3)
 	c.Assert(err, gocheck.IsNil)
 	defer coll.RemoveAll(bson.M{"appname": app.GetName()})
@@ -446,7 +446,7 @@ func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {
 	container.HostAddr = host
 	coll := collection()
 	defer coll.Close()
-	coll.UpdateId(container.ID, container)
+	coll.Update(bson.M{"id": container.ID}, container)
 	var stdout, stderr bytes.Buffer
 	var p dockerProvisioner
 	err = p.ExecuteCommand(&stdout, &stderr, app, "ls", "-ar")
@@ -477,12 +477,12 @@ func (s *S) TestProvisionerExecuteCommandMultipleContainers(c *gocheck.C) {
 	container1.HostAddr = host
 	coll := collection()
 	defer coll.Close()
-	coll.UpdateId(container1.ID, container1)
+	coll.Update(bson.M{"id": container1.ID}, container1)
 	container2, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(container2)
 	container2.HostAddr = host
-	coll.UpdateId(container2.ID, container2)
+	coll.Update(bson.M{"id": container2.ID}, container2)
 	var stdout, stderr bytes.Buffer
 	var p dockerProvisioner
 	err = p.ExecuteCommand(&stdout, &stderr, app, "ls", "-ar")
@@ -592,7 +592,7 @@ func (s *S) TestExecuteCommandOnce(c *gocheck.C) {
 	container.HostAddr = host
 	coll := collection()
 	defer coll.Close()
-	coll.UpdateId(container.ID, container)
+	coll.Update(bson.M{"id": container.ID}, container)
 	var stdout, stderr bytes.Buffer
 	err = p.ExecuteCommandOnce(&stdout, &stderr, app, "ls", "-lh")
 	c.Assert(err, gocheck.IsNil)

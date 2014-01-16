@@ -122,7 +122,7 @@ func getHostAddr(hostID string) string {
 }
 
 type container struct {
-	ID       string `bson:"_id"`
+	ID       string
 	AppName  string
 	Type     string
 	IP       string
@@ -214,14 +214,14 @@ func (c *container) setStatus(status string) error {
 	c.Status = status
 	coll := collection()
 	defer coll.Close()
-	return coll.UpdateId(c.ID, c)
+	return coll.Update(bson.M{"id": c.ID}, c)
 }
 
 func (c *container) setImage(imageId string) error {
 	c.Image = imageId
 	coll := collection()
 	defer coll.Close()
-	return coll.UpdateId(c.ID, c)
+	return coll.Update(bson.M{"id": c.ID}, c)
 }
 
 func build(a provision.App, version string, w io.Writer) (string, error) {
@@ -300,7 +300,7 @@ func (c *container) remove() error {
 	log.Debugf("Removing container %s from database", c.ID)
 	coll := collection()
 	defer coll.Close()
-	if err := coll.RemoveId(c.ID); err != nil {
+	if err := coll.Remove(bson.M{"id": c.ID}); err != nil {
 		log.Errorf("Failed to remove container from database: %s", err)
 	}
 	r, err := getRouter()
@@ -418,7 +418,7 @@ func getContainer(id string) (*container, error) {
 	var c container
 	coll := collection()
 	defer coll.Close()
-	err := coll.Find(bson.M{"_id": id}).One(&c)
+	err := coll.Find(bson.M{"id": id}).One(&c)
 	if err != nil {
 		return nil, err
 	}
