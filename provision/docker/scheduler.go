@@ -8,7 +8,6 @@ import (
 	"errors"
 	"github.com/dotcloud/docker"
 	dcli "github.com/fsouza/go-dockerclient"
-	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/cmd"
@@ -39,18 +38,19 @@ type node struct {
 type segregatedScheduler struct{}
 
 func (s segregatedScheduler) Schedule(opts dcli.CreateContainerOptions, cfg *docker.Config) (string, *docker.Container, error) {
-	image := cfg.Image
-	namespace, err := config.GetString("docker:repository-namespace")
-	if err != nil {
-		return "", nil, err
-	}
 	conn, err := db.Conn()
 	if err != nil {
 		return "", nil, err
 	}
 	defer conn.Close()
-	appname := strings.Replace(image, namespace+"/", "", -1)
-	app := app.App{Name: appname}
+	var cont container
+	coll := collection()
+	defer coll.Close()
+	err = coll.Find(bson.M{"name": opts.Name}).One(&cont)
+	if err != nil {
+		return "", nil, err
+	}
+	app := app.App{Name: cont.AppName}
 	err = app.Get()
 	if err != nil {
 		return s.fallback(opts, cfg)
