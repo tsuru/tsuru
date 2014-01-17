@@ -51,8 +51,15 @@ func (s *S) TestCreateContainerForward(c *gocheck.C) {
 
 func (s *S) TestCreateContainerBackward(c *gocheck.C) {
 	cont := container{ID: "ble"}
+	coll := collection()
+	defer coll.Close()
+	err := coll.Insert(&cont)
+	c.Assert(err, gocheck.IsNil)
 	context := action.BWContext{FWResult: cont}
 	createContainer.Backward(context)
+	err = coll.Find(bson.M{"id": cont.ID}).One(&cont)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "not found")
 }
 
 func (s *S) TestAddRouteName(c *gocheck.C) {

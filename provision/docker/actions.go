@@ -34,6 +34,9 @@ var createContainer = action.Action{
 	Backward: func(ctx action.BWContext) {
 		c := ctx.FWResult.(container)
 		dockerCluster().RemoveContainer(c.ID)
+		coll := collection()
+		defer coll.Close()
+		coll.Remove(bson.M{"id": c.ID})
 	},
 }
 
