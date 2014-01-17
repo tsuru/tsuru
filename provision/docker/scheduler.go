@@ -71,7 +71,7 @@ func (s segregatedScheduler) fallback(opts dcli.CreateContainerOptions, cfg *doc
 	}
 	defer conn.Close()
 	var nodes []node
-	err = conn.Collection(schedulerCollection).Find(bson.M{"teams": bson.M{"$size": 0}}).All(&nodes)
+	err = conn.Collection(schedulerCollection).Find(bson.M{"$or": []bson.M{{"teams": bson.M{"$exists": false}}, {"teams": bson.M{"$size": 0}}}}).All(&nodes)
 	if err != nil || len(nodes) < 1 {
 		return "", nil, errNoFallback
 	}
