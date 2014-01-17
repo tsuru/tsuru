@@ -453,7 +453,7 @@ var saveNewUnitsInDatabase = action.Action{
 				InstanceId: unit.InstanceId,
 			}
 			app.AddUnit(&unit)
-			messages[mCount] = queue.Message{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}}
+			messages[mCount] = queue.Message{Action: regenerateApprc, Args: []string{app.Name, unit.Name}}
 			messages[mCount+1] = queue.Message{Action: BindService, Args: []string{app.Name, unit.Name}}
 			mCount += 2
 		}

@@ -469,7 +469,7 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 		expectedName := fmt.Sprintf("%s/%d", app.Name, i+1)
 		c.Check(unit.Name, gocheck.Equals, expectedName)
 		messages := []queue.Message{
-			{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}},
+			{Action: regenerateApprc, Args: []string{app.Name, unit.Name}},
 			{Action: BindService, Args: []string{app.Name, unit.Name}},
 		}
 		expectedMessages = append(expectedMessages, messages...)
@@ -519,7 +519,7 @@ func (s *S) TestAddUnitsQuota(c *gocheck.C) {
 		expectedName := fmt.Sprintf("%s/%d", app.Name, i+1)
 		c.Assert(unit.Name, gocheck.Equals, expectedName)
 		messages := []queue.Message{
-			{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}},
+			{Action: regenerateApprc, Args: []string{app.Name, unit.Name}},
 			{Action: BindService, Args: []string{app.Name, unit.Name}},
 		}
 		expectedMessages = append(expectedMessages, messages...)
