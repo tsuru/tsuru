@@ -6,7 +6,7 @@
 Schedulers
 ++++++++++
 
-Tsuru uses schedulers to choices which node an unit should be deployed. There is
+Tsuru uses schedulers to chooses which node an unit should be deployed. There are
 two schedulers: `round robin` and `segregate scheduler`.
 
 Segregate scheduler
@@ -14,8 +14,8 @@ Segregate scheduler
 
 Segregate scheduler is a scheduler that segregates the units between nodes by team.
 
-How it works, you make a relation between nodes and teams. And the scheduler deploys
-the app unit on the nodes defineds for you team.
+irst, what you need to do is to define a relation between nodes and teams.
+And then, the scheduler deploys the app unit on the node related to its team.
 
     - team1 -> node1
     - team2 -> node3
@@ -25,8 +25,8 @@ Configuration and setup
 -----------------------
 
 To use the `segregate scheduler` you shoud enable the segregate mode in 
-`tsuru.conf` and make sure that the conf about scheduler storage (redis)
-is configured:
+`tsuru.conf` and make sure that the details about the scheduler storage (redis)
+is also configured:
 
 .. highlight:: yaml
 
@@ -53,7 +53,7 @@ You can use the `tsr` to add nodes:
 Adding a fallback node
 ----------------------
 
-To add a fallback is just to add a node without team:
+To add a fallback, you just need to add a node without team:
 
 .. highlight:: bash
 
