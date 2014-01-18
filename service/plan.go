@@ -33,6 +33,18 @@ func GetPlanByName(name string) (*Plan, error) {
 	}
 	defer conn.Close()
 	var p Plan
-	conn.Plans().Find(bson.M{"name": name}).One(&p)
+	err = conn.Plans().Find(bson.M{"name": name}).One(&p)
+	if err != nil {
+		return nil, err
+	}
 	return &p, nil
+}
+
+func DeletePlan(p *Plan) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.Plans().Remove(bson.M{"name": p.Name})
 }
