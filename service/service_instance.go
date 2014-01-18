@@ -31,6 +31,7 @@ var (
 type ServiceInstance struct {
 	Name        string
 	ServiceName string `bson:"service_name"`
+	PlanName    string
 	Apps        []string
 	Teams       []string
 }
@@ -236,7 +237,7 @@ func validateServiceInstanceName(name string) error {
 	return nil
 }
 
-func CreateServiceInstance(name string, service *Service, user *auth.User) error {
+func CreateServiceInstance(name string, service *Service, plan *Plan, user *auth.User) error {
 	err := validateServiceInstanceName(name)
 	if err != nil {
 		return err
@@ -244,6 +245,9 @@ func CreateServiceInstance(name string, service *Service, user *auth.User) error
 	instance := ServiceInstance{
 		Name:        name,
 		ServiceName: service.Name,
+	}
+	if plan != nil {
+		instance.PlanName = plan.Name
 	}
 	teams, err := user.Teams()
 	if err != nil {
