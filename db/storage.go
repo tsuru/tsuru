@@ -166,6 +166,11 @@ func (s *Storage) ServiceInstances() *Collection {
 	return s.Collection("service_instances")
 }
 
+// Plans returns the plans collection.
+func (s *Storage) Plans() *Collection {
+	return s.Collection("plans")
+}
+
 // Users returns the users collection from MongoDB.
 func (s *Storage) Users() *Collection {
 	emailIndex := mgo.Index{Key: []string{"email"}, Unique: true}

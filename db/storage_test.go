@@ -267,6 +267,14 @@ func (s *S) TestServices(c *gocheck.C) {
 	c.Assert(services, gocheck.DeepEquals, servicesc)
 }
 
+func (s *S) TestPlans(c *gocheck.C) {
+	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
+	defer storage.session.Close()
+	plans := storage.Plans()
+	plansc := storage.Collection("plans")
+	c.Assert(plans, gocheck.DeepEquals, plansc)
+}
+
 func (s *S) TestServiceInstances(c *gocheck.C) {
 	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
 	defer storage.session.Close()
