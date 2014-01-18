@@ -35,3 +35,25 @@ func (s *S) TestRemovePlan(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(p, gocheck.IsNil)
 }
+
+func (s *S) TestGetPlansByServiceName(c *gocheck.C) {
+	plan1 := Plan{
+		Name:        "Ignite",
+		ServiceName: "MySql",
+	}
+	err := CreatePlan(&plan1)
+	c.Assert(err, gocheck.IsNil)
+	defer DeletePlan(&plan1)
+	plan2 := Plan{
+		Name:        "Drift",
+		ServiceName: "MySql",
+	}
+	err = CreatePlan(&plan2)
+	c.Assert(err, gocheck.IsNil)
+	defer DeletePlan(&plan1)
+	c.Assert(err, gocheck.IsNil)
+	plans, err := GetPlansByServiceName("MySql")
+	c.Assert(err, gocheck.IsNil)
+	expected := []Plan{plan1, plan2}
+	c.Assert(plans, gocheck.DeepEquals, expected)
+}
