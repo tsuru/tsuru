@@ -40,6 +40,7 @@ func GetPlanByName(name string) (*Plan, error) {
 	return &p, nil
 }
 
+// DeletePlan deletes a plan.
 func DeletePlan(p *Plan) error {
 	conn, err := db.Conn()
 	if err != nil {
