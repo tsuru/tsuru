@@ -15,7 +15,7 @@ func (s *S) TestCreatePlan(c *gocheck.C) {
 	}
 	err := CreatePlan(&plan)
 	c.Assert(err, gocheck.IsNil)
-	p, err := GetPlan(plan.Name)
+	p, err := GetPlanByName(plan.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.Name, gocheck.Equals, plan.Name)
 	c.Assert(p.ServiceName, gocheck.Equals, plan.ServiceName)

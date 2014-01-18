@@ -25,8 +25,8 @@ func CreatePlan(p *Plan) error {
 	return conn.Plans().Insert(p)
 }
 
-// GetPlan get a plan by name.
-func GetPlan(name string) (*Plan, error) {
+// GetPlanByName get a plan by name.
+func GetPlanByName(name string) (*Plan, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
