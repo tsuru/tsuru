@@ -18,7 +18,7 @@ import (
 
 var m = pat.New()
 
-func RegisterHandler(path string, method string, h http.Handler) {
+func RegisterAdminHandler(path string, method string, h http.Handler) {
 	if method == "GET" {
 		m.Get(path, h)
 	}

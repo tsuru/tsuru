@@ -13,8 +13,8 @@ import (
 )
 
 func init() {
-	api.RegisterHandler("/node/add", "POST", api.Handler(addNodeHandler))
-	api.RegisterHandler("/node/remove", "DELETE", api.Handler(removeNodeHandler))
+	api.RegisterAdminHandler("/node/add", "POST", api.Handler(addNodeHandler))
+	api.RegisterAdminHandler("/node/remove", "DELETE", api.Handler(removeNodeHandler))
 }
 
 // AddNodeHandler calls scheduler.Register registering a node into it.

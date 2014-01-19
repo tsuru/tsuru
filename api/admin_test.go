@@ -21,9 +21,9 @@ func (h testH) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(r.Method))
 }
 
-func (s *AdminApiSuite) TestRegisterHandlerMakesHandlerAvailableViaGet(c *gocheck.C) {
+func (s *AdminApiSuite) TestRegisterAdminHandlerMakesHandlerAvailableViaGet(c *gocheck.C) {
 	h := testH{}
-	RegisterHandler("/foo/bar", "GET", h)
+	RegisterAdminHandler("/foo/bar", "GET", h)
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "http://example.com/foo/bar", nil)
 	c.Assert(err, gocheck.IsNil)
@@ -33,9 +33,9 @@ func (s *AdminApiSuite) TestRegisterHandlerMakesHandlerAvailableViaGet(c *gochec
 	c.Assert("GET", gocheck.Equals, string(b))
 }
 
-func (s *AdminApiSuite) TestRegisterHandlerMakesHandlerAvailableViaPost(c *gocheck.C) {
+func (s *AdminApiSuite) TestRegisterAdminHandlerMakesHandlerAvailableViaPost(c *gocheck.C) {
 	h := testH{}
-	RegisterHandler("/foo/bar", "POST", h)
+	RegisterAdminHandler("/foo/bar", "POST", h)
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("POST", "http://example.com/foo/bar", nil)
 	c.Assert(err, gocheck.IsNil)
@@ -45,9 +45,9 @@ func (s *AdminApiSuite) TestRegisterHandlerMakesHandlerAvailableViaPost(c *goche
 	c.Assert("POST", gocheck.Equals, string(b))
 }
 
-func (s *AdminApiSuite) TestRegisterHandlerMakesHandlerAvailableViaPut(c *gocheck.C) {
+func (s *AdminApiSuite) TestRegisterAdminHandlerMakesHandlerAvailableViaPut(c *gocheck.C) {
 	h := testH{}
-	RegisterHandler("/foo/bar", "PUT", h)
+	RegisterAdminHandler("/foo/bar", "PUT", h)
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("PUT", "http://example.com/foo/bar", nil)
 	c.Assert(err, gocheck.IsNil)
@@ -57,9 +57,9 @@ func (s *AdminApiSuite) TestRegisterHandlerMakesHandlerAvailableViaPut(c *gochec
 	c.Assert("PUT", gocheck.Equals, string(b))
 }
 
-func (s *AdminApiSuite) TestRegisterHandlerMakesHandlerAvailableViaDelete(c *gocheck.C) {
+func (s *AdminApiSuite) TestRegisterAdminHandlerMakesHandlerAvailableViaDelete(c *gocheck.C) {
 	h := testH{}
-	RegisterHandler("/foo/bar", "DELETE", h)
+	RegisterAdminHandler("/foo/bar", "DELETE", h)
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("DELETE", "http://example.com/foo/bar", nil)
 	c.Assert(err, gocheck.IsNil)
