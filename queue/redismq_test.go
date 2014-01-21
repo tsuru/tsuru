@@ -76,3 +76,18 @@ func (s *RedismqSuite) TestGetTimeout(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.timeout, gocheck.Equals, time.Duration(1e6))
 }
+
+func (s *RedismqSuite) TestFactoryGet(c *gocheck.C) {
+	var factory redismqQFactory
+	q, err := factory.Get("ancient")
+	c.Assert(err, gocheck.IsNil)
+	rq, ok := q.(*RedismqQ)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(rq.name, gocheck.Equals, "ancient")
+	msg := Message{Action: "wat", Args: []string{"a", "b"}}
+	err = rq.Put(&msg, 0)
+	c.Assert(err, gocheck.IsNil)
+	got, err := rq.Get(1e6)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(*got, gocheck.DeepEquals, msg)
+}

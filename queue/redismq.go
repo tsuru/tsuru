@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/adeven/redismq"
+	"github.com/globocom/config"
 	"io"
 	"strings"
 	"time"
@@ -74,4 +75,36 @@ func (r *RedismqQ) Get(timeout time.Duration) (*Message, error) {
 		return nil, fmt.Errorf("Invalid message: %q", pack.Payload)
 	}
 	return &msg, nil
+}
+
+type redismqQFactory struct{}
+
+func (redismqQFactory) Get(name string) (Q, error) {
+	host, err := config.GetString("queue:redis-host")
+	if err != nil {
+		host = "localhost"
+	}
+	port, err := config.GetString("queue:redis-port")
+	if err != nil {
+		if nport, err := config.GetInt("queue:redis-port"); err != nil {
+			port = "6379"
+		} else {
+			port = fmt.Sprintf("%d", nport)
+		}
+	}
+	password, _ := config.GetString("queue:redis-password")
+	db, err := config.GetInt("queue:redis-db")
+	if err != nil {
+		db = 3
+	}
+	queue := redismq.CreateQueue(host, port, password, int64(db), name)
+	consumer, err := queue.AddConsumer("factory")
+	if err != nil {
+		return nil, err
+	}
+	return &RedismqQ{name: name, queue: queue, consumer: consumer}, nil
+}
+
+func (redismqQFactory) Handler(f func(*Message), names ...string) (Handler, error) {
+	return nil, nil
 }
