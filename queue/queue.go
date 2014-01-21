@@ -61,6 +61,7 @@ type QFactory interface {
 
 var factories = map[string]QFactory{
 	"beanstalkd": beanstalkdFactory{},
+	"redis":      redismqQFactory{},
 }
 
 // Register registers a new queue factory. This is how one would add a new
