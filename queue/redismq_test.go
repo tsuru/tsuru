@@ -136,3 +136,10 @@ func (s *RedismqSuite) TestRedismqFactoryPutMessageBackOnFailure(c *gocheck.C) {
 	_, err = q.Get(1e6)
 	c.Assert(err, gocheck.IsNil)
 }
+
+func (s *RedismqSuite) TestRedisMqFactoryIsInFactoriesMap(c *gocheck.C) {
+	f, ok := factories["redis"]
+	c.Assert(ok, gocheck.Equals, true)
+	_, ok = f.(redismqQFactory)
+	c.Assert(ok, gocheck.Equals, true)
+}
