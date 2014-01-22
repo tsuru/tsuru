@@ -7,6 +7,7 @@ package queue
 import (
 	"github.com/adeven/redismq"
 	"launchpad.net/gocheck"
+	"sync/atomic"
 	"time"
 )
 
@@ -90,4 +91,48 @@ func (s *RedismqSuite) TestFactoryGet(c *gocheck.C) {
 	got, err := rq.Get(1e6)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(*got, gocheck.DeepEquals, msg)
+}
+
+func (s *RedismqSuite) TestRedismqFactoryHandler(c *gocheck.C) {
+	var factory redismqQFactory
+	q, err := factory.Get("civil")
+	c.Assert(err, gocheck.IsNil)
+	msg := Message{
+		Action: "create-app",
+		Args:   []string{"something"},
+	}
+	q.Put(&msg, 0)
+	var called int32
+	var dumb = func(m *Message) {
+		atomic.StoreInt32(&called, 1)
+		c.Assert(m.Action, gocheck.Equals, msg.Action)
+		c.Assert(m.Args, gocheck.DeepEquals, msg.Args)
+	}
+	handler, err := factory.Handler(dumb, "civil")
+	c.Assert(err, gocheck.IsNil)
+	exec, ok := handler.(*executor)
+	c.Assert(ok, gocheck.Equals, true)
+	exec.inner()
+	time.Sleep(1e3)
+	c.Assert(atomic.LoadInt32(&called), gocheck.Equals, int32(1))
+	_, err = q.Get(1e6)
+	c.Assert(err, gocheck.NotNil)
+}
+
+func (s *RedismqSuite) TestRedismqFactoryPutMessageBackOnFailure(c *gocheck.C) {
+	var factory redismqQFactory
+	q, err := factory.Get("wheels")
+	c.Assert(err, gocheck.IsNil)
+	msg := Message{Action: "create-app"}
+	q.Put(&msg, 0)
+	var dumb = func(m *Message) {
+		m.Fail()
+		time.Sleep(1e3)
+	}
+	handler, err := factory.Handler(dumb, "wheels")
+	c.Assert(err, gocheck.IsNil)
+	handler.(*executor).inner()
+	time.Sleep(1e6)
+	_, err = q.Get(1e6)
+	c.Assert(err, gocheck.IsNil)
 }

@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"github.com/adeven/redismq"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/log"
 	"io"
+	"net"
 	"strings"
 	"time"
 )
@@ -79,7 +81,11 @@ func (r *redismqQ) Get(timeout time.Duration) (*Message, error) {
 
 type redismqQFactory struct{}
 
-func (redismqQFactory) Get(name string) (Q, error) {
+func (factory redismqQFactory) Get(name string) (Q, error) {
+	return factory.get(name, "factory")
+}
+
+func (redismqQFactory) get(name, consumerName string) (*redismqQ, error) {
 	host, err := config.GetString("queue:redis-host")
 	if err != nil {
 		host = "localhost"
@@ -98,13 +104,39 @@ func (redismqQFactory) Get(name string) (Q, error) {
 		db = 3
 	}
 	queue := redismq.CreateQueue(host, port, password, int64(db), name)
-	consumer, err := queue.AddConsumer("factory")
+	consumer, err := queue.AddConsumer(consumerName)
 	if err != nil {
 		return nil, err
 	}
 	return &redismqQ{name: name, queue: queue, consumer: consumer}, nil
 }
 
-func (redismqQFactory) Handler(f func(*Message), names ...string) (Handler, error) {
-	return nil, nil
+func (factory redismqQFactory) Handler(f func(*Message), names ...string) (Handler, error) {
+	name := "default"
+	if len(names) > 0 {
+		name = names[0]
+	}
+	consumerName := fmt.Sprintf("handler-%d", time.Now().UnixNano())
+	queue, err := factory.get(name, consumerName)
+	if err != nil {
+		return nil, err
+	}
+	return &executor{
+		inner: func() {
+			if message, err := queue.Get(5e9); err == nil {
+				log.Debugf("Dispatching %q message to handler function.", message.Action)
+				go func(m *Message) {
+					f(m)
+					if m.fail {
+						queue.Put(m, 0)
+					}
+				}(message)
+			} else {
+				log.Debugf("Failed to get message from the queue: %s. Trying again...", err)
+				if e, ok := err.(*net.OpError); ok && e.Op == "dial" {
+					time.Sleep(5e9)
+				}
+			}
+		},
+	}, nil
 }
