@@ -86,19 +86,19 @@ func (factory redismqQFactory) Get(name string) (Q, error) {
 }
 
 func (redismqQFactory) get(name, consumerName string) (*redismqQ, error) {
-	host, err := config.GetString("queue:redis-host")
+	host, err := config.GetString("redis-queue:host")
 	if err != nil {
 		host = "localhost"
 	}
-	port, err := config.GetString("queue:redis-port")
+	port, err := config.GetString("redis-queue:port")
 	if err != nil {
-		if nport, err := config.GetInt("queue:redis-port"); err != nil {
+		if nport, err := config.GetInt("redis-queue:port"); err != nil {
 			port = "6379"
 		} else {
 			port = fmt.Sprintf("%d", nport)
 		}
 	}
-	password, _ := config.GetString("queue:redis-password")
+	password, _ := config.GetString("redis-queue:password")
 	db, err := config.GetInt("queue:redis-db")
 	if err != nil {
 		db = 3
