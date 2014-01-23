@@ -10,8 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/dotcloud/docker"
-	dclient "github.com/fsouza/go-dockerclient"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
 	"github.com/globocom/docker-cluster/storage"
@@ -178,11 +177,11 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 		AttachStdout: false,
 		AttachStderr: false,
 	}
-	opts := dclient.CreateContainerOptions{Name: contName}
+	opts := docker.CreateContainerOptions{Name: contName}
 	hostID, c, err := dockerCluster().CreateContainer(opts, &config)
-	if err == dclient.ErrNoSuchImage {
+	if err == docker.ErrNoSuchImage {
 		var buf bytes.Buffer
-		pullOpts := dclient.PullImageOptions{Repository: imageId}
+		pullOpts := docker.PullImageOptions{Repository: imageId}
 		dockerCluster().PullImage(pullOpts, &buf)
 		hostID, c, err = dockerCluster().CreateContainer(opts, &config)
 	}
@@ -363,7 +362,7 @@ func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) er
 func (c *container) commit() (string, error) {
 	log.Debugf("commiting container %s", c.ID)
 	repository := assembleImageName(c.AppName)
-	opts := dclient.CommitContainerOptions{Container: c.ID, Repository: repository}
+	opts := docker.CommitContainerOptions{Container: c.ID, Repository: repository}
 	image, err := dockerCluster().CommitContainer(opts)
 	if err != nil {
 		log.Errorf("Could not commit docker image: %s", err)
@@ -402,7 +401,7 @@ func (c *container) start() error {
 
 // logs returns logs for the container.
 func (c *container) logs(w io.Writer) error {
-	opts := dclient.AttachToContainerOptions{
+	opts := docker.AttachToContainerOptions{
 		Container:    c.ID,
 		Logs:         true,
 		Stdout:       true,
@@ -415,7 +414,7 @@ func (c *container) logs(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	opts = dclient.AttachToContainerOptions{
+	opts = docker.AttachToContainerOptions{
 		Container:    c.ID,
 		Logs:         true,
 		Stderr:       true,
@@ -502,9 +501,9 @@ func replicateImage(name string) error {
 		if !strings.HasPrefix(name, registry) {
 			name = registry + "/" + name
 		}
-		pushOpts := dclient.PushImageOptions{Name: name}
+		pushOpts := docker.PushImageOptions{Name: name}
 		for i := 0; i < maxTry; i++ {
-			err = dockerCluster().PushImage(pushOpts, dclient.AuthConfiguration{}, &buf)
+			err = dockerCluster().PushImage(pushOpts, docker.AuthConfiguration{}, &buf)
 			if err == nil {
 				buf.Reset()
 				break
@@ -515,7 +514,7 @@ func replicateImage(name string) error {
 		if err != nil {
 			return err
 		}
-		pullOpts := dclient.PullImageOptions{Repository: name}
+		pullOpts := docker.PullImageOptions{Repository: name}
 		for i := 0; i < maxTry; i++ {
 			err = dockerCluster().PullImage(pullOpts, &buf)
 			if err == nil {

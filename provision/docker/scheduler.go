@@ -6,8 +6,7 @@ package docker
 
 import (
 	"errors"
-	"github.com/dotcloud/docker"
-	dcli "github.com/fsouza/go-dockerclient"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/globocom/docker-cluster/cluster"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/cmd"
@@ -37,7 +36,7 @@ type node struct {
 
 type segregatedScheduler struct{}
 
-func (s segregatedScheduler) Schedule(opts dcli.CreateContainerOptions, cfg *docker.Config) (string, *docker.Container, error) {
+func (s segregatedScheduler) Schedule(opts docker.CreateContainerOptions, cfg *docker.Config) (string, *docker.Container, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return "", nil, err
@@ -64,7 +63,7 @@ func (s segregatedScheduler) Schedule(opts dcli.CreateContainerOptions, cfg *doc
 	return s.handle(opts, cfg, nodes)
 }
 
-func (s segregatedScheduler) fallback(opts dcli.CreateContainerOptions, cfg *docker.Config) (string, *docker.Container, error) {
+func (s segregatedScheduler) fallback(opts docker.CreateContainerOptions, cfg *docker.Config) (string, *docker.Container, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return "", nil, err
@@ -78,9 +77,9 @@ func (s segregatedScheduler) fallback(opts dcli.CreateContainerOptions, cfg *doc
 	return s.handle(opts, cfg, nodes)
 }
 
-func (segregatedScheduler) handle(opts dcli.CreateContainerOptions, cfg *docker.Config, nodes []node) (string, *docker.Container, error) {
+func (segregatedScheduler) handle(opts docker.CreateContainerOptions, cfg *docker.Config, nodes []node) (string, *docker.Container, error) {
 	node := nodes[rand.Intn(len(nodes))]
-	client, err := dcli.NewClient(node.Address)
+	client, err := docker.NewClient(node.Address)
 	if err != nil {
 		return node.ID, nil, err
 	}

@@ -6,7 +6,7 @@ package docker
 
 import (
 	"fmt"
-	"github.com/dotcloud/docker"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
 	etesting "github.com/globocom/tsuru/exec/testing"
