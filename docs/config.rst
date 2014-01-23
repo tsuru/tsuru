@@ -289,6 +289,9 @@ Tsuru uses a work queue for asynchronous tasks. By default it will use
 queue, and settings related to the queue (like the address where beanstalkd is
 listening).
 
+Besides beanstalkd, Tsuru also supports Redis as a working queue. In order to
+use Redis, Tsuru administrators must set ``queue`` to ``redis``.
+
 Creating a new queue provider is as easy as implementing `an interface
 <http://godoc.org/github.com/globocom/tsuru/queue#Q>`_.
 
@@ -303,6 +306,31 @@ queue-server
 
 ``queue-server`` is the TCP address where beanstalkd is listening. This setting
 is optional and defaults to "localhost:11300".
+
+redis-queue:host
+++++++++++++++++
+
+``redis-queue:host`` is the host of the Redis server to be used for the working
+queue. This settings is optional and defaults to "localhost".
+
+redis-queue:port
+++++++++++++++++
+
+``redis-queue:port`` is the port of the Redis server to be used for the working
+queue. This settings is optional and defaults to 6379.
+
+redis-queue:password
+++++++++++++++++++++
+
+``redis-queue:password`` is the password of the Redis server to be used for the
+working queue. This settings is optional and defaults to "", indicating that
+the Redis server is not authenticated.
+
+redis-queue:db
+++++++++++++++
+
+``redis-queue:password`` is the database number of the Redis server to be used
+for the working queue. This settings is optional and defaults to 3.
 
 Admin users
 -----------
