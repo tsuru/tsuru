@@ -101,7 +101,10 @@ func handle(msg *queue.Message) {
 			log.Error(err.Error())
 			return
 		}
-		app.SerializeEnvVars()
+		err = app.SerializeEnvVars()
+		if err != nil {
+			log.Error(err.Error())
+		}
 		fallthrough
 	case startApp:
 		if msg.Action == regenerateApprc {
