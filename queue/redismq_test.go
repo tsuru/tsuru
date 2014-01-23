@@ -6,6 +6,7 @@ package queue
 
 import (
 	"github.com/adeven/redismq"
+	"github.com/globocom/config"
 	"launchpad.net/gocheck"
 	"sync/atomic"
 	"time"
@@ -24,6 +25,11 @@ func (s *RedismqSuite) SetUpSuite(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	s.consumer, err = s.queue.AddConsumer("redismq_tests")
 	c.Assert(err, gocheck.IsNil)
+	config.Set("queue", "redis")
+}
+
+func (s *RedismqSuite) TearDownSuite(c *gocheck.C) {
+	config.Unset("queue")
 }
 
 func (s *RedismqSuite) TestPut(c *gocheck.C) {

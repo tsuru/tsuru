@@ -99,7 +99,7 @@ func (redismqQFactory) get(name, consumerName string) (*redismqQ, error) {
 		}
 	}
 	password, _ := config.GetString("redis-queue:password")
-	db, err := config.GetInt("queue:redis-db")
+	db, err := config.GetInt("redis-queue:db")
 	if err != nil {
 		db = 3
 	}
