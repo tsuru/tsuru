@@ -58,11 +58,11 @@
 		},
 		{
 			"ImportPath": "github.com/globocom/docker-cluster/cluster",
-			"Rev": "72ca505f1f0758fdd161fd4bb7eac682d614fda4"
+			"Rev": "cdf9fe206de33103f4b01b1da50985071941b4c1"
 		},
 		{
 			"ImportPath": "github.com/globocom/docker-cluster/storage",
-			"Rev": "72ca505f1f0758fdd161fd4bb7eac682d614fda4"
+			"Rev": "cdf9fe206de33103f4b01b1da50985071941b4c1"
 		},
 		{
 			"ImportPath": "github.com/globocom/gandalf/testing",
