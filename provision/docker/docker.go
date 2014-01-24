@@ -498,9 +498,6 @@ func (e *cmdError) Error() string {
 func replicateImage(name string) error {
 	var buf bytes.Buffer
 	if registry, err := config.GetString("docker:registry"); err == nil {
-		if !strings.HasPrefix(name, registry) {
-			name = registry + "/" + name
-		}
 		pushOpts := docker.PushImageOptions{Name: name}
 		for i := 0; i < maxTry; i++ {
 			err = dockerCluster().PushImage(pushOpts, docker.AuthConfiguration{}, &buf)

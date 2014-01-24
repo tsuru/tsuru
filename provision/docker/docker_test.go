@@ -816,6 +816,7 @@ func (s *S) TestReplicateImage(c *gocheck.C) {
 	c.Assert(request.URL.Path, gocheck.Matches, ".*/images/localhost:3030/base/push$")
 }
 
+<<<<<<< HEAD
 func (s *S) TestReplicateImageWithoutRegistryInTheImageName(c *gocheck.C) {
 	var request *http.Request
 	var requests int32
@@ -851,6 +852,8 @@ func (s *S) TestReplicateImageWithoutRegistryInTheImageName(c *gocheck.C) {
 	c.Assert(request.URL.Path, gocheck.Matches, ".*/images/localhost:3030/base/push$")
 }
 
+=======
+>>>>>>> provision/docker/docker: removing replicate image test without registry url
 func (s *S) TestReplicateImageNoRegistry(c *gocheck.C) {
 	var requests int32
 	server, err := dtesting.NewServer(func(*http.Request) {
