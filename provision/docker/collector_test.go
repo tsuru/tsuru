@@ -23,7 +23,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 	defer cleanup()
 	sshHandler, cleanup := startSSHAgentServer("")
 	defer cleanup()
-	defer insertContainers(listenPort)()
+	defer insertContainers(listenPort, c)()
 	expected := []provision.Unit{
 		{
 			Name:    "9930c24f1c5f",

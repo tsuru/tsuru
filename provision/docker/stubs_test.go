@@ -13,6 +13,7 @@ import (
 	etesting "github.com/globocom/tsuru/exec/testing"
 	rtesting "github.com/globocom/tsuru/router/testing"
 	"labix.org/v2/mgo/bson"
+	"launchpad.net/gocheck"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -188,7 +189,7 @@ func startSSHAgentServer(output string) (*FakeSSHServer, func()) {
 	}
 }
 
-func insertContainers(containerPort string) func() {
+func insertContainers(containerPort string, c *gocheck.C) func() {
 	coll := collection()
 	defer coll.Close()
 	err := coll.Insert(
@@ -210,11 +211,13 @@ func insertContainers(containerPort string) func() {
 	}
 	rtesting.FakeRouter.AddRoute("ashamed", fmt.Sprintf("http://127.0.0.1:%s", containerPort))
 	rtesting.FakeRouter.AddRoute("make-up", "http://127.0.0.1:9025")
+	removeCont := createFakeContainers([]string{"9930c24f1c5f", "9930c24f1c4f", "9930c24f1c6f", "9930c24f1c7f"}, c)
 	return func() {
 		coll := collection()
 		defer coll.Close()
 		coll.RemoveAll(bson.M{"appname": "make-up"})
 		coll.RemoveAll(bson.M{"appname": "ashamed"})
+		removeCont()
 	}
 }
 
