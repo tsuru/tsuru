@@ -369,6 +369,8 @@ func (s *S) TestContainerNetworkInfoNotFound(c *gocheck.C) {
 		dCluster = oldCluster
 	}()
 	container := container{ID: "c-01", Port: "8888"}
+	clean := createFakeContainers([]string{"c-01"}, c)
+	defer clean()
 	ip, port, err := container.networkInfo()
 	c.Assert(ip, gocheck.Equals, "")
 	c.Assert(port, gocheck.Equals, "")
