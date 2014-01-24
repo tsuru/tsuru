@@ -11,6 +11,7 @@ import (
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
+	"github.com/globocom/docker-cluster/storage"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	etesting "github.com/globocom/tsuru/exec/testing"
@@ -192,12 +193,8 @@ func (s *S) TestContainerSetImage(c *gocheck.C) {
 
 func newImage(repo, serverURL string) error {
 	opts := docker.PullImageOptions{Repository: repo}
-	client, err := docker.NewClient(serverURL)
-	if err != nil {
-		return err
-	}
 	var buffer bytes.Buffer
-	return client.PullImage(opts, &buffer)
+	return dCluster.PullImage(opts, &buffer)
 }
 
 type newContainerOpts struct {
@@ -219,10 +216,6 @@ func (s *S) newContainer(opts *newContainerOpts) (*container, error) {
 	}
 	rtesting.FakeRouter.AddBackend(container.AppName)
 	rtesting.FakeRouter.AddRoute(container.AppName, container.getAddress())
-	client, err := docker.NewClient(s.server.URL())
-	if err != nil {
-		return nil, err
-	}
 	port, err := getPort()
 	if err != nil {
 		return nil, err
@@ -234,7 +227,7 @@ func (s *S) newContainer(opts *newContainerOpts) (*container, error) {
 		Cmd:          []string{"ps"},
 		ExposedPorts: ports,
 	}
-	c, err := client.CreateContainer(docker.CreateContainerOptions{}, &config)
+	_, c, err := dCluster.CreateContainer(docker.CreateContainerOptions{}, &config)
 	if err != nil {
 		return nil, err
 	}
@@ -368,7 +361,7 @@ func (s *S) TestContainerNetworkInfoNotFound(c *gocheck.C) {
 	defer server.Close()
 	oldCluster := dockerCluster()
 	var err error
-	dCluster, err = cluster.New(nil, nil,
+	dCluster, err = cluster.New(nil, storage.Redis("localhost:6379", "tests"),
 		cluster.Node{ID: "server", Address: server.URL},
 	)
 	c.Assert(err, gocheck.IsNil)
@@ -836,7 +829,7 @@ func (s *S) TestReplicateImageWithoutRegistryInTheImageName(c *gocheck.C) {
 	defer config.Unset("docker:registry")
 	cmutex.Lock()
 	oldDockerCluster := dCluster
-	dCluster, _ = cluster.New(nil, nil, cluster.Node{ID: "server0", Address: server.URL()})
+	dCluster, _ = cluster.New(nil, storage.Redis("localhost:6379", "tests"), cluster.Node{ID: "server0", Address: server.URL()})
 	cmutex.Unlock()
 	defer func() {
 		cmutex.Lock()
@@ -865,7 +858,7 @@ func (s *S) TestReplicateImageNoRegistry(c *gocheck.C) {
 	defer server.Stop()
 	cmutex.Lock()
 	oldDockerCluster := dCluster
-	dCluster, _ = cluster.New(nil, nil, cluster.Node{ID: "server0", Address: server.URL()})
+	dCluster, _ = cluster.New(nil, storage.Redis("localhost:6379", "tests"), cluster.Node{ID: "server0", Address: server.URL()})
 	cmutex.Unlock()
 	defer func() {
 		cmutex.Lock()

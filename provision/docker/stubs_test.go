@@ -9,6 +9,7 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
+	"github.com/globocom/docker-cluster/storage"
 	etesting "github.com/globocom/tsuru/exec/testing"
 	rtesting "github.com/globocom/tsuru/router/testing"
 	"labix.org/v2/mgo/bson"
@@ -162,7 +163,7 @@ func startDockerTestServer(containerPort string, calls *int) (func(), *httptest.
 	}))
 	var err error
 	oldCluster := dockerCluster()
-	dCluster, err = cluster.New(nil, nil,
+	dCluster, err = cluster.New(nil, storage.Redis("localhost:6379", "tests"),
 		cluster.Node{ID: "server", Address: server.URL},
 	)
 	if err != nil {
