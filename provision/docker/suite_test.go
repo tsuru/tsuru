@@ -6,8 +6,10 @@ package docker
 
 import (
 	dtesting "github.com/fsouza/go-dockerclient/testing"
+	"github.com/garyburd/redigo/redis"
 	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
+	"github.com/globocom/docker-cluster/storage"
 	ftesting "github.com/globocom/tsuru/fs/testing"
 	"github.com/globocom/tsuru/provision"
 	_ "github.com/globocom/tsuru/testing"
@@ -66,9 +68,11 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *S) SetUpTest(c *gocheck.C) {
-	dCluster, _ = cluster.New(nil, nil,
+	var err error
+	dCluster, err = cluster.New(nil, storage.Redis("localhost:6379", "tests"),
 		cluster.Node{ID: "server", Address: s.server.URL()},
 	)
+	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
@@ -77,6 +81,20 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 	err := coll.Database.DropDatabase()
 	c.Assert(err, gocheck.IsNil)
 	fsystem = nil
+	clearSchedStorage(c)
+}
+
+func clearSchedStorage(c *gocheck.C) {
+	conn, err := redis.Dial("tcp", "localhost:6379")
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	keys, err := conn.Do("keys", "*")
+	c.Assert(err, gocheck.IsNil)
+	for _, key := range keys.([]interface{}) {
+		k := string(key.([]byte))
+		_, err := conn.Do("del", k)
+		c.Assert(err, gocheck.IsNil)
+	}
 }
 
 type unitSlice []provision.Unit
@@ -95,4 +113,20 @@ func (s unitSlice) Swap(i, j int) {
 
 func sortUnits(units []provision.Unit) {
 	sort.Sort(unitSlice(units))
+}
+
+func createFakeContainers(ids []string, c *gocheck.C) func() {
+	conn, err := redis.Dial("tcp", "localhost:6379")
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	filter := []interface{}{}
+	for _, id := range ids {
+		key := "tests:" + id
+		_, err = conn.Do("SET", key, "server")
+		c.Assert(err, gocheck.IsNil)
+		filter = append(filter, key)
+	}
+	return func() {
+		conn.Do("DEL", filter...)
+	}
 }
