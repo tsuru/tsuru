@@ -497,7 +497,7 @@ func (e *cmdError) Error() string {
 // replicateImage replicates the given image through all nodes in the cluster.
 func replicateImage(name string) error {
 	var buf bytes.Buffer
-	if registry, err := config.GetString("docker:registry"); err == nil {
+	if _, err := config.GetString("docker:registry"); err == nil {
 		pushOpts := docker.PushImageOptions{Name: name}
 		for i := 0; i < maxTry; i++ {
 			err = dockerCluster().PushImage(pushOpts, docker.AuthConfiguration{}, &buf)
