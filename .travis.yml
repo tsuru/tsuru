@@ -20,7 +20,7 @@ install:
   - echo http://localhost > $HOME/.tsuru_target
   - make get
 script:
-  - make travis_test
+  - make test
 notifications:
   email:
     recipients:
