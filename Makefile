@@ -115,7 +115,7 @@ deadcode: _install_deadcode
 	@go list ./... | sed -e 's;github.com/globocom/tsuru/;;' | xargs deadcode
 
 race:
-	@for pkg in `go list ./...`; do godep go test -race -i $$pkg; go test -race $$pkg; done
+	@/bin/bash -ec 'for pkg in `go list ./...`; do go test -race -i $$pkg; go test -race $$pkg; done'
 
 doc:
 	@cd docs && make html SPHINXOPTS="-N -W"
