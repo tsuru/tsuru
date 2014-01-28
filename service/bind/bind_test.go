@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -298,7 +298,6 @@ func (s *S) TestUnbindMultiUnits(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.UnbindApp(&a)
 	c.Assert(err, gocheck.IsNil)
-	s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
 	ok := make(chan bool, 1)
 	go func() {
 		t := time.Tick(1)
