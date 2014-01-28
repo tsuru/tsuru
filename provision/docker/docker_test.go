@@ -367,6 +367,7 @@ func (s *S) TestContainerNetworkInfoNotFound(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer func() {
 		dCluster = oldCluster
+        removeClusterNodes([]string{"server"}, c)
 	}()
 	container := container{ID: "c-01", Port: "8888"}
 	clean := createFakeContainers([]string{"c-01"}, c)
@@ -740,14 +741,17 @@ func (s *S) TestDockerCluster(c *gocheck.C) {
 		cluster.Node{ID: "server0", Address: "http://localhost:4243"},
 		cluster.Node{ID: "server1", Address: "http://10.10.10.10:4243"},
 	)
-	oldDockerCluster := dCluster
+    nodes, err := dCluster.Nodes()
+    c.Assert(err, gocheck.IsNil)
 	cmutex.Lock()
 	dCluster = nil
 	cmutex.Unlock()
 	defer func() {
 		cmutex.Lock()
 		defer cmutex.Unlock()
-		dCluster = oldDockerCluster
+        removeClusterNodes([]string{"server0", "server1"}, c)
+        dCluster, err = cluster.New(nil, storage.Redis("localhost:6379", "tests"), nodes...)
+        c.Assert(err, gocheck.IsNil)
 	}()
 	cluster := dockerCluster()
 	c.Assert(cluster, gocheck.DeepEquals, expected)
@@ -796,42 +800,6 @@ func (s *S) TestReplicateImage(c *gocheck.C) {
 	defer config.Unset("docker:registry")
 	cmutex.Lock()
 	oldDockerCluster := dCluster
-	dCluster, _ = cluster.New(nil, nil, cluster.Node{ID: "server0", Address: server.URL()})
-	cmutex.Unlock()
-	defer func() {
-		cmutex.Lock()
-		defer cmutex.Unlock()
-		dCluster = oldDockerCluster
-	}()
-	var buf bytes.Buffer
-	opts := docker.PullImageOptions{
-		Repository: "localhost:3030/base",
-		Registry:   "http://index.docker.io",
-	}
-	err = dCluster.PullImage(opts, &buf)
-	c.Assert(err, gocheck.IsNil)
-	err = replicateImage("localhost:3030/base")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(atomic.LoadInt32(&requests), gocheck.Equals, int32(3))
-	c.Assert(request.URL.Path, gocheck.Matches, ".*/images/localhost:3030/base/push$")
-}
-
-<<<<<<< HEAD
-func (s *S) TestReplicateImageWithoutRegistryInTheImageName(c *gocheck.C) {
-	var request *http.Request
-	var requests int32
-	server, err := dtesting.NewServer(func(r *http.Request) {
-		v := atomic.AddInt32(&requests, 1)
-		if v == 2 {
-			request = r
-		}
-	})
-	c.Assert(err, gocheck.IsNil)
-	defer server.Stop()
-	config.Set("docker:registry", "localhost:3030")
-	defer config.Unset("docker:registry")
-	cmutex.Lock()
-	oldDockerCluster := dCluster
 	dCluster, _ = cluster.New(nil, storage.Redis("localhost:6379", "tests"), cluster.Node{ID: "server0", Address: server.URL()})
 	cmutex.Unlock()
 	defer func() {
@@ -839,21 +807,16 @@ func (s *S) TestReplicateImageWithoutRegistryInTheImageName(c *gocheck.C) {
 		defer cmutex.Unlock()
 		dCluster = oldDockerCluster
 	}()
-	var buf bytes.Buffer
-	opts := docker.PullImageOptions{
-		Repository: "localhost:3030/base",
-		Registry:   "http://index.docker.io",
-	}
-	err = dCluster.PullImage(opts, &buf)
+    err = newImage("localhost:3030/base", "http://index.docker.io")
 	c.Assert(err, gocheck.IsNil)
-	err = replicateImage("base")
+    cleanup := insertImage("localhost:3030/base", "server0", c)
+    defer cleanup()
+	err = replicateImage("localhost:3030/base")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(atomic.LoadInt32(&requests), gocheck.Equals, int32(3))
 	c.Assert(request.URL.Path, gocheck.Matches, ".*/images/localhost:3030/base/push$")
 }
 
-=======
->>>>>>> provision/docker/docker: removing replicate image test without registry url
 func (s *S) TestReplicateImageNoRegistry(c *gocheck.C) {
 	var requests int32
 	server, err := dtesting.NewServer(func(*http.Request) {
@@ -863,11 +826,12 @@ func (s *S) TestReplicateImageNoRegistry(c *gocheck.C) {
 	defer server.Stop()
 	cmutex.Lock()
 	oldDockerCluster := dCluster
-	dCluster, _ = cluster.New(nil, storage.Redis("localhost:6379", "tests"), cluster.Node{ID: "server0", Address: server.URL()})
+	dCluster, _ = cluster.New(nil, storage.Redis("localhost:6379", "tests"), cluster.Node{ID: "server111", Address: server.URL()})
 	cmutex.Unlock()
 	defer func() {
 		cmutex.Lock()
 		defer cmutex.Unlock()
+        removeClusterNodes([]string{"server111"}, c)
 		dCluster = oldDockerCluster
 	}()
 	err = replicateImage("tsuru/python")
