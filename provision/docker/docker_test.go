@@ -192,9 +192,9 @@ func (s *S) TestContainerSetImage(c *gocheck.C) {
 }
 
 func newImage(repo, serverURL string) error {
-	opts := docker.PullImageOptions{Repository: repo}
-	var buffer bytes.Buffer
-	return dCluster.PullImage(opts, &buffer)
+	var buf bytes.Buffer
+	opts := docker.PullImageOptions{Repository: repo, OutputStream: &buf}
+	return dCluster.PullImage(opts)
 }
 
 type newContainerOpts struct {
@@ -227,7 +227,7 @@ func (s *S) newContainer(opts *newContainerOpts) (*container, error) {
 		Cmd:          []string{"ps"},
 		ExposedPorts: ports,
 	}
-	_, c, err := dCluster.CreateContainer(docker.CreateContainerOptions{}, &config)
+	_, c, err := dCluster.CreateContainer(docker.CreateContainerOptions{Config: &config})
 	if err != nil {
 		return nil, err
 	}
@@ -290,7 +290,7 @@ func (s *S) TestRemoveContainerIgnoreErrors(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(container)
 	client, _ := docker.NewClient(s.server.URL())
-	err = client.RemoveContainer(container.ID)
+	err = client.RemoveContainer(docker.RemoveContainerOptions{ID: container.ID})
 	c.Assert(err, gocheck.IsNil)
 	err = container.remove()
 	c.Assert(err, gocheck.IsNil)

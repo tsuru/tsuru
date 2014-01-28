@@ -6,6 +6,7 @@ package docker
 
 import (
 	"errors"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
@@ -33,7 +34,7 @@ var createContainer = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		c := ctx.FWResult.(container)
-		dockerCluster().RemoveContainer(c.ID)
+		dockerCluster().RemoveContainer(docker.RemoveContainerOptions{ID: c.ID})
 		coll := collection()
 		defer coll.Close()
 		coll.Remove(bson.M{"id": c.ID})

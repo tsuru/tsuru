@@ -177,13 +177,13 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 		AttachStdout: false,
 		AttachStderr: false,
 	}
-	opts := docker.CreateContainerOptions{Name: contName}
-	hostID, c, err := dockerCluster().CreateContainer(opts, &config)
+	opts := docker.CreateContainerOptions{Name: contName, Config: &config}
+	hostID, c, err := dockerCluster().CreateContainer(opts)
 	if err == docker.ErrNoSuchImage {
 		var buf bytes.Buffer
-		pullOpts := docker.PullImageOptions{Repository: imageId}
-		dockerCluster().PullImage(pullOpts, &buf)
-		hostID, c, err = dockerCluster().CreateContainer(opts, &config)
+		pullOpts := docker.PullImageOptions{Repository: imageId, OutputStream: &buf}
+		dockerCluster().PullImage(pullOpts)
+		hostID, c, err = dockerCluster().CreateContainer(opts)
 	}
 	if err != nil {
 		log.Errorf("error on creating container in docker %s - %s", cont.AppName, err)
@@ -303,7 +303,7 @@ func start(app provision.App, imageId string, w io.Writer) (*container, error) {
 func (c *container) remove() error {
 	address := c.getAddress()
 	log.Debugf("Removing container %s from docker", c.ID)
-	err := dockerCluster().RemoveContainer(c.ID)
+	err := dockerCluster().RemoveContainer(docker.RemoveContainerOptions{ID: c.ID})
 	if err != nil {
 		log.Errorf("Failed to remove container from docker: %s", err)
 	}
@@ -498,9 +498,9 @@ func (e *cmdError) Error() string {
 func replicateImage(name string) error {
 	var buf bytes.Buffer
 	if _, err := config.GetString("docker:registry"); err == nil {
-		pushOpts := docker.PushImageOptions{Name: name}
+		pushOpts := docker.PushImageOptions{Name: name, OutputStream: &buf}
 		for i := 0; i < maxTry; i++ {
-			err = dockerCluster().PushImage(pushOpts, docker.AuthConfiguration{}, &buf)
+			err = dockerCluster().PushImage(pushOpts, docker.AuthConfiguration{})
 			if err == nil {
 				buf.Reset()
 				break
@@ -511,9 +511,9 @@ func replicateImage(name string) error {
 		if err != nil {
 			return err
 		}
-		pullOpts := docker.PullImageOptions{Repository: name}
+		pullOpts := docker.PullImageOptions{Repository: name, OutputStream: &buf}
 		for i := 0; i < maxTry; i++ {
-			err = dockerCluster().PullImage(pullOpts, &buf)
+			err = dockerCluster().PullImage(pullOpts)
 			if err == nil {
 				break
 			}
