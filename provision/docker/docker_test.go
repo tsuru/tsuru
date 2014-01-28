@@ -367,7 +367,7 @@ func (s *S) TestContainerNetworkInfoNotFound(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer func() {
 		dCluster = oldCluster
-        removeClusterNodes([]string{"server"}, c)
+		removeClusterNodes([]string{"server"}, c)
 	}()
 	container := container{ID: "c-01", Port: "8888"}
 	clean := createFakeContainers([]string{"c-01"}, c)
@@ -741,17 +741,17 @@ func (s *S) TestDockerCluster(c *gocheck.C) {
 		cluster.Node{ID: "server0", Address: "http://localhost:4243"},
 		cluster.Node{ID: "server1", Address: "http://10.10.10.10:4243"},
 	)
-    nodes, err := dCluster.Nodes()
-    c.Assert(err, gocheck.IsNil)
+	nodes, err := dCluster.Nodes()
+	c.Assert(err, gocheck.IsNil)
 	cmutex.Lock()
 	dCluster = nil
 	cmutex.Unlock()
 	defer func() {
 		cmutex.Lock()
 		defer cmutex.Unlock()
-        removeClusterNodes([]string{"server0", "server1"}, c)
-        dCluster, err = cluster.New(nil, storage.Redis("localhost:6379", "tests"), nodes...)
-        c.Assert(err, gocheck.IsNil)
+		removeClusterNodes([]string{"server0", "server1"}, c)
+		dCluster, err = cluster.New(nil, storage.Redis("localhost:6379", "tests"), nodes...)
+		c.Assert(err, gocheck.IsNil)
 	}()
 	cluster := dockerCluster()
 	c.Assert(cluster, gocheck.DeepEquals, expected)
@@ -807,10 +807,10 @@ func (s *S) TestReplicateImage(c *gocheck.C) {
 		defer cmutex.Unlock()
 		dCluster = oldDockerCluster
 	}()
-    err = newImage("localhost:3030/base", "http://index.docker.io")
+	err = newImage("localhost:3030/base", "http://index.docker.io")
 	c.Assert(err, gocheck.IsNil)
-    cleanup := insertImage("localhost:3030/base", "server0", c)
-    defer cleanup()
+	cleanup := insertImage("localhost:3030/base", "server0", c)
+	defer cleanup()
 	err = replicateImage("localhost:3030/base")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(atomic.LoadInt32(&requests), gocheck.Equals, int32(3))
@@ -831,7 +831,7 @@ func (s *S) TestReplicateImageNoRegistry(c *gocheck.C) {
 	defer func() {
 		cmutex.Lock()
 		defer cmutex.Unlock()
-        removeClusterNodes([]string{"server111"}, c)
+		removeClusterNodes([]string{"server111"}, c)
 		dCluster = oldDockerCluster
 	}()
 	err = replicateImage("tsuru/python")

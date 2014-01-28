@@ -88,15 +88,15 @@ func removeClusterNodes(ids []string, c *gocheck.C) {
 	conn, err := redis.Dial("tcp", "localhost:6379")
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
-    c.Assert(err, gocheck.IsNil)
-    err = conn.Send("multi")
-    c.Assert(err, gocheck.IsNil)
-    for _, id := range ids {
-        conn.Send("del", "tests:node:"+id)
-        conn.Send("lrem", "tests:nodes", "0", id)
-    }
-    _, err = conn.Do("exec")
-    c.Assert(err, gocheck.IsNil)
+	c.Assert(err, gocheck.IsNil)
+	err = conn.Send("multi")
+	c.Assert(err, gocheck.IsNil)
+	for _, id := range ids {
+		conn.Send("del", "tests:node:"+id)
+		conn.Send("lrem", "tests:nodes", "0", id)
+	}
+	_, err = conn.Do("exec")
+	c.Assert(err, gocheck.IsNil)
 }
 
 func clearSchedStorage(c *gocheck.C) {
@@ -116,14 +116,14 @@ func insertImage(repo, nodeID string, c *gocheck.C) func() {
 	conn, err := redis.Dial("tcp", "localhost:6379")
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
-    _, err = conn.Do("set", "tests:image:"+repo, nodeID)
-    c.Assert(err, gocheck.IsNil)
-    return func() {
-        conn, err := redis.Dial("tcp", "localhost:6379")
-        c.Assert(err, gocheck.IsNil)
-        defer conn.Close()
-        conn.Do("del", "tests:image:"+repo)
-    }
+	_, err = conn.Do("set", "tests:image:"+repo, nodeID)
+	c.Assert(err, gocheck.IsNil)
+	return func() {
+		conn, err := redis.Dial("tcp", "localhost:6379")
+		c.Assert(err, gocheck.IsNil)
+		defer conn.Close()
+		conn.Do("del", "tests:image:"+repo)
+	}
 }
 
 type unitSlice []provision.Unit
