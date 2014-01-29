@@ -17,6 +17,7 @@ import (
 	etesting "github.com/globocom/tsuru/exec/testing"
 	ftesting "github.com/globocom/tsuru/fs/testing"
 	rtesting "github.com/globocom/tsuru/router/testing"
+	"github.com/globocom/tsuru/safe"
 	"github.com/globocom/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
@@ -192,7 +193,7 @@ func (s *S) TestContainerSetImage(c *gocheck.C) {
 }
 
 func newImage(repo, serverURL string) error {
-	var buf bytes.Buffer
+	var buf safe.Buffer
 	opts := docker.PullImageOptions{Repository: repo, OutputStream: &buf}
 	return dCluster.PullImage(opts)
 }

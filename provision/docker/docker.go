@@ -18,6 +18,7 @@ import (
 	"github.com/globocom/tsuru/fs"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
+	"github.com/globocom/tsuru/safe"
 	"io"
 	"labix.org/v2/mgo/bson"
 	"net"
@@ -496,7 +497,7 @@ func (e *cmdError) Error() string {
 
 // replicateImage replicates the given image through all nodes in the cluster.
 func replicateImage(name string) error {
-	var buf bytes.Buffer
+	var buf safe.Buffer
 	if _, err := config.GetString("docker:registry"); err == nil {
 		pushOpts := docker.PushImageOptions{Name: name, OutputStream: &buf}
 		for i := 0; i < maxTry; i++ {
