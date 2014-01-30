@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -99,6 +99,22 @@ func (app *App) Get() error {
 		return ErrAppNotFound
 	}
 	return err
+}
+
+// GetAppByName queries the database to find an app identified by the given
+// name.
+func GetAppByName(name string) (*App, error) {
+	var app App
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	err = conn.Apps().Find(bson.M{"name": name}).One(&app)
+	if err == mgo.ErrNotFound {
+		return nil, ErrAppNotFound
+	}
+	return &app, err
 }
 
 // CreateApp creates a new app.

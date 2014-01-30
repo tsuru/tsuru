@@ -52,6 +52,25 @@ func (s *S) TestGetNotFound(c *gocheck.C) {
 	c.Assert(err, gocheck.Equals, ErrAppNotFound)
 }
 
+func (s *S) TestGetAppByName(c *gocheck.C) {
+	newApp := App{Name: "myApp", Platform: "Django"}
+	err := s.conn.Apps().Insert(newApp)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": newApp.Name})
+	newApp.Env = map[string]bind.EnvVar{}
+	err = s.conn.Apps().Update(bson.M{"name": newApp.Name}, &newApp)
+	c.Assert(err, gocheck.IsNil)
+	myApp, err := GetAppByName("myApp")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(myApp.Name, gocheck.Equals, newApp.Name)
+}
+
+func (s *S) TestGetAppByNameNotFound(c *gocheck.C) {
+	app, err := GetAppByName("wat")
+	c.Assert(err, gocheck.Equals, ErrAppNotFound)
+	c.Assert(app, gocheck.IsNil)
+}
+
 func (s *S) TestDelete(c *gocheck.C) {
 	s.conn.Users().Update(
 		bson.M{"email": s.user.Email},
