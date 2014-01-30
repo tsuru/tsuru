@@ -10,7 +10,9 @@ import (
 
 func (s *S) TestPlan(c *gocheck.C) {
 	plan := Plan{
-		Name: "Ignite",
+		Name:        "Ignite",
+		Description: "A simple plan",
 	}
 	c.Assert("Ignite", gocheck.Equals, plan.Name)
+	c.Assert("A simple plan", gocheck.Equals, plan.Description)
 }

@@ -6,5 +6,6 @@ package service
 
 // Plan represents a service plan
 type Plan struct {
-	Name string
+	Name        string
+	Description string
 }
