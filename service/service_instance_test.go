@@ -408,10 +408,7 @@ func (s *InstanceSuite) TestCreateServiceInstance(c *gocheck.C) {
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Services().RemoveId(srv.Name)
-	plan := Plan{Name: "small", ServiceName: srv.Name}
-	err = CreatePlan(&plan)
-	c.Assert(err, gocheck.IsNil)
-	defer DeletePlan(&plan)
+	plan := Plan{Name: "small"}
 	err = CreateServiceInstance("instance", &srv, &plan, s.user)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
