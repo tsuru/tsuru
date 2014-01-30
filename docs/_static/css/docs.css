@@ -67,3 +67,28 @@ dt:hover > a.headerlink {
 	color: #000;
 	visibility: visible;
 }
+
+.container .section {
+	float: left;
+	width: 74%;
+}
+
+.sidebar {
+	float: right;
+	width: 25%;
+	background-color: #eee;
+	padding: 10px;
+}
+
+.sidebar ul {
+	padding: 0 21px;
+	margin-bottom: 10px;
+}
+
+.sidebar input {
+	width: 100%;
+	border: 1px solid #ccc;
+	border-radius: 4px;
+	padding: 2px 7px;
+	background-color: #fff;
+}
