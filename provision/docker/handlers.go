@@ -23,7 +23,7 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	return dCluster.Register(params)
+	return dockerCluster().Register(params)
 }
 
 func removeNodeHandler(w http.ResponseWriter, r *http.Request) error {
@@ -31,7 +31,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	return dCluster.Unregister(params)
+	return dockerCluster().Unregister(params)
 }
 
 func unmarshal(body io.ReadCloser) (map[string]string, error) {
