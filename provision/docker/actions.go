@@ -112,7 +112,7 @@ var saveUnits = action.Action{
 		if !ok {
 			return nil, errors.New("First parameter must be a *app.App.")
 		}
-		err := a.Get()
+		a, err := app.GetAppByName(a.Name)
 		if err != nil {
 			return nil, err
 		}

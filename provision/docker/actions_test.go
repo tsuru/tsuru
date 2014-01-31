@@ -172,35 +172,35 @@ func (s *S) TestSaveUnitsName(c *gocheck.C) {
 }
 
 func (s *S) TestSaveUnitsForward(c *gocheck.C) {
-	app := app.App{
+	a := app.App{
 		Name:     "otherapp",
 		Platform: "zend",
 	}
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
-	err = conn.Apps().Insert(app)
+	err = conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": app.Name})
+	defer conn.Apps().Remove(bson.M{"name": a.Name})
 	container := container{
 		ID:       "id",
 		Type:     "python",
 		HostAddr: "",
-		AppName:  app.Name,
+		AppName:  a.Name,
 	}
 	coll := collection()
 	c.Assert(err, gocheck.IsNil)
 	coll.Insert(&container)
-	context := action.FWContext{Params: []interface{}{&app}}
+	context := action.FWContext{Params: []interface{}{&a}}
 	_, err = saveUnits.Forward(context)
 	c.Assert(err, gocheck.IsNil)
-	err = app.Get()
+	app, err := app.GetAppByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Units[0].Name, gocheck.Equals, "id")
 }
 
 func (s *S) TestSaveUnitsForwardShouldMaintainData(c *gocheck.C) {
-	app := app.App{
+	a := app.App{
 		Name:     "otherapp",
 		Platform: "zend",
 		Deploys:  10,
@@ -208,23 +208,23 @@ func (s *S) TestSaveUnitsForwardShouldMaintainData(c *gocheck.C) {
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
-	err = conn.Apps().Insert(app)
+	err = conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
-	app.Deploys = 0
-	defer conn.Apps().Remove(bson.M{"name": app.Name})
+	a.Deploys = 0
+	defer conn.Apps().Remove(bson.M{"name": a.Name})
 	container := container{
 		ID:       "id",
 		Type:     "python",
 		HostAddr: "",
-		AppName:  app.Name,
+		AppName:  a.Name,
 	}
 	coll := collection()
 	c.Assert(err, gocheck.IsNil)
 	coll.Insert(&container)
-	context := action.FWContext{Params: []interface{}{&app}}
+	context := action.FWContext{Params: []interface{}{&a}}
 	_, err = saveUnits.Forward(context)
 	c.Assert(err, gocheck.IsNil)
-	err = app.Get()
+	app, err := app.GetAppByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Units[0].Name, gocheck.Equals, "id")
 	c.Assert(int(app.Deploys), gocheck.Equals, 10)
