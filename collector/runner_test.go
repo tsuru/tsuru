@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -58,6 +58,7 @@ func (s *S) TestCollect(c *gocheck.C) {
 	var apps []app.App
 	err := s.conn.Apps().Find(bson.M{"name": bson.M{"$in": []string{"as_i_rise", "the_infanta"}}}).Sort("name").All(&apps)
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(apps, gocheck.HasLen, 2)
 	c.Assert(apps[0].Units[0].Ip, gocheck.Equals, "10.10.10.1")
 	c.Assert(apps[1].Units[0].Ip, gocheck.Equals, "10.10.10.2")
 }

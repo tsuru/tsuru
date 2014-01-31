@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -42,15 +42,16 @@ func (l *AppList) Add(a *app.App, index int) {
 func update(units []provision.Unit) {
 	log.Debug("updating status from provisioner")
 	var l AppList
+	var err error
 	for _, unit := range units {
 		a, index := l.Search(unit.AppName)
 		if index > -1 {
-			err := a.Get()
-			a.Units = nil
+			a, err = app.GetAppByName(unit.AppName)
 			if err != nil {
 				log.Errorf("collector: app %q not found. Skipping.\n", unit.AppName)
 				continue
 			}
+			a.Units = nil
 			l.Add(a, index)
 		}
 		u := app.Unit{}
