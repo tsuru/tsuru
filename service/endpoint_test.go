@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -71,6 +71,16 @@ type infoHandler struct {
 func (h *infoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.r = r
 	content := `[{"label": "some label", "value": "some value"}, {"label": "label2.0", "value": "v2"}]`
+	w.Write([]byte(content))
+}
+
+type plansHandler struct {
+	r *http.Request
+}
+
+func (h *plansHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.r = r
+	content := `[{"name": "ignite", "description": "some value"}, {"name": "small", "description": "not space left for you"}]`
 	w.Write([]byte(content))
 }
 
@@ -357,4 +367,19 @@ func (s *S) TestInfoNotFound(c *gocheck.C) {
 	result, err := client.Info(&instance)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result, gocheck.IsNil)
+}
+
+func (s *S) TestPlans(c *gocheck.C) {
+	h := plansHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	client := &Client{endpoint: ts.URL}
+	result, err := client.Plans()
+	c.Assert(err, gocheck.IsNil)
+	expected := []Plan{
+		{Name: "ignite", Description: "some value"},
+		{Name: "small", Description: "not space left for you"},
+	}
+	c.Assert(result, gocheck.DeepEquals, expected)
+	c.Assert(h.r.URL.Path, gocheck.Equals, "/resources/plans")
 }

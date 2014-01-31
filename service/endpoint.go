@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -176,6 +176,20 @@ func (c *Client) Info(instance *ServiceInstance) ([]map[string]string, error) {
 		return nil, err
 	}
 	result := []map[string]string{}
+	err = c.jsonFromResponse(resp, &result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (c *Client) Plans() ([]Plan, error) {
+	url := "/resources/plans"
+	resp, err := c.issueRequest(url, "GET", nil)
+	if err != nil || resp.StatusCode != 200 {
+		return nil, err
+	}
+	result := []Plan{}
 	err = c.jsonFromResponse(resp, &result)
 	if err != nil {
 		return nil, err
