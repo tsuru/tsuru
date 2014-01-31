@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -622,8 +622,7 @@ func generateAppToken(w http.ResponseWriter, r *http.Request, t *auth.Token) err
 		return err
 	}
 	if body.Export {
-		a := app.App{Name: body.Client}
-		if err := a.Get(); err == nil {
+		if a, err := app.GetAppByName(body.Client); err == nil {
 			envs := []bind.EnvVar{
 				{
 					Name:   "TSURU_APP_TOKEN",

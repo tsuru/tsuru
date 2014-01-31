@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -27,18 +27,17 @@ import (
 )
 
 func getApp(name string, u *auth.User) (app.App, error) {
-	app := app.App{Name: name}
-	err := app.Get()
+	a, err := app.GetAppByName(name)
 	if err != nil {
-		return app, &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", name)}
+		return app.App{}, &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", name)}
 	}
 	if u.IsAdmin() {
-		return app, nil
+		return *a, nil
 	}
-	if !auth.CheckUserAccess(app.Teams, u) {
-		return app, &errors.HTTP{Code: http.StatusForbidden, Message: "User does not have access to this app"}
+	if !auth.CheckUserAccess(a.Teams, u) {
+		return *a, &errors.HTTP{Code: http.StatusForbidden, Message: "User does not have access to this app"}
 	}
-	return app, nil
+	return *a, nil
 }
 
 func deploy(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
@@ -47,17 +46,16 @@ func deploy(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Missing parameter version"}
 	}
 	w.Header().Set("Content-Type", "text")
-	instance := &app.App{Name: r.URL.Query().Get(":appname")}
-	err := instance.Get()
+	appName := r.URL.Query().Get(":appname")
+	instance, err := app.GetAppByName(appName)
 	if err != nil {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", instance.Name)}
+		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
 	}
 	return app.DeployApp(instance, version, w)
 }
 
 func appIsAvailable(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
-	app := app.App{Name: r.URL.Query().Get(":appname")}
-	err := app.Get()
+	app, err := app.GetAppByName(r.URL.Query().Get(":appname"))
 	if err != nil {
 		return err
 	}
@@ -642,8 +640,7 @@ func restart(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 
 func addLog(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	queryValues := r.URL.Query()
-	app := app.App{Name: queryValues.Get(":app")}
-	err := app.Get()
+	app, err := app.GetAppByName(queryValues.Get(":app"))
 	if err != nil {
 		return err
 	}
