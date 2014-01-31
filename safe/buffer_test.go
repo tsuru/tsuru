@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -205,5 +205,17 @@ func (s *S) TestSafeBufferWriteTo(c *gocheck.C) {
 	x, err := buf2.Read(p[:])
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(x, gocheck.Equals, 9)
+	c.Assert(p[:], gocheck.DeepEquals, []byte("something"))
+}
+
+func (s *S) TestSafeBufferWriteString(c *gocheck.C) {
+	buf := NewBuffer(nil)
+	n, err := buf.WriteString("something")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, 9)
+	var p [9]byte
+	n, err = buf.Read(p[:])
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, 9)
 	c.Assert(p[:], gocheck.DeepEquals, []byte("something"))
 }
