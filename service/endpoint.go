@@ -183,6 +183,10 @@ func (c *Client) Info(instance *ServiceInstance) ([]map[string]string, error) {
 	return result, nil
 }
 
+// Plans returns the service plans.
+// The api should be prepared to receive the request,
+// like below:
+// GET /resources/plans
 func (c *Client) Plans() ([]Plan, error) {
 	url := "/resources/plans"
 	resp, err := c.issueRequest(url, "GET", nil)
