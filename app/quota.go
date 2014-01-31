@@ -40,7 +40,7 @@ func reserveUnits(app *App, quantity int) error {
 }
 
 func checkAppLimit(name string, quantity int) (*App, error) {
-	app, err := GetAppByName(name)
+	app, err := GetByName(name)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,7 @@ func releaseUnits(app *App, quantity int) error {
 }
 
 func checkAppUsage(name string, quantity int) (*App, error) {
-	app, err := GetAppByName(name)
+	app, err := GetByName(name)
 	if err != nil {
 		return nil, err
 	}

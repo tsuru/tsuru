@@ -83,7 +83,7 @@ type Applog struct {
 
 // GetAppByName queries the database to find an app identified by the given
 // name.
-func GetAppByName(name string) (*App, error) {
+func GetByName(name string) (*App, error) {
 	var app App
 	conn, err := db.Conn()
 	if err != nil {

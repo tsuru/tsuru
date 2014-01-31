@@ -44,7 +44,7 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *gocheck.C) {
 	}
 	err = CreateApp(&a, s.user)
 	c.Assert(err, gocheck.IsNil)
-	app, err := GetAppByName(a.Name)
+	app, err := GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	err = Delete(app)
 	c.Assert(err, gocheck.IsNil)

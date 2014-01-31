@@ -622,7 +622,7 @@ func generateAppToken(w http.ResponseWriter, r *http.Request, t *auth.Token) err
 		return err
 	}
 	if body.Export {
-		if a, err := app.GetAppByName(body.Client); err == nil {
+		if a, err := app.GetByName(body.Client); err == nil {
 			envs := []bind.EnvVar{
 				{
 					Name:   "TSURU_APP_TOKEN",

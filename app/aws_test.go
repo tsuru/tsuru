@@ -148,7 +148,7 @@ func (s *S) TestDestroyBucket(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	defer s.provisioner.Destroy(&app)
-	otherApp, err := GetAppByName(app.Name)
+	otherApp, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	err = destroyBucket(otherApp)
 	c.Assert(err, gocheck.IsNil)

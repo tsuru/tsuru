@@ -27,7 +27,7 @@ import (
 )
 
 func getApp(name string, u *auth.User) (app.App, error) {
-	a, err := app.GetAppByName(name)
+	a, err := app.GetByName(name)
 	if err != nil {
 		return app.App{}, &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", name)}
 	}
@@ -47,7 +47,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	}
 	w.Header().Set("Content-Type", "text")
 	appName := r.URL.Query().Get(":appname")
-	instance, err := app.GetAppByName(appName)
+	instance, err := app.GetByName(appName)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
 	}
@@ -55,7 +55,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 }
 
 func appIsAvailable(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
-	app, err := app.GetAppByName(r.URL.Query().Get(":appname"))
+	app, err := app.GetByName(r.URL.Query().Get(":appname"))
 	if err != nil {
 		return err
 	}
@@ -640,7 +640,7 @@ func restart(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 
 func addLog(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	queryValues := r.URL.Query()
-	app, err := app.GetAppByName(queryValues.Get(":app"))
+	app, err := app.GetByName(queryValues.Get(":app"))
 	if err != nil {
 		return err
 	}

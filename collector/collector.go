@@ -46,7 +46,7 @@ func update(units []provision.Unit) {
 	for _, unit := range units {
 		a, index := l.Search(unit.AppName)
 		if index > -1 {
-			a, err = app.GetAppByName(unit.AppName)
+			a, err = app.GetByName(unit.AppName)
 			if err != nil {
 				log.Errorf("collector: app %q not found. Skipping.\n", unit.AppName)
 				continue

@@ -1786,7 +1786,7 @@ func (s *AuthSuite) TestGenerateApplictionTokenExport(c *gocheck.C) {
 	var jsonToken map[string]interface{}
 	err = json.NewDecoder(recorder.Body).Decode(&jsonToken)
 	c.Assert(err, gocheck.IsNil)
-	app, err := app.GetAppByName(a.Name)
+	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	tokenVar := app.Env["TSURU_APP_TOKEN"]
 	c.Assert(tokenVar.Name, gocheck.Equals, "TSURU_APP_TOKEN")

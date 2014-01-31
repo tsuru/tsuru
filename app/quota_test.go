@@ -21,7 +21,7 @@ func (s *S) TestReserveUnits(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	err := reserveUnits(app, 6)
 	c.Assert(err, gocheck.IsNil)
-	app, err = GetAppByName(app.Name)
+	app, err = GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Quota.InUse, gocheck.Equals, 6)
 }
@@ -58,7 +58,7 @@ func (s *S) TestReserveUnitsUnlimitedQuota(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	err := reserveUnits(app, 6)
 	c.Assert(err, gocheck.IsNil)
-	app, err = GetAppByName(app.Name)
+	app, err = GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Quota.InUse, gocheck.Equals, 6)
 }
@@ -81,7 +81,7 @@ func (s *S) TestReserveUnitsIsAtomic(c *gocheck.C) {
 		}()
 	}
 	wg.Wait()
-	app, err := GetAppByName(app.Name)
+	app, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Quota.InUse, gocheck.Equals, 39)
 }
@@ -95,7 +95,7 @@ func (s *S) TestReleaseUnits(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	err := releaseUnits(app, 6)
 	c.Assert(err, gocheck.IsNil)
-	app, err = GetAppByName(app.Name)
+	app, err = GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Quota.InUse, gocheck.Equals, 1)
 }
@@ -130,7 +130,7 @@ func (s *S) TestReleaseUnitsIsAtomic(c *gocheck.C) {
 		}()
 	}
 	wg.Wait()
-	app, err := GetAppByName(app.Name)
+	app, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Quota.InUse, gocheck.Equals, 1)
 }

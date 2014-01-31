@@ -29,7 +29,7 @@ const (
 // ensureAppIsStarted make sure that the app and all units present in the given
 // message are started.
 func ensureAppIsStarted(msg *queue.Message) (App, error) {
-	app, err := GetAppByName(msg.Args[0])
+	app, err := GetByName(msg.Args[0])
 	if err != nil {
 		return App{}, fmt.Errorf("Error handling %q: app %q does not exist.", msg.Action, msg.Args[0])
 	}
@@ -55,7 +55,7 @@ func ensureAppIsStarted(msg *queue.Message) (App, error) {
 // bindUnit handles the bind-service message, binding a unit to all service
 // instances bound to the app.
 func bindUnit(msg *queue.Message) error {
-	app, err := GetAppByName(msg.Args[0])
+	app, err := GetByName(msg.Args[0])
 	if err != nil {
 		return fmt.Errorf("Error handling %q: app %q does not exist.", msg.Action, app.Name)
 	}

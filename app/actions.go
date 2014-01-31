@@ -209,7 +209,7 @@ var exportEnvironmentsAction = action.Action{
 	Name: "export-environments",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		app := ctx.Params[0].(*App)
-		app, err := GetAppByName(app.Name)
+		app, err := GetByName(app.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -249,7 +249,7 @@ var exportEnvironmentsAction = action.Action{
 	Backward: func(ctx action.BWContext) {
 		app := ctx.Params[0].(*App)
 		auth.DeleteToken(app.Env["TSURU_APP_TOKEN"].Value)
-		app, err := GetAppByName(app.Name)
+		app, err := GetByName(app.Name)
 		if err == nil {
 			s3Env := app.InstanceEnv(s3InstanceName)
 			vars := make([]string, len(s3Env)+3)
@@ -352,7 +352,7 @@ var reserveUnitsToAdd = action.Action{
 			return nil, err
 		}
 		defer conn.Close()
-		app, err = GetAppByName(app.Name)
+		app, err = GetByName(app.Name)
 		if err != nil {
 			return nil, ErrAppNotFound
 		}
@@ -440,7 +440,7 @@ var saveNewUnitsInDatabase = action.Action{
 			return nil, err
 		}
 		defer conn.Close()
-		app, err = GetAppByName(app.Name)
+		app, err = GetByName(app.Name)
 		if err != nil {
 			return nil, ErrAppNotFound
 		}

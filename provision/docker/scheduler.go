@@ -49,7 +49,7 @@ func (s segregatedScheduler) Schedule(opts docker.CreateContainerOptions) (strin
 	if err != nil {
 		return "", nil, err
 	}
-	app, err := app.GetAppByName(cont.AppName)
+	app, err := app.GetByName(cont.AppName)
 	if err != nil {
 		return s.fallback(opts)
 	}

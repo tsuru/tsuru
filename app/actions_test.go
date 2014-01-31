@@ -88,7 +88,7 @@ func (s *S) TestInsertAppForward(c *gocheck.C) {
 	c.Assert(a.Platform, gocheck.Equals, app.Platform)
 	c.Assert(a.Units, gocheck.HasLen, 1)
 	c.Assert(a.Units[0].Name, gocheck.Equals, "")
-	gotApp, err := GetAppByName(app.Name)
+	gotApp, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(gotApp.Units, gocheck.HasLen, 1)
 	c.Assert(gotApp.Units[0].Name, gocheck.Equals, "")
@@ -111,7 +111,7 @@ func (s *S) TestInsertAppForwardWithQuota(c *gocheck.C) {
 	c.Assert(a.Platform, gocheck.Equals, app.Platform)
 	c.Assert(a.Units, gocheck.HasLen, 1)
 	c.Assert(a.Units[0].Name, gocheck.Equals, "")
-	gotApp, err := GetAppByName(app.Name)
+	gotApp, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(gotApp.Units, gocheck.HasLen, 1)
 	c.Assert(gotApp.Units[0].Name, gocheck.Equals, "")
@@ -131,7 +131,7 @@ func (s *S) TestInsertAppForwardAppPointer(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(a.Name, gocheck.Equals, app.Name)
 	c.Assert(a.Platform, gocheck.Equals, app.Platform)
-	_, err = GetAppByName(app.Name)
+	_, err = GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 }
 
@@ -367,7 +367,7 @@ func (s *S) TestExportEnvironmentsForward(c *gocheck.C) {
 	result, err := exportEnvironmentsAction.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result, gocheck.Equals, &env)
-	gotApp, err := GetAppByName(app.Name)
+	gotApp, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	appEnv := gotApp.InstanceEnv(s3InstanceName)
 	c.Assert(appEnv["TSURU_S3_ENDPOINT"].Value, gocheck.Equals, env.endpoint)
@@ -407,7 +407,7 @@ func (s *S) TestExportEnvironmentsForwardWithoutS3Env(c *gocheck.C) {
 	result, err := exportEnvironmentsAction.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result, gocheck.Equals, &app)
-	gotApp, err := GetAppByName(app.Name)
+	gotApp, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	appEnv := gotApp.InstanceEnv(s3InstanceName)
 	c.Assert(appEnv, gocheck.DeepEquals, map[string]bind.EnvVar{})
@@ -441,7 +441,7 @@ func (s *S) TestExportEnvironmentsBackward(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	ctx := action.BWContext{Params: []interface{}{&app}}
 	exportEnvironmentsAction.Backward(ctx)
-	copy, err := GetAppByName(app.Name)
+	copy, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	for _, name := range envNames {
 		if _, ok := copy.Env[name]; ok {
@@ -728,7 +728,7 @@ func (s *S) TestReserveUnitsToAddForward(c *gocheck.C) {
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, 3}})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result.(int), gocheck.Equals, 3)
-	gotApp, err := GetAppByName(app.Name)
+	gotApp, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(gotApp.InUse, gocheck.Equals, 3)
 }
@@ -744,7 +744,7 @@ func (s *S) TestReserveUnitsToAddForwardUint(c *gocheck.C) {
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, uint(3)}})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result.(int), gocheck.Equals, 3)
-	gotApp, err := GetAppByName(app.Name)
+	gotApp, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(gotApp.InUse, gocheck.Equals, 3)
 }
@@ -760,7 +760,7 @@ func (s *S) TestReserveUnitsToAddForwardNoPointer(c *gocheck.C) {
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{app, 3}})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result.(int), gocheck.Equals, 3)
-	gotApp, err := GetAppByName(app.Name)
+	gotApp, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(gotApp.InUse, gocheck.Equals, 3)
 }
@@ -813,7 +813,7 @@ func (s *S) TestReserveUnitsToAddBackward(c *gocheck.C) {
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	reserveUnitsToAdd.Backward(action.BWContext{Params: []interface{}{&app, 3}, FWResult: 3})
-	gotApp, err := GetAppByName(app.Name)
+	gotApp, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(gotApp.InUse, gocheck.Equals, 1)
 }
@@ -827,7 +827,7 @@ func (s *S) TestReserveUnitsToAddBackwardNoPointer(c *gocheck.C) {
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	reserveUnitsToAdd.Backward(action.BWContext{Params: []interface{}{app, 3}, FWResult: 3})
-	gotApp, err := GetAppByName(app.Name)
+	gotApp, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(gotApp.InUse, gocheck.Equals, 1)
 }
@@ -938,7 +938,7 @@ func (s *S) TestSaveNewUnitsInDatabaseForward(c *gocheck.C) {
 	fwresult, err := saveNewUnitsInDatabase.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(fwresult, gocheck.IsNil)
-	gotApp, err := GetAppByName(app.Name)
+	gotApp, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(gotApp.Units, gocheck.HasLen, 3)
 	var expectedMessages MessageList
@@ -981,7 +981,7 @@ func (s *S) TestSaveNewUnitsInDatabaseForwardNoPointer(c *gocheck.C) {
 	fwresult, err := saveNewUnitsInDatabase.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(fwresult, gocheck.IsNil)
-	gotApp, err := GetAppByName(app.Name)
+	gotApp, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(gotApp.Units, gocheck.HasLen, 3)
 	var expectedMessages MessageList

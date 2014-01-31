@@ -194,7 +194,7 @@ func (s *S) TestSaveUnitsForward(c *gocheck.C) {
 	context := action.FWContext{Params: []interface{}{&a}}
 	_, err = saveUnits.Forward(context)
 	c.Assert(err, gocheck.IsNil)
-	app, err := app.GetAppByName(a.Name)
+	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Units[0].Name, gocheck.Equals, "id")
 }
@@ -224,7 +224,7 @@ func (s *S) TestSaveUnitsForwardShouldMaintainData(c *gocheck.C) {
 	context := action.FWContext{Params: []interface{}{&a}}
 	_, err = saveUnits.Forward(context)
 	c.Assert(err, gocheck.IsNil)
-	app, err := app.GetAppByName(a.Name)
+	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Units[0].Name, gocheck.Equals, "id")
 	c.Assert(int(app.Deploys), gocheck.Equals, 10)
