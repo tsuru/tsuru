@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -13,7 +13,7 @@ import (
 )
 
 func reserveUnits(app *App, quantity int) error {
-	err := checkAppLimit(app, quantity)
+	app, err := checkAppLimit(app.Name, quantity)
 	if err != nil {
 		return err
 	}
@@ -27,7 +27,7 @@ func reserveUnits(app *App, quantity int) error {
 		bson.M{"$inc": bson.M{"quota.inuse": quantity}},
 	)
 	for err == mgo.ErrNotFound {
-		err = checkAppLimit(app, quantity)
+		app, err = checkAppLimit(app.Name, quantity)
 		if err != nil {
 			return err
 		}
@@ -39,22 +39,22 @@ func reserveUnits(app *App, quantity int) error {
 	return err
 }
 
-func checkAppLimit(app *App, quantity int) error {
-	err := app.Get()
+func checkAppLimit(name string, quantity int) (*App, error) {
+	app, err := GetAppByName(name)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if app.Quota.Limit > -1 && app.Quota.InUse+quantity > app.Quota.Limit {
-		return &quota.QuotaExceededError{
+		return nil, &quota.QuotaExceededError{
 			Available: uint(app.Quota.Limit - app.Quota.InUse),
 			Requested: uint(quantity),
 		}
 	}
-	return nil
+	return app, nil
 }
 
 func releaseUnits(app *App, quantity int) error {
-	err := checkAppUsage(app, quantity)
+	app, err := checkAppUsage(app.Name, quantity)
 	if err != nil {
 		return err
 	}
@@ -68,7 +68,7 @@ func releaseUnits(app *App, quantity int) error {
 		bson.M{"$inc": bson.M{"quota.inuse": -1 * quantity}},
 	)
 	for err == mgo.ErrNotFound {
-		err = checkAppUsage(app, quantity)
+		app, err = checkAppUsage(app.Name, quantity)
 		if err != nil {
 			return err
 		}
@@ -80,13 +80,13 @@ func releaseUnits(app *App, quantity int) error {
 	return err
 }
 
-func checkAppUsage(app *App, quantity int) error {
-	err := app.Get()
+func checkAppUsage(name string, quantity int) (*App, error) {
+	app, err := GetAppByName(name)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if app.Quota.InUse-quantity < 0 {
-		return errors.New("Not enough reserved units")
+		return nil, errors.New("Not enough reserved units")
 	}
-	return nil
+	return app, nil
 }

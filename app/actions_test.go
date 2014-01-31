@@ -88,11 +88,11 @@ func (s *S) TestInsertAppForward(c *gocheck.C) {
 	c.Assert(a.Platform, gocheck.Equals, app.Platform)
 	c.Assert(a.Units, gocheck.HasLen, 1)
 	c.Assert(a.Units[0].Name, gocheck.Equals, "")
-	err = app.Get()
+	gotApp, err := GetAppByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.Units, gocheck.HasLen, 1)
-	c.Assert(app.Units[0].Name, gocheck.Equals, "")
-	c.Assert(app.Quota, gocheck.DeepEquals, quota.Unlimited)
+	c.Assert(gotApp.Units, gocheck.HasLen, 1)
+	c.Assert(gotApp.Units[0].Name, gocheck.Equals, "")
+	c.Assert(gotApp.Quota, gocheck.DeepEquals, quota.Unlimited)
 }
 
 func (s *S) TestInsertAppForwardWithQuota(c *gocheck.C) {
@@ -111,12 +111,12 @@ func (s *S) TestInsertAppForwardWithQuota(c *gocheck.C) {
 	c.Assert(a.Platform, gocheck.Equals, app.Platform)
 	c.Assert(a.Units, gocheck.HasLen, 1)
 	c.Assert(a.Units[0].Name, gocheck.Equals, "")
-	err = app.Get()
+	gotApp, err := GetAppByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.Units, gocheck.HasLen, 1)
-	c.Assert(app.Units[0].Name, gocheck.Equals, "")
+	c.Assert(gotApp.Units, gocheck.HasLen, 1)
+	c.Assert(gotApp.Units[0].Name, gocheck.Equals, "")
 	expected := quota.Quota{Limit: 2}
-	c.Assert(app.Quota, gocheck.DeepEquals, expected)
+	c.Assert(gotApp.Quota, gocheck.DeepEquals, expected)
 }
 
 func (s *S) TestInsertAppForwardAppPointer(c *gocheck.C) {
@@ -131,7 +131,7 @@ func (s *S) TestInsertAppForwardAppPointer(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(a.Name, gocheck.Equals, app.Name)
 	c.Assert(a.Platform, gocheck.Equals, app.Platform)
-	err = app.Get()
+	_, err = GetAppByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 }
 
@@ -367,9 +367,9 @@ func (s *S) TestExportEnvironmentsForward(c *gocheck.C) {
 	result, err := exportEnvironmentsAction.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result, gocheck.Equals, &env)
-	err = app.Get()
+	gotApp, err := GetAppByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
-	appEnv := app.InstanceEnv(s3InstanceName)
+	appEnv := gotApp.InstanceEnv(s3InstanceName)
 	c.Assert(appEnv["TSURU_S3_ENDPOINT"].Value, gocheck.Equals, env.endpoint)
 	c.Assert(appEnv["TSURU_S3_ENDPOINT"].Public, gocheck.Equals, false)
 	c.Assert(appEnv["TSURU_S3_LOCATIONCONSTRAINT"].Value, gocheck.Equals, "true")
@@ -380,7 +380,7 @@ func (s *S) TestExportEnvironmentsForward(c *gocheck.C) {
 	c.Assert(appEnv["TSURU_S3_SECRET_KEY"].Public, gocheck.Equals, false)
 	c.Assert(appEnv["TSURU_S3_BUCKET"].Value, gocheck.Equals, env.bucket)
 	c.Assert(appEnv["TSURU_S3_BUCKET"].Public, gocheck.Equals, false)
-	appEnv = app.InstanceEnv("")
+	appEnv = gotApp.InstanceEnv("")
 	c.Assert(appEnv["TSURU_APPNAME"].Value, gocheck.Equals, app.Name)
 	c.Assert(appEnv["TSURU_APPNAME"].Public, gocheck.Equals, false)
 	c.Assert(appEnv["TSURU_HOST"].Value, gocheck.Equals, expectedHost)
@@ -407,11 +407,11 @@ func (s *S) TestExportEnvironmentsForwardWithoutS3Env(c *gocheck.C) {
 	result, err := exportEnvironmentsAction.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result, gocheck.Equals, &app)
-	err = app.Get()
+	gotApp, err := GetAppByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
-	appEnv := app.InstanceEnv(s3InstanceName)
+	appEnv := gotApp.InstanceEnv(s3InstanceName)
 	c.Assert(appEnv, gocheck.DeepEquals, map[string]bind.EnvVar{})
-	appEnv = app.InstanceEnv("")
+	appEnv = gotApp.InstanceEnv("")
 	c.Assert(appEnv["TSURU_APPNAME"].Value, gocheck.Equals, app.Name)
 	c.Assert(appEnv["TSURU_APPNAME"].Public, gocheck.Equals, false)
 	c.Assert(appEnv["TSURU_HOST"].Value, gocheck.Equals, expectedHost)
@@ -441,8 +441,7 @@ func (s *S) TestExportEnvironmentsBackward(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	ctx := action.BWContext{Params: []interface{}{&app}}
 	exportEnvironmentsAction.Backward(ctx)
-	copy := app
-	err = copy.Get()
+	copy, err := GetAppByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	for _, name := range envNames {
 		if _, ok := copy.Env[name]; ok {
@@ -729,9 +728,9 @@ func (s *S) TestReserveUnitsToAddForward(c *gocheck.C) {
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, 3}})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result.(int), gocheck.Equals, 3)
-	err = app.Get()
+	gotApp, err := GetAppByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.InUse, gocheck.Equals, 3)
+	c.Assert(gotApp.InUse, gocheck.Equals, 3)
 }
 
 func (s *S) TestReserveUnitsToAddForwardUint(c *gocheck.C) {
@@ -745,9 +744,9 @@ func (s *S) TestReserveUnitsToAddForwardUint(c *gocheck.C) {
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, uint(3)}})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result.(int), gocheck.Equals, 3)
-	err = app.Get()
+	gotApp, err := GetAppByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.InUse, gocheck.Equals, 3)
+	c.Assert(gotApp.InUse, gocheck.Equals, 3)
 }
 
 func (s *S) TestReserveUnitsToAddForwardNoPointer(c *gocheck.C) {
@@ -761,9 +760,9 @@ func (s *S) TestReserveUnitsToAddForwardNoPointer(c *gocheck.C) {
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{app, 3}})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result.(int), gocheck.Equals, 3)
-	err = app.Get()
+	gotApp, err := GetAppByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.InUse, gocheck.Equals, 3)
+	c.Assert(gotApp.InUse, gocheck.Equals, 3)
 }
 
 func (s *S) TestReserveUnitsToAddForwardQuotaExceeded(c *gocheck.C) {
@@ -814,9 +813,9 @@ func (s *S) TestReserveUnitsToAddBackward(c *gocheck.C) {
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	reserveUnitsToAdd.Backward(action.BWContext{Params: []interface{}{&app, 3}, FWResult: 3})
-	err := app.Get()
+	gotApp, err := GetAppByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.InUse, gocheck.Equals, 1)
+	c.Assert(gotApp.InUse, gocheck.Equals, 1)
 }
 
 func (s *S) TestReserveUnitsToAddBackwardNoPointer(c *gocheck.C) {
@@ -828,9 +827,9 @@ func (s *S) TestReserveUnitsToAddBackwardNoPointer(c *gocheck.C) {
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	reserveUnitsToAdd.Backward(action.BWContext{Params: []interface{}{app, 3}, FWResult: 3})
-	err := app.Get()
+	gotApp, err := GetAppByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.InUse, gocheck.Equals, 1)
+	c.Assert(gotApp.InUse, gocheck.Equals, 1)
 }
 
 func (s *S) TestReserveUnitsMinParams(c *gocheck.C) {
@@ -939,17 +938,16 @@ func (s *S) TestSaveNewUnitsInDatabaseForward(c *gocheck.C) {
 	fwresult, err := saveNewUnitsInDatabase.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(fwresult, gocheck.IsNil)
-	err = app.Get()
+	gotApp, err := GetAppByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.Units, gocheck.HasLen, 3)
+	c.Assert(gotApp.Units, gocheck.HasLen, 3)
 	var expectedMessages MessageList
-	for i, unit := range app.Units {
+	for i, unit := range gotApp.Units {
 		c.Assert(unit.Name, gocheck.Equals, units[i].Name)
 		c.Assert(unit.State, gocheck.Equals, provision.StatusBuilding.String())
 		messages := []queue.Message{
-			{Action: regenerateApprc, Args: []string{app.Name, unit.Name}},
-			{Action: BindService, Args: []string{app.Name, unit.Name}},
+			{Action: regenerateApprc, Args: []string{gotApp.Name, unit.Name}},
+			{Action: BindService, Args: []string{gotApp.Name, unit.Name}},
 		}
 		expectedMessages = append(expectedMessages, messages...)
 	}
@@ -983,16 +981,15 @@ func (s *S) TestSaveNewUnitsInDatabaseForwardNoPointer(c *gocheck.C) {
 	fwresult, err := saveNewUnitsInDatabase.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(fwresult, gocheck.IsNil)
-	err = app.Get()
+	gotApp, err := GetAppByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.Units, gocheck.HasLen, 3)
+	c.Assert(gotApp.Units, gocheck.HasLen, 3)
 	var expectedMessages MessageList
-	for i, unit := range app.Units {
+	for i, unit := range gotApp.Units {
 		c.Assert(unit.Name, gocheck.Equals, units[i].Name)
 		messages := []queue.Message{
-			{Action: regenerateApprc, Args: []string{app.Name, unit.Name}},
-			{Action: BindService, Args: []string{app.Name, unit.Name}},
+			{Action: regenerateApprc, Args: []string{gotApp.Name, unit.Name}},
+			{Action: BindService, Args: []string{gotApp.Name, unit.Name}},
 		}
 		expectedMessages = append(expectedMessages, messages...)
 	}

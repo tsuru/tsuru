@@ -29,17 +29,16 @@ const (
 // ensureAppIsStarted make sure that the app and all units present in the given
 // message are started.
 func ensureAppIsStarted(msg *queue.Message) (App, error) {
-	a := App{Name: msg.Args[0]}
-	err := a.Get()
+	app, err := GetAppByName(msg.Args[0])
 	if err != nil {
-		return a, fmt.Errorf("Error handling %q: app %q does not exist.", msg.Action, a.Name)
+		return App{}, fmt.Errorf("Error handling %q: app %q does not exist.", msg.Action, msg.Args[0])
 	}
-	units := getUnits(&a, msg.Args[1:])
+	units := getUnits(app, msg.Args[1:])
 	if len(msg.Args) > 1 && len(units) == 0 {
 		format := "Error handling %q for the app %q: unknown units in the message. Deleting it..."
-		return a, fmt.Errorf(format, msg.Action, a.Name)
+		return *app, fmt.Errorf(format, msg.Action, app.Name)
 	}
-	if !a.Available() || !units.Started() {
+	if !app.Available() || !units.Started() {
 		format := "Error handling %q for the app %q:"
 		uState := units.State()
 		if uState == "error" || uState == "down" {
@@ -48,37 +47,36 @@ func ensureAppIsStarted(msg *queue.Message) (App, error) {
 			msg.Fail()
 			format += " all units must be started."
 		}
-		return a, fmt.Errorf(format, msg.Action, a.Name)
+		return *app, fmt.Errorf(format, msg.Action, app.Name)
 	}
-	return a, nil
+	return *app, nil
 }
 
 // bindUnit handles the bind-service message, binding a unit to all service
 // instances bound to the app.
 func bindUnit(msg *queue.Message) error {
-	a := App{Name: msg.Args[0]}
-	err := a.Get()
+	app, err := GetAppByName(msg.Args[0])
 	if err != nil {
-		return fmt.Errorf("Error handling %q: app %q does not exist.", msg.Action, a.Name)
+		return fmt.Errorf("Error handling %q: app %q does not exist.", msg.Action, app.Name)
 	}
 	conn, err := db.Conn()
 	if err != nil {
 		return fmt.Errorf("Error handling %q: %s", msg.Action, err)
 	}
 	defer conn.Close()
-	units := getUnits(&a, msg.Args[1:])
+	units := getUnits(app, msg.Args[1:])
 	if len(units) == 0 {
 		return errors.New("Unknown unit in the message.")
 	}
 	unit := units[0]
 	var instances []service.ServiceInstance
-	q := bson.M{"apps": bson.M{"$in": []string{msg.Args[0]}}}
+	q := bson.M{"apps": bson.M{"$in": []string{app.Name}}}
 	err = conn.ServiceInstances().Find(q).All(&instances)
 	if err != nil {
 		return err
 	}
 	for _, instance := range instances {
-		_, err = instance.BindUnit(&a, &unit)
+		_, err = instance.BindUnit(app, &unit)
 		if err != nil {
 			log.Errorf("Error binding the unit %s with the service instance %s: %s", unit.Name, instance.Name, err)
 		}
