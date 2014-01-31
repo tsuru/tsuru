@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -12,6 +12,7 @@ import (
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/provision"
 	"io"
+	"sort"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -655,10 +656,15 @@ func (p *FakeProvisioner) CollectStatus() ([]provision.Unit, error) {
 		return nil, err
 	}
 	units := make([]provision.Unit, len(p.apps))
-	i := 0
 	p.mut.RLock()
 	defer p.mut.RUnlock()
-	for name, a := range p.apps {
+	apps := make([]string, 0, len(p.apps))
+	for name := range p.apps {
+		apps = append(apps, name)
+	}
+	sort.Strings(apps)
+	for i, name := range apps {
+		a := p.apps[name]
 		unit := provision.Unit{
 			Name:       name + "/0",
 			AppName:    name,
@@ -669,7 +675,6 @@ func (p *FakeProvisioner) CollectStatus() ([]provision.Unit, error) {
 			Machine:    i + 1,
 		}
 		units[i] = unit
-		i++
 	}
 	return units, nil
 }
