@@ -4,8 +4,6 @@
 
 package service
 
-import "errors"
-
 // Plan represents a service plan
 type Plan struct {
 	Name        string
@@ -20,7 +18,7 @@ func GetPlansByServiceName(serviceName string) ([]Plan, error) {
 	}
 	endpoint, err := s.getClient("production")
 	if err != nil {
-		return nil, errors.New("endpoint does not exists")
+		return []Plan{}, nil
 	}
 	plans, err := endpoint.Plans()
 	if err != nil {

@@ -37,3 +37,14 @@ func (s *S) TestGetPlansByServiceName(c *gocheck.C) {
 	}
 	c.Assert(plans, gocheck.DeepEquals, expected)
 }
+
+func (s *S) TestGetPlansByServiceNameWithoutEndpoint(c *gocheck.C) {
+	srvc := Service{Name: "mysql"}
+	err := s.conn.Services().Insert(&srvc)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().RemoveId(srvc.Name)
+	plans, err := GetPlansByServiceName("mysql")
+	c.Assert(err, gocheck.IsNil)
+	expected := []Plan{}
+	c.Assert(plans, gocheck.DeepEquals, expected)
+}
