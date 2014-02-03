@@ -209,3 +209,22 @@ func getServiceInstanceOrError(name string, u *auth.User) (*service.ServiceInsta
 	}
 	return si, nil
 }
+
+func servicePlans(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
+	serviceName := r.URL.Query().Get(":name")
+	rec.Log(u.Email, "service-plans", serviceName)
+	plans, err := service.GetPlansByServiceName(serviceName)
+	if err != nil {
+		return err
+	}
+	b, err := json.Marshal(plans)
+	if err != nil {
+		return nil
+	}
+	w.Write(b)
+	return nil
+}
