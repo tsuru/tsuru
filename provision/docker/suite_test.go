@@ -69,6 +69,8 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 
 func (s *S) SetUpTest(c *gocheck.C) {
 	var err error
+	cmutex.Lock()
+	defer cmutex.Unlock()
 	dCluster, err = cluster.New(nil, storage.Redis("localhost:6379", "tests"),
 		cluster.Node{ID: "server", Address: s.server.URL()},
 	)
