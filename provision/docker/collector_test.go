@@ -10,6 +10,7 @@ import (
 	rtesting "github.com/globocom/tsuru/router/testing"
 	"launchpad.net/gocheck"
 	"strings"
+	"sync/atomic"
 )
 
 func (s *S) TestCollectStatus(c *gocheck.C) {
@@ -17,7 +18,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 	listener := startTestListener("127.0.0.1:0")
 	defer listener.Close()
 	listenPort := strings.Split(listener.Addr().String(), ":")[1]
-	var calls int
+	var calls int64
 	var err error
 	cleanup, _ := startDockerTestServer(listenPort, &calls)
 	defer cleanup()
@@ -67,7 +68,7 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 	c.Assert(sshHandler.requests[1].Method, gocheck.Equals, "DELETE")
 	c.Assert(rtesting.FakeRouter.HasRoute("make-up", "http://127.0.0.1:9025"), gocheck.Equals, false)
 	c.Assert(rtesting.FakeRouter.HasRoute("make-up", "http://127.0.0.1:9024"), gocheck.Equals, true)
-	c.Assert(calls, gocheck.Equals, 2)
+	c.Assert(atomic.LoadInt64(&calls), gocheck.Equals, int64(2))
 }
 
 func (s *S) TestProvisionCollectStatusEmpty(c *gocheck.C) {

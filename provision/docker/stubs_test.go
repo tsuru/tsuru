@@ -19,6 +19,7 @@ import (
 	"net/http/httptest"
 	"strconv"
 	"strings"
+	"sync/atomic"
 )
 
 var inspectOut = `
@@ -64,7 +65,7 @@ func startTestListener(addr string) net.Listener {
 	return listener
 }
 
-func startDockerTestServer(containerPort string, calls *int) (func(), *httptest.Server) {
+func startDockerTestServer(containerPort string, calls *int64) (func(), *httptest.Server) {
 	listAllOutput := `[
     {
         "Id": "8dfafdbc3a40",
@@ -143,7 +144,7 @@ func startDockerTestServer(containerPort string, calls *int) (func(), *httptest.
 	}
 }`
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		(*calls)++
+		atomic.AddInt64(calls, 1)
 		if strings.Contains(r.URL.Path, "/containers/") {
 			if strings.Contains(r.URL.Path, "/containers/9930c24f1c4f") {
 				w.Write([]byte(c2Output))
