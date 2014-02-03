@@ -6,6 +6,7 @@ package docker
 
 import (
 	"bytes"
+	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
 	"github.com/globocom/tsuru/db"
 	"launchpad.net/gocheck"
@@ -44,8 +45,49 @@ func (s *HandlersSuite) TestAddNodeHandler(c *gocheck.C) {
 	c.Assert(n, gocheck.Equals, 1)
 }
 
+func (s *HandlersSuite) TestAddNodeHandlerWithoutdCluster(c *gocheck.C) {
+	config.Set("docker:segregate", true)
+	defer config.Unset("docker:segregate")
+	config.Set("docker:scheduler:redis-server", "127.0.0.1:6379")
+	defer config.Unset("docker:scheduler:redis-server")
+	dCluster = nil
+	b := bytes.NewBufferString(`{"address": "host.com:4243", "ID": "server01", "teams": "myteam"}`)
+	req, err := http.NewRequest("POST", "/node/add", b)
+	c.Assert(err, gocheck.IsNil)
+	rec := httptest.NewRecorder()
+	err = addNodeHandler(rec, req)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Collection(schedulerCollection).RemoveId("server01")
+	n, err := s.conn.Collection(schedulerCollection).FindId("server01").Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, 1)
+}
+
 func (s *HandlersSuite) TestRemoveNodeHandler(c *gocheck.C) {
 	dCluster, _ = cluster.New(segScheduler, nil)
+	err := s.conn.Collection(schedulerCollection).Insert(map[string]string{"address": "host.com:4243", "_id": "server01", "teams": "myteam"})
+	c.Assert(err, gocheck.IsNil)
+	n, err := s.conn.Collection(schedulerCollection).FindId("server01").Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, 1)
+	b := bytes.NewBufferString(`{"ID": "server01"}`)
+	req, err := http.NewRequest("POST", "/node/remove", b)
+	c.Assert(err, gocheck.IsNil)
+	rec := httptest.NewRecorder()
+	err = removeNodeHandler(rec, req)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Collection(schedulerCollection).RemoveId("server01")
+	n, err = s.conn.Collection(schedulerCollection).FindId("server01").Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, 0)
+}
+
+func (s *HandlersSuite) TestRemoveNodeHandlerWithoutCluster(c *gocheck.C) {
+	config.Set("docker:segregate", true)
+	defer config.Unset("docker:segregate")
+	config.Set("docker:scheduler:redis-server", "127.0.0.1:6379")
+	defer config.Unset("docker:scheduler:redis-server")
+	dCluster = nil
 	err := s.conn.Collection(schedulerCollection).Insert(map[string]string{"address": "host.com:4243", "_id": "server01", "teams": "myteam"})
 	c.Assert(err, gocheck.IsNil)
 	n, err := s.conn.Collection(schedulerCollection).FindId("server01").Count()
