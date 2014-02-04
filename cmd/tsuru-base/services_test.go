@@ -9,10 +9,28 @@ import (
 	"encoding/json"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/cmd/testing"
+	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"
 	"strings"
 )
+
+type infoTransport struct{}
+
+func (t *infoTransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
+	var message string
+	if req.URL.Path == "/services/mongodb" {
+		message = `[{"Name":"mymongo", "Apps":["myapp"], "Info":{"key": "value", "key2": "value2"}}]`
+	}
+	if req.URL.Path == "/services/mongodb/plans" {
+		message = `[{"name": "small", "description": "another plan"}]`
+	}
+	resp = &http.Response{
+		Body:       ioutil.NopCloser(bytes.NewBufferString(message)),
+		StatusCode: http.StatusOK,
+	}
+	return resp, nil
+}
 
 func (s *S) TestServiceList(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
@@ -361,13 +379,21 @@ func (s *S) TestServiceInfoExtraHeaders(c *gocheck.C) {
 
 func (s *S) TestServiceInfoRun(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `[{"Name":"mymongo", "Apps":["myapp"], "Info":{"key": "value", "key2": "value2"}}]`
 	expected := `Info for "mongodb"
+
+Instances
 +-----------+-------+-------+--------+
 | Instances | Apps  | key   | key2   |
 +-----------+-------+-------+--------+
 | mymongo   | myapp | value | value2 |
 +-----------+-------+-------+--------+
+
+Plans
++-------+--------------+
+| Name  | Description  |
++-------+--------------+
+| small | another plan |
++-------+--------------+
 `
 	args := []string{"mongodb"}
 	context := cmd.Context{
@@ -375,7 +401,7 @@ func (s *S) TestServiceInfoRun(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: result, Status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &infoTransport{}}, nil, manager)
 	err := (&ServiceInfo{}).Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	obtained := stdout.String()

@@ -312,8 +312,9 @@ func (c ServiceInfo) Run(ctx *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	ctx.Stdout.Write([]byte(fmt.Sprintf("Info for \"%s\"\n", serviceName)))
+	ctx.Stdout.Write([]byte(fmt.Sprintf("Info for \"%s\"\n\n", serviceName)))
 	if len(instances) > 0 {
+		ctx.Stdout.Write([]byte("Instances\n"))
 		table := cmd.NewTable()
 		extraHeaders := c.ExtraHeaders(instances)
 		for _, instance := range instances {
@@ -327,6 +328,38 @@ func (c ServiceInfo) Run(ctx *cmd.Context, client *cmd.Client) error {
 		headers := []string{"Instances", "Apps"}
 		headers = append(headers, extraHeaders...)
 		table.Headers = cmd.Row(headers)
+		ctx.Stdout.Write(table.Bytes())
+	}
+	ctx.Stdout.Write([]byte("\nPlans\n"))
+	url, err = cmd.GetURL(fmt.Sprintf("/services/%s/plans", serviceName))
+	if err != nil {
+		return err
+	}
+	request, err = http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	resp, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	result, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	var plans []map[string]string
+	err = json.Unmarshal(result, &plans)
+	if err != nil {
+		return err
+	}
+	if len(plans) > 0 {
+		table := cmd.NewTable()
+		for _, plan := range plans {
+			data := []string{plan["name"], plan["description"]}
+			table.AddRow(cmd.Row(data))
+		}
+		table.Headers = cmd.Row([]string{"Name", "Description"})
 		ctx.Stdout.Write(table.Bytes())
 	}
 	return nil
