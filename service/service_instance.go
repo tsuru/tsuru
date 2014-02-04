@@ -31,7 +31,7 @@ var (
 type ServiceInstance struct {
 	Name        string
 	ServiceName string `bson:"service_name"`
-	PlanName    string `bson:plan_name`
+	PlanName    string `bson:"plan_name"`
 	Apps        []string
 	Teams       []string
 }
