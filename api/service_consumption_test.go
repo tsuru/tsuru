@@ -95,7 +95,7 @@ func (s *ConsumptionSuite) TestCreateInstanceWithPlan(c *gocheck.C) {
 	err = s.conn.ServiceInstances().Find(bson.M{
 		"name":         "brainSQL",
 		"service_name": "mysql",
-		"planname":     "small",
+		"plan_name":    "small",
 	}).One(&si)
 	c.Assert(err, gocheck.IsNil)
 	s.conn.ServiceInstances().Update(bson.M{"name": si.Name}, si)
