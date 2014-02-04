@@ -60,24 +60,28 @@ func (s ServiceList) Run(ctx *cmd.Context, client *cmd.Client) error {
 type ServiceAdd struct{}
 
 func (sa ServiceAdd) Info() *cmd.Info {
-	usage := `service-add <servicename> <serviceinstancename>
+	usage := `service-add <servicename> <serviceinstancename> <plan>
 e.g.:
 
-    $ tsuru service-add mongodb tsuru_mongodb
+    $ tsuru service-add mongodb tsuru_mongodb small
 
-Will add a new instance of the "mongodb" service, named "tsuru_mongodb".`
+Will add a new instance of the "mongodb" service, named "tsuru_mongodb" with the plan "small".`
 	return &cmd.Info{
 		Name:    "service-add",
 		Usage:   usage,
 		Desc:    "Create a service instance to one or more apps make use of.",
 		MinArgs: 2,
-		MaxArgs: 2,
+		MaxArgs: 3,
 	}
 }
 
 func (sa ServiceAdd) Run(ctx *cmd.Context, client *cmd.Client) error {
 	srvName, instName := ctx.Args[0], ctx.Args[1]
-	fmtBody := fmt.Sprintf(`{"name": "%s", "service_name": "%s"}`, instName, srvName)
+	var plan string
+	if len(ctx.Args) == 3 {
+		plan = ctx.Args[2]
+	}
+	fmtBody := fmt.Sprintf(`{"name": "%s", "service_name": "%s", "plan": "%s"}`, instName, srvName, plan)
 	b := bytes.NewBufferString(fmtBody)
 	url, err := cmd.GetURL("/services/instances")
 	if err != nil {

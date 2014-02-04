@@ -283,18 +283,18 @@ func (s *S) TestServiceUnbindIsAFlaggedComand(c *gocheck.C) {
 }
 
 func (s *S) TestServiceAddInfo(c *gocheck.C) {
-	usage := `service-add <servicename> <serviceinstancename>
+	usage := `service-add <servicename> <serviceinstancename> <plan>
 e.g.:
 
-    $ tsuru service-add mongodb tsuru_mongodb
+    $ tsuru service-add mongodb tsuru_mongodb small
 
-Will add a new instance of the "mongodb" service, named "tsuru_mongodb".`
+Will add a new instance of the "mongodb" service, named "tsuru_mongodb" with the plan "small".`
 	expected := &cmd.Info{
 		Name:    "service-add",
 		Usage:   usage,
 		Desc:    "Create a service instance to one or more apps make use of.",
 		MinArgs: 2,
-		MaxArgs: 2,
+		MaxArgs: 3,
 	}
 	command := &ServiceAdd{}
 	c.Assert(command.Info(), gocheck.DeepEquals, expected)
@@ -306,6 +306,7 @@ func (s *S) TestServiceAddRun(c *gocheck.C) {
 	args := []string{
 		"my_app_db",
 		"mysql",
+		"small",
 	}
 	context := cmd.Context{
 		Args:   args,
