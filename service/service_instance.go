@@ -237,7 +237,7 @@ func validateServiceInstanceName(name string) error {
 	return nil
 }
 
-func CreateServiceInstance(name string, service *Service, plan *Plan, user *auth.User) error {
+func CreateServiceInstance(name string, service *Service, planName string, user *auth.User) error {
 	err := validateServiceInstanceName(name)
 	if err != nil {
 		return err
@@ -246,9 +246,7 @@ func CreateServiceInstance(name string, service *Service, plan *Plan, user *auth
 		Name:        name,
 		ServiceName: service.Name,
 	}
-	if plan != nil {
-		instance.PlanName = plan.Name
-	}
+	instance.PlanName = planName
 	teams, err := user.Teams()
 	if err != nil {
 		return err

@@ -408,14 +408,13 @@ func (s *InstanceSuite) TestCreateServiceInstance(c *gocheck.C) {
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Services().RemoveId(srv.Name)
-	plan := Plan{Name: "small"}
-	err = CreateServiceInstance("instance", &srv, &plan, s.user)
+	err = CreateServiceInstance("instance", &srv, "small", s.user)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
 	si, err := GetServiceInstance("instance", s.user)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(atomic.LoadInt32(&requests), gocheck.Equals, int32(1))
-	c.Assert(si.PlanName, gocheck.Equals, plan.Name)
+	c.Assert(si.PlanName, gocheck.Equals, "small")
 }
 
 func (s *InstanceSuite) TestCreateServiceInstanceNameShouldBeUnique(c *gocheck.C) {
@@ -427,10 +426,10 @@ func (s *InstanceSuite) TestCreateServiceInstanceNameShouldBeUnique(c *gocheck.C
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Services().RemoveId(srv.Name)
-	err = CreateServiceInstance("instance", &srv, nil, s.user)
+	err = CreateServiceInstance("instance", &srv, "", s.user)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
-	err = CreateServiceInstance("instance", &srv, nil, s.user)
+	err = CreateServiceInstance("instance", &srv, "", s.user)
 	c.Assert(err, gocheck.Equals, ErrInstanceNameAlreadyExists)
 }
 
@@ -453,7 +452,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceRestrictedService(c *gocheck.C)
 	err = s.conn.Services().Insert(&srv)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Services().RemoveId(srv.Name)
-	err = CreateServiceInstance("instance", &srv, nil, s.user)
+	err = CreateServiceInstance("instance", &srv, "", s.user)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "instance"})
 	instance, err := GetServiceInstance("instance", s.user)
@@ -470,7 +469,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceEndpointFailure(c *gocheck.C) {
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Services().RemoveId(srv.Name)
-	err = CreateServiceInstance("instance", &srv, nil, s.user)
+	err = CreateServiceInstance("instance", &srv, "", s.user)
 	c.Assert(err, gocheck.NotNil)
 	count, err := s.conn.ServiceInstances().Find(bson.M{"name": "instance"}).Count()
 	c.Assert(err, gocheck.IsNil)
@@ -501,7 +500,7 @@ func (s *InstanceSuite) TestCreateServiceInstanceValidatesTheName(c *gocheck.C) 
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Services().RemoveId(srv.Name)
 	for _, t := range tests {
-		err := CreateServiceInstance(t.input, &srv, nil, s.user)
+		err := CreateServiceInstance(t.input, &srv, "", s.user)
 		if err != t.err {
 			c.Errorf("Is %q valid? Want %#v. Got %#v", t.input, t.err, err)
 		}
