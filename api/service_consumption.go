@@ -37,7 +37,8 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t *auth.Token
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	return service.CreateServiceInstance(body["name"], &srv, "", user)
+	planName := body["plan"]
+	return service.CreateServiceInstance(body["name"], &srv, planName, user)
 }
 
 func removeServiceInstance(w http.ResponseWriter, r *http.Request, t *auth.Token) error {

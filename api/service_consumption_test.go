@@ -71,6 +71,44 @@ func makeRequestToCreateInstanceHandler(c *gocheck.C) (*httptest.ResponseRecorde
 	return recorder, request
 }
 
+func (s *ConsumptionSuite) TestCreateInstanceWithPlan(c *gocheck.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
+	}))
+	defer ts.Close()
+	se := service.Service{
+		Name:     "mysql",
+		Teams:    []string{s.team.Name},
+		Endpoint: map[string]string{"production": ts.URL},
+	}
+	se.Create()
+	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
+	data := `{"name":"brainSQL","service_name":"mysql","plan":"small"}`
+	b := bytes.NewBufferString(data)
+	request, err := http.NewRequest("POST", "/services/instances", b)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = createServiceInstance(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	var si service.ServiceInstance
+	err = s.conn.ServiceInstances().Find(bson.M{
+		"name":         "brainSQL",
+		"service_name": "mysql",
+		"planname":     "small",
+	}).One(&si)
+	c.Assert(err, gocheck.IsNil)
+	s.conn.ServiceInstances().Update(bson.M{"name": si.Name}, si)
+	c.Assert(si.Name, gocheck.Equals, "brainSQL")
+	c.Assert(si.ServiceName, gocheck.Equals, "mysql")
+	action := testing.Action{
+		Action: "create-service-instance",
+		User:   s.user.Email,
+		Extra:  []interface{}{data},
+	}
+	c.Assert(action, testing.IsRecorded)
+}
+
 func (s *ConsumptionSuite) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
