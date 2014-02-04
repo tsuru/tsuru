@@ -288,8 +288,7 @@ func (ServiceInfo) ExtraHeaders(instances []ServiceInstanceModel) []string {
 	return headers
 }
 
-func (c ServiceInfo) Run(ctx *cmd.Context, client *cmd.Client) error {
-	serviceName := ctx.Args[0]
+func (c ServiceInfo) BuildInstancesTable(serviceName string, ctx *cmd.Context, client *cmd.Client) error {
 	url, err := cmd.GetURL("/services/" + serviceName)
 	if err != nil {
 		return err
@@ -330,21 +329,25 @@ func (c ServiceInfo) Run(ctx *cmd.Context, client *cmd.Client) error {
 		table.Headers = cmd.Row(headers)
 		ctx.Stdout.Write(table.Bytes())
 	}
+	return nil
+}
+
+func (c ServiceInfo) BuildPlansTable(serviceName string, ctx *cmd.Context, client *cmd.Client) error {
 	ctx.Stdout.Write([]byte("\nPlans\n"))
-	url, err = cmd.GetURL(fmt.Sprintf("/services/%s/plans", serviceName))
+	url, err := cmd.GetURL(fmt.Sprintf("/services/%s/plans", serviceName))
 	if err != nil {
 		return err
 	}
-	request, err = http.NewRequest("GET", url, nil)
+	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return err
 	}
-	resp, err = client.Do(request)
+	resp, err := client.Do(request)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
-	result, err = ioutil.ReadAll(resp.Body)
+	result, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
@@ -363,6 +366,15 @@ func (c ServiceInfo) Run(ctx *cmd.Context, client *cmd.Client) error {
 		ctx.Stdout.Write(table.Bytes())
 	}
 	return nil
+}
+
+func (c ServiceInfo) Run(ctx *cmd.Context, client *cmd.Client) error {
+	serviceName := ctx.Args[0]
+	err := c.BuildInstancesTable(serviceName, ctx, client)
+	if err != nil {
+		return err
+	}
+	return c.BuildPlansTable(serviceName, ctx, client)
 }
 
 type ServiceDoc struct{}
