@@ -69,7 +69,7 @@ Create an app
     * URI: /apps
     * Format: json
 
-Returns 200 in case of success, and json in the body of hte response containing the statusn and the url for git repository.
+Returns 200 in case of success, and json in the body of the response containing the status and the url for git repository.
 
 Example:
 
