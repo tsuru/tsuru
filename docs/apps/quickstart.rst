@@ -60,3 +60,4 @@ first application using a supported language or framework:
 * :doc:`Deploying Python applications in tsuru </apps/quickstart/python>`
 * :doc:`Deploying Ruby/Rails applications in tsuru </apps/quickstart/ruby>`
 * :doc:`Deploying PHP applications in tsuru </apps/quickstart/php>`
+* :doc:`Deploying go applications in tsuru </apps/quickstart/go>`

@@ -20,6 +20,8 @@ Application Deployment
 * :doc:`python/django </apps/quickstart/python>`
 * :doc:`ruby/rails </apps/quickstart/ruby>`
 * :doc:`php </apps/quickstart/php>`
+* :doc:`go </apps/quickstart/go>`
+
 * :doc:`understanding deployment hooks </apps/deploy-hooks>`
 * :doc:`recovery and troubleshooting </apps/recovery>`
 
