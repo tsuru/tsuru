@@ -32,7 +32,7 @@ import (
 )
 
 func (s *S) TestContainerGetAddress(c *gocheck.C) {
-	container := container{ID: "id123", Port: "8888", HostAddr: "10.10.10.10", HostPort: "49153"}
+	container := container{ID: "id123", HostAddr: "10.10.10.10", HostPort: "49153"}
 	address := container.getAddress()
 	expected := "http://10.10.10.10:49153"
 	c.Assert(address, gocheck.Equals, expected)
@@ -57,9 +57,6 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 	u, _ := url.Parse(s.server.URL())
 	host, _, _ := net.SplitHostPort(u.Host)
 	c.Assert(cont.HostAddr, gocheck.Equals, host)
-	port, err := getPort()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(cont.Port, gocheck.Equals, port)
 	user, err := config.GetString("docker:ssh:user")
 	c.Assert(err, gocheck.IsNil)
 	dcli, _ := docker.NewClient(s.server.URL())
@@ -212,7 +209,6 @@ func (s *S) newContainer(opts *newContainerOpts) (*container, error) {
 		ID:       "id",
 		IP:       "10.10.10.10",
 		HostPort: "3333",
-		Port:     "8888",
 		HostAddr: "127.0.0.1",
 	}
 	rtesting.FakeRouter.AddBackend(container.AppName)
@@ -336,15 +332,6 @@ func (s *S) TestContainerNetworkInfo(c *gocheck.C) {
 	c.Assert(port, gocheck.Not(gocheck.Equals), "")
 }
 
-func (s *S) TestContainerNetworkInfoNoPort(c *gocheck.C) {
-	container := container{ID: "c-01"}
-	ip, port, err := container.networkInfo()
-	c.Assert(ip, gocheck.Equals, "")
-	c.Assert(port, gocheck.Equals, "")
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Container does not contain any mapped port")
-}
-
 func (s *S) TestContainerNetworkInfoNotFound(c *gocheck.C) {
 	inspectOut := `{
 	"NetworkSettings": {
@@ -370,7 +357,7 @@ func (s *S) TestContainerNetworkInfoNotFound(c *gocheck.C) {
 		dCluster = oldCluster
 		removeClusterNodes([]string{"server"}, c)
 	}()
-	container := container{ID: "c-01", Port: "8888"}
+	container := container{ID: "c-01"}
 	clean := createFakeContainers([]string{"c-01"}, c)
 	defer clean()
 	ip, port, err := container.networkInfo()

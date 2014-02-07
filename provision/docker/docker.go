@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"crypto"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/globocom/config"
@@ -126,7 +125,6 @@ type container struct {
 	AppName  string
 	Type     string
 	IP       string
-	Port     string
 	HostAddr string
 	HostPort string
 	Status   string
@@ -191,7 +189,6 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 		return container{}, err
 	}
 	cont.ID = c.ID
-	cont.Port = port
 	cont.HostAddr = getHostAddr(hostID)
 	err = coll.Update(bson.M{"name": cont.Name}, cont)
 	if err != nil {
@@ -203,8 +200,9 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 
 // networkInfo returns the IP and the host port for the container.
 func (c *container) networkInfo() (string, string, error) {
-	if c.Port == "" {
-		return "", "", errors.New("Container does not contain any mapped port")
+	port, err := getPort()
+	if err != nil {
+		return "", "", err
 	}
 	dockerContainer, err := dockerCluster().InspectContainer(c.ID)
 	if err != nil {
@@ -212,14 +210,14 @@ func (c *container) networkInfo() (string, string, error) {
 	}
 	if dockerContainer.NetworkSettings != nil {
 		ip := dockerContainer.NetworkSettings.IPAddress
-		p := docker.Port(fmt.Sprintf("%s/tcp", c.Port))
+		p := docker.Port(fmt.Sprintf("%s/tcp", port))
 		for _, port := range dockerContainer.NetworkSettings.Ports[p] {
 			if port.HostPort != "" && port.HostIp != "" {
 				return ip, port.HostPort, nil
 			}
 		}
 	}
-	return "", "", fmt.Errorf("Container port %s is not mapped to any host port", c.Port)
+	return "", "", fmt.Errorf("Container port %s is not mapped to any host port", port)
 }
 
 func (c *container) setStatus(status string) error {
