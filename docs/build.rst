@@ -129,7 +129,7 @@ You can use ``apt-get`` to install Gandalf using `Tsuru's ppa
     $ sudo apt-get update
     $ sudo apt-get install tsuru-server
 
-Then you will need to edit the file ``/etc/default/tsuru-server`` and enable the API and the colletor:
+Then you will need to edit the file ``/etc/default/tsuru-server`` and enable the API and the collector:
 
 .. highlight:: bash
 
