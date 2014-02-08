@@ -552,7 +552,7 @@ balancer will communicate with. This setting has no effect when
 Sample file
 ===========
 
-Here is a complete example, with S3, VPC, HTTP/TLS and load balacing enabled:
+Here is a complete example, with S3, VPC, HTTP/TLS and load balancing enabled:
 
 .. highlight:: yaml
 
