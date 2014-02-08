@@ -103,8 +103,8 @@ Email configuration
 
 Tsuru sends email to users when they request password recovery. In order to
 send those emails, Tsuru needs to be configured with some SMTP settings.
-Omiting these settings won't break Tsuru, but users would not be able to reset
-their password automattically.
+Omitting these settings won't break Tsuru, but users would not be able to reset
+their password automatically.
 
 smtp:server
 +++++++++++
@@ -174,7 +174,7 @@ Tokens are generated during authentication, and are hashed using SHA512.
 This mechanism requires two settings to operate: ``auth:hash-cost`` and
 ``auth:token-expire-days``. Each setting is described below.
 
-The ``auth`` section also controls whether user registation is on or off. When
+The ``auth`` section also controls whether user registration is on or off. When
 user registration is off, the user creation URL is not registered in the
 server.
 
@@ -211,7 +211,7 @@ Tsuru is able to use Amazon Web Services (AWS) Simple Storage Service (S3) to
 provide static storage for apps. Whenever ``bucket-support`` is true, Tsuru
 will create a S3 bucket and AWS Identity and Access Management (IAM)
 credentials to access this bucket during the app creation process. In order to
-be able to comunicate with AWS API's, tsuru needs some settings, listed below.
+be able to communicate with AWS API's, tsuru needs some settings, listed below.
 
 For more details on AWS authentication, AWS AIM and AWS S3, check AWS docs:
 https://aws.amazon.com/documentation/.
@@ -552,7 +552,7 @@ balancer will communicate with. This setting has no effect when
 Sample file
 ===========
 
-Here is a complete example, with S3, VPC, HTTP/TLS and load balacing enabled:
+Here is a complete example, with S3, VPC, HTTP/TLS and load balancing enabled:
 
 .. highlight:: yaml
 

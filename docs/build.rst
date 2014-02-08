@@ -129,7 +129,7 @@ You can use ``apt-get`` to install Gandalf using `Tsuru's ppa
     $ sudo apt-get update
     $ sudo apt-get install tsuru-server
 
-Then you will need to edit the file ``/etc/default/tsuru-server`` and enable the API and the colletor:
+Then you will need to edit the file ``/etc/default/tsuru-server`` and enable the API and the collector:
 
 .. highlight:: bash
 
@@ -250,7 +250,7 @@ Now that you have ``tsr`` properly installed, and you
 
     $ sudo service beanstalkd start
 
-3. Start api and collector
+3. Start API and collector
 
 .. highlight:: bash
 
