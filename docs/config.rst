@@ -103,7 +103,7 @@ Email configuration
 
 Tsuru sends email to users when they request password recovery. In order to
 send those emails, Tsuru needs to be configured with some SMTP settings.
-Omiting these settings won't break Tsuru, but users would not be able to reset
+Omitting these settings won't break Tsuru, but users would not be able to reset
 their password automattically.
 
 smtp:server
