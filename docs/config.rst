@@ -211,7 +211,7 @@ Tsuru is able to use Amazon Web Services (AWS) Simple Storage Service (S3) to
 provide static storage for apps. Whenever ``bucket-support`` is true, Tsuru
 will create a S3 bucket and AWS Identity and Access Management (IAM)
 credentials to access this bucket during the app creation process. In order to
-be able to comunicate with AWS API's, tsuru needs some settings, listed below.
+be able to communicate with AWS API's, tsuru needs some settings, listed below.
 
 For more details on AWS authentication, AWS AIM and AWS S3, check AWS docs:
 https://aws.amazon.com/documentation/.
