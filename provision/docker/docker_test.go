@@ -778,9 +778,11 @@ func (s *S) TestPushImage(c *gocheck.C) {
 	defer server.Stop()
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
+	var storage mapStorage
+	storage.StoreImage("localhost:3030/base", "server0")
 	cmutex.Lock()
 	oldDockerCluster := dCluster
-	dCluster, _ = cluster.New(nil, &mapStorage{},
+	dCluster, _ = cluster.New(nil, &storage,
 		cluster.Node{ID: "server0", Address: server.URL()})
 	cmutex.Unlock()
 	defer func() {
@@ -790,8 +792,6 @@ func (s *S) TestPushImage(c *gocheck.C) {
 	}()
 	err = newImage("localhost:3030/base", "http://index.docker.io")
 	c.Assert(err, gocheck.IsNil)
-	cleanup := insertImage("localhost:3030/base", "server0", c)
-	defer cleanup()
 	err = pushImage("localhost:3030/base")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(request.URL.Path, gocheck.Matches, ".*/images/localhost:3030/base/push$")
