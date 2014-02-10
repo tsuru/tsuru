@@ -11,7 +11,6 @@ import (
 	"github.com/globocom/docker-cluster/cluster"
 	"github.com/globocom/docker-cluster/storage"
 	etesting "github.com/globocom/tsuru/exec/testing"
-	rtesting "github.com/globocom/tsuru/router/testing"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -19,17 +18,6 @@ import (
 	"strings"
 	"sync/atomic"
 )
-
-func createTestRoutes(names ...string) func() {
-	for _, name := range names {
-		rtesting.FakeRouter.AddBackend(name)
-	}
-	return func() {
-		for _, name := range names {
-			rtesting.FakeRouter.RemoveBackend(name)
-		}
-	}
-}
 
 func startTestListener(addr string) net.Listener {
 	listener, err := net.Listen("tcp", addr)

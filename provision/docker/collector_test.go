@@ -130,7 +130,6 @@ func startDocker() (func(), *httptest.Server) {
 }
 
 func (s *S) TestCollectStatusFixContainer(c *gocheck.C) {
-	createTestRoutes("makea")()
 	cleanup := createFakeContainers([]string{"9930c24f1c4x"}, c)
 	defer cleanup()
 	coll := collection()
