@@ -525,6 +525,23 @@ func (s *S) TestContainerCommit(c *gocheck.C) {
 	c.Assert(imageId, gocheck.Equals, repository)
 }
 
+func (s *S) TestContainerCommitWithRegistry(c *gocheck.C) {
+	config.Set("docker:registry", "localhost:3030")
+	defer config.Unset("docker:registry")
+	_, cleanup := startSSHAgentServer("")
+	defer cleanup()
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	cont, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(cont)
+	imageId, err := cont.commit()
+	c.Assert(err, gocheck.IsNil)
+	repoNamespace, _ := config.GetString("docker:repository-namespace")
+	repository := "localhost:3030/" + repoNamespace + "/" + cont.AppName
+	c.Assert(imageId, gocheck.Equals, repository)
+}
+
 func (s *S) TestRemoveImage(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)

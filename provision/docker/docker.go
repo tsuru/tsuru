@@ -34,8 +34,6 @@ var (
 	fsystem  fs.Fs
 )
 
-const maxTry = 5
-
 var (
 	clusterNodes map[string]string
 	segScheduler segregatedScheduler
@@ -368,7 +366,7 @@ func (c *container) commit() (string, error) {
 		return "", err
 	}
 	log.Debugf("image %s generated from container %s", image.ID, c.ID)
-	replicateImage(repository)
+	pushImage(repository)
 	return repository, nil
 }
 
@@ -483,39 +481,6 @@ func pushImage(name string) error {
 		err = dockerCluster().PushImage(pushOpts, docker.AuthConfiguration{})
 		if err != nil {
 			log.Errorf("[docker] Failed to push image %q (%s): %s", name, err, buf.String())
-			return err
-		}
-	}
-	return nil
-}
-
-// replicateImage replicates the given image through all nodes in the cluster.
-func replicateImage(name string) error {
-	var buf safe.Buffer
-	if _, err := config.GetString("docker:registry"); err == nil {
-		pushOpts := docker.PushImageOptions{Name: name, OutputStream: &buf}
-		for i := 0; i < maxTry; i++ {
-			err = dockerCluster().PushImage(pushOpts, docker.AuthConfiguration{})
-			if err == nil {
-				buf.Reset()
-				break
-			}
-			log.Errorf("[docker] Failed to push image %q (%s): %s", name, err, buf.String())
-			buf.Reset()
-		}
-		if err != nil {
-			return err
-		}
-		pullOpts := docker.PullImageOptions{Repository: name, OutputStream: &buf}
-		for i := 0; i < maxTry; i++ {
-			err = dockerCluster().PullImage(pullOpts)
-			if err == nil {
-				break
-			}
-			buf.Reset()
-		}
-		if err != nil {
-			log.Errorf("[docker] Failed to replicate image %q through nodes (%s): %s", name, err, buf.String())
 			return err
 		}
 	}
