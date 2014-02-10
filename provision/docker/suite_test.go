@@ -6,7 +6,6 @@ package docker
 
 import (
 	dtesting "github.com/fsouza/go-dockerclient/testing"
-	"github.com/garyburd/redigo/redis"
 	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
 	ftesting "github.com/globocom/tsuru/fs/testing"
@@ -82,20 +81,6 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 	err := coll.Database.DropDatabase()
 	c.Assert(err, gocheck.IsNil)
 	fsystem = nil
-}
-
-func insertImage(repo, nodeID string, c *gocheck.C) func() {
-	conn, err := redis.Dial("tcp", "localhost:6379")
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Close()
-	_, err = conn.Do("set", "tests:image:"+repo, nodeID)
-	c.Assert(err, gocheck.IsNil)
-	return func() {
-		conn, err := redis.Dial("tcp", "localhost:6379")
-		c.Assert(err, gocheck.IsNil)
-		defer conn.Close()
-		conn.Do("del", "tests:image:"+repo)
-	}
 }
 
 type unitSlice []provision.Unit
