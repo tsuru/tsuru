@@ -5,8 +5,10 @@
 package docker
 
 import (
+	"github.com/globocom/docker-cluster/cluster"
 	"github.com/globocom/tsuru/heal"
 	"launchpad.net/gocheck"
+	"net/http/httptest"
 	"sync/atomic"
 )
 
@@ -19,9 +21,20 @@ type HealerSuite struct {
 var _ = gocheck.Suite(&HealerSuite{})
 
 func (s *HealerSuite) SetUpSuite(c *gocheck.C) {
+	var err error
+	var server *httptest.Server
 	s.healer = &ContainerHealer{}
-	createFakeContainers([]string{"8dfafdbc3a40", "dca19cd9bb9e", "3fd99cd9bb84"}, c)
-	s.cleanup, _ = startDockerTestServer("4567", &s.calls)
+	s.cleanup, server = startDockerTestServer("4567", &s.calls)
+	storage := mapStorage{}
+	storage.StoreContainer("8dfafdbc3a40", "server")
+	storage.StoreContainer("dca19cd9bb9e", "server")
+	storage.StoreContainer("3fd99cd9bb84", "server")
+	cmutex.Lock()
+	defer cmutex.Unlock()
+	dCluster, err = cluster.New(nil, &storage,
+		cluster.Node{ID: "server", Address: server.URL},
+	)
+	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *HealerSuite) TearDownTest(c *gocheck.C) {
@@ -29,8 +42,7 @@ func (s *HealerSuite) TearDownTest(c *gocheck.C) {
 }
 
 func (s *HealerSuite) TearDownSuite(c *gocheck.C) {
-	defer s.cleanup()
-	clearSchedStorage(c)
+	s.cleanup()
 }
 
 func (s *HealerSuite) TestContainerHealerShouldBeRegistered(c *gocheck.C) {
