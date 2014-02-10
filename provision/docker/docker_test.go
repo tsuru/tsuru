@@ -827,6 +827,46 @@ func (s *S) TestReplicateImageNoRegistry(c *gocheck.C) {
 	c.Assert(atomic.LoadInt32(&requests), gocheck.Equals, int32(0))
 }
 
+func (s *S) TestPushImage(c *gocheck.C) {
+	var request *http.Request
+	server, err := dtesting.NewServer(func(r *http.Request) {
+		request = r
+	})
+	c.Assert(err, gocheck.IsNil)
+	defer server.Stop()
+	config.Set("docker:registry", "localhost:3030")
+	defer config.Unset("docker:registry")
+	cmutex.Lock()
+	oldDockerCluster := dCluster
+	dCluster, _ = cluster.New(nil, storage.Redis("localhost:6379", "tests"),
+		cluster.Node{ID: "server0", Address: server.URL()})
+	cmutex.Unlock()
+	defer func() {
+		cmutex.Lock()
+		defer cmutex.Unlock()
+		dCluster = oldDockerCluster
+	}()
+	err = newImage("localhost:3030/base", "http://index.docker.io")
+	c.Assert(err, gocheck.IsNil)
+	cleanup := insertImage("localhost:3030/base", "server0", c)
+	defer cleanup()
+	err = pushImage("localhost:3030/base")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(request.URL.Path, gocheck.Matches, ".*/images/localhost:3030/base/push$")
+}
+
+func (s *S) TestPushImageNoRegistry(c *gocheck.C) {
+	var request *http.Request
+	server, err := dtesting.NewServer(func(r *http.Request) {
+		request = r
+	})
+	c.Assert(err, gocheck.IsNil)
+	defer server.Stop()
+	err = pushImage("localhost:3030/base")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(request, gocheck.IsNil)
+}
+
 func (s *S) TestBuildImageName(c *gocheck.C) {
 	repository := assembleImageName("raising")
 	c.Assert(repository, gocheck.Equals, s.repoNamespace+"/raising")

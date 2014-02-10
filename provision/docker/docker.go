@@ -474,6 +474,21 @@ func (e *cmdError) Error() string {
 	return fmt.Sprintf("Failed to run command %q (%s): %s.", command, e.err, e.out)
 }
 
+// pushImage sends the given image to the registry server defined in the
+// configuration file.
+func pushImage(name string) error {
+	if _, err := config.GetString("docker:registry"); err == nil {
+		var buf safe.Buffer
+		pushOpts := docker.PushImageOptions{Name: name, OutputStream: &buf}
+		err = dockerCluster().PushImage(pushOpts, docker.AuthConfiguration{})
+		if err != nil {
+			log.Errorf("[docker] Failed to push image %q (%s): %s", name, err, buf.String())
+			return err
+		}
+	}
+	return nil
+}
+
 // replicateImage replicates the given image through all nodes in the cluster.
 func replicateImage(name string) error {
 	var buf safe.Buffer
