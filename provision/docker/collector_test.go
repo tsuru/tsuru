@@ -129,8 +129,6 @@ func startDocker() (func(), *httptest.Server) {
 }
 
 func (s *S) TestCollectStatusFixContainer(c *gocheck.C) {
-	cleanup := createFakeContainers([]string{"9930c24f1c4x"}, c)
-	defer cleanup()
 	coll := collection()
 	defer coll.Close()
 	err := coll.Insert(
@@ -156,8 +154,16 @@ func (s *S) TestCollectStatusFixContainer(c *gocheck.C) {
 			Status:  provision.StatusUnreachable,
 		},
 	}
-	cleanup, _ = startDocker()
+	cleanup, server := startDocker()
 	defer cleanup()
+	var storage mapStorage
+	storage.StoreContainer("9930c24f1c4x", "server0")
+	cmutex.Lock()
+	dCluster, err = cluster.New(nil, &storage,
+		cluster.Node{ID: "server0", Address: server.URL},
+	)
+	cmutex.Unlock()
+	c.Assert(err, gocheck.IsNil)
 	var p dockerProvisioner
 	units, err := p.CollectStatus()
 	c.Assert(err, gocheck.IsNil)
