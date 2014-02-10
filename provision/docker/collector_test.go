@@ -6,7 +6,6 @@ package docker
 
 import (
 	"github.com/globocom/docker-cluster/cluster"
-	"github.com/globocom/docker-cluster/storage"
 	etesting "github.com/globocom/tsuru/exec/testing"
 	"github.com/globocom/tsuru/provision"
 	"labix.org/v2/mgo/bson"
@@ -117,7 +116,7 @@ func startDocker() (func(), *httptest.Server) {
 	}))
 	var err error
 	oldCluster := dockerCluster()
-	dCluster, err = cluster.New(nil, storage.Redis("localhost:6379", "tests"),
+	dCluster, err = cluster.New(nil, &mapStorage{},
 		cluster.Node{ID: "server", Address: server.URL},
 	)
 	if err != nil {

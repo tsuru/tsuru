@@ -9,7 +9,6 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
-	"github.com/globocom/docker-cluster/storage"
 	ftesting "github.com/globocom/tsuru/fs/testing"
 	"github.com/globocom/tsuru/provision"
 	_ "github.com/globocom/tsuru/testing"
@@ -71,7 +70,7 @@ func (s *S) SetUpTest(c *gocheck.C) {
 	var err error
 	cmutex.Lock()
 	defer cmutex.Unlock()
-	dCluster, err = cluster.New(nil, storage.Redis("localhost:6379", "tests"),
+	dCluster, err = cluster.New(nil, &mapStorage{},
 		cluster.Node{ID: "server", Address: s.server.URL()},
 	)
 	c.Assert(err, gocheck.IsNil)

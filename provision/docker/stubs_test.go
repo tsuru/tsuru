@@ -9,7 +9,6 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
-	"github.com/globocom/docker-cluster/storage"
 	etesting "github.com/globocom/tsuru/exec/testing"
 	"net"
 	"net/http"
@@ -127,7 +126,7 @@ func startDockerTestServer(containerPort string, calls *int64) (func(), *httptes
 	}))
 	var err error
 	oldCluster := dockerCluster()
-	dCluster, err = cluster.New(nil, storage.Redis("localhost:6379", "tests"),
+	dCluster, err = cluster.New(nil, &mapStorage{},
 		cluster.Node{ID: "server", Address: server.URL},
 	)
 	if err != nil {
@@ -159,31 +158,6 @@ func mockExecutor() (*etesting.FakeExecutor, func()) {
 		setExecut(nil)
 	}
 }
-
-type mapStorage struct {
-	containers map[string]string
-}
-
-func (m *mapStorage) StoreContainer(containerID, hostID string) error {
-	if m.containers == nil {
-		m.containers = make(map[string]string)
-	}
-	m.containers[containerID] = hostID
-	return nil
-}
-
-func (m *mapStorage) RetrieveContainer(containerID string) (string, error) {
-	return m.containers[containerID], nil
-}
-
-func (m *mapStorage) RemoveContainer(containerID string) error {
-	delete(m.containers, containerID)
-	return nil
-}
-
-func (m *mapStorage) StoreImage(imageID, hostID string) error      { return nil }
-func (m *mapStorage) RetrieveImage(imageID string) (string, error) { return "", nil }
-func (m *mapStorage) RemoveImage(imageID string) error             { return nil }
 
 type fakeScheduler struct {
 	nodes     []cluster.Node

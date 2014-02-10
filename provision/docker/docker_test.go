@@ -11,7 +11,6 @@ import (
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
-	"github.com/globocom/docker-cluster/storage"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	etesting "github.com/globocom/tsuru/exec/testing"
@@ -28,7 +27,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync/atomic"
 )
 
 func (s *S) TestContainerGetAddress(c *gocheck.C) {
@@ -349,7 +347,7 @@ func (s *S) TestContainerNetworkInfoNotFound(c *gocheck.C) {
 	defer server.Close()
 	oldCluster := dockerCluster()
 	var err error
-	dCluster, err = cluster.New(nil, storage.Redis("localhost:6379", "tests"),
+	dCluster, err = cluster.New(nil, &mapStorage{},
 		cluster.Node{ID: "server", Address: server.URL},
 	)
 	c.Assert(err, gocheck.IsNil)
@@ -738,7 +736,7 @@ func (s *S) TestDockerCluster(c *gocheck.C) {
 		cmutex.Lock()
 		defer cmutex.Unlock()
 		removeClusterNodes([]string{"server0", "server1"}, c)
-		dCluster, err = cluster.New(nil, storage.Redis("localhost:6379", "tests"), nodes...)
+		dCluster, err = cluster.New(nil, &mapStorage{}, nodes...)
 		c.Assert(err, gocheck.IsNil)
 	}()
 	cluster := dockerCluster()
@@ -773,60 +771,6 @@ func (s *S) TestGetDockerServersShouldSearchFromConfig(c *gocheck.C) {
 	c.Assert(servers, gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestReplicateImage(c *gocheck.C) {
-	var request *http.Request
-	var requests int32
-	server, err := dtesting.NewServer(func(r *http.Request) {
-		v := atomic.AddInt32(&requests, 1)
-		if v == 2 {
-			request = r
-		}
-	})
-	c.Assert(err, gocheck.IsNil)
-	defer server.Stop()
-	config.Set("docker:registry", "localhost:3030")
-	defer config.Unset("docker:registry")
-	cmutex.Lock()
-	oldDockerCluster := dCluster
-	dCluster, _ = cluster.New(nil, storage.Redis("localhost:6379", "tests"), cluster.Node{ID: "server0", Address: server.URL()})
-	cmutex.Unlock()
-	defer func() {
-		cmutex.Lock()
-		defer cmutex.Unlock()
-		dCluster = oldDockerCluster
-	}()
-	err = newImage("localhost:3030/base", "http://index.docker.io")
-	c.Assert(err, gocheck.IsNil)
-	cleanup := insertImage("localhost:3030/base", "server0", c)
-	defer cleanup()
-	err = replicateImage("localhost:3030/base")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(atomic.LoadInt32(&requests), gocheck.Equals, int32(3))
-	c.Assert(request.URL.Path, gocheck.Matches, ".*/images/localhost:3030/base/push$")
-}
-
-func (s *S) TestReplicateImageNoRegistry(c *gocheck.C) {
-	var requests int32
-	server, err := dtesting.NewServer(func(*http.Request) {
-		atomic.AddInt32(&requests, 1)
-	})
-	c.Assert(err, gocheck.IsNil)
-	defer server.Stop()
-	cmutex.Lock()
-	oldDockerCluster := dCluster
-	dCluster, _ = cluster.New(nil, storage.Redis("localhost:6379", "tests"), cluster.Node{ID: "server111", Address: server.URL()})
-	cmutex.Unlock()
-	defer func() {
-		cmutex.Lock()
-		defer cmutex.Unlock()
-		removeClusterNodes([]string{"server111"}, c)
-		dCluster = oldDockerCluster
-	}()
-	err = replicateImage("tsuru/python")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(atomic.LoadInt32(&requests), gocheck.Equals, int32(0))
-}
-
 func (s *S) TestPushImage(c *gocheck.C) {
 	var request *http.Request
 	server, err := dtesting.NewServer(func(r *http.Request) {
@@ -838,7 +782,7 @@ func (s *S) TestPushImage(c *gocheck.C) {
 	defer config.Unset("docker:registry")
 	cmutex.Lock()
 	oldDockerCluster := dCluster
-	dCluster, _ = cluster.New(nil, storage.Redis("localhost:6379", "tests"),
+	dCluster, _ = cluster.New(nil, &mapStorage{},
 		cluster.Node{ID: "server0", Address: server.URL()})
 	cmutex.Unlock()
 	defer func() {
