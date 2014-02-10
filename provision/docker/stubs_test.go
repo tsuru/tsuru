@@ -22,30 +22,6 @@ import (
 	"sync/atomic"
 )
 
-var inspectOut = `
-{
-	"State": {
-		"Running": false,
-		"Pid": 0,
-		"ExitCode": 0,
-		"StartedAt": "2013-06-13T20:59:31.699407Z",
-		"Ghost": false
-	},
-	"NetworkSettings": {
-		"IpAddress": "10.10.10.10",
-		"IpPrefixLen": 8,
-		"Gateway": "10.65.41.1",
-		"Ports": {
-			"8888/tcp": [
-				{
-					"HostIp": "0.0.0.0",
-					"HostPort": "34233"
-				}
-			]
-		}
-	}
-}`
-
 func createTestRoutes(names ...string) func() {
 	for _, name := range names {
 		rtesting.FakeRouter.AddBackend(name)

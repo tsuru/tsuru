@@ -5,10 +5,15 @@
 package docker
 
 import (
+	"github.com/globocom/docker-cluster/cluster"
+	"github.com/globocom/docker-cluster/storage"
 	etesting "github.com/globocom/tsuru/exec/testing"
 	"github.com/globocom/tsuru/provision"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 )
 
 func (s *S) TestCollectStatusForStartedUnit(c *gocheck.C) {
@@ -79,6 +84,92 @@ func (s *S) TestCollectStatusForUnreachableUnit(c *gocheck.C) {
 	sortUnits(units)
 	sortUnits(expected)
 	c.Assert(units, gocheck.DeepEquals, expected)
+}
+
+func startDocker() (func(), *httptest.Server) {
+	output := `{
+    "State": {
+        "Running": true,
+        "Pid": 2785,
+        "ExitCode": 0,
+        "StartedAt": "2013-08-15T03:38:45.709874216-03:00",
+        "Ghost": false
+    },
+    "Image": "b750fe79269d2ec9a3c593ef05b4332b1d1a02a62b4accb2c21d589ff2f5f2dc",
+	"NetworkSettings": {
+		"IpAddress": "127.0.0.9",
+		"IpPrefixLen": 8,
+		"Gateway": "10.65.41.1",
+		"Ports": {
+			"8888/tcp": [
+				{
+					"HostIp": "0.0.0.0",
+					"HostPort": "9999"
+				}
+			]
+		}
+	}
+}`
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.Contains(r.URL.Path, "/containers/9930c24f1c4x") {
+			w.Write([]byte(output))
+		}
+	}))
+	var err error
+	oldCluster := dockerCluster()
+	dCluster, err = cluster.New(nil, storage.Redis("localhost:6379", "tests"),
+		cluster.Node{ID: "server", Address: server.URL},
+	)
+	if err != nil {
+		panic(err)
+	}
+	return func() {
+		server.Close()
+		dCluster = oldCluster
+	}, server
+}
+
+func (s *S) TestCollectStatusFixContainer(c *gocheck.C) {
+	createTestRoutes("makea")()
+	cleanup := createFakeContainers([]string{"9930c24f1c4x"}, c)
+	defer cleanup()
+	coll := collection()
+	defer coll.Close()
+	err := coll.Insert(
+		container{
+			ID:       "9930c24f1c4x",
+			AppName:  "makea",
+			Type:     "python",
+			Status:   "running",
+			IP:       "127.0.0.4",
+			HostPort: "9025",
+			HostAddr: "127.0.0.1",
+		},
+	)
+	c.Assert(err, gocheck.IsNil)
+	defer coll.RemoveAll(bson.M{"appname": "makea"})
+	expected := []provision.Unit{
+		{
+			Name:    "9930c24f1c4x",
+			AppName: "makea",
+			Type:    "python",
+			Machine: 0,
+			Ip:      "127.0.0.1",
+			Status:  provision.StatusUnreachable,
+		},
+	}
+	cleanup, _ = startDocker()
+	defer cleanup()
+	var p dockerProvisioner
+	units, err := p.CollectStatus()
+	c.Assert(err, gocheck.IsNil)
+	sortUnits(units)
+	sortUnits(expected)
+	c.Assert(units, gocheck.DeepEquals, expected)
+	cont, err := getContainer("9930c24f1c4x")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(cont.IP, gocheck.Equals, "127.0.0.9")
+	c.Assert(cont.HostPort, gocheck.Equals, "9999")
 }
 
 func (s *S) TestCollectStatusForDownUnit(c *gocheck.C) {
