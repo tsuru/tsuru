@@ -12,8 +12,6 @@ import (
 	"github.com/globocom/docker-cluster/storage"
 	etesting "github.com/globocom/tsuru/exec/testing"
 	rtesting "github.com/globocom/tsuru/router/testing"
-	"labix.org/v2/mgo/bson"
-	"launchpad.net/gocheck"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -163,40 +161,6 @@ func startSSHAgentServer(output string) (*FakeSSHServer, func()) {
 	return &handler, func() {
 		server.Close()
 		config.Unset("docker:ssh-agent-port")
-	}
-}
-
-func insertContainers(containerPort string, c *gocheck.C) func() {
-	coll := collection()
-	defer coll.Close()
-	err := coll.Insert(
-		container{
-			ID: "9930c24f1c5f", AppName: "ashamed", Type: "python",
-			Status: "running", IP: "127.0.0.3",
-			HostPort: containerPort, HostAddr: "127.0.0.1",
-		},
-		container{
-			ID: "9930c24f1c4f", AppName: "make-up", Type: "python",
-			Status: "running", IP: "127.0.0.4",
-			HostPort: "9025", HostAddr: "127.0.0.1",
-		},
-		container{ID: "9930c24f1c6f", AppName: "make-up", Type: "python", Status: "error", HostAddr: "127.0.0.1"},
-		container{ID: "9930c24f1c7f", AppName: "make-up", Type: "python", Status: "created", HostAddr: "127.0.0.1"},
-	)
-	if err != nil {
-		panic(err)
-	}
-	rtesting.FakeRouter.AddRoute("ashamed", fmt.Sprintf("http://127.0.0.1:%s", containerPort))
-	rtesting.FakeRouter.AddRoute("make-up", "http://127.0.0.1:9025")
-	removeCont := createFakeContainers([]string{
-		"9930c24f1c5f", "9930c24f1c4f", "9930c24f1c6f", "9930c24f1c7f",
-	}, c)
-	return func() {
-		coll := collection()
-		defer coll.Close()
-		coll.RemoveAll(bson.M{"appname": "make-up"})
-		coll.RemoveAll(bson.M{"appname": "ashamed"})
-		removeCont()
 	}
 }
 
