@@ -345,9 +345,11 @@ func (s *S) TestContainerNetworkInfoNotFound(c *gocheck.C) {
 		}
 	}))
 	defer server.Close()
+	var storage mapStorage
+	storage.StoreContainer("c-01", "server")
 	oldCluster := dockerCluster()
 	var err error
-	dCluster, err = cluster.New(nil, &mapStorage{},
+	dCluster, err = cluster.New(nil, &storage,
 		cluster.Node{ID: "server", Address: server.URL},
 	)
 	c.Assert(err, gocheck.IsNil)
@@ -356,8 +358,6 @@ func (s *S) TestContainerNetworkInfoNotFound(c *gocheck.C) {
 		removeClusterNodes([]string{"server"}, c)
 	}()
 	container := container{ID: "c-01"}
-	clean := createFakeContainers([]string{"c-01"}, c)
-	defer clean()
 	ip, port, err := container.networkInfo()
 	c.Assert(ip, gocheck.Equals, "")
 	c.Assert(port, gocheck.Equals, "")
