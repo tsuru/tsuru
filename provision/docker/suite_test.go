@@ -82,35 +82,6 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 	err := coll.Database.DropDatabase()
 	c.Assert(err, gocheck.IsNil)
 	fsystem = nil
-	clearSchedStorage(c)
-}
-
-func removeClusterNodes(ids []string, c *gocheck.C) {
-	conn, err := redis.Dial("tcp", "localhost:6379")
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Close()
-	c.Assert(err, gocheck.IsNil)
-	err = conn.Send("multi")
-	c.Assert(err, gocheck.IsNil)
-	for _, id := range ids {
-		conn.Send("del", "tests:node:"+id)
-		conn.Send("lrem", "tests:nodes", "0", id)
-	}
-	_, err = conn.Do("exec")
-	c.Assert(err, gocheck.IsNil)
-}
-
-func clearSchedStorage(c *gocheck.C) {
-	conn, err := redis.Dial("tcp", "localhost:6379")
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Close()
-	keys, err := conn.Do("keys", "*")
-	c.Assert(err, gocheck.IsNil)
-	for _, key := range keys.([]interface{}) {
-		k := string(key.([]byte))
-		_, err := conn.Do("del", k)
-		c.Assert(err, gocheck.IsNil)
-	}
 }
 
 func insertImage(repo, nodeID string, c *gocheck.C) func() {

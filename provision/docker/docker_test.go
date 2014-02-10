@@ -355,7 +355,6 @@ func (s *S) TestContainerNetworkInfoNotFound(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer func() {
 		dCluster = oldCluster
-		removeClusterNodes([]string{"server"}, c)
 	}()
 	container := container{ID: "c-01"}
 	ip, port, err := container.networkInfo()
@@ -735,7 +734,6 @@ func (s *S) TestDockerCluster(c *gocheck.C) {
 	defer func() {
 		cmutex.Lock()
 		defer cmutex.Unlock()
-		removeClusterNodes([]string{"server0", "server1"}, c)
 		dCluster, err = cluster.New(nil, &mapStorage{}, nodes...)
 		c.Assert(err, gocheck.IsNil)
 	}()
