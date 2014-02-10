@@ -424,25 +424,6 @@ func (c *container) logs(w io.Writer) error {
 	return dockerCluster().AttachToContainer(opts)
 }
 
-func getContainer(id string) (*container, error) {
-	var c container
-	coll := collection()
-	defer coll.Close()
-	err := coll.Find(bson.M{"id": id}).One(&c)
-	if err != nil {
-		return nil, err
-	}
-	return &c, nil
-}
-
-func listAppContainers(appName string) ([]container, error) {
-	var containers []container
-	coll := collection()
-	defer coll.Close()
-	err := coll.Find(bson.M{"appname": appName}).All(&containers)
-	return containers, err
-}
-
 // getImage returns the image name or id from an app.
 func getImage(app provision.App) string {
 	var c container

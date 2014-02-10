@@ -333,7 +333,7 @@ func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
 	defer p.Destroy(app)
 	coll := collection()
 	defer coll.Close()
-	coll.Insert(container{ID: "c-89320", AppName: app.GetName(), Version: "a345fe"})
+	coll.Insert(container{ID: "c-89320", AppName: app.GetName(), Version: "a345fe", Image: "tsuru/python"})
 	defer coll.RemoveId(bson.M{"id": "c-89320"})
 	units, err := p.AddUnits(app, 3)
 	c.Assert(err, gocheck.IsNil)
