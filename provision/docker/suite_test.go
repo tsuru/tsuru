@@ -144,19 +144,3 @@ func (s unitSlice) Swap(i, j int) {
 func sortUnits(units []provision.Unit) {
 	sort.Sort(unitSlice(units))
 }
-
-func createFakeContainers(ids []string, c *gocheck.C) func() {
-	conn, err := redis.Dial("tcp", "localhost:6379")
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Close()
-	filter := []interface{}{}
-	for _, id := range ids {
-		key := "tests:" + id
-		_, err = conn.Do("SET", key, "server")
-		c.Assert(err, gocheck.IsNil)
-		filter = append(filter, key)
-	}
-	return func() {
-		conn.Do("DEL", filter...)
-	}
-}
