@@ -27,6 +27,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync/atomic"
 )
 
 func (s *S) TestContainerGetAddress(c *gocheck.C) {
@@ -82,6 +83,49 @@ func (s *S) TestNewContainerUndefinedUser(c *gocheck.C) {
 	container, err := dcli.InspectContainer(cont.ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(container.Config.User, gocheck.Equals, "")
+}
+
+func (s *S) TestNewContainerNoSuchImage(c *gocheck.C) {
+	var nreq int32
+	var requests []*http.Request
+	server1 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if atomic.LoadInt32(&nreq) == 0 {
+			http.Error(w, "No such image", http.StatusNotFound)
+		} else {
+			body := `{"Id":"e90302"}`
+			w.Header().Set("Content-Type", "application/json")
+			w.Write([]byte(body))
+		}
+		requests = append(requests, r)
+		atomic.AddInt32(&nreq, 1)
+	}))
+	defer server1.Close()
+	server2 := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body := `{"Id":"e90303"}`
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(body))
+	}))
+	defer server2.Close()
+	var storage mapStorage
+	var err error
+	cmutex.Lock()
+	dCluster, err = cluster.New(nil, &storage,
+		cluster.Node{ID: "handler0", Address: server1.URL},
+		cluster.Node{ID: "handler1", Address: server2.URL},
+	)
+	cmutex.Unlock()
+	c.Assert(err, gocheck.IsNil)
+	app := testing.NewFakeApp("app-name", "brainfuck", 1)
+	rtesting.FakeRouter.AddBackend(app.GetName())
+	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
+	cont, err := newContainer(app, getImage(app), []string{"docker", "run"})
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(&cont)
+	c.Assert(cont.ID, gocheck.Equals, "e90302")
+	c.Assert(requests, gocheck.HasLen, 3)
+	c.Assert(requests[1].URL.Path, gocheck.Equals, "/images/create")
+	c.Assert(requests[1].URL.Query().Get("fromImage"), gocheck.Equals, "tsuru/brainfuck")
+	c.Assert(requests[2].URL.Path, gocheck.Equals, "/containers/create")
 }
 
 func (s *S) TestGetSSHCommandsDefaultSSHDPath(c *gocheck.C) {
