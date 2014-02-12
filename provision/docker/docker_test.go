@@ -498,7 +498,7 @@ func (s *S) TestGetImageFromAppPlatform(c *gocheck.C) {
 	c.Assert(img, gocheck.Equals, fmt.Sprintf("%s/python", repoNamespace))
 }
 
-func (s *S) TestGetImageAppWith20Deploys(c *gocheck.C) {
+func (s *S) TestGetImageAppWhenDeployIsMultipleOf10(c *gocheck.C) {
 	var request http.Request
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		request = *r

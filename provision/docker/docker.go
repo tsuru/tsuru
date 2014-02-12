@@ -423,6 +423,8 @@ func (c *container) logs(w io.Writer) error {
 }
 
 // getImage returns the image name or id from an app.
+// when the container image is empty is returned the platform image.
+// when a deploy is multiple of 10 is returned the platform image.
 func getImage(app provision.App) string {
 	var c container
 	coll := collection()
