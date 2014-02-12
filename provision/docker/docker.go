@@ -232,14 +232,6 @@ func (c *container) setImage(imageId string) error {
 	return coll.Update(bson.M{"id": c.ID}, c)
 }
 
-func build(a provision.App, version string, w io.Writer) (string, error) {
-	imageID, err := deploy(a, version, w)
-	if err != nil {
-		return "", err
-	}
-	return imageID, nil
-}
-
 func deploy(app provision.App, version string, w io.Writer) (string, error) {
 	commands, err := deployCmds(app, version)
 	if err != nil {
