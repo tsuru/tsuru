@@ -1874,10 +1874,20 @@ func (s *S) TestAppAvailableShouldReturnsTrueWhenOneUnitIsUnreachable(c *gocheck
 }
 
 func (s *S) TestSwap(c *gocheck.C) {
-	app1 := &App{}
-	app2 := &App{}
-	err := Swap(app1, app2)
+	app1 := &App{Name: "app1", CName: "cname"}
+	err := s.conn.Apps().Insert(app1)
 	c.Assert(err, gocheck.IsNil)
+	app2 := &App{Name: "app2"}
+	err = s.conn.Apps().Insert(app2)
+	c.Assert(err, gocheck.IsNil)
+	defer func() {
+		s.conn.Apps().Remove(bson.M{"name": app1.Name})
+		s.conn.Apps().Remove(bson.M{"name": app2.Name})
+	}()
+	err = Swap(app1, app2)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app1.CName, gocheck.Equals, "")
+	c.Assert(app2.CName, gocheck.Equals, "cname")
 }
 
 func (s *S) TestDeployApp(c *gocheck.C) {

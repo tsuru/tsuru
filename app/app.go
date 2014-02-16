@@ -878,8 +878,29 @@ func List(u *auth.User) ([]App, error) {
 }
 
 // Swap calls the Provisioner.Swap.
+// And updates the app.CName in the database.
 func Swap(app1, app2 *App) error {
-	return Provisioner.Swap(app1, app2)
+	err := Provisioner.Swap(app1, app2)
+	if err != nil {
+		return err
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	app1.CName, app2.CName = app2.CName, app1.CName
+	updateCName := func(app *App) error {
+		return conn.Apps().Update(
+			bson.M{"name": app.Name},
+			bson.M{"$set": bson.M{"cname": app.CName}},
+		)
+	}
+	err = updateCName(app1)
+	if err != nil {
+		return err
+	}
+	return updateCName(app2)
 }
 
 // DeployApp calls the Provisioner.Deploy
