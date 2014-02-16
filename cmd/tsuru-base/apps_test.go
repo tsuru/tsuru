@@ -146,7 +146,7 @@ func (s *S) TestAppInfoCName(c *gocheck.C) {
 Repository: git@git.com:php.git
 Platform: php
 Teams: tsuruteam, crane
-Address: yourapp.tsuru.io
+Address: yourapp.tsuru.io, myapp.tsuru.io
 Units:
 +--------+---------+
 | Unit   | State   |
@@ -388,11 +388,11 @@ func (s *S) TestAppListNotReady(c *gocheck.C) {
 func (s *S) TestAppListCName(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"ip":"10.10.10.10","cname":"app1.tsuru.io","name":"app1","ready":true,"units":[{"Name":"app1/0","State":"started"}]}]`
-	expected := `+-------------+-------------------------+---------------+--------+
-| Application | Units State Summary     | Address       | Ready? |
-+-------------+-------------------------+---------------+--------+
-| app1        | 1 of 1 units in-service | app1.tsuru.io | Yes    |
-+-------------+-------------------------+---------------+--------+
+	expected := `+-------------+-------------------------+----------------------------+--------+
+| Application | Units State Summary     | Address                    | Ready? |
++-------------+-------------------------+----------------------------+--------+
+| app1        | 1 of 1 units in-service | app1.tsuru.io, 10.10.10.10 | Yes    |
++-------------+-------------------------+----------------------------+--------+
 `
 	context := cmd.Context{
 		Args:   []string{},
