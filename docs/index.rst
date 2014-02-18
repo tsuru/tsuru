@@ -65,7 +65,8 @@ Contribute to Tsuru
 
 * :doc:`coding style </contribute/coding-style>`
 * :doc:`how to contribute </contribute>`
-* :doc:`setting up your development environment </contribute/setting-up-your-tsuru-development-environment>`
+* :doc:`setting up your local environment </contribute/setting-up-your-tsuru-development-environment>`
+* :doc:`Building a fully functional development environment with Vagrant </developer/vagrant>`
 
 .. toctree::
     :hidden:
