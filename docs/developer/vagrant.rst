@@ -12,11 +12,15 @@ Then clone the `tsuru-bootstrap` project from github:
 
 .. highlight:: bash
 
+::yy
+
     git clone https://github.com/dgryski/tsuru-bootstrap.git
 
 Enter the `tsuru-bootstrap` directory and execute `vagrant up`. It will take a time:
 
 .. highlight:: bash
+
+::
 
     cd tsuru-bootstrap
     vagrant up
@@ -24,6 +28,8 @@ Enter the `tsuru-bootstrap` directory and execute `vagrant up`. It will take a t
 After it, configure the tsuru target with the address of the server that's running by vagrant:
 
 .. highlight:: bash
+
+::
 
     tsuru target-add development http://192.168.50.4:8080 -s
 
