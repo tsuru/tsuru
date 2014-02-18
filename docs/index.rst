@@ -24,7 +24,7 @@ Configure and run Tsuru
 
 * :doc:`docker provisioner architecture </provisioners/docker/architecture>`
 
-* :doc:`configuration </config>`
+* :doc:`configuration reference </config>`
 * :doc:`backing up Tsuru </server/backup>`
 
 * :doc:`mysql </services/mysql-example>`
