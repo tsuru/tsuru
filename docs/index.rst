@@ -6,15 +6,31 @@
 Documentation
 +++++++++++++
 
-Using Tsuru
------------
-
 * :doc:`Why Tsuru? </why>`.
 * :doc:`Overview </overview>`
 * :doc:`FAQ </faq>`.
+* :doc:`releases </releases/index>`
 
-Application Deployment
-++++++++++++++++++++++
+Install Tsuru
++++++++++++++
+
+* :doc:`Tsuru and juju </build>`
+
+* :doc:`Tsuru and docker on ubuntu </docker>`
+* :doc:`Tsuru and docker on centos </docker-centos>`
+
+Configure and run Tsuru
++++++++++++++++++++++++
+
+* :doc:`docker provisioner architecture </provisioners/docker/architecture>`
+
+* :doc:`configuration </config>`
+* :doc:`backing up Tsuru </server/backup>`
+
+* :doc:`mysql </services/mysql-example>`
+
+Use Tsuru command-line and deploy your applications
++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 * :doc:`building your application </apps/quickstart>`
 * :doc:`python/django </apps/quickstart/python>`
@@ -25,54 +41,31 @@ Application Deployment
 * :doc:`understanding deployment hooks </apps/deploy-hooks>`
 * :doc:`recovery and troubleshooting </apps/recovery>`
 
-CLI
-+++
-
-* :doc:`clients installation guide </install/client>`
-* :doc:`Tsuru client usage guide </apps/client/usage>`
-
-Services
-++++++++
+* :doc:`Tsuru command-line installation guide </install/client>`
+* :doc:`Tsuru command-line usage guide </apps/client/usage>`
 
 * :doc:`using services </apps/client/services>`
 
-Running Tsuru
--------------
+Develop applications and services for Tsuru clouds
+++++++++++++++++++++++++++++++++++++++++++++++++++
 
-Deploy Tsuru
-++++++++++++
-
-* :doc:`Tsuru and juju </build>`
-
-* :doc:`docker provisioner architecture </provisioners/docker/architecture>`
-* :doc:`Tsuru and docker on ubuntu </docker>`
-* :doc:`Tsuru and docker on centos </docker-centos>`
-
-* :doc:`configuration </config>`
-* :doc:`backing up Tsuru </server/backup>`
-
-* :doc:`api reference </api>`
-
-Services
-++++++++
+* :doc:`API reference </api>`
 
 * :doc:`building your service </services/build>`
 * :doc:`crane usage guide </services/usage>`
 * :doc:`services api workflow </services/api>`
 
-Installing services
+Get Involved
+++++++++++++
+
+* :doc:`community </community>`
+
+Contribute to Tsuru
 +++++++++++++++++++
 
-* :doc:`mysql </services/mysql-example>`
-
-Get Involved
-------------
-
-* :doc:`how to contribute </contribute>`
 * :doc:`coding style </contribute/coding-style>`
+* :doc:`how to contribute </contribute>`
 * :doc:`setting up your development environment </contribute/setting-up-your-tsuru-development-environment>`
-* :doc:`community </community>`
-* :doc:`releases </releases/index>`
 
 .. toctree::
     :hidden:
