@@ -12,7 +12,7 @@ Then clone the `tsuru-bootstrap` project from github:
 
 .. highlight:: bash
 
-::yy
+::
 
     git clone https://github.com/dgryski/tsuru-bootstrap.git
 
