@@ -58,6 +58,7 @@ Installing beanstalk
 .. highlight:: bash
 
 ::
+
     apt-get install beanstalkd -qqy
     cat > /etc/default/beanstalkd <<EOF
     BEANSTALKD_LISTEN_ADDR=127.0.0.1
@@ -73,6 +74,7 @@ Installing redis
 .. highlight:: bash
 
 ::
+
     apt-get install redis-server -qqy
 
 Installing hipache
@@ -81,6 +83,7 @@ Installing hipache
 .. highlight:: bash
 
 ::
+
     apt-get install node-hipache -qqy
     start hipache
 
@@ -90,6 +93,7 @@ Installing docker
 .. highlight:: bash
 
 ::
+
     apt-get install lxc-docker -qqy
     sed -i.old -e 's;-d;-d -H tcp://127.0.0.1:4243;' /etc/init/docker.conf
     rm /etc/init/docker.conf.old
@@ -102,6 +106,7 @@ Installing gandalf
 .. highlight:: bash
 
 ::
+
     apt-get install gandalf-server -qqy
     hook_dir=/home/git/bare-template/hooks
     mkdir -p $hook_dir
@@ -120,6 +125,7 @@ Installing Tsuru api server
 .. highlight:: bash
 
 ::
+
     apt-get install tsuru-server -qqy
 
     cp /vagrant/tsuru.conf /etc/tsuru/tsuru.conf
