@@ -17,8 +17,8 @@ import (
 )
 
 type TsuruHandler struct {
-	path   string
 	method string
+	path   string
 	h      http.Handler
 }
 
@@ -29,8 +29,12 @@ func fatal(err error) {
 var tsuruHandlerList []TsuruHandler
 
 //RegisterHandler inserts a handler on a list of handlers
-func RegisterHandler(h TsuruHandler) {
-	tsuruHandlerList = append(tsuruHandlerList, h)
+func RegisterHandler(path string, method string, h http.Handler) {
+	var th TsuruHandler
+	th.path = path
+	th.method = method
+	th.h = h
+	tsuruHandlerList = append(tsuruHandlerList, th)
 }
 
 // RunServer starts Tsuru API server. The dry parameter indicates whether the
@@ -48,11 +52,11 @@ func RunServer(dry bool) {
 	}
 	fmt.Printf("Using the database %q from the server %q.\n\n", dbName, connString)
 
+	m := pat.New()
+
 	for _, handler := range tsuruHandlerList {
 		m.Add(handler.method, handler.path, handler.h)
 	}
-
-	m := pat.New()
 
 	m.Get("/schema/app", authorizationRequiredHandler(appSchema))
 	m.Get("/schema/service", authorizationRequiredHandler(serviceSchema))
