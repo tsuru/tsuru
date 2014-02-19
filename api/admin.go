@@ -19,18 +19,7 @@ import (
 var m = pat.New()
 
 func RegisterAdminHandler(path string, method string, h http.Handler) {
-	if method == "GET" {
-		m.Get(path, h)
-	}
-	if method == "POST" {
-		m.Post(path, h)
-	}
-	if method == "PUT" {
-		m.Put(path, h)
-	}
-	if method == "DELETE" {
-		m.Del(path, h)
-	}
+	m.Add(method, path, h)
 }
 
 // RunAdminServer starts tsuru administrative api
