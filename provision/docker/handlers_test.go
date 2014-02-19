@@ -6,9 +6,11 @@ package docker
 
 import (
 	"bytes"
+	"encoding/json"
 	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
 	"github.com/globocom/tsuru/db"
+	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
@@ -103,4 +105,54 @@ func (s *HandlersSuite) TestRemoveNodeHandlerWithoutCluster(c *gocheck.C) {
 	n, err = s.conn.Collection(schedulerCollection).FindId("server01").Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, 0)
+}
+
+func (s *HandlersSuite) TestListNodeHandler(c *gocheck.C) {
+	var result []node
+	dCluster, _ = cluster.New(segScheduler, nil)
+	err := s.conn.Collection(schedulerCollection).Insert(node{Address: "host.com:4243", ID: "server01"})
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Collection(schedulerCollection).RemoveId("server01")
+	err = s.conn.Collection(schedulerCollection).Insert(node{Address: "host.com:4243", ID: "server02"})
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Collection(schedulerCollection).RemoveId("server02")
+	req, err := http.NewRequest("GET", "/node/", nil)
+	rec := httptest.NewRecorder()
+	err = listNodeHandler(rec, req)
+	c.Assert(err, gocheck.IsNil)
+	body, err := ioutil.ReadAll(rec.Body)
+	c.Assert(err, gocheck.IsNil)
+	err = json.Unmarshal(body, &result)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result[0].ID, gocheck.Equals, "server01")
+	c.Assert(result[0].Address, gocheck.DeepEquals, "host.com:4243")
+	c.Assert(result[1].ID, gocheck.Equals, "server02")
+	c.Assert(result[1].Address, gocheck.DeepEquals, "host.com:4243")
+}
+
+func (s *HandlersSuite) TestListNodeHandlerWithoutCluster(c *gocheck.C) {
+	var result []node
+	config.Set("docker:segregate", true)
+	defer config.Unset("docker:segregate")
+	config.Set("docker:scheduler:redis-server", "127.0.0.1:6379")
+	defer config.Unset("docker:scheduler:redis-server")
+	dCluster = nil
+	err := s.conn.Collection(schedulerCollection).Insert(node{Address: "host.com:4243", ID: "server01"})
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Collection(schedulerCollection).RemoveId("server01")
+	err = s.conn.Collection(schedulerCollection).Insert(node{Address: "host.com:4243", ID: "server02"})
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Collection(schedulerCollection).RemoveId("server02")
+	req, err := http.NewRequest("GET", "/node/", nil)
+	rec := httptest.NewRecorder()
+	err = listNodeHandler(rec, req)
+	c.Assert(err, gocheck.IsNil)
+	body, err := ioutil.ReadAll(rec.Body)
+	c.Assert(err, gocheck.IsNil)
+	err = json.Unmarshal(body, &result)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result[0].ID, gocheck.Equals, "server01")
+	c.Assert(result[0].Address, gocheck.DeepEquals, "host.com:4243")
+	c.Assert(result[1].ID, gocheck.Equals, "server02")
+	c.Assert(result[1].Address, gocheck.DeepEquals, "host.com:4243")
 }

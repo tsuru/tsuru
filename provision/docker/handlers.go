@@ -15,9 +15,10 @@ import (
 func init() {
 	api.RegisterAdminHandler("/node/add", "POST", api.Handler(addNodeHandler))
 	api.RegisterAdminHandler("/node/remove", "DELETE", api.Handler(removeNodeHandler))
+	api.RegisterHandler("/node/", "GET", api.Handler(listNodeHandler))
 }
 
-// AddNodeHandler calls scheduler.Register registering a node into it.
+// addNodeHandler calls scheduler.Register to registering a node into it.
 func addNodeHandler(w http.ResponseWriter, r *http.Request) error {
 	params, err := unmarshal(r.Body)
 	if err != nil {
@@ -26,12 +27,22 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request) error {
 	return dockerCluster().Register(params)
 }
 
+// removeNodeHandler calls scheduler.Unregister to unregistering a node into it.
 func removeNodeHandler(w http.ResponseWriter, r *http.Request) error {
 	params, err := unmarshal(r.Body)
 	if err != nil {
 		return err
 	}
 	return dockerCluster().Unregister(params)
+}
+
+//listNodeHandler call scheduler.Nodes to list all nodes into it.
+func listNodeHandler(w http.ResponseWriter, r *http.Request) error {
+	node_list, err := dockerCluster().Nodes()
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(node_list)
 }
 
 func unmarshal(body io.ReadCloser) (map[string]string, error) {
