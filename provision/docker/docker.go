@@ -176,12 +176,6 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 	}
 	opts := docker.CreateContainerOptions{Name: contName, Config: &config}
 	hostID, c, err := dockerCluster().CreateContainer(opts)
-	if err == docker.ErrNoSuchImage {
-		var buf safe.Buffer
-		pullOpts := docker.PullImageOptions{Repository: imageId, OutputStream: &buf}
-		dockerCluster().PullImage(pullOpts, docker.AuthConfiguration{}, hostID)
-		hostID, c, err = dockerCluster().CreateContainer(opts, hostID)
-	}
 	if err != nil {
 		log.Errorf("error on creating container in docker %s - %s", cont.AppName, err)
 		return container{}, err

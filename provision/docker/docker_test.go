@@ -43,6 +43,10 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 	app := testing.NewFakeApp("app-name", "brainfuck", 1)
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
+	dockerCluster().PullImage(
+		docker.PullImageOptions{Repository: "tsuru/brainfuck"},
+		docker.AuthConfiguration{},
+	)
 	cont, err := newContainer(app, getImage(app), []string{"docker", "run"})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(&cont)
