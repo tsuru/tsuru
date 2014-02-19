@@ -7,6 +7,7 @@ package docker
 import (
 	"errors"
 	"github.com/fsouza/go-dockerclient"
+	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/cmd"
@@ -81,6 +82,13 @@ func (segregatedScheduler) handle(opts docker.CreateContainerOptions, nodes []no
 	client, err := docker.NewClient(node.Address)
 	if err != nil {
 		return node.ID, nil, err
+	}
+	if _, err := config.GetString("docker:registry"); err == nil {
+		pullOpts := docker.PullImageOptions{Repository: opts.Config.Image}
+		err := client.PullImage(pullOpts, docker.AuthConfiguration{})
+		if err != nil {
+			return node.ID, nil, err
+		}
 	}
 	container, err := client.CreateContainer(opts)
 	return node.ID, container, err

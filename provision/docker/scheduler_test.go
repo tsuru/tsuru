@@ -50,11 +50,20 @@ func (s *SchedulerSuite) TestSchedulerSchedule(c *gocheck.C) {
 	defer server2.Stop()
 	var buf bytes.Buffer
 	client, _ := docker.NewClient(server0.URL())
-	client.PullImage(docker.PullImageOptions{Repository: "tsuru/python", OutputStream: &buf})
+	client.PullImage(
+		docker.PullImageOptions{Repository: "tsuru/python", OutputStream: &buf},
+		docker.AuthConfiguration{},
+	)
 	client, _ = docker.NewClient(server1.URL())
-	client.PullImage(docker.PullImageOptions{Repository: "tsuru/python", OutputStream: &buf})
+	client.PullImage(
+		docker.PullImageOptions{Repository: "tsuru/python", OutputStream: &buf},
+		docker.AuthConfiguration{},
+	)
 	client, _ = docker.NewClient(server2.URL())
-	client.PullImage(docker.PullImageOptions{Repository: "tsuru/python", OutputStream: &buf})
+	client.PullImage(
+		docker.PullImageOptions{Repository: "tsuru/python", OutputStream: &buf},
+		docker.AuthConfiguration{},
+	)
 	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}}
 	a2 := app.App{Name: "mirror", Teams: []string{"tsuruteam"}}
 	a3 := app.App{Name: "dedication", Teams: []string{"nodockerforme"}}
@@ -96,13 +105,59 @@ func (s *SchedulerSuite) TestSchedulerSchedule(c *gocheck.C) {
 	c.Check(node, gocheck.Equals, "server2")
 }
 
+func (s *SchedulerSuite) TestSchedulerScheduleWithRegistry(c *gocheck.C) {
+	config.Set("docker:registry", "myregistry.secret.server.com")
+	defer config.Unset("docker:registry")
+	server0, err := testing.NewServer(nil)
+	c.Assert(err, gocheck.IsNil)
+	defer server0.Stop()
+	server1, err := testing.NewServer(nil)
+	c.Assert(err, gocheck.IsNil)
+	defer server1.Stop()
+	server2, err := testing.NewServer(nil)
+	c.Assert(err, gocheck.IsNil)
+	defer server2.Stop()
+	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}}
+	a2 := app.App{Name: "mirror", Teams: []string{"tsuruteam"}}
+	a3 := app.App{Name: "dedication", Teams: []string{"nodockerforme"}}
+	cont1 := container{ID: "1", Name: "impius1", AppName: a1.Name}
+	cont2 := container{ID: "2", Name: "mirror1", AppName: a2.Name}
+	cont3 := container{ID: "3", Name: "dedication1", AppName: a3.Name}
+	err = s.storage.Apps().Insert(a1, a2, a3)
+	c.Assert(err, gocheck.IsNil)
+	defer s.storage.Apps().RemoveAll(bson.M{"name": bson.M{"$in": []string{a1.Name, a2.Name, a3.Name}}})
+	coll := s.storage.Collection(schedulerCollection)
+	err = coll.Insert(
+		node{ID: "server0", Address: server0.URL(), Teams: []string{"tsuruteam"}},
+		node{ID: "server1", Address: server1.URL(), Teams: []string{"tsuruteam"}},
+		node{ID: "server2", Address: server2.URL()},
+	)
+	c.Assert(err, gocheck.IsNil)
+	defer coll.RemoveAll(bson.M{"_id": bson.M{"$in": []string{"server0", "server1", "server2"}}})
+	contColl := collection()
+	err = contColl.Insert(
+		cont1, cont2, cont3,
+	)
+	c.Assert(err, gocheck.IsNil)
+	defer contColl.RemoveAll(bson.M{"name": bson.M{"$in": []string{cont1.Name, cont2.Name, cont3.Name}}})
+	var scheduler segregatedScheduler
+	config := docker.Config{Cmd: []string{"/usr/sbin/sshd", "-D"}, Image: "tsuru/python"}
+	opts := docker.CreateContainerOptions{Name: cont1.Name, Config: &config}
+	node, _, err := scheduler.Schedule(opts)
+	c.Assert(err, gocheck.IsNil)
+	c.Check(node == "server1" || node == "server0", gocheck.Equals, true)
+}
+
 func (s *SchedulerSuite) TestSchedulerScheduleFallback(c *gocheck.C) {
 	server0, err := testing.NewServer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer server0.Stop()
 	var buf bytes.Buffer
 	client, _ := docker.NewClient(server0.URL())
-	client.PullImage(docker.PullImageOptions{Repository: "tsuru/python", OutputStream: &buf})
+	client.PullImage(
+		docker.PullImageOptions{Repository: "tsuru/python", OutputStream: &buf},
+		docker.AuthConfiguration{},
+	)
 	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}}
 	cont1 := container{ID: "1", Name: "impius1", AppName: a1.Name}
 	err = s.storage.Apps().Insert(a1)
