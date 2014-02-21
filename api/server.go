@@ -19,7 +19,7 @@ import (
 type TsuruHandler struct {
 	method string
 	path   string
-	h      http.Handler
+	h      AdminRequiredHandler
 }
 
 func fatal(err error) {
@@ -29,7 +29,7 @@ func fatal(err error) {
 var tsuruHandlerList []TsuruHandler
 
 //RegisterHandler inserts a handler on a list of handlers
-func RegisterHandler(path string, method string, h http.Handler) {
+func RegisterHandler(path string, method string, h AdminRequiredHandler) {
 	var th TsuruHandler
 	th.path = path
 	th.method = method
@@ -100,7 +100,7 @@ func RunServer(dry bool) {
 	m.Get("/apps/:app/log", authorizationRequiredHandler(appLog))
 	m.Post("/apps/:app/log", authorizationRequiredHandler(addLog))
 
-	m.Get("/deploys", adminRequiredHandler(deploysList))
+	m.Get("/deploys", AdminRequiredHandler(deploysList))
 
 	m.Get("/platforms", authorizationRequiredHandler(platformList))
 
@@ -124,9 +124,9 @@ func RunServer(dry bool) {
 	m.Post("/users/keys", authorizationRequiredHandler(addKeyToUser))
 	m.Del("/users/keys", authorizationRequiredHandler(removeKeyFromUser))
 
-	m.Post("/tokens", adminRequiredHandler(generateAppToken))
+	m.Post("/tokens", AdminRequiredHandler(generateAppToken))
 
-	m.Del("/logs", adminRequiredHandler(logRemove))
+	m.Del("/logs", AdminRequiredHandler(logRemove))
 
 	m.Get("/teams", authorizationRequiredHandler(teamList))
 	m.Post("/teams", authorizationRequiredHandler(createTeam))

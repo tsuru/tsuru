@@ -91,9 +91,9 @@ func (fn authorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.
 	}
 }
 
-type adminRequiredHandler authorizationRequiredHandler
+type AdminRequiredHandler authorizationRequiredHandler
 
-func (fn adminRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (fn AdminRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	setVersionHeaders(w)
 	defer func() {
 		if r.Body != nil {

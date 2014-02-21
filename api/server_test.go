@@ -5,6 +5,8 @@
 package api
 
 import (
+    "fmt"
+    "github.com/globocom/tsuru/auth"
 	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"
@@ -15,9 +17,13 @@ type ServerSuite struct{}
 
 var _ = gocheck.Suite(&ServerSuite{})
 
+func authorizedTsuruHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	fmt.Fprint(w, "success")
+	return nil
+}
+
 func (s *ServerSuite) TestRegisterHandlerMakesHandlerAvailableViaGet(c *gocheck.C) {
-	h := testH{}
-	RegisterAdminHandler("/foo/bar", "GET", h)
+	RegisterHandler("/foo/bar", "GET", authorizedTsuruHandler)
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "http://example.com/foo/bar", nil)
 	c.Assert(err, gocheck.IsNil)
@@ -28,8 +34,7 @@ func (s *ServerSuite) TestRegisterHandlerMakesHandlerAvailableViaGet(c *gocheck.
 }
 
 func (s *ServerSuite) TestRegisterHandlerMakesHandlerAvailableViaPost(c *gocheck.C) {
-	h := testH{}
-	RegisterAdminHandler("/foo/bar", "POST", h)
+	RegisterHandler("/foo/bar", "POST", authorizedTsuruHandler)
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("POST", "http://example.com/foo/bar", nil)
 	c.Assert(err, gocheck.IsNil)
@@ -40,8 +45,7 @@ func (s *ServerSuite) TestRegisterHandlerMakesHandlerAvailableViaPost(c *gocheck
 }
 
 func (s *ServerSuite) TestRegisterHandlerMakesHandlerAvailableViaPut(c *gocheck.C) {
-	h := testH{}
-	RegisterAdminHandler("/foo/bar", "PUT", h)
+	RegisterHandler("/foo/bar", "PUT", authorizedTsuruHandler)
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("PUT", "http://example.com/foo/bar", nil)
 	c.Assert(err, gocheck.IsNil)
@@ -52,8 +56,7 @@ func (s *ServerSuite) TestRegisterHandlerMakesHandlerAvailableViaPut(c *gocheck.
 }
 
 func (s *ServerSuite) TestRegisterHandlerMakesHandlerAvailableViaDelete(c *gocheck.C) {
-	h := testH{}
-	RegisterAdminHandler("/foo/bar", "DELETE", h)
+	RegisterHandler("/foo/bar", "DELETE", authorizedTsuruHandler)
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("DELETE", "http://example.com/foo/bar", nil)
 	c.Assert(err, gocheck.IsNil)
@@ -61,4 +64,14 @@ func (s *ServerSuite) TestRegisterHandlerMakesHandlerAvailableViaDelete(c *goche
 	b, err := ioutil.ReadAll(rec.Body)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert("DELETE", gocheck.Equals, string(b))
+}
+
+func (s *ServerSuite) TestIsNotAdmin(c *gocheck.C) {
+	RegisterHandler("/foo/bar", "POST", authorizedTsuruHandler)
+	rec := httptest.NewRecorder()
+	req, err := http.NewRequest("POST","http://example.com/foo/bar", nil)
+	c.Assert(err, gocheck.IsNil)
+	m.ServeHTTP(rec, req)
+	b, err :=ioutil.ReadAll(rec.Body)
+	c.Assert("POST", gocheck.Equals, string(b))
 }

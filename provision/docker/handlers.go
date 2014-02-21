@@ -7,6 +7,7 @@ package docker
 import (
 	"encoding/json"
 	"github.com/globocom/tsuru/api"
+	"github.com/globocom/tsuru/auth"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -15,7 +16,7 @@ import (
 func init() {
 	api.RegisterAdminHandler("/node/add", "POST", api.Handler(addNodeHandler))
 	api.RegisterAdminHandler("/node/remove", "DELETE", api.Handler(removeNodeHandler))
-	api.RegisterHandler("/node/", "GET", api.Handler(listNodeHandler))
+	api.RegisterHandler("/node/", "GET", api.AdminRequiredHandler(listNodeHandler))
 }
 
 // addNodeHandler calls scheduler.Register to registering a node into it.
@@ -37,7 +38,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request) error {
 }
 
 //listNodeHandler call scheduler.Nodes to list all nodes into it.
-func listNodeHandler(w http.ResponseWriter, r *http.Request) error {
+func listNodeHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	node_list, err := dockerCluster().Nodes()
 	if err != nil {
 		return err
