@@ -108,6 +108,50 @@ func (h *TestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(content))
 }
 
+func (s *S) TestEndpointCreate(c *gocheck.C) {
+	h := TestHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
+	client := &Client{endpoint: ts.URL}
+	err := client.Create(&instance)
+	c.Assert(err, gocheck.IsNil)
+	expectedURL := "/resources"
+	h.Lock()
+	defer h.Unlock()
+	c.Assert(h.url, gocheck.Equals, expectedURL)
+	c.Assert(h.method, gocheck.Equals, "POST")
+	v, err := url.ParseQuery(string(h.body))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(map[string][]string(v), gocheck.DeepEquals, map[string][]string{"name": {"my-redis"}})
+	c.Assert("application/x-www-form-urlencoded", gocheck.DeepEquals, h.request.Header.Get("Content-Type"))
+	c.Assert("application/json", gocheck.Equals, h.request.Header.Get("Accept"))
+}
+
+func (s *S) TestEndpointCreatePlans(c *gocheck.C) {
+	h := TestHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	instance := ServiceInstance{
+		Name:        "my-redis",
+		ServiceName: "redis",
+		PlanName:    "basic",
+	}
+	client := &Client{endpoint: ts.URL}
+	err := client.Create(&instance)
+	c.Assert(err, gocheck.IsNil)
+	expectedURL := "/resources"
+	h.Lock()
+	defer h.Unlock()
+	c.Assert(h.url, gocheck.Equals, expectedURL)
+	c.Assert(h.method, gocheck.Equals, "POST")
+	v, err := url.ParseQuery(string(h.body))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(map[string][]string(v), gocheck.DeepEquals, map[string][]string{"name": {"my-redis"}, "plan": {"basic"}})
+	c.Assert("application/x-www-form-urlencoded", gocheck.DeepEquals, h.request.Header.Get("Content-Type"))
+	c.Assert("application/json", gocheck.Equals, h.request.Header.Get("Accept"))
+}
+
 func (s *S) TestCreateShouldSendTheNameOfTheResourceToTheEndpoint(c *gocheck.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)

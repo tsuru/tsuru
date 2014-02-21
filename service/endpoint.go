@@ -72,6 +72,9 @@ func (c *Client) Create(instance *ServiceInstance) error {
 	params := map[string][]string{
 		"name": {instance.Name},
 	}
+	if instance.PlanName != "" {
+		params["plan"] = []string{instance.PlanName}
+	}
 	if resp, err = c.issueRequest("/resources", "POST", params); err == nil && resp.StatusCode < 300 {
 		return nil
 	}
