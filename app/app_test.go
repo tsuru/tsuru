@@ -1376,6 +1376,27 @@ func (s *S) TestHookRunnerNotNil(c *gocheck.C) {
 	c.Assert(runner, gocheck.Equals, &fakeRunner)
 }
 
+func (s *S) TestStop(c *gocheck.C) {
+	unitList := []Unit{
+		{Name: "app/0", State: provision.StatusStarted.String()},
+	}
+	a := App{Name: "app", Units: unitList}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+
+	var buf bytes.Buffer
+	err = a.Stop(&buf)
+	c.Assert(err, gocheck.IsNil)
+
+	err = s.conn.Apps().Find(bson.M{"name": a.GetName()}).One(&a)
+	c.Assert(err, gocheck.IsNil)
+
+	for _, u := range a.Units {
+		c.Assert(u.State, gocheck.Equals, provision.StatusStopped.String())
+	}
+}
+
 func (s *S) TestLog(c *gocheck.C) {
 	a := App{Name: "newApp"}
 	err := s.conn.Apps().Insert(a)

@@ -134,6 +134,20 @@ func (s *S) TestRestartFailure(c *gocheck.C) {
 	c.Assert(pErr.Err.Error(), gocheck.Equals, "exit status 25")
 }
 
+func (s *S) TestStop(c *gocheck.C) {
+	fexec := &etesting.FakeExecutor{}
+	setExecut(fexec)
+	defer setExecut(nil)
+	app := testing.NewFakeApp("app", "python", 1)
+	p := JujuProvisioner{}
+	err := p.Stop(app)
+	c.Assert(err, gocheck.IsNil)
+	args := []string{
+		"ssh", "-o", "StrictHostKeyChecking no", "-q", "1", "/var/lib/tsuru/hooks/stop",
+	}
+	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
+}
+
 func (s *S) TestDeploy(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("juju", "")
 	c.Assert(err, gocheck.IsNil)

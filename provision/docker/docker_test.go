@@ -15,6 +15,7 @@ import (
 	"github.com/globocom/tsuru/db"
 	etesting "github.com/globocom/tsuru/exec/testing"
 	ftesting "github.com/globocom/tsuru/fs/testing"
+	"github.com/globocom/tsuru/provision"
 	rtesting "github.com/globocom/tsuru/router/testing"
 	"github.com/globocom/tsuru/safe"
 	"github.com/globocom/tsuru/testing"
@@ -639,6 +640,19 @@ func (s *S) TestContainerStop(c *gocheck.C) {
 	dockerContainer, err := dockerCluster().InspectContainer(cont.ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(dockerContainer.State.Running, gocheck.Equals, false)
+	c.Assert(cont.Status, gocheck.Equals, provision.StatusStopped.String())
+}
+
+func (s *S) TestContainerStopReturnsNilWhenContainerAlreadyMarkedAsStopped(c *gocheck.C) {
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	cont, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(cont)
+
+	cont.setStatus(provision.StatusStopped.String())
+	err = cont.stop()
+	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TestContainerLogs(c *gocheck.C) {

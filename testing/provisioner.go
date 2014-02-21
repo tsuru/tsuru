@@ -738,6 +738,10 @@ func (p *FakeProvisioner) HasCName(app provision.App, cname string) bool {
 	return ok && pApp.cname == cname
 }
 
+func (p *FakeProvisioner) Stop(app provision.App) error {
+    return nil
+}
+
 type provisionedApp struct {
 	units       []provision.Unit
 	app         provision.App

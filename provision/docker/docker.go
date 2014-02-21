@@ -358,10 +358,14 @@ func (c *container) commit() (string, error) {
 
 // stop stops the container.
 func (c *container) stop() error {
+	if c.Status == provision.StatusStopped.String() {
+		return nil
+	}
 	err := dockerCluster().StopContainer(c.ID, 10)
 	if err != nil {
 		log.Errorf("error on stop container %s: %s", c.ID, err)
 	}
+	c.setStatus(provision.StatusStopped.String())
 	return err
 }
 
