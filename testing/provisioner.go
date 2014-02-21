@@ -739,7 +739,7 @@ func (p *FakeProvisioner) HasCName(app provision.App, cname string) bool {
 }
 
 func (p *FakeProvisioner) Stop(app provision.App) error {
-    return nil
+	return nil
 }
 
 type provisionedApp struct {
