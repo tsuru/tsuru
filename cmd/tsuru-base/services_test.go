@@ -23,7 +23,7 @@ func (t *infoTransport) RoundTrip(req *http.Request) (resp *http.Response, err e
 		message = `[{"Name":"mymongo", "Apps":["myapp"], "Info":{"key": "value", "key2": "value2"}}]`
 	}
 	if req.URL.Path == "/services/mongodb/plans" {
-		message = `[{"name": "small", "description": "another plan"}]`
+		message = `[{"Name": "small", "Description": "another plan"}]`
 	}
 	resp = &http.Response{
 		Body:       ioutil.NopCloser(bytes.NewBufferString(message)),

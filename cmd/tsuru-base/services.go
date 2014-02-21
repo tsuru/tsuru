@@ -363,7 +363,7 @@ func (c ServiceInfo) BuildPlansTable(serviceName string, ctx *cmd.Context, clien
 	if len(plans) > 0 {
 		table := cmd.NewTable()
 		for _, plan := range plans {
-			data := []string{plan["name"], plan["description"]}
+			data := []string{plan["Name"], plan["Description"]}
 			table.AddRow(cmd.Row(data))
 		}
 		table.Headers = cmd.Row([]string{"Name", "Description"})
