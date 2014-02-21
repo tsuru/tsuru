@@ -5,8 +5,8 @@
 package api
 
 import (
-    "fmt"
-    "github.com/globocom/tsuru/auth"
+	"fmt"
+	"github.com/globocom/tsuru/auth"
 	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"
@@ -69,9 +69,9 @@ func (s *ServerSuite) TestRegisterHandlerMakesHandlerAvailableViaDelete(c *goche
 func (s *ServerSuite) TestIsNotAdmin(c *gocheck.C) {
 	RegisterHandler("/foo/bar", "POST", authorizedTsuruHandler)
 	rec := httptest.NewRecorder()
-	req, err := http.NewRequest("POST","http://example.com/foo/bar", nil)
+	req, err := http.NewRequest("POST", "http://example.com/foo/bar", nil)
 	c.Assert(err, gocheck.IsNil)
 	m.ServeHTTP(rec, req)
-	b, err :=ioutil.ReadAll(rec.Body)
+	b, err := ioutil.ReadAll(rec.Body)
 	c.Assert("POST", gocheck.Equals, string(b))
 }
