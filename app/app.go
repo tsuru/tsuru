@@ -929,7 +929,7 @@ func Swap(app1, app2 *App) error {
 }
 
 // DeployApp calls the Provisioner.Deploy
-func DeployApp(app *App, version string, writer io.Writer) error {
+func DeployApp(app *App, version, commit string, writer io.Writer) error {
 	start := time.Now()
 	pipeline := Provisioner.DeployPipeline()
 	if pipeline == nil {
@@ -942,10 +942,10 @@ func DeployApp(app *App, version string, writer io.Writer) error {
 		return err
 	}
 	elapsed := time.Since(start)
-	return saveDeployData(app.Name, elapsed)
+	return saveDeployData(app.Name, commit, elapsed)
 }
 
-func saveDeployData(appName string, duration time.Duration) error {
+func saveDeployData(appName, commit string, duration time.Duration) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err

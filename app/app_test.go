@@ -1924,7 +1924,12 @@ func (s *S) TestDeployApp(c *gocheck.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
-	err = DeployApp(&a, "version", writer)
+	err = DeployApp(
+		&a,
+		"version",
+		"1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
+		writer,
+	)
 	c.Assert(err, gocheck.IsNil)
 	logs := writer.String()
 	c.Assert(logs, gocheck.Equals, "Deploy called")
@@ -1943,7 +1948,12 @@ func (s *S) TestDeployAppIncrementDeployNumber(c *gocheck.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
-	err = DeployApp(&a, "version", writer)
+	err = DeployApp(
+		&a,
+		"version",
+		"1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
+		writer,
+	)
 	c.Assert(err, gocheck.IsNil)
 	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(a.Deploys, gocheck.Equals, uint(1))
@@ -1962,7 +1972,12 @@ func (s *S) TestDeployAppSaveDeployData(c *gocheck.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
-	err = DeployApp(&a, "version", writer)
+	err = DeployApp(
+		&a,
+		"version",
+		"1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
+		writer,
+	)
 	c.Assert(err, gocheck.IsNil)
 	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(a.Deploys, gocheck.Equals, uint(1))
@@ -1988,11 +2003,21 @@ func (s *S) TestDeployCustomPipeline(c *gocheck.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
-	err = DeployApp(&a, "version", writer)
+	err = DeployApp(
+		&a,
+		"version",
+		"1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
+		writer,
+	)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(s.provisioner.ExecutedPipeline(), gocheck.Equals, false)
 	s.provisioner.CustomPipeline = true
-	err = DeployApp(&a, "version", writer)
+	err = DeployApp(
+		&a,
+		"version",
+		"1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
+		writer,
+	)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(s.provisioner.ExecutedPipeline(), gocheck.Equals, true)
 }
