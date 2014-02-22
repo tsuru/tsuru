@@ -97,6 +97,36 @@ func (s *S) TestDeployHandler(c *gocheck.C) {
 	c.Assert(s.provisioner.Version(&a), gocheck.Equals, "a345f3e")
 }
 
+func (s *S) TestDeployWithCommit(c *gocheck.C) {
+	a := app.App{
+		Name:     "otherapp",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+		Units:    []app.Unit{{Name: "i-0800", State: "started"}},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("version=a345f3e&user=fulano&commit=123"))
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	err = deploy(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	b, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(string(b), gocheck.Equals, "Deploy called")
+	deploys, err := s.conn.Deploys().Find(bson.M{"commit": "123"}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(deploys, gocheck.Equals, 1)
+	c.Assert(s.provisioner.Version(&a), gocheck.Equals, "a345f3e")
+}
+
 func (s *S) TestCloneRepositoryShouldIncrementDeployNumberOnApp(c *gocheck.C) {
 	a := app.App{
 		Name:     "otherapp",

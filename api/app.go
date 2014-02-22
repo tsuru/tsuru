@@ -45,13 +45,14 @@ func deploy(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if version == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Missing parameter version"}
 	}
+	commit := r.PostFormValue("commit")
 	w.Header().Set("Content-Type", "text")
 	appName := r.URL.Query().Get(":appname")
 	instance, err := app.GetByName(appName)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
 	}
-	return app.DeployApp(instance, version, "", w)
+	return app.DeployApp(instance, version, commit, w)
 }
 
 func appIsAvailable(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
