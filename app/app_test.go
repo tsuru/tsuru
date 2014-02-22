@@ -1972,10 +1972,11 @@ func (s *S) TestDeployAppSaveDeployData(c *gocheck.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
+	commit := "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c"
 	err = DeployApp(
 		&a,
 		"version",
-		"1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
+		commit,
 		writer,
 	)
 	c.Assert(err, gocheck.IsNil)
@@ -1988,6 +1989,7 @@ func (s *S) TestDeployAppSaveDeployData(c *gocheck.C) {
 	diff := now.Sub(result["timestamp"].(time.Time))
 	c.Assert(diff < 60*time.Second, gocheck.Equals, true)
 	c.Assert(result["duration"], gocheck.Not(gocheck.Equals), 0)
+	c.Assert(result["commit"], gocheck.Equals, commit)
 }
 
 func (s *S) TestDeployCustomPipeline(c *gocheck.C) {

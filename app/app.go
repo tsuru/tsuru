@@ -631,6 +631,7 @@ type Deploy struct {
 	App       string
 	Timestamp time.Time
 	Duration  time.Duration
+	Commit    string
 }
 
 func (app *App) ListDeploys() ([]Deploy, error) {
@@ -955,6 +956,7 @@ func saveDeployData(appName, commit string, duration time.Duration) error {
 		App:       appName,
 		Timestamp: time.Now(),
 		Duration:  duration,
+		Commit:    commit,
 	}
 	return conn.Deploys().Insert(deploy)
 }
