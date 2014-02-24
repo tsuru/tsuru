@@ -1,7 +1,7 @@
 #!/bin/bash -el
 while read oldrev newrev refname
 do
-sleep 0
+true
 done
 app_dir=${PWD##*/}
 app_name=${app_dir/.git/}
