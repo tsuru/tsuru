@@ -190,6 +190,16 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 	return cont, nil
 }
 
+func ListContainersByNode(address string) ([]container, error) {
+	var list []container
+	coll := collection()
+	defer coll.Close()
+	if err := coll.Find(bson.M{"hostaddr": address}).All(&list); err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+
 // networkInfo returns the IP and the host port for the container.
 func (c *container) networkInfo() (string, string, error) {
 	port, err := getPort()

@@ -10,6 +10,7 @@ import (
 	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
 	"github.com/globocom/tsuru/db"
+	"labix.org/v2/mgo/bson"
 	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"
@@ -26,10 +27,15 @@ func (s *HandlersSuite) SetUpSuite(c *gocheck.C) {
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Collection(schedulerCollection).RemoveAll(nil)
+	config.Set("docker:collection", "docker_handler_suite")
+	s.conn.Collection(schedulerCollection).RemoveAll(nil)
 }
 
 func (s *HandlersSuite) TearDownSuite(c *gocheck.C) {
+	coll := collection()
+	defer coll.Close()
+	err := coll.Database.DropDatabase()
+	c.Assert(err, gocheck.IsNil)
 	s.conn.Close()
 }
 
@@ -155,4 +161,30 @@ func (s *HandlersSuite) TestListNodeHandlerWithoutCluster(c *gocheck.C) {
 	c.Assert(result[0].Address, gocheck.DeepEquals, "host.com:4243")
 	c.Assert(result[1].ID, gocheck.Equals, "server02")
 	c.Assert(result[1].Address, gocheck.DeepEquals, "host.com:4243")
+}
+
+func (s *HandlersSuite) TestListContainersHandler(c *gocheck.C) {
+	var result []container
+	coll := collection()
+	dCluster, _ = cluster.New(segScheduler, nil)
+	err := coll.Insert(container{ID: "blabla", Type: "python", HostAddr: "http://cittavld1182.globoi.com"})
+	c.Assert(err, gocheck.IsNil)
+	defer coll.Remove(bson.M{"id": "blabla"})
+	err = coll.Insert(container{ID: "bleble", Type: "java", HostAddr: "http://cittavld1182.globoi.com"})
+	c.Assert(err, gocheck.IsNil)
+	defer coll.Remove(bson.M{"id": "bleble"})
+	req, err := http.NewRequest("GET", "/node/cittavld1182.globoi.com/containers?:address=http://cittavld1182.globoi.com", nil)
+	rec := httptest.NewRecorder()
+	err = listContainersHandler(rec, req, nil)
+	c.Assert(err, gocheck.IsNil)
+	body, err := ioutil.ReadAll(rec.Body)
+	c.Assert(err, gocheck.IsNil)
+	err = json.Unmarshal(body, &result)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result[0].ID, gocheck.DeepEquals, "blabla")
+	c.Assert(result[0].Type, gocheck.DeepEquals, "python")
+	c.Assert(result[0].HostAddr, gocheck.DeepEquals, "http://cittavld1182.globoi.com")
+	c.Assert(result[1].ID, gocheck.DeepEquals, "bleble")
+	c.Assert(result[1].Type, gocheck.DeepEquals, "java")
+	c.Assert(result[1].HostAddr, gocheck.DeepEquals, "http://cittavld1182.globoi.com")
 }

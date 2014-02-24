@@ -17,6 +17,7 @@ func init() {
 	api.RegisterAdminHandler("/node/add", "POST", api.Handler(addNodeHandler))
 	api.RegisterAdminHandler("/node/remove", "DELETE", api.Handler(removeNodeHandler))
 	api.RegisterHandler("/node/", "GET", api.AdminRequiredHandler(listNodeHandler))
+	api.RegisterHandler("/node/:address/containers", "GET", api.AdminRequiredHandler(listContainersHandler))
 }
 
 // addNodeHandler calls scheduler.Register to registering a node into it.
@@ -44,6 +45,15 @@ func listNodeHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) erro
 		return err
 	}
 	return json.NewEncoder(w).Encode(node_list)
+}
+
+func listContainersHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	n := r.URL.Query().Get(":address")
+	container_list, err := ListContainersByNode(n)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(container_list)
 }
 
 func unmarshal(body io.ReadCloser) (map[string]string, error) {

@@ -89,6 +89,23 @@ func (s *S) TestNewContainerUndefinedUser(c *gocheck.C) {
 	c.Assert(container.Config.User, gocheck.Equals, "")
 }
 
+func (s *S) TestListContainersByNode(c *gocheck.C) {
+	var result []container
+	coll := collection()
+	defer coll.Close()
+	coll.Insert(
+		container{ID: "blabla", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1182.globoi.com"},
+		container{ID: "bleble", Type: "python", AppName: "wat", HostAddr: "http://cittavld1182.globoi.com"},
+		container{ID: "blibli", Type: "java", AppName: "masoq", HostAddr: "http://cittavld1182.globoi.com"},
+	)
+	defer coll.RemoveAll(bson.M{"hostaddr": "http://cittavld1182.globoi.com"})
+	result, err := ListContainersByNode("http://cittavld1182.globoi.com")
+	c.Assert(result[0].ID, gocheck.DeepEquals, "blabla")
+	c.Assert(result[1].AppName, gocheck.DeepEquals, "wat")
+	c.Assert(result[2].Type, gocheck.DeepEquals, "java")
+	c.Assert(err, gocheck.IsNil)
+}
+
 func (s *S) TestGetSSHCommandsDefaultSSHDPath(c *gocheck.C) {
 	rfs := ftesting.RecordingFs{}
 	f, err := rfs.Create("/opt/me/id_dsa.pub")
