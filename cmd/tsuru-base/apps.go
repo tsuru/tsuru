@@ -97,10 +97,10 @@ Address: %s
 `
 	teams := strings.Join(a.Teams, ", ")
 	units := cmd.NewTable()
-	units.Headers = cmd.Row([]string{"Unit", "State"})
+	units.Headers = cmd.Row([]string{"Unit", "Host", "State"})
 	for _, unit := range a.Units {
 		if unit.Name != "" {
-			units.AddRow(cmd.Row([]string{unit.Name, unit.State}))
+			units.AddRow(cmd.Row([]string{unit.Name, unit.Ip, unit.State}))
 		}
 	}
 	args := []interface{}{a.Name, a.Repository, a.Platform, teams, a.Addr()}
