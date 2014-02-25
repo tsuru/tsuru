@@ -166,10 +166,10 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 	p := docker.Port(fmt.Sprintf("%s/tcp", port))
 	exposedPorts[p] = struct{}{}
 
-    memory, err := config.GetInt("docker:memory")
-    if err != nil {
-            memory = 0
-    }
+	memory, err := config.GetInt("docker:memory")
+	if err != nil {
+		memory = 0
+	}
 
 	config := docker.Config{
 		Image:        imageId,
@@ -179,7 +179,7 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 		AttachStdin:  false,
 		AttachStdout: false,
 		AttachStderr: false,
-        Memory:       int64(memory),
+		Memory:       int64(memory),
 	}
 
 	opts := docker.CreateContainerOptions{Name: contName, Config: &config}
