@@ -4,8 +4,25 @@
 
 package api
 
-import "net/http"
+import (
+	"fmt"
+	"github.com/globocom/tsuru/db"
+	"net/http"
+)
 
 func healthcheck(w http.ResponseWriter, r *http.Request) {
+	conn, err := db.Conn()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Failed to connect to MongoDB: %s", err)
+		return
+	}
+	defer conn.Close()
+	err = conn.Apps().Database.Session.Ping()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Failed to ping MongoDB: %s", err)
+		return
+	}
 	w.Write([]byte("WORKING"))
 }
