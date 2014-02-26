@@ -406,7 +406,7 @@ func (p *FakeProvisioner) Reset() {
 	}
 }
 
-func (FakeProvisioner) Swap(app1, app2 provision.App) error {
+func (*FakeProvisioner) Swap(app1, app2 provision.App) error {
 	return nil
 }
 
