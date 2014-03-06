@@ -14,10 +14,10 @@ import (
 )
 
 func init() {
+	api.RegisterHandler("/node", "GET", api.AdminRequiredHandler(listNodeHandler))
+	api.RegisterHandler("/node/:address/containers", "GET", api.AdminRequiredHandler(listContainersHandler))
 	api.RegisterAdminHandler("/node/add", "POST", api.Handler(addNodeHandler))
 	api.RegisterAdminHandler("/node/remove", "DELETE", api.Handler(removeNodeHandler))
-	api.RegisterHandler("/node/", "GET", api.AdminRequiredHandler(listNodeHandler))
-	api.RegisterHandler("/node/:address/containers", "GET", api.AdminRequiredHandler(listContainersHandler))
 }
 
 // addNodeHandler calls scheduler.Register to registering a node into it.
