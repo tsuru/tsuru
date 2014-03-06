@@ -40,20 +40,20 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request) error {
 
 //listNodeHandler call scheduler.Nodes to list all nodes into it.
 func listNodeHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
-	node_list, err := dockerCluster().Nodes()
+	nodeList, err := dockerCluster().Nodes()
 	if err != nil {
 		return err
 	}
-	return json.NewEncoder(w).Encode(node_list)
+	return json.NewEncoder(w).Encode(nodeList)
 }
 
 func listContainersHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	n := r.URL.Query().Get(":address")
-	container_list, err := ListContainersByNode(n)
+	containerList, err := listContainersByNode(n)
 	if err != nil {
 		return err
 	}
-	return json.NewEncoder(w).Encode(container_list)
+	return json.NewEncoder(w).Encode(containerList)
 }
 
 func unmarshal(body io.ReadCloser) (map[string]string, error) {
