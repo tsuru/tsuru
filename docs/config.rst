@@ -329,7 +329,7 @@ the Redis server is not authenticated.
 redis-queue:db
 ++++++++++++++
 
-``redis-queue:password`` is the database number of the Redis server to be used
+``redis-queue:db`` is the database number of the Redis server to be used
 for the working queue. This settings is optional and defaults to 3.
 
 Admin users
