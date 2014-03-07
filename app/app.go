@@ -70,6 +70,7 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["ip"] = app.Ip
 	result["cname"] = app.CName
 	result["ready"] = app.State == "ready"
+	result["owner"] = app.Owner
 	return json.Marshal(&result)
 }
 
