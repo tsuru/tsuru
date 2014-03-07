@@ -30,12 +30,13 @@ var appshortflag = &gnuflag.Flag{
 
 func (s *S) TestAppInfo(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `{"name":"app1","cname":"","ip":"myapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead", "units":[{"Ip":"10.10.10.10","Name":"app1/0","State":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","State":"started"}, {"Ip":"","Name":"app1/2","State":"pending"}],"teams":["tsuruteam","crane"]}`
+	result := `{"name":"app1","cname":"","ip":"myapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead", "units":[{"Ip":"10.10.10.10","Name":"app1/0","State":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","State":"started"}, {"Ip":"","Name":"app1/2","State":"pending"}],"teams":["tsuruteam","crane"], "owner": "myapp_owner"}`
 	expected := `Application: app1
 Repository: git@git.com:php.git
 Platform: php
 Teams: tsuruteam, crane
 Address: myapp.tsuru.io
+Owner: myapp_owner
 Units:
 +--------+---------+
 | Unit   | State   |
@@ -60,12 +61,13 @@ Units:
 
 func (s *S) TestAppInfoNoUnits(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `{"name":"app1","ip":"app1.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead","units":[],"teams":["tsuruteam","crane"]}`
+	result := `{"name":"app1","ip":"app1.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead","units":[],"teams":["tsuruteam","crane"], "owner": "myapp_owner"}`
 	expected := `Application: app1
 Repository: git@git.com:php.git
 Platform: php
 Teams: tsuruteam, crane
 Address: app1.tsuru.io
+Owner: myapp_owner
 
 `
 	context := cmd.Context{
@@ -82,12 +84,13 @@ Address: app1.tsuru.io
 
 func (s *S) TestAppInfoEmptyUnit(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `{"name":"app1","cname":"","ip":"myapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead", "units":[{"Name":"","State":""}],"teams":["tsuruteam","crane"]}`
+	result := `{"name":"app1","cname":"","ip":"myapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead", "units":[{"Name":"","State":""}],"teams":["tsuruteam","crane"], "owner": "myapp_owner"}`
 	expected := `Application: app1
 Repository: git@git.com:php.git
 Platform: php
 Teams: tsuruteam, crane
 Address: myapp.tsuru.io
+Owner: myapp_owner
 
 `
 	context := cmd.Context{
@@ -104,12 +107,13 @@ Address: myapp.tsuru.io
 
 func (s *S) TestAppInfoWithoutArgs(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `{"name":"secret","ip":"secret.tsuru.io","platform":"ruby","repository":"git@git.com:php.git","state":"dead","units":[{"Ip":"10.10.10.10","Name":"secret/0","State":"started"}, {"Ip":"9.9.9.9","Name":"secret/1","State":"pending"}],"Teams":["tsuruteam","crane"]}`
+	result := `{"name":"secret","ip":"secret.tsuru.io","platform":"ruby","repository":"git@git.com:php.git","state":"dead","units":[{"Ip":"10.10.10.10","Name":"secret/0","State":"started"}, {"Ip":"9.9.9.9","Name":"secret/1","State":"pending"}],"Teams":["tsuruteam","crane"], "owner": "myapp_owner"}`
 	expected := `Application: secret
 Repository: git@git.com:php.git
 Platform: ruby
 Teams: tsuruteam, crane
 Address: secret.tsuru.io
+Owner: myapp_owner
 Units:
 +----------+---------+
 | Unit     | State   |
@@ -141,12 +145,13 @@ Units:
 
 func (s *S) TestAppInfoCName(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `{"name":"app1","ip":"myapp.tsuru.io","cname":"yourapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead","units":[{"Ip":"10.10.10.10","Name":"app1/0","State":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","State":"started"}, {"Ip":"","Name":"app1/2","State":"pending"}],"Teams":["tsuruteam","crane"]}`
+	result := `{"name":"app1","ip":"myapp.tsuru.io","cname":"yourapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead","units":[{"Ip":"10.10.10.10","Name":"app1/0","State":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","State":"started"}, {"Ip":"","Name":"app1/2","State":"pending"}],"Teams":["tsuruteam","crane"], "owner": "myapp_owner"}`
 	expected := `Application: app1
 Repository: git@git.com:php.git
 Platform: php
 Teams: tsuruteam, crane
 Address: yourapp.tsuru.io, myapp.tsuru.io
+Owner: myapp_owner
 Units:
 +--------+---------+
 | Unit   | State   |
