@@ -1,0 +1,27 @@
+=======================
+tsr 0.3.7 release notes
+=======================
+
+Welcome to tsr 0.3.7!
+
+These release notes cover the `new features`_ and `backwards incompatible
+changes`_ you'll want to be aware of when upgrading from tsr 0.3.6 or older
+versions.
+
+.. _`new features`: `What's new in tsr 0.3.7`_
+
+What's new in tsr 0.3.7
+=======================
+
+API
+---
+
+    * Improve administrative API for the Docker provisioner
+    * Store deploy metadata
+    * Improve healthcheck (ping MongoDB before marking the API as ok)
+    * Expose owner of the app in the app-info API
+
+Backwards incompatible changes
+==============================
+
+tsr 0.3.7 does not introduce any incompatible changes.
