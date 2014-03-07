@@ -35,4 +35,4 @@ Other improvements and bugfixes
 Backwards incompatible changes
 ==============================
 
-tsr 0.3.2 does not introduce any incompatible change.
+tsr 0.3.2 does not introduce any incompatible changes.
