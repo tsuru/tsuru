@@ -72,7 +72,7 @@ type app struct {
 	Teams      []string
 	Units      []unit
 	Ready      bool
-	Owner	   string
+	Owner      string
 }
 
 func (a *app) Addr() string {

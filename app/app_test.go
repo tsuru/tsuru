@@ -1581,7 +1581,7 @@ func (s *S) TestAppMarshalJSON(c *gocheck.C) {
 		Teams:    []string{"team1"},
 		Ip:       "10.10.10.1",
 		CName:    "name.mycompany.com",
-		Owner:	  "appOwner",
+		Owner:    "appOwner",
 	}
 	expected := make(map[string]interface{})
 	expected["name"] = "name"
@@ -1609,7 +1609,7 @@ func (s *S) TestAppMarshalJSONReady(c *gocheck.C) {
 		Ip:       "10.10.10.1",
 		CName:    "name.mycompany.com",
 		State:    "ready",
-		Owner:	  "appOwner",
+		Owner:    "appOwner",
 	}
 	expected := make(map[string]interface{})
 	expected["name"] = "name"
