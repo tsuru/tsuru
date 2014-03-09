@@ -73,6 +73,27 @@ tsuru
 
 `tsuru` is the tsuru client.
 
+0.8.9 release
+-------------
+.. toctree::
+   :maxdepth: 1
+
+   tsuru/0.8.9
+
+0.8.8 release
+-------------
+.. toctree::
+   :maxdepth: 1
+
+   tsuru/0.8.8
+
+0.8.7 release
+-------------
+.. toctree::
+   :maxdepth: 1
+
+   tsuru/0.8.7
+
 0.8.6 release
 -------------
 .. toctree::
