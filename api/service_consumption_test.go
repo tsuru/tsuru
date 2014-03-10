@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -69,6 +69,44 @@ func makeRequestToCreateInstanceHandler(c *gocheck.C) (*httptest.ResponseRecorde
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	return recorder, request
+}
+
+func (s *ConsumptionSuite) TestCreateInstanceWithPlan(c *gocheck.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_HOST":"localhost"}`))
+	}))
+	defer ts.Close()
+	se := service.Service{
+		Name:     "mysql",
+		Teams:    []string{s.team.Name},
+		Endpoint: map[string]string{"production": ts.URL},
+	}
+	se.Create()
+	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
+	data := `{"name":"brainSQL","service_name":"mysql","plan":"small"}`
+	b := bytes.NewBufferString(data)
+	request, err := http.NewRequest("POST", "/services/instances", b)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = createServiceInstance(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	var si service.ServiceInstance
+	err = s.conn.ServiceInstances().Find(bson.M{
+		"name":         "brainSQL",
+		"service_name": "mysql",
+		"plan_name":    "small",
+	}).One(&si)
+	c.Assert(err, gocheck.IsNil)
+	s.conn.ServiceInstances().Update(bson.M{"name": si.Name}, si)
+	c.Assert(si.Name, gocheck.Equals, "brainSQL")
+	c.Assert(si.ServiceName, gocheck.Equals, "mysql")
+	action := testing.Action{
+		Action: "create-service-instance",
+		User:   s.user.Email,
+		Extra:  []interface{}{data},
+	}
+	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *ConsumptionSuite) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *gocheck.C) {
@@ -664,4 +702,37 @@ func (s *ConsumptionSuite) TestGetServiceInstanceOrError(c *gocheck.C) {
 	rSi, err := getServiceInstanceOrError("foo", s.user)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(rSi.Name, gocheck.Equals, si.Name)
+}
+
+func (s *ConsumptionSuite) TestServicePlansHandler(c *gocheck.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		content := `[{"name": "ignite", "description": "some value"}, {"name": "small", "description": "not space left for you"}]`
+		w.Write([]byte(content))
+	}))
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := srvc.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer srvc.Delete()
+	request, err := http.NewRequest("GET", "/services/mysql/plans?:name=mysql", nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = servicePlans(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, gocheck.IsNil)
+	var plans []service.Plan
+	err = json.Unmarshal(body, &plans)
+	c.Assert(err, gocheck.IsNil)
+	expected := []service.Plan{
+		{Name: "ignite", Description: "some value"},
+		{Name: "small", Description: "not space left for you"},
+	}
+	c.Assert(plans, gocheck.DeepEquals, expected)
+	action := testing.Action{
+		Action: "service-plans",
+		User:   s.user.Email,
+		Extra:  []interface{}{"mysql"},
+	}
+	c.Assert(action, testing.IsRecorded)
 }

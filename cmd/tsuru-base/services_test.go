@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -9,10 +9,28 @@ import (
 	"encoding/json"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/cmd/testing"
+	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"
 	"strings"
 )
+
+type infoTransport struct{}
+
+func (t *infoTransport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
+	var message string
+	if req.URL.Path == "/services/mongodb" {
+		message = `[{"Name":"mymongo", "Apps":["myapp"], "Info":{"key": "value", "key2": "value2"}}]`
+	}
+	if req.URL.Path == "/services/mongodb/plans" {
+		message = `[{"Name": "small", "Description": "another plan"}]`
+	}
+	resp = &http.Response{
+		Body:       ioutil.NopCloser(bytes.NewBufferString(message)),
+		StatusCode: http.StatusOK,
+	}
+	return resp, nil
+}
 
 func (s *S) TestServiceList(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
@@ -265,18 +283,18 @@ func (s *S) TestServiceUnbindIsAFlaggedComand(c *gocheck.C) {
 }
 
 func (s *S) TestServiceAddInfo(c *gocheck.C) {
-	usage := `service-add <servicename> <serviceinstancename>
+	usage := `service-add <servicename> <serviceinstancename> <plan>
 e.g.:
 
-    $ tsuru service-add mongodb tsuru_mongodb
+    $ tsuru service-add mongodb tsuru_mongodb small
 
-Will add a new instance of the "mongodb" service, named "tsuru_mongodb".`
+Will add a new instance of the "mongodb" service, named "tsuru_mongodb" with the plan "small".`
 	expected := &cmd.Info{
 		Name:    "service-add",
 		Usage:   usage,
 		Desc:    "Create a service instance to one or more apps make use of.",
 		MinArgs: 2,
-		MaxArgs: 2,
+		MaxArgs: 3,
 	}
 	command := &ServiceAdd{}
 	c.Assert(command.Info(), gocheck.DeepEquals, expected)
@@ -288,6 +306,7 @@ func (s *S) TestServiceAddRun(c *gocheck.C) {
 	args := []string{
 		"my_app_db",
 		"mysql",
+		"small",
 	}
 	context := cmd.Context{
 		Args:   args,
@@ -361,13 +380,21 @@ func (s *S) TestServiceInfoExtraHeaders(c *gocheck.C) {
 
 func (s *S) TestServiceInfoRun(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `[{"Name":"mymongo", "Apps":["myapp"], "Info":{"key": "value", "key2": "value2"}}]`
 	expected := `Info for "mongodb"
+
+Instances
 +-----------+-------+-------+--------+
 | Instances | Apps  | key   | key2   |
 +-----------+-------+-------+--------+
 | mymongo   | myapp | value | value2 |
 +-----------+-------+-------+--------+
+
+Plans
++-------+--------------+
+| Name  | Description  |
++-------+--------------+
+| small | another plan |
++-------+--------------+
 `
 	args := []string{"mongodb"}
 	context := cmd.Context{
@@ -375,7 +402,7 @@ func (s *S) TestServiceInfoRun(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: result, Status: http.StatusOK}}, nil, manager)
+	client := cmd.NewClient(&http.Client{Transport: &infoTransport{}}, nil, manager)
 	err := (&ServiceInfo{}).Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	obtained := stdout.String()

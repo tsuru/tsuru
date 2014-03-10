@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -63,9 +63,16 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	f.Close()
 	s.server, err = dtesting.NewServer(nil)
 	c.Assert(err, gocheck.IsNil)
-	dCluster, _ = cluster.New(nil,
+}
+
+func (s *S) SetUpTest(c *gocheck.C) {
+	var err error
+	cmutex.Lock()
+	defer cmutex.Unlock()
+	dCluster, err = cluster.New(nil, &mapStorage{},
 		cluster.Node{ID: "server", Address: s.server.URL()},
 	)
+	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
@@ -74,11 +81,6 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 	err := coll.Database.DropDatabase()
 	c.Assert(err, gocheck.IsNil)
 	fsystem = nil
-}
-
-func (s *S) SetUp(c *gocheck.C) {
-	clusterNodes = map[string]string{"server": s.server.URL()}
-	config.Unset("docker:registry")
 }
 
 type unitSlice []provision.Unit

@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -32,7 +32,7 @@ import (
 	"time"
 )
 
-func (s *S) TestGet(c *gocheck.C) {
+func (s *S) TestGetAppByName(c *gocheck.C) {
 	newApp := App{Name: "myApp", Platform: "Django"}
 	err := s.conn.Apps().Insert(newApp)
 	c.Assert(err, gocheck.IsNil)
@@ -40,16 +40,15 @@ func (s *S) TestGet(c *gocheck.C) {
 	newApp.Env = map[string]bind.EnvVar{}
 	err = s.conn.Apps().Update(bson.M{"name": newApp.Name}, &newApp)
 	c.Assert(err, gocheck.IsNil)
-	myApp := App{Name: "myApp"}
-	err = myApp.Get()
+	myApp, err := GetByName("myApp")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(myApp.Name, gocheck.Equals, newApp.Name)
 }
 
-func (s *S) TestGetNotFound(c *gocheck.C) {
-	app := App{Name: "wat"}
-	err := app.Get()
+func (s *S) TestGetAppByNameNotFound(c *gocheck.C) {
+	app, err := GetByName("wat")
 	c.Assert(err, gocheck.Equals, ErrAppNotFound)
+	c.Assert(app, gocheck.IsNil)
 }
 
 func (s *S) TestDelete(c *gocheck.C) {
@@ -72,14 +71,12 @@ func (s *S) TestDelete(c *gocheck.C) {
 	}
 	err := s.conn.Apps().Insert(&a)
 	c.Assert(err, gocheck.IsNil)
-	a.Get()
-	err = Delete(&a)
+	app, err := GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	err = a.Get()
+	err = Delete(app)
+	c.Assert(err, gocheck.IsNil)
+	_, err = GetByName(app.Name)
 	c.Assert(err, gocheck.NotNil)
-	qt, err := s.conn.Apps().Find(bson.M{"name": a.Name}).Count()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(qt, gocheck.Equals, 0)
 	c.Assert(s.provisioner.Provisioned(&a), gocheck.Equals, false)
 	err = auth.ReserveApp(s.user)
 	c.Assert(err, gocheck.IsNil)
@@ -101,19 +98,17 @@ func (s *S) TestDestroy(c *gocheck.C) {
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, gocheck.IsNil)
-	a.Get()
-	token := a.Env["TSURU_APP_TOKEN"].Value
-	err = Delete(&a)
+	app, err := GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	err = a.Get()
+	token := app.Env["TSURU_APP_TOKEN"].Value
+	err = Delete(app)
+	c.Assert(err, gocheck.IsNil)
+	_, err = GetByName(app.Name)
 	c.Assert(err, gocheck.NotNil)
-	qt, err := s.conn.Apps().Find(bson.M{"name": a.Name}).Count()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(qt, gocheck.Equals, 0)
 	c.Assert(s.provisioner.Provisioned(&a), gocheck.Equals, false)
 	msg, err := aqueue().Get(1e6)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(msg.Args, gocheck.DeepEquals, []string{a.Name})
+	c.Assert(msg.Args, gocheck.DeepEquals, []string{app.Name})
 	_, err = auth.GetToken("bearer " + token)
 	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
 }
@@ -131,18 +126,15 @@ func (s *S) TestDestroyWithoutBucketSupport(c *gocheck.C) {
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, gocheck.IsNil)
-	a.Get()
-	err = Delete(&a)
+	app, err := GetByName(a.Name)
+	err = Delete(app)
 	c.Assert(err, gocheck.IsNil)
-	err = a.Get()
+	_, err = GetByName(app.Name)
 	c.Assert(err, gocheck.NotNil)
-	qt, err := s.conn.Apps().Find(bson.M{"name": a.Name}).Count()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(qt, gocheck.Equals, 0)
 	c.Assert(s.provisioner.Provisioned(&a), gocheck.Equals, false)
 	msg, err := aqueue().Get(1e6)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(msg.Args, gocheck.DeepEquals, []string{a.Name})
+	c.Assert(msg.Args, gocheck.DeepEquals, []string{app.Name})
 }
 
 func (s *S) TestDestroyWithoutUnits(c *gocheck.C) {
@@ -153,12 +145,13 @@ func (s *S) TestDestroyWithoutUnits(c *gocheck.C) {
 	err := CreateApp(&app, s.user)
 	c.Assert(err, gocheck.IsNil)
 	defer s.provisioner.Destroy(&app)
-	app.Get()
-	err = Delete(&app)
+	a, err := GetByName(app.Name)
+	c.Assert(err, gocheck.IsNil)
+	err = Delete(a)
 	c.Assert(err, gocheck.IsNil)
 	msg, err := aqueue().Get(1e6)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(msg.Args, gocheck.DeepEquals, []string{app.Name})
+	c.Assert(msg.Args, gocheck.DeepEquals, []string{a.Name})
 }
 
 func (s *S) TestCreateApp(c *gocheck.C) {
@@ -177,20 +170,16 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 	defer s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": -1}})
 	config.Set("quota:units-per-app", 3)
 	defer config.Unset("quota:units-per-app")
-
 	err := CreateApp(&a, s.user)
 	c.Assert(err, gocheck.IsNil)
 	defer Delete(&a)
-	err = a.Get()
-	c.Assert(err, gocheck.IsNil)
-	var retrievedApp App
-	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&retrievedApp)
+	retrievedApp, err := GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(retrievedApp.Name, gocheck.Equals, a.Name)
 	c.Assert(retrievedApp.Platform, gocheck.Equals, a.Platform)
 	c.Assert(retrievedApp.Teams, gocheck.DeepEquals, []string{s.team.Name})
 	c.Assert(retrievedApp.Owner, gocheck.Equals, s.user.Email)
-	env := a.InstanceEnv(s3InstanceName)
+	env := retrievedApp.InstanceEnv(s3InstanceName)
 	c.Assert(env["TSURU_S3_ENDPOINT"].Value, gocheck.Equals, s.t.S3Server.URL())
 	c.Assert(env["TSURU_S3_ENDPOINT"].Public, gocheck.Equals, false)
 	c.Assert(env["TSURU_S3_LOCATIONCONSTRAINT"].Value, gocheck.Equals, "true")
@@ -204,7 +193,7 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 	c.Assert(env["TSURU_S3_BUCKET"].Value, gocheck.HasLen, maxBucketSize)
 	c.Assert(env["TSURU_S3_BUCKET"].Value, gocheck.Equals, "appnamee3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3")
 	c.Assert(env["TSURU_S3_BUCKET"].Public, gocheck.Equals, false)
-	env = a.InstanceEnv("")
+	env = retrievedApp.InstanceEnv("")
 	c.Assert(env["TSURU_APPNAME"].Value, gocheck.Equals, a.Name)
 	c.Assert(env["TSURU_APPNAME"].Public, gocheck.Equals, false)
 	c.Assert(env["TSURU_HOST"].Value, gocheck.Equals, expectedHost)
@@ -256,10 +245,7 @@ func (s *S) TestCreateWithoutBucketSupport(c *gocheck.C) {
 	err := CreateApp(&a, s.user)
 	c.Assert(err, gocheck.IsNil)
 	defer Delete(&a)
-	err = a.Get()
-	c.Assert(err, gocheck.IsNil)
-	var retrievedApp App
-	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&retrievedApp)
+	retrievedApp, err := GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(retrievedApp.Name, gocheck.Equals, a.Name)
 	c.Assert(retrievedApp.Platform, gocheck.Equals, a.Platform)
@@ -337,7 +323,7 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfProvisionerFail(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	expected := `Tsuru failed to create the app "theirapp": exit status 1`
 	c.Assert(err.Error(), gocheck.Equals, expected)
-	err = a.Get()
+	_, err = GetByName(a.Name)
 	c.Assert(err, gocheck.NotNil)
 	msg, err := aqueue().Get(1e6)
 	c.Assert(err, gocheck.IsNil)
@@ -384,16 +370,16 @@ func (s *S) TestCreateAppCreatesRepositoryInGandalf(c *gocheck.C) {
 	}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, gocheck.IsNil)
-	err = a.Get()
+	app, err := GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	defer Delete(&a)
+	defer Delete(app)
 	c.Assert(h.url[0], gocheck.Equals, "/repository")
 	c.Assert(h.method[0], gocheck.Equals, "POST")
 	expected := fmt.Sprintf(`{"name":"someapp","users":["%s"],"ispublic":false}`, s.user.Email)
 	c.Assert(string(h.body[0]), gocheck.Equals, expected)
 	msg, err := aqueue().Get(1e6)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(msg.Args, gocheck.DeepEquals, []string{a.Name})
+	c.Assert(msg.Args, gocheck.DeepEquals, []string{app.Name})
 }
 
 func (s *S) TestCreateAppDoesNotSaveTheAppWhenGandalfFailstoCreateTheRepository(c *gocheck.C) {
@@ -460,17 +446,17 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	for _, unit := range units {
 		c.Assert(unit.AppName, gocheck.Equals, app.Name)
 	}
-	err = app.Get()
+	gotApp, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.Units, gocheck.HasLen, 7)
-	c.Assert(app.Platform, gocheck.Equals, "python")
+	c.Assert(gotApp.Units, gocheck.HasLen, 7)
+	c.Assert(gotApp.Platform, gocheck.Equals, "python")
 	var expectedMessages MessageList
-	for i, unit := range app.Units {
+	for i, unit := range gotApp.Units {
 		expectedName := fmt.Sprintf("%s/%d", app.Name, i+1)
 		c.Check(unit.Name, gocheck.Equals, expectedName)
 		messages := []queue.Message{
-			{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}},
-			{Action: BindService, Args: []string{app.Name, unit.Name}},
+			{Action: regenerateApprc, Args: []string{gotApp.Name, unit.Name}},
+			{Action: BindService, Args: []string{gotApp.Name, unit.Name}},
 		}
 		expectedMessages = append(expectedMessages, messages...)
 	}
@@ -510,17 +496,17 @@ func (s *S) TestAddUnitsQuota(c *gocheck.C) {
 	for _, unit := range units {
 		c.Assert(unit.AppName, gocheck.Equals, app.Name)
 	}
-	err = app.Get()
+	gotApp, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.Units, gocheck.HasLen, 7)
-	c.Assert(app.Platform, gocheck.Equals, "python")
+	c.Assert(gotApp.Units, gocheck.HasLen, 7)
+	c.Assert(gotApp.Platform, gocheck.Equals, "python")
 	var expectedMessages MessageList
-	for i, unit := range app.Units {
+	for i, unit := range gotApp.Units {
 		expectedName := fmt.Sprintf("%s/%d", app.Name, i+1)
 		c.Assert(unit.Name, gocheck.Equals, expectedName)
 		messages := []queue.Message{
-			{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}},
-			{Action: BindService, Args: []string{app.Name, unit.Name}},
+			{Action: regenerateApprc, Args: []string{gotApp.Name, unit.Name}},
+			{Action: BindService, Args: []string{gotApp.Name, unit.Name}},
 		}
 		expectedMessages = append(expectedMessages, messages...)
 	}
@@ -591,7 +577,7 @@ func (s *S) TestAddUnitsIsAtomic(c *gocheck.C) {
 	}
 	err := app.AddUnits(2)
 	c.Assert(err, gocheck.NotNil)
-	err = app.Get()
+	_, err = GetByName(app.Name)
 	c.Assert(err, gocheck.Equals, ErrAppNotFound)
 }
 
@@ -667,9 +653,9 @@ func (s *S) TestRemoveUnitsWithQuota(c *gocheck.C) {
 	defer s.provisioner.Destroy(&a)
 	err = a.RemoveUnits(4)
 	c.Assert(err, gocheck.IsNil)
-	err = a.Get()
+	app, err := GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(a.Quota.InUse, gocheck.Equals, 2)
+	c.Assert(app.Quota.InUse, gocheck.Equals, 2)
 }
 
 func (s *S) TestRemoveUnits(c *gocheck.C) {
@@ -703,8 +689,9 @@ func (s *S) TestRemoveUnits(c *gocheck.C) {
 	defer s.provisioner.Destroy(&app)
 	app.AddUnits(4)
 	defer testing.CleanQ(queueName)
-	app.Get()
-	otherApp := App{Name: app.Name, Units: app.Units}
+	gotApp, err := GetByName(app.Name)
+	c.Assert(err, gocheck.IsNil)
+	otherApp := App{Name: gotApp.Name, Units: gotApp.Units}
 	err = otherApp.RemoveUnits(2)
 	c.Assert(err, gocheck.IsNil)
 	ts.Close()
@@ -713,13 +700,13 @@ func (s *S) TestRemoveUnits(c *gocheck.C) {
 	c.Assert(units[0].Name, gocheck.Equals, "chemistry/0")
 	c.Assert(units[1].Name, gocheck.Equals, "chemistry/3")
 	c.Assert(units[2].Name, gocheck.Equals, "chemistry/4")
-	err = app.Get()
+	gotApp, err = GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.Platform, gocheck.Equals, "python")
-	c.Assert(app.Units, gocheck.HasLen, 2)
-	c.Assert(app.Units[0].Name, gocheck.Equals, "chemistry/3")
-	c.Assert(app.Units[1].Name, gocheck.Equals, "chemistry/4")
-	c.Assert(app.Quota.InUse, gocheck.Equals, 2)
+	c.Assert(gotApp.Platform, gocheck.Equals, "python")
+	c.Assert(gotApp.Units, gocheck.HasLen, 2)
+	c.Assert(gotApp.Units[0].Name, gocheck.Equals, "chemistry/3")
+	c.Assert(gotApp.Units[1].Name, gocheck.Equals, "chemistry/4")
+	c.Assert(gotApp.Quota.InUse, gocheck.Equals, 2)
 }
 
 func (s *S) TestRemoveUnitsInvalidValues(c *gocheck.C) {
@@ -821,23 +808,21 @@ func (s *S) TestRemoveUnitByNameOrInstanceID(c *gocheck.C) {
 		s.provisioner.Destroy(&app)
 		s.conn.Apps().Remove(bson.M{"name": app.Name})
 	}()
-	err = app.Get()
+	otherApp, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
-	otherApp := App{Name: app.Name, Units: app.Units}
 	err = otherApp.RemoveUnit(app.Units[0].Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.Platform, gocheck.Equals, "python")
-	c.Assert(app.Units, gocheck.HasLen, 5)
-	c.Assert(app.Units[0].Name, gocheck.Equals, "physics/0")
-	c.Assert(app.Units[1].Name, gocheck.Equals, "physics/1")
-	c.Assert(app.Units[2].Name, gocheck.Equals, "physics/2")
-	c.Assert(app.Units[3].Name, gocheck.Equals, "physics/3")
-	c.Assert(app.Units[4].Name, gocheck.Equals, "physics/4")
-	err = app.RemoveUnit(app.Units[1].InstanceId)
+	c.Assert(otherApp.Platform, gocheck.Equals, "python")
+	c.Assert(otherApp.Units, gocheck.HasLen, 4)
+	c.Assert(otherApp.Units[0].Name, gocheck.Equals, "physics/1")
+	c.Assert(otherApp.Units[1].Name, gocheck.Equals, "physics/2")
+	c.Assert(otherApp.Units[2].Name, gocheck.Equals, "physics/3")
+	c.Assert(otherApp.Units[3].Name, gocheck.Equals, "physics/4")
+	err = otherApp.RemoveUnit(otherApp.Units[1].InstanceId)
 	c.Assert(err, gocheck.IsNil)
-	units := s.provisioner.GetUnits(&app)
+	units := s.provisioner.GetUnits(otherApp)
 	c.Assert(units, gocheck.HasLen, 3)
-	c.Assert(units[0].Name, gocheck.Equals, "physics/2")
+	c.Assert(units[0].Name, gocheck.Equals, "physics/1")
 	c.Assert(units[1].Name, gocheck.Equals, "physics/3")
 	c.Assert(units[2].Name, gocheck.Equals, "physics/4")
 	ok := make(chan int8)
@@ -857,7 +842,7 @@ func (s *S) TestRemoveUnitByNameOrInstanceID(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveAbsentUnit(c *gocheck.C) {
-	app := App{
+	app := &App{
 		Name:     "chemistry",
 		Platform: "python",
 		Units: []Unit{
@@ -867,15 +852,15 @@ func (s *S) TestRemoveAbsentUnit(c *gocheck.C) {
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
-	err = s.provisioner.Provision(&app)
+	err = s.provisioner.Provision(app)
 	c.Assert(err, gocheck.IsNil)
 	err = app.AddUnits(1)
 	c.Assert(err, gocheck.IsNil)
 	defer func() {
-		s.provisioner.Destroy(&app)
+		s.provisioner.Destroy(app)
 		s.conn.Apps().Remove(bson.M{"name": app.Name})
 	}()
-	err = app.Get()
+	app, err = GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	instID := app.Units[1].InstanceId
 	err = app.RemoveUnit(instID)
@@ -883,11 +868,11 @@ func (s *S) TestRemoveAbsentUnit(c *gocheck.C) {
 	err = app.RemoveUnit(instID)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err, gocheck.ErrorMatches, "Unit not found.")
-	err = app.Get()
+	app, err = GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Units, gocheck.HasLen, 1)
 	c.Assert(app.Units[0].Name, gocheck.Equals, "chemistry/0")
-	units := s.provisioner.GetUnits(&app)
+	units := s.provisioner.GetUnits(app)
 	c.Assert(units, gocheck.HasLen, 1)
 	c.Assert(units[0].Name, gocheck.Equals, "chemistry/0")
 }
@@ -988,8 +973,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 	}
 	err = a.setEnvsToApp(envs, true, false)
 	c.Assert(err, gocheck.IsNil)
-	newApp := App{Name: a.Name}
-	err = newApp.Get()
+	newApp, err := GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	expected := map[string]bind.EnvVar{
 		"DATABASE_HOST": {
@@ -1037,8 +1021,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 	}
 	err = a.setEnvsToApp(envs, false, false)
 	c.Assert(err, gocheck.IsNil)
-	newApp := App{Name: a.Name}
-	err = newApp.Get()
+	newApp, err := GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	expected := map[string]bind.EnvVar{
 		"DATABASE_HOST": {
@@ -1079,8 +1062,7 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = a.UnsetEnvs([]string{"DATABASE_HOST", "DATABASE_PASSWORD"}, true)
 	c.Assert(err, gocheck.IsNil)
-	newApp := App{Name: a.Name}
-	err = newApp.Get()
+	newApp, err := GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	expected := map[string]bind.EnvVar{
 		"DATABASE_HOST": {
@@ -1116,8 +1098,7 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFal
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = a.UnsetEnvs([]string{"DATABASE_HOST", "DATABASE_PASSWORD"}, false)
 	c.Assert(err, gocheck.IsNil)
-	newApp := App{Name: a.Name}
-	err = newApp.Get()
+	newApp, err := GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(newApp.Env, gocheck.DeepEquals, map[string]bind.EnvVar{})
 }
@@ -1163,33 +1144,33 @@ func (s *S) TestInstanceEnvironmentDoesNotPanicIfTheEnvMapIsNil(c *gocheck.C) {
 }
 
 func (s *S) TestSetCName(c *gocheck.C) {
-	a := App{Name: "ktulu"}
-	err := s.conn.Apps().Insert(a)
+	app := &App{Name: "ktulu"}
+	err := s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
-	err = a.SetCName("ktulu.mycompany.com")
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	s.provisioner.Provision(app)
+	defer s.provisioner.Destroy(app)
+	err = app.SetCName("ktulu.mycompany.com")
 	c.Assert(err, gocheck.IsNil)
-	err = a.Get()
+	app, err = GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(a.CName, gocheck.Equals, "ktulu.mycompany.com")
+	c.Assert(app.CName, gocheck.Equals, "ktulu.mycompany.com")
 }
 
 func (s *S) TestSetCNamePartialUpdate(c *gocheck.C) {
-	a := App{Name: "master", Platform: "puppet"}
+	a := &App{Name: "master", Platform: "puppet"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
+	s.provisioner.Provision(a)
+	defer s.provisioner.Destroy(a)
 	other := App{Name: a.Name}
 	err = other.SetCName("ktulu.mycompany.com")
 	c.Assert(err, gocheck.IsNil)
-	err = other.Get()
-	c.Assert(other.Platform, gocheck.Equals, "puppet")
-	c.Assert(other.Name, gocheck.Equals, "master")
-	c.Assert(other.CName, gocheck.Equals, "ktulu.mycompany.com")
+	a, err = GetByName(a.Name)
+	c.Assert(a.Platform, gocheck.Equals, "puppet")
+	c.Assert(a.Name, gocheck.Equals, "master")
+	c.Assert(a.CName, gocheck.Equals, "ktulu.mycompany.com")
 }
 
 func (s *S) TestSetCNameUnknownApp(c *gocheck.C) {
@@ -1247,17 +1228,17 @@ func (s *S) TestSetCNameCallsProvisionerSetCName(c *gocheck.C) {
 }
 
 func (s *S) TestUnsetCNameRemovesFromDatabase(c *gocheck.C) {
-	a := App{Name: "ktulu"}
+	a := &App{Name: "ktulu"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
+	s.provisioner.Provision(a)
+	defer s.provisioner.Destroy(a)
 	err = a.SetCName("ktulu.mycompany.com")
 	c.Assert(err, gocheck.IsNil)
 	err = a.UnsetCName()
 	c.Assert(err, gocheck.IsNil)
-	err = a.Get()
+	a, err = GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(a.CName, gocheck.Equals, "")
 }
@@ -1310,8 +1291,7 @@ func (s *S) TestReady(c *gocheck.C) {
 	err := a.Ready()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(a.State, gocheck.Equals, "ready")
-	other := App{Name: a.Name}
-	err = other.Get()
+	other, err := GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(other.State, gocheck.Equals, "ready")
 }
@@ -1394,6 +1374,27 @@ func (s *S) TestHookRunnerNotNil(c *gocheck.C) {
 	a := App{Name: "jungle", hr: &fakeRunner}
 	runner := a.hookRunner()
 	c.Assert(runner, gocheck.Equals, &fakeRunner)
+}
+
+func (s *S) TestStop(c *gocheck.C) {
+	unitList := []Unit{
+		{Name: "app/0", State: provision.StatusStarted.String()},
+	}
+	a := App{Name: "app", Units: unitList}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+
+	var buf bytes.Buffer
+	err = a.Stop(&buf)
+	c.Assert(err, gocheck.IsNil)
+
+	err = s.conn.Apps().Find(bson.M{"name": a.GetName()}).One(&a)
+	c.Assert(err, gocheck.IsNil)
+
+	for _, u := range a.Units {
+		c.Assert(u.State, gocheck.Equals, provision.StatusStopped.String())
+	}
 }
 
 func (s *S) TestLog(c *gocheck.C) {
@@ -1580,6 +1581,7 @@ func (s *S) TestAppMarshalJSON(c *gocheck.C) {
 		Teams:    []string{"team1"},
 		Ip:       "10.10.10.1",
 		CName:    "name.mycompany.com",
+		Owner:    "appOwner",
 	}
 	expected := make(map[string]interface{})
 	expected["name"] = "name"
@@ -1589,6 +1591,7 @@ func (s *S) TestAppMarshalJSON(c *gocheck.C) {
 	expected["units"] = nil
 	expected["ip"] = "10.10.10.1"
 	expected["cname"] = "name.mycompany.com"
+	expected["owner"] = "appOwner"
 	expected["ready"] = false
 	data, err := app.MarshalJSON()
 	c.Assert(err, gocheck.IsNil)
@@ -1606,6 +1609,7 @@ func (s *S) TestAppMarshalJSONReady(c *gocheck.C) {
 		Ip:       "10.10.10.1",
 		CName:    "name.mycompany.com",
 		State:    "ready",
+		Owner:    "appOwner",
 	}
 	expected := make(map[string]interface{})
 	expected["name"] = "name"
@@ -1615,6 +1619,7 @@ func (s *S) TestAppMarshalJSONReady(c *gocheck.C) {
 	expected["units"] = nil
 	expected["ip"] = "10.10.10.1"
 	expected["cname"] = "name.mycompany.com"
+	expected["owner"] = "appOwner"
 	expected["ready"] = true
 	data, err := app.MarshalJSON()
 	c.Assert(err, gocheck.IsNil)
@@ -1894,10 +1899,20 @@ func (s *S) TestAppAvailableShouldReturnsTrueWhenOneUnitIsUnreachable(c *gocheck
 }
 
 func (s *S) TestSwap(c *gocheck.C) {
-	app1 := &App{}
-	app2 := &App{}
-	err := Swap(app1, app2)
+	app1 := &App{Name: "app1", CName: "cname"}
+	err := s.conn.Apps().Insert(app1)
 	c.Assert(err, gocheck.IsNil)
+	app2 := &App{Name: "app2"}
+	err = s.conn.Apps().Insert(app2)
+	c.Assert(err, gocheck.IsNil)
+	defer func() {
+		s.conn.Apps().Remove(bson.M{"name": app1.Name})
+		s.conn.Apps().Remove(bson.M{"name": app2.Name})
+	}()
+	err = Swap(app1, app2)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app1.CName, gocheck.Equals, "")
+	c.Assert(app2.CName, gocheck.Equals, "cname")
 }
 
 func (s *S) TestDeployApp(c *gocheck.C) {
@@ -1913,7 +1928,12 @@ func (s *S) TestDeployApp(c *gocheck.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
-	err = DeployApp(&a, "version", writer)
+	err = DeployApp(
+		&a,
+		"version",
+		"1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
+		writer,
+	)
 	c.Assert(err, gocheck.IsNil)
 	logs := writer.String()
 	c.Assert(logs, gocheck.Equals, "Deploy called")
@@ -1932,7 +1952,12 @@ func (s *S) TestDeployAppIncrementDeployNumber(c *gocheck.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
-	err = DeployApp(&a, "version", writer)
+	err = DeployApp(
+		&a,
+		"version",
+		"1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
+		writer,
+	)
 	c.Assert(err, gocheck.IsNil)
 	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(a.Deploys, gocheck.Equals, uint(1))
@@ -1951,7 +1976,13 @@ func (s *S) TestDeployAppSaveDeployData(c *gocheck.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
-	err = DeployApp(&a, "version", writer)
+	commit := "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c"
+	err = DeployApp(
+		&a,
+		"version",
+		commit,
+		writer,
+	)
 	c.Assert(err, gocheck.IsNil)
 	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(a.Deploys, gocheck.Equals, uint(1))
@@ -1962,6 +1993,7 @@ func (s *S) TestDeployAppSaveDeployData(c *gocheck.C) {
 	diff := now.Sub(result["timestamp"].(time.Time))
 	c.Assert(diff < 60*time.Second, gocheck.Equals, true)
 	c.Assert(result["duration"], gocheck.Not(gocheck.Equals), 0)
+	c.Assert(result["commit"], gocheck.Equals, commit)
 }
 
 func (s *S) TestDeployCustomPipeline(c *gocheck.C) {
@@ -1977,11 +2009,21 @@ func (s *S) TestDeployCustomPipeline(c *gocheck.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
-	err = DeployApp(&a, "version", writer)
+	err = DeployApp(
+		&a,
+		"version",
+		"1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
+		writer,
+	)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(s.provisioner.ExecutedPipeline(), gocheck.Equals, false)
 	s.provisioner.CustomPipeline = true
-	err = DeployApp(&a, "version", writer)
+	err = DeployApp(
+		&a,
+		"version",
+		"1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
+		writer,
+	)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(s.provisioner.ExecutedPipeline(), gocheck.Equals, true)
 }

@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	tsuruMin      = "0.8.2"
+	tsuruMin      = "0.8.9"
 	craneMin      = "0.5.1"
 	tsuruAdminMin = "0.2.1"
 )
@@ -91,9 +91,9 @@ func (fn authorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.
 	}
 }
 
-type adminRequiredHandler authorizationRequiredHandler
+type AdminRequiredHandler authorizationRequiredHandler
 
-func (fn adminRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (fn AdminRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	setVersionHeaders(w)
 	defer func() {
 		if r.Body != nil {

@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,11 +6,10 @@ package docker
 
 import (
 	"bytes"
+	"crypto"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"github.com/dotcloud/docker"
-	dclient "github.com/fsouza/go-dockerclient"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
 	"github.com/globocom/docker-cluster/storage"
@@ -18,6 +17,7 @@ import (
 	"github.com/globocom/tsuru/fs"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
+	"github.com/globocom/tsuru/safe"
 	"io"
 	"labix.org/v2/mgo/bson"
 	"net"
@@ -25,6 +25,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"time"
 )
 
 var (
@@ -32,8 +33,6 @@ var (
 	cmutex   sync.Mutex
 	fsystem  fs.Fs
 )
-
-const maxTry = 5
 
 var (
 	clusterNodes map[string]string
@@ -53,40 +52,28 @@ func getDockerServers() []cluster.Node {
 		nodes = append(nodes, node)
 		clusterNodes[id] = server
 	}
-	n, err := listNodesInTheScheduler()
-	if err != nil {
-		log.Error(err.Error())
-	}
-	for _, node := range n {
-		if len(node.Teams) == 0 {
-			node := cluster.Node{
-				ID:      node.ID,
-				Address: node.Address,
-			}
-			nodes = append(nodes, node)
-			clusterNodes[node.ID] = node.Address
-		}
-	}
 	return nodes
 }
 
 func dockerCluster() *cluster.Cluster {
 	cmutex.Lock()
 	defer cmutex.Unlock()
+	var clusterStorage cluster.Storage
 	if dCluster == nil {
-		if segregate, _ := config.GetBool("docker:segregate"); segregate {
-			dCluster, _ = cluster.New(segScheduler)
-		} else {
-			nodes := getDockerServers()
-			dCluster, _ = cluster.New(nil, nodes...)
-		}
 		if redisServer, err := config.GetString("docker:scheduler:redis-server"); err == nil {
 			prefix, _ := config.GetString("docker:scheduler:redis-prefix")
 			if password, err := config.GetString("docker:scheduler:redis-password"); err == nil {
-				dCluster.SetStorage(storage.AuthenticatedRedis(redisServer, password, prefix))
+				clusterStorage = storage.AuthenticatedRedis(redisServer, password, prefix)
 			} else {
-				dCluster.SetStorage(storage.Redis(redisServer, prefix))
+				clusterStorage = storage.Redis(redisServer, prefix)
 			}
+		}
+		var nodes []cluster.Node
+		if segregate, _ := config.GetBool("docker:segregate"); segregate {
+			dCluster, _ = cluster.New(segScheduler, clusterStorage)
+		} else {
+			nodes = getDockerServers()
+			dCluster, _ = cluster.New(nil, clusterStorage, nodes...)
 		}
 	}
 	return dCluster
@@ -132,27 +119,42 @@ func getHostAddr(hostID string) string {
 }
 
 type container struct {
-	ID       string `bson:"_id"`
+	ID       string
 	AppName  string
 	Type     string
 	IP       string
-	Port     string
 	HostAddr string
 	HostPort string
 	Status   string
 	Version  string
 	Image    string
+	Name     string
 }
 
 func (c *container) getAddress() string {
 	return fmt.Sprintf("http://%s:%s", c.HostAddr, c.HostPort)
 }
 
+func containerName() string {
+	h := crypto.MD5.New()
+	h.Write([]byte(time.Now().Format(time.RFC3339Nano)))
+	return fmt.Sprintf("%x", h.Sum(nil))[:20]
+}
+
 // newContainer creates a new container in Docker and stores it in the database.
 func newContainer(app provision.App, imageId string, cmds []string) (container, error) {
+	contName := containerName()
 	cont := container{
 		AppName: app.GetName(),
 		Type:    app.GetPlatform(),
+		Name:    contName,
+		Status:  "created",
+	}
+	coll := collection()
+	defer coll.Close()
+	if err := coll.Insert(cont); err != nil {
+		log.Errorf("error on inserting container into database %s - %s", cont.Name, err)
+		return container{}, err
 	}
 	port, err := getPort()
 	if err != nil {
@@ -172,27 +174,37 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 		AttachStdout: false,
 		AttachStderr: false,
 	}
-	hostID, c, err := dockerCluster().CreateContainer(&config)
-	if err == dclient.ErrNoSuchImage {
-		var buf bytes.Buffer
-		pullOpts := dclient.PullImageOptions{Repository: imageId}
-		dockerCluster().PullImage(pullOpts, &buf)
-		hostID, c, err = dockerCluster().CreateContainer(&config)
-	}
+	opts := docker.CreateContainerOptions{Name: contName, Config: &config}
+	hostID, c, err := dockerCluster().CreateContainer(opts)
 	if err != nil {
 		log.Errorf("error on creating container in docker %s - %s", cont.AppName, err)
 		return container{}, err
 	}
 	cont.ID = c.ID
-	cont.Port = port
 	cont.HostAddr = getHostAddr(hostID)
+	err = coll.Update(bson.M{"name": cont.Name}, cont)
+	if err != nil {
+		log.Errorf("error on updating container into database %s - %s", cont.ID, err)
+		return container{}, err
+	}
 	return cont, nil
+}
+
+func listContainersByNode(address string) ([]container, error) {
+	var list []container
+	coll := collection()
+	defer coll.Close()
+	if err := coll.Find(bson.M{"hostaddr": address}).All(&list); err != nil {
+		return nil, err
+	}
+	return list, nil
 }
 
 // networkInfo returns the IP and the host port for the container.
 func (c *container) networkInfo() (string, string, error) {
-	if c.Port == "" {
-		return "", "", errors.New("Container does not contain any mapped port")
+	port, err := getPort()
+	if err != nil {
+		return "", "", err
 	}
 	dockerContainer, err := dockerCluster().InspectContainer(c.ID)
 	if err != nil {
@@ -200,36 +212,28 @@ func (c *container) networkInfo() (string, string, error) {
 	}
 	if dockerContainer.NetworkSettings != nil {
 		ip := dockerContainer.NetworkSettings.IPAddress
-		p := docker.Port(fmt.Sprintf("%s/tcp", c.Port))
+		p := docker.Port(fmt.Sprintf("%s/tcp", port))
 		for _, port := range dockerContainer.NetworkSettings.Ports[p] {
 			if port.HostPort != "" && port.HostIp != "" {
 				return ip, port.HostPort, nil
 			}
 		}
 	}
-	return "", "", fmt.Errorf("Container port %s is not mapped to any host port", c.Port)
+	return "", "", fmt.Errorf("Container port %s is not mapped to any host port", port)
 }
 
 func (c *container) setStatus(status string) error {
 	c.Status = status
 	coll := collection()
 	defer coll.Close()
-	return coll.UpdateId(c.ID, c)
+	return coll.Update(bson.M{"id": c.ID}, c)
 }
 
 func (c *container) setImage(imageId string) error {
 	c.Image = imageId
 	coll := collection()
 	defer coll.Close()
-	return coll.UpdateId(c.ID, c)
-}
-
-func build(a provision.App, version string, w io.Writer) (string, error) {
-	imageID, err := deploy(a, version, w)
-	if err != nil {
-		return "", err
-	}
-	return imageID, nil
+	return coll.Update(bson.M{"id": c.ID}, c)
 }
 
 func deploy(app provision.App, version string, w io.Writer) (string, error) {
@@ -238,7 +242,7 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 		return "", err
 	}
 	imageId := getImage(app)
-	actions := []*action.Action{&createContainer, &startContainer, &insertContainer}
+	actions := []*action.Action{&createContainer, &startContainer}
 	pipeline := action.NewPipeline(actions...)
 	err = pipeline.Execute(app, imageId, commands)
 	if err != nil {
@@ -270,7 +274,7 @@ func start(app provision.App, imageId string, w io.Writer) (*container, error) {
 	if err != nil {
 		return nil, err
 	}
-	actions := []*action.Action{&createContainer, &startContainer, &setNetworkInfo, &insertContainer, &addRoute}
+	actions := []*action.Action{&createContainer, &startContainer, &setNetworkInfo, &addRoute}
 	pipeline := action.NewPipeline(actions...)
 	err = pipeline.Execute(app, imageId, commands)
 	if err != nil {
@@ -292,7 +296,7 @@ func start(app provision.App, imageId string, w io.Writer) (*container, error) {
 func (c *container) remove() error {
 	address := c.getAddress()
 	log.Debugf("Removing container %s from docker", c.ID)
-	err := dockerCluster().RemoveContainer(c.ID)
+	err := dockerCluster().RemoveContainer(docker.RemoveContainerOptions{ID: c.ID})
 	if err != nil {
 		log.Errorf("Failed to remove container from docker: %s", err)
 	}
@@ -300,7 +304,7 @@ func (c *container) remove() error {
 	log.Debugf("Removing container %s from database", c.ID)
 	coll := collection()
 	defer coll.Close()
-	if err := coll.RemoveId(c.ID); err != nil {
+	if err := coll.Remove(bson.M{"id": c.ID}); err != nil {
 		log.Errorf("Failed to remove container from database: %s", err)
 	}
 	r, err := getRouter()
@@ -351,23 +355,27 @@ func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) er
 func (c *container) commit() (string, error) {
 	log.Debugf("commiting container %s", c.ID)
 	repository := assembleImageName(c.AppName)
-	opts := dclient.CommitContainerOptions{Container: c.ID, Repository: repository}
+	opts := docker.CommitContainerOptions{Container: c.ID, Repository: repository}
 	image, err := dockerCluster().CommitContainer(opts)
 	if err != nil {
 		log.Errorf("Could not commit docker image: %s", err)
 		return "", err
 	}
 	log.Debugf("image %s generated from container %s", image.ID, c.ID)
-	replicateImage(repository)
+	pushImage(repository)
 	return repository, nil
 }
 
 // stop stops the container.
 func (c *container) stop() error {
+	if c.Status == provision.StatusStopped.String() {
+		return nil
+	}
 	err := dockerCluster().StopContainer(c.ID, 10)
 	if err != nil {
 		log.Errorf("error on stop container %s: %s", c.ID, err)
 	}
+	c.setStatus(provision.StatusStopped.String())
 	return err
 }
 
@@ -390,7 +398,7 @@ func (c *container) start() error {
 
 // logs returns logs for the container.
 func (c *container) logs(w io.Writer) error {
-	opts := dclient.AttachToContainerOptions{
+	opts := docker.AttachToContainerOptions{
 		Container:    c.ID,
 		Logs:         true,
 		Stdout:       true,
@@ -403,7 +411,7 @@ func (c *container) logs(w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	opts = dclient.AttachToContainerOptions{
+	opts = docker.AttachToContainerOptions{
 		Container:    c.ID,
 		Logs:         true,
 		Stderr:       true,
@@ -414,26 +422,9 @@ func (c *container) logs(w io.Writer) error {
 	return dockerCluster().AttachToContainer(opts)
 }
 
-func getContainer(id string) (*container, error) {
-	var c container
-	coll := collection()
-	defer coll.Close()
-	err := coll.Find(bson.M{"_id": id}).One(&c)
-	if err != nil {
-		return nil, err
-	}
-	return &c, nil
-}
-
-func listAppContainers(appName string) ([]container, error) {
-	var containers []container
-	coll := collection()
-	defer coll.Close()
-	err := coll.Find(bson.M{"appname": appName}).All(&containers)
-	return containers, err
-}
-
 // getImage returns the image name or id from an app.
+// when the container image is empty is returned the platform image.
+// when a deploy is multiple of 10 is returned the platform image.
 func getImage(app provision.App) string {
 	var c container
 	coll := collection()
@@ -483,36 +474,15 @@ func (e *cmdError) Error() string {
 	return fmt.Sprintf("Failed to run command %q (%s): %s.", command, e.err, e.out)
 }
 
-// replicateImage replicates the given image through all nodes in the cluster.
-func replicateImage(name string) error {
-	var buf bytes.Buffer
-	if registry, err := config.GetString("docker:registry"); err == nil {
-		if !strings.HasPrefix(name, registry) {
-			name = registry + "/" + name
-		}
-		pushOpts := dclient.PushImageOptions{Name: name}
-		for i := 0; i < maxTry; i++ {
-			err = dockerCluster().PushImage(pushOpts, dclient.AuthConfiguration{}, &buf)
-			if err == nil {
-				buf.Reset()
-				break
-			}
+// pushImage sends the given image to the registry server defined in the
+// configuration file.
+func pushImage(name string) error {
+	if _, err := config.GetString("docker:registry"); err == nil {
+		var buf safe.Buffer
+		pushOpts := docker.PushImageOptions{Name: name, OutputStream: &buf}
+		err = dockerCluster().PushImage(pushOpts, docker.AuthConfiguration{})
+		if err != nil {
 			log.Errorf("[docker] Failed to push image %q (%s): %s", name, err, buf.String())
-			buf.Reset()
-		}
-		if err != nil {
-			return err
-		}
-		pullOpts := dclient.PullImageOptions{Repository: name}
-		for i := 0; i < maxTry; i++ {
-			err = dockerCluster().PullImage(pullOpts, &buf)
-			if err == nil {
-				break
-			}
-			buf.Reset()
-		}
-		if err != nil {
-			log.Errorf("[docker] Failed to replicate image %q through nodes (%s): %s", name, err, buf.String())
 			return err
 		}
 	}

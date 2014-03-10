@@ -1,4 +1,4 @@
-# Copyright 2013 tsuru authors. All rights reserved.
+# Copyright 2014 tsuru authors. All rights reserved.
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
@@ -104,7 +104,7 @@ test: _go_test _tsr_dry _sh_tests
 
 _travis_go_test:
 	go clean ./...
-	for pkg in `go list ./...`; do go test -v $$pkg; done
+	/bin/bash -ec 'for pkg in `go list ./...`; do go test -v $$pkg; done'
 
 travis_test: _travis_go_test _tsr_dry _sh_tests
 
@@ -115,7 +115,7 @@ deadcode: _install_deadcode
 	@go list ./... | sed -e 's;github.com/globocom/tsuru/;;' | xargs deadcode
 
 race:
-	@for pkg in `go list ./...`; do godep go test -race -i $$pkg; go test -race $$pkg; done
+	@/bin/bash -ec 'for pkg in `go list ./...`; do go test -race -i $$pkg; go test -race $$pkg; done'
 
 doc:
 	@cd docs && make html SPHINXOPTS="-N -W"

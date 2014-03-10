@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,6 +6,7 @@ package docker
 
 import (
 	"errors"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
@@ -33,7 +34,10 @@ var createContainer = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		c := ctx.FWResult.(container)
-		dockerCluster().RemoveContainer(c.ID)
+		dockerCluster().RemoveContainer(docker.RemoveContainerOptions{ID: c.ID})
+		coll := collection()
+		defer coll.Close()
+		coll.Remove(bson.M{"id": c.ID})
 	},
 }
 
@@ -48,27 +52,6 @@ var setNetworkInfo = action.Action{
 		c.IP = ip
 		c.HostPort = hostPort
 		return c, nil
-	},
-}
-
-var insertContainer = action.Action{
-	Name: "insert-container",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		c := ctx.Previous.(container)
-		c.Status = "created"
-		coll := collection()
-		defer coll.Close()
-		if err := coll.Insert(c); err != nil {
-			log.Errorf("error on inserting container into database %s - %s", c.ID, err)
-			return nil, err
-		}
-		return c, nil
-	},
-	Backward: func(ctx action.BWContext) {
-		c := ctx.FWResult.(container)
-		coll := collection()
-		defer coll.Close()
-		coll.RemoveId(c.ID)
 	},
 }
 
@@ -129,7 +112,7 @@ var saveUnits = action.Action{
 		if !ok {
 			return nil, errors.New("First parameter must be a *app.App.")
 		}
-		err := a.Get()
+		a, err := app.GetByName(a.Name)
 		if err != nil {
 			return nil, err
 		}

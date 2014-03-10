@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -94,6 +94,36 @@ func (s *S) TestDeployHandler(c *gocheck.C) {
 	b, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(string(b), gocheck.Equals, "Deploy called")
+	c.Assert(s.provisioner.Version(&a), gocheck.Equals, "a345f3e")
+}
+
+func (s *S) TestDeployWithCommit(c *gocheck.C) {
+	a := app.App{
+		Name:     "otherapp",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+		Units:    []app.Unit{{Name: "i-0800", State: "started"}},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("version=a345f3e&user=fulano&commit=123"))
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	err = deploy(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	b, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(string(b), gocheck.Equals, "Deploy called")
+	deploys, err := s.conn.Deploys().Find(bson.M{"commit": "123"}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(deploys, gocheck.Equals, 1)
 	c.Assert(s.provisioner.Version(&a), gocheck.Equals, "a345f3e")
 }
 
@@ -246,7 +276,7 @@ func (s *S) TestDelete(c *gocheck.C) {
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
-	myApp := app.App{
+	myApp := &app.App{
 		Name:     "myapptodelete",
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
@@ -254,10 +284,11 @@ func (s *S) TestDelete(c *gocheck.C) {
 			{Ip: "10.10.10.10", Machine: 1},
 		},
 	}
-	err := app.CreateApp(&myApp, s.user)
+	err := app.CreateApp(myApp, s.user)
 	c.Assert(err, gocheck.IsNil)
-	myApp.Get()
-	defer app.Delete(&myApp)
+	myApp, err = app.GetByName(myApp.Name)
+	c.Assert(err, gocheck.IsNil)
+	defer app.Delete(myApp)
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:app="+myApp.Name, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -381,9 +412,9 @@ func (s *S) TestCreateAppHandler(c *gocheck.C) {
 	defer ts.Close()
 	a := app.App{Name: "someapp"}
 	defer func() {
-		err := a.Get()
+		a, err := app.GetByName("someapp")
 		c.Assert(err, gocheck.IsNil)
-		err = app.Delete(&a)
+		err = app.Delete(a)
 		c.Assert(err, gocheck.IsNil)
 	}()
 	b := strings.NewReader(`{"name":"someapp","platform":"zend"}`)
@@ -517,9 +548,9 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = addUnits(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
-	err = a.Get()
+	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(a.Units, gocheck.HasLen, 3)
+	c.Assert(app.Units, gocheck.HasLen, 3)
 	action := testing.Action{
 		Action: "add-units",
 		User:   s.user.Email,
@@ -641,11 +672,11 @@ func (s *S) TestRemoveUnits(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = removeUnits(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
-	err = a.Get()
+	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(a.Units, gocheck.HasLen, 1)
-	c.Assert(a.Units[0].Name, gocheck.Equals, "velha/2")
-	c.Assert(s.provisioner.GetUnits(&a), gocheck.HasLen, 2)
+	c.Assert(app.Units, gocheck.HasLen, 1)
+	c.Assert(app.Units[0].Name, gocheck.Equals, "velha/2")
+	c.Assert(s.provisioner.GetUnits(app), gocheck.HasLen, 2)
 	action := testing.Action{
 		Action: "remove-units",
 		User:   s.user.Email,
@@ -742,14 +773,14 @@ func (s *S) TestAddTeamToTheApp(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = grantAppAccess(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
-	err = a.Get()
+	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(a.Teams, gocheck.HasLen, 2)
-	c.Assert(a.Teams[1], gocheck.Equals, s.team.Name)
+	c.Assert(app.Teams, gocheck.HasLen, 2)
+	c.Assert(app.Teams[1], gocheck.Equals, s.team.Name)
 	action := testing.Action{
 		Action: "grant-app-access",
 		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + a.Name, "team=" + s.team.Name},
+		Extra:  []interface{}{"app=" + app.Name, "team=" + s.team.Name},
 	}
 	c.Assert(action, testing.IsRecorded)
 }
@@ -882,13 +913,13 @@ func (s *S) TestRevokeAccessFromTeam(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = revokeAppAccess(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
-	a.Get()
-	c.Assert(a.Teams, gocheck.HasLen, 1)
-	c.Assert(a.Teams[0], gocheck.Equals, "abcd")
+	app, err := app.GetByName(a.Name)
+	c.Assert(app.Teams, gocheck.HasLen, 1)
+	c.Assert(app.Teams[0], gocheck.Equals, "abcd")
 	action := testing.Action{
 		Action: "revoke-app-access",
 		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + a.Name, "team=" + s.team.Name},
+		Extra:  []interface{}{"app=" + app.Name, "team=" + s.team.Name},
 	}
 	c.Assert(action, testing.IsRecorded)
 }
@@ -1424,8 +1455,7 @@ func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *goch
 	recorder := httptest.NewRecorder()
 	err = setEnv(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
-	app := &app.App{Name: "black-dog"}
-	err = app.Get()
+	app, err := app.GetByName("black-dog")
 	c.Assert(err, gocheck.IsNil)
 	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true}
 	c.Assert(app.Env["DATABASE_HOST"], gocheck.DeepEquals, expected)
@@ -1457,8 +1487,7 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *go
 	recorder := httptest.NewRecorder()
 	err = setEnv(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
-	app := &app.App{Name: "vigil"}
-	err = app.Get()
+	app, err := app.GetByName("vigil")
 	c.Assert(err, gocheck.IsNil)
 	expectedHost := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true}
 	expectedUser := bind.EnvVar{Name: "DATABASE_USER", Value: "root", Public: true}
@@ -1500,8 +1529,7 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfPrivateVariables(c *gocheck.C
 	recorder := httptest.NewRecorder()
 	err = setEnv(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
-	app := &app.App{Name: "losers"}
-	err = app.Get()
+	app, err := app.GetByName("losers")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Env, gocheck.DeepEquals, original)
 }
@@ -1584,8 +1612,7 @@ func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *goche
 	recorder := httptest.NewRecorder()
 	err = unsetEnv(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
-	app := app.App{Name: "swift"}
-	err = app.Get()
+	app, err := app.GetByName("swift")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Env, gocheck.DeepEquals, expected)
 	action := testing.Action{
@@ -1616,8 +1643,8 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *gocheck.C)
 	recorder := httptest.NewRecorder()
 	err = unsetEnv(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
-	app := app.App{Name: "let-it-be"}
-	err = app.Get()
+	app, err := app.GetByName("let-it-be")
+	c.Assert(err, gocheck.IsNil)
 	expected := map[string]bind.EnvVar{
 		"DATABASE_PASSWORD": {
 			Name:   "DATABASE_PASSWORD",
@@ -1625,7 +1652,6 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *gocheck.C)
 			Public: false,
 		},
 	}
-	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Env, gocheck.DeepEquals, expected)
 	action := testing.Action{
 		Action: "unset-env",
@@ -1656,8 +1682,8 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = unsetEnv(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
-	app := app.App{Name: "letitbe"}
-	err = app.Get()
+	app, err := app.GetByName("letitbe")
+	c.Assert(err, gocheck.IsNil)
 	expected := map[string]bind.EnvVar{
 		"DATABASE_PASSWORD": {
 			Name:   "DATABASE_PASSWORD",
@@ -1665,7 +1691,6 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *gocheck.C) {
 			Public: false,
 		},
 	}
-	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Env, gocheck.DeepEquals, expected)
 }
 
@@ -1739,13 +1764,13 @@ func (s *S) TestSetCNameHandler(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = setCName(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
-	err = a.Get()
+	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(a.CName, gocheck.Equals, "leper.secretcompany.com")
+	c.Assert(app.CName, gocheck.Equals, "leper.secretcompany.com")
 	action := testing.Action{
 		Action: "set-cname",
 		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + a.Name, "cname=leper.secretcompany.com"},
+		Extra:  []interface{}{"app=" + app.Name, "cname=leper.secretcompany.com"},
 	}
 	c.Assert(action, testing.IsRecorded)
 }
@@ -1765,9 +1790,9 @@ func (s *S) TestSetCNameHandlerAcceptsEmptyCName(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = setCName(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
-	err = a.Get()
+	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(a.CName, gocheck.Equals, "")
+	c.Assert(app.CName, gocheck.Equals, "")
 }
 
 func (s *S) TestSetCNameHandlerReturnsInternalErrorIfItFailsToReadTheBody(c *gocheck.C) {
@@ -1874,13 +1899,13 @@ func (s *S) TestUnsetCNameHandler(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = unsetCName(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
-	err = a.Get()
+	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(a.CName, gocheck.Equals, "")
+	c.Assert(app.CName, gocheck.Equals, "")
 	action := testing.Action{
 		Action: "unset-cname",
 		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + a.Name},
+		Extra:  []interface{}{"app=" + app.Name},
 	}
 	c.Assert(action, testing.IsRecorded)
 }
@@ -2373,19 +2398,21 @@ func (s *S) TestUnbindHandler(c *gocheck.C) {
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, gocheck.IsNil)
-	a.Get()
+	otherApp, err := app.GetByName(a.Name)
+	c.Assert(err, gocheck.IsNil)
 	defer app.Delete(&a)
-	a.Env["DATABASE_HOST"] = bind.EnvVar{
+	otherApp.Env["DATABASE_HOST"] = bind.EnvVar{
 		Name:         "DATABASE_HOST",
 		Value:        "arrea",
 		Public:       false,
 		InstanceName: instance.Name,
 	}
-	a.Env["MY_VAR"] = bind.EnvVar{Name: "MY_VAR", Value: "123"}
-	a.Units = []app.Unit{{Ip: "127.0.0.1", Machine: 1}}
-	err = s.conn.Apps().Update(bson.M{"name": a.Name}, &a)
+	otherApp.Env["MY_VAR"] = bind.EnvVar{Name: "MY_VAR", Value: "123"}
+	otherApp.Units = []app.Unit{{Ip: "127.0.0.1", Machine: 1}}
+	err = s.conn.Apps().Update(bson.M{"name": otherApp.Name}, otherApp)
 	c.Assert(err, gocheck.IsNil)
-	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
+	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, otherApp.Name,
+		instance.Name, otherApp.Name)
 	req, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -2394,14 +2421,14 @@ func (s *S) TestUnbindHandler(c *gocheck.C) {
 	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(instance.Apps, gocheck.DeepEquals, []string{})
-	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
+	otherApp, err = app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	expected := bind.EnvVar{
 		Name:  "MY_VAR",
 		Value: "123",
 	}
-	c.Assert(a.Env["MY_VAR"], gocheck.DeepEquals, expected)
-	_, ok := a.Env["DATABASE_HOST"]
+	c.Assert(otherApp.Env["MY_VAR"], gocheck.DeepEquals, expected)
+	_, ok := otherApp.Env["DATABASE_HOST"]
 	c.Assert(ok, gocheck.Equals, false)
 	ch := make(chan bool)
 	go func() {
@@ -2419,7 +2446,7 @@ func (s *S) TestUnbindHandler(c *gocheck.C) {
 	action := testing.Action{
 		Action: "unbind-app",
 		User:   s.user.Email,
-		Extra:  []interface{}{"instance=" + instance.Name, "app=" + a.Name},
+		Extra:  []interface{}{"instance=" + instance.Name, "app=" + otherApp.Name},
 	}
 	c.Assert(action, testing.IsRecorded)
 }
@@ -2678,11 +2705,11 @@ func (s *S) TestgetAppOrErrorWhenUserIsAdmin(c *gocheck.C) {
 		err = s.conn.Users().Remove(bson.M{"email": admin.Email})
 		c.Assert(err, gocheck.IsNil)
 	}(admin, adminTeam)
+	expected, err := app.GetByName(a.Name)
+	c.Assert(err, gocheck.IsNil)
 	app, err := getApp(a.Name, &admin)
 	c.Assert(err, gocheck.IsNil)
-	err = a.Get()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(app, gocheck.DeepEquals, a)
+	c.Assert(app, gocheck.DeepEquals, *expected)
 }
 
 func (s *S) TestSwap(c *gocheck.C) {

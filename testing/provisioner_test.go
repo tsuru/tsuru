@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -501,10 +501,10 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 		"grand-designs":      {app: NewFakeApp("grand-designs", "rush", 1)},
 	}
 	expected := []provision.Unit{
-		{"red-lenses/0", "red-lenses", "rush", "i-0801", 1, "10.10.10.1", "started"},
-		{"between-the-wheels/0", "between-the-wheels", "rush", "i-0802", 2, "10.10.10.2", "started"},
-		{"the-big-money/0", "the-big-money", "rush", "i-0803", 3, "10.10.10.3", "started"},
-		{"grand-designs/0", "grand-designs", "rush", "i-0804", 4, "10.10.10.4", "started"},
+		{"between-the-wheels/0", "between-the-wheels", "rush", "i-0801", 1, "10.10.10.1", "started"},
+		{"grand-designs/0", "grand-designs", "rush", "i-0802", 2, "10.10.10.2", "started"},
+		{"red-lenses/0", "red-lenses", "rush", "i-0803", 3, "10.10.10.3", "started"},
+		{"the-big-money/0", "the-big-money", "rush", "i-0804", 4, "10.10.10.4", "started"},
 	}
 	units, err := p.CollectStatus()
 	c.Assert(err, gocheck.IsNil)

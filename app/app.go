@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -70,6 +70,7 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["ip"] = app.Ip
 	result["cname"] = app.CName
 	result["ready"] = app.State == "ready"
+	result["owner"] = app.Owner
 	return json.Marshal(&result)
 }
 
@@ -81,24 +82,20 @@ type Applog struct {
 	AppName string
 }
 
-// Get queries the database and fills the App object with data retrieved from
-// the database. It uses the name of the app as filter in the query, so you can
-// provide this field:
-//
-//     app := App{Name: "myapp"}
-//     err := app.Get()
-//     // do something with the app
-func (app *App) Get() error {
+// GetAppByName queries the database to find an app identified by the given
+// name.
+func GetByName(name string) (*App, error) {
+	var app App
 	conn, err := db.NewStorage()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer conn.Close()
-	err = conn.Apps().Find(bson.M{"name": app.Name}).One(app)
+	err = conn.Apps().Find(bson.M{"name": name}).One(&app)
 	if err == mgo.ErrNotFound {
-		return ErrAppNotFound
+		return nil, ErrAppNotFound
 	}
-	return err
+	return &app, err
 }
 
 // CreateApp creates a new app.
@@ -236,11 +233,12 @@ func (app *App) AddUnits(n uint) error {
 	if n == 0 {
 		return stderr.New("Cannot add zero units.")
 	}
-	return action.NewPipeline(
+	err := action.NewPipeline(
 		&reserveUnitsToAdd,
 		&provisionAddUnits,
 		&saveNewUnitsInDatabase,
 	).Execute(app, n)
+	return err
 }
 
 // RemoveUnit removes a unit by its InstanceId or Name.
@@ -565,6 +563,31 @@ func (app *App) hookRunner() hookRunner {
 	return app.hr
 }
 
+func (app *App) Stop(w io.Writer) error {
+	// FIXME make this action atomic
+	log.Write(w, []byte("\n ---> Stopping your app\n"))
+
+	err := Provisioner.Stop(app)
+	if err != nil {
+		log.Errorf("[stop] error on stop the app %s - %s", app.Name, err)
+		return err
+	}
+
+	units := make([]Unit, len(app.Units))
+	for i, u := range app.Units {
+		u.State = provision.StatusStopped.String()
+		units[i] = u
+	}
+	app.Units = units
+
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.Apps().Update(bson.M{"name": app.Name}, app)
+}
+
 func (app *App) Ready() error {
 	app.State = "ready"
 	conn, err := db.NewStorage()
@@ -609,6 +632,7 @@ type Deploy struct {
 	App       string
 	Timestamp time.Time
 	Duration  time.Duration
+	Commit    string
 }
 
 func (app *App) ListDeploys() ([]Deploy, error) {
@@ -881,12 +905,33 @@ func List(u *auth.User) ([]App, error) {
 }
 
 // Swap calls the Provisioner.Swap.
+// And updates the app.CName in the database.
 func Swap(app1, app2 *App) error {
-	return Provisioner.Swap(app1, app2)
+	err := Provisioner.Swap(app1, app2)
+	if err != nil {
+		return err
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	app1.CName, app2.CName = app2.CName, app1.CName
+	updateCName := func(app *App) error {
+		return conn.Apps().Update(
+			bson.M{"name": app.Name},
+			bson.M{"$set": bson.M{"cname": app.CName}},
+		)
+	}
+	err = updateCName(app1)
+	if err != nil {
+		return err
+	}
+	return updateCName(app2)
 }
 
 // DeployApp calls the Provisioner.Deploy
-func DeployApp(app *App, version string, writer io.Writer) error {
+func DeployApp(app *App, version, commit string, writer io.Writer) error {
 	start := time.Now()
 	pipeline := Provisioner.DeployPipeline()
 	if pipeline == nil {
@@ -899,10 +944,10 @@ func DeployApp(app *App, version string, writer io.Writer) error {
 		return err
 	}
 	elapsed := time.Since(start)
-	return saveDeployData(app.Name, elapsed)
+	return saveDeployData(app.Name, commit, elapsed)
 }
 
-func saveDeployData(appName string, duration time.Duration) error {
+func saveDeployData(appName, commit string, duration time.Duration) error {
 	conn, err := db.NewStorage()
 	if err != nil {
 		return err
@@ -912,6 +957,7 @@ func saveDeployData(appName string, duration time.Duration) error {
 		App:       appName,
 		Timestamp: time.Now(),
 		Duration:  duration,
+		Commit:    commit,
 	}
 	return conn.Deploys().Insert(deploy)
 }

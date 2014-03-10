@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -1783,13 +1783,14 @@ func (s *AuthSuite) TestGenerateApplictionTokenExport(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = generateAppToken(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
-	var jsonToken map[string]string
+	var jsonToken map[string]interface{}
 	err = json.NewDecoder(recorder.Body).Decode(&jsonToken)
-	err = a.Get()
 	c.Assert(err, gocheck.IsNil)
-	tokenVar := a.Env["TSURU_APP_TOKEN"]
+	app, err := app.GetByName(a.Name)
+	c.Assert(err, gocheck.IsNil)
+	tokenVar := app.Env["TSURU_APP_TOKEN"]
 	c.Assert(tokenVar.Name, gocheck.Equals, "TSURU_APP_TOKEN")
-	c.Assert(tokenVar.Value, gocheck.Equals, jsonToken["token"])
+	c.Assert(tokenVar.Value, gocheck.Equals, jsonToken["token"].(string))
 	c.Assert(tokenVar.Public, gocheck.Equals, false)
 	c.Assert(tokenVar.InstanceName, gocheck.Equals, "")
 }

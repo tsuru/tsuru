@@ -1,0 +1,48 @@
+=========================
+tsuru 0.8.7 release notes
+=========================
+
+Welcome to tsuru 0.8.7!
+
+These release notes cover the new features you'll want to be aware of when
+upgrading from tsuru 0.8.6 or older versions.
+
+.. _`new features`: `What's new in tsuru 0.8.7`_
+
+What's new in tsuru 0.8.7
+=========================
+
+Added support for service plans
+-------------------------------
+
+You can use the `service-info` command to the see the plans of a service:
+
+.. highlight:: bash
+
+::
+
+    $ tsuru service-info redis
+    Info for "redis"
+
+    Plans
+    +-------+----------------------------------------------------------------------------------------------+
+    | Name  | Description                                                                                  |
+    +-------+----------------------------------------------------------------------------------------------+
+    | basic | Is a dedicated instance. With 1GB of memory.                                                 |
+    | plus  | Is 3 dedicated instances. With 1GB of memory and HA and failover support via redis-sentinel. |
+    +-------+----------------------------------------------------------------------------------------------+
+
+And on `service-add` the plan should be defined:
+
+.. highlight:: bash
+
+::
+
+    $ tsuru service-add redis myredis basic
+    Service successfully added.
+
+Improvements on app-info and app-list
+-------------------------------------
+
+Now the app address and the app cname is displayed on `app-info`
+and `app-list` command.

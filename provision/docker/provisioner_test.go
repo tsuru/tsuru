@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -67,7 +67,7 @@ func (s *S) TestProvisionerRestartCallsTheRestartHook(c *gocheck.C) {
 	cont.HostAddr = host
 	coll := collection()
 	defer coll.Close()
-	err = coll.UpdateId(cont.ID, cont)
+	err = coll.Update(bson.M{"id": cont.ID}, cont)
 	c.Assert(err, gocheck.IsNil)
 	err = p.Restart(app)
 	c.Assert(err, gocheck.IsNil)
@@ -127,7 +127,7 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	p.Provision(&a)
 	defer p.Destroy(&a)
 	w := writer{b: make([]byte, 2048)}
-	err = app.DeployApp(&a, "master", &w)
+	err = app.DeployApp(&a, "master", "123", &w)
 	c.Assert(err, gocheck.IsNil)
 	w.b = nil
 	defer p.Destroy(&a)
@@ -175,7 +175,7 @@ func (s *S) TestDeployEnqueuesBindService(c *gocheck.C) {
 	p.Provision(&a)
 	defer p.Destroy(&a)
 	w := writer{b: make([]byte, 2048)}
-	err = app.DeployApp(&a, "master", &w)
+	err = app.DeployApp(&a, "master", "123", &w)
 	c.Assert(err, gocheck.IsNil)
 	defer p.Destroy(&a)
 	q, err := getQueue()
@@ -229,7 +229,7 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 	setExecut(fexec)
 	defer setExecut(nil)
 	var w bytes.Buffer
-	err = app.DeployApp(&a, "master", &w)
+	err = app.DeployApp(&a, "master", "123", &w)
 	c.Assert(err, gocheck.IsNil)
 	time.Sleep(1e9)
 	defer p.Destroy(&a)
@@ -333,8 +333,8 @@ func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
 	defer p.Destroy(app)
 	coll := collection()
 	defer coll.Close()
-	coll.Insert(container{ID: "c-89320", AppName: app.GetName(), Version: "a345fe"})
-	defer coll.RemoveId("c-89320")
+	coll.Insert(container{ID: "c-89320", AppName: app.GetName(), Version: "a345fe", Image: "tsuru/python"})
+	defer coll.RemoveId(bson.M{"id": "c-89320"})
 	units, err := p.AddUnits(app, 3)
 	c.Assert(err, gocheck.IsNil)
 	defer coll.RemoveAll(bson.M{"appname": app.GetName()})
@@ -446,7 +446,7 @@ func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {
 	container.HostAddr = host
 	coll := collection()
 	defer coll.Close()
-	coll.UpdateId(container.ID, container)
+	coll.Update(bson.M{"id": container.ID}, container)
 	var stdout, stderr bytes.Buffer
 	var p dockerProvisioner
 	err = p.ExecuteCommand(&stdout, &stderr, app, "ls", "-ar")
@@ -477,12 +477,12 @@ func (s *S) TestProvisionerExecuteCommandMultipleContainers(c *gocheck.C) {
 	container1.HostAddr = host
 	coll := collection()
 	defer coll.Close()
-	coll.UpdateId(container1.ID, container1)
+	coll.Update(bson.M{"id": container1.ID}, container1)
 	container2, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(container2)
 	container2.HostAddr = host
-	coll.UpdateId(container2.ID, container2)
+	coll.Update(bson.M{"id": container2.ID}, container2)
 	var stdout, stderr bytes.Buffer
 	var p dockerProvisioner
 	err = p.ExecuteCommand(&stdout, &stderr, app, "ls", "-ar")
@@ -592,7 +592,7 @@ func (s *S) TestExecuteCommandOnce(c *gocheck.C) {
 	container.HostAddr = host
 	coll := collection()
 	defer coll.Close()
-	coll.UpdateId(container.ID, container)
+	coll.Update(bson.M{"id": container.ID}, container)
 	var stdout, stderr bytes.Buffer
 	err = p.ExecuteCommandOnce(&stdout, &stderr, app, "ls", "-lh")
 	c.Assert(err, gocheck.IsNil)
@@ -632,4 +632,56 @@ func (s *S) TestProvisionerStart(c *gocheck.C) {
 	dockerContainer, err = dcli.InspectContainer(container.ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(dockerContainer.State.Running, gocheck.Equals, true)
+}
+
+func (s *S) TestProvisionerStop(c *gocheck.C) {
+	dcli, _ := dockerClient.NewClient(s.server.URL())
+	app := testing.NewFakeApp("almah", "static", 2)
+	p := dockerProvisioner{}
+	container, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(container)
+	err = dcli.StartContainer(container.ID, nil)
+	c.Assert(err, gocheck.IsNil)
+	dockerContainer, err := dcli.InspectContainer(container.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dockerContainer.State.Running, gocheck.Equals, true)
+	err = p.Stop(app)
+	c.Assert(err, gocheck.IsNil)
+	dockerContainer, err = dcli.InspectContainer(container.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dockerContainer.State.Running, gocheck.Equals, false)
+}
+
+func (s *S) TestProvisionerStopSkipAlreadyStoppedContainers(c *gocheck.C) {
+	dcli, _ := dockerClient.NewClient(s.server.URL())
+	app := testing.NewFakeApp("almah", "static", 2)
+	p := dockerProvisioner{}
+	container, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(container)
+	err = dcli.StartContainer(container.ID, nil)
+	c.Assert(err, gocheck.IsNil)
+	dockerContainer, err := dcli.InspectContainer(container.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dockerContainer.State.Running, gocheck.Equals, true)
+	container2, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(container2)
+	err = dcli.StartContainer(container2.ID, nil)
+	c.Assert(err, gocheck.IsNil)
+	err = dcli.StopContainer(container2.ID, 1)
+	c.Assert(err, gocheck.IsNil)
+	container2.setStatus(provision.StatusStopped.String())
+	dockerContainer2, err := dcli.InspectContainer(container2.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dockerContainer2.State.Running, gocheck.Equals, false)
+	err = p.Stop(app)
+	c.Assert(err, gocheck.IsNil)
+	dockerContainer, err = dcli.InspectContainer(container.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dockerContainer.State.Running, gocheck.Equals, false)
+	dockerContainer2, err = dcli.InspectContainer(container2.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dockerContainer2.State.Running, gocheck.Equals, false)
 }

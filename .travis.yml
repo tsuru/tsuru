@@ -8,9 +8,6 @@ env:
 before_install:
   - sudo apt-get update -qq > apt-get.out 2>&1  || (cat apt-get.out && exit 1)
   - sudo apt-get install bzr mercurial git -qq > apt-get.out 2>&1 || (cat apt-get.out && exit 1)
-  - sudo add-apt-repository ppa:tsuru/lvm2 -y
-  - sudo apt-get update
-  - sudo apt-get install -q libdevmapper-dev
 install:
   - export PATH="$HOME/gopath/bin:$PATH"
   - curl -sL https://github.com/kr/beanstalkd/archive/v1.9.tar.gz | tar -xzC /tmp
@@ -20,7 +17,6 @@ install:
   - sleep 1
   - nc -z 127.0.0.1 11300
   - popd
-  - go get github.com/dotcloud/tar
   - echo http://localhost > $HOME/.tsuru_target
   - make get
 script:

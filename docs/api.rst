@@ -69,7 +69,7 @@ Create an app
     * URI: /apps
     * Format: json
 
-Returns 200 in case of success, and json in the body of hte response containing the statusn and the url for git repository.
+Returns 200 in case of success, and json in the body of the response containing the status and the url for git repository.
 
 Example:
 
@@ -96,13 +96,13 @@ Example:
 
     GET /apps/myapp/restart HTTP/1.1
 
-Get app enviroment variables
-****************************
+Get app environment variables
+*****************************
 
     * Method: GET
     * URI: /apps/<appname>/env
 
-Returns 200 in case of success, and json in the body returning a dictionary with enviroment names and values..
+Returns 200 in case of success, and json in the body returning a dictionary with environment names and values..
 
 Example:
 
@@ -113,8 +113,8 @@ Example:
     GET /apps/myapp/env HTTP/1.1
     {"DATABASE_HOST":"localhost"}
 
-Set an app enviroment
-*********************
+Set an app environment
+**********************
 
     * Method: POST
     * URI: /apps/<appname>/env
@@ -129,8 +129,8 @@ Example:
 
     POST /apps/myapp/env HTTP/1.1
 
-Delete an app enviroment
-************************
+Delete an app environment
+*************************
 
     * Method: DELETE
     * URI: /apps/<appname>/env
@@ -390,7 +390,7 @@ Bind a service instance with an app
     * URI: /services/instances/<serviceinstancename>/<appname>
     * Format: json
 
-Returns 200 in case of success, and json with the enviroment variables to be exported
+Returns 200 in case of success, and json with the environment variables to be exported
 in the app environ.
 Returns 403 if the user has not access to the app.
 Returns 404 if the application does not exists.

@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -190,6 +190,14 @@ func (s *S) TestServices(c *gocheck.C) {
 	services := strg.Services()
 	servicesc := strg.storage.Collection("services")
 	c.Assert(services, gocheck.DeepEquals, servicesc)
+}
+
+func (s *S) TestPlans(c *gocheck.C) {
+	storage, _ := Open("127.0.0.1:27017", "tsuru_storage_test")
+	defer storage.session.Close()
+	plans := storage.Plans()
+	plansc := storage.Collection("plans")
+	c.Assert(plans, gocheck.DeepEquals, plansc)
 }
 
 func (s *S) TestServiceInstances(c *gocheck.C) {

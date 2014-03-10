@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -44,13 +44,14 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *gocheck.C) {
 	}
 	err = CreateApp(&a, s.user)
 	c.Assert(err, gocheck.IsNil)
-	a.Get()
-	err = Delete(&a)
+	app, err := GetByName(a.Name)
+	c.Assert(err, gocheck.IsNil)
+	err = Delete(app)
 	c.Assert(err, gocheck.IsNil)
 	n, err := s.conn.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": []string{a.Name}}}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, 0)
 	msg, err := aqueue().Get(1e6)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(msg.Args, gocheck.DeepEquals, []string{a.Name})
+	c.Assert(msg.Args, gocheck.DeepEquals, []string{app.Name})
 }

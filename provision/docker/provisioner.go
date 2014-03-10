@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -104,6 +104,22 @@ func (*dockerProvisioner) Start(app provision.App) error {
 	return nil
 }
 
+func (p *dockerProvisioner) Stop(app provision.App) error {
+	containers, err := listAppContainers(app.GetName())
+	if err != nil {
+		log.Errorf("Got error while getting app containers: %s", err)
+		return nil
+	}
+	for _, c := range containers {
+		err := c.stop()
+		if err != nil {
+			log.Errorf("Failed to stop %q: %s", app.GetName(), err)
+			return err
+		}
+	}
+	return nil
+}
+
 func injectEnvsAndRestart(a provision.App) {
 	time.Sleep(5e9)
 	err := a.SerializeEnvVars()
@@ -142,7 +158,7 @@ func (dockerProvisioner) Swap(app1, app2 provision.App) error {
 }
 
 func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer) error {
-	imageId, err := build(a, version, w)
+	imageId, err := deploy(a, version, w)
 	if err != nil {
 		return err
 	}
@@ -209,16 +225,20 @@ func (*dockerProvisioner) AddUnits(a provision.App, units uint) ([]provision.Uni
 	if units == 0 {
 		return nil, errors.New("Cannot add 0 units")
 	}
-	containers, err := listAppContainers(a.GetName())
+	length, err := getContainerCountForAppName(a.GetName())
 	if err != nil {
 		return nil, err
 	}
-	if len(containers) < 1 {
+	if length < 1 {
 		return nil, errors.New("New units can only be added after the first deployment")
 	}
 	writer := app.LogWriter{App: a, Writer: ioutil.Discard}
 	result := make([]provision.Unit, int(units))
-	imageId := getImage(a)
+	container, err := getOneContainerByAppName(a.GetName())
+	if err != nil {
+		return nil, err
+	}
+	imageId := container.Image
 	for i := uint(0); i < units; i++ {
 		container, err := start(a, imageId, &writer)
 		if err != nil {

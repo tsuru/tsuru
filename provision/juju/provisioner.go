@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -151,6 +151,17 @@ func (p *JujuProvisioner) Start(app provision.App) error {
 	err := p.ExecuteCommand(&buf, &buf, app, "/var/lib/tsuru/hooks/start")
 	if err != nil {
 		msg := fmt.Sprintf("Failed to start the app (%s): %s", err, buf.String())
+		app.Log(msg, "tsuru-provisioner")
+		return &provision.Error{Reason: buf.String(), Err: err}
+	}
+	return nil
+}
+
+func (p *JujuProvisioner) Stop(app provision.App) error {
+	var buf bytes.Buffer
+	err := p.ExecuteCommand(&buf, &buf, app, "/var/lib/tsuru/hooks/stop")
+	if err != nil {
+		msg := fmt.Sprintf("Failed to stop the app (%s): %s", err, buf.String())
 		app.Log(msg, "tsuru-provisioner")
 		return &provision.Error{Reason: buf.String(), Err: err}
 	}

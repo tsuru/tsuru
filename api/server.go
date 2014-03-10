@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -16,8 +16,25 @@ import (
 	"net/http"
 )
 
+type TsuruHandler struct {
+	method string
+	path   string
+	h      AdminRequiredHandler
+}
+
 func fatal(err error) {
 	log.Fatal(err.Error())
+}
+
+var tsuruHandlerList []TsuruHandler
+
+//RegisterHandler inserts a handler on a list of handlers
+func RegisterHandler(path string, method string, h AdminRequiredHandler) {
+	var th TsuruHandler
+	th.path = path
+	th.method = method
+	th.h = h
+	tsuruHandlerList = append(tsuruHandlerList, th)
 }
 
 // RunServer starts Tsuru API server. The dry parameter indicates whether the
@@ -37,6 +54,10 @@ func RunServer(dry bool) {
 
 	m := pat.New()
 
+	for _, handler := range tsuruHandlerList {
+		m.Add(handler.method, handler.path, handler.h)
+	}
+
 	m.Get("/schema/app", authorizationRequiredHandler(appSchema))
 	m.Get("/schema/service", authorizationRequiredHandler(serviceSchema))
 	m.Get("/schema/services", authorizationRequiredHandler(servicesSchema))
@@ -54,6 +75,7 @@ func RunServer(dry bool) {
 	m.Put("/services", authorizationRequiredHandler(serviceUpdate))
 	m.Del("/services/:name", authorizationRequiredHandler(serviceDelete))
 	m.Get("/services/:name", authorizationRequiredHandler(serviceInfo))
+	m.Get("/services/:name/plans", authorizationRequiredHandler(servicePlans))
 	m.Get("/services/:name/doc", authorizationRequiredHandler(serviceDoc))
 	m.Put("/services/:name/doc", authorizationRequiredHandler(serviceAddDoc))
 	m.Put("/services/:service/:team", authorizationRequiredHandler(grantServiceAccess))
@@ -78,7 +100,7 @@ func RunServer(dry bool) {
 	m.Get("/apps/:app/log", authorizationRequiredHandler(appLog))
 	m.Post("/apps/:app/log", authorizationRequiredHandler(addLog))
 
-	m.Get("/deploys", adminRequiredHandler(deploysList))
+	m.Get("/deploys", AdminRequiredHandler(deploysList))
 
 	m.Get("/platforms", authorizationRequiredHandler(platformList))
 
@@ -102,9 +124,9 @@ func RunServer(dry bool) {
 	m.Post("/users/keys", authorizationRequiredHandler(addKeyToUser))
 	m.Del("/users/keys", authorizationRequiredHandler(removeKeyFromUser))
 
-	m.Post("/tokens", adminRequiredHandler(generateAppToken))
+	m.Post("/tokens", AdminRequiredHandler(generateAppToken))
 
-	m.Del("/logs", adminRequiredHandler(logRemove))
+	m.Del("/logs", AdminRequiredHandler(logRemove))
 
 	m.Get("/teams", authorizationRequiredHandler(teamList))
 	m.Post("/teams", authorizationRequiredHandler(createTeam))

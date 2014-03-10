@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -148,8 +148,9 @@ func (s *S) TestDestroyBucket(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	defer s.provisioner.Destroy(&app)
-	app.Get()
-	err = destroyBucket(&app)
+	otherApp, err := GetByName(app.Name)
+	c.Assert(err, gocheck.IsNil)
+	err = destroyBucket(otherApp)
 	c.Assert(err, gocheck.IsNil)
 	s3 := getS3Endpoint()
 	_, err = s3.Bucket(bucket).List("", "/", "", 100)
@@ -157,9 +158,9 @@ func (s *S) TestDestroyBucket(c *gocheck.C) {
 	iam := getIAMEndpoint()
 	_, err = iam.GetUserPolicy("app-battery-bucket", "battery")
 	c.Assert(err, gocheck.NotNil)
-	_, err = iam.DeleteAccessKey(app.Env["TSURU_S3_ACCESS_KEY_ID"].Value, "")
+	_, err = iam.DeleteAccessKey(otherApp.Env["TSURU_S3_ACCESS_KEY_ID"].Value, "")
 	c.Assert(err, gocheck.NotNil)
 	msg, err := aqueue().Get(1e6)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(msg.Args, gocheck.DeepEquals, []string{app.Name})
+	c.Assert(msg.Args, gocheck.DeepEquals, []string{otherApp.Name})
 }

@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -13,15 +13,15 @@ import (
 )
 
 func (s *S) TestReserveUnits(c *gocheck.C) {
-	app := App{
+	app := &App{
 		Name:  "together",
 		Quota: quota.Quota{Limit: 7},
 	}
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	err := reserveUnits(&app, 6)
+	err := reserveUnits(app, 6)
 	c.Assert(err, gocheck.IsNil)
-	err = app.Get()
+	app, err = GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Quota.InUse, gocheck.Equals, 6)
 }
@@ -53,12 +53,12 @@ func (s *S) TestReserveUnitsQuotaExceeded(c *gocheck.C) {
 }
 
 func (s *S) TestReserveUnitsUnlimitedQuota(c *gocheck.C) {
-	app := App{Name: "together", Quota: quota.Unlimited}
+	app := &App{Name: "together", Quota: quota.Unlimited}
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	err := reserveUnits(&app, 6)
+	err := reserveUnits(app, 6)
 	c.Assert(err, gocheck.IsNil)
-	err = app.Get()
+	app, err = GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Quota.InUse, gocheck.Equals, 6)
 }
@@ -66,7 +66,7 @@ func (s *S) TestReserveUnitsUnlimitedQuota(c *gocheck.C) {
 func (s *S) TestReserveUnitsIsAtomic(c *gocheck.C) {
 	ncpu := runtime.NumCPU()
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(ncpu))
-	app := App{
+	app := &App{
 		Name:  "together",
 		Quota: quota.Quota{Limit: 40},
 	}
@@ -77,25 +77,25 @@ func (s *S) TestReserveUnitsIsAtomic(c *gocheck.C) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			reserveUnits(&app, 3)
+			reserveUnits(app, 3)
 		}()
 	}
 	wg.Wait()
-	err := app.Get()
+	app, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Quota.InUse, gocheck.Equals, 39)
 }
 
 func (s *S) TestReleaseUnits(c *gocheck.C) {
-	app := App{
+	app := &App{
 		Name:  "together",
 		Quota: quota.Quota{Limit: 7, InUse: 7},
 	}
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	err := releaseUnits(&app, 6)
+	err := releaseUnits(app, 6)
 	c.Assert(err, gocheck.IsNil)
-	err = app.Get()
+	app, err = GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Quota.InUse, gocheck.Equals, 1)
 }
@@ -115,7 +115,7 @@ func (s *S) TestReleaseUnreservedUnits(c *gocheck.C) {
 func (s *S) TestReleaseUnitsIsAtomic(c *gocheck.C) {
 	ncpu := runtime.NumCPU()
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(ncpu))
-	app := App{
+	app := &App{
 		Name:  "together",
 		Quota: quota.Quota{Limit: 40, InUse: 40},
 	}
@@ -126,11 +126,11 @@ func (s *S) TestReleaseUnitsIsAtomic(c *gocheck.C) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			releaseUnits(&app, 3)
+			releaseUnits(app, 3)
 		}()
 	}
 	wg.Wait()
-	err := app.Get()
+	app, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Quota.InUse, gocheck.Equals, 1)
 }

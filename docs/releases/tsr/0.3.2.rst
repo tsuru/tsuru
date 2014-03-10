@@ -1,0 +1,38 @@
+=======================
+tsr 0.3.2 release notes
+=======================
+
+Welcome to tsr 0.3.2!
+
+These release notes cover the `new features`_ and `backwards incompatible
+changes`_ you'll want to be aware of when upgrading from tsr 0.3.1 or older
+versions.
+
+.. _`new features`: `What's new in tsr 0.3.2`_
+
+What's new in tsr 0.3.2
+=======================
+
+Segregated scheduler
+--------------------
+
+    * Support more than one team per scheduler
+    * Fix the behavior of the segregated scheduler
+    * Improve documentation of the scheduler
+
+API
+---
+
+    * Improve administrative API registration
+
+Other improvements and bugfixes
+-------------------------------
+
+    * Do not run restart on unit-add (nor unit-remove)
+    * Improve node management in the Docker provisioner
+    * Rebuild app image on every 10 deployment
+
+Backwards incompatible changes
+==============================
+
+tsr 0.3.2 does not introduce any incompatible changes.

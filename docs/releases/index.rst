@@ -12,6 +12,48 @@ tsr
 
 -.. _development_release_notes:
 
+0.3.7 release
+-------------
+.. toctree::
+   :maxdepth: 1
+
+   tsr/0.3.7
+
+0.3.6 release
+-------------
+.. toctree::
+   :maxdepth: 1
+
+   tsr/0.3.6
+
+0.3.5 release
+-------------
+.. toctree::
+   :maxdepth: 1
+
+   tsr/0.3.5
+
+0.3.4 release
+-------------
+.. toctree::
+   :maxdepth: 1
+
+   tsr/0.3.4
+
+0.3.3 release
+-------------
+.. toctree::
+   :maxdepth: 1
+
+   tsr/0.3.3
+
+0.3.2 release
+-------------
+.. toctree::
+   :maxdepth: 1
+
+   tsr/0.3.2
+
 0.3.1 release
 -------------
 .. toctree::
@@ -30,6 +72,27 @@ tsuru
 =====
 
 `tsuru` is the tsuru client.
+
+0.8.9 release
+-------------
+.. toctree::
+   :maxdepth: 1
+
+   tsuru/0.8.9
+
+0.8.8 release
+-------------
+.. toctree::
+   :maxdepth: 1
+
+   tsuru/0.8.8
+
+0.8.7 release
+-------------
+.. toctree::
+   :maxdepth: 1
+
+   tsuru/0.8.7
 
 0.8.6 release
 -------------

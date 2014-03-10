@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -18,19 +18,8 @@ import (
 
 var m = pat.New()
 
-func RegisterHandler(path string, method string, h http.Handler) {
-	if method == "GET" {
-		m.Get(path, h)
-	}
-	if method == "POST" {
-		m.Post(path, h)
-	}
-	if method == "PUT" {
-		m.Put(path, h)
-	}
-	if method == "DELETE" {
-		m.Del(path, h)
-	}
+func RegisterAdminHandler(path string, method string, h http.Handler) {
+	m.Add(method, path, h)
 }
 
 // RunAdminServer starts tsuru administrative api

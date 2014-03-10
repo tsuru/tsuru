@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -31,6 +31,7 @@ var (
 type ServiceInstance struct {
 	Name        string
 	ServiceName string `bson:"service_name"`
+	PlanName    string `bson:"plan_name"`
 	Apps        []string
 	Teams       []string
 }
@@ -236,7 +237,7 @@ func validateServiceInstanceName(name string) error {
 	return nil
 }
 
-func CreateServiceInstance(name string, service *Service, user *auth.User) error {
+func CreateServiceInstance(name string, service *Service, planName string, user *auth.User) error {
 	err := validateServiceInstanceName(name)
 	if err != nil {
 		return err
@@ -245,6 +246,7 @@ func CreateServiceInstance(name string, service *Service, user *auth.User) error
 		Name:        name,
 		ServiceName: service.Name,
 	}
+	instance.PlanName = planName
 	teams, err := user.Teams()
 	if err != nil {
 		return err

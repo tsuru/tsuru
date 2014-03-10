@@ -1,4 +1,4 @@
-.. Copyright 2013 tsuru authors. All rights reserved.
+.. Copyright 2014 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -60,3 +60,4 @@ first application using a supported language or framework:
 * :doc:`Deploying Python applications in tsuru </apps/quickstart/python>`
 * :doc:`Deploying Ruby/Rails applications in tsuru </apps/quickstart/ruby>`
 * :doc:`Deploying PHP applications in tsuru </apps/quickstart/php>`
+* :doc:`Deploying go applications in tsuru </apps/quickstart/go>`

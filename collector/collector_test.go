@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -38,7 +38,7 @@ func (s *S) TestUpdate(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	out := getOutput()
 	update(out)
-	err := a.Get()
+	a, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(a.Units[0].Name, gocheck.Equals, "i-00000zz8")
 	c.Assert(a.Units[0].Ip, gocheck.Equals, "192.168.0.11")
@@ -63,7 +63,7 @@ func (s *S) TestUpdateWithMultipleUnits(c *gocheck.C) {
 	}
 	out = append(out, u)
 	update(out)
-	err := a.Get()
+	a, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(len(a.Units), gocheck.Equals, 2)
 	var unit app.Unit
@@ -96,7 +96,7 @@ func (s *S) TestUpdateWithDownMachine(c *gocheck.C) {
 		},
 	}
 	update(units)
-	err = a.Get()
+	_, err = app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 }
 
@@ -105,14 +105,15 @@ func (s *S) TestUpdateTwice(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	out := getOutput()
 	update(out)
-	err := a.Get()
+	a, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(a.Units[0].Ip, gocheck.Equals, "192.168.0.11")
 	c.Assert(a.Units[0].Machine, gocheck.Equals, 1)
 	c.Assert(a.Units[0].InstanceId, gocheck.Equals, "i-0800")
 	c.Assert(a.Units[0].State, gocheck.Equals, provision.StatusStarted.String())
 	update(out)
-	err = a.Get()
+	a, err = app.GetByName(a.Name)
+	c.Assert(err, gocheck.IsNil)
 	c.Assert(len(a.Units), gocheck.Equals, 1)
 }
 
@@ -157,8 +158,7 @@ func (s *S) TestUpdateWithMultipleApps(c *gocheck.C) {
 	}
 	update(units)
 	for _, appDict := range appDicts {
-		a := app.App{Name: appDict["name"]}
-		err := a.Get()
+		a, err := app.GetByName(appDict["name"])
 		c.Assert(err, gocheck.IsNil)
 		c.Assert(a.Units[0].Ip, gocheck.Equals, appDict["ip"])
 	}

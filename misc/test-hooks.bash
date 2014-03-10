@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright 2013 tsuru authors. All rights reserved.
+# Copyright 2014 tsuru authors. All rights reserved.
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
@@ -101,7 +101,9 @@ else
 fi
 
 echo -n "post-receive... "
-out=`TSURU_HOST=http://127.0.0.1:5000 TSURU_TOKEN=000secret123 hooks/post-receive`
+out=`TSURU_HOST=http://127.0.0.1:5000 TSURU_TOKEN=000secret123 hooks/post-receive <<END
+oldref newref refname
+END`
 gout=`echo $out | grep "Tsuru receiving push"`
 
 if [ $? = 0 ]

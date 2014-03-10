@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,8 +6,7 @@ package docker
 
 import (
 	"errors"
-	"github.com/dotcloud/docker"
-	dcli "github.com/fsouza/go-dockerclient"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
 	"github.com/globocom/tsuru/app"
@@ -38,53 +37,60 @@ type node struct {
 
 type segregatedScheduler struct{}
 
-func (s segregatedScheduler) Schedule(cfg *docker.Config) (string, *docker.Container, error) {
-	image := cfg.Image
-	namespace, err := config.GetString("docker:repository-namespace")
-	if err != nil {
-		return "", nil, err
-	}
+func (s segregatedScheduler) Schedule(opts docker.CreateContainerOptions) (string, *docker.Container, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return "", nil, err
 	}
 	defer conn.Close()
-	appname := strings.Replace(image, namespace+"/", "", -1)
-	app := app.App{Name: appname}
-	err = app.Get()
+	var cont container
+	coll := collection()
+	defer coll.Close()
+	err = coll.Find(bson.M{"name": opts.Name}).One(&cont)
 	if err != nil {
-		return s.fallback(cfg)
+		return "", nil, err
+	}
+	app, err := app.GetByName(cont.AppName)
+	if err != nil {
+		return s.fallback(opts)
 	}
 	var nodes []node
 	query := bson.M{"teams": bson.M{"$in": app.Teams}}
 	err = conn.Collection(schedulerCollection).Find(query).All(&nodes)
 	if err != nil || len(nodes) < 1 {
-		return s.fallback(cfg)
+		return s.fallback(opts)
 	}
-	return s.handle(cfg, nodes)
+	return s.handle(opts, nodes)
 }
 
-func (s segregatedScheduler) fallback(cfg *docker.Config) (string, *docker.Container, error) {
+func (s segregatedScheduler) fallback(opts docker.CreateContainerOptions) (string, *docker.Container, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return "", nil, err
 	}
 	defer conn.Close()
 	var nodes []node
-	err = conn.Collection(schedulerCollection).Find(bson.M{"teams": bson.M{"$size": 0}}).All(&nodes)
+	err = conn.Collection(schedulerCollection).Find(bson.M{"$or": []bson.M{{"teams": bson.M{"$exists": false}}, {"teams": bson.M{"$size": 0}}}}).All(&nodes)
 	if err != nil || len(nodes) < 1 {
 		return "", nil, errNoFallback
 	}
-	return s.handle(cfg, nodes)
+	return s.handle(opts, nodes)
 }
 
-func (segregatedScheduler) handle(cfg *docker.Config, nodes []node) (string, *docker.Container, error) {
+func (segregatedScheduler) handle(opts docker.CreateContainerOptions, nodes []node) (string, *docker.Container, error) {
 	node := nodes[rand.Intn(len(nodes))]
-	client, err := dcli.NewClient(node.Address)
+	client, err := docker.NewClient(node.Address)
 	if err != nil {
 		return node.ID, nil, err
 	}
-	container, err := client.CreateContainer(dcli.CreateContainerOptions{}, cfg)
+	if _, err := config.GetString("docker:registry"); err == nil {
+		pullOpts := docker.PullImageOptions{Repository: opts.Config.Image}
+		err := client.PullImage(pullOpts, docker.AuthConfiguration{})
+		if err != nil {
+			return node.ID, nil, err
+		}
+	}
+	container, err := client.CreateContainer(opts)
 	return node.ID, container, err
 }
 

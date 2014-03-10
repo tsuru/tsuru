@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -16,7 +16,7 @@ import (
 const defaultConfigPath = "/etc/tsuru/tsuru.conf"
 
 func buildManager() *cmd.Manager {
-	m := cmd.NewManager("tsr", "0.3.1", "", os.Stdout, os.Stderr, os.Stdin)
+	m := cmd.NewManager("tsr", "0.3.7", "", os.Stdout, os.Stderr, os.Stdin)
 	m.Register(&tsrCommand{Command: &apiCmd{}})
 	m.Register(&tsrCommand{Command: &adminCmd{}})
 	m.Register(&tsrCommand{Command: &collectorCmd{}})

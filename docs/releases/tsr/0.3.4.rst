@@ -1,0 +1,30 @@
+=======================
+tsr 0.3.4 release notes
+=======================
+
+Welcome to tsr 0.3.4!
+
+These release notes cover the `new features`_ and `backwards incompatible
+changes`_ you'll want to be aware of when upgrading from tsr 0.3.3 or older
+versions.
+
+.. _`new features`: `What's new in tsr 0.3.4`_
+
+What's new in tsr 0.3.4
+=======================
+
+Documentation improvements
+--------------------------
+
+    * Improvements in the layout of the documentation
+
+Bugfixes
+--------
+
+    * Swap address and cname on apps when running swap
+    * Always pull the image before creating the container
+
+Backwards incompatible changes
+==============================
+
+tsr 0.3.4 does not introduce any incompatible changes.

@@ -1,33 +1,48 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 package docker
 
 import (
+	"github.com/globocom/docker-cluster/cluster"
 	"github.com/globocom/tsuru/heal"
 	"launchpad.net/gocheck"
+	"net/http/httptest"
+	"sync/atomic"
 )
 
 type HealerSuite struct {
 	healer  *ContainerHealer
-	calls   int
+	calls   int64
 	cleanup func()
 }
 
 var _ = gocheck.Suite(&HealerSuite{})
 
 func (s *HealerSuite) SetUpSuite(c *gocheck.C) {
+	var err error
+	var server *httptest.Server
 	s.healer = &ContainerHealer{}
-	s.cleanup, _ = startDockerTestServer("4567", &s.calls)
+	s.cleanup, server = startDockerTestServer("4567", &s.calls)
+	storage := mapStorage{}
+	storage.StoreContainer("8dfafdbc3a40", "server")
+	storage.StoreContainer("dca19cd9bb9e", "server")
+	storage.StoreContainer("3fd99cd9bb84", "server")
+	cmutex.Lock()
+	defer cmutex.Unlock()
+	dCluster, err = cluster.New(nil, &storage,
+		cluster.Node{ID: "server", Address: server.URL},
+	)
+	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *HealerSuite) TearDownTest(c *gocheck.C) {
-	s.calls = 0
+	atomic.StoreInt64(&s.calls, 0)
 }
 
 func (s *HealerSuite) TearDownSuite(c *gocheck.C) {
-	defer s.cleanup()
+	s.cleanup()
 }
 
 func (s *HealerSuite) TestContainerHealerShouldBeRegistered(c *gocheck.C) {
@@ -46,13 +61,13 @@ func (s *HealerSuite) TestContainerHealerImplementsHealInterface(c *gocheck.C) {
 func (s *HealerSuite) TestContainerHealPerformListContainersKillAndStartOnUnhealthyContainers(c *gocheck.C) {
 	err := s.healer.Heal()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(s.calls, gocheck.Equals, 3)
+	c.Assert(atomic.LoadInt64(&s.calls), gocheck.Equals, int64(3))
 }
 
 func (s *HealerSuite) TestCollectContainersCallsDockerApi(c *gocheck.C) {
 	_, err := s.healer.collectContainers()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(s.calls, gocheck.Equals, 1)
+	c.Assert(atomic.LoadInt64(&s.calls), gocheck.Equals, int64(1))
 }
 
 func (s *HealerSuite) TestCollectContainerReturnsCollectedContainers(c *gocheck.C) {

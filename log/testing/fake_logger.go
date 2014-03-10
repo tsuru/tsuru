@@ -1,22 +1,23 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 package testing
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/globocom/tsuru/log"
+	"github.com/globocom/tsuru/safe"
 )
 
 func NewFakeLogger() log.Logger {
-	l := &FakeLogger{Buf: bytes.Buffer{}}
+	var buf safe.Buffer
+	l := &FakeLogger{Buf: buf}
 	log.SetLogger(l)
 	return l
 }
 
 type FakeLogger struct {
-	Buf bytes.Buffer
+	Buf safe.Buffer
 }
 
 func (l *FakeLogger) Error(o string) {

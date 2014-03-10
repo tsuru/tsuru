@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -149,8 +149,7 @@ func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCa
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.BindApp(&a)
 	c.Assert(err, gocheck.IsNil)
-	newApp := app.App{Name: a.Name}
-	err = newApp.Get()
+	newApp, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	expectedEnv := map[string]bind.EnvVar{
 		"DATABASE_USER": {
@@ -166,7 +165,7 @@ func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCa
 			InstanceName: instance.Name,
 		},
 	}
-	c.Assert(a.Env, gocheck.DeepEquals, expectedEnv)
+	c.Assert(newApp.Env, gocheck.DeepEquals, expectedEnv)
 }
 
 func (s *S) TestBindAppMultiUnits(c *gocheck.C) {
@@ -298,7 +297,6 @@ func (s *S) TestUnbindMultiUnits(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.UnbindApp(&a)
 	c.Assert(err, gocheck.IsNil)
-	s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
 	ok := make(chan bool, 1)
 	go func() {
 		t := time.Tick(1)
@@ -384,8 +382,7 @@ func (s *S) TestUnbindRemovesEnvironmentVariableFromApp(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.UnbindApp(&a)
 	c.Assert(err, gocheck.IsNil)
-	newApp := app.App{Name: a.Name}
-	err = newApp.Get()
+	newApp, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	expected := map[string]bind.EnvVar{
 		"MY_VAR": {
@@ -393,7 +390,7 @@ func (s *S) TestUnbindRemovesEnvironmentVariableFromApp(c *gocheck.C) {
 			Value: "123",
 		},
 	}
-	c.Assert(a.Env, gocheck.DeepEquals, expected)
+	c.Assert(newApp.Env, gocheck.DeepEquals, expected)
 }
 
 func (s *S) TestUnbindCallsTheUnbindMethodFromAPI(c *gocheck.C) {

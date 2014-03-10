@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -37,7 +37,8 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t *auth.Token
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	return service.CreateServiceInstance(body["name"], &srv, user)
+	planName := body["plan"]
+	return service.CreateServiceInstance(body["name"], &srv, planName, user)
 }
 
 func removeServiceInstance(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
@@ -208,4 +209,23 @@ func getServiceInstanceOrError(name string, u *auth.User) (*service.ServiceInsta
 		}
 	}
 	return si, nil
+}
+
+func servicePlans(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
+	serviceName := r.URL.Query().Get(":name")
+	rec.Log(u.Email, "service-plans", serviceName)
+	plans, err := service.GetPlansByServiceName(serviceName)
+	if err != nil {
+		return err
+	}
+	b, err := json.Marshal(plans)
+	if err != nil {
+		return nil
+	}
+	w.Write(b)
+	return nil
 }

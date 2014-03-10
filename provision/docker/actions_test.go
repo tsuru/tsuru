@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -37,46 +37,24 @@ func (s *S) TestCreateContainerForward(c *gocheck.C) {
 	c.Assert(cont, gocheck.FitsTypeOf, container{})
 	c.Assert(cont.AppName, gocheck.Equals, app.GetName())
 	c.Assert(cont.Type, gocheck.Equals, app.GetPlatform())
-	port, err := getPort()
+	coll := collection()
+	defer coll.Close()
+	defer coll.Remove(bson.M{"id": cont.ID})
+	retrieved, err := getContainer(cont.ID)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(cont.Port, gocheck.Equals, port)
+	c.Assert(retrieved.ID, gocheck.Equals, cont.ID)
+	c.Assert(retrieved.Status, gocheck.Equals, "created")
 }
 
 func (s *S) TestCreateContainerBackward(c *gocheck.C) {
 	cont := container{ID: "ble"}
-	context := action.BWContext{FWResult: cont}
-	createContainer.Backward(context)
-}
-
-func (s *S) TestInsertContainerName(c *gocheck.C) {
-	c.Assert(insertContainer.Name, gocheck.Equals, "insert-container")
-}
-
-func (s *S) TestInsertContainerForward(c *gocheck.C) {
-	cont := container{ID: "someid"}
-	context := action.FWContext{Previous: cont}
-	r, err := insertContainer.Forward(context)
-	c.Assert(err, gocheck.IsNil)
-	coll := collection()
-	defer coll.Close()
-	defer coll.RemoveId(cont.ID)
-	cont = r.(container)
-	var retrieved container
-	err = coll.FindId(cont.ID).One(&retrieved)
-	c.Assert(retrieved.ID, gocheck.Equals, cont.ID)
-	c.Assert(retrieved.Status, gocheck.Equals, "created")
-	c.Assert(cont, gocheck.FitsTypeOf, container{})
-}
-
-func (s *S) TestInsertContainerBackward(c *gocheck.C) {
-	cont := container{ID: "someid"}
 	coll := collection()
 	defer coll.Close()
 	err := coll.Insert(&cont)
 	c.Assert(err, gocheck.IsNil)
 	context := action.BWContext{FWResult: cont}
-	insertContainer.Backward(context)
-	err = coll.FindId(cont.ID).One(&cont)
+	createContainer.Backward(context)
+	err = coll.Find(bson.M{"id": cont.ID}).One(&cont)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "not found")
 }
@@ -191,35 +169,35 @@ func (s *S) TestSaveUnitsName(c *gocheck.C) {
 }
 
 func (s *S) TestSaveUnitsForward(c *gocheck.C) {
-	app := app.App{
+	a := app.App{
 		Name:     "otherapp",
 		Platform: "zend",
 	}
 	conn, err := db.NewStorage()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
-	err = conn.Apps().Insert(app)
+	err = conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": app.Name})
+	defer conn.Apps().Remove(bson.M{"name": a.Name})
 	container := container{
 		ID:       "id",
 		Type:     "python",
 		HostAddr: "",
-		AppName:  app.Name,
+		AppName:  a.Name,
 	}
 	coll := collection()
 	c.Assert(err, gocheck.IsNil)
 	coll.Insert(&container)
-	context := action.FWContext{Params: []interface{}{&app}}
+	context := action.FWContext{Params: []interface{}{&a}}
 	_, err = saveUnits.Forward(context)
 	c.Assert(err, gocheck.IsNil)
-	err = app.Get()
+	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Units[0].Name, gocheck.Equals, "id")
 }
 
 func (s *S) TestSaveUnitsForwardShouldMaintainData(c *gocheck.C) {
-	app := app.App{
+	a := app.App{
 		Name:     "otherapp",
 		Platform: "zend",
 		Deploys:  10,
@@ -227,23 +205,23 @@ func (s *S) TestSaveUnitsForwardShouldMaintainData(c *gocheck.C) {
 	conn, err := db.NewStorage()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
-	err = conn.Apps().Insert(app)
+	err = conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
-	app.Deploys = 0
-	defer conn.Apps().Remove(bson.M{"name": app.Name})
+	a.Deploys = 0
+	defer conn.Apps().Remove(bson.M{"name": a.Name})
 	container := container{
 		ID:       "id",
 		Type:     "python",
 		HostAddr: "",
-		AppName:  app.Name,
+		AppName:  a.Name,
 	}
 	coll := collection()
 	c.Assert(err, gocheck.IsNil)
 	coll.Insert(&container)
-	context := action.FWContext{Params: []interface{}{&app}}
+	context := action.FWContext{Params: []interface{}{&a}}
 	_, err = saveUnits.Forward(context)
 	c.Assert(err, gocheck.IsNil)
-	err = app.Get()
+	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Units[0].Name, gocheck.Equals, "id")
 	c.Assert(int(app.Deploys), gocheck.Equals, 10)

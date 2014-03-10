@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -71,6 +71,9 @@ func (c *Client) Create(instance *ServiceInstance) error {
 	var resp *http.Response
 	params := map[string][]string{
 		"name": {instance.Name},
+	}
+	if instance.PlanName != "" {
+		params["plan"] = []string{instance.PlanName}
 	}
 	if resp, err = c.issueRequest("/resources", "POST", params); err == nil && resp.StatusCode < 300 {
 		return nil
@@ -176,6 +179,24 @@ func (c *Client) Info(instance *ServiceInstance) ([]map[string]string, error) {
 		return nil, err
 	}
 	result := []map[string]string{}
+	err = c.jsonFromResponse(resp, &result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// Plans returns the service plans.
+// The api should be prepared to receive the request,
+// like below:
+// GET /resources/plans
+func (c *Client) Plans() ([]Plan, error) {
+	url := "/resources/plans"
+	resp, err := c.issueRequest(url, "GET", nil)
+	if err != nil || resp.StatusCode != 200 {
+		return nil, err
+	}
+	result := []Plan{}
 	err = c.jsonFromResponse(resp, &result)
 	if err != nil {
 		return nil, err

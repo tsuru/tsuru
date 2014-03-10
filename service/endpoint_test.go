@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -74,6 +74,16 @@ func (h *infoHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(content))
 }
 
+type plansHandler struct {
+	r *http.Request
+}
+
+func (h *plansHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.r = r
+	content := `[{"name": "ignite", "description": "some value"}, {"name": "small", "description": "not space left for you"}]`
+	w.Write([]byte(content))
+}
+
 func failHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusInternalServerError)
 	w.Write([]byte("Server failed to do its job."))
@@ -96,6 +106,50 @@ func (h *TestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.body, _ = ioutil.ReadAll(r.Body)
 	h.request = r
 	w.Write([]byte(content))
+}
+
+func (s *S) TestEndpointCreate(c *gocheck.C) {
+	h := TestHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
+	client := &Client{endpoint: ts.URL}
+	err := client.Create(&instance)
+	c.Assert(err, gocheck.IsNil)
+	expectedURL := "/resources"
+	h.Lock()
+	defer h.Unlock()
+	c.Assert(h.url, gocheck.Equals, expectedURL)
+	c.Assert(h.method, gocheck.Equals, "POST")
+	v, err := url.ParseQuery(string(h.body))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(map[string][]string(v), gocheck.DeepEquals, map[string][]string{"name": {"my-redis"}})
+	c.Assert("application/x-www-form-urlencoded", gocheck.DeepEquals, h.request.Header.Get("Content-Type"))
+	c.Assert("application/json", gocheck.Equals, h.request.Header.Get("Accept"))
+}
+
+func (s *S) TestEndpointCreatePlans(c *gocheck.C) {
+	h := TestHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	instance := ServiceInstance{
+		Name:        "my-redis",
+		ServiceName: "redis",
+		PlanName:    "basic",
+	}
+	client := &Client{endpoint: ts.URL}
+	err := client.Create(&instance)
+	c.Assert(err, gocheck.IsNil)
+	expectedURL := "/resources"
+	h.Lock()
+	defer h.Unlock()
+	c.Assert(h.url, gocheck.Equals, expectedURL)
+	c.Assert(h.method, gocheck.Equals, "POST")
+	v, err := url.ParseQuery(string(h.body))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(map[string][]string(v), gocheck.DeepEquals, map[string][]string{"name": {"my-redis"}, "plan": {"basic"}})
+	c.Assert("application/x-www-form-urlencoded", gocheck.DeepEquals, h.request.Header.Get("Content-Type"))
+	c.Assert("application/json", gocheck.Equals, h.request.Header.Get("Accept"))
 }
 
 func (s *S) TestCreateShouldSendTheNameOfTheResourceToTheEndpoint(c *gocheck.C) {
@@ -357,4 +411,19 @@ func (s *S) TestInfoNotFound(c *gocheck.C) {
 	result, err := client.Info(&instance)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result, gocheck.IsNil)
+}
+
+func (s *S) TestPlans(c *gocheck.C) {
+	h := plansHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	client := &Client{endpoint: ts.URL}
+	result, err := client.Plans()
+	c.Assert(err, gocheck.IsNil)
+	expected := []Plan{
+		{Name: "ignite", Description: "some value"},
+		{Name: "small", Description: "not space left for you"},
+	}
+	c.Assert(result, gocheck.DeepEquals, expected)
+	c.Assert(h.r.URL.Path, gocheck.Equals, "/resources/plans")
 }

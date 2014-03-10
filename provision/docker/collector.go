@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -9,6 +9,7 @@ import (
 	"github.com/globocom/tsuru/provision"
 	_ "github.com/globocom/tsuru/router/hipache"
 	_ "github.com/globocom/tsuru/router/testing"
+	"labix.org/v2/mgo/bson"
 	"net"
 	"strings"
 	"sync"
@@ -51,7 +52,8 @@ func collectUnit(container container, units chan<- provision.Unit, wg *sync.Wait
 	}
 	if container.Status == "running" {
 		unit.Ip = container.HostAddr
-		if ip, hostPort, err := container.networkInfo(); err == nil &&
+		ip, hostPort, err := container.networkInfo()
+		if err == nil &&
 			(hostPort != container.HostPort || ip != container.IP) {
 			err = fixContainer(&container, ip, hostPort)
 			if err != nil {
@@ -97,5 +99,5 @@ func fixContainer(container *container, ip, port string) error {
 	router.AddRoute(container.AppName, container.getAddress())
 	coll := collection()
 	defer coll.Close()
-	return coll.UpdateId(container.ID, container)
+	return coll.Update(bson.M{"id": container.ID}, container)
 }

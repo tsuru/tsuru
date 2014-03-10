@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -209,7 +209,7 @@ var exportEnvironmentsAction = action.Action{
 	Name: "export-environments",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		app := ctx.Params[0].(*App)
-		err := app.Get()
+		app, err := GetByName(app.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -249,7 +249,8 @@ var exportEnvironmentsAction = action.Action{
 	Backward: func(ctx action.BWContext) {
 		app := ctx.Params[0].(*App)
 		auth.DeleteToken(app.Env["TSURU_APP_TOKEN"].Value)
-		if app.Get() == nil {
+		app, err := GetByName(app.Name)
+		if err == nil {
 			s3Env := app.InstanceEnv(s3InstanceName)
 			vars := make([]string, len(s3Env)+3)
 			i := 0
@@ -290,7 +291,6 @@ var createRepository = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.FWResult.(*App)
-		app.Get()
 		gURL := repository.ServerURL()
 		c := gandalf.Client{Endpoint: gURL}
 		c.RemoveRepository(app.Name)
@@ -328,12 +328,13 @@ var provisionApp = action.Action{
 var reserveUnitsToAdd = action.Action{
 	Name: "reserve-units-to-add",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var app App
+		var app *App
 		switch ctx.Params[0].(type) {
 		case App:
-			app = ctx.Params[0].(App)
+			tmp := ctx.Params[0].(App)
+			app = &tmp
 		case *App:
-			app = *ctx.Params[0].(*App)
+			app = ctx.Params[0].(*App)
 		default:
 			return nil, errors.New("First parameter must be App or *App.")
 		}
@@ -351,26 +352,27 @@ var reserveUnitsToAdd = action.Action{
 			return nil, err
 		}
 		defer conn.Close()
-		err = app.Get()
+		app, err = GetByName(app.Name)
 		if err != nil {
 			return nil, ErrAppNotFound
 		}
-		err = reserveUnits(&app, n)
+		err = reserveUnits(app, n)
 		if err != nil {
 			return nil, err
 		}
 		return n, nil
 	},
 	Backward: func(ctx action.BWContext) {
-		var app App
+		var app *App
 		switch ctx.Params[0].(type) {
 		case App:
-			app = ctx.Params[0].(App)
+			tmp := ctx.Params[0].(App)
+			app = &tmp
 		case *App:
-			app = *ctx.Params[0].(*App)
+			app = ctx.Params[0].(*App)
 		}
 		qty := ctx.FWResult.(int)
-		err := releaseUnits(&app, qty)
+		err := releaseUnits(app, qty)
 		if err != nil {
 			log.Errorf("Failed to rollback reserveUnitsToAdd: %s", err)
 		}
@@ -422,12 +424,13 @@ var provisionAddUnits = action.Action{
 var saveNewUnitsInDatabase = action.Action{
 	Name: "save-new-units-in-database",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var app App
+		var app *App
 		switch ctx.Params[0].(type) {
 		case App:
-			app = ctx.Params[0].(App)
+			tmp := ctx.Params[0].(App)
+			app = &tmp
 		case *App:
-			app = *ctx.Params[0].(*App)
+			app = ctx.Params[0].(*App)
 		default:
 			return nil, errors.New("First parameter must be App or *App.")
 		}
@@ -437,7 +440,7 @@ var saveNewUnitsInDatabase = action.Action{
 			return nil, err
 		}
 		defer conn.Close()
-		err = app.Get()
+		app, err = GetByName(app.Name)
 		if err != nil {
 			return nil, ErrAppNotFound
 		}
@@ -453,7 +456,7 @@ var saveNewUnitsInDatabase = action.Action{
 				InstanceId: unit.InstanceId,
 			}
 			app.AddUnit(&unit)
-			messages[mCount] = queue.Message{Action: RegenerateApprcAndStart, Args: []string{app.Name, unit.Name}}
+			messages[mCount] = queue.Message{Action: regenerateApprc, Args: []string{app.Name, unit.Name}}
 			messages[mCount+1] = queue.Message{Action: BindService, Args: []string{app.Name, unit.Name}}
 			mCount += 2
 		}

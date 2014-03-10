@@ -1,4 +1,4 @@
-.. Copyright 2013 tsuru authors. All rights reserved.
+.. Copyright 2014 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -78,7 +78,7 @@ How does environment variables work?
 ====================================
 
 All configurations in Tsuru are handled by the use of environment variables. If
-you need to connect with a third party service, e.g. twitter's api,
+you need to connect with a third party service, e.g. twitter's API,
 you are probably going to need some extra configurations, like client_id. In
 Tsuru, you can export those as environment variables, visible only
 by your application's processes.
@@ -86,7 +86,7 @@ by your application's processes.
 When you bind your application into a service, most likely you'll need to
 communicate with that service in some way. Services can export environment
 variables by telling Tsuru what they need, so whenever you bind your
-application with a service, its api can return environment variables for Tsuru
+application with a service, its API can return environment variables for Tsuru
 to export on your application's units.
 
 How does the quota system works?
@@ -123,7 +123,7 @@ Client installation fails with "undefined: bufio.Scanner". What does it mean?
 
 Tsuru clients require Go 1.1 or later. The message ``undefined: bufio.Scanner``
 means that you're using an old version of Go. You'll have to `install
-<http://golang.org/doc/install>`_ the last verson.
+<http://golang.org/doc/install>`_ the last version.
 
 If you're using Homebrew on Mac OS, just run:
 

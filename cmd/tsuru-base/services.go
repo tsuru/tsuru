@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -60,24 +60,28 @@ func (s ServiceList) Run(ctx *cmd.Context, client *cmd.Client) error {
 type ServiceAdd struct{}
 
 func (sa ServiceAdd) Info() *cmd.Info {
-	usage := `service-add <servicename> <serviceinstancename>
+	usage := `service-add <servicename> <serviceinstancename> <plan>
 e.g.:
 
-    $ tsuru service-add mongodb tsuru_mongodb
+    $ tsuru service-add mongodb tsuru_mongodb small
 
-Will add a new instance of the "mongodb" service, named "tsuru_mongodb".`
+Will add a new instance of the "mongodb" service, named "tsuru_mongodb" with the plan "small".`
 	return &cmd.Info{
 		Name:    "service-add",
 		Usage:   usage,
 		Desc:    "Create a service instance to one or more apps make use of.",
 		MinArgs: 2,
-		MaxArgs: 2,
+		MaxArgs: 3,
 	}
 }
 
 func (sa ServiceAdd) Run(ctx *cmd.Context, client *cmd.Client) error {
 	srvName, instName := ctx.Args[0], ctx.Args[1]
-	fmtBody := fmt.Sprintf(`{"name": "%s", "service_name": "%s"}`, instName, srvName)
+	var plan string
+	if len(ctx.Args) == 3 {
+		plan = ctx.Args[2]
+	}
+	fmtBody := fmt.Sprintf(`{"name": "%s", "service_name": "%s", "plan": "%s"}`, instName, srvName, plan)
 	b := bytes.NewBufferString(fmtBody)
 	url, err := cmd.GetURL("/services/instances")
 	if err != nil {
@@ -288,8 +292,7 @@ func (ServiceInfo) ExtraHeaders(instances []ServiceInstanceModel) []string {
 	return headers
 }
 
-func (c ServiceInfo) Run(ctx *cmd.Context, client *cmd.Client) error {
-	serviceName := ctx.Args[0]
+func (c ServiceInfo) BuildInstancesTable(serviceName string, ctx *cmd.Context, client *cmd.Client) error {
 	url, err := cmd.GetURL("/services/" + serviceName)
 	if err != nil {
 		return err
@@ -312,8 +315,9 @@ func (c ServiceInfo) Run(ctx *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	ctx.Stdout.Write([]byte(fmt.Sprintf("Info for \"%s\"\n", serviceName)))
+	ctx.Stdout.Write([]byte(fmt.Sprintf("Info for \"%s\"\n\n", serviceName)))
 	if len(instances) > 0 {
+		ctx.Stdout.Write([]byte("Instances\n"))
 		table := cmd.NewTable()
 		extraHeaders := c.ExtraHeaders(instances)
 		for _, instance := range instances {
@@ -330,6 +334,51 @@ func (c ServiceInfo) Run(ctx *cmd.Context, client *cmd.Client) error {
 		ctx.Stdout.Write(table.Bytes())
 	}
 	return nil
+}
+
+func (c ServiceInfo) BuildPlansTable(serviceName string, ctx *cmd.Context, client *cmd.Client) error {
+	ctx.Stdout.Write([]byte("\nPlans\n"))
+	url, err := cmd.GetURL(fmt.Sprintf("/services/%s/plans", serviceName))
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	result, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	var plans []map[string]string
+	err = json.Unmarshal(result, &plans)
+	if err != nil {
+		return err
+	}
+	if len(plans) > 0 {
+		table := cmd.NewTable()
+		for _, plan := range plans {
+			data := []string{plan["Name"], plan["Description"]}
+			table.AddRow(cmd.Row(data))
+		}
+		table.Headers = cmd.Row([]string{"Name", "Description"})
+		ctx.Stdout.Write(table.Bytes())
+	}
+	return nil
+}
+
+func (c ServiceInfo) Run(ctx *cmd.Context, client *cmd.Client) error {
+	serviceName := ctx.Args[0]
+	err := c.BuildInstancesTable(serviceName, ctx, client)
+	if err != nil {
+		return err
+	}
+	return c.BuildPlansTable(serviceName, ctx, client)
 }
 
 type ServiceDoc struct{}
