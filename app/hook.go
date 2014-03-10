@@ -9,8 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/globocom/tsuru/repository"
-	"io"
 	"gopkg.in/v1/yaml"
+	"io"
 	"path"
 )
 
