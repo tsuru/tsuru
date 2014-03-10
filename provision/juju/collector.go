@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -11,7 +11,7 @@ import (
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	_ "github.com/globocom/tsuru/router/elb"
-	"launchpad.net/goyaml"
+	"gopkg.in/v1/yaml"
 	"net/http"
 	"regexp"
 	"strings"
@@ -23,7 +23,7 @@ func (p *JujuProvisioner) getOutput() (jujuOutput, error) {
 		return jujuOutput{}, cmdError(string(output), err, []string{"juju", "status"})
 	}
 	var out jujuOutput
-	err = goyaml.Unmarshal(output, &out)
+	err = yaml.Unmarshal(output, &out)
 	if err != nil {
 		reason := fmt.Sprintf("%q returned invalid data: %s", "juju status", output)
 		return jujuOutput{}, &provision.Error{Reason: reason, Err: err}

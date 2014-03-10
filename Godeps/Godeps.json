@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/globocom/tsuru",
-	"GoVersion": "devel +ddb6756dff3f Thu Feb 20 09:06:32 2014 -0800",
+	"GoVersion": "devel +e3ff5d42017d Mon Mar 10 07:57:58 2014 +0100",
 	"Packages": [
 		"./..."
 	],
@@ -41,8 +41,8 @@
 		},
 		{
 			"ImportPath": "github.com/fsouza/go-dockerclient",
-			"Comment": "0.2.1-30-gec0e7c3",
-			"Rev": "ec0e7c3271bafd9b102c2ca4104e8802eb056a89"
+			"Comment": "0.2.1-50-g2a0ba39",
+			"Rev": "2a0ba39b67eb83b5cab914dac1a34d23d2a1eb1a"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
@@ -66,8 +66,8 @@
 		},
 		{
 			"ImportPath": "github.com/globocom/gandalf/testing",
-			"Comment": "0.2.0-14-gb287fb0",
-			"Rev": "b287fb0995ee3486da397ade6c870617d2f00315"
+			"Comment": "0.2.2",
+			"Rev": "a1cd1313e3534bb8a661849c3ea9921bb13d1d05"
 		},
 		{
 			"ImportPath": "github.com/globocom/go-gandalfclient",
@@ -92,6 +92,10 @@
 		{
 			"ImportPath": "github.com/vmihailenco/bufio",
 			"Rev": "5a6706bb583bf168d886202cb376c877e9c85521"
+		},
+		{
+			"ImportPath": "gopkg.in/v1/yaml",
+			"Rev": "4914593b9558e85597f08346c798aea8f6fb899f"
 		},
 		{
 			"ImportPath": "labix.org/v2/mgo",
