@@ -11,7 +11,7 @@ import (
 )
 
 func healthcheck(w http.ResponseWriter, r *http.Request) {
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "Failed to connect to MongoDB: %s", err)

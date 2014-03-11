@@ -564,23 +564,19 @@ func (app *App) hookRunner() hookRunner {
 }
 
 func (app *App) Stop(w io.Writer) error {
-	// FIXME make this action atomic
 	log.Write(w, []byte("\n ---> Stopping your app\n"))
-
 	err := Provisioner.Stop(app)
 	if err != nil {
 		log.Errorf("[stop] error on stop the app %s - %s", app.Name, err)
 		return err
 	}
-
 	units := make([]Unit, len(app.Units))
 	for i, u := range app.Units {
 		u.State = provision.StatusStopped.String()
 		units[i] = u
 	}
 	app.Units = units
-
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}
@@ -911,7 +907,7 @@ func Swap(app1, app2 *App) error {
 	if err != nil {
 		return err
 	}
-	conn, err := db.Conn()
+	conn, err := db.NewStorage()
 	if err != nil {
 		return err
 	}
