@@ -21,7 +21,7 @@ const (
 	DefaultDatabaseName = "tsuru"
 )
 
-type TsrStorage struct {
+type Storage struct {
 	storage *storage.Storage
 }
 
@@ -41,40 +41,40 @@ func Conn() (*storage.Storage, error) {
 	return storage.Open(url, dbname)
 }
 
-func NewStorage() (*TsrStorage, error) {
-	strg := &TsrStorage{}
+func NewStorage() (*Storage, error) {
+	strg := &Storage{}
 	var err error
 	strg.storage, err = Conn()
 	return strg, err
 }
 
-func (s *TsrStorage) Close() {
+func (s *Storage) Close() {
 	s.storage.Close()
 }
 
-func (s *TsrStorage) Collection(c string) *storage.Collection {
+func (s *Storage) Collection(c string) *storage.Collection {
 	return s.storage.Collection(c)
 }
 
 // Apps returns the apps collection from MongoDB.
-func (s *TsrStorage) Apps() *storage.Collection {
+func (s *Storage) Apps() *storage.Collection {
 	nameIndex := mgo.Index{Key: []string{"name"}, Unique: true}
 	c := s.storage.Collection("apps")
 	c.EnsureIndex(nameIndex)
 	return c
 }
 
-func (s *TsrStorage) Deploys() *storage.Collection {
+func (s *Storage) Deploys() *storage.Collection {
 	return s.storage.Collection("deploys")
 }
 
 // Platforms returns the platforms collection from MongoDB.
-func (s *TsrStorage) Platforms() *storage.Collection {
+func (s *Storage) Platforms() *storage.Collection {
 	return s.storage.Collection("platforms")
 }
 
 // Logs returns the logs collection from MongoDB.
-func (s *TsrStorage) Logs() *storage.Collection {
+func (s *Storage) Logs() *storage.Collection {
 	appNameIndex := mgo.Index{Key: []string{"appname"}}
 	sourceIndex := mgo.Index{Key: []string{"source"}}
 	dateAscIndex := mgo.Index{Key: []string{"date"}}
@@ -88,47 +88,47 @@ func (s *TsrStorage) Logs() *storage.Collection {
 }
 
 // Services returns the services collection from MongoDB.
-func (s *TsrStorage) Services() *storage.Collection {
+func (s *Storage) Services() *storage.Collection {
 	return s.storage.Collection("services")
 }
 
 // ServiceInstances returns the services_instances collection from MongoDB.
-func (s *TsrStorage) ServiceInstances() *storage.Collection {
+func (s *Storage) ServiceInstances() *storage.Collection {
 	return s.storage.Collection("service_instances")
 }
 
 // Plans returns the plans collection.
-func (s *TsrStorage) Plans() *storage.Collection {
+func (s *Storage) Plans() *storage.Collection {
 	return s.storage.Collection("plans")
 }
 
 // Users returns the users collection from MongoDB.
-func (s *TsrStorage) Users() *storage.Collection {
+func (s *Storage) Users() *storage.Collection {
 	emailIndex := mgo.Index{Key: []string{"email"}, Unique: true}
 	c := s.storage.Collection("users")
 	c.EnsureIndex(emailIndex)
 	return c
 }
 
-func (s *TsrStorage) Tokens() *storage.Collection {
+func (s *Storage) Tokens() *storage.Collection {
 	return s.storage.Collection("tokens")
 }
 
-func (s *TsrStorage) PasswordTokens() *storage.Collection {
+func (s *Storage) PasswordTokens() *storage.Collection {
 	return s.storage.Collection("password_tokens")
 }
 
-func (s *TsrStorage) UserActions() *storage.Collection {
+func (s *Storage) UserActions() *storage.Collection {
 	return s.storage.Collection("user_actions")
 }
 
 // Teams returns the teams collection from MongoDB.
-func (s *TsrStorage) Teams() *storage.Collection {
+func (s *Storage) Teams() *storage.Collection {
 	return s.storage.Collection("teams")
 }
 
 // Quota returns the quota collection from MongoDB.
-func (s *TsrStorage) Quota() *storage.Collection {
+func (s *Storage) Quota() *storage.Collection {
 	userIndex := mgo.Index{Key: []string{"owner"}, Unique: true}
 	c := s.storage.Collection("quota")
 	c.EnsureIndex(userIndex)
