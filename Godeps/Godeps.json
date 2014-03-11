@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/globocom/tsuru",
-	"GoVersion": "devel +e3ff5d42017d Mon Mar 10 07:57:58 2014 +0100",
+	"GoVersion": "devel +3cd546ac3a99 Tue Mar 11 16:36:14 2014 +1100",
 	"Packages": [
 		"./..."
 	],
@@ -41,8 +41,8 @@
 		},
 		{
 			"ImportPath": "github.com/fsouza/go-dockerclient",
-			"Comment": "0.2.1-50-g2a0ba39",
-			"Rev": "2a0ba39b67eb83b5cab914dac1a34d23d2a1eb1a"
+			"Comment": "0.2.1-56-ge0d2387",
+			"Rev": "e0d238720b9484e1cf1c2f07cb418723d71f8f76"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
@@ -58,16 +58,16 @@
 		},
 		{
 			"ImportPath": "github.com/globocom/docker-cluster/cluster",
-			"Rev": "6922a97520d422585e5092a933cad89e27dbb764"
+			"Rev": "dce6ffa070f1ee764785e78b9e3754dea62108a5"
 		},
 		{
 			"ImportPath": "github.com/globocom/docker-cluster/storage",
-			"Rev": "6922a97520d422585e5092a933cad89e27dbb764"
+			"Rev": "dce6ffa070f1ee764785e78b9e3754dea62108a5"
 		},
 		{
 			"ImportPath": "github.com/globocom/gandalf/testing",
-			"Comment": "0.2.2",
-			"Rev": "a1cd1313e3534bb8a661849c3ea9921bb13d1d05"
+			"Comment": "0.3.0-3-g50f66f0",
+			"Rev": "50f66f029f957412b818e8e597edb9c74af8a9bc"
 		},
 		{
 			"ImportPath": "github.com/globocom/go-gandalfclient",
