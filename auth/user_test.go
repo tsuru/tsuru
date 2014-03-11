@@ -131,7 +131,7 @@ func (s *S) TestUserCheckPasswordValidatesThePassword(c *gocheck.C) {
 }
 
 func (s *S) TestUserStartPasswordReset(c *gocheck.C) {
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	defer s.server.Reset()

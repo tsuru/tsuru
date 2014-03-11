@@ -89,7 +89,7 @@ var insertApp = action.Action{
 		default:
 			return nil, errors.New("First parameter must be App or *App.")
 		}
-		conn, err := db.NewStorage()
+		conn, err := db.Conn()
 		if err != nil {
 			return nil, err
 		}
@@ -107,7 +107,7 @@ var insertApp = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.FWResult.(*App)
-		conn, err := db.NewStorage()
+		conn, err := db.Conn()
 		if err != nil {
 			log.Errorf("Could not connect to the database: %s", err)
 			return
@@ -347,7 +347,7 @@ var reserveUnitsToAdd = action.Action{
 		default:
 			return nil, errors.New("Second parameter must be int or uint.")
 		}
-		conn, err := db.NewStorage()
+		conn, err := db.Conn()
 		if err != nil {
 			return nil, err
 		}
@@ -435,7 +435,7 @@ var saveNewUnitsInDatabase = action.Action{
 			return nil, errors.New("First parameter must be App or *App.")
 		}
 		prev := ctx.Previous.(*addUnitsActionResult)
-		conn, err := db.NewStorage()
+		conn, err := db.Conn()
 		if err != nil {
 			return nil, err
 		}

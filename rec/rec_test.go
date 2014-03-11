@@ -25,7 +25,7 @@ func (RecSuite) SetUpSuite(c *gocheck.C) {
 }
 
 func (RecSuite) TearDownSuite(c *gocheck.C) {
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	conn.Apps().Database.DropDatabase()
 }
@@ -34,7 +34,7 @@ func (RecSuite) TestLog(c *gocheck.C) {
 	ch := Log("user@tsuru.io", "run-command", "ls", "-ltr")
 	_, ok := <-ch
 	c.Assert(ok, gocheck.Equals, false)
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	query := map[string]interface{}{
@@ -57,7 +57,7 @@ func (RecSuite) TestLogConnError(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(err, gocheck.NotNil)
 	config.Set("database:url", old)
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	query := map[string]interface{}{
@@ -102,7 +102,7 @@ func (RecSuite) TestLogInvalidData(c *gocheck.C) {
 		err := <-ch
 		c.Check(err, gocheck.Equals, t.expected)
 	}
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	var action userAction

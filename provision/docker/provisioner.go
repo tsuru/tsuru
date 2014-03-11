@@ -362,7 +362,7 @@ func collection() *storage.Collection {
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		log.Errorf("Failed to connect to the database: %s", err)
 	}

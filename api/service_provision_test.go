@@ -24,7 +24,7 @@ import (
 )
 
 type ProvisionSuite struct {
-	conn  *db.TsrStorage
+	conn  *db.Storage
 	team  *auth.Team
 	user  *auth.User
 	token *auth.Token
@@ -37,7 +37,7 @@ func (s *ProvisionSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_provision_test")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
-	s.conn, err = db.NewStorage()
+	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	s.createUserAndTeam(c)
 }

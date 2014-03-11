@@ -119,7 +119,7 @@ func (s *S) TestDeploy(c *gocheck.C) {
 		Platform: "python",
 		Units:    []app.Unit{{Name: "i-0800", State: "started"}},
 	}
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	defer conn.Close()
 	err = conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -167,7 +167,7 @@ func (s *S) TestDeployEnqueuesBindService(c *gocheck.C) {
 		Platform: "python",
 		Units:    []app.Unit{{Name: "i-0800", State: "started"}},
 	}
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	defer conn.Close()
 	err = conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -218,7 +218,7 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 		Platform: "python",
 		Units:    []app.Unit{{Name: "i-0800", State: "started"}},
 	}
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	defer conn.Close()
 	err = conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)

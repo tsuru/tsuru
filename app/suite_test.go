@@ -25,7 +25,7 @@ import (
 func Test(t *testing.T) { gocheck.TestingT(t) }
 
 type S struct {
-	conn        *db.TsrStorage
+	conn        *db.Storage
 	team        auth.Team
 	user        *auth.User
 	adminTeam   auth.Team
@@ -78,7 +78,7 @@ func (s *S) createUserAndTeam(c *gocheck.C) {
 func (s *S) SetUpSuite(c *gocheck.C) {
 	err := config.ReadConfigFile("testdata/config.yaml")
 	c.Assert(err, gocheck.IsNil)
-	s.conn, err = db.NewStorage()
+	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	s.t = &ttesting.T{}
 	s.createUserAndTeam(c)

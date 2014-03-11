@@ -40,7 +40,7 @@ func Log(user string, action string, extra ...interface{}) <-chan error {
 			ch <- ErrMissingAction
 			return
 		}
-		conn, err := db.NewStorage()
+		conn, err := db.Conn()
 		if err != nil {
 			ch <- err
 			return

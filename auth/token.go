@@ -50,7 +50,7 @@ func parseToken(header string) (string, error) {
 }
 
 func GetToken(header string) (*Token, error) {
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func GetToken(header string) (*Token, error) {
 }
 
 func DeleteToken(token string) error {
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ func DeleteToken(token string) error {
 }
 
 func CreateApplicationToken(appName string) (*Token, error) {
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func createPasswordToken(u *User) (*passwordToken, error) {
 		UserEmail: u.Email,
 		Creation:  time.Now(),
 	}
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +158,7 @@ func (t *passwordToken) user() (*User, error) {
 }
 
 func getPasswordToken(token string) (*passwordToken, error) {
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
@@ -175,7 +175,7 @@ func getPasswordToken(token string) (*passwordToken, error) {
 }
 
 func removeOldTokens(userEmail string) error {
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}

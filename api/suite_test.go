@@ -48,7 +48,7 @@ func (h *testBadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func Test(t *testing.T) { gocheck.TestingT(t) }
 
 type S struct {
-	conn        *db.TsrStorage
+	conn        *db.Storage
 	team        *auth.Team
 	user        *auth.User
 	token       *auth.Token
@@ -93,7 +93,7 @@ func (s *S) createUserAndTeam(c *gocheck.C) {
 
 func (s *S) SetUpSuite(c *gocheck.C) {
 	err := config.ReadConfigFile("testdata/config.yaml")
-	s.conn, err = db.NewStorage()
+	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	s.createUserAndTeam(c)
 	s.t = &tsuruTesting.T{}

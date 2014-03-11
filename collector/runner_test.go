@@ -16,7 +16,7 @@ import (
 var buildingApps = []string{"as_i_rise", "the_infanta"}
 var runningApps = []string{"caravan", "bu2b", "carnies"}
 
-func createApp(conn *db.TsrStorage, name, state string) {
+func createApp(conn *db.Storage, name, state string) {
 	a := app.App{
 		Name:  name,
 		Units: []app.Unit{{State: state}},
@@ -27,7 +27,7 @@ func createApp(conn *db.TsrStorage, name, state string) {
 	}
 }
 
-func createApps(conn *db.TsrStorage) {
+func createApps(conn *db.Storage) {
 	for _, name := range buildingApps {
 		createApp(conn, name, provision.StatusBuilding.String())
 	}
@@ -36,7 +36,7 @@ func createApps(conn *db.TsrStorage) {
 	}
 }
 
-func destroyApps(conn *db.TsrStorage) {
+func destroyApps(conn *db.Storage) {
 	allApps := append(buildingApps, runningApps...)
 	conn.Apps().Remove(bson.M{"name": bson.M{"$in": allApps}})
 }

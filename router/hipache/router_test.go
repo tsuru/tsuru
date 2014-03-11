@@ -21,7 +21,7 @@ func Test(t *testing.T) {
 type S struct {
 	pool *redis.Pool
 	fake *fakeConn
-	conn *db.TsrStorage
+	conn *db.Storage
 }
 
 var _ = gocheck.Suite(&S{})
@@ -31,7 +31,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "router_hipache_tests")
 	var err error
-	s.conn, err = db.NewStorage()
+	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
 }
 

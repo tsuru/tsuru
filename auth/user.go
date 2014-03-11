@@ -73,7 +73,7 @@ func GetUserByEmail(email string) (*User, error) {
 		return nil, &errors.ValidationError{Message: emailError}
 	}
 	var u User
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func GetUserByEmail(email string) (*User, error) {
 }
 
 func (u *User) Create() error {
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
@@ -96,7 +96,7 @@ func (u *User) Create() error {
 }
 
 func (u *User) Update() error {
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func (u *User) CreateToken(password string) (*Token, error) {
 	if err := u.CheckPassword(password); err != nil {
 		return nil, err
 	}
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +143,7 @@ func (u *User) CreateToken(password string) (*Token, error) {
 
 // Teams returns a slice containing all teams that the user is member of.
 func (u *User) Teams() ([]Team, error) {
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +203,7 @@ func (u *User) IsAdmin() bool {
 }
 
 func (u *User) AllowedApps() ([]string, error) {
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
@@ -259,7 +259,7 @@ func (u *User) ResetPassword(token string) error {
 	if token == "" {
 		return ErrInvalidToken
 	}
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}

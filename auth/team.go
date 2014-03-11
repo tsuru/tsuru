@@ -65,7 +65,7 @@ func (t *Team) RemoveUser(u *User) error {
 }
 
 func (t *Team) AllowedApps() ([]string, error) {
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +94,7 @@ func CreateTeam(name string, user ...*User) error {
 	for i, u := range user {
 		team.Users[i] = u.Email
 	}
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func isTeamNameValid(name string) bool {
 
 func GetTeam(name string) (*Team, error) {
 	var t Team
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
@@ -134,7 +134,7 @@ func GetTeamsNames(teams []Team) []string {
 func CheckUserAccess(teamNames []string, u *User) bool {
 	q := bson.M{"_id": bson.M{"$in": teamNames}}
 	var teams []Team
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		log.Errorf("Failed to connect to the database: %s", err)
 		return false

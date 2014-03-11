@@ -91,7 +91,7 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 }
 
 func (s *S) TestUsers(c *gocheck.C) {
-	strg, err := NewStorage()
+	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	users := strg.Users()
 	usersc := strg.storage.Collection("users")
@@ -100,7 +100,7 @@ func (s *S) TestUsers(c *gocheck.C) {
 }
 
 func (s *S) TestTokens(c *gocheck.C) {
-	strg, err := NewStorage()
+	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	tokens := strg.Tokens()
 	tokensc := strg.storage.Collection("tokens")
@@ -108,7 +108,7 @@ func (s *S) TestTokens(c *gocheck.C) {
 }
 
 func (s *S) TestPasswordTokens(c *gocheck.C) {
-	strg, err := NewStorage()
+	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	tokens := strg.PasswordTokens()
 	tokensc := strg.storage.Collection("password_tokens")
@@ -116,7 +116,7 @@ func (s *S) TestPasswordTokens(c *gocheck.C) {
 }
 
 func (s *S) TestUserActions(c *gocheck.C) {
-	strg, err := NewStorage()
+	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	actions := strg.UserActions()
 	actionsc := strg.storage.Collection("user_actions")
@@ -124,7 +124,7 @@ func (s *S) TestUserActions(c *gocheck.C) {
 }
 
 func (s *S) TestApps(c *gocheck.C) {
-	strg, err := NewStorage()
+	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	apps := strg.Apps()
 	appsc := strg.storage.Collection("apps")
@@ -133,7 +133,7 @@ func (s *S) TestApps(c *gocheck.C) {
 }
 
 func (s *S) TestDeploys(c *gocheck.C) {
-	strg, err := NewStorage()
+	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	deploys := strg.Deploys()
 	deploysc := strg.storage.Collection("deploys")
@@ -141,7 +141,7 @@ func (s *S) TestDeploys(c *gocheck.C) {
 }
 
 func (s *S) TestPlatforms(c *gocheck.C) {
-	strg, err := NewStorage()
+	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	plats := strg.Platforms()
 	platsc := strg.storage.Collection("platforms")
@@ -149,7 +149,7 @@ func (s *S) TestPlatforms(c *gocheck.C) {
 }
 
 func (s *S) TestLogs(c *gocheck.C) {
-	strg, err := NewStorage()
+	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	logs := strg.Logs()
 	logsc := strg.storage.Collection("logs")
@@ -157,35 +157,35 @@ func (s *S) TestLogs(c *gocheck.C) {
 }
 
 func (s *S) TestLogsAppNameIndex(c *gocheck.C) {
-	strg, err := NewStorage()
+	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	logs := strg.Logs()
 	c.Assert(logs, HasIndex, []string{"appname"})
 }
 
 func (s *S) TestLogsSourceIndex(c *gocheck.C) {
-	strg, err := NewStorage()
+	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	logs := strg.Logs()
 	c.Assert(logs, HasIndex, []string{"source"})
 }
 
 func (s *S) TestLogsDateAscendingIndex(c *gocheck.C) {
-	strg, err := NewStorage()
+	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	logs := strg.Logs()
 	c.Assert(logs, HasIndex, []string{"date"})
 }
 
 func (s *S) TestLogsDateDescendingIndex(c *gocheck.C) {
-	strg, err := NewStorage()
+	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	logs := strg.Logs()
 	c.Assert(logs, HasIndex, []string{"-date"})
 }
 
 func (s *S) TestServices(c *gocheck.C) {
-	strg, err := NewStorage()
+	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	services := strg.Services()
 	servicesc := strg.storage.Collection("services")
@@ -193,7 +193,7 @@ func (s *S) TestServices(c *gocheck.C) {
 }
 
 func (s *S) TestPlans(c *gocheck.C) {
-	storage, err := NewStorage()
+	storage, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	plans := storage.Plans()
 	plansc := storage.Collection("plans")
@@ -201,7 +201,7 @@ func (s *S) TestPlans(c *gocheck.C) {
 }
 
 func (s *S) TestServiceInstances(c *gocheck.C) {
-	strg, err := NewStorage()
+	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	serviceInstances := strg.ServiceInstances()
 	serviceInstancesc := strg.storage.Collection("service_instances")
@@ -209,7 +209,7 @@ func (s *S) TestServiceInstances(c *gocheck.C) {
 }
 
 func (s *S) TestMethodTeamsShouldReturnTeamsCollection(c *gocheck.C) {
-	strg, err := NewStorage()
+	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	teams := strg.Teams()
 	teamsc := strg.storage.Collection("teams")
@@ -217,7 +217,7 @@ func (s *S) TestMethodTeamsShouldReturnTeamsCollection(c *gocheck.C) {
 }
 
 func (s *S) TestQuota(c *gocheck.C) {
-	strg, err := NewStorage()
+	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	quota := strg.Quota()
 	quotac := strg.storage.Collection("quota")
@@ -225,7 +225,7 @@ func (s *S) TestQuota(c *gocheck.C) {
 }
 
 func (s *S) TestQuotaOwnerIsUnique(c *gocheck.C) {
-	strg, err := NewStorage()
+	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	quota := strg.Quota()
 	c.Assert(quota, HasUniqueIndex, []string{"owner"})

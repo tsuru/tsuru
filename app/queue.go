@@ -59,7 +59,7 @@ func bindUnit(msg *queue.Message) error {
 	if err != nil {
 		return fmt.Errorf("Error handling %q: app %q does not exist.", msg.Action, app.Name)
 	}
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return fmt.Errorf("Error handling %q: %s", msg.Action, err)
 	}

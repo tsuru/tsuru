@@ -18,14 +18,14 @@ import (
 )
 
 type HandlersSuite struct {
-	conn *db.TsrStorage
+	conn *db.Storage
 }
 
 var _ = gocheck.Suite(&HandlersSuite{})
 
 func (s *HandlersSuite) SetUpSuite(c *gocheck.C) {
 	var err error
-	s.conn, err = db.NewStorage()
+	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	config.Set("docker:collection", "docker_handler_suite")
 	s.conn.Collection(schedulerCollection).RemoveAll(nil)

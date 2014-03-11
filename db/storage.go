@@ -25,11 +25,11 @@ type Storage struct {
 	storage *storage.Storage
 }
 
-// Conn reads the tsuru config and calls storage.Open to get a database connection.
+// conn reads the tsuru config and calls storage.Open to get a database connection.
 //
 // Most tsuru packages should probably use this function. storage.Open is intended for
 // use when supporting more than one database.
-func Conn() (*storage.Storage, error) {
+func conn() (*storage.Storage, error) {
 	url, _ := config.GetString("database:url")
 	if url == "" {
 		url = DefaultDatabaseURL
@@ -41,10 +41,10 @@ func Conn() (*storage.Storage, error) {
 	return storage.Open(url, dbname)
 }
 
-func NewStorage() (*Storage, error) {
+func Conn() (*Storage, error) {
 	strg := &Storage{}
 	var err error
-	strg.storage, err = Conn()
+	strg.storage, err = conn()
 	return strg, err
 }
 

@@ -18,7 +18,7 @@ import (
 )
 
 type DeploySuite struct {
-	conn  *db.TsrStorage
+	conn  *db.Storage
 	token *auth.Token
 	team  *auth.Team
 }
@@ -41,13 +41,13 @@ func (s *DeploySuite) SetUpSuite(c *gocheck.C) {
 	config.Set("database:name", "tsuru_deploy_api_tests")
 	config.Set("aut:hash-cost", 4)
 	var err error
-	s.conn, err = db.NewStorage()
+	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	s.createUserAndTeam(c)
 }
 
 func (s *DeploySuite) TearDownSuite(c *gocheck.C) {
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	conn.Apps().Database.DropDatabase()
@@ -55,7 +55,7 @@ func (s *DeploySuite) TearDownSuite(c *gocheck.C) {
 
 func (s *DeploySuite) TestDeployList(c *gocheck.C) {
 	var result []app.Deploy
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	request, err := http.NewRequest("GET", "/deploys", nil)

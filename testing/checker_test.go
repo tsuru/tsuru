@@ -18,7 +18,7 @@ var _ = gocheck.Suite(CheckerSuite{})
 func (CheckerSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("database:url", "localhost:27017")
 	config.Set("database:name", "tsuru_testing_test")
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	action := map[string]interface{}{
@@ -40,7 +40,7 @@ func (CheckerSuite) SetUpSuite(c *gocheck.C) {
 }
 
 func (CheckerSuite) TearDownSuite(c *gocheck.C) {
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	conn.Apps().Database.DropDatabase()

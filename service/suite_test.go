@@ -15,7 +15,7 @@ import (
 func Test(t *testing.T) { gocheck.TestingT(t) }
 
 type S struct {
-	conn    *db.TsrStorage
+	conn    *db.Storage
 	service *Service
 	team    *auth.Team
 	user    *auth.User
@@ -52,7 +52,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_service_test")
 	config.Set("auth:salt", "tsuru-salt")
-	s.conn, err = db.NewStorage()
+	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	s.user = &auth.User{Email: "cidade@raul.com", Password: "123"}
 	err = s.user.Create()

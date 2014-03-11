@@ -16,7 +16,7 @@ import (
 func Test(t *testing.T) { gocheck.TestingT(t) }
 
 type S struct {
-	conn        *db.TsrStorage
+	conn        *db.Storage
 	provisioner *ttesting.FakeProvisioner
 }
 
@@ -26,7 +26,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	var err error
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_collector_test")
-	s.conn, err = db.NewStorage()
+	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	s.provisioner = ttesting.NewFakeProvisioner()
 	app.Provisioner = s.provisioner

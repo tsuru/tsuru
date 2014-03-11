@@ -22,7 +22,7 @@ type Service struct {
 }
 
 func (s *Service) Get() error {
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
@@ -32,7 +32,7 @@ func (s *Service) Get() error {
 }
 
 func (s *Service) Create() error {
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
@@ -41,7 +41,7 @@ func (s *Service) Create() error {
 }
 
 func (s *Service) Update() error {
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func (s *Service) Update() error {
 }
 
 func (s *Service) Delete() error {
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func GetServicesByTeamKindAndNoRestriction(teamKind string, u *auth.User) ([]Ser
 	if err != nil {
 		return nil, err
 	}
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
@@ -135,7 +135,7 @@ func GetServicesByOwnerTeams(teamKind string, u *auth.User) ([]Service, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}

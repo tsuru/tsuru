@@ -17,7 +17,7 @@ import (
 )
 
 type LogSuite struct {
-	conn  *db.TsrStorage
+	conn  *db.Storage
 	token *auth.Token
 	team  *auth.Team
 }
@@ -40,7 +40,7 @@ func (s *LogSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("database:name", "tsuru_log_api_tests")
 	config.Set("auth:hash-cost", 4)
 	var err error
-	s.conn, err = db.NewStorage()
+	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	s.createUserAndTeam(c)
 }

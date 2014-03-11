@@ -250,7 +250,7 @@ func (s *S) newContainer(opts *newContainerOpts) (*container, error) {
 	}
 	container.ID = c.ID
 	container.Image = "tsuru/python"
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
@@ -486,7 +486,7 @@ func (s *S) TestGetImageAppWhenDeployIsMultipleOf10(c *gocheck.C) {
 	imageRepo := u.Host + "/tsuru/python"
 	err := newImage(imageRepo, s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	units := []app.Unit{{Name: "4fa6e0f0c678"}, {Name: "e90e34656806"}}
@@ -717,7 +717,7 @@ func (s *S) TestGetHostAddr(c *gocheck.C) {
 func (s *S) TestGetHostAddrWithSegregatedScheduler(c *gocheck.C) {
 	config.Set("docker:segregate", true)
 	defer config.Unset("docker:segregate")
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	coll := conn.Collection(schedulerCollection)
@@ -897,7 +897,7 @@ func (s *S) TestContainerStartStartedUnits(c *gocheck.C) {
 }
 
 func (s *S) TestUsePlatformImage(c *gocheck.C) {
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	units := []app.Unit{{Name: "4fa6e0f0c678"}, {Name: "e90e34656806"}}

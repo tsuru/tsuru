@@ -214,7 +214,7 @@ func createTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 
 // RemoveTeam removes a team document from the database.
 func removeTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
@@ -271,7 +271,7 @@ func addUserToTeamInDatabase(user *auth.User, team *auth.Team) error {
 	if err := team.AddUser(user); err != nil {
 		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 	}
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
@@ -299,7 +299,7 @@ func addUserToTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error 
 		return err
 	}
 	rec.Log(u.Email, "add-user-to-team", "team="+teamName, "user="+email)
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
@@ -325,7 +325,7 @@ func addUserToTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error 
 }
 
 func removeUserFromTeamInDatabase(u *auth.User, team *auth.Team) error {
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
@@ -374,7 +374,7 @@ func removeUserFromTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) e
 		return err
 	}
 	rec.Log(u.Email, "remove-user-from-team", "team="+teamName, "user="+email)
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
@@ -434,7 +434,7 @@ func getKeyFromBody(b io.Reader) (string, error) {
 }
 
 func addKeyInDatabase(key *auth.Key, u *auth.User) error {
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
@@ -480,7 +480,7 @@ func addKeyToUser(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 }
 
 func removeKeyFromDatabase(key *auth.Key, u *auth.User) error {
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
@@ -569,7 +569,7 @@ func removeUser(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}

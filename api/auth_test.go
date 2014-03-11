@@ -53,14 +53,14 @@ func (s *AuthSuite) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *AuthSuite) TearDownSuite(c *gocheck.C) {
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	conn.Apps().Database.DropDatabase()
 	s.server.Stop()
 }
 
 func (s *AuthSuite) TearDownTest(c *gocheck.C) {
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	_, err := conn.Users().RemoveAll(bson.M{"email": bson.M{"$ne": s.user.Email}})
 	c.Assert(err, gocheck.IsNil)
@@ -77,7 +77,7 @@ func (s *AuthSuite) createUserAndTeam(c *gocheck.C) {
 	err := s.user.Create()
 	c.Assert(err, gocheck.IsNil)
 	s.team = &auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	err = conn.Teams().Insert(s.team)
 	c.Assert(err, gocheck.IsNil)
@@ -292,7 +292,7 @@ func (s *AuthSuite) TestCreateUserCreatesUserInGandalf(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-type", "application/json")
 	recorder := httptest.NewRecorder()
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	defer conn.Users().Remove(bson.M{"email": "nobody@me.myself"})
 	err = createUser(recorder, request)
@@ -314,7 +314,7 @@ func (s *AuthSuite) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheR
 	err = login(recorder, request)
 	c.Assert(err, gocheck.IsNil)
 	var user auth.User
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	err = conn.Users().Find(bson.M{"email": "nobody@globo.com"}).One(&user)
 	var recorderJSON map[string]string
@@ -419,7 +419,7 @@ func (s *AuthSuite) TestLoginShouldReturnBadRequestWhenPasswordIsInvalid(c *goch
 	u := &auth.User{Email: "me@globo.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	defer conn.Users().Remove(bson.M{"email": u.Email})
 	for _, password := range passwords {
@@ -458,7 +458,7 @@ func (s *AuthSuite) TestCreateTeamHandlerSavesTheTeamInTheDatabaseWithTheAuthent
 	err = createTeam(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	t := new(auth.Team)
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	err = conn.Teams().Find(bson.M{"_id": "timeredbull"}).One(t)
 	defer conn.Teams().Remove(bson.M{"_id": "timeredbull"})
@@ -500,7 +500,7 @@ func (s *AuthSuite) TestCreateTeamHandlerReturnsBadRequestIfTheNameIsNotGiven(c 
 }
 
 func (s *AuthSuite) TestCreateTeamHandlerReturnConflictIfTheTeamToBeCreatedAlreadyExists(c *gocheck.C) {
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	err := conn.Teams().Insert(bson.M{"_id": "timeredbull"})
 	defer conn.Teams().Remove(bson.M{"_id": "timeredbull"})
@@ -525,7 +525,7 @@ func (s *AuthSuite) TestKeyToMap(c *gocheck.C) {
 }
 
 func (s *AuthSuite) TestRemoveTeam(c *gocheck.C) {
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	team := auth.Team{Name: "painofsalvation", Users: []string{s.user.Email}}
 	err := conn.Teams().Insert(team)
@@ -560,7 +560,7 @@ func (s *AuthSuite) TestRemoveTeamGives404WhenTeamDoesNotExist(c *gocheck.C) {
 }
 
 func (s *AuthSuite) TestRemoveTeamGives404WhenUserDoesNotHaveAccessToTheTeam(c *gocheck.C) {
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	team := auth.Team{Name: "painofsalvation"}
 	err := conn.Teams().Insert(team)
@@ -578,7 +578,7 @@ func (s *AuthSuite) TestRemoveTeamGives404WhenUserDoesNotHaveAccessToTheTeam(c *
 }
 
 func (s *AuthSuite) TestRemoveTeamGives403WhenTeamHasAccessToAnyApp(c *gocheck.C) {
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	team := auth.Team{Name: "evergrey", Users: []string{s.user.Email}}
 	err := conn.Teams().Insert(team)
@@ -627,7 +627,7 @@ func (s *AuthSuite) TestListTeamsReturns204IfTheUserHasNoTeam(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	token, err := u.CreateToken("234567")
 	c.Assert(err, gocheck.IsNil)
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	defer conn.Users().Remove(bson.M{"email": u.Email})
 	defer conn.Tokens().Remove(bson.M{"token": token.Token})
@@ -640,7 +640,7 @@ func (s *AuthSuite) TestListTeamsReturns204IfTheUserHasNoTeam(c *gocheck.C) {
 }
 
 func (s *AuthSuite) TestAddUserToTeam(c *gocheck.C) {
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
@@ -691,7 +691,7 @@ func (s *AuthSuite) TestAddUserToTeamShouldReturnUnauthorizedIfTheGivenUserIsNot
 	c.Assert(err, gocheck.IsNil)
 	token, err := u.CreateToken("123456")
 	c.Assert(err, gocheck.IsNil)
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	defer conn.Users().Remove(bson.M{"email": u.Email})
 	defer conn.Tokens().Remove(bson.M{"token": token.Token})
@@ -746,7 +746,7 @@ func (s *AuthSuite) TestAddUserToTeamShoulGrantAccessInGandalf(c *gocheck.C) {
 	t, err := u.CreateToken("123456")
 	c.Assert(err, gocheck.IsNil)
 	defer auth.DeleteToken(t.Token)
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	defer conn.Users().Remove(bson.M{"email": u.Email})
 	a := App{Name: "i-should", Teams: []string{s.team.Name}}
@@ -775,7 +775,7 @@ func (s *AuthSuite) TestAddUserToTeamShoulGrantAccessInGandalf(c *gocheck.C) {
 func (s *AuthSuite) TestAddUserToTeamInDatabase(c *gocheck.C) {
 	user := &auth.User{Email: "nobody@gmail.com", Password: "123456"}
 	team := &auth.Team{Name: "myteam"}
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	err := conn.Teams().Insert(team)
 	c.Assert(err, gocheck.IsNil)
@@ -804,7 +804,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExi
 	u := auth.User{Email: "nonee@me.me", Password: "none"}
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	defer conn.Users().Remove(bson.M{"email": u.Email})
 	s.team.AddUser(&u)
@@ -829,7 +829,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveOnlyAppsInThatTeamInGandal
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	u := auth.User{Email: "nobody@me.me", Password: "none"}
 	err := u.Create()
@@ -887,7 +887,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnUnauthorizedIfTheGivenUser
 	err = u.Create()
 	token, err := u.CreateToken("123456")
 	c.Assert(err, gocheck.IsNil)
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	defer conn.Users().Remove(bson.M{"email": u.Email})
 	defer conn.Tokens().Remove(bson.M{"token": token.Token})
@@ -904,7 +904,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnNotFoundWhenTheUserIsNotMe
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	u := &auth.User{Email: "nobody@me.me", Password: "132"}
 	s.team.AddUser(u)
@@ -943,7 +943,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamRevokesAccessInGandalf(c *gocheck.C) {
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	u := &auth.User{Email: "pomar@nando-reis.com", Password: "123456"}
 	err := u.Create()
@@ -984,7 +984,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamRevokesAccessInGandalf(c *gocheck.C) {
 }
 
 func (s *AuthSuite) TestRemoveUserFromTeamInDatabase(c *gocheck.C) {
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	u := &auth.User{Email: "nobody@gmail.com", Password: "123456"}
 	err := u.Create()
@@ -1046,7 +1046,7 @@ func (s *AuthSuite) TestGetTeamNotFound(c *gocheck.C) {
 }
 
 func (s *AuthSuite) TestGetTeamForbidden(c *gocheck.C) {
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	team := auth.Team{Name: "paradisum", Users: []string{"someuser@me.com"}}
@@ -1068,7 +1068,7 @@ func (s *AuthSuite) TestAddKeyToUserAddsAKeyToTheUser(c *gocheck.C) {
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	defer func() {
 		s.user.RemoveKey(auth.Key{Content: "my-key"})
@@ -1156,7 +1156,7 @@ func (s *AuthSuite) TestAddKeyToUserReturnsConflictIfTheKeyIsAlreadyPresent(c *g
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	s.user.AddKey(auth.Key{Content: "my-key"})
 	conn.Users().Update(bson.M{"email": s.user.Email}, s.user)
@@ -1180,7 +1180,7 @@ func (s *AuthSuite) TestAddKeyAddKeyToUserInGandalf(c *gocheck.C) {
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	u := &auth.User{Email: "francisco@franciscosouza.net", Password: "123456"}
 	err := u.Create()
@@ -1209,7 +1209,7 @@ func (s *AuthSuite) TestAddKeyAddKeyToUserInGandalf(c *gocheck.C) {
 }
 
 func (s *AuthSuite) TestAddKeyToUserShouldNotInsertKeyInDatabaseWhenGandalfAdditionFails(c *gocheck.C) {
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	u := &auth.User{Email: "me@gmail.com", Password: "123456"}
 	err := u.Create()
@@ -1231,7 +1231,7 @@ func (s *AuthSuite) TestAddKeyToUserShouldNotInsertKeyInDatabaseWhenGandalfAddit
 }
 
 func (s *AuthSuite) TestAddKeyInDatabaseShouldStoreUsersKeyInDB(c *gocheck.C) {
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	u := &auth.User{Email: "me@gmail.com", Password: "123456"}
 	err := u.Create()
@@ -1249,7 +1249,7 @@ func (s *AuthSuite) TestAddKeyInGandalfShouldCallGandalfAPI(c *gocheck.C) {
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	u := &auth.User{Email: "me@gmail.com", Password: "123456"}
 	err := u.Create()
@@ -1263,7 +1263,7 @@ func (s *AuthSuite) TestAddKeyInGandalfShouldCallGandalfAPI(c *gocheck.C) {
 }
 
 func (s *AuthSuite) TestRemoveKeyFromGandalfCallsGandalfAPI(c *gocheck.C) {
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	u := &auth.User{Email: "me@gmail.com", Password: "123456"}
 	err := u.Create()
@@ -1283,7 +1283,7 @@ func (s *AuthSuite) TestRemoveKeyFromGandalfCallsGandalfAPI(c *gocheck.C) {
 }
 
 func (s *AuthSuite) TestRemoveKeyFromDatabase(c *gocheck.C) {
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	u := &auth.User{Email: "me@gmail.com", Password: "123456"}
 	err := u.Create()
@@ -1443,7 +1443,7 @@ func (s *AuthSuite) TestRemoveUser(c *gocheck.C) {
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	u := auth.User{Email: "her-voices@painofsalvation.com", Password: "123456"}
 	err := u.Create()
@@ -1468,7 +1468,7 @@ func (s *AuthSuite) TestRemoveUserWithTheUserBeingLastMemberOfATeam(c *gocheck.C
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	u := auth.User{Email: "of-two-beginnings@painofsalvation.com", Password: "123456"}
 	err := u.Create()
@@ -1499,7 +1499,7 @@ func (s *AuthSuite) TestRemoveUserShouldRemoveTheUserFromAllTeamsThatHeIsMember(
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	u := auth.User{Email: "of-two-beginnings@painofsalvation.com", Password: "123456"}
 	err := u.Create()
@@ -1532,7 +1532,7 @@ func (s *AuthSuite) TestRemoveUserRevokesAccessInGandalf(c *gocheck.C) {
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	u := auth.User{Email: "of-two-beginnings@painofsalvation.com", Password: "123456"}
 	err := u.Create()
@@ -1564,7 +1564,7 @@ func (s *AuthSuite) TestRemoveUserRevokesAccessInGandalf(c *gocheck.C) {
 }
 
 func (s *AuthSuite) TestChangePasswordHandler(c *gocheck.C) {
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	u := &auth.User{Email: "me@globo.com.com", Password: "123456"}
 	u.Create()
@@ -1590,7 +1590,7 @@ func (s *AuthSuite) TestChangePasswordHandler(c *gocheck.C) {
 }
 
 func (s *AuthSuite) TestChangePasswordReturns412IfNewPasswordIsInvalid(c *gocheck.C) {
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	u := &auth.User{Email: "me@globo.com.com", Password: "123456"}
 	u.Create()
@@ -1660,7 +1660,7 @@ func (s *AuthSuite) TestResetPasswordStep1(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err := resetPassword(recorder, request)
 	c.Assert(err, gocheck.IsNil)
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	var m map[string]interface{}
@@ -1706,7 +1706,7 @@ func (s *AuthSuite) TestResetPasswordInvalidEmail(c *gocheck.C) {
 }
 
 func (s *AuthSuite) TestResetPasswordStep2(c *gocheck.C) {
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	user := auth.User{Email: "uns@alanis.com", Password: "145678"}
@@ -1743,7 +1743,7 @@ func (s *AuthSuite) TestGenerateApplicationToken(c *gocheck.C) {
 	var jsonToken map[string]interface{}
 	err = json.NewDecoder(recorder.Body).Decode(&jsonToken)
 	c.Assert(err, gocheck.IsNil)
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	defer conn.Tokens().Remove(bson.M{"token": jsonToken["token"]})
 	t, err := auth.GetToken("bearer " + jsonToken["token"].(string))
@@ -1772,7 +1772,7 @@ func (s *AuthSuite) TestGenerateApplicationTokenMissingClient(c *gocheck.C) {
 }
 
 func (s *AuthSuite) TestGenerateApplictionTokenExport(c *gocheck.C) {
-	conn, _ := db.NewStorage()
+	conn, _ := db.Conn()
 	defer conn.Close()
 	a := app.App{Name: "myapp"}
 	err := conn.Apps().Insert(a)

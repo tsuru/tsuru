@@ -38,7 +38,7 @@ func (isRecordedChecker) Check(params []interface{}, names []string) (bool, stri
 	default:
 		return false, "First parameter must be of type Action or *Action"
 	}
-	conn, err := db.NewStorage()
+	conn, err := db.Conn()
 	if err != nil {
 		panic("Could not connect to the database: " + err.Error())
 	}

@@ -18,7 +18,7 @@ import (
 )
 
 type SchedulerSuite struct {
-	storage *db.TsrStorage
+	storage *db.Storage
 }
 
 var _ = gocheck.Suite(&SchedulerSuite{})
@@ -29,7 +29,7 @@ func (s *SchedulerSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("database:name", "docker_scheduler_tests")
 	config.Set("docker:repository-namespace", "tsuru")
 	config.Set("docker:collection", "docker_unit_tests")
-	s.storage, err = db.NewStorage()
+	s.storage, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
 }
 
