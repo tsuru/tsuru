@@ -12,9 +12,9 @@ import (
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/rec"
 	"github.com/globocom/tsuru/service"
+	"gopkg.in/v1/yaml"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
-	"launchpad.net/goyaml"
 	"net/http"
 )
 
@@ -48,7 +48,7 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t *auth.Token) error 
 		return err
 	}
 	var sy serviceYaml
-	err = goyaml.Unmarshal(body, &sy)
+	err = yaml.Unmarshal(body, &sy)
 	if err != nil {
 		return err
 	}
@@ -101,18 +101,18 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t *auth.Token) error 
 	if err != nil {
 		return err
 	}
-	var yaml serviceYaml
-	goyaml.Unmarshal(body, &yaml)
+	var y serviceYaml
+	yaml.Unmarshal(body, &y)
 	u, err := t.User()
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "update-service", yaml.Id, yaml.Endpoint)
-	s, err := getServiceByOwner(yaml.Id, u)
+	rec.Log(u.Email, "update-service", y.Id, y.Endpoint)
+	s, err := getServiceByOwner(y.Id, u)
 	if err != nil {
 		return err
 	}
-	s.Endpoint = yaml.Endpoint
+	s.Endpoint = y.Endpoint
 	if err = s.Update(); err != nil {
 		return err
 	}
