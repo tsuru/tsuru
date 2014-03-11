@@ -82,19 +82,19 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
-	//strg, err := storage.Open("127.0.0.1:27017", "tsuru_storage_test")
-	//c.Assert(err, gocheck.IsNil)
-	//defer strg.Close()
+	strg, err := Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer strg.Close()
 	config.Unset("database:url")
 	config.Unset("database:name")
-	//s.session.DB("tsuru_storage_test").DropDatabase()
+	strg.Collection("apps").Database.DropDatabase()
 }
 
 func (s *S) TestUsers(c *gocheck.C) {
 	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	users := strg.Users()
-	usersc := strg.storage.Collection("users")
+	usersc := strg.Collection("users")
 	c.Assert(users, gocheck.DeepEquals, usersc)
 	c.Assert(users, HasUniqueIndex, []string{"email"})
 }
@@ -103,7 +103,7 @@ func (s *S) TestTokens(c *gocheck.C) {
 	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	tokens := strg.Tokens()
-	tokensc := strg.storage.Collection("tokens")
+	tokensc := strg.Collection("tokens")
 	c.Assert(tokens, gocheck.DeepEquals, tokensc)
 }
 
@@ -111,7 +111,7 @@ func (s *S) TestPasswordTokens(c *gocheck.C) {
 	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	tokens := strg.PasswordTokens()
-	tokensc := strg.storage.Collection("password_tokens")
+	tokensc := strg.Collection("password_tokens")
 	c.Assert(tokens, gocheck.DeepEquals, tokensc)
 }
 
@@ -119,7 +119,7 @@ func (s *S) TestUserActions(c *gocheck.C) {
 	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	actions := strg.UserActions()
-	actionsc := strg.storage.Collection("user_actions")
+	actionsc := strg.Collection("user_actions")
 	c.Assert(actions, gocheck.DeepEquals, actionsc)
 }
 
@@ -127,7 +127,7 @@ func (s *S) TestApps(c *gocheck.C) {
 	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	apps := strg.Apps()
-	appsc := strg.storage.Collection("apps")
+	appsc := strg.Collection("apps")
 	c.Assert(apps, gocheck.DeepEquals, appsc)
 	c.Assert(apps, HasUniqueIndex, []string{"name"})
 }
@@ -136,7 +136,7 @@ func (s *S) TestDeploys(c *gocheck.C) {
 	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	deploys := strg.Deploys()
-	deploysc := strg.storage.Collection("deploys")
+	deploysc := strg.Collection("deploys")
 	c.Assert(deploys, gocheck.DeepEquals, deploysc)
 }
 
@@ -144,7 +144,7 @@ func (s *S) TestPlatforms(c *gocheck.C) {
 	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	plats := strg.Platforms()
-	platsc := strg.storage.Collection("platforms")
+	platsc := strg.Collection("platforms")
 	c.Assert(plats, gocheck.DeepEquals, platsc)
 }
 
@@ -152,7 +152,7 @@ func (s *S) TestLogs(c *gocheck.C) {
 	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	logs := strg.Logs()
-	logsc := strg.storage.Collection("logs")
+	logsc := strg.Collection("logs")
 	c.Assert(logs, gocheck.DeepEquals, logsc)
 }
 
@@ -188,7 +188,7 @@ func (s *S) TestServices(c *gocheck.C) {
 	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	services := strg.Services()
-	servicesc := strg.storage.Collection("services")
+	servicesc := strg.Collection("services")
 	c.Assert(services, gocheck.DeepEquals, servicesc)
 }
 
@@ -204,7 +204,7 @@ func (s *S) TestServiceInstances(c *gocheck.C) {
 	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	serviceInstances := strg.ServiceInstances()
-	serviceInstancesc := strg.storage.Collection("service_instances")
+	serviceInstancesc := strg.Collection("service_instances")
 	c.Assert(serviceInstances, gocheck.DeepEquals, serviceInstancesc)
 }
 
@@ -212,7 +212,7 @@ func (s *S) TestMethodTeamsShouldReturnTeamsCollection(c *gocheck.C) {
 	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	teams := strg.Teams()
-	teamsc := strg.storage.Collection("teams")
+	teamsc := strg.Collection("teams")
 	c.Assert(teams, gocheck.DeepEquals, teamsc)
 }
 
@@ -220,7 +220,7 @@ func (s *S) TestQuota(c *gocheck.C) {
 	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
 	quota := strg.Quota()
-	quotac := strg.storage.Collection("quota")
+	quotac := strg.Collection("quota")
 	c.Assert(quota, gocheck.DeepEquals, quotac)
 }
 

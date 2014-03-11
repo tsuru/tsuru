@@ -4,10 +4,11 @@
 
 // Package db encapsulates tsuru connection with MongoDB.
 //
-// The function Open dials to MongoDB and returns a connection (represented by
-// the storage.Storage type). It manages an internal pool of connections, and
-// reconnects in case of failures. That means that you should not store
-// references to the connection, but always call Open.
+// The function Conn dials to MongoDB using data from the configuration file
+// and returns a connection (represented by the storage.Storage type). It
+// manages an internal pool of connections, and reconnects in case of failures.
+// That means that you should not store references to the connection, but
+// always call Open.
 package db
 
 import (
@@ -22,7 +23,7 @@ const (
 )
 
 type Storage struct {
-	storage *storage.Storage
+	*storage.Storage
 }
 
 // conn reads the tsuru config and calls storage.Open to get a database connection.
@@ -42,35 +43,29 @@ func conn() (*storage.Storage, error) {
 }
 
 func Conn() (*Storage, error) {
-	strg := &Storage{}
-	var err error
-	strg.storage, err = conn()
-	return strg, err
-}
-
-func (s *Storage) Close() {
-	s.storage.Close()
-}
-
-func (s *Storage) Collection(c string) *storage.Collection {
-	return s.storage.Collection(c)
+	var (
+		strg Storage
+		err  error
+	)
+	strg.Storage, err = conn()
+	return &strg, err
 }
 
 // Apps returns the apps collection from MongoDB.
 func (s *Storage) Apps() *storage.Collection {
 	nameIndex := mgo.Index{Key: []string{"name"}, Unique: true}
-	c := s.storage.Collection("apps")
+	c := s.Collection("apps")
 	c.EnsureIndex(nameIndex)
 	return c
 }
 
 func (s *Storage) Deploys() *storage.Collection {
-	return s.storage.Collection("deploys")
+	return s.Collection("deploys")
 }
 
 // Platforms returns the platforms collection from MongoDB.
 func (s *Storage) Platforms() *storage.Collection {
-	return s.storage.Collection("platforms")
+	return s.Collection("platforms")
 }
 
 // Logs returns the logs collection from MongoDB.
@@ -79,7 +74,7 @@ func (s *Storage) Logs() *storage.Collection {
 	sourceIndex := mgo.Index{Key: []string{"source"}}
 	dateAscIndex := mgo.Index{Key: []string{"date"}}
 	dateDescIndex := mgo.Index{Key: []string{"-date"}}
-	c := s.storage.Collection("logs")
+	c := s.Collection("logs")
 	c.EnsureIndex(appNameIndex)
 	c.EnsureIndex(sourceIndex)
 	c.EnsureIndex(dateAscIndex)
@@ -89,48 +84,48 @@ func (s *Storage) Logs() *storage.Collection {
 
 // Services returns the services collection from MongoDB.
 func (s *Storage) Services() *storage.Collection {
-	return s.storage.Collection("services")
+	return s.Collection("services")
 }
 
 // ServiceInstances returns the services_instances collection from MongoDB.
 func (s *Storage) ServiceInstances() *storage.Collection {
-	return s.storage.Collection("service_instances")
+	return s.Collection("service_instances")
 }
 
 // Plans returns the plans collection.
 func (s *Storage) Plans() *storage.Collection {
-	return s.storage.Collection("plans")
+	return s.Collection("plans")
 }
 
 // Users returns the users collection from MongoDB.
 func (s *Storage) Users() *storage.Collection {
 	emailIndex := mgo.Index{Key: []string{"email"}, Unique: true}
-	c := s.storage.Collection("users")
+	c := s.Collection("users")
 	c.EnsureIndex(emailIndex)
 	return c
 }
 
 func (s *Storage) Tokens() *storage.Collection {
-	return s.storage.Collection("tokens")
+	return s.Collection("tokens")
 }
 
 func (s *Storage) PasswordTokens() *storage.Collection {
-	return s.storage.Collection("password_tokens")
+	return s.Collection("password_tokens")
 }
 
 func (s *Storage) UserActions() *storage.Collection {
-	return s.storage.Collection("user_actions")
+	return s.Collection("user_actions")
 }
 
 // Teams returns the teams collection from MongoDB.
 func (s *Storage) Teams() *storage.Collection {
-	return s.storage.Collection("teams")
+	return s.Collection("teams")
 }
 
 // Quota returns the quota collection from MongoDB.
 func (s *Storage) Quota() *storage.Collection {
 	userIndex := mgo.Index{Key: []string{"owner"}, Unique: true}
-	c := s.storage.Collection("quota")
+	c := s.Collection("quota")
 	c.EnsureIndex(userIndex)
 	return c
 }
