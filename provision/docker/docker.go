@@ -404,7 +404,6 @@ func (c *container) logs(w io.Writer) error {
 		Stdout:       true,
 		OutputStream: w,
 		ErrorStream:  w,
-		RawTerminal:  false,
 		Stream:       true,
 	}
 	err := dockerCluster().AttachToContainer(opts)
@@ -417,7 +416,6 @@ func (c *container) logs(w io.Writer) error {
 		Stderr:       true,
 		OutputStream: w,
 		ErrorStream:  w,
-		RawTerminal:  false,
 	}
 	return dockerCluster().AttachToContainer(opts)
 }
