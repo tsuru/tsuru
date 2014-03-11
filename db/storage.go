@@ -11,8 +11,8 @@
 package db
 
 import (
-	"github.com/globocom/tsuru/db/storage"
 	"github.com/globocom/config"
+	"github.com/globocom/tsuru/db/storage"
 	"labix.org/v2/mgo"
 )
 
@@ -22,7 +22,7 @@ const (
 )
 
 type TsrStorage struct {
-    storage *storage.Storage
+	storage *storage.Storage
 }
 
 // Conn reads the tsuru config and calls storage.Open to get a database connection.
@@ -42,18 +42,18 @@ func Conn() (*storage.Storage, error) {
 }
 
 func NewStorage() (*TsrStorage, error) {
-    strg := &TsrStorage{}
-    var err error
-    strg.storage, err = Conn()
-    return strg, err
+	strg := &TsrStorage{}
+	var err error
+	strg.storage, err = Conn()
+	return strg, err
 }
 
 func (s *TsrStorage) Close() {
-    s.storage.Close()
+	s.storage.Close()
 }
 
 func (s *TsrStorage) Collection(c string) *storage.Collection {
-    return s.storage.Collection(c)
+	return s.storage.Collection(c)
 }
 
 // Apps returns the apps collection from MongoDB.
@@ -98,14 +98,14 @@ func (s *TsrStorage) ServiceInstances() *storage.Collection {
 }
 
 // Plans returns the plans collection.
-func (s *Storage) Plans() *Collection {
-	return s.Collection("plans")
+func (s *TsrStorage) Plans() *storage.Collection {
+	return s.storage.Collection("plans")
 }
 
 // Users returns the users collection from MongoDB.
 func (s *TsrStorage) Users() *storage.Collection {
 	emailIndex := mgo.Index{Key: []string{"email"}, Unique: true}
-    c := s.storage.Collection("users")
+	c := s.storage.Collection("users")
 	c.EnsureIndex(emailIndex)
 	return c
 }

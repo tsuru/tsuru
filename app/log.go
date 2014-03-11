@@ -99,7 +99,7 @@ func LogRemove(a *App) error {
 	if err != nil {
 		return err
 	}
-    //defer conn.Close()
+	//defer conn.Close()
 	if a != nil {
 		_, err = conn.Logs().RemoveAll(bson.M{"appname": a.Name})
 	} else {
