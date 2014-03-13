@@ -71,6 +71,7 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["cname"] = app.CName
 	result["ready"] = app.State == "ready"
 	result["owner"] = app.Owner
+	result["deploys"] = app.Deploys
 	return json.Marshal(&result)
 }
 

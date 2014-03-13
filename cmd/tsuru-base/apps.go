@@ -73,6 +73,7 @@ type app struct {
 	Units      []unit
 	Ready      bool
 	Owner      string
+	Deploys    uint
 }
 
 func (a *app) Addr() string {
@@ -96,6 +97,7 @@ Platform: %s
 Teams: %s
 Address: %s
 Owner: %s
+Deploys: %d
 `
 	teams := strings.Join(a.Teams, ", ")
 	units := cmd.NewTable()
@@ -105,7 +107,7 @@ Owner: %s
 			units.AddRow(cmd.Row([]string{unit.Name, unit.State}))
 		}
 	}
-	args := []interface{}{a.Name, a.Repository, a.Platform, teams, a.Addr(), a.Owner}
+	args := []interface{}{a.Name, a.Repository, a.Platform, teams, a.Addr(), a.Owner, a.Deploys}
 	if units.Rows() > 0 {
 		format += "Units:\n%s"
 		args = append(args, units)
