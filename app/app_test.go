@@ -1582,6 +1582,7 @@ func (s *S) TestAppMarshalJSON(c *gocheck.C) {
 		Ip:       "10.10.10.1",
 		CName:    "name.mycompany.com",
 		Owner:    "appOwner",
+		Deploys:  7,
 	}
 	expected := make(map[string]interface{})
 	expected["name"] = "name"
@@ -1592,6 +1593,7 @@ func (s *S) TestAppMarshalJSON(c *gocheck.C) {
 	expected["ip"] = "10.10.10.1"
 	expected["cname"] = "name.mycompany.com"
 	expected["owner"] = "appOwner"
+	expected["deploys"] = "7"
 	expected["ready"] = false
 	data, err := app.MarshalJSON()
 	c.Assert(err, gocheck.IsNil)
@@ -1610,6 +1612,7 @@ func (s *S) TestAppMarshalJSONReady(c *gocheck.C) {
 		CName:    "name.mycompany.com",
 		State:    "ready",
 		Owner:    "appOwner",
+		Deploys:  7,
 	}
 	expected := make(map[string]interface{})
 	expected["name"] = "name"
@@ -1620,6 +1623,7 @@ func (s *S) TestAppMarshalJSONReady(c *gocheck.C) {
 	expected["ip"] = "10.10.10.1"
 	expected["cname"] = "name.mycompany.com"
 	expected["owner"] = "appOwner"
+	expected["deploys"] = "7"
 	expected["ready"] = true
 	data, err := app.MarshalJSON()
 	c.Assert(err, gocheck.IsNil)
