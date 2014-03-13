@@ -1,9 +1,9 @@
 #!/bin/bash -el
 while read oldrev newrev refname
 do
-true
+	COMMIT=${newrev}
 done
 app_dir=${PWD##*/}
 app_name=${app_dir/.git/}
 url="${TSURU_HOST}/apps/${app_name}/repository/clone"
-curl -H "Authorization: bearer ${TSURU_TOKEN}" -d "version=origin/master&commit=${newrev}" -s -N --max-time 1800 $url
+curl -H "Authorization: bearer ${TSURU_TOKEN}" -d "version=origin/master&commit=${COMMIT}" -s -N --max-time 1800 $url
