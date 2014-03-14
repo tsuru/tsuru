@@ -391,11 +391,16 @@ func (c *container) start() error {
 	if err != nil {
 		return err
 	}
+	var encryptHostdir bool
 	sharedBasedir, _ := config.GetString("docker:sharedfs:hostdir")
 	sharedMount, _ := config.GetString("docker:sharedfs:mountpoint")
 	sharedIsolation, _ := config.GetBool("docker:sharedfs:app-isolation")
 	sharedSalt, _ := config.GetString("docker:sharedfs:salt")
-	sharedEncrypt, _ := config.GetBool("docker:sharedfs:encrypt-hostdir")
+	if err != nil {
+		encryptHostdir = false
+	} else {
+		encryptHostdir = true
+	}
 	config := docker.HostConfig{}
 	bindings := make(map[docker.Port][]docker.PortBinding)
 	bindings[docker.Port(fmt.Sprintf("%s/tcp", port))] = []docker.PortBinding{
@@ -408,7 +413,7 @@ func (c *container) start() error {
 	if sharedBasedir != "" && sharedMount != "" {
 		if sharedIsolation {
 			var appHostDir string
-			if sharedEncrypt && sharedSalt != "" {
+			if encryptHostdir {
 				h := crypto.SHA1.New()
 				io.WriteString(h, sharedSalt+c.AppName)
 				appHostDir = fmt.Sprintf("%x", h.Sum(nil))
