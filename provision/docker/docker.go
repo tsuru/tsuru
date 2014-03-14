@@ -394,6 +394,8 @@ func (c *container) start() error {
 	sharedBasedir, _ := config.GetString("docker:sharedfs:hostdir")
 	sharedMount, _ := config.GetString("docker:sharedfs:mountpoint")
 	sharedIsolation, _ := config.GetBool("docker:sharedfs:app-isolation")
+	sharedSalt, _ := config.GetString("docker:sharedfs:salt")
+	sharedEncrypt, _ := config.GetBool("docker:sharedfs:encrypt-hostdir")
 	config := docker.HostConfig{}
 	bindings := make(map[docker.Port][]docker.PortBinding)
 	bindings[docker.Port(fmt.Sprintf("%s/tcp", port))] = []docker.PortBinding{
@@ -405,7 +407,15 @@ func (c *container) start() error {
 	config.PortBindings = bindings
 	if sharedBasedir != "" && sharedMount != "" {
 		if sharedIsolation {
-			config.Binds = append(config.Binds, fmt.Sprintf("%s/%s:%s:rw", sharedBasedir, c.AppName, sharedMount))
+			var appHostDir string
+			if sharedEncrypt && sharedSalt != "" {
+				h := crypto.SHA1.New()
+				io.WriteString(h, sharedSalt+c.AppName)
+				appHostDir = fmt.Sprintf("%x", h.Sum(nil))
+			} else {
+				appHostDir = c.AppName
+			}
+			config.Binds = append(config.Binds, fmt.Sprintf("%s/%s:%s:rw", sharedBasedir, appHostDir, sharedMount))
 		} else {
 			config.Binds = append(config.Binds, fmt.Sprintf("%s:%s:rw", sharedBasedir, sharedMount))
 		}
