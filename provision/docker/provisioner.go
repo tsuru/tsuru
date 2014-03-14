@@ -96,7 +96,7 @@ func (*dockerProvisioner) Start(app provision.App) error {
 		return errors.New(fmt.Sprintf("Got error while getting app containers: %s", err))
 	}
 	for _, c := range containers {
-		err := c.start(app)
+		err := c.start()
 		if err != nil {
 			return err
 		}

@@ -73,10 +73,9 @@ var addRoute = action.Action{
 var startContainer = action.Action{
 	Name: "start-container",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app := ctx.Params[0].(provision.App)
 		c := ctx.Previous.(container)
 		log.Debugf("starting container %s", c.ID)
-		err := c.start(app)
+		err := c.start()
 		if err != nil {
 			log.Errorf("error on start container %s - %s", c.ID, err)
 			return nil, err
