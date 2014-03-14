@@ -167,8 +167,8 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 	exposedPorts[p] = struct{}{}
 
     sharedVolumes := map[string]struct{} {
-        "/mnt/shared"
-    } 
+        "/mnt/shared": {},
+    }
 
 	config := docker.Config{
 		Image:        imageId,
