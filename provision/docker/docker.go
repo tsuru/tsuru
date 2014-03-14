@@ -177,7 +177,6 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 		AttachStdin:  false,
 		AttachStdout: false,
 		AttachStderr: false,
-        Volumes:      sharedVolumes,
 	}
     
 	if sharedMount != "" && sharedBasedir != "" {
