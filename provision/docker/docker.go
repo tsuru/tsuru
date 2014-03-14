@@ -165,6 +165,11 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 	exposedPorts := make(map[docker.Port]struct{}, 1)
 	p := docker.Port(fmt.Sprintf("%s/tcp", port))
 	exposedPorts[p] = struct{}{}
+
+    sharedVolumes := map[string]struct{} {
+        "/mnt/shared"
+    } 
+
 	config := docker.Config{
 		Image:        imageId,
 		Cmd:          cmds,
@@ -173,6 +178,7 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 		AttachStdin:  false,
 		AttachStdout: false,
 		AttachStderr: false,
+        Volumes:      sharedVolumes,
 	}
 	opts := docker.CreateContainerOptions{Name: contName, Config: &config}
 	hostID, c, err := dockerCluster().CreateContainer(opts)
