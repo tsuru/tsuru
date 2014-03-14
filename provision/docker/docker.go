@@ -166,7 +166,7 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 	p := docker.Port(fmt.Sprintf("%s/tcp", port))
 	exposedPorts[p] = struct{}{}
 
-    sharedMount, _ := config.GetString("docker:sharedfs:mountpoint")
+	sharedMount, _ := config.GetString("docker:sharedfs:mountpoint")
 	sharedBasedir, _ := config.GetString("docker:sharedfs:hostdir")
 
 	config := docker.Config{
@@ -178,12 +178,12 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 		AttachStdout: false,
 		AttachStderr: false,
 	}
-    
+
 	if sharedMount != "" && sharedBasedir != "" {
-        config.Volumes = map[string]struct{} {
-            sharedMount: {},
-        }
-    }
+		config.Volumes = map[string]struct{}{
+			sharedMount: {},
+		}
+	}
 
 	opts := docker.CreateContainerOptions{Name: contName, Config: &config}
 	hostID, c, err := dockerCluster().CreateContainer(opts)
@@ -397,8 +397,8 @@ func (c *container) start(app provision.App) error {
 	}
 
 	sharedBasedir, _ := config.GetString("docker:sharedfs:hostdir")
-    sharedMount, _ := config.GetString("docker:sharedfs:mountpoint")
-    sharedIsolation, _ := config.GetBool("docker:sharedfs:app-isolation")
+	sharedMount, _ := config.GetString("docker:sharedfs:mountpoint")
+	sharedIsolation, _ := config.GetBool("docker:sharedfs:app-isolation")
 
 	config := docker.HostConfig{}
 	bindings := make(map[docker.Port][]docker.PortBinding)
@@ -411,11 +411,11 @@ func (c *container) start(app provision.App) error {
 	config.PortBindings = bindings
 
 	if sharedBasedir != "" && sharedMount != "" {
-        if ( sharedIsolation ) {
-            config.Binds = append(config.Binds, fmt.Sprintf("%s/%s:%s:rw", sharedBasedir, app.GetName(), sharedMount))
-        } else {
-            config.Binds = append(config.Binds, fmt.Sprintf("%s:%s:rw", sharedBasedir, sharedMount))
-        }
+		if sharedIsolation {
+			config.Binds = append(config.Binds, fmt.Sprintf("%s/%s:%s:rw", sharedBasedir, app.GetName(), sharedMount))
+		} else {
+			config.Binds = append(config.Binds, fmt.Sprintf("%s:%s:rw", sharedBasedir, sharedMount))
+		}
 	}
 
 	return dockerCluster().StartContainer(c.ID, &config)
