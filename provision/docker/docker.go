@@ -399,6 +399,9 @@ func (c *container) start() error {
 		},
 	}
 	config.PortBindings = bindings
+
+    config.Binds = append(config.Binds, "/mnt/testshare:/mnt/shared:rw")
+
 	return dockerCluster().StartContainer(c.ID, &config)
 }
 
