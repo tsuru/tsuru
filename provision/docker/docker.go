@@ -166,9 +166,8 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 	p := docker.Port(fmt.Sprintf("%s/tcp", port))
 	exposedPorts[p] = struct{}{}
 
-    sharedVolumes := map[string]struct{} {
-        "/mnt/shared": {},
-    }
+    sharedMount, _ := config.GetString("docker:sharedfs:mountpoint")
+	sharedBasedir, _ := config.GetString("docker:sharedfs:hostdir")
 
 	config := docker.Config{
 		Image:        imageId,
@@ -180,6 +179,13 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 		AttachStderr: false,
         Volumes:      sharedVolumes,
 	}
+    
+	if sharedMount != "" && sharedBasedir != "" {
+        config.Volumes = map[string]struct{} {
+            sharedMount: {},
+        }
+    }
+
 	opts := docker.CreateContainerOptions{Name: contName, Config: &config}
 	hostID, c, err := dockerCluster().CreateContainer(opts)
 	if err != nil {
@@ -385,11 +391,16 @@ func (c *container) stop() error {
 	return err
 }
 
-func (c *container) start() error {
+func (c *container) start(app provision.App) error {
 	port, err := getPort()
 	if err != nil {
 		return err
 	}
+
+	sharedBasedir, _ := config.GetString("docker:sharedfs:hostdir")
+    sharedMount, _ := config.GetString("docker:sharedfs:mountpoint")
+    sharedIsolation, _ := config.GetBool("docker:sharedfs:app-isolation")
+
 	config := docker.HostConfig{}
 	bindings := make(map[docker.Port][]docker.PortBinding)
 	bindings[docker.Port(fmt.Sprintf("%s/tcp", port))] = []docker.PortBinding{
@@ -400,7 +411,13 @@ func (c *container) start() error {
 	}
 	config.PortBindings = bindings
 
-    config.Binds = append(config.Binds, "/mnt/testshare:/mnt/shared:rw")
+	if sharedBasedir != "" && sharedMount != "" {
+        if ( sharedIsolation ) {
+            config.Binds = append(config.Binds, fmt.Sprintf("%s/%s:%s:rw", sharedBasedir, app.GetName(), sharedMount))
+        } else {
+            config.Binds = append(config.Binds, fmt.Sprintf("%s:%s:rw", sharedBasedir, sharedMount))
+        }
+	}
 
 	return dockerCluster().StartContainer(c.ID, &config)
 }
