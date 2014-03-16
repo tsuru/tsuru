@@ -391,7 +391,6 @@ func (c *container) start() error {
 	if err != nil {
 		return err
 	}
-	var encryptHostdir bool
 	sharedBasedir, _ := config.GetString("docker:sharedfs:hostdir")
 	sharedMount, _ := config.GetString("docker:sharedfs:mountpoint")
 	sharedIsolation, _ := config.GetBool("docker:sharedfs:app-isolation")
