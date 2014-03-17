@@ -6,9 +6,9 @@
 Documentation
 +++++++++++++
 
-* :doc:`Why Tsuru? </why>`.
+* :doc:`Why Tsuru? </why>`
 * :doc:`Overview </overview>`
-* :doc:`FAQ </faq>`.
+* :doc:`FAQ </faq>`
 * :doc:`releases </releases/index>`
 
 Using Tsuru
