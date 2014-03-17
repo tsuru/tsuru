@@ -16,6 +16,8 @@ Using Tsuru
 
 Deploy you applications on Tsuru.
 
+* :doc:`command-line installation guide </install/client>`
+
 * :doc:`building your application </apps/quickstart>`
 * :doc:`python/django </apps/quickstart/python>`
 * :doc:`ruby/rails </apps/quickstart/ruby>`
@@ -25,8 +27,7 @@ Deploy you applications on Tsuru.
 * :doc:`understanding deployment hooks </apps/deploy-hooks>`
 * :doc:`recovery and troubleshooting </apps/recovery>`
 
-* :doc:`Tsuru command-line installation guide </install/client>`
-* :doc:`Tsuru command-line usage guide </apps/client/usage>`
+* :doc:`command-line usage guide </apps/client/usage>`
 
 * :doc:`using services </apps/client/services>`
 
@@ -38,10 +39,11 @@ Build your cloud with Tsuru.
 Install Tsuru
 -------------
 
-* :doc:`Tsuru and juju </build>`
 
-* :doc:`Tsuru and docker on ubuntu </docker>`
-* :doc:`Tsuru and docker on centos </docker-centos>`
+* :doc:`with docker on ubuntu </docker>`
+* :doc:`with docker on centos </docker-centos>`
+
+* :doc:`with juju (python version) on ubuntu </build>`
 
 Configure and run Tsuru
 -----------------------
@@ -72,10 +74,10 @@ Get Involved
 Contribute to Tsuru
 +++++++++++++++++++
 
-* :doc:`coding style </contribute/coding-style>`
 * :doc:`how to contribute </contribute>`
-* :doc:`setting up your local environment </contribute/setting-up-your-tsuru-development-environment>`
+* :doc:`coding style </contribute/coding-style>`
 * :doc:`Building a fully functional development environment with Vagrant </developer/vagrant>`
+* :doc:`setting up your local environment </contribute/setting-up-your-tsuru-development-environment>`
 
 .. toctree::
     :hidden:

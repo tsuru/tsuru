@@ -66,7 +66,7 @@ dt:hover > a.headerlink {
 
 #content ol, #content ul {
 	list-style-type: disc;
-	padding: 0 15px;
+	padding: 15px;
 }
 
 #content a {
