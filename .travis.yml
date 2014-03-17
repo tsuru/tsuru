@@ -2,7 +2,6 @@ language: go
 go:
   - 1.1.2
   - 1.2
-  - tip
 env:
   - GOARCH=amd64
 before_install:
