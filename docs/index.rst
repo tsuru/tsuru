@@ -11,26 +11,10 @@ Documentation
 * :doc:`FAQ </faq>`.
 * :doc:`releases </releases/index>`
 
-Install Tsuru
-+++++++++++++
+Using Tsuru
++++++++++++
 
-* :doc:`Tsuru and juju </build>`
-
-* :doc:`Tsuru and docker on ubuntu </docker>`
-* :doc:`Tsuru and docker on centos </docker-centos>`
-
-Configure and run Tsuru
-+++++++++++++++++++++++
-
-* :doc:`docker provisioner architecture </provisioners/docker/architecture>`
-
-* :doc:`configuration reference </config>`
-* :doc:`backing up Tsuru </server/backup>`
-
-* :doc:`mysql </services/mysql-example>`
-
-Use Tsuru command-line and deploy your applications
-+++++++++++++++++++++++++++++++++++++++++++++++++++
+Deploy you applications on Tsuru.
 
 * :doc:`building your application </apps/quickstart>`
 * :doc:`python/django </apps/quickstart/python>`
@@ -46,8 +30,33 @@ Use Tsuru command-line and deploy your applications
 
 * :doc:`using services </apps/client/services>`
 
-Develop applications and services for Tsuru clouds
-++++++++++++++++++++++++++++++++++++++++++++++++++
+Running Tsuru
++++++++++++++
+
+Build your cloud with Tsuru.
+
+Install Tsuru
+-------------
+
+* :doc:`Tsuru and juju </build>`
+
+* :doc:`Tsuru and docker on ubuntu </docker>`
+* :doc:`Tsuru and docker on centos </docker-centos>`
+
+Configure and run Tsuru
+-----------------------
+
+* :doc:`docker provisioner architecture </provisioners/docker/architecture>`
+
+* :doc:`configuration reference </config>`
+* :doc:`backing up Tsuru </server/backup>`
+
+* :doc:`mysql </services/mysql-example>`
+
+Extending Tsuru
++++++++++++++++
+
+Create your services and use tsuru api.
 
 * :doc:`API reference </api>`
 

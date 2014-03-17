@@ -1,5 +1,5 @@
 .section h2 {
-    margin: 30px 0;
+    margin: 30px 0 5px;
     font-size: 30.5px;
 }
 
@@ -66,9 +66,26 @@ dt:hover > a.headerlink {
 
 #content ol, #content ul {
 	list-style-type: disc;
-	padding: 15px;
+	padding: 0 15px;
 }
 
 #content a {
 	text-decoration: underline;
+}
+
+#using-tsuru, #running-tsuru, #extending-tsuru {
+	float: left;
+	width: 30%;
+	margin-left: 10px;
+	clear: none;
+	margin-bottom: 30px;
+}
+
+#using-tsuru h2, #running-tsuru h2, #extending-tsuru h2 {
+	background-color: #efefef;
+	padding-left: 15px;
+}
+
+#content .content-container {
+	max-width: 1024px;
 }
