@@ -1064,6 +1064,47 @@ func (s *AuthSuite) TestGetTeamForbidden(c *gocheck.C) {
 	c.Assert(e.Message, gocheck.Equals, "User is not member of this team")
 }
 
+func (s *AuthSuite) TestUserIsAdmin(c *gocheck.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	h := testHandler{}
+	ts := testing.StartGandalfTestServer(&h)
+	defer ts.Close()
+	u := &auth.User{Email: "spider@man.com", Password: "123456"}
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
+	request, err := http.NewRequest("GET", "/users/is_admin", nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = isAdmin(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *AuthSuite) TestUserIsNotAdmin(c *gocheck.C) {
+	user := &auth.User{Email: "who@thewho.com", Password: "123456"}
+	err := user.Create()
+	c.Assert(err, gocheck.IsNil)
+	team := &auth.Team{Name: "faketeam", Users: []string{s.user.Email}}
+	conn, _ := db.Conn()
+	defer conn.Close()
+	defer conn.Users().Remove(bson.M{"email": user.Email})
+	defer conn.Teams().Remove(bson.M{"team": team.Name})
+	err = conn.Teams().Insert(team)
+	c.Assert(err, gocheck.IsNil)
+	token, err := user.CreateToken("123456")
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Tokens().Remove(bson.M{"token": token.Token})
+	request, err := http.NewRequest("GET", "/users/is_admin", nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = isAdmin(recorder, request, token)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
+	c.Assert(e.Message, gocheck.Equals, "User is not member of admin team")
+}
+
 func (s *AuthSuite) TestAddKeyToUserAddsAKeyToTheUser(c *gocheck.C) {
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
