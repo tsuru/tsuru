@@ -80,6 +80,13 @@ tsuru
 
 `tsuru` is the tsuru client.
 
+0.8.9.1 release
+---------------
+.. toctree::
+   :maxdepth: 1
+
+   tsuru/0.8.9.1
+
 0.8.9 release
 -------------
 .. toctree::

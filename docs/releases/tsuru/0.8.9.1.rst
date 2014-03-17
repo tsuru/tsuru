@@ -1,0 +1,18 @@
+===========================
+tsuru 0.8.9.1 release notes
+===========================
+
+Welcome to tsuru 0.8.9.1!
+
+These release notes cover the new features you'll want to be aware of when
+upgrading from tsuru 0.8.9 or older versions.
+
+.. _`new features`: `What's new in tsuru 0.8.9.1`_
+
+What's new in tsuru 0.8.9.1
+===========================
+
+Improvements on app-info
+------------------------
+
+Now the number of deploys is displayed on `app-info` command 
