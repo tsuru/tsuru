@@ -165,6 +165,7 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 	exposedPorts := make(map[docker.Port]struct{}, 1)
 	p := docker.Port(fmt.Sprintf("%s/tcp", port))
 	exposedPorts[p] = struct{}{}
+	gitUnitRepo, _ := config.GetString("git:unit-repo")
 	sharedMount, _ := config.GetString("docker:sharedfs:mountpoint")
 	sharedBasedir, _ := config.GetString("docker:sharedfs:hostdir")
 	config := docker.Config{
@@ -176,10 +177,13 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 		AttachStdout: false,
 		AttachStderr: false,
 	}
+	config.Env = append(config.Env, fmt.Sprintf("TSURU_APP_DIR=%s", gitUnitRepo))
 	if sharedMount != "" && sharedBasedir != "" {
 		config.Volumes = map[string]struct{}{
 			sharedMount: {},
 		}
+
+		config.Env = append(config.Env, fmt.Sprintf("TSURU_SHAREDFS_MOUNTPOINT=%s", sharedMount))
 	}
 	opts := docker.CreateContainerOptions{Name: contName, Config: &config}
 	hostID, c, err := dockerCluster().CreateContainer(opts)
