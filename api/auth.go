@@ -104,7 +104,7 @@ func login(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 	}
-	fmt.Fprintf(w, `{"token":"%s"}`, t.Token)
+	fmt.Fprintf(w, `{"token":"%s","is_admin":%v}`, t.Token, u.IsAdmin())
 	return nil
 }
 
@@ -418,17 +418,6 @@ func getTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(team)
-}
-
-func isAdmin(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
-	if !u.IsAdmin() {
-		return &errors.HTTP{Code: http.StatusForbidden, Message: "User is not member of admin team"}
-	}
-	return nil
 }
 
 func getKeyFromBody(b io.Reader) (string, error) {

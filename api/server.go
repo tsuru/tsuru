@@ -120,7 +120,6 @@ func RunServer(dry bool) {
 	m.Del("/users/tokens", authorizationRequiredHandler(logout))
 	m.Put("/users/password", authorizationRequiredHandler(changePassword))
 	m.Del("/users", authorizationRequiredHandler(removeUser))
-	m.Get("/users/is_admin", authorizationRequiredHandler(isAdmin))
 	m.Get("/users/:email/keys", authorizationRequiredHandler(listKeys))
 	m.Post("/users/keys", authorizationRequiredHandler(addKeyToUser))
 	m.Del("/users/keys", authorizationRequiredHandler(removeKeyFromUser))
