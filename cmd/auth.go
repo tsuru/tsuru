@@ -132,13 +132,13 @@ func (c *login) Run(context *Context, client *Client) error {
 	if err != nil {
 		return err
 	}
-	out := make(map[string]string)
+	out := make(map[string]interface{})
 	err = json.Unmarshal(result, &out)
 	if err != nil {
 		return err
 	}
 	fmt.Fprintln(context.Stdout, "Successfully logged in!")
-	return writeToken(out["token"])
+	return writeToken(out["token"].(string))
 }
 
 func (c *login) Info() *Info {

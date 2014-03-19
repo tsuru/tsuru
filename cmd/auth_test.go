@@ -26,7 +26,7 @@ func (s *S) TestLogin(c *gocheck.C) {
 	expected := "Password: \nSuccessfully logged in!\n"
 	reader := strings.NewReader("chico\n")
 	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, reader}
-	client := NewClient(&http.Client{Transport: &ttesting.Transport{Message: `{"token": "sometoken"}`, Status: http.StatusOK}}, nil, manager)
+	client := NewClient(&http.Client{Transport: &ttesting.Transport{Message: `{"token": "sometoken", "is_admin": true}`, Status: http.StatusOK}}, nil, manager)
 	command := login{}
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
