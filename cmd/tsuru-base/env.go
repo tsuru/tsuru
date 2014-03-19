@@ -50,7 +50,11 @@ func (c *EnvGet) Run(context *cmd.Context, client *cmd.Client) error {
 	}
 	formatted := make([]string, 0, len(variables))
 	for _, v := range variables {
-		formatted = append(formatted, fmt.Sprintf("%s=%s", v["name"], v["value"]))
+		value := "*** (private variable)"
+		if v["public"].(bool) {
+			value = v["value"].(string)
+		}
+		formatted = append(formatted, fmt.Sprintf("%s=%s", v["name"], value))
 	}
 	sort.Strings(formatted)
 	fmt.Fprintln(context.Stdout, strings.Join(formatted, "\n"))

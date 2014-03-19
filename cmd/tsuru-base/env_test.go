@@ -89,6 +89,24 @@ func (s *S) TestEnvGetAlwaysPrintInAlphabeticalOrder(c *gocheck.C) {
 	c.Assert(stdout.String(), gocheck.Equals, result)
 }
 
+func (s *S) TestEnvGetPrivateVariables(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	jsonResult := `[{"name": "DATABASE_USER", "value": "someuser", "public": true}, {"name": "DATABASE_HOST", "value": "somehost", "public": false}]`
+	result := "DATABASE_HOST=*** (private variable)\nDATABASE_USER=someuser\n"
+	params := []string{"DATABASE_HOST", "DATABASE_USER"}
+	context := cmd.Context{
+		Args:   params,
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: jsonResult, Status: http.StatusOK}}, nil, manager)
+	command := EnvGet{}
+	command.Flags().Parse(true, []string{"-a", "someapp"})
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, result)
+}
+
 func (s *S) TestEnvGetWithoutTheFlag(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	jsonResult := `[{"name": "DATABASE_HOST", "value": "somehost", "public": true}, {"name": "DATABASE_USER", "value": "someuser", "public": true}]`
