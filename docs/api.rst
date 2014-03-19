@@ -111,7 +111,7 @@ Example:
 ::
 
     GET /apps/myapp/env HTTP/1.1
-    {"DATABASE_HOST":"localhost"}
+    [{"name": "DATABASE_HOST", "value": "localhost", "public": true}]
 
 Set an app environment
 **********************
