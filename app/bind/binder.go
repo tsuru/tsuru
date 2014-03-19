@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,25 +6,12 @@
 // service.
 package bind
 
-import "fmt"
-
 // EnvVar represents a environment variable for an app.
 type EnvVar struct {
 	Name         string
 	Value        string
 	Public       bool
 	InstanceName string
-}
-
-func (e *EnvVar) String() string {
-	var value, suffix string
-	if e.Public {
-		value = e.Value
-	} else {
-		value = "***"
-		suffix = " (private variable)"
-	}
-	return fmt.Sprintf("%s%s", value, suffix)
 }
 
 type Unit interface {
