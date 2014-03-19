@@ -1314,8 +1314,15 @@ func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = getEnv(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
-	expected := `{"DATABASE_HOST":"localhost"}` + "\n"
-	c.Assert(recorder.Body.String(), gocheck.Equals, expected)
+	expected := []map[string]interface{}{{
+		"name":   "DATABASE_HOST",
+		"value":  "localhost",
+		"public": true,
+	}}
+	result := []map[string]interface{}{}
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.DeepEquals, expected)
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
 	action := testing.Action{
 		Action: "get-env",
@@ -1346,11 +1353,11 @@ func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *gocheck.C) {
 	err = getEnv(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(recorder.Header().Get("Content-type"), gocheck.Equals, "application/json")
-	expected := map[string]string{
-		"DATABASE_HOST": "localhost",
-		"DATABASE_USER": "root",
+	expected := []map[string]interface{}{
+		{"name": "DATABASE_HOST", "value": "localhost", "public": true},
+		{"name": "DATABASE_USER", "value": "root", "public": true},
 	}
-	var got map[string]string
+	var got []map[string]interface{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &got)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(got, gocheck.DeepEquals, expected)
@@ -1360,40 +1367,6 @@ func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *gocheck.C) {
 		Extra:  []interface{}{"app=" + a.Name, "envs=[DATABASE_HOST DATABASE_USER]"},
 	}
 	c.Assert(action, testing.IsRecorded)
-}
-
-func (s *S) TestGetEnvHandlerReturnsAllVariablesIfEnvironmentVariablesAreMissingWithMaskOnPrivateVars(c *gocheck.C) {
-	a := app.App{
-		Name:     "time",
-		Platform: "pink-floyd",
-		Teams:    []string{s.team.Name},
-		Env: map[string]bind.EnvVar{
-			"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
-			"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
-			"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
-		},
-	}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	expected := map[string]string{
-		"DATABASE_HOST":     "localhost",
-		"DATABASE_PASSWORD": "*** (private variable)",
-		"DATABASE_USER":     "root",
-	}
-	var got map[string]string
-	bodies := []io.Reader{nil, strings.NewReader("")}
-	for _, body := range bodies {
-		request, err := http.NewRequest("GET", "/apps/time/env/?:app=time", body)
-		c.Assert(err, gocheck.IsNil)
-		recorder := httptest.NewRecorder()
-		err = getEnv(recorder, request, s.token)
-		c.Assert(err, gocheck.IsNil)
-		err = json.Unmarshal(recorder.Body.Bytes(), &got)
-		c.Assert(err, gocheck.IsNil)
-		c.Assert(got, gocheck.DeepEquals, expected)
-	}
 }
 
 func (s *S) TestGetEnvHandlerReturnsInternalErrorIfReadAllFails(c *gocheck.C) {

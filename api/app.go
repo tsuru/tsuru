@@ -386,21 +386,27 @@ func getEnv(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
-	l := len(variables)
-	if l == 0 {
-		l = len(app.Env)
-	}
-	result := make(map[string]string, l)
+	var result []map[string]interface{}
 	w.Header().Set("Content-Type", "application/json")
 	if len(variables) > 0 {
 		for _, variable := range variables {
 			if v, ok := app.Env[variable]; ok {
-				result[variable] = v.String()
+				item := map[string]interface{}{
+					"name":   v.Name,
+					"value":  v.Value,
+					"public": v.Public,
+				}
+				result = append(result, item)
 			}
 		}
 	} else {
-		for k, v := range app.Env {
-			result[k] = v.String()
+		for _, v := range app.Env {
+			item := map[string]interface{}{
+				"name":   v.Name,
+				"value":  v.Value,
+				"public": v.Public,
+			}
+			result = append(result, item)
 		}
 	}
 	return json.NewEncoder(w).Encode(result)
