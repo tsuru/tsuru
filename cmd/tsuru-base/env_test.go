@@ -28,7 +28,7 @@ If you don't provide the app name, tsuru will try to guess it.`
 
 func (s *S) TestEnvGetRun(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	jsonResult := `{"DATABASE_HOST":"somehost"}`
+	jsonResult := `[{"name": "DATABASE_HOST", "value": "somehost", "public": true}]`
 	result := "DATABASE_HOST=somehost\n"
 	context := cmd.Context{
 		Args:   []string{"DATABASE_HOST"},
@@ -45,7 +45,7 @@ func (s *S) TestEnvGetRun(c *gocheck.C) {
 
 func (s *S) TestEnvGetRunWithMultipleParams(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	jsonResult := `{"DATABASE_HOST":"somehost","DATABASE_USER":"someuser"}`
+	jsonResult := `[{"name": "DATABASE_HOST", "value": "somehost", "public": true}, {"name": "DATABASE_USER", "value": "someuser", "public": true}]`
 	result := "DATABASE_HOST=somehost\nDATABASE_USER=someuser\n"
 	params := []string{"DATABASE_HOST", "DATABASE_USER"}
 	context := cmd.Context{
@@ -73,7 +73,7 @@ func (s *S) TestEnvGetRunWithMultipleParams(c *gocheck.C) {
 
 func (s *S) TestEnvGetAlwaysPrintInAlphabeticalOrder(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	jsonResult := `{"DATABASE_USER":"someuser","DATABASE_HOST":"somehost"}`
+	jsonResult := `[{"name": "DATABASE_USER", "value": "someuser", "public": true}, {"name": "DATABASE_HOST", "value": "somehost", "public": true}]`
 	result := "DATABASE_HOST=somehost\nDATABASE_USER=someuser\n"
 	params := []string{"DATABASE_HOST", "DATABASE_USER"}
 	context := cmd.Context{
@@ -91,7 +91,7 @@ func (s *S) TestEnvGetAlwaysPrintInAlphabeticalOrder(c *gocheck.C) {
 
 func (s *S) TestEnvGetWithoutTheFlag(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	jsonResult := `{"DATABASE_HOST":"somehost","DATABASE_USER":"someuser"}`
+	jsonResult := `[{"name": "DATABASE_HOST", "value": "somehost", "public": true}, {"name": "DATABASE_USER", "value": "someuser", "public": true}]`
 	result := "DATABASE_HOST=somehost\nDATABASE_USER=someuser\n"
 	params := []string{"DATABASE_HOST", "DATABASE_USER"}
 	context := cmd.Context{

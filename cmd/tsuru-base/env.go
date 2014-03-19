@@ -43,14 +43,14 @@ func (c *EnvGet) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	var variables map[string]string
+	var variables []map[string]interface{}
 	err = json.Unmarshal(b, &variables)
 	if err != nil {
 		return err
 	}
 	formatted := make([]string, 0, len(variables))
-	for name, value := range variables {
-		formatted = append(formatted, name+"="+value)
+	for _, v := range variables {
+		formatted = append(formatted, fmt.Sprintf("%s=%s", v["name"], v["value"]))
 	}
 	sort.Strings(formatted)
 	fmt.Fprintln(context.Stdout, strings.Join(formatted, "\n"))
