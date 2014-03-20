@@ -163,7 +163,7 @@ func (s *HandlersSuite) TestListNodeHandlerWithoutCluster(c *gocheck.C) {
 	c.Assert(result[1].Address, gocheck.DeepEquals, "host.com:4243")
 }
 
-func (s *HandlersSuite) TestListContainersByNodeHandler(c *gocheck.C) {
+func (s *HandlersSuite) TestListContainersByHostHandler(c *gocheck.C) {
 	var result []container
 	coll := collection()
 	dCluster, _ = cluster.New(segScheduler, nil)
@@ -175,7 +175,7 @@ func (s *HandlersSuite) TestListContainersByNodeHandler(c *gocheck.C) {
 	defer coll.Remove(bson.M{"id": "bleble"})
 	req, err := http.NewRequest("GET", "/node/cittavld1182.globoi.com/containers?:address=http://cittavld1182.globoi.com", nil)
 	rec := httptest.NewRecorder()
-	err = listContainersByNodeHandler(rec, req, nil)
+	err = listContainersByHostHandler(rec, req, nil)
 	c.Assert(err, gocheck.IsNil)
 	body, err := ioutil.ReadAll(rec.Body)
 	c.Assert(err, gocheck.IsNil)

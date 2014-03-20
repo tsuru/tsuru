@@ -15,7 +15,7 @@ import (
 
 func init() {
 	api.RegisterHandler("/node", "GET", api.AdminRequiredHandler(listNodeHandler))
-	api.RegisterHandler("/node/:address/containers", "GET", api.AdminRequiredHandler(listContainersByNodeHandler))
+	api.RegisterHandler("/node/:address/containers", "GET", api.AdminRequiredHandler(listContainersByHostHandler))
 	api.RegisterHandler("/node/:appname/containers", "GET", api.AdminRequiredHandler(listContainersByAppHandler))
 	api.RegisterAdminHandler("/node/add", "POST", api.Handler(addNodeHandler))
 	api.RegisterAdminHandler("/node/remove", "DELETE", api.Handler(removeNodeHandler))
@@ -49,9 +49,9 @@ func listNodeHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) erro
 }
 
 //listContainersHandler call scheduler.Containers to list all containers into it.
-func listContainersByNodeHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func listContainersByHostHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	n := r.URL.Query().Get(":address")
-	containerList, err := listContainersByNode(n)
+	containerList, err := listContainersByHost(n)
 	if err != nil {
 		return err
 	}

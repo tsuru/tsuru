@@ -190,7 +190,7 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 	return cont, nil
 }
 
-func listContainersByNode(address string) ([]container, error) {
+func listContainersByHost(address string) ([]container, error) {
 	var list []container
 	coll := collection()
 	defer coll.Close()

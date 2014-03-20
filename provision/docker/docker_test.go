@@ -89,7 +89,7 @@ func (s *S) TestNewContainerUndefinedUser(c *gocheck.C) {
 	c.Assert(container.Config.User, gocheck.Equals, "")
 }
 
-func (s *S) TestListContainersByNode(c *gocheck.C) {
+func (s *S) TestListContainersByHost(c *gocheck.C) {
 	var result []container
 	coll := collection()
 	defer coll.Close()
@@ -99,7 +99,7 @@ func (s *S) TestListContainersByNode(c *gocheck.C) {
 		container{ID: "blibli", Type: "java", AppName: "masoq", HostAddr: "http://cittavld1182.globoi.com"},
 	)
 	defer coll.RemoveAll(bson.M{"hostaddr": "http://cittavld1182.globoi.com"})
-	result, err := listContainersByNode("http://cittavld1182.globoi.com")
+	result, err := listContainersByHost("http://cittavld1182.globoi.com")
 	c.Assert(result[0].ID, gocheck.DeepEquals, "blabla")
 	c.Assert(result[1].AppName, gocheck.DeepEquals, "wat")
 	c.Assert(result[2].Type, gocheck.DeepEquals, "java")
