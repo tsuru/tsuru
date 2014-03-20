@@ -163,7 +163,7 @@ func (s *HandlersSuite) TestListNodeHandlerWithoutCluster(c *gocheck.C) {
 	c.Assert(result[1].Address, gocheck.DeepEquals, "host.com:4243")
 }
 
-func (s *HandlersSuite) TestListContainersHandler(c *gocheck.C) {
+func (s *HandlersSuite) TestListContainersByNodeHandler(c *gocheck.C) {
 	var result []container
 	coll := collection()
 	dCluster, _ = cluster.New(segScheduler, nil)
@@ -175,7 +175,7 @@ func (s *HandlersSuite) TestListContainersHandler(c *gocheck.C) {
 	defer coll.Remove(bson.M{"id": "bleble"})
 	req, err := http.NewRequest("GET", "/node/cittavld1182.globoi.com/containers?:address=http://cittavld1182.globoi.com", nil)
 	rec := httptest.NewRecorder()
-	err = listContainersHandler(rec, req, nil)
+	err = listContainersByNodeHandler(rec, req, nil)
 	c.Assert(err, gocheck.IsNil)
 	body, err := ioutil.ReadAll(rec.Body)
 	c.Assert(err, gocheck.IsNil)
@@ -187,4 +187,30 @@ func (s *HandlersSuite) TestListContainersHandler(c *gocheck.C) {
 	c.Assert(result[1].ID, gocheck.DeepEquals, "bleble")
 	c.Assert(result[1].Type, gocheck.DeepEquals, "java")
 	c.Assert(result[1].HostAddr, gocheck.DeepEquals, "http://cittavld1182.globoi.com")
+}
+
+func (s *HandlersSuite) TestListContainersByAppHandler(c *gocheck.C) {
+	var result []container
+	coll := collection()
+	dCluster, _ = cluster.New(segScheduler, nil)
+	err := coll.Insert(container{ID: "blabla", AppName: "appbla", HostAddr: "http://cittavld1182.globoi.com"})
+	c.Assert(err, gocheck.IsNil)
+	defer coll.Remove(bson.M{"id": "blabla"})
+	err = coll.Insert(container{ID: "bleble", AppName: "appbla", HostAddr: "http://cittavld1180.globoi.com"})
+	c.Assert(err, gocheck.IsNil)
+	defer coll.Remove(bson.M{"id": "bleble"})
+	req, err := http.NewRequest("GET", "/node/appbla/containers?:appname=appbla", nil)
+	rec := httptest.NewRecorder()
+	err = listContainersByAppHandler(rec, req, nil)
+	c.Assert(err, gocheck.IsNil)
+	body, err := ioutil.ReadAll(rec.Body)
+	c.Assert(err, gocheck.IsNil)
+	err = json.Unmarshal(body, &result)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result[0].ID, gocheck.DeepEquals, "blabla")
+	c.Assert(result[0].AppName, gocheck.DeepEquals, "appbla")
+	c.Assert(result[0].HostAddr, gocheck.DeepEquals, "http://cittavld1182.globoi.com")
+	c.Assert(result[1].ID, gocheck.DeepEquals, "bleble")
+	c.Assert(result[1].AppName, gocheck.DeepEquals, "appbla")
+	c.Assert(result[1].HostAddr, gocheck.DeepEquals, "http://cittavld1180.globoi.com")
 }

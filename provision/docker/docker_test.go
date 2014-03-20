@@ -124,6 +124,23 @@ func (s *S) TestGetSSHCommandsDefaultSSHDPath(c *gocheck.C) {
 	c.Assert(commands[1], gocheck.Equals, "sudo /usr/sbin/sshd -D")
 }
 
+func (s *S) TestListContainersByApp(c *gocheck.C) {
+	var result []container
+	coll := collection()
+	defer coll.Close()
+	coll.Insert(
+		container{ID: "Hey", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1180.globoi.com"},
+		container{ID: "Ho", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1182.globoi.com"},
+		container{ID: "Let's Go", Type: "java", AppName: "myapp", HostAddr: "http://cittavld597.globoi.com"},
+	)
+	defer coll.RemoveAll(bson.M{"appname": "myapp"})
+	result, err := listContainersByApp("myapp")
+	c.Assert(result[0].ID, gocheck.DeepEquals, "Hey")
+	c.Assert(result[1].HostAddr, gocheck.DeepEquals, "http://cittavld1182.globoi.com")
+	c.Assert(result[2].Type, gocheck.DeepEquals, "java")
+	c.Assert(err, gocheck.IsNil)
+}
+
 func (s *S) TestGetSSHCommandsDefaultKeyFile(c *gocheck.C) {
 	rfs := ftesting.RecordingFs{}
 	f, err := rfs.Create(os.ExpandEnv("${HOME}/.ssh/id_rsa.pub"))

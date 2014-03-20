@@ -15,7 +15,8 @@ import (
 
 func init() {
 	api.RegisterHandler("/node", "GET", api.AdminRequiredHandler(listNodeHandler))
-	api.RegisterHandler("/node/:address/containers", "GET", api.AdminRequiredHandler(listContainersHandler))
+	api.RegisterHandler("/node/:address/containers", "GET", api.AdminRequiredHandler(listContainersByNodeHandler))
+	api.RegisterHandler("/node/:appname/containers", "GET", api.AdminRequiredHandler(listContainersByAppHandler))
 	api.RegisterAdminHandler("/node/add", "POST", api.Handler(addNodeHandler))
 	api.RegisterAdminHandler("/node/remove", "DELETE", api.Handler(removeNodeHandler))
 }
@@ -47,9 +48,19 @@ func listNodeHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) erro
 	return json.NewEncoder(w).Encode(nodeList)
 }
 
-func listContainersHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+//listContainersHandler call scheduler.Containers to list all containers into it.
+func listContainersByNodeHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	n := r.URL.Query().Get(":address")
 	containerList, err := listContainersByNode(n)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(containerList)
+}
+
+func listContainersByAppHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+	n := r.URL.Query().Get(":appname")
+	containerList, err := listContainersByApp(n)
 	if err != nil {
 		return err
 	}
