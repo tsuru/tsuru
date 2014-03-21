@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -311,7 +311,11 @@ func (s *S) TestSetEnvironVariablesToAppForwardReturnsEnvVars(c *gocheck.C) {
 			InstanceName: si.Name,
 		},
 	}
-	c.Assert(result.([]bind.EnvVar), gocheck.DeepEquals, expected)
+	got := result.([]bind.EnvVar)
+	if got[0].Name == "DATABASE_PASSWORD" {
+		got[0], got[1] = got[1], got[0]
+	}
+	c.Assert(got, gocheck.DeepEquals, expected)
 }
 
 func (s *S) TestSetEnvironVariablesToAppBackward(c *gocheck.C) {
