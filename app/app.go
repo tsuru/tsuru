@@ -54,6 +54,8 @@ type App struct {
 	State    string
 	Deploys  uint
 	quota.Quota
+	Memory   int64
+	Swap     int64
 
 	hr hookRunner
 }
@@ -609,6 +611,16 @@ func (app *App) GetUnits() []bind.Unit {
 // GetName returns the name of the app.
 func (app *App) GetName() string {
 	return app.Name
+}
+
+// GetMemory returns the memory limit for the app.
+func (app *App) GetMemory() int64 {
+	return app.Memory
+}
+
+// GetSwap returns the swap limit for the app.
+func (app *App) GetSwap() int64{
+	return app.Swap
 }
 
 // GetIp returns the ip of the app.

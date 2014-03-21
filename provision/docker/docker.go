@@ -173,6 +173,8 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 		AttachStdin:  false,
 		AttachStdout: false,
 		AttachStderr: false,
+		Memory:       app.GetMemory()
+		MemorySwap:   app.GetSwap()
 	}
 	opts := docker.CreateContainerOptions{Name: contName, Config: &config}
 	hostID, c, err := dockerCluster().CreateContainer(opts)

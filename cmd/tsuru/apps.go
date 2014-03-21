@@ -20,7 +20,13 @@ type AppCreate struct{}
 func (AppCreate) Run(context *cmd.Context, client *cmd.Client) error {
 	appName := context.Args[0]
 	platform := context.Args[1]
-	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s","platform":"%s"}`, appName, platform))
+	memory := context.Args[2]
+	// TODO: Read default memory from config and ensure that user can use the choosen amount of memory
+	if memory == "" {
+	   memory = 128 // 128
+	}
+	memory = memory*1024*1024 // Convert in MB
+	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s","platform":"%s","memory":"%s"}`, appName, platform, memory))
 	url, err := cmd.GetURL("/apps")
 	if err != nil {
 		return err
@@ -53,7 +59,7 @@ func (AppCreate) Run(context *cmd.Context, client *cmd.Client) error {
 func (AppCreate) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "app-create",
-		Usage:   "app-create <appname> <platform>",
+		Usage:   "app-create <appname> <platform> <memory MB>",
 		Desc:    "create a new app.",
 		MinArgs: 2,
 	}
