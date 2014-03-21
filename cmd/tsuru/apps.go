@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"launchpad.net/gnuflag"
 	"net/http"
+	"strconv"
 )
 
 type AppCreate struct{}
@@ -20,13 +21,18 @@ type AppCreate struct{}
 func (AppCreate) Run(context *cmd.Context, client *cmd.Client) error {
 	appName := context.Args[0]
 	platform := context.Args[1]
-	memory := context.Args[2]
-	// TODO: Read default memory from config and ensure that user can use the choosen amount of memory
-	if memory == "" {
+	memory, _ := strconv.Atoi(context.Args[2])
+	/* TODO: 
+	 * - Read default memory from config
+	 * - Ensure that user can use the choosen amount of memory
+	 * - Ensure that choosen memory is between mix and max in config
+	 * - Ensure that choosen memory is a multiple of slot size in config
+	 */
+	if memory == 0 {
 	   memory = 128 // 128
 	}
 	memory = memory*1024*1024 // Convert in MB
-	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s","platform":"%s","memory":"%s"}`, appName, platform, memory))
+	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s","platform":"%s","memory":"%d"}`, appName, platform, memory))
 	url, err := cmd.GetURL("/apps")
 	if err != nil {
 		return err
