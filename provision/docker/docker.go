@@ -26,6 +26,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"strconv"
 )
 
 var (
@@ -173,8 +174,8 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 		AttachStdin:  false,
 		AttachStdout: false,
 		AttachStderr: false,
-		Memory:       app.GetMemory()
-		MemorySwap:   app.GetSwap()
+		Memory:       int64(app.GetMemory()*1024*1024),
+		MemorySwap:   int64(app.GetSwap()*1024*1024)
 	}
 	opts := docker.CreateContainerOptions{Name: contName, Config: &config}
 	hostID, c, err := dockerCluster().CreateContainer(opts)

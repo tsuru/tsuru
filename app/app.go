@@ -54,8 +54,8 @@ type App struct {
 	State    string
 	Deploys  uint
 	quota.Quota
-	Memory   int64
-	Swap     int64
+	Memory   int
+	Swap     int
 
 	hr hookRunner
 }

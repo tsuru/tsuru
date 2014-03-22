@@ -31,7 +31,6 @@ func (AppCreate) Run(context *cmd.Context, client *cmd.Client) error {
 	if memory == 0 {
 	   memory = 128 // 128
 	}
-	memory = memory*1024*1024 // Convert in MB
 	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s","platform":"%s","memory":"%d"}`, appName, platform, memory))
 	url, err := cmd.GetURL("/apps")
 	if err != nil {
