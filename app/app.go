@@ -613,13 +613,13 @@ func (app *App) GetName() string {
 	return app.Name
 }
 
-// GetMemory returns the memory limit for the app.
-func (app *App) GetMemory() int64 {
+// GetMemory returns the memory limit (in MB) for the app.
+func (app *App) GetMemory() int {
 	return app.Memory
 }
 
-// GetSwap returns the swap limit for the app.
-func (app *App) GetSwap() int64{
+// GetSwap returns the swap limit (in MB) for the app.
+func (app *App) GetSwap() int {
 	return app.Swap
 }
 
