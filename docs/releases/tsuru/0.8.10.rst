@@ -1,0 +1,15 @@
+==========================
+tsuru 0.8.10 release notes
+==========================
+
+Welcome to tsuru 0.8.10!
+
+These release notes cover the new features you'll want to be aware of when
+upgrading from tsuru 0.8.10 or older versions.
+
+.. _`new features`: `What's new in tsuru 0.8.10`_
+
+What's new in tsuru 0.8.10
+==========================
+
+Support `tsr` 0.3.9.
