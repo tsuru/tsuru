@@ -126,7 +126,7 @@ The password for authentication within the SMTP server.
 Git configuration
 -----------------
 
-Tsuru uses `Gandalf <https://github.com/globocom/gandalf>`_ to manage git
+Tsuru uses `Gandalf <https://github.com/tsuru/gandalf>`_ to manage git
 repositories. Gandalf exposes a REST API for repositories management, and tsuru
 uses it. So tsuru requires information about the Gandalf HTTP server, and also
 its git-daemon and SSH service.

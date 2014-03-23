@@ -109,7 +109,7 @@ using `hipache <https://github.com/dotcloud/hipache>`_ and another with `elb
 How are Git repositories managed?
 =================================
 
-Tsuru uses `Gandalf <https://github.com/globocom/gandalf>`_ to manage git
+Tsuru uses `Gandalf <https://github.com/tsuru/gandalf>`_ to manage git
 repositories. Every time you create an application, Tsuru will ask Gandalf to
 create a related git bare repository for you to push in.
 

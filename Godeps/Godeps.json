@@ -65,7 +65,7 @@
 			"Rev": "dce6ffa070f1ee764785e78b9e3754dea62108a5"
 		},
 		{
-			"ImportPath": "github.com/globocom/gandalf/testing",
+			"ImportPath": "github.com/tsuru/gandalf/testing",
 			"Comment": "0.3.0-3-g50f66f0",
 			"Rev": "50f66f029f957412b818e8e597edb9c74af8a9bc"
 		},

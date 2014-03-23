@@ -110,7 +110,7 @@ Install the latest version, by doing this:
 
 **3.4 Gandalf**
 
-Tsuru uses `Gandalf <https://github.com/globocom/gandalf>`_ to manage git
+Tsuru uses `Gandalf <https://github.com/tsuru/gandalf>`_ to manage git
 repositories, to get it installed `follow this steps
 <https://gandalf.readthedocs.org/en/latest/install.html>`_
 

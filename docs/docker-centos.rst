@@ -101,7 +101,7 @@ Install the latest EPEL version, by doing this:
 Tsuru Setup
 -----------
 
-Tsuru uses `Gandalf <https://github.com/globocom/gandalf/>`_ to manage `git repositories <https://gandalf.readthedocs.org/en/latest/install.html/>`_, and `hipache <https://github.com/dotcloud/hipache/>`_ as router
+Tsuru uses `Gandalf <https://github.com/tsuru/gandalf/>`_ to manage `git repositories <https://gandalf.readthedocs.org/en/latest/install.html/>`_, and `hipache <https://github.com/dotcloud/hipache/>`_ as router
 To setup Tsuru, just follow this steps. Obs: It can be used to upgrade this services as needed
 
 .. highlight:: bash
