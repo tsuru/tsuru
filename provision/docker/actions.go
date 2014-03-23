@@ -37,7 +37,7 @@ var createContainer = action.Action{
 		dockerCluster().RemoveContainer(docker.RemoveContainerOptions{ID: c.ID})
 		coll := collection()
 		defer coll.Close()
-		coll.Remove(bson.M{"id": c.ID})
+		coll.Remove(bson.M{"name": c.Name})
 	},
 }
 
