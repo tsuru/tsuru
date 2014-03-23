@@ -12,6 +12,13 @@ tsr
 
 -.. _development_release_notes:
 
+0.3.9 release
+-------------
+.. toctree::
+   :maxdepth: 1
+
+   tsr/0.3.9
+
 0.3.8 release
 -------------
 .. toctree::

@@ -1,0 +1,27 @@
+=======================
+tsr 0.3.9 release notes
+=======================
+
+Welcome to tsr 0.3.9!
+
+These release notes cover the `new features`_ and `backwards incompatible
+changes`_ you'll want to be aware of when upgrading from tsr 0.3.8 or older
+versions.
+
+.. _`new features`: `What's new in tsr 0.3.9`_
+
+What's new in tsr 0.3.9
+=======================
+
+API
+---
+
+    * Login expose `is_admin` info.
+    * Changed get environs output data.
+
+Backwards incompatible changes
+==============================
+
+tsr 0.3.9 has changed the api output data for get environs from an app.
+
+You should use `tsuru` cli 0.8.10 version.
