@@ -8,8 +8,8 @@ package repository
 
 import (
 	"github.com/globocom/config"
-	"github.com/tsuru/go-gandalfclient"
 	"github.com/globocom/tsuru/log"
+	"github.com/tsuru/go-gandalfclient"
 )
 
 // ServerURL returns the URL to Gandalf API.
