@@ -15,8 +15,8 @@ import (
 
 func init() {
 	api.RegisterHandler("/node", "GET", api.AdminRequiredHandler(listNodeHandler))
+	api.RegisterHandler("/node/apps/:appname/containers", "GET", api.AdminRequiredHandler(listContainersByAppHandler))
 	api.RegisterHandler("/node/:address/containers", "GET", api.AdminRequiredHandler(listContainersByHostHandler))
-	api.RegisterHandler("/node/:appname/containers", "GET", api.AdminRequiredHandler(listContainersByAppHandler))
 	api.RegisterAdminHandler("/node/add", "POST", api.Handler(addNodeHandler))
 	api.RegisterAdminHandler("/node/remove", "DELETE", api.Handler(removeNodeHandler))
 }
