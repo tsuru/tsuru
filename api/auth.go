@@ -46,6 +46,9 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 	if !validation.ValidateLength(u.Password, passwordMinLen, passwordMaxLen) {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: passwordError}
 	}
+	if _, err = auth.GetUserByEmail(u.Email); err == nil {
+		err = &errors.HTTP{Code: http.StatusConflict, Message: "This email is already registered"}
+	}
 	gURL := repository.ServerURL()
 	c := gandalf.Client{Endpoint: gURL}
 	if _, err := c.NewUser(u.Email, keyToMap(u.Keys)); err != nil {
@@ -59,9 +62,6 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 		rec.Log(u.Email, "create-user")
 		w.WriteHeader(http.StatusCreated)
 		return nil
-	}
-	if _, err = auth.GetUserByEmail(u.Email); err == nil {
-		err = &errors.HTTP{Code: http.StatusConflict, Message: "This email is already registered"}
 	}
 	return err
 }
