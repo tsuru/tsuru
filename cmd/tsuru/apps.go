@@ -20,16 +20,10 @@ type AppCreate struct{}
 func (AppCreate) Run(context *cmd.Context, client *cmd.Client) error {
 	appName := context.Args[0]
 	platform := context.Args[1]
-	memory := context.Args[2]
-	/* TODO: 
-	 * - Read default memory from config
-	 * - Ensure that user can use the choosen amount of memory
-	 * - Ensure that choosen memory is between mix and max in config
-	 * - Ensure that choosen memory is a multiple of slot size in config
-	 */
-	if memory == "" {
-	   memory = "128" // 128M
-	}
+    memory := ""
+    if len(context.Args) == 3 {
+	    memory = context.Args[2]
+    }
 	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s","platform":"%s","memory":"%s"}`, appName, platform, memory))
 	url, err := cmd.GetURL("/apps")
 	if err != nil {
