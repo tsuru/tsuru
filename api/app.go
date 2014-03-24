@@ -132,12 +132,12 @@ func createApp(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 		return err
 	}
 	rec.Log(u.Email, "create-app", "name="+a.Name, "platform="+a.Platform, "memory="+strconv.Itoa(a.Memory), "request_body="+string(body[:]))
-    canSetMem, _ := config.GetBool("docker:allow-memory-set")
-    if ( !canSetMem && a.Memory > 0 ) {
-        err := "Memory setting not allowed."
-        log.Errorf("%s", err)
-        return &errors.HTTP{Code: http.StatusBadRequest, Message: err} 
-    }
+	canSetMem, _ := config.GetBool("docker:allow-memory-set")
+	if !canSetMem && a.Memory > 0 {
+		err := "Memory setting not allowed."
+		log.Errorf("%s", err)
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err}
+	}
 	err = app.CreateApp(&a, u)
 	if err != nil {
 		log.Errorf("Got error while creating app: %s", err)

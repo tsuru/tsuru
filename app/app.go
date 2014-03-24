@@ -54,8 +54,8 @@ type App struct {
 	State    string
 	Deploys  uint
 	quota.Quota
-	Memory   int `json:",string"`
-	Swap     int `json:",string"`
+	Memory int `json:",string"`
+	Swap   int `json:",string"`
 
 	hr hookRunner
 }
@@ -121,18 +121,18 @@ func CreateApp(app *App, user *auth.User) error {
 	if _, err := getPlatform(app.Platform); err != nil {
 		return err
 	}
-    // app.Memory is empty, no custom memory passed from CLI
-    if app.Memory < 1 {
-        // get default memory limit from tsuru config
-        configMemory, err := config.GetInt("docker:memory")
-	    if err != nil {
-            // no default memory set in config (or error when reading), set it as unlimited (0)
-		    app.Memory = 0
-	    } else {
-            // default memory set in config, use that.
-            app.Memory = configMemory
-        }
-    }
+	// app.Memory is empty, no custom memory passed from CLI
+	if app.Memory < 1 {
+		// get default memory limit from tsuru config
+		configMemory, err := config.GetInt("docker:memory")
+		if err != nil {
+			// no default memory set in config (or error when reading), set it as unlimited (0)
+			app.Memory = 0
+		} else {
+			// default memory set in config, use that.
+			app.Memory = configMemory
+		}
+	}
 	app.SetTeams(teams)
 	app.Owner = user.Email
 	if !app.isValid() {
