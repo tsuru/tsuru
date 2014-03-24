@@ -131,7 +131,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "create-app", "name="+a.Name, "platform="+a.Platform, "memory="+strconv.Itoa(a.Memory))
+	rec.Log(u.Email, "create-app", "name="+a.Name, "platform="+a.Platform, "memory="+strconv.Itoa(a.Memory), "request_body="+string(body[:]))
 	err = app.CreateApp(&a, u)
 	if err != nil {
 		log.Errorf("Got error while creating app: %s", err)
