@@ -8,11 +8,11 @@ import (
 	"github.com/flaviamissi/go-elb/aws"
 	"github.com/flaviamissi/go-elb/elb"
 	"github.com/flaviamissi/go-elb/elb/elbtest"
-	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/router"
 	"github.com/globocom/tsuru/testing"
+	"github.com/tsuru/config"
 	"launchpad.net/gocheck"
 	goTesting "testing"
 )

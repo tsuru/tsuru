@@ -6,7 +6,7 @@ package queue
 
 import (
 	"github.com/adeven/redismq"
-	"github.com/globocom/config"
+	"github.com/tsuru/config"
 	"launchpad.net/gocheck"
 	"sync/atomic"
 	"time"

@@ -6,10 +6,10 @@ package api
 
 import (
 	"fmt"
-	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
+	"github.com/tsuru/config"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"net/http"

@@ -5,11 +5,11 @@
 package main
 
 import (
-	"github.com/globocom/config"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/provision"
 	_ "github.com/globocom/tsuru/provision/docker"
 	_ "github.com/globocom/tsuru/provision/juju"
+	"github.com/tsuru/config"
 	"os"
 )
 

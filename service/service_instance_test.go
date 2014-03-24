@@ -6,11 +6,11 @@ package service
 
 import (
 	"encoding/json"
-	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/testing"
+	"github.com/tsuru/config"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"net/http"

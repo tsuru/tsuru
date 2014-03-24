@@ -6,10 +6,10 @@ package api
 
 import (
 	"encoding/json"
-	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
+	"github.com/tsuru/config"
 	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"

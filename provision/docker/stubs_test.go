@@ -7,9 +7,9 @@ package docker
 import (
 	"fmt"
 	"github.com/fsouza/go-dockerclient"
-	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
 	etesting "github.com/globocom/tsuru/exec/testing"
+	"github.com/tsuru/config"
 	"net"
 	"net/http"
 	"net/http/httptest"

@@ -7,12 +7,12 @@ package juju
 import (
 	"bufio"
 	"fmt"
-	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/heal"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
+	"github.com/tsuru/config"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/ec2"
 	"launchpad.net/goamz/s3"

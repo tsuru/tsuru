@@ -6,12 +6,12 @@ package app
 
 import (
 	"fmt"
-	"github.com/globocom/config"
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/quota"
 	ttesting "github.com/globocom/tsuru/testing"
+	"github.com/tsuru/config"
 	"io"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"

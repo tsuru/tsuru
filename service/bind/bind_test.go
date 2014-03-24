@@ -5,7 +5,6 @@
 package service_test
 
 import (
-	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/auth"
@@ -13,6 +12,7 @@ import (
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/service"
 	ttesting "github.com/globocom/tsuru/testing"
+	"github.com/tsuru/config"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"net/http"

@@ -7,7 +7,6 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/auth"
@@ -18,6 +17,7 @@ import (
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/service"
 	"github.com/globocom/tsuru/testing"
+	"github.com/tsuru/config"
 	"io"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"

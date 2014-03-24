@@ -6,12 +6,12 @@ package juju
 
 import (
 	"fmt"
-	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/db/storage"
 	"github.com/globocom/tsuru/log"
 	"github.com/globocom/tsuru/provision"
 	_ "github.com/globocom/tsuru/router/elb"
+	"github.com/tsuru/config"
 	"gopkg.in/v1/yaml"
 	"net/http"
 	"regexp"

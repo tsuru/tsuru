@@ -5,7 +5,6 @@
 package api
 
 import (
-	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/auth"
 	"github.com/globocom/tsuru/db"
@@ -13,6 +12,7 @@ import (
 	"github.com/globocom/tsuru/quota"
 	"github.com/globocom/tsuru/service"
 	tsuruTesting "github.com/globocom/tsuru/testing"
+	"github.com/tsuru/config"
 	"io"
 	"io/ioutil"
 	"launchpad.net/gocheck"

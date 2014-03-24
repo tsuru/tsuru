@@ -7,7 +7,6 @@ package app
 import (
 	"errors"
 	"fmt"
-	"github.com/globocom/config"
 	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/auth"
@@ -17,6 +16,7 @@ import (
 	"github.com/globocom/tsuru/queue"
 	"github.com/globocom/tsuru/quota"
 	"github.com/globocom/tsuru/repository"
+	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
 	"io"
 	"labix.org/v2/mgo"

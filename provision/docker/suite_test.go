@@ -6,11 +6,11 @@ package docker
 
 import (
 	dtesting "github.com/fsouza/go-dockerclient/testing"
-	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
 	ftesting "github.com/globocom/tsuru/fs/testing"
 	"github.com/globocom/tsuru/provision"
 	_ "github.com/globocom/tsuru/testing"
+	"github.com/tsuru/config"
 	"launchpad.net/gocheck"
 	"os"
 	"sort"

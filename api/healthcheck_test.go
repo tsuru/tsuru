@@ -5,7 +5,7 @@
 package api
 
 import (
-	"github.com/globocom/config"
+	"github.com/tsuru/config"
 	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"

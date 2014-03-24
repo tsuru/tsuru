@@ -5,10 +5,10 @@
 package main
 
 import (
-	"github.com/globocom/config"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/testing"
+	"github.com/tsuru/config"
 	"launchpad.net/gocheck"
 	"os"
 )

@@ -5,8 +5,8 @@
 package db
 
 import (
-	"github.com/globocom/config"
 	"github.com/globocom/tsuru/db/storage"
+	"github.com/tsuru/config"
 	"launchpad.net/gocheck"
 	"reflect"
 	"testing"

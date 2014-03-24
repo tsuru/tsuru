@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -8,9 +8,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/globocom/config"
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/testing"
+	"github.com/tsuru/config"
 	"launchpad.net/gocheck"
 )
 

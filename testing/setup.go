@@ -6,7 +6,7 @@
 package testing
 
 import (
-	"github.com/globocom/config"
+	"github.com/tsuru/config"
 	"github.com/tsuru/gandalf/testing"
 	"io/ioutil"
 	"launchpad.net/goamz/iam/iamtest"

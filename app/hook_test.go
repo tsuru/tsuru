@@ -4,7 +4,7 @@ package app
 
 import (
 	"bytes"
-	"github.com/globocom/config"
+	"github.com/tsuru/config"
 	"io"
 	"launchpad.net/gocheck"
 )

@@ -15,7 +15,7 @@ package queue
 
 import (
 	"fmt"
-	"github.com/globocom/config"
+	"github.com/tsuru/config"
 	"time"
 )
 

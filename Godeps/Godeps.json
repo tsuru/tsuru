@@ -53,7 +53,7 @@
 			"Rev": "b758415df160f5ecffca83dd46c8065b1576cf6c"
 		},
 		{
-			"ImportPath": "github.com/globocom/config",
+			"ImportPath": "github.com/tsuru/config",
 			"Rev": "caf5fe2f55dfaf63564a929bda3d722181e6d770"
 		},
 		{

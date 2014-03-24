@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"github.com/flaviamissi/go-elb/elb"
 	"github.com/globocom/commandmocker"
-	"github.com/globocom/config"
 	"github.com/globocom/tsuru/app"
 	etesting "github.com/globocom/tsuru/exec/testing"
 	"github.com/globocom/tsuru/heal"
 	"github.com/globocom/tsuru/provision"
+	"github.com/tsuru/config"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/ec2"

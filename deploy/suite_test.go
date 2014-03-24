@@ -1,7 +1,7 @@
 package deploy
 
 import (
-	"github.com/globocom/config"
+	"github.com/tsuru/config"
 	"launchpad.net/gocheck"
 	"testing"
 )

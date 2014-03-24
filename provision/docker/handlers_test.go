@@ -7,9 +7,9 @@ package docker
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/globocom/config"
 	"github.com/globocom/docker-cluster/cluster"
 	"github.com/globocom/tsuru/db"
+	"github.com/tsuru/config"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
