@@ -47,7 +47,7 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: passwordError}
 	}
 	if _, err = auth.GetUserByEmail(u.Email); err == nil {
-		err = &errors.HTTP{Code: http.StatusConflict, Message: "This email is already registered"}
+		return &errors.HTTP{Code: http.StatusConflict, Message: "This email is already registered"}
 	}
 	gURL := repository.ServerURL()
 	c := gandalf.Client{Endpoint: gURL}
