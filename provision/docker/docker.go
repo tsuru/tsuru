@@ -351,7 +351,7 @@ func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) er
 	if err != nil {
 		return err
 	}
-    log.Debugf("Running SSH on %s:%d: %s %s", c.HostAddr, sshAgentPort(), cmd, args)
+	log.Debugf("Running SSH on %s:%d: %s %s", c.HostAddr, sshAgentPort(), cmd, args)
 	resp, err := http.Post(url, "application/json", &buf)
 	if err != nil {
 		return err
