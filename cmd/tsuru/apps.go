@@ -23,6 +23,8 @@ func (AppCreate) Run(context *cmd.Context, client *cmd.Client) error {
     memory := ""
     if len(context.Args) == 3 {
 	    memory = context.Args[2]
+    } else {
+        memory = "0"
     }
 	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s","platform":"%s","memory":"%s"}`, appName, platform, memory))
 	url, err := cmd.GetURL("/apps")
