@@ -125,8 +125,8 @@ func CreateApp(app *App, user *auth.User) error {
     // app.Memory is empty, no custom memory passed from CLI
     if app.Memory < 1 {
         // get default memory limit from tsuru config
-        configMemory, _ := config.GetString("docker:memory")
-	    if configMemory == "" || _ != nil {
+        configMemory, err := config.GetString("docker:memory")
+	    if configMemory == "" || err != nil {
             // no default memory set in config (or error when reading), set it as unlimited (0)
 		    app.Memory = 0
 	    } else {
