@@ -30,7 +30,6 @@ import (
 	"sort"
 	"strings"
 	"time"
-    "strconv"
 )
 
 var Provisioner provision.Provisioner
@@ -125,14 +124,13 @@ func CreateApp(app *App, user *auth.User) error {
     // app.Memory is empty, no custom memory passed from CLI
     if app.Memory < 1 {
         // get default memory limit from tsuru config
-        configMemory, err := config.GetString("docker:memory")
-	    if configMemory == "" || err != nil {
+        configMemory, err := config.GetInt("docker:memory")
+	    if err != nil {
             // no default memory set in config (or error when reading), set it as unlimited (0)
 		    app.Memory = 0
 	    } else {
             // default memory set in config, use that.
-            m, _ := strconv.Atoi(configMemory)
-            app.Memory = m
+            app.Memory = configMemory
         }
     }
 	app.SetTeams(teams)
