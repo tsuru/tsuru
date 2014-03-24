@@ -10,7 +10,7 @@ import (
 	stderrors "errors"
 	"fmt"
 	"github.com/globocom/config"
-	"github.com/globocom/go-gandalfclient"
+	"github.com/tsuru/go-gandalfclient"
 	"github.com/globocom/tsuru/db"
 	"github.com/globocom/tsuru/errors"
 	"github.com/globocom/tsuru/log"

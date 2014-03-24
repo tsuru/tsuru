@@ -10,7 +10,7 @@ import (
 	stderr "errors"
 	"fmt"
 	"github.com/globocom/config"
-	"github.com/globocom/go-gandalfclient"
+	"github.com/tsuru/go-gandalfclient"
 	"github.com/globocom/tsuru/action"
 	"github.com/globocom/tsuru/app/bind"
 	"github.com/globocom/tsuru/auth"

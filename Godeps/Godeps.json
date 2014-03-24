@@ -70,7 +70,7 @@
 			"Rev": "50f66f029f957412b818e8e597edb9c74af8a9bc"
 		},
 		{
-			"ImportPath": "github.com/globocom/go-gandalfclient",
+			"ImportPath": "github.com/tsuru/go-gandalfclient",
 			"Rev": "874ca26886fc17186993bb02d66655145e0e1c0b"
 		},
 		{
