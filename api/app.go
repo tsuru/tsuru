@@ -160,6 +160,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	msg := map[string]string{
 		"status":         "success",
 		"repository_url": repository.ReadWriteURL(a.Name),
+		"ip":             a.Ip,
 	}
 	jsonMsg, err := json.Marshal(msg)
 	if err != nil {

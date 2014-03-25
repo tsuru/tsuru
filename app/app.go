@@ -141,6 +141,12 @@ func CreateApp(app *App, user *auth.User) error {
 	if err != nil {
 		return &AppCreationError{app: app.Name, Err: err}
 	}
+	app.Ip, err = Provisioner.Addr(app)
+	if err != nil {
+		errMsg := "Failed to obtain app %s address: %s"
+		log.Errorf(errMsg, app.GetName(), err)
+		return fmt.Errorf(errMsg, app.GetName(), err)
+	}
 	return nil
 }
 

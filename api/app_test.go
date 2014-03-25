@@ -426,17 +426,22 @@ func (s *S) TestCreateAppHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
+	var gotApp app.App
+	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&gotApp)
+	c.Assert(err, gocheck.IsNil)
 	repoURL := repository.ReadWriteURL(a.Name)
+	var appIP string
+	appIP, err = s.provisioner.Addr(&gotApp)
+	c.Assert(err, gocheck.IsNil)
 	var obtained map[string]string
 	expected := map[string]string{
 		"status":         "success",
 		"repository_url": repoURL,
+		"ip":             appIP,
 	}
 	err = json.Unmarshal(body, &obtained)
 	c.Assert(obtained, gocheck.DeepEquals, expected)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
-	var gotApp app.App
-	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(gotApp.Teams, gocheck.DeepEquals, []string{s.team.Name})
 	c.Assert(s.provisioner.GetUnits(&gotApp), gocheck.HasLen, 1)
