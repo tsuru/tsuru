@@ -17,8 +17,8 @@ import (
 
 type AppCreate struct {
 	tsuru.GuessingCommand
-    memory int
-    fs     *gnuflag.FlagSet
+	memory int
+	fs     *gnuflag.FlagSet
 }
 
 func (c *AppCreate) Info() *cmd.Info {
@@ -32,7 +32,7 @@ func (c *AppCreate) Info() *cmd.Info {
 
 func (c *AppCreate) Flags() *gnuflag.FlagSet {
 	if c.fs == nil {
-        c.fs = c.GuessingCommand.Flags()
+		c.fs = c.GuessingCommand.Flags()
 		c.fs.IntVar(&c.memory, "memory", 0, "The maximum amount of memory reserved to each container for this app")
 		c.fs.IntVar(&c.memory, "m", 0, "The maximum amount of memory reserved to each container for this app")
 	}
