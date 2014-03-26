@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/globocom/tsuru",
-	"GoVersion": "devel +2e2908226d52 Mon Mar 24 11:48:34 2014 -0700",
+	"GoVersion": "devel +6815c401f8a1 Tue Mar 25 15:09:49 2014 -0700",
 	"Packages": [
 		"./..."
 	],
@@ -49,10 +49,6 @@
 			"Rev": "8736767bf9f75f2374aac103059362a5c322d211"
 		},
 		{
-			"ImportPath": "github.com/tsuru/commandmocker",
-			"Rev": "b758415df160f5ecffca83dd46c8065b1576cf6c"
-		},
-		{
 			"ImportPath": "github.com/globocom/docker-cluster/cluster",
 			"Rev": "dce6ffa070f1ee764785e78b9e3754dea62108a5"
 		},
@@ -77,13 +73,17 @@
 			"Rev": "4011ceaa3ceeeeb8f38e541d2e8efceba6d0b86e"
 		},
 		{
+			"ImportPath": "github.com/tsuru/commandmocker",
+			"Rev": "aaef171fb7cf6cf5c1be8b0e2aceab1050c9f059"
+		},
+		{
 			"ImportPath": "github.com/tsuru/config",
 			"Rev": "7921e9db83828c5dddbe7fd74f2f2a27817b605b"
 		},
 		{
 			"ImportPath": "github.com/tsuru/gandalf/testing",
-			"Comment": "0.3.0-12-g3c5e652",
-			"Rev": "3c5e65231430e18d0bd8b035c9bdebaf995d1d66"
+			"Comment": "0.3.0-13-gd2a16f0",
+			"Rev": "d2a16f0941591490e23c1d992a5e944f107f6185"
 		},
 		{
 			"ImportPath": "github.com/tsuru/go-gandalfclient",
