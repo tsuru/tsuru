@@ -77,7 +77,7 @@ get-prod:
 	@rm -f /tmp/.get-prod
 
 godep:
-	go get github.com/kr/godep
+	go get github.com/tools/godep
 	godep restore ./...
 	godep go clean ./...
 
