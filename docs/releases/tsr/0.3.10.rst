@@ -13,11 +13,19 @@ versions.
 What's new in tsr 0.3.10
 ========================
 
+API
+
+    * Improve feedback for duplicated users (issue `#693
+      <https://github.com/globocom/tsuru/issues/693>`_)
+
 Docker provisioner
 ------------------
 
     * Update docker-cluster library, to fix the behavior of the default
-      scheduler (issue `#716 <https://github.com/globocom/tsuru/issues/716>`_).
+      scheduler (issue `#716 <https://github.com/globocom/tsuru/issues/716>`_)
+    * Improve debug logs for SSH (issue `#665
+      <https://github.com/globocom/tsuru/issues/665>`_)
+    * Fix URL for listing containers by app
 
 Backwards incompatible changes
 ==============================
