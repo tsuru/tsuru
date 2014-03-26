@@ -5,7 +5,7 @@
 package docker
 
 import (
-	"github.com/globocom/docker-cluster/cluster"
+	"github.com/tsuru/docker-cluster/cluster"
 	etesting "github.com/globocom/tsuru/exec/testing"
 	"github.com/globocom/tsuru/provision"
 	"labix.org/v2/mgo/bson"

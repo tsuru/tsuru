@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"github.com/fsouza/go-dockerclient"
 	dtesting "github.com/fsouza/go-dockerclient/testing"
-	"github.com/globocom/docker-cluster/cluster"
+	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/db"
 	etesting "github.com/globocom/tsuru/exec/testing"

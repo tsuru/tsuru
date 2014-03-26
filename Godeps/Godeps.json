@@ -49,11 +49,11 @@
 			"Rev": "8736767bf9f75f2374aac103059362a5c322d211"
 		},
 		{
-			"ImportPath": "github.com/globocom/docker-cluster/cluster",
+			"ImportPath": "github.com/tsuru/docker-cluster/cluster",
 			"Rev": "dce6ffa070f1ee764785e78b9e3754dea62108a5"
 		},
 		{
-			"ImportPath": "github.com/globocom/docker-cluster/storage",
+			"ImportPath": "github.com/tsuru/docker-cluster/storage",
 			"Rev": "dce6ffa070f1ee764785e78b9e3754dea62108a5"
 		},
 		{

@@ -6,7 +6,7 @@ package docker
 
 import (
 	dtesting "github.com/fsouza/go-dockerclient/testing"
-	"github.com/globocom/docker-cluster/cluster"
+	"github.com/tsuru/docker-cluster/cluster"
 	ftesting "github.com/globocom/tsuru/fs/testing"
 	"github.com/globocom/tsuru/provision"
 	_ "github.com/globocom/tsuru/testing"
