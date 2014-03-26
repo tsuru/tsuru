@@ -8,11 +8,11 @@ import (
 	"bytes"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
-	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/globocom/tsuru/app"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/db"
 	"github.com/tsuru/config"
+	"github.com/tsuru/docker-cluster/cluster"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 )

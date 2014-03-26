@@ -5,9 +5,9 @@
 package docker
 
 import (
-	"github.com/tsuru/docker-cluster/cluster"
 	etesting "github.com/globocom/tsuru/exec/testing"
 	"github.com/globocom/tsuru/provision"
+	"github.com/tsuru/docker-cluster/cluster"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"net/http"

@@ -5,8 +5,8 @@
 package docker
 
 import (
-	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/globocom/tsuru/heal"
+	"github.com/tsuru/docker-cluster/cluster"
 	"launchpad.net/gocheck"
 	"net/http/httptest"
 	"sync/atomic"
