@@ -39,13 +39,13 @@ Address: myapp.tsuru.io
 Owner: myapp_owner
 Deploys: 7
 Units:
-+--------+---------+
-| Unit   | State   |
-+--------+---------+
-| app1/0 | started |
-| app1/1 | started |
-| app1/2 | pending |
-+--------+---------+
++--------+-------------+---------+
+| Unit   | Host        | State   |
++--------+-------------+---------+
+| app1/0 | 10.10.10.10 | started |
+| app1/1 | 9.9.9.9     | started |
+| app1/2 |             | pending |
++--------+-------------+---------+
 
 `
 	context := cmd.Context{
@@ -119,12 +119,12 @@ Address: secret.tsuru.io
 Owner: myapp_owner
 Deploys: 7
 Units:
-+----------+---------+
-| Unit     | State   |
-+----------+---------+
-| secret/0 | started |
-| secret/1 | pending |
-+----------+---------+
++----------+-------------+---------+
+| Unit     | Host        | State   |
++----------+-------------+---------+
+| secret/0 | 10.10.10.10 | started |
+| secret/1 | 9.9.9.9     | pending |
++----------+-------------+---------+
 
 `
 	context := cmd.Context{
@@ -158,13 +158,13 @@ Address: yourapp.tsuru.io, myapp.tsuru.io
 Owner: myapp_owner
 Deploys: 7
 Units:
-+--------+---------+
-| Unit   | State   |
-+--------+---------+
-| app1/0 | started |
-| app1/1 | started |
-| app1/2 | pending |
-+--------+---------+
++--------+-------------+---------+
+| Unit   | Host        | State   |
++--------+-------------+---------+
+| app1/0 | 10.10.10.10 | started |
+| app1/1 | 9.9.9.9     | started |
+| app1/2 |             | pending |
++--------+-------------+---------+
 
 `
 	context := cmd.Context{
