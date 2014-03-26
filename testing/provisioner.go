@@ -91,6 +91,14 @@ func NewFakeApp(name, platform string, units int) *FakeApp {
 	return &app
 }
 
+func (a *FakeApp) GetMemory() int {
+	return 0
+}
+
+func (a *FakeApp) GetSwap() int {
+	return 0
+}
+
 func (a *FakeApp) Logs() []string {
 	a.logMut.Lock()
 	defer a.logMut.Unlock()
