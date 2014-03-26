@@ -15,12 +15,35 @@ import (
 	"net/http"
 )
 
-type AppCreate struct{}
+type AppCreate struct {
+	cmd.Command
+	memory int
+	fs     *gnuflag.FlagSet
+}
 
-func (AppCreate) Run(context *cmd.Context, client *cmd.Client) error {
+func (c *AppCreate) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "app-create",
+		Usage:   "app-create <appname> <platform> [--memory/-m memory_in_mb]",
+		Desc:    "create a new app.",
+		MinArgs: 2,
+	}
+}
+
+func (c *AppCreate) Flags() *gnuflag.FlagSet {
+	if c.fs == nil {
+		infoMessage := "The maximum amount of memory reserved to each container for this app"
+		c.fs = gnuflag.NewFlagSet("", gnuflag.ExitOnError)
+		c.fs.IntVar(&c.memory, "memory", 0, infoMessage)
+		c.fs.IntVar(&c.memory, "m", 0, infoMessage)
+	}
+	return c.fs
+}
+
+func (c *AppCreate) Run(context *cmd.Context, client *cmd.Client) error {
 	appName := context.Args[0]
 	platform := context.Args[1]
-	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s","platform":"%s"}`, appName, platform))
+	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s","platform":"%s","memory":"%d"}`, appName, platform, c.memory))
 	url, err := cmd.GetURL("/apps")
 	if err != nil {
 		return err
@@ -48,15 +71,6 @@ func (AppCreate) Run(context *cmd.Context, client *cmd.Client) error {
 	fmt.Fprintln(context.Stdout, "Use app-info to check the status of the app and its units.")
 	fmt.Fprintf(context.Stdout, "Your repository for %q project is %q\n", appName, out["repository_url"])
 	return nil
-}
-
-func (AppCreate) Info() *cmd.Info {
-	return &cmd.Info{
-		Name:    "app-create",
-		Usage:   "app-create <appname> <platform>",
-		Desc:    "create a new app.",
-		MinArgs: 2,
-	}
 }
 
 type AppRemove struct {
