@@ -49,14 +49,6 @@
 			"Rev": "8736767bf9f75f2374aac103059362a5c322d211"
 		},
 		{
-			"ImportPath": "github.com/tsuru/docker-cluster/cluster",
-			"Rev": "dce6ffa070f1ee764785e78b9e3754dea62108a5"
-		},
-		{
-			"ImportPath": "github.com/tsuru/docker-cluster/storage",
-			"Rev": "dce6ffa070f1ee764785e78b9e3754dea62108a5"
-		},
-		{
 			"ImportPath": "github.com/gorilla/context",
 			"Rev": "708054d61e5a2918b9f4e9700000ee611dcf03f5"
 		},
@@ -79,6 +71,14 @@
 		{
 			"ImportPath": "github.com/tsuru/config",
 			"Rev": "7921e9db83828c5dddbe7fd74f2f2a27817b605b"
+		},
+		{
+			"ImportPath": "github.com/tsuru/docker-cluster/cluster",
+			"Rev": "9ebf017ab15cf0ec60836d0643ff2282a343d302"
+		},
+		{
+			"ImportPath": "github.com/tsuru/docker-cluster/storage",
+			"Rev": "9ebf017ab15cf0ec60836d0643ff2282a343d302"
 		},
 		{
 			"ImportPath": "github.com/tsuru/gandalf/testing",
