@@ -30,7 +30,7 @@ Adding repositories
 
 ::
 
-    sudo apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 36A1D7869245C8950F966E92D8576A8BA88D21E9
+    sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 36A1D7869245C8950F966E92D8576A8BA88D21E9
     echo "deb http://get.docker.io/ubuntu docker main" | sudo tee /etc/apt/sources.list.d/docker.list
 
     sudo apt-add-repository ppa:tsuru/lvm2 -y
@@ -127,13 +127,13 @@ Installing Tsuru API server
 
     sudo apt-get install tsuru-server -qqy
 
-    cp /vagrant/tsuru.conf /etc/tsuru/tsuru.conf
-    sed -i.old -e "s/{{{HOST_IP}}}/${host_ip}/" /etc/tsuru/tsuru.conf
-    sed -i.old -e 's/=no/=yes/' /etc/default/tsuru-server
-    rm /etc/default/tsuru-server.old /etc/tsuru/tsuru.conf.old
-    start tsuru-ssh-agent
-    start tsuru-server-api
-    start tsuru-server-collector
+    sudo curl http://script.cloud.tsuru.io/conf/tsuru-docker-single.conf -o /etc/tsuru/tsuru.conf
+    # make sure you replace all occurrences of {{{HOST_IP}}} with the machine's
+    # public IP in the /etc/tsuru/tsuru.conf file
+    sudo sed -i -e 's/=no/=yes/' /etc/default/tsuru-server
+    sudo start tsuru-ssh-agent
+    sudo start tsuru-server-api
+    sudo start tsuru-server-collector
 
 Installing platforms
 ====================
@@ -142,8 +142,7 @@ Installing platforms
 
 ::
 
-    curl -O https://raw.github.com/globocom/tsuru/master/misc/platforms-setup.js
-    mongo tsuru platforms-setup.js
+    curl https://raw.github.com/globocom/tsuru/master/misc/platforms-setup.js | mongo tsuru
 
 And then install your preferred platform from `basebuilder
 <https://github.com/flaviamissi/basebuilder>`_:
@@ -168,12 +167,12 @@ Adding Services
 ===============
 
 Here you will find a complete step-by-step example of how to install a mysql
-service with tsuru: `http://docs.tsuru.io/en/latest/services/mysql-example.html
-<http://docs.tsuru.io/en/latest/services/mysql-example.html>`_
+service with tsuru: :doc:`Install and configure a MySQL service
+</services/mysql-example>`.
 
 DNS server
 ==========
 
-You can integrate any DNS server with tsuru. Here:
-`<http://docs.tsuru.io/en/latest/misc/dns-forwarders.html>`_ you can find a
-example of how to install a DNS server integrated with tsuru
+You can integrate any DNS server with Tsuru. :doc:`Here you can find an example
+of using bind as a DNS forwarder </misc/dns-forwarders>`, integrated with
+Tsuru.

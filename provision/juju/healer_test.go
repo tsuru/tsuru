@@ -7,11 +7,11 @@ package juju
 import (
 	"fmt"
 	"github.com/flaviamissi/go-elb/elb"
-	"github.com/globocom/commandmocker"
 	"github.com/globocom/tsuru/app"
 	etesting "github.com/globocom/tsuru/exec/testing"
 	"github.com/globocom/tsuru/heal"
 	"github.com/globocom/tsuru/provision"
+	"github.com/tsuru/commandmocker"
 	"github.com/tsuru/config"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goamz/aws"

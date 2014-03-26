@@ -7,12 +7,12 @@ package juju
 import (
 	"bytes"
 	"errors"
-	"github.com/globocom/commandmocker"
 	"github.com/globocom/tsuru/exec"
 	etesting "github.com/globocom/tsuru/exec/testing"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/repository"
 	"github.com/globocom/tsuru/testing"
+	"github.com/tsuru/commandmocker"
 	"github.com/tsuru/config"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"

@@ -1,13 +1,13 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 package juju
 
 import (
-	"github.com/globocom/commandmocker"
 	"github.com/globocom/tsuru/provision"
 	"github.com/globocom/tsuru/testing"
+	"github.com/tsuru/commandmocker"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"net/http"
