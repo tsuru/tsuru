@@ -19,7 +19,7 @@ func buildManager(name string) *cmd.Manager {
 	m := cmd.BuildBaseManager(name, version, header)
 	m.Register(&tsuru.AppRun{})
 	m.Register(&tsuru.AppInfo{})
-	m.Register(AppCreate{})
+	m.Register(&AppCreate{})
 	m.Register(&AppRemove{})
 	m.Register(&UnitAdd{})
 	m.Register(&UnitRemove{})

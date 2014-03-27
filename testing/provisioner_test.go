@@ -53,6 +53,17 @@ func (s *S) TestFakeAppRestart(c *gocheck.C) {
 	c.Assert(buf.String(), gocheck.Equals, "Restarting app...")
 }
 
+func (s *S) TestFakeAppGetMemory(c *gocheck.C) {
+	app := NewFakeApp("sou", "otm", 0)
+	app.Memory = 100
+	c.Assert(app.GetMemory(), gocheck.Equals, 100)
+}
+
+func (s *S) TestFakeAppGetSwap(c *gocheck.C) {
+	app := NewFakeApp("sou", "otm", 0)
+	c.Assert(app.GetSwap(), gocheck.Equals, 0)
+}
+
 func (s *S) TestFakeAppSerializeEnvVars(c *gocheck.C) {
 	app := NewFakeApp("sou", "otm", 0)
 	err := app.SerializeEnvVars()

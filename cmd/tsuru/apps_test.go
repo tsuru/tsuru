@@ -18,7 +18,7 @@ import (
 func (s *S) TestAppCreateInfo(c *gocheck.C) {
 	expected := &cmd.Info{
 		Name:    "app-create",
-		Usage:   "app-create <appname> <platform>",
+		Usage:   "app-create <appname> <platform> [--memory/-m memory_in_mb]",
 		Desc:    "create a new app.",
 		MinArgs: 2,
 	}
@@ -42,7 +42,7 @@ Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + 
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
 			c.Assert(err, gocheck.IsNil)
-			c.Assert(string(body), gocheck.Equals, `{"name":"ble","platform":"django"}`)
+			c.Assert(string(body), gocheck.Equals, `{"name":"ble","platform":"django","memory":"0"}`)
 			return req.Method == "POST" && req.URL.Path == "/apps"
 		},
 	}
@@ -65,6 +65,26 @@ func (s *S) TestAppCreateWithInvalidFramework(c *gocheck.C) {
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(stdout.String(), gocheck.Equals, "")
+}
+
+func (s *S) TestAppCreateFlags(c *gocheck.C) {
+	command := AppCreate{}
+	flagset := command.Flags()
+	c.Assert(flagset, gocheck.NotNil)
+	flagset.Parse(true, []string{"-m", "10"})
+	memory := flagset.Lookup("memory")
+	usage := "The maximum amount of memory reserved to each container for this app"
+	c.Check(memory, gocheck.NotNil)
+	c.Check(memory.Name, gocheck.Equals, "memory")
+	c.Check(memory.Usage, gocheck.Equals, usage)
+	c.Check(memory.Value.String(), gocheck.Equals, "10")
+	c.Check(memory.DefValue, gocheck.Equals, "0")
+	smemory := flagset.Lookup("m")
+	c.Check(smemory, gocheck.NotNil)
+	c.Check(smemory.Name, gocheck.Equals, "m")
+	c.Check(smemory.Usage, gocheck.Equals, usage)
+	c.Check(smemory.Value.String(), gocheck.Equals, "10")
+	c.Check(smemory.DefValue, gocheck.Equals, "0")
 }
 
 func (s *S) TestAppRemove(c *gocheck.C) {

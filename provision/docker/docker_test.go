@@ -42,6 +42,7 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 	clusterNodes = map[string]string{"server": s.server.URL()}
 	defer func() { clusterNodes = oldClusterNodes }()
 	app := testing.NewFakeApp("app-name", "brainfuck", 1)
+	app.Memory = 15
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	dockerCluster().PullImage(
@@ -66,6 +67,7 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 	container, err := dcli.InspectContainer(cont.ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(container.Config.User, gocheck.Equals, user)
+	c.Assert(container.Config.Memory, gocheck.Equals, int64(app.Memory*1024*1024))
 }
 
 func (s *S) TestNewContainerUndefinedUser(c *gocheck.C) {
