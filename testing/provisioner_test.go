@@ -55,7 +55,8 @@ func (s *S) TestFakeAppRestart(c *gocheck.C) {
 
 func (s *S) TestFakeAppGetMemory(c *gocheck.C) {
 	app := NewFakeApp("sou", "otm", 0)
-	c.Assert(app.GetMemory(), gocheck.Equals, 0)
+	app.Memory = 100
+	c.Assert(app.GetMemory(), gocheck.Equals, 100)
 }
 
 func (s *S) TestFakeAppGetSwap(c *gocheck.C) {
