@@ -163,6 +163,7 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 		Name:     "appname",
 		Platform: "python",
 		Units:    []Unit{{Machine: 3}},
+		Memory:   15,
 	}
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
@@ -179,6 +180,7 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 	c.Assert(retrievedApp.Platform, gocheck.Equals, a.Platform)
 	c.Assert(retrievedApp.Teams, gocheck.DeepEquals, []string{s.team.Name})
 	c.Assert(retrievedApp.Owner, gocheck.Equals, s.user.Email)
+	c.Assert(retrievedApp.Memory, gocheck.Equals, a.Memory)
 	env := retrievedApp.InstanceEnv(s3InstanceName)
 	c.Assert(env["TSURU_S3_ENDPOINT"].Value, gocheck.Equals, s.t.S3Server.URL())
 	c.Assert(env["TSURU_S3_ENDPOINT"].Public, gocheck.Equals, false)
@@ -210,6 +212,58 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 	err = auth.ReserveApp(s.user)
 	_, ok = err.(*quota.QuotaExceededError)
 	c.Assert(ok, gocheck.Equals, true)
+}
+
+func (s *S) TestCreateAppDefaultMemory(c *gocheck.C) {
+	config.Set("docker:memory", 10)
+	config.Set("bucket-support", false)
+	defer config.Set("bucket-support", true)
+	ts := testing.StartGandalfTestServer(&testHandler{})
+	defer ts.Close()
+	a := App{
+		Name:     "appname",
+		Platform: "python",
+		Units:    []Unit{{Machine: 3}},
+	}
+	expectedHost := "localhost"
+	config.Set("host", expectedHost)
+	s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": 1}})
+	defer s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": -1}})
+	config.Set("quota:units-per-app", 3)
+	defer config.Unset("quota:units-per-app")
+	err := CreateApp(&a, s.user)
+	c.Assert(err, gocheck.IsNil)
+	defer Delete(&a)
+	retrievedApp, err := GetByName(a.Name)
+	c.Assert(retrievedApp.Memory, gocheck.Equals, 10)
+	_, err = aqueue().Get(1e6)
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestCreateAppWithoutDefault(c *gocheck.C) {
+	config.Unset("docker:memory")
+	config.Set("bucket-support", false)
+	defer config.Set("bucket-support", true)
+	ts := testing.StartGandalfTestServer(&testHandler{})
+	defer ts.Close()
+	a := App{
+		Name:     "appname",
+		Platform: "python",
+		Units:    []Unit{{Machine: 3}},
+	}
+	expectedHost := "localhost"
+	config.Set("host", expectedHost)
+	s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": 1}})
+	defer s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": -1}})
+	config.Set("quota:units-per-app", 3)
+	defer config.Unset("quota:units-per-app")
+	err := CreateApp(&a, s.user)
+	c.Assert(err, gocheck.IsNil)
+	defer Delete(&a)
+	retrievedApp, err := GetByName(a.Name)
+	c.Assert(retrievedApp.Memory, gocheck.Equals, 0)
+	_, err = aqueue().Get(1e6)
+	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TestCreateAppUserQuotaExceeded(c *gocheck.C) {
