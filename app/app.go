@@ -43,16 +43,17 @@ var (
 // This struct holds information about the app: its name, address, list of
 // teams that have access to it, used platform, etc.
 type App struct {
-	Env      map[string]bind.EnvVar
-	Platform string `bson:"framework"`
-	Name     string
-	Ip       string
-	CName    string
-	Units    []Unit
-	Teams    []string
-	Owner    string
-	State    string
-	Deploys  uint
+	Env       map[string]bind.EnvVar
+	Platform  string `bson:"framework"`
+	Name      string
+	Ip        string
+	CName     string
+	Units     []Unit
+	Teams     []string
+	TeamOwner string
+	Owner     string
+	State     string
+	Deploys   uint
 	quota.Quota
 	Memory int `json:",string"`
 	Swap   int `json:",string"`
@@ -117,6 +118,9 @@ func CreateApp(app *App, user *auth.User) error {
 	}
 	if len(teams) == 0 {
 		return NoTeamsError{}
+	}
+	if len(teams) > 1 && app.TeamOwner == "" {
+		return ManyTeamsError{}
 	}
 	if _, err := getPlatform(app.Platform); err != nil {
 		return err

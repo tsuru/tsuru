@@ -313,6 +313,32 @@ func (s *S) TestCreateWithoutBucketSupport(c *gocheck.C) {
 	c.Assert(s.provisioner.GetUnits(&a), gocheck.HasLen, 1)
 }
 
+func (s *S) TestCreateAppTeamOwner(c *gocheck.C) {
+	h := testHandler{}
+	ts := testing.StartGandalfTestServer(&h)
+	defer ts.Close()
+	app := App{Name: "america", Platform: "python", TeamOwner: "tsuruteam"}
+	err := CreateApp(&app, s.user)
+	c.Check(err, gocheck.IsNil)
+	_, err = aqueue().Get(1e6)
+	c.Assert(err, gocheck.IsNil)
+	defer Delete(&app)
+}
+
+func (s *S) TestCreateAppTeamOwnerMoreTeamShouldReturnError(c *gocheck.C) {
+	h := testHandler{}
+	ts := testing.StartGandalfTestServer(&h)
+	defer ts.Close()
+	app := App{Name: "america", Platform: "python"}
+	team := auth.Team{Name: "tsurutwo", Users: []string{s.user.Email}}
+	err := s.conn.Teams().Insert(team)
+	c.Check(err, gocheck.IsNil)
+	defer s.conn.Teams().RemoveId(team.Name)
+	err = CreateApp(&app, s.user)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.FitsTypeOf, ManyTeamsError{})
+}
+
 func (s *S) TestCannotCreateAppWithUnknownPlatform(c *gocheck.C) {
 	a := App{Name: "paradisum", Platform: "unknown"}
 	err := CreateApp(&a, s.user)

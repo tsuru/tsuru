@@ -24,3 +24,11 @@ type NoTeamsError struct{}
 func (err NoTeamsError) Error() string {
 	return "Cannot create app without teams."
 }
+
+// ManyTeamsError is the error returned when the user has more than one team and tries to
+// create an app without specify a app team owner.
+type ManyTeamsError struct{}
+
+func (err ManyTeamsError) Error() string {
+	return "You belongs to more than one team, choose one to be owner for this app."
+}

@@ -450,6 +450,69 @@ func (s *S) TestCreateAppHandler(c *gocheck.C) {
 	c.Assert(action, testing.IsRecorded)
 }
 
+func (s *S) TestCreateAppTeamOwner(c *gocheck.C) {
+	config.Set("docker:allow-memory-set", true)
+	h := testHandler{}
+	ts := testing.StartGandalfTestServer(&h)
+	defer ts.Close()
+	a := app.App{Name: "someapp"}
+	defer func() {
+		a, err := app.GetByName("someapp")
+		c.Assert(err, gocheck.IsNil)
+		err = app.Delete(a)
+		c.Assert(err, gocheck.IsNil)
+	}()
+	data := `{"name":"someapp","platform":"zend","memory":"1","teamOwner":"tsuruteam"}`
+	b := strings.NewReader(data)
+	request, err := http.NewRequest("POST", "/apps", b)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = createApp(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, gocheck.IsNil)
+	repoURL := repository.ReadWriteURL(a.Name)
+	var obtained map[string]string
+	expected := map[string]string{
+		"status":         "success",
+		"repository_url": repoURL,
+	}
+	err = json.Unmarshal(body, &obtained)
+	c.Assert(obtained, gocheck.DeepEquals, expected)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	var gotApp app.App
+	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(gotApp.Teams, gocheck.DeepEquals, []string{s.team.Name})
+	c.Assert(s.provisioner.GetUnits(&gotApp), gocheck.HasLen, 1)
+	action := testing.Action{
+		Action: "create-app",
+		User:   s.user.Email,
+		Extra:  []interface{}{"name=someapp", "platform=zend", "memory=1"},
+	}
+	c.Assert(action, testing.IsRecorded)
+}
+
+func (s *S) TestCreateAppTwoTeamOwner(c *gocheck.C) {
+	config.Set("docker:allow-memory-set", true)
+	h := testHandler{}
+	ts := testing.StartGandalfTestServer(&h)
+	defer ts.Close()
+	team := auth.Team{Name: "tsurutwo", Users: []string{s.user.Email}}
+	err := s.conn.Teams().Insert(team)
+	c.Check(err, gocheck.IsNil)
+	defer s.conn.Teams().RemoveId(team.Name)
+	data := `{"name":"someapp","platform":"zend","memory":"1"}`
+	b := strings.NewReader(data)
+	request, err := http.NewRequest("POST", "/apps", b)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = createApp(recorder, request, s.token)
+	c.Assert(err, gocheck.NotNil)
+}
+
 func (s *S) TestCreateAppMemorySetNowAllowed(c *gocheck.C) {
 	config.Set("docker:allow-memory-set", false)
 	conn, err := db.Conn()

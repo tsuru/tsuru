@@ -19,3 +19,8 @@ func (s *S) TestNoTeamsError(c *gocheck.C) {
 	e := NoTeamsError{}
 	c.Assert(e.Error(), gocheck.Equals, "Cannot create app without teams.")
 }
+
+func (s *S) TestManyTeamsError(c *gocheck.C) {
+	e := ManyTeamsError{}
+	c.Assert(e.Error(), gocheck.Equals, "You belongs to more than one team, choose one to be owner for this app.")
+}
