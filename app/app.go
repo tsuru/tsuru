@@ -119,12 +119,6 @@ func CreateApp(app *App, user *auth.User) error {
 	if len(teams) == 0 {
 		return NoTeamsError{}
 	}
-	if app.TeamOwner == "" {
-		if len(teams) > 1 {
-			return ManyTeamsError{}
-		}
-		app.TeamOwner = teams[0].Name
-	}
 	if _, err := getPlatform(app.Platform); err != nil {
 		return err
 	}
@@ -139,6 +133,9 @@ func CreateApp(app *App, user *auth.User) error {
 			// default memory set in config, use that.
 			app.Memory = configMemory
 		}
+	}
+	if err := app.setTeamOwner(teams); err != nil {
+		return err
 	}
 	app.SetTeams(teams)
 	app.Owner = user.Email
@@ -480,6 +477,17 @@ func (app *App) SetTeams(teams []auth.Team) {
 		app.Teams[i] = team.Name
 	}
 	sort.Strings(app.Teams)
+}
+
+// setTeamOwner sets the TeamOwner value.
+func (app *App) setTeamOwner(teams []auth.Team) error {
+	if app.TeamOwner == "" {
+		if len(teams) > 1 {
+			return ManyTeamsError{}
+		}
+		app.TeamOwner = teams[0].Name
+	}
+	return nil
 }
 
 // setEnv sets the given environment variable in the app.
