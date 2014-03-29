@@ -119,8 +119,11 @@ func CreateApp(app *App, user *auth.User) error {
 	if len(teams) == 0 {
 		return NoTeamsError{}
 	}
-	if len(teams) > 1 && app.TeamOwner == "" {
-		return ManyTeamsError{}
+	if app.TeamOwner == "" {
+		if len(teams) > 1 {
+			return ManyTeamsError{}
+		}
+		app.TeamOwner = teams[0].Name
 	}
 	if _, err := getPlatform(app.Platform); err != nil {
 		return err

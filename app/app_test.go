@@ -314,12 +314,27 @@ func (s *S) TestCreateWithoutBucketSupport(c *gocheck.C) {
 }
 
 func (s *S) TestCreateAppTeamOwner(c *gocheck.C) {
+	config.Set("bucket-support", false)
+	defer config.Set("bucket-support", true)
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	app := App{Name: "america", Platform: "python", TeamOwner: "tsuruteam"}
 	err := CreateApp(&app, s.user)
 	c.Check(err, gocheck.IsNil)
+	_, err = aqueue().Get(1e6)
+	c.Assert(err, gocheck.IsNil)
+	defer Delete(&app)
+}
+
+func (s *S) TestCreateAppTeamOwnerOneTeam(c *gocheck.C) {
+	h := testHandler{}
+	ts := testing.StartGandalfTestServer(&h)
+	defer ts.Close()
+	app := App{Name: "america", Platform: "python"}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.TeamOwner, gocheck.Equals, "tsuruteam")
 	_, err = aqueue().Get(1e6)
 	c.Assert(err, gocheck.IsNil)
 	defer Delete(&app)
