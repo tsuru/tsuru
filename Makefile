@@ -47,6 +47,8 @@ ifneq ($(subst ~,$(HOME),$(GOPATH))/src/github.com/globocom/tsuru, $(PWD))
 	@echo "       or clone it manually to the dir $(GOPATH)/src/github.com/globocom/tsuru"
 	@exit 1
 endif
+	@exit 0  # in case everything is ok, without this
+		 # it says nothing to be done for check-path.
 
 get: hg git bzr get-prod get-test godep
 
