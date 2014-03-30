@@ -13,12 +13,14 @@ import (
 	"io/ioutil"
 	"launchpad.net/gnuflag"
 	"net/http"
+	"strconv"
 )
 
 type AppCreate struct {
 	cmd.Command
-	memory int
-	fs     *gnuflag.FlagSet
+	memory    int
+	teamOwner string
+	fs        *gnuflag.FlagSet
 }
 
 func (c *AppCreate) Info() *cmd.Info {
@@ -36,6 +38,9 @@ func (c *AppCreate) Flags() *gnuflag.FlagSet {
 		c.fs = gnuflag.NewFlagSet("", gnuflag.ExitOnError)
 		c.fs.IntVar(&c.memory, "memory", 0, infoMessage)
 		c.fs.IntVar(&c.memory, "m", 0, infoMessage)
+		teamMessage := "Team owner app"
+		c.fs.StringVar(&c.teamOwner, "team", "", teamMessage)
+		c.fs.StringVar(&c.teamOwner, "t", "", teamMessage)
 	}
 	return c.fs
 }
@@ -43,12 +48,21 @@ func (c *AppCreate) Flags() *gnuflag.FlagSet {
 func (c *AppCreate) Run(context *cmd.Context, client *cmd.Client) error {
 	appName := context.Args[0]
 	platform := context.Args[1]
-	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s","platform":"%s","memory":"%d"}`, appName, platform, c.memory))
+	params := map[string]string{
+		"name":      appName,
+		"platform":  platform,
+		"memory":    strconv.Itoa(c.memory),
+		"teamOwner": c.teamOwner,
+	}
+	b, err := json.Marshal(params)
+	if err != nil {
+		return err
+	}
 	url, err := cmd.GetURL("/apps")
 	if err != nil {
 		return err
 	}
-	request, err := http.NewRequest("POST", url, b)
+	request, err := http.NewRequest("POST", url, bytes.NewBuffer(b))
 	if err != nil {
 		return err
 	}

@@ -6,6 +6,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/cmd/testing"
 	"github.com/globocom/tsuru/cmd/tsuru-base"
@@ -42,12 +43,57 @@ Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + 
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
 			c.Assert(err, gocheck.IsNil)
-			c.Assert(string(body), gocheck.Equals, `{"name":"ble","platform":"django","memory":"0"}`)
+			expected := map[string]string{
+				"name":      "ble",
+				"platform":  "django",
+				"memory":    "0",
+				"teamOwner": "",
+			}
+			result := map[string]string{}
+			err = json.Unmarshal(body, &result)
+			c.Assert(expected, gocheck.DeepEquals, result)
 			return req.Method == "POST" && req.URL.Path == "/apps"
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: &trans}, nil, manager)
 	command := AppCreate{}
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestAppCreateTeamOwner(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	result := `{"status":"success", "repository_url":"git@tsuru.plataformas.glb.com:ble.git"}`
+	expected := `App "ble" is being created!
+Use app-info to check the status of the app and its units.
+Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + "\n"
+	context := cmd.Context{
+		Args:   []string{"ble", "django"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	trans := testing.ConditionalTransport{
+		Transport: testing.Transport{Message: result, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			defer req.Body.Close()
+			body, err := ioutil.ReadAll(req.Body)
+			c.Assert(err, gocheck.IsNil)
+			expected := map[string]string{
+				"name":      "ble",
+				"platform":  "django",
+				"memory":    "0",
+				"teamOwner": "team",
+			}
+			result := map[string]string{}
+			err = json.Unmarshal(body, &result)
+			c.Assert(expected, gocheck.DeepEquals, result)
+			return req.Method == "POST" && req.URL.Path == "/apps"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: &trans}, nil, manager)
+	command := AppCreate{}
+	command.Flags().Parse(true, []string{"-t", "team"})
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)
