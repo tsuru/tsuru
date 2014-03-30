@@ -354,6 +354,20 @@ func (s *S) TestCreateAppTeamOwnerMoreTeamShouldReturnError(c *gocheck.C) {
 	c.Assert(err, gocheck.FitsTypeOf, ManyTeamsError{})
 }
 
+func (s *S) TestCreateAppTeamOwnerTeamNotFound(c *gocheck.C) {
+	h := testHandler{}
+	ts := testing.StartGandalfTestServer(&h)
+	defer ts.Close()
+	app := App{
+		Name:      "someapp",
+		Platform:  "python",
+		TeamOwner: "not found",
+	}
+	err := CreateApp(&app, s.user)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.ErrorMatches, ".*team not found.")
+}
+
 func (s *S) TestCannotCreateAppWithUnknownPlatform(c *gocheck.C) {
 	a := App{Name: "paradisum", Platform: "unknown"}
 	err := CreateApp(&a, s.user)

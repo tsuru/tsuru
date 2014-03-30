@@ -486,6 +486,13 @@ func (app *App) setTeamOwner(teams []auth.Team) error {
 			return ManyTeamsError{}
 		}
 		app.TeamOwner = teams[0].Name
+	} else {
+		for _, t := range teams {
+			if t.Name == app.TeamOwner {
+				return nil
+			}
+		}
+		return stderr.New("team not found.")
 	}
 	return nil
 }
