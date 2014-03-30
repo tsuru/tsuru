@@ -131,6 +131,20 @@ func (s *S) TestAppCreateFlags(c *gocheck.C) {
 	c.Check(smemory.Usage, gocheck.Equals, usage)
 	c.Check(smemory.Value.String(), gocheck.Equals, "10")
 	c.Check(smemory.DefValue, gocheck.Equals, "0")
+	flagset.Parse(true, []string{"-t", "team"})
+	usage = "Team owner app"
+	teamOwner := flagset.Lookup("team")
+	c.Check(teamOwner, gocheck.NotNil)
+	c.Check(teamOwner.Name, gocheck.Equals, "team")
+	c.Check(teamOwner.Usage, gocheck.Equals, usage)
+	c.Check(teamOwner.Value.String(), gocheck.Equals, "team")
+	c.Check(teamOwner.DefValue, gocheck.Equals, "")
+	teamOwner = flagset.Lookup("t")
+	c.Check(teamOwner, gocheck.NotNil)
+	c.Check(teamOwner.Name, gocheck.Equals, "t")
+	c.Check(teamOwner.Usage, gocheck.Equals, usage)
+	c.Check(teamOwner.Value.String(), gocheck.Equals, "team")
+	c.Check(teamOwner.DefValue, gocheck.Equals, "")
 }
 
 func (s *S) TestAppRemove(c *gocheck.C) {
