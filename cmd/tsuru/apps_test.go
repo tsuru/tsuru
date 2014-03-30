@@ -18,7 +18,7 @@ import (
 func (s *S) TestAppCreateInfo(c *gocheck.C) {
 	expected := &cmd.Info{
 		Name:    "app-create",
-		Usage:   "app-create <appname> <platform> [--memory/-m memory_in_mb]",
+		Usage:   "app-create <appname> <platform> [--memory/-m memory_in_mb] [--team/-t (team owner)]",
 		Desc:    "create a new app.",
 		MinArgs: 2,
 	}
