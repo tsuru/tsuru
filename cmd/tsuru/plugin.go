@@ -18,5 +18,6 @@ func (pluginInstal) Info() *cmd.Info {
 }
 
 func (c *pluginInstal) Run(context *cmd.Context, client *cmd.Client) error {
-	return nil
+	path := cmd.JoinWithUserDir(".tsuru", "plugins")
+	return filesystem().MkdirAll(path, 0755)
 }
