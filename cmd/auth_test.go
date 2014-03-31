@@ -38,7 +38,7 @@ func (s *S) TestLogin(c *gocheck.C) {
 
 func (s *S) TestLoginShouldNotDependOnTsuruTokenFile(c *gocheck.C) {
 	rfs := &testing.RecordingFs{}
-	f, _ := rfs.Create(joinWithUserDir(".tsuru_target"))
+	f, _ := rfs.Create(JoinWithUserDir(".tsuru_target"))
 	f.Write([]byte("http://localhost"))
 	f.Close()
 	fsystem = rfs
@@ -90,7 +90,7 @@ func (s *S) TestLogout(c *gocheck.C) {
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
-	c.Assert(rfs.HasAction("remove "+joinWithUserDir(".tsuru_token")), gocheck.Equals, true)
+	c.Assert(rfs.HasAction("remove "+JoinWithUserDir(".tsuru_token")), gocheck.Equals, true)
 	c.Assert(called, gocheck.Equals, true)
 }
 
@@ -121,7 +121,7 @@ func (s *S) TestLogoutNoTarget(c *gocheck.C) {
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
-	c.Assert(rfs.HasAction("remove "+joinWithUserDir(".tsuru_token")), gocheck.Equals, true)
+	c.Assert(rfs.HasAction("remove "+JoinWithUserDir(".tsuru_token")), gocheck.Equals, true)
 }
 
 func (s *S) TestTeamAddUser(c *gocheck.C) {
@@ -343,7 +343,7 @@ func (s *S) TestTeamListIsACommand(c *gocheck.C) {
 
 func (s *S) TestUserCreateShouldNotDependOnTsuruTokenFile(c *gocheck.C) {
 	rfs := &testing.RecordingFs{}
-	f, _ := rfs.Create(joinWithUserDir(".tsuru_target"))
+	f, _ := rfs.Create(JoinWithUserDir(".tsuru_target"))
 	f.Write([]byte("http://localhost"))
 	f.Close()
 	fsystem = rfs
@@ -428,7 +428,7 @@ func (s *S) TestUserCreateInfo(c *gocheck.C) {
 
 func (s *S) TestUserRemove(c *gocheck.C) {
 	rfs := &testing.RecordingFs{}
-	f, _ := rfs.Create(joinWithUserDir(".tsuru_target"))
+	f, _ := rfs.Create(JoinWithUserDir(".tsuru_target"))
 	f.Write([]byte("http://tsuru.io"))
 	f.Close()
 	fsystem = rfs
@@ -456,7 +456,7 @@ func (s *S) TestUserRemove(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
 	c.Assert(buf.String(), gocheck.Equals, "Are you sure you want to remove your user from tsuru? (y/n) User successfully removed.\n")
-	c.Assert(rfs.HasAction("remove "+joinWithUserDir(".tsuru_token")), gocheck.Equals, true)
+	c.Assert(rfs.HasAction("remove "+JoinWithUserDir(".tsuru_token")), gocheck.Equals, true)
 }
 
 func (s *S) TestUserRemoveWithoutConfirmation(c *gocheck.C) {

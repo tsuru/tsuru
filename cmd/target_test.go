@@ -85,7 +85,7 @@ func (s *S) TestDeleteTargetFile(c *gocheck.C) {
 		fsystem = nil
 	}()
 	deleteTargetFile()
-	targetFile := joinWithUserDir(".tsuru_target")
+	targetFile := JoinWithUserDir(".tsuru_target")
 	c.Assert(rfs.HasAction("remove "+targetFile), gocheck.Equals, true)
 }
 
@@ -284,10 +284,10 @@ func (s *S) TestTargetRun(c *gocheck.C) {
 default	http://tsuru.google.com
 other	http://other.tsuru.io`
 	rfs := &testing.RecordingFs{}
-	f, _ := rfs.Create(joinWithUserDir(".tsuru_target"))
+	f, _ := rfs.Create(JoinWithUserDir(".tsuru_target"))
 	f.Write([]byte("http://tsuru.io"))
 	f.Close()
-	f, _ = rfs.Create(joinWithUserDir(".tsuru_targets"))
+	f, _ = rfs.Create(JoinWithUserDir(".tsuru_targets"))
 	f.Write([]byte(content))
 	f.Close()
 	fsystem = rfs
@@ -340,7 +340,7 @@ func (s *S) TestTargetRemoveInfo(c *gocheck.C) {
 
 func (s *S) TestTargetRemove(c *gocheck.C) {
 	rfs := &testing.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
-	f, _ := rfs.Create(joinWithUserDir(".tsuru_target"))
+	f, _ := rfs.Create(JoinWithUserDir(".tsuru_target"))
 	f.Write([]byte("http://tsuru.google.com"))
 	f.Close()
 	fsystem = rfs
@@ -372,10 +372,10 @@ func (s *S) TestTargetRemove(c *gocheck.C) {
 
 func (s *S) TestTargetRemoveCurrentTarget(c *gocheck.C) {
 	rfs := &testing.RecordingFs{}
-	f, _ := rfs.Create(joinWithUserDir(".tsuru_targets"))
+	f, _ := rfs.Create(JoinWithUserDir(".tsuru_targets"))
 	f.Write([]byte("first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"))
 	f.Close()
-	f, _ = rfs.Create(joinWithUserDir(".tsuru_target"))
+	f, _ = rfs.Create(JoinWithUserDir(".tsuru_target"))
 	f.Write([]byte("http://tsuru.google.com"))
 	f.Close()
 	fsystem = rfs

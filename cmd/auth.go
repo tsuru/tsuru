@@ -90,7 +90,7 @@ func (c *userRemove) Run(context *Context, client *Client) error {
 	if err != nil {
 		return err
 	}
-	filesystem().Remove(joinWithUserDir(".tsuru_token"))
+	filesystem().Remove(JoinWithUserDir(".tsuru_token"))
 	fmt.Fprint(context.Stdout, "User successfully removed.\n")
 	return nil
 }
@@ -165,7 +165,7 @@ func (c *logout) Run(context *Context, client *Client) error {
 		request, _ := http.NewRequest("DELETE", url, nil)
 		client.Do(request)
 	}
-	err := filesystem().Remove(joinWithUserDir(".tsuru_token"))
+	err := filesystem().Remove(JoinWithUserDir(".tsuru_token"))
 	if err != nil && os.IsNotExist(err) {
 		return errors.New("You're not logged in!")
 	}

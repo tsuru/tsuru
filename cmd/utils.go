@@ -13,14 +13,14 @@ import (
 	"strings"
 )
 
-func joinWithUserDir(p ...string) string {
+func JoinWithUserDir(p ...string) string {
 	paths := []string{os.ExpandEnv("$HOME")}
 	paths = append(paths, p...)
 	return path.Join(paths...)
 }
 
 func writeToken(token string) error {
-	tokenPath := joinWithUserDir(".tsuru_token")
+	tokenPath := JoinWithUserDir(".tsuru_token")
 	file, err := filesystem().Create(tokenPath)
 	if err != nil {
 		return err
@@ -36,7 +36,7 @@ func writeToken(token string) error {
 }
 
 func readToken() (string, error) {
-	tokenPath := joinWithUserDir(".tsuru_token")
+	tokenPath := JoinWithUserDir(".tsuru_token")
 	file, err := filesystem().Open(tokenPath)
 	if err != nil {
 		return "", err
