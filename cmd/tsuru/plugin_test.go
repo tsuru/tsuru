@@ -18,3 +18,11 @@ func (s *S) TestPluginInstallInfo(c *gocheck.C) {
 	}
 	c.Assert(pluginInstal{}.Info(), gocheck.DeepEquals, expected)
 }
+
+func (s *S) TestPluginInstall(c *gocheck.C) {
+	context := cmd.Context{}
+	client := cmd.NewClient(nil, nil, manager)
+	command := pluginInstal{}
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+}

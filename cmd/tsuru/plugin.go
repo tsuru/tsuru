@@ -16,3 +16,7 @@ func (pluginInstal) Info() *cmd.Info {
 		MinArgs: 0,
 	}
 }
+
+func (c *pluginInstal) Run(context *cmd.Context, client *cmd.Client) error {
+	return nil
+}
