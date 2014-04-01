@@ -54,6 +54,10 @@ func (s *S) TestPluginInstall(c *gocheck.C) {
 	c.Assert("fakeplugin\n", gocheck.Equals, string(data))
 }
 
+func (s *S) TestPluginInstallIsACommand(c *gocheck.C) {
+	var _ cmd.Command = &pluginInstall{}
+}
+
 func (s *S) TestPluginInfo(c *gocheck.C) {
 	expected := &cmd.Info{
 		Name:    "plugin",
