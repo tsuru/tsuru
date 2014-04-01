@@ -121,3 +121,25 @@ func (s *S) TestPluginRemove(c *gocheck.C) {
 func (s *S) TestPluginRemoveIsACommand(c *gocheck.C) {
 	var _ cmd.Command = &pluginRemove{}
 }
+
+func (s *S) TestPluginListInfo(c *gocheck.C) {
+	expected := &cmd.Info{
+		Name:    "plugin-list",
+		Usage:   "plugin-list",
+		Desc:    "List installed tsuru plugins.",
+		MinArgs: 0,
+	}
+	c.Assert(pluginList{}.Info(), gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestPluginList(c *gocheck.C) {
+	context := cmd.Context{}
+	client := cmd.NewClient(nil, nil, manager)
+	command := pluginList{}
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestPluginListIsACommand(c *gocheck.C) {
+	var _ cmd.Command = &pluginList{}
+}

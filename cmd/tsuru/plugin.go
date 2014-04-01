@@ -96,3 +96,18 @@ func (c *pluginRemove) Run(context *cmd.Context, client *cmd.Client) error {
 	pluginPath := cmd.JoinWithUserDir(".tsuru", "plugins", pluginName)
 	return filesystem().Remove(pluginPath)
 }
+
+type pluginList struct{}
+
+func (pluginList) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "plugin-list",
+		Usage:   "plugin-list",
+		Desc:    "List installed tsuru plugins.",
+		MinArgs: 0,
+	}
+}
+
+func (c *pluginList) Run(context *cmd.Context, client *cmd.Client) error {
+	return nil
+}
