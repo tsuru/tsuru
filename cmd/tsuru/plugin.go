@@ -73,7 +73,7 @@ func (c *plugin) Run(context *cmd.Context, client *cmd.Client) error {
 	pluginName := context.Args[0]
 	pluginPath := cmd.JoinWithUserDir(".tsuru", "plugins", pluginName)
 	var b bytes.Buffer
-	err := executor().Execute(pluginPath, nil, nil, &b, &b)
+	err := executor().Execute(pluginPath, context.Args[1:], nil, &b, &b)
 	if err != nil {
 		return err
 	}

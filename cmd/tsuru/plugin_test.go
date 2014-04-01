@@ -88,7 +88,24 @@ func (s *S) TestPlugin(c *gocheck.C) {
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	pluginPath := cmd.JoinWithUserDir(".tsuru", "plugins", "myplugin")
-	c.Assert(fexec.ExecutedCmd(pluginPath, nil), gocheck.Equals, true)
+	c.Assert(fexec.ExecutedCmd(pluginPath, []string{}), gocheck.Equals, true)
+}
+
+func (s *S) TestPluginWithArgs(c *gocheck.C) {
+	fexec := etesting.FakeExecutor{}
+	execut = &fexec
+	defer func() {
+		execut = nil
+	}()
+	context := cmd.Context{
+		Args: []string{"myplugin", "ble", "bla"},
+	}
+	client := cmd.NewClient(nil, nil, manager)
+	command := plugin{}
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	pluginPath := cmd.JoinWithUserDir(".tsuru", "plugins", "myplugin")
+	c.Assert(fexec.ExecutedCmd(pluginPath, []string{"ble", "bla"}), gocheck.Equals, true)
 }
 
 func (s *S) TestPluginIsACommand(c *gocheck.C) {
