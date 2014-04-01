@@ -8,29 +8,48 @@ import (
 	"fmt"
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/fs/testing"
+	"io/ioutil"
 	"launchpad.net/gocheck"
+	"net/http"
+	"net/http/httptest"
 )
 
 func (s *S) TestPluginInstallInfo(c *gocheck.C) {
 	expected := &cmd.Info{
 		Name:    "plugin-install",
-		Usage:   "plugin-install <plugin-url>",
+		Usage:   "plugin-install <plugin-name> <plugin-url>",
 		Desc:    "Install tsuru plugins.",
-		MinArgs: 1,
+		MinArgs: 2,
 	}
-	c.Assert(pluginInstal{}.Info(), gocheck.DeepEquals, expected)
+	c.Assert(pluginInstall{}.Info(), gocheck.DeepEquals, expected)
 }
 
 func (s *S) TestPluginInstall(c *gocheck.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, "fakeplugin")
+	}))
+	defer ts.Close()
 	rfs := testing.RecordingFs{}
 	fsystem = &rfs
 	defer func() {
 		fsystem = nil
 	}()
-	context := cmd.Context{}
+	context := cmd.Context{
+		Args: []string{"myplugin", ts.URL},
+	}
 	client := cmd.NewClient(nil, nil, manager)
-	command := pluginInstal{}
+	command := pluginInstall{}
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
-	rfs.HasAction(fmt.Sprintf("mkdirall .tsuru/plugins with mode 0755"))
+	pluginsPath := cmd.JoinWithUserDir(".tsuru", "plugins")
+	hasAction := rfs.HasAction(fmt.Sprintf("mkdirall %s with mode 0755", pluginsPath))
+	c.Assert(hasAction, gocheck.Equals, true)
+	pluginPath := cmd.JoinWithUserDir(".tsuru", "plugins", "myplugin")
+	hasAction = rfs.HasAction(fmt.Sprintf("create %s", pluginPath))
+	c.Assert(hasAction, gocheck.Equals, true)
+	f, err := rfs.Open(pluginPath)
+	c.Assert(err, gocheck.IsNil)
+	data, err := ioutil.ReadAll(f)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert("fakeplugin\n", gocheck.Equals, string(data))
 }

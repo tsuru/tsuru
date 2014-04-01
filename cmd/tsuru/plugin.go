@@ -4,20 +4,52 @@
 
 package main
 
-import "github.com/globocom/tsuru/cmd"
+import (
+	"errors"
+	"github.com/globocom/tsuru/cmd"
+	"io/ioutil"
+	"net/http"
+)
 
-type pluginInstal struct{}
+type pluginInstall struct{}
 
-func (pluginInstal) Info() *cmd.Info {
+func (pluginInstall) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "plugin-install",
-		Usage:   "plugin-install <plugin-url>",
+		Usage:   "plugin-install <plugin-name> <plugin-url>",
 		Desc:    "Install tsuru plugins.",
-		MinArgs: 1,
+		MinArgs: 2,
 	}
 }
 
-func (c *pluginInstal) Run(context *cmd.Context, client *cmd.Client) error {
-	path := cmd.JoinWithUserDir(".tsuru", "plugins")
-	return filesystem().MkdirAll(path, 0755)
+func (c *pluginInstall) Run(context *cmd.Context, client *cmd.Client) error {
+	pluginsDir := cmd.JoinWithUserDir(".tsuru", "plugins")
+	err := filesystem().MkdirAll(pluginsDir, 0755)
+	if err != nil {
+		return err
+	}
+	pluginName := context.Args[0]
+	pluginUrl := context.Args[1]
+	pluginPath := cmd.JoinWithUserDir(".tsuru", "plugins", pluginName)
+	file, err := filesystem().Create(pluginPath)
+	if err != nil {
+		return err
+	}
+	resp, err := http.Get(pluginUrl)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	n, err := file.Write(data)
+	if err != nil {
+		return err
+	}
+	if n != len(data) {
+		return errors.New("Failed to install plugin.")
+	}
+	return nil
 }
