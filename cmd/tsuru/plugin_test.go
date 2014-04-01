@@ -45,7 +45,7 @@ func (s *S) TestPluginInstall(c *gocheck.C) {
 	hasAction := rfs.HasAction(fmt.Sprintf("mkdirall %s with mode 0755", pluginsPath))
 	c.Assert(hasAction, gocheck.Equals, true)
 	pluginPath := cmd.JoinWithUserDir(".tsuru", "plugins", "myplugin")
-	hasAction = rfs.HasAction(fmt.Sprintf("create %s", pluginPath))
+	hasAction = rfs.HasAction(fmt.Sprintf("openfile %s with mode 0755", pluginPath))
 	c.Assert(hasAction, gocheck.Equals, true)
 	f, err := rfs.Open(pluginPath)
 	c.Assert(err, gocheck.IsNil)

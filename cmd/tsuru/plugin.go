@@ -9,6 +9,7 @@ import (
 	"github.com/globocom/tsuru/cmd"
 	"io/ioutil"
 	"net/http"
+	"os"
 )
 
 type pluginInstall struct{}
@@ -31,7 +32,7 @@ func (c *pluginInstall) Run(context *cmd.Context, client *cmd.Client) error {
 	pluginName := context.Args[0]
 	pluginUrl := context.Args[1]
 	pluginPath := cmd.JoinWithUserDir(".tsuru", "plugins", pluginName)
-	file, err := filesystem().Create(pluginPath)
+	file, err := filesystem().OpenFile(pluginPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0755)
 	if err != nil {
 		return err
 	}
