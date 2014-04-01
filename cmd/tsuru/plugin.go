@@ -54,6 +54,7 @@ func (c *pluginInstall) Run(context *cmd.Context, client *cmd.Client) error {
 	if n != len(data) {
 		return errors.New("Failed to install plugin.")
 	}
+	fmt.Fprintf(context.Stdout, `Plugin "%s" successfully installed!`+"\n", pluginName)
 	return nil
 }
 
@@ -94,7 +95,12 @@ func (pluginRemove) Info() *cmd.Info {
 func (c *pluginRemove) Run(context *cmd.Context, client *cmd.Client) error {
 	pluginName := context.Args[0]
 	pluginPath := cmd.JoinWithUserDir(".tsuru", "plugins", pluginName)
-	return filesystem().Remove(pluginPath)
+	err := filesystem().Remove(pluginPath)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(context.Stdout, `Plugin "%s" successfully removed!`+"\n", pluginName)
+	return nil
 }
 
 type pluginList struct{}

@@ -5,6 +5,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/globocom/tsuru/cmd"
 	etesting "github.com/globocom/tsuru/exec/testing"
@@ -35,8 +36,10 @@ func (s *S) TestPluginInstall(c *gocheck.C) {
 	defer func() {
 		fsystem = nil
 	}()
+	var stdout bytes.Buffer
 	context := cmd.Context{
-		Args: []string{"myplugin", ts.URL},
+		Args:   []string{"myplugin", ts.URL},
+		Stdout: &stdout,
 	}
 	client := cmd.NewClient(nil, nil, manager)
 	command := pluginInstall{}
@@ -53,6 +56,8 @@ func (s *S) TestPluginInstall(c *gocheck.C) {
 	data, err := ioutil.ReadAll(f)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert("fakeplugin\n", gocheck.Equals, string(data))
+	expected := `Plugin "myplugin" successfully installed!` + "\n"
+	c.Assert(expected, gocheck.Equals, stdout.String())
 }
 
 func (s *S) TestPluginInstallIsACommand(c *gocheck.C) {
@@ -106,8 +111,10 @@ func (s *S) TestPluginRemove(c *gocheck.C) {
 	defer func() {
 		fsystem = nil
 	}()
+	var stdout bytes.Buffer
 	context := cmd.Context{
-		Args: []string{"myplugin"},
+		Args:   []string{"myplugin"},
+		Stdout: &stdout,
 	}
 	client := cmd.NewClient(nil, nil, manager)
 	command := pluginRemove{}
@@ -116,6 +123,8 @@ func (s *S) TestPluginRemove(c *gocheck.C) {
 	pluginPath := cmd.JoinWithUserDir(".tsuru", "plugins", "myplugin")
 	hasAction := rfs.HasAction(fmt.Sprintf("remove %s", pluginPath))
 	c.Assert(hasAction, gocheck.Equals, true)
+	expected := `Plugin "myplugin" successfully removed!` + "\n"
+	c.Assert(expected, gocheck.Equals, stdout.String())
 }
 
 func (s *S) TestPluginRemoveIsACommand(c *gocheck.C) {
