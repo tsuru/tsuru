@@ -14,9 +14,9 @@ import (
 func (s *S) TestPluginInstallInfo(c *gocheck.C) {
 	expected := &cmd.Info{
 		Name:    "plugin-install",
-		Usage:   "plugin-install",
+		Usage:   "plugin-install <plugin-url>",
 		Desc:    "Install tsuru plugins.",
-		MinArgs: 0,
+		MinArgs: 1,
 	}
 	c.Assert(pluginInstal{}.Info(), gocheck.DeepEquals, expected)
 }

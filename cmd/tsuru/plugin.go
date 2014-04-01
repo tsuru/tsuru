@@ -11,9 +11,9 @@ type pluginInstal struct{}
 func (pluginInstal) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "plugin-install",
-		Usage:   "plugin-install",
+		Usage:   "plugin-install <plugin-url>",
 		Desc:    "Install tsuru plugins.",
-		MinArgs: 0,
+		MinArgs: 1,
 	}
 }
 
