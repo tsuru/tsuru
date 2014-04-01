@@ -109,5 +109,10 @@ func (pluginList) Info() *cmd.Info {
 }
 
 func (c *pluginList) Run(context *cmd.Context, client *cmd.Client) error {
+	pluginsPath := cmd.JoinWithUserDir(".tsuru", "plugins")
+	plugins, _ := ioutil.ReadDir(pluginsPath)
+	for _, p := range plugins {
+		fmt.Println(p.Name())
+	}
 	return nil
 }

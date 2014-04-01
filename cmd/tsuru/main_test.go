@@ -243,3 +243,10 @@ func (s *S) TestPluginRemoveIsRegistered(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(command, gocheck.FitsTypeOf, &pluginRemove{})
 }
+
+func (s *S) TestPluginListIsRegistered(c *gocheck.C) {
+	manager := buildManager("tsuru")
+	command, ok := manager.Commands["plugin-list"]
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(command, gocheck.FitsTypeOf, &pluginList{})
+}

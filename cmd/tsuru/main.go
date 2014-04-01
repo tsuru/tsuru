@@ -47,6 +47,7 @@ func buildManager(name string) *cmd.Manager {
 	m.Register(platformList{})
 	m.Register(&pluginInstall{})
 	m.Register(&pluginRemove{})
+	m.Register(&pluginList{})
 	m.Register(&plugin{})
 	m.Register(swap{})
 	return m
