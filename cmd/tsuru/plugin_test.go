@@ -7,7 +7,8 @@ package main
 import (
 	"fmt"
 	"github.com/globocom/tsuru/cmd"
-	"github.com/globocom/tsuru/fs/testing"
+	etesting "github.com/globocom/tsuru/exec/testing"
+	ftesting "github.com/globocom/tsuru/fs/testing"
 	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"
@@ -29,7 +30,7 @@ func (s *S) TestPluginInstall(c *gocheck.C) {
 		fmt.Fprintln(w, "fakeplugin")
 	}))
 	defer ts.Close()
-	rfs := testing.RecordingFs{}
+	rfs := ftesting.RecordingFs{}
 	fsystem = &rfs
 	defer func() {
 		fsystem = nil
@@ -66,4 +67,21 @@ func (s *S) TestPluginInfo(c *gocheck.C) {
 		MinArgs: 1,
 	}
 	c.Assert(plugin{}.Info(), gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestPlugin(c *gocheck.C) {
+	fexec := etesting.FakeExecutor{}
+	execut = &fexec
+	defer func() {
+		execut = nil
+	}()
+	context := cmd.Context{
+		Args: []string{"myplugin"},
+	}
+	client := cmd.NewClient(nil, nil, manager)
+	command := plugin{}
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	pluginPath := cmd.JoinWithUserDir(".tsuru", "plugins", "myplugin")
+	c.Assert(fexec.ExecutedCmd(pluginPath, nil), gocheck.Equals, true)
 }

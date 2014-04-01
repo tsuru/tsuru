@@ -5,7 +5,9 @@
 package main
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
 	"github.com/globocom/tsuru/cmd"
 	"io/ioutil"
 	"net/http"
@@ -64,4 +66,16 @@ func (plugin) Info() *cmd.Info {
 		Desc:    "Execute tsuru plugins.",
 		MinArgs: 1,
 	}
+}
+
+func (c *plugin) Run(context *cmd.Context, client *cmd.Client) error {
+	pluginName := context.Args[0]
+	pluginPath := cmd.JoinWithUserDir(".tsuru", "plugins", pluginName)
+	var b bytes.Buffer
+	err := executor().Execute(pluginPath, nil, nil, &b, &b)
+	if err != nil {
+		return err
+	}
+	fmt.Println(b.String())
+	return nil
 }
