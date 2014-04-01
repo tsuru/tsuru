@@ -79,3 +79,20 @@ func (c *plugin) Run(context *cmd.Context, client *cmd.Client) error {
 	fmt.Println(b.String())
 	return nil
 }
+
+type pluginRemove struct{}
+
+func (pluginRemove) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "plugin-remove",
+		Usage:   "plugin-remove <plugin-name>",
+		Desc:    "Remove tsuru plugins.",
+		MinArgs: 1,
+	}
+}
+
+func (c *pluginRemove) Run(context *cmd.Context, client *cmd.Client) error {
+	pluginName := context.Args[0]
+	pluginPath := cmd.JoinWithUserDir(".tsuru", "plugins", pluginName)
+	return filesystem().Remove(pluginPath)
+}

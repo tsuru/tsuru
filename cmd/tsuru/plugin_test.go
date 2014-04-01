@@ -89,3 +89,35 @@ func (s *S) TestPlugin(c *gocheck.C) {
 func (s *S) TestPluginIsACommand(c *gocheck.C) {
 	var _ cmd.Command = &plugin{}
 }
+
+func (s *S) TestPluginRemoveInfo(c *gocheck.C) {
+	expected := &cmd.Info{
+		Name:    "plugin-remove",
+		Usage:   "plugin-remove <plugin-name>",
+		Desc:    "Remove tsuru plugins.",
+		MinArgs: 1,
+	}
+	c.Assert(pluginRemove{}.Info(), gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestPluginRemove(c *gocheck.C) {
+	rfs := ftesting.RecordingFs{}
+	fsystem = &rfs
+	defer func() {
+		fsystem = nil
+	}()
+	context := cmd.Context{
+		Args: []string{"myplugin"},
+	}
+	client := cmd.NewClient(nil, nil, manager)
+	command := pluginRemove{}
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	pluginPath := cmd.JoinWithUserDir(".tsuru", "plugins", "myplugin")
+	hasAction := rfs.HasAction(fmt.Sprintf("remove %s", pluginPath))
+	c.Assert(hasAction, gocheck.Equals, true)
+}
+
+func (s *S) TestPluginRemoveIsACommand(c *gocheck.C) {
+	var _ cmd.Command = &pluginRemove{}
+}
