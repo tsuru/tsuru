@@ -54,3 +54,14 @@ func (c *pluginInstall) Run(context *cmd.Context, client *cmd.Client) error {
 	}
 	return nil
 }
+
+type plugin struct{}
+
+func (plugin) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "plugin",
+		Usage:   "plugin <plugin-name> [<args>]",
+		Desc:    "Execute tsuru plugins.",
+		MinArgs: 1,
+	}
+}

@@ -53,3 +53,13 @@ func (s *S) TestPluginInstall(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert("fakeplugin\n", gocheck.Equals, string(data))
 }
+
+func (s *S) TestPluginInfo(c *gocheck.C) {
+	expected := &cmd.Info{
+		Name:    "plugin",
+		Usage:   "plugin <plugin-name> [<args>]",
+		Desc:    "Execute tsuru plugins.",
+		MinArgs: 1,
+	}
+	c.Assert(plugin{}.Info(), gocheck.DeepEquals, expected)
+}
