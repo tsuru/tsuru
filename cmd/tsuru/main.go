@@ -46,6 +46,7 @@ func buildManager(name string) *cmd.Manager {
 	m.Register(&tsuru.ServiceUnbind{})
 	m.Register(platformList{})
 	m.Register(&pluginInstall{})
+	m.Register(&plugin{})
 	m.Register(swap{})
 	return m
 }

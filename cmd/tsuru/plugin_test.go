@@ -85,3 +85,7 @@ func (s *S) TestPlugin(c *gocheck.C) {
 	pluginPath := cmd.JoinWithUserDir(".tsuru", "plugins", "myplugin")
 	c.Assert(fexec.ExecutedCmd(pluginPath, nil), gocheck.Equals, true)
 }
+
+func (s *S) TestPluginIsACommand(c *gocheck.C) {
+	var _ cmd.Command = &plugin{}
+}
