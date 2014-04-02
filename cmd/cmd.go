@@ -27,6 +27,8 @@ func (e osExiter) Exit(code int) {
 	os.Exit(code)
 }
 
+type Lookup func(m *Manager, args []string) error
+
 type Manager struct {
 	Commands      map[string]Command
 	topics        map[string]string
@@ -39,17 +41,18 @@ type Manager struct {
 	e             exiter
 	original      string
 	wrong         bool
+	lookup        Lookup
 }
 
-func NewManager(name, ver, verHeader string, stdout, stderr io.Writer, stdin io.Reader) *Manager {
-	manager := &Manager{name: name, version: ver, versionHeader: verHeader, stdout: stdout, stderr: stderr, stdin: stdin}
+func NewManager(name, ver, verHeader string, stdout, stderr io.Writer, stdin io.Reader, lookup Lookup) *Manager {
+	manager := &Manager{name: name, version: ver, versionHeader: verHeader, stdout: stdout, stderr: stderr, stdin: stdin, lookup: lookup}
 	manager.Register(&help{manager})
 	manager.Register(&version{manager})
 	return manager
 }
 
-func BuildBaseManager(name, version, versionHeader string) *Manager {
-	m := NewManager(name, version, versionHeader, os.Stdout, os.Stderr, os.Stdin)
+func BuildBaseManager(name, version, versionHeader string, lookup Lookup) *Manager {
+	m := NewManager(name, version, versionHeader, os.Stdout, os.Stderr, os.Stdin, lookup)
 	m.Register(&login{})
 	m.Register(&logout{})
 	m.Register(&userCreate{})
@@ -101,6 +104,14 @@ func (m *Manager) Run(args []string) {
 	name := args[0]
 	command, ok := m.Commands[name]
 	if !ok {
+		if m.lookup != nil {
+			err := m.lookup(m, args)
+			if err != nil {
+				fmt.Fprint(m.stderr, err)
+				m.finisher().Exit(1)
+			}
+			return
+		}
 		fmt.Fprintf(m.stderr, "Error: command %q does not exist\n", args[0])
 		m.finisher().Exit(1)
 		return

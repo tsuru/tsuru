@@ -21,7 +21,7 @@ var manager *cmd.Manager
 
 func (s *S) SetUpSuite(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	manager = cmd.NewManager("glb", version, header, &stdout, &stderr, os.Stdin)
+	manager = cmd.NewManager("glb", version, header, &stdout, &stderr, os.Stdin, nil)
 	targetFile := os.Getenv("HOME") + "/.tsuru_target"
 	_, err := os.Stat(targetFile)
 	if err == nil {

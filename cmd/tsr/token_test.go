@@ -33,7 +33,7 @@ func (s *S) TestTokenRun(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	manager := cmd.NewManager("glb", "", "", &stdout, &stderr, os.Stdin)
+	manager := cmd.NewManager("glb", "", "", &stdout, &stderr, os.Stdin, nil)
 	client := cmd.NewClient(&http.Client{}, nil, manager)
 	command := tokenCmd{}
 	err := command.Run(&context, client)

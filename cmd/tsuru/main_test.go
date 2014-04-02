@@ -7,11 +7,12 @@ package main
 import (
 	"github.com/globocom/tsuru/cmd"
 	"github.com/globocom/tsuru/cmd/tsuru-base"
+	etesting "github.com/globocom/tsuru/exec/testing"
 	"launchpad.net/gocheck"
 )
 
 func (s *S) TestCommandsFromBaseManagerAreRegistered(c *gocheck.C) {
-	baseManager := cmd.BuildBaseManager("tsuru", version, header)
+	baseManager := cmd.BuildBaseManager("tsuru", version, header, nil)
 	manager := buildManager("tsuru")
 	for name, instance := range baseManager.Commands {
 		command, ok := manager.Commands[name]
@@ -249,4 +250,16 @@ func (s *S) TestPluginListIsRegistered(c *gocheck.C) {
 	command, ok := manager.Commands["plugin-list"]
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(command, gocheck.FitsTypeOf, &pluginList{})
+}
+
+func (s *S) TestPluginLookup(c *gocheck.C) {
+	fexec := etesting.FakeExecutor{}
+	execut = &fexec
+	defer func() {
+		execut = nil
+	}()
+	manager := buildManager("tsuru")
+	manager.Run([]string{"myplugin"})
+	pluginPath := cmd.JoinWithUserDir(".tsuru", "plugins", "myplugin")
+	c.Assert(fexec.ExecutedCmd(pluginPath, []string{}), gocheck.Equals, true)
 }

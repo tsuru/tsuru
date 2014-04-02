@@ -44,7 +44,7 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 
 func (s *S) SetUpTest(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	manager = NewManager("glb", "1.0", "", &stdout, &stderr, os.Stdin)
+	manager = NewManager("glb", "1.0", "", &stdout, &stderr, os.Stdin, nil)
 	var exiter recordingExiter
 	manager.e = &exiter
 }

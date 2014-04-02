@@ -110,6 +110,18 @@ func (s *S) TestRegisterTopicMultiple(c *gocheck.C) {
 	c.Assert(manager.topics, gocheck.DeepEquals, expected)
 }
 
+func (s *S) TestCustomLookup(c *gocheck.C) {
+	lookup := func(m *Manager, args []string) error {
+		fmt.Fprintf(m.stdout, "teste")
+		return nil
+	}
+	var stdout, stderr bytes.Buffer
+	manager := NewManager("glb", "0.x", "Foo-Tsuru", &stdout, &stderr, os.Stdin, lookup)
+	manager.Run([]string{"custom"})
+	c.Assert(stdout.String(), gocheck.Equals, "teste")
+
+}
+
 func (s *S) TestManagerRunShouldWriteErrorsOnStderr(c *gocheck.C) {
 	manager.Register(&ErrorCommand{msg: "You are wrong\n"})
 	manager.Run([]string{"error"})
@@ -232,7 +244,7 @@ Tsuru likes to manage targets
 
 func (s *S) TestHelpCommandShouldBeRegisteredByDefault(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	m := NewManager("tsuru", "1.0", "", &stdout, &stderr, os.Stdin)
+	m := NewManager("tsuru", "1.0", "", &stdout, &stderr, os.Stdin, nil)
 	_, exists := m.Commands["help"]
 	c.Assert(exists, gocheck.Equals, true)
 }
@@ -275,7 +287,7 @@ Foo do anything or nothing.
 
 func (s *S) TestVersion(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	manager := NewManager("tsuru", "5.0", "", &stdout, &stderr, os.Stdin)
+	manager := NewManager("tsuru", "5.0", "", &stdout, &stderr, os.Stdin, nil)
 	command := version{manager: manager}
 	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
 	err := command.Run(&context, nil)
@@ -354,7 +366,7 @@ Foo do anything or nothing.
 
 `
 	var stdout, stderr bytes.Buffer
-	manager := NewManager("tsuru", "1.0", "", &stdout, &stderr, os.Stdin)
+	manager := NewManager("tsuru", "1.0", "", &stdout, &stderr, os.Stdin, nil)
 	manager.Register(&TestCommand{})
 	context := Context{[]string{"foo"}, manager.stdout, manager.stderr, manager.stdin}
 	command := help{manager: manager}
@@ -390,97 +402,97 @@ func (s *S) TestFinisherReturnTheDefinedE(c *gocheck.C) {
 }
 
 func (s *S) TestLoginIsRegistered(c *gocheck.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "")
+	manager := BuildBaseManager("tsuru", "1.0", "", nil)
 	lgn, ok := manager.Commands["login"]
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(lgn, gocheck.FitsTypeOf, &login{})
 }
 
 func (s *S) TestLogoutIsRegistered(c *gocheck.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "")
+	manager := BuildBaseManager("tsuru", "1.0", "", nil)
 	lgt, ok := manager.Commands["logout"]
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(lgt, gocheck.FitsTypeOf, &logout{})
 }
 
 func (s *S) TestUserCreateIsRegistered(c *gocheck.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "")
+	manager := BuildBaseManager("tsuru", "1.0", "", nil)
 	user, ok := manager.Commands["user-create"]
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(user, gocheck.FitsTypeOf, &userCreate{})
 }
 
 func (s *S) TestTeamCreateIsRegistered(c *gocheck.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "")
+	manager := BuildBaseManager("tsuru", "1.0", "", nil)
 	create, ok := manager.Commands["team-create"]
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(create, gocheck.FitsTypeOf, &teamCreate{})
 }
 
 func (s *S) TestTeamListIsRegistered(c *gocheck.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "")
+	manager := BuildBaseManager("tsuru", "1.0", "", nil)
 	list, ok := manager.Commands["team-list"]
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(list, gocheck.FitsTypeOf, &teamList{})
 }
 
 func (s *S) TestTeamAddUserIsRegistered(c *gocheck.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "")
+	manager := BuildBaseManager("tsuru", "1.0", "", nil)
 	adduser, ok := manager.Commands["team-user-add"]
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(adduser, gocheck.FitsTypeOf, &teamUserAdd{})
 }
 
 func (s *S) TestTeamRemoveUserIsRegistered(c *gocheck.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "")
+	manager := BuildBaseManager("tsuru", "1.0", "", nil)
 	removeuser, ok := manager.Commands["team-user-remove"]
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(removeuser, gocheck.FitsTypeOf, &teamUserRemove{})
 }
 
 func (s *S) TestTeamUserListIsRegistered(c *gocheck.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "")
+	manager := BuildBaseManager("tsuru", "1.0", "", nil)
 	listuser, ok := manager.Commands["team-user-list"]
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(listuser, gocheck.FitsTypeOf, teamUserList{})
 }
 
 func (s *S) TestTargetListIsRegistered(c *gocheck.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "")
+	manager := BuildBaseManager("tsuru", "1.0", "", nil)
 	tgt, ok := manager.Commands["target-list"]
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(tgt, gocheck.FitsTypeOf, &targetList{})
 }
 
 func (s *S) TestTargetTopicIsRegistered(c *gocheck.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "")
+	manager := BuildBaseManager("tsuru", "1.0", "", nil)
 	expected := fmt.Sprintf(targetTopic, "tsuru")
 	c.Assert(manager.topics["target"], gocheck.Equals, expected)
 }
 
 func (s *S) TestUserRemoveIsRegistered(c *gocheck.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "")
+	manager := BuildBaseManager("tsuru", "1.0", "", nil)
 	rmUser, ok := manager.Commands["user-remove"]
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(rmUser, gocheck.FitsTypeOf, &userRemove{})
 }
 
 func (s *S) TestTeamRemoveIsRegistered(c *gocheck.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "")
+	manager := BuildBaseManager("tsuru", "1.0", "", nil)
 	rmTeam, ok := manager.Commands["team-remove"]
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(rmTeam, gocheck.FitsTypeOf, &teamRemove{})
 }
 
 func (s *S) TestChangePasswordIsRegistered(c *gocheck.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "")
+	manager := BuildBaseManager("tsuru", "1.0", "", nil)
 	chpass, ok := manager.Commands["change-password"]
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(chpass, gocheck.FitsTypeOf, &changePassword{})
 }
 
 func (s *S) TestResetPasswordIsRegistered(c *gocheck.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "")
+	manager := BuildBaseManager("tsuru", "1.0", "", nil)
 	reset, ok := manager.Commands["reset-password"]
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(reset, gocheck.FitsTypeOf, &resetPassword{})
@@ -488,7 +500,7 @@ func (s *S) TestResetPasswordIsRegistered(c *gocheck.C) {
 
 func (s *S) TestVersionIsRegisteredByNewManager(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	manager := NewManager("tsuru", "1.0", "", &stdout, &stderr, os.Stdin)
+	manager := NewManager("tsuru", "1.0", "", &stdout, &stderr, os.Stdin, nil)
 	ver, ok := manager.Commands["version"]
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(ver, gocheck.FitsTypeOf, &version{})

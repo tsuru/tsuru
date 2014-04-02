@@ -44,5 +44,5 @@ func Test(t *testing.T) { gocheck.TestingT(t) }
 
 func (s *S) SetUpTest(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	manager = cmd.NewManager("glb", version, header, &stdout, &stderr, os.Stdin)
+	manager = cmd.NewManager("glb", version, header, &stdout, &stderr, os.Stdin, nil)
 }

@@ -21,7 +21,7 @@ func (s *S) TestTokenGen(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	manager := cmd.NewManager("glb", "0.2", "ad-ver", &stdout, &stderr, nil)
+	manager := cmd.NewManager("glb", "0.2", "ad-ver", &stdout, &stderr, nil, nil)
 	result := `{"token":"secret123"}`
 	trans := testing.ConditionalTransport{
 		Transport: testing.Transport{Message: result, Status: http.StatusOK},
@@ -50,7 +50,7 @@ func (s *S) TestTokenGenWithExportOn(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	manager := cmd.NewManager("glb", "0.2", "ad-ver", &stdout, &stderr, nil)
+	manager := cmd.NewManager("glb", "0.2", "ad-ver", &stdout, &stderr, nil, nil)
 	result := `{"token":"secret123"}`
 	trans := testing.ConditionalTransport{
 		Transport: testing.Transport{Message: result, Status: http.StatusOK},

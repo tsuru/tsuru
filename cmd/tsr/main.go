@@ -16,7 +16,7 @@ import (
 const defaultConfigPath = "/etc/tsuru/tsuru.conf"
 
 func buildManager() *cmd.Manager {
-	m := cmd.NewManager("tsr", "0.3.10", "", os.Stdout, os.Stderr, os.Stdin)
+	m := cmd.NewManager("tsr", "0.3.10", "", os.Stdout, os.Stderr, os.Stdin, nil)
 	m.Register(&tsrCommand{Command: &apiCmd{}})
 	m.Register(&tsrCommand{Command: &adminCmd{}})
 	m.Register(&tsrCommand{Command: &collectorCmd{}})
