@@ -18,7 +18,7 @@ const (
 func buildManager(name string) *cmd.Manager {
 	lookup := func(m *cmd.Manager, args []string) error {
 		context := cmd.Context{Args: args}
-		client := cmd.NewClient(nil, nil, manager)
+		client := cmd.NewClient(nil, nil, m)
 		command := plugin{}
 		return command.Run(&context, client)
 	}
@@ -54,7 +54,6 @@ func buildManager(name string) *cmd.Manager {
 	m.Register(&pluginInstall{})
 	m.Register(&pluginRemove{})
 	m.Register(&pluginList{})
-	m.Register(&plugin{})
 	m.Register(swap{})
 	return m
 }
