@@ -14,7 +14,7 @@ Documentation
 Using Tsuru
 +++++++++++
 
-Deploy you applications on Tsuru.
+Deploy your applications on tsuru.
 
 * :doc:`command-line installation guide </install/client>`
 
@@ -27,7 +27,14 @@ Deploy you applications on Tsuru.
 * :doc:`understanding deployment hooks </apps/deploy-hooks>`
 * :doc:`recovery and troubleshooting </apps/recovery>`
 
-* :doc:`command-line usage guide </apps/client/usage>`
+tsuru command-line
+------------------
+
+* :doc:`usage guide </apps/client/usage>`
+* :doc:`using and creating command-line plugins </using/cli/plugins>`
+
+services
+--------
 
 * :doc:`using services </apps/client/services>`
 
