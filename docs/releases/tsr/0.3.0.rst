@@ -49,7 +49,7 @@ Other improvements and bugfixes
 -------------------------------
 
     * `unit-remove` does not block util all units are removed.
-    * BUGFIX: send on closed channel: https://github.com/globocom/tsuru/issues/624.
+    * BUGFIX: send on closed channel: https://github.com/tsuru/tsuru/issues/624.
     * Api handler that returns information about all deploys.
     * Refactored quota backend.
     * New lisp platform. Thanks to Nick Ricketts.

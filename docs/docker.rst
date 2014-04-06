@@ -109,7 +109,7 @@ Installing gandalf
     sudo apt-get install gandalf-server -qqy
     hook_dir=/home/git/bare-template/hooks
     sudo mkdir -p $hook_dir
-    sudo curl https://raw.githubusercontent.com/globocom/tsuru/master/misc/git-hooks/post-receive -o ${hook_dir}/post-receive
+    sudo curl https://raw.githubusercontent.com/tsuru/tsuru/master/misc/git-hooks/post-receive -o ${hook_dir}/post-receive
     sudo chmod +x ${hook_dir}/post-receive
     sudo chown -R git:git /home/git/bare-template
     # make sure you write the public IP of the machine in the "host" parameter
@@ -142,7 +142,7 @@ Installing platforms
 
 ::
 
-    curl https://raw.githubusercontent.com/globocom/tsuru/master/misc/platforms-setup.js | mongo tsuru
+    curl https://raw.githubusercontent.com/tsuru/tsuru/master/misc/platforms-setup.js | mongo tsuru
 
 And then install your preferred platform from `basebuilder
 <https://github.com/flaviamissi/basebuilder>`_. For example, Python:

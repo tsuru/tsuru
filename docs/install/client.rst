@@ -133,7 +133,7 @@ and put the binary somewhere in your PATH:
 Build from source (Linux and Mac OS X)
 ======================================
 
-`Tsuru's source <https://github.com/globocom/tsuru>`_ is written in `Go
+`Tsuru's source <https://github.com/tsuru/tsuru>`_ is written in `Go
 <http://golang.org>`_, so before installing tsuru from source, please make sure
 you have `installed and configured Go <http://golang.org/doc/install>`_.
 
@@ -144,6 +144,6 @@ tsuru's clients:
 
 ::
 
-    $ go get github.com/globocom/tsuru/cmd/tsuru
-    $ go get github.com/globocom/tsuru/cmd/tsuru-admin
-    $ go get github.com/globocom/tsuru/cmd/crane
+    $ go get github.com/tsuru/tsuru/cmd/tsuru
+    $ go get github.com/tsuru/tsuru/cmd/tsuru-admin
+    $ go get github.com/tsuru/tsuru/cmd/crane

@@ -9,7 +9,7 @@ Easy Server Installation
 
 It's really easy to have a running PaaS with Tsuru. We provide a serie of scripts, each one built to install
 and configure the required components for each Tsuru provisioner, you can check our scripts on
-`Tsuru repository <https://github.com/globocom/tsuru/tree/master/misc>`_, there are separeted scripts to install each
+`Tsuru repository <https://github.com/tsuru/tsuru/tree/master/misc>`_, there are separeted scripts to install each
 component, so it's easy to create your own script to configure a new provisioner or to change the configuration of
 an existing one.
 
@@ -111,6 +111,6 @@ contact us in #tsuru @ freenode.net or at our `mailing list <https://groups.goog
 | Manual Scaling          | Yes                    | No                 | Yes                   |
 +-------------------------+------------------------+--------------------+-----------------------+
 
-.. _154: https://github.com/globocom/tsuru/issues/154
-.. _466: https://github.com/globocom/tsuru/issues/466
+.. _154: https://github.com/tsuru/tsuru/issues/154
+.. _466: https://github.com/tsuru/tsuru/issues/466
 .. _Abyss: https://github.com/globocom/abyss

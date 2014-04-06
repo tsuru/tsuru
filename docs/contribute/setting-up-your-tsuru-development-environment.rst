@@ -129,7 +129,7 @@ Once you have defined the GOPATH variable, then run the following commands:
 
     $ mkdir -p $GOPATH/src/github.com/globocom
     $ cd $GOPATH/src/github.com/globocom
-    $ git clone git://github.com/globocom/tsuru
+    $ git clone git://github.com/tsuru/tsuru
 
 If you have already cloned the repository, just move the cloned directory to
 `$GOPATH/src/github.com/globocom`.

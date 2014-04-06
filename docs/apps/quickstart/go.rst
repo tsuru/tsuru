@@ -16,7 +16,7 @@ Creating the app within tsuru
 =============================
 
 To create an app, you use `app-create
-<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#hdr-Create_an_app>`_
+<http://godoc.org/github.com/tsuru/tsuru/cmd/tsuru#hdr-Create_an_app>`_
 command:
 
 .. highlight:: bash
@@ -35,11 +35,11 @@ and develop a hello world tutorial-app, let's call it "helloworld":
     $ tsuru app-create helloworld go
 
 To list all available platforms, use `platform-list
-<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#hdr-Display_the_list_of_available_platforms>`_
+<http://godoc.org/github.com/tsuru/tsuru/cmd/tsuru#hdr-Display_the_list_of_available_platforms>`_
 command.
 
 You can see all your applications using `app-list
-<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#hdr-List_apps_that_you_have_access_to>`_
+<http://godoc.org/github.com/tsuru/tsuru/cmd/tsuru#hdr-List_apps_that_you_have_access_to>`_
 command:
 
 .. highlight:: bash
@@ -100,7 +100,7 @@ Git deployment
 
 When you create a new app, tsuru will display the Git remote that you should
 use. You can always get it using `app-info
-<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#hdr-Display_information_about_an_app>`_
+<http://godoc.org/github.com/tsuru/tsuru/cmd/tsuru#hdr-Display_information_about_an_app>`_
 command:
 
 .. highlight:: bash
@@ -141,7 +141,7 @@ push to tsuru remote and your project will be deployed:
 
 If you get a "Permission denied (publickey).", make sure you're member of a
 team and have a public key added to tsuru. To add a key, use `key-add
-<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#hdr-Add_SSH_public_key_to_tsuru_s_git_server>`_
+<http://godoc.org/github.com/tsuru/tsuru/cmd/tsuru#hdr-Add_SSH_public_key_to_tsuru_s_git_server>`_
 command:
 
 .. highlight:: bash
@@ -188,7 +188,7 @@ And you will be also able to omit the ``--app`` flag from now on:
     +--------------+---------+
 
 For more details on the ``--app`` flag, see `"Guessing app names"
-<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#hdr-Guessing_app_names>`_
+<http://godoc.org/github.com/tsuru/tsuru/cmd/tsuru#hdr-Guessing_app_names>`_
 section of tsuru command documentation.
 
 Running the application
@@ -246,4 +246,4 @@ Going further
 
 For more information, you can dig into `tsuru docs <http://docs.tsuru.io>`_, or
 read `complete instructions of use for the tsuru command
-<http://godoc.org/github.com/globocom/tsuru/cmd/tsuru>`_.
+<http://godoc.org/github.com/tsuru/tsuru/cmd/tsuru>`_.

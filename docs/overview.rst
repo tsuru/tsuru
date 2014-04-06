@@ -2,7 +2,7 @@ Tsuru Overview
 ==============
 
 This document is in alpha state, to suggest improvements check out the
-`related github issue <https://github.com/globocom/tsuru/issues/367>`_.
+`related github issue <https://github.com/tsuru/tsuru/issues/367>`_.
 
 Tsuru is an open source PaaS. If you don't know what a PaaS is and what it
 does, see `wikipedia's description <http://en.wikipedia.org/wiki/PaaS>`_.

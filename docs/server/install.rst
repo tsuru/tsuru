@@ -66,7 +66,7 @@ After installing and configuring go, and installing libyaml, just run in your te
 
 ::
 
-    $ go get github.com/globocom/tsuru/...
+    $ go get github.com/tsuru/tsuru/...
 
 Server configuration
 ====================

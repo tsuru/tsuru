@@ -206,7 +206,7 @@ Then execute:
 ::
 
     $ source ~/.bashrc
-    $ go get github.com/globocom/tsuru/tsr
+    $ go get github.com/tsuru/tsuru/tsr
 
 Configuring tsuru
 =================
@@ -223,7 +223,7 @@ You can download the sample configuration file from Github:
 ::
 
     $ [sudo] mkdir /etc/tsuru
-    $ [sudo] curl -sL https://raw.github.com/globocom/tsuru/master/etc/tsuru.conf -o /etc/tsuru/tsuru.conf
+    $ [sudo] curl -sL https://raw.github.com/tsuru/tsuru/master/etc/tsuru.conf -o /etc/tsuru/tsuru.conf
 
 Make sure you define the required settings (database connection, authentication
 configuration, AWS credentials, etc.) before running tsuru.

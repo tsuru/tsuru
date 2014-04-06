@@ -108,7 +108,7 @@ To setup Tsuru, just follow this steps. Obs: It can be used to upgrade this serv
 
 ::
 
-    $ curl https://raw.github.com/globocom/tsuru/master/misc/functions-docker-centos.sh -o functions-docker-centos.sh
+    $ curl https://raw.github.com/tsuru/tsuru/master/misc/functions-docker-centos.sh -o functions-docker-centos.sh
     $ source functions-docker-centos.sh
     # Install Tsuru Server(tsr), Gandalf, Hipache and Circus for monitoring
     $ install_services
@@ -122,7 +122,7 @@ the configuration file in the ``/etc/tsuru/tsuru.conf`` path. You can check a
 sample configuration file and documentation for each tsuru setting in the
 :doc:`"Configuring tsuru" </config>` page.
 
-You can download the sample configuration file from `Github <https://raw.github.com/globocom/tsuru/master/etc/tsuru-docker.conf/>`_ 
+You can download the sample configuration file from `Github <https://raw.github.com/tsuru/tsuru/master/etc/tsuru-docker.conf/>`_ 
 
 By default, this configuration will use the tsuru image namespace, so if you try to create an application using python platform,
 tsuru will search for an image named tsuru/python. You can change this default behavior by changing the docker:repository-namespace config field.

@@ -293,7 +293,7 @@ Besides beanstalkd, Tsuru also supports Redis as a working queue. In order to
 use Redis, Tsuru administrators must set ``queue`` to ``redis``.
 
 Creating a new queue provider is as easy as implementing `an interface
-<http://godoc.org/github.com/globocom/tsuru/queue#Q>`_.
+<http://godoc.org/github.com/tsuru/tsuru/queue#Q>`_.
 
 queue
 +++++

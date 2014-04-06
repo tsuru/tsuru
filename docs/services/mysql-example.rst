@@ -166,7 +166,7 @@ doc-get will retrieve the current documentation of the service.
 Further instructions
 ====================
 
-Now you can add this service for your applications using the `bind <http://godoc.org/github.com/globocom/tsuru/cmd/tsuru#hdr-Bind_an_application_to_a_service_instance>`_ command
+Now you can add this service for your applications using the `bind <http://godoc.org/github.com/tsuru/tsuru/cmd/tsuru#hdr-Bind_an_application_to_a_service_instance>`_ command
 
 For a complete reference, check the documentation for `crane <http://docs.tsuru.io/en/latest/services/usage.html>`_ command:
-`http://godoc.org/github.com/globocom/tsuru/cmd/crane <http://godoc.org/github.com/globocom/tsuru/cmd/crane>`_.
+`http://godoc.org/github.com/tsuru/tsuru/cmd/crane <http://godoc.org/github.com/tsuru/tsuru/cmd/crane>`_.
