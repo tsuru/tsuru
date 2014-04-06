@@ -7,8 +7,8 @@ package juju
 import (
 	"github.com/flaviamissi/go-elb/aws"
 	"github.com/flaviamissi/go-elb/elb"
-	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/log"
 )
 
 type elbInstance struct {

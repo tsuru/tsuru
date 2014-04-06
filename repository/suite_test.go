@@ -5,8 +5,8 @@
 package repository
 
 import (
-	tsrTesting "github.com/tsuru/tsuru/testing"
 	"github.com/tsuru/config"
+	tsrTesting "github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 	"net/http/httptest"
 	"testing"

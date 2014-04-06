@@ -8,9 +8,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/testing"
-	"github.com/tsuru/config"
 	"launchpad.net/gocheck"
 )
 

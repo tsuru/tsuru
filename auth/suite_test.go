@@ -6,9 +6,9 @@ package auth
 
 import (
 	"code.google.com/p/go.crypto/bcrypt"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	ttesting "github.com/tsuru/tsuru/testing"
-	"github.com/tsuru/config"
 	"io"
 	"io/ioutil"
 	"launchpad.net/gocheck"

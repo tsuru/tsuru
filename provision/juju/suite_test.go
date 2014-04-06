@@ -5,9 +5,9 @@
 package juju
 
 import (
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/queue"
-	"github.com/tsuru/config"
 	"launchpad.net/gocheck"
 	"testing"
 )

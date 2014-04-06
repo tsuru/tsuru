@@ -12,8 +12,8 @@
 package db
 
 import (
-	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/db/storage"
 	"labix.org/v2/mgo"
 )
 

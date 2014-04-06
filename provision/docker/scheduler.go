@@ -7,11 +7,11 @@ package docker
 import (
 	"errors"
 	"github.com/fsouza/go-dockerclient"
+	"github.com/tsuru/config"
+	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/config"
-	"github.com/tsuru/docker-cluster/cluster"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"math/rand"

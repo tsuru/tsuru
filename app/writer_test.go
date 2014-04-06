@@ -6,8 +6,8 @@ package app
 
 import (
 	"bytes"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 )

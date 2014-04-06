@@ -7,6 +7,8 @@ package app
 import (
 	"errors"
 	"fmt"
+	"github.com/tsuru/config"
+	"github.com/tsuru/go-gandalfclient"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
@@ -16,8 +18,6 @@ import (
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
-	"github.com/tsuru/config"
-	"github.com/tsuru/go-gandalfclient"
 	"io"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"

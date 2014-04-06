@@ -7,9 +7,9 @@ package hipache
 import (
 	"errors"
 	"github.com/garyburd/redigo/redis"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/router"
-	"github.com/tsuru/config"
 	"launchpad.net/gocheck"
 	"testing"
 )

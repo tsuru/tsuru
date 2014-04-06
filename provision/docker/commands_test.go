@@ -6,11 +6,11 @@ package docker
 
 import (
 	"fmt"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
 	ftesting "github.com/tsuru/tsuru/fs/testing"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/testing"
-	"github.com/tsuru/config"
 	"launchpad.net/gocheck"
 	"os"
 	"strings"

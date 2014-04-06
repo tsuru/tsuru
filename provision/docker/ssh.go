@@ -7,9 +7,9 @@ package docker
 import (
 	"encoding/json"
 	"github.com/bmizerany/pat"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/io"
-	"github.com/tsuru/config"
 	"launchpad.net/gnuflag"
 	"net"
 	"net/http"

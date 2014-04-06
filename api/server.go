@@ -7,11 +7,11 @@ package api
 import (
 	"fmt"
 	"github.com/bmizerany/pat"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/config"
 	"net"
 	"net/http"
 )

@@ -5,6 +5,7 @@
 package api
 
 import (
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
@@ -12,7 +13,6 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/service"
 	tsuruTesting "github.com/tsuru/tsuru/testing"
-	"github.com/tsuru/config"
 	"io"
 	"io/ioutil"
 	"launchpad.net/gocheck"

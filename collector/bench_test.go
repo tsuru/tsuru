@@ -6,11 +6,11 @@ package collector
 
 import (
 	"fmt"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
 	ttesting "github.com/tsuru/tsuru/testing"
-	"github.com/tsuru/config"
 	"testing"
 )
 

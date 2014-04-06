@@ -7,9 +7,9 @@
 package repository
 
 import (
-	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
+	"github.com/tsuru/tsuru/log"
 )
 
 // ServerURL returns the URL to Gandalf API.

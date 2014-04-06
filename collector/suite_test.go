@@ -5,10 +5,10 @@
 package collector
 
 import (
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	ttesting "github.com/tsuru/tsuru/testing"
-	"github.com/tsuru/config"
 	"launchpad.net/gocheck"
 	"testing"
 )

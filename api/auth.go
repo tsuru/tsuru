@@ -7,6 +7,8 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/tsuru/config"
+	"github.com/tsuru/go-gandalfclient"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
@@ -18,8 +20,6 @@ import (
 	"github.com/tsuru/tsuru/rec"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/validation"
-	"github.com/tsuru/config"
-	"github.com/tsuru/go-gandalfclient"
 	"io"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"

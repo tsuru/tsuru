@@ -5,8 +5,8 @@
 package router
 
 import (
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/db"
 	"launchpad.net/gocheck"
 	"testing"
 )
