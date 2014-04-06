@@ -61,7 +61,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	f.Write([]byte("key-content"))
 	f.Close()
-	s.server, err = dtesting.NewServer(nil)
+	s.server, err = dtesting.NewServer("127.0.0.1:0", nil)
 	c.Assert(err, gocheck.IsNil)
 }
 

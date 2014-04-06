@@ -414,21 +414,45 @@ connect in the database:
 
 
 You can extend your wordpress installing plugins into your repository. In the example bellow, we
-are installing the W3 Total Cache, adding the Amazon S3 capability to wordpress
+are adding the Amazon S3 capability to wordpress, just installing 2 more plugins: `Amazon S3 and Cloudfront <http://wordpress.org/plugins/amazon-s3-and-cloudfront>`_ +
+`Amazon Web Services <http://wordpress.org/plugins/amazon-web-services>`_. It's the right way to store content files into Tsuru.
 
 .. highlight:: bash
 
 ::
 
     $ cd wp-content/plugins/
-    $ wget http://downloads.wordpress.org/plugin/w3-total-cache.0.9.3.zip
-    $ unzip w3-total-cache.0.9.3.zip
-    $ rm w3-total-cache.0.9.3.zip
-    $ git add w3-total-cache/
-    $ git commit -m 'adding plugin for caching and S3'
+    $ wget http://downloads.wordpress.org/plugin/amazon-web-services.0.1.zip
+    $ wget http://downloads.wordpress.org/plugin/amazon-s3-and-cloudfront.0.6.1.zip
+    $ unzip amazon-web-services.0.1.zip
+    $ unzip amazon-s3-and-cloudfront.0.6.1.zip
+    $ rm -f amazon-web-services.0.1.zip amazon-s3-and-cloudfront.0.6.1.zip
+    $ git add amazon-web-services/ amazon-s3-and-cloudfront/
+
+Now you need to add the amazon AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environments 
+support into wp-config.php. You could add these environments right after the WP_DEBUG as bellow:
+
+.. highlight:: bash
+
+::
+
+    $ grep -A2 define.*WP_DEBUG  wp-config.php
+    define('WP_DEBUG', false);
+    define('AWS_ACCESS_KEY_ID', getenv('AWS_ACCESS_KEY_ID'));
+    define('AWS_SECRET_ACCESS_KEY', getenv('AWS_SECRET_ACCESS_KEY'));
+    $ git add wp-config.php
+    $ git commit -m 'adding plugins for S3'
     $ git push tsuru master
 
-It's done! Now we have a PHP project deployed on tsuru, using a MySQL
+Now, just inject the right values for these environments with tsuru env-set as bellow:
+
+.. highlight:: bash
+
+::
+
+    $ tsuru env-set AWS_ACCESS_KEY_ID="xxx" AWS_SECRET_ACCESS_KEY="xxxxx" -a blog 
+
+It's done! Now we have a PHP project deployed on tsuru, with S3 support using a MySQL
 service.
 
 

@@ -39,13 +39,13 @@ func (s *SchedulerSuite) TearDownSuite(c *gocheck.C) {
 }
 
 func (s *SchedulerSuite) TestSchedulerSchedule(c *gocheck.C) {
-	server0, err := testing.NewServer(nil)
+	server0, err := testing.NewServer("127.0.0.1:0", nil)
 	c.Assert(err, gocheck.IsNil)
 	defer server0.Stop()
-	server1, err := testing.NewServer(nil)
+	server1, err := testing.NewServer("127.0.0.1:0", nil)
 	c.Assert(err, gocheck.IsNil)
 	defer server1.Stop()
-	server2, err := testing.NewServer(nil)
+	server2, err := testing.NewServer("127.0.0.1:0", nil)
 	c.Assert(err, gocheck.IsNil)
 	defer server2.Stop()
 	var buf bytes.Buffer
@@ -108,13 +108,13 @@ func (s *SchedulerSuite) TestSchedulerSchedule(c *gocheck.C) {
 func (s *SchedulerSuite) TestSchedulerScheduleWithRegistry(c *gocheck.C) {
 	config.Set("docker:registry", "myregistry.secret.server.com")
 	defer config.Unset("docker:registry")
-	server0, err := testing.NewServer(nil)
+	server0, err := testing.NewServer("127.0.0.1:0", nil)
 	c.Assert(err, gocheck.IsNil)
 	defer server0.Stop()
-	server1, err := testing.NewServer(nil)
+	server1, err := testing.NewServer("127.0.0.1:0", nil)
 	c.Assert(err, gocheck.IsNil)
 	defer server1.Stop()
-	server2, err := testing.NewServer(nil)
+	server2, err := testing.NewServer("127.0.0.1:0", nil)
 	c.Assert(err, gocheck.IsNil)
 	defer server2.Stop()
 	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}}
@@ -149,7 +149,7 @@ func (s *SchedulerSuite) TestSchedulerScheduleWithRegistry(c *gocheck.C) {
 }
 
 func (s *SchedulerSuite) TestSchedulerScheduleFallback(c *gocheck.C) {
-	server0, err := testing.NewServer(nil)
+	server0, err := testing.NewServer("127.0.0.1:0", nil)
 	c.Assert(err, gocheck.IsNil)
 	defer server0.Stop()
 	var buf bytes.Buffer

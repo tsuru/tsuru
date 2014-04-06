@@ -827,7 +827,7 @@ func (s *S) TestGetDockerServersShouldSearchFromConfig(c *gocheck.C) {
 
 func (s *S) TestPushImage(c *gocheck.C) {
 	var request *http.Request
-	server, err := dtesting.NewServer(func(r *http.Request) {
+	server, err := dtesting.NewServer("127.0.0.1:0", func(r *http.Request) {
 		request = r
 	})
 	c.Assert(err, gocheck.IsNil)
@@ -855,7 +855,7 @@ func (s *S) TestPushImage(c *gocheck.C) {
 
 func (s *S) TestPushImageNoRegistry(c *gocheck.C) {
 	var request *http.Request
-	server, err := dtesting.NewServer(func(r *http.Request) {
+	server, err := dtesting.NewServer("127.0.0.1:0", func(r *http.Request) {
 		request = r
 	})
 	c.Assert(err, gocheck.IsNil)
