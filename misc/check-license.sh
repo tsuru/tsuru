@@ -11,7 +11,8 @@ do
 	date=`git log -1 --format="%ad" --date=short -- $f`
 	if [ `echo "$date" | grep ^2014` ]
 	then
-		echo $f $date
+		#echo $f $date
+		gsed -i s/2013/2014/g $f
 		status=1
 	fi
 done
