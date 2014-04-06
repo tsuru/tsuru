@@ -433,6 +433,7 @@ func (s *S) TestCreateAppHandler(c *gocheck.C) {
 	expected := map[string]string{
 		"status":         "success",
 		"repository_url": repoURL,
+		"ip":             "someapp.fake-lb.tsuru.io",
 	}
 	err = json.Unmarshal(body, &obtained)
 	c.Assert(obtained, gocheck.DeepEquals, expected)
