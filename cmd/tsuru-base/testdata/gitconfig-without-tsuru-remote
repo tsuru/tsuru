@@ -6,5 +6,5 @@
 	ignorecase = true
 	precomposeunicode = false
 [remote "origin"]
-	url = git@github.com:globocom/tsuru-django-sample.git
+	url = git@github.com:tsuru/tsuru-django-sample.git
 	fetch = +refs/heads/*:refs/remotes/origin/*
