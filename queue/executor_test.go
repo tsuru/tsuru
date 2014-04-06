@@ -5,7 +5,7 @@
 package queue
 
 import (
-	"github.com/globocom/tsuru/safe"
+	"github.com/tsuru/tsuru/safe"
 	"launchpad.net/gocheck"
 	"time"
 )

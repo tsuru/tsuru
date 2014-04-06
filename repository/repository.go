@@ -7,7 +7,7 @@
 package repository
 
 import (
-	"github.com/globocom/tsuru/log"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
 )

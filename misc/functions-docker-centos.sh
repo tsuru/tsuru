@@ -49,7 +49,7 @@ webserver:
     [ -d /var/repositories ] || mkdir -p /var/repositories
     echo "Creating template path"
     [ -d /home/git/bare-template/hooks ] || mkdir -p /home/git/bare-template/hooks
-    curl https://raw.github.com/globocom/tsuru/master/misc/git-hooks/post-receive -o /home/git/bare-template/hooks/post-receive
+    curl https://raw.github.com/tsuru/tsuru/master/misc/git-hooks/post-receive -o /home/git/bare-template/hooks/post-receive
     chmod +x /home/git/bare-template/hooks/*
     mkdir -p /home/git/.ssh /var/log/gandalf
     chown -R git:git /home/git /var/repositories /var/log/gandalf
@@ -81,7 +81,7 @@ function install_tsuru() {
 function configure_tsuru() {
     echo "Configuring tsuru"
     mkdir -p /etc/tsuru
-    curl -sL https://raw.github.com/globocom/tsuru/master/etc/tsuru-docker.conf -o /etc/tsuru/tsuru.conf
+    curl -sL https://raw.github.com/tsuru/tsuru/master/etc/tsuru-docker.conf -o /etc/tsuru/tsuru.conf
     #trying to configure tsuru for you
     sed -i "s|^host:.*|host: $EXTIP:8080|; \
 	 s|id_rsa.pub|id_dsa.pub|; \
@@ -105,7 +105,7 @@ function setup_platforms() {
     # because mongo usually takes some time to startup, and it's not safe to call it from here
     # so call it after everything runs
     if [ ! -f platforms-setup.js ]; then
-        curl -O https://raw.github.com/globocom/tsuru/master/misc/platforms-setup.js
+        curl -O https://raw.github.com/tsuru/tsuru/master/misc/platforms-setup.js
     fi
     mongo tsuru platforms-setup.js
 }
@@ -150,7 +150,7 @@ function install_circus() {
 
 function configure_circus() {
     echo "Configuring circus"
-    curl https://raw.github.com/globocom/tsuru/master/misc/circus-docker.ini -o /etc/circus/circus.ini.download
+    curl https://raw.github.com/tsuru/tsuru/master/misc/circus-docker.ini -o /etc/circus/circus.ini.download
     sed "s|/usr/bin/tsr|$TSURU_BIN/tsr|; s|/var/log/tsuru|$TSURU_LOG|; s|uid = ubuntu|uid = $TSURU_USER|; s|/usr/local/bin/docker|/usr/bin/docker|; s|/usr/bin/gandalf-webserver|$TSURU_BIN/gandalf-webserver|; s|/usr/local/bin/hipache|$TSURU_BIN/hipache|; s|registry.cloud.company.com|registry.$TSURU_DOMAIN|; /.watcher:beanstalkd./,/^$/ d;" /etc/circus/circus.ini.download > /etc/circus/circus.ini
     mkdir -p /var/log/docker
     chown -R $TSURU_USER:$TSURU_USER $TSURU_LOG

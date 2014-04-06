@@ -7,8 +7,8 @@ package elb
 import (
 	"github.com/flaviamissi/go-elb/aws"
 	"github.com/flaviamissi/go-elb/elb"
-	"github.com/globocom/tsuru/log"
-	"github.com/globocom/tsuru/router"
+	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/config"
 )
 

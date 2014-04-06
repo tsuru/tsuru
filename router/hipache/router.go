@@ -17,8 +17,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/garyburd/redigo/redis"
-	"github.com/globocom/tsuru/log"
-	"github.com/globocom/tsuru/router"
+	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/config"
 	"strings"
 )

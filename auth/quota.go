@@ -6,8 +6,8 @@ package auth
 
 import (
 	"errors"
-	"github.com/globocom/tsuru/db"
-	"github.com/globocom/tsuru/quota"
+	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/quota"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 )

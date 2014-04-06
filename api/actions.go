@@ -5,8 +5,8 @@
 package api
 
 import (
-	"github.com/globocom/tsuru/action"
-	"github.com/globocom/tsuru/auth"
+	"github.com/tsuru/tsuru/action"
+	"github.com/tsuru/tsuru/auth"
 )
 
 // addKeyToUserAction creates a user in gandalf server.

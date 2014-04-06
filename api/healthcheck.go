@@ -6,7 +6,7 @@ package api
 
 import (
 	"fmt"
-	"github.com/globocom/tsuru/db"
+	"github.com/tsuru/tsuru/db"
 	"net/http"
 )
 

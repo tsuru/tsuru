@@ -5,7 +5,7 @@
 package docker
 
 import (
-	"github.com/globocom/tsuru/heal"
+	"github.com/tsuru/tsuru/heal"
 	"github.com/tsuru/docker-cluster/cluster"
 	"launchpad.net/gocheck"
 	"net/http/httptest"

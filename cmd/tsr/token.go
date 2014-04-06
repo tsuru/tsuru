@@ -6,8 +6,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/globocom/tsuru/auth"
-	"github.com/globocom/tsuru/cmd"
+	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/cmd"
 )
 
 type tokenCmd struct{}

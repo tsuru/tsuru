@@ -7,9 +7,9 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/globocom/tsuru/app/bind"
-	"github.com/globocom/tsuru/errors"
-	"github.com/globocom/tsuru/log"
+	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/log"
 	"io"
 	"io/ioutil"
 	"net/http"

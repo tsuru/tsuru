@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/globocom/tsuru/cmd/term"
+	"github.com/tsuru/tsuru/cmd/term"
 	"io"
 	"io/ioutil"
 	"launchpad.net/gnuflag"

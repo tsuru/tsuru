@@ -41,10 +41,10 @@ ifndef GOPATH
 	@echo "       http://golang.org/cmd/go/#GOPATH_environment_variable"
 	@exit 1
 endif
-ifneq ($(subst ~,$(HOME),$(GOPATH))/src/github.com/globocom/tsuru, $(PWD))
+ifneq ($(subst ~,$(HOME),$(GOPATH))/src/github.com/tsuru/tsuru, $(PWD))
 	@echo "FATAL: you must clone tsuru inside your GOPATH To do so,"
-	@echo "       you can run go get github.com/globocom/tsuru/..."
-	@echo "       or clone it manually to the dir $(GOPATH)/src/github.com/globocom/tsuru"
+	@echo "       you can run go get github.com/tsuru/tsuru/..."
+	@echo "       or clone it manually to the dir $(GOPATH)/src/github.com/tsuru/tsuru"
 	@exit 1
 endif
 	@exit 0  # in case everything is ok, without this
@@ -64,10 +64,10 @@ bzr:
 get-test:
 	@/bin/echo -n "Installing test dependencies... "
 	@go list -f '{{range .TestImports}}{{.}} {{end}}' ./... | tr ' ' '\n' |\
-	       grep '^.*\..*/.*$$' | grep -v 'github.com/globocom/tsuru' |\
+	       grep '^.*\..*/.*$$' | grep -v 'github.com/tsuru/tsuru' |\
 	       sort | uniq | xargs go get -u -d >/tmp/.get-test 2>&1 || (cat /tmp/.get-test && exit 1)
 	@go list -f '{{range .XTestImports}}{{.}} {{end}}' ./... | tr ' ' '\n' |\
-	       grep '^.*\..*/.*$$' | grep -v 'github.com/globocom/tsuru' |\
+	       grep '^.*\..*/.*$$' | grep -v 'github.com/tsuru/tsuru' |\
 	       sort | uniq | xargs go get -u -d >/tmp/.get-test 2>&1 || (cat /tmp/.get-test && exit 1)
 	@/bin/echo "ok"
 	@rm -f /tmp/.get-test
@@ -114,7 +114,7 @@ _install_deadcode: git
 	@go get github.com/remyoudompheng/go-misc/deadcode
 
 deadcode: _install_deadcode
-	@go list ./... | sed -e 's;github.com/globocom/tsuru/;;' | xargs deadcode
+	@go list ./... | sed -e 's;github.com/tsuru/tsuru/;;' | xargs deadcode
 
 race:
 	@/bin/bash -ec 'for pkg in `go list ./...`; do go test -race -i $$pkg; go test -race $$pkg; done'

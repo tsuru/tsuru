@@ -8,7 +8,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/globocom/tsuru/cmd/term"
+	"github.com/tsuru/tsuru/cmd/term"
 	"log"
 	"os"
 )

@@ -6,7 +6,7 @@ package testing
 
 import (
 	"bytes"
-	"github.com/globocom/tsuru/exec"
+	"github.com/tsuru/tsuru/exec"
 	"launchpad.net/gocheck"
 	"testing"
 )

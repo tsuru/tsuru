@@ -5,7 +5,7 @@
 package testing
 
 import (
-	"github.com/globocom/tsuru/db"
+	"github.com/tsuru/tsuru/db"
 	"launchpad.net/gocheck"
 	"runtime"
 	"time"

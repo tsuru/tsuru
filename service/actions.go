@@ -6,11 +6,11 @@ package service
 
 import (
 	stderrors "errors"
-	"github.com/globocom/tsuru/action"
-	"github.com/globocom/tsuru/app/bind"
-	"github.com/globocom/tsuru/db"
-	"github.com/globocom/tsuru/errors"
-	"github.com/globocom/tsuru/log"
+	"github.com/tsuru/tsuru/action"
+	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/log"
 	"labix.org/v2/mgo/bson"
 	"net/http"
 	"sync"

@@ -7,8 +7,8 @@ package testing
 import (
 	"bytes"
 	"errors"
-	"github.com/globocom/tsuru/app/bind"
-	"github.com/globocom/tsuru/provision"
+	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/provision"
 	"launchpad.net/gocheck"
 	"testing"
 )

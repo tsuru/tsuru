@@ -5,7 +5,7 @@
 package docker
 
 import (
-	"github.com/globocom/tsuru/testing"
+	"github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
 

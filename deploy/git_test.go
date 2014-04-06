@@ -8,8 +8,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/globocom/tsuru/repository"
-	"github.com/globocom/tsuru/testing"
+	"github.com/tsuru/tsuru/repository"
+	"github.com/tsuru/tsuru/testing"
 	"github.com/tsuru/config"
 	"launchpad.net/gocheck"
 )

@@ -5,8 +5,8 @@
 package service
 
 import (
-	"github.com/globocom/tsuru/auth"
-	"github.com/globocom/tsuru/db"
+	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/config"
 	"launchpad.net/gocheck"
 	"testing"

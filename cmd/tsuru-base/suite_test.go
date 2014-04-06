@@ -6,7 +6,7 @@ package tsuru
 
 import (
 	"bytes"
-	"github.com/globocom/tsuru/cmd"
+	"github.com/tsuru/tsuru/cmd"
 	"launchpad.net/gocheck"
 	"os"
 	"os/exec"

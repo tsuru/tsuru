@@ -6,8 +6,8 @@ package docker
 
 import (
 	"encoding/json"
-	"github.com/globocom/tsuru/cmd"
-	"github.com/globocom/tsuru/exec/testing"
+	"github.com/tsuru/tsuru/cmd"
+	"github.com/tsuru/tsuru/exec/testing"
 	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"

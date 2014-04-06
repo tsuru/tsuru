@@ -6,9 +6,9 @@ package docker
 
 import (
 	dtesting "github.com/fsouza/go-dockerclient/testing"
-	ftesting "github.com/globocom/tsuru/fs/testing"
-	"github.com/globocom/tsuru/provision"
-	_ "github.com/globocom/tsuru/testing"
+	ftesting "github.com/tsuru/tsuru/fs/testing"
+	"github.com/tsuru/tsuru/provision"
+	_ "github.com/tsuru/tsuru/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"launchpad.net/gocheck"

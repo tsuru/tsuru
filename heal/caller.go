@@ -7,7 +7,7 @@ package heal
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/globocom/tsuru/log"
+	"github.com/tsuru/tsuru/log"
 	"io"
 	"io/ioutil"
 	"net/http"

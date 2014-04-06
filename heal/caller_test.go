@@ -6,7 +6,7 @@ package heal
 
 import (
 	"fmt"
-	"github.com/globocom/tsuru/log"
+	"github.com/tsuru/tsuru/log"
 	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"

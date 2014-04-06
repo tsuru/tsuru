@@ -8,9 +8,9 @@ package provision
 
 import (
 	"fmt"
-	"github.com/globocom/tsuru/action"
-	"github.com/globocom/tsuru/app/bind"
-	"github.com/globocom/tsuru/cmd"
+	"github.com/tsuru/tsuru/action"
+	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/cmd"
 	"io"
 )
 

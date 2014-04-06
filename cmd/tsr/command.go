@@ -5,7 +5,7 @@
 package main
 
 import (
-	"github.com/globocom/tsuru/cmd"
+	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/config"
 	"launchpad.net/gnuflag"
 )

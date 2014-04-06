@@ -6,8 +6,8 @@ package api
 
 import (
 	"encoding/json"
-	"github.com/globocom/tsuru/app"
-	"github.com/globocom/tsuru/auth"
+	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/auth"
 	"net/http"
 )
 

@@ -6,7 +6,7 @@ package testing
 
 import (
 	"errors"
-	"github.com/globocom/tsuru/fs"
+	"github.com/tsuru/tsuru/fs"
 	"io/ioutil"
 	"launchpad.net/gocheck"
 	"os"

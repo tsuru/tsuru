@@ -6,7 +6,7 @@ package api
 
 import (
 	"fmt"
-	"github.com/globocom/tsuru/auth"
+	"github.com/tsuru/tsuru/auth"
 	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"

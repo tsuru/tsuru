@@ -4,7 +4,7 @@
 package testing
 
 import (
-	"github.com/globocom/tsuru/log"
+	"github.com/tsuru/tsuru/log"
 	"launchpad.net/gocheck"
 	"testing"
 )

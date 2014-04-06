@@ -6,7 +6,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/globocom/tsuru/cmd"
+	"github.com/tsuru/tsuru/cmd"
 	"net/http"
 )
 

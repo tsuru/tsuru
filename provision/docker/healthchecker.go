@@ -4,7 +4,7 @@
 
 package docker
 
-import "github.com/globocom/tsuru/provision"
+import "github.com/tsuru/tsuru/provision"
 
 // isReachable returns true if the web application deploy in the
 // unit is accessible via 0.0.0.0:PORT.

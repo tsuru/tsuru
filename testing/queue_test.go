@@ -5,7 +5,7 @@
 package testing
 
 import (
-	"github.com/globocom/tsuru/queue"
+	"github.com/tsuru/tsuru/queue"
 	"launchpad.net/gocheck"
 )
 

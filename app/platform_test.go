@@ -5,7 +5,7 @@
 package app
 
 import (
-	"github.com/globocom/tsuru/db"
+	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/config"
 	"launchpad.net/gocheck"
 )

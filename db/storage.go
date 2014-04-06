@@ -12,7 +12,7 @@
 package db
 
 import (
-	"github.com/globocom/tsuru/db/storage"
+	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/config"
 	"labix.org/v2/mgo"
 )

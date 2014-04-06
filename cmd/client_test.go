@@ -6,8 +6,8 @@ package cmd
 
 import (
 	"bytes"
-	ttesting "github.com/globocom/tsuru/cmd/testing"
-	"github.com/globocom/tsuru/fs/testing"
+	ttesting "github.com/tsuru/tsuru/cmd/testing"
+	"github.com/tsuru/tsuru/fs/testing"
 	"launchpad.net/gocheck"
 	"net/http"
 )

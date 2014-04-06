@@ -8,7 +8,7 @@ package rec
 
 import (
 	"errors"
-	"github.com/globocom/tsuru/db"
+	"github.com/tsuru/tsuru/db"
 	"time"
 )
 

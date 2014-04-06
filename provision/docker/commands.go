@@ -7,8 +7,8 @@ package docker
 import (
 	"bytes"
 	"fmt"
-	"github.com/globocom/tsuru/provision"
-	"github.com/globocom/tsuru/repository"
+	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/config"
 	"io/ioutil"
 	"os"

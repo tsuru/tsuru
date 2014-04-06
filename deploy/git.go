@@ -8,9 +8,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/globocom/tsuru/log"
-	"github.com/globocom/tsuru/provision"
-	"github.com/globocom/tsuru/repository"
+	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/repository"
 	"io"
 )
 

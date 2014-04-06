@@ -7,7 +7,7 @@ package docker
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/globocom/tsuru/db"
+	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"io/ioutil"

@@ -5,13 +5,13 @@
 package service_test
 
 import (
-	"github.com/globocom/tsuru/app"
-	"github.com/globocom/tsuru/app/bind"
-	"github.com/globocom/tsuru/auth"
-	"github.com/globocom/tsuru/db"
-	"github.com/globocom/tsuru/errors"
-	"github.com/globocom/tsuru/service"
-	ttesting "github.com/globocom/tsuru/testing"
+	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/service"
+	ttesting "github.com/tsuru/tsuru/testing"
 	"github.com/tsuru/config"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"

@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/adeven/redismq"
-	"github.com/globocom/tsuru/log"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/config"
 	"io"
 	"net"

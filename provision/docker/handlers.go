@@ -6,8 +6,8 @@ package docker
 
 import (
 	"encoding/json"
-	"github.com/globocom/tsuru/api"
-	"github.com/globocom/tsuru/auth"
+	"github.com/tsuru/tsuru/api"
+	"github.com/tsuru/tsuru/auth"
 	"io"
 	"io/ioutil"
 	"net/http"

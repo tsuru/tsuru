@@ -5,9 +5,9 @@
 package collector
 
 import (
-	"github.com/globocom/tsuru/app"
-	"github.com/globocom/tsuru/db"
-	"github.com/globocom/tsuru/provision"
+	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/provision"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"time"

@@ -6,7 +6,7 @@ package action
 
 import (
 	"errors"
-	"github.com/globocom/tsuru/log"
+	"github.com/tsuru/tsuru/log"
 	"sync"
 )
 

@@ -5,8 +5,8 @@
 package api
 
 import (
-	"github.com/globocom/tsuru/app"
-	"github.com/globocom/tsuru/auth"
+	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/auth"
 	"net/http"
 )
 

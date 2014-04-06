@@ -6,10 +6,10 @@ package collector
 
 import (
 	"fmt"
-	"github.com/globocom/tsuru/app"
-	"github.com/globocom/tsuru/db"
-	"github.com/globocom/tsuru/log"
-	"github.com/globocom/tsuru/provision"
+	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/config"
 	stdlog "log"
 	"time"

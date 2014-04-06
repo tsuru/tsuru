@@ -5,7 +5,7 @@
 package app
 
 import (
-	"github.com/globocom/tsuru/quota"
+	"github.com/tsuru/tsuru/quota"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"runtime"

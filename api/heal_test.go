@@ -7,7 +7,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/globocom/tsuru/heal"
+	"github.com/tsuru/tsuru/heal"
 	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"

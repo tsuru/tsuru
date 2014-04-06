@@ -5,7 +5,7 @@
 package main
 
 import (
-	"github.com/globocom/tsuru/exec"
+	"github.com/tsuru/tsuru/exec"
 )
 
 var execut exec.Executor

@@ -7,7 +7,7 @@ package tsuru
 import (
 	"errors"
 	"fmt"
-	"github.com/globocom/tsuru/git"
+	"github.com/tsuru/tsuru/git"
 	"launchpad.net/gnuflag"
 	"os"
 	"regexp"

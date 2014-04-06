@@ -5,8 +5,8 @@ package testing
 
 import (
 	"fmt"
-	"github.com/globocom/tsuru/log"
-	"github.com/globocom/tsuru/safe"
+	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/safe"
 )
 
 func NewFakeLogger() log.Logger {

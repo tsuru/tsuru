@@ -6,11 +6,11 @@ package app
 
 import (
 	"fmt"
-	"github.com/globocom/tsuru/auth"
-	"github.com/globocom/tsuru/db"
-	"github.com/globocom/tsuru/queue"
-	"github.com/globocom/tsuru/quota"
-	ttesting "github.com/globocom/tsuru/testing"
+	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/queue"
+	"github.com/tsuru/tsuru/quota"
+	ttesting "github.com/tsuru/tsuru/testing"
 	"github.com/tsuru/config"
 	"io"
 	"io/ioutil"

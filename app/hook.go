@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/globocom/tsuru/repository"
+	"github.com/tsuru/tsuru/repository"
 	"gopkg.in/v1/yaml"
 	"io"
 	"path"

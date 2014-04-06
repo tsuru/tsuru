@@ -6,10 +6,10 @@ package docker
 
 import (
 	"fmt"
-	"github.com/globocom/tsuru/app/bind"
-	ftesting "github.com/globocom/tsuru/fs/testing"
-	"github.com/globocom/tsuru/repository"
-	"github.com/globocom/tsuru/testing"
+	"github.com/tsuru/tsuru/app/bind"
+	ftesting "github.com/tsuru/tsuru/fs/testing"
+	"github.com/tsuru/tsuru/repository"
+	"github.com/tsuru/tsuru/testing"
 	"github.com/tsuru/config"
 	"launchpad.net/gocheck"
 	"os"

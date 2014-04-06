@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/globocom/tsuru/cmd"
+	"github.com/tsuru/tsuru/cmd"
 	"io/ioutil"
 	"net/http"
 	"os"

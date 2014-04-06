@@ -5,8 +5,8 @@
 package juju
 
 import (
-	"github.com/globocom/tsuru/queue"
-	"github.com/globocom/tsuru/testing"
+	"github.com/tsuru/tsuru/queue"
+	"github.com/tsuru/tsuru/testing"
 	"github.com/tsuru/commandmocker"
 	"launchpad.net/gocheck"
 	"sort"

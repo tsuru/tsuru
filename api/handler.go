@@ -6,10 +6,10 @@ package api
 
 import (
 	"fmt"
-	"github.com/globocom/tsuru/auth"
-	"github.com/globocom/tsuru/errors"
-	"github.com/globocom/tsuru/io"
-	"github.com/globocom/tsuru/log"
+	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/io"
+	"github.com/tsuru/tsuru/log"
 	"net/http"
 )
 

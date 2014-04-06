@@ -7,8 +7,8 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/globocom/tsuru/cmd"
-	"github.com/globocom/tsuru/cmd/tsuru-base"
+	"github.com/tsuru/tsuru/cmd"
+	"github.com/tsuru/tsuru/cmd/tsuru-base"
 	"launchpad.net/gnuflag"
 	"net/http"
 	"strings"

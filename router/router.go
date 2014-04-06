@@ -8,8 +8,8 @@ package router
 
 import (
 	"fmt"
-	"github.com/globocom/tsuru/db"
-	"github.com/globocom/tsuru/db/storage"
+	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storage"
 	"labix.org/v2/mgo/bson"
 )
 

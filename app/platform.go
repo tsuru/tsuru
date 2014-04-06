@@ -5,7 +5,7 @@
 package app
 
 import (
-	"github.com/globocom/tsuru/db"
+	"github.com/tsuru/tsuru/db"
 	"labix.org/v2/mgo/bson"
 )
 

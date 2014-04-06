@@ -10,8 +10,8 @@
 // instance of Docker provisioner:
 //
 //     import (
-//         "github.com/globocom/tsuru/provision"
-//         _ "github.com/globocom/tsuru/provision/docker"
+//         "github.com/tsuru/tsuru/provision"
+//         _ "github.com/tsuru/tsuru/provision/docker"
 //     )
 //     // ...
 //     func main() {

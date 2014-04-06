@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"fmt"
-	"github.com/globocom/tsuru/testing"
+	"github.com/tsuru/tsuru/testing"
 	"github.com/tsuru/config"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/goamz/aws"

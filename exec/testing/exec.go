@@ -9,7 +9,7 @@ package testing
 
 import (
 	"errors"
-	"github.com/globocom/tsuru/safe"
+	"github.com/tsuru/tsuru/safe"
 	"io"
 	"reflect"
 	"strings"

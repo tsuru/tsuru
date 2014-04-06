@@ -7,8 +7,8 @@ package tsuru
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/globocom/tsuru/cmd"
-	"github.com/globocom/tsuru/cmd/testing"
+	"github.com/tsuru/tsuru/cmd"
+	"github.com/tsuru/tsuru/cmd/testing"
 	"launchpad.net/gocheck"
 	"net/http"
 	"time"

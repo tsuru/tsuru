@@ -6,7 +6,7 @@ package testing
 
 import (
 	"errors"
-	"github.com/globocom/tsuru/queue"
+	"github.com/tsuru/tsuru/queue"
 	"sync"
 	"sync/atomic"
 	"time"

@@ -12,10 +12,10 @@ mkdir -p $destination_dir
 echo "ok"
 
 echo -n "Downloading dependencies... "
-go get -u -d github.com/globocom/tsuru/cmd/tsr
+go get -u -d github.com/tsuru/tsuru/cmd/tsr
 echo "ok"
 
-pushd $GOPATH/src/github.com/globocom/tsuru
+pushd $GOPATH/src/github.com/tsuru/tsuru
 
 echo -n "Checking out $REVISION... "
 git checkout $REVISION
@@ -37,6 +37,6 @@ then
 fi
 
 echo "Building tsr-${REVISION}... "
-godep go build $BUILD_FLAGS $destination_dir/tsr github.com/globocom/tsuru/cmd/tsr
+godep go build $BUILD_FLAGS $destination_dir/tsr github.com/tsuru/tsuru/cmd/tsr
 tar -C $destination_dir -czf $destination_dir/tsr-${REVISION}${POSTFIX}.tar.gz tsr
 rm $destination_dir/tsr

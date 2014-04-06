@@ -5,8 +5,8 @@
 package main
 
 import (
-	"github.com/globocom/tsuru/exec"
-	"github.com/globocom/tsuru/exec/testing"
+	"github.com/tsuru/tsuru/exec"
+	"github.com/tsuru/tsuru/exec/testing"
 	"launchpad.net/gocheck"
 )
 

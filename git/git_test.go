@@ -147,7 +147,7 @@ func (s *S) TestGetRemoteURL(c *gocheck.C) {
 		expected string
 		err      error
 	}{
-		{"origin", "git@github.com:globocom/tsuru-django-sample.git", nil},
+		{"origin", "git@github.com:tsuru/tsuru-django-sample.git", nil},
 		{"tsuru", "git@tsuruhost.com:gopher.git", nil},
 		{"wut", "", errors.New(`Remote "wut" not found.`)},
 	}

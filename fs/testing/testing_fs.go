@@ -9,8 +9,8 @@ package testing
 
 import (
 	"fmt"
-	"github.com/globocom/tsuru/fs"
-	"github.com/globocom/tsuru/safe"
+	"github.com/tsuru/tsuru/fs"
+	"github.com/tsuru/tsuru/safe"
 	"os"
 	"path"
 	"strings"

@@ -6,7 +6,7 @@ package testing
 
 import (
 	"errors"
-	"github.com/globocom/tsuru/router"
+	"github.com/tsuru/tsuru/router"
 	"sync"
 )
 

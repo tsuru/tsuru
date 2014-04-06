@@ -6,8 +6,8 @@ package auth
 
 import (
 	"code.google.com/p/go.crypto/bcrypt"
-	"github.com/globocom/tsuru/db"
-	ttesting "github.com/globocom/tsuru/testing"
+	"github.com/tsuru/tsuru/db"
+	ttesting "github.com/tsuru/tsuru/testing"
 	"github.com/tsuru/config"
 	"io"
 	"io/ioutil"

@@ -5,8 +5,8 @@
 package juju
 
 import (
-	"github.com/globocom/tsuru/provision"
-	"github.com/globocom/tsuru/testing"
+	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/testing"
 	"github.com/tsuru/commandmocker"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"

@@ -27,7 +27,7 @@ function setup_platforms() {
     # because mongo usually takes some time to startup, and it's not safe to call it from here
     # so call it after everything runs
     if [ ! -f platforms-setup.js ]; then
-        curl -O https://raw.github.com/globocom/tsuru/master/misc/platforms-setup.js
+        curl -O https://raw.github.com/tsuru/tsuru/master/misc/platforms-setup.js
     fi
     mongo tsuru platforms-setup.js
 }

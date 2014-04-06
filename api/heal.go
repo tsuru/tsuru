@@ -7,8 +7,8 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/globocom/tsuru/auth"
-	"github.com/globocom/tsuru/heal"
+	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/heal"
 	"github.com/tsuru/config"
 	"net/http"
 )

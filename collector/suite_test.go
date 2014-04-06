@@ -5,9 +5,9 @@
 package collector
 
 import (
-	"github.com/globocom/tsuru/app"
-	"github.com/globocom/tsuru/db"
-	ttesting "github.com/globocom/tsuru/testing"
+	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/db"
+	ttesting "github.com/tsuru/tsuru/testing"
 	"github.com/tsuru/config"
 	"launchpad.net/gocheck"
 	"testing"

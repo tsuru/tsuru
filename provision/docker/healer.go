@@ -6,8 +6,8 @@ package docker
 
 import (
 	"github.com/fsouza/go-dockerclient"
-	"github.com/globocom/tsuru/heal"
-	"github.com/globocom/tsuru/log"
+	"github.com/tsuru/tsuru/heal"
+	"github.com/tsuru/tsuru/log"
 	"strings"
 )
 

@@ -7,7 +7,7 @@ package tsuru
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/globocom/tsuru/cmd"
+	"github.com/tsuru/tsuru/cmd"
 	"io"
 	"launchpad.net/gnuflag"
 	"net/http"

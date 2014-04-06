@@ -6,8 +6,8 @@ package hipache_test
 
 import (
 	"fmt"
-	"github.com/globocom/tsuru/router"
-	_ "github.com/globocom/tsuru/router/hipache"
+	"github.com/tsuru/tsuru/router"
+	_ "github.com/tsuru/tsuru/router/hipache"
 )
 
 func Example() {

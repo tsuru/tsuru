@@ -6,8 +6,8 @@ package service
 
 import (
 	stderrors "errors"
-	"github.com/globocom/tsuru/app/bind"
-	"github.com/globocom/tsuru/errors"
+	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/errors"
 	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"

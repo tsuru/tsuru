@@ -6,7 +6,7 @@ package cmd
 
 import (
 	"fmt"
-	"github.com/globocom/tsuru/fs"
+	"github.com/tsuru/tsuru/fs"
 	"io"
 	"launchpad.net/gnuflag"
 	"net/http"

@@ -5,8 +5,8 @@
 package main
 
 import (
-	"github.com/globocom/tsuru/api"
-	"github.com/globocom/tsuru/cmd"
+	"github.com/tsuru/tsuru/api"
+	"github.com/tsuru/tsuru/cmd"
 	"launchpad.net/gnuflag"
 )
 

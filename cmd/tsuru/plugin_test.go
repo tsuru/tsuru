@@ -7,9 +7,9 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/globocom/tsuru/cmd"
-	etesting "github.com/globocom/tsuru/exec/testing"
-	ftesting "github.com/globocom/tsuru/fs/testing"
+	"github.com/tsuru/tsuru/cmd"
+	etesting "github.com/tsuru/tsuru/exec/testing"
+	ftesting "github.com/tsuru/tsuru/fs/testing"
 	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"

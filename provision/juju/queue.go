@@ -5,9 +5,9 @@
 package juju
 
 import (
-	"github.com/globocom/tsuru/log"
-	"github.com/globocom/tsuru/provision"
-	"github.com/globocom/tsuru/queue"
+	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/queue"
 	"sort"
 	"sync"
 )

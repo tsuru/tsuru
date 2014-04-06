@@ -6,11 +6,11 @@ package docker
 
 import (
 	dockerClient "github.com/fsouza/go-dockerclient"
-	"github.com/globocom/tsuru/action"
-	"github.com/globocom/tsuru/app"
-	"github.com/globocom/tsuru/db"
-	rtesting "github.com/globocom/tsuru/router/testing"
-	"github.com/globocom/tsuru/testing"
+	"github.com/tsuru/tsuru/action"
+	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/db"
+	rtesting "github.com/tsuru/tsuru/router/testing"
+	"github.com/tsuru/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"time"

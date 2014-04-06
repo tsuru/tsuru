@@ -7,8 +7,8 @@ package auth
 import (
 	"errors"
 	"fmt"
-	"github.com/globocom/tsuru/db"
-	"github.com/globocom/tsuru/log"
+	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/log"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"regexp"

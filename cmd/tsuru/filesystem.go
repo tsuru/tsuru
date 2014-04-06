@@ -5,7 +5,7 @@
 package main
 
 import (
-	"github.com/globocom/tsuru/fs"
+	"github.com/tsuru/tsuru/fs"
 )
 
 var fsystem fs.Fs

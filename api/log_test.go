@@ -6,9 +6,9 @@ package api
 
 import (
 	"fmt"
-	"github.com/globocom/tsuru/app"
-	"github.com/globocom/tsuru/auth"
-	"github.com/globocom/tsuru/db"
+	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/config"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"

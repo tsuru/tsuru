@@ -5,13 +5,13 @@
 package api
 
 import (
-	"github.com/globocom/tsuru/app"
-	"github.com/globocom/tsuru/auth"
-	"github.com/globocom/tsuru/db"
-	"github.com/globocom/tsuru/queue"
-	"github.com/globocom/tsuru/quota"
-	"github.com/globocom/tsuru/service"
-	tsuruTesting "github.com/globocom/tsuru/testing"
+	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/queue"
+	"github.com/tsuru/tsuru/quota"
+	"github.com/tsuru/tsuru/service"
+	tsuruTesting "github.com/tsuru/tsuru/testing"
 	"github.com/tsuru/config"
 	"io"
 	"io/ioutil"

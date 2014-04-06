@@ -5,8 +5,8 @@
 package testing
 
 import (
-	"github.com/globocom/tsuru/db"
-	"github.com/globocom/tsuru/router"
+	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/config"
 	"launchpad.net/gocheck"
 	"testing"

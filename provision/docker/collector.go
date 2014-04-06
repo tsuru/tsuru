@@ -5,10 +5,10 @@
 package docker
 
 import (
-	"github.com/globocom/tsuru/log"
-	"github.com/globocom/tsuru/provision"
-	_ "github.com/globocom/tsuru/router/hipache"
-	_ "github.com/globocom/tsuru/router/testing"
+	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/provision"
+	_ "github.com/tsuru/tsuru/router/hipache"
+	_ "github.com/tsuru/tsuru/router/testing"
 	"labix.org/v2/mgo/bson"
 	"net"
 	"strings"

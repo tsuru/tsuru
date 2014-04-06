@@ -10,8 +10,8 @@
 // of JujuProvisioner:
 //
 //     import (
-//         "github.com/globocom/tsuru/provision"
-//         _ "github.com/globocom/tsuru/provision/juju"
+//         "github.com/tsuru/tsuru/provision"
+//         _ "github.com/tsuru/tsuru/provision/juju"
 //     )
 //     // ...
 //     func main() {
