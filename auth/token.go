@@ -32,6 +32,10 @@ func (t *Token) User() (*User, error) {
 	return GetUserByEmail(t.UserEmail)
 }
 
+func (t *Token) IsAppToken() (bool) {
+	return t.AppName != ""
+}
+
 type passwordToken struct {
 	Token     string `bson:"_id"`
 	UserEmail string

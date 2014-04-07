@@ -31,7 +31,7 @@ func getApp(name string, u *auth.User) (app.App, error) {
 	if err != nil {
 		return app.App{}, &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", name)}
 	}
-	if u.IsAdmin() {
+	if u == nil || u.IsAdmin() {
 		return *a, nil
 	}
 	if !auth.CheckUserAccess(a.Teams, u) {
@@ -389,12 +389,20 @@ func getEnv(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 			return err
 		}
 	}
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
+
 	appName := r.URL.Query().Get(":app")
-	rec.Log(u.Email, "get-env", "app="+appName, fmt.Sprintf("envs=%s", variables))
+
+	var u *auth.User = nil
+	var err error
+
+	if !t.IsAppToken() {
+		u, err = t.User()
+		if err != nil {
+			return err
+		}
+		rec.Log(u.Email, "get-env", "app="+appName, fmt.Sprintf("envs=%s", variables))
+	}
+
 	app, err := getApp(appName, u)
 	if err != nil {
 		return err

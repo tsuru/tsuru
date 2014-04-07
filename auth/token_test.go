@@ -297,3 +297,13 @@ func (s *S) TestRemoveOldWithoutSetting(c *gocheck.C) {
 	err := removeOldTokens("something@tsuru.io")
 	c.Assert(err, gocheck.NotNil)
 }
+
+func (s *S) TestTokenIsAppToken(c *gocheck.C) {
+	t := Token{AppName: "myapp"}
+	isAppToken := t.IsAppToken()
+	c.Assert(isAppToken, gocheck.Equals, true)
+
+	t = Token{UserEmail: "something@something.com"}
+	isAppToken = t.IsAppToken()
+	c.Assert(isAppToken, gocheck.Equals, false)
+}

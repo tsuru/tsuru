@@ -1519,6 +1519,42 @@ func (s *S) TestGetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessToTh
 	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
 }
 
+func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromAppWithAppToken(c *gocheck.C) {
+	a := app.App{
+		Name:     "everything-i-want",
+		Platform: "gotthard",
+		Teams:    []string{s.team.Name},
+		Env: map[string]bind.EnvVar{
+			"DATABASE_HOST":     {Name: "DATABASE_HOST", Value: "localhost", Public: true},
+			"DATABASE_USER":     {Name: "DATABASE_USER", Value: "root", Public: true},
+			"DATABASE_PASSWORD": {Name: "DATABASE_PASSWORD", Value: "secret", Public: false},
+		},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
+	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, strings.NewReader(`["DATABASE_HOST"]`))
+	request.Header.Set("Content-Type", "application/json")
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	token, err := auth.CreateApplicationToken("appToken")
+	c.Assert(err, gocheck.IsNil)
+	err = getEnv(recorder, request, token)
+	c.Assert(err, gocheck.IsNil)
+	expected := []map[string]interface{}{{
+		"name":   "DATABASE_HOST",
+		"value":  "localhost",
+		"public": true,
+	}}
+	result := []map[string]interface{}{}
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.DeepEquals, expected)
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
+}
+
 func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *gocheck.C) {
 	a := app.App{
 		Name:  "black-dog",
