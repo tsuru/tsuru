@@ -1,0 +1,30 @@
+========================
+tsr 0.3.11 release notes
+========================
+
+Welcome to tsr 0.3.11!
+
+These release notes cover the `new features`_ and `backwards incompatible
+changes`_ you'll want to be aware of when upgrading from tsr 0.3.10 or older
+versions.
+
+.. _`new features`: `What's new in tsr 0.3.11`_
+
+What's new in tsr 0.3.11
+========================
+
+API
+---
+
+    * Added app team owner - `#619 <https://github.com/tsuru/tsuru/issues/619>`_
+    * Expose public url in `create-app` - `#724 <https://github.com/tsuru/tsuru/issues/724>`_
+
+Docker provisioner
+------------------
+
+    * Add support to custom memory - `#434 <https://github.com/tsuru/tsuru/issues/434>`_
+
+Backwards incompatible changes
+==============================
+
+TODO
