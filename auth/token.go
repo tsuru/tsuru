@@ -32,7 +32,7 @@ func (t *Token) User() (*User, error) {
 	return GetUserByEmail(t.UserEmail)
 }
 
-func (t *Token) IsAppToken() (bool) {
+func (t *Token) IsAppToken() bool {
 	return t.AppName != ""
 }
 
