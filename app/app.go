@@ -685,23 +685,39 @@ type Deploy struct {
 }
 
 func (app *App) ListDeploys() ([]Deploy, error) {
-	return listDeploys(app)
+	return listDeploys(app, nil)
 }
 
-func ListDeploys() ([]Deploy, error) {
-	return listDeploys(nil)
+func ListDeploys(s *service.Service) ([]Deploy, error) {
+	return listDeploys(nil, s)
 }
 
-func listDeploys(app *App) ([]Deploy, error) {
+func listDeploys(app *App, s *service.Service) ([]Deploy, error) {
 	var list []Deploy
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	var qr interface{}
+	var qr bson.M
 	if app != nil {
 		qr = bson.M{"app": app.Name}
+		fmt.Println(qr)
+	}
+	if s != nil {
+		var instances []service.ServiceInstance
+		q := bson.M{"service_name": s.Name}
+		err = conn.ServiceInstances().Find(q).All(&instances)
+		if err != nil {
+			return nil, err
+		}
+		var appNames []string
+		for _, instance := range instances {
+			for _, apps := range instance.Apps {
+				appNames = append(appNames, apps)
+			}
+		}
+		qr = bson.M{"app": bson.M{"$in": appNames}}
 	}
 	if err := conn.Deploys().Find(qr).Sort("-timestamp").All(&list); err != nil {
 		return nil, err

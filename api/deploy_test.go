@@ -10,6 +10,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/service"
 	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"
@@ -80,4 +81,42 @@ func (s *DeploySuite) TestDeployList(c *gocheck.C) {
 	c.Assert(result[1].App, gocheck.Equals, "ge")
 	c.Assert(result[1].Timestamp.In(time.UTC), gocheck.DeepEquals, timestamp.In(time.UTC))
 	c.Assert(result[1].Duration, gocheck.DeepEquals, duration)
+}
+
+func (s *DeploySuite) TestDeployListByService(c *gocheck.C) {
+	var result []app.Deploy
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	srv := service.Service{Name: "redis", Teams: []string{s.team.Name}}
+	err = srv.Create()
+	c.Assert(err, gocheck.IsNil)
+	instance := service.ServiceInstance{
+		Name:        "redis-g1",
+		ServiceName: "redis",
+		Apps:        []string{"g1", "qwerty"},
+		Teams:       []string{s.team.Name},
+	}
+	err = instance.Create()
+	c.Assert(err, gocheck.IsNil)
+	request, err := http.NewRequest("GET", "/deploys?service=redis", nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
+	duration := time.Since(timestamp)
+	err = s.conn.Deploys().Insert(app.Deploy{App: "g1", Timestamp: timestamp, Duration: duration})
+	c.Assert(err, gocheck.IsNil)
+	err = s.conn.Deploys().Insert(app.Deploy{App: "ge", Timestamp: timestamp, Duration: duration})
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Deploys().RemoveAll(nil)
+	err = deploysList(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, gocheck.IsNil)
+	err = json.Unmarshal(body, &result)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.HasLen, 1)
+	c.Assert(result[0].App, gocheck.Equals, "g1")
+	c.Assert(result[0].Timestamp.In(time.UTC), gocheck.DeepEquals, timestamp.In(time.UTC))
+	c.Assert(result[0].Duration, gocheck.DeepEquals, duration)
 }

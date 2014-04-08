@@ -1957,6 +1957,37 @@ func (s *S) TestListAppDeploys(c *gocheck.C) {
 	c.Assert(deploys, gocheck.DeepEquals, expected)
 }
 
+func (s *S) TestListServiceDeploys(c *gocheck.C) {
+	s.conn.Deploys().RemoveAll(nil)
+	srv := service.Service{Name: "mysql"}
+	instance := service.ServiceInstance{
+		Name:        "myinstance",
+		ServiceName: "mysql",
+		Apps:        []string{"g1"},
+	}
+	err := s.conn.ServiceInstances().Insert(instance)
+	err = s.conn.Services().Insert(srv)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"apps": instance.Apps})
+	defer s.conn.Services().Remove(bson.M{"_id": srv.Name})
+	insert := []interface{}{
+		Deploy{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
+		Deploy{App: "g1", Timestamp: time.Now()},
+	}
+	s.conn.Deploys().Insert(insert...)
+	defer s.conn.Deploys().RemoveAll(bson.M{"apps": instance.Apps})
+	expected := []Deploy{insert[1].(Deploy), insert[0].(Deploy)}
+	deploys, err := ListDeploys(&srv)
+	c.Assert(err, gocheck.IsNil)
+	for i := 0; i < 2; i++ {
+		ts := expected[i].Timestamp
+		expected[i].Timestamp = time.Date(ts.Year(), ts.Month(), ts.Day(), ts.Hour(), ts.Minute(), ts.Second(), 0, time.UTC)
+		ts = deploys[i].Timestamp
+		deploys[i].Timestamp = time.Date(ts.Year(), ts.Month(), ts.Day(), ts.Hour(), ts.Minute(), ts.Second(), 0, time.UTC)
+	}
+	c.Assert(deploys, gocheck.DeepEquals, expected)
+}
+
 func (s *S) TestListAllDeploys(c *gocheck.C) {
 	s.conn.Deploys().RemoveAll(nil)
 	insert := []interface{}{
@@ -1966,7 +1997,7 @@ func (s *S) TestListAllDeploys(c *gocheck.C) {
 	s.conn.Deploys().Insert(insert...)
 	defer s.conn.Deploys().RemoveAll(nil)
 	expected := []Deploy{insert[1].(Deploy), insert[0].(Deploy)}
-	deploys, err := ListDeploys()
+	deploys, err := ListDeploys(nil)
 	c.Assert(err, gocheck.IsNil)
 	for i := 0; i < 2; i++ {
 		ts := expected[i].Timestamp
