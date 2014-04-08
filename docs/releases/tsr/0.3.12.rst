@@ -1,0 +1,24 @@
+========================
+tsr 0.3.12 release notes
+========================
+
+Welcome to tsr 0.3.12!
+
+These release notes cover the `new features`_ and `backwards incompatible
+changes`_ you'll want to be aware of when upgrading from tsr 0.3.11 or older
+versions.
+
+.. _`new features`: `What's new in tsr 0.3.12`_
+
+What's new in tsr 0.3.12
+========================
+
+Docker provisioner
+------------------
+
+    * integrated the segregated scheduler with owner team  - `#753 <https://github.com/tsuru/tsuru/issues/753>`_
+
+Backwards incompatible changes
+==============================
+
+tsr 0.3.12 did not introduce any incompatible changes.
