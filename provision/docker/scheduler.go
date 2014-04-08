@@ -55,7 +55,12 @@ func (s segregatedScheduler) Schedule(opts docker.CreateContainerOptions) (strin
 		return s.fallback(opts)
 	}
 	var nodes []node
-	query := bson.M{"teams": bson.M{"$in": app.Teams}}
+	var query bson.M
+	if app.TeamOwner != "" {
+		query = bson.M{"teams": app.TeamOwner}
+	} else {
+		query = bson.M{"teams": bson.M{"$in": app.Teams}}
+	}
 	err = conn.Collection(schedulerCollection).Find(query).All(&nodes)
 	if err != nil || len(nodes) < 1 {
 		return s.fallback(opts)

@@ -181,6 +181,43 @@ func (s *SchedulerSuite) TestSchedulerScheduleFallback(c *gocheck.C) {
 	c.Check(node, gocheck.Equals, "server0")
 }
 
+func (s *SchedulerSuite) TestSchedulerScheduleTeamOwner(c *gocheck.C) {
+	server0, err := testing.NewServer("127.0.0.1:0", nil)
+	c.Assert(err, gocheck.IsNil)
+	defer server0.Stop()
+	var buf bytes.Buffer
+	client, _ := docker.NewClient(server0.URL())
+	client.PullImage(
+		docker.PullImageOptions{Repository: "tsuru/python", OutputStream: &buf},
+		docker.AuthConfiguration{},
+	)
+	a1 := app.App{
+		Name:      "impius",
+		Teams:     []string{"nodockerforme"},
+		TeamOwner: "tsuruteam",
+	}
+	cont1 := container{ID: "1", Name: "impius1", AppName: a1.Name}
+	err = s.storage.Apps().Insert(a1)
+	c.Assert(err, gocheck.IsNil)
+	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
+	coll := s.storage.Collection(schedulerCollection)
+	err = coll.Insert(
+		bson.M{"_id": "server0", "address": server0.URL(), "teams": []string{"tsuruteam"}},
+	)
+	c.Assert(err, gocheck.IsNil)
+	defer coll.RemoveAll(bson.M{"_id": "server0"})
+	contColl := collection()
+	err = contColl.Insert(cont1)
+	c.Assert(err, gocheck.IsNil)
+	defer contColl.RemoveAll(bson.M{"name": cont1.Name})
+	var scheduler segregatedScheduler
+	config := docker.Config{Cmd: []string{"/usr/sbin/sshd", "-D"}, Image: "tsuru/python"}
+	opts := docker.CreateContainerOptions{Name: cont1.Name, Config: &config}
+	node, _, err := scheduler.Schedule(opts)
+	c.Assert(err, gocheck.IsNil)
+	c.Check(node, gocheck.Equals, "server0")
+}
+
 func (s *SchedulerSuite) TestSchedulerNoFallback(c *gocheck.C) {
 	app := app.App{Name: "bill", Teams: []string{"jean"}}
 	err := s.storage.Apps().Insert(app)
