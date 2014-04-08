@@ -27,4 +27,16 @@ Docker provisioner
 Backwards incompatible changes
 ==============================
 
-TODO
+All existing apps have no team owner.
+You can run the mongodb script below to automatically set the first existing team in the app as team owner.
+
+.. highlight:: javascript
+
+::
+
+    db.apps.find({ teamowner: { $exists: false }}).forEach(
+        function(app) {
+            app.teamowner = app.teams[0];
+            db.apps.save(app);
+        }
+    );
