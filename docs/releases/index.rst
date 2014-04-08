@@ -10,7 +10,19 @@ tsr
 
 `tsr` is the tsuru server daemon.
 
--.. _development_release_notes:
+0.3.11 release
+--------------
+.. toctree::
+   :maxdepth: 1
+
+   tsr/0.3.11
+
+0.3.10 release
+--------------
+.. toctree::
+   :maxdepth: 1
+
+   tsr/0.3.10
 
 0.3.9 release
 -------------
@@ -86,6 +98,13 @@ tsuru
 =====
 
 `tsuru` is the tsuru client.
+
+0.8.11 release
+---------------
+.. toctree::
+   :maxdepth: 1
+
+   tsuru/0.8.11
 
 0.8.10 release
 ---------------
