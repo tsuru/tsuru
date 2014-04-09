@@ -119,7 +119,19 @@ func (s *S) TestCustomLookup(c *gocheck.C) {
 	manager := NewManager("glb", "0.x", "Foo-Tsuru", &stdout, &stderr, os.Stdin, lookup)
 	manager.Run([]string{"custom"})
 	c.Assert(stdout.String(), gocheck.Equals, "teste")
+}
 
+func (s *S) TestCustomLookupNotFound(c *gocheck.C) {
+	lookup := func(m *Manager, args []string) error {
+		return os.ErrNotExist
+	}
+	var stdout, stderr bytes.Buffer
+	manager := NewManager("glb", "0.x", "Foo-Tsuru", &stdout, &stderr, os.Stdin, lookup)
+	var exiter recordingExiter
+	manager.e = &exiter
+	manager.Run([]string{"custom"})
+	c.Assert(stderr.String(), gocheck.Equals, "Error: command \"custom\" does not exist\n")
+	c.Assert(manager.e.(*recordingExiter).value(), gocheck.Equals, 1)
 }
 
 func (s *S) TestManagerRunShouldWriteErrorsOnStderr(c *gocheck.C) {

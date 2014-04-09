@@ -107,7 +107,13 @@ func (m *Manager) Run(args []string) {
 		if m.lookup != nil {
 			err := m.lookup(m, args)
 			if err != nil {
-				fmt.Fprint(m.stderr, err)
+				msg := ""
+				if os.IsNotExist(err) {
+					msg = fmt.Sprintf("Error: command %q does not exist\n", args[0])
+				} else {
+					msg = err.Error()
+				}
+				fmt.Fprint(m.stderr, msg)
 				m.finisher().Exit(1)
 			}
 			return
