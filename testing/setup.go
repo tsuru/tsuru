@@ -9,8 +9,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/gandalf/testing"
 	"io/ioutil"
-	"launchpad.net/goamz/iam/iamtest"
-	"launchpad.net/goamz/s3/s3test"
 	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
@@ -19,8 +17,6 @@ import (
 type T struct {
 	Admin        user
 	AdminTeam    team
-	S3Server     *s3test.Server
-	IamServer    *iamtest.Server
 	GitAPIServer string
 	GitRWHost    string
 	GitROHost    string
@@ -34,17 +30,6 @@ type user struct {
 type team struct {
 	Name  string `bson:"_id"`
 	Users []string
-}
-
-func (t *T) StartAmzS3AndIAM(c *gocheck.C) {
-	var err error
-	t.S3Server, err = s3test.NewServer(&s3test.Config{Send409Conflict: true})
-	c.Assert(err, gocheck.IsNil)
-	config.Set("aws:s3:endpoint", t.S3Server.URL())
-	t.IamServer, err = iamtest.NewServer()
-	c.Assert(err, gocheck.IsNil)
-	config.Set("aws:iam:endpoint", t.IamServer.URL())
-	config.Unset("aws:s3:bucketEndpoint")
 }
 
 func (t *T) SetGitConfs(c *gocheck.C) {

@@ -97,8 +97,6 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	s.createUserAndTeam(c)
 	s.t = &tsuruTesting.T{}
-	s.t.StartAmzS3AndIAM(c)
-	s.t.SetGitConfs(c)
 	s.provisioner = tsuruTesting.NewFakeProvisioner()
 	app.Provisioner = s.provisioner
 	p := app.Platform{Name: "zend"}
@@ -106,8 +104,6 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
-	defer s.t.S3Server.Quit()
-	defer s.t.IamServer.Quit()
 	queue.Preempt()
 	s.conn.Apps().Database.DropDatabase()
 }

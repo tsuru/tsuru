@@ -6,20 +6,6 @@ git:
   api-server: http://127.0.0.1:8000
   rw-host: my.gandalf.domain
   ro-host: 10.10.10.10
-bucket-support: true
-aws:
-  access-key-id: access-id-here
-  secret-access-key: secret-very-secret
-  ec2:
-    endpoint: https://ec2.us-east-1.amazonaws.com
-  iam:
-    endpoint: https://iam.amazonaws.com/
-  s3:
-    region-name: us-west-1
-    endpoint: https://ec2.us-west-1.amazonaws.com
-    bucketEndpoint: https://s3-us-west-1.amazonaws.com
-    location-constraint: true
-    lowercase-bucket: true
 auth:
   salt: tsuru-salt
   token-expire-days: 2
