@@ -158,6 +158,24 @@ func (dockerProvisioner) Swap(app1, app2 provision.App) error {
 }
 
 func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer) error {
+	imageId, err := deploy(a, version, w)
+	if err != nil {
+		return err
+	}
+	containers, err := listAppContainers(a.GetName())
+	started := make(chan bool, len(containers))
+	if err == nil && len(containers) > 0 {
+		for _, c := range containers {
+			go startInBackground(a, c, imageId, w, started)
+		}
+	} else {
+		go startInBackground(a, container{}, imageId, w, started)
+	}
+	if <-started {
+		fmt.Fprint(w, "\n ---> App will be restarted, please check its logs for more details...\n\n")
+	} else {
+		fmt.Fprint(w, "\n ---> App failed to start, please check its logs for more details...\n\n")
+	}
 	return nil
 }
 
