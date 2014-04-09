@@ -1,4 +1,4 @@
-.. Copyright 2013 tsuru authors. All rights reserved.
+.. Copyright 2014 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -6,12 +6,12 @@
 Howto install a dns forwarder
 +++++++++++++++++++++++++++++
 
-This document describes how to create a dns forwarder and set a base domain for tsuru. 
+This document describes how to create a dns forwarder and set a base domain for tsuru.
 
 Overview
 ========
 
-The recommended way to use tsuru is integrated with a DNS server. 
+The recommended way to use tsuru is integrated with a DNS server.
 The easiest way to do that is configuring it as a cache forwarder,
 and configuring a DNS zone to be used for tsuru as required.
 
@@ -49,8 +49,8 @@ Configuring Bind
 Forwarder
 ---------
 
-First we will show how to configure your DNS as a forwarder. 
-Into the config file,  insert the forwarders directive inside the "options" main directive. 
+First we will show how to configure your DNS as a forwarder.
+Into the config file,  insert the forwarders directive inside the "options" main directive.
 You can use the google's public DNS(8.8.8.8/8.8.4.4) as forwarder or your company's DNS. It should look like that:
 
 Ubuntu
@@ -60,7 +60,7 @@ Ubuntu
 
 ::
 
-    $ egrep -v '//|^$' /etc/bind/named.conf.options 
+    $ egrep -v '//|^$' /etc/bind/named.conf.options
     options {
             directory "/var/cache/bind";
             forwarders {
@@ -128,7 +128,7 @@ And create a db.cloud.company.com file(considering the your external IP for tsur
 
 ::
 
-   $  cat db.cloud.company.com 
+   $  cat db.cloud.company.com
    ;
    $TTL    604800
    @       IN      SOA     cloud.company.com. tsuru.cloud.company.com. (
@@ -141,8 +141,8 @@ And create a db.cloud.company.com file(considering the your external IP for tsur
    @       IN      NS      cloud.company.com.
    @       IN      A       192.168.123.131
    git     IN      A       192.168.123.131 ; here we can set a better exhibition for the git remote provided by tsuru
-   *       IN      A       192.168.123.131 
- 
+   *       IN      A       192.168.123.131
+
 Ps: If you have problems, it could be related with the date of your machine. We recommend you to install a ntpd service.
 
 Now just reload your DNS server, point it to your resolv.conf, and use tsuru!
