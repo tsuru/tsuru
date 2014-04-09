@@ -1,10 +1,10 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 package cmd
 
-const targetTopic = `In Tsuru, a target is the address of the remote tsuru server.
+const targetTopic = `In tsuru, a target is the address of the remote tsuru server.
 
 Each target is identified by a label and a HTTP/HTTPS address. The client
 requires at least one target to connect to, there's no default target. A user

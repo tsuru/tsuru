@@ -1,8 +1,8 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package quota provides primitives for quota management in Tsuru.
+// Package quota provides primitives for quota management in tsuru.
 package quota
 
 import "fmt"

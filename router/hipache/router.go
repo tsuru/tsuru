@@ -190,7 +190,7 @@ func (r hipacheRouter) SetCName(cname, name string) error {
 		return &routeError{"setCName", err}
 	}
 	if !r.validCName(cname) {
-		err := errors.New(fmt.Sprintf("Invalid CNAME %s. You can't use Tsuru's application domain.", cname))
+		err := errors.New(fmt.Sprintf("Invalid CNAME %s. You can't use tsuru's application domain.", cname))
 		return &routeError{"setCName", err}
 	}
 	frontend := "frontend:" + backendName + "." + domain

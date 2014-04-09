@@ -71,7 +71,7 @@ function use_https_in_git() {
 }
 
 
-##### Functions for Tsuru Setup #####
+##### Functions for tsuru setup #####
 
 function install_tsuru() {
     echo "Downloading tsuru binary and copying to TSURU_BIN"

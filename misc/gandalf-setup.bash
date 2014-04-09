@@ -19,7 +19,7 @@ function install_gandalf() {
     sudo apt-get install git -y
     echo Installing python software properties
     sudo apt-get install python-software-properties -y
-    echo "Adding Tsuru repository"
+    echo "Adding tsuru repository"
     sudo apt-add-repository ppa:tsuru/ppa -y
     sudo apt-get update
     echo "Installing gandalf"

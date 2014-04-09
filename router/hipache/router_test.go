@@ -393,7 +393,7 @@ func (s *S) TestSetCNameValidatesCNameAccordingToDomainConfig(c *gocheck.C) {
 	router := hipacheRouter{}
 	err := router.SetCName("mycname.golang.org", "myapp")
 	c.Assert(err, gocheck.NotNil)
-	expected := "Could not setCName route: Invalid CNAME mycname.golang.org. You can't use Tsuru's application domain."
+	expected := "Could not setCName route: Invalid CNAME mycname.golang.org. You can't use tsuru's application domain."
 	c.Assert(err.Error(), gocheck.Equals, expected)
 }
 

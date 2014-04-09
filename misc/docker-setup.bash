@@ -82,7 +82,7 @@ function download_scripts() {
 
 function echo_conf_warning() {
     echo "=================================================================================================================="
-    echo "        Tsuru is now ready to be started, but first you need to manually set the following configurations"
+    echo "        tsuru is now ready to be started, but first you need to manually set the following configurations"
     echo "        On /etc/tsuru/tsuru.conf set the git:rw-host and git:ro-host to gandalf's public address"
     echo "=================================================================================================================="
 }

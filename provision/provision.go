@@ -112,7 +112,7 @@ type CNameManager interface {
 // Any tsuru provisioner must implement this interface in order to provision
 // tsuru apps.
 //
-// Tsuru comes with a default provisioner: juju. One can add other provisioners
+// tsuru comes with a default provisioner: juju. One can add other provisioners
 // by satisfying this interface and registering it using the function Register.
 type Provisioner interface {
 	// Deploy updates the code of the app in units to match the given
@@ -153,7 +153,7 @@ type Provisioner interface {
 
 	// Addr returns the address for an app.
 	//
-	// Tsuru will use this method to get the IP (althought it might not be
+	// tsuru will use this method to get the IP (althought it might not be
 	// an actual IP, collector calls it "IP") of the app from the
 	// provisioner.
 	Addr(App) (string, error)

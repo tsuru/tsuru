@@ -104,7 +104,7 @@ echo -n "post-receive... "
 out=`TSURU_HOST=http://127.0.0.1:5000 TSURU_TOKEN=000secret123 hooks/post-receive <<END
 oldref newref refname
 END`
-gout=`echo $out | grep "Tsuru receiving push"`
+gout=`echo $out | grep "tsuru receiving push"`
 
 if [ $? = 0 ]
 then

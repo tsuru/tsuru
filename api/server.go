@@ -37,7 +37,7 @@ func RegisterHandler(path string, method string, h AdminRequiredHandler) {
 	tsuruHandlerList = append(tsuruHandlerList, th)
 }
 
-// RunServer starts Tsuru API server. The dry parameter indicates whether the
+// RunServer starts tsuru API server. The dry parameter indicates whether the
 // server should run in dry mode, not starting the HTTP listener (for testing
 // purposes).
 func RunServer(dry bool) {

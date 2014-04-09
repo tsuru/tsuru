@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -224,7 +224,7 @@ Usage:
 
 	% tsuru team-create <team-name>
 
-team-create will create a team for the user. Tsuru requires a user to be a
+team-create will create a team for the user. tsuru requires a user to be a
 member of at least one team in order to create an app or a service instance.
 
 When you create a team, you're automatically member of this team.
