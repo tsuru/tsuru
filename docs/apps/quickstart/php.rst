@@ -10,7 +10,7 @@ Overview
 ========
 
 This document is a hands-on guide to deploying a simple PHP application in
-Tsuru. The example application will be a very simple Wordpress project associated
+tsuru. The example application will be a very simple Wordpress project associated
 to a MySQL service. It's applicable to any php over apache application.
 
 Creating the app within tsuru
@@ -132,7 +132,7 @@ push to tsuru remote and your project will be deployed:
     Writing objects: 100% (119/119), 16.24 KiB, done.
     Total 119 (delta 55), reused 119 (delta 55)
     remote:
-    remote:  ---> Tsuru receiving push
+    remote:  ---> tsuru receiving push
     remote:
     remote: From git://cloud.tsuru.io/blog.git
     remote:  * branch            master     -> FETCH_HEAD
@@ -415,7 +415,7 @@ connect in the database:
 
 You can extend your wordpress installing plugins into your repository. In the example bellow, we
 are adding the Amazon S3 capability to wordpress, just installing 2 more plugins: `Amazon S3 and Cloudfront <http://wordpress.org/plugins/amazon-s3-and-cloudfront>`_ +
-`Amazon Web Services <http://wordpress.org/plugins/amazon-web-services>`_. It's the right way to store content files into Tsuru.
+`Amazon Web Services <http://wordpress.org/plugins/amazon-web-services>`_. It's the right way to store content files into tsuru.
 
 .. highlight:: bash
 

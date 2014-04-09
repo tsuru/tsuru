@@ -9,9 +9,9 @@ Building your service
 Overview
 ========
 
-This document is a hands-on guide to turning your existing cloud service into a Tsuru service.
+This document is a hands-on guide to turning your existing cloud service into a tsuru service.
 
-In order to create a service you need to implement a provisioning API for your service, which Tsuru will call using `HTTP protocol <http://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol#Request_methods>`_ when a customer creates a new instance or binds a service instance with an app.
+In order to create a service you need to implement a provisioning API for your service, which tsuru will call using `HTTP protocol <http://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol#Request_methods>`_ when a customer creates a new instance or binds a service instance with an app.
 
 You will also need to create a YAML document that will serve as the service manifest. We provide a command-line tool to help you to create this manifest and manage your service.
 
@@ -74,7 +74,7 @@ For run this app you can do:
 
 If you open your web browser and access the url "http://127.0.0.1:5000/" you will see the "Hello World!".
 
-Then, you need to implement the resources expected by the :doc:`Tsuru api workflow </services/api>`.
+Then, you need to implement the resources expected by the :doc:`tsuru api workflow </services/api>`.
 
 Provisioning the resource for new instances
 -------------------------------------------

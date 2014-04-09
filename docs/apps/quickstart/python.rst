@@ -10,7 +10,7 @@ Overview
 ========
 
 This document is a hands-on guide to deploying a simple Python application in
-Tsuru. The example application will be a very simple Django project associated
+tsuru. The example application will be a very simple Django project associated
 to a MySQL service. It's applicable to any WSGI application.
 
 Creating the app within tsuru
@@ -117,7 +117,7 @@ push to tsuru remote and your project will be deployed:
     Writing objects: 100% (119/119), 16.24 KiB, done.
     Total 119 (delta 55), reused 119 (delta 55)
     remote:
-    remote:  ---> Tsuru receiving push
+    remote:  ---> tsuru receiving push
     remote:
     remote: From git://cloud.tsuru.io/blog.git
     remote:  * branch            master     -> FETCH_HEAD
@@ -341,7 +341,7 @@ another deploy:
     Writing objects: 100% (3/3), 326 bytes, done.
     Total 3 (delta 1), reused 0 (delta 0)
     remote:
-    remote:  ---> Tsuru receiving push
+    remote:  ---> tsuru receiving push
     remote:
     remote:  ---> Installing dependencies
     remote: Reading package lists...
@@ -389,7 +389,7 @@ Now we commit the changes and run another deploy:
     Writing objects: 100% (3/3), 325 bytes, done.
     Total 3 (delta 1), reused 0 (delta 0)
     remote:
-    remote:  ---> Tsuru receiving push
+    remote:  ---> tsuru receiving push
     remote:
     [...]
     remote:  ---> Restarting your app
@@ -528,7 +528,7 @@ Now let's commit it and run another deploy:
     Writing objects: 100% (4/4), 535 bytes, done.
     Total 4 (delta 3), reused 0 (delta 0)
     remote:
-    remote:  ---> Tsuru receiving push
+    remote:  ---> tsuru receiving push
     remote:
     remote:  ---> Installing dependencies
     #####################################
@@ -596,7 +596,7 @@ It would be boring to manually run ``syncdb`` and/or ``migrate`` after every
 deployment. So we can configure an automatic hook to always run before or after
 the app restarts.
 
-Tsuru parses a file called ``app.yaml`` and runs restart hooks. As the
+tsuru parses a file called ``app.yaml`` and runs restart hooks. As the
 extension suggests, this is a YAML file, that contains a list of commands that
 should run before and after the restart. Here is our example of app.yaml:
 
@@ -612,7 +612,7 @@ should run before and after the restart. Here is our example of app.yaml:
 
 For more details, check the :doc:`hooks documentation </apps/deploy-hooks>`.
 
-Tsuru will look for the file in the root of the project. Let's commit and
+tsuru will look for the file in the root of the project. Let's commit and
 deploy it:
 
 .. highlight:: bash
@@ -628,7 +628,7 @@ deploy it:
     Writing objects: 100% (3/3), 338 bytes, done.
     Total 3 (delta 1), reused 0 (delta 0)
     remote:
-    remote:  ---> Tsuru receiving push
+    remote:  ---> tsuru receiving push
     remote:
     remote:  ---> Installing dependencies
     remote: Reading package lists...

@@ -129,7 +129,7 @@ This will return something like:
     | myblog/1 | started |
     +----------+---------+
 
-Tsuru uses information from git configuration to guess the name of the app, for
+tsuru uses information from git configuration to guess the name of the app, for
 more details, see `"Guessing app names"
 <http://godoc.org/github.com/tsuru/tsuru/cmd/tsuru#hdr-Guessing_app_names>`_
 section of tsuru command documentation.

@@ -6,13 +6,13 @@
 Configuring tsuru
 +++++++++++++++++
 
-Tsuru uses a configuration file in `YAML <http://www.yaml.org/>`_ format. This
+tsuru uses a configuration file in `YAML <http://www.yaml.org/>`_ format. This
 document describes what each option means, and how it should look like.
 
 Notation
 ========
 
-Tsuru uses a colon to represent nesting in YAML. So, whenever this document say
+tsuru uses a colon to represent nesting in YAML. So, whenever this document say
 something like ``key1:key2``, it refers to the value of the ``key2`` that is
 nested in the block that is the value of ``key1``. For example,
 ``database:url`` means:
@@ -24,7 +24,7 @@ nested in the block that is the value of ``key1``. For example,
     database:
       url: <value>
 
-Tsuru configuration
+tsuru configuration
 ===================
 
 This section describes tsuru's core configuration. Other sections will include
@@ -33,7 +33,7 @@ configuration of optional components, and finally, a full sample file.
 HTTP server
 -----------
 
-Tsuru provides a REST API, that supports HTTP and HTTP/TLS (a.k.a. HTTPS). Here
+tsuru provides a REST API, that supports HTTP and HTTP/TLS (a.k.a. HTTPS). Here
 are the options that affect how tsuru's API behaves:
 
 listen
@@ -64,7 +64,7 @@ domain. This setting is optional, unless ``use-tls`` is true.
 Database access
 ---------------
 
-Tsuru uses MongoDB as database manager, to store information about users, VM's,
+tsuru uses MongoDB as database manager, to store information about users, VM's,
 and its components. Regarding database control, you're able to define to which
 database server tsuru will connect (providing a `MongoDB connection string
 <http://docs.mongodb.org/manual/reference/connection-string/>`_). The database
@@ -101,9 +101,9 @@ Default value: 60 seconds.
 Email configuration
 -------------------
 
-Tsuru sends email to users when they request password recovery. In order to
-send those emails, Tsuru needs to be configured with some SMTP settings.
-Omitting these settings won't break Tsuru, but users would not be able to reset
+tsuru sends email to users when they request password recovery. In order to
+send those emails, tsuru needs to be configured with some SMTP settings.
+Omitting these settings won't break tsuru, but users would not be able to reset
 their password automatically.
 
 smtp:server
@@ -115,7 +115,7 @@ The SMTP server to connect to. It must be in the form <host>:<port>. Example:
 smtp:user
 +++++++++
 
-The user to authenticate with the SMTP sever. Currently, Tsuru requires
+The user to authenticate with the SMTP sever. Currently, tsuru requires
 authenticated sessions.
 
 smtp:password
@@ -126,12 +126,12 @@ The password for authentication within the SMTP server.
 Git configuration
 -----------------
 
-Tsuru uses `Gandalf <https://github.com/tsuru/gandalf>`_ to manage git
+tsuru uses `Gandalf <https://github.com/tsuru/gandalf>`_ to manage git
 repositories. Gandalf exposes a REST API for repositories management, and tsuru
 uses it. So tsuru requires information about the Gandalf HTTP server, and also
 its git-daemon and SSH service.
 
-Tsuru also needs to know where the git repository will be cloned and stored in
+tsuru also needs to know where the git repository will be cloned and stored in
 units storage. Here are all options related to git repositories:
 
 git:unit-repo
@@ -168,7 +168,7 @@ like git://tsuruhost.com/<app-name>.git.
 Authentication configuration
 ----------------------------
 
-Tsuru has its own authentication mechanism, that hashes passwords brcypt.
+tsuru has its own authentication mechanism, that hashes passwords brcypt.
 Tokens are generated during authentication, and are hashed using SHA512.
 
 This mechanism requires two settings to operate: ``auth:hash-cost`` and
@@ -201,14 +201,14 @@ that the token will be valid. This setting is optional, and defaults to "7".
 auth:max-simultaneous-sessions
 ++++++++++++++++++++++++++++++
 
-Tsuru can limit the number of simultaneous sessions per user. This setting is
+tsuru can limit the number of simultaneous sessions per user. This setting is
 optional, and defaults to "unlimited".
 
 Amazon Web Services (AWS) configuration
 ---------------------------------------
 
-Tsuru is able to use Amazon Web Services (AWS) Simple Storage Service (S3) to
-provide static storage for apps. Whenever ``bucket-support`` is true, Tsuru
+tsuru is able to use Amazon Web Services (AWS) Simple Storage Service (S3) to
+provide static storage for apps. Whenever ``bucket-support`` is true, tsuru
 will create a S3 bucket and AWS Identity and Access Management (IAM)
 credentials to access this bucket during the app creation process. In order to
 be able to communicate with AWS API's, tsuru needs some settings, listed below.
@@ -284,13 +284,13 @@ and has no default value.
 queue configuration
 -------------------
 
-Tsuru uses a work queue for asynchronous tasks. By default it will use
+tsuru uses a work queue for asynchronous tasks. By default it will use
 `beanstalkd <http://kr.github.com/beanstalkd>`_. You can customize the used
 queue, and settings related to the queue (like the address where beanstalkd is
 listening).
 
-Besides beanstalkd, Tsuru also supports Redis as a working queue. In order to
-use Redis, Tsuru administrators must set ``queue`` to ``redis``.
+Besides beanstalkd, tsuru also supports Redis as a working queue. In order to
+use Redis, tsuru administrators must set ``queue`` to ``redis``.
 
 Creating a new queue provider is as easy as implementing `an interface
 <http://godoc.org/github.com/tsuru/tsuru/queue#Q>`_.
@@ -335,7 +335,7 @@ for the working queue. This settings is optional and defaults to 3.
 Admin users
 -----------
 
-Tsuru has a very simple way to identify admin users: an admin user is a user
+tsuru has a very simple way to identify admin users: an admin user is a user
 that is the member of the admin team, and the admin team is defined in the
 configuration file, using the ``admin-team`` setting.
 
@@ -349,10 +349,10 @@ installation. All members of the administration team is able to use the
 Quota management
 ----------------
 
-Tsuru can, optionally, manage quotas. Currently, there are two available
+tsuru can, optionally, manage quotas. Currently, there are two available
 quotas: apps per user and units per app.
 
-Tsuru administrators can control the default quota for new users and new apps
+tsuru administrators can control the default quota for new users and new apps
 in the configuration file, and use ``tsuru-admin`` command to change quotas for
 users or apps. Quota management is disabled by default, to enable it, just set
 the desired quota to a positive integer.
@@ -383,7 +383,7 @@ noises on logs, to turn it on set it to true, e.g.: ``debug: true``
 Defining the provisioner
 ------------------------
 
-Tsuru supports multiple provisioners. A provisioner is a Go type that satisfies
+tsuru supports multiple provisioners. A provisioner is a Go type that satisfies
 an interface. By default, tsuru will use ``JujuProvisioner`` (identified by the
 string "juju"). To use other provisioner, that has been already registered with
 tsuru, one must define the setting ``provisioner``.
@@ -400,7 +400,7 @@ Juju configuration).
 Juju provisioner configuration
 ==============================
 
-"juju" is the default provisioner used by Tsuru. It's named after the `tool
+"juju" is the default provisioner used by tsuru. It's named after the `tool
 used by tsuru <https://juju.ubuntu.com/>`_ to provision and manage instances.
 It's a extended version of Juju, supporting Amazon's `Virtual Private Cloud
 (VPC) <https://aws.amazon.com/vpc/>`_ and `Elastic Load Balancing (ELB)

@@ -33,7 +33,7 @@ You can use `make` to install all tsuru dependencies and run tests. It will also
 writing docs
 ============
 
-Tsuru documentation is written using `Sphinx <http://sphinx.pocoo.org/>`_, which uses `RST <http://docutils.sourceforge.net/rst.html>`_. Check these tools docs to learn how to write docs for Tsuru.
+tsuru documentation is written using `Sphinx <http://sphinx.pocoo.org/>`_, which uses `RST <http://docutils.sourceforge.net/rst.html>`_. Check these tools docs to learn how to write docs for tsuru.
 
 building docs
 =============

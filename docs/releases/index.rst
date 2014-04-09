@@ -2,7 +2,7 @@
 Release notes
 =============
 
-Release notes for the official Tsuru releases. Each release note will
+Release notes for the official tsuru releases. Each release note will
 tell you what's new in each version.
 
 tsr

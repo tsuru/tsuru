@@ -6,20 +6,20 @@
 Building your app in tsuru
 ++++++++++++++++++++++++++
 
-Tsuru is an open source polyglot cloud application platform. With Tsuru, you
+tsuru is an open source polyglot cloud application platform. With tsuru, you
 don't need to think about servers at all. You can write apps in the programming
 language of your choice, back it with add-on resources such as SQL and NoSQL
 databases, memcached, redis, and many others. You manage your app using the
-Tsuru command-line tool and you deploy code using the Git revision control
-system, all running on the Tsuru infrastructure.
+tsuru command-line tool and you deploy code using the Git revision control
+system, all running on the tsuru infrastructure.
 
 
 Install the tsuru client
 ++++++++++++++++++++++++
 
-:doc:`Install the Tsuru client </install/client>` for your development platform.
+:doc:`Install the tsuru client </install/client>` for your development platform.
 
-The the Tsuru client is a command-line tool for creating and managing apps.
+The the tsuru client is a command-line tool for creating and managing apps.
 Check out the :doc:`CLI usage guide </apps/client/usage>` to learn more.
 
 Sign up

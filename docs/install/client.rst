@@ -66,13 +66,13 @@ Whenever a new version of any of tsuru's clients is out, you can just run:
 For more details on taps, check `homebrew documentation
 <https://github.com/mxcl/homebrew/wiki>`_.
 
-**NOTE:** Tsuru requires Go 1.1 or higher. Make sure you have the last version
+**NOTE:** tsuru requires Go 1.1 or higher. Make sure you have the last version
 of Go installed in your system.
 
 Using the PPA (Ubuntu only)
 ===========================
 
-Ubuntu users can install Tsuru clients using ``apt-get`` and the `Tsuru PPA
+Ubuntu users can install tsuru clients using ``apt-get`` and the `tsuru PPA
 <https://launchpad.net/~tsuru/+archive/ppa>`_. You'll need to add the PPA
 repository locally and run an ``apt-get update``:
 
@@ -83,7 +83,7 @@ repository locally and run an ``apt-get update``:
     $ sudo apt-add-repository ppa:tsuru/ppa
     $ sudo apt-get update
 
-Now you can install Tsuru's clients:
+Now you can install tsuru's clients:
 
 .. highlight:: bash
 
@@ -133,7 +133,7 @@ and put the binary somewhere in your PATH:
 Build from source (Linux and Mac OS X)
 ======================================
 
-`Tsuru's source <https://github.com/tsuru/tsuru>`_ is written in `Go
+`tsuru's source <https://github.com/tsuru/tsuru>`_ is written in `Go
 <http://golang.org>`_, so before installing tsuru from source, please make sure
 you have `installed and configured Go <http://golang.org/doc/install>`_.
 

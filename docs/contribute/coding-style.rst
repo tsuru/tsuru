@@ -6,7 +6,7 @@
 Coding style
 ++++++++++++
 
-Please follow these coding standards when writing code for inclusion in Tsuru.
+Please follow these coding standards when writing code for inclusion in tsuru.
 
 Formatting
 ==========

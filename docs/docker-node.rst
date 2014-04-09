@@ -52,7 +52,7 @@ Now start it:
 
     $ sudo start docker
 
-Tsuru node agent
+tsuru node agent
 ----------------
 
 Now that you have docker installed and running it's time to install tsuru node agent.

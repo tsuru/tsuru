@@ -118,7 +118,7 @@ Installing gandalf
     sudo start gandalf-server
     sudo start git-daemon
 
-Installing Tsuru API server
+Installing tsuru API server
 ===========================
 
 .. highlight:: bash
@@ -173,6 +173,6 @@ service with tsuru: :doc:`Install and configure a MySQL service
 DNS server
 ==========
 
-You can integrate any DNS server with Tsuru. :doc:`Here you can find an example
+You can integrate any DNS server with tsuru. :doc:`Here you can find an example
 of using bind as a DNS forwarder </misc/dns-forwarders>`, integrated with
-Tsuru.
+tsuru.

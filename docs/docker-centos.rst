@@ -79,10 +79,10 @@ Now, just follow the steps to build the kernel + lxc + docker from `here: https:
 After build, install and reboot the server with the new kernel(it will take some time), you will need to install the tsuru's dependencies 
 
 
-Tsuru's Dependencies
+tsuru's Dependencies
 --------------------
 
-Tsuru needs MongoDB stable, distributed by 10genr, `Beanstalkd <http://kr.github.com/beanstalkd/>`_ as work queue, git-daemon(necessary for Gandalf) and Redis for `hipache <https://github.com/dotcloud/hipache/>`_ pt-ge
+tsuru needs MongoDB stable, distributed by 10genr, `Beanstalkd <http://kr.github.com/beanstalkd/>`_ as work queue, git-daemon(necessary for Gandalf) and Redis for `hipache <https://github.com/dotcloud/hipache/>`_ pt-ge
 Install the latest EPEL version, by doing this:
 
 .. highlight:: bash
@@ -98,11 +98,11 @@ Install the latest EPEL version, by doing this:
     $ chkconfig redis on
 
 
-Tsuru Setup
+tsuru Setup
 -----------
 
-Tsuru uses `Gandalf <https://github.com/tsuru/gandalf/>`_ to manage `git repositories <https://gandalf.readthedocs.org/en/latest/install.html/>`_, and `hipache <https://github.com/dotcloud/hipache/>`_ as router
-To setup Tsuru, just follow this steps. Obs: It can be used to upgrade this services as needed
+tsuru uses `Gandalf <https://github.com/tsuru/gandalf/>`_ to manage `git repositories <https://gandalf.readthedocs.org/en/latest/install.html/>`_, and `hipache <https://github.com/dotcloud/hipache/>`_ as router
+To setup tsuru, just follow this steps. Obs: It can be used to upgrade this services as needed
 
 .. highlight:: bash
 
@@ -110,7 +110,7 @@ To setup Tsuru, just follow this steps. Obs: It can be used to upgrade this serv
 
     $ curl https://raw.github.com/tsuru/tsuru/master/misc/functions-docker-centos.sh -o functions-docker-centos.sh
     $ source functions-docker-centos.sh
-    # Install Tsuru Server(tsr), Gandalf, Hipache and Circus for monitoring
+    # Install tsuru Server(tsr), Gandalf, Hipache and Circus for monitoring
     $ install_services
 
 

@@ -5,7 +5,7 @@ tsr 0.3.0 release notes
 Welcome to tsr 0.3.0!
 
 These release notes cover the `new features`_ and `backwards incompatible
-changes`_ you'll want to be aware of when upgrading from Tsuru 0.2.x or older
+changes`_ you'll want to be aware of when upgrading from tsuru 0.2.x or older
 versions.
 
 .. _`new features`: `What's new in tsr 0.3.0`_
@@ -57,7 +57,7 @@ Other improvements and bugfixes
 Backwards incompatible changes
 ==============================
 
-Tsuru 0.3.0 handles quota in a brand new way. Users upgrading from 0.2.x need
+tsuru 0.3.0 handles quota in a brand new way. Users upgrading from 0.2.x need
 to run a migration script in the database. There are two scripts available: one
 for installations with quota enabled and other for installations without quota.
 

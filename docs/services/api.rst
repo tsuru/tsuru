@@ -6,7 +6,7 @@
 api workflow
 ++++++++++++
 
-Tsuru sends requests to your service to:
+tsuru sends requests to your service to:
 
 * create a new instance of your service
 * bind an app with your service
@@ -16,7 +16,7 @@ Tsuru sends requests to your service to:
 Creating a new instance
 =======================
 
-This process begins when a Tsuru customer creates an instance of your service
+This process begins when a tsuru customer creates an instance of your service
 via command line tool:
 
 .. highlight:: bash
@@ -25,7 +25,7 @@ via command line tool:
 
     $ tsuru service-add mysql mysql_instance
 
-Tsuru calls your service to create a new instance of your service via POST on
+tsuru calls your service to create a new instance of your service via POST on
 ``/resources`` (please notice that tsuru does not include a trailing slash)
 with the "name" that represents the app name in the request body. Example of
 request:
@@ -47,7 +47,7 @@ Your API should return the following HTTP response code with the respective resp
 Binding an app to a service instance
 ====================================
 
-This process begins when a Tsuru customer binds an app to an instance of your service via command line tool:
+This process begins when a tsuru customer binds an app to an instance of your service via command line tool:
 
 .. highlight:: bash
 
@@ -55,7 +55,7 @@ This process begins when a Tsuru customer binds an app to an instance of your se
 
     $ tsuru bind mysql_instance --app my_app
 
-Tsuru calls your service to bind an app with a service instance via POST on ``/resources/<service-name>`` (please notice that tsuru does not include a trailing slash) with the "hostname" that represents the app hostname in the request body. Example of request:
+tsuru calls your service to bind an app with a service instance via POST on ``/resources/<service-name>`` (please notice that tsuru does not include a trailing slash) with the "hostname" that represents the app hostname in the request body. Example of request:
 
 .. highlight:: text
 
@@ -88,7 +88,7 @@ Status codes for errors in the process:
 Unbind an app from a service instance
 =====================================
 
-This process begins when a Tsuru customer unbinds an app from an instance of your service via command line tool:
+This process begins when a tsuru customer unbinds an app from an instance of your service via command line tool:
 
 .. highlight:: bash
 
@@ -96,7 +96,7 @@ This process begins when a Tsuru customer unbinds an app from an instance of you
 
     $ tsuru unbind mysql_instance --app my_app
 
-Tsuru calls your service to unbind an app with a service instance via DELETE on ``/resources/<service-name>/hostname/<app-hostname>`` (please notice that tsuru does not include a trailing slash). Example of request:
+tsuru calls your service to unbind an app with a service instance via DELETE on ``/resources/<service-name>/hostname/<app-hostname>`` (please notice that tsuru does not include a trailing slash). Example of request:
 
 .. highlight:: text
 
@@ -114,7 +114,7 @@ Your API should return the following HTTP response code with the respective resp
 Destroying an instance
 ======================
 
-This process begins when a Tsuru customer removes an instance of your service via command line tool:
+This process begins when a tsuru customer removes an instance of your service via command line tool:
 
 .. highlight:: bash
 
@@ -122,7 +122,7 @@ This process begins when a Tsuru customer removes an instance of your service vi
 
     $ tsuru service-remove mysql_instance
 
-Tsuru calls your service to remove an instance of your service via DELETE on ``/resources/<service-name>`` (please notice that tsuru does not include a trailing slash). Example of request:
+tsuru calls your service to remove an instance of your service via DELETE on ``/resources/<service-name>`` (please notice that tsuru does not include a trailing slash). Example of request:
 
 .. highlight:: text
 
@@ -140,7 +140,7 @@ Your API should return the following HTTP response code with the respective resp
 Checking the status of an instance
 ==================================
 
-This process begins when a Tsuru customer wants to check the status of an instance via command line tool:
+This process begins when a tsuru customer wants to check the status of an instance via command line tool:
 
 .. highlight:: bash
 
@@ -148,7 +148,7 @@ This process begins when a Tsuru customer wants to check the status of an instan
 
     $ tsuru service-status mysql_instance
 
-Tsuru calls your service to check the status of the instance via GET on ``/resources/mysql_instance/status`` (please notice that tsuru does not include a trailing slash). Example of request:
+tsuru calls your service to check the status of the instance via GET on ``/resources/mysql_instance/status`` (please notice that tsuru does not include a trailing slash). Example of request:
 
 .. highlight:: text
 

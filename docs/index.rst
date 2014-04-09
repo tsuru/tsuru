@@ -6,12 +6,12 @@
 Documentation
 +++++++++++++
 
-* :doc:`Why Tsuru? </why>`
+* :doc:`Why tsuru? </why>`
 * :doc:`Overview </overview>`
 * :doc:`FAQ </faq>`
 * :doc:`releases </releases/index>`
 
-Using Tsuru
+Using tsuru
 +++++++++++
 
 Deploy your applications on tsuru.
@@ -38,12 +38,12 @@ services
 
 * :doc:`using services </apps/client/services>`
 
-Running Tsuru
+Running tsuru
 +++++++++++++
 
-Build your cloud with Tsuru.
+Build your cloud with tsuru.
 
-Install Tsuru
+Install tsuru
 -------------
 
 
@@ -52,17 +52,17 @@ Install Tsuru
 
 * :doc:`with juju (python version) on ubuntu </build>`
 
-Configure and run Tsuru
+Configure and run tsuru
 -----------------------
 
 * :doc:`docker provisioner architecture </provisioners/docker/architecture>`
 
 * :doc:`configuration reference </config>`
-* :doc:`backing up Tsuru </server/backup>`
+* :doc:`backing up tsuru </server/backup>`
 
 * :doc:`mysql </services/mysql-example>`
 
-Extending Tsuru
+Extending tsuru
 +++++++++++++++
 
 Create your services and use tsuru api.
@@ -78,7 +78,7 @@ Get Involved
 
 * :doc:`community </community>`
 
-Contribute to Tsuru
+Contribute to tsuru
 +++++++++++++++++++
 
 * :doc:`how to contribute </contribute>`

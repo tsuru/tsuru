@@ -49,7 +49,7 @@ installer:
 Installing Beanstalkd
 =====================
 
-Tsuru uses `Beanstalkd <http://kr.github.com/beanstalkd/>`_ as a work queue.
+tsuru uses `Beanstalkd <http://kr.github.com/beanstalkd/>`_ as a work queue.
 Install the latest version, by doing this:
 
 .. highlight:: bash
@@ -63,7 +63,7 @@ Install the latest version, by doing this:
 Installing Redis
 ================
 
-One of Tsuru routing providers uses `Redis <http://redis.io>`_ to store
+One of tsuru routing providers uses `Redis <http://redis.io>`_ to store
 information about frontends and backends. You will also need to install it:
 
 .. highlight:: bash

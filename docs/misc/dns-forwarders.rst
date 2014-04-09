@@ -145,7 +145,7 @@ And create a db.cloud.company.com file(considering the your external IP for tsur
  
 Ps: If you have problems, it could be related with the date of your machine. We recommend you to install a ntpd service.
 
-Now just reload your DNS server, point it to your resolv.conf, and use Tsuru!
+Now just reload your DNS server, point it to your resolv.conf, and use tsuru!
 To test, just execute the command below, and see if all responses resolv to 192.168.123.131:
 
 .. highlight:: bash

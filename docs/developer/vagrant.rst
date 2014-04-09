@@ -3,7 +3,7 @@
    license that can be found in the LICENSE file.
 
 +++++++++++++++++++++++++++++++++++++++++++++++++++++
-Building a Tsuru development environment with Vagrant
+Building a tsuru development environment with Vagrant
 +++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 First, make sure that virtualbox, vagrant and git are installed on your machine.

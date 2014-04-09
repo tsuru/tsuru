@@ -6,7 +6,7 @@
 Schedulers
 ++++++++++
 
-Tsuru uses schedulers to chooses which node an unit should be deployed. There are
+tsuru uses schedulers to chooses which node an unit should be deployed. There are
 two schedulers: `round robin` and `segregate scheduler`.
 
 Segregate scheduler

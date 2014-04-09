@@ -5,7 +5,7 @@ tsuru 0.8.6 release notes
 Welcome to tsuru 0.8.6!
 
 These release notes cover the new features you'll want to be aware of when
-upgrading from Tsuru 0.8.5 or older versions.
+upgrading from tsuru 0.8.5 or older versions.
 
 .. _`new features`: `What's new in tsuru 0.8.6`_
 

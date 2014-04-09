@@ -9,7 +9,7 @@ Server installation guide
 Dependencies
 ============
 
-Tsuru depends on `Go <http://golang.org>`_ and `libyaml <http://pyyaml.org/wiki/LibYAML>`_.
+tsuru depends on `Go <http://golang.org>`_ and `libyaml <http://pyyaml.org/wiki/LibYAML>`_.
 
 To install Go, follow the official instructions in the language website:
 http://golang.org/doc/install.

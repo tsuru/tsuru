@@ -10,7 +10,7 @@ Overview
 ========
 
 This document is a hands-on guide to deploying a simple Ruby application in
-Tsuru. The example application will be a very simple Rails project associated
+tsuru. The example application will be a very simple Rails project associated
 to a MySQL service.
 
 Creating the app within tsuru
@@ -464,7 +464,7 @@ Now let's commit it and run another deploy:
     Writing objects: 100% (4/4), 535 bytes, done.
     Total 4 (delta 3), reused 0 (delta 0)
     remote:
-    remote:  ---> Tsuru receiving push
+    remote:  ---> tsuru receiving push
     remote:
     remote:  ---> Installing dependencies
     #####################################
@@ -503,7 +503,7 @@ It would be boring to manually run ``rake db:migrate`` after every deployment.
 So we can configure an automatic hook to always run before or after
 the app restarts.
 
-Tsuru parses a file called ``app.yaml`` and runs restart hooks. As the
+tsuru parses a file called ``app.yaml`` and runs restart hooks. As the
 extension suggests, this is a YAML file, that contains a list of commands that
 should run before and after the restart. Here is our example of app.yaml:
 
@@ -518,7 +518,7 @@ should run before and after the restart. Here is our example of app.yaml:
 
 For more details, check the :doc:`hooks documentation </apps/deploy-hooks>`.
 
-Tsuru will look for the file in the root of the project. Let's commit and
+tsuru will look for the file in the root of the project. Let's commit and
 deploy it:
 
 .. highlight:: bash

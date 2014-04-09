@@ -6,7 +6,7 @@
 Deployment hooks
 ++++++++++++++++
 
-Tsuru provides some deployment hooks, like ``restart:before``,
+tsuru provides some deployment hooks, like ``restart:before``,
 ``restart:after`` and ``build``. Deployment hooks allow developers to run commands before and
 after some commands.
 
@@ -31,7 +31,7 @@ name of the file may be ``app.yaml`` or ``app.yml``. Here is an example of the f
         - python manage.py collectstatic --noinput
         - python manage.py compress
 
-Tsuru supports the following hooks:
+tsuru supports the following hooks:
 
 * ``restart:before``: this hook lists commands that will run before the app is
   restarted. Commands listed in this hook will run once per app.

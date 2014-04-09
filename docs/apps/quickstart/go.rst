@@ -10,7 +10,7 @@ Overview
 ========
 
 This document is a hands-on guide to deploying a simple Go web application in
-Tsuru. 
+tsuru. 
 
 Creating the app within tsuru
 =============================

@@ -21,7 +21,7 @@ out: https://github.com/hfeeki/vagrant-tsuru.
 Overview
 ========
 
-The Tsuru PaaS is composed by multiple components:
+The tsuru PaaS is composed by multiple components:
 
 * tsuru server
 * tsuru collector
@@ -55,19 +55,19 @@ ask on #tsuru channel on irc.freenode.net.
 2. Hardware
 -----------
 
-Tsuru server is a lightweight framework and can be run in a single small machine along with all the deps.
+tsuru server is a lightweight framework and can be run in a single small machine along with all the deps.
 
 3. Software
 -----------
 
 **3.1 MongoDB**
 
-Tsuru needs MongoDB stable, distributed by 10gen. `It's pretty easy to
+tsuru needs MongoDB stable, distributed by 10gen. `It's pretty easy to
 get it running on Ubuntu <http://docs.mongodb.org/manual/tutorial/install-mongodb-on-ubuntu/>`_
 
 **3.2 Juju**
 
-Tsuru uses juju to orchestrates your "apps". To install juju follow the `juju
+tsuru uses juju to orchestrates your "apps". To install juju follow the `juju
 install guide
 <https://juju.ubuntu.com/docs/getting-started.html#installation>`_.
 Please make sure that you `configure Juju
@@ -99,7 +99,7 @@ file:
 
 **3.3 Beanstalkd**
 
-Tsuru uses `Beanstalkd <http://kr.github.com/beanstalkd/>`_ as a work queue.
+tsuru uses `Beanstalkd <http://kr.github.com/beanstalkd/>`_ as a work queue.
 Install the latest version, by doing this:
 
 .. highlight:: bash
@@ -110,14 +110,14 @@ Install the latest version, by doing this:
 
 **3.4 Gandalf**
 
-Tsuru uses `Gandalf <https://github.com/tsuru/gandalf>`_ to manage git
+tsuru uses `Gandalf <https://github.com/tsuru/gandalf>`_ to manage git
 repositories, to get it installed `follow this steps
 <https://gandalf.readthedocs.org/en/latest/install.html>`_
 
 Installing from PPA
 ===================
 
-You can use ``apt-get`` to install Gandalf using `Tsuru's ppa
+You can use ``apt-get`` to install Gandalf using `tsuru's ppa
 <https://launchpad.net/~tsuru/+archive/ppa>`_:
 
 .. highlight:: bash
