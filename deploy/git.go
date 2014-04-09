@@ -19,7 +19,7 @@ func clone(p provision.Provisioner, app provision.App) ([]byte, error) {
 	var buf bytes.Buffer
 	path, err := repository.GetPath()
 	if err != nil {
-		return nil, fmt.Errorf("Tsuru is misconfigured: %s", err)
+		return nil, fmt.Errorf("tsuru is misconfigured: %s", err)
 	}
 	cmd := fmt.Sprintf("git clone %s %s --depth 1", repository.ReadOnlyURL(app.GetName()), path)
 	err = p.ExecuteCommand(&buf, &buf, app, cmd)
@@ -35,7 +35,7 @@ func fetch(p provision.Provisioner, app provision.App) ([]byte, error) {
 	var buf bytes.Buffer
 	path, err := repository.GetPath()
 	if err != nil {
-		return nil, fmt.Errorf("Tsuru is misconfigured: %s", err)
+		return nil, fmt.Errorf("tsuru is misconfigured: %s", err)
 	}
 	cmd := fmt.Sprintf("cd %s && git fetch origin", path)
 	err = p.ExecuteCommand(&buf, &buf, app, cmd)
@@ -49,7 +49,7 @@ func checkout(p provision.Provisioner, app provision.App, version string) ([]byt
 	var buf bytes.Buffer
 	path, err := repository.GetPath()
 	if err != nil {
-		return nil, fmt.Errorf("Tsuru is misconfigured: %s", err)
+		return nil, fmt.Errorf("tsuru is misconfigured: %s", err)
 	}
 	cmd := fmt.Sprintf("cd %s && git checkout %s", path, version)
 	if err := p.ExecuteCommand(&buf, &buf, app, cmd); err != nil {
@@ -59,7 +59,7 @@ func checkout(p provision.Provisioner, app provision.App, version string) ([]byt
 }
 
 func Git(provisioner provision.Provisioner, app provision.App, objID string, w io.Writer) error {
-	log.Write(w, []byte("\n ---> Tsuru receiving push\n"))
+	log.Write(w, []byte("\n ---> tsuru receiving push\n"))
 	log.Write(w, []byte("\n ---> Replicating the application repository across units\n"))
 	out, err := clone(provisioner, app)
 	if err != nil {

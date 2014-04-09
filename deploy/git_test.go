@@ -50,7 +50,7 @@ func (s *S) TestDeployLogsActions(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	logs := w.String()
 	expected := `
- ---> Tsuru receiving push
+ ---> tsuru receiving push
 
  ---> Replicating the application repository across units
 
@@ -86,7 +86,7 @@ func (s *S) TestCloneRepositoryUndefinedPath(c *gocheck.C) {
 	defer config.Set("git:unit-repo", old)
 	_, err := clone(nil, nil)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, `Tsuru is misconfigured: key "git:unit-repo" not found`)
+	c.Assert(err.Error(), gocheck.Equals, `tsuru is misconfigured: key "git:unit-repo" not found`)
 }
 
 func (s *S) TestPullRepository(c *gocheck.C) {
@@ -107,7 +107,7 @@ func (s *S) TestPullRepositoryUndefinedPath(c *gocheck.C) {
 	defer config.Set("git:unit-repo", old)
 	_, err := fetch(nil, nil)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, `Tsuru is misconfigured: key "git:unit-repo" not found`)
+	c.Assert(err.Error(), gocheck.Equals, `tsuru is misconfigured: key "git:unit-repo" not found`)
 }
 
 func (s *S) TestCheckout(c *gocheck.C) {
@@ -128,7 +128,7 @@ func (s *S) TestCheckoutUndefinedPath(c *gocheck.C) {
 	defer config.Set("git:unit-repo", old)
 	_, err := checkout(nil, nil, "")
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, `Tsuru is misconfigured: key "git:unit-repo" not found`)
+	c.Assert(err.Error(), gocheck.Equals, `tsuru is misconfigured: key "git:unit-repo" not found`)
 }
 
 func (s *S) TestCheckoutFailure(c *gocheck.C) {
