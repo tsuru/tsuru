@@ -702,7 +702,6 @@ func listDeploys(app *App, s *service.Service) ([]Deploy, error) {
 	var qr bson.M
 	if app != nil {
 		qr = bson.M{"app": app.Name}
-		fmt.Println(qr)
 	}
 	if s != nil {
 		var instances []service.ServiceInstance
