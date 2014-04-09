@@ -430,7 +430,7 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfProvisionerFail(c *gocheck.C) {
 	err := CreateApp(&a, s.user)
 	defer Delete(&a) // clean mess if test fail
 	c.Assert(err, gocheck.NotNil)
-	expected := `Tsuru failed to create the app "theirapp": exit status 1`
+	expected := `tsuru failed to create the app "theirapp": exit status 1`
 	c.Assert(err.Error(), gocheck.Equals, expected)
 	_, err = GetByName(a.Name)
 	c.Assert(err, gocheck.NotNil)
