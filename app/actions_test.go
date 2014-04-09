@@ -17,12 +17,8 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/testing"
 	"labix.org/v2/mgo/bson"
-	"launchpad.net/goamz/aws"
-	"launchpad.net/goamz/iam"
-	"launchpad.net/goamz/s3"
 	"launchpad.net/gocheck"
 	"sort"
-	"strings"
 	"time"
 )
 
@@ -30,24 +26,8 @@ func (s *S) TestReserveUserAppName(c *gocheck.C) {
 	c.Assert(reserveUserApp.Name, gocheck.Equals, "reserve-user-app")
 }
 
-func (s *S) TestCreateIAMUserName(c *gocheck.C) {
-	c.Assert(createIAMUserAction.Name, gocheck.Equals, "create-iam-user")
-}
-
-func (s *S) TestCreateIAMAccessKeyName(c *gocheck.C) {
-	c.Assert(createIAMAccessKeyAction.Name, gocheck.Equals, "create-iam-access-key")
-}
-
 func (s *S) TestInsertAppName(c *gocheck.C) {
 	c.Assert(insertApp.Name, gocheck.Equals, "insert-app")
-}
-
-func (s *S) TestCreateBucketName(c *gocheck.C) {
-	c.Assert(createBucketAction.Name, gocheck.Equals, "create-bucket")
-}
-
-func (s *S) TestCreateUserPolicyName(c *gocheck.C) {
-	c.Assert(createUserPolicyAction.Name, gocheck.Equals, "create-user-policy")
 }
 
 func (s *S) TestExportEnvironmentsName(c *gocheck.C) {
@@ -177,179 +157,6 @@ func (s *S) TestInsertAppMinimumParams(c *gocheck.C) {
 	c.Assert(insertApp.MinParams, gocheck.Equals, 1)
 }
 
-func (s *S) TestCreateIAMUserForward(c *gocheck.C) {
-	auth := aws.Auth{AccessKey: "access", SecretKey: "s3cr3t"}
-	region := aws.Region{IAMEndpoint: s.t.IamServer.URL()}
-	iamClient := iam.New(auth, region)
-	app := App{Name: "trapped"}
-	ctx := action.FWContext{Params: []interface{}{&app}, Previous: &app}
-	result, err := createIAMUserAction.Forward(ctx)
-	c.Assert(err, gocheck.IsNil)
-	defer iamClient.DeleteUser(app.Name)
-	u, ok := result.(*iam.User)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(u.Name, gocheck.Equals, app.Name)
-}
-
-func (s *S) TestCreateIAMUserBackward(c *gocheck.C) {
-	auth := aws.Auth{AccessKey: "access", SecretKey: "s3cr3t"}
-	region := aws.Region{IAMEndpoint: s.t.IamServer.URL()}
-	iamClient := iam.New(auth, region)
-	app := App{Name: "escape"}
-	user, err := createIAMUser(app.Name)
-	c.Assert(err, gocheck.IsNil)
-	defer iamClient.DeleteUser(user.Name)
-	ctx := action.BWContext{Params: []interface{}{&app}, FWResult: user}
-	createIAMUserAction.Backward(ctx)
-	_, err = iamClient.GetUser(user.Name)
-	c.Assert(err, gocheck.NotNil)
-}
-
-func (s *S) TestCreateIAMUserMinParams(c *gocheck.C) {
-	c.Assert(createIAMUserAction.MinParams, gocheck.Equals, 1)
-}
-
-func (s *S) TestCreateIAMAccessKeyForward(c *gocheck.C) {
-	auth := aws.Auth{AccessKey: "access", SecretKey: "s3cr3t"}
-	region := aws.Region{IAMEndpoint: s.t.IamServer.URL()}
-	iamClient := iam.New(auth, region)
-	resp, err := iamClient.CreateUser("puppets", "/")
-	c.Assert(err, gocheck.IsNil)
-	defer iamClient.DeleteUser(resp.User.Name)
-	ctx := action.FWContext{Params: []interface{}{nil}, Previous: &resp.User}
-	result, err := createIAMAccessKeyAction.Forward(ctx)
-	c.Assert(err, gocheck.IsNil)
-	ak, ok := result.(*iam.AccessKey)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(ak.UserName, gocheck.Equals, resp.User.Name)
-	c.Assert(ak.Id, gocheck.Not(gocheck.Equals), "")
-	c.Assert(ak.Secret, gocheck.Equals, "")
-	defer iamClient.DeleteAccessKey(ak.Id, ak.UserName)
-}
-
-func (s *S) TestCreateIAMAccessKeyBackward(c *gocheck.C) {
-	auth := aws.Auth{AccessKey: "access", SecretKey: "s3cr3t"}
-	region := aws.Region{IAMEndpoint: s.t.IamServer.URL()}
-	iamClient := iam.New(auth, region)
-	resp, err := iamClient.CreateUser("myuser", "/")
-	c.Assert(err, gocheck.IsNil)
-	defer iamClient.DeleteUser(resp.User.Name)
-	kresp, err := iamClient.CreateAccessKey(resp.User.Name)
-	c.Assert(err, gocheck.IsNil)
-	defer iamClient.DeleteAccessKey(kresp.AccessKey.Id, resp.User.Name)
-	ctx := action.BWContext{Params: []interface{}{nil}, FWResult: &kresp.AccessKey}
-	createIAMAccessKeyAction.Backward(ctx)
-	akResp, err := iamClient.AccessKeys(resp.User.Name)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(akResp.AccessKeys, gocheck.HasLen, 0)
-}
-
-func (s *S) TestCreateIAMMinParams(c *gocheck.C) {
-	c.Assert(createIAMAccessKeyAction.MinParams, gocheck.Equals, 1)
-}
-
-func (s *S) TestCreateBucketForward(c *gocheck.C) {
-	auth := aws.Auth{AccessKey: "access", SecretKey: "s3cr3t"}
-	region := aws.Region{S3Endpoint: s.t.S3Server.URL()}
-	s3Client := s3.New(auth, region)
-	app := App{Name: "leper"}
-	ctx := action.FWContext{
-		Params:   []interface{}{&app},
-		Previous: &iam.AccessKey{Id: "access", Secret: "s3cr3t"},
-	}
-	result, err := createBucketAction.Forward(ctx)
-	c.Assert(err, gocheck.IsNil)
-	env, ok := result.(*s3Env)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(env.AccessKey, gocheck.Equals, "access")
-	c.Assert(env.SecretKey, gocheck.Equals, "s3cr3t")
-	c.Assert(env.endpoint, gocheck.Equals, s.t.S3Server.URL())
-	c.Assert(env.locationConstraint, gocheck.Equals, true)
-	defer s3Client.Bucket(env.bucket).DelBucket()
-	_, err = s3Client.Bucket(env.bucket).List("", "/", "", 100)
-	c.Assert(err, gocheck.IsNil)
-}
-
-func (s *S) TestCreateBucketBackward(c *gocheck.C) {
-	patchRandomReader()
-	defer unpatchRandomReader()
-	auth := aws.Auth{AccessKey: "access", SecretKey: "s3cr3t"}
-	region := aws.Region{
-		Name:                 "myregion",
-		S3Endpoint:           s.t.S3Server.URL(),
-		S3LocationConstraint: true,
-		S3LowercaseBucket:    true,
-	}
-	s3Client := s3.New(auth, region)
-	app := App{Name: "leper"}
-	err := s3Client.Bucket(app.Name).PutBucket(s3.BucketOwnerFull)
-	c.Assert(err, gocheck.IsNil)
-	env := s3Env{
-		Auth:               aws.Auth{AccessKey: "access", SecretKey: "s3cr3t"},
-		bucket:             app.Name,
-		endpoint:           s.t.S3Server.URL(),
-		locationConstraint: true,
-	}
-	ctx := action.BWContext{Params: []interface{}{&app}, FWResult: &env}
-	createBucketAction.Backward(ctx)
-	_, err = s3Client.Bucket(app.Name).List("", "/", "", 100)
-	c.Assert(err, gocheck.NotNil)
-}
-
-func (s *S) TestCreateBucketMinParams(c *gocheck.C) {
-	c.Assert(createBucketAction.MinParams, gocheck.Equals, 1)
-}
-
-func (s *S) TestCreateUserPolicyForward(c *gocheck.C) {
-	auth := aws.Auth{AccessKey: "access", SecretKey: "s3cr3t"}
-	region := aws.Region{IAMEndpoint: s.t.IamServer.URL()}
-	iamClient := iam.New(auth, region)
-	resp, err := iamClient.CreateUser("blackened", "/")
-	c.Assert(err, gocheck.IsNil)
-	defer iamClient.DeleteUser(resp.User.Name)
-	app := App{Name: resp.User.Name}
-	env := s3Env{
-		Auth:               aws.Auth{AccessKey: "access", SecretKey: "s3cr3t"},
-		bucket:             app.Name,
-		endpoint:           s.t.S3Server.URL(),
-		locationConstraint: true,
-	}
-	ctx := action.FWContext{Params: []interface{}{&app}, Previous: &env}
-	result, err := createUserPolicyAction.Forward(ctx)
-	c.Assert(err, gocheck.IsNil)
-	e, ok := result.(*s3Env)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e, gocheck.Equals, &env)
-	_, err = iamClient.GetUserPolicy(resp.User.Name, "app-blackened-bucket")
-	c.Assert(err, gocheck.IsNil)
-}
-
-func (s *S) TestCreateUserPolicyBackward(c *gocheck.C) {
-	auth := aws.Auth{AccessKey: "access", SecretKey: "s3cr3t"}
-	region := aws.Region{IAMEndpoint: s.t.IamServer.URL()}
-	iamClient := iam.New(auth, region)
-	resp, err := iamClient.CreateUser("blackened", "/")
-	c.Assert(err, gocheck.IsNil)
-	defer iamClient.DeleteUser(resp.User.Name)
-	app := App{Name: resp.User.Name}
-	env := s3Env{
-		Auth:               aws.Auth{AccessKey: "access", SecretKey: "s3cr3t"},
-		bucket:             app.Name,
-		endpoint:           s.t.S3Server.URL(),
-		locationConstraint: true,
-	}
-	_, err = iamClient.PutUserPolicy(resp.User.Name, "app-blackened-bucket", "null")
-	c.Assert(err, gocheck.IsNil)
-	ctx := action.BWContext{Params: []interface{}{&app}, FWResult: &env}
-	createUserPolicyAction.Backward(ctx)
-	_, err = iamClient.GetUserPolicy(resp.User.Name, "app-blackened-bucket")
-	c.Assert(err, gocheck.NotNil)
-}
-
-func (s *S) TestCreateUsePolicyMinParams(c *gocheck.C) {
-	c.Assert(createUserPolicyAction.MinParams, gocheck.Equals, 1)
-}
-
 func (s *S) TestExportEnvironmentsForward(c *gocheck.C) {
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
@@ -357,30 +164,13 @@ func (s *S) TestExportEnvironmentsForward(c *gocheck.C) {
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	env := s3Env{
-		Auth:               aws.Auth{AccessKey: "access", SecretKey: "s3cr3t"},
-		bucket:             app.Name + "-bucket",
-		endpoint:           s.t.S3Server.URL(),
-		locationConstraint: true,
-	}
-	ctx := action.FWContext{Params: []interface{}{&app}, Previous: &env}
+	ctx := action.FWContext{Params: []interface{}{&app}}
 	result, err := exportEnvironmentsAction.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(result, gocheck.Equals, &env)
+	c.Assert(result, gocheck.Equals, nil)
 	gotApp, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
-	appEnv := gotApp.InstanceEnv(s3InstanceName)
-	c.Assert(appEnv["TSURU_S3_ENDPOINT"].Value, gocheck.Equals, env.endpoint)
-	c.Assert(appEnv["TSURU_S3_ENDPOINT"].Public, gocheck.Equals, false)
-	c.Assert(appEnv["TSURU_S3_LOCATIONCONSTRAINT"].Value, gocheck.Equals, "true")
-	c.Assert(appEnv["TSURU_S3_LOCATIONCONSTRAINT"].Public, gocheck.Equals, false)
-	c.Assert(appEnv["TSURU_S3_ACCESS_KEY_ID"].Value, gocheck.Equals, env.AccessKey)
-	c.Assert(appEnv["TSURU_S3_ACCESS_KEY_ID"].Public, gocheck.Equals, false)
-	c.Assert(appEnv["TSURU_S3_SECRET_KEY"].Value, gocheck.Equals, env.SecretKey)
-	c.Assert(appEnv["TSURU_S3_SECRET_KEY"].Public, gocheck.Equals, false)
-	c.Assert(appEnv["TSURU_S3_BUCKET"].Value, gocheck.Equals, env.bucket)
-	c.Assert(appEnv["TSURU_S3_BUCKET"].Public, gocheck.Equals, false)
-	appEnv = gotApp.InstanceEnv("")
+	appEnv := gotApp.InstanceEnv("")
 	c.Assert(appEnv["TSURU_APPNAME"].Value, gocheck.Equals, app.Name)
 	c.Assert(appEnv["TSURU_APPNAME"].Public, gocheck.Equals, false)
 	c.Assert(appEnv["TSURU_HOST"].Value, gocheck.Equals, expectedHost)
@@ -396,41 +186,13 @@ func (s *S) TestExportEnvironmentsForward(c *gocheck.C) {
 	c.Assert(message.Args, gocheck.DeepEquals, []string{app.Name})
 }
 
-func (s *S) TestExportEnvironmentsForwardWithoutS3Env(c *gocheck.C) {
-	expectedHost := "localhost"
-	config.Set("host", expectedHost)
-	app := App{Name: "mist", Platform: "opeth"}
-	err := s.conn.Apps().Insert(app)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	ctx := action.FWContext{Params: []interface{}{&app}, Previous: &app}
-	result, err := exportEnvironmentsAction.Forward(ctx)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(result, gocheck.Equals, &app)
-	gotApp, err := GetByName(app.Name)
-	c.Assert(err, gocheck.IsNil)
-	appEnv := gotApp.InstanceEnv(s3InstanceName)
-	c.Assert(appEnv, gocheck.DeepEquals, map[string]bind.EnvVar{})
-	appEnv = gotApp.InstanceEnv("")
-	c.Assert(appEnv["TSURU_APPNAME"].Value, gocheck.Equals, app.Name)
-	c.Assert(appEnv["TSURU_APPNAME"].Public, gocheck.Equals, false)
-	c.Assert(appEnv["TSURU_HOST"].Value, gocheck.Equals, expectedHost)
-	c.Assert(appEnv["TSURU_HOST"].Public, gocheck.Equals, false)
-}
-
 func (s *S) TestExportEnvironmentsBackward(c *gocheck.C) {
 	envNames := []string{
-		"TSURU_S3_ACCESS_KEY_ID", "TSURU_S3_SECRET_KEY",
-		"TSURU_APPNAME", "TSURU_HOST", "TSURU_S3_ENDPOINT",
-		"TSURU_S3_LOCATIONCONSTRAINT", "TSURU_S3_BUCKET",
 		"TSURU_APP_TOKEN",
 	}
 	app := App{Name: "moon", Platform: "opeth", Env: make(map[string]bind.EnvVar)}
 	for _, name := range envNames {
 		envVar := bind.EnvVar{Name: name, Value: name, Public: false}
-		if strings.HasPrefix(name, "TSURU_S3_") {
-			envVar.InstanceName = s3InstanceName
-		}
 		app.Env[name] = envVar
 	}
 	token, err := auth.CreateApplicationToken(app.Name)

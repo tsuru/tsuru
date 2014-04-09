@@ -114,8 +114,6 @@ func (s *S) TestDestroy(c *gocheck.C) {
 }
 
 func (s *S) TestDestroyWithoutBucketSupport(c *gocheck.C) {
-	config.Unset("bucket-support")
-	defer config.Set("bucket-support", true)
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
@@ -155,8 +153,6 @@ func (s *S) TestDestroyWithoutUnits(c *gocheck.C) {
 }
 
 func (s *S) TestCreateApp(c *gocheck.C) {
-	patchRandomReader()
-	defer unpatchRandomReader()
 	ts := testing.StartGandalfTestServer(&testHandler{})
 	defer ts.Close()
 	a := App{
@@ -181,21 +177,7 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 	c.Assert(retrievedApp.Teams, gocheck.DeepEquals, []string{s.team.Name})
 	c.Assert(retrievedApp.Owner, gocheck.Equals, s.user.Email)
 	c.Assert(retrievedApp.Memory, gocheck.Equals, a.Memory)
-	env := retrievedApp.InstanceEnv(s3InstanceName)
-	c.Assert(env["TSURU_S3_ENDPOINT"].Value, gocheck.Equals, s.t.S3Server.URL())
-	c.Assert(env["TSURU_S3_ENDPOINT"].Public, gocheck.Equals, false)
-	c.Assert(env["TSURU_S3_LOCATIONCONSTRAINT"].Value, gocheck.Equals, "true")
-	c.Assert(env["TSURU_S3_LOCATIONCONSTRAINT"].Public, gocheck.Equals, false)
-	e, ok := env["TSURU_S3_ACCESS_KEY_ID"]
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Public, gocheck.Equals, false)
-	e, ok = env["TSURU_S3_SECRET_KEY"]
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Public, gocheck.Equals, false)
-	c.Assert(env["TSURU_S3_BUCKET"].Value, gocheck.HasLen, maxBucketSize)
-	c.Assert(env["TSURU_S3_BUCKET"].Value, gocheck.Equals, "appnamee3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3e3")
-	c.Assert(env["TSURU_S3_BUCKET"].Public, gocheck.Equals, false)
-	env = retrievedApp.InstanceEnv("")
+	env := retrievedApp.InstanceEnv("")
 	c.Assert(env["TSURU_APPNAME"].Value, gocheck.Equals, a.Name)
 	c.Assert(env["TSURU_APPNAME"].Public, gocheck.Equals, false)
 	c.Assert(env["TSURU_HOST"].Value, gocheck.Equals, expectedHost)
@@ -210,14 +192,12 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 	c.Assert(message.Args, gocheck.DeepEquals, expectedMessage.Args)
 	c.Assert(s.provisioner.GetUnits(&a), gocheck.HasLen, 1)
 	err = auth.ReserveApp(s.user)
-	_, ok = err.(*quota.QuotaExceededError)
+	_, ok := err.(*quota.QuotaExceededError)
 	c.Assert(ok, gocheck.Equals, true)
 }
 
 func (s *S) TestCreateAppDefaultMemory(c *gocheck.C) {
 	config.Set("docker:memory", 10)
-	config.Set("bucket-support", false)
-	defer config.Set("bucket-support", true)
 	ts := testing.StartGandalfTestServer(&testHandler{})
 	defer ts.Close()
 	a := App{
@@ -242,8 +222,6 @@ func (s *S) TestCreateAppDefaultMemory(c *gocheck.C) {
 
 func (s *S) TestCreateAppWithoutDefault(c *gocheck.C) {
 	config.Unset("docker:memory")
-	config.Set("bucket-support", false)
-	defer config.Set("bucket-support", true)
 	ts := testing.StartGandalfTestServer(&testHandler{})
 	defer ts.Close()
 	a := App{
@@ -283,39 +261,7 @@ func (s *S) TestCreateAppUserQuotaExceeded(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 }
 
-func (s *S) TestCreateWithoutBucketSupport(c *gocheck.C) {
-	config.Unset("bucket-support")
-	defer config.Set("bucket-support", true)
-	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
-	defer ts.Close()
-	a := App{
-		Name:     "sorry",
-		Platform: "python",
-		Units:    []Unit{{Machine: 3}},
-	}
-	expectedHost := "localhost"
-	config.Set("host", expectedHost)
-	err := CreateApp(&a, s.user)
-	c.Assert(err, gocheck.IsNil)
-	defer Delete(&a)
-	retrievedApp, err := GetByName(a.Name)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(retrievedApp.Name, gocheck.Equals, a.Name)
-	c.Assert(retrievedApp.Platform, gocheck.Equals, a.Platform)
-	c.Assert(retrievedApp.Teams, gocheck.DeepEquals, []string{s.team.Name})
-	env := a.InstanceEnv(s3InstanceName)
-	c.Assert(env, gocheck.DeepEquals, map[string]bind.EnvVar{})
-	message, err := aqueue().Get(1e6)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(message.Action, gocheck.Equals, regenerateApprc)
-	c.Assert(message.Args, gocheck.DeepEquals, []string{a.Name})
-	c.Assert(s.provisioner.GetUnits(&a), gocheck.HasLen, 1)
-}
-
 func (s *S) TestCreateAppTeamOwner(c *gocheck.C) {
-	config.Set("bucket-support", false)
-	defer config.Set("bucket-support", true)
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
@@ -433,34 +379,6 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfProvisionerFail(c *gocheck.C) {
 	expected := `tsuru failed to create the app "theirapp": exit status 1`
 	c.Assert(err.Error(), gocheck.Equals, expected)
 	_, err = GetByName(a.Name)
-	c.Assert(err, gocheck.NotNil)
-	msg, err := aqueue().Get(1e6)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(msg.Args, gocheck.DeepEquals, []string{a.Name})
-}
-
-func (s *S) TestDeletesIAMCredentialsAndS3BucketIfProvisionerFail(c *gocheck.C) {
-	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
-	defer ts.Close()
-	s.provisioner.PrepareFailure("Provision", stderr.New("exit status 1"))
-	source := patchRandomReader()
-	defer unpatchRandomReader()
-	a := App{
-		Name:     "theirapp",
-		Platform: "python",
-		Units:    []Unit{{Machine: 1}},
-	}
-	err := CreateApp(&a, s.user)
-	defer Delete(&a) // clean mess if test fail
-	c.Assert(err, gocheck.NotNil)
-	iam := getIAMEndpoint()
-	_, err = iam.GetUser("theirapp")
-	c.Assert(err, gocheck.NotNil)
-	s3 := getS3Endpoint()
-	bucketName := fmt.Sprintf("%s%x", a.Name, source[:(maxBucketSize-len(a.Name)/2)])
-	bucket := s3.Bucket(bucketName)
-	_, err = bucket.Get("")
 	c.Assert(err, gocheck.NotNil)
 	msg, err := aqueue().Get(1e6)
 	c.Assert(err, gocheck.IsNil)

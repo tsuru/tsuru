@@ -82,7 +82,6 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	s.t = &ttesting.T{}
 	s.createUserAndTeam(c)
-	s.t.StartAmzS3AndIAM(c)
 	s.t.SetGitConfs(c)
 	s.provisioner = ttesting.NewFakeProvisioner()
 	Provisioner = s.provisioner
@@ -91,8 +90,6 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
-	defer s.t.S3Server.Quit()
-	defer s.t.IamServer.Quit()
 	s.conn.Apps().Database.DropDatabase()
 	queue.Preempt()
 }

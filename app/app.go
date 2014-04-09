@@ -108,9 +108,8 @@ func GetByName(name string) (*App, error) {
 //
 //       1. Save the app in the database
 //       2. Create IAM credentials for the app
-//       3. Create S3 bucket for the app (if the bucket support is enabled)
-//       4. Create the git repository using gandalf
-//       5. Provision units within the provisioner
+//       3. Create the git repository using gandalf
+//       4. Provision units within the provisioner
 func CreateApp(app *App, user *auth.User) error {
 	teams, err := user.Teams()
 	if err != nil {
@@ -145,15 +144,13 @@ func CreateApp(app *App, user *auth.User) error {
 			"starting with a letter."
 		return &errors.ValidationError{Message: msg}
 	}
-	actions := []*action.Action{&reserveUserApp, &insertApp}
-	useS3, _ := config.GetBool("bucket-support")
-	if useS3 {
-		actions = append(actions, &createIAMUserAction,
-			&createIAMAccessKeyAction,
-			&createBucketAction, &createUserPolicyAction)
+	actions := []*action.Action{
+		&reserveUserApp,
+		&insertApp,
+		&exportEnvironmentsAction,
+		&createRepository,
+		&provisionApp,
 	}
-	actions = append(actions, &exportEnvironmentsAction,
-		&createRepository, &provisionApp)
 	pipeline := action.NewPipeline(actions...)
 	err = pipeline.Execute(app, user)
 	if err != nil {
@@ -206,18 +203,12 @@ func (app *App) unbind() error {
 //
 // Delete an app is a process composed of four steps:
 //
-//       1. Destroy the bucket and S3 credentials (if bucket-support is
-//       enabled).
-//       2. Destroy the app unit using juju
-//       3. Unbind all service instances from the app
+//       1. Destroy the app unit
+//       2. Unbind all service instances from the app
 //       4. Remove the app from the database
 func Delete(app *App) error {
 	gURL := repository.ServerURL()
 	(&gandalf.Client{Endpoint: gURL}).RemoveRepository(app.Name)
-	useS3, _ := config.GetBool("bucket-support")
-	if useS3 {
-		destroyBucket(app)
-	}
 	if len(app.Units) > 0 {
 		Provisioner.Destroy(app)
 		app.unbind()
