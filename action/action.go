@@ -83,8 +83,10 @@ type Pipeline struct {
 // NewPipeline creates a new pipeline instance with the given list of actions.
 func NewPipeline(actions ...*Action) *Pipeline {
 	return &Pipeline{actions: actions}
+
 }
 
+// Result returns the result of the last action.
 func (p *Pipeline) Result() Result {
 	action := p.actions[len(p.actions)-1]
 	action.rMutex.Lock()
