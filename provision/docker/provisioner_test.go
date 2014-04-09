@@ -7,7 +7,7 @@ package docker
 import (
 	"bytes"
 	"fmt"
-	dockerClient "github.com/fsouza/go-dockerclient"
+	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
@@ -80,12 +80,12 @@ func (s *S) TestProvisionerRestartCallsTheRestartHook(c *gocheck.C) {
 }
 
 func (s *S) stopContainers(n uint) {
-	client, err := dockerClient.NewClient(s.server.URL())
+	client, err := docker.NewClient(s.server.URL())
 	if err != nil {
 		return
 	}
 	for n > 0 {
-		opts := dockerClient.ListContainersOptions{All: false}
+		opts := docker.ListContainersOptions{All: false}
 		containers, err := client.ListContainers(opts)
 		if err != nil {
 			return
@@ -369,7 +369,7 @@ func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
 	container, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
-	client, err := dockerClient.NewClient(s.server.URL())
+	client, err := docker.NewClient(s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	err = client.StartContainer(container.ID, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -410,7 +410,7 @@ func (s *S) TestRemoveUnitInSameHostAsAnotherUnitShouldEnqueueAnotherBind(c *goc
 	c2, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer rtesting.FakeRouter.RemoveBackend(c1.AppName)
-	client, err := dockerClient.NewClient(s.server.URL())
+	client, err := docker.NewClient(s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	err = client.StartContainer(c1.ID, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -622,7 +622,7 @@ func (s *S) TestProvisionerStart(c *gocheck.C) {
 	container, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(container)
-	dcli, err := dockerClient.NewClient(s.server.URL())
+	dcli, err := docker.NewClient(s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	dockerContainer, err := dcli.InspectContainer(container.ID)
 	c.Assert(err, gocheck.IsNil)
@@ -635,7 +635,7 @@ func (s *S) TestProvisionerStart(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerStop(c *gocheck.C) {
-	dcli, _ := dockerClient.NewClient(s.server.URL())
+	dcli, _ := docker.NewClient(s.server.URL())
 	app := testing.NewFakeApp("almah", "static", 2)
 	p := dockerProvisioner{}
 	container, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
@@ -654,7 +654,7 @@ func (s *S) TestProvisionerStop(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerStopSkipAlreadyStoppedContainers(c *gocheck.C) {
-	dcli, _ := dockerClient.NewClient(s.server.URL())
+	dcli, _ := docker.NewClient(s.server.URL())
 	app := testing.NewFakeApp("almah", "static", 2)
 	p := dockerProvisioner{}
 	container, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
