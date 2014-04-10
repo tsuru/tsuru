@@ -37,7 +37,7 @@ func (s *S) TestContainerGetAddress(c *gocheck.C) {
 	c.Assert(address, gocheck.Equals, expected)
 }
 
-func (s *S) TestNewContainer(c *gocheck.C) {
+func (s *S) TestContainerCreate(c *gocheck.C) {
 	oldClusterNodes := clusterNodes
 	clusterNodes = map[string]string{"server": s.server.URL()}
 	defer func() { clusterNodes = oldClusterNodes }()
@@ -49,15 +49,14 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 		docker.PullImageOptions{Repository: "tsuru/brainfuck"},
 		docker.AuthConfiguration{},
 	)
-	cont, err := newContainer(app, getImage(app), []string{"docker", "run"})
+	cont := container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
+	err := cont.create(app, getImage(app), []string{"docker", "run"})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(&cont)
 	c.Assert(cont.ID, gocheck.Not(gocheck.Equals), "")
 	c.Assert(cont, gocheck.FitsTypeOf, container{})
 	c.Assert(cont.AppName, gocheck.Equals, app.GetName())
 	c.Assert(cont.Type, gocheck.Equals, app.GetPlatform())
-	c.Assert(cont.Name, gocheck.Not(gocheck.Equals), "")
-	c.Assert(cont.Name, gocheck.HasLen, 20)
 	u, _ := url.Parse(s.server.URL())
 	host, _, _ := net.SplitHostPort(u.Host)
 	c.Assert(cont.HostAddr, gocheck.Equals, host)
@@ -66,11 +65,13 @@ func (s *S) TestNewContainer(c *gocheck.C) {
 	dcli, _ := docker.NewClient(s.server.URL())
 	container, err := dcli.InspectContainer(cont.ID)
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(container.Path, gocheck.Equals, "docker")
+	c.Assert(container.Args, gocheck.DeepEquals, []string{"run"})
 	c.Assert(container.Config.User, gocheck.Equals, user)
 	c.Assert(container.Config.Memory, gocheck.Equals, int64(app.Memory*1024*1024))
 }
 
-func (s *S) TestNewContainerUndefinedUser(c *gocheck.C) {
+func (s *S) TestContainerCreateUndefinedUser(c *gocheck.C) {
 	oldUser, _ := config.Get("docker:ssh:user")
 	defer config.Set("docker:ssh:user", oldUser)
 	config.Unset("docker:ssh:user")
@@ -82,7 +83,8 @@ func (s *S) TestNewContainerUndefinedUser(c *gocheck.C) {
 	app := testing.NewFakeApp("app-name", "python", 1)
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
-	cont, err := newContainer(app, getImage(app), []string{"docker", "run"})
+	cont := container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
+	err = cont.create(app, getImage(app), []string{"docker", "run"})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(&cont)
 	dcli, _ := docker.NewClient(s.server.URL())

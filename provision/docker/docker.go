@@ -141,25 +141,12 @@ func containerName() string {
 	return fmt.Sprintf("%x", h.Sum(nil))[:20]
 }
 
-// newContainer creates a new container in Docker and stores it in the database.
-func newContainer(app provision.App, imageId string, cmds []string) (container, error) {
-	contName := containerName()
-	cont := container{
-		AppName: app.GetName(),
-		Type:    app.GetPlatform(),
-		Name:    contName,
-		Status:  "created",
-	}
-	coll := collection()
-	defer coll.Close()
-	if err := coll.Insert(cont); err != nil {
-		log.Errorf("error on inserting container into database %s - %s", cont.Name, err)
-		return container{}, err
-	}
+// creates a new container in Docker.
+func (c *container) create(app provision.App, imageId string, cmds []string) error {
 	port, err := getPort()
 	if err != nil {
-		log.Errorf("error on getting port for container %s - %s", cont.AppName, port)
-		return container{}, err
+		log.Errorf("error on getting port for container %s - %s", c.AppName, port)
+		return err
 	}
 	user, _ := config.GetString("docker:ssh:user")
 	exposedPorts := make(map[docker.Port]struct{}, 1)
@@ -176,20 +163,15 @@ func newContainer(app provision.App, imageId string, cmds []string) (container, 
 		Memory:       int64(app.GetMemory() * 1024 * 1024),
 		MemorySwap:   int64(app.GetSwap() * 1024 * 1024),
 	}
-	opts := docker.CreateContainerOptions{Name: contName, Config: &config}
-	hostID, c, err := dockerCluster().CreateContainer(opts)
+	opts := docker.CreateContainerOptions{Name: c.Name, Config: &config}
+	hostID, cont, err := dockerCluster().CreateContainer(opts)
 	if err != nil {
-		log.Errorf("error on creating container in docker %s - %s", cont.AppName, err)
-		return container{}, err
+		log.Errorf("error on creating container in docker %s - %s", c.AppName, err)
+		return err
 	}
-	cont.ID = c.ID
-	cont.HostAddr = getHostAddr(hostID)
-	err = coll.Update(bson.M{"name": cont.Name}, cont)
-	if err != nil {
-		log.Errorf("error on updating container into database %s - %s", cont.ID, err)
-		return container{}, err
-	}
-	return cont, nil
+	c.ID = cont.ID
+	c.HostAddr = getHostAddr(hostID)
+	return nil
 }
 
 func listContainersByHost(address string) ([]container, error) {
@@ -254,7 +236,7 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 		return "", err
 	}
 	imageId := getImage(app)
-	actions := []*action.Action{&createContainer, &startContainer}
+	actions := []*action.Action{&insertEmptyContainerInDB, &createContainer, &startContainer, &updateContainerInDB}
 	pipeline := action.NewPipeline(actions...)
 	err = pipeline.Execute(app, imageId, commands)
 	if err != nil {
@@ -282,13 +264,13 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 }
 
 func start(app provision.App, imageId string, w io.Writer) (*container, error) {
-	commands, err := runCmds()
+	run_with_agent_commands, err := runWithAgentCmds(app)
 	if err != nil {
 		return nil, err
 	}
-	actions := []*action.Action{&createContainer, &startContainer, &setNetworkInfo, &addRoute}
+	actions := []*action.Action{&insertEmptyContainerInDB, &createContainer, &startContainer, &updateContainerInDB, &setNetworkInfo, &addRoute}
 	pipeline := action.NewPipeline(actions...)
-	err = pipeline.Execute(app, imageId, commands)
+	err = pipeline.Execute(app, imageId, run_with_agent_commands)
 	if err != nil {
 		return nil, err
 	}

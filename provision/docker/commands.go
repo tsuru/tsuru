@@ -33,9 +33,9 @@ func deployCmds(app provision.App, version string) ([]string, error) {
 	return cmds, nil
 }
 
-// runCmds returns the commands that should be passed when the
-// provisioner will run an unit.
-func runCmds() ([]string, error) {
+// runWithAgentCmds returns the commands that should be passed when the
+// provisioner will run an unit using tsuru_unit_agent to start.
+func runWithAgentCmds(app provision.App) ([]string, error) {
 	runCmd, err := config.GetString("docker:run-cmd:bin")
 	if err != nil {
 		return nil, err
@@ -44,8 +44,13 @@ func runCmds() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	host := app.Envs()["TSURU_HOST"].Value
+	token := app.Envs()["TSURU_APP_TOKEN"].Value
+	unitAgentCmds := []string{"tsuru_unit_agent", host, token, app.GetName(), runCmd}
+	unitAgentCmd := strings.Join(unitAgentCmds, " ")
+	fallbackCmd := fmt.Sprintf("(%s || %s)", unitAgentCmd, runCmd)
 	sshCmd := strings.Join(ssh, " && ")
-	cmd := fmt.Sprintf("%s && %s", runCmd, sshCmd)
+	cmd := fmt.Sprintf("%s && %s", fallbackCmd, sshCmd)
 	cmds := []string{"/bin/bash", "-c", cmd}
 	return cmds, nil
 }

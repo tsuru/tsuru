@@ -18,14 +18,59 @@ import (
 	"strings"
 )
 
+var insertEmptyContainerInDB = action.Action{
+	Name: "insert-empty-container",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		app := ctx.Params[0].(provision.App)
+		contName := containerName()
+		cont := container{
+			AppName: app.GetName(),
+			Type:    app.GetPlatform(),
+			Name:    contName,
+			Status:  "created",
+		}
+		coll := collection()
+		defer coll.Close()
+		if err := coll.Insert(cont); err != nil {
+			log.Errorf("error on inserting container into database %s - %s", cont.Name, err)
+			return nil, err
+		}
+		return cont, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		c := ctx.FWResult.(container)
+		coll := collection()
+		defer coll.Close()
+		coll.Remove(bson.M{"name": c.Name})
+	},
+}
+
+var updateContainerInDB = action.Action{
+	Name: "update-database-container",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		coll := collection()
+		defer coll.Close()
+		cont := ctx.Previous.(container)
+		err := coll.Update(bson.M{"name": cont.Name}, cont)
+		if err != nil {
+			log.Errorf("error on updating container into database %s - %s", cont.ID, err)
+			return nil, err
+		}
+		return cont, nil
+	},
+	Backward: func(ctx action.BWContext) {
+	},
+}
+
 var createContainer = action.Action{
 	Name: "create-container",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
+		cont := ctx.Previous.(container)
 		app := ctx.Params[0].(provision.App)
 		imageId := ctx.Params[1].(string)
 		cmds := ctx.Params[2].([]string)
 		log.Debugf("create container for app %s, based on image %s, with cmds %s", app.GetName(), imageId, cmds)
-		cont, err := newContainer(app, imageId, cmds)
+		err := cont.create(app, imageId, cmds)
 		if err != nil {
 			log.Errorf("error on create container for app %s - %s", app.GetName(), err)
 			return nil, err
@@ -34,10 +79,10 @@ var createContainer = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		c := ctx.FWResult.(container)
-		dockerCluster().RemoveContainer(docker.RemoveContainerOptions{ID: c.ID})
-		coll := collection()
-		defer coll.Close()
-		coll.Remove(bson.M{"name": c.Name})
+		err := dockerCluster().RemoveContainer(docker.RemoveContainerOptions{ID: c.ID})
+		if err != nil {
+			log.Errorf("Failed to remove the container %q: %s", c.ID, err)
+		}
 	},
 }
 

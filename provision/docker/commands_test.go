@@ -37,15 +37,29 @@ func (s *S) TestDeployCmds(c *gocheck.C) {
 	c.Assert(cmds, gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestRunCmds(c *gocheck.C) {
+func (s *S) TestRunWithAgentCmds(c *gocheck.C) {
+	app := testing.NewFakeApp("app-name", "python", 1)
+	host_env := bind.EnvVar{
+		Name:   "TSURU_HOST",
+		Value:  "tsuru_host",
+		Public: true,
+	}
+	token_env := bind.EnvVar{
+		Name:   "TSURU_APP_TOKEN",
+		Value:  "app_token",
+		Public: true,
+	}
+	app.SetEnv(host_env)
+	app.SetEnv(token_env)
 	runCmd, err := config.GetString("docker:run-cmd:bin")
 	c.Assert(err, gocheck.IsNil)
+	unitAgentCmd := fmt.Sprintf("(tsuru_unit_agent tsuru_host app_token app-name %s || %s)", runCmd, runCmd)
 	ssh, err := sshCmds()
 	sshCmd := strings.Join(ssh, " && ")
 	c.Assert(err, gocheck.IsNil)
-	cmd := fmt.Sprintf("%s && %s", runCmd, sshCmd)
+	cmd := fmt.Sprintf("%s && %s", unitAgentCmd, sshCmd)
 	expected := []string{"/bin/bash", "-c", cmd}
-	cmds, err := runCmds()
+	cmds, err := runWithAgentCmds(app)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cmds, gocheck.DeepEquals, expected)
 }

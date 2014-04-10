@@ -16,11 +16,79 @@ import (
 	"time"
 )
 
+func (s *S) TestInsertEmptyContainerInDBName(c *gocheck.C) {
+	c.Assert(insertEmptyContainerInDB.Name, gocheck.Equals, "insert-empty-container")
+}
+
+func (s *S) TestInsertEmptyContainerInDBForward(c *gocheck.C) {
+	app := testing.NewFakeApp("myapp", "python", 1)
+	context := action.FWContext{Params: []interface{}{app}}
+	r, err := insertEmptyContainerInDB.Forward(context)
+	c.Assert(err, gocheck.IsNil)
+	cont := r.(container)
+	c.Assert(cont, gocheck.FitsTypeOf, container{})
+	c.Assert(cont.AppName, gocheck.Equals, app.GetName())
+	c.Assert(cont.Type, gocheck.Equals, app.GetPlatform())
+	c.Assert(cont.Name, gocheck.Not(gocheck.Equals), "")
+	c.Assert(cont.Name, gocheck.HasLen, 20)
+	c.Assert(cont.Status, gocheck.Equals, "created")
+	coll := collection()
+	defer coll.Close()
+	defer coll.Remove(bson.M{"name": cont.Name})
+	var retrieved container
+	err = coll.Find(bson.M{"name": cont.Name}).One(&retrieved)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(retrieved.Name, gocheck.Equals, cont.Name)
+}
+
+func (s *S) TestInsertEmptyContainerInDBBackward(c *gocheck.C) {
+	cont := container{Name: "myName"}
+	coll := collection()
+	defer coll.Close()
+	err := coll.Insert(&cont)
+	c.Assert(err, gocheck.IsNil)
+	context := action.BWContext{FWResult: cont}
+	insertEmptyContainerInDB.Backward(context)
+	err = coll.Find(bson.M{"name": cont.Name}).One(&cont)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "not found")
+}
+
+func (s *S) TestUpdateContainerInDBName(c *gocheck.C) {
+	c.Assert(updateContainerInDB.Name, gocheck.Equals, "update-database-container")
+}
+
+func (s *S) TestUpdateContainerInDBForward(c *gocheck.C) {
+	cont := container{Name: "myName"}
+	coll := collection()
+	defer coll.Close()
+	err := coll.Insert(cont)
+	c.Assert(err, gocheck.IsNil)
+	cont.ID = "myID"
+	context := action.FWContext{Previous: cont}
+	r, err := updateContainerInDB.Forward(context)
+	c.Assert(r, gocheck.FitsTypeOf, container{})
+	retrieved, err := getContainer(cont.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(retrieved.ID, gocheck.Equals, cont.ID)
+}
+
 func (s *S) TestCreateContainerName(c *gocheck.C) {
 	c.Assert(createContainer.Name, gocheck.Equals, "create-container")
 }
 
 func (s *S) TestCreateContainerForward(c *gocheck.C) {
+	cmutex.Lock()
+	oldClusterNodes := clusterNodes
+	clusterNodes = map[string]string{
+		"server": "http://localhost:8081",
+	}
+	cmutex.Unlock()
+	defer func() {
+		cmutex.Lock()
+		clusterNodes = oldClusterNodes
+		cmutex.Unlock()
+	}()
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	client, err := dockerClient.NewClient(s.server.URL())
@@ -29,34 +97,37 @@ func (s *S) TestCreateContainerForward(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	cmds := []string{"ps", "-ef"}
 	app := testing.NewFakeApp("myapp", "python", 1)
-	context := action.FWContext{Params: []interface{}{app, images[0].ID, cmds}}
+	cont := container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
+	context := action.FWContext{Previous: cont, Params: []interface{}{app, images[0].ID, cmds}}
 	r, err := createContainer.Forward(context)
 	c.Assert(err, gocheck.IsNil)
-	cont := r.(container)
+	cont = r.(container)
 	defer cont.remove()
 	c.Assert(cont, gocheck.FitsTypeOf, container{})
-	c.Assert(cont.AppName, gocheck.Equals, app.GetName())
-	c.Assert(cont.Type, gocheck.Equals, app.GetPlatform())
-	coll := collection()
-	defer coll.Close()
-	defer coll.Remove(bson.M{"id": cont.ID})
-	retrieved, err := getContainer(cont.ID)
+	c.Assert(cont.ID, gocheck.Not(gocheck.Equals), "")
+	c.Assert(cont.HostAddr, gocheck.Equals, "localhost")
+	dcli, err := dockerClient.NewClient(s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(retrieved.ID, gocheck.Equals, cont.ID)
-	c.Assert(retrieved.Status, gocheck.Equals, "created")
+	cc, err := dcli.InspectContainer(cont.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(cc.State.Running, gocheck.Equals, false)
 }
 
 func (s *S) TestCreateContainerBackward(c *gocheck.C) {
-	cont := container{ID: "ble"}
-	coll := collection()
-	defer coll.Close()
-	err := coll.Insert(&cont)
+	dcli, err := dockerClient.NewClient(s.server.URL())
 	c.Assert(err, gocheck.IsNil)
+	err = newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	defer dcli.RemoveImage("tsuru/python")
+	conta, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(conta)
+	cont := *conta
 	context := action.BWContext{FWResult: cont}
 	createContainer.Backward(context)
-	err = coll.Find(bson.M{"id": cont.ID}).One(&cont)
+	_, err = dcli.InspectContainer(cont.ID)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "not found")
+	c.Assert(err, gocheck.FitsTypeOf, &dockerClient.NoSuchContainer{})
 }
 
 func (s *S) TestAddRouteName(c *gocheck.C) {
