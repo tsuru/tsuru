@@ -106,7 +106,6 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	h := &tsrTesting.TestHandler{}
 	gandalfServer := tsrTesting.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
-	go s.stopContainers(1)
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	fexec := &etesting.FakeExecutor{}
@@ -130,7 +129,6 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	err = app.DeployApp(&a, "master", "123", &w)
 	c.Assert(err, gocheck.IsNil)
 	w.b = nil
-	defer p.Destroy(&a)
 	time.Sleep(6e9)
 	q, err := getQueue()
 	for _, u := range a.ProvisionedUnits() {
