@@ -9,7 +9,7 @@ Easy Server Installation
 
 It's really easy to have a running PaaS with tsuru. We provide a serie of scripts, each one built to install
 and configure the required components for each tsuru provisioner, you can check our scripts on
-`tsuru repository <https://github.com/tsuru/tsuru/tree/master/misc>`_, there are separeted scripts to install each
+`tsuru repository <https://github.com/tsuru/tsuru/tree/master/misc>`_, there are separated scripts to install each
 component, so it's easy to create your own script to configure a new provisioner or to change the configuration of
 an existing one.
 
