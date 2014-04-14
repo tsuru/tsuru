@@ -38,7 +38,6 @@ func (c *AppCreate) Flags() *gnuflag.FlagSet {
 		c.fs.IntVar(&c.memory, "memory", 0, infoMessage)
 		c.fs.IntVar(&c.memory, "m", 0, infoMessage)
 		infoMessage = "The maximum amount of swap reserved to each container for this app"
-		c.fs = gnuflag.NewFlagSet("", gnuflag.ExitOnError)
 		c.fs.IntVar(&c.swap, "swap", 0, infoMessage)
 		c.fs.IntVar(&c.swap, "s", 0, infoMessage)
 	}
