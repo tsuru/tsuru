@@ -133,6 +133,18 @@ func CreateApp(app *App, user *auth.User) error {
 			app.Memory = configMemory
 		}
 	}
+	// app.Swap is empty, no custom swap passed from CLI
+	if app.Swap < 1 {
+		// get default swap limit from tsuru config
+		configSwap, err := config.GetInt("docker:swap")
+		if err != nil {
+			// no default swap set in config (or error when reading), set it as unlimited (0)
+			app.Swap = 0
+		} else {
+			// default swap set in config, use that.
+			app.Swap = configSwap
+		}
+	}
 	app.SetTeams(teams)
 	app.Owner = user.Email
 	if !app.isValid() {

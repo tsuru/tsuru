@@ -18,13 +18,14 @@ import (
 type AppCreate struct {
 	cmd.Command
 	memory int
+	swap   int
 	fs     *gnuflag.FlagSet
 }
 
 func (c *AppCreate) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "app-create",
-		Usage:   "app-create <appname> <platform> [--memory/-m memory_in_mb]",
+		Usage:   "app-create <appname> <platform> [--memory/-m memory_in_mb] [--swap/-s swap_in_mb]",
 		Desc:    "create a new app.",
 		MinArgs: 2,
 	}
@@ -36,6 +37,10 @@ func (c *AppCreate) Flags() *gnuflag.FlagSet {
 		c.fs = gnuflag.NewFlagSet("", gnuflag.ExitOnError)
 		c.fs.IntVar(&c.memory, "memory", 0, infoMessage)
 		c.fs.IntVar(&c.memory, "m", 0, infoMessage)
+		infoMessage = "The maximum amount of swap reserved to each container for this app"
+		c.fs = gnuflag.NewFlagSet("", gnuflag.ExitOnError)
+		c.fs.IntVar(&c.swap, "swap", 0, infoMessage)
+		c.fs.IntVar(&c.swap, "s", 0, infoMessage)
 	}
 	return c.fs
 }
@@ -43,7 +48,7 @@ func (c *AppCreate) Flags() *gnuflag.FlagSet {
 func (c *AppCreate) Run(context *cmd.Context, client *cmd.Client) error {
 	appName := context.Args[0]
 	platform := context.Args[1]
-	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s","platform":"%s","memory":"%d"}`, appName, platform, c.memory))
+	b := bytes.NewBufferString(fmt.Sprintf(`{"name":"%s","platform":"%s","memory":"%d","swap":"%d"}`, appName, platform, c.memory, c.swap))
 	url, err := cmd.GetURL("/apps")
 	if err != nil {
 		return err

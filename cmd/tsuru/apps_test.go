@@ -18,7 +18,7 @@ import (
 func (s *S) TestAppCreateInfo(c *gocheck.C) {
 	expected := &cmd.Info{
 		Name:    "app-create",
-		Usage:   "app-create <appname> <platform> [--memory/-m memory_in_mb]",
+		Usage:   "app-create <appname> <platform> [--memory/-m memory_in_mb] [--swap/-s swap_in_mb]",
 		Desc:    "create a new app.",
 		MinArgs: 2,
 	}
@@ -42,7 +42,7 @@ Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + 
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
 			c.Assert(err, gocheck.IsNil)
-			c.Assert(string(body), gocheck.Equals, `{"name":"ble","platform":"django","memory":"0"}`)
+			c.Assert(string(body), gocheck.Equals, `{"name":"ble","platform":"django","memory":"0","swap":"0"}`)
 			return req.Method == "POST" && req.URL.Path == "/apps"
 		},
 	}
@@ -85,6 +85,19 @@ func (s *S) TestAppCreateFlags(c *gocheck.C) {
 	c.Check(smemory.Usage, gocheck.Equals, usage)
 	c.Check(smemory.Value.String(), gocheck.Equals, "10")
 	c.Check(smemory.DefValue, gocheck.Equals, "0")
+	swap := flagset.Lookup("swap")
+	usage = "The maximum amount of swap reserved to each container for this app"
+	c.Check(swap, gocheck.NotNil)
+	c.Check(swap.Name, gocheck.Equals, "swap")
+	c.Check(swap.Usage, gocheck.Equals, usage)
+	c.Check(swap.Value.String(), gocheck.Equals, "10")
+	c.Check(swap.DefValue, gocheck.Equals, "0")
+	sswap := flagset.Lookup("s")
+	c.Check(sswap, gocheck.NotNil)
+	c.Check(sswap.Name, gocheck.Equals, "m")
+	c.Check(sswap.Usage, gocheck.Equals, usage)
+	c.Check(sswap.Value.String(), gocheck.Equals, "10")
+	c.Check(sswap.DefValue, gocheck.Equals, "0")
 }
 
 func (s *S) TestAppRemove(c *gocheck.C) {
