@@ -83,34 +83,34 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 	fsystem = nil
 }
 
-func (s *S) stopMultipleServersCluster(cluster *cluster.Cluster, nodes map[string]string) {
+func (s *S) stopMultipleServersCluster(cluster *cluster.Cluster, nodes []string) {
 	cmutex.Lock()
 	defer cmutex.Unlock()
-	clusterNodes = nodes
 	dCluster = cluster
+	config.Set("docker:servers", nodes)
 }
 
-func (s *S) startMultipleServersCluster() (*cluster.Cluster, map[string]string, error) {
+func (s *S) startMultipleServersCluster() (*cluster.Cluster, []string, error) {
 	otherServer, err := dtesting.NewServer("127.0.0.1:0", nil)
 	if err != nil {
 		return nil, nil, err
 	}
 	cmutex.Lock()
 	defer cmutex.Unlock()
-	oldClusterNodes := clusterNodes
 	oldCluster := dCluster
-	clusterNodes = map[string]string{
-		"server1": "http://server1:8888",
-		"server2": "http://server2:8888",
+	oldServers, err := config.GetList("docker:servers")
+	if err != nil {
+		oldServers = []string{}
 	}
+	config.Set("docker:servers", []string{"http://serverAddr0:8888", "http://serverAddr1:8888"})
 	dCluster, err = cluster.New(nil, &mapStorage{},
-		cluster.Node{ID: "server1", Address: s.server.URL()},
-		cluster.Node{ID: "server2", Address: otherServer.URL()},
+		cluster.Node{ID: "server0", Address: s.server.URL()},
+		cluster.Node{ID: "server1", Address: otherServer.URL()},
 	)
 	if err != nil {
 		return nil, nil, err
 	}
-	return oldCluster, oldClusterNodes, nil
+	return oldCluster, oldServers, nil
 }
 
 type unitSlice []provision.Unit

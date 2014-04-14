@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"crypto"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
@@ -164,6 +165,25 @@ func getHostAddr(hostID string) string {
 	return host
 }
 
+func hostToNodeName(host string) (string, error) {
+	var nodes []cluster.Node
+	var err error
+	if seg, _ := config.GetBool("docker:segregate"); seg {
+		nodes, err = segScheduler.Nodes()
+		if err != nil {
+			return "", err
+		}
+	} else {
+		nodes = getDockerServers()
+	}
+	for _, node := range nodes {
+		if getHostAddr(node.ID) == host {
+			return node.ID, nil
+		}
+	}
+	return "", errors.New(fmt.Sprintf("Host `%s` not found", host))
+}
+
 type container struct {
 	ID       string
 	AppName  string
@@ -210,7 +230,15 @@ func (c *container) create(app provision.App, imageId string, cmds []string, des
 		MemorySwap:   int64(app.GetSwap() * 1024 * 1024),
 	}
 	opts := docker.CreateContainerOptions{Name: c.Name, Config: &config}
-	hostID, cont, err := dockerCluster().CreateContainer(opts, destinationHosts...)
+	var nodeList []string
+	if len(destinationHosts) > 0 {
+		nodeName, err := hostToNodeName(destinationHosts[0])
+		if err != nil {
+			return err
+		}
+		nodeList = []string{nodeName}
+	}
+	hostID, cont, err := dockerCluster().CreateContainer(opts, nodeList...)
 	if err != nil {
 		log.Errorf("error on creating container in docker %s - %s", c.AppName, err)
 		return err

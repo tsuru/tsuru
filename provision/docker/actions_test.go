@@ -347,13 +347,13 @@ func (s *S) TestProvisionAddUnitsToHostForward(c *gocheck.C) {
 	coll := collection()
 	defer coll.Close()
 	coll.Insert(container{ID: "container-id", AppName: app.GetName(), Version: "container-version", Image: "tsuru/python"})
-	context := action.FWContext{Params: []interface{}{app, 2, "server2"}}
+	context := action.FWContext{Params: []interface{}{app, 2, "serverAddr1"}}
 	result, err := provisionAddUnitsToHost.Forward(context)
 	c.Assert(err, gocheck.IsNil)
 	units := result.([]provision.Unit)
 	c.Assert(units, gocheck.HasLen, 2)
-	c.Assert(units[0].Ip, gocheck.Equals, "server2")
-	c.Assert(units[1].Ip, gocheck.Equals, "server2")
+	c.Assert(units[0].Ip, gocheck.Equals, "serverAddr1")
+	c.Assert(units[1].Ip, gocheck.Equals, "serverAddr1")
 	count, err := coll.Find(bson.M{"appname": app.GetName()}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(count, gocheck.Equals, 3)
