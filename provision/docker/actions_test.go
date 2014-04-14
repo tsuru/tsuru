@@ -140,6 +140,7 @@ func (s *S) TestAddRouteForward(c *gocheck.C) {
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	cont := container{ID: "ble", AppName: app.GetName()}
+	defer cont.remove()
 	context := action.FWContext{Previous: cont}
 	r, err := addRoute.Forward(context)
 	c.Assert(err, gocheck.IsNil)
@@ -347,6 +348,7 @@ func (s *S) TestProvisionAddUnitsToHostForward(c *gocheck.C) {
 	coll := collection()
 	defer coll.Close()
 	coll.Insert(container{ID: "container-id", AppName: app.GetName(), Version: "container-version", Image: "tsuru/python"})
+	defer coll.Remove(bson.M{"appname": app.GetName()})
 	context := action.FWContext{Params: []interface{}{app, 2, "serverAddr1"}}
 	result, err := provisionAddUnitsToHost.Forward(context)
 	c.Assert(err, gocheck.IsNil)

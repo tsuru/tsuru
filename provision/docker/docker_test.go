@@ -960,6 +960,7 @@ func (s *S) TestMoveContainers(c *gocheck.C) {
 	coll := collection()
 	defer coll.Close()
 	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
+	defer coll.Remove(bson.M{"appname": appInstance.GetName()})
 	units, err := addUnitsWithHost(appInstance, 2, "serverAddr1")
 	c.Assert(err, gocheck.IsNil)
 	conn, err := db.Conn()
