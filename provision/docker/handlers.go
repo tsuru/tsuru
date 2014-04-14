@@ -52,11 +52,11 @@ func listNodeHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) erro
 func listContainersHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	address := r.URL.Query().Get(":address")
 	if address != "" {
-	containerList, err := ListContainers(address)
-	if err != nil {
-		return err
-	}
-	return json.NewEncoder(w).Encode(containerList)		
+		containerList, err := ListContainers(address)
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(w).Encode(containerList)
 	}
 	app := r.URL.Query().Get(":appname")
 	containerList, err := ListContainersByApp(app)
