@@ -51,7 +51,7 @@ func (s *S) TestProvisionAddUnitsName(c *gocheck.C) {
 }
 
 func (s *S) TestSaveNewUnitsInDatabaseName(c *gocheck.C) {
-	c.Assert(saveNewUnitsInDatabase.Name, gocheck.Equals, "save-new-units-in-database")
+	c.Assert(SaveNewUnitsInDatabase.Name, gocheck.Equals, "save-new-units-in-database")
 }
 
 func (s *S) TestInsertAppForward(c *gocheck.C) {
@@ -608,10 +608,10 @@ func (s *S) TestProvisionAddUnits(c *gocheck.C) {
 	ctx := action.FWContext{Previous: 3, Params: []interface{}{&app}}
 	fwresult, err := provisionAddUnits.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
-	result, ok := fwresult.(*addUnitsActionResult)
+	units, ok := fwresult.([]provision.Unit)
 	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(result.units, gocheck.HasLen, 3)
-	c.Assert(result.units, gocheck.DeepEquals, s.provisioner.GetUnits(&app)[1:])
+	c.Assert(units, gocheck.HasLen, 3)
+	c.Assert(units, gocheck.DeepEquals, s.provisioner.GetUnits(&app)[1:])
 }
 
 func (s *S) TestProvisionAddUnitsNoPointer(c *gocheck.C) {
@@ -624,10 +624,10 @@ func (s *S) TestProvisionAddUnitsNoPointer(c *gocheck.C) {
 	ctx := action.FWContext{Previous: 3, Params: []interface{}{app}}
 	fwresult, err := provisionAddUnits.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
-	result, ok := fwresult.(*addUnitsActionResult)
+	units, ok := fwresult.([]provision.Unit)
 	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(result.units, gocheck.HasLen, 3)
-	c.Assert(result.units, gocheck.DeepEquals, s.provisioner.GetUnits(&app)[1:])
+	c.Assert(units, gocheck.HasLen, 3)
+	c.Assert(units, gocheck.DeepEquals, s.provisioner.GetUnits(&app)[1:])
 }
 
 func (s *S) TestProvisionAddUnitsProvisionFailure(c *gocheck.C) {
@@ -659,8 +659,7 @@ func (s *S) TestProvisionAddUnitsBackward(c *gocheck.C) {
 	defer s.provisioner.Destroy(&app)
 	units, err := s.provisioner.AddUnits(&app, 3)
 	c.Assert(err, gocheck.IsNil)
-	result := addUnitsActionResult{units: units}
-	ctx := action.BWContext{Params: []interface{}{&app}, FWResult: &result}
+	ctx := action.BWContext{Params: []interface{}{&app}, FWResult: units}
 	provisionAddUnits.Backward(ctx)
 	c.Assert(s.provisioner.GetUnits(&app), gocheck.HasLen, 1)
 }
@@ -674,8 +673,7 @@ func (s *S) TestProvisionAddUnitsBackwardNoPointer(c *gocheck.C) {
 	defer s.provisioner.Destroy(&app)
 	units, err := s.provisioner.AddUnits(&app, 3)
 	c.Assert(err, gocheck.IsNil)
-	result := addUnitsActionResult{units: units}
-	ctx := action.BWContext{Params: []interface{}{app}, FWResult: &result}
+	ctx := action.BWContext{Params: []interface{}{app}, FWResult: units}
 	provisionAddUnits.Backward(ctx)
 	c.Assert(s.provisioner.GetUnits(&app), gocheck.HasLen, 1)
 }
@@ -695,9 +693,8 @@ func (s *S) TestSaveNewUnitsInDatabaseForward(c *gocheck.C) {
 	defer s.provisioner.Destroy(&app)
 	units, err := s.provisioner.AddUnits(&app, 3)
 	c.Assert(err, gocheck.IsNil)
-	result := addUnitsActionResult{units: units}
-	ctx := action.FWContext{Previous: &result, Params: []interface{}{&app}}
-	fwresult, err := saveNewUnitsInDatabase.Forward(ctx)
+	ctx := action.FWContext{Previous: units, Params: []interface{}{&app}}
+	fwresult, err := SaveNewUnitsInDatabase.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(fwresult, gocheck.IsNil)
 	gotApp, err := GetByName(app.Name)
@@ -738,9 +735,8 @@ func (s *S) TestSaveNewUnitsInDatabaseForwardNoPointer(c *gocheck.C) {
 	defer s.provisioner.Destroy(&app)
 	units, err := s.provisioner.AddUnits(&app, 3)
 	c.Assert(err, gocheck.IsNil)
-	result := addUnitsActionResult{units: units}
-	ctx := action.FWContext{Previous: &result, Params: []interface{}{app}}
-	fwresult, err := saveNewUnitsInDatabase.Forward(ctx)
+	ctx := action.FWContext{Previous: units, Params: []interface{}{app}}
+	fwresult, err := SaveNewUnitsInDatabase.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(fwresult, gocheck.IsNil)
 	gotApp, err := GetByName(app.Name)
@@ -770,26 +766,26 @@ func (s *S) TestSaveNewUnitsInDatabaseForwardNoPointer(c *gocheck.C) {
 }
 
 func (s *S) TestSaveNewUnitsInDatabaseForwardInvalidApp(c *gocheck.C) {
-	result, err := saveNewUnitsInDatabase.Forward(action.FWContext{Params: []interface{}{"something"}})
+	result, err := SaveNewUnitsInDatabase.Forward(action.FWContext{Params: []interface{}{"something"}})
 	c.Assert(result, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 }
 
 func (s *S) TestSaveNewUnitsInDatabaseAppNotFound(c *gocheck.C) {
 	app := App{Name: "something"}
-	fwresult := addUnitsActionResult{}
-	ctx := action.FWContext{Previous: &fwresult, Params: []interface{}{app}}
-	result, err := saveNewUnitsInDatabase.Forward(ctx)
+	fwresult := []provision.Unit{}
+	ctx := action.FWContext{Previous: fwresult, Params: []interface{}{app}}
+	result, err := SaveNewUnitsInDatabase.Forward(ctx)
 	c.Assert(result, gocheck.IsNil)
 	c.Assert(err.Error(), gocheck.Equals, "App not found")
 }
 
 func (s *S) TestSaveNewUnitsInDatabaseBackward(c *gocheck.C) {
-	c.Assert(saveNewUnitsInDatabase.Backward, gocheck.IsNil)
+	c.Assert(SaveNewUnitsInDatabase.Backward, gocheck.IsNil)
 }
 
 func (s *S) TestSaveNewUnitsMinParams(c *gocheck.C) {
-	c.Assert(saveNewUnitsInDatabase.MinParams, gocheck.Equals, 1)
+	c.Assert(SaveNewUnitsInDatabase.MinParams, gocheck.Equals, 1)
 }
 
 func (s *S) TestProvisionerDeployName(c *gocheck.C) {

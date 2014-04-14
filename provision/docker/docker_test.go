@@ -946,3 +946,49 @@ func (s *S) TestUsePlatformImage(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, false)
 	defer conn.Apps().Remove(bson.M{"name": "app4"})
 }
+
+func (s *S) TestMoveContainers(c *gocheck.C) {
+	cluster, nodes, err := s.startMultipleServersCluster()
+	defer s.stopMultipleServersCluster(cluster, nodes)
+	err = newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	appInstance := testing.NewFakeApp("myapp", "python", 0)
+	var p dockerProvisioner
+	defer p.Destroy(appInstance)
+	p.Provision(appInstance)
+	app.Provisioner = &p
+	coll := collection()
+	defer coll.Close()
+	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
+	units, err := addUnitsWithHost(appInstance, 2, "server2")
+	c.Assert(err, gocheck.IsNil)
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	appStruct := &app.App{
+		Name:     appInstance.GetName(),
+		Platform: appInstance.GetPlatform(),
+	}
+	err = conn.Apps().Insert(appStruct)
+	c.Assert(err, gocheck.IsNil)
+	err = conn.Apps().Update(
+		bson.M{"name": appStruct.Name},
+		bson.M{"$set": bson.M{"units": units}},
+	)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
+	err = moveContainers("server2", "server1")
+	c.Assert(err, gocheck.IsNil)
+	containers, err := listContainersByHost("server2")
+	c.Assert(len(containers), gocheck.Equals, 0)
+	containers, err = listContainersByHost("server1")
+	c.Assert(len(containers), gocheck.Equals, 2)
+	q, err := getQueue()
+	c.Assert(err, gocheck.IsNil)
+	for _ = range containers {
+		_, err := q.Get(1e6)
+		c.Assert(err, gocheck.IsNil)
+		_, err = q.Get(1e6)
+		c.Assert(err, gocheck.IsNil)
+	}
+}

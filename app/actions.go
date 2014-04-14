@@ -265,10 +265,6 @@ var reserveUnitsToAdd = action.Action{
 	MinParams: 2,
 }
 
-type addUnitsActionResult struct {
-	units []provision.Unit
-}
-
 var provisionAddUnits = action.Action{
 	Name: "provision-add-units",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
@@ -282,13 +278,11 @@ var provisionAddUnits = action.Action{
 			return nil, errors.New("First parameter must be App or *App.")
 		}
 		n := ctx.Previous.(int)
-		var result addUnitsActionResult
 		units, err := Provisioner.AddUnits(&app, uint(n))
 		if err != nil {
 			return nil, err
 		}
-		result.units = units
-		return &result, nil
+		return units, nil
 	},
 	Backward: func(ctx action.BWContext) {
 		var app App
@@ -298,15 +292,15 @@ var provisionAddUnits = action.Action{
 		case *App:
 			app = *ctx.Params[0].(*App)
 		}
-		fwResult := ctx.FWResult.(*addUnitsActionResult)
-		for _, unit := range fwResult.units {
+		units := ctx.FWResult.([]provision.Unit)
+		for _, unit := range units {
 			Provisioner.RemoveUnit(&app, unit.Name)
 		}
 	},
 	MinParams: 1,
 }
 
-var saveNewUnitsInDatabase = action.Action{
+var SaveNewUnitsInDatabase = action.Action{
 	Name: "save-new-units-in-database",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		var app *App
@@ -319,7 +313,7 @@ var saveNewUnitsInDatabase = action.Action{
 		default:
 			return nil, errors.New("First parameter must be App or *App.")
 		}
-		prev := ctx.Previous.(*addUnitsActionResult)
+		units := ctx.Previous.([]provision.Unit)
 		conn, err := db.Conn()
 		if err != nil {
 			return nil, err
@@ -329,9 +323,9 @@ var saveNewUnitsInDatabase = action.Action{
 		if err != nil {
 			return nil, ErrAppNotFound
 		}
-		messages := make([]queue.Message, len(prev.units)*2)
+		messages := make([]queue.Message, len(units)*2)
 		mCount := 0
-		for _, unit := range prev.units {
+		for _, unit := range units {
 			unit := Unit{
 				Name:       unit.Name,
 				Type:       unit.Type,

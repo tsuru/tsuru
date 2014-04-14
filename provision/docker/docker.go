@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/docker-cluster/storage"
 	"github.com/tsuru/tsuru/action"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/fs"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
@@ -38,6 +39,51 @@ var (
 	clusterNodes map[string]string
 	segScheduler segregatedScheduler
 )
+
+func moveOneContainer(c container, toHost string, errors chan error, wg *sync.WaitGroup) {
+	a, err := app.GetByName(c.AppName)
+	defer wg.Done()
+	if err != nil {
+		errors <- err
+		return
+	}
+	err = action.NewPipeline(
+		&provisionAddUnitsToHost,
+		&app.SaveNewUnitsInDatabase,
+	).Execute(a, 1, toHost)
+	if err != nil {
+		errors <- err
+		return
+	}
+	err = a.RemoveUnit(c.ID)
+	if err != nil {
+		errors <- err
+		return
+	}
+}
+
+func moveContainers(fromHost, toHost string) error {
+	containers, err := listContainersByHost(fromHost)
+	if err != nil {
+		return err
+	}
+	moveErrors := make(chan error, len(containers))
+	wg := sync.WaitGroup{}
+	wg.Add(len(containers))
+	for _, c := range containers {
+		go moveOneContainer(c, toHost, moveErrors, &wg)
+	}
+	go func() {
+		wg.Wait()
+		close(moveErrors)
+	}()
+	var lastError error = nil
+	for err := range moveErrors {
+		log.Errorf("Error moving container - %s", err)
+		lastError = err
+	}
+	return lastError
+}
 
 func getDockerServers() []cluster.Node {
 	servers, _ := config.GetList("docker:servers")
@@ -142,7 +188,7 @@ func containerName() string {
 }
 
 // creates a new container in Docker.
-func (c *container) create(app provision.App, imageId string, cmds []string) error {
+func (c *container) create(app provision.App, imageId string, cmds []string, destinationHosts ...string) error {
 	port, err := getPort()
 	if err != nil {
 		log.Errorf("error on getting port for container %s - %s", c.AppName, port)
@@ -164,7 +210,7 @@ func (c *container) create(app provision.App, imageId string, cmds []string) err
 		MemorySwap:   int64(app.GetSwap() * 1024 * 1024),
 	}
 	opts := docker.CreateContainerOptions{Name: c.Name, Config: &config}
-	hostID, cont, err := dockerCluster().CreateContainer(opts)
+	hostID, cont, err := dockerCluster().CreateContainer(opts, destinationHosts...)
 	if err != nil {
 		log.Errorf("error on creating container in docker %s - %s", c.AppName, err)
 		return err
@@ -267,14 +313,14 @@ func deploy(app provision.App, version string, w io.Writer) (string, error) {
 	return imageId, nil
 }
 
-func start(app provision.App, imageId string, w io.Writer) (*container, error) {
+func start(app provision.App, imageId string, w io.Writer, destinationHosts ...string) (*container, error) {
 	run_with_agent_commands, err := runWithAgentCmds(app)
 	if err != nil {
 		return nil, err
 	}
 	actions := []*action.Action{&insertEmptyContainerInDB, &createContainer, &startContainer, &updateContainerInDB, &setNetworkInfo, &addRoute}
 	pipeline := action.NewPipeline(actions...)
-	err = pipeline.Execute(app, imageId, run_with_agent_commands)
+	err = pipeline.Execute(app, imageId, run_with_agent_commands, destinationHosts)
 	if err != nil {
 		return nil, err
 	}

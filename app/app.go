@@ -268,7 +268,7 @@ func (app *App) AddUnits(n uint) error {
 	err := action.NewPipeline(
 		&reserveUnitsToAdd,
 		&provisionAddUnits,
-		&saveNewUnitsInDatabase,
+		&SaveNewUnitsInDatabase,
 	).Execute(app, n)
 	return err
 }

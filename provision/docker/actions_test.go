@@ -9,6 +9,7 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/provision"
 	rtesting "github.com/tsuru/tsuru/router/testing"
 	"github.com/tsuru/tsuru/testing"
 	"labix.org/v2/mgo/bson"
@@ -328,4 +329,53 @@ func (s *S) TestbindServiceParams(c *gocheck.C) {
 	context := action.FWContext{Params: []interface{}{""}}
 	_, err := bindService.Forward(context)
 	c.Assert(err.Error(), gocheck.Equals, "First parameter must be a provision.App.")
+}
+
+func (s *S) TestProvisionAddUnitsToHostName(c *gocheck.C) {
+	c.Assert(provisionAddUnitsToHost.Name, gocheck.Equals, "provision-add-units-to-host")
+}
+
+func (s *S) TestProvisionAddUnitsToHostForward(c *gocheck.C) {
+	cluster, nodes, err := s.startMultipleServersCluster()
+	defer s.stopMultipleServersCluster(cluster, nodes)
+	err = newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	var p dockerProvisioner
+	app := testing.NewFakeApp("myapp", "python", 0)
+	defer p.Destroy(app)
+	p.Provision(app)
+	coll := collection()
+	defer coll.Close()
+	coll.Insert(container{ID: "container-id", AppName: app.GetName(), Version: "container-version", Image: "tsuru/python"})
+	context := action.FWContext{Params: []interface{}{app, 2, "server2"}}
+	result, err := provisionAddUnitsToHost.Forward(context)
+	c.Assert(err, gocheck.IsNil)
+	units := result.([]provision.Unit)
+	c.Assert(units, gocheck.HasLen, 2)
+	c.Assert(units[0].Ip, gocheck.Equals, "server2")
+	c.Assert(units[1].Ip, gocheck.Equals, "server2")
+	count, err := coll.Find(bson.M{"appname": app.GetName()}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 3)
+}
+
+func (s *S) TestProvisionAddUnitsToHostBackward(c *gocheck.C) {
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	container, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(container)
+	app := testing.NewFakeApp(container.AppName, "python", 0)
+	unit := provision.Unit{
+		Name:    container.ID,
+		AppName: app.GetName(),
+		Type:    app.GetPlatform(),
+		Ip:      container.HostAddr,
+		Status:  provision.StatusBuilding,
+	}
+	context := action.BWContext{Params: []interface{}{app, 1, "server"}, FWResult: []provision.Unit{unit}}
+	provisionAddUnitsToHost.Backward(context)
+	_, err = getContainer(container.ID)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "not found")
 }

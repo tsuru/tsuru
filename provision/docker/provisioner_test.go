@@ -206,8 +206,10 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	cont1, err := s.newContainer(nil)
+	defer s.removeTestContainer(cont1)
 	c.Assert(err, gocheck.IsNil)
-	_, err = s.newContainer(nil)
+	cont2, err := s.newContainer(nil)
+	defer s.removeTestContainer(cont2)
 	c.Assert(err, gocheck.IsNil)
 	defer rtesting.FakeRouter.RemoveBackend(cont1.AppName)
 	var p dockerProvisioner
@@ -359,6 +361,29 @@ func (s *S) TestProvisionerAddUnitsWithoutContainers(c *gocheck.C) {
 	c.Assert(units, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "New units can only be added after the first deployment")
+}
+
+func (s *S) TestProvisionerAddUnitsWithHost(c *gocheck.C) {
+	cluster, nodes, err := s.startMultipleServersCluster()
+	defer s.stopMultipleServersCluster(cluster, nodes)
+	err = newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	var p dockerProvisioner
+	app := testing.NewFakeApp("myapp", "python", 0)
+	p.Provision(app)
+	defer p.Destroy(app)
+	coll := collection()
+	defer coll.Close()
+	coll.Insert(container{ID: "xxxfoo", AppName: app.GetName(), Version: "123987", Image: "tsuru/python"})
+	defer coll.RemoveId(bson.M{"id": "xxxfoo"})
+	units, err := addUnitsWithHost(app, 1, "server2")
+	c.Assert(err, gocheck.IsNil)
+	defer coll.RemoveAll(bson.M{"appname": app.GetName()})
+	c.Assert(units, gocheck.HasLen, 1)
+	c.Assert(units[0].Ip, gocheck.Equals, "server2")
+	count, err := coll.Find(bson.M{"appname": app.GetName()}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 2)
 }
 
 func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {

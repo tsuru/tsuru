@@ -83,6 +83,36 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 	fsystem = nil
 }
 
+func (s *S) stopMultipleServersCluster(cluster *cluster.Cluster, nodes map[string]string) {
+	cmutex.Lock()
+	defer cmutex.Unlock()
+	clusterNodes = nodes
+	dCluster = cluster
+}
+
+func (s *S) startMultipleServersCluster() (*cluster.Cluster, map[string]string, error) {
+	otherServer, err := dtesting.NewServer("127.0.0.1:0", nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	cmutex.Lock()
+	defer cmutex.Unlock()
+	oldClusterNodes := clusterNodes
+	oldCluster := dCluster
+	clusterNodes = map[string]string{
+		"server1": "http://server1:8888",
+		"server2": "http://server2:8888",
+	}
+	dCluster, err = cluster.New(nil, &mapStorage{},
+		cluster.Node{ID: "server1", Address: s.server.URL()},
+		cluster.Node{ID: "server2", Address: otherServer.URL()},
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+	return oldCluster, oldClusterNodes, nil
+}
+
 type unitSlice []provision.Unit
 
 func (s unitSlice) Len() int {

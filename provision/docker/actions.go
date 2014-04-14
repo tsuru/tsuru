@@ -69,8 +69,12 @@ var createContainer = action.Action{
 		app := ctx.Params[0].(provision.App)
 		imageId := ctx.Params[1].(string)
 		cmds := ctx.Params[2].([]string)
+		var destinationHosts []string
+		if len(ctx.Params) > 3 {
+			destinationHosts = ctx.Params[3].([]string)
+		}
 		log.Debugf("create container for app %s, based on image %s, with cmds %s", app.GetName(), imageId, cmds)
-		err := cont.create(app, imageId, cmds)
+		err := cont.create(app, imageId, cmds, destinationHosts...)
 		if err != nil {
 			log.Errorf("error on create container for app %s - %s", app.GetName(), err)
 			return nil, err
@@ -213,4 +217,27 @@ var bindService = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 	},
+}
+
+var provisionAddUnitsToHost = action.Action{
+	Name: "provision-add-units-to-host",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		a := ctx.Params[0].(provision.App)
+		n := ctx.Params[1].(int)
+		destinationHost := ctx.Params[2].(string)
+		units, err := addUnitsWithHost(a, uint(n), destinationHost)
+		if err != nil {
+			return nil, err
+		}
+		return units, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		a := ctx.Params[0].(provision.App)
+		units := ctx.FWResult.([]provision.Unit)
+		var provisioner dockerProvisioner
+		for _, unit := range units {
+			provisioner.RemoveUnit(a, unit.Name)
+		}
+	},
+	MinParams: 3,
 }

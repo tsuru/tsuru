@@ -221,7 +221,7 @@ func (*dockerProvisioner) Addr(app provision.App) (string, error) {
 	return addr, nil
 }
 
-func (*dockerProvisioner) AddUnits(a provision.App, units uint) ([]provision.Unit, error) {
+func addUnitsWithHost(a provision.App, units uint, destinationHost ...string) ([]provision.Unit, error) {
 	if units == 0 {
 		return nil, errors.New("Cannot add 0 units")
 	}
@@ -240,7 +240,7 @@ func (*dockerProvisioner) AddUnits(a provision.App, units uint) ([]provision.Uni
 	}
 	imageId := container.Image
 	for i := uint(0); i < units; i++ {
-		container, err := start(a, imageId, &writer)
+		container, err := start(a, imageId, &writer, destinationHost...)
 		if err != nil {
 			return nil, err
 		}
@@ -253,6 +253,10 @@ func (*dockerProvisioner) AddUnits(a provision.App, units uint) ([]provision.Uni
 		}
 	}
 	return result, nil
+}
+
+func (*dockerProvisioner) AddUnits(a provision.App, units uint) ([]provision.Unit, error) {
+	return addUnitsWithHost(a, units)
 }
 
 func (*dockerProvisioner) RemoveUnit(a provision.App, unitName string) error {

@@ -19,6 +19,7 @@ func init() {
 	api.RegisterHandler("/node/:address/containers", "GET", api.AdminRequiredHandler(listContainersHandler))
 	api.RegisterAdminHandler("/node/add", "POST", api.Handler(addNodeHandler))
 	api.RegisterAdminHandler("/node/remove", "DELETE", api.Handler(removeNodeHandler))
+	api.RegisterAdminHandler("/containers/move", "POST", api.Handler(moveContainersHandler))
 }
 
 // addNodeHandler calls scheduler.Register to registering a node into it.
@@ -37,6 +38,14 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	return dockerCluster().Unregister(params)
+}
+
+func moveContainersHandler(w http.ResponseWriter, r *http.Request) error {
+	params, err := unmarshal(r.Body)
+	if err != nil {
+		return err
+	}
+	return moveContainers(params["from"], params["to"])
 }
 
 //listNodeHandler call scheduler.Nodes to list all nodes into it.
