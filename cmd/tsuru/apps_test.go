@@ -85,6 +85,7 @@ Your repository for "ble" project is "git@tsuru.plataformas.glb.com:ble.git"` + 
 				"platform":  "django",
 				"memory":    "0",
 				"teamOwner": "team",
+				"swap":      "0",
 			}
 			result := map[string]string{}
 			err = json.Unmarshal(body, &result)
@@ -146,6 +147,7 @@ func (s *S) TestAppCreateFlags(c *gocheck.C) {
 	c.Check(teamOwner.Usage, gocheck.Equals, usage)
 	c.Check(teamOwner.Value.String(), gocheck.Equals, "team")
 	c.Check(teamOwner.DefValue, gocheck.Equals, "")
+	flagset.Parse(true, []string{"-s", "10"})
 	swap := flagset.Lookup("swap")
 	usage = "The maximum amount of swap reserved to each container for this app"
 	c.Check(swap, gocheck.NotNil)
@@ -155,7 +157,7 @@ func (s *S) TestAppCreateFlags(c *gocheck.C) {
 	c.Check(swap.DefValue, gocheck.Equals, "0")
 	sswap := flagset.Lookup("s")
 	c.Check(sswap, gocheck.NotNil)
-	c.Check(sswap.Name, gocheck.Equals, "m")
+	c.Check(sswap.Name, gocheck.Equals, "s")
 	c.Check(sswap.Usage, gocheck.Equals, usage)
 	c.Check(sswap.Value.String(), gocheck.Equals, "10")
 	c.Check(sswap.DefValue, gocheck.Equals, "0")

@@ -495,7 +495,7 @@ func (s *S) TestCreateAppTeamOwner(c *gocheck.C) {
 	action := testing.Action{
 		Action: "create-app",
 		User:   s.user.Email,
-		Extra:  []interface{}{"name=someapp", "platform=zend", "memory=1"},
+		Extra:  []interface{}{"name=someapp", "platform=zend", "memory=1", "swap=0"},
 	}
 	c.Assert(action, testing.IsRecorded)
 }

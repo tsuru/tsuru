@@ -223,8 +223,9 @@ func (s *S) TestCreateAppDefaultMemory(c *gocheck.C) {
 
 func (s *S) TestCreateAppDefaultSwap(c *gocheck.C) {
 	config.Set("docker:swap", 32)
-	config.Set("bucket-support", false)
-	defer config.Set("bucket-support", true)
+	defer config.Unset("docker:swap")
+	config.Set("docker:memory", 10)
+	defer config.Unset("docker:memory")
 	ts := testing.StartGandalfTestServer(&testHandler{})
 	defer ts.Close()
 	a := App{
@@ -242,7 +243,7 @@ func (s *S) TestCreateAppDefaultSwap(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer Delete(&a)
 	retrievedApp, err := GetByName(a.Name)
-	c.Assert(retrievedApp.Swap, gocheck.Equals, 32)
+	c.Assert(retrievedApp.Swap, gocheck.Equals, 42)
 	_, err = aqueue().Get(1e6)
 	c.Assert(err, gocheck.IsNil)
 }
