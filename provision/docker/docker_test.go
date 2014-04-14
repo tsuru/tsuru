@@ -103,7 +103,7 @@ func (s *S) TestListContainersByHost(c *gocheck.C) {
 		container{ID: "blibli", Type: "java", AppName: "masoq", HostAddr: "http://cittavld1182.globoi.com"},
 	)
 	defer coll.RemoveAll(bson.M{"hostaddr": "http://cittavld1182.globoi.com"})
-	result, err := listContainersByHost("http://cittavld1182.globoi.com")
+	result, err := ListContainers("http://cittavld1182.globoi.com")
 	c.Assert(result[0].ID, gocheck.DeepEquals, "blabla")
 	c.Assert(result[1].AppName, gocheck.DeepEquals, "wat")
 	c.Assert(result[2].Type, gocheck.DeepEquals, "java")
@@ -138,7 +138,7 @@ func (s *S) TestListContainersByApp(c *gocheck.C) {
 		container{ID: "Let's Go", Type: "java", AppName: "myapp", HostAddr: "http://cittavld597.globoi.com"},
 	)
 	defer coll.RemoveAll(bson.M{"appname": "myapp"})
-	result, err := listContainersByApp("myapp")
+	result, err := ListContainersByApp("myapp")
 	c.Assert(result[0].ID, gocheck.DeepEquals, "Hey")
 	c.Assert(result[1].HostAddr, gocheck.DeepEquals, "http://cittavld1182.globoi.com")
 	c.Assert(result[2].Type, gocheck.DeepEquals, "java")

@@ -174,21 +174,26 @@ func (c *container) create(app provision.App, imageId string, cmds []string) err
 	return nil
 }
 
-func listContainersByHost(address string) ([]container, error) {
-	var list []container
-	coll := collection()
-	defer coll.Close()
-	if err := coll.Find(bson.M{"hostaddr": address}).All(&list); err != nil {
-		return nil, err
-	}
-	return list, nil
+func ListContainers(address string) ([]container, error) {
+	return listContainers(address, "")
 }
 
-func listContainersByApp(app string) ([]container, error) {
+func ListContainersByApp(app string) ([]container, error) {
+	return listContainers("", app)
+}
+
+func listContainers(address string, app string) ([]container, error) {
 	var list []container
 	coll := collection()
 	defer coll.Close()
-	if err := coll.Find(bson.M{"appname": app}).All(&list); err != nil {
+	var qr bson.M
+	if app != "" {
+		qr = bson.M{"appname": app}
+	}
+	if address != "" {
+		qr = bson.M{"hostaddr": address}
+	}
+	if err := coll.Find(qr).All(&list); err != nil {
 		return nil, err
 	}
 	return list, nil
