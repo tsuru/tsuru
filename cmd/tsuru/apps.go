@@ -21,12 +21,13 @@ type AppCreate struct {
 	memory    int
 	teamOwner string
 	fs        *gnuflag.FlagSet
+	swap      int
 }
 
 func (c *AppCreate) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "app-create",
-		Usage:   "app-create <appname> <platform> [--memory/-m memory_in_mb] [--team/-t (team owner)]",
+		Usage:   "app-create <appname> <platform> [--memory/-m memory_in_mb] [--swap/-s swap_in_mb] [--team/-t (team owner)]",
 		Desc:    "create a new app.",
 		MinArgs: 2,
 	}
@@ -41,6 +42,9 @@ func (c *AppCreate) Flags() *gnuflag.FlagSet {
 		teamMessage := "Team owner app"
 		c.fs.StringVar(&c.teamOwner, "team", "", teamMessage)
 		c.fs.StringVar(&c.teamOwner, "t", "", teamMessage)
+		infoMessage = "The maximum amount of swap reserved to each container for this app"
+		c.fs.IntVar(&c.swap, "swap", 0, infoMessage)
+		c.fs.IntVar(&c.swap, "s", 0, infoMessage)
 	}
 	return c.fs
 }
@@ -52,6 +56,7 @@ func (c *AppCreate) Run(context *cmd.Context, client *cmd.Client) error {
 		"name":      appName,
 		"platform":  platform,
 		"memory":    strconv.Itoa(c.memory),
+		"swap":      strconv.Itoa(c.swap),
 		"teamOwner": c.teamOwner,
 	}
 	b, err := json.Marshal(params)

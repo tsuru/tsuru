@@ -418,7 +418,7 @@ func (s *S) TestCreateAppHandler(c *gocheck.C) {
 		err = app.Delete(a)
 		c.Assert(err, gocheck.IsNil)
 	}()
-	data := `{"name":"someapp","platform":"zend","memory":"10"}`
+	data := `{"name":"someapp","platform":"zend","memory":"10","swap":"20"}`
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, gocheck.IsNil)
@@ -446,7 +446,7 @@ func (s *S) TestCreateAppHandler(c *gocheck.C) {
 	action := testing.Action{
 		Action: "create-app",
 		User:   s.user.Email,
-		Extra:  []interface{}{"name=someapp", "platform=zend", "memory=10"},
+		Extra:  []interface{}{"name=someapp", "platform=zend", "memory=10", "swap=20"},
 	}
 	c.Assert(action, testing.IsRecorded)
 }
@@ -537,6 +537,24 @@ func (s *S) TestCreateAppMemorySetNowAllowed(c *gocheck.C) {
 	c.Assert(e.Message, gocheck.Matches, "^.*Memory setting not allowed.$")
 }
 
+func (s *S) TestCreateAppSwapSetNowAllowed(c *gocheck.C) {
+	config.Set("docker:allow-memory-set", false)
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	b := strings.NewReader(`{"name":"someapp","platform":"zend","swap":"10"}`)
+	request, err := http.NewRequest("POST", "/apps", b)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = createApp(recorder, request, s.token)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
+	c.Assert(e.Message, gocheck.Matches, "^.*Memory setting not allowed.$")
+}
+
 func (s *S) TestCreateAppInvalidMemorySize(c *gocheck.C) {
 	config.Set("docker:allow-memory-set", true)
 	config.Set("docker:max-allowed-memory", 1)
@@ -554,6 +572,25 @@ func (s *S) TestCreateAppInvalidMemorySize(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
 	c.Assert(e.Message, gocheck.Matches, "^.*Invalid memory size. You cannot request more than.*")
+}
+
+func (s *S) TestCreateAppInvalidSwapSize(c *gocheck.C) {
+	config.Set("docker:allow-memory-set", true)
+	config.Set("docker:max-allowed-swap", 1)
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	b := strings.NewReader(`{"name":"someapp","platform":"zend","swap":"10"}`)
+	request, err := http.NewRequest("POST", "/apps", b)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = createApp(recorder, request, s.token)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
+	c.Assert(e.Message, gocheck.Matches, "^.*Invalid swap size. You cannot request more than.*")
 }
 
 func (s *S) TestCreateAppQuotaExceeded(c *gocheck.C) {

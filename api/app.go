@@ -131,9 +131,9 @@ func createApp(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "create-app", "name="+a.Name, "platform="+a.Platform, "memory="+strconv.Itoa(a.Memory))
+	rec.Log(u.Email, "create-app", "name="+a.Name, "platform="+a.Platform, "memory="+strconv.Itoa(a.Memory), "swap="+strconv.Itoa(a.Swap))
 	canSetMem, _ := config.GetBool("docker:allow-memory-set")
-	if !canSetMem && a.Memory > 0 {
+	if !canSetMem && (a.Memory > 0 || a.Swap > 0) {
 		err := "Memory setting not allowed."
 		log.Errorf("%s", err)
 		return &errors.HTTP{Code: http.StatusForbidden, Message: err}
@@ -141,6 +141,12 @@ func createApp(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	maxMem, _ := config.GetInt("docker:max-allowed-memory")
 	if maxMem > 0 && a.Memory > maxMem {
 		err := fmt.Sprintf("Invalid memory size. You cannot request more than %dMB.", maxMem)
+		log.Errorf("%s", err)
+		return &errors.HTTP{Code: http.StatusForbidden, Message: err}
+	}
+	maxSwap, _ := config.GetInt("docker:max-allowed-swap")
+	if maxSwap > 0 && a.Swap > maxSwap {
+		err := fmt.Sprintf("Invalid swap size. You cannot request more than %dMB.", maxSwap)
 		log.Errorf("%s", err)
 		return &errors.HTTP{Code: http.StatusForbidden, Message: err}
 	}
