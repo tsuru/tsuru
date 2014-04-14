@@ -150,8 +150,6 @@ func createApp(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 		log.Errorf("%s", err)
 		return &errors.HTTP{Code: http.StatusForbidden, Message: err}
 	}
-	// Swap size must always be the sum of memory plus swap
-	a.Swap = a.Memory + a.Swap
 	err = app.CreateApp(&a, u)
 	if err != nil {
 		log.Errorf("Got error while creating app: %s", err)

@@ -145,6 +145,10 @@ func CreateApp(app *App, user *auth.User) error {
 			app.Swap = configSwap
 		}
 	}
+	// Swap size must always be the sum of memory plus swap
+    if ( app.Swap > 0 ) {
+    	app.Swap = app.Memory + app.Swap
+    }
 	app.SetTeams(teams)
 	app.Owner = user.Email
 	if !app.isValid() {
