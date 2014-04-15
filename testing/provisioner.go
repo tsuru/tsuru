@@ -794,3 +794,25 @@ func (c *FakeCommand) Run(*cmd.Context, *cmd.Client) error {
 	atomic.AddInt32(&c.calls, 1)
 	return nil
 }
+
+type AdminCommandableProvisioner struct {
+	FakeProvisioner
+}
+
+func (p *AdminCommandableProvisioner) AdminCommands() []cmd.Command {
+	return []cmd.Command{&FakeAdminCommand{}}
+}
+
+type FakeAdminCommand struct{}
+
+func (c *FakeAdminCommand) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:  "fake-admin",
+		Usage: "fake usage",
+		Desc:  "fake desc",
+	}
+}
+
+func (c *FakeAdminCommand) Run(*cmd.Context, *cmd.Client) error {
+	return nil
+}

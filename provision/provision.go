@@ -175,6 +175,12 @@ type Commandable interface {
 	Commands() []cmd.Command
 }
 
+// Implementing the AdminCommandable interface allows the Provisioner to
+// extend the tsuru-admin command line interface
+type AdminCommandable interface {
+	AdminCommands() []cmd.Command
+}
+
 var provisioners = make(map[string]Provisioner)
 
 // Register registers a new provisioner in the Provisioner registry.

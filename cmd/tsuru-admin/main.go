@@ -8,6 +8,9 @@ package main
 import (
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/tsuru-base"
+	"github.com/tsuru/tsuru/provision"
+	_ "github.com/tsuru/tsuru/provision/docker"
+	_ "github.com/tsuru/tsuru/provision/juju"
 	"os"
 )
 
@@ -25,7 +28,20 @@ func buildManager(name string) *cmd.Manager {
 	m.Register(&logRemove{})
 	m.Register(&changeQuota{})
 	m.Register(&moveContainer{})
+	registerProvisionersCommands(m)
 	return m
+}
+
+func registerProvisionersCommands(m *cmd.Manager) {
+	provisioners := provision.Registry()
+	for _, p := range provisioners {
+		if c, ok := p.(provision.AdminCommandable); ok {
+			commands := c.AdminCommands()
+			for _, cmd := range commands {
+				m.Register(cmd)
+			}
+		}
+	}
 }
 
 func main() {

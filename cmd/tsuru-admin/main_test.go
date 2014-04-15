@@ -7,6 +7,8 @@ package main
 import (
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/tsuru-base"
+	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
 
@@ -67,4 +69,14 @@ func (s *S) TestCommandsFromBaseManagerAreRegistered(c *gocheck.C) {
 		c.Assert(ok, gocheck.Equals, true)
 		c.Assert(command, gocheck.FitsTypeOf, instance)
 	}
+}
+
+func (s *S) TestShouldRegisterAllCommandsFromProvisioners(c *gocheck.C) {
+	fp := testing.NewFakeProvisioner()
+	p := testing.AdminCommandableProvisioner{FakeProvisioner: *fp}
+	provision.Register("fakeAdminProvisioner", &p)
+	manager := buildManager("tsuru-admin")
+	fake, ok := manager.Commands["fake-admin"]
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(fake, gocheck.FitsTypeOf, &testing.FakeAdminCommand{})
 }
