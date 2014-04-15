@@ -342,7 +342,7 @@ func (s *S) TestProvisionAddUnitsToHostForward(c *gocheck.C) {
 	err = newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	var p dockerProvisioner
-	app := testing.NewFakeApp("myapp", "python", 0)
+	app := testing.NewFakeApp("myapp-2", "python", 0)
 	defer p.Destroy(app)
 	p.Provision(app)
 	coll := collection()
