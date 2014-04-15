@@ -75,6 +75,11 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["ready"] = app.State == "ready"
 	result["owner"] = app.Owner
 	result["deploys"] = app.Deploys
+	result["memory"] = app.Memory
+	result["swap"] = 0
+	if app.Swap > 0 {
+		result["swap"] = app.Swap - app.Memory
+	}
 	return json.Marshal(&result)
 }
 
