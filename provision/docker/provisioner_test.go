@@ -579,7 +579,7 @@ func (s *S) TestCommands(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerIsCommandable(c *gocheck.C) {
-	var _ provision.Commandable = &dockerProvisioner{}
+	var _ cmd.Commandable = &dockerProvisioner{}
 }
 
 func (s *S) TestSwap(c *gocheck.C) {

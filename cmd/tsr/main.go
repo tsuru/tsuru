@@ -29,7 +29,7 @@ func buildManager() *cmd.Manager {
 func registerProvisionersCommands(m *cmd.Manager) {
 	provisioners := provision.Registry()
 	for _, p := range provisioners {
-		if c, ok := p.(provision.Commandable); ok {
+		if c, ok := p.(cmd.Commandable); ok {
 			commands := c.Commands()
 			for _, cmd := range commands {
 				m.Register(&tsrCommand{Command: cmd})

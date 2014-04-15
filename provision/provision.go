@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
-	"github.com/tsuru/tsuru/cmd"
 	"io"
 )
 
@@ -167,18 +166,6 @@ type Provisioner interface {
 
 	// DeployPipeline returns actions that should be executed on deploy.
 	DeployPipeline() *action.Pipeline
-}
-
-// Commandable is a provisioner that provides commands to extend the tsr
-// command line interface.
-type Commandable interface {
-	Commands() []cmd.Command
-}
-
-// Implementing the AdminCommandable interface allows the Provisioner to
-// extend the tsuru-admin command line interface
-type AdminCommandable interface {
-	AdminCommands() []cmd.Command
 }
 
 var provisioners = make(map[string]Provisioner)

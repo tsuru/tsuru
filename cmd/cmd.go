@@ -192,6 +192,18 @@ type Info struct {
 	Desc    string
 }
 
+// Implementing the Commandable interface allows extending
+// the tsr command line interface
+type Commandable interface {
+	Commands() []Command
+}
+
+// Implementing the AdminCommandable interface allows extending
+// the tsuru-admin command line interface
+type AdminCommandable interface {
+	AdminCommands() []Command
+}
+
 type help struct {
 	manager *Manager
 }
