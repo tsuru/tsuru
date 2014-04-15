@@ -361,6 +361,12 @@ func (p *dockerProvisioner) Commands() []cmd.Command {
 	}
 }
 
+func (p *dockerProvisioner) AdminCommands() []cmd.Command {
+	return []cmd.Command{
+		&moveContainerCmd{},
+	}
+}
+
 func collection() *storage.Collection {
 	name, err := config.GetString("docker:collection")
 	if err != nil {

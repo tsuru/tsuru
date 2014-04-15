@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package main
+package docker
 
 import (
 	"bytes"
@@ -12,9 +12,9 @@ import (
 	"net/http"
 )
 
-type moveContainer struct{}
+type moveContainerCmd struct{}
 
-func (c *moveContainer) Info() *cmd.Info {
+func (c *moveContainerCmd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "containers-move",
 		Usage:   "containers-move <from host> <to host>",
@@ -23,7 +23,7 @@ func (c *moveContainer) Info() *cmd.Info {
 	}
 }
 
-func (c *moveContainer) Run(context *cmd.Context, client *cmd.Client) error {
+func (c *moveContainerCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	url, err := cmd.GetURL("/containers/move")
 	if err != nil {
 		return err
