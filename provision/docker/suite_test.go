@@ -10,7 +10,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	ftesting "github.com/tsuru/tsuru/fs/testing"
 	"github.com/tsuru/tsuru/provision"
-	_ "github.com/tsuru/tsuru/testing"
+	tTesting "github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 	"os"
 	"sort"
@@ -30,6 +30,7 @@ type S struct {
 	port          string
 	sshUser       string
 	server        *dtesting.DockerServer
+	targetRecover []string
 }
 
 var _ = gocheck.Suite(&S{})
@@ -63,6 +64,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	f.Close()
 	s.server, err = dtesting.NewServer("127.0.0.1:0", nil)
 	c.Assert(err, gocheck.IsNil)
+	s.targetRecover = tTesting.SetTargetFile(c)
 }
 
 func (s *S) SetUpTest(c *gocheck.C) {
@@ -81,6 +83,7 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 	err := coll.Database.DropDatabase()
 	c.Assert(err, gocheck.IsNil)
 	fsystem = nil
+	tTesting.RollbackTargetFile(s.targetRecover)
 }
 
 func (s *S) stopMultipleServersCluster(cluster *cluster.Cluster, nodes []string) {

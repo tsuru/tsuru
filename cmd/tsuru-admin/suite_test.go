@@ -7,9 +7,9 @@ package main
 import (
 	"bytes"
 	"github.com/tsuru/tsuru/cmd"
+	tTesting "github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 	"os"
-	"os/exec"
 	"testing"
 )
 
@@ -22,23 +22,11 @@ var manager *cmd.Manager
 func (s *S) SetUpSuite(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	manager = cmd.NewManager("glb", version, header, &stdout, &stderr, os.Stdin, nil)
-	targetFile := os.Getenv("HOME") + "/.tsuru_target"
-	_, err := os.Stat(targetFile)
-	if err == nil {
-		old := targetFile + ".old"
-		s.recover = []string{"mv", old, targetFile}
-		exec.Command("mv", targetFile, old).Run()
-	} else {
-		s.recover = []string{"rm", targetFile}
-	}
-	f, err := os.Create(targetFile)
-	c.Assert(err, gocheck.IsNil)
-	f.Write([]byte("http://localhost"))
-	f.Close()
+	s.recover = tTesting.SetTargetFile(c)
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
-	exec.Command(s.recover[0], s.recover[1:]...).Run()
+	tTesting.RollbackTargetFile(s.recover)
 }
 
 var _ = gocheck.Suite(&S{})

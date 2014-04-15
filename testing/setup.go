@@ -12,6 +12,8 @@ import (
 	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"os/exec"
 )
 
 type T struct {
@@ -67,4 +69,26 @@ func StartGandalfTestServer(h http.Handler) *httptest.Server {
 	ts := testing.TestServer(h)
 	config.Set("git:api-server", ts.URL)
 	return ts
+}
+
+func SetTargetFile(c *gocheck.C) []string {
+	targetFile := os.Getenv("HOME") + "/.tsuru_target"
+	_, err := os.Stat(targetFile)
+	var recover []string
+	if err == nil {
+		old := targetFile + ".old"
+		recover = []string{"mv", old, targetFile}
+		exec.Command("mv", targetFile, old).Run()
+	} else {
+		recover = []string{"rm", targetFile}
+	}
+	f, err := os.Create(targetFile)
+	c.Assert(err, gocheck.IsNil)
+	f.Write([]byte("http://localhost"))
+	f.Close()
+	return recover
+}
+
+func RollbackTargetFile(rollbackCmds []string) {
+	exec.Command(rollbackCmds[0], rollbackCmds[1:]...).Run()
 }
