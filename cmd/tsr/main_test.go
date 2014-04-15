@@ -69,14 +69,14 @@ func (s *S) TestTokenCmdIsRegistered(c *gocheck.C) {
 
 func (s *S) TestShouldRegisterAllCommandsFromProvisioners(c *gocheck.C) {
 	fp := testing.NewFakeProvisioner()
-	p := testing.CommandableProvisioner{FakeProvisioner: *fp}
+	p := CommandableProvisioner{FakeProvisioner: *fp}
 	provision.Register("comm", &p)
 	manager := buildManager()
 	fake, ok := manager.Commands["fake"]
 	c.Assert(ok, gocheck.Equals, true)
 	tsrFake, ok := fake.(*tsrCommand)
 	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(tsrFake.Command, gocheck.FitsTypeOf, &testing.FakeCommand{})
+	c.Assert(tsrFake.Command, gocheck.FitsTypeOf, &FakeCommand{})
 }
 
 func (s *S) TestHealerCmdIsRegistered(c *gocheck.C) {

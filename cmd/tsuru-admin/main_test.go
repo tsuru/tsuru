@@ -66,10 +66,10 @@ func (s *S) TestCommandsFromBaseManagerAreRegistered(c *gocheck.C) {
 
 func (s *S) TestShouldRegisterAllCommandsFromProvisioners(c *gocheck.C) {
 	fp := testing.NewFakeProvisioner()
-	p := testing.AdminCommandableProvisioner{FakeProvisioner: *fp}
+	p := AdminCommandableProvisioner{FakeProvisioner: *fp}
 	provision.Register("fakeAdminProvisioner", &p)
 	manager := buildManager("tsuru-admin")
 	fake, ok := manager.Commands["fake-admin"]
 	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(fake, gocheck.FitsTypeOf, &testing.FakeAdminCommand{})
+	c.Assert(fake, gocheck.FitsTypeOf, &FakeAdminCommand{})
 }

@@ -9,13 +9,11 @@ import (
 	"fmt"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
-	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/provision"
 	"io"
 	"sort"
 	"strconv"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -760,59 +758,4 @@ type provisionedApp struct {
 	version     string
 	cname       string
 	unitLen     int
-}
-
-type CommandableProvisioner struct {
-	FakeProvisioner
-	cmd *FakeCommand
-}
-
-func (p *CommandableProvisioner) Commands() []cmd.Command {
-	if p.cmd == nil {
-		p.cmd = &FakeCommand{}
-	}
-	return []cmd.Command{p.cmd}
-}
-
-type FakeCommand struct {
-	calls int32
-}
-
-func (c *FakeCommand) Calls() int32 {
-	return atomic.LoadInt32(&c.calls)
-}
-
-func (c *FakeCommand) Info() *cmd.Info {
-	return &cmd.Info{
-		Name:  "fake",
-		Usage: "fake fake",
-		Desc:  "do nothing",
-	}
-}
-
-func (c *FakeCommand) Run(*cmd.Context, *cmd.Client) error {
-	atomic.AddInt32(&c.calls, 1)
-	return nil
-}
-
-type AdminCommandableProvisioner struct {
-	FakeProvisioner
-}
-
-func (p *AdminCommandableProvisioner) AdminCommands() []cmd.Command {
-	return []cmd.Command{&FakeAdminCommand{}}
-}
-
-type FakeAdminCommand struct{}
-
-func (c *FakeAdminCommand) Info() *cmd.Info {
-	return &cmd.Info{
-		Name:  "fake-admin",
-		Usage: "fake usage",
-		Desc:  "fake desc",
-	}
-}
-
-func (c *FakeAdminCommand) Run(*cmd.Context, *cmd.Client) error {
-	return nil
 }
