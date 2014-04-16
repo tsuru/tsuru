@@ -6,7 +6,10 @@ package io
 
 import (
 	"net/http"
+	"sync"
 )
+
+var writeMutex sync.Mutex
 
 // FlushingWriter is a custom writer that flushes after writing, if the
 // underlying ResponseWriter is also an http.Flusher.
@@ -22,6 +25,8 @@ func (w *FlushingWriter) WriteHeader(code int) {
 
 // Write writes and flushes the data.
 func (w *FlushingWriter) Write(data []byte) (int, error) {
+	writeMutex.Lock()
+	defer writeMutex.Unlock()
 	w.wrote = true
 	n, err := w.ResponseWriter.Write(data)
 	if f, ok := w.ResponseWriter.(http.Flusher); ok {

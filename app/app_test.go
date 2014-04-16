@@ -638,6 +638,47 @@ func (s *S) TestAddUnitsIsAtomic(c *gocheck.C) {
 	c.Assert(err, gocheck.Equals, ErrAppNotFound)
 }
 
+func (s *S) TestAddUnitsToDB(c *gocheck.C) {
+	app := App{
+		Name: "warpaint", Platform: "python",
+		Quota: quota.Unlimited,
+	}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	app.AddUnitsToDB([]provision.Unit{
+		{Name: "warpaint/1"},
+		{Name: "warpaint/2"},
+	})
+	c.Assert(app.Units, gocheck.HasLen, 2)
+	gotApp, err := GetByName(app.Name)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(gotApp.Units, gocheck.HasLen, 2)
+	c.Assert(gotApp.Platform, gocheck.Equals, "python")
+	var expectedMessages MessageList
+	for i, unit := range gotApp.Units {
+		expectedName := fmt.Sprintf("%s/%d", app.Name, i+1)
+		c.Check(unit.Name, gocheck.Equals, expectedName)
+		messages := []queue.Message{
+			{Action: regenerateApprc, Args: []string{gotApp.Name, unit.Name}},
+			{Action: BindService, Args: []string{gotApp.Name, unit.Name}},
+		}
+		expectedMessages = append(expectedMessages, messages...)
+	}
+	gotMessages := make(MessageList, expectedMessages.Len())
+	for i := range expectedMessages {
+		message, err := aqueue().Get(1e6)
+		c.Check(err, gocheck.IsNil)
+		gotMessages[i] = queue.Message{
+			Action: message.Action,
+			Args:   message.Args,
+		}
+	}
+	sort.Sort(expectedMessages)
+	sort.Sort(gotMessages)
+	c.Assert(gotMessages, gocheck.DeepEquals, expectedMessages)
+}
+
 type hasUnitChecker struct{}
 
 func (c *hasUnitChecker) Info() *gocheck.CheckerInfo {
@@ -898,6 +939,61 @@ func (s *S) TestRemoveUnitByNameOrInstanceID(c *gocheck.C) {
 	}
 }
 
+func (s *S) TestRemoveUnitFromDBByNameOrInstanceID(c *gocheck.C) {
+	var calls int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&calls, 1)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer ts.Close()
+	srvc := service.Service{Name: "test-service", Endpoint: map[string]string{"production": ts.URL}}
+	err := srvc.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().Remove(bson.M{"_id": "test-service"})
+	app := App{
+		Name:     "physics",
+		Platform: "python",
+		Units: []Unit{
+			{Name: "physics/0"},
+		},
+		Quota: quota.Unlimited,
+	}
+	instance := service.ServiceInstance{
+		Name:        "serv-instance",
+		ServiceName: "test-service",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{app.Name},
+	}
+	instance.Create()
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": "serv-instance"})
+	err = s.conn.Apps().Insert(app)
+	c.Assert(err, gocheck.IsNil)
+	defer testing.CleanQ(queueName)
+	defer func() {
+		s.conn.Apps().Remove(bson.M{"name": app.Name})
+	}()
+	err = app.AddUnitsToDB([]provision.Unit{{Name: "physics/1"}})
+	c.Assert(err, gocheck.IsNil)
+	err = app.RemoveUnitFromDB("physics/1")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.Units, gocheck.HasLen, 1)
+	c.Assert(app.Units[0].Name, gocheck.Equals, "physics/0")
+	ok := make(chan int8)
+	go func() {
+		for _ = range time.Tick(1e3) {
+			if atomic.LoadInt32(&calls) == 1 {
+				ok <- 1
+				return
+			}
+		}
+	}()
+	select {
+	case <-ok:
+	case <-time.After(2e9):
+		c.Fatal("Did not call service endpoint once.")
+	}
+}
+
 func (s *S) TestRemoveAbsentUnit(c *gocheck.C) {
 	app := &App{
 		Name:     "chemistry",
@@ -924,7 +1020,7 @@ func (s *S) TestRemoveAbsentUnit(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = app.RemoveUnit(instID)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.ErrorMatches, "Unit not found.")
+	c.Assert(err, gocheck.ErrorMatches, fmt.Sprintf("Unit not found: %s.", instID))
 	app, err = GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Units, gocheck.HasLen, 1)

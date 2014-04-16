@@ -45,7 +45,7 @@ func moveContainersHandler(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	return moveContainers(params["from"], params["to"])
+	return moveContainers(params["from"], params["to"], w)
 }
 
 //listNodeHandler call scheduler.Nodes to list all nodes into it.

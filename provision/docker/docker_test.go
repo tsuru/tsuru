@@ -978,7 +978,8 @@ func (s *S) TestMoveContainers(c *gocheck.C) {
 	)
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
-	err = moveContainers("serverAddr1", "serverAddr0")
+	var buf bytes.Buffer
+	err = moveContainers("serverAddr1", "serverAddr0", &buf)
 	c.Assert(err, gocheck.IsNil)
 	containers, err := listContainersByHost("serverAddr1")
 	c.Assert(len(containers), gocheck.Equals, 0)

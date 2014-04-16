@@ -332,11 +332,11 @@ func (s *S) TestbindServiceParams(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, "First parameter must be a provision.App.")
 }
 
-func (s *S) TestProvisionAddUnitsToHostName(c *gocheck.C) {
-	c.Assert(provisionAddUnitsToHost.Name, gocheck.Equals, "provision-add-units-to-host")
+func (s *S) TestProvisionAddUnitToHostName(c *gocheck.C) {
+	c.Assert(provisionAddUnitToHost.Name, gocheck.Equals, "provision-add-unit-to-host")
 }
 
-func (s *S) TestProvisionAddUnitsToHostForward(c *gocheck.C) {
+func (s *S) TestProvisionAddUnitToHostForward(c *gocheck.C) {
 	cluster, nodes, err := s.startMultipleServersCluster()
 	defer s.stopMultipleServersCluster(cluster, nodes)
 	err = newImage("tsuru/python", s.server.URL())
@@ -349,19 +349,18 @@ func (s *S) TestProvisionAddUnitsToHostForward(c *gocheck.C) {
 	defer coll.Close()
 	coll.Insert(container{ID: "container-id", AppName: app.GetName(), Version: "container-version", Image: "tsuru/python"})
 	defer coll.Remove(bson.M{"appname": app.GetName()})
-	context := action.FWContext{Params: []interface{}{app, 2, "serverAddr1"}}
-	result, err := provisionAddUnitsToHost.Forward(context)
+	context := action.FWContext{Params: []interface{}{app, "serverAddr1"}}
+	result, err := provisionAddUnitToHost.Forward(context)
 	c.Assert(err, gocheck.IsNil)
 	units := result.([]provision.Unit)
-	c.Assert(units, gocheck.HasLen, 2)
+	c.Assert(units, gocheck.HasLen, 1)
 	c.Assert(units[0].Ip, gocheck.Equals, "serverAddr1")
-	c.Assert(units[1].Ip, gocheck.Equals, "serverAddr1")
 	count, err := coll.Find(bson.M{"appname": app.GetName()}).Count()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(count, gocheck.Equals, 3)
+	c.Assert(count, gocheck.Equals, 2)
 }
 
-func (s *S) TestProvisionAddUnitsToHostBackward(c *gocheck.C) {
+func (s *S) TestProvisionAddUnitToHostBackward(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	container, err := s.newContainer(nil)
@@ -375,9 +374,31 @@ func (s *S) TestProvisionAddUnitsToHostBackward(c *gocheck.C) {
 		Ip:      container.HostAddr,
 		Status:  provision.StatusBuilding,
 	}
-	context := action.BWContext{Params: []interface{}{app, 1, "server"}, FWResult: []provision.Unit{unit}}
-	provisionAddUnitsToHost.Backward(context)
+	context := action.BWContext{Params: []interface{}{app, "server"}, FWResult: []provision.Unit{unit}}
+	provisionAddUnitToHost.Backward(context)
 	_, err = getContainer(container.ID)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "not found")
+}
+
+func (s *S) TestProvisionRemoveOldUnitName(c *gocheck.C) {
+	c.Assert(provisionRemoveOldUnit.Name, gocheck.Equals, "provision-remove-old-unit")
+}
+
+func (s *S) TestProvisionRemoveOldUnitForward(c *gocheck.C) {
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	container, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
+	client, err := dockerClient.NewClient(s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	err = client.StartContainer(container.ID, nil)
+	c.Assert(err, gocheck.IsNil)
+	app := testing.NewFakeApp(container.AppName, "python", 0)
+	context := action.FWContext{Params: []interface{}{app, "", *container}}
+	_, err = provisionRemoveOldUnit.Forward(context)
+	c.Assert(err, gocheck.IsNil)
+	_, err = getContainer(container.ID)
+	c.Assert(err, gocheck.NotNil)
 }

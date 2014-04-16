@@ -51,7 +51,7 @@ func (s *S) TestProvisionAddUnitsName(c *gocheck.C) {
 }
 
 func (s *S) TestSaveNewUnitsInDatabaseName(c *gocheck.C) {
-	c.Assert(SaveNewUnitsInDatabase.Name, gocheck.Equals, "save-new-units-in-database")
+	c.Assert(saveNewUnitsInDatabase.Name, gocheck.Equals, "save-new-units-in-database")
 }
 
 func (s *S) TestInsertAppForward(c *gocheck.C) {
@@ -694,7 +694,7 @@ func (s *S) TestSaveNewUnitsInDatabaseForward(c *gocheck.C) {
 	units, err := s.provisioner.AddUnits(&app, 3)
 	c.Assert(err, gocheck.IsNil)
 	ctx := action.FWContext{Previous: units, Params: []interface{}{&app}}
-	fwresult, err := SaveNewUnitsInDatabase.Forward(ctx)
+	fwresult, err := saveNewUnitsInDatabase.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(fwresult, gocheck.IsNil)
 	gotApp, err := GetByName(app.Name)
@@ -736,7 +736,7 @@ func (s *S) TestSaveNewUnitsInDatabaseForwardNoPointer(c *gocheck.C) {
 	units, err := s.provisioner.AddUnits(&app, 3)
 	c.Assert(err, gocheck.IsNil)
 	ctx := action.FWContext{Previous: units, Params: []interface{}{app}}
-	fwresult, err := SaveNewUnitsInDatabase.Forward(ctx)
+	fwresult, err := saveNewUnitsInDatabase.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(fwresult, gocheck.IsNil)
 	gotApp, err := GetByName(app.Name)
@@ -766,7 +766,7 @@ func (s *S) TestSaveNewUnitsInDatabaseForwardNoPointer(c *gocheck.C) {
 }
 
 func (s *S) TestSaveNewUnitsInDatabaseForwardInvalidApp(c *gocheck.C) {
-	result, err := SaveNewUnitsInDatabase.Forward(action.FWContext{Params: []interface{}{"something"}})
+	result, err := saveNewUnitsInDatabase.Forward(action.FWContext{Params: []interface{}{"something"}})
 	c.Assert(result, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 }
@@ -775,17 +775,17 @@ func (s *S) TestSaveNewUnitsInDatabaseAppNotFound(c *gocheck.C) {
 	app := App{Name: "something"}
 	fwresult := []provision.Unit{}
 	ctx := action.FWContext{Previous: fwresult, Params: []interface{}{app}}
-	result, err := SaveNewUnitsInDatabase.Forward(ctx)
+	result, err := saveNewUnitsInDatabase.Forward(ctx)
 	c.Assert(result, gocheck.IsNil)
 	c.Assert(err.Error(), gocheck.Equals, "App not found")
 }
 
 func (s *S) TestSaveNewUnitsInDatabaseBackward(c *gocheck.C) {
-	c.Assert(SaveNewUnitsInDatabase.Backward, gocheck.IsNil)
+	c.Assert(saveNewUnitsInDatabase.Backward, gocheck.IsNil)
 }
 
 func (s *S) TestSaveNewUnitsMinParams(c *gocheck.C) {
-	c.Assert(SaveNewUnitsInDatabase.MinParams, gocheck.Equals, 1)
+	c.Assert(saveNewUnitsInDatabase.MinParams, gocheck.Equals, 1)
 }
 
 func (s *S) TestProvisionerDeployName(c *gocheck.C) {

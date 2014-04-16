@@ -14,7 +14,6 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"io"
@@ -300,7 +299,7 @@ var provisionAddUnits = action.Action{
 	MinParams: 1,
 }
 
-var SaveNewUnitsInDatabase = action.Action{
+var saveNewUnitsInDatabase = action.Action{
 	Name: "save-new-units-in-database",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		var app *App
@@ -314,39 +313,14 @@ var SaveNewUnitsInDatabase = action.Action{
 			return nil, errors.New("First parameter must be App or *App.")
 		}
 		units := ctx.Previous.([]provision.Unit)
-		conn, err := db.Conn()
-		if err != nil {
-			return nil, err
-		}
-		defer conn.Close()
-		app, err = GetByName(app.Name)
+		app, err := GetByName(app.Name)
 		if err != nil {
 			return nil, ErrAppNotFound
 		}
-		messages := make([]queue.Message, len(units)*2)
-		mCount := 0
-		for _, unit := range units {
-			unit := Unit{
-				Name:       unit.Name,
-				Type:       unit.Type,
-				Ip:         unit.Ip,
-				Machine:    unit.Machine,
-				State:      provision.StatusBuilding.String(),
-				InstanceId: unit.InstanceId,
-			}
-			app.AddUnit(&unit)
-			messages[mCount] = queue.Message{Action: regenerateApprc, Args: []string{app.Name, unit.Name}}
-			messages[mCount+1] = queue.Message{Action: BindService, Args: []string{app.Name, unit.Name}}
-			mCount += 2
-		}
-		err = conn.Apps().Update(
-			bson.M{"name": app.Name},
-			bson.M{"$set": bson.M{"units": app.Units}},
-		)
+		err = app.AddUnitsToDB(units)
 		if err != nil {
 			return nil, err
 		}
-		go Enqueue(messages...)
 		return nil, nil
 	},
 	MinParams: 1,

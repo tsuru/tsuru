@@ -41,38 +41,42 @@ var (
 	segScheduler segregatedScheduler
 )
 
-func moveOneContainer(c container, toHost string, errors chan error, wg *sync.WaitGroup) {
+func moveOneContainer(c container, toHost string, errors chan error, wg *sync.WaitGroup, idx int, w io.Writer) {
 	a, err := app.GetByName(c.AppName)
 	defer wg.Done()
 	if err != nil {
 		errors <- err
 		return
 	}
-	err = action.NewPipeline(
-		&provisionAddUnitsToHost,
-		&app.SaveNewUnitsInDatabase,
-	).Execute(a, 1, toHost)
+	fmt.Fprintf(w, "Moving unit %d for %q: %s -> %s...\n", idx, c.AppName, c.HostAddr, toHost)
+	pipeline := action.NewPipeline(
+		&provisionAddUnitToHost,
+		&provisionRemoveOldUnit,
+	)
+	err = pipeline.Execute(a, toHost, c)
 	if err != nil {
 		errors <- err
 		return
 	}
-	err = a.RemoveUnit(c.ID)
-	if err != nil {
-		errors <- err
-		return
-	}
+	fmt.Fprintf(w, "Finished moving unit %d for %q.\n", idx, c.AppName)
 }
 
-func moveContainers(fromHost, toHost string) error {
+func moveContainers(fromHost, toHost string, w io.Writer) error {
 	containers, err := listContainersByHost(fromHost)
 	if err != nil {
 		return err
 	}
-	moveErrors := make(chan error, len(containers))
+	numberContainers := len(containers)
+	if numberContainers == 0 {
+		fmt.Fprintf(w, "No units to move in %s.\n", fromHost)
+		return nil
+	}
+	fmt.Fprintf(w, "Moving %d units...\n", numberContainers)
+	moveErrors := make(chan error, numberContainers)
 	wg := sync.WaitGroup{}
-	wg.Add(len(containers))
-	for _, c := range containers {
-		go moveOneContainer(c, toHost, moveErrors, &wg)
+	wg.Add(numberContainers)
+	for idx, c := range containers {
+		go moveOneContainer(c, toHost, moveErrors, &wg, idx, w)
 	}
 	go func() {
 		wg.Wait()
@@ -82,6 +86,42 @@ func moveContainers(fromHost, toHost string) error {
 	for err := range moveErrors {
 		log.Errorf("Error moving container - %s", err)
 		lastError = err
+	}
+	if lastError != nil {
+		return lastError
+	}
+	newContainers, err := listContainersByHost(toHost)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(w, "Adding new units to DB...\n")
+	for _, c := range newContainers {
+		a, err := app.GetByName(c.AppName)
+		if err != nil {
+			return err
+		}
+		newUnit := provision.Unit{
+			Name:    c.ID,
+			AppName: a.GetName(),
+			Type:    a.GetPlatform(),
+			Ip:      c.HostAddr,
+			Status:  provision.StatusBuilding,
+		}
+		err = a.AddUnitsToDB([]provision.Unit{newUnit})
+		if err != nil {
+			return err
+		}
+	}
+	fmt.Fprintf(w, "Removing old units from DB...\n")
+	for _, c := range containers {
+		a, err := app.GetByName(c.AppName)
+		if err != nil {
+			return err
+		}
+		err = a.RemoveUnitFromDB(c.ID)
+		if err != nil {
+			return err
+		}
 	}
 	return lastError
 }

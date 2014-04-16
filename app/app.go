@@ -242,6 +242,43 @@ func Delete(app *App) error {
 	return conn.Apps().Remove(bson.M{"name": app.Name})
 }
 
+// Add provisioned units to database and enqueue messages to
+// bind services and regenerate apprc. It's called as one of
+// the steps started by AddUnits(). It doesn't call the
+// provisioner.
+func (app *App) AddUnitsToDB(units []provision.Unit) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	messages := make([]queue.Message, len(units)*2)
+	mCount := 0
+	for _, unit := range units {
+		unit := Unit{
+			Name:       unit.Name,
+			Type:       unit.Type,
+			Ip:         unit.Ip,
+			Machine:    unit.Machine,
+			State:      provision.StatusBuilding.String(),
+			InstanceId: unit.InstanceId,
+		}
+		app.AddUnit(&unit)
+		messages[mCount] = queue.Message{Action: regenerateApprc, Args: []string{app.Name, unit.Name}}
+		messages[mCount+1] = queue.Message{Action: BindService, Args: []string{app.Name, unit.Name}}
+		mCount += 2
+	}
+	err = conn.Apps().Update(
+		bson.M{"name": app.Name},
+		bson.M{"$set": bson.M{"units": app.Units}},
+	)
+	if err != nil {
+		return err
+	}
+	go Enqueue(messages...)
+	return nil
+}
+
 // AddUnit adds a new unit to the app (or update an existing unit). It just updates
 // the internal list of units, it does not talk to the provisioner. For
 // provisioning a new unit for the app, one should use AddUnits method, which
@@ -268,7 +305,7 @@ func (app *App) AddUnits(n uint) error {
 	err := action.NewPipeline(
 		&reserveUnitsToAdd,
 		&provisionAddUnits,
-		&SaveNewUnitsInDatabase,
+		&saveNewUnitsInDatabase,
 	).Execute(app, n)
 	return err
 }
@@ -280,6 +317,32 @@ func (app *App) AddUnits(n uint) error {
 //
 // Returns an error in case of failure.
 func (app *App) RemoveUnit(id string) error {
+	unit, i, err := app.findUnitByID(id)
+	if err != nil {
+		return err
+	}
+	if err = Provisioner.RemoveUnit(app, unit.GetName()); err != nil {
+		log.Error(err.Error())
+	}
+	return app.removeUnitByIdx(i, unit)
+}
+
+// RemoveUnitFromDB removes a unit only from database. It doesn't call the
+// provisioner.
+// An error might be returned in case of failure.
+func (app *App) RemoveUnitFromDB(id string) error {
+	unit, i, err := app.findUnitByID(id)
+	if err != nil {
+		return err
+	}
+	return app.removeUnitByIdx(i, unit)
+}
+
+// findUnitByID searchs first by InstanceId, if no instance is found, then tries to
+// search using the unit name.
+// It returns the Unit instance and its index inside the the app.Units list.
+// An error might be returned in case of failure.
+func (app *App) findUnitByID(id string) (*Unit, int, error) {
 	var (
 		unit Unit
 		i    int
@@ -292,13 +355,14 @@ func (app *App) RemoveUnit(id string) error {
 		}
 	}
 	if unit.GetName() == "" {
-		return stderr.New("Unit not found.")
+		return nil, 0, stderr.New(fmt.Sprintf("Unit not found: %s.", id))
 	}
-	if err := Provisioner.RemoveUnit(app, unit.GetName()); err != nil {
-		log.Error(err.Error())
-	}
+	return &unit, i, nil
+}
+
+func (app *App) removeUnitByIdx(i int, unit provision.AppUnit) error {
 	app.removeUnits([]int{i})
-	app.unbindUnit(&unit)
+	app.unbindUnit(unit)
 	conn, err := db.Conn()
 	if err != nil {
 		return err
