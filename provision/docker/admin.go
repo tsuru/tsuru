@@ -36,7 +36,7 @@ func (c *moveContainerCmd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "containers-move",
 		Usage:   "containers-move <from host> <to host>",
-		Desc:    "Move all containers from host to another.",
+		Desc:    "Move all containers from one host to another.\nThis command is especially useful for host maintenance.",
 		MinArgs: 2,
 	}
 }
