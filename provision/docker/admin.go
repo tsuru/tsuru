@@ -9,10 +9,28 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/tsuru/tsuru/cmd"
+	"io"
 	"net/http"
 )
 
 type moveContainerCmd struct{}
+
+type jsonLogWriter struct {
+	w io.Writer
+	b []byte
+}
+
+func (w *jsonLogWriter) Write(b []byte) (int, error) {
+	var logEntry progressLog
+	w.b = append(w.b, b...)
+	err := json.Unmarshal(w.b, &logEntry)
+	if err != nil {
+		return len(b), nil
+	}
+	fmt.Fprintf(w.w, "%s\n", logEntry.Message)
+	w.b = nil
+	return len(b), nil
+}
 
 func (c *moveContainerCmd) Info() *cmd.Info {
 	return &cmd.Info{
@@ -42,10 +60,14 @@ func (c *moveContainerCmd) Run(context *cmd.Context, client *cmd.Client) error {
 		return err
 	}
 	request.Header.Set("Content-Type", "application/json")
-	_, err = client.Do(request)
+	response, err := client.Do(request)
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(context.Stdout, "Containers moved successfully!\n")
+	defer response.Body.Close()
+	w := jsonLogWriter{w: context.Stdout}
+	for n := int64(1); n > 0 && err == nil; n, err = io.Copy(&w, response.Body) {
+	}
+	fmt.Fprintf(context.Stdout, "Command successful!\n")
 	return nil
 }

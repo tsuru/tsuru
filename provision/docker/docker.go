@@ -41,14 +41,22 @@ var (
 	segScheduler segregatedScheduler
 )
 
-func moveOneContainer(c container, toHost string, errors chan error, wg *sync.WaitGroup, idx int, w io.Writer) {
+type progressLog struct {
+	Message string
+}
+
+func logProgress(encoder *json.Encoder, format string, params ...interface{}) {
+	encoder.Encode(progressLog{Message: fmt.Sprintf(format, params...)})
+}
+
+func moveOneContainer(c container, toHost string, errors chan error, wg *sync.WaitGroup, idx int, encoder *json.Encoder) {
 	a, err := app.GetByName(c.AppName)
 	defer wg.Done()
 	if err != nil {
 		errors <- err
 		return
 	}
-	fmt.Fprintf(w, "Moving unit %d for %q: %s -> %s...\n", idx, c.AppName, c.HostAddr, toHost)
+	logProgress(encoder, "Moving unit %d for %q: %s -> %s...", idx, c.AppName, c.HostAddr, toHost)
 	pipeline := action.NewPipeline(
 		&provisionAddUnitToHost,
 		&provisionRemoveOldUnit,
@@ -58,25 +66,25 @@ func moveOneContainer(c container, toHost string, errors chan error, wg *sync.Wa
 		errors <- err
 		return
 	}
-	fmt.Fprintf(w, "Finished moving unit %d for %q.\n", idx, c.AppName)
+	logProgress(encoder, "Finished moving unit %d for %q.", idx, c.AppName)
 }
 
-func moveContainers(fromHost, toHost string, w io.Writer) error {
+func moveContainers(fromHost, toHost string, encoder *json.Encoder) error {
 	containers, err := listContainersByHost(fromHost)
 	if err != nil {
 		return err
 	}
 	numberContainers := len(containers)
 	if numberContainers == 0 {
-		fmt.Fprintf(w, "No units to move in %s.\n", fromHost)
+		logProgress(encoder, "No units to move in %s.", fromHost)
 		return nil
 	}
-	fmt.Fprintf(w, "Moving %d units...\n", numberContainers)
+	logProgress(encoder, "Moving %d units...", numberContainers)
 	moveErrors := make(chan error, numberContainers)
 	wg := sync.WaitGroup{}
 	wg.Add(numberContainers)
 	for idx, c := range containers {
-		go moveOneContainer(c, toHost, moveErrors, &wg, idx, w)
+		go moveOneContainer(c, toHost, moveErrors, &wg, idx, encoder)
 	}
 	go func() {
 		wg.Wait()
@@ -94,7 +102,7 @@ func moveContainers(fromHost, toHost string, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(w, "Adding new units to DB...\n")
+	logProgress(encoder, "Adding new units to DB...")
 	for _, c := range newContainers {
 		a, err := app.GetByName(c.AppName)
 		if err != nil {
@@ -112,7 +120,7 @@ func moveContainers(fromHost, toHost string, w io.Writer) error {
 			return err
 		}
 	}
-	fmt.Fprintf(w, "Removing old units from DB...\n")
+	logProgress(encoder, "Removing old units from DB...")
 	for _, c := range containers {
 		a, err := app.GetByName(c.AppName)
 		if err != nil {

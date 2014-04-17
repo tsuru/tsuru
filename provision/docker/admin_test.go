@@ -31,7 +31,7 @@ func (s *S) TestMoveContainerRun(c *gocheck.C) {
 		Stderr: &stderr,
 		Args:   []string{"from", "to"},
 	}
-	expected := "Containers moved successfully!\n"
+	expected := "Command successful!\n"
 	trans := &testing.ConditionalTransport{
 		Transport: testing.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {

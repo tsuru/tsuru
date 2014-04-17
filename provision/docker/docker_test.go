@@ -6,6 +6,7 @@ package docker
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/fsouza/go-dockerclient"
 	dtesting "github.com/fsouza/go-dockerclient/testing"
@@ -979,7 +980,8 @@ func (s *S) TestMoveContainers(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	var buf bytes.Buffer
-	err = moveContainers("serverAddr1", "serverAddr0", &buf)
+	encoder := json.NewEncoder(&buf)
+	err = moveContainers("serverAddr1", "serverAddr0", encoder)
 	c.Assert(err, gocheck.IsNil)
 	containers, err := listContainersByHost("serverAddr1")
 	c.Assert(len(containers), gocheck.Equals, 0)
