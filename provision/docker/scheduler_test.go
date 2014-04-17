@@ -409,7 +409,7 @@ func (s *SchedulerSuite) TestAddNodeToTheSchedulerCmdRun(c *gocheck.C) {
 	err = coll.Find(bson.M{"_id": "server0"}).One(&n)
 	c.Assert(err, gocheck.IsNil)
 	c.Check(n.ID, gocheck.Equals, "server0")
-	c.Check(n.Teams, gocheck.DeepEquals, []string{""})
+	c.Check(len(n.Teams), gocheck.Equals, 0)
 	c.Check(n.Address, gocheck.Equals, "http://localhost:8080")
 	c.Assert(buf.String(), gocheck.Equals, "Node successfully registered.\n")
 }

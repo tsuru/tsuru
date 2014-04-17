@@ -140,7 +140,12 @@ func (segregatedScheduler) Register(params map[string]string) error {
 		return err
 	}
 	defer conn.Close()
-	node := node{ID: params["ID"], Address: params["address"], Teams: []string{params["team"]}}
+	var teams []string
+	team := params["team"]
+	if team != "" {
+		teams = []string{team}
+	}
+	node := node{ID: params["ID"], Address: params["address"], Teams: teams}
 	err = conn.Collection(schedulerCollection).Insert(node)
 	if mgo.IsDup(err) {
 		return errNodeAlreadyRegister
