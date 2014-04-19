@@ -68,6 +68,5 @@ func (c *moveContainerCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	w := jsonLogWriter{w: context.Stdout}
 	for n := int64(1); n > 0 && err == nil; n, err = io.Copy(&w, response.Body) {
 	}
-	fmt.Fprintf(context.Stdout, "Command successful!\n")
 	return nil
 }

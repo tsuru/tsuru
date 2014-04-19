@@ -46,7 +46,13 @@ func moveContainersHandler(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	encoder := json.NewEncoder(w)
-	return moveContainers(params["from"], params["to"], encoder)
+	err = moveContainers(params["from"], params["to"], encoder)
+	if err != nil {
+		logProgress(encoder, "Error trying to move containers: %s", err.Error())
+	} else {
+		logProgress(encoder, "Containers moved successfully!")
+	}
+	return nil
 }
 
 //listNodeHandler call scheduler.Nodes to list all nodes into it.

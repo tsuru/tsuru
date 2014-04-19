@@ -31,9 +31,10 @@ func (s *S) TestMoveContainerRun(c *gocheck.C) {
 		Stderr: &stderr,
 		Args:   []string{"from", "to"},
 	}
-	expected := "Command successful!\n"
+	msg, _ := json.Marshal(progressLog{Message: "progress msg"})
+	result := string(msg)
 	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: "", Status: http.StatusOK},
+		Transport: testing.Transport{Message: result, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
@@ -53,5 +54,6 @@ func (s *S) TestMoveContainerRun(c *gocheck.C) {
 	cmd := moveContainerCmd{}
 	err := cmd.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
+	expected := "progress msg\n"
 	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
