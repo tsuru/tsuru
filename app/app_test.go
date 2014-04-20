@@ -1749,9 +1749,9 @@ func (s *S) TestAppMarshalJSON(c *gocheck.C) {
 	expected["cname"] = "name.mycompany.com"
 	expected["owner"] = "appOwner"
 	expected["deploys"] = float64(7)
-	expected["memory"] = float64(64)
+	expected["memory"] = "64"
 	// Expected swap is the "real" swap size. App object has the sum of memory + swap but in json we return it as real size (swap - memory)
-	expected["swap"] = float64(64)
+	expected["swap"] = "64"
 	expected["ready"] = false
 	data, err := app.MarshalJSON()
 	c.Assert(err, gocheck.IsNil)
@@ -1784,9 +1784,9 @@ func (s *S) TestAppMarshalJSONReady(c *gocheck.C) {
 	expected["cname"] = "name.mycompany.com"
 	expected["owner"] = "appOwner"
 	expected["deploys"] = float64(7)
-	expected["memory"] = float64(64)
+	expected["memory"] = "64"
 	// Expected swap is the "real" swap size. App object has the sum of memory + swap but in json we return it as real size (swap - memory)
-	expected["swap"] = float64(64)
+	expected["swap"] = "64"
 	expected["ready"] = true
 	data, err := app.MarshalJSON()
 	c.Assert(err, gocheck.IsNil)

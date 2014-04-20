@@ -28,6 +28,7 @@ import (
 	"os"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -54,10 +55,10 @@ type App struct {
 	Owner     string
 	State     string
 	Deploys   uint
-	quota.Quota
-	Memory int `json:",string"`
-	Swap   int `json:",string"`
+	Memory    int `json:",string"`
+	Swap      int `json:",string"`
 
+	quota.Quota
 	hr hookRunner
 }
 
@@ -75,10 +76,10 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["ready"] = app.State == "ready"
 	result["owner"] = app.Owner
 	result["deploys"] = app.Deploys
-	result["memory"] = app.Memory
-	result["swap"] = 0
+	result["memory"] = strconv.Itoa(app.Memory)
+	result["swap"] = "0"
 	if app.Swap > 0 {
-		result["swap"] = app.Swap - app.Memory
+		result["swap"] = strconv.Itoa(app.Swap - app.Memory)
 	}
 	return json.Marshal(&result)
 }
