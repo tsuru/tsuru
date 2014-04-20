@@ -6,6 +6,7 @@ package docker
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
@@ -15,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
+	"sync"
 )
 
 type SchedulerSuite struct {
@@ -511,4 +513,49 @@ func (s *SchedulerSuite) TestListNodesInTheSchedulerCmdRun(c *gocheck.C) {
 +---------+-----------------------+-------+
 `
 	c.Assert(buf.String(), gocheck.Equals, expected)
+}
+
+func (s *SchedulerSuite) TestChooseNodeDistributesNodesEqually(c *gocheck.C) {
+	nodes := []node{
+		{ID: "node1", Address: "http://server1:1234"},
+		{ID: "node2", Address: "http://server2:1234"},
+		{ID: "node3", Address: "http://server3:1234"},
+		{ID: "node4", Address: "http://server4:1234"},
+	}
+	contColl := collection()
+	defer contColl.RemoveAll(bson.M{"appname": "coolapp9"})
+	cont1 := container{ID: "pre1", Name: "existingUnit1", AppName: "coolapp9", HostAddr: "server1"}
+	err := contColl.Insert(cont1)
+	c.Assert(err, gocheck.Equals, nil)
+	cont2 := container{ID: "pre2", Name: "existingUnit2", AppName: "coolapp9", HostAddr: "server2"}
+	err = contColl.Insert(cont2)
+	c.Assert(err, gocheck.Equals, nil)
+	numberOfUnits := 38
+	unitsPerNode := (numberOfUnits + 2) / 4
+	wg := sync.WaitGroup{}
+	wg.Add(numberOfUnits)
+	for i := 0; i < numberOfUnits; i++ {
+		go func(i int) {
+			defer wg.Done()
+			cont := container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "coolapp9"}
+			err := contColl.Insert(cont)
+			c.Assert(err, gocheck.IsNil)
+			node, err := chooseNode(nodes, cont)
+			c.Assert(err, gocheck.IsNil)
+			c.Assert(node.ID, gocheck.NotNil)
+		}(i)
+	}
+	wg.Wait()
+	n, err := contColl.Find(bson.M{"hostaddr": "server1"}).Count()
+	c.Assert(err, gocheck.Equals, nil)
+	c.Check(n, gocheck.Equals, unitsPerNode)
+	n, err = contColl.Find(bson.M{"hostaddr": "server2"}).Count()
+	c.Assert(err, gocheck.Equals, nil)
+	c.Check(n, gocheck.Equals, unitsPerNode)
+	n, err = contColl.Find(bson.M{"hostaddr": "server3"}).Count()
+	c.Assert(err, gocheck.Equals, nil)
+	c.Check(n, gocheck.Equals, unitsPerNode)
+	n, err = contColl.Find(bson.M{"hostaddr": "server4"}).Count()
+	c.Assert(err, gocheck.Equals, nil)
+	c.Check(n, gocheck.Equals, unitsPerNode)
 }

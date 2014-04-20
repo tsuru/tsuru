@@ -12,10 +12,13 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/log"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
-	"math/rand"
+	"net"
+	"net/url"
 	"strings"
+	"sync"
 )
 
 // errNoFallback is the error returned when no fallback hosts are configured in
@@ -52,7 +55,7 @@ func (s segregatedScheduler) Schedule(opts docker.CreateContainerOptions) (strin
 	}
 	app, err := app.GetByName(cont.AppName)
 	if err != nil {
-		return s.fallback(opts)
+		return s.fallback(opts, cont)
 	}
 	var nodes []node
 	var query bson.M
@@ -63,12 +66,12 @@ func (s segregatedScheduler) Schedule(opts docker.CreateContainerOptions) (strin
 	}
 	err = conn.Collection(schedulerCollection).Find(query).All(&nodes)
 	if err != nil || len(nodes) < 1 {
-		return s.fallback(opts)
+		return s.fallback(opts, cont)
 	}
-	return s.handle(opts, nodes)
+	return s.handle(opts, nodes, cont)
 }
 
-func (s segregatedScheduler) fallback(opts docker.CreateContainerOptions) (string, *docker.Container, error) {
+func (s segregatedScheduler) fallback(opts docker.CreateContainerOptions, cont container) (string, *docker.Container, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return "", nil, err
@@ -79,11 +82,14 @@ func (s segregatedScheduler) fallback(opts docker.CreateContainerOptions) (strin
 	if err != nil || len(nodes) < 1 {
 		return "", nil, errNoFallback
 	}
-	return s.handle(opts, nodes)
+	return s.handle(opts, nodes, cont)
 }
 
-func (segregatedScheduler) handle(opts docker.CreateContainerOptions, nodes []node) (string, *docker.Container, error) {
-	node := nodes[rand.Intn(len(nodes))]
+func (segregatedScheduler) handle(opts docker.CreateContainerOptions, nodes []node, cont container) (string, *docker.Container, error) {
+	node, err := chooseNode(nodes, cont)
+	if err != nil {
+		return node.ID, nil, err
+	}
 	client, err := docker.NewClient(node.Address)
 	if err != nil {
 		return node.ID, nil, err
@@ -97,6 +103,59 @@ func (segregatedScheduler) handle(opts docker.CreateContainerOptions, nodes []no
 	}
 	container, err := client.CreateContainer(opts)
 	return node.ID, container, err
+}
+
+type nodeAggregate struct {
+	HostAddr string `bson:"_id"`
+	Count    int
+}
+
+var hostMutex sync.Mutex
+
+func chooseNode(nodes []node, cont container) (node, error) {
+	var chosenNode node
+	hosts := make([]string, len(nodes))
+	hostsMap := make(map[string]node)
+	for i, node := range nodes {
+		url, _ := url.Parse(node.Address)
+		host, _, _ := net.SplitHostPort(url.Host)
+		hosts[i] = host
+		hostsMap[host] = node
+	}
+	log.Debugf("[scheduler] Possible nodes for container %s: %#v", cont.Name, hosts)
+	coll := collection()
+	defer coll.Close()
+	pipe := coll.Pipe([]bson.M{
+		{"$match": bson.M{"hostaddr": bson.M{"$in": hosts}}},
+		{"$group": bson.M{"_id": "$hostaddr", "count": bson.M{"$sum": 1}}},
+	})
+	err := func() error {
+		hostMutex.Lock()
+		defer hostMutex.Unlock()
+		var results []nodeAggregate
+		err := pipe.All(&results)
+		if err != nil {
+			return err
+		}
+		countMap := make(map[string]int)
+		for _, result := range results {
+			countMap[result.HostAddr] = result.Count
+		}
+		var minHost string
+		minCount := 2 ^ 30
+		for _, host := range hosts {
+			count := countMap[host]
+			if count < minCount {
+				minCount = count
+				minHost = host
+			}
+		}
+		chosenNode = hostsMap[minHost]
+		log.Debugf("[scheduler] Chosen node for container %s: %#v Count: %d", cont.Name, chosenNode, minCount)
+		cont.HostAddr = minHost
+		return coll.Update(bson.M{"name": cont.Name}, cont)
+	}()
+	return chosenNode, err
 }
 
 func (segregatedScheduler) Nodes() ([]cluster.Node, error) {
