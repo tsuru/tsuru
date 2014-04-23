@@ -332,13 +332,34 @@ func (s *S) TestAppListDisplayAppsInAlphabeticalOrder(c *gocheck.C) {
 	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
-func (s *S) TestAppListUnitIsntStarted(c *gocheck.C) {
+func (s *S) TestAppListUnitIsntAvailable(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"ip":"10.10.10.10","name":"app1","ready":true,"units":[{"Name":"app1/0","State":"pending"}]}]`
 	expected := `+-------------+-------------------------+-------------+--------+
 | Application | Units State Summary     | Address     | Ready? |
 +-------------+-------------------------+-------------+--------+
 | app1        | 0 of 1 units in-service | 10.10.10.10 | Yes    |
++-------------+-------------------------+-------------+--------+
+`
+	context := cmd.Context{
+		Args:   []string{},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: result, Status: http.StatusOK}}, nil, manager)
+	command := AppList{}
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestAppListUnitIsAvailable(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	result := `[{"ip":"10.10.10.10","name":"app1","ready":true,"units":[{"Name":"app1/0","State":"unreachable"}]}]`
+	expected := `+-------------+-------------------------+-------------+--------+
+| Application | Units State Summary     | Address     | Ready? |
++-------------+-------------------------+-------------+--------+
+| app1        | 1 of 1 units in-service | 10.10.10.10 | Yes    |
 +-------------+-------------------------+-------------+--------+
 `
 	context := cmd.Context{
@@ -716,4 +737,13 @@ func (s *S) TestAppStartWithoutTheFlag(c *gocheck.C) {
 
 func (s *S) TestAppStartIsAFlaggedCommand(c *gocheck.C) {
 	var _ cmd.FlaggedCommand = &AppStart{}
+}
+
+func (s *S) TestUnitAvailable(c *gocheck.C) {
+	u := &unit{State: "unreachable"}
+	c.Assert(u.Available(), gocheck.Equals, true)
+	u = &unit{State: "started"}
+	c.Assert(u.Available(), gocheck.Equals, true)
+	u = &unit{State: "down"}
+	c.Assert(u.Available(), gocheck.Equals, false)
 }

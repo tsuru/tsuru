@@ -63,6 +63,10 @@ type unit struct {
 	State string
 }
 
+func (u *unit) Available() bool {
+	return u.State == "started" || u.State == "unreachable"
+}
+
 type app struct {
 	Ip         string
 	CName      string
@@ -234,17 +238,17 @@ func (c AppList) Show(result []byte, context *cmd.Context) error {
 	table := cmd.NewTable()
 	table.Headers = cmd.Row([]string{"Application", "Units State Summary", "Address", "Ready?"})
 	for _, app := range apps {
-		var startedUnits int
+		var available int
 		var total int
 		for _, unit := range app.Units {
 			if unit.Name != "" {
 				total++
-				if unit.State == "started" {
-					startedUnits += 1
+				if unit.Available() {
+					available += 1
 				}
 			}
 		}
-		summary := fmt.Sprintf("%d of %d units in-service", startedUnits, total)
+		summary := fmt.Sprintf("%d of %d units in-service", available, total)
 		table.AddRow(cmd.Row([]string{app.Name, summary, app.Addr(), app.IsReady()}))
 	}
 	table.Sort()
