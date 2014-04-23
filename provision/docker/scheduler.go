@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
+	"math"
 	"net"
 	"net/url"
 	"strings"
@@ -142,7 +143,7 @@ func chooseNode(nodes []node, cont container) (node, error) {
 			countMap[result.HostAddr] = result.Count
 		}
 		var minHost string
-		minCount := 2 ^ 30
+		minCount := math.MaxInt32
 		for _, host := range hosts {
 			count := countMap[host]
 			if count < minCount {
