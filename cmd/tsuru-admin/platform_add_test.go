@@ -41,7 +41,7 @@ func (s *S) TestPlatformAddRun(c *gocheck.C) {
 
     client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
     command := platformAdd{}
-    command.Flags().Parse(true, []string{"--dockerfile", "Dockerfile"})
+    command.Flags().Parse(true, []string{"--dockerfile", "testdata/Dockerfile"})
 
     err := command.Run(&context, client)
 
