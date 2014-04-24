@@ -19,8 +19,8 @@ const (
 	CmdDo
 )
 
-// Command is a command sent to the redis server.
-type Command struct {
+// RedisCommand is a command sent to the redis server.
+type RedisCommand struct {
 	Cmd  string
 	Args []interface{}
 	Type CmdType
@@ -35,7 +35,7 @@ type Command struct {
 //     }, 10)
 //     conn := fakePool.Get()
 type FakeRedisConn struct {
-	Cmds   []Command
+	Cmds   []RedisCommand
 	closed int32
 }
 
@@ -66,7 +66,7 @@ func (c *FakeRedisConn) Send(cmd string, args ...interface{}) error {
 
 func (c *FakeRedisConn) cmd(tp CmdType, cmd string, args []interface{}) error {
 	if cmd != "" {
-		c.Cmds = append(c.Cmds, Command{Cmd: cmd, Args: args, Type: tp})
+		c.Cmds = append(c.Cmds, RedisCommand{Cmd: cmd, Args: args, Type: tp})
 	}
 	return nil
 }
@@ -82,8 +82,8 @@ func (*FakeRedisConn) Receive() (interface{}, error) {
 }
 
 // GetCommands return the list of commands of the given type.
-func (c *FakeRedisConn) GetCommands(tp CmdType) []Command {
-	var cmds []Command
+func (c *FakeRedisConn) GetCommands(tp CmdType) []RedisCommand {
+	var cmds []RedisCommand
 	for _, cmd := range c.Cmds {
 		if cmd.Type == tp {
 			cmds = append(cmds, cmd)

@@ -34,7 +34,7 @@ func (s *S) TestDo(c *gocheck.C) {
 	result, err := conn.Do("GET", "something")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result, gocheck.IsNil)
-	expected := []Command{
+	expected := []RedisCommand{
 		{Cmd: "GET", Args: []interface{}{"something"}, Type: CmdDo},
 	}
 	c.Assert(conn.Cmds, gocheck.DeepEquals, expected)
@@ -52,7 +52,7 @@ func (s *S) TestSend(c *gocheck.C) {
 	conn := FakeRedisConn{}
 	err := conn.Send("GET", "something")
 	c.Assert(err, gocheck.IsNil)
-	expected := []Command{
+	expected := []RedisCommand{
 		{Cmd: "GET", Args: []interface{}{"something"}, Type: CmdSend},
 	}
 	c.Assert(conn.Cmds, gocheck.DeepEquals, expected)
@@ -78,12 +78,12 @@ func (s *S) TestReceive(c *gocheck.C) {
 }
 
 func (s *S) TestGetCommands(c *gocheck.C) {
-	doCommands := []Command{
+	doCommands := []RedisCommand{
 		{Cmd: "GET", Args: []interface{}{"foo"}, Type: CmdDo},
 		{Cmd: "SET", Args: []interface{}{"foo", "bar"}, Type: CmdDo},
 		{Cmd: "EXEC", Type: CmdDo},
 	}
-	sendCommands := []Command{
+	sendCommands := []RedisCommand{
 		{Cmd: "MULTI", Type: CmdSend},
 		{Cmd: "SET", Args: []interface{}{"foo", "bar"}, Type: CmdSend},
 	}
