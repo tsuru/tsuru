@@ -5,7 +5,7 @@
 package queue
 
 import (
-	"github.com/adeven/redismq"
+	"github.com/garyburd/redigo/redis"
 	"github.com/tsuru/config"
 	"launchpad.net/gocheck"
 	"sync/atomic"
@@ -13,18 +13,15 @@ import (
 )
 
 type RedismqSuite struct {
-	queue    *redismq.Queue
-	consumer *redismq.Consumer
+	pool *redis.Pool
 }
 
 var _ = gocheck.Suite(&RedismqSuite{})
 
 func (s *RedismqSuite) SetUpSuite(c *gocheck.C) {
-	s.queue = redismq.CreateQueue("localhost", "6379", "", 3, "redismq_tests")
-	err := s.queue.Delete()
-	c.Assert(err, gocheck.IsNil)
-	s.consumer, err = s.queue.AddConsumer("redismq_tests")
-	c.Assert(err, gocheck.IsNil)
+	s.pool = redis.NewPool(func() (redis.Conn, error) {
+		return redis.Dial("tcp", "127.0.0.1:6379")
+	}, 10)
 	config.Set("queue", "redis")
 }
 
@@ -37,7 +34,7 @@ func (s *RedismqSuite) TestPut(c *gocheck.C) {
 		Action: "regenerate-apprc",
 		Args:   []string{"myapp"},
 	}
-	q := redismqQ{name: "default", queue: s.queue, consumer: s.consumer}
+	q := redismqQ{name: "default", pool: s.pool, prefix: "test", maxSize: 10}
 	err := q.Put(&msg, 0)
 	c.Assert(err, gocheck.IsNil)
 	got, err := q.Get(1e6)
@@ -50,7 +47,7 @@ func (s *RedismqSuite) TestPutWithDelay(c *gocheck.C) {
 		Action: "regenerate-apprc",
 		Args:   []string{"myapp"},
 	}
-	q := redismqQ{name: "default", queue: s.queue, consumer: s.consumer}
+	q := redismqQ{name: "default", pool: s.pool, prefix: "tests", maxSize: 10}
 	err := q.Put(&msg, 1e9)
 	c.Assert(err, gocheck.IsNil)
 	_, err = q.Get(1e6)
@@ -66,7 +63,7 @@ func (s *RedismqSuite) TestGet(c *gocheck.C) {
 		Action: "regenerate-apprc",
 		Args:   []string{"myapp"},
 	}
-	q := redismqQ{name: "default", queue: s.queue, consumer: s.consumer}
+	q := redismqQ{name: "default", pool: s.pool, prefix: "tests", maxSize: 10}
 	err := q.Put(&msg, 0)
 	c.Assert(err, gocheck.IsNil)
 	got, err := q.Get(1e6)
@@ -75,13 +72,37 @@ func (s *RedismqSuite) TestGet(c *gocheck.C) {
 }
 
 func (s *RedismqSuite) TestGetTimeout(c *gocheck.C) {
-	q := redismqQ{name: "default", queue: s.queue, consumer: s.consumer}
+	q := redismqQ{name: "default", pool: s.pool, prefix: "tests", maxSize: 10}
 	got, err := q.Get(1e6)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(got, gocheck.IsNil)
 	e, ok := err.(*timeoutError)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.timeout, gocheck.Equals, time.Duration(1e6))
+}
+
+func (s *RedismqSuite) TestPutAndGetMaxSize(c *gocheck.C) {
+	msg1 := Message{Action: "regenerate-apprc", Args: []string{"myapp"}}
+	msg2 := Message{Action: "regenerate-apprc", Args: []string{"yourapp"}}
+	msg3 := Message{Action: "regenerate-apprc", Args: []string{"hisapp"}}
+	msg4 := Message{Action: "regenerate-apprc", Args: []string{"herapp"}}
+	q := redismqQ{name: "default", pool: s.pool, prefix: "tests", maxSize: 3}
+	err := q.Put(&msg1, 0)
+	c.Assert(err, gocheck.IsNil)
+	err = q.Put(&msg2, 0)
+	c.Assert(err, gocheck.IsNil)
+	err = q.Put(&msg3, 0)
+	c.Assert(err, gocheck.IsNil)
+	err = q.Put(&msg4, 0)
+	c.Assert(err, gocheck.IsNil)
+	msgs := make([]Message, 3)
+	for i := range msgs {
+		msg, err := q.Get(1e6)
+		c.Check(err, gocheck.IsNil)
+		msgs[i] = *msg
+	}
+	expected := []Message{msg2, msg3, msg4}
+	c.Assert(msgs, gocheck.DeepEquals, expected)
 }
 
 func (s *RedismqSuite) TestFactoryGet(c *gocheck.C) {
