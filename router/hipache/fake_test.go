@@ -6,10 +6,10 @@ package hipache
 
 import (
 	"github.com/garyburd/redigo/redis"
-	"github.com/tsuru/tsuru/testing"
+	rtesting "github.com/tsuru/tsuru/testing/redis"
 )
 
-var conn redis.Conn = &testing.FakeRedisConn{}
+var conn redis.Conn = &rtesting.FakeRedisConn{}
 
 func fakeConnect() (redis.Conn, error) {
 	return conn, nil
