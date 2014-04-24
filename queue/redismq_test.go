@@ -23,6 +23,9 @@ func (s *RedismqSuite) SetUpSuite(c *gocheck.C) {
 		return redis.Dial("tcp", "127.0.0.1:6379")
 	}, 10)
 	config.Set("queue", "redis")
+	q := redismqQ{name: "default", pool: s.pool, prefix: "test", maxSize: 10}
+	conn := s.pool.Get()
+	conn.Do("DEL", q.key())
 }
 
 func (s *RedismqSuite) TearDownSuite(c *gocheck.C) {
