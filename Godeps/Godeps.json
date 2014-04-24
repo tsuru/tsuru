@@ -106,11 +106,6 @@
 			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
 		},
 		{
-			"ImportPath": "launchpad.net/goamz/iam",
-			"Comment": "50",
-			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
-		},
-		{
 			"ImportPath": "launchpad.net/goamz/s3",
 			"Comment": "50",
 			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
