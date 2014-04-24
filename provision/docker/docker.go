@@ -31,9 +31,10 @@ import (
 )
 
 var (
-	dCluster *cluster.Cluster
-	cmutex   sync.Mutex
-	fsystem  fs.Fs
+	dCluster   *cluster.Cluster
+	cmutex     sync.Mutex
+	appDBMutex sync.Mutex
+	fsystem    fs.Fs
 )
 
 var (
@@ -49,14 +50,24 @@ func logProgress(encoder *json.Encoder, format string, params ...interface{}) {
 	encoder.Encode(progressLog{Message: fmt.Sprintf(format, params...)})
 }
 
-func moveOneContainer(c container, toHost string, errors chan error, wg *sync.WaitGroup, idx int, encoder *json.Encoder) {
+func moveOneContainerInDB(a *app.App, oldContainer container, newUnit provision.Unit) error {
+	appDBMutex.Lock()
+	defer appDBMutex.Unlock()
+	err := a.AddUnitsToDB([]provision.Unit{newUnit})
+	if err != nil {
+		return err
+	}
+	return a.RemoveUnitFromDB(oldContainer.ID)
+}
+
+func moveOneContainer(c container, toHost string, errors chan error, wg *sync.WaitGroup, encoder *json.Encoder) {
 	a, err := app.GetByName(c.AppName)
 	defer wg.Done()
 	if err != nil {
 		errors <- err
 		return
 	}
-	logProgress(encoder, "Moving unit %d for %q: %s -> %s...", idx, c.AppName, c.HostAddr, toHost)
+	logProgress(encoder, "Moving unit %s for %q: %s -> %s...", c.ID, c.AppName, c.HostAddr, toHost)
 	pipeline := action.NewPipeline(
 		&provisionAddUnitToHost,
 		&provisionRemoveOldUnit,
@@ -66,7 +77,14 @@ func moveOneContainer(c container, toHost string, errors chan error, wg *sync.Wa
 		errors <- err
 		return
 	}
-	logProgress(encoder, "Finished moving unit %d for %q.", idx, c.AppName)
+	logProgress(encoder, "Finished moving unit %s for %q.", c.ID, c.AppName)
+	addedUnit := pipeline.Result().(provision.Unit)
+	err = moveOneContainerInDB(a, c, addedUnit)
+	if err != nil {
+		errors <- err
+		return
+	}
+	logProgress(encoder, "Moved unit %s -> %s for %s in DB.", c.ID, addedUnit.Name, c.AppName)
 }
 
 func moveContainers(fromHost, toHost string, encoder *json.Encoder) error {
@@ -83,8 +101,8 @@ func moveContainers(fromHost, toHost string, encoder *json.Encoder) error {
 	moveErrors := make(chan error, numberContainers)
 	wg := sync.WaitGroup{}
 	wg.Add(numberContainers)
-	for idx, c := range containers {
-		go moveOneContainer(c, toHost, moveErrors, &wg, idx, encoder)
+	for _, c := range containers {
+		go moveOneContainer(c, toHost, moveErrors, &wg, encoder)
 	}
 	go func() {
 		wg.Wait()
@@ -94,42 +112,6 @@ func moveContainers(fromHost, toHost string, encoder *json.Encoder) error {
 	for err := range moveErrors {
 		log.Errorf("Error moving container - %s", err)
 		lastError = err
-	}
-	if lastError != nil {
-		return lastError
-	}
-	newContainers, err := listContainersByHost(toHost)
-	if err != nil {
-		return err
-	}
-	logProgress(encoder, "Adding new units to DB...")
-	for _, c := range newContainers {
-		a, err := app.GetByName(c.AppName)
-		if err != nil {
-			return err
-		}
-		newUnit := provision.Unit{
-			Name:    c.ID,
-			AppName: a.GetName(),
-			Type:    a.GetPlatform(),
-			Ip:      c.HostAddr,
-			Status:  provision.StatusBuilding,
-		}
-		err = a.AddUnitsToDB([]provision.Unit{newUnit})
-		if err != nil {
-			return err
-		}
-	}
-	logProgress(encoder, "Removing old units from DB...")
-	for _, c := range containers {
-		a, err := app.GetByName(c.AppName)
-		if err != nil {
-			return err
-		}
-		err = a.RemoveUnitFromDB(c.ID)
-		if err != nil {
-			return err
-		}
 	}
 	return lastError
 }

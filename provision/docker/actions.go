@@ -228,17 +228,15 @@ var provisionAddUnitToHost = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		return units, nil
+		return units[0], nil
 	},
 	Backward: func(ctx action.BWContext) {
 		a := ctx.Params[0].(provision.App)
-		units := ctx.FWResult.([]provision.Unit)
+		unit := ctx.FWResult.(provision.Unit)
 		var provisioner dockerProvisioner
-		for _, unit := range units {
-			err := provisioner.RemoveUnit(a, unit.Name)
-			if err != nil {
-				log.Errorf("Error removing added unit %s - %s", unit.Name, err)
-			}
+		err := provisioner.RemoveUnit(a, unit.Name)
+		if err != nil {
+			log.Errorf("Error removing added unit %s - %s", unit.Name, err)
 		}
 	},
 	MinParams: 2,
@@ -247,14 +245,15 @@ var provisionAddUnitToHost = action.Action{
 var provisionRemoveOldUnit = action.Action{
 	Name: "provision-remove-old-unit",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
+		unit := ctx.Previous.(provision.Unit)
 		a := ctx.Params[0].(provision.App)
 		cont := ctx.Params[2].(container)
 		var provisioner dockerProvisioner
 		err := provisioner.RemoveUnit(a, cont.ID)
 		if err != nil {
-			return nil, err
+			return unit, err
 		}
-		return nil, nil
+		return unit, nil
 	},
 	Backward: func(ctx action.BWContext) {
 	},

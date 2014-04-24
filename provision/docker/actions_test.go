@@ -352,9 +352,8 @@ func (s *S) TestProvisionAddUnitToHostForward(c *gocheck.C) {
 	context := action.FWContext{Params: []interface{}{app, "serverAddr1"}}
 	result, err := provisionAddUnitToHost.Forward(context)
 	c.Assert(err, gocheck.IsNil)
-	units := result.([]provision.Unit)
-	c.Assert(units, gocheck.HasLen, 1)
-	c.Assert(units[0].Ip, gocheck.Equals, "serverAddr1")
+	unit := result.(provision.Unit)
+	c.Assert(unit.Ip, gocheck.Equals, "serverAddr1")
 	count, err := coll.Find(bson.M{"appname": app.GetName()}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(count, gocheck.Equals, 2)
@@ -374,7 +373,7 @@ func (s *S) TestProvisionAddUnitToHostBackward(c *gocheck.C) {
 		Ip:      container.HostAddr,
 		Status:  provision.StatusBuilding,
 	}
-	context := action.BWContext{Params: []interface{}{app, "server"}, FWResult: []provision.Unit{unit}}
+	context := action.BWContext{Params: []interface{}{app, "server"}, FWResult: unit}
 	provisionAddUnitToHost.Backward(context)
 	_, err = getContainer(container.ID)
 	c.Assert(err, gocheck.NotNil)
@@ -396,9 +395,18 @@ func (s *S) TestProvisionRemoveOldUnitForward(c *gocheck.C) {
 	err = client.StartContainer(container.ID, nil)
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp(container.AppName, "python", 0)
-	context := action.FWContext{Params: []interface{}{app, "", *container}}
-	_, err = provisionRemoveOldUnit.Forward(context)
+	unit := provision.Unit{
+		Name:    container.ID,
+		AppName: app.GetName(),
+		Type:    app.GetPlatform(),
+		Ip:      container.HostAddr,
+		Status:  provision.StatusBuilding,
+	}
+	context := action.FWContext{Params: []interface{}{app, "", *container}, Previous: unit}
+	result, err := provisionRemoveOldUnit.Forward(context)
 	c.Assert(err, gocheck.IsNil)
+	retUnit := result.(provision.Unit)
+	c.Assert(retUnit, gocheck.DeepEquals, unit)
 	_, err = getContainer(container.ID)
 	c.Assert(err, gocheck.NotNil)
 }
