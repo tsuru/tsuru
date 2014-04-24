@@ -130,32 +130,30 @@ func chooseNode(nodes []node, cont container) (node, error) {
 		{"$match": bson.M{"hostaddr": bson.M{"$in": hosts}}},
 		{"$group": bson.M{"_id": "$hostaddr", "count": bson.M{"$sum": 1}}},
 	})
-	err := func() error {
-		hostMutex.Lock()
-		defer hostMutex.Unlock()
-		var results []nodeAggregate
-		err := pipe.All(&results)
-		if err != nil {
-			return err
+	hostMutex.Lock()
+	defer hostMutex.Unlock()
+	var results []nodeAggregate
+	err := pipe.All(&results)
+	if err != nil {
+		return chosenNode, err
+	}
+	countMap := make(map[string]int)
+	for _, result := range results {
+		countMap[result.HostAddr] = result.Count
+	}
+	var minHost string
+	minCount := math.MaxInt32
+	for _, host := range hosts {
+		count := countMap[host]
+		if count < minCount {
+			minCount = count
+			minHost = host
 		}
-		countMap := make(map[string]int)
-		for _, result := range results {
-			countMap[result.HostAddr] = result.Count
-		}
-		var minHost string
-		minCount := math.MaxInt32
-		for _, host := range hosts {
-			count := countMap[host]
-			if count < minCount {
-				minCount = count
-				minHost = host
-			}
-		}
-		chosenNode = hostsMap[minHost]
-		log.Debugf("[scheduler] Chosen node for container %s: %#v Count: %d", cont.Name, chosenNode, minCount)
-		cont.HostAddr = minHost
-		return coll.Update(bson.M{"name": cont.Name}, cont)
-	}()
+	}
+	chosenNode = hostsMap[minHost]
+	log.Debugf("[scheduler] Chosen node for container %s: %#v Count: %d", cont.Name, chosenNode, minCount)
+	cont.HostAddr = minHost
+	err = coll.Update(bson.M{"name": cont.Name}, cont)
 	return chosenNode, err
 }
 
