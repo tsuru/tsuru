@@ -103,6 +103,7 @@ func RunServer(dry bool) {
 	m.Get("/deploys", AdminRequiredHandler(deploysList))
 
 	m.Get("/platforms", authorizationRequiredHandler(platformList))
+    m.Put("/platforms/add", AdminRequiredHandler(platformAdd))
 
 	// These handlers don't use :app on purpose. Using :app means that only
 	// the token generate for the given app is valid, but these handlers
@@ -141,6 +142,7 @@ func RunServer(dry bool) {
 	m.Put("/swap", authorizationRequiredHandler(swap))
 
 	m.Get("/healthcheck/", http.HandlerFunc(healthcheck))
+
 
 	if !dry {
 		provisioner, err := getProvisioner()
