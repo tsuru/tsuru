@@ -5,15 +5,12 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"github.com/tsuru/tsuru/cmd"
-	"io"
 	"launchpad.net/gnuflag"
-	"mime/multipart"
 	"net/http"
-	"os"
-	"path/filepath"
+    "fmt"
+    "strings"
 )
 
 type platformAdd struct {
@@ -37,33 +34,13 @@ func (p *platformAdd) Run(context *cmd.Context, client *cmd.Client) error {
 		return errors.New("The platform's name required.")
 	}
 
-	dockerfile_path, err := filepath.Abs(p.dockerfile)
-	if err != nil {
+	if p.dockerfile == "" {
 		return errors.New("The Dockerfile doens't exists.")
 	}
 
-	file, err := os.Open(dockerfile_path)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
+    body := fmt.Sprintf("name=%s&dockerfile=%s", name, p.dockerfile)
 
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
-	part, err := writer.CreateFormFile("dockerfile", dockerfile_path)
-	if err != nil {
-		return err
-	}
-
-	_, err = io.Copy(part, file)
-	_ = writer.WriteField("name", name)
-
-	err = writer.Close()
-	if err != nil {
-		return err
-	}
-
-	request, err := http.NewRequest("PUT", "/platform/add", body)
+	request, err := http.NewRequest("PUT", "/platform/add", strings.NewReader(body))
 	if err != nil {
 		return err
 	}
@@ -77,10 +54,11 @@ func (p *platformAdd) Run(context *cmd.Context, client *cmd.Client) error {
 }
 
 func (p *platformAdd) Flags() *gnuflag.FlagSet {
+    message := "The dockerfile url to create a platform"
 	if p.fs == nil {
 		p.fs = gnuflag.NewFlagSet("platform-add", gnuflag.ExitOnError)
-		p.fs.StringVar(&p.dockerfile, "dockerfile", "", "The dockerfile to create a platform")
-		p.fs.StringVar(&p.dockerfile, "d", "", "The dockerfile to create a platform")
+		p.fs.StringVar(&p.dockerfile, "dockerfile", "", message)
+		p.fs.StringVar(&p.dockerfile, "d", "", message)
 	}
 
 	return p.fs

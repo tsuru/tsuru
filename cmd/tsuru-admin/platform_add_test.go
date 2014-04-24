@@ -41,7 +41,7 @@ func (s *S) TestPlatformAddRun(c *gocheck.C) {
 
     client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
     command := platformAdd{}
-    command.Flags().Parse(true, []string{"--dockerfile", "testdata/Dockerfile"})
+    command.Flags().Parse(true, []string{"--dockerfile", "http://localhost/Dockerfile"})
 
     err := command.Run(&context, client)
 
@@ -50,17 +50,18 @@ func (s *S) TestPlatformAddRun(c *gocheck.C) {
 }
 
 func (s *S) TestPlatformAddFlagSet(c *gocheck.C) {
+    message := "The dockerfile url to create a platform"
     command := platformAdd{}
     flagset := command.Flags()
     flagset.Parse(true, []string{"--dockerfile", "dockerfile"})
 
     dockerfile := flagset.Lookup("dockerfile")
     c.Check(dockerfile.Name, gocheck.Equals, "dockerfile")
-    c.Check(dockerfile.Usage, gocheck.Equals, "The dockerfile to create a platform")
+    c.Check(dockerfile.Usage, gocheck.Equals, message)
     c.Check(dockerfile.DefValue, gocheck.Equals, "")
 
     sdockerfile := flagset.Lookup("d")
     c.Check(sdockerfile.Name, gocheck.Equals, "d")
-    c.Check(sdockerfile.Usage, gocheck.Equals, "The dockerfile to create a platform")
+    c.Check(sdockerfile.Usage, gocheck.Equals, message)
     c.Check(sdockerfile.DefValue, gocheck.Equals, "")
 }
