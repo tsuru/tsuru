@@ -134,3 +134,23 @@ func (s *S) TestResult(c *gocheck.C) {
 	r := pipeline.Result()
 	c.Assert(r, gocheck.Equals, "ok")
 }
+
+func (s *S) TestDoesntOverwriteResult(c *gocheck.C) {
+	myAction := Action{
+		Forward: func(ctx FWContext) (Result, error) {
+			return ctx.Params[0], nil
+		},
+		Backward: func(ctx BWContext) {
+		},
+	}
+	pipeline1 := NewPipeline(&myAction)
+	err := pipeline1.Execute("result1")
+	c.Assert(err, gocheck.IsNil)
+	pipeline2 := NewPipeline(&myAction)
+	err = pipeline2.Execute("result2")
+	c.Assert(err, gocheck.IsNil)
+	r1 := pipeline1.Result()
+	c.Assert(r1, gocheck.Equals, "result1")
+	r2 := pipeline2.Result()
+	c.Assert(r2, gocheck.Equals, "result2")
+}
