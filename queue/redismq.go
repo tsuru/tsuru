@@ -8,19 +8,19 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/adeven/redismq"
+	"github.com/garyburd/redigo/redis"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/log"
 	"io"
 	"net"
-	"strings"
 	"time"
 )
 
 type redismqQ struct {
-	name     string
-	queue    *redismq.Queue
-	consumer *redismq.Consumer
+	name    string
+	prefix  string
+	pool    *redis.Pool
+	maxSize int
 }
 
 func (r *redismqQ) Put(m *Message, delay time.Duration) error {
@@ -32,49 +32,63 @@ func (r *redismqQ) Put(m *Message, delay time.Duration) error {
 	if delay > 0 {
 		go func() {
 			time.Sleep(delay)
-			r.queue.Put(buf.String())
+			r.put(buf.String())
 		}()
 		return nil
 	} else {
-		return r.queue.Put(buf.String())
+		return r.put(buf.String())
 	}
 }
 
+func (r *redismqQ) put(message string) error {
+	conn := r.pool.Get()
+	defer conn.Close()
+	conn.Send("MULTI")
+	conn.Send("LPUSH", r.key(), message)
+	conn.Send("LTRIM", r.key(), 0, r.maxSize-1)
+	_, err := conn.Do("EXEC")
+	return err
+}
+
+func (r *redismqQ) key() string {
+	return r.prefix + ":" + r.name
+}
+
 func (r *redismqQ) Get(timeout time.Duration) (*Message, error) {
-	packChan := make(chan *redismq.Package)
+	payloadChan := make(chan []byte)
 	errChan := make(chan error)
 	quit := make(chan int)
 	go func() {
-		var pack *redismq.Package
+		conn := r.pool.Get()
+		defer conn.Close()
+		var payload interface{}
 		var err error
-		for pack == nil {
+		for payload == nil {
 			select {
 			case <-quit:
 				return
 			default:
-				pack, err = r.consumer.NoWaitGet()
+				payload, err = conn.Do("RPOP", r.key())
 				if err != nil {
 					errChan <- err
 					return
 				}
 			}
 		}
-		packChan <- pack
+		payloadChan <- payload.([]byte)
 	}()
-	var pack *redismq.Package
+	var payload []byte
 	select {
-	case pack = <-packChan:
+	case payload = <-payloadChan:
 	case err := <-errChan:
 		return nil, err
 	case <-time.After(timeout):
 		close(quit)
 		return nil, &timeoutError{timeout: timeout}
 	}
-	defer pack.Ack()
-	reader := strings.NewReader(pack.Payload)
 	var msg Message
-	if err := json.NewDecoder(reader).Decode(&msg); err != nil && err != io.EOF {
-		return nil, fmt.Errorf("Invalid message: %q", pack.Payload)
+	if err := json.Unmarshal(payload, &msg); err != nil && err != io.EOF {
+		return nil, fmt.Errorf("Invalid message: %q", payload)
 	}
 	return &msg, nil
 }
@@ -103,12 +117,30 @@ func (redismqQFactory) get(name, consumerName string) (*redismqQ, error) {
 	if err != nil {
 		db = 3
 	}
-	queue := redismq.CreateQueue(host, port, password, int64(db), name)
-	consumer, err := queue.AddConsumer(consumerName)
-	if err != nil {
-		return nil, err
+	maxIdle, _ := config.GetInt("redis-queue:pool-max-idle-conn")
+	if maxIdle == 0 {
+		maxIdle = 20
 	}
-	return &redismqQ{name: name, queue: queue, consumer: consumer}, nil
+	idleTimeout, _ := config.GetDuration("redis-queue:pool-idle-timeout")
+	if idleTimeout == 0 {
+		idleTimeout = 300e9
+	}
+	pool := redis.NewPool(func() (redis.Conn, error) {
+		conn, err := redis.Dial("tcp", host+":"+port)
+		if err != nil {
+			return nil, err
+		}
+		if password != "" {
+			_, err = conn.Do("AUTH", password)
+			if err != nil {
+				return nil, err
+			}
+		}
+		_, err = conn.Do("SELECT", db)
+		return conn, err
+	}, maxIdle)
+	pool.IdleTimeout = idleTimeout
+	return &redismqQ{name: name, pool: pool}, nil
 }
 
 func (factory redismqQFactory) Handler(f func(*Message), names ...string) (Handler, error) {

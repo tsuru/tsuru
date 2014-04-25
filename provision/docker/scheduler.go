@@ -113,10 +113,35 @@ type nodeAggregate struct {
 
 var hostMutex sync.Mutex
 
+// aggregateNodesByHost aggregates and counts how many containers
+// exist for each host already on the database.
+func aggregateNodesByHost(hosts []string) (map[string]int, error) {
+	coll := collection()
+	defer coll.Close()
+	pipe := coll.Pipe([]bson.M{
+		{"$match": bson.M{"hostaddr": bson.M{"$in": hosts}}},
+		{"$group": bson.M{"_id": "$hostaddr", "count": bson.M{"$sum": 1}}},
+	})
+	var results []nodeAggregate
+	err := pipe.All(&results)
+	if err != nil {
+		return nil, err
+	}
+	countMap := make(map[string]int)
+	for _, result := range results {
+		countMap[result.HostAddr] = result.Count
+	}
+	return countMap, nil
+}
+
+// chooseNode finds which is the node with the minimum number
+// of containers and returns it
 func chooseNode(nodes []node, cont container) (node, error) {
 	var chosenNode node
 	hosts := make([]string, len(nodes))
 	hostsMap := make(map[string]node)
+	// Only hostname is saved in the docker containers collection
+	// so we need to extract and map then to the original node.
 	for i, node := range nodes {
 		url, _ := url.Parse(node.Address)
 		host, _, _ := net.SplitHostPort(url.Host)
@@ -124,38 +149,28 @@ func chooseNode(nodes []node, cont container) (node, error) {
 		hostsMap[host] = node
 	}
 	log.Debugf("[scheduler] Possible nodes for container %s: %#v", cont.Name, hosts)
+	hostMutex.Lock()
+	defer hostMutex.Unlock()
+	countMap, err := aggregateNodesByHost(hosts)
+	if err != nil {
+		return chosenNode, err
+	}
+	// Finally finding the host with the minimum amount of containers.
+	var minHost string
+	minCount := math.MaxInt32
+	for _, host := range hosts {
+		count := countMap[host]
+		if count < minCount {
+			minCount = count
+			minHost = host
+		}
+	}
+	chosenNode = hostsMap[minHost]
+	log.Debugf("[scheduler] Chosen node for container %s: %#v Count: %d", cont.Name, chosenNode, minCount)
+	cont.HostAddr = minHost
 	coll := collection()
 	defer coll.Close()
-	pipe := coll.Pipe([]bson.M{
-		{"$match": bson.M{"hostaddr": bson.M{"$in": hosts}}},
-		{"$group": bson.M{"_id": "$hostaddr", "count": bson.M{"$sum": 1}}},
-	})
-	err := func() error {
-		hostMutex.Lock()
-		defer hostMutex.Unlock()
-		var results []nodeAggregate
-		err := pipe.All(&results)
-		if err != nil {
-			return err
-		}
-		countMap := make(map[string]int)
-		for _, result := range results {
-			countMap[result.HostAddr] = result.Count
-		}
-		var minHost string
-		minCount := math.MaxInt32
-		for _, host := range hosts {
-			count := countMap[host]
-			if count < minCount {
-				minCount = count
-				minHost = host
-			}
-		}
-		chosenNode = hostsMap[minHost]
-		log.Debugf("[scheduler] Chosen node for container %s: %#v Count: %d", cont.Name, chosenNode, minCount)
-		cont.HostAddr = minHost
-		return coll.Update(bson.M{"name": cont.Name}, cont)
-	}()
+	err = coll.Update(bson.M{"name": cont.Name}, cont)
 	return chosenNode, err
 }
 

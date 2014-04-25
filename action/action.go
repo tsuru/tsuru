@@ -82,7 +82,15 @@ type Pipeline struct {
 
 // NewPipeline creates a new pipeline instance with the given list of actions.
 func NewPipeline(actions ...*Action) *Pipeline {
-	return &Pipeline{actions: actions}
+	// Actions are usually global functions, copying them
+	// guarantees each copy have an isolated Result.
+	newActions := make([]*Action, len(actions))
+	for i, action := range actions {
+		newAction := new(Action)
+		*newAction = *action
+		newActions[i] = newAction
+	}
+	return &Pipeline{actions: newActions}
 
 }
 

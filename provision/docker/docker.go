@@ -308,12 +308,6 @@ func listContainersBy(query bson.M) ([]container, error) {
 	var list []container
 	coll := collection()
 	defer coll.Close()
-	// if app != "" {
-	// 	qr = bson.M{"appname": app}
-	// }
-	// if address != "" {
-	// 	qr = bson.M{"hostaddr": address}
-	// }
 	if err := coll.Find(query).All(&list); err != nil {
 		return nil, err
 	}

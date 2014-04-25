@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/tsuru/tsuru",
-	"GoVersion": "devel +0134c7020c40 Wed Mar 26 15:23:31 2014 -0700",
+	"GoVersion": "devel +9eacb9c0d810 Thu Apr 24 12:24:22 2014 -0700",
 	"Packages": [
 		"./..."
 	],
@@ -14,14 +14,6 @@
 			"ImportPath": "code.google.com/p/go.crypto/blowfish",
 			"Comment": "null-184",
 			"Rev": "cd1eea1eb82851fe9cde1d062406ca60c935ce24"
-		},
-		{
-			"ImportPath": "github.com/adeven/redis",
-			"Rev": "6a7dfb6ac870f9bf9cece7fb7181dd31cf59f7a8"
-		},
-		{
-			"ImportPath": "github.com/adeven/redismq",
-			"Rev": "ec92d9cf876da73ed9659011d2a19c5ca325d2e7"
 		},
 		{
 			"ImportPath": "github.com/bmizerany/pat",
@@ -90,10 +82,6 @@
 			"Rev": "874ca26886fc17186993bb02d66655145e0e1c0b"
 		},
 		{
-			"ImportPath": "github.com/vmihailenco/bufio",
-			"Rev": "24e7e48f60fc2d9e99e43c07485d9fff42051e66"
-		},
-		{
 			"ImportPath": "gopkg.in/v1/yaml",
 			"Rev": "4914593b9558e85597f08346c798aea8f6fb899f"
 		},
@@ -114,11 +102,6 @@
 		},
 		{
 			"ImportPath": "launchpad.net/goamz/ec2",
-			"Comment": "50",
-			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
-		},
-		{
-			"ImportPath": "launchpad.net/goamz/iam",
 			"Comment": "50",
 			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
 		},
