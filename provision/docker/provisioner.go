@@ -390,3 +390,7 @@ func (p *dockerProvisioner) DeployPipeline() *action.Pipeline {
 	pipeline := action.NewPipeline(actions...)
 	return pipeline
 }
+
+func (p *dockerProvisioner) PlatformAdd(args string) error {
+    return nil
+}

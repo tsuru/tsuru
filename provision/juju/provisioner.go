@@ -558,3 +558,7 @@ func unitNotFound(unitName string, output []byte) bool {
 func (p *JujuProvisioner) DeployPipeline() *action.Pipeline {
 	return nil
 }
+
+func (p *JujuProvisioner) PlatformAdd(args string) error {
+    return nil
+}
