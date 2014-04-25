@@ -7,7 +7,6 @@ package docker
 import (
 	"errors"
 	"github.com/fsouza/go-dockerclient"
-	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
@@ -41,10 +40,10 @@ type node struct {
 
 type segregatedScheduler struct{}
 
-func (s segregatedScheduler) Schedule(opts docker.CreateContainerOptions) (string, *docker.Container, error) {
+func (s segregatedScheduler) Schedule(opts docker.CreateContainerOptions, schedulerOpts cluster.SchedulerOptions) (cluster.Node, error) {
 	conn, err := db.Conn()
 	if err != nil {
-		return "", nil, err
+		return cluster.Node{}, err
 	}
 	defer conn.Close()
 	var cont container
@@ -52,7 +51,7 @@ func (s segregatedScheduler) Schedule(opts docker.CreateContainerOptions) (strin
 	defer coll.Close()
 	err = coll.Find(bson.M{"name": opts.Name}).One(&cont)
 	if err != nil {
-		return "", nil, err
+		return cluster.Node{}, err
 	}
 	app, err := app.GetByName(cont.AppName)
 	if err != nil {
@@ -72,38 +71,26 @@ func (s segregatedScheduler) Schedule(opts docker.CreateContainerOptions) (strin
 	return s.handle(opts, nodes, cont)
 }
 
-func (s segregatedScheduler) fallback(opts docker.CreateContainerOptions, cont container) (string, *docker.Container, error) {
+func (s segregatedScheduler) fallback(opts docker.CreateContainerOptions, cont container) (cluster.Node, error) {
 	conn, err := db.Conn()
 	if err != nil {
-		return "", nil, err
+		return cluster.Node{}, err
 	}
 	defer conn.Close()
 	var nodes []node
 	err = conn.Collection(schedulerCollection).Find(bson.M{"$or": []bson.M{{"teams": bson.M{"$exists": false}}, {"teams": bson.M{"$size": 0}}}}).All(&nodes)
 	if err != nil || len(nodes) < 1 {
-		return "", nil, errNoFallback
+		return cluster.Node{}, errNoFallback
 	}
 	return s.handle(opts, nodes, cont)
 }
 
-func (segregatedScheduler) handle(opts docker.CreateContainerOptions, nodes []node, cont container) (string, *docker.Container, error) {
+func (segregatedScheduler) handle(opts docker.CreateContainerOptions, nodes []node, cont container) (cluster.Node, error) {
 	node, err := chooseNode(nodes, cont)
 	if err != nil {
-		return node.ID, nil, err
+		return cluster.Node{}, err
 	}
-	client, err := docker.NewClient(node.Address)
-	if err != nil {
-		return node.ID, nil, err
-	}
-	if _, err := config.GetString("docker:registry"); err == nil {
-		pullOpts := docker.PullImageOptions{Repository: opts.Config.Image}
-		err := client.PullImage(pullOpts, docker.AuthConfiguration{})
-		if err != nil {
-			return node.ID, nil, err
-		}
-	}
-	container, err := client.CreateContainer(opts)
-	return node.ID, container, err
+	return cluster.Node{ID: node.ID, Address: node.Address}, nil
 }
 
 type nodeAggregate struct {
@@ -190,6 +177,10 @@ func (segregatedScheduler) Nodes() ([]cluster.Node, error) {
 		result[i] = cluster.Node{ID: node.ID, Address: node.Address}
 	}
 	return result, nil
+}
+
+func (s segregatedScheduler) NodesForOptions(schedulerOpts cluster.SchedulerOptions) ([]cluster.Node, error) {
+	return s.Nodes()
 }
 
 func (segregatedScheduler) GetNode(id string) (node, error) {
