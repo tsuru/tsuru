@@ -750,7 +750,7 @@ func (p *FakeProvisioner) Stop(app provision.App) error {
 }
 
 func (p *FakeProvisioner) PlatformAdd(args string) error {
-    return nil
+	return nil
 }
 
 type provisionedApp struct {

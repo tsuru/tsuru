@@ -27,23 +27,23 @@ func Platforms() ([]Platform, error) {
 
 // PlatformAdd add a new platform to tsuru
 func PlatformAdd(name string, file string) error {
-    p := Platform{Name: name}
-    conn, err := db.Conn()
-    if err != nil {
-        return err
-    }
+	p := Platform{Name: name}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
 
-    err = conn.Platforms().Insert(p)
-    if err != nil {
-        if mgo.IsDup(err) {
-            return DuplicatePlatformError{}
-        }
-        return err
-    }
+	err = conn.Platforms().Insert(p)
+	if err != nil {
+		if mgo.IsDup(err) {
+			return DuplicatePlatformError{}
+		}
+		return err
+	}
 
-    err = Provisioner.PlatformAdd(file)
+	err = Provisioner.PlatformAdd(file)
 
-    return nil
+	return nil
 }
 
 func getPlatform(name string) (*Platform, error) {
@@ -68,5 +68,5 @@ func (InvalidPlatformError) Error() string {
 type DuplicatePlatformError struct{}
 
 func (DuplicatePlatformError) Error() string {
-    return "Duplicate platform"
+	return "Duplicate platform"
 }

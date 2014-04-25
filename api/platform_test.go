@@ -5,26 +5,25 @@
 package api
 
 import (
-    "launchpad.net/gocheck"
+	"fmt"
+	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
-    "fmt"
-    "strings"
+	"strings"
 )
 
-
-type PlatformSuite struct {}
+type PlatformSuite struct{}
 
 var _ = gocheck.Suite(&PlatformSuite{})
 
 func (p *PlatformSuite) TestPlatformAdd(c *gocheck.C) {
-    dockerfile_url := "http://localhost/Dockerfile"
+	dockerfile_url := "http://localhost/Dockerfile"
 
-    body := fmt.Sprintf("name=%s&dockerfile=%s", "teste", dockerfile_url)
+	body := fmt.Sprintf("name=%s&dockerfile=%s", "teste", dockerfile_url)
 	request, _ := http.NewRequest("PUT", "/platform/add", strings.NewReader(body))
-    recorder := httptest.NewRecorder()
+	recorder := httptest.NewRecorder()
 
-    result := platformAdd(recorder, request, nil)
+	result := platformAdd(recorder, request, nil)
 
-    c.Assert(result, gocheck.IsNil)
+	c.Assert(result, gocheck.IsNil)
 }

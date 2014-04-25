@@ -560,5 +560,5 @@ func (p *JujuProvisioner) DeployPipeline() *action.Pipeline {
 }
 
 func (p *JujuProvisioner) PlatformAdd(args string) error {
-    return nil
+	return nil
 }

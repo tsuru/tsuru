@@ -392,5 +392,5 @@ func (p *dockerProvisioner) DeployPipeline() *action.Pipeline {
 }
 
 func (p *dockerProvisioner) PlatformAdd(args string) error {
-    return nil
+	return nil
 }

@@ -6,11 +6,11 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"github.com/tsuru/tsuru/cmd"
 	"launchpad.net/gnuflag"
 	"net/http"
-    "fmt"
-    "strings"
+	"strings"
 )
 
 type platformAdd struct {
@@ -38,7 +38,7 @@ func (p *platformAdd) Run(context *cmd.Context, client *cmd.Client) error {
 		return errors.New("The Dockerfile doens't exists.")
 	}
 
-    body := fmt.Sprintf("name=%s&dockerfile=%s", name, p.dockerfile)
+	body := fmt.Sprintf("name=%s&dockerfile=%s", name, p.dockerfile)
 	request, err := http.NewRequest("PUT", "/platform/add", strings.NewReader(body))
 	if err != nil {
 		return err
@@ -54,7 +54,7 @@ func (p *platformAdd) Run(context *cmd.Context, client *cmd.Client) error {
 }
 
 func (p *platformAdd) Flags() *gnuflag.FlagSet {
-    message := "The dockerfile url to create a platform"
+	message := "The dockerfile url to create a platform"
 	if p.fs == nil {
 		p.fs = gnuflag.NewFlagSet("platform-add", gnuflag.ExitOnError)
 		p.fs.StringVar(&p.dockerfile, "dockerfile", "", message)
