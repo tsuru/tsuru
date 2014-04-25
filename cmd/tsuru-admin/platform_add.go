@@ -39,7 +39,6 @@ func (p *platformAdd) Run(context *cmd.Context, client *cmd.Client) error {
 	}
 
     body := fmt.Sprintf("name=%s&dockerfile=%s", name, p.dockerfile)
-
 	request, err := http.NewRequest("PUT", "/platform/add", strings.NewReader(body))
 	if err != nil {
 		return err
@@ -50,6 +49,7 @@ func (p *platformAdd) Run(context *cmd.Context, client *cmd.Client) error {
 		return err
 	}
 
+	fmt.Fprintf(context.Stdout, "Platform successfully added!\n")
 	return nil
 }
 
