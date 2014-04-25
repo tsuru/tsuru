@@ -749,6 +749,10 @@ func (p *FakeProvisioner) Stop(app provision.App) error {
 	return nil
 }
 
+func (p *FakeProvisioner) PlatformAdd(args string) error {
+    return nil
+}
+
 type provisionedApp struct {
 	units       []provision.Unit
 	app         provision.App
