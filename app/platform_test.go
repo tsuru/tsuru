@@ -8,15 +8,21 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"launchpad.net/gocheck"
+    "labix.org/v2/mgo/bson"
+	"github.com/tsuru/tsuru/testing"
 )
 
-type PlatformSuite struct{}
+type PlatformSuite struct{
+    provisioner *testing.FakeProvisioner
+}
 
 var _ = gocheck.Suite(&PlatformSuite{})
 
 func (s *PlatformSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "platform_tests")
+    s.provisioner = testing.NewFakeProvisioner()
+	Provisioner = s.provisioner
 }
 
 func (s *PlatformSuite) TearDownSuite(c *gocheck.C) {
@@ -66,4 +72,22 @@ func (s *PlatformSuite) TestGetPlatform(c *gocheck.C) {
 	c.Assert(got, gocheck.IsNil)
 	_, ok := err.(InvalidPlatformError)
 	c.Assert(ok, gocheck.Equals, true)
+}
+
+func (s *PlatformSuite) TestPlatformAdd(c *gocheck.C) {
+    conn, err := db.Conn()
+    c.Assert(err, gocheck.IsNil)
+    defer conn.Close()
+
+    name := "test_platform_add"
+    file := "http://localhost/Dockerfile"
+    err = PlatformAdd(name, file)
+	defer conn.Platforms().Remove(bson.M{"_id": name})
+
+    c.Assert(err, gocheck.IsNil)
+
+    err = PlatformAdd(name, file)
+
+    _, ok := err.(DuplicatePlatformError)
+    c.Assert(ok, gocheck.Equals, true)
 }

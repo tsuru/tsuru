@@ -6,6 +6,7 @@ package app
 
 import (
 	"github.com/tsuru/tsuru/db"
+	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 )
 
@@ -22,6 +23,27 @@ func Platforms() ([]Platform, error) {
 	}
 	err = conn.Platforms().Find(nil).All(&platforms)
 	return platforms, err
+}
+
+// PlatformAdd add a new platform to tsuru
+func PlatformAdd(name string, file string) error {
+    p := Platform{Name: name}
+    conn, err := db.Conn()
+    if err != nil {
+        return err
+    }
+
+    err = conn.Platforms().Insert(p)
+    if err != nil {
+        if mgo.IsDup(err) {
+            return DuplicatePlatformError{}
+        }
+        return err
+    }
+
+    err = Provisioner.PlatformAdd(file)
+
+    return nil
 }
 
 func getPlatform(name string) (*Platform, error) {
@@ -41,4 +63,10 @@ type InvalidPlatformError struct{}
 
 func (InvalidPlatformError) Error() string {
 	return "Invalid platform"
+}
+
+type DuplicatePlatformError struct{}
+
+func (DuplicatePlatformError) Error() string {
+    return "Duplicate platform"
 }
