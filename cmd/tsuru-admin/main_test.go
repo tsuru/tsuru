@@ -54,6 +54,13 @@ func (s *S) TestChangeQuotaIsRegistered(c *gocheck.C) {
 	c.Assert(token, gocheck.FitsTypeOf, &changeQuota{})
 }
 
+func (s *S) TestPlatformAddIsRegistered(c *gocheck.C) {
+	manager := buildManager("tsuru-admin")
+	token, ok := manager.Commands["platform-add"]
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(token, gocheck.FitsTypeOf, &platformAdd{})
+}
+
 func (s *S) TestCommandsFromBaseManagerAreRegistered(c *gocheck.C) {
 	baseManager := cmd.BuildBaseManager("tsuru", version, header, nil)
 	manager := buildManager("tsuru")

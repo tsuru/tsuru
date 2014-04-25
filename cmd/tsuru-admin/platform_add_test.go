@@ -15,7 +15,7 @@ import (
 func (s *S) TestPlatformAddInfo(c *gocheck.C) {
 	expected := &cmd.Info{
 		Name:    "platform-add",
-		Usage:   "platform-add [platform name] [--dockerfile/-d Dockerfile]",
+		Usage:   "platform-add <platform name> [--dockerfile/-d Dockerfile]",
 		Desc:    "Add new platform to tsuru.",
 		MinArgs: 2,
 	}

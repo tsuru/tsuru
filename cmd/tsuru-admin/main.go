@@ -27,6 +27,7 @@ func buildManager(name string) *cmd.Manager {
 	m.Register(&tokenGen{})
 	m.Register(&logRemove{})
 	m.Register(&changeQuota{})
+	m.Register(&platformAdd{})
 	registerProvisionersCommands(m)
 	return m
 }
