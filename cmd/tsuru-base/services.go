@@ -125,10 +125,9 @@ func (sb *ServiceBind) Run(ctx *cmd.Context, client *cmd.Client) error {
 	defer resp.Body.Close()
 	var variables []string
 	dec := json.NewDecoder(resp.Body)
-	msg := fmt.Sprintf("Instance %q is now bound to the app %q.", instanceName, appName)
-	if err = dec.Decode(&variables); err == nil {
+	msg := fmt.Sprintf("Instance %q is now bound to the app %q.\n", instanceName, appName)
+	if err = dec.Decode(&variables); err == nil && len(variables) > 0 {
 		msg += fmt.Sprintf(`
-
 The following environment variables are now available for use in your app:
 
 - %s

@@ -169,6 +169,28 @@ For more details, please check the documentation for the service, using service-
 	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
+func (s *S) TestServiceBindWithoutEnvironmentVariables(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	ctx := cmd.Context{
+		Args:   []string{"my-mysql"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: `null`, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			return req.Method == "PUT" && req.URL.Path == "/services/instances/my-mysql/g1"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	command := ServiceBind{}
+	command.Flags().Parse(true, []string{"-a", "g1"})
+	err := command.Run(&ctx, client)
+	c.Assert(err, gocheck.IsNil)
+	expected := `Instance "my-mysql" is now bound to the app "g1".` + "\n"
+	c.Assert(stdout.String(), gocheck.Equals, expected)
+}
+
 func (s *S) TestServiceBindWithRequestFailure(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	ctx := cmd.Context{
