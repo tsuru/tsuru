@@ -1,0 +1,15 @@
+=============================================
+tsuru 0.9.0 release notes - UNDER DEVELOPMENT
+=============================================
+
+Welcome to tsuru 0.9.0!
+
+These release notes cover the new features you'll want to be aware of when
+upgrading from tsuru 0.8.x or older versions.
+
+.. _`new features`: `What's new in tsuru 0.9.0`_
+
+What's new in tsuru 0.9.0
+=========================
+
+* fixed app-list output.
