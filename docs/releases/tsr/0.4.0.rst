@@ -1,0 +1,33 @@
+===========================================
+tsr 0.4.0 release notes - UNDER DEVELOPMENT
+===========================================
+
+Welcome to tsr 0.4.0!
+
+These release notes cover the `new features`_ and `backwards incompatible
+changes`_ you'll want to be aware of when upgrading from tsr 0.3.x or older
+versions.
+
+.. _`new features`: `What's new in tsr 0.4.0`_
+
+What's new in tsr 0.4.0
+=======================
+
+* redis queue backend was refactored.
+* fixed output when service doesn't export environment variables
+
+Docker
+------
+
+* refactored unit creation to be more atomic
+* support for unit-agent
+* added an administrative command to move containers between nodes
+* memory swap limit is configurable
+
+Backwards incompatible changes
+==============================
+
+The s3 integration on app creation was removed. 
+The config properties `bucket-support` and `aws:iam` was removed too.
+
+You should use `tsuru` cli 0.9.0 version.
