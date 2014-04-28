@@ -268,7 +268,7 @@ func (c *container) create(app provision.App, imageId string, cmds []string, des
 		}
 		nodeList = []string{nodeName}
 	}
-	hostID, cont, err := dockerCluster().CreateContainer(opts, nodeList...)
+	hostID, cont, err := dockerCluster().CreateContainerSchedulerOpts(opts, app.GetName(), nodeList...)
 	if err != nil {
 		log.Errorf("error on creating container in docker %s - %s", c.AppName, err)
 		return err

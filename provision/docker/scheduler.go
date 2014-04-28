@@ -41,52 +41,13 @@ type node struct {
 type segregatedScheduler struct{}
 
 func (s segregatedScheduler) Schedule(opts docker.CreateContainerOptions, schedulerOpts cluster.SchedulerOptions) (cluster.Node, error) {
-	conn, err := db.Conn()
+	appName, _ := schedulerOpts.(string)
+	a, _ := app.GetByName(appName)
+	nodes, err := s.nodesForApp(a)
 	if err != nil {
 		return cluster.Node{}, err
 	}
-	defer conn.Close()
-	var cont container
-	coll := collection()
-	defer coll.Close()
-	err = coll.Find(bson.M{"name": opts.Name}).One(&cont)
-	if err != nil {
-		return cluster.Node{}, err
-	}
-	app, err := app.GetByName(cont.AppName)
-	if err != nil {
-		return s.fallback(opts, cont)
-	}
-	var nodes []node
-	var query bson.M
-	if app.TeamOwner != "" {
-		query = bson.M{"teams": app.TeamOwner}
-	} else {
-		query = bson.M{"teams": bson.M{"$in": app.Teams}}
-	}
-	err = conn.Collection(schedulerCollection).Find(query).All(&nodes)
-	if err != nil || len(nodes) < 1 {
-		return s.fallback(opts, cont)
-	}
-	return s.handle(opts, nodes, cont)
-}
-
-func (s segregatedScheduler) fallback(opts docker.CreateContainerOptions, cont container) (cluster.Node, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return cluster.Node{}, err
-	}
-	defer conn.Close()
-	var nodes []node
-	err = conn.Collection(schedulerCollection).Find(bson.M{"$or": []bson.M{{"teams": bson.M{"$exists": false}}, {"teams": bson.M{"$size": 0}}}}).All(&nodes)
-	if err != nil || len(nodes) < 1 {
-		return cluster.Node{}, errNoFallback
-	}
-	return s.handle(opts, nodes, cont)
-}
-
-func (segregatedScheduler) handle(opts docker.CreateContainerOptions, nodes []node, cont container) (cluster.Node, error) {
-	node, err := chooseNode(nodes, cont)
+	node, err := s.chooseNode(nodes, opts.Name)
 	if err != nil {
 		return cluster.Node{}, err
 	}
@@ -123,7 +84,7 @@ func aggregateNodesByHost(hosts []string) (map[string]int, error) {
 
 // chooseNode finds which is the node with the minimum number
 // of containers and returns it
-func chooseNode(nodes []node, cont container) (node, error) {
+func (segregatedScheduler) chooseNode(nodes []node, contName string) (node, error) {
 	var chosenNode node
 	hosts := make([]string, len(nodes))
 	hostsMap := make(map[string]node)
@@ -135,7 +96,7 @@ func chooseNode(nodes []node, cont container) (node, error) {
 		hosts[i] = host
 		hostsMap[host] = node
 	}
-	log.Debugf("[scheduler] Possible nodes for container %s: %#v", cont.Name, hosts)
+	log.Debugf("[scheduler] Possible nodes for container %s: %#v", contName, hosts)
 	hostMutex.Lock()
 	defer hostMutex.Unlock()
 	countMap, err := aggregateNodesByHost(hosts)
@@ -153,12 +114,38 @@ func chooseNode(nodes []node, cont container) (node, error) {
 		}
 	}
 	chosenNode = hostsMap[minHost]
-	log.Debugf("[scheduler] Chosen node for container %s: %#v Count: %d", cont.Name, chosenNode, minCount)
-	cont.HostAddr = minHost
+	log.Debugf("[scheduler] Chosen node for container %s: %#v Count: %d", contName, chosenNode, minCount)
 	coll := collection()
 	defer coll.Close()
-	err = coll.Update(bson.M{"name": cont.Name}, cont)
+	err = coll.Update(bson.M{"name": contName}, bson.M{"$set": bson.M{"hostaddr": minHost}})
 	return chosenNode, err
+}
+
+func (segregatedScheduler) nodesForApp(app *app.App) ([]node, error) {
+	var nodes []node
+	var query bson.M
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	if app != nil {
+		if app.TeamOwner != "" {
+			query = bson.M{"teams": app.TeamOwner}
+		} else {
+			query = bson.M{"teams": bson.M{"$in": app.Teams}}
+		}
+		err = conn.Collection(schedulerCollection).Find(query).All(&nodes)
+		if err == nil && len(nodes) > 0 {
+			return nodes, nil
+		}
+	}
+	query = bson.M{"$or": []bson.M{{"teams": bson.M{"$exists": false}}, {"teams": bson.M{"$size": 0}}}}
+	err = conn.Collection(schedulerCollection).Find(query).All(&nodes)
+	if err != nil || len(nodes) == 0 {
+		return nil, errNoFallback
+	}
+	return nodes, nil
 }
 
 func (segregatedScheduler) Nodes() ([]cluster.Node, error) {
@@ -180,7 +167,17 @@ func (segregatedScheduler) Nodes() ([]cluster.Node, error) {
 }
 
 func (s segregatedScheduler) NodesForOptions(schedulerOpts cluster.SchedulerOptions) ([]cluster.Node, error) {
-	return s.Nodes()
+	appName, _ := schedulerOpts.(string)
+	a, _ := app.GetByName(appName)
+	nodes, err := s.nodesForApp(a)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]cluster.Node, len(nodes))
+	for i, node := range nodes {
+		result[i] = cluster.Node{ID: node.ID, Address: node.Address}
+	}
+	return result, nil
 }
 
 func (segregatedScheduler) GetNode(id string) (node, error) {
