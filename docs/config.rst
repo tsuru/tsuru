@@ -207,20 +207,11 @@ optional, and defaults to "unlimited".
 Amazon Web Services (AWS) configuration
 ---------------------------------------
 
-tsuru is able to use Amazon Web Services (AWS) Simple Storage Service (S3) to
-provide static storage for apps. Whenever ``bucket-support`` is true, tsuru
-will create a S3 bucket and AWS Identity and Access Management (IAM)
-credentials to access this bucket during the app creation process. In order to
+tsuru is able to use Amazon Web Services (AWS). In order to
 be able to communicate with AWS API's, tsuru needs some settings, listed below.
 
-For more details on AWS authentication, AWS AIM and AWS S3, check AWS docs:
+For more details on AWS authentication, check AWS docs:
 https://aws.amazon.com/documentation/.
-
-bucket-support
-++++++++++++++
-
-``bucket-support`` is a boolean flag, that turns on the bucket per app feature.
-This field is optional, and defaults to false.
 
 aws:access-key-id
 +++++++++++++++++
@@ -241,45 +232,6 @@ aws:ec2:endpoint
 
 ``aws:ec2:endpoint`` is the EC2 endpoint that tsuru will call to communicate
 with ec2. It's only used for `juju` healers.
-
-aws:iam:endpoint
-++++++++++++++++
-
-``aws:iam:endpoint`` is the IAM endpoint that tsuru will call to create
-credentials for its applications. This setting is optional, and defaults to
-``https://iam.amazonaws.com/``. You should change this setting only when using
-another service that also implements IAM's API.
-
-aws:s3:region-name
-++++++++++++++++++
-
-``aws:s3:region-name`` is the name of the region that tsuru will use to create
-S3 buckets. Given that ``bucket-support`` is true, this setting is required and
-has no default value.
-
-aws:s3:endpoint
-+++++++++++++++
-
-``aws:s3:endpoint`` is the S3 endpoint that tsuru will call to create buckets
-for its applications. Given that ``bucket-support`` is true, this setting is
-required and has no default value.
-
-aws:s3:location-constraint
-++++++++++++++++++++++++++
-
-``aws:s3:location-constraint`` indicates whether buckets should be stored in
-the selected region. Given that ``bucket-support`` is true, this setting is
-required and has no default value.
-
-For more details, check the documentation for buckets and regions:
-http://docs.aws.amazon.com/AmazonS3/latest/dev/LocationSelection.html.
-
-aws:s3:lowercase-bucket
-+++++++++++++++++++++++
-
-``aws:s3:lowercase-bucket`` will be true if the region requires bucket names to
-be lowercase. Given that ``bucket-support`` is true, this setting is required
-and has no default value.
 
 queue configuration
 -------------------
