@@ -79,17 +79,6 @@ func (s *S) TestCreateContainerName(c *gocheck.C) {
 }
 
 func (s *S) TestCreateContainerForward(c *gocheck.C) {
-	cmutex.Lock()
-	oldClusterNodes := clusterNodes
-	clusterNodes = map[string]string{
-		"server": "http://localhost:8081",
-	}
-	cmutex.Unlock()
-	defer func() {
-		cmutex.Lock()
-		clusterNodes = oldClusterNodes
-		cmutex.Unlock()
-	}()
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	client, err := dockerClient.NewClient(s.server.URL())
@@ -106,7 +95,7 @@ func (s *S) TestCreateContainerForward(c *gocheck.C) {
 	defer cont.remove()
 	c.Assert(cont, gocheck.FitsTypeOf, container{})
 	c.Assert(cont.ID, gocheck.Not(gocheck.Equals), "")
-	c.Assert(cont.HostAddr, gocheck.Equals, "localhost")
+	c.Assert(cont.HostAddr, gocheck.Equals, "127.0.0.1")
 	dcli, err := dockerClient.NewClient(s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	cc, err := dcli.InspectContainer(cont.ID)

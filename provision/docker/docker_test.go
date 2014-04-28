@@ -709,16 +709,18 @@ func (s *S) TestContainerLogs(c *gocheck.C) {
 
 func (s *S) TestGetHostAddr(c *gocheck.C) {
 	cmutex.Lock()
-	old := clusterNodes
-	clusterNodes = map[string]string{
-		"server0":  "http://localhost:8081",
-		"server20": "http://localhost:3234",
-		"server21": "http://10.10.10.10:4243",
-	}
+	old := dCluster
+	var err error
+	dCluster, err = cluster.New(nil, &mapStorage{},
+		cluster.Node{ID: "server0", Address: "http://localhost:8081"},
+		cluster.Node{ID: "server20", Address: "http://localhost:3234"},
+		cluster.Node{ID: "server21", Address: "http://10.10.10.10:4243"},
+	)
+	c.Assert(err, gocheck.IsNil)
 	cmutex.Unlock()
 	defer func() {
 		cmutex.Lock()
-		clusterNodes = old
+		dCluster = old
 		cmutex.Unlock()
 	}()
 	var tests = []struct {
@@ -736,8 +738,6 @@ func (s *S) TestGetHostAddr(c *gocheck.C) {
 }
 
 func (s *S) TestGetHostAddrWithSegregatedScheduler(c *gocheck.C) {
-	config.Set("docker:segregate", true)
-	defer config.Unset("docker:segregate")
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
@@ -747,20 +747,15 @@ func (s *S) TestGetHostAddrWithSegregatedScheduler(c *gocheck.C) {
 		node{ID: "server20", Address: "http://remotehost:8081", Teams: []string{"tsuru"}},
 		node{ID: "server21", Address: "http://10.10.10.1:8082", Teams: []string{"tsuru"}},
 	)
-	c.Assert(err, gocheck.IsNil)
 	defer coll.RemoveAll(bson.M{"_id": bson.M{"$in": []string{"server0", "server1", "server2"}}})
 	cmutex.Lock()
-	old := clusterNodes
-	clusterNodes = map[string]string{
-		"server0":  "http://localhost:8081",
-		"server20": "http://localhost:3234",
-		"server21": "http://10.10.10.10:4243",
-		"server33": "http://10.10.10.11:4243",
-	}
+	old := dCluster
+	dCluster, err = cluster.New(segScheduler, &mapStorage{})
+	c.Assert(err, gocheck.IsNil)
 	cmutex.Unlock()
 	defer func() {
 		cmutex.Lock()
-		clusterNodes = old
+		dCluster = old
 		cmutex.Unlock()
 	}()
 	var tests = []struct {

@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"crypto"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
@@ -113,33 +112,30 @@ func urlToHost(urlStr string) string {
 }
 
 func getHostAddr(hostID string) string {
-	var fullAddress string
-	if seg, _ := config.GetBool("docker:segregate"); seg {
-		node, _ := segScheduler.GetNode(hostID)
-		fullAddress = node.Address
-	} else {
-		fullAddress = clusterNodes[hostID]
+	nodes, err := dockerCluster().Nodes()
+	if err != nil {
+		log.Errorf("Error trying to list cluster nodes: %s", err.Error())
+		return ""
 	}
-	return urlToHost(fullAddress)
+	for _, node := range nodes {
+		if node.ID == hostID {
+			return urlToHost(node.Address)
+		}
+	}
+	return ""
 }
 
 func hostToNodeName(host string) (string, error) {
-	var nodes []cluster.Node
-	var err error
-	if seg, _ := config.GetBool("docker:segregate"); seg {
-		nodes, err = segScheduler.Nodes()
-		if err != nil {
-			return "", err
-		}
-	} else {
-		nodes = getDockerServers()
+	nodes, err := dockerCluster().Nodes()
+	if err != nil {
+		return "", err
 	}
 	for _, node := range nodes {
-		if getHostAddr(node.ID) == host {
+		if urlToHost(node.Address) == host {
 			return node.ID, nil
 		}
 	}
-	return "", errors.New(fmt.Sprintf("Host `%s` not found", host))
+	return "", fmt.Errorf("Host `%s` not found", host)
 }
 
 type container struct {
