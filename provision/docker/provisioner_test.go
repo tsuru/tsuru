@@ -106,6 +106,7 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	h := &tsrTesting.TestHandler{}
 	gandalfServer := tsrTesting.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
+	go s.stopContainers(1)
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	fexec := &etesting.FakeExecutor{}

@@ -618,6 +618,7 @@ func (s *S) TestContainerDeploy(c *gocheck.C) {
 	h := &testing.TestHandler{}
 	gandalfServer := testing.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
+	go s.stopContainers(1)
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp("myapp", "python", 1)
