@@ -15,8 +15,6 @@ import (
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"math"
-	"net"
-	"net/url"
 	"strings"
 	"sync"
 )
@@ -91,8 +89,7 @@ func (segregatedScheduler) chooseNode(nodes []node, contName string) (node, erro
 	// Only hostname is saved in the docker containers collection
 	// so we need to extract and map then to the original node.
 	for i, node := range nodes {
-		url, _ := url.Parse(node.Address)
-		host, _, _ := net.SplitHostPort(url.Host)
+		host := urlToHost(node.Address)
 		hosts[i] = host
 		hostsMap[host] = node
 	}

@@ -106,6 +106,12 @@ func getPort() (string, error) {
 	return fmt.Sprint(port), nil
 }
 
+func urlToHost(urlStr string) string {
+	url, _ := url.Parse(urlStr)
+	host, _, _ := net.SplitHostPort(url.Host)
+	return host
+}
+
 func getHostAddr(hostID string) string {
 	var fullAddress string
 	if seg, _ := config.GetBool("docker:segregate"); seg {
@@ -114,9 +120,7 @@ func getHostAddr(hostID string) string {
 	} else {
 		fullAddress = clusterNodes[hostID]
 	}
-	url, _ := url.Parse(fullAddress)
-	host, _, _ := net.SplitHostPort(url.Host)
-	return host
+	return urlToHost(fullAddress)
 }
 
 func hostToNodeName(host string) (string, error) {

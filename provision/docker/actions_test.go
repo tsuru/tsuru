@@ -338,6 +338,7 @@ func (s *S) TestProvisionAddUnitToHostName(c *gocheck.C) {
 
 func (s *S) TestProvisionAddUnitToHostForward(c *gocheck.C) {
 	cluster, nodes, err := s.startMultipleServersCluster()
+	c.Assert(err, gocheck.IsNil)
 	defer s.stopMultipleServersCluster(cluster, nodes)
 	err = newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
@@ -348,12 +349,12 @@ func (s *S) TestProvisionAddUnitToHostForward(c *gocheck.C) {
 	coll := collection()
 	defer coll.Close()
 	coll.Insert(container{ID: "container-id", AppName: app.GetName(), Version: "container-version", Image: "tsuru/python"})
-	defer coll.Remove(bson.M{"appname": app.GetName()})
-	context := action.FWContext{Params: []interface{}{app, "serverAddr1"}}
+	defer coll.RemoveAll(bson.M{"appname": app.GetName()})
+	context := action.FWContext{Params: []interface{}{app, "localhost"}}
 	result, err := provisionAddUnitToHost.Forward(context)
 	c.Assert(err, gocheck.IsNil)
 	unit := result.(provision.Unit)
-	c.Assert(unit.Ip, gocheck.Equals, "serverAddr1")
+	c.Assert(unit.Ip, gocheck.Equals, "localhost")
 	count, err := coll.Find(bson.M{"appname": app.GetName()}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(count, gocheck.Equals, 2)

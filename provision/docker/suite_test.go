@@ -14,6 +14,7 @@ import (
 	"launchpad.net/gocheck"
 	"os"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -94,7 +95,7 @@ func (s *S) stopMultipleServersCluster(cluster *cluster.Cluster, nodes []string)
 }
 
 func (s *S) startMultipleServersCluster() (*cluster.Cluster, []string, error) {
-	otherServer, err := dtesting.NewServer("127.0.0.1:0", nil)
+	otherServer, err := dtesting.NewServer("localhost:0", nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -105,10 +106,11 @@ func (s *S) startMultipleServersCluster() (*cluster.Cluster, []string, error) {
 	if err != nil {
 		oldServers = []string{}
 	}
-	config.Set("docker:servers", []string{"http://serverAddr0:8888", "http://serverAddr1:8888"})
+	otherUrl := strings.Replace(otherServer.URL(), "127.0.0.1", "localhost", 1)
+	config.Set("docker:servers", []string{s.server.URL(), otherUrl})
 	dCluster, err = cluster.New(nil, &mapStorage{},
 		cluster.Node{ID: "server0", Address: s.server.URL()},
-		cluster.Node{ID: "server1", Address: otherServer.URL()},
+		cluster.Node{ID: "server1", Address: otherUrl},
 	)
 	if err != nil {
 		return nil, nil, err

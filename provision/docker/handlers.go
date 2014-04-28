@@ -20,6 +20,7 @@ func init() {
 	api.RegisterAdminHandler("/node/add", "POST", api.Handler(addNodeHandler))
 	api.RegisterAdminHandler("/node/remove", "DELETE", api.Handler(removeNodeHandler))
 	api.RegisterAdminHandler("/containers/move", "POST", api.Handler(moveContainersHandler))
+	api.RegisterAdminHandler("/containers/rebalance", "POST", api.Handler(rebalanceContainersHandler))
 }
 
 // addNodeHandler calls scheduler.Register to registering a node into it.
@@ -51,6 +52,21 @@ func moveContainersHandler(w http.ResponseWriter, r *http.Request) error {
 		logProgress(encoder, "Error trying to move containers: %s", err.Error())
 	} else {
 		logProgress(encoder, "Containers moved successfully!")
+	}
+	return nil
+}
+
+func rebalanceContainersHandler(w http.ResponseWriter, r *http.Request) error {
+	params, err := unmarshal(r.Body)
+	if err != nil {
+		return err
+	}
+	encoder := json.NewEncoder(w)
+	err = rebalanceContainers(encoder, params["dry"] == "true")
+	if err != nil {
+		logProgress(encoder, "Error trying to rebalance containers: %s", err.Error())
+	} else {
+		logProgress(encoder, "Containers rebalanced successfully!")
 	}
 	return nil
 }
