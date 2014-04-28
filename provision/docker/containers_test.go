@@ -13,6 +13,7 @@ import (
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"sync"
+	"time"
 )
 
 var provisionMutex sync.Mutex
@@ -65,16 +66,8 @@ func (s *S) TestMoveContainers(c *gocheck.C) {
 	c.Assert(len(containers), gocheck.Equals, 0)
 	containers, err = listContainersByHost("127.0.0.1")
 	c.Assert(len(containers), gocheck.Equals, 2)
-	q, err := getQueue()
-	c.Assert(err, gocheck.IsNil)
-	_, err = q.Get(1e6)
-	c.Assert(err, gocheck.IsNil)
-	for _ = range containers {
-		_, err := q.Get(1e6)
-		c.Assert(err, gocheck.IsNil)
-		_, err = q.Get(1e6)
-		c.Assert(err, gocheck.IsNil)
-	}
+	time.Sleep(1e9)
+	testing.CleanQ("tsuru-app")
 }
 
 func (s *S) TestRebalanceContainers(c *gocheck.C) {
@@ -125,12 +118,6 @@ func (s *S) TestRebalanceContainers(c *gocheck.C) {
 	c.Assert(len(c1), gocheck.Equals, 3)
 	c2, err := listContainersByHost("127.0.0.1")
 	c.Assert(len(c2), gocheck.Equals, 2)
-	q, err := getQueue()
-	c.Assert(err, gocheck.IsNil)
-	for _ = range c1 {
-		_, err = q.Get(1e6)
-		c.Assert(err, gocheck.IsNil)
-		_, err = q.Get(1e6)
-		c.Assert(err, gocheck.IsNil)
-	}
+	time.Sleep(1e9)
+	testing.CleanQ("tsuru-app")
 }
