@@ -23,7 +23,7 @@ func (s *S) TestInsertEmptyContainerInDBName(c *gocheck.C) {
 
 func (s *S) TestInsertEmptyContainerInDBForward(c *gocheck.C) {
 	app := testing.NewFakeApp("myapp", "python", 1)
-	context := action.FWContext{Params: []interface{}{app}}
+	context := action.FWContext{Params: []interface{}{app, "image-id"}}
 	r, err := insertEmptyContainerInDB.Forward(context)
 	c.Assert(err, gocheck.IsNil)
 	cont := r.(container)
@@ -33,6 +33,7 @@ func (s *S) TestInsertEmptyContainerInDBForward(c *gocheck.C) {
 	c.Assert(cont.Name, gocheck.Not(gocheck.Equals), "")
 	c.Assert(cont.Name, gocheck.HasLen, 20)
 	c.Assert(cont.Status, gocheck.Equals, "created")
+	c.Assert(cont.Image, gocheck.Equals, "image-id")
 	coll := collection()
 	defer coll.Close()
 	defer coll.Remove(bson.M{"name": cont.Name})

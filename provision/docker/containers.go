@@ -143,8 +143,8 @@ func rebalanceContainers(encoder *json.Encoder, dryRun bool) error {
 		return err
 	}
 	totalCount := 0
-	for _, host := range hosts {
-		hostsMap[host.HostAddr] = &host
+	for i, host := range hosts {
+		hostsMap[host.HostAddr] = &hosts[i]
 		totalCount += host.Count
 	}
 	cluster := dockerCluster()
