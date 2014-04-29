@@ -409,5 +409,5 @@ func (p *dockerProvisioner) PlatformAdd(name string, args string) error {
         return err
     }
 
-    return pushImage(name)
+    return pushImage(image_name)
 }
