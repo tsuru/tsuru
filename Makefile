@@ -13,20 +13,23 @@ endef
 
 define HG_ERROR
 
-FATAL: you need mercurial (hg) to download tsuru dependencies.
-       Check INSTALL.md for details
+FATAL: You need Mercurial (hg) to download tsuru dependencies.
+       For more details, please check
+       http://docs.tsuru.io/en/latest/contribute/setting-up-your-tsuru-development-environment.html#installing-git-bzr-and-mercurial
 endef
 
 define GIT_ERROR
 
-FATAL: you need git to download tsuru dependencies.
-       Check INSTALL.md for details
+FATAL: You need Git to download tsuru dependencies.
+       For more details, please check
+       http://docs.tsuru.io/en/latest/contribute/setting-up-your-tsuru-development-environment.html#installing-git-bzr-and-mercurial
 endef
 
 define BZR_ERROR
 
-FATAL: you need bazaar (bzr) to download tsuru dependencies.
-       Check INSTALL.md for details
+FATAL: You need Bazaar (bzr) to download tsuru dependencies.
+       For more details, please check
+       http://docs.tsuru.io/en/latest/contribute/setting-up-your-tsuru-development-environment.html#installing-git-bzr-and-mercurial
 endef
 
 .PHONY: all check-path get hg git bzr get-test get-prod test race client
@@ -37,8 +40,8 @@ all: check-path get test
 check-path:
 ifndef GOPATH
 	@echo "FATAL: you must declare GOPATH environment variable, for more"
-	@echo "       details, please check INSTALL.md file and/or"
-	@echo "       http://golang.org/cmd/go/#GOPATH_environment_variable"
+	@echo "       details, please check"
+	@echo "       http://golang.org/doc/code.html#GOPATH"
 	@exit 1
 endif
 ifneq ($(subst ~,$(HOME),$(GOPATH))/src/github.com/tsuru/tsuru, $(PWD))
