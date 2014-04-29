@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/fsouza/go-dockerclient"
+	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
@@ -22,10 +23,12 @@ import (
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"net"
+	"net/http"
 	"net/http/httptest"
 	"runtime"
 	"strconv"
 	"time"
+	"github.com/tsuru/docker-cluster/cluster"
 )
 
 func setExecut(e exec.Executor) {
@@ -708,4 +711,35 @@ func (s *S) TestProvisionerStopSkipAlreadyStoppedContainers(c *gocheck.C) {
 	dockerContainer2, err = dcli.InspectContainer(container2.ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(dockerContainer2.State.Running, gocheck.Equals, false)
+}
+
+func (s *S) TestProvisionerPlatformAdd(c *gocheck.C) {
+	var requests []*http.Request
+	server, err := dtesting.NewServer("127.0.0.1:0", func(r *http.Request) {
+        requests = append(requests, r)
+	})
+	c.Assert(err, gocheck.IsNil)
+	defer server.Stop()
+	config.Set("docker:registry", "localhost:3030")
+	defer config.Unset("docker:registry")
+	var storage mapStorage
+	storage.StoreImage("localhost:3030/base", "server0")
+	cmutex.Lock()
+	oldDockerCluster := dCluster
+	dCluster, _ = cluster.New(nil, &storage,
+		cluster.Node{ID: "server0", Address: server.URL()})
+	cmutex.Unlock()
+	defer func() {
+		cmutex.Lock()
+		dCluster = oldDockerCluster
+		cmutex.Unlock()
+	}()
+
+	p := dockerProvisioner{}
+    err = p.PlatformAdd("test", "http://localhost/Dockerfile")
+    c.Assert(err, gocheck.IsNil)
+    c.Assert(requests, gocheck.HasLen, 2)
+    queryString := requests[0].URL.Query()
+    c.Assert(queryString.Get("t"), gocheck.Equals, assembleImageName("test"))
+    c.Assert(queryString.Get("remote"), gocheck.Equals, "http://localhost/Dockerfile")
 }

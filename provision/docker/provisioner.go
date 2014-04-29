@@ -19,12 +19,14 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/router"
+	"github.com/tsuru/tsuru/safe"
 	_ "github.com/tsuru/tsuru/router/hipache"
 	_ "github.com/tsuru/tsuru/router/testing"
 	"io"
 	"io/ioutil"
 	"sync"
 	"time"
+    "github.com/fsouza/go-dockerclient"
 )
 
 func init() {
@@ -391,6 +393,21 @@ func (p *dockerProvisioner) DeployPipeline() *action.Pipeline {
 	return pipeline
 }
 
-func (p *dockerProvisioner) PlatformAdd(args string) error {
-	return nil
+// PlatformAdd build and push a new docker platform to register
+func (p *dockerProvisioner) PlatformAdd(name string, args string) error {
+    var buf safe.Buffer
+    image_name := assembleImageName(name)
+    docker_cluster := dockerCluster()
+    buildOptions := docker.BuildImageOptions{
+        Name: image_name,
+        Remote: args,
+        InputStream: nil,
+        OutputStream: &buf,
+    }
+    err := docker_cluster.BuildImage(buildOptions)
+    if err != nil {
+        return err
+    }
+
+    return pushImage(name)
 }
