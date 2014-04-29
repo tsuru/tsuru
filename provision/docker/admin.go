@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"github.com/tsuru/tsuru/cmd"
 	"io"
+	"launchpad.net/gnuflag"
 	"net/http"
 )
 
@@ -69,4 +70,55 @@ func (c *moveContainerCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	for n := int64(1); n > 0 && err == nil; n, err = io.Copy(&w, response.Body) {
 	}
 	return nil
+}
+
+type rebalanceContainersCmd struct {
+	fs  *gnuflag.FlagSet
+	dry bool
+}
+
+func (c *rebalanceContainersCmd) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "containers-rebalance",
+		Usage:   "containers-rebalance [--dry]",
+		Desc:    "Move containers creating a more even distribution between docker nodes.",
+		MinArgs: 0,
+	}
+}
+
+func (c *rebalanceContainersCmd) Run(context *cmd.Context, client *cmd.Client) error {
+	url, err := cmd.GetURL("/containers/rebalance")
+	if err != nil {
+		return err
+	}
+	params := map[string]string{
+		"dry": fmt.Sprintf("%t", c.dry),
+	}
+	b, err := json.Marshal(params)
+	if err != nil {
+		return err
+	}
+	buffer := bytes.NewBuffer(b)
+	request, err := http.NewRequest("POST", url, buffer)
+	if err != nil {
+		return err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	w := jsonLogWriter{w: context.Stdout}
+	for n := int64(1); n > 0 && err == nil; n, err = io.Copy(&w, response.Body) {
+	}
+	return nil
+}
+
+func (c *rebalanceContainersCmd) Flags() *gnuflag.FlagSet {
+	if c.fs == nil {
+		c.fs = gnuflag.NewFlagSet("containers-rebalance", gnuflag.ExitOnError)
+		c.fs.BoolVar(&c.dry, "dry", false, "Dry run, only shows what would be done")
+	}
+	return c.fs
 }

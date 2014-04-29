@@ -364,6 +364,7 @@ func (p *dockerProvisioner) Commands() []cmd.Command {
 func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 	return []cmd.Command{
 		&moveContainerCmd{},
+		&rebalanceContainersCmd{},
 	}
 }
 
