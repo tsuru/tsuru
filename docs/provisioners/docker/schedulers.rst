@@ -14,7 +14,7 @@ Segregate scheduler
 
 Segregate scheduler is a scheduler that segregates the units between nodes by team.
 
-irst, what you need to do is to define a relation between nodes and teams.
+First, what you need to do is to define a relation between nodes and teams.
 And then, the scheduler deploys the app unit on the node related to its team.
 
     - team1 -> node1
