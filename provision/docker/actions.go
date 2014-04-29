@@ -167,7 +167,7 @@ var saveUnits = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		containers, err := listAppContainers(a.GetName())
+		containers, err := listContainersByApp(a.GetName())
 		if err != nil {
 			return nil, err
 		}

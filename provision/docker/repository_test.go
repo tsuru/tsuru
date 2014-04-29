@@ -24,6 +24,40 @@ func (s *S) getContainerCollection(appName string, containerIds ...string) func(
 	}
 }
 
+func (s *S) TestListContainersByApp(c *gocheck.C) {
+	var result []container
+	coll := collection()
+	defer coll.Close()
+	coll.Insert(
+		container{ID: "Hey", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1180.globoi.com"},
+		container{ID: "Ho", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1182.globoi.com"},
+		container{ID: "Let's Go", Type: "java", AppName: "myapp", HostAddr: "http://cittavld597.globoi.com"},
+	)
+	defer coll.RemoveAll(bson.M{"appname": "myapp"})
+	result, err := listContainersByApp("myapp")
+	c.Assert(result[0].ID, gocheck.DeepEquals, "Hey")
+	c.Assert(result[1].HostAddr, gocheck.DeepEquals, "http://cittavld1182.globoi.com")
+	c.Assert(result[2].Type, gocheck.DeepEquals, "java")
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestListContainersByHost(c *gocheck.C) {
+	var result []container
+	coll := collection()
+	defer coll.Close()
+	coll.Insert(
+		container{ID: "blabla", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1182.globoi.com"},
+		container{ID: "bleble", Type: "python", AppName: "wat", HostAddr: "http://cittavld1182.globoi.com"},
+		container{ID: "blibli", Type: "java", AppName: "masoq", HostAddr: "http://cittavld1182.globoi.com"},
+	)
+	defer coll.RemoveAll(bson.M{"hostaddr": "http://cittavld1182.globoi.com"})
+	result, err := listContainersByHost("http://cittavld1182.globoi.com")
+	c.Assert(result[0].ID, gocheck.DeepEquals, "blabla")
+	c.Assert(result[1].AppName, gocheck.DeepEquals, "wat")
+	c.Assert(result[2].Type, gocheck.DeepEquals, "java")
+	c.Assert(err, gocheck.IsNil)
+}
+
 func (s *S) TestGetOneContainerByAppName(c *gocheck.C) {
 	appName := "some-app"
 	containerIds := []string{"some-container-1", "some-container-2"}

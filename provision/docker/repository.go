@@ -43,12 +43,20 @@ func getContainerPartialId(partialId string) (*container, error) {
 	return &containers[0], nil
 }
 
-func listAppContainers(appName string) ([]container, error) {
-	var containers []container
+func listContainersByHost(address string) ([]container, error) {
+	return listContainersBy(bson.M{"hostaddr": address})
+}
+
+func listContainersByApp(appName string) ([]container, error) {
+	return listContainersBy(bson.M{"appname": appName})
+}
+
+func listContainersBy(query bson.M) ([]container, error) {
+	var list []container
 	coll := collection()
 	defer coll.Close()
-	err := coll.Find(bson.M{"appname": appName}).All(&containers)
-	return containers, err
+	err := coll.Find(query).All(&list)
+	return list, err
 }
 
 func getOneContainerByAppName(appName string) (*container, error) {

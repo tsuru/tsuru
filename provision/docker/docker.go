@@ -202,24 +202,6 @@ func (c *container) create(app provision.App, imageId string, cmds []string, des
 	return nil
 }
 
-func listContainersByHost(address string) ([]container, error) {
-	return listContainersBy(bson.M{"hostaddr": address})
-}
-
-func listContainersByApp(app string) ([]container, error) {
-	return listContainersBy(bson.M{"appname": app})
-}
-
-func listContainersBy(query bson.M) ([]container, error) {
-	var list []container
-	coll := collection()
-	defer coll.Close()
-	if err := coll.Find(query).All(&list); err != nil {
-		return nil, err
-	}
-	return list, nil
-}
-
 // networkInfo returns the IP and the host port for the container.
 func (c *container) networkInfo() (string, string, error) {
 	port, err := getPort()

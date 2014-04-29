@@ -93,23 +93,6 @@ func (s *S) TestContainerCreateUndefinedUser(c *gocheck.C) {
 	c.Assert(container.Config.User, gocheck.Equals, "")
 }
 
-func (s *S) TestListContainersByHost(c *gocheck.C) {
-	var result []container
-	coll := collection()
-	defer coll.Close()
-	coll.Insert(
-		container{ID: "blabla", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1182.globoi.com"},
-		container{ID: "bleble", Type: "python", AppName: "wat", HostAddr: "http://cittavld1182.globoi.com"},
-		container{ID: "blibli", Type: "java", AppName: "masoq", HostAddr: "http://cittavld1182.globoi.com"},
-	)
-	defer coll.RemoveAll(bson.M{"hostaddr": "http://cittavld1182.globoi.com"})
-	result, err := listContainersByHost("http://cittavld1182.globoi.com")
-	c.Assert(result[0].ID, gocheck.DeepEquals, "blabla")
-	c.Assert(result[1].AppName, gocheck.DeepEquals, "wat")
-	c.Assert(result[2].Type, gocheck.DeepEquals, "java")
-	c.Assert(err, gocheck.IsNil)
-}
-
 func (s *S) TestGetSSHCommandsDefaultSSHDPath(c *gocheck.C) {
 	rfs := ftesting.RecordingFs{}
 	f, err := rfs.Create("/opt/me/id_dsa.pub")
@@ -126,23 +109,6 @@ func (s *S) TestGetSSHCommandsDefaultSSHDPath(c *gocheck.C) {
 	commands, err := sshCmds()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(commands[1], gocheck.Equals, "sudo /usr/sbin/sshd -D")
-}
-
-func (s *S) TestListContainersByApp(c *gocheck.C) {
-	var result []container
-	coll := collection()
-	defer coll.Close()
-	coll.Insert(
-		container{ID: "Hey", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1180.globoi.com"},
-		container{ID: "Ho", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1182.globoi.com"},
-		container{ID: "Let's Go", Type: "java", AppName: "myapp", HostAddr: "http://cittavld597.globoi.com"},
-	)
-	defer coll.RemoveAll(bson.M{"appname": "myapp"})
-	result, err := listContainersByApp("myapp")
-	c.Assert(result[0].ID, gocheck.DeepEquals, "Hey")
-	c.Assert(result[1].HostAddr, gocheck.DeepEquals, "http://cittavld1182.globoi.com")
-	c.Assert(result[2].Type, gocheck.DeepEquals, "java")
-	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TestGetSSHCommandsDefaultKeyFile(c *gocheck.C) {
@@ -475,16 +441,16 @@ func (s *S) TestGetContainers(c *gocheck.C) {
 		container{ID: "wat", Type: "java", AppName: "otherthing"},
 	)
 	defer coll.RemoveAll(bson.M{"id": bson.M{"$in": []string{"abcdef", "fedajs", "wat"}}})
-	containers, err := listAppContainers("something")
+	containers, err := listContainersByApp("something")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(containers, gocheck.HasLen, 2)
 	c.Assert(containers[0].ID, gocheck.Equals, "abcdef")
 	c.Assert(containers[1].ID, gocheck.Equals, "fedajs")
-	containers, err = listAppContainers("otherthing")
+	containers, err = listContainersByApp("otherthing")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(containers, gocheck.HasLen, 1)
 	c.Assert(containers[0].ID, gocheck.Equals, "wat")
-	containers, err = listAppContainers("unknown")
+	containers, err = listContainersByApp("unknown")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(containers, gocheck.HasLen, 0)
 }
