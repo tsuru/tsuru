@@ -369,6 +369,7 @@ func (s *S) TestProvisionerAddUnitsWithoutContainers(c *gocheck.C) {
 
 func (s *S) TestProvisionerAddUnitsWithHost(c *gocheck.C) {
 	cluster, nodes, err := s.startMultipleServersCluster()
+	c.Assert(err, gocheck.IsNil)
 	defer s.stopMultipleServersCluster(cluster, nodes)
 	err = newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
@@ -380,11 +381,11 @@ func (s *S) TestProvisionerAddUnitsWithHost(c *gocheck.C) {
 	defer coll.Close()
 	coll.Insert(container{ID: "xxxfoo", AppName: app.GetName(), Version: "123987", Image: "tsuru/python"})
 	defer coll.RemoveId(bson.M{"id": "xxxfoo"})
-	units, err := addUnitsWithHost(app, 1, "serverAddr1")
+	units, err := addUnitsWithHost(app, 1, "localhost")
 	c.Assert(err, gocheck.IsNil)
 	defer coll.RemoveAll(bson.M{"appname": app.GetName()})
 	c.Assert(units, gocheck.HasLen, 1)
-	c.Assert(units[0].Ip, gocheck.Equals, "serverAddr1")
+	c.Assert(units[0].Ip, gocheck.Equals, "localhost")
 	count, err := coll.Find(bson.M{"appname": app.GetName()}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(count, gocheck.Equals, 2)

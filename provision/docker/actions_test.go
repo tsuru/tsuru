@@ -23,7 +23,7 @@ func (s *S) TestInsertEmptyContainerInDBName(c *gocheck.C) {
 
 func (s *S) TestInsertEmptyContainerInDBForward(c *gocheck.C) {
 	app := testing.NewFakeApp("myapp", "python", 1)
-	context := action.FWContext{Params: []interface{}{app}}
+	context := action.FWContext{Params: []interface{}{app, "image-id"}}
 	r, err := insertEmptyContainerInDB.Forward(context)
 	c.Assert(err, gocheck.IsNil)
 	cont := r.(container)
@@ -33,6 +33,7 @@ func (s *S) TestInsertEmptyContainerInDBForward(c *gocheck.C) {
 	c.Assert(cont.Name, gocheck.Not(gocheck.Equals), "")
 	c.Assert(cont.Name, gocheck.HasLen, 20)
 	c.Assert(cont.Status, gocheck.Equals, "created")
+	c.Assert(cont.Image, gocheck.Equals, "image-id")
 	coll := collection()
 	defer coll.Close()
 	defer coll.Remove(bson.M{"name": cont.Name})
@@ -79,17 +80,6 @@ func (s *S) TestCreateContainerName(c *gocheck.C) {
 }
 
 func (s *S) TestCreateContainerForward(c *gocheck.C) {
-	cmutex.Lock()
-	oldClusterNodes := clusterNodes
-	clusterNodes = map[string]string{
-		"server": "http://localhost:8081",
-	}
-	cmutex.Unlock()
-	defer func() {
-		cmutex.Lock()
-		clusterNodes = oldClusterNodes
-		cmutex.Unlock()
-	}()
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	client, err := dockerClient.NewClient(s.server.URL())
@@ -106,7 +96,7 @@ func (s *S) TestCreateContainerForward(c *gocheck.C) {
 	defer cont.remove()
 	c.Assert(cont, gocheck.FitsTypeOf, container{})
 	c.Assert(cont.ID, gocheck.Not(gocheck.Equals), "")
-	c.Assert(cont.HostAddr, gocheck.Equals, "localhost")
+	c.Assert(cont.HostAddr, gocheck.Equals, "127.0.0.1")
 	dcli, err := dockerClient.NewClient(s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	cc, err := dcli.InspectContainer(cont.ID)
@@ -338,6 +328,7 @@ func (s *S) TestProvisionAddUnitToHostName(c *gocheck.C) {
 
 func (s *S) TestProvisionAddUnitToHostForward(c *gocheck.C) {
 	cluster, nodes, err := s.startMultipleServersCluster()
+	c.Assert(err, gocheck.IsNil)
 	defer s.stopMultipleServersCluster(cluster, nodes)
 	err = newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
@@ -348,12 +339,12 @@ func (s *S) TestProvisionAddUnitToHostForward(c *gocheck.C) {
 	coll := collection()
 	defer coll.Close()
 	coll.Insert(container{ID: "container-id", AppName: app.GetName(), Version: "container-version", Image: "tsuru/python"})
-	defer coll.Remove(bson.M{"appname": app.GetName()})
-	context := action.FWContext{Params: []interface{}{app, "serverAddr1"}}
+	defer coll.RemoveAll(bson.M{"appname": app.GetName()})
+	context := action.FWContext{Params: []interface{}{app, "localhost"}}
 	result, err := provisionAddUnitToHost.Forward(context)
 	c.Assert(err, gocheck.IsNil)
 	unit := result.(provision.Unit)
-	c.Assert(unit.Ip, gocheck.Equals, "serverAddr1")
+	c.Assert(unit.Ip, gocheck.Equals, "localhost")
 	count, err := coll.Find(bson.M{"appname": app.GetName()}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(count, gocheck.Equals, 2)

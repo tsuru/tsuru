@@ -22,12 +22,14 @@ var insertEmptyContainerInDB = action.Action{
 	Name: "insert-empty-container",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		app := ctx.Params[0].(provision.App)
+		imageId := ctx.Params[1].(string)
 		contName := containerName()
 		cont := container{
 			AppName: app.GetName(),
 			Type:    app.GetPlatform(),
 			Name:    contName,
 			Status:  "created",
+			Image:   imageId,
 		}
 		coll := collection()
 		defer coll.Close()

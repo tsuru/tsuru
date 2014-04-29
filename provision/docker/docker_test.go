@@ -6,7 +6,6 @@ package docker
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"github.com/fsouza/go-dockerclient"
 	dtesting "github.com/fsouza/go-dockerclient/testing"
@@ -710,16 +709,18 @@ func (s *S) TestContainerLogs(c *gocheck.C) {
 
 func (s *S) TestGetHostAddr(c *gocheck.C) {
 	cmutex.Lock()
-	old := clusterNodes
-	clusterNodes = map[string]string{
-		"server0":  "http://localhost:8081",
-		"server20": "http://localhost:3234",
-		"server21": "http://10.10.10.10:4243",
-	}
+	old := dCluster
+	var err error
+	dCluster, err = cluster.New(nil, &mapStorage{},
+		cluster.Node{ID: "server0", Address: "http://localhost:8081"},
+		cluster.Node{ID: "server20", Address: "http://localhost:3234"},
+		cluster.Node{ID: "server21", Address: "http://10.10.10.10:4243"},
+	)
+	c.Assert(err, gocheck.IsNil)
 	cmutex.Unlock()
 	defer func() {
 		cmutex.Lock()
-		clusterNodes = old
+		dCluster = old
 		cmutex.Unlock()
 	}()
 	var tests = []struct {
@@ -737,8 +738,6 @@ func (s *S) TestGetHostAddr(c *gocheck.C) {
 }
 
 func (s *S) TestGetHostAddrWithSegregatedScheduler(c *gocheck.C) {
-	config.Set("docker:segregate", true)
-	defer config.Unset("docker:segregate")
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
@@ -748,20 +747,15 @@ func (s *S) TestGetHostAddrWithSegregatedScheduler(c *gocheck.C) {
 		node{ID: "server20", Address: "http://remotehost:8081", Teams: []string{"tsuru"}},
 		node{ID: "server21", Address: "http://10.10.10.1:8082", Teams: []string{"tsuru"}},
 	)
-	c.Assert(err, gocheck.IsNil)
 	defer coll.RemoveAll(bson.M{"_id": bson.M{"$in": []string{"server0", "server1", "server2"}}})
 	cmutex.Lock()
-	old := clusterNodes
-	clusterNodes = map[string]string{
-		"server0":  "http://localhost:8081",
-		"server20": "http://localhost:3234",
-		"server21": "http://10.10.10.10:4243",
-		"server33": "http://10.10.10.11:4243",
-	}
+	old := dCluster
+	dCluster, err = cluster.New(segScheduler, &mapStorage{})
+	c.Assert(err, gocheck.IsNil)
 	cmutex.Unlock()
 	defer func() {
 		cmutex.Lock()
-		clusterNodes = old
+		dCluster = old
 		cmutex.Unlock()
 	}()
 	var tests = []struct {
@@ -947,53 +941,4 @@ func (s *S) TestUsePlatformImage(c *gocheck.C) {
 	ok = usePlatformImage(app4)
 	c.Assert(ok, gocheck.Equals, false)
 	defer conn.Apps().Remove(bson.M{"name": "app4"})
-}
-
-func (s *S) TestMoveContainers(c *gocheck.C) {
-	cluster, nodes, err := s.startMultipleServersCluster()
-	defer s.stopMultipleServersCluster(cluster, nodes)
-	err = newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
-	appInstance := testing.NewFakeApp("myapp", "python", 0)
-	var p dockerProvisioner
-	defer p.Destroy(appInstance)
-	p.Provision(appInstance)
-	app.Provisioner = &p
-	coll := collection()
-	defer coll.Close()
-	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
-	defer coll.Remove(bson.M{"appname": appInstance.GetName()})
-	units, err := addUnitsWithHost(appInstance, 2, "serverAddr1")
-	c.Assert(err, gocheck.IsNil)
-	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Close()
-	appStruct := &app.App{
-		Name:     appInstance.GetName(),
-		Platform: appInstance.GetPlatform(),
-	}
-	err = conn.Apps().Insert(appStruct)
-	c.Assert(err, gocheck.IsNil)
-	err = conn.Apps().Update(
-		bson.M{"name": appStruct.Name},
-		bson.M{"$set": bson.M{"units": units}},
-	)
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
-	var buf bytes.Buffer
-	encoder := json.NewEncoder(&buf)
-	err = moveContainers("serverAddr1", "serverAddr0", encoder)
-	c.Assert(err, gocheck.IsNil)
-	containers, err := listContainersByHost("serverAddr1")
-	c.Assert(len(containers), gocheck.Equals, 0)
-	containers, err = listContainersByHost("serverAddr0")
-	c.Assert(len(containers), gocheck.Equals, 2)
-	q, err := getQueue()
-	c.Assert(err, gocheck.IsNil)
-	for _ = range containers {
-		_, err := q.Get(1e6)
-		c.Assert(err, gocheck.IsNil)
-		_, err = q.Get(1e6)
-		c.Assert(err, gocheck.IsNil)
-	}
 }
