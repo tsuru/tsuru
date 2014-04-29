@@ -745,8 +745,8 @@ func (s *S) TestProvisionerPlatformAdd(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerPlatformAddWithoutArgs(c *gocheck.C) {
-    p := dockerProvisioner{}
-    err := p.PlatformAdd("test", "")
-    c.Assert(err, gocheck.NotNil)
-    c.Assert(err.Error(), gocheck.Equals, "Dockerfile is required.")
+	p := dockerProvisioner{}
+	err := p.PlatformAdd("test", "")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Dockerfile is required.")
 }
