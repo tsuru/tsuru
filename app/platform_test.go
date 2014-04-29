@@ -91,3 +91,9 @@ func (s *PlatformSuite) TestPlatformAdd(c *gocheck.C) {
 	_, ok := err.(DuplicatePlatformError)
 	c.Assert(ok, gocheck.Equals, true)
 }
+
+func (s *PlatformSuite) TestPlatformAddWithoutName(c *gocheck.C) {
+    err := PlatformAdd("", "")
+    c.Assert(err, gocheck.NotNil)
+    c.Assert(err.Error(), gocheck.Equals, "Platform name is required.")
+}

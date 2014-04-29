@@ -8,6 +8,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
+    "errors"
 )
 
 type Platform struct {
@@ -27,6 +28,9 @@ func Platforms() ([]Platform, error) {
 
 // PlatformAdd add a new platform to tsuru
 func PlatformAdd(name string, file string) error {
+    if name == "" {
+        return errors.New("Platform name is required.")
+    }
 	p := Platform{Name: name}
 	conn, err := db.Conn()
 	if err != nil {
