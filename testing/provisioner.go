@@ -749,7 +749,7 @@ func (p *FakeProvisioner) Stop(app provision.App) error {
 	return nil
 }
 
-func (p *FakeProvisioner) PlatformAdd(name, args string) error {
+func (p *FakeProvisioner) PlatformAdd(name string, args map[string]string) error {
 	return nil
 }
 

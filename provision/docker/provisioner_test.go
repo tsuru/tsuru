@@ -735,8 +735,10 @@ func (s *S) TestProvisionerPlatformAdd(c *gocheck.C) {
 		dCluster = oldDockerCluster
 		cmutex.Unlock()
 	}()
+	args := make(map[string]string)
+	args["dockerfile"] = "http://localhost/Dockerfile"
 	p := dockerProvisioner{}
-	err = p.PlatformAdd("test", "http://localhost/Dockerfile")
+	err = p.PlatformAdd("test", args)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(requests, gocheck.HasLen, 2)
 	queryString := requests[0].URL.Query()
@@ -746,7 +748,7 @@ func (s *S) TestProvisionerPlatformAdd(c *gocheck.C) {
 
 func (s *S) TestProvisionerPlatformAddWithoutArgs(c *gocheck.C) {
 	p := dockerProvisioner{}
-	err := p.PlatformAdd("test", "")
+	err := p.PlatformAdd("test", nil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Dockerfile is required.")
 }

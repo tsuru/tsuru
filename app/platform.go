@@ -27,7 +27,7 @@ func Platforms() ([]Platform, error) {
 }
 
 // PlatformAdd add a new platform to tsuru
-func PlatformAdd(name string, file string) error {
+func PlatformAdd(name string, args map[string]string) error {
 	if name == "" {
 		return errors.New("Platform name is required.")
 	}
@@ -43,7 +43,7 @@ func PlatformAdd(name string, file string) error {
 		}
 		return err
 	}
-	err = Provisioner.PlatformAdd(name, file)
+	err = Provisioner.PlatformAdd(name, args)
 	return nil
 }
 
