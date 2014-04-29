@@ -17,7 +17,7 @@ func (s *S) TestPlatformAddInfo(c *gocheck.C) {
 		Name:    "platform-add",
 		Usage:   "platform-add <platform name> [--dockerfile/-d Dockerfile]",
 		Desc:    "Add new platform to tsuru.",
-		MinArgs: 2,
+		MinArgs: 1,
 	}
 
 	c.Assert((&platformAdd{}).Info(), gocheck.DeepEquals, expected)
@@ -35,7 +35,8 @@ func (s *S) TestPlatformAddRun(c *gocheck.C) {
 	trans := &testing.ConditionalTransport{
 		Transport: testing.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/platform/add" && req.Method == "PUT"
+            c.Assert(req.Header.Get("Content-Type"), gocheck.Equals, "application/x-www-form-urlencoded")
+			return req.URL.Path == "/platforms/add" && req.Method == "PUT"
 		},
 	}
 

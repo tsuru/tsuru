@@ -24,7 +24,7 @@ func (p *platformAdd) Info() *cmd.Info {
 		Name:    "platform-add",
 		Usage:   "platform-add <platform name> [--dockerfile/-d Dockerfile]",
 		Desc:    "Add new platform to tsuru.",
-		MinArgs: 2,
+		MinArgs: 1,
 	}
 }
 
@@ -39,10 +39,12 @@ func (p *platformAdd) Run(context *cmd.Context, client *cmd.Client) error {
 	}
 
 	body := fmt.Sprintf("name=%s&dockerfile=%s", name, p.dockerfile)
-	request, err := http.NewRequest("PUT", "/platform/add", strings.NewReader(body))
+    url, err := cmd.GetURL("/platforms/add")
+	request, err := http.NewRequest("PUT", url, strings.NewReader(body))
 	if err != nil {
 		return err
 	}
+    request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	_, err = client.Do(request)
 	if err != nil {
