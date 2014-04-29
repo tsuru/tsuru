@@ -32,7 +32,6 @@ func PlatformAdd(name string, file string) error {
 	if err != nil {
 		return err
 	}
-
 	err = conn.Platforms().Insert(p)
 	if err != nil {
 		if mgo.IsDup(err) {
@@ -40,10 +39,14 @@ func PlatformAdd(name string, file string) error {
 		}
 		return err
 	}
-
-	err = Provisioner.PlatformAdd(file)
-
+	err = Provisioner.PlatformAdd(name, file)
 	return nil
+}
+
+type DuplicatePlatformError struct{}
+
+func (DuplicatePlatformError) Error() string {
+	return "Duplicate platform"
 }
 
 func getPlatform(name string) (*Platform, error) {
@@ -63,10 +66,4 @@ type InvalidPlatformError struct{}
 
 func (InvalidPlatformError) Error() string {
 	return "Invalid platform"
-}
-
-type DuplicatePlatformError struct{}
-
-func (DuplicatePlatformError) Error() string {
-	return "Duplicate platform"
 }
