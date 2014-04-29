@@ -20,6 +20,7 @@ func init() {
 	api.RegisterHandler("/node/:address/containers", "GET", api.AdminRequiredHandler(listContainersHandler))
 	api.RegisterAdminHandler("/node/add", "POST", api.Handler(addNodeHandler))
 	api.RegisterAdminHandler("/node/remove", "DELETE", api.Handler(removeNodeHandler))
+	api.RegisterAdminHandler("/container/:id/move", "POST", api.Handler(moveContainerHandler))
 	api.RegisterAdminHandler("/containers/move", "POST", api.Handler(moveContainersHandler))
 	api.RegisterAdminHandler("/containers/rebalance", "POST", api.Handler(rebalanceContainersHandler))
 }
@@ -42,17 +43,37 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request) error {
 	return dockerCluster().Unregister(params)
 }
 
+func moveContainerHandler(w http.ResponseWriter, r *http.Request) error {
+	params, err := unmarshal(r.Body)
+	if err != nil {
+		return err
+	}
+	contId := r.URL.Query().Get(":id")
+	to := params["to"]
+	if to == "" {
+		return fmt.Errorf("Invalid params: id: %s - to: %s", contId, to)
+	}
+	encoder := json.NewEncoder(w)
+	err = moveContainer(contId, to, encoder)
+	if err != nil {
+		logProgress(encoder, "Error trying to move container: %s", err.Error())
+	} else {
+		logProgress(encoder, "Containers moved successfully!")
+	}
+	return nil
+}
+
 func moveContainersHandler(w http.ResponseWriter, r *http.Request) error {
 	params, err := unmarshal(r.Body)
 	if err != nil {
 		return err
 	}
-	encoder := json.NewEncoder(w)
 	from := params["from"]
 	to := params["to"]
 	if from == "" || to == "" {
 		return fmt.Errorf("Invalid params: from: %s - to: %s", from, to)
 	}
+	encoder := json.NewEncoder(w)
 	err = moveContainers(from, to, encoder)
 	if err != nil {
 		logProgress(encoder, "Error trying to move containers: %s", err.Error())

@@ -69,6 +69,23 @@ func moveOneContainer(c container, toHost string, errors chan error, wg *sync.Wa
 	logProgress(encoder, "Moved unit %s -> %s for %s in DB.", c.ID, addedUnit.Name, c.AppName)
 }
 
+func moveContainer(contId string, toHost string, encoder *json.Encoder) error {
+	cont, err := getContainerPartialId(contId)
+	if err != nil {
+		return err
+	}
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	moveErrors := make(chan error, 1)
+	moveOneContainer(*cont, toHost, moveErrors, &wg, encoder)
+	close(moveErrors)
+	if err = <-moveErrors; err != nil {
+		log.Errorf("Error moving container - %s", err)
+		return err
+	}
+	return nil
+}
+
 func moveContainers(fromHost, toHost string, encoder *json.Encoder) error {
 	containers, err := listContainersByHost(fromHost)
 	if err != nil {

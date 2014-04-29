@@ -5,8 +5,13 @@
 package docker
 
 import (
+	"errors"
+	"fmt"
+	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 )
+
+var ambiguousContainerError error = errors.New("Ambiguous container name.")
 
 func getContainer(id string) (*container, error) {
 	var c container
@@ -17,6 +22,25 @@ func getContainer(id string) (*container, error) {
 		return nil, err
 	}
 	return &c, nil
+}
+
+func getContainerPartialId(partialId string) (*container, error) {
+	var containers []container
+	coll := collection()
+	defer coll.Close()
+	partialId = fmt.Sprintf("%s.*", partialId)
+	err := coll.Find(bson.M{"id": bson.RegEx{Pattern: partialId}}).All(&containers)
+	if err != nil {
+		return nil, err
+	}
+	lenContainers := len(containers)
+	if lenContainers == 0 {
+		return nil, mgo.ErrNotFound
+	}
+	if lenContainers > 1 {
+		return nil, ambiguousContainerError
+	}
+	return &containers[0], nil
 }
 
 func listAppContainers(appName string) ([]container, error) {

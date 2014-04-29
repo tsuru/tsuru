@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 )
@@ -51,4 +52,29 @@ func (s *S) TestGetContainerCountForAppName(c *gocheck.C) {
 	count, err := getContainerCountForAppName(appName)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(count, gocheck.Equals, len(containerIds))
+}
+
+func (s *S) TestGetContainerPartialIdAmbiguous(c *gocheck.C) {
+	containerIds := []string{"container-1", "container-2"}
+	cleanupFunc := s.getContainerCollection("some-app", containerIds...)
+	defer cleanupFunc()
+	_, err := getContainerPartialId("container")
+	c.Assert(err, gocheck.Equals, ambiguousContainerError)
+}
+
+func (s *S) TestGetContainerPartialIdNotFound(c *gocheck.C) {
+	containerIds := []string{"container-1", "container-2"}
+	cleanupFunc := s.getContainerCollection("some-app", containerIds...)
+	defer cleanupFunc()
+	_, err := getContainerPartialId("container-9")
+	c.Assert(err, gocheck.Equals, mgo.ErrNotFound)
+}
+
+func (s *S) TestGetContainerPartialId(c *gocheck.C) {
+	containerIds := []string{"container-a1", "container-b2"}
+	cleanupFunc := s.getContainerCollection("some-app", containerIds...)
+	defer cleanupFunc()
+	cont, err := getContainerPartialId("container-a")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(cont.ID, gocheck.Equals, "container-a1")
 }
