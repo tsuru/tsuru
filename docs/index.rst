@@ -33,10 +33,6 @@ tsuru command-line
 * :doc:`usage guide </apps/client/usage>`
 * :doc:`using and creating command-line plugins </using/cli/plugins>`
 
-tsuru-admin command-line
-------------------------
-
-* :doc:`usage guide </apps/tsuru-admin/usage>`
 
 services
 --------
@@ -66,6 +62,11 @@ Configure and run tsuru
 * :doc:`backing up tsuru </server/backup>`
 
 * :doc:`mysql </services/mysql-example>`
+
+tsuru-admin command-line
+------------------------
+
+* :doc:`usage guide </apps/tsuru-admin/usage>`
 
 Extending tsuru
 +++++++++++++++
