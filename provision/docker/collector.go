@@ -17,10 +17,7 @@ import (
 
 func (p *dockerProvisioner) CollectStatus() ([]provision.Unit, error) {
 	var containersGroup sync.WaitGroup
-	var containers []container
-	coll := collection()
-	defer coll.Close()
-	err := coll.Find(nil).All(&containers)
+	containers, err := listAllContainers()
 	if err != nil {
 		return nil, err
 	}

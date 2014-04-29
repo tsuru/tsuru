@@ -51,6 +51,10 @@ func listContainersByApp(appName string) ([]container, error) {
 	return listContainersBy(bson.M{"appname": appName})
 }
 
+func listAllContainers() ([]container, error) {
+	return listContainersBy(nil)
+}
+
 func listContainersBy(query bson.M) ([]container, error) {
 	var list []container
 	coll := collection()

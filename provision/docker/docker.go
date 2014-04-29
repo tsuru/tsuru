@@ -427,11 +427,8 @@ func (c *container) logs(w io.Writer) error {
 // when the container image is empty is returned the platform image.
 // when a deploy is multiple of 10 is returned the platform image.
 func getImage(app provision.App) string {
-	var c container
-	coll := collection()
-	defer coll.Close()
-	coll.Find(bson.M{"appname": app.GetName()}).One(&c)
-	if c.Image == "" {
+	c, err := getOneContainerByAppName(app.GetName())
+	if err != nil || c.Image == "" {
 		return assembleImageName(app.GetPlatform())
 	}
 	if usePlatformImage(app) {

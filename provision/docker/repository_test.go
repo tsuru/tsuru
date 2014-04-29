@@ -58,6 +58,18 @@ func (s *S) TestListContainersByHost(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 }
 
+func (s *S) TestListAllContainers(c *gocheck.C) {
+	appName := "some-app"
+	containerIds := []string{"some-container-1", "some-container-2"}
+	cleanupFunc := s.getContainerCollection(appName, containerIds...)
+	defer cleanupFunc()
+	containers, err := listAllContainers()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(len(containers), gocheck.Equals, 2)
+	c.Assert(containers[0].ID, gocheck.Equals, containerIds[0])
+	c.Assert(containers[1].ID, gocheck.Equals, containerIds[1])
+}
+
 func (s *S) TestGetOneContainerByAppName(c *gocheck.C) {
 	appName := "some-app"
 	containerIds := []string{"some-container-1", "some-container-2"}
