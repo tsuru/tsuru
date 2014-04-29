@@ -87,35 +87,29 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 	tTesting.RollbackTargetFile(s.targetRecover)
 }
 
-func (s *S) stopMultipleServersCluster(cluster *cluster.Cluster, nodes []string) {
+func (s *S) stopMultipleServersCluster(cluster *cluster.Cluster) {
 	cmutex.Lock()
 	defer cmutex.Unlock()
 	dCluster = cluster
-	config.Set("docker:servers", nodes)
 }
 
-func (s *S) startMultipleServersCluster() (*cluster.Cluster, []string, error) {
+func (s *S) startMultipleServersCluster() (*cluster.Cluster, error) {
 	otherServer, err := dtesting.NewServer("localhost:0", nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	cmutex.Lock()
 	defer cmutex.Unlock()
 	oldCluster := dCluster
-	oldServers, err := config.GetList("docker:servers")
-	if err != nil {
-		oldServers = []string{}
-	}
 	otherUrl := strings.Replace(otherServer.URL(), "127.0.0.1", "localhost", 1)
-	config.Set("docker:servers", []string{s.server.URL(), otherUrl})
 	dCluster, err = cluster.New(nil, &mapStorage{},
 		cluster.Node{ID: "server0", Address: s.server.URL()},
 		cluster.Node{ID: "server1", Address: otherUrl},
 	)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return oldCluster, oldServers, nil
+	return oldCluster, nil
 }
 
 type unitSlice []provision.Unit

@@ -17,13 +17,18 @@ import (
 	"sync"
 )
 
-var appDBMutex sync.Mutex
+var (
+	appDBMutex sync.Mutex
+	logMutex   sync.Mutex
+)
 
 type progressLog struct {
 	Message string
 }
 
 func logProgress(encoder *json.Encoder, format string, params ...interface{}) {
+	logMutex.Lock()
+	defer logMutex.Unlock()
 	encoder.Encode(progressLog{Message: fmt.Sprintf(format, params...)})
 }
 

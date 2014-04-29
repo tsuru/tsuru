@@ -57,3 +57,51 @@ func (s *S) TestMoveContainerRun(c *gocheck.C) {
 	expected := "progress msg\n"
 	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
+
+func (s *S) TestRebalanceContainersInfo(c *gocheck.C) {
+	expected := &cmd.Info{
+		Name:    "containers-rebalance",
+		Usage:   "containers-rebalance [--dry]",
+		Desc:    "Move containers creating a more even distribution between docker nodes.",
+		MinArgs: 0,
+	}
+	c.Assert((&rebalanceContainersCmd{}).Info(), gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestRebalanceContainersRun(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	msg, _ := json.Marshal(progressLog{Message: "progress msg"})
+	result := string(msg)
+	expectedDry := "true"
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: result, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			defer req.Body.Close()
+			body, err := ioutil.ReadAll(req.Body)
+			c.Assert(err, gocheck.IsNil)
+			expected := map[string]string{
+				"dry": expectedDry,
+			}
+			result := map[string]string{}
+			err = json.Unmarshal(body, &result)
+			c.Assert(expected, gocheck.DeepEquals, result)
+			return req.URL.Path == "/containers/rebalance" && req.Method == "POST"
+		},
+	}
+	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	cmd := rebalanceContainersCmd{}
+	cmd.Flags().Parse(true, []string{"--dry"})
+	err := cmd.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	expected := "progress msg\n"
+	c.Assert(stdout.String(), gocheck.Equals, expected)
+	expectedDry = "false"
+	cmd2 := rebalanceContainersCmd{}
+	err = cmd2.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+}
