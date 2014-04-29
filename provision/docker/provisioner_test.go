@@ -10,6 +10,7 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
+	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
@@ -28,7 +29,6 @@ import (
 	"runtime"
 	"strconv"
 	"time"
-	"github.com/tsuru/docker-cluster/cluster"
 )
 
 func setExecut(e exec.Executor) {
@@ -717,7 +717,7 @@ func (s *S) TestProvisionerStopSkipAlreadyStoppedContainers(c *gocheck.C) {
 func (s *S) TestProvisionerPlatformAdd(c *gocheck.C) {
 	var requests []*http.Request
 	server, err := dtesting.NewServer("127.0.0.1:0", func(r *http.Request) {
-        requests = append(requests, r)
+		requests = append(requests, r)
 	})
 	c.Assert(err, gocheck.IsNil)
 	defer server.Stop()
@@ -737,10 +737,10 @@ func (s *S) TestProvisionerPlatformAdd(c *gocheck.C) {
 	}()
 
 	p := dockerProvisioner{}
-    err = p.PlatformAdd("test", "http://localhost/Dockerfile")
-    c.Assert(err, gocheck.IsNil)
-    c.Assert(requests, gocheck.HasLen, 2)
-    queryString := requests[0].URL.Query()
-    c.Assert(queryString.Get("t"), gocheck.Equals, assembleImageName("test"))
-    c.Assert(queryString.Get("remote"), gocheck.Equals, "http://localhost/Dockerfile")
+	err = p.PlatformAdd("test", "http://localhost/Dockerfile")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(requests, gocheck.HasLen, 2)
+	queryString := requests[0].URL.Query()
+	c.Assert(queryString.Get("t"), gocheck.Equals, assembleImageName("test"))
+	c.Assert(queryString.Get("remote"), gocheck.Equals, "http://localhost/Dockerfile")
 }

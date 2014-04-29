@@ -35,7 +35,7 @@ func (s *S) TestPlatformAddRun(c *gocheck.C) {
 	trans := &testing.ConditionalTransport{
 		Transport: testing.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-            c.Assert(req.Header.Get("Content-Type"), gocheck.Equals, "application/x-www-form-urlencoded")
+			c.Assert(req.Header.Get("Content-Type"), gocheck.Equals, "application/x-www-form-urlencoded")
 			return req.URL.Path == "/platforms/add" && req.Method == "PUT"
 		},
 	}

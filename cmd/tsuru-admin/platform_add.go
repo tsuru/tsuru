@@ -39,12 +39,12 @@ func (p *platformAdd) Run(context *cmd.Context, client *cmd.Client) error {
 	}
 
 	body := fmt.Sprintf("name=%s&dockerfile=%s", name, p.dockerfile)
-    url, err := cmd.GetURL("/platforms/add")
+	url, err := cmd.GetURL("/platforms/add")
 	request, err := http.NewRequest("PUT", url, strings.NewReader(body))
 	if err != nil {
 		return err
 	}
-    request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
 	_, err = client.Do(request)
 	if err != nil {
