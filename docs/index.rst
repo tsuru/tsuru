@@ -33,6 +33,11 @@ tsuru command-line
 * :doc:`usage guide </apps/client/usage>`
 * :doc:`using and creating command-line plugins </using/cli/plugins>`
 
+tsuru-admin command-line
+------------------------
+
+* :doc:`usage guide </apps/tsuru-admin/usage>`
+
 services
 --------
 

@@ -21,7 +21,7 @@ Docker
 
 * refactored unit creation to be more atomic
 * support for unit-agent
-* added an administrative command to move containers between nodes
+* added an administrative command to move and rebalance containers between nodes
 * memory swap limit is configurable
 
 Backwards incompatible changes
