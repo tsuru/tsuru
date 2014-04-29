@@ -327,9 +327,9 @@ func (s *S) TestProvisionAddUnitToHostName(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionAddUnitToHostForward(c *gocheck.C) {
-	cluster, nodes, err := s.startMultipleServersCluster()
+	cluster, err := s.startMultipleServersCluster()
 	c.Assert(err, gocheck.IsNil)
-	defer s.stopMultipleServersCluster(cluster, nodes)
+	defer s.stopMultipleServersCluster(cluster)
 	err = newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	var p dockerProvisioner

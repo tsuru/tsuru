@@ -7,14 +7,18 @@ package docker
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/testing"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 )
 
 type HandlersSuite struct {
@@ -213,4 +217,158 @@ func (s *HandlersSuite) TestListContainersByAppHandler(c *gocheck.C) {
 	c.Assert(result[1].ID, gocheck.DeepEquals, "bleble")
 	c.Assert(result[1].AppName, gocheck.DeepEquals, "appbla")
 	c.Assert(result[1].HostAddr, gocheck.DeepEquals, "http://cittavld1180.globoi.com")
+}
+
+func (s *HandlersSuite) TestMoveContainersEmptyBodyHandler(c *gocheck.C) {
+	b := bytes.NewBufferString("")
+	req, err := http.NewRequest("POST", "/containers/move", b)
+	rec := httptest.NewRecorder()
+	err = moveContainersHandler(rec, req)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "unexpected end of JSON input")
+}
+
+func (s *HandlersSuite) TestMoveContainersEmptyToHandler(c *gocheck.C) {
+	b := bytes.NewBufferString(`{"from": "fromhost", "to": ""}`)
+	req, err := http.NewRequest("POST", "/containers/move", b)
+	rec := httptest.NewRecorder()
+	err = moveContainersHandler(rec, req)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Invalid params: from: fromhost - to: ")
+}
+
+func (s *HandlersSuite) TestMoveContainersHandler(c *gocheck.C) {
+	b := bytes.NewBufferString(`{"from": "localhost", "to": "127.0.0.1"}`)
+	req, err := http.NewRequest("POST", "/containers/move", b)
+	rec := httptest.NewRecorder()
+	err = moveContainersHandler(rec, req)
+	c.Assert(err, gocheck.IsNil)
+	body, err := ioutil.ReadAll(rec.Body)
+	c.Assert(err, gocheck.IsNil)
+	validJson := fmt.Sprintf("[%s]", strings.Replace(strings.Trim(string(body), "\n "), "\n", ",", -1))
+	var result []progressLog
+	err = json.Unmarshal([]byte(validJson), &result)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.DeepEquals, []progressLog{
+		{Message: "No units to move in localhost."},
+		{Message: "Containers moved successfully!"},
+	})
+}
+
+func (s *S) TestRebalanceContainersEmptyBodyHandler(c *gocheck.C) {
+	cluster, err := s.startMultipleServersCluster()
+	c.Assert(err, gocheck.IsNil)
+	defer s.stopMultipleServersCluster(cluster)
+	err = newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	appInstance := testing.NewFakeApp("myapp", "python", 0)
+	var p dockerProvisioner
+	defer p.Destroy(appInstance)
+	p.Provision(appInstance)
+	provisionMutex.Lock()
+	oldProvisioner := app.Provisioner
+	app.Provisioner = &p
+	provisionMutex.Unlock()
+	defer func() {
+		provisionMutex.Lock()
+		app.Provisioner = oldProvisioner
+		provisionMutex.Unlock()
+	}()
+	coll := collection()
+	defer coll.Close()
+	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
+	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
+	units, err := addUnitsWithHost(appInstance, 5, "localhost")
+	c.Assert(err, gocheck.IsNil)
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	appStruct := &app.App{
+		Name:     appInstance.GetName(),
+		Platform: appInstance.GetPlatform(),
+	}
+	err = conn.Apps().Insert(appStruct)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
+	err = conn.Apps().Update(
+		bson.M{"name": appStruct.Name},
+		bson.M{"$set": bson.M{"units": units}},
+	)
+	c.Assert(err, gocheck.IsNil)
+	b := bytes.NewBufferString("")
+	req, err := http.NewRequest("POST", "/containers/move", b)
+	rec := httptest.NewRecorder()
+	err = rebalanceContainersHandler(rec, req)
+	c.Assert(err, gocheck.IsNil)
+	body, err := ioutil.ReadAll(rec.Body)
+	c.Assert(err, gocheck.IsNil)
+	validJson := fmt.Sprintf("[%s]", strings.Replace(strings.Trim(string(body), "\n "), "\n", ",", -1))
+	var result []progressLog
+	err = json.Unmarshal([]byte(validJson), &result)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(len(result), gocheck.Equals, 8)
+	c.Assert(result[0].Message, gocheck.Equals, "Trying to move 2 units from localhost...")
+	c.Assert(result[1].Message, gocheck.Matches, "Moving unit .*")
+	c.Assert(result[2].Message, gocheck.Matches, "Moving unit .*")
+	c.Assert(result[7].Message, gocheck.Matches, "Containers rebalanced successfully!")
+	testing.CleanQ("tsuru-app")
+}
+
+func (s *S) TestRebalanceContainersDryBodyHandler(c *gocheck.C) {
+	cluster, err := s.startMultipleServersCluster()
+	c.Assert(err, gocheck.IsNil)
+	defer s.stopMultipleServersCluster(cluster)
+	err = newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	appInstance := testing.NewFakeApp("myapp", "python", 0)
+	var p dockerProvisioner
+	defer p.Destroy(appInstance)
+	p.Provision(appInstance)
+	provisionMutex.Lock()
+	oldProvisioner := app.Provisioner
+	app.Provisioner = &p
+	provisionMutex.Unlock()
+	defer func() {
+		provisionMutex.Lock()
+		app.Provisioner = oldProvisioner
+		provisionMutex.Unlock()
+	}()
+	coll := collection()
+	defer coll.Close()
+	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
+	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
+	units, err := addUnitsWithHost(appInstance, 5, "localhost")
+	c.Assert(err, gocheck.IsNil)
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	appStruct := &app.App{
+		Name:     appInstance.GetName(),
+		Platform: appInstance.GetPlatform(),
+	}
+	err = conn.Apps().Insert(appStruct)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
+	err = conn.Apps().Update(
+		bson.M{"name": appStruct.Name},
+		bson.M{"$set": bson.M{"units": units}},
+	)
+	c.Assert(err, gocheck.IsNil)
+	b := bytes.NewBufferString(`{"dry": "true"}`)
+	req, err := http.NewRequest("POST", "/containers/move", b)
+	rec := httptest.NewRecorder()
+	err = rebalanceContainersHandler(rec, req)
+	c.Assert(err, gocheck.IsNil)
+	body, err := ioutil.ReadAll(rec.Body)
+	c.Assert(err, gocheck.IsNil)
+	validJson := fmt.Sprintf("[%s]", strings.Replace(strings.Trim(string(body), "\n "), "\n", ",", -1))
+	var result []progressLog
+	err = json.Unmarshal([]byte(validJson), &result)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(len(result), gocheck.Equals, 4)
+	c.Assert(result[0].Message, gocheck.Equals, "Trying to move 2 units from localhost...")
+	c.Assert(result[1].Message, gocheck.Matches, "Would move unit .*")
+	c.Assert(result[2].Message, gocheck.Matches, "Would move unit .*")
+	c.Assert(result[3].Message, gocheck.Matches, "Containers rebalanced successfully!")
+	testing.CleanQ("tsuru-app")
 }

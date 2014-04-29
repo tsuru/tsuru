@@ -6,6 +6,7 @@ package docker
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/tsuru/tsuru/api"
 	"github.com/tsuru/tsuru/auth"
 	"io"
@@ -47,7 +48,12 @@ func moveContainersHandler(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	encoder := json.NewEncoder(w)
-	err = moveContainers(params["from"], params["to"], encoder)
+	from := params["from"]
+	to := params["to"]
+	if from == "" || to == "" {
+		return fmt.Errorf("Invalid params: from: %s - to: %s", from, to)
+	}
+	err = moveContainers(from, to, encoder)
 	if err != nil {
 		logProgress(encoder, "Error trying to move containers: %s", err.Error())
 	} else {
@@ -57,12 +63,13 @@ func moveContainersHandler(w http.ResponseWriter, r *http.Request) error {
 }
 
 func rebalanceContainersHandler(w http.ResponseWriter, r *http.Request) error {
+	dry := false
 	params, err := unmarshal(r.Body)
-	if err != nil {
-		return err
+	if err == nil {
+		dry = params["dry"] == "true"
 	}
 	encoder := json.NewEncoder(w)
-	err = rebalanceContainers(encoder, params["dry"] == "true")
+	err = rebalanceContainers(encoder, dry)
 	if err != nil {
 		logProgress(encoder, "Error trying to rebalance containers: %s", err.Error())
 	} else {
