@@ -396,19 +396,21 @@ func (p *dockerProvisioner) DeployPipeline() *action.Pipeline {
 
 // PlatformAdd build and push a new docker platform to register
 func (p *dockerProvisioner) PlatformAdd(name string, args string) error {
+    if args == "" {
+        return errors.New("Dockerfile is required.")
+    }
 	var buf safe.Buffer
-	image_name := assembleImageName(name)
-	docker_cluster := dockerCluster()
+	imageName := assembleImageName(name)
+	dockerCluster := dockerCluster()
 	buildOptions := docker.BuildImageOptions{
-		Name:         image_name,
+		Name:         imageName,
 		Remote:       args,
 		InputStream:  nil,
 		OutputStream: &buf,
 	}
-	err := docker_cluster.BuildImage(buildOptions)
+	err := dockerCluster.BuildImage(buildOptions)
 	if err != nil {
 		return err
 	}
-
-	return pushImage(image_name)
+	return pushImage(imageName)
 }
