@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/safe"
 	"io"
 	"io/ioutil"
+	"net/url"
 	"sync"
 	"time"
 )
@@ -399,6 +400,9 @@ func (p *dockerProvisioner) DeployPipeline() *action.Pipeline {
 func (p *dockerProvisioner) PlatformAdd(name string, args map[string]string) error {
 	if args["dockerfile"] == "" {
 		return errors.New("Dockerfile is required.")
+	}
+	if _, err := url.ParseRequestURI(args["dockerfile"]); err != nil {
+		return errors.New("dockerfile parameter should be an url.")
 	}
 	var buf safe.Buffer
 	imageName := assembleImageName(name)
