@@ -14,7 +14,7 @@ import (
 	"net/http"
 )
 
-type moveContainerCmd struct{}
+type moveContainersCmd struct{}
 
 type jsonLogWriter struct {
 	w io.Writer
@@ -33,7 +33,7 @@ func (w *jsonLogWriter) Write(b []byte) (int, error) {
 	return len(b), nil
 }
 
-func (c *moveContainerCmd) Info() *cmd.Info {
+func (c *moveContainersCmd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "containers-move",
 		Usage:   "containers-move <from host> <to host>",
@@ -42,7 +42,7 @@ func (c *moveContainerCmd) Info() *cmd.Info {
 	}
 }
 
-func (c *moveContainerCmd) Run(context *cmd.Context, client *cmd.Client) error {
+func (c *moveContainersCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	url, err := cmd.GetURL("/containers/move")
 	if err != nil {
 		return err
@@ -50,6 +50,46 @@ func (c *moveContainerCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	params := map[string]string{
 		"from": context.Args[0],
 		"to":   context.Args[1],
+	}
+	b, err := json.Marshal(params)
+	if err != nil {
+		return err
+	}
+	buffer := bytes.NewBuffer(b)
+	request, err := http.NewRequest("POST", url, buffer)
+	if err != nil {
+		return err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	w := jsonLogWriter{w: context.Stdout}
+	for n := int64(1); n > 0 && err == nil; n, err = io.Copy(&w, response.Body) {
+	}
+	return nil
+}
+
+type moveContainerCmd struct{}
+
+func (c *moveContainerCmd) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "container-move",
+		Usage:   "container-move <container id> <to host>",
+		Desc:    "Move specified container to another host.",
+		MinArgs: 2,
+	}
+}
+
+func (c *moveContainerCmd) Run(context *cmd.Context, client *cmd.Client) error {
+	url, err := cmd.GetURL(fmt.Sprintf("/container/%s/move", context.Args[0]))
+	if err != nil {
+		return err
+	}
+	params := map[string]string{
+		"to": context.Args[1],
 	}
 	b, err := json.Marshal(params)
 	if err != nil {

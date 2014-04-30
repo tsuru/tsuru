@@ -14,17 +14,17 @@ import (
 	"net/http"
 )
 
-func (s *S) TestMoveContainerInfo(c *gocheck.C) {
+func (s *S) TestMoveContainersInfo(c *gocheck.C) {
 	expected := &cmd.Info{
 		Name:    "containers-move",
 		Usage:   "containers-move <from host> <to host>",
 		Desc:    "Move all containers from one host to another.\nThis command is especially useful for host maintenance.",
 		MinArgs: 2,
 	}
-	c.Assert((&moveContainerCmd{}).Info(), gocheck.DeepEquals, expected)
+	c.Assert((&moveContainersCmd{}).Info(), gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestMoveContainerRun(c *gocheck.C) {
+func (s *S) TestMoveContainersRun(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Stdout: &stdout,
@@ -47,6 +47,49 @@ func (s *S) TestMoveContainerRun(c *gocheck.C) {
 			err = json.Unmarshal(body, &result)
 			c.Assert(expected, gocheck.DeepEquals, result)
 			return req.URL.Path == "/containers/move" && req.Method == "POST"
+		},
+	}
+	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	cmd := moveContainersCmd{}
+	err := cmd.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	expected := "progress msg\n"
+	c.Assert(stdout.String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestMoveContainerInfo(c *gocheck.C) {
+	expected := &cmd.Info{
+		Name:    "container-move",
+		Usage:   "container-move <container id> <to host>",
+		Desc:    "Move specified container to another host.",
+		MinArgs: 2,
+	}
+	c.Assert((&moveContainerCmd{}).Info(), gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestMoveContainerRun(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Args:   []string{"contId", "toHost"},
+	}
+	msg, _ := json.Marshal(progressLog{Message: "progress msg"})
+	result := string(msg)
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: result, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			defer req.Body.Close()
+			body, err := ioutil.ReadAll(req.Body)
+			c.Assert(err, gocheck.IsNil)
+			expected := map[string]string{
+				"to": "toHost",
+			}
+			result := map[string]string{}
+			err = json.Unmarshal(body, &result)
+			c.Assert(expected, gocheck.DeepEquals, result)
+			return req.URL.Path == "/container/contId/move" && req.Method == "POST"
 		},
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)

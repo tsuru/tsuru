@@ -72,7 +72,7 @@ func (p *dockerProvisioner) Provision(app provision.App) error {
 }
 
 func (p *dockerProvisioner) Restart(app provision.App) error {
-	containers, err := listAppContainers(app.GetName())
+	containers, err := listContainersByApp(app.GetName())
 	if err != nil {
 		log.Errorf("Got error while getting app containers: %s", err)
 		return err
@@ -93,7 +93,7 @@ func (p *dockerProvisioner) Restart(app provision.App) error {
 }
 
 func (*dockerProvisioner) Start(app provision.App) error {
-	containers, err := listAppContainers(app.GetName())
+	containers, err := listContainersByApp(app.GetName())
 	if err != nil {
 		return errors.New(fmt.Sprintf("Got error while getting app containers: %s", err))
 	}
@@ -107,7 +107,7 @@ func (*dockerProvisioner) Start(app provision.App) error {
 }
 
 func (p *dockerProvisioner) Stop(app provision.App) error {
-	containers, err := listAppContainers(app.GetName())
+	containers, err := listContainersByApp(app.GetName())
 	if err != nil {
 		log.Errorf("Got error while getting app containers: %s", err)
 		return nil
@@ -164,7 +164,7 @@ func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer)
 	if err != nil {
 		return err
 	}
-	containers, err := listAppContainers(a.GetName())
+	containers, err := listContainersByApp(a.GetName())
 	started := make(chan bool, len(containers))
 	if err == nil && len(containers) > 0 {
 		for _, c := range containers {
@@ -182,7 +182,7 @@ func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer)
 }
 
 func (p *dockerProvisioner) Destroy(app provision.App) error {
-	containers, _ := listAppContainers(app.GetName())
+	containers, _ := listContainersByApp(app.GetName())
 	go func(c []container) {
 		var containersGroup sync.WaitGroup
 		containersGroup.Add(len(containers))
@@ -279,7 +279,7 @@ func (*dockerProvisioner) RemoveUnit(a provision.App, unitName string) error {
 // that the unit being removed has the same host that any
 // of the units that still being used
 func rebindWhenNeed(appName string, container *container) error {
-	containers, err := listAppContainers(appName)
+	containers, err := listContainersByApp(appName)
 	if err != nil {
 		return err
 	}
@@ -310,7 +310,7 @@ func (*dockerProvisioner) InstallDeps(app provision.App, w io.Writer) error {
 }
 
 func (*dockerProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
-	containers, err := listAppContainers(app.GetName())
+	containers, err := listContainersByApp(app.GetName())
 	if err != nil {
 		return err
 	}
@@ -322,7 +322,7 @@ func (*dockerProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provi
 }
 
 func (*dockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
-	containers, err := listAppContainers(app.GetName())
+	containers, err := listContainersByApp(app.GetName())
 	if err != nil {
 		return err
 	}
@@ -366,6 +366,7 @@ func (p *dockerProvisioner) Commands() []cmd.Command {
 func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 	return []cmd.Command{
 		&moveContainerCmd{},
+		&moveContainersCmd{},
 		&rebalanceContainersCmd{},
 	}
 }

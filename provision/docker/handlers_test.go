@@ -255,6 +255,21 @@ func (s *HandlersSuite) TestMoveContainersHandler(c *gocheck.C) {
 	})
 }
 
+func (s *HandlersSuite) TestMoveContainerHandler(c *gocheck.C) {
+	b := bytes.NewBufferString(`{"to": "127.0.0.1"}`)
+	req, err := http.NewRequest("POST", "/container/myid/move?:id=myid", b)
+	rec := httptest.NewRecorder()
+	err = moveContainerHandler(rec, req)
+	c.Assert(err, gocheck.IsNil)
+	body, err := ioutil.ReadAll(rec.Body)
+	c.Assert(err, gocheck.IsNil)
+	var result progressLog
+	err = json.Unmarshal(body, &result)
+	c.Assert(err, gocheck.IsNil)
+	expected := progressLog{Message: "Error trying to move container: not found"}
+	c.Assert(result, gocheck.DeepEquals, expected)
+}
+
 func (s *S) TestRebalanceContainersEmptyBodyHandler(c *gocheck.C) {
 	cluster, err := s.startMultipleServersCluster()
 	c.Assert(err, gocheck.IsNil)
