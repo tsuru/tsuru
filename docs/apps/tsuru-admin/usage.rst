@@ -39,6 +39,9 @@ address configured in your tsuru.conf file.
 Commands
 ========
 
+All the "container*"" commands below only exist when using the docker
+provisioner.
+
 containers-move
 ---------------
 
@@ -47,8 +50,6 @@ containers-move
 ::
 
     $ tsuru-admin containers-move <from host> <to host>
-
-This command only exist when using the docker provisioner.
 
 It allows you to move all containers from one host to another. This is useful
 when doing maintenance on hosts. <from host> and <to host> must be host names
@@ -63,6 +64,19 @@ This command will go through the following steps:
 * For each unit, create a new unit at the destination host;
 * Erase each unit from the origin host.
 
+container-move
+--------------
+
+.. highlight:: bash
+
+::
+
+    $ tsuru-admin container-move <container id> <to host>
+
+This command allow you to specify a container id and a destination host, this
+will create a new container on the destination host and remove the container
+from its previous host.
+
 
 containers-rebalance
 --------------------
@@ -72,9 +86,6 @@ containers-rebalance
 ::
 
     $ tsuru-admin containers-rebalance [--dry]
-
-This command has the same restrictions as the containers-move command, it only
-works with the docker provisioner.
 
 Instead of specifying hosts as in the containers-move command, this command
 will automatically choose to which host each unit should be moved, trying to
