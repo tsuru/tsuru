@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/queue"
@@ -390,6 +391,34 @@ func (s *S) TestCantCreateAppWithInvalidName(c *gocheck.C) {
 	msg := "Invalid app name, your app should have at most 63 " +
 		"characters, containing only lower case letters, numbers or dashes, " +
 		"starting with a letter."
+	c.Assert(e.Message, gocheck.Equals, msg)
+}
+
+func (s *S) TestCantCreateAppWithSamePlatformName(c *gocheck.C) {
+	a := App{Name: "python", Platform: "python"}
+	err := CreateApp(&a, s.user)
+	e, ok := err.(*errors.ValidationError)
+	c.Assert(ok, gocheck.Equals, true)
+	msg := "Invalid app name: platform name and app name can not be the same"
+	c.Assert(e.Message, gocheck.Equals, msg)
+}
+
+func (s *S) TestCantCreateAppWhenEqualToSomePlatformName(c *gocheck.C) {
+	a := App{Name: "django", Platform: "python"}
+	platforms := []Platform{
+		{Name: "django"},
+	}
+	conn, _ := db.Conn()
+	defer conn.Close()
+	for _, p := range platforms {
+		conn.Platforms().Insert(p)
+		defer conn.Platforms().Remove(p)
+	}
+	err := CreateApp(&a, s.user)
+	e, ok := err.(*errors.ValidationError)
+	c.Assert(ok, gocheck.Equals, true)
+	msg := "Invalid app name: platform name already exists " +
+		"with the same name"
 	c.Assert(e.Message, gocheck.Equals, msg)
 }
 
@@ -1965,6 +1994,53 @@ func (s *S) TestListReturnsAllAppsWhenUserIsInAdminTeam(c *gocheck.C) {
 	c.Assert(len(apps), Greater, 0)
 	c.Assert(apps[0].Name, gocheck.Equals, "testApp")
 	c.Assert(apps[0].Teams, gocheck.DeepEquals, []string{"notAdmin", "noSuperUser"})
+}
+
+func (s *S) TestReturnTrueIfSameAppNameAndPlatformName(c *gocheck.C) {
+	a := App{
+		Name:     "sameName",
+		Platform: "sameName",
+	}
+	c.Assert(a.equalAppNameAndPlatformName(), gocheck.Equals, true)
+}
+
+func (s *S) TestReturnFalseIfSameAppNameAndPlatformName(c *gocheck.C) {
+	a := App{
+		Name:     "sameName",
+		Platform: "differentName",
+	}
+	c.Assert(a.equalAppNameAndPlatformName(), gocheck.Equals, false)
+}
+
+func (s *S) TestReturnTrueIfAppNameEqualToSomePlatformName(c *gocheck.C) {
+	a := App{Name: "sameName"}
+	platforms := []Platform{
+		{Name: "not"},
+		{Name: "sameName"},
+		{Name: "nothing"},
+	}
+	conn, _ := db.Conn()
+	defer conn.Close()
+	for _, p := range platforms {
+		conn.Platforms().Insert(p)
+		defer conn.Platforms().Remove(p)
+	}
+	c.Assert(a.equalToSomePlatformName(), gocheck.Equals, true)
+}
+
+func (s *S) TestReturnFalseIfAppNameEqualToSomePlatformName(c *gocheck.C) {
+	a := App{Name: "differentName"}
+	platforms := []Platform{
+		{Name: "yyyyy"},
+		{Name: "xxxxx"},
+	}
+	conn, _ := db.Conn()
+	defer conn.Close()
+	for _, p := range platforms {
+		conn.Platforms().Insert(p)
+		defer conn.Platforms().Remove(p)
+	}
+	c.Assert(a.equalToSomePlatformName(), gocheck.Equals, false)
 }
 
 func (s *S) TestGetName(c *gocheck.C) {
