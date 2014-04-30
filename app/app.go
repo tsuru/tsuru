@@ -166,6 +166,16 @@ func CreateApp(app *App, user *auth.User) error {
 			"starting with a letter."
 		return &errors.ValidationError{Message: msg}
 	}
+	if app.equalAppNameAndPlatformName() {
+		msg := "Invalid app name: platform name and app name " +
+			"can not be the same"
+		return &errors.ValidationError{Message: msg}
+	}
+	if app.equalToSomePlatformName() {
+		msg := "Invalid app name: platform name already exists " +
+			"with the same name"
+		return &errors.ValidationError{Message: msg}
+	}
 	actions := []*action.Action{
 		&reserveUserApp,
 		&insertApp,
@@ -608,6 +618,26 @@ func (app *App) getEnv(name string) (bind.EnvVar, error) {
 // isValid indicates whether the name of the app is valid.
 func (app *App) isValid() bool {
 	return nameRegexp.MatchString(app.Name)
+}
+
+// equalAppNameAndPlatformName check if the app.Name and app.Platform have
+// same name
+func (app *App) equalAppNameAndPlatformName() bool {
+	return app.Name == app.GetPlatform()
+}
+
+// equalToSomePlatformName indicates if app.Name and some Platform are equals
+func (app *App) equalToSomePlatformName() bool {
+	platforms, err := Platforms()
+	if err != nil {
+		return false
+	}
+	for _, platform := range platforms {
+		if app.Name == platform.Name {
+			return true
+		}
+	}
+	return false
 }
 
 // InstanceEnv returns a map of environment variables that belongs to the given
