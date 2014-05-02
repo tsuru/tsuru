@@ -302,9 +302,14 @@ func (u *User) ListKeys() (map[string]string, error) {
 	return c.ListKeys(u.Email)
 }
 
-type AuthenticationFailure struct{}
+type AuthenticationFailure struct {
+	Message string
+}
 
-func (AuthenticationFailure) Error() string {
+func (a AuthenticationFailure) Error() string {
+	if a.Message != "" {
+		return a.Message
+	}
 	return "Authentication failed, wrong password."
 }
 

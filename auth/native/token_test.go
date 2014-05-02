@@ -1,0 +1,270 @@
+// Copyright 2014 tsuru authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE file.
+
+package native
+
+import (
+	"code.google.com/p/go.crypto/bcrypt"
+	"crypto"
+	"fmt"
+	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/auth"
+	"labix.org/v2/mgo/bson"
+	"launchpad.net/gocheck"
+	"runtime"
+	"sync"
+	"time"
+)
+
+func (s *S) TestLoadConfigTokenExpire(c *gocheck.C) {
+	configuredToken, err := config.Get("auth:token-expire-days")
+	c.Assert(err, gocheck.IsNil)
+	expected := time.Duration(int64(configuredToken.(int)) * 24 * int64(time.Hour))
+	cost = 0
+	tokenExpire = 0
+	loadConfig()
+	c.Assert(tokenExpire, gocheck.Equals, expected)
+}
+
+func (s *S) TestLoadConfigUndefinedTokenExpire(c *gocheck.C) {
+	tokenExpire = 0
+	cost = 0
+	key := "auth:token-expire-days"
+	oldConfig, err := config.Get(key)
+	c.Assert(err, gocheck.IsNil)
+	err = config.Unset(key)
+	c.Assert(err, gocheck.IsNil)
+	defer config.Set(key, oldConfig)
+	err = loadConfig()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(tokenExpire, gocheck.Equals, defaultExpiration)
+}
+
+func (s *S) TestLoadConfigExpireDaysNotInteger(c *gocheck.C) {
+	cost = 0
+	tokenExpire = 0
+	oldValue, err := config.Get("auth:token-expire-days")
+	c.Assert(err, gocheck.IsNil)
+	config.Set("auth:token-expire-days", "abacaxi")
+	defer config.Set("auth:token-expire-days", oldValue)
+	err = loadConfig()
+	c.Assert(tokenExpire, gocheck.Equals, defaultExpiration)
+}
+
+func (s *S) TestLoadConfigCost(c *gocheck.C) {
+	key := "auth:hash-cost"
+	oldConfig, err := config.Get(key)
+	c.Assert(err, gocheck.IsNil)
+	config.Set(key, bcrypt.MaxCost)
+	defer config.Set(key, oldConfig)
+	cost = 0
+	tokenExpire = 0
+	err = loadConfig()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(cost, gocheck.Equals, bcrypt.MaxCost)
+}
+
+func (s *S) TestLoadConfigCostUndefined(c *gocheck.C) {
+	cost = 0
+	tokenExpire = 0
+	key := "auth:hash-cost"
+	oldConfig, err := config.Get(key)
+	c.Assert(err, gocheck.IsNil)
+	config.Unset(key)
+	defer config.Set(key, oldConfig)
+	err = loadConfig()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(cost, gocheck.Equals, bcrypt.DefaultCost)
+}
+
+func (s *S) TestLoadConfigCostInvalid(c *gocheck.C) {
+	values := []int{bcrypt.MinCost - 1, bcrypt.MaxCost + 1}
+	key := "auth:hash-cost"
+	oldConfig, _ := config.Get(key)
+	defer config.Set(key, oldConfig)
+	for _, v := range values {
+		cost = 0
+		tokenExpire = 0
+		config.Set(key, v)
+		err := loadConfig()
+		c.Assert(err, gocheck.NotNil)
+		msg := fmt.Sprintf("Invalid value for setting %q: it must be between %d and %d.", key, bcrypt.MinCost, bcrypt.MaxCost)
+		c.Assert(err.Error(), gocheck.Equals, msg)
+	}
+}
+
+func (s *S) TestTokenCannotRepeat(c *gocheck.C) {
+	input := "user-token"
+	tokens := make([]string, 10)
+	var wg sync.WaitGroup
+	for i := range tokens {
+		wg.Add(1)
+		go func(i int) {
+			tokens[i] = token(input, crypto.MD5)
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+	reference := tokens[0]
+	for _, t := range tokens[1:] {
+		c.Check(t, gocheck.Not(gocheck.Equals), reference)
+	}
+}
+
+func (s *S) TestNewUserToken(c *gocheck.C) {
+	u := auth.User{Email: "girl@mj.com"}
+	t, err := newUserToken(&u)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(t.Expires, gocheck.Equals, tokenExpire)
+	c.Assert(t.UserEmail, gocheck.Equals, u.Email)
+}
+
+func (s *S) TestNewTokenReturnsErrorWhenUserReferenceDoesNotContainsEmail(c *gocheck.C) {
+	u := auth.User{}
+	t, err := newUserToken(&u)
+	c.Assert(t, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.ErrorMatches, "^Impossible to generate tokens for users without email$")
+}
+
+func (s *S) TestNewTokenReturnsErrorWhenUserIsNil(c *gocheck.C) {
+	t, err := newUserToken(nil)
+	c.Assert(t, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.ErrorMatches, "^User is nil$")
+}
+
+func (s *S) TestRemoveOld(c *gocheck.C) {
+	config.Set("auth:max-simultaneous-sessions", 6)
+	defer config.Unset("auth:max-simultaneous-sessions")
+	user := "removeme@tsuru.io"
+	defer s.conn.Tokens().RemoveAll(bson.M{"useremail": user})
+	initial := time.Now().Add(-48 * time.Hour)
+	for i := 0; i < 30; i++ {
+		token := Token{
+			Token:     fmt.Sprintf("blastoise-%d", i),
+			Expires:   100 * 24 * time.Hour,
+			Creation:  initial.Add(time.Duration(i) * time.Hour),
+			UserEmail: user,
+		}
+		err := s.conn.Tokens().Insert(token)
+		c.Check(err, gocheck.IsNil)
+	}
+	err := removeOldTokens(user)
+	c.Assert(err, gocheck.IsNil)
+	var tokens []Token
+	err = s.conn.Tokens().Find(bson.M{"useremail": user}).All(&tokens)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(tokens, gocheck.HasLen, 6)
+	names := make([]string, len(tokens))
+	for i := range tokens {
+		names[i] = tokens[i].Token
+	}
+	expected := []string{
+		"blastoise-24", "blastoise-25", "blastoise-26",
+		"blastoise-27", "blastoise-28", "blastoise-29",
+	}
+	c.Assert(names, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestRemoveOldNothingToRemove(c *gocheck.C) {
+	config.Set("auth:max-simultaneous-sessions", 6)
+	defer config.Unset("auth:max-simultaneous-sessions")
+	user := "removeme@tsuru.io"
+	defer s.conn.Tokens().RemoveAll(bson.M{"useremail": user})
+	t := Token{
+		Token:     "blablabla",
+		UserEmail: user,
+		Creation:  time.Now(),
+		Expires:   time.Hour,
+	}
+	err := s.conn.Tokens().Insert(t)
+	c.Assert(err, gocheck.IsNil)
+	err = removeOldTokens(user)
+	c.Assert(err, gocheck.IsNil)
+	count, err := s.conn.Tokens().Find(bson.M{"useremail": user}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 1)
+}
+
+func (s *S) TestRemoveOldWithoutSetting(c *gocheck.C) {
+	err := removeOldTokens("something@tsuru.io")
+	c.Assert(err, gocheck.NotNil)
+}
+
+func (s *S) TestCreateTokenShouldSaveTheTokenInTheDatabase(c *gocheck.C) {
+	u := auth.User{Email: "wolverine@xmen.com", Password: "123456"}
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	_, err = createToken(&u, "123456")
+	c.Assert(err, gocheck.IsNil)
+	var result Token
+	err = s.conn.Tokens().Find(bson.M{"useremail": u.Email}).One(&result)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result.Token, gocheck.NotNil)
+}
+
+func (s *S) TestCreateTokenRemoveOldTokens(c *gocheck.C) {
+	config.Set("auth:max-simultaneous-sessions", 2)
+	u := auth.User{Email: "para@xmen.com", Password: "123456"}
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	defer s.conn.Tokens().RemoveAll(bson.M{"useremail": u.Email})
+	t1, err := newUserToken(&u)
+	c.Assert(err, gocheck.IsNil)
+	t2 := t1
+	t2.Token += "aa"
+	err = s.conn.Tokens().Insert(t1, t2)
+	_, err = createToken(&u, "123456")
+	c.Assert(err, gocheck.IsNil)
+	ok := make(chan bool, 1)
+	go func() {
+		for {
+			ct, err := s.conn.Tokens().Find(bson.M{"useremail": u.Email}).Count()
+			c.Assert(err, gocheck.IsNil)
+			if ct == 2 {
+				ok <- true
+				return
+			}
+			runtime.Gosched()
+		}
+	}()
+	select {
+	case <-ok:
+	case <-time.After(2e9):
+		c.Fatal("Did not remove old tokens after 2 seconds")
+	}
+}
+
+func (s *S) TestCreateTokenUsesDefaultCostWhenHasCostIsUndefined(c *gocheck.C) {
+	err := config.Unset("auth:hash-cost")
+	c.Assert(err, gocheck.IsNil)
+	defer config.Set("auth:hash-cost", bcrypt.MinCost)
+	u := auth.User{Email: "wolverine@xmen.com", Password: "123456"}
+	err = u.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	cost = 0
+	tokenExpire = 0
+	_, err = createToken(&u, "123456")
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestCreateTokenShouldReturnErrorIfTheProvidedUserDoesNotHaveEmailDefined(c *gocheck.C) {
+	u := auth.User{Password: "123"}
+	_, err := createToken(&u, "123")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.ErrorMatches, "^User does not have an email$")
+}
+
+func (s *S) TestCreateTokenShouldValidateThePassword(c *gocheck.C) {
+	u := auth.User{Email: "me@gmail.com", Password: "123456"}
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	_, err = createToken(&u, "123")
+	c.Assert(err, gocheck.NotNil)
+}
