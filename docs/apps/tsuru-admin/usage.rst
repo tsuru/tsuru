@@ -94,3 +94,22 @@ distribute the units as evenly as possible.
 The --dry flag runs the balancing algorithm without doing any real
 modification. It will only print which units would be moved and where they
 would be created.
+
+
+All the "platform*"" commands below only exist when using the docker
+provisioner.
+
+platform-add
+------------
+
+.. highlight:: bash
+
+::
+
+    $ tsuru-admin platform-add <name> [--dockerfile]
+
+This command allow you to add a new platform to your tsuru installation.
+It will automatically create and build a whole new platform on tsuru server and
+will allow your users to create apps based on that platform.
+
+The --dockerfile flag is an URL to a dockerfile which will create your platform.
