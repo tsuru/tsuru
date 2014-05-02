@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
@@ -33,6 +34,8 @@ const (
 	passwordMinLen = 6
 	passwordMaxLen = 50
 )
+
+var AuthScheme = native.NativeScheme{}
 
 func createUser(w http.ResponseWriter, r *http.Request) error {
 	var u auth.User
@@ -67,28 +70,20 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 }
 
 func login(w http.ResponseWriter, r *http.Request) error {
-	var pass map[string]string
-	err := json.NewDecoder(r.Body).Decode(&pass)
+	var params map[string]string
+	err := json.NewDecoder(r.Body).Decode(&params)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Invalid JSON"}
 	}
-	password, ok := pass["password"]
-	if !ok {
-		msg := "You must provide a password to login"
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
-	}
-	u, err := auth.GetUserByEmail(r.URL.Query().Get(":email"))
+	params["email"] = r.URL.Query().Get(":email")
+	token, err := AuthScheme.Login(params)
 	if err != nil {
-		if e, ok := err.(*errors.ValidationError); ok {
-			return &errors.HTTP{Code: http.StatusBadRequest, Message: e.Message}
-		} else if err == auth.ErrUserNotFound {
-			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		if err == auth.ErrUserNotFound {
+			return &errors.HTTP{
+				Code:    http.StatusNotFound,
+				Message: err.Error(),
+			}
 		}
-		return err
-	}
-	rec.Log(u.Email, "login")
-	t, err := u.CreateToken(password)
-	if err != nil {
 		switch err.(type) {
 		case *errors.ValidationError:
 			return &errors.HTTP{
@@ -104,7 +99,12 @@ func login(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 	}
-	fmt.Fprintf(w, `{"token":"%s","is_admin":%v}`, t.Token, u.IsAdmin())
+	u, err := token.User()
+	if err != nil {
+		return err
+	}
+	rec.Log(u.Email, "login")
+	fmt.Fprintf(w, `{"token":"%s","is_admin":%v}`, token.GetValue(), u.IsAdmin())
 	return nil
 }
 
