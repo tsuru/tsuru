@@ -738,7 +738,7 @@ func (s *S) TestProvisionerPlatformAdd(c *gocheck.C) {
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	p := dockerProvisioner{}
-	err = p.PlatformAdd("test", args)
+	err = p.PlatformAdd("test", args, bytes.NewBuffer(nil))
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(requests, gocheck.HasLen, 2)
 	queryString := requests[0].URL.Query()
@@ -748,7 +748,7 @@ func (s *S) TestProvisionerPlatformAdd(c *gocheck.C) {
 
 func (s *S) TestProvisionerPlatformAddWithoutArgs(c *gocheck.C) {
 	p := dockerProvisioner{}
-	err := p.PlatformAdd("test", nil)
+	err := p.PlatformAdd("test", nil, nil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Dockerfile is required.")
 }
@@ -757,7 +757,7 @@ func (s *S) TestProvisionerPlatformAddShouldValidateArgs(c *gocheck.C) {
 	args := make(map[string]string)
 	args["dockerfile"] = "not_a_url"
 	p := dockerProvisioner{}
-	err := p.PlatformAdd("test", args)
+	err := p.PlatformAdd("test", args, bytes.NewBuffer(nil))
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "dockerfile parameter should be an url.")
 }

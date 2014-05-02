@@ -167,7 +167,7 @@ type Provisioner interface {
 	// DeployPipeline returns actions that should be executed on deploy.
 	DeployPipeline() *action.Pipeline
 
-	PlatformAdd(name string, args map[string]string) error
+	PlatformAdd(name string, args map[string]string, w io.Writer) error
 }
 
 var provisioners = make(map[string]Provisioner)

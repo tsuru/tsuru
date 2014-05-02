@@ -22,7 +22,6 @@ import (
 	"github.com/tsuru/tsuru/router"
 	_ "github.com/tsuru/tsuru/router/hipache"
 	_ "github.com/tsuru/tsuru/router/testing"
-	"github.com/tsuru/tsuru/safe"
 	"io"
 	"io/ioutil"
 	"net/url"
@@ -397,23 +396,24 @@ func (p *dockerProvisioner) DeployPipeline() *action.Pipeline {
 }
 
 // PlatformAdd build and push a new docker platform to register
-func (p *dockerProvisioner) PlatformAdd(name string, args map[string]string) error {
+func (p *dockerProvisioner) PlatformAdd(name string, args map[string]string, w io.Writer) error {
 	if args["dockerfile"] == "" {
 		return errors.New("Dockerfile is required.")
 	}
 	if _, err := url.ParseRequestURI(args["dockerfile"]); err != nil {
 		return errors.New("dockerfile parameter should be an url.")
 	}
-	var buf safe.Buffer
 	imageName := assembleImageName(name)
 	dockerCluster := dockerCluster()
 	buildOptions := docker.BuildImageOptions{
-		Name:         imageName,
-		Remote:       args["dockerfile"],
-		InputStream:  nil,
-		OutputStream: &buf,
+		Name:           imageName,
+		NoCache:        true,
+		RmTmpContainer: true,
+		Remote:         args["dockerfile"],
+		InputStream:    nil,
+		OutputStream:   w,
 	}
-	err := dockerCluster.BuildImage(buildOptions)
+    err := dockerCluster.BuildImage(buildOptions)
 	if err != nil {
 		return err
 	}
