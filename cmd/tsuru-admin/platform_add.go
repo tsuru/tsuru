@@ -7,6 +7,7 @@ package main
 import (
 	"fmt"
 	"github.com/tsuru/tsuru/cmd"
+	"io"
 	"launchpad.net/gnuflag"
 	"net/http"
 	"strings"
@@ -36,12 +37,14 @@ func (p *platformAdd) Run(context *cmd.Context, client *cmd.Client) error {
 		return err
 	}
 	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
-	_, err = client.Do(request)
+	response, err := client.Do(request)
 	if err != nil {
 		return err
 	}
-
+	defer response.Body.Close()
+	var n int64
+	for n = 1; n > 0 && err == nil; n, err = io.Copy(context.Stdout, response.Body) {
+	}
 	fmt.Fprintf(context.Stdout, "Platform successfully added!\n")
 	return nil
 }
