@@ -25,7 +25,7 @@ type ConsumptionSuite struct {
 	conn  *db.Storage
 	team  *auth.Team
 	user  *auth.User
-	token *auth.Token
+	token auth.Token
 }
 
 var _ = gocheck.Suite(&ConsumptionSuite{})
@@ -58,7 +58,7 @@ func (s *ConsumptionSuite) createUserAndTeam(c *gocheck.C) {
 	s.team = &auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
 	err = s.conn.Teams().Insert(s.team)
 	c.Assert(err, gocheck.IsNil)
-	s.token, err = s.user.CreateToken("123456")
+	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, gocheck.IsNil)
 }
 
@@ -327,9 +327,9 @@ func (s *ConsumptionSuite) TestServicesInstancesHandlerReturnsOnlyServicesThatTh
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
-	token, err := u.CreateToken("123456")
+	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Tokens().Remove(bson.M{"token": token.Token})
+	defer s.conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	srv := service.Service{Name: "redis", IsRestricted: true}
 	err = s.conn.Services().Insert(srv)
 	c.Assert(err, gocheck.IsNil)

@@ -100,7 +100,7 @@ func rebalanceContainersHandler(w http.ResponseWriter, r *http.Request) error {
 }
 
 //listNodeHandler call scheduler.Nodes to list all nodes into it.
-func listNodeHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func listNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	nodeList, err := dockerCluster().Nodes()
 	if err != nil {
 		return err
@@ -109,7 +109,7 @@ func listNodeHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) erro
 }
 
 //listContainersHandler call scheduler.Containers to list all containers into it.
-func listContainersHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func listContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	address := r.URL.Query().Get(":address")
 	if address != "" {
 		containerList, err := listContainersByHost(address)

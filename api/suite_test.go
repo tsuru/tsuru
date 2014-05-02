@@ -8,6 +8,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
@@ -51,7 +52,7 @@ type S struct {
 	conn        *db.Storage
 	team        *auth.Team
 	user        *auth.User
-	token       *auth.Token
+	token       auth.Token
 	t           *tsuruTesting.T
 	provisioner *tsuruTesting.FakeProvisioner
 }
@@ -88,7 +89,7 @@ func (s *S) createUserAndTeam(c *gocheck.C) {
 	s.team = &auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
 	err = s.conn.Teams().Insert(s.team)
 	c.Assert(err, gocheck.IsNil)
-	s.token, err = s.user.CreateToken("123456")
+	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
 }
 
 func (s *S) SetUpSuite(c *gocheck.C) {
@@ -119,3 +120,5 @@ func (s *S) getTestData(p ...string) io.ReadCloser {
 	f, _ := os.OpenFile(fp, os.O_RDONLY, 0)
 	return f
 }
+
+var nativeScheme = auth.Scheme(native.NativeScheme{})

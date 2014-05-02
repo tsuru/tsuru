@@ -123,7 +123,7 @@ var exportEnvironmentsAction = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		t, err := auth.CreateApplicationToken(app.Name)
+		t, err := AuthScheme.AppLogin(app.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -131,7 +131,7 @@ var exportEnvironmentsAction = action.Action{
 		envVars := []bind.EnvVar{
 			{Name: "TSURU_APPNAME", Value: app.Name},
 			{Name: "TSURU_HOST", Value: host},
-			{Name: "TSURU_APP_TOKEN", Value: t.Token},
+			{Name: "TSURU_APP_TOKEN", Value: t.GetValue()},
 		}
 		err = app.setEnvsToApp(envVars, false, true)
 		if err != nil {
@@ -141,7 +141,7 @@ var exportEnvironmentsAction = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.Params[0].(*App)
-		auth.DeleteToken(app.Env["TSURU_APP_TOKEN"].Value)
+		AuthScheme.Logout(app.Env["TSURU_APP_TOKEN"].Value)
 		app, err := GetByName(app.Name)
 		if err == nil {
 			vars := []string{"TSURU_HOST", "TSURU_APPNAME", "TSURU_APP_TOKEN"}

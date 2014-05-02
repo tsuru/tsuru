@@ -22,7 +22,7 @@ func getProvisioner() (string, error) {
 }
 
 // healers returns a json with all healers registered and yours endpoints.
-func healers(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func healers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	p, _ := getProvisioner()
 	h := map[string]string{}
 	for healer := range heal.All(p) {
@@ -31,7 +31,7 @@ func healers(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	return json.NewEncoder(w).Encode(h)
 }
 
-func healer(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func healer(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	p, _ := getProvisioner()
 	healer, _ := heal.Get(p, r.URL.Query().Get(":healer"))
 	w.WriteHeader(http.StatusOK)

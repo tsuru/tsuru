@@ -177,9 +177,10 @@ func (s *S) TestExportEnvironmentsForward(c *gocheck.C) {
 	c.Assert(appEnv["TSURU_HOST"].Public, gocheck.Equals, false)
 	c.Assert(appEnv["TSURU_APP_TOKEN"].Value, gocheck.Not(gocheck.Equals), "")
 	c.Assert(appEnv["TSURU_APP_TOKEN"].Public, gocheck.Equals, false)
-	t, err := auth.GetToken("bearer " + appEnv["TSURU_APP_TOKEN"].Value)
+	t, err := nativeScheme.Auth(appEnv["TSURU_APP_TOKEN"].Value)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(t.AppName, gocheck.Equals, app.Name)
+	c.Assert(t.IsAppToken(), gocheck.Equals, true)
+	c.Assert(t.GetAppName(), gocheck.Equals, app.Name)
 	message, err := aqueue().Get(2e9)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(message.Action, gocheck.Equals, regenerateApprc)
@@ -195,9 +196,9 @@ func (s *S) TestExportEnvironmentsBackward(c *gocheck.C) {
 		envVar := bind.EnvVar{Name: name, Value: name, Public: false}
 		app.Env[name] = envVar
 	}
-	token, err := auth.CreateApplicationToken(app.Name)
+	token, err := nativeScheme.AppLogin(app.Name)
 	c.Assert(err, gocheck.IsNil)
-	app.Env["TSURU_APP_TOKEN"] = bind.EnvVar{Name: "TSURU_APP_NAME", Value: token.Token}
+	app.Env["TSURU_APP_TOKEN"] = bind.EnvVar{Name: "TSURU_APP_NAME", Value: token.GetValue()}
 	err = s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
@@ -210,7 +211,7 @@ func (s *S) TestExportEnvironmentsBackward(c *gocheck.C) {
 			c.Errorf("Variable %q should be unexported, but it's still exported.", name)
 		}
 	}
-	_, err = auth.GetToken("bearer " + token.Token)
+	_, err = nativeScheme.Auth(token.GetValue())
 	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
 }
 

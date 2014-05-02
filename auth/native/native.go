@@ -14,7 +14,7 @@ var ErrMissingEmailError error = &tsuruErrors.ValidationError{Message: "You must
 
 type NativeScheme struct{}
 
-func (s NativeScheme) Login(params map[string]string) (auth.Tokener, error) {
+func (s NativeScheme) Login(params map[string]string) (auth.Token, error) {
 	email, ok := params["email"]
 	if !ok {
 		return nil, ErrMissingEmailError
@@ -34,6 +34,14 @@ func (s NativeScheme) Login(params map[string]string) (auth.Tokener, error) {
 	return token, nil
 }
 
-func (s NativeScheme) Auth(token string) (auth.Tokener, error) {
-	return nil, nil
+func (s NativeScheme) Auth(token string) (auth.Token, error) {
+	return GetToken(token)
+}
+
+func (s NativeScheme) Logout(token string) error {
+	return DeleteToken(token)
+}
+
+func (s NativeScheme) AppLogin(appName string) (auth.Token, error) {
+	return CreateApplicationToken(appName)
 }

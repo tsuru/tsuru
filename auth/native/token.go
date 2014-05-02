@@ -16,6 +16,7 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/validation"
 	"labix.org/v2/mgo/bson"
+	"strings"
 	"time"
 )
 
@@ -25,6 +26,11 @@ const (
 	passwordError     = "Password length should be least 6 characters and at most 50 characters."
 	passwordMinLen    = 6
 	passwordMaxLen    = 50
+)
+
+var (
+	tokenExpire time.Duration
+	cost        int
 )
 
 type Token struct {
@@ -47,12 +53,13 @@ func (t *Token) IsAppToken() bool {
 	return t.AppName != ""
 }
 
+func (t *Token) GetUserName() string {
+	return t.UserEmail
+}
+
 func (t *Token) GetAppName() string {
 	return t.AppName
 }
-
-var tokenExpire time.Duration
-var cost int
 
 func loadConfig() error {
 	if cost == 0 && tokenExpire == 0 {
@@ -163,4 +170,67 @@ func createToken(u *auth.User, password string) (*Token, error) {
 	err = conn.Tokens().Insert(token)
 	go removeOldTokens(u.Email)
 	return token, err
+}
+
+// parseToken extracts token from a header:
+// 'type token' or 'token'
+func parseToken(header string) (string, error) {
+	s := strings.Split(header, " ")
+	var value string
+	if len(s) < 3 {
+		value = s[len(s)-1]
+	}
+	if value != "" {
+		return value, nil
+	}
+	return value, auth.ErrInvalidToken
+}
+
+func GetToken(header string) (*Token, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	var t Token
+	token, err := parseToken(header)
+	if err != nil {
+		return nil, err
+	}
+	err = conn.Tokens().Find(bson.M{"token": token}).One(&t)
+	if err != nil {
+		return nil, auth.ErrInvalidToken
+	}
+	if t.Creation.Add(t.Expires).Sub(time.Now()) < 1 {
+		return nil, auth.ErrInvalidToken
+	}
+	return &t, nil
+}
+
+func DeleteToken(token string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.Tokens().Remove(bson.M{"token": token})
+}
+
+func CreateApplicationToken(appName string) (*Token, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	t := Token{
+		Token:    token(appName, crypto.SHA1),
+		Creation: time.Now(),
+		Expires:  365 * 24 * time.Hour,
+		AppName:  appName,
+	}
+	err = conn.Tokens().Insert(t)
+	if err != nil {
+		return nil, err
+	}
+	return &t, nil
 }

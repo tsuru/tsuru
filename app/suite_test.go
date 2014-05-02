@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
@@ -188,3 +189,5 @@ type testBadHandler struct {
 func (h *testBadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, h.msg, http.StatusInternalServerError)
 }
+
+var nativeScheme = auth.Scheme(native.NativeScheme{})

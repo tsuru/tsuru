@@ -49,7 +49,6 @@ type S struct {
 	hashed  string
 	user    *User
 	team    *Team
-	token   *Token
 	server  *ttesting.SMTPServer
 	gitRoot string
 	gitHost string
@@ -69,7 +68,6 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	s.user = &User{Email: "timeredbull@globo.com", Password: "123456"}
 	s.user.Create()
 	s.hashed = s.user.Password
-	s.token, _ = s.user.CreateToken("123456")
 	team := &Team{Name: "cobrateam", Users: []string{s.user.Email}}
 	err := s.conn.Teams().Insert(team)
 	c.Assert(err, gocheck.IsNil)

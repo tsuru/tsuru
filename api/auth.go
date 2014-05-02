@@ -13,7 +13,6 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
@@ -34,8 +33,6 @@ const (
 	passwordMinLen = 6
 	passwordMaxLen = 50
 )
-
-var AuthScheme = native.NativeScheme{}
 
 func createUser(w http.ResponseWriter, r *http.Request) error {
 	var u auth.User
@@ -76,7 +73,7 @@ func login(w http.ResponseWriter, r *http.Request) error {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Invalid JSON"}
 	}
 	params["email"] = r.URL.Query().Get(":email")
-	token, err := AuthScheme.Login(params)
+	token, err := app.AuthScheme.Login(params)
 	if err != nil {
 		if err == auth.ErrUserNotFound {
 			return &errors.HTTP{
@@ -108,9 +105,8 @@ func login(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func logout(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
-	auth.DeleteToken(t.Token)
-	return nil
+func logout(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	return app.AuthScheme.Logout(t.GetValue())
 }
 
 // ChangePassword changes the password from the logged in user.
@@ -123,7 +119,7 @@ func logout(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 //
 // This handler will return 403 if the password didn't match the user, or 400
 // if the new password is invalid.
-func changePassword(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func changePassword(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	var body map[string]string
 	err := json.NewDecoder(r.Body).Decode(&body)
 	if err != nil {
@@ -190,7 +186,7 @@ func keyToMap(keys []auth.Key) map[string]string {
 	return kMap
 }
 
-func createTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	var params map[string]string
 	err := json.NewDecoder(r.Body).Decode(&params)
 	if err != nil {
@@ -213,21 +209,21 @@ func createTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 }
 
 // RemoveTeam removes a team document from the database.
-func removeTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 	name := r.URL.Query().Get(":name")
-	rec.Log(t.UserEmail, "remove-team", name)
+	rec.Log(t.GetUserName(), "remove-team", name)
 	if n, err := conn.Apps().Find(bson.M{"teams": name}).Count(); err != nil || n > 0 {
 		msg := `This team cannot be removed because it have access to apps.
 
 Please remove the apps or revoke these accesses, and try again.`
 		return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 	}
-	query := bson.M{"_id": name, "users": t.UserEmail}
+	query := bson.M{"_id": name, "users": t.GetUserName()}
 	err = conn.Teams().Remove(query)
 	if err == mgo.ErrNotFound {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf(`Team "%s" not found.`, name)}
@@ -235,7 +231,7 @@ Please remove the apps or revoke these accesses, and try again.`
 	return err
 }
 
-func teamList(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -291,7 +287,7 @@ func addUserToTeamInGandalf(user *auth.User, t *auth.Team) error {
 	return nil
 }
 
-func addUserToTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func addUserToTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	teamName := r.URL.Query().Get(":team")
 	email := r.URL.Query().Get(":user")
 	u, err := t.User()
@@ -366,7 +362,7 @@ func removeUserFromTeamInGandalf(u *auth.User, team *auth.Team) error {
 	return nil
 }
 
-func removeUserFromTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func removeUserFromTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	email := r.URL.Query().Get(":user")
 	teamName := r.URL.Query().Get(":team")
 	u, err := t.User()
@@ -402,7 +398,7 @@ func removeUserFromTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) e
 	return removeUserFromTeamInGandalf(user, team)
 }
 
-func getTeam(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func getTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	teamName := r.URL.Query().Get(":name")
 	user, err := t.User()
 	if err != nil {
@@ -457,7 +453,7 @@ func addKeyInGandalf(key *auth.Key, u *auth.User) error {
 // This function is just an http wrapper around addKeyToUser. The latter function
 // exists to be used in other places in the package without the http stuff (request and
 // response).
-func addKeyToUser(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	content, err := getKeyFromBody(r.Body)
 	if err != nil {
 		return err
@@ -502,7 +498,7 @@ func removeKeyFromGandalf(key *auth.Key, u *auth.User) error {
 // This function is just an http wrapper around removeKeyFromUser. The latter function
 // exists to be used in other places in the package without the http stuff (request and
 // response).
-func removeKeyFromUser(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func removeKeyFromUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	content, err := getKeyFromBody(r.Body)
 	if err != nil {
 		return err
@@ -524,7 +520,7 @@ func removeKeyFromUser(w http.ResponseWriter, r *http.Request, t *auth.Token) er
 }
 
 // listKeys list user's keys
-func listKeys(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func listKeys(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -550,7 +546,7 @@ func listKeys(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 // removeUser removes the user from the database and from gandalf server
 //
 // If the user is the only one in a team an error will be returned.
-func removeUser(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -604,7 +600,7 @@ type jToken struct {
 	Export bool   `json:"export"`
 }
 
-func generateAppToken(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func generateAppToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	var body jToken
 	defer r.Body.Close()
 	err := json.NewDecoder(r.Body).Decode(&body)
@@ -617,7 +613,7 @@ func generateAppToken(w http.ResponseWriter, r *http.Request, t *auth.Token) err
 			Message: "Missing client name in JSON body",
 		}
 	}
-	token, err := auth.CreateApplicationToken(body.Client)
+	token, err := app.AuthScheme.AppLogin(body.Client)
 	if err != nil {
 		return err
 	}
@@ -626,7 +622,7 @@ func generateAppToken(w http.ResponseWriter, r *http.Request, t *auth.Token) err
 			envs := []bind.EnvVar{
 				{
 					Name:   "TSURU_APP_TOKEN",
-					Value:  token.Token,
+					Value:  token.GetValue(),
 					Public: false,
 				},
 			}

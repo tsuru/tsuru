@@ -17,7 +17,7 @@ import (
 	"net/http"
 )
 
-func createServiceInstance(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
@@ -41,7 +41,7 @@ func createServiceInstance(w http.ResponseWriter, r *http.Request, t *auth.Token
 	return service.CreateServiceInstance(body["name"], &srv, planName, user)
 }
 
-func removeServiceInstance(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -60,7 +60,7 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t *auth.Token
 	return nil
 }
 
-func serviceInstances(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func serviceInstances(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -88,7 +88,7 @@ func serviceInstances(w http.ResponseWriter, r *http.Request, t *auth.Token) err
 	return err
 }
 
-func serviceInstance(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func serviceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -100,7 +100,7 @@ func serviceInstance(w http.ResponseWriter, r *http.Request, t *auth.Token) erro
 	return json.NewEncoder(w).Encode(instance)
 }
 
-func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -124,7 +124,7 @@ func serviceInstanceStatus(w http.ResponseWriter, r *http.Request, t *auth.Token
 	return nil
 }
 
-func serviceInfo(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func serviceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -159,7 +159,7 @@ func serviceInfo(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	return nil
 }
 
-func serviceDoc(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func serviceDoc(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -211,7 +211,7 @@ func getServiceInstanceOrError(name string, u *auth.User) (*service.ServiceInsta
 	return si, nil
 }
 
-func servicePlans(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err

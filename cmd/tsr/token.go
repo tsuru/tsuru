@@ -6,18 +6,18 @@ package main
 
 import (
 	"fmt"
-	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
 )
 
 type tokenCmd struct{}
 
 func (tokenCmd) Run(context *cmd.Context, client *cmd.Client) error {
-	t, err := auth.CreateApplicationToken("tsr")
+	t, err := app.AuthScheme.AppLogin("tsr")
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(context.Stdout, t.Token)
+	fmt.Fprintf(context.Stdout, t.GetValue())
 	return nil
 }
 

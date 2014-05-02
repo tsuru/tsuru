@@ -105,6 +105,7 @@ func (u *User) Update() error {
 }
 
 func (u *User) HashPassword() {
+	loadConfig()
 	if passwd, err := bcrypt.GenerateFromPassword([]byte(u.Password), cost); err == nil {
 		u.Password = string(passwd)
 	}
@@ -118,27 +119,6 @@ func (u *User) CheckPassword(password string) error {
 		return nil
 	}
 	return AuthenticationFailure{}
-}
-
-func (u *User) CreateToken(password string) (*Token, error) {
-	if u.Email == "" {
-		return nil, stderrors.New("User does not have an email")
-	}
-	if err := u.CheckPassword(password); err != nil {
-		return nil, err
-	}
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	t, err := newUserToken(u)
-	if err != nil {
-		return nil, err
-	}
-	err = conn.Tokens().Insert(t)
-	go removeOldTokens(u.Email)
-	return t, err
 }
 
 // Teams returns a slice containing all teams that the user is member of.

@@ -8,23 +8,25 @@ package auth
 // Everything could change in minutes, please don't
 // rely on them until this notice is gone.
 
-type Tokener interface {
+type Token interface {
 	GetValue() string
 	GetAppName() string
+	GetUserName() string
 	IsAppToken() bool
 	User() (*User, error)
 }
 
 type Scheme interface {
-	Login(params map[string]string) (Tokener, error)
-	Auth(token string) (Tokener, error)
-	// CreateApplicationToken(appName string) (*Tokener, error)
+	AppLogin(appName string) (Token, error)
+	Login(params map[string]string) (Token, error)
+	Logout(token string) error
+	Auth(token string) (Token, error)
 }
 
 // type ManagedScheme interface {
 // 	Scheme
 // 	Create(email string, password string) (*User, error)
-// 	Remove(token Tokener) error
-// 	ResetPassword(token Tokener) error
-// 	ChangePassword(token Tokener, newPassword string) error
+// 	Remove(token Token) error
+// 	ResetPassword(token Token) error
+// 	ChangePassword(token Token, newPassword string) error
 // }

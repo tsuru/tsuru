@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"code.google.com/p/go.crypto/bcrypt"
 	stderrors "errors"
-	"fmt"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
@@ -212,82 +211,6 @@ func (s *S) TestResetPasswordEmptyToken(c *gocheck.C) {
 	c.Assert(err, gocheck.Equals, ErrInvalidToken)
 }
 
-func (s *S) TestCreateTokenShouldSaveTheTokenInTheDatabase(c *gocheck.C) {
-	u := User{Email: "wolverine@xmen.com", Password: "123456"}
-	err := u.Create()
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
-	_, err = u.CreateToken("123456")
-	c.Assert(err, gocheck.IsNil)
-	var result Token
-	err = s.conn.Tokens().Find(bson.M{"useremail": u.Email}).One(&result)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(result.Token, gocheck.NotNil)
-}
-
-func (s *S) TestCreateTokenRemoveOldTokens(c *gocheck.C) {
-	config.Set("auth:max-simultaneous-sessions", 2)
-	u := User{Email: "para@xmen.com", Password: "123456"}
-	err := u.Create()
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
-	defer s.conn.Tokens().RemoveAll(bson.M{"useremail": u.Email})
-	t1, err := newUserToken(&u)
-	c.Assert(err, gocheck.IsNil)
-	t2 := t1
-	t2.Token += "aa"
-	err = s.conn.Tokens().Insert(t1, t2)
-	_, err = u.CreateToken("123456")
-	c.Assert(err, gocheck.IsNil)
-	ok := make(chan bool, 1)
-	go func() {
-		for {
-			ct, err := s.conn.Tokens().Find(bson.M{"useremail": u.Email}).Count()
-			c.Assert(err, gocheck.IsNil)
-			if ct == 2 {
-				ok <- true
-				return
-			}
-			runtime.Gosched()
-		}
-	}()
-	select {
-	case <-ok:
-	case <-time.After(2e9):
-		c.Fatal("Did not remove old tokens after 2 seconds")
-	}
-}
-
-func (s *S) TestCreateTokenUsesDefaultCostWhenHasCostIsUndefined(c *gocheck.C) {
-	err := config.Unset("auth:hash-cost")
-	c.Assert(err, gocheck.IsNil)
-	defer config.Set("auth:hash-cost", bcrypt.MinCost)
-	u := User{Email: "wolverine@xmen.com", Password: "123456"}
-	err = u.Create()
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
-	cost = 0
-	tokenExpire = 0
-	_, err = u.CreateToken("123456")
-	c.Assert(err, gocheck.IsNil)
-}
-
-func (s *S) TestCreateTokenShouldReturnErrorIfTheProvidedUserDoesNotHaveEmailDefined(c *gocheck.C) {
-	u := User{Password: "123"}
-	_, err := u.CreateToken("123")
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.ErrorMatches, "^User does not have an email$")
-}
-
-func (s *S) TestCreateTokenShouldValidateThePassword(c *gocheck.C) {
-	u := User{Email: "me@gmail.com", Password: "123456"}
-	err := u.Create()
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
-	_, err = u.CreateToken("123")
-	c.Assert(err, gocheck.NotNil)
-}
-
 func (s *S) TestAddKeyAddsAKeyToTheUser(c *gocheck.C) {
 	u := &User{Email: "sacefulofsecrets@pinkfloyd.com"}
 	err := u.AddKey(Key{Content: "my-key"})
@@ -307,83 +230,6 @@ func (s *S) TestRemoveUnknownKey(c *gocheck.C) {
 	err := u.RemoveKey(Key{Content: "my-key"})
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Key not found")
-}
-
-func (s *S) TestLoadConfigTokenExpire(c *gocheck.C) {
-	configuredToken, err := config.Get("auth:token-expire-days")
-	c.Assert(err, gocheck.IsNil)
-	expected := time.Duration(int64(configuredToken.(int)) * 24 * int64(time.Hour))
-	cost = 0
-	tokenExpire = 0
-	loadConfig()
-	c.Assert(tokenExpire, gocheck.Equals, expected)
-}
-
-func (s *S) TestLoadConfigUndefinedTokenExpire(c *gocheck.C) {
-	tokenExpire = 0
-	cost = 0
-	key := "auth:token-expire-days"
-	oldConfig, err := config.Get(key)
-	c.Assert(err, gocheck.IsNil)
-	err = config.Unset(key)
-	c.Assert(err, gocheck.IsNil)
-	defer config.Set(key, oldConfig)
-	err = loadConfig()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(tokenExpire, gocheck.Equals, defaultExpiration)
-}
-
-func (s *S) TestLoadConfigExpireDaysNotInteger(c *gocheck.C) {
-	cost = 0
-	tokenExpire = 0
-	oldValue, err := config.Get("auth:token-expire-days")
-	c.Assert(err, gocheck.IsNil)
-	config.Set("auth:token-expire-days", "abacaxi")
-	defer config.Set("auth:token-expire-days", oldValue)
-	err = loadConfig()
-	c.Assert(tokenExpire, gocheck.Equals, defaultExpiration)
-}
-
-func (s *S) TestLoadConfigCost(c *gocheck.C) {
-	key := "auth:hash-cost"
-	oldConfig, err := config.Get(key)
-	c.Assert(err, gocheck.IsNil)
-	config.Set(key, bcrypt.MaxCost)
-	defer config.Set(key, oldConfig)
-	cost = 0
-	tokenExpire = 0
-	err = loadConfig()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(cost, gocheck.Equals, bcrypt.MaxCost)
-}
-
-func (s *S) TestLoadConfigCostUndefined(c *gocheck.C) {
-	cost = 0
-	tokenExpire = 0
-	key := "auth:hash-cost"
-	oldConfig, err := config.Get(key)
-	c.Assert(err, gocheck.IsNil)
-	config.Unset(key)
-	defer config.Set(key, oldConfig)
-	err = loadConfig()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(cost, gocheck.Equals, bcrypt.DefaultCost)
-}
-
-func (s *S) TestLoadConfigCostInvalid(c *gocheck.C) {
-	values := []int{bcrypt.MinCost - 1, bcrypt.MaxCost + 1}
-	key := "auth:hash-cost"
-	oldConfig, _ := config.Get(key)
-	defer config.Set(key, oldConfig)
-	for _, v := range values {
-		cost = 0
-		tokenExpire = 0
-		config.Set(key, v)
-		err := loadConfig()
-		c.Assert(err, gocheck.NotNil)
-		msg := fmt.Sprintf("Invalid value for setting %q: it must be between %d and %d.", key, bcrypt.MinCost, bcrypt.MaxCost)
-		c.Assert(err.Error(), gocheck.Equals, msg)
-	}
 }
 
 func (s *S) TestTeams(c *gocheck.C) {

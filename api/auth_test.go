@@ -30,7 +30,7 @@ import (
 type AuthSuite struct {
 	team   *auth.Team
 	user   *auth.User
-	token  *auth.Token
+	token  auth.Token
 	server *testing.SMTPServer
 }
 
@@ -81,7 +81,7 @@ func (s *AuthSuite) createUserAndTeam(c *gocheck.C) {
 	defer conn.Close()
 	err = conn.Teams().Insert(s.team)
 	c.Assert(err, gocheck.IsNil)
-	s.token, err = s.user.CreateToken("123456")
+	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, gocheck.IsNil)
 }
 
@@ -478,14 +478,14 @@ func (s *AuthSuite) TestLoginShouldReturnBadRequestWhenPasswordIsInvalid(c *goch
 }
 
 func (s *AuthSuite) TestLogout(c *gocheck.C) {
-	token, err := s.user.CreateToken("123456")
+	token, err := nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, gocheck.IsNil)
 	request, err := http.NewRequest("DELETE", "/users/tokens", nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = logout(recorder, request, token)
 	c.Assert(err, gocheck.IsNil)
-	_, err = auth.GetToken("bearer " + token.Token)
+	_, err = nativeScheme.Auth(token.GetValue())
 	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
 }
 
@@ -665,12 +665,12 @@ func (s *AuthSuite) TestListTeamsReturns204IfTheUserHasNoTeam(c *gocheck.C) {
 	u := auth.User{Email: "cruiser@gotthard.com", Password: "234567"}
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
-	token, err := u.CreateToken("234567")
+	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "234567"})
 	c.Assert(err, gocheck.IsNil)
 	conn, _ := db.Conn()
 	defer conn.Close()
 	defer conn.Users().Remove(bson.M{"email": u.Email})
-	defer conn.Tokens().Remove(bson.M{"token": token.Token})
+	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	request, err := http.NewRequest("GET", "/teams", nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -729,12 +729,12 @@ func (s *AuthSuite) TestAddUserToTeamShouldReturnUnauthorizedIfTheGivenUserIsNot
 	u := &auth.User{Email: "hi@me.me", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
-	token, err := u.CreateToken("123456")
+	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, gocheck.IsNil)
 	conn, _ := db.Conn()
 	defer conn.Close()
 	defer conn.Users().Remove(bson.M{"email": u.Email})
-	defer conn.Tokens().Remove(bson.M{"token": token.Token})
+	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	request, err := http.NewRequest("PUT", "/teams/tsuruteam/hi@me.me?:team=tsuruteam&:user=hi@me.me", nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -783,9 +783,9 @@ func (s *AuthSuite) TestAddUserToTeamShoulGrantAccessInGandalf(c *gocheck.C) {
 	u := &auth.User{Email: "marathon@rush.com", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
-	t, err := u.CreateToken("123456")
+	t, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, gocheck.IsNil)
-	defer auth.DeleteToken(t.Token)
+	defer nativeScheme.Logout(t.GetValue())
 	conn, _ := db.Conn()
 	defer conn.Close()
 	defer conn.Users().Remove(bson.M{"email": u.Email})
@@ -925,12 +925,12 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnUnauthorizedIfTheGivenUser
 	c.Assert(err, gocheck.IsNil)
 	u := &auth.User{Email: "unknown@gmail.com", Password: "123456"}
 	err = u.Create()
-	token, err := u.CreateToken("123456")
+	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, gocheck.IsNil)
 	conn, _ := db.Conn()
 	defer conn.Close()
 	defer conn.Users().Remove(bson.M{"email": u.Email})
-	defer conn.Tokens().Remove(bson.M{"token": token.Token})
+	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	recorder := httptest.NewRecorder()
 	err = removeUserFromTeam(recorder, request, token)
 	c.Assert(err, gocheck.NotNil)
@@ -988,9 +988,9 @@ func (s *AuthSuite) TestRemoveUserFromTeamRevokesAccessInGandalf(c *gocheck.C) {
 	u := &auth.User{Email: "pomar@nando-reis.com", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
-	t, err := u.CreateToken("123456")
+	t, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, gocheck.IsNil)
-	defer auth.DeleteToken(t.Token)
+	defer nativeScheme.Logout(t.GetValue())
 	defer conn.Users().Remove(bson.M{"email": u.Email})
 	b := bytes.NewBufferString(`{"key":"my-key"}`)
 	request, err := http.NewRequest("POST", "/users/keys", b)
@@ -1225,9 +1225,9 @@ func (s *AuthSuite) TestAddKeyAddKeyToUserInGandalf(c *gocheck.C) {
 	u := &auth.User{Email: "francisco@franciscosouza.net", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
-	t, err := u.CreateToken("123456")
+	t, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, gocheck.IsNil)
-	defer auth.DeleteToken(t.Token)
+	defer nativeScheme.Logout(t.GetValue())
 	b := bytes.NewBufferString(`{"key":"my-key"}`)
 	request, err := http.NewRequest("POST", "/users/keys", b)
 	c.Assert(err, gocheck.IsNil)
@@ -1254,9 +1254,9 @@ func (s *AuthSuite) TestAddKeyToUserShouldNotInsertKeyInDatabaseWhenGandalfAddit
 	u := &auth.User{Email: "me@gmail.com", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
-	t, err := u.CreateToken("123456")
+	t, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, gocheck.IsNil)
-	defer auth.DeleteToken(t.Token)
+	defer nativeScheme.Logout(t.GetValue())
 	b := bytes.NewBufferString(`{"key":"my-key"}`)
 	request, err := http.NewRequest("POST", "/users/keys", b)
 	c.Assert(err, gocheck.IsNil)
@@ -1489,9 +1489,9 @@ func (s *AuthSuite) TestRemoveUser(c *gocheck.C) {
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Users().Remove(bson.M{"email": u.Email})
-	token, err := u.CreateToken("123456")
+	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, gocheck.IsNil)
-	defer conn.Tokens().Remove(bson.M{"token": token.Token})
+	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	request, err := http.NewRequest("DELETE", "/users", nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1514,9 +1514,9 @@ func (s *AuthSuite) TestRemoveUserWithTheUserBeingLastMemberOfATeam(c *gocheck.C
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Users().Remove(bson.M{"email": u.Email})
-	token, err := u.CreateToken("123456")
+	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, gocheck.IsNil)
-	defer conn.Tokens().Remove(bson.M{"token": token.Token})
+	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	t := auth.Team{Name: "painofsalvation", Users: []string{u.Email}}
 	err = conn.Teams().Insert(t)
 	c.Assert(err, gocheck.IsNil)
@@ -1545,9 +1545,9 @@ func (s *AuthSuite) TestRemoveUserShouldRemoveTheUserFromAllTeamsThatHeIsMember(
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Users().Remove(bson.M{"email": u.Email})
-	token, err := u.CreateToken("123456")
+	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, gocheck.IsNil)
-	defer conn.Tokens().Remove(bson.M{"token": token.Token})
+	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	t := auth.Team{Name: "painofsalvation", Users: []string{u.Email, s.user.Email}}
 	err = conn.Teams().Insert(t)
 	c.Assert(err, gocheck.IsNil)
@@ -1578,9 +1578,9 @@ func (s *AuthSuite) TestRemoveUserRevokesAccessInGandalf(c *gocheck.C) {
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Users().Remove(bson.M{"email": u.Email})
-	token, err := u.CreateToken("123456")
+	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, gocheck.IsNil)
-	defer conn.Tokens().Remove(bson.M{"token": token.Token})
+	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	t := auth.Team{Name: "painofsalvation", Users: []string{u.Email, s.user.Email}}
 	err = conn.Teams().Insert(t)
 	c.Assert(err, gocheck.IsNil)
@@ -1610,9 +1610,9 @@ func (s *AuthSuite) TestChangePasswordHandler(c *gocheck.C) {
 	u.Create()
 	oldPassword := u.Password
 	defer conn.Users().Remove(bson.M{"email": u.Email})
-	token, err := u.CreateToken("123456")
+	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, gocheck.IsNil)
-	defer conn.Tokens().Remove(bson.M{"token": token.Token})
+	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	body := bytes.NewBufferString(`{"old":"123456","new":"654321"}`)
 	request, err := http.NewRequest("PUT", "/users/password", body)
 	c.Assert(err, gocheck.IsNil)
@@ -1635,9 +1635,9 @@ func (s *AuthSuite) TestChangePasswordReturns412IfNewPasswordIsInvalid(c *gochec
 	u := &auth.User{Email: "me@globo.com.com", Password: "123456"}
 	u.Create()
 	defer conn.Users().Remove(bson.M{"email": u.Email})
-	token, err := u.CreateToken("123456")
+	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, gocheck.IsNil)
-	defer conn.Tokens().Remove(bson.M{"token": token.Token})
+	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
 	body := bytes.NewBufferString(`{"old":"123456","new":"1234"}`)
 	request, err := http.NewRequest("PUT", "/users/password", body)
 	c.Assert(err, gocheck.IsNil)
@@ -1786,9 +1786,10 @@ func (s *AuthSuite) TestGenerateApplicationToken(c *gocheck.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
 	defer conn.Tokens().Remove(bson.M{"token": jsonToken["token"]})
-	t, err := auth.GetToken("bearer " + jsonToken["token"].(string))
+	t, err := nativeScheme.Auth(jsonToken["token"].(string))
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(t.AppName, gocheck.Equals, "tsuru-healer")
+	c.Assert(t.IsAppToken(), gocheck.Equals, true)
+	c.Assert(t.GetAppName(), gocheck.Equals, "tsuru-healer")
 }
 
 func (s *AuthSuite) TestGenerateApplicationTokenInvalidJSON(c *gocheck.C) {

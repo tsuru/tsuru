@@ -110,7 +110,7 @@ func (s *S) TestDestroy(c *gocheck.C) {
 	msg, err := aqueue().Get(1e6)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(msg.Args, gocheck.DeepEquals, []string{app.Name})
-	_, err = auth.GetToken("bearer " + token)
+	_, err = nativeScheme.Auth(token)
 	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
 }
 

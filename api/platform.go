@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-func platformAdd(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	name := r.FormValue("name")
 	args := make(map[string]string)
 	for key, values := range r.Form {

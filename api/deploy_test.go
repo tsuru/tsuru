@@ -20,7 +20,7 @@ import (
 
 type DeploySuite struct {
 	conn  *db.Storage
-	token *auth.Token
+	token auth.Token
 	team  *auth.Team
 }
 
@@ -33,7 +33,7 @@ func (s *DeploySuite) createUserAndTeam(c *gocheck.C) {
 	s.team = &auth.Team{Name: "tsuruteam", Users: []string{user.Email}}
 	err = s.conn.Teams().Insert(s.team)
 	c.Assert(err, gocheck.IsNil)
-	s.token, err = user.CreateToken("123456")
+	s.token, err = nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, gocheck.IsNil)
 }
 

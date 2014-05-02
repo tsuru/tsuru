@@ -6,6 +6,7 @@ package api
 
 import (
 	"fmt"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
@@ -45,26 +46,26 @@ func (fn Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func validate(token string, r *http.Request) (*auth.Token, error) {
+func validate(token string, r *http.Request) (auth.Token, error) {
 	if token == "" {
 		return nil, &errors.HTTP{
 			Message: "You must provide the Authorization header",
 		}
 	}
 	invalid := &errors.HTTP{Message: "Invalid token"}
-	t, err := auth.GetToken(token)
+	t, err := app.AuthScheme.Auth(token)
 	if err != nil {
 		return nil, invalid
 	}
-	if t.AppName != "" {
-		if q := r.URL.Query().Get(":app"); q != "" && t.AppName != q {
+	if t.IsAppToken() {
+		if q := r.URL.Query().Get(":app"); q != "" && t.GetAppName() != q {
 			return nil, invalid
 		}
 	}
 	return t, nil
 }
 
-type authorizationRequiredHandler func(http.ResponseWriter, *http.Request, *auth.Token) error
+type authorizationRequiredHandler func(http.ResponseWriter, *http.Request, auth.Token) error
 
 func (fn authorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	setVersionHeaders(w)
@@ -104,7 +105,7 @@ func (fn AdminRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	header := r.Header.Get("Authorization")
 	if header == "" {
 		http.Error(&fw, "You must provide the Authorization header", http.StatusUnauthorized)
-	} else if t, err := auth.GetToken(header); err != nil {
+	} else if t, err := app.AuthScheme.Auth(header); err != nil {
 		http.Error(&fw, "Invalid token", http.StatusUnauthorized)
 	} else if user, err := t.User(); err != nil || !user.IsAdmin() {
 		http.Error(&fw, "Forbidden", http.StatusForbidden)

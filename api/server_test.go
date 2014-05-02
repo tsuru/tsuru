@@ -17,7 +17,7 @@ type ServerSuite struct{}
 
 var _ = gocheck.Suite(&ServerSuite{})
 
-func authorizedTsuruHandler(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func authorizedTsuruHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	fmt.Fprint(w, "success")
 	return nil
 }

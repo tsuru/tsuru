@@ -23,7 +23,7 @@ type serviceYaml struct {
 	Endpoint map[string]string
 }
 
-func serviceList(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -41,7 +41,7 @@ func serviceList(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 	return err
 }
 
-func serviceCreate(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -95,7 +95,7 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t *auth.Token) error 
 	return nil
 }
 
-func serviceUpdate(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	defer r.Body.Close()
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -120,7 +120,7 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t *auth.Token) error 
 	return nil
 }
 
-func serviceDelete(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -172,7 +172,7 @@ func getServiceAndTeam(serviceName string, teamName string, u *auth.User) (*serv
 	return service, t, nil
 }
 
-func grantServiceAccess(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -195,7 +195,7 @@ func grantServiceAccess(w http.ResponseWriter, r *http.Request, t *auth.Token) e
 	return conn.Services().Update(bson.M{"_id": service.Name}, service)
 }
 
-func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -222,7 +222,7 @@ func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t *auth.Token) 
 	return conn.Services().Update(bson.M{"_id": service.Name}, service)
 }
 
-func serviceAddDoc(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func serviceAddDoc(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err

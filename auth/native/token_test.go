@@ -7,6 +7,7 @@ package native
 import (
 	"code.google.com/p/go.crypto/bcrypt"
 	"crypto"
+	"encoding/json"
 	"fmt"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
@@ -267,4 +268,114 @@ func (s *S) TestCreateTokenShouldValidateThePassword(c *gocheck.C) {
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	_, err = createToken(&u, "123")
 	c.Assert(err, gocheck.NotNil)
+}
+
+func (s *S) TestParseToken(c *gocheck.C) {
+	t, err := parseToken("type token")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(t, gocheck.Equals, "token")
+	t, err = parseToken("token")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(t, gocheck.Equals, "token")
+	t, err = parseToken("type ble ble")
+	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
+	c.Assert(t, gocheck.Equals, "")
+	t, err = parseToken("")
+	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
+	c.Assert(t, gocheck.Equals, "")
+}
+
+func (s *S) TestGetToken(c *gocheck.C) {
+	t, err := GetToken("bearer " + s.token.Token)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(t.Token, gocheck.Equals, s.token.Token)
+}
+
+func (s *S) TestGetTokenEmptyToken(c *gocheck.C) {
+	u, err := GetToken("bearer tokenthatdoesnotexist")
+	c.Assert(u, gocheck.IsNil)
+	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
+}
+
+func (s *S) TestGetTokenNotFound(c *gocheck.C) {
+	t, err := GetToken("bearer invalid")
+	c.Assert(t, gocheck.IsNil)
+	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
+}
+
+func (s *S) TestGetTokenInvalid(c *gocheck.C) {
+	t, err := GetToken("invalid")
+	c.Assert(t, gocheck.IsNil)
+	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
+}
+
+func (s *S) TestGetExpiredToken(c *gocheck.C) {
+	t, err := CreateApplicationToken("tsuru-healer")
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Tokens().Remove(bson.M{"token": t.Token})
+	t.Creation = time.Now().Add(-24 * time.Hour)
+	t.Expires = time.Hour
+	s.conn.Tokens().Update(bson.M{"token": t.Token}, t)
+	t2, err := GetToken(t.Token)
+	c.Assert(t2, gocheck.IsNil)
+	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
+}
+
+func (s *S) TestDeleteToken(c *gocheck.C) {
+	t, err := CreateApplicationToken("tsuru-healer")
+	c.Assert(err, gocheck.IsNil)
+	err = DeleteToken(t.Token)
+	c.Assert(err, gocheck.IsNil)
+	_, err = GetToken("bearer " + t.Token)
+	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
+}
+
+func (s *S) TestCreateApplicationToken(c *gocheck.C) {
+	t, err := CreateApplicationToken("tsuru-healer")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(t, gocheck.NotNil)
+	defer s.conn.Tokens().Remove(bson.M{"token": t.Token})
+	n, err := s.conn.Tokens().Find(t).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, 1)
+	c.Assert(t.AppName, gocheck.Equals, "tsuru-healer")
+}
+
+func (s *S) TestTokenGetUser(c *gocheck.C) {
+	u, err := s.token.User()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(u.Email, gocheck.Equals, s.user.Email)
+}
+
+func (s *S) TestTokenGetUserUnknownEmail(c *gocheck.C) {
+	t := Token{UserEmail: "something@something.com"}
+	u, err := t.User()
+	c.Assert(u, gocheck.IsNil)
+	c.Assert(err, gocheck.NotNil)
+}
+
+func (s *S) TestTokenMarshalJSON(c *gocheck.C) {
+	valid := time.Now()
+	t := Token{
+		Token:     "12saii",
+		Creation:  valid,
+		Expires:   time.Hour,
+		UserEmail: "something@something.com",
+		AppName:   "myapp",
+	}
+	b, err := json.Marshal(&t)
+	c.Assert(err, gocheck.IsNil)
+	want := fmt.Sprintf(`{"token":"12saii","creation":%q,"expires":%d,"email":"something@something.com","app":"myapp"}`,
+		valid.Format(time.RFC3339Nano), time.Hour)
+	c.Assert(string(b), gocheck.Equals, want)
+}
+
+func (s *S) TestTokenIsAppToken(c *gocheck.C) {
+	t := Token{AppName: "myapp"}
+	isAppToken := t.IsAppToken()
+	c.Assert(isAppToken, gocheck.Equals, true)
+
+	t = Token{UserEmail: "something@something.com"}
+	isAppToken = t.IsAppToken()
+	c.Assert(isAppToken, gocheck.Equals, false)
 }

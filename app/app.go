@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
@@ -34,6 +35,7 @@ import (
 )
 
 var Provisioner provision.Provisioner
+var AuthScheme = auth.Scheme(native.NativeScheme{})
 
 var (
 	nameRegexp  = regexp.MustCompile(`^[a-z][a-z0-9-]{0,62}$`)
@@ -246,7 +248,7 @@ func Delete(app *App) error {
 		app.unbind()
 	}
 	token := app.Env["TSURU_APP_TOKEN"].Value
-	auth.DeleteToken(token)
+	AuthScheme.Logout(token)
 	if owner, err := auth.GetUserByEmail(app.Owner); err == nil {
 		auth.ReleaseApp(owner)
 	}

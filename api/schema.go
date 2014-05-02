@@ -29,7 +29,7 @@ type link map[string]string
 type property map[string]interface{}
 
 // appSchema returns a json schema for app.
-func appSchema(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func appSchema(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	host, err := config.GetString("host")
 	if err != nil {
 		return err
@@ -68,7 +68,7 @@ func appSchema(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
 }
 
 // serviceSchema returns a json schema for service.
-func serviceSchema(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func serviceSchema(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	s := schema{
 		Title:    "service",
 		Type:     "object",
@@ -92,7 +92,7 @@ func serviceSchema(w http.ResponseWriter, r *http.Request, t *auth.Token) error 
 }
 
 // servicesSchema returns a json schema for services.
-func servicesSchema(w http.ResponseWriter, r *http.Request, t *auth.Token) error {
+func servicesSchema(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	s := schema{
 		Title: "service collection",
 		Type:  "array",
