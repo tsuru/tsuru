@@ -37,6 +37,10 @@ func PlatformAdd(name string, args map[string]string, w io.Writer) error {
 	if err != nil {
 		return err
 	}
+	err = Provisioner.PlatformAdd(name, args, w)
+	if err != nil {
+		return err
+	}
 	err = conn.Platforms().Insert(p)
 	if err != nil {
 		if mgo.IsDup(err) {
@@ -44,7 +48,7 @@ func PlatformAdd(name string, args map[string]string, w io.Writer) error {
 		}
 		return err
 	}
-	return Provisioner.PlatformAdd(name, args, w)
+	return nil
 }
 
 type DuplicatePlatformError struct{}
