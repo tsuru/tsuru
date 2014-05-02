@@ -30,7 +30,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	config.Set("admin-team", "admin")
 	config.Set("database:url", "127.0.0.1:27017")
-	config.Set("database:name", "tsuru_auth_test")
+	config.Set("database:name", "tsuru_auth_native_test")
 	s.conn, _ = db.Conn()
 	s.user = &auth.User{Email: "timeredbull@globo.com", Password: "123456"}
 	s.user.Create()
