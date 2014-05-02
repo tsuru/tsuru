@@ -9,6 +9,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
+    "io"
 )
 
 type Platform struct {
@@ -27,7 +28,7 @@ func Platforms() ([]Platform, error) {
 }
 
 // PlatformAdd add a new platform to tsuru
-func PlatformAdd(name string, args map[string]string) error {
+func PlatformAdd(name string, args map[string]string, w io.Writer) error {
 	if name == "" {
 		return errors.New("Platform name is required.")
 	}
@@ -43,8 +44,7 @@ func PlatformAdd(name string, args map[string]string) error {
 		}
 		return err
 	}
-	err = Provisioner.PlatformAdd(name, args)
-	return nil
+	return Provisioner.PlatformAdd(name, args, w)
 }
 
 type DuplicatePlatformError struct{}

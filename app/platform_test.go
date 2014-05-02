@@ -81,16 +81,16 @@ func (s *PlatformSuite) TestPlatformAdd(c *gocheck.C) {
 	name := "test_platform_add"
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
-	err = PlatformAdd(name, args)
+	err = PlatformAdd(name, args, nil)
 	defer conn.Platforms().Remove(bson.M{"_id": name})
 	c.Assert(err, gocheck.IsNil)
-	err = PlatformAdd(name, args)
+	err = PlatformAdd(name, args, nil)
 	_, ok := err.(DuplicatePlatformError)
 	c.Assert(ok, gocheck.Equals, true)
 }
 
 func (s *PlatformSuite) TestPlatformAddWithoutName(c *gocheck.C) {
-	err := PlatformAdd("", nil)
+	err := PlatformAdd("", nil, nil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Platform name is required.")
 }
