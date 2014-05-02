@@ -413,7 +413,7 @@ func (p *dockerProvisioner) PlatformAdd(name string, args map[string]string, w i
 		InputStream:    nil,
 		OutputStream:   w,
 	}
-    err := dockerCluster.BuildImage(buildOptions)
+	err := dockerCluster.BuildImage(buildOptions)
 	if err != nil {
 		return err
 	}

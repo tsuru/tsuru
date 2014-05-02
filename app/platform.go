@@ -7,9 +7,9 @@ package app
 import (
 	"errors"
 	"github.com/tsuru/tsuru/db"
+	"io"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
-    "io"
 )
 
 type Platform struct {
