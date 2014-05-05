@@ -419,3 +419,7 @@ func (p *dockerProvisioner) PlatformAdd(name string, args map[string]string, w i
 	}
 	return pushImage(imageName)
 }
+
+func (p *dockerProvisioner) PlatformUpdate(name string, args map[string]string, w io.Writer) error {
+    return nil
+}

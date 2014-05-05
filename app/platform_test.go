@@ -94,3 +94,52 @@ func (s *PlatformSuite) TestPlatformAddWithoutName(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Platform name is required.")
 }
+
+func (s *PlatformSuite) TestPlatformUpdate(c *gocheck.C) {
+    conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+    name := "test_platform_update"
+	args := make(map[string]string)
+	args["dockerfile"] = "http://localhost/Dockerfile"
+	err = PlatformUpdate(name, args, nil)
+    c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Platform doesn't exists.")
+    p := Platform{Name: name}
+    err = conn.Platforms().Insert(p)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Platforms().Remove(bson.M{"_id": name})
+	err = PlatformUpdate(name, args, nil)
+    c.Assert(err, gocheck.IsNil)
+}
+
+func (s *PlatformSuite) TestPlatformUpdateWithoutName(c *gocheck.C) {
+    err := PlatformUpdate("", nil, nil)
+    c.Assert(err, gocheck.NotNil)
+    c.Assert(err.Error(), gocheck.Equals, "Platform name is required.")
+}
+
+func (s *PlatformSuite) TestPlatformUpdateShouldSetUpdatePlatformFlagOnApps(c *gocheck.C) {
+    conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+    name := "test_platform_update"
+	args := make(map[string]string)
+	args["dockerfile"] = "http://localhost/Dockerfile"
+    args["forceUpdate"] = "true"
+    p := Platform{Name: name}
+    err = conn.Platforms().Insert(p)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Platforms().Remove(bson.M{"_id": name})
+    app := App{
+        Name: "test_app",
+        Platform: name,
+    }
+    err = conn.Apps().Insert(app)
+	c.Assert(err, gocheck.IsNil)
+    defer conn.Apps().Remove(bson.M{"_id": "test_app"})
+	err = PlatformUpdate(name, args, nil)
+    a, err := GetByName("test_app")
+    c.Assert(err, gocheck.IsNil)
+    c.Assert(a.UpdatePlatform, gocheck.Equals, true)
+}

@@ -58,6 +58,32 @@ func (DuplicatePlatformError) Error() string {
 }
 
 func PlatformUpdate(name string, args map[string]string, w io.Writer) error {
+    if name == "" {
+        return errors.New("Platform name is required.")
+    }
+    var p Platform
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+    err = conn.Platforms().Find(bson.M{"_id": name}).One(&p)
+    if err != nil {
+        if err == mgo.ErrNotFound {
+            return errors.New("Platform doesn't exists.")
+        }
+        return err
+    }
+    err = Provisioner.PlatformUpdate(name, args, w)
+    if args["forceUpdate"] == "true" {
+        var apps []App
+        err = conn.Apps().Find(bson.M{"framework": name}).All(&apps)
+        if err != nil {
+            return err
+        }
+        for _, app := range apps {
+            app.SetUpdatePlatform(true)
+        }
+    }
     return nil
 }
 

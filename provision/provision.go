@@ -168,6 +168,7 @@ type Provisioner interface {
 	DeployPipeline() *action.Pipeline
 
 	PlatformAdd(name string, args map[string]string, w io.Writer) error
+	PlatformUpdate(name string, args map[string]string, w io.Writer) error
 }
 
 var provisioners = make(map[string]Provisioner)

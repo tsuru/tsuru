@@ -753,6 +753,10 @@ func (p *FakeProvisioner) PlatformAdd(name string, args map[string]string, w io.
 	return nil
 }
 
+func (p *FakeProvisioner) PlatformUpdate(name string, args map[string]string, w io.Writer) error {
+    return nil
+}
+
 type provisionedApp struct {
 	units       []provision.Unit
 	app         provision.App

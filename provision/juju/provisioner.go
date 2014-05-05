@@ -562,3 +562,7 @@ func (p *JujuProvisioner) DeployPipeline() *action.Pipeline {
 func (p *JujuProvisioner) PlatformAdd(name string, args map[string]string, w io.Writer) error {
 	return nil
 }
+
+func (p *JujuProvisioner) PlatformUpdate(name string, args map[string]string, w io.Writer) error {
+	return nil
+}
