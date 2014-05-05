@@ -2328,3 +2328,18 @@ func (s *S) TestStart(c *gocheck.C) {
 	starts := s.provisioner.Starts(&a)
 	c.Assert(starts, gocheck.Equals, 1)
 }
+
+func (s *S) TestAppSetUpdatePlatform(c *gocheck.C) {
+	a := App{
+		Name:     "someApp",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
+		Units:    []Unit{{Name: "i-0800", State: "started"}},
+	}
+    err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+    a.SetUpdatePlatform(true)
+    app, _ := GetByName("someApp")
+    c.Assert(app.UpdatePlatform, gocheck.Equals, true)
+}

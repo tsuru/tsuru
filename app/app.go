@@ -59,6 +59,7 @@ type App struct {
 	Deploys   uint
 	Memory    int `json:",string"`
 	Swap      int `json:",string"`
+    UpdatePlatform bool
 
 	quota.Quota
 	hr hookRunner
@@ -1150,4 +1151,15 @@ func incrementDeploy(app *App) error {
 // Start starts the app.
 func (app *App) Start(w io.Writer) error {
 	return Provisioner.Start(app)
+}
+
+func (app *App) SetUpdatePlatform(check bool) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+    return conn.Apps().Update(
+        bson.M{"name": app.Name},
+        bson.M{"$set": bson.M{"updateplatform": check}},
+    )
 }
