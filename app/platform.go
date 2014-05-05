@@ -57,6 +57,10 @@ func (DuplicatePlatformError) Error() string {
 	return "Duplicate platform"
 }
 
+func PlatformUpdate(name string, args map[string]string, w io.Writer) error {
+    return nil
+}
+
 func getPlatform(name string) (*Platform, error) {
 	var p Platform
 	conn, err := db.Conn()
