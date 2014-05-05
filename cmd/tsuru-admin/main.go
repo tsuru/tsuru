@@ -28,6 +28,7 @@ func buildManager(name string) *cmd.Manager {
 	m.Register(&logRemove{})
 	m.Register(&changeQuota{})
 	m.Register(&platformAdd{})
+	m.Register(&platformUpdate{})
 	registerProvisionersCommands(m)
 	return m
 }

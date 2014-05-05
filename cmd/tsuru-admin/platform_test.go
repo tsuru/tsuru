@@ -69,8 +69,8 @@ func (s *S) TestPlatformAddFlagSet(c *gocheck.C) {
 
 func (s *S) TestPlatformUpdateInfo(c *gocheck.C) {
 	expected := &cmd.Info{
-		Name:    "platform-platform",
-		Usage:   "platform-platform <platform name> [--dockerfile/-d Dockerfile]",
+		Name:    "platform-update",
+		Usage:   "platform-update <platform name> [--dockerfile/-d Dockerfile --force-update=true]",
 		Desc:    "Update a platform to tsuru.",
 		MinArgs: 1,
 	}

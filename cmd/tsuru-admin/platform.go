@@ -66,42 +66,42 @@ type platformUpdate struct {
 }
 
 func (p *platformUpdate) Info() *cmd.Info {
-	return &cmd.Info{
-		Name:    "platform-platform",
-		Usage:   "platform-platform <platform name> [--dockerfile/-d Dockerfile]",
-		Desc:    "Update a platform to tsuru.",
-		MinArgs: 1,
-	}
+    return &cmd.Info{
+        Name:    "platform-update",
+        Usage:   "platform-update <platform name> [--dockerfile/-d Dockerfile --force-update=true]",
+        Desc:    "Update a platform to tsuru.",
+        MinArgs: 1,
+    }
 }
 
 func (p *platformUpdate) Flags() *gnuflag.FlagSet {
     forceUpdateMessage := "Force apps to update your platform in next deploy"
-	dockerfileMessage := "The dockerfile url to update a platform"
-	if p.fs == nil {
-		p.fs = gnuflag.NewFlagSet("platform-update", gnuflag.ExitOnError)
-		p.fs.StringVar(&p.dockerfile, "dockerfile", "", dockerfileMessage)
-		p.fs.StringVar(&p.dockerfile, "d", "", dockerfileMessage)
-		p.fs.BoolVar(&p.forceUpdate, "force-update", false, forceUpdateMessage)
-	}
-	return p.fs
+    dockerfileMessage := "The dockerfile url to update a platform"
+    if p.fs == nil {
+        p.fs = gnuflag.NewFlagSet("platform-update", gnuflag.ExitOnError)
+        p.fs.StringVar(&p.dockerfile, "dockerfile", "", dockerfileMessage)
+        p.fs.StringVar(&p.dockerfile, "d", "", dockerfileMessage)
+        p.fs.BoolVar(&p.forceUpdate, "force-update", false, forceUpdateMessage)
+    }
+    return p.fs
 }
 
 func (p *platformUpdate) Run(context *cmd.Context, client *cmd.Client) error {
-	name := context.Args[0]
-	body := fmt.Sprintf("name=%s&dockerfile=%s&forceUpdate=%t", name, p.dockerfile, p.forceUpdate)
-	url, err := cmd.GetURL("/platforms/update")
-	request, err := http.NewRequest("PUT", url, strings.NewReader(body))
-	if err != nil {
-		return err
-	}
-	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	response, err := client.Do(request)
-	if err != nil {
-		return err
-	}
-	defer response.Body.Close()
+    name := context.Args[0]
+    body := fmt.Sprintf("name=%s&dockerfile=%s&forceUpdate=%t", name, p.dockerfile, p.forceUpdate)
+    url, err := cmd.GetURL("/platforms/update")
+    request, err := http.NewRequest("PUT", url, strings.NewReader(body))
+    if err != nil {
+        return err
+    }
+    request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+    response, err := client.Do(request)
+    if err != nil {
+        return err
+    }
+    defer response.Body.Close()
     for n := int64(1); n > 0 && err == nil; n, err = io.Copy(context.Stdout, response.Body) {
-	}
-	fmt.Fprintf(context.Stdout, "Platform successfully updated!\n")
-	return nil
+    }
+    fmt.Fprintf(context.Stdout, "Platform successfully updated!\n")
+    return nil
 }
