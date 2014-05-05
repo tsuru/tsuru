@@ -14,15 +14,16 @@ What's new in tsr 0.4.0
 =======================
 
 * redis queue backend was refactored.
-* fixed output when service doesn't export environment variables
+* fixed output when service doesn't export environment variables (`#772 <https://github.com/tsuru/tsuru/issues/772>`)
 
 Docker
 ------
 
 * refactored unit creation to be more atomic
-* support for unit-agent
-* added an administrative command to move and rebalance containers between nodes
-* memory swap limit is configurable
+* support for unit-agent (`#633 <https://github.com/tsuru/tsuru/issues/633>`) - tsuru unit agent repository: https://github.com/tsuru/tsuru-unit-agent
+* added an administrative command to move and rebalance containers between nodes (`#646 <https://github.com/tsuru/tsuru/issues/646>`) - docs about rebalance: http://docs.tsuru.io/en/latest/apps/tsuru-admin/usage.html#containers-rebalance
+* memory swap limit is configurable (`#764 https://github.com/tsuru/tsuru/issues/764`)
+* added a command to add a new platform (`#780 https://github.com/tsuru/tsuru/issues/780`) - docs about `platform-add` command: http://docs.tsuru.io/en/latest/apps/tsuru-admin/usage.html#platform-add
 
 Backwards incompatible changes
 ==============================
