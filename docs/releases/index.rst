@@ -172,4 +172,4 @@ tsuru-admin
 .. toctree::
    :maxdepth: 1
 
-   tsr/0.3.0
+   tsuru-admin/0.3.0
