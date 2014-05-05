@@ -31,4 +31,4 @@ Backwards incompatible changes
 The s3 integration on app creation was removed. 
 The config properties `bucket-support`, `aws:iam` `aws:s3` was removed too.
 
-You should use `tsuru` cli 0.9.0 version.
+You should use `tsuru` cli 0.9.0 and `tsuru-admin` 0.3.0 version.
