@@ -907,4 +907,16 @@ func (s *S) TestUsePlatformImage(c *gocheck.C) {
 	ok = usePlatformImage(app4)
 	c.Assert(ok, gocheck.Equals, false)
 	defer conn.Apps().Remove(bson.M{"name": "app4"})
+    app5 := &app.App{
+        Name: "app5",
+        Platform: "python",
+        Deploys: 19,
+        Units: units,
+        UpdatePlatform: true,
+    }
+	err = conn.Apps().Insert(app5)
+	c.Assert(err, gocheck.IsNil)
+	ok = usePlatformImage(app5)
+	c.Assert(ok, gocheck.Equals, true)
+	defer conn.Apps().Remove(bson.M{"name": "app5"})
 }

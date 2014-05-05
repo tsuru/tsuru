@@ -69,6 +69,7 @@ type FakeApp struct {
 	ready    bool
 	deploys  uint
 	env      map[string]bind.EnvVar
+    UpdatePlatform bool
 }
 
 func NewFakeApp(name, platform string, units int) *FakeApp {
@@ -246,6 +247,10 @@ func (a *FakeApp) Run(cmd string, w io.Writer, once bool) error {
 	a.Commands = append(a.Commands, fmt.Sprintf("ran %s", cmd))
 	a.commMut.Unlock()
 	return nil
+}
+
+func (app *FakeApp) GetUpdatePlatform() bool {
+    return app.UpdatePlatform
 }
 
 type Cmd struct {

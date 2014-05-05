@@ -530,7 +530,7 @@ func assembleImageName(appName string) string {
 
 func usePlatformImage(app provision.App) bool {
 	deploys := app.GetDeploys()
-	if deploys != 0 && deploys%10 == 0 {
+	if (deploys != 0 && deploys%10 == 0) || app.GetUpdatePlatform() == true {
 		return true
 	}
 	return false

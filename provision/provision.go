@@ -99,6 +99,7 @@ type App interface {
 
 	GetMemory() int
 	GetSwap() int
+    GetUpdatePlatform() bool
 }
 
 type CNameManager interface {

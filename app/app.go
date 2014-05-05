@@ -1163,3 +1163,7 @@ func (app *App) SetUpdatePlatform(check bool) error {
         bson.M{"$set": bson.M{"updateplatform": check}},
     )
 }
+
+func (app *App) GetUpdatePlatform() bool {
+    return app.UpdatePlatform
+}
