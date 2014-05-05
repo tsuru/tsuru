@@ -161,3 +161,15 @@ tsuru
    :maxdepth: 1
 
    tsuru/0.8.6
+
+tsuru-admin
+===========
+
+`tsuru-admin` is the tsuru administrative client.
+
+0.3.0 release
+-------------
+.. toctree::
+   :maxdepth: 1
+
+   tsr/0.3.0
