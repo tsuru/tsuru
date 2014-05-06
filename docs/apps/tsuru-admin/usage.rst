@@ -113,3 +113,18 @@ It will automatically create and build a whole new platform on tsuru server and
 will allow your users to create apps based on that platform.
 
 The --dockerfile flag is an URL to a dockerfile which will create your platform.
+
+platform-update
+---------------
+
+.. highlight:: bash
+
+::
+
+    $ tsuru-admin platform-update <name> [--dockerfile]
+
+This command allow you to update a platform in your tsuru installation.
+It will automatically rebuild your platform and will flag apps to update
+platform on next deploy.
+
+The --dockerfile flag is an URL to a dockerfile which will update your platform.
