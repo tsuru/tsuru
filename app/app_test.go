@@ -2368,6 +2368,7 @@ func (s *S) TestAppSetUpdatePlatform(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	a.SetUpdatePlatform(true)
-	app, _ := GetByName("someApp")
+	app, err := GetByName("someApp")
+    c.Assert(err, gocheck.IsNil)
 	c.Assert(app.UpdatePlatform, gocheck.Equals, true)
 }

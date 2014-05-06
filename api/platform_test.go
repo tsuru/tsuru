@@ -19,7 +19,7 @@ var _ = gocheck.Suite(&PlatformSuite{})
 func (p *PlatformSuite) TestPlatformAdd(c *gocheck.C) {
 	dockerfile_url := "http://localhost/Dockerfile"
 	body := fmt.Sprintf("name=%s&dockerfile=%s", "teste", dockerfile_url)
-	request, _ := http.NewRequest("PUT", "/platforms/add", strings.NewReader(body))
+	request, _ := http.NewRequest("POST", "/platforms/add", strings.NewReader(body))
 	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	result := platformAdd(recorder, request, nil)
@@ -28,8 +28,8 @@ func (p *PlatformSuite) TestPlatformAdd(c *gocheck.C) {
 
 func (p *PlatformSuite) TestPlatformUpdate(c *gocheck.C) {
 	dockerfile_url := "http://localhost/Dockerfile"
-	body := fmt.Sprintf("name=%s&dockerfile=%s", "teste", dockerfile_url)
-	request, _ := http.NewRequest("PUT", "/platforms/update", strings.NewReader(body))
+	body := fmt.Sprintf("dockerfile=%s", dockerfile_url)
+    request, _ := http.NewRequest("PUT", "/platforms/teste?:name=teste", strings.NewReader(body))
 	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	result := platformUpdate(recorder, request, nil)
