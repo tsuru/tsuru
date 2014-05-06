@@ -622,10 +622,7 @@ func (p *FakeProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 }
 
 func (p *FakeProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
-	var (
-		output []byte
-		err    error
-	)
+	var output []byte
 	command := Cmd{
 		Cmd:  cmd,
 		Args: args,
@@ -636,31 +633,22 @@ func (p *FakeProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provi
 	p.cmdMut.Unlock()
 	select {
 	case output = <-p.outputs:
-		select {
-		case fail := <-p.failures:
-			if fail.method == "ExecuteCommandOnce" {
-				stderr.Write(output)
-				return fail.err
-			}
-			p.failures <- fail
-		default:
-			stdout.Write(output)
-		}
+		stdout.Write(output)
 	case fail := <-p.failures:
 		if fail.method == "ExecuteCommandOnce" {
-			err = fail.err
 			select {
 			case output = <-p.outputs:
 				stderr.Write(output)
 			default:
 			}
+			return fail.err
 		} else {
 			p.failures <- fail
 		}
 	case <-time.After(2e9):
 		return errors.New("FakeProvisioner timed out waiting for output.")
 	}
-	return err
+	return nil
 }
 
 func (p *FakeProvisioner) CollectStatus() ([]provision.Unit, error) {

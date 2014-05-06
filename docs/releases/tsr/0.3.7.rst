@@ -18,7 +18,7 @@ API
 
     * Improve administrative API for the Docker provisioner
     * Store deploy metadata
-    * Improve healthcheck (ping MongoDB before marking the API as ok)
+    * Improve healthcheck (ping MongoDB before marking the API is ok)
     * Expose owner of the app in the app-info API
 
 Backwards incompatible changes
