@@ -68,27 +68,25 @@ type platformUpdate struct {
 func (p *platformUpdate) Info() *cmd.Info {
     return &cmd.Info{
         Name:    "platform-update",
-        Usage:   "platform-update <platform name> [--dockerfile/-d Dockerfile --force-update=true]",
+        Usage:   "platform-update <platform name> [--dockerfile/-d Dockerfile]",
         Desc:    "Update a platform to tsuru.",
         MinArgs: 1,
     }
 }
 
 func (p *platformUpdate) Flags() *gnuflag.FlagSet {
-    forceUpdateMessage := "Force apps to update your platform in next deploy"
     dockerfileMessage := "The dockerfile url to update a platform"
     if p.fs == nil {
         p.fs = gnuflag.NewFlagSet("platform-update", gnuflag.ExitOnError)
         p.fs.StringVar(&p.dockerfile, "dockerfile", "", dockerfileMessage)
         p.fs.StringVar(&p.dockerfile, "d", "", dockerfileMessage)
-        p.fs.BoolVar(&p.forceUpdate, "force-update", false, forceUpdateMessage)
     }
     return p.fs
 }
 
 func (p *platformUpdate) Run(context *cmd.Context, client *cmd.Client) error {
     name := context.Args[0]
-    body := fmt.Sprintf("name=%s&dockerfile=%s&forceUpdate=%t", name, p.dockerfile, p.forceUpdate)
+    body := fmt.Sprintf("name=%s&dockerfile=%s", name, p.dockerfile)
     url, err := cmd.GetURL("/platforms/update")
     request, err := http.NewRequest("PUT", url, strings.NewReader(body))
     if err != nil {

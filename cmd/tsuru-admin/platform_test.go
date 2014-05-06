@@ -70,7 +70,7 @@ func (s *S) TestPlatformAddFlagSet(c *gocheck.C) {
 func (s *S) TestPlatformUpdateInfo(c *gocheck.C) {
 	expected := &cmd.Info{
 		Name:    "platform-update",
-		Usage:   "platform-update <platform name> [--dockerfile/-d Dockerfile --force-update=true]",
+		Usage:   "platform-update <platform name> [--dockerfile/-d Dockerfile]",
 		Desc:    "Update a platform to tsuru.",
 		MinArgs: 1,
 	}
@@ -82,7 +82,6 @@ func (s *S) TestPlatformUpdateFlagSet(c *gocheck.C) {
 	command := platformUpdate{}
 	flagset := command.Flags()
 	flagset.Parse(true, []string{"--dockerfile", "dockerfile"})
-	flagset.Parse(true, []string{"--force-update", "true"})
 
 	dockerfile := flagset.Lookup("dockerfile")
 	c.Check(dockerfile.Name, gocheck.Equals, "dockerfile")
@@ -93,12 +92,6 @@ func (s *S) TestPlatformUpdateFlagSet(c *gocheck.C) {
 	c.Check(sdockerfile.Name, gocheck.Equals, "d")
 	c.Check(sdockerfile.Usage, gocheck.Equals, dockerfile_message)
 	c.Check(sdockerfile.DefValue, gocheck.Equals, "")
-
-    forceUpdateMessage := "Force apps to update your platform in next deploy"
-    fdockerfile := flagset.Lookup("force-update")
-    c.Check(fdockerfile.Name, gocheck.Equals, "force-update")
-	c.Check(fdockerfile.Usage, gocheck.Equals, forceUpdateMessage)
-	c.Check(fdockerfile.DefValue, gocheck.Equals, "false")
 }
 
 func (s *S) TestPlatformUpdateRun(c *gocheck.C) {
@@ -115,14 +108,12 @@ func (s *S) TestPlatformUpdateRun(c *gocheck.C) {
 			c.Assert(req.Header.Get("Content-Type"), gocheck.Equals, "application/x-www-form-urlencoded")
             c.Assert(req.FormValue("name"), gocheck.Equals, "teste")
             c.Assert(req.FormValue("dockerfile"), gocheck.Equals, "http://localhost/Dockerfile")
-            c.Assert(req.FormValue("forceUpdate"), gocheck.Equals, "true")
 			return req.URL.Path == "/platforms/update" && req.Method == "PUT"
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	command := platformUpdate{}
     command.Flags().Parse(true, []string{"--dockerfile", "http://localhost/Dockerfile"})
-	command.Flags().Parse(true, []string{"--force-update", "true"})
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)

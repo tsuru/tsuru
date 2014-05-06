@@ -28,8 +28,7 @@ func (p *PlatformSuite) TestPlatformAdd(c *gocheck.C) {
 
 func (p *PlatformSuite) TestPlatformUpdate(c *gocheck.C) {
 	dockerfile_url := "http://localhost/Dockerfile"
-    forceUpdate := true
-	body := fmt.Sprintf("name=%s&dockerfile=%s&forceUpdate=%t", "teste", dockerfile_url, forceUpdate)
+	body := fmt.Sprintf("name=%s&dockerfile=%s", "teste", dockerfile_url)
 	request, _ := http.NewRequest("PUT", "/platforms/update", strings.NewReader(body))
 	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
