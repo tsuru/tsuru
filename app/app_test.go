@@ -2223,6 +2223,34 @@ func (s *S) TestDeployApp(c *gocheck.C) {
 	c.Assert(logs, gocheck.Equals, "Deploy called")
 }
 
+func (s *S) TestDeployAppWithUpdatePlatform(c *gocheck.C) {
+	a := App{
+		Name:     "someApp",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
+		Units:    []Unit{{Name: "i-0800", State: "started"}},
+        UpdatePlatform: true,
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	writer := &bytes.Buffer{}
+	err = DeployApp(
+		&a,
+		"version",
+		"1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
+		writer,
+	)
+	c.Assert(err, gocheck.IsNil)
+	logs := writer.String()
+	c.Assert(logs, gocheck.Equals, "Deploy called")
+    var updatedApp App
+    s.conn.Apps().Find(bson.M{"name": "someApp"}).One(&updatedApp)
+    c.Assert(updatedApp.UpdatePlatform, gocheck.Equals, false)
+}
+
 func (s *S) TestDeployAppIncrementDeployNumber(c *gocheck.C) {
 	a := App{
 		Name:     "otherapp",

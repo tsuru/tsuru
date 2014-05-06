@@ -1118,6 +1118,9 @@ func DeployApp(app *App, version, commit string, writer io.Writer) error {
 		return err
 	}
 	elapsed := time.Since(start)
+    if app.UpdatePlatform == true {
+        app.SetUpdatePlatform(false)
+    }
 	return saveDeployData(app.Name, commit, elapsed)
 }
 

@@ -126,20 +126,20 @@ func (s *PlatformSuite) TestPlatformUpdateShouldSetUpdatePlatformFlagOnApps(c *g
     name := "test_platform_update"
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
-    args["forceUpdate"] = "true"
     p := Platform{Name: name}
     err = conn.Platforms().Insert(p)
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Platforms().Remove(bson.M{"_id": name})
+    appName := "test_app"
     app := App{
-        Name: "test_app",
+        Name: appName,
         Platform: name,
     }
     err = conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
-    defer conn.Apps().Remove(bson.M{"_id": "test_app"})
+    defer conn.Apps().Remove(bson.M{"_id": appName})
 	err = PlatformUpdate(name, args, nil)
-    a, err := GetByName("test_app")
+    a, err := GetByName(appName)
     c.Assert(err, gocheck.IsNil)
     c.Assert(a.UpdatePlatform, gocheck.Equals, true)
 }

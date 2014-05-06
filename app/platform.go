@@ -74,15 +74,13 @@ func PlatformUpdate(name string, args map[string]string, w io.Writer) error {
         return err
     }
     err = Provisioner.PlatformUpdate(name, args, w)
-    if args["forceUpdate"] == "true" {
-        var apps []App
-        err = conn.Apps().Find(bson.M{"framework": name}).All(&apps)
-        if err != nil {
-            return err
-        }
-        for _, app := range apps {
-            app.SetUpdatePlatform(true)
-        }
+    var apps []App
+    err = conn.Apps().Find(bson.M{"framework": name}).All(&apps)
+    if err != nil {
+        return err
+    }
+    for _, app := range apps {
+        app.SetUpdatePlatform(true)
     }
     return nil
 }
