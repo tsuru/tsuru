@@ -2225,11 +2225,11 @@ func (s *S) TestDeployApp(c *gocheck.C) {
 
 func (s *S) TestDeployAppWithUpdatePlatform(c *gocheck.C) {
 	a := App{
-		Name:     "someApp",
-		Platform: "django",
-		Teams:    []string{s.team.Name},
-		Units:    []Unit{{Name: "i-0800", State: "started"}},
-        UpdatePlatform: true,
+		Name:           "someApp",
+		Platform:       "django",
+		Teams:          []string{s.team.Name},
+		Units:          []Unit{{Name: "i-0800", State: "started"}},
+		UpdatePlatform: true,
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -2246,9 +2246,9 @@ func (s *S) TestDeployAppWithUpdatePlatform(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	logs := writer.String()
 	c.Assert(logs, gocheck.Equals, "Deploy called")
-    var updatedApp App
-    s.conn.Apps().Find(bson.M{"name": "someApp"}).One(&updatedApp)
-    c.Assert(updatedApp.UpdatePlatform, gocheck.Equals, false)
+	var updatedApp App
+	s.conn.Apps().Find(bson.M{"name": "someApp"}).One(&updatedApp)
+	c.Assert(updatedApp.UpdatePlatform, gocheck.Equals, false)
 }
 
 func (s *S) TestDeployAppIncrementDeployNumber(c *gocheck.C) {
@@ -2364,10 +2364,10 @@ func (s *S) TestAppSetUpdatePlatform(c *gocheck.C) {
 		Teams:    []string{s.team.Name},
 		Units:    []Unit{{Name: "i-0800", State: "started"}},
 	}
-    err := s.conn.Apps().Insert(a)
+	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-    a.SetUpdatePlatform(true)
-    app, _ := GetByName("someApp")
-    c.Assert(app.UpdatePlatform, gocheck.Equals, true)
+	a.SetUpdatePlatform(true)
+	app, _ := GetByName("someApp")
+	c.Assert(app.UpdatePlatform, gocheck.Equals, true)
 }

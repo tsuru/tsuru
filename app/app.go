@@ -46,20 +46,20 @@ var (
 // This struct holds information about the app: its name, address, list of
 // teams that have access to it, used platform, etc.
 type App struct {
-	Env       map[string]bind.EnvVar
-	Platform  string `bson:"framework"`
-	Name      string
-	Ip        string
-	CName     string
-	Units     []Unit
-	Teams     []string
-	TeamOwner string
-	Owner     string
-	State     string
-	Deploys   uint
-	Memory    int `json:",string"`
-	Swap      int `json:",string"`
-    UpdatePlatform bool
+	Env            map[string]bind.EnvVar
+	Platform       string `bson:"framework"`
+	Name           string
+	Ip             string
+	CName          string
+	Units          []Unit
+	Teams          []string
+	TeamOwner      string
+	Owner          string
+	State          string
+	Deploys        uint
+	Memory         int `json:",string"`
+	Swap           int `json:",string"`
+	UpdatePlatform bool
 
 	quota.Quota
 	hr hookRunner
@@ -1118,9 +1118,9 @@ func DeployApp(app *App, version, commit string, writer io.Writer) error {
 		return err
 	}
 	elapsed := time.Since(start)
-    if app.UpdatePlatform == true {
-        app.SetUpdatePlatform(false)
-    }
+	if app.UpdatePlatform == true {
+		app.SetUpdatePlatform(false)
+	}
 	return saveDeployData(app.Name, commit, elapsed)
 }
 
@@ -1161,12 +1161,12 @@ func (app *App) SetUpdatePlatform(check bool) error {
 	if err != nil {
 		return err
 	}
-    return conn.Apps().Update(
-        bson.M{"name": app.Name},
-        bson.M{"$set": bson.M{"updateplatform": check}},
-    )
+	return conn.Apps().Update(
+		bson.M{"name": app.Name},
+		bson.M{"$set": bson.M{"updateplatform": check}},
+	)
 }
 
 func (app *App) GetUpdatePlatform() bool {
-    return app.UpdatePlatform
+	return app.UpdatePlatform
 }

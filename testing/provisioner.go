@@ -58,18 +58,18 @@ func (u *FakeUnit) GetIp() string {
 
 // Fake implementation for provision.App.
 type FakeApp struct {
-	name     string
-	platform string
-	units    []provision.AppUnit
-	logs     []string
-	logMut   sync.Mutex
-	Commands []string
-	Memory   int
-	commMut  sync.Mutex
-	ready    bool
-	deploys  uint
-	env      map[string]bind.EnvVar
-    UpdatePlatform bool
+	name           string
+	platform       string
+	units          []provision.AppUnit
+	logs           []string
+	logMut         sync.Mutex
+	Commands       []string
+	Memory         int
+	commMut        sync.Mutex
+	ready          bool
+	deploys        uint
+	env            map[string]bind.EnvVar
+	UpdatePlatform bool
 }
 
 func NewFakeApp(name, platform string, units int) *FakeApp {
@@ -250,7 +250,7 @@ func (a *FakeApp) Run(cmd string, w io.Writer, once bool) error {
 }
 
 func (app *FakeApp) GetUpdatePlatform() bool {
-    return app.UpdatePlatform
+	return app.UpdatePlatform
 }
 
 type Cmd struct {
@@ -747,7 +747,7 @@ func (p *FakeProvisioner) PlatformAdd(name string, args map[string]string, w io.
 }
 
 func (p *FakeProvisioner) PlatformUpdate(name string, args map[string]string, w io.Writer) error {
-    return nil
+	return nil
 }
 
 type provisionedApp struct {

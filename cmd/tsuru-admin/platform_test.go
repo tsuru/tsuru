@@ -106,14 +106,14 @@ func (s *S) TestPlatformUpdateRun(c *gocheck.C) {
 		Transport: testing.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			c.Assert(req.Header.Get("Content-Type"), gocheck.Equals, "application/x-www-form-urlencoded")
-            c.Assert(req.FormValue("name"), gocheck.Equals, "teste")
-            c.Assert(req.FormValue("dockerfile"), gocheck.Equals, "http://localhost/Dockerfile")
+			c.Assert(req.FormValue("name"), gocheck.Equals, "teste")
+			c.Assert(req.FormValue("dockerfile"), gocheck.Equals, "http://localhost/Dockerfile")
 			return req.URL.Path == "/platforms/update" && req.Method == "PUT"
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	command := platformUpdate{}
-    command.Flags().Parse(true, []string{"--dockerfile", "http://localhost/Dockerfile"})
+	command.Flags().Parse(true, []string{"--dockerfile", "http://localhost/Dockerfile"})
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)

@@ -96,50 +96,50 @@ func (s *PlatformSuite) TestPlatformAddWithoutName(c *gocheck.C) {
 }
 
 func (s *PlatformSuite) TestPlatformUpdate(c *gocheck.C) {
-    conn, err := db.Conn()
+	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
-    name := "test_platform_update"
+	name := "test_platform_update"
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	err = PlatformUpdate(name, args, nil)
-    c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Platform doesn't exists.")
-    p := Platform{Name: name}
-    err = conn.Platforms().Insert(p)
+	p := Platform{Name: name}
+	err = conn.Platforms().Insert(p)
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Platforms().Remove(bson.M{"_id": name})
 	err = PlatformUpdate(name, args, nil)
-    c.Assert(err, gocheck.IsNil)
+	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *PlatformSuite) TestPlatformUpdateWithoutName(c *gocheck.C) {
-    err := PlatformUpdate("", nil, nil)
-    c.Assert(err, gocheck.NotNil)
-    c.Assert(err.Error(), gocheck.Equals, "Platform name is required.")
+	err := PlatformUpdate("", nil, nil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Platform name is required.")
 }
 
 func (s *PlatformSuite) TestPlatformUpdateShouldSetUpdatePlatformFlagOnApps(c *gocheck.C) {
-    conn, err := db.Conn()
+	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
-    name := "test_platform_update"
+	name := "test_platform_update"
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
-    p := Platform{Name: name}
-    err = conn.Platforms().Insert(p)
+	p := Platform{Name: name}
+	err = conn.Platforms().Insert(p)
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Platforms().Remove(bson.M{"_id": name})
-    appName := "test_app"
-    app := App{
-        Name: appName,
-        Platform: name,
-    }
-    err = conn.Apps().Insert(app)
+	appName := "test_app"
+	app := App{
+		Name:     appName,
+		Platform: name,
+	}
+	err = conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
-    defer conn.Apps().Remove(bson.M{"_id": appName})
+	defer conn.Apps().Remove(bson.M{"_id": appName})
 	err = PlatformUpdate(name, args, nil)
-    a, err := GetByName(appName)
-    c.Assert(err, gocheck.IsNil)
-    c.Assert(a.UpdatePlatform, gocheck.Equals, true)
+	a, err := GetByName(appName)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(a.UpdatePlatform, gocheck.Equals, true)
 }
