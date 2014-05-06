@@ -421,5 +421,5 @@ func (p *dockerProvisioner) PlatformAdd(name string, args map[string]string, w i
 }
 
 func (p *dockerProvisioner) PlatformUpdate(name string, args map[string]string, w io.Writer) error {
-    return nil
+    return p.PlatformAdd(name, args, w)
 }
