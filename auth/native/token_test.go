@@ -433,3 +433,26 @@ func (s *S) TestUserCheckPasswordValidatesThePassword(c *gocheck.C) {
 	c.Check(ok, gocheck.Equals, true)
 	c.Check(e.Message, gocheck.Equals, passwordError)
 }
+
+func (s *S) TestDeleteAllTokens(c *gocheck.C) {
+	tokens := []Token{
+		{Token: "t1", UserEmail: "x@x.com", Creation: time.Now(), Expires: time.Hour},
+		{Token: "t2", UserEmail: "x@x.com", Creation: time.Now(), Expires: time.Hour},
+		{Token: "t3", UserEmail: "y@y.com", Creation: time.Now(), Expires: time.Hour},
+	}
+	err := s.conn.Tokens().Insert(tokens[0])
+	c.Assert(err, gocheck.IsNil)
+	err = s.conn.Tokens().Insert(tokens[1])
+	c.Assert(err, gocheck.IsNil)
+	err = s.conn.Tokens().Insert(tokens[2])
+	c.Assert(err, gocheck.IsNil)
+	err = DeleteAllTokens("x@x.com")
+	c.Assert(err, gocheck.IsNil)
+	var tokensDB []Token
+	err = s.conn.Tokens().Find(bson.M{"useremail": "x@x.com"}).All(&tokensDB)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(len(tokensDB), gocheck.Equals, 0)
+	err = s.conn.Tokens().Find(bson.M{"useremail": "y@y.com"}).All(&tokensDB)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(len(tokensDB), gocheck.Equals, 1)
+}

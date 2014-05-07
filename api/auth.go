@@ -531,6 +531,10 @@ func listKeys(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //
 // If the user is the only one in a team an error will be returned.
 func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	managed, ok := app.AuthScheme.(auth.ManagedScheme)
+	if !ok {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: nonManagedSchemeMsg}
+	}
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -576,7 +580,7 @@ Please remove the team, then remove the user.`, team.Name)
 		log.Errorf("Failed to remove user from gandalf: %s", err)
 		return fmt.Errorf("Failed to remove the user from the git server: %s", err)
 	}
-	return conn.Users().Remove(bson.M{"email": u.Email})
+	return managed.Remove(t)
 }
 
 type jToken struct {

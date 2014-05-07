@@ -226,6 +226,16 @@ func DeleteToken(token string) error {
 	return conn.Tokens().Remove(bson.M{"token": token})
 }
 
+func DeleteAllTokens(email string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	_, err = conn.Tokens().RemoveAll(bson.M{"useremail": email})
+	return err
+}
+
 func CreateApplicationToken(appName string) (*Token, error) {
 	conn, err := db.Conn()
 	if err != nil {

@@ -60,6 +60,15 @@ func (u *User) Create() error {
 	return conn.Users().Insert(u)
 }
 
+func (u *User) Delete() error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.Users().Remove(bson.M{"email": u.Email})
+}
+
 func (u *User) Update() error {
 	conn, err := db.Conn()
 	if err != nil {

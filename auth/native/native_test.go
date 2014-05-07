@@ -214,3 +214,23 @@ func (s *S) TestResetPasswordEmptyToken(c *gocheck.C) {
 	err := scheme.ResetPassword(&u, "")
 	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
 }
+
+func (s *S) TestNativeRemove(c *gocheck.C) {
+	scheme := NativeScheme{}
+	params := make(map[string]string)
+	params["email"] = "timeredbull@globo.com"
+	params["password"] = "123456"
+	token, err := scheme.Login(params)
+	c.Assert(err, gocheck.IsNil)
+	err = scheme.Remove(token)
+	c.Assert(err, gocheck.IsNil)
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	var tokens []Token
+	err = conn.Tokens().Find(bson.M{"useremail": "timeredbull@globo.com"}).All(&tokens)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(len(tokens), gocheck.Equals, 0)
+	_, err = auth.GetUserByEmail("timeredbull@globo.com")
+	c.Assert(err, gocheck.Equals, auth.ErrUserNotFound)
+}

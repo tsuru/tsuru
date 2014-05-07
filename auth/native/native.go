@@ -124,5 +124,13 @@ func (s NativeScheme) ResetPassword(user *auth.User, resetToken string) error {
 }
 
 func (s NativeScheme) Remove(token auth.Token) error {
-	return nil
+	u, err := token.User()
+	if err != nil {
+		return err
+	}
+	err = DeleteAllTokens(u.Email)
+	if err != nil {
+		return err
+	}
+	return u.Delete()
 }
