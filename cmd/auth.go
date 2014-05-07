@@ -106,18 +106,18 @@ func (c *userRemove) Info() *Info {
 
 type login struct{}
 
-func (c *login) Run(context *Context, client *Client) error {
+func nativeLogin(context *Context, client *Client) error {
 	email := context.Args[0]
-	url, err := GetURL("/users/" + email + "/tokens")
-	if err != nil {
-		return err
-	}
 	fmt.Fprint(context.Stdout, "Password: ")
 	password, err := passwordFromReader(context.Stdin)
 	if err != nil {
 		return err
 	}
 	fmt.Fprintln(context.Stdout)
+	url, err := GetURL("/users/" + email + "/tokens")
+	if err != nil {
+		return err
+	}
 	b := bytes.NewBufferString(`{"password":"` + password + `"}`)
 	request, err := http.NewRequest("POST", url, b)
 	if err != nil {
@@ -139,6 +139,10 @@ func (c *login) Run(context *Context, client *Client) error {
 	}
 	fmt.Fprintln(context.Stdout, "Successfully logged in!")
 	return writeToken(out["token"].(string))
+}
+
+func (c *login) Run(context *Context, client *Client) error {
+	return nativeLogin(context, client)
 }
 
 func (c *login) Info() *Info {
