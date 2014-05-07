@@ -1758,7 +1758,7 @@ func (s *AuthSuite) TestResetPasswordStep2(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Users().Remove(bson.M{"email": user.Email})
 	oldPassword := user.Password
-	err = user.StartPasswordReset()
+	err = nativeScheme.StartPasswordReset(&user)
 	c.Assert(err, gocheck.IsNil)
 	var t map[string]interface{}
 	err = conn.PasswordTokens().Find(bson.M{"useremail": user.Email}).One(&t)

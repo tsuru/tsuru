@@ -5,8 +5,13 @@
 package native
 
 import (
+	"bytes"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/db"
+	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
+	"strings"
+	"time"
 )
 
 func (s *S) TestNativeLoginWithoutEmail(c *gocheck.C) {
@@ -124,4 +129,88 @@ func (s *S) TestChangePassword(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	_, err = scheme.Login(map[string]string{"email": user.Email, "password": "999999"})
 	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestStartPasswordReset(c *gocheck.C) {
+	scheme := NativeScheme{}
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	defer s.server.Reset()
+	u := auth.User{Email: "thank@alanis.com"}
+	err = scheme.StartPasswordReset(&u)
+	c.Assert(err, gocheck.IsNil)
+	var token passwordToken
+	err = conn.PasswordTokens().Find(bson.M{"useremail": u.Email}).One(&token)
+	c.Assert(err, gocheck.IsNil)
+	time.Sleep(1e9) // Let the email flow.
+	s.server.Lock()
+	defer s.server.Unlock()
+	c.Assert(s.server.MailBox, gocheck.HasLen, 1)
+	m := s.server.MailBox[0]
+	c.Assert(m.From, gocheck.Equals, "root")
+	c.Assert(m.To, gocheck.DeepEquals, []string{u.Email})
+	var buf bytes.Buffer
+	err = resetEmailData.Execute(&buf, token)
+	c.Assert(err, gocheck.IsNil)
+	expected := strings.Replace(buf.String(), "\n", "\r\n", -1) + "\r\n"
+	c.Assert(string(m.Data), gocheck.Equals, expected)
+}
+
+func (s *S) TestResetPassword(c *gocheck.C) {
+	scheme := NativeScheme{}
+	defer s.server.Reset()
+	u := auth.User{Email: "blues@rush.com"}
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
+	p := u.Password
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	err = scheme.StartPasswordReset(&u)
+	c.Assert(err, gocheck.IsNil)
+	time.Sleep(1e6) // Let the email flow
+	var token passwordToken
+	err = s.conn.PasswordTokens().Find(bson.M{"useremail": u.Email}).One(&token)
+	c.Assert(err, gocheck.IsNil)
+	err = scheme.ResetPassword(&u, token.Token)
+	c.Assert(err, gocheck.IsNil)
+	u2, _ := auth.GetUserByEmail(u.Email)
+	c.Assert(u2.Password, gocheck.Not(gocheck.Equals), p)
+	time.Sleep(1e9) // Let the email flow
+	s.server.Lock()
+	defer s.server.Unlock()
+	c.Assert(s.server.MailBox, gocheck.HasLen, 2)
+	m := s.server.MailBox[1]
+	c.Assert(m.From, gocheck.Equals, "root")
+	c.Assert(m.To, gocheck.DeepEquals, []string{u.Email})
+	var buf bytes.Buffer
+	err = passwordResetConfirm.Execute(&buf, map[string]string{"email": u.Email, "password": ""})
+	c.Assert(err, gocheck.IsNil)
+	expected := strings.Replace(buf.String(), "\n", "\r\n", -1) + "\r\n"
+	lines := strings.Split(string(m.Data), "\r\n")
+	lines[len(lines)-4] = ""
+	c.Assert(strings.Join(lines, "\r\n"), gocheck.Equals, expected)
+	err = s.conn.PasswordTokens().Find(bson.M{"useremail": u.Email}).One(&token)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(token.Used, gocheck.Equals, true)
+}
+
+func (s *S) TestResetPasswordThirdToken(c *gocheck.C) {
+	scheme := NativeScheme{}
+	u := auth.User{Email: "profecia@raul.com"}
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	t, err := createPasswordToken(&u)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.PasswordTokens().Remove(bson.M{"_id": t.Token})
+	u2 := auth.User{Email: "tsuru@globo.com"}
+	err = scheme.ResetPassword(&u2, t.Token)
+	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
+}
+
+func (s *S) TestResetPasswordEmptyToken(c *gocheck.C) {
+	scheme := NativeScheme{}
+	u := auth.User{Email: "presto@rush.com"}
+	err := scheme.ResetPassword(&u, "")
+	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
 }

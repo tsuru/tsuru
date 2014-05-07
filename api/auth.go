@@ -137,6 +137,10 @@ func changePassword(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 }
 
 func resetPassword(w http.ResponseWriter, r *http.Request) error {
+	managed, ok := app.AuthScheme.(auth.ManagedScheme)
+	if !ok {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: nonManagedSchemeMsg}
+	}
 	email := r.URL.Query().Get(":email")
 	token := r.URL.Query().Get("token")
 	u, err := auth.GetUserByEmail(email)
@@ -150,10 +154,10 @@ func resetPassword(w http.ResponseWriter, r *http.Request) error {
 	}
 	if token == "" {
 		rec.Log(email, "reset-password-gen-token")
-		return u.StartPasswordReset()
+		return managed.StartPasswordReset(u)
 	}
 	rec.Log(email, "reset-password")
-	return u.ResetPassword(token)
+	return managed.ResetPassword(u, token)
 }
 
 // keyToMap converts a Key array into a map maybe we should store a map

@@ -8,14 +8,6 @@ package auth
 // Everything could change in minutes, please don't
 // rely on them until this notice is gone.
 
-type Token interface {
-	GetValue() string
-	GetAppName() string
-	GetUserName() string
-	IsAppToken() bool
-	User() (*User, error)
-}
-
 type Scheme interface {
 	AppLogin(appName string) (Token, error)
 	Login(params map[string]string) (Token, error)
@@ -27,6 +19,18 @@ type ManagedScheme interface {
 	Scheme
 	Create(user *User) (*User, error)
 	Remove(token Token) error
-	ResetPassword(token Token) error
+	StartPasswordReset(user *User) error
+	ResetPassword(user *User, resetToken string) error
 	ChangePassword(token Token, oldPassword string, newPassword string) error
+}
+
+type AuthenticationFailure struct {
+	Message string
+}
+
+func (a AuthenticationFailure) Error() string {
+	if a.Message != "" {
+		return a.Message
+	}
+	return "Authentication failed, wrong password."
 }

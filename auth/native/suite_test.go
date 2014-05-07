@@ -9,6 +9,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
+	ttesting "github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 	"testing"
 )
@@ -20,6 +21,7 @@ type S struct {
 	hashed string
 	user   *auth.User
 	team   *auth.Team
+	server *ttesting.SMTPServer
 	token  auth.Token
 }
 
@@ -33,6 +35,12 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("admin-team", "admin")
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_auth_native_test")
+	var err error
+	s.server, err = ttesting.NewSMTPServer()
+	c.Assert(err, gocheck.IsNil)
+	config.Set("smtp:server", s.server.Addr())
+	config.Set("smtp:user", "root")
+	config.Set("smtp:password", "123456")
 }
 
 func (s *S) SetUpTest(c *gocheck.C) {
@@ -54,4 +62,8 @@ func (s *S) TearDownTest(c *gocheck.C) {
 	s.conn.Close()
 	cost = 0
 	tokenExpire = 0
+}
+
+func (s *S) TearDownSuite(c *gocheck.C) {
+	s.server.Stop()
 }

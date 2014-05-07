@@ -6,6 +6,7 @@ package native
 
 import (
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/validation"
 )
@@ -86,10 +87,42 @@ func (s NativeScheme) ChangePassword(token auth.Token, oldPassword string, newPa
 	return user.Update()
 }
 
-func (s NativeScheme) Remove(token auth.Token) error {
+func (s NativeScheme) StartPasswordReset(user *auth.User) error {
+	passToken, err := createPasswordToken(user)
+	if err != nil {
+		return err
+	}
+	go sendResetPassword(user, passToken)
 	return nil
 }
 
-func (s NativeScheme) ResetPassword(token auth.Token) error {
+// ResetPassword actually resets the password of the user. It needs the token
+// string. The new password will be a random string, that will be then sent to
+// the user email.
+func (s NativeScheme) ResetPassword(user *auth.User, resetToken string) error {
+	if resetToken == "" {
+		return auth.ErrInvalidToken
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	passToken, err := getPasswordToken(resetToken)
+	if err != nil {
+		return err
+	}
+	if passToken.UserEmail != user.Email {
+		return auth.ErrInvalidToken
+	}
+	password := generatePassword(12)
+	user.Password = password
+	hashPassword(user)
+	go sendNewPassword(user, password)
+	passToken.Used = true
+	conn.PasswordTokens().UpdateId(passToken.Token, passToken)
+	return user.Update()
+}
+
+func (s NativeScheme) Remove(token auth.Token) error {
 	return nil
 }

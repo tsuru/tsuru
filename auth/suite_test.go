@@ -100,8 +100,6 @@ func (s *S) TearDownTest(c *gocheck.C) {
 	config.Set("git:host", s.gitHost)
 	config.Set("git:port", s.gitPort)
 	config.Set("git:protocol", s.gitProt)
-	cost = 0
-	tokenExpire = 0
 }
 
 func (s *S) getTestData(path ...string) io.ReadCloser {
