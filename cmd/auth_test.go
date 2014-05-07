@@ -676,3 +676,14 @@ func (s *S) TestResetPasswordFlags(c *gocheck.C) {
 func (s *S) TestResetPasswordIsAFlaggedCommand(c *gocheck.C) {
 	var _ FlaggedCommand = &resetPassword{}
 }
+
+func (s *S) TestScheme(c *gocheck.C) {
+	err := os.Setenv("TSURU_AUTH_SCHEME", "")
+	c.Assert(err, gocheck.IsNil)
+	result := scheme()
+	c.Assert(result, gocheck.Equals, "native")
+	err = os.Setenv("TSURU_AUTH_SCHEME", "oauth")
+	c.Assert(err, gocheck.IsNil)
+	result = scheme()
+	c.Assert(result, gocheck.Equals, "oauth")
+}
