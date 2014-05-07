@@ -141,10 +141,6 @@ func nativeLogin(context *Context, client *Client) error {
 	return writeToken(out["token"].(string))
 }
 
-func oauthLogin(context *Context, client *Client) error {
-	return nil
-}
-
 func (c *login) Run(context *Context, client *Client) error {
 	if scheme() == "oauth" {
 		return oauthLogin(context, client)

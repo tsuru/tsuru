@@ -18,18 +18,6 @@ import (
 	"strings"
 )
 
-func oauthScheme() {
-	os.Setenv("TSURU_AUTH_SCHEME", "oauth")
-}
-
-func (s *S) TestOauthLogin(c *gocheck.C) {
-	oauthScheme()
-	context := Context{[]string{}, manager.stdout, manager.stderr, nil}
-	command := login{}
-	err := command.Run(&context, nil)
-	c.Assert(err, gocheck.IsNil)
-}
-
 func navitveScheme() {
 	os.Setenv("TSURU_AUTH_SCHEME", "")
 }
