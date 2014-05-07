@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"runtime"
@@ -378,4 +379,57 @@ func (s *S) TestTokenIsAppToken(c *gocheck.C) {
 	t = Token{UserEmail: "something@something.com"}
 	isAppToken = t.IsAppToken()
 	c.Assert(isAppToken, gocheck.Equals, false)
+}
+
+func (s *S) TestUserCheckPasswordUsesBcrypt(c *gocheck.C) {
+	u := auth.User{Email: "paradisum", Password: "abcd1234"}
+	err := hashPassword(&u)
+	c.Assert(err, gocheck.IsNil)
+	err = bcrypt.CompareHashAndPassword([]byte(u.Password), []byte("abcd1234"))
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestUserCheckPasswordRightPassword(c *gocheck.C) {
+	u := auth.User{Email: "wolverine@xmen.com", Password: "123456"}
+	err := hashPassword(&u)
+	c.Assert(err, gocheck.IsNil)
+	err = checkPassword(u.Password, "123456")
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestUserCheckPasswordChecksBcryptPasswordFirst(c *gocheck.C) {
+	passwd, err := bcrypt.GenerateFromPassword([]byte("123456"), cost)
+	c.Assert(err, gocheck.IsNil)
+	u := auth.User{Email: "wolverine@xmen", Password: string(passwd)}
+	err = checkPassword(u.Password, "123456")
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestUserCheckPasswordReturnsFalseIfThePasswordDoesNotMatch(c *gocheck.C) {
+	u := auth.User{Email: "wolverine@xmen.com", Password: "123456"}
+	err := hashPassword(&u)
+	c.Assert(err, gocheck.IsNil)
+	err = checkPassword(u.Password, "654321")
+	c.Assert(err, gocheck.NotNil)
+	_, ok := err.(auth.AuthenticationFailure)
+	c.Assert(ok, gocheck.Equals, true)
+}
+
+func (s *S) TestUserCheckPasswordValidatesThePassword(c *gocheck.C) {
+	u := auth.User{Email: "wolverine@xmen.com", Password: "123456"}
+	err := hashPassword(&u)
+	c.Assert(err, gocheck.IsNil)
+	err = checkPassword(u.Password, "123")
+	c.Check(err, gocheck.NotNil)
+	e, ok := err.(*tsuruErrors.ValidationError)
+	c.Check(ok, gocheck.Equals, true)
+	c.Check(e.Message, gocheck.Equals, passwordError)
+	var p [51]byte
+	p[0] = 'a'
+	p[50] = 'z'
+	err = checkPassword(u.Password, string(p[:]))
+	c.Check(err, gocheck.NotNil)
+	e, ok = err.(*tsuruErrors.ValidationError)
+	c.Check(ok, gocheck.Equals, true)
+	c.Check(e.Message, gocheck.Equals, passwordError)
 }
