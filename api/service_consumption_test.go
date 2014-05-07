@@ -355,16 +355,12 @@ func (s *ConsumptionSuite) TestServicesInstancesHandlerReturnsOnlyServicesThatTh
 }
 
 func (s *ConsumptionSuite) TestServicesInstancesHandlerFilterInstancesPerServiceIncludingServicesThatDoesNotHaveInstances(c *gocheck.C) {
-	u := &auth.User{Email: "me@globo.com", Password: "123"}
-	err := u.Create()
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	serviceNames := []string{"redis", "mysql", "pgsql", "memcached"}
 	defer s.conn.Services().RemoveAll(bson.M{"name": bson.M{"$in": serviceNames}})
 	defer s.conn.ServiceInstances().RemoveAll(bson.M{"service_name": bson.M{"$in": serviceNames}})
 	for _, name := range serviceNames {
 		srv := service.Service{Name: name, Teams: []string{s.team.Name}}
-		err = srv.Create()
+		err := srv.Create()
 		c.Assert(err, gocheck.IsNil)
 		instance := service.ServiceInstance{
 			Name:        srv.Name + "1",
@@ -381,7 +377,7 @@ func (s *ConsumptionSuite) TestServicesInstancesHandlerFilterInstancesPerService
 		err = instance.Create()
 	}
 	srv := service.Service{Name: "oracle", Teams: []string{s.team.Name}}
-	err = srv.Create()
+	err := srv.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Services().Remove(bson.M{"name": "oracle"})
 	request, err := http.NewRequest("GET", "/services/instances", nil)

@@ -237,8 +237,9 @@ func (s *AuthSuite) TestCreateUserHandlerReturnErrorAndConflictIfItFailsToCreate
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
-	u := auth.User{Email: "nobody@globo.com", Password: "123456"}
-	u.Create()
+	u := auth.User{Email: "nobody@globo.com"}
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, gocheck.IsNil)
@@ -353,8 +354,6 @@ func (s *AuthSuite) TestLoginShouldInformWhenUserIsNotAdmin(c *gocheck.C) {
 }
 
 func (s *AuthSuite) TestLoginShouldInformWhenUserIsAdmin(c *gocheck.C) {
-	u := auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
-	u.Create()
 	b := bytes.NewBufferString(`{"password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users/whydidifall@thewho.com/tokens?:email=whydidifall@thewho.com", b)
 	c.Assert(err, gocheck.IsNil)
@@ -844,7 +843,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExi
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
-	u := auth.User{Email: "nonee@me.me", Password: "none"}
+	u := auth.User{Email: "nonee@me.me"}
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
 	conn, _ := db.Conn()
@@ -874,7 +873,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveOnlyAppsInThatTeamInGandal
 	defer ts.Close()
 	conn, _ := db.Conn()
 	defer conn.Close()
-	u := auth.User{Email: "nobody@me.me", Password: "none"}
+	u := auth.User{Email: "nobody@me.me"}
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Users().Remove(bson.M{"email": u.Email})
@@ -1029,7 +1028,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamRevokesAccessInGandalf(c *gocheck.C) {
 func (s *AuthSuite) TestRemoveUserFromTeamInDatabase(c *gocheck.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
-	u := &auth.User{Email: "nobody@gmail.com", Password: "123456"}
+	u := &auth.User{Email: "nobody@gmail.com"}
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
 	s.team.AddUser(u)
@@ -1276,7 +1275,7 @@ func (s *AuthSuite) TestAddKeyToUserShouldNotInsertKeyInDatabaseWhenGandalfAddit
 func (s *AuthSuite) TestAddKeyInDatabaseShouldStoreUsersKeyInDB(c *gocheck.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
-	u := &auth.User{Email: "me@gmail.com", Password: "123456"}
+	u := &auth.User{Email: "me@gmail.com"}
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Users().Remove(bson.M{"email": u.Email})
@@ -1294,7 +1293,7 @@ func (s *AuthSuite) TestAddKeyInGandalfShouldCallGandalfAPI(c *gocheck.C) {
 	defer ts.Close()
 	conn, _ := db.Conn()
 	defer conn.Close()
-	u := &auth.User{Email: "me@gmail.com", Password: "123456"}
+	u := &auth.User{Email: "me@gmail.com"}
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Users().Remove(bson.M{"email": u.Email})
@@ -1308,7 +1307,7 @@ func (s *AuthSuite) TestAddKeyInGandalfShouldCallGandalfAPI(c *gocheck.C) {
 func (s *AuthSuite) TestRemoveKeyFromGandalfCallsGandalfAPI(c *gocheck.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
-	u := &auth.User{Email: "me@gmail.com", Password: "123456"}
+	u := &auth.User{Email: "me@gmail.com"}
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Users().Remove(bson.M{"email": u.Email})
@@ -1328,7 +1327,7 @@ func (s *AuthSuite) TestRemoveKeyFromGandalfCallsGandalfAPI(c *gocheck.C) {
 func (s *AuthSuite) TestRemoveKeyFromDatabase(c *gocheck.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
-	u := &auth.User{Email: "me@gmail.com", Password: "123456"}
+	u := &auth.User{Email: "me@gmail.com"}
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Users().Remove(bson.M{"email": u.Email})

@@ -353,7 +353,7 @@ func (s *S) TestCannotCreateAppWithUnknownPlatform(c *gocheck.C) {
 }
 
 func (s *S) TestCannotCreateAppWithoutTeams(c *gocheck.C) {
-	u := auth.User{Email: "perpetual@yes.com", Password: "123678"}
+	u := auth.User{Email: "perpetual@yes.com"}
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
