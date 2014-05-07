@@ -16,6 +16,7 @@ var (
 	ErrInvalidEmail         = &tsuruErrors.ValidationError{Message: "Invalid email."}
 	ErrInvalidPassword      = &tsuruErrors.ValidationError{Message: "Password length should be least 6 characters and at most 50 characters."}
 	ErrEmailRegistered      = &tsuruErrors.ConflictError{Message: "This email is already registered."}
+	ErrPasswordMismatch     = &tsuruErrors.NotAuthorizedError{Message: "The given password didn't match the user's current password."}
 )
 
 type NativeScheme struct{}
@@ -62,7 +63,6 @@ func (s NativeScheme) Create(user *auth.User) (*auth.User, error) {
 	if _, err := auth.GetUserByEmail(user.Email); err == nil {
 		return nil, ErrEmailRegistered
 	}
-
 	if err := hashPassword(user); err != nil {
 		return nil, err
 	}
@@ -71,7 +71,19 @@ func (s NativeScheme) Create(user *auth.User) (*auth.User, error) {
 }
 
 func (s NativeScheme) ChangePassword(token auth.Token, oldPassword string, newPassword string) error {
-	return nil
+	user, err := token.User()
+	if err != nil {
+		return err
+	}
+	if err = checkPassword(user.Password, oldPassword); err != nil {
+		return ErrPasswordMismatch
+	}
+	if !validation.ValidateLength(newPassword, passwordMinLen, passwordMaxLen) {
+		return ErrInvalidPassword
+	}
+	user.Password = newPassword
+	hashPassword(user)
+	return user.Update()
 }
 
 func (s NativeScheme) Remove(token auth.Token) error {

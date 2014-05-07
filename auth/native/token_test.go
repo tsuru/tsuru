@@ -286,9 +286,9 @@ func (s *S) TestParseToken(c *gocheck.C) {
 }
 
 func (s *S) TestGetToken(c *gocheck.C) {
-	t, err := GetToken("bearer " + s.token.Token)
+	t, err := GetToken("bearer " + s.token.GetValue())
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(t.Token, gocheck.Equals, s.token.Token)
+	c.Assert(t.Token, gocheck.Equals, s.token.GetValue())
 }
 
 func (s *S) TestGetTokenEmptyToken(c *gocheck.C) {

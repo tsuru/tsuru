@@ -475,7 +475,7 @@ func (s *AuthSuite) TestLoginShouldReturnBadRequestWhenPasswordIsInvalid(c *goch
 		e, ok := err.(*errors.HTTP)
 		c.Assert(ok, gocheck.Equals, true)
 		c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
-		c.Assert(e.Message, gocheck.Equals, passwordError)
+		c.Assert(e.Message, gocheck.Matches, "Password.*")
 	}
 }
 
