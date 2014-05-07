@@ -79,6 +79,16 @@ func loadConfig() error {
 	return nil
 }
 
+func hashPassword(u *auth.User) error {
+	loadConfig()
+	passwd, err := bcrypt.GenerateFromPassword([]byte(u.Password), cost)
+	if err != nil {
+		return err
+	}
+	u.Password = string(passwd)
+	return nil
+}
+
 func token(data string, hash crypto.Hash) string {
 	var tokenKey [keySize]byte
 	n, err := rand.Read(tokenKey[:])

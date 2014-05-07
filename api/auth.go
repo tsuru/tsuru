@@ -28,42 +28,45 @@ import (
 
 const (
 	// TODO(fss): move code that depend on these constants to package auth.
-	emailError     = "Invalid email."
-	passwordError  = "Password length should be least 6 characters and at most 50 characters."
-	passwordMinLen = 6
-	passwordMaxLen = 50
+	passwordError       = "Password length should be least 6 characters and at most 50 characters."
+	passwordMinLen      = 6
+	passwordMaxLen      = 50
+	nonManagedSchemeMsg = "Authentication scheme does not allow this operation."
 )
 
 func createUser(w http.ResponseWriter, r *http.Request) error {
+	managed, ok := app.AuthScheme.(auth.ManagedScheme)
+	if !ok {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: nonManagedSchemeMsg}
+	}
 	var u auth.User
 	err := json.NewDecoder(r.Body).Decode(&u)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
-	if !validation.ValidateEmail(u.Email) {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: emailError}
+	u.Quota = quota.Unlimited
+	if limit, err := config.GetInt("quota:apps-per-user"); err == nil && limit > -1 {
+		u.Quota.Limit = limit
 	}
-	if !validation.ValidateLength(u.Password, passwordMinLen, passwordMaxLen) {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: passwordError}
-	}
-	if _, err = auth.GetUserByEmail(u.Email); err == nil {
-		return &errors.HTTP{Code: http.StatusConflict, Message: "This email is already registered"}
+	_, err = managed.Create(&u)
+	if err != nil {
+		switch err.(type) {
+		case *errors.ValidationError:
+			return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+		case *errors.ConflictError:
+			return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
+		default:
+			return err
+		}
 	}
 	gURL := repository.ServerURL()
 	c := gandalf.Client{Endpoint: gURL}
 	if _, err := c.NewUser(u.Email, keyToMap(u.Keys)); err != nil {
 		return fmt.Errorf("Failed to create user in the git server: %s", err)
 	}
-	u.Quota = quota.Unlimited
-	if limit, err := config.GetInt("quota:apps-per-user"); err == nil && limit > -1 {
-		u.Quota.Limit = limit
-	}
-	if err := u.Create(); err == nil {
-		rec.Log(u.Email, "create-user")
-		w.WriteHeader(http.StatusCreated)
-		return nil
-	}
-	return err
+	rec.Log(u.Email, "create-user")
+	w.WriteHeader(http.StatusCreated)
+	return nil
 }
 
 func login(w http.ResponseWriter, r *http.Request) error {

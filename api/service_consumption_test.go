@@ -53,7 +53,7 @@ func (s *ConsumptionSuite) TearDownTest(c *gocheck.C) {
 
 func (s *ConsumptionSuite) createUserAndTeam(c *gocheck.C) {
 	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
-	err := s.user.Create()
+	_, err := nativeScheme.Create(s.user)
 	c.Assert(err, gocheck.IsNil)
 	s.team = &auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
 	err = s.conn.Teams().Insert(s.team)
@@ -324,7 +324,7 @@ func (s *ConsumptionSuite) TestServicesInstancesHandler(c *gocheck.C) {
 
 func (s *ConsumptionSuite) TestServicesInstancesHandlerReturnsOnlyServicesThatTheUserHasAccess(c *gocheck.C) {
 	u := &auth.User{Email: "me@globo.com", Password: "123456"}
-	err := u.Create()
+	_, err := nativeScheme.Create(u)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})

@@ -91,7 +91,6 @@ func (u *User) Create() error {
 		return err
 	}
 	defer conn.Close()
-	u.HashPassword()
 	return conn.Users().Insert(u)
 }
 

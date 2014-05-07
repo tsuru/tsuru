@@ -23,10 +23,10 @@ type Scheme interface {
 	Auth(token string) (Token, error)
 }
 
-// type ManagedScheme interface {
-// 	Scheme
-// 	Create(email string, password string) (*User, error)
-// 	Remove(token Token) error
-// 	ResetPassword(token Token) error
-// 	ChangePassword(token Token, newPassword string) error
-// }
+type ManagedScheme interface {
+	Scheme
+	Create(user *User) (*User, error)
+	Remove(token Token) error
+	ResetPassword(token Token) error
+	ChangePassword(token Token, oldPassword string, newPassword string) error
+}

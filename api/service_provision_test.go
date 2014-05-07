@@ -61,7 +61,7 @@ func (s *ProvisionSuite) makeRequestToServicesHandler(c *gocheck.C) (*httptest.R
 
 func (s *ProvisionSuite) createUserAndTeam(c *gocheck.C) {
 	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "1234567"}
-	err := s.user.Create()
+	_, err := nativeScheme.Create(s.user)
 	c.Assert(err, gocheck.IsNil)
 	s.team = &auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
 	err = s.conn.Teams().Insert(s.team)
@@ -183,7 +183,7 @@ func (s *ProvisionSuite) TestCreateHandlerSavesOwnerTeamsFromUserWhoCreated(c *g
 
 func (s *ProvisionSuite) TestCreateHandlerReturnsForbiddenIfTheUserIsNotMemberOfAnyTeam(c *gocheck.C) {
 	u := &auth.User{Email: "enforce@queensryche.com", Password: "123456"}
-	err := u.Create()
+	_, err := nativeScheme.Create(u)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().RemoveAll(bson.M{"email": u.Email})
 	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})

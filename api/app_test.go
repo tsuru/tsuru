@@ -228,8 +228,7 @@ func (s *S) TestAppList(c *gocheck.C) {
 // Issue #52.
 func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserIsAMember(c *gocheck.C) {
 	u := auth.User{Email: "passing-by@angra.com", Password: "123456"}
-	u.HashPassword()
-	err := s.conn.Users().Insert(u)
+	_, err := nativeScheme.Create(&u)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
@@ -632,7 +631,7 @@ func (s *S) TestCreateAppInvalidName(c *gocheck.C) {
 
 func (s *S) TestCreateAppReturns400IfTheUserIsNotMemberOfAnyTeam(c *gocheck.C) {
 	u := &auth.User{Email: "thetrees@rush.com", Password: "123456"}
-	err := u.Create()
+	_, err := nativeScheme.Create(u)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
@@ -1182,8 +1181,7 @@ func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromGandalf(c *gocheck.C) {
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	u := auth.User{Email: "again@live.com", Password: "123456"}
-	u.HashPassword()
-	err := s.conn.Users().Insert(u)
+	_, err := nativeScheme.Create(&u)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
