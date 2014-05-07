@@ -18,7 +18,12 @@ import (
 	"strings"
 )
 
-func (s *S) TestLogin(c *gocheck.C) {
+func navitveScheme() {
+	os.Setenv("TSURU_AUTH_SCHEME", "")
+}
+
+func (s *S) TestNativeLogin(c *gocheck.C) {
+	navitveScheme()
 	fsystem = &testing.RecordingFs{FileContent: "old-token"}
 	defer func() {
 		fsystem = nil
@@ -36,7 +41,8 @@ func (s *S) TestLogin(c *gocheck.C) {
 	c.Assert(token, gocheck.Equals, "sometoken")
 }
 
-func (s *S) TestLoginShouldNotDependOnTsuruTokenFile(c *gocheck.C) {
+func (s *S) TestNativeLoginShouldNotDependOnTsuruTokenFile(c *gocheck.C) {
+	navitveScheme()
 	rfs := &testing.RecordingFs{}
 	f, _ := rfs.Create(JoinWithUserDir(".tsuru_target"))
 	f.Write([]byte("http://localhost"))
@@ -55,7 +61,8 @@ func (s *S) TestLoginShouldNotDependOnTsuruTokenFile(c *gocheck.C) {
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
 }
 
-func (s *S) TestLoginShouldReturnErrorIfThePasswordIsNotGiven(c *gocheck.C) {
+func (s *S) TestNativeLoginShouldReturnErrorIfThePasswordIsNotGiven(c *gocheck.C) {
+	navitveScheme()
 	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, strings.NewReader("\n")}
 	command := login{}
 	err := command.Run(&context, nil)
