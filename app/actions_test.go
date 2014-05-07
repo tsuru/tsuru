@@ -343,7 +343,7 @@ func (s *S) TestProvisionAppMinParams(c *gocheck.C) {
 
 func (s *S) TestReserveUserAppForward(c *gocheck.C) {
 	user := auth.User{
-		Email: "clap@yes.com", Password: "123456",
+		Email: "clap@yes.com",
 		Quota: quota.Quota{Limit: 1},
 	}
 	err := user.Create()

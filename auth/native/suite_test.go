@@ -25,6 +25,8 @@ type S struct {
 
 var _ = gocheck.Suite(&S{})
 
+var nativeScheme = NativeScheme{}
+
 func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("auth:token-expire-days", 2)
 	config.Set("auth:hash-cost", bcrypt.MinCost)
@@ -33,11 +35,12 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("database:name", "tsuru_auth_native_test")
 	s.conn, _ = db.Conn()
 	s.user = &auth.User{Email: "timeredbull@globo.com", Password: "123456"}
-	s.user.Create()
+	_, err := nativeScheme.Create(s.user)
+	c.Assert(err, gocheck.IsNil)
 	s.hashed = s.user.Password
 	s.token, _ = createToken(s.user, "123456")
 	team := &auth.Team{Name: "cobrateam", Users: []string{s.user.Email}}
-	err := s.conn.Teams().Insert(team)
+	err = s.conn.Teams().Insert(team)
 	c.Assert(err, gocheck.IsNil)
 	s.team = team
 }

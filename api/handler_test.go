@@ -33,7 +33,7 @@ func (s *HandlerSuite) SetUpSuite(c *gocheck.C) {
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	user := &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
-	err = user.Create()
+	_, err = nativeScheme.Create(user)
 	c.Assert(err, gocheck.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, gocheck.IsNil)
@@ -252,7 +252,7 @@ func (s *HandlerSuite) TestAdminRequiredHandlerShouldReturnUnauthorizedIfTheToke
 
 func (s *HandlerSuite) TestAdminRequiredHandlerShouldReturnForbiddenIfTheUserIsNotAdmin(c *gocheck.C) {
 	user := &auth.User{Email: "rain@gotthard.com", Password: "123456"}
-	err := user.Create()
+	_, err := nativeScheme.Create(user)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": user.Email})
 	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})

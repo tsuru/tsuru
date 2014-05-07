@@ -28,7 +28,7 @@ var _ = gocheck.Suite(&DeploySuite{})
 
 func (s *DeploySuite) createUserAndTeam(c *gocheck.C) {
 	user := &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
-	err := user.Create()
+	_, err := nativeScheme.Create(user)
 	c.Assert(err, gocheck.IsNil)
 	s.team = &auth.Team{Name: "tsuruteam", Users: []string{user.Email}}
 	err = s.conn.Teams().Insert(s.team)

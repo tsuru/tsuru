@@ -260,7 +260,7 @@ func (s *InstanceSuite) TestGetServiceInstancesByServicesAndTeams(c *gocheck.C) 
 }
 
 func (s *InstanceSuite) TestGetServiceInstancesByServicesAndTeamsForUsersThatAreNotMembersOfAnyTeam(c *gocheck.C) {
-	u := auth.User{Email: "noteamforme@globo.com", Password: "123"}
+	u := auth.User{Email: "noteamforme@globo.com"}
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})

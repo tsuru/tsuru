@@ -54,7 +54,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("auth:salt", "tsuru-salt")
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
-	s.user = &auth.User{Email: "cidade@raul.com", Password: "123"}
+	s.user = &auth.User{Email: "cidade@raul.com"}
 	err = s.user.Create()
 	c.Assert(err, gocheck.IsNil)
 	s.team = &auth.Team{Name: "Raul", Users: []string{s.user.Email}}

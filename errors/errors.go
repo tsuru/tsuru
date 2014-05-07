@@ -29,3 +29,9 @@ type ValidationError struct {
 func (err *ValidationError) Error() string {
 	return err.Message
 }
+
+type ConflictError ValidationError
+
+func (err *ConflictError) Error() string {
+	return err.Message
+}

@@ -66,7 +66,7 @@ var Greater gocheck.Checker = &greaterChecker{}
 
 func (s *S) createUserAndTeam(c *gocheck.C) {
 	s.user = &auth.User{
-		Email: "whydidifall@thewho.com", Password: "123",
+		Email: "whydidifall@thewho.com",
 		Quota: quota.Unlimited,
 	}
 	err := s.user.Create()
@@ -113,8 +113,8 @@ func (s *S) getTestData(p ...string) io.ReadCloser {
 }
 
 func (s *S) createAdminUserAndTeam(c *gocheck.C) {
-	s.admin = &auth.User{Email: "superuser@gmail.com", Password: "123"}
-	err := s.conn.Users().Insert(&s.admin)
+	s.admin = &auth.User{Email: "superuser@gmail.com"}
+	err := s.admin.Create()
 	c.Assert(err, gocheck.IsNil)
 	adminTeamName, err := config.GetString("admin-team")
 	c.Assert(err, gocheck.IsNil)

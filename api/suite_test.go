@@ -84,7 +84,7 @@ var HasAccessTo gocheck.Checker = &hasAccessToChecker{}
 
 func (s *S) createUserAndTeam(c *gocheck.C) {
 	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123456", Quota: quota.Unlimited}
-	err := s.user.Create()
+	_, err := nativeScheme.Create(s.user)
 	c.Assert(err, gocheck.IsNil)
 	s.team = &auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
 	err = s.conn.Teams().Insert(s.team)
@@ -121,4 +121,4 @@ func (s *S) getTestData(p ...string) io.ReadCloser {
 	return f
 }
 
-var nativeScheme = auth.Scheme(native.NativeScheme{})
+var nativeScheme = auth.ManagedScheme(native.NativeScheme{})
