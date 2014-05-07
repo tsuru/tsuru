@@ -19,7 +19,6 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/rec"
 	"github.com/tsuru/tsuru/repository"
-	"github.com/tsuru/tsuru/validation"
 	"io"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
@@ -27,12 +26,26 @@ import (
 )
 
 const (
-	// TODO(fss): move code that depend on these constants to package auth.
-	passwordError       = "Password length should be least 6 characters and at most 50 characters."
-	passwordMinLen      = 6
-	passwordMaxLen      = 50
 	nonManagedSchemeMsg = "Authentication scheme does not allow this operation."
 )
+
+func handleAuthError(err error) error {
+	if err == auth.ErrUserNotFound {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	switch err.(type) {
+	case *errors.ValidationError:
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	case *errors.ConflictError:
+		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
+	case *errors.NotAuthorizedError:
+		return &errors.HTTP{Code: http.StatusForbidden, Message: err.Error()}
+	case auth.AuthenticationFailure:
+		return &errors.HTTP{Code: http.StatusUnauthorized, Message: err.Error()}
+	default:
+		return err
+	}
+}
 
 func createUser(w http.ResponseWriter, r *http.Request) error {
 	managed, ok := app.AuthScheme.(auth.ManagedScheme)
@@ -50,14 +63,7 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 	}
 	_, err = managed.Create(&u)
 	if err != nil {
-		switch err.(type) {
-		case *errors.ValidationError:
-			return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-		case *errors.ConflictError:
-			return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
-		default:
-			return err
-		}
+		return handleAuthError(err)
 	}
 	gURL := repository.ServerURL()
 	c := gandalf.Client{Endpoint: gURL}
@@ -78,26 +84,7 @@ func login(w http.ResponseWriter, r *http.Request) error {
 	params["email"] = r.URL.Query().Get(":email")
 	token, err := app.AuthScheme.Login(params)
 	if err != nil {
-		if err == auth.ErrUserNotFound {
-			return &errors.HTTP{
-				Code:    http.StatusNotFound,
-				Message: err.Error(),
-			}
-		}
-		switch err.(type) {
-		case *errors.ValidationError:
-			return &errors.HTTP{
-				Code:    http.StatusBadRequest,
-				Message: err.(*errors.ValidationError).Message,
-			}
-		case auth.AuthenticationFailure:
-			return &errors.HTTP{
-				Code:    http.StatusUnauthorized,
-				Message: err.Error(),
-			}
-		default:
-			return err
-		}
+		return handleAuthError(err)
 	}
 	u, err := token.User()
 	if err != nil {
@@ -123,6 +110,10 @@ func logout(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // This handler will return 403 if the password didn't match the user, or 400
 // if the new password is invalid.
 func changePassword(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	managed, ok := app.AuthScheme.(auth.ManagedScheme)
+	if !ok {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: nonManagedSchemeMsg}
+	}
 	var body map[string]string
 	err := json.NewDecoder(r.Body).Decode(&body)
 	if err != nil {
@@ -137,26 +128,12 @@ func changePassword(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 			Message: "Both the old and the new passwords are required.",
 		}
 	}
-	u, err := t.User()
+	err = managed.ChangePassword(t, body["old"], body["new"])
 	if err != nil {
-		return err
+		return handleAuthError(err)
 	}
-	if err := u.CheckPassword(body["old"]); err != nil {
-		return &errors.HTTP{
-			Code:    http.StatusForbidden,
-			Message: "The given password didn't match the user's current password.",
-		}
-	}
-	if !validation.ValidateLength(body["new"], passwordMinLen, passwordMaxLen) {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: passwordError,
-		}
-	}
-	rec.Log(u.Email, "change-password")
-	u.Password = body["new"]
-	u.HashPassword()
-	return u.Update()
+	rec.Log(t.GetUserName(), "change-password")
+	return nil
 }
 
 func resetPassword(w http.ResponseWriter, r *http.Request) error {

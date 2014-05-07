@@ -28,9 +28,6 @@ import (
 const (
 	defaultExpiration = 7 * 24 * time.Hour
 	emailError        = "Invalid email."
-	passwordError     = "Password length should be least 6 characters and at most 50 characters."
-	passwordMinLen    = 6
-	passwordMaxLen    = 50
 )
 
 var ErrUserNotFound = stderrors.New("User not found")
@@ -108,16 +105,6 @@ func (u *User) HashPassword() {
 	if passwd, err := bcrypt.GenerateFromPassword([]byte(u.Password), cost); err == nil {
 		u.Password = string(passwd)
 	}
-}
-
-func (u *User) CheckPassword(password string) error {
-	if !validation.ValidateLength(password, passwordMinLen, passwordMaxLen) {
-		return &errors.ValidationError{Message: passwordError}
-	}
-	if bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password)) == nil {
-		return nil
-	}
-	return AuthenticationFailure{}
 }
 
 // Teams returns a slice containing all teams that the user is member of.

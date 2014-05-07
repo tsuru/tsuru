@@ -35,3 +35,9 @@ type ConflictError ValidationError
 func (err *ConflictError) Error() string {
 	return err.Message
 }
+
+type NotAuthorizedError ValidationError
+
+func (err *NotAuthorizedError) Error() string {
+	return err.Message
+}

@@ -6,7 +6,6 @@ package auth
 
 import (
 	"bytes"
-	"code.google.com/p/go.crypto/bcrypt"
 	stderrors "errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
@@ -78,55 +77,6 @@ func (s *S) TestUpdateUser(c *gocheck.C) {
 	u2, err := GetUserByEmail("wolverine@xmen.com")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(u2.Password, gocheck.Equals, "1234")
-}
-
-func (s *S) TestUserCheckPasswordUsesBcrypt(c *gocheck.C) {
-	u := User{Email: "paradisum", Password: "abcd1234"}
-	u.HashPassword()
-	err := bcrypt.CompareHashAndPassword([]byte(u.Password), []byte("abcd1234"))
-	c.Assert(err, gocheck.IsNil)
-}
-
-func (s *S) TestUserCheckPasswordRightPassword(c *gocheck.C) {
-	u := User{Email: "wolverine@xmen.com", Password: "123456"}
-	u.HashPassword()
-	err := u.CheckPassword("123456")
-	c.Assert(err, gocheck.IsNil)
-}
-
-func (s *S) TestUserCheckPasswordChecksBcryptPasswordFirst(c *gocheck.C) {
-	passwd, err := bcrypt.GenerateFromPassword([]byte("123456"), cost)
-	c.Assert(err, gocheck.IsNil)
-	u := User{Email: "wolverine@xmen", Password: string(passwd)}
-	err = u.CheckPassword("123456")
-	c.Assert(err, gocheck.IsNil)
-}
-
-func (s *S) TestUserCheckPasswordReturnsFalseIfThePasswordDoesNotMatch(c *gocheck.C) {
-	u := User{Email: "wolverine@xmen.com", Password: "123456"}
-	u.HashPassword()
-	err := u.CheckPassword("654321")
-	c.Assert(err, gocheck.NotNil)
-	_, ok := err.(AuthenticationFailure)
-	c.Assert(ok, gocheck.Equals, true)
-}
-
-func (s *S) TestUserCheckPasswordValidatesThePassword(c *gocheck.C) {
-	u := User{Email: "wolverine@xmen.com", Password: "123456"}
-	u.HashPassword()
-	err := u.CheckPassword("123")
-	c.Check(err, gocheck.NotNil)
-	e, ok := err.(*errors.ValidationError)
-	c.Check(ok, gocheck.Equals, true)
-	c.Check(e.Message, gocheck.Equals, passwordError)
-	var p [51]byte
-	p[0] = 'a'
-	p[50] = 'z'
-	err = u.CheckPassword(string(p[:]))
-	c.Check(err, gocheck.NotNil)
-	e, ok = err.(*errors.ValidationError)
-	c.Check(ok, gocheck.Equals, true)
-	c.Check(e.Message, gocheck.Equals, passwordError)
 }
 
 func (s *S) TestUserStartPasswordReset(c *gocheck.C) {
