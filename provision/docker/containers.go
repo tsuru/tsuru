@@ -6,6 +6,7 @@ package docker
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/action"
@@ -26,10 +27,38 @@ type progressLog struct {
 	Message string
 }
 
+type compositeError struct {
+	base    error
+	message string
+}
+
+func (err *compositeError) Error() string {
+	if err.base == nil {
+		return err.message
+	}
+	return fmt.Sprintf("%s Caused by: %s", err.message, err.base.Error())
+}
+
+var containerMovementErr = errors.New("Error moving some containers.")
+
 func logProgress(encoder *json.Encoder, format string, params ...interface{}) {
 	logMutex.Lock()
 	defer logMutex.Unlock()
 	encoder.Encode(progressLog{Message: fmt.Sprintf(format, params...)})
+}
+
+func handleMoveErrors(moveErrors chan error, encoder *json.Encoder) error {
+	hasError := false
+	for err := range moveErrors {
+		errMsg := fmt.Sprintf("Error moving container: %s", err.Error())
+		log.Errorf(errMsg)
+		logProgress(encoder, errMsg)
+		hasError = true
+	}
+	if hasError {
+		return containerMovementErr
+	}
+	return nil
 }
 
 func moveOneContainerInDB(a *app.App, oldContainer container, newUnit provision.Unit) error {
@@ -46,7 +75,10 @@ func moveOneContainer(c container, toHost string, errors chan error, wg *sync.Wa
 	a, err := app.GetByName(c.AppName)
 	defer wg.Done()
 	if err != nil {
-		errors <- err
+		errors <- &compositeError{
+			base:    err,
+			message: fmt.Sprintf("Error getting app %q for unit %s.", c.AppName, c.ID),
+		}
 		return
 	}
 	logProgress(encoder, "Moving unit %s for %q: %s -> %s...", c.ID, c.AppName, c.HostAddr, toHost)
@@ -56,14 +88,20 @@ func moveOneContainer(c container, toHost string, errors chan error, wg *sync.Wa
 	)
 	err = pipeline.Execute(a, toHost, c)
 	if err != nil {
-		errors <- err
+		errors <- &compositeError{
+			base:    err,
+			message: fmt.Sprintf("Error moving unit %s.", c.ID),
+		}
 		return
 	}
 	logProgress(encoder, "Finished moving unit %s for %q.", c.ID, c.AppName)
 	addedUnit := pipeline.Result().(provision.Unit)
 	err = moveOneContainerInDB(a, c, addedUnit)
 	if err != nil {
-		errors <- err
+		errors <- &compositeError{
+			base:    err,
+			message: fmt.Sprintf("Error moving unit %s in DB.", c.ID),
+		}
 		return
 	}
 	logProgress(encoder, "Moved unit %s -> %s for %s in DB.", c.ID, addedUnit.Name, c.AppName)
@@ -79,11 +117,7 @@ func moveContainer(contId string, toHost string, encoder *json.Encoder) error {
 	moveErrors := make(chan error, 1)
 	moveOneContainer(*cont, toHost, moveErrors, &wg, encoder)
 	close(moveErrors)
-	if err = <-moveErrors; err != nil {
-		log.Errorf("Error moving container - %s", err)
-		return err
-	}
-	return nil
+	return handleMoveErrors(moveErrors, encoder)
 }
 
 func moveContainers(fromHost, toHost string, encoder *json.Encoder) error {
@@ -107,12 +141,7 @@ func moveContainers(fromHost, toHost string, encoder *json.Encoder) error {
 		wg.Wait()
 		close(moveErrors)
 	}()
-	var lastError error = nil
-	for err := range moveErrors {
-		log.Errorf("Error moving container - %s", err)
-		lastError = err
-	}
-	return lastError
+	return handleMoveErrors(moveErrors, encoder)
 }
 
 type hostWithContainers struct {
@@ -216,8 +245,8 @@ func rebalanceContainers(encoder *json.Encoder, dryRun bool) error {
 			wg.Wait()
 			close(moveErrors)
 		}()
-		for err := range moveErrors {
-			log.Errorf("Error moving container - %s", err)
+		err := handleMoveErrors(moveErrors, encoder)
+		if err != nil {
 			return err
 		}
 	}

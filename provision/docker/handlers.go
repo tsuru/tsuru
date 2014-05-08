@@ -76,7 +76,7 @@ func moveContainersHandler(w http.ResponseWriter, r *http.Request) error {
 	encoder := json.NewEncoder(w)
 	err = moveContainers(from, to, encoder)
 	if err != nil {
-		logProgress(encoder, "Error trying to move containers: %s", err.Error())
+		logProgress(encoder, "Error: %s", err.Error())
 	} else {
 		logProgress(encoder, "Containers moved successfully!")
 	}
