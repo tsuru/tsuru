@@ -9,10 +9,18 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"runtime"
 )
 
 func clientID() string {
 	return os.Getenv("TSURU_AUTH_CLIENTID")
+}
+
+func open(url string) error {
+	if runtime.GOOS == "linux" {
+		return exec.Command("xdg-open", url).Start()
+	}
+	return exec.Command("open", url).Start()
 }
 
 func localServer() {
@@ -26,7 +34,7 @@ func localServer() {
 		})
 		http.ListenAndServe(":4242", nil)
 	}()
-	exec.Command("open", "http://localhost:4242").Start()
+	open("http://localhost:4242")
 }
 
 func oauthLogin(context *Context, client *Client) error {
