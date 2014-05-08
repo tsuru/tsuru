@@ -287,52 +287,52 @@ func (s *S) TestParseToken(c *gocheck.C) {
 }
 
 func (s *S) TestGetToken(c *gocheck.C) {
-	t, err := GetToken("bearer " + s.token.GetValue())
+	t, err := getToken("bearer " + s.token.GetValue())
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(t.Token, gocheck.Equals, s.token.GetValue())
 }
 
 func (s *S) TestGetTokenEmptyToken(c *gocheck.C) {
-	u, err := GetToken("bearer tokenthatdoesnotexist")
+	u, err := getToken("bearer tokenthatdoesnotexist")
 	c.Assert(u, gocheck.IsNil)
 	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
 }
 
 func (s *S) TestGetTokenNotFound(c *gocheck.C) {
-	t, err := GetToken("bearer invalid")
+	t, err := getToken("bearer invalid")
 	c.Assert(t, gocheck.IsNil)
 	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
 }
 
 func (s *S) TestGetTokenInvalid(c *gocheck.C) {
-	t, err := GetToken("invalid")
+	t, err := getToken("invalid")
 	c.Assert(t, gocheck.IsNil)
 	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
 }
 
 func (s *S) TestGetExpiredToken(c *gocheck.C) {
-	t, err := CreateApplicationToken("tsuru-healer")
+	t, err := createApplicationToken("tsuru-healer")
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Tokens().Remove(bson.M{"token": t.Token})
 	t.Creation = time.Now().Add(-24 * time.Hour)
 	t.Expires = time.Hour
 	s.conn.Tokens().Update(bson.M{"token": t.Token}, t)
-	t2, err := GetToken(t.Token)
+	t2, err := getToken(t.Token)
 	c.Assert(t2, gocheck.IsNil)
 	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
 }
 
 func (s *S) TestDeleteToken(c *gocheck.C) {
-	t, err := CreateApplicationToken("tsuru-healer")
+	t, err := createApplicationToken("tsuru-healer")
 	c.Assert(err, gocheck.IsNil)
-	err = DeleteToken(t.Token)
+	err = deleteToken(t.Token)
 	c.Assert(err, gocheck.IsNil)
-	_, err = GetToken("bearer " + t.Token)
+	_, err = getToken("bearer " + t.Token)
 	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
 }
 
 func (s *S) TestCreateApplicationToken(c *gocheck.C) {
-	t, err := CreateApplicationToken("tsuru-healer")
+	t, err := createApplicationToken("tsuru-healer")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(t, gocheck.NotNil)
 	defer s.conn.Tokens().Remove(bson.M{"token": t.Token})
@@ -446,7 +446,7 @@ func (s *S) TestDeleteAllTokens(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = s.conn.Tokens().Insert(tokens[2])
 	c.Assert(err, gocheck.IsNil)
-	err = DeleteAllTokens("x@x.com")
+	err = deleteAllTokens("x@x.com")
 	c.Assert(err, gocheck.IsNil)
 	var tokensDB []Token
 	err = s.conn.Tokens().Find(bson.M{"useremail": "x@x.com"}).All(&tokensDB)

@@ -43,15 +43,15 @@ func (s NativeScheme) Login(params map[string]string) (auth.Token, error) {
 }
 
 func (s NativeScheme) Auth(token string) (auth.Token, error) {
-	return GetToken(token)
+	return getToken(token)
 }
 
 func (s NativeScheme) Logout(token string) error {
-	return DeleteToken(token)
+	return deleteToken(token)
 }
 
 func (s NativeScheme) AppLogin(appName string) (auth.Token, error) {
-	return CreateApplicationToken(appName)
+	return createApplicationToken(appName)
 }
 
 func (s NativeScheme) Create(user *auth.User) (*auth.User, error) {
@@ -128,7 +128,7 @@ func (s NativeScheme) Remove(token auth.Token) error {
 	if err != nil {
 		return err
 	}
-	err = DeleteAllTokens(u.Email)
+	err = deleteAllTokens(u.Email)
 	if err != nil {
 		return err
 	}

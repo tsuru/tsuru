@@ -196,7 +196,7 @@ func parseToken(header string) (string, error) {
 	return value, auth.ErrInvalidToken
 }
 
-func GetToken(header string) (*Token, error) {
+func getToken(header string) (*Token, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -217,7 +217,7 @@ func GetToken(header string) (*Token, error) {
 	return &t, nil
 }
 
-func DeleteToken(token string) error {
+func deleteToken(token string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -226,7 +226,7 @@ func DeleteToken(token string) error {
 	return conn.Tokens().Remove(bson.M{"token": token})
 }
 
-func DeleteAllTokens(email string) error {
+func deleteAllTokens(email string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -236,7 +236,7 @@ func DeleteAllTokens(email string) error {
 	return err
 }
 
-func CreateApplicationToken(appName string) (*Token, error) {
+func createApplicationToken(appName string) (*Token, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
