@@ -92,6 +92,8 @@ func (s *S) createUserAndTeam(c *gocheck.C) {
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
 }
 
+var nativeScheme = auth.ManagedScheme(native.NativeScheme{})
+
 func (s *S) SetUpSuite(c *gocheck.C) {
 	err := config.ReadConfigFile("testdata/config.yaml")
 	s.conn, err = db.Conn()
@@ -100,6 +102,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	s.t = &tsuruTesting.T{}
 	s.provisioner = tsuruTesting.NewFakeProvisioner()
 	app.Provisioner = s.provisioner
+	app.AuthScheme = nativeScheme
 	p := app.Platform{Name: "zend"}
 	s.conn.Platforms().Insert(p)
 }
@@ -120,5 +123,3 @@ func (s *S) getTestData(p ...string) io.ReadCloser {
 	f, _ := os.OpenFile(fp, os.O_RDONLY, 0)
 	return f
 }
-
-var nativeScheme = auth.ManagedScheme(native.NativeScheme{})

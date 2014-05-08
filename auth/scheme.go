@@ -4,6 +4,8 @@
 
 package auth
 
+import "fmt"
+
 // TODO: These interfaces are a Work In Progress
 // Everything could change in minutes, please don't
 // rely on them until this notice is gone.
@@ -33,4 +35,22 @@ func (a AuthenticationFailure) Error() string {
 		return a.Message
 	}
 	return "Authentication failed, wrong password."
+}
+
+var schemes = make(map[string]Scheme)
+
+func RegisterScheme(name string, scheme Scheme) {
+	schemes[name] = scheme
+}
+
+func UnregisterScheme(name string) {
+	delete(schemes, name)
+}
+
+func GetScheme(name string) (Scheme, error) {
+	scheme, ok := schemes[name]
+	if !ok {
+		return nil, fmt.Errorf("Unknown scheme: %q.", name)
+	}
+	return scheme, nil
 }

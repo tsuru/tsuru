@@ -22,6 +22,10 @@ var (
 
 type NativeScheme struct{}
 
+func init() {
+	auth.RegisterScheme("native", NativeScheme{})
+}
+
 func (s NativeScheme) Login(params map[string]string) (auth.Token, error) {
 	email, ok := params["email"]
 	if !ok {

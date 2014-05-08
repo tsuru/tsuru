@@ -14,7 +14,6 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
@@ -35,7 +34,7 @@ import (
 )
 
 var Provisioner provision.Provisioner
-var AuthScheme = auth.Scheme(native.NativeScheme{})
+var AuthScheme auth.Scheme
 
 var (
 	nameRegexp  = regexp.MustCompile(`^[a-z][a-z0-9-]{0,62}$`)

@@ -76,6 +76,8 @@ func (s *S) createUserAndTeam(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 }
 
+var nativeScheme = auth.Scheme(native.NativeScheme{})
+
 func (s *S) SetUpSuite(c *gocheck.C) {
 	err := config.ReadConfigFile("testdata/config.yaml")
 	c.Assert(err, gocheck.IsNil)
@@ -86,6 +88,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	s.t.SetGitConfs(c)
 	s.provisioner = ttesting.NewFakeProvisioner()
 	Provisioner = s.provisioner
+	AuthScheme = nativeScheme
 	platform := Platform{Name: "python"}
 	s.conn.Platforms().Insert(platform)
 }
@@ -189,5 +192,3 @@ type testBadHandler struct {
 func (h *testBadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, h.msg, http.StatusInternalServerError)
 }
-
-var nativeScheme = auth.Scheme(native.NativeScheme{})

@@ -9,6 +9,8 @@ import (
 	"github.com/bmizerany/pat"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/auth"
+	_ "github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
@@ -35,6 +37,14 @@ func RegisterHandler(path string, method string, h AdminRequiredHandler) {
 	th.method = method
 	th.h = h
 	tsuruHandlerList = append(tsuruHandlerList, th)
+}
+
+func getAuthScheme() (string, error) {
+	name, err := config.GetString("auth:scheme")
+	if name == "" {
+		name = "native"
+	}
+	return name, err
 }
 
 // RunServer starts tsuru API server. The dry parameter indicates whether the
@@ -154,7 +164,15 @@ func RunServer(dry bool) {
 			fatal(err)
 		}
 		fmt.Printf("Using %q provisioner.\n\n", provisioner)
-
+		scheme, err := getAuthScheme()
+		if err != nil {
+			fmt.Printf("Warning: configuration didn't declare a auth:scheme, using default scheme.\n")
+		}
+		app.AuthScheme, err = auth.GetScheme(scheme)
+		if err != nil {
+			fatal(err)
+		}
+		fmt.Printf("Using %q auth scheme.\n\n", scheme)
 		listen, err := config.GetString("listen")
 		if err != nil {
 			fatal(err)
