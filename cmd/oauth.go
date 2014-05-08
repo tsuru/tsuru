@@ -6,6 +6,7 @@ package cmd
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -23,21 +24,33 @@ func open(url string) error {
 	return exec.Command("open", url).Start()
 }
 
-func localServer() {
-	func() {
-		http.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprintf(w, "Test")
-		})
-		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-			url := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=http://localhost:4242/callback&scope=user:email", clientID())
-			http.Redirect(w, r, url, 302)
-		})
-		http.ListenAndServe(":4242", nil)
+func serve() (string, error) {
+	http.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, "Test")
+	})
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		url := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=http://localhost:4242/callback&scope=user:email", clientID())
+		http.Redirect(w, r, url, 302)
+	})
+	l, e := net.Listen("tcp", ":0")
+	if e != nil {
+		return "", e
+	}
+	server := &http.Server{}
+	return l.Addr().String(), server.Serve(l)
+}
+
+func startServerAndOpenBrowser() {
+	url, err := func() (string, error) {
+		return serve()
 	}()
-	open("http://localhost:4242")
+	if err != nil {
+		return
+	}
+	open(url)
 }
 
 func oauthLogin(context *Context, client *Client) error {
-	localServer()
+	startServerAndOpenBrowser()
 	return nil
 }
