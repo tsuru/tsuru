@@ -1,0 +1,15 @@
+#!/bin/bash -el
+
+while read oldrev newrev refname
+do
+	COMMIT=${newrev}
+done
+
+app_dir=${PWD##*/}
+app_name=${app_dir/.git/}
+git archive --format=tar.gz --output=/tmp/${app_name}.tar.gz $COMMIT
+s3cmd put -P /tmp/${app_name}.tar.gz s3://yourbucket/archives/
+rm /tmp/${app_name}.tar.gz
+archive_url="https://s3.amazonaws.com/yourbucket/archives/${app_name}.tar.gz"
+url="${TSURU_HOST}/apps/${app_name}/repository/clone"
+curl -H "Authorization: bearer ${TSURU_TOKEN}" -d "archive-url=${archive_url}&commit=${COMMIT}" -s -N --max-time 1800 $url
