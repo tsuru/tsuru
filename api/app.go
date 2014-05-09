@@ -62,7 +62,12 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
 	}
-	return app.DeployApp(instance, version, commit, w)
+	return app.DeployApp(app.DeployOptions{
+		App:          instance,
+		Version:      version,
+		Commit:       commit,
+		OutputStream: w,
+	})
 }
 
 func appIsAvailable(w http.ResponseWriter, r *http.Request, t auth.Token) error {
