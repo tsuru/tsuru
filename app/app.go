@@ -1111,10 +1111,10 @@ type DeployOptions struct {
 	OutputStream io.Writer
 }
 
-// DeployApp runs a deployment of an application. It will first try to run an
+// Deploy runs a deployment of an application. It will first try to run an
 // archive based deploy (if opts.ArchiveURL is not empty), and then fallback to
 // the Git based deployment.
-func DeployApp(opts DeployOptions) error {
+func Deploy(opts DeployOptions) error {
 	start := time.Now()
 	pipeline := Provisioner.DeployPipeline()
 	if pipeline == nil {

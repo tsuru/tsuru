@@ -2212,7 +2212,7 @@ func (s *S) TestDeployApp(c *gocheck.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
-	err = DeployApp(DeployOptions{
+	err = Deploy(DeployOptions{
 		App:          &a,
 		Version:      "version",
 		Commit:       "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
@@ -2237,7 +2237,7 @@ func (s *S) TestDeployAppWithUpdatePlatform(c *gocheck.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
-	err = DeployApp(DeployOptions{
+	err = Deploy(DeployOptions{
 		App:          &a,
 		Version:      "version",
 		Commit:       "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
@@ -2264,7 +2264,7 @@ func (s *S) TestDeployAppIncrementDeployNumber(c *gocheck.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
-	err = DeployApp(DeployOptions{
+	err = Deploy(DeployOptions{
 		App:          &a,
 		Version:      "version",
 		Commit:       "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
@@ -2289,7 +2289,7 @@ func (s *S) TestDeployAppSaveDeployData(c *gocheck.C) {
 	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
 	commit := "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c"
-	err = DeployApp(DeployOptions{
+	err = Deploy(DeployOptions{
 		App:          &a,
 		Version:      "version",
 		Commit:       commit,
@@ -2321,7 +2321,7 @@ func (s *S) TestDeployCustomPipeline(c *gocheck.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
-	err = DeployApp(DeployOptions{
+	err = Deploy(DeployOptions{
 		App:          &a,
 		Version:      "version",
 		Commit:       "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
@@ -2330,7 +2330,7 @@ func (s *S) TestDeployCustomPipeline(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(s.provisioner.ExecutedPipeline(), gocheck.Equals, false)
 	s.provisioner.CustomPipeline = true
-	err = DeployApp(DeployOptions{
+	err = Deploy(DeployOptions{
 		App:          &a,
 		Version:      "version",
 		Commit:       "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
