@@ -10,11 +10,15 @@ import "fmt"
 // Everything could change in minutes, please don't
 // rely on them until this notice is gone.
 
+type SchemeInfo map[string]string
+
 type Scheme interface {
 	AppLogin(appName string) (Token, error)
 	Login(params map[string]string) (Token, error)
 	Logout(token string) error
 	Auth(token string) (Token, error)
+	Info() (SchemeInfo, error)
+	Name() string
 }
 
 type ManagedScheme interface {

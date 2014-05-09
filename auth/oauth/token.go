@@ -5,58 +5,41 @@
 package oauth
 
 import (
-	"encoding/json"
-	"github.com/tsuru/config"
+	"code.google.com/p/goauth2/oauth"
+	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
-	"io/ioutil"
-	"net/http"
-	"net/url"
 )
 
 type Token struct {
-	Token string
+	oauth.Token
+	UserEmail string `json:"email"`
 }
 
-type client struct {
-	url string
+func (t *Token) GetValue() string {
+	return t.AccessToken
 }
 
-func (c *client) getToken(code string) (string, error) {
-	clientId, err := config.GetString("auth:oauth:client-id")
-	if err != nil {
-		return "", err
-	}
-	clientSecret, err := config.GetString("auth:oauth:client-secret")
-	if err != nil {
-		return "", err
-	}
-	v := url.Values{}
-	v.Add("code", code)
-	v.Add("client_id", clientId)
-	v.Add("client_secret", clientSecret)
-	resp, err := http.PostForm(c.url, v)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	data := map[string]string{}
-	json.Unmarshal(body, &data)
-	return data["access_token"], nil
-
+func (t *Token) User() (*auth.User, error) {
+	return auth.GetUserByEmail(t.UserEmail)
 }
 
-func newToken(code string) (*Token, error) {
-	t := Token{}
-	t.Token = ""
+func (t *Token) IsAppToken() bool {
+	return false
+}
+
+func (t *Token) GetUserName() string {
+	return t.Extra["email"]
+}
+
+func (t *Token) GetAppName() string {
+	return ""
+}
+
+func (t *Token) save() error {
 	conn, err := db.Conn()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer conn.Close()
-	err = conn.Tokens().Insert(&t)
-	return &t, err
+	return conn.Tokens().Insert(t)
 }

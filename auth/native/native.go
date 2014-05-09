@@ -138,3 +138,11 @@ func (s NativeScheme) Remove(token auth.Token) error {
 	}
 	return u.Delete()
 }
+
+func (s NativeScheme) Name() string {
+	return "native"
+}
+
+func (s NativeScheme) Info() (auth.SchemeInfo, error) {
+	return nil, nil
+}

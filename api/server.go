@@ -11,6 +11,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	_ "github.com/tsuru/tsuru/auth/native"
+	_ "github.com/tsuru/tsuru/auth/oauth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
@@ -127,6 +128,7 @@ func RunServer(dry bool) {
 		m.Post("/users", Handler(createUser))
 	}
 
+	m.Get("/users/scheme", Handler(authScheme))
 	m.Post("/users/:email/password", Handler(resetPassword))
 	m.Post("/users/:email/tokens", Handler(login))
 	m.Del("/users/tokens", authorizationRequiredHandler(logout))

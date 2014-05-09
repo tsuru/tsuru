@@ -16,6 +16,10 @@
 			"Rev": "cd1eea1eb82851fe9cde1d062406ca60c935ce24"
 		},
 		{
+			"ImportPath": "code.google.com/p/goauth2/oauth",
+			"Rev": "d4571a95014ff1fdd0055dc0f6b7e977a42b1e5a"
+		},
+		{
 			"ImportPath": "github.com/bmizerany/pat",
 			"Rev": "51b7af73e39f6dc59846b22d56ca886d105ef0c3"
 		},

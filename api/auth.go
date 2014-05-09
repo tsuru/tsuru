@@ -619,3 +619,17 @@ func generateAppToken(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 	}
 	return json.NewEncoder(w).Encode(token)
 }
+
+type schemeData struct {
+	Name string          `json:"name"`
+	Data auth.SchemeInfo `json:"data"`
+}
+
+func authScheme(w http.ResponseWriter, r *http.Request) error {
+	info, err := app.AuthScheme.Info()
+	if err != nil {
+		return err
+	}
+	data := schemeData{Name: app.AuthScheme.Name(), Data: info}
+	return json.NewEncoder(w).Encode(data)
+}
