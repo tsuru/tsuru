@@ -7,7 +7,7 @@ done
 
 app_dir=${PWD##*/}
 app_name=${app_dir/.git/}
-git archive --format=tar.gz --output=/tmp/${app_name}.tar.gz $COMMIT
+git archive --format=tar.gz --output=/tmp/${app_name}.tar.gz --prefix=current/ $COMMIT
 s3cmd put -P /tmp/${app_name}.tar.gz s3://yourbucket/archives/
 rm /tmp/${app_name}.tar.gz
 archive_url="https://s3.amazonaws.com/yourbucket/archives/${app_name}.tar.gz"
