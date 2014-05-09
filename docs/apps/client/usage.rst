@@ -6,9 +6,8 @@
 Client usage
 ++++++++++++
 
-After installing the server, build the cmd/main.go file with the name you wish,
-and add it to your $PATH. Here we'll call it `tsuru`.  Then you must set the
-target with your server url, like:
+After :doc:`installing the tsuru client </install/client>`, you must set the
+target with the tsuru server URL, something like:
 
 Setting a target
 ================
@@ -17,7 +16,7 @@ Setting a target
 
 ::
 
-    $ tsuru target-add default tsuru.myhost.com:8080
+    $ tsuru target-add default https://cloud.tsuru.io
     $ tsuru target-set default
 
 Authentication
