@@ -117,7 +117,7 @@ type CNameManager interface {
 type Provisioner interface {
 	// Deploy updates the code of the app in units to match the given
 	// version, logging progress in the given writer.
-	Deploy(app App, version string, w io.Writer) error
+	GitDeploy(app App, version string, w io.Writer) error
 
 	// Provision is called when tsuru is creating the app.
 	Provision(App) error

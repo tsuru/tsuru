@@ -422,7 +422,7 @@ func (*FakeProvisioner) Swap(app1, app2 provision.App) error {
 	return nil
 }
 
-func (p *FakeProvisioner) Deploy(app provision.App, version string, w io.Writer) error {
+func (p *FakeProvisioner) GitDeploy(app provision.App, version string, w io.Writer) error {
 	if err := p.getError("Deploy"); err != nil {
 		return err
 	}

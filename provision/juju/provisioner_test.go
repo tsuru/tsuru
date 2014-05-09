@@ -148,7 +148,7 @@ func (s *S) TestStop(c *gocheck.C) {
 	c.Assert(fexec.ExecutedCmd("juju", args), gocheck.Equals, true)
 }
 
-func (s *S) TestDeploy(c *gocheck.C) {
+func (s *S) TestGitDeploy(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("juju", "")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
@@ -159,7 +159,7 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	app := testing.NewFakeApp("cribcaged", "python", 1)
 	w := &bytes.Buffer{}
 	p := JujuProvisioner{}
-	err = p.Deploy(app, "f83ac40", w)
+	err = p.GitDeploy(app, "f83ac40", w)
 	c.Assert(err, gocheck.IsNil)
 	expected := []string{"set", app.GetName(), "app-version=f83ac40"}
 	c.Assert(commandmocker.Parameters(tmpdir)[:3], gocheck.DeepEquals, expected)

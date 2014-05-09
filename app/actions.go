@@ -342,7 +342,7 @@ var ProvisionerDeploy = action.Action{
 		if !ok {
 			return nil, errors.New("Third parameter must be a io.Writer.")
 		}
-		err := Provisioner.Deploy(app, version, logWriter)
+		err := Provisioner.GitDeploy(app, version, logWriter)
 		return nil, err
 	},
 	Backward: func(ctx action.BWContext) {

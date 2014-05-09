@@ -1,4 +1,3 @@
-// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -176,7 +175,7 @@ func (JujuProvisioner) Swap(app1, app2 provision.App) error {
 	return r.Swap(app1.GetName(), app2.GetName())
 }
 
-func (p *JujuProvisioner) Deploy(a provision.App, version string, w io.Writer) error {
+func (p *JujuProvisioner) GitDeploy(a provision.App, version string, w io.Writer) error {
 	var buf bytes.Buffer
 	setOption := []string{"set", a.GetName(), "app-version=" + version}
 	if err := runCmd(true, &buf, &buf, setOption...); err != nil {

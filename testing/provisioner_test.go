@@ -221,10 +221,10 @@ func (s *S) TestVersion(c *gocheck.C) {
 	app := NewFakeApp("free", "matos", 1)
 	p := NewFakeProvisioner()
 	p.Provision(app)
-	err := p.Deploy(app, "master", &buf)
+	err := p.GitDeploy(app, "master", &buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.Version(app), gocheck.Equals, "master")
-	err = p.Deploy(app, "1.0", &buf)
+	err = p.GitDeploy(app, "1.0", &buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.Version(app), gocheck.Equals, "1.0")
 }
@@ -251,7 +251,7 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	app := NewFakeApp("soul", "arch", 1)
 	p := NewFakeProvisioner()
 	p.Provision(app)
-	err := p.Deploy(app, "1.0", &buf)
+	err := p.GitDeploy(app, "1.0", &buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(buf.String(), gocheck.Equals, "Deploy called")
 	c.Assert(p.apps[app.GetName()].version, gocheck.Equals, "1.0")
@@ -261,7 +261,7 @@ func (s *S) TestDeployUnknownApp(c *gocheck.C) {
 	var buf bytes.Buffer
 	app := NewFakeApp("soul", "arch", 1)
 	p := NewFakeProvisioner()
-	err := p.Deploy(app, "1.0", &buf)
+	err := p.GitDeploy(app, "1.0", &buf)
 	c.Assert(err, gocheck.Equals, errNotProvisioned)
 }
 
@@ -271,7 +271,7 @@ func (s *S) TestDeployWithPreparedFailure(c *gocheck.C) {
 	app := NewFakeApp("soul", "arch", 1)
 	p := NewFakeProvisioner()
 	p.PrepareFailure("Deploy", err)
-	e := p.Deploy(app, "1.0", &buf)
+	e := p.GitDeploy(app, "1.0", &buf)
 	c.Assert(e, gocheck.NotNil)
 	c.Assert(e, gocheck.Equals, err)
 }

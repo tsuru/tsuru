@@ -159,7 +159,7 @@ func (dockerProvisioner) Swap(app1, app2 provision.App) error {
 	return r.Swap(app1.GetName(), app2.GetName())
 }
 
-func (p *dockerProvisioner) Deploy(a provision.App, version string, w io.Writer) error {
+func (p *dockerProvisioner) GitDeploy(a provision.App, version string, w io.Writer) error {
 	imageId, err := deploy(a, version, w)
 	if err != nil {
 		return err
