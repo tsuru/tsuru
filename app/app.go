@@ -1103,24 +1103,34 @@ func Swap(app1, app2 *App) error {
 	return updateCName(app2)
 }
 
-// DeployApp calls the Provisioner.Deploy
-func DeployApp(app *App, version, commit string, writer io.Writer) error {
+type DeployOptions struct {
+	App          *App
+	Version      string
+	Commit       string
+	ArchiveURL   string
+	OutputStream io.Writer
+}
+
+// DeployApp runs a deployment of an application. It will first try to run an
+// archive based deploy (if opts.ArchiveURL is not empty), and then fallback to
+// the Git based deployment.
+func DeployApp(opts DeployOptions) error {
 	start := time.Now()
 	pipeline := Provisioner.DeployPipeline()
 	if pipeline == nil {
 		actions := []*action.Action{&ProvisionerDeploy, &IncrementDeploy}
 		pipeline = action.NewPipeline(actions...)
 	}
-	logWriter := LogWriter{App: app, Writer: writer}
-	err := pipeline.Execute(app, version, &logWriter)
+	logWriter := LogWriter{App: opts.App, Writer: opts.OutputStream}
+	err := pipeline.Execute(opts.App, opts.Version, &logWriter)
 	if err != nil {
 		return err
 	}
 	elapsed := time.Since(start)
-	if app.UpdatePlatform == true {
-		app.SetUpdatePlatform(false)
+	if opts.App.UpdatePlatform == true {
+		opts.App.SetUpdatePlatform(false)
 	}
-	return saveDeployData(app.Name, commit, elapsed)
+	return saveDeployData(opts.App.Name, opts.Commit, elapsed)
 }
 
 func saveDeployData(appName, commit string, duration time.Duration) error {
