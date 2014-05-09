@@ -22,6 +22,12 @@ func (t TestScheme) Logout(token string) error {
 func (t TestScheme) Auth(token string) (Token, error) {
 	return nil, nil
 }
+func (t TestScheme) Info() (SchemeInfo, error) {
+	return nil, nil
+}
+func (t TestScheme) Name() string {
+	return "test"
+}
 
 func (s *S) TestRegisterScheme(c *gocheck.C) {
 	instance := TestScheme{}
