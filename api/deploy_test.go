@@ -7,7 +7,6 @@ package api
 import (
 	"encoding/json"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/service"
@@ -17,6 +16,13 @@ import (
 	"net/http/httptest"
 	"time"
 )
+
+type Deploy struct {
+	App       string
+	Timestamp time.Time
+	Duration  time.Duration
+	Commit    string
+}
 
 type DeploySuite struct {
 	conn  *db.Storage
@@ -55,7 +61,7 @@ func (s *DeploySuite) TearDownSuite(c *gocheck.C) {
 }
 
 func (s *DeploySuite) TestDeployList(c *gocheck.C) {
-	var result []app.Deploy
+	var result []Deploy
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
@@ -64,9 +70,9 @@ func (s *DeploySuite) TestDeployList(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
 	duration := time.Since(timestamp)
-	err = s.conn.Deploys().Insert(app.Deploy{App: "g1", Timestamp: timestamp, Duration: duration})
+	err = s.conn.Deploys().Insert(Deploy{App: "g1", Timestamp: timestamp, Duration: duration})
 	c.Assert(err, gocheck.IsNil)
-	err = s.conn.Deploys().Insert(app.Deploy{App: "ge", Timestamp: timestamp, Duration: duration})
+	err = s.conn.Deploys().Insert(Deploy{App: "ge", Timestamp: timestamp, Duration: duration})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Deploys().RemoveAll(nil)
 	err = deploysList(recorder, request, s.token)
@@ -84,7 +90,7 @@ func (s *DeploySuite) TestDeployList(c *gocheck.C) {
 }
 
 func (s *DeploySuite) TestDeployListByService(c *gocheck.C) {
-	var result []app.Deploy
+	var result []Deploy
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
@@ -104,9 +110,9 @@ func (s *DeploySuite) TestDeployListByService(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
 	duration := time.Since(timestamp)
-	err = s.conn.Deploys().Insert(app.Deploy{App: "g1", Timestamp: timestamp, Duration: duration})
+	err = s.conn.Deploys().Insert(Deploy{App: "g1", Timestamp: timestamp, Duration: duration})
 	c.Assert(err, gocheck.IsNil)
-	err = s.conn.Deploys().Insert(app.Deploy{App: "ge", Timestamp: timestamp, Duration: duration})
+	err = s.conn.Deploys().Insert(Deploy{App: "ge", Timestamp: timestamp, Duration: duration})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Deploys().RemoveAll(nil)
 	err = deploysList(recorder, request, s.token)
