@@ -42,8 +42,18 @@ func getApp(name string, u *auth.User) (app.App, error) {
 
 func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	version := r.PostFormValue("version")
-	if version == "" {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Missing parameter version"}
+	archiveURL := r.PostFormValue("archive-url")
+	if version == "" && archiveURL == "" {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "you must specify either the version or the archive-url",
+		}
+	}
+	if version != "" && archiveURL != "" {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "you must specify either the version or the archive-url, but not both",
+		}
 	}
 	commit := r.PostFormValue("commit")
 	w.Header().Set("Content-Type", "text")

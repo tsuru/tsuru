@@ -169,7 +169,7 @@ func (s *S) TestCloneRepositoryShouldReturnNotFoundWhenAppDoesNotExist(c *gochec
 	c.Assert(e, gocheck.ErrorMatches, "^App abc not found.$")
 }
 
-func (s *S) TestCloneRepositoryWithoutVersion(c *gocheck.C) {
+func (s *S) TestCloneRepositoryWithoutVersionAndArchiveURL(c *gocheck.C) {
 	request, err := http.NewRequest("POST", "/apps/abc/repository/clone?:appname=abc", nil)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -179,7 +179,21 @@ func (s *S) TestCloneRepositoryWithoutVersion(c *gocheck.C) {
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
-	c.Assert(e.Message, gocheck.Equals, "Missing parameter version")
+	c.Assert(e.Message, gocheck.Equals, "you must specify either the version or the archive-url")
+}
+
+func (s *S) TestCloneRepositoryWithVersionAndArchiveURL(c *gocheck.C) {
+	body := strings.NewReader("version=abcdef&archive-url=http://google.com")
+	request, err := http.NewRequest("POST", "/apps/abc/repository/clone?:appname=abc", body)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	err = deploy(recorder, request, s.token)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
+	c.Assert(e.Message, gocheck.Equals, "you must specify either the version or the archive-url, but not both")
 }
 
 func (s *S) TestAppList(c *gocheck.C) {
