@@ -130,7 +130,12 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	p.Provision(&a)
 	defer p.Destroy(&a)
 	w := writer{b: make([]byte, 2048)}
-	err = app.DeployApp(&a, "master", "123", &w)
+	err = app.DeployApp(app.DeployOptions{
+		App:          &a,
+		Version:      "master",
+		Commit:       "123",
+		OutputStream: &w,
+	})
 	c.Assert(err, gocheck.IsNil)
 	w.b = nil
 	time.Sleep(6e9)
@@ -177,7 +182,12 @@ func (s *S) TestDeployEnqueuesBindService(c *gocheck.C) {
 	p.Provision(&a)
 	defer p.Destroy(&a)
 	w := writer{b: make([]byte, 2048)}
-	err = app.DeployApp(&a, "master", "123", &w)
+	err = app.DeployApp(app.DeployOptions{
+		App:          &a,
+		Version:      "master",
+		Commit:       "123",
+		OutputStream: &w,
+	})
 	c.Assert(err, gocheck.IsNil)
 	defer p.Destroy(&a)
 	q, err := getQueue()
@@ -233,7 +243,12 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 	setExecut(fexec)
 	defer setExecut(nil)
 	var w bytes.Buffer
-	err = app.DeployApp(&a, "master", "123", &w)
+	err = app.DeployApp(app.DeployOptions{
+		App:          &a,
+		Version:      "master",
+		Commit:       "123",
+		OutputStream: &w,
+	})
 	c.Assert(err, gocheck.IsNil)
 	time.Sleep(1e9)
 	defer p.Destroy(&a)
