@@ -786,23 +786,23 @@ func (app *App) GetDeploys() uint {
 	return app.Deploys
 }
 
-type Deploy struct {
+type deploy struct {
 	App       string
 	Timestamp time.Time
 	Duration  time.Duration
 	Commit    string
 }
 
-func (app *App) ListDeploys() ([]Deploy, error) {
+func (app *App) ListDeploys() ([]deploy, error) {
 	return listDeploys(app, nil)
 }
 
-func ListDeploys(s *service.Service) ([]Deploy, error) {
+func ListDeploys(s *service.Service) ([]deploy, error) {
 	return listDeploys(nil, s)
 }
 
-func listDeploys(app *App, s *service.Service) ([]Deploy, error) {
-	var list []Deploy
+func listDeploys(app *App, s *service.Service) ([]deploy, error) {
+	var list []deploy
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -1139,7 +1139,7 @@ func saveDeployData(appName, commit string, duration time.Duration) error {
 		return err
 	}
 	defer conn.Close()
-	deploy := Deploy{
+	deploy := deploy{
 		App:       appName,
 		Timestamp: time.Now(),
 		Duration:  duration,

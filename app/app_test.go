@@ -2080,12 +2080,12 @@ func (s *S) TestListAppDeploys(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	insert := []interface{}{
-		Deploy{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
-		Deploy{App: "g1", Timestamp: time.Now()},
+		deploy{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
+		deploy{App: "g1", Timestamp: time.Now()},
 	}
 	s.conn.Deploys().Insert(insert...)
 	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
-	expected := []Deploy{insert[1].(Deploy), insert[0].(Deploy)}
+	expected := []deploy{insert[1].(deploy), insert[0].(deploy)}
 	deploys, err := a.ListDeploys()
 	c.Assert(err, gocheck.IsNil)
 	for i := 0; i < 2; i++ {
@@ -2111,12 +2111,12 @@ func (s *S) TestListServiceDeploys(c *gocheck.C) {
 	defer s.conn.ServiceInstances().Remove(bson.M{"apps": instance.Apps})
 	defer s.conn.Services().Remove(bson.M{"_id": srv.Name})
 	insert := []interface{}{
-		Deploy{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
-		Deploy{App: "g1", Timestamp: time.Now()},
+		deploy{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
+		deploy{App: "g1", Timestamp: time.Now()},
 	}
 	s.conn.Deploys().Insert(insert...)
 	defer s.conn.Deploys().RemoveAll(bson.M{"apps": instance.Apps})
-	expected := []Deploy{insert[1].(Deploy), insert[0].(Deploy)}
+	expected := []deploy{insert[1].(deploy), insert[0].(deploy)}
 	deploys, err := ListDeploys(&srv)
 	c.Assert(err, gocheck.IsNil)
 	for i := 0; i < 2; i++ {
@@ -2131,12 +2131,12 @@ func (s *S) TestListServiceDeploys(c *gocheck.C) {
 func (s *S) TestListAllDeploys(c *gocheck.C) {
 	s.conn.Deploys().RemoveAll(nil)
 	insert := []interface{}{
-		Deploy{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
-		Deploy{App: "ge", Timestamp: time.Now()},
+		deploy{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
+		deploy{App: "ge", Timestamp: time.Now()},
 	}
 	s.conn.Deploys().Insert(insert...)
 	defer s.conn.Deploys().RemoveAll(nil)
-	expected := []Deploy{insert[1].(Deploy), insert[0].(Deploy)}
+	expected := []deploy{insert[1].(deploy), insert[0].(deploy)}
 	deploys, err := ListDeploys(nil)
 	c.Assert(err, gocheck.IsNil)
 	for i := 0; i < 2; i++ {
