@@ -6,8 +6,11 @@ package oauth
 
 import (
 	"code.google.com/p/goauth2/oauth"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/log"
 )
 
 type Token struct {
@@ -28,7 +31,7 @@ func (t *Token) IsAppToken() bool {
 }
 
 func (t *Token) GetUserName() string {
-	return t.Extra["email"]
+	return t.UserEmail
 }
 
 func (t *Token) GetAppName() string {
@@ -36,10 +39,19 @@ func (t *Token) GetAppName() string {
 }
 
 func (t *Token) save() error {
+	coll := collection()
+	defer coll.Close()
+	return coll.Insert(t)
+}
+
+func collection() *storage.Collection {
+	name, err := config.GetString("auth:oauth:collection")
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 	conn, err := db.Conn()
 	if err != nil {
-		return err
+		log.Errorf("Failed to connect to the database: %s", err)
 	}
-	defer conn.Close()
-	return conn.Tokens().Insert(t)
+	return conn.Collection(name)
 }

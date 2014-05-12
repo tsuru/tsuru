@@ -6,6 +6,7 @@ package oauth
 
 import (
 	"code.google.com/p/goauth2/oauth"
+	"encoding/json"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -14,10 +15,12 @@ import (
 
 var (
 	ErrMissingCodeError = &tsuruErrors.ValidationError{Message: "You must provide code to login"}
+	ErrEmptyAccessToken = &tsuruErrors.NotAuthorizedError{Message: "Couldn't convert code to access token."}
+	ErrEmptyUserEmail   = &tsuruErrors.NotAuthorizedError{Message: "Couldn't parse user email."}
 )
 
 type OAuthParser interface {
-	Parse(oauthToken *oauth.Token, infoResponse *http.Response) (auth.Token, error)
+	Parse(infoResponse *http.Response) (string, error)
 }
 
 type OAuthScheme struct {
@@ -65,7 +68,6 @@ func (s *OAuthScheme) loadConfig() error {
 	s.Config = &oauth.Config{
 		ClientId:     clientId,
 		ClientSecret: clientSecret,
-		RedirectURL:  "{{redirect_url}}",
 		Scope:        scope,
 		AuthURL:      authURL,
 		TokenURL:     tokenURL,
@@ -82,17 +84,36 @@ func (s *OAuthScheme) Login(params map[string]string) (auth.Token, error) {
 		return nil, ErrMissingCodeError
 	}
 	transport := &oauth.Transport{Config: s.Config}
-	token, err := transport.Exchange(code)
+	oauthToken, err := transport.Exchange(code)
 	if err != nil {
 		return nil, err
 	}
-	transport.Token = token
+	if oauthToken.AccessToken == "" {
+		return nil, ErrEmptyAccessToken
+	}
+	transport.Token = oauthToken
 	client := transport.Client()
 	response, err := client.Get(s.InfoUrl)
 	if err != nil {
 		return nil, err
 	}
-	authToken, err := s.Parser.Parse(token, response)
+	email, err := s.Parser.Parse(response)
+	if email == "" {
+		return nil, ErrEmptyUserEmail
+	}
+	_, err = auth.GetUserByEmail(email)
+	if err != nil {
+		if err != auth.ErrUserNotFound {
+			return nil, err
+		}
+		user := auth.User{Email: email}
+		err = user.Create()
+		if err != nil {
+			return nil, err
+		}
+	}
+	authToken := &Token{Token: *oauthToken, UserEmail: email}
+	err = authToken.save()
 	if err != nil {
 		return nil, err
 	}
@@ -128,12 +149,19 @@ func (s *OAuthScheme) Info() (auth.SchemeInfo, error) {
 	if err := s.loadConfig(); err != nil {
 		return nil, err
 	}
-	return auth.SchemeInfo{"authorizeUrl": s.Config.AuthCodeURL("")}, nil
+	config := new(oauth.Config)
+	*config = *s.Config
+	config.RedirectURL = "redirect_url_placeholder"
+	return auth.SchemeInfo{"authorizeUrl": config.AuthCodeURL("")}, nil
 }
 
-func (s *OAuthScheme) Parse(oauthToken *oauth.Token, infoResponse *http.Response) (auth.Token, error) {
-	t := &Token{Token: *oauthToken, UserEmail: "x@x.com"}
-	t.save()
-	// TODO: save user
-	return t, nil
+func (s *OAuthScheme) Parse(infoResponse *http.Response) (string, error) {
+	user := struct {
+		Email string `json:"email"`
+	}{}
+	err := json.NewDecoder(infoResponse.Body).Decode(&user)
+	if err != nil {
+		return user.Email, err
+	}
+	return user.Email, nil
 }
