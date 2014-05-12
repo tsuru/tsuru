@@ -5,13 +5,17 @@
 package oauth
 
 import (
-	"code.google.com/p/goauth2/oauth"
+	goauth2 "code.google.com/p/goauth2/oauth"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/log"
+	"labix.org/v2/mgo/bson"
 )
 
 type Token struct {
-	oauth.Token
+	goauth2.Token
 	UserEmail string `json:"email"`
 }
 
@@ -28,18 +32,53 @@ func (t *Token) IsAppToken() bool {
 }
 
 func (t *Token) GetUserName() string {
-	return t.Extra["email"]
+	return t.UserEmail
 }
 
 func (t *Token) GetAppName() string {
 	return ""
 }
 
-func (t *Token) save() error {
+func getToken(header string) (*Token, error) {
 	conn, err := db.Conn()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	defer conn.Close()
-	return conn.Tokens().Insert(t)
+	var t Token
+	token, err := auth.ParseToken(header)
+	if err != nil {
+		return nil, err
+	}
+	coll := collection()
+	defer coll.Close()
+	err = coll.Find(bson.M{"token.accesstoken": token}).One(&t)
+	if err != nil {
+		return nil, auth.ErrInvalidToken
+	}
+	return &t, nil
+}
+
+func deleteToken(token string) error {
+	coll := collection()
+	defer coll.Close()
+	return coll.Remove(bson.M{"token.accesstoken": token})
+}
+
+func (t *Token) save() error {
+	coll := collection()
+	defer coll.Close()
+	return coll.Insert(t)
+}
+
+func collection() *storage.Collection {
+	name, err := config.GetString("auth:oauth:collection")
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		log.Errorf("Failed to connect to the database: %s", err)
+	}
+	return conn.Collection(name)
 }

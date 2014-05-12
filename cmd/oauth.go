@@ -6,48 +6,66 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/tsuru/tsuru/exec"
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"runtime"
 )
+
+var execut exec.Executor
+
+func executor() exec.Executor {
+	if execut == nil {
+		execut = exec.OsExecutor{}
+	}
+	return execut
+}
 
 func clientID() string {
 	return os.Getenv("TSURU_AUTH_CLIENTID")
 }
 
-func open(url string) error {
-	if runtime.GOOS == "linux" {
-		return exec.Command("xdg-open", url).Start()
+func port() string {
+	p := os.Getenv("TSURU_AUTH_SERVER_PORT")
+	if p == "" {
+		return ":0"
 	}
-	return exec.Command("open", url).Start()
+	return p
 }
 
-func serve() (string, error) {
-	http.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
+func open(url string) error {
+	if runtime.GOOS == "linux" {
+		return executor().Execute("xdg-open", []string{url}, nil, nil, nil)
+	}
+	return executor().Execute("open", []string{url}, nil, nil, nil)
+}
+
+func serve(url chan string, finish chan bool) {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			finish <- true
+		}()
 		fmt.Fprintf(w, "Test")
 	})
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		url := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=http://localhost:4242/callback&scope=user:email", clientID())
-		http.Redirect(w, r, url, 302)
-	})
-	l, e := net.Listen("tcp", ":0")
+	l, e := net.Listen("tcp", port())
 	if e != nil {
-		return "", e
+		return
 	}
+	_, port, _ := net.SplitHostPort(l.Addr().String())
+	url <- fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=http://localhost:%s&scope=user:email", clientID(), port)
 	server := &http.Server{}
-	return l.Addr().String(), server.Serve(l)
+	server.Serve(l)
 }
 
 func startServerAndOpenBrowser() {
-	url, err := func() (string, error) {
-		return serve()
+	url := make(chan string)
+	finish := make(chan bool)
+	go func() {
+		serve(url, finish)
 	}()
-	if err != nil {
-		return
-	}
-	open(url)
+	open(<-url)
+	<-finish
 }
 
 func oauthLogin(context *Context, client *Client) error {
