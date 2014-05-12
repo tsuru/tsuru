@@ -43,7 +43,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("auth:oauth:collection", "oauth_token")
 	config.Set("admin-team", "admin")
 	config.Set("database:url", "127.0.0.1:27017")
-	config.Set("database:name", "tsuru_auth_native_test")
+	config.Set("database:name", "tsuru_auth_oauth_test")
 }
 
 func (s *S) SetUpTest(c *gocheck.C) {
