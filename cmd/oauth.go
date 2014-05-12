@@ -24,8 +24,11 @@ func open(url string) error {
 	return exec.Command("open", url).Start()
 }
 
-func serve(url chan string) {
-	http.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
+func serve(url chan string, finish chan bool) {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			finish <- true
+		}()
 		fmt.Fprintf(w, "Test")
 	})
 	l, e := net.Listen("tcp", ":0")
@@ -33,19 +36,18 @@ func serve(url chan string) {
 		return
 	}
 	_, port, _ := net.SplitHostPort(l.Addr().String())
-	url <- fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=http://localhost:%s/callback&scope=user:email", clientID(), port)
+	url <- fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=http://localhost:%s&scope=user:email", clientID(), port)
 	server := &http.Server{}
 	server.Serve(l)
 }
 
 func startServerAndOpenBrowser() {
-	c := make(chan string)
+	url := make(chan string)
 	finish := make(chan bool)
 	go func() {
-		serve(c)
+		serve(url, finish)
 	}()
-	url := <-c
-	open(url)
+	open(<-url)
 	<-finish
 }
 
