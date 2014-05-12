@@ -28,17 +28,13 @@ func serve(url chan string) {
 	http.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Test")
 	})
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		url := fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=http://localhost:4242/callback&scope=user:email", clientID())
-		http.Redirect(w, r, url, 302)
-	})
 	l, e := net.Listen("tcp", ":0")
 	if e != nil {
 		return
 	}
-	server := &http.Server{}
 	_, port, _ := net.SplitHostPort(l.Addr().String())
-	url <- fmt.Sprintf("http://localhost:%s", port)
+	url <- fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=http://localhost:%s/callback&scope=user:email", clientID(), port)
+	server := &http.Server{}
 	server.Serve(l)
 }
 
@@ -47,7 +43,6 @@ func startServerAndOpenBrowser() {
 	finish := make(chan bool)
 	go func() {
 		serve(c)
-
 	}()
 	url := <-c
 	open(url)
