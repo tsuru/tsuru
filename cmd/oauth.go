@@ -24,7 +24,7 @@ func open(url string) error {
 	return exec.Command("open", url).Start()
 }
 
-func serve() (string, error) {
+func serve(url chan string) {
 	http.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "Test")
 	})
@@ -34,20 +34,24 @@ func serve() (string, error) {
 	})
 	l, e := net.Listen("tcp", ":0")
 	if e != nil {
-		return "", e
+		return
 	}
 	server := &http.Server{}
-	return l.Addr().String(), server.Serve(l)
+	_, port, _ := net.SplitHostPort(l.Addr().String())
+	url <- fmt.Sprintf("http://localhost:%s", port)
+	server.Serve(l)
 }
 
 func startServerAndOpenBrowser() {
-	url, err := func() (string, error) {
-		return serve()
+	c := make(chan string)
+	finish := make(chan bool)
+	go func() {
+		serve(c)
+
 	}()
-	if err != nil {
-		return
-	}
+	url := <-c
 	open(url)
+	<-finish
 }
 
 func oauthLogin(context *Context, client *Client) error {
