@@ -708,12 +708,13 @@ func (s *S) TestGetHostAddrWithSegregatedScheduler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	coll := conn.Collection(schedulerCollection)
-	err = coll.Insert(
-		node{ID: "server0", Address: "http://remotehost:8080", Teams: []string{"tsuru"}},
-		node{ID: "server20", Address: "http://remotehost:8081", Teams: []string{"tsuru"}},
-		node{ID: "server21", Address: "http://10.10.10.1:8082", Teams: []string{"tsuru"}},
-	)
-	defer coll.RemoveAll(bson.M{"_id": bson.M{"$in": []string{"server0", "server1", "server2"}}})
+	p := Pool{Name: "pool1", Nodes: []string{
+		"http://remotehost:8080",
+		"http://remotehost:8081",
+		"http://10.10.10.1:8082",
+	}}
+	err = coll.Insert(p)
+	defer coll.RemoveAll(bson.M{"_id": p.Name})
 	cmutex.Lock()
 	old := dCluster
 	dCluster, err = cluster.New(segScheduler, &mapStorage{})
@@ -728,9 +729,9 @@ func (s *S) TestGetHostAddrWithSegregatedScheduler(c *gocheck.C) {
 		input    string
 		expected string
 	}{
-		{"server0", "remotehost"},
-		{"server20", "remotehost"},
-		{"server21", "10.10.10.1"},
+		{"http://remotehost:8080", "remotehost"},
+		{"http://remotehost:8081", "remotehost"},
+		{"http://10.10.10.1:8082", "10.10.10.1"},
 		{"server33", ""},
 	}
 	for _, t := range tests {
