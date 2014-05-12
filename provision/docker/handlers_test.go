@@ -44,88 +44,96 @@ func (s *HandlersSuite) TearDownSuite(c *gocheck.C) {
 }
 
 func (s *HandlersSuite) TestAddNodeHandler(c *gocheck.C) {
-	dCluster, _ = cluster.New(segScheduler, nil)
-	b := bytes.NewBufferString(`{"address": "host.com:4243", "ID": "server01", "teams": "myteam"}`)
+	dCluster, _ = cluster.New(&segScheduler, nil)
+	p := Pool{Name: "pool1"}
+	s.conn.Collection(schedulerCollection).Insert(p)
+	b := bytes.NewBufferString(`{"address": "host.com:4243", "ID": "server01", "pool": "pool1"}`)
 	req, err := http.NewRequest("POST", "/node/add", b)
 	c.Assert(err, gocheck.IsNil)
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req)
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Collection(schedulerCollection).RemoveId("server01")
-	n, err := s.conn.Collection(schedulerCollection).FindId("server01").Count()
+	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
+	n, err := s.conn.Collection(schedulerCollection).FindId("pool1").Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, 1)
 }
 
 func (s *HandlersSuite) TestAddNodeHandlerWithoutdCluster(c *gocheck.C) {
+	p := Pool{Name: "pool1"}
+	s.conn.Collection(schedulerCollection).Insert(p)
 	config.Set("docker:segregate", true)
 	defer config.Unset("docker:segregate")
 	config.Set("docker:scheduler:redis-server", "127.0.0.1:6379")
 	defer config.Unset("docker:scheduler:redis-server")
 	dCluster = nil
-	b := bytes.NewBufferString(`{"address": "host.com:4243", "ID": "server01", "teams": "myteam"}`)
+	b := bytes.NewBufferString(`{"address": "host.com:4243", "ID": "server01", "pool": "pool1"}`)
 	req, err := http.NewRequest("POST", "/node/add", b)
 	c.Assert(err, gocheck.IsNil)
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req)
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Collection(schedulerCollection).RemoveId("server01")
-	n, err := s.conn.Collection(schedulerCollection).FindId("server01").Count()
+	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
+	n, err := s.conn.Collection(schedulerCollection).FindId("pool1").Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, 1)
 }
 
 func (s *HandlersSuite) TestRemoveNodeHandler(c *gocheck.C) {
-	dCluster, _ = cluster.New(segScheduler, nil)
-	err := s.conn.Collection(schedulerCollection).Insert(map[string]string{"address": "host.com:4243", "_id": "server01", "teams": "myteam"})
+	p := Pool{Name: "pool1", Nodes: []string{"host.com:4243"}}
+	err := s.conn.Collection(schedulerCollection).Insert(p)
 	c.Assert(err, gocheck.IsNil)
-	n, err := s.conn.Collection(schedulerCollection).FindId("server01").Count()
+	dCluster, _ = cluster.New(&segScheduler, nil)
+	var pool Pool
+	err = s.conn.Collection(schedulerCollection).FindId("pool1").One(&pool)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 1)
-	b := bytes.NewBufferString(`{"ID": "server01"}`)
+	c.Assert(len(pool.Nodes), gocheck.Equals, 1)
+	b := bytes.NewBufferString(`{"address": "host.com:4243", "pool": "pool1"}`)
 	req, err := http.NewRequest("POST", "/node/remove", b)
 	c.Assert(err, gocheck.IsNil)
 	rec := httptest.NewRecorder()
 	err = removeNodeHandler(rec, req)
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Collection(schedulerCollection).RemoveId("server01")
-	n, err = s.conn.Collection(schedulerCollection).FindId("server01").Count()
+	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
+	err = s.conn.Collection(schedulerCollection).FindId("pool1").One(&pool)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 0)
+	c.Assert(len(pool.Nodes), gocheck.Equals, 0)
 }
 
 func (s *HandlersSuite) TestRemoveNodeHandlerWithoutCluster(c *gocheck.C) {
+	p := Pool{Name: "pool1", Nodes: []string{"host.com:4243"}}
+	err := s.conn.Collection(schedulerCollection).Insert(p)
+	c.Assert(err, gocheck.IsNil)
 	config.Set("docker:segregate", true)
 	defer config.Unset("docker:segregate")
 	config.Set("docker:scheduler:redis-server", "127.0.0.1:6379")
 	defer config.Unset("docker:scheduler:redis-server")
 	dCluster = nil
-	err := s.conn.Collection(schedulerCollection).Insert(map[string]string{"address": "host.com:4243", "_id": "server01", "teams": "myteam"})
+	var pool Pool
+	err = s.conn.Collection(schedulerCollection).FindId("pool1").One(&pool)
 	c.Assert(err, gocheck.IsNil)
-	n, err := s.conn.Collection(schedulerCollection).FindId("server01").Count()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 1)
-	b := bytes.NewBufferString(`{"ID": "server01"}`)
+	c.Assert(len(pool.Nodes), gocheck.Equals, 1)
+	b := bytes.NewBufferString(`{"address": "host.com:4243", "pool": "pool1"}`)
 	req, err := http.NewRequest("POST", "/node/remove", b)
 	c.Assert(err, gocheck.IsNil)
 	rec := httptest.NewRecorder()
 	err = removeNodeHandler(rec, req)
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Collection(schedulerCollection).RemoveId("server01")
-	n, err = s.conn.Collection(schedulerCollection).FindId("server01").Count()
+	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
+	err = s.conn.Collection(schedulerCollection).FindId("pool1").One(&pool)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 0)
+	c.Assert(len(pool.Nodes), gocheck.Equals, 0)
 }
 
 func (s *HandlersSuite) TestListNodeHandler(c *gocheck.C) {
-	var result []node
+	var result []map[string]string
 	dCluster, _ = cluster.New(segScheduler, nil)
-	err := s.conn.Collection(schedulerCollection).Insert(node{Address: "host.com:4243", ID: "server01"})
+	p1 := Pool{Name: "pool1", Nodes: []string{"host.com:4243"}}
+	p2 := Pool{Name: "pool2", Nodes: []string{"host.com:4243"}}
+	err := s.conn.Collection(schedulerCollection).Insert(p1, p2)
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Collection(schedulerCollection).RemoveId("server01")
-	err = s.conn.Collection(schedulerCollection).Insert(node{Address: "host.com:4243", ID: "server02"})
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Collection(schedulerCollection).RemoveId("server02")
+	defer s.conn.Collection(schedulerCollection).RemoveId(p1.Name)
+	defer s.conn.Collection(schedulerCollection).RemoveId(p2.Name)
 	req, err := http.NewRequest("GET", "/node/", nil)
 	rec := httptest.NewRecorder()
 	err = listNodeHandler(rec, req, nil)
@@ -134,25 +142,25 @@ func (s *HandlersSuite) TestListNodeHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = json.Unmarshal(body, &result)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(result[0].ID, gocheck.Equals, "server01")
-	c.Assert(result[0].Address, gocheck.DeepEquals, "host.com:4243")
-	c.Assert(result[1].ID, gocheck.Equals, "server02")
-	c.Assert(result[1].Address, gocheck.DeepEquals, "host.com:4243")
+	c.Assert(result[0]["ID"], gocheck.Equals, "host.com:4243")
+	c.Assert(result[0]["Address"], gocheck.DeepEquals, "host.com:4243")
+	c.Assert(result[1]["ID"], gocheck.Equals, "host.com:4243")
+	c.Assert(result[1]["Address"], gocheck.DeepEquals, "host.com:4243")
 }
 
 func (s *HandlersSuite) TestListNodeHandlerWithoutCluster(c *gocheck.C) {
-	var result []node
+	var result []map[string]string
+	p1 := Pool{Name: "pool1", Nodes: []string{"host.com:4243"}}
+	p2 := Pool{Name: "pool2", Nodes: []string{"host.com:4243"}}
+	err := s.conn.Collection(schedulerCollection).Insert(p1, p2)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Collection(schedulerCollection).RemoveId(p1.Name)
+	defer s.conn.Collection(schedulerCollection).RemoveId(p2.Name)
 	config.Set("docker:segregate", true)
 	defer config.Unset("docker:segregate")
 	config.Set("docker:scheduler:redis-server", "127.0.0.1:6379")
 	defer config.Unset("docker:scheduler:redis-server")
 	dCluster = nil
-	err := s.conn.Collection(schedulerCollection).Insert(node{Address: "host.com:4243", ID: "server01"})
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Collection(schedulerCollection).RemoveId("server01")
-	err = s.conn.Collection(schedulerCollection).Insert(node{Address: "host.com:4243", ID: "server02"})
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Collection(schedulerCollection).RemoveId("server02")
 	req, err := http.NewRequest("GET", "/node/", nil)
 	rec := httptest.NewRecorder()
 	err = listNodeHandler(rec, req, nil)
@@ -161,10 +169,10 @@ func (s *HandlersSuite) TestListNodeHandlerWithoutCluster(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = json.Unmarshal(body, &result)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(result[0].ID, gocheck.Equals, "server01")
-	c.Assert(result[0].Address, gocheck.DeepEquals, "host.com:4243")
-	c.Assert(result[1].ID, gocheck.Equals, "server02")
-	c.Assert(result[1].Address, gocheck.DeepEquals, "host.com:4243")
+	c.Assert(result[0]["ID"], gocheck.DeepEquals, "host.com:4243")
+	c.Assert(result[0]["Address"], gocheck.DeepEquals, "host.com:4243")
+	c.Assert(result[1]["ID"], gocheck.DeepEquals, "host.com:4243")
+	c.Assert(result[1]["Address"], gocheck.DeepEquals, "host.com:4243")
 }
 
 func (s *HandlersSuite) TestListContainersByHostHandler(c *gocheck.C) {
