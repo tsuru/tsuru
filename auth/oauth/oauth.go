@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/auth/native"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"net/http"
@@ -129,10 +130,8 @@ func (s *OAuthScheme) Login(params map[string]string) (auth.Token, error) {
 }
 
 func (s *OAuthScheme) AppLogin(appName string) (auth.Token, error) {
-	if err := s.loadConfig(); err != nil {
-		return nil, err
-	}
-	return nil, nil
+	nativeScheme := native.NativeScheme{}
+	return nativeScheme.AppLogin(appName)
 }
 
 func (s *OAuthScheme) Logout(token string) error {
@@ -145,6 +144,11 @@ func (s *OAuthScheme) Auth(header string) (auth.Token, error) {
 	}
 	token, err := getToken(header)
 	if err != nil {
+		nativeScheme := native.NativeScheme{}
+		token, nativeErr := nativeScheme.Auth(header)
+		if nativeErr == nil && token.IsAppToken() {
+			return token, nil
+		}
 		return nil, err
 	}
 	transport := goauth2.Transport{Config: s.Config}

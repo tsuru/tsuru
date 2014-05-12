@@ -118,3 +118,23 @@ func (s *S) TestOAuthAuth(c *gocheck.C) {
 	c.Assert(s.reqs[0].URL.Path, gocheck.Equals, "/user")
 	c.Assert(token.GetValue(), gocheck.Equals, "myvalidtoken")
 }
+
+func (s *S) TestOAuthAppLogin(c *gocheck.C) {
+	scheme := OAuthScheme{}
+	token, err := scheme.AppLogin("myApp")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(token.IsAppToken(), gocheck.Equals, true)
+	c.Assert(token.GetAppName(), gocheck.Equals, "myApp")
+}
+
+func (s *S) TestOAuthAuthWithAppToken(c *gocheck.C) {
+	scheme := OAuthScheme{}
+	appToken, err := scheme.AppLogin("myApp")
+	c.Assert(err, gocheck.IsNil)
+	token, err := scheme.Auth("bearer " + appToken.GetValue())
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(len(s.reqs), gocheck.Equals, 0)
+	c.Assert(token.IsAppToken(), gocheck.Equals, true)
+	c.Assert(token.GetAppName(), gocheck.Equals, "myApp")
+	c.Assert(token.GetValue(), gocheck.Equals, appToken.GetValue())
+}
