@@ -17,6 +17,14 @@ func clientID() string {
 	return os.Getenv("TSURU_AUTH_CLIENTID")
 }
 
+func port() string {
+	p := os.Getenv("TSURU_AUTH_SERVER_PORT")
+	if p == "" {
+		return ":0"
+	}
+	return p
+}
+
 func open(url string) error {
 	if runtime.GOOS == "linux" {
 		return exec.Command("xdg-open", url).Start()
@@ -31,7 +39,7 @@ func serve(url chan string, finish chan bool) {
 		}()
 		fmt.Fprintf(w, "Test")
 	})
-	l, e := net.Listen("tcp", ":0")
+	l, e := net.Listen("tcp", port())
 	if e != nil {
 		return
 	}
