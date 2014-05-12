@@ -764,7 +764,7 @@ func (s *S) TestDockerCluster(c *gocheck.C) {
 func (s *S) TestDockerClusterSegregated(c *gocheck.C) {
 	config.Set("docker:segregate", true)
 	defer config.Unset("docker:segregate")
-	expected, _ := cluster.New(segScheduler, nil)
+	expected, _ := cluster.New(&segScheduler, nil)
 	oldDockerCluster := dCluster
 	cmutex.Lock()
 	dCluster = nil

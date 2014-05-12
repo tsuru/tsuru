@@ -70,7 +70,7 @@ func dockerCluster() *cluster.Cluster {
 		}
 		var nodes []cluster.Node
 		if segregate, _ := config.GetBool("docker:segregate"); segregate {
-			dCluster, _ = cluster.New(segScheduler, clusterStorage)
+			dCluster, _ = cluster.New(&segScheduler, clusterStorage)
 		} else {
 			nodes = getDockerServers()
 			dCluster, _ = cluster.New(nil, clusterStorage, nodes...)
