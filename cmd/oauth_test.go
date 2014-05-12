@@ -5,8 +5,10 @@
 package cmd
 
 import (
+	etesting "github.com/tsuru/tsuru/exec/testing"
 	"launchpad.net/gocheck"
 	"os"
+	"runtime"
 )
 
 func (s *S) TestClientID(c *gocheck.C) {
@@ -22,4 +24,20 @@ func (s *S) TestPort(c *gocheck.C) {
 	err = os.Setenv("TSURU_AUTH_SERVER_PORT", "")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(":0", gocheck.Equals, port())
+}
+
+func (s *S) TestOpen(c *gocheck.C) {
+	fexec := etesting.FakeExecutor{}
+	execut = &fexec
+	defer func() {
+		execut = nil
+	}()
+	url := "http://someurl"
+	err := open(url)
+	c.Assert(err, gocheck.IsNil)
+	if runtime.GOOS == "linux" {
+		c.Assert(fexec.ExecutedCmd("xdg-open", []string{url}), gocheck.Equals, true)
+	} else {
+		c.Assert(fexec.ExecutedCmd("open", []string{url}), gocheck.Equals, true)
+	}
 }

@@ -6,12 +6,21 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/tsuru/tsuru/exec"
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"runtime"
 )
+
+var execut exec.Executor
+
+func executor() exec.Executor {
+	if execut == nil {
+		execut = exec.OsExecutor{}
+	}
+	return execut
+}
 
 func clientID() string {
 	return os.Getenv("TSURU_AUTH_CLIENTID")
@@ -27,9 +36,9 @@ func port() string {
 
 func open(url string) error {
 	if runtime.GOOS == "linux" {
-		return exec.Command("xdg-open", url).Start()
+		return executor().Execute("xdg-open", []string{url}, nil, nil, nil)
 	}
-	return exec.Command("open", url).Start()
+	return executor().Execute("open", []string{url}, nil, nil, nil)
 }
 
 func serve(url chan string, finish chan bool) {
