@@ -16,7 +16,6 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/validation"
 	"labix.org/v2/mgo/bson"
-	"strings"
 	"time"
 )
 
@@ -182,20 +181,6 @@ func createToken(u *auth.User, password string) (*Token, error) {
 	return token, err
 }
 
-// parseToken extracts token from a header:
-// 'type token' or 'token'
-func parseToken(header string) (string, error) {
-	s := strings.Split(header, " ")
-	var value string
-	if len(s) < 3 {
-		value = s[len(s)-1]
-	}
-	if value != "" {
-		return value, nil
-	}
-	return value, auth.ErrInvalidToken
-}
-
 func getToken(header string) (*Token, error) {
 	conn, err := db.Conn()
 	if err != nil {
@@ -203,7 +188,7 @@ func getToken(header string) (*Token, error) {
 	}
 	defer conn.Close()
 	var t Token
-	token, err := parseToken(header)
+	token, err := auth.ParseToken(header)
 	if err != nil {
 		return nil, err
 	}

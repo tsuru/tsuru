@@ -6,6 +6,8 @@ package oauth
 
 import (
 	"bytes"
+	goauth2 "code.google.com/p/goauth2/oauth"
+	"github.com/tsuru/config"
 	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"
@@ -34,8 +36,8 @@ func (s *S) TestOAuthLogin(c *gocheck.C) {
 	c.Assert(u.Email, gocheck.Equals, "rand@althor.com")
 	c.Assert(len(s.reqs), gocheck.Equals, 2)
 	c.Assert(s.reqs[0].URL.Path, gocheck.Equals, "/token")
-	c.Assert(s.reqs[1].URL.Path, gocheck.Equals, "/user")
 	c.Assert(s.bodies[0], gocheck.Matches, "client_id=clientid&client_secret=clientsecret&code=abcdefg.*")
+	c.Assert(s.reqs[1].URL.Path, gocheck.Equals, "/user")
 	c.Assert(s.reqs[1].Header.Get("Authorization"), gocheck.Equals, "Bearer my_token")
 }
 
@@ -76,6 +78,16 @@ func (s *S) TestOAuthInfo(c *gocheck.C) {
 	c.Assert(info["authorizeUrl"], gocheck.Matches, s.server.URL+"/auth.*")
 	c.Assert(info["authorizeUrl"], gocheck.Matches, ".*client_id=clientid.*")
 	c.Assert(info["authorizeUrl"], gocheck.Matches, ".*redirect_uri=redirect_url_placeholder.*")
+	c.Assert(info["port"], gocheck.Equals, "")
+}
+
+func (s *S) TestOAuthInfoWithPort(c *gocheck.C) {
+	config.Set("auth:oauth:callback-port", "9009")
+	defer config.Set("auth:oauth:callback-port", nil)
+	scheme := OAuthScheme{}
+	info, err := scheme.Info()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(info["port"], gocheck.Equals, "9009")
 }
 
 func (s *S) TestOAuthParse(c *gocheck.C) {
@@ -93,4 +105,16 @@ func (s *S) TestOAuthParseInvalid(c *gocheck.C) {
 	parser := OAuthParser(&OAuthScheme{})
 	_, err := parser.Parse(rsp)
 	c.Assert(err, gocheck.NotNil)
+}
+
+func (s *S) TestOAuthAuth(c *gocheck.C) {
+	existing := Token{Token: goauth2.Token{AccessToken: "myvalidtoken"}, UserEmail: "x@x.com"}
+	err := existing.save()
+	c.Assert(err, gocheck.IsNil)
+	scheme := OAuthScheme{}
+	token, err := scheme.Auth("bearer myvalidtoken")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(len(s.reqs), gocheck.Equals, 1)
+	c.Assert(s.reqs[0].URL.Path, gocheck.Equals, "/user")
+	c.Assert(token.GetValue(), gocheck.Equals, "myvalidtoken")
 }

@@ -271,21 +271,6 @@ func (s *S) TestCreateTokenShouldValidateThePassword(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 }
 
-func (s *S) TestParseToken(c *gocheck.C) {
-	t, err := parseToken("type token")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(t, gocheck.Equals, "token")
-	t, err = parseToken("token")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(t, gocheck.Equals, "token")
-	t, err = parseToken("type ble ble")
-	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
-	c.Assert(t, gocheck.Equals, "")
-	t, err = parseToken("")
-	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
-	c.Assert(t, gocheck.Equals, "")
-}
-
 func (s *S) TestGetToken(c *gocheck.C) {
 	t, err := getToken("bearer " + s.token.GetValue())
 	c.Assert(err, gocheck.IsNil)
