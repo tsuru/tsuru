@@ -12,6 +12,7 @@ import (
 	"io"
 	"launchpad.net/gocheck"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path"
 	"path/filepath"
@@ -693,4 +694,15 @@ func (s *S) TestScheme(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	result = scheme()
 	c.Assert(result, gocheck.Equals, "oauth")
+}
+
+func (s *S) TestSchemeInfo(c *gocheck.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"name": "oauth", "data": {}}`))
+	}))
+	defer ts.Close()
+	writeTarget(ts.URL)
+	info, err := schemeInfo()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(info["name"], gocheck.Equals, "oauth")
 }

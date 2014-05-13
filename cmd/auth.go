@@ -527,3 +527,21 @@ func scheme() string {
 	}
 	return "native"
 }
+
+func schemeInfo() (map[string]interface{}, error) {
+	url, err := GetURL("/user/scheme")
+	if err != nil {
+		return nil, err
+	}
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	info := map[string]interface{}{}
+	err = json.NewDecoder(resp.Body).Decode(&info)
+	if err != nil {
+		return nil, err
+	}
+	return info, nil
+}
