@@ -216,6 +216,77 @@ auth:max-simultaneous-sessions
 tsuru can limit the number of simultaneous sessions per user. This setting is
 optional, and defaults to "unlimited".
 
+auth:oauth
+++++++++++
+
+Every config entry inside ``auth:oauth`` are used when the ``auth:scheme`` is set
+to "oauth". Please check `rfc6749 <http://tools.ietf.org/html/rfc6749>`_ for more
+details. 
+
+auth:oauth:client-id
+++++++++++++++++++++
+
+The client id provided by your OAuth server.
+
+auth:oauth:client-secret
+++++++++++++++++++++++++
+
+The client secret provided by your OAuth server.
+
+auth:oauth:scope
+++++++++++++++++
+
+The scope for your authentication request.
+
+auth:oauth:auth-url
++++++++++++++++++++
+
+The URL used in the authorization step of the OAuth flow. Tsuru CLI will
+receive this URL and trigger the opening a browser on this URL with the necessary
+parameters.
+
+During the authorization step, Tsuru CLI will start a server locally and set the
+callback to http://localhost:<port>, if ``auth:oauth:callback-port`` is set Tsuru
+CLI will use its value as <port>. If ``auth:oauth:callback-port`` isn't present 
+Tsuru CLI will automatically choose an open port.
+
+The callback URL should be registered on your OAuth server.
+
+If the chosen server requires the callback URL to match the same host and port as
+the registered one you should register "http://localhost:<chosen port>" and set
+the ``auth:oauth:callback-port`` accordingly.
+
+If the chosen server is more lenient and allows a different port to be used you
+should register simply "http://localhost" and leave ``auth:oauth:callback-port``
+empty.
+
+auth:oauth:token-url
+++++++++++++++++++++
+
+The URL used in the exchange token step of the OAuth flow.
+
+auth:oauth:info-url
++++++++++++++++++++
+
+The URL used to fetch information about the authenticated user. Tsuru expects a
+json response containing a field called ``email``.
+
+Tsuru will also make call this URL on every request to the API to make sure the
+token is still valid and hasn't been revoked.
+
+auth:oauth:collection
++++++++++++++++++++++
+
+The database collection used to store valid access tokens. Defaults to
+"oauth_tokens".
+
+auth:oauth:callback-port
+++++++++++++++++++++++++
+
+The port used in the callback URL during the authorization step. Check docs for
+``auth:oauth:auth-url`` for more details.
+
+
 Amazon Web Services (AWS) configuration
 ---------------------------------------
 
