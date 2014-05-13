@@ -521,9 +521,12 @@ func passwordFromReader(reader io.Reader) (string, error) {
 }
 
 func scheme() string {
-	authScheme := os.Getenv("TSURU_AUTH_SCHEME")
-	if authScheme != "" {
-		return authScheme
+	info, err := schemeInfo()
+	if err == nil {
+		authScheme := info["name"]
+		if authScheme != "" {
+			return authScheme.(string)
+		}
 	}
 	return "native"
 }

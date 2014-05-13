@@ -686,14 +686,22 @@ func (s *S) TestResetPasswordIsAFlaggedCommand(c *gocheck.C) {
 }
 
 func (s *S) TestScheme(c *gocheck.C) {
-	err := os.Setenv("TSURU_AUTH_SCHEME", "")
-	c.Assert(err, gocheck.IsNil)
 	result := scheme()
 	c.Assert(result, gocheck.Equals, "native")
-	err = os.Setenv("TSURU_AUTH_SCHEME", "oauth")
-	c.Assert(err, gocheck.IsNil)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"name": "oauth", "data": {}}`))
+	}))
+	defer ts.Close()
+	writeTarget(ts.URL)
 	result = scheme()
 	c.Assert(result, gocheck.Equals, "oauth")
+	ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"name": "native", "data": {}}`))
+	}))
+	defer ts.Close()
+	writeTarget(ts.URL)
+	result = scheme()
+	c.Assert(result, gocheck.Equals, "native")
 }
 
 func (s *S) TestSchemeInfo(c *gocheck.C) {
