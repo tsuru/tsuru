@@ -361,6 +361,7 @@ func (p *dockerProvisioner) Commands() []cmd.Command {
 		listNodesInTheSchedulerCmd{},
 		addPoolToSchedulerCmd{},
 		removePoolFromSchedulerCmd{},
+		listPoolsInTheSchedulerCmd{},
 		&sshAgentCmd{},
 	}
 }
