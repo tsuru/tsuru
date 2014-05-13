@@ -27,11 +27,15 @@ func clientID() string {
 }
 
 func port() string {
-	p := os.Getenv("TSURU_AUTH_SERVER_PORT")
-	if p == "" {
-		return ":0"
+	info, err := schemeInfo()
+	if err == nil {
+		data := info["data"].(map[string]interface{})
+		p := data["port"].(string)
+		if p != "" {
+			return p
+		}
 	}
-	return p
+	return ":0"
 }
 
 func open(url string) error {

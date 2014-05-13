@@ -7,6 +7,8 @@ package cmd
 import (
 	etesting "github.com/tsuru/tsuru/exec/testing"
 	"launchpad.net/gocheck"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"runtime"
 )
@@ -18,12 +20,13 @@ func (s *S) TestClientID(c *gocheck.C) {
 }
 
 func (s *S) TestPort(c *gocheck.C) {
-	err := os.Setenv("TSURU_AUTH_SERVER_PORT", ":4242")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(":4242", gocheck.Equals, port())
-	err = os.Setenv("TSURU_AUTH_SERVER_PORT", "")
-	c.Assert(err, gocheck.IsNil)
 	c.Assert(":0", gocheck.Equals, port())
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"name": "oauth", "data": {"port": ":4242"}}`))
+	}))
+	defer ts.Close()
+	writeTarget(ts.URL)
+	c.Assert(":4242", gocheck.Equals, port())
 }
 
 func (s *S) TestOpen(c *gocheck.C) {
