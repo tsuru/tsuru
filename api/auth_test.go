@@ -1840,3 +1840,39 @@ func (s *AuthSuite) TestGenerateApplictionTokenExport(c *gocheck.C) {
 	c.Assert(tokenVar.Public, gocheck.Equals, false)
 	c.Assert(tokenVar.InstanceName, gocheck.Equals, "")
 }
+
+type TestScheme native.NativeScheme
+
+func (t TestScheme) AppLogin(appName string) (auth.Token, error) {
+	return nil, nil
+}
+func (t TestScheme) Login(params map[string]string) (auth.Token, error) {
+	return nil, nil
+}
+func (t TestScheme) Logout(token string) error {
+	return nil
+}
+func (t TestScheme) Auth(token string) (auth.Token, error) {
+	return nil, nil
+}
+func (t TestScheme) Info() (auth.SchemeInfo, error) {
+	return auth.SchemeInfo{"foo": "bar", "foo2": "bar2"}, nil
+}
+func (t TestScheme) Name() string {
+	return "test"
+}
+
+func (s *AuthSuite) TestAuthScheme(c *gocheck.C) {
+	oldScheme := app.AuthScheme
+	defer func() { app.AuthScheme = oldScheme }()
+	app.AuthScheme = TestScheme{}
+	request, _ := http.NewRequest("GET", "/auth/scheme", nil)
+	recorder := httptest.NewRecorder()
+	err := authScheme(recorder, request)
+	c.Assert(err, gocheck.IsNil)
+	var parsed map[string]interface{}
+	err = json.NewDecoder(recorder.Body).Decode(&parsed)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(parsed["name"], gocheck.Equals, "test")
+	c.Assert(parsed["data"], gocheck.DeepEquals, map[string]interface{}{"foo": "bar", "foo2": "bar2"})
+}

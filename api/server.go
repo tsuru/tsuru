@@ -128,7 +128,8 @@ func RunServer(dry bool) {
 		m.Post("/users", Handler(createUser))
 	}
 
-	m.Get("/users/scheme", Handler(authScheme))
+	m.Get("/auth/scheme", Handler(authScheme))
+	m.Post("/auth/login", Handler(login))
 	m.Post("/users/:email/password", Handler(resetPassword))
 	m.Post("/users/:email/tokens", Handler(login))
 	m.Del("/users/tokens", authorizationRequiredHandler(logout))
