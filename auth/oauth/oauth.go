@@ -16,9 +16,10 @@ import (
 )
 
 var (
-	ErrMissingCodeError = &tsuruErrors.ValidationError{Message: "You must provide code to login"}
-	ErrEmptyAccessToken = &tsuruErrors.NotAuthorizedError{Message: "Couldn't convert code to access token."}
-	ErrEmptyUserEmail   = &tsuruErrors.NotAuthorizedError{Message: "Couldn't parse user email."}
+	ErrMissingCodeError       = &tsuruErrors.ValidationError{Message: "You must provide code to login"}
+	ErrMissingCodeRedirectUrl = &tsuruErrors.ValidationError{Message: "You must provide the used redirect url to login"}
+	ErrEmptyAccessToken       = &tsuruErrors.NotAuthorizedError{Message: "Couldn't convert code to access token."}
+	ErrEmptyUserEmail         = &tsuruErrors.NotAuthorizedError{Message: "Couldn't parse user email."}
 )
 
 type OAuthParser interface {
@@ -92,6 +93,11 @@ func (s *OAuthScheme) Login(params map[string]string) (auth.Token, error) {
 	if !ok {
 		return nil, ErrMissingCodeError
 	}
+	redirectUrl, ok := params["redirectUrl"]
+	if !ok {
+		return nil, ErrMissingCodeRedirectUrl
+	}
+	s.Config.RedirectURL = redirectUrl
 	transport := &goauth2.Transport{Config: s.Config}
 	oauthToken, err := transport.Exchange(code)
 	if err != nil {
@@ -171,7 +177,7 @@ func (s *OAuthScheme) Info() (auth.SchemeInfo, error) {
 	}
 	config := new(goauth2.Config)
 	*config = *s.Config
-	config.RedirectURL = "redirect_url_placeholder"
+	config.RedirectURL = "%s"
 	return auth.SchemeInfo{"authorizeUrl": config.AuthCodeURL(""), "port": s.CallbackPort}, nil
 }
 

@@ -16,8 +16,17 @@ import (
 func (s *S) TestOAuthLoginWithoutCode(c *gocheck.C) {
 	scheme := OAuthScheme{}
 	params := make(map[string]string)
+	params["redirectUrl"] = "http://localhost"
 	_, err := scheme.Login(params)
 	c.Assert(err, gocheck.Equals, ErrMissingCodeError)
+}
+
+func (s *S) TestOAuthLoginWithoutRedirectUrl(c *gocheck.C) {
+	scheme := OAuthScheme{}
+	params := make(map[string]string)
+	params["code"] = "abcdefg"
+	_, err := scheme.Login(params)
+	c.Assert(err, gocheck.Equals, ErrMissingCodeRedirectUrl)
 }
 
 func (s *S) TestOAuthLogin(c *gocheck.C) {
@@ -26,6 +35,7 @@ func (s *S) TestOAuthLogin(c *gocheck.C) {
 	s.rsps["/user"] = `{"email":"rand@althor.com"}`
 	params := make(map[string]string)
 	params["code"] = "abcdefg"
+	params["redirectUrl"] = "http://localhost"
 	token, err := scheme.Login(params)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(token.GetValue(), gocheck.Equals, "my_token")
@@ -36,7 +46,7 @@ func (s *S) TestOAuthLogin(c *gocheck.C) {
 	c.Assert(u.Email, gocheck.Equals, "rand@althor.com")
 	c.Assert(len(s.reqs), gocheck.Equals, 2)
 	c.Assert(s.reqs[0].URL.Path, gocheck.Equals, "/token")
-	c.Assert(s.bodies[0], gocheck.Matches, "client_id=clientid&client_secret=clientsecret&code=abcdefg.*")
+	c.Assert(s.bodies[0], gocheck.Equals, "client_id=clientid&client_secret=clientsecret&code=abcdefg&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost&scope=myscope")
 	c.Assert(s.reqs[1].URL.Path, gocheck.Equals, "/user")
 	c.Assert(s.reqs[1].Header.Get("Authorization"), gocheck.Equals, "Bearer my_token")
 }
@@ -46,6 +56,7 @@ func (s *S) TestOAuthLoginEmptyToken(c *gocheck.C) {
 	s.rsps["/token"] = `access_token=`
 	params := make(map[string]string)
 	params["code"] = "abcdefg"
+	params["redirectUrl"] = "http://localhost"
 	_, err := scheme.Login(params)
 	c.Assert(err, gocheck.Equals, ErrEmptyAccessToken)
 	c.Assert(len(s.reqs), gocheck.Equals, 1)
@@ -58,6 +69,7 @@ func (s *S) TestOAuthLoginEmptyEmail(c *gocheck.C) {
 	s.rsps["/user"] = `{"email":""}`
 	params := make(map[string]string)
 	params["code"] = "abcdefg"
+	params["redirectUrl"] = "http://localhost"
 	_, err := scheme.Login(params)
 	c.Assert(err, gocheck.Equals, ErrEmptyUserEmail)
 	c.Assert(len(s.reqs), gocheck.Equals, 2)
@@ -77,7 +89,7 @@ func (s *S) TestOAuthInfo(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(info["authorizeUrl"], gocheck.Matches, s.server.URL+"/auth.*")
 	c.Assert(info["authorizeUrl"], gocheck.Matches, ".*client_id=clientid.*")
-	c.Assert(info["authorizeUrl"], gocheck.Matches, ".*redirect_uri=redirect_url_placeholder.*")
+	c.Assert(info["authorizeUrl"], gocheck.Matches, ".*redirect_uri=%25s.*")
 	c.Assert(info["port"], gocheck.Equals, "")
 }
 

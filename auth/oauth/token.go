@@ -74,7 +74,8 @@ func (t *Token) save() error {
 func collection() *storage.Collection {
 	name, err := config.GetString("auth:oauth:collection")
 	if err != nil {
-		log.Fatal(err.Error())
+		name = "oauth_tokens"
+		log.Debugf("auth:oauth:collection not found using default value: %s.", name)
 	}
 	conn, err := db.Conn()
 	if err != nil {
