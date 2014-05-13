@@ -9,7 +9,6 @@ import (
 	"github.com/tsuru/tsuru/exec"
 	"net"
 	"net/http"
-	"os"
 	"runtime"
 )
 
@@ -22,8 +21,16 @@ func executor() exec.Executor {
 	return execut
 }
 
-func clientID() string {
-	return os.Getenv("TSURU_AUTH_CLIENTID")
+func authorizeUrl() string {
+	info, err := schemeInfo()
+	if err == nil {
+		data := info["data"].(map[string]interface{})
+		url := data["authorizeUrl"].(string)
+		if url != "" {
+			return url
+		}
+	}
+	return ""
 }
 
 func port() string {
@@ -57,7 +64,7 @@ func serve(url chan string, finish chan bool) {
 		return
 	}
 	_, port, _ := net.SplitHostPort(l.Addr().String())
-	url <- fmt.Sprintf("https://github.com/login/oauth/authorize?client_id=%s&redirect_uri=http://localhost:%s&scope=user:email", clientID(), port)
+	url <- fmt.Sprintf(authorizeUrl(), port)
 	server := &http.Server{}
 	server.Serve(l)
 }

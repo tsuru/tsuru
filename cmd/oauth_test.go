@@ -9,14 +9,17 @@ import (
 	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"runtime"
 )
 
-func (s *S) TestClientID(c *gocheck.C) {
-	err := os.Setenv("TSURU_AUTH_CLIENTID", "someid")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert("someid", gocheck.Equals, clientID())
+func (s *S) TestAuthorizeUrl(c *gocheck.C) {
+	c.Assert("", gocheck.Equals, authorizeUrl())
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"name": "oauth", "data": {"authorizeUrl": "http://ble:%s"}}`))
+	}))
+	defer ts.Close()
+	writeTarget(ts.URL)
+	c.Assert("http://ble:%s", gocheck.Equals, authorizeUrl())
 }
 
 func (s *S) TestPort(c *gocheck.C) {
