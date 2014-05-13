@@ -456,4 +456,83 @@ func (s *SchedulerSuite) TestChooseNodeDistributesNodesEqually(c *gocheck.C) {
 	n, err = contColl.Find(bson.M{"hostaddr": "server4"}).Count()
 	c.Assert(err, gocheck.Equals, nil)
 	c.Check(n, gocheck.Equals, unitsPerNode)
+
+}
+
+func (s *SchedulerSuite) TestAddPoolToSchedulerCmdInfo(c *gocheck.C) {
+	expected := cmd.Info{
+		Name:    "docker-add-pool",
+		Usage:   "docker-add-pool <pool>",
+		Desc:    "Add a pool to cluster",
+		MinArgs: 1,
+	}
+	cmd := addPoolToSchedulerCmd{}
+	c.Assert(cmd.Info(), gocheck.DeepEquals, &expected)
+}
+
+func (s *SchedulerSuite) TestAddPoolToTheSchedulerCmd(c *gocheck.C) {
+	var buf bytes.Buffer
+	coll := s.storage.Collection(schedulerCollection)
+	defer coll.Remove(bson.M{"_id": "poolTest"})
+	context := cmd.Context{Args: []string{"poolTest"}, Stdout: &buf}
+	cmd := addPoolToSchedulerCmd{}
+	err := cmd.Run(&context, nil)
+	c.Assert(err, gocheck.IsNil)
+	p, err := coll.Find(bson.M{"_id": "poolTest"}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(p, gocheck.Equals, 1)
+}
+
+func (s *SchedulerSuite) TestAddPoolToTheSchedulerCmdFailure(c *gocheck.C) {
+	var buf bytes.Buffer
+	coll := s.storage.Collection(schedulerCollection)
+	defer coll.Remove(bson.M{"_id": "poolTest"})
+	context := cmd.Context{Args: []string{"poolTest"}, Stdout: &buf}
+	cmd := addPoolToSchedulerCmd{}
+	err := cmd.Run(&context, nil)
+	c.Assert(err, gocheck.IsNil)
+	err = cmd.Run(&context, nil)
+	c.Assert(err, gocheck.NotNil)
+}
+
+func (s *SchedulerSuite) TestRemovePoolFromSchedulerCmdInfo(c *gocheck.C) {
+	expected := cmd.Info{
+		Name:    "docker-rm-pool",
+		Usage:   "docker-rm-pool <pool>",
+		Desc:    "Remove a pool to cluster",
+		MinArgs: 1,
+	}
+	cmd := removePoolFromSchedulerCmd{}
+	c.Assert(cmd.Info(), gocheck.DeepEquals, &expected)
+}
+
+func (s *SchedulerSuite) TestRemovePoolFromTheSchedulerCmd(c *gocheck.C) {
+	var buf bytes.Buffer
+	coll := s.storage.Collection(schedulerCollection)
+	p := Pool{Name: "poolTest"}
+	err := coll.Insert(p)
+	c.Assert(err, gocheck.IsNil)
+	context := cmd.Context{Args: []string{"poolTest"}, Stdout: &buf}
+	cmd := removePoolFromSchedulerCmd{}
+	err = cmd.Run(&context, nil)
+	c.Assert(err, gocheck.IsNil)
+	count, err := coll.Find(bson.M{"_id": "poolTest"}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 0)
+}
+
+func (s *SchedulerSuite) TestRemovePoolWithNodesFromTheSchedulerCmdFailure(c *gocheck.C) {
+	var buf bytes.Buffer
+	coll := s.storage.Collection(schedulerCollection)
+	p := Pool{Name: "poolTest", Nodes: []string{"http://localhost:1234"}}
+	defer coll.RemoveAll(bson.M{"_id": p.Name})
+	err := coll.Insert(p)
+	c.Assert(err, gocheck.IsNil)
+	context := cmd.Context{Args: []string{"poolTest"}, Stdout: &buf}
+	cmd := removePoolFromSchedulerCmd{}
+	err = cmd.Run(&context, nil)
+	c.Assert(err, gocheck.NotNil)
+	count, err := coll.Find(bson.M{"_id": "poolTest"}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 1)
 }
