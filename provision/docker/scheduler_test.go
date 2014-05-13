@@ -536,3 +536,31 @@ func (s *SchedulerSuite) TestRemovePoolWithNodesFromTheSchedulerCmdFailure(c *go
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(count, gocheck.Equals, 1)
 }
+
+func (s *SchedulerSuite) TestListPoolsInTheSchedulerCmdInfo(c *gocheck.C) {
+	expected := cmd.Info{
+		Name:  "docker-list-pools",
+		Usage: "docker-list-pools",
+		Desc:  "List available pools in the cluster",
+	}
+	cmd := listPoolsInTheSchedulerCmd{}
+	c.Assert(cmd.Info(), gocheck.DeepEquals, &expected)
+}
+
+func (s *SchedulerSuite) TestListPoolsInTheSchedulerCmdRun(c *gocheck.C) {
+	coll := s.storage.Collection(schedulerCollection)
+	pool := Pool{Name: "pool1", Nodes: []string{"url:1234", "url:2345"}, Teams: []string{"tsuruteam", "ateam"}}
+	err := coll.Insert(pool)
+	defer coll.RemoveAll(bson.M{"_id": pool.Name})
+	var buf bytes.Buffer
+	ctx := cmd.Context{Stdout: &buf}
+	err = listPoolsInTheSchedulerCmd{}.Run(&ctx, nil)
+	c.Assert(err, gocheck.IsNil)
+	expected := `+-------+--------------------+------------------+
+| Pools | Nodes              | Teams            |
++-------+--------------------+------------------+
+| pool1 | url:1234, url:2345 | tsuruteam, ateam |
++-------+--------------------+------------------+
+`
+	c.Assert(buf.String(), gocheck.Equals, expected)
+}

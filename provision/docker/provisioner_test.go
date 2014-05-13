@@ -596,6 +596,8 @@ func (s *S) TestCommands(c *gocheck.C) {
 		addNodeToSchedulerCmd{},
 		removeNodeFromSchedulerCmd{},
 		listNodesInTheSchedulerCmd{},
+		addPoolToSchedulerCmd{},
+		removePoolFromSchedulerCmd{},
 		&sshAgentCmd{},
 	}
 	c.Assert(p.Commands(), gocheck.DeepEquals, expected)

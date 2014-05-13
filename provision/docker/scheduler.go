@@ -15,6 +15,7 @@ import (
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"math"
+	"strings"
 	"sync"
 )
 
@@ -376,5 +377,35 @@ func (removePoolFromSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) erro
 		return err
 	}
 	ctx.Stdout.Write([]byte("Pool successfully removed.\n"))
+	return nil
+}
+
+type listPoolsInTheSchedulerCmd struct{}
+
+func (listPoolsInTheSchedulerCmd) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:  "docker-list-pools",
+		Usage: "docker-list-pools",
+		Desc:  "List available pools in the cluster",
+	}
+}
+
+func (listPoolsInTheSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
+	t := cmd.Table{Headers: cmd.Row([]string{"Pools", "Nodes", "Teams"})}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	var pools []Pool
+	err = conn.Collection(schedulerCollection).Find(nil).All(&pools)
+	if err != nil {
+		return err
+	}
+	for _, p := range pools {
+		t.AddRow(cmd.Row([]string{p.Name, strings.Join(p.Nodes, ", "), strings.Join(p.Teams, ", ")}))
+	}
+	t.Sort()
+	ctx.Stdout.Write(t.Bytes())
 	return nil
 }
