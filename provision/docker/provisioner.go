@@ -363,6 +363,7 @@ func (p *dockerProvisioner) Commands() []cmd.Command {
 		removePoolFromSchedulerCmd{},
 		listPoolsInTheSchedulerCmd{},
 		addTeamsToPoolCmd{},
+		removeTeamsFromPoolCmd{},
 		&sshAgentCmd{},
 	}
 }

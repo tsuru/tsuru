@@ -600,6 +600,7 @@ func (s *S) TestCommands(c *gocheck.C) {
 		removePoolFromSchedulerCmd{},
 		listPoolsInTheSchedulerCmd{},
 		addTeamsToPoolCmd{},
+		removeTeamsFromPoolCmd{},
 		&sshAgentCmd{},
 	}
 	c.Assert(p.Commands(), gocheck.DeepEquals, expected)
