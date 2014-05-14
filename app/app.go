@@ -235,11 +235,11 @@ func (app *App) unbind() error {
 
 // Delete deletes an app.
 //
-// Delete an app is a process composed of four steps:
+// Delete an app is a process composed of three steps:
 //
 //       1. Destroy the app unit
 //       2. Unbind all service instances from the app
-//       4. Remove the app from the database
+//       3. Remove the app from the database
 func Delete(app *App) error {
 	gURL := repository.ServerURL()
 	(&gandalf.Client{Endpoint: gURL}).RemoveRepository(app.Name)
