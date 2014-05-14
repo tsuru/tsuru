@@ -5,10 +5,13 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/tsuru/tsuru/exec"
+	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"runtime"
 )
 
@@ -52,20 +55,48 @@ func open(url string) error {
 	return executor().Execute("open", []string{url}, nil, nil, nil)
 }
 
-func serve(url chan string, finish chan bool) {
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+func callback(redirectUrl string, finish chan bool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			finish <- true
 		}()
-		fmt.Fprintf(w, "Test")
-	})
+		params := url.Values{
+			"code":        {"qwert"},
+			"redirectUrl": {redirectUrl},
+		}
+		u, err := GetURL("/auth/login")
+		if err != nil {
+			return
+		}
+		resp, err := http.PostForm(u, params)
+		if err != nil {
+			return
+		}
+		defer resp.Body.Close()
+		result, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return
+		}
+		data := make(map[string]interface{})
+		err = json.Unmarshal(result, &data)
+		if err != nil {
+			return
+		}
+		writeToken(data["token"].(string))
+	}
+}
+
+func serve(u chan string, finish chan bool) {
+	var redirectUrl string
 	l, e := net.Listen("tcp", port())
 	if e != nil {
 		return
 	}
 	_, port, _ := net.SplitHostPort(l.Addr().String())
-	url <- fmt.Sprintf(authorizeUrl(), port)
+	redirectUrl = fmt.Sprintf(authorizeUrl(), fmt.Sprintf("http://localhost:%s", port))
+	u <- redirectUrl
 	server := &http.Server{}
+	http.HandleFunc("/", callback(redirectUrl, finish))
 	server.Serve(l)
 }
 
