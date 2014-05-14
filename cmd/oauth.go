@@ -55,9 +55,8 @@ func open(url string) error {
 	return executor().Execute("open", []string{url}, nil, nil, nil)
 }
 
-func serve(u chan string, finish chan bool) {
-	var redirectUrl string
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+func callback(redirectUrl string, finish chan bool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			finish <- true
 		}()
@@ -84,7 +83,11 @@ func serve(u chan string, finish chan bool) {
 			return
 		}
 		writeToken(data["token"].(string))
-	})
+	}
+}
+
+func serve(u chan string, finish chan bool) {
+	var redirectUrl string
 	l, e := net.Listen("tcp", port())
 	if e != nil {
 		return
@@ -93,6 +96,7 @@ func serve(u chan string, finish chan bool) {
 	redirectUrl = fmt.Sprintf(authorizeUrl(), fmt.Sprintf("http://localhost:%s", port))
 	u <- redirectUrl
 	server := &http.Server{}
+	http.HandleFunc("/", callback(redirectUrl, finish))
 	server.Serve(l)
 }
 
