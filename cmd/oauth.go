@@ -86,27 +86,18 @@ func callback(redirectUrl string, finish chan bool) http.HandlerFunc {
 	}
 }
 
-func serve(u chan string, finish chan bool) {
-	var redirectUrl string
+func startServerAndOpenBrowser() {
+	finish := make(chan bool)
 	l, e := net.Listen("tcp", port())
 	if e != nil {
 		return
 	}
 	_, port, _ := net.SplitHostPort(l.Addr().String())
-	redirectUrl = fmt.Sprintf(authorizeUrl(), fmt.Sprintf("http://localhost:%s", port))
-	u <- redirectUrl
-	server := &http.Server{}
+	redirectUrl := fmt.Sprintf(authorizeUrl(), fmt.Sprintf("http://localhost:%s", port))
 	http.HandleFunc("/", callback(redirectUrl, finish))
-	server.Serve(l)
-}
-
-func startServerAndOpenBrowser() {
-	url := make(chan string)
-	finish := make(chan bool)
-	go func() {
-		serve(url, finish)
-	}()
-	open(<-url)
+	server := &http.Server{}
+	go server.Serve(l)
+	open(redirectUrl)
 	<-finish
 }
 
