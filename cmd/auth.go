@@ -532,7 +532,7 @@ func scheme() string {
 }
 
 func schemeInfo() (map[string]interface{}, error) {
-	url, err := GetURL("/user/scheme")
+	url, err := GetURL("/auth/scheme")
 	if err != nil {
 		return nil, err
 	}
