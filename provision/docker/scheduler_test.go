@@ -564,3 +564,30 @@ func (s *SchedulerSuite) TestListPoolsInTheSchedulerCmdRun(c *gocheck.C) {
 `
 	c.Assert(buf.String(), gocheck.Equals, expected)
 }
+
+func (s *SchedulerSuite) TestAddTeamsToPoolCmdInfo(c *gocheck.C) {
+	expected := cmd.Info{
+		Name:    "docker-pool-teams-add",
+		Usage:   "docker-pool-teams-add <pool> <teams>",
+		Desc:    "Add team to a pool",
+		MinArgs: 2,
+	}
+	cmd := addTeamsToPoolCmd{}
+	c.Assert(cmd.Info(), gocheck.DeepEquals, &expected)
+}
+
+func (s *SchedulerSuite) TestAddTeamsToPoolCmdRun(c *gocheck.C) {
+	coll := s.storage.Collection(schedulerCollection)
+	p := Pool{Name: "pool1"}
+	err := coll.Insert(p)
+	c.Assert(err, gocheck.IsNil)
+	defer coll.RemoveAll(bson.M{"_id": p.Name})
+	var buf bytes.Buffer
+	ctx := cmd.Context{Stdout: &buf, Args: []string{"pool1", "team1", "team2"}}
+	err = addTeamsToPoolCmd{}.Run(&ctx, nil)
+	c.Assert(err, gocheck.IsNil)
+	var pool Pool
+	err = coll.FindId(p.Name).One(&pool)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(pool.Teams, gocheck.DeepEquals, []string{"team1", "team2"})
+}
