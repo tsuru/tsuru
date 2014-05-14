@@ -39,6 +39,10 @@ func (t *Token) GetAppName() string {
 	return ""
 }
 
+func makeToken(t *goauth2.Token) *Token {
+	return &Token{*t, t.Extra["email"]}
+}
+
 func getToken(header string) (*Token, error) {
 	conn, err := db.Conn()
 	if err != nil {

@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"
+	"time"
 )
 
 func (s *S) TestOAuthLoginWithoutCode(c *gocheck.C) {
@@ -49,6 +50,11 @@ func (s *S) TestOAuthLogin(c *gocheck.C) {
 	c.Assert(s.bodies[0], gocheck.Equals, "client_id=clientid&client_secret=clientsecret&code=abcdefg&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost&scope=myscope")
 	c.Assert(s.reqs[1].URL.Path, gocheck.Equals, "/user")
 	c.Assert(s.reqs[1].Header.Get("Authorization"), gocheck.Equals, "Bearer my_token")
+	dbToken, err := getToken("my_token")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dbToken.AccessToken, gocheck.Equals, "my_token")
+	c.Assert(dbToken.UserEmail, gocheck.Equals, "rand@althor.com")
+	c.Assert(dbToken.Extra["email"], gocheck.Equals, "rand@althor.com")
 }
 
 func (s *S) TestOAuthLoginEmptyToken(c *gocheck.C) {
@@ -129,6 +135,30 @@ func (s *S) TestOAuthAuth(c *gocheck.C) {
 	c.Assert(len(s.reqs), gocheck.Equals, 1)
 	c.Assert(s.reqs[0].URL.Path, gocheck.Equals, "/user")
 	c.Assert(token.GetValue(), gocheck.Equals, "myvalidtoken")
+}
+
+func (s *S) TestOAuthAuthWithExchange(c *gocheck.C) {
+	existing := Token{Token: goauth2.Token{
+		AccessToken:  "my_expired_token",
+		RefreshToken: "my_refresh_token",
+		Expiry:       time.Now().Add(-time.Hour),
+		Extra:        map[string]string{"email": "x@x.com"},
+	}, UserEmail: "x@x.com"}
+	err := existing.save()
+	c.Assert(err, gocheck.IsNil)
+	s.rsps["/token"] = `access_token=new_token`
+	scheme := OAuthScheme{}
+	token, err := scheme.Auth("bearer my_expired_token")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(len(s.reqs), gocheck.Equals, 2)
+	c.Assert(s.reqs[0].URL.Path, gocheck.Equals, "/token")
+	c.Assert(s.reqs[1].URL.Path, gocheck.Equals, "/user")
+	c.Assert(token.GetValue(), gocheck.Equals, "new_token")
+	dbToken, err := getToken("new_token")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dbToken.AccessToken, gocheck.Equals, "new_token")
+	c.Assert(dbToken.UserEmail, gocheck.Equals, "x@x.com")
+	c.Assert(dbToken.Extra["email"], gocheck.Equals, "x@x.com")
 }
 
 func (s *S) TestOAuthAppLogin(c *gocheck.C) {
