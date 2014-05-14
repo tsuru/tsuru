@@ -260,7 +260,16 @@ func (segregatedScheduler) addTeamsToPool(pool_name string, teams []string) erro
 		return err
 	}
 	defer conn.Close()
-	return conn.Collection(schedulerCollection).UpdateId(pool_name, bson.M{"teams": teams})
+	return conn.Collection(schedulerCollection).UpdateId(pool_name, bson.M{"$push": bson.M{"teams": bson.M{"$each": teams}}})
+}
+
+func (segregatedScheduler) removeTeamsFromPool(pool_name string, teams []string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.Collection(schedulerCollection).UpdateId(pool_name, bson.M{"$pullAll": bson.M{"teams": teams}})
 }
 
 func listNodesInTheScheduler() ([]string, error) {
@@ -437,5 +446,26 @@ func (addTeamsToPoolCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
 		return err
 	}
 	ctx.Stdout.Write([]byte("Teams successfully registered.\n"))
+	return nil
+}
+
+type removeTeamsFromPoolCmd struct{}
+
+func (removeTeamsFromPoolCmd) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "docker-pool-teams-remove",
+		Usage:   "docker-pool-teams-remove <pool> <teams>",
+		Desc:    "Remove team from pool",
+		MinArgs: 2,
+	}
+}
+
+func (removeTeamsFromPoolCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
+	var segScheduler segregatedScheduler
+	err := segScheduler.removeTeamsFromPool(ctx.Args[0], ctx.Args[1:])
+	if err != nil {
+		return err
+	}
+	ctx.Stdout.Write([]byte("Teams successfully removed.\n"))
 	return nil
 }

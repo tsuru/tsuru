@@ -591,3 +591,45 @@ func (s *SchedulerSuite) TestAddTeamsToPoolCmdRun(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(pool.Teams, gocheck.DeepEquals, []string{"team1", "team2"})
 }
+
+func (s *SchedulerSuite) TestAddTeamsToPoolWithTeams(c *gocheck.C) {
+	coll := s.storage.Collection(schedulerCollection)
+	p := Pool{Name: "pool1", Teams: []string{"team1"}}
+	err := coll.Insert(p)
+	c.Assert(err, gocheck.IsNil)
+	defer coll.RemoveAll(bson.M{"_id": p.Name})
+	var segScheduler segregatedScheduler
+	err = segScheduler.addTeamsToPool(p.Name, []string{"team2", "team3"})
+	c.Assert(err, gocheck.IsNil)
+	var pool Pool
+	err = coll.FindId(p.Name).One(&pool)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(pool.Teams, gocheck.DeepEquals, []string{"team1", "team2", "team3"})
+}
+
+func (s *SchedulerSuite) TestRemoveTeamsFromPoolCmdInfo(c *gocheck.C) {
+	expected := cmd.Info{
+		Name:    "docker-pool-teams-remove",
+		Usage:   "docker-pool-teams-remove <pool> <teams>",
+		Desc:    "Remove team from pool",
+		MinArgs: 2,
+	}
+	cmd := removeTeamsFromPoolCmd{}
+	c.Assert(cmd.Info(), gocheck.DeepEquals, &expected)
+}
+
+func (s *SchedulerSuite) TestRemoveTeamsFromPoolCmdRun(c *gocheck.C) {
+	coll := s.storage.Collection(schedulerCollection)
+	p := Pool{Name: "pool1", Teams: []string{"team1", "team2"}}
+	err := coll.Insert(p)
+	c.Assert(err, gocheck.IsNil)
+	defer coll.RemoveAll(bson.M{"_id": p.Name})
+	var buf bytes.Buffer
+	ctx := cmd.Context{Stdout: &buf, Args: []string{"pool1", "team1"}}
+	err = removeTeamsFromPoolCmd{}.Run(&ctx, nil)
+	c.Assert(err, gocheck.IsNil)
+	var pool Pool
+	err = coll.FindId(p.Name).One(&pool)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(pool.Teams, gocheck.DeepEquals, []string{"team2"})
+}
