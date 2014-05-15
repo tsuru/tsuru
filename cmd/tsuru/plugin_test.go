@@ -75,20 +75,28 @@ func (s *S) TestPluginInfo(c *gocheck.C) {
 }
 
 func (s *S) TestPlugin(c *gocheck.C) {
-	fexec := etesting.FakeExecutor{}
+	fexec := etesting.FakeExecutor{
+		Output: map[string][][]byte{
+			"a b": {[]byte("hello world")},
+		},
+	}
 	execut = &fexec
 	defer func() {
 		execut = nil
 	}()
+	var buf bytes.Buffer
 	context := cmd.Context{
-		Args: []string{"myplugin"},
+		Args:   []string{"myplugin", "a", "b"},
+		Stdout: &buf,
+		Stderr: &buf,
 	}
 	client := cmd.NewClient(nil, nil, manager)
 	command := plugin{}
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	pluginPath := cmd.JoinWithUserDir(".tsuru", "plugins", "myplugin")
-	c.Assert(fexec.ExecutedCmd(pluginPath, []string{}), gocheck.Equals, true)
+	c.Assert(fexec.ExecutedCmd(pluginPath, []string{"a", "b"}), gocheck.Equals, true)
+	c.Assert(buf.String(), gocheck.Equals, "hello world")
 }
 
 func (s *S) TestPluginWithArgs(c *gocheck.C) {

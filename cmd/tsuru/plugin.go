@@ -5,7 +5,6 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"github.com/tsuru/tsuru/cmd"
@@ -72,12 +71,10 @@ func (plugin) Info() *cmd.Info {
 func (c *plugin) Run(context *cmd.Context, client *cmd.Client) error {
 	pluginName := context.Args[0]
 	pluginPath := cmd.JoinWithUserDir(".tsuru", "plugins", pluginName)
-	var b bytes.Buffer
-	err := executor().Execute(pluginPath, context.Args[1:], nil, &b, &b)
+	err := executor().Execute(pluginPath, context.Args[1:], nil, context.Stdout, context.Stderr)
 	if err != nil {
 		return err
 	}
-	fmt.Println(b.String())
 	return nil
 }
 
