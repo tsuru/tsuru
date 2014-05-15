@@ -10,7 +10,7 @@ import "fmt"
 // Everything could change in minutes, please don't
 // rely on them until this notice is gone.
 
-type SchemeInfo map[string]string
+type SchemeInfo map[string]interface{}
 
 type Scheme interface {
 	AppLogin(appName string) (Token, error)

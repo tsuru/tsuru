@@ -95,12 +95,12 @@ func (s *S) TestOAuthInfo(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(info["authorizeUrl"], gocheck.Matches, s.server.URL+"/auth.*")
 	c.Assert(info["authorizeUrl"], gocheck.Matches, ".*client_id=clientid.*")
-	c.Assert(info["authorizeUrl"], gocheck.Matches, ".*redirect_uri=%25s.*")
-	c.Assert(info["port"], gocheck.Equals, "")
+	c.Assert(info["authorizeUrl"], gocheck.Matches, ".*redirect_uri=__redirect_url__.*")
+	c.Assert(info["port"], gocheck.Equals, "0")
 }
 
 func (s *S) TestOAuthInfoWithPort(c *gocheck.C) {
-	config.Set("auth:oauth:callback-port", "9009")
+	config.Set("auth:oauth:callback-port", 9009)
 	defer config.Set("auth:oauth:callback-port", nil)
 	scheme := OAuthScheme{}
 	info, err := scheme.Info()

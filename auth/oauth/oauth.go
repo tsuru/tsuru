@@ -13,6 +13,7 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"net/http"
+	"strconv"
 )
 
 var (
@@ -29,7 +30,7 @@ type OAuthParser interface {
 type OAuthScheme struct {
 	BaseConfig   goauth2.Config
 	InfoUrl      string
-	CallbackPort string
+	CallbackPort int
 	Parser       OAuthParser
 }
 
@@ -117,10 +118,9 @@ func (s *OAuthScheme) loadConfig() (goauth2.Config, error) {
 	if err != nil {
 		return emptyConfig, err
 	}
-	callbackPort, err := config.GetString("auth:oauth:callback-port")
+	callbackPort, err := config.GetInt("auth:oauth:callback-port")
 	if err != nil {
-		log.Debugf("auth:oauth:callback-port not found using random port.")
-		callbackPort = ""
+		log.Debugf("auth:oauth:callback-port not found using random port: %s", err)
 	}
 	s.InfoUrl = infoURL
 	s.CallbackPort = callbackPort
@@ -199,8 +199,8 @@ func (s *OAuthScheme) Info() (auth.SchemeInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	config.RedirectURL = "%s"
-	return auth.SchemeInfo{"authorizeUrl": config.AuthCodeURL(""), "port": s.CallbackPort}, nil
+	config.RedirectURL = "__redirect_url__"
+	return auth.SchemeInfo{"authorizeUrl": config.AuthCodeURL(""), "port": strconv.Itoa(s.CallbackPort)}, nil
 }
 
 func (s *OAuthScheme) Parse(infoResponse *http.Response) (string, error) {

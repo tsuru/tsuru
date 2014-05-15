@@ -5,14 +5,15 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/tsuru/tsuru/exec"
 	"io/ioutil"
 	"net"
 	"net/http"
-	"net/url"
 	"runtime"
+	"strings"
 )
 
 var execut exec.Executor
@@ -42,7 +43,7 @@ func port() string {
 		data := info["data"].(map[string]interface{})
 		p := data["port"].(string)
 		if p != "" {
-			return p
+			return fmt.Sprintf(":%s", p)
 		}
 	}
 	return ":0"
@@ -60,15 +61,18 @@ func callback(redirectUrl string, finish chan bool) http.HandlerFunc {
 		defer func() {
 			finish <- true
 		}()
-		params := url.Values{
-			"code":        {"qwert"},
-			"redirectUrl": {redirectUrl},
-		}
+		code := r.URL.Query().Get("code")
+		params := map[string]string{"code": code, "redirectUrl": redirectUrl}
 		u, err := GetURL("/auth/login")
 		if err != nil {
 			return
 		}
-		resp, err := http.PostForm(u, params)
+		var buf bytes.Buffer
+		err = json.NewEncoder(&buf).Encode(params)
+		if err != nil {
+			return
+		}
+		resp, err := http.Post(u, "application/json", &buf)
 		if err != nil {
 			return
 		}
@@ -83,6 +87,8 @@ func callback(redirectUrl string, finish chan bool) http.HandlerFunc {
 			return
 		}
 		writeToken(data["token"].(string))
+		w.Header().Add("Content-Type", "text/html")
+		w.Write([]byte("<html><head><script>window.close();</script></head></html>"))
 	}
 }
 
@@ -93,11 +99,12 @@ func startServerAndOpenBrowser() {
 		return
 	}
 	_, port, _ := net.SplitHostPort(l.Addr().String())
-	redirectUrl := fmt.Sprintf(authorizeUrl(), fmt.Sprintf("http://localhost:%s", port))
+	redirectUrl := fmt.Sprintf("http://localhost:%s", port)
+	authUrl := strings.Replace(authorizeUrl(), "__redirect_url__", redirectUrl, 1)
 	http.HandleFunc("/", callback(redirectUrl, finish))
 	server := &http.Server{}
 	go server.Serve(l)
-	open(redirectUrl)
+	open(authUrl)
 	<-finish
 }
 

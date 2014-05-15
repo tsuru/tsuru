@@ -25,7 +25,7 @@ func (s *S) TestAuthorizeUrl(c *gocheck.C) {
 func (s *S) TestPort(c *gocheck.C) {
 	c.Assert(":0", gocheck.Equals, port())
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"name": "oauth", "data": {"port": ":4242"}}`))
+		w.Write([]byte(`{"name": "oauth", "data": {"port": "4242"}}`))
 	}))
 	defer ts.Close()
 	writeTarget(ts.URL)
