@@ -92,13 +92,16 @@ func callback(redirectUrl string, finish chan bool) http.HandlerFunc {
 	}
 }
 
-func startServerAndOpenBrowser() {
+func oauthLogin(context *Context, client *Client) error {
 	finish := make(chan bool)
-	l, e := net.Listen("tcp", port())
-	if e != nil {
-		return
+	l, err := net.Listen("tcp", port())
+	if err != nil {
+		return err
 	}
-	_, port, _ := net.SplitHostPort(l.Addr().String())
+	_, port, err := net.SplitHostPort(l.Addr().String())
+	if err != nil {
+		return err
+	}
 	redirectUrl := fmt.Sprintf("http://localhost:%s", port)
 	authUrl := strings.Replace(authorizeUrl(), "__redirect_url__", redirectUrl, 1)
 	http.HandleFunc("/", callback(redirectUrl, finish))
@@ -106,9 +109,5 @@ func startServerAndOpenBrowser() {
 	go server.Serve(l)
 	open(authUrl)
 	<-finish
-}
-
-func oauthLogin(context *Context, client *Client) error {
-	startServerAndOpenBrowser()
 	return nil
 }
