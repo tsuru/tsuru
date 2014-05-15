@@ -7,7 +7,6 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
@@ -16,7 +15,6 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
-	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/rec"
 	"github.com/tsuru/tsuru/repository"
 	"io"
@@ -56,10 +54,6 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 	err := json.NewDecoder(r.Body).Decode(&u)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
-	}
-	u.Quota = quota.Unlimited
-	if limit, err := config.GetInt("quota:apps-per-user"); err == nil && limit > -1 {
-		u.Quota.Limit = limit
 	}
 	_, err = managed.Create(&u)
 	if err != nil {

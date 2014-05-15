@@ -56,6 +56,12 @@ func (u *User) Create() error {
 	if err != nil {
 		return err
 	}
+	if u.Quota.Limit == 0 {
+		u.Quota = quota.Unlimited
+		if limit, err := config.GetInt("quota:apps-per-user"); err == nil && limit > -1 {
+			u.Quota.Limit = limit
+		}
+	}
 	defer conn.Close()
 	return conn.Users().Insert(u)
 }
