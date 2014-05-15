@@ -16,11 +16,9 @@ const (
 )
 
 func buildManager(name string) *cmd.Manager {
-	lookup := func(m *cmd.Manager, args []string) error {
-		context := cmd.Context{Args: args}
-		client := cmd.NewClient(nil, nil, m)
+	lookup := func(context *cmd.Context) error {
 		command := plugin{}
-		return command.Run(&context, client)
+		return command.Run(context, nil)
 	}
 	m := cmd.BuildBaseManager(name, version, header, lookup)
 	m.Register(&tsuru.AppRun{})
