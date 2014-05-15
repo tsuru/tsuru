@@ -18,6 +18,23 @@ import (
 
 var execut exec.Executor
 
+const callbackPage = `
+<html>
+<head>
+	<script>window.close();</script>
+	<style>
+	body {
+		text-align: center;
+	}
+	</style>
+</head>
+<body>
+	<h1>Login Successful!</h1>
+	<p>You can close this window now.</p>
+</body>
+</html>
+`
+
 func executor() exec.Executor {
 	if execut == nil {
 		execut = exec.OsExecutor{}
@@ -88,7 +105,7 @@ func callback(redirectUrl string, finish chan bool) http.HandlerFunc {
 		}
 		writeToken(data["token"].(string))
 		w.Header().Add("Content-Type", "text/html")
-		w.Write([]byte("<html><head><script>window.close();</script></head></html>"))
+		w.Write([]byte(callbackPage))
 	}
 }
 
