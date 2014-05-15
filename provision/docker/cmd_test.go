@@ -24,6 +24,7 @@ func (s *CmdSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "docker_scheduler_tests")
 	config.Set("docker:collection", "docker_unit_tests")
+	config.Set("docker:segregate", true)
 	s.storage, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
 }

@@ -14,8 +14,8 @@ func (addNodeToSchedulerCmd) Info() *cmd.Info {
 }
 
 func (addNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
-	var scheduler segregatedScheduler
-	err := scheduler.Register(map[string]string{"ID": ctx.Args[0], "address": ctx.Args[1], "pool": ctx.Args[2]})
+	cluster := dockerCluster()
+	err := cluster.Register(map[string]string{"ID": ctx.Args[0], "address": ctx.Args[1], "pool": ctx.Args[2]})
 	if err != nil {
 		return err
 	}
@@ -35,8 +35,8 @@ func (removeNodeFromSchedulerCmd) Info() *cmd.Info {
 }
 
 func (removeNodeFromSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
-	var scheduler segregatedScheduler
-	err := scheduler.Unregister(map[string]string{"pool": ctx.Args[0], "address": ctx.Args[1]})
+	cluster := dockerCluster()
+	err := cluster.Unregister(map[string]string{"pool": ctx.Args[0], "address": ctx.Args[1]})
 	if err != nil {
 		return err
 	}
