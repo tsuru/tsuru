@@ -23,6 +23,16 @@ func navitveScheme() {
 	os.Setenv("TSURU_AUTH_SCHEME", "")
 }
 
+func (s *S) TestLoginInfo(c *gocheck.C) {
+	expected := &Info{
+		Name:    "login",
+		Usage:   "login [<email>]",
+		Desc:    "log in with your credentials.",
+		MinArgs: 0,
+	}
+	c.Assert((&login{}).Info(), gocheck.DeepEquals, expected)
+}
+
 func (s *S) TestNativeLogin(c *gocheck.C) {
 	navitveScheme()
 	fsystem = &testing.RecordingFs{FileContent: "old-token"}
