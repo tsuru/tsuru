@@ -111,18 +111,18 @@ func (s *S) TestRegisterTopicMultiple(c *gocheck.C) {
 }
 
 func (s *S) TestCustomLookup(c *gocheck.C) {
-	lookup := func(m *Manager, args []string) error {
-		fmt.Fprintf(m.stdout, "teste")
+	lookup := func(ctx *Context) error {
+		fmt.Fprintf(ctx.Stdout, "test")
 		return nil
 	}
 	var stdout, stderr bytes.Buffer
 	manager := NewManager("glb", "0.x", "Foo-Tsuru", &stdout, &stderr, os.Stdin, lookup)
 	manager.Run([]string{"custom"})
-	c.Assert(stdout.String(), gocheck.Equals, "teste")
+	c.Assert(stdout.String(), gocheck.Equals, "test")
 }
 
 func (s *S) TestCustomLookupNotFound(c *gocheck.C) {
-	lookup := func(m *Manager, args []string) error {
+	lookup := func(ctx *Context) error {
 		return os.ErrNotExist
 	}
 	var stdout, stderr bytes.Buffer

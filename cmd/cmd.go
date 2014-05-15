@@ -27,7 +27,7 @@ func (e osExiter) Exit(code int) {
 	os.Exit(code)
 }
 
-type Lookup func(m *Manager, args []string) error
+type Lookup func(context *Context) error
 
 type Manager struct {
 	Commands      map[string]Command
@@ -105,7 +105,8 @@ func (m *Manager) Run(args []string) {
 	command, ok := m.Commands[name]
 	if !ok {
 		if m.lookup != nil {
-			err := m.lookup(m, args)
+			context := Context{args, m.stdout, m.stderr, m.stdin}
+			err := m.lookup(&context)
 			if err != nil {
 				msg := ""
 				if os.IsNotExist(err) {
