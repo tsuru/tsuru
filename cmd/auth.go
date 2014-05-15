@@ -149,11 +149,17 @@ func (c *login) Run(context *Context, client *Client) error {
 }
 
 func (c *login) Info() *Info {
+	args := 1
+	usage := "login <email>"
+	if scheme() == "oauth" {
+		usage = "login"
+		args = 0
+	}
 	return &Info{
 		Name:    "login",
-		Usage:   "login [<email>]",
+		Usage:   usage,
 		Desc:    "log in with your credentials.",
-		MinArgs: 0,
+		MinArgs: args,
 	}
 }
 

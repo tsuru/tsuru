@@ -26,7 +26,19 @@ func navitveScheme() {
 func (s *S) TestLoginInfo(c *gocheck.C) {
 	expected := &Info{
 		Name:    "login",
-		Usage:   "login [<email>]",
+		Usage:   "login <email>",
+		Desc:    "log in with your credentials.",
+		MinArgs: 1,
+	}
+	c.Assert((&login{}).Info(), gocheck.DeepEquals, expected)
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"name": "oauth", "data": {}}`))
+	}))
+	defer ts.Close()
+	writeTarget(ts.URL)
+	expected = &Info{
+		Name:    "login",
+		Usage:   "login",
 		Desc:    "log in with your credentials.",
 		MinArgs: 0,
 	}
