@@ -318,7 +318,7 @@ func (s *SchedulerSuite) TestChooseNodeDistributesNodesEqually(c *gocheck.C) {
 			err := contColl.Insert(cont)
 			c.Assert(err, gocheck.IsNil)
 			var s segregatedScheduler
-			node, err := s.chooseNode(nodes, cont.Name)
+			node, err := s.chooseNode(nodes, cont.Name, "coolapp9")
 			c.Assert(err, gocheck.IsNil)
 			c.Assert(node, gocheck.NotNil)
 		}(i)

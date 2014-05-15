@@ -45,7 +45,7 @@ func (s segregatedScheduler) Schedule(opts docker.CreateContainerOptions, schedu
 	if err != nil {
 		return cluster.Node{}, err
 	}
-	node, err := s.chooseNode(nodes, opts.Name)
+	node, err := s.chooseNode(nodes, opts.Name, appName)
 	if err != nil {
 		return cluster.Node{}, err
 	}
@@ -59,13 +59,13 @@ type nodeAggregate struct {
 
 var hostMutex sync.Mutex
 
-// aggregateNodesByHost aggregates and counts how many containers
-// exist for each host already on the database.
-func aggregateNodesByHost(hosts []string) (map[string]int, error) {
+// aggregateNodesBy aggregates and counts how many containers
+// exist each node that matches received filters
+func aggregateNodesBy(matcher bson.M) (map[string]int, error) {
 	coll := collection()
 	defer coll.Close()
 	pipe := coll.Pipe([]bson.M{
-		{"$match": bson.M{"hostaddr": bson.M{"$in": hosts}}},
+		matcher,
 		{"$group": bson.M{"_id": "$hostaddr", "count": bson.M{"$sum": 1}}},
 	})
 	var results []nodeAggregate
@@ -80,9 +80,17 @@ func aggregateNodesByHost(hosts []string) (map[string]int, error) {
 	return countMap, nil
 }
 
+func aggregateNodesByHost(hosts []string) (map[string]int, error) {
+	return aggregateNodesBy(bson.M{"$match": bson.M{"hostaddr": bson.M{"$in": hosts}}})
+}
+
+func aggregateNodesByHostApp(hosts []string, appName string) (map[string]int, error) {
+	return aggregateNodesBy(bson.M{"$match": bson.M{"appname": appName, "hostaddr": bson.M{"$in": hosts}}})
+}
+
 // chooseNode finds which is the node with the minimum number
 // of containers and returns it
-func (segregatedScheduler) chooseNode(nodes []string, contName string) (string, error) {
+func (segregatedScheduler) chooseNode(nodes []string, contName string, appName string) (string, error) {
 	var chosenNode string
 	hosts := make([]string, len(nodes))
 	hostsMap := make(map[string]string)
@@ -96,17 +104,22 @@ func (segregatedScheduler) chooseNode(nodes []string, contName string) (string, 
 	log.Debugf("[scheduler] Possible nodes for container %s: %#v", contName, hosts)
 	hostMutex.Lock()
 	defer hostMutex.Unlock()
-	countMap, err := aggregateNodesByHost(hosts)
+	hostCountMap, err := aggregateNodesByHost(hosts)
 	if err != nil {
 		return chosenNode, err
 	}
-	// Finally finding the host with the minimum amount of containers.
+	appCountMap, err := aggregateNodesByHostApp(hosts, appName)
+	if err != nil {
+		return chosenNode, err
+	}
+	// Finally finding the host with the minimum value for
+	// the pair [appCount, hostCount]
 	var minHost string
 	minCount := math.MaxInt32
 	for _, host := range hosts {
-		count := countMap[host]
-		if count < minCount {
-			minCount = count
+		adjCount := appCountMap[host]*10000 + hostCountMap[host]
+		if adjCount < minCount {
+			minCount = adjCount
 			minHost = host
 		}
 	}
