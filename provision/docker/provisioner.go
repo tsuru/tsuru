@@ -356,14 +356,6 @@ func (p *dockerProvisioner) UnsetCName(app provision.App, cname string) error {
 
 func (p *dockerProvisioner) Commands() []cmd.Command {
 	return []cmd.Command{
-		addNodeToSchedulerCmd{},
-		removeNodeFromSchedulerCmd{},
-		listNodesInTheSchedulerCmd{},
-		addPoolToSchedulerCmd{},
-		removePoolFromSchedulerCmd{},
-		listPoolsInTheSchedulerCmd{},
-		addTeamsToPoolCmd{},
-		removeTeamsFromPoolCmd{},
 		&sshAgentCmd{},
 	}
 }
@@ -373,6 +365,14 @@ func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 		&moveContainerCmd{},
 		&moveContainersCmd{},
 		&rebalanceContainersCmd{},
+		addNodeToSchedulerCmd{},
+		removeNodeFromSchedulerCmd{},
+		listNodesInTheSchedulerCmd{},
+		addPoolToSchedulerCmd{},
+		removePoolFromSchedulerCmd{},
+		listPoolsInTheSchedulerCmd{},
+		addTeamsToPoolCmd{},
+		removeTeamsFromPoolCmd{},
 	}
 }
 
