@@ -71,8 +71,7 @@ func (s *S) TestCallbackHandler(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	handler(recorder, request)
 	c.Assert(<-finish, gocheck.Equals, true)
-	expected := "<html><head><script>window.close();</script></head></html>"
-	c.Assert(expected, gocheck.Equals, recorder.Body.String())
+	c.Assert(callbackPage, gocheck.Equals, recorder.Body.String())
 	file, err := rfs.Open(JoinWithUserDir(".tsuru_token"))
 	c.Assert(err, gocheck.IsNil)
 	data, err := ioutil.ReadAll(file)
