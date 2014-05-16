@@ -343,7 +343,50 @@ func (s *SchedulerSuite) TestChooseNodeDistributesNodesEqually(c *gocheck.C) {
 	n, err = contColl.Find(bson.M{"hostaddr": "server4"}).Count()
 	c.Assert(err, gocheck.Equals, nil)
 	c.Check(n, gocheck.Equals, unitsPerNode)
+}
 
+func (s *SchedulerSuite) TestChooseNodeDistributesNodesEquallyDifferentApps(c *gocheck.C) {
+	nodes := []string{
+		"http://server1:1234",
+		"http://server2:1234",
+	}
+	contColl := collection()
+	defer contColl.RemoveAll(bson.M{"appname": "skyrim"})
+	defer contColl.RemoveAll(bson.M{"appname": "oblivion"})
+	cont1 := container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "server1"}
+	err := contColl.Insert(cont1)
+	c.Assert(err, gocheck.Equals, nil)
+	cont2 := container{ID: "pre2", Name: "existingUnit2", AppName: "skyrim", HostAddr: "server1"}
+	err = contColl.Insert(cont2)
+	c.Assert(err, gocheck.Equals, nil)
+	numberOfUnits := 2
+	wg := sync.WaitGroup{}
+	wg.Add(numberOfUnits)
+	for i := 0; i < numberOfUnits; i++ {
+		go func(i int) {
+			defer wg.Done()
+			cont := container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "oblivion"}
+			err := contColl.Insert(cont)
+			c.Assert(err, gocheck.IsNil)
+			var s segregatedScheduler
+			node, err := s.chooseNode(nodes, cont.Name, "oblivion")
+			c.Assert(err, gocheck.IsNil)
+			c.Assert(node, gocheck.NotNil)
+		}(i)
+	}
+	wg.Wait()
+	n, err := contColl.Find(bson.M{"hostaddr": "server1"}).Count()
+	c.Assert(err, gocheck.Equals, nil)
+	c.Check(n, gocheck.Equals, 3)
+	n, err = contColl.Find(bson.M{"hostaddr": "server2"}).Count()
+	c.Assert(err, gocheck.Equals, nil)
+	c.Check(n, gocheck.Equals, 1)
+	n, err = contColl.Find(bson.M{"hostaddr": "server1", "appname": "oblivion"}).Count()
+	c.Assert(err, gocheck.Equals, nil)
+	c.Check(n, gocheck.Equals, 1)
+	n, err = contColl.Find(bson.M{"hostaddr": "server2", "appname": "oblivion"}).Count()
+	c.Assert(err, gocheck.Equals, nil)
+	c.Check(n, gocheck.Equals, 1)
 }
 
 func (s *SchedulerSuite) TestAddPoolToSchedulerCmdInfo(c *gocheck.C) {
