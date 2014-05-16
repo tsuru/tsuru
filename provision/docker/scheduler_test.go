@@ -247,6 +247,13 @@ func (s *SchedulerSuite) TestAddNodeDuplicated(c *gocheck.C) {
 	c.Assert(err, gocheck.Equals, errNodeAlreadyRegister)
 }
 
+func (s *SchedulerSuite) TestAddNodeWithoutPoolNameError(c *gocheck.C) {
+	var scheduler segregatedScheduler
+	err := scheduler.Register(map[string]string{"address": "http://localhost:1234"})
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Pool name is required.")
+}
+
 func (s *SchedulerSuite) TestRemoveNodeFromScheduler(c *gocheck.C) {
 	coll := s.storage.Collection(schedulerCollection)
 	err := coll.Insert(Pool{Name: "pool1"})
