@@ -6,8 +6,6 @@ package main
 
 import (
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
 	tTesting "github.com/tsuru/tsuru/testing"
@@ -23,7 +21,6 @@ var _ = gocheck.Suite(&S{})
 func Test(t *testing.T) { gocheck.TestingT(t) }
 
 func (s *S) SetUpSuite(c *gocheck.C) {
-	app.AuthScheme = native.NativeScheme{}
 	config.ReadConfigFile("testdata/tsuru.conf")
 }
 

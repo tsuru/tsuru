@@ -6,13 +6,25 @@ package main
 
 import (
 	"fmt"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/auth"
+	_ "github.com/tsuru/tsuru/auth/native"
+	_ "github.com/tsuru/tsuru/auth/oauth"
 	"github.com/tsuru/tsuru/cmd"
 )
 
 type tokenCmd struct{}
 
 func (tokenCmd) Run(context *cmd.Context, client *cmd.Client) error {
+	scheme, err := config.GetString("auth:scheme")
+	if err != nil {
+		scheme = "native"
+	}
+	app.AuthScheme, err = auth.GetScheme(scheme)
+	if err != nil {
+		return err
+	}
 	t, err := app.AuthScheme.AppLogin("tsr")
 	if err != nil {
 		return err
