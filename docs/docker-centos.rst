@@ -21,7 +21,7 @@ You can integrate any DNS server with tsuru. Here: `<http://docs.tsuru.io/en/lat
 Docker
 ------
 
-To make docker working on a RHEL/Centos distro, you will need to use the `EPEL repository <http://fedoraproject.org/wiki/EPEL>`_, build a kernel with `AUFS <http://aufs.sourceforge.net/>`_ support, and install all dependencies as following: 
+To make docker working on a RHEL/Centos distro, you will need to use the `EPEL repository <http://fedoraproject.org/wiki/EPEL>`_, build a kernel with `AUFS <http://aufs.sourceforge.net/>`_ support, and install all dependencies as following:
 
 .. highlight:: bash
 
@@ -50,7 +50,7 @@ To Compile, just follow these steps
 
 ::
 
-    # Download the kernel + dependencies for docker 
+    # Download the kernel + dependencies for docker
     $ yum install fedora-packager -y
     # you will need to perform these steps bellow with a unprivileged user, ex: su - tsuru
     $ git clone https://github.com/sciurus/docker-rhel-rpm
@@ -76,7 +76,7 @@ Now, just follow the steps to build the kernel + lxc + docker from `here: https:
     $ chkconfig iptables off
 
 
-After build, install and reboot the server with the new kernel(it will take some time), you will need to install the tsuru's dependencies 
+After build, install and reboot the server with the new kernel(it will take some time), you will need to install the tsuru's dependencies
 
 
 tsuru's Dependencies
@@ -89,7 +89,7 @@ Install the latest EPEL version, by doing this:
 
 ::
 
-    $ yum install mongodb-server beanstalkd git-daemon redis python-pip python-devel gcc gcc-c++ -y 
+    $ yum install mongodb-server beanstalkd git-daemon redis python-pip python-devel gcc gcc-c++ -y
     $ service mongod start
     $ service beanstalkd start
     $ service redis start
@@ -122,7 +122,7 @@ the configuration file in the ``/etc/tsuru/tsuru.conf`` path. You can check a
 sample configuration file and documentation for each tsuru setting in the
 :doc:`"Configuring tsuru" </config>` page.
 
-You can download the sample configuration file from `Github <https://raw.github.com/tsuru/tsuru/master/etc/tsuru-docker.conf/>`_ 
+You can download the sample configuration file from `Github <https://raw.github.com/tsuru/tsuru/master/etc/tsuru-docker.conf/>`_
 
 By default, this configuration will use the tsuru image namespace, so if you try to create an application using python platform,
 tsuru will search for an image named tsuru/python. You can change this default behavior by changing the docker:repository-namespace config field.
@@ -163,14 +163,14 @@ Now it's time to install the docker images for your neededs platform. You can bu
 
 ::
 
-    # Add an alias for docker to make your life easier (add it to your .bash_profile) 
+    # Add an alias for docker to make your life easier (add it to your .bash_profile)
     $ alias docker='docker -H 127.0.0.1:4243'
     # Build the wanted platform, here we are adding the static platform(webserver)
-    $ docker build -t tsuru/static https://raw.github.com/flaviamissi/basebuilder/master/static/Dockerfile
+    $ docker build -t tsuru/static https://raw.github.com/tsuru/basebuilder/master/static/Dockerfile
     # Now you can see if your image is ready - you should see the tsuru/static as an repository
     $ docker images
     # If you want all the other platforms, just run the command bellow
-    $ for image in nodejs php python ruby; do docker build -t tsuru/$image https://raw.github.com/flaviamissi/basebuilder/master/$image/Dockerfile;done 
+    $ for image in nodejs php python ruby; do docker build -t tsuru/$image https://raw.github.com/tsuru/basebuilder/master/$image/Dockerfile;done
     # To see if everything went well - just take a look in the repository column
     $ docker images
     # Now try to create your apps!

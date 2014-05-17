@@ -145,13 +145,13 @@ Installing platforms
     curl https://raw.githubusercontent.com/tsuru/tsuru/master/misc/platforms-setup.js | mongo tsuru
 
 And then install your preferred platform from `basebuilder
-<https://github.com/flaviamissi/basebuilder>`_. For example, Python:
+<https://github.com/tsuru/basebuilder>`_. For example, Python:
 
 .. highlight:: bash
 
 ::
 
-    docker build --no-cache -t tsuru/python https://raw.githubusercontent.com/flaviamissi/basebuilder/master/python/Dockerfile
+    docker build --no-cache -t tsuru/python https://raw.githubusercontent.com/tsuru/basebuilder/master/python/Dockerfile
 
 Replace Python with the desired platform (check basebuilder for a list of
 available platforms).

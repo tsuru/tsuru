@@ -20,7 +20,7 @@ Platforms Extensibility
 -----------------------
 
 One of tsuru main goals is to be easily extensible. The platform is one great example of accomplishment on that.
-tsuru platforms works slightly different for each provisioner. `Juju <https://juju.ubuntu.com/>`_ use `charms` for platform provisioning you can find the scripts on our `charms repository <https://github.com/globocom/charms>`_. The `Docker <http://www.docker.io/>`_ provisioner is a bit different, it has an specific image for each platform, if one wants to create a new platform, just extend tsuru/base image and follow the directory tree structure, the scripts and Dockerfile for our existing platforms images can be found on our `images repository <https://github.com/flaviamissi/basebuilder>`_
+tsuru platforms works slightly different for each provisioner. `Juju <https://juju.ubuntu.com/>`_ use `charms` for platform provisioning you can find the scripts on our `charms repository <https://github.com/globocom/charms>`_. The `Docker <http://www.docker.io/>`_ provisioner is a bit different, it has an specific image for each platform, if one wants to create a new platform, just extend tsuru/base image and follow the directory tree structure, the scripts and Dockerfile for our existing platforms images can be found on our `images repository <https://github.com/tsuru/basebuilder>`_
 
 Services Creation and Extension
 -------------------------------
