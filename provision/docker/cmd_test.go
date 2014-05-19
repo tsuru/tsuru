@@ -6,36 +6,13 @@ package docker
 
 import (
 	"bytes"
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/testing"
-	"github.com/tsuru/tsuru/db"
 	"launchpad.net/gocheck"
 	"net/http"
 )
 
-type CmdSuite struct {
-	storage *db.Storage
-}
-
-var _ = gocheck.Suite(&CmdSuite{})
-
-func (s *CmdSuite) SetUpSuite(c *gocheck.C) {
-	var err error
-	config.Set("database:url", "127.0.0.1:27017")
-	config.Set("database:name", "docker_scheduler_tests")
-	config.Set("docker:collection", "docker_unit_tests")
-	config.Set("docker:segregate", true)
-	s.storage, err = db.Conn()
-	c.Assert(err, gocheck.IsNil)
-}
-
-func (s *CmdSuite) TearDownSuite(c *gocheck.C) {
-	s.storage.Apps().Database.DropDatabase()
-	s.storage.Close()
-}
-
-func (s *CmdSuite) TestAddNodeToTheSchedulerCmdInfo(c *gocheck.C) {
+func (s *S) TestAddNodeToTheSchedulerCmdInfo(c *gocheck.C) {
 	expected := cmd.Info{
 		Name:    "docker-node-add",
 		Usage:   "docker-node-add <pool> <address>",
@@ -46,7 +23,7 @@ func (s *CmdSuite) TestAddNodeToTheSchedulerCmdInfo(c *gocheck.C) {
 	c.Assert(cmd.Info(), gocheck.DeepEquals, &expected)
 }
 
-func (s *CmdSuite) TestAddNodeToTheSchedulerCmdRun(c *gocheck.C) {
+func (s *S) TestAddNodeToTheSchedulerCmdRun(c *gocheck.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Args: []string{"poolTest", "http://localhost:8080"}, Stdout: &buf}
 	trans := &testing.ConditionalTransport{
@@ -63,7 +40,7 @@ func (s *CmdSuite) TestAddNodeToTheSchedulerCmdRun(c *gocheck.C) {
 	c.Assert(buf.String(), gocheck.Equals, "Node successfully registered.\n")
 }
 
-func (s *CmdSuite) TestRemoveNodeFromTheSchedulerCmdInfo(c *gocheck.C) {
+func (s *S) TestRemoveNodeFromTheSchedulerCmdInfo(c *gocheck.C) {
 	expected := cmd.Info{
 		Name:    "docker-node-remove",
 		Usage:   "docker-node-remove <pool> <address>",
@@ -74,7 +51,7 @@ func (s *CmdSuite) TestRemoveNodeFromTheSchedulerCmdInfo(c *gocheck.C) {
 	c.Assert(cmd.Info(), gocheck.DeepEquals, &expected)
 }
 
-func (s *CmdSuite) TestRemoveNodeFromTheSchedulerCmdRun(c *gocheck.C) {
+func (s *S) TestRemoveNodeFromTheSchedulerCmdRun(c *gocheck.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Args: []string{"pool1", "http://localhost:8080"}, Stdout: &buf}
 	trans := &testing.ConditionalTransport{
@@ -91,7 +68,7 @@ func (s *CmdSuite) TestRemoveNodeFromTheSchedulerCmdRun(c *gocheck.C) {
 	c.Assert(buf.String(), gocheck.Equals, "Node successfully removed.\n")
 }
 
-func (s *CmdSuite) TestListNodesInTheSchedulerCmdInfo(c *gocheck.C) {
+func (s *S) TestListNodesInTheSchedulerCmdInfo(c *gocheck.C) {
 	expected := cmd.Info{
 		Name:  "docker-node-list",
 		Usage: "docker-node-list",
@@ -101,7 +78,7 @@ func (s *CmdSuite) TestListNodesInTheSchedulerCmdInfo(c *gocheck.C) {
 	c.Assert(cmd.Info(), gocheck.DeepEquals, &expected)
 }
 
-func (s *CmdSuite) TestListNodesInTheSchedulerCmdRun(c *gocheck.C) {
+func (s *S) TestListNodesInTheSchedulerCmdRun(c *gocheck.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Stdout: &buf}
 	trans := &testing.ConditionalTransport{
