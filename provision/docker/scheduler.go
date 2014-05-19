@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
+	"io/ioutil"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"math"
@@ -374,24 +375,30 @@ type listPoolsInTheSchedulerCmd struct{}
 
 func (listPoolsInTheSchedulerCmd) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:  "docker-list-pools",
-		Usage: "docker-list-pools",
+		Name:  "docker-pool-list",
+		Usage: "docker-pool-list",
 		Desc:  "List available pools in the cluster",
 	}
 }
 
 func (listPoolsInTheSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
 	t := cmd.Table{Headers: cmd.Row([]string{"Pools", "Nodes", "Teams"})}
-	conn, err := db.Conn()
+	url, err := cmd.GetURL("/pool")
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
 	var pools []Pool
-	err = conn.Collection(schedulerCollection).Find(nil).All(&pools)
-	if err != nil {
-		return err
-	}
+	err = json.Unmarshal(body, &pools)
 	for _, p := range pools {
 		t.AddRow(cmd.Row([]string{p.Name, strings.Join(p.Nodes, ", "), strings.Join(p.Teams, ", ")}))
 	}

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/tsuru/tsuru/api"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/db"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -23,6 +24,7 @@ func init() {
 	api.RegisterAdminHandler("/container/:id/move", "POST", api.Handler(moveContainerHandler))
 	api.RegisterAdminHandler("/containers/move", "POST", api.Handler(moveContainersHandler))
 	api.RegisterAdminHandler("/containers/rebalance", "POST", api.Handler(rebalanceContainersHandler))
+	api.RegisterHandler("/pool", "GET", api.AdminRequiredHandler(listPoolHandler))
 	api.RegisterHandler("/pool/add", "POST", api.AdminRequiredHandler(addPoolHandler))
 	api.RegisterHandler("/pool/remove", "DELETE", api.AdminRequiredHandler(removePoolHandler))
 }
@@ -144,6 +146,22 @@ func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	}
 	var segScheduler segregatedScheduler
 	return segScheduler.removePool(params["pool"])
+}
+
+//listNodeHandler call scheduler.Nodes to list all nodes into it.
+func listPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	var pools []Pool
+	err = conn.Collection(schedulerCollection).Find(nil).All(&pools)
+	println(pools)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(pools)
 }
 
 func unmarshal(body io.ReadCloser) (map[string]string, error) {
