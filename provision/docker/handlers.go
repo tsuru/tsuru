@@ -43,6 +43,15 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	return dockerCluster().Unregister(params)
 }
 
+//listNodeHandler call scheduler.Nodes to list all nodes into it.
+func listNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	nodeList, err := dockerCluster().Nodes()
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(nodeList)
+}
+
 func moveContainerHandler(w http.ResponseWriter, r *http.Request) error {
 	params, err := unmarshal(r.Body)
 	if err != nil {
@@ -97,15 +106,6 @@ func rebalanceContainersHandler(w http.ResponseWriter, r *http.Request) error {
 		logProgress(encoder, "Containers rebalanced successfully!")
 	}
 	return nil
-}
-
-//listNodeHandler call scheduler.Nodes to list all nodes into it.
-func listNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	nodeList, err := dockerCluster().Nodes()
-	if err != nil {
-		return err
-	}
-	return json.NewEncoder(w).Encode(nodeList)
 }
 
 //listContainersHandler call scheduler.Containers to list all containers into it.
