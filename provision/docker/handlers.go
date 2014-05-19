@@ -18,15 +18,15 @@ func init() {
 	api.RegisterHandler("/node", "GET", api.AdminRequiredHandler(listNodeHandler))
 	api.RegisterHandler("/node/apps/:appname/containers", "GET", api.AdminRequiredHandler(listContainersHandler))
 	api.RegisterHandler("/node/:address/containers", "GET", api.AdminRequiredHandler(listContainersHandler))
-	api.RegisterAdminHandler("/node/add", "POST", api.Handler(addNodeHandler))
-	api.RegisterAdminHandler("/node/remove", "DELETE", api.Handler(removeNodeHandler))
+	api.RegisterHandler("/node/add", "POST", api.AdminRequiredHandler(addNodeHandler))
+	api.RegisterHandler("/node/remove", "DELETE", api.AdminRequiredHandler(removeNodeHandler))
 	api.RegisterAdminHandler("/container/:id/move", "POST", api.Handler(moveContainerHandler))
 	api.RegisterAdminHandler("/containers/move", "POST", api.Handler(moveContainersHandler))
 	api.RegisterAdminHandler("/containers/rebalance", "POST", api.Handler(rebalanceContainersHandler))
 }
 
 // addNodeHandler calls scheduler.Register to registering a node into it.
-func addNodeHandler(w http.ResponseWriter, r *http.Request) error {
+func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	params, err := unmarshal(r.Body)
 	if err != nil {
 		return err
@@ -35,7 +35,7 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request) error {
 }
 
 // removeNodeHandler calls scheduler.Unregister to unregistering a node into it.
-func removeNodeHandler(w http.ResponseWriter, r *http.Request) error {
+func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	params, err := unmarshal(r.Body)
 	if err != nil {
 		return err
