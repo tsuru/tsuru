@@ -342,16 +342,27 @@ type removePoolFromSchedulerCmd struct{}
 
 func (removePoolFromSchedulerCmd) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "docker-rm-pool",
-		Usage:   "docker-rm-pool <pool>",
+		Name:    "docker-pool-remove",
+		Usage:   "docker-pool-remove <pool>",
 		Desc:    "Remove a pool to cluster",
 		MinArgs: 1,
 	}
 }
 
 func (removePoolFromSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
-	var segScheduler segregatedScheduler
-	err := segScheduler.removePool(ctx.Args[0])
+	b, err := json.Marshal(map[string]string{"pool": ctx.Args[0]})
+	if err != nil {
+		return err
+	}
+	url, err := cmd.GetURL("/pool/remove")
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest("DELETE", url, bytes.NewBuffer(b))
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(req)
 	if err != nil {
 		return err
 	}
