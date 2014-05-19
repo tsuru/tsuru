@@ -31,8 +31,8 @@ func (p *platformAdd) Info() *cmd.Info {
 func (p *platformAdd) Run(context *cmd.Context, client *cmd.Client) error {
 	name := context.Args[0]
 	body := fmt.Sprintf("name=%s&dockerfile=%s", name, p.dockerfile)
-	url, err := cmd.GetURL("/platforms/add")
-	request, err := http.NewRequest("PUT", url, strings.NewReader(body))
+	url, err := cmd.GetURL("/platforms")
+	request, err := http.NewRequest("POST", url, strings.NewReader(body))
 	if err != nil {
 		return err
 	}
@@ -86,8 +86,8 @@ func (p *platformUpdate) Flags() *gnuflag.FlagSet {
 
 func (p *platformUpdate) Run(context *cmd.Context, client *cmd.Client) error {
 	name := context.Args[0]
-	body := fmt.Sprintf("name=%s&dockerfile=%s", name, p.dockerfile)
-	url, err := cmd.GetURL("/platforms/update")
+	body := fmt.Sprintf("a=1&dockerfile=%s", p.dockerfile)
+	url, err := cmd.GetURL("/platforms/" + name)
 	request, err := http.NewRequest("PUT", url, strings.NewReader(body))
 	if err != nil {
 		return err

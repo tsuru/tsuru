@@ -18,6 +18,10 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 
 func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	name := r.URL.Query().Get(":name")
+	err := r.ParseForm()
+	if err != nil {
+		return err
+	}
 	args := make(map[string]string)
 	for key, values := range r.Form {
 		args[key] = values[0]

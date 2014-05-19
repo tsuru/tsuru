@@ -36,7 +36,7 @@ func (s *S) TestPlatformAddRun(c *gocheck.C) {
 		Transport: testing.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			c.Assert(req.Header.Get("Content-Type"), gocheck.Equals, "application/x-www-form-urlencoded")
-			return req.URL.Path == "/platforms/add" && req.Method == "PUT"
+			return req.URL.Path == "/platforms" && req.Method == "POST"
 		},
 	}
 
@@ -96,19 +96,19 @@ func (s *S) TestPlatformUpdateFlagSet(c *gocheck.C) {
 
 func (s *S) TestPlatformUpdateRun(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
+	name := "teste"
 	context := cmd.Context{
 		Stdout: &stdout,
 		Stderr: &stderr,
-		Args:   []string{"teste"},
+		Args:   []string{name},
 	}
 	expected := "Platform successfully updated!\n"
 	trans := &testing.ConditionalTransport{
 		Transport: testing.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			c.Assert(req.Header.Get("Content-Type"), gocheck.Equals, "application/x-www-form-urlencoded")
-			c.Assert(req.FormValue("name"), gocheck.Equals, "teste")
 			c.Assert(req.FormValue("dockerfile"), gocheck.Equals, "http://localhost/Dockerfile")
-			return req.URL.Path == "/platforms/update" && req.Method == "PUT"
+			return req.URL.Path == "/platforms/"+name && req.Method == "PUT"
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)

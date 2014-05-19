@@ -114,7 +114,7 @@ func RunServer(dry bool) {
 	m.Get("/deploys", AdminRequiredHandler(deploysList))
 
 	m.Get("/platforms", authorizationRequiredHandler(platformList))
-	m.Post("/platforms/add", AdminRequiredHandler(platformAdd))
+	m.Post("/platforms", AdminRequiredHandler(platformAdd))
 	m.Put("/platforms/:name", AdminRequiredHandler(platformUpdate))
 
 	// These handlers don't use :app on purpose. Using :app means that only
