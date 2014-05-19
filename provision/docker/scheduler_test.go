@@ -12,9 +12,11 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
+	"github.com/tsuru/tsuru/cmd/testing"
 	"github.com/tsuru/tsuru/db"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
+	"net/http"
 	"sync"
 )
 
@@ -391,8 +393,8 @@ func (s *SchedulerSuite) TestChooseNodeDistributesNodesEquallyDifferentApps(c *g
 
 func (s *SchedulerSuite) TestAddPoolToSchedulerCmdInfo(c *gocheck.C) {
 	expected := cmd.Info{
-		Name:    "docker-add-pool",
-		Usage:   "docker-add-pool <pool>",
+		Name:    "docker-pool-add",
+		Usage:   "docker-pool-add <pool>",
 		Desc:    "Add a pool to cluster",
 		MinArgs: 1,
 	}
@@ -402,27 +404,18 @@ func (s *SchedulerSuite) TestAddPoolToSchedulerCmdInfo(c *gocheck.C) {
 
 func (s *SchedulerSuite) TestAddPoolToTheSchedulerCmd(c *gocheck.C) {
 	var buf bytes.Buffer
-	coll := s.storage.Collection(schedulerCollection)
-	defer coll.Remove(bson.M{"_id": "poolTest"})
 	context := cmd.Context{Args: []string{"poolTest"}, Stdout: &buf}
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: "", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Path == "/pool/add"
+		},
+	}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
 	cmd := addPoolToSchedulerCmd{}
-	err := cmd.Run(&context, nil)
+	err := cmd.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
-	p, err := coll.Find(bson.M{"_id": "poolTest"}).Count()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(p, gocheck.Equals, 1)
-}
-
-func (s *SchedulerSuite) TestAddPoolToTheSchedulerCmdFailure(c *gocheck.C) {
-	var buf bytes.Buffer
-	coll := s.storage.Collection(schedulerCollection)
-	defer coll.Remove(bson.M{"_id": "poolTest"})
-	context := cmd.Context{Args: []string{"poolTest"}, Stdout: &buf}
-	cmd := addPoolToSchedulerCmd{}
-	err := cmd.Run(&context, nil)
-	c.Assert(err, gocheck.IsNil)
-	err = cmd.Run(&context, nil)
-	c.Assert(err, gocheck.NotNil)
 }
 
 func (s *SchedulerSuite) TestRemovePoolFromSchedulerCmdInfo(c *gocheck.C) {

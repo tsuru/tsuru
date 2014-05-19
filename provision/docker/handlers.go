@@ -23,6 +23,7 @@ func init() {
 	api.RegisterAdminHandler("/container/:id/move", "POST", api.Handler(moveContainerHandler))
 	api.RegisterAdminHandler("/containers/move", "POST", api.Handler(moveContainersHandler))
 	api.RegisterAdminHandler("/containers/rebalance", "POST", api.Handler(rebalanceContainersHandler))
+	api.RegisterHandler("/pool/add", "POST", api.AdminRequiredHandler(addPoolHandler))
 }
 
 // addNodeHandler calls scheduler.Register to registering a node into it.
@@ -124,6 +125,15 @@ func listContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return err
 	}
 	return json.NewEncoder(w).Encode(containerList)
+}
+
+func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	params, err := unmarshal(r.Body)
+	if err != nil {
+		return err
+	}
+	var segScheduler segregatedScheduler
+	return segScheduler.addPool(params["pool"])
 }
 
 func unmarshal(body io.ReadCloser) (map[string]string, error) {

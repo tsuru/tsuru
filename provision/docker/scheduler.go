@@ -5,6 +5,8 @@
 package docker
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/docker-cluster/cluster"
@@ -15,6 +17,7 @@ import (
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"math"
+	"net/http"
 	"strings"
 	"sync"
 )
@@ -307,16 +310,27 @@ type addPoolToSchedulerCmd struct{}
 
 func (addPoolToSchedulerCmd) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "docker-add-pool",
-		Usage:   "docker-add-pool <pool>",
+		Name:    "docker-pool-add",
+		Usage:   "docker-pool-add <pool>",
 		Desc:    "Add a pool to cluster",
 		MinArgs: 1,
 	}
 }
 
 func (addPoolToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
-	var segScheduler segregatedScheduler
-	err := segScheduler.addPool(ctx.Args[0])
+	b, err := json.Marshal(map[string]string{"pool": ctx.Args[0]})
+	if err != nil {
+		return err
+	}
+	url, err := cmd.GetURL("/pool/add")
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(b))
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(req)
 	if err != nil {
 		return err
 	}
