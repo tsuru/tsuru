@@ -74,6 +74,9 @@ func PlatformUpdate(name string, args map[string]string, w io.Writer) error {
 		return err
 	}
 	err = Provisioner.PlatformUpdate(name, args, w)
+	if err != nil {
+		return err
+	}
 	var apps []App
 	err = conn.Apps().Find(bson.M{"framework": name}).All(&apps)
 	if err != nil {
