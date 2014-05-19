@@ -48,11 +48,11 @@ func (c *DBTokenCache) PutToken(t *goauth2.Token) error {
 	}
 	var email string
 	if t.Extra == nil || t.Extra["email"] == "" {
-		config, err := c.scheme.loadConfig()
+		conf, err := c.scheme.loadConfig()
 		if err != nil {
 			return err
 		}
-		transport := &goauth2.Transport{Config: &config}
+		transport := &goauth2.Transport{Config: &conf}
 		transport.Token = t
 		client := transport.Client()
 		response, err := client.Get(c.scheme.InfoUrl)
@@ -68,8 +68,16 @@ func (c *DBTokenCache) PutToken(t *goauth2.Token) error {
 			if err != auth.ErrUserNotFound {
 				return err
 			}
+			registrationEnabled, _ := config.GetBool("auth:user-registration")
+			if !registrationEnabled {
+				return err
+			}
 			user := auth.User{Email: email}
-			err = user.Create()
+			err := user.Create()
+			if err != nil {
+				return err
+			}
+			err = user.CreateOnGandalf()
 			if err != nil {
 				return err
 			}
@@ -212,4 +220,24 @@ func (s *OAuthScheme) Parse(infoResponse *http.Response) (string, error) {
 		return user.Email, err
 	}
 	return user.Email, nil
+}
+
+func (s *OAuthScheme) Create(user *auth.User) (*auth.User, error) {
+	err := user.Create()
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+func (s *OAuthScheme) Remove(token auth.Token) error {
+	u, err := token.User()
+	if err != nil {
+		return err
+	}
+	err = deleteAllTokens(u.Email)
+	if err != nil {
+		return err
+	}
+	return u.Delete()
 }

@@ -69,6 +69,13 @@ func deleteToken(token string) error {
 	return coll.Remove(bson.M{"token.accesstoken": token})
 }
 
+func deleteAllTokens(email string) error {
+	coll := collection()
+	defer coll.Close()
+	_, err := coll.RemoveAll(bson.M{"useremail": email})
+	return err
+}
+
 func (t *Token) save() error {
 	coll := collection()
 	defer coll.Close()

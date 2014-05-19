@@ -8,7 +8,10 @@ import (
 	"bytes"
 	goauth2 "code.google.com/p/goauth2/oauth"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/db"
 	"io/ioutil"
+	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"net/http"
 	"time"
@@ -55,6 +58,20 @@ func (s *S) TestOAuthLogin(c *gocheck.C) {
 	c.Assert(dbToken.AccessToken, gocheck.Equals, "my_token")
 	c.Assert(dbToken.UserEmail, gocheck.Equals, "rand@althor.com")
 	c.Assert(dbToken.Extra["email"], gocheck.Equals, "rand@althor.com")
+	c.Assert(s.testHandler.Url, gocheck.Equals, "/user")
+}
+
+func (s *S) TestOAuthLoginRegistrationDisabled(c *gocheck.C) {
+	config.Set("auth:user-registration", false)
+	defer config.Set("auth:user-registration", true)
+	scheme := OAuthScheme{}
+	s.rsps["/token"] = `access_token=my_token`
+	s.rsps["/user"] = `{"email":"rand@althor.com"}`
+	params := make(map[string]string)
+	params["code"] = "abcdefg"
+	params["redirectUrl"] = "http://localhost"
+	_, err := scheme.Login(params)
+	c.Assert(err, gocheck.Equals, auth.ErrUserNotFound)
 }
 
 func (s *S) TestOAuthLoginEmptyToken(c *gocheck.C) {
@@ -179,4 +196,39 @@ func (s *S) TestOAuthAuthWithAppToken(c *gocheck.C) {
 	c.Assert(token.IsAppToken(), gocheck.Equals, true)
 	c.Assert(token.GetAppName(), gocheck.Equals, "myApp")
 	c.Assert(token.GetValue(), gocheck.Equals, appToken.GetValue())
+}
+
+func (s *S) TestOAuthCreate(c *gocheck.C) {
+	scheme := OAuthScheme{}
+	user := auth.User{Email: "x@x.com"}
+	_, err := scheme.Create(&user)
+	c.Assert(err, gocheck.IsNil)
+	dbUser, err := auth.GetUserByEmail(user.Email)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dbUser.Email, gocheck.Equals, user.Email)
+	c.Assert(s.testHandler.Url, gocheck.Equals, "")
+}
+
+func (s *S) TestOAuthRemove(c *gocheck.C) {
+	scheme := OAuthScheme{}
+	s.rsps["/token"] = `access_token=my_token`
+	s.rsps["/user"] = `{"email":"rand@althor.com"}`
+	params := make(map[string]string)
+	params["code"] = "abcdefg"
+	params["redirectUrl"] = "http://localhost"
+	token, err := scheme.Login(params)
+	c.Assert(err, gocheck.IsNil)
+	err = scheme.Remove(token)
+	c.Assert(err, gocheck.IsNil)
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	var tokens []Token
+	coll := collection()
+	defer coll.Close()
+	err = coll.Find(bson.M{"useremail": "rand@althor.com"}).All(&tokens)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(len(tokens), gocheck.Equals, 0)
+	_, err = auth.GetUserByEmail("rand@althor.com")
+	c.Assert(err, gocheck.Equals, auth.ErrUserNotFound)
 }

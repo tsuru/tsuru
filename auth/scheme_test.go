@@ -28,6 +28,12 @@ func (t TestScheme) Info() (SchemeInfo, error) {
 func (t TestScheme) Name() string {
 	return "test"
 }
+func (t TestScheme) Create(u *User) (*User, error) {
+	return nil, nil
+}
+func (t TestScheme) Remove(token Token) error {
+	return nil
+}
 
 func (s *S) TestRegisterScheme(c *gocheck.C) {
 	instance := TestScheme{}
