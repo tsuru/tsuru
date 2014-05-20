@@ -409,7 +409,7 @@ func (s *SchedulerSuite) TestAddPoolToTheSchedulerCmd(c *gocheck.C) {
 	trans := &testing.ConditionalTransport{
 		Transport: testing.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/pool/add"
+			return req.URL.Path == "/pool"
 		},
 	}
 	manager := cmd.Manager{}
@@ -436,7 +436,7 @@ func (s *SchedulerSuite) TestRemovePoolFromTheSchedulerCmd(c *gocheck.C) {
 	trans := &testing.ConditionalTransport{
 		Transport: testing.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/pool/remove"
+			return req.URL.Path == "/pool"
 		},
 	}
 	manager := cmd.Manager{}

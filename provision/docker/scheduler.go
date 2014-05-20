@@ -323,7 +323,7 @@ func (addPoolToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	url, err := cmd.GetURL("/pool/add")
+	url, err := cmd.GetURL("/pool")
 	if err != nil {
 		return err
 	}
@@ -355,7 +355,7 @@ func (removePoolFromSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) erro
 	if err != nil {
 		return err
 	}
-	url, err := cmd.GetURL("/pool/remove")
+	url, err := cmd.GetURL("/pool")
 	if err != nil {
 		return err
 	}

@@ -25,8 +25,8 @@ func init() {
 	api.RegisterAdminHandler("/containers/move", "POST", api.Handler(moveContainersHandler))
 	api.RegisterAdminHandler("/containers/rebalance", "POST", api.Handler(rebalanceContainersHandler))
 	api.RegisterHandler("/pool", "GET", api.AdminRequiredHandler(listPoolHandler))
-	api.RegisterHandler("/pool/add", "POST", api.AdminRequiredHandler(addPoolHandler))
-	api.RegisterHandler("/pool/remove", "DELETE", api.AdminRequiredHandler(removePoolHandler))
+	api.RegisterHandler("/pool", "POST", api.AdminRequiredHandler(addPoolHandler))
+	api.RegisterHandler("/pool", "DELETE", api.AdminRequiredHandler(removePoolHandler))
 }
 
 // addNodeHandler calls scheduler.Register to registering a node into it.
