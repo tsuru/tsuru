@@ -46,23 +46,18 @@ func handleAuthError(err error) error {
 }
 
 func createUser(w http.ResponseWriter, r *http.Request) error {
-	managed, ok := app.AuthScheme.(auth.ManagedScheme)
-	if !ok {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: nonManagedSchemeMsg}
-	}
 	var u auth.User
 	err := json.NewDecoder(r.Body).Decode(&u)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
-	_, err = managed.Create(&u)
+	_, err = app.AuthScheme.Create(&u)
 	if err != nil {
 		return handleAuthError(err)
 	}
-	gURL := repository.ServerURL()
-	c := gandalf.Client{Endpoint: gURL}
-	if _, err := c.NewUser(u.Email, keyToMap(u.Keys)); err != nil {
-		return fmt.Errorf("Failed to create user in the git server: %s", err)
+	err = u.CreateOnGandalf()
+	if err != nil {
+		return err
 	}
 	rec.Log(u.Email, "create-user")
 	w.WriteHeader(http.StatusCreated)
@@ -152,16 +147,6 @@ func resetPassword(w http.ResponseWriter, r *http.Request) error {
 	}
 	rec.Log(email, "reset-password")
 	return managed.ResetPassword(u, token)
-}
-
-// keyToMap converts a Key array into a map maybe we should store a map
-// directly instead of having a convertion
-func keyToMap(keys []auth.Key) map[string]string {
-	kMap := make(map[string]string, len(keys))
-	for _, k := range keys {
-		kMap[k.Name] = k.Content
-	}
-	return kMap
 }
 
 func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -408,22 +393,12 @@ func getKeyFromBody(b io.Reader) (string, error) {
 }
 
 func addKeyInDatabase(key *auth.Key, u *auth.User) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
 	u.AddKey(*key)
-	return conn.Users().Update(bson.M{"email": u.Email}, u)
+	return u.Update()
 }
 
 func addKeyInGandalf(key *auth.Key, u *auth.User) error {
-	key.Name = fmt.Sprintf("%s-%d", u.Email, len(u.Keys)+1)
-	gURL := repository.ServerURL()
-	if err := (&gandalf.Client{Endpoint: gURL}).AddKey(u.Email, keyToMap([]auth.Key{*key})); err != nil {
-		return fmt.Errorf("Failed to add key to git server: %s", err)
-	}
-	return nil
+	return u.AddKeyGandalf(key)
 }
 
 // AddKeyToUser adds a key to a user.
@@ -525,10 +500,6 @@ func listKeys(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 //
 // If the user is the only one in a team an error will be returned.
 func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	managed, ok := app.AuthScheme.(auth.ManagedScheme)
-	if !ok {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: nonManagedSchemeMsg}
-	}
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -574,7 +545,7 @@ Please remove the team, then remove the user.`, team.Name)
 		log.Errorf("Failed to remove user from gandalf: %s", err)
 		return fmt.Errorf("Failed to remove the user from the git server: %s", err)
 	}
-	return managed.Remove(t)
+	return app.AuthScheme.Remove(t)
 }
 
 type jToken struct {

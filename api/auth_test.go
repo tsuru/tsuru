@@ -561,12 +561,6 @@ func (s *AuthSuite) TestCreateTeamHandlerReturnConflictIfTheTeamToBeCreatedAlrea
 	c.Assert(e, gocheck.ErrorMatches, "^Team already exists$")
 }
 
-func (s *AuthSuite) TestKeyToMap(c *gocheck.C) {
-	keys := []auth.Key{{Name: "testkey", Content: "somekey"}}
-	kMap := keyToMap(keys)
-	c.Assert(kMap, gocheck.DeepEquals, map[string]string{"testkey": "somekey"})
-}
-
 func (s *AuthSuite) TestRemoveTeam(c *gocheck.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
@@ -1860,6 +1854,12 @@ func (t TestScheme) Info() (auth.SchemeInfo, error) {
 }
 func (t TestScheme) Name() string {
 	return "test"
+}
+func (t TestScheme) Create(u *auth.User) (*auth.User, error) {
+	return nil, nil
+}
+func (t TestScheme) Remove(token auth.Token) error {
+	return nil
 }
 
 func (s *AuthSuite) TestAuthScheme(c *gocheck.C) {

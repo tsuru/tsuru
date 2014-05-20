@@ -19,12 +19,12 @@ type Scheme interface {
 	Auth(token string) (Token, error)
 	Info() (SchemeInfo, error)
 	Name() string
+	Create(user *User) (*User, error)
+	Remove(token Token) error
 }
 
 type ManagedScheme interface {
 	Scheme
-	Create(user *User) (*User, error)
-	Remove(token Token) error
 	StartPasswordReset(user *User) error
 	ResetPassword(user *User, resetToken string) error
 	ChangePassword(token Token, oldPassword string, newPassword string) error

@@ -6,6 +6,7 @@ package auth
 
 import (
 	stderrors "errors"
+	"fmt"
 	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
 	"github.com/tsuru/tsuru/db"
@@ -32,6 +33,16 @@ type User struct {
 	Password string
 	Keys     []Key
 	quota.Quota
+}
+
+// keyToMap converts a Key array into a map maybe we should store a map
+// directly instead of having a convertion
+func keyToMap(keys []Key) map[string]string {
+	kMap := make(map[string]string, len(keys))
+	for _, k := range keys {
+		kMap[k.Name] = k.Content
+	}
+	return kMap
 }
 
 func GetUserByEmail(email string) (*User, error) {
@@ -128,6 +139,15 @@ func (u *User) RemoveKey(key Key) error {
 	return nil
 }
 
+func (u *User) AddKeyGandalf(key *Key) error {
+	key.Name = fmt.Sprintf("%s-%d", u.Email, len(u.Keys)+1)
+	gURL := repository.ServerURL()
+	if err := (&gandalf.Client{Endpoint: gURL}).AddKey(u.Email, keyToMap([]Key{*key})); err != nil {
+		return fmt.Errorf("Failed to add key to git server: %s", err)
+	}
+	return nil
+}
+
 func (u *User) IsAdmin() bool {
 	adminTeamName, err := config.GetString("admin-team")
 	if err != nil {
@@ -172,4 +192,13 @@ func (u *User) ListKeys() (map[string]string, error) {
 	gURL := repository.ServerURL()
 	c := gandalf.Client{Endpoint: gURL}
 	return c.ListKeys(u.Email)
+}
+
+func (u *User) CreateOnGandalf() error {
+	gURL := repository.ServerURL()
+	c := gandalf.Client{Endpoint: gURL}
+	if _, err := c.NewUser(u.Email, keyToMap(u.Keys)); err != nil {
+		return fmt.Errorf("Failed to create user in the git server: %s", err)
+	}
+	return nil
 }

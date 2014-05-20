@@ -191,3 +191,36 @@ func (s *S) TestListKeysGandalfAPIError(c *gocheck.C) {
 	c.Assert(keys, gocheck.DeepEquals, map[string]string(nil))
 	c.Assert(err.Error(), gocheck.Equals, "some terrible error\n")
 }
+
+func (s *S) TestKeyToMap(c *gocheck.C) {
+	keys := []Key{{Name: "testkey", Content: "somekey"}}
+	kMap := keyToMap(keys)
+	c.Assert(kMap, gocheck.DeepEquals, map[string]string{"testkey": "somekey"})
+}
+
+func (s *S) TestAddKeyInGandalfShouldCallGandalfAPI(c *gocheck.C) {
+	h := testing.TestHandler{}
+	ts := testing.StartGandalfTestServer(&h)
+	defer ts.Close()
+	u := &User{Email: "me@gmail.com"}
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer u.Delete()
+	key := Key{Content: "my-ssh-key", Name: "key1"}
+	err = u.AddKeyGandalf(&key)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(h.Url, gocheck.Equals, "/user/me@gmail.com/key")
+}
+
+func (s *S) TestCreateUserOnGandalf(c *gocheck.C) {
+	h := testing.TestHandler{}
+	ts := testing.StartGandalfTestServer(&h)
+	defer ts.Close()
+	u := &User{Email: "me@gmail.com"}
+	err := u.CreateOnGandalf()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(h.Url, gocheck.Equals, "/user")
+	expected := `{"name":"me@gmail.com","keys":{}}`
+	c.Assert(string(h.Body), gocheck.Equals, expected)
+	c.Assert(h.Method, gocheck.Equals, "POST")
+}
