@@ -419,8 +419,19 @@ func (addTeamsToPoolCmd) Info() *cmd.Info {
 }
 
 func (addTeamsToPoolCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
-	var segScheduler segregatedScheduler
-	err := segScheduler.addTeamsToPool(ctx.Args[0], ctx.Args[1:])
+	body, err := json.Marshal(map[string]interface{}{"pool": ctx.Args[0], "teams": ctx.Args[1:]})
+	if err != nil {
+		return err
+	}
+	url, err := cmd.GetURL("/pool/team")
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -440,8 +451,19 @@ func (removeTeamsFromPoolCmd) Info() *cmd.Info {
 }
 
 func (removeTeamsFromPoolCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
-	var segScheduler segregatedScheduler
-	err := segScheduler.removeTeamsFromPool(ctx.Args[0], ctx.Args[1:])
+	body, err := json.Marshal(map[string]interface{}{"pool": ctx.Args[0], "teams": ctx.Args[1:]})
+	if err != nil {
+		return err
+	}
+	url, err := cmd.GetURL("/pool/team")
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest("DELETE", url, bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(req)
 	if err != nil {
 		return err
 	}

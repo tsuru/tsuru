@@ -27,6 +27,8 @@ func init() {
 	api.RegisterHandler("/pool", "GET", api.AdminRequiredHandler(listPoolHandler))
 	api.RegisterHandler("/pool", "POST", api.AdminRequiredHandler(addPoolHandler))
 	api.RegisterHandler("/pool", "DELETE", api.AdminRequiredHandler(removePoolHandler))
+	api.RegisterHandler("/pool/team", "POST", api.AdminRequiredHandler(addTeamToPoolHandler))
+	api.RegisterHandler("/pool/team", "DELETE", api.AdminRequiredHandler(removeTeamToPoolHandler))
 }
 
 // addNodeHandler calls scheduler.Register to registering a node into it.
@@ -162,6 +164,39 @@ func listPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 		return err
 	}
 	return json.NewEncoder(w).Encode(pools)
+}
+
+type teamsToPoolParams struct {
+	Pool  string   `json:"pool"`
+	Teams []string `json:"teams"`
+}
+
+func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	var params teamsToPoolParams
+	err = json.Unmarshal(b, &params)
+	if err != nil {
+		return err
+	}
+	var segScheduler segregatedScheduler
+	return segScheduler.addTeamsToPool(params.Pool, params.Teams)
+}
+
+func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	var params teamsToPoolParams
+	err = json.Unmarshal(b, &params)
+	if err != nil {
+		return err
+	}
+	var segScheduler segregatedScheduler
+	return segScheduler.removeTeamsFromPool(params.Pool, params.Teams)
 }
 
 func unmarshal(body io.ReadCloser) (map[string]string, error) {

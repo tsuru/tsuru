@@ -89,6 +89,7 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	fsystem = nil
 	tTesting.RollbackTargetFile(s.targetRecover)
+	s.storage.Apps().Database.DropDatabase()
 	s.storage.Close()
 }
 

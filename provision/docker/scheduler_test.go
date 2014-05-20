@@ -471,34 +471,18 @@ func (s *S) TestAddTeamsToPoolCmdInfo(c *gocheck.C) {
 }
 
 func (s *S) TestAddTeamsToPoolCmdRun(c *gocheck.C) {
-	coll := s.storage.Collection(schedulerCollection)
-	p := Pool{Name: "pool1"}
-	err := coll.Insert(p)
-	c.Assert(err, gocheck.IsNil)
-	defer coll.RemoveAll(bson.M{"_id": p.Name})
 	var buf bytes.Buffer
 	ctx := cmd.Context{Stdout: &buf, Args: []string{"pool1", "team1", "team2"}}
-	err = addTeamsToPoolCmd{}.Run(&ctx, nil)
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: "", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Path == "/pool/team"
+		},
+	}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
+	err := addTeamsToPoolCmd{}.Run(&ctx, client)
 	c.Assert(err, gocheck.IsNil)
-	var pool Pool
-	err = coll.FindId(p.Name).One(&pool)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(pool.Teams, gocheck.DeepEquals, []string{"team1", "team2"})
-}
-
-func (s *S) TestAddTeamsToPoolWithTeams(c *gocheck.C) {
-	coll := s.storage.Collection(schedulerCollection)
-	p := Pool{Name: "pool1", Teams: []string{"team1"}}
-	err := coll.Insert(p)
-	c.Assert(err, gocheck.IsNil)
-	defer coll.RemoveAll(bson.M{"_id": p.Name})
-	var segScheduler segregatedScheduler
-	err = segScheduler.addTeamsToPool(p.Name, []string{"team2", "team3"})
-	c.Assert(err, gocheck.IsNil)
-	var pool Pool
-	err = coll.FindId(p.Name).One(&pool)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(pool.Teams, gocheck.DeepEquals, []string{"team1", "team2", "team3"})
 }
 
 func (s *S) TestRemoveTeamsFromPoolCmdInfo(c *gocheck.C) {
@@ -513,17 +497,16 @@ func (s *S) TestRemoveTeamsFromPoolCmdInfo(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveTeamsFromPoolCmdRun(c *gocheck.C) {
-	coll := s.storage.Collection(schedulerCollection)
-	p := Pool{Name: "pool1", Teams: []string{"team1", "team2"}}
-	err := coll.Insert(p)
-	c.Assert(err, gocheck.IsNil)
-	defer coll.RemoveAll(bson.M{"_id": p.Name})
 	var buf bytes.Buffer
 	ctx := cmd.Context{Stdout: &buf, Args: []string{"pool1", "team1"}}
-	err = removeTeamsFromPoolCmd{}.Run(&ctx, nil)
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: "", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Path == "/pool/team"
+		},
+	}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
+	err := removeTeamsFromPoolCmd{}.Run(&ctx, client)
 	c.Assert(err, gocheck.IsNil)
-	var pool Pool
-	err = coll.FindId(p.Name).One(&pool)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(pool.Teams, gocheck.DeepEquals, []string{"team2"})
 }
