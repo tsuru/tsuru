@@ -8,6 +8,7 @@ import (
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
+	"github.com/tsuru/tsuru/db"
 	ftesting "github.com/tsuru/tsuru/fs/testing"
 	"github.com/tsuru/tsuru/provision"
 	tTesting "github.com/tsuru/tsuru/testing"
@@ -32,6 +33,7 @@ type S struct {
 	sshUser       string
 	server        *dtesting.DockerServer
 	targetRecover []string
+	storage       *db.Storage
 }
 
 var _ = gocheck.Suite(&S{})
@@ -66,6 +68,8 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	s.server, err = dtesting.NewServer("127.0.0.1:0", nil)
 	c.Assert(err, gocheck.IsNil)
 	s.targetRecover = tTesting.SetTargetFile(c)
+	s.storage, err = db.Conn()
+	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) SetUpTest(c *gocheck.C) {
@@ -85,6 +89,7 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	fsystem = nil
 	tTesting.RollbackTargetFile(s.targetRecover)
+	s.storage.Close()
 }
 
 func (s *S) stopMultipleServersCluster(cluster *cluster.Cluster) {
