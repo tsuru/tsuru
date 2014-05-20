@@ -24,7 +24,7 @@ func (addNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	url, err := cmd.GetURL("/node/add")
+	url, err := cmd.GetURL("/node")
 	if err != nil {
 		return err
 	}
@@ -56,7 +56,7 @@ func (removeNodeFromSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) erro
 	if err != nil {
 		return err
 	}
-	url, err := cmd.GetURL("/node/remove")
+	url, err := cmd.GetURL("/node")
 	if err != nil {
 		return err
 	}

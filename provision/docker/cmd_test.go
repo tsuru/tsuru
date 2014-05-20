@@ -29,7 +29,7 @@ func (s *S) TestAddNodeToTheSchedulerCmdRun(c *gocheck.C) {
 	trans := &testing.ConditionalTransport{
 		Transport: testing.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/node/add"
+			return req.URL.Path == "/node"
 		},
 	}
 	manager := cmd.Manager{}
@@ -57,7 +57,7 @@ func (s *S) TestRemoveNodeFromTheSchedulerCmdRun(c *gocheck.C) {
 	trans := &testing.ConditionalTransport{
 		Transport: testing.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/node/remove"
+			return req.URL.Path == "/node"
 		},
 	}
 	manager := cmd.Manager{}
