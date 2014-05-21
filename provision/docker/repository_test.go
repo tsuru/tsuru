@@ -31,14 +31,14 @@ func (s *S) TestListContainersByApp(c *gocheck.C) {
 	coll.Insert(
 		container{ID: "Hey", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1180.globoi.com"},
 		container{ID: "Ho", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1182.globoi.com"},
-		container{ID: "Let's Go", Type: "java", AppName: "myapp", HostAddr: "http://cittavld597.globoi.com"},
+		container{ID: "Let's Go", Type: "java", AppName: "other", HostAddr: "http://cittavld597.globoi.com"},
 	)
 	defer coll.RemoveAll(bson.M{"appname": "myapp"})
 	result, err := listContainersByApp("myapp")
-	c.Assert(result[0].ID, gocheck.DeepEquals, "Hey")
-	c.Assert(result[1].HostAddr, gocheck.DeepEquals, "http://cittavld1182.globoi.com")
-	c.Assert(result[2].Type, gocheck.DeepEquals, "java")
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(len(result), gocheck.Equals, 2)
+	check := (result[0].ID == "Hey" && result[1].ID == "Ho") || (result[0].ID == "Ho" && result[1].ID == "Hey")
+	c.Assert(check, gocheck.Equals, true)
 }
 
 func (s *S) TestListContainersByHost(c *gocheck.C) {
@@ -46,16 +46,16 @@ func (s *S) TestListContainersByHost(c *gocheck.C) {
 	coll := collection()
 	defer coll.Close()
 	coll.Insert(
-		container{ID: "blabla", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1182.globoi.com"},
-		container{ID: "bleble", Type: "python", AppName: "wat", HostAddr: "http://cittavld1182.globoi.com"},
-		container{ID: "blibli", Type: "java", AppName: "masoq", HostAddr: "http://cittavld1182.globoi.com"},
+		container{ID: "1", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1182.globoi.com"},
+		container{ID: "2", Type: "python", AppName: "wat", HostAddr: "http://cittavld1182.globoi.com"},
+		container{ID: "3", Type: "java", AppName: "masoq", HostAddr: "http://cittavld9999.globoi.com"},
 	)
 	defer coll.RemoveAll(bson.M{"hostaddr": "http://cittavld1182.globoi.com"})
 	result, err := listContainersByHost("http://cittavld1182.globoi.com")
-	c.Assert(result[0].ID, gocheck.DeepEquals, "blabla")
-	c.Assert(result[1].AppName, gocheck.DeepEquals, "wat")
-	c.Assert(result[2].Type, gocheck.DeepEquals, "java")
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(len(result), gocheck.Equals, 2)
+	check := (result[0].ID == "1" && result[1].ID == "2") || (result[0].ID == "2" && result[1].ID == "1")
+	c.Assert(check, gocheck.Equals, true)
 }
 
 func (s *S) TestListAllContainers(c *gocheck.C) {
@@ -66,8 +66,9 @@ func (s *S) TestListAllContainers(c *gocheck.C) {
 	containers, err := listAllContainers()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(len(containers), gocheck.Equals, 2)
-	c.Assert(containers[0].ID, gocheck.Equals, containerIds[0])
-	c.Assert(containers[1].ID, gocheck.Equals, containerIds[1])
+	check := (containers[0].ID == containerIds[0] && containers[1].ID == containerIds[1]) ||
+		(containers[0].ID == containerIds[1] && containers[1].ID == containerIds[0])
+	c.Assert(check, gocheck.Equals, true)
 }
 
 func (s *S) TestGetOneContainerByAppName(c *gocheck.C) {
