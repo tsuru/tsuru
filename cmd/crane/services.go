@@ -6,6 +6,8 @@ package main
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/tsuru/tsuru/cmd"
@@ -20,7 +22,7 @@ func (c *ServiceCreate) Info() *cmd.Info {
 	desc := "Creates a service based on a passed manifest. The manifest format should be a yaml and follow the standard described in the documentation (should link to it here)"
 	return &cmd.Info{
 		Name:    "create",
-		Usage:   "create path/to/manifesto",
+		Usage:   "create path/to/manifest",
 		Desc:    desc,
 		MinArgs: 1,
 	}
@@ -122,8 +124,8 @@ type ServiceUpdate struct{}
 func (c *ServiceUpdate) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "update",
-		Usage:   "update <path/to/manifesto>",
-		Desc:    "Update service data, extracting it from the given manifesto file.",
+		Usage:   "update <path/to/manifest>",
+		Desc:    "Update service data, extracting it from the given manifest file.",
 		MinArgs: 1,
 	}
 }
@@ -230,11 +232,28 @@ e.g.: $ crane template`
 	}
 }
 
+const passwordSize = 12
+
+func generatePassword() (string, error) {
+	b := make([]byte, passwordSize)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(b), nil
+}
+
 func (c *ServiceTemplate) Run(ctx *cmd.Context, client *cmd.Client) error {
+	pass, err := generatePassword()
+	if err != nil {
+		return err
+	}
 	template := `id: servicename
+password: %s
 endpoint:
   production: production-endpoint.com
   test: test-endpoint.com:8080`
+	template = fmt.Sprintf(template, pass)
 	f, err := os.Create("manifest.yaml")
 	defer f.Close()
 	if err != nil {

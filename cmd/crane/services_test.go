@@ -19,7 +19,7 @@ func (s *S) TestServiceCreateInfo(c *gocheck.C) {
 	cmd := ServiceCreate{}
 	i := cmd.Info()
 	c.Assert(i.Name, gocheck.Equals, "create")
-	c.Assert(i.Usage, gocheck.Equals, "create path/to/manifesto")
+	c.Assert(i.Usage, gocheck.Equals, "create path/to/manifest")
 	c.Assert(i.Desc, gocheck.Equals, desc)
 	c.Assert(i.MinArgs, gocheck.Equals, 1)
 }
@@ -176,8 +176,8 @@ func (s *S) TestServiceUpdateIsACommand(c *gocheck.C) {
 func (s *S) TestServiceUpdateInfo(c *gocheck.C) {
 	expected := &cmd.Info{
 		Name:    "update",
-		Usage:   "update <path/to/manifesto>",
-		Desc:    "Update service data, extracting it from the given manifesto file.",
+		Usage:   "update <path/to/manifest>",
+		Desc:    "Update service data, extracting it from the given manifest file.",
 		MinArgs: 1,
 	}
 	c.Assert((&ServiceUpdate{}).Info(), gocheck.DeepEquals, expected)
@@ -281,8 +281,9 @@ func (s *S) TestServiceTemplateRun(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	fc, err := ioutil.ReadAll(f)
 	manifest := `id: servicename
+password: .{16}
 endpoint:
   production: production-endpoint.com
   test: test-endpoint.com:8080`
-	c.Assert(string(fc), gocheck.Equals, manifest)
+	c.Assert(string(fc), gocheck.Matches, manifest)
 }
