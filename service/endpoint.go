@@ -20,6 +20,8 @@ import (
 
 type Client struct {
 	endpoint string
+	username string
+	password string
 }
 
 func (c *Client) buildErrorMessage(err error, resp *http.Response) string {
@@ -51,6 +53,7 @@ func (c *Client) issueRequest(path, method string, params map[string][]string) (
 	}
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Accept", "application/json")
+	req.SetBasicAuth(c.username, c.password)
 	return http.DefaultClient.Do(req)
 }
 

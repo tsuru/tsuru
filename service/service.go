@@ -65,7 +65,7 @@ func (s *Service) getClient(endpoint string) (cli *Client, err error) {
 		if !strings.HasPrefix(e, "http://") {
 			e = "http://" + e
 		}
-		cli = &Client{endpoint: e}
+		cli = &Client{endpoint: e, username: s.Name, password: s.Password}
 	} else {
 		err = errors.New("Unknown endpoint: " + endpoint)
 	}

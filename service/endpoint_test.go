@@ -113,7 +113,7 @@ func (s *S) TestEndpointCreate(c *gocheck.C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
-	client := &Client{endpoint: ts.URL}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.Create(&instance)
 	c.Assert(err, gocheck.IsNil)
 	expectedURL := "/resources"
@@ -126,6 +126,7 @@ func (s *S) TestEndpointCreate(c *gocheck.C) {
 	c.Assert(map[string][]string(v), gocheck.DeepEquals, map[string][]string{"name": {"my-redis"}})
 	c.Assert("application/x-www-form-urlencoded", gocheck.DeepEquals, h.request.Header.Get("Content-Type"))
 	c.Assert("application/json", gocheck.Equals, h.request.Header.Get("Accept"))
+	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
 }
 
 func (s *S) TestEndpointCreatePlans(c *gocheck.C) {
@@ -137,7 +138,7 @@ func (s *S) TestEndpointCreatePlans(c *gocheck.C) {
 		ServiceName: "redis",
 		PlanName:    "basic",
 	}
-	client := &Client{endpoint: ts.URL}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.Create(&instance)
 	c.Assert(err, gocheck.IsNil)
 	expectedURL := "/resources"
@@ -150,6 +151,7 @@ func (s *S) TestEndpointCreatePlans(c *gocheck.C) {
 	c.Assert(map[string][]string(v), gocheck.DeepEquals, map[string][]string{"name": {"my-redis"}, "plan": {"basic"}})
 	c.Assert("application/x-www-form-urlencoded", gocheck.DeepEquals, h.request.Header.Get("Content-Type"))
 	c.Assert("application/json", gocheck.Equals, h.request.Header.Get("Accept"))
+	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
 }
 
 func (s *S) TestCreateShouldSendTheNameOfTheResourceToTheEndpoint(c *gocheck.C) {
@@ -157,7 +159,7 @@ func (s *S) TestCreateShouldSendTheNameOfTheResourceToTheEndpoint(c *gocheck.C) 
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
-	client := &Client{endpoint: ts.URL}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.Create(&instance)
 	c.Assert(err, gocheck.IsNil)
 	expectedURL := "/resources"
@@ -170,13 +172,14 @@ func (s *S) TestCreateShouldSendTheNameOfTheResourceToTheEndpoint(c *gocheck.C) 
 	c.Assert(map[string][]string(v), gocheck.DeepEquals, map[string][]string{"name": {"my-redis"}})
 	c.Assert("application/x-www-form-urlencoded", gocheck.DeepEquals, h.request.Header.Get("Content-Type"))
 	c.Assert("application/json", gocheck.Equals, h.request.Header.Get("Accept"))
+	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
 }
 
 func (s *S) TestCreateShouldReturnErrorIfTheRequestFail(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
-	client := &Client{endpoint: ts.URL}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.Create(&instance)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err, gocheck.ErrorMatches, "^Failed to create the instance "+instance.Name+": Server failed to do its job.$")
@@ -187,20 +190,21 @@ func (s *S) TestDestroyShouldSendADELETERequestToTheResourceURL(c *gocheck.C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
-	client := &Client{endpoint: ts.URL}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.Destroy(&instance)
 	h.Lock()
 	defer h.Unlock()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(h.url, gocheck.Equals, "/resources/"+instance.Name)
 	c.Assert(h.method, gocheck.Equals, "DELETE")
+	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
 }
 
 func (s *S) TestDestroyShouldReturnErrorIfTheRequestFails(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
-	client := &Client{endpoint: ts.URL}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.Destroy(&instance)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err, gocheck.ErrorMatches, "^Failed to destroy the instance "+instance.Name+": Server failed to do its job.$")
@@ -214,7 +218,7 @@ func (s *S) TestBindWithEndpointDown(c *gocheck.C) {
 	}
 	// Use http://tools.ietf.org/html/rfc5737 'TEST-NET' to avoid broken
 	// resolvers redirecting to a search page.
-	client := &Client{endpoint: "http://192.0.2.42"}
+	client := &Client{endpoint: "http://192.0.2.42", username: "user", password: "abcde"}
 	_, err := client.Bind(&instance, &a, a.GetUnits()[0])
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err, gocheck.ErrorMatches, "^her-redis api is down.$")
@@ -229,13 +233,14 @@ func (s *S) TestBindShouldSendAPOSTToTheResourceURL(c *gocheck.C) {
 		name: "her-app",
 		ip:   "10.0.10.1",
 	}
-	client := &Client{endpoint: ts.URL}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	_, err := client.Bind(&instance, &a, a.GetUnits()[0])
 	h.Lock()
 	defer h.Unlock()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(h.url, gocheck.Equals, "/resources/"+instance.Name)
 	c.Assert(h.method, gocheck.Equals, "POST")
+	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, gocheck.IsNil)
 	expected := map[string][]string{"unit-host": {"10.0.10.1"}, "app-host": {"10.0.10.1"}}
@@ -256,7 +261,7 @@ func (s *S) TestBindShouldReturnMapWithTheEnvironmentVariable(c *gocheck.C) {
 		name: "her-app",
 		ip:   "10.0.10.1",
 	}
-	client := &Client{endpoint: ts.URL}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	env, err := client.Bind(&instance, &a, a.GetUnits()[0])
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(env, gocheck.DeepEquals, expected)
@@ -270,7 +275,7 @@ func (s *S) TestBindShouldReturnErrorIfTheRequestFail(c *gocheck.C) {
 		name: "her-app",
 		ip:   "10.0.10.1",
 	}
-	client := &Client{endpoint: ts.URL}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	_, err := client.Bind(&instance, &a, a.GetUnits()[0])
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err, gocheck.ErrorMatches, "^Failed to bind instance her-redis to the unit 10.0.10.1: Server failed to do its job.$")
@@ -287,7 +292,7 @@ func (s *S) TestBindShouldReturnPreconditionFailedIfServiceAPIReturnPrecondition
 		name: "her-app",
 		ip:   "10.0.10.1",
 	}
-	client := &Client{endpoint: ts.URL}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	_, err := client.Bind(&instance, &a, a.GetUnits()[0])
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.HTTP)
@@ -304,13 +309,14 @@ func (s *S) TestUnbindSendADELETERequestToTheResourceURL(c *gocheck.C) {
 		name: "arch-enemy",
 		ip:   "2.2.2.2",
 	}
-	client := &Client{endpoint: ts.URL}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.Unbind(&instance, a.GetUnits()[0])
 	h.Lock()
 	defer h.Unlock()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(h.url, gocheck.Equals, "/resources/heaven-can-wait/hostname/2.2.2.2")
 	c.Assert(h.method, gocheck.Equals, "DELETE")
+	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
 }
 
 func (s *S) TestUnbindReturnsErrorIfTheRequestFails(c *gocheck.C) {
@@ -321,7 +327,7 @@ func (s *S) TestUnbindReturnsErrorIfTheRequestFails(c *gocheck.C) {
 		name: "arch-enemy",
 		ip:   "2.2.2.2",
 	}
-	client := &Client{endpoint: ts.URL}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.Unbind(&instance, a.GetUnits()[0])
 	c.Assert(err, gocheck.NotNil)
 	expected := `Failed to unbind ("/resources/heaven-can-wait/hostname/2.2.2.2"): Server failed to do its job.`
@@ -358,7 +364,7 @@ func (s *S) TestStatusShouldSendTheNameAndHostOfTheService(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(noContentHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
-	client := &Client{endpoint: ts.URL}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	state, err := client.Status(&instance)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(state, gocheck.Equals, "up")
@@ -368,7 +374,7 @@ func (s *S) TestStatusShouldReturnDownWhenAPIReturns500(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
-	client := &Client{endpoint: ts.URL}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	state, err := client.Status(&instance)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(state, gocheck.Equals, "down")
@@ -392,7 +398,7 @@ func (s *S) TestInfo(c *gocheck.C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
-	client := &Client{endpoint: ts.URL}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	result, err := client.Info(&instance)
 	c.Assert(err, gocheck.IsNil)
 	expected := []map[string]string{
@@ -401,13 +407,14 @@ func (s *S) TestInfo(c *gocheck.C) {
 	}
 	c.Assert(result, gocheck.DeepEquals, expected)
 	c.Assert(h.r.URL.Path, gocheck.Equals, "/resources/my-redis")
+	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.r.Header.Get("Authorization"))
 }
 
 func (s *S) TestInfoNotFound(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(notFoundHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
-	client := &Client{endpoint: ts.URL}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	result, err := client.Info(&instance)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result, gocheck.IsNil)
@@ -417,7 +424,7 @@ func (s *S) TestPlans(c *gocheck.C) {
 	h := plansHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
-	client := &Client{endpoint: ts.URL}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	result, err := client.Plans()
 	c.Assert(err, gocheck.IsNil)
 	expected := []Plan{
@@ -426,4 +433,5 @@ func (s *S) TestPlans(c *gocheck.C) {
 	}
 	c.Assert(result, gocheck.DeepEquals, expected)
 	c.Assert(h.r.URL.Path, gocheck.Equals, "/resources/plans")
+	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.r.Header.Get("Authorization"))
 }

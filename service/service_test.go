@@ -65,10 +65,15 @@ func (s *S) TestGetClient(c *gocheck.C) {
 		"production": "http://mysql.api.com",
 		"test":       "http://localhost:9090",
 	}
-	service := Service{Name: "redis", Endpoint: endpoints}
+	service := Service{Name: "redis", Password: "abcde", Endpoint: endpoints}
 	cli, err := service.getClient("production")
+	expected := &Client{
+		endpoint: endpoints["production"],
+		username: "redis",
+		password: "abcde",
+	}
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(cli, gocheck.DeepEquals, &Client{endpoint: endpoints["production"]})
+	c.Assert(cli, gocheck.DeepEquals, expected)
 }
 
 func (s *S) TestGetClientWithouHTTP(c *gocheck.C) {
