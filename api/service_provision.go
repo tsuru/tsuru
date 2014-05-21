@@ -20,7 +20,21 @@ import (
 
 type serviceYaml struct {
 	Id       string
+	Password string
 	Endpoint map[string]string
+}
+
+func (sy *serviceYaml) validate() error {
+	if sy.Id == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "You must provide an id in the manifest file."}
+	}
+	if sy.Password == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a password in the manifest file."}
+	}
+	if _, ok := sy.Endpoint["production"]; !ok {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a production endpoint in the manifest file."}
+	}
+	return nil
 }
 
 func serviceList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -52,8 +66,9 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	if _, ok := sy.Endpoint["production"]; !ok {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a production endpoint in the manifest file."}
+	err = sy.validate()
+	if err != nil {
+		return err
 	}
 	u, err := t.User()
 	if err != nil {
@@ -85,6 +100,7 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	s := service.Service{
 		Name:       sy.Id,
 		Endpoint:   sy.Endpoint,
+		Password:   sy.Password,
 		OwnerTeams: auth.GetTeamsNames(teams),
 	}
 	err = s.Create()
@@ -102,7 +118,14 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	var y serviceYaml
-	yaml.Unmarshal(body, &y)
+	err = yaml.Unmarshal(body, &y)
+	if err != nil {
+		return err
+	}
+	err = y.validate()
+	if err != nil {
+		return err
+	}
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -113,6 +136,7 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	s.Endpoint = y.Endpoint
+	s.Password = y.Password
 	if err = s.Update(); err != nil {
 		return err
 	}

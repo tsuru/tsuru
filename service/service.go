@@ -14,6 +14,7 @@ import (
 
 type Service struct {
 	Name         string `bson:"_id"`
+	Password     string
 	Endpoint     map[string]string
 	OwnerTeams   []string `bson:"owner_teams"`
 	Teams        []string
