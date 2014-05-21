@@ -27,6 +27,8 @@ binaries or building them from source.
 
 `Using the PPA (Ubuntu only)`_
 
+`Using AUR (ArchLinux only)`_
+
 `Pre-built binaries (Linux and Mac OS X)`_
 
 `Build from source (Linux and Mac OS X)`_
@@ -92,6 +94,20 @@ Now you can install tsuru's clients:
     $ sudo apt-get install tsuru
     $ sudo apt-get install crane
     $ sudo apt-get install tsuru-admin
+
+Using AUR (ArchLinux only)
+==========================
+
+Archlinux users can build and install tsuru client from AUR repository,
+Is needed to have installed `yaourt <http://archlinux.fr/yaourt-en>`_ program.
+
+You can run:
+
+.. highlight:: bash
+
+::
+
+    $ yaourt -S tsuru
 
 Pre-built binaries (Linux and Mac OS X)
 =======================================
