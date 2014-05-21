@@ -68,12 +68,13 @@ func (c *Client) jsonFromResponse(resp *http.Response, v interface{}) error {
 	return json.Unmarshal(body, &v)
 }
 
-func (c *Client) Create(instance *ServiceInstance) error {
+func (c *Client) Create(instance *ServiceInstance, user string) error {
 	var err error
 	log.Debug("Attempting to call creation of service instance " + instance.Name + " at " + instance.ServiceName + " api")
 	var resp *http.Response
 	params := map[string][]string{
 		"name": {instance.Name},
+		"user": {user},
 	}
 	if instance.PlanName != "" {
 		params["plan"] = []string{instance.PlanName}

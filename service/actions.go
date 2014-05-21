@@ -36,7 +36,11 @@ var createServiceInstance = action.Action{
 		if !ok {
 			return nil, stderrors.New("Second parameter must be a ServiceInstance.")
 		}
-		err = endpoint.Create(&instance)
+		user, ok := ctx.Params[2].(string)
+		if !ok {
+			return nil, stderrors.New("Third parameter must be a string.")
+		}
+		err = endpoint.Create(&instance, user)
 		if err != nil {
 			return nil, err
 		}

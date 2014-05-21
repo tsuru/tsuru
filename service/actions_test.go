@@ -36,7 +36,7 @@ func (s *S) TestCreateServiceInstanceForward(c *gocheck.C) {
 	defer s.conn.Services().RemoveId(srv.Name)
 	instance := ServiceInstance{Name: "mysql"}
 	ctx := action.FWContext{
-		Params: []interface{}{srv, instance},
+		Params: []interface{}{srv, instance, "my@user"},
 	}
 	r, err := createServiceInstance.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
@@ -57,14 +57,19 @@ func (s *S) TestCreateServiceInstanceForwardInvalidParams(c *gocheck.C) {
 	err := s.conn.Services().Insert(&srv)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Services().RemoveId(srv.Name)
-	ctx := action.FWContext{Params: []interface{}{"", ""}}
+	ctx := action.FWContext{Params: []interface{}{"", "", ""}}
 	_, err = createServiceInstance.Forward(ctx)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "First parameter must be a Service.")
-	ctx = action.FWContext{Params: []interface{}{srv, ""}}
+	ctx = action.FWContext{Params: []interface{}{srv, "", ""}}
 	_, err = createServiceInstance.Forward(ctx)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Second parameter must be a ServiceInstance.")
+	instance := ServiceInstance{Name: "mysql"}
+	ctx = action.FWContext{Params: []interface{}{srv, instance, 1}}
+	_, err = createServiceInstance.Forward(ctx)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Third parameter must be a string.")
 }
 
 func (s *S) TestCreateServiceInstanceBackward(c *gocheck.C) {

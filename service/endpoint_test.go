@@ -114,7 +114,7 @@ func (s *S) TestEndpointCreate(c *gocheck.C) {
 	defer ts.Close()
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
-	err := client.Create(&instance)
+	err := client.Create(&instance, "my@user")
 	c.Assert(err, gocheck.IsNil)
 	expectedURL := "/resources"
 	h.Lock()
@@ -123,7 +123,10 @@ func (s *S) TestEndpointCreate(c *gocheck.C) {
 	c.Assert(h.method, gocheck.Equals, "POST")
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(map[string][]string(v), gocheck.DeepEquals, map[string][]string{"name": {"my-redis"}})
+	c.Assert(map[string][]string(v), gocheck.DeepEquals, map[string][]string{
+		"name": {"my-redis"},
+		"user": {"my@user"},
+	})
 	c.Assert("application/x-www-form-urlencoded", gocheck.DeepEquals, h.request.Header.Get("Content-Type"))
 	c.Assert("application/json", gocheck.Equals, h.request.Header.Get("Accept"))
 	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
@@ -139,7 +142,7 @@ func (s *S) TestEndpointCreatePlans(c *gocheck.C) {
 		PlanName:    "basic",
 	}
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
-	err := client.Create(&instance)
+	err := client.Create(&instance, "my@user")
 	c.Assert(err, gocheck.IsNil)
 	expectedURL := "/resources"
 	h.Lock()
@@ -148,7 +151,11 @@ func (s *S) TestEndpointCreatePlans(c *gocheck.C) {
 	c.Assert(h.method, gocheck.Equals, "POST")
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(map[string][]string(v), gocheck.DeepEquals, map[string][]string{"name": {"my-redis"}, "plan": {"basic"}})
+	c.Assert(map[string][]string(v), gocheck.DeepEquals, map[string][]string{
+		"name": {"my-redis"},
+		"plan": {"basic"},
+		"user": {"my@user"},
+	})
 	c.Assert("application/x-www-form-urlencoded", gocheck.DeepEquals, h.request.Header.Get("Content-Type"))
 	c.Assert("application/json", gocheck.Equals, h.request.Header.Get("Accept"))
 	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
@@ -160,7 +167,7 @@ func (s *S) TestCreateShouldSendTheNameOfTheResourceToTheEndpoint(c *gocheck.C) 
 	defer ts.Close()
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
-	err := client.Create(&instance)
+	err := client.Create(&instance, "my@user")
 	c.Assert(err, gocheck.IsNil)
 	expectedURL := "/resources"
 	h.Lock()
@@ -169,7 +176,10 @@ func (s *S) TestCreateShouldSendTheNameOfTheResourceToTheEndpoint(c *gocheck.C) 
 	c.Assert(h.method, gocheck.Equals, "POST")
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(map[string][]string(v), gocheck.DeepEquals, map[string][]string{"name": {"my-redis"}})
+	c.Assert(map[string][]string(v), gocheck.DeepEquals, map[string][]string{
+		"name": {"my-redis"},
+		"user": {"my@user"},
+	})
 	c.Assert("application/x-www-form-urlencoded", gocheck.DeepEquals, h.request.Header.Get("Content-Type"))
 	c.Assert("application/json", gocheck.Equals, h.request.Header.Get("Accept"))
 	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
@@ -180,7 +190,7 @@ func (s *S) TestCreateShouldReturnErrorIfTheRequestFail(c *gocheck.C) {
 	defer ts.Close()
 	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
-	err := client.Create(&instance)
+	err := client.Create(&instance, "my@user")
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err, gocheck.ErrorMatches, "^Failed to create the instance "+instance.Name+": Server failed to do its job.$")
 }

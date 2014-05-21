@@ -259,7 +259,7 @@ func CreateServiceInstance(name string, service *Service, planName string, user 
 	}
 	actions := []*action.Action{&createServiceInstance, &insertServiceInstance}
 	pipeline := action.NewPipeline(actions...)
-	return pipeline.Execute(*service, instance)
+	return pipeline.Execute(*service, instance, user.Email)
 }
 
 func GetServiceInstancesByServices(services []Service) ([]ServiceInstance, error) {
