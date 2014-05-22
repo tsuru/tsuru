@@ -190,8 +190,10 @@ func (s *S) TestEnvSetValues(c *gocheck.C) {
 	context := cmd.Context{
 		Args: []string{
 			"DATABASE_HOST=some", "host",
-			"DATABASE_USER=root", "DATABASE_PASSWORD=.1234..abc",
+			"DATABASE_USER=root",
+			"DATABASE_PASSWORD=.1234..abc",
 			"http_proxy=http://myproxy.com:3128/",
+			"VALUE_WITH_EQUAL_SIGN=http://wholikesquerystrings.me/?tsuru=awesome",
 		},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -200,10 +202,11 @@ func (s *S) TestEnvSetValues(c *gocheck.C) {
 		Transport: testing.Transport{Message: result, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			want := map[string]string{
-				"DATABASE_HOST":     "some host",
-				"DATABASE_USER":     "root",
-				"DATABASE_PASSWORD": ".1234..abc",
-				"http_proxy":        "http://myproxy.com:3128/",
+				"DATABASE_HOST":         "some host",
+				"DATABASE_USER":         "root",
+				"DATABASE_PASSWORD":     ".1234..abc",
+				"http_proxy":            "http://myproxy.com:3128/",
+				"VALUE_WITH_EQUAL_SIGN": "http://wholikesquerystrings.me/?tsuru=awesome",
 			}
 			defer req.Body.Close()
 			var got map[string]string
