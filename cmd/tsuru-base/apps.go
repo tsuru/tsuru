@@ -264,6 +264,19 @@ func (c AppList) Info() *cmd.Info {
 	}
 }
 
+type AppStop struct{}
+
+func (c *AppStop) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:  "stop",
+		Usage: "stop [--app appname]",
+		Desc: `stops an app.
+
+If you don't provide the app name, tsuru will try to guess it.`,
+		MinArgs: 0,
+	}
+}
+
 type AppStart struct {
 	GuessingCommand
 }

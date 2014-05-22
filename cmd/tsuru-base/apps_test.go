@@ -747,3 +747,15 @@ func (s *S) TestUnitAvailable(c *gocheck.C) {
 	u = &unit{State: "down"}
 	c.Assert(u.Available(), gocheck.Equals, false)
 }
+
+func (s *S) TestAppStopInfo(c *gocheck.C) {
+	expected := &cmd.Info{
+		Name:  "stop",
+		Usage: "stop [--app appname]",
+		Desc: `stops an app.
+
+If you don't provide the app name, tsuru will try to guess it.`,
+		MinArgs: 0,
+	}
+	c.Assert((&AppStop{}).Info(), gocheck.DeepEquals, expected)
+}
