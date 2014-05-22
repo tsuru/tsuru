@@ -7,6 +7,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
@@ -25,7 +26,10 @@ import (
 
 const (
 	nonManagedSchemeMsg = "Authentication scheme does not allow this operation."
+	createDisabledMsg   = "User registration is disabled for non-admin users."
 )
+
+var createDisabledErr = &errors.HTTP{Code: http.StatusUnauthorized, Message: createDisabledMsg}
 
 func handleAuthError(err error) error {
 	if err == auth.ErrUserNotFound {
@@ -46,6 +50,21 @@ func handleAuthError(err error) error {
 }
 
 func createUser(w http.ResponseWriter, r *http.Request) error {
+	registrationEnabled, _ := config.GetBool("auth:user-registration")
+	if !registrationEnabled {
+		token := r.Header.Get("Authorization")
+		t, err := app.AuthScheme.Auth(token)
+		if err != nil {
+			return createDisabledErr
+		}
+		user, err := t.User()
+		if err != nil {
+			return createDisabledErr
+		}
+		if !user.IsAdmin() {
+			return createDisabledErr
+		}
+	}
 	var u auth.User
 	err := json.NewDecoder(r.Body).Decode(&u)
 	if err != nil {

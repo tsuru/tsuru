@@ -39,6 +39,7 @@ var _ = gocheck.Suite(&AuthSuite{})
 
 func (s *AuthSuite) SetUpSuite(c *gocheck.C) {
 	var err error
+	config.Set("auth:user-registration", true)
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_auth_test")
 	config.Set("auth:salt", "tsuru-salt")
@@ -303,6 +304,64 @@ func (s *AuthSuite) TestCreateUserCreatesUserInGandalf(c *gocheck.C) {
 	expected := `{"name":"nobody@me.myself","keys":{}}`
 	c.Assert(string(h.body[0]), gocheck.Equals, expected)
 	c.Assert(h.method[0], gocheck.Equals, "POST")
+}
+
+func (s *AuthSuite) TestCreateUserFailWithRegistrationDisabled(c *gocheck.C) {
+	h := testHandler{}
+	ts := testing.StartGandalfTestServer(&h)
+	defer ts.Close()
+	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
+	request, err := http.NewRequest("POST", "/users", b)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-type", "application/json")
+	oldUserRegistration, err := config.GetBool("auth:user-registration")
+	c.Assert(err, gocheck.IsNil)
+	config.Set("auth:user-registration", false)
+	defer config.Set("auth:user-registration", oldUserRegistration)
+	recorder := httptest.NewRecorder()
+	err = createUser(recorder, request)
+	c.Assert(err, gocheck.Equals, createDisabledErr)
+}
+
+func (s *AuthSuite) TestCreateUserFailWithRegistrationDisabledAndCommonUser(c *gocheck.C) {
+	simpleUser := &auth.User{Email: "my@common.user", Password: "123456"}
+	_, err := nativeScheme.Create(simpleUser)
+	c.Assert(err, gocheck.IsNil)
+	token, err := nativeScheme.Login(map[string]string{"email": simpleUser.Email, "password": "123456"})
+	c.Assert(err, gocheck.IsNil)
+	h := testHandler{}
+	ts := testing.StartGandalfTestServer(&h)
+	defer ts.Close()
+	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
+	request, err := http.NewRequest("POST", "/users", b)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-type", "application/json")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	oldUserRegistration, err := config.GetBool("auth:user-registration")
+	c.Assert(err, gocheck.IsNil)
+	config.Set("auth:user-registration", false)
+	defer config.Set("auth:user-registration", oldUserRegistration)
+	recorder := httptest.NewRecorder()
+	err = createUser(recorder, request)
+	c.Assert(err, gocheck.Equals, createDisabledErr)
+}
+
+func (s *AuthSuite) TestCreateUserWorksWithRegistrationDisabledAndAdminUser(c *gocheck.C) {
+	h := testHandler{}
+	ts := testing.StartGandalfTestServer(&h)
+	defer ts.Close()
+	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
+	request, err := http.NewRequest("POST", "/users", b)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-type", "application/json")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	oldUserRegistration, err := config.GetBool("auth:user-registration")
+	c.Assert(err, gocheck.IsNil)
+	config.Set("auth:user-registration", false)
+	defer config.Set("auth:user-registration", oldUserRegistration)
+	recorder := httptest.NewRecorder()
+	err = createUser(recorder, request)
+	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *AuthSuite) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheResponse(c *gocheck.C) {

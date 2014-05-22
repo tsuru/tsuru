@@ -124,10 +124,7 @@ func RunServer(dry bool) {
 	m.Post("/apps/:appname/repository/clone", authorizationRequiredHandler(deploy))
 	m.Post("/apps/:appname/deploy", authorizationRequiredHandler(deploy))
 
-	if registrationEnabled, _ := config.GetBool("auth:user-registration"); registrationEnabled {
-		m.Post("/users", Handler(createUser))
-	}
-
+	m.Post("/users", Handler(createUser))
 	m.Get("/auth/scheme", Handler(authScheme))
 	m.Post("/auth/login", Handler(login))
 	m.Post("/users/:email/password", Handler(resetPassword))
