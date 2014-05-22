@@ -82,7 +82,7 @@ func (c *EnvSet) Run(context *cmd.Context, client *cmd.Client) error {
 		return err
 	}
 	raw := strings.Join(context.Args, " ")
-	regex := regexp.MustCompile(`(\w+=[^=]+)(\s|$)`)
+	regex := regexp.MustCompile(`(\w+=[^\s]+[^=]+)(\s|$)`)
 	decls := regex.FindAllStringSubmatch(raw, -1)
 	if len(decls) < 1 {
 		return errors.New(envSetValidationMessage)
@@ -90,7 +90,7 @@ func (c *EnvSet) Run(context *cmd.Context, client *cmd.Client) error {
 	variables := make(map[string]string, len(decls))
 	for _, v := range decls {
 		parts := strings.Split(v[1], "=")
-		variables[parts[0]] = parts[1]
+		variables[parts[0]] = strings.Join(parts[1:], "=")
 	}
 	var buf bytes.Buffer
 	json.NewEncoder(&buf).Encode(variables)
