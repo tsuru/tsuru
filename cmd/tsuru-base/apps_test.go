@@ -784,3 +784,33 @@ func (s *S) TestAppStop(c *gocheck.C) {
 	c.Assert(called, gocheck.Equals, true)
 	c.Assert(stdout.String(), gocheck.Equals, "Stopped")
 }
+
+func (s *S) TestAppStopWithoutTheFlag(c *gocheck.C) {
+	var (
+		called         bool
+		stdout, stderr bytes.Buffer
+	)
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: "Stopped", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			called = true
+			return req.URL.Path == "/apps/motorbreath/stop" && req.Method == "GET"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	fake := &FakeGuesser{name: "motorbreath"}
+	command := AppStop{GuessingCommand: GuessingCommand{G: fake}}
+	command.Flags().Parse(true, nil)
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(called, gocheck.Equals, true)
+	c.Assert(stdout.String(), gocheck.Equals, "Stopped")
+}
+
+func (s *S) TestAppStopIsAFlaggedCommand(c *gocheck.C) {
+	var _ cmd.FlaggedCommand = &AppStop{}
+}
