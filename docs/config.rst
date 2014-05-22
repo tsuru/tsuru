@@ -168,14 +168,11 @@ like git://tsuruhost.com/<app-name>.git.
 Authentication configuration
 ----------------------------
 
-tsuru has support for multiple authentication schemes.
+tsuru has support for ``native`` and ``oauth`` authentication schemes.
 
-The default scheme is called "native" and it supports the creation of users in
+The default scheme is ``native`` and it supports the creation of users in
 Tsuru's internal database. It hashes passwords brcypt and tokens are generated
 during authentication, and are hashed using SHA512.
-
-This scheme requires two settings to operate: ``auth:hash-cost`` and
-``auth:token-expire-days``. Each setting is described below.
 
 The ``auth`` section also controls whether user registration is on or off. When
 user registration is off, the user creation URL is not registered in the
@@ -184,11 +181,8 @@ server.
 auth:scheme
 +++++++++++
 
-The authentication scheme to be used. The default value is "native" and right
-now it's the only supported scheme.
-
-An "oauth" authentication scheme is currently under development.
-
+The authentication scheme to be used. The default value is ``native``, the other
+supported value is ``oauth``.
 
 auth:user-registration
 ++++++++++++++++++++++
@@ -199,12 +193,16 @@ optional, and defaults to false.
 auth:hash-cost
 ++++++++++++++
 
+Required only with ``native`` chosen as ``auth:scheme``.
+
 This number indicates how many CPU time you're willing to give to hashing
 calculation. It is an absolute number, between 4 and 31, where 4 is faster and
 less secure, while 31 is very secure and *very* slow.
 
 auth:token-expire-days
 ++++++++++++++++++++++
+
+Required only with ``native`` chosen as ``auth:scheme``.
 
 Whenever a user logs in, tsuru generates a token for him/her, and the user may
 store the token. ``auth:token-expire-days`` setting defines the amount of days

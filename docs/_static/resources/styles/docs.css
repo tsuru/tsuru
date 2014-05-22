@@ -1,26 +1,52 @@
+.section h1,
+.section h2,
+.section h3,
+.section h4,
+.section h5 {
+    line-height: 1.2em;
+    margin: 30px 0 5px;
+    font-family: Georgia;
+}
+
 .section h1 {
-    margin-bottom: 30px;
+    font-size: 34px;
 }
 
 .section h2 {
-    margin: 30px 0 5px;
-    font-size: 30.5px;
+    font-size: 30px;
 }
 
 .section h3 {
-    font-size: 20.5px;
-    margin: 30px 0 5px;
+    font-size: 26px;
 }
 
 .section h4 {
-    margin: 30px 0;
+    font-size: 22px;
 }
 
-.section p,
-.section em,
-.section li {
-    font-size: 15px;
+.section h5 {
+    font-size: 16px;
+}
+
+.section p {
+    margin-bottom: 10px;
+    line-height: 20px;
+}
+
+main p, main li, main em {
+    color: #333;
+    font-size: 14px;
     font-weight: normal;
+}
+
+span.pre {
+    font-family: monospace;
+    background: #dedede;
+}
+
+#configuring-tsuru {
+    width: 80%;
+    margin: 0 auto;
 }
 
 #build-your-own-paas-with-tsuru h2,
@@ -79,15 +105,20 @@ dt:hover > a.headerlink {
 
 #using-tsuru, #running-tsuru, #extending-tsuru {
 	float: left;
-	width: 30%;
-	margin-left: 10px;
+	width: 32%;
+	margin-left: 2%;
 	clear: none;
 	margin-bottom: 30px;
 }
 
+#using-tsuru {
+    margin-left: 0;
+}
+
 #using-tsuru h2, #running-tsuru h2, #extending-tsuru h2 {
 	background-color: #efefef;
-	padding-left: 15px;
+	padding-left: 5px;
+    margin-left: -5px;
 }
 
 #content .content-container {
