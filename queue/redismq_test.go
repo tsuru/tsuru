@@ -51,12 +51,12 @@ func (s *RedismqSuite) TestPutWithDelay(c *gocheck.C) {
 		Args:   []string{"myapp"},
 	}
 	q := redismqQ{name: "default", pool: s.pool, prefix: "tests", maxSize: 10}
-	err := q.Put(&msg, 1e9)
+	err := q.Put(&msg, 3e9)
 	c.Assert(err, gocheck.IsNil)
-	_, err = q.Get(1e6)
+	_, err = q.Get(1e9)
 	c.Assert(err, gocheck.NotNil)
 	time.Sleep(15e8)
-	got, err := q.Get(1e6)
+	got, err := q.Get(1e9)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(*got, gocheck.DeepEquals, msg)
 }

@@ -55,40 +55,24 @@ func (r *redismqQ) key() string {
 }
 
 func (r *redismqQ) Get(timeout time.Duration) (*Message, error) {
-	payloadChan := make(chan []byte)
-	errChan := make(chan error)
-	quit := make(chan int)
-	go func() {
-		conn := r.pool.Get()
-		defer conn.Close()
-		var payload interface{}
-		var err error
-		for payload == nil {
-			select {
-			case <-quit:
-				return
-			default:
-				payload, err = conn.Do("RPOP", r.key())
-				if err != nil {
-					errChan <- err
-					return
-				}
-			}
-		}
-		payloadChan <- payload.([]byte)
-	}()
-	var payload []byte
-	select {
-	case payload = <-payloadChan:
-	case err := <-errChan:
+	conn := r.pool.Get()
+	defer conn.Close()
+	secTimeout := int(timeout.Seconds())
+	if secTimeout < 1 {
+		secTimeout = 1
+	}
+	payload, err := conn.Do("BRPOP", r.key(), secTimeout)
+	if err != nil {
 		return nil, err
-	case <-time.After(timeout):
-		close(quit)
+	}
+	if payload == nil {
 		return nil, &timeoutError{timeout: timeout}
 	}
+	items := payload.([]interface{})
+	data := items[1].([]byte)
 	var msg Message
-	if err := json.Unmarshal(payload, &msg); err != nil && err != io.EOF {
-		return nil, fmt.Errorf("Invalid message: %q", payload)
+	if err := json.Unmarshal(data, &msg); err != nil && err != io.EOF {
+		return nil, fmt.Errorf("Invalid message: %q", data)
 	}
 	return &msg, nil
 }
