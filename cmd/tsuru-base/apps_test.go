@@ -759,3 +759,28 @@ If you don't provide the app name, tsuru will try to guess it.`,
 	}
 	c.Assert((&AppStop{}).Info(), gocheck.DeepEquals, expected)
 }
+
+func (s *S) TestAppStop(c *gocheck.C) {
+	var (
+		called         bool
+		stdout, stderr bytes.Buffer
+	)
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: "Stopped", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			called = true
+			return req.URL.Path == "/apps/handful_of_nothing/stop" && req.Method == "GET"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	command := AppStop{}
+	command.Flags().Parse(true, []string{"--app", "handful_of_nothing"})
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(called, gocheck.Equals, true)
+	c.Assert(stdout.String(), gocheck.Equals, "Stopped")
+}

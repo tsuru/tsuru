@@ -264,7 +264,9 @@ func (c AppList) Info() *cmd.Info {
 	}
 }
 
-type AppStop struct{}
+type AppStop struct {
+	GuessingCommand
+}
 
 func (c *AppStop) Info() *cmd.Info {
 	return &cmd.Info{
@@ -275,6 +277,31 @@ func (c *AppStop) Info() *cmd.Info {
 If you don't provide the app name, tsuru will try to guess it.`,
 		MinArgs: 0,
 	}
+}
+
+func (c *AppStop) Run(context *cmd.Context, client *cmd.Client) error {
+	appName, err := c.Guess()
+	if err != nil {
+		return err
+	}
+	url, err := cmd.GetURL(fmt.Sprintf("/apps/%s/stop", appName))
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	_, err = io.Copy(context.Stdout, response.Body)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 type AppStart struct {
