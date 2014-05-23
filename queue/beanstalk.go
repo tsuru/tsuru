@@ -31,6 +31,18 @@ type beanstalkdQ struct {
 	name string
 }
 
+func (b *beanstalkdQ) Pub(msg []byte) error {
+	return nil
+}
+
+func (b *beanstalkdQ) UnSub() error {
+	return nil
+}
+
+func (b *beanstalkdQ) Sub() (chan []byte, error) {
+	return nil, nil
+}
+
 func (b *beanstalkdQ) Get(timeout time.Duration) (*Message, error) {
 	return get(timeout, b.name)
 }

@@ -36,10 +36,38 @@ func (h *fakeHandler) Stop() error {
 func (h *fakeHandler) Wait() {}
 
 type FakeQ struct {
-	messages messageQueue
+	messages   messageQueue
+	pubSubStop chan int
+	name       string
+}
+
+type SyncSet struct {
+	set map[string]bool
+	sync.Mutex
+}
+
+var subscribersSet = SyncSet{set: make(map[string]bool)}
+
+func (s *SyncSet) put(val string) {
+	s.Lock()
+	defer s.Unlock()
+	s.set[val] = true
+}
+
+func (s *SyncSet) get(val string) bool {
+	s.Lock()
+	defer s.Unlock()
+	return s.set[val]
+}
+
+func (s *SyncSet) delete(val string) {
+	s.Lock()
+	defer s.Unlock()
+	delete(s.set, val)
 }
 
 func (q *FakeQ) get(ch chan *queue.Message, stop chan int) {
+	defer close(ch)
 	for {
 		select {
 		case <-stop:
@@ -52,6 +80,42 @@ func (q *FakeQ) get(ch chan *queue.Message, stop chan int) {
 		}
 		time.Sleep(1e3)
 	}
+}
+
+func (q *FakeQ) Pub(msg []byte) error {
+	if !subscribersSet.get(q.name) {
+		return nil
+	}
+	m := queue.Message{Action: string(msg)}
+	q.messages.enqueue(&m)
+	return nil
+}
+
+func (q *FakeQ) Sub() (chan []byte, error) {
+	subChan := make(chan []byte)
+	q.pubSubStop = make(chan int, 1)
+	go func() {
+		defer close(subChan)
+		for {
+			select {
+			case <-q.pubSubStop:
+				return
+			default:
+			}
+			if msg := q.messages.dequeue(); msg != nil {
+				subChan <- []byte(msg.Action)
+			}
+			time.Sleep(1e3)
+		}
+	}()
+	subscribersSet.put(q.name)
+	return subChan, nil
+}
+
+func (q *FakeQ) UnSub() error {
+	subscribersSet.delete(q.name)
+	close(q.pubSubStop)
+	return nil
 }
 
 func (q *FakeQ) Get(timeout time.Duration) (*queue.Message, error) {
@@ -96,7 +160,7 @@ func (f *FakeQFactory) Get(name string) (queue.Q, error) {
 	if q, ok := f.queues[name]; ok {
 		return q, nil
 	}
-	q := FakeQ{}
+	q := FakeQ{name: name}
 	f.queues[name] = &q
 	return &q, nil
 }

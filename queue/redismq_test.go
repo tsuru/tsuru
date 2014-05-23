@@ -173,3 +173,42 @@ func (s *RedismqSuite) TestRedisMqFactoryIsInFactoriesMap(c *gocheck.C) {
 	_, ok = f.(redismqQFactory)
 	c.Assert(ok, gocheck.Equals, true)
 }
+
+func (s *RedismqSuite) TestRedisPubSub(c *gocheck.C) {
+	var factory redismqQFactory
+	q, err := factory.Get("mypubsub")
+	c.Assert(err, gocheck.IsNil)
+	msgChan, err := q.Sub()
+	c.Assert(err, gocheck.IsNil)
+	err = q.Pub([]byte("entil'zha"))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(<-msgChan, gocheck.DeepEquals, []byte("entil'zha"))
+}
+
+func (s *RedismqSuite) TestRedisPubSubUnsub(c *gocheck.C) {
+	var factory redismqQFactory
+	q, err := factory.Get("mypubsub")
+	c.Assert(err, gocheck.IsNil)
+	msgChan, err := q.Sub()
+	c.Assert(err, gocheck.IsNil)
+	err = q.Pub([]byte("anla'shok"))
+	c.Assert(err, gocheck.IsNil)
+	done := make(chan bool)
+	go func() {
+		time.Sleep(5e8)
+		q.UnSub()
+	}()
+	go func() {
+		msgs := make([][]byte, 0)
+		for msg := range msgChan {
+			msgs = append(msgs, msg)
+		}
+		c.Assert(msgs, gocheck.DeepEquals, [][]byte{[]byte("anla'shok")})
+		done <- true
+	}()
+	select {
+	case <-done:
+	case <-time.After(1e9):
+		c.Error("Timeout waiting for message.")
+	}
+}
