@@ -47,7 +47,7 @@ func (r *redismqQ) UnSub() error {
 }
 
 func (r *redismqQ) Sub() (chan []byte, error) {
-	r.psc = &redis.PubSubConn{r.pool.Get()}
+	r.psc = &redis.PubSubConn{Conn: r.pool.Get()}
 	msgChan := make(chan []byte)
 	err := r.psc.Subscribe(r.key())
 	if err != nil {
