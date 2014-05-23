@@ -1160,9 +1160,26 @@ func incrementDeploy(app *App) error {
 	)
 }
 
-// Start starts the app.
+// Start starts the app calling the provisioner.Start method and
+// changing the units state to StatusStarted.
 func (app *App) Start(w io.Writer) error {
-	return Provisioner.Start(app)
+	err := Provisioner.Start(app)
+	if err != nil {
+		log.Errorf("[start] error on start the app %s - %s", app.Name, err)
+		return err
+	}
+	units := make([]Unit, len(app.Units))
+	for i, u := range app.Units {
+		u.State = provision.StatusStarted.String()
+		units[i] = u
+	}
+	app.Units = units
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.Apps().Update(bson.M{"name": app.Name}, app)
 }
 
 func (app *App) SetUpdatePlatform(check bool) error {
