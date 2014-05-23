@@ -150,7 +150,6 @@ func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	return segScheduler.removePool(params["pool"])
 }
 
-//listNodeHandler call scheduler.Nodes to list all nodes into it.
 func listPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	conn, err := db.Conn()
 	if err != nil {
@@ -159,7 +158,6 @@ func listPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	defer conn.Close()
 	var pools []Pool
 	err = conn.Collection(schedulerCollection).Find(nil).All(&pools)
-	println(pools)
 	if err != nil {
 		return err
 	}

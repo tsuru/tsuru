@@ -395,3 +395,47 @@ func (s *S) TestRebalanceContainersDryBodyHandler(c *gocheck.C) {
 	c.Assert(result[3].Message, gocheck.Matches, "Containers rebalanced successfully!")
 	testing.CleanQ("tsuru-app")
 }
+
+func (s *HandlersSuite) TestAddPoolHandler(c *gocheck.C) {
+	b := bytes.NewBufferString(`{"pool": "pool1"}`)
+	req, err := http.NewRequest("POST", "/pool", b)
+	c.Assert(err, gocheck.IsNil)
+	rec := httptest.NewRecorder()
+	err = addPoolHandler(rec, req, nil)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
+	n, err := s.conn.Collection(schedulerCollection).FindId("pool1").Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, 1)
+}
+
+func (s *HandlersSuite) TestRemovePoolHandler(c *gocheck.C) {
+	pool := Pool{Name: "pool1"}
+	err := s.conn.Collection(schedulerCollection).Insert(pool)
+	c.Assert(err, gocheck.IsNil)
+	b := bytes.NewBufferString(`{"pool": "pool1"}`)
+	req, err := http.NewRequest("DELETE", "/pool", b)
+	c.Assert(err, gocheck.IsNil)
+	rec := httptest.NewRecorder()
+	err = removePoolHandler(rec, req, nil)
+	c.Assert(err, gocheck.IsNil)
+	p, err := s.conn.Collection(schedulerCollection).FindId("pool1").Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(p, gocheck.Equals, 0)
+}
+
+func (s *HandlersSuite) TestListPoolsHandler(c *gocheck.C) {
+	pool := Pool{Name: "pool1", Nodes: []string{"url:1234", "url:2345"}, Teams: []string{"tsuruteam", "ateam"}}
+	err := s.conn.Collection(schedulerCollection).Insert(pool)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Collection(schedulerCollection).Remove(pool)
+	poolsExpected := []Pool{pool}
+	req, err := http.NewRequest("GET", "/pool", nil)
+	c.Assert(err, gocheck.IsNil)
+	rec := httptest.NewRecorder()
+	err = listPoolHandler(rec, req, nil)
+	var pools []Pool
+	err = json.NewDecoder(rec.Body).Decode(&pools)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(pools, gocheck.DeepEquals, poolsExpected)
+}
