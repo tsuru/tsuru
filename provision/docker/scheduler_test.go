@@ -372,7 +372,8 @@ func (s *S) TestChooseNodeDistributesNodesEquallyDifferentApps(c *gocheck.C) {
 
 func (s *S) TestAddPool(c *gocheck.C) {
 	var seg segregatedScheduler
-	defer collection().RemoveId("pool1")
+	coll := s.storage.Collection(schedulerCollection)
+	defer coll.RemoveId("pool1")
 	err := seg.addPool("pool1")
 	c.Assert(err, gocheck.IsNil)
 }
@@ -402,9 +403,25 @@ func (s *S) TestRemovePoolDontRemovePoolWithNodes(c *gocheck.C) {
 	coll := s.storage.Collection(schedulerCollection)
 	pool := Pool{Name: "pool1", Nodes: []string{"test:1234"}}
 	err := coll.Insert(pool)
+	defer coll.RemoveId(pool.Name)
 	c.Assert(err, gocheck.IsNil)
 	err = seg.removePool("pool1")
 	c.Assert(err, gocheck.NotNil)
+}
+
+func (s *S) TestAddTeamToPool(c *gocheck.C) {
+	var seg segregatedScheduler
+	coll := s.storage.Collection(schedulerCollection)
+	pool := Pool{Name: "pool1"}
+	err := coll.Insert(pool)
+	c.Assert(err, gocheck.IsNil)
+	defer coll.RemoveId(pool.Name)
+	err = seg.addTeamsToPool("pool1", []string{"ateam", "test"})
+	c.Assert(err, gocheck.IsNil)
+	var p Pool
+	err = coll.FindId(pool.Name).One(&p)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(p.Teams, gocheck.DeepEquals, []string{"ateam", "test"})
 }
 
 func (s *S) TestAddPoolToSchedulerCmdInfo(c *gocheck.C) {
