@@ -28,6 +28,10 @@ type Q interface {
 	// Put sends a message to the queue after the given delay. When delay
 	// is 0, the message is sent immediately to the queue.
 	Put(m *Message, delay time.Duration) error
+
+	Pub(msg []byte) error
+	Sub() (chan []byte, error)
+	UnSub() error
 }
 
 // Handler represents a runnable routine. It can be started and stopped.

@@ -21,6 +21,55 @@ type redismqQ struct {
 	prefix  string
 	pool    *redis.Pool
 	maxSize int
+	psc     *redis.PubSubConn
+}
+
+func (r *redismqQ) Pub(msg []byte) error {
+	conn := r.pool.Get()
+	defer conn.Close()
+	_, err := conn.Do("PUBLISH", r.key(), msg)
+	return err
+}
+
+func (r *redismqQ) UnSub() error {
+	if r.psc == nil {
+		return nil
+	}
+	err := r.psc.Unsubscribe()
+	if err != nil {
+		return err
+	}
+	err = r.psc.Close()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *redismqQ) Sub() (chan []byte, error) {
+	r.psc = &redis.PubSubConn{r.pool.Get()}
+	msgChan := make(chan []byte)
+	err := r.psc.Subscribe(r.key())
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+		defer close(msgChan)
+		for {
+			switch v := r.psc.Receive().(type) {
+			case redis.Message:
+				msgChan <- v.Data
+			case redis.Subscription:
+				if v.Count == 0 {
+					return
+				}
+			case error:
+				log.Errorf("Error receiving messages from channel %s: %s", r.key(), v.Error())
+				return
+			}
+		}
+	}()
+	return msgChan, nil
 }
 
 func (r *redismqQ) Put(m *Message, delay time.Duration) error {
