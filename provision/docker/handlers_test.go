@@ -428,14 +428,49 @@ func (s *HandlersSuite) TestListPoolsHandler(c *gocheck.C) {
 	pool := Pool{Name: "pool1", Nodes: []string{"url:1234", "url:2345"}, Teams: []string{"tsuruteam", "ateam"}}
 	err := s.conn.Collection(schedulerCollection).Insert(pool)
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Collection(schedulerCollection).Remove(pool)
+	defer s.conn.Collection(schedulerCollection).RemoveId(pool.Name)
 	poolsExpected := []Pool{pool}
 	req, err := http.NewRequest("GET", "/pool", nil)
 	c.Assert(err, gocheck.IsNil)
 	rec := httptest.NewRecorder()
 	err = listPoolHandler(rec, req, nil)
+	c.Assert(err, gocheck.IsNil)
 	var pools []Pool
 	err = json.NewDecoder(rec.Body).Decode(&pools)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(pools, gocheck.DeepEquals, poolsExpected)
+}
+
+func (s *HandlersSuite) TestAddTeamsToPoolHandler(c *gocheck.C) {
+	pool := Pool{Name: "pool1"}
+	err := s.conn.Collection(schedulerCollection).Insert(pool)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Collection(schedulerCollection).RemoveId(pool.Name)
+	b := bytes.NewBufferString(`{"pool": "pool1", "teams": ["test"]}`)
+	req, err := http.NewRequest("POST", "/pool/team", b)
+	c.Assert(err, gocheck.IsNil)
+	rec := httptest.NewRecorder()
+	err = addTeamToPoolHandler(rec, req, nil)
+	c.Assert(err, gocheck.IsNil)
+	var p Pool
+	err = s.conn.Collection(schedulerCollection).FindId("pool1").One(&p)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(p.Teams, gocheck.DeepEquals, []string{"test"})
+}
+
+func (s *HandlersSuite) TestRemoveTeamsToPoolHandler(c *gocheck.C) {
+	pool := Pool{Name: "pool1", Teams: []string{"test"}}
+	err := s.conn.Collection(schedulerCollection).Insert(pool)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Collection(schedulerCollection).RemoveId(pool.Name)
+	b := bytes.NewBufferString(`{"pool": "pool1", "teams": ["test"]}`)
+	req, err := http.NewRequest("DELETE", "/pool/team", b)
+	c.Assert(err, gocheck.IsNil)
+	rec := httptest.NewRecorder()
+	err = removeTeamToPoolHandler(rec, req, nil)
+	c.Assert(err, gocheck.IsNil)
+	var p Pool
+	err = s.conn.Collection(schedulerCollection).FindId("pool1").One(&p)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(p.Teams, gocheck.DeepEquals, []string{})
 }
