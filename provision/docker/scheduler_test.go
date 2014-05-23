@@ -370,6 +370,43 @@ func (s *S) TestChooseNodeDistributesNodesEquallyDifferentApps(c *gocheck.C) {
 	c.Check(n, gocheck.Equals, 1)
 }
 
+func (s *S) TestAddPool(c *gocheck.C) {
+	var seg segregatedScheduler
+	defer collection().RemoveId("pool1")
+	err := seg.addPool("pool1")
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestAddPoolWithoutNameShouldBreak(c *gocheck.C) {
+	var seg segregatedScheduler
+	err := seg.addPool("")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Pool name is required.")
+}
+
+func (s *S) TestRemovePool(c *gocheck.C) {
+	var seg segregatedScheduler
+	coll := s.storage.Collection(schedulerCollection)
+	pool := Pool{Name: "pool1"}
+	err := coll.Insert(pool)
+	c.Assert(err, gocheck.IsNil)
+	err = seg.removePool("pool1")
+	c.Assert(err, gocheck.IsNil)
+	p, err := coll.FindId("pool1").Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(p, gocheck.Equals, 0)
+}
+
+func (s *S) TestRemovePoolDontRemovePoolWithNodes(c *gocheck.C) {
+	var seg segregatedScheduler
+	coll := s.storage.Collection(schedulerCollection)
+	pool := Pool{Name: "pool1", Nodes: []string{"test:1234"}}
+	err := coll.Insert(pool)
+	c.Assert(err, gocheck.IsNil)
+	err = seg.removePool("pool1")
+	c.Assert(err, gocheck.NotNil)
+}
+
 func (s *S) TestAddPoolToSchedulerCmdInfo(c *gocheck.C) {
 	expected := cmd.Info{
 		Name:    "docker-pool-add",

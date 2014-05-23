@@ -253,6 +253,9 @@ func (segregatedScheduler) Unregister(params map[string]string) error {
 }
 
 func (segregatedScheduler) addPool(pool_name string) error {
+	if pool_name == "" {
+		return errors.New("Pool name is required.")
+	}
 	conn, err := db.Conn()
 	if err != nil {
 		return err
