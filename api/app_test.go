@@ -2924,3 +2924,31 @@ func (s *S) TestStartHandler(c *gocheck.C) {
 	}
 	c.Assert(action, testing.IsRecorded)
 }
+
+func (s *S) TestStopHandler(c *gocheck.C) {
+	a := app.App{
+		Name:  "stress",
+		Teams: []string{s.team.Name},
+		Units: []app.Unit{{Name: "i-0800", State: provision.StatusStarted.String()}},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	url := fmt.Sprintf("/apps/%s/stop?:app=%s", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = stop(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	stops := s.provisioner.Stops(&a)
+	c.Assert(stops, gocheck.Equals, 1)
+	action := testing.Action{
+		Action: "stop",
+		User:   s.user.Email,
+		Extra:  []interface{}{a.Name},
+	}
+	c.Assert(action, testing.IsRecorded)
+}

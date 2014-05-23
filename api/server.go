@@ -99,6 +99,7 @@ func RunServer(dry bool) {
 	m.Post("/apps/:app/run", authorizationRequiredHandler(runCommand))
 	m.Get("/apps/:app/restart", authorizationRequiredHandler(restart))
 	m.Get("/apps/:app/start", authorizationRequiredHandler(start))
+	m.Get("/apps/:app/stop", authorizationRequiredHandler(stop))
 	m.Get("/apps/:app/env", authorizationRequiredHandler(getEnv))
 	m.Post("/apps/:app/env", authorizationRequiredHandler(setEnv))
 	m.Del("/apps/:app/env", authorizationRequiredHandler(unsetEnv))

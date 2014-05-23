@@ -1563,17 +1563,16 @@ func (s *S) TestStop(c *gocheck.C) {
 		{Name: "app/0", State: provision.StatusStarted.String()},
 	}
 	a := App{Name: "app", Units: unitList}
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-
 	var buf bytes.Buffer
 	err = a.Stop(&buf)
 	c.Assert(err, gocheck.IsNil)
-
 	err = s.conn.Apps().Find(bson.M{"name": a.GetName()}).One(&a)
 	c.Assert(err, gocheck.IsNil)
-
 	for _, u := range a.Units {
 		c.Assert(u.State, gocheck.Equals, provision.StatusStopped.String())
 	}
@@ -2346,15 +2345,21 @@ func (s *S) TestStart(c *gocheck.C) {
 		Name:     "someApp",
 		Platform: "django",
 		Teams:    []string{s.team.Name},
-		Units:    []Unit{{Name: "i-0800", State: "started"}},
+		Units:    []Unit{{Name: "i-0800", State: provision.StatusStopped.String()}},
 	}
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	var b bytes.Buffer
-	err := a.Start(&b)
+	err = a.Start(&b)
 	c.Assert(err, gocheck.IsNil)
 	starts := s.provisioner.Starts(&a)
 	c.Assert(starts, gocheck.Equals, 1)
+	app, err := GetByName("someApp")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.Units[0].State, gocheck.Equals, provision.StatusStarted.String())
 }
 
 func (s *S) TestAppSetUpdatePlatform(c *gocheck.C) {

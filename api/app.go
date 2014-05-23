@@ -761,3 +761,18 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	return app.Start(w)
 }
+
+func stop(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	w.Header().Set("Content-Type", "text")
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
+	appName := r.URL.Query().Get(":app")
+	rec.Log(u.Email, "stop", appName)
+	app, err := getApp(appName, u)
+	if err != nil {
+		return err
+	}
+	return app.Stop(w)
+}

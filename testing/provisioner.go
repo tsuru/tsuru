@@ -332,6 +332,13 @@ func (p *FakeProvisioner) Starts(app provision.App) int {
 	return p.apps[app.GetName()].starts
 }
 
+// Stops returns the number of stops for a given app.
+func (p *FakeProvisioner) Stops(app provision.App) int {
+	p.mut.RLock()
+	defer p.mut.RUnlock()
+	return p.apps[app.GetName()].stops
+}
+
 // InstalledDeps returns the number of InstallDeps calls for the given app.
 func (p *FakeProvisioner) InstalledDeps(app provision.App) int {
 	p.mut.RLock()
@@ -739,6 +746,14 @@ func (p *FakeProvisioner) HasCName(app provision.App, cname string) bool {
 }
 
 func (p *FakeProvisioner) Stop(app provision.App) error {
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	pApp, ok := p.apps[app.GetName()]
+	if !ok {
+		return errNotProvisioned
+	}
+	pApp.stops++
+	p.apps[app.GetName()] = pApp
 	return nil
 }
 
@@ -755,6 +770,7 @@ type provisionedApp struct {
 	app         provision.App
 	restarts    int
 	starts      int
+	stops       int
 	installDeps int
 	version     string
 	cname       string
