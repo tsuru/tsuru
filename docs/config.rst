@@ -317,13 +317,15 @@ with ec2. It's only used for `juju` healers.
 queue configuration
 -------------------
 
-tsuru uses a work queue for asynchronous tasks. By default it will use
-`beanstalkd <http://kr.github.com/beanstalkd>`_. You can customize the used
-queue, and settings related to the queue (like the address where beanstalkd is
-listening).
+tsuru uses a work queue for asynchronous tasks.
 
-Besides beanstalkd, tsuru also supports Redis as a working queue. In order to
-use Redis, tsuru administrators must set ``queue`` to ``redis``.
+tsuru supports both ``redis`` and ``beanstalkd`` as queue backends. However,
+using ``beanstalkd`` is *deprecated* as of 0.5.0. The log live streaming feature
+"tsuru log -f" will not work if using ``beanstalkd``.
+
+For compatibility and historical reasons the default queue is `beanstalkd
+<http://kr.github.com/beanstalkd>`_. You can customize the used queue, and
+settings related to the queue (like the address where the server is listening).
 
 Creating a new queue provider is as easy as implementing `an interface
 <http://godoc.org/github.com/tsuru/tsuru/queue#Q>`_.
@@ -332,7 +334,8 @@ queue
 +++++
 
 ``queue`` is the name of the queue implementation that tsuru will use. This
-setting is optional and defaults to "beanstalkd".
+setting defaults to ``beanstalkd``, but we strongly encourage you to change it to
+``redis``.
 
 queue-server
 ++++++++++++

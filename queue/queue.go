@@ -30,10 +30,20 @@ type Q interface {
 	Put(m *Message, delay time.Duration) error
 }
 
+// PubSubQ represents a Q implementation that allows Publishing and
+// Subscribing messages.
 type PubSubQ interface {
 	Q
+
+	// Publishes a message using the underlaying queue server.
 	Pub(msg []byte) error
+
+	// Returns a channel that will yield every message published to this
+	// queue.
 	Sub() (chan []byte, error)
+
+	// Unsubscribe the queue, this should make sure the channel returned
+	// by Sub() is closed.
 	UnSub() error
 }
 
