@@ -256,3 +256,10 @@ func (s *S) TestPluginLookup(c *gocheck.C) {
 	pluginPath := cmd.JoinWithUserDir(".tsuru", "plugins", "myplugin")
 	c.Assert(fexec.ExecutedCmd(pluginPath, []string{}), gocheck.Equals, true)
 }
+
+func (s *S) TestAppStopIsRegistered(c *gocheck.C) {
+	manager := buildManager("tsuru")
+	stop, ok := manager.Commands["stop"]
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(stop, gocheck.FitsTypeOf, &tsuru.AppStop{})
+}
