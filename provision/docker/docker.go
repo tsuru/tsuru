@@ -254,10 +254,22 @@ func gitDeploy(app provision.App, version string, w io.Writer) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	return deploy(app, commands, w)
+}
+
+func archiveDeploy(app provision.App, archiveURL string, w io.Writer) (string, error) {
+	commands, err := archiveDeployCmds(app, archiveURL)
+	if err != nil {
+		return "", err
+	}
+	return deploy(app, commands, w)
+}
+
+func deploy(app provision.App, commands []string, w io.Writer) (string, error) {
 	imageId := getImage(app)
 	actions := []*action.Action{&insertEmptyContainerInDB, &createContainer, &startContainer, &updateContainerInDB}
 	pipeline := action.NewPipeline(actions...)
-	err = pipeline.Execute(app, imageId, commands)
+	err := pipeline.Execute(app, imageId, commands)
 	if err != nil {
 		log.Errorf("error on execute deploy pipeline for app %s - %s", app.GetName(), err)
 		return "", err

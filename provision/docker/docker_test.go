@@ -579,7 +579,7 @@ func (s *S) TestRemoveImageCallsRegistry(c *gocheck.C) {
 	c.Assert(request.URL.Path, gocheck.Equals, path)
 }
 
-func (s *S) TestContainerDeploy(c *gocheck.C) {
+func (s *S) TestGitDeploy(c *gocheck.C) {
 	h := &testing.TestHandler{}
 	gandalfServer := testing.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
@@ -591,6 +591,18 @@ func (s *S) TestContainerDeploy(c *gocheck.C) {
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
 	_, err = gitDeploy(app, "ff13e", &buf)
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestArchiveDeploy(c *gocheck.C) {
+	go s.stopContainers(1)
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	app := testing.NewFakeApp("myapp", "python", 1)
+	rtesting.FakeRouter.AddBackend(app.GetName())
+	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
+	var buf bytes.Buffer
+	_, err = archiveDeploy(app, "https://s3.amazonaws.com/wat/archive.tar.gz", &buf)
 	c.Assert(err, gocheck.IsNil)
 }
 
