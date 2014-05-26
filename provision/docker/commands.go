@@ -17,8 +17,8 @@ import (
 	"strings"
 )
 
-// deployCmds returns the commands that is used when provisioner
-// deploy an unit.
+// deployCmds returns the list of commands that are used when the provisioner
+// deploys a unit.
 func deployCmds(app provision.App, version string) ([]string, error) {
 	deployCmd, err := config.GetString("docker:deploy-cmd")
 	if err != nil {
@@ -33,8 +33,8 @@ func deployCmds(app provision.App, version string) ([]string, error) {
 	return cmds, nil
 }
 
-// runWithAgentCmds returns the commands that should be passed when the
-// provisioner will run an unit using tsuru_unit_agent to start.
+// runWithAgentCmds returns the list of commands that should be passed when the
+// provisioner will run a unit using tsuru_unit_agent to start.
 func runWithAgentCmds(app provision.App) ([]string, error) {
 	runCmd, err := config.GetString("docker:run-cmd:bin")
 	if err != nil {
