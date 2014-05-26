@@ -16,7 +16,7 @@ import (
 	"strings"
 )
 
-func (s *S) TestDeployCmds(c *gocheck.C) {
+func (s *S) TestGitDeployCmds(c *gocheck.C) {
 	h := &testing.TestHandler{}
 	gandalfServer := testing.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
@@ -31,8 +31,28 @@ func (s *S) TestDeployCmds(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	version := "version"
 	appRepo := repository.ReadOnlyURL(app.GetName())
-	expected := []string{deployCmd, appRepo, version, `http_proxy=[http://theirproxy.com:3128/,http://teste.com:3111] `}
+	expected := []string{deployCmd, appRepo, version, "http_proxy=[http://theirproxy.com:3128/,http://teste.com:3111] "}
 	cmds, err := gitDeployCmds(app, version)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(cmds, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestArchiveDeployCmds(c *gocheck.C) {
+	app := testing.NewFakeApp("app-name", "python", 1)
+	env := bind.EnvVar{
+		Name:   "http_proxy",
+		Value:  "[http://theirproxy.com:3128/, http://teste.com:3111]",
+		Public: true,
+	}
+	app.SetEnv(env)
+	deployCmd, err := config.GetString("docker:deploy-cmd")
+	c.Assert(err, gocheck.IsNil)
+	archiveURL := "https://s3.amazonaws.com/wat/archive.tar.gz"
+	expected := []string{
+		deployCmd, archiveURL,
+		"http_proxy=[http://theirproxy.com:3128/,http://teste.com:3111] ",
+	}
+	cmds, err := archiveDeployCmds(app, archiveURL)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cmds, gocheck.DeepEquals, expected)
 }

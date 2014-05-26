@@ -18,19 +18,29 @@ import (
 )
 
 // gitDeployCmds returns the list of commands that are used when the
-// provisioner deploys a unit.
+// provisioner deploys a unit using the Git repository method.
 func gitDeployCmds(app provision.App, version string) ([]string, error) {
+	appRepo := repository.ReadOnlyURL(app.GetName())
+	return deployCmds(app, appRepo, version)
+}
+
+// archiveDeployCmds returns the list of commands that are used when the
+// provisioner deploys a unit using the archive method.
+func archiveDeployCmds(app provision.App, archiveURL string) ([]string, error) {
+	return deployCmds(app, archiveURL)
+}
+
+func deployCmds(app provision.App, params ...string) ([]string, error) {
 	deployCmd, err := config.GetString("docker:deploy-cmd")
 	if err != nil {
 		return nil, err
 	}
-	appRepo := repository.ReadOnlyURL(app.GetName())
 	var envs string
 	for _, env := range app.Envs() {
 		envs += fmt.Sprintf(`%s=%s `, env.Name, strings.Replace(env.Value, " ", "", -1))
 	}
-	cmds := []string{deployCmd, appRepo, version, envs}
-	return cmds, nil
+	cmds := append([]string{deployCmd}, params...)
+	return append(cmds, envs), nil
 }
 
 // runWithAgentCmds returns the list of commands that should be passed when the
