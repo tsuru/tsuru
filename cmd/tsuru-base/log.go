@@ -43,6 +43,7 @@ func (w *jsonWriter) Write(b []byte) (int, error) {
 	w.b = append(w.b, b...)
 	err := json.Unmarshal(w.b, &logs)
 	if err != nil {
+		fmt.Printf("Error: %s", string(b))
 		return len(b), nil
 	}
 	for _, l := range logs {

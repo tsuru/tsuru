@@ -5,92 +5,96 @@
 package app
 
 import (
-	"errors"
+	"encoding/json"
+	"fmt"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/queue"
 	"labix.org/v2/mgo/bson"
-	"sync"
-	"sync/atomic"
 )
 
-const (
-	closed int32 = iota
-	open
-)
-
-var listeners = struct {
-	m map[string][]*LogListener
-	sync.RWMutex
-}{
-	m: make(map[string][]*LogListener),
-}
+var UnsupportedPubSubErr = fmt.Errorf("Your queue backend doesn't support pubsub required for log streaming. Using redis as queue is recommended.")
 
 type LogListener struct {
-	C       <-chan Applog
-	c       chan Applog
-	quit    chan byte
-	state   int32
-	appname string
+	C <-chan Applog
+	q queue.PubSubQ
 }
 
-func NewLogListener(a *App) *LogListener {
+func logQueueName(appName string) string {
+	return "pubsub:" + appName
+}
+
+func NewLogListener(a *App) (*LogListener, error) {
+	factory, err := queue.Factory()
+	if err != nil {
+		return nil, err
+	}
+	q, err := factory.Get(logQueueName(a.Name))
+	if err != nil {
+		return nil, err
+	}
+	pubSubQ, ok := q.(queue.PubSubQ)
+	if !ok {
+		return nil, UnsupportedPubSubErr
+	}
+	subChan, err := pubSubQ.Sub()
+	if err != nil {
+		return nil, err
+	}
 	c := make(chan Applog, 10)
-	l := LogListener{C: c, c: c, state: open, appname: a.Name}
-	l.quit = make(chan byte)
-	listeners.Lock()
-	list := listeners.m[l.appname]
-	list = append(list, &l)
-	listeners.m[a.Name] = list
-	listeners.Unlock()
-	return &l
+	go func() {
+		defer close(c)
+		for msg := range subChan {
+			applog := Applog{}
+			err := json.Unmarshal(msg, &applog)
+			if err != nil {
+				log.Errorf("Unparsable log message, ignoring: %s", string(msg))
+				continue
+			}
+			c <- applog
+		}
+	}()
+	l := LogListener{C: c, q: pubSubQ}
+	return &l, nil
 }
 
-func (l *LogListener) Close() error {
-	if !atomic.CompareAndSwapInt32(&l.state, open, closed) {
-		return errors.New("Already closed.")
-	}
-	listeners.Lock()
-	defer listeners.Unlock()
-	close(l.quit)
-	close(l.c)
-	list := listeners.m[l.appname]
-	index := -1
-	for i, listener := range list {
-		if listener == l {
-			index = i
-			break
+func (l *LogListener) Close() (err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("Recovered panic closing listener (possible double close): %#v", r)
 		}
-	}
-	if index > -1 {
-		list[index], list[len(list)-1] = list[len(list)-1], list[index]
-		listeners.m[l.appname] = list[:len(list)-1]
-	}
-	return nil
+	}()
+	err = l.q.UnSub()
+	return
 }
 
 func notify(appName string, messages []interface{}) {
-	var wg sync.WaitGroup
-	listeners.RLock()
-	ls := make([]*LogListener, len(listeners.m[appName]))
-	copy(ls, listeners.m[appName])
-	listeners.RUnlock()
-	for _, l := range ls {
-		wg.Add(1)
-		go func(l *LogListener) {
-			defer wg.Done()
-			for _, msg := range messages {
-				select {
-				case <-l.quit:
-					return
-				default:
-					defer func() {
-						recover()
-					}()
-					l.c <- msg.(Applog)
-				}
-			}
-		}(l)
+	factory, err := queue.Factory()
+	if err != nil {
+		log.Errorf("Error on logs notify: %s", err.Error())
+		return
 	}
-	wg.Wait()
+	q, err := factory.Get(logQueueName(appName))
+	if err != nil {
+		log.Errorf("Error on logs notify: %s", err.Error())
+		return
+	}
+	pubSubQ, ok := q.(queue.PubSubQ)
+	if !ok {
+		log.Debugf("Queue does not support pubsub, logs only in database.")
+		return
+	}
+	for _, msg := range messages {
+		bytes, err := json.Marshal(msg)
+		if err != nil {
+			log.Errorf("Error on logs notify: %s", err.Error())
+			continue
+		}
+		err = pubSubQ.Pub(bytes)
+		if err != nil {
+			log.Errorf("Error on logs notify: %s", err.Error())
+		}
+	}
 }
 
 // LogRemove removes the app log.
@@ -99,7 +103,7 @@ func LogRemove(a *App) error {
 	if err != nil {
 		return err
 	}
-	//defer conn.Close()
+	defer conn.Close()
 	if a != nil {
 		_, err = conn.Logs().RemoveAll(bson.M{"appname": a.Name})
 	} else {

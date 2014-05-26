@@ -598,9 +598,11 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	// TODO(fss): write an automated test for this code.
 	if r.URL.Query().Get("follow") == "1" {
-		l := app.NewLogListener(&a)
+		l, err := app.NewLogListener(&a)
+		if err != nil {
+			return err
+		}
 		defer l.Close()
 		for log := range l.C {
 			err := encoder.Encode([]app.Applog{log})

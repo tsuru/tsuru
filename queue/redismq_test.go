@@ -178,9 +178,11 @@ func (s *RedismqSuite) TestRedisPubSub(c *gocheck.C) {
 	var factory redismqQFactory
 	q, err := factory.Get("mypubsub")
 	c.Assert(err, gocheck.IsNil)
-	msgChan, err := q.Sub()
+	pubSubQ, ok := q.(PubSubQ)
+	c.Assert(ok, gocheck.Equals, true)
+	msgChan, err := pubSubQ.Sub()
 	c.Assert(err, gocheck.IsNil)
-	err = q.Pub([]byte("entil'zha"))
+	err = pubSubQ.Pub([]byte("entil'zha"))
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(<-msgChan, gocheck.DeepEquals, []byte("entil'zha"))
 }
@@ -189,14 +191,16 @@ func (s *RedismqSuite) TestRedisPubSubUnsub(c *gocheck.C) {
 	var factory redismqQFactory
 	q, err := factory.Get("mypubsub")
 	c.Assert(err, gocheck.IsNil)
-	msgChan, err := q.Sub()
+	pubSubQ, ok := q.(PubSubQ)
+	c.Assert(ok, gocheck.Equals, true)
+	msgChan, err := pubSubQ.Sub()
 	c.Assert(err, gocheck.IsNil)
-	err = q.Pub([]byte("anla'shok"))
+	err = pubSubQ.Pub([]byte("anla'shok"))
 	c.Assert(err, gocheck.IsNil)
 	done := make(chan bool)
 	go func() {
 		time.Sleep(5e8)
-		q.UnSub()
+		pubSubQ.UnSub()
 	}()
 	go func() {
 		msgs := make([][]byte, 0)

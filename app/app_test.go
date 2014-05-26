@@ -1640,7 +1640,8 @@ func (s *S) TestLogWithListeners(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	l := NewLogListener(&a)
+	l, err := NewLogListener(&a)
+	c.Assert(err, gocheck.IsNil)
 	defer l.Close()
 	go func() {
 		for log := range l.C {

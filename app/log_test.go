@@ -13,35 +13,42 @@ import (
 
 func (s *S) TestNewLogListener(c *gocheck.C) {
 	app := App{Name: "myapp"}
-	l := NewLogListener(&app)
-	c.Assert(l.appname, gocheck.Equals, "myapp")
-	c.Assert(l.state, gocheck.Equals, open)
+	l, err := NewLogListener(&app)
+	defer l.Close()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(l.q, gocheck.NotNil)
 	c.Assert(l.C, gocheck.NotNil)
-	close(l.c)
+	notify("myapp", []interface{}{Applog{Message: "123"}})
+	logMsg := <-l.C
+	c.Assert(logMsg.Message, gocheck.Equals, "123")
+}
+
+func (s *S) TestNewLogListenerClosingChannel(c *gocheck.C) {
+	app := App{Name: "myapp"}
+	l, err := NewLogListener(&app)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(l.q, gocheck.NotNil)
+	c.Assert(l.C, gocheck.NotNil)
+	l.Close()
 	_, ok := <-l.C
 	c.Assert(ok, gocheck.Equals, false)
-	ls := listeners.m["myapp"]
-	c.Assert(ls, gocheck.HasLen, 1)
-	c.Assert(ls[0], gocheck.Equals, l)
-	delete(listeners.m, "myapp")
 }
 
 func (s *S) TestLogListenerClose(c *gocheck.C) {
-	app := App{Name: "yourapp"}
-	l := NewLogListener(&app)
-	err := l.Close()
+	app := App{Name: "myapp"}
+	l, err := NewLogListener(&app)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(l.state, gocheck.Equals, closed)
+	err = l.Close()
+	c.Assert(err, gocheck.IsNil)
 	_, ok := <-l.C
 	c.Assert(ok, gocheck.Equals, false)
-	ls := listeners.m["yourapp"]
-	c.Assert(ls, gocheck.HasLen, 0)
 }
 
 func (s *S) TestLogListenerDoubleClose(c *gocheck.C) {
 	app := App{Name: "yourapp"}
-	l := NewLogListener(&app)
-	err := l.Close()
+	l, err := NewLogListener(&app)
+	c.Assert(err, gocheck.IsNil)
+	err = l.Close()
 	c.Assert(err, gocheck.IsNil)
 	err = l.Close()
 	c.Assert(err, gocheck.NotNil)
@@ -53,7 +60,8 @@ func (s *S) TestNotify(c *gocheck.C) {
 		sync.Mutex
 	}
 	app := App{Name: "fade"}
-	l := NewLogListener(&app)
+	l, err := NewLogListener(&app)
+	c.Assert(err, gocheck.IsNil)
 	defer l.Close()
 	go func() {
 		for log := range l.C {
@@ -62,9 +70,10 @@ func (s *S) TestNotify(c *gocheck.C) {
 			logs.Unlock()
 		}
 	}()
+	t := time.Date(2014, 7, 10, 15, 0, 0, 0, time.UTC)
 	ms := []interface{}{
-		Applog{Date: time.Now(), Message: "Something went wrong. Check it out:", Source: "tsuru"},
-		Applog{Date: time.Now(), Message: "This program has performed an illegal operation.", Source: "tsuru"},
+		Applog{Date: t, Message: "Something went wrong. Check it out:", Source: "tsuru"},
+		Applog{Date: t, Message: "This program has performed an illegal operation.", Source: "tsuru"},
 	}
 	notify(app.Name, ms)
 	done := make(chan bool, 1)
@@ -101,8 +110,10 @@ func (s *S) TestNotifySendOnClosedChannel(c *gocheck.C) {
 		c.Assert(recover(), gocheck.IsNil)
 	}()
 	app := App{Name: "fade"}
-	l := NewLogListener(&app)
-	close(l.c)
+	l, err := NewLogListener(&app)
+	c.Assert(err, gocheck.IsNil)
+	err = l.Close()
+	c.Assert(err, gocheck.IsNil)
 	ms := []interface{}{
 		Applog{Date: time.Now(), Message: "Something went wrong. Check it out:", Source: "tsuru"},
 	}

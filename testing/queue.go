@@ -12,10 +12,14 @@ import (
 	"time"
 )
 
-var factory = NewFakeQFactory()
+var (
+	factory         = NewFakePubSubQFactory()
+	noPubSubFactory = NewFakeQFactory()
+)
 
 func init() {
 	queue.Register("fake", factory)
+	queue.Register("noPubSubFake", noPubSubFactory)
 }
 
 type fakeHandler struct {
@@ -39,6 +43,11 @@ type FakeQ struct {
 	messages   messageQueue
 	pubSubStop chan int
 	name       string
+}
+
+type FakePubSubQ struct {
+	FakeQ
+	pubSubStop chan int
 }
 
 type SyncSet struct {
@@ -82,7 +91,7 @@ func (q *FakeQ) get(ch chan *queue.Message, stop chan int) {
 	}
 }
 
-func (q *FakeQ) Pub(msg []byte) error {
+func (q *FakePubSubQ) Pub(msg []byte) error {
 	if !subscribersSet.get(q.name) {
 		return nil
 	}
@@ -91,7 +100,7 @@ func (q *FakeQ) Pub(msg []byte) error {
 	return nil
 }
 
-func (q *FakeQ) Sub() (chan []byte, error) {
+func (q *FakePubSubQ) Sub() (chan []byte, error) {
 	subChan := make(chan []byte)
 	q.pubSubStop = make(chan int, 1)
 	go func() {
@@ -112,7 +121,7 @@ func (q *FakeQ) Sub() (chan []byte, error) {
 	return subChan, nil
 }
 
-func (q *FakeQ) UnSub() error {
+func (q *FakePubSubQ) UnSub() error {
 	subscribersSet.delete(q.name)
 	close(q.pubSubStop)
 	return nil
@@ -141,6 +150,32 @@ func (q *FakeQ) Put(m *queue.Message, delay time.Duration) error {
 		q.messages.enqueue(m)
 	}
 	return nil
+}
+
+type FakePubSubQFactory struct {
+	queues map[string]*FakePubSubQ
+	sync.Mutex
+}
+
+func NewFakePubSubQFactory() *FakePubSubQFactory {
+	return &FakePubSubQFactory{
+		queues: make(map[string]*FakePubSubQ),
+	}
+}
+
+func (f *FakePubSubQFactory) Get(name string) (queue.Q, error) {
+	f.Lock()
+	defer f.Unlock()
+	if q, ok := f.queues[name]; ok {
+		return q, nil
+	}
+	q := FakePubSubQ{FakeQ: FakeQ{name: name}}
+	f.queues[name] = &q
+	return &q, nil
+}
+
+func (f *FakePubSubQFactory) Handler(fn func(*queue.Message), names ...string) (queue.Handler, error) {
+	return &fakeHandler{}, nil
 }
 
 type FakeQFactory struct {

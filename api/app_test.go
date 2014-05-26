@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/service"
@@ -27,6 +28,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -2163,6 +2165,70 @@ func (s *S) TestAppLogReturnsBadRequestIfNumberOfLinesIsNotAnInteger(c *gocheck.
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
 	c.Assert(e.Message, gocheck.Equals, `Parameter "lines" must be an integer.`)
+}
+
+func (s *S) TestAppLogFollowNoPubSub(c *gocheck.C) {
+	oldQueue, err := config.GetString("queue")
+	c.Assert(err, gocheck.IsNil)
+	defer config.Set("queue", oldQueue)
+	config.Set("queue", "noPubSubFake")
+	a := app.App{
+		Name:     "lost",
+		Platform: "vougan",
+		Teams:    []string{s.team.Name},
+	}
+	err = s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	url := "/apps/something/log/?:app=lost&lines=10&follow=1"
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = appLog(recorder, request, s.token)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Matches, ".*pubsub required for log streaming.*")
+}
+
+func (s *S) TestAppLogFollowWithPubSub(c *gocheck.C) {
+	a := app.App{
+		Name:     "lost",
+		Platform: "vougan",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	url := "/apps/something/log/?:app=lost&lines=10&follow=1"
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, gocheck.IsNil)
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		recorder := httptest.NewRecorder()
+		err := appLog(recorder, request, s.token)
+		c.Assert(err, gocheck.IsNil)
+		body, err := ioutil.ReadAll(recorder.Body)
+		c.Assert(err, gocheck.IsNil)
+		adjusted := strings.Split(string(body), "\n")[1]
+		logs := []app.Applog{}
+		err = json.Unmarshal([]byte(adjusted), &logs)
+		c.Assert(err, gocheck.IsNil)
+		c.Assert(logs, gocheck.HasLen, 1)
+		c.Assert(logs[0].Message, gocheck.Equals, "x")
+	}()
+	time.Sleep(1e9)
+	factory, err := queue.Factory()
+	c.Assert(err, gocheck.IsNil)
+	q, err := factory.Get("pubsub:" + a.Name)
+	c.Assert(err, gocheck.IsNil)
+	pubSubQ, ok := q.(queue.PubSubQ)
+	c.Assert(ok, gocheck.Equals, true)
+	err = pubSubQ.Pub([]byte(`{"message": "x"}`))
+	c.Assert(err, gocheck.IsNil)
+	time.Sleep(1e9)
+	pubSubQ.UnSub()
+	wg.Wait()
 }
 
 func (s *S) TestAppLogShouldHaveContentType(c *gocheck.C) {
