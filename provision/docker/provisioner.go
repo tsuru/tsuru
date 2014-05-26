@@ -164,6 +164,18 @@ func (p *dockerProvisioner) GitDeploy(a provision.App, version string, w io.Writ
 	if err != nil {
 		return err
 	}
+	return p.deploy(a, imageId, w)
+}
+
+func (p *dockerProvisioner) ArchiveDeploy(a provision.App, archiveURL string, w io.Writer) error {
+	imageId, err := archiveDeploy(a, archiveURL, w)
+	if err != nil {
+		return err
+	}
+	return p.deploy(a, imageId, w)
+}
+
+func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer) error {
 	containers, err := listContainersByApp(a.GetName())
 	started := make(chan bool, len(containers))
 	if err == nil && len(containers) > 0 {
