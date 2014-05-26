@@ -17,9 +17,9 @@ import (
 	"strings"
 )
 
-// deployCmds returns the list of commands that are used when the provisioner
-// deploys a unit.
-func deployCmds(app provision.App, version string) ([]string, error) {
+// gitDeployCmds returns the list of commands that are used when the
+// provisioner deploys a unit.
+func gitDeployCmds(app provision.App, version string) ([]string, error) {
 	deployCmd, err := config.GetString("docker:deploy-cmd")
 	if err != nil {
 		return nil, err
