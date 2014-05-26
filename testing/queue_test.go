@@ -7,6 +7,7 @@ package testing
 import (
 	"github.com/tsuru/tsuru/queue"
 	"launchpad.net/gocheck"
+	"time"
 )
 
 func (s *S) TestFakeQPutAndGet(c *gocheck.C) {
@@ -57,6 +58,41 @@ func (s *S) TestFakeQPutWithTimeout(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	_, err = q.Get(1e9)
 	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestFakeQPubSub(c *gocheck.C) {
+	q := FakePubSubQ{}
+	msgChan, err := q.Sub()
+	c.Assert(err, gocheck.IsNil)
+	err = q.Pub([]byte("muad'dib"))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(<-msgChan, gocheck.DeepEquals, []byte("muad'dib"))
+}
+
+func (s *S) TestFakeQPubSubUnSub(c *gocheck.C) {
+	q := FakePubSubQ{}
+	msgChan, err := q.Sub()
+	c.Assert(err, gocheck.IsNil)
+	err = q.Pub([]byte("arrakis"))
+	c.Assert(err, gocheck.IsNil)
+	done := make(chan bool)
+	go func() {
+		time.Sleep(5e8)
+		q.UnSub()
+	}()
+	go func() {
+		msgs := make([][]byte, 0)
+		for msg := range msgChan {
+			msgs = append(msgs, msg)
+		}
+		c.Assert(msgs, gocheck.DeepEquals, [][]byte{[]byte("arrakis")})
+		done <- true
+	}()
+	select {
+	case <-done:
+	case <-time.After(1e9):
+		c.Error("Timeout waiting for message.")
+	}
 }
 
 func (s *S) TestFakeHandlerStart(c *gocheck.C) {
