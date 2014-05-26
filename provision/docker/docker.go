@@ -249,7 +249,7 @@ func (c *container) setImage(imageId string) error {
 	return coll.Update(bson.M{"id": c.ID}, c)
 }
 
-func deploy(app provision.App, version string, w io.Writer) (string, error) {
+func gitDeploy(app provision.App, version string, w io.Writer) (string, error) {
 	commands, err := gitDeployCmds(app, version)
 	if err != nil {
 		return "", err

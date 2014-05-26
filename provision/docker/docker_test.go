@@ -590,7 +590,7 @@ func (s *S) TestContainerDeploy(c *gocheck.C) {
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
-	_, err = deploy(app, "ff13e", &buf)
+	_, err = gitDeploy(app, "ff13e", &buf)
 	c.Assert(err, gocheck.IsNil)
 }
 
