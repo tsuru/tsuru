@@ -92,6 +92,7 @@ type Applog struct {
 	Message string
 	Source  string
 	AppName string
+	Unit    string
 }
 
 // GetAppByName queries the database to find an app identified by the given
@@ -599,7 +600,7 @@ func (app *App) setEnv(env bind.EnvVar) {
 	}
 	app.Env[env.Name] = env
 	if env.Public {
-		app.Log(fmt.Sprintf("setting env %s with value %s", env.Name, env.Value), "tsuru")
+		app.Log(fmt.Sprintf("setting env %s with value %s", env.Name, env.Value), "tsuru", "api")
 	}
 }
 
@@ -662,7 +663,7 @@ func (app *App) Run(cmd string, w io.Writer, once bool) error {
 	if !app.Available() {
 		return stderr.New("App must be available to run commands")
 	}
-	app.Log(fmt.Sprintf("running '%s'", cmd), "tsuru")
+	app.Log(fmt.Sprintf("running '%s'", cmd), "tsuru", "api")
 	return app.sourced(cmd, w, once)
 }
 
@@ -999,7 +1000,7 @@ func (app *App) UnsetCName() error {
 
 // Log adds a log message to the app. Specifying a good source is good so the
 // user can filter where the message come from.
-func (app *App) Log(message, source string) error {
+func (app *App) Log(message, source, unit string) error {
 	messages := strings.Split(message, "\n")
 	logs := make([]interface{}, 0, len(messages))
 	for _, msg := range messages {
@@ -1009,6 +1010,7 @@ func (app *App) Log(message, source string) error {
 				Message: msg,
 				Source:  source,
 				AppName: app.Name,
+				Unit:    unit,
 			}
 			logs = append(logs, l)
 		}
@@ -1026,8 +1028,8 @@ func (app *App) Log(message, source string) error {
 }
 
 // LastLogs returns a list of the last `lines` log of the app, matching the
-// given source.
-func (app *App) LastLogs(lines int, source string) ([]Applog, error) {
+// fields in the log instance received as an example.
+func (app *App) LastLogs(lines int, filterLog Applog) ([]Applog, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -1035,8 +1037,11 @@ func (app *App) LastLogs(lines int, source string) ([]Applog, error) {
 	defer conn.Close()
 	logs := []Applog{}
 	q := bson.M{"appname": app.Name}
-	if source != "" {
-		q["source"] = source
+	if filterLog.Source != "" {
+		q["source"] = filterLog.Source
+	}
+	if filterLog.Unit != "" {
+		q["unit"] = filterLog.Unit
 	}
 	err = conn.Logs().Find(q).Sort("-date").Limit(lines).All(&logs)
 	if err != nil {

@@ -2210,14 +2210,16 @@ func (s *S) TestAppLogFollowWithPubSub(c *gocheck.C) {
 		c.Assert(err, gocheck.IsNil)
 		body, err := ioutil.ReadAll(recorder.Body)
 		c.Assert(err, gocheck.IsNil)
-		adjusted := strings.Split(string(body), "\n")[1]
+		splitted := strings.Split(strings.TrimSpace(string(body)), "\n")
+		c.Assert(splitted, gocheck.HasLen, 2)
+		c.Assert(splitted[0], gocheck.Equals, "[]")
 		logs := []app.Applog{}
-		err = json.Unmarshal([]byte(adjusted), &logs)
+		err = json.Unmarshal([]byte(splitted[1]), &logs)
 		c.Assert(err, gocheck.IsNil)
 		c.Assert(logs, gocheck.HasLen, 1)
 		c.Assert(logs[0].Message, gocheck.Equals, "x")
 	}()
-	time.Sleep(1e9)
+	time.Sleep(1e8)
 	factory, err := queue.Factory()
 	c.Assert(err, gocheck.IsNil)
 	q, err := factory.Get("pubsub:" + a.Name)
@@ -2226,7 +2228,53 @@ func (s *S) TestAppLogFollowWithPubSub(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	err = pubSubQ.Pub([]byte(`{"message": "x"}`))
 	c.Assert(err, gocheck.IsNil)
-	time.Sleep(1e9)
+	time.Sleep(1e8)
+	pubSubQ.UnSub()
+	wg.Wait()
+}
+
+func (s *S) TestAppLogFollowWithFilter(c *gocheck.C) {
+	a := app.App{
+		Name:     "lost",
+		Platform: "vougan",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	url := "/apps/something/log/?:app=lost&lines=10&follow=1&source=web"
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, gocheck.IsNil)
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		recorder := httptest.NewRecorder()
+		err := appLog(recorder, request, s.token)
+		c.Assert(err, gocheck.IsNil)
+		body, err := ioutil.ReadAll(recorder.Body)
+		c.Assert(err, gocheck.IsNil)
+		splitted := strings.Split(strings.TrimSpace(string(body)), "\n")
+		c.Assert(splitted, gocheck.HasLen, 2)
+		c.Assert(splitted[0], gocheck.Equals, "[]")
+		logs := []app.Applog{}
+		err = json.Unmarshal([]byte(splitted[1]), &logs)
+		c.Assert(err, gocheck.IsNil)
+		c.Assert(logs, gocheck.HasLen, 1)
+		c.Assert(logs[0].Message, gocheck.Equals, "y")
+	}()
+	time.Sleep(1e8)
+	factory, err := queue.Factory()
+	c.Assert(err, gocheck.IsNil)
+	q, err := factory.Get("pubsub:" + a.Name)
+	c.Assert(err, gocheck.IsNil)
+	pubSubQ, ok := q.(queue.PubSubQ)
+	c.Assert(ok, gocheck.Equals, true)
+	err = pubSubQ.Pub([]byte(`{"message": "x", "source": "app"}`))
+	c.Assert(err, gocheck.IsNil)
+	err = pubSubQ.Pub([]byte(`{"message": "y", "source": "web"}`))
+	c.Assert(err, gocheck.IsNil)
+	time.Sleep(1e8)
 	pubSubQ.UnSub()
 	wg.Wait()
 }
@@ -2262,7 +2310,7 @@ func (s *S) TestAppLogSelectByLines(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	for i := 0; i < 15; i++ {
-		a.Log(strconv.Itoa(i), "source")
+		a.Log(strconv.Itoa(i), "source", "")
 	}
 	url := fmt.Sprintf("/apps/%s/log/?:app=%s&lines=10", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
@@ -2296,8 +2344,8 @@ func (s *S) TestAppLogSelectBySource(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
-	a.Log("mars log", "mars")
-	a.Log("earth log", "earth")
+	a.Log("mars log", "mars", "")
+	a.Log("earth log", "earth", "")
 	url := fmt.Sprintf("/apps/%s/log/?:app=%s&source=mars&lines=10", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -2318,6 +2366,43 @@ func (s *S) TestAppLogSelectBySource(c *gocheck.C) {
 		Action: "app-log",
 		User:   s.user.Email,
 		Extra:  []interface{}{"app=" + a.Name, "lines=10", "source=mars"},
+	}
+	c.Assert(action, testing.IsRecorded)
+}
+
+func (s *S) TestAppLogSelectByUnit(c *gocheck.C) {
+	a := app.App{
+		Name:     "lost",
+		Platform: "vougan",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
+	a.Log("mars log", "mars", "prospero")
+	a.Log("earth log", "earth", "caliban")
+	url := fmt.Sprintf("/apps/%s/log/?:app=%s&unit=caliban&lines=10", a.Name, a.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Content-Type", "application/json")
+	err = appLog(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, gocheck.IsNil)
+	logs := []app.Applog{}
+	err = json.Unmarshal(body, &logs)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(logs, gocheck.HasLen, 1)
+	c.Assert(logs[0].Message, gocheck.Equals, "earth log")
+	c.Assert(logs[0].Source, gocheck.Equals, "earth")
+	c.Assert(logs[0].Unit, gocheck.Equals, "caliban")
+	action := testing.Action{
+		Action: "app-log",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=" + a.Name, "lines=10", "unit=caliban"},
 	}
 	c.Assert(action, testing.IsRecorded)
 }
@@ -2373,7 +2458,7 @@ func (s *S) TestAppLogShouldReturnLogByApp(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app1.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": app1.Name})
-	app1.Log("app1 log", "source")
+	app1.Log("app1 log", "source", "")
 	app2 := app.App{
 		Name:     "app2",
 		Platform: "vougan",
@@ -2383,7 +2468,7 @@ func (s *S) TestAppLogShouldReturnLogByApp(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app2.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": app2.Name})
-	app2.Log("app2 log", "source")
+	app2.Log("app2 log", "source", "")
 	app3 := app.App{
 		Name:     "app3",
 		Platform: "vougan",
@@ -2393,7 +2478,7 @@ func (s *S) TestAppLogShouldReturnLogByApp(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app3.Name})
 	defer s.conn.Logs().Remove(bson.M{"appname": app3.Name})
-	app3.Log("app3 log", "tsuru")
+	app3.Log("app3 log", "tsuru", "")
 	url := fmt.Sprintf("/apps/%s/log/?:app=%s&lines=10", app3.Name, app3.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -2877,7 +2962,7 @@ func (s *S) TestAddLogHandler(c *gocheck.C) {
 		"mysource",
 		"mysource",
 	}
-	logs, err := a.LastLogs(5, "")
+	logs, err := a.LastLogs(5, app.Applog{})
 	c.Assert(err, gocheck.IsNil)
 	got := make([]string, len(logs))
 	gotSource := make([]string, len(logs))

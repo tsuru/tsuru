@@ -569,6 +569,8 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	source := r.URL.Query().Get("source")
+	unit := r.URL.Query().Get("unit")
+	follow := r.URL.Query().Get("follow")
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -581,15 +583,19 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if source != "" {
 		extra = append(extra, "source="+source)
 	}
-	if r.URL.Query().Get("follow") == "1" {
+	if follow == "1" {
 		extra = append(extra, "follow=1")
 	}
+	if unit != "" {
+		extra = append(extra, "unit="+unit)
+	}
 	rec.Log(u.Email, "app-log", extra...)
+	filterLog := app.Applog{Source: source, Unit: unit}
 	a, err := getApp(appName, u)
 	if err != nil {
 		return err
 	}
-	logs, err := a.LastLogs(lines, source)
+	logs, err := a.LastLogs(lines, filterLog)
 	if err != nil {
 		return err
 	}
@@ -598,8 +604,8 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	if r.URL.Query().Get("follow") == "1" {
-		l, err := app.NewLogListener(&a)
+	if follow == "1" {
+		l, err := app.NewLogListener(&a, filterLog)
 		if err != nil {
 			return err
 		}
@@ -707,8 +713,10 @@ func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if len(source) == 0 {
 		source = "app"
 	}
+	unit := queryValues.Get("unit")
+	log.Debugf("Values: %#v", r)
 	for _, log := range logs {
-		err := app.Log(log, source)
+		err := app.Log(log, source, unit)
 		if err != nil {
 			return err
 		}

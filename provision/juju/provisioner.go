@@ -114,7 +114,7 @@ func (p *JujuProvisioner) Provision(app provision.App) error {
 	err = runCmd(false, &buf, &buf, args...)
 	out := buf.String()
 	if err != nil {
-		app.Log("Failed to create machine: "+out, "tsuru")
+		app.Log("Failed to create machine: "+out, "tsuru", "api")
 		return cmdError(out, err, args)
 	}
 	setOption := []string{
@@ -139,7 +139,7 @@ func (p *JujuProvisioner) Restart(app provision.App) error {
 	err := p.ExecuteCommand(&buf, &buf, app, "/var/lib/tsuru/hooks/restart")
 	if err != nil {
 		msg := fmt.Sprintf("Failed to restart the app (%s): %s", err, buf.String())
-		app.Log(msg, "tsuru-provisioner")
+		app.Log(msg, "tsuru-provisioner", "api")
 		return &provision.Error{Reason: buf.String(), Err: err}
 	}
 	return nil
@@ -150,7 +150,7 @@ func (p *JujuProvisioner) Start(app provision.App) error {
 	err := p.ExecuteCommand(&buf, &buf, app, "/var/lib/tsuru/hooks/start")
 	if err != nil {
 		msg := fmt.Sprintf("Failed to start the app (%s): %s", err, buf.String())
-		app.Log(msg, "tsuru-provisioner")
+		app.Log(msg, "tsuru-provisioner", "api")
 		return &provision.Error{Reason: buf.String(), Err: err}
 	}
 	return nil
@@ -161,7 +161,7 @@ func (p *JujuProvisioner) Stop(app provision.App) error {
 	err := p.ExecuteCommand(&buf, &buf, app, "/var/lib/tsuru/hooks/stop")
 	if err != nil {
 		msg := fmt.Sprintf("Failed to stop the app (%s): %s", err, buf.String())
-		app.Log(msg, "tsuru-provisioner")
+		app.Log(msg, "tsuru-provisioner", "api")
 		return &provision.Error{Reason: buf.String(), Err: err}
 	}
 	return nil
@@ -203,7 +203,7 @@ func (p *JujuProvisioner) destroyService(app provision.App) error {
 	}
 	if err != nil {
 		msg := fmt.Sprintf("Failed to destroy the app: %s.", out)
-		app.Log(msg, "tsuru")
+		app.Log(msg, "tsuru", "api")
 		return cmdError(out, err, []string{"destroy-service", app.GetName()})
 	}
 	return nil
@@ -220,7 +220,7 @@ func (p *JujuProvisioner) terminateMachines(app provision.App, units ...provisio
 		out := buf.String()
 		if err != nil {
 			msg := fmt.Sprintf("Failed to destroy unit %s: %s", u.GetName(), out)
-			app.Log(msg, "tsuru")
+			app.Log(msg, "tsuru", "api")
 			log.Errorf("Failed to destroy unit %q from the app %q: %s", u.GetName(), app.GetName(), out)
 			return cmdError(out, err, []string{"terminate-machine", strconv.Itoa(u.GetMachine())})
 		}

@@ -24,7 +24,7 @@ func logQueueName(appName string) string {
 	return "pubsub:" + appName
 }
 
-func NewLogListener(a *App) (*LogListener, error) {
+func NewLogListener(a *App, filterLog Applog) (*LogListener, error) {
 	factory, err := queue.Factory()
 	if err != nil {
 		return nil, err
@@ -51,7 +51,10 @@ func NewLogListener(a *App) (*LogListener, error) {
 				log.Errorf("Unparsable log message, ignoring: %s", string(msg))
 				continue
 			}
-			c <- applog
+			if (filterLog.Source == "" || filterLog.Source == applog.Source) &&
+				(filterLog.Unit == "" || filterLog.Unit == applog.Unit) {
+				c <- applog
+			}
 		}
 	}()
 	l := LogListener{C: c, q: pubSubQ}

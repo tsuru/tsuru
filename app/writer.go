@@ -9,7 +9,7 @@ import (
 )
 
 type Logger interface {
-	Log(string, string) error
+	Log(string, string, string) error
 }
 
 type LogWriter struct {
@@ -19,7 +19,7 @@ type LogWriter struct {
 
 // Write writes and logs the data.
 func (w *LogWriter) Write(data []byte) (int, error) {
-	err := w.App.Log(string(data), "tsuru")
+	err := w.App.Log(string(data), "tsuru", "api")
 	if err != nil {
 		return 0, err
 	}

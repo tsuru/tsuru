@@ -18,6 +18,7 @@ type AppLog struct {
 	GuessingCommand
 	fs     *gnuflag.FlagSet
 	source string
+	unit   string
 	lines  int
 	follow bool
 }
@@ -25,7 +26,7 @@ type AppLog struct {
 func (c *AppLog) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "log",
-		Usage: "log [--app appname] [--lines/-l numberOfLines] [--source/-s source] [--follow/-f]",
+		Usage: "log [--app appname] [--lines/-l numberOfLines] [--source/-s source] [--unit/-u unit] [--follow/-f]",
 		Desc: `show logs for an app.
 
 If you don't provide the app name, tsuru will try to guess it. The default number of lines is 10.`,
@@ -48,7 +49,12 @@ func (w *jsonWriter) Write(b []byte) (int, error) {
 	}
 	for _, l := range logs {
 		date := l.Date.In(time.Local).Format("2006-01-02 15:04:05 -0700")
-		prefix := fmt.Sprintf("%s [%s]:", date, l.Source)
+		var prefix string
+		if l.Unit != "" {
+			prefix = fmt.Sprintf("%s [%s][%s]:", date, l.Source, l.Unit)
+		} else {
+			prefix = fmt.Sprintf("%s [%s]:", date, l.Source)
+		}
 		fmt.Fprintf(w.w, "%s %s\n", cmd.Colorfy(prefix, "blue", "", ""), l.Message)
 	}
 	w.b = nil
@@ -59,6 +65,7 @@ type log struct {
 	Date    time.Time
 	Message string
 	Source  string
+	Unit    string
 }
 
 func (c *AppLog) Run(context *cmd.Context, client *cmd.Client) error {
@@ -72,6 +79,9 @@ func (c *AppLog) Run(context *cmd.Context, client *cmd.Client) error {
 	}
 	if c.source != "" {
 		url = fmt.Sprintf("%s&source=%s", url, c.source)
+	}
+	if c.unit != "" {
+		url = fmt.Sprintf("%s&unit=%s", url, c.unit)
 	}
 	if c.follow {
 		url += "&follow=1"
@@ -101,6 +111,8 @@ func (c *AppLog) Flags() *gnuflag.FlagSet {
 		c.fs.IntVar(&c.lines, "l", 10, "The number of log lines to display")
 		c.fs.StringVar(&c.source, "source", "", "The log from the given source")
 		c.fs.StringVar(&c.source, "s", "", "The log from the given source")
+		c.fs.StringVar(&c.unit, "unit", "", "The log from the given unit")
+		c.fs.StringVar(&c.unit, "u", "", "The log from the given unit")
 		c.fs.BoolVar(&c.follow, "follow", false, "Follow logs")
 		c.fs.BoolVar(&c.follow, "f", false, "Follow logs")
 	}

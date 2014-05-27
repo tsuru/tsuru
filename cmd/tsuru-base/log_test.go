@@ -99,14 +99,14 @@ func (s *S) TestAppLog(c *gocheck.C) {
 	t := time.Now()
 	logs := []log{
 		{Date: t, Message: "creating app lost", Source: "tsuru"},
-		{Date: t.Add(2 * time.Hour), Message: "app lost successfully created", Source: "app"},
+		{Date: t.Add(2 * time.Hour), Message: "app lost successfully created", Source: "app", Unit: "abcdef"},
 	}
 	result, err := json.Marshal(logs)
 	c.Assert(err, gocheck.IsNil)
 	t = t.In(time.Local)
 	tfmt := "2006-01-02 15:04:05 -0700"
 	expected := cmd.Colorfy(t.Format(tfmt)+" [tsuru]:", "blue", "", "") + " creating app lost\n"
-	expected = expected + cmd.Colorfy(t.Add(2*time.Hour).Format(tfmt)+" [app]:", "blue", "", "") + " app lost successfully created\n"
+	expected = expected + cmd.Colorfy(t.Add(2*time.Hour).Format(tfmt)+" [app][abcdef]:", "blue", "", "") + " app lost successfully created\n"
 	context := cmd.Context{
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -173,7 +173,7 @@ func (s *S) TestAppLogShouldReturnNilIfHasNoContent(c *gocheck.C) {
 func (s *S) TestAppLogInfo(c *gocheck.C) {
 	expected := &cmd.Info{
 		Name:  "log",
-		Usage: "log [--app appname] [--lines/-l numberOfLines] [--source/-s source] [--follow/-f]",
+		Usage: "log [--app appname] [--lines/-l numberOfLines] [--source/-s source] [--unit/-u unit] [--follow/-f]",
 		Desc: `show logs for an app.
 
 If you don't provide the app name, tsuru will try to guess it. The default number of lines is 10.`,
@@ -206,6 +206,38 @@ func (s *S) TestAppLogBySource(c *gocheck.C) {
 		Transport: testing.Transport{Message: string(result), Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			return req.URL.Query().Get("source") == "mysource"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	err = command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestAppLogByUnit(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	t := time.Now()
+	logs := []log{
+		{Date: t, Message: "creating app lost", Source: "tsuru", Unit: "api"},
+		{Date: t.Add(2 * time.Hour), Message: "app lost successfully created", Source: "tsuru", Unit: "api"},
+	}
+	result, err := json.Marshal(logs)
+	c.Assert(err, gocheck.IsNil)
+	t = t.In(time.Local)
+	tfmt := "2006-01-02 15:04:05 -0700"
+	expected := cmd.Colorfy(t.Format(tfmt)+" [tsuru][api]:", "blue", "", "") + " creating app lost\n"
+	expected = expected + cmd.Colorfy(t.Add(2*time.Hour).Format(tfmt)+" [tsuru][api]:", "blue", "", "") + " app lost successfully created\n"
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	fake := &FakeGuesser{name: "hitthelights"}
+	command := AppLog{GuessingCommand: GuessingCommand{G: fake}}
+	command.Flags().Parse(true, []string{"--unit", "api"})
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: string(result), Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Query().Get("unit") == "api"
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
@@ -281,7 +313,7 @@ func (s *S) TestAppLogWithFollow(c *gocheck.C) {
 func (s *S) TestAppLogFlagSet(c *gocheck.C) {
 	command := AppLog{}
 	flagset := command.Flags()
-	flagset.Parse(true, []string{"--source", "tsuru", "--lines", "12", "--app", "ashamed", "--follow"})
+	flagset.Parse(true, []string{"--source", "tsuru", "--unit", "abcdef", "--lines", "12", "--app", "ashamed", "--follow"})
 	source := flagset.Lookup("source")
 	c.Check(source, gocheck.NotNil)
 	c.Check(source.Name, gocheck.Equals, "source")
@@ -294,6 +326,18 @@ func (s *S) TestAppLogFlagSet(c *gocheck.C) {
 	c.Check(ssource.Usage, gocheck.Equals, "The log from the given source")
 	c.Check(ssource.Value.String(), gocheck.Equals, "tsuru")
 	c.Check(ssource.DefValue, gocheck.Equals, "")
+	unit := flagset.Lookup("unit")
+	c.Check(unit, gocheck.NotNil)
+	c.Check(unit.Name, gocheck.Equals, "unit")
+	c.Check(unit.Usage, gocheck.Equals, "The log from the given unit")
+	c.Check(unit.Value.String(), gocheck.Equals, "abcdef")
+	c.Check(unit.DefValue, gocheck.Equals, "")
+	sunit := flagset.Lookup("u")
+	c.Check(sunit, gocheck.NotNil)
+	c.Check(sunit.Name, gocheck.Equals, "u")
+	c.Check(sunit.Usage, gocheck.Equals, "The log from the given unit")
+	c.Check(sunit.Value.String(), gocheck.Equals, "abcdef")
+	c.Check(sunit.DefValue, gocheck.Equals, "")
 	lines := flagset.Lookup("lines")
 	c.Check(lines, gocheck.NotNil)
 	c.Check(lines.Name, gocheck.Equals, "lines")

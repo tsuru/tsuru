@@ -71,7 +71,7 @@ type AppUnit interface {
 type App interface {
 	Named
 	// Log should be used to log messages in the app.
-	Log(message, source string) error
+	Log(message, source, unit string) error
 
 	// GetPlatform returns the platform (type) of the app. It is equivalent
 	// to the Unit `Type` field.

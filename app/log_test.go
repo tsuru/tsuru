@@ -13,7 +13,7 @@ import (
 
 func (s *S) TestNewLogListener(c *gocheck.C) {
 	app := App{Name: "myapp"}
-	l, err := NewLogListener(&app)
+	l, err := NewLogListener(&app, Applog{})
 	defer l.Close()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(l.q, gocheck.NotNil)
@@ -25,7 +25,7 @@ func (s *S) TestNewLogListener(c *gocheck.C) {
 
 func (s *S) TestNewLogListenerClosingChannel(c *gocheck.C) {
 	app := App{Name: "myapp"}
-	l, err := NewLogListener(&app)
+	l, err := NewLogListener(&app, Applog{})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(l.q, gocheck.NotNil)
 	c.Assert(l.C, gocheck.NotNil)
@@ -36,7 +36,7 @@ func (s *S) TestNewLogListenerClosingChannel(c *gocheck.C) {
 
 func (s *S) TestLogListenerClose(c *gocheck.C) {
 	app := App{Name: "myapp"}
-	l, err := NewLogListener(&app)
+	l, err := NewLogListener(&app, Applog{})
 	c.Assert(err, gocheck.IsNil)
 	err = l.Close()
 	c.Assert(err, gocheck.IsNil)
@@ -46,7 +46,7 @@ func (s *S) TestLogListenerClose(c *gocheck.C) {
 
 func (s *S) TestLogListenerDoubleClose(c *gocheck.C) {
 	app := App{Name: "yourapp"}
-	l, err := NewLogListener(&app)
+	l, err := NewLogListener(&app, Applog{})
 	c.Assert(err, gocheck.IsNil)
 	err = l.Close()
 	c.Assert(err, gocheck.IsNil)
@@ -60,7 +60,7 @@ func (s *S) TestNotify(c *gocheck.C) {
 		sync.Mutex
 	}
 	app := App{Name: "fade"}
-	l, err := NewLogListener(&app)
+	l, err := NewLogListener(&app, Applog{})
 	c.Assert(err, gocheck.IsNil)
 	defer l.Close()
 	go func() {
@@ -72,8 +72,8 @@ func (s *S) TestNotify(c *gocheck.C) {
 	}()
 	t := time.Date(2014, 7, 10, 15, 0, 0, 0, time.UTC)
 	ms := []interface{}{
-		Applog{Date: t, Message: "Something went wrong. Check it out:", Source: "tsuru"},
-		Applog{Date: t, Message: "This program has performed an illegal operation.", Source: "tsuru"},
+		Applog{Date: t, Message: "Something went wrong. Check it out:", Source: "tsuru", Unit: "some"},
+		Applog{Date: t, Message: "This program has performed an illegal operation.", Source: "tsuru", Unit: "some"},
 	}
 	notify(app.Name, ms)
 	done := make(chan bool, 1)
@@ -105,12 +105,67 @@ func (s *S) TestNotify(c *gocheck.C) {
 	c.Assert(logs.l, gocheck.DeepEquals, ms)
 }
 
+func (s *S) TestNotifyFiltered(c *gocheck.C) {
+	var logs struct {
+		l []interface{}
+		sync.Mutex
+	}
+	app := App{Name: "fade"}
+	l, err := NewLogListener(&app, Applog{Source: "tsuru", Unit: "unit1"})
+	c.Assert(err, gocheck.IsNil)
+	defer l.Close()
+	go func() {
+		for log := range l.C {
+			logs.Lock()
+			logs.l = append(logs.l, log)
+			logs.Unlock()
+		}
+	}()
+	t := time.Date(2014, 7, 10, 15, 0, 0, 0, time.UTC)
+	ms := []interface{}{
+		Applog{Date: t, Message: "Something went wrong. Check it out:", Source: "tsuru", Unit: "unit1"},
+		Applog{Date: t, Message: "This program has performed an illegal operation.", Source: "other", Unit: "unit1"},
+		Applog{Date: t, Message: "Last one.", Source: "tsuru", Unit: "unit2"},
+	}
+	notify(app.Name, ms)
+	done := make(chan bool, 1)
+	q := make(chan bool)
+	go func(quit chan bool) {
+		for _ = range time.Tick(1e3) {
+			select {
+			case <-quit:
+				return
+			default:
+			}
+			logs.Lock()
+			if len(logs.l) == 1 {
+				logs.Unlock()
+				done <- true
+				return
+			}
+			logs.Unlock()
+		}
+	}(q)
+	select {
+	case <-done:
+	case <-time.After(2e9):
+		defer close(q)
+		c.Fatal("Timed out.")
+	}
+	logs.Lock()
+	defer logs.Unlock()
+	expected := []interface{}{
+		Applog{Date: t, Message: "Something went wrong. Check it out:", Source: "tsuru", Unit: "unit1"},
+	}
+	c.Assert(logs.l, gocheck.DeepEquals, expected)
+}
+
 func (s *S) TestNotifySendOnClosedChannel(c *gocheck.C) {
 	defer func() {
 		c.Assert(recover(), gocheck.IsNil)
 	}()
 	app := App{Name: "fade"}
-	l, err := NewLogListener(&app)
+	l, err := NewLogListener(&app, Applog{})
 	c.Assert(err, gocheck.IsNil)
 	err = l.Close()
 	c.Assert(err, gocheck.IsNil)
@@ -125,7 +180,7 @@ func (s *S) TestLogRemove(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	err = a.Log("last log msg", "tsuru")
+	err = a.Log("last log msg", "tsuru", "hari")
 	c.Assert(err, gocheck.IsNil)
 	err = LogRemove(nil)
 	c.Assert(err, gocheck.IsNil)
@@ -138,7 +193,7 @@ func (s *S) TestLogRemoveByApp(c *gocheck.C) {
 	a := App{Name: "newApp"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
-	err = a.Log("last log msg", "tsuru")
+	err = a.Log("last log msg", "tsuru", "hari")
 	c.Assert(err, gocheck.IsNil)
 	a2 := App{Name: "oldApp"}
 	err = s.conn.Apps().Insert(a2)
@@ -148,7 +203,7 @@ func (s *S) TestLogRemoveByApp(c *gocheck.C) {
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 		s.conn.Logs().RemoveAll(nil)
 	}()
-	err = a2.Log("last log msg", "tsuru")
+	err = a2.Log("last log msg", "tsuru", "hari")
 	c.Assert(err, gocheck.IsNil)
 	err = LogRemove(&a)
 	c.Assert(err, gocheck.IsNil)

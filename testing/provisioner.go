@@ -107,8 +107,8 @@ func (a *FakeApp) Logs() []string {
 	return logs
 }
 
-func (a *FakeApp) HasLog(source, message string) bool {
-	log := source + message
+func (a *FakeApp) HasLog(source, unit, message string) bool {
+	log := source + unit + message
 	a.logMut.Lock()
 	defer a.logMut.Unlock()
 	for _, l := range a.logs {
@@ -134,9 +134,9 @@ func (a *FakeApp) Ready() error {
 	return nil
 }
 
-func (a *FakeApp) Log(message, source string) error {
+func (a *FakeApp) Log(message, source, unit string) error {
 	a.logMut.Lock()
-	a.logs = append(a.logs, source+message)
+	a.logs = append(a.logs, source+unit+message)
 	a.logMut.Unlock()
 	return nil
 }

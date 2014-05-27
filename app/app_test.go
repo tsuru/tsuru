@@ -1586,7 +1586,7 @@ func (s *S) TestLog(c *gocheck.C) {
 		s.conn.Apps().Remove(bson.M{"name": a.Name})
 		s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	}()
-	err = a.Log("last log msg", "tsuru")
+	err = a.Log("last log msg", "tsuru", "outermachine")
 	c.Assert(err, gocheck.IsNil)
 	var logs []Applog
 	err = s.conn.Logs().Find(bson.M{"appname": a.Name}).All(&logs)
@@ -1595,6 +1595,7 @@ func (s *S) TestLog(c *gocheck.C) {
 	c.Assert(logs[0].Message, gocheck.Equals, "last log msg")
 	c.Assert(logs[0].Source, gocheck.Equals, "tsuru")
 	c.Assert(logs[0].AppName, gocheck.Equals, a.Name)
+	c.Assert(logs[0].Unit, gocheck.Equals, "outermachine")
 }
 
 func (s *S) TestLogShouldAddOneRecordByLine(c *gocheck.C) {
@@ -1605,7 +1606,7 @@ func (s *S) TestLogShouldAddOneRecordByLine(c *gocheck.C) {
 		s.conn.Apps().Remove(bson.M{"name": a.Name})
 		s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	}()
-	err = a.Log("last log msg\nfirst log", "source")
+	err = a.Log("last log msg\nfirst log", "source", "machine")
 	c.Assert(err, gocheck.IsNil)
 	var logs []Applog
 	err = s.conn.Logs().Find(bson.M{"appname": a.Name}).Sort("$natural").All(&logs)
@@ -1620,9 +1621,9 @@ func (s *S) TestLogShouldNotLogBlankLines(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	err = a.Log("some message", "tsuru")
+	err = a.Log("some message", "tsuru", "machine")
 	c.Assert(err, gocheck.IsNil)
-	err = a.Log("", "")
+	err = a.Log("", "", "")
 	c.Assert(err, gocheck.IsNil)
 	count, err := s.conn.Logs().Find(bson.M{"appname": a.Name}).Count()
 	c.Assert(err, gocheck.IsNil)
@@ -1640,7 +1641,7 @@ func (s *S) TestLogWithListeners(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	l, err := NewLogListener(&a)
+	l, err := NewLogListener(&a, Applog{})
 	c.Assert(err, gocheck.IsNil)
 	defer l.Close()
 	go func() {
@@ -1650,7 +1651,7 @@ func (s *S) TestLogWithListeners(c *gocheck.C) {
 			logs.Unlock()
 		}
 	}()
-	err = a.Log("last log msg", "tsuru")
+	err = a.Log("last log msg", "tsuru", "machine")
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
 	done := make(chan bool, 1)
@@ -1683,6 +1684,7 @@ func (s *S) TestLogWithListeners(c *gocheck.C) {
 	logs.Unlock()
 	c.Assert(log.Message, gocheck.Equals, "last log msg")
 	c.Assert(log.Source, gocheck.Equals, "tsuru")
+	c.Assert(log.Unit, gocheck.Equals, "machine")
 }
 
 func (s *S) TestLastLogs(c *gocheck.C) {
@@ -1695,11 +1697,35 @@ func (s *S) TestLastLogs(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	for i := 0; i < 15; i++ {
-		app.Log(strconv.Itoa(i), "tsuru")
+		app.Log(strconv.Itoa(i), "tsuru", "rdaneel")
 		time.Sleep(1e6) // let the time flow
 	}
-	app.Log("app3 log from circus", "circus")
-	logs, err := app.LastLogs(10, "tsuru")
+	app.Log("app3 log from circus", "circus", "rdaneel")
+	logs, err := app.LastLogs(10, Applog{Source: "tsuru"})
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(logs, gocheck.HasLen, 10)
+	for i := 5; i < 15; i++ {
+		c.Check(logs[i-5].Message, gocheck.Equals, strconv.Itoa(i))
+		c.Check(logs[i-5].Source, gocheck.Equals, "tsuru")
+	}
+}
+
+func (s *S) TestLastLogsUnitFilter(c *gocheck.C) {
+	app := App{
+		Name:     "app3",
+		Platform: "vougan",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	for i := 0; i < 15; i++ {
+		app.Log(strconv.Itoa(i), "tsuru", "rdaneel")
+		time.Sleep(1e6) // let the time flow
+	}
+	app.Log("app3 log from circus", "circus", "rdaneel")
+	app.Log("app3 log from tsuru", "tsuru", "seldon")
+	logs, err := app.LastLogs(10, Applog{Source: "tsuru", Unit: "rdaneel"})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(logs, gocheck.HasLen, 10)
 	for i := 5; i < 15; i++ {
@@ -1717,7 +1743,7 @@ func (s *S) TestLastLogsEmpty(c *gocheck.C) {
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	logs, err := app.LastLogs(10, "tsuru")
+	logs, err := app.LastLogs(10, Applog{Source: "tsuru"})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(logs, gocheck.DeepEquals, []Applog{})
 }

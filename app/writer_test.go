@@ -43,7 +43,7 @@ func (s *WriterSuite) TestLogWriter(c *gocheck.C) {
 	c.Assert(b.Bytes(), gocheck.DeepEquals, data)
 	instance := App{}
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
-	logs, err := instance.LastLogs(1, "")
+	logs, err := instance.LastLogs(1, Applog{})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(logs[0].Message, gocheck.Equals, string(data))
 }
