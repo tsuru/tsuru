@@ -411,12 +411,9 @@ func getEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			return err
 		}
 	}
-
 	appName := r.URL.Query().Get(":app")
-
 	var u *auth.User = nil
 	var err error
-
 	if !t.IsAppToken() {
 		u, err = t.User()
 		if err != nil {
@@ -424,7 +421,6 @@ func getEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 		rec.Log(u.Email, "get-env", "app="+appName, fmt.Sprintf("envs=%s", variables))
 	}
-
 	app, err := getApp(appName, u)
 	if err != nil {
 		return err
@@ -714,7 +710,6 @@ func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		source = "app"
 	}
 	unit := queryValues.Get("unit")
-	log.Debugf("Values: %#v", r)
 	for _, log := range logs {
 		err := app.Log(log, source, unit)
 		if err != nil {
