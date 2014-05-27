@@ -868,6 +868,7 @@ func (s *S) TestContainerStart(c *gocheck.C) {
 	dockerContainer, err = client.InspectContainer(cont.ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(dockerContainer.State.Running, gocheck.Equals, true)
+	c.Assert(cont.Status, gocheck.Equals, provision.StatusStarted.String())
 }
 
 func (s *S) TestContainerStartWithoutPort(c *gocheck.C) {

@@ -402,7 +402,7 @@ func (c *container) stop() error {
 		log.Errorf("error on stop container %s: %s", c.ID, err)
 	}
 	c.setStatus(provision.StatusStopped.String())
-	return err
+	return nil
 }
 
 func (c *container) start() error {
@@ -438,7 +438,12 @@ func (c *container) start() error {
 			config.Binds = append(config.Binds, fmt.Sprintf("%s:%s:rw", sharedBasedir, sharedMount))
 		}
 	}
-	return dockerCluster().StartContainer(c.ID, &config)
+	err = dockerCluster().StartContainer(c.ID, &config)
+	if err != nil {
+		return err
+	}
+	c.setStatus(provision.StatusStarted.String())
+	return nil
 }
 
 // logs returns logs for the container.
