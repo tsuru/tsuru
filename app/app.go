@@ -1016,7 +1016,7 @@ func (app *App) Log(message, source, unit string) error {
 		}
 	}
 	if len(logs) > 0 {
-		go notify(app.Name, logs)
+		notify(app.Name, logs)
 		conn, err := db.Conn()
 		if err != nil {
 			return err

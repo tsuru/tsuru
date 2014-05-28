@@ -84,13 +84,67 @@ func (s *S) TestJSONWriter(c *gocheck.C) {
 	c.Assert(writer.String(), gocheck.Equals, expected)
 }
 
+func (s *S) TestJSONWriterBrokenJson(c *gocheck.C) {
+	t := time.Now()
+	logs := []log{
+		{Date: t, Message: "Something 1", Source: "tsuru"},
+	}
+	b, err := json.Marshal(logs)
+	c.Assert(err, gocheck.IsNil)
+	var writer bytes.Buffer
+	w := jsonWriter{w: &writer}
+	n, err := w.Write(append(b, append([]byte("\n"), b...)...))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, 2*len(b)+1)
+	tfmt := "2006-01-02 15:04:05 -0700"
+	expected := cmd.Colorfy(t.Format(tfmt)+" [tsuru]:", "blue", "", "") + " Something 1\n"
+	c.Assert(writer.String(), gocheck.Equals, expected+expected)
+}
+
+func (s *S) TestJSONWriterInvalidDataNotRead(c *gocheck.C) {
+	t := time.Now()
+	logs := []log{
+		{Date: t, Message: "Something 1", Source: "tsuru"},
+	}
+	b, err := json.Marshal(logs)
+	c.Assert(err, gocheck.IsNil)
+	var writer bytes.Buffer
+	w := jsonWriter{w: &writer}
+	n, err := w.Write(append(b, []byte("\ninvalid data")...))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, len(b)+1)
+	tfmt := "2006-01-02 15:04:05 -0700"
+	expected := cmd.Colorfy(t.Format(tfmt)+" [tsuru]:", "blue", "", "") + " Something 1\n"
+	c.Assert(writer.String(), gocheck.Equals, expected)
+	c.Assert(w.b, gocheck.DeepEquals, []byte("invalid data"))
+}
+
+func (s *S) TestJSONWriterInvalidDataNotReadMultiLine(c *gocheck.C) {
+	t := time.Now()
+	logs := []log{
+		{Date: t, Message: "Something 1", Source: "tsuru"},
+	}
+	b, err := json.Marshal(logs)
+	c.Assert(err, gocheck.IsNil)
+	var writer bytes.Buffer
+	w := jsonWriter{w: &writer}
+	n, err := w.Write(append(b, []byte("\ninvalid data\n")...))
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Unparseable chunk: \"invalid data\\n\"")
+	c.Assert(n, gocheck.Equals, len(b)+1)
+	tfmt := "2006-01-02 15:04:05 -0700"
+	expected := cmd.Colorfy(t.Format(tfmt)+" [tsuru]:", "blue", "", "") + " Something 1\n"
+	c.Assert(writer.String(), gocheck.Equals, expected)
+	c.Assert(w.b, gocheck.DeepEquals, []byte("invalid data\n"))
+}
+
 func (s *S) TestJSONWriterInvalidJSON(c *gocheck.C) {
 	var writer bytes.Buffer
 	w := jsonWriter{w: &writer}
 	b := []byte("-----")
 	n, err := w.Write(b)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, len(b))
+	c.Assert(n, gocheck.Equals, 0)
 	c.Assert(writer.String(), gocheck.Equals, "")
 }
 
@@ -120,6 +174,35 @@ func (s *S) TestAppLog(c *gocheck.C) {
 	command.Flags().Parse(true, []string{"--app", "appName"})
 	err = command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestAppLogWithUnparsableData(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	t := time.Now()
+	logs := []log{
+		{Date: t, Message: "creating app lost", Source: "tsuru"},
+	}
+	result, err := json.Marshal(logs)
+	c.Assert(err, gocheck.IsNil)
+	t = t.In(time.Local)
+	tfmt := "2006-01-02 15:04:05 -0700"
+
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	command := AppLog{}
+	transport := testing.Transport{
+		Message: string(result) + "\nunparseable data",
+		Status:  http.StatusOK,
+	}
+	client := cmd.NewClient(&http.Client{Transport: &transport}, nil, manager)
+	command.Flags().Parse(true, []string{"--app", "appName"})
+	err = command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	expected := cmd.Colorfy(t.Format(tfmt)+" [tsuru]:", "blue", "", "") + " creating app lost\n"
+	expected += "Error: unparseable data"
 	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
