@@ -47,11 +47,8 @@ Build your cloud with tsuru.
 Install tsuru
 -------------
 
-
 * :doc:`with docker on ubuntu </docker>`
-* :doc:`with docker on centos </docker-centos>`
-
-* :doc:`with juju (python version) on ubuntu </build>`
+* :doc:`docker schedulers </provisioners/docker/schedulers>`
 
 Configure and run tsuru
 -----------------------
