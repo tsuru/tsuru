@@ -151,37 +151,23 @@ func (s *S) TestPlatforms(c *gocheck.C) {
 func (s *S) TestLogs(c *gocheck.C) {
 	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
-	logs := strg.Logs()
-	logsc := strg.Collection("logs")
+	logs := strg.Logs("myapp")
+	logsc := strg.Collection("logs_myapp")
 	c.Assert(logs, gocheck.DeepEquals, logsc)
-}
-
-func (s *S) TestLogsAppNameIndex(c *gocheck.C) {
-	strg, err := Conn()
-	c.Assert(err, gocheck.IsNil)
-	logs := strg.Logs()
-	c.Assert(logs, HasIndex, []string{"appname"})
 }
 
 func (s *S) TestLogsSourceIndex(c *gocheck.C) {
 	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
-	logs := strg.Logs()
+	logs := strg.Logs("app1")
 	c.Assert(logs, HasIndex, []string{"source"})
 }
 
-func (s *S) TestLogsDateAscendingIndex(c *gocheck.C) {
+func (s *S) TestLogsUnitIndex(c *gocheck.C) {
 	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)
-	logs := strg.Logs()
-	c.Assert(logs, HasIndex, []string{"date"})
-}
-
-func (s *S) TestLogsDateDescendingIndex(c *gocheck.C) {
-	strg, err := Conn()
-	c.Assert(err, gocheck.IsNil)
-	logs := strg.Logs()
-	c.Assert(logs, HasIndex, []string{"-date"})
+	logs := strg.Logs("app1")
+	c.Assert(logs, HasIndex, []string{"unit"})
 }
 
 func (s *S) TestServices(c *gocheck.C) {

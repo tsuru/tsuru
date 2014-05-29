@@ -1584,12 +1584,12 @@ func (s *S) TestLog(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer func() {
 		s.conn.Apps().Remove(bson.M{"name": a.Name})
-		s.conn.Logs().Remove(bson.M{"appname": a.Name})
+		s.conn.Logs(a.Name).DropCollection()
 	}()
 	err = a.Log("last log msg", "tsuru", "outermachine")
 	c.Assert(err, gocheck.IsNil)
 	var logs []Applog
-	err = s.conn.Logs().Find(bson.M{"appname": a.Name}).All(&logs)
+	err = s.conn.Logs(a.Name).Find(nil).All(&logs)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(logs, gocheck.HasLen, 1)
 	c.Assert(logs[0].Message, gocheck.Equals, "last log msg")
@@ -1604,12 +1604,12 @@ func (s *S) TestLogShouldAddOneRecordByLine(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer func() {
 		s.conn.Apps().Remove(bson.M{"name": a.Name})
-		s.conn.Logs().Remove(bson.M{"appname": a.Name})
+		s.conn.Logs(a.Name).DropCollection()
 	}()
 	err = a.Log("last log msg\nfirst log", "source", "machine")
 	c.Assert(err, gocheck.IsNil)
 	var logs []Applog
-	err = s.conn.Logs().Find(bson.M{"appname": a.Name}).Sort("$natural").All(&logs)
+	err = s.conn.Logs(a.Name).Find(nil).Sort("$natural").All(&logs)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(logs, gocheck.HasLen, 2)
 	c.Assert(logs[0].Message, gocheck.Equals, "last log msg")
@@ -1625,7 +1625,7 @@ func (s *S) TestLogShouldNotLogBlankLines(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = a.Log("", "", "")
 	c.Assert(err, gocheck.IsNil)
-	count, err := s.conn.Logs().Find(bson.M{"appname": a.Name}).Count()
+	count, err := s.conn.Logs(a.Name).Find(nil).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(count, gocheck.Equals, 1)
 }
@@ -1653,7 +1653,7 @@ func (s *S) TestLogWithListeners(c *gocheck.C) {
 	}()
 	err = a.Log("last log msg", "tsuru", "machine")
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Logs().Remove(bson.M{"appname": a.Name})
+	defer s.conn.Logs(a.Name).DropCollection()
 	done := make(chan bool, 1)
 	q := make(chan bool)
 	go func(quit chan bool) {

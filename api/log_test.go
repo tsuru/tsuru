@@ -61,7 +61,7 @@ func (s *LogSuite) TestLogRemoveAll(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = logRemove(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
-	count, err := s.conn.Logs().Find(nil).Count()
+	count, err := s.conn.Logs(a.Name).Find(nil).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(count, gocheck.Equals, 0)
 }
@@ -88,7 +88,7 @@ func (s *LogSuite) TestLogRemoveByApp(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = logRemove(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
-	count, err := s.conn.Logs().Find(nil).Count()
+	count, err := s.conn.Logs(a2.Name).Find(nil).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(count, gocheck.Equals, 1)
 }

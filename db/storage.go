@@ -69,17 +69,35 @@ func (s *Storage) Platforms() *storage.Collection {
 }
 
 // Logs returns the logs collection from MongoDB.
-func (s *Storage) Logs() *storage.Collection {
-	appNameIndex := mgo.Index{Key: []string{"appname"}}
+func (s *Storage) Logs(appName string) *storage.Collection {
+	if appName == "" {
+		return nil
+	}
 	sourceIndex := mgo.Index{Key: []string{"source"}}
-	dateAscIndex := mgo.Index{Key: []string{"date"}}
-	dateDescIndex := mgo.Index{Key: []string{"-date"}}
-	c := s.Collection("logs")
-	c.EnsureIndex(appNameIndex)
+	unitIndex := mgo.Index{Key: []string{"unit"}}
+	c := s.Collection("logs_" + appName)
+	meanSize := 200
+	maxLines := 5000
+	info := mgo.CollectionInfo{Capped: true, MaxBytes: meanSize * maxLines, MaxDocs: maxLines}
+	c.Create(&info)
 	c.EnsureIndex(sourceIndex)
-	c.EnsureIndex(dateAscIndex)
-	c.EnsureIndex(dateDescIndex)
+	c.EnsureIndex(unitIndex)
 	return c
+}
+
+func (s *Storage) LogsCollections() ([]*storage.Collection, error) {
+	var names []struct {
+		Name string
+	}
+	err := s.Apps().Find(nil).All(&names)
+	if err != nil {
+		return nil, err
+	}
+	var colls []*storage.Collection
+	for _, name := range names {
+		colls = append(colls, s.Collection("logs_"+name.Name))
+	}
+	return colls, nil
 }
 
 // Services returns the services collection from MongoDB.

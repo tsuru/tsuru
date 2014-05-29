@@ -10,7 +10,6 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/queue"
-	"labix.org/v2/mgo/bson"
 )
 
 var UnsupportedPubSubErr = fmt.Errorf("Your queue backend doesn't support pubsub required for log streaming. Using redis as queue is recommended.")
@@ -108,9 +107,17 @@ func LogRemove(a *App) error {
 	}
 	defer conn.Close()
 	if a != nil {
-		_, err = conn.Logs().RemoveAll(bson.M{"appname": a.Name})
-	} else {
-		_, err = conn.Logs().RemoveAll(nil)
+		return conn.Logs(a.Name).DropCollection()
 	}
-	return err
+	colls, err := conn.LogsCollections()
+	if err != nil {
+		return err
+	}
+	for _, coll := range colls {
+		err = coll.DropCollection()
+		if err != nil {
+			log.Errorf("Error trying to drop collection %s", coll.Name)
+		}
+	}
+	return nil
 }

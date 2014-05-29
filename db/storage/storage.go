@@ -96,6 +96,10 @@ func (s *Storage) Collection(name string) *Collection {
 	return &Collection{s.session.DB(s.dbname).C(name)}
 }
 
+func (s *Storage) DB() *mgo.Database {
+	return s.session.DB(s.dbname)
+}
+
 func init() {
 	ticker = time.NewTicker(time.Hour)
 	go retire(ticker)

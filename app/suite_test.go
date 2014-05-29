@@ -101,7 +101,7 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 func (s *S) TearDownTest(c *gocheck.C) {
 	s.t.RollbackGitConfs(c)
 	s.provisioner.Reset()
-	s.conn.Logs().RemoveAll(nil)
+	LogRemove(nil)
 	s.conn.Users().Update(
 		bson.M{"email": s.user.Email},
 		bson.M{"$set": bson.M{"quota": quota.Unlimited}},

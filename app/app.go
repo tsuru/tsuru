@@ -1022,7 +1022,7 @@ func (app *App) Log(message, source, unit string) error {
 			return err
 		}
 		defer conn.Close()
-		return conn.Logs().Insert(logs...)
+		return conn.Logs(app.Name).Insert(logs...)
 	}
 	return nil
 }
@@ -1036,14 +1036,14 @@ func (app *App) LastLogs(lines int, filterLog Applog) ([]Applog, error) {
 	}
 	defer conn.Close()
 	logs := []Applog{}
-	q := bson.M{"appname": app.Name}
+	q := bson.M{}
 	if filterLog.Source != "" {
 		q["source"] = filterLog.Source
 	}
 	if filterLog.Unit != "" {
 		q["unit"] = filterLog.Unit
 	}
-	err = conn.Logs().Find(q).Sort("-date").Limit(lines).All(&logs)
+	err = conn.Logs(app.Name).Find(q).Sort("-$natural").Limit(lines).All(&logs)
 	if err != nil {
 		return nil, err
 	}
