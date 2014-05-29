@@ -5,10 +5,10 @@
 package tsuru
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/tsuru/tsuru/cmd"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"io"
 	"launchpad.net/gnuflag"
 	"net/http"
@@ -35,43 +35,25 @@ If you don't provide the app name, tsuru will try to guess it. The default numbe
 	}
 }
 
-type jsonWriter struct {
-	w io.Writer
-	b []byte
-}
+type logFormatter struct{}
 
-func (w *jsonWriter) Write(b []byte) (int, error) {
-	w.b = append(w.b, b...)
-	writtenCount := 0
-	for len(w.b) > 0 {
-		var logs []log
-		parts := bytes.SplitAfterN(w.b, []byte("\n"), 2)
-		err := json.Unmarshal(parts[0], &logs)
-		if err != nil {
-			if len(parts) == 1 {
-				return writtenCount, nil
-			} else {
-				return writtenCount, fmt.Errorf("Unparseable chunk: %q", string(parts[0]))
-			}
-		}
-		writtenCount += len(parts[0])
-		if len(parts) == 1 {
-			w.b = []byte{}
-		} else {
-			w.b = parts[1]
-		}
-		for _, l := range logs {
-			date := l.Date.In(time.Local).Format("2006-01-02 15:04:05 -0700")
-			var prefix string
-			if l.Unit != "" {
-				prefix = fmt.Sprintf("%s [%s][%s]:", date, l.Source, l.Unit)
-			} else {
-				prefix = fmt.Sprintf("%s [%s]:", date, l.Source)
-			}
-			fmt.Fprintf(w.w, "%s %s\n", cmd.Colorfy(prefix, "blue", "", ""), l.Message)
-		}
+func (logFormatter) Format(out io.Writer, data []byte) error {
+	var logs []log
+	err := json.Unmarshal(data, &logs)
+	if err != nil {
+		return err
 	}
-	return writtenCount, nil
+	for _, l := range logs {
+		date := l.Date.In(time.Local).Format("2006-01-02 15:04:05 -0700")
+		var prefix string
+		if l.Unit != "" {
+			prefix = fmt.Sprintf("%s [%s][%s]:", date, l.Source, l.Unit)
+		} else {
+			prefix = fmt.Sprintf("%s [%s]:", date, l.Source)
+		}
+		fmt.Fprintf(out, "%s %s\n", cmd.Colorfy(prefix, "blue", "", ""), l.Message)
+	}
+	return nil
 }
 
 type log struct {
@@ -111,11 +93,12 @@ func (c *AppLog) Run(context *cmd.Context, client *cmd.Client) error {
 		return nil
 	}
 	defer response.Body.Close()
-	w := jsonWriter{w: context.Stdout}
-	for n := int64(1); n > 0 && err == nil; n, err = io.Copy(&w, response.Body) {
+	w := tsuruIo.NewStreamWriter(context.Stdout, logFormatter{})
+	for n := int64(1); n > 0 && err == nil; n, err = io.Copy(w, response.Body) {
 	}
-	if len(w.b) > 0 {
-		fmt.Fprintf(w.w, "Error: %s", string(w.b))
+	unparsed := w.Remaining()
+	if len(unparsed) > 0 {
+		fmt.Fprintf(context.Stdout, "Error: %s", string(unparsed))
 	}
 	return nil
 }
