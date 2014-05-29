@@ -74,6 +74,8 @@ func (s *S) TestDelete(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	app, err := GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
+	err = app.Log("msg", "src", "unit")
+	c.Assert(err, gocheck.IsNil)
 	err = Delete(app)
 	c.Assert(err, gocheck.IsNil)
 	_, err = GetByName(app.Name)
@@ -81,6 +83,9 @@ func (s *S) TestDelete(c *gocheck.C) {
 	c.Assert(s.provisioner.Provisioned(&a), gocheck.Equals, false)
 	err = auth.ReserveApp(s.user)
 	c.Assert(err, gocheck.IsNil)
+	count, err := s.conn.Logs(app.Name).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 0)
 }
 
 func (s *S) TestDestroy(c *gocheck.C) {

@@ -258,6 +258,10 @@ func Delete(app *App) error {
 		return err
 	}
 	defer conn.Close()
+	err = conn.Logs(app.Name).DropCollection()
+	if err != nil {
+		log.Errorf("Ignored error dropping logs collection for app %s", app.Name)
+	}
 	return conn.Apps().Remove(bson.M{"name": app.Name})
 }
 
