@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/tsuru/tsuru/cmd"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"io"
 	"launchpad.net/gnuflag"
 	"net/http"
@@ -16,21 +17,16 @@ import (
 
 type moveContainersCmd struct{}
 
-type jsonLogWriter struct {
-	w io.Writer
-	b []byte
-}
+type progressFormatter struct{}
 
-func (w *jsonLogWriter) Write(b []byte) (int, error) {
+func (progressFormatter) Format(out io.Writer, data []byte) error {
 	var logEntry progressLog
-	w.b = append(w.b, b...)
-	err := json.Unmarshal(w.b, &logEntry)
+	err := json.Unmarshal(data, &logEntry)
 	if err != nil {
-		return len(b), nil
+		return err
 	}
-	fmt.Fprintf(w.w, "%s\n", logEntry.Message)
-	w.b = nil
-	return len(b), nil
+	fmt.Fprintf(out, "%s\n", logEntry.Message)
+	return nil
 }
 
 func (c *moveContainersCmd) Info() *cmd.Info {
@@ -66,8 +62,8 @@ func (c *moveContainersCmd) Run(context *cmd.Context, client *cmd.Client) error 
 		return err
 	}
 	defer response.Body.Close()
-	w := jsonLogWriter{w: context.Stdout}
-	for n := int64(1); n > 0 && err == nil; n, err = io.Copy(&w, response.Body) {
+	w := tsuruIo.NewStreamWriter(context.Stdout, progressFormatter{})
+	for n := int64(1); n > 0 && err == nil; n, err = io.Copy(w, response.Body) {
 	}
 	return nil
 }
@@ -106,8 +102,8 @@ func (c *moveContainerCmd) Run(context *cmd.Context, client *cmd.Client) error {
 		return err
 	}
 	defer response.Body.Close()
-	w := jsonLogWriter{w: context.Stdout}
-	for n := int64(1); n > 0 && err == nil; n, err = io.Copy(&w, response.Body) {
+	w := tsuruIo.NewStreamWriter(context.Stdout, progressFormatter{})
+	for n := int64(1); n > 0 && err == nil; n, err = io.Copy(w, response.Body) {
 	}
 	return nil
 }
@@ -149,8 +145,8 @@ func (c *rebalanceContainersCmd) Run(context *cmd.Context, client *cmd.Client) e
 		return err
 	}
 	defer response.Body.Close()
-	w := jsonLogWriter{w: context.Stdout}
-	for n := int64(1); n > 0 && err == nil; n, err = io.Copy(&w, response.Body) {
+	w := tsuruIo.NewStreamWriter(context.Stdout, progressFormatter{})
+	for n := int64(1); n > 0 && err == nil; n, err = io.Copy(w, response.Body) {
 	}
 	return nil
 }
