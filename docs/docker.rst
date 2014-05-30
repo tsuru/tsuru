@@ -2,11 +2,22 @@
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
-+++++++++++++++++++++++++++++++++++++++++
-Build your own PaaS with tsuru and Docker
-+++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++
+Install tsuru and Docker
+++++++++++++++++++++++++
 
-This document describes how to create a private PaaS service using tsuru and docker.
+This document describes how to install all tsuru compoments in one virtual machine.
+Install all components in one machine is not recommended for production ready but is a good
+start to have a tsuru stack working.
+
+tsuru components are composed by:
+
+* MongoDB
+* beanstalkd
+* hipache
+* docker
+* gandalf
+* tsuru api
 
 This document assumes that tsuru is being installed on a Ubuntu 12.04 LTS 64-bit
 machine.
@@ -26,6 +37,8 @@ Before install, let's install curl and python-software-properties, that are used
 Adding repositories
 ===================
 
+Let's start adding the docker, mongo and tsuru repositories.
+
 .. highlight:: bash
 
 ::
@@ -33,42 +46,56 @@ Adding repositories
     sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 36A1D7869245C8950F966E92D8576A8BA88D21E9
     echo "deb http://get.docker.io/ubuntu docker main" | sudo tee /etc/apt/sources.list.d/docker.list
 
-    sudo apt-add-repository ppa:tsuru/lvm2 -y
-    sudo apt-add-repository ppa:tsuru/ppa -y
-
     sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 7F0CEB10
     echo "deb http://downloads-distro.mongodb.org/repo/ubuntu-upstart dist 10gen" | sudo tee /etc/apt/sources.list.d/mongodb.list
 
+    sudo apt-add-repository ppa:tsuru/ppa -y
+
     sudo apt-get update
+
 
 Installing MongoDB
 ==================
 
+tsuru uses MongoDB to store all data about apps, users and teams. Let's install it:
+
 .. highlight:: bash
 
 ::
+
 
     sudo apt-get install mongodb-10gen -qqy
 
 Installing beanstalkd
 =====================
 
+tsuru uses bealstalk as a queue tool.
+
 .. highlight:: bash
 
 ::
 
     sudo apt-get install beanstalkd -qqy
-    cat > /tmp/default-beanstalkd <<EOF
-    BEANSTALKD_LISTEN_ADDR=127.0.0.1
-    BEANSTALKD_LISTEN_PORT=11300
-    DAEMON_OPTS="-l \$BEANSTALKD_LISTEN_ADDR -p \$BEANSTALKD_LISTEN_PORT -b /var/lib/beanstalkd"
-    START=yes
-    EOF
-    sudo mv /tmp/default-beanstalkd /etc/default/beanstalkd
+
+
+Change the beastalkd config to enable it. To do it chane the `START=no` to `START=yes`. The configuration
+file in in `/etc/default/beanstalkd`.
+
+Now let's start beanstalkd:
+
+.. highlight:: bash
+
+::
+
     sudo service beanstalkd start
 
-Installing redis
-================
+Installing Hipache
+==================
+
+Hipache is a distributed HTTP and websocket proxy. tsuru uses Hipache to route
+the requests to the containers.
+
+Hipache uses redis to store the router data. To install redis:
 
 .. highlight:: bash
 
@@ -76,14 +103,20 @@ Installing redis
 
     sudo apt-get install redis-server -qqy
 
-Installing hipache
-==================
+We can use apt-get to install Hipache too.
 
 .. highlight:: bash
 
 ::
 
     sudo apt-get install node-hipache -qqy
+
+Now let's start Hipache
+
+.. highlight:: bash
+
+::
+
     sudo start hipache
 
 Installing docker
@@ -94,19 +127,45 @@ Installing docker
 ::
 
     sudo apt-get install lxc-docker -qqy
-    echo export DOCKER_OPTS=\"-H 127.0.0.1:4243\" | sudo tee -a /etc/default/docker
-    echo export DOCKER_HOST=127.0.0.1:4243 >> ~/.bashrc
+
+tsuru uses the docker HTTP api to manage the containers, to it works it is needed to
+configure docker to use tcp protocol.
+
+To change it, edit the `/etc/default/docker` adding this line:
+
+.. highlight:: bash
+
+::
+
+    export DOCKER_OPTS=\"-H 127.0.0.1:4243\"
+
+Then restart docker:
+
+.. highlight:: bash
+
+::
+
     sudo stop docker
     sudo start docker
 
 Installing gandalf
 ==================
 
+tsuru uses gandalf to manage git repositories.
+
 .. highlight:: bash
 
 ::
 
     sudo apt-get install gandalf-server -qqy
+
+A deploy is executed after a commit happens. To it works, its needed to add a script to be executed
+by git post-receive hook.
+
+.. highlight:: bash
+
+::
+
     hook_dir=/home/git/bare-template/hooks
     sudo mkdir -p $hook_dir
     sudo curl https://raw.githubusercontent.com/tsuru/tsuru/master/misc/git-hooks/post-receive -o ${hook_dir}/post-receive
