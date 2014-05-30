@@ -30,5 +30,5 @@ func (err NoTeamsError) Error() string {
 type ManyTeamsError struct{}
 
 func (err ManyTeamsError) Error() string {
-	return "You belongs to more than one team, choose one to be owner for this app."
+	return "You belong to more than one team, choose one to be owner for this app."
 }
