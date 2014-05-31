@@ -197,23 +197,26 @@ Installing tsuru API server
 Installing platforms
 ====================
 
-.. highlight:: bash
-
-::
-
-    curl https://raw.githubusercontent.com/tsuru/tsuru/master/misc/platforms-setup.js | mongo tsuru
-
-And then install your preferred platform from `basebuilder
-<https://github.com/tsuru/basebuilder>`_. For example, Python:
+You can use the `tsuru-admin` to install your preferred platform:
 
 .. highlight:: bash
 
 ::
 
-    docker build --no-cache -t tsuru/python https://raw.githubusercontent.com/tsuru/basebuilder/master/python/Dockerfile
+    tsuru-admin platform-add platform-name --dockerfile dockerfile-url
 
-Replace Python with the desired platform (check basebuilder for a list of
-available platforms).
+For example, Python:
+
+.. highlight:: bash
+
+::
+
+    tsuru-admin platform-add python --dockerfile https://raw.githubusercontent.com/tsuru/basebuilder/master/python/Dockerfile
+
+
+You can see the oficial tsuru dockerfiles here: https://github.com/tsuru/basebuilder. 
+
+:doc:`Here you can see more docs about tsuru-admin </apps/tsuru-admin/usage>`. 
 
 Using tsuru client
 ==================
