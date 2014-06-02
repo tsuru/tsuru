@@ -3003,28 +3003,14 @@ func (s *S) TestPlatformList(c *gocheck.C) {
 }
 
 func (s *S) TestgetAppOrErrorWhenUserIsAdmin(c *gocheck.C) {
-	admin := auth.User{Email: "superuser@gmail.com", Password: "123"}
-	err := s.conn.Users().Insert(&admin)
-	c.Assert(err, gocheck.IsNil)
-	adminTeamName, err := config.GetString("admin-team")
-	c.Assert(err, gocheck.IsNil)
-	adminTeam := auth.Team{Name: adminTeamName, Users: []string{admin.Email}}
-	err = s.conn.Teams().Insert(&adminTeam)
-	c.Assert(err, gocheck.IsNil)
 	a := app.App{Name: "testApp", Teams: []string{"notAdmin", "noSuperUser"}}
-	err = s.conn.Apps().Insert(&a)
+	err := s.conn.Apps().Insert(&a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs(a.Name).DropCollection()
-	defer func(admin auth.User, adminTeam auth.Team) {
-		err := s.conn.Teams().RemoveId(adminTeam.Name)
-		c.Assert(err, gocheck.IsNil)
-		err = s.conn.Users().Remove(bson.M{"email": admin.Email})
-		c.Assert(err, gocheck.IsNil)
-	}(admin, adminTeam)
 	expected, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	app, err := getApp(a.Name, &admin)
+	app, err := getApp(a.Name, s.adminuser)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app, gocheck.DeepEquals, *expected)
 }

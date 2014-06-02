@@ -21,9 +21,9 @@ func init() {
 	api.RegisterHandler("/node/:address/containers", "GET", api.AdminRequiredHandler(listContainersHandler))
 	api.RegisterHandler("/node", "POST", api.AdminRequiredHandler(addNodeHandler))
 	api.RegisterHandler("/node", "DELETE", api.AdminRequiredHandler(removeNodeHandler))
-	api.RegisterAdminHandler("/container/:id/move", "POST", api.Handler(moveContainerHandler))
-	api.RegisterAdminHandler("/containers/move", "POST", api.Handler(moveContainersHandler))
-	api.RegisterAdminHandler("/containers/rebalance", "POST", api.Handler(rebalanceContainersHandler))
+	api.RegisterHandler("/container/:id/move", "POST", api.AdminRequiredHandler(moveContainerHandler))
+	api.RegisterHandler("/containers/move", "POST", api.AdminRequiredHandler(moveContainersHandler))
+	api.RegisterHandler("/containers/rebalance", "POST", api.AdminRequiredHandler(rebalanceContainersHandler))
 	api.RegisterHandler("/pool", "GET", api.AdminRequiredHandler(listPoolHandler))
 	api.RegisterHandler("/pool", "POST", api.AdminRequiredHandler(addPoolHandler))
 	api.RegisterHandler("/pool", "DELETE", api.AdminRequiredHandler(removePoolHandler))
@@ -58,7 +58,7 @@ func listNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	return json.NewEncoder(w).Encode(nodeList)
 }
 
-func moveContainerHandler(w http.ResponseWriter, r *http.Request) error {
+func moveContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	params, err := unmarshal(r.Body)
 	if err != nil {
 		return err
@@ -78,7 +78,7 @@ func moveContainerHandler(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func moveContainersHandler(w http.ResponseWriter, r *http.Request) error {
+func moveContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	params, err := unmarshal(r.Body)
 	if err != nil {
 		return err
@@ -98,7 +98,7 @@ func moveContainersHandler(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-func rebalanceContainersHandler(w http.ResponseWriter, r *http.Request) error {
+func rebalanceContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	dry := false
 	params, err := unmarshal(r.Body)
 	if err == nil {

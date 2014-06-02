@@ -53,6 +53,9 @@ type S struct {
 	team        *auth.Team
 	user        *auth.User
 	token       auth.Token
+	adminteam   *auth.Team
+	adminuser   *auth.User
+	admintoken  auth.Token
 	t           *tsuruTesting.T
 	provisioner *tsuruTesting.FakeProvisioner
 }
@@ -86,10 +89,19 @@ func (s *S) createUserAndTeam(c *gocheck.C) {
 	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123456", Quota: quota.Unlimited}
 	_, err := nativeScheme.Create(s.user)
 	c.Assert(err, gocheck.IsNil)
+	s.adminuser = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: quota.Unlimited}
+	_, err = nativeScheme.Create(s.adminuser)
+	c.Assert(err, gocheck.IsNil)
 	s.team = &auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
 	err = s.conn.Teams().Insert(s.team)
 	c.Assert(err, gocheck.IsNil)
+	s.adminteam = &auth.Team{Name: "admin", Users: []string{s.adminuser.Email}}
+	err = s.conn.Teams().Insert(s.adminteam)
+	c.Assert(err, gocheck.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
+	c.Assert(err, gocheck.IsNil)
+	s.admintoken, err = nativeScheme.Login(map[string]string{"email": s.adminuser.Email, "password": "123456"})
+	c.Assert(err, gocheck.IsNil)
 }
 
 var nativeScheme = auth.ManagedScheme(native.NativeScheme{})

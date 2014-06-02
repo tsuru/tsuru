@@ -51,7 +51,7 @@ func getAuthScheme() (string, error) {
 // RunServer starts tsuru API server. The dry parameter indicates whether the
 // server should run in dry mode, not starting the HTTP listener (for testing
 // purposes).
-func RunServer(dry bool) {
+func RunServer(dry bool) *pat.PatternServeMux {
 	log.Init()
 	connString, err := config.GetString("database:url")
 	if err != nil {
@@ -200,4 +200,5 @@ func RunServer(dry bool) {
 			fatal(http.Serve(listener, nil))
 		}
 	}
+	return m
 }

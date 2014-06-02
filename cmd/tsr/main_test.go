@@ -40,15 +40,6 @@ func (s *S) TestAPICmdIsRegistered(c *gocheck.C) {
 	c.Assert(tsrApi.Command, gocheck.FitsTypeOf, &apiCmd{})
 }
 
-func (s *S) TestAdminCmdIsRegistered(c *gocheck.C) {
-	manager := buildManager()
-	admin, ok := manager.Commands["admin-api"]
-	c.Assert(ok, gocheck.Equals, true)
-	tsrApi, ok := admin.(*tsrCommand)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(tsrApi.Command, gocheck.FitsTypeOf, &adminCmd{})
-}
-
 func (s *S) TestCollectorCmdIsRegistered(c *gocheck.C) {
 	manager := buildManager()
 	collector, ok := manager.Commands["collector"]
