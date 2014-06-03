@@ -24,6 +24,8 @@ Deploy your applications on tsuru.
 * :doc:`php </apps/quickstart/php>`
 * :doc:`go </apps/quickstart/go>`
 
+* :doc:`using buildpacks </using/buildpacks>`
+
 * :doc:`understanding deployment hooks </apps/deploy-hooks>`
 * :doc:`recovery and troubleshooting </apps/recovery>`
 
