@@ -317,10 +317,6 @@ func removeContainer(c *container) error {
 	return err
 }
 
-func (*dockerProvisioner) InstallDeps(app provision.App, w io.Writer) error {
-	return nil
-}
-
 func (*dockerProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
 	containers, err := listContainersByApp(app.GetName())
 	if err != nil {
