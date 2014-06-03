@@ -446,6 +446,22 @@ func (p *FakeProvisioner) GitDeploy(app provision.App, version string, w io.Writ
 	return nil
 }
 
+func (p *FakeProvisioner) ArchiveDeploy(app provision.App, archiveURL string, w io.Writer) error {
+	if err := p.getError("ArchiveDeploy"); err != nil {
+		return err
+	}
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	pApp, ok := p.apps[app.GetName()]
+	if !ok {
+		return errNotProvisioned
+	}
+	w.Write([]byte("Deploy called"))
+	pApp.lastArchive = archiveURL
+	p.apps[app.GetName()] = pApp
+	return nil
+}
+
 func (p *FakeProvisioner) Provision(app provision.App) error {
 	if err := p.getError("Provision"); err != nil {
 		return err
@@ -774,6 +790,7 @@ type provisionedApp struct {
 	stops       int
 	installDeps int
 	version     string
+	lastArchive string
 	cname       string
 	unitLen     int
 }

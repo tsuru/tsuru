@@ -259,7 +259,7 @@ func (s *S) TestPrepareFailure(c *gocheck.C) {
 	c.Assert(got.err.Error(), gocheck.Equals, "the body eletric")
 }
 
-func (s *S) TestDeploy(c *gocheck.C) {
+func (s *S) TestGitDeploy(c *gocheck.C) {
 	var buf bytes.Buffer
 	app := NewFakeApp("soul", "arch", 1)
 	p := NewFakeProvisioner()
@@ -270,7 +270,7 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	c.Assert(p.apps[app.GetName()].version, gocheck.Equals, "1.0")
 }
 
-func (s *S) TestDeployUnknownApp(c *gocheck.C) {
+func (s *S) TestGitDeployUnknownApp(c *gocheck.C) {
 	var buf bytes.Buffer
 	app := NewFakeApp("soul", "arch", 1)
 	p := NewFakeProvisioner()
@@ -278,13 +278,43 @@ func (s *S) TestDeployUnknownApp(c *gocheck.C) {
 	c.Assert(err, gocheck.Equals, errNotProvisioned)
 }
 
-func (s *S) TestDeployWithPreparedFailure(c *gocheck.C) {
+func (s *S) TestGitDeployWithPreparedFailure(c *gocheck.C) {
 	var buf bytes.Buffer
 	err := errors.New("not really")
 	app := NewFakeApp("soul", "arch", 1)
 	p := NewFakeProvisioner()
 	p.PrepareFailure("GitDeploy", err)
 	e := p.GitDeploy(app, "1.0", &buf)
+	c.Assert(e, gocheck.NotNil)
+	c.Assert(e, gocheck.Equals, err)
+}
+
+func (s *S) TestArchiveDeploy(c *gocheck.C) {
+	var buf bytes.Buffer
+	app := NewFakeApp("soul", "arch", 1)
+	p := NewFakeProvisioner()
+	p.Provision(app)
+	err := p.ArchiveDeploy(app, "https://s3.amazonaws.com/smt/archive.tar.gz", &buf)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(buf.String(), gocheck.Equals, "Deploy called")
+	c.Assert(p.apps[app.GetName()].lastArchive, gocheck.Equals, "https://s3.amazonaws.com/smt/archive.tar.gz")
+}
+
+func (s *S) TestArchiveDeployUnknownApp(c *gocheck.C) {
+	var buf bytes.Buffer
+	app := NewFakeApp("soul", "arch", 1)
+	p := NewFakeProvisioner()
+	err := p.ArchiveDeploy(app, "https://s3.amazonaws.com/smt/archive.tar.gz", &buf)
+	c.Assert(err, gocheck.Equals, errNotProvisioned)
+}
+
+func (s *S) TestArchiveDeployWithPreparedFailure(c *gocheck.C) {
+	var buf bytes.Buffer
+	err := errors.New("not really")
+	app := NewFakeApp("soul", "arch", 1)
+	p := NewFakeProvisioner()
+	p.PrepareFailure("ArchiveDeploy", err)
+	e := p.ArchiveDeploy(app, "https://s3.amazonaws.com/smt/archive.tar.gz", &buf)
 	c.Assert(e, gocheck.NotNil)
 	c.Assert(e, gocheck.Equals, err)
 }
