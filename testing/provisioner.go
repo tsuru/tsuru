@@ -710,21 +710,6 @@ func (p *FakeProvisioner) Addr(app provision.App) (string, error) {
 	return fmt.Sprintf("%s.fake-lb.tsuru.io", app.GetName()), nil
 }
 
-func (p *FakeProvisioner) InstallDeps(app provision.App, w io.Writer) error {
-	if err := p.getError("InstallDeps"); err != nil {
-		return err
-	}
-	p.mut.Lock()
-	defer p.mut.Unlock()
-	pApp, ok := p.apps[app.GetName()]
-	if !ok {
-		return errNotProvisioned
-	}
-	pApp.installDeps++
-	p.apps[app.GetName()] = pApp
-	return nil
-}
-
 func (p *FakeProvisioner) SetCName(app provision.App, cname string) error {
 	if err := p.getError("SetCName"); err != nil {
 		return err

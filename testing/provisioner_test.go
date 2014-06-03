@@ -606,35 +606,6 @@ func (s *S) TestAddrFailure(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, "Cannot get addr of this app.")
 }
 
-func (s *S) TestInstallDeps(c *gocheck.C) {
-	var buf bytes.Buffer
-	app := NewFakeApp("alcool", "raul", 1)
-	p := NewFakeProvisioner()
-	p.Provision(app)
-	err := p.InstallDeps(app, &buf)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(p.InstalledDeps(app), gocheck.Equals, 1)
-	err = p.InstallDeps(app, &buf)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(p.InstalledDeps(app), gocheck.Equals, 2)
-}
-
-func (s *S) TestInstallDepsNotProvisioned(c *gocheck.C) {
-	var buf bytes.Buffer
-	app := NewFakeApp("alcool", "raul", 1)
-	p := NewFakeProvisioner()
-	err := p.InstallDeps(app, &buf)
-	c.Assert(err, gocheck.Equals, errNotProvisioned)
-}
-
-func (s *S) TestInstallDepsFailure(c *gocheck.C) {
-	p := NewFakeProvisioner()
-	p.PrepareFailure("InstallDeps", errors.New("Failed to install"))
-	err := p.InstallDeps(nil, nil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Failed to install")
-}
-
 func (s *S) TestSetCName(c *gocheck.C) {
 	app := NewFakeApp("jean", "mj", 0)
 	p := NewFakeProvisioner()
