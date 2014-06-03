@@ -2,16 +2,14 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package deploy
+package juju
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/repository"
-	"io"
 )
 
 // Clone runs a git clone to clone the app repository in an app.
@@ -56,35 +54,4 @@ func checkout(p provision.Provisioner, app provision.App, version string) ([]byt
 		return buf.Bytes(), err
 	}
 	return nil, nil
-}
-
-func Git(provisioner provision.Provisioner, app provision.App, objID string, w io.Writer) error {
-	log.Write(w, []byte("\n ---> tsuru receiving push\n"))
-	log.Write(w, []byte("\n ---> Replicating the application repository across units\n"))
-	out, err := clone(provisioner, app)
-	if err != nil {
-		out, err = fetch(provisioner, app)
-	}
-	if err != nil {
-		msg := fmt.Sprintf("Got error while cloning/fetching repository: %s -- \n%s", err, string(out))
-		log.Write(w, []byte(msg))
-		return errors.New(msg)
-	}
-	out, err = checkout(provisioner, app, objID)
-	if err != nil {
-		msg := fmt.Sprintf("Failed to checkout Git repository: %s -- \n%s", err, string(out))
-		log.Write(w, []byte(msg))
-		return errors.New(msg)
-	}
-	log.Write(w, []byte("\n ---> Installing dependencies\n"))
-	if err := provisioner.InstallDeps(app, w); err != nil {
-		log.Write(w, []byte(err.Error()))
-		return err
-	}
-	log.Write(w, []byte("\n ---> Restarting application\n"))
-	if err := app.Restart(w); err != nil {
-		log.Write(w, []byte(err.Error()))
-		return err
-	}
-	return log.Write(w, []byte("\n ---> Deploy done!\n\n"))
 }

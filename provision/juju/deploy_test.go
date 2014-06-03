@@ -2,10 +2,9 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package deploy
+package juju
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"github.com/tsuru/config"
@@ -13,56 +12,6 @@ import (
 	"github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
-
-func (s *S) TestDeploy(c *gocheck.C) {
-	content := `{"git_url": "git://tsuruhost.com/cribcaged.git"}`
-	h := &testing.TestHandler{Content: content}
-	gandalfServer := testing.StartGandalfTestServer(h)
-	defer gandalfServer.Close()
-	provisioner := testing.NewFakeProvisioner()
-	provisioner.PrepareOutput([]byte("cloned"))
-	provisioner.PrepareOutput([]byte("updated"))
-	app := testing.NewFakeApp("cribcaged", "python", 1)
-	provisioner.Provision(app)
-	w := &bytes.Buffer{}
-	err := Git(provisioner, app, "5734f0042844fdeb5bbc1b72b18f2dc1779cade7", w)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.Commands, gocheck.DeepEquals, []string{"restart"})
-	c.Assert(provisioner.InstalledDeps(app), gocheck.Equals, 1)
-	cloneCommand := "git clone git://tsuruhost.com/cribcaged.git test/dir --depth 1"
-	c.Assert(provisioner.GetCmds(cloneCommand, app), gocheck.HasLen, 1)
-	path, _ := repository.GetPath()
-	checkoutCommand := fmt.Sprintf("cd %s && git checkout 5734f0042844fdeb5bbc1b72b18f2dc1779cade7", path)
-	c.Assert(provisioner.GetCmds(checkoutCommand, app), gocheck.HasLen, 1)
-}
-
-func (s *S) TestDeployLogsActions(c *gocheck.C) {
-	h := &testing.TestHandler{}
-	gandalfServer := testing.StartGandalfTestServer(h)
-	defer gandalfServer.Close()
-	provisioner := testing.NewFakeProvisioner()
-	provisioner.PrepareOutput([]byte(""))
-	provisioner.PrepareOutput([]byte("updated"))
-	app := testing.NewFakeApp("cribcaged", "python", 1)
-	provisioner.Provision(app)
-	w := &bytes.Buffer{}
-	err := Git(provisioner, app, "5734f0042844fdeb5bbc1b72b18f2dc1779cade7", w)
-	c.Assert(err, gocheck.IsNil)
-	logs := w.String()
-	expected := `
- ---> tsuru receiving push
-
- ---> Replicating the application repository across units
-
- ---> Installing dependencies
-
- ---> Restarting application
-Restarting app...
- ---> Deploy done!
-
-`
-	c.Assert(logs, gocheck.Equals, expected)
-}
 
 func (s *S) TestCloneRepository(c *gocheck.C) {
 	h := &testing.TestHandler{}

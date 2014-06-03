@@ -24,6 +24,7 @@ var _ = gocheck.Suite(&S{})
 func (s *S) SetUpSuite(c *gocheck.C) {
 	var err error
 	s.collName = "juju_units_test"
+	config.Set("git:unit-repo", "test/dir")
 	config.Set("git:ro-host", "tsuruhost.com")
 	config.Set("juju:units-collection", s.collName)
 	config.Set("juju:bootstrap-collection", "juju_bootstrap_test")

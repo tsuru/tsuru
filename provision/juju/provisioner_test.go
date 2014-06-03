@@ -80,7 +80,9 @@ func (s *S) TestProvision(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionUndefinedCharmsPath(c *gocheck.C) {
+	old, _ := config.Get("juju:charms-path")
 	config.Unset("juju:charms-path")
+	defer config.Set("juju:charms-path", old)
 	p := JujuProvisioner{}
 	err := p.Provision(testing.NewFakeApp("eternity", "sandman", 0))
 	c.Assert(err, gocheck.NotNil)
@@ -152,10 +154,6 @@ func (s *S) TestGitDeploy(c *gocheck.C) {
 	tmpdir, err := commandmocker.Add("juju", "")
 	c.Assert(err, gocheck.IsNil)
 	defer commandmocker.Remove(tmpdir)
-	config.Set("git:unit-repo", "test/dir")
-	defer func() {
-		config.Unset("git:unit-repo")
-	}()
 	app := testing.NewFakeApp("cribcaged", "python", 1)
 	w := &bytes.Buffer{}
 	p := JujuProvisioner{}

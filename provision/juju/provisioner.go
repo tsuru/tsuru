@@ -13,7 +13,6 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
-	"github.com/tsuru/tsuru/deploy"
 	"github.com/tsuru/tsuru/exec"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
@@ -175,13 +174,40 @@ func (JujuProvisioner) Swap(app1, app2 provision.App) error {
 	return r.Swap(app1.GetName(), app2.GetName())
 }
 
-func (p *JujuProvisioner) GitDeploy(a provision.App, version string, w io.Writer) error {
+func (p *JujuProvisioner) GitDeploy(app provision.App, version string, w io.Writer) error {
 	var buf bytes.Buffer
-	setOption := []string{"set", a.GetName(), "app-version=" + version}
+	setOption := []string{"set", app.GetName(), "app-version=" + version}
 	if err := runCmd(true, &buf, &buf, setOption...); err != nil {
 		log.Errorf("juju: Failed to set app-version. Error: %s.\nCommand output: %s", err, &buf)
 	}
-	return deploy.Git(p, a, version, w)
+	log.Write(w, []byte("\n ---> tsuru receiving push\n"))
+	log.Write(w, []byte("\n ---> Replicating the application repository across units\n"))
+	out, err := clone(p, app)
+	if err != nil {
+		out, err = fetch(p, app)
+	}
+	if err != nil {
+		msg := fmt.Sprintf("Got error while cloning/fetching repository: %s -- \n%s", err, string(out))
+		log.Write(w, []byte(msg))
+		return errors.New(msg)
+	}
+	out, err = checkout(p, app, version)
+	if err != nil {
+		msg := fmt.Sprintf("Failed to checkout Git repository: %s -- \n%s", err, string(out))
+		log.Write(w, []byte(msg))
+		return errors.New(msg)
+	}
+	log.Write(w, []byte("\n ---> Installing dependencies\n"))
+	if err := p.InstallDeps(app, w); err != nil {
+		log.Write(w, []byte(err.Error()))
+		return err
+	}
+	log.Write(w, []byte("\n ---> Restarting application\n"))
+	if err := app.Restart(w); err != nil {
+		log.Write(w, []byte(err.Error()))
+		return err
+	}
+	return log.Write(w, []byte("\n ---> Deploy done!\n\n"))
 }
 
 func (p *JujuProvisioner) destroyService(app provision.App) error {
