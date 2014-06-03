@@ -107,18 +107,22 @@ type CNameManager interface {
 	UnsetCName(app App, cname string) error
 }
 
+// ArchiveDeployer is a provisioner that can deploy archives.
+type ArchiveDeployer interface {
+	ArchiveDeploy(app App, archiveURL string, w io.Writer) error
+}
+
+// GitDeployer is a provisioner that can deploy the application from a Git
+// repository.
+type GitDeployer interface {
+	GitDeploy(app App, version string, w io.Writer) error
+}
+
 // Provisioner is the basic interface of this package.
 //
 // Any tsuru provisioner must implement this interface in order to provision
 // tsuru apps.
-//
-// tsuru comes with a default provisioner: juju. One can add other provisioners
-// by satisfying this interface and registering it using the function Register.
 type Provisioner interface {
-	// Deploy updates the code of the app in units to match the given
-	// version, logging progress in the given writer.
-	GitDeploy(app App, version string, w io.Writer) error
-
 	// Provision is called when tsuru is creating the app.
 	Provision(App) error
 
