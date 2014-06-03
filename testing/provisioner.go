@@ -395,10 +395,11 @@ func (p *FakeProvisioner) PrepareOutput(b []byte) {
 
 // PrepareFailure prepares a failure for the given method name.
 //
-// For instance, PrepareFailure("Deploy", errors.New("Deploy failed")) will
+// For instance, PrepareFailure("GitDeploy", errors.New("GitDeploy failed")) will
 // cause next Deploy call to return the given error. Multiple calls to this
 // method will enqueue failures, i.e. three calls to
-// PrepareFailure("Deploy"...) means that the three next Deploy call will fail.
+// PrepareFailure("GitDeploy"...) means that the three next GitDeploy call will
+// fail.
 func (p *FakeProvisioner) PrepareFailure(method string, err error) {
 	p.failures <- failure{method, err}
 }
@@ -430,7 +431,7 @@ func (*FakeProvisioner) Swap(app1, app2 provision.App) error {
 }
 
 func (p *FakeProvisioner) GitDeploy(app provision.App, version string, w io.Writer) error {
-	if err := p.getError("Deploy"); err != nil {
+	if err := p.getError("GitDeploy"); err != nil {
 		return err
 	}
 	p.mut.Lock()

@@ -283,7 +283,7 @@ func (s *S) TestDeployWithPreparedFailure(c *gocheck.C) {
 	err := errors.New("not really")
 	app := NewFakeApp("soul", "arch", 1)
 	p := NewFakeProvisioner()
-	p.PrepareFailure("Deploy", err)
+	p.PrepareFailure("GitDeploy", err)
 	e := p.GitDeploy(app, "1.0", &buf)
 	c.Assert(e, gocheck.NotNil)
 	c.Assert(e, gocheck.Equals, err)
