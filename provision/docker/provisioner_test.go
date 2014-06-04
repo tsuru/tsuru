@@ -788,3 +788,11 @@ func (s *S) TestProvisionerUnits(c *gocheck.C) {
 	}
 	c.Assert(units, gocheck.DeepEquals, expected)
 }
+
+func (s *S) TestProvisionerUnitsAppDoesNotExist(c *gocheck.C) {
+	app := app.App{Name: "myapplication"}
+	p := dockerProvisioner{}
+	units := p.Units(&app)
+	expected := []provision.Unit{}
+	c.Assert(units, gocheck.DeepEquals, expected)
+}
