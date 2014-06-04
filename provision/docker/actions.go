@@ -145,11 +145,11 @@ var startContainer = action.Action{
 var injectEnvirons = action.Action{
 	Name: "inject-environs",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app, ok := ctx.Params[0].(provision.App)
+		opts, ok := ctx.Params[0].(app.DeployOptions)
 		if !ok {
-			return nil, errors.New("First parameter must be a provision.App.")
+			return nil, errors.New("First parameter must be DeployOptions")
 		}
-		go injectEnvsAndRestart(app)
+		go injectEnvsAndRestart(opts.App)
 		return nil, nil
 	},
 	Backward: func(ctx action.BWContext) {
@@ -159,11 +159,11 @@ var injectEnvirons = action.Action{
 var saveUnits = action.Action{
 	Name: "save-units",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		a, ok := ctx.Params[0].(*app.App)
+		opts, ok := ctx.Params[0].(app.DeployOptions)
 		if !ok {
-			return nil, errors.New("First parameter must be a *app.App.")
+			return nil, errors.New("First parameter must be DeployOptions")
 		}
-		a, err := app.GetByName(a.Name)
+		a, err := app.GetByName(opts.App.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -204,14 +204,14 @@ var saveUnits = action.Action{
 var bindService = action.Action{
 	Name: "bind-service",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		a, ok := ctx.Params[0].(provision.App)
+		opts, ok := ctx.Params[0].(app.DeployOptions)
 		if !ok {
-			return nil, errors.New("First parameter must be a provision.App.")
+			return nil, errors.New("First parameter must be DeployOptions")
 		}
-		for _, u := range a.ProvisionedUnits() {
+		for _, u := range opts.App.ProvisionedUnits() {
 			msg := queue.Message{
 				Action: app.BindService,
-				Args:   []string{a.GetName(), u.GetName()},
+				Args:   []string{opts.App.GetName(), u.GetName()},
 			}
 			go app.Enqueue(msg)
 		}

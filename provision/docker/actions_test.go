@@ -14,7 +14,6 @@ import (
 	"github.com/tsuru/tsuru/testing"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
-	"time"
 )
 
 func (s *S) TestInsertEmptyContainerInDBName(c *gocheck.C) {
@@ -213,18 +212,17 @@ func (s *S) TestInjectEnvironsName(c *gocheck.C) {
 }
 
 func (s *S) TestInjectEnvironsForward(c *gocheck.C) {
-	app := testing.NewFakeApp("myapp", "python", 1)
-	context := action.FWContext{Params: []interface{}{app}}
+	a := app.App{Name: "myapp", Platform: "python"}
+	opts := app.DeployOptions{App: &a}
+	context := action.FWContext{Params: []interface{}{opts}}
 	_, err := injectEnvirons.Forward(context)
 	c.Assert(err, gocheck.IsNil)
-	time.Sleep(6e9)
-	c.Assert(app.GetCommands(), gocheck.DeepEquals, []string{"serialize", "restart"})
 }
 
 func (s *S) TestInjectEnvironsParams(c *gocheck.C) {
 	ctx := action.FWContext{Params: []interface{}{""}}
 	_, err := injectEnvirons.Forward(ctx)
-	c.Assert(err.Error(), gocheck.Equals, "First parameter must be a provision.App.")
+	c.Assert(err.Error(), gocheck.Equals, "First parameter must be DeployOptions")
 }
 
 func (s *S) TestSaveUnitsName(c *gocheck.C) {
@@ -251,7 +249,8 @@ func (s *S) TestSaveUnitsForward(c *gocheck.C) {
 	coll := collection()
 	c.Assert(err, gocheck.IsNil)
 	coll.Insert(&container)
-	context := action.FWContext{Params: []interface{}{&a}}
+	opts := app.DeployOptions{App: &a}
+	context := action.FWContext{Params: []interface{}{opts}}
 	_, err = saveUnits.Forward(context)
 	c.Assert(err, gocheck.IsNil)
 	app, err := app.GetByName(a.Name)
@@ -281,7 +280,8 @@ func (s *S) TestSaveUnitsForwardShouldMaintainData(c *gocheck.C) {
 	coll := collection()
 	c.Assert(err, gocheck.IsNil)
 	coll.Insert(&container)
-	context := action.FWContext{Params: []interface{}{&a}}
+	opts := app.DeployOptions{App: &a}
+	context := action.FWContext{Params: []interface{}{opts}}
 	_, err = saveUnits.Forward(context)
 	c.Assert(err, gocheck.IsNil)
 	app, err := app.GetByName(a.Name)
@@ -293,16 +293,17 @@ func (s *S) TestSaveUnitsForwardShouldMaintainData(c *gocheck.C) {
 func (s *S) TestSaveUnitsParams(c *gocheck.C) {
 	context := action.FWContext{Params: []interface{}{""}}
 	_, err := saveUnits.Forward(context)
-	c.Assert(err.Error(), gocheck.Equals, "First parameter must be a *app.App.")
+	c.Assert(err.Error(), gocheck.Equals, "First parameter must be DeployOptions")
 }
 
-func (s *S) TestbindServiceName(c *gocheck.C) {
+func (s *S) TestBindServiceName(c *gocheck.C) {
 	c.Assert(bindService.Name, gocheck.Equals, "bind-service")
 }
 
-func (s *S) TestbindServiceForward(c *gocheck.C) {
-	a := testing.NewFakeApp("cribcaged", "python", 1)
-	context := action.FWContext{Params: []interface{}{a}}
+func (s *S) TestBindServiceForward(c *gocheck.C) {
+	a := app.App{Name: "cribcaged", Platform: "python"}
+	opts := app.DeployOptions{App: &a}
+	context := action.FWContext{Params: []interface{}{opts}}
 	_, err := bindService.Forward(context)
 	c.Assert(err, gocheck.IsNil)
 	q, err := getQueue()
@@ -316,10 +317,10 @@ func (s *S) TestbindServiceForward(c *gocheck.C) {
 	}
 }
 
-func (s *S) TestbindServiceParams(c *gocheck.C) {
+func (s *S) TestBindServiceParams(c *gocheck.C) {
 	context := action.FWContext{Params: []interface{}{""}}
 	_, err := bindService.Forward(context)
-	c.Assert(err.Error(), gocheck.Equals, "First parameter must be a provision.App.")
+	c.Assert(err.Error(), gocheck.Equals, "First parameter must be DeployOptions")
 }
 
 func (s *S) TestProvisionAddUnitToHostName(c *gocheck.C) {
