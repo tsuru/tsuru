@@ -448,6 +448,10 @@ func (p *dockerProvisioner) Units(app provision.App) []provision.Unit {
 			Name:    container.ID,
 			AppName: container.AppName,
 			Type:    container.Type,
+			Status:  provision.StatusBuilding,
+		}
+		if container.Status == "error" {
+			unit.Status = provision.StatusDown
 		}
 		units = append(units, unit)
 	}
