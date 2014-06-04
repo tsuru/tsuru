@@ -436,3 +436,7 @@ func (p *dockerProvisioner) PlatformAdd(name string, args map[string]string, w i
 func (p *dockerProvisioner) PlatformUpdate(name string, args map[string]string, w io.Writer) error {
 	return p.PlatformAdd(name, args, w)
 }
+
+func (p *dockerProvisioner) Units(app provision.App) []provision.Unit {
+	return nil
+}

@@ -578,3 +578,7 @@ func unitNotFound(unitName string, output []byte) bool {
 	}
 	return false
 }
+
+func (p *JujuProvisioner) Units(app provision.App) []provision.Unit {
+	return nil
+}

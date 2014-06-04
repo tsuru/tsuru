@@ -164,6 +164,9 @@ type Provisioner interface {
 
 	// Swap change the router between two apps.
 	Swap(App, App) error
+
+	// Units returns information about units by App.
+	Units(App) []Unit
 }
 
 // CustomizedDeployPipelineProvisioner is a provisioner with a customized

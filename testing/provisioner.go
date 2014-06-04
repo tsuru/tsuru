@@ -644,6 +644,10 @@ func (p *FakeProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provi
 	return nil
 }
 
+func (p *FakeProvisioner) Units(app provision.App) []provision.Unit {
+	return nil
+}
+
 func (p *FakeProvisioner) CollectStatus() ([]provision.Unit, error) {
 	if err := p.getError("CollectStatus"); err != nil {
 		return nil, err
