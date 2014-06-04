@@ -717,11 +717,6 @@ func (s *S) TestStartedUnitsShouldReturnTrueForUnreachable(c *gocheck.C) {
 	c.Assert(units, gocheck.HasLen, 1)
 }
 
-func (s *S) TestDeployPipeline(c *gocheck.C) {
-	p := JujuProvisioner{}
-	c.Assert(p.DeployPipeline(), gocheck.IsNil)
-}
-
 func (s *S) TestStart(c *gocheck.C) {
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)

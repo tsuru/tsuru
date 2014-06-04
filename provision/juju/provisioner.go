@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
