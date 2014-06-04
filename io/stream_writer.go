@@ -30,7 +30,7 @@ func (w *streamWriter) Remaining() []byte {
 
 func (w *streamWriter) Write(b []byte) (int, error) {
 	w.b = append(w.b, b...)
-	writtenCount := 0
+	writtenCount := len(b)
 	for len(w.b) > 0 {
 		parts := bytes.SplitAfterN(w.b, []byte("\n"), 2)
 		err := w.formatter.Format(w.w, parts[0])
@@ -41,7 +41,6 @@ func (w *streamWriter) Write(b []byte) (int, error) {
 				return writtenCount, fmt.Errorf("Unparseable chunk: %q", string(parts[0]))
 			}
 		}
-		writtenCount += len(parts[0])
 		if len(parts) == 1 {
 			w.b = []byte{}
 		} else {
