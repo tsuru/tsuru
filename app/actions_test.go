@@ -797,7 +797,7 @@ func (s *S) TestProvisionerDeployMinParams(c *gocheck.C) {
 	c.Assert(ProvisionerDeploy.MinParams, gocheck.Equals, 2)
 }
 
-func (s *S) TestProvisionerDeployForward(c *gocheck.C) {
+func (s *S) TestProvisionerDeployGitForward(c *gocheck.C) {
 	a := App{
 		Name:     "someApp",
 		Platform: "django",
@@ -815,7 +815,28 @@ func (s *S) TestProvisionerDeployForward(c *gocheck.C) {
 	_, err = ProvisionerDeploy.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
 	logs := writer.String()
-	c.Assert(logs, gocheck.Equals, "Deploy called")
+	c.Assert(logs, gocheck.Equals, "Git deploy called")
+}
+
+func (s *S) TestProvisionerDeployArchiveForward(c *gocheck.C) {
+	a := App{
+		Name:     "someApp",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
+		Units:    []Unit{{Name: "i-0800", State: "started"}},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	writer := &bytes.Buffer{}
+	opts := DeployOptions{App: &a, ArchiveURL: "https://s3.amazonaws.com/smt/archive.tar.gz"}
+	ctx := action.FWContext{Params: []interface{}{opts, writer}}
+	_, err = ProvisionerDeploy.Forward(ctx)
+	c.Assert(err, gocheck.IsNil)
+	logs := writer.String()
+	c.Assert(logs, gocheck.Equals, "Archive deploy called")
 }
 
 func (s *S) TestProvisionerDeployParams(c *gocheck.C) {
