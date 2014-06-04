@@ -1124,9 +1124,11 @@ type DeployOptions struct {
 // archive based deploy (if opts.ArchiveURL is not empty), and then fallback to
 // the Git based deployment.
 func Deploy(opts DeployOptions) error {
+	var pipeline *action.Pipeline
 	start := time.Now()
-	pipeline := Provisioner.DeployPipeline()
-	if pipeline == nil {
+	if cprovisioner, ok := Provisioner.(provision.CustomizedDeployPipelineProvisioner); ok {
+		pipeline = cprovisioner.DeployPipeline()
+	} else {
 		actions := []*action.Action{&ProvisionerDeploy, &IncrementDeploy}
 		pipeline = action.NewPipeline(actions...)
 	}

@@ -7,6 +7,7 @@ package app
 import (
 	"errors"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/provision"
 	"io"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
@@ -29,6 +30,13 @@ func Platforms() ([]Platform, error) {
 
 // PlatformAdd add a new platform to tsuru
 func PlatformAdd(name string, args map[string]string, w io.Writer) error {
+	var (
+		provisioner provision.ExtensibleProvisioner
+		ok          bool
+	)
+	if provisioner, ok = Provisioner.(provision.ExtensibleProvisioner); !ok {
+		return errors.New("Provisioner is not extensible")
+	}
 	if name == "" {
 		return errors.New("Platform name is required.")
 	}
@@ -37,7 +45,7 @@ func PlatformAdd(name string, args map[string]string, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	err = Provisioner.PlatformAdd(name, args, w)
+	err = provisioner.PlatformAdd(name, args, w)
 	if err != nil {
 		return err
 	}
@@ -58,22 +66,29 @@ func (DuplicatePlatformError) Error() string {
 }
 
 func PlatformUpdate(name string, args map[string]string, w io.Writer) error {
+	var (
+		provisioner provision.ExtensibleProvisioner
+		platform    Platform
+		ok          bool
+	)
+	if provisioner, ok = Provisioner.(provision.ExtensibleProvisioner); !ok {
+		return errors.New("Provisioner is not extensible")
+	}
 	if name == "" {
 		return errors.New("Platform name is required.")
 	}
-	var p Platform
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
-	err = conn.Platforms().Find(bson.M{"_id": name}).One(&p)
+	err = conn.Platforms().Find(bson.M{"_id": name}).One(&platform)
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return errors.New("Platform doesn't exists.")
+			return errors.New("Platform doesn't exist.")
 		}
 		return err
 	}
-	err = Provisioner.PlatformUpdate(name, args, w)
+	err = provisioner.PlatformUpdate(name, args, w)
 	if err != nil {
 		return err
 	}

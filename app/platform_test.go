@@ -75,6 +75,13 @@ func (s *PlatformSuite) TestGetPlatform(c *gocheck.C) {
 }
 
 func (s *PlatformSuite) TestPlatformAdd(c *gocheck.C) {
+	provisioner := testing.ExtensibleFakeProvisioner{
+		FakeProvisioner: testing.NewFakeProvisioner(),
+	}
+	Provisioner = &provisioner
+	defer func() {
+		Provisioner = s.provisioner
+	}()
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
@@ -84,18 +91,62 @@ func (s *PlatformSuite) TestPlatformAdd(c *gocheck.C) {
 	err = PlatformAdd(name, args, nil)
 	defer conn.Platforms().Remove(bson.M{"_id": name})
 	c.Assert(err, gocheck.IsNil)
+	platform := provisioner.GetPlatform(name)
+	c.Assert(platform.Name, gocheck.Equals, name)
+	c.Assert(platform.Args, gocheck.DeepEquals, args)
+	c.Assert(platform.Version, gocheck.Equals, 1)
+}
+
+func (s *PlatformSuite) TestPlatformAddDuplicate(c *gocheck.C) {
+	provisioner := testing.ExtensibleFakeProvisioner{
+		FakeProvisioner: testing.NewFakeProvisioner(),
+	}
+	Provisioner = &provisioner
+	defer func() {
+		Provisioner = s.provisioner
+	}()
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	name := "test_platform_add"
+	args := make(map[string]string)
+	args["dockerfile"] = "http://localhost/Dockerfile"
+	err = PlatformAdd(name, args, nil)
+	defer conn.Platforms().Remove(bson.M{"_id": name})
+	c.Assert(err, gocheck.IsNil)
+	provisioner.PlatformRemove(name)
 	err = PlatformAdd(name, args, nil)
 	_, ok := err.(DuplicatePlatformError)
 	c.Assert(ok, gocheck.Equals, true)
 }
 
+func (s *PlatformSuite) TestPlatformAddNotExtensibleProvisioner(c *gocheck.C) {
+	err := PlatformAdd("python", nil, nil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Provisioner is not extensible")
+}
+
 func (s *PlatformSuite) TestPlatformAddWithoutName(c *gocheck.C) {
+	provisioner := testing.ExtensibleFakeProvisioner{
+		FakeProvisioner: testing.NewFakeProvisioner(),
+	}
+	Provisioner = &provisioner
+	defer func() {
+		Provisioner = s.provisioner
+	}()
 	err := PlatformAdd("", nil, nil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Platform name is required.")
 }
 
 func (s *PlatformSuite) TestPlatformUpdate(c *gocheck.C) {
+	provisioner := testing.ExtensibleFakeProvisioner{
+		FakeProvisioner: testing.NewFakeProvisioner(),
+	}
+	Provisioner = &provisioner
+	defer func() {
+		Provisioner = s.provisioner
+	}()
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
@@ -104,9 +155,8 @@ func (s *PlatformSuite) TestPlatformUpdate(c *gocheck.C) {
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	err = PlatformUpdate(name, args, nil)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Platform doesn't exists.")
-	p := Platform{Name: name}
-	err = conn.Platforms().Insert(p)
+	c.Assert(err.Error(), gocheck.Equals, "Platform doesn't exist.")
+	err = PlatformAdd(name, nil, nil)
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Platforms().Remove(bson.M{"_id": name})
 	err = PlatformUpdate(name, args, nil)
@@ -114,20 +164,33 @@ func (s *PlatformSuite) TestPlatformUpdate(c *gocheck.C) {
 }
 
 func (s *PlatformSuite) TestPlatformUpdateWithoutName(c *gocheck.C) {
+	provisioner := testing.ExtensibleFakeProvisioner{
+		FakeProvisioner: testing.NewFakeProvisioner(),
+	}
+	Provisioner = &provisioner
+	defer func() {
+		Provisioner = s.provisioner
+	}()
 	err := PlatformUpdate("", nil, nil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Platform name is required.")
 }
 
 func (s *PlatformSuite) TestPlatformUpdateShouldSetUpdatePlatformFlagOnApps(c *gocheck.C) {
+	provisioner := testing.ExtensibleFakeProvisioner{
+		FakeProvisioner: testing.NewFakeProvisioner(),
+	}
+	Provisioner = &provisioner
+	defer func() {
+		Provisioner = s.provisioner
+	}()
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	name := "test_platform_update"
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
-	p := Platform{Name: name}
-	err = conn.Platforms().Insert(p)
+	err = PlatformAdd(name, nil, nil)
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Platforms().Remove(bson.M{"_id": name})
 	appName := "test_app"
@@ -139,6 +202,7 @@ func (s *PlatformSuite) TestPlatformUpdateShouldSetUpdatePlatformFlagOnApps(c *g
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Apps().Remove(bson.M{"_id": appName})
 	err = PlatformUpdate(name, args, nil)
+	c.Assert(err, gocheck.IsNil)
 	a, err := GetByName(appName)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(a.UpdatePlatform, gocheck.Equals, true)

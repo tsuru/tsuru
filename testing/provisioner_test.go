@@ -684,18 +684,71 @@ func (s *S) TestExecuteCommandOnce(c *gocheck.C) {
 	c.Assert(buf.String(), gocheck.Equals, string(output))
 }
 
-func (s *S) TestDeployPipeline(c *gocheck.C) {
-	p := FakeProvisioner{}
-	c.Assert(p.DeployPipeline(), gocheck.IsNil)
-	p.CustomPipeline = true
-	c.Assert(p.DeployPipeline(), gocheck.NotNil)
-}
-
 func (s *S) TestExecutedPipeline(c *gocheck.C) {
-	p := FakeProvisioner{CustomPipeline: true}
+	p := PipelineFakeProvisioner{FakeProvisioner: NewFakeProvisioner()}
 	c.Assert(p.ExecutedPipeline(), gocheck.Equals, false)
 	pipeline := p.DeployPipeline()
 	err := pipeline.Execute()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.ExecutedPipeline(), gocheck.Equals, true)
+}
+
+func (s *S) TestExtensiblePlatformAdd(c *gocheck.C) {
+	p := ExtensibleFakeProvisioner{FakeProvisioner: NewFakeProvisioner()}
+	args := map[string]string{"dockerfile": "mydockerfile.txt"}
+	err := p.PlatformAdd("python", args, nil)
+	c.Assert(err, gocheck.IsNil)
+	platform := p.GetPlatform("python")
+	c.Assert(platform.Name, gocheck.Equals, "python")
+	c.Assert(platform.Version, gocheck.Equals, 1)
+	c.Assert(platform.Args, gocheck.DeepEquals, args)
+}
+
+func (s *S) TestExtensiblePlatformAddTwice(c *gocheck.C) {
+	p := ExtensibleFakeProvisioner{FakeProvisioner: NewFakeProvisioner()}
+	args := map[string]string{"dockerfile": "mydockerfile.txt"}
+	err := p.PlatformAdd("python", args, nil)
+	c.Assert(err, gocheck.IsNil)
+	err = p.PlatformAdd("python", nil, nil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "duplicate platform")
+}
+
+func (s *S) TestExtensiblePlatformUpdate(c *gocheck.C) {
+	p := ExtensibleFakeProvisioner{FakeProvisioner: NewFakeProvisioner()}
+	args := map[string]string{"dockerfile": "mydockerfile.txt"}
+	err := p.PlatformAdd("python", args, nil)
+	c.Assert(err, gocheck.IsNil)
+	args["something"] = "wat"
+	err = p.PlatformUpdate("python", args, nil)
+	c.Assert(err, gocheck.IsNil)
+	platform := p.GetPlatform("python")
+	c.Assert(platform.Name, gocheck.Equals, "python")
+	c.Assert(platform.Version, gocheck.Equals, 2)
+	c.Assert(platform.Args, gocheck.DeepEquals, args)
+}
+
+func (s *S) TestExtensiblePlatformUpdateNotFound(c *gocheck.C) {
+	p := ExtensibleFakeProvisioner{FakeProvisioner: NewFakeProvisioner()}
+	err := p.PlatformUpdate("python", nil, nil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "platform not found")
+}
+
+func (s *S) TestExtensiblePlatformRemove(c *gocheck.C) {
+	p := ExtensibleFakeProvisioner{FakeProvisioner: NewFakeProvisioner()}
+	args := map[string]string{"dockerfile": "mydockerfile.txt"}
+	err := p.PlatformAdd("python", args, nil)
+	c.Assert(err, gocheck.IsNil)
+	err = p.PlatformRemove("python")
+	c.Assert(err, gocheck.IsNil)
+	platform := p.GetPlatform("python")
+	c.Assert(platform, gocheck.IsNil)
+}
+
+func (s *S) TestExtensiblePlatformRemoveNotFound(c *gocheck.C) {
+	p := ExtensibleFakeProvisioner{FakeProvisioner: NewFakeProvisioner()}
+	err := p.PlatformRemove("python")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "platform not found")
 }

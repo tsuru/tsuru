@@ -164,10 +164,17 @@ type Provisioner interface {
 
 	// Swap change the router between two apps.
 	Swap(App, App) error
+}
 
-	// DeployPipeline returns actions that should be executed on deploy.
+// CustomizedDeployPipelineProvisioner is a provisioner with a customized
+// deploy pipeline.
+type CustomizedDeployPipelineProvisioner interface {
 	DeployPipeline() *action.Pipeline
+}
 
+// ExtensibleProvisioner is a provisioner where administrators can manage
+// platforms (automatically adding, removing and updating platforms).
+type ExtensibleProvisioner interface {
 	PlatformAdd(name string, args map[string]string, w io.Writer) error
 	PlatformUpdate(name string, args map[string]string, w io.Writer) error
 }

@@ -266,14 +266,12 @@ type failure struct {
 
 // Fake implementation for provision.Provisioner.
 type FakeProvisioner struct {
-	cmds             []Cmd
-	cmdMut           sync.Mutex
-	outputs          chan []byte
-	failures         chan failure
-	apps             map[string]provisionedApp
-	mut              sync.RWMutex
-	executedPipeline bool
-	CustomPipeline   bool
+	cmds     []Cmd
+	cmdMut   sync.Mutex
+	outputs  chan []byte
+	failures chan failure
+	apps     map[string]provisionedApp
+	mut      sync.RWMutex
 }
 
 func NewFakeProvisioner() *FakeProvisioner {
@@ -282,28 +280,6 @@ func NewFakeProvisioner() *FakeProvisioner {
 	p.failures = make(chan failure, 8)
 	p.apps = make(map[string]provisionedApp)
 	return &p
-}
-
-func (p *FakeProvisioner) ExecutedPipeline() bool {
-	return p.executedPipeline
-}
-
-func (p *FakeProvisioner) DeployPipeline() *action.Pipeline {
-	if p.CustomPipeline {
-		act := action.Action{
-			Name: "change-executed-pipeline",
-			Forward: func(ctx action.FWContext) (action.Result, error) {
-				p.executedPipeline = true
-				return nil, nil
-			},
-			Backward: func(ctx action.BWContext) {
-			},
-		}
-		actions := []*action.Action{&act}
-		pipeline := action.NewPipeline(actions...)
-		return pipeline
-	}
-	return nil
 }
 
 func (p *FakeProvisioner) getError(method string) error {
@@ -337,13 +313,6 @@ func (p *FakeProvisioner) Stops(app provision.App) int {
 	p.mut.RLock()
 	defer p.mut.RUnlock()
 	return p.apps[app.GetName()].stops
-}
-
-// InstalledDeps returns the number of InstallDeps calls for the given app.
-func (p *FakeProvisioner) InstalledDeps(app provision.App) int {
-	p.mut.RLock()
-	defer p.mut.RUnlock()
-	return p.apps[app.GetName()].installDeps
 }
 
 // Returns the number of calls to restart.
@@ -759,11 +728,75 @@ func (p *FakeProvisioner) Stop(app provision.App) error {
 	return nil
 }
 
-func (p *FakeProvisioner) PlatformAdd(name string, args map[string]string, w io.Writer) error {
+type PipelineFakeProvisioner struct {
+	*FakeProvisioner
+	executedPipeline bool
+}
+
+func (p *PipelineFakeProvisioner) ExecutedPipeline() bool {
+	return p.executedPipeline
+}
+
+func (p *PipelineFakeProvisioner) DeployPipeline() *action.Pipeline {
+	act := action.Action{
+		Name: "change-executed-pipeline",
+		Forward: func(ctx action.FWContext) (action.Result, error) {
+			p.executedPipeline = true
+			return nil, nil
+		},
+		Backward: func(ctx action.BWContext) {
+		},
+	}
+	actions := []*action.Action{&act}
+	pipeline := action.NewPipeline(actions...)
+	return pipeline
+}
+
+type ExtensibleFakeProvisioner struct {
+	*FakeProvisioner
+	platforms []provisionedPlatform
+}
+
+func (p *ExtensibleFakeProvisioner) GetPlatform(name string) *provisionedPlatform {
+	_, platform := p.getPlatform(name)
+	return platform
+}
+
+func (p *ExtensibleFakeProvisioner) getPlatform(name string) (int, *provisionedPlatform) {
+	for i, platform := range p.platforms {
+		if platform.Name == name {
+			return i, &platform
+		}
+	}
+	return -1, nil
+}
+
+func (p *ExtensibleFakeProvisioner) PlatformAdd(name string, args map[string]string, w io.Writer) error {
+	if p.GetPlatform(name) != nil {
+		return errors.New("duplicate platform")
+	}
+	p.platforms = append(p.platforms, provisionedPlatform{Name: name, Args: args, Version: 1})
 	return nil
 }
 
-func (p *FakeProvisioner) PlatformUpdate(name string, args map[string]string, w io.Writer) error {
+func (p *ExtensibleFakeProvisioner) PlatformUpdate(name string, args map[string]string, w io.Writer) error {
+	index, platform := p.getPlatform(name)
+	if platform == nil {
+		return errors.New("platform not found")
+	}
+	platform.Version += 1
+	platform.Args = args
+	p.platforms[index] = *platform
+	return nil
+}
+
+func (p *ExtensibleFakeProvisioner) PlatformRemove(name string) error {
+	index, _ := p.getPlatform(name)
+	if index < 0 {
+		return errors.New("platform not found")
+	}
+	p.platforms[index] = p.platforms[len(p.platforms)-1]
+	p.platforms = p.platforms[:len(p.platforms)-1]
 	return nil
 }
 
@@ -773,9 +806,14 @@ type provisionedApp struct {
 	restarts    int
 	starts      int
 	stops       int
-	installDeps int
 	version     string
 	lastArchive string
 	cname       string
 	unitLen     int
+}
+
+type provisionedPlatform struct {
+	Name    string
+	Args    map[string]string
+	Version int
 }

@@ -2340,6 +2340,13 @@ func (s *S) TestDeployAppSaveDeployData(c *gocheck.C) {
 }
 
 func (s *S) TestDeployCustomPipeline(c *gocheck.C) {
+	provisioner := testing.PipelineFakeProvisioner{
+		FakeProvisioner: testing.NewFakeProvisioner(),
+	}
+	Provisioner = &provisioner
+	defer func() {
+		Provisioner = s.provisioner
+	}()
 	a := App{
 		Name:     "otherapp",
 		Platform: "zend",
@@ -2349,8 +2356,8 @@ func (s *S) TestDeployCustomPipeline(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
+	provisioner.Provision(&a)
+	defer provisioner.Destroy(&a)
 	writer := &bytes.Buffer{}
 	err = Deploy(DeployOptions{
 		App:          &a,
@@ -2359,16 +2366,7 @@ func (s *S) TestDeployCustomPipeline(c *gocheck.C) {
 		OutputStream: writer,
 	})
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(s.provisioner.ExecutedPipeline(), gocheck.Equals, false)
-	s.provisioner.CustomPipeline = true
-	err = Deploy(DeployOptions{
-		App:          &a,
-		Version:      "version",
-		Commit:       "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
-		OutputStream: writer,
-	})
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(s.provisioner.ExecutedPipeline(), gocheck.Equals, true)
+	c.Assert(provisioner.ExecutedPipeline(), gocheck.Equals, true)
 }
 
 func (s *S) TestStart(c *gocheck.C) {
