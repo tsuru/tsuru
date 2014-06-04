@@ -6,6 +6,8 @@ package api
 
 import (
 	"fmt"
+	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
@@ -17,6 +19,14 @@ type PlatformSuite struct{}
 var _ = gocheck.Suite(&PlatformSuite{})
 
 func (p *PlatformSuite) TestPlatformAdd(c *gocheck.C) {
+	provisioner := testing.ExtensibleFakeProvisioner{
+		FakeProvisioner: testing.NewFakeProvisioner(),
+	}
+	oldProvisioner := app.Provisioner
+	app.Provisioner = &provisioner
+	defer func() {
+		app.Provisioner = oldProvisioner
+	}()
 	dockerfile_url := "http://localhost/Dockerfile"
 	body := fmt.Sprintf("name=%s&dockerfile=%s", "teste", dockerfile_url)
 	request, _ := http.NewRequest("POST", "/platforms/add", strings.NewReader(body))
@@ -27,9 +37,19 @@ func (p *PlatformSuite) TestPlatformAdd(c *gocheck.C) {
 }
 
 func (p *PlatformSuite) TestPlatformUpdate(c *gocheck.C) {
+	provisioner := testing.ExtensibleFakeProvisioner{
+		FakeProvisioner: testing.NewFakeProvisioner(),
+	}
+	oldProvisioner := app.Provisioner
+	app.Provisioner = &provisioner
+	defer func() {
+		app.Provisioner = oldProvisioner
+	}()
+	err := app.PlatformAdd("wat", nil, nil)
+	c.Assert(err, gocheck.IsNil)
 	dockerfile_url := "http://localhost/Dockerfile"
 	body := fmt.Sprintf("dockerfile=%s", dockerfile_url)
-	request, _ := http.NewRequest("PUT", "/platforms/teste?:name=teste", strings.NewReader(body))
+	request, _ := http.NewRequest("PUT", "/platforms/wat?:name=wat", strings.NewReader(body))
 	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	result := platformUpdate(recorder, request, nil)
