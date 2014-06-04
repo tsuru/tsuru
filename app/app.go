@@ -1133,7 +1133,7 @@ func Deploy(opts DeployOptions) error {
 		pipeline = action.NewPipeline(actions...)
 	}
 	logWriter := LogWriter{App: opts.App, Writer: opts.OutputStream}
-	err := pipeline.Execute(opts.App, opts.Version, &logWriter)
+	err := pipeline.Execute(opts, &logWriter)
 	if err != nil {
 		return err
 	}
