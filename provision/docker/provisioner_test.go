@@ -763,3 +763,28 @@ func (s *S) TestProvisionerPlatformAddShouldValidateArgs(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "dockerfile parameter should be an url.")
 }
+
+func (s *S) TestProvisionerUnits(c *gocheck.C) {
+	app := app.App{Name: "myapplication"}
+	coll := collection()
+	defer coll.Close()
+	err := coll.Insert(
+		container{
+			ID:       "9930c24f1c4f",
+			AppName:  app.Name,
+			Type:     "python",
+			Status:   "running",
+			IP:       "127.0.0.4",
+			HostPort: "9025",
+			HostAddr: "127.0.0.1",
+		},
+	)
+	c.Assert(err, gocheck.IsNil)
+	defer coll.RemoveAll(bson.M{"appname": app.Name})
+	p := dockerProvisioner{}
+	units := p.Units(&app)
+	expected := []provision.Unit{
+		{Name: "9930c24f1c4f", AppName: "myapplication", Type: "python"},
+	}
+	c.Assert(units, gocheck.DeepEquals, expected)
+}

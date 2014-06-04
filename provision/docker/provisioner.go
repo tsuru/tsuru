@@ -438,5 +438,18 @@ func (p *dockerProvisioner) PlatformUpdate(name string, args map[string]string, 
 }
 
 func (p *dockerProvisioner) Units(app provision.App) []provision.Unit {
-	return nil
+	containers, err := listContainersByApp(app.GetName())
+	if err != nil {
+		return nil
+	}
+	units := []provision.Unit{}
+	for _, container := range containers {
+		unit := provision.Unit{
+			Name:    container.ID,
+			AppName: container.AppName,
+			Type:    container.Type,
+		}
+		units = append(units, unit)
+	}
+	return units
 }
