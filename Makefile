@@ -119,6 +119,8 @@ _install_deadcode: git
 deadcode: _install_deadcode
 	@go list ./... | sed -e 's;github.com/tsuru/tsuru/;;' | xargs deadcode
 
+deadc0de: deadcode
+
 race:
 	@/bin/bash -ec 'for pkg in `go list ./...`; do go test -race -i $$pkg; go test -race $$pkg; done'
 
