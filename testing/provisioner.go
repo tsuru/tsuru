@@ -409,7 +409,7 @@ func (p *FakeProvisioner) GitDeploy(app provision.App, version string, w io.Writ
 	if !ok {
 		return errNotProvisioned
 	}
-	w.Write([]byte("Deploy called"))
+	w.Write([]byte("Git deploy called"))
 	pApp.version = version
 	p.apps[app.GetName()] = pApp
 	return nil
@@ -425,7 +425,7 @@ func (p *FakeProvisioner) ArchiveDeploy(app provision.App, archiveURL string, w 
 	if !ok {
 		return errNotProvisioned
 	}
-	w.Write([]byte("Deploy called"))
+	w.Write([]byte("Archive deploy called"))
 	pApp.lastArchive = archiveURL
 	p.apps[app.GetName()] = pApp
 	return nil

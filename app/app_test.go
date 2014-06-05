@@ -2251,7 +2251,7 @@ func (s *S) TestDeployApp(c *gocheck.C) {
 	})
 	c.Assert(err, gocheck.IsNil)
 	logs := writer.String()
-	c.Assert(logs, gocheck.Equals, "Deploy called")
+	c.Assert(logs, gocheck.Equals, "Git deploy called")
 }
 
 func (s *S) TestDeployAppWithUpdatePlatform(c *gocheck.C) {
@@ -2276,7 +2276,7 @@ func (s *S) TestDeployAppWithUpdatePlatform(c *gocheck.C) {
 	})
 	c.Assert(err, gocheck.IsNil)
 	logs := writer.String()
-	c.Assert(logs, gocheck.Equals, "Deploy called")
+	c.Assert(logs, gocheck.Equals, "Git deploy called")
 	var updatedApp App
 	s.conn.Apps().Find(bson.M{"name": "someApp"}).One(&updatedApp)
 	c.Assert(updatedApp.UpdatePlatform, gocheck.Equals, false)

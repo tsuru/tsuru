@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/queue"
+	"io"
 	"labix.org/v2/mgo/bson"
 	"net"
 	"strings"
@@ -145,11 +146,11 @@ var startContainer = action.Action{
 var injectEnvirons = action.Action{
 	Name: "inject-environs",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app, ok := ctx.Params[0].(provision.App)
+		opts, ok := ctx.Params[0].(app.DeployOptions)
 		if !ok {
-			return nil, errors.New("First parameter must be a provision.App.")
+			return nil, errors.New("First parameter must be DeployOptions")
 		}
-		go injectEnvsAndRestart(app)
+		go injectEnvsAndRestart(opts.App)
 		return nil, nil
 	},
 	Backward: func(ctx action.BWContext) {
@@ -159,11 +160,11 @@ var injectEnvirons = action.Action{
 var saveUnits = action.Action{
 	Name: "save-units",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		a, ok := ctx.Params[0].(*app.App)
+		opts, ok := ctx.Params[0].(app.DeployOptions)
 		if !ok {
-			return nil, errors.New("First parameter must be a *app.App.")
+			return nil, errors.New("First parameter must be DeployOptions")
 		}
-		a, err := app.GetByName(a.Name)
+		a, err := app.GetByName(opts.App.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -204,14 +205,14 @@ var saveUnits = action.Action{
 var bindService = action.Action{
 	Name: "bind-service",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		a, ok := ctx.Params[0].(provision.App)
+		opts, ok := ctx.Params[0].(app.DeployOptions)
 		if !ok {
-			return nil, errors.New("First parameter must be a provision.App.")
+			return nil, errors.New("First parameter must be DeployOptions")
 		}
-		for _, u := range a.ProvisionedUnits() {
+		for _, u := range opts.App.ProvisionedUnits() {
 			msg := queue.Message{
 				Action: app.BindService,
-				Args:   []string{a.GetName(), u.GetName()},
+				Args:   []string{opts.App.GetName(), u.GetName()},
 			}
 			go app.Enqueue(msg)
 		}
@@ -260,4 +261,38 @@ var provisionRemoveOldUnit = action.Action{
 	Backward: func(ctx action.BWContext) {
 	},
 	MinParams: 3,
+}
+
+var followLogsAndCommit = action.Action{
+	Name: "follow-logs-and-commit",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		c, ok := ctx.Previous.(container)
+		if !ok {
+			return nil, errors.New("Previous result must be a container.")
+		}
+		w, ok := ctx.Params[4].(io.Writer)
+		if !ok {
+			return nil, errors.New("Fifth parameter must be a io.Writer.")
+		}
+		err := c.logs(w)
+		if err != nil {
+			log.Errorf("error on get logs for container %s - %s", c.ID, err)
+			return nil, err
+		}
+		_, err = dockerCluster().WaitContainer(c.ID)
+		if err != nil {
+			log.Errorf("Process failed for container %q: %s", c.ID, err)
+			return nil, err
+		}
+		imageId, err := c.commit()
+		if err != nil {
+			log.Errorf("error on commit container %s - %s", c.ID, err)
+			return nil, err
+		}
+		c.remove()
+		return imageId, nil
+	},
+	Backward: func(ctx action.BWContext) {
+	},
+	MinParams: 5,
 }

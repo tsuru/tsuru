@@ -266,7 +266,7 @@ func (s *S) TestGitDeploy(c *gocheck.C) {
 	p.Provision(app)
 	err := p.GitDeploy(app, "1.0", &buf)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(buf.String(), gocheck.Equals, "Deploy called")
+	c.Assert(buf.String(), gocheck.Equals, "Git deploy called")
 	c.Assert(p.apps[app.GetName()].version, gocheck.Equals, "1.0")
 }
 
@@ -296,7 +296,7 @@ func (s *S) TestArchiveDeploy(c *gocheck.C) {
 	p.Provision(app)
 	err := p.ArchiveDeploy(app, "https://s3.amazonaws.com/smt/archive.tar.gz", &buf)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(buf.String(), gocheck.Equals, "Deploy called")
+	c.Assert(buf.String(), gocheck.Equals, "Archive deploy called")
 	c.Assert(p.apps[app.GetName()].lastArchive, gocheck.Equals, "https://s3.amazonaws.com/smt/archive.tar.gz")
 }
 

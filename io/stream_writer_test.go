@@ -10,12 +10,7 @@ import (
 	"fmt"
 	"io"
 	"launchpad.net/gocheck"
-	// "testing"
 )
-
-type S struct{}
-
-var _ = gocheck.Suite(&S{})
 
 type entry struct {
 	Message string

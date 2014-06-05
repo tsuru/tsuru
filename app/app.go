@@ -1047,7 +1047,7 @@ func (app *App) LastLogs(lines int, filterLog Applog) ([]Applog, error) {
 	if filterLog.Unit != "" {
 		q["unit"] = filterLog.Unit
 	}
-	err = conn.Logs(app.Name).Find(q).Sort("-$natural").Limit(lines).All(&logs)
+	err = conn.Logs(app.Name).Find(q).Sort("-_id").Limit(lines).All(&logs)
 	if err != nil {
 		return nil, err
 	}
@@ -1133,7 +1133,7 @@ func Deploy(opts DeployOptions) error {
 		pipeline = action.NewPipeline(actions...)
 	}
 	logWriter := LogWriter{App: opts.App, Writer: opts.OutputStream}
-	err := pipeline.Execute(opts.App, opts.Version, &logWriter)
+	err := pipeline.Execute(opts, &logWriter)
 	if err != nil {
 		return err
 	}

@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/docker-cluster/storage"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/fs"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/safe"
@@ -266,32 +267,16 @@ func archiveDeploy(app provision.App, archiveURL string, w io.Writer) (string, e
 }
 
 func deploy(app provision.App, commands []string, w io.Writer) (string, error) {
+	writer := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
 	imageId := getImage(app)
-	actions := []*action.Action{&insertEmptyContainerInDB, &createContainer, &startContainer, &updateContainerInDB}
+	actions := []*action.Action{&insertEmptyContainerInDB, &createContainer, &startContainer, &updateContainerInDB, &followLogsAndCommit}
 	pipeline := action.NewPipeline(actions...)
-	err := pipeline.Execute(app, imageId, commands)
+	err := pipeline.Execute(app, imageId, commands, []string{}, writer)
 	if err != nil {
 		log.Errorf("error on execute deploy pipeline for app %s - %s", app.GetName(), err)
 		return "", err
 	}
-	c := pipeline.Result().(container)
-	err = c.logs(w)
-	if err != nil {
-		log.Errorf("error on get logs for container %s - %s", c.ID, err)
-		return "", err
-	}
-	_, err = dockerCluster().WaitContainer(c.ID)
-	if err != nil {
-		log.Errorf("Process failed for container %q: %s", c.ID, err)
-		return "", err
-	}
-	imageId, err = c.commit()
-	if err != nil {
-		log.Errorf("error on commit container %s - %s", c.ID, err)
-		return "", err
-	}
-	c.remove()
-	return imageId, nil
+	return pipeline.Result().(string), nil
 }
 
 func start(app provision.App, imageId string, w io.Writer, destinationHosts ...string) (*container, error) {

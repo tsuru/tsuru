@@ -7,18 +7,9 @@ package io
 import (
 	"launchpad.net/gocheck"
 	"net/http/httptest"
-	"testing"
 )
 
-type FlushingSuite struct{}
-
-var _ = gocheck.Suite(&FlushingSuite{})
-
-func Test(t *testing.T) {
-	gocheck.TestingT(t)
-}
-
-func (s *FlushingSuite) TestFlushingWriter(c *gocheck.C) {
+func (s *S) TestFlushingWriter(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	writer := FlushingWriter{recorder, false}
 	data := []byte("ble")
@@ -28,7 +19,7 @@ func (s *FlushingSuite) TestFlushingWriter(c *gocheck.C) {
 	c.Assert(writer.wrote, gocheck.Equals, true)
 }
 
-func (s *FlushingSuite) TestFlushingWriterShouldReturnTheDataSize(c *gocheck.C) {
+func (s *S) TestFlushingWriterShouldReturnTheDataSize(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	writer := FlushingWriter{recorder, false}
 	data := []byte("ble")
@@ -37,14 +28,14 @@ func (s *FlushingSuite) TestFlushingWriterShouldReturnTheDataSize(c *gocheck.C) 
 	c.Assert(n, gocheck.Equals, len(data))
 }
 
-func (s *FlushingSuite) TestFlushingWriterHeader(c *gocheck.C) {
+func (s *S) TestFlushingWriterHeader(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	writer := FlushingWriter{recorder, false}
 	writer.Header().Set("Content-Type", "application/xml")
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/xml")
 }
 
-func (s *FlushingSuite) TestFlushingWriterWriteHeader(c *gocheck.C) {
+func (s *S) TestFlushingWriterWriteHeader(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	writer := FlushingWriter{recorder, false}
 	expectedCode := 333
@@ -53,7 +44,7 @@ func (s *FlushingSuite) TestFlushingWriterWriteHeader(c *gocheck.C) {
 	c.Assert(writer.wrote, gocheck.Equals, true)
 }
 
-func (s *FlushingSuite) TestFlushingWriterWrote(c *gocheck.C) {
+func (s *S) TestFlushingWriterWrote(c *gocheck.C) {
 	writer := FlushingWriter{nil, false}
 	c.Assert(writer.Wrote(), gocheck.Equals, false)
 	writer.wrote = true

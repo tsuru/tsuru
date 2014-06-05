@@ -330,35 +330,36 @@ var saveNewUnitsInDatabase = action.Action{
 var ProvisionerDeploy = action.Action{
 	Name: "provisioner-deploy",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app, ok := ctx.Params[0].(*App)
+		opts, ok := ctx.Params[0].(DeployOptions)
 		if !ok {
-			return nil, errors.New("First parameter must be a *App.")
+			return nil, errors.New("First parameter must be DeployOptions")
 		}
-		version, ok := ctx.Params[1].(string)
+		writer, ok := ctx.Params[1].(io.Writer)
 		if !ok {
-			return nil, errors.New("Second parameter must be a string.")
+			return nil, errors.New("Second parameter must be an io.Writer")
 		}
-		logWriter, ok := ctx.Params[2].(io.Writer)
-		if !ok {
-			return nil, errors.New("Third parameter must be a io.Writer.")
+		if opts.ArchiveURL != "" {
+			if deployer, ok := Provisioner.(provision.ArchiveDeployer); ok {
+				return nil, deployer.ArchiveDeploy(opts.App, opts.ArchiveURL, writer)
+			}
 		}
-		err := Provisioner.(provision.GitDeployer).GitDeploy(app, version, logWriter)
+		err := Provisioner.(provision.GitDeployer).GitDeploy(opts.App, opts.Version, writer)
 		return nil, err
 	},
 	Backward: func(ctx action.BWContext) {
 	},
-	MinParams: 3,
+	MinParams: 2,
 }
 
 // Increment is an actions that increments the deploy number.
 var IncrementDeploy = action.Action{
 	Name: "increment-deploy",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app, ok := ctx.Params[0].(*App)
+		opts, ok := ctx.Params[0].(DeployOptions)
 		if !ok {
-			return nil, errors.New("First parameter must be a *App.")
+			return nil, errors.New("First parameter must be DeployOptions")
 		}
-		err := incrementDeploy(app)
+		err := incrementDeploy(opts.App)
 		return nil, err
 	},
 	Backward: func(ctx action.BWContext) {

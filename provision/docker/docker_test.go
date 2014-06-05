@@ -590,8 +590,47 @@ func (s *S) TestGitDeploy(c *gocheck.C) {
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
-	_, err = gitDeploy(app, "ff13e", &buf)
+	imageId, err := gitDeploy(app, "ff13e", &buf)
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(imageId, gocheck.Equals, "tsuru/myapp")
+	var conts []container
+	coll := collection()
+	defer coll.Close()
+	err = coll.Find(nil).All(&conts)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(conts, gocheck.HasLen, 0)
+	err = dockerCluster().RemoveImage("tsuru/myapp")
+	c.Assert(err, gocheck.IsNil)
+}
+
+type errBuffer struct{}
+
+func (errBuffer) Write(data []byte) (int, error) {
+	return 0, fmt.Errorf("My write error")
+}
+
+func (s *S) TestGitDeployRollsbackAfterErrorOnAttach(c *gocheck.C) {
+	h := &testing.TestHandler{}
+	gandalfServer := testing.StartGandalfTestServer(h)
+	defer gandalfServer.Close()
+	go s.stopContainers(1)
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	app := testing.NewFakeApp("myapp", "python", 1)
+	rtesting.FakeRouter.AddBackend(app.GetName())
+	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
+	var buf errBuffer
+	_, err = gitDeploy(app, "ff13e", &buf)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "My write error")
+	var conts []container
+	coll := collection()
+	defer coll.Close()
+	err = coll.Find(nil).All(&conts)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(conts, gocheck.HasLen, 0)
+	err = dockerCluster().RemoveImage("tsuru/myapp")
+	c.Assert(err, gocheck.NotNil)
 }
 
 func (s *S) TestArchiveDeploy(c *gocheck.C) {
