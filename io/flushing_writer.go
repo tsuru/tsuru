@@ -5,6 +5,8 @@
 package io
 
 import (
+	"fmt"
+	"github.com/tsuru/tsuru/log"
 	"net/http"
 	"sync"
 )
@@ -24,15 +26,25 @@ func (w *FlushingWriter) WriteHeader(code int) {
 }
 
 // Write writes and flushes the data.
-func (w *FlushingWriter) Write(data []byte) (int, error) {
+func (w *FlushingWriter) Write(data []byte) (written int, err error) {
 	writeMutex.Lock()
 	defer writeMutex.Unlock()
 	w.wrote = true
-	n, err := w.ResponseWriter.Write(data)
+	written, err = w.ResponseWriter.Write(data)
+	if err != nil {
+		return
+	}
 	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		defer func() {
+			if r := recover(); r != nil {
+				msg := fmt.Sprintf("Error recovered on flushing writer: %#v", r)
+				log.Debugf(msg)
+				err = fmt.Errorf(msg)
+			}
+		}()
 		f.Flush()
 	}
-	return n, err
+	return
 }
 
 // Wrote returns whether the method WriteHeader has been called or not.
