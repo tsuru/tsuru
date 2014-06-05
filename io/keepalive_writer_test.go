@@ -53,8 +53,8 @@ func (s *S) TestKeepAliveWriterDoesntWriteMultipleNewlines(c *gocheck.C) {
 	count, err := w.Write([]byte("xxx\n"))
 	c.Check(err, gocheck.IsNil)
 	c.Check(count, gocheck.Equals, 4)
-	time.Sleep(150 * time.Millisecond)
+	time.Sleep(120 * time.Millisecond)
 	c.Check(buf.String(), gocheck.Equals, "xxx\n---\n")
-	time.Sleep(150 * time.Millisecond)
+	time.Sleep(120 * time.Millisecond)
 	c.Check(buf.String(), gocheck.Equals, "xxx\n---\n---\n")
 }
