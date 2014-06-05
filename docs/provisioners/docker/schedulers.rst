@@ -14,12 +14,21 @@ Segregate scheduler
 
 Segregate scheduler is a scheduler that segregates the units between nodes by team.
 
-First, what you need to do is to define a relation between nodes and teams.
-And then, the scheduler deploys the app unit on the node related to its team.
+First, what you need to do is to define a relation between a pool, teams and nodes.
+And then, the scheduler deploys the app unit on the pool where a node is related to its team.
 
-    - team1 -> node1
-    - team2 -> node3
-    - others -> fallback (node4)
+    - Pool1 
+      -> team1, team2
+      -> node1
+
+    - Pool2
+      -> team2
+      -> node3, node4
+
+    - Pool3 (fallback)
+      -> <no teams>
+      -> node2
+
 
 Configuration and setup
 -----------------------
@@ -38,54 +47,104 @@ is also configured:
         redis-server: 127.0.0.1:6379
         redis-prefix: docker-cluster
 
-Adding a node
+Adding a pool
 -------------
 
-You can use the `tsr` to add nodes:
+Using `tsuru-admin` you create a pool:
 
 .. highlight:: bash
 
 ::
 
-    $ tsr docker-add-node someid http://localhost:4243 myteam
+    $ tsuru-admin docker-pool-add pool1
 
+Removing a pool
+---------------
 
-Adding a fallback node
-----------------------
-
-To add a fallback, you just need to add a node without team:
+A pool is removable if it don't have any node associated with it.
+To remove a pool you do:
 
 .. highlight:: bash
 
 ::
 
-    $ tsr docker-add-node someid http://localhost:4243
+    $ tsuru-admin docker-pool-remove pool1
+
+Listing a pool
+--------------
+
+To list pools you do:
+
+.. highlight:: bash
+
+::
+
+    $ tsuru-admin docker-pool-list
+    +-------+-------------------+-----------+
+    | Pools | Nodes             | Teams     |
+    +-------+-------------------+-----------+
+    | pool1 | node1, node2      | team1     |
+    | pool2 | node3             | team2     |
+    +-------+-------------------+-----------+
+
+
+Adding node to a pool
+-------------
+
+You can use the `tsuru-admin` to add nodes:
+
+.. highlight:: bash
+
+::
+
+    $ tsuru-admin docker-node-add pool1 http://localhost:4243
 
 Removing a node
 ---------------
 
-You can use the `tsr` to remove nodes: 
+You can use the `tsuru-admin` to remove nodes: 
 
 .. highlight:: bash
 
 ::
 
-    $ tsr docker-rm-node xxx
+    $ tsuru-admin docker-node-remove pool1 http://localhost:4243
     Node successfully removed.
 
 List nodes
 ----------
 
-Just use `docker-list-nodes` to list nodes:
-
 .. highlight:: bash
 
 ::
 
-    $ tsr docker-list-nodes
-    +------+-----------------------+------------------+
-    | ID   | Address               | Team             |
-    +------+-----------------------+------------------+
-    | fall | http://localhost:4243 |                  |
-    | xpto | http://localhost:4243 | xpto             |
-    +------+-----------------------+------------------+
+    $ tsuru-admin docker-nodes-list
+    +-----------+
+    | Address   |
+    +-----------+
+    | node1     |
+    | node2     |
+    +-----------+
+
+Adding teams to a pool
+-----------------------
+
+You can add one or more teams at once.
+
+.. highlight:: bash
+
+    $ tsuru-admin docker-pool-teams-add pool1 team1
+
+    $ tsuru-admin docker-pool-teams-add pool1 team1 team2 team3
+
+Removing teams from a pool
+--------------------------
+
+You can remove one or more teams at once.
+
+.. highlight:: bash
+
+    $ tsuru-admin docker-pool-teams-remove pool1 team1
+
+    $ tsuru-admin docker-pool-teams-remove pool1 team1 team2 team3
+
