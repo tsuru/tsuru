@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/queue"
+	"io"
 	"labix.org/v2/mgo/bson"
 	"net"
 	"strings"
@@ -260,4 +261,38 @@ var provisionRemoveOldUnit = action.Action{
 	Backward: func(ctx action.BWContext) {
 	},
 	MinParams: 3,
+}
+
+var followLogsAndCommit = action.Action{
+	Name: "follow-logs-and-commit",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		c, ok := ctx.Previous.(container)
+		if !ok {
+			return nil, errors.New("Previous result must be a container.")
+		}
+		w, ok := ctx.Params[4].(io.Writer)
+		if !ok {
+			return nil, errors.New("Fifth parameter must be a io.Writer.")
+		}
+		err := c.logs(w)
+		if err != nil {
+			log.Errorf("error on get logs for container %s - %s", c.ID, err)
+			return nil, err
+		}
+		_, err = dockerCluster().WaitContainer(c.ID)
+		if err != nil {
+			log.Errorf("Process failed for container %q: %s", c.ID, err)
+			return nil, err
+		}
+		imageId, err := c.commit()
+		if err != nil {
+			log.Errorf("error on commit container %s - %s", c.ID, err)
+			return nil, err
+		}
+		c.remove()
+		return imageId, nil
+	},
+	Backward: func(ctx action.BWContext) {
+	},
+	MinParams: 5,
 }

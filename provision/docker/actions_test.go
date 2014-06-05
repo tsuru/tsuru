@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"bytes"
 	dockerClient "github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
@@ -401,4 +402,35 @@ func (s *S) TestProvisionRemoveOldUnitForward(c *gocheck.C) {
 	c.Assert(retUnit, gocheck.DeepEquals, unit)
 	_, err = getContainer(container.ID)
 	c.Assert(err, gocheck.NotNil)
+}
+
+func (s *S) TestFollowLogsAndCommitName(c *gocheck.C) {
+	c.Assert(followLogsAndCommit.Name, gocheck.Equals, "follow-logs-and-commit")
+}
+
+func (s *S) TestFollowLogsAndCommitForward(c *gocheck.C) {
+	go s.stopContainers(1)
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	app := testing.NewFakeApp("myapp", "python", 1)
+	cont := container{AppName: "mightyapp", ID: "myid123"}
+	err = cont.create(app, "tsuru/python", []string{"foo"})
+	c.Assert(err, gocheck.IsNil)
+	var buf bytes.Buffer
+	context := action.FWContext{Params: []interface{}{nil, nil, nil, nil, &buf}, Previous: cont}
+	imageId, err := followLogsAndCommit.Forward(context)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(imageId, gocheck.Equals, "tsuru/mightyapp")
+	c.Assert(buf.String(), gocheck.Not(gocheck.Equals), "")
+	var dbCont container
+	coll := collection()
+	defer coll.Close()
+	err = coll.Find(bson.M{"id": cont.ID}).One(&dbCont)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "not found")
+	_, err = dockerCluster().InspectContainer(cont.ID)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Matches, "No such container.*")
+	err = dockerCluster().RemoveImage("tsuru/mightyapp")
+	c.Assert(err, gocheck.IsNil)
 }
