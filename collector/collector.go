@@ -51,20 +51,8 @@ func update(units []provision.Unit) {
 				log.Errorf("collector: app %q not found. Skipping.\n", unit.AppName)
 				continue
 			}
-			a.Units = nil
 			l.Add(a, index)
 		}
-		u := app.Unit{}
-		u.Name = unit.Name
-		u.Type = unit.Type
-		u.Machine = unit.Machine
-		u.InstanceId = unit.InstanceId
-		u.Ip = unit.Ip
-		if unit.Status == provision.StatusStarted && a.State == "" {
-			a.State = "ready"
-		}
-		u.State = string(unit.Status)
-		a.AddUnit(&u)
 	}
 	conn, err := db.Conn()
 	if err != nil {
