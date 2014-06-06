@@ -449,6 +449,7 @@ func (p *dockerProvisioner) Units(app provision.App) []provision.Unit {
 			AppName: container.AppName,
 			Type:    container.Type,
 			Status:  provision.StatusBuilding,
+			Ip:      container.HostAddr,
 		}
 		if container.Status == "error" {
 			unit.Status = provision.StatusDown

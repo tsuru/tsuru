@@ -776,7 +776,6 @@ func (s *S) TestProvisionerUnits(c *gocheck.C) {
 			Status:   "running",
 			IP:       "127.0.0.4",
 			HostPort: "9025",
-			HostAddr: "127.0.0.1",
 		},
 	)
 	c.Assert(err, gocheck.IsNil)
@@ -784,7 +783,7 @@ func (s *S) TestProvisionerUnits(c *gocheck.C) {
 	p := dockerProvisioner{}
 	units := p.Units(&app)
 	expected := []provision.Unit{
-		{Name: "9930c24f1c4f", AppName: "myapplication", Type: "python"},
+		{Name: "9930c24f1c4f", AppName: "myapplication", Type: "python", Status: provision.StatusBuilding},
 	}
 	c.Assert(units, gocheck.DeepEquals, expected)
 }
@@ -809,13 +808,37 @@ func (s *S) TestProvisionerUnitsStatus(c *gocheck.C) {
 			Status:   "running",
 			IP:       "127.0.0.4",
 			HostPort: "9025",
-			HostAddr: "127.0.0.1",
 		},
 		container{
 			ID:       "9930c24f1c4j",
 			AppName:  app.Name,
 			Type:     "python",
 			Status:   "error",
+			IP:       "127.0.0.4",
+			HostPort: "9025",
+		},
+	)
+	c.Assert(err, gocheck.IsNil)
+	defer coll.RemoveAll(bson.M{"appname": app.Name})
+	p := dockerProvisioner{}
+	units := p.Units(&app)
+	expected := []provision.Unit{
+		{Name: "9930c24f1c4f", AppName: "myapplication", Type: "python", Status: provision.StatusBuilding},
+		{Name: "9930c24f1c4j", AppName: "myapplication", Type: "python", Status: provision.StatusDown},
+	}
+	c.Assert(units, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestProvisionerUnitsIp(c *gocheck.C) {
+	app := app.App{Name: "myapplication"}
+	coll := collection()
+	defer coll.Close()
+	err := coll.Insert(
+		container{
+			ID:       "9930c24f1c4f",
+			AppName:  app.Name,
+			Type:     "python",
+			Status:   "running",
 			IP:       "127.0.0.4",
 			HostPort: "9025",
 			HostAddr: "127.0.0.1",
@@ -826,8 +849,7 @@ func (s *S) TestProvisionerUnitsStatus(c *gocheck.C) {
 	p := dockerProvisioner{}
 	units := p.Units(&app)
 	expected := []provision.Unit{
-		{Name: "9930c24f1c4f", AppName: "myapplication", Type: "python", Status: provision.StatusBuilding},
-		{Name: "9930c24f1c4j", AppName: "myapplication", Type: "python", Status: provision.StatusDown},
+		{Name: "9930c24f1c4f", AppName: "myapplication", Type: "python", Ip: "127.0.0.1", Status: provision.StatusBuilding},
 	}
 	c.Assert(units, gocheck.DeepEquals, expected)
 }
