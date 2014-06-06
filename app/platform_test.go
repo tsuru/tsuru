@@ -5,6 +5,7 @@
 package app
 
 import (
+	"errors"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/testing"
@@ -118,6 +119,29 @@ func (s *PlatformSuite) TestPlatformAddDuplicate(c *gocheck.C) {
 	err = PlatformAdd(name, args, nil)
 	_, ok := err.(DuplicatePlatformError)
 	c.Assert(ok, gocheck.Equals, true)
+}
+
+func (s *PlatformSuite) TestPlatformAddWithProvisionerError(c *gocheck.C) {
+	provisioner := testing.ExtensibleFakeProvisioner{
+		FakeProvisioner: testing.NewFakeProvisioner(),
+	}
+	provisioner.PrepareFailure("PlatformAdd", errors.New("build error"))
+	Provisioner = &provisioner
+	defer func() {
+		Provisioner = s.provisioner
+	}()
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	name := "test_platform_add"
+	args := make(map[string]string)
+	args["dockerfile"] = "http://localhost/Dockerfile"
+	err = PlatformAdd(name, args, nil)
+	defer conn.Platforms().Remove(bson.M{"_id": name})
+	c.Assert(err, gocheck.NotNil)
+	count, err := conn.Platforms().FindId(name).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 0)
 }
 
 func (s *PlatformSuite) TestPlatformAddNotExtensibleProvisioner(c *gocheck.C) {

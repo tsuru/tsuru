@@ -772,6 +772,9 @@ func (p *ExtensibleFakeProvisioner) getPlatform(name string) (int, *provisionedP
 }
 
 func (p *ExtensibleFakeProvisioner) PlatformAdd(name string, args map[string]string, w io.Writer) error {
+	if err := p.getError("PlatformAdd"); err != nil {
+		return err
+	}
 	if p.GetPlatform(name) != nil {
 		return errors.New("duplicate platform")
 	}

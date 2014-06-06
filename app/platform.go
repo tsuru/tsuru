@@ -6,6 +6,7 @@ package app
 
 import (
 	"errors"
+	"fmt"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
 	"io"
@@ -45,14 +46,18 @@ func PlatformAdd(name string, args map[string]string, w io.Writer) error {
 	if err != nil {
 		return err
 	}
-	err = provisioner.PlatformAdd(name, args, w)
-	if err != nil {
-		return err
-	}
 	err = conn.Platforms().Insert(p)
 	if err != nil {
 		if mgo.IsDup(err) {
 			return DuplicatePlatformError{}
+		}
+		return err
+	}
+	err = provisioner.PlatformAdd(name, args, w)
+	if err != nil {
+		db_err := conn.Platforms().RemoveId(p.Name)
+		if db_err != nil {
+			return fmt.Errorf("Caused by: %s and %s", err.Error(), db_err.Error())
 		}
 		return err
 	}
