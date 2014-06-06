@@ -66,6 +66,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		App:          instance,
 		Version:      version,
 		Commit:       commit,
+		ArchiveURL:   archiveURL,
 		OutputStream: w,
 	})
 
