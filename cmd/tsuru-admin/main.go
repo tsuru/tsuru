@@ -10,7 +10,6 @@ import (
 	"github.com/tsuru/tsuru/cmd/tsuru-base"
 	"github.com/tsuru/tsuru/provision"
 	_ "github.com/tsuru/tsuru/provision/docker"
-	_ "github.com/tsuru/tsuru/provision/juju"
 	"os"
 )
 
