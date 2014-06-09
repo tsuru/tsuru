@@ -133,6 +133,8 @@ You can add one or more teams at once.
 
 .. highlight:: bash
 
+::
+
     $ tsuru-admin docker-pool-teams-add pool1 team1
 
     $ tsuru-admin docker-pool-teams-add pool1 team1 team2 team3
@@ -143,6 +145,8 @@ Removing teams from a pool
 You can remove one or more teams at once.
 
 .. highlight:: bash
+
+::
 
     $ tsuru-admin docker-pool-teams-remove pool1 team1
 
