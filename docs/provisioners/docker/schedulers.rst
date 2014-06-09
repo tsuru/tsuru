@@ -17,7 +17,7 @@ Segregate scheduler is a scheduler that segregates the units between nodes by te
 First, what you need to do is to define a relation between a pool, teams and nodes.
 And then, the scheduler deploys the app unit on the pool where a node is related to its team.
 
-    - Pool1 
+    - Pool1
       -> team1, team2
       -> node1
 
@@ -33,7 +33,7 @@ And then, the scheduler deploys the app unit on the pool where a node is related
 Configuration and setup
 -----------------------
 
-To use the `segregate scheduler` you shoud enable the segregate mode in 
+To use the `segregate scheduler` you shoud enable the segregate mode in
 `tsuru.conf` and make sure that the details about the scheduler storage (redis)
 is also configured:
 
@@ -89,7 +89,7 @@ To list pools you do:
 
 
 Adding node to a pool
--------------
+---------------------
 
 You can use the `tsuru-admin` to add nodes:
 
@@ -102,7 +102,7 @@ You can use the `tsuru-admin` to add nodes:
 Removing a node
 ---------------
 
-You can use the `tsuru-admin` to remove nodes: 
+You can use the `tsuru-admin` to remove nodes:
 
 .. highlight:: bash
 
