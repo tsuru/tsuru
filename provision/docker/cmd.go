@@ -15,7 +15,7 @@ func (addNodeToSchedulerCmd) Info() *cmd.Info {
 		Name:    "docker-node-add",
 		Usage:   "docker-node-add <pool> <address>",
 		Desc:    "Registers a new node in the cluster",
-		MinArgs: 1,
+		MinArgs: 2,
 	}
 }
 
