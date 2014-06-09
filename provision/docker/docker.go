@@ -433,24 +433,19 @@ func (c *container) start() error {
 
 // logs returns logs for the container.
 func (c *container) logs(w io.Writer) error {
+	container, err := dockerCluster().InspectContainer(c.ID)
+	if err != nil {
+		return err
+	}
 	opts := docker.AttachToContainerOptions{
 		Container:    c.ID,
 		Logs:         true,
 		Stdout:       true,
-		OutputStream: w,
-		ErrorStream:  w,
-		Stream:       true,
-	}
-	err := dockerCluster().AttachToContainer(opts)
-	if err != nil {
-		return err
-	}
-	opts = docker.AttachToContainerOptions{
-		Container:    c.ID,
-		Logs:         true,
 		Stderr:       true,
 		OutputStream: w,
 		ErrorStream:  w,
+		RawTerminal:  container.Config.Tty,
+		Stream:       true,
 	}
 	return dockerCluster().AttachToContainer(opts)
 }
