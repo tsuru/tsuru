@@ -69,6 +69,9 @@ func (w *keepAliveWriter) keepAlive() {
 }
 
 func (w *keepAliveWriter) Write(b []byte) (int, error) {
+	if len(b) == 0 {
+		return 0, nil
+	}
 	w.writeLock.Lock()
 	defer w.writeLock.Unlock()
 	if w.withError {

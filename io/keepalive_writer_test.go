@@ -58,3 +58,12 @@ func (s *S) TestKeepAliveWriterDoesntWriteMultipleNewlines(c *gocheck.C) {
 	time.Sleep(120 * time.Millisecond)
 	c.Check(buf.String(), gocheck.Equals, "xxx\n---\n---\n")
 }
+
+func (s *S) TestKeepAliveWriterEmptyContent(c *gocheck.C) {
+	var buf closableBuffer
+	w := NewKeepAliveWriter(&buf, 100*time.Millisecond, "---")
+	close(w.ping)
+	count, err := w.Write(nil)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 0)
+}
