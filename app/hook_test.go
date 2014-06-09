@@ -103,9 +103,6 @@ func (s *S) TestYAMLLoadConfigInvalid(c *gocheck.C) {
 func (s *S) TestYAMLRunnerRestartBefore(c *gocheck.C) {
 	app := App{
 		Name: "kn",
-		Units: []Unit{
-			{Name: "kn/0"}, {Name: "kn/1"}, {Name: "kn/2"},
-		},
 	}
 	s.provisioner.PrepareOutput([]byte(". .."))
 	s.provisioner.PrepareOutput([]byte("nothing"))
@@ -127,9 +124,6 @@ func (s *S) TestYAMLRunnerRestartBefore(c *gocheck.C) {
 func (s *S) TestYAMLRunnerRestartAfter(c *gocheck.C) {
 	app := App{
 		Name: "kn",
-		Units: []Unit{
-			{Name: "kn/0"}, {Name: "kn/1"}, {Name: "kn/2"},
-		},
 	}
 	s.provisioner.PrepareOutput([]byte(". .."))
 	runner := yamlHookRunner{

@@ -73,7 +73,6 @@ type App struct {
 	Name           string
 	Ip             string
 	CName          string
-	Units          []Unit
 	Teams          []string
 	TeamOwner      string
 	Owner          string
@@ -88,6 +87,10 @@ type App struct {
 	hr hookRunner
 }
 
+func (app *App) Units() []provision.Unit {
+	return Provisioner.Units(app)
+}
+
 // MarshalJSON marshals the app in json format. It returns a JSON object with
 // the following keys: name, framework, teams, units, repository and ip.
 func (app *App) MarshalJSON() ([]byte, error) {
@@ -95,7 +98,7 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["name"] = app.Name
 	result["platform"] = app.Platform
 	result["teams"] = app.Teams
-	result["units"] = app.Units
+	result["units"] = app.Units()
 	result["repository"] = repository.ReadWriteURL(app.Name)
 	result["ip"] = app.Ip
 	result["cname"] = app.CName
@@ -306,7 +309,7 @@ func (app *App) unbind() error {
 func Delete(app *App) error {
 	gURL := repository.ServerURL()
 	(&gandalf.Client{Endpoint: gURL}).RemoveRepository(app.Name)
-	if len(app.Units) > 0 {
+	if len(app.Units()) > 0 {
 		Provisioner.Destroy(app)
 		app.unbind()
 	}
@@ -332,53 +335,15 @@ func Delete(app *App) error {
 // the steps started by AddUnits(). It doesn't call the
 // provisioner.
 func (app *App) AddUnitsToDB(units []provision.Unit) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
 	messages := make([]queue.Message, len(units)*2)
 	mCount := 0
 	for _, unit := range units {
-		unit := Unit{
-			Name:       unit.Name,
-			Type:       unit.Type,
-			Ip:         unit.Ip,
-			Machine:    unit.Machine,
-			State:      provision.StatusBuilding.String(),
-			InstanceId: unit.InstanceId,
-		}
-		app.AddUnit(&unit)
 		messages[mCount] = queue.Message{Action: regenerateApprc, Args: []string{app.Name, unit.Name}}
 		messages[mCount+1] = queue.Message{Action: BindService, Args: []string{app.Name, unit.Name}}
 		mCount += 2
 	}
-	err = conn.Apps().Update(
-		bson.M{"name": app.Name},
-		bson.M{"$set": bson.M{"units": app.Units}},
-	)
-	if err != nil {
-		return err
-	}
 	go Enqueue(messages...)
 	return nil
-}
-
-// AddUnit adds a new unit to the app (or update an existing unit). It just updates
-// the internal list of units, it does not talk to the provisioner. For
-// provisioning a new unit for the app, one should use AddUnits method, which
-// receives the number of units that you want to provision.
-func (app *App) AddUnit(u *Unit) {
-	for i, unt := range app.Units {
-		if unt.Name == u.Name {
-			app.Units[i] = *u
-			return
-		} else if unt.Name == "" {
-			app.Units[i] = *u
-			return
-		}
-	}
-	app.Units = append(app.Units, *u)
 }
 
 // AddUnits creates n new units within the provisioner, saves new units in the
@@ -402,92 +367,36 @@ func (app *App) AddUnits(n uint) error {
 //
 // Returns an error in case of failure.
 func (app *App) RemoveUnit(id string) error {
-	unit, i, err := app.findUnitByID(id)
+	unit, _, err := app.findUnitByID(id)
 	if err != nil {
 		return err
 	}
-	if err = Provisioner.RemoveUnit(app, unit.GetName()); err != nil {
+	if err = Provisioner.RemoveUnit(app, unit.Name); err != nil {
 		log.Error(err.Error())
 	}
-	return app.removeUnitByIdx(i, unit)
-}
-
-// RemoveUnitFromDB removes a unit only from database. It doesn't call the
-// provisioner.
-// An error might be returned in case of failure.
-func (app *App) RemoveUnitFromDB(id string) error {
-	unit, i, err := app.findUnitByID(id)
-	if err != nil {
-		return err
-	}
-	return app.removeUnitByIdx(i, unit)
+	return app.unbindUnit(unit)
 }
 
 // findUnitByID searchs first by InstanceId, if no instance is found, then tries to
 // search using the unit name.
 // It returns the Unit instance and its index inside the the app.Units list.
 // An error might be returned in case of failure.
-func (app *App) findUnitByID(id string) (*Unit, int, error) {
+func (app *App) findUnitByID(id string) (*provision.Unit, int, error) {
 	var (
-		unit Unit
+		unit provision.Unit
 		i    int
-		u    Unit
+		u    provision.Unit
 	)
-	for i, u = range app.Units {
+	for i, u = range app.Units() {
 		if u.InstanceId == id || u.Name == id {
 			unit = u
 			break
 		}
 	}
-	if unit.GetName() == "" {
+	if unit.Name == "" {
 		return nil, 0, stderr.New(fmt.Sprintf("Unit not found: %s.", id))
 	}
 	return &unit, i, nil
-}
-
-func (app *App) removeUnitByIdx(i int, unit provision.AppUnit) error {
-	app.removeUnits([]int{i})
-	app.unbindUnit(unit)
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	return conn.Apps().Update(
-		bson.M{"name": app.Name},
-		bson.M{"$set": bson.M{"units": app.Units}},
-	)
-}
-
-// removeUnits removes units identified by the given indices. The slice of
-// indices must be sorted in ascending order. If the slice is unsorted, the
-// behavior of the method is unknown.
-//
-// For example, if the app have the following units:
-//
-//     {"unit1", "unit2", "unit3", "unit4", "unit5"}
-//
-// Calling this method with with the slice []int{2, 4} would remove "unit3" and
-// "unit5" from the list.
-func (app *App) removeUnits(indices []int) {
-	prefix := true
-	for i := range indices {
-		if i != indices[i] {
-			prefix = false
-			break
-		}
-	}
-	if prefix {
-		app.Units = app.Units[len(indices):]
-	} else {
-		for i, index := range indices {
-			index -= i
-			if index+1 < len(app.Units) {
-				copy(app.Units[index:], app.Units[index+1:])
-			}
-			app.Units = app.Units[:len(app.Units)-1]
-		}
-	}
 }
 
 // RemoveUnits removes n units from the app. It's a process composed of x
@@ -500,7 +409,7 @@ func (app *App) removeUnits(indices []int) {
 func (app *App) RemoveUnits(n uint) error {
 	if n == 0 {
 		return stderr.New("Cannot remove zero units.")
-	} else if l := uint(len(app.Units)); l == n {
+	} else if l := uint(len(app.Units())); l == n {
 		return stderr.New("Cannot remove all units from an app.")
 	} else if n > l {
 		return fmt.Errorf("Cannot remove %d units from this app, it has only %d units.", n, l)
@@ -509,10 +418,10 @@ func (app *App) RemoveUnits(n uint) error {
 		removed []int
 		err     error
 	)
-	units := UnitSlice(app.Units)
+	units := UnitSlice(app.Units())
 	sort.Sort(units)
 	for i := 0; i < int(n); i++ {
-		name := units[i].GetName()
+		name := units[i].Name
 		go Provisioner.RemoveUnit(app, name)
 		removed = append(removed, i)
 		app.unbindUnit(&units[i])
@@ -525,13 +434,11 @@ func (app *App) RemoveUnits(n uint) error {
 		return err
 	}
 	defer conn.Close()
-	app.removeUnits(removed)
 	dbErr := conn.Apps().Update(
 		bson.M{"name": app.Name},
 		bson.M{
 			"$set": bson.M{
-				"units":       app.Units,
-				"quota.inuse": len(app.Units),
+				"quota.inuse": len(app.Units()),
 			},
 		},
 	)
@@ -543,7 +450,7 @@ func (app *App) RemoveUnits(n uint) error {
 
 // unbindUnit unbinds a unit from all service instances that are bound to the
 // app. It is used by RemoveUnit and RemoveUnits methods.
-func (app *App) unbindUnit(unit provision.AppUnit) error {
+func (app *App) unbindUnit(unit *provision.Unit) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -556,10 +463,10 @@ func (app *App) unbindUnit(unit provision.AppUnit) error {
 		return err
 	}
 	for _, instance := range instances {
-		go func(instance service.ServiceInstance, unit provision.AppUnit) {
+		go func(instance service.ServiceInstance, unit *provision.Unit) {
 			err = instance.UnbindUnit(unit)
 			if err != nil {
-				log.Errorf("Error unbinding the unit %s with the service instance %s.", unit.GetIp(), instance.Name)
+				log.Errorf("Error unbinding the unit %s with the service instance %s.", unit.Ip, instance.Name)
 			}
 		}(instance, unit)
 	}
@@ -789,18 +696,7 @@ func (app *App) Stop(w io.Writer) error {
 		log.Errorf("[stop] error on stop the app %s - %s", app.Name, err)
 		return err
 	}
-	units := make([]Unit, len(app.Units))
-	for i, u := range app.Units {
-		u.State = provision.StatusStopped.String()
-		units[i] = u
-	}
-	app.Units = units
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	return conn.Apps().Update(bson.M{"name": app.Name}, app)
+	return nil
 }
 
 func (app *App) Ready() error {
@@ -816,10 +712,8 @@ func (app *App) Ready() error {
 // GetUnits returns the internal list of units converted to bind.Unit.
 func (app *App) GetUnits() []bind.Unit {
 	var units []bind.Unit
-	for _, unit := range app.Units {
-		copy := unit
-		copy.app = app
-		units = append(units, &copy)
+	for _, unit := range app.Units() {
+		units = append(units, &unit)
 	}
 	return units
 }
@@ -902,15 +796,9 @@ func listDeploys(app *App, s *service.Service) ([]deploy, error) {
 }
 
 // ProvisionedUnits returns the internal list of units converted to
-// provision.AppUnit.
-func (app *App) ProvisionedUnits() []provision.AppUnit {
-	units := make([]provision.AppUnit, len(app.Units))
-	for i, u := range app.Units {
-		other := u
-		other.app = app
-		units[i] = &other
-	}
-	return units
+// provision.Unit.
+func (app *App) ProvisionedUnits() []provision.Unit {
+	return app.Units()
 }
 
 // Env returns app.Env
@@ -1246,18 +1134,7 @@ func (app *App) Start(w io.Writer) error {
 		log.Errorf("[start] error on start the app %s - %s", app.Name, err)
 		return err
 	}
-	units := make([]Unit, len(app.Units))
-	for i, u := range app.Units {
-		u.State = provision.StatusStarted.String()
-		units[i] = u
-	}
-	app.Units = units
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	return conn.Apps().Update(bson.M{"name": app.Name}, app)
+	return nil
 }
 
 func (app *App) SetUpdatePlatform(check bool) error {

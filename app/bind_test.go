@@ -38,9 +38,6 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *gocheck.C) {
 		Name:     "whichapp",
 		Platform: "python",
 		Teams:    []string{},
-		Units: []Unit{
-			{Ip: "10.10.10.10", Machine: 1},
-		},
 	}
 	err = CreateApp(&a, s.user)
 	c.Assert(err, gocheck.IsNil)

@@ -70,3 +70,20 @@ func (ProvisionSuite) TestStatusUnreachable(c *gocheck.C) {
 func (ProvisionSuite) TestStatusBuilding(c *gocheck.C) {
 	c.Assert(StatusBuilding.String(), gocheck.Equals, "building")
 }
+
+func (s *S) TestUnitAvailable(c *gocheck.C) {
+	var tests = []struct {
+		input    Status
+		expected bool
+	}{
+		{StatusStarted, true},
+		{StatusUnreachable, true},
+		{StatusBuilding, false},
+		{StatusDown, false},
+		{StatusError, false},
+	}
+	for _, test := range tests {
+		u := Unit{Status: test.input}
+		c.Check(u.Available(), gocheck.Equals, test.expected)
+	}
+}

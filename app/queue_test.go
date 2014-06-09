@@ -7,6 +7,7 @@ package app
 import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/log/testing"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/service"
 	"labix.org/v2/mgo/bson"
@@ -20,13 +21,6 @@ func (s *S) TestHandleMessage(c *gocheck.C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
 	a := App{
 		Name: "nemesis",
-		Units: []Unit{
-			{
-				Name:    "i-00800",
-				State:   "started",
-				Machine: 19,
-			},
-		},
 		Env: map[string]bind.EnvVar{
 			"http_proxy": {
 				Name:   "http_proxy",
@@ -52,23 +46,6 @@ func (s *S) TestHandleMessageWithSpecificUnit(c *gocheck.C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
 	a := App{
 		Name: "nemesis",
-		Units: []Unit{
-			{
-				Name:    "nemesis/0",
-				State:   "started",
-				Machine: 19,
-			},
-			{
-				Name:    "nemesis/1",
-				State:   "started",
-				Machine: 20,
-			},
-			{
-				Name:    "nemesis/2",
-				State:   "started",
-				Machine: 23,
-			},
-		},
 		Env: map[string]bind.EnvVar{
 			"http_proxy": {
 				Name:   "http_proxy",
@@ -79,8 +56,9 @@ func (s *S) TestHandleMessageWithSpecificUnit(c *gocheck.C) {
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
+	s.provisioner.Provision(&a)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	msg := queue.Message{Action: regenerateApprc, Args: []string{a.Name, "nemesis/1"}}
+	msg := queue.Message{Action: regenerateApprc, Args: []string{a.Name, a.Units()[0].Name}}
 	handle(&msg)
 	cmds := s.provisioner.GetCmds("", &a)
 	c.Assert(cmds, gocheck.HasLen, 1)
@@ -154,19 +132,15 @@ func (s *S) TestHandleMessageErrors(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	a = App{
 		Name: "totem",
-		Units: []Unit{
-			{Name: "totem/0", State: "pending"},
-			{Name: "totem/1", State: "started"},
-		},
 	}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	a = App{Name: "marathon", Units: []Unit{{Name: "marathon/0", State: "error"}}}
+	a = App{Name: "marathon"}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	a = App{Name: "territories", Units: []Unit{{Name: "territories/0", State: "down"}}}
+	a = App{Name: "territories"}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
@@ -191,13 +165,6 @@ func (s *S) TestHandleRestartAppMessage(c *gocheck.C) {
 	s.provisioner.PrepareOutput([]byte("started"))
 	a := App{
 		Name: "nemesis",
-		Units: []Unit{
-			{
-				Name:    "i-00800",
-				State:   "started",
-				Machine: 19,
-			},
-		},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -215,13 +182,6 @@ func (s *S) TestHandleRegenerateAndRestart(c *gocheck.C) {
 	s.provisioner.PrepareOutput([]byte("started"))
 	a := App{
 		Name: "nemesis",
-		Units: []Unit{
-			{
-				Name:    "i-00800",
-				State:   "started",
-				Machine: 19,
-			},
-		},
 		Env: map[string]bind.EnvVar{
 			"http_proxy": {
 				Name:   "http_proxy",
@@ -249,29 +209,29 @@ func (s *S) TestHandleRegenerateAndRestart(c *gocheck.C) {
 
 func (s *S) TestUnitListStarted(c *gocheck.C) {
 	var tests = []struct {
-		input    []Unit
+		input    []provision.Unit
 		expected bool
 	}{
 		{
-			[]Unit{
-				{State: "started"},
-				{State: "started"},
-				{State: "started"},
+			[]provision.Unit{
+				{Status: "started"},
+				{Status: "started"},
+				{Status: "started"},
 			},
 			true,
 		},
 		{nil, true},
 		{
-			[]Unit{
-				{State: "started"},
-				{State: "blabla"},
+			[]provision.Unit{
+				{Status: "started"},
+				{Status: "blabla"},
 			},
 			false,
 		},
 		{
-			[]Unit{
-				{State: "started"},
-				{State: "unreachable"},
+			[]provision.Unit{
+				{Status: "started"},
+				{Status: "unreachable"},
 			},
 			true,
 		},
@@ -286,21 +246,21 @@ func (s *S) TestUnitListStarted(c *gocheck.C) {
 
 func (s *S) TestUnitListState(c *gocheck.C) {
 	var tests = []struct {
-		input    []Unit
+		input    []provision.Unit
 		expected string
 	}{
 		{
-			[]Unit{{State: "started"}, {State: "started"}}, "started",
+			[]provision.Unit{{Status: "started"}, {Status: "started"}}, "started",
 		},
 		{nil, ""},
 		{
-			[]Unit{{State: "started"}, {State: "pending"}}, "",
+			[]provision.Unit{{Status: "started"}, {Status: "pending"}}, "",
 		},
 		{
-			[]Unit{{State: "error"}}, "error",
+			[]provision.Unit{{Status: "error"}}, "error",
 		},
 		{
-			[]Unit{{State: "pending"}}, "pending",
+			[]provision.Unit{{Status: "pending"}}, "pending",
 		},
 	}
 	for _, t := range tests {
@@ -337,22 +297,16 @@ func (s *S) TestHandleBindServiceMessage(c *gocheck.C) {
 	defer s.conn.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
 	a := App{
 		Name: "nemesis",
-		Units: []Unit{
-			{
-				Name:    "i-00800",
-				State:   "started",
-				Machine: 19,
-			},
-		},
 	}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
+	s.provisioner.Provision(&a)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.AddApp(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	err = s.conn.ServiceInstances().Update(bson.M{"name": instance.Name}, instance)
 	c.Assert(err, gocheck.IsNil)
-	message := queue.Message{Action: BindService, Args: []string{a.Name, a.Units[0].Name}}
+	message := queue.Message{Action: BindService, Args: []string{a.Name, a.Units()[0].Name}}
 	handle(&message)
 	c.Assert(called, gocheck.Equals, true)
 }
@@ -361,12 +315,6 @@ func (s *S) TestEnsureAppIsStartedUnknownUnits(c *gocheck.C) {
 	a := App{
 		Name:     "neon",
 		Platform: "symfonia",
-		Units: []Unit{
-			{Name: "neon/0", State: "started"},
-			{Name: "neon/1", State: "started"},
-			{Name: "neon/3", State: "started"},
-			{Name: "neon/5", State: "started"},
-		},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)

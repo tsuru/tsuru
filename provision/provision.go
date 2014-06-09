@@ -50,19 +50,17 @@ type Unit struct {
 	Status     Status
 }
 
+func (u *Unit) GetIp() string {
+	return u.Ip
+}
+
+func (u *Unit) Available() bool {
+	return u.Status == StatusStarted || u.Status == StatusUnreachable
+}
+
 // Named is something that has a name, providing the GetName method.
 type Named interface {
 	GetName() string
-}
-
-// AppUnit represents a unit in an app.
-type AppUnit interface {
-	Named
-	GetMachine() int
-	GetStatus() Status
-	GetIp() string
-	GetInstanceId() string
-	Available() bool
 }
 
 // App represents a tsuru app.
@@ -80,7 +78,7 @@ type App interface {
 	// GetDeploy returns the deploys that an app has.
 	GetDeploys() uint
 
-	ProvisionedUnits() []AppUnit
+	ProvisionedUnits() []Unit
 	RemoveUnit(id string) error
 
 	// Run executes the command in app units. Commands executed with this

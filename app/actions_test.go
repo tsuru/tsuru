@@ -66,12 +66,8 @@ func (s *S) TestInsertAppForward(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(a.Name, gocheck.Equals, app.Name)
 	c.Assert(a.Platform, gocheck.Equals, app.Platform)
-	c.Assert(a.Units, gocheck.HasLen, 1)
-	c.Assert(a.Units[0].Name, gocheck.Equals, "")
 	gotApp, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(gotApp.Units, gocheck.HasLen, 1)
-	c.Assert(gotApp.Units[0].Name, gocheck.Equals, "")
 	c.Assert(gotApp.Quota, gocheck.DeepEquals, quota.Unlimited)
 }
 
@@ -89,12 +85,8 @@ func (s *S) TestInsertAppForwardWithQuota(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(a.Name, gocheck.Equals, app.Name)
 	c.Assert(a.Platform, gocheck.Equals, app.Platform)
-	c.Assert(a.Units, gocheck.HasLen, 1)
-	c.Assert(a.Units[0].Name, gocheck.Equals, "")
 	gotApp, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(gotApp.Units, gocheck.HasLen, 1)
-	c.Assert(gotApp.Units[0].Name, gocheck.Equals, "")
 	expected := quota.Quota{Limit: 2}
 	c.Assert(gotApp.Quota, gocheck.DeepEquals, expected)
 }
@@ -280,7 +272,6 @@ func (s *S) TestProvisionAppForward(c *gocheck.C) {
 	app := App{
 		Name:     "earthshine",
 		Platform: "django",
-		Units:    []Unit{{Machine: 3}},
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
@@ -299,7 +290,6 @@ func (s *S) TestProvisionAppForwardAppPointer(c *gocheck.C) {
 	app := App{
 		Name:     "earthshine",
 		Platform: "django",
-		Units:    []Unit{{Machine: 3}},
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
@@ -324,7 +314,6 @@ func (s *S) TestProvisionAppBackward(c *gocheck.C) {
 	app := App{
 		Name:     "earthshine",
 		Platform: "django",
-		Units:    []Unit{{Machine: 3}},
 	}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
@@ -702,9 +691,9 @@ func (s *S) TestSaveNewUnitsInDatabaseForward(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(gotApp.Units, gocheck.HasLen, 3)
 	var expectedMessages MessageList
-	for i, unit := range gotApp.Units {
+	for i, unit := range gotApp.Units() {
 		c.Assert(unit.Name, gocheck.Equals, units[i].Name)
-		c.Assert(unit.State, gocheck.Equals, provision.StatusBuilding.String())
+		c.Assert(unit.Status, gocheck.Equals, provision.StatusBuilding)
 		messages := []queue.Message{
 			{Action: regenerateApprc, Args: []string{gotApp.Name, unit.Name}},
 			{Action: BindService, Args: []string{gotApp.Name, unit.Name}},
@@ -742,9 +731,9 @@ func (s *S) TestSaveNewUnitsInDatabaseForwardNoPointer(c *gocheck.C) {
 	c.Assert(fwresult, gocheck.IsNil)
 	gotApp, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(gotApp.Units, gocheck.HasLen, 3)
+	c.Assert(gotApp.Units(), gocheck.HasLen, 3)
 	var expectedMessages MessageList
-	for i, unit := range gotApp.Units {
+	for i, unit := range gotApp.Units() {
 		c.Assert(unit.Name, gocheck.Equals, units[i].Name)
 		messages := []queue.Message{
 			{Action: regenerateApprc, Args: []string{gotApp.Name, unit.Name}},
@@ -802,7 +791,6 @@ func (s *S) TestProvisionerDeployGitForward(c *gocheck.C) {
 		Name:     "someApp",
 		Platform: "django",
 		Teams:    []string{s.team.Name},
-		Units:    []Unit{{Name: "i-0800", State: "started"}},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -823,7 +811,6 @@ func (s *S) TestProvisionerDeployArchiveForward(c *gocheck.C) {
 		Name:     "someApp",
 		Platform: "django",
 		Teams:    []string{s.team.Name},
-		Units:    []Unit{{Name: "i-0800", State: "started"}},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -861,7 +848,6 @@ func (s *S) TestIncrementDeployForward(c *gocheck.C) {
 		Name:     "otherapp",
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
-		Units:    []Unit{{Name: "i-0800", State: "started"}},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)

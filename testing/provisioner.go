@@ -23,44 +23,11 @@ func init() {
 	provision.Register("fake", &FakeProvisioner{})
 }
 
-// Fake implementation for provision.Unit.
-type FakeUnit struct {
-	Name       string
-	Ip         string
-	InstanceId string
-	Machine    int
-	Status     provision.Status
-}
-
-func (u *FakeUnit) GetName() string {
-	return u.Name
-}
-
-func (u *FakeUnit) GetMachine() int {
-	return u.Machine
-}
-
-func (u *FakeUnit) GetStatus() provision.Status {
-	return u.Status
-}
-
-func (u *FakeUnit) GetInstanceId() string {
-	return u.InstanceId
-}
-
-func (u *FakeUnit) Available() bool {
-	return u.Status == provision.StatusStarted || u.Status == provision.StatusUnreachable
-}
-
-func (u *FakeUnit) GetIp() string {
-	return u.Ip
-}
-
 // Fake implementation for provision.App.
 type FakeApp struct {
 	name           string
 	platform       string
-	units          []provision.AppUnit
+	units          []provision.Unit
 	logs           []string
 	logMut         sync.Mutex
 	Commands       []string
@@ -76,11 +43,11 @@ func NewFakeApp(name, platform string, units int) *FakeApp {
 	app := FakeApp{
 		name:     name,
 		platform: platform,
-		units:    make([]provision.AppUnit, units),
+		units:    make([]provision.Unit, units),
 	}
 	namefmt := "%s/%d"
 	for i := 0; i < units; i++ {
-		app.units[i] = &FakeUnit{
+		app.units[i] = provision.Unit{
 			Name:       fmt.Sprintf(namefmt, name, i),
 			Machine:    i + 1,
 			Status:     provision.StatusStarted,
@@ -153,18 +120,18 @@ func (a *FakeApp) GetDeploys() uint {
 	return a.deploys
 }
 
-func (a *FakeApp) ProvisionedUnits() []provision.AppUnit {
+func (a *FakeApp) ProvisionedUnits() []provision.Unit {
 	return a.units
 }
 
-func (a *FakeApp) AddUnit(u *FakeUnit) {
+func (a *FakeApp) AddUnit(u provision.Unit) {
 	a.units = append(a.units, u)
 }
 
 func (a *FakeApp) RemoveUnit(id string) error {
 	index := -1
 	for i, u := range a.units {
-		if u.GetName() == id {
+		if u.Name == id {
 			index = i
 			break
 		}
@@ -181,7 +148,7 @@ func (a *FakeApp) RemoveUnit(id string) error {
 
 func (a *FakeApp) SetUnitStatus(s provision.Status, index int) {
 	if index < len(a.units) {
-		a.units[index].(*FakeUnit).Status = s
+		a.units[index].Status = s
 	}
 }
 
@@ -210,10 +177,10 @@ func (a *FakeApp) GetIp() string {
 	return ""
 }
 
-func (a *FakeApp) GetUnits() []bind.Unit {
-	units := make([]bind.Unit, len(a.units))
+func (a *FakeApp) GetUnits() []provision.Unit {
+	units := make([]provision.Unit, len(a.units))
 	for i, unit := range a.units {
-		units[i] = unit.(bind.Unit)
+		units[i] = unit
 	}
 	return units
 }
@@ -645,7 +612,7 @@ func (p *FakeProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provi
 }
 
 func (p *FakeProvisioner) Units(app provision.App) []provision.Unit {
-	return nil
+	return p.apps[app.GetName()].units
 }
 
 func (p *FakeProvisioner) CollectStatus() ([]provision.Unit, error) {

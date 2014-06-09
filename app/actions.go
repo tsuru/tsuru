@@ -93,7 +93,6 @@ var insertApp = action.Action{
 		if limit, err := config.GetInt("quota:units-per-app"); err == nil {
 			app.Quota.Limit = limit
 		}
-		app.Units = append(app.Units, Unit{})
 		err = conn.Apps().Insert(app)
 		if mgo.IsDup(err) {
 			return nil, ErrAppAlreadyExists

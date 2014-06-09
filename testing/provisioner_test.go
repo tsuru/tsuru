@@ -23,13 +23,13 @@ var _ = gocheck.Suite(&S{})
 
 func (s *S) TestFakeAppAddUnit(c *gocheck.C) {
 	app := NewFakeApp("jean", "mj", 0)
-	app.AddUnit(&FakeUnit{Name: "jean/0"})
+	app.AddUnit(provision.Unit{Name: "jean/0"})
 	c.Assert(app.units, gocheck.HasLen, 1)
 }
 
 func (s *S) TestFakeAppRemoveUnit(c *gocheck.C) {
 	app := NewFakeApp("jean", "mk", 0)
-	app.AddUnit(&FakeUnit{Name: "jean/0"})
+	app.AddUnit(provision.Unit{Name: "jean/0"})
 	err := app.RemoveUnit("jean/0")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.units, gocheck.HasLen, 0)

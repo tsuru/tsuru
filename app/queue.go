@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/service"
 	"io/ioutil"
@@ -133,7 +134,7 @@ func handle(msg *queue.Message) {
 }
 
 // unitList is a simple slice of units, with special methods to handle state.
-type unitList []Unit
+type unitList []provision.Unit
 
 // Started returns true if all units in the list is started.
 func (l unitList) Started() bool {
@@ -145,28 +146,28 @@ func (l unitList) Started() bool {
 	return true
 }
 
-// State returns a string if all units have the same state. Otherwise it
+// State returns a string if all units have the same status. Otherwise it
 // returns an empty string.
 func (l unitList) State() string {
 	if len(l) == 0 {
 		return ""
 	}
-	state := l[0].State
+	status := l[0].Status.String()
 	for i := 1; i < len(l); i++ {
-		if l[i].State != state {
+		if l[i].Status.String() != status {
 			return ""
 		}
 	}
-	return state
+	return status
 }
 
 // getUnits builds a unitList from the given app and the names in the string
 // slice.
 func getUnits(app *App, names []string) unitList {
-	var units []Unit
+	var units []provision.Unit
 	if len(names) > 0 {
 		for _, unitName := range names {
-			for _, appUnit := range app.Units {
+			for _, appUnit := range app.Units() {
 				if appUnit.Name == unitName {
 					units = append(units, appUnit)
 					break

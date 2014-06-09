@@ -5,70 +5,22 @@
 package app
 
 import (
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/provision"
 	"launchpad.net/gocheck"
 	"sort"
 )
 
-func (s *S) TestUnitGetName(c *gocheck.C) {
-	u := Unit{Name: "abcdef", app: &App{Name: "2112"}}
-	c.Assert(u.GetName(), gocheck.Equals, "abcdef")
-}
-
-func (s *S) TestUnitGetMachine(c *gocheck.C) {
-	u := Unit{Machine: 10}
-	c.Assert(u.GetMachine(), gocheck.Equals, u.Machine)
-}
-
-func (s *S) TestUnitGetStatus(c *gocheck.C) {
-	var tests = []struct {
-		input    string
-		expected provision.Status
-	}{
-		{"started", provision.StatusStarted},
-		{"building", provision.StatusBuilding},
-		{"down", provision.StatusDown},
-	}
-	for _, test := range tests {
-		u := Unit{State: test.input}
-		got := u.GetStatus()
-		c.Assert(got, gocheck.Equals, test.expected)
-	}
-}
-
-func (s *S) TestUnitAvailable(c *gocheck.C) {
-	var tests = []struct {
-		input    provision.Status
-		expected bool
-	}{
-		{provision.StatusStarted, true},
-		{provision.StatusUnreachable, true},
-		{provision.StatusBuilding, false},
-		{provision.StatusDown, false},
-		{provision.StatusError, false},
-	}
-	for _, test := range tests {
-		u := Unit{State: test.input.String()}
-		c.Check(u.Available(), gocheck.Equals, test.expected)
-	}
-}
-
-func (s *S) TestUnitShouldBeABinderUnit(c *gocheck.C) {
-	var _ bind.Unit = &Unit{}
-}
-
 func (s *S) TestUnitSliceLen(c *gocheck.C) {
-	units := UnitSlice{Unit{}, Unit{}}
+	units := UnitSlice{provision.Unit{}, provision.Unit{}}
 	c.Assert(units.Len(), gocheck.Equals, 2)
 }
 
 func (s *S) TestUnitSliceLess(c *gocheck.C) {
 	units := UnitSlice{
-		Unit{Name: "b", State: provision.StatusDown.String()},
-		Unit{Name: "d", State: provision.StatusBuilding.String()},
-		Unit{Name: "e", State: provision.StatusStarted.String()},
-		Unit{Name: "s", State: provision.StatusUnreachable.String()},
+		provision.Unit{Name: "b", Status: provision.StatusDown},
+		provision.Unit{Name: "d", Status: provision.StatusBuilding},
+		provision.Unit{Name: "e", Status: provision.StatusStarted},
+		provision.Unit{Name: "s", Status: provision.StatusUnreachable},
 	}
 	c.Assert(units.Less(0, 1), gocheck.Equals, true)
 	c.Assert(units.Less(1, 2), gocheck.Equals, true)
@@ -79,20 +31,20 @@ func (s *S) TestUnitSliceLess(c *gocheck.C) {
 
 func (s *S) TestUnitSliceSwap(c *gocheck.C) {
 	units := UnitSlice{
-		Unit{Name: "b", State: provision.StatusDown.String()},
-		Unit{Name: "f", State: provision.StatusBuilding.String()},
-		Unit{Name: "g", State: provision.StatusStarted.String()},
+		provision.Unit{Name: "b", Status: provision.StatusDown},
+		provision.Unit{Name: "f", Status: provision.StatusBuilding},
+		provision.Unit{Name: "g", Status: provision.StatusStarted},
 	}
 	units.Swap(0, 1)
-	c.Assert(units[0].State, gocheck.Equals, provision.StatusBuilding.String())
-	c.Assert(units[1].State, gocheck.Equals, provision.StatusDown.String())
+	c.Assert(units[0].Status, gocheck.Equals, provision.StatusBuilding)
+	c.Assert(units[1].Status, gocheck.Equals, provision.StatusDown)
 }
 
 func (s *S) TestUnitSliceSort(c *gocheck.C) {
 	units := UnitSlice{
-		Unit{Name: "f", State: provision.StatusBuilding.String()},
-		Unit{Name: "g", State: provision.StatusStarted.String()},
-		Unit{Name: "b", State: provision.StatusDown.String()},
+		provision.Unit{Name: "f", Status: provision.StatusBuilding},
+		provision.Unit{Name: "g", Status: provision.StatusStarted},
+		provision.Unit{Name: "b", Status: provision.StatusDown},
 	}
 	c.Assert(sort.IsSorted(units), gocheck.Equals, false)
 	sort.Sort(units)
