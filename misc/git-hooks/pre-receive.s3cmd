@@ -16,3 +16,4 @@ rm /tmp/${ARCHIVE_FILE_NAME}
 ARCHIVE_URL=https://s3.amazonaws.com/${BUCKET_NAME}/${ARCHIVE_FILE_NAME}
 URL="${TSURU_HOST}/apps/${APP_NAME}/repository/clone"
 curl -H "Authorization: bearer ${TSURU_TOKEN}" -d "archive-url=${ARCHIVE_URL}&commit=${COMMIT}" -s -N --max-time 1800 $URL
+s3cmd del s3://${BUCKET_NAME}/${ARCHIVE_FILE_NAME}
