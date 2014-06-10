@@ -88,18 +88,6 @@ mkdir /tmp/shell.git
 ln -s $PWD/misc/git-hooks /tmp/shell.git/hooks
 pushd /tmp/shell.git > /dev/null
 
-echo -n "pre-receive on available app... "
-out=`TSURU_HOST=http://127.0.0.1:5000 TSURU_TOKEN=000secret123 hooks/pre-receive`
-
-if [ $? = 0 ]
-then
-	echo "PASS"
-else
-	echo "FAILURE: expected 0 status from pre-receive on shell app."
-	echo "$out"
-	status=1
-fi
-
 echo -n "post-receive... "
 out=`TSURU_HOST=http://127.0.0.1:5000 TSURU_TOKEN=000secret123 hooks/post-receive <<END
 oldref newref refname
@@ -117,27 +105,6 @@ fi
 
 popd > /dev/null
 rm -rf /tmp/shell.git
-
-echo -n "pre-receive on unavailable app... "
-
-mkdir /tmp/xeu.git
-ln -s $PWD/misc/git-hooks /tmp/xeu.git/hooks
-pushd /tmp/xeu.git > /dev/null
-
-TSURU_HOST=http://127.0.0.1:5000 TSURU_TOKEN=000secret123 hooks/pre-receive > .pre-receive.out 2>&1
-
-if [ $? != 0 ]
-then
-	echo "PASS"
-else
-	echo "FAILURE: got wrong status from pre-receive hook for unavailable app"
-	cat .pre-receive.out
-	status=1
-fi
-rm .pre-receive.out
-
-popd > /dev/null
-rm -rf /tmp/xeu.git
 
 kill %1
 
