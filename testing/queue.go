@@ -40,14 +40,14 @@ func (h *fakeHandler) Stop() error {
 func (h *fakeHandler) Wait() {}
 
 type FakeQ struct {
-	messages   messageQueue
-	pubSubStop chan int
-	name       string
+	messages messageQueue
+	name     string
 }
 
 type FakePubSubQ struct {
 	FakeQ
-	pubSubStop chan int
+	pubSubStop     chan int
+	pubSubStopLock sync.Mutex
 }
 
 type SyncSet struct {
@@ -102,15 +102,20 @@ func (q *FakePubSubQ) Pub(msg []byte) error {
 
 func (q *FakePubSubQ) Sub() (chan []byte, error) {
 	subChan := make(chan []byte)
-	q.pubSubStop = make(chan int, 1)
+	q.pubSubStopLock.Lock()
+	q.pubSubStop = make(chan int)
+	q.pubSubStopLock.Unlock()
 	go func() {
 		defer close(subChan)
 		for {
+			q.pubSubStopLock.Lock()
 			select {
 			case <-q.pubSubStop:
+				q.pubSubStopLock.Unlock()
 				return
 			default:
 			}
+			q.pubSubStopLock.Unlock()
 			if msg := q.messages.dequeue(); msg != nil {
 				subChan <- []byte(msg.Action)
 			}
