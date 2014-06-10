@@ -21,13 +21,13 @@ import (
 // provisioner deploys a unit using the Git repository method.
 func gitDeployCmds(app provision.App, version string) ([]string, error) {
 	appRepo := repository.ReadOnlyURL(app.GetName())
-	return deployCmds(app, appRepo, version)
+	return deployCmds(app, "git", appRepo, version)
 }
 
 // archiveDeployCmds returns the list of commands that are used when the
 // provisioner deploys a unit using the archive method.
 func archiveDeployCmds(app provision.App, archiveURL string) ([]string, error) {
-	return deployCmds(app, archiveURL)
+	return deployCmds(app, "archive", archiveURL)
 }
 
 func deployCmds(app provision.App, params ...string) ([]string, error) {

@@ -31,7 +31,7 @@ func (s *S) TestGitDeployCmds(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	version := "version"
 	appRepo := repository.ReadOnlyURL(app.GetName())
-	expected := []string{deployCmd, appRepo, version, "http_proxy=[http://theirproxy.com:3128/,http://teste.com:3111] "}
+	expected := []string{deployCmd, "git", appRepo, version, "http_proxy=[http://theirproxy.com:3128/,http://teste.com:3111] "}
 	cmds, err := gitDeployCmds(app, version)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cmds, gocheck.DeepEquals, expected)
@@ -49,7 +49,7 @@ func (s *S) TestArchiveDeployCmds(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	archiveURL := "https://s3.amazonaws.com/wat/archive.tar.gz"
 	expected := []string{
-		deployCmd, archiveURL,
+		deployCmd, "archive", archiveURL,
 		"http_proxy=[http://theirproxy.com:3128/,http://teste.com:3111] ",
 	}
 	cmds, err := archiveDeployCmds(app, archiveURL)
