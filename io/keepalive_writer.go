@@ -33,9 +33,7 @@ func NewKeepAliveWriter(w io.Writer, interval time.Duration, msg string) *keepAl
 
 func (w *keepAliveWriter) writeInterval() {
 	w.writeLock.Lock()
-	defer func() {
-		w.writeLock.Unlock()
-	}()
+	defer w.writeLock.Unlock()
 	msg := []byte{}
 	if w.lastByte != '\n' {
 		msg = []byte("\n")

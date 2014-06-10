@@ -8,16 +8,20 @@ import (
 	"bytes"
 	"errors"
 	"launchpad.net/gocheck"
+	"sync"
 	"time"
 )
 
 type closableBuffer struct {
 	bytes.Buffer
-	closed    bool
-	callCount int
+	closed     bool
+	callCount  int
+	writerLock sync.Mutex
 }
 
 func (b *closableBuffer) Write(bytes []byte) (int, error) {
+	b.writerLock.Lock()
+	defer b.writerLock.Unlock()
 	b.callCount++
 	if b.closed {
 		return 0, errors.New("Closed error.")
@@ -26,8 +30,16 @@ func (b *closableBuffer) Write(bytes []byte) (int, error) {
 }
 
 func (b *closableBuffer) Close() error {
+	b.writerLock.Lock()
+	defer b.writerLock.Unlock()
 	b.closed = true
 	return nil
+}
+
+func (b *closableBuffer) String() string {
+	b.writerLock.Lock()
+	defer b.writerLock.Unlock()
+	return b.Buffer.String()
 }
 
 func (s *S) TestKeepAliveWriter(c *gocheck.C) {
