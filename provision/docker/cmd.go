@@ -47,7 +47,7 @@ func (removeNodeFromSchedulerCmd) Info() *cmd.Info {
 		Name:    "docker-node-remove",
 		Usage:   "docker-node-remove <pool> <address>",
 		Desc:    "Removes a node from the cluster",
-		MinArgs: 1,
+		MinArgs: 2,
 	}
 }
 
