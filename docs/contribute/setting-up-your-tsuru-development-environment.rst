@@ -78,7 +78,7 @@ Installing git, bzr and mercurial
 =================================
 
 tsuru depends on go libs that use git, bazaar and mercurial, so you need to install
-these two version control systems to get and compile tsuru from source.
+these three version control systems to download and compile tsuru from source.
 
 To install git, you can use your package installer:
 
@@ -127,12 +127,14 @@ Once you have defined the GOPATH variable, then run the following commands:
 
 ::
 
-    $ mkdir -p $GOPATH/src/github.com/globocom
-    $ cd $GOPATH/src/github.com/globocom
+    $ mkdir -p $GOPATH/src/github.com/tsuru
+    $ cd $GOPATH/src/github.com/tsuru
     $ git clone git://github.com/tsuru/tsuru
 
 If you have already cloned the repository, just move the cloned directory to
-`$GOPATH/src/github.com/globocom`.
+`$GOPATH/src/github.com/tsuru`.
+
+Also, you will definitely want to add $GOPATH/bin to your $PATH.
 
 For more details on GOPATH, please check this url:
 http://golang.org/cmd/go/#GOPATH_environment_variable
