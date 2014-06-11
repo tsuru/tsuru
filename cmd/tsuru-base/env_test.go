@@ -189,11 +189,12 @@ func (s *S) TestEnvSetValues(c *gocheck.C) {
 	result := "variable(s) successfully exported\n"
 	context := cmd.Context{
 		Args: []string{
-			"DATABASE_HOST=some", "host",
+			"DATABASE_HOST=some host",
 			"DATABASE_USER=root",
 			"DATABASE_PASSWORD=.1234..abc",
 			"http_proxy=http://myproxy.com:3128/",
 			"VALUE_WITH_EQUAL_SIGN=http://wholikesquerystrings.me/?tsuru=awesome",
+			"BASE64_STRING=t5urur0ck5==",
 		},
 		Stdout: &stdout,
 		Stderr: &stderr,
@@ -207,6 +208,7 @@ func (s *S) TestEnvSetValues(c *gocheck.C) {
 				"DATABASE_PASSWORD":     ".1234..abc",
 				"http_proxy":            "http://myproxy.com:3128/",
 				"VALUE_WITH_EQUAL_SIGN": "http://wholikesquerystrings.me/?tsuru=awesome",
+				"BASE64_STRING":         "t5urur0ck5==",
 			}
 			defer req.Body.Close()
 			var got map[string]string
