@@ -796,6 +796,7 @@ type deploy struct {
 	Timestamp time.Time
 	Duration  time.Duration
 	Commit    string
+	Error     error
 }
 
 func (app *App) ListDeploys() ([]deploy, error) {
@@ -1134,17 +1135,18 @@ func Deploy(opts DeployOptions) error {
 	}
 	logWriter := LogWriter{App: opts.App, Writer: opts.OutputStream}
 	err := pipeline.Execute(opts, &logWriter)
+	elapsed := time.Since(start)
 	if err != nil {
+		saveDeployData(opts.App.Name, opts.Commit, elapsed, err)
 		return err
 	}
-	elapsed := time.Since(start)
 	if opts.App.UpdatePlatform == true {
 		opts.App.SetUpdatePlatform(false)
 	}
-	return saveDeployData(opts.App.Name, opts.Commit, elapsed)
+	return saveDeployData(opts.App.Name, opts.Commit, elapsed, nil)
 }
 
-func saveDeployData(appName, commit string, duration time.Duration) error {
+func saveDeployData(appName, commit string, duration time.Duration, deployError error) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -1155,6 +1157,7 @@ func saveDeployData(appName, commit string, duration time.Duration) error {
 		Timestamp: time.Now(),
 		Duration:  duration,
 		Commit:    commit,
+		Error:     deployError,
 	}
 	return conn.Deploys().Insert(deploy)
 }

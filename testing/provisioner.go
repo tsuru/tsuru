@@ -752,6 +752,24 @@ func (p *PipelineFakeProvisioner) DeployPipeline() *action.Pipeline {
 	return pipeline
 }
 
+type PipelineErrorFakeProvisioner struct {
+	*FakeProvisioner
+}
+
+func (p *PipelineErrorFakeProvisioner) DeployPipeline() *action.Pipeline {
+	act := action.Action{
+		Name: "error-pipeline",
+		Forward: func(ctx action.FWContext) (action.Result, error) {
+			return nil, errors.New("deploy error")
+		},
+		Backward: func(ctx action.BWContext) {
+		},
+	}
+	actions := []*action.Action{&act}
+	pipeline := action.NewPipeline(actions...)
+	return pipeline
+}
+
 type ExtensibleFakeProvisioner struct {
 	*FakeProvisioner
 	platforms []provisionedPlatform

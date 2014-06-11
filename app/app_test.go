@@ -2369,6 +2369,39 @@ func (s *S) TestDeployCustomPipeline(c *gocheck.C) {
 	c.Assert(provisioner.ExecutedPipeline(), gocheck.Equals, true)
 }
 
+func (s *S) TestDeployAppSaveDeployErrorData(c *gocheck.C) {
+	provisioner := testing.PipelineErrorFakeProvisioner{
+		FakeProvisioner: testing.NewFakeProvisioner(),
+	}
+	Provisioner = &provisioner
+	defer func() {
+		Provisioner = s.provisioner
+	}()
+	a := App{
+		Name:     "testErrorApp",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+		Units:    []Unit{{Name: "i-0800", State: "started"}},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	provisioner.Provision(&a)
+	defer provisioner.Destroy(&a)
+	writer := &bytes.Buffer{}
+	err = Deploy(DeployOptions{
+		App:          &a,
+		Version:      "version",
+		Commit:       "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
+		OutputStream: writer,
+	})
+	c.Assert(err, gocheck.NotNil)
+	var result map[string]interface{}
+	s.conn.Deploys().Find(bson.M{"app": a.Name}).One(&result)
+	c.Assert(result["app"], gocheck.Equals, a.Name)
+	c.Assert(result["error"], gocheck.NotNil)
+}
+
 func (s *S) TestStart(c *gocheck.C) {
 	s.provisioner.PrepareOutput([]byte("not yaml")) // loadConf
 	a := App{
