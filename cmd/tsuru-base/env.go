@@ -21,7 +21,7 @@ const envSetValidationMessage = `You must specify environment variables in the f
 
 Example:
 
-  tsuru env-set NAME=value OTHER_NAME=value with spaces ANOTHER_NAME="using quotes"`
+  tsuru env-set NAME=value OTHER_NAME="value with spaces" ANOTHER_NAME='using single quotes'`
 
 type EnvGet struct {
 	GuessingCommand
@@ -81,10 +81,10 @@ func (c *EnvSet) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	raw := strings.Join(context.Args, " ")
-	regex := regexp.MustCompile(`(\w+=[^\s]+[^=]+)(\s|$)`)
+	raw := strings.Join(context.Args, "\n")
+	regex := regexp.MustCompile(`(\w+=[^\n$]+)(\n|$)`)
 	decls := regex.FindAllStringSubmatch(raw, -1)
-	if len(decls) < 1 {
+	if len(decls) < 1 || len(decls) != len(context.Args) {
 		return errors.New(envSetValidationMessage)
 	}
 	variables := make(map[string]string, len(decls))

@@ -20,18 +20,18 @@ func (s Status) String() string {
 }
 
 const (
-	// building - is while the unit is been provisioned,
+	// building - is while the unit is being provisioned,
 	// it occurs during a deploy.
 	StatusBuilding = Status("building")
 	// error - when an error occurs caused by the application code.
 	StatusError = Status("error")
 	// is when an error occurs caused by tsuru internal problems.
 	StatusDown = Status("down")
-	// is when the app process is up but it is not binded to the
+	// is when the app process is up but it is not bound to the
 	// right host ("0.0.0.0") and right port ($PORT).
 	// If your process is a worker its state will be unreachable.
 	StatusUnreachable = Status("unreachable")
-	// Is when the app process is up and binded to the right
+	// Is when the app process is up and bound to the right
 	// host ("0.0.0.0") and right port ($PORT).
 	StatusStarted = Status("started")
 	// stopped - is when the Docker container is stopped
@@ -130,7 +130,7 @@ type Provisioner interface {
 	Destroy(App) error
 
 	// AddUnits adds units to an app. The first parameter is the app, the
-	// second is the number of units to add.
+	// second is the number of units to be added.
 	//
 	// It returns a slice containing all added units
 	AddUnits(App, uint) ([]Unit, error)
@@ -157,7 +157,7 @@ type Provisioner interface {
 
 	// Addr returns the address for an app.
 	//
-	// tsuru will use this method to get the IP (althought it might not be
+	// tsuru will use this method to get the IP (although it might not be
 	// an actual IP, collector calls it "IP") of the app from the
 	// provisioner.
 	Addr(App) (string, error)
