@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/queue"
 	rtesting "github.com/tsuru/tsuru/router/testing"
+	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/testing"
 	tsrTesting "github.com/tsuru/tsuru/testing"
 	"labix.org/v2/mgo/bson"
@@ -129,16 +130,14 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	defer conn.Apps().Remove(bson.M{"name": a.Name})
 	p.Provision(&a)
 	defer p.Destroy(&a)
-	w := writer{b: make([]byte, 2048)}
+	w := safe.NewBuffer(make([]byte, 2048))
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		Version:      "master",
 		Commit:       "123",
-		OutputStream: &w,
+		OutputStream: w,
 	})
-
 	c.Assert(err, gocheck.IsNil)
-	w.b = nil
 	time.Sleep(6e9)
 	q, err := getQueue()
 	for _, u := range a.ProvisionedUnits() {
@@ -182,14 +181,13 @@ func (s *S) TestDeployEnqueuesBindService(c *gocheck.C) {
 	defer conn.Apps().Remove(bson.M{"name": a.Name})
 	p.Provision(&a)
 	defer p.Destroy(&a)
-	w := writer{b: make([]byte, 2048)}
+	w := safe.NewBuffer(make([]byte, 2048))
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		Version:      "master",
 		Commit:       "123",
-		OutputStream: &w,
+		OutputStream: w,
 	})
-
 	c.Assert(err, gocheck.IsNil)
 	defer p.Destroy(&a)
 	q, err := getQueue()
@@ -201,17 +199,6 @@ func (s *S) TestDeployEnqueuesBindService(c *gocheck.C) {
 		c.Assert(message.Args[0], gocheck.Equals, a.GetName())
 		c.Assert(message.Args[1], gocheck.Equals, u.GetName())
 	}
-}
-
-type writer struct {
-	b   []byte
-	cur int
-}
-
-func (w *writer) Write(c []byte) (int, error) {
-	copy(w.b[w.cur:], c)
-	w.cur += len(c)
-	return len(c), nil
 }
 
 func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *gocheck.C) {
