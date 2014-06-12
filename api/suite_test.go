@@ -135,3 +135,7 @@ func (s *S) getTestData(p ...string) io.ReadCloser {
 	f, _ := os.OpenFile(fp, os.O_RDONLY, 0)
 	return f
 }
+
+func resetHandlers() {
+	tsuruHandlerList = []TsuruHandler{}
+}

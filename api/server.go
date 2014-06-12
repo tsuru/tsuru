@@ -40,10 +40,6 @@ func RegisterHandler(path string, method string, h http.Handler) {
 	tsuruHandlerList = append(tsuruHandlerList, th)
 }
 
-func resetHandlers() {
-	tsuruHandlerList = []TsuruHandler{}
-}
-
 func getAuthScheme() (string, error) {
 	name, err := config.GetString("auth:scheme")
 	if name == "" {
