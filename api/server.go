@@ -7,6 +7,7 @@ package api
 import (
 	"fmt"
 	"github.com/bmizerany/pat"
+	"github.com/codegangsta/negroni"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -22,7 +23,7 @@ import (
 type TsuruHandler struct {
 	method string
 	path   string
-	h      AdminRequiredHandler
+	h      http.Handler
 }
 
 func fatal(err error) {
@@ -32,12 +33,16 @@ func fatal(err error) {
 var tsuruHandlerList []TsuruHandler
 
 //RegisterHandler inserts a handler on a list of handlers
-func RegisterHandler(path string, method string, h AdminRequiredHandler) {
+func RegisterHandler(path string, method string, h http.Handler) {
 	var th TsuruHandler
 	th.path = path
 	th.method = method
 	th.h = h
 	tsuruHandlerList = append(tsuruHandlerList, th)
+}
+
+func resetHandlers() {
+	tsuruHandlerList = []TsuruHandler{}
 }
 
 func getAuthScheme() (string, error) {
@@ -51,7 +56,7 @@ func getAuthScheme() (string, error) {
 // RunServer starts tsuru API server. The dry parameter indicates whether the
 // server should run in dry mode, not starting the HTTP listener (for testing
 // purposes).
-func RunServer(dry bool) *pat.PatternServeMux {
+func RunServer(dry bool) http.Handler {
 	log.Init()
 	connString, err := config.GetString("database:url")
 	if err != nil {
@@ -155,6 +160,17 @@ func RunServer(dry bool) *pat.PatternServeMux {
 
 	m.Get("/healthcheck/", http.HandlerFunc(healthcheck))
 
+	n := negroni.New()
+	n.Use(negroni.NewRecovery())
+	n.Use(negroni.NewLogger())
+	n.UseHandler(m)
+	n.Use(negroni.HandlerFunc(flushingWriterMiddleware))
+	n.Use(negroni.HandlerFunc(contextClearerMiddleware))
+	n.Use(negroni.HandlerFunc(errorHandlingMiddleware))
+	n.Use(negroni.HandlerFunc(setVersionHeadersMiddleware))
+	n.Use(negroni.HandlerFunc(authTokenMiddleware))
+	n.UseHandler(http.HandlerFunc(runDelayedHandler))
+
 	if !dry {
 		provisioner, err := getProvisioner()
 		if err != nil {
@@ -189,16 +205,16 @@ func RunServer(dry bool) *pat.PatternServeMux {
 				fatal(err)
 			}
 			fmt.Printf("tsuru HTTP/TLS server listening at %s...\n", listen)
-			fatal(http.ListenAndServeTLS(listen, certFile, keyFile, m))
+			fatal(http.ListenAndServeTLS(listen, certFile, keyFile, n))
 		} else {
 			listener, err := net.Listen("tcp", listen)
 			if err != nil {
 				fatal(err)
 			}
 			fmt.Printf("tsuru HTTP server listening at %s...\n", listen)
-			http.Handle("/", m)
+			http.Handle("/", n)
 			fatal(http.Serve(listener, nil))
 		}
 	}
-	return m
+	return n
 }

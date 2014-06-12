@@ -19,10 +19,11 @@ func authorizedTsuruHandler(w http.ResponseWriter, r *http.Request, t auth.Token
 }
 
 func (s *S) TestRegisterHandlerMakesHandlerAvailableViaGet(c *gocheck.C) {
-	RegisterHandler("/foo/bar", "GET", authorizedTsuruHandler)
+	RegisterHandler("/foo/bar", "GET", authorizationRequiredHandler(authorizedTsuruHandler))
+	defer resetHandlers()
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("GET", "http://example.com/foo/bar", nil)
-	req.Header.Set("Authorization", "bearer "+s.admintoken.GetValue())
+	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	c.Assert(err, gocheck.IsNil)
 	m := RunServer(true)
 	m.ServeHTTP(rec, req)
@@ -32,10 +33,11 @@ func (s *S) TestRegisterHandlerMakesHandlerAvailableViaGet(c *gocheck.C) {
 }
 
 func (s *S) TestRegisterHandlerMakesHandlerAvailableViaPost(c *gocheck.C) {
-	RegisterHandler("/foo/bar", "POST", authorizedTsuruHandler)
+	RegisterHandler("/foo/bar", "POST", authorizationRequiredHandler(authorizedTsuruHandler))
+	defer resetHandlers()
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("POST", "http://example.com/foo/bar", nil)
-	req.Header.Set("Authorization", "bearer "+s.admintoken.GetValue())
+	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	c.Assert(err, gocheck.IsNil)
 	m := RunServer(true)
 	m.ServeHTTP(rec, req)
@@ -45,10 +47,11 @@ func (s *S) TestRegisterHandlerMakesHandlerAvailableViaPost(c *gocheck.C) {
 }
 
 func (s *S) TestRegisterHandlerMakesHandlerAvailableViaPut(c *gocheck.C) {
-	RegisterHandler("/foo/bar", "PUT", authorizedTsuruHandler)
+	RegisterHandler("/foo/bar", "PUT", authorizationRequiredHandler(authorizedTsuruHandler))
+	defer resetHandlers()
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("PUT", "http://example.com/foo/bar", nil)
-	req.Header.Set("Authorization", "bearer "+s.admintoken.GetValue())
+	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	c.Assert(err, gocheck.IsNil)
 	m := RunServer(true)
 	m.ServeHTTP(rec, req)
@@ -58,10 +61,11 @@ func (s *S) TestRegisterHandlerMakesHandlerAvailableViaPut(c *gocheck.C) {
 }
 
 func (s *S) TestRegisterHandlerMakesHandlerAvailableViaDelete(c *gocheck.C) {
-	RegisterHandler("/foo/bar", "DELETE", authorizedTsuruHandler)
+	RegisterHandler("/foo/bar", "DELETE", authorizationRequiredHandler(authorizedTsuruHandler))
+	defer resetHandlers()
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("DELETE", "http://example.com/foo/bar", nil)
-	req.Header.Set("Authorization", "bearer "+s.admintoken.GetValue())
+	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	c.Assert(err, gocheck.IsNil)
 	m := RunServer(true)
 	m.ServeHTTP(rec, req)
@@ -71,10 +75,11 @@ func (s *S) TestRegisterHandlerMakesHandlerAvailableViaDelete(c *gocheck.C) {
 }
 
 func (s *S) TestIsNotAdmin(c *gocheck.C) {
-	RegisterHandler("/foo/bar", "POST", authorizedTsuruHandler)
+	RegisterHandler("/foo/bar", "POST", authorizationRequiredHandler(authorizedTsuruHandler))
+	defer resetHandlers()
 	rec := httptest.NewRecorder()
 	req, err := http.NewRequest("POST", "http://example.com/foo/bar", nil)
-	req.Header.Set("Authorization", "bearer "+s.admintoken.GetValue())
+	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	c.Assert(err, gocheck.IsNil)
 	m := RunServer(true)
 	m.ServeHTTP(rec, req)
