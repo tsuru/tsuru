@@ -5,9 +5,11 @@
 package api
 
 import (
+	"github.com/gorilla/mux"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"net/http"
+	"net/url"
 )
 
 var (
@@ -21,23 +23,41 @@ var (
 	}
 )
 
+type Router struct {
+	mux.Router
+}
+
+func registerVars(r *http.Request, vars map[string]string) {
+	values := make(url.Values)
+	for key, value := range vars {
+		values[":"+key] = []string{value}
+	}
+	r.URL.RawQuery = url.Values(values).Encode() + "&" + r.URL.RawQuery
+}
+
+func (r *Router) Add(method string, path string, h http.Handler) *mux.Route {
+	return r.Router.Handle(path, h).Methods(method)
+}
+
+func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	var match mux.RouteMatch
+	if !r.Match(req, &match) {
+		http.NotFound(w, req)
+		return
+	}
+	registerVars(req, match.Vars)
+	SetDelayedHandler(req, match.Handler)
+}
+
 type Handler func(http.ResponseWriter, *http.Request) error
 
 func (fn Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	SetDelayedHandler(r, fn)
-}
-
-func (fn Handler) Run(w http.ResponseWriter, r *http.Request) {
 	AddRequestError(r, fn(w, r))
 }
 
 type authorizationRequiredHandler func(http.ResponseWriter, *http.Request, auth.Token) error
 
 func (fn authorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	SetDelayedHandler(r, fn)
-}
-
-func (fn authorizationRequiredHandler) Run(w http.ResponseWriter, r *http.Request) {
 	t := GetAuthToken(r)
 	if t == nil {
 		AddRequestError(r, tokenRequiredErr)
@@ -49,10 +69,6 @@ func (fn authorizationRequiredHandler) Run(w http.ResponseWriter, r *http.Reques
 type AdminRequiredHandler authorizationRequiredHandler
 
 func (fn AdminRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	SetDelayedHandler(r, fn)
-}
-
-func (fn AdminRequiredHandler) Run(w http.ResponseWriter, r *http.Request) {
 	t := GetAuthToken(r)
 	if t == nil {
 		AddRequestError(r, tokenRequiredErr)

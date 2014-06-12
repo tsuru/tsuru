@@ -24,12 +24,8 @@ const (
 const (
 	tokenContextKey int = iota
 	errorContextKey
-	finalHandlerKey
+	delayedHandlerKey
 )
-
-type delayedHandler interface {
-	Run(w http.ResponseWriter, r *http.Request)
-}
 
 func GetAuthToken(r *http.Request) auth.Token {
 	if v := context.Get(r, tokenContextKey); v != nil {
@@ -60,8 +56,8 @@ func GetRequestError(r *http.Request) error {
 	return nil
 }
 
-func SetDelayedHandler(r *http.Request, h delayedHandler) {
-	context.Set(r, finalHandlerKey, h)
+func SetDelayedHandler(r *http.Request, h http.Handler) {
+	context.Set(r, delayedHandlerKey, h)
 }
 
 func validate(token string, r *http.Request) (auth.Token, error) {
@@ -132,8 +128,8 @@ func authTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.Handl
 }
 
 func runDelayedHandler(w http.ResponseWriter, r *http.Request) {
-	v := context.Get(r, finalHandlerKey)
+	v := context.Get(r, delayedHandlerKey)
 	if v != nil {
-		v.(delayedHandler).Run(w, r)
+		v.(http.Handler).ServeHTTP(w, r)
 	}
 }

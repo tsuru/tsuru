@@ -17,11 +17,11 @@ import (
 
 func init() {
 	api.RegisterHandler("/node", "GET", api.AdminRequiredHandler(listNodeHandler))
-	api.RegisterHandler("/node/apps/:appname/containers", "GET", api.AdminRequiredHandler(listContainersHandler))
-	api.RegisterHandler("/node/:address/containers", "GET", api.AdminRequiredHandler(listContainersHandler))
+	api.RegisterHandler("/node/apps/{appname}/containers", "GET", api.AdminRequiredHandler(listContainersHandler))
+	api.RegisterHandler("/node/{address}/containers", "GET", api.AdminRequiredHandler(listContainersHandler))
 	api.RegisterHandler("/node", "POST", api.AdminRequiredHandler(addNodeHandler))
 	api.RegisterHandler("/node", "DELETE", api.AdminRequiredHandler(removeNodeHandler))
-	api.RegisterHandler("/container/:id/move", "POST", api.AdminRequiredHandler(moveContainerHandler))
+	api.RegisterHandler("/container/{id}/move", "POST", api.AdminRequiredHandler(moveContainerHandler))
 	api.RegisterHandler("/containers/move", "POST", api.AdminRequiredHandler(moveContainersHandler))
 	api.RegisterHandler("/containers/rebalance", "POST", api.AdminRequiredHandler(rebalanceContainersHandler))
 	api.RegisterHandler("/pool", "GET", api.AdminRequiredHandler(listPoolHandler))
