@@ -611,6 +611,12 @@ func (p *FakeProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provi
 	return nil
 }
 
+func (p *FakeProvisioner) AddUnit(app provision.App, unit provision.Unit) {
+	a := p.apps[app.GetName()]
+	units := append(a.units, unit)
+	a.SetUnits(units)
+}
+
 func (p *FakeProvisioner) Units(app provision.App) []provision.Unit {
 	return p.apps[app.GetName()].units
 }
@@ -695,6 +701,10 @@ func (p *FakeProvisioner) Stop(app provision.App) error {
 		return errNotProvisioned
 	}
 	pApp.stops++
+	for i, u := range pApp.units {
+		u.Status = provision.StatusStopped
+		pApp.units[i] = u
+	}
 	p.apps[app.GetName()] = pApp
 	return nil
 }
@@ -802,6 +812,10 @@ type provisionedApp struct {
 	lastArchive string
 	cname       string
 	unitLen     int
+}
+
+func (a *provisionedApp) SetUnits(units []provision.Unit) {
+	a.units = units
 }
 
 type provisionedPlatform struct {
