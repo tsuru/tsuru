@@ -75,8 +75,8 @@ func validate(token string, r *http.Request) (auth.Token, error) {
 }
 
 func contextClearerMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	defer context.Clear(r)
 	next(w, r)
-	context.Clear(r)
 }
 
 func flushingWriterMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {

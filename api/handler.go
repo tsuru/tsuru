@@ -5,11 +5,9 @@
 package api
 
 import (
-	"github.com/gorilla/mux"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"net/http"
-	"net/url"
 )
 
 var (
@@ -22,32 +20,6 @@ var (
 		Message: "You must be an admin",
 	}
 )
-
-type Router struct {
-	mux.Router
-}
-
-func registerVars(r *http.Request, vars map[string]string) {
-	values := make(url.Values)
-	for key, value := range vars {
-		values[":"+key] = []string{value}
-	}
-	r.URL.RawQuery = url.Values(values).Encode() + "&" + r.URL.RawQuery
-}
-
-func (r *Router) Add(method string, path string, h http.Handler) *mux.Route {
-	return r.Router.Handle(path, h).Methods(method)
-}
-
-func (r *Router) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	var match mux.RouteMatch
-	if !r.Match(req, &match) {
-		http.NotFound(w, req)
-		return
-	}
-	registerVars(req, match.Vars)
-	SetDelayedHandler(req, match.Handler)
-}
 
 type Handler func(http.ResponseWriter, *http.Request) error
 

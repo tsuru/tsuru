@@ -67,7 +67,7 @@ func RunServer(dry bool) http.Handler {
 	}
 	fmt.Printf("Using the database %q from the server %q.\n\n", dbName, connString)
 
-	m := &Router{}
+	m := &delayedRouter{}
 
 	for _, handler := range tsuruHandlerList {
 		m.Add(handler.method, handler.path, handler.h)
@@ -160,11 +160,11 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Get", "/healthcheck/", http.HandlerFunc(healthcheck))
 
 	n := negroni.New()
-	n.UseHandler(m)
 	n.Use(negroni.NewRecovery())
 	n.Use(negroni.NewLogger())
-	n.Use(negroni.HandlerFunc(flushingWriterMiddleware))
+	n.UseHandler(m)
 	n.Use(negroni.HandlerFunc(contextClearerMiddleware))
+	n.Use(negroni.HandlerFunc(flushingWriterMiddleware))
 	n.Use(negroni.HandlerFunc(errorHandlingMiddleware))
 	n.Use(negroni.HandlerFunc(setVersionHeadersMiddleware))
 	n.Use(negroni.HandlerFunc(authTokenMiddleware))
