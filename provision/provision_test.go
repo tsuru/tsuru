@@ -71,7 +71,7 @@ func (ProvisionSuite) TestStatusBuilding(c *gocheck.C) {
 	c.Assert(StatusBuilding.String(), gocheck.Equals, "building")
 }
 
-func (s *S) TestUnitAvailable(c *gocheck.C) {
+func (ProvisionSuite) TestUnitAvailable(c *gocheck.C) {
 	var tests = []struct {
 		input    Status
 		expected bool
