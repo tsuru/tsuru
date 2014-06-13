@@ -464,7 +464,7 @@ func (s *S) TestAppRestart(c *gocheck.C) {
 		Transport: testing.Transport{Message: "Restarted", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			called = true
-			return req.URL.Path == "/apps/handful_of_nothing/restart" && req.Method == "GET"
+			return req.URL.Path == "/apps/handful_of_nothing/restart" && req.Method == "POST"
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
@@ -489,7 +489,7 @@ func (s *S) TestAppRestartWithoutTheFlag(c *gocheck.C) {
 		Transport: testing.Transport{Message: "Restarted", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			called = true
-			return req.URL.Path == "/apps/motorbreath/restart" && req.Method == "GET"
+			return req.URL.Path == "/apps/motorbreath/restart" && req.Method == "POST"
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
@@ -697,7 +697,7 @@ func (s *S) TestAppStart(c *gocheck.C) {
 		Transport: testing.Transport{Message: "Started", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			called = true
-			return req.URL.Path == "/apps/handful_of_nothing/start" && req.Method == "GET"
+			return req.URL.Path == "/apps/handful_of_nothing/start" && req.Method == "POST"
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
@@ -722,7 +722,7 @@ func (s *S) TestAppStartWithoutTheFlag(c *gocheck.C) {
 		Transport: testing.Transport{Message: "Started", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			called = true
-			return req.URL.Path == "/apps/motorbreath/start" && req.Method == "GET"
+			return req.URL.Path == "/apps/motorbreath/start" && req.Method == "POST"
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
@@ -773,7 +773,7 @@ func (s *S) TestAppStop(c *gocheck.C) {
 		Transport: testing.Transport{Message: "Stopped", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			called = true
-			return req.URL.Path == "/apps/handful_of_nothing/stop" && req.Method == "GET"
+			return req.URL.Path == "/apps/handful_of_nothing/stop" && req.Method == "POST"
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
@@ -798,7 +798,7 @@ func (s *S) TestAppStopWithoutTheFlag(c *gocheck.C) {
 		Transport: testing.Transport{Message: "Stopped", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			called = true
-			return req.URL.Path == "/apps/motorbreath/stop" && req.Method == "GET"
+			return req.URL.Path == "/apps/motorbreath/stop" && req.Method == "POST"
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
