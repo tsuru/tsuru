@@ -9,14 +9,11 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/queue"
 	"io"
 	"labix.org/v2/mgo/bson"
-	"net"
-	"strings"
 )
 
 var insertEmptyContainerInDB = action.Action{
@@ -157,51 +154,6 @@ var injectEnvirons = action.Action{
 	},
 }
 
-var saveUnits = action.Action{
-	Name: "save-units",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		opts, ok := ctx.Params[0].(app.DeployOptions)
-		if !ok {
-			return nil, errors.New("First parameter must be DeployOptions")
-		}
-		a, err := app.GetByName(opts.App.Name)
-		if err != nil {
-			return nil, err
-		}
-		containers, err := listContainersByApp(a.GetName())
-		if err != nil {
-			return nil, err
-		}
-		for _, c := range containers {
-			var status string
-			addr := strings.Replace(c.getAddress(), "http://", "", 1)
-			conn, err := net.Dial("tcp", addr)
-			if err != nil {
-				status = provision.StatusUnreachable.String()
-			} else {
-				conn.Close()
-				status = provision.StatusStarted.String()
-			}
-			u := app.Unit{
-				Name:  c.ID,
-				Type:  c.Type,
-				Ip:    c.HostAddr,
-				State: status,
-			}
-			a.AddUnit(&u)
-		}
-		conn, err := db.Conn()
-		if err != nil {
-			return nil, err
-		}
-		defer conn.Close()
-		conn.Apps().Update(bson.M{"name": a.Name}, a)
-		return nil, nil
-	},
-	Backward: func(ctx action.BWContext) {
-	},
-}
-
 var bindService = action.Action{
 	Name: "bind-service",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
@@ -212,7 +164,7 @@ var bindService = action.Action{
 		for _, u := range opts.App.ProvisionedUnits() {
 			msg := queue.Message{
 				Action: app.BindService,
-				Args:   []string{opts.App.GetName(), u.GetName()},
+				Args:   []string{opts.App.GetName(), u.Name},
 			}
 			go app.Enqueue(msg)
 		}

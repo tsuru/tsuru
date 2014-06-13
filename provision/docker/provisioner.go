@@ -400,7 +400,7 @@ func (p *dockerProvisioner) DeployPipeline() *action.Pipeline {
 	actions := []*action.Action{
 		&app.ProvisionerDeploy,
 		&app.IncrementDeploy,
-		&saveUnits,
+		//&saveUnits,
 		&injectEnvirons,
 		&bindService,
 	}

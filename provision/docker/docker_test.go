@@ -476,8 +476,7 @@ func (s *S) TestGetImageAppWhenDeployIsMultipleOf10(c *gocheck.C) {
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
-	units := []app.Unit{{Name: "4fa6e0f0c678"}, {Name: "e90e34656806"}}
-	app := &app.App{Name: "app1", Platform: "python", Deploys: 20, Units: units}
+	app := &app.App{Name: "app1", Platform: "python", Deploys: 20}
 	err = conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": "app1"})
@@ -935,26 +934,25 @@ func (s *S) TestUsePlatformImage(c *gocheck.C) {
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
-	units := []app.Unit{{Name: "4fa6e0f0c678"}, {Name: "e90e34656806"}}
-	app1 := &app.App{Name: "app1", Platform: "python", Deploys: 40, Units: units}
+	app1 := &app.App{Name: "app1", Platform: "python", Deploys: 40}
 	err = conn.Apps().Insert(app1)
 	c.Assert(err, gocheck.IsNil)
 	ok := usePlatformImage(app1)
 	c.Assert(ok, gocheck.Equals, true)
 	defer conn.Apps().Remove(bson.M{"name": "app1"})
-	app2 := &app.App{Name: "app2", Platform: "python", Deploys: 20, Units: units}
+	app2 := &app.App{Name: "app2", Platform: "python", Deploys: 20}
 	err = conn.Apps().Insert(app2)
 	c.Assert(err, gocheck.IsNil)
 	ok = usePlatformImage(app2)
 	c.Assert(ok, gocheck.Equals, true)
 	defer conn.Apps().Remove(bson.M{"name": "app2"})
-	app3 := &app.App{Name: "app3", Platform: "python", Deploys: 0, Units: units}
+	app3 := &app.App{Name: "app3", Platform: "python", Deploys: 0}
 	err = conn.Apps().Insert(app3)
 	c.Assert(err, gocheck.IsNil)
 	ok = usePlatformImage(app3)
 	c.Assert(ok, gocheck.Equals, false)
 	defer conn.Apps().Remove(bson.M{"name": "app3"})
-	app4 := &app.App{Name: "app4", Platform: "python", Deploys: 19, Units: units}
+	app4 := &app.App{Name: "app4", Platform: "python", Deploys: 19}
 	err = conn.Apps().Insert(app4)
 	c.Assert(err, gocheck.IsNil)
 	ok = usePlatformImage(app4)
@@ -964,7 +962,6 @@ func (s *S) TestUsePlatformImage(c *gocheck.C) {
 		Name:           "app5",
 		Platform:       "python",
 		Deploys:        19,
-		Units:          units,
 		UpdatePlatform: true,
 	}
 	err = conn.Apps().Insert(app5)

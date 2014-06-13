@@ -88,11 +88,7 @@ func handleMoveErrors(moveErrors chan error, encoder *json.Encoder) error {
 func moveOneContainerInDB(a *app.App, oldContainer container, newUnit provision.Unit) error {
 	appDBMutex.Lock()
 	defer appDBMutex.Unlock()
-	err := a.AddUnitsToDB([]provision.Unit{newUnit})
-	if err != nil {
-		return err
-	}
-	return a.RemoveUnitFromDB(oldContainer.ID)
+	return a.AddUnitsToDB([]provision.Unit{newUnit})
 }
 
 func moveOneContainer(c container, toHost string, errors chan error, wg *sync.WaitGroup, encoder *json.Encoder, locker *appLocker) {

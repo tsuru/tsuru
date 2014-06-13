@@ -9,7 +9,6 @@ import (
 	dockerClient "github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
 	rtesting "github.com/tsuru/tsuru/router/testing"
 	"github.com/tsuru/tsuru/testing"
@@ -226,77 +225,6 @@ func (s *S) TestInjectEnvironsParams(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, "First parameter must be DeployOptions")
 }
 
-func (s *S) TestSaveUnitsName(c *gocheck.C) {
-	c.Assert(saveUnits.Name, gocheck.Equals, "save-units")
-}
-
-func (s *S) TestSaveUnitsForward(c *gocheck.C) {
-	a := app.App{
-		Name:     "otherapp",
-		Platform: "zend",
-	}
-	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Close()
-	err = conn.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": a.Name})
-	container := container{
-		ID:       "id",
-		Type:     "python",
-		HostAddr: "",
-		AppName:  a.Name,
-	}
-	coll := collection()
-	c.Assert(err, gocheck.IsNil)
-	coll.Insert(&container)
-	opts := app.DeployOptions{App: &a}
-	context := action.FWContext{Params: []interface{}{opts}}
-	_, err = saveUnits.Forward(context)
-	c.Assert(err, gocheck.IsNil)
-	app, err := app.GetByName(a.Name)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.Units[0].Name, gocheck.Equals, "id")
-}
-
-func (s *S) TestSaveUnitsForwardShouldMaintainData(c *gocheck.C) {
-	a := app.App{
-		Name:     "otherapp",
-		Platform: "zend",
-		Deploys:  10,
-	}
-	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Close()
-	err = conn.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
-	a.Deploys = 0
-	defer conn.Apps().Remove(bson.M{"name": a.Name})
-	container := container{
-		ID:       "id",
-		Type:     "python",
-		HostAddr: "",
-		AppName:  a.Name,
-	}
-	coll := collection()
-	c.Assert(err, gocheck.IsNil)
-	coll.Insert(&container)
-	opts := app.DeployOptions{App: &a}
-	context := action.FWContext{Params: []interface{}{opts}}
-	_, err = saveUnits.Forward(context)
-	c.Assert(err, gocheck.IsNil)
-	app, err := app.GetByName(a.Name)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.Units[0].Name, gocheck.Equals, "id")
-	c.Assert(int(app.Deploys), gocheck.Equals, 10)
-}
-
-func (s *S) TestSaveUnitsParams(c *gocheck.C) {
-	context := action.FWContext{Params: []interface{}{""}}
-	_, err := saveUnits.Forward(context)
-	c.Assert(err.Error(), gocheck.Equals, "First parameter must be DeployOptions")
-}
-
 func (s *S) TestBindServiceName(c *gocheck.C) {
 	c.Assert(bindService.Name, gocheck.Equals, "bind-service")
 }
@@ -314,7 +242,7 @@ func (s *S) TestBindServiceForward(c *gocheck.C) {
 		c.Assert(err, gocheck.IsNil)
 		c.Assert(message.Action, gocheck.Equals, app.BindService)
 		c.Assert(message.Args[0], gocheck.Equals, a.GetName())
-		c.Assert(message.Args[1], gocheck.Equals, u.GetName())
+		c.Assert(message.Args[1], gocheck.Equals, u.Name)
 	}
 }
 

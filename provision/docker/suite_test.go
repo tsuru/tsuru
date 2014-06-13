@@ -8,6 +8,7 @@ import (
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	ftesting "github.com/tsuru/tsuru/fs/testing"
 	"github.com/tsuru/tsuru/provision"
@@ -70,6 +71,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	s.targetRecover = tTesting.SetTargetFile(c)
 	s.storage, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
+	app.Provisioner = &dockerProvisioner{}
 }
 
 func (s *S) SetUpTest(c *gocheck.C) {

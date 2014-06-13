@@ -121,7 +121,6 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	a := app.App{
 		Name:     "otherapp",
 		Platform: "python",
-		Units:    []app.Unit{{Name: "i-0800", State: "started"}},
 	}
 	conn, err := db.Conn()
 	defer conn.Close()
@@ -145,7 +144,7 @@ func (s *S) TestDeploy(c *gocheck.C) {
 		c.Assert(err, gocheck.IsNil)
 		c.Assert(message.Action, gocheck.Equals, app.BindService)
 		c.Assert(message.Args[0], gocheck.Equals, a.GetName())
-		c.Assert(message.Args[1], gocheck.Equals, u.GetName())
+		c.Assert(message.Args[1], gocheck.Equals, u.Name)
 	}
 }
 
@@ -172,7 +171,6 @@ func (s *S) TestDeployEnqueuesBindService(c *gocheck.C) {
 	a := app.App{
 		Name:     "otherapp",
 		Platform: "python",
-		Units:    []app.Unit{{Name: "i-0800", State: "started"}},
 	}
 	conn, err := db.Conn()
 	defer conn.Close()
@@ -197,7 +195,7 @@ func (s *S) TestDeployEnqueuesBindService(c *gocheck.C) {
 		c.Assert(err, gocheck.IsNil)
 		c.Assert(message.Action, gocheck.Equals, app.BindService)
 		c.Assert(message.Args[0], gocheck.Equals, a.GetName())
-		c.Assert(message.Args[1], gocheck.Equals, u.GetName())
+		c.Assert(message.Args[1], gocheck.Equals, u.Name)
 	}
 }
 
@@ -219,7 +217,6 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 	a := app.App{
 		Name:     "otherapp",
 		Platform: "python",
-		Units:    []app.Unit{{Name: "i-0800", State: "started"}},
 	}
 	conn, err := db.Conn()
 	defer conn.Close()
@@ -249,7 +246,7 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 		c.Assert(err, gocheck.IsNil)
 		c.Assert(message.Action, gocheck.Equals, app.BindService)
 		c.Assert(message.Args[0], gocheck.Equals, a.GetName())
-		c.Assert(message.Args[1], gocheck.Equals, u.GetName())
+		c.Assert(message.Args[1], gocheck.Equals, u.Name)
 	}
 	coll := collection()
 	defer coll.Close()
@@ -296,7 +293,6 @@ func (s *S) TestProvisionerDestroyEmptyUnit(c *gocheck.C) {
 	setExecut(fexec)
 	defer setExecut(nil)
 	app := testing.NewFakeApp("myapp", "python", 0)
-	app.AddUnit(&testing.FakeUnit{})
 	var p dockerProvisioner
 	p.Provision(app)
 	err := p.Destroy(app)
