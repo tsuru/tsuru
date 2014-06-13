@@ -19,21 +19,21 @@ It can be compiled with:
 Setting a target
 ================
 
-The target for the tsuru-admin command should point to the admin-listen
-address configured in your tsuru.conf file.
+The target for the tsuru-admin command should point to the `listen` address
+configured in your tsuru.conf file.
 
 .. highlight:: yaml
 
 ::
 
-    admin-listen: "0.0.0.0:8888"
+    listen: ":8080"
 
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru-admin target-add default tsuru.myhost.com:8888
+    $ tsuru-admin target-add default tsuru.myhost.com:8080
     $ tsuru-admin target-set default
 
 Commands
