@@ -63,7 +63,7 @@ func (c *DBTokenCache) PutToken(t *goauth2.Token) error {
 		if email == "" {
 			return ErrEmptyUserEmail
 		}
-		_, err = auth.GetUserByEmail(email)
+		user, err := auth.GetUserByEmail(email)
 		if err != nil {
 			if err != auth.ErrUserNotFound {
 				return err
@@ -72,15 +72,15 @@ func (c *DBTokenCache) PutToken(t *goauth2.Token) error {
 			if !registrationEnabled {
 				return err
 			}
-			user := auth.User{Email: email}
+			user = &auth.User{Email: email}
 			err := user.Create()
 			if err != nil {
 				return err
 			}
-			err = user.CreateOnGandalf()
-			if err != nil {
-				return err
-			}
+		}
+		err = user.CreateOnGandalf()
+		if err != nil {
+			log.Errorf("Ignored error trying to create user on gandalf: %s", err.Error())
 		}
 		t.Extra = make(map[string]string)
 		t.Extra["email"] = email
