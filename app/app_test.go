@@ -1462,6 +1462,7 @@ func (s *S) TestIsValid(c *gocheck.C) {
 		{"-myapp", false},
 		{"my_app", false},
 		{"b", true},
+		{InternalAppName, false},
 	}
 	for _, d := range data {
 		a := App{Name: d.name}
@@ -2439,4 +2440,67 @@ func (s *S) TestAppSetUpdatePlatform(c *gocheck.C) {
 	app, err := GetByName("someApp")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.UpdatePlatform, gocheck.Equals, true)
+}
+
+func (s *S) TestAppAcquireApplicationLock(c *gocheck.C) {
+	a := App{
+		Name: "someApp",
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	locked, err := AcquireApplicationLock(a.Name, "foo", "/something")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(locked, gocheck.Equals, true)
+	app, err := GetByName("someApp")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.Lock.Locked, gocheck.Equals, true)
+	c.Assert(app.Lock.Owner, gocheck.Equals, "foo")
+	c.Assert(app.Lock.Reason, gocheck.Equals, "/something")
+	c.Assert(app.Lock.AcquireDate, gocheck.NotNil)
+}
+
+func (s *S) TestAppAcquireApplicationLockNonExistentApp(c *gocheck.C) {
+	locked, err := AcquireApplicationLock("myApp", "foo", "/something")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(locked, gocheck.Equals, false)
+}
+
+func (s *S) TestAppAcquireApplicationLockAlreadyLocked(c *gocheck.C) {
+	a := App{
+		Name: "someApp",
+		Lock: AppLock{
+			Locked:      true,
+			Reason:      "/app/my-app/deploy",
+			Owner:       "someone",
+			AcquireDate: time.Date(2048, time.November, 10, 10, 0, 0, 0, time.UTC),
+		},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	locked, err := AcquireApplicationLock(a.Name, "foo", "/something")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(locked, gocheck.Equals, false)
+	app, err := GetByName("someApp")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.Lock.Locked, gocheck.Equals, true)
+	c.Assert(app.Lock.Owner, gocheck.Equals, "someone")
+	c.Assert(app.Lock.Reason, gocheck.Equals, "/app/my-app/deploy")
+	c.Assert(app.Lock.AcquireDate, gocheck.NotNil)
+}
+
+func (s *S) TestAppLockStringUnlocked(c *gocheck.C) {
+	lock := AppLock{Locked: false}
+	c.Assert(lock.String(), gocheck.Equals, "Not locked")
+}
+
+func (s *S) TestAppLockStringLocked(c *gocheck.C) {
+	lock := AppLock{
+		Locked:      true,
+		Reason:      "/app/my-app/deploy",
+		Owner:       "someone",
+		AcquireDate: time.Date(2048, time.November, 10, 10, 0, 0, 0, time.UTC),
+	}
+	c.Assert(lock.String(), gocheck.Equals, "App locked by someone, running /app/my-app/deploy. Acquired in 2048-11-10T10:00:00Z")
 }

@@ -288,7 +288,7 @@ func (c *AppStop) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	request, err := http.NewRequest("GET", url, nil)
+	request, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		return err
 	}
@@ -328,7 +328,7 @@ func (c *AppStart) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	request, err := http.NewRequest("GET", url, nil)
+	request, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		return err
 	}
@@ -357,7 +357,7 @@ func (c *AppRestart) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	request, err := http.NewRequest("GET", url, nil)
+	request, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		return err
 	}

@@ -127,6 +127,58 @@ func authTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.Handl
 	next(w, r)
 }
 
+func appLockMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	if r.Method == "GET" {
+		next(w, r)
+		return
+	}
+	appName := r.URL.Query().Get(":app")
+	if appName == "" {
+		appName = r.URL.Query().Get(":appname")
+	}
+	if appName == "" {
+		next(w, r)
+		return
+	}
+	t := GetAuthToken(r)
+	var owner string
+	if t != nil {
+		if t.IsAppToken() {
+			owner = t.GetAppName()
+		} else {
+			owner = t.GetUserName()
+		}
+	}
+	ok, err := app.AcquireApplicationLock(appName, owner, r.URL.Path)
+	if err != nil {
+		AddRequestError(r, fmt.Errorf("Error trying to acquire application lock: %s", err))
+		return
+	}
+	if ok {
+		defer app.ReleaseApplicationLock(appName)
+		next(w, r)
+		return
+	}
+	a, err := app.GetByName(appName)
+	httpErr := &errors.HTTP{Code: http.StatusInternalServerError}
+	if err != nil {
+		if err == app.ErrAppNotFound {
+			httpErr.Code = http.StatusNotFound
+			httpErr.Message = err.Error()
+		} else {
+			httpErr.Message = fmt.Sprintf("Error to get application: %s", err)
+		}
+	} else {
+		httpErr.Code = http.StatusConflict
+		if a.Lock.Locked {
+			httpErr.Message = fmt.Sprintf("%s", &a.Lock)
+		} else {
+			httpErr.Message = "Not locked anymore, please try again."
+		}
+	}
+	AddRequestError(r, httpErr)
+}
+
 func runDelayedHandler(w http.ResponseWriter, r *http.Request) {
 	v := context.Get(r, delayedHandlerKey)
 	if v != nil {

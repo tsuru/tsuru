@@ -395,6 +395,12 @@ func (s *HandlerSuite) TestAdminRequiredHandlerShouldRespectTheHandlerStatusCode
 }
 
 func (s *HandlerSuite) TestAuthorizationRequiredHandlerAppToken(c *gocheck.C) {
+	myApp := app.App{
+		Name: "my-app",
+	}
+	err := s.conn.Apps().Insert(myApp)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": myApp.Name})
 	token, err := nativeScheme.AppLogin("my-app")
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Tokens().Remove(bson.M{"token": token.GetValue()})
@@ -437,4 +443,34 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerAppMissng(c *gocheck.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+}
+
+func (s *HandlerSuite) TestLocksAppDuringAppRequests(c *gocheck.C) {
+	myApp := app.App{
+		Name: "my-app",
+	}
+	err := s.conn.Apps().Insert(myApp)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": myApp.Name})
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("POST", "/apps/my-app/", nil)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	handler := func(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+		a, err := app.GetByName(r.URL.Query().Get(":app"))
+		c.Assert(err, gocheck.IsNil)
+		c.Assert(a.Lock.Reason, gocheck.Equals, "/apps/my-app/")
+		c.Assert(a.Lock.Owner, gocheck.Equals, s.token.GetUserName())
+		c.Assert(a.Lock.Locked, gocheck.Equals, true)
+		c.Assert(a.Lock.AcquireDate, gocheck.NotNil)
+		return nil
+	}
+	RegisterHandler("/apps/{app}/", "POST", authorizationRequiredHandler(handler))
+	defer resetHandlers()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	a, err := app.GetByName(request.URL.Query().Get(":app"))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(a.Lock.Locked, gocheck.Equals, false)
 }
