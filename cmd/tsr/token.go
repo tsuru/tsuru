@@ -25,7 +25,7 @@ func (tokenCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	t, err := app.AuthScheme.AppLogin("tsr")
+	t, err := app.AuthScheme.AppLogin(app.InternalAppName)
 	if err != nil {
 		return err
 	}

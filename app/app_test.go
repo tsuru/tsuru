@@ -1462,6 +1462,7 @@ func (s *S) TestIsValid(c *gocheck.C) {
 		{"-myapp", false},
 		{"my_app", false},
 		{"b", true},
+		{InternalAppName, false},
 	}
 	for _, d := range data {
 		a := App{Name: d.name}

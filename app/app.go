@@ -41,6 +41,10 @@ var (
 	cnameRegexp = regexp.MustCompile(`^[a-zA-Z0-9][\w-.]+$`)
 )
 
+const (
+	InternalAppName = "tsr"
+)
+
 // AppLock stores information about a lock hold on the app
 type AppLock struct {
 	Locked      bool
@@ -682,7 +686,7 @@ func (app *App) getEnv(name string) (bind.EnvVar, error) {
 
 // isValid indicates whether the name of the app is valid.
 func (app *App) isValid() bool {
-	return nameRegexp.MatchString(app.Name)
+	return app.Name != InternalAppName && nameRegexp.MatchString(app.Name)
 }
 
 // equalAppNameAndPlatformName check if the app.Name and app.Platform have
