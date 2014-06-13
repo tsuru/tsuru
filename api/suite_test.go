@@ -5,6 +5,7 @@
 package api
 
 import (
+	"github.com/gorilla/context"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -127,6 +128,7 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 func (s *S) TearDownTest(c *gocheck.C) {
 	s.t.RollbackGitConfs(c)
 	s.provisioner.Reset()
+	context.Purge(-1)
 }
 
 func (s *S) getTestData(p ...string) io.ReadCloser {

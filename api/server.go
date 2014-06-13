@@ -164,6 +164,7 @@ func RunServer(dry bool) http.Handler {
 	n.Use(negroni.HandlerFunc(errorHandlingMiddleware))
 	n.Use(negroni.HandlerFunc(setVersionHeadersMiddleware))
 	n.Use(negroni.HandlerFunc(authTokenMiddleware))
+	n.Use(negroni.HandlerFunc(appLockMiddleware))
 	n.UseHandler(http.HandlerFunc(runDelayedHandler))
 
 	if !dry {

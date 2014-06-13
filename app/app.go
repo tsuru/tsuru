@@ -41,6 +41,25 @@ var (
 	cnameRegexp = regexp.MustCompile(`^[a-zA-Z0-9][\w-.]+$`)
 )
 
+// AppLock stores information about a lock hold on the app
+type AppLock struct {
+	Locked      bool
+	Reason      string
+	Owner       string
+	AcquireDate time.Time
+}
+
+func (l *AppLock) String() string {
+	if !l.Locked {
+		return "Not locked"
+	}
+	return fmt.Sprintf("App locked by %s, running %s. Acquired in %s",
+		l.Owner,
+		l.Reason,
+		l.AcquireDate.Format(time.RFC3339),
+	)
+}
+
 // App is the main type in tsuru. An app represents a real world application.
 // This struct holds information about the app: its name, address, list of
 // teams that have access to it, used platform, etc.
@@ -59,6 +78,7 @@ type App struct {
 	Memory         int `json:",string"`
 	Swap           int `json:",string"`
 	UpdatePlatform bool
+	Lock           AppLock
 
 	quota.Quota
 	hr hookRunner
@@ -93,6 +113,44 @@ type Applog struct {
 	Source  string
 	AppName string
 	Unit    string
+}
+
+// Acquire an application lock by setting the lock field in the database.
+// This method is already called by a connection middleware on requests with
+// :app or :appname params that have side-effects.
+func AcquireApplicationLock(appName string, owner string, reason string) (bool, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return false, err
+	}
+	defer conn.Close()
+	appLock := AppLock{
+		Locked:      true,
+		Reason:      reason,
+		Owner:       owner,
+		AcquireDate: time.Now().In(time.UTC),
+	}
+	err = conn.Apps().Update(bson.M{"name": appName, "lock.locked": bson.M{"$in": []interface{}{false, nil}}}, bson.M{"$set": bson.M{"lock": appLock}})
+	if err == mgo.ErrNotFound {
+		// TODO(cezarsa): Maybe handle lock expiring by checking timestamp
+		return false, nil
+	}
+	return err == nil, err
+}
+
+// Releases a lock hold on an app, currently it's called by a middleware,
+// however, ideally, it should be called individually by each handler since
+// they might be doing operations in background.
+func ReleaseApplicationLock(appName string) {
+	conn, err := db.Conn()
+	if err != nil {
+		log.Errorf("Error getting DB, couldn't unlock %s: %s", appName, err.Error())
+	}
+	defer conn.Close()
+	err = conn.Apps().Update(bson.M{"name": appName, "lock.locked": true}, bson.M{"$set": bson.M{"lock": AppLock{}}})
+	if err != nil {
+		log.Errorf("Error updating entry, couldn't unlock %s: %s", appName, err.Error())
+	}
 }
 
 // GetAppByName queries the database to find an app identified by the given

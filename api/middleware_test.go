@@ -7,12 +7,14 @@ package api
 import (
 	"errors"
 	"github.com/gorilla/context"
+	"github.com/tsuru/tsuru/app"
 	tsuruErr "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
+	"time"
 )
 
 type handlerLog struct {
@@ -166,4 +168,88 @@ func (s *S) TestRunDelayedHandlerWithHandler(c *gocheck.C) {
 	SetDelayedHandler(request, h)
 	runDelayedHandler(recorder, request)
 	c.Assert(log.called, gocheck.Equals, true)
+}
+
+func (s *S) TestAppLockMiddlewareDoesNothingWithoutApp(c *gocheck.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("POST", "/", nil)
+	c.Assert(err, gocheck.IsNil)
+	h, log := doHandler()
+	appLockMiddleware(recorder, request, h)
+	c.Assert(log.called, gocheck.Equals, true)
+}
+
+func (s *S) TestAppLockMiddlewareDoesNothingForGetRequests(c *gocheck.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/?:app=abc", nil)
+	c.Assert(err, gocheck.IsNil)
+	h, log := doHandler()
+	appLockMiddleware(recorder, request, h)
+	c.Assert(log.called, gocheck.Equals, true)
+}
+
+func (s *S) TestAppLockMiddlewareReturns404IfNotApp(c *gocheck.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("POST", "/?:app=abc", nil)
+	c.Assert(err, gocheck.IsNil)
+	h, log := doHandler()
+	appLockMiddleware(recorder, request, h)
+	c.Assert(log.called, gocheck.Equals, false)
+	httpErr := GetRequestError(request).(*tsuruErr.HTTP)
+	c.Assert(httpErr.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(httpErr.Message, gocheck.Equals, "App not found")
+	request, err = http.NewRequest("POST", "/?:appname=abc", nil)
+	c.Assert(err, gocheck.IsNil)
+	appLockMiddleware(recorder, request, h)
+	c.Assert(log.called, gocheck.Equals, false)
+	httpErr = GetRequestError(request).(*tsuruErr.HTTP)
+	c.Assert(httpErr.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(httpErr.Message, gocheck.Equals, "App not found")
+}
+
+func (s *S) TestAppLockMiddlewareOnLockedApp(c *gocheck.C) {
+	myApp := app.App{
+		Name: "my-app",
+		Lock: app.AppLock{
+			Locked:      true,
+			Reason:      "/app/my-app/deploy",
+			Owner:       "someone",
+			AcquireDate: time.Date(2048, time.November, 10, 10, 0, 0, 0, time.UTC),
+		},
+	}
+	err := s.conn.Apps().Insert(myApp)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": myApp.Name})
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("POST", "/?:app=my-app", nil)
+	c.Assert(err, gocheck.IsNil)
+	h, log := doHandler()
+	appLockMiddleware(recorder, request, h)
+	c.Assert(log.called, gocheck.Equals, false)
+	httpErr := GetRequestError(request).(*tsuruErr.HTTP)
+	c.Assert(httpErr.Code, gocheck.Equals, http.StatusConflict)
+	c.Assert(httpErr.Message, gocheck.Equals, "App locked by someone, running /app/my-app/deploy. Acquired in 2048-11-10T10:00:00Z")
+}
+
+func (s *S) TestAppLockMiddlewareLocksAndUnlocks(c *gocheck.C) {
+	myApp := app.App{
+		Name: "my-app",
+	}
+	err := s.conn.Apps().Insert(myApp)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": myApp.Name})
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("POST", "/?:app=my-app", nil)
+	c.Assert(err, gocheck.IsNil)
+	called := false
+	appLockMiddleware(recorder, request, func(w http.ResponseWriter, r *http.Request) {
+		a, err := app.GetByName(request.URL.Query().Get(":app"))
+		c.Assert(err, gocheck.IsNil)
+		c.Assert(a.Lock.Locked, gocheck.Equals, true)
+		called = true
+	})
+	c.Assert(called, gocheck.Equals, true)
+	a, err := app.GetByName(request.URL.Query().Get(":app"))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(a.Lock.Locked, gocheck.Equals, false)
 }
