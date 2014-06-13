@@ -106,6 +106,7 @@ func (s *S) TearDownTest(c *gocheck.C) {
 		bson.M{"email": s.user.Email},
 		bson.M{"$set": bson.M{"quota": quota.Unlimited}},
 	)
+	ttesting.CleanQ(queueName)
 }
 
 func (s *S) getTestData(p ...string) io.ReadCloser {

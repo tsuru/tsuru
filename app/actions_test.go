@@ -687,16 +687,13 @@ func (s *S) TestSaveNewUnitsInDatabaseForward(c *gocheck.C) {
 	fwresult, err := saveNewUnitsInDatabase.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(fwresult, gocheck.IsNil)
-	gotApp, err := GetByName(app.Name)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(gotApp.Units, gocheck.HasLen, 3)
+	c.Assert(app.Units(), gocheck.HasLen, 4)
 	var expectedMessages MessageList
-	for i, unit := range gotApp.Units() {
+	for i, unit := range app.Units()[1:] {
 		c.Assert(unit.Name, gocheck.Equals, units[i].Name)
-		c.Assert(unit.Status, gocheck.Equals, provision.StatusBuilding)
 		messages := []queue.Message{
-			{Action: regenerateApprc, Args: []string{gotApp.Name, unit.Name}},
-			{Action: BindService, Args: []string{gotApp.Name, unit.Name}},
+			{Action: regenerateApprc, Args: []string{app.Name, unit.Name}},
+			{Action: BindService, Args: []string{app.Name, unit.Name}},
 		}
 		expectedMessages = append(expectedMessages, messages...)
 	}
@@ -729,15 +726,13 @@ func (s *S) TestSaveNewUnitsInDatabaseForwardNoPointer(c *gocheck.C) {
 	fwresult, err := saveNewUnitsInDatabase.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(fwresult, gocheck.IsNil)
-	gotApp, err := GetByName(app.Name)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(gotApp.Units(), gocheck.HasLen, 3)
+	c.Assert(app.Units(), gocheck.HasLen, 4)
 	var expectedMessages MessageList
-	for i, unit := range gotApp.Units() {
+	for i, unit := range app.Units()[1:] {
 		c.Assert(unit.Name, gocheck.Equals, units[i].Name)
 		messages := []queue.Message{
-			{Action: regenerateApprc, Args: []string{gotApp.Name, unit.Name}},
-			{Action: BindService, Args: []string{gotApp.Name, unit.Name}},
+			{Action: regenerateApprc, Args: []string{app.Name, unit.Name}},
+			{Action: BindService, Args: []string{app.Name, unit.Name}},
 		}
 		expectedMessages = append(expectedMessages, messages...)
 	}

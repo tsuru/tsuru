@@ -31,6 +31,7 @@ func (s *S) TestHandleMessage(c *gocheck.C) {
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
+	s.provisioner.Provision(&a)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	msg := queue.Message{Action: regenerateApprc, Args: []string{a.Name}}
 	handle(&msg)
@@ -87,21 +88,9 @@ func (s *S) TestHandleMessageErrors(c *gocheck.C) {
 				` all units must be started.`,
 		},
 		{
-			action: startApp,
-			args:   []string{"totem", "totem/0", "totem/1"},
-			expectedLog: `Error handling "start-app" for the app "totem":` +
-				` all units must be started.`,
-		},
-		{
 			action: regenerateApprc,
 			args:   []string{"nemesis"},
 			expectedLog: `Error handling "regenerate-apprc" for the app "nemesis":` +
-				` all units must be started.`,
-		},
-		{
-			action: regenerateApprc,
-			args:   []string{"totem", "totem/0", "totem/1"},
-			expectedLog: `Error handling "regenerate-apprc" for the app "totem":` +
 				` all units must be started.`,
 		},
 		{
@@ -125,39 +114,49 @@ func (s *S) TestHandleMessageErrors(c *gocheck.C) {
 			expectedLog: `Error handling "regenerate-apprc" for the app "territories":` +
 				` units are in "down" state.`,
 		},
+		{
+			action: startApp,
+			args:   []string{"totem", "totem/0", "totem/1"},
+			expectedLog: `Error handling "start-app" for the app "totem":` +
+				` all units must be started.`,
+		},
+		{
+			action: regenerateApprc,
+			args:   []string{"totem", "totem/0", "totem/1"},
+			expectedLog: `Error handling "regenerate-apprc" for the app "totem":` +
+				` all units must be started.`,
+		},
 	}
 	a := App{Name: "nemesis"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	a = App{
-		Name: "totem",
-	}
+	a = App{Name: "totem"}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
+	s.provisioner.AddUnit(&a, provision.Unit{Name: "totem/0", Status: provision.StatusBuilding})
+	s.provisioner.AddUnit(&a, provision.Unit{Name: "totem/1", Status: provision.StatusStarted})
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	a = App{Name: "marathon"}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
+	s.provisioner.AddUnit(&a, provision.Unit{Name: "marathon/0", Status: provision.StatusError, Type: "python"})
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	a = App{Name: "territories"}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
+	s.provisioner.AddUnit(&a, provision.Unit{Name: "territories/0", Status: provision.StatusDown})
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	logger := testing.NewFakeLogger().(*testing.FakeLogger)
 	for _, d := range data {
+		logger := testing.NewFakeLogger().(*testing.FakeLogger)
 		message := queue.Message{Action: d.action}
 		if len(d.args) > 0 {
 			message.Args = d.args
 		}
 		handle(&message)
-	}
-	content := logger.Buf.String()
-	lines := strings.Split(content, "\n")
-	for i, d := range data {
-		if lines[i] != d.expectedLog {
-			c.Errorf("\nWant: %q.\nGot:\n%s", d.expectedLog, content)
-		}
+		content := strings.Replace(logger.Buf.String(), "\n", "", -1)
+		c.Check(content, gocheck.Equals, d.expectedLog)
 	}
 }
 

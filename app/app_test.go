@@ -24,7 +24,6 @@ import (
 	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -110,27 +109,6 @@ func (s *S) TestDestroy(c *gocheck.C) {
 	c.Assert(msg.Args, gocheck.DeepEquals, []string{app.Name})
 	_, err = nativeScheme.Auth(token)
 	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
-}
-
-func (s *S) TestDestroyWithoutBucketSupport(c *gocheck.C) {
-	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
-	defer ts.Close()
-	a := App{
-		Name:     "blinded",
-		Platform: "python",
-	}
-	err := CreateApp(&a, s.user)
-	c.Assert(err, gocheck.IsNil)
-	app, err := GetByName(a.Name)
-	err = Delete(app)
-	c.Assert(err, gocheck.IsNil)
-	_, err = GetByName(app.Name)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(s.provisioner.Provisioned(&a), gocheck.Equals, false)
-	msg, err := aqueue().Get(1e6)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(msg.Args, gocheck.DeepEquals, []string{app.Name})
 }
 
 func (s *S) TestDestroyWithoutUnits(c *gocheck.C) {
@@ -483,29 +461,22 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
-	otherApp := App{Name: "warpaint"}
-	err = otherApp.AddUnits(5)
+	err = app.AddUnits(5)
 	c.Assert(err, gocheck.IsNil)
-	units := s.provisioner.GetUnits(&app)
-	c.Assert(units, gocheck.HasLen, 6)
-	err = otherApp.AddUnits(2)
+	c.Assert(app.Units(), gocheck.HasLen, 6)
+	err = app.AddUnits(2)
 	c.Assert(err, gocheck.IsNil)
-	units = s.provisioner.GetUnits(&app)
-	c.Assert(units, gocheck.HasLen, 8)
-	for _, unit := range units {
+	c.Assert(app.Units(), gocheck.HasLen, 8)
+	for _, unit := range app.Units() {
 		c.Assert(unit.AppName, gocheck.Equals, app.Name)
 	}
-	gotApp, err := GetByName(app.Name)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(gotApp.Units, gocheck.HasLen, 7)
-	c.Assert(gotApp.Platform, gocheck.Equals, "python")
 	var expectedMessages MessageList
-	for i, unit := range gotApp.Units() {
+	for i, unit := range app.Units()[1:] {
 		expectedName := fmt.Sprintf("%s/%d", app.Name, i+1)
 		c.Check(unit.Name, gocheck.Equals, expectedName)
 		messages := []queue.Message{
-			{Action: regenerateApprc, Args: []string{gotApp.Name, unit.Name}},
-			{Action: BindService, Args: []string{gotApp.Name, unit.Name}},
+			{Action: regenerateApprc, Args: []string{app.Name, unit.Name}},
+			{Action: BindService, Args: []string{app.Name, unit.Name}},
 		}
 		expectedMessages = append(expectedMessages, messages...)
 	}
@@ -542,35 +513,6 @@ func (s *S) TestAddUnitsQuota(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	units = s.provisioner.GetUnits(&app)
 	c.Assert(units, gocheck.HasLen, 8)
-	for _, unit := range units {
-		c.Assert(unit.AppName, gocheck.Equals, app.Name)
-	}
-	gotApp, err := GetByName(app.Name)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(gotApp.Units, gocheck.HasLen, 7)
-	c.Assert(gotApp.Platform, gocheck.Equals, "python")
-	var expectedMessages MessageList
-	for i, unit := range gotApp.Units() {
-		expectedName := fmt.Sprintf("%s/%d", app.Name, i+1)
-		c.Assert(unit.Name, gocheck.Equals, expectedName)
-		messages := []queue.Message{
-			{Action: regenerateApprc, Args: []string{gotApp.Name, unit.Name}},
-			{Action: BindService, Args: []string{gotApp.Name, unit.Name}},
-		}
-		expectedMessages = append(expectedMessages, messages...)
-	}
-	gotMessages := make(MessageList, expectedMessages.Len())
-	for i := range expectedMessages {
-		message, err := aqueue().Get(1e6)
-		c.Assert(err, gocheck.IsNil)
-		gotMessages[i] = queue.Message{
-			Action: message.Action,
-			Args:   message.Args,
-		}
-	}
-	sort.Sort(expectedMessages)
-	sort.Sort(gotMessages)
-	c.Assert(gotMessages, gocheck.DeepEquals, expectedMessages)
 	err = reserveUnits(&app, 1)
 	_, ok := err.(*quota.QuotaExceededError)
 	c.Assert(ok, gocheck.Equals, true)
@@ -638,22 +580,20 @@ func (s *S) TestAddUnitsToDB(c *gocheck.C) {
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
+	app.AddUnits(1)
 	app.AddUnitsToDB([]provision.Unit{
 		{Name: "warpaint/1"},
 		{Name: "warpaint/2"},
 	})
-	c.Assert(app.Units, gocheck.HasLen, 2)
-	gotApp, err := GetByName(app.Name)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(gotApp.Units, gocheck.HasLen, 2)
-	c.Assert(gotApp.Platform, gocheck.Equals, "python")
 	var expectedMessages MessageList
-	for i, unit := range gotApp.Units() {
+	for i, unit := range app.Units()[1:] {
 		expectedName := fmt.Sprintf("%s/%d", app.Name, i+1)
 		c.Check(unit.Name, gocheck.Equals, expectedName)
 		messages := []queue.Message{
-			{Action: regenerateApprc, Args: []string{gotApp.Name, unit.Name}},
-			{Action: BindService, Args: []string{gotApp.Name, unit.Name}},
+			{Action: regenerateApprc, Args: []string{app.Name, unit.Name}},
+			{Action: BindService, Args: []string{app.Name, unit.Name}},
 		}
 		expectedMessages = append(expectedMessages, messages...)
 	}
@@ -671,52 +611,6 @@ func (s *S) TestAddUnitsToDB(c *gocheck.C) {
 	c.Assert(gotMessages, gocheck.DeepEquals, expectedMessages)
 }
 
-type hasUnitChecker struct{}
-
-func (c *hasUnitChecker) Info() *gocheck.CheckerInfo {
-	return &gocheck.CheckerInfo{Name: "HasUnit", Params: []string{"app", "unit"}}
-}
-
-func (c *hasUnitChecker) Check(params []interface{}, names []string) (bool, string) {
-	a, ok := params[0].(*App)
-	if !ok {
-		return false, "first parameter should be a pointer to an app instance"
-	}
-	u, ok := params[1].(provision.Unit)
-	if !ok {
-		return false, "second parameter should be a pointer to an unit instance"
-	}
-	for _, unit := range a.ProvisionedUnits() {
-		if reflect.DeepEqual(unit, u) {
-			return true, ""
-		}
-	}
-	return false, ""
-}
-
-var HasUnit gocheck.Checker = &hasUnitChecker{}
-
-func (s *S) TestRemoveUnitsPriority(c *gocheck.C) {
-	a := App{Name: "ble"}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	s.provisioner.Provision(&a)
-	s.provisioner.AddUnits(&a, 3)
-	units := a.ProvisionedUnits()
-	for _, unit := range units {
-		c.Assert(&a, HasUnit, unit)
-	}
-	removeUnits := []int{1, 2}
-	for _, unit := range removeUnits {
-		err = a.RemoveUnits(1)
-		c.Assert(err, gocheck.IsNil)
-		c.Assert(&a, gocheck.Not(HasUnit), units[unit])
-	}
-	c.Assert(&a, HasUnit, units[0])
-	c.Assert(a.ProvisionedUnits(), gocheck.HasLen, 1)
-}
-
 func (s *S) TestRemoveUnitsWithQuota(c *gocheck.C) {
 	a := App{
 		Name:  "ble",
@@ -726,7 +620,8 @@ func (s *S) TestRemoveUnitsWithQuota(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(&a)
-	s.provisioner.AddUnits(&a, 6)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 5)
 	defer s.provisioner.Destroy(&a)
 	err = a.RemoveUnits(4)
 	c.Assert(err, gocheck.IsNil)
@@ -766,21 +661,16 @@ func (s *S) TestRemoveUnits(c *gocheck.C) {
 	defer s.provisioner.Destroy(&app)
 	app.AddUnits(4)
 	defer testing.CleanQ(queueName)
-	gotApp, err := GetByName(app.Name)
-	c.Assert(err, gocheck.IsNil)
-	otherApp := App{Name: gotApp.Name}
-	err = otherApp.RemoveUnits(2)
+	err = app.RemoveUnits(2)
 	c.Assert(err, gocheck.IsNil)
 	ts.Close()
-	units := s.provisioner.GetUnits(&app)
+	units := app.Units()
 	c.Assert(units, gocheck.HasLen, 3)
-	c.Assert(units[0].Name, gocheck.Equals, "chemistry/0")
-	c.Assert(units[1].Name, gocheck.Equals, "chemistry/3")
-	c.Assert(units[2].Name, gocheck.Equals, "chemistry/4")
+	gotApp, err := GetByName(app.Name)
+	c.Assert(err, gocheck.IsNil)
 	gotApp, err = GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(gotApp.Platform, gocheck.Equals, "python")
-	c.Assert(gotApp.Quota.InUse, gocheck.Equals, 2)
+	c.Assert(gotApp.Quota.InUse, gocheck.Equals, 3)
 }
 
 func (s *S) TestRemoveUnitsInvalidValues(c *gocheck.C) {
@@ -836,6 +726,7 @@ func (s *S) TestRemoveUnitByNameOrInstanceID(c *gocheck.C) {
 	err = s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
 	err = s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
 	c.Assert(err, gocheck.IsNil)
 	err = app.AddUnits(4)
 	c.Assert(err, gocheck.IsNil)
@@ -880,6 +771,7 @@ func (s *S) TestRemoveAbsentUnit(c *gocheck.C) {
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
 	err = s.provisioner.Provision(app)
+	defer s.provisioner.Destroy(app)
 	c.Assert(err, gocheck.IsNil)
 	err = app.AddUnits(1)
 	c.Assert(err, gocheck.IsNil)
@@ -1410,7 +1302,7 @@ func (s *S) TestStop(c *gocheck.C) {
 	err = s.conn.Apps().Find(bson.M{"name": a.GetName()}).One(&a)
 	c.Assert(err, gocheck.IsNil)
 	for _, u := range a.Units() {
-		c.Assert(u.Status, gocheck.Equals, provision.StatusStopped.String())
+		c.Assert(u.Status, gocheck.Equals, provision.StatusStopped)
 	}
 }
 
@@ -1604,18 +1496,11 @@ func (s *S) TestSetTeamsSortTeamNames(c *gocheck.C) {
 }
 
 func (s *S) TestGetUnits(c *gocheck.C) {
-	ips := []string{"1.1.1.1", "2.2.2.2", "3.3.3.3"}
-	units := make([]provision.Unit, len(ips))
-	got := make([]string, len(ips))
-	for i, ip := range ips {
-		unit := provision.Unit{Ip: ip}
-		units[i] = unit
-	}
-	app := App{}
-	for i, unit := range app.GetUnits() {
-		got[i] = unit.GetIp()
-	}
-	c.Assert(got, gocheck.DeepEquals, ips)
+	app := App{Name: "app"}
+	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
+	c.Assert(app.GetUnits(), gocheck.HasLen, 1)
+	c.Assert(app.Units()[0].Ip, gocheck.Equals, app.GetUnits()[0].GetIp())
 }
 
 func (s *S) TestAppMarshalJSON(c *gocheck.C) {
@@ -1693,6 +1578,7 @@ func (s *S) TestRun(c *gocheck.C) {
 		Name: "myapp",
 	}
 	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
 	var buf bytes.Buffer
 	err := app.Run("ls -lh", &buf, false)
 	c.Assert(err, gocheck.IsNil)
@@ -1709,6 +1595,8 @@ func (s *S) TestRunOnce(c *gocheck.C) {
 	app := App{
 		Name: "myapp",
 	}
+	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
 	var buf bytes.Buffer
 	err := app.Run("ls -lh", &buf, true)
 	c.Assert(err, gocheck.IsNil)
@@ -1725,6 +1613,8 @@ func (s *S) TestRunWithoutEnv(c *gocheck.C) {
 	app := App{
 		Name: "myapp",
 	}
+	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
 	var buf bytes.Buffer
 	err := app.run("ls -lh", &buf, false)
 	c.Assert(err, gocheck.IsNil)
@@ -1783,6 +1673,8 @@ func (s *S) TestSerializeEnvVarsErrorWithoutOutput(c *gocheck.C) {
 			},
 		},
 	}
+	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
 	err := app.SerializeEnvVars()
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Failed to write env vars: Failed to run commands.")
@@ -1801,6 +1693,8 @@ func (s *S) TestSerializeEnvVarsErrorWithOutput(c *gocheck.C) {
 			},
 		},
 	}
+	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
 	err := app.SerializeEnvVars()
 	c.Assert(err, gocheck.NotNil)
 	expected := "Failed to write env vars (exit status 1): This program has performed an illegal operation."
@@ -2010,18 +1904,15 @@ func (s *S) TestGetProvisionedUnits(c *gocheck.C) {
 	}
 }
 
-func (s *S) TestAppAvailableShouldReturnsTrueWhenOneUnitIsStarted(c *gocheck.C) {
+func (s *S) TestAppAvailable(c *gocheck.C) {
 	a := App{
 		Name: "anycolor",
 	}
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
 	c.Assert(a.Available(), gocheck.Equals, true)
-}
-
-func (s *S) TestAppAvailableShouldReturnsTrueWhenOneUnitIsUnreachable(c *gocheck.C) {
-	a := App{
-		Name: "anycolor",
-	}
-	c.Assert(a.Available(), gocheck.Equals, true)
+	s.provisioner.Stop(&a)
+	c.Assert(a.Available(), gocheck.Equals, false)
 }
 
 func (s *S) TestSwap(c *gocheck.C) {
