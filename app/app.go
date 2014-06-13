@@ -796,7 +796,7 @@ type deploy struct {
 	Timestamp time.Time
 	Duration  time.Duration
 	Commit    string
-	Error     error
+	Error     string
 }
 
 func (app *App) ListDeploys() ([]deploy, error) {
@@ -1157,7 +1157,9 @@ func saveDeployData(appName, commit string, duration time.Duration, deployError 
 		Timestamp: time.Now(),
 		Duration:  duration,
 		Commit:    commit,
-		Error:     deployError,
+	}
+	if deployError != nil {
+		deploy.Error = deployError.Error()
 	}
 	return conn.Deploys().Insert(deploy)
 }
