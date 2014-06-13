@@ -2502,5 +2502,5 @@ func (s *S) TestAppLockStringLocked(c *gocheck.C) {
 		Owner:       "someone",
 		AcquireDate: time.Date(2048, time.November, 10, 10, 0, 0, 0, time.UTC),
 	}
-	c.Assert(lock.String(), gocheck.Equals, "App locked by someone, running /app/my-app/deploy. Acquired in 2048-11-10T10:00:00Z")
+	c.Assert(lock.String(), gocheck.Matches, "App locked by someone, running /app/my-app/deploy. Acquired in 2048-11-10T.*")
 }

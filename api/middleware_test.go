@@ -228,7 +228,7 @@ func (s *S) TestAppLockMiddlewareOnLockedApp(c *gocheck.C) {
 	c.Assert(log.called, gocheck.Equals, false)
 	httpErr := GetRequestError(request).(*tsuruErr.HTTP)
 	c.Assert(httpErr.Code, gocheck.Equals, http.StatusConflict)
-	c.Assert(httpErr.Message, gocheck.Equals, "App locked by someone, running /app/my-app/deploy. Acquired in 2048-11-10T10:00:00Z")
+	c.Assert(httpErr.Message, gocheck.Matches, "App locked by someone, running /app/my-app/deploy. Acquired in 2048-11-10.*")
 }
 
 func (s *S) TestAppLockMiddlewareLocksAndUnlocks(c *gocheck.C) {
