@@ -612,9 +612,12 @@ func (p *FakeProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provi
 }
 
 func (p *FakeProvisioner) AddUnit(app provision.App, unit provision.Unit) {
+	p.mut.Lock()
+	defer p.mut.Unlock()
 	a := p.apps[app.GetName()]
-	units := append(a.units, unit)
-	a.SetUnits(units)
+	a.units = append(a.units, unit)
+	a.unitLen++
+	p.apps[app.GetName()] = a
 }
 
 func (p *FakeProvisioner) Units(app provision.App) []provision.Unit {
@@ -812,10 +815,6 @@ type provisionedApp struct {
 	lastArchive string
 	cname       string
 	unitLen     int
-}
-
-func (a *provisionedApp) SetUnits(units []provision.Unit) {
-	a.units = units
 }
 
 type provisionedPlatform struct {

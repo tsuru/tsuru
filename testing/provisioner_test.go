@@ -753,18 +753,12 @@ func (s *S) TestExtensiblePlatformRemoveNotFound(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, "platform not found")
 }
 
-func (s *S) TestProvisionedAppSetUnits(c *gocheck.C) {
-	a := provisionedApp{}
-	units := []provision.Unit{{Name: "jean/0"}}
-	a.SetUnits(units)
-	c.Assert(a.units, gocheck.DeepEquals, units)
-}
-
 func (s *S) TestFakeProvisionerAddUnit(c *gocheck.C) {
 	app := NewFakeApp("red-sector", "rush", 1)
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, gocheck.IsNil)
-	p.AddUnit(app, provision.Unit{Name: "jean/0"})
-	c.Assert(p.Units(app), gocheck.HasLen, 1)
+	p.AddUnit(app, provision.Unit{Name: "red-sector/1"})
+	c.Assert(p.Units(app), gocheck.HasLen, 2)
+	c.Assert(p.apps[app.GetName()].unitLen, gocheck.Equals, 2)
 }
