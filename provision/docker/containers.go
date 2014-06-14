@@ -11,6 +11,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"labix.org/v2/mgo/bson"
@@ -25,18 +26,6 @@ var (
 
 type progressLog struct {
 	Message string
-}
-
-type compositeError struct {
-	base    error
-	message string
-}
-
-func (err *compositeError) Error() string {
-	if err.base == nil {
-		return err.message
-	}
-	return fmt.Sprintf("%s Caused by: %s", err.message, err.base.Error())
 }
 
 var containerMovementErr = errors.New("Error moving some containers.")
@@ -75,9 +64,9 @@ func moveOneContainer(c container, toHost string, errors chan error, wg *sync.Wa
 	a, err := app.GetByName(c.AppName)
 	defer wg.Done()
 	if err != nil {
-		errors <- &compositeError{
-			base:    err,
-			message: fmt.Sprintf("Error getting app %q for unit %s.", c.AppName, c.ID),
+		errors <- &tsuruErrors.CompositeError{
+			Base:    err,
+			Message: fmt.Sprintf("Error getting app %q for unit %s.", c.AppName, c.ID),
 		}
 		return
 	}
@@ -88,9 +77,9 @@ func moveOneContainer(c container, toHost string, errors chan error, wg *sync.Wa
 	)
 	err = pipeline.Execute(a, toHost, c)
 	if err != nil {
-		errors <- &compositeError{
-			base:    err,
-			message: fmt.Sprintf("Error moving unit %s.", c.ID),
+		errors <- &tsuruErrors.CompositeError{
+			Base:    err,
+			Message: fmt.Sprintf("Error moving unit %s.", c.ID),
 		}
 		return
 	}
@@ -98,9 +87,9 @@ func moveOneContainer(c container, toHost string, errors chan error, wg *sync.Wa
 	addedUnit := pipeline.Result().(provision.Unit)
 	err = moveOneContainerInDB(a, c, addedUnit)
 	if err != nil {
-		errors <- &compositeError{
-			base:    err,
-			message: fmt.Sprintf("Error moving unit %s in DB.", c.ID),
+		errors <- &tsuruErrors.CompositeError{
+			Base:    err,
+			Message: fmt.Sprintf("Error moving unit %s in DB.", c.ID),
 		}
 		return
 	}
