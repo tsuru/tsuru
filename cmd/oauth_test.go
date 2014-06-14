@@ -15,24 +15,9 @@ import (
 	"strings"
 )
 
-func (s *S) TestAuthorizeUrl(c *gocheck.C) {
-	c.Assert("", gocheck.Equals, authorizeUrl())
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"name": "oauth", "data": {"authorizeUrl": "http://ble:%s"}}`))
-	}))
-	defer ts.Close()
-	writeTarget(ts.URL)
-	c.Assert("http://ble:%s", gocheck.Equals, authorizeUrl())
-}
-
 func (s *S) TestPort(c *gocheck.C) {
-	c.Assert(":0", gocheck.Equals, port())
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"name": "oauth", "data": {"port": "4242"}}`))
-	}))
-	defer ts.Close()
-	writeTarget(ts.URL)
-	c.Assert(":4242", gocheck.Equals, port())
+	c.Assert(":0", gocheck.Equals, port(map[string]string{}))
+	c.Assert(":4242", gocheck.Equals, port(map[string]string{"port": "4242"}))
 }
 
 func (s *S) TestOpen(c *gocheck.C) {

@@ -26,6 +26,27 @@ func (e recordingExiter) value() int {
 	return int(e)
 }
 
+type TestNamedCommand struct {
+	nameCalls int
+	infoCalls int
+}
+
+func (c *TestNamedCommand) Name() string {
+	c.nameCalls++
+	return "nameInName"
+}
+
+func (c *TestNamedCommand) Info() *Info {
+	c.infoCalls++
+	return &Info{
+		Name: "nameInInfo",
+	}
+}
+
+func (c *TestNamedCommand) Run(context *Context, client *Client) error {
+	return nil
+}
+
 type TestCommand struct{}
 
 func (c *TestCommand) Info() *Info {
@@ -81,6 +102,14 @@ func (s *S) TestRegister(c *gocheck.C) {
 	manager.Register(&TestCommand{})
 	badCall := func() { manager.Register(&TestCommand{}) }
 	c.Assert(badCall, gocheck.PanicMatches, "command already registered: foo")
+}
+
+func (s *S) TestRegisterCallsNameOnNamedCommand(c *gocheck.C) {
+	instance := &TestNamedCommand{}
+	manager.Register(instance)
+	c.Assert(manager.Commands["nameInName"], gocheck.Equals, instance)
+	c.Assert(instance.nameCalls, gocheck.Equals, 1)
+	c.Assert(instance.infoCalls, gocheck.Equals, 0)
 }
 
 func (s *S) TestRegisterTopic(c *gocheck.C) {

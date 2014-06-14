@@ -104,7 +104,14 @@ func (c *userRemove) Info() *Info {
 	}
 }
 
-type login struct{}
+type loginScheme struct {
+	Name string
+	Data map[string]string
+}
+
+type login struct {
+	scheme *loginScheme
+}
 
 func nativeLogin(context *Context, client *Client) error {
 	email := context.Args[0]
@@ -141,22 +148,39 @@ func nativeLogin(context *Context, client *Client) error {
 	return writeToken(out["token"].(string))
 }
 
+func (c *login) getScheme() *loginScheme {
+	if c.scheme == nil {
+		info, err := schemeInfo()
+		if err != nil {
+			fmt.Printf("Error trying to figure auth scheme, using native as fallback: %s\n", err.Error())
+			c.scheme = &loginScheme{Name: "native", Data: make(map[string]string)}
+		} else {
+			c.scheme = info
+		}
+	}
+	return c.scheme
+}
+
 func (c *login) Run(context *Context, client *Client) error {
-	if scheme() == "oauth" {
-		return oauthLogin(context, client)
+	if c.getScheme().Name == "oauth" {
+		return c.oauthLogin(context, client)
 	}
 	return nativeLogin(context, client)
+}
+
+func (c *login) Name() string {
+	return "login"
 }
 
 func (c *login) Info() *Info {
 	args := 1
 	usage := "login <email>"
-	if scheme() == "oauth" {
+	if c.getScheme().Name == "oauth" {
 		usage = "login"
 		args = 0
 	}
 	return &Info{
-		Name:    "login",
+		Name:    c.Name(),
 		Usage:   usage,
 		Desc:    "log in with your credentials.",
 		MinArgs: args,
@@ -526,18 +550,7 @@ func passwordFromReader(reader io.Reader) (string, error) {
 	return password, err
 }
 
-func scheme() string {
-	info, err := schemeInfo()
-	if err == nil {
-		authScheme := info["name"]
-		if authScheme != "" {
-			return authScheme.(string)
-		}
-	}
-	return "native"
-}
-
-func schemeInfo() (map[string]interface{}, error) {
+func schemeInfo() (*loginScheme, error) {
 	url, err := GetURL("/auth/scheme")
 	if err != nil {
 		return nil, err
@@ -547,10 +560,10 @@ func schemeInfo() (map[string]interface{}, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	info := map[string]interface{}{}
+	info := loginScheme{}
 	err = json.NewDecoder(resp.Body).Decode(&info)
 	if err != nil {
 		return nil, err
 	}
-	return info, nil
+	return &info, nil
 }

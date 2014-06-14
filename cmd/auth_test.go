@@ -707,32 +707,91 @@ func (s *S) TestResetPasswordIsAFlaggedCommand(c *gocheck.C) {
 	var _ FlaggedCommand = &resetPassword{}
 }
 
-func (s *S) TestScheme(c *gocheck.C) {
-	result := scheme()
-	c.Assert(result, gocheck.Equals, "native")
+func (s *S) TestLoginGetSchemeCachesResult(c *gocheck.C) {
+	callCount := 0
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		w.Write([]byte(`{"name": "oauth", "data": {}}`))
+	}))
+	defer ts.Close()
+	writeTarget(ts.URL)
+	loginCmd := login{}
+	scheme := loginCmd.getScheme()
+	c.Assert(scheme.Name, gocheck.Equals, "oauth")
+	c.Assert(scheme.Data, gocheck.DeepEquals, map[string]string{})
+	c.Assert(callCount, gocheck.Equals, 1)
+	loginCmd.getScheme()
+	c.Assert(callCount, gocheck.Equals, 1)
+}
+
+func (s *S) TestLoginGetSchemeDefault(c *gocheck.C) {
+	loginCmd := login{}
+	scheme := loginCmd.getScheme()
+	c.Assert(scheme.Name, gocheck.Equals, "native")
+	c.Assert(scheme.Data, gocheck.DeepEquals, map[string]string{})
+}
+
+func (s *S) TestLoginGetScheme(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"name": "oauth", "data": {}}`))
 	}))
 	defer ts.Close()
 	writeTarget(ts.URL)
-	result = scheme()
-	c.Assert(result, gocheck.Equals, "oauth")
+	loginCmd := login{}
+	scheme := loginCmd.getScheme()
+	c.Assert(scheme.Name, gocheck.Equals, "oauth")
 	ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"name": "native", "data": {}}`))
 	}))
 	defer ts.Close()
 	writeTarget(ts.URL)
-	result = scheme()
-	c.Assert(result, gocheck.Equals, "native")
+	loginCmd = login{}
+	scheme = loginCmd.getScheme()
+	c.Assert(scheme.Name, gocheck.Equals, "native")
+}
+
+func (s *S) TestLoginGetSchemeParsesData(c *gocheck.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"name": "oauth", "data": {"x": "y", "z": "w"}}`))
+	}))
+	defer ts.Close()
+	writeTarget(ts.URL)
+	loginCmd := login{}
+	scheme := loginCmd.getScheme()
+	c.Assert(scheme.Name, gocheck.Equals, "oauth")
+	c.Assert(scheme.Data, gocheck.DeepEquals, map[string]string{"x": "y", "z": "w"})
+}
+
+func (s *S) TestLoginGetSchemeInvalidData(c *gocheck.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"name": "oauth", "data": {"x": 9, "z": "w"}}`))
+	}))
+	defer ts.Close()
+	writeTarget(ts.URL)
+	loginCmd := login{}
+	scheme := loginCmd.getScheme()
+	c.Assert(scheme.Name, gocheck.Equals, "native")
+	c.Assert(scheme.Data, gocheck.DeepEquals, map[string]string{})
 }
 
 func (s *S) TestSchemeInfo(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"name": "oauth", "data": {}}`))
+		w.Write([]byte(`{"name": "oauth", "data": {"x": "y"}}`))
 	}))
 	defer ts.Close()
 	writeTarget(ts.URL)
 	info, err := schemeInfo()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(info["name"], gocheck.Equals, "oauth")
+	c.Assert(info.Name, gocheck.Equals, "oauth")
+	c.Assert(info.Data, gocheck.DeepEquals, map[string]string{"x": "y"})
+}
+
+func (s *S) TestSchemeInfoInvalidData(c *gocheck.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"name": "oauth", "data": {"x": 9}}`))
+	}))
+	defer ts.Close()
+	writeTarget(ts.URL)
+	_, err := schemeInfo()
+	c.Assert(err, gocheck.NotNil)
 }

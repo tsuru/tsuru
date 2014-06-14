@@ -42,26 +42,10 @@ func executor() exec.Executor {
 	return execut
 }
 
-func authorizeUrl() string {
-	info, err := schemeInfo()
-	if err == nil {
-		data := info["data"].(map[string]interface{})
-		url := data["authorizeUrl"].(string)
-		if url != "" {
-			return url
-		}
-	}
-	return ""
-}
-
-func port() string {
-	info, err := schemeInfo()
-	if err == nil {
-		data := info["data"].(map[string]interface{})
-		p := data["port"].(string)
-		if p != "" {
-			return fmt.Sprintf(":%s", p)
-		}
+func port(schemeData map[string]string) string {
+	p := schemeData["port"]
+	if p != "" {
+		return fmt.Sprintf(":%s", p)
 	}
 	return ":0"
 }
@@ -109,9 +93,10 @@ func callback(redirectUrl string, finish chan bool) http.HandlerFunc {
 	}
 }
 
-func oauthLogin(context *Context, client *Client) error {
+func (c *login) oauthLogin(context *Context, client *Client) error {
+	schemeData := c.getScheme().Data
 	finish := make(chan bool)
-	l, err := net.Listen("tcp", port())
+	l, err := net.Listen("tcp", port(schemeData))
 	if err != nil {
 		return err
 	}
@@ -120,7 +105,7 @@ func oauthLogin(context *Context, client *Client) error {
 		return err
 	}
 	redirectUrl := fmt.Sprintf("http://localhost:%s", port)
-	authUrl := strings.Replace(authorizeUrl(), "__redirect_url__", redirectUrl, 1)
+	authUrl := strings.Replace(schemeData["authorizeUrl"], "__redirect_url__", redirectUrl, 1)
 	http.HandleFunc("/", callback(redirectUrl, finish))
 	server := &http.Server{}
 	go server.Serve(l)

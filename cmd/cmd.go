@@ -77,7 +77,13 @@ func (m *Manager) Register(command Command) {
 	if m.Commands == nil {
 		m.Commands = make(map[string]Command)
 	}
-	name := command.Info().Name
+	var name string
+	namedCmd, ok := command.(NamedCommand)
+	if ok {
+		name = namedCmd.Name()
+	} else {
+		name = command.Info().Name
+	}
 	_, found := m.Commands[name]
 	if found {
 		panic(fmt.Sprintf("command already registered: %s", name))
@@ -171,6 +177,11 @@ func (m *Manager) finisher() exiter {
 type Command interface {
 	Info() *Info
 	Run(context *Context, client *Client) error
+}
+
+type NamedCommand interface {
+	Command
+	Name() string
 }
 
 type FlaggedCommand interface {
