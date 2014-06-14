@@ -13,7 +13,6 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
-	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
@@ -38,7 +37,6 @@ func (s *S) TestAppIsAvailableHandlerShouldReturnErrorWhenAppStatusIsnotStarted(
 		Name:     "someapp",
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
-		Units:    []app.Unit{{Name: "someapp/0", Type: "django", State: provision.StatusBuilding.String()}},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -57,12 +55,13 @@ func (s *S) TestAppIsAvailableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c
 		Name:     "someapp",
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
-		Units:    []app.Unit{{Name: "someapp/0", Type: "django", State: provision.StatusStarted.String()}},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs(a.Name).DropCollection()
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -77,7 +76,6 @@ func (s *S) TestDeployHandler(c *gocheck.C) {
 		Name:     "otherapp",
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
-		Units:    []app.Unit{{Name: "i-0800", State: "started"}},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -104,7 +102,6 @@ func (s *S) TestDeployArchiveURL(c *gocheck.C) {
 		Name:     "otherapp",
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
-		Units:    []app.Unit{{Name: "i-0800", State: "started"}},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -130,7 +127,6 @@ func (s *S) TestDeployWithCommit(c *gocheck.C) {
 		Name:     "otherapp",
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
-		Units:    []app.Unit{{Name: "i-0800", State: "started"}},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -160,7 +156,6 @@ func (s *S) TestCloneRepositoryShouldIncrementDeployNumberOnApp(c *gocheck.C) {
 		Name:     "otherapp",
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
-		Units:    []app.Unit{{Name: "i-0800", State: "started"}},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -228,22 +223,23 @@ func (s *S) TestAppList(c *gocheck.C) {
 	app1 := app.App{
 		Name:  "app1",
 		Teams: []string{s.team.Name},
-		Units: []app.Unit{{Name: "app1/0", Ip: "10.10.10.10"}},
 	}
 	err := s.conn.Apps().Insert(app1)
 	c.Assert(err, gocheck.IsNil)
+	s.provisioner.Provision(&app1)
+	defer s.provisioner.Destroy(&app1)
 	defer s.conn.Apps().Remove(bson.M{"name": app1.Name})
 	defer s.conn.Logs(app1.Name).DropCollection()
 	app2 := app.App{
 		Name:  "app2",
 		Teams: []string{s.team.Name},
-		Units: []app.Unit{{Name: "app2/0"}},
 	}
 	err = s.conn.Apps().Insert(app2)
 	c.Assert(err, gocheck.IsNil)
+	s.provisioner.Provision(&app2)
+	defer s.provisioner.Destroy(&app2)
 	defer s.conn.Apps().Remove(bson.M{"name": app2.Name})
 	defer s.conn.Logs(app2.Name).DropCollection()
-	expected := []app.App{app1, app2}
 	request, err := http.NewRequest("GET", "/apps/", nil)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -256,12 +252,11 @@ func (s *S) TestAppList(c *gocheck.C) {
 	apps := []app.App{}
 	err = json.Unmarshal(body, &apps)
 	c.Assert(err, gocheck.IsNil)
+	expected := []app.App{app1, app2}
 	c.Assert(len(apps), gocheck.Equals, len(expected))
 	for i, app := range apps {
 		c.Assert(app.Name, gocheck.DeepEquals, expected[i].Name)
-		if app.Units[0].Ip != "" {
-			c.Assert(app.Units[0].Ip, gocheck.Equals, "10.10.10.10")
-		}
+		c.Assert(app.Units(), gocheck.DeepEquals, expected[i].Units())
 	}
 	action := testing.Action{Action: "app-list", User: s.user.Email}
 	c.Assert(action, testing.IsRecorded)
@@ -321,9 +316,6 @@ func (s *S) TestDelete(c *gocheck.C) {
 		Name:     "myapptodelete",
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
-		Units: []app.Unit{
-			{Ip: "10.10.10.10", Machine: 1},
-		},
 	}
 	err := app.CreateApp(myApp, s.user)
 	c.Assert(err, gocheck.IsNil)
@@ -694,8 +686,7 @@ func (s *S) TestCreateAppReturns400IfTheUserIsNotMemberOfAnyTeam(c *gocheck.C) {
 
 func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(c *gocheck.C) {
 	a := app.App{
-		Name:  "plainsofdawn",
-		Units: []app.Unit{{Machine: 1}},
+		Name: "plainsofdawn",
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -736,7 +727,7 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.Units, gocheck.HasLen, 3)
+	c.Assert(app.Units(), gocheck.HasLen, 4)
 	action := testing.Action{
 		Action: "add-units",
 		User:   s.user.Email,
@@ -840,9 +831,6 @@ func (s *S) TestRemoveUnits(c *gocheck.C) {
 		Name:     "velha",
 		Platform: "python",
 		Teams:    []string{s.team.Name},
-		Units: []app.Unit{
-			{Name: "velha/0"}, {Name: "velha/1"}, {Name: "velha/2"},
-		},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -860,8 +848,7 @@ func (s *S) TestRemoveUnits(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.Units, gocheck.HasLen, 1)
-	c.Assert(app.Units[0].Name, gocheck.Equals, "velha/2")
+	c.Assert(app.Units(), gocheck.HasLen, 2)
 	c.Assert(s.provisioner.GetUnits(app), gocheck.HasLen, 2)
 	action := testing.Action{
 		Action: "remove-units",
@@ -1334,13 +1321,11 @@ func (s *S) TestRunOnceHandler(c *gocheck.C) {
 		Name:     "secrets",
 		Platform: "arch enemy",
 		Teams:    []string{s.team.Name},
-		Units: []app.Unit{
-			{Name: "i-0800", State: "started", Machine: 10},
-			{Name: "i-0801", State: "started", Machine: 11},
-		},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs(a.Name).DropCollection()
 	url := fmt.Sprintf("/apps/%s/run/?:app=%s&once=true", a.Name, a.Name)
@@ -1370,10 +1355,11 @@ func (s *S) TestRunHandler(c *gocheck.C) {
 		Name:     "secrets",
 		Platform: "arch enemy",
 		Teams:    []string{s.team.Name},
-		Units:    []app.Unit{{Name: "i-0800", State: "started", Machine: 10}},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs(a.Name).DropCollection()
 	url := fmt.Sprintf("/apps/%s/run/?:app=%s", a.Name, a.Name)
@@ -1404,12 +1390,13 @@ func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *gocheck.C
 		Name:     "secrets",
 		Platform: "arch enemy",
 		Teams:    []string{s.team.Name},
-		Units:    []app.Unit{{Name: "i-0800", State: "started"}},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs(a.Name).DropCollection()
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
 	url := fmt.Sprintf("/apps/%s/run/?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
 	c.Assert(err, gocheck.IsNil)
@@ -1637,7 +1624,6 @@ func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *goch
 	a := app.App{
 		Name:  "black-dog",
 		Teams: []string{s.team.Name},
-		Units: []app.Unit{{Machine: 1}},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -1670,7 +1656,6 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *go
 	a := app.App{
 		Name:  "vigil",
 		Teams: []string{s.team.Name},
-		Units: []app.Unit{{Machine: 1}},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -1714,7 +1699,6 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfPrivateVariables(c *gocheck.C
 		Name:  "losers",
 		Teams: []string{s.team.Name},
 		Env:   original,
-		Units: []app.Unit{{Machine: 1}},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -2551,13 +2535,14 @@ func (s *S) TestBindHandlerEndpointIsDown(c *gocheck.C) {
 	a := app.App{
 		Name:  "painkiller",
 		Teams: []string{s.team.Name},
-		Units: []app.Unit{{Ip: "127.0.0.1", Machine: 1}},
 		Env:   map[string]bind.EnvVar{},
 	}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs(a.Name).DropCollection()
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -2586,13 +2571,14 @@ func (s *S) TestBindHandler(c *gocheck.C) {
 	a := app.App{
 		Name:  "painkiller",
 		Teams: []string{s.team.Name},
-		Units: []app.Unit{{Ip: "127.0.0.1", Machine: 1}},
 		Env:   map[string]bind.EnvVar{},
 	}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs(a.Name).DropCollection()
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -2720,7 +2706,7 @@ func (s *S) TestUnbindHandler(c *gocheck.C) {
 	defer gts.Close()
 	var called int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/hostname/127.0.0.1" {
+		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/hostname/10.10.10.1" {
 			atomic.StoreInt32(&called, 1)
 		}
 	}))
@@ -2742,13 +2728,14 @@ func (s *S) TestUnbindHandler(c *gocheck.C) {
 		Name:     "painkiller",
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
-		Units:    []app.Unit{{Machine: 1}},
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, gocheck.IsNil)
+	defer app.Delete(&a)
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
 	otherApp, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	defer app.Delete(&a)
 	otherApp.Env["DATABASE_HOST"] = bind.EnvVar{
 		Name:         "DATABASE_HOST",
 		Value:        "arrea",
@@ -2756,11 +2743,10 @@ func (s *S) TestUnbindHandler(c *gocheck.C) {
 		InstanceName: instance.Name,
 	}
 	otherApp.Env["MY_VAR"] = bind.EnvVar{Name: "MY_VAR", Value: "123"}
-	otherApp.Units = []app.Unit{{Ip: "127.0.0.1", Machine: 1}}
 	err = s.conn.Apps().Update(bson.M{"name": otherApp.Name}, otherApp)
 	c.Assert(err, gocheck.IsNil)
-	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, otherApp.Name,
-		instance.Name, otherApp.Name)
+	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name,
+		instance.Name, a.Name)
 	req, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -2794,7 +2780,7 @@ func (s *S) TestUnbindHandler(c *gocheck.C) {
 	action := testing.Action{
 		Action: "unbind-app",
 		User:   s.user.Email,
-		Extra:  []interface{}{"instance=" + instance.Name, "app=" + otherApp.Name},
+		Extra:  []interface{}{"instance=" + instance.Name, "app=" + a.Name},
 	}
 	c.Assert(action, testing.IsRecorded)
 }
@@ -2895,7 +2881,6 @@ func (s *S) TestRestartHandler(c *gocheck.C) {
 	a := app.App{
 		Name:  "stress",
 		Teams: []string{s.team.Name},
-		Units: []app.Unit{{Name: "i-0800", State: "started"}},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -3069,7 +3054,6 @@ func (s *S) TestStartHandler(c *gocheck.C) {
 	a := app.App{
 		Name:  "stress",
 		Teams: []string{s.team.Name},
-		Units: []app.Unit{{Name: "i-0800", State: "started"}},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -3097,7 +3081,6 @@ func (s *S) TestStopHandler(c *gocheck.C) {
 	a := app.App{
 		Name:  "stress",
 		Teams: []string{s.team.Name},
-		Units: []app.Unit{{Name: "i-0800", State: provision.StatusStarted.String()}},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
