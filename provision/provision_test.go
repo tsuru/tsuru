@@ -87,3 +87,8 @@ func (ProvisionSuite) TestUnitAvailable(c *gocheck.C) {
 		c.Check(u.Available(), gocheck.Equals, test.expected)
 	}
 }
+
+func (ProvisionSuite) TestUnitGetIp(c *gocheck.C) {
+	u := Unit{Ip: "10.3.3.1"}
+	c.Assert(u.Ip, gocheck.Equals, u.GetIp())
+}

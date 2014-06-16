@@ -48,10 +48,12 @@ type Unit struct {
 	Status  Status
 }
 
+//  GetIp returns the Unit.IP.
 func (u *Unit) GetIp() string {
 	return u.Ip
 }
 
+// Available returns true if the unit status is started or unreachable.
 func (u *Unit) Available() bool {
 	return u.Status == StatusStarted || u.Status == StatusUnreachable
 }
