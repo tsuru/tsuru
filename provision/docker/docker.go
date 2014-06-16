@@ -152,6 +152,11 @@ type container struct {
 	Name     string
 }
 
+// available returns true if the Status is Started or Unreachable.
+func (c *container) available() bool {
+	return c.Status == provision.StatusStarted.String() || c.Status == provision.StatusUnreachable.String()
+}
+
 func (c *container) getAddress() string {
 	return fmt.Sprintf("http://%s:%s", c.HostAddr, c.HostPort)
 }

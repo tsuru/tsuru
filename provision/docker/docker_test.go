@@ -970,3 +970,17 @@ func (s *S) TestUsePlatformImage(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	defer conn.Apps().Remove(bson.M{"name": "app5"})
 }
+
+func (s *S) TestContainerAvailable(c *gocheck.C) {
+	cases := map[provision.Status]bool{
+		provision.StatusStarted:     true,
+		provision.StatusUnreachable: true,
+		provision.StatusDown:        false,
+		provision.StatusStopped:     false,
+		provision.StatusBuilding:    false,
+	}
+	for status, expected := range cases {
+		cont := container{Status: status.String()}
+		c.Assert(cont.available(), gocheck.Equals, expected)
+	}
+}
