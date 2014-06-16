@@ -9,7 +9,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"labix.org/v2/mgo/bson"
-	"strings"
+	"regexp"
 )
 
 type Service struct {
@@ -62,7 +62,7 @@ func (s *Service) Delete() error {
 
 func (s *Service) getClient(endpoint string) (cli *Client, err error) {
 	if e, ok := s.Endpoint[endpoint]; ok {
-		if !strings.HasPrefix(e, "http://") {
+		if p, _ := regexp.MatchString("^https?://", e); !p {
 			e = "http://" + e
 		}
 		cli = &Client{endpoint: e, username: s.Name, password: s.Password}

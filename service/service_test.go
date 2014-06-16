@@ -87,6 +87,17 @@ func (s *S) TestGetClientWithouHTTP(c *gocheck.C) {
 	c.Assert(cli.endpoint, gocheck.Equals, "http://mysql.api.com")
 }
 
+func (s *S) TestGetClientWithHTTPS(c *gocheck.C) {
+	endpoints := map[string]string{
+		"production": "https://mysql.api.com",
+		"test":       "https://localhost:9090",
+	}
+	service := Service{Name: "redis", Endpoint: endpoints}
+	cli, err := service.getClient("production")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(cli.endpoint, gocheck.Equals, "https://mysql.api.com")
+}
+
 func (s *S) TestGetClientWithUnknownEndpoint(c *gocheck.C) {
 	endpoints := map[string]string{
 		"production": "http://mysql.api.com",
