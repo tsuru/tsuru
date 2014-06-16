@@ -42,7 +42,7 @@ func collectUnit(container container, units chan<- provision.Unit, wg *sync.Wait
 		AppName: container.AppName,
 		Type:    container.Type,
 	}
-	if container.Status == "running" {
+	if container.available() {
 		unit.Ip = container.HostAddr
 		ip, hostPort, err := container.networkInfo()
 		if err == nil &&
