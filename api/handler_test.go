@@ -459,7 +459,7 @@ func (s *HandlerSuite) TestLocksAppDuringAppRequests(c *gocheck.C) {
 	handler := func(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		a, err := app.GetByName(r.URL.Query().Get(":app"))
 		c.Assert(err, gocheck.IsNil)
-		c.Assert(a.Lock.Reason, gocheck.Equals, "/apps/my-app/")
+		c.Assert(a.Lock.Reason, gocheck.Equals, "POST /apps/my-app/")
 		c.Assert(a.Lock.Owner, gocheck.Equals, s.token.GetUserName())
 		c.Assert(a.Lock.Locked, gocheck.Equals, true)
 		c.Assert(a.Lock.AcquireDate, gocheck.NotNil)

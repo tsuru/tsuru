@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
 	"net/http"
+	"reflect"
 )
 
 const (
@@ -88,10 +89,24 @@ func authTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.Handl
 	next(w, r)
 }
 
-func appLockMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+type appLockMiddleware struct {
+	excludedHandlers []http.Handler
+}
+
+func (m *appLockMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	if r.Method == "GET" {
 		next(w, r)
 		return
+	}
+	currentHandler := context.GetDelayedHandler(r)
+	if currentHandler != nil {
+		currentHandlerPtr := reflect.ValueOf(currentHandler).Pointer()
+		for _, h := range m.excludedHandlers {
+			if reflect.ValueOf(h).Pointer() == currentHandlerPtr {
+				next(w, r)
+				return
+			}
+		}
 	}
 	appName := r.URL.Query().Get(":app")
 	if appName == "" {
@@ -110,7 +125,7 @@ func appLockMiddleware(w http.ResponseWriter, r *http.Request, next http.Handler
 			owner = t.GetUserName()
 		}
 	}
-	ok, err := app.AcquireApplicationLock(appName, owner, r.URL.Path)
+	ok, err := app.AcquireApplicationLock(appName, owner, fmt.Sprintf("%s %s", r.Method, r.URL.Path))
 	if err != nil {
 		context.AddRequestError(r, fmt.Errorf("Error trying to acquire application lock: %s", err))
 		return

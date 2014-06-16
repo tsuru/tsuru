@@ -175,7 +175,8 @@ func (s *S) TestAppLockMiddlewareDoesNothingWithoutApp(c *gocheck.C) {
 	request, err := http.NewRequest("POST", "/", nil)
 	c.Assert(err, gocheck.IsNil)
 	h, log := doHandler()
-	appLockMiddleware(recorder, request, h)
+	m := &appLockMiddleware{}
+	m.ServeHTTP(recorder, request, h)
 	c.Assert(log.called, gocheck.Equals, true)
 }
 
@@ -184,7 +185,8 @@ func (s *S) TestAppLockMiddlewareDoesNothingForGetRequests(c *gocheck.C) {
 	request, err := http.NewRequest("GET", "/?:app=abc", nil)
 	c.Assert(err, gocheck.IsNil)
 	h, log := doHandler()
-	appLockMiddleware(recorder, request, h)
+	m := &appLockMiddleware{}
+	m.ServeHTTP(recorder, request, h)
 	c.Assert(log.called, gocheck.Equals, true)
 }
 
@@ -193,14 +195,15 @@ func (s *S) TestAppLockMiddlewareReturns404IfNotApp(c *gocheck.C) {
 	request, err := http.NewRequest("POST", "/?:app=abc", nil)
 	c.Assert(err, gocheck.IsNil)
 	h, log := doHandler()
-	appLockMiddleware(recorder, request, h)
+	m := &appLockMiddleware{}
+	m.ServeHTTP(recorder, request, h)
 	c.Assert(log.called, gocheck.Equals, false)
 	httpErr := context.GetRequestError(request).(*tsuruErr.HTTP)
 	c.Assert(httpErr.Code, gocheck.Equals, http.StatusNotFound)
 	c.Assert(httpErr.Message, gocheck.Equals, "App not found")
 	request, err = http.NewRequest("POST", "/?:appname=abc", nil)
 	c.Assert(err, gocheck.IsNil)
-	appLockMiddleware(recorder, request, h)
+	m.ServeHTTP(recorder, request, h)
 	c.Assert(log.called, gocheck.Equals, false)
 	httpErr = context.GetRequestError(request).(*tsuruErr.HTTP)
 	c.Assert(httpErr.Code, gocheck.Equals, http.StatusNotFound)
@@ -224,7 +227,8 @@ func (s *S) TestAppLockMiddlewareOnLockedApp(c *gocheck.C) {
 	request, err := http.NewRequest("POST", "/?:app=my-app", nil)
 	c.Assert(err, gocheck.IsNil)
 	h, log := doHandler()
-	appLockMiddleware(recorder, request, h)
+	m := &appLockMiddleware{}
+	m.ServeHTTP(recorder, request, h)
 	c.Assert(log.called, gocheck.Equals, false)
 	httpErr := context.GetRequestError(request).(*tsuruErr.HTTP)
 	c.Assert(httpErr.Code, gocheck.Equals, http.StatusConflict)
@@ -242,7 +246,8 @@ func (s *S) TestAppLockMiddlewareLocksAndUnlocks(c *gocheck.C) {
 	request, err := http.NewRequest("POST", "/?:app=my-app", nil)
 	c.Assert(err, gocheck.IsNil)
 	called := false
-	appLockMiddleware(recorder, request, func(w http.ResponseWriter, r *http.Request) {
+	m := &appLockMiddleware{}
+	m.ServeHTTP(recorder, request, func(w http.ResponseWriter, r *http.Request) {
 		a, err := app.GetByName(request.URL.Query().Get(":app"))
 		c.Assert(err, gocheck.IsNil)
 		c.Assert(a.Lock.Locked, gocheck.Equals, true)
@@ -266,7 +271,8 @@ func (s *S) TestAppLockMiddlewareWithPreventUnlock(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	called := false
 	context.SetPreventUnlock(request)
-	appLockMiddleware(recorder, request, func(w http.ResponseWriter, r *http.Request) {
+	m := &appLockMiddleware{}
+	m.ServeHTTP(recorder, request, func(w http.ResponseWriter, r *http.Request) {
 		a, err := app.GetByName(request.URL.Query().Get(":app"))
 		c.Assert(err, gocheck.IsNil)
 		c.Assert(a.Lock.Locked, gocheck.Equals, true)
@@ -276,4 +282,18 @@ func (s *S) TestAppLockMiddlewareWithPreventUnlock(c *gocheck.C) {
 	a, err := app.GetByName(request.URL.Query().Get(":app"))
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(a.Lock.Locked, gocheck.Equals, true)
+}
+
+func (s *S) TestAppLockMiddlewareDoesNothingForExcludedHandlers(c *gocheck.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("POST", "/?:app=abc", nil)
+	c.Assert(err, gocheck.IsNil)
+	finalHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})
+	context.SetDelayedHandler(request, finalHandler)
+	h, log := doHandler()
+	m := &appLockMiddleware{
+		excludedHandlers: []http.Handler{finalHandler},
+	}
+	m.ServeHTTP(recorder, request, h)
+	c.Assert(log.called, gocheck.Equals, true)
 }

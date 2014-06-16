@@ -110,7 +110,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Put", "/apps/{app}/{team}", authorizationRequiredHandler(grantAppAccess))
 	m.Add("Delete", "/apps/{app}/{team}", authorizationRequiredHandler(revokeAppAccess))
 	m.Add("Get", "/apps/{app}/log", authorizationRequiredHandler(appLog))
-	m.Add("Post", "/apps/{app}/log", authorizationRequiredHandler(addLog))
+	logPostHandler := authorizationRequiredHandler(addLog)
+	m.Add("Post", "/apps/{app}/log", logPostHandler)
 
 	m.Add("Get", "/deploys", AdminRequiredHandler(deploysList))
 
@@ -164,7 +165,9 @@ func RunServer(dry bool) http.Handler {
 	n.Use(negroni.HandlerFunc(errorHandlingMiddleware))
 	n.Use(negroni.HandlerFunc(setVersionHeadersMiddleware))
 	n.Use(negroni.HandlerFunc(authTokenMiddleware))
-	n.Use(negroni.HandlerFunc(appLockMiddleware))
+	n.Use(&appLockMiddleware{excludedHandlers: []http.Handler{
+		logPostHandler,
+	}})
 	n.UseHandler(http.HandlerFunc(runDelayedHandler))
 
 	if !dry {
