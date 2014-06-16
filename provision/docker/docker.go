@@ -295,7 +295,7 @@ func start(app provision.App, imageId string, w io.Writer, destinationHosts ...s
 	if err != nil {
 		return nil, err
 	}
-	err = c.setStatus("running")
+	err = c.setStatus(provision.StatusStarted.String())
 	if err != nil {
 		return nil, err
 	}
