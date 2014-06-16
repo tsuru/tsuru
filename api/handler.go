@@ -5,6 +5,7 @@
 package api
 
 import (
+	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"net/http"
@@ -24,29 +25,29 @@ var (
 type Handler func(http.ResponseWriter, *http.Request) error
 
 func (fn Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	AddRequestError(r, fn(w, r))
+	context.AddRequestError(r, fn(w, r))
 }
 
 type authorizationRequiredHandler func(http.ResponseWriter, *http.Request, auth.Token) error
 
 func (fn authorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	t := GetAuthToken(r)
+	t := context.GetAuthToken(r)
 	if t == nil {
-		AddRequestError(r, tokenRequiredErr)
+		context.AddRequestError(r, tokenRequiredErr)
 	} else {
-		AddRequestError(r, fn(w, r, t))
+		context.AddRequestError(r, fn(w, r, t))
 	}
 }
 
 type AdminRequiredHandler authorizationRequiredHandler
 
 func (fn AdminRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	t := GetAuthToken(r)
+	t := context.GetAuthToken(r)
 	if t == nil {
-		AddRequestError(r, tokenRequiredErr)
+		context.AddRequestError(r, tokenRequiredErr)
 	} else if user, err := t.User(); err != nil || !user.IsAdmin() {
-		AddRequestError(r, adminRequiredErr)
+		context.AddRequestError(r, adminRequiredErr)
 	} else {
-		AddRequestError(r, fn(w, r, t))
+		context.AddRequestError(r, fn(w, r, t))
 	}
 }

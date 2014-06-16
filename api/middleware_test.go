@@ -6,7 +6,7 @@ package api
 
 import (
 	"errors"
-	"github.com/gorilla/context"
+	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	tsuruErr "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
@@ -36,12 +36,12 @@ func (s *S) TestContextClearerMiddleware(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, gocheck.IsNil)
-	context.Set(request, "key", "something")
+	context.AddRequestError(request, errors.New("Some Error"))
 	h, log := doHandler()
 	contextClearerMiddleware(recorder, request, h)
 	c.Assert(log.called, gocheck.Equals, true)
-	val := context.Get(request, "key")
-	c.Assert(val, gocheck.IsNil)
+	contErr := context.GetRequestError(request)
+	c.Assert(contErr, gocheck.IsNil)
 }
 
 func (s *S) TestFlushingWriterMiddleware(c *gocheck.C) {
@@ -82,7 +82,7 @@ func (s *S) TestErrorHandlingMiddlewareWithError(c *gocheck.C) {
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, gocheck.IsNil)
 	h, log := doHandler()
-	AddRequestError(request, errors.New("something"))
+	context.AddRequestError(request, errors.New("something"))
 	errorHandlingMiddleware(recorder, request, h)
 	c.Assert(log.called, gocheck.Equals, true)
 	c.Assert(recorder.Code, gocheck.Equals, 500)
@@ -93,7 +93,7 @@ func (s *S) TestErrorHandlingMiddlewareWithHTTPError(c *gocheck.C) {
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, gocheck.IsNil)
 	h, log := doHandler()
-	AddRequestError(request, &tsuruErr.HTTP{Code: 403, Message: "other msg"})
+	context.AddRequestError(request, &tsuruErr.HTTP{Code: 403, Message: "other msg"})
 	errorHandlingMiddleware(recorder, request, h)
 	c.Assert(log.called, gocheck.Equals, true)
 	c.Assert(recorder.Code, gocheck.Equals, 403)
@@ -106,7 +106,7 @@ func (s *S) TestAuthTokenMiddlewareWithoutToken(c *gocheck.C) {
 	h, log := doHandler()
 	authTokenMiddleware(recorder, request, h)
 	c.Assert(log.called, gocheck.Equals, true)
-	t := GetAuthToken(request)
+	t := context.GetAuthToken(request)
 	c.Assert(t, gocheck.IsNil)
 }
 
@@ -118,7 +118,7 @@ func (s *S) TestAuthTokenMiddlewareWithToken(c *gocheck.C) {
 	h, log := doHandler()
 	authTokenMiddleware(recorder, request, h)
 	c.Assert(log.called, gocheck.Equals, true)
-	t := GetAuthToken(request)
+	t := context.GetAuthToken(request)
 	c.Assert(t.GetValue(), gocheck.Equals, s.token.GetValue())
 	c.Assert(t.GetUserName(), gocheck.Equals, s.token.GetUserName())
 }
@@ -134,7 +134,7 @@ func (s *S) TestAuthTokenMiddlewareWithAppToken(c *gocheck.C) {
 	h, log := doHandler()
 	authTokenMiddleware(recorder, request, h)
 	c.Assert(log.called, gocheck.Equals, true)
-	t := GetAuthToken(request)
+	t := context.GetAuthToken(request)
 	c.Assert(t.GetValue(), gocheck.Equals, token.GetValue())
 	c.Assert(t.GetAppName(), gocheck.Equals, "abc")
 }
@@ -165,7 +165,7 @@ func (s *S) TestRunDelayedHandlerWithHandler(c *gocheck.C) {
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, gocheck.IsNil)
 	h, log := doHandler()
-	SetDelayedHandler(request, h)
+	context.SetDelayedHandler(request, h)
 	runDelayedHandler(recorder, request)
 	c.Assert(log.called, gocheck.Equals, true)
 }
@@ -195,14 +195,14 @@ func (s *S) TestAppLockMiddlewareReturns404IfNotApp(c *gocheck.C) {
 	h, log := doHandler()
 	appLockMiddleware(recorder, request, h)
 	c.Assert(log.called, gocheck.Equals, false)
-	httpErr := GetRequestError(request).(*tsuruErr.HTTP)
+	httpErr := context.GetRequestError(request).(*tsuruErr.HTTP)
 	c.Assert(httpErr.Code, gocheck.Equals, http.StatusNotFound)
 	c.Assert(httpErr.Message, gocheck.Equals, "App not found")
 	request, err = http.NewRequest("POST", "/?:appname=abc", nil)
 	c.Assert(err, gocheck.IsNil)
 	appLockMiddleware(recorder, request, h)
 	c.Assert(log.called, gocheck.Equals, false)
-	httpErr = GetRequestError(request).(*tsuruErr.HTTP)
+	httpErr = context.GetRequestError(request).(*tsuruErr.HTTP)
 	c.Assert(httpErr.Code, gocheck.Equals, http.StatusNotFound)
 	c.Assert(httpErr.Message, gocheck.Equals, "App not found")
 }
@@ -226,7 +226,7 @@ func (s *S) TestAppLockMiddlewareOnLockedApp(c *gocheck.C) {
 	h, log := doHandler()
 	appLockMiddleware(recorder, request, h)
 	c.Assert(log.called, gocheck.Equals, false)
-	httpErr := GetRequestError(request).(*tsuruErr.HTTP)
+	httpErr := context.GetRequestError(request).(*tsuruErr.HTTP)
 	c.Assert(httpErr.Code, gocheck.Equals, http.StatusConflict)
 	c.Assert(httpErr.Message, gocheck.Matches, "App locked by someone, running /app/my-app/deploy. Acquired in 2048-11-10.*")
 }

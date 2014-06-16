@@ -6,6 +6,7 @@ package api
 
 import (
 	"github.com/gorilla/mux"
+	"github.com/tsuru/tsuru/api/context"
 	"net/http"
 	"net/url"
 )
@@ -33,5 +34,5 @@ func (r *delayedRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	r.registerVars(req, match.Vars)
-	SetDelayedHandler(req, match.Handler)
+	context.SetDelayedHandler(req, match.Handler)
 }

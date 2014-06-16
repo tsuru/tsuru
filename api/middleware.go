@@ -6,7 +6,7 @@ package api
 
 import (
 	"fmt"
-	"github.com/gorilla/context"
+	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
@@ -20,45 +20,6 @@ const (
 	craneMin      = "0.5.1"
 	tsuruAdminMin = "0.3.0"
 )
-
-const (
-	tokenContextKey int = iota
-	errorContextKey
-	delayedHandlerKey
-)
-
-func GetAuthToken(r *http.Request) auth.Token {
-	if v := context.Get(r, tokenContextKey); v != nil {
-		return v.(auth.Token)
-	}
-	return nil
-}
-
-func SetAuthToken(r *http.Request, t auth.Token) {
-	context.Set(r, tokenContextKey, t)
-}
-
-func AddRequestError(r *http.Request, err error) {
-	if err == nil {
-		return
-	}
-	existingErr := context.Get(r, errorContextKey)
-	if existingErr != nil {
-		err = &errors.CompositeError{Base: existingErr.(error), Message: err.Error()}
-	}
-	context.Set(r, errorContextKey, err)
-}
-
-func GetRequestError(r *http.Request) error {
-	if v := context.Get(r, errorContextKey); v != nil {
-		return v.(error)
-	}
-	return nil
-}
-
-func SetDelayedHandler(r *http.Request, h http.Handler) {
-	context.Set(r, delayedHandlerKey, h)
-}
 
 func validate(token string, r *http.Request) (auth.Token, error) {
 	invalid := &errors.HTTP{Message: "Invalid token"}
@@ -98,7 +59,7 @@ func setVersionHeadersMiddleware(w http.ResponseWriter, r *http.Request, next ht
 
 func errorHandlingMiddleware(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	next(w, r)
-	err := GetRequestError(r)
+	err := context.GetRequestError(r)
 	if err != nil {
 		code := http.StatusInternalServerError
 		if e, ok := err.(*errors.HTTP); ok {
@@ -122,7 +83,7 @@ func authTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.Handl
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		}
-		SetAuthToken(r, t)
+		context.SetAuthToken(r, t)
 	}
 	next(w, r)
 }
@@ -140,7 +101,7 @@ func appLockMiddleware(w http.ResponseWriter, r *http.Request, next http.Handler
 		next(w, r)
 		return
 	}
-	t := GetAuthToken(r)
+	t := context.GetAuthToken(r)
 	var owner string
 	if t != nil {
 		if t.IsAppToken() {
@@ -151,7 +112,7 @@ func appLockMiddleware(w http.ResponseWriter, r *http.Request, next http.Handler
 	}
 	ok, err := app.AcquireApplicationLock(appName, owner, r.URL.Path)
 	if err != nil {
-		AddRequestError(r, fmt.Errorf("Error trying to acquire application lock: %s", err))
+		context.AddRequestError(r, fmt.Errorf("Error trying to acquire application lock: %s", err))
 		return
 	}
 	if ok {
@@ -176,12 +137,12 @@ func appLockMiddleware(w http.ResponseWriter, r *http.Request, next http.Handler
 			httpErr.Message = "Not locked anymore, please try again."
 		}
 	}
-	AddRequestError(r, httpErr)
+	context.AddRequestError(r, httpErr)
 }
 
 func runDelayedHandler(w http.ResponseWriter, r *http.Request) {
-	v := context.Get(r, delayedHandlerKey)
-	if v != nil {
-		v.(http.Handler).ServeHTTP(w, r)
+	h := context.GetDelayedHandler(r)
+	if h != nil {
+		h.ServeHTTP(w, r)
 	}
 }
