@@ -139,7 +139,7 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	time.Sleep(6e9)
 	q, err := getQueue()
-	for _, u := range a.ProvisionedUnits() {
+	for _, u := range a.Units() {
 		message, err := q.Get(1e6)
 		c.Assert(err, gocheck.IsNil)
 		c.Assert(message.Action, gocheck.Equals, app.BindService)
@@ -190,7 +190,7 @@ func (s *S) TestDeployEnqueuesBindService(c *gocheck.C) {
 	defer p.Destroy(&a)
 	q, err := getQueue()
 	c.Assert(err, gocheck.IsNil)
-	for _, u := range a.ProvisionedUnits() {
+	for _, u := range a.Units() {
 		message, err := q.Get(1e6)
 		c.Assert(err, gocheck.IsNil)
 		c.Assert(message.Action, gocheck.Equals, app.BindService)
@@ -241,7 +241,7 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 	defer p.Destroy(&a)
 	q, err := getQueue()
 	c.Assert(err, gocheck.IsNil)
-	for _, u := range a.ProvisionedUnits() {
+	for _, u := range a.Units() {
 		message, err := q.Get(1e6)
 		c.Assert(err, gocheck.IsNil)
 		c.Assert(message.Action, gocheck.Equals, app.BindService)

@@ -161,7 +161,7 @@ var bindService = action.Action{
 		if !ok {
 			return nil, errors.New("First parameter must be DeployOptions")
 		}
-		for _, u := range opts.App.ProvisionedUnits() {
+		for _, u := range opts.App.Units() {
 			msg := queue.Message{
 				Action: app.BindService,
 				Args:   []string{opts.App.GetName(), u.Name},

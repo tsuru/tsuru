@@ -237,7 +237,7 @@ func (s *S) TestBindServiceForward(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	q, err := getQueue()
 	c.Assert(err, gocheck.IsNil)
-	for _, u := range a.ProvisionedUnits() {
+	for _, u := range a.Units() {
 		message, err := q.Get(1e6)
 		c.Assert(err, gocheck.IsNil)
 		c.Assert(message.Action, gocheck.Equals, app.BindService)

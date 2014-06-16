@@ -118,7 +118,7 @@ func (a *FakeApp) GetDeploys() uint {
 	return a.deploys
 }
 
-func (a *FakeApp) ProvisionedUnits() []provision.Unit {
+func (a *FakeApp) Units() []provision.Unit {
 	return a.units
 }
 
@@ -544,7 +544,7 @@ func (p *FakeProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 	p.cmdMut.Lock()
 	p.cmds = append(p.cmds, command)
 	p.cmdMut.Unlock()
-	for _ = range app.ProvisionedUnits() {
+	for _ = range app.Units() {
 		select {
 		case output = <-p.outputs:
 			select {

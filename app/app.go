@@ -87,6 +87,7 @@ type App struct {
 	hr hookRunner
 }
 
+// Units returns the ilist of units.
 func (app *App) Units() []provision.Unit {
 	return Provisioner.Units(app)
 }
@@ -458,7 +459,7 @@ func (app *App) unbindUnit(unit *provision.Unit) error {
 
 // Available returns true if at least one of N units is started or unreachable.
 func (app *App) Available() bool {
-	for _, unit := range app.ProvisionedUnits() {
+	for _, unit := range app.Units() {
 		if unit.Available() {
 			return true
 		}
@@ -776,12 +777,6 @@ func listDeploys(app *App, s *service.Service) ([]deploy, error) {
 		return nil, err
 	}
 	return list, err
-}
-
-// ProvisionedUnits returns the internal list of units converted to
-// provision.Unit.
-func (app *App) ProvisionedUnits() []provision.Unit {
-	return app.Units()
 }
 
 // Env returns app.Env

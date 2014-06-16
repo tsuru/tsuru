@@ -78,7 +78,7 @@ type App interface {
 	// GetDeploy returns the deploys that an app has.
 	GetDeploys() uint
 
-	ProvisionedUnits() []Unit
+	Units() []Unit
 	RemoveUnit(id string) error
 
 	// Run executes the command in app units. Commands executed with this

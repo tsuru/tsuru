@@ -1893,14 +1893,10 @@ func (s *S) TestListAllDeploys(c *gocheck.C) {
 	c.Assert(deploys, gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestGetProvisionedUnits(c *gocheck.C) {
+func (s *S) TestAppUnits(c *gocheck.C) {
 	a := App{Name: "anycolor"}
-	gotUnits := a.ProvisionedUnits()
-	for i := range a.Units() {
-		if gotUnits[i].Name != a.Units()[i].Name {
-			c.Errorf("Failed at position %d: Want %q. Got %q.", i, a.Units()[i].Name, gotUnits[i].Name)
-		}
-	}
+	s.provisioner.Provision(&a)
+	c.Assert(a.Units(), gocheck.HasLen, 1)
 }
 
 func (s *S) TestAppAvailable(c *gocheck.C) {
