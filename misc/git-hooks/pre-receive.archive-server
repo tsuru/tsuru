@@ -7,7 +7,7 @@ done
 
 generate_archive() {
 	url="${ARCHIVE_SERVER_WRITE}/"
-	result=`curl -sNd "path=${1}&refid=${2}&prefix=current" --max-time 1800 $url`
+	result=`curl -sNd "path=${1}&refid=${2}" --max-time 1800 $url`
 	python <<END
 import json
 print json.loads(u"""${result}""")["id"]
