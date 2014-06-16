@@ -177,10 +177,10 @@ func (a *FakeApp) GetIp() string {
 	return ""
 }
 
-func (a *FakeApp) GetUnits() []provision.Unit {
-	units := make([]provision.Unit, len(a.units))
+func (a *FakeApp) GetUnits() []bind.Unit {
+	units := make([]bind.Unit, len(a.units))
 	for i, unit := range a.units {
-		units[i] = unit
+		units[i] = &unit
 	}
 	return units
 }

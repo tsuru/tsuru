@@ -53,12 +53,11 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 	s.conn.Apps().Database.DropDatabase()
 }
 
-func createTestApp(conn *db.Storage, name, framework string, teams []string, units []app.Unit) (app.App, error) {
+func createTestApp(conn *db.Storage, name, framework string, teams []string) (app.App, error) {
 	a := app.App{
 		Name:     name,
 		Platform: framework,
 		Teams:    teams,
-		Units:    units,
 	}
 	err := conn.Apps().Insert(&a)
 	return a, err
@@ -78,7 +77,7 @@ func (s *S) TestBindUnit(c *gocheck.C) {
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	instance.Create()
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
-	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "10.10.10.10"}})
+	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	envs, err := instance.BindUnit(&a, a.GetUnits()[0])
@@ -99,7 +98,7 @@ func (s *S) TestBindAppFailsWhenEndpointIsDown(c *gocheck.C) {
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	instance.Create()
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
-	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "10.10.10.10"}})
+	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.BindApp(&a)
@@ -120,7 +119,7 @@ func (s *S) TestBindAddsAppToTheServiceInstance(c *gocheck.C) {
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	instance.Create()
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
-	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "10.10.10.10"}})
+	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.BindApp(&a)
@@ -148,7 +147,7 @@ func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCa
 	err = instance.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
-	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "127.0.0.1"}})
+	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.BindApp(&a)
@@ -194,7 +193,7 @@ func (s *S) TestBindAppMultiUnits(c *gocheck.C) {
 	err = instance.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
-	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "127.0.0.1"}, {Ip: "128.0.0.1"}})
+	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.BindApp(&a)
@@ -228,7 +227,7 @@ func (s *S) TestBindReturnConflictIfTheAppIsAlreadyBound(c *gocheck.C) {
 	err = instance.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
-	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "127.0.0.1"}})
+	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.BindApp(&a)
@@ -244,7 +243,7 @@ func (s *S) TestBindDoesNotFailsAndStopsWhenAppDoesNotHaveAnUnit(c *gocheck.C) {
 	err := instance.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
-	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{})
+	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.BindApp(&a)
@@ -270,7 +269,7 @@ func (s *S) TestUnbindUnit(c *gocheck.C) {
 	}
 	instance.Create()
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
-	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "10.10.10.10"}})
+	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.UnbindUnit(a.GetUnits()[0])
@@ -299,7 +298,7 @@ func (s *S) TestUnbindMultiUnits(c *gocheck.C) {
 	}
 	instance.Create()
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
-	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "10.10.10.10"}, {Ip: "9.9.9.9"}})
+	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.UnbindApp(&a)
@@ -336,7 +335,7 @@ func (s *S) TestUnbindRemovesAppFromServiceInstance(c *gocheck.C) {
 	}
 	instance.Create()
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
-	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "10.10.10.10"}})
+	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.UnbindApp(&a)
@@ -380,11 +379,6 @@ func (s *S) TestUnbindRemovesEnvironmentVariableFromApp(c *gocheck.C) {
 				Value: "123",
 			},
 		},
-		Units: []app.Unit{
-			{
-				Ip: "10.10.10.10",
-			},
-		},
 	}
 	err = s.conn.Apps().Insert(&a)
 	c.Assert(err, gocheck.IsNil)
@@ -423,7 +417,7 @@ func (s *S) TestUnbindCallsTheUnbindMethodFromAPI(c *gocheck.C) {
 	err = instance.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
-	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "127.0.0.1"}})
+	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.UnbindApp(&a)
@@ -455,7 +449,7 @@ func (s *S) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBoundToTheInstance(c
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	instance.Create()
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
-	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name}, []app.Unit{{Ip: "10.10.10.10"}})
+	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.UnbindApp(&a)
