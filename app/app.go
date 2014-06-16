@@ -985,7 +985,7 @@ func (app *App) setEnvsToApp(envs []bind.EnvVar, publicOnly, useQueue bool) erro
 			Enqueue(queue.Message{Action: regenerateApprc, Args: []string{app.Name}})
 			return nil
 		}
-		go app.SerializeEnvVars()
+		return app.SerializeEnvVars()
 	}
 	return nil
 }
@@ -1017,7 +1017,7 @@ func (app *App) UnsetEnvs(variableNames []string, publicOnly bool) error {
 		if err != nil {
 			return err
 		}
-		go app.SerializeEnvVars()
+		return app.SerializeEnvVars()
 	}
 	return nil
 }
