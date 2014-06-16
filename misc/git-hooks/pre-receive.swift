@@ -1,16 +1,30 @@
 #!/bin/bash -el
 
+# This script generates a git archive from the provided commit, uploads it to
+# Swift, sends the URL to Tsuru and then delete the archive in from the
+# container.
+#
+# It depends on the "swift" command line (it can be installed with pip).
+#
+# It also depends on the following environment variables:
+#
+#   - AUTH_URL: the authentication URL (for example:
+#               https://yourswift.com/auth/v1.0)
+#   - AUTH_PARAMS: the parameters used in authentication (for example: "-K
+#                  yourkey -U youruser")
+#   - CONTAINER_NAME: name of the container where the script will store the
+#                     archives
+#   - TSURU_HOST: URL to the Tsuru API (for example: http://yourtsuru:8080)
+#   - TSURU_TOKEN: the token to communicate with the API (generated with `tsr
+#                  token`, in the server).
+
 while read oldrev newrev refname
 do
         COMMIT=${newrev}
 done
 
-AUTH_URL=https://yourswift.com/auth/v1.0
-AUTH_PARAMS="-K yourkey -U youruser"
-
 APP_DIR=${PWD##*/}
 APP_NAME=${APP_DIR/.git/}
-CONTAINER_NAME=yourbucket
 UUID=`python -c 'import uuid; print uuid.uuid4().hex'`
 ARCHIVE_FILE_NAME=${APP_NAME}_${COMMIT}_${UUID}.tar.gz
 git archive --format=tar.gz -o /tmp/$ARCHIVE_FILE_NAME $COMMIT

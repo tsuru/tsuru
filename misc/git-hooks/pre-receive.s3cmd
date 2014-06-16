@@ -1,5 +1,18 @@
 #!/bin/bash -el
 
+# This script generates a git archive from the provided commit, uploads it to
+# S3, sends the URL to Tsuru and then delete the archive in from the
+# bucket.
+#
+# It depends on the "s3cmd" command line, previously configured.
+#
+# It also depends on the following environment variables:
+#
+#   - BUCKET_NAME: name of the bucket where the script will store the archives
+#   - TSURU_HOST: URL to the Tsuru API (for example: http://yourtsuru:8080)
+#   - TSURU_TOKEN: the token to communicate with the API (generated with `tsr
+#                  token`, in the server).
+
 while read oldrev newrev refname
 do
         COMMIT=${newrev}
@@ -7,7 +20,6 @@ done
 
 APP_DIR=${PWD##*/}
 APP_NAME=${APP_DIR/.git/}
-BUCKET_NAME=yourbucket
 UUID=`python -c 'import uuid; print uuid.uuid4().hex'`
 ARCHIVE_FILE_NAME=${APP_NAME}_${COMMIT}_${UUID}.tar.gz
 git archive --format=tar.gz -o /tmp/$ARCHIVE_FILE_NAME $COMMIT

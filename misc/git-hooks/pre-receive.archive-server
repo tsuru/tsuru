@@ -1,5 +1,20 @@
 #!/bin/bash -el
 
+# This script uses the archive-server (https://github.com/tsuru/archive-server)
+# to generate archives and deploy applications using them.
+#
+# It depends on the following environment variables:
+#
+#   - ARCHIVE_SERVER_READ: the base URL that will be sent to the tsuru server,
+#                          is a public URL that will be used to serve the
+#                          archive (for example: http://archive-server:8080)
+#   - ARCHIVE_SERVER_WRITE: the base URL that will be used to generate the
+#                           archive, it's commonly a private URL (for example:
+#                           http://127.0.0.1:8181)
+#   - TSURU_HOST: URL to the Tsuru API (for example: http://yourtsuru:8080)
+#   - TSURU_TOKEN: the token to communicate with the API (generated with `tsr
+#                  token`, in the server).
+
 while read oldrev newrev refname
 do
 	COMMIT=${newrev}
