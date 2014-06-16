@@ -253,3 +253,27 @@ func (s *S) TestAppLockMiddlewareLocksAndUnlocks(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(a.Lock.Locked, gocheck.Equals, false)
 }
+
+func (s *S) TestAppLockMiddlewareWithPreventUnlock(c *gocheck.C) {
+	myApp := app.App{
+		Name: "my-app",
+	}
+	err := s.conn.Apps().Insert(myApp)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": myApp.Name})
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("POST", "/?:app=my-app", nil)
+	c.Assert(err, gocheck.IsNil)
+	called := false
+	context.SetPreventUnlock(request)
+	appLockMiddleware(recorder, request, func(w http.ResponseWriter, r *http.Request) {
+		a, err := app.GetByName(request.URL.Query().Get(":app"))
+		c.Assert(err, gocheck.IsNil)
+		c.Assert(a.Lock.Locked, gocheck.Equals, true)
+		called = true
+	})
+	c.Assert(called, gocheck.Equals, true)
+	a, err := app.GetByName(request.URL.Query().Get(":app"))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(a.Lock.Locked, gocheck.Equals, true)
+}

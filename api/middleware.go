@@ -116,7 +116,9 @@ func appLockMiddleware(w http.ResponseWriter, r *http.Request, next http.Handler
 		return
 	}
 	if ok {
-		defer app.ReleaseApplicationLock(appName)
+		if !context.IsPreventUnlock(r) {
+			defer app.ReleaseApplicationLock(appName)
+		}
 		next(w, r)
 		return
 	}

@@ -15,6 +15,7 @@ const (
 	tokenContextKey int = iota
 	errorContextKey
 	delayedHandlerKey
+	preventUnlockKey
 )
 
 func Clear(r *http.Request) {
@@ -60,4 +61,15 @@ func GetDelayedHandler(r *http.Request) http.Handler {
 		return v.(http.Handler)
 	}
 	return nil
+}
+
+func SetPreventUnlock(r *http.Request) {
+	context.Set(r, preventUnlockKey, true)
+}
+
+func IsPreventUnlock(r *http.Request) bool {
+	if v := context.Get(r, preventUnlockKey); v != nil {
+		return v.(bool)
+	}
+	return false
 }
