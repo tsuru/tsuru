@@ -6,7 +6,6 @@ package service
 
 import (
 	stderrors "errors"
-	"fmt"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"
@@ -133,17 +132,11 @@ var addAppToServiceInstance = action.Action{
 		if !ok {
 			log.Error("Second parameter must be a ServiceInstance.")
 		}
-		a := ctx.Params[0].(bind.App)
-		//a, ok := ctx.Params[0].(bind.App)
+		a, ok := ctx.Params[0].(bind.App)
 		if !ok {
-			fmt.Println("aaa")
 			log.Error("First parameter must be a bind.App.")
 		}
-		fmt.Printf("#%v", a, ctx.Params[0])
-		err := si.RemoveApp(a.GetName())
-		if err != nil {
-			fmt.Println("aaaaa", err)
-		}
+		si.RemoveApp(a.GetName())
 		if err := si.update(); err != nil {
 			log.Errorf("Could not remove app from service instance: %s", err.Error())
 		}

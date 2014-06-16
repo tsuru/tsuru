@@ -80,6 +80,8 @@ func (s *S) TestBindUnit(c *gocheck.C) {
 	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	app.Provisioner.Provision(&a)
+	defer app.Provisioner.Destroy(&a)
 	envs, err := instance.BindUnit(&a, a.GetUnits()[0])
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
@@ -101,6 +103,8 @@ func (s *S) TestBindAppFailsWhenEndpointIsDown(c *gocheck.C) {
 	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	app.Provisioner.Provision(&a)
+	defer app.Provisioner.Destroy(&a)
 	err = instance.BindApp(&a)
 	c.Assert(err, gocheck.NotNil)
 }
@@ -150,6 +154,8 @@ func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCa
 	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	app.Provisioner.Provision(&a)
+	defer app.Provisioner.Destroy(&a)
 	err = instance.BindApp(&a)
 	c.Assert(err, gocheck.IsNil)
 	newApp, err := app.GetByName(a.Name)
@@ -196,6 +202,9 @@ func (s *S) TestBindAppMultiUnits(c *gocheck.C) {
 	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	app.Provisioner.Provision(&a)
+	defer app.Provisioner.Destroy(&a)
+	app.Provisioner.AddUnits(&a, 1)
 	err = instance.BindApp(&a)
 	c.Assert(err, gocheck.IsNil)
 	ok := make(chan bool)
@@ -272,6 +281,8 @@ func (s *S) TestUnbindUnit(c *gocheck.C) {
 	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	app.Provisioner.Provision(&a)
+	defer app.Provisioner.Destroy(&a)
 	err = instance.UnbindUnit(a.GetUnits()[0])
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
@@ -301,6 +312,9 @@ func (s *S) TestUnbindMultiUnits(c *gocheck.C) {
 	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	app.Provisioner.Provision(&a)
+	defer app.Provisioner.Destroy(&a)
+	app.Provisioner.AddUnits(&a, 1)
 	err = instance.UnbindApp(&a)
 	c.Assert(err, gocheck.IsNil)
 	ok := make(chan bool, 1)
@@ -399,7 +413,7 @@ func (s *S) TestUnbindRemovesEnvironmentVariableFromApp(c *gocheck.C) {
 func (s *S) TestUnbindCallsTheUnbindMethodFromAPI(c *gocheck.C) {
 	var called int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/hostname/127.0.0.1" {
+		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/hostname/10.10.10.1" {
 			atomic.StoreInt32(&called, 1)
 		}
 	}))
@@ -420,6 +434,8 @@ func (s *S) TestUnbindCallsTheUnbindMethodFromAPI(c *gocheck.C) {
 	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	app.Provisioner.Provision(&a)
+	defer app.Provisioner.Destroy(&a)
 	err = instance.UnbindApp(&a)
 	c.Assert(err, gocheck.IsNil)
 	ch := make(chan bool)
