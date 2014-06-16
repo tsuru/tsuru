@@ -173,36 +173,6 @@ func (s *S) TestCollectStatusFixContainer(c *gocheck.C) {
 	c.Assert(cont.HostPort, gocheck.Equals, "9999")
 }
 
-func (s *S) TestCollectStatusForDownUnit(c *gocheck.C) {
-	coll := collection()
-	defer coll.Close()
-	err := coll.Insert(
-		container{
-			ID:       "9930c24f1c6f",
-			AppName:  "make-up",
-			Type:     "python",
-			Status:   "error",
-			HostAddr: "127.0.0.1",
-		},
-	)
-	c.Assert(err, gocheck.IsNil)
-	defer coll.RemoveAll(bson.M{"appname": "make-up"})
-	expected := []provision.Unit{
-		{
-			Name:    "9930c24f1c6f",
-			AppName: "make-up",
-			Type:    "python",
-			Status:  provision.StatusDown,
-		},
-	}
-	var p dockerProvisioner
-	units, err := p.CollectStatus()
-	c.Assert(err, gocheck.IsNil)
-	sortUnits(units)
-	sortUnits(expected)
-	c.Assert(units, gocheck.DeepEquals, expected)
-}
-
 func (s *S) TestProvisionCollectStatusEmpty(c *gocheck.C) {
 	coll := collection()
 	defer coll.Close()

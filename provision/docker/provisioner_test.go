@@ -809,7 +809,7 @@ func (s *S) TestProvisionerUnitsStatus(c *gocheck.C) {
 			ID:       "9930c24f1c4j",
 			AppName:  app.Name,
 			Type:     "python",
-			Status:   "error",
+			Status:   provision.StatusDown.String(),
 			IP:       "127.0.0.4",
 			HostPort: "9025",
 		},
