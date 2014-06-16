@@ -41,13 +41,11 @@ const (
 // Unit represents a provision unit. Can be a machine, container or anything
 // IP-addressable.
 type Unit struct {
-	Name       string
-	AppName    string
-	Type       string
-	InstanceId string
-	Machine    int
-	Ip         string
-	Status     Status
+	Name    string
+	AppName string
+	Type    string
+	Ip      string
+	Status  Status
 }
 
 func (u *Unit) GetIp() string {

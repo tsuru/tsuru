@@ -24,7 +24,6 @@ func getFakeUnits(apps []string) []provision.Unit {
 			Type:    "python",
 			Ip:      fmt.Sprintf("10.10.%d.%d", i%255, i+1),
 			Status:  provision.StatusStarted,
-			Machine: i + 1,
 		}
 	}
 	return units

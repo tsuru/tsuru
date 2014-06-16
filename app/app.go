@@ -360,14 +360,9 @@ func (app *App) AddUnits(n uint) error {
 	return err
 }
 
-// RemoveUnit removes a unit by its InstanceId or Name.
-//
-// Will search first by InstanceId, if no instance is found, then tries to
-// search using the unit name, then calls the removal function from provisioner
-//
-// Returns an error in case of failure.
-func (app *App) RemoveUnit(id string) error {
-	unit, _, err := app.findUnitByID(id)
+// RemoveUnit removes a unit by its Name.
+func (app *App) RemoveUnit(name string) error {
+	unit, err := app.findUnitByName(name)
 	if err != nil {
 		return err
 	}
@@ -377,26 +372,14 @@ func (app *App) RemoveUnit(id string) error {
 	return app.unbindUnit(unit)
 }
 
-// findUnitByID searchs first by InstanceId, if no instance is found, then tries to
-// search using the unit name.
-// It returns the Unit instance and its index inside the the app.Units list.
-// An error might be returned in case of failure.
-func (app *App) findUnitByID(id string) (*provision.Unit, int, error) {
-	var (
-		unit provision.Unit
-		i    int
-		u    provision.Unit
-	)
-	for i, u = range app.Units() {
-		if u.InstanceId == id || u.Name == id {
-			unit = u
-			break
+// findUnitByName searchs unit by name.
+func (app *App) findUnitByName(name string) (*provision.Unit, error) {
+	for _, u := range app.Units() {
+		if u.Name == name {
+			return &u, nil
 		}
 	}
-	if unit.Name == "" {
-		return nil, 0, stderr.New(fmt.Sprintf("Unit not found: %s.", id))
-	}
-	return &unit, i, nil
+	return nil, stderr.New(fmt.Sprintf("Unit not found: %s.", name))
 }
 
 // RemoveUnits removes n units from the app. It's a process composed of x

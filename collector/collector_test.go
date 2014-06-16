@@ -15,13 +15,11 @@ import (
 func getOutput() []provision.Unit {
 	return []provision.Unit{
 		{
-			Name:       "i-00000zz8",
-			AppName:    "umaappqq",
-			Type:       "python",
-			Machine:    1,
-			InstanceId: "i-0800",
-			Ip:         "192.168.0.11",
-			Status:     provision.StatusStarted,
+			Name:    "i-00000zz8",
+			AppName: "umaappqq",
+			Type:    "python",
+			Ip:      "192.168.0.11",
+			Status:  provision.StatusStarted,
 		},
 	}
 }

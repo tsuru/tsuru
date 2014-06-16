@@ -217,8 +217,8 @@ func (s *S) TestGetCmds(c *gocheck.C) {
 
 func (s *S) TestGetUnits(c *gocheck.C) {
 	list := []provision.Unit{
-		{"chain-lighting/0", "chain-lighting", "django", "i-0801", 1, "10.10.10.10", provision.StatusStarted},
-		{"chain-lighting/1", "chain-lighting", "django", "i-0802", 2, "10.10.10.15", provision.StatusStarted},
+		{"chain-lighting/0", "chain-lighting", "django", "10.10.10.10", provision.StatusStarted},
+		{"chain-lighting/1", "chain-lighting", "django", "10.10.10.15", provision.StatusStarted},
 	}
 	app := NewFakeApp("chain-lighting", "rush", 1)
 	p := NewFakeProvisioner()
@@ -328,13 +328,11 @@ func (s *S) TestProvision(c *gocheck.C) {
 	c.Assert(pApp.app, gocheck.DeepEquals, app)
 	c.Assert(pApp.units, gocheck.HasLen, 1)
 	expected := provision.Unit{
-		Name:       "kid-gloves/0",
-		AppName:    "kid-gloves",
-		Type:       "rush",
-		Status:     provision.StatusStarted,
-		InstanceId: "i-080",
-		Ip:         "10.10.10.1",
-		Machine:    1,
+		Name:    "kid-gloves/0",
+		AppName: "kid-gloves",
+		Type:    "rush",
+		Status:  provision.StatusStarted,
+		Ip:      "10.10.10.1",
 	}
 	unit := pApp.units[0]
 	c.Assert(unit, gocheck.DeepEquals, expected)
@@ -564,10 +562,10 @@ func (s *S) TestCollectStatus(c *gocheck.C) {
 		"grand-designs":      {app: NewFakeApp("grand-designs", "rush", 1)},
 	}
 	expected := []provision.Unit{
-		{"between-the-wheels/0", "between-the-wheels", "rush", "i-0801", 1, "10.10.10.1", "started"},
-		{"grand-designs/0", "grand-designs", "rush", "i-0802", 2, "10.10.10.2", "started"},
-		{"red-lenses/0", "red-lenses", "rush", "i-0803", 3, "10.10.10.3", "started"},
-		{"the-big-money/0", "the-big-money", "rush", "i-0804", 4, "10.10.10.4", "started"},
+		{"between-the-wheels/0", "between-the-wheels", "rush", "10.10.10.1", "started"},
+		{"grand-designs/0", "grand-designs", "rush", "10.10.10.2", "started"},
+		{"red-lenses/0", "red-lenses", "rush", "10.10.10.3", "started"},
+		{"the-big-money/0", "the-big-money", "rush", "10.10.10.4", "started"},
 	}
 	units, err := p.CollectStatus()
 	c.Assert(err, gocheck.IsNil)

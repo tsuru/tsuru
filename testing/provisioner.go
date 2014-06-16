@@ -48,11 +48,9 @@ func NewFakeApp(name, platform string, units int) *FakeApp {
 	namefmt := "%s/%d"
 	for i := 0; i < units; i++ {
 		app.units[i] = provision.Unit{
-			Name:       fmt.Sprintf(namefmt, name, i),
-			Machine:    i + 1,
-			Status:     provision.StatusStarted,
-			Ip:         fmt.Sprintf("10.10.10.%d", i+1),
-			InstanceId: fmt.Sprintf("i-0%d", i+1),
+			Name:   fmt.Sprintf(namefmt, name, i),
+			Status: provision.StatusStarted,
+			Ip:     fmt.Sprintf("10.10.10.%d", i+1),
 		}
 	}
 	return &app
@@ -412,13 +410,11 @@ func (p *FakeProvisioner) Provision(app provision.App) error {
 		unitLen: 1,
 		units: []provision.Unit{
 			{
-				Name:       app.GetName() + "/0",
-				AppName:    app.GetName(),
-				Type:       app.GetPlatform(),
-				Status:     provision.StatusStarted,
-				InstanceId: "i-080",
-				Ip:         "10.10.10.1",
-				Machine:    1,
+				Name:    app.GetName() + "/0",
+				AppName: app.GetName(),
+				Type:    app.GetPlatform(),
+				Status:  provision.StatusStarted,
+				Ip:      "10.10.10.1",
 			},
 		},
 	}
@@ -483,13 +479,11 @@ func (p *FakeProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit,
 	length := uint(len(pApp.units))
 	for i := uint(0); i < n; i++ {
 		unit := provision.Unit{
-			Name:       fmt.Sprintf("%s/%d", name, pApp.unitLen),
-			AppName:    name,
-			Type:       platform,
-			Status:     provision.StatusStarted,
-			InstanceId: fmt.Sprintf("i-08%d", length+i),
-			Ip:         fmt.Sprintf("10.10.10.%d", length+i),
-			Machine:    int(length + i),
+			Name:    fmt.Sprintf("%s/%d", name, pApp.unitLen),
+			AppName: name,
+			Type:    platform,
+			Status:  provision.StatusStarted,
+			Ip:      fmt.Sprintf("10.10.10.%d", length+i),
 		}
 		pApp.units = append(pApp.units, unit)
 		pApp.unitLen++
@@ -639,13 +633,11 @@ func (p *FakeProvisioner) CollectStatus() ([]provision.Unit, error) {
 	for i, name := range apps {
 		a := p.apps[name]
 		unit := provision.Unit{
-			Name:       name + "/0",
-			AppName:    name,
-			Type:       a.app.GetPlatform(),
-			Status:     "started",
-			InstanceId: fmt.Sprintf("i-0%d", 800+i+1),
-			Ip:         "10.10.10." + strconv.Itoa(i+1),
-			Machine:    i + 1,
+			Name:    name + "/0",
+			AppName: name,
+			Type:    a.app.GetPlatform(),
+			Status:  "started",
+			Ip:      "10.10.10." + strconv.Itoa(i+1),
 		}
 		units[i] = unit
 	}
