@@ -15,6 +15,8 @@ It can be compiled with:
 
     $ go get github.com/tsuru/tsuru/cmd/tsuru-admin
 
+To use `tsuru-admin` commands you should be an `admin user <../../config.html#admin-users>`_.
+To be an admin user you should be in an `admin team <../../config.html#admin-team>`_.
 
 Setting a target
 ================
