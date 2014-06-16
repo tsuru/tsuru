@@ -107,6 +107,8 @@ func (s *S) TestBindAppFailsWhenEndpointIsDown(c *gocheck.C) {
 }
 
 func (s *S) TestBindAddsAppToTheServiceInstance(c *gocheck.C) {
+	fakeProvisioner := app.Provisioner.(*ttesting.FakeProvisioner)
+	fakeProvisioner.PrepareOutput([]byte("exported"))
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
 	}))
@@ -128,6 +130,8 @@ func (s *S) TestBindAddsAppToTheServiceInstance(c *gocheck.C) {
 }
 
 func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCall(c *gocheck.C) {
+	fakeProvisioner := app.Provisioner.(*ttesting.FakeProvisioner)
+	fakeProvisioner.PrepareOutput([]byte("exported"))
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
 	}))
@@ -169,6 +173,9 @@ func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCa
 }
 
 func (s *S) TestBindAppMultiUnits(c *gocheck.C) {
+	fakeProvisioner := app.Provisioner.(*ttesting.FakeProvisioner)
+	fakeProvisioner.PrepareOutput([]byte("exported"))
+	fakeProvisioner.PrepareOutput([]byte("exported"))
 	var calls int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
@@ -339,6 +346,8 @@ func (s *S) TestUnbindRemovesAppFromServiceInstance(c *gocheck.C) {
 }
 
 func (s *S) TestUnbindRemovesEnvironmentVariableFromApp(c *gocheck.C) {
+	fakeProvisioner := app.Provisioner.(*ttesting.FakeProvisioner)
+	fakeProvisioner.PrepareOutput([]byte("exported"))
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
