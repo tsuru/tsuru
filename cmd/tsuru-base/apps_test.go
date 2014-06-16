@@ -30,7 +30,7 @@ var appshortflag = &gnuflag.Flag{
 
 func (s *S) TestAppInfo(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `{"name":"app1","cname":"","ip":"myapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead", "units":[{"Ip":"10.10.10.10","Name":"app1/0","State":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","State":"started"}, {"Ip":"","Name":"app1/2","State":"pending"}],"teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
+	result := `{"name":"app1","cname":"","ip":"myapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead", "units":[{"Ip":"10.10.10.10","Name":"app1/0","Status":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","Status":"started"}, {"Ip":"","Name":"app1/2","Status":"pending"}],"teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
 	expected := `Application: app1
 Repository: git@git.com:php.git
 Platform: php
@@ -86,7 +86,7 @@ Deploys: 7
 
 func (s *S) TestAppInfoEmptyUnit(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `{"name":"app1","cname":"","ip":"myapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead", "units":[{"Name":"","State":""}],"teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
+	result := `{"name":"app1","cname":"","ip":"myapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead", "units":[{"Name":"","Status":""}],"teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
 	expected := `Application: app1
 Repository: git@git.com:php.git
 Platform: php
@@ -110,7 +110,7 @@ Deploys: 7
 
 func (s *S) TestAppInfoWithoutArgs(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `{"name":"secret","ip":"secret.tsuru.io","platform":"ruby","repository":"git@git.com:php.git","state":"dead","units":[{"Ip":"10.10.10.10","Name":"secret/0","State":"started"}, {"Ip":"9.9.9.9","Name":"secret/1","State":"pending"}],"Teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
+	result := `{"name":"secret","ip":"secret.tsuru.io","platform":"ruby","repository":"git@git.com:php.git","state":"dead","units":[{"Ip":"10.10.10.10","Name":"secret/0","Status":"started"}, {"Ip":"9.9.9.9","Name":"secret/1","Status":"pending"}],"Teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
 	expected := `Application: secret
 Repository: git@git.com:php.git
 Platform: ruby
@@ -149,7 +149,7 @@ Units:
 
 func (s *S) TestAppInfoCName(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `{"name":"app1","ip":"myapp.tsuru.io","cname":"yourapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead","units":[{"Ip":"10.10.10.10","Name":"app1/0","State":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","State":"started"}, {"Ip":"","Name":"app1/2","State":"pending"}],"Teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
+	result := `{"name":"app1","ip":"myapp.tsuru.io","cname":"yourapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead","units":[{"Ip":"10.10.10.10","Name":"app1/0","Status":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","Status":"started"}, {"Ip":"","Name":"app1/2","Status":"pending"}],"Teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
 	expected := `Application: app1
 Repository: git@git.com:php.git
 Platform: php
@@ -291,7 +291,7 @@ If you don't provide the app name, tsuru will try to guess it.`,
 
 func (s *S) TestAppList(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `[{"ip":"10.10.10.10","name":"app1","ready":true,"units":[{"Name":"app1/0","State":"started"}]}]`
+	result := `[{"ip":"10.10.10.10","name":"app1","ready":true,"units":[{"Name":"app1/0","Status":"started"}]}]`
 	expected := `+-------------+-------------------------+-------------+--------+
 | Application | Units State Summary     | Address     | Ready? |
 +-------------+-------------------------+-------------+--------+
@@ -312,7 +312,7 @@ func (s *S) TestAppList(c *gocheck.C) {
 
 func (s *S) TestAppListDisplayAppsInAlphabeticalOrder(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `[{"ip":"10.10.10.11","name":"sapp","ready":true,"units":[{"Name":"sapp1/0","State":"started"}]},{"ip":"10.10.10.10","name":"app1","ready":true,"units":[{"Name":"app1/0","State":"started"}]}]`
+	result := `[{"ip":"10.10.10.11","name":"sapp","ready":true,"units":[{"Name":"sapp1/0","Status":"started"}]},{"ip":"10.10.10.10","name":"app1","ready":true,"units":[{"Name":"app1/0","Status":"started"}]}]`
 	expected := `+-------------+-------------------------+-------------+--------+
 | Application | Units State Summary     | Address     | Ready? |
 +-------------+-------------------------+-------------+--------+
@@ -334,7 +334,7 @@ func (s *S) TestAppListDisplayAppsInAlphabeticalOrder(c *gocheck.C) {
 
 func (s *S) TestAppListUnitIsntAvailable(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `[{"ip":"10.10.10.10","name":"app1","ready":true,"units":[{"Name":"app1/0","State":"pending"}]}]`
+	result := `[{"ip":"10.10.10.10","name":"app1","ready":true,"units":[{"Name":"app1/0","Status":"pending"}]}]`
 	expected := `+-------------+-------------------------+-------------+--------+
 | Application | Units State Summary     | Address     | Ready? |
 +-------------+-------------------------+-------------+--------+
@@ -355,7 +355,7 @@ func (s *S) TestAppListUnitIsntAvailable(c *gocheck.C) {
 
 func (s *S) TestAppListUnitIsAvailable(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `[{"ip":"10.10.10.10","name":"app1","ready":true,"units":[{"Name":"app1/0","State":"unreachable"}]}]`
+	result := `[{"ip":"10.10.10.10","name":"app1","ready":true,"units":[{"Name":"app1/0","Status":"unreachable"}]}]`
 	expected := `+-------------+-------------------------+-------------+--------+
 | Application | Units State Summary     | Address     | Ready? |
 +-------------+-------------------------+-------------+--------+
@@ -376,7 +376,7 @@ func (s *S) TestAppListUnitIsAvailable(c *gocheck.C) {
 
 func (s *S) TestAppListUnitWithoutName(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `[{"ip":"10.10.10.10","name":"app1","ready":true,"units":[{"Name":"","State":"pending"}]}]`
+	result := `[{"ip":"10.10.10.10","name":"app1","ready":true,"units":[{"Name":"","Status":"pending"}]}]`
 	expected := `+-------------+-------------------------+-------------+--------+
 | Application | Units State Summary     | Address     | Ready? |
 +-------------+-------------------------+-------------+--------+
@@ -397,7 +397,7 @@ func (s *S) TestAppListUnitWithoutName(c *gocheck.C) {
 
 func (s *S) TestAppListNotReady(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `[{"ip":"10.10.10.10","name":"app1","ready":false,"units":[{"Name":"","State":"pending"}]}]`
+	result := `[{"ip":"10.10.10.10","name":"app1","ready":false,"units":[{"Name":"","Status":"pending"}]}]`
 	expected := `+-------------+-------------------------+-------------+--------+
 | Application | Units State Summary     | Address     | Ready? |
 +-------------+-------------------------+-------------+--------+
@@ -418,7 +418,7 @@ func (s *S) TestAppListNotReady(c *gocheck.C) {
 
 func (s *S) TestAppListCName(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `[{"ip":"10.10.10.10","cname":"app1.tsuru.io","name":"app1","ready":true,"units":[{"Name":"app1/0","State":"started"}]}]`
+	result := `[{"ip":"10.10.10.10","cname":"app1.tsuru.io","name":"app1","ready":true,"units":[{"Name":"app1/0","Status":"started"}]}]`
 	expected := `+-------------+-------------------------+----------------------------+--------+
 | Application | Units State Summary     | Address                    | Ready? |
 +-------------+-------------------------+----------------------------+--------+
@@ -740,11 +740,11 @@ func (s *S) TestAppStartIsAFlaggedCommand(c *gocheck.C) {
 }
 
 func (s *S) TestUnitAvailable(c *gocheck.C) {
-	u := &unit{State: "unreachable"}
+	u := &unit{Status: "unreachable"}
 	c.Assert(u.Available(), gocheck.Equals, true)
-	u = &unit{State: "started"}
+	u = &unit{Status: "started"}
 	c.Assert(u.Available(), gocheck.Equals, true)
-	u = &unit{State: "down"}
+	u = &unit{Status: "down"}
 	c.Assert(u.Available(), gocheck.Equals, false)
 }
 

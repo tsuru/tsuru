@@ -58,13 +58,13 @@ func (c *AppInfo) Run(context *cmd.Context, client *cmd.Client) error {
 }
 
 type unit struct {
-	Name  string
-	Ip    string
-	State string
+	Name   string
+	Ip     string
+	Status string
 }
 
 func (u *unit) Available() bool {
-	return u.State == "started" || u.State == "unreachable"
+	return u.Status == "started" || u.Status == "unreachable"
 }
 
 type app struct {
@@ -108,7 +108,7 @@ Deploys: %d
 	units.Headers = cmd.Row([]string{"Unit", "State"})
 	for _, unit := range a.Units {
 		if unit.Name != "" {
-			units.AddRow(cmd.Row([]string{unit.Name, unit.State}))
+			units.AddRow(cmd.Row([]string{unit.Name, unit.Status}))
 		}
 	}
 	args := []interface{}{a.Name, a.Repository, a.Platform, teams, a.Addr(), a.Owner, a.Deploys}
