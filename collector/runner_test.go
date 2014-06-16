@@ -18,8 +18,7 @@ var runningApps = []string{"caravan", "bu2b", "carnies"}
 
 func createApp(conn *db.Storage, name, state string) {
 	a := app.App{
-		Name:  name,
-		Units: []app.Unit{{State: state}},
+		Name: name,
 	}
 	err := conn.Apps().Insert(&a)
 	if err != nil {
