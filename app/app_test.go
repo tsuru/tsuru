@@ -2073,7 +2073,6 @@ func (s *S) TestDeployAppSaveDeployErrorData(c *gocheck.C) {
 		Name:     "testErrorApp",
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
-		Units:    []Unit{{Name: "i-0800", State: "started"}},
 	}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
