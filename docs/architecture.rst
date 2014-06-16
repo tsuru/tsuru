@@ -17,10 +17,9 @@ provisioners
 
 The provisioner is responsible for provision the `units`.
 
-There is two provisioners:
+There is only one supported provisioner right now:
 
 * docker
-* juju
 
 routers
 -------

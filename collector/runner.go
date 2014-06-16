@@ -53,7 +53,7 @@ func Run(dryMode bool) {
 		provisioner, err := config.GetString("provisioner")
 		if err != nil {
 			fmt.Println("Warning: configuration didn't declare a provisioner, using default provisioner.")
-			provisioner = "juju"
+			provisioner = "docker"
 		}
 		app.Provisioner, err = provision.Get(provisioner)
 		if err != nil {

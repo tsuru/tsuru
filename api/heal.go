@@ -16,7 +16,7 @@ import (
 func getProvisioner() (string, error) {
 	provisioner, err := config.GetString("provisioner")
 	if provisioner == "" {
-		provisioner = "juju"
+		provisioner = "docker"
 	}
 	return provisioner, err
 }

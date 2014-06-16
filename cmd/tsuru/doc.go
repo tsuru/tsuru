@@ -291,8 +291,8 @@ Usage:
 	% tsuru app-create <app-name> <platform>
 
 app-create will create a new app using the given name and platform. For tsuru,
-a platform is a Juju charm. To check the available platforms, use the command
-"platform-list".
+a platform is provisioner dependent. To check the available platforms, use the
+command "platform-list" and to add a platform use the command "platform-add".
 
 In order to create an app, you need to be member of at least one team. All
 teams that you are member (see "tsuru team-list") will be able to access the
