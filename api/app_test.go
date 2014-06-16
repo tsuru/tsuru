@@ -1633,6 +1633,7 @@ func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromAppWithAppToken(c *goche
 }
 
 func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *gocheck.C) {
+	s.provisioner.PrepareOutput([]byte("exported"))
 	a := app.App{
 		Name:  "black-dog",
 		Teams: []string{s.team.Name},
@@ -1665,6 +1666,7 @@ func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *goch
 }
 
 func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *gocheck.C) {
+	s.provisioner.PrepareOutput([]byte("exported"))
 	a := app.App{
 		Name:  "vigil",
 		Teams: []string{s.team.Name},
@@ -1700,6 +1702,7 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *go
 }
 
 func (s *S) TestSetEnvHandlerShouldNotChangeValueOfPrivateVariables(c *gocheck.C) {
+	s.provisioner.PrepareOutput([]byte("exported"))
 	original := map[string]bind.EnvVar{
 		"DATABASE_HOST": {
 			Name:   "DATABASE_HOST",
@@ -2594,6 +2597,7 @@ func (s *S) TestBindHandler(c *gocheck.C) {
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
+	s.provisioner.PrepareOutput([]byte("exported"))
 	err = bindServiceInstance(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
@@ -2710,6 +2714,7 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *goche
 }
 
 func (s *S) TestUnbindHandler(c *gocheck.C) {
+	s.provisioner.PrepareOutput([]byte("exported"))
 	h := testHandler{}
 	gts := testing.StartGandalfTestServer(&h)
 	defer gts.Close()
