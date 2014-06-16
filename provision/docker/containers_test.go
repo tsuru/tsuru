@@ -232,3 +232,57 @@ func (s *S) TestRebalanceContainers(c *gocheck.C) {
 	c.Assert(len(c2), gocheck.Equals, 2)
 	testing.CleanQ("tsuru-app")
 }
+
+func (s *S) TestAppLocker(c *gocheck.C) {
+	appName := "myapp"
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	appDB := &app.App{Name: appName}
+	defer conn.Apps().Remove(bson.M{"name": appName})
+	err = conn.Apps().Insert(appDB)
+	c.Assert(err, gocheck.IsNil)
+	locker := &appLocker{}
+	hasLock := locker.lock(appName)
+	c.Assert(hasLock, gocheck.Equals, true)
+	c.Assert(locker.refCount[appName], gocheck.Equals, 1)
+	appDB, err = app.GetByName(appName)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(appDB.Lock.Locked, gocheck.Equals, true)
+	c.Assert(appDB.Lock.Owner, gocheck.Equals, app.InternalAppName)
+	c.Assert(appDB.Lock.Reason, gocheck.Equals, "container-move")
+	hasLock = locker.lock(appName)
+	c.Assert(hasLock, gocheck.Equals, true)
+	c.Assert(locker.refCount[appName], gocheck.Equals, 2)
+	locker.unlock(appName)
+	c.Assert(locker.refCount[appName], gocheck.Equals, 1)
+	appDB, err = app.GetByName(appName)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(appDB.Lock.Locked, gocheck.Equals, true)
+	locker.unlock(appName)
+	c.Assert(locker.refCount[appName], gocheck.Equals, 0)
+	appDB, err = app.GetByName(appName)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(appDB.Lock.Locked, gocheck.Equals, false)
+}
+
+func (s *S) TestAppLockerBlockOtherLockers(c *gocheck.C) {
+	appName := "myapp"
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	appDB := &app.App{Name: appName}
+	defer conn.Apps().Remove(bson.M{"name": appName})
+	err = conn.Apps().Insert(appDB)
+	c.Assert(err, gocheck.IsNil)
+	locker := &appLocker{}
+	hasLock := locker.lock(appName)
+	c.Assert(hasLock, gocheck.Equals, true)
+	c.Assert(locker.refCount[appName], gocheck.Equals, 1)
+	appDB, err = app.GetByName(appName)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(appDB.Lock.Locked, gocheck.Equals, true)
+	otherLocker := &appLocker{}
+	hasLock = otherLocker.lock(appName)
+	c.Assert(hasLock, gocheck.Equals, false)
+}
