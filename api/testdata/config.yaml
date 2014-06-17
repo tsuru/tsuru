@@ -10,14 +10,5 @@ auth:
   salt: tsuru-salt
   token-expire-days: 2
   hash-cost: 4
-juju:
-  bucket: juju-bucket
-  charms-path: /home/charms
-  units-collection: juju_units
-  elb-collection: juju_load_balancers
-  use-elb: false
-  elb-endpoint: https://elasticloadbalancing.amazonaws.com
-  elb-avail-zones:
-    - us-west-1a
 queue: fake
 admin-team: admin
