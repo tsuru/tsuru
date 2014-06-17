@@ -75,14 +75,12 @@ var reserveUserApp = action.Action{
 var insertApp = action.Action{
 	Name: "insert-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var app App
+		var app *App
 		switch ctx.Params[0].(type) {
-		case App:
-			app = ctx.Params[0].(App)
 		case *App:
-			app = *ctx.Params[0].(*App)
+			app = ctx.Params[0].(*App)
 		default:
-			return nil, errors.New("First parameter must be App or *App.")
+			return nil, errors.New("First parameter must be *App.")
 		}
 		conn, err := db.Conn()
 		if err != nil {
@@ -93,7 +91,7 @@ var insertApp = action.Action{
 		if limit, err := config.GetInt("quota:units-per-app"); err == nil {
 			app.Quota.Limit = limit
 		}
-		app.Ip, err = Provisioner.Addr(&app)
+		app.Ip, err = Provisioner.Addr(app)
 		if err != nil {
 			return nil, err
 		}
@@ -101,7 +99,7 @@ var insertApp = action.Action{
 		if mgo.IsDup(err) {
 			return nil, ErrAppAlreadyExists
 		}
-		return &app, err
+		return app, err
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.FWResult.(*App)

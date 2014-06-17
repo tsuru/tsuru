@@ -55,7 +55,7 @@ func (s *S) TestSaveNewUnitsInDatabaseName(c *gocheck.C) {
 }
 
 func (s *S) TestInsertAppForward(c *gocheck.C) {
-	app := App{Name: "conviction", Platform: "evergrey"}
+	app := &App{Name: "conviction", Platform: "evergrey"}
 	ctx := action.FWContext{
 		Params: []interface{}{app},
 	}
@@ -75,7 +75,7 @@ func (s *S) TestInsertAppForward(c *gocheck.C) {
 func (s *S) TestInsertAppForwardWithQuota(c *gocheck.C) {
 	config.Set("quota:units-per-app", 2)
 	defer config.Unset("quota:units-per-app")
-	app := App{Name: "come", Platform: "beatles"}
+	app := &App{Name: "come", Platform: "beatles"}
 	ctx := action.FWContext{
 		Params: []interface{}{app},
 	}
@@ -115,7 +115,7 @@ func (s *S) TestInsertAppForwardInvalidValue(c *gocheck.C) {
 	r, err := insertApp.Forward(ctx)
 	c.Assert(r, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "First parameter must be App or *App.")
+	c.Assert(err.Error(), gocheck.Equals, "First parameter must be *App.")
 }
 
 func (s *S) TestInsertAppDuplication(c *gocheck.C) {
