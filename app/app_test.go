@@ -975,6 +975,32 @@ func (s *S) TestSetCName(c *gocheck.C) {
 	c.Assert(app.CName, gocheck.Equals, "ktulu.mycompany.com")
 }
 
+func (s *S) TestSetCNameWithWildCard(c *gocheck.C) {
+	app := &App{Name: "ktulu"}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	s.provisioner.Provision(app)
+	defer s.provisioner.Destroy(app)
+	err = app.SetCName("*.mycompany.com")
+	c.Assert(err, gocheck.IsNil)
+	app, err = GetByName(app.Name)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.CName, gocheck.Equals, "*.mycompany.com")
+}
+
+func (s *S) TestSetCNameErrsOnInvalid(c *gocheck.C) {
+	app := &App{Name: "ktulu"}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	s.provisioner.Provision(app)
+	defer s.provisioner.Destroy(app)
+	err = app.SetCName("_ktulu.mycompany.com")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Invalid cname")
+}
+
 func (s *S) TestSetCNamePartialUpdate(c *gocheck.C) {
 	a := &App{Name: "master", Platform: "puppet"}
 	err := s.conn.Apps().Insert(a)

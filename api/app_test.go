@@ -1956,6 +1956,32 @@ func (s *S) TestSetCNameHandler(c *gocheck.C) {
 	c.Assert(action, testing.IsRecorded)
 }
 
+func (s *S) TestSetCNameHandlerAcceptsWildCard(c *gocheck.C) {
+	a := app.App{Name: "leper", Teams: []string{s.team.Name}}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs(a.Name).DropCollection()
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
+	b := strings.NewReader(`{"cname":"*.leper.secretcompany.com"}`)
+	request, err := http.NewRequest("POST", url, b)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = setCName(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	app, err := app.GetByName(a.Name)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.CName, gocheck.Equals, "*.leper.secretcompany.com")
+	action := testing.Action{
+		Action: "set-cname",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=" + app.Name, "cname=*.leper.secretcompany.com"},
+	}
+	c.Assert(action, testing.IsRecorded)
+}
+
 func (s *S) TestSetCNameHandlerAcceptsEmptyCName(c *gocheck.C) {
 	a := app.App{Name: "leper", Teams: []string{s.team.Name}, CName: "leper.secretcompany.com"}
 	err := s.conn.Apps().Insert(a)
@@ -1974,6 +2000,27 @@ func (s *S) TestSetCNameHandlerAcceptsEmptyCName(c *gocheck.C) {
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.CName, gocheck.Equals, "")
+}
+
+func (s *S) TestSetCNameHandlerErrsOnInvalidCName(c *gocheck.C) {
+	a := app.App{Name: "leper", Teams: []string{s.team.Name}}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs(a.Name).DropCollection()
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
+	b := strings.NewReader(`{"cname":"_leper.secretcompany.com"}`)
+	request, err := http.NewRequest("POST", url, b)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = setCName(recorder, request, s.token)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
+	c.Assert(e.Message, gocheck.Equals, "Invalid cname")
 }
 
 func (s *S) TestSetCNameHandlerReturnsInternalErrorIfItFailsToReadTheBody(c *gocheck.C) {
