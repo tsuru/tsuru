@@ -26,10 +26,9 @@ func (p *dockerProvisioner) CollectStatus() error {
 	}
 	for _, container := range containers {
 		containersGroup.Add(1)
-		go collectUnit(container, units, &containersGroup)
+		go collectUnit(container, &containersGroup)
 	}
 	containersGroup.Wait()
-	close(units)
 	return nil
 }
 
@@ -48,10 +47,10 @@ func collectUnit(container container, wg *sync.WaitGroup) {
 		addr := strings.Replace(container.getAddress(), "http://", "", 1)
 		conn, err := net.Dial("tcp", addr)
 		if err != nil {
-			unit.Status = provision.StatusUnreachable
+			container.Status = provision.StatusUnreachable.String()
 		} else {
 			conn.Close()
-			unit.Status = provision.StatusStarted
+			container.Status = provision.StatusStarted.String()
 		}
 	}
 }
