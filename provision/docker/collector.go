@@ -15,35 +15,27 @@ import (
 	"sync"
 )
 
-func (p *dockerProvisioner) CollectStatus() ([]provision.Unit, error) {
+func (p *dockerProvisioner) CollectStatus() error {
 	var containersGroup sync.WaitGroup
 	containers, err := listAllContainers()
 	if err != nil {
-		return nil, err
+		return err
 	}
 	if len(containers) == 0 {
-		return nil, nil
+		return nil
 	}
-	units := make(chan provision.Unit, len(containers))
-	result := buildResult(len(containers), units)
 	for _, container := range containers {
 		containersGroup.Add(1)
 		go collectUnit(container, units, &containersGroup)
 	}
 	containersGroup.Wait()
 	close(units)
-	return <-result, nil
+	return nil
 }
 
-func collectUnit(container container, units chan<- provision.Unit, wg *sync.WaitGroup) {
+func collectUnit(container container, wg *sync.WaitGroup) {
 	defer wg.Done()
-	unit := provision.Unit{
-		Name:    container.ID,
-		AppName: container.AppName,
-		Type:    container.Type,
-	}
 	if container.available() {
-		unit.Ip = container.HostAddr
 		ip, hostPort, err := container.networkInfo()
 		if err == nil &&
 			(hostPort != container.HostPort || ip != container.IP) {
@@ -61,22 +53,7 @@ func collectUnit(container container, units chan<- provision.Unit, wg *sync.Wait
 			conn.Close()
 			unit.Status = provision.StatusStarted
 		}
-		log.Debugf("collected data for [container %s] - [app %s]", container.ID, container.AppName)
-		units <- unit
 	}
-}
-
-func buildResult(maxSize int, units <-chan provision.Unit) <-chan []provision.Unit {
-	ch := make(chan []provision.Unit, 1)
-	go func() {
-		result := make([]provision.Unit, 0, maxSize)
-		for unit := range units {
-			result = append(result, unit)
-			log.Debugf("result for [container %s] - [app %s]", unit.Name, unit.AppName)
-		}
-		ch <- result
-	}()
-	return ch
 }
 
 func fixContainer(container *container, ip, port string) error {

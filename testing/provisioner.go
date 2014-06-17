@@ -11,8 +11,6 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/provision"
 	"io"
-	"sort"
-	"strconv"
 	"sync"
 	"time"
 )
@@ -618,30 +616,11 @@ func (p *FakeProvisioner) Units(app provision.App) []provision.Unit {
 	return p.apps[app.GetName()].units
 }
 
-func (p *FakeProvisioner) CollectStatus() ([]provision.Unit, error) {
+func (p *FakeProvisioner) CollectStatus() error {
 	if err := p.getError("CollectStatus"); err != nil {
-		return nil, err
+		return err
 	}
-	units := make([]provision.Unit, len(p.apps))
-	p.mut.RLock()
-	defer p.mut.RUnlock()
-	apps := make([]string, 0, len(p.apps))
-	for name := range p.apps {
-		apps = append(apps, name)
-	}
-	sort.Strings(apps)
-	for i, name := range apps {
-		a := p.apps[name]
-		unit := provision.Unit{
-			Name:    name + "/0",
-			AppName: name,
-			Type:    a.app.GetPlatform(),
-			Status:  "started",
-			Ip:      "10.10.10." + strconv.Itoa(i+1),
-		}
-		units[i] = unit
-	}
-	return units, nil
+	return nil
 }
 
 func (p *FakeProvisioner) Addr(app provision.App) (string, error) {

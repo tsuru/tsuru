@@ -553,40 +553,14 @@ func (s *S) TestExecuteComandTimeout(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, "FakeProvisioner timed out waiting for output.")
 }
 
-func (s *S) TestCollectStatus(c *gocheck.C) {
-	p := NewFakeProvisioner()
-	p.apps = map[string]provisionedApp{
-		"red-lenses":         {app: NewFakeApp("red-lenses", "rush", 1)},
-		"between-the-wheels": {app: NewFakeApp("between-the-wheels", "rush", 1)},
-		"the-big-money":      {app: NewFakeApp("the-big-money", "rush", 1)},
-		"grand-designs":      {app: NewFakeApp("grand-designs", "rush", 1)},
-	}
-	expected := []provision.Unit{
-		{"between-the-wheels/0", "between-the-wheels", "rush", "10.10.10.1", "started"},
-		{"grand-designs/0", "grand-designs", "rush", "10.10.10.2", "started"},
-		{"red-lenses/0", "red-lenses", "rush", "10.10.10.3", "started"},
-		{"the-big-money/0", "the-big-money", "rush", "10.10.10.4", "started"},
-	}
-	units, err := p.CollectStatus()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(units, gocheck.DeepEquals, expected)
-}
-
 func (s *S) TestCollectStatusPreparedFailure(c *gocheck.C) {
 	p := NewFakeProvisioner()
 	p.PrepareFailure("CollectStatus", errors.New("Failed to collect status."))
-	units, err := p.CollectStatus()
-	c.Assert(units, gocheck.IsNil)
+	err := p.CollectStatus()
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Failed to collect status.")
 }
 
-func (s *S) TestCollectStatusNoApps(c *gocheck.C) {
-	p := NewFakeProvisioner()
-	units, err := p.CollectStatus()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(units, gocheck.HasLen, 0)
-}
 func (s *S) TestAddr(c *gocheck.C) {
 	app := NewFakeApp("quick", "who", 1)
 	p := NewFakeProvisioner()

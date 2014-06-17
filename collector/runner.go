@@ -18,7 +18,7 @@ import (
 func collect(ticker <-chan time.Time) {
 	for _ = range ticker {
 		log.Debug("Collecting status from provisioner")
-		_, err := app.Provisioner.CollectStatus()
+		err := app.Provisioner.CollectStatus()
 		if err != nil {
 			log.Errorf("Failed to collect status within the provisioner: %s.", err)
 			continue

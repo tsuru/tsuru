@@ -151,7 +151,7 @@ type Provisioner interface {
 
 	// CollectStatus returns information about all provisioned units. It's used
 	// by tsuru collector when updating the status of apps in the database.
-	CollectStatus() ([]Unit, error)
+	CollectStatus() error
 
 	// Addr returns the address for an app.
 	//
