@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/tsuru/tsuru",
-	"GoVersion": "devel +9eacb9c0d810 Thu Apr 24 12:24:22 2014 -0700",
+	"GoVersion": "devel +7d2e78c502ab Sat Jun 14 16:47:40 2014 +1000",
 	"Packages": [
 		"./..."
 	],
@@ -17,6 +17,7 @@
 		},
 		{
 			"ImportPath": "code.google.com/p/goauth2/oauth",
+			"Comment": "weekly-44",
 			"Rev": "696c088491246273e92442aa66b5281e5bb34faa"
 		},
 		{
@@ -28,12 +29,9 @@
 			"Rev": "5b56f4f917c7f54e3822b9c64df54da596b63c1d"
 		},
 		{
-			"ImportPath": "github.com/flaviamissi/go-elb/aws",
-			"Rev": "cf2b00bae0a0e4444486ff232d441ba838935462"
-		},
-		{
-			"ImportPath": "github.com/flaviamissi/go-elb/elb",
-			"Rev": "cf2b00bae0a0e4444486ff232d441ba838935462"
+			"ImportPath": "github.com/codegangsta/negroni",
+			"Comment": "v0.1-4-ga13766a",
+			"Rev": "a13766a8c2572caeb14341b7de158aff2fd00fa9"
 		},
 		{
 			"ImportPath": "github.com/fsouza/go-dockerclient",
@@ -54,6 +52,7 @@
 		},
 		{
 			"ImportPath": "github.com/howeyc/fsnotify",
+			"Comment": "v0.8.13",
 			"Rev": "5102fde921d31f59c6e45d835aa01f0213aade0f"
 		},
 		{
@@ -91,28 +90,13 @@
 		},
 		{
 			"ImportPath": "labix.org/v2/mgo",
-			"Comment": "271",
+			"Comment": "275",
 			"Rev": "gustavo@niemeyer.net-20130906162000-1oo19qtbrtr6xk98"
 		},
 		{
 			"ImportPath": "launchpad.net/gnuflag",
 			"Comment": "12",
 			"Rev": "roger.peppe@canonical.com-20121003093437-zcyyw0lpvj2nifpk"
-		},
-		{
-			"ImportPath": "launchpad.net/goamz/aws",
-			"Comment": "50",
-			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
-		},
-		{
-			"ImportPath": "launchpad.net/goamz/ec2",
-			"Comment": "50",
-			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
-		},
-		{
-			"ImportPath": "launchpad.net/goamz/s3",
-			"Comment": "50",
-			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
 		},
 		{
 			"ImportPath": "launchpad.net/gocheck",
