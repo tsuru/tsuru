@@ -124,7 +124,7 @@ resources.
 Scaling
 -------
 
-The Juju_ provisioner allows you to easily add and remove units, enabling one
+The Docker_ provisioner allows you to easily add and remove units, enabling one
 to scale an application painlessly. It will take care of the application code
 replication, and services binding. There's nothing required to the developer to
 do in order to scale an application, just add a new unit and tsuru will do the
@@ -150,9 +150,10 @@ Extensible Service and Platform Support
 ---------------------------------------
 
 tsuru allows you to easily add support for new services and new platforms. For
-application platforms, it uses `Juju Charms <http://jujucharms.com/>`_, for
-services, it has an :doc:`API </services/api>` that it uses to comunicate with
-them.
+application platforms, it uses platforms based on Dockerfiles that can be
+dynamically added to Tsuru. See `Basebuilder <https://github.com/tsuru/basebuilder>`_
+for more details. For services, Tsuru defines an :doc:`API </services/api>` that
+it uses to comunicate with them.
 
 Collaboration
 -------------
@@ -174,7 +175,7 @@ Distributed and Extensible
 tsuru server is easily extensible, distributed and customizable. It has the
 concept of ``Provisioner``: a provisioner is a component that takes care of the
 orchestration (VM/container management) and provisioning. By default, it will
-deploy applications using the Juju_ provisioner, but you can easily implement
+deploy applications using the Docker_ provisioner, but you can easily implement
 your own provisioner and use whatever backend you wish.
 
 When you extend tsuru, you are able to pratically build a new PaaS in terms of
@@ -182,7 +183,7 @@ behavior of provision and orchestration, making use of the great tsuru
 structure. You change the whole tsuru workflow by implementing a new
 provisioner.
 
-.. _Juju: https://juju.ubuntu.com/
+.. _Docker: http://www.docker.com/
 
 Dev/Ops Perspective
 -------------------

@@ -7,26 +7,32 @@ with others PaaS's on the market.
 Easy Server Installation
 ------------------------
 
-It's really easy to have a running PaaS with tsuru. We provide a serie of scripts, each one built to install
-and configure the required components for each tsuru provisioner, you can check our scripts on
-`tsuru repository <https://github.com/tsuru/tsuru/tree/master/misc>`_, there are separated scripts to install each
-component, so it's easy to create your own script to configure a new provisioner or to change the configuration of
-an existing one.
+It's really easy to have a running PaaS with tsuru. We provide a serie of scripts,
+each one built to install and configure the required components for each tsuru
+provisioner, you can check our scripts on `tsuru repository
+<https://github.com/tsuru/tsuru/tree/master/misc>`_, there are separated scripts
+to install each component, so it's easy to create your own script to configure a
+new provisioner or to change the configuration of an existing one.
 
-But it's okay if you want more control and do not want to use our scripts, or want to better understand the interaction
-between tsuru components, we built `a guide <http://docs.tsuru.io/en/latest/build.html>`_ only for you.
+But it's okay if you want more control and do not want to use our scripts, or want
+to better understand the interaction between tsuru components, we built 
+`a guide <http://docs.tsuru.io/en/latest/docker.html>`_ only for you.
 
 Platforms Extensibility
 -----------------------
 
-One of tsuru main goals is to be easily extensible. The platform is one great example of accomplishment on that.
-tsuru platforms works slightly different for each provisioner. `Juju <https://juju.ubuntu.com/>`_ use `charms` for platform provisioning you can find the scripts on our `charms repository <https://github.com/globocom/charms>`_. The `Docker <http://www.docker.io/>`_ provisioner is a bit different, it has an specific image for each platform, if one wants to create a new platform, just extend tsuru/base image and follow the directory tree structure, the scripts and Dockerfile for our existing platforms images can be found on our `images repository <https://github.com/tsuru/basebuilder>`_
+One of tsuru main goals is to be easily extensible. The 
+`Docker <http://www.docker.io/>`_ provisioner has an specific image for each 
+platform, if one wants to create a new platform, just extend tsuru/base image and
+follow the directory tree structure, the scripts and Dockerfile for our existing
+platforms images can be found on our  `images repository <https://github.com/tsuru/basebuilder>`_
 
 Services Creation and Extension
 -------------------------------
 
-Most applications need a service to work properly, like a database service. tsuru provides an interface API to communicate
-with services APIs, but it doesn't manage services directly, this provides more control over the service and its management.
+Most applications need a service to work properly, like a database service. tsuru
+provides an interface API to communicate with services APIs, but it doesn't manage
+services directly, this provides more control over the service and its management.
 
 In order to create a new service you simply write an API implementing the predefined endpoints. tsuru will call when
 a user performs an action using the client, read more on the `building your service tutorial <http://docs.tsuru.io/en/latest/services/build.html>`_.
@@ -39,10 +45,9 @@ if you don't like it and want to change it, you can do it and create a new servi
 IaaS's and Provisioners
 -----------------------
 
-tsuru provides an easy way to change the application unit provisioning system and it already has two
-working provisioners, Juju, Docker.
-But the main advantage is the ease of extending the provisioning system. One can simply implement
-the Provision interface tsuru provides, configure it on your installation and start using it.
+tsuru provides an easy way to change the application unit provisioning system but
+right now it supports only Docker. One can simply implement the Provision
+interface tsuru provides, configure it on your installation and start using it.
 
 Routers
 -------

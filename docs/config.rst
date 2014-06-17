@@ -284,36 +284,6 @@ auth:oauth:callback-port
 The port used in the callback URL during the authorization step. Check docs for
 ``auth:oauth:auth-url`` for more details.
 
-
-Amazon Web Services (AWS) configuration
----------------------------------------
-
-tsuru is able to use Amazon Web Services (AWS). In order to
-be able to communicate with AWS API's, tsuru needs some settings, listed below.
-
-For more details on AWS authentication, check AWS docs:
-https://aws.amazon.com/documentation/.
-
-aws:access-key-id
-+++++++++++++++++
-
-``aws:access-key-id`` is the access key ID used by tsuru to authenticate with
-AWS API. Given that ``bucket-support`` is true, this setting is required and
-has no default value.
-
-aws:secret-access-key
-+++++++++++++++++++++
-
-``aws:secret-access-key`` is the secret access key used by tsuru to
-authenticate with AWS API. Given that ``bucket-support`` is true, this
-setting is required and has no default value.
-
-aws:ec2:endpoint
-++++++++++++++++
-
-``aws:ec2:endpoint`` is the EC2 endpoint that tsuru will call to communicate
-with ec2. It's only used for `juju` healers.
-
 queue configuration
 -------------------
 
@@ -419,219 +389,134 @@ noises on logs, to turn it on set it to true, e.g.: ``debug: true``
 Defining the provisioner
 ------------------------
 
-tsuru supports multiple provisioners. A provisioner is a Go type that satisfies
-an interface. By default, tsuru will use ``JujuProvisioner`` (identified by the
-string "juju"). To use other provisioner, that has been already registered with
-tsuru, one must define the setting ``provisioner``.
+tsuru has extensible support for provisioners. A provisioner is a Go type that
+satisfies the `provision.Provisioner` interface. By default, tsuru will use
+``DockerProvisioner`` (identified by the string "docker"), and now that's the only
+supported provisioner (Ubuntu Juju was supported in the past but its support has
+been removed from Tsuru).
 
 provisioner
 +++++++++++
 
 ``provisioner`` is the string the name of the provisioner that will be used by
-tsuru. This setting is optional and defaults to "juju".
+tsuru. This setting is optional and defaults to "docker".
 
-You can also configure the provisioner (check the next section for details on
-Juju configuration).
+Docker provisioner configuration
+--------------------------------
 
-Juju provisioner configuration
-==============================
-
-"juju" is the default provisioner used by tsuru. It's named after the `tool
-used by tsuru <https://juju.ubuntu.com/>`_ to provision and manage instances.
-It's a extended version of Juju, supporting Amazon's `Virtual Private Cloud
-(VPC) <https://aws.amazon.com/vpc/>`_ and `Elastic Load Balancing (ELB)
-<https://aws.amazon.com/elasticloadbalancing/>`_.
-
-Charms path
------------
-
-Juju describe services as `Charms <http://jujucharms.com/>`_. Each tsuru
-platform is a Juju charm. The tsuru team provides a collection of charms with
-customized hooks: https://github.com/globocom/charms. In order (for more
-details, refer to :doc:`build documentation </build>`).
-
-juju:charms-path
-++++++++++++++++
-
-``charms-path`` is the path where tsuru should look for charms when creating
-new apps. If you specify the value "/etc/juju/charms", your charms tree should
-look something like this:
-
-::
-
-    .
-    ├── centos
-    │   ├── ...
-    └── precise
-        ├── go
-        │   ├── config.yaml
-        │   ├── hooks
-        │   ...
-        │   └── metadata.yaml
-        ├── nodejs
-        │   ├── config.yaml
-        │   ├── hooks
-        │   ...
-        │   └── metadata.yaml
-        ├── python
-        │   ├── config.yaml
-        │   ├── hooks
-        │   ...
-        │   ├── metadata.yaml
-        │   └── utils
-        │       ├── circus.ini
-        │       └── nginx.conf
-        ├── rack
-        │   ├── config.yaml
-        │   ├── hooks
-        │   ...
-        │   ├── metadata.yaml
-        ├── ruby
-        │   ├── config.yaml
-        │   ├── hooks
-        │   ...
-        │   └── metadata.yaml
-        └── static
-            ├── config.yaml
-            ├── hooks
-            ...
-            └── metadata.yaml
-
-Given that you're using juju, this setting is mandatory and has no default
-value.
-
-Storing units in the database
------------------------------
-
-Juju provisioner uses the database to store information about units. It uses a
-MongoDB collection that will be located in the same database used by tsuru. One
-can set the name of this collection using the setting described below:
-
-juju:units-collection
-+++++++++++++++++++++
-
-``juju:units-collection`` defines the name of the collection that Juju
-provisioner should use to store information about units. This setting is
-required by the provisioner and has no default value.
-
-Elastic Load Balancing support
-------------------------------
-
-Juju provisioner can manage load balancers per app using Elastic Load Balancing
-(ELB) API, provided by Amazon. In order to enable Elastic Load Balancing
-support, one must set ``juju:use-elb`` to true and define other settings
-described below:
-
-juju:use-elb
-++++++++++++
-
-``juju:use-elb`` is a boolean flag that indicates whether Juju provisioner will
-use ELB. When enabled, it will create a load balancer per app, registering and
-deregistering units as they come and go, and deleting the load balancer when
-the app is removed. This setting is optional and defaults to false.
-
-Whenever ``juju:use-elb`` is defined to be true, other settings related to load
-balancing become mandatory: ``juju:elb-endpoint``, ``juju:elb-collection``,
-``juju:elb-avail-zones`` (or ``juju:elb-vpc-subnets`` and
-``juju:elb-vpc-secgroups``, see ``juju:elb-use-vpc`` for more details).
-
-juju:elb-endpoint
+docker:collection
 +++++++++++++++++
 
-``juju:elb-endpoint`` is the ELB endpoint that tsuru will use to manage load
-balancers. This setting has no default value, and is mandatory once
-``juju:use-elb`` is true. When ``juju:use-elb`` is false, the value of this
-setting is irrelevant.
+Database collection name used to store containers information.
 
-juju:elb-collection
-+++++++++++++++++++
+docker:repository-namespace
++++++++++++++++++++++++++++
 
-``juju:elb-collection`` is the name of the collection that Juju provisioner
-will use to store information about load balancers.
+TODO: see `tsuru with docker </docker>`
 
-This setting has no default value, and is mandatory once ``juju:use-elb`` is
-true. When ``juju:use-elb`` is false, the value of this setting is irrelevant.
+docker:router
++++++++++++++
 
-juju:elb-use-vpc
+TODO: see `tsuru with docker </docker>`
+
+docker:deploy-cmd
++++++++++++++++++
+
+TODO: see `tsuru with docker </docker>`
+
+docker:ssh-agent-port
++++++++++++++++++++++
+
+TODO: see `tsuru with docker </docker>`
+
+docker:segregate
 ++++++++++++++++
 
-``juju:elb-use-vpc`` is another boolean flag. It indicates whether load
-balancers should be created using an Amazon Virtual Private Cloud. When this
-setting is true, one must also define ``juju:elb-vpc-subnets`` and
-``juju:elb-vpc-secgroups``.
+TODO: see `tsuru with docker </docker>`
 
-This setting is optional, defaults to false and has no effect when
-``juju:use-elb`` is false.
+docker:scheduler:redis-server
++++++++++++++++++++++++++++++
 
-juju:elb-vpc-subnets
-++++++++++++++++++++
+TODO: see `tsuru with docker </docker>`
 
-``juju:elb-vpc-subnets`` contains a list of subnets that will be attached to
-the load balancer. This setting must be defined whenever ``juju:elb-use-vpc``
-is true. It has no default value.
+docker:scheduler:redis-prefix
++++++++++++++++++++++++++++++
 
-juju:elb-vpc-secgroups
+TODO: see `tsuru with docker </docker>`
+
+docker:run-cmd:bin
+++++++++++++++++++
+
+TODO: see `tsuru with docker </docker>`
+
+docker:run-cmd:port
++++++++++++++++++++
+
+TODO: see `tsuru with docker </docker>`
+
+docker:ssh:add-key-cmd
 ++++++++++++++++++++++
 
-``juju:elb-vpc-secgroups`` contains a list of security groups from which the
-load balancer will inherit rules. This setting must be defined whenever
-``juju:elb-use-vpc`` is true. It has no default value.
+TODO: see `tsuru with docker </docker>`
 
-juju:elb-avail-zones
-++++++++++++++++++++
+docker:ssh:public-key
++++++++++++++++++++++
 
-``juju:elb-avail-zones`` contains a list of availability zones that the load
-balancer will communicate with. This setting has no effect when
-``juju:elb-use-vpc`` is true, has no default value and must be defined whenever
-``juju:elb-use-vpc`` is false.
+TODO: see `tsuru with docker </docker>`
+
+docker:ssh:user
++++++++++++++++
+
+TODO: see `tsuru with docker </docker>`
 
 Sample file
 ===========
 
-Here is a complete example, with S3, VPC, HTTP/TLS and load balancing enabled:
+Here is a complete example:
 
 .. highlight:: yaml
 
 ::
 
-    listen: ":8080"
-    use-tls: true
-    tls:
-      cert-file: /etc/tsuru/tls/cert.pem
-      key-file: /etc/tsuru/tls/key.pem
-    host: http://10.19.2.238:8080
+    listen: "0.0.0.0:8080"
+    host: http://{{{API_HOST}}}:8080
+    admin-team: admin
+
     database:
-      url: 127.0.0.1:27017
-      name: tsuru
+      url: {{{MONGO_HOST}}}:{{{MONGO_PORT}}}
+      name: tsurudb
+
     git:
       unit-repo: /home/application/current
-      host: gandalf.tsuru.io
-      port: 8000
-      protocol: http
+      api-server: http://{{{GANDALF_HOST}}}:8000
+      rw-host: {{{GANDALF_HOST}}}
+      ro-host: {{{GANDALF_HOST}}}
+
     auth:
-      token-expire-days: 14
-    bucket-support: true
-    aws:
-      access-key-id: access-key
-      secret-access-key: s3cr3t
-      iam:
-        endpoint: https://iam.amazonaws.com/
-      s3:
-        region-name: sa-east-1
-        endpoint: https://s3.amazonaws.com
-        location-constraint: true
-        lowercase-bucket: true
-    provisioner: juju
-    queue-server: "127.0.0.1:11300"
-    admin-team: admin
-    juju:
-      charms-path: /etc/juju/charms
-      units-collection: j_units
-      use-elb: true
-      elb-endpoint: https://elasticloadbalancing.amazonaws.com
-      elb-collection: j_lbs
-      elb-use-vpc: true
-      elb-vpc-subnets:
-        - subnet-a1a1a1
-      elb-vpc-secgroups:
-        - sg-a1a1a1
+      user-registration: true
+      scheme: native
+
+    provisioner: docker
+    hipache:
+      domain: {{{HOST_NAME}}}
+    queue: redis
+    redis-queue:
+      host: localhost
+      port: 6379
+    docker:
+      collection: docker_containers
+      repository-namespace: tsuru
+      router: hipache
+      deploy-cmd: /var/lib/tsuru/deploy
+      ssh-agent-port: 4545
+      segregate: true
+      scheduler:
+        redis-server: 127.0.0.1:6379
+        redis-prefix: docker-cluster
+      run-cmd:
+        bin: /var/lib/tsuru/start
+        port: "8888"
+      ssh:
+        add-key-cmd: /var/lib/tsuru/add-key
+        public-key: /var/lib/tsuru/.ssh/id_rsa.pub
+        user: ubuntu
