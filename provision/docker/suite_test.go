@@ -82,6 +82,9 @@ func (s *S) SetUpTest(c *gocheck.C) {
 		cluster.Node{ID: "server", Address: s.server.URL()},
 	)
 	c.Assert(err, gocheck.IsNil)
+	coll := collection()
+	defer coll.Close()
+	coll.RemoveAll(nil)
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
