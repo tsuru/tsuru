@@ -69,6 +69,7 @@ func (s *S) TestInsertAppForward(c *gocheck.C) {
 	gotApp, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(gotApp.Quota, gocheck.DeepEquals, quota.Unlimited)
+	c.Assert(gotApp.Ip, gocheck.Equals, "conviction.fake-lb.tsuru.io")
 }
 
 func (s *S) TestInsertAppForwardWithQuota(c *gocheck.C) {
