@@ -20,11 +20,7 @@ import (
 	"strings"
 )
 
-const (
-	maxTry = 300
-)
-
-type cloudstackIaas struct{}
+type CloudstackIaas struct{}
 
 type NetInterface struct {
 	IpAddress string
@@ -42,7 +38,7 @@ func (cs *CloudstackVirtualMachine) GetAddress() string {
 	return cs.Nic[0].IpAddress
 }
 
-func (i *cloudstackIaas) CreateVirtualMachine(params map[string]string) (iaas.Machine, error) {
+func (i *CloudstackIaas) CreateVirtualMachine(params map[string]string) (iaas.Machine, error) {
 	url, err := buildUrl("deployVirtualMachine", params)
 	if err != nil {
 		return nil, err
@@ -97,7 +93,7 @@ func buildUrl(command string, params map[string]string) (string, error) {
 	return fmt.Sprintf("%s?%s&signature=%s", cloudstackUrl, queryString, signature), nil
 }
 
-func waitVMIsCreated(map[string]string) (*CloudstackVirtualMachine, error) {
+func waitVMIsCreated(vmStatus map[string]string) (*CloudstackVirtualMachine, error) {
 	vmJson := `{"nic": [{"ipaddress": "0.0.0.0"}]}`
 	vmJsonBuffer := bytes.NewBufferString(vmJson)
 	var vm CloudstackVirtualMachine
@@ -105,5 +101,7 @@ func waitVMIsCreated(map[string]string) (*CloudstackVirtualMachine, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &vm, nil
+	if vm.IsAvailable() {
+		return &vm, nil
+	}
 }
