@@ -23,14 +23,13 @@ const (
 )
 
 func validate(token string, r *http.Request) (auth.Token, error) {
-	invalid := &errors.HTTP{Message: "Invalid token"}
 	t, err := app.AuthScheme.Auth(token)
 	if err != nil {
-		return nil, invalid
+		return nil, fmt.Errorf("Invalid token")
 	}
 	if t.IsAppToken() {
 		if q := r.URL.Query().Get(":app"); q != "" && t.GetAppName() != q {
-			return nil, invalid
+			return nil, fmt.Errorf("App token mismatch, token for %q, request for %q", t.GetAppName(), q)
 		}
 	}
 	return t, nil
@@ -81,10 +80,10 @@ func authTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.Handl
 	if token != "" {
 		t, err := validate(token, r)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusUnauthorized)
-			return
+			log.Debugf("Ignored invalid token for %s: %s", r.URL.Path, err.Error())
+		} else {
+			context.SetAuthToken(r, t)
 		}
-		context.SetAuthToken(r, t)
 	}
 	next(w, r)
 }

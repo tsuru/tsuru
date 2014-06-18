@@ -149,8 +149,21 @@ func (s *S) TestAuthTokenMiddlewareWithIncorrectAppToken(c *gocheck.C) {
 	request.Header.Set("Authorization", "bearer "+token.GetValue())
 	h, log := doHandler()
 	authTokenMiddleware(recorder, request, h)
-	c.Assert(log.called, gocheck.Equals, false)
-	c.Assert(recorder.Code, gocheck.Equals, 401)
+	t := context.GetAuthToken(request)
+	c.Assert(t, gocheck.IsNil)
+	c.Assert(log.called, gocheck.Equals, true)
+}
+
+func (s *S) TestAuthTokenMiddlewareWithInvalidToken(c *gocheck.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/", nil)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer ifyougotozah'ha'dumyoulldie")
+	h, log := doHandler()
+	authTokenMiddleware(recorder, request, h)
+	c.Assert(log.called, gocheck.Equals, true)
+	t := context.GetAuthToken(request)
+	c.Assert(t, gocheck.IsNil)
 }
 
 func (s *S) TestRunDelayedHandlerWithoutHandler(c *gocheck.C) {

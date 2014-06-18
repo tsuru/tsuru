@@ -177,7 +177,7 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldReturnUnauthorizedI
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusUnauthorized)
-	c.Assert(recorder.Body.String(), gocheck.Equals, "You must provide the Authorization header\n")
+	c.Assert(recorder.Body.String(), gocheck.Equals, "You must provide a valid Authorization header\n")
 }
 
 func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldReturnUnauthorizedIfTheTokenIsInvalid(c *gocheck.C) {
@@ -190,7 +190,7 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldReturnUnauthorizedI
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusUnauthorized)
-	c.Assert(recorder.Body.String(), gocheck.Equals, "Invalid token\n")
+	c.Assert(recorder.Body.String(), gocheck.Equals, "You must provide a valid Authorization header\n")
 }
 
 func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldReturnTheHandlerResultIfTheTokenIsOk(c *gocheck.C) {
@@ -280,7 +280,7 @@ func (s *HandlerSuite) TestAdminRequiredHandlerShouldReturnUnauthorizedIfTheAuth
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusUnauthorized)
-	c.Assert(recorder.Body.String(), gocheck.Equals, "You must provide the Authorization header\n")
+	c.Assert(recorder.Body.String(), gocheck.Equals, "You must provide a valid Authorization header\n")
 }
 
 func (s *HandlerSuite) TestAdminRequiredHandlerShouldReturnUnauthorizedIfTheTokenIsInvalid(c *gocheck.C) {
@@ -293,7 +293,7 @@ func (s *HandlerSuite) TestAdminRequiredHandlerShouldReturnUnauthorizedIfTheToke
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusUnauthorized)
-	c.Assert(recorder.Body.String(), gocheck.Equals, "Invalid token\n")
+	c.Assert(recorder.Body.String(), gocheck.Equals, "You must provide a valid Authorization header\n")
 }
 
 func (s *HandlerSuite) TestAdminRequiredHandlerShouldReturnForbiddenIfTheUserIsNotAdmin(c *gocheck.C) {

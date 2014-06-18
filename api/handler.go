@@ -14,7 +14,7 @@ import (
 var (
 	tokenRequiredErr = &errors.HTTP{
 		Code:    http.StatusUnauthorized,
-		Message: "You must provide the Authorization header",
+		Message: "You must provide a valid Authorization header",
 	}
 	adminRequiredErr = &errors.HTTP{
 		Code:    http.StatusForbidden,
