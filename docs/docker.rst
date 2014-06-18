@@ -186,13 +186,75 @@ Installing tsuru API server
 
     sudo apt-get install tsuru-server -qqy
 
-    sudo curl http://script.cloud.tsuru.io/conf/tsuru-docker-single.conf -o /etc/tsuru/tsuru.conf
     # make sure you replace all occurrences of {{{HOST_IP}}} with the machine's
     # public IP in the /etc/tsuru/tsuru.conf file
     sudo sed -i -e 's/=no/=yes/' /etc/default/tsuru-server
     sudo start tsuru-ssh-agent
     sudo start tsuru-server-api
     sudo start tsuru-server-collector
+
+
+Now we will create an conf file to run your tsuru server.
+
+.. highlight:: bash
+
+::
+
+    sudo vim /etc/tsuru/tsuru.conf
+
+
+The basic configuration is:
+
+::
+
+    listen: "0.0.0.0:8000"
+    debug: false #if you are developing to tsuru turn it to true
+    host: http://machine-public-ip
+    auth:
+        user-registration: true
+
+
+Now we will configure git:
+
+::
+
+    git:
+        unit-repo: /home/application/current
+        api-server: http://127.0.0.1:8000
+        rw-host: gandalf-server-public-ip
+        ro-host: gandalf-server-private-ip
+
+
+Finally, we will configure docker:
+
+::
+
+    provisioner: docker
+    docker:
+        segregate: false
+        servers:
+            - http://127.0.0.1:4243 # you should configure it if segregate is false
+        router: hipache
+
+        # these confs are explained [here](http://tsuru.readthedocs.org/en/latest/config.html)
+        collection: docker_containers
+        repository-namespace: tsuru
+        deploy-cmd: /var/lib/tsuru/deploy
+        ssh-agent-port: 4545
+        scheduler:
+            redis-server: 127.0.0.1:6379
+            redis-prefix: docker-cluster
+        run-cmd:
+            bin: /var/lib/tsuru/start
+            port: "8888"
+        ssh:
+            add-key-cmd: /var/lib/tsuru/add-key
+            public-key: /var/lib/tsuru/.ssh/id_rsa.pub
+            user: ubuntu
+
+    hipache:
+        domain: tsuru-sample.com # tsuru use this to mount the app's urls
+
 
 Installing platforms
 ====================
