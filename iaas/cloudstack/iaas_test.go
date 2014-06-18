@@ -33,7 +33,7 @@ func (s *cloudstackSuite) TestCreateVirtualMachine(c *gocheck.C) {
 	}))
 	defer fakeServer.Close()
 	config.Set("cloudstack:url", fakeServer.URL)
-	var cs cloudstackIaas
+	var cs CloudstackIaas
 	params := map[string]string{"name": "test"}
 	vm, err := cs.CreateVirtualMachine(params)
 	c.Assert(err, gocheck.IsNil)

@@ -104,4 +104,5 @@ func waitVMIsCreated(vmStatus map[string]string) (*CloudstackVirtualMachine, err
 	if vm.IsAvailable() {
 		return &vm, nil
 	}
+	return &vm, nil
 }
