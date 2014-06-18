@@ -18,16 +18,16 @@ First, what you need to do is to define a relation between a pool, teams and nod
 And then, the scheduler deploys the app unit on the pool where a node is related to its team.
 
     - Pool1
-      -> team1, team2
-      -> node1
+      - team1, team2
+      - node1
 
     - Pool2
-      -> team2
-      -> node3, node4
+      - team2
+      - node3, node4
 
     - Pool3 (fallback)
-      -> <no teams>
-      -> node2
+      - <no teams>
+      - node2
 
 
 Configuration and setup
