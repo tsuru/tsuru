@@ -15,7 +15,6 @@ import (
 	"github.com/tsuru/docker-cluster/storage"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/fs"
-	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/safe"
@@ -272,11 +271,10 @@ func archiveDeploy(app provision.App, archiveURL string, w io.Writer) (string, e
 }
 
 func deploy(app provision.App, commands []string, w io.Writer) (string, error) {
-	writer := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
 	imageId := getImage(app)
 	actions := []*action.Action{&insertEmptyContainerInDB, &createContainer, &startContainer, &updateContainerInDB, &followLogsAndCommit}
 	pipeline := action.NewPipeline(actions...)
-	err := pipeline.Execute(app, imageId, commands, []string{}, writer)
+	err := pipeline.Execute(app, imageId, commands, []string{}, w)
 	if err != nil {
 		log.Errorf("error on execute deploy pipeline for app %s - %s", app.GetName(), err)
 		return "", err

@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/rec"
@@ -25,6 +26,7 @@ import (
 	"labix.org/v2/mgo/bson"
 	"net/http"
 	"strconv"
+	"time"
 )
 
 func getApp(name string, u *auth.User) (app.App, error) {
@@ -63,12 +65,13 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
 	}
+	writer := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
 	return app.Deploy(app.DeployOptions{
 		App:          instance,
 		Version:      version,
 		Commit:       commit,
 		ArchiveURL:   archiveURL,
-		OutputStream: w,
+		OutputStream: writer,
 	})
 
 }
