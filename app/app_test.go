@@ -75,6 +75,7 @@ func (s *S) TestDelete(c *gocheck.C) {
 	err = app.Log("msg", "src", "unit")
 	c.Assert(err, gocheck.IsNil)
 	err = Delete(app)
+	time.Sleep(200 * time.Millisecond)
 	c.Assert(err, gocheck.IsNil)
 	_, err = GetByName(app.Name)
 	c.Assert(err, gocheck.NotNil)
@@ -100,6 +101,7 @@ func (s *S) TestDestroy(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	token := app.Env["TSURU_APP_TOKEN"].Value
 	err = Delete(app)
+	time.Sleep(200 * time.Millisecond)
 	c.Assert(err, gocheck.IsNil)
 	_, err = GetByName(app.Name)
 	c.Assert(err, gocheck.NotNil)

@@ -194,31 +194,38 @@ func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer)
 }
 
 func (p *dockerProvisioner) Destroy(app provision.App) error {
-	containers, _ := listContainersByApp(app.GetName())
-	go func(c []container) {
-		var containersGroup sync.WaitGroup
-		containersGroup.Add(len(containers))
-		for _, c := range containers {
-			go func(c container) {
-				defer containersGroup.Done()
-				err := removeContainer(&c)
-				if err != nil {
-					log.Error(err.Error())
-				}
-			}(c)
-		}
-		containersGroup.Wait()
-		err := removeImage(assembleImageName(app.GetName()))
-		if err != nil {
-			log.Error(err.Error())
-		}
-	}(containers)
-	r, err := getRouter()
+	containers, err := listContainersByApp(app.GetName())
 	if err != nil {
-		log.Errorf("Failed to get router: %s", err)
+		log.Errorf("Failed to list app containers: %s", err.Error())
 		return err
 	}
-	return r.RemoveBackend(app.GetName())
+	var containersGroup sync.WaitGroup
+	containersGroup.Add(len(containers))
+	for _, c := range containers {
+		go func(c container) {
+			defer containersGroup.Done()
+			err := removeContainer(&c)
+			if err != nil {
+				log.Errorf("Unable to destroy container %s: %s", c.ID, err.Error())
+			}
+		}(c)
+	}
+	containersGroup.Wait()
+	err = removeImage(assembleImageName(app.GetName()))
+	if err != nil {
+		log.Errorf("Failed to remove image: %s", err.Error())
+	}
+	r, err := getRouter()
+	if err != nil {
+		log.Errorf("Failed to get router: %s", err.Error())
+		return err
+	}
+	err = r.RemoveBackend(app.GetName())
+	if err != nil {
+		log.Errorf("Failed to remove route backend: %s", err.Error())
+		return err
+	}
+	return nil
 }
 
 func (*dockerProvisioner) Addr(app provision.App) (string, error) {

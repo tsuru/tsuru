@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
+	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
@@ -94,6 +95,7 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+	context.SetPreventUnlock(r)
 	app.Delete(&a)
 	fmt.Fprint(w, "success")
 	return nil

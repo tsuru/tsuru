@@ -30,6 +30,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -295,6 +296,23 @@ func (app *App) unbind() error {
 	return nil
 }
 
+func asyncDestroyAppProvisioner(app *App) *sync.WaitGroup {
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		err := Provisioner.Destroy(app)
+		if err != nil {
+			log.Errorf("Unable to destroy app in provisioner: %s", err.Error())
+		}
+		err = app.unbind()
+		if err != nil {
+			log.Errorf("Unable to unbind app in provisioner: %s", err.Error())
+		}
+	}()
+	return &wg
+}
+
 // Delete deletes an app.
 //
 // Delete an app is a process composed of three steps:
@@ -303,27 +321,44 @@ func (app *App) unbind() error {
 //       2. Unbind all service instances from the app
 //       3. Remove the app from the database
 func Delete(app *App) error {
-	gURL := repository.ServerURL()
-	(&gandalf.Client{Endpoint: gURL}).RemoveRepository(app.Name)
-	if len(app.Units()) > 0 {
-		Provisioner.Destroy(app)
-		app.unbind()
-	}
+	appName := app.Name
+	wg := asyncDestroyAppProvisioner(app)
+	wg.Add(1)
+	defer wg.Done()
+	go func() {
+		defer ReleaseApplicationLock(appName)
+		wg.Wait()
+		conn, err := db.Conn()
+		if err != nil {
+			log.Errorf("Unable to delete app %s from db: %s", appName, err.Error())
+		}
+		defer conn.Close()
+		err = conn.Logs(appName).DropCollection()
+		if err != nil {
+			log.Errorf("Ignored error dropping logs collection for app %s: %s", appName, err.Error())
+		}
+		err = conn.Apps().Remove(bson.M{"name": appName})
+		if err != nil {
+			log.Errorf("Error trying to destroy app %s from db: %s", appName, err.Error())
+		}
+	}()
+	gandalfClient := gandalf.Client{Endpoint: repository.ServerURL()}
+	gandalfClient.RemoveRepository(appName)
 	token := app.Env["TSURU_APP_TOKEN"].Value
-	AuthScheme.Logout(token)
-	if owner, err := auth.GetUserByEmail(app.Owner); err == nil {
-		auth.ReleaseApp(owner)
-	}
-	conn, err := db.Conn()
+	err := AuthScheme.Logout(token)
 	if err != nil {
-		return err
+		log.Errorf("Unable to remove app token in destroy: %s", err.Error())
 	}
-	defer conn.Close()
-	err = conn.Logs(app.Name).DropCollection()
+	owner, err := auth.GetUserByEmail(app.Owner)
 	if err != nil {
-		log.Errorf("Ignored error dropping logs collection for app %s", app.Name)
+		log.Errorf("Unable to get app owner in destroy: %s", err.Error())
+	} else {
+		err = auth.ReleaseApp(owner)
+		if err != nil {
+			log.Errorf("Unable to release app quota: %s", err.Error())
+		}
 	}
-	return conn.Apps().Remove(bson.M{"name": app.Name})
+	return nil
 }
 
 // Add provisioned units to database and enqueue messages to

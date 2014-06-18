@@ -130,9 +130,11 @@ func (m *appLockMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, ne
 		return
 	}
 	if ok {
-		if !context.IsPreventUnlock(r) {
-			defer app.ReleaseApplicationLock(appName)
-		}
+		defer func() {
+			if !context.IsPreventUnlock(r) {
+				app.ReleaseApplicationLock(appName)
+			}
+		}()
 		next(w, r)
 		return
 	}
