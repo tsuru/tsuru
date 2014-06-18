@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/tsuru/tsuru",
-	"GoVersion": "devel +7d2e78c502ab Sat Jun 14 16:47:40 2014 +1000",
+	"GoVersion": "go1.2.2",
 	"Packages": [
 		"./..."
 	],
@@ -12,6 +12,11 @@
 		},
 		{
 			"ImportPath": "code.google.com/p/go.crypto/blowfish",
+			"Comment": "null-184",
+			"Rev": "cd1eea1eb82851fe9cde1d062406ca60c935ce24"
+		},
+		{
+			"ImportPath": "code.google.com/p/go.crypto/ssh",
 			"Comment": "null-184",
 			"Rev": "cd1eea1eb82851fe9cde1d062406ca60c935ce24"
 		},
@@ -35,8 +40,8 @@
 		},
 		{
 			"ImportPath": "github.com/fsouza/go-dockerclient",
-			"Comment": "0.2.1-147-g1e7f677",
-			"Rev": "1e7f677d29806b8e8bcb5d2d7bf9266746e686d9"
+			"Comment": "0.2.1-147-g5e5b0c4",
+			"Rev": "5e5b0c4275b4ea28690cfed6dd3550bfd3701683"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
