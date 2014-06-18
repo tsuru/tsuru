@@ -68,7 +68,7 @@ func (s *S) TestContainerCreate(c *gocheck.C) {
 	c.Assert(container.Path, gocheck.Equals, "docker")
 	c.Assert(container.Args, gocheck.DeepEquals, []string{"run"})
 	c.Assert(container.Config.User, gocheck.Equals, user)
-	c.Assert(container.Config.Memory, gocheck.Equals, int64(app.Memory*1024*1024))
+	c.Assert(container.Config.Memory, gocheck.Equals, float64(app.Memory*1024*1024))
 }
 
 func (s *S) TestContainerCreateUndefinedUser(c *gocheck.C) {
