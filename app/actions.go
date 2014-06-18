@@ -91,10 +91,6 @@ var insertApp = action.Action{
 		if limit, err := config.GetInt("quota:units-per-app"); err == nil {
 			app.Quota.Limit = limit
 		}
-		app.Ip, err = Provisioner.Addr(app)
-		if err != nil {
-			return nil, err
-		}
 		err = conn.Apps().Insert(app)
 		if mgo.IsDup(err) {
 			return nil, ErrAppAlreadyExists
@@ -206,6 +202,47 @@ var provisionApp = action.Action{
 	Backward: func(ctx action.BWContext) {
 		app := ctx.FWResult.(*App)
 		Provisioner.Destroy(app)
+	},
+	MinParams: 1,
+}
+
+var setAppIp = action.Action{
+	Name: "set-app-ip",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		var app *App
+		switch ctx.Params[0].(type) {
+		case *App:
+			app = ctx.Params[0].(*App)
+		default:
+			return nil, errors.New("First parameter must be *App.")
+		}
+		conn, err := db.Conn()
+		if err != nil {
+			return nil, err
+		}
+		defer conn.Close()
+		app.Ip, err = Provisioner.Addr(app)
+		if err != nil {
+			return nil, err
+		}
+		err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"ip": app.Ip}})
+		if err != nil {
+			return nil, err
+		}
+		return app, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		app := ctx.FWResult.(*App)
+		app.Ip = ""
+		conn, err := db.Conn()
+		if err != nil {
+			log.Errorf("Error trying to get connection to rollback setAppIp action: %s", err)
+		}
+		defer conn.Close()
+		err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$unset": bson.M{"ip": ""}})
+		if err != nil {
+			log.Errorf("Error trying to update app to rollback setAppIp action: %s", err)
+		}
 	},
 	MinParams: 1,
 }

@@ -251,6 +251,7 @@ func CreateApp(app *App, user *auth.User) error {
 		&exportEnvironmentsAction,
 		&createRepository,
 		&provisionApp,
+		&setAppIp,
 	}
 	pipeline := action.NewPipeline(actions...)
 	err = pipeline.Execute(app, user)

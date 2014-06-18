@@ -54,6 +54,10 @@ func (s *S) TestSaveNewUnitsInDatabaseName(c *gocheck.C) {
 	c.Assert(saveNewUnitsInDatabase.Name, gocheck.Equals, "save-new-units-in-database")
 }
 
+func (s *S) TestSetAppIpName(c *gocheck.C) {
+	c.Assert(setAppIp.Name, gocheck.Equals, "set-app-ip")
+}
+
 func (s *S) TestInsertAppForward(c *gocheck.C) {
 	app := &App{Name: "conviction", Platform: "evergrey"}
 	ctx := action.FWContext{
@@ -69,7 +73,6 @@ func (s *S) TestInsertAppForward(c *gocheck.C) {
 	gotApp, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(gotApp.Quota, gocheck.DeepEquals, quota.Unlimited)
-	c.Assert(gotApp.Ip, gocheck.Equals, "conviction.fake-lb.tsuru.io")
 }
 
 func (s *S) TestInsertAppForwardWithQuota(c *gocheck.C) {
@@ -82,13 +85,15 @@ func (s *S) TestInsertAppForwardWithQuota(c *gocheck.C) {
 	r, err := insertApp.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	expected := quota.Quota{Limit: 2}
 	a, ok := r.(*App)
 	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(app.Quota, gocheck.DeepEquals, expected)
 	c.Assert(a.Name, gocheck.Equals, app.Name)
 	c.Assert(a.Platform, gocheck.Equals, app.Platform)
+	c.Assert(a.Quota, gocheck.DeepEquals, expected)
 	gotApp, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
-	expected := quota.Quota{Limit: 2}
 	c.Assert(gotApp.Quota, gocheck.DeepEquals, expected)
 }
 
@@ -109,8 +114,9 @@ func (s *S) TestInsertAppForwardAppPointer(c *gocheck.C) {
 }
 
 func (s *S) TestInsertAppForwardInvalidValue(c *gocheck.C) {
+	app := App{Name: "conviction", Platform: "evergrey"}
 	ctx := action.FWContext{
-		Params: []interface{}{"hello"},
+		Params: []interface{}{app},
 	}
 	r, err := insertApp.Forward(ctx)
 	c.Assert(r, gocheck.IsNil)
@@ -867,4 +873,40 @@ func (s *S) TestIncrementDeployParams(c *gocheck.C) {
 	ctx := action.FWContext{Params: []interface{}{""}}
 	_, err := IncrementDeploy.Forward(ctx)
 	c.Assert(err.Error(), gocheck.Equals, "First parameter must be DeployOptions")
+}
+
+func (s *S) TestSetAppIpForward(c *gocheck.C) {
+	app := &App{Name: "conviction", Platform: "evergrey"}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	ctx := action.FWContext{
+		Params: []interface{}{app},
+	}
+	r, err := setAppIp.Forward(ctx)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.Ip, gocheck.Equals, "conviction.fake-lb.tsuru.io")
+	a, ok := r.(*App)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(a.Ip, gocheck.Equals, "conviction.fake-lb.tsuru.io")
+	gotApp, err := GetByName(app.Name)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(gotApp.Ip, gocheck.Equals, "conviction.fake-lb.tsuru.io")
+}
+
+func (s *S) TestSetAppIpBackward(c *gocheck.C) {
+	app := &App{Name: "conviction", Platform: "evergrey", Ip: "some-value"}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	ctx := action.BWContext{
+		Params:   []interface{}{app},
+		FWResult: app,
+	}
+	setAppIp.Backward(ctx)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.Ip, gocheck.Equals, "")
+	gotApp, err := GetByName(app.Name)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(gotApp.Ip, gocheck.Equals, "")
 }
