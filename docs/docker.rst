@@ -209,9 +209,18 @@ The basic configuration is:
 
     listen: "0.0.0.0:8000"
     debug: false #if you are developing to tsuru turn it to true
-    host: http://machine-public-ip
+    host: http://machine-public-ip:8000 # This port should be the same on "listen" conf
+    admin-team: admin # if you want to run tsuru-admin commands, you should be in the admin-team
     auth:
         user-registration: true
+        scheme: native # you can use oauth or native
+    database:
+        url: mongo-host:mongo-port
+        name: tsurudb
+    queue: redis
+    redis-queue:
+        host: redis-host
+        port: redis-port
 
 
 Now we will configure git:
@@ -236,7 +245,6 @@ Finally, we will configure docker:
             - http://127.0.0.1:4243 # you should configure it if segregate is false
         router: hipache
 
-        # these confs are explained [here](http://tsuru.readthedocs.org/en/latest/config.html)
         collection: docker_containers
         repository-namespace: tsuru
         deploy-cmd: /var/lib/tsuru/deploy
@@ -255,6 +263,7 @@ Finally, we will configure docker:
     hipache:
         domain: tsuru-sample.com # tsuru use this to mount the app's urls
 
+All confs are better explained `here <http://tsuru.readthedocs.org/en/latest/config.html>`_.
 
 Installing platforms
 ====================
