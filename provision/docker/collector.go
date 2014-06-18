@@ -44,14 +44,6 @@ func collectUnit(container container, wg *sync.WaitGroup) {
 				return
 			}
 		}
-		addr := strings.Replace(container.getAddress(), "http://", "", 1)
-		conn, err := net.Dial("tcp", addr)
-		if err != nil {
-			container.Status = provision.StatusUnreachable.String()
-		} else {
-			conn.Close()
-			container.Status = provision.StatusStarted.String()
-		}
 	}
 }
 
