@@ -136,11 +136,12 @@ func injectEnvsAndRestart(a provision.App) {
 	}
 }
 
-func startInBackground(a provision.App, c container, imageId string, w io.Writer, started chan bool) {
+func startInBackground(a provision.App, c container, imageId string, w io.Writer, errorChan chan error, wg *sync.WaitGroup) {
+	defer wg.Done()
 	_, err := start(a, imageId, w)
 	if err != nil {
 		log.Errorf("error on start the app %s - %s", a.GetName(), err)
-		started <- false
+		errorChan <- fmt.Errorf("Error trying to start unit on app %s: %s", a.GetName(), err.Error())
 		return
 	}
 	if c.ID != "" {
@@ -148,7 +149,7 @@ func startInBackground(a provision.App, c container, imageId string, w io.Writer
 			removeContainer(&c)
 		}
 	}
-	started <- true
+	errorChan <- nil
 }
 
 func (dockerProvisioner) Swap(app1, app2 provision.App) error {
@@ -177,20 +178,49 @@ func (p *dockerProvisioner) ArchiveDeploy(a provision.App, archiveURL string, w 
 
 func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer) error {
 	containers, err := listContainersByApp(a.GetName())
-	started := make(chan bool, len(containers))
+	chanSize := len(containers)
+	if chanSize == 0 {
+		chanSize = 1
+	}
+	errorChan := make(chan error, chanSize)
+	wg := sync.WaitGroup{}
+	wg.Add(chanSize)
 	if err == nil && len(containers) > 0 {
 		for _, c := range containers {
-			go startInBackground(a, c, imageId, w, started)
+			go startInBackground(a, c, imageId, w, errorChan, &wg)
 		}
 	} else {
-		go startInBackground(a, container{}, imageId, w, started)
+		go startInBackground(a, container{}, imageId, w, errorChan, &wg)
 	}
-	if <-started {
-		fmt.Fprint(w, "\n ---> App will be restarted, please check its logs for more details...\n\n")
-	} else {
+	go func() {
+		wg.Wait()
+		close(errorChan)
+	}()
+	var allErr error
+	counter := 0
+	plural := ""
+	if chanSize > 1 {
+		plural = "s"
+	}
+	fmt.Fprintf(w, "\n---- Starting %d unit%s ----\n", chanSize, plural)
+	for err = range errorChan {
+		counter++
+		if err == nil {
+			fmt.Fprintf(w, " ---> Started unit %d/%d...\n", counter, chanSize)
+			continue
+		}
+		fmt.Fprintf(w, " ---> Error to start unit %d/%d: %s\n", counter, chanSize, err.Error())
+		if allErr == nil {
+			allErr = fmt.Errorf("Multiple errors starting containers")
+		}
+		allErr = fmt.Errorf("%s; %s", allErr.Error(), err.Error())
+	}
+	if allErr != nil {
 		fmt.Fprint(w, "\n ---> App failed to start, please check its logs for more details...\n\n")
+	} else {
+		fmt.Fprint(w, "\n ---> App will be restarted, please check its logs for more details...\n\n")
 	}
-	return nil
+	return allErr
 }
 
 func (p *dockerProvisioner) Destroy(app provision.App) error {
