@@ -189,8 +189,8 @@ func (c *container) create(app provision.App, imageId string, cmds []string, des
 		AttachStdin:  false,
 		AttachStdout: false,
 		AttachStderr: false,
-		Memory:       int64(app.GetMemory() * 1024 * 1024),
-		MemorySwap:   int64(app.GetSwap() * 1024 * 1024),
+		Memory:       float64(app.GetMemory() * 1024 * 1024),
+		MemorySwap:   float64(app.GetSwap() * 1024 * 1024),
 	}
 	config.Env = append(config.Env, fmt.Sprintf("TSURU_APP_DIR=%s", gitUnitRepo))
 	if sharedMount != "" && sharedBasedir != "" {
