@@ -81,6 +81,9 @@ type App interface {
 	Units() []Unit
 	RemoveUnit(id string) error
 
+	// Unbind unbinds a unit from all service instances that are bound to the unit.
+	Unbind(unit *Unit) error
+
 	// Run executes the command in app units. Commands executed with this
 	// method should have access to environment variables defined in the
 	// app.

@@ -400,7 +400,7 @@ func (app *App) RemoveUnit(name string) error {
 	if err = Provisioner.RemoveUnit(app, unit.Name); err != nil {
 		log.Error(err.Error())
 	}
-	return app.unbindUnit(unit)
+	return app.Unbind(unit)
 }
 
 // findUnitByName searchs unit by name.
@@ -438,7 +438,7 @@ func (app *App) RemoveUnits(n uint) error {
 		name := units[i].Name
 		go Provisioner.RemoveUnit(app, name)
 		removed = append(removed, i)
-		app.unbindUnit(&units[i])
+		app.Unbind(&units[i])
 	}
 	if len(removed) == 0 {
 		return err
@@ -462,9 +462,9 @@ func (app *App) RemoveUnits(n uint) error {
 	return err
 }
 
-// unbindUnit unbinds a unit from all service instances that are bound to the
+// Unbind unbinds a unit from all service instances that are bound to the
 // app. It is used by RemoveUnit and RemoveUnits methods.
-func (app *App) unbindUnit(unit *provision.Unit) error {
+func (app *App) Unbind(unit *provision.Unit) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err

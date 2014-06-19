@@ -54,6 +54,10 @@ func NewFakeApp(name, platform string, units int) *FakeApp {
 	return &app
 }
 
+func (a *FakeApp) Unbind(unit *provision.Unit) error {
+	return nil
+}
+
 func (a *FakeApp) GetMemory() int {
 	return a.Memory
 }
