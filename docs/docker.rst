@@ -186,8 +186,6 @@ Installing tsuru API server
 
     sudo apt-get install tsuru-server -qqy
 
-    # make sure you replace all occurrences of {{{HOST_IP}}} with the machine's
-    # public IP in the /etc/tsuru/tsuru.conf file
     sudo sed -i -e 's/=no/=yes/' /etc/default/tsuru-server
     sudo start tsuru-ssh-agent
     sudo start tsuru-server-api
