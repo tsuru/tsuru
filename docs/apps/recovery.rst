@@ -18,7 +18,7 @@ The first step is to check the application logs. To view your logs, run:
 
 ::
 
-    $ tsuru logs -a appname
+    $ tsuru log -a appname
 
 Restart your application
 ========================
