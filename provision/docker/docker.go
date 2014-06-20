@@ -535,3 +535,14 @@ func usePlatformImage(app provision.App) bool {
 	}
 	return false
 }
+
+// unitFromContainer returns a unit that represents a container.
+func unitFromContainer(c container) provision.Unit {
+	return provision.Unit{
+		Name:    c.ID,
+		AppName: c.AppName,
+		Type:    c.Type,
+		Status:  provision.Status(c.Status),
+		Ip:      c.HostAddr,
+	}
+}

@@ -480,13 +480,7 @@ func (p *dockerProvisioner) Units(app provision.App) []provision.Unit {
 	}
 	units := []provision.Unit{}
 	for _, container := range containers {
-		unit := provision.Unit{
-			Name:    container.ID,
-			AppName: container.AppName,
-			Type:    container.Type,
-			Status:  provision.Status(container.Status),
-			Ip:      container.HostAddr,
-		}
+		unit := unitFromContainer(container)
 		units = append(units, unit)
 	}
 	return units

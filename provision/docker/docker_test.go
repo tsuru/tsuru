@@ -984,3 +984,21 @@ func (s *S) TestContainerAvailable(c *gocheck.C) {
 		c.Assert(cont.available(), gocheck.Equals, expected)
 	}
 }
+
+func (s *S) TestUnitFromContainer(c *gocheck.C) {
+	cont := container{
+		ID:       "someid",
+		AppName:  "someapp",
+		Type:     "django",
+		Status:   provision.StatusStarted.String(),
+		HostAddr: "10.9.8.7",
+	}
+	expected := provision.Unit{
+		Name:    cont.ID,
+		AppName: cont.AppName,
+		Type:    cont.Type,
+		Status:  provision.Status(cont.Status),
+		Ip:      cont.HostAddr,
+	}
+	c.Assert(unitFromContainer(cont), gocheck.Equals, expected)
+}
