@@ -17,15 +17,19 @@ Using tsuru
 Deploy your applications on tsuru.
 
 * :doc:`command-line installation guide </install/client>`
+* :doc:`quickstart </apps/quickstart>`
 
-* :doc:`building your application </apps/quickstart>`
+Building your application:
+
 * :doc:`python/django </apps/quickstart/python>`
 * :doc:`ruby/rails </apps/quickstart/ruby>`
 * :doc:`php </apps/quickstart/php>`
 * :doc:`go </apps/quickstart/go>`
 
-* :doc:`using buildpacks </using/buildpacks>`
+Other topics:
 
+* :doc:`using buildpacks </using/buildpacks>`
+* :doc:`Procfile syntax </using/procfile>`
 * :doc:`understanding deployment hooks </apps/deploy-hooks>`
 * :doc:`recovery and troubleshooting </apps/recovery>`
 
