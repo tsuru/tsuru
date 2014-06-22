@@ -31,6 +31,7 @@ Other topics:
 * :doc:`using buildpacks </using/buildpacks>`
 * :doc:`Procfile syntax </using/procfile>`
 * :doc:`understanding deployment hooks </apps/deploy-hooks>`
+* :doc:`understanding unit states </using/unit-states>`
 * :doc:`recovery and troubleshooting </apps/recovery>`
 
 tsuru command-line
@@ -44,11 +45,15 @@ services
 --------
 
 * :doc:`using services </apps/client/services>`
+* :doc:`install mysql service  </services/mysql-example>`
 
 Running tsuru
 +++++++++++++
 
 Build your cloud with tsuru.
+
+* :doc:`tsuru architecture </architecture>`
+* :doc:`docker provisioner architecture </provisioners/docker/architecture>`
 
 Install tsuru
 -------------
@@ -59,12 +64,11 @@ Install tsuru
 Configure and run tsuru
 -----------------------
 
-* :doc:`docker provisioner architecture </provisioners/docker/architecture>`
-
 * :doc:`configuration reference </config>`
+* :doc:`creating tsuru platforms </add-a-platform>`
 * :doc:`backing up tsuru </server/backup>`
 
-* :doc:`mysql </services/mysql-example>`
+
 
 tsuru-admin command-line
 ------------------------
