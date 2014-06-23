@@ -25,7 +25,7 @@ ARCHIVE_FILE_NAME=${APP_NAME}_${COMMIT}_${UUID}.tar.gz
 git archive --format=tar.gz -o /tmp/$ARCHIVE_FILE_NAME $COMMIT
 s3cmd put -P /tmp/${ARCHIVE_FILE_NAME} s3://${BUCKET_NAME}/ > /dev/null
 rm /tmp/${ARCHIVE_FILE_NAME}
-ARCHIVE_URL=https://s3.amazonaws.com/${BUCKET_NAME}/${ARCHIVE_FILE_NAME}
+ARCHIVE_URL=`s3cmd info s3://${BUCKET_NAME}/${ARCHIVE_FILE_NAME} | grep URL | awk -F': ' '{print $2}' | tr -d ' '`
 URL="${TSURU_HOST}/apps/${APP_NAME}/repository/clone"
 curl -H "Authorization: bearer ${TSURU_TOKEN}" -d "archive-url=${ARCHIVE_URL}&commit=${COMMIT}" -s -N --max-time 1800 $URL
 s3cmd del s3://${BUCKET_NAME}/${ARCHIVE_FILE_NAME}
