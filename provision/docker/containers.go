@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -178,105 +177,123 @@ type hostWithContainers struct {
 	Containers []container
 }
 
-func minHost(hosts map[string]*hostWithContainers, possibleDests []cluster.Node) *hostWithContainers {
-	var minHost *hostWithContainers
+func minCountHost(hosts []hostWithContainers) *hostWithContainers {
+	var minCountHost *hostWithContainers
 	minCount := math.MaxInt32
-	for _, dest := range possibleDests {
-		hostAddr := urlToHost(dest.Address)
-		host := hosts[hostAddr]
-		if host.Count < minCount {
-			minCount = host.Count
-			minHost = host
+	for i, dest := range hosts {
+		if dest.Count < minCount {
+			minCount = dest.Count
+			minCountHost = &hosts[i]
 		}
 	}
-	return minHost
+	return minCountHost
 }
 
 func rebalanceContainers(encoder *json.Encoder, dryRun bool) error {
 	coll := collection()
 	defer coll.Close()
-	pipe := coll.Pipe([]bson.M{
-		{"$match": bson.M{"hostaddr": bson.M{"$ne": ""}}},
-		{"$group": bson.M{
-			"_id":   "$hostaddr",
-			"count": bson.M{"$sum": 1},
-			"containers": bson.M{"$push": bson.M{
-				// Could use $$ROOT instead of repeating fields but only in Mongo 2.6+.
-				"_id":      "$_id",
-				"id":       "$id",
-				"name":     "$name",
-				"appname":  "$appname",
-				"type":     "$type",
-				"ip":       "$ip",
-				"image":    "$image",
-				"hostaddr": "$hostaddr",
-				"hostport": "$hostport",
-				"status":   "$status",
-				"version":  "$version",
-			}}}},
+	fullDocQuery := bson.M{
+		// Could use $$ROOT instead of repeating fields but only in Mongo 2.6+.
+		"_id":      "$_id",
+		"id":       "$id",
+		"name":     "$name",
+		"appname":  "$appname",
+		"type":     "$type",
+		"ip":       "$ip",
+		"image":    "$image",
+		"hostaddr": "$hostaddr",
+		"hostport": "$hostport",
+		"status":   "$status",
+		"version":  "$version",
+	}
+	appsPipe := coll.Pipe([]bson.M{
+		{"$group": bson.M{"_id": "$appname", "count": bson.M{"$sum": 1}}},
 	})
-	var hosts []hostWithContainers
-	hostsMap := make(map[string]*hostWithContainers)
-	err := pipe.All(&hosts)
+	var appsInfo []struct {
+		Name  string `bson:"_id"`
+		Count int
+	}
+	err := appsPipe.All(&appsInfo)
 	if err != nil {
 		return err
-	}
-	totalCount := 0
-	for i, host := range hosts {
-		hostsMap[host.HostAddr] = &hosts[i]
-		totalCount += host.Count
 	}
 	cluster := dockerCluster()
-	allNodes, err := cluster.Nodes()
-	if err != nil {
-		return err
-	}
-	for _, node := range allNodes {
-		hostAddr := urlToHost(node.Address)
-		_, present := hostsMap[hostAddr]
-		if !present {
-			hosts = append(hosts, hostWithContainers{HostAddr: hostAddr})
-			hostsMap[hostAddr] = &hosts[len(hosts)-1]
-		}
-	}
-	numberOfNodes := len(allNodes)
-	maxContsPerUnit := int(math.Ceil(float64(totalCount) / float64(numberOfNodes)))
-	for _, host := range hosts {
-		toMoveCount := host.Count - maxContsPerUnit
-		if toMoveCount <= 0 {
+	for _, appInfo := range appsInfo {
+		if appInfo.Count < 2 {
 			continue
 		}
-		logProgress(encoder, "Trying to move %d units from %s...", toMoveCount, host.HostAddr)
-		locker := &appLocker{}
-		wg := sync.WaitGroup{}
-		moveErrors := make(chan error, toMoveCount)
-		for _, cont := range host.Containers {
-			possibleDests, err := cluster.NodesForOptions(cont.AppName)
+		logProgress(encoder, "Rebalancing app %q (%d units)...", appInfo.Name, appInfo.Count)
+		possibleDests, err := cluster.NodesForOptions(appInfo.Name)
+		if err != nil {
+			return err
+		}
+		maxContPerUnit := int(math.Ceil(float64(appInfo.Count) / float64(len(possibleDests))))
+		pipe := coll.Pipe([]bson.M{
+			{"$match": bson.M{"hostaddr": bson.M{"$ne": ""}, "appname": appInfo.Name}},
+			{"$group": bson.M{
+				"_id":        "$hostaddr",
+				"count":      bson.M{"$sum": 1},
+				"containers": bson.M{"$push": fullDocQuery}}},
+		})
+		var hosts []hostWithContainers
+		hostsSet := make(map[string]bool)
+		err = pipe.All(&hosts)
+		if err != nil {
+			return err
+		}
+		for _, host := range hosts {
+			hostsSet[host.HostAddr] = true
+		}
+		for _, node := range possibleDests {
+			hostAddr := urlToHost(node.Address)
+			_, present := hostsSet[hostAddr]
+			if !present {
+				hosts = append(hosts, hostWithContainers{HostAddr: hostAddr})
+			}
+		}
+		anythingDone := false
+		for _, host := range hosts {
+			toMoveCount := host.Count - maxContPerUnit
+			if toMoveCount <= 0 {
+				continue
+			}
+			anythingDone = true
+			logProgress(encoder, "Trying to move %d units for %q from %s...", toMoveCount, appInfo.Name, host.HostAddr)
+			locker := &appLocker{}
+			wg := sync.WaitGroup{}
+			moveErrors := make(chan error, toMoveCount)
+			for _, cont := range host.Containers {
+				minDest := minCountHost(hosts)
+				if minDest.Count < maxContPerUnit {
+					toMoveCount--
+					minDest.Count++
+					if dryRun {
+						logProgress(encoder, "Would move unit %s for %q: %s -> %s...", cont.ID, appInfo.Name, cont.HostAddr, minDest.HostAddr)
+					} else {
+						wg.Add(1)
+						go moveOneContainer(cont, minDest.HostAddr, moveErrors, &wg, encoder, locker)
+					}
+				}
+				if toMoveCount == 0 {
+					break
+				}
+			}
+			if toMoveCount > 0 {
+				logProgress(encoder, "Couldn't find suitable destination for %d units for app %q", toMoveCount, appInfo.Name)
+			}
+			go func() {
+				wg.Wait()
+				close(moveErrors)
+			}()
+			err := handleMoveErrors(moveErrors, encoder)
 			if err != nil {
 				return err
 			}
-			minDest := minHost(hostsMap, possibleDests)
-			if minDest.Count < maxContsPerUnit {
-				toMoveCount--
-				minDest.Count++
-				if dryRun {
-					logProgress(encoder, "Would move unit %s for %q: %s -> %s...", cont.ID, cont.AppName, cont.HostAddr, minDest.HostAddr)
-				} else {
-					wg.Add(1)
-					go moveOneContainer(cont, minDest.HostAddr, moveErrors, &wg, encoder, locker)
-				}
-			}
-			if toMoveCount == 0 {
-				break
-			}
 		}
-		go func() {
-			wg.Wait()
-			close(moveErrors)
-		}()
-		err := handleMoveErrors(moveErrors, encoder)
-		if err != nil {
-			return err
+		if anythingDone {
+			logProgress(encoder, "Rebalance finished for %q", appInfo.Name)
+		} else {
+			logProgress(encoder, "Nothing to do for %q", appInfo.Name)
 		}
 	}
 	return nil

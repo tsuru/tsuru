@@ -329,11 +329,13 @@ func (s *S) TestRebalanceContainersEmptyBodyHandler(c *gocheck.C) {
 	var result []progressLog
 	err = json.Unmarshal([]byte(validJson), &result)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(len(result), gocheck.Equals, 8)
-	c.Assert(result[0].Message, gocheck.Equals, "Trying to move 2 units from localhost...")
-	c.Assert(result[1].Message, gocheck.Matches, "Moving unit .*")
+	c.Assert(len(result), gocheck.Equals, 10)
+	c.Assert(result[0].Message, gocheck.Equals, "Rebalancing app \"myapp\" (6 units)...")
+	c.Assert(result[1].Message, gocheck.Equals, "Trying to move 2 units for \"myapp\" from localhost...")
 	c.Assert(result[2].Message, gocheck.Matches, "Moving unit .*")
-	c.Assert(result[7].Message, gocheck.Matches, "Containers rebalanced successfully!")
+	c.Assert(result[3].Message, gocheck.Matches, "Moving unit .*")
+	c.Assert(result[8].Message, gocheck.Equals, "Rebalance finished for \"myapp\"")
+	c.Assert(result[9].Message, gocheck.Equals, "Containers rebalanced successfully!")
 	testing.CleanQ("tsuru-app")
 }
 
@@ -388,11 +390,13 @@ func (s *S) TestRebalanceContainersDryBodyHandler(c *gocheck.C) {
 	var result []progressLog
 	err = json.Unmarshal([]byte(validJson), &result)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(len(result), gocheck.Equals, 4)
-	c.Assert(result[0].Message, gocheck.Equals, "Trying to move 2 units from localhost...")
-	c.Assert(result[1].Message, gocheck.Matches, "Would move unit .*")
+	c.Assert(len(result), gocheck.Equals, 6)
+	c.Assert(result[0].Message, gocheck.Equals, "Rebalancing app \"myapp\" (6 units)...")
+	c.Assert(result[1].Message, gocheck.Equals, "Trying to move 2 units for \"myapp\" from localhost...")
 	c.Assert(result[2].Message, gocheck.Matches, "Would move unit .*")
-	c.Assert(result[3].Message, gocheck.Matches, "Containers rebalanced successfully!")
+	c.Assert(result[3].Message, gocheck.Matches, "Would move unit .*")
+	c.Assert(result[4].Message, gocheck.Equals, "Rebalance finished for \"myapp\"")
+	c.Assert(result[5].Message, gocheck.Equals, "Containers rebalanced successfully!")
 	testing.CleanQ("tsuru-app")
 }
 
