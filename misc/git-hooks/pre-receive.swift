@@ -33,5 +33,6 @@ swift -qA $AUTH_URL $AUTH_PARAMS post -r ".r:*" $CONTAINER_NAME
 rm /tmp/$ARCHIVE_FILE_NAME
 ARCHIVE_URL=`swift -A $AUTH_URL $AUTH_PARAMS stat -v $CONTAINER_NAME $ARCHIVE_FILE_NAME | grep URL | awk -F': ' '{print $2}'`
 URL="${TSURU_HOST}/apps/${APP_NAME}/repository/clone"
-curl -H "Authorization: bearer ${TSURU_TOKEN}" -d "archive-url=${ARCHIVE_URL}&commit=${COMMIT}" -s -N --max-time 1800 $URL
+curl -H "Authorization: bearer ${TSURU_TOKEN}" -d "archive-url=${ARCHIVE_URL}&commit=${COMMIT}" -s -N --max-time 1800 $URL | tee /tmp/deploy-${APP_NAME}.log
 swift -qA $AUTH_URL $AUTH_PARAMS delete $CONTAINER_NAME $ARCHIVE_FILE_NAME
+tail -1 /tmp/deploy-${APP_NAME}.log | grep -q "^OK$"

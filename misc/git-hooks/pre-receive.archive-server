@@ -34,4 +34,5 @@ app_name=${app_dir/.git/}
 archive_id=`generate_archive $PWD $COMMIT`
 archive_url="${ARCHIVE_SERVER_READ}/?id=$archive_id"
 url="${TSURU_HOST}/apps/${app_name}/repository/clone"
-curl -H "Authorization: bearer ${TSURU_TOKEN}" -d "archive-url=${archive_url}&commit=${COMMIT}" -s -N --max-time 1800 $url
+curl -H "Authorization: bearer ${TSURU_TOKEN}" -d "archive-url=${archive_url}&commit=${COMMIT}" -s -N --max-time 1800 $url | tee /tmp/deploy-${APP_NAME}.log
+tail -1 /tmp/deploy-${APP_NAME}.log | grep -q "^OK$"
