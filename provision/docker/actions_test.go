@@ -364,6 +364,24 @@ func (s *S) TestFollowLogsAndCommitForward(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 }
 
+func (s *S) TestFollowLogsAndCommitForwardNonZeroStatus(c *gocheck.C) {
+	go s.stopContainers(1)
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	app := testing.NewFakeApp("myapp", "python", 1)
+	cont := container{AppName: "mightyapp"}
+	err = cont.create(app, "tsuru/python", []string{"foo"})
+	c.Assert(err, gocheck.IsNil)
+	err = s.server.MutateContainer(cont.ID, docker.State{ExitCode: 1})
+	c.Assert(err, gocheck.IsNil)
+	var buf bytes.Buffer
+	context := action.FWContext{Params: []interface{}{nil, nil, nil, nil, &buf}, Previous: cont}
+	imageId, err := followLogsAndCommit.Forward(context)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Exit status 1")
+	c.Assert(imageId, gocheck.IsNil)
+}
+
 func (s *S) TestFollowLogsAndCommitForwardWaitFailure(c *gocheck.C) {
 	s.server.PrepareFailure("failed to wait for the container",
 		dtesting.FailureSpec{UrlRegex: "/containers/.*/wait"})
@@ -371,7 +389,7 @@ func (s *S) TestFollowLogsAndCommitForwardWaitFailure(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp("myapp", "python", 1)
-	cont := container{AppName: "mightyapp", ID: "myid123"}
+	cont := container{AppName: "mightyapp"}
 	err = cont.create(app, "tsuru/python", []string{"foo"})
 	c.Assert(err, gocheck.IsNil)
 	var buf bytes.Buffer

@@ -6,6 +6,7 @@ package docker
 
 import (
 	"errors"
+	"fmt"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
@@ -231,10 +232,13 @@ var followLogsAndCommit = action.Action{
 			log.Errorf("error on get logs for container %s - %s", c.ID, err)
 			return nil, err
 		}
-		_, err = dockerCluster().WaitContainer(c.ID)
+		status, err := dockerCluster().WaitContainer(c.ID)
 		if err != nil {
 			log.Errorf("Process failed for container %q: %s", c.ID, err)
 			return nil, err
+		}
+		if status != 0 {
+			return nil, fmt.Errorf("Exit status %d", status)
 		}
 		imageId, err := c.commit()
 		if err != nil {
