@@ -702,37 +702,18 @@ func (s *S) TestRemoveUnitsInvalidValues(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveUnitByNameOrInstanceID(c *gocheck.C) {
-	var calls int32
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		atomic.AddInt32(&calls, 1)
-		w.WriteHeader(http.StatusNoContent)
-	}))
-	defer ts.Close()
-	srvc := service.Service{Name: "nosql", Endpoint: map[string]string{"production": ts.URL}}
-	err := srvc.Create()
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Services().Remove(bson.M{"_id": "nosql"})
 	app := App{
 		Name:     "physics",
 		Platform: "python",
 		Quota:    quota.Unlimited,
 	}
-	instance := service.ServiceInstance{
-		Name:        "my-mysql",
-		ServiceName: "nosql",
-		Teams:       []string{s.team.Name},
-		Apps:        []string{app.Name},
-	}
-	instance.Create()
-	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
-	err = s.conn.Apps().Insert(app)
+	err := s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
 	err = s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
 	c.Assert(err, gocheck.IsNil)
 	err = app.AddUnits(4)
 	c.Assert(err, gocheck.IsNil)
-	defer testing.CleanQ(queueName)
 	defer func() {
 		s.provisioner.Destroy(&app)
 		s.conn.Apps().Remove(bson.M{"name": app.Name})
@@ -747,20 +728,6 @@ func (s *S) TestRemoveUnitByNameOrInstanceID(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	units := s.provisioner.GetUnits(otherApp)
 	c.Assert(units, gocheck.HasLen, 3)
-	ok := make(chan int8)
-	go func() {
-		for _ = range time.Tick(1e3) {
-			if atomic.LoadInt32(&calls) == 2 {
-				ok <- 1
-				return
-			}
-		}
-	}()
-	select {
-	case <-ok:
-	case <-time.After(2e9):
-		c.Fatal("Did not call service endpoint twice.")
-	}
 }
 
 func (s *S) TestRemoveAbsentUnit(c *gocheck.C) {

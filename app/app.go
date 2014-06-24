@@ -397,10 +397,7 @@ func (app *App) RemoveUnit(name string) error {
 	if err != nil {
 		return err
 	}
-	if err = Provisioner.RemoveUnit(app, unit.Name); err != nil {
-		log.Error(err.Error())
-	}
-	return app.Unbind(unit)
+	return Provisioner.RemoveUnit(app, unit.Name)
 }
 
 // findUnitByName searchs unit by name.
@@ -438,7 +435,6 @@ func (app *App) RemoveUnits(n uint) error {
 		name := units[i].Name
 		go Provisioner.RemoveUnit(app, name)
 		removed = append(removed, i)
-		app.Unbind(&units[i])
 	}
 	if len(removed) == 0 {
 		return err
@@ -460,31 +456,6 @@ func (app *App) RemoveUnits(n uint) error {
 		return dbErr
 	}
 	return err
-}
-
-// Unbind unbinds a unit from all service instances that are bound to the
-// app. It is used by RemoveUnit and RemoveUnits methods.
-func (app *App) Unbind(unit *provision.Unit) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	var instances []service.ServiceInstance
-	q := bson.M{"apps": bson.M{"$in": []string{app.Name}}}
-	err = conn.ServiceInstances().Find(q).All(&instances)
-	if err != nil {
-		return err
-	}
-	for _, instance := range instances {
-		go func(instance service.ServiceInstance, unit *provision.Unit) {
-			err = instance.UnbindUnit(unit)
-			if err != nil {
-				log.Errorf("Error unbinding the unit %s with the service instance %s.", unit.Ip, instance.Name)
-			}
-		}(instance, unit)
-	}
-	return nil
 }
 
 // Available returns true if at least one of N units is started or unreachable.
