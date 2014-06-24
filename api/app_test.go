@@ -93,7 +93,7 @@ func (s *S) TestDeployHandler(c *gocheck.C) {
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	b, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(string(b), gocheck.Equals, "Git deploy called")
+	c.Assert(string(b), gocheck.Equals, "Git deploy called\nOK\n")
 	c.Assert(s.provisioner.Version(&a), gocheck.Equals, "a345f3e")
 }
 
@@ -119,7 +119,7 @@ func (s *S) TestDeployArchiveURL(c *gocheck.C) {
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	b, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(string(b), gocheck.Equals, "Archive deploy called")
+	c.Assert(string(b), gocheck.Equals, "Archive deploy called\nOK\n")
 }
 
 func (s *S) TestDeployWithCommit(c *gocheck.C) {
@@ -144,7 +144,7 @@ func (s *S) TestDeployWithCommit(c *gocheck.C) {
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	b, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(string(b), gocheck.Equals, "Git deploy called")
+	c.Assert(string(b), gocheck.Equals, "Git deploy called\nOK\n")
 	deploys, err := s.conn.Deploys().Find(bson.M{"commit": "123"}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(deploys, gocheck.Equals, 1)

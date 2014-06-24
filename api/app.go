@@ -66,13 +66,17 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
 	}
 	writer := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
-	return app.Deploy(app.DeployOptions{
+	err = app.Deploy(app.DeployOptions{
 		App:          instance,
 		Version:      version,
 		Commit:       commit,
 		ArchiveURL:   archiveURL,
 		OutputStream: writer,
 	})
+	if err == nil {
+		fmt.Fprintln(w, "\nOK")
+	}
+	return err
 
 }
 
