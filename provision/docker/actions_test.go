@@ -6,7 +6,8 @@ package docker
 
 import (
 	"bytes"
-	dockerClient "github.com/fsouza/go-dockerclient"
+	"github.com/fsouza/go-dockerclient"
+	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/provision"
@@ -81,7 +82,7 @@ func (s *S) TestCreateContainerName(c *gocheck.C) {
 func (s *S) TestCreateContainerForward(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	client, err := dockerClient.NewClient(s.server.URL())
+	client, err := docker.NewClient(s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	images, err := client.ListImages(true)
 	c.Assert(err, gocheck.IsNil)
@@ -96,7 +97,7 @@ func (s *S) TestCreateContainerForward(c *gocheck.C) {
 	c.Assert(cont, gocheck.FitsTypeOf, container{})
 	c.Assert(cont.ID, gocheck.Not(gocheck.Equals), "")
 	c.Assert(cont.HostAddr, gocheck.Equals, "127.0.0.1")
-	dcli, err := dockerClient.NewClient(s.server.URL())
+	dcli, err := docker.NewClient(s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	cc, err := dcli.InspectContainer(cont.ID)
 	c.Assert(err, gocheck.IsNil)
@@ -104,7 +105,7 @@ func (s *S) TestCreateContainerForward(c *gocheck.C) {
 }
 
 func (s *S) TestCreateContainerBackward(c *gocheck.C) {
-	dcli, err := dockerClient.NewClient(s.server.URL())
+	dcli, err := docker.NewClient(s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	err = newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
@@ -117,7 +118,7 @@ func (s *S) TestCreateContainerBackward(c *gocheck.C) {
 	createContainer.Backward(context)
 	_, err = dcli.InspectContainer(cont.ID)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.FitsTypeOf, &dockerClient.NoSuchContainer{})
+	c.Assert(err, gocheck.FitsTypeOf, &docker.NoSuchContainer{})
 }
 
 func (s *S) TestAddRouteName(c *gocheck.C) {
@@ -189,7 +190,7 @@ func (s *S) TestStartContainerForward(c *gocheck.C) {
 }
 
 func (s *S) TestStartContainerBackward(c *gocheck.C) {
-	dcli, err := dockerClient.NewClient(s.server.URL())
+	dcli, err := docker.NewClient(s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	err = newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
@@ -311,7 +312,7 @@ func (s *S) TestProvisionRemoveOldUnitForward(c *gocheck.C) {
 	container, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
-	client, err := dockerClient.NewClient(s.server.URL())
+	client, err := docker.NewClient(s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	err = client.StartContainer(container.ID, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -361,4 +362,21 @@ func (s *S) TestFollowLogsAndCommitForward(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Matches, "No such container.*")
 	err = dockerCluster().RemoveImage("tsuru/mightyapp")
 	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestFollowLogsAndCommitForwardWaitFailure(c *gocheck.C) {
+	s.server.PrepareFailure("failed to wait for the container",
+		dtesting.FailureSpec{UrlRegex: "/containers/.*/wait"})
+	defer s.server.ResetFailure("failed to wait for the container")
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	app := testing.NewFakeApp("myapp", "python", 1)
+	cont := container{AppName: "mightyapp", ID: "myid123"}
+	err = cont.create(app, "tsuru/python", []string{"foo"})
+	c.Assert(err, gocheck.IsNil)
+	var buf bytes.Buffer
+	context := action.FWContext{Params: []interface{}{nil, nil, nil, nil, &buf}, Previous: cont}
+	imageId, err := followLogsAndCommit.Forward(context)
+	c.Assert(err, gocheck.ErrorMatches, `.*failed to wait for the container\n$`)
+	c.Assert(imageId, gocheck.IsNil)
 }
