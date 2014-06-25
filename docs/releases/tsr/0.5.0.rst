@@ -1,0 +1,57 @@
+=======================
+tsr 0.5.0 release notes
+=======================
+
+Welcome to tsr 0.5.0!
+
+These release notes cover the `new features`_ and `backwards incompatible
+changes`_ you'll want to be aware of when upgrading from tsr 0.4.0 or older
+versions.
+
+.. _`new features`: `What's new in tsr 0.5.0`_
+.. _`backwards incompatible changes`: `Backwards incompatible changes`_
+
+What's new in tsr 0.5.0
+=======================
+
+Stability and Consistency
+-------------------------
+
+One of the main feature on this release is improve the stability and consitency of the tsuru api.
+
+* prevent inconsitency caused by problems on deploy (`#803 <https://github.com/tsuru/tsuru/issues/803`_) / (`#804 <https://github.com/tsuru/tsuru/issues/804`_)
+* units information is not updated by collector (`#806 <https://github.com/tsuru/tsuru/issues/806>`_)
+* fixed log listener scale problem (`#762 <https://github.com/tsuru/tsuru/issues/762>`_)
+* prevent inconsitency caused by simultaneous operations in an application (`#789 <https://github.com/tsuru/tsuru/issues/789>`_)
+* prevent inconsitency cause by simultaneous `env-set` (`#820 <https://github.com/tsuru/tsuru/issues/820>`_)
+* saved info about a deploy ocours with success in deploy (`#816 <https://github.com/tsuru/tsuru/issues/816>`_)
+
+Buildpack
+---------
+
+tsuru supports deploying applications via Heroku Buildpacks.
+Buildpacks are useful if you’re interested in following Heroku’s best practices for building applications or if you are deploying an application that already runs on Heroku.
+tsuru uses Buildstep Docker image to make deploy using buildpacks possible. For more information you can see the documentation about it: http://docs.tsuru.io/en/latest/using/buildpacks.html.
+
+Other features
+--------------
+
+* log filter by unit (`#375 <https://github.com/tsuru/tsuru/issues/375>`_)
+* support for `pre-receive` git hook instead `post-receive` for deployment (`#458 <https://github.com/tsuru/tsuru/issues/458>`_)
+* stop and start commands (`#606 <https://github.com/tsuru/tsuru/issues/606>`_) 
+* oauth support (`#752 <https://github.com/tsuru/tsuru/issues/752>`_)
+* platform update command (`#780 <https://github.com/tsuru/tsuru/issues/780>`_)
+* support services with `https` endpoint (`#812 <https://github.com/tsuru/tsuru/pull/812>`_) / (`#821 <https://github.com/tsuru/tsuru/pull/821>`_)
+
+Platforms
+---------
+
+* support for deploy hooks (http://docs.tsuru.io/en/0.4.0/apps/deploy-hooks.html) for static and php applications (`#607 <https://github.com/tsuru/tsuru/issues/607>`_)
+* new buildpack platform
+
+Backwards incompatible changes
+==============================
+
+* Juju provisioner was removed. This provisioner was not being maintained. A possible idea is to use juju in the future to provision the tsuru "nodes" instead "units". 
+* `tsr admin` was removed.
+* The `units` field in `apps` collection was removed. The `units` data is retrieved by provisioner.
