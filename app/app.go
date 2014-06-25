@@ -391,23 +391,12 @@ func (app *App) AddUnits(n uint) error {
 	return err
 }
 
-// findUnitByName searchs unit by name.
-func (app *App) findUnitByName(name string) (*provision.Unit, error) {
-	for _, u := range app.Units() {
-		if u.Name == name {
-			return &u, nil
-		}
-	}
-	return nil, stderr.New(fmt.Sprintf("Unit not found: %s.", name))
-}
-
 // RemoveUnits removes n units from the app. It's a process composed of x
 // steps:
 //
 //     1. Remove units from the provisioner
-//     2. Unbind units from service instances bound to the app
-//     3. Remove units from the app list
-//     4. Update the app in the database
+//     2. Remove units from the app list
+//     3. Update quota
 func (app *App) RemoveUnits(n uint) error {
 	if n == 0 {
 		return stderr.New("Cannot remove zero units.")
@@ -416,7 +405,6 @@ func (app *App) RemoveUnits(n uint) error {
 	} else if n > l {
 		return fmt.Errorf("Cannot remove %d units from this app, it has only %d units.", n, l)
 	}
-	//units := UnitSlice(app.Units())
 	for i := 0; i < int(n); i++ {
 		go Provisioner.RemoveUnit(app)
 	}
@@ -436,7 +424,7 @@ func (app *App) RemoveUnits(n uint) error {
 	if err == nil {
 		return dbErr
 	}
-	return err
+	return nil
 }
 
 // Available returns true if at least one of N units is started or unreachable.
