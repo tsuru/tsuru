@@ -6,26 +6,31 @@
 Install tsuru and Docker
 ++++++++++++++++++++++++
 
-This document describes how to install all tsuru compoments in one virtual machine.
-Install all components in one machine is not recommended for production ready but is a good
-start to have a tsuru stack working.
+This document describes how to manually install all tsuru compoments in one
+virtual machine. Installing all components in one machine is not recommended
+for production ready but is a good start to have a tsuru stack working.
+
+You can install it automatically using `tsuru-now
+<https://github.com/tsuru/now>`_ (or `tsuru-bootstrap
+<https://github.com/tsuru/tsuru-bootstrap>`_, that runs tsuru-now on vagrant).
 
 tsuru components are composed by:
 
 * MongoDB
-* beanstalkd
-* hipache
-* docker
-* gandalf
-* tsuru api
+* Redis
+* Hipache
+* Docker
+* Gandalf
+* tsuru API
 
-This document assumes that tsuru is being installed on a Ubuntu 12.04 LTS 64-bit
-machine.
+This document assumes that tsuru is being installed on a Ubuntu Server 14.04
+LTS 64-bit machine.
 
 Before install
 ==============
 
-Before install, let's install curl and python-software-properties, that are used to install extra repositories.
+Before install, let's install curl and python-software-properties, that are
+used to install extra repositories.
 
 .. highlight:: bash
 
@@ -37,7 +42,7 @@ Before install, let's install curl and python-software-properties, that are used
 Adding repositories
 ===================
 
-Let's start adding the docker, mongo and tsuru repositories.
+Let's start adding the repositories for Docker, tsuru and MongoDB.
 
 .. highlight:: bash
 
@@ -64,38 +69,13 @@ tsuru uses MongoDB to store all data about apps, users and teams. Let's install 
 ::
 
 
-    sudo apt-get install mongodb-10gen -qqy
+    sudo apt-get install mongodb-org -qqy
 
-Installing beanstalkd
-=====================
+Installing Redis
+================
 
-tsuru uses bealstalk as a queue tool.
-
-.. highlight:: bash
-
-::
-
-    sudo apt-get install beanstalkd -qqy
-
-
-Change the beastalkd config to enable it. To do it chane the `START=no` to `START=yes`. The configuration
-file in in `/etc/default/beanstalkd`.
-
-Now let's start beanstalkd:
-
-.. highlight:: bash
-
-::
-
-    sudo service beanstalkd start
-
-Installing Hipache
-==================
-
-Hipache is a distributed HTTP and websocket proxy. tsuru uses Hipache to route
-the requests to the containers.
-
-Hipache uses redis to store the router data. To install redis:
+tsuru uses Redis for message queueing and Hipache uses it for storing routing
+data.
 
 .. highlight:: bash
 
@@ -103,7 +83,13 @@ Hipache uses redis to store the router data. To install redis:
 
     sudo apt-get install redis-server -qqy
 
-We can use apt-get to install Hipache too.
+Installing Hipache
+==================
+
+Hipache is a distributed HTTP and websocket proxy. tsuru uses Hipache to route
+the requests to the containers.
+
+In order to install Hipache, just use apt-get:
 
 .. highlight:: bash
 
@@ -137,7 +123,7 @@ To change it, edit the `/etc/default/docker` adding this line:
 
 ::
 
-    export DOCKER_OPTS=\"-H 127.0.0.1:4243\"
+    export DOCKER_OPTS="-H 127.0.0.1:4243"
 
 Then restart docker:
 
@@ -148,8 +134,8 @@ Then restart docker:
     sudo stop docker
     sudo start docker
 
-Installing gandalf
-==================
+Installing gandalf and archive-server
+=====================================
 
 tsuru uses gandalf to manage git repositories.
 
@@ -159,8 +145,30 @@ tsuru uses gandalf to manage git repositories.
 
     sudo apt-get install gandalf-server -qqy
 
-A deploy is executed after a commit happens. To it works, its needed to add a script to be executed
-by git post-receive hook.
+A deploy is executed in the ``git push``. In order to get it working, you will
+need to add a pre-receive hook. Tsuru comes with three pre-receive hooks, all
+of them need further configuration:
+
+    * s3cmd: uses `Amazon S3 <https://s3.amazonaws.com>`_ to store and server
+      archives
+    * archive-server: uses tsuru's `archive-server
+      <https://github.com/tsuru/archive-server>`_ to store and serve archives
+    * swift: uses `Swift <http://swift.openstack.org>`_ to store and server
+      archives (compatible with `Rackspace Cloud Files
+      <http://www.rackspace.com/cloud/files/>`_)
+
+In this tutorial, we will use archive-server, but you can use anything that can
+store a git archive and serve it via HTTP or FTP. You can install
+archive-server via apt-get too:
+
+.. highlight:: bash
+
+::
+
+    sudo apt-get install archive-server -qqy
+
+Then you will need to configure Gandalf, install the pre-receive hook, set the
+proper environment variables and start Gandalf and the archive-server:
 
 .. highlight:: bash
 
@@ -168,14 +176,33 @@ by git post-receive hook.
 
     hook_dir=/home/git/bare-template/hooks
     sudo mkdir -p $hook_dir
-    sudo curl https://raw.githubusercontent.com/tsuru/tsuru/master/misc/git-hooks/post-receive -o ${hook_dir}/post-receive
-    sudo chmod +x ${hook_dir}/post-receive
+    sudo curl https://raw.githubusercontent.com/tsuru/tsuru/master/misc/git-hooks/pre-receive.archive-server -o ${hook_dir}/pre-receive
+    sudo chmod +x ${hook_dir}/pre-receive
     sudo chown -R git:git /home/git/bare-template
-    # make sure you write the public IP of the machine in the "host" parameter
-    # in the /etc/gandalf.conf file
+    cat | sudo tee -a /home/git/.bash_profile <<EOF
+    export ARCHIVE_SERVER_READ=http://172.17.42.1:3232 ARCHIVE_SERVER_WRITE=http://127.0.0.1:3131
+    EOF
+
+In the ``/etc/gandalf.conf`` file, remove the comment from the line "template:
+/home/git/bare-template", so it looks like that:
+
+.. highlight:: yaml
+
+::
+
+    git:
+      bare:
+        location: /var/lib/gandalf/repositories
+        template: /home/git/bare-template
+
+Then start gandalf and archive-server:
+
+.. highlight:: bash
+
+::
 
     sudo start gandalf-server
-    sudo start git-daemon
+    sudo start archive-server
 
 Installing tsuru API server
 ===========================
@@ -191,8 +218,7 @@ Installing tsuru API server
     sudo start tsuru-server-api
     sudo start tsuru-server-collector
 
-
-Now we will create an conf file to run your tsuru server.
+Now you need to customize the configuration in the ``/etc/tsuru/tsuru.conf``.
 
 .. highlight:: bash
 
@@ -205,20 +231,20 @@ The basic configuration is:
 
 ::
 
-    listen: "0.0.0.0:8000"
-    debug: false #if you are developing to tsuru turn it to true
-    host: http://machine-public-ip:8000 # This port should be the same on "listen" conf
-    admin-team: admin # if you want to run tsuru-admin commands, you should be in the admin-team
+    listen: "0.0.0.0:8080"
+    debug: true
+    host: http://machine-public-ip:8080 # This port must be the same as in the "listen" conf
+    admin-team: admin
     auth:
         user-registration: true
         scheme: native # you can use oauth or native
     database:
-        url: mongo-host:mongo-port
+        url: 127.0.0.1:27017
         name: tsurudb
     queue: redis
     redis-queue:
-        host: redis-host
-        port: redis-port
+        host: 127.0.0.1
+        port: 6379
 
 
 Now we will configure git:
@@ -228,9 +254,6 @@ Now we will configure git:
     git:
         unit-repo: /home/application/current
         api-server: http://127.0.0.1:8000
-        rw-host: gandalf-server-public-ip
-        ro-host: gandalf-server-private-ip
-
 
 Finally, we will configure docker:
 
@@ -240,9 +263,8 @@ Finally, we will configure docker:
     docker:
         segregate: false
         servers:
-            - http://127.0.0.1:4243 # you should configure it if segregate is false
+            - http://127.0.0.1:4243
         router: hipache
-
         collection: docker_containers
         repository-namespace: tsuru
         deploy-cmd: /var/lib/tsuru/deploy
@@ -257,16 +279,39 @@ Finally, we will configure docker:
             add-key-cmd: /var/lib/tsuru/add-key
             public-key: /var/lib/tsuru/.ssh/id_rsa.pub
             user: ubuntu
-
     hipache:
-        domain: tsuru-sample.com # tsuru use this to mount the app's urls
+        domain: tsuru-sample.com # tsuru uses this to mount the app's urls
 
 All confs are better explained `here <http://tsuru.readthedocs.org/en/latest/config.html>`_.
+
+Generating token for Gandalf authentication
+===========================================
+
+The last step before is to tell the pre-receive script where to find the tsuru
+server and how to talk to it. We do that by exporting two environment variables
+in the ``~git/.bash_profile`` file:
+
+.. highlight:: bash
+
+::
+
+    cat | sudo tee -a /home/git/.bash_profile <<EOF
+    export TSURU_HOST=http://127.0.0.1:8080
+    export TSURU_TOKEN=`tsr token`
+    EOF
+
+Using tsuru client
+==================
+
+Congratulations! At this point you should have a working tsuru server running
+on your machine, follow the :doc:`tsuru client usage guide
+</apps/client/usage>` to start build your apps.
 
 Installing platforms
 ====================
 
-You can use the `tsuru-admin` to install your preferred platform:
+After creating the first user and the admin team, you can use the `tsuru-admin`
+to install your preferred platform:
 
 .. highlight:: bash
 
@@ -283,16 +328,9 @@ For example, Python:
     tsuru-admin platform-add python --dockerfile https://raw.githubusercontent.com/tsuru/basebuilder/master/python/Dockerfile
 
 
-You can see the oficial tsuru dockerfiles here: https://github.com/tsuru/basebuilder. 
+You can see the oficial tsuru dockerfiles here: https://github.com/tsuru/basebuilder.
 
-:doc:`Here you can see more docs about tsuru-admin </apps/tsuru-admin/usage>`. 
-
-Using tsuru client
-==================
-
-Congratulations! At this point you should have a working tsuru server running
-on your machine, follow the :doc:`tsuru client usage guide
-</apps/client/usage>` to start build your apps.
+:doc:`Here you can see more docs about tsuru-admin </apps/tsuru-admin/usage>`.
 
 Adding Services
 ===============
