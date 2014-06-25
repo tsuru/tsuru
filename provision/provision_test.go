@@ -8,6 +8,7 @@ import (
 	"errors"
 	"launchpad.net/gocheck"
 	"reflect"
+	"sort"
 	"testing"
 )
 
@@ -91,4 +92,45 @@ func (ProvisionSuite) TestUnitAvailable(c *gocheck.C) {
 func (ProvisionSuite) TestUnitGetIp(c *gocheck.C) {
 	u := Unit{Ip: "10.3.3.1"}
 	c.Assert(u.Ip, gocheck.Equals, u.GetIp())
+}
+
+func (ProvisionSuite) TestUnitSliceLen(c *gocheck.C) {
+	units := UnitSlice{Unit{}, Unit{}}
+	c.Assert(units.Len(), gocheck.Equals, 2)
+}
+
+func (ProvisionSuite) TestUnitSliceLess(c *gocheck.C) {
+	units := UnitSlice{
+		Unit{Name: "b", Status: StatusDown},
+		Unit{Name: "d", Status: StatusBuilding},
+		Unit{Name: "e", Status: StatusStarted},
+		Unit{Name: "s", Status: StatusUnreachable},
+	}
+	c.Assert(units.Less(0, 1), gocheck.Equals, true)
+	c.Assert(units.Less(1, 2), gocheck.Equals, true)
+	c.Assert(units.Less(2, 0), gocheck.Equals, false)
+	c.Assert(units.Less(3, 2), gocheck.Equals, true)
+	c.Assert(units.Less(3, 1), gocheck.Equals, false)
+}
+
+func (ProvisionSuite) TestUnitSliceSwap(c *gocheck.C) {
+	units := UnitSlice{
+		Unit{Name: "b", Status: StatusDown},
+		Unit{Name: "f", Status: StatusBuilding},
+		Unit{Name: "g", Status: StatusStarted},
+	}
+	units.Swap(0, 1)
+	c.Assert(units[0].Status, gocheck.Equals, StatusBuilding)
+	c.Assert(units[1].Status, gocheck.Equals, StatusDown)
+}
+
+func (ProvisionSuite) TestUnitSliceSort(c *gocheck.C) {
+	units := UnitSlice{
+		Unit{Name: "f", Status: StatusBuilding},
+		Unit{Name: "g", Status: StatusStarted},
+		Unit{Name: "b", Status: StatusDown},
+	}
+	c.Assert(sort.IsSorted(units), gocheck.Equals, false)
+	sort.Sort(units)
+	c.Assert(sort.IsSorted(units), gocheck.Equals, true)
 }
