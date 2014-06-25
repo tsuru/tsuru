@@ -9,7 +9,6 @@ changes`_ you'll want to be aware of when upgrading from tsr 0.4.0 or older
 versions.
 
 .. _`new features`: `What's new in tsr 0.5.0`_
-.. _`backwards incompatible changes`: `Backwards incompatible changes`_
 
 What's new in tsr 0.5.0
 =======================
@@ -19,7 +18,7 @@ Stability and Consistency
 
 One of the main feature on this release is improve the stability and consitency of the tsuru api.
 
-* prevent inconsitency caused by problems on deploy (`#803 <https://github.com/tsuru/tsuru/issues/803`_) / (`#804 <https://github.com/tsuru/tsuru/issues/804`_)
+* prevent inconsitency caused by problems on deploy (`#803 <https://github.com/tsuru/tsuru/issues/803>`_) / (`#804 <https://github.com/tsuru/tsuru/issues/804>`_)
 * units information is not updated by collector (`#806 <https://github.com/tsuru/tsuru/issues/806>`_)
 * fixed log listener scale problem (`#762 <https://github.com/tsuru/tsuru/issues/762>`_)
 * prevent inconsitency caused by simultaneous operations in an application (`#789 <https://github.com/tsuru/tsuru/issues/789>`_)
