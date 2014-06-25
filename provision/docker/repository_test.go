@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"github.com/tsuru/tsuru/provision"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
@@ -124,4 +125,23 @@ func (s *S) TestGetContainerPartialId(c *gocheck.C) {
 	cont, err := getContainerPartialId("container-a")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cont.ID, gocheck.Equals, "container-a1")
+}
+
+func (s *S) TestListContainersByAppOrderedByStatus(c *gocheck.C) {
+	coll := collection()
+	defer coll.Close()
+	coll.Insert(
+		container{AppName: "myapp", ID: "0", Status: provision.StatusStarted.String()},
+		container{AppName: "myapp", ID: "1", Status: provision.StatusBuilding.String()},
+		container{AppName: "myapp", ID: "2", Status: provision.StatusUnreachable.String()},
+		container{AppName: "myapp", ID: "3", Status: provision.StatusDown.String()},
+	)
+	defer coll.RemoveAll(bson.M{"appname": "myapp"})
+	containers, err := listContainersByAppOrderedByStatus("myapp")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(len(containers), gocheck.Equals, 4)
+	c.Assert(containers[0].Status, gocheck.Equals, provision.StatusDown.String())
+	c.Assert(containers[1].Status, gocheck.Equals, provision.StatusBuilding.String())
+	c.Assert(containers[2].Status, gocheck.Equals, provision.StatusUnreachable.String())
+	c.Assert(containers[3].Status, gocheck.Equals, provision.StatusStarted.String())
 }

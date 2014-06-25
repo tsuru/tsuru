@@ -7,8 +7,10 @@ package docker
 import (
 	"errors"
 	"fmt"
+	"github.com/tsuru/tsuru/provision"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
+	"sort"
 )
 
 var ambiguousContainerError error = errors.New("Ambiguous container name.")
@@ -40,8 +42,34 @@ func listContainersByApp(appName string) ([]container, error) {
 	return listContainersBy(bson.M{"appname": appName})
 }
 
+// ContainerSlice attaches the methods of sort.Interface to []container, sorting in increasing order.
+type containerSlice []container
+
+func (c containerSlice) Len() int {
+	return len(c)
+}
+
+func (c containerSlice) Less(i, j int) bool {
+	weight := map[string]int{
+		provision.StatusDown.String():        0,
+		provision.StatusBuilding.String():    1,
+		provision.StatusUnreachable.String(): 2,
+		provision.StatusStarted.String():     3,
+	}
+	return weight[c[i].Status] < weight[c[j].Status]
+}
+
+func (c containerSlice) Swap(i, j int) {
+	c[i], c[j] = c[j], c[i]
+}
+
 func listContainersByAppOrderedByStatus(appName string) ([]container, error) {
-	return listContainersBy(bson.M{"appname": appName})
+	containers, err := listContainersBy(bson.M{"appname": appName})
+	if err != nil {
+		return nil, err
+	}
+	sort.Sort(containerSlice(containers))
+	return containers, nil
 }
 
 func listAllContainers() ([]container, error) {
