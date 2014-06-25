@@ -410,6 +410,23 @@ func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 }
 
+func (s *S) TestProvisionerRemoveUnitPriorityOrder(c *gocheck.C) {
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	container, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
+	app := testing.NewFakeApp(container.AppName, "python", 0)
+	var p dockerProvisioner
+	_, err = p.AddUnits(app, 1)
+	c.Assert(err, gocheck.IsNil)
+	err = p.RemoveUnit(app)
+	c.Assert(err, gocheck.IsNil)
+	_, err = getContainer(container.ID)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(p.Units(app), gocheck.HasLen, 1)
+}
+
 func (s *S) TestProvisionerRemoveUnitNotFound(c *gocheck.C) {
 	var p dockerProvisioner
 	err := p.RemoveUnit(nil)
