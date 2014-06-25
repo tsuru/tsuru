@@ -391,15 +391,6 @@ func (app *App) AddUnits(n uint) error {
 	return err
 }
 
-// RemoveUnit removes a unit by its Name.
-func (app *App) RemoveUnit(name string) error {
-	unit, err := app.findUnitByName(name)
-	if err != nil {
-		return err
-	}
-	return Provisioner.RemoveUnit(app, unit.Name)
-}
-
 // findUnitByName searchs unit by name.
 func (app *App) findUnitByName(name string) (*provision.Unit, error) {
 	for _, u := range app.Units() {
@@ -425,19 +416,9 @@ func (app *App) RemoveUnits(n uint) error {
 	} else if n > l {
 		return fmt.Errorf("Cannot remove %d units from this app, it has only %d units.", n, l)
 	}
-	var (
-		removed []int
-		err     error
-	)
-	units := UnitSlice(app.Units())
-	sort.Sort(units)
+	//units := UnitSlice(app.Units())
 	for i := 0; i < int(n); i++ {
-		name := units[i].Name
-		go Provisioner.RemoveUnit(app, name)
-		removed = append(removed, i)
-	}
-	if len(removed) == 0 {
-		return err
+		go Provisioner.RemoveUnit(app)
 	}
 	conn, err := db.Conn()
 	if err != nil {

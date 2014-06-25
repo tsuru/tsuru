@@ -79,7 +79,6 @@ type App interface {
 	GetDeploys() uint
 
 	Units() []Unit
-	RemoveUnit(id string) error
 
 	// Run executes the command in app units. Commands executed with this
 	// method should have access to environment variables defined in the
@@ -135,7 +134,7 @@ type Provisioner interface {
 
 	// RemoveUnit removes a unit from the app. It receives the app and the name
 	// of the unit to be removed.
-	RemoveUnit(App, string) error
+	RemoveUnit(App) error
 
 	// ExecuteCommand runs a command in all units of the app.
 	ExecuteCommand(stdout, stderr io.Writer, app App, cmd string, args ...string) error

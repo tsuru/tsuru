@@ -330,8 +330,8 @@ var provisionAddUnits = action.Action{
 			app = *ctx.Params[0].(*App)
 		}
 		units := ctx.FWResult.([]provision.Unit)
-		for _, unit := range units {
-			Provisioner.RemoveUnit(&app, unit.Name)
+		for _ = range units {
+			Provisioner.RemoveUnit(&app)
 		}
 	},
 	MinParams: 1,

@@ -124,24 +124,6 @@ func (a *FakeApp) AddUnit(u provision.Unit) {
 	a.units = append(a.units, u)
 }
 
-func (a *FakeApp) RemoveUnit(id string) error {
-	index := -1
-	for i, u := range a.units {
-		if u.Name == id {
-			index = i
-			break
-		}
-	}
-	if index < 0 {
-		return errors.New("Unit not found")
-	}
-	if index < len(a.units)-1 {
-		a.units[index] = a.units[len(a.units)-1]
-	}
-	a.units = a.units[:len(a.units)-1]
-	return nil
-}
-
 func (a *FakeApp) SetUnitStatus(s provision.Status, index int) {
 	if index < len(a.units) {
 		a.units[index].Status = s
@@ -492,27 +474,16 @@ func (p *FakeProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit,
 	return result, nil
 }
 
-func (p *FakeProvisioner) RemoveUnit(app provision.App, name string) error {
+func (p *FakeProvisioner) RemoveUnit(app provision.App) error {
 	if err := p.getError("RemoveUnit"); err != nil {
 		return err
 	}
-	index := -1
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	pApp, ok := p.apps[app.GetName()]
 	if !ok {
 		return errNotProvisioned
 	}
-	for i, unit := range pApp.units {
-		if unit.Name == name {
-			index = i
-			break
-		}
-	}
-	if index == -1 {
-		return errors.New("Unit not found.")
-	}
-	copy(pApp.units[index:], pApp.units[index+1:])
 	pApp.units = pApp.units[:len(pApp.units)-1]
 	pApp.unitLen--
 	p.apps[app.GetName()] = pApp

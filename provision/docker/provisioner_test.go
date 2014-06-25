@@ -404,7 +404,7 @@ func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp(container.AppName, "python", 0)
 	var p dockerProvisioner
-	err = p.RemoveUnit(app, container.ID)
+	err = p.RemoveUnit(app)
 	c.Assert(err, gocheck.IsNil)
 	_, err = getContainer(container.ID)
 	c.Assert(err, gocheck.NotNil)
@@ -412,51 +412,9 @@ func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
 
 func (s *S) TestProvisionerRemoveUnitNotFound(c *gocheck.C) {
 	var p dockerProvisioner
-	err := p.RemoveUnit(nil, "not-found")
+	err := p.RemoveUnit(nil)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "not found")
-}
-
-func (s *S) TestProvisionerRemoveUnitNotInApp(c *gocheck.C) {
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
-	container, err := s.newContainer(nil)
-	c.Assert(err, gocheck.IsNil)
-	defer s.removeTestContainer(container)
-	var p dockerProvisioner
-	err = p.RemoveUnit(testing.NewFakeApp("hisapp", "python", 1), container.ID)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Unit does not belong to this app")
-	_, err = getContainer(container.ID)
-	c.Assert(err, gocheck.IsNil)
-}
-
-func (s *S) TestRemoveUnitInSameHostAsAnotherUnitShouldEnqueueAnotherBind(c *gocheck.C) {
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
-	c1, err := s.newContainer(nil)
-	c.Assert(err, gocheck.IsNil)
-	c2, err := s.newContainer(nil)
-	c.Assert(err, gocheck.IsNil)
-	defer rtesting.FakeRouter.RemoveBackend(c1.AppName)
-	client, err := docker.NewClient(s.server.URL())
-	c.Assert(err, gocheck.IsNil)
-	err = client.StartContainer(c1.ID, nil)
-	c.Assert(err, gocheck.IsNil)
-	a := testing.NewFakeApp(c1.AppName, "python", 0)
-	var p dockerProvisioner
-	err = p.RemoveUnit(a, c1.ID)
-	c.Assert(err, gocheck.IsNil)
-	_, err = getContainer(c1.ID)
-	c.Assert(err, gocheck.NotNil)
-	_, err = getContainer(c2.ID)
-	c.Assert(err, gocheck.IsNil)
-	q, err := getQueue()
-	c.Assert(err, gocheck.IsNil)
-	message, err := q.Get(1e6)
-	c.Assert(err, gocheck.IsNil)
-	expected := &queue.Message{Action: app.BindService, Args: []string{a.GetName(), c2.ID}}
-	c.Assert(message, gocheck.DeepEquals, expected)
+	c.Assert(err.Error(), gocheck.Equals, "remove unit: app should not be nil")
 }
 
 func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {

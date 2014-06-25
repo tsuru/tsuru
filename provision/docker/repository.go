@@ -51,6 +51,10 @@ func listContainersByApp(appName string) ([]container, error) {
 	return listContainersBy(bson.M{"appname": appName})
 }
 
+func listContainersByAppOrderedByStatus(appName string) ([]container, error) {
+	return listContainersBy(bson.M{"appname": appName})
+}
+
 func listAllContainers() ([]container, error) {
 	return listContainersBy(nil)
 }

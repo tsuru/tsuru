@@ -27,16 +27,6 @@ func (s *S) TestFakeAppAddUnit(c *gocheck.C) {
 	c.Assert(app.units, gocheck.HasLen, 1)
 }
 
-func (s *S) TestFakeAppRemoveUnit(c *gocheck.C) {
-	app := NewFakeApp("jean", "mk", 0)
-	app.AddUnit(provision.Unit{Name: "jean/0"})
-	err := app.RemoveUnit("jean/0")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.units, gocheck.HasLen, 0)
-	err = app.RemoveUnit("jean/0")
-	c.Assert(err, gocheck.NotNil)
-}
-
 func (s *S) TestFakeAppReady(c *gocheck.C) {
 	app := NewFakeApp("sou", "otm", 0)
 	c.Assert(app.IsReady(), gocheck.Equals, false)
@@ -477,7 +467,7 @@ func (s *S) TestRemoveUnit(c *gocheck.C) {
 	p.Provision(app)
 	_, err := p.AddUnits(app, 2)
 	c.Assert(err, gocheck.IsNil)
-	err = p.RemoveUnit(app, "hemispheres/1")
+	err = p.RemoveUnit(app)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.GetUnits(app), gocheck.HasLen, 2)
 	c.Assert(p.GetUnits(app)[0].Name, gocheck.Equals, "hemispheres/0")
@@ -486,25 +476,14 @@ func (s *S) TestRemoveUnit(c *gocheck.C) {
 func (s *S) TestRemoveUnitFromUnprivisionedApp(c *gocheck.C) {
 	app := NewFakeApp("hemispheres", "rush", 0)
 	p := NewFakeProvisioner()
-	err := p.RemoveUnit(app, "hemispheres/1")
+	err := p.RemoveUnit(app)
 	c.Assert(err, gocheck.Equals, errNotProvisioned)
-}
-
-func (s *S) TestRemoveUnknownUnit(c *gocheck.C) {
-	app := NewFakeApp("hemispheres", "rush", 0)
-	p := NewFakeProvisioner()
-	p.Provision(app)
-	_, err := p.AddUnits(app, 2)
-	c.Assert(err, gocheck.IsNil)
-	err = p.RemoveUnit(app, "hemispheres/3")
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Unit not found.")
 }
 
 func (s *S) TestRemoveUnitFailure(c *gocheck.C) {
 	p := NewFakeProvisioner()
 	p.PrepareFailure("RemoveUnit", errors.New("This program has performed an illegal operation."))
-	err := p.RemoveUnit(nil, "hemispheres/5")
+	err := p.RemoveUnit(nil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "This program has performed an illegal operation.")
 }

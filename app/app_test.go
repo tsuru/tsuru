@@ -701,69 +701,6 @@ func (s *S) TestRemoveUnitsInvalidValues(c *gocheck.C) {
 	}
 }
 
-func (s *S) TestRemoveUnitByNameOrInstanceID(c *gocheck.C) {
-	app := App{
-		Name:     "physics",
-		Platform: "python",
-		Quota:    quota.Unlimited,
-	}
-	err := s.conn.Apps().Insert(app)
-	c.Assert(err, gocheck.IsNil)
-	err = s.provisioner.Provision(&app)
-	defer s.provisioner.Destroy(&app)
-	c.Assert(err, gocheck.IsNil)
-	err = app.AddUnits(4)
-	c.Assert(err, gocheck.IsNil)
-	defer func() {
-		s.provisioner.Destroy(&app)
-		s.conn.Apps().Remove(bson.M{"name": app.Name})
-	}()
-	otherApp, err := GetByName(app.Name)
-	c.Assert(err, gocheck.IsNil)
-	err = otherApp.RemoveUnit(app.Units()[0].Name)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(otherApp.Platform, gocheck.Equals, "python")
-	c.Assert(otherApp.Units(), gocheck.HasLen, 4)
-	err = otherApp.RemoveUnit(otherApp.Units()[1].Name)
-	c.Assert(err, gocheck.IsNil)
-	units := s.provisioner.GetUnits(otherApp)
-	c.Assert(units, gocheck.HasLen, 3)
-}
-
-func (s *S) TestRemoveAbsentUnit(c *gocheck.C) {
-	app := &App{
-		Name:     "chemistry",
-		Platform: "python",
-		Quota:    quota.Unlimited,
-	}
-	err := s.conn.Apps().Insert(app)
-	c.Assert(err, gocheck.IsNil)
-	err = s.provisioner.Provision(app)
-	defer s.provisioner.Destroy(app)
-	c.Assert(err, gocheck.IsNil)
-	err = app.AddUnits(1)
-	c.Assert(err, gocheck.IsNil)
-	defer func() {
-		s.provisioner.Destroy(app)
-		s.conn.Apps().Remove(bson.M{"name": app.Name})
-	}()
-	app, err = GetByName(app.Name)
-	c.Assert(err, gocheck.IsNil)
-	name := app.Units()[1].Name
-	err = app.RemoveUnit(name)
-	c.Assert(err, gocheck.IsNil)
-	err = app.RemoveUnit(name)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.ErrorMatches, fmt.Sprintf("Unit not found: %s.", name))
-	app, err = GetByName(app.Name)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.Units(), gocheck.HasLen, 1)
-	c.Assert(app.Units()[0].Name, gocheck.Equals, "chemistry/0")
-	units := s.provisioner.GetUnits(app)
-	c.Assert(units, gocheck.HasLen, 1)
-	c.Assert(units[0].Name, gocheck.Equals, "chemistry/0")
-}
-
 func (s *S) TestGrantAccess(c *gocheck.C) {
 	a := App{Name: "appName", Platform: "django", Teams: []string{}}
 	err := a.Grant(&s.team)

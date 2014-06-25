@@ -18,7 +18,6 @@ import (
 	"github.com/tsuru/tsuru/exec"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/router"
 	_ "github.com/tsuru/tsuru/router/hipache"
 	_ "github.com/tsuru/tsuru/router/testing"
@@ -145,9 +144,7 @@ func startInBackground(a provision.App, c container, imageId string, w io.Writer
 		return
 	}
 	if c.ID != "" {
-		if a.RemoveUnit(c.ID) != nil {
-			removeContainer(&c)
-		}
+		removeContainer(&c)
 	}
 	errorChan <- nil
 }
@@ -310,36 +307,15 @@ func (*dockerProvisioner) AddUnits(a provision.App, units uint) ([]provision.Uni
 	return addUnitsWithHost(a, units)
 }
 
-func (*dockerProvisioner) RemoveUnit(a provision.App, unitName string) error {
-	container, err := getContainer(unitName)
+func (*dockerProvisioner) RemoveUnit(a provision.App) error {
+	if a == nil {
+		return errors.New("remove unit: app should not be nil")
+	}
+	containers, err := listContainersByAppOrderedByStatus(a.GetName())
 	if err != nil {
 		return err
 	}
-	if container.AppName != a.GetName() {
-		return errors.New("Unit does not belong to this app")
-	}
-	if err := removeContainer(container); err != nil {
-		return err
-	}
-	return rebindWhenNeed(a.GetName(), container)
-}
-
-// rebindWhenNeed rebinds a unit to the app's services when it finds
-// that the unit being removed has the same host that any
-// of the units that still being used
-func rebindWhenNeed(appName string, container *container) error {
-	containers, err := listContainersByApp(appName)
-	if err != nil {
-		return err
-	}
-	for _, c := range containers {
-		if c.HostAddr == container.HostAddr && c.ID != container.ID {
-			msg := queue.Message{Action: app.BindService, Args: []string{appName, c.ID}}
-			go app.Enqueue(msg)
-			break
-		}
-	}
-	return nil
+	return removeContainer(&containers[0])
 }
 
 func removeContainer(c *container) error {

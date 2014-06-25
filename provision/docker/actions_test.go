@@ -295,7 +295,7 @@ func (s *S) TestProvisionAddUnitToHostBackward(c *gocheck.C) {
 		Ip:      container.HostAddr,
 		Status:  provision.StatusBuilding,
 	}
-	context := action.BWContext{Params: []interface{}{app, "server"}, FWResult: unit}
+	context := action.BWContext{Params: []interface{}{app, "server", *container}, FWResult: unit}
 	provisionAddUnitToHost.Backward(context)
 	_, err = getContainer(container.ID)
 	c.Assert(err, gocheck.NotNil)
