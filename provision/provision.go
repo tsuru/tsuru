@@ -58,27 +58,6 @@ func (u *Unit) Available() bool {
 	return u.Status == StatusStarted || u.Status == StatusUnreachable
 }
 
-// UnitSlice attaches the methods of sort.Interface to []Unit, sorting in increasing order.
-type UnitSlice []Unit
-
-func (u UnitSlice) Len() int {
-	return len(u)
-}
-
-func (u UnitSlice) Less(i, j int) bool {
-	weight := map[Status]int{
-		StatusDown:        0,
-		StatusBuilding:    1,
-		StatusUnreachable: 2,
-		StatusStarted:     3,
-	}
-	return weight[u[i].Status] < weight[u[j].Status]
-}
-
-func (u UnitSlice) Swap(i, j int) {
-	u[i], u[j] = u[j], u[i]
-}
-
 // Named is something that has a name, providing the GetName method.
 type Named interface {
 	GetName() string
