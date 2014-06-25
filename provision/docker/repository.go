@@ -53,8 +53,9 @@ func (c containerSlice) Less(i, j int) bool {
 	weight := map[string]int{
 		provision.StatusDown.String():        0,
 		provision.StatusBuilding.String():    1,
-		provision.StatusUnreachable.String(): 2,
-		provision.StatusStarted.String():     3,
+		provision.StatusStopped.String():     2,
+		provision.StatusUnreachable.String(): 3,
+		provision.StatusStarted.String():     4,
 	}
 	return weight[c[i].Status] < weight[c[j].Status]
 }

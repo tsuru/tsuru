@@ -158,12 +158,15 @@ func (S) TestcontainerSliceLess(c *gocheck.C) {
 		container{Name: "d", Status: provision.StatusBuilding.String()},
 		container{Name: "e", Status: provision.StatusStarted.String()},
 		container{Name: "s", Status: provision.StatusUnreachable.String()},
+		container{Name: "z", Status: provision.StatusStopped.String()},
 	}
 	c.Assert(containers.Less(0, 1), gocheck.Equals, true)
 	c.Assert(containers.Less(1, 2), gocheck.Equals, true)
 	c.Assert(containers.Less(2, 0), gocheck.Equals, false)
 	c.Assert(containers.Less(3, 2), gocheck.Equals, true)
 	c.Assert(containers.Less(3, 1), gocheck.Equals, false)
+	c.Assert(containers.Less(4, 3), gocheck.Equals, true)
+	c.Assert(containers.Less(4, 1), gocheck.Equals, false)
 }
 
 func (S) TestcontainerSliceSwap(c *gocheck.C) {
