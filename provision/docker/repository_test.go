@@ -9,6 +9,7 @@ import (
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
+	"sort"
 )
 
 func (s *S) getContainerCollection(appName string, containerIds ...string) func() {
@@ -144,4 +145,45 @@ func (s *S) TestListContainersByAppOrderedByStatus(c *gocheck.C) {
 	c.Assert(containers[1].Status, gocheck.Equals, provision.StatusBuilding.String())
 	c.Assert(containers[2].Status, gocheck.Equals, provision.StatusUnreachable.String())
 	c.Assert(containers[3].Status, gocheck.Equals, provision.StatusStarted.String())
+}
+
+func (S) TestcontainerSliceLen(c *gocheck.C) {
+	containers := containerSlice{container{}, container{}}
+	c.Assert(containers.Len(), gocheck.Equals, 2)
+}
+
+func (S) TestcontainerSliceLess(c *gocheck.C) {
+	containers := containerSlice{
+		container{Name: "b", Status: provision.StatusDown.String()},
+		container{Name: "d", Status: provision.StatusBuilding.String()},
+		container{Name: "e", Status: provision.StatusStarted.String()},
+		container{Name: "s", Status: provision.StatusUnreachable.String()},
+	}
+	c.Assert(containers.Less(0, 1), gocheck.Equals, true)
+	c.Assert(containers.Less(1, 2), gocheck.Equals, true)
+	c.Assert(containers.Less(2, 0), gocheck.Equals, false)
+	c.Assert(containers.Less(3, 2), gocheck.Equals, true)
+	c.Assert(containers.Less(3, 1), gocheck.Equals, false)
+}
+
+func (S) TestcontainerSliceSwap(c *gocheck.C) {
+	containers := containerSlice{
+		container{Name: "b", Status: provision.StatusDown.String()},
+		container{Name: "f", Status: provision.StatusBuilding.String()},
+		container{Name: "g", Status: provision.StatusStarted.String()},
+	}
+	containers.Swap(0, 1)
+	c.Assert(containers[0].Status, gocheck.Equals, provision.StatusBuilding.String())
+	c.Assert(containers[1].Status, gocheck.Equals, provision.StatusDown.String())
+}
+
+func (S) TestcontainerSliceSort(c *gocheck.C) {
+	containers := containerSlice{
+		container{Name: "f", Status: provision.StatusBuilding.String()},
+		container{Name: "g", Status: provision.StatusStarted.String()},
+		container{Name: "b", Status: provision.StatusDown.String()},
+	}
+	c.Assert(sort.IsSorted(containers), gocheck.Equals, false)
+	sort.Sort(containers)
+	c.Assert(sort.IsSorted(containers), gocheck.Equals, true)
 }
