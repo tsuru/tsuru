@@ -12,17 +12,14 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/service"
-	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"sync"
 )
 
 const (
 	// queue actions
-	regenerateApprc         = "regenerate-apprc"
-	startApp                = "start-app"
-	RegenerateApprcAndStart = "regenerate-apprc-start-app"
-	BindService             = "bind-service"
+	regenerateApprc = "regenerate-apprc"
+	BindService     = "bind-service"
 
 	queueName = "tsuru-app"
 )
@@ -88,8 +85,6 @@ func bindUnit(msg *queue.Message) error {
 // handle is the function called by the queue handler on each message.
 func handle(msg *queue.Message) {
 	switch msg.Action {
-	case RegenerateApprcAndStart:
-		fallthrough
 	case regenerateApprc:
 		if len(msg.Args) < 1 {
 			log.Errorf("Error handling %q: this action requires at least 1 argument.", msg.Action)
@@ -103,24 +98,6 @@ func handle(msg *queue.Message) {
 		err = app.SerializeEnvVars()
 		if err != nil {
 			log.Error(err.Error())
-		}
-		fallthrough
-	case startApp:
-		if msg.Action == regenerateApprc {
-			break
-		}
-		if len(msg.Args) < 1 {
-			log.Errorf("Error handling %q: this action requires at least 1 argument.", msg.Action)
-		}
-		app, err := ensureAppIsStarted(msg)
-		if err != nil {
-			log.Error(err.Error())
-			return
-		}
-		err = app.Restart(ioutil.Discard)
-		if err != nil {
-			log.Errorf("Error handling %q. App failed to start:\n%s.", msg.Action, err)
-			return
 		}
 	case BindService:
 		err := bindUnit(msg)
@@ -216,7 +193,7 @@ func aqueue() queue.Q {
 //
 // Here is a functional example for this function:
 //
-//     msg := queue.Message{Action: app.RegenerateApprcAndStart, Args: []string{"myapp"}}
+//     msg := queue.Message{Action: app.regenerateApprc, Args: []string{"myapp"}}
 //     app.Enqueue(msg)
 func Enqueue(msgs ...queue.Message) {
 	q := aqueue()
