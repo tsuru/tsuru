@@ -17,6 +17,17 @@ import (
 	"launchpad.net/gocheck"
 )
 
+func getContainer(id string) (*container, error) {
+	var c container
+	coll := collection()
+	defer coll.Close()
+	err := coll.Find(bson.M{"id": id}).One(&c)
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
 func (s *S) TestInsertEmptyContainerInDBName(c *gocheck.C) {
 	c.Assert(insertEmptyContainerInDB.Name, gocheck.Equals, "insert-empty-container")
 }
