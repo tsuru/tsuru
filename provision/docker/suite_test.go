@@ -23,18 +23,19 @@ import (
 func Test(t *testing.T) { gocheck.TestingT(t) }
 
 type S struct {
-	collName      string
-	imageCollName string
-	gitHost       string
-	repoNamespace string
-	deployCmd     string
-	runBin        string
-	runArgs       string
-	port          string
-	sshUser       string
-	server        *dtesting.DockerServer
-	targetRecover []string
-	storage       *db.Storage
+	collName       string
+	imageCollName  string
+	gitHost        string
+	repoNamespace  string
+	deployCmd      string
+	runBin         string
+	runArgs        string
+	port           string
+	sshUser        string
+	server         *dtesting.DockerServer
+	targetRecover  []string
+	storage        *db.Storage
+	oldProvisioner provision.Provisioner
 }
 
 var _ = gocheck.Suite(&S{})
@@ -71,6 +72,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	s.targetRecover = tTesting.SetTargetFile(c)
 	s.storage, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
+	s.oldProvisioner = app.Provisioner
 	app.Provisioner = &dockerProvisioner{}
 }
 
@@ -96,6 +98,7 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 	tTesting.RollbackTargetFile(s.targetRecover)
 	s.storage.Apps().Database.DropDatabase()
 	s.storage.Close()
+	app.Provisioner = s.oldProvisioner
 }
 
 func (s *S) stopMultipleServersCluster(cluster *cluster.Cluster) {

@@ -13,10 +13,7 @@ import (
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"strings"
-	"sync"
 )
-
-var provisionMutex sync.Mutex
 
 func (s *S) TestMoveContainers(c *gocheck.C) {
 	cluster, err := s.startMultipleServersCluster()
@@ -28,15 +25,6 @@ func (s *S) TestMoveContainers(c *gocheck.C) {
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
-	provisionMutex.Lock()
-	oldProvisioner := app.Provisioner
-	app.Provisioner = &p
-	provisionMutex.Unlock()
-	defer func() {
-		provisionMutex.Lock()
-		app.Provisioner = oldProvisioner
-		provisionMutex.Unlock()
-	}()
 	coll := collection()
 	defer coll.Close()
 	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
@@ -87,15 +75,6 @@ func (s *S) TestMoveContainersUnknownDest(c *gocheck.C) {
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
-	provisionMutex.Lock()
-	oldProvisioner := app.Provisioner
-	app.Provisioner = &p
-	provisionMutex.Unlock()
-	defer func() {
-		provisionMutex.Lock()
-		app.Provisioner = oldProvisioner
-		provisionMutex.Unlock()
-	}()
 	coll := collection()
 	defer coll.Close()
 	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
@@ -141,15 +120,6 @@ func (s *S) TestMoveContainer(c *gocheck.C) {
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
-	provisionMutex.Lock()
-	oldProvisioner := app.Provisioner
-	app.Provisioner = &p
-	provisionMutex.Unlock()
-	defer func() {
-		provisionMutex.Lock()
-		app.Provisioner = oldProvisioner
-		provisionMutex.Unlock()
-	}()
 	coll := collection()
 	defer coll.Close()
 	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
@@ -192,15 +162,6 @@ func (s *S) TestRebalanceContainers(c *gocheck.C) {
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
-	provisionMutex.Lock()
-	oldProvisioner := app.Provisioner
-	app.Provisioner = &p
-	provisionMutex.Unlock()
-	defer func() {
-		provisionMutex.Lock()
-		app.Provisioner = oldProvisioner
-		provisionMutex.Unlock()
-	}()
 	coll := collection()
 	defer coll.Close()
 	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})

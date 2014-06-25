@@ -117,7 +117,6 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	setExecut(fexec)
 	defer setExecut(nil)
 	p := dockerProvisioner{}
-	app.Provisioner = &p
 	a := app.App{
 		Name:     "otherapp",
 		Platform: "python",
@@ -167,7 +166,6 @@ func (s *S) TestDeployEnqueuesBindService(c *gocheck.C) {
 	setExecut(&etesting.FakeExecutor{})
 	defer setExecut(nil)
 	p := dockerProvisioner{}
-	app.Provisioner = &p
 	a := app.App{
 		Name:     "otherapp",
 		Platform: "python",
