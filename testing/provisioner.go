@@ -584,6 +584,8 @@ func (p *FakeProvisioner) AddUnit(app provision.App, unit provision.Unit) {
 }
 
 func (p *FakeProvisioner) Units(app provision.App) []provision.Unit {
+	p.mut.Lock()
+	defer p.mut.Unlock()
 	return p.apps[app.GetName()].units
 }
 
