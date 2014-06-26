@@ -64,8 +64,8 @@ Other features
 * support services with `https` endpoint (`#812
   <https://github.com/tsuru/tsuru/pull/812>`_) / (`#821
   <https://github.com/tsuru/tsuru/pull/821>`_)
-* grouping nodes by pool in segregate scheduler. For more information 
-  you can see the docs about the segregate scheduler: :doc:`</provisioners/docker/schedulers>`.
+* grouping nodes by pool in segregate scheduler. For more information
+  you can see the docs about the segregate scheduler: :doc:`/provisioners/docker/schedulers`.
 
 Platforms
 ---------
@@ -83,10 +83,10 @@ Backwards incompatible changes
 * ELB router was removed. This router was used only by juju.
 * ``tsr admin`` was removed.
 * The field ``units`` was removed from the collection ``apps``. Information
-  about units are now available in the provisioner. 
+  about units are now available in the provisioner.
   Now the unit state is controlled by provisioner. If you are upgrading tsuru
-  from 0.4.0 or an older version you should run the MongoDB script bellow, 
-  where the `docker` collection name is the name configured by 
+  from 0.4.0 or an older version you should run the MongoDB script bellow,
+  where the `docker` collection name is the name configured by
   `docker:collection` in `tsuru.conf`:
 
 .. highlight:: javascript
@@ -98,7 +98,7 @@ Backwards incompatible changes
             db.docker.update({"id": unit.name}, {$set: {"status": unit.state}});
         });
     };
-     
+
     db.apps.find().forEach(migration);
 
 * The scheduler collection has changed to group nodes by pool. If you are using
@@ -111,7 +111,7 @@ Backwards incompatible changes
     function idGenerator(id) {
         return id.replace(/\d+/g, "")
     }
-     
+
     var migration = function(doc) {
         var id = idGenerator(doc._id);
         db.temp_scheduler_collection.update(
