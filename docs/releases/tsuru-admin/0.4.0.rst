@@ -1,0 +1,17 @@
+===============================
+tsuru-admin 0.4.0 release notes
+===============================
+
+Welcome to tsuru-admin 0.4.0!
+
+These release notes cover the `new features`_ when upgrading
+from tsuru-admin 0.3.x or older versions.
+
+.. _`new features`: `What's new in tsr 0.4.0`_
+
+What's new in tsr 0.4.0
+=======================
+
+New commands:
+
+* platform-update(`#780 <https://github.com/tsuru/tsuru/issues/780>`_): http://docs.tsuru.io/en/latest/apps/tsuru-admin/usage.html#platform-update
