@@ -126,3 +126,8 @@ Backwards incompatible changes
 You can implement your own `idGenerator` to return the name for the new pools.
 In our case the `idGenerator` generates an id based on node name. It makes
 sense because we use the node name to identify a node group.
+
+Features deprecated in 0.5.0
+============================
+
+Beanstalkd queue backend will be removed in 0.6.0.
