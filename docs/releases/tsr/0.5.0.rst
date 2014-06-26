@@ -64,6 +64,8 @@ Other features
 * support services with `https` endpoint (`#812
   <https://github.com/tsuru/tsuru/pull/812>`_) / (`#821
   <https://github.com/tsuru/tsuru/pull/821>`_)
+* grouping nodes by pool in segregate scheduler. For more information 
+  you can see the docs about the segregate scheduler: :doc:`</provisioners/docker/schedulers>`.
 
 Platforms
 ---------
@@ -98,3 +100,29 @@ Backwards incompatible changes
     };
      
     db.apps.find().forEach(migration);
+
+* The scheduler collection has changed to group nodes by pool. If you are using
+  this scheduler you shoul run the MongoDB script bellow:
+
+.. highlight:: javascript
+
+::
+
+    function idGenerator(id) {
+        return id.replace(/\d+/g, "")
+    }
+     
+    var migration = function(doc) {
+        var id = idGenerator(doc._id);
+        db.temp_scheduler_collection.update(
+            {teams: doc.teams},
+            {$push: {nodes: doc.address},
+             $set: {teams: doc.teams, _id: id}},
+            {upsert: true});
+    }
+    db.docker_scheduler.find().forEach(migration);
+    db.temp_scheduler_collection.renameCollection("docker_scheduler", true);
+
+You can implement your own `idGenerator` to return the name for the new pools.
+In our case the `idGenerator` generates an id based on node name. It makes
+sense because we use the node name to identify a node group.
