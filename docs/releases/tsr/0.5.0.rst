@@ -78,6 +78,23 @@ Backwards incompatible changes
 * Juju provisioner was removed. This provisioner was not being maintained. A
   possible idea is to use Juju in the future to provision the tsuru nodes
   instead of units
+* ELB router was removed. This router was used only by juju.
 * ``tsr admin`` was removed.
 * The field ``units`` was removed from the collection ``apps``. Information
-  about units are now available in the provisioner.
+  about units are now available in the provisioner. 
+  Now the unit state is controlled by provisioner. If you are upgrading tsuru
+  from 0.4.0 or an older version you should run the MongoDB script bellow, 
+  where the `docker` collection name is the name configured by 
+  `docker:collection` in `tsuru.conf`:
+
+.. highlight:: javascript
+
+::
+
+    var migration = function(doc) {
+        doc.units.forEach(function(unit){
+            db.docker.update({"id": unit.name}, {$set: {"status": unit.state}});
+        });
+    };
+     
+    db.apps.find().forEach(migration);
