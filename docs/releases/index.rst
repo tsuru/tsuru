@@ -113,6 +113,13 @@ tsuru
 
 `tsuru` is the tsuru client.
 
+0.10.0 release
+---------------
+.. toctree::
+   :maxdepth: 1
+
+   tsuru/0.10.0
+
 0.9.0 release
 ---------------
 .. toctree::
