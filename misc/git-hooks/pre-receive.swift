@@ -39,5 +39,5 @@ else
 fi
 URL="${TSURU_HOST}/apps/${APP_NAME}/repository/clone"
 curl -H "Authorization: bearer ${TSURU_TOKEN}" -d "archive-url=${ARCHIVE_URL}&commit=${COMMIT}" -s -N --max-time 1800 $URL | tee /tmp/deploy-${APP_NAME}.log
-swift -q$AUTH_PARAMS delete $CONTAINER_NAME $ARCHIVE_FILE_NAME
+swift -q $AUTH_PARAMS delete $CONTAINER_NAME $ARCHIVE_FILE_NAME
 tail -1 /tmp/deploy-${APP_NAME}.log | grep -q "^OK$"
