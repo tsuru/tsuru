@@ -122,5 +122,30 @@ dt:hover > a.headerlink {
 }
 
 #content .content-container {
-	max-width: 1024px;
+	background-color: white;
+	float: left;
+	padding: 0 20px;
+}
+
+#content .content-section:after {
+	clear: both;
+	content: ".";
+	display: block;
+	height: 0;
+	visibility: hidden;
+}
+
+#content .content-section {
+	background-color: #f7eeeb;
+}
+
+#sidebar {
+	float: right;
+	background-color: #f7eeeb;
+	padding: 0 20px;
+}
+
+input {
+	border: 1px solid #333;
+	background-color: #fff;
 }

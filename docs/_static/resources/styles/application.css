@@ -389,6 +389,7 @@ datalist {
 #content .content-container {
   margin: 0 auto;
   max-width: 960px;
+  padding: 0 20px;
 }
 
 #features .column {
@@ -414,6 +415,7 @@ datalist {
 #footer {
   background-color: #222233;
   padding: 96px 0;
+  clear: both;
 }
 
 @viewport {

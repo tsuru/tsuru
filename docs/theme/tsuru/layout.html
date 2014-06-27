@@ -1,4 +1,18 @@
 <!DOCTYPE html>
+{%- macro script() %}
+<script type="text/javascript">
+var DOCUMENTATION_OPTIONS = {
+URL_ROOT:    '{{ url_root }}',
+VERSION:     '{{ release|e }}',
+COLLAPSE_INDEX: false,
+FILE_SUFFIX: '{{ '' if no_search_suffix else file_suffix }}',
+HAS_SOURCE:  {{ has_source|lower }}
+};
+</script>
+{%- for scriptfile in script_files %}
+<script type="text/javascript" src="{{ pathto(scriptfile, 1) }}"></script>
+{%- endfor %}
+{%- endmacro %}
 <html>
 <head>
 <meta charset="utf-8">
@@ -6,8 +20,7 @@
 <meta name="description" content="">
 <link rel="shortcut icon" href="">
 <!-- Scripts -->
-
-<script src=""></script>
+{{ script() }}
 
 <link rel="stylesheet" href="http://netdna.bootstrapcdn.com/font-awesome/4.0.3/css/font-awesome.css">
 
@@ -20,6 +33,8 @@
 <link rel="stylesheet" media="only screen and (min-width: 1024px)" href="{{ pathto('_static/resources/styles/large.css', 1) }}">
 
 <title>{% block title %}tsuru{% endblock %}</title>
+
+{% block extrahead %}{% endblock %}
 
 </head>
 
@@ -53,11 +68,12 @@
 <article class="content-section section">
 
 	<div class="content-container container">
-
-		{% block body %}{% endblock %}
+		{% block body %}
+		{% endblock %}
 
 	</div>
 
+	{%- include "sidebar.html" %}
 </article>
 </main>
 
