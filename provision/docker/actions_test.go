@@ -7,7 +7,6 @@ package docker
 import (
 	"bytes"
 	"github.com/fsouza/go-dockerclient"
-	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/provision"
@@ -394,8 +393,7 @@ func (s *S) TestFollowLogsAndCommitForwardNonZeroStatus(c *gocheck.C) {
 }
 
 func (s *S) TestFollowLogsAndCommitForwardWaitFailure(c *gocheck.C) {
-	s.server.PrepareFailure("failed to wait for the container",
-		dtesting.FailureSpec{UrlRegex: "/containers/.*/wait"})
+	s.server.PrepareFailure("failed to wait for the container", "/containers/.*/wait")
 	defer s.server.ResetFailure("failed to wait for the container")
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
