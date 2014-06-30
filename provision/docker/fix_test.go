@@ -57,7 +57,7 @@ func startDocker() (func(), *httptest.Server) {
 	}, server
 }
 
-func (s *S) TestCollectStatusFixContainer(c *gocheck.C) {
+func (s *S) TestFixContainers(c *gocheck.C) {
 	coll := collection()
 	defer coll.Close()
 	err := coll.Insert(
@@ -83,8 +83,7 @@ func (s *S) TestCollectStatusFixContainer(c *gocheck.C) {
 	)
 	cmutex.Unlock()
 	c.Assert(err, gocheck.IsNil)
-	var p dockerProvisioner
-	err = p.CollectStatus()
+	err = fixContainers()
 	c.Assert(err, gocheck.IsNil)
 	cont, err := getContainer("9930c24f1c4x")
 	c.Assert(err, gocheck.IsNil)

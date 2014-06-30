@@ -12,7 +12,7 @@ import (
 	"sync"
 )
 
-func (p *dockerProvisioner) CollectStatus() error {
+func fixContainers() error {
 	var containersGroup sync.WaitGroup
 	containers, err := listAllContainers()
 	if err != nil {
@@ -23,13 +23,13 @@ func (p *dockerProvisioner) CollectStatus() error {
 	}
 	for _, container := range containers {
 		containersGroup.Add(1)
-		go collectUnit(container, &containersGroup)
+		go checkContainer(container, &containersGroup)
 	}
 	containersGroup.Wait()
 	return nil
 }
 
-func collectUnit(container container, wg *sync.WaitGroup) {
+func checkContainer(container container, wg *sync.WaitGroup) {
 	defer wg.Done()
 	if container.available() {
 		ip, hostPort, err := container.networkInfo()
