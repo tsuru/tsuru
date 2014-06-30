@@ -39,7 +39,7 @@ func (c *moveContainersCmd) Info() *cmd.Info {
 }
 
 func (c *moveContainersCmd) Run(context *cmd.Context, client *cmd.Client) error {
-	url, err := cmd.GetURL("/containers/move")
+	url, err := cmd.GetURL("/docker/containers/move")
 	if err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ func (c *moveContainerCmd) Info() *cmd.Info {
 }
 
 func (c *moveContainerCmd) Run(context *cmd.Context, client *cmd.Client) error {
-	url, err := cmd.GetURL(fmt.Sprintf("/container/%s/move", context.Args[0]))
+	url, err := cmd.GetURL(fmt.Sprintf("/docker/container/%s/move", context.Args[0]))
 	if err != nil {
 		return err
 	}
@@ -123,7 +123,7 @@ func (c *rebalanceContainersCmd) Info() *cmd.Info {
 }
 
 func (c *rebalanceContainersCmd) Run(context *cmd.Context, client *cmd.Client) error {
-	url, err := cmd.GetURL("/containers/rebalance")
+	url, err := cmd.GetURL("/docker/containers/rebalance")
 	if err != nil {
 		return err
 	}

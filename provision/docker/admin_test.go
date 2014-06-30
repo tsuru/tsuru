@@ -46,7 +46,7 @@ func (s *S) TestMoveContainersRun(c *gocheck.C) {
 			result := map[string]string{}
 			err = json.Unmarshal(body, &result)
 			c.Assert(expected, gocheck.DeepEquals, result)
-			return req.URL.Path == "/containers/move" && req.Method == "POST"
+			return req.URL.Path == "/docker/containers/move" && req.Method == "POST"
 		},
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
@@ -89,7 +89,7 @@ func (s *S) TestMoveContainerRun(c *gocheck.C) {
 			result := map[string]string{}
 			err = json.Unmarshal(body, &result)
 			c.Assert(expected, gocheck.DeepEquals, result)
-			return req.URL.Path == "/container/contId/move" && req.Method == "POST"
+			return req.URL.Path == "/docker/container/contId/move" && req.Method == "POST"
 		},
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
@@ -132,7 +132,7 @@ func (s *S) TestRebalanceContainersRun(c *gocheck.C) {
 			result := map[string]string{}
 			err = json.Unmarshal(body, &result)
 			c.Assert(expected, gocheck.DeepEquals, result)
-			return req.URL.Path == "/containers/rebalance" && req.Method == "POST"
+			return req.URL.Path == "/docker/containers/rebalance" && req.Method == "POST"
 		},
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
