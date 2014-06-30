@@ -5,17 +5,25 @@
 package main
 
 import (
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api"
 	"github.com/tsuru/tsuru/cmd"
 	"launchpad.net/gnuflag"
 )
 
 type apiCmd struct {
-	fs  *gnuflag.FlagSet
-	dry bool
+	fs    *gnuflag.FlagSet
+	dry   bool
+	check bool
 }
 
 func (c *apiCmd) Run(context *cmd.Context, client *cmd.Client) error {
+	if c.check {
+		err := config.Check()
+		if err != nil {
+			return err
+		}
+	}
 	api.RunServer(c.dry)
 	return nil
 }
@@ -34,6 +42,7 @@ func (c *apiCmd) Flags() *gnuflag.FlagSet {
 		c.fs = gnuflag.NewFlagSet("api", gnuflag.ExitOnError)
 		c.fs.BoolVar(&c.dry, "dry", false, "dry-run: does not start the server (for testing purpose)")
 		c.fs.BoolVar(&c.dry, "d", false, "dry-run: does not start the server (for testing purpose)")
+		c.fs.BoolVar(&c.check, "t", false, "check config: test your tsuru.conf file before starts.")
 	}
 	return c.fs
 }

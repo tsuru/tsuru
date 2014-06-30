@@ -41,4 +41,9 @@ func (s *S) TestAPICmdFlags(c *gocheck.C) {
 	c.Assert(flag.Usage, gocheck.Equals, "dry-run: does not start the server (for testing purpose)")
 	c.Assert(flag.Value.String(), gocheck.Equals, "true")
 	c.Assert(flag.DefValue, gocheck.Equals, "false")
+	flagset.Parse(true, []string{"-t", "true"})
+	flag = flagset.Lookup("t")
+	c.Assert(flag, gocheck.NotNil)
+	c.Assert(flag.Name, gocheck.Equals, "t")
+	c.Assert(flag.Usage, gocheck.Equals, "check config: test your tsuru.conf file before starts.")
 }
