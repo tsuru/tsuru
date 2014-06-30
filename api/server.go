@@ -96,7 +96,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Get", "/apps/{app}", authorizationRequiredHandler(appInfo))
 	m.Add("Post", "/apps/{app}/cname", authorizationRequiredHandler(setCName))
 	m.Add("Delete", "/apps/{app}/cname", authorizationRequiredHandler(unsetCName))
-	m.Add("Post", "/apps/{app}/run", authorizationRequiredHandler(runCommand))
+	runHandler := authorizationRequiredHandler(runCommand)
+	m.Add("Post", "/apps/{app}/run", runHandler)
 	m.Add("Post", "/apps/{app}/restart", authorizationRequiredHandler(restart))
 	m.Add("Post", "/apps/{app}/start", authorizationRequiredHandler(start))
 	m.Add("Post", "/apps/{app}/stop", authorizationRequiredHandler(stop))
@@ -167,6 +168,7 @@ func RunServer(dry bool) http.Handler {
 	n.Use(negroni.HandlerFunc(authTokenMiddleware))
 	n.Use(&appLockMiddleware{excludedHandlers: []http.Handler{
 		logPostHandler,
+		runHandler,
 	}})
 	n.UseHandler(http.HandlerFunc(runDelayedHandler))
 
