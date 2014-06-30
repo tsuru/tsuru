@@ -422,3 +422,18 @@ datalist {
   width: device-width;
   zoom: 1;
 }
+
+.warning {
+    height: 50px;
+    border: 1px solid red;
+    margin: 20px 0;
+    padding-left: 20px;
+}
+
+.warning .admonition-title {
+    display: none;
+}
+
+.warning p {
+    line-height: 50px !important;
+}

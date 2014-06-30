@@ -1,0 +1,17 @@
+.. warning::
+
+    Version under development
+
+=======================
+tsr 0.5.1 release notes 
+=======================
+
+Welcome to tsr 0.5.1!
+
+.. _`new features`: `What's new in tsr 0.5.1`_
+
+What's new in tsr 0.5.1
+=======================
+
+* **tsr api** now checks tsuru.conf file and don't starts if it is misconfigured.
+  You can check your config with **tsr api -t** flag. (`#714 <https://github.com/tsuru/tsuru/issues/714>`_)
