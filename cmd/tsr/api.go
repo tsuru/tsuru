@@ -19,7 +19,7 @@ type apiCmd struct {
 
 func (c *apiCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	if c.check {
-		err := config.Check()
+		err := config.Check([]config.Checker{CheckProvisioner})
 		if err != nil {
 			return err
 		}
