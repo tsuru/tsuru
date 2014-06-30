@@ -29,6 +29,7 @@ func init() {
 	api.RegisterHandler("/pool", "DELETE", api.AdminRequiredHandler(removePoolHandler))
 	api.RegisterHandler("/pool/team", "POST", api.AdminRequiredHandler(addTeamToPoolHandler))
 	api.RegisterHandler("/pool/team", "DELETE", api.AdminRequiredHandler(removeTeamToPoolHandler))
+	api.RegisterHandler("/fix-containers", "POST", api.AdminRequiredHandler(fixContainersHandler))
 }
 
 // addNodeHandler calls scheduler.Register to registering a node into it.
@@ -56,6 +57,15 @@ func listNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 		return err
 	}
 	return json.NewEncoder(w).Encode(nodeList)
+}
+
+func fixContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	err := fixContainers()
+	if err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
 }
 
 func moveContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {

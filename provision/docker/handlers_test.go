@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/testing"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
@@ -32,6 +33,8 @@ func (s *HandlersSuite) SetUpSuite(c *gocheck.C) {
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	config.Set("docker:collection", "docker_handler_suite")
+	config.Set("docker:run-cmd:port", 8888)
+	config.Set("docker:router", "fake")
 	s.conn.Collection(schedulerCollection).RemoveAll(nil)
 }
 
@@ -173,6 +176,42 @@ func (s *HandlersSuite) TestListNodeHandlerWithoutCluster(c *gocheck.C) {
 	c.Assert(result[0]["Address"], gocheck.DeepEquals, "host.com:4243")
 	c.Assert(result[1]["ID"], gocheck.DeepEquals, "host.com:4243")
 	c.Assert(result[1]["Address"], gocheck.DeepEquals, "host.com:4243")
+}
+
+func (s *HandlersSuite) TestFixContainerHandler(c *gocheck.C) {
+	coll := collection()
+	defer coll.Close()
+	err := coll.Insert(
+		container{
+			ID:       "9930c24f1c4x",
+			AppName:  "makea",
+			Type:     "python",
+			Status:   provision.StatusStarted.String(),
+			IP:       "127.0.0.4",
+			HostPort: "9025",
+			HostAddr: "127.0.0.1",
+		},
+	)
+	c.Assert(err, gocheck.IsNil)
+	defer coll.RemoveAll(bson.M{"appname": "makea"})
+	cleanup, server := startDocker()
+	defer cleanup()
+	var storage mapStorage
+	storage.StoreContainer("9930c24f1c4x", "server0")
+	cmutex.Lock()
+	dCluster, err = cluster.New(nil, &storage,
+		cluster.Node{ID: "server0", Address: server.URL},
+	)
+	cmutex.Unlock()
+	request, err := http.NewRequest("POST", "/fix-containers", nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = fixContainersHandler(recorder, request, nil)
+	c.Assert(err, gocheck.IsNil)
+	cont, err := getContainer("9930c24f1c4x")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(cont.IP, gocheck.Equals, "127.0.0.9")
+	c.Assert(cont.HostPort, gocheck.Equals, "9999")
 }
 
 func (s *HandlersSuite) TestListContainersByHostHandler(c *gocheck.C) {
