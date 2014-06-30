@@ -12,17 +12,18 @@ import (
 )
 
 type apiCmd struct {
-	fs    *gnuflag.FlagSet
-	dry   bool
-	check bool
+	fs        *gnuflag.FlagSet
+	dry       bool
+	checkOnly bool
 }
 
 func (c *apiCmd) Run(context *cmd.Context, client *cmd.Client) error {
-	if c.check {
-		err := config.Check([]config.Checker{CheckProvisioner})
-		if err != nil {
-			return err
-		}
+	err := config.Check([]config.Checker{CheckProvisioner})
+	if err != nil {
+		return err
+	}
+	if c.checkOnly {
+		return nil
 	}
 	api.RunServer(c.dry)
 	return nil
@@ -42,7 +43,7 @@ func (c *apiCmd) Flags() *gnuflag.FlagSet {
 		c.fs = gnuflag.NewFlagSet("api", gnuflag.ExitOnError)
 		c.fs.BoolVar(&c.dry, "dry", false, "dry-run: does not start the server (for testing purpose)")
 		c.fs.BoolVar(&c.dry, "d", false, "dry-run: does not start the server (for testing purpose)")
-		c.fs.BoolVar(&c.check, "t", false, "check config: test your tsuru.conf file before starts.")
+		c.fs.BoolVar(&c.checkOnly, "t", false, "check only config: test your tsuru.conf file before starts.")
 	}
 	return c.fs
 }
