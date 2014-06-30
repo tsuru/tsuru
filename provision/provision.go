@@ -148,10 +148,6 @@ type Provisioner interface {
 	// Start start the app units.
 	Start(App) error
 
-	// CollectStatus returns information about all provisioned units. It's used
-	// by tsuru collector when updating the status of apps in the database.
-	CollectStatus() error
-
 	// Addr returns the address for an app.
 	//
 	// tsuru will use this method to get the IP (although it might not be

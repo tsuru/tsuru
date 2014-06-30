@@ -532,14 +532,6 @@ func (s *S) TestExecuteComandTimeout(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, "FakeProvisioner timed out waiting for output.")
 }
 
-func (s *S) TestCollectStatusPreparedFailure(c *gocheck.C) {
-	p := NewFakeProvisioner()
-	p.PrepareFailure("CollectStatus", errors.New("Failed to collect status."))
-	err := p.CollectStatus()
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Failed to collect status.")
-}
-
 func (s *S) TestAddr(c *gocheck.C) {
 	app := NewFakeApp("quick", "who", 1)
 	p := NewFakeProvisioner()

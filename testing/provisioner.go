@@ -589,13 +589,6 @@ func (p *FakeProvisioner) Units(app provision.App) []provision.Unit {
 	return p.apps[app.GetName()].units
 }
 
-func (p *FakeProvisioner) CollectStatus() error {
-	if err := p.getError("CollectStatus"); err != nil {
-		return err
-	}
-	return nil
-}
-
 func (p *FakeProvisioner) Addr(app provision.App) (string, error) {
 	if err := p.getError("Addr"); err != nil {
 		return "", err
