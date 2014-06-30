@@ -216,7 +216,6 @@ Installing tsuru API server
     sudo sed -i -e 's/=no/=yes/' /etc/default/tsuru-server
     sudo start tsuru-ssh-agent
     sudo start tsuru-server-api
-    sudo start tsuru-server-collector
 
 Now you need to customize the configuration in the ``/etc/tsuru/tsuru.conf``.
 

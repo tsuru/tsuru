@@ -31,11 +31,6 @@ Currently, there is two routers:
 * elb
 * hipache
 
-collector
-=========
-
-The `collector` is a loop process that checks and updates the unit states. 
-
 mongodb
 =======
 

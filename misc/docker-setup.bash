@@ -39,8 +39,6 @@ function install_docker() {
 }
 
 function start_tsuru() {
-    echo "starting tsuru-collector"
-    sudo -u ubuntu tsr collector &
     echo "starting tsuru-api"
     sudo -u ubuntu tsr api &
 }

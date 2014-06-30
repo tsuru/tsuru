@@ -144,9 +144,8 @@ At that time, circus should be running and started all the tsuru services
 Running
 ~~~~~~~
 
-Now that you have ``tsr`` properly installed, and you
-:doc:`configured tsuru </config>`
-Verify api, collector and docker-ssh-agent
+Now that you have ``tsr`` properly installed, and you :doc:`configured tsuru
+</config>` Verify api and docker-ssh-agent
 
 .. highlight:: bash
 
