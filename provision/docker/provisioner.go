@@ -115,14 +115,22 @@ func (p *dockerProvisioner) Stop(app provision.App) error {
 		log.Errorf("Got error while getting app containers: %s", err)
 		return nil
 	}
+	var wg sync.WaitGroup
+	errCh := make(chan error, len(containers)+1)
 	for _, c := range containers {
-		err := c.stop()
-		if err != nil {
-			log.Errorf("Failed to stop %q: %s", app.GetName(), err)
-			return err
-		}
+		wg.Add(1)
+		go func(c container) {
+			defer wg.Done()
+			err := c.stop()
+			if err != nil {
+				log.Errorf("Failed to stop %q: %s", app.GetName(), err)
+				errCh <- err
+			}
+		}(c)
 	}
-	return nil
+	wg.Wait()
+	close(errCh)
+	return <-errCh
 }
 
 func injectEnvsAndRestart(a provision.App) {

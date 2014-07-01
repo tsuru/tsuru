@@ -701,7 +701,6 @@ func (s *S) TestProvisionerStopSkipAlreadyStoppedContainers(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = dcli.StopContainer(container2.ID, 1)
 	c.Assert(err, gocheck.IsNil)
-	container2.setStatus(provision.StatusStopped.String())
 	dockerContainer2, err := dcli.InspectContainer(container2.ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(dockerContainer2.State.Running, gocheck.Equals, false)
