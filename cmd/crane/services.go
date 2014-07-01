@@ -22,7 +22,7 @@ func (c *ServiceCreate) Info() *cmd.Info {
 	desc := "Creates a service based on a passed manifest. The manifest format should be a yaml and follow the standard described in the documentation (should link to it here)"
 	return &cmd.Info{
 		Name:    "create",
-		Usage:   "create path/to/manifest",
+		Usage:   "create path/to/manifest [- for stdin]",
 		Desc:    desc,
 		MinArgs: 1,
 	}
@@ -34,11 +34,16 @@ func (c *ServiceCreate) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	b, err := ioutil.ReadFile(manifest)
+	var data []byte
+	if manifest == "-" {
+		data, err = ioutil.ReadAll(os.Stdin)
+	} else {
+		data, err = ioutil.ReadFile(manifest)
+	}
 	if err != nil {
 		return err
 	}
-	request, err := http.NewRequest("POST", url, bytes.NewReader(b))
+	request, err := http.NewRequest("POST", url, bytes.NewReader(data))
 	if err != nil {
 		return err
 	}
@@ -46,7 +51,7 @@ func (c *ServiceCreate) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	b, err = ioutil.ReadAll(r.Body)
+	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
 	}

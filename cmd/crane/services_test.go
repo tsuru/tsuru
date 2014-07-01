@@ -19,7 +19,7 @@ func (s *S) TestServiceCreateInfo(c *gocheck.C) {
 	cmd := ServiceCreate{}
 	i := cmd.Info()
 	c.Assert(i.Name, gocheck.Equals, "create")
-	c.Assert(i.Usage, gocheck.Equals, "create path/to/manifest")
+	c.Assert(i.Usage, gocheck.Equals, "create path/to/manifest [- for stdin]")
 	c.Assert(i.Desc, gocheck.Equals, desc)
 	c.Assert(i.MinArgs, gocheck.Equals, 1)
 }
