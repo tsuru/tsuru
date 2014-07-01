@@ -1,9 +1,5 @@
-.. warning::
-
-    Version under development
-
 =======================
-tsr 0.5.1 release notes 
+tsr 0.5.1 release notes
 =======================
 
 Welcome to tsr 0.5.1!
@@ -13,5 +9,7 @@ Welcome to tsr 0.5.1!
 What's new in tsr 0.5.1
 =======================
 
-* **tsr api** now checks tsuru.conf file and don't starts if it is misconfigured.
-  You can check your config with **tsr api -t** flag. (`#714 <https://github.com/tsuru/tsuru/issues/714>`_)
+* **tsr api** now checks tsuru.conf file and refuse to start if it is
+  misconfigured. It's also possible to exclusively test the config file with
+  the -t flag.  i.e.: running "tsr api -t". (`#714
+  <https://github.com/tsuru/tsuru/issues/714>`_)
