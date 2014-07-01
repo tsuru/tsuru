@@ -148,3 +148,31 @@ func (s *S) TestRebalanceContainersRun(c *gocheck.C) {
 	err = cmd2.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 }
+
+func (s *S) TestFixContainersCmdRun(c *gocheck.C) {
+	var buf bytes.Buffer
+	context := cmd.Context{Stdout: &buf, Stderr: &buf}
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: "", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Path == "/docker/fix-containers" && req.Method == "POST"
+		},
+	}
+	manager := cmd.NewManager("admin", "0.1", "admin-ver", &buf, &buf, nil, nil)
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	cmd := fixContainersCmd{}
+	err := cmd.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(buf.String(), gocheck.Equals, "")
+}
+
+func (s *S) TestFixContainersCmdInfo(c *gocheck.C) {
+	expected := cmd.Info{
+		Name:  "fix-containers",
+		Usage: "fix-containers",
+		Desc:  "Fix containers that are broken in the cluster.",
+	}
+	command := fixContainersCmd{}
+	info := command.Info()
+	c.Assert(*info, gocheck.DeepEquals, expected)
+}
