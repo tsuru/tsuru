@@ -6,8 +6,8 @@ package cmd
 
 import (
 	"crypto/x509"
-	"errors"
 	"fmt"
+	"github.com/tsuru/tsuru/errors"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -75,7 +75,11 @@ and download the last version.
 	if response.StatusCode > 399 {
 		defer response.Body.Close()
 		result, _ := ioutil.ReadAll(response.Body)
-		return response, errors.New(string(result))
+		err := &errors.HTTP{
+			Code:    response.StatusCode,
+			Message: string(result),
+		}
+		return response, err
 	}
 	return response, nil
 }

@@ -7,6 +7,7 @@ package cmd
 import (
 	"bytes"
 	ttesting "github.com/tsuru/tsuru/cmd/testing"
+	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/fs/testing"
 	"launchpad.net/gocheck"
 	"net/http"
@@ -31,7 +32,12 @@ func (s *S) TestShouldReturnBodyMessageOnError(c *gocheck.C) {
 	response, err := client.Do(request)
 	c.Assert(response, gocheck.NotNil)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "You must be authenticated to execute this command.")
+	expectedMsg := "You must be authenticated to execute this command."
+	c.Assert(err.Error(), gocheck.Equals, expectedMsg)
+	httpErr, ok := err.(*errors.HTTP)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(httpErr.Code, gocheck.Equals, http.StatusUnauthorized)
+	c.Assert(httpErr.Message, gocheck.Equals, expectedMsg)
 }
 
 func (s *S) TestShouldReturnErrorWhenServerIsDown(c *gocheck.C) {

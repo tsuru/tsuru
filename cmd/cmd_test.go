@@ -8,11 +8,13 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/fs"
 	"github.com/tsuru/tsuru/fs/testing"
 	"io"
 	"launchpad.net/gnuflag"
 	"launchpad.net/gocheck"
+	"net/http"
 	"os"
 )
 
@@ -72,6 +74,16 @@ func (c *ErrorCommand) Info() *Info {
 
 func (c *ErrorCommand) Run(context *Context, client *Client) error {
 	return errors.New(c.msg)
+}
+
+type UnauthorizedErrorCommand struct{}
+
+func (c *UnauthorizedErrorCommand) Info() *Info {
+	return &Info{Name: "unauthorized-error"}
+}
+
+func (c *UnauthorizedErrorCommand) Run(context *Context, client *Client) error {
+	return &tsuruErrors.HTTP{Code: http.StatusUnauthorized, Message: "my error"}
 }
 
 type CommandWithFlags struct {
@@ -179,6 +191,12 @@ func (s *S) TestManagerRunShouldAppendNewLineOnErrorWhenItsNotPresent(c *gocheck
 	manager.Register(&ErrorCommand{msg: "You are wrong"})
 	manager.Run([]string{"error"})
 	c.Assert(manager.stderr.(*bytes.Buffer).String(), gocheck.Equals, "Error: You are wrong\n")
+}
+
+func (s *S) TestManagerRunWithHTTPUnauthorizedError(c *gocheck.C) {
+	manager.Register(&UnauthorizedErrorCommand{})
+	manager.Run([]string{"unauthorized-error"})
+	c.Assert(manager.stderr.(*bytes.Buffer).String(), gocheck.Equals, `Error: You're not authenticated or your session has expired. Please use "login" command for authentication.`+"\n")
 }
 
 func (s *S) TestManagerRunWithFlags(c *gocheck.C) {

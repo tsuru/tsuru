@@ -6,12 +6,12 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/fs"
 	"io"
 	"launchpad.net/gnuflag"
 	"net/http"
 	"os"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -153,9 +153,9 @@ func (m *Manager) Run(args []string) {
 	client := NewClient(&http.Client{}, &context, m)
 	err := command.Run(&context, client)
 	if err != nil {
-		re := regexp.MustCompile(`^((Invalid token)|(You must provide the Authorization header))`)
 		errorMsg := err.Error()
-		if re.MatchString(errorMsg) {
+		httpErr, ok := err.(*errors.HTTP)
+		if ok && httpErr.Code == http.StatusUnauthorized {
 			errorMsg = `You're not authenticated or your session has expired. Please use "login" command for authentication.`
 		}
 		if !strings.HasSuffix(errorMsg, "\n") {
