@@ -558,6 +558,29 @@ func (s *S) TestProvisionerIsCommandable(c *gocheck.C) {
 	var _ cmd.Commandable = &dockerProvisioner{}
 }
 
+func (s *S) TestAdminCommands(c *gocheck.C) {
+	expected := []cmd.Command{
+		&moveContainerCmd{},
+		&moveContainersCmd{},
+		&rebalanceContainersCmd{},
+		addNodeToSchedulerCmd{},
+		removeNodeFromSchedulerCmd{},
+		listNodesInTheSchedulerCmd{},
+		addPoolToSchedulerCmd{},
+		removePoolFromSchedulerCmd{},
+		listPoolsInTheSchedulerCmd{},
+		addTeamsToPoolCmd{},
+		removeTeamsFromPoolCmd{},
+		fixContainersCmd{},
+	}
+	var p dockerProvisioner
+	c.Assert(p.AdminCommands(), gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestProvisionerIsAdminCommandable(c *gocheck.C) {
+	var _ cmd.AdminCommandable = &dockerProvisioner{}
+}
+
 func (s *S) TestSwap(c *gocheck.C) {
 	var p dockerProvisioner
 	app1 := testing.NewFakeApp("app1", "python", 1)
