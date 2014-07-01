@@ -96,17 +96,26 @@ func (*dockerProvisioner) Start(app provision.App) error {
 	if err != nil {
 		return errors.New(fmt.Sprintf("Got error while getting app containers: %s", err))
 	}
+	var wg sync.WaitGroup
+	errCh := make(chan error, len(containers)+1)
 	for _, c := range containers {
-		err := c.start()
-		if err != nil {
-			return err
-		}
-		c.setStatus(provision.StatusStarted.String())
-		if ip, port, err := c.networkInfo(); err == nil {
-			fixContainer(&c, ip, port)
-		}
+		wg.Add(1)
+		go func(c container) {
+			defer wg.Done()
+			err := c.start()
+			if err != nil {
+				errCh <- err
+				return
+			}
+			c.setStatus(provision.StatusStarted.String())
+			if ip, port, err := c.networkInfo(); err == nil {
+				fixContainer(&c, ip, port)
+			}
+		}(c)
 	}
-	return nil
+	wg.Wait()
+	close(errCh)
+	return <-errCh
 }
 
 func (p *dockerProvisioner) Stop(app provision.App) error {
