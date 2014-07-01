@@ -660,6 +660,7 @@ func (s *S) TestProvisionerStart(c *gocheck.C) {
 	expectedPort := dockerContainer.NetworkSettings.Ports["8888/tcp"][0].HostPort
 	c.Assert(container.IP, gocheck.Equals, expectedIP)
 	c.Assert(container.HostPort, gocheck.Equals, expectedPort)
+	c.Assert(container.Status, gocheck.Equals, provision.StatusStarted.String())
 }
 
 func (s *S) TestProvisionerStop(c *gocheck.C) {
