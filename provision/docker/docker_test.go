@@ -894,6 +894,7 @@ func (s *S) TestBuildImageNameWithRegistry(c *gocheck.C) {
 
 func (s *S) TestContainerStart(c *gocheck.C) {
 	cont, err := s.newContainer(nil)
+	cont.Status = "pending"
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(cont)
 	client, err := docker.NewClient(s.server.URL())
@@ -906,7 +907,7 @@ func (s *S) TestContainerStart(c *gocheck.C) {
 	dockerContainer, err = client.InspectContainer(cont.ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(dockerContainer.State.Running, gocheck.Equals, true)
-	c.Assert(cont.Status, gocheck.Equals, provision.StatusStarted.String())
+	c.Assert(cont.Status, gocheck.Equals, "pending")
 }
 
 func (s *S) TestContainerStartWithoutPort(c *gocheck.C) {

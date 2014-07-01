@@ -272,7 +272,13 @@ func archiveDeploy(app provision.App, archiveURL string, w io.Writer) (string, e
 
 func deploy(app provision.App, commands []string, w io.Writer) (string, error) {
 	imageId := getImage(app)
-	actions := []*action.Action{&insertEmptyContainerInDB, &createContainer, &startContainer, &updateContainerInDB, &followLogsAndCommit}
+	actions := []*action.Action{
+		&insertEmptyContainerInDB,
+		&createContainer,
+		&startContainer,
+		&updateContainerInDB,
+		&followLogsAndCommit,
+	}
 	pipeline := action.NewPipeline(actions...)
 	err := pipeline.Execute(app, imageId, commands, []string{}, w)
 	if err != nil {
@@ -287,7 +293,14 @@ func start(app provision.App, imageId string, w io.Writer, destinationHosts ...s
 	if err != nil {
 		return nil, err
 	}
-	actions := []*action.Action{&insertEmptyContainerInDB, &createContainer, &startContainer, &updateContainerInDB, &setNetworkInfo, &addRoute}
+	actions := []*action.Action{
+		&insertEmptyContainerInDB,
+		&createContainer,
+		&startContainer,
+		&updateContainerInDB,
+		&setNetworkInfo,
+		&addRoute,
+	}
 	pipeline := action.NewPipeline(actions...)
 	err = pipeline.Execute(app, imageId, run_with_agent_commands, destinationHosts)
 	if err != nil {
@@ -430,7 +443,6 @@ func (c *container) start() error {
 	if err != nil {
 		return err
 	}
-	c.setStatus(provision.StatusStarted.String())
 	return nil
 }
 
