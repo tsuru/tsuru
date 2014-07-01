@@ -18,10 +18,9 @@ import (
 
 var execut exec.Executor
 
-const callbackPage = `
+const callbackPage = `<!DOCTYPE html>
 <html>
 <head>
-	<script>window.close();</script>
 	<style>
 	body {
 		text-align: center;
@@ -29,10 +28,20 @@ const callbackPage = `
 	</style>
 </head>
 <body>
-	<h1>Login Successful!</h1>
-	<p>You can close this window now.</p>
+	%s
 </body>
 </html>
+`
+
+const successMarkup = `
+	<script>window.close();</script>
+	<h1>Login Successful!</h1>
+	<p>You can close this window now.</p>
+`
+
+const errorMarkup = `
+	<h1>Login Failed!</h1>
+	<p>%s</p>
 `
 
 func executor() exec.Executor {
@@ -57,39 +66,51 @@ func open(url string) error {
 	return executor().Execute("open", []string{url}, nil, nil, nil)
 }
 
+func convertToken(code, redirectUrl string) (string, error) {
+	var token string
+	params := map[string]string{"code": code, "redirectUrl": redirectUrl}
+	u, err := GetURL("/auth/login")
+	if err != nil {
+		return token, fmt.Errorf("Error in GetURL: %s", err.Error())
+	}
+	var buf bytes.Buffer
+	err = json.NewEncoder(&buf).Encode(params)
+	if err != nil {
+		return token, fmt.Errorf("Error encoding params %#v: %s", params, err.Error())
+	}
+	resp, err := http.Post(u, "application/json", &buf)
+	if err != nil {
+		return token, fmt.Errorf("Error during login post: %s", err.Error())
+	}
+	defer resp.Body.Close()
+	result, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return token, fmt.Errorf("Error reading body: %s", err.Error())
+	}
+	data := make(map[string]interface{})
+	err = json.Unmarshal(result, &data)
+	if err != nil {
+		return token, fmt.Errorf("Error parsing response: %s - %s", result, err.Error())
+	}
+	return data["token"].(string), nil
+}
+
 func callback(redirectUrl string, finish chan bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
 			finish <- true
 		}()
-		code := r.URL.Query().Get("code")
-		params := map[string]string{"code": code, "redirectUrl": redirectUrl}
-		u, err := GetURL("/auth/login")
-		if err != nil {
-			return
+		var page string
+		token, err := convertToken(r.URL.Query().Get("code"), redirectUrl)
+		if err == nil {
+			writeToken(token)
+			page = fmt.Sprintf(callbackPage, successMarkup)
+		} else {
+			msg := fmt.Sprintf(errorMarkup, err.Error())
+			page = fmt.Sprintf(callbackPage, msg)
 		}
-		var buf bytes.Buffer
-		err = json.NewEncoder(&buf).Encode(params)
-		if err != nil {
-			return
-		}
-		resp, err := http.Post(u, "application/json", &buf)
-		if err != nil {
-			return
-		}
-		defer resp.Body.Close()
-		result, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return
-		}
-		data := make(map[string]interface{})
-		err = json.Unmarshal(result, &data)
-		if err != nil {
-			return
-		}
-		writeToken(data["token"].(string))
 		w.Header().Add("Content-Type", "text/html")
-		w.Write([]byte(callbackPage))
+		w.Write([]byte(page))
 	}
 }
 

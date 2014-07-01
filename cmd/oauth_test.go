@@ -5,6 +5,7 @@
 package cmd
 
 import (
+	"fmt"
 	etesting "github.com/tsuru/tsuru/exec/testing"
 	ftesting "github.com/tsuru/tsuru/fs/testing"
 	"io/ioutil"
@@ -56,7 +57,8 @@ func (s *S) TestCallbackHandler(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	handler(recorder, request)
 	c.Assert(<-finish, gocheck.Equals, true)
-	c.Assert(callbackPage, gocheck.Equals, recorder.Body.String())
+	expectedPage := fmt.Sprintf(callbackPage, successMarkup)
+	c.Assert(expectedPage, gocheck.Equals, recorder.Body.String())
 	file, err := rfs.Open(JoinWithUserDir(".tsuru_token"))
 	c.Assert(err, gocheck.IsNil)
 	data, err := ioutil.ReadAll(file)
