@@ -39,7 +39,7 @@ main p, main li, main em {
     font-weight: normal;
 }
 
-span.pre {
+.literal, span.pre {
     font-family: monospace;
     background: #dedede;
 }
