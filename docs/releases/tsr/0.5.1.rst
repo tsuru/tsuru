@@ -4,6 +4,10 @@ tsr 0.5.1 release notes
 
 Welcome to tsr 0.5.1!
 
+These release notes cover the `new features`_, `bug fixes`_ and `backwards incompatible
+changes`_ you'll want to be aware of when upgrading from tsr 0.5.0 or older
+versions.
+
 .. _`new features`: `What's new in tsr 0.5.1`_
 
 What's new in tsr 0.5.1
@@ -12,4 +16,20 @@ What's new in tsr 0.5.1
 * **tsr api** now checks tsuru.conf file and refuse to start if it is
   misconfigured. It's also possible to exclusively test the config file with
   the -t flag.  i.e.: running "tsr api -t". (`#714
-  <https://github.com/tsuru/tsuru/issues/714>`_)
+  <https://github.com/tsuru/tsuru/issues/714>`_).
+* new command in the ``tsuru-admin``: the command fix-containers will look for
+  broken containers and fix their configuration within the router, and in the
+  database
+
+Bug fixes
+=========
+
+* Do not lock application on ``tsuru run``
+
+Backwards incompatible changes
+==============================
+
+* **tsr collector** is no more. In the 0.5.0 release, collector got much less
+  responsibilities, and now it does nothing, because it no longer exists. The
+  last of its responsibilities is now available in the ``tsuru-admin
+  fix-containers`` command.
