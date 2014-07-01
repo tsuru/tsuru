@@ -120,6 +120,13 @@ tsuru
 
 `tsuru` is the tsuru client.
 
+0.10.1 release
+---------------
+.. toctree::
+   :maxdepth: 1
+
+   tsuru/0.10.1
+
 0.10.0 release
 ---------------
 .. toctree::
@@ -187,6 +194,13 @@ tsuru-admin
 ===========
 
 `tsuru-admin` is the tsuru administrative client.
+
+0.4.1 release
+-------------
+.. toctree::
+   :maxdepth: 1
+
+   tsuru-admin/0.4.1
 
 0.4.0 release
 -------------
