@@ -1,0 +1,28 @@
+.. warning::
+
+    Version under development
+
+
+=======================
+tsr 0.5.2 release notes
+=======================
+
+Welcome to tsr 0.5.2!
+
+These release notes cover the `new features`_, `bug fixes`_ and `backwards incompatible
+changes`_ you'll want to be aware of when upgrading from tsr 0.5.1 or older
+versions.
+
+.. _`new features`: `What's new in tsr 0.5.2`_
+
+What's new in tsr 0.5.2
+=======================
+
+Bug fixes
+=========
+
+* Check if node exists before exclude it (mongo don't return an error if I try to remove a node which not exists from a pool) (`#840 <https://github.com/tsuru/tsuru/issues/840>`_). 
+
+Backwards incompatible changes
+==============================
+
