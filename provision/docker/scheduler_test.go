@@ -238,12 +238,12 @@ func (s *S) TestAddNodeWithoutPoolNameError(c *gocheck.C) {
 func (s *S) TestRemoveNodeFromScheduler(c *gocheck.C) {
 	coll := s.storage.Collection(schedulerCollection)
 	err := coll.Insert(Pool{Name: "pool1"})
+	defer coll.RemoveAll(bson.M{"_id": "pool1"})
 	c.Assert(err, gocheck.IsNil)
 	nd := cluster.Node{ID: "server0", Address: "http://localhost:8080"}
 	var scheduler segregatedScheduler
 	err = scheduler.Register(map[string]string{"ID": nd.ID, "address": nd.Address, "pool": "pool1"})
 	c.Assert(err, gocheck.IsNil)
-	defer coll.RemoveAll(bson.M{"_id": "pool1"})
 	err = scheduler.Unregister(map[string]string{"address": nd.Address, "pool": "pool1"})
 	c.Assert(err, gocheck.IsNil)
 	n, err := coll.Find(bson.M{"_id": "server0"}).Count()
@@ -252,8 +252,12 @@ func (s *S) TestRemoveNodeFromScheduler(c *gocheck.C) {
 }
 
 func (s *S) TesteRemoveUnknownNodeFromScheduler(c *gocheck.C) {
+	coll := s.storage.Collection(schedulerCollection)
+	err := coll.Insert(Pool{Name: "pool1"})
+	defer coll.RemoveAll(bson.M{"_id": "pool1"})
+	c.Assert(err, gocheck.IsNil)
 	var scheduler segregatedScheduler
-	err := scheduler.Unregister(map[string]string{"ID": "server0"})
+	err = scheduler.Unregister(map[string]string{"pool": "pool1", "address": "not-exists"})
 	c.Assert(err, gocheck.Equals, errNodeNotFound)
 }
 
