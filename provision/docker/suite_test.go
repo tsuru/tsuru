@@ -67,7 +67,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	f.Write([]byte("key-content"))
 	f.Close()
-	s.server, err = dtesting.NewServer("127.0.0.1:0", nil)
+	s.server, err = dtesting.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, gocheck.IsNil)
 	s.targetRecover = tTesting.SetTargetFile(c)
 	s.storage, err = db.Conn()
@@ -108,7 +108,7 @@ func (s *S) stopMultipleServersCluster(cluster *cluster.Cluster) {
 }
 
 func (s *S) startMultipleServersCluster() (*cluster.Cluster, error) {
-	otherServer, err := dtesting.NewServer("localhost:0", nil)
+	otherServer, err := dtesting.NewServer("localhost:0", nil, nil)
 	if err != nil {
 		return nil, err
 	}

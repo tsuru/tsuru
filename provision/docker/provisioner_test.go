@@ -716,7 +716,7 @@ func (s *S) TestProvisionerStopSkipAlreadyStoppedContainers(c *gocheck.C) {
 
 func (s *S) TestProvisionerPlatformAdd(c *gocheck.C) {
 	var requests []*http.Request
-	server, err := dtesting.NewServer("127.0.0.1:0", func(r *http.Request) {
+	server, err := dtesting.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
 		requests = append(requests, r)
 	})
 	c.Assert(err, gocheck.IsNil)

@@ -553,11 +553,7 @@ func (s *S) TestContainerCommitWithRegistry(c *gocheck.C) {
 func (s *S) TestRemoveImage(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	client, err := docker.NewClient(s.server.URL())
-	c.Assert(err, gocheck.IsNil)
-	images, err := client.ListImages(true)
-	c.Assert(err, gocheck.IsNil)
-	err = removeImage(images[0].ID)
+	err = removeImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
 }
 
@@ -841,7 +837,7 @@ func (s *S) TestGetDockerServersShouldSearchFromConfig(c *gocheck.C) {
 
 func (s *S) TestPushImage(c *gocheck.C) {
 	var request *http.Request
-	server, err := dtesting.NewServer("127.0.0.1:0", func(r *http.Request) {
+	server, err := dtesting.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
 		request = r
 	})
 	c.Assert(err, gocheck.IsNil)
@@ -869,7 +865,7 @@ func (s *S) TestPushImage(c *gocheck.C) {
 
 func (s *S) TestPushImageNoRegistry(c *gocheck.C) {
 	var request *http.Request
-	server, err := dtesting.NewServer("127.0.0.1:0", func(r *http.Request) {
+	server, err := dtesting.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
 		request = r
 	})
 	c.Assert(err, gocheck.IsNil)

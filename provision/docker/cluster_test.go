@@ -13,7 +13,7 @@ import (
 
 type mapStorage struct {
 	cMap  map[string]string
-	iMap  map[string]string
+	iMap  map[string][]string
 	nodes []cluster.Node
 	cMut  sync.Mutex
 	iMut  sync.Mutex
@@ -51,20 +51,20 @@ func (s *mapStorage) StoreImage(imageID, hostID string) error {
 	s.iMut.Lock()
 	defer s.iMut.Unlock()
 	if s.iMap == nil {
-		s.iMap = make(map[string]string)
+		s.iMap = make(map[string][]string)
 	}
-	s.iMap[imageID] = hostID
+	s.iMap[imageID] = append(s.iMap[imageID], hostID)
 	return nil
 }
 
-func (s *mapStorage) RetrieveImage(imageID string) (string, error) {
+func (s *mapStorage) RetrieveImage(imageID string) ([]string, error) {
 	s.iMut.Lock()
 	defer s.iMut.Unlock()
-	host, ok := s.iMap[imageID]
+	hosts, ok := s.iMap[imageID]
 	if !ok {
-		return "", docker.ErrNoSuchImage
+		return nil, docker.ErrNoSuchImage
 	}
-	return host, nil
+	return hosts, nil
 }
 
 func (s *mapStorage) RemoveImage(imageID string) error {
