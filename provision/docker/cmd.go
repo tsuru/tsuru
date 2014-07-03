@@ -24,7 +24,7 @@ func (addNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	url, err := cmd.GetURL("/node")
+	url, err := cmd.GetURL("/docker/node")
 	if err != nil {
 		return err
 	}
@@ -56,7 +56,7 @@ func (removeNodeFromSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) erro
 	if err != nil {
 		return err
 	}
-	url, err := cmd.GetURL("/node")
+	url, err := cmd.GetURL("/docker/node")
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func (listNodesInTheSchedulerCmd) Info() *cmd.Info {
 }
 
 func (listNodesInTheSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
-	url, err := cmd.GetURL("/node")
+	url, err := cmd.GetURL("/docker/node")
 	if err != nil {
 		return err
 	}

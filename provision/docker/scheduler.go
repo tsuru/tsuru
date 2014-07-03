@@ -334,7 +334,7 @@ func (addPoolToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	url, err := cmd.GetURL("/pool")
+	url, err := cmd.GetURL("/docker/pool")
 	if err != nil {
 		return err
 	}
@@ -366,7 +366,7 @@ func (removePoolFromSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) erro
 	if err != nil {
 		return err
 	}
-	url, err := cmd.GetURL("/pool")
+	url, err := cmd.GetURL("/docker/pool")
 	if err != nil {
 		return err
 	}
@@ -394,7 +394,7 @@ func (listPoolsInTheSchedulerCmd) Info() *cmd.Info {
 
 func (listPoolsInTheSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
 	t := cmd.Table{Headers: cmd.Row([]string{"Pools", "Nodes", "Teams"})}
-	url, err := cmd.GetURL("/pool")
+	url, err := cmd.GetURL("/docker/pool")
 	if err != nil {
 		return err
 	}
@@ -434,7 +434,7 @@ func (addTeamsToPoolCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	url, err := cmd.GetURL("/pool/team")
+	url, err := cmd.GetURL("/docker/pool/team")
 	if err != nil {
 		return err
 	}
@@ -466,7 +466,7 @@ func (removeTeamsFromPoolCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	url, err := cmd.GetURL("/pool/team")
+	url, err := cmd.GetURL("/docker/pool/team")
 	if err != nil {
 		return err
 	}

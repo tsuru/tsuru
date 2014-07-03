@@ -475,7 +475,7 @@ func (s *S) TestAddPoolToTheSchedulerCmd(c *gocheck.C) {
 	trans := &testing.ConditionalTransport{
 		Transport: testing.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/pool"
+			return req.URL.Path == "/docker/pool"
 		},
 	}
 	manager := cmd.Manager{}
@@ -502,7 +502,7 @@ func (s *S) TestRemovePoolFromTheSchedulerCmd(c *gocheck.C) {
 	trans := &testing.ConditionalTransport{
 		Transport: testing.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/pool"
+			return req.URL.Path == "/docker/pool"
 		},
 	}
 	manager := cmd.Manager{}
@@ -531,7 +531,7 @@ func (s *S) TestListPoolsInTheSchedulerCmdRun(c *gocheck.C) {
 	trans := &testing.ConditionalTransport{
 		Transport: testing.Transport{Message: string(poolsJson), Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/pool"
+			return req.URL.Path == "/docker/pool"
 		},
 	}
 	manager := cmd.Manager{}
@@ -564,7 +564,7 @@ func (s *S) TestAddTeamsToPoolCmdRun(c *gocheck.C) {
 	trans := &testing.ConditionalTransport{
 		Transport: testing.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/pool/team"
+			return req.URL.Path == "/docker/pool/team"
 		},
 	}
 	manager := cmd.Manager{}
@@ -590,7 +590,7 @@ func (s *S) TestRemoveTeamsFromPoolCmdRun(c *gocheck.C) {
 	trans := &testing.ConditionalTransport{
 		Transport: testing.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/pool/team"
+			return req.URL.Path == "/docker/pool/team"
 		},
 	}
 	manager := cmd.Manager{}

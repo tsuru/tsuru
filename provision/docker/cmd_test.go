@@ -29,7 +29,7 @@ func (s *S) TestAddNodeToTheSchedulerCmdRun(c *gocheck.C) {
 	trans := &testing.ConditionalTransport{
 		Transport: testing.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/node"
+			return req.URL.Path == "/docker/node"
 		},
 	}
 	manager := cmd.Manager{}
@@ -57,7 +57,7 @@ func (s *S) TestRemoveNodeFromTheSchedulerCmdRun(c *gocheck.C) {
 	trans := &testing.ConditionalTransport{
 		Transport: testing.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/node"
+			return req.URL.Path == "/docker/node"
 		},
 	}
 	manager := cmd.Manager{}
@@ -84,7 +84,7 @@ func (s *S) TestListNodesInTheSchedulerCmdRun(c *gocheck.C) {
 	trans := &testing.ConditionalTransport{
 		Transport: testing.Transport{Message: `[{"Address": "http://localhost:8080"}, {"Address": "http://localhost:9090"}]`, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/node"
+			return req.URL.Path == "/docker/node"
 		},
 	}
 	manager := cmd.Manager{}
