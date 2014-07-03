@@ -1,0 +1,8 @@
+===============================
+tsuru-admin 0.4.2 release notes
+===============================
+
+Welcome to tsuru-admin 0.4.2!
+
+tsuru-admin 0.4.2 includes a bug fix in the communication with the Docker
+provisioner API.
