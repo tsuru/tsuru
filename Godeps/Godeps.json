@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/tsuru/tsuru",
-	"GoVersion": "go1.2.2",
+	"GoVersion": "go1.3",
 	"Packages": [
 		"./..."
 	],
@@ -12,11 +12,6 @@
 		},
 		{
 			"ImportPath": "code.google.com/p/go.crypto/blowfish",
-			"Comment": "null-184",
-			"Rev": "cd1eea1eb82851fe9cde1d062406ca60c935ce24"
-		},
-		{
-			"ImportPath": "code.google.com/p/go.crypto/ssh",
 			"Comment": "null-184",
 			"Rev": "cd1eea1eb82851fe9cde1d062406ca60c935ce24"
 		},
@@ -74,11 +69,11 @@
 		},
 		{
 			"ImportPath": "github.com/tsuru/docker-cluster/cluster",
-			"Rev": "5422335ad1f8e5f61fbc0646db30e51c4aabd791"
+			"Rev": "8faea114805e866ad52036dc846edecb3c8a8a39"
 		},
 		{
 			"ImportPath": "github.com/tsuru/docker-cluster/storage",
-			"Rev": "5422335ad1f8e5f61fbc0646db30e51c4aabd791"
+			"Rev": "8faea114805e866ad52036dc846edecb3c8a8a39"
 		},
 		{
 			"ImportPath": "github.com/tsuru/gandalf/testing",
