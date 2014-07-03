@@ -26,7 +26,7 @@ Sign up
 +++++++
 
 To create an account, you use the `user-create
-<http://godoc.org/github.com/tsuru/tsuru/cmd/tsuru#hdr-Create_a_user>`_
+<http://godoc.org/github.com/tsuru/tsuru-clients/tsuru#hdr-Create_a_user>`_
 command:
 
 .. highlight:: bash
@@ -41,7 +41,7 @@ Login
 +++++
 
 To login in tsuru, you use the `login
-<http://godoc.org/github.com/tsuru/tsuru/cmd/tsuru#hdr-Authenticate_within_remote_tsuru_server>`_
+<http://godoc.org/github.com/tsuru/tsuru-clients/tsuru#hdr-Authenticate_within_remote_tsuru_server>`_
 command, you will be asked for your password:
 
 .. highlight:: bash
