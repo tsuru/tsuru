@@ -1,3 +1,1 @@
-Fabric==1.4.2
-Sphinx==1.1.3
-circus==0.6.0
+ items assets kind software-package url http://test.aayongche.com:9999/app/apps/iphone-1.0.3-driver.ipa kind display-image needs-shine url http://test.aayongche.com:1234/images/driver_logo.png kind full-size-image needs-shine url http://test.aayongche.com:1234/images/driver_logo.png metadata bundle-identifier com.aa.driver bundle-version 1.0.3 kind software subtitle AA租车司机端 title AA租车司机端 
