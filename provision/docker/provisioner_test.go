@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/testing"
 	tsrTesting "github.com/tsuru/tsuru/testing"
+	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"net"
@@ -390,6 +391,80 @@ func (s *S) TestProvisionerAddUnitsWithHost(c *gocheck.C) {
 	c.Assert(count, gocheck.Equals, 2)
 }
 
+func (s *S) TestProvisionerRemoveUnits(c *gocheck.C) {
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	container1, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	defer rtesting.FakeRouter.RemoveBackend(container1.AppName)
+	container2, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	defer rtesting.FakeRouter.RemoveBackend(container2.AppName)
+	container3, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(container3)
+	client, err := docker.NewClient(s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	err = client.StartContainer(container1.ID, nil)
+	c.Assert(err, gocheck.IsNil)
+	err = client.StartContainer(container2.ID, nil)
+	c.Assert(err, gocheck.IsNil)
+	app := testing.NewFakeApp(container1.AppName, "python", 0)
+	var p dockerProvisioner
+	err = p.RemoveUnits(app, 2)
+	c.Assert(err, gocheck.IsNil)
+	_, err = getContainer(container1.ID)
+	c.Assert(err, gocheck.NotNil)
+	_, err = getContainer(container2.ID)
+	c.Assert(err, gocheck.NotNil)
+}
+
+func (s *S) TestProvisionerRemoveUnitsPriorityOrder(c *gocheck.C) {
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	container, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
+	app := testing.NewFakeApp(container.AppName, "python", 0)
+	var p dockerProvisioner
+	_, err = p.AddUnits(app, 3)
+	c.Assert(err, gocheck.IsNil)
+	err = p.RemoveUnits(app, 1)
+	c.Assert(err, gocheck.IsNil)
+	_, err = getContainer(container.ID)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(p.Units(app), gocheck.HasLen, 3)
+}
+
+func (s *S) TestProvisionerRemoveUnitsNotFound(c *gocheck.C) {
+	var p dockerProvisioner
+	err := p.RemoveUnits(nil, 1)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "remove units: app should not be nil")
+}
+
+func (s *S) TestProvisionerRemoveUnitsZeroUnits(c *gocheck.C) {
+	var p dockerProvisioner
+	err := p.RemoveUnits(testing.NewFakeApp("something", "python", 0), 0)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "remove units: units must be at least 1")
+}
+
+func (s *S) TestProvisionerRemoveUnitsTooManyUnits(c *gocheck.C) {
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	container, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
+	app := testing.NewFakeApp(container.AppName, "python", 0)
+	var p dockerProvisioner
+	_, err = p.AddUnits(app, 2)
+	c.Assert(err, gocheck.IsNil)
+	err = p.RemoveUnits(app, 3)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "remove units: cannot remove all units from app")
+}
+
 func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
@@ -402,34 +477,16 @@ func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp(container.AppName, "python", 0)
 	var p dockerProvisioner
-	err = p.RemoveUnit(app)
+	err = p.RemoveUnit(provision.Unit{AppName: app.GetName(), Name: container.ID})
 	c.Assert(err, gocheck.IsNil)
 	_, err = getContainer(container.ID)
 	c.Assert(err, gocheck.NotNil)
-}
-
-func (s *S) TestProvisionerRemoveUnitPriorityOrder(c *gocheck.C) {
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
-	container, err := s.newContainer(nil)
-	c.Assert(err, gocheck.IsNil)
-	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
-	app := testing.NewFakeApp(container.AppName, "python", 0)
-	var p dockerProvisioner
-	_, err = p.AddUnits(app, 1)
-	c.Assert(err, gocheck.IsNil)
-	err = p.RemoveUnit(app)
-	c.Assert(err, gocheck.IsNil)
-	_, err = getContainer(container.ID)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(p.Units(app), gocheck.HasLen, 1)
 }
 
 func (s *S) TestProvisionerRemoveUnitNotFound(c *gocheck.C) {
 	var p dockerProvisioner
-	err := p.RemoveUnit(nil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "remove unit: app should not be nil")
+	err := p.RemoveUnit(provision.Unit{Name: "wat de reu"})
+	c.Assert(err, gocheck.Equals, mgo.ErrNotFound)
 }
 
 func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {

@@ -328,15 +328,38 @@ func (*dockerProvisioner) AddUnits(a provision.App, units uint) ([]provision.Uni
 	return addUnitsWithHost(a, units)
 }
 
-func (*dockerProvisioner) RemoveUnit(a provision.App) error {
+func (*dockerProvisioner) RemoveUnits(a provision.App, units uint) error {
 	if a == nil {
-		return errors.New("remove unit: app should not be nil")
+		return errors.New("remove units: app should not be nil")
+	}
+	if units < 1 {
+		return errors.New("remove units: units must be at least 1")
 	}
 	containers, err := listContainersByAppOrderedByStatus(a.GetName())
 	if err != nil {
 		return err
 	}
-	return removeContainer(&containers[0])
+	if units >= uint(len(containers)) {
+		return errors.New("remove units: cannot remove all units from app")
+	}
+	var wg sync.WaitGroup
+	for i := 0; i < int(units); i++ {
+		wg.Add(1)
+		go func(c container) {
+			removeContainer(&c)
+			wg.Done()
+		}(containers[i])
+	}
+	wg.Wait()
+	return nil
+}
+
+func (*dockerProvisioner) RemoveUnit(unit provision.Unit) error {
+	container, err := getContainerPartialId(unit.Name)
+	if err != nil {
+		return err
+	}
+	return removeContainer(container)
 }
 
 func removeContainer(c *container) error {
