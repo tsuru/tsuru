@@ -160,6 +160,6 @@ tsuru's clients:
 
 ::
 
-    $ go get github.com/tsuru/tsuru-clients/tsuru
-    $ go get github.com/tsuru/tsuru-clients/tsuru-admin
+    $ go get github.com/tsuru/tsuru-client/tsuru
+    $ go get github.com/tsuru/tsuru-admin
     $ go get github.com/tsuru/crane
