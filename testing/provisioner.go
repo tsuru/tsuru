@@ -451,7 +451,7 @@ func (p *FakeProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit,
 			AppName: name,
 			Type:    platform,
 			Status:  provision.StatusStarted,
-			Ip:      fmt.Sprintf("10.10.10.%d", length+i),
+			Ip:      fmt.Sprintf("10.10.10.%d", length+i+1),
 		}
 		pApp.units = append(pApp.units, unit)
 		pApp.unitLen++
