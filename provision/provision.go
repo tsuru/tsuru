@@ -132,9 +132,13 @@ type Provisioner interface {
 	// It returns a slice containing all added units
 	AddUnits(App, uint) ([]Unit, error)
 
-	// RemoveUnit removes a unit from the app. It receives the app and the name
-	// of the unit to be removed.
-	RemoveUnit(App) error
+	// RemoveUnits "undoes" AddUnits, removing the given number of units
+	// from the app.
+	RemoveUnits(App, uint) error
+
+	// RemoveUnit removes a unit from the app. It receives the unit to be
+	// removed.
+	RemoveUnit(Unit) error
 
 	// ExecuteCommand runs a command in all units of the app.
 	ExecuteCommand(stdout, stderr io.Writer, app App, cmd string, args ...string) error
