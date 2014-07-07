@@ -18,6 +18,11 @@ versions.
 What's new in tsr 0.5.2
 =======================
 
+Improvements
+============
+
+* cluster try to remove an image only in nodes that have pulled that image (`docker-cluster #22 <https://github.com/tsuru/docker-cluster/issues/22>`_).
+
 Bug fixes
 =========
 
