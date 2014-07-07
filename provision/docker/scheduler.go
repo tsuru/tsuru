@@ -245,12 +245,11 @@ func (segregatedScheduler) Unregister(params map[string]string) error {
 		return err
 	}
 	defer conn.Close()
-	var pools []Pool
-	err = conn.Collection(schedulerCollection).Find(bson.M{"nodes": params["address"]}).All(&pools)
+	pools, err := conn.Collection(schedulerCollection).Find(bson.M{"nodes": params["address"]}).Count()
 	if err != nil {
 		return err
 	}
-	if len(pools) == 0 {
+	if pools == 0 {
 		return errNodeNotFound
 	}
 	err = conn.Collection(schedulerCollection).UpdateId(params["pool"], bson.M{"$pull": bson.M{"nodes": params["address"]}})
