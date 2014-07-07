@@ -385,19 +385,7 @@ func (p *FakeProvisioner) Provision(app provision.App) error {
 	}
 	p.mut.Lock()
 	defer p.mut.Unlock()
-	p.apps[app.GetName()] = provisionedApp{
-		app:     app,
-		unitLen: 1,
-		units: []provision.Unit{
-			{
-				Name:    app.GetName() + "/0",
-				AppName: app.GetName(),
-				Type:    app.GetPlatform(),
-				Status:  provision.StatusStarted,
-				Ip:      "10.10.10.1",
-			},
-		},
-	}
+	p.apps[app.GetName()] = provisionedApp{app: app}
 	return nil
 }
 

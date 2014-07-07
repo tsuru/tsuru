@@ -316,16 +316,7 @@ func (s *S) TestProvision(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	pApp := p.apps[app.GetName()]
 	c.Assert(pApp.app, gocheck.DeepEquals, app)
-	c.Assert(pApp.units, gocheck.HasLen, 1)
-	expected := provision.Unit{
-		Name:    "kid-gloves/0",
-		AppName: "kid-gloves",
-		Type:    "rush",
-		Status:  provision.StatusStarted,
-		Ip:      "10.10.10.1",
-	}
-	unit := pApp.units[0]
-	c.Assert(unit, gocheck.DeepEquals, expected)
+	c.Assert(pApp.units, gocheck.HasLen, 0)
 }
 
 func (s *S) TestProvisionWithPreparedFailure(c *gocheck.C) {
@@ -421,7 +412,7 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	p.Provision(app)
 	units, err := p.AddUnits(app, 2)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(p.GetUnits(app), gocheck.HasLen, 3)
+	c.Assert(p.GetUnits(app), gocheck.HasLen, 2)
 	c.Assert(units, gocheck.HasLen, 2)
 }
 
@@ -469,7 +460,7 @@ func (s *S) TestRemoveUnits(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = p.RemoveUnits(app, 3)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(p.GetUnits(app), gocheck.HasLen, 3)
+	c.Assert(p.GetUnits(app), gocheck.HasLen, 2)
 	c.Assert(p.GetUnits(app)[0].Name, gocheck.Equals, "hemispheres/3")
 }
 
@@ -507,8 +498,8 @@ func (s *S) TestRemoveUnit(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = p.RemoveUnit(units[0])
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(p.GetUnits(app), gocheck.HasLen, 2)
-	c.Assert(p.GetUnits(app)[0].Name, gocheck.Equals, "hemispheres/0")
+	c.Assert(p.GetUnits(app), gocheck.HasLen, 1)
+	c.Assert(p.GetUnits(app)[0].Name, gocheck.Equals, "hemispheres/1")
 }
 
 func (s *S) TestRemoveUnitNotFound(c *gocheck.C) {
@@ -517,7 +508,7 @@ func (s *S) TestRemoveUnitNotFound(c *gocheck.C) {
 	p.Provision(app)
 	units, err := p.AddUnits(app, 2)
 	c.Assert(err, gocheck.IsNil)
-	err = p.RemoveUnit(provision.Unit{Name: units[0].Name+"wat", AppName: "hemispheres"})
+	err = p.RemoveUnit(provision.Unit{Name: units[0].Name + "wat", AppName: "hemispheres"})
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "unit not found")
 }
@@ -750,6 +741,6 @@ func (s *S) TestFakeProvisionerAddUnit(c *gocheck.C) {
 	err := p.Provision(app)
 	c.Assert(err, gocheck.IsNil)
 	p.AddUnit(app, provision.Unit{Name: "red-sector/1"})
-	c.Assert(p.Units(app), gocheck.HasLen, 2)
-	c.Assert(p.apps[app.GetName()].unitLen, gocheck.Equals, 2)
+	c.Assert(p.Units(app), gocheck.HasLen, 1)
+	c.Assert(p.apps[app.GetName()].unitLen, gocheck.Equals, 1)
 }
