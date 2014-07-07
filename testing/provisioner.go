@@ -474,8 +474,8 @@ func (p *FakeProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit,
 	return result, nil
 }
 
-func (p *FakeProvisioner) RemoveUnit(app provision.App) error {
-	if err := p.getError("RemoveUnit"); err != nil {
+func (p *FakeProvisioner) RemoveUnits(app provision.App, n uint) error {
+	if err := p.getError("RemoveUnits"); err != nil {
 		return err
 	}
 	p.mut.Lock()
@@ -484,9 +484,38 @@ func (p *FakeProvisioner) RemoveUnit(app provision.App) error {
 	if !ok {
 		return errNotProvisioned
 	}
-	pApp.units = pApp.units[:len(pApp.units)-1]
-	pApp.unitLen--
+	if n >= uint(len(pApp.units)) {
+		return errors.New("too many units to remove")
+	}
+	pApp.units = pApp.units[int(n):]
+	pApp.unitLen -= int(n)
 	p.apps[app.GetName()] = pApp
+	return nil
+}
+
+func (p *FakeProvisioner) RemoveUnit(unit provision.Unit) error {
+	if err := p.getError("RemoveUnit"); err != nil {
+		return err
+	}
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	app, ok := p.apps[unit.AppName]
+	if !ok {
+		return errNotProvisioned
+	}
+	index := -1
+	for i, u := range app.units {
+		if u.Name == unit.Name {
+			index = i
+		}
+	}
+	if index < 0 {
+		return errors.New("unit not found")
+	}
+	app.units[index] = app.units[len(app.units)-1]
+	app.units = app.units[:len(app.units)-1]
+	app.unitLen--
+	p.apps[unit.AppName] = app
 	return nil
 }
 
