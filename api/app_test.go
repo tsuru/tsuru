@@ -62,6 +62,7 @@ func (s *S) TestAppIsAvailableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c
 	defer s.conn.Logs(a.Name).DropCollection()
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 1)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -475,7 +476,7 @@ func (s *S) TestCreateAppHandler(c *gocheck.C) {
 	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(gotApp.Teams, gocheck.DeepEquals, []string{s.team.Name})
-	c.Assert(s.provisioner.GetUnits(&gotApp), gocheck.HasLen, 1)
+	c.Assert(s.provisioner.GetUnits(&gotApp), gocheck.HasLen, 0)
 	action := testing.Action{
 		Action: "create-app",
 		User:   s.user.Email,
@@ -524,7 +525,7 @@ func (s *S) TestCreateAppTeamOwner(c *gocheck.C) {
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(gotApp.Teams, gocheck.DeepEquals, []string{s.team.Name})
-	c.Assert(s.provisioner.GetUnits(&gotApp), gocheck.HasLen, 1)
+	c.Assert(s.provisioner.GetUnits(&gotApp), gocheck.HasLen, 0)
 	action := testing.Action{
 		Action: "create-app",
 		User:   s.user.Email,
@@ -727,7 +728,7 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.Units(), gocheck.HasLen, 4)
+	c.Assert(app.Units(), gocheck.HasLen, 3)
 	action := testing.Action{
 		Action: "add-units",
 		User:   s.user.Email,
@@ -848,8 +849,8 @@ func (s *S) TestRemoveUnits(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.Units(), gocheck.HasLen, 2)
-	c.Assert(s.provisioner.GetUnits(app), gocheck.HasLen, 2)
+	c.Assert(app.Units(), gocheck.HasLen, 1)
+	c.Assert(s.provisioner.GetUnits(app), gocheck.HasLen, 1)
 	action := testing.Action{
 		Action: "remove-units",
 		User:   s.user.Email,
@@ -1326,6 +1327,7 @@ func (s *S) TestRunOnceHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 1)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs(a.Name).DropCollection()
 	url := fmt.Sprintf("/apps/%s/run/?:app=%s&once=true", a.Name, a.Name)
@@ -1360,6 +1362,7 @@ func (s *S) TestRunHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 1)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs(a.Name).DropCollection()
 	url := fmt.Sprintf("/apps/%s/run/?:app=%s", a.Name, a.Name)
@@ -1397,6 +1400,7 @@ func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *gocheck.C
 	defer s.conn.Logs(a.Name).DropCollection()
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 1)
 	url := fmt.Sprintf("/apps/%s/run/?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
 	c.Assert(err, gocheck.IsNil)
@@ -2590,6 +2594,7 @@ func (s *S) TestBindHandlerEndpointIsDown(c *gocheck.C) {
 	defer s.conn.Logs(a.Name).DropCollection()
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 1)
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -2626,6 +2631,7 @@ func (s *S) TestBindHandler(c *gocheck.C) {
 	defer s.conn.Logs(a.Name).DropCollection()
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 1)
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -2753,6 +2759,7 @@ func (s *S) TestUnbindHandler(c *gocheck.C) {
 	defer gts.Close()
 	var called int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println(r.URL.Path)
 		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/hostname/10.10.10.1" {
 			atomic.StoreInt32(&called, 1)
 		}
@@ -2781,6 +2788,7 @@ func (s *S) TestUnbindHandler(c *gocheck.C) {
 	defer app.Delete(&a)
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 1)
 	otherApp, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	otherApp.Env["DATABASE_HOST"] = bind.EnvVar{
