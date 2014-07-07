@@ -608,7 +608,7 @@ func (s *S) TestProvisionAddUnits(c *gocheck.C) {
 	units, ok := fwresult.([]provision.Unit)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(units, gocheck.HasLen, 3)
-	c.Assert(units, gocheck.DeepEquals, s.provisioner.GetUnits(&app)[1:])
+	c.Assert(units, gocheck.DeepEquals, s.provisioner.GetUnits(&app))
 }
 
 func (s *S) TestProvisionAddUnitsNoPointer(c *gocheck.C) {
@@ -624,7 +624,7 @@ func (s *S) TestProvisionAddUnitsNoPointer(c *gocheck.C) {
 	units, ok := fwresult.([]provision.Unit)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(units, gocheck.HasLen, 3)
-	c.Assert(units, gocheck.DeepEquals, s.provisioner.GetUnits(&app)[1:])
+	c.Assert(units, gocheck.DeepEquals, s.provisioner.GetUnits(&app))
 }
 
 func (s *S) TestProvisionAddUnitsProvisionFailure(c *gocheck.C) {
@@ -658,7 +658,7 @@ func (s *S) TestProvisionAddUnitsBackward(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	ctx := action.BWContext{Params: []interface{}{&app}, FWResult: units}
 	provisionAddUnits.Backward(ctx)
-	c.Assert(s.provisioner.GetUnits(&app), gocheck.HasLen, 1)
+	c.Assert(s.provisioner.GetUnits(&app), gocheck.HasLen, 0)
 }
 
 func (s *S) TestProvisionAddUnitsBackwardNoPointer(c *gocheck.C) {
@@ -672,7 +672,7 @@ func (s *S) TestProvisionAddUnitsBackwardNoPointer(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	ctx := action.BWContext{Params: []interface{}{app}, FWResult: units}
 	provisionAddUnits.Backward(ctx)
-	c.Assert(s.provisioner.GetUnits(&app), gocheck.HasLen, 1)
+	c.Assert(s.provisioner.GetUnits(&app), gocheck.HasLen, 0)
 }
 
 func (s *S) TestProvisionAddUnitsMinParams(c *gocheck.C) {
@@ -694,9 +694,9 @@ func (s *S) TestSaveNewUnitsInDatabaseForward(c *gocheck.C) {
 	fwresult, err := saveNewUnitsInDatabase.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(fwresult, gocheck.IsNil)
-	c.Assert(app.Units(), gocheck.HasLen, 4)
+	c.Assert(app.Units(), gocheck.HasLen, 3)
 	var expectedMessages MessageList
-	for i, unit := range app.Units()[1:] {
+	for i, unit := range app.Units() {
 		c.Assert(unit.Name, gocheck.Equals, units[i].Name)
 		messages := []queue.Message{
 			{Action: regenerateApprc, Args: []string{app.Name, unit.Name}},
@@ -733,9 +733,9 @@ func (s *S) TestSaveNewUnitsInDatabaseForwardNoPointer(c *gocheck.C) {
 	fwresult, err := saveNewUnitsInDatabase.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(fwresult, gocheck.IsNil)
-	c.Assert(app.Units(), gocheck.HasLen, 4)
+	c.Assert(app.Units(), gocheck.HasLen, 3)
 	var expectedMessages MessageList
-	for i, unit := range app.Units()[1:] {
+	for i, unit := range app.Units() {
 		c.Assert(unit.Name, gocheck.Equals, units[i].Name)
 		messages := []queue.Message{
 			{Action: regenerateApprc, Args: []string{app.Name, unit.Name}},

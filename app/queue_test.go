@@ -32,6 +32,8 @@ func (s *S) TestHandleMessage(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 1)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	msg := queue.Message{Action: regenerateApprc, Args: []string{a.Name}}
 	handle(&msg)
@@ -58,6 +60,8 @@ func (s *S) TestHandleMessageWithSpecificUnit(c *gocheck.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 1)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	msg := queue.Message{Action: regenerateApprc, Args: []string{a.Name, a.Units()[0].Name}}
 	handle(&msg)
@@ -242,6 +246,8 @@ func (s *S) TestHandleBindServiceMessage(c *gocheck.C) {
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	s.provisioner.Provision(&a)
+	s.provisioner.AddUnits(&a, 1)
+	defer s.provisioner.Destroy(&a)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.AddApp(a.Name)
 	c.Assert(err, gocheck.IsNil)

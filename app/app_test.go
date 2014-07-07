@@ -168,7 +168,6 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(message.Action, gocheck.Equals, expectedMessage.Action)
 	c.Assert(message.Args, gocheck.DeepEquals, expectedMessage.Args)
-	c.Assert(s.provisioner.GetUnits(&a), gocheck.HasLen, 1)
 	err = auth.ReserveApp(s.user)
 	_, ok := err.(*quota.QuotaExceededError)
 	c.Assert(ok, gocheck.Equals, true)
@@ -465,16 +464,16 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	defer s.provisioner.Destroy(&app)
 	err = app.AddUnits(5)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.Units(), gocheck.HasLen, 6)
+	c.Assert(app.Units(), gocheck.HasLen, 5)
 	err = app.AddUnits(2)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.Units(), gocheck.HasLen, 8)
+	c.Assert(app.Units(), gocheck.HasLen, 7)
 	for _, unit := range app.Units() {
 		c.Assert(unit.AppName, gocheck.Equals, app.Name)
 	}
 	var expectedMessages MessageList
-	for i, unit := range app.Units()[1:] {
-		expectedName := fmt.Sprintf("%s/%d", app.Name, i+1)
+	for i, unit := range app.Units() {
+		expectedName := fmt.Sprintf("%s/%d", app.Name, i)
 		c.Check(unit.Name, gocheck.Equals, expectedName)
 		messages := []queue.Message{
 			{Action: regenerateApprc, Args: []string{app.Name, unit.Name}},
@@ -510,11 +509,11 @@ func (s *S) TestAddUnitsQuota(c *gocheck.C) {
 	err = otherApp.AddUnits(5)
 	c.Assert(err, gocheck.IsNil)
 	units := s.provisioner.GetUnits(&app)
-	c.Assert(units, gocheck.HasLen, 6)
+	c.Assert(units, gocheck.HasLen, 5)
 	err = otherApp.AddUnits(2)
 	c.Assert(err, gocheck.IsNil)
 	units = s.provisioner.GetUnits(&app)
-	c.Assert(units, gocheck.HasLen, 8)
+	c.Assert(units, gocheck.HasLen, 7)
 	err = reserveUnits(&app, 1)
 	_, ok := err.(*quota.QuotaExceededError)
 	c.Assert(ok, gocheck.Equals, true)
@@ -590,8 +589,8 @@ func (s *S) TestAddUnitsToDB(c *gocheck.C) {
 		{Name: "warpaint/2"},
 	})
 	var expectedMessages MessageList
-	for i, unit := range app.Units()[1:] {
-		expectedName := fmt.Sprintf("%s/%d", app.Name, i+1)
+	for i, unit := range app.Units() {
+		expectedName := fmt.Sprintf("%s/%d", app.Name, i)
 		c.Check(unit.Name, gocheck.Equals, expectedName)
 		messages := []queue.Message{
 			{Action: regenerateApprc, Args: []string{app.Name, unit.Name}},
@@ -629,7 +628,7 @@ func (s *S) TestRemoveUnitsWithQuota(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	app, err := GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.Quota.InUse, gocheck.Equals, 2)
+	c.Assert(app.Quota.InUse, gocheck.Equals, 1)
 }
 
 func (s *S) TestRemoveUnits(c *gocheck.C) {
@@ -667,12 +666,12 @@ func (s *S) TestRemoveUnits(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	ts.Close()
 	units := app.Units()
-	c.Assert(units, gocheck.HasLen, 3)
+	c.Assert(units, gocheck.HasLen, 2)
 	gotApp, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	gotApp, err = GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(gotApp.Quota.InUse, gocheck.Equals, 3)
+	c.Assert(gotApp.Quota.InUse, gocheck.Equals, 2)
 }
 
 func (s *S) TestRemoveUnitsInvalidValues(c *gocheck.C) {
@@ -681,8 +680,8 @@ func (s *S) TestRemoveUnitsInvalidValues(c *gocheck.C) {
 		expected string
 	}{
 		{0, "Cannot remove zero units."},
-		{4, "Cannot remove all units from an app."},
-		{5, "Cannot remove 5 units from this app, it has only 4 units."},
+		{3, "Cannot remove all units from an app."},
+		{4, "Cannot remove 4 units from this app, it has only 3 units."},
 	}
 	app := App{
 		Name:     "chemistryii",
@@ -1430,6 +1429,7 @@ func (s *S) TestGetUnits(c *gocheck.C) {
 	app := App{Name: "app"}
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
+	s.provisioner.AddUnits(&app, 1)
 	c.Assert(app.GetUnits(), gocheck.HasLen, 1)
 	c.Assert(app.Units()[0].Ip, gocheck.Equals, app.GetUnits()[0].GetIp())
 }
@@ -1510,6 +1510,7 @@ func (s *S) TestRun(c *gocheck.C) {
 	}
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
+	s.provisioner.AddUnits(&app, 1)
 	var buf bytes.Buffer
 	err := app.Run("ls -lh", &buf, false)
 	c.Assert(err, gocheck.IsNil)
@@ -1528,6 +1529,7 @@ func (s *S) TestRunOnce(c *gocheck.C) {
 	}
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
+	s.provisioner.AddUnits(&app, 1)
 	var buf bytes.Buffer
 	err := app.Run("ls -lh", &buf, true)
 	c.Assert(err, gocheck.IsNil)
@@ -1546,6 +1548,7 @@ func (s *S) TestRunWithoutEnv(c *gocheck.C) {
 	}
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
+	s.provisioner.AddUnits(&app, 1)
 	var buf bytes.Buffer
 	err := app.run("ls -lh", &buf, false)
 	c.Assert(err, gocheck.IsNil)
@@ -1606,6 +1609,7 @@ func (s *S) TestSerializeEnvVarsErrorWithoutOutput(c *gocheck.C) {
 	}
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
+	s.provisioner.AddUnits(&app, 1)
 	err := app.SerializeEnvVars()
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Failed to write env vars: Failed to run commands.")
@@ -1626,6 +1630,7 @@ func (s *S) TestSerializeEnvVarsErrorWithOutput(c *gocheck.C) {
 	}
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
+	s.provisioner.AddUnits(&app, 1)
 	err := app.SerializeEnvVars()
 	c.Assert(err, gocheck.NotNil)
 	expected := "Failed to write env vars (exit status 1): This program has performed an illegal operation."
@@ -1828,6 +1833,8 @@ func (s *S) TestListAllDeploys(c *gocheck.C) {
 func (s *S) TestAppUnits(c *gocheck.C) {
 	a := App{Name: "anycolor"}
 	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 1)
 	c.Assert(a.Units(), gocheck.HasLen, 1)
 }
 
@@ -1837,6 +1844,7 @@ func (s *S) TestAppAvailable(c *gocheck.C) {
 	}
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 1)
 	c.Assert(a.Available(), gocheck.Equals, true)
 	s.provisioner.Stop(&a)
 	c.Assert(a.Available(), gocheck.Equals, false)

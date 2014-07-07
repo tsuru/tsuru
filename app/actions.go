@@ -322,16 +322,9 @@ var provisionAddUnits = action.Action{
 		return units, nil
 	},
 	Backward: func(ctx action.BWContext) {
-		var app App
-		switch ctx.Params[0].(type) {
-		case App:
-			app = ctx.Params[0].(App)
-		case *App:
-			app = *ctx.Params[0].(*App)
-		}
 		units := ctx.FWResult.([]provision.Unit)
-		for _ = range units {
-			Provisioner.RemoveUnit(&app)
+		for _, unit := range units {
+			Provisioner.RemoveUnit(unit)
 		}
 	},
 	MinParams: 1,

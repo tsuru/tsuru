@@ -405,9 +405,7 @@ func (app *App) RemoveUnits(n uint) error {
 	} else if n > l {
 		return fmt.Errorf("Cannot remove %d units from this app, it has only %d units.", n, l)
 	}
-	for i := 0; i < int(n); i++ {
-		go Provisioner.RemoveUnit(app)
-	}
+	go Provisioner.RemoveUnits(app, n)
 	conn, err := db.Conn()
 	if err != nil {
 		return err
