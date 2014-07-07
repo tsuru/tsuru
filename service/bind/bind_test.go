@@ -82,6 +82,7 @@ func (s *S) TestBindUnit(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	app.Provisioner.Provision(&a)
 	defer app.Provisioner.Destroy(&a)
+	app.Provisioner.AddUnits(&a, 1)
 	envs, err := instance.BindUnit(&a, a.GetUnits()[0])
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
@@ -105,6 +106,7 @@ func (s *S) TestBindAppFailsWhenEndpointIsDown(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	app.Provisioner.Provision(&a)
 	defer app.Provisioner.Destroy(&a)
+	app.Provisioner.AddUnits(&a, 1)
 	err = instance.BindApp(&a)
 	c.Assert(err, gocheck.NotNil)
 }
@@ -156,6 +158,7 @@ func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCa
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	app.Provisioner.Provision(&a)
 	defer app.Provisioner.Destroy(&a)
+	app.Provisioner.AddUnits(&a, 1)
 	err = instance.BindApp(&a)
 	c.Assert(err, gocheck.IsNil)
 	newApp, err := app.GetByName(a.Name)
@@ -210,7 +213,7 @@ func (s *S) TestBindAppMultiUnits(c *gocheck.C) {
 	ok := make(chan bool)
 	go func() {
 		t := time.Tick(1)
-		for _ = <-t; atomic.LoadInt32(&calls) < 2; _ = <-t {
+		for _ = <-t; atomic.LoadInt32(&calls) < 1; _ = <-t {
 		}
 		ok <- true
 	}()
@@ -219,7 +222,7 @@ func (s *S) TestBindAppMultiUnits(c *gocheck.C) {
 	case <-time.After(2e9):
 		c.Errorf("Did not bind all units afters 2s.")
 	}
-	c.Assert(calls, gocheck.Equals, int32(2))
+	c.Assert(calls, gocheck.Equals, int32(1))
 }
 
 func (s *S) TestBindReturnConflictIfTheAppIsAlreadyBound(c *gocheck.C) {
@@ -283,6 +286,7 @@ func (s *S) TestUnbindUnit(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	app.Provisioner.Provision(&a)
 	defer app.Provisioner.Destroy(&a)
+	app.Provisioner.AddUnits(&a, 1)
 	err = instance.UnbindUnit(a.GetUnits()[0])
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
@@ -314,7 +318,7 @@ func (s *S) TestUnbindMultiUnits(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	app.Provisioner.Provision(&a)
 	defer app.Provisioner.Destroy(&a)
-	app.Provisioner.AddUnits(&a, 1)
+	app.Provisioner.AddUnits(&a, 2)
 	err = instance.UnbindApp(&a)
 	c.Assert(err, gocheck.IsNil)
 	ok := make(chan bool, 1)
@@ -436,6 +440,7 @@ func (s *S) TestUnbindCallsTheUnbindMethodFromAPI(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	app.Provisioner.Provision(&a)
 	defer app.Provisioner.Destroy(&a)
+	app.Provisioner.AddUnits(&a, 1)
 	err = instance.UnbindApp(&a)
 	c.Assert(err, gocheck.IsNil)
 	ch := make(chan bool)
