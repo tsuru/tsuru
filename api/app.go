@@ -278,6 +278,7 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+	context.SetPreventUnlock(r)
 	return app.RemoveUnits(uint(n))
 }
 

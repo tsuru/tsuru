@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
@@ -849,6 +850,7 @@ func (s *S) TestRemoveUnits(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(context.IsPreventUnlock(request), gocheck.Equals, true)
 	c.Assert(app.Units(), gocheck.HasLen, 1)
 	c.Assert(s.provisioner.GetUnits(app), gocheck.HasLen, 1)
 	action := testing.Action{
