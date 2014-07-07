@@ -399,29 +399,35 @@ func (app *App) AddUnits(n uint) error {
 //     3. Update quota
 func (app *App) RemoveUnits(n uint) error {
 	if n == 0 {
+		ReleaseApplicationLock(app.Name)
 		return stderr.New("Cannot remove zero units.")
 	} else if l := uint(len(app.Units())); l == n {
+		ReleaseApplicationLock(app.Name)
 		return stderr.New("Cannot remove all units from an app.")
 	} else if n > l {
+		ReleaseApplicationLock(app.Name)
 		return fmt.Errorf("Cannot remove %d units from this app, it has only %d units.", n, l)
 	}
-	go Provisioner.RemoveUnits(app, n)
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	dbErr := conn.Apps().Update(
-		bson.M{"name": app.Name},
-		bson.M{
-			"$set": bson.M{
-				"quota.inuse": len(app.Units()),
+	go func() {
+		defer ReleaseApplicationLock(app.Name)
+		Provisioner.RemoveUnits(app, n)
+		conn, err := db.Conn()
+		if err != nil {
+			log.Errorf("Error: %s", err)
+		}
+		defer conn.Close()
+		dbErr := conn.Apps().Update(
+			bson.M{"name": app.Name},
+			bson.M{
+				"$set": bson.M{
+					"quota.inuse": len(app.Units()),
+				},
 			},
-		},
-	)
-	if err == nil {
-		return dbErr
-	}
+		)
+		if dbErr != nil {
+			log.Errorf("Error: %s", dbErr)
+		}
+	}()
 	return nil
 }
 
