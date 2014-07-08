@@ -20,7 +20,11 @@ import (
 	"strings"
 )
 
-type CloudstackIaas struct{}
+func init() {
+	iaas.RegisterIaasProvider("cloudstack", &CloudstackIaaS{})
+}
+
+type CloudstackIaaS struct{}
 
 type NetInterface struct {
 	IpAddress string
@@ -38,7 +42,15 @@ func (cs *CloudstackVirtualMachine) GetAddress() string {
 	return cs.Nic[0].IpAddress
 }
 
-func (i *CloudstackIaas) CreateVirtualMachine(params map[string]string) (iaas.Machine, error) {
+func (i *CloudstackIaaS) DeleteMachine(params map[string]interface{}) error {
+	return nil
+}
+
+func (i *CloudstackIaaS) ListMachines(params map[string]interface{}) error {
+	return nil
+}
+
+func (i *CloudstackIaaS) CreateMachine(params map[string]interface{}) (iaas.Machine, error) {
 	url, err := buildUrl("deployVirtualMachine", params)
 	if err != nil {
 		return nil, err
@@ -60,7 +72,7 @@ func (i *CloudstackIaas) CreateVirtualMachine(params map[string]string) (iaas.Ma
 	return waitVMIsCreated(vmStatus)
 }
 
-func buildUrl(command string, params map[string]string) (string, error) {
+func buildUrl(command string, params map[string]interface{}) (string, error) {
 	apiKey, err := config.GetString("cloudstack:api-key")
 	if err != nil {
 		return "", err
@@ -79,7 +91,7 @@ func buildUrl(command string, params map[string]string) (string, error) {
 	sort.Strings(sorted_keys)
 	var string_params []string
 	for _, key := range sorted_keys {
-		queryStringParam := fmt.Sprintf("%s=%s", key, url.QueryEscape(params[key]))
+		queryStringParam := fmt.Sprintf("%s=%s", key, url.QueryEscape(fmt.Sprintf("%s", params[key])))
 		string_params = append(string_params, queryStringParam)
 	}
 	queryString := strings.Join(string_params, "&")

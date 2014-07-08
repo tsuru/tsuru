@@ -6,6 +6,10 @@
 // implement a new iaas on tsuru.
 package iaas
 
+import (
+	"fmt"
+)
+
 // IaaS VirtualMachine representation
 type Machine interface {
 	IsAvailable() bool
@@ -15,13 +19,27 @@ type Machine interface {
 // IaaS is the basic interface of this package.
 //
 // Any tsuru IaaS must implement this interface.
-type Iaas interface {
+type IaaS interface {
 	// IaaS is called when tsuru is creating a Virtual Machine.
-	CreateVirtualMachine(params map[string]interface{}) (Machine, error)
+	CreateMachine(params map[string]interface{}) (Machine, error)
 
 	// IaaS is called when tsuru is destroying a Virtual Machine.
-	DeleteVirtualMachine(params map[string]interface{}) error
+	DeleteMachine(params map[string]interface{}) error
 
-	// Iaas is called when tsuru is listing Virtual Machines.
-	ListVirtualMachines(params map[string]interface{}) error
+	// IaaS is called when tsuru is listing Virtual Machines.
+	ListMachines(params map[string]interface{}) error
+}
+
+var iaasProviders = make(map[string]IaaS)
+
+func RegisterIaasProvider(name string, iaas IaaS) {
+	iaasProviders[name] = iaas
+}
+
+func GetIaasProvider(name string) (IaaS, error) {
+	provider, ok := iaasProviders[name]
+	if !ok {
+		return nil, fmt.Errorf("IaaS provider %q not registered", name)
+	}
+	return provider, nil
 }
