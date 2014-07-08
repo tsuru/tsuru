@@ -15,9 +15,9 @@ import (
 func (s *S) TestAddNodeToTheSchedulerCmdInfo(c *gocheck.C) {
 	expected := cmd.Info{
 		Name:    "docker-node-add",
-		Usage:   "docker-node-add <pool> <address>",
+		Usage:   "docker-node-add [parameters]",
 		Desc:    "Registers a new node in the cluster",
-		MinArgs: 2,
+		MinArgs: 1,
 	}
 	cmd := addNodeToSchedulerCmd{}
 	c.Assert(cmd.Info(), gocheck.DeepEquals, &expected)

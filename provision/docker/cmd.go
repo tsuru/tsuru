@@ -5,22 +5,26 @@ import (
 	"encoding/json"
 	"github.com/tsuru/tsuru/cmd"
 	"io/ioutil"
+	"launchpad.net/gnuflag"
 	"net/http"
 )
 
-type addNodeToSchedulerCmd struct{}
+type addNodeToSchedulerCmd struct {
+	fs       *gnuflag.FlagSet
+	register bool
+}
 
 func (addNodeToSchedulerCmd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "docker-node-add",
-		Usage:   "docker-node-add <pool> <address>",
+		Usage:   "docker-node-add [parameters]",
 		Desc:    "Registers a new node in the cluster",
-		MinArgs: 2,
+		MinArgs: 1,
 	}
 }
 
 func (addNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
-	b, err := json.Marshal(map[string]string{"pool": ctx.Args[0], "address": ctx.Args[1]})
+	b, err := json.Marshal(ctx.Args)
 	if err != nil {
 		return err
 	}
@@ -38,6 +42,13 @@ func (addNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
 	}
 	ctx.Stdout.Write([]byte("Node successfully registered.\n"))
 	return nil
+}
+
+func (a *addNodeToSchedulerCmd) Flags() *gnuflag.FlagSet {
+	if a.fs == nil {
+		a.fs.BoolVar(&a.register, "register", false, "Register an already created node")
+	}
+	return a.fs
 }
 
 type removeNodeFromSchedulerCmd struct{}
