@@ -21,9 +21,9 @@ type cloudstackSuite struct{}
 var _ = gocheck.Suite(&cloudstackSuite{})
 
 func (s *cloudstackSuite) SetUpSuite(c *gocheck.C) {
-	config.Set("cloudstack:api-key", "test")
-	config.Set("cloudstack:secret-key", "test")
-	config.Set("cloudstack:url", "test")
+	config.Set("iaas:cloudstack:api-key", "test")
+	config.Set("iaas:cloudstack:secret-key", "test")
+	config.Set("iaas:cloudstack:url", "test")
 }
 
 func (s *cloudstackSuite) TestCreateMachine(c *gocheck.C) {
@@ -32,7 +32,7 @@ func (s *cloudstackSuite) TestCreateMachine(c *gocheck.C) {
 		fmt.Fprintln(w, `{"id": "test", "jobid": "test"}`)
 	}))
 	defer fakeServer.Close()
-	config.Set("cloudstack:url", fakeServer.URL)
+	config.Set("iaas:cloudstack:url", fakeServer.URL)
 	var cs CloudstackIaaS
 	params := map[string]string{"name": "test"}
 	vm, err := cs.CreateMachine(params)

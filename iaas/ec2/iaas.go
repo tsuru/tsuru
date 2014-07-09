@@ -21,11 +21,11 @@ func init() {
 }
 
 func createEC2Handler(region aws.Region) (*ec2.EC2, error) {
-	keyId, err := config.GetString("iaas:ec2:key_id")
+	keyId, err := config.GetString("iaas:ec2:key-id")
 	if err != nil {
 		return nil, err
 	}
-	secretKey, err := config.GetString("iaas:ec2:secret_key")
+	secretKey, err := config.GetString("iaas:ec2:secret-key")
 	if err != nil {
 		return nil, err
 	}

@@ -38,8 +38,8 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 }
 
 func (s *S) TestCreateEC2Handler(c *gocheck.C) {
-	config.Set("iaas:ec2:key_id", "mykey")
-	config.Set("iaas:ec2:secret_key", "mysecret")
+	config.Set("iaas:ec2:key-id", "mykey")
+	config.Set("iaas:ec2:secret-key", "mysecret")
 	handler, err := createEC2Handler(aws.APNortheast)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(handler.Region, gocheck.DeepEquals, aws.APNortheast)

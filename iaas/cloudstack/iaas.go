@@ -74,11 +74,11 @@ func (i *CloudstackIaaS) CreateMachine(params map[string]string) (*iaas.Machine,
 }
 
 func buildUrl(command string, params map[string]string) (string, error) {
-	apiKey, err := config.GetString("cloudstack:api-key")
+	apiKey, err := config.GetString("iaas:cloudstack:api-key")
 	if err != nil {
 		return "", err
 	}
-	secretKey, err := config.GetString("cloudstack:secret-key")
+	secretKey, err := config.GetString("iaas:cloudstack:secret-key")
 	if err != nil {
 		return "", err
 	}
@@ -99,7 +99,7 @@ func buildUrl(command string, params map[string]string) (string, error) {
 	digest := hmac.New(sha1.New, []byte(secretKey))
 	digest.Write([]byte(queryString))
 	signature := base64.StdEncoding.EncodeToString(digest.Sum(nil))
-	cloudstackUrl, err := config.GetString("cloudstack:url")
+	cloudstackUrl, err := config.GetString("iaas:cloudstack:url")
 	if err != nil {
 		return "", err
 	}
