@@ -34,15 +34,15 @@ func (s *cloudstackSuite) TestCreateMachine(c *gocheck.C) {
 	defer fakeServer.Close()
 	config.Set("cloudstack:url", fakeServer.URL)
 	var cs CloudstackIaaS
-	params := map[string]interface{}{"name": "test"}
+	params := map[string]string{"name": "test"}
 	vm, err := cs.CreateMachine(params)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(vm, gocheck.NotNil)
-	c.Assert(vm.GetAddress(), gocheck.NotNil)
+	c.Assert(vm.Address, gocheck.Equals, "0.0.0.0")
 }
 
 func (s *cloudstackSuite) TestBuildUrlToCloudstack(c *gocheck.C) {
-	params := map[string]interface{}{"atest": "2"}
+	params := map[string]string{"atest": "2"}
 	urlBuilded, err := buildUrl("commandTest", params)
 	c.Assert(err, gocheck.IsNil)
 	u, err := url.Parse(urlBuilded)

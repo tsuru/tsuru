@@ -38,19 +38,11 @@ func (cs *CloudstackVirtualMachine) IsAvailable() bool {
 	return true
 }
 
-func (cs *CloudstackVirtualMachine) GetAddress() string {
-	return cs.Nic[0].IpAddress
-}
-
-func (i *CloudstackIaaS) DeleteMachine(params map[string]interface{}) error {
+func (i *CloudstackIaaS) DeleteMachine(machine *iaas.Machine) error {
 	return nil
 }
 
-func (i *CloudstackIaaS) ListMachines(params map[string]interface{}) error {
-	return nil
-}
-
-func (i *CloudstackIaaS) CreateMachine(params map[string]interface{}) (iaas.Machine, error) {
+func (i *CloudstackIaaS) CreateMachine(params map[string]string) (*iaas.Machine, error) {
 	url, err := buildUrl("deployVirtualMachine", params)
 	if err != nil {
 		return nil, err
@@ -69,10 +61,19 @@ func (i *CloudstackIaaS) CreateMachine(params map[string]interface{}) (iaas.Mach
 	if err != nil {
 		return nil, err
 	}
-	return waitVMIsCreated(vmStatus)
+	csVm, err := waitVMIsCreated(vmStatus)
+	if err != nil {
+		return nil, err
+	}
+	m := &iaas.Machine{
+		Id:      csVm.Nic[0].IpAddress,
+		Address: csVm.Nic[0].IpAddress,
+		Status:  "running",
+	}
+	return m, nil
 }
 
-func buildUrl(command string, params map[string]interface{}) (string, error) {
+func buildUrl(command string, params map[string]string) (string, error) {
 	apiKey, err := config.GetString("cloudstack:api-key")
 	if err != nil {
 		return "", err
@@ -91,7 +92,7 @@ func buildUrl(command string, params map[string]interface{}) (string, error) {
 	sort.Strings(sorted_keys)
 	var string_params []string
 	for _, key := range sorted_keys {
-		queryStringParam := fmt.Sprintf("%s=%s", key, url.QueryEscape(fmt.Sprintf("%s", params[key])))
+		queryStringParam := fmt.Sprintf("%s=%s", key, url.QueryEscape(params[key]))
 		string_params = append(string_params, queryStringParam)
 	}
 	queryString := strings.Join(string_params, "&")

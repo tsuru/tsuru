@@ -10,24 +10,13 @@ import (
 	"fmt"
 )
 
-// IaaS VirtualMachine representation
-type Machine interface {
-	IsAvailable() bool
-	GetAddress() string
-}
-
-// IaaS is the basic interface of this package.
-//
-// Any tsuru IaaS must implement this interface.
+// Every Tsuru IaaS must implement this interface.
 type IaaS interface {
-	// IaaS is called when tsuru is creating a Virtual Machine.
-	CreateMachine(params map[string]interface{}) (Machine, error)
+	// Called when tsuru is creating a Machine.
+	CreateMachine(params map[string]string) (*Machine, error)
 
-	// IaaS is called when tsuru is destroying a Virtual Machine.
-	DeleteMachine(params map[string]interface{}) error
-
-	// IaaS is called when tsuru is listing Virtual Machines.
-	ListMachines(params map[string]interface{}) error
+	// Called when tsuru is destroying a Machine.
+	DeleteMachine(m *Machine) error
 }
 
 var iaasProviders = make(map[string]IaaS)
