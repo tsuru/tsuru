@@ -620,7 +620,7 @@ func (s *S) TestAdminCommands(c *gocheck.C) {
 		&moveContainerCmd{},
 		&moveContainersCmd{},
 		&rebalanceContainersCmd{},
-		addNodeToSchedulerCmd{},
+		&addNodeToSchedulerCmd{},
 		removeNodeFromSchedulerCmd{},
 		listNodesInTheSchedulerCmd{},
 		addPoolToSchedulerCmd{},

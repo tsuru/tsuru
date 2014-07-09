@@ -3,10 +3,12 @@ package docker
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"github.com/tsuru/tsuru/cmd"
 	"io/ioutil"
 	"launchpad.net/gnuflag"
 	"net/http"
+	"strings"
 )
 
 type addNodeToSchedulerCmd struct {
@@ -23,12 +25,20 @@ func (addNodeToSchedulerCmd) Info() *cmd.Info {
 	}
 }
 
-func (addNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
-	b, err := json.Marshal(ctx.Args)
+func (a *addNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
+	jsonParams := map[string]string{}
+	for _, param := range ctx.Args {
+		if strings.Contains(param, "=") {
+			keyValue := strings.SplitN(param, "=", 2)
+			println(keyValue)
+			jsonParams[keyValue[0]] = keyValue[1]
+		}
+	}
+	b, err := json.Marshal(jsonParams)
 	if err != nil {
 		return err
 	}
-	url, err := cmd.GetURL("/docker/node")
+	url, err := cmd.GetURL(fmt.Sprintf("/docker/node?register=%t", a.register))
 	if err != nil {
 		return err
 	}

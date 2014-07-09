@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/testing"
+	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"
 )
@@ -25,16 +26,19 @@ func (s *S) TestAddNodeToTheSchedulerCmdInfo(c *gocheck.C) {
 
 func (s *S) TestAddNodeToTheSchedulerCmdRun(c *gocheck.C) {
 	var buf bytes.Buffer
-	context := cmd.Context{Args: []string{"poolTest", "http://localhost:8080"}, Stdout: &buf}
+	context := cmd.Context{Args: []string{"pool=poolTest", "address=http://localhost:8080"}, Stdout: &buf}
+	expectedBody := `{"address":"http://localhost:8080","pool":"poolTest"}`
 	trans := &testing.ConditionalTransport{
 		Transport: testing.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/docker/node"
+			body, _ := ioutil.ReadAll(req.Body)
+			c.Assert(string(body), gocheck.DeepEquals, expectedBody)
+			return req.URL.Path == "/docker/node" && req.URL.RawQuery == "register=false"
 		},
 	}
 	manager := cmd.Manager{}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
-	cmd := addNodeToSchedulerCmd{}
+	cmd := addNodeToSchedulerCmd{register: false}
 	err := cmd.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(buf.String(), gocheck.Equals, "Node successfully registered.\n")
