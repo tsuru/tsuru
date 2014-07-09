@@ -50,8 +50,8 @@ func (s *HandlersSuite) TestAddNodeHandler(c *gocheck.C) {
 	dCluster, _ = cluster.New(&segScheduler, nil)
 	p := Pool{Name: "pool1"}
 	s.conn.Collection(schedulerCollection).Insert(p)
-	b := bytes.NewBufferString(`{"address": "host.com:4243", "ID": "server01", "pool": "pool1"}`)
-	req, err := http.NewRequest("POST", "/node/add", b)
+	b := bytes.NewBufferString(`{"address": "host.com:4243", "pool": "pool1"}`)
+	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
 	c.Assert(err, gocheck.IsNil)
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
@@ -71,7 +71,7 @@ func (s *HandlersSuite) TestAddNodeHandlerWithoutdCluster(c *gocheck.C) {
 	defer config.Unset("docker:scheduler:redis-server")
 	dCluster = nil
 	b := bytes.NewBufferString(`{"address": "host.com:4243", "ID": "server01", "pool": "pool1"}`)
-	req, err := http.NewRequest("POST", "/node/add", b)
+	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
 	c.Assert(err, gocheck.IsNil)
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
