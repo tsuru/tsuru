@@ -16,10 +16,8 @@ const userData = `#!/bin/bash
 curl -sL https://raw.github.com/tsuru/now/master/run.bash | bash
 `
 
-const iaasName = "ec2"
-
 func init() {
-	iaas.RegisterIaasProvider(iaasName, &EC2IaaS{})
+	iaas.RegisterIaasProvider("ec2", &EC2IaaS{})
 }
 
 func createEC2Handler(region aws.Region) (*ec2.EC2, error) {
