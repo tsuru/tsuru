@@ -11,7 +11,7 @@ import (
 )
 
 func (s *S) TestCreateMachineForIaaS(c *gocheck.C) {
-	m, err := CreateMachineForIaaS("test-iaas", map[string]string{"id": "myid"})
+	m, err := CreateMachineForIaaS("test-iaas", map[string]string{"id": "myid", "something": "x"})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(m.Id, gocheck.Equals, "myid")
 	c.Assert(m.Iaas, gocheck.Equals, "test-iaas")
@@ -22,6 +22,10 @@ func (s *S) TestCreateMachineForIaaS(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(dbMachine.Id, gocheck.Equals, "myid")
 	c.Assert(dbMachine.Iaas, gocheck.Equals, "test-iaas")
+	c.Assert(dbMachine.CreationParams, gocheck.DeepEquals, map[string]string{
+		"id":        "myid",
+		"something": "x",
+	})
 }
 
 func (s *S) TestCreateMachine(c *gocheck.C) {

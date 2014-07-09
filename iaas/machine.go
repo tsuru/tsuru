@@ -15,10 +15,11 @@ import (
 )
 
 type Machine struct {
-	Id      string `bson:"_id"`
-	Iaas    string
-	Status  string
-	Address string
+	Id             string `bson:"_id"`
+	Iaas           string
+	Status         string
+	Address        string
+	CreationParams map[string]string
 }
 
 func CreateMachine(params map[string]string) (*Machine, error) {
@@ -30,12 +31,13 @@ func CreateMachine(params map[string]string) (*Machine, error) {
 }
 
 func CreateMachineForIaaS(iaasName string, params map[string]string) (*Machine, error) {
-	iaas, err := GetIaasProvider(iaasName)
+	iaas, err := getIaasProvider(iaasName)
 	m, err := iaas.CreateMachine(params)
 	if err != nil {
 		return nil, err
 	}
 	m.Iaas = iaasName
+	m.CreationParams = params
 	err = m.saveToDB()
 	if err != nil {
 		return nil, err
@@ -52,7 +54,7 @@ func ListMachines() ([]Machine, error) {
 }
 
 func (m *Machine) Destroy() error {
-	iaas, err := GetIaasProvider(m.Iaas)
+	iaas, err := getIaasProvider(m.Iaas)
 	if err != nil {
 		return err
 	}

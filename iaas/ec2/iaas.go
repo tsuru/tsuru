@@ -37,12 +37,20 @@ func createEC2Handler(region aws.Region) (*ec2.EC2, error) {
 
 type EC2IaaS struct{}
 
-func (i *EC2IaaS) DeleteMachine(machine *iaas.Machine) error {
-	ec2Inst, err := createEC2Handler(aws.Region{})
+func (i *EC2IaaS) DeleteMachine(m *iaas.Machine) error {
+	regionName, ok := m.CreationParams["region"]
+	if !ok {
+		return fmt.Errorf("region creation param required")
+	}
+	region, ok := aws.Regions[regionName]
+	if !ok {
+		return fmt.Errorf("region %q not found", regionName)
+	}
+	ec2Inst, err := createEC2Handler(region)
 	if err != nil {
 		return err
 	}
-	_, err = ec2Inst.TerminateInstances([]string{machine.Id})
+	_, err = ec2Inst.TerminateInstances([]string{m.Id})
 	return err
 }
 
@@ -57,11 +65,11 @@ func (i *EC2IaaS) CreateMachine(params map[string]string) (*iaas.Machine, error)
 	}
 	imageId, ok := params["image"]
 	if !ok {
-		return nil, fmt.Errorf("image param not found")
+		return nil, fmt.Errorf("image param required")
 	}
-	instanceType, ok := params["instance"]
+	instanceType, ok := params["type"]
 	if !ok {
-		return nil, fmt.Errorf("instance param not found")
+		return nil, fmt.Errorf("type param required")
 	}
 	options := ec2.RunInstances{
 		ImageId:      imageId,

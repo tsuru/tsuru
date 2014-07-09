@@ -25,7 +25,7 @@ func RegisterIaasProvider(name string, iaas IaaS) {
 	iaasProviders[name] = iaas
 }
 
-func GetIaasProvider(name string) (IaaS, error) {
+func getIaasProvider(name string) (IaaS, error) {
 	provider, ok := iaasProviders[name]
 	if !ok {
 		return nil, fmt.Errorf("IaaS provider %q not registered", name)
