@@ -8,6 +8,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/iaas"
 	"launchpad.net/goamz/aws"
+	"launchpad.net/goamz/ec2"
 	"launchpad.net/goamz/ec2/ec2test"
 	"launchpad.net/gocheck"
 	"testing"
@@ -31,6 +32,8 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 		EC2Endpoint: s.srv.URL(),
 	}
 	aws.Regions["myregion"] = s.region
+	config.Set("iaas:ec2:key-id", "mykey")
+	config.Set("iaas:ec2:secret-key", "mysecret")
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
@@ -38,8 +41,6 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 }
 
 func (s *S) TestCreateEC2Handler(c *gocheck.C) {
-	config.Set("iaas:ec2:key-id", "mykey")
-	config.Set("iaas:ec2:secret-key", "mysecret")
 	handler, err := createEC2Handler(aws.APNortheast)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(handler.Region, gocheck.DeepEquals, aws.APNortheast)
@@ -55,10 +56,30 @@ func (s *S) TestCreateMachine(c *gocheck.C) {
 	}
 	iaas := &EC2IaaS{}
 	m, err := iaas.CreateMachine(params)
+	m.CreationParams = map[string]string{"region": "myregion"}
+	defer iaas.DeleteMachine(m)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(m.Id, gocheck.Equals, "i-0")
-	c.Assert(m.Address, gocheck.Equals, "i-0.testing.invalid")
+	c.Assert(m.Id, gocheck.Matches, `i-\d`)
+	c.Assert(m.Address, gocheck.Matches, `i-\d.testing.invalid`)
 	c.Assert(m.Status, gocheck.Equals, "pending")
+}
+
+func (s *S) TestWaitForDnsName(c *gocheck.C) {
+	handler, err := createEC2Handler(s.region)
+	c.Assert(err, gocheck.IsNil)
+	options := ec2.RunInstances{
+		ImageId:      "ami-xxx",
+		InstanceType: "m1.small",
+		MinCount:     1,
+		MaxCount:     1,
+	}
+	resp, err := handler.RunInstances(&options)
+	c.Assert(err, gocheck.IsNil)
+	instance := &resp.Instances[0]
+	instance.DNSName = ""
+	instance, err = waitForDnsName(handler, instance)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(instance.DNSName, gocheck.Matches, `i-\d.testing.invalid`)
 }
 
 func (s *S) TestCreateMachineValidations(c *gocheck.C) {
