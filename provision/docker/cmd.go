@@ -30,7 +30,6 @@ func (a *addNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error 
 	for _, param := range ctx.Args {
 		if strings.Contains(param, "=") {
 			keyValue := strings.SplitN(param, "=", 2)
-			println(keyValue)
 			jsonParams[keyValue[0]] = keyValue[1]
 		}
 	}
