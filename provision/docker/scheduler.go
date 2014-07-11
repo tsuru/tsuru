@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
@@ -221,9 +220,6 @@ func (segregatedScheduler) GetNode(pool, address string) (string, error) {
 // the given team. The team parameter is optional, when set to "", the node
 // will be used as a fallback node.
 func (seg *segregatedScheduler) Register(params map[string]string) error {
-	if params["address"] == "" {
-		return fmt.Errorf("Node address is required.")
-	}
 	conn, err := db.Conn()
 	if err != nil {
 		return err

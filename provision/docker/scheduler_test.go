@@ -235,13 +235,6 @@ func (s *S) TestAddNodeWithoutPoolNameError(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, "Pool name is required.")
 }
 
-func (s *S) TestAddNodeWithoutAddress(c *gocheck.C) {
-	var scheduler segregatedScheduler
-	err := scheduler.Register(map[string]string{"pool": "pool1"})
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Node address is required.")
-}
-
 func (s *S) TestRemoveNodeFromScheduler(c *gocheck.C) {
 	coll := s.storage.Collection(schedulerCollection)
 	err := coll.Insert(Pool{Name: "pool1"})

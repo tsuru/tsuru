@@ -82,6 +82,16 @@ func (s *HandlersSuite) TestAddNodeHandlerWithoutdCluster(c *gocheck.C) {
 	c.Assert(n, gocheck.Equals, 1)
 }
 
+func (s *HandlersSuite) TestAddNodeHandlerWithoutdAddress(c *gocheck.C) {
+	b := bytes.NewBufferString(`{"pool": "pool1"}`)
+	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
+	c.Assert(err, gocheck.IsNil)
+	rec := httptest.NewRecorder()
+	err = addNodeHandler(rec, req, nil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "Node address is required.")
+}
+
 func (s *HandlersSuite) TestRemoveNodeHandler(c *gocheck.C) {
 	p := Pool{Name: "pool1", Nodes: []string{"host.com:4243"}}
 	err := s.conn.Collection(schedulerCollection).Insert(p)

@@ -38,6 +38,9 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if err != nil {
 		return err
 	}
+	if params["address"] == "" {
+		return fmt.Errorf("Node address is required.")
+	}
 	return dockerCluster().Register(params)
 }
 
