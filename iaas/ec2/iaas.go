@@ -15,7 +15,7 @@ import (
 )
 
 const userData = `#!/bin/bash
-curl -sL https://raw.github.com/tsuru/now/master/run.bash | bash
+curl -sL https://raw.github.com/tsuru/now/master/run.bash | bash -s -- --docker-only
 `
 
 const maxWaitTime = time.Duration(1 * time.Minute)
