@@ -79,17 +79,6 @@ func dockerCluster() *cluster.Cluster {
 	return dCluster
 }
 
-// runCmd executes commands and log the given stdout and stderror.
-func runCmd(cmd string, args ...string) (string, error) {
-	out := bytes.Buffer{}
-	err := executor().Execute(cmd, args, nil, &out, &out)
-	log.Debugf("running the cmd: %s with the args: %s", cmd, args)
-	if err != nil {
-		return "", &cmdError{cmd: cmd, args: args, err: err, out: out.String()}
-	}
-	return out.String(), nil
-}
-
 func getPort() (string, error) {
 	port, err := config.Get("docker:run-cmd:port")
 	if err != nil {
@@ -531,18 +520,6 @@ func removeFromRegistry(imageId string) {
 			http.DefaultClient.Do(request)
 		}
 	}
-}
-
-type cmdError struct {
-	cmd  string
-	args []string
-	err  error
-	out  string
-}
-
-func (e *cmdError) Error() string {
-	command := e.cmd + " " + strings.Join(e.args, " ")
-	return fmt.Sprintf("Failed to run command %q (%s): %s.", command, e.err, e.out)
 }
 
 // pushImage sends the given image to the registry server defined in the
