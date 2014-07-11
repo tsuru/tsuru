@@ -133,6 +133,7 @@ type container struct {
 	Version     string
 	Image       string
 	Name        string
+	User        string
 }
 
 // available returns true if the Status is Started or Unreachable.
@@ -200,6 +201,7 @@ func (c *container) create(app provision.App, imageId string, cmds []string, des
 	}
 	c.ID = cont.ID
 	c.HostAddr = getHostAddr(hostID)
+	c.User = user
 	return nil
 }
 

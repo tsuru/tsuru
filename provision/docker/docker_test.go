@@ -60,6 +60,7 @@ func (s *S) TestContainerCreate(c *gocheck.C) {
 	c.Assert(cont.HostAddr, gocheck.Equals, host)
 	user, err := config.GetString("docker:ssh:user")
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(cont.User, gocheck.Equals, user)
 	dcli, _ := docker.NewClient(s.server.URL())
 	container, err := dcli.InspectContainer(cont.ID)
 	c.Assert(err, gocheck.IsNil)
