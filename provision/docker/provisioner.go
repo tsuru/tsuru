@@ -108,8 +108,8 @@ func (*dockerProvisioner) Start(app provision.App) error {
 				return
 			}
 			c.setStatus(provision.StatusStarted.String())
-			if ip, port, err := c.networkInfo(); err == nil {
-				fixContainer(&c, ip, port)
+			if info, err := c.networkInfo(); err == nil {
+				fixContainer(&c, info)
 			}
 		}(c)
 	}

@@ -32,10 +32,10 @@ func fixContainers() error {
 func checkContainer(container container, wg *sync.WaitGroup) {
 	defer wg.Done()
 	if container.available() {
-		ip, hostPort, err := container.networkInfo()
+		info, err := container.networkInfo()
 		if err == nil &&
-			(hostPort != container.HostPort || ip != container.IP) {
-			err = fixContainer(&container, ip, hostPort)
+			(info.HTTPHostPort != container.HostPort || info.IP != container.IP || info.SSHHostPort != container.SSHHostPort) {
+			err = fixContainer(&container, info)
 			if err != nil {
 				log.Errorf("error on fix container hostport for [container %s]", container.ID)
 				return
@@ -44,15 +44,16 @@ func checkContainer(container container, wg *sync.WaitGroup) {
 	}
 }
 
-func fixContainer(container *container, ip, port string) error {
+func fixContainer(container *container, info containerNetworkInfo) error {
 	router, err := getRouter()
 	if err != nil {
 		return err
 	}
 	router.RemoveRoute(container.AppName, container.getAddress())
 	container.removeHost()
-	container.IP = ip
-	container.HostPort = port
+	container.IP = info.IP
+	container.HostPort = info.HTTPHostPort
+	container.SSHHostPort = info.SSHHostPort
 	router.AddRoute(container.AppName, container.getAddress())
 	coll := collection()
 	defer coll.Close()

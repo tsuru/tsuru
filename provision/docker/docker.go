@@ -139,16 +139,18 @@ func hostToNodeName(host string) (string, error) {
 }
 
 type container struct {
-	ID       string
-	AppName  string
-	Type     string
-	IP       string
-	HostAddr string
-	HostPort string
-	Status   string
-	Version  string
-	Image    string
-	Name     string
+	ID          string
+	AppName     string
+	Type        string
+	IP          string
+	HostAddr    string
+	HostPort    string
+	SSHHostPort string
+	PrivateKey  []byte
+	Status      string
+	Version     string
+	Image       string
+	Name        string
 }
 
 // available returns true if the Status is Started or Unreachable.
@@ -174,12 +176,13 @@ func (c *container) create(app provision.App, imageId string, cmds []string, des
 		return err
 	}
 	user, _ := config.GetString("docker:ssh:user")
-	exposedPorts := make(map[docker.Port]struct{}, 1)
-	p := docker.Port(fmt.Sprintf("%s/tcp", port))
-	exposedPorts[p] = struct{}{}
 	gitUnitRepo, _ := config.GetString("git:unit-repo")
 	sharedMount, _ := config.GetString("docker:sharedfs:mountpoint")
 	sharedBasedir, _ := config.GetString("docker:sharedfs:hostdir")
+	exposedPorts := map[docker.Port]struct{}{
+		docker.Port(port + "/tcp"): {},
+		docker.Port("22/tcp"):      {},
+	}
 	config := docker.Config{
 		Image:        imageId,
 		Cmd:          cmds,
@@ -218,26 +221,44 @@ func (c *container) create(app provision.App, imageId string, cmds []string, des
 	return nil
 }
 
+type containerNetworkInfo struct {
+	HTTPHostPort string
+	SSHHostPort  string
+	IP           string
+}
+
 // networkInfo returns the IP and the host port for the container.
-func (c *container) networkInfo() (string, string, error) {
+func (c *container) networkInfo() (containerNetworkInfo, error) {
+	var netInfo containerNetworkInfo
 	port, err := getPort()
 	if err != nil {
-		return "", "", err
+		return netInfo, err
 	}
 	dockerContainer, err := dockerCluster().InspectContainer(c.ID)
 	if err != nil {
-		return "", "", err
+		return netInfo, err
 	}
 	if dockerContainer.NetworkSettings != nil {
-		ip := dockerContainer.NetworkSettings.IPAddress
-		p := docker.Port(fmt.Sprintf("%s/tcp", port))
-		for _, port := range dockerContainer.NetworkSettings.Ports[p] {
+		netInfo.IP = dockerContainer.NetworkSettings.IPAddress
+		httpPort := docker.Port(port + "/tcp")
+		for _, port := range dockerContainer.NetworkSettings.Ports[httpPort] {
 			if port.HostPort != "" && port.HostIp != "" {
-				return ip, port.HostPort, nil
+				netInfo.HTTPHostPort = port.HostPort
+				break
+			}
+		}
+		sshPort := docker.Port("22/tcp")
+		for _, port := range dockerContainer.NetworkSettings.Ports[sshPort] {
+			if port.HostPort != "" && port.HostIp != "" {
+				netInfo.SSHHostPort = port.HostPort
+				break
 			}
 		}
 	}
-	return "", "", fmt.Errorf("Container port %s is not mapped to any host port", port)
+	if netInfo.HTTPHostPort == "" {
+		err = fmt.Errorf("Container port %s is not mapped to any host port", port)
+	}
+	return netInfo, err
 }
 
 func (c *container) setStatus(status string) error {
@@ -355,12 +376,12 @@ func (c *container) removeHost() error {
 }
 
 func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) error {
-	ip, _, err := c.networkInfo()
+	info, err := c.networkInfo()
 	if err != nil {
 		return err
 	}
 	stdout = &filter{w: stdout, content: []byte("unable to resolve host")}
-	url := fmt.Sprintf("http://%s:%d/container/%s/cmd", c.HostAddr, sshAgentPort(), ip)
+	url := fmt.Sprintf("http://%s:%d/container/%s/cmd", c.HostAddr, sshAgentPort(), info.IP)
 	input := cmdInput{Cmd: cmd, Args: args}
 	var buf bytes.Buffer
 	err = json.NewEncoder(&buf).Encode(input)
@@ -416,14 +437,10 @@ func (c *container) start() error {
 	sharedIsolation, _ := config.GetBool("docker:sharedfs:app-isolation")
 	sharedSalt, _ := config.GetString("docker:sharedfs:salt")
 	config := docker.HostConfig{}
-	bindings := make(map[docker.Port][]docker.PortBinding)
-	bindings[docker.Port(fmt.Sprintf("%s/tcp", port))] = []docker.PortBinding{
-		{
-			HostIp:   "",
-			HostPort: "",
-		},
+	config.PortBindings = map[docker.Port][]docker.PortBinding{
+		docker.Port(port + "/tcp"): {{HostIp: "", HostPort: ""}},
+		docker.Port("22/tcp"):      {{HostIp: "", HostPort: ""}},
 	}
-	config.PortBindings = bindings
 	if sharedBasedir != "" && sharedMount != "" {
 		if sharedIsolation {
 			var appHostDir string

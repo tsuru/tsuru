@@ -79,8 +79,8 @@ func (s *S) TestProvisionerRestartCallsTheRestartHook(c *gocheck.C) {
 	input := cmdInput{Cmd: "/var/lib/tsuru/restart"}
 	body := handler.bodies[0]
 	c.Assert(body, gocheck.DeepEquals, input)
-	ip, _, _ := cont.networkInfo()
-	path := fmt.Sprintf("/container/%s/cmd", ip)
+	info, _ := cont.networkInfo()
+	path := fmt.Sprintf("/container/%s/cmd", info.IP)
 	c.Assert(handler.requests[0].URL.Path, gocheck.DeepEquals, path)
 }
 
@@ -515,8 +515,8 @@ func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {
 	body := handler.bodies[0]
 	input := cmdInput{Cmd: "ls", Args: []string{"-ar"}}
 	c.Assert(body, gocheck.DeepEquals, input)
-	ip, _, _ := container.networkInfo()
-	path := fmt.Sprintf("/container/%s/cmd", ip)
+	info, _ := container.networkInfo()
+	path := fmt.Sprintf("/container/%s/cmd", info.IP)
 	c.Assert(handler.requests[0].URL.Path, gocheck.DeepEquals, path)
 }
 
@@ -549,10 +549,10 @@ func (s *S) TestProvisionerExecuteCommandMultipleContainers(c *gocheck.C) {
 	c.Assert(stderr.Bytes(), gocheck.IsNil)
 	input := cmdInput{Cmd: "ls", Args: []string{"-ar"}}
 	c.Assert(handler.bodies, gocheck.DeepEquals, []cmdInput{input, input})
-	ip1, _, _ := container1.networkInfo()
-	ip2, _, _ := container2.networkInfo()
-	path1 := fmt.Sprintf("/container/%s/cmd", ip1)
-	path2 := fmt.Sprintf("/container/%s/cmd", ip2)
+	info1, _ := container1.networkInfo()
+	info2, _ := container2.networkInfo()
+	path1 := fmt.Sprintf("/container/%s/cmd", info1.IP)
+	path2 := fmt.Sprintf("/container/%s/cmd", info2.IP)
 	c.Assert(handler.requests[0].URL.Path, gocheck.Equals, path1)
 	c.Assert(handler.requests[1].URL.Path, gocheck.Equals, path2)
 }
@@ -718,6 +718,8 @@ func (s *S) TestProvisionerStart(c *gocheck.C) {
 	c.Assert(container.IP, gocheck.Equals, expectedIP)
 	c.Assert(container.HostPort, gocheck.Equals, expectedPort)
 	c.Assert(container.Status, gocheck.Equals, provision.StatusStarted.String())
+	expectedSSHPort := dockerContainer.NetworkSettings.Ports["22/tcp"][0].HostPort
+	c.Assert(container.SSHHostPort, gocheck.Equals, expectedSSHPort)
 }
 
 func (s *S) TestProvisionerStop(c *gocheck.C) {

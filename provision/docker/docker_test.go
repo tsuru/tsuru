@@ -224,8 +224,10 @@ func (s *S) newContainer(opts *newContainerOpts) (*container, error) {
 	if err != nil {
 		return nil, err
 	}
-	ports := make(map[docker.Port]struct{})
-	ports[docker.Port(fmt.Sprintf("%s/tcp", port))] = struct{}{}
+	ports := map[docker.Port]struct{}{
+		docker.Port(port + "/tcp"): {},
+		docker.Port("22/tcp"):      {},
+	}
 	config := docker.Config{
 		Image:        "tsuru/python",
 		Cmd:          []string{"ps"},
@@ -333,10 +335,11 @@ func (s *S) TestContainerNetworkInfo(c *gocheck.C) {
 	cont, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(cont)
-	ip, port, err := cont.networkInfo()
+	info, err := cont.networkInfo()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(ip, gocheck.Not(gocheck.Equals), "")
-	c.Assert(port, gocheck.Not(gocheck.Equals), "")
+	c.Assert(info.IP, gocheck.Not(gocheck.Equals), "")
+	c.Assert(info.HTTPHostPort, gocheck.Not(gocheck.Equals), "")
+	c.Assert(info.SSHHostPort, gocheck.Not(gocheck.Equals), "")
 }
 
 func (s *S) TestContainerNetworkInfoNotFound(c *gocheck.C) {
@@ -366,9 +369,10 @@ func (s *S) TestContainerNetworkInfoNotFound(c *gocheck.C) {
 		dCluster = oldCluster
 	}()
 	container := container{ID: "c-01"}
-	ip, port, err := container.networkInfo()
-	c.Assert(ip, gocheck.Equals, "")
-	c.Assert(port, gocheck.Equals, "")
+	info, err := container.networkInfo()
+	c.Assert(info.IP, gocheck.Equals, "10.10.10.10")
+	c.Assert(info.SSHHostPort, gocheck.Equals, "")
+	c.Assert(info.HTTPHostPort, gocheck.Equals, "")
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Container port 8888 is not mapped to any host port")
 }

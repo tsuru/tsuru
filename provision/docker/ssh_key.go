@@ -17,7 +17,7 @@ import (
 func marshalKey(keyPair *rsa.PrivateKey) (privateKey []byte, publicKey []byte, err error) {
 	sshPublicKey, err := ssh.NewPublicKey(&keyPair.PublicKey)
 	if err != nil {
-		return nil, nil,  err
+		return nil, nil, err
 	}
 	publicKey = ssh.MarshalAuthorizedKey(sshPublicKey)
 	block := pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(keyPair)}

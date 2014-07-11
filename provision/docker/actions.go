@@ -95,12 +95,12 @@ var setNetworkInfo = action.Action{
 	Name: "set-network-info",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		c := ctx.Previous.(container)
-		ip, hostPort, err := c.networkInfo()
+		info, err := c.networkInfo()
 		if err != nil {
 			return nil, err
 		}
-		c.IP = ip
-		c.HostPort = hostPort
+		c.IP = info.IP
+		c.HostPort = info.HTTPHostPort
 		return c, nil
 	},
 }
