@@ -6,6 +6,7 @@ package docker
 
 import (
 	"bytes"
+	"code.google.com/p/go.crypto/ssh"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -381,6 +382,39 @@ func (c *container) removeHost() error {
 }
 
 func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) error {
+	if c.PrivateKey == "" || c.SSHHostPort == "" {
+		return c.legacySSH(stdout, stderr, cmd, args...)
+	}
+	key, err := unmarshalKey([]byte(c.PrivateKey))
+	if err != nil {
+		return err
+	}
+	signer, err := ssh.NewSignerFromKey(key)
+	if err != nil {
+		return err
+	}
+	host := c.HostAddr + ":" + c.SSHHostPort
+	config := ssh.ClientConfig{
+		Config: ssh.Config{Rand: rand.Reader},
+		Auth:   []ssh.AuthMethod{ssh.PublicKeys(signer)},
+		User:   c.User,
+	}
+	client, err := ssh.Dial("tcp", host, &config)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	session, err := client.NewSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+	session.Stdout = stdout
+	session.Stderr = stderr
+	return session.Run(cmd + " " + strings.Join(args, " "))
+}
+
+func (c *container) legacySSH(stdout, stderr io.Writer, cmd string, args ...string) error {
 	info, err := c.networkInfo()
 	if err != nil {
 		return err
