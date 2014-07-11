@@ -16,7 +16,6 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/docker-cluster/storage"
 	"github.com/tsuru/tsuru/action"
-	"github.com/tsuru/tsuru/fs"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/safe"
@@ -33,7 +32,6 @@ import (
 var (
 	dCluster *cluster.Cluster
 	cmutex   sync.Mutex
-	fsystem  fs.Fs
 )
 
 var (
