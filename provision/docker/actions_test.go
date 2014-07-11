@@ -168,6 +168,7 @@ func (s *S) TestSetNetworkInfoForward(c *gocheck.C) {
 	c.Assert(cont, gocheck.FitsTypeOf, container{})
 	c.Assert(cont.IP, gocheck.Not(gocheck.Equals), "")
 	c.Assert(cont.HostPort, gocheck.Not(gocheck.Equals), "")
+	c.Assert(cont.SSHHostPort, gocheck.Not(gocheck.Equals), "")
 }
 
 func (s *S) TestSetImage(c *gocheck.C) {

@@ -101,6 +101,7 @@ var setNetworkInfo = action.Action{
 		}
 		c.IP = info.IP
 		c.HostPort = info.HTTPHostPort
+		c.SSHHostPort = info.SSHHostPort
 		return c, nil
 	},
 }
