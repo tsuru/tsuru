@@ -13,6 +13,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 )
 
 func init() {
@@ -40,6 +41,12 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	}
 	if params["address"] == "" {
 		return fmt.Errorf("Node address is required.")
+	}
+	if _, err := url.ParseRequestURI(params["address"]); err != nil {
+		return err
+	}
+	if _, err := http.Get(fmt.Sprintf("%s/_ping", params["address"])); err != nil {
+		return err
 	}
 	return dockerCluster().Register(params)
 }

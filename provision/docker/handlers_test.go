@@ -23,7 +23,8 @@ import (
 )
 
 type HandlersSuite struct {
-	conn *db.Storage
+	conn   *db.Storage
+	server *httptest.Server
 }
 
 var _ = gocheck.Suite(&HandlersSuite{})
@@ -36,6 +37,7 @@ func (s *HandlersSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("docker:run-cmd:port", 8888)
 	config.Set("docker:router", "fake")
 	s.conn.Collection(schedulerCollection).RemoveAll(nil)
+	s.server = httptest.NewServer(nil)
 }
 
 func (s *HandlersSuite) TearDownSuite(c *gocheck.C) {
@@ -50,7 +52,8 @@ func (s *HandlersSuite) TestAddNodeHandler(c *gocheck.C) {
 	dCluster, _ = cluster.New(&segScheduler, nil)
 	p := Pool{Name: "pool1"}
 	s.conn.Collection(schedulerCollection).Insert(p)
-	b := bytes.NewBufferString(`{"address": "host.com:4243", "pool": "pool1"}`)
+	json := fmt.Sprintf(`{"address": "%s", "pool": "pool1"}`, s.server.URL)
+	b := bytes.NewBufferString(json)
 	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
 	c.Assert(err, gocheck.IsNil)
 	rec := httptest.NewRecorder()
@@ -70,7 +73,7 @@ func (s *HandlersSuite) TestAddNodeHandlerWithoutdCluster(c *gocheck.C) {
 	config.Set("docker:scheduler:redis-server", "127.0.0.1:6379")
 	defer config.Unset("docker:scheduler:redis-server")
 	dCluster = nil
-	b := bytes.NewBufferString(`{"address": "host.com:4243", "ID": "server01", "pool": "pool1"}`)
+	b := bytes.NewBufferString(fmt.Sprintf(`{"address": "%s", "pool": "pool1"}`, s.server.URL))
 	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
 	c.Assert(err, gocheck.IsNil)
 	rec := httptest.NewRecorder()
@@ -90,6 +93,24 @@ func (s *HandlersSuite) TestAddNodeHandlerWithoutdAddress(c *gocheck.C) {
 	err = addNodeHandler(rec, req, nil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Node address is required.")
+}
+
+func (s *HandlersSuite) TestAddNodeHandlerWithInvalidURLAddress(c *gocheck.C) {
+	b := bytes.NewBufferString(`{"address": "url:1234", "pool": "pool1"}`)
+	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
+	c.Assert(err, gocheck.IsNil)
+	rec := httptest.NewRecorder()
+	err = addNodeHandler(rec, req, nil)
+	c.Assert(err, gocheck.NotNil)
+}
+
+func (s *HandlersSuite) TestAddNodeHandlerWithInaccessibleAddress(c *gocheck.C) {
+	b := bytes.NewBufferString(`{"address": "cant-access-url:1234", "pool": "pool1"}`)
+	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
+	c.Assert(err, gocheck.IsNil)
+	rec := httptest.NewRecorder()
+	err = addNodeHandler(rec, req, nil)
+	c.Assert(err, gocheck.NotNil)
 }
 
 func (s *HandlersSuite) TestRemoveNodeHandler(c *gocheck.C) {
