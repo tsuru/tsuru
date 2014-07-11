@@ -10,11 +10,9 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
-	ftesting "github.com/tsuru/tsuru/fs/testing"
 	"github.com/tsuru/tsuru/provision"
 	tTesting "github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
-	"os"
 	"sort"
 	"strings"
 	"testing"
@@ -62,11 +60,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	s.runBin = "/usr/local/bin/circusd"
 	s.runArgs = "/etc/circus/circus.ini"
 	s.port = "8888"
-	fsystem = &ftesting.RecordingFs{}
-	f, err := fsystem.Create(os.ExpandEnv("${HOME}/.ssh/id_rsa.pub"))
-	c.Assert(err, gocheck.IsNil)
-	f.Write([]byte("key-content"))
-	f.Close()
+	var err error
 	s.server, err = dtesting.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, gocheck.IsNil)
 	s.targetRecover = tTesting.SetTargetFile(c)

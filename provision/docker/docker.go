@@ -7,6 +7,8 @@ package docker
 import (
 	"bytes"
 	"crypto"
+	"crypto/rand"
+	"crypto/rsa"
 	"encoding/json"
 	"fmt"
 	"github.com/fsouza/go-dockerclient"
@@ -79,13 +81,6 @@ func dockerCluster() *cluster.Cluster {
 	return dCluster
 }
 
-func filesystem() fs.Fs {
-	if fsystem == nil {
-		fsystem = fs.OsFs{}
-	}
-	return fsystem
-}
-
 // runCmd executes commands and log the given stdout and stderror.
 func runCmd(cmd string, args ...string) (string, error) {
 	out := bytes.Buffer{}
@@ -146,7 +141,7 @@ type container struct {
 	HostAddr    string
 	HostPort    string
 	SSHHostPort string
-	PrivateKey  []byte
+	PrivateKey  string
 	Status      string
 	Version     string
 	Image       string
@@ -301,7 +296,13 @@ func deploy(app provision.App, commands []string, w io.Writer) (string, error) {
 		&followLogsAndCommit,
 	}
 	pipeline := action.NewPipeline(actions...)
-	err := pipeline.Execute(app, imageId, commands, []string{}, w)
+	args := runContainerActionsArgs{
+		app:      app,
+		imageID:  imageId,
+		commands: commands,
+		writer:   w,
+	}
+	err := pipeline.Execute(args)
 	if err != nil {
 		log.Errorf("error on execute deploy pipeline for app %s - %s", app.GetName(), err)
 		return "", err
@@ -310,7 +311,15 @@ func deploy(app provision.App, commands []string, w io.Writer) (string, error) {
 }
 
 func start(app provision.App, imageId string, w io.Writer, destinationHosts ...string) (*container, error) {
-	run_with_agent_commands, err := runWithAgentCmds(app)
+	keyPair, err := rsa.GenerateKey(rand.Reader, 1024)
+	if err != nil {
+		return nil, err
+	}
+	privateKey, publicKey, err := marshalKey(keyPair)
+	if err != nil {
+		return nil, err
+	}
+	commands, err := runWithAgentCmds(app, publicKey)
 	if err != nil {
 		return nil, err
 	}
@@ -323,7 +332,14 @@ func start(app provision.App, imageId string, w io.Writer, destinationHosts ...s
 		&addRoute,
 	}
 	pipeline := action.NewPipeline(actions...)
-	err = pipeline.Execute(app, imageId, run_with_agent_commands, destinationHosts)
+	args := runContainerActionsArgs{
+		app:              app,
+		imageID:          imageId,
+		commands:         commands,
+		destinationHosts: destinationHosts,
+		privateKey:       privateKey,
+	}
+	err = pipeline.Execute(args)
 	if err != nil {
 		return nil, err
 	}

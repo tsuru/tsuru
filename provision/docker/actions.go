@@ -17,18 +17,27 @@ import (
 	"labix.org/v2/mgo/bson"
 )
 
+type runContainerActionsArgs struct {
+	app              provision.App
+	imageID          string
+	commands         []string
+	destinationHosts []string
+	privateKey       []byte
+	writer           io.Writer
+}
+
 var insertEmptyContainerInDB = action.Action{
 	Name: "insert-empty-container",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		app := ctx.Params[0].(provision.App)
-		imageId := ctx.Params[1].(string)
+		args := ctx.Params[0].(runContainerActionsArgs)
 		contName := containerName()
 		cont := container{
-			AppName: app.GetName(),
-			Type:    app.GetPlatform(),
-			Name:    contName,
-			Status:  "created",
-			Image:   imageId,
+			AppName:    args.app.GetName(),
+			Type:       args.app.GetPlatform(),
+			Name:       contName,
+			Status:     "created",
+			Image:      args.imageID,
+			PrivateKey: string(args.privateKey),
 		}
 		coll := collection()
 		defer coll.Close()
@@ -67,17 +76,11 @@ var createContainer = action.Action{
 	Name: "create-container",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		cont := ctx.Previous.(container)
-		app := ctx.Params[0].(provision.App)
-		imageId := ctx.Params[1].(string)
-		cmds := ctx.Params[2].([]string)
-		var destinationHosts []string
-		if len(ctx.Params) > 3 {
-			destinationHosts = ctx.Params[3].([]string)
-		}
-		log.Debugf("create container for app %s, based on image %s, with cmds %s", app.GetName(), imageId, cmds)
-		err := cont.create(app, imageId, cmds, destinationHosts...)
+		args := ctx.Params[0].(runContainerActionsArgs)
+		log.Debugf("create container for app %s, based on image %s, with cmds %s", args.app.GetName(), args.imageID, args.commands)
+		err := cont.create(args.app, args.imageID, args.commands, args.destinationHosts...)
 		if err != nil {
-			log.Errorf("error on create container for app %s - %s", app.GetName(), err)
+			log.Errorf("error on create container for app %s - %s", args.app.GetName(), err)
 			return nil, err
 		}
 		return cont, nil
@@ -220,11 +223,8 @@ var followLogsAndCommit = action.Action{
 		if !ok {
 			return nil, errors.New("Previous result must be a container.")
 		}
-		w, ok := ctx.Params[4].(io.Writer)
-		if !ok {
-			return nil, errors.New("Fifth parameter must be a io.Writer.")
-		}
-		err := c.logs(w)
+		args := ctx.Params[0].(runContainerActionsArgs)
+		err := c.logs(args.writer)
 		if err != nil {
 			log.Errorf("error on get logs for container %s - %s", c.ID, err)
 			return nil, err
@@ -247,5 +247,5 @@ var followLogsAndCommit = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 	},
-	MinParams: 5,
+	MinParams: 1,
 }

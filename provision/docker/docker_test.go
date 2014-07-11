@@ -14,7 +14,6 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	etesting "github.com/tsuru/tsuru/exec/testing"
-	ftesting "github.com/tsuru/tsuru/fs/testing"
 	"github.com/tsuru/tsuru/provision"
 	rtesting "github.com/tsuru/tsuru/router/testing"
 	"github.com/tsuru/tsuru/safe"
@@ -25,7 +24,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 )
@@ -94,35 +92,13 @@ func (s *S) TestContainerCreateUndefinedUser(c *gocheck.C) {
 }
 
 func (s *S) TestGetSSHCommandsDefaultSSHDPath(c *gocheck.C) {
-	rfs := ftesting.RecordingFs{}
-	f, err := rfs.Create("/opt/me/id_dsa.pub")
-	c.Assert(err, gocheck.IsNil)
-	f.Write([]byte("ssh-rsa ohwait! me@machine"))
-	f.Close()
-	old := fsystem
-	fsystem = &rfs
-	defer func() {
-		fsystem = old
-	}()
-	config.Set("docker:ssh:public-key", "/opt/me/id_dsa.pub")
-	defer config.Unset("docker:ssh:public-key")
-	commands, err := sshCmds()
+	commands, err := sshCmds([]byte("mykey"))
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(commands[1], gocheck.Equals, "sudo /usr/sbin/sshd -D")
 }
 
 func (s *S) TestGetSSHCommandsDefaultKeyFile(c *gocheck.C) {
-	rfs := ftesting.RecordingFs{}
-	f, err := rfs.Create(os.ExpandEnv("${HOME}/.ssh/id_rsa.pub"))
-	c.Assert(err, gocheck.IsNil)
-	f.Write([]byte("ssh-rsa ohwait! me@machine"))
-	f.Close()
-	old := fsystem
-	fsystem = &rfs
-	defer func() {
-		fsystem = old
-	}()
-	commands, err := sshCmds()
+	commands, err := sshCmds([]byte("ssh-rsa ohwait! me@machine"))
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(commands[0], gocheck.Equals, "/var/lib/tsuru/add-key ssh-rsa ohwait! me@machine")
 }
@@ -131,21 +107,9 @@ func (s *S) TestGetSSHCommandsMissingAddKeyCommand(c *gocheck.C) {
 	old, _ := config.Get("docker:ssh:add-key-cmd")
 	defer config.Set("docker:ssh:add-key-cmd", old)
 	config.Unset("docker:ssh:add-key-cmd")
-	commands, err := sshCmds()
+	commands, err := sshCmds([]byte("my-key"))
 	c.Assert(commands, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
-}
-
-func (s *S) TestGetSSHCommandsKeyFileNotFound(c *gocheck.C) {
-	old := fsystem
-	fsystem = &ftesting.RecordingFs{}
-	defer func() {
-		fsystem = old
-	}()
-	commands, err := sshCmds()
-	c.Assert(commands, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(os.IsNotExist(err), gocheck.Equals, true)
 }
 
 func (s *S) TestGetPort(c *gocheck.C) {

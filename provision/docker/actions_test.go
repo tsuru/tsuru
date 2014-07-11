@@ -33,7 +33,8 @@ func (s *S) TestInsertEmptyContainerInDBName(c *gocheck.C) {
 
 func (s *S) TestInsertEmptyContainerInDBForward(c *gocheck.C) {
 	app := testing.NewFakeApp("myapp", "python", 1)
-	context := action.FWContext{Params: []interface{}{app, "image-id"}}
+	args := runContainerActionsArgs{app: app, imageID: "image-id", privateKey: []byte("priv key")}
+	context := action.FWContext{Params: []interface{}{args}}
 	r, err := insertEmptyContainerInDB.Forward(context)
 	c.Assert(err, gocheck.IsNil)
 	cont := r.(container)
@@ -44,6 +45,7 @@ func (s *S) TestInsertEmptyContainerInDBForward(c *gocheck.C) {
 	c.Assert(cont.Name, gocheck.HasLen, 20)
 	c.Assert(cont.Status, gocheck.Equals, "created")
 	c.Assert(cont.Image, gocheck.Equals, "image-id")
+	c.Assert(cont.PrivateKey, gocheck.Equals, "priv key")
 	coll := collection()
 	defer coll.Close()
 	defer coll.Remove(bson.M{"name": cont.Name})
@@ -99,7 +101,8 @@ func (s *S) TestCreateContainerForward(c *gocheck.C) {
 	cmds := []string{"ps", "-ef"}
 	app := testing.NewFakeApp("myapp", "python", 1)
 	cont := container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
-	context := action.FWContext{Previous: cont, Params: []interface{}{app, images[0].ID, cmds}}
+	args := runContainerActionsArgs{app: app, imageID: images[0].ID, commands: cmds}
+	context := action.FWContext{Previous: cont, Params: []interface{}{args}}
 	r, err := createContainer.Forward(context)
 	c.Assert(err, gocheck.IsNil)
 	cont = r.(container)
@@ -357,7 +360,8 @@ func (s *S) TestFollowLogsAndCommitForward(c *gocheck.C) {
 	err = cont.create(app, "tsuru/python", []string{"foo"})
 	c.Assert(err, gocheck.IsNil)
 	var buf bytes.Buffer
-	context := action.FWContext{Params: []interface{}{nil, nil, nil, nil, &buf}, Previous: cont}
+	args := runContainerActionsArgs{writer: &buf}
+	context := action.FWContext{Params: []interface{}{args}, Previous: cont}
 	imageId, err := followLogsAndCommit.Forward(context)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(imageId, gocheck.Equals, "tsuru/mightyapp")
@@ -386,7 +390,8 @@ func (s *S) TestFollowLogsAndCommitForwardNonZeroStatus(c *gocheck.C) {
 	err = s.server.MutateContainer(cont.ID, docker.State{ExitCode: 1})
 	c.Assert(err, gocheck.IsNil)
 	var buf bytes.Buffer
-	context := action.FWContext{Params: []interface{}{nil, nil, nil, nil, &buf}, Previous: cont}
+	args := runContainerActionsArgs{writer: &buf}
+	context := action.FWContext{Params: []interface{}{args}, Previous: cont}
 	imageId, err := followLogsAndCommit.Forward(context)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Exit status 1")
@@ -403,7 +408,8 @@ func (s *S) TestFollowLogsAndCommitForwardWaitFailure(c *gocheck.C) {
 	err = cont.create(app, "tsuru/python", []string{"foo"})
 	c.Assert(err, gocheck.IsNil)
 	var buf bytes.Buffer
-	context := action.FWContext{Params: []interface{}{nil, nil, nil, nil, &buf}, Previous: cont}
+	args := runContainerActionsArgs{writer: &buf}
+	context := action.FWContext{Params: []interface{}{args}, Previous: cont}
 	imageId, err := followLogsAndCommit.Forward(context)
 	c.Assert(err, gocheck.ErrorMatches, `.*failed to wait for the container\n$`)
 	c.Assert(imageId, gocheck.IsNil)

@@ -10,10 +10,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/repository"
-	"io/ioutil"
-	"os"
-	"os/user"
-	"path"
 	"strings"
 )
 
@@ -45,12 +41,12 @@ func deployCmds(app provision.App, params ...string) ([]string, error) {
 
 // runWithAgentCmds returns the list of commands that should be passed when the
 // provisioner will run a unit using tsuru_unit_agent to start.
-func runWithAgentCmds(app provision.App) ([]string, error) {
+func runWithAgentCmds(app provision.App, publicKey []byte) ([]string, error) {
 	runCmd, err := config.GetString("docker:run-cmd:bin")
 	if err != nil {
 		return nil, err
 	}
-	ssh, err := sshCmds()
+	ssh, err := sshCmds(publicKey)
 	if err != nil {
 		return nil, err
 	}
@@ -66,25 +62,8 @@ func runWithAgentCmds(app provision.App) ([]string, error) {
 }
 
 // sshCmds returns the commands needed to start a ssh daemon.
-func sshCmds() ([]string, error) {
+func sshCmds(publicKey []byte) ([]string, error) {
 	addKeyCommand, err := config.GetString("docker:ssh:add-key-cmd")
-	if err != nil {
-		return nil, err
-	}
-	keyFile, err := config.GetString("docker:ssh:public-key")
-	if err != nil {
-		if u, err := user.Current(); err == nil {
-			keyFile = path.Join(u.HomeDir, ".ssh", "id_rsa.pub")
-		} else {
-			keyFile = os.ExpandEnv("${HOME}/.ssh/id_rsa.pub")
-		}
-	}
-	f, err := filesystem().Open(keyFile)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	keyContent, err := ioutil.ReadAll(f)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +72,7 @@ func sshCmds() ([]string, error) {
 		sshdCommand = "sudo /usr/sbin/sshd"
 	}
 	return []string{
-		fmt.Sprintf("%s %s", addKeyCommand, bytes.TrimSpace(keyContent)),
+		fmt.Sprintf("%s %s", addKeyCommand, bytes.TrimSpace(publicKey)),
 		sshdCommand + " -D",
 	}, nil
 }
