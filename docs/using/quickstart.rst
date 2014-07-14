@@ -17,10 +17,10 @@ system, all running on the tsuru infrastructure.
 Install the tsuru client
 ++++++++++++++++++++++++
 
-:doc:`Install the tsuru client </install/client>` for your development platform.
+:doc:`Install the tsuru client </using/install-client>` for your development platform.
 
 The the tsuru client is a command-line tool for creating and managing apps.
-Check out the :doc:`CLI usage guide </apps/client/usage>` to learn more.
+Check out the :doc:`CLI usage guide </reference/tsuru-client>` to learn more.
 
 Sign up
 +++++++
@@ -57,7 +57,7 @@ Deploy an application
 Choose from the following getting started tutorials to learn how to deploy your
 first application using a supported language or framework:
 
-* :doc:`Deploying Python applications in tsuru </apps/quickstart/python>`
-* :doc:`Deploying Ruby/Rails applications in tsuru </apps/quickstart/ruby>`
-* :doc:`Deploying PHP applications in tsuru </apps/quickstart/php>`
-* :doc:`Deploying go applications in tsuru </apps/quickstart/go>`
+* :doc:`Deploying Python applications in tsuru </using/python>`
+* :doc:`Deploying Ruby/Rails applications in tsuru </using/ruby>`
+* :doc:`Deploying PHP applications in tsuru </using/php>`
+* :doc:`Deploying go applications in tsuru </using/go>`

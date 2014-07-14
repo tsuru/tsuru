@@ -65,12 +65,12 @@ Other features
   <https://github.com/tsuru/tsuru/pull/812>`_) / (`#821
   <https://github.com/tsuru/tsuru/pull/821>`_)
 * grouping nodes by pool in segregate scheduler. For more information
-  you can see the docs about the segregate scheduler: :doc:`/provisioners/docker/schedulers`.
+  you can see the docs about the segregate scheduler: :doc:`/understanding/schedulers`.
 
 Platforms
 ---------
 
-* :doc:`deployment hooks </apps/deploy-hooks>` support for static and PHP applications (`#607
+* :doc:`deployment hooks </using/deploy-hooks>` support for static and PHP applications (`#607
   <https://github.com/tsuru/tsuru/issues/607>`_)
 * new platform: buildpack (used for buildpack support)
 

@@ -6,7 +6,7 @@
 Client usage
 ++++++++++++
 
-After :doc:`installing the tsuru client </install/client>`, you must set the
+After :doc:`installing the tsuru client </using/install-client>`, you must set the
 target with the tsuru server URL, something like:
 
 Setting a target

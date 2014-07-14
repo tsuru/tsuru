@@ -304,7 +304,7 @@ Using tsuru client
 
 Congratulations! At this point you should have a working tsuru server running
 on your machine, follow the :doc:`tsuru client usage guide
-</apps/client/usage>` to start build your apps.
+</reference/tsuru-client>` to start build your apps.
 
 Installing platforms
 ====================
@@ -329,7 +329,7 @@ For example, Python:
 
 You can see the oficial tsuru dockerfiles here: https://github.com/tsuru/basebuilder.
 
-:doc:`Here you can see more docs about tsuru-admin </apps/tsuru-admin/usage>`.
+:doc:`Here you can see more docs about tsuru-admin </reference/tsuru-admin>`.
 
 Adding Services
 ===============
@@ -342,5 +342,5 @@ DNS server
 ==========
 
 You can integrate any DNS server with tsuru. :doc:`Here you can find an example
-of using bind as a DNS forwarder </misc/dns-forwarders>`, integrated with
+of using bind as a DNS forwarder </installing/dns-forwarders>`, integrated with
 tsuru.

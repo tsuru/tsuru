@@ -30,7 +30,7 @@ dependencies. For example, if you have a Python application, tsuru will search
 for the requirements.txt file, but first it will search for OS dependencies (a
 list of deb packages in a file named requirements.apt, in the case of Ubuntu).
 
-tsuru also has :doc:`hooks </apps/deploy-hooks>` that can trigger commands
+tsuru also has :doc:`hooks </using/deploy-hooks>` that can trigger commands
 before and after some events that happen during the deployment process, like
 restart (represented by ``restart:before``, ``restart:before-each``,
 ``restart:after`` and ``restart:after-each`` hooks).

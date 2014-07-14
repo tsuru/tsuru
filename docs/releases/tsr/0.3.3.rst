@@ -32,7 +32,7 @@ In order to use Redis, you need to change the configuration file:
       password: "your-password"
 
 All settings are optional (``queue`` will still default to "beanstalkd"), refer
-to :doc:`configuration docs </config>` for more details.
+to :doc:`configuration docs </reference/config>` for more details.
 
 Other improvements and bugfixes
 -------------------------------

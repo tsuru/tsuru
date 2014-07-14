@@ -2,9 +2,9 @@
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
-++++++++++
-contribute
-++++++++++
+++++++++++++
+contributing
+++++++++++++
 
 * Source hosted at `GitHub <http://github.com/tsuru/tsuru>`_
 * Report issues on `GitHub Issues <http://github.com/tsuru/tsuru/issues>`_
@@ -15,9 +15,9 @@ Pull requests are very welcome! Make sure your patches are well tested and docum
 development environment
 =======================
 
-See this guide to :doc:`setting up you tsuru development environment </contribute/setting-up-your-tsuru-development-environment>`.
+See this guide to :doc:`setting up you tsuru development environment </contributing/setting-up-your-tsuru-development-environment>`.
 
-And follow our :doc:`coding style guide </contribute/coding-style>`.
+And follow our :doc:`coding style guide </contributing/coding-style>`.
 
 running the tests
 =================

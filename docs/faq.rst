@@ -69,7 +69,7 @@ functionality for applications. Examples of services are MySQL, Redis, MongoDB,
 etc. tsuru has built-in services, but it is easy to create and add new services
 to tsuru. Services aren't managed by tsuru, but by its creators.
 
-Check the :doc:`service usage documentation </apps/client/services>` for more
+Check the :doc:`service usage documentation </reference/services>` for more
 on using services and the :doc:`building your own service tutorial
 </services/build>` for a quick start on how to extend tsuru by creating new
 services.
