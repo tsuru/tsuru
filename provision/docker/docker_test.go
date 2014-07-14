@@ -18,6 +18,7 @@ import (
 	rtesting "github.com/tsuru/tsuru/router/testing"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/testing"
+	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"net"
@@ -353,7 +354,7 @@ func (s *S) TestContainerSSH(c *gocheck.C) {
 	container.HostAddr = "localhost"
 	container.PrivateKey = string(fakeServerPrivateKey)
 	container.User = sshUsername()
-	tmpDir := os.TempDir()
+	tmpDir, err := ioutil.TempDir("", "containerssh")
 	defer os.RemoveAll(tmpDir)
 	filepath := path.Join(tmpDir, "file.txt")
 	file, err := os.Create(filepath)
