@@ -14,3 +14,11 @@ on your own servers.
 To get started, first read :ref:`understangind tsuru <understanding>`.
 
 The full documentation tree can be seen :ref:`here <toctree>`.
+
+.. toctree::
+    :hidden:
+    :glob:
+
+    *
+    */*
+    */*/*
