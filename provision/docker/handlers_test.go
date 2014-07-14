@@ -30,10 +30,14 @@ func (TestIaaS) DeleteMachine(m *iaas.Machine) error {
 }
 
 func (TestIaaS) CreateMachine(params map[string]string) (*iaas.Machine, error) {
+	rawURL := strings.Replace(httptest.NewServer(nil).URL, "http://", "", -1)
+	address := strings.Split(rawURL, ":")
+	config.Set("iaas:node-protocol", "http")
+	config.Set("iaas:node-port", address[1])
 	m := iaas.Machine{
 		Id:      "id",
 		Status:  "running",
-		Address: httptest.NewServer(nil).URL,
+		Address: address[0],
 	}
 	return &m, nil
 }
@@ -52,6 +56,7 @@ func (s *HandlersSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("docker:collection", "docker_handler_suite")
 	config.Set("docker:run-cmd:port", 8888)
 	config.Set("docker:router", "fake")
+	config.Set("iaas:default", "test-iaas")
 	s.conn.Collection(schedulerCollection).RemoveAll(nil)
 	s.server = httptest.NewServer(nil)
 }

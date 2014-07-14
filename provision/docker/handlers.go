@@ -45,11 +45,15 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	}
 	register, _ := strconv.ParseBool(r.URL.Query().Get("register"))
 	if !register {
-		m, err := iaas.CreateMachineForIaaS("test-iaas", params)
+		m, err := iaas.CreateMachine(params)
 		if err != nil {
 			return err
 		}
-		params["address"] = m.Address
+		nodeAddress, err := m.FormatNodeAddress()
+		if err != nil {
+			return err
+		}
+		params["address"] = nodeAddress
 	}
 	if params["address"] == "" {
 		return fmt.Errorf("Node address is required.")
