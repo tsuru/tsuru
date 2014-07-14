@@ -7,6 +7,7 @@
 package iaas
 
 import (
+	"fmt"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
@@ -63,6 +64,18 @@ func (m *Machine) Destroy() error {
 		return err
 	}
 	return m.removeFromDB()
+}
+
+func (m *Machine) FormatNodeAddress() (string, error) {
+	protocol, err := config.Get("iaas:node-protocol")
+	if err != nil {
+		return "", err
+	}
+	port, err := config.Get("iaas:node-port")
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s://%s:%s", protocol, m.Address, port), nil
 }
 
 func (m *Machine) saveToDB() error {
