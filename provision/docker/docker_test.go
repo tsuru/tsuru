@@ -342,7 +342,7 @@ func (s *S) TestContainerNetworkInfoNotFound(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, "Container port 8888 is not mapped to any host port")
 }
 
-func (s *S) TestContainerSSH(c *gocheck.C) {
+func (s *S) TestContainerLegacySSH(c *gocheck.C) {
 	var handler FakeSSHServer
 	handler.output = ". .."
 	server := httptest.NewServer(&handler)
@@ -364,7 +364,7 @@ func (s *S) TestContainerSSH(c *gocheck.C) {
 	c.Assert(body, gocheck.DeepEquals, input)
 }
 
-func (s *S) TestContainerSSHFiltersStdout(c *gocheck.C) {
+func (s *S) TestContainerLegacySSHFiltersStdout(c *gocheck.C) {
 	var handler FakeSSHServer
 	handler.output = "failed\nunable to resolve host abcdef"
 	server := httptest.NewServer(&handler)
