@@ -11,6 +11,11 @@ This documentation has the following resources:
 .. toctree::
 
     index
+    understanding/index
+    installing/index
+    using/index
+    managing/index
     contributing/index
+    reference/index
     faq
     releases/index
