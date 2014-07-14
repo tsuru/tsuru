@@ -24,6 +24,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
+	"path"
 	"strconv"
 	"strings"
 )
@@ -340,6 +342,28 @@ func (s *S) TestContainerNetworkInfoNotFound(c *gocheck.C) {
 	c.Assert(info.HTTPHostPort, gocheck.Equals, "")
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Container port 8888 is not mapped to any host port")
+}
+
+func (s *S) TestContainerSSH(c *gocheck.C) {
+	sshServer := newMockSSHServer(c)
+	defer sshServer.Shutdown()
+	container, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	container.SSHHostPort = sshServer.port
+	container.HostAddr = "localhost"
+	container.PrivateKey = string(fakeServerPrivateKey)
+	container.User = sshUsername()
+	tmpDir := os.TempDir()
+	defer os.RemoveAll(tmpDir)
+	filepath := path.Join(tmpDir, "file.txt")
+	file, err := os.Create(filepath)
+	c.Assert(err, gocheck.IsNil)
+	file.Write([]byte("hello"))
+	file.Close()
+	var stdout, stderr bytes.Buffer
+	err = container.ssh(&stdout, &stderr, "cat", filepath)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, "hello")
 }
 
 func (s *S) TestContainerLegacySSH(c *gocheck.C) {
