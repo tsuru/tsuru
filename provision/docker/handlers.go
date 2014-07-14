@@ -10,10 +10,12 @@ import (
 	"github.com/tsuru/tsuru/api"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/iaas"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
 func init() {
@@ -38,6 +40,14 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	params, err := unmarshal(r.Body)
 	if err != nil {
 		return err
+	}
+	register, _ := strconv.ParseBool(r.URL.Query().Get("register"))
+	if !register {
+		m, err := iaas.CreateMachineForIaaS("test-iaas", params)
+		if err != nil {
+			return err
+		}
+		params["address"] = m.Address
 	}
 	if params["address"] == "" {
 		return fmt.Errorf("Node address is required.")

@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/testing"
 	"io/ioutil"
@@ -21,6 +22,21 @@ import (
 	"net/http/httptest"
 	"strings"
 )
+
+type TestIaaS struct{}
+
+func (TestIaaS) DeleteMachine(m *iaas.Machine) error {
+	return nil
+}
+
+func (TestIaaS) CreateMachine(params map[string]string) (*iaas.Machine, error) {
+	m := iaas.Machine{
+		Id:      "id",
+		Status:  "running",
+		Address: httptest.NewServer(nil).URL,
+	}
+	return &m, nil
+}
 
 type HandlersSuite struct {
 	conn   *db.Storage
@@ -52,6 +68,7 @@ func (s *HandlersSuite) TestAddNodeHandler(c *gocheck.C) {
 	dCluster, _ = cluster.New(&segScheduler, nil)
 	p := Pool{Name: "pool1"}
 	s.conn.Collection(schedulerCollection).Insert(p)
+	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
 	json := fmt.Sprintf(`{"address": "%s", "pool": "pool1"}`, s.server.URL)
 	b := bytes.NewBufferString(json)
 	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
@@ -59,7 +76,23 @@ func (s *HandlersSuite) TestAddNodeHandler(c *gocheck.C) {
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
 	c.Assert(err, gocheck.IsNil)
+	n, err := s.conn.Collection(schedulerCollection).FindId("pool1").Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(n, gocheck.Equals, 1)
+}
+
+func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *gocheck.C) {
+	iaas.RegisterIaasProvider("test-iaas", TestIaaS{})
+	dCluster, _ = cluster.New(&segScheduler, nil)
+	p := Pool{Name: "pool1"}
+	s.conn.Collection(schedulerCollection).Insert(p)
 	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
+	b := bytes.NewBufferString(`{"pool": "pool1", "id": "test"}`)
+	req, err := http.NewRequest("POST", "/docker/node?register=false", b)
+	c.Assert(err, gocheck.IsNil)
+	rec := httptest.NewRecorder()
+	err = addNodeHandler(rec, req, nil)
+	c.Assert(err, gocheck.IsNil)
 	n, err := s.conn.Collection(schedulerCollection).FindId("pool1").Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, 1)
