@@ -385,7 +385,7 @@ func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) er
 	if c.PrivateKey == "" || c.SSHHostPort == "" {
 		return c.legacySSH(stdout, stderr, cmd, args...)
 	}
-	key, err := unmarshalKey([]byte(c.PrivateKey))
+	key, err := ssh.ParseRawPrivateKey([]byte(c.PrivateKey))
 	if err != nil {
 		return err
 	}

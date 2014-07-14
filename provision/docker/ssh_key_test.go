@@ -31,12 +31,6 @@ func (s *SSHKeySuite) TestMarshalKey(c *gocheck.C) {
 	c.Assert(string(privKey), gocheck.Equals, privateKeyPEM)
 }
 
-func (s *SSHKeySuite) TestUnmarshalKey(c *gocheck.C) {
-	keyPair, err := unmarshalKey([]byte(privateKeyPEM))
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(keyPair, gocheck.DeepEquals, s.keyPair)
-}
-
 var privateKeyPEM = `-----BEGIN RSA PRIVATE KEY-----
 MIIBOgIBAAJBANE0bCR0Xkg83QFZwwtmbzT6dPusOOnXEcre/zzHbfngVC5O2R9/
 n6uKAb1eYapaA1HINSRZULUH0uYnTjq8P3MCAwEAAQJAdagf8diodcQVH39WHIE9

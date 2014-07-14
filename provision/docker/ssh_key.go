@@ -24,9 +24,3 @@ func marshalKey(keyPair *rsa.PrivateKey) (privateKey []byte, publicKey []byte, e
 	privateKey = pem.EncodeToMemory(&block)
 	return privateKey, publicKey, nil
 }
-
-// unmarshalKey takes the private in PEM format and return the private key.
-func unmarshalKey(privateKey []byte) (*rsa.PrivateKey, error) {
-	block, _ := pem.Decode(privateKey)
-	return x509.ParsePKCS1PrivateKey(block.Bytes)
-}
