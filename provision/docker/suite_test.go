@@ -6,6 +6,7 @@ package docker
 
 import (
 	dtesting "github.com/fsouza/go-dockerclient/testing"
+	"github.com/garyburd/redigo/redis"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
@@ -55,6 +56,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("docker:run-cmd:port", "8888")
 	config.Set("docker:ssh:add-key-cmd", "/var/lib/tsuru/add-key")
 	config.Set("docker:ssh:user", s.sshUser)
+	config.Set("docker:scheduler:redis-prefix", "redis-scheduler-storage-test")
 	config.Set("queue", "fake")
 	s.deployCmd = "/var/lib/tsuru/deploy"
 	s.runBin = "/usr/local/bin/circusd"
@@ -75,12 +77,22 @@ func (s *S) SetUpTest(c *gocheck.C) {
 	cmutex.Lock()
 	defer cmutex.Unlock()
 	dCluster, err = cluster.New(nil, &mapStorage{},
-		cluster.Node{ID: "server", Address: s.server.URL()},
+		cluster.Node{Address: s.server.URL()},
 	)
 	c.Assert(err, gocheck.IsNil)
 	coll := collection()
 	defer coll.Close()
 	coll.RemoveAll(nil)
+	redisConn, err := redis.Dial("tcp", "127.0.0.1:6379")
+	c.Assert(err, gocheck.IsNil)
+	defer redisConn.Close()
+	result, err := redisConn.Do("KEYS", "redis-scheduler-storage-test*")
+	c.Assert(err, gocheck.IsNil)
+	keys := result.([]interface{})
+	for _, key := range keys {
+		keyName := string(key.([]byte))
+		redisConn.Do("DEL", keyName)
+	}
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
@@ -110,8 +122,8 @@ func (s *S) startMultipleServersCluster() (*cluster.Cluster, error) {
 	oldCluster := dCluster
 	otherUrl := strings.Replace(otherServer.URL(), "127.0.0.1", "localhost", 1)
 	dCluster, err = cluster.New(nil, &mapStorage{},
-		cluster.Node{ID: "server0", Address: s.server.URL()},
-		cluster.Node{ID: "server1", Address: otherUrl},
+		cluster.Node{Address: s.server.URL()},
+		cluster.Node{Address: otherUrl},
 	)
 	if err != nil {
 		return nil, err

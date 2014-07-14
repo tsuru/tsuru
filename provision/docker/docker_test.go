@@ -40,9 +40,6 @@ func (s *S) TestContainerGetAddress(c *gocheck.C) {
 }
 
 func (s *S) TestContainerCreate(c *gocheck.C) {
-	oldClusterNodes := clusterNodes
-	clusterNodes = map[string]string{"server": s.server.URL()}
-	defer func() { clusterNodes = oldClusterNodes }()
 	app := testing.NewFakeApp("app-name", "brainfuck", 1)
 	app.Memory = 15
 	rtesting.FakeRouter.AddBackend(app.GetName())
@@ -78,9 +75,6 @@ func (s *S) TestContainerCreateUndefinedUser(c *gocheck.C) {
 	oldUser, _ := config.Get("docker:ssh:user")
 	defer config.Set("docker:ssh:user", oldUser)
 	config.Unset("docker:ssh:user")
-	oldClusterNodes := clusterNodes
-	clusterNodes = map[string]string{"server": s.server.URL()}
-	defer func() { clusterNodes = oldClusterNodes }()
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp("app-name", "python", 1)
@@ -327,11 +321,11 @@ func (s *S) TestContainerNetworkInfoNotFound(c *gocheck.C) {
 	}))
 	defer server.Close()
 	var storage mapStorage
-	storage.StoreContainer("c-01", "server")
+	storage.StoreContainer("c-01", server.URL)
 	oldCluster := dockerCluster()
 	var err error
 	dCluster, err = cluster.New(nil, &storage,
-		cluster.Node{ID: "server", Address: server.URL},
+		cluster.Node{Address: server.URL},
 	)
 	c.Assert(err, gocheck.IsNil)
 	defer func() {
@@ -720,79 +714,24 @@ func (s *S) TestContainerLogs(c *gocheck.C) {
 	c.Assert(buff.String(), gocheck.Not(gocheck.Equals), "")
 }
 
-func (s *S) TestGetHostAddr(c *gocheck.C) {
-	cmutex.Lock()
-	old := dCluster
-	var err error
-	dCluster, err = cluster.New(nil, &mapStorage{},
-		cluster.Node{ID: "server0", Address: "http://localhost:8081"},
-		cluster.Node{ID: "server20", Address: "http://localhost:3234"},
-		cluster.Node{ID: "server21", Address: "http://10.10.10.10:4243"},
-	)
-	c.Assert(err, gocheck.IsNil)
-	cmutex.Unlock()
-	defer func() {
-		cmutex.Lock()
-		dCluster = old
-		cmutex.Unlock()
-	}()
+func (s *S) TestUrlToHost(c *gocheck.C) {
 	var tests = []struct {
 		input    string
 		expected string
 	}{
-		{"server0", "localhost"},
-		{"server20", "localhost"},
-		{"server21", "10.10.10.10"},
-		{"server33", ""},
+		{"http://localhost:8081", "localhost"},
+		{"http://localhost:3234", "localhost"},
+		{"http://10.10.10.10:4243", "10.10.10.10"},
+		{"", ""},
 	}
 	for _, t := range tests {
-		c.Check(getHostAddr(t.input), gocheck.Equals, t.expected)
-	}
-}
-
-func (s *S) TestGetHostAddrWithSegregatedScheduler(c *gocheck.C) {
-	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Close()
-	coll := conn.Collection(schedulerCollection)
-	p := Pool{Name: "pool1", Nodes: []string{
-		"http://remotehost:8080",
-		"http://remotehost:8081",
-		"http://10.10.10.1:8082",
-	}}
-	err = coll.Insert(p)
-	defer coll.RemoveAll(bson.M{"_id": p.Name})
-	cmutex.Lock()
-	old := dCluster
-	dCluster, err = cluster.New(segScheduler, &mapStorage{})
-	c.Assert(err, gocheck.IsNil)
-	cmutex.Unlock()
-	defer func() {
-		cmutex.Lock()
-		dCluster = old
-		cmutex.Unlock()
-	}()
-	var tests = []struct {
-		input    string
-		expected string
-	}{
-		{"http://remotehost:8080", "remotehost"},
-		{"http://remotehost:8081", "remotehost"},
-		{"http://10.10.10.1:8082", "10.10.10.1"},
-		{"server33", ""},
-	}
-	for _, t := range tests {
-		c.Check(getHostAddr(t.input), gocheck.Equals, t.expected)
+		c.Check(urlToHost(t.input), gocheck.Equals, t.expected)
 	}
 }
 
 func (s *S) TestDockerCluster(c *gocheck.C) {
 	config.Set("docker:servers", []string{"http://localhost:4243", "http://10.10.10.10:4243"})
 	defer config.Unset("docker:servers")
-	expected, _ := cluster.New(nil, nil,
-		cluster.Node{ID: "server0", Address: "http://localhost:4243"},
-		cluster.Node{ID: "server1", Address: "http://10.10.10.10:4243"},
-	)
 	nodes, err := dCluster.Nodes()
 	c.Assert(err, gocheck.IsNil)
 	cmutex.Lock()
@@ -804,14 +743,21 @@ func (s *S) TestDockerCluster(c *gocheck.C) {
 		dCluster, err = cluster.New(nil, &mapStorage{}, nodes...)
 		c.Assert(err, gocheck.IsNil)
 	}()
-	cluster := dockerCluster()
-	c.Assert(cluster, gocheck.DeepEquals, expected)
+	config.Set("docker:scheduler:redis-server", "127.0.0.1:6379")
+	defer config.Unset("docker:scheduler:redis-server")
+	clus := dockerCluster()
+	c.Assert(clus, gocheck.NotNil)
+	currentNodes, err := clus.Nodes()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(currentNodes, gocheck.DeepEquals, []cluster.Node{
+		{Address: "http://localhost:4243", Metadata: map[string]string{}},
+		{Address: "http://10.10.10.10:4243", Metadata: map[string]string{}},
+	})
 }
 
 func (s *S) TestDockerClusterSegregated(c *gocheck.C) {
 	config.Set("docker:segregate", true)
 	defer config.Unset("docker:segregate")
-	expected, _ := cluster.New(&segScheduler, nil)
 	oldDockerCluster := dCluster
 	cmutex.Lock()
 	dCluster = nil
@@ -821,8 +767,13 @@ func (s *S) TestDockerClusterSegregated(c *gocheck.C) {
 		defer cmutex.Unlock()
 		dCluster = oldDockerCluster
 	}()
-	cluster := dockerCluster()
-	c.Assert(cluster, gocheck.DeepEquals, expected)
+	config.Set("docker:scheduler:redis-server", "127.0.0.1:6379")
+	defer config.Unset("docker:scheduler:redis-server")
+	clus := dockerCluster()
+	c.Assert(clus, gocheck.NotNil)
+	currentNodes, err := clus.Nodes()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(currentNodes, gocheck.HasLen, 0)
 }
 
 func (s *S) TestGetDockerServersShouldSearchFromConfig(c *gocheck.C) {
@@ -830,8 +781,8 @@ func (s *S) TestGetDockerServersShouldSearchFromConfig(c *gocheck.C) {
 	defer config.Unset("docker:servers")
 	servers := getDockerServers()
 	expected := []cluster.Node{
-		{ID: "server0", Address: "http://server01.com:4243"},
-		{ID: "server1", Address: "http://server02.com:4243"},
+		{Address: "http://server01.com:4243"},
+		{Address: "http://server02.com:4243"},
 	}
 	c.Assert(servers, gocheck.DeepEquals, expected)
 }
@@ -846,11 +797,11 @@ func (s *S) TestPushImage(c *gocheck.C) {
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
 	var storage mapStorage
-	storage.StoreImage("localhost:3030/base", "server0")
+	storage.StoreImage("localhost:3030/base", server.URL())
 	cmutex.Lock()
 	oldDockerCluster := dCluster
 	dCluster, _ = cluster.New(nil, &storage,
-		cluster.Node{ID: "server0", Address: server.URL()})
+		cluster.Node{Address: server.URL()})
 	cmutex.Unlock()
 	defer func() {
 		cmutex.Lock()

@@ -44,7 +44,11 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		return err
 	}
 	register, _ := strconv.ParseBool(r.URL.Query().Get("register"))
-	if !register {
+	var address string
+	if register {
+		address, _ = params["address"]
+		delete(params, "address")
+	} else {
 		m, err := iaas.CreateMachine(params)
 		if err != nil {
 			return err
@@ -53,18 +57,18 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		if err != nil {
 			return err
 		}
-		params["address"] = nodeAddress
+		address = nodeAddress
 	}
-	if params["address"] == "" {
+	if address == "" {
 		return fmt.Errorf("Node address is required.")
 	}
-	if _, err := url.ParseRequestURI(params["address"]); err != nil {
+	if _, err := url.ParseRequestURI(address); err != nil {
 		return err
 	}
-	if _, err := http.Get(fmt.Sprintf("%s/_ping", params["address"])); err != nil {
+	if _, err := http.Get(fmt.Sprintf("%s/_ping", address)); err != nil {
 		return err
 	}
-	return dockerCluster().Register(params)
+	return dockerCluster().Register(address, params)
 }
 
 // removeNodeHandler calls scheduler.Unregister to unregistering a node into it.
@@ -73,7 +77,11 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if err != nil {
 		return err
 	}
-	return dockerCluster().Unregister(params)
+	address, _ := params["address"]
+	if address == "" {
+		return fmt.Errorf("Node address is required.")
+	}
+	return dockerCluster().Unregister(address)
 }
 
 //listNodeHandler call scheduler.Nodes to list all nodes into it.

@@ -35,25 +35,21 @@ var (
 	cmutex   sync.Mutex
 )
 
-var (
-	clusterNodes map[string]string
-	segScheduler segregatedScheduler
-)
-
 func getDockerServers() []cluster.Node {
 	servers, _ := config.GetList("docker:servers")
 	nodes := []cluster.Node{}
-	clusterNodes = make(map[string]string)
-	for index, server := range servers {
-		id := fmt.Sprintf("server%d", index)
+	for _, server := range servers {
 		node := cluster.Node{
-			ID:      id,
 			Address: server,
 		}
 		nodes = append(nodes, node)
-		clusterNodes[id] = server
 	}
 	return nodes
+}
+
+func isSegregateScheduler() bool {
+	segregate, _ := config.GetBool("docker:segregate")
+	return segregate
 }
 
 func dockerCluster() *cluster.Cluster {
@@ -61,17 +57,19 @@ func dockerCluster() *cluster.Cluster {
 	defer cmutex.Unlock()
 	var clusterStorage cluster.Storage
 	if dCluster == nil {
-		if redisServer, err := config.GetString("docker:scheduler:redis-server"); err == nil {
-			prefix, _ := config.GetString("docker:scheduler:redis-prefix")
-			if password, err := config.GetString("docker:scheduler:redis-password"); err == nil {
-				clusterStorage = storage.AuthenticatedRedis(redisServer, password, prefix)
-			} else {
-				clusterStorage = storage.Redis(redisServer, prefix)
-			}
+		redisServer, err := config.GetString("docker:scheduler:redis-server")
+		if err != nil {
+			panic("docker:scheduler:redis-server is mandatory")
+		}
+		prefix, _ := config.GetString("docker:scheduler:redis-prefix")
+		if password, err := config.GetString("docker:scheduler:redis-password"); err == nil {
+			clusterStorage = storage.AuthenticatedRedis(redisServer, password, prefix)
+		} else {
+			clusterStorage = storage.Redis(redisServer, prefix)
 		}
 		var nodes []cluster.Node
-		if segregate, _ := config.GetBool("docker:segregate"); segregate {
-			dCluster, _ = cluster.New(&segScheduler, clusterStorage)
+		if isSegregateScheduler() {
+			dCluster, _ = cluster.New(&segregatedScheduler{}, clusterStorage)
 		} else {
 			nodes = getDockerServers()
 			dCluster, _ = cluster.New(nil, clusterStorage, nodes...)
@@ -94,28 +92,14 @@ func urlToHost(urlStr string) string {
 	return host
 }
 
-func getHostAddr(hostID string) string {
-	nodes, err := dockerCluster().Nodes()
-	if err != nil {
-		log.Errorf("Error trying to list cluster nodes: %s", err.Error())
-		return ""
-	}
-	for _, node := range nodes {
-		if node.ID == hostID {
-			return urlToHost(node.Address)
-		}
-	}
-	return ""
-}
-
-func hostToNodeName(host string) (string, error) {
+func hostToNodeAddress(host string) (string, error) {
 	nodes, err := dockerCluster().Nodes()
 	if err != nil {
 		return "", err
 	}
 	for _, node := range nodes {
 		if urlToHost(node.Address) == host {
-			return node.ID, nil
+			return node.Address, nil
 		}
 	}
 	return "", fmt.Errorf("Host `%s` not found", host)
@@ -189,19 +173,19 @@ func (c *container) create(app provision.App, imageId string, cmds []string, des
 	opts := docker.CreateContainerOptions{Name: c.Name, Config: &config}
 	var nodeList []string
 	if len(destinationHosts) > 0 {
-		nodeName, err := hostToNodeName(destinationHosts[0])
+		nodeName, err := hostToNodeAddress(destinationHosts[0])
 		if err != nil {
 			return err
 		}
 		nodeList = []string{nodeName}
 	}
-	hostID, cont, err := dockerCluster().CreateContainerSchedulerOpts(opts, app.GetName(), nodeList...)
+	addr, cont, err := dockerCluster().CreateContainerSchedulerOpts(opts, app.GetName(), nodeList...)
 	if err != nil {
 		log.Errorf("error on creating container in docker %s - %s", c.AppName, err)
 		return err
 	}
 	c.ID = cont.ID
-	c.HostAddr = getHostAddr(hostID)
+	c.HostAddr = urlToHost(addr)
 	c.User = user
 	return nil
 }

@@ -81,27 +81,31 @@ func (s *mapStorage) StoreNode(node cluster.Node) error {
 	return nil
 }
 
-func (s *mapStorage) RetrieveNode(id string) (string, error) {
-	s.nMut.Lock()
-	defer s.nMut.Unlock()
-	for _, node := range s.nodes {
-		if node.ID == id {
-			return node.Address, nil
-		}
-	}
-	return "", errors.New("no such node")
-}
-
 func (s *mapStorage) RetrieveNodes() ([]cluster.Node, error) {
 	return s.nodes, nil
 }
 
-func (s *mapStorage) RemoveNode(id string) error {
+func (s *mapStorage) RetrieveNodesByMetadata(metadata map[string]string) ([]cluster.Node, error) {
+	s.nMut.Lock()
+	defer s.nMut.Unlock()
+	filteredNodes := []cluster.Node{}
+	for _, node := range s.nodes {
+		for key, value := range metadata {
+			nodeVal, ok := node.Metadata[key]
+			if ok && nodeVal == value {
+				filteredNodes = append(filteredNodes, node)
+			}
+		}
+	}
+	return filteredNodes, nil
+}
+
+func (s *mapStorage) RemoveNode(addr string) error {
 	s.nMut.Lock()
 	defer s.nMut.Unlock()
 	index := -1
 	for i, node := range s.nodes {
-		if node.ID == id {
+		if node.Address == addr {
 			index = i
 		}
 	}

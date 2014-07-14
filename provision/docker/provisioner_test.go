@@ -783,11 +783,11 @@ func (s *S) TestProvisionerPlatformAdd(c *gocheck.C) {
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
 	var storage mapStorage
-	storage.StoreImage("localhost:3030/base", "server0")
+	storage.StoreImage("localhost:3030/base", server.URL())
 	cmutex.Lock()
 	oldDockerCluster := dCluster
 	dCluster, _ = cluster.New(nil, &storage,
-		cluster.Node{ID: "server0", Address: server.URL()})
+		cluster.Node{Address: server.URL()})
 	cmutex.Unlock()
 	defer func() {
 		cmutex.Lock()

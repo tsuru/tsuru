@@ -15,7 +15,6 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 	"io/ioutil"
-	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"math"
 	"net/http"
@@ -36,16 +35,15 @@ const schedulerCollection = "docker_scheduler"
 
 type Pool struct {
 	Name  string `bson:"_id"`
-	Nodes []string
 	Teams []string
 }
 
 type segregatedScheduler struct{}
 
-func (s segregatedScheduler) Schedule(opts docker.CreateContainerOptions, schedulerOpts cluster.SchedulerOptions) (cluster.Node, error) {
+func (s segregatedScheduler) Schedule(c *cluster.Cluster, opts docker.CreateContainerOptions, schedulerOpts cluster.SchedulerOptions) (cluster.Node, error) {
 	appName, _ := schedulerOpts.(string)
 	a, _ := app.GetByName(appName)
-	nodes, err := s.nodesForApp(a)
+	nodes, err := nodesForApp(c, a)
 	if err != nil {
 		return cluster.Node{}, err
 	}
@@ -53,7 +51,7 @@ func (s segregatedScheduler) Schedule(opts docker.CreateContainerOptions, schedu
 	if err != nil {
 		return cluster.Node{}, err
 	}
-	return cluster.Node{ID: node, Address: node}, nil
+	return cluster.Node{Address: node}, nil
 }
 
 type nodeAggregate struct {
@@ -94,16 +92,16 @@ func aggregateNodesByHostApp(hosts []string, appName string) (map[string]int, er
 
 // chooseNode finds which is the node with the minimum number
 // of containers and returns it
-func (segregatedScheduler) chooseNode(nodes []string, contName string, appName string) (string, error) {
+func (segregatedScheduler) chooseNode(nodes []cluster.Node, contName string, appName string) (string, error) {
 	var chosenNode string
 	hosts := make([]string, len(nodes))
 	hostsMap := make(map[string]string)
 	// Only hostname is saved in the docker containers collection
 	// so we need to extract and map then to the original node.
 	for i, node := range nodes {
-		host := urlToHost(node)
+		host := urlToHost(node.Address)
 		hosts[i] = host
-		hostsMap[host] = node
+		hostsMap[host] = node.Address
 	}
 	log.Debugf("[scheduler] Possible nodes for container %s: %#v", contName, hosts)
 	hostMutex.Lock()
@@ -135,7 +133,7 @@ func (segregatedScheduler) chooseNode(nodes []string, contName string, appName s
 	return chosenNode, err
 }
 
-func (segregatedScheduler) nodesForApp(app *app.App) ([]string, error) {
+func poolsForApp(app *app.App) ([]Pool, error) {
 	var pools []Pool
 	var query bson.M
 	conn, err := db.Conn()
@@ -149,118 +147,45 @@ func (segregatedScheduler) nodesForApp(app *app.App) ([]string, error) {
 		} else {
 			query = bson.M{"teams": bson.M{"$in": app.Teams}}
 		}
+		conn.Collection(schedulerCollection).Find(query).All(&pools)
+	}
+	if len(pools) == 0 {
+		query = bson.M{"$or": []bson.M{{"teams": bson.M{"$exists": false}}, {"teams": bson.M{"$size": 0}}}}
 		err = conn.Collection(schedulerCollection).Find(query).All(&pools)
-		if err == nil {
-			for _, pool := range pools {
-				if len(pool.Nodes) > 0 {
-					return pool.Nodes, nil
-				}
-			}
+		if err != nil {
+			return nil, errNoFallback
 		}
 	}
-	query = bson.M{"$or": []bson.M{{"teams": bson.M{"$exists": false}}, {"teams": bson.M{"$size": 0}}}}
-	err = conn.Collection(schedulerCollection).Find(query).All(&pools)
+	return pools, nil
+}
+
+func nodesForApp(c *cluster.Cluster, app *app.App) ([]cluster.Node, error) {
+	pools, err := poolsForApp(app)
 	if err != nil {
-		return nil, errNoFallback
+		return nil, err
 	}
 	for _, pool := range pools {
-		if len(pool.Nodes) > 0 {
-			return pool.Nodes, nil
+		nodes, err := c.NodesForMetadata(map[string]string{"pool": pool.Name})
+		if err != nil {
+			return nil, err
+		}
+		if len(nodes) > 0 {
+			return nodes, nil
 		}
 	}
 	return nil, errNoFallback
 }
 
-func (segregatedScheduler) Nodes() ([]cluster.Node, error) {
-	nodes, err := listNodesInTheScheduler()
+func nodesForAppName(c *cluster.Cluster, appName string) ([]cluster.Node, error) {
+	a, err := app.GetByName(appName)
 	if err != nil {
 		return nil, err
 	}
-	result := make([]cluster.Node, len(nodes))
-	for i, node := range nodes {
-		result[i] = cluster.Node{ID: node, Address: node}
-	}
-	return result, nil
+	return nodesForApp(c, a)
 }
 
-func (s segregatedScheduler) NodesForOptions(schedulerOpts cluster.SchedulerOptions) ([]cluster.Node, error) {
-	appName, _ := schedulerOpts.(string)
-	a, _ := app.GetByName(appName)
-	nodes, err := s.nodesForApp(a)
-	if err != nil {
-		return nil, err
-	}
-	result := make([]cluster.Node, len(nodes))
-	for i, node := range nodes {
-		result[i] = cluster.Node{ID: node, Address: node}
-	}
-	return result, nil
-}
-
-func (segregatedScheduler) GetNode(pool, address string) (string, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return "", err
-	}
-	defer conn.Close()
-	var p Pool
-	err = conn.Collection(schedulerCollection).FindId(pool).One(&p)
-	if err != nil {
-		return "", err
-	}
-	for _, n := range p.Nodes {
-		if n == address {
-			return n, nil
-		}
-	}
-	return "", errNodeNotFound
-}
-
-// Register adds a new node to the scheduler, registering for use in
-// the given team. The team parameter is optional, when set to "", the node
-// will be used as a fallback node.
-func (seg *segregatedScheduler) Register(params map[string]string) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	nodes, _ := seg.Nodes()
-	for _, node := range nodes {
-		if params["address"] == node.Address {
-			return errNodeAlreadyRegister
-		}
-	}
-	if params["pool"] == "" {
-		return errors.New("Pool name is required.")
-	}
-	err = conn.Collection(schedulerCollection).Update(bson.M{"_id": params["pool"]}, bson.M{"$push": bson.M{"nodes": params["address"]}})
-	return err
-}
-
-// Unregister removes a node from the scheduler.
-func (segregatedScheduler) Unregister(params map[string]string) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	pools, err := conn.Collection(schedulerCollection).Find(bson.M{"nodes": params["address"]}).Count()
-	if err != nil {
-		return err
-	}
-	if pools == 0 {
-		return errNodeNotFound
-	}
-	err = conn.Collection(schedulerCollection).UpdateId(params["pool"], bson.M{"$pull": bson.M{"nodes": params["address"]}})
-	if err == mgo.ErrNotFound {
-		return errNodeNotFound
-	}
-	return err
-}
-
-func (segregatedScheduler) addPool(pool_name string) error {
-	if pool_name == "" {
+func (segregatedScheduler) addPool(poolName string) error {
+	if poolName == "" {
 		return errors.New("Pool name is required.")
 	}
 	conn, err := db.Conn()
@@ -268,53 +193,35 @@ func (segregatedScheduler) addPool(pool_name string) error {
 		return err
 	}
 	defer conn.Close()
-	pool := Pool{Name: pool_name}
+	pool := Pool{Name: poolName}
 	return conn.Collection(schedulerCollection).Insert(pool)
 }
 
-func (segregatedScheduler) removePool(pool_name string) error {
+func (segregatedScheduler) removePool(poolName string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	return conn.Collection(schedulerCollection).Remove(bson.M{"_id": pool_name, "nodes": bson.M{"$size": 0}})
+	return conn.Collection(schedulerCollection).Remove(bson.M{"_id": poolName})
 }
 
-func (segregatedScheduler) addTeamsToPool(pool_name string, teams []string) error {
+func (segregatedScheduler) addTeamsToPool(poolName string, teams []string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	return conn.Collection(schedulerCollection).UpdateId(pool_name, bson.M{"$push": bson.M{"teams": bson.M{"$each": teams}}})
+	return conn.Collection(schedulerCollection).UpdateId(poolName, bson.M{"$push": bson.M{"teams": bson.M{"$each": teams}}})
 }
 
-func (segregatedScheduler) removeTeamsFromPool(pool_name string, teams []string) error {
+func (segregatedScheduler) removeTeamsFromPool(poolName string, teams []string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	return conn.Collection(schedulerCollection).UpdateId(pool_name, bson.M{"$pullAll": bson.M{"teams": teams}})
-}
-
-func listNodesInTheScheduler() ([]string, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	var pools []Pool
-	err = conn.Collection(schedulerCollection).Find(nil).All(&pools)
-	if err != nil {
-		return nil, err
-	}
-	var nodes []string
-	for _, pool := range pools {
-		nodes = append(nodes, pool.Nodes...)
-	}
-	return nodes, nil
+	return conn.Collection(schedulerCollection).UpdateId(poolName, bson.M{"$pullAll": bson.M{"teams": teams}})
 }
 
 type addPoolToSchedulerCmd struct{}
@@ -392,7 +299,7 @@ func (listPoolsInTheSchedulerCmd) Info() *cmd.Info {
 }
 
 func (listPoolsInTheSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
-	t := cmd.Table{Headers: cmd.Row([]string{"Pools", "Nodes", "Teams"})}
+	t := cmd.Table{Headers: cmd.Row([]string{"Pools", "Teams"})}
 	url, err := cmd.GetURL("/docker/pool")
 	if err != nil {
 		return err
@@ -410,7 +317,7 @@ func (listPoolsInTheSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) erro
 	var pools []Pool
 	err = json.Unmarshal(body, &pools)
 	for _, p := range pools {
-		t.AddRow(cmd.Row([]string{p.Name, strings.Join(p.Nodes, ", "), strings.Join(p.Teams, ", ")}))
+		t.AddRow(cmd.Row([]string{p.Name, strings.Join(p.Teams, ", ")}))
 	}
 	t.Sort()
 	ctx.Stdout.Write(t.Bytes())

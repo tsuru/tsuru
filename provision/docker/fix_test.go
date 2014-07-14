@@ -46,7 +46,7 @@ func startDocker() (func(), *httptest.Server) {
 	var err error
 	oldCluster := dockerCluster()
 	dCluster, err = cluster.New(nil, &mapStorage{},
-		cluster.Node{ID: "server", Address: server.URL},
+		cluster.Node{Address: server.URL},
 	)
 	if err != nil {
 		panic(err)
@@ -76,10 +76,10 @@ func (s *S) TestFixContainers(c *gocheck.C) {
 	cleanup, server := startDocker()
 	defer cleanup()
 	var storage mapStorage
-	storage.StoreContainer("9930c24f1c4x", "server0")
+	storage.StoreContainer("9930c24f1c4x", server.URL)
 	cmutex.Lock()
 	dCluster, err = cluster.New(nil, &storage,
-		cluster.Node{ID: "server0", Address: server.URL},
+		cluster.Node{Address: server.URL},
 	)
 	cmutex.Unlock()
 	c.Assert(err, gocheck.IsNil)

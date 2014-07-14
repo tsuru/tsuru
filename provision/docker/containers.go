@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
@@ -217,13 +218,18 @@ func rebalanceContainers(encoder *json.Encoder, dryRun bool) error {
 	if err != nil {
 		return err
 	}
-	cluster := dockerCluster()
+	clusterInstance := dockerCluster()
 	for _, appInfo := range appsInfo {
 		if appInfo.Count < 2 {
 			continue
 		}
 		logProgress(encoder, "Rebalancing app %q (%d units)...", appInfo.Name, appInfo.Count)
-		possibleDests, err := cluster.NodesForOptions(appInfo.Name)
+		var possibleDests []cluster.Node
+		if isSegregateScheduler() {
+			possibleDests, err = nodesForAppName(clusterInstance, appInfo.Name)
+		} else {
+			possibleDests, err = clusterInstance.Nodes()
+		}
 		if err != nil {
 			return err
 		}
