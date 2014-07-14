@@ -29,6 +29,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func (s *S) TestContainerGetAddress(c *gocheck.C) {
@@ -348,6 +349,29 @@ func (s *S) TestContainerNetworkInfoNotFound(c *gocheck.C) {
 func (s *S) TestContainerSSH(c *gocheck.C) {
 	sshServer := newMockSSHServer(c)
 	defer sshServer.Shutdown()
+	timedout := make(chan bool)
+	quit := make(chan bool)
+	go func() {
+		addr := "localhost:" + sshServer.port
+		for {
+			select {
+			case <-timedout:
+				return
+			default:
+				if conn, err := net.Dial("tcp", addr); err == nil {
+					conn.Close()
+					close(quit)
+					return
+				}
+			}
+		}
+	}()
+	select {
+	case <-quit:
+	case <-time.After(2e9):
+		close(timedout)
+		c.Fatal("The SSH server didn't come up after 2 seconds.")
+	}
 	container, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	container.SSHHostPort = sshServer.port
