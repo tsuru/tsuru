@@ -35,7 +35,9 @@ func init() {
 	api.RegisterHandler("/docker/fix-containers", "POST", api.AdminRequiredHandler(fixContainersHandler))
 }
 
-// addNodeHandler calls scheduler.Register to registering a node into it.
+// addNodeHandler can provide an machine and/or register a node address.
+// If register flag is true, it will just register a node.
+// It checks if node address is valid and accessible.
 func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	params, err := unmarshal(r.Body)
 	if err != nil {
