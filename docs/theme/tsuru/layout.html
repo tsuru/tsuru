@@ -70,7 +70,9 @@ HAS_SOURCE:  {{ has_source|lower }}
 	<div class="content-container container">
 		{% block body %}
 		{% endblock %}
-
+		{%- if pagename != 'index' %}
+			{%- include "navigation.html" %}
+		{% endif %}
 	</div>
 
 	{%- include "sidebar.html" %}
