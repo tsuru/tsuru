@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/tsuru/tsuru",
-	"GoVersion": "devel +5af436a50c54 Thu Jul 10 14:35:04 2014 -0700",
+	"GoVersion": "devel +67f9ef140028 Sat Jul 12 15:18:36 2014 +1000",
 	"Packages": [
 		"./..."
 	],
