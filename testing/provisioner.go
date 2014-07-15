@@ -124,12 +124,6 @@ func (a *FakeApp) AddUnit(u provision.Unit) {
 	a.units = append(a.units, u)
 }
 
-func (a *FakeApp) SetUnitStatus(s provision.Status, index int) {
-	if index < len(a.units) {
-		a.units[index].Status = s
-	}
-}
-
 func (a *FakeApp) SetEnv(env bind.EnvVar) {
 	if a.env == nil {
 		a.env = map[string]bind.EnvVar{}
