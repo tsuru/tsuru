@@ -6,6 +6,7 @@ package cmd
 
 import (
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 )
@@ -33,8 +34,9 @@ var fontEffects = map[string]int{
 }
 
 type Table struct {
-	Headers Row
-	rows    rowSlice
+	Headers       Row
+	LineSeparator bool
+	rows          rowSlice
 }
 
 type Row []string
@@ -48,6 +50,31 @@ func (t *Table) Sort() {
 	sort.Sort(t.rows)
 }
 
+func (t *Table) addRows(rows rowSlice, sizes []int, result string) string {
+	for _, row := range rows {
+		extraRows := rowSlice{}
+		for column, field := range row {
+			parts := strings.Split(field, "\n")
+			field = parts[0]
+			for i := range parts[1:] {
+				newRow := Row(make([]string, len(row)))
+				newRow[column] = parts[i+1]
+				extraRows.add(newRow)
+			}
+			result += "| " + field
+			result += strings.Repeat(" ", sizes[column]+1-len(field))
+		}
+		result += "|\n"
+		result = t.addRows(extraRows, sizes, result)
+		ptr1 := reflect.ValueOf(rows).Pointer()
+		ptr2 := reflect.ValueOf(t.rows).Pointer()
+		if ptr1 == ptr2 && t.LineSeparator {
+			result += t.separator()
+		}
+	}
+	return result
+}
+
 func (t *Table) String() string {
 	if t.Headers == nil && len(t.rows) < 1 {
 		return ""
@@ -56,20 +83,16 @@ func (t *Table) String() string {
 	result := t.separator()
 	if t.Headers != nil {
 		for column, header := range t.Headers {
-			result = result + "| " + header
-			result = result + strings.Repeat(" ", sizes[column]+1-len(header))
+			result += "| " + header
+			result += strings.Repeat(" ", sizes[column]+1-len(header))
 		}
-		result = result + "|\n"
-		result = result + t.separator()
+		result += "|\n"
+		result += t.separator()
 	}
-	for _, row := range t.rows {
-		for column, field := range row {
-			result = result + "| " + field
-			result = result + strings.Repeat(" ", sizes[column]+1-len(field))
-		}
-		result = result + "|\n"
+	result = t.addRows(t.rows, sizes, result)
+	if !t.LineSeparator {
+		result += t.separator()
 	}
-	result = result + t.separator()
 	return result
 }
 
@@ -95,8 +118,11 @@ func (t *Table) columnsSize() []int {
 	sizes := make([]int, columns)
 	for _, row := range t.rows {
 		for i := 0; i < columns; i++ {
-			if len(row[i]) > sizes[i] {
-				sizes[i] = len(row[i])
+			rowParts := strings.Split(row[i], "\n")
+			for _, part := range rowParts {
+				if len(part) > sizes[i] {
+					sizes[i] = len(part)
+				}
 			}
 		}
 	}

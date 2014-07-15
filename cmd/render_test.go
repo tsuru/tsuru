@@ -107,6 +107,57 @@ func (s *S) TestString(c *gocheck.C) {
 	c.Assert(table.String(), gocheck.Equals, expected)
 }
 
+func (s *S) TestStringWithSeparator(c *gocheck.C) {
+	table := NewTable()
+	table.LineSeparator = true
+	table.AddRow(Row{"One", "1"})
+	table.AddRow(Row{"Two", "2"})
+	table.AddRow(Row{"Three", "3"})
+	expected := `+-------+---+
+| One   | 1 |
++-------+---+
+| Two   | 2 |
++-------+---+
+| Three | 3 |
++-------+---+
+`
+	c.Assert(table.String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestStringWithNewLine(c *gocheck.C) {
+	table := NewTable()
+	table.AddRow(Row{"One", "xxx\nyyy"})
+	table.AddRow(Row{"Two", "2"})
+	table.AddRow(Row{"Three", "3"})
+	expected := `+-------+-----+
+| One   | xxx |
+|       | yyy |
+| Two   | 2   |
+| Three | 3   |
++-------+-----+
+`
+	c.Assert(table.String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestStringWithNewLineWithSeparator(c *gocheck.C) {
+	table := NewTable()
+	table.LineSeparator = true
+	table.AddRow(Row{"One", "xxx\nyyy\nzzzz"})
+	table.AddRow(Row{"Two", "2"})
+	table.AddRow(Row{"Three", "3"})
+	expected := `+-------+------+
+| One   | xxx  |
+|       | yyy  |
+|       | zzzz |
++-------+------+
+| Two   | 2    |
++-------+------+
+| Three | 3    |
++-------+------+
+`
+	c.Assert(table.String(), gocheck.Equals, expected)
+}
+
 func (s *S) TestRenderNoRows(c *gocheck.C) {
 	table := NewTable()
 	table.Headers = Row{"Word", "Number"}
