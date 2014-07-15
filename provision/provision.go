@@ -13,6 +13,7 @@ import (
 	"io"
 )
 
+// Status represents the status of a unit in tsuru.
 type Status string
 
 func (s Status) String() string {
@@ -20,21 +21,28 @@ func (s Status) String() string {
 }
 
 const (
-	// building - is while the unit is being provisioned,
-	// it occurs during a deploy.
+	// StatusBuilding is the status for units being provisined by the
+	// provisioner, like in the deployment.
 	StatusBuilding = Status("building")
-	// error - when an error occurs caused by the application code.
+
+	// StatusError is the status for units that failed to start, because of
+	// an application error.
 	StatusError = Status("error")
-	// is when an error occurs caused by tsuru internal problems.
+
+	// StatusDown is the status for units that failed to start, because of
+	// some internal error on tsuru.
 	StatusDown = Status("down")
-	// is when the app process is up but it is not bound to the
-	// right host ("0.0.0.0") and right port ($PORT).
-	// If your process is a worker its state will be unreachable.
+
+	// StatusUnreachable is the case where the process is up and running,
+	// but the unit is not reachable. Probably because it's not bound to
+	// the right host ("0.0.0.0") and/or right port ($PORT).
 	StatusUnreachable = Status("unreachable")
-	// Is when the app process is up and bound to the right
-	// host ("0.0.0.0") and right port ($PORT).
+
+	// StatusStarted is for cases where the unit is up and running, and
+	// bound to the proper status.
 	StatusStarted = Status("started")
-	// stopped - is when the Docker container is stopped
+
+	// StatusStopped is for cases where the unit has been stopped.
 	StatusStopped = Status("stopped")
 )
 
@@ -48,7 +56,7 @@ type Unit struct {
 	Status  Status
 }
 
-//  GetIp returns the Unit.IP.
+// GetIp returns the Unit.IP.
 func (u *Unit) GetIp() string {
 	return u.Ip
 }
@@ -99,6 +107,7 @@ type App interface {
 	GetUpdatePlatform() bool
 }
 
+// CNameManager represents a provisioner that supports cname on applications.
 type CNameManager interface {
 	SetCName(app App, cname string) error
 	UnsetCName(app App, cname string) error
@@ -190,7 +199,7 @@ func Register(name string, p Provisioner) {
 func Get(name string) (Provisioner, error) {
 	p, ok := provisioners[name]
 	if !ok {
-		return nil, fmt.Errorf("Unknown provisioner: %q.", name)
+		return nil, fmt.Errorf("unknown provisioner: %q", name)
 	}
 	return p, nil
 }
@@ -204,11 +213,13 @@ func Registry() []Provisioner {
 	return registry
 }
 
+// Error represents a provisioning error. It encapsulates further errors.
 type Error struct {
 	Reason string
 	Err    error
 }
 
+// Error is the string representation of a provisioning error.
 func (e *Error) Error() string {
 	var err string
 	if e.Err != nil {
