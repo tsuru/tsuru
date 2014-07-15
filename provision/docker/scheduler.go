@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
@@ -24,7 +25,7 @@ import (
 
 // errNoFallback is the error returned when no fallback hosts are configured in
 // the segregated scheduler.
-var errNoFallback = errors.New("No fallback configured in the scheduler")
+var errNoFallback = errors.New("No fallback configured in the scheduler: you should have a pool without any teams")
 
 const schedulerCollection = "docker_scheduler"
 
@@ -148,8 +149,11 @@ func poolsForApp(app *app.App) ([]Pool, error) {
 		query = bson.M{"$or": []bson.M{{"teams": bson.M{"$exists": false}}, {"teams": bson.M{"$size": 0}}}}
 		err = conn.Collection(schedulerCollection).Find(query).All(&pools)
 		if err != nil {
-			return nil, errNoFallback
+			return nil, err
 		}
+	}
+	if len(pools) == 0 {
+		return nil, errNoFallback
 	}
 	return pools, nil
 }
@@ -168,7 +172,7 @@ func nodesForApp(c *cluster.Cluster, app *app.App) ([]cluster.Node, error) {
 			return nodes, nil
 		}
 	}
-	return nil, errNoFallback
+	return nil, fmt.Errorf("No nodes found in pools %v", pools)
 }
 
 func nodesForAppName(c *cluster.Cluster, appName string) ([]cluster.Node, error) {
