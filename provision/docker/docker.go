@@ -233,6 +233,7 @@ func (c *container) networkInfo() (containerNetworkInfo, error) {
 
 func (c *container) setStatus(status string) error {
 	c.Status = status
+	c.LastStatusUpdate = time.Now().In(time.UTC)
 	coll := collection()
 	defer coll.Close()
 	return coll.Update(bson.M{"id": c.ID}, c)

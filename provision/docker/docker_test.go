@@ -137,7 +137,8 @@ func (s *S) TestGetPortInteger(c *gocheck.C) {
 }
 
 func (s *S) TestContainerSetStatus(c *gocheck.C) {
-	container := container{ID: "something-300"}
+	update := time.Date(1989, 2, 2, 14, 59, 32, 0, time.UTC).In(time.UTC)
+	container := container{ID: "something-300", LastStatusUpdate: update}
 	coll := collection()
 	defer coll.Close()
 	coll.Insert(container)
@@ -146,6 +147,8 @@ func (s *S) TestContainerSetStatus(c *gocheck.C) {
 	c2, err := getContainer(container.ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(c2.Status, gocheck.Equals, "what?!")
+	lastUpdate := c2.LastStatusUpdate.In(time.UTC).Format(time.RFC822)
+	c.Assert(lastUpdate, gocheck.Not(gocheck.DeepEquals), update.Format(time.RFC822))
 }
 
 func (s *S) TestContainerSetImage(c *gocheck.C) {
