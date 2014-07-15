@@ -27,6 +27,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -729,6 +730,12 @@ func (s *S) TestUrlToHost(c *gocheck.C) {
 	}
 }
 
+type NodeList []cluster.Node
+
+func (a NodeList) Len() int           { return len(a) }
+func (a NodeList) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a NodeList) Less(i, j int) bool { return a[i].Address < a[j].Address }
+
 func (s *S) TestDockerCluster(c *gocheck.C) {
 	config.Set("docker:servers", []string{"http://localhost:4243", "http://10.10.10.10:4243"})
 	defer config.Unset("docker:servers")
@@ -749,10 +756,12 @@ func (s *S) TestDockerCluster(c *gocheck.C) {
 	c.Assert(clus, gocheck.NotNil)
 	currentNodes, err := clus.Nodes()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(currentNodes, gocheck.DeepEquals, []cluster.Node{
-		{Address: "http://localhost:4243", Metadata: map[string]string{}},
+	sortedNodes := NodeList(currentNodes)
+	sort.Sort(sortedNodes)
+	c.Assert(sortedNodes, gocheck.DeepEquals, NodeList([]cluster.Node{
 		{Address: "http://10.10.10.10:4243", Metadata: map[string]string{}},
-	})
+		{Address: "http://localhost:4243", Metadata: map[string]string{}},
+	}))
 }
 
 func (s *S) TestDockerClusterSegregated(c *gocheck.C) {
