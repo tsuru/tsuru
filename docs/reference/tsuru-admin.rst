@@ -15,8 +15,8 @@ It can be compiled with:
 
     $ go get github.com/tsuru/tsuru-clients/tsuru-admin
 
-To use `tsuru-admin` commands you should be an `admin user <../../config.html#admin-users>`_.
-To be an admin user you should be in an `admin team <../../config.html#admin-team>`_.
+To use `tsuru-admin` commands you should be an `admin user <config.html#admin-users>`_.
+To be an admin user you should be in an `admin team <config.html#admin-team>`_.
 
 Setting a target
 ================
@@ -130,3 +130,24 @@ It will automatically rebuild your platform and will flag apps to update
 platform on next deploy.
 
 The --dockerfile flag is an URL to a dockerfile which will update your platform.
+
+docker-node-add
+---------------
+
+.. highlight:: bash
+
+::
+
+    $ tsuru-admin docker-node-add [param_name=param_value]... [--register]
+
+This command add a node to your docker cluster.
+By default, this command will call the configured IaaS to create a new
+machine. Every param will be sent to the IaaS implementation.
+
+You should configure in **tsuru.conf** the protocol and port for IaaS be able
+to access your node (`you can see it here <config.html#iaas-configuration>`_).
+
+If you want to just register an docker node, you should use the --register
+flag with an **address=http://your-docker-node:docker-port**
+
+The command always check if your node address is accessible.
