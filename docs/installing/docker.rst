@@ -281,7 +281,7 @@ Finally, we will configure docker:
     hipache:
         domain: tsuru-sample.com # tsuru uses this to mount the app's urls
 
-All confs are better explained `here <http://tsuru.readthedocs.org/en/latest/config.html>`_.
+All confs are better explained `here <../reference/config.html>`_.
 
 Generating token for Gandalf authentication
 ===========================================
