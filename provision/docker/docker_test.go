@@ -172,17 +172,18 @@ type newContainerOpts struct {
 }
 
 func (s *S) newContainer(opts *newContainerOpts) (*container, error) {
-	appName := "container"
-	if opts != nil {
-		appName = opts.AppName
-	}
 	container := container{
-		AppName:  appName,
 		ID:       "id",
 		IP:       "10.10.10.10",
 		HostPort: "3333",
 		HostAddr: "127.0.0.1",
-		Status:   opts.Status,
+	}
+	if opts != nil {
+		container.Status = opts.Status
+		container.AppName = opts.AppName
+	}
+	if container.AppName == "" {
+		container.AppName = "container"
 	}
 	rtesting.FakeRouter.AddBackend(container.AppName)
 	rtesting.FakeRouter.AddRoute(container.AppName, container.getAddress())
