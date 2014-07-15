@@ -26,11 +26,6 @@ import (
 // the segregated scheduler.
 var errNoFallback = errors.New("No fallback configured in the scheduler")
 
-var (
-	errNodeAlreadyRegister = errors.New("This node is already registered")
-	errNodeNotFound        = errors.New("Node not found")
-)
-
 const schedulerCollection = "docker_scheduler"
 
 type Pool struct {
