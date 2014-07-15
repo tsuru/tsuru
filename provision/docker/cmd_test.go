@@ -15,10 +15,16 @@ import (
 
 func (s *S) TestAddNodeToTheSchedulerCmdInfo(c *gocheck.C) {
 	expected := cmd.Info{
-		Name:    "docker-node-add",
-		Usage:   "docker-node-add [parameters]",
-		Desc:    "Registers a new node in the cluster",
-		MinArgs: 1,
+		Name:  "docker-node-add",
+		Usage: "docker-node-add [param_name=param_value]... [--register]",
+		Desc: `Creates or registers a new node in the cluster.
+By default, this command will call the configured IaaS to create a new
+machine. Every param will be sent to the IaaS implementation.
+
+--register: Registers an existing docker endpoint. The IaaS won't be called.
+            Having a address=<docker_api_url> param is mandatory.
+`,
+		MinArgs: 0,
 	}
 	cmd := addNodeToSchedulerCmd{}
 	c.Assert(cmd.Info(), gocheck.DeepEquals, &expected)

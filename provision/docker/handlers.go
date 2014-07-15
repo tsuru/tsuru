@@ -60,7 +60,7 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		address = nodeAddress
 	}
 	if address == "" {
-		return fmt.Errorf("Node address is required.")
+		return fmt.Errorf("address=url parameter is required.")
 	}
 	if _, err := url.ParseRequestURI(address); err != nil {
 		return err

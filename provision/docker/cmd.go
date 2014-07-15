@@ -18,10 +18,16 @@ type addNodeToSchedulerCmd struct {
 
 func (addNodeToSchedulerCmd) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "docker-node-add",
-		Usage:   "docker-node-add [parameters]",
-		Desc:    "Registers a new node in the cluster",
-		MinArgs: 1,
+		Name:  "docker-node-add",
+		Usage: "docker-node-add [param_name=param_value]... [--register]",
+		Desc: `Creates or registers a new node in the cluster.
+By default, this command will call the configured IaaS to create a new
+machine. Every param will be sent to the IaaS implementation.
+
+--register: Registers an existing docker endpoint. The IaaS won't be called.
+            Having a address=<docker_api_url> param is mandatory.
+`,
+		MinArgs: 0,
 	}
 }
 
@@ -47,6 +53,9 @@ func (a *addNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error 
 	}
 	_, err = client.Do(req)
 	if err != nil {
+		info := a.Info()
+		fmt.Fprintf(ctx.Stderr, "Usage: %s %s\n", info.Name, info.Usage)
+		fmt.Fprintf(ctx.Stderr, "\n%s\n", info.Desc)
 		return err
 	}
 	ctx.Stdout.Write([]byte("Node successfully registered.\n"))

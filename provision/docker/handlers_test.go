@@ -130,7 +130,7 @@ func (s *HandlersSuite) TestAddNodeHandlerWithoutdAddress(c *gocheck.C) {
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Node address is required.")
+	c.Assert(err.Error(), gocheck.Equals, "address=url parameter is required.")
 }
 
 func (s *HandlersSuite) TestAddNodeHandlerWithInvalidURLAddress(c *gocheck.C) {
