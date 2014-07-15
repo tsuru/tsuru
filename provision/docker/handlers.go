@@ -11,6 +11,8 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/iaas"
+	_ "github.com/tsuru/tsuru/iaas/cloudstack"
+	_ "github.com/tsuru/tsuru/iaas/ec2"
 	"io"
 	"io/ioutil"
 	"net/http"
