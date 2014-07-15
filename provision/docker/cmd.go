@@ -55,6 +55,7 @@ func (a *addNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error 
 
 func (a *addNodeToSchedulerCmd) Flags() *gnuflag.FlagSet {
 	if a.fs == nil {
+		a.fs = gnuflag.NewFlagSet("with-flags", gnuflag.ContinueOnError)
 		a.fs.BoolVar(&a.register, "register", false, "Register an already created node")
 	}
 	return a.fs
