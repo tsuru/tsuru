@@ -33,6 +33,9 @@ func CreateMachine(params map[string]string) (*Machine, error) {
 
 func CreateMachineForIaaS(iaasName string, params map[string]string) (*Machine, error) {
 	iaas, err := getIaasProvider(iaasName)
+	if err != nil {
+		return nil, err
+	}
 	m, err := iaas.CreateMachine(params)
 	if err != nil {
 		return nil, err
