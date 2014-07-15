@@ -702,6 +702,25 @@ func (s *S) TestRemoveUnitsInvalidValues(c *gocheck.C) {
 	}
 }
 
+func (s *S) TestSetUnitStatus(c *gocheck.C) {
+	a := App{Name: "appName", Platform: "python"}
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 3)
+	units := a.Units()
+	err := a.SetUnitStatus(units[0].Name, provision.StatusError)
+	c.Assert(err, gocheck.IsNil)
+	units = a.Units()
+	c.Assert(units[0].Status, gocheck.Equals, provision.StatusError)
+}
+
+func (s *S) TestSetUnitStatusNotFound(c *gocheck.C) {
+	a := App{Name: "appName", Platform: "django"}
+	err := a.SetUnitStatus("someunit", provision.StatusError)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "unit not found")
+}
+
 func (s *S) TestGrantAccess(c *gocheck.C) {
 	a := App{Name: "appName", Platform: "django", Teams: []string{}}
 	err := a.Grant(&s.team)

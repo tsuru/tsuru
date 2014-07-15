@@ -391,8 +391,8 @@ func (app *App) AddUnits(n uint) error {
 	return err
 }
 
-// RemoveUnits removes n units from the app. It's a process composed of x
-// steps:
+// RemoveUnits removes n units from the app. It's a process composed of
+// multiple steps:
 //
 //     1. Remove units from the provisioner
 //     2. Remove units from the app list
@@ -429,6 +429,16 @@ func (app *App) RemoveUnits(n uint) error {
 		}
 	}()
 	return nil
+}
+
+// SetUnitStatus changes the status of the given unit.
+func (app *App) SetUnitStatus(unitName string, status provision.Status) error {
+	for _, unit := range app.Units() {
+		if unit.Name == unitName {
+			return Provisioner.SetUnitStatus(unit, status)
+		}
+	}
+	return stderr.New("unit not found")
 }
 
 // Available returns true if at least one of N units is started or unreachable.
