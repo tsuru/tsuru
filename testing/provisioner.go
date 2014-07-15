@@ -606,6 +606,28 @@ func (p *FakeProvisioner) Units(app provision.App) []provision.Unit {
 	return p.apps[app.GetName()].units
 }
 
+func (p *FakeProvisioner) SetUnitStatus(unit provision.Unit, status provision.Status) error {
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	app, ok := p.apps[unit.AppName]
+	if !ok {
+		return errNotProvisioned
+	}
+	index := -1
+	for i, unt := range app.units {
+		if unt.Name == unit.Name {
+			index = i
+			break
+		}
+	}
+	if index < 0 {
+		return errors.New("unit not found")
+	}
+	app.units[index].Status = status
+	p.apps[unit.AppName] = app
+	return nil
+}
+
 func (p *FakeProvisioner) Addr(app provision.App) (string, error) {
 	if err := p.getError("Addr"); err != nil {
 		return "", err

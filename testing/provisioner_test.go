@@ -744,3 +744,48 @@ func (s *S) TestFakeProvisionerAddUnit(c *gocheck.C) {
 	c.Assert(p.Units(app), gocheck.HasLen, 1)
 	c.Assert(p.apps[app.GetName()].unitLen, gocheck.Equals, 1)
 }
+
+func (s *S) TestFakeProvisionerUnits(c *gocheck.C) {
+	app := NewFakeApp("red-sector", "rush", 1)
+	p := NewFakeProvisioner()
+	err := p.Provision(app)
+	c.Assert(err, gocheck.IsNil)
+	p.AddUnit(app, provision.Unit{Name: "red-sector/1"})
+	c.Assert(p.Units(app), gocheck.HasLen, 1)
+}
+
+func (s *S) TestFakeProvisionerUnitsAppNotFound(c *gocheck.C) {
+	app := NewFakeApp("red-sector", "rush", 1)
+	p := NewFakeProvisioner()
+	c.Assert(p.Units(app), gocheck.HasLen, 0)
+}
+
+func (s *S) TestFakeProvisionerSetUnitStatus(c *gocheck.C) {
+	app := NewFakeApp("red-sector", "rush", 1)
+	p := NewFakeProvisioner()
+	err := p.Provision(app)
+	c.Assert(err, gocheck.IsNil)
+	unit := provision.Unit{AppName: "red-sector", Name: "red-sector/1", Status: provision.StatusStarted}
+	p.AddUnit(app, unit)
+	err = p.SetUnitStatus(unit, provision.StatusError)
+	c.Assert(err, gocheck.IsNil)
+	unit = p.Units(app)[0]
+	c.Assert(unit.Status, gocheck.Equals, provision.StatusError)
+}
+
+func (s *S) TestFakeProvisionerSetUnitStatusAppNotFound(c *gocheck.C) {
+	p := NewFakeProvisioner()
+	err := p.SetUnitStatus(provision.Unit{AppName: "something"}, provision.StatusError)
+	c.Assert(err, gocheck.Equals, errNotProvisioned)
+}
+
+func (s *S) TestFakeProvisionerSetUnitStatusUnitNotFound(c *gocheck.C) {
+	app := NewFakeApp("red-sector", "rush", 1)
+	p := NewFakeProvisioner()
+	err := p.Provision(app)
+	c.Assert(err, gocheck.IsNil)
+	unit := provision.Unit{AppName: "red-sector", Name: "red-sector/1", Status: provision.StatusStarted}
+	err = p.SetUnitStatus(unit, provision.StatusError)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "unit not found")
+}
