@@ -394,13 +394,13 @@ func (s *S) TestProvisionerAddUnitsWithHost(c *gocheck.C) {
 func (s *S) TestProvisionerRemoveUnits(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	container1, err := s.newContainer(nil)
+	container1, err := s.newContainer(&newContainerOpts{Status: "building"})
 	c.Assert(err, gocheck.IsNil)
 	defer rtesting.FakeRouter.RemoveBackend(container1.AppName)
-	container2, err := s.newContainer(nil)
+	container2, err := s.newContainer(&newContainerOpts{Status: "building"})
 	c.Assert(err, gocheck.IsNil)
 	defer rtesting.FakeRouter.RemoveBackend(container2.AppName)
-	container3, err := s.newContainer(nil)
+	container3, err := s.newContainer(&newContainerOpts{Status: "started"})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(container3)
 	client, err := docker.NewClient(s.server.URL())
@@ -492,7 +492,8 @@ func (s *S) TestProvisionerRemoveUnitNotFound(c *gocheck.C) {
 func (s *S) TestProvisionerSetUnitStatus(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	container, err := s.newContainer(&newContainerOpts{Status: provision.StatusStarted.String()})
+	opts := newContainerOpts{Status: provision.StatusStarted.String(), AppName: "someapp"}
+	container, err := s.newContainer(&opts)
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(container)
 	var p dockerProvisioner
@@ -506,7 +507,8 @@ func (s *S) TestProvisionerSetUnitStatus(c *gocheck.C) {
 func (s *S) TestProvisionerSetUnitStatusWrongApp(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	container, err := s.newContainer(&newContainerOpts{Status: provision.StatusStarted.String()})
+	opts := newContainerOpts{Status: provision.StatusStarted.String(), AppName: "someapp"}
+	container, err := s.newContainer(&opts)
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(container)
 	var p dockerProvisioner
