@@ -168,6 +168,7 @@ func newImage(repo, serverURL string) error {
 
 type newContainerOpts struct {
 	AppName string
+	Status  string
 }
 
 func (s *S) newContainer(opts *newContainerOpts) (*container, error) {
@@ -181,6 +182,7 @@ func (s *S) newContainer(opts *newContainerOpts) (*container, error) {
 		IP:       "10.10.10.10",
 		HostPort: "3333",
 		HostAddr: "127.0.0.1",
+		Status:   opts.Status,
 	}
 	rtesting.FakeRouter.AddBackend(container.AppName)
 	rtesting.FakeRouter.AddRoute(container.AppName, container.getAddress())

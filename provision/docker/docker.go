@@ -106,19 +106,20 @@ func hostToNodeAddress(host string) (string, error) {
 }
 
 type container struct {
-	ID          string
-	AppName     string
-	Type        string
-	IP          string
-	HostAddr    string
-	HostPort    string
-	SSHHostPort string
-	PrivateKey  string
-	Status      string
-	Version     string
-	Image       string
-	Name        string
-	User        string
+	ID               string
+	AppName          string
+	Type             string
+	IP               string
+	HostAddr         string
+	HostPort         string
+	SSHHostPort      string
+	PrivateKey       string
+	Status           string
+	Version          string
+	Image            string
+	Name             string
+	User             string
+	LastStatusUpdate time.Time
 }
 
 // available returns true if the Status is Started or Unreachable.

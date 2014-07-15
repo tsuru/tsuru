@@ -489,6 +489,41 @@ func (s *S) TestProvisionerRemoveUnitNotFound(c *gocheck.C) {
 	c.Assert(err, gocheck.Equals, mgo.ErrNotFound)
 }
 
+func (s *S) TestProvisionerSetUnitStatus(c *gocheck.C) {
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	container, err := s.newContainer(&newContainerOpts{Status: provision.StatusStarted.String()})
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(container)
+	var p dockerProvisioner
+	err = p.SetUnitStatus(provision.Unit{Name: container.ID, AppName: container.AppName}, provision.StatusError)
+	c.Assert(err, gocheck.IsNil)
+	container, err = getContainerPartialId(container.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(container.Status, gocheck.Equals, provision.StatusError.String())
+}
+
+func (s *S) TestProvisionerSetUnitStatusWrongApp(c *gocheck.C) {
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	container, err := s.newContainer(&newContainerOpts{Status: provision.StatusStarted.String()})
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(container)
+	var p dockerProvisioner
+	err = p.SetUnitStatus(provision.Unit{Name: container.ID, AppName: container.AppName + "a"}, provision.StatusError)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "wrong app name")
+	container, err = getContainerPartialId(container.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(container.Status, gocheck.Equals, provision.StatusStarted.String())
+}
+
+func (s *S) TestProvisionerSetUnitStatusUnitNotFound(c *gocheck.C) {
+	var p dockerProvisioner
+	err := p.SetUnitStatus(provision.Unit{Name: "mycontainer", AppName: "myapp"}, provision.StatusError)
+	c.Assert(err, gocheck.Equals, mgo.ErrNotFound)
+}
+
 func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {
 	var handler FakeSSHServer
 	handler.output = ". .."

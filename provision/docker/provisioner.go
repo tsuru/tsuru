@@ -374,6 +374,17 @@ func removeContainer(c *container) error {
 	return err
 }
 
+func (p *dockerProvisioner) SetUnitStatus(unit provision.Unit, status provision.Status) error {
+	container, err := getContainerPartialId(unit.Name)
+	if err != nil {
+		return err
+	}
+	if container.AppName != unit.AppName {
+		return errors.New("wrong app name")
+	}
+	return container.setStatus(status.String())
+}
+
 func (*dockerProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
 	containers, err := listContainersByApp(app.GetName())
 	if err != nil {
