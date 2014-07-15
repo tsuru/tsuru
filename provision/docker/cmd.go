@@ -75,14 +75,14 @@ type removeNodeFromSchedulerCmd struct{}
 func (removeNodeFromSchedulerCmd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "docker-node-remove",
-		Usage:   "docker-node-remove <pool> <address>",
+		Usage:   "docker-node-remove <address>",
 		Desc:    "Removes a node from the cluster",
-		MinArgs: 2,
+		MinArgs: 1,
 	}
 }
 
 func (removeNodeFromSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
-	b, err := json.Marshal(map[string]string{"pool": ctx.Args[0], "address": ctx.Args[1]})
+	b, err := json.Marshal(map[string]string{"address": ctx.Args[0]})
 	if err != nil {
 		return err
 	}

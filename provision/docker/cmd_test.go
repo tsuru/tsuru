@@ -53,9 +53,9 @@ func (s *S) TestAddNodeToTheSchedulerCmdRun(c *gocheck.C) {
 func (s *S) TestRemoveNodeFromTheSchedulerCmdInfo(c *gocheck.C) {
 	expected := cmd.Info{
 		Name:    "docker-node-remove",
-		Usage:   "docker-node-remove <pool> <address>",
+		Usage:   "docker-node-remove <address>",
 		Desc:    "Removes a node from the cluster",
-		MinArgs: 2,
+		MinArgs: 1,
 	}
 	cmd := removeNodeFromSchedulerCmd{}
 	c.Assert(cmd.Info(), gocheck.DeepEquals, &expected)
