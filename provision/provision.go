@@ -149,6 +149,9 @@ type Provisioner interface {
 	// removed.
 	RemoveUnit(Unit) error
 
+	// SetUnitStatus changes the status of a unit.
+	SetUnitStatus(Unit, Status) error
+
 	// ExecuteCommand runs a command in all units of the app.
 	ExecuteCommand(stdout, stderr io.Writer, app App, cmd string, args ...string) error
 
