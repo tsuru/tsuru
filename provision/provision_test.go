@@ -27,7 +27,7 @@ func (ProvisionSuite) TestRegisterAndGetProvisioner(c *gocheck.C) {
 	c.Check(got, gocheck.DeepEquals, p)
 	_, err = Get("unknown-provisioner")
 	c.Check(err, gocheck.NotNil)
-	expectedMessage := `Unknown provisioner: "unknown-provisioner".`
+	expectedMessage := `unknown provisioner: "unknown-provisioner"`
 	c.Assert(err.Error(), gocheck.Equals, expectedMessage)
 }
 
