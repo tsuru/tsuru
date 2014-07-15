@@ -457,6 +457,44 @@ docker:ssh:user
 
 TODO: see `tsuru with docker </docker>`
 
+IaaS configuration
+------------------
+
+iaas:default
+++++++++++++
+
+Define the default IaaS to tsuru use to create/list/delete your nodes.
+
+iaas:api-key
+++++++++++++
+
+Api-key to authenticate on IaaS.
+
+iaas:secret-key
++++++++++++++++
+
+Secret-key to authenticate on IaaS.
+
+iaas:url
+++++++++
+
+Endpoint api to use the IaaS
+
+iaas:node-protocol
+++++++++++++++++++
+
+Protocol to create node URL.
+
+iaas:node-port
+++++++++++++++
+
+Port to create node URL.
+
+iaas:collection
++++++++++++++++
+
+Collection to handle machine data on database.
+
 Sample file
 ===========
 
