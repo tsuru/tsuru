@@ -8,13 +8,26 @@ tsr 0.6.0 release notes
 
 Welcome to tsr 0.6.0!
 
-These release notes cover the `new features`_ and `bug fixes`_ you'll want to
-be aware of when upgrading from tsr 0.6.0 or older versions.
+These release notes cover the `new features`_, `bug fixes`_ and `general
+improvements`_ you'll want to be aware of when upgrading from tsr 0.6.0 or
+older versions.
 
 .. _`new features`: `What's new in tsr 0.6.0`_
 
 What's new in tsr 0.6.0
 =======================
+
+* Removed the ssh-agent dependency. Now tsuru will generate a RSA keypair per
+  container, making it more secure and with one less agent running in the
+  Docker hosts. Now a Docker host is just a host that runs Docker. tsuru server
+  is still able to communicate with containers created using the ssh-agent, but
+  won't create any new containers using a preconfigured SSH key. The version
+  0.7.0 will delete ssh-agent completely.
+* **under development** Improve handling of unit statuses. Now the unit will
+  communicate with the server, minute after minute, updating the status. This
+  will work as a heart beat. So the unit will change to the status "error"
+  whenever the heart beat fails after 4 minutes or the unit informs that the
+  process failed to install.
 
 Bug fixes
 =========
@@ -23,3 +36,16 @@ Bug fixes
   did not validate user access properly. With this failure, any authenticated
   user were able to add logs to an application, even if he/she doesn't have
   access to the app.
+
+Breaking changes
+================
+
+* tsuru source no longer supports Go 1.1. It's possible that tsuru will build
+  with Go 1.1, but it's no longer supported.
+
+Other improvements
+==================
+
+* improve the structure of the documentation
+* improve the search in the documentation
+* cmd: properly handle multiline cells in tables
