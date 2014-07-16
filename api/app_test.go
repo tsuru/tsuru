@@ -943,7 +943,7 @@ func (s *S) TestSetUnitStatus(c *gocheck.C) {
 	s.provisioner.AddUnits(&a, 3)
 	body := strings.NewReader("status=error")
 	unit := a.Units()[0]
-	request, err := http.NewRequest("POST", "/apps/telegram/<unit-name>?:app=telegram&:unit="+unit.Name, body)
+	request, err := http.NewRequest("POST", "/apps/telegram/units/<unit-name>?:app=telegram&:unit="+unit.Name, body)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
@@ -955,7 +955,7 @@ func (s *S) TestSetUnitStatus(c *gocheck.C) {
 
 func (s *S) TestSetUnitStatusNoUnit(c *gocheck.C) {
 	body := strings.NewReader("status=error")
-	request, err := http.NewRequest("POST", "/apps/velha/af32db?:app=velha", body)
+	request, err := http.NewRequest("POST", "/apps/velha/units/af32db?:app=velha", body)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
@@ -970,7 +970,7 @@ func (s *S) TestSetUnitStatusNoUnit(c *gocheck.C) {
 func (s *S) TestSetUnitStatusInvalidStatus(c *gocheck.C) {
 	bodies := []io.Reader{strings.NewReader("status=something"), strings.NewReader("")}
 	for _, body := range bodies {
-		request, err := http.NewRequest("POST", "/apps/velha/af32db?:app=velha&:unit=af32db", body)
+		request, err := http.NewRequest("POST", "/apps/velha/units/af32db?:app=velha&:unit=af32db", body)
 		c.Assert(err, gocheck.IsNil)
 		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		recorder := httptest.NewRecorder()
@@ -985,7 +985,7 @@ func (s *S) TestSetUnitStatusInvalidStatus(c *gocheck.C) {
 
 func (s *S) TestSetUnitStatusAppNotFound(c *gocheck.C) {
 	body := strings.NewReader("status=error")
-	request, err := http.NewRequest("POST", "/apps/velha/af32db?:app=velha&:unit=af32db", body)
+	request, err := http.NewRequest("POST", "/apps/velha/units/af32db?:app=velha&:unit=af32db", body)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()

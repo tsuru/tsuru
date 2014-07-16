@@ -108,6 +108,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Post", "/apps", authorizationRequiredHandler(createApp))
 	m.Add("Put", "/apps/{app}/units", authorizationRequiredHandler(addUnits))
 	m.Add("Delete", "/apps/{app}/units", authorizationRequiredHandler(removeUnits))
+	m.Add("Post", "/apps/{app}/units/{unit}", authorizationRequiredHandler(setUnitStatus))
 	m.Add("Put", "/apps/{app}/{team}", authorizationRequiredHandler(grantAppAccess))
 	m.Add("Delete", "/apps/{app}/{team}", authorizationRequiredHandler(revokeAppAccess))
 	m.Add("Get", "/apps/{app}/log", authorizationRequiredHandler(appLog))
