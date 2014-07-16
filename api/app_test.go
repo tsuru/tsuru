@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
@@ -924,6 +925,76 @@ func (s *S) TestRemoveUnitsReturns400IfNumberIsInvalid(c *gocheck.C) {
 		c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
 		c.Assert(e.Message, gocheck.Equals, "Invalid number of units: the number must be an integer greater than 0.")
 	}
+}
+
+func (s *S) TestSetUnitStatus(c *gocheck.C) {
+	a := app.App{
+		Name:     "telegram",
+		Platform: "python",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs(a.Name).DropCollection()
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 3)
+	body := strings.NewReader("status=error")
+	unit := a.Units()[0]
+	request, err := http.NewRequest("POST", "/apps/telegram/<unit-name>?:app=telegram&:unit="+unit.Name, body)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	err = setUnitStatus(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	unit = a.Units()[0]
+	c.Assert(unit.Status, gocheck.Equals, provision.StatusError)
+}
+
+func (s *S) TestSetUnitStatusNoUnit(c *gocheck.C) {
+	body := strings.NewReader("status=error")
+	request, err := http.NewRequest("POST", "/apps/velha/af32db?:app=velha", body)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	err = setUnitStatus(recorder, request, s.token)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
+	c.Assert(e.Message, gocheck.Equals, "missing unit")
+}
+
+func (s *S) TestSetUnitStatusInvalidStatus(c *gocheck.C) {
+	bodies := []io.Reader{strings.NewReader("status=something"), strings.NewReader("")}
+	for _, body := range bodies {
+		request, err := http.NewRequest("POST", "/apps/velha/af32db?:app=velha&:unit=af32db", body)
+		c.Assert(err, gocheck.IsNil)
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		recorder := httptest.NewRecorder()
+		err = setUnitStatus(recorder, request, s.token)
+		c.Assert(err, gocheck.NotNil)
+		e, ok := err.(*errors.HTTP)
+		c.Assert(ok, gocheck.Equals, true)
+		c.Check(e.Code, gocheck.Equals, http.StatusBadRequest)
+		c.Check(e.Message, gocheck.Equals, provision.ErrInvalidStatus.Error())
+	}
+}
+
+func (s *S) TestSetUnitStatusAppNotFound(c *gocheck.C) {
+	body := strings.NewReader("status=error")
+	request, err := http.NewRequest("POST", "/apps/velha/af32db?:app=velha&:unit=af32db", body)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	err = setUnitStatus(recorder, request, s.token)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Check(e.Code, gocheck.Equals, http.StatusNotFound)
+	c.Check(e.Message, gocheck.Equals, "App not found")
 }
 
 func (s *S) TestAddTeamToTheApp(c *gocheck.C) {

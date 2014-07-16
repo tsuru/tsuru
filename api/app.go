@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/errors"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/rec"
 	"github.com/tsuru/tsuru/repository"
@@ -280,6 +281,30 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	context.SetPreventUnlock(r)
 	return app.RemoveUnits(uint(n))
+}
+
+func setUnitStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	unitName := r.URL.Query().Get(":unit")
+	if unitName == "" {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "missing unit",
+		}
+	}
+	postStatus := r.FormValue("status")
+	status, err := provision.ParseStatus(postStatus)
+	if err != nil {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: err.Error(),
+		}
+	}
+	appName := r.URL.Query().Get(":app")
+	a, err := app.GetByName(appName)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	return a.SetUnitStatus(unitName, status)
 }
 
 func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error {
