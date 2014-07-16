@@ -15,7 +15,7 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
-	"github.com/tsuru/docker-cluster/storage"
+	"github.com/tsuru/docker-cluster/storage/redis"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
@@ -63,9 +63,9 @@ func dockerCluster() *cluster.Cluster {
 		}
 		prefix, _ := config.GetString("docker:scheduler:redis-prefix")
 		if password, err := config.GetString("docker:scheduler:redis-password"); err == nil {
-			clusterStorage = storage.AuthenticatedRedis(redisServer, password, prefix)
+			clusterStorage = redis.AuthenticatedRedis(redisServer, password, prefix)
 		} else {
-			clusterStorage = storage.Redis(redisServer, prefix)
+			clusterStorage = redis.Redis(redisServer, prefix)
 		}
 		var nodes []cluster.Node
 		if isSegregateScheduler() {
