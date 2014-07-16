@@ -13,6 +13,7 @@ improvements`_ you'll want to be aware of when upgrading from tsr 0.6.0 or
 older versions.
 
 .. _`new features`: `What's new in tsr 0.6.0`_
+.. _`general improvements`: `Other improvements`_
 
 What's new in tsr 0.6.0
 =======================
