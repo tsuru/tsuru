@@ -45,7 +45,6 @@ docker:
   repository-namespace: tsuru
   router: hipache
   deploy-cmd: /var/lib/tsuru/deploy
-  ssh-agent-port: 4545
   segregate: true
   scheduler:
     redis-server: 127.0.0.1:6379
@@ -54,8 +53,6 @@ docker:
     bin: /var/lib/tsuru/start
     port: 8888
   ssh:
-    add-key-cmd: /var/lib/tsuru/add-key
-    public-key: /var/lib/tsuru/.ssh/id_rsa.pub
     user: ubuntu
 `
 
