@@ -14,7 +14,7 @@ Then clone the `tsuru-bootstrap` project from github:
 
 ::
 
-    git clone https://github.com/dgryski/tsuru-bootstrap.git
+    git clone https://github.com/tsuru/tsuru-bootstrap.git
 
 Enter the `tsuru-bootstrap` directory and execute `vagrant up`. It will take a time:
 
