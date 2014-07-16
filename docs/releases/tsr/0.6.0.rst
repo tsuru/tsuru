@@ -1,0 +1,25 @@
+.. warning::
+
+    Version under development
+
+=======================
+tsr 0.6.0 release notes
+=======================
+
+Welcome to tsr 0.6.0!
+
+These release notes cover the `new features`_ and `bug fixes`_ you'll want to
+be aware of when upgrading from tsr 0.6.0 or older versions.
+
+.. _`new features`: `What's new in tsr 0.6.0`_
+
+What's new in tsr 0.6.0
+=======================
+
+Bug fixes
+=========
+
+* fix security issue with user tokens: handlers that expected application token
+  did not validate user access properly. With this failure, any authenticated
+  user were able to add logs to an application, even if he/she doesn't have
+  access to the app.
