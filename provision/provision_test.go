@@ -63,12 +63,35 @@ func (ProvisionSuite) TestStatusString(c *gocheck.C) {
 	c.Assert(s.String(), gocheck.Equals, "pending")
 }
 
-func (ProvisionSuite) TestStatusUnreachable(c *gocheck.C) {
-	c.Assert(StatusUnreachable.String(), gocheck.Equals, "unreachable")
+func (ProvisionSuite) TestStatuses(c *gocheck.C) {
+	c.Check(StatusBuilding.String(), gocheck.Equals, "building")
+	c.Check(StatusError.String(), gocheck.Equals, "error")
+	c.Check(StatusDown.String(), gocheck.Equals, "down")
+	c.Check(StatusUnreachable.String(), gocheck.Equals, "unreachable")
+	c.Check(StatusStarted.String(), gocheck.Equals, "started")
+	c.Check(StatusStopped.String(), gocheck.Equals, "stopped")
 }
 
-func (ProvisionSuite) TestStatusBuilding(c *gocheck.C) {
-	c.Assert(StatusBuilding.String(), gocheck.Equals, "building")
+func (ProvisionSuite) TestParseStatus(c *gocheck.C) {
+	var tests = []struct {
+		input  string
+		output Status
+		err    error
+	}{
+		{"building", StatusBuilding, nil},
+		{"error", StatusError, nil},
+		{"down", StatusDown, nil},
+		{"unreachable", StatusUnreachable, nil},
+		{"started", StatusStarted, nil},
+		{"stopped", StatusStopped, nil},
+		{"something", Status(""), ErrInvalidStatus},
+		{"otherthing", Status(""), ErrInvalidStatus},
+	}
+	for _, t := range tests {
+		got, err := ParseStatus(t.input)
+		c.Check(got, gocheck.Equals, t.output)
+		c.Check(err, gocheck.Equals, t.err)
+	}
 }
 
 func (ProvisionSuite) TestUnitAvailable(c *gocheck.C) {

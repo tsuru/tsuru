@@ -7,17 +7,38 @@
 package provision
 
 import (
+	"errors"
 	"fmt"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"io"
 )
 
+var ErrInvalidStatus = errors.New("invalid status")
+
 // Status represents the status of a unit in tsuru.
 type Status string
 
 func (s Status) String() string {
 	return string(s)
+}
+
+func ParseStatus(status string) (Status, error) {
+	switch status {
+	case "building":
+		return StatusBuilding, nil
+	case "error":
+		return StatusError, nil
+	case "down":
+		return StatusDown, nil
+	case "unreachable":
+		return StatusUnreachable, nil
+	case "started":
+		return StatusStarted, nil
+	case "stopped":
+		return StatusStopped, nil
+	}
+	return Status(""), ErrInvalidStatus
 }
 
 const (
