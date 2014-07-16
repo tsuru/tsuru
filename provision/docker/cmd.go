@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"launchpad.net/gnuflag"
 	"net/http"
+	"sort"
 	"strings"
 )
 
@@ -140,6 +141,7 @@ func (listNodesInTheSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) erro
 				result = append(result, fmt.Sprintf("%s=%s", key, value.(string)))
 			}
 		}
+		sort.Strings(result)
 		t.AddRow(cmd.Row([]string{addr, strings.Join(result, "\n")}))
 	}
 	t.Sort()
