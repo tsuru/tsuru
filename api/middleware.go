@@ -31,6 +31,13 @@ func validate(token string, r *http.Request) (auth.Token, error) {
 		if q := r.URL.Query().Get(":app"); q != "" && t.GetAppName() != q {
 			return nil, fmt.Errorf("App token mismatch, token for %q, request for %q", t.GetAppName(), q)
 		}
+	} else if user, err := t.User(); err == nil {
+		if q := r.URL.Query().Get(":app"); q != "" {
+			_, err = getApp(q, user)
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 	return t, nil
 }

@@ -158,7 +158,53 @@ func (s *S) TestAuthTokenMiddlewareWithInvalidToken(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Authorization", "bearer ifyougotozah'ha'dumyoulldie")
+	h, log := doHandler()
+	authTokenMiddleware(recorder, request, h)
+	c.Assert(log.called, gocheck.Equals, true)
+	t := context.GetAuthToken(request)
+	c.Assert(t, gocheck.IsNil)
+}
+
+func (s *S) TestAuthTokenMiddlewareUserTokenForApp(c *gocheck.C) {
+	a := app.App{Name: "something", Teams: []string{s.team.Name}}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/?:app=something", nil)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	h, log := doHandler()
+	authTokenMiddleware(recorder, request, h)
+	c.Assert(log.called, gocheck.Equals, true)
+	t := context.GetAuthToken(request)
+	c.Assert(t.GetValue(), gocheck.Equals, s.token.GetValue())
+	c.Assert(t.GetUserName(), gocheck.Equals, s.token.GetUserName())
+}
+
+func (s *S) TestAuthTokenMiddlewareUserTokenAppNotFound(c *gocheck.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/?:app=something", nil)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	h, log := doHandler()
+	authTokenMiddleware(recorder, request, h)
+	c.Assert(log.called, gocheck.Equals, true)
+	t := context.GetAuthToken(request)
+	c.Assert(t, gocheck.IsNil)
+}
+
+func (s *S) TestAuthTokenMiddlewareUserTokenNoAccessToTheApp(c *gocheck.C) {
+	a := app.App{Name: "something"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/?:app=something", nil)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	h, log := doHandler()
 	authTokenMiddleware(recorder, request, h)
 	c.Assert(log.called, gocheck.Equals, true)
