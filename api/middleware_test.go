@@ -191,9 +191,12 @@ func (s *S) TestAuthTokenMiddlewareUserTokenAppNotFound(c *gocheck.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	h, log := doHandler()
 	authTokenMiddleware(recorder, request, h)
-	c.Assert(log.called, gocheck.Equals, true)
-	t := context.GetAuthToken(request)
-	c.Assert(t, gocheck.IsNil)
+	c.Assert(log.called, gocheck.Equals, false)
+	err = context.GetRequestError(request)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*tsuruErr.HTTP)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
 }
 
 func (s *S) TestAuthTokenMiddlewareUserTokenNoAccessToTheApp(c *gocheck.C) {
@@ -207,9 +210,12 @@ func (s *S) TestAuthTokenMiddlewareUserTokenNoAccessToTheApp(c *gocheck.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	h, log := doHandler()
 	authTokenMiddleware(recorder, request, h)
-	c.Assert(log.called, gocheck.Equals, true)
-	t := context.GetAuthToken(request)
-	c.Assert(t, gocheck.IsNil)
+	c.Assert(log.called, gocheck.Equals, false)
+	err = context.GetRequestError(request)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*tsuruErr.HTTP)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
 }
 
 func (s *S) TestRunDelayedHandlerWithoutHandler(c *gocheck.C) {

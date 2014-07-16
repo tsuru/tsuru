@@ -87,6 +87,10 @@ func authTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.Handl
 	if token != "" {
 		t, err := validate(token, r)
 		if err != nil {
+			if _, ok := err.(*errors.HTTP); ok {
+				context.AddRequestError(r, err)
+				return
+			}
 			log.Debugf("Ignored invalid token for %s: %s", r.URL.Path, err.Error())
 		} else {
 			context.SetAuthToken(r, t)
