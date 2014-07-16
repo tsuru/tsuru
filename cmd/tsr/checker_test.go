@@ -53,6 +53,7 @@ docker:
     bin: /var/lib/tsuru/start
     port: 8888
   ssh:
+    add-key-cmd: /var/lib/tsuru/add-key
     user: ubuntu
 `
 
