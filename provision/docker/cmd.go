@@ -130,9 +130,10 @@ func (listNodesInTheSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) erro
 	body, err := ioutil.ReadAll(resp.Body)
 	var nodes []map[string]interface{}
 	err = json.Unmarshal(body, &nodes)
-	t := cmd.Table{Headers: cmd.Row([]string{"Address", "Metadata"}), LineSeparator: true}
+	t := cmd.Table{Headers: cmd.Row([]string{"Address", "Status", "Metadata"}), LineSeparator: true}
 	for _, n := range nodes {
 		addr := n["Address"].(string)
+		status := n["Status"].(string)
 		result := []string{}
 		metadataField, _ := n["Metadata"]
 		if metadataField != nil {
@@ -142,7 +143,7 @@ func (listNodesInTheSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) erro
 			}
 		}
 		sort.Strings(result)
-		t.AddRow(cmd.Row([]string{addr, strings.Join(result, "\n")}))
+		t.AddRow(cmd.Row([]string{addr, status, strings.Join(result, "\n")}))
 	}
 	t.Sort()
 	ctx.Stdout.Write(t.Bytes())

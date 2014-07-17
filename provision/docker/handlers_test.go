@@ -70,7 +70,7 @@ func (s *HandlersSuite) TearDownSuite(c *gocheck.C) {
 }
 
 func (s *HandlersSuite) TestAddNodeHandler(c *gocheck.C) {
-	dCluster, _ = cluster.New(segregatedScheduler{}, &mapStorage{})
+	dCluster, _ = cluster.New(segregatedScheduler{}, &cluster.MapStorage{})
 	p := Pool{Name: "pool1"}
 	s.conn.Collection(schedulerCollection).Insert(p)
 	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
@@ -88,7 +88,7 @@ func (s *HandlersSuite) TestAddNodeHandler(c *gocheck.C) {
 
 func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *gocheck.C) {
 	iaas.RegisterIaasProvider("test-iaas", TestIaaS{})
-	dCluster, _ = cluster.New(segregatedScheduler{}, &mapStorage{})
+	dCluster, _ = cluster.New(segregatedScheduler{}, &cluster.MapStorage{})
 	p := Pool{Name: "pool1"}
 	s.conn.Collection(schedulerCollection).Insert(p)
 	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
@@ -124,6 +124,8 @@ func (s *HandlersSuite) TestAddNodeHandlerWithoutdCluster(c *gocheck.C) {
 }
 
 func (s *HandlersSuite) TestAddNodeHandlerWithoutdAddress(c *gocheck.C) {
+	config.Set("docker:scheduler:redis-server", "127.0.0.1:6379")
+	defer config.Unset("docker:scheduler:redis-server")
 	b := bytes.NewBufferString(`{"pool": "pool1"}`)
 	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
 	c.Assert(err, gocheck.IsNil)
@@ -134,26 +136,25 @@ func (s *HandlersSuite) TestAddNodeHandlerWithoutdAddress(c *gocheck.C) {
 }
 
 func (s *HandlersSuite) TestAddNodeHandlerWithInvalidURLAddress(c *gocheck.C) {
-	b := bytes.NewBufferString(`{"address": "url:1234", "pool": "pool1"}`)
+	config.Set("docker:scheduler:redis-server", "127.0.0.1:6379")
+	defer config.Unset("docker:scheduler:redis-server")
+	b := bytes.NewBufferString(`{"address": "/invalid", "pool": "pool1"}`)
 	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
 	c.Assert(err, gocheck.IsNil)
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
-	c.Assert(err, gocheck.NotNil)
-}
-
-func (s *HandlersSuite) TestAddNodeHandlerWithInaccessibleAddress(c *gocheck.C) {
-	b := bytes.NewBufferString(`{"address": "cant-access-url:1234", "pool": "pool1"}`)
-	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
+	c.Assert(err, gocheck.ErrorMatches, "Invalid address url: host cannot be empty")
+	b = bytes.NewBufferString(`{"address": "xxx://abc/invalid", "pool": "pool1"}`)
+	req, err = http.NewRequest("POST", "/docker/node?register=true", b)
 	c.Assert(err, gocheck.IsNil)
-	rec := httptest.NewRecorder()
+	rec = httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
-	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.ErrorMatches, `Invalid address url: scheme must be http\[s\]`)
 }
 
 func (s *HandlersSuite) TestRemoveNodeHandler(c *gocheck.C) {
 	var err error
-	dCluster, err = cluster.New(nil, &mapStorage{})
+	dCluster, err = cluster.New(nil, &cluster.MapStorage{})
 	c.Assert(err, gocheck.IsNil)
 	err = dCluster.Register("host.com:4243", nil)
 	c.Assert(err, gocheck.IsNil)
@@ -170,7 +171,7 @@ func (s *HandlersSuite) TestRemoveNodeHandler(c *gocheck.C) {
 func (s *HandlersSuite) TestListNodeHandler(c *gocheck.C) {
 	var result []cluster.Node
 	var err error
-	dCluster, err = cluster.New(nil, &mapStorage{})
+	dCluster, err = cluster.New(nil, &cluster.MapStorage{})
 	c.Assert(err, gocheck.IsNil)
 	err = dCluster.Register("host1.com:4243", map[string]string{"pool": "pool1"})
 	c.Assert(err, gocheck.IsNil)
@@ -208,7 +209,7 @@ func (s *HandlersSuite) TestFixContainerHandler(c *gocheck.C) {
 	defer coll.RemoveAll(bson.M{"appname": "makea"})
 	cleanup, server := startDocker()
 	defer cleanup()
-	var storage mapStorage
+	var storage cluster.MapStorage
 	storage.StoreContainer("9930c24f1c4x", server.URL)
 	cmutex.Lock()
 	dCluster, err = cluster.New(nil, &storage,

@@ -44,7 +44,7 @@ func (s *S) TestSchedulerSchedule(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer contColl.RemoveAll(bson.M{"name": bson.M{"$in": []string{cont1.Name, cont2.Name, cont3.Name}}})
 	var scheduler segregatedScheduler
-	clusterInstance, err := cluster.New(&scheduler, &mapStorage{})
+	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	c.Assert(err, gocheck.IsNil)
 	err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
 	c.Assert(err, gocheck.IsNil)
@@ -82,7 +82,7 @@ func (s *S) TestSchedulerScheduleFallback(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer contColl.RemoveAll(bson.M{"name": cont1.Name})
 	var scheduler segregatedScheduler
-	clusterInstance, err := cluster.New(&scheduler, &mapStorage{})
+	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	c.Assert(err, gocheck.IsNil)
 	err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
 	c.Assert(err, gocheck.IsNil)
@@ -112,7 +112,7 @@ func (s *S) TestSchedulerScheduleTeamOwner(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer contColl.RemoveAll(bson.M{"name": cont1.Name})
 	var scheduler segregatedScheduler
-	clusterInstance, err := cluster.New(&scheduler, &mapStorage{})
+	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	c.Assert(err, gocheck.IsNil)
 	err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
 	c.Assert(err, gocheck.IsNil)
@@ -133,7 +133,7 @@ func (s *S) TestSchedulerNoFallback(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer contColl.Remove(bson.M{"name": cont1.Name})
 	var scheduler segregatedScheduler
-	clusterInstance, err := cluster.New(&scheduler, &mapStorage{})
+	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	c.Assert(err, gocheck.IsNil)
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
 	node, err := scheduler.Schedule(clusterInstance, opts, app.Name)
@@ -143,7 +143,7 @@ func (s *S) TestSchedulerNoFallback(c *gocheck.C) {
 
 func (s *S) TestSchedulerNoNodesNoPool(c *gocheck.C) {
 	var scheduler segregatedScheduler
-	clusterInstance, err := cluster.New(&scheduler, &mapStorage{})
+	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	c.Assert(err, gocheck.IsNil)
 	opts := docker.CreateContainerOptions{}
 	node, err := scheduler.Schedule(clusterInstance, opts, "")
@@ -153,7 +153,7 @@ func (s *S) TestSchedulerNoNodesNoPool(c *gocheck.C) {
 
 func (s *S) TestSchedulerNoNodesWithFallbackPool(c *gocheck.C) {
 	var scheduler segregatedScheduler
-	clusterInstance, err := cluster.New(&scheduler, &mapStorage{})
+	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	c.Assert(err, gocheck.IsNil)
 	err = scheduler.addPool("mypool")
 	c.Assert(err, gocheck.IsNil)

@@ -45,7 +45,7 @@ func startDocker() (func(), *httptest.Server) {
 	}))
 	var err error
 	oldCluster := dockerCluster()
-	dCluster, err = cluster.New(nil, &mapStorage{},
+	dCluster, err = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: server.URL},
 	)
 	if err != nil {
@@ -75,7 +75,7 @@ func (s *S) TestFixContainers(c *gocheck.C) {
 	defer coll.RemoveAll(bson.M{"appname": "makea"})
 	cleanup, server := startDocker()
 	defer cleanup()
-	var storage mapStorage
+	var storage cluster.MapStorage
 	storage.StoreContainer("9930c24f1c4x", server.URL)
 	cmutex.Lock()
 	dCluster, err = cluster.New(nil, &storage,

@@ -18,6 +18,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 )
 
 func init() {
@@ -64,11 +65,15 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if address == "" {
 		return fmt.Errorf("address=url parameter is required.")
 	}
-	if _, err := url.ParseRequestURI(address); err != nil {
-		return err
+	url, err := url.ParseRequestURI(address)
+	if err != nil {
+		return fmt.Errorf("Invalid address url: %s", err.Error())
 	}
-	if _, err := http.Get(fmt.Sprintf("%s/_ping", address)); err != nil {
-		return err
+	if url.Host == "" {
+		return fmt.Errorf("Invalid address url: host cannot be empty")
+	}
+	if !strings.HasPrefix(url.Scheme, "http") {
+		return fmt.Errorf("Invalid address url: scheme must be http[s]")
 	}
 	return dockerCluster().Register(address, params)
 }
@@ -88,7 +93,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 
 //listNodeHandler call scheduler.Nodes to list all nodes into it.
 func listNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	nodeList, err := dockerCluster().Nodes()
+	nodeList, err := dockerCluster().UnfilteredNodes()
 	if err != nil {
 		return err
 	}

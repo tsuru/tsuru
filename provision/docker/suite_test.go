@@ -76,7 +76,7 @@ func (s *S) SetUpTest(c *gocheck.C) {
 	var err error
 	cmutex.Lock()
 	defer cmutex.Unlock()
-	dCluster, err = cluster.New(nil, &mapStorage{},
+	dCluster, err = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: s.server.URL()},
 	)
 	c.Assert(err, gocheck.IsNil)
@@ -121,7 +121,7 @@ func (s *S) startMultipleServersCluster() (*cluster.Cluster, error) {
 	defer cmutex.Unlock()
 	oldCluster := dCluster
 	otherUrl := strings.Replace(otherServer.URL(), "127.0.0.1", "localhost", 1)
-	dCluster, err = cluster.New(nil, &mapStorage{},
+	dCluster, err = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: s.server.URL()},
 		cluster.Node{Address: otherUrl},
 	)

@@ -327,7 +327,7 @@ func (s *S) TestContainerNetworkInfoNotFound(c *gocheck.C) {
 		}
 	}))
 	defer server.Close()
-	var storage mapStorage
+	var storage cluster.MapStorage
 	storage.StoreContainer("c-01", server.URL)
 	oldCluster := dockerCluster()
 	var err error
@@ -753,7 +753,7 @@ func (s *S) TestDockerCluster(c *gocheck.C) {
 	defer func() {
 		cmutex.Lock()
 		defer cmutex.Unlock()
-		dCluster, err = cluster.New(nil, &mapStorage{}, nodes...)
+		dCluster, err = cluster.New(nil, &cluster.MapStorage{}, nodes...)
 		c.Assert(err, gocheck.IsNil)
 	}()
 	config.Set("docker:scheduler:redis-server", "127.0.0.1:6379")
@@ -811,7 +811,7 @@ func (s *S) TestPushImage(c *gocheck.C) {
 	defer server.Stop()
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
-	var storage mapStorage
+	var storage cluster.MapStorage
 	storage.StoreImage("localhost:3030/base", server.URL())
 	cmutex.Lock()
 	oldDockerCluster := dCluster

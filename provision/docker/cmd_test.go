@@ -93,8 +93,8 @@ func (s *S) TestListNodesInTheSchedulerCmdRun(c *gocheck.C) {
 	context := cmd.Context{Stdout: &buf}
 	trans := &testing.ConditionalTransport{
 		Transport: testing.Transport{Message: `[
-	{"Address": "http://localhost:8080", "Metadata": {"meta1": "foo", "meta2": "bar"}},
-	{"Address": "http://localhost:9090"}
+	{"Address": "http://localhost:8080", "Status": "disabled", "Metadata": {"meta1": "foo", "meta2": "bar"}},
+	{"Address": "http://localhost:9090", "Status": "ready"}
 ]`, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			return req.URL.Path == "/docker/node"
@@ -104,14 +104,14 @@ func (s *S) TestListNodesInTheSchedulerCmdRun(c *gocheck.C) {
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
 	err := listNodesInTheSchedulerCmd{}.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
-	expected := `+-----------------------+-----------+
-| Address               | Metadata  |
-+-----------------------+-----------+
-| http://localhost:8080 | meta1=foo |
-|                       | meta2=bar |
-+-----------------------+-----------+
-| http://localhost:9090 |           |
-+-----------------------+-----------+
+	expected := `+-----------------------+----------+-----------+
+| Address               | Status   | Metadata  |
++-----------------------+----------+-----------+
+| http://localhost:8080 | disabled | meta1=foo |
+|                       |          | meta2=bar |
++-----------------------+----------+-----------+
+| http://localhost:9090 | ready    |           |
++-----------------------+----------+-----------+
 `
 	c.Assert(buf.String(), gocheck.Equals, expected)
 }
