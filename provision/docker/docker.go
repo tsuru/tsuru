@@ -371,21 +371,7 @@ func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) er
 	if c.PrivateKey == "" || c.SSHHostPort == "" {
 		return c.legacySSH(stdout, stderr, cmd, args...)
 	}
-	key, err := ssh.ParseRawPrivateKey([]byte(c.PrivateKey))
-	if err != nil {
-		return err
-	}
-	signer, err := ssh.NewSignerFromKey(key)
-	if err != nil {
-		return err
-	}
-	host := c.HostAddr + ":" + c.SSHHostPort
-	config := ssh.ClientConfig{
-		Config: ssh.Config{Rand: rand.Reader},
-		Auth:   []ssh.AuthMethod{ssh.PublicKeys(signer)},
-		User:   c.User,
-	}
-	client, err := ssh.Dial("tcp", host, &config)
+	client, err := c.dialSSH()
 	if err != nil {
 		return err
 	}
@@ -421,6 +407,55 @@ func (c *container) legacySSH(stdout, stderr io.Writer, cmd string, args ...stri
 	defer resp.Body.Close()
 	_, err = io.Copy(stdout, resp.Body)
 	return err
+}
+
+func (c *container) shell(stdin io.Reader, stdout, stderr io.Writer) error {
+	client, err := c.dialSSH()
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+	session, err := client.NewSession()
+	if err != nil {
+		return err
+	}
+	defer session.Close()
+	session.Stdout = stdout
+	session.Stderr = stderr
+	session.Stdin = stdin
+	modes := ssh.TerminalModes{
+		ssh.ECHO:          0,
+		ssh.ECHOCTL:       0,
+		ssh.TTY_OP_ISPEED: 14400,
+		ssh.TTY_OP_OSPEED: 14400,
+	}
+	err = session.RequestPty("xterm", 120, 80, modes)
+	if err != nil {
+		return err
+	}
+	err = session.Shell()
+	if err != nil {
+		return err
+	}
+	return session.Wait()
+}
+
+func (c *container) dialSSH() (*ssh.Client, error) {
+	key, err := ssh.ParseRawPrivateKey([]byte(c.PrivateKey))
+	if err != nil {
+		return nil, err
+	}
+	signer, err := ssh.NewSignerFromKey(key)
+	if err != nil {
+		return nil, err
+	}
+	host := c.HostAddr + ":" + c.SSHHostPort
+	config := ssh.ClientConfig{
+		Config: ssh.Config{Rand: rand.Reader},
+		Auth:   []ssh.AuthMethod{ssh.PublicKeys(signer)},
+		User:   c.User,
+	}
+	return ssh.Dial("tcp", host, &config)
 }
 
 // commit commits an image in docker based in the container

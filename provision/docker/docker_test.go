@@ -433,6 +433,52 @@ func (s *S) TestContainerLegacySSHFiltersStdout(c *gocheck.C) {
 	c.Assert(stdout.String(), gocheck.Equals, "failed\n")
 }
 
+func (s *S) TestContainerShell(c *gocheck.C) {
+	sshServer := newMockSSHServer(c)
+	defer sshServer.Shutdown()
+	timedout := make(chan bool)
+	quit := make(chan bool)
+	go func() {
+		addr := "localhost:" + sshServer.port
+		for {
+			select {
+			case <-timedout:
+				return
+			default:
+				if conn, err := net.Dial("tcp", addr); err == nil {
+					conn.Close()
+					close(quit)
+					return
+				}
+			}
+		}
+	}()
+	select {
+	case <-quit:
+	case <-time.After(2e9):
+		close(timedout)
+		c.Fatal("The SSH server didn't come up after 2 seconds.")
+	}
+	container, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	container.SSHHostPort = sshServer.port
+	container.HostAddr = "localhost"
+	container.PrivateKey = string(fakeServerPrivateKey)
+	container.User = sshUsername()
+	tmpDir, err := ioutil.TempDir("", "containerssh")
+	defer os.RemoveAll(tmpDir)
+	filepath := path.Join(tmpDir, "file.txt")
+	file, err := os.Create(filepath)
+	c.Assert(err, gocheck.IsNil)
+	file.Write([]byte("hello"))
+	file.Close()
+	var stdout, stderr bytes.Buffer
+	stdin := bytes.NewBufferString("cat " + filepath + "\nexit\n")
+	err = container.shell(stdin, &stdout, &stderr)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(strings.Contains(stdout.String(), "hello"), gocheck.Equals, true)
+}
+
 func (s *S) TestGetContainer(c *gocheck.C) {
 	coll := collection()
 	defer coll.Close()
