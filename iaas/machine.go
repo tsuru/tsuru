@@ -70,15 +70,15 @@ func (m *Machine) Destroy() error {
 }
 
 func (m *Machine) FormatNodeAddress() (string, error) {
-	protocol, err := config.Get("iaas:node-protocol")
+	protocol, err := config.GetString("iaas:node-protocol")
 	if err != nil {
 		return "", err
 	}
-	port, err := config.Get("iaas:node-port")
+	port, err := config.GetInt("iaas:node-port")
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s://%s:%s", protocol, m.Address, port), nil
+	return fmt.Sprintf("%s://%s:%d", protocol, m.Address, port), nil
 }
 
 func (m *Machine) saveToDB() error {
