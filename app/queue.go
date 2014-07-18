@@ -29,11 +29,13 @@ const (
 func ensureAppIsStarted(msg *queue.Message) (App, error) {
 	app, err := GetByName(msg.Args[0])
 	if err != nil {
+		log.Errorf("Error handling %q: app %q does not exist.", msg.Action, msg.Args[0])
 		return App{}, fmt.Errorf("Error handling %q: app %q does not exist.", msg.Action, msg.Args[0])
 	}
 	units := getUnits(app, msg.Args[1:])
 	if len(msg.Args) > 1 && len(units) == 0 {
 		format := "Error handling %q for the app %q: unknown units in the message. Deleting it..."
+		log.Errorf(format, msg.Action, app.Name)
 		return *app, fmt.Errorf(format, msg.Action, app.Name)
 	}
 	if !app.Available() || !units.Started() {
@@ -41,6 +43,7 @@ func ensureAppIsStarted(msg *queue.Message) (App, error) {
 		uState := units.State()
 		if uState == "error" || uState == "down" {
 			format += fmt.Sprintf(" units are in %q state.", uState)
+			log.Errorf(format, msg.Action, app.Name)
 		} else {
 			msg.Fail()
 			format += " all units must be started."
@@ -55,7 +58,8 @@ func ensureAppIsStarted(msg *queue.Message) (App, error) {
 func bindUnit(msg *queue.Message) error {
 	app, err := GetByName(msg.Args[0])
 	if err != nil {
-		return fmt.Errorf("Error handling %q: app %q does not exist.", msg.Action, app.Name)
+		log.Errorf("Error handling %q: app %q does not exist.", msg.Action, msg.Args[0])
+		return fmt.Errorf("Error handling %q: app %q does not exist.", msg.Action, msg.Args[0])
 	}
 	conn, err := db.Conn()
 	if err != nil {
@@ -92,7 +96,6 @@ func handle(msg *queue.Message) {
 		}
 		app, err := ensureAppIsStarted(msg)
 		if err != nil {
-			log.Error(err.Error())
 			return
 		}
 		err = app.SerializeEnvVars()

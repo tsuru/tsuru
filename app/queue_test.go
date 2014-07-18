@@ -86,10 +86,9 @@ func (s *S) TestHandleMessageErrors(c *gocheck.C) {
 			expectedLog: `Error handling "unknown-action": invalid action.`,
 		},
 		{
-			action: regenerateApprc,
-			args:   []string{"nemesis"},
-			expectedLog: `Error handling "regenerate-apprc" for the app "nemesis":` +
-				` all units must be started.`,
+			action:      regenerateApprc,
+			args:        []string{"nemesis"},
+			expectedLog: "",
 		},
 		{
 			action:      regenerateApprc,
@@ -113,10 +112,9 @@ func (s *S) TestHandleMessageErrors(c *gocheck.C) {
 				` units are in "down" state.`,
 		},
 		{
-			action: regenerateApprc,
-			args:   []string{"totem", "totem/0", "totem/1"},
-			expectedLog: `Error handling "regenerate-apprc" for the app "totem":` +
-				` all units must be started.`,
+			action:      regenerateApprc,
+			args:        []string{"totem", "totem/0", "totem/1"},
+			expectedLog: "",
 		},
 	}
 	a := App{Name: "nemesis"}
