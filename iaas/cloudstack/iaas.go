@@ -56,7 +56,7 @@ func (i *CloudstackIaaS) CreateMachine(params map[string]string) (*iaas.Machine,
 	if err != nil {
 		return nil, err
 	}
-	var vmStatus map[string]string
+	var vmStatus map[string]interface{}
 	err = json.Unmarshal(body, &vmStatus)
 	if err != nil {
 		return nil, err
@@ -97,13 +97,13 @@ func buildUrl(command string, params map[string]string) (string, error) {
 	}
 	queryString := strings.Join(string_params, "&")
 	digest := hmac.New(sha1.New, []byte(secretKey))
-	digest.Write([]byte(queryString))
+	digest.Write([]byte(strings.ToLower(queryString)))
 	signature := base64.StdEncoding.EncodeToString(digest.Sum(nil))
 	cloudstackUrl, err := config.GetString("iaas:cloudstack:url")
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s?%s&signature=%s", cloudstackUrl, queryString, signature), nil
+	return fmt.Sprintf("%s?%s&signature=%s", cloudstackUrl, queryString, url.QueryEscape(signature)), nil
 }
 
 func waitVMIsCreated(vmStatus map[string]string) (*CloudstackVirtualMachine, error) {
