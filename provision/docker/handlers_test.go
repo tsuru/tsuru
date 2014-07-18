@@ -12,14 +12,18 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/testing"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path"
 	"strings"
 )
 
@@ -511,4 +515,110 @@ func (s *HandlersSuite) TestRemoveTeamsToPoolHandler(c *gocheck.C) {
 	err = s.conn.Collection(schedulerCollection).FindId("pool1").One(&p)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.Teams, gocheck.DeepEquals, []string{})
+}
+
+func (s *HandlersSuite) TestSSHToContainerHandler(c *gocheck.C) {
+	sshServer := newMockSSHServer(c, 2e9)
+	defer sshServer.Shutdown()
+	coll := collection()
+	defer coll.Close()
+	container := container{
+		ID:          "9930c24f1c4x",
+		AppName:     "makea",
+		Type:        "python",
+		Status:      provision.StatusStarted.String(),
+		IP:          "127.0.0.4",
+		HostPort:    "9025",
+		HostAddr:    "localhost",
+		SSHHostPort: sshServer.port,
+		PrivateKey:  string(fakeServerPrivateKey),
+		User:        sshUsername(),
+	}
+	err := coll.Insert(container)
+	c.Assert(err, gocheck.IsNil)
+	defer coll.RemoveAll(bson.M{"appname": "makea"})
+	tmpDir, err := ioutil.TempDir("", "containerssh")
+	defer os.RemoveAll(tmpDir)
+	filepath := path.Join(tmpDir, "file.txt")
+	file, err := os.Create(filepath)
+	c.Assert(err, gocheck.IsNil)
+	file.Write([]byte("hello"))
+	file.Close()
+	conn, err := net.Dial("tcp", "localhost:"+sshServer.port)
+	c.Assert(err, gocheck.IsNil)
+	recorder := hijacker{
+		ResponseWriter: httptest.NewRecorder(),
+		input:          bytes.NewBufferString("cat " + filepath + "\nexit\n"),
+		conn:           conn,
+	}
+	request, err := http.NewRequest("GET", "/?:container_id="+container.ID, nil)
+	c.Assert(err, gocheck.IsNil)
+	err = sshToContainerHandler(&recorder, request, nil)
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *HandlersSuite) TestSSHToContainerHandlerUnhijackable(c *gocheck.C) {
+	coll := collection()
+	defer coll.Close()
+	container := container{
+		ID:       "9930c24f1c4x",
+		AppName:  "makea",
+		Type:     "python",
+		Status:   provision.StatusStarted.String(),
+		IP:       "127.0.0.4",
+		HostPort: "9025",
+		HostAddr: "127.0.0.1",
+	}
+	err := coll.Insert(container)
+	c.Assert(err, gocheck.IsNil)
+	defer coll.RemoveAll(bson.M{"appname": "makea"})
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/?:container_id="+container.ID, nil)
+	c.Assert(err, gocheck.IsNil)
+	err = sshToContainerHandler(recorder, request, nil)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusInternalServerError)
+	c.Assert(e.Message, gocheck.Equals, "cannot hijack connection")
+}
+
+func (s *HandlersSuite) TestSSHToContainerHandlerContainerNotFound(c *gocheck.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/?:container_id=a12345", nil)
+	c.Assert(err, gocheck.IsNil)
+	err = sshToContainerHandler(recorder, request, nil)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(e.Message, gocheck.Equals, "not found")
+}
+
+func (s *HandlersSuite) TestSSHToContainerFailToHijack(c *gocheck.C) {
+	coll := collection()
+	defer coll.Close()
+	container := container{
+		ID:       "9930c24f1c4x",
+		AppName:  "makea",
+		Type:     "python",
+		Status:   provision.StatusStarted.String(),
+		IP:       "127.0.0.4",
+		HostPort: "9025",
+		HostAddr: "127.0.0.1",
+	}
+	err := coll.Insert(container)
+	c.Assert(err, gocheck.IsNil)
+	defer coll.RemoveAll(bson.M{"appname": "makea"})
+	recorder := hijacker{
+		err: fmt.Errorf("are you going to hijack the connection? seriously?"),
+	}
+	request, err := http.NewRequest("GET", "/?:container_id="+container.ID, nil)
+	c.Assert(err, gocheck.IsNil)
+	err = sshToContainerHandler(&recorder, request, nil)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusInternalServerError)
+	c.Assert(e.Message, gocheck.Equals, recorder.err.Error())
 }
