@@ -73,7 +73,6 @@ func (b beanstalkdFactory) Handler(f func(*Message), names ...string) (Handler, 
 					}
 				}(message)
 			} else {
-				log.Debugf("Failed to get message from the queue: %s. Trying again...", err)
 				if e, ok := err.(*net.OpError); ok && e.Op == "dial" {
 					time.Sleep(5e9)
 				}
