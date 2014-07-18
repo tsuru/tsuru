@@ -18,6 +18,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"text/template"
+	"time"
 )
 
 const sshd_config = `
@@ -118,7 +119,7 @@ func getAvailablePort() string {
 }
 
 // newMockSSHServer returns a new mock ssh server.
-func newMockSSHServer(c *gocheck.C) *sshServer {
+func newMockSSHServer(c *gocheck.C, timeout time.Duration) *sshServer {
 	dir, err := ioutil.TempDir("", "sshtest")
 	c.Assert(err, gocheck.IsNil)
 	f, err := os.Create(filepath.Join(dir, "sshd_config"))
@@ -144,6 +145,29 @@ func newMockSSHServer(c *gocheck.C) *sshServer {
 		port: port,
 	}
 	server.start()
+	timedout := make(chan bool)
+	quit := make(chan bool)
+	go func() {
+		addr := "localhost:" + port
+		for {
+			select {
+			case <-timedout:
+				return
+			default:
+				if conn, err := net.Dial("tcp", addr); err == nil {
+					conn.Close()
+					close(quit)
+					return
+				}
+			}
+		}
+	}()
+	select {
+	case <-quit:
+	case <-time.After(timeout):
+		close(timedout)
+		c.Fatalf("The SSH server didn't come up after %s.", timeout)
+	}
 	return &server
 }
 
