@@ -183,9 +183,8 @@ func GetByName(name string) (*App, error) {
 // Creating a new app is a process composed of four steps:
 //
 //       1. Save the app in the database
-//       2. Create IAM credentials for the app
-//       3. Create the git repository using gandalf
-//       4. Provision units within the provisioner
+//       2. Create the git repository using gandalf
+//       3. Provision the app using the provisioner
 func CreateApp(app *App, user *auth.User) error {
 	teams, err := user.Teams()
 	if err != nil {
