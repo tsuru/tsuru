@@ -7,6 +7,7 @@ package cloudstack
 import (
 	"crypto/hmac"
 	"crypto/sha1"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"

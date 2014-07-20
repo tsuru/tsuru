@@ -24,6 +24,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path"
+	"strconv"
 	"strings"
 )
 
@@ -37,7 +38,8 @@ func (TestIaaS) CreateMachine(params map[string]string) (*iaas.Machine, error) {
 	rawURL := strings.Replace(httptest.NewServer(nil).URL, "http://", "", -1)
 	address := strings.Split(rawURL, ":")
 	config.Set("iaas:node-protocol", "http")
-	config.Set("iaas:node-port", address[1])
+	i, _ := strconv.Atoi(address[1])
+	config.Set("iaas:node-port", i)
 	m := iaas.Machine{
 		Id:      "id",
 		Status:  "running",
