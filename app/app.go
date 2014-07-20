@@ -180,7 +180,7 @@ func GetByName(name string) (*App, error) {
 
 // CreateApp creates a new app.
 //
-// Creating a new app is a process composed of four steps:
+// Creating a new app is a process composed of the following steps:
 //
 //       1. Save the app in the database
 //       2. Create the git repository using gandalf
