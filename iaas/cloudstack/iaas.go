@@ -5,7 +5,6 @@
 package cloudstack
 
 import (
-	"bytes"
 	"crypto/hmac"
 	"crypto/sha1"
 	"encoding/base64"
@@ -18,25 +17,24 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"time"
 )
 
 func init() {
 	iaas.RegisterIaasProvider("cloudstack", &CloudstackIaaS{})
 }
 
+type ListVirtualMachinesResponse struct {
+	VirtualMachine []VirtualMachineStruct `json:"virtualmachine"`
+}
+type VirtualMachineStruct struct {
+	Nic []NicStruct `json:"nic"`
+}
+type NicStruct struct {
+	IpAddress string `json:"ipaddress"`
+}
+
 type CloudstackIaaS struct{}
-
-type NetInterface struct {
-	IpAddress string
-}
-
-type CloudstackVirtualMachine struct {
-	Nic []NetInterface
-}
-
-func (cs *CloudstackVirtualMachine) IsAvailable() bool {
-	return true
-}
 
 func (i *CloudstackIaaS) DeleteMachine(machine *iaas.Machine) error {
 	return nil
@@ -56,18 +54,19 @@ func (i *CloudstackIaaS) CreateMachine(params map[string]string) (*iaas.Machine,
 	if err != nil {
 		return nil, err
 	}
-	var vmStatus map[string]interface{}
+	var vmStatus map[string]map[string]string
 	err = json.Unmarshal(body, &vmStatus)
 	if err != nil {
 		return nil, err
 	}
-	csVm, err := waitVMIsCreated(vmStatus)
+	vmStatus["deployvirtualmachineresponse"]["projectid"] = params["projectid"]
+	IpAddress, err := waitVMIsCreated(vmStatus)
 	if err != nil {
 		return nil, err
 	}
 	m := &iaas.Machine{
-		Id:      csVm.Nic[0].IpAddress,
-		Address: csVm.Nic[0].IpAddress,
+		Id:      IpAddress,
+		Address: IpAddress,
 		Status:  "running",
 	}
 	return m, nil
@@ -106,16 +105,47 @@ func buildUrl(command string, params map[string]string) (string, error) {
 	return fmt.Sprintf("%s?%s&signature=%s", cloudstackUrl, queryString, url.QueryEscape(signature)), nil
 }
 
-func waitVMIsCreated(vmStatus map[string]string) (*CloudstackVirtualMachine, error) {
-	vmJson := `{"nic": [{"ipaddress": "0.0.0.0"}]}`
-	vmJsonBuffer := bytes.NewBufferString(vmJson)
-	var vm CloudstackVirtualMachine
-	err := json.Unmarshal(vmJsonBuffer.Bytes(), &vm)
+func waitVMIsCreated(vmStatus map[string]map[string]string) (string, error) {
+	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+	client := &http.Client{Transport: tr}
+	jobData := vmStatus["deployvirtualmachineresponse"]
+	count := 0
+	maxTry := 300
+	jobStatus := 0
+	for jobStatus != 0 || count > maxTry {
+		urlToJobCheck, _ := buildUrl("queryAsyncJobResult", map[string]string{"jobid": jobData["jobid"]})
+		resp, err := client.Get(urlToJobCheck)
+		if err != nil {
+			return "", err
+		}
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return "", err
+		}
+		var jobCheckStatus map[string]interface{}
+		err = json.Unmarshal(body, &jobCheckStatus)
+		if err != nil {
+			return "", err
+		}
+		jobStatus = jobCheckStatus["jobstatus"].(int)
+		count = count + 1
+		time.Sleep(time.Second)
+	}
+	urlToGetMachineInfo, _ := buildUrl("listVirtualMachines", map[string]string{"id": jobData["id"], "projectid": jobData["projectid"]})
+	resp, err := client.Get(urlToGetMachineInfo)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	if vm.IsAvailable() {
-		return &vm, nil
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
 	}
-	return &vm, nil
+	var machineInfo map[string]ListVirtualMachinesResponse
+	err = json.Unmarshal(body, &machineInfo)
+	if err != nil {
+		return "", err
+	}
+	return machineInfo["listvirtualmachinesresponse"].VirtualMachine[0].Nic[0].IpAddress, nil
 }
