@@ -14,10 +14,6 @@ import (
 	"time"
 )
 
-const userData = `#!/bin/bash
-curl -sL https://raw.github.com/tsuru/now/master/run.bash | bash -s -- --docker-only
-`
-
 const maxWaitTime = time.Duration(1 * time.Minute)
 
 func init() {
@@ -98,7 +94,7 @@ func (i *EC2IaaS) CreateMachine(params map[string]string) (*iaas.Machine, error)
 	options := ec2.RunInstances{
 		ImageId:      imageId,
 		InstanceType: instanceType,
-		UserData:     []byte(userData),
+		UserData:     []byte(iaas.UserData),
 		MinCount:     1,
 		MaxCount:     1,
 		KeyName:      keyName,

@@ -5,8 +5,10 @@
 package cloudstack
 
 import (
+	"encoding/base64"
 	"fmt"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/iaas"
 	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
@@ -25,6 +27,35 @@ func (s *cloudstackSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("iaas:cloudstack:api-key", "test")
 	config.Set("iaas:cloudstack:secret-key", "test")
 	config.Set("iaas:cloudstack:url", "test")
+}
+
+func (s *cloudstackSuite) TestReadUserDataDefault(c *gocheck.C) {
+	userData, err := readUserData()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(userData, gocheck.Equals, base64.StdEncoding.EncodeToString([]byte(iaas.UserData)))
+}
+
+func (s *cloudstackSuite) TestReadUserData(c *gocheck.C) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "abc def ghi")
+	}))
+	defer server.Close()
+	config.Set("iaas:cloudstack:user-data", server.URL)
+	defer config.Unset("iaas:cloudstack:user-data")
+	userData, err := readUserData()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(userData, gocheck.Equals, base64.StdEncoding.EncodeToString([]byte("abc def ghi")))
+}
+
+func (s *cloudstackSuite) TestReadUserDataError(c *gocheck.C) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+	config.Set("iaas:cloudstack:user-data", server.URL)
+	defer config.Unset("iaas:cloudstack:user-data")
+	_, err := readUserData()
+	c.Assert(err, gocheck.NotNil)
 }
 
 func (s *cloudstackSuite) TestCreateMachine(c *gocheck.C) {

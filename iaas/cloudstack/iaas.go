@@ -42,21 +42,21 @@ func (i *CloudstackIaaS) DeleteMachine(machine *iaas.Machine) error {
 }
 
 func (i *CloudstackIaaS) CreateMachine(params map[string]string) (*iaas.Machine, error) {
+	userData, err := readUserData()
+	if err != nil {
+		return nil, err
+	}
+	params["userdata"] = userData
 	url, err := buildUrl("deployVirtualMachine", params)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := http.Get(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	resp, err := httpClient().Get(url)
 	if err != nil {
 		return nil, err
 	}
 	var vmStatus map[string]map[string]string
-	err = json.Unmarshal(body, &vmStatus)
+	err = json.NewDecoder(resp.Body).Decode(&vmStatus)
 	if err != nil {
 		return nil, err
 	}
@@ -71,6 +71,34 @@ func (i *CloudstackIaaS) CreateMachine(params map[string]string) (*iaas.Machine,
 		Status:  "running",
 	}
 	return m, nil
+}
+
+func readUserData() (string, error) {
+	userDataUrl, _ := config.GetString("iaas:cloudstack:user-data")
+	var userData string
+	if userDataUrl == "" {
+		userData = iaas.UserData
+	} else {
+		resp, err := http.Get(userDataUrl)
+		if err != nil {
+			return "", err
+		}
+		if resp.StatusCode != http.StatusOK {
+			return "", fmt.Errorf("Invalid user-data status code: %d", resp.StatusCode)
+		}
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return "", err
+		}
+		userData = string(body)
+	}
+	return base64.StdEncoding.EncodeToString([]byte(userData)), nil
+}
+
+func httpClient() *http.Client {
+	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+	return &http.Client{Transport: tr}
 }
 
 func buildUrl(command string, params map[string]string) (string, error) {
@@ -107,15 +135,13 @@ func buildUrl(command string, params map[string]string) (string, error) {
 }
 
 func waitVMIsCreated(vmStatus map[string]map[string]string) (string, error) {
-	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
-	client := &http.Client{Transport: tr}
 	jobData := vmStatus["deployvirtualmachineresponse"]
 	count := 0
 	maxTry := 300
 	jobStatus := 0
 	for jobStatus != 0 || count > maxTry {
 		urlToJobCheck, _ := buildUrl("queryAsyncJobResult", map[string]string{"jobid": jobData["jobid"]})
-		resp, err := client.Get(urlToJobCheck)
+		resp, err := httpClient().Get(urlToJobCheck)
 		if err != nil {
 			return "", err
 		}
@@ -134,7 +160,7 @@ func waitVMIsCreated(vmStatus map[string]map[string]string) (string, error) {
 		time.Sleep(time.Second)
 	}
 	urlToGetMachineInfo, _ := buildUrl("listVirtualMachines", map[string]string{"id": jobData["id"], "projectid": jobData["projectid"]})
-	resp, err := client.Get(urlToGetMachineInfo)
+	resp, err := httpClient().Get(urlToGetMachineInfo)
 	if err != nil {
 		return "", err
 	}

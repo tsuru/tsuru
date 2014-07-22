@@ -10,6 +10,10 @@ import (
 	"fmt"
 )
 
+const UserData = `#!/bin/bash
+curl -sL https://raw.github.com/tsuru/now/master/run.bash | bash -s -- --docker-only
+`
+
 // Every Tsuru IaaS must implement this interface.
 type IaaS interface {
 	// Called when tsuru is creating a Machine.
