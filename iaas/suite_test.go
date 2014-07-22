@@ -36,7 +36,7 @@ func (TestIaaS) CreateMachine(params map[string]string) (*Machine, error) {
 	m := Machine{
 		Id:      params["id"],
 		Status:  "running",
-		Address: "mymachine.somewhere.com",
+		Address: params["id"] + ".somewhere.com",
 	}
 	return &m, nil
 }

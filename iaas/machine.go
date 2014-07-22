@@ -57,6 +57,14 @@ func ListMachines() ([]Machine, error) {
 	return result, err
 }
 
+func FindMachineByAddress(address string) (Machine, error) {
+	coll := collection()
+	defer coll.Close()
+	var result Machine
+	err := coll.Find(bson.M{"address": address}).One(&result)
+	return result, err
+}
+
 func (m *Machine) Destroy() error {
 	iaas, err := getIaasProvider(m.Iaas)
 	if err != nil {

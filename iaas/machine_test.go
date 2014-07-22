@@ -6,6 +6,7 @@ package iaas
 
 import (
 	"github.com/tsuru/config"
+	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 )
@@ -46,6 +47,21 @@ func (s *S) TestListMachines(c *gocheck.C) {
 	c.Assert(machines, gocheck.HasLen, 2)
 	c.Assert(machines[0].Id, gocheck.Equals, "myid1")
 	c.Assert(machines[1].Id, gocheck.Equals, "myid2")
+}
+
+func (s *S) TestFindMachineByAddress(c *gocheck.C) {
+	_, err := CreateMachineForIaaS("test-iaas", map[string]string{"id": "myid1"})
+	c.Assert(err, gocheck.IsNil)
+	_, err = CreateMachineForIaaS("test-iaas", map[string]string{"id": "myid2"})
+	c.Assert(err, gocheck.IsNil)
+	machine, err := FindMachineByAddress("myid1.somewhere.com")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(machine.Id, gocheck.Equals, "myid1")
+	machine, err = FindMachineByAddress("myid2.somewhere.com")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(machine.Id, gocheck.Equals, "myid2")
+	_, err = FindMachineByAddress("myid3.somewhere.com")
+	c.Assert(err, gocheck.Equals, mgo.ErrNotFound)
 }
 
 func (s *S) TestDestroy(c *gocheck.C) {
