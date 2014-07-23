@@ -74,3 +74,18 @@ func (s *S) TestDestroy(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(machines, gocheck.HasLen, 0)
 }
+
+func (s *S) TestFindById(c *gocheck.C) {
+	_, err := CreateMachineForIaaS("test-iaas", map[string]string{"id": "myid1"})
+	c.Assert(err, gocheck.IsNil)
+	_, err = CreateMachineForIaaS("test-iaas", map[string]string{"id": "myid2"})
+	c.Assert(err, gocheck.IsNil)
+	machine, err := FindMachineById("myid1")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(machine.Id, gocheck.Equals, "myid1")
+	machine, err = FindMachineById("myid2")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(machine.Id, gocheck.Equals, "myid2")
+	_, err = FindMachineById("myid3")
+	c.Assert(err, gocheck.Equals, mgo.ErrNotFound)
+}

@@ -69,6 +69,14 @@ func FindMachineByAddress(address string) (Machine, error) {
 	return result, err
 }
 
+func FindMachineById(id string) (Machine, error) {
+	coll := collection()
+	defer coll.Close()
+	var result Machine
+	err := coll.FindId(id).One(&result)
+	return result, err
+}
+
 func (m *Machine) Destroy() error {
 	iaas, err := getIaasProvider(m.Iaas)
 	if err != nil {
