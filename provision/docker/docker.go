@@ -78,6 +78,15 @@ func dockerCluster() *cluster.Cluster {
 			nodes = getDockerServers()
 			dCluster, _ = cluster.New(nil, clusterStorage, nodes...)
 		}
+		autoHealing, _ := config.GetBool("docker:auto-healing")
+		if autoHealing {
+			healer := Healer{}
+			dCluster.SetHealer(&healer)
+		}
+		activeMonitoring, _ := config.GetBool("docker:active-monitoring")
+		if activeMonitoring {
+			dCluster.StartActiveMonitoring(1 * time.Minute)
+		}
 	}
 	return dCluster
 }
