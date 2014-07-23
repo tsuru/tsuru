@@ -3163,9 +3163,13 @@ func (s *S) TestSwap(c *gocheck.C) {
 	app1 := app.App{Name: "app1", Teams: []string{s.team.Name}}
 	err := s.conn.Apps().Insert(&app1)
 	c.Assert(err, gocheck.IsNil)
+	err = s.provisioner.Provision(&app1)
+	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app1.Name})
 	app2 := app.App{Name: "app2", Teams: []string{s.team.Name}}
 	err = s.conn.Apps().Insert(&app2)
+	c.Assert(err, gocheck.IsNil)
+	err = s.provisioner.Provision(&app2)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app2.Name})
 	request, _ := http.NewRequest("PUT", "/swap?app1=app1&app2=app2", nil)
