@@ -38,6 +38,22 @@ type NicStruct struct {
 type CloudstackIaaS struct{}
 
 func (i *CloudstackIaaS) DeleteMachine(machine *iaas.Machine) error {
+	url, err := buildUrl("destroyVirtualMachine", map[string]string{"id": machine.Id})
+	if err != nil {
+		return err
+	}
+	resp, err := httpClient().Get(url)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != 200 {
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		return fmt.Errorf("DeleteMachine: Unexpected return code: %d body: %s", resp.StatusCode, body)
+	}
 	return nil
 }
 
@@ -66,7 +82,7 @@ func (i *CloudstackIaaS) CreateMachine(params map[string]string) (*iaas.Machine,
 		return nil, err
 	}
 	m := &iaas.Machine{
-		Id:      IpAddress,
+		Id:      vmStatus["deployvirtualmachineresponse"]["id"],
 		Address: IpAddress,
 		Status:  "running",
 	}
@@ -99,6 +115,7 @@ func readUserData() (string, error) {
 func httpClient() *http.Client {
 	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 	return &http.Client{Transport: tr}
+	// return http.DefaultClient
 }
 
 func buildUrl(command string, params map[string]string) (string, error) {

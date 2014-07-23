@@ -93,3 +93,39 @@ func (s *cloudstackSuite) TestBuildUrlToCloudstack(c *gocheck.C) {
 	c.Assert(q["response"], gocheck.DeepEquals, []string{"json"})
 	c.Assert(q["command"], gocheck.DeepEquals, []string{"commandTest"})
 }
+
+func (s *cloudstackSuite) TestDeleteMachine(c *gocheck.C) {
+	var req *http.Request
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		req = r
+		w.WriteHeader(http.StatusOK)
+	}))
+	config.Set("iaas:cloudstack:url", server.URL)
+	defer server.Close()
+	var cs CloudstackIaaS
+	machine := iaas.Machine{Id: "myMachineId"}
+	err := cs.DeleteMachine(&machine)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(req, gocheck.NotNil)
+	c.Assert(req.RequestURI, gocheck.Matches, ".*command=destroyVirtualMachine&id=myMachineId.*")
+}
+
+func (s *cloudstackSuite) TestDeleteMachineError(c *gocheck.C) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	config.Set("iaas:cloudstack:url", server.URL)
+	defer server.Close()
+	var cs CloudstackIaaS
+	machine := iaas.Machine{Id: "myMachineId"}
+	err := cs.DeleteMachine(&machine)
+	c.Assert(err, gocheck.ErrorMatches, ".*Unexpected return code.*")
+}
+
+func (s *cloudstackSuite) TestDeleteMachineErrorNoServer(c *gocheck.C) {
+	config.Set("iaas:cloudstack:url", "http://invalidurl.invalid.invalid")
+	var cs CloudstackIaaS
+	machine := iaas.Machine{Id: "myMachineId"}
+	err := cs.DeleteMachine(&machine)
+	c.Assert(err, gocheck.ErrorMatches, ".*no such host.*")
+}
