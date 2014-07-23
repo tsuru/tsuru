@@ -33,6 +33,7 @@ func (TestIaaS) DeleteMachine(m *Machine) error {
 }
 
 func (TestIaaS) CreateMachine(params map[string]string) (*Machine, error) {
+	params["you"] = "shouldnot"
 	m := Machine{
 		Id:      params["id"],
 		Status:  "running",
