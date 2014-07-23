@@ -5,8 +5,11 @@
 package io
 
 import (
+	"bufio"
+	"errors"
 	"fmt"
 	"github.com/tsuru/tsuru/log"
+	"net"
 	"net/http"
 	"sync"
 )
@@ -50,4 +53,13 @@ func (w *FlushingWriter) Write(data []byte) (written int, err error) {
 // Wrote returns whether the method WriteHeader has been called or not.
 func (w *FlushingWriter) Wrote() bool {
 	return w.wrote
+}
+
+// Hijack will hijack the underlying TCP connection, if available in the
+// ResponseWriter.
+func (w *FlushingWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hijacker, ok := w.ResponseWriter.(http.Hijacker); ok {
+		return hijacker.Hijack()
+	}
+	return nil, nil, errors.New("cannot hijack connection")
 }
