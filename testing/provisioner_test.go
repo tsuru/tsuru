@@ -574,6 +574,8 @@ func (s *S) TestExecuteComandTimeout(c *gocheck.C) {
 func (s *S) TestAddr(c *gocheck.C) {
 	app := NewFakeApp("quick", "who", 1)
 	p := NewFakeProvisioner()
+	err := p.Provision(app)
+	c.Assert(err, gocheck.IsNil)
 	addr, err := p.Addr(app)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(addr, gocheck.Equals, "quick.fake-lb.tsuru.io")

@@ -640,7 +640,11 @@ func (p *FakeProvisioner) Addr(app provision.App) (string, error) {
 	if err := p.getError("Addr"); err != nil {
 		return "", err
 	}
-	return p.apps[app.GetName()].addr, nil
+	pApp, ok := p.apps[app.GetName()]
+	if !ok {
+		return "", errNotProvisioned
+	}
+	return pApp.addr, nil
 }
 
 func (p *FakeProvisioner) SetCName(app provision.App, cname string) error {
