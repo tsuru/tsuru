@@ -40,6 +40,23 @@ func init() {
 	api.RegisterHandler("/docker/ssh/{container_id}", "GET", api.AdminRequiredHandler(sshToContainerHandler))
 }
 
+func validateNodeAddress(address string) error {
+	if address == "" {
+		return fmt.Errorf("address=url parameter is required")
+	}
+	url, err := url.ParseRequestURI(address)
+	if err != nil {
+		return fmt.Errorf("Invalid address url: %s", err.Error())
+	}
+	if url.Host == "" {
+		return fmt.Errorf("Invalid address url: host cannot be empty")
+	}
+	if !strings.HasPrefix(url.Scheme, "http") {
+		return fmt.Errorf("Invalid address url: scheme must be http[s]")
+	}
+	return nil
+}
+
 // addNodeHandler can provide an machine and/or register a node address.
 // If register flag is true, it will just register a node.
 // It checks if node address is valid and accessible.
@@ -54,7 +71,14 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		address, _ = params["address"]
 		delete(params, "address")
 	} else {
-		m, err := iaas.CreateMachine(params)
+		iaasName, _ := params["iaas"]
+		var m *iaas.Machine
+		if iaasName != "" {
+			delete(params, "iaas")
+			m, err = iaas.CreateMachineForIaaS(iaasName, params)
+		} else {
+			m, err = iaas.CreateMachine(params)
+		}
 		if err != nil {
 			return err
 		}
@@ -62,20 +86,12 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		if err != nil {
 			return err
 		}
+		params["iaas"] = m.Iaas
 		address = nodeAddress
 	}
-	if address == "" {
-		return fmt.Errorf("address=url parameter is required.")
-	}
-	url, err := url.ParseRequestURI(address)
+	err = validateNodeAddress(address)
 	if err != nil {
-		return fmt.Errorf("Invalid address url: %s", err.Error())
-	}
-	if url.Host == "" {
-		return fmt.Errorf("Invalid address url: host cannot be empty")
-	}
-	if !strings.HasPrefix(url.Scheme, "http") {
-		return fmt.Errorf("Invalid address url: scheme must be http[s]")
+		return err
 	}
 	return dockerCluster().Register(address, params)
 }

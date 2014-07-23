@@ -24,7 +24,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path"
-	"strconv"
 	"strings"
 )
 
@@ -35,15 +34,10 @@ func (TestIaaS) DeleteMachine(m *iaas.Machine) error {
 }
 
 func (TestIaaS) CreateMachine(params map[string]string) (*iaas.Machine, error) {
-	rawURL := strings.Replace(httptest.NewServer(nil).URL, "http://", "", -1)
-	address := strings.Split(rawURL, ":")
-	config.Set("iaas:node-protocol", "http")
-	i, _ := strconv.Atoi(address[1])
-	config.Set("iaas:node-port", i)
 	m := iaas.Machine{
-		Id:      "id",
+		Id:      params["id"],
 		Status:  "running",
-		Address: address[0],
+		Address: params["id"] + ".fake.host",
 	}
 	return &m, nil
 }
@@ -56,15 +50,23 @@ type HandlersSuite struct {
 var _ = gocheck.Suite(&HandlersSuite{})
 
 func (s *HandlersSuite) SetUpSuite(c *gocheck.C) {
-	var err error
-	s.conn, err = db.Conn()
-	c.Assert(err, gocheck.IsNil)
+	config.Set("database:name", "docker_provision_handlers_tests_s")
 	config.Set("docker:collection", "docker_handler_suite")
 	config.Set("docker:run-cmd:port", 8888)
 	config.Set("docker:router", "fake")
+	config.Set("docker:scheduler:redis-prefix", "redis-scheduler-storage-handlers-test")
 	config.Set("iaas:default", "test-iaas")
+	config.Set("iaas:node-protocol", "http")
+	config.Set("iaas:node-port", 1234)
+	var err error
+	s.conn, err = db.Conn()
+	c.Assert(err, gocheck.IsNil)
 	s.conn.Collection(schedulerCollection).RemoveAll(nil)
 	s.server = httptest.NewServer(nil)
+}
+
+func (s *HandlersSuite) SetUpTest(c *gocheck.C) {
+	clearRedisKeys("redis-scheduler-storage-handlers-test*", c)
 }
 
 func (s *HandlersSuite) TearDownSuite(c *gocheck.C) {
@@ -87,9 +89,13 @@ func (s *HandlersSuite) TestAddNodeHandler(c *gocheck.C) {
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
 	c.Assert(err, gocheck.IsNil)
-	n, err := s.conn.Collection(schedulerCollection).FindId("pool1").Count()
+	nodes, err := dCluster.Nodes()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 1)
+	c.Assert(nodes, gocheck.HasLen, 1)
+	c.Assert(nodes[0].Address, gocheck.Equals, s.server.URL)
+	c.Assert(nodes[0].Metadata, gocheck.DeepEquals, map[string]string{
+		"pool": "pool1",
+	})
 }
 
 func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *gocheck.C) {
@@ -98,20 +104,51 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *gocheck.C) {
 	p := Pool{Name: "pool1"}
 	s.conn.Collection(schedulerCollection).Insert(p)
 	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
-	b := bytes.NewBufferString(`{"pool": "pool1", "id": "test"}`)
+	b := bytes.NewBufferString(`{"pool": "pool1", "id": "test1"}`)
 	req, err := http.NewRequest("POST", "/docker/node?register=false", b)
 	c.Assert(err, gocheck.IsNil)
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
 	c.Assert(err, gocheck.IsNil)
-	n, err := s.conn.Collection(schedulerCollection).FindId("pool1").Count()
+	nodes, err := dCluster.Nodes()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 1)
+	c.Assert(nodes, gocheck.HasLen, 1)
+	c.Assert(nodes[0].Address, gocheck.Equals, "http://test1.fake.host:1234")
+	c.Assert(nodes[0].Metadata, gocheck.DeepEquals, map[string]string{
+		"id":   "test1",
+		"pool": "pool1",
+		"iaas": "test-iaas",
+	})
+}
+
+func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachineExplicit(c *gocheck.C) {
+	iaas.RegisterIaasProvider("test-iaas", TestIaaS{})
+	iaas.RegisterIaasProvider("another-test-iaas", TestIaaS{})
+	dCluster, _ = cluster.New(segregatedScheduler{}, &cluster.MapStorage{})
+	p := Pool{Name: "pool1"}
+	s.conn.Collection(schedulerCollection).Insert(p)
+	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
+	b := bytes.NewBufferString(`{"pool": "pool1", "id": "test1", "iaas": "another-test-iaas"}`)
+	req, err := http.NewRequest("POST", "/docker/node?register=false", b)
+	c.Assert(err, gocheck.IsNil)
+	rec := httptest.NewRecorder()
+	err = addNodeHandler(rec, req, nil)
+	c.Assert(err, gocheck.IsNil)
+	nodes, err := dCluster.Nodes()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(nodes, gocheck.HasLen, 1)
+	c.Assert(nodes[0].Address, gocheck.Equals, "http://test1.fake.host:1234")
+	c.Assert(nodes[0].Metadata, gocheck.DeepEquals, map[string]string{
+		"id":   "test1",
+		"pool": "pool1",
+		"iaas": "another-test-iaas",
+	})
 }
 
 func (s *HandlersSuite) TestAddNodeHandlerWithoutdCluster(c *gocheck.C) {
 	p := Pool{Name: "pool1"}
 	s.conn.Collection(schedulerCollection).Insert(p)
+	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
 	config.Set("docker:segregate", true)
 	defer config.Unset("docker:segregate")
 	config.Set("docker:scheduler:redis-server", "127.0.0.1:6379")
@@ -123,10 +160,13 @@ func (s *HandlersSuite) TestAddNodeHandlerWithoutdCluster(c *gocheck.C) {
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
 	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
-	n, err := s.conn.Collection(schedulerCollection).FindId("pool1").Count()
+	nodes, err := dockerCluster().Nodes()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 1)
+	c.Assert(nodes, gocheck.HasLen, 1)
+	c.Assert(nodes[0].Address, gocheck.Equals, s.server.URL)
+	c.Assert(nodes[0].Metadata, gocheck.DeepEquals, map[string]string{
+		"pool": "pool1",
+	})
 }
 
 func (s *HandlersSuite) TestAddNodeHandlerWithoutdAddress(c *gocheck.C) {
@@ -138,7 +178,7 @@ func (s *HandlersSuite) TestAddNodeHandlerWithoutdAddress(c *gocheck.C) {
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "address=url parameter is required.")
+	c.Assert(err.Error(), gocheck.Equals, "address=url parameter is required")
 }
 
 func (s *HandlersSuite) TestAddNodeHandlerWithInvalidURLAddress(c *gocheck.C) {
@@ -156,6 +196,15 @@ func (s *HandlersSuite) TestAddNodeHandlerWithInvalidURLAddress(c *gocheck.C) {
 	rec = httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
 	c.Assert(err, gocheck.ErrorMatches, `Invalid address url: scheme must be http\[s\]`)
+}
+
+func (s *HandlersSuite) TestValidateNodeAddress(c *gocheck.C) {
+	err := validateNodeAddress("/invalid")
+	c.Assert(err, gocheck.ErrorMatches, "Invalid address url: host cannot be empty")
+	err = validateNodeAddress("xxx://abc/invalid")
+	c.Assert(err, gocheck.ErrorMatches, `Invalid address url: scheme must be http\[s\]`)
+	err = validateNodeAddress("")
+	c.Assert(err, gocheck.ErrorMatches, "address=url parameter is required")
 }
 
 func (s *HandlersSuite) TestRemoveNodeHandler(c *gocheck.C) {

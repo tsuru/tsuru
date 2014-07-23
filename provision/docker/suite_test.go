@@ -83,10 +83,14 @@ func (s *S) SetUpTest(c *gocheck.C) {
 	coll := collection()
 	defer coll.Close()
 	coll.RemoveAll(nil)
+	clearRedisKeys("redis-scheduler-storage-test*", c)
+}
+
+func clearRedisKeys(keysPattern string, c *gocheck.C) {
 	redisConn, err := redis.Dial("tcp", "127.0.0.1:6379")
 	c.Assert(err, gocheck.IsNil)
 	defer redisConn.Close()
-	result, err := redisConn.Do("KEYS", "redis-scheduler-storage-test*")
+	result, err := redisConn.Do("KEYS", keysPattern)
 	c.Assert(err, gocheck.IsNil)
 	keys := result.([]interface{})
 	for _, key := range keys {
