@@ -1872,10 +1872,21 @@ func (s *S) TestAppAvailable(c *gocheck.C) {
 }
 
 func (s *S) TestSwap(c *gocheck.C) {
+	var err error
 	app1 := &App{Name: "app1", CName: "cname"}
-	err := s.conn.Apps().Insert(app1)
+	err = s.provisioner.Provision(app1)
+	c.Assert(err, gocheck.IsNil)
+	app1.Ip, err = s.provisioner.Addr(app1)
+	c.Assert(err, gocheck.IsNil)
+	oldIp1 := app1.Ip
+	err = s.conn.Apps().Insert(app1)
 	c.Assert(err, gocheck.IsNil)
 	app2 := &App{Name: "app2"}
+	err = s.provisioner.Provision(app2)
+	c.Assert(err, gocheck.IsNil)
+	app2.Ip, err = s.provisioner.Addr(app2)
+	c.Assert(err, gocheck.IsNil)
+	oldIp2 := app2.Ip
 	err = s.conn.Apps().Insert(app2)
 	c.Assert(err, gocheck.IsNil)
 	defer func() {
@@ -1886,6 +1897,8 @@ func (s *S) TestSwap(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app1.CName, gocheck.Equals, "")
 	c.Assert(app2.CName, gocheck.Equals, "cname")
+	c.Assert(app1.Ip, gocheck.Equals, oldIp2)
+	c.Assert(app2.Ip, gocheck.Equals, oldIp1)
 }
 
 func (s *S) TestDeployApp(c *gocheck.C) {

@@ -334,7 +334,18 @@ func (p *FakeProvisioner) Reset() {
 	}
 }
 
-func (*FakeProvisioner) Swap(app1, app2 provision.App) error {
+func (p *FakeProvisioner) Swap(app1, app2 provision.App) error {
+	pApp1, ok := p.apps[app1.GetName()]
+	if !ok {
+		return errNotProvisioned
+	}
+	pApp2, ok := p.apps[app2.GetName()]
+	if !ok {
+		return errNotProvisioned
+	}
+	pApp1.addr, pApp2.addr = pApp2.addr, pApp1.addr
+	p.apps[app1.GetName()] = pApp1
+	p.apps[app2.GetName()] = pApp2
 	return nil
 }
 
@@ -379,7 +390,10 @@ func (p *FakeProvisioner) Provision(app provision.App) error {
 	}
 	p.mut.Lock()
 	defer p.mut.Unlock()
-	p.apps[app.GetName()] = provisionedApp{app: app}
+	p.apps[app.GetName()] = provisionedApp{
+		app:  app,
+		addr: fmt.Sprintf("%s.fake-lb.tsuru.io", app.GetName()),
+	}
 	return nil
 }
 
@@ -626,7 +640,7 @@ func (p *FakeProvisioner) Addr(app provision.App) (string, error) {
 	if err := p.getError("Addr"); err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s.fake-lb.tsuru.io", app.GetName()), nil
+	return p.apps[app.GetName()].addr, nil
 }
 
 func (p *FakeProvisioner) SetCName(app provision.App, cname string) error {
@@ -784,6 +798,7 @@ type provisionedApp struct {
 	version     string
 	lastArchive string
 	cname       string
+	addr        string
 	unitLen     int
 }
 

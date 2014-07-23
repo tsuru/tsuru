@@ -1012,9 +1012,13 @@ func Swap(app1, app2 *App) error {
 	defer conn.Close()
 	app1.CName, app2.CName = app2.CName, app1.CName
 	updateCName := func(app *App) error {
+		app.Ip, err = Provisioner.Addr(app)
+		if err != nil {
+			return err
+		}
 		return conn.Apps().Update(
 			bson.M{"name": app.Name},
-			bson.M{"$set": bson.M{"cname": app.CName}},
+			bson.M{"$set": bson.M{"cname": app.CName, "ip": app.Ip}},
 		)
 	}
 	err = updateCName(app1)
