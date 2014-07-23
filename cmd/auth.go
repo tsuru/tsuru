@@ -366,7 +366,7 @@ func (teamUserList) Run(context *Context, client *Client) error {
 func (teamUserList) Info() *Info {
 	return &Info{
 		Name:    "team-user-list",
-		Usage:   "team-user-list",
+		Usage:   "team-user-list <teamname>",
 		Desc:    "List members of a team.",
 		MinArgs: 1,
 	}
