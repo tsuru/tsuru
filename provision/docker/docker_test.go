@@ -569,6 +569,32 @@ func (s *S) TestContainerCommitWithRegistry(c *gocheck.C) {
 	c.Assert(imageId, gocheck.Equals, repository)
 }
 
+func (s *S) TestContainerCommitErrorInCommit(c *gocheck.C) {
+	s.server.PrepareFailure("commit-failure", "/commit")
+	defer s.server.ResetFailure("commit-failure")
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	cont, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(cont)
+	_, err = cont.commit()
+	c.Assert(err, gocheck.ErrorMatches, ".*commit-failure\n")
+}
+
+func (s *S) TestContainerCommitErrorInPush(c *gocheck.C) {
+	s.server.PrepareFailure("push-failure", "/images/.*?/push")
+	defer s.server.ResetFailure("push-failure")
+	config.Set("docker:registry", "localhost:3030")
+	defer config.Unset("docker:registry")
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	cont, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(cont)
+	_, err = cont.commit()
+	c.Assert(err, gocheck.ErrorMatches, ".*push-failure\n")
+}
+
 func (s *S) TestRemoveImage(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)

@@ -459,10 +459,13 @@ func (c *container) commit() (string, error) {
 	image, err := dockerCluster().CommitContainer(opts)
 	if err != nil {
 		log.Errorf("Could not commit docker image: %s", err)
-		return "", err
+		return "", fmt.Errorf("error in commit container %s: %s", c.ID, err.Error())
 	}
 	log.Debugf("image %s generated from container %s", image.ID, c.ID)
-	pushImage(repository)
+	err = pushImage(repository)
+	if err != nil {
+		return "", fmt.Errorf("error in push image %s: %s", repository, err.Error())
+	}
 	return repository, nil
 }
 
