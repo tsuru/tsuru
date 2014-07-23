@@ -877,7 +877,9 @@ func (s *S) TestIncrementDeployParams(c *gocheck.C) {
 
 func (s *S) TestSetAppIpForward(c *gocheck.C) {
 	app := &App{Name: "conviction", Platform: "evergrey"}
-	err := s.conn.Apps().Insert(app)
+	err := s.provisioner.Provision(app)
+	c.Assert(err, gocheck.IsNil)
+	err = s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	ctx := action.FWContext{
