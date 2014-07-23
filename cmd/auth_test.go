@@ -318,7 +318,7 @@ func (s *S) TestTeamUserListError(c *gocheck.C) {
 func (s *S) TestTeamUserListInfo(c *gocheck.C) {
 	expected := &Info{
 		Name:    "team-user-list",
-		Usage:   "team-user-list",
+		Usage:   "team-user-list <teamname>",
 		Desc:    "List members of a team.",
 		MinArgs: 1,
 	}
