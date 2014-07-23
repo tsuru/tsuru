@@ -776,13 +776,29 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	app1Name := r.URL.Query().Get("app1")
 	app2Name := r.URL.Query().Get("app2")
+	locked1, err := app.AcquireApplicationLock(app1Name, t.GetUserName(), "/swap")
+	if err != nil {
+		return err
+	}
+	defer app.ReleaseApplicationLock(app1Name)
+	locked2, err := app.AcquireApplicationLock(app2Name, t.GetUserName(), "/swap")
+	if err != nil {
+		return err
+	}
+	defer app.ReleaseApplicationLock(app2Name)
 	app1, err := getApp(app1Name, u)
 	if err != nil {
 		return err
 	}
+	if !locked1 {
+		return &errors.HTTP{Code: http.StatusConflict, Message: fmt.Sprintf("%s: %s", app1.Name, &app1.Lock)}
+	}
 	app2, err := getApp(app2Name, u)
 	if err != nil {
 		return err
+	}
+	if !locked2 {
+		return &errors.HTTP{Code: http.StatusConflict, Message: fmt.Sprintf("%s: %s", app2.Name, &app2.Lock)}
 	}
 	rec.Log(u.Email, "swap", app1Name, app2Name)
 	return app.Swap(&app1, &app2)
