@@ -158,6 +158,9 @@ func RunServer(dry bool) http.Handler {
 
 	m.Add("Get", "/healthcheck/", http.HandlerFunc(healthcheck))
 
+	m.Add("Get", "/iaas/machines", AdminRequiredHandler(machinesList))
+	m.Add("Delete", "/iaas/machines/{machine_id}", AdminRequiredHandler(machineDestroy))
+
 	n := negroni.New()
 	n.Use(negroni.NewRecovery())
 	n.Use(negroni.NewLogger())
