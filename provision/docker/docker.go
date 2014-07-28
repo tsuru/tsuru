@@ -15,6 +15,7 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
+	clusterLog "github.com/tsuru/docker-cluster/log"
 	"github.com/tsuru/docker-cluster/storage/redis"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/log"
@@ -61,6 +62,9 @@ func dockerCluster() *cluster.Cluster {
 	defer cmutex.Unlock()
 	var clusterStorage cluster.Storage
 	if dCluster == nil {
+		debug, _ := config.GetBool("debug")
+		clusterLog.SetDebug(debug)
+		clusterLog.SetLogger(log.GetStdLogger())
 		redisServer, err := config.GetString("docker:scheduler:redis-server")
 		if err != nil {
 			panic("docker:scheduler:redis-server is mandatory")
