@@ -551,36 +551,15 @@ func (c *container) logs(w io.Writer) error {
 // when a deploy is multiple of 10 is returned the platform image.
 func getImage(app provision.App) string {
 	c, err := getOneContainerByAppName(app.GetName())
-	if err != nil || c.Image == "" {
-		return assembleImageName(app.GetPlatform())
-	}
-	if usePlatformImage(app) {
-		err := removeImage(c.Image)
-		if err != nil {
-			log.Error(err.Error())
-		}
+	if err != nil || c.Image == "" || usePlatformImage(app) {
 		return assembleImageName(app.GetPlatform())
 	}
 	return c.Image
 }
 
-// removeImage removes an image from docker registry
+// removeImage removes an image from docker cluster
 func removeImage(imageId string) error {
-	removeFromRegistry(imageId)
 	return dockerCluster().RemoveImage(imageId)
-}
-
-func removeFromRegistry(imageId string) {
-	parts := strings.SplitN(imageId, "/", 3)
-	if len(parts) > 2 {
-		registryServer := parts[0]
-		url := fmt.Sprintf("http://%s/v1/repositories/%s/tags", registryServer,
-			strings.Join(parts[1:], "/"))
-		request, err := http.NewRequest("DELETE", url, nil)
-		if err == nil {
-			http.DefaultClient.Do(request)
-		}
-	}
 }
 
 // pushImage sends the given image to the registry server defined in the

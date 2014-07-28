@@ -483,36 +483,24 @@ func (s *S) TestGetImageFromAppPlatform(c *gocheck.C) {
 }
 
 func (s *S) TestGetImageAppWhenDeployIsMultipleOf10(c *gocheck.C) {
-	var request http.Request
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		request = *r
-	}))
-	defer server.Close()
-	u, _ := url.Parse(server.URL)
-	imageRepo := u.Host + "/tsuru/python"
-	err := newImage(imageRepo, s.server.URL())
-	c.Assert(err, gocheck.IsNil)
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	app := &app.App{Name: "app1", Platform: "python", Deploys: 20}
 	err = conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": "app1"})
-	cont := container{ID: "bleble", Type: "python", AppName: "app1", Image: imageRepo}
+	defer conn.Apps().Remove(bson.M{"name": app.Name})
+	cont := container{ID: "bleble", Type: app.Platform, AppName: app.Name, Image: "tsuru/app1"}
 	coll := collection()
 	err = coll.Insert(cont)
 	c.Assert(err, gocheck.IsNil)
 	defer coll.Close()
 	c.Assert(err, gocheck.IsNil)
-	defer coll.RemoveAll(bson.M{"id": "bleble"})
+	defer coll.RemoveAll(bson.M{"id": cont.ID})
 	img := getImage(app)
 	repoNamespace, err := config.GetString("docker:repository-namespace")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(img, gocheck.Equals, fmt.Sprintf("%s/python", repoNamespace))
-	c.Assert(request.Method, gocheck.Equals, "DELETE")
-	path := "/v1/repositories/tsuru/python/tags"
-	c.Assert(request.URL.Path, gocheck.Equals, path)
+	c.Assert(img, gocheck.Equals, fmt.Sprintf("%s/%s", repoNamespace, app.Platform))
 }
 
 func (s *S) TestGetImageFromDatabase(c *gocheck.C) {
@@ -538,8 +526,6 @@ func (s *S) TestGetImageWithRegistry(c *gocheck.C) {
 }
 
 func (s *S) TestContainerCommit(c *gocheck.C) {
-	_, cleanup := startSSHAgentServer("")
-	defer cleanup()
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer(nil)
@@ -555,8 +541,6 @@ func (s *S) TestContainerCommit(c *gocheck.C) {
 func (s *S) TestContainerCommitWithRegistry(c *gocheck.C) {
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
-	_, cleanup := startSSHAgentServer("")
-	defer cleanup()
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer(nil)
@@ -593,6 +577,40 @@ func (s *S) TestContainerCommitErrorInPush(c *gocheck.C) {
 	defer s.removeTestContainer(cont)
 	_, err = cont.commit()
 	c.Assert(err, gocheck.ErrorMatches, ".*push-failure\n")
+}
+
+func (s *S) TestContainerCommitRemovesOldImages(c *gocheck.C) {
+	appName := "commit-remove-test-app"
+	cont, err := s.newContainer(&newContainerOpts{AppName: appName})
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(cont)
+	imageId, err := cont.commit()
+	c.Assert(err, gocheck.IsNil)
+	repoNamespace, _ := config.GetString("docker:repository-namespace")
+	repository := repoNamespace + "/" + cont.AppName
+	c.Assert(imageId, gocheck.Equals, repository)
+	images, err := dockerCluster().ListImages(true)
+	c.Assert(err, gocheck.IsNil)
+	var toEraseID string
+	for _, image := range images {
+		if image.RepoTags[0] == "tsuru/"+appName {
+			toEraseID = image.ID
+			break
+		}
+	}
+	c.Assert(toEraseID, gocheck.Not(gocheck.Equals), "")
+	cont, err = s.newContainer(&newContainerOpts{AppName: appName})
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(cont)
+	_, err = cont.commit()
+	c.Assert(err, gocheck.IsNil)
+	images, err = dockerCluster().ListImages(true)
+	c.Assert(err, gocheck.IsNil)
+	for _, image := range images {
+		if image.ID == toEraseID {
+			c.Fatalf("Image id %q shouldn't be in images list.", toEraseID)
+		}
+	}
 }
 
 func (s *S) TestRemoveImage(c *gocheck.C) {
