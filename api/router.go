@@ -27,6 +27,11 @@ func (r *delayedRouter) Add(method string, path string, h http.Handler) *mux.Rou
 	return r.Router.Handle(path, h).Methods(method)
 }
 
+// AddAll binds a path to GET, POST, PUT and DELETE methods.
+func (r *delayedRouter) AddAll(path string, h http.Handler) *mux.Route {
+	return r.Router.Handle(path, h).Methods("GET", "POST", "PUT", "DELETE")
+}
+
 func (r *delayedRouter) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	var match mux.RouteMatch
 	if !r.Match(req, &match) {
