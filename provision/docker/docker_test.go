@@ -593,7 +593,7 @@ func (s *S) TestContainerCommitRemovesOldImages(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	var toEraseID string
 	for _, image := range images {
-		if image.RepoTags[0] == "tsuru/"+appName {
+		if len(image.RepoTags) > 0 && image.RepoTags[0] == "tsuru/"+appName {
 			toEraseID = image.ID
 			break
 		}
