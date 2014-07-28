@@ -35,7 +35,7 @@ func writeToken(token string) error {
 	return nil
 }
 
-func readToken() (string, error) {
+func ReadToken() (string, error) {
 	tokenPath := JoinWithUserDir(".tsuru_token")
 	file, err := filesystem().Open(tokenPath)
 	if err != nil {

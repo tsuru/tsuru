@@ -59,7 +59,7 @@ func (s *S) TestNativeLogin(c *gocheck.C) {
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
-	token, err := readToken()
+	token, err := ReadToken()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(token, gocheck.Equals, "sometoken")
 }

@@ -32,7 +32,7 @@ func (s *S) TestReadToken(c *gocheck.C) {
 	defer func() {
 		fsystem = nil
 	}()
-	token, err := readToken()
+	token, err := ReadToken()
 	c.Assert(err, gocheck.IsNil)
 	tokenPath := JoinWithUserDir(".tsuru_token")
 	c.Assert(err, gocheck.IsNil)
