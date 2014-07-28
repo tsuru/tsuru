@@ -437,7 +437,6 @@ func (c *container) shell(stdin io.Reader, stdout, stderr io.Writer) error {
 	session.Stderr = stderr
 	session.Stdin = stdin
 	modes := ssh.TerminalModes{
-		ssh.ECHO:          0,
 		ssh.ECHOCTL:       0,
 		ssh.TTY_OP_ISPEED: 14400,
 		ssh.TTY_OP_OSPEED: 14400,
