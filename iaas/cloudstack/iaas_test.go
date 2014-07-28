@@ -72,11 +72,26 @@ func (s *cloudstackSuite) TestCreateMachine(c *gocheck.C) {
 	defer fakeServer.Close()
 	config.Set("iaas:cloudstack:url", fakeServer.URL)
 	var cs CloudstackIaaS
-	params := map[string]string{"name": "test"}
+	params := map[string]string{
+		"projectid":         "val",
+		"networkids":        "val",
+		"templateid":        "val",
+		"serviceofferingid": "val",
+		"zoneid":            "val",
+	}
 	vm, err := cs.CreateMachine(params)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(vm, gocheck.NotNil)
 	c.Assert(vm.Address, gocheck.Equals, "10.24.16.241")
+}
+
+func (s *cloudstackSuite) TestCreateMachineValidateParams(c *gocheck.C) {
+	var cs CloudstackIaaS
+	params := map[string]string{
+		"name": "something",
+	}
+	_, err := cs.CreateMachine(params)
+	c.Assert(err, gocheck.ErrorMatches, "param \"projectid\" is mandatory")
 }
 
 func (s *cloudstackSuite) TestBuildUrlToCloudstack(c *gocheck.C) {
