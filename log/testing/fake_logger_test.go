@@ -61,3 +61,9 @@ func (s *FakeLoggerSuite) TestFatalfWritesOnBuffer(c *gocheck.C) {
 	s.l.Fatalf("some fatal error %d", 1)
 	c.Assert(s.fl.Buf.String(), gocheck.Equals, "some fatal error 1\n")
 }
+
+func (s *FakeLoggerSuite) TestGetStdLogger(c *gocheck.C) {
+	l := s.l.GetStdLogger()
+	l.Printf("some error %d", 1)
+	c.Assert(s.fl.Buf.String(), gocheck.Equals, "some error 1\n")
+}

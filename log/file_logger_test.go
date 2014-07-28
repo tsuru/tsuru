@@ -75,3 +75,9 @@ func (s *FileLoggerSuite) TestErrorShouldWriteWhenDebugIsFalse(c *gocheck.C) {
 	l.Error("should write this")
 	c.Assert(b.String(), gocheck.Matches, `.* ERROR: should write this\n$`)
 }
+
+func (s *FileLoggerSuite) TestGetStdLoggerShouldReturnValidLogger(c *gocheck.C) {
+	logger := s.l.GetStdLogger()
+	logger.Printf(`message is "%s"`, "some debug message")
+	c.Assert(s.b.String(), gocheck.Matches, `.*message is "some debug message"\n$`)
+}

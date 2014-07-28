@@ -49,3 +49,7 @@ func (l *syslogLogger) Debug(o string) {
 func (l *syslogLogger) Debugf(format string, o ...interface{}) {
 	l.Debug(fmt.Sprintf(format, o...))
 }
+
+func (l *syslogLogger) GetStdLogger() *log.Logger {
+	return log.New(l.w, "", 0)
+}

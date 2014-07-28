@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/safe"
+	stdLog "log"
 )
 
 func NewFakeLogger() log.Logger {
@@ -42,4 +43,8 @@ func (l *FakeLogger) Debug(o string) {
 
 func (l *FakeLogger) Debugf(format string, o ...interface{}) {
 	l.Error(fmt.Sprintf(format, o...))
+}
+
+func (l *FakeLogger) GetStdLogger() *stdLog.Logger {
+	return stdLog.New(&l.Buf, "", 0)
 }

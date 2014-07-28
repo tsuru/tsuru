@@ -12,6 +12,7 @@ package log
 import (
 	"github.com/tsuru/config"
 	"io"
+	"log"
 	"sync"
 )
 
@@ -22,6 +23,7 @@ type Logger interface {
 	Fatalf(string, ...interface{})
 	Debug(string)
 	Debugf(string, ...interface{})
+	GetStdLogger() *log.Logger
 }
 
 func Init() {
@@ -114,6 +116,17 @@ func (t *Target) Debugf(format string, v ...interface{}) {
 	}
 }
 
+// GetStdLogger returns a standard Logger instance
+// useful for configuring log in external packages.
+func (t *Target) GetStdLogger() *log.Logger {
+	t.mut.RLock()
+	defer t.mut.RUnlock()
+	if t.logger != nil {
+		return t.logger.GetStdLogger()
+	}
+	return nil
+}
+
 var DefaultTarget = new(Target)
 
 // Error is a wrapper for DefaultTarget.Error.
@@ -144,6 +157,11 @@ func Debug(v string) {
 // Debugf is a wrapper for DefaultTarget.Debugf.
 func Debugf(format string, v ...interface{}) {
 	DefaultTarget.Debugf(format, v...)
+}
+
+// GetStdLogger is a wrapper for DefaultTarget.GetStdLogger.
+func GetStdLogger() *log.Logger {
+	return DefaultTarget.GetStdLogger()
 }
 
 // SetLogger is a wrapper for DefaultTarget.SetLogger.

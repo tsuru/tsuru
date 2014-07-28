@@ -52,3 +52,7 @@ func (l *fileLogger) Debug(o string) {
 func (l *fileLogger) Debugf(format string, o ...interface{}) {
 	l.Debug(fmt.Sprintf(format, o...))
 }
+
+func (l *fileLogger) GetStdLogger() *log.Logger {
+	return l.logger
+}
