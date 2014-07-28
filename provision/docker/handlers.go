@@ -57,6 +57,46 @@ func validateNodeAddress(address string) error {
 	return nil
 }
 
+func addNodeForParams(params map[string]string, isRegister bool) (map[string]string, error) {
+	response := make(map[string]string)
+	var address string
+	if isRegister {
+		address, _ = params["address"]
+		delete(params, "address")
+	} else {
+		iaasName, _ := params["iaas"]
+		desc, err := iaas.Describe(iaasName)
+		if err != nil {
+			return response, err
+		}
+		response["description"] = desc
+		var m *iaas.Machine
+		if iaasName != "" {
+			m, err = iaas.CreateMachineForIaaS(iaasName, params)
+		} else {
+			m, err = iaas.CreateMachine(params)
+		}
+		if err != nil {
+			return response, err
+		}
+		nodeAddress, err := m.FormatNodeAddress()
+		if err != nil {
+			return response, err
+		}
+		params["iaas"] = m.Iaas
+		address = nodeAddress
+	}
+	err := validateNodeAddress(address)
+	if err != nil {
+		return response, err
+	}
+	err = dockerCluster().Register(address, params)
+	if err != nil {
+		return response, err
+	}
+	return response, err
+}
+
 // addNodeHandler can provide an machine and/or register a node address.
 // If register flag is true, it will just register a node.
 // It checks if node address is valid and accessible.
@@ -65,35 +105,13 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if err != nil {
 		return err
 	}
-	register, _ := strconv.ParseBool(r.URL.Query().Get("register"))
-	var address string
-	if register {
-		address, _ = params["address"]
-		delete(params, "address")
-	} else {
-		iaasName, _ := params["iaas"]
-		var m *iaas.Machine
-		if iaasName != "" {
-			delete(params, "iaas")
-			m, err = iaas.CreateMachineForIaaS(iaasName, params)
-		} else {
-			m, err = iaas.CreateMachine(params)
-		}
-		if err != nil {
-			return err
-		}
-		nodeAddress, err := m.FormatNodeAddress()
-		if err != nil {
-			return err
-		}
-		params["iaas"] = m.Iaas
-		address = nodeAddress
-	}
-	err = validateNodeAddress(address)
+	isRegister, _ := strconv.ParseBool(r.URL.Query().Get("register"))
+	response, err := addNodeForParams(params, isRegister)
 	if err != nil {
-		return err
+		w.WriteHeader(http.StatusBadRequest)
+		response["error"] = err.Error()
 	}
-	return dockerCluster().Register(address, params)
+	return json.NewEncoder(w).Encode(response)
 }
 
 // removeNodeHandler calls scheduler.Unregister to unregistering a node into it.

@@ -50,6 +50,32 @@ func (s *S) TestAddNodeToTheSchedulerCmdRun(c *gocheck.C) {
 	c.Assert(buf.String(), gocheck.Equals, "Node successfully registered.\n")
 }
 
+func (s *S) TestAddNodeWithErrorCmdRun(c *gocheck.C) {
+	var buf bytes.Buffer
+	context := cmd.Context{
+		Args:   []string{"pool=poolTest", "address=http://localhost:8080"},
+		Stdout: &buf, Stderr: &buf,
+	}
+	expectedBody := `{"address":"http://localhost:8080","pool":"poolTest"}`
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{
+			Message: `{"error": "some err", "description": "my iaas desc"}`,
+			Status:  http.StatusBadRequest,
+		},
+		CondFunc: func(req *http.Request) bool {
+			body, _ := ioutil.ReadAll(req.Body)
+			c.Assert(string(body), gocheck.DeepEquals, expectedBody)
+			return req.URL.Path == "/docker/node" && req.URL.RawQuery == "register=false"
+		},
+	}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
+	cmd := addNodeToSchedulerCmd{register: false}
+	err := cmd.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(buf.String(), gocheck.Equals, "Error: some err\n\nmy iaas desc\n")
+}
+
 func (s *S) TestRemoveNodeFromTheSchedulerCmdInfo(c *gocheck.C) {
 	expected := cmd.Info{
 		Name:    "docker-node-remove",

@@ -54,10 +54,10 @@ func (a *addNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error 
 	}
 	_, err = client.Do(req)
 	if err != nil {
-		info := a.Info()
-		fmt.Fprintf(ctx.Stderr, "Usage: %s %s\n", info.Name, info.Usage)
-		fmt.Fprintf(ctx.Stderr, "\n%s\n", info.Desc)
-		return err
+		result := make(map[string]string)
+		json.Unmarshal([]byte(err.Error()), &result)
+		fmt.Fprintf(ctx.Stderr, "Error: %s\n\n%s\n", result["error"], result["description"])
+		return nil
 	}
 	ctx.Stdout.Write([]byte("Node successfully registered.\n"))
 	return nil

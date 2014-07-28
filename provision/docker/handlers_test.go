@@ -42,6 +42,10 @@ func (TestIaaS) CreateMachine(params map[string]string) (*iaas.Machine, error) {
 	return &m, nil
 }
 
+func (TestIaaS) Describe() string {
+	return "my iaas description"
+}
+
 type HandlersSuite struct {
 	conn   *db.Storage
 	server *httptest.Server
@@ -110,6 +114,10 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *gocheck.C) {
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
 	c.Assert(err, gocheck.IsNil)
+	var result map[string]string
+	err = json.NewDecoder(rec.Body).Decode(&result)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.DeepEquals, map[string]string{"description": "my iaas description"})
 	nodes, err := dCluster.Nodes()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(nodes, gocheck.HasLen, 1)
@@ -177,8 +185,11 @@ func (s *HandlersSuite) TestAddNodeHandlerWithoutdAddress(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "address=url parameter is required")
+	var result map[string]string
+	err = json.NewDecoder(rec.Body).Decode(&result)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(rec.Code, gocheck.Equals, http.StatusBadRequest)
+	c.Assert(result["error"], gocheck.Matches, "address=url parameter is required")
 }
 
 func (s *HandlersSuite) TestAddNodeHandlerWithInvalidURLAddress(c *gocheck.C) {
@@ -189,13 +200,22 @@ func (s *HandlersSuite) TestAddNodeHandlerWithInvalidURLAddress(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
-	c.Assert(err, gocheck.ErrorMatches, "Invalid address url: host cannot be empty")
+	c.Assert(err, gocheck.IsNil)
+	var result map[string]string
+	err = json.NewDecoder(rec.Body).Decode(&result)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(rec.Code, gocheck.Equals, http.StatusBadRequest)
+	c.Assert(result["error"], gocheck.Matches, "Invalid address url: host cannot be empty")
 	b = bytes.NewBufferString(`{"address": "xxx://abc/invalid", "pool": "pool1"}`)
 	req, err = http.NewRequest("POST", "/docker/node?register=true", b)
 	c.Assert(err, gocheck.IsNil)
 	rec = httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
-	c.Assert(err, gocheck.ErrorMatches, `Invalid address url: scheme must be http\[s\]`)
+	c.Assert(err, gocheck.IsNil)
+	err = json.NewDecoder(rec.Body).Decode(&result)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(rec.Code, gocheck.Equals, http.StatusBadRequest)
+	c.Assert(result["error"], gocheck.Matches, `Invalid address url: scheme must be http\[s\]`)
 }
 
 func (s *HandlersSuite) TestValidateNodeAddress(c *gocheck.C) {
