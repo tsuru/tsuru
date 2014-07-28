@@ -207,3 +207,17 @@ func (c *Client) Plans() ([]Plan, error) {
 	}
 	return result, nil
 }
+
+// Proxy is a proxy between tsuru and the service.
+// This method allow customized service methods.
+func (c *Client) Proxy(method, path string, params map[string]string) (*http.Response, error) {
+	p := map[string][]string{}
+	for k, v := range params {
+		p[k] = []string{v}
+	}
+	resp, err := c.issueRequest(path, method, p)
+	if err != nil {
+		return nil, err
+	}
+	return resp, nil
+}

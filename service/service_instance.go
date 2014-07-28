@@ -311,3 +311,13 @@ func GetServiceInstance(name string, u *auth.User) (*ServiceInstance, error) {
 	}
 	return &instance, nil
 }
+
+// Proxy is a proxy between tsuru and the service.
+// This method allow customized service methods.
+func Proxy(si *ServiceInstance, method, path string, params map[string]string) (*http.Response, error) {
+	endpoint, err := si.Service().getClient("production")
+	if err != nil {
+		return nil, err
+	}
+	return endpoint.Proxy(method, path, params)
+}

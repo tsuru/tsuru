@@ -732,3 +732,73 @@ func (s *ConsumptionSuite) TestServicePlansHandler(c *gocheck.C) {
 	}
 	c.Assert(action, testing.IsRecorded)
 }
+
+func (s *ConsumptionSuite) TestServiceProxy(c *gocheck.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte("a message"))
+	}))
+	defer ts.Close()
+	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}}
+	err := se.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
+	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
+	err = si.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer service.DeleteInstance(&si)
+	url := fmt.Sprintf("/services/proxy/%s?:instance=%s&callback=/mypath", si.Name, si.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = serviceProxy(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusCreated)
+	c.Assert(recorder.Body.Bytes(), gocheck.DeepEquals, []byte("a message"))
+}
+
+func (s *ConsumptionSuite) TestServiceProxyNoContent(c *gocheck.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer ts.Close()
+	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}}
+	err := se.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
+	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
+	err = si.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer service.DeleteInstance(&si)
+	url := fmt.Sprintf("/services/proxy/%s?:instance=%s&callback=/mypath", si.Name, si.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = serviceProxy(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusNoContent)
+}
+
+func (s *ConsumptionSuite) TestServiceProxyError(c *gocheck.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+		w.Write([]byte("some error"))
+	}))
+	defer ts.Close()
+	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}}
+	err := se.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
+	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
+	err = si.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer service.DeleteInstance(&si)
+	url := fmt.Sprintf("/services/proxy/%s?:instance=%s&callback=/mypath", si.Name, si.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = serviceProxy(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusBadGateway)
+	c.Assert(recorder.Body.Bytes(), gocheck.DeepEquals, []byte("some error"))
+}

@@ -229,3 +229,35 @@ func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	w.Write(b)
 	return nil
 }
+
+func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
+	siName := r.URL.Query().Get(":instance")
+	si, err := getServiceInstanceOrError(siName, u)
+	if err != nil {
+		return err
+	}
+	path := r.URL.Query().Get("callback")
+	rec.Log(u.Email, "service-proxy-status", siName, path)
+	var params map[string]string
+	if r.Body != nil {
+		b, err := ioutil.ReadAll(r.Body)
+		defer r.Body.Close()
+		if err != nil {
+			return err
+		}
+		err = json.Unmarshal(b, &params)
+		if err != nil {
+			return err
+		}
+	}
+	response, _ := service.Proxy(si, r.Method, path, params)
+	w.WriteHeader(response.StatusCode)
+	body, _ := ioutil.ReadAll(response.Body)
+	defer response.Body.Close()
+	w.Write(body)
+	return nil
+}

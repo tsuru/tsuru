@@ -550,3 +550,18 @@ func (s *InstanceSuite) TestGetServiceInstance(c *gocheck.C) {
 	c.Assert(instance, gocheck.IsNil)
 	c.Assert(err, gocheck.Equals, ErrAccessNotAllowed)
 }
+
+func (s *InstanceSuite) TestProxy(c *gocheck.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer ts.Close()
+	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().RemoveId(srv.Name)
+	si := ServiceInstance{Name: "instance", ServiceName: srv.Name}
+	response, err := Proxy(&si, "DELETE", "/aaa", nil)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(response.StatusCode, gocheck.Equals, http.StatusNoContent)
+}

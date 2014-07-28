@@ -445,3 +445,19 @@ func (s *S) TestPlans(c *gocheck.C) {
 	c.Assert(h.r.URL.Path, gocheck.Equals, "/resources/plans")
 	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.r.Header.Get("Authorization"))
 }
+
+func (s *S) TestProxy(c *gocheck.C) {
+	handlerTest := func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}
+	ts := httptest.NewServer(http.HandlerFunc(handlerTest))
+	defer ts.Close()
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	result, err := client.Proxy("/backup", "GET", map[string]string{"key": "value"})
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result.StatusCode, gocheck.Equals, http.StatusNoContent)
+	client = &Client{endpoint: "http://10.1.2.3:12345", username: "user", password: "abcde"}
+	result, err = client.Proxy("/backup", "GET", nil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(result, gocheck.IsNil)
+}
