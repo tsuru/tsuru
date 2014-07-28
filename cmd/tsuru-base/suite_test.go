@@ -18,7 +18,7 @@ type S struct {
 }
 
 func (s *S) SetUpSuite(c *gocheck.C) {
-	s.recover = tTesting.SetTargetFile(c)
+	s.recover = tTesting.SetTargetFile(c, []byte("http://localhost"))
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
