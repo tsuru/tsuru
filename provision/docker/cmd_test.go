@@ -118,10 +118,13 @@ func (s *S) TestListNodesInTheSchedulerCmdRun(c *gocheck.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Stdout: &buf}
 	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: `[
-	{"Address": "http://localhost:8080", "Status": "disabled", "Metadata": {"meta1": "foo", "meta2": "bar"}},
-	{"Address": "http://localhost:9090", "Status": "ready"}
-]`, Status: http.StatusOK},
+		Transport: testing.Transport{Message: `{
+	"machines": [{"Id": "m-id-1", "Address": "localhost2"}],
+	"nodes": [
+		{"Address": "http://localhost1:8080", "Status": "disabled", "Metadata": {"meta1": "foo", "meta2": "bar"}},
+		{"Address": "http://localhost2:9090", "Status": "ready"}
+	]
+}`, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			return req.URL.Path == "/docker/node"
 		},
@@ -130,14 +133,14 @@ func (s *S) TestListNodesInTheSchedulerCmdRun(c *gocheck.C) {
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
 	err := listNodesInTheSchedulerCmd{}.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
-	expected := `+-----------------------+----------+-----------+
-| Address               | Status   | Metadata  |
-+-----------------------+----------+-----------+
-| http://localhost:8080 | disabled | meta1=foo |
-|                       |          | meta2=bar |
-+-----------------------+----------+-----------+
-| http://localhost:9090 | ready    |           |
-+-----------------------+----------+-----------+
+	expected := `+------------------------+---------+----------+-----------+
+| Address                | IaaS ID | Status   | Metadata  |
++------------------------+---------+----------+-----------+
+| http://localhost1:8080 |         | disabled | meta1=foo |
+|                        |         |          | meta2=bar |
++------------------------+---------+----------+-----------+
+| http://localhost2:9090 | m-id-1  | ready    |           |
++------------------------+---------+----------+-----------+
 `
 	c.Assert(buf.String(), gocheck.Equals, expected)
 }

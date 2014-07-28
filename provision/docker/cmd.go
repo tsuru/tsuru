@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/tsuru/tsuru/cmd"
-	"io/ioutil"
 	"launchpad.net/gnuflag"
 	"net/http"
 	"sort"
@@ -126,16 +125,25 @@ func (listNodesInTheSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) erro
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	var nodes []map[string]interface{}
-	err = json.Unmarshal(body, &nodes)
-	t := cmd.Table{Headers: cmd.Row([]string{"Address", "Status", "Metadata"}), LineSeparator: true}
+	var result map[string]interface{}
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		return err
+	}
+	machines := result["machines"].([]interface{})
+	machineMap := map[string]map[string]interface{}{}
+	for _, m := range machines {
+		machine := m.(map[string]interface{})
+		machineMap[machine["Address"].(string)] = m.(map[string]interface{})
+	}
+	t := cmd.Table{Headers: cmd.Row([]string{"Address", "IaaS ID", "Status", "Metadata"}), LineSeparator: true}
+	nodes := result["nodes"].([]interface{})
 	for _, n := range nodes {
-		addr := n["Address"].(string)
-		status := n["Status"].(string)
+		node := n.(map[string]interface{})
+		addr := node["Address"].(string)
+		status := node["Status"].(string)
 		result := []string{}
-		metadataField, _ := n["Metadata"]
+		metadataField, _ := node["Metadata"]
 		if metadataField != nil {
 			metadata := metadataField.(map[string]interface{})
 			for key, value := range metadata {
@@ -143,7 +151,12 @@ func (listNodesInTheSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) erro
 			}
 		}
 		sort.Strings(result)
-		t.AddRow(cmd.Row([]string{addr, status, strings.Join(result, "\n")}))
+		m, ok := machineMap[urlToHost(addr)]
+		var iaasId string
+		if ok {
+			iaasId = m["Id"].(string)
+		}
+		t.AddRow(cmd.Row([]string{addr, iaasId, status, strings.Join(result, "\n")}))
 	}
 	t.Sort()
 	ctx.Stdout.Write(t.Bytes())

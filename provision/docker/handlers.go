@@ -133,7 +133,15 @@ func listNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	if err != nil {
 		return err
 	}
-	return json.NewEncoder(w).Encode(nodeList)
+	machines, err := iaas.ListMachines()
+	if err != nil {
+		return err
+	}
+	result := map[string]interface{}{
+		"nodes":    nodeList,
+		"machines": machines,
+	}
+	return json.NewEncoder(w).Encode(result)
 }
 
 func fixContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {

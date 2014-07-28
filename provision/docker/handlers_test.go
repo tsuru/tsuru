@@ -244,7 +244,10 @@ func (s *HandlersSuite) TestRemoveNodeHandler(c *gocheck.C) {
 }
 
 func (s *HandlersSuite) TestListNodeHandler(c *gocheck.C) {
-	var result []cluster.Node
+	var result struct {
+		Nodes    []cluster.Node `json:"nodes"`
+		Machines []iaas.Machine `json:"machines"`
+	}
 	var err error
 	dCluster, err = cluster.New(nil, &cluster.MapStorage{})
 	c.Assert(err, gocheck.IsNil)
@@ -260,10 +263,10 @@ func (s *HandlersSuite) TestListNodeHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = json.Unmarshal(body, &result)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(result[0].Address, gocheck.Equals, "host1.com:4243")
-	c.Assert(result[0].Metadata, gocheck.DeepEquals, map[string]string{"pool": "pool1"})
-	c.Assert(result[1].Address, gocheck.Equals, "host2.com:4243")
-	c.Assert(result[1].Metadata, gocheck.DeepEquals, map[string]string{"pool": "pool2", "foo": "bar"})
+	c.Assert(result.Nodes[0].Address, gocheck.Equals, "host1.com:4243")
+	c.Assert(result.Nodes[0].Metadata, gocheck.DeepEquals, map[string]string{"pool": "pool1"})
+	c.Assert(result.Nodes[1].Address, gocheck.Equals, "host2.com:4243")
+	c.Assert(result.Nodes[1].Metadata, gocheck.DeepEquals, map[string]string{"pool": "pool2", "foo": "bar"})
 }
 
 func (s *HandlersSuite) TestFixContainerHandler(c *gocheck.C) {
