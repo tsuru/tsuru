@@ -16,6 +16,7 @@ import (
 	_ "github.com/tsuru/tsuru/iaas/ec2"
 	"io"
 	"io/ioutil"
+	"labix.org/v2/mgo"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -124,7 +125,19 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if address == "" {
 		return fmt.Errorf("Node address is required.")
 	}
-	return dockerCluster().Unregister(address)
+	err = dockerCluster().Unregister(address)
+	if err != nil {
+		return err
+	}
+	removeIaaS, _ := strconv.ParseBool(params["remove_iaas"])
+	if removeIaaS {
+		m, err := iaas.FindMachineByAddress(urlToHost(address))
+		if err != nil && err != mgo.ErrNotFound {
+			return err
+		}
+		return m.Destroy()
+	}
+	return nil
 }
 
 //listNodeHandler call scheduler.Nodes to list all nodes into it.

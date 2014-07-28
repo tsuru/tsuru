@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/testing"
 	"io/ioutil"
+	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"net"
@@ -241,6 +242,47 @@ func (s *HandlersSuite) TestRemoveNodeHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	nodes, err := dCluster.Nodes()
 	c.Assert(len(nodes), gocheck.Equals, 0)
+}
+
+func (s *HandlersSuite) TestRemoveNodeHandlerWithoutRemoveIaaS(c *gocheck.C) {
+	iaas.RegisterIaasProvider("some-iaas", TestIaaS{})
+	machine, err := iaas.CreateMachineForIaaS("some-iaas", map[string]string{})
+	c.Assert(err, gocheck.IsNil)
+	dCluster, err = cluster.New(nil, &cluster.MapStorage{})
+	c.Assert(err, gocheck.IsNil)
+	err = dCluster.Register(fmt.Sprintf("http://%s:4243", machine.Address), nil)
+	c.Assert(err, gocheck.IsNil)
+	b := bytes.NewBufferString(fmt.Sprintf(`{"address": "http://%s:4243", "remove_iaas": "false"}`, machine.Address))
+	req, err := http.NewRequest("POST", "/node/remove", b)
+	c.Assert(err, gocheck.IsNil)
+	rec := httptest.NewRecorder()
+	err = removeNodeHandler(rec, req, nil)
+	c.Assert(err, gocheck.IsNil)
+	nodes, err := dCluster.Nodes()
+	c.Assert(len(nodes), gocheck.Equals, 0)
+	dbM, err := iaas.FindMachineById(machine.Id)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dbM.Id, gocheck.Equals, machine.Id)
+}
+
+func (s *HandlersSuite) TestRemoveNodeHandlerRemoveIaaS(c *gocheck.C) {
+	iaas.RegisterIaasProvider("my-xxx-iaas", TestIaaS{})
+	machine, err := iaas.CreateMachineForIaaS("my-xxx-iaas", map[string]string{})
+	c.Assert(err, gocheck.IsNil)
+	dCluster, err = cluster.New(nil, &cluster.MapStorage{})
+	c.Assert(err, gocheck.IsNil)
+	err = dCluster.Register(fmt.Sprintf("http://%s:4243", machine.Address), nil)
+	c.Assert(err, gocheck.IsNil)
+	b := bytes.NewBufferString(fmt.Sprintf(`{"address": "http://%s:4243", "remove_iaas": "true"}`, machine.Address))
+	req, err := http.NewRequest("POST", "/node/remove", b)
+	c.Assert(err, gocheck.IsNil)
+	rec := httptest.NewRecorder()
+	err = removeNodeHandler(rec, req, nil)
+	c.Assert(err, gocheck.IsNil)
+	nodes, err := dCluster.Nodes()
+	c.Assert(len(nodes), gocheck.Equals, 0)
+	_, err = iaas.FindMachineById(machine.Id)
+	c.Assert(err, gocheck.Equals, mgo.ErrNotFound)
 }
 
 func (s *HandlersSuite) TestListNodeHandler(c *gocheck.C) {
