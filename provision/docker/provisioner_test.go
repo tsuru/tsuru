@@ -666,6 +666,7 @@ func (s *S) TestAdminCommands(c *gocheck.C) {
 		addTeamsToPoolCmd{},
 		removeTeamsFromPoolCmd{},
 		fixContainersCmd{},
+		sshToContainerCmd{},
 	}
 	var p dockerProvisioner
 	c.Assert(p.AdminCommands(), gocheck.DeepEquals, expected)

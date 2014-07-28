@@ -450,6 +450,7 @@ func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 		addTeamsToPoolCmd{},
 		removeTeamsFromPoolCmd{},
 		fixContainersCmd{},
+		sshToContainerCmd{},
 	}
 }
 
