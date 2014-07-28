@@ -56,6 +56,18 @@ func waitForDnsName(ec2Inst *ec2.EC2, instance *ec2.Instance) (*ec2.Instance, er
 
 type EC2IaaS struct{}
 
+func (i *EC2IaaS) Describe() string {
+	return `EC2 IaaS required params:
+  image=<image id>         Image AMI ID
+  type=<instance type>     Your template uuid
+
+Optional params:
+  region=<region>          Chosen region, defaults to us-east-1
+  securityGroup=<group>    Chosen security group
+  keyName=<key name>       Key name for machine
+`
+}
+
 func (i *EC2IaaS) DeleteMachine(m *iaas.Machine) error {
 	regionName, ok := m.CreationParams["region"]
 	if !ok {

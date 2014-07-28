@@ -37,6 +37,27 @@ type NicStruct struct {
 
 type CloudstackIaaS struct{}
 
+func (i *CloudstackIaaS) Describe() string {
+	return `Cloudstack IaaS required params:
+  projectid=<projectid>                     Your project uuid
+  networkids=<networkids>                   Your network uuid
+  templateid=<templateid>                   Your template uuid
+  serviceofferingid=<serviceofferingid>     Your service offering uuid
+  zoneid=<zoneid>                           Your zone uuid
+`
+}
+
+func validateParams(params map[string]string) error {
+	mandatory := []string{"projectid", "networkids", "templateid", "serviceofferingid", "zoneid"}
+	for _, p := range mandatory {
+		_, isPresent := params[p]
+		if !isPresent {
+			return fmt.Errorf("param %q is mandatory", p)
+		}
+	}
+	return nil
+}
+
 func (i *CloudstackIaaS) DeleteMachine(machine *iaas.Machine) error {
 	url, err := buildUrl("destroyVirtualMachine", map[string]string{"id": machine.Id})
 	if err != nil {
@@ -58,6 +79,10 @@ func (i *CloudstackIaaS) DeleteMachine(machine *iaas.Machine) error {
 }
 
 func (i *CloudstackIaaS) CreateMachine(params map[string]string) (*iaas.Machine, error) {
+	err := validateParams(params)
+	if err != nil {
+		return nil, err
+	}
 	userData, err := readUserData()
 	if err != nil {
 		return nil, err

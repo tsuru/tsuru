@@ -8,6 +8,7 @@ package iaas
 
 import (
 	"fmt"
+	"github.com/tsuru/config"
 )
 
 const UserData = `#!/bin/bash
@@ -23,6 +24,10 @@ type IaaS interface {
 	DeleteMachine(m *Machine) error
 }
 
+type Describer interface {
+	Describe() string
+}
+
 var iaasProviders = make(map[string]IaaS)
 
 func RegisterIaasProvider(name string, iaas IaaS) {
@@ -35,4 +40,23 @@ func getIaasProvider(name string) (IaaS, error) {
 		return nil, fmt.Errorf("IaaS provider %q not registered", name)
 	}
 	return provider, nil
+}
+
+func Describe(iaasName ...string) (string, error) {
+	if len(iaasName) == 0 || iaasName[0] == "" {
+		defaultIaaS, err := config.GetString("iaas:default")
+		if err != nil {
+			defaultIaaS = "ec2"
+		}
+		iaasName = []string{defaultIaaS}
+	}
+	iaas, err := getIaasProvider(iaasName[0])
+	if err != nil {
+		return "", err
+	}
+	desc, ok := iaas.(Describer)
+	if !ok {
+		return "", nil
+	}
+	return desc.Describe(), nil
 }

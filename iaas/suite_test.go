@@ -41,3 +41,19 @@ func (TestIaaS) CreateMachine(params map[string]string) (*Machine, error) {
 	}
 	return &m, nil
 }
+
+type TestDescriberIaaS struct {
+	TestIaaS
+}
+
+func (i TestDescriberIaaS) DeleteMachine(m *Machine) error {
+	return i.TestIaaS.DeleteMachine(m)
+}
+
+func (i TestDescriberIaaS) CreateMachine(params map[string]string) (*Machine, error) {
+	return i.TestIaaS.CreateMachine(params)
+}
+
+func (i TestDescriberIaaS) Describe() string {
+	return "ahoy desc!"
+}

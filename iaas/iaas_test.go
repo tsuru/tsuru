@@ -18,3 +18,19 @@ func (s *S) TestRegisterIaasProvider(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(provider, gocheck.Equals, providerInstance)
 }
+
+func (s *S) TestDescribeNoDescriptiption(c *gocheck.C) {
+	providerInstance := TestIaaS{}
+	RegisterIaasProvider("nodesc-iaas", providerInstance)
+	desc, err := Describe("nodesc-iaas")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(desc, gocheck.Equals, "")
+}
+
+func (s *S) TestDescribe(c *gocheck.C) {
+	providerInstance := TestDescriberIaaS{}
+	RegisterIaasProvider("withdesc-iaas", providerInstance)
+	desc, err := Describe("withdesc-iaas")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(desc, gocheck.Equals, "ahoy desc!")
+}
