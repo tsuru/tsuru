@@ -22,14 +22,10 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/safe"
 	"io"
-	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"net"
 	"net/http"
 	"net/url"
-	"os"
-	"os/exec"
-	"path"
 	"strings"
 	"sync"
 	"time"
@@ -388,21 +384,7 @@ func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) er
 	if c.PrivateKey == "" || c.SSHHostPort == "" {
 		return c.legacySSH(stdout, stderr, cmd, args...)
 	}
-	key, err := ssh.ParseRawPrivateKey([]byte(c.PrivateKey))
-	if err != nil {
-		return err
-	}
-	signer, err := ssh.NewSignerFromKey(key)
-	if err != nil {
-		return err
-	}
-	host := c.HostAddr + ":" + c.SSHHostPort
-	config := ssh.ClientConfig{
-		Config: ssh.Config{Rand: rand.Reader},
-		Auth:   []ssh.AuthMethod{ssh.PublicKeys(signer)},
-		User:   c.User,
-	}
-	client, err := ssh.Dial("tcp", host, &config)
+	client, err := c.dialSSH()
 	if err != nil {
 		return err
 	}
@@ -441,26 +423,52 @@ func (c *container) legacySSH(stdout, stderr io.Writer, cmd string, args ...stri
 }
 
 func (c *container) shell(stdin io.Reader, stdout, stderr io.Writer) error {
-	dir, err := ioutil.TempDir("", "docker-container-"+c.ID)
+	client, err := c.dialSSH()
 	if err != nil {
 		return err
 	}
-	defer os.RemoveAll(dir)
-	keyPath := path.Join(dir, c.ID+".pem")
-	err = ioutil.WriteFile(keyPath, []byte(c.PrivateKey), 0400)
+	defer client.Close()
+	session, err := client.NewSession()
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command(
-		"ssh", "-q", "-i", keyPath, "-l", c.User,
-		c.HostAddr, "-p", c.SSHHostPort,
-		"-o", "StrictHostKeyChecking no",
-		"-o", "PasswordAuthentication no",
-	)
-	cmd.Stdin = stdin
-	cmd.Stdout = stdout
-	cmd.Stderr = stderr
-	return cmd.Run()
+	defer session.Close()
+	session.Stdout = stdout
+	session.Stderr = stderr
+	session.Stdin = stdin
+	modes := ssh.TerminalModes{
+		ssh.ECHO:          0,
+		ssh.ECHOCTL:       0,
+		ssh.TTY_OP_ISPEED: 14400,
+		ssh.TTY_OP_OSPEED: 14400,
+	}
+	err = session.RequestPty("xterm", 120, 80, modes)
+	if err != nil {
+		return err
+	}
+	err = session.Shell()
+	if err != nil {
+		return err
+	}
+	return session.Wait()
+}
+
+func (c *container) dialSSH() (*ssh.Client, error) {
+	key, err := ssh.ParseRawPrivateKey([]byte(c.PrivateKey))
+	if err != nil {
+		return nil, err
+	}
+	signer, err := ssh.NewSignerFromKey(key)
+	if err != nil {
+		return nil, err
+	}
+	host := c.HostAddr + ":" + c.SSHHostPort
+	config := ssh.ClientConfig{
+		Config: ssh.Config{Rand: rand.Reader},
+		Auth:   []ssh.AuthMethod{ssh.PublicKeys(signer)},
+		User:   c.User,
+	}
+	return ssh.Dial("tcp", host, &config)
 }
 
 // commit commits an image in docker based in the container
