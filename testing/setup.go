@@ -71,7 +71,7 @@ func StartGandalfTestServer(h http.Handler) *httptest.Server {
 	return ts
 }
 
-func SetTargetFile(c *gocheck.C) []string {
+func SetTargetFile(c *gocheck.C, target []byte) []string {
 	targetFile := os.Getenv("HOME") + "/.tsuru_target"
 	_, err := os.Stat(targetFile)
 	var recover []string
@@ -84,7 +84,7 @@ func SetTargetFile(c *gocheck.C) []string {
 	}
 	f, err := os.Create(targetFile)
 	c.Assert(err, gocheck.IsNil)
-	f.Write([]byte("http://localhost"))
+	f.Write(target)
 	f.Close()
 	return recover
 }
