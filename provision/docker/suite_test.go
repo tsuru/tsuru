@@ -65,7 +65,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	var err error
 	s.server, err = dtesting.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, gocheck.IsNil)
-	s.targetRecover = tTesting.SetTargetFile(c)
+	s.targetRecover = tTesting.SetTargetFile(c, []byte("http://localhost"))
 	s.storage, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	s.oldProvisioner = app.Provisioner
