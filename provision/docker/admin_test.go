@@ -9,9 +9,12 @@ import (
 	"encoding/json"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/testing"
+	ttesting "github.com/tsuru/tsuru/testing"
 	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"
+	"net/http/httptest"
+	"time"
 )
 
 func (s *S) TestMoveContainersInfo(c *gocheck.C) {
@@ -175,4 +178,51 @@ func (s *S) TestFixContainersCmdInfo(c *gocheck.C) {
 	command := fixContainersCmd{}
 	info := command.Info()
 	c.Assert(*info, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestSSHToContainerCmdInfo(c *gocheck.C) {
+	expected := cmd.Info{
+		Name:    "ssh",
+		Usage:   "ssh <container-id>",
+		Desc:    "Open a SSH shell to the given container.",
+		MinArgs: 1,
+	}
+	var command sshToContainerCmd
+	info := command.Info()
+	c.Assert(*info, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestSSHToContainerCmdRun(c *gocheck.C) {
+	var stopServer func()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/docker/ssh/af3332d" && r.Method == "GET" {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("hello my friend\n"))
+			w.(http.Flusher).Flush()
+			w.Write([]byte("glad to see you here\n"))
+			w.(http.Flusher).Flush()
+		} else {
+			http.Error(w, "not found", http.StatusNotFound)
+		}
+		go func() {
+			time.Sleep(1e9)
+			stopServer()
+		}()
+	}))
+	defer server.Close()
+	stopServer = server.Close
+	target := "http://" + server.Listener.Addr().String()
+	recover := ttesting.SetTargetFile(c, []byte(target))
+	defer ttesting.RollbackTargetFile(recover)
+	var stdout, stderr, stdin bytes.Buffer
+	context := cmd.Context{
+		Args:   []string{"af3332d"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Stdin:  &stdin,
+	}
+	var command sshToContainerCmd
+	err := command.Run(&context, nil)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, "hello my friend\nglad to see you here\n")
 }

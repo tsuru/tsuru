@@ -6,13 +6,18 @@ package docker
 
 import (
 	"bytes"
+	"code.google.com/p/go.crypto/ssh/terminal"
 	"encoding/json"
 	"fmt"
 	"github.com/tsuru/tsuru/cmd"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"io"
 	"launchpad.net/gnuflag"
+	"net"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"os"
 )
 
 type moveContainersCmd struct{}
@@ -180,4 +185,74 @@ func (c *rebalanceContainersCmd) Flags() *gnuflag.FlagSet {
 		c.fs.BoolVar(&c.dry, "dry", false, "Dry run, only shows what would be done")
 	}
 	return c.fs
+}
+
+type sshToContainerCmd struct{}
+
+func (sshToContainerCmd) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "ssh",
+		Usage:   "ssh <container-id>",
+		Desc:    "Open a SSH shell to the given container.",
+		MinArgs: 1,
+	}
+}
+
+func (sshToContainerCmd) Run(context *cmd.Context, _ *cmd.Client) error {
+	serverURL, err := cmd.GetURL("/docker/ssh/" + context.Args[0])
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest("GET", serverURL, nil)
+	if err != nil {
+		return err
+	}
+	token, err := cmd.ReadToken()
+	if err != nil {
+		return err
+	}
+	request.Header.Set("Authorization", "bearer "+token)
+	parsedURL, err := url.Parse(serverURL)
+	if err != nil {
+		return err
+	}
+	conn, err := net.Dial("tcp", parsedURL.Host)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	client := httputil.NewClientConn(conn, nil)
+	resp, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("%d - %s", resp.StatusCode, resp.Status)
+	}
+	io.Copy(context.Stdout, resp.Body)
+	errs := make(chan error, 2)
+	quit := make(chan bool)
+	rwc, _ := client.Hijack()
+	if stdin, ok := context.Stdin.(*os.File); ok {
+		fd := int(stdin.Fd())
+		if terminal.IsTerminal(fd) {
+			oldState, err := terminal.MakeRaw(fd)
+			if err != nil {
+				return err
+			}
+			defer terminal.Restore(fd, oldState)
+		}
+	}
+	go io.Copy(rwc, context.Stdin)
+	go func() {
+		defer close(quit)
+		n, err := io.Copy(context.Stdout, rwc)
+		println(n)
+		if err != nil && err != io.EOF {
+			errs <- err
+		}
+	}()
+	<-quit
+	close(errs)
+	return <-errs
 }
