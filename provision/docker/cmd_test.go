@@ -6,6 +6,7 @@ package docker
 
 import (
 	"bytes"
+	"encoding/json"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/testing"
 	"io/ioutil"
@@ -78,9 +79,12 @@ func (s *S) TestAddNodeWithErrorCmdRun(c *gocheck.C) {
 
 func (s *S) TestRemoveNodeFromTheSchedulerCmdInfo(c *gocheck.C) {
 	expected := cmd.Info{
-		Name:    "docker-node-remove",
-		Usage:   "docker-node-remove <address>",
-		Desc:    "Removes a node from the cluster",
+		Name:  "docker-node-remove",
+		Usage: "docker-node-remove <address> [--destroy]",
+		Desc: `Removes a node from the cluster.
+
+--destroy: Destroy the machine in the IaaS used to create it, if it exists.
+`,
 		MinArgs: 1,
 	}
 	cmd := removeNodeFromSchedulerCmd{}
@@ -89,16 +93,40 @@ func (s *S) TestRemoveNodeFromTheSchedulerCmdInfo(c *gocheck.C) {
 
 func (s *S) TestRemoveNodeFromTheSchedulerCmdRun(c *gocheck.C) {
 	var buf bytes.Buffer
-	context := cmd.Context{Args: []string{"pool1", "http://localhost:8080"}, Stdout: &buf}
+	context := cmd.Context{Args: []string{"http://localhost:8080"}, Stdout: &buf}
 	trans := &testing.ConditionalTransport{
 		Transport: testing.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/docker/node"
+			var result map[string]string
+			json.NewDecoder(req.Body).Decode(&result)
+			return req.URL.Path == "/docker/node" &&
+				result["address"] == "http://localhost:8080"
 		},
 	}
 	manager := cmd.Manager{}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
 	cmd := removeNodeFromSchedulerCmd{}
+	err := cmd.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(buf.String(), gocheck.Equals, "Node successfully removed.\n")
+}
+
+func (s *S) TestRemoveNodeFromTheSchedulerWithDestroyCmdRun(c *gocheck.C) {
+	var buf bytes.Buffer
+	context := cmd.Context{Args: []string{"http://localhost:8080"}, Stdout: &buf}
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: "", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			var result map[string]string
+			json.NewDecoder(req.Body).Decode(&result)
+			return req.URL.Path == "/docker/node" &&
+				result["remove_iaas"] == "true" &&
+				result["address"] == "http://localhost:8080"
+		},
+	}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
+	cmd := removeNodeFromSchedulerCmd{destroy: true}
 	err := cmd.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(buf.String(), gocheck.Equals, "Node successfully removed.\n")

@@ -70,19 +70,29 @@ func (a *addNodeToSchedulerCmd) Flags() *gnuflag.FlagSet {
 	return a.fs
 }
 
-type removeNodeFromSchedulerCmd struct{}
+type removeNodeFromSchedulerCmd struct {
+	fs      *gnuflag.FlagSet
+	destroy bool
+}
 
 func (removeNodeFromSchedulerCmd) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "docker-node-remove",
-		Usage:   "docker-node-remove <address>",
-		Desc:    "Removes a node from the cluster",
+		Name:  "docker-node-remove",
+		Usage: "docker-node-remove <address> [--destroy]",
+		Desc: `Removes a node from the cluster.
+
+--destroy: Destroy the machine in the IaaS used to create it, if it exists.
+`,
 		MinArgs: 1,
 	}
 }
 
-func (removeNodeFromSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
-	b, err := json.Marshal(map[string]string{"address": ctx.Args[0]})
+func (c *removeNodeFromSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
+	params := map[string]string{"address": ctx.Args[0]}
+	if c.destroy {
+		params["remove_iaas"] = "true"
+	}
+	b, err := json.Marshal(params)
 	if err != nil {
 		return err
 	}
@@ -100,6 +110,14 @@ func (removeNodeFromSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) erro
 	}
 	ctx.Stdout.Write([]byte("Node successfully removed.\n"))
 	return nil
+}
+
+func (c *removeNodeFromSchedulerCmd) Flags() *gnuflag.FlagSet {
+	if c.fs == nil {
+		c.fs = gnuflag.NewFlagSet("with-flags", gnuflag.ContinueOnError)
+		c.fs.BoolVar(&c.destroy, "destroy", false, "Destroy node from IaaS")
+	}
+	return c.fs
 }
 
 type listNodesInTheSchedulerCmd struct{}

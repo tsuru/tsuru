@@ -442,7 +442,7 @@ func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 		&moveContainersCmd{},
 		&rebalanceContainersCmd{},
 		&addNodeToSchedulerCmd{},
-		removeNodeFromSchedulerCmd{},
+		&removeNodeFromSchedulerCmd{},
 		listNodesInTheSchedulerCmd{},
 		addPoolToSchedulerCmd{},
 		removePoolFromSchedulerCmd{},
