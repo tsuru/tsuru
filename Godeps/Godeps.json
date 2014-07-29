@@ -45,7 +45,7 @@
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
-			"Rev": "8736767bf9f75f2374aac103059362a5c322d211"
+			"Rev": "6628c86d6a89ce7983c7c9b5e98c1df795fbd256"
 		},
 		{
 			"ImportPath": "github.com/gorilla/context",

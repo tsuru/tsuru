@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"io"
 	"net"
+	"sync"
 	"time"
 )
 
@@ -126,13 +127,22 @@ func (r *redismqQ) Get(timeout time.Duration) (*Message, error) {
 	return &msg, nil
 }
 
-type redismqQFactory struct{}
-
-func (factory redismqQFactory) Get(name string) (Q, error) {
-	return factory.get(name, "factory")
+type redismqQFactory struct {
+	pool *redis.Pool
+	sync.Mutex
 }
 
-func (redismqQFactory) get(name, consumerName string) (*redismqQ, error) {
+func (factory *redismqQFactory) Get(name string) (Q, error) {
+	return factory.get(name, "factory"), nil
+}
+
+func (factory *redismqQFactory) getPool() *redis.Pool {
+	factory.Lock()
+	defer factory.Unlock()
+	if factory.pool != nil {
+		fmt.Printf("pool sz: %d\n", factory.pool.ActiveCount())
+		return factory.pool
+	}
 	host, err := config.GetString("redis-queue:host")
 	if err != nil {
 		host = "localhost"
@@ -150,42 +160,46 @@ func (redismqQFactory) get(name, consumerName string) (*redismqQ, error) {
 	if err != nil {
 		db = 3
 	}
-	maxIdle, _ := config.GetInt("redis-queue:pool-max-idle-conn")
-	if maxIdle == 0 {
+	maxIdle, err := config.GetInt("redis-queue:pool-max-idle-conn")
+	if err != nil {
 		maxIdle = 20
 	}
-	idleTimeout, _ := config.GetDuration("redis-queue:pool-idle-timeout")
-	if idleTimeout == 0 {
-		idleTimeout = 300e9
+	idleTimeout, err := config.GetDuration("redis-queue:pool-idle-timeout")
+	if err != nil {
+		idleTimeout = 5 * time.Minute
 	}
-	pool := redis.NewPool(func() (redis.Conn, error) {
-		conn, err := redis.Dial("tcp", host+":"+port)
-		if err != nil {
-			return nil, err
-		}
-		if password != "" {
-			_, err = conn.Do("AUTH", password)
+	factory.pool = &redis.Pool{
+		MaxIdle:     maxIdle,
+		IdleTimeout: idleTimeout,
+		Dial: func() (redis.Conn, error) {
+			conn, err := redis.Dial("tcp", host+":"+port)
 			if err != nil {
 				return nil, err
 			}
-		}
-		_, err = conn.Do("SELECT", db)
-		return conn, err
-	}, maxIdle)
-	pool.IdleTimeout = idleTimeout
-	return &redismqQ{name: name, pool: pool}, nil
+			if password != "" {
+				_, err = conn.Do("AUTH", password)
+				if err != nil {
+					return nil, err
+				}
+			}
+			_, err = conn.Do("SELECT", db)
+			return conn, err
+		},
+	}
+	return factory.pool
 }
 
-func (factory redismqQFactory) Handler(f func(*Message), names ...string) (Handler, error) {
+func (factory *redismqQFactory) get(name, consumerName string) *redismqQ {
+	return &redismqQ{name: name, pool: factory.getPool()}
+}
+
+func (factory *redismqQFactory) Handler(f func(*Message), names ...string) (Handler, error) {
 	name := "default"
 	if len(names) > 0 {
 		name = names[0]
 	}
 	consumerName := fmt.Sprintf("handler-%d", time.Now().UnixNano())
-	queue, err := factory.get(name, consumerName)
-	if err != nil {
-		return nil, err
-	}
+	queue := factory.get(name, consumerName)
 	return &executor{
 		inner: func() {
 			if message, err := queue.Get(5e9); err == nil {

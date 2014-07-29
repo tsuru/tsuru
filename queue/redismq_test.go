@@ -115,6 +115,8 @@ func (s *RedismqSuite) TestFactoryGet(c *gocheck.C) {
 	rq, ok := q.(*redismqQ)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(rq.name, gocheck.Equals, "ancient")
+	c.Assert(rq.pool.IdleTimeout, gocheck.Equals, 5*time.Minute)
+	c.Assert(rq.pool.MaxIdle, gocheck.Equals, 20)
 	msg := Message{Action: "wat", Args: []string{"a", "b"}}
 	err = rq.Put(&msg, 0)
 	c.Assert(err, gocheck.IsNil)
@@ -170,7 +172,7 @@ func (s *RedismqSuite) TestRedismqFactoryPutMessageBackOnFailure(c *gocheck.C) {
 func (s *RedismqSuite) TestRedisMqFactoryIsInFactoriesMap(c *gocheck.C) {
 	f, ok := factories["redis"]
 	c.Assert(ok, gocheck.Equals, true)
-	_, ok = f.(redismqQFactory)
+	_, ok = f.(*redismqQFactory)
 	c.Assert(ok, gocheck.Equals, true)
 }
 
