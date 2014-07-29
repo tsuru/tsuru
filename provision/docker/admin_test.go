@@ -14,7 +14,6 @@ import (
 	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
-	"time"
 )
 
 func (s *S) TestMoveContainersInfo(c *gocheck.C) {
@@ -193,24 +192,20 @@ func (s *S) TestSSHToContainerCmdInfo(c *gocheck.C) {
 }
 
 func (s *S) TestSSHToContainerCmdRun(c *gocheck.C) {
-	var stopServer func()
+	var closeClientConn func()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/docker/ssh/af3332d" && r.Method == "GET" {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("hello my friend\n"))
-			w.(http.Flusher).Flush()
-			w.Write([]byte("glad to see you here\n"))
-			w.(http.Flusher).Flush()
+			conn, _, err := w.(http.Hijacker).Hijack()
+			c.Assert(err, gocheck.IsNil)
+			conn.Write([]byte("hello my friend\n"))
+			conn.Write([]byte("glad to see you here\n"))
+			closeClientConn()
 		} else {
 			http.Error(w, "not found", http.StatusNotFound)
 		}
-		go func() {
-			time.Sleep(1e9)
-			stopServer()
-		}()
 	}))
 	defer server.Close()
-	stopServer = server.Close
+	closeClientConn = server.CloseClientConnections
 	target := "http://" + server.Listener.Addr().String()
 	recover := ttesting.SetTargetFile(c, []byte(target))
 	defer ttesting.RollbackTargetFile(recover)

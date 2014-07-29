@@ -15,7 +15,6 @@ import (
 	"launchpad.net/gnuflag"
 	"net"
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"os"
 )
@@ -221,11 +220,9 @@ func (sshToContainerCmd) Run(context *cmd.Context, _ *cmd.Client) error {
 		return err
 	}
 	defer conn.Close()
-	client := httputil.NewClientConn(conn, nil)
-	client.Do(request)
+	request.Write(conn)
 	errs := make(chan error, 2)
 	quit := make(chan bool)
-	rwc, _ := client.Hijack()
 	if stdin, ok := context.Stdin.(*os.File); ok {
 		fd := int(stdin.Fd())
 		if terminal.IsTerminal(fd) {
@@ -236,10 +233,10 @@ func (sshToContainerCmd) Run(context *cmd.Context, _ *cmd.Client) error {
 			defer terminal.Restore(fd, oldState)
 		}
 	}
-	go io.Copy(rwc, context.Stdin)
+	go io.Copy(conn, context.Stdin)
 	go func() {
 		defer close(quit)
-		_, err := io.Copy(context.Stdout, rwc)
+		_, err := io.Copy(context.Stdout, conn)
 		if err != nil && err != io.EOF {
 			errs <- err
 		}
