@@ -209,6 +209,8 @@ func (s *S) TestSSHToContainerCmdRun(c *gocheck.C) {
 	target := "http://" + server.Listener.Addr().String()
 	targetRecover := ttesting.SetTargetFile(c, []byte(target))
 	defer ttesting.RollbackFile(targetRecover)
+	tokenRecover := ttesting.SetTokenFile(c, []byte("abc123"))
+	defer ttesting.RollbackFile(tokenRecover)
 	var stdout, stderr, stdin bytes.Buffer
 	context := cmd.Context{
 		Args:   []string{"af3332d"},
