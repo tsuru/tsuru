@@ -28,13 +28,13 @@ import (
 type FakeFile struct {
 	content string
 	current int64
-	r       *safe.Reader
+	r       *safe.BytesReader
 	f       *os.File
 }
 
-func (f *FakeFile) reader() *safe.Reader {
+func (f *FakeFile) reader() *safe.BytesReader {
 	if f.r == nil {
-		f.r = safe.NewReader([]byte(f.content))
+		f.r = safe.NewBytesReader([]byte(f.content))
 	}
 	return f.r
 }
