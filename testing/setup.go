@@ -72,23 +72,31 @@ func StartGandalfTestServer(h http.Handler) *httptest.Server {
 }
 
 func SetTargetFile(c *gocheck.C, target []byte) []string {
-	targetFile := os.Getenv("HOME") + "/.tsuru_target"
-	_, err := os.Stat(targetFile)
-	var recover []string
-	if err == nil {
-		old := targetFile + ".old"
-		recover = []string{"mv", old, targetFile}
-		exec.Command("mv", targetFile, old).Run()
-	} else {
-		recover = []string{"rm", targetFile}
-	}
-	f, err := os.Create(targetFile)
-	c.Assert(err, gocheck.IsNil)
-	f.Write(target)
-	f.Close()
-	return recover
+	return writeHomeFile(c, ".tsuru_target", target)
 }
 
-func RollbackTargetFile(rollbackCmds []string) {
+func SetTokenFile(c *gocheck.C, token []byte) []string {
+	return writeHomeFile(c, ".tsuru_token", token)
+}
+
+func RollbackFile(rollbackCmds []string) {
 	exec.Command(rollbackCmds[0], rollbackCmds[1:]...).Run()
+}
+
+func writeHomeFile(c *gocheck.C, filename string, content []byte) []string {
+	file := os.Getenv("HOME") + "/" + filename
+	_, err := os.Stat(file)
+	var recover []string
+	if err == nil {
+		old := file + ".old"
+		recover = []string{"mv", old, file}
+		exec.Command("mv", file, old).Run()
+	} else {
+		recover = []string{"rm", file}
+	}
+	f, err := os.Create(file)
+	c.Assert(err, gocheck.IsNil)
+	f.Write(content)
+	f.Close()
+	return recover
 }
