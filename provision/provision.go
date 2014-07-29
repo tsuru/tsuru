@@ -16,6 +16,8 @@ import (
 
 var ErrInvalidStatus = errors.New("invalid status")
 
+var ErrEmptyApp = errors.New("no units for this app")
+
 // Status represents the status of a unit in tsuru.
 type Status string
 
