@@ -6,7 +6,6 @@ package docker
 
 import (
 	"bytes"
-	"code.google.com/p/go.crypto/ssh/terminal"
 	"encoding/json"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/testing"
