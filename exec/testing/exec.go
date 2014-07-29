@@ -9,8 +9,8 @@ package testing
 
 import (
 	"errors"
+	"github.com/tsuru/tsuru/exec"
 	"github.com/tsuru/tsuru/safe"
-	"io"
 	"reflect"
 	"strings"
 	"sync"
@@ -63,14 +63,14 @@ func (e *FakeExecutor) hasOutputForArgs(args []string) (bool, []byte) {
 	return false, nil
 }
 
-func (e *FakeExecutor) Execute(cmd string, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-	c := command{name: cmd, args: args}
+func (e *FakeExecutor) Execute(opts exec.ExecuteOptions) error {
+	c := command{name: opts.Cmd, args: opts.Args}
 	e.mut.Lock()
 	e.cmds = append(e.cmds, c)
 	e.mut.Unlock()
-	has, out := e.hasOutputForArgs(args)
+	has, out := e.hasOutputForArgs(opts.Args)
 	if has {
-		stdout.Write(out)
+		opts.Stdout.Write(out)
 	}
 	return nil
 }
@@ -102,8 +102,8 @@ type ErrorExecutor struct {
 	FakeExecutor
 }
 
-func (e *ErrorExecutor) Execute(cmd string, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
-	e.FakeExecutor.Execute(cmd, args, stdin, stderr, stderr)
+func (e *ErrorExecutor) Execute(opts exec.ExecuteOptions) error {
+	e.FakeExecutor.Execute(opts)
 	return errors.New("")
 }
 
@@ -116,15 +116,15 @@ type RetryExecutor struct {
 	calls    safe.Counter
 }
 
-func (e *RetryExecutor) Execute(cmd string, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
+func (e *RetryExecutor) Execute(opts exec.ExecuteOptions) error {
 	defer e.calls.Increment()
 	var err error
 	succeed := e.Failures <= e.calls.Val()
 	if !succeed {
-		stdout = stderr
+		opts.Stdout = opts.Stderr
 		err = errors.New("")
 	}
-	e.FakeExecutor.Execute(cmd, args, stdin, stdout, stderr)
+	e.FakeExecutor.Execute(opts)
 	return err
 }
 
@@ -137,14 +137,14 @@ type FailLaterExecutor struct {
 	calls    safe.Counter
 }
 
-func (e *FailLaterExecutor) Execute(cmd string, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
+func (e *FailLaterExecutor) Execute(opts exec.ExecuteOptions) error {
 	defer e.calls.Increment()
 	var err error
 	fail := e.Succeeds <= e.calls.Val()
 	if fail {
-		stdout = stderr
+		opts.Stdout = opts.Stderr
 		err = errors.New("")
 	}
-	e.FakeExecutor.Execute(cmd, args, stdin, stdout, stderr)
+	e.FakeExecutor.Execute(opts)
 	return err
 }

@@ -34,17 +34,29 @@ func (s *S) TestFakeExecutorImplementsExecutor(c *gocheck.C) {
 func (s *S) TestExecute(c *gocheck.C) {
 	var e FakeExecutor
 	var b bytes.Buffer
-	cmd := "ls"
-	args := []string{"-lsa"}
-	err := e.Execute(cmd, args, nil, &b, &b)
+	opts := exec.ExecuteOptions{
+		Cmd:    "ls",
+		Args:   []string{"-lsa"},
+		Stdout: &b,
+		Stderr: &b,
+	}
+	err := e.Execute(opts)
 	c.Assert(err, gocheck.IsNil)
-	cmd = "ps"
-	args = []string{"aux"}
-	err = e.Execute(cmd, args, nil, &b, &b)
+	opts = exec.ExecuteOptions{
+		Cmd:    "ps",
+		Args:   []string{"aux"},
+		Stdout: &b,
+		Stderr: &b,
+	}
+	err = e.Execute(opts)
 	c.Assert(err, gocheck.IsNil)
-	cmd = "ps"
-	args = []string{"-ef"}
-	err = e.Execute(cmd, args, nil, &b, &b)
+	opts = exec.ExecuteOptions{
+		Cmd:    "ps",
+		Args:   []string{"-ef"},
+		Stdout: &b,
+		Stderr: &b,
+	}
+	err = e.Execute(opts)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(e.ExecutedCmd("ls", []string{"-lsa"}), gocheck.Equals, true)
 	c.Assert(e.ExecutedCmd("ps", []string{"aux"}), gocheck.Equals, true)
@@ -58,9 +70,13 @@ func (s *S) TestFakeExecutorOutput(c *gocheck.C) {
 		},
 	}
 	var b bytes.Buffer
-	cmd := "ls"
-	args := []string{"-lsa"}
-	err := e.Execute(cmd, args, nil, &b, &b)
+	opts := exec.ExecuteOptions{
+		Cmd:    "ls",
+		Args:   []string{"-lsa"},
+		Stdout: &b,
+		Stderr: &b,
+	}
+	err := e.Execute(opts)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(e.ExecutedCmd("ls", []string{"-lsa"}), gocheck.Equals, true)
 	c.Assert(b.String(), gocheck.Equals, "ble")
@@ -73,15 +89,20 @@ func (s *S) TestFakeExecutorMultipleOutputs(c *gocheck.C) {
 		},
 	}
 	var b bytes.Buffer
-	err := e.Execute("ls", nil, nil, &b, &b)
+	opts := exec.ExecuteOptions{
+		Cmd:    "ls",
+		Stdout: &b,
+		Stderr: &b,
+	}
+	err := e.Execute(opts)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(b.String(), gocheck.Equals, "bla")
 	b.Reset()
-	err = e.Execute("ls", nil, nil, &b, &b)
+	err = e.Execute(opts)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(b.String(), gocheck.Equals, "ble")
 	b.Reset()
-	err = e.Execute("ls", nil, nil, &b, &b)
+	err = e.Execute(opts)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(b.String(), gocheck.Equals, "bla")
 }
@@ -94,15 +115,26 @@ func (s *S) TestFakeExecutorMultipleOutputsDifferentCalls(c *gocheck.C) {
 		},
 	}
 	var b bytes.Buffer
-	err := e.Execute("ls", []string{"-l"}, nil, &b, &b)
+	opts := exec.ExecuteOptions{
+		Cmd:    "ls",
+		Args:   []string{"-l"},
+		Stdout: &b,
+		Stderr: &b,
+	}
+	err := e.Execute(opts)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(b.String(), gocheck.Equals, "hello")
 	b.Reset()
-	err = e.Execute("ls", nil, nil, &b, &b)
+	opts = exec.ExecuteOptions{
+		Cmd:    "ls",
+		Stdout: &b,
+		Stderr: &b,
+	}
+	err = e.Execute(opts)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(b.String(), gocheck.Equals, "bla")
 	b.Reset()
-	err = e.Execute("ls", nil, nil, &b, &b)
+	err = e.Execute(opts)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(b.String(), gocheck.Equals, "ble")
 }
@@ -163,17 +195,29 @@ func (s *S) TestErrorExecutorImplementsExecutor(c *gocheck.C) {
 func (s *S) TestErrorExecute(c *gocheck.C) {
 	var e ErrorExecutor
 	var b bytes.Buffer
-	cmd := "ls"
-	args := []string{"-lsa"}
-	err := e.Execute(cmd, args, nil, &b, &b)
+	opts := exec.ExecuteOptions{
+		Cmd:    "ls",
+		Args:   []string{"-lsa"},
+		Stdout: &b,
+		Stderr: &b,
+	}
+	err := e.Execute(opts)
 	c.Assert(err, gocheck.NotNil)
-	cmd = "ps"
-	args = []string{"aux"}
-	err = e.Execute(cmd, args, nil, &b, &b)
+	opts = exec.ExecuteOptions{
+		Cmd:    "ps",
+		Args:   []string{"aux"},
+		Stdout: &b,
+		Stderr: &b,
+	}
+	err = e.Execute(opts)
 	c.Assert(err, gocheck.NotNil)
-	cmd = "ps"
-	args = []string{"-ef"}
-	err = e.Execute(cmd, args, nil, &b, &b)
+	opts = exec.ExecuteOptions{
+		Cmd:    "ps",
+		Args:   []string{"-ef"},
+		Stdout: &b,
+		Stderr: &b,
+	}
+	err = e.Execute(opts)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(e.ExecutedCmd("ls", []string{"-lsa"}), gocheck.Equals, true)
 	c.Assert(e.ExecutedCmd("ps", []string{"aux"}), gocheck.Equals, true)
@@ -189,9 +233,13 @@ func (s *S) TestErrorExecutorOutput(c *gocheck.C) {
 		},
 	}
 	var b bytes.Buffer
-	cmd := "ls"
-	args := []string{"-lsa"}
-	err := e.Execute(cmd, args, nil, &b, &b)
+	opts := exec.ExecuteOptions{
+		Cmd:    "ls",
+		Args:   []string{"-lsa"},
+		Stdout: &b,
+		Stderr: &b,
+	}
+	err := e.Execute(opts)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(e.ExecutedCmd("ls", []string{"-lsa"}), gocheck.Equals, true)
 	c.Assert(b.String(), gocheck.Equals, "ble")
@@ -237,9 +285,17 @@ func (s *S) TestErrorExecutorDoesNotHaveOutputForNoMatchingArgs(c *gocheck.C) {
 }
 
 func (s *S) TestGetCommands(c *gocheck.C) {
-	e := FakeExecutor{}
-	b := &bytes.Buffer{}
-	err := e.Execute("sudo", []string{"ifconfig", "-a"}, nil, b, b)
+	var (
+		e FakeExecutor
+		b bytes.Buffer
+	)
+	opts := exec.ExecuteOptions{
+		Cmd:    "sudo",
+		Args:   []string{"ifconfig", "-a"},
+		Stdout: &b,
+		Stderr: &b,
+	}
+	err := e.Execute(opts)
 	c.Assert(err, gocheck.IsNil)
 	cmds := e.GetCommands("sudo")
 	expected := []command{{name: "sudo", args: []string{"ifconfig", "-a"}}}
@@ -256,23 +312,28 @@ func (s *S) TestRetryExecutor(c *gocheck.C) {
 		},
 	}
 	var stdout, stderr bytes.Buffer
-	args := []string{"-la"}
-	err := e.Execute("ls", args, nil, &stdout, &stderr)
+	opts := exec.ExecuteOptions{
+		Cmd:    "ls",
+		Args:   []string{"-lsa"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	err := e.Execute(opts)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(stderr.String(), gocheck.Equals, "hello")
 	c.Assert(stdout.String(), gocheck.Equals, "")
 	stderr.Reset()
-	err = e.Execute("ls", args, nil, &stdout, &stderr)
+	err = e.Execute(opts)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(stderr.String(), gocheck.Equals, "hello")
 	c.Assert(stdout.String(), gocheck.Equals, "")
 	stderr.Reset()
-	err = e.Execute("ls", args, nil, &stdout, &stderr)
+	err = e.Execute(opts)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, "hello")
 	c.Assert(stderr.String(), gocheck.Equals, "")
 	stdout.Reset()
-	err = e.Execute("ls", args, nil, &stdout, &stderr)
+	err = e.Execute(opts)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, "hello")
 	c.Assert(stderr.String(), gocheck.Equals, "")
@@ -288,23 +349,28 @@ func (s *S) TestFailLaterExecutor(c *gocheck.C) {
 		},
 	}
 	var stdout, stderr bytes.Buffer
-	args := []string{"-la"}
-	err := e.Execute("ls", args, nil, &stdout, &stderr)
+	opts := exec.ExecuteOptions{
+		Cmd:    "ls",
+		Args:   []string{"-lsa"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	err := e.Execute(opts)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, "hello!")
 	c.Assert(stderr.String(), gocheck.Equals, "")
 	stdout.Reset()
-	err = e.Execute("ls", args, nil, &stdout, &stderr)
+	err = e.Execute(opts)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, "hello!")
 	c.Assert(stderr.String(), gocheck.Equals, "")
 	stdout.Reset()
-	err = e.Execute("ls", args, nil, &stdout, &stderr)
+	err = e.Execute(opts)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(stdout.String(), gocheck.Equals, "")
 	c.Assert(stderr.String(), gocheck.Equals, "hello!")
 	stderr.Reset()
-	err = e.Execute("ls", args, nil, &stdout, &stderr)
+	err = e.Execute(opts)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(stdout.String(), gocheck.Equals, "")
 	c.Assert(stderr.String(), gocheck.Equals, "hello!")

@@ -27,7 +27,13 @@ func (s *S) TestExecute(c *gocheck.C) {
 	defer commandmocker.Remove(tmpdir)
 	var e OsExecutor
 	var b bytes.Buffer
-	err = e.Execute("ls", []string{"-lsa"}, nil, &b, &b)
+	opts := ExecuteOptions{
+		Cmd:    "ls",
+		Args:   []string{"-lsa"},
+		Stdout: &b,
+		Stderr: &b,
+	}
+	err = e.Execute(opts)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 	expected := []string{"-lsa"}
@@ -41,7 +47,12 @@ func (s *S) TestExecuteWithoutArgs(c *gocheck.C) {
 	defer commandmocker.Remove(tmpdir)
 	var e OsExecutor
 	var b bytes.Buffer
-	err = e.Execute("ls", nil, nil, &b, &b)
+	opts := ExecuteOptions{
+		Cmd:    "ls",
+		Stdout: &b,
+		Stderr: &b,
+	}
+	err = e.Execute(opts)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
 	c.Assert(commandmocker.Parameters(tmpdir), gocheck.IsNil)
