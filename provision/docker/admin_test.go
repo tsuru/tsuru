@@ -6,14 +6,17 @@ package docker
 
 import (
 	"bytes"
+	"code.google.com/p/go.crypto/ssh/terminal"
 	"encoding/json"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/testing"
 	ttesting "github.com/tsuru/tsuru/testing"
 	"io/ioutil"
 	"launchpad.net/gocheck"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 )
 
 func (s *S) TestMoveContainersInfo(c *gocheck.C) {
@@ -194,7 +197,7 @@ func (s *S) TestSSHToContainerCmdInfo(c *gocheck.C) {
 func (s *S) TestSSHToContainerCmdRun(c *gocheck.C) {
 	var closeClientConn func()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/docker/ssh/af3332d" && r.Method == "GET" {
+		if r.URL.Path == "/docker/ssh/af3332d" && r.Method == "GET" && r.Header.Get("Authorization") == "bearer abc123" {
 			conn, _, err := w.(http.Hijacker).Hijack()
 			c.Assert(err, gocheck.IsNil)
 			conn.Write([]byte("hello my friend\n"))
@@ -222,4 +225,43 @@ func (s *S) TestSSHToContainerCmdRun(c *gocheck.C) {
 	err := command.Run(&context, nil)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, "hello my friend\nglad to see you here\n")
+}
+
+func (s *S) TestSSHToContainerCmdNoToken(c *gocheck.C) {
+	var buf bytes.Buffer
+	context := cmd.Context{
+		Args:   []string{"af3332d"},
+		Stdout: &buf,
+		Stderr: &buf,
+		Stdin:  &buf,
+	}
+	var command sshToContainerCmd
+	err := command.Run(&context, nil)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(os.IsNotExist(err), gocheck.Equals, true)
+}
+
+func (s *S) TestSSHToContainerCmdConnectionRefused(c *gocheck.C) {
+	server := httptest.NewServer(nil)
+	addr := server.Listener.Addr().String()
+	server.Close()
+	targetRecover := ttesting.SetTargetFile(c, []byte("http://"+addr))
+	defer ttesting.RollbackFile(targetRecover)
+	tokenRecover := ttesting.SetTokenFile(c, []byte("abc123"))
+	defer ttesting.RollbackFile(tokenRecover)
+	var buf bytes.Buffer
+	context := cmd.Context{
+		Args:   []string{"af3332d"},
+		Stdout: &buf,
+		Stderr: &buf,
+		Stdin:  &buf,
+	}
+	var command sshToContainerCmd
+	err := command.Run(&context, nil)
+	c.Assert(err, gocheck.NotNil)
+	opErr, ok := err.(*net.OpError)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(opErr.Net, gocheck.Equals, "tcp")
+	c.Assert(opErr.Op, gocheck.Equals, "dial")
+	c.Assert(opErr.Addr.String(), gocheck.Equals, addr)
 }

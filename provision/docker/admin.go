@@ -211,10 +211,7 @@ func (sshToContainerCmd) Run(context *cmd.Context, _ *cmd.Client) error {
 		return err
 	}
 	request.Header.Set("Authorization", "bearer "+token)
-	parsedURL, err := url.Parse(serverURL)
-	if err != nil {
-		return err
-	}
+	parsedURL, _ := url.Parse(serverURL)
 	conn, err := net.Dial("tcp", parsedURL.Host)
 	if err != nil {
 		return err
