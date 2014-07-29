@@ -86,6 +86,7 @@ deadc0de: deadcode
 
 race:
 	go test $(GO_EXTRAFLAGS) -race -i ./...
+	go test $(GO_EXTRAFLAGS) -race ./...
 
 doc:
 	@cd docs && make html SPHINXOPTS="-N -W"
