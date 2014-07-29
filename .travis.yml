@@ -18,9 +18,9 @@ install:
   - nc -z 127.0.0.1 11300
   - popd
   - echo http://localhost > $HOME/.tsuru_target
-  - make get
+  - make get GO_EXTRAFLAGS=-x
 script:
-  - make travis_test
+  - make test GO_EXTRAFLAGS=-x
 notifications:
   email:
     recipients:
