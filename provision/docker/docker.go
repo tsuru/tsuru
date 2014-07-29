@@ -433,9 +433,9 @@ func (c *container) shell(stdin io.Reader, stdout, stderr io.Writer) error {
 		return err
 	}
 	defer session.Close()
-	session.Stdout = stdout
-	session.Stderr = stderr
-	session.Stdin = stdin
+	session.Stdout = safe.NewWriter(stdout)
+	session.Stderr = safe.NewWriter(stderr)
+	session.Stdin = safe.NewReader(stdin)
 	modes := ssh.TerminalModes{
 		ssh.ECHOCTL:       0,
 		ssh.TTY_OP_ISPEED: 14400,
