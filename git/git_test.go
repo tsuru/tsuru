@@ -163,30 +163,3 @@ func (s *S) TestGetRemoteURL(c *gocheck.C) {
 		}
 	}
 }
-
-func BenchmarkGetRemoteURL(b *testing.B) {
-	tmpdir, err := filepath.EvalSymlinks(os.TempDir())
-	if err != nil {
-		b.Fatal(err)
-	}
-	repoPath := path.Join(tmpdir, "git-bench")
-	err = os.MkdirAll(repoPath, 0755)
-	if err != nil {
-		b.Fatal(err)
-	}
-	cmd := exec.Command("git", "init")
-	cmd.Dir = repoPath
-	err = cmd.Run()
-	if err != nil {
-		b.Fatal(err)
-	}
-	err = exec.Command("cp", "testdata/gitconfig", path.Join(repoPath, ".git", "config")).Run()
-	if err != nil {
-		b.Fatal(err)
-	}
-	for i := 0; i < b.N; i++ {
-		repo, _ := OpenRepository(repoPath)
-		repo.RemoteURL("origin")
-		repo.RemoteURL("tsuru")
-	}
-}
