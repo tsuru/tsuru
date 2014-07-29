@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/tsuru/tsuru/cmd"
+	"github.com/tsuru/tsuru/errors"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"io"
 	"launchpad.net/gnuflag"
@@ -17,7 +18,12 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
+	"strconv"
+	"strings"
 )
+
+var httpHeaderRegexp = regexp.MustCompile(`HTTP/.*? (\d+)`)
 
 type moveContainersCmd struct{}
 
@@ -206,11 +212,11 @@ func (sshToContainerCmd) Run(context *cmd.Context, _ *cmd.Client) error {
 	if err != nil {
 		return err
 	}
+	request.Close = true
 	token, err := cmd.ReadToken()
-	if err != nil {
-		return err
+	if err == nil {
+		request.Header.Set("Authorization", "bearer "+token)
 	}
-	request.Header.Set("Authorization", "bearer "+token)
 	parsedURL, _ := url.Parse(serverURL)
 	conn, err := net.Dial("tcp", parsedURL.Host)
 	if err != nil {
@@ -218,8 +224,6 @@ func (sshToContainerCmd) Run(context *cmd.Context, _ *cmd.Client) error {
 	}
 	defer conn.Close()
 	request.Write(conn)
-	errs := make(chan error, 2)
-	quit := make(chan bool)
 	if stdin, ok := context.Stdin.(*os.File); ok {
 		fd := int(stdin.Fd())
 		if terminal.IsTerminal(fd) {
@@ -230,6 +234,28 @@ func (sshToContainerCmd) Run(context *cmd.Context, _ *cmd.Client) error {
 			defer terminal.Restore(fd, oldState)
 		}
 	}
+	bytesLimit := 50
+	var readStr string
+	byteBuffer := make([]byte, 1)
+	for i := 0; i < bytesLimit && byteBuffer[0] != '\n'; i++ {
+		_, err := conn.Read(byteBuffer)
+		if err != nil {
+			break
+		}
+		readStr += string(byteBuffer)
+	}
+	matches := httpHeaderRegexp.FindAllStringSubmatch(readStr, -1)
+	if len(matches) > 0 && len(matches[0]) > 1 {
+		code, _ := strconv.Atoi(matches[0][1])
+		return &errors.HTTP{
+			Code:    code,
+			Message: strings.TrimSpace(readStr),
+		}
+	} else {
+		context.Stdout.Write([]byte(readStr))
+	}
+	errs := make(chan error, 2)
+	quit := make(chan bool)
 	go io.Copy(conn, context.Stdin)
 	go func() {
 		defer close(quit)

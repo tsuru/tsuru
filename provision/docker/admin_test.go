@@ -7,15 +7,16 @@ package docker
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/testing"
+	"github.com/tsuru/tsuru/errors"
 	ttesting "github.com/tsuru/tsuru/testing"
 	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net"
 	"net/http"
 	"net/http/httptest"
-	"os"
 )
 
 func (s *S) TestMoveContainersInfo(c *gocheck.C) {
@@ -227,6 +228,13 @@ func (s *S) TestSSHToContainerCmdRun(c *gocheck.C) {
 }
 
 func (s *S) TestSSHToContainerCmdNoToken(c *gocheck.C) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "You must provide a valid Authorization header", http.StatusUnauthorized)
+	}))
+	defer server.Close()
+	target := "http://" + server.Listener.Addr().String()
+	targetRecover := ttesting.SetTargetFile(c, []byte(target))
+	defer ttesting.RollbackFile(targetRecover)
 	var buf bytes.Buffer
 	context := cmd.Context{
 		Args:   []string{"af3332d"},
@@ -236,8 +244,63 @@ func (s *S) TestSSHToContainerCmdNoToken(c *gocheck.C) {
 	}
 	var command sshToContainerCmd
 	err := command.Run(&context, nil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(os.IsNotExist(err), gocheck.Equals, true)
+	c.Assert(err, gocheck.FitsTypeOf, &errors.HTTP{})
+	httpErr := err.(*errors.HTTP)
+	c.Assert(httpErr.Code, gocheck.Equals, 401)
+	c.Assert(httpErr.Message, gocheck.Equals, "HTTP/1.1 401 Unauthorized")
+}
+
+func (s *S) TestSSHToContainerCmdSmallData(c *gocheck.C) {
+	var closeClientConn func()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, _, err := w.(http.Hijacker).Hijack()
+		c.Assert(err, gocheck.IsNil)
+		conn.Write([]byte("hello"))
+		closeClientConn()
+	}))
+	defer server.Close()
+	closeClientConn = server.CloseClientConnections
+	target := "http://" + server.Listener.Addr().String()
+	targetRecover := ttesting.SetTargetFile(c, []byte(target))
+	defer ttesting.RollbackFile(targetRecover)
+	var stdout, stderr, stdin bytes.Buffer
+	context := cmd.Context{
+		Args:   []string{"af3332d"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Stdin:  &stdin,
+	}
+	var command sshToContainerCmd
+	err := command.Run(&context, nil)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, "hello")
+}
+
+func (s *S) TestSSHToContainerCmdLongNoNewLine(c *gocheck.C) {
+	var closeClientConn func()
+	expected := fmt.Sprintf("%0200s", "x")
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		conn, _, err := w.(http.Hijacker).Hijack()
+		c.Assert(err, gocheck.IsNil)
+		conn.Write([]byte(expected))
+		closeClientConn()
+	}))
+	defer server.Close()
+	closeClientConn = server.CloseClientConnections
+	target := "http://" + server.Listener.Addr().String()
+	targetRecover := ttesting.SetTargetFile(c, []byte(target))
+	defer ttesting.RollbackFile(targetRecover)
+	var stdout, stderr, stdin bytes.Buffer
+	context := cmd.Context{
+		Args:   []string{"af3332d"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Stdin:  &stdin,
+	}
+	var command sshToContainerCmd
+	err := command.Run(&context, nil)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
 func (s *S) TestSSHToContainerCmdConnectionRefused(c *gocheck.C) {
