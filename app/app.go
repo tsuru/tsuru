@@ -779,15 +779,16 @@ func (app *App) SerializeEnvVars() error {
 	}
 	cmd += "END\n"
 	err := app.run(cmd, &buf, false)
-	if err != nil {
+	if err != nil && err != provision.ErrEmptyApp {
 		output := buf.Bytes()
 		if output == nil {
 			err = fmt.Errorf("Failed to write env vars: %s.", err)
 		} else {
 			err = fmt.Errorf("Failed to write env vars (%s): %s.", err, output)
 		}
+		return err
 	}
-	return err
+	return nil
 }
 
 // SetEnvs saves a list of environment variables in the app. The publicOnly

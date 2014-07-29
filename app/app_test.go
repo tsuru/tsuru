@@ -1658,6 +1658,25 @@ func (s *S) TestSerializeEnvVarsErrorWithOutput(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, expected)
 }
 
+func (s *S) TestSerializeEnvVarsEmptyApp(c *gocheck.C) {
+	s.provisioner.PrepareFailure("ExecuteCommand", provision.ErrEmptyApp)
+	app := App{
+		Name: "intheend",
+		Env: map[string]bind.EnvVar{
+			"https_proxy": {
+				Name:   "https_proxy",
+				Value:  "https://secureproxy.com:3128/",
+				Public: true,
+			},
+		},
+	}
+	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
+	s.provisioner.AddUnits(&app, 1)
+	err := app.SerializeEnvVars()
+	c.Assert(err, gocheck.IsNil)
+}
+
 func (s *S) TestListReturnsAppsForAGivenUser(c *gocheck.C) {
 	a := App{
 		Name:  "testapp",
