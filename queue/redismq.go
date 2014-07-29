@@ -140,7 +140,6 @@ func (factory *redismqQFactory) getPool() *redis.Pool {
 	factory.Lock()
 	defer factory.Unlock()
 	if factory.pool != nil {
-		fmt.Printf("pool sz: %d\n", factory.pool.ActiveCount())
 		return factory.pool
 	}
 	host, err := config.GetString("redis-queue:host")
