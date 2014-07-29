@@ -27,3 +27,19 @@ func (s *S) TestSafeBufferIsThreadSafe(c *gocheck.C) {
 	buf.Reset()
 	wg.Wait()
 }
+
+func (s *S) TestSafeWriterIsThreadSafe(c *gocheck.C) {
+	var buf Buffer
+	writer := NewWriter(&buf)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		writer.Write([]byte("something"))
+		wg.Done()
+	}()
+	go func() {
+		writer.Write([]byte("otherthing"))
+		wg.Done()
+	}()
+	wg.Wait()
+}
