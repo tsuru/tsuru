@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2014 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -75,12 +75,4 @@ func (s *S) TestWrite(c *gocheck.C) {
 	err := Write(w, []byte("teeest"))
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(w.String(), gocheck.Equals, "teeest")
-}
-
-func BenchmarkLogging(b *testing.B) {
-	target := new(Target)
-	_ = newFakeLogger()
-	for i := 0; i < b.N; i++ {
-		target.Debugf("Log message number %d.", i+1)
-	}
 }
