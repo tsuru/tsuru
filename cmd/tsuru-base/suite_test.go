@@ -22,7 +22,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
-	tTesting.RollbackTargetFile(s.recover)
+	tTesting.RollbackFile(s.recover)
 }
 
 var _ = gocheck.Suite(&S{})
