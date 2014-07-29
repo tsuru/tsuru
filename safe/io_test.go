@@ -6,6 +6,7 @@ package safe
 
 import (
 	"bytes"
+	"io/ioutil"
 	"launchpad.net/gocheck"
 )
 
@@ -14,4 +15,12 @@ func (s *S) TestSafeWriter(c *gocheck.C) {
 	writer := NewWriter(&buf)
 	writer.Write([]byte("hello world"))
 	c.Assert(buf.String(), gocheck.Equals, "hello world")
+}
+
+func (s *S) TestSafeReader(c *gocheck.C) {
+	buf := bytes.NewBufferString("hello world")
+	reader := NewReader(buf)
+	b, err := ioutil.ReadAll(reader)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(string(b), gocheck.Equals, "hello world")
 }

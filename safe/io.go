@@ -23,3 +23,18 @@ func (w *Writer) Write(p []byte) (int, error) {
 	defer w.mut.Unlock()
 	return w.w.Write(p)
 }
+
+type Reader struct {
+	r io.Reader
+	mut sync.Mutex
+}
+
+func NewReader(r io.Reader) *Reader {
+	return &Reader{r: r}
+}
+
+func (r *Reader) Read(p []byte) (int, error) {
+	r.mut.Lock()
+	defer r.mut.Unlock()
+	return r.r.Read(p)
+}
