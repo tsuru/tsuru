@@ -222,14 +222,7 @@ func (sshToContainerCmd) Run(context *cmd.Context, _ *cmd.Client) error {
 	}
 	defer conn.Close()
 	client := httputil.NewClientConn(conn, nil)
-	resp, err := client.Do(request)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("%d - %s", resp.StatusCode, resp.Status)
-	}
-	io.Copy(context.Stdout, resp.Body)
+	client.Do(request)
 	errs := make(chan error, 2)
 	quit := make(chan bool)
 	rwc, _ := client.Hijack()
@@ -246,8 +239,7 @@ func (sshToContainerCmd) Run(context *cmd.Context, _ *cmd.Client) error {
 	go io.Copy(rwc, context.Stdin)
 	go func() {
 		defer close(quit)
-		n, err := io.Copy(context.Stdout, rwc)
-		println(n)
+		_, err := io.Copy(context.Stdout, rwc)
 		if err != nil && err != io.EOF {
 			errs <- err
 		}
