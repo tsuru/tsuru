@@ -7,6 +7,7 @@
 package safe
 
 import (
+	"bytes"
 	"launchpad.net/gocheck"
 	"sync"
 )
@@ -29,7 +30,7 @@ func (s *S) TestSafeBufferIsThreadSafe(c *gocheck.C) {
 }
 
 func (s *S) TestSafeWriterIsThreadSafe(c *gocheck.C) {
-	var buf Buffer
+	var buf bytes.Buffer
 	writer := NewWriter(&buf)
 	var wg sync.WaitGroup
 	wg.Add(2)
@@ -39,6 +40,23 @@ func (s *S) TestSafeWriterIsThreadSafe(c *gocheck.C) {
 	}()
 	go func() {
 		writer.Write([]byte("otherthing"))
+		wg.Done()
+	}()
+	wg.Wait()
+}
+
+func (s *S) TestSafeReaderIsThreadSafe(c *gocheck.C) {
+	var buf [8]byte
+	buffer := bytes.NewBufferString("hello world something")
+	reader := NewReader(buffer)
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		reader.Read(buf[:])
+		wg.Done()
+	}()
+	go func() {
+		reader.Read(buf[:])
 		wg.Done()
 	}()
 	wg.Wait()
