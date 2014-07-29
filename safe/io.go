@@ -25,7 +25,7 @@ func (w *Writer) Write(p []byte) (int, error) {
 }
 
 type Reader struct {
-	r io.Reader
+	r   io.Reader
 	mut sync.Mutex
 }
 
