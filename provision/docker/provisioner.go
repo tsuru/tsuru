@@ -391,7 +391,7 @@ func (*dockerProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provi
 		return err
 	}
 	if len(containers) == 0 {
-		return errors.New("No containers for this app")
+		return provision.ErrEmptyApp
 	}
 	container := containers[0]
 	return container.ssh(stdout, stderr, cmd, args...)
@@ -403,7 +403,7 @@ func (*dockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 		return err
 	}
 	if len(containers) == 0 {
-		return errors.New("No containers for this app")
+		return provision.ErrEmptyApp
 	}
 	for _, c := range containers {
 		err = c.ssh(stdout, stderr, cmd, args...)

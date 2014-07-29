@@ -599,8 +599,15 @@ func (s *S) TestProvisionerExecuteCommandNoContainers(c *gocheck.C) {
 	app := testing.NewFakeApp("almah", "static", 2)
 	var buf bytes.Buffer
 	err := p.ExecuteCommand(&buf, &buf, app, "ls", "-lh")
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "No containers for this app")
+	c.Assert(err, gocheck.Equals, provision.ErrEmptyApp)
+}
+
+func (s *S) TestProvisionerExecuteCommandOnceNoContainers(c *gocheck.C) {
+	var p dockerProvisioner
+	app := testing.NewFakeApp("almah", "static", 2)
+	var buf bytes.Buffer
+	err := p.ExecuteCommandOnce(&buf, &buf, app, "ls", "-lh")
+	c.Assert(err, gocheck.Equals, provision.ErrEmptyApp)
 }
 
 func (s *S) TestProvisionCollection(c *gocheck.C) {
