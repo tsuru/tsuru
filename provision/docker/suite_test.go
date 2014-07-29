@@ -104,7 +104,7 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 	defer coll.Close()
 	err := coll.Database.DropDatabase()
 	c.Assert(err, gocheck.IsNil)
-	tTesting.RollbackTargetFile(s.targetRecover)
+	tTesting.RollbackFile(s.targetRecover)
 	s.storage.Apps().Database.DropDatabase()
 	s.storage.Close()
 	app.Provisioner = s.oldProvisioner

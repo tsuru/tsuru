@@ -207,8 +207,8 @@ func (s *S) TestSSHToContainerCmdRun(c *gocheck.C) {
 	defer server.Close()
 	closeClientConn = server.CloseClientConnections
 	target := "http://" + server.Listener.Addr().String()
-	recover := ttesting.SetTargetFile(c, []byte(target))
-	defer ttesting.RollbackTargetFile(recover)
+	targetRecover := ttesting.SetTargetFile(c, []byte(target))
+	defer ttesting.RollbackFile(targetRecover)
 	var stdout, stderr, stdin bytes.Buffer
 	context := cmd.Context{
 		Args:   []string{"af3332d"},
