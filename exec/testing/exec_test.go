@@ -294,11 +294,18 @@ func (s *S) TestGetCommands(c *gocheck.C) {
 		Args:   []string{"ifconfig", "-a"},
 		Stdout: &b,
 		Stderr: &b,
+		Envs:   []string{"BLA=bla"},
 	}
 	err := e.Execute(opts)
 	c.Assert(err, gocheck.IsNil)
 	cmds := e.GetCommands("sudo")
-	expected := []command{{name: "sudo", args: []string{"ifconfig", "-a"}}}
+	expected := []command{
+		{
+			name: "sudo",
+			args: []string{"ifconfig", "-a"},
+			envs: []string{"BLA=bla"},
+		},
+	}
 	c.Assert(cmds, gocheck.DeepEquals, expected)
 }
 

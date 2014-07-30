@@ -19,6 +19,7 @@ import (
 type command struct {
 	name string
 	args []string
+	envs []string
 }
 
 func (c *command) GetName() string {
@@ -64,7 +65,7 @@ func (e *FakeExecutor) hasOutputForArgs(args []string) (bool, []byte) {
 }
 
 func (e *FakeExecutor) Execute(opts exec.ExecuteOptions) error {
-	c := command{name: opts.Cmd, args: opts.Args}
+	c := command{name: opts.Cmd, args: opts.Args, envs: opts.Envs}
 	e.mut.Lock()
 	e.cmds = append(e.cmds, c)
 	e.mut.Unlock()
