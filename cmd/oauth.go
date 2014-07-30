@@ -61,15 +61,15 @@ func port(schemeData map[string]string) string {
 
 func open(url string) error {
 	var opts exec.ExecuteOptions
+	opts = exec.ExecuteOptions{
+		Cmd:  "open",
+		Args: []string{url},
+	}
 	if runtime.GOOS == "linux" {
 		opts = exec.ExecuteOptions{
 			Cmd:  "xdg-open",
 			Args: []string{url},
 		}
-	}
-	opts = exec.ExecuteOptions{
-		Cmd:  "open",
-		Args: []string{url},
 	}
 	return executor().Execute(opts)
 }
