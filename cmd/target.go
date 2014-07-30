@@ -85,7 +85,7 @@ func (t *targetSlice) String() string {
 	return strings.Join(values, "\n")
 }
 
-func readTarget() (string, error) {
+func ReadTarget() (string, error) {
 	targetPath := JoinWithUserDir(".tsuru_target")
 	if f, err := filesystem().Open(targetPath); err == nil {
 		defer f.Close()
@@ -102,7 +102,7 @@ func deleteTargetFile() {
 
 func GetURL(path string) (string, error) {
 	var prefix string
-	target, err := readTarget()
+	target, err := ReadTarget()
 	if err != nil {
 		return "", err
 	}
@@ -263,7 +263,7 @@ func (t *targetList) Run(ctx *Context, client *Client) error {
 	for label, target := range targets {
 		slice.add(label, target)
 	}
-	if current, err := readTarget(); err == nil {
+	if current, err := ReadTarget(); err == nil {
 		slice.setCurrent(current)
 	}
 	fmt.Fprintf(ctx.Stdout, "%s\n", slice)
@@ -300,7 +300,7 @@ func (t *targetRemove) Run(ctx *Context, client *Client) error {
 		}
 	}
 	if turl != "" {
-		if current, err := readTarget(); err == nil && current == turl {
+		if current, err := ReadTarget(); err == nil && current == turl {
 			deleteTargetFile()
 		}
 	}

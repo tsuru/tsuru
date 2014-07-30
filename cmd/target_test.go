@@ -51,7 +51,7 @@ func (s *S) TestReadTarget(c *gocheck.C) {
 	defer func() {
 		fsystem = nil
 	}()
-	target, err := readTarget()
+	target, err := ReadTarget()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(target, gocheck.Equals, "http://tsuru.google.com")
 }
@@ -61,7 +61,7 @@ func (s *S) TestReadTargetReturnsEmptyStringIfTheFileDoesNotExist(c *gocheck.C) 
 	defer func() {
 		fsystem = nil
 	}()
-	target, err := readTarget()
+	target, err := ReadTarget()
 	c.Assert(target, gocheck.Equals, "")
 	c.Assert(err, gocheck.NotNil)
 	_, ok := err.(undefinedTargetError)
@@ -73,7 +73,7 @@ func (s *S) TestReadTargetTrimsFileContent(c *gocheck.C) {
 	defer func() {
 		fsystem = nil
 	}()
-	target, err := readTarget()
+	target, err := ReadTarget()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(target, gocheck.Equals, "http://tsuru.io")
 }
@@ -196,7 +196,7 @@ func (s *S) TestTargetAddWithSet(c *gocheck.C) {
 	err := targetAdd.Run(context, nil)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(context.Stdout.(*bytes.Buffer).String(), gocheck.Equals, "New target default -> http://tsuru.google.com added to target list and defined as the current target\n")
-	t, err := readTarget()
+	t, err := ReadTarget()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(t, gocheck.Equals, "http://tsuru.google.com")
 }
@@ -386,7 +386,7 @@ func (s *S) TestTargetRemoveCurrentTarget(c *gocheck.C) {
 	context := &Context{[]string{"default"}, manager.stdout, manager.stderr, manager.stdin}
 	err := targetRemove.Run(context, nil)
 	c.Assert(err, gocheck.IsNil)
-	_, err = readTarget()
+	_, err = ReadTarget()
 	c.Assert(err, gocheck.NotNil)
 }
 
