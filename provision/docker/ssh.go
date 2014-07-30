@@ -9,6 +9,7 @@ import (
 	"github.com/bmizerany/pat"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/cmd"
+	"github.com/tsuru/tsuru/exec"
 	"github.com/tsuru/tsuru/io"
 	"launchpad.net/gnuflag"
 	"net"
@@ -42,12 +43,24 @@ func (h *sshHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		"--", input.Cmd,
 	}
 	sshArgs = append(sshArgs, input.Args...)
-	executor().Execute("ssh", sshArgs, nil, w, w)
+	opts := exec.ExecuteOptions{
+		Cmd:    "ssh",
+		Args:   sshArgs,
+		Stdout: w,
+		Stderr: w,
+	}
+	executor().Execute(opts)
 }
 
 func removeHostHandler(w http.ResponseWriter, r *http.Request) {
 	w = &io.FlushingWriter{ResponseWriter: w}
-	executor().Execute("ssh-keygen", []string{"-R", r.URL.Query().Get(":ip")}, nil, w, w)
+	opts := exec.ExecuteOptions{
+		Cmd:    "ssh-keygen",
+		Args:   []string{"-R", r.URL.Query().Get(":ip")},
+		Stdout: w,
+		Stderr: w,
+	}
+	executor().Execute(opts)
 }
 
 type sshAgentCmd struct {
