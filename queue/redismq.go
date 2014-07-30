@@ -20,15 +20,18 @@ import (
 type redismqQ struct {
 	name    string
 	prefix  string
-	pool    *redis.Pool
+	factory *redismqQFactory
 	maxSize int
 	psc     *redis.PubSubConn
 }
 
 func (r *redismqQ) Pub(msg []byte) error {
-	conn := r.pool.Get()
+	conn, err := r.factory.getConn()
+	if err != nil {
+		return err
+	}
 	defer conn.Close()
-	_, err := conn.Do("PUBLISH", r.key(), msg)
+	_, err = conn.Do("PUBLISH", r.key(), msg)
 	return err
 }
 
@@ -48,9 +51,13 @@ func (r *redismqQ) UnSub() error {
 }
 
 func (r *redismqQ) Sub() (chan []byte, error) {
-	r.psc = &redis.PubSubConn{Conn: r.pool.Get()}
+	conn, err := r.factory.getConn(true)
+	if err != nil {
+		return nil, err
+	}
+	r.psc = &redis.PubSubConn{Conn: conn}
 	msgChan := make(chan []byte)
-	err := r.psc.Subscribe(r.key())
+	err = r.psc.Subscribe(r.key())
 	if err != nil {
 		return nil, err
 	}
@@ -91,12 +98,15 @@ func (r *redismqQ) Put(m *Message, delay time.Duration) error {
 }
 
 func (r *redismqQ) put(message string) error {
-	conn := r.pool.Get()
+	conn, err := r.factory.getConn()
+	if err != nil {
+		return err
+	}
 	defer conn.Close()
 	conn.Send("MULTI")
 	conn.Send("LPUSH", r.key(), message)
 	conn.Send("LTRIM", r.key(), 0, r.maxSize-1)
-	_, err := conn.Do("EXEC")
+	_, err = conn.Do("EXEC")
 	return err
 }
 
@@ -105,7 +115,10 @@ func (r *redismqQ) key() string {
 }
 
 func (r *redismqQ) Get(timeout time.Duration) (*Message, error) {
-	conn := r.pool.Get()
+	conn, err := r.factory.getConn()
+	if err != nil {
+		return nil, err
+	}
 	defer conn.Close()
 	secTimeout := int(timeout.Seconds())
 	if secTimeout < 1 {
@@ -133,15 +146,18 @@ type redismqQFactory struct {
 }
 
 func (factory *redismqQFactory) Get(name string) (Q, error) {
-	return factory.get(name, "factory"), nil
+	return &redismqQ{name: name, factory: factory}, nil
 }
 
-func (factory *redismqQFactory) getPool() *redis.Pool {
-	factory.Lock()
-	defer factory.Unlock()
-	if factory.pool != nil {
-		return factory.pool
+func (factory *redismqQFactory) getConn(standAlone ...bool) (redis.Conn, error) {
+	isStandAlone := len(standAlone) > 0 && standAlone[0]
+	if isStandAlone {
+		return factory.dial()
 	}
+	return factory.getPool().Get(), nil
+}
+
+func (factory *redismqQFactory) dial() (redis.Conn, error) {
 	host, err := config.GetString("redis-queue:host")
 	if err != nil {
 		host = "localhost"
@@ -159,6 +175,26 @@ func (factory *redismqQFactory) getPool() *redis.Pool {
 	if err != nil {
 		db = 3
 	}
+	conn, err := redis.Dial("tcp", host+":"+port)
+	if err != nil {
+		return nil, err
+	}
+	if password != "" {
+		_, err = conn.Do("AUTH", password)
+		if err != nil {
+			return nil, err
+		}
+	}
+	_, err = conn.Do("SELECT", db)
+	return conn, err
+}
+
+func (factory *redismqQFactory) getPool() *redis.Pool {
+	factory.Lock()
+	defer factory.Unlock()
+	if factory.pool != nil {
+		return factory.pool
+	}
 	maxIdle, err := config.GetInt("redis-queue:pool-max-idle-conn")
 	if err != nil {
 		maxIdle = 20
@@ -170,26 +206,9 @@ func (factory *redismqQFactory) getPool() *redis.Pool {
 	factory.pool = &redis.Pool{
 		MaxIdle:     maxIdle,
 		IdleTimeout: idleTimeout,
-		Dial: func() (redis.Conn, error) {
-			conn, err := redis.Dial("tcp", host+":"+port)
-			if err != nil {
-				return nil, err
-			}
-			if password != "" {
-				_, err = conn.Do("AUTH", password)
-				if err != nil {
-					return nil, err
-				}
-			}
-			_, err = conn.Do("SELECT", db)
-			return conn, err
-		},
+		Dial:        factory.dial,
 	}
 	return factory.pool
-}
-
-func (factory *redismqQFactory) get(name, consumerName string) *redismqQ {
-	return &redismqQ{name: name, pool: factory.getPool()}
 }
 
 func (factory *redismqQFactory) Handler(f func(*Message), names ...string) (Handler, error) {
@@ -197,8 +216,10 @@ func (factory *redismqQFactory) Handler(f func(*Message), names ...string) (Hand
 	if len(names) > 0 {
 		name = names[0]
 	}
-	consumerName := fmt.Sprintf("handler-%d", time.Now().UnixNano())
-	queue := factory.get(name, consumerName)
+	queue, err := factory.Get(name)
+	if err != nil {
+		return nil, err
+	}
 	return &executor{
 		inner: func() {
 			if message, err := queue.Get(5e9); err == nil {
