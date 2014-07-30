@@ -27,6 +27,11 @@ func (s *S) TestCommandGetArgs(c *gocheck.C) {
 	c.Assert(cmd.GetArgs(), gocheck.DeepEquals, cmd.args)
 }
 
+func (s *S) TestCommandGetEnvs(c *gocheck.C) {
+	cmd := command{name: "docker", envs: []string{"BLA=ble"}}
+	c.Assert(cmd.GetEnvs(), gocheck.DeepEquals, cmd.envs)
+}
+
 func (s *S) TestFakeExecutorImplementsExecutor(c *gocheck.C) {
 	var _ exec.Executor = &FakeExecutor{}
 }

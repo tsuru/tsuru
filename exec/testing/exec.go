@@ -30,6 +30,11 @@ func (c *command) GetArgs() []string {
 	return c.args
 }
 
+// GetEnvs returns the command environment variables.
+func (c *command) GetEnvs() []string {
+	return c.envs
+}
+
 type FakeExecutor struct {
 	cmds    []command
 	mut     sync.RWMutex
