@@ -401,6 +401,8 @@ func (s *S) TestUnbindRemovesEnvironmentVariableFromApp(c *gocheck.C) {
 	err = s.conn.Apps().Insert(&a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = fakeProvisioner.Provision(&a)
+	c.Assert(err, gocheck.IsNil)
 	err = instance.UnbindApp(&a)
 	c.Assert(err, gocheck.IsNil)
 	newApp, err := app.GetByName(a.Name)

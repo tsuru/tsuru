@@ -145,20 +145,6 @@ var startContainer = action.Action{
 	},
 }
 
-var injectEnvirons = action.Action{
-	Name: "inject-environs",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		opts, ok := ctx.Params[0].(app.DeployOptions)
-		if !ok {
-			return nil, errors.New("First parameter must be DeployOptions")
-		}
-		go injectEnvsAndRestart(opts.App)
-		return nil, nil
-	},
-	Backward: func(ctx action.BWContext) {
-	},
-}
-
 var bindService = action.Action{
 	Name: "bind-service",
 	Forward: func(ctx action.FWContext) (action.Result, error) {

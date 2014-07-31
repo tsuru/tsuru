@@ -18,47 +18,19 @@ import (
 
 const (
 	// queue actions
-	regenerateApprc = "regenerate-apprc"
-	BindService     = "bind-service"
+	BindService = "bind-service"
 
 	queueName = "tsuru-app"
 )
 
-// ensureAppIsStarted make sure that the app and all units present in the given
-// message are started.
-func ensureAppIsStarted(msg *queue.Message) (App, error) {
-	app, err := GetByName(msg.Args[0])
-	if err != nil {
-		log.Errorf("Error handling %q: app %q does not exist.", msg.Action, msg.Args[0])
-		return App{}, fmt.Errorf("Error handling %q: app %q does not exist.", msg.Action, msg.Args[0])
-	}
-	units := getUnits(app, msg.Args[1:])
-	if len(msg.Args) > 1 && len(units) == 0 {
-		format := "Error handling %q for the app %q: unknown units in the message. Deleting it..."
-		log.Errorf(format, msg.Action, app.Name)
-		return *app, fmt.Errorf(format, msg.Action, app.Name)
-	}
-	if !app.Available() || !units.Started() {
-		format := "Error handling %q for the app %q:"
-		uState := units.State()
-		if uState == "error" || uState == "down" {
-			format += fmt.Sprintf(" units are in %q state.", uState)
-			log.Errorf(format, msg.Action, app.Name)
-		} else {
-			msg.Fail()
-			format += " all units must be started."
-		}
-		return *app, fmt.Errorf(format, msg.Action, app.Name)
-	}
-	return *app, nil
-}
-
 // bindUnit handles the bind-service message, binding a unit to all service
 // instances bound to the app.
 func bindUnit(msg *queue.Message) error {
+	if len(msg.Args) < 2 {
+		return fmt.Errorf("Error handling %q: this action requires at least 2 arguments.", msg.Action)
+	}
 	app, err := GetByName(msg.Args[0])
 	if err != nil {
-		log.Errorf("Error handling %q: app %q does not exist.", msg.Action, msg.Args[0])
 		return fmt.Errorf("Error handling %q: app %q does not exist.", msg.Action, msg.Args[0])
 	}
 	conn, err := db.Conn()
@@ -89,19 +61,6 @@ func bindUnit(msg *queue.Message) error {
 // handle is the function called by the queue handler on each message.
 func handle(msg *queue.Message) {
 	switch msg.Action {
-	case regenerateApprc:
-		if len(msg.Args) < 1 {
-			log.Errorf("Error handling %q: this action requires at least 1 argument.", msg.Action)
-			return
-		}
-		app, err := ensureAppIsStarted(msg)
-		if err != nil {
-			return
-		}
-		err = app.SerializeEnvVars()
-		if err != nil {
-			log.Error(err.Error())
-		}
 	case BindService:
 		err := bindUnit(msg)
 		if err != nil {
@@ -196,7 +155,7 @@ func aqueue() queue.Q {
 //
 // Here is a functional example for this function:
 //
-//     msg := queue.Message{Action: app.regenerateApprc, Args: []string{"myapp"}}
+//     msg := queue.Message{Action: app.BindService, Args: []string{"myapp"}}
 //     app.Enqueue(msg)
 func Enqueue(msgs ...queue.Message) {
 	q := aqueue()

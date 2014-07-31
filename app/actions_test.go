@@ -180,10 +180,6 @@ func (s *S) TestExportEnvironmentsForward(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(t.IsAppToken(), gocheck.Equals, true)
 	c.Assert(t.GetAppName(), gocheck.Equals, app.Name)
-	message, err := aqueue().Get(2e9)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(message.Action, gocheck.Equals, regenerateApprc)
-	c.Assert(message.Args, gocheck.DeepEquals, []string{app.Name})
 }
 
 func (s *S) TestExportEnvironmentsBackward(c *gocheck.C) {
@@ -699,7 +695,6 @@ func (s *S) TestSaveNewUnitsInDatabaseForward(c *gocheck.C) {
 	for i, unit := range app.Units() {
 		c.Assert(unit.Name, gocheck.Equals, units[i].Name)
 		messages := []queue.Message{
-			{Action: regenerateApprc, Args: []string{app.Name, unit.Name}},
 			{Action: BindService, Args: []string{app.Name, unit.Name}},
 		}
 		expectedMessages = append(expectedMessages, messages...)
@@ -738,7 +733,6 @@ func (s *S) TestSaveNewUnitsInDatabaseForwardNoPointer(c *gocheck.C) {
 	for i, unit := range app.Units() {
 		c.Assert(unit.Name, gocheck.Equals, units[i].Name)
 		messages := []queue.Message{
-			{Action: regenerateApprc, Args: []string{app.Name, unit.Name}},
 			{Action: BindService, Args: []string{app.Name, unit.Name}},
 		}
 		expectedMessages = append(expectedMessages, messages...)

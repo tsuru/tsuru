@@ -54,34 +54,36 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	c.Assert(app.IsReady(), gocheck.Equals, true)
 }
 
-func (s *S) TestProvisionerRestartCallsTheRestartHook(c *gocheck.C) {
-	var handler FakeSSHServer
-	handler.output = "caad7bbd5411"
-	server := httptest.NewServer(&handler)
-	defer server.Close()
-	host, port, _ := net.SplitHostPort(server.Listener.Addr().String())
-	portNumber, _ := strconv.Atoi(port)
-	config.Set("docker:ssh-agent-port", portNumber)
-	defer config.Unset("docker:ssh-agent-port")
+func (s *S) TestProvisionerRestart(c *gocheck.C) {
 	var p dockerProvisioner
 	app := testing.NewFakeApp("almah", "static", 1)
-	newImage("tsuru/python", s.server.URL())
-	cont, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
+	container, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, gocheck.IsNil)
-	defer s.removeTestContainer(cont)
-	cont.HostAddr = host
+	defer s.removeTestContainer(container)
+	err = p.Start(app)
+	c.Assert(err, gocheck.IsNil)
+	dockerContainer, err := dCluster.InspectContainer(container.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dockerContainer.State.Running, gocheck.Equals, true)
+	container.IP = ""
+	container.HostPort = ""
 	coll := collection()
 	defer coll.Close()
-	err = coll.Update(bson.M{"id": cont.ID}, cont)
-	c.Assert(err, gocheck.IsNil)
+	coll.Update(bson.M{"id": container.ID}, container)
 	err = p.Restart(app)
 	c.Assert(err, gocheck.IsNil)
-	input := cmdInput{Cmd: "/var/lib/tsuru/restart"}
-	body := handler.bodies[0]
-	c.Assert(body, gocheck.DeepEquals, input)
-	info, _ := cont.networkInfo()
-	path := fmt.Sprintf("/container/%s/cmd", info.IP)
-	c.Assert(handler.requests[0].URL.Path, gocheck.DeepEquals, path)
+	dockerContainer, err = dCluster.InspectContainer(container.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dockerContainer.State.Running, gocheck.Equals, true)
+	container, err = getContainer(container.ID)
+	c.Assert(err, gocheck.IsNil)
+	expectedIP := dockerContainer.NetworkSettings.IPAddress
+	expectedPort := dockerContainer.NetworkSettings.Ports["8888/tcp"][0].HostPort
+	c.Assert(container.IP, gocheck.Equals, expectedIP)
+	c.Assert(container.HostPort, gocheck.Equals, expectedPort)
+	c.Assert(container.Status, gocheck.Equals, provision.StatusStarted.String())
+	expectedSSHPort := dockerContainer.NetworkSettings.Ports["22/tcp"][0].HostPort
+	c.Assert(container.SSHHostPort, gocheck.Equals, expectedSSHPort)
 }
 
 func (s *S) stopContainers(n uint) {

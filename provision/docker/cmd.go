@@ -148,11 +148,13 @@ func (listNodesInTheSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) erro
 	if err != nil {
 		return err
 	}
-	machines := result["machines"].([]interface{})
 	machineMap := map[string]map[string]interface{}{}
-	for _, m := range machines {
-		machine := m.(map[string]interface{})
-		machineMap[machine["Address"].(string)] = m.(map[string]interface{})
+	if result["machines"] != nil {
+		machines := result["machines"].([]interface{})
+		for _, m := range machines {
+			machine := m.(map[string]interface{})
+			machineMap[machine["Address"].(string)] = m.(map[string]interface{})
+		}
 	}
 	t := cmd.Table{Headers: cmd.Row([]string{"Address", "IaaS ID", "Status", "Metadata"}), LineSeparator: true}
 	nodes := result["nodes"].([]interface{})

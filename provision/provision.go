@@ -118,8 +118,6 @@ type App interface {
 
 	Restart(io.Writer) error
 
-	SerializeEnvVars() error
-
 	Envs() map[string]bind.EnvVar
 
 	// Ready marks the app as ready for deployment.

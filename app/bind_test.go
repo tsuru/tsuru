@@ -48,7 +48,4 @@ func (s *S) TestDestroyShouldUnbindAppFromInstance(c *gocheck.C) {
 	n, err := s.conn.ServiceInstances().Find(bson.M{"apps": bson.M{"$in": []string{a.Name}}}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, 0)
-	msg, err := aqueue().Get(1e6)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(msg.Args, gocheck.DeepEquals, []string{app.Name})
 }

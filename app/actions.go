@@ -130,7 +130,7 @@ var exportEnvironmentsAction = action.Action{
 			{Name: "TSURU_HOST", Value: host},
 			{Name: "TSURU_APP_TOKEN", Value: t.GetValue()},
 		}
-		err = app.setEnvsToApp(envVars, false, true)
+		err = app.setEnvsToApp(envVars, false, false)
 		if err != nil {
 			return nil, err
 		}

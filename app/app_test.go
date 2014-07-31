@@ -106,9 +106,6 @@ func (s *S) TestDestroy(c *gocheck.C) {
 	_, err = GetByName(app.Name)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(s.provisioner.Provisioned(&a), gocheck.Equals, false)
-	msg, err := aqueue().Get(1e6)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(msg.Args, gocheck.DeepEquals, []string{app.Name})
 	_, err = nativeScheme.Auth(token)
 	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
 }
@@ -125,9 +122,6 @@ func (s *S) TestDestroyWithoutUnits(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = Delete(a)
 	c.Assert(err, gocheck.IsNil)
-	msg, err := aqueue().Get(1e6)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(msg.Args, gocheck.DeepEquals, []string{a.Name})
 }
 
 func (s *S) TestCreateApp(c *gocheck.C) {
@@ -160,14 +154,6 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 	c.Assert(env["TSURU_APPNAME"].Public, gocheck.Equals, false)
 	c.Assert(env["TSURU_HOST"].Value, gocheck.Equals, expectedHost)
 	c.Assert(env["TSURU_HOST"].Public, gocheck.Equals, false)
-	expectedMessage := queue.Message{
-		Action: regenerateApprc,
-		Args:   []string{a.Name},
-	}
-	message, err := aqueue().Get(1e6)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(message.Action, gocheck.Equals, expectedMessage.Action)
-	c.Assert(message.Args, gocheck.DeepEquals, expectedMessage.Args)
 	err = auth.ReserveApp(s.user)
 	_, ok := err.(*quota.QuotaExceededError)
 	c.Assert(ok, gocheck.Equals, true)
@@ -192,8 +178,6 @@ func (s *S) TestCreateAppDefaultMemory(c *gocheck.C) {
 	defer Delete(&a)
 	retrievedApp, err := GetByName(a.Name)
 	c.Assert(retrievedApp.Memory, gocheck.Equals, 10)
-	_, err = aqueue().Get(1e6)
-	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TestCreateAppDefaultSwap(c *gocheck.C) {
@@ -218,8 +202,6 @@ func (s *S) TestCreateAppDefaultSwap(c *gocheck.C) {
 	defer Delete(&a)
 	retrievedApp, err := GetByName(a.Name)
 	c.Assert(retrievedApp.Swap, gocheck.Equals, 42)
-	_, err = aqueue().Get(1e6)
-	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TestCreateAppWithoutDefault(c *gocheck.C) {
@@ -243,8 +225,6 @@ func (s *S) TestCreateAppWithoutDefault(c *gocheck.C) {
 	retrievedApp, err := GetByName(a.Name)
 	c.Assert(retrievedApp.Memory, gocheck.Equals, 0)
 	c.Assert(retrievedApp.Swap, gocheck.Equals, 0)
-	_, err = aqueue().Get(1e6)
-	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TestCreateAppUserQuotaExceeded(c *gocheck.C) {
@@ -271,8 +251,6 @@ func (s *S) TestCreateAppTeamOwner(c *gocheck.C) {
 	app := App{Name: "america", Platform: "python", TeamOwner: "tsuruteam"}
 	err := CreateApp(&app, s.user)
 	c.Check(err, gocheck.IsNil)
-	_, err = aqueue().Get(1e6)
-	c.Assert(err, gocheck.IsNil)
 	defer Delete(&app)
 }
 
@@ -284,8 +262,6 @@ func (s *S) TestCreateAppTeamOwnerOneTeam(c *gocheck.C) {
 	err := CreateApp(&app, s.user)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.TeamOwner, gocheck.Equals, "tsuruteam")
-	_, err = aqueue().Get(1e6)
-	c.Assert(err, gocheck.IsNil)
 	defer Delete(&app)
 }
 
@@ -410,9 +386,6 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfProvisionerFail(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, expected)
 	_, err = GetByName(a.Name)
 	c.Assert(err, gocheck.NotNil)
-	msg, err := aqueue().Get(1e6)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(msg.Args, gocheck.DeepEquals, []string{a.Name})
 }
 
 func (s *S) TestCreateAppCreatesRepositoryInGandalf(c *gocheck.C) {
@@ -433,9 +406,6 @@ func (s *S) TestCreateAppCreatesRepositoryInGandalf(c *gocheck.C) {
 	c.Assert(h.method[0], gocheck.Equals, "POST")
 	expected := fmt.Sprintf(`{"name":"someapp","users":["%s"],"ispublic":false}`, s.user.Email)
 	c.Assert(string(h.body[0]), gocheck.Equals, expected)
-	msg, err := aqueue().Get(1e6)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(msg.Args, gocheck.DeepEquals, []string{app.Name})
 }
 
 func (s *S) TestCreateAppDoesNotSaveTheAppWhenGandalfFailstoCreateTheRepository(c *gocheck.C) {
@@ -447,9 +417,6 @@ func (s *S) TestCreateAppDoesNotSaveTheAppWhenGandalfFailstoCreateTheRepository(
 	count, err := s.conn.Apps().Find(bson.M{"name": a.Name}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(count, gocheck.Equals, 0)
-	msg, err := aqueue().Get(1e6)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(msg.Args, gocheck.DeepEquals, []string{a.Name})
 }
 
 func (s *S) TestAddUnits(c *gocheck.C) {
@@ -476,7 +443,6 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 		expectedName := fmt.Sprintf("%s/%d", app.Name, i)
 		c.Check(unit.Name, gocheck.Equals, expectedName)
 		messages := []queue.Message{
-			{Action: regenerateApprc, Args: []string{app.Name, unit.Name}},
 			{Action: BindService, Args: []string{app.Name, unit.Name}},
 		}
 		expectedMessages = append(expectedMessages, messages...)
@@ -593,7 +559,6 @@ func (s *S) TestAddUnitsToDB(c *gocheck.C) {
 		expectedName := fmt.Sprintf("%s/%d", app.Name, i)
 		c.Check(unit.Name, gocheck.Equals, expectedName)
 		messages := []queue.Message{
-			{Action: regenerateApprc, Args: []string{app.Name, unit.Name}},
 			{Action: BindService, Args: []string{app.Name, unit.Name}},
 		}
 		expectedMessages = append(expectedMessages, messages...)
@@ -815,7 +780,9 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 			Public: true,
 		},
 	}
-	err = a.setEnvsToApp(envs, true, false)
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, gocheck.IsNil)
+	err = a.setEnvsToApp(envs, true, true)
 	c.Assert(err, gocheck.IsNil)
 	newApp, err := GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
@@ -832,6 +799,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 		},
 	}
 	c.Assert(newApp.Env, gocheck.DeepEquals, expected)
+	c.Assert(s.provisioner.Restarts(&a), gocheck.Equals, 1)
 }
 
 func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFalse(c *gocheck.C) {
@@ -861,7 +829,9 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 			Public: true,
 		},
 	}
-	err = a.setEnvsToApp(envs, false, false)
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, gocheck.IsNil)
+	err = a.setEnvsToApp(envs, false, true)
 	c.Assert(err, gocheck.IsNil)
 	newApp, err := GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
@@ -878,6 +848,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 		},
 	}
 	c.Assert(newApp.Env, gocheck.DeepEquals, expected)
+	c.Assert(s.provisioner.Restarts(&a), gocheck.Equals, 1)
 }
 
 func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c *gocheck.C) {
@@ -900,6 +871,8 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, gocheck.IsNil)
 	err = a.UnsetEnvs([]string{"DATABASE_HOST", "DATABASE_PASSWORD"}, true)
 	c.Assert(err, gocheck.IsNil)
 	newApp, err := GetByName(a.Name)
@@ -912,6 +885,7 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue
 		},
 	}
 	c.Assert(newApp.Env, gocheck.DeepEquals, expected)
+	c.Assert(s.provisioner.Restarts(&a), gocheck.Equals, 1)
 }
 
 func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFalse(c *gocheck.C) {
@@ -934,11 +908,14 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFal
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, gocheck.IsNil)
 	err = a.UnsetEnvs([]string{"DATABASE_HOST", "DATABASE_PASSWORD"}, false)
 	c.Assert(err, gocheck.IsNil)
 	newApp, err := GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(newApp.Env, gocheck.DeepEquals, map[string]bind.EnvVar{})
+	c.Assert(s.provisioner.Restarts(&a), gocheck.Equals, 1)
 }
 
 func (s *S) TestGetEnvironmentVariableFromApp(c *gocheck.C) {
@@ -1591,90 +1568,6 @@ func (s *S) TestEnvs(c *gocheck.C) {
 	}
 	env := app.Envs()
 	c.Assert(env, gocheck.DeepEquals, app.Env)
-}
-
-func (s *S) TestSerializeEnvVars(c *gocheck.C) {
-	s.provisioner.PrepareOutput([]byte("exported"))
-	app := App{
-		Name:  "time",
-		Teams: []string{s.team.Name},
-		Env: map[string]bind.EnvVar{
-			"http_proxy": {
-				Name:   "http_proxy",
-				Value:  "http://theirproxy.com:3128/",
-				Public: true,
-			},
-		},
-	}
-	err := app.SerializeEnvVars()
-	c.Assert(err, gocheck.IsNil)
-	cmds := s.provisioner.GetCmds("", &app)
-	c.Assert(cmds, gocheck.HasLen, 1)
-	cmdRegexp := `^cat > /home/application/apprc <<END # generated by tsuru .*`
-	cmdRegexp += ` export http_proxy="http://theirproxy.com:3128/" END $`
-	cmd := strings.Replace(cmds[0].Cmd, "\n", " ", -1)
-	c.Assert(cmd, gocheck.Matches, cmdRegexp)
-}
-
-func (s *S) TestSerializeEnvVarsErrorWithoutOutput(c *gocheck.C) {
-	s.provisioner.PrepareFailure("ExecuteCommand", stderr.New("Failed to run commands"))
-	app := App{
-		Name: "intheend",
-		Env: map[string]bind.EnvVar{
-			"https_proxy": {
-				Name:   "https_proxy",
-				Value:  "https://secureproxy.com:3128/",
-				Public: true,
-			},
-		},
-	}
-	s.provisioner.Provision(&app)
-	defer s.provisioner.Destroy(&app)
-	s.provisioner.AddUnits(&app, 1)
-	err := app.SerializeEnvVars()
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Failed to write env vars: Failed to run commands.")
-}
-
-func (s *S) TestSerializeEnvVarsErrorWithOutput(c *gocheck.C) {
-	s.provisioner.PrepareOutput([]byte("This program has performed an illegal operation"))
-	s.provisioner.PrepareFailure("ExecuteCommand", stderr.New("exit status 1"))
-	app := App{
-		Name: "intheend",
-		Env: map[string]bind.EnvVar{
-			"https_proxy": {
-				Name:   "https_proxy",
-				Value:  "https://secureproxy.com:3128/",
-				Public: true,
-			},
-		},
-	}
-	s.provisioner.Provision(&app)
-	defer s.provisioner.Destroy(&app)
-	s.provisioner.AddUnits(&app, 1)
-	err := app.SerializeEnvVars()
-	c.Assert(err, gocheck.NotNil)
-	expected := "Failed to write env vars (exit status 1): This program has performed an illegal operation."
-	c.Assert(err.Error(), gocheck.Equals, expected)
-}
-
-func (s *S) TestSerializeEnvVarsEmptyApp(c *gocheck.C) {
-	s.provisioner.PrepareFailure("ExecuteCommand", provision.ErrEmptyApp)
-	app := App{
-		Name: "intheend",
-		Env: map[string]bind.EnvVar{
-			"https_proxy": {
-				Name:   "https_proxy",
-				Value:  "https://secureproxy.com:3128/",
-				Public: true,
-			},
-		},
-	}
-	s.provisioner.Provision(&app)
-	defer s.provisioner.Destroy(&app)
-	s.provisioner.AddUnits(&app, 1)
-	err := app.SerializeEnvVars()
-	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TestListReturnsAppsForAGivenUser(c *gocheck.C) {

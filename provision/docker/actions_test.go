@@ -222,24 +222,6 @@ func (s *S) TestStartContainerBackward(c *gocheck.C) {
 	c.Assert(cc.State.Running, gocheck.Equals, false)
 }
 
-func (s *S) TestInjectEnvironsName(c *gocheck.C) {
-	c.Assert(injectEnvirons.Name, gocheck.Equals, "inject-environs")
-}
-
-func (s *S) TestInjectEnvironsForward(c *gocheck.C) {
-	a := app.App{Name: "myapp", Platform: "python"}
-	opts := app.DeployOptions{App: &a}
-	context := action.FWContext{Params: []interface{}{opts}}
-	_, err := injectEnvirons.Forward(context)
-	c.Assert(err, gocheck.IsNil)
-}
-
-func (s *S) TestInjectEnvironsParams(c *gocheck.C) {
-	ctx := action.FWContext{Params: []interface{}{""}}
-	_, err := injectEnvirons.Forward(ctx)
-	c.Assert(err.Error(), gocheck.Equals, "First parameter must be DeployOptions")
-}
-
 func (s *S) TestBindServiceName(c *gocheck.C) {
 	c.Assert(bindService.Name, gocheck.Equals, "bind-service")
 }

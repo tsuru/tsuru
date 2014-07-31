@@ -5,7 +5,6 @@
 package docker
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"github.com/fsouza/go-dockerclient"
@@ -25,7 +24,6 @@ import (
 	"io/ioutil"
 	"net/url"
 	"sync"
-	"time"
 )
 
 func init() {
@@ -71,24 +69,11 @@ func (p *dockerProvisioner) Provision(app provision.App) error {
 }
 
 func (p *dockerProvisioner) Restart(app provision.App) error {
-	containers, err := listContainersByApp(app.GetName())
+	err := p.Stop(app)
 	if err != nil {
-		log.Errorf("Got error while getting app containers: %s", err)
 		return err
 	}
-	var buf bytes.Buffer
-	for _, c := range containers {
-		err = c.ssh(&buf, &buf, "/var/lib/tsuru/restart")
-		if err != nil {
-			log.Errorf("Failed to restart %q: %s.", app.GetName(), err)
-			log.Debug("Command outputs:")
-			log.Debugf("out: %s", &buf)
-			log.Debugf("err: %s", &buf)
-			return err
-		}
-		buf.Reset()
-	}
-	return nil
+	return p.Start(app)
 }
 
 func (*dockerProvisioner) Start(app provision.App) error {
@@ -140,20 +125,6 @@ func (p *dockerProvisioner) Stop(app provision.App) error {
 	wg.Wait()
 	close(errCh)
 	return <-errCh
-}
-
-func injectEnvsAndRestart(a provision.App) {
-	time.Sleep(5e9)
-	err := a.SerializeEnvVars()
-	if err != nil {
-		log.Errorf("Failed to serialize env vars: %s.", err)
-	}
-	var buf bytes.Buffer
-	w := app.LogWriter{App: a, Writer: &buf}
-	err = a.Restart(&w)
-	if err != nil {
-		log.Errorf("Failed to restart app %q (%s): %s.", a.GetName(), err, buf.String())
-	}
 }
 
 func startInBackground(a provision.App, c container, imageId string, w io.Writer, errorChan chan error, wg *sync.WaitGroup) {
@@ -470,7 +441,6 @@ func (p *dockerProvisioner) DeployPipeline() *action.Pipeline {
 	actions := []*action.Action{
 		&app.ProvisionerDeploy,
 		&app.IncrementDeploy,
-		&injectEnvirons,
 		&bindService,
 	}
 	pipeline := action.NewPipeline(actions...)
