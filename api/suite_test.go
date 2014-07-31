@@ -11,7 +11,6 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/service"
 	tsuruTesting "github.com/tsuru/tsuru/testing"
@@ -121,7 +120,6 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
-	queue.Preempt()
 	s.conn.Apps().Database.DropDatabase()
 }
 

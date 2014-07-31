@@ -5,49 +5,28 @@
 package testing
 
 import (
-	"errors"
 	"github.com/tsuru/tsuru/queue"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
 var (
-	factory         = NewFakePubSubQFactory()
-	noPubSubFactory = NewFakeQFactory()
+	factory = NewFakePubSubQFactory()
 )
 
 func init() {
 	queue.Register("fake", factory)
-	queue.Register("noPubSubFake", noPubSubFactory)
-}
-
-type fakeHandler struct {
-	running int32
-}
-
-func (h *fakeHandler) Start() {
-	atomic.StoreInt32(&h.running, 1)
-}
-
-func (h *fakeHandler) Stop() error {
-	if !atomic.CompareAndSwapInt32(&h.running, 1, 0) {
-		return errors.New("Not running.")
-	}
-	return nil
-}
-
-func (h *fakeHandler) Wait() {}
-
-type FakeQ struct {
-	messages messageQueue
-	name     string
 }
 
 type FakePubSubQ struct {
-	FakeQ
+	messages       messageQueue
+	name           string
 	pubSubStop     chan int
 	pubSubStopLock sync.Mutex
+}
+
+type Message struct {
+	Action string
 }
 
 type SyncSet struct {
@@ -75,27 +54,11 @@ func (s *SyncSet) delete(val string) {
 	delete(s.set, val)
 }
 
-func (q *FakeQ) get(ch chan *queue.Message, stop chan int) {
-	defer close(ch)
-	for {
-		select {
-		case <-stop:
-			return
-		default:
-		}
-		if msg := q.messages.dequeue(); msg != nil {
-			ch <- msg
-			return
-		}
-		time.Sleep(1e3)
-	}
-}
-
 func (q *FakePubSubQ) Pub(msg []byte) error {
 	if !subscribersSet.get(q.name) {
 		return nil
 	}
-	m := queue.Message{Action: string(msg)}
+	m := Message{Action: string(msg)}
 	q.messages.enqueue(&m)
 	return nil
 }
@@ -132,31 +95,6 @@ func (q *FakePubSubQ) UnSub() error {
 	return nil
 }
 
-func (q *FakeQ) Get(timeout time.Duration) (*queue.Message, error) {
-	ch := make(chan *queue.Message, 1)
-	stop := make(chan int, 1)
-	defer close(stop)
-	go q.get(ch, stop)
-	select {
-	case msg := <-ch:
-		return msg, nil
-	case <-time.After(timeout):
-	}
-	return nil, errors.New("Timed out.")
-}
-
-func (q *FakeQ) Put(m *queue.Message, delay time.Duration) error {
-	if delay > 0 {
-		go func() {
-			time.Sleep(delay)
-			q.messages.enqueue(m)
-		}()
-	} else {
-		q.messages.enqueue(m)
-	}
-	return nil
-}
-
 type FakePubSubQFactory struct {
 	queues map[string]*FakePubSubQ
 	sync.Mutex
@@ -168,49 +106,19 @@ func NewFakePubSubQFactory() *FakePubSubQFactory {
 	}
 }
 
-func (f *FakePubSubQFactory) Get(name string) (queue.Q, error) {
+func (f *FakePubSubQFactory) Get(name string) (queue.PubSubQ, error) {
 	f.Lock()
 	defer f.Unlock()
 	if q, ok := f.queues[name]; ok {
 		return q, nil
 	}
-	q := FakePubSubQ{FakeQ: FakeQ{name: name}}
+	q := FakePubSubQ{name: name}
 	f.queues[name] = &q
 	return &q, nil
-}
-
-func (f *FakePubSubQFactory) Handler(fn func(*queue.Message), names ...string) (queue.Handler, error) {
-	return &fakeHandler{}, nil
-}
-
-type FakeQFactory struct {
-	queues map[string]*FakeQ
-	sync.Mutex
-}
-
-func NewFakeQFactory() *FakeQFactory {
-	return &FakeQFactory{
-		queues: make(map[string]*FakeQ),
-	}
-}
-
-func (f *FakeQFactory) Get(name string) (queue.Q, error) {
-	f.Lock()
-	defer f.Unlock()
-	if q, ok := f.queues[name]; ok {
-		return q, nil
-	}
-	q := FakeQ{name: name}
-	f.queues[name] = &q
-	return &q, nil
-}
-
-func (f *FakeQFactory) Handler(fn func(*queue.Message), names ...string) (queue.Handler, error) {
-	return &fakeHandler{}, nil
 }
 
 type messageNode struct {
-	m    *queue.Message
+	m    *Message
 	next *messageNode
 	prev *messageNode
 }
@@ -222,7 +130,7 @@ type messageQueue struct {
 	sync.Mutex
 }
 
-func (q *messageQueue) enqueue(msg *queue.Message) {
+func (q *messageQueue) enqueue(msg *Message) {
 	q.Lock()
 	defer q.Unlock()
 	if q.last == nil {
@@ -236,7 +144,7 @@ func (q *messageQueue) enqueue(msg *queue.Message) {
 	q.n++
 }
 
-func (q *messageQueue) dequeue() *queue.Message {
+func (q *messageQueue) dequeue() *Message {
 	q.Lock()
 	defer q.Unlock()
 	if q.n == 0 {
@@ -249,23 +157,4 @@ func (q *messageQueue) dequeue() *queue.Message {
 		q.last = q.first
 	}
 	return msg
-}
-
-// CleanQ deletes all messages from queues identified by the given names.
-func CleanQ(names ...string) {
-	var wg sync.WaitGroup
-	for _, name := range names {
-		wg.Add(1)
-		go func(name string) {
-			defer wg.Done()
-			q, _ := factory.Get(name)
-			for {
-				_, err := q.Get(1e6)
-				if err != nil {
-					break
-				}
-			}
-		}(name)
-	}
-	wg.Wait()
 }

@@ -18,26 +18,19 @@ type S struct{}
 
 var _ = gocheck.Suite(&S{})
 
-func (s *S) TestMessageFail(c *gocheck.C) {
-	m := Message{}
-	c.Assert(m.fail, gocheck.Equals, false)
-	m.Fail()
-	c.Assert(m.fail, gocheck.Equals, true)
-}
-
 func (s *S) TestFactory(c *gocheck.C) {
-	config.Set("queue", "beanstalkd")
+	config.Set("queue", "redis")
 	defer config.Unset("queue")
 	f, err := Factory()
 	c.Assert(err, gocheck.IsNil)
-	_, ok := f.(beanstalkdFactory)
+	_, ok := f.(*redismqQFactory)
 	c.Assert(ok, gocheck.Equals, true)
 }
 
 func (s *S) TestFactoryConfigUndefined(c *gocheck.C) {
 	f, err := Factory()
 	c.Assert(err, gocheck.IsNil)
-	_, ok := f.(beanstalkdFactory)
+	_, ok := f.(*redismqQFactory)
 	c.Assert(ok, gocheck.Equals, true)
 }
 
@@ -53,13 +46,7 @@ func (s *S) TestFactoryConfigUnknown(c *gocheck.C) {
 func (s *S) TestRegister(c *gocheck.C) {
 	config.Set("queue", "unregistered")
 	defer config.Unset("queue")
-	Register("unregistered", beanstalkdFactory{})
+	Register("unregistered", &redismqQFactory{})
 	_, err := Factory()
 	c.Assert(err, gocheck.IsNil)
-}
-
-func (s *S) TestTimeoutError(c *gocheck.C) {
-	var err error = &timeoutError{timeout: 5e9}
-	expected := "Timed out waiting for message after 5s."
-	c.Assert(err.Error(), gocheck.Equals, expected)
 }

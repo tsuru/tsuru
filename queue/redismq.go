@@ -5,14 +5,10 @@
 package queue
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"github.com/garyburd/redigo/redis"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/log"
-	"io"
-	"net"
 	"sync"
 	"time"
 )
@@ -21,7 +17,6 @@ type redismqQ struct {
 	name    string
 	prefix  string
 	factory *redismqQFactory
-	maxSize int
 	psc     *redis.PubSubConn
 }
 
@@ -80,64 +75,8 @@ func (r *redismqQ) Sub() (chan []byte, error) {
 	return msgChan, nil
 }
 
-func (r *redismqQ) Put(m *Message, delay time.Duration) error {
-	var buf bytes.Buffer
-	err := json.NewEncoder(&buf).Encode(m)
-	if err != nil {
-		return err
-	}
-	if delay > 0 {
-		go func() {
-			time.Sleep(delay)
-			r.put(buf.String())
-		}()
-		return nil
-	} else {
-		return r.put(buf.String())
-	}
-}
-
-func (r *redismqQ) put(message string) error {
-	conn, err := r.factory.getConn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	conn.Send("MULTI")
-	conn.Send("LPUSH", r.key(), message)
-	conn.Send("LTRIM", r.key(), 0, r.maxSize-1)
-	_, err = conn.Do("EXEC")
-	return err
-}
-
 func (r *redismqQ) key() string {
 	return r.prefix + ":" + r.name
-}
-
-func (r *redismqQ) Get(timeout time.Duration) (*Message, error) {
-	conn, err := r.factory.getConn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	secTimeout := int(timeout.Seconds())
-	if secTimeout < 1 {
-		secTimeout = 1
-	}
-	payload, err := conn.Do("BRPOP", r.key(), secTimeout)
-	if err != nil {
-		return nil, err
-	}
-	if payload == nil {
-		return nil, &timeoutError{timeout: timeout}
-	}
-	items := payload.([]interface{})
-	data := items[1].([]byte)
-	var msg Message
-	if err := json.Unmarshal(data, &msg); err != nil && err != io.EOF {
-		return nil, fmt.Errorf("Invalid message: %q", data)
-	}
-	return &msg, nil
 }
 
 type redismqQFactory struct {
@@ -145,7 +84,7 @@ type redismqQFactory struct {
 	sync.Mutex
 }
 
-func (factory *redismqQFactory) Get(name string) (Q, error) {
+func (factory *redismqQFactory) Get(name string) (PubSubQ, error) {
 	return &redismqQ{name: name, factory: factory}, nil
 }
 
@@ -209,32 +148,4 @@ func (factory *redismqQFactory) getPool() *redis.Pool {
 		Dial:        factory.dial,
 	}
 	return factory.pool
-}
-
-func (factory *redismqQFactory) Handler(f func(*Message), names ...string) (Handler, error) {
-	name := "default"
-	if len(names) > 0 {
-		name = names[0]
-	}
-	queue, err := factory.Get(name)
-	if err != nil {
-		return nil, err
-	}
-	return &executor{
-		inner: func() {
-			if message, err := queue.Get(5e9); err == nil {
-				log.Debugf("Dispatching %q message to handler function.", message.Action)
-				go func(m *Message) {
-					f(m)
-					if m.fail {
-						queue.Put(m, 0)
-					}
-				}(message)
-			} else {
-				if e, ok := err.(*net.OpError); ok && e.Op == "dial" {
-					time.Sleep(5e9)
-				}
-			}
-		},
-	}, nil
 }

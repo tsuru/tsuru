@@ -499,7 +499,6 @@ func (s *S) TestRebalanceContainersEmptyBodyHandler(c *gocheck.C) {
 	c.Assert(result[3].Message, gocheck.Matches, "Moving unit .*")
 	c.Assert(result[8].Message, gocheck.Equals, "Rebalance finished for \"myapp\"")
 	c.Assert(result[9].Message, gocheck.Equals, "Containers rebalanced successfully!")
-	testing.CleanQ("tsuru-app")
 }
 
 func (s *S) TestRebalanceContainersDryBodyHandler(c *gocheck.C) {
@@ -551,7 +550,6 @@ func (s *S) TestRebalanceContainersDryBodyHandler(c *gocheck.C) {
 	c.Assert(result[3].Message, gocheck.Matches, "Would move unit .*")
 	c.Assert(result[4].Message, gocheck.Equals, "Rebalance finished for \"myapp\"")
 	c.Assert(result[5].Message, gocheck.Equals, "Containers rebalanced successfully!")
-	testing.CleanQ("tsuru-app")
 }
 
 func (s *HandlersSuite) TestAddPoolHandler(c *gocheck.C) {

@@ -2320,28 +2320,6 @@ func (s *S) TestAppLogReturnsBadRequestIfNumberOfLinesIsNotAnInteger(c *gocheck.
 	c.Assert(e.Message, gocheck.Equals, `Parameter "lines" must be an integer.`)
 }
 
-func (s *S) TestAppLogFollowNoPubSub(c *gocheck.C) {
-	oldQueue, err := config.GetString("queue")
-	c.Assert(err, gocheck.IsNil)
-	defer config.Set("queue", oldQueue)
-	config.Set("queue", "noPubSubFake")
-	a := app.App{
-		Name:     "lost",
-		Platform: "vougan",
-		Teams:    []string{s.team.Name},
-	}
-	err = s.conn.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	url := "/apps/something/log/?:app=lost&lines=10&follow=1"
-	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, gocheck.IsNil)
-	recorder := httptest.NewRecorder()
-	err = appLog(recorder, request, s.token)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Matches, ".*pubsub required for log streaming.*")
-}
-
 func (s *S) TestAppLogFollowWithPubSub(c *gocheck.C) {
 	a := app.App{
 		Name:     "lost",

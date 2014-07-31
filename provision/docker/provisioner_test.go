@@ -17,7 +17,6 @@ import (
 	"github.com/tsuru/tsuru/exec"
 	etesting "github.com/tsuru/tsuru/exec/testing"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/queue"
 	rtesting "github.com/tsuru/tsuru/router/testing"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/testing"
@@ -150,15 +149,6 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	c.Assert(units, gocheck.HasLen, 1)
 	c.Assert(serviceBodies, gocheck.HasLen, 1)
 	c.Assert(serviceBodies[0], gocheck.Matches, ".*unit-host="+units[0].Ip)
-}
-
-func getQueue() (queue.Q, error) {
-	queueName := "tsuru-app"
-	qfactory, err := queue.Factory()
-	if err != nil {
-		return nil, err
-	}
-	return qfactory.Get(queueName)
 }
 
 func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *gocheck.C) {

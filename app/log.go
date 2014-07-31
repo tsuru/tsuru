@@ -12,8 +12,6 @@ import (
 	"github.com/tsuru/tsuru/queue"
 )
 
-var UnsupportedPubSubErr = fmt.Errorf("Your queue backend doesn't support pubsub required for log streaming. Using redis as queue is recommended.")
-
 type LogListener struct {
 	C <-chan Applog
 	q queue.PubSubQ
@@ -28,13 +26,9 @@ func NewLogListener(a *App, filterLog Applog) (*LogListener, error) {
 	if err != nil {
 		return nil, err
 	}
-	q, err := factory.Get(logQueueName(a.Name))
+	pubSubQ, err := factory.Get(logQueueName(a.Name))
 	if err != nil {
 		return nil, err
-	}
-	pubSubQ, ok := q.(queue.PubSubQ)
-	if !ok {
-		return nil, UnsupportedPubSubErr
 	}
 	subChan, err := pubSubQ.Sub()
 	if err != nil {
@@ -76,14 +70,9 @@ func notify(appName string, messages []interface{}) {
 		log.Errorf("Error on logs notify: %s", err.Error())
 		return
 	}
-	q, err := factory.Get(logQueueName(appName))
+	pubSubQ, err := factory.Get(logQueueName(appName))
 	if err != nil {
 		log.Errorf("Error on logs notify: %s", err.Error())
-		return
-	}
-	pubSubQ, ok := q.(queue.PubSubQ)
-	if !ok {
-		log.Debugf("Queue does not support pubsub, logs only in database.")
 		return
 	}
 	for _, msg := range messages {

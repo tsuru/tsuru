@@ -10,7 +10,6 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/service"
 	ttesting "github.com/tsuru/tsuru/testing"
@@ -97,7 +96,6 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 
 func (s *S) TearDownSuite(c *gocheck.C) {
 	s.conn.Apps().Database.DropDatabase()
-	queue.Preempt()
 }
 
 func (s *S) TearDownTest(c *gocheck.C) {
@@ -153,41 +151,6 @@ func (s *S) addServiceInstance(c *gocheck.C, appName string, fn http.HandlerFunc
 	err = s.conn.ServiceInstances().Update(bson.M{"name": instance.Name}, instance)
 	c.Assert(err, gocheck.IsNil)
 	return ret
-}
-
-type MessageList []queue.Message
-
-func (l MessageList) Len() int {
-	return len(l)
-}
-
-func (l MessageList) Less(i, j int) bool {
-	if l[i].Action < l[j].Action {
-		return true
-	} else if l[i].Action > l[j].Action {
-		return false
-	}
-	if len(l[i].Args) == 0 {
-		return true
-	} else if len(l[j].Args) == 0 {
-		return false
-	}
-	smaller := len(l[i].Args)
-	if len(l[j].Args) < smaller {
-		smaller = len(l[j].Args)
-	}
-	for k := 0; k < smaller; k++ {
-		if l[i].Args[k] < l[j].Args[k] {
-			return true
-		} else if l[i].Args[k] > l[j].Args[k] {
-			return false
-		}
-	}
-	return false
-}
-
-func (l MessageList) Swap(i, j int) {
-	l[i], l[j] = l[j], l[i]
 }
 
 type testHandler struct {

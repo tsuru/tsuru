@@ -62,7 +62,6 @@ func (s *S) TestMoveContainers(c *gocheck.C) {
 	c.Assert(logEntry.Message, gocheck.Matches, ".*Moving unit.*for.*myapp.*localhost.*127.0.0.1.*")
 	json.Unmarshal([]byte(parts[2]), &logEntry)
 	c.Assert(logEntry.Message, gocheck.Matches, ".*Moving unit.*for.*myapp.*localhost.*127.0.0.1.*")
-	testing.CleanQ("tsuru-app")
 }
 
 func (s *S) TestMoveContainersUnknownDest(c *gocheck.C) {
@@ -149,7 +148,6 @@ func (s *S) TestMoveContainer(c *gocheck.C) {
 	c.Assert(len(containers), gocheck.Equals, 1)
 	containers, err = listContainersByHost("127.0.0.1")
 	c.Assert(len(containers), gocheck.Equals, 1)
-	testing.CleanQ("tsuru-app")
 }
 
 func (s *S) TestRebalanceContainers(c *gocheck.C) {
@@ -191,7 +189,6 @@ func (s *S) TestRebalanceContainers(c *gocheck.C) {
 	c.Assert(len(c1), gocheck.Equals, 3)
 	c2, err := listContainersByHost("127.0.0.1")
 	c.Assert(len(c2), gocheck.Equals, 2)
-	testing.CleanQ("tsuru-app")
 }
 
 func (s *S) TestAppLocker(c *gocheck.C) {
