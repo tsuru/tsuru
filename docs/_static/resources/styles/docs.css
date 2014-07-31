@@ -162,3 +162,12 @@ input {
 strong {
     font-weight: bold !important;
 }
+
+th {
+	font-weight: bold;
+}
+
+td, th {
+	border: 1px solid #000;
+	padding: 2px;
+}
