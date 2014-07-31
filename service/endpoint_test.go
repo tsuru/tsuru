@@ -453,7 +453,7 @@ func (s *S) TestProxy(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(handlerTest))
 	defer ts.Close()
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
-	result, err := client.Proxy("/backup", "GET", map[string]string{"key": "value"})
+	result, err := client.Proxy("/backup", "GET", nil)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result.StatusCode, gocheck.Equals, http.StatusNoContent)
 	client = &Client{endpoint: "http://10.1.2.3:12345", username: "user", password: "abcde"}

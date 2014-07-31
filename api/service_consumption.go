@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/rec"
 	"github.com/tsuru/tsuru/service"
+	"io"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"net/http"
@@ -242,22 +243,9 @@ func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	path := r.URL.Query().Get("callback")
 	rec.Log(u.Email, "service-proxy-status", siName, path)
-	var params map[string]string
-	if r.Body != nil {
-		b, err := ioutil.ReadAll(r.Body)
-		defer r.Body.Close()
-		if err != nil {
-			return err
-		}
-		err = json.Unmarshal(b, &params)
-		if err != nil {
-			return err
-		}
-	}
-	response, _ := service.Proxy(si, r.Method, path, params)
+	response, _ := service.Proxy(si, r.Method, path, r.Body)
 	w.WriteHeader(response.StatusCode)
-	body, _ := ioutil.ReadAll(response.Body)
 	defer response.Body.Close()
-	w.Write(body)
+	io.Copy(w, response.Body)
 	return nil
 }

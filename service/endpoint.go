@@ -210,14 +210,13 @@ func (c *Client) Plans() ([]Plan, error) {
 
 // Proxy is a proxy between tsuru and the service.
 // This method allow customized service methods.
-func (c *Client) Proxy(method, path string, params map[string]string) (*http.Response, error) {
-	p := map[string][]string{}
-	for k, v := range params {
-		p[k] = []string{v}
-	}
-	resp, err := c.issueRequest(path, method, p)
+func (c *Client) Proxy(method, path string, body io.ReadCloser) (*http.Response, error) {
+	url := strings.TrimRight(c.endpoint, "/") + "/" + strings.Trim(path, "/")
+	req, err := http.NewRequest(method, url, body)
 	if err != nil {
+		log.Errorf("Got error while creating request: %s", err)
 		return nil, err
 	}
-	return resp, nil
+	req.SetBasicAuth(c.username, c.password)
+	return http.DefaultClient.Do(req)
 }
