@@ -54,9 +54,8 @@ func runWithAgentCmds(app provision.App, publicKey []byte) ([]string, error) {
 	token := app.Envs()["TSURU_APP_TOKEN"].Value
 	unitAgentCmds := []string{"tsuru_unit_agent", host, token, app.GetName(), runCmd}
 	unitAgentCmd := strings.Join(unitAgentCmds, " ")
-	fallbackCmd := fmt.Sprintf("(%s || %s)", unitAgentCmd, runCmd)
 	sshCmd := strings.Join(ssh, " && ")
-	cmd := fmt.Sprintf("%s && %s", fallbackCmd, sshCmd)
+	cmd := fmt.Sprintf("%s && %s", unitAgentCmd, sshCmd)
 	cmds := []string{"/bin/bash", "-c", cmd}
 	return cmds, nil
 }

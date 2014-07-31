@@ -71,7 +71,7 @@ func (s *S) TestRunWithAgentCmds(c *gocheck.C) {
 	app.SetEnv(token_env)
 	runCmd, err := config.GetString("docker:run-cmd:bin")
 	c.Assert(err, gocheck.IsNil)
-	unitAgentCmd := fmt.Sprintf("(tsuru_unit_agent tsuru_host app_token app-name %s || %s)", runCmd, runCmd)
+	unitAgentCmd := fmt.Sprintf("tsuru_unit_agent tsuru_host app_token app-name %s", runCmd)
 	key := []byte("key-content")
 	ssh, err := sshCmds(key)
 	sshCmd := strings.Join(ssh, " && ")
