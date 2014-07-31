@@ -24,11 +24,20 @@ What's new in tsr 0.6.0
   is still able to communicate with containers created using the ssh-agent, but
   won't create any new containers using a preconfigured SSH key. The version
   0.7.0 will delete ssh-agent completely.
-* **under development** Improve handling of unit statuses. Now the unit will
-  communicate with the server, minute after minute, updating the status. This
-  will work as a heart beat. So the unit will change to the status "error"
-  whenever the heart beat fails after 4 minutes or the unit informs that the
-  process failed to install.
+
+* Tsuru now supports managing IaaS providers, this allow Tsuru to provision new
+  docker nodes making it a lot easier to install and maintain. The behavior of
+  ``docker-node-*`` admin commands was changed to receive machine information and
+  new commands have been added. See :doc:`tsuru-admin </reference/tsuru-admin>`
+  for more details.
+
+  Right now, EC2 and Cloudstack are supported as IaaS providers. You can see more
+  details about how to configure them in the :doc:`config reference </reference/config>`
+
+* Improved handling of unit statuses. Now the unit will communicate with the
+  server, minute after minute, updating the status. This will work as a heart
+  beat. So the unit will change to the status "error" whenever the heart beat
+  fails after 4 minutes or the unit informs that the process failed to install.
 
 Bug fixes
 =========
@@ -44,9 +53,16 @@ Breaking changes
 * tsuru source no longer supports Go 1.1. It's possible that tsuru will build
   with Go 1.1, but it's no longer supported.
 
+* tsuru_unit_agent package is not optional anymore, it must be available in the
+  image otherwise the container won't start.
+
 Other improvements
 ==================
 
-* improve the structure of the documentation
-* improve the search in the documentation
+* improved documentation search and structure
+* improved reliability of docker nodes, automatically trying another node in case
+  of failures
+* experimental support for automatically healing docker nodes added through a IaaS
+  provider
 * cmd: properly handle multiline cells in tables
+* added command ``tsuru-admin ssh`` command
