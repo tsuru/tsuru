@@ -2,8 +2,8 @@
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
-tsuru Frequently Asked Questions
---------------------------------
+Frequently Asked Questions
+--------------------------
 
 * `What is tsuru?`_
 * `What is an application?`_
