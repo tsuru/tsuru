@@ -3,7 +3,7 @@
    license that can be found in the LICENSE file.
 
 ++++++++++++
-contributing
+Contributing
 ++++++++++++
 
 * Source hosted at `GitHub <http://github.com/tsuru/tsuru>`_
