@@ -85,12 +85,6 @@ func handleMoveErrors(moveErrors chan error, encoder *json.Encoder) error {
 	return nil
 }
 
-func moveOneContainerInDB(a *app.App, oldContainer container, newUnit provision.Unit) error {
-	appDBMutex.Lock()
-	defer appDBMutex.Unlock()
-	return a.AddUnitsToDB([]provision.Unit{newUnit})
-}
-
 func moveOneContainer(c container, toHost string, errors chan error, wg *sync.WaitGroup, encoder *json.Encoder, locker *appLocker) {
 	defer wg.Done()
 	locked := locker.lock(c.AppName)
@@ -122,15 +116,15 @@ func moveOneContainer(c container, toHost string, errors chan error, wg *sync.Wa
 	}
 	logProgress(encoder, "Finished moving unit %s for %q.", c.ID, c.AppName)
 	addedUnit := pipeline.Result().(provision.Unit)
-	err = moveOneContainerInDB(a, c, addedUnit)
+	err = a.BindUnit(&addedUnit)
 	if err != nil {
 		errors <- &tsuruErrors.CompositeError{
 			Base:    err,
-			Message: fmt.Sprintf("Error moving unit %s in DB.", c.ID),
+			Message: fmt.Sprintf("Error binding unit %s to service instances.", c.ID),
 		}
 		return
 	}
-	logProgress(encoder, "Moved unit %s -> %s for %s in DB.", c.ID, addedUnit.Name, c.AppName)
+	logProgress(encoder, "Moved unit %s -> %s for %s with bindings.", c.ID, addedUnit.Name, c.AppName)
 }
 
 func moveContainer(contId string, toHost string, encoder *json.Encoder) error {

@@ -441,7 +441,7 @@ func (p *dockerProvisioner) DeployPipeline() *action.Pipeline {
 	actions := []*action.Action{
 		&app.ProvisionerDeploy,
 		&app.IncrementDeploy,
-		&bindService,
+		&app.BindService,
 	}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline

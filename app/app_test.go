@@ -15,7 +15,6 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/service"
@@ -24,7 +23,6 @@ import (
 	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -429,6 +427,12 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
+	callCount := 0
+	rollback := s.addServiceInstance(c, app.Name, func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
+	})
+	defer rollback()
 	err = app.AddUnits(5)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Units(), gocheck.HasLen, 5)
@@ -438,27 +442,7 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	for _, unit := range app.Units() {
 		c.Assert(unit.AppName, gocheck.Equals, app.Name)
 	}
-	var expectedMessages MessageList
-	for i, unit := range app.Units() {
-		expectedName := fmt.Sprintf("%s/%d", app.Name, i)
-		c.Check(unit.Name, gocheck.Equals, expectedName)
-		messages := []queue.Message{
-			{Action: BindService, Args: []string{app.Name, unit.Name}},
-		}
-		expectedMessages = append(expectedMessages, messages...)
-	}
-	gotMessages := make(MessageList, expectedMessages.Len())
-	for i := range expectedMessages {
-		message, err := aqueue().Get(1e6)
-		c.Check(err, gocheck.IsNil)
-		gotMessages[i] = queue.Message{
-			Action: message.Action,
-			Args:   message.Args,
-		}
-	}
-	sort.Sort(expectedMessages)
-	sort.Sort(gotMessages)
-	c.Assert(gotMessages, gocheck.DeepEquals, expectedMessages)
+	c.Assert(callCount, gocheck.Equals, 7)
 }
 
 func (s *S) TestAddUnitsQuota(c *gocheck.C) {
@@ -539,44 +523,6 @@ func (s *S) TestAddUnitsIsAtomic(c *gocheck.C) {
 	c.Assert(err, gocheck.Equals, ErrAppNotFound)
 }
 
-func (s *S) TestAddUnitsToDB(c *gocheck.C) {
-	app := App{
-		Name: "warpaint", Platform: "python",
-		Quota: quota.Unlimited,
-	}
-	err := s.conn.Apps().Insert(app)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	s.provisioner.Provision(&app)
-	defer s.provisioner.Destroy(&app)
-	app.AddUnits(1)
-	app.AddUnitsToDB([]provision.Unit{
-		{Name: "warpaint/1"},
-		{Name: "warpaint/2"},
-	})
-	var expectedMessages MessageList
-	for i, unit := range app.Units() {
-		expectedName := fmt.Sprintf("%s/%d", app.Name, i)
-		c.Check(unit.Name, gocheck.Equals, expectedName)
-		messages := []queue.Message{
-			{Action: BindService, Args: []string{app.Name, unit.Name}},
-		}
-		expectedMessages = append(expectedMessages, messages...)
-	}
-	gotMessages := make(MessageList, expectedMessages.Len())
-	for i := range expectedMessages {
-		message, err := aqueue().Get(1e6)
-		c.Check(err, gocheck.IsNil)
-		gotMessages[i] = queue.Message{
-			Action: message.Action,
-			Args:   message.Args,
-		}
-	}
-	sort.Sort(expectedMessages)
-	sort.Sort(gotMessages)
-	c.Assert(gotMessages, gocheck.DeepEquals, expectedMessages)
-}
-
 func (s *S) TestRemoveUnitsWithQuota(c *gocheck.C) {
 	a := App{
 		Name:  "ble",
@@ -627,7 +573,6 @@ func (s *S) TestRemoveUnits(c *gocheck.C) {
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
 	app.AddUnits(4)
-	defer testing.CleanQ(queueName)
 	err = app.RemoveUnits(2)
 	c.Assert(err, gocheck.IsNil)
 	time.Sleep(1e9)

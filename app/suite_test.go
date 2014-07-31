@@ -12,12 +12,14 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
+	"github.com/tsuru/tsuru/service"
 	ttesting "github.com/tsuru/tsuru/testing"
 	"io"
 	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path"
 	"testing"
@@ -106,7 +108,6 @@ func (s *S) TearDownTest(c *gocheck.C) {
 		bson.M{"email": s.user.Email},
 		bson.M{"$set": bson.M{"quota": quota.Unlimited}},
 	)
-	ttesting.CleanQ(queueName)
 }
 
 func (s *S) getTestData(p ...string) io.ReadCloser {
@@ -132,6 +133,26 @@ func (s *S) removeAdminUserAndTeam(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = s.conn.Users().Remove(bson.M{"email": s.admin.Email})
 	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) addServiceInstance(c *gocheck.C, appName string, fn http.HandlerFunc) func() {
+	ts := httptest.NewServer(fn)
+	ret := func() {
+		ts.Close()
+		s.conn.Services().Remove(bson.M{"_id": "mysql"})
+		s.conn.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := srvc.Create()
+	c.Assert(err, gocheck.IsNil)
+	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
+	err = instance.Create()
+	c.Assert(err, gocheck.IsNil)
+	err = instance.AddApp(appName)
+	c.Assert(err, gocheck.IsNil)
+	err = s.conn.ServiceInstances().Update(bson.M{"name": instance.Name}, instance)
+	c.Assert(err, gocheck.IsNil)
+	return ret
 }
 
 type MessageList []queue.Message

@@ -9,10 +9,8 @@ import (
 	"fmt"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/action"
-	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/queue"
 	"io"
 	"labix.org/v2/mgo/bson"
 )
@@ -142,26 +140,6 @@ var startContainer = action.Action{
 		if err != nil {
 			log.Errorf("Failed to stop the container %q: %s", c.ID, err)
 		}
-	},
-}
-
-var bindService = action.Action{
-	Name: "bind-service",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		opts, ok := ctx.Params[0].(app.DeployOptions)
-		if !ok {
-			return nil, errors.New("First parameter must be DeployOptions")
-		}
-		for _, u := range opts.App.Units() {
-			msg := queue.Message{
-				Action: app.BindService,
-				Args:   []string{opts.App.GetName(), u.Name},
-			}
-			go app.Enqueue(msg)
-		}
-		return nil, nil
-	},
-	Backward: func(ctx action.BWContext) {
 	},
 }
 

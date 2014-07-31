@@ -12,8 +12,12 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/service"
 	tTesting "github.com/tsuru/tsuru/testing"
+	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
+	"net/http"
+	"net/http/httptest"
 	"sort"
 	"strings"
 	"testing"
@@ -133,6 +137,26 @@ func (s *S) startMultipleServersCluster() (*cluster.Cluster, error) {
 		return nil, err
 	}
 	return oldCluster, nil
+}
+
+func (s *S) addServiceInstance(c *gocheck.C, appName string, fn http.HandlerFunc) func() {
+	ts := httptest.NewServer(fn)
+	ret := func() {
+		ts.Close()
+		s.storage.Services().Remove(bson.M{"_id": "mysql"})
+		s.storage.ServiceInstances().Remove(bson.M{"_id": "my-mysql"})
+	}
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := srvc.Create()
+	c.Assert(err, gocheck.IsNil)
+	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{}}
+	err = instance.Create()
+	c.Assert(err, gocheck.IsNil)
+	err = instance.AddApp(appName)
+	c.Assert(err, gocheck.IsNil)
+	err = s.storage.ServiceInstances().Update(bson.M{"name": instance.Name}, instance)
+	c.Assert(err, gocheck.IsNil)
+	return ret
 }
 
 type unitSlice []provision.Unit

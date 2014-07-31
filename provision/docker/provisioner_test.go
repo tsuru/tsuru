@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/testing"
 	tsrTesting "github.com/tsuru/tsuru/testing"
+	"io/ioutil"
 	"labix.org/v2/mgo"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
@@ -116,56 +117,6 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	go s.stopContainers(1)
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	fexec := &etesting.FakeExecutor{}
-	setExecut(fexec)
-	defer setExecut(nil)
-	p := dockerProvisioner{}
-	a := app.App{
-		Name:     "otherapp",
-		Platform: "python",
-	}
-	conn, err := db.Conn()
-	defer conn.Close()
-	err = conn.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": a.Name})
-	p.Provision(&a)
-	defer p.Destroy(&a)
-	w := safe.NewBuffer(make([]byte, 2048))
-	err = app.Deploy(app.DeployOptions{
-		App:          &a,
-		Version:      "master",
-		Commit:       "123",
-		OutputStream: w,
-	})
-	c.Assert(err, gocheck.IsNil)
-	time.Sleep(6e9)
-	q, err := getQueue()
-	for _, u := range a.Units() {
-		message, err := q.Get(1e6)
-		c.Assert(err, gocheck.IsNil)
-		c.Assert(message.Action, gocheck.Equals, app.BindService)
-		c.Assert(message.Args[0], gocheck.Equals, a.GetName())
-		c.Assert(message.Args[1], gocheck.Equals, u.Name)
-	}
-}
-
-func getQueue() (queue.Q, error) {
-	queueName := "tsuru-app"
-	qfactory, err := queue.Factory()
-	if err != nil {
-		return nil, err
-	}
-	return qfactory.Get(queueName)
-}
-
-func (s *S) TestDeployEnqueuesBindService(c *gocheck.C) {
-	h := &tsrTesting.TestHandler{}
-	gandalfServer := tsrTesting.StartGandalfTestServer(h)
-	defer gandalfServer.Close()
-	go s.stopContainers(1)
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
 	setExecut(&etesting.FakeExecutor{})
 	defer setExecut(nil)
 	p := dockerProvisioner{}
@@ -181,6 +132,13 @@ func (s *S) TestDeployEnqueuesBindService(c *gocheck.C) {
 	p.Provision(&a)
 	defer p.Destroy(&a)
 	w := safe.NewBuffer(make([]byte, 2048))
+	var serviceBodies []string
+	rollback := s.addServiceInstance(c, a.Name, func(w http.ResponseWriter, r *http.Request) {
+		data, _ := ioutil.ReadAll(r.Body)
+		serviceBodies = append(serviceBodies, string(data))
+		w.WriteHeader(http.StatusOK)
+	})
+	defer rollback()
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		Version:      "master",
@@ -188,16 +146,19 @@ func (s *S) TestDeployEnqueuesBindService(c *gocheck.C) {
 		OutputStream: w,
 	})
 	c.Assert(err, gocheck.IsNil)
-	defer p.Destroy(&a)
-	q, err := getQueue()
-	c.Assert(err, gocheck.IsNil)
-	for _, u := range a.Units() {
-		message, err := q.Get(1e6)
-		c.Assert(err, gocheck.IsNil)
-		c.Assert(message.Action, gocheck.Equals, app.BindService)
-		c.Assert(message.Args[0], gocheck.Equals, a.GetName())
-		c.Assert(message.Args[1], gocheck.Equals, u.Name)
+	units := a.Units()
+	c.Assert(units, gocheck.HasLen, 1)
+	c.Assert(serviceBodies, gocheck.HasLen, 1)
+	c.Assert(serviceBodies[0], gocheck.Matches, ".*unit-host="+units[0].Ip)
+}
+
+func getQueue() (queue.Q, error) {
+	queueName := "tsuru-app"
+	qfactory, err := queue.Factory()
+	if err != nil {
+		return nil, err
 	}
+	return qfactory.Get(queueName)
 }
 
 func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *gocheck.C) {
@@ -238,17 +199,7 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 	})
 
 	c.Assert(err, gocheck.IsNil)
-	time.Sleep(1e9)
 	defer p.Destroy(&a)
-	q, err := getQueue()
-	c.Assert(err, gocheck.IsNil)
-	for _, u := range a.Units() {
-		message, err := q.Get(1e6)
-		c.Assert(err, gocheck.IsNil)
-		c.Assert(message.Action, gocheck.Equals, app.BindService)
-		c.Assert(message.Args[0], gocheck.Equals, a.GetName())
-		c.Assert(message.Args[1], gocheck.Equals, u.Name)
-	}
 	coll := collection()
 	defer coll.Close()
 	n, err := coll.Find(bson.M{"appname": cont1.AppName}).Count()

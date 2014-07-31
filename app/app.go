@@ -17,7 +17,6 @@ import (
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/service"
@@ -359,16 +358,24 @@ func Delete(app *App) error {
 	return nil
 }
 
-// Add provisioned units to database and enqueue messages to
-// bind services and regenerate apprc. It's called as one of
-// the steps started by AddUnits(). It doesn't call the
-// provisioner.
-func (app *App) AddUnitsToDB(units []provision.Unit) error {
-	messages := make([]queue.Message, len(units))
-	for i, unit := range units {
-		messages[i] = queue.Message{Action: BindService, Args: []string{app.Name, unit.Name}}
+func (app *App) BindUnit(unit *provision.Unit) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
 	}
-	go Enqueue(messages...)
+	defer conn.Close()
+	var instances []service.ServiceInstance
+	q := bson.M{"apps": bson.M{"$in": []string{app.Name}}}
+	err = conn.ServiceInstances().Find(q).All(&instances)
+	if err != nil {
+		return err
+	}
+	for _, instance := range instances {
+		_, err = instance.BindUnit(app, unit)
+		if err != nil {
+			log.Errorf("Error binding the unit %s with the service instance %s: %s", unit.Name, instance.Name, err)
+		}
+	}
 	return nil
 }
 
@@ -381,7 +388,7 @@ func (app *App) AddUnits(n uint) error {
 	err := action.NewPipeline(
 		&reserveUnitsToAdd,
 		&provisionAddUnits,
-		&saveNewUnitsInDatabase,
+		&BindService,
 	).Execute(app, n)
 	return err
 }

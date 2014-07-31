@@ -13,12 +13,12 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/testing"
+	"io/ioutil"
 	"labix.org/v2/mgo/bson"
 	"launchpad.net/gocheck"
-	"sort"
+	"net/http"
 	"time"
 )
 
@@ -50,8 +50,8 @@ func (s *S) TestProvisionAddUnitsName(c *gocheck.C) {
 	c.Assert(provisionAddUnits.Name, gocheck.Equals, "provision-add-units")
 }
 
-func (s *S) TestSaveNewUnitsInDatabaseName(c *gocheck.C) {
-	c.Assert(saveNewUnitsInDatabase.Name, gocheck.Equals, "save-new-units-in-database")
+func (s *S) TestBindServiceName(c *gocheck.C) {
+	c.Assert(BindService.Name, gocheck.Equals, "bind-service")
 }
 
 func (s *S) TestSetAppIpName(c *gocheck.C) {
@@ -219,7 +219,7 @@ func (s *S) TestCreateRepositoryForward(c *gocheck.C) {
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
 	app := App{Name: "someapp", Teams: []string{s.team.Name}}
-	ctx := action.FWContext{Params: []interface{}{app}}
+	ctx := action.FWContext{Params: []interface{}{&app}}
 	result, err := createRepository.Forward(ctx)
 	a, ok := result.(*App)
 	c.Assert(ok, gocheck.Equals, true)
@@ -252,7 +252,7 @@ func (s *S) TestCreateRepositoryForwardInvalidType(c *gocheck.C) {
 	ctx := action.FWContext{Params: []interface{}{"something"}}
 	_, err := createRepository.Forward(ctx)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "First parameter must be App or *App.")
+	c.Assert(err.Error(), gocheck.Equals, "First parameter must be *App.")
 }
 
 func (s *S) TestCreateRepositoryBackward(c *gocheck.C) {
@@ -279,7 +279,7 @@ func (s *S) TestProvisionAppForward(c *gocheck.C) {
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	ctx := action.FWContext{Params: []interface{}{app, 4}}
+	ctx := action.FWContext{Params: []interface{}{&app, 4}}
 	result, err := provisionApp.Forward(ctx)
 	defer s.provisioner.Destroy(&app)
 	c.Assert(err, gocheck.IsNil)
@@ -396,7 +396,7 @@ func (s *S) TestReserveUserAppForwardAppNotPointer(c *gocheck.C) {
 		Platform: "django",
 	}
 	expected := map[string]string{"user": user.Email, "app": app.Name}
-	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{app, user}})
+	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{&app, user}})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(previous, gocheck.DeepEquals, expected)
 	err = auth.ReserveApp(&user)
@@ -413,7 +413,7 @@ func (s *S) TestReserveUserAppForwardInvalidApp(c *gocheck.C) {
 	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{"something", user}})
 	c.Assert(previous, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "First parameter must be App or *App.")
+	c.Assert(err.Error(), gocheck.Equals, "First parameter must be *App.")
 }
 
 func (s *S) TestReserveUserAppForwardInvalidUser(c *gocheck.C) {
@@ -421,7 +421,7 @@ func (s *S) TestReserveUserAppForwardInvalidUser(c *gocheck.C) {
 		Name:     "clap",
 		Platform: "django",
 	}
-	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{app, "something"}})
+	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{&app, "something"}})
 	c.Assert(previous, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Third parameter must be auth.User or *auth.User.")
@@ -439,7 +439,7 @@ func (s *S) TestReserveUserAppForwardQuotaExceeded(c *gocheck.C) {
 		Name:     "clap",
 		Platform: "django",
 	}
-	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{app, user}})
+	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{&app, user}})
 	c.Assert(previous, gocheck.IsNil)
 	_, ok := err.(*quota.QuotaExceededError)
 	c.Assert(ok, gocheck.Equals, true)
@@ -504,22 +504,6 @@ func (s *S) TestReserveUnitsToAddForwardUint(c *gocheck.C) {
 	c.Assert(gotApp.InUse, gocheck.Equals, 3)
 }
 
-func (s *S) TestReserveUnitsToAddForwardNoPointer(c *gocheck.C) {
-	app := App{
-		Name:     "visions",
-		Platform: "django",
-		Quota:    quota.Unlimited,
-	}
-	s.conn.Apps().Insert(app)
-	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{app, 3}})
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(result.(int), gocheck.Equals, 3)
-	gotApp, err := GetByName(app.Name)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(gotApp.InUse, gocheck.Equals, 3)
-}
-
 func (s *S) TestReserveUnitsToAddForwardQuotaExceeded(c *gocheck.C) {
 	app := App{
 		Name:     "visions",
@@ -528,7 +512,7 @@ func (s *S) TestReserveUnitsToAddForwardQuotaExceeded(c *gocheck.C) {
 	}
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{app, 1}})
+	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, 1}})
 	c.Assert(result, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*quota.QuotaExceededError)
@@ -541,7 +525,7 @@ func (s *S) TestReserveUnitsToAddForwardInvalidApp(c *gocheck.C) {
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{"something", 3}})
 	c.Assert(result, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "First parameter must be App or *App.")
+	c.Assert(err.Error(), gocheck.Equals, "First parameter must be *App.")
 }
 
 func (s *S) TestReserveUnitsToAddAppNotFound(c *gocheck.C) {
@@ -553,7 +537,7 @@ func (s *S) TestReserveUnitsToAddAppNotFound(c *gocheck.C) {
 }
 
 func (s *S) TestReserveUnitsToAddForwardInvalidNumber(c *gocheck.C) {
-	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{App{}, "what"}})
+	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&App{}, "what"}})
 	c.Assert(result, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Second parameter must be int or uint.")
@@ -568,20 +552,6 @@ func (s *S) TestReserveUnitsToAddBackward(c *gocheck.C) {
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	reserveUnitsToAdd.Backward(action.BWContext{Params: []interface{}{&app, 3}, FWResult: 3})
-	gotApp, err := GetByName(app.Name)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(gotApp.InUse, gocheck.Equals, 1)
-}
-
-func (s *S) TestReserveUnitsToAddBackwardNoPointer(c *gocheck.C) {
-	app := App{
-		Name:     "visions",
-		Platform: "django",
-		Quota:    quota.Quota{Limit: 5, InUse: 4},
-	}
-	s.conn.Apps().Insert(app)
-	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	reserveUnitsToAdd.Backward(action.BWContext{Params: []interface{}{app, 3}, FWResult: 3})
 	gotApp, err := GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(gotApp.InUse, gocheck.Equals, 1)
@@ -607,29 +577,13 @@ func (s *S) TestProvisionAddUnits(c *gocheck.C) {
 	c.Assert(units, gocheck.DeepEquals, s.provisioner.GetUnits(&app))
 }
 
-func (s *S) TestProvisionAddUnitsNoPointer(c *gocheck.C) {
-	app := App{
-		Name:     "visions",
-		Platform: "django",
-	}
-	s.provisioner.Provision(&app)
-	defer s.provisioner.Destroy(&app)
-	ctx := action.FWContext{Previous: 3, Params: []interface{}{app}}
-	fwresult, err := provisionAddUnits.Forward(ctx)
-	c.Assert(err, gocheck.IsNil)
-	units, ok := fwresult.([]provision.Unit)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(units, gocheck.HasLen, 3)
-	c.Assert(units, gocheck.DeepEquals, s.provisioner.GetUnits(&app))
-}
-
 func (s *S) TestProvisionAddUnitsProvisionFailure(c *gocheck.C) {
 	s.provisioner.PrepareFailure("AddUnits", errors.New("Failed to add units"))
 	app := App{
 		Name:     "visions",
 		Platform: "django",
 	}
-	ctx := action.FWContext{Previous: 3, Params: []interface{}{app}}
+	ctx := action.FWContext{Previous: 3, Params: []interface{}{&app}}
 	result, err := provisionAddUnits.Forward(ctx)
 	c.Assert(result, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
@@ -640,7 +594,7 @@ func (s *S) TestProvisionAddUnitsInvalidApp(c *gocheck.C) {
 	result, err := provisionAddUnits.Forward(action.FWContext{Params: []interface{}{"something"}})
 	c.Assert(result, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "First parameter must be App or *App.")
+	c.Assert(err.Error(), gocheck.Equals, "First parameter must be *App.")
 }
 
 func (s *S) TestProvisionAddUnitsBackward(c *gocheck.C) {
@@ -657,25 +611,11 @@ func (s *S) TestProvisionAddUnitsBackward(c *gocheck.C) {
 	c.Assert(s.provisioner.GetUnits(&app), gocheck.HasLen, 0)
 }
 
-func (s *S) TestProvisionAddUnitsBackwardNoPointer(c *gocheck.C) {
-	app := App{
-		Name:     "fiction",
-		Platform: "django",
-	}
-	s.provisioner.Provision(&app)
-	defer s.provisioner.Destroy(&app)
-	units, err := s.provisioner.AddUnits(&app, 3)
-	c.Assert(err, gocheck.IsNil)
-	ctx := action.BWContext{Params: []interface{}{app}, FWResult: units}
-	provisionAddUnits.Backward(ctx)
-	c.Assert(s.provisioner.GetUnits(&app), gocheck.HasLen, 0)
-}
-
 func (s *S) TestProvisionAddUnitsMinParams(c *gocheck.C) {
 	c.Assert(provisionAddUnits.MinParams, gocheck.Equals, 1)
 }
 
-func (s *S) TestSaveNewUnitsInDatabaseForward(c *gocheck.C) {
+func (s *S) TestBindServiceForward(c *gocheck.C) {
 	app := App{
 		Name:     "visions",
 		Platform: "django",
@@ -686,34 +626,24 @@ func (s *S) TestSaveNewUnitsInDatabaseForward(c *gocheck.C) {
 	defer s.provisioner.Destroy(&app)
 	units, err := s.provisioner.AddUnits(&app, 3)
 	c.Assert(err, gocheck.IsNil)
-	ctx := action.FWContext{Previous: units, Params: []interface{}{&app}}
-	fwresult, err := saveNewUnitsInDatabase.Forward(ctx)
+	var bodies []string
+	rollback := s.addServiceInstance(c, app.Name, func(w http.ResponseWriter, r *http.Request) {
+		data, _ := ioutil.ReadAll(r.Body)
+		bodies = append(bodies, string(data))
+		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
+	})
+	defer rollback()
+	ctx := action.FWContext{Previous: units[:2], Params: []interface{}{&app}}
+	fwresult, err := BindService.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(fwresult, gocheck.IsNil)
 	c.Assert(app.Units(), gocheck.HasLen, 3)
-	var expectedMessages MessageList
-	for i, unit := range app.Units() {
-		c.Assert(unit.Name, gocheck.Equals, units[i].Name)
-		messages := []queue.Message{
-			{Action: BindService, Args: []string{app.Name, unit.Name}},
-		}
-		expectedMessages = append(expectedMessages, messages...)
-	}
-	gotMessages := make(MessageList, expectedMessages.Len())
-	for i := range expectedMessages {
-		message, err := aqueue().Get(1e6)
-		c.Assert(err, gocheck.IsNil)
-		gotMessages[i] = queue.Message{
-			Action: message.Action,
-			Args:   message.Args,
-		}
-	}
-	sort.Sort(expectedMessages)
-	sort.Sort(gotMessages)
-	c.Assert(gotMessages, gocheck.DeepEquals, expectedMessages)
+	c.Assert(bodies, gocheck.HasLen, 2)
+	c.Assert(bodies[0], gocheck.Matches, ".*unit-host="+units[0].Ip)
+	c.Assert(bodies[1], gocheck.Matches, ".*unit-host="+units[1].Ip)
 }
 
-func (s *S) TestSaveNewUnitsInDatabaseForwardNoPointer(c *gocheck.C) {
+func (s *S) TestBindServiceForwardWithDeployOpts(c *gocheck.C) {
 	app := App{
 		Name:     "visions",
 		Platform: "django",
@@ -724,54 +654,72 @@ func (s *S) TestSaveNewUnitsInDatabaseForwardNoPointer(c *gocheck.C) {
 	defer s.provisioner.Destroy(&app)
 	units, err := s.provisioner.AddUnits(&app, 3)
 	c.Assert(err, gocheck.IsNil)
-	ctx := action.FWContext{Previous: units, Params: []interface{}{app}}
-	fwresult, err := saveNewUnitsInDatabase.Forward(ctx)
+	callCount := 0
+	rollback := s.addServiceInstance(c, app.Name, func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
+	})
+	defer rollback()
+	opts := DeployOptions{App: &app}
+	ctx := action.FWContext{Previous: units, Params: []interface{}{opts}}
+	fwresult, err := BindService.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(fwresult, gocheck.IsNil)
 	c.Assert(app.Units(), gocheck.HasLen, 3)
-	var expectedMessages MessageList
-	for i, unit := range app.Units() {
-		c.Assert(unit.Name, gocheck.Equals, units[i].Name)
-		messages := []queue.Message{
-			{Action: BindService, Args: []string{app.Name, unit.Name}},
-		}
-		expectedMessages = append(expectedMessages, messages...)
-	}
-	gotMessages := make(MessageList, expectedMessages.Len())
-	for i := range expectedMessages {
-		message, err := aqueue().Get(1e6)
-		c.Assert(err, gocheck.IsNil)
-		gotMessages[i] = queue.Message{
-			Action: message.Action,
-			Args:   message.Args,
-		}
-	}
-	sort.Sort(expectedMessages)
-	sort.Sort(gotMessages)
-	c.Assert(gotMessages, gocheck.DeepEquals, expectedMessages)
+	c.Assert(callCount, gocheck.Equals, 3)
 }
 
-func (s *S) TestSaveNewUnitsInDatabaseForwardInvalidApp(c *gocheck.C) {
-	result, err := saveNewUnitsInDatabase.Forward(action.FWContext{Params: []interface{}{"something"}})
+func (s *S) TestBindServiceForwardNoPrevious(c *gocheck.C) {
+	app := App{
+		Name:     "visions",
+		Platform: "django",
+	}
+	s.conn.Apps().Insert(app)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
+	_, err := s.provisioner.AddUnits(&app, 3)
+	c.Assert(err, gocheck.IsNil)
+	var bodies []string
+	rollback := s.addServiceInstance(c, app.Name, func(w http.ResponseWriter, r *http.Request) {
+		data, _ := ioutil.ReadAll(r.Body)
+		bodies = append(bodies, string(data))
+		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
+	})
+	defer rollback()
+	ctx := action.FWContext{Previous: nil, Params: []interface{}{&app}}
+	fwresult, err := BindService.Forward(ctx)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(fwresult, gocheck.IsNil)
+	units := app.Units()
+	c.Assert(units, gocheck.HasLen, 3)
+	c.Assert(bodies, gocheck.HasLen, 3)
+	c.Assert(bodies[0], gocheck.Matches, ".*unit-host="+units[0].Ip)
+	c.Assert(bodies[1], gocheck.Matches, ".*unit-host="+units[1].Ip)
+	c.Assert(bodies[2], gocheck.Matches, ".*unit-host="+units[2].Ip)
+}
+
+func (s *S) TestBindServiceForwardInvalidApp(c *gocheck.C) {
+	result, err := BindService.Forward(action.FWContext{Params: []interface{}{"something"}})
 	c.Assert(result, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 }
 
-func (s *S) TestSaveNewUnitsInDatabaseAppNotFound(c *gocheck.C) {
+func (s *S) TestBindServiceAppNotFound(c *gocheck.C) {
 	app := App{Name: "something"}
 	fwresult := []provision.Unit{}
-	ctx := action.FWContext{Previous: fwresult, Params: []interface{}{app}}
-	result, err := saveNewUnitsInDatabase.Forward(ctx)
+	ctx := action.FWContext{Previous: fwresult, Params: []interface{}{&app}}
+	result, err := BindService.Forward(ctx)
 	c.Assert(result, gocheck.IsNil)
 	c.Assert(err.Error(), gocheck.Equals, "App not found")
 }
 
-func (s *S) TestSaveNewUnitsInDatabaseBackward(c *gocheck.C) {
-	c.Assert(saveNewUnitsInDatabase.Backward, gocheck.IsNil)
+func (s *S) TestBindServiceBackward(c *gocheck.C) {
+	c.Assert(BindService.Backward, gocheck.IsNil)
 }
 
 func (s *S) TestSaveNewUnitsMinParams(c *gocheck.C) {
-	c.Assert(saveNewUnitsInDatabase.MinParams, gocheck.Equals, 1)
+	c.Assert(BindService.MinParams, gocheck.Equals, 1)
 }
 
 func (s *S) TestProvisionerDeployName(c *gocheck.C) {

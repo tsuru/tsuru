@@ -32,14 +32,12 @@ var (
 var reserveUserApp = action.Action{
 	Name: "reserve-user-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var app App
+		var app *App
 		switch ctx.Params[0].(type) {
-		case App:
-			app = ctx.Params[0].(App)
 		case *App:
-			app = *ctx.Params[0].(*App)
+			app = ctx.Params[0].(*App)
 		default:
-			return nil, errors.New("First parameter must be App or *App.")
+			return nil, errors.New("First parameter must be *App.")
 		}
 		var user auth.User
 		switch ctx.Params[1].(type) {
@@ -152,14 +150,12 @@ var exportEnvironmentsAction = action.Action{
 var createRepository = action.Action{
 	Name: "create-repository",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var app App
+		var app *App
 		switch ctx.Params[0].(type) {
-		case App:
-			app = ctx.Params[0].(App)
 		case *App:
-			app = *ctx.Params[0].(*App)
+			app = ctx.Params[0].(*App)
 		default:
-			return nil, errors.New("First parameter must be App or *App.")
+			return nil, errors.New("First parameter must be *App.")
 		}
 		gURL := repository.ServerURL()
 		var users []string
@@ -168,7 +164,7 @@ var createRepository = action.Action{
 		}
 		c := gandalf.Client{Endpoint: gURL}
 		_, err := c.NewRepository(app.Name, users, false)
-		return &app, err
+		return app, err
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.FWResult.(*App)
@@ -184,20 +180,18 @@ var createRepository = action.Action{
 var provisionApp = action.Action{
 	Name: "provision-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var app App
+		var app *App
 		switch ctx.Params[0].(type) {
-		case App:
-			app = ctx.Params[0].(App)
 		case *App:
-			app = *ctx.Params[0].(*App)
+			app = ctx.Params[0].(*App)
 		default:
-			return nil, errors.New("First parameter must be App or *App.")
+			return nil, errors.New("First parameter must be *App.")
 		}
-		err := Provisioner.Provision(&app)
+		err := Provisioner.Provision(app)
 		if err != nil {
 			return nil, err
 		}
-		return &app, nil
+		return app, nil
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.FWResult.(*App)
@@ -252,13 +246,10 @@ var reserveUnitsToAdd = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		var app *App
 		switch ctx.Params[0].(type) {
-		case App:
-			tmp := ctx.Params[0].(App)
-			app = &tmp
 		case *App:
 			app = ctx.Params[0].(*App)
 		default:
-			return nil, errors.New("First parameter must be App or *App.")
+			return nil, errors.New("First parameter must be *App.")
 		}
 		var n int
 		switch ctx.Params[1].(type) {
@@ -287,9 +278,6 @@ var reserveUnitsToAdd = action.Action{
 	Backward: func(ctx action.BWContext) {
 		var app *App
 		switch ctx.Params[0].(type) {
-		case App:
-			tmp := ctx.Params[0].(App)
-			app = &tmp
 		case *App:
 			app = ctx.Params[0].(*App)
 		}
@@ -305,17 +293,15 @@ var reserveUnitsToAdd = action.Action{
 var provisionAddUnits = action.Action{
 	Name: "provision-add-units",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var app App
+		var app *App
 		switch ctx.Params[0].(type) {
-		case App:
-			app = ctx.Params[0].(App)
 		case *App:
-			app = *ctx.Params[0].(*App)
+			app = ctx.Params[0].(*App)
 		default:
-			return nil, errors.New("First parameter must be App or *App.")
+			return nil, errors.New("First parameter must be *App.")
 		}
 		n := ctx.Previous.(int)
-		units, err := Provisioner.AddUnits(&app, uint(n))
+		units, err := Provisioner.AddUnits(app, uint(n))
 		if err != nil {
 			return nil, err
 		}
@@ -330,27 +316,32 @@ var provisionAddUnits = action.Action{
 	MinParams: 1,
 }
 
-var saveNewUnitsInDatabase = action.Action{
-	Name: "save-new-units-in-database",
+var BindService = action.Action{
+	Name: "bind-service",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		var app *App
 		switch ctx.Params[0].(type) {
-		case App:
-			tmp := ctx.Params[0].(App)
-			app = &tmp
 		case *App:
 			app = ctx.Params[0].(*App)
+		case DeployOptions:
+			opts := ctx.Params[0].(DeployOptions)
+			app = opts.App
 		default:
-			return nil, errors.New("First parameter must be App or *App.")
+			return nil, errors.New("First parameter must be *App or DeployOptions.")
 		}
-		units := ctx.Previous.([]provision.Unit)
+		units, _ := ctx.Previous.([]provision.Unit)
 		app, err := GetByName(app.Name)
 		if err != nil {
 			return nil, ErrAppNotFound
 		}
-		err = app.AddUnitsToDB(units)
-		if err != nil {
-			return nil, err
+		if len(units) == 0 {
+			units = app.Units()
+		}
+		for _, unit := range units {
+			err := app.BindUnit(&unit)
+			if err != nil {
+				return nil, err
+			}
 		}
 		return nil, nil
 	},

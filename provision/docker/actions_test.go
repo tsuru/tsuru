@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/action"
-	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/provision"
 	rtesting "github.com/tsuru/tsuru/router/testing"
 	"github.com/tsuru/tsuru/testing"
@@ -220,33 +219,6 @@ func (s *S) TestStartContainerBackward(c *gocheck.C) {
 	cc, err := dcli.InspectContainer(cont.ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cc.State.Running, gocheck.Equals, false)
-}
-
-func (s *S) TestBindServiceName(c *gocheck.C) {
-	c.Assert(bindService.Name, gocheck.Equals, "bind-service")
-}
-
-func (s *S) TestBindServiceForward(c *gocheck.C) {
-	a := app.App{Name: "cribcaged", Platform: "python"}
-	opts := app.DeployOptions{App: &a}
-	context := action.FWContext{Params: []interface{}{opts}}
-	_, err := bindService.Forward(context)
-	c.Assert(err, gocheck.IsNil)
-	q, err := getQueue()
-	c.Assert(err, gocheck.IsNil)
-	for _, u := range a.Units() {
-		message, err := q.Get(1e6)
-		c.Assert(err, gocheck.IsNil)
-		c.Assert(message.Action, gocheck.Equals, app.BindService)
-		c.Assert(message.Args[0], gocheck.Equals, a.GetName())
-		c.Assert(message.Args[1], gocheck.Equals, u.Name)
-	}
-}
-
-func (s *S) TestBindServiceParams(c *gocheck.C) {
-	context := action.FWContext{Params: []interface{}{""}}
-	_, err := bindService.Forward(context)
-	c.Assert(err.Error(), gocheck.Equals, "First parameter must be DeployOptions")
 }
 
 func (s *S) TestProvisionAddUnitToHostName(c *gocheck.C) {
