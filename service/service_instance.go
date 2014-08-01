@@ -21,10 +21,11 @@ import (
 )
 
 var (
-	ErrServiceInstanceNotFound   = stderrors.New("Service instance not found")
-	ErrInvalidInstanceName       = stderrors.New("Invalid service instance name")
-	ErrInstanceNameAlreadyExists = stderrors.New("Instance name already exists.")
-	ErrAccessNotAllowed          = stderrors.New("User does not have access to this service instance")
+	ErrServiceInstanceNotFound   = stderrors.New("service instance not found")
+	ErrInvalidInstanceName       = stderrors.New("invalid service instance name")
+	ErrInstanceNameAlreadyExists = stderrors.New("instance name already exists.")
+	ErrAccessNotAllowed          = stderrors.New("user does not have access to this service instance")
+	ErrMultipleTeams             = stderrors.New("user is member of multiple teams, please specify the team that owns the service instance")
 
 	instanceNameRegexp = regexp.MustCompile(`^[A-Za-z][-a-zA-Z0-9_]+$`)
 )
@@ -35,6 +36,7 @@ type ServiceInstance struct {
 	PlanName    string `bson:"plan_name"`
 	Apps        []string
 	Teams       []string
+	TeamOwner   string
 }
 
 // DeleteInstance deletes the service instance from the database.
@@ -238,16 +240,12 @@ func validateServiceInstanceName(name string) error {
 	return nil
 }
 
-func CreateServiceInstance(name string, service *Service, planName string, user *auth.User) error {
-	err := validateServiceInstanceName(name)
+func CreateServiceInstance(instance ServiceInstance, service *Service, user *auth.User) error {
+	err := validateServiceInstanceName(instance.Name)
 	if err != nil {
 		return err
 	}
-	instance := ServiceInstance{
-		Name:        name,
-		ServiceName: service.Name,
-	}
-	instance.PlanName = planName
+	instance.ServiceName = service.Name
 	teams, err := user.Teams()
 	if err != nil {
 		return err
@@ -256,6 +254,23 @@ func CreateServiceInstance(name string, service *Service, planName string, user 
 	for _, team := range teams {
 		if service.HasTeam(&team) || !service.IsRestricted {
 			instance.Teams = append(instance.Teams, team.Name)
+		}
+	}
+	if instance.TeamOwner == "" {
+		if len(instance.Teams) > 1 {
+			return ErrMultipleTeams
+		}
+		instance.TeamOwner = instance.Teams[0]
+	} else {
+		var found bool
+		for _, team := range instance.Teams {
+			if instance.TeamOwner == team {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return auth.ErrTeamNotFound
 		}
 	}
 	actions := []*action.Action{&createServiceInstance, &insertServiceInstance}
