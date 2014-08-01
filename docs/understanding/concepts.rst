@@ -1,17 +1,24 @@
 Concepts
 ========
 
-Twelve-Factor
--------------
-
 Docker
 ------
+
+Docker is an open source project to pack, ship and run any application as a
+lightweight, portable, self-sufficient container.
+When you deploy an app with git push, tsuru builds an create Docker image,
+then distributes it as units across your cluster.
 
 Clusters
 --------
 
+A cluster is a named group of nodes. tsuru `api` has a scheduler algorithm
+that distribute applications intelligently across a cluster nodes.
+
 Nodes
 -----
+
+Node is a physical or virtual machine with 
 
 Applications
 ------------
@@ -24,8 +31,7 @@ associated development teams, a repository and a set of units.
 Units
 -----
 
-A unit is an isolated Unix container or a virtual machine - depending on the
-configured provisioner. A unit has everything an application needs to run, the
+A unit is a container. A unit has everything an application needs to run, the
 fetched operational system and language level dependencies, the application's
 source code, the language runtime, and the applications processes defined on
 the Procfile.
@@ -35,14 +41,12 @@ Platforms
 
 A platform is a well defined pack with installed dependencies for a language or
 framework that a group of applications will need. A platform might be a
-container template, or a virtual machine image.
+container template (docker image).
 
 For instance, tsuru has a container image for python applications, with
 virtualenv installed and other required things needed for tsuru to deploy
-applications on top of that platform. Platforms are easily extendable in
-tsuru, but currently not managed by it, all tsuru does (by now) is to keep
-database records for each existent platform. Every application runs on top of
-a platform.
+applications on top of that platform. Platforms are easily extendable and
+managed by tsuru. Every application runs on top of a platform.
 
 Services
 --------
@@ -51,8 +55,3 @@ A service is a well defined API that tsuru communicates with to provide extra
 functionality for applications. Examples of services are MySQL, Redis, MongoDB,
 etc. tsuru has built-in services, but it is easy to create and add new services
 to tsuru. Services aren't managed by tsuru, but by its creators.
-
-Check the :doc:`service usage documentation </reference/services>` for more
-on using services and the :doc:`building your own service tutorial
-</services/build>` for a quick start on how to extend tsuru by creating new
-services.
