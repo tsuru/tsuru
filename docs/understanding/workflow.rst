@@ -1,5 +1,5 @@
-Docker Provisioner Architecture
-===============================
+Deployment workflow
+===================
 
 This document describes how tsuru works when configured with docker provisioner.
 `Docker <http://docker.io>`_
