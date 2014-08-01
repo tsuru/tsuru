@@ -65,7 +65,7 @@ Other features
   <https://github.com/tsuru/tsuru/pull/812>`_) / (`#821
   <https://github.com/tsuru/tsuru/pull/821>`_)
 * grouping nodes by pool in segregate scheduler. For more information
-  you can see the docs about the segregate scheduler: :doc:`/understanding/schedulers`.
+  you can see the docs about the segregate scheduler: :doc:`/managing/nodes`.
 
 Platforms
 ---------

@@ -8,8 +8,6 @@ Understanding
 
 .. toctree::
 
-    why
     overview
     architecture
     docker-architecture
-    schedulers
