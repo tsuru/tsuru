@@ -13,7 +13,7 @@ import (
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/service"
 	ttesting "github.com/tsuru/tsuru/testing"
-	"labix.org/v2/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"

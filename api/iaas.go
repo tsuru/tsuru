@@ -9,7 +9,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/iaas"
-	"labix.org/v2/mgo"
+	"gopkg.in/mgo.v2"
 	"net/http"
 )
 

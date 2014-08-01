@@ -7,7 +7,7 @@ package docker
 import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/provision"
-	"labix.org/v2/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"

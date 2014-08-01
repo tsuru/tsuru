@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/tsuru/tsuru",
-	"GoVersion": "devel +67f9ef140028 Sat Jul 12 15:18:36 2014 +1000",
+	"GoVersion": "devel +bfe2cc97b9e1 Fri Aug 01 06:21:08 2014 -0700",
 	"Packages": [
 		"./..."
 	],
@@ -61,10 +61,6 @@
 			"Rev": "5102fde921d31f59c6e45d835aa01f0213aade0f"
 		},
 		{
-			"ImportPath": "github.com/kr/beanstalk",
-			"Rev": "4011ceaa3ceeeeb8f38e541d2e8efceba6d0b86e"
-		},
-		{
 			"ImportPath": "github.com/tsuru/commandmocker",
 			"Rev": "adc1ee2fa7604e1663b2564ca1283d71c9153cac"
 		},
@@ -74,11 +70,15 @@
 		},
 		{
 			"ImportPath": "github.com/tsuru/docker-cluster/cluster",
-			"Rev": "2db7c48654ca04311107dd84356e07fd9315f1d1"
+			"Rev": "2103dfcbeac75a75d348613763a5393ec05df7ce"
+		},
+		{
+			"ImportPath": "github.com/tsuru/docker-cluster/log",
+			"Rev": "2103dfcbeac75a75d348613763a5393ec05df7ce"
 		},
 		{
 			"ImportPath": "github.com/tsuru/docker-cluster/storage",
-			"Rev": "2db7c48654ca04311107dd84356e07fd9315f1d1"
+			"Rev": "2103dfcbeac75a75d348613763a5393ec05df7ce"
 		},
 		{
 			"ImportPath": "github.com/tsuru/gandalf/testing",
@@ -88,6 +88,10 @@
 		{
 			"ImportPath": "github.com/tsuru/go-gandalfclient",
 			"Rev": "874ca26886fc17186993bb02d66655145e0e1c0b"
+		},
+		{
+			"ImportPath": "gopkg.in/mgo.v2",
+			"Rev": "dc255bb679efa273b6544a03261c4053505498a4"
 		},
 		{
 			"ImportPath": "gopkg.in/v1/yaml",

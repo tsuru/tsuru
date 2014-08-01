@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
-	"labix.org/v2/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var routers = make(map[string]Router)

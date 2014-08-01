@@ -14,8 +14,8 @@ import (
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/rec"
+	"gopkg.in/mgo.v2/bson"
 	"io"
-	"labix.org/v2/mgo/bson"
 	"net/http"
 	"regexp"
 )

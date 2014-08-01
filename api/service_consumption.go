@@ -12,9 +12,9 @@ import (
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/rec"
 	"github.com/tsuru/tsuru/service"
+	"gopkg.in/mgo.v2/bson"
 	"io"
 	"io/ioutil"
-	"labix.org/v2/mgo/bson"
 	"net/http"
 )
 

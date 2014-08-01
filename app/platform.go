@@ -9,9 +9,9 @@ import (
 	"fmt"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 	"io"
-	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
 )
 
 type Platform struct {

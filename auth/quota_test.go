@@ -7,7 +7,7 @@ package auth
 import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/quota"
-	"labix.org/v2/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 	"runtime"
 	"sync"

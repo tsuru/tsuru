@@ -6,7 +6,7 @@ package native
 
 import (
 	"github.com/tsuru/tsuru/auth"
-	"labix.org/v2/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 	"time"
 )

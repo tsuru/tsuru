@@ -18,9 +18,9 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/rec"
 	"github.com/tsuru/tsuru/repository"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 	"io"
-	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
 	"net/http"
 )
 

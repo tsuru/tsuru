@@ -8,7 +8,7 @@ import (
 	"bytes"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
-	"labix.org/v2/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
 

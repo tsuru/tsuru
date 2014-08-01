@@ -8,8 +8,8 @@ import (
 	"errors"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/quota"
-	"labix.org/v2/mgo"
-	"labix.org/v2/mgo/bson"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func reserveUnits(app *App, quantity int) error {

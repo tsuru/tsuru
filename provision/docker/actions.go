@@ -11,8 +11,8 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
+	"gopkg.in/mgo.v2/bson"
 	"io"
-	"labix.org/v2/mgo/bson"
 )
 
 type runContainerActionsArgs struct {

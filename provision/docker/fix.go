@@ -8,7 +8,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	_ "github.com/tsuru/tsuru/router/hipache"
 	_ "github.com/tsuru/tsuru/router/testing"
-	"labix.org/v2/mgo/bson"
+	"gopkg.in/mgo.v2/bson"
 	"sync"
 )
 
