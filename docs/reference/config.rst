@@ -422,12 +422,21 @@ docker:segregate
 
 TODO: see `tsuru with docker </docker>`
 
-docker:scheduler:redis-server
+docker:cluster:storage
++++++++++++++++++++++++++++++
+
+docker:cluster:mongo-url
++++++++++++++++++++++++++++++
+
+docker:cluster:mongo-database
++++++++++++++++++++++++++++++
+
+docker:cluster:redis-server
 +++++++++++++++++++++++++++++
 
 TODO: see `tsuru with docker </docker>`
 
-docker:scheduler:redis-prefix
+docker:cluster:redis-prefix
 +++++++++++++++++++++++++++++
 
 TODO: see `tsuru with docker </docker>`
