@@ -37,7 +37,14 @@ func (s *ConsumptionSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("auth:hash-cost", 4)
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
-	s.createUserAndTeam(c)
+	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
+	_, err = nativeScheme.Create(s.user)
+	c.Assert(err, gocheck.IsNil)
+	s.team = &auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
+	err = s.conn.Teams().Insert(s.team)
+	c.Assert(err, gocheck.IsNil)
+	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
+	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *ConsumptionSuite) TearDownSuite(c *gocheck.C) {
@@ -51,20 +58,11 @@ func (s *ConsumptionSuite) TearDownTest(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 }
 
-func (s *ConsumptionSuite) createUserAndTeam(c *gocheck.C) {
-	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
-	_, err := nativeScheme.Create(s.user)
+func makeRequestToCreateInstanceHandler(params map[string]string, c *gocheck.C) (*httptest.ResponseRecorder, *http.Request) {
+	var buf bytes.Buffer
+	err := json.NewEncoder(&buf).Encode(params)
 	c.Assert(err, gocheck.IsNil)
-	s.team = &auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
-	err = s.conn.Teams().Insert(s.team)
-	c.Assert(err, gocheck.IsNil)
-	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
-	c.Assert(err, gocheck.IsNil)
-}
-
-func makeRequestToCreateInstanceHandler(c *gocheck.C) (*httptest.ResponseRecorder, *http.Request) {
-	b := bytes.NewBufferString(`{"name":"brainSQL","service_name":"mysql"}`)
-	request, err := http.NewRequest("POST", "/services/instances", b)
+	request, err := http.NewRequest("POST", "/services/instances", &buf)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
@@ -83,13 +81,15 @@ func (s *ConsumptionSuite) TestCreateInstanceWithPlan(c *gocheck.C) {
 	}
 	se.Create()
 	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
-	data := `{"name":"brainSQL","service_name":"mysql","plan":"small"}`
-	b := bytes.NewBufferString(data)
-	request, err := http.NewRequest("POST", "/services/instances", b)
-	c.Assert(err, gocheck.IsNil)
+	params := map[string]string{
+		"name":         "brainSQL",
+		"service_name": "mysql",
+		"plan":         "small",
+		"owner":        s.team.Name,
+	}
+	recorder, request := makeRequestToCreateInstanceHandler(params, c)
 	request.Header.Set("Content-Type", "application/json")
-	recorder := httptest.NewRecorder()
-	err = createServiceInstance(recorder, request, s.token)
+	err := createServiceInstance(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	var si service.ServiceInstance
 	err = s.conn.ServiceInstances().Find(bson.M{
@@ -101,12 +101,6 @@ func (s *ConsumptionSuite) TestCreateInstanceWithPlan(c *gocheck.C) {
 	s.conn.ServiceInstances().Update(bson.M{"name": si.Name}, si)
 	c.Assert(si.Name, gocheck.Equals, "brainSQL")
 	c.Assert(si.ServiceName, gocheck.Equals, "mysql")
-	action := testing.Action{
-		Action: "create-service-instance",
-		User:   s.user.Email,
-		Extra:  []interface{}{data},
-	}
-	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *ConsumptionSuite) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *gocheck.C) {
@@ -121,7 +115,12 @@ func (s *ConsumptionSuite) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *
 	}
 	se.Create()
 	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
-	recorder, request := makeRequestToCreateInstanceHandler(c)
+	params := map[string]string{
+		"name":         "brainSQL",
+		"service_name": "mysql",
+		"owner":        s.team.Name,
+	}
+	recorder, request := makeRequestToCreateInstanceHandler(params, c)
 	err := createServiceInstance(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	var si service.ServiceInstance
@@ -130,12 +129,7 @@ func (s *ConsumptionSuite) TestCreateInstanceHandlerSavesServiceInstanceInDb(c *
 	s.conn.ServiceInstances().Update(bson.M{"name": si.Name}, si)
 	c.Assert(si.Name, gocheck.Equals, "brainSQL")
 	c.Assert(si.ServiceName, gocheck.Equals, "mysql")
-	action := testing.Action{
-		Action: "create-service-instance",
-		User:   s.user.Email,
-		Extra:  []interface{}{`{"name":"brainSQL","service_name":"mysql"}`},
-	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(si.TeamOwner, gocheck.Equals, s.team.Name)
 }
 
 func (s *ConsumptionSuite) TestCreateInstanceHandlerSavesAllTeamsThatTheGivenUserIsMemberAndHasAccessToTheServiceInTheInstance(c *gocheck.C) {
@@ -149,7 +143,12 @@ func (s *ConsumptionSuite) TestCreateInstanceHandlerSavesAllTeamsThatTheGivenUse
 	srv := service.Service{Name: "mysql", Teams: []string{s.team.Name}, IsRestricted: true, Endpoint: map[string]string{"production": ts.URL}}
 	err = srv.Create()
 	c.Assert(err, gocheck.IsNil)
-	recorder, request := makeRequestToCreateInstanceHandler(c)
+	params := map[string]string{
+		"name":         "brainSQL",
+		"service_name": "mysql",
+		"owner":        s.team.Name,
+	}
+	recorder, request := makeRequestToCreateInstanceHandler(params, c)
 	err = createServiceInstance(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	var si service.ServiceInstance
@@ -162,7 +161,12 @@ func (s *ConsumptionSuite) TestCreateInstanceHandlerSavesAllTeamsThatTheGivenUse
 func (s *ConsumptionSuite) TestCreateInstanceHandlerReturnsErrorWhenUserCannotUseService(c *gocheck.C) {
 	service := service.Service{Name: "mysql", IsRestricted: true}
 	service.Create()
-	recorder, request := makeRequestToCreateInstanceHandler(c)
+	params := map[string]string{
+		"name":         "brainSQL",
+		"service_name": "mysql",
+		"owner":        s.team.Name,
+	}
+	recorder, request := makeRequestToCreateInstanceHandler(params, c)
 	err := createServiceInstance(recorder, request, s.token)
 	c.Assert(err, gocheck.ErrorMatches, "^This user does not have access to this service$")
 }
@@ -176,7 +180,12 @@ func (s *ConsumptionSuite) TestCreateInstanceHandlerIgnoresTeamAuthIfServiceIsNo
 	err := srvc.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
-	recorder, request := makeRequestToCreateInstanceHandler(c)
+	params := map[string]string{
+		"name":         "brainSQL",
+		"service_name": "mysql",
+		"owner":        s.team.Name,
+	}
+	recorder, request := makeRequestToCreateInstanceHandler(params, c)
 	err = createServiceInstance(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	var si service.ServiceInstance
@@ -187,7 +196,12 @@ func (s *ConsumptionSuite) TestCreateInstanceHandlerIgnoresTeamAuthIfServiceIsNo
 }
 
 func (s *ConsumptionSuite) TestCreateInstanceHandlerReturnsErrorWhenServiceDoesntExists(c *gocheck.C) {
-	recorder, request := makeRequestToCreateInstanceHandler(c)
+	params := map[string]string{
+		"name":         "brainSQL",
+		"service_name": "mysql",
+		"owner":        s.team.Name,
+	}
+	recorder, request := makeRequestToCreateInstanceHandler(params, c)
 	err := createServiceInstance(recorder, request, s.token)
 	c.Assert(err.Error(), gocheck.Equals, "Service not found")
 }
@@ -201,7 +215,12 @@ func (s *ConsumptionSuite) TestCreateInstanceHandlerReturnErrorIfTheServiceAPICa
 	err := srvc.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
-	recorder, request := makeRequestToCreateInstanceHandler(c)
+	params := map[string]string{
+		"name":         "brainSQL",
+		"service_name": "mysql",
+		"owner":        s.team.Name,
+	}
+	recorder, request := makeRequestToCreateInstanceHandler(params, c)
 	err = createServiceInstance(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 }
@@ -439,7 +458,7 @@ func (s *ConsumptionSuite) TestServiceInstanceStatusHandler(c *gocheck.C) {
 func (s *ConsumptionSuite) TestServiceInstanceStatusHandlerShouldReturnErrorWhenServiceInstanceNotExists(c *gocheck.C) {
 	recorder, request := makeRequestToStatusHandler("inexistent-instance", c)
 	err := serviceInstanceStatus(recorder, request, s.token)
-	c.Assert(err, gocheck.ErrorMatches, "^Service instance not found$")
+	c.Assert(err, gocheck.ErrorMatches, "^service instance not found$")
 }
 
 func (s *ConsumptionSuite) TestServiceInstanceStatusHandlerShouldReturnForbiddenWhenUserDontHaveAccess(c *gocheck.C) {
