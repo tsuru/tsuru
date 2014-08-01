@@ -35,7 +35,7 @@ func CheckDocker() error {
 	if err != nil {
 		return err
 	}
-	return nil
+	return checkCluster()
 }
 
 // Check default configs to Docker.
@@ -58,17 +58,33 @@ func CheckDockerBasicConfig() error {
 	return nil
 }
 
+func checkCluster() error {
+	storage, err := config.GetString("docker:cluster:storage")
+	if err != nil {
+		return fmt.Errorf("Config Error: you should configure %q", "docker:cluster:storage")
+	}
+	var mustHave []string
+	if storage == "redis" {
+		mustHave = []string{"docker:cluster:redis-server", "docker:cluster:redis-prefix"}
+	} else if storage == "mongodb" {
+		mustHave = []string{"docker:cluster:mongo-url", "docker:cluster:mongo-database"}
+	} else {
+		return fmt.Errorf("Config Error: docker:cluster:storage must be either 'redis' or 'mongodb'")
+	}
+	for _, value := range mustHave {
+		if _, err := config.Get(value); err != nil {
+			return fmt.Errorf("Config Error: you should configure %q", value)
+		}
+	}
+	return nil
+}
+
 // Check Schedulers
 // It's verify your scheduler configuration and validate related confs.
 func CheckScheduler() error {
 	if scheduler, err := config.Get("docker:segregate"); err == nil && scheduler == true {
 		if servers, err := config.Get("docker:servers"); err == nil && servers != nil {
 			return fmt.Errorf("Your scheduler is the segregate. Please remove the servers conf in docker.")
-		}
-		for _, value := range []string{"docker:scheduler:redis-server", "docker:scheduler:redis-prefix"} {
-			if _, err := config.Get(value); err != nil {
-				return fmt.Errorf("You should configure %s.", value)
-			}
 		}
 		return nil
 	}

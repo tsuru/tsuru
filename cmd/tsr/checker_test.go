@@ -46,7 +46,8 @@ docker:
   router: hipache
   deploy-cmd: /var/lib/tsuru/deploy
   segregate: true
-  scheduler:
+  cluster:
+    storage: redis
     redis-server: 127.0.0.1:6379
     redis-prefix: docker-cluster
   run-cmd:
@@ -102,10 +103,29 @@ func (s *CheckerSuite) TestCheckSchedulerRoundRobinWithoutServersConfig(c *goche
 	c.Assert(err, gocheck.NotNil)
 }
 
-func (s *CheckerSuite) TestCheckSchedulerSegregateWithoutRedisConf(c *gocheck.C) {
-	config.Unset("docker:scheduler:redis-server")
-	err := CheckScheduler()
+func (s *CheckerSuite) TestCheckClusterWithRedis(c *gocheck.C) {
+	err := checkCluster()
+	c.Assert(err, gocheck.IsNil)
+	toFail := []string{"docker:cluster:storage", "docker:cluster:redis-server", "docker:cluster:redis-prefix"}
+	for _, prop := range toFail {
+		val, _ := config.Get(prop)
+		config.Unset(prop)
+		err := checkCluster()
+		c.Assert(err, gocheck.NotNil)
+		config.Set(prop, val)
+	}
+}
+
+func (s *CheckerSuite) TestCheckClusterWithMongo(c *gocheck.C) {
+	config.Set("docker:cluster:storage", "mongodb")
+	err := checkCluster()
 	c.Assert(err, gocheck.NotNil)
+	config.Set("docker:cluster:mongo-url", "xxx")
+	err = checkCluster()
+	c.Assert(err, gocheck.NotNil)
+	config.Set("docker:cluster:mongo-database", "xxx")
+	err = checkCluster()
+	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *CheckerSuite) TestCheckRouter(c *gocheck.C) {
