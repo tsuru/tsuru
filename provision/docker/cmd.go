@@ -157,7 +157,10 @@ func (listNodesInTheSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) erro
 		}
 	}
 	t := cmd.Table{Headers: cmd.Row([]string{"Address", "IaaS ID", "Status", "Metadata"}), LineSeparator: true}
-	nodes := result["nodes"].([]interface{})
+	var nodes []interface{}
+	if result["nodes"] != nil {
+		nodes = result["nodes"].([]interface{})
+	}
 	for _, n := range nodes {
 		node := n.(map[string]interface{})
 		addr := node["Address"].(string)
