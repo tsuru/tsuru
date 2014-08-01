@@ -2,41 +2,43 @@
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
-++++++++++++++++++
-tsuru architecture
-++++++++++++++++++
+============
+Architecture
+============
 
-api
-===
+API
+---
 
-The api is the heart of `tsuru`. The api is responsible to the deploy workflow
-and the lifecycle of `apps`.
+API component is a RESTful API server written with `Go`.
+The API is responsible to the deploy workflow and lifecycle
+of `apps`.
 
-provisioners
-------------
+Command-line clients interact with this component.
 
-The provisioner is responsible for provision the `units`.
+Database
+--------
 
-There is only one supported provisioner right now:
+The database component is a `MongoDB` server.
 
-* docker
 
-routers
+Queue/Cache
+-----------
+
+The queue and cache component uses `Redis`.
+
+
+Gandalf
 -------
 
-The router routes incoming traffic to the application units.
+`Gandalf` is a REST api to manage git repositories, users and provide access
+to them over SSH.
 
-Currently, there is two routers:
+Registry
+--------
 
-* elb
-* hipache
+The registry component hosts `Docker`_ images.
 
-mongodb
-=======
+Router
+------
 
-tsuru uses `mongodb` to store all data about `apps`, `units`, `services`, `users` and teams.
-
-gandalf
-=======
-
-`gandalf` is a REST api to manage git repositories, users and provide access to them over SSH.
+The router component routes traffic to application units.
