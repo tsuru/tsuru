@@ -18,7 +18,7 @@ that distribute applications intelligently across a cluster nodes.
 Nodes
 -----
 
-Node is a physical or virtual machine with 
+Node is a physical or virtual machine with docker.
 
 Applications
 ------------
