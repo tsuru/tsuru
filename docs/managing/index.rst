@@ -10,3 +10,4 @@ Managing
 
     backup
     add-a-platform
+    nodes
