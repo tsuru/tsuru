@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	clusterLog "github.com/tsuru/docker-cluster/log"
+	"github.com/tsuru/docker-cluster/storage/mongodb"
 	"github.com/tsuru/docker-cluster/storage/redis"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/log"
@@ -53,23 +54,38 @@ func isSegregateScheduler() bool {
 	return segregate
 }
 
+func buildClusterStorage() (cluster.Storage, error) {
+	storageName, _ := config.GetString("docker:cluster:storage")
+	if storageName == "redis" {
+		redisServer, _ := config.GetString("docker:cluster:redis-server")
+		prefix, _ := config.GetString("docker:cluster:redis-prefix")
+		if password, err := config.GetString("docker:cluster:redis-password"); err == nil {
+			return redis.AuthenticatedRedis(redisServer, password, prefix), nil
+		} else {
+			return redis.Redis(redisServer, prefix), nil
+		}
+	} else if storageName == "mongodb" {
+		mongoUrl, _ := config.GetString("docker:cluster:mongo-url")
+		mongoDatabase, _ := config.GetString("docker:cluster:mongo-database")
+		storage, err := mongodb.Mongodb(mongoUrl, mongoDatabase)
+		if err != nil {
+			return nil, fmt.Errorf("Cluster Storage: Unable to connnect to mongodb: %s", err.Error())
+		}
+		return storage, nil
+	}
+	return nil, fmt.Errorf("Cluster Storage: Invalid value for docker:cluster:storage: %s", storageName)
+}
+
 func dockerCluster() *cluster.Cluster {
 	cmutex.Lock()
 	defer cmutex.Unlock()
-	var clusterStorage cluster.Storage
 	if dCluster == nil {
 		debug, _ := config.GetBool("debug")
 		clusterLog.SetDebug(debug)
 		clusterLog.SetLogger(log.GetStdLogger())
-		redisServer, err := config.GetString("docker:scheduler:redis-server")
+		clusterStorage, err := buildClusterStorage()
 		if err != nil {
-			panic("docker:scheduler:redis-server is mandatory")
-		}
-		prefix, _ := config.GetString("docker:scheduler:redis-prefix")
-		if password, err := config.GetString("docker:scheduler:redis-password"); err == nil {
-			clusterStorage = redis.AuthenticatedRedis(redisServer, password, prefix)
-		} else {
-			clusterStorage = redis.Redis(redisServer, prefix)
+			panic(err.Error())
 		}
 		var nodes []cluster.Node
 		if isSegregateScheduler() {

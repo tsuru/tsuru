@@ -60,7 +60,8 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("docker:run-cmd:port", "8888")
 	config.Set("docker:ssh:add-key-cmd", "/var/lib/tsuru/add-key")
 	config.Set("docker:ssh:user", s.sshUser)
-	config.Set("docker:scheduler:redis-prefix", "redis-scheduler-storage-test")
+	config.Set("docker:cluster:storage", "redis")
+	config.Set("docker:cluster:redis-prefix", "redis-scheduler-storage-test")
 	config.Set("queue", "fake")
 	s.deployCmd = "/var/lib/tsuru/deploy"
 	s.runBin = "/usr/local/bin/circusd"

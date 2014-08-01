@@ -59,7 +59,8 @@ func (s *HandlersSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("docker:collection", "docker_handler_suite")
 	config.Set("docker:run-cmd:port", 8888)
 	config.Set("docker:router", "fake")
-	config.Set("docker:scheduler:redis-prefix", "redis-scheduler-storage-handlers-test")
+	config.Set("docker:cluster:storage", "redis")
+	config.Set("docker:cluster:redis-prefix", "redis-scheduler-storage-handlers-test")
 	config.Set("iaas:default", "test-iaas")
 	config.Set("iaas:node-protocol", "http")
 	config.Set("iaas:node-port", 1234)
@@ -160,8 +161,8 @@ func (s *HandlersSuite) TestAddNodeHandlerWithoutdCluster(c *gocheck.C) {
 	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
 	config.Set("docker:segregate", true)
 	defer config.Unset("docker:segregate")
-	config.Set("docker:scheduler:redis-server", "127.0.0.1:6379")
-	defer config.Unset("docker:scheduler:redis-server")
+	config.Set("docker:cluster:redis-server", "127.0.0.1:6379")
+	defer config.Unset("docker:cluster:redis-server")
 	dCluster = nil
 	b := bytes.NewBufferString(fmt.Sprintf(`{"address": "%s", "pool": "pool1"}`, s.server.URL))
 	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
@@ -179,8 +180,8 @@ func (s *HandlersSuite) TestAddNodeHandlerWithoutdCluster(c *gocheck.C) {
 }
 
 func (s *HandlersSuite) TestAddNodeHandlerWithoutdAddress(c *gocheck.C) {
-	config.Set("docker:scheduler:redis-server", "127.0.0.1:6379")
-	defer config.Unset("docker:scheduler:redis-server")
+	config.Set("docker:cluster:redis-server", "127.0.0.1:6379")
+	defer config.Unset("docker:cluster:redis-server")
 	b := bytes.NewBufferString(`{"pool": "pool1"}`)
 	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
 	c.Assert(err, gocheck.IsNil)
@@ -194,8 +195,8 @@ func (s *HandlersSuite) TestAddNodeHandlerWithoutdAddress(c *gocheck.C) {
 }
 
 func (s *HandlersSuite) TestAddNodeHandlerWithInvalidURLAddress(c *gocheck.C) {
-	config.Set("docker:scheduler:redis-server", "127.0.0.1:6379")
-	defer config.Unset("docker:scheduler:redis-server")
+	config.Set("docker:cluster:redis-server", "127.0.0.1:6379")
+	defer config.Unset("docker:cluster:redis-server")
 	b := bytes.NewBufferString(`{"address": "/invalid", "pool": "pool1"}`)
 	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
 	c.Assert(err, gocheck.IsNil)

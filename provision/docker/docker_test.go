@@ -800,8 +800,8 @@ func (s *S) TestDockerCluster(c *gocheck.C) {
 		dCluster, err = cluster.New(nil, &cluster.MapStorage{}, nodes...)
 		c.Assert(err, gocheck.IsNil)
 	}()
-	config.Set("docker:scheduler:redis-server", "127.0.0.1:6379")
-	defer config.Unset("docker:scheduler:redis-server")
+	config.Set("docker:cluster:redis-server", "127.0.0.1:6379")
+	defer config.Unset("docker:cluster:redis-server")
 	clus := dockerCluster()
 	c.Assert(clus, gocheck.NotNil)
 	currentNodes, err := clus.Nodes()
@@ -826,8 +826,8 @@ func (s *S) TestDockerClusterSegregated(c *gocheck.C) {
 		defer cmutex.Unlock()
 		dCluster = oldDockerCluster
 	}()
-	config.Set("docker:scheduler:redis-server", "127.0.0.1:6379")
-	defer config.Unset("docker:scheduler:redis-server")
+	config.Set("docker:cluster:redis-server", "127.0.0.1:6379")
+	defer config.Unset("docker:cluster:redis-server")
 	clus := dockerCluster()
 	c.Assert(clus, gocheck.NotNil)
 	currentNodes, err := clus.Nodes()
@@ -1009,4 +1009,19 @@ func (s *S) TestUnitFromContainer(c *gocheck.C) {
 		Ip:      cont.HostAddr,
 	}
 	c.Assert(unitFromContainer(cont), gocheck.Equals, expected)
+}
+
+func (s *S) TestBuildClusterStorage(c *gocheck.C) {
+	_, err := buildClusterStorage()
+	c.Assert(err, gocheck.IsNil)
+	config.Unset("docker:cluster:storage")
+	defer config.Set("docker:cluster:storage", "redis")
+	_, err = buildClusterStorage()
+	c.Assert(err, gocheck.ErrorMatches, ".*Invalid value for docker:cluster:storage.*")
+	config.Set("docker:cluster:storage", "mongodb")
+	_, err = buildClusterStorage()
+	c.Assert(err, gocheck.IsNil)
+	config.Set("docker:cluster:storage", "xxxx")
+	_, err = buildClusterStorage()
+	c.Assert(err, gocheck.ErrorMatches, ".*Invalid value for docker:cluster:storage: xxxx.*")
 }
