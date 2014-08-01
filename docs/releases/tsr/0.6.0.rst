@@ -56,6 +56,12 @@ Breaking changes
 * tsuru_unit_agent package is not optional anymore, it must be available in the
   image otherwise the container won't start.
 
+* docker cluster storage format in Redis has changed, also Mongodb is supported as
+  an alternative to Redis. There is a `migration script
+  <https://gist.github.com/cezarsa/d2c8b8db611af9a2d67d>`_ available which convert
+  data in Redis to the new format, and also allows importing Redis data in
+  Mongodb.
+
 Other improvements
 ==================
 
