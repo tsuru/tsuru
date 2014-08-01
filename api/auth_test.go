@@ -617,7 +617,7 @@ func (s *AuthSuite) TestCreateTeamHandlerReturnConflictIfTheTeamToBeCreatedAlrea
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusConflict)
-	c.Assert(e, gocheck.ErrorMatches, "^Team already exists$")
+	c.Assert(e, gocheck.ErrorMatches, "^team already exists$")
 }
 
 func (s *AuthSuite) TestRemoveTeam(c *gocheck.C) {
