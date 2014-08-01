@@ -9,5 +9,6 @@ Understanding
 .. toctree::
 
     overview
+    concepts
     architecture
     workflow

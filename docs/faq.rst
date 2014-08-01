@@ -5,11 +5,6 @@
 Frequently Asked Questions
 --------------------------
 
-* `What is tsuru?`_
-* `What is an application?`_
-* `What is a unit?`_
-* `What is a platform?`_
-* `What is a service?`_
 * `How does environment variables work?`_
 * `How does the quota system works?`_
 * `How routing works?`_
@@ -19,60 +14,6 @@ This document is an attempt to explain concepts you'll face when deploying and
 managing applications using tsuru.  To request additional explanations you can
 open an issue on our issue tracker, talk to us at #tsuru @ freenode.net or open
 a thread on our mailing list.
-
-What is tsuru?
-==============
-
-tsuru is an open source polyglot cloud application platform (PaaS). With tsuru,
-you don’t need to think about servers at all.  You can write apps in the
-programming language of your choice, back it with add-on resources such as SQL
-and NoSQL databases, memcached, redis, and many others. You manage your app
-using the tsuru command-line tool and you deploy code using the Git revision
-control system, all running on the tsuru infrastructure.
-
-What is an application?
-=======================
-
-An application, in tsuru, is a program's source code, dependencies list - on
-operational system and language level - and a Procfile with instructions on how
-to run that program.  An application has a name, a unique address, a Platform,
-associated development teams, a repository and a set of units.
-
-What is a unit?
-===============
-
-A unit is an isolated Unix container or a virtual machine - depending on the
-configured provisioner. A unit has everything an application needs to run, the
-fetched operational system and language level dependencies, the application's
-source code, the language runtime, and the applications processes defined on
-the Procfile.
-
-What is a platform?
-===================
-
-A platform is a well defined pack with installed dependencies for a language or
-framework that a group of applications will need. A platform might be a
-container template, or a virtual machine image.
-
-For instance, tsuru has a container image for python applications, with
-virtualenv installed and other required things needed for tsuru to deploy
-applications on top of that platform. Platforms are easily extendable in
-tsuru, but currently not managed by it, all tsuru does (by now) is to keep
-database records for each existent platform. Every application runs on top of
-a platform.
-
-What is a service?
-==================
-
-A service is a well defined API that tsuru communicates with to provide extra
-functionality for applications. Examples of services are MySQL, Redis, MongoDB,
-etc. tsuru has built-in services, but it is easy to create and add new services
-to tsuru. Services aren't managed by tsuru, but by its creators.
-
-Check the :doc:`service usage documentation </reference/services>` for more
-on using services and the :doc:`building your own service tutorial
-</services/build>` for a quick start on how to extend tsuru by creating new
-services.
 
 How does environment variables work?
 ====================================
