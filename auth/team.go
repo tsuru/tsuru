@@ -17,8 +17,9 @@ import (
 )
 
 var (
-	ErrInvalidTeamName   = errors.New("Invalid team name")
-	ErrTeamAlreadyExists = errors.New("Team already exists")
+	ErrInvalidTeamName   = errors.New("invalid team name")
+	ErrTeamAlreadyExists = errors.New("team already exists")
+	ErrTeamNotFound      = errors.New("team not found")
 
 	teamNameRegexp = regexp.MustCompile(`^[a-zA-Z][-@_.+\w\s]+$`)
 )
@@ -118,6 +119,9 @@ func GetTeam(name string) (*Team, error) {
 	}
 	err = conn.Teams().FindId(name).One(&t)
 	if err != nil {
+		if err == mgo.ErrNotFound {
+			err = ErrTeamNotFound
+		}
 		return nil, err
 	}
 	return &t, nil

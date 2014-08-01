@@ -199,6 +199,6 @@ func (s *S) TestGetTeam(c *gocheck.C) {
 	c.Assert(t.Name, gocheck.Equals, team.Name)
 	c.Assert(t.Users, gocheck.HasLen, 0)
 	t, err = GetTeam("wat")
-	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.Equals, ErrTeamNotFound)
 	c.Assert(t, gocheck.IsNil)
 }
