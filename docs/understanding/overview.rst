@@ -34,6 +34,9 @@ Just add a unit and tsuru will take care of everything else.
 Reliable
 --------
 
+tsuru has a set of tools to make sure that the applications will be always
+available.
+
 Open source
 -----------
 
