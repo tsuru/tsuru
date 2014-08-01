@@ -713,6 +713,7 @@ func (app *App) GetPlatform() string {
 	return app.Platform
 }
 
+//GetDeploys returns the amount of deploys of an app.
 func (app *App) GetDeploys() uint {
 	return app.Deploys
 }
@@ -1093,4 +1094,22 @@ func (app *App) SetUpdatePlatform(check bool) error {
 
 func (app *App) GetUpdatePlatform() bool {
 	return app.UpdatePlatform
+}
+
+func GetDiffInDeploys(d *deploy) (string, error) {
+	var list []deploy
+	conn, err := db.Conn()
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+	if err := conn.Deploys().Find(bson.M{"app": d.App}).Sort("-timestamp").All(&list); err != nil {
+		return "", err
+	}
+	gandalfClient := gandalf.Client{Endpoint: repository.ServerURL()}
+	diffOutput, err := gandalfClient.GetDiff(d.App, list[1].Commit, list[0].Commit)
+	if err != nil {
+		return "", fmt.Errorf("Caught error getting repository metadata: %s", err.Error())
+	}
+	return diffOutput, nil
 }

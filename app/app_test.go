@@ -1721,6 +1721,24 @@ func (s *S) TestListAllDeploys(c *gocheck.C) {
 	c.Assert(deploys, gocheck.DeepEquals, expected)
 }
 
+func (s *S) TestGetDiffInDeploys(c *gocheck.C) {
+	s.conn.Deploys().RemoveAll(nil)
+	lastDeploy := deploy{App: "g1", Timestamp: time.Now(), Commit: "1b970b076bbb30d708e262b402d4e31910e1dc10"}
+	previousDeploy := deploy{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second), Commit: "545b1904af34458704e2aa06ff1aaffad5289f8f"}
+	otherAppDeploy := deploy{App: "ge", Timestamp: time.Now(), Commit: "hwed834hf8y34h8fhn8rnr823nr238runh23x"}
+	s.conn.Deploys().Insert(previousDeploy)
+	s.conn.Deploys().Insert(lastDeploy)
+	s.conn.Deploys().Insert(otherAppDeploy)
+	defer s.conn.Deploys().RemoveAll(nil)
+	expected := "test_diff"
+	h := testHandler{content: expected}
+	ts := testing.StartGandalfTestServer(&h)
+	defer ts.Close()
+	diffOutput, err := GetDiffInDeploys(&lastDeploy)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(diffOutput, gocheck.DeepEquals, expected)
+}
+
 func (s *S) TestAppUnits(c *gocheck.C) {
 	a := App{Name: "anycolor"}
 	s.provisioner.Provision(&a)
