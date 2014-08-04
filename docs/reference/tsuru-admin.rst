@@ -55,10 +55,7 @@ containers-move
 
 It allows you to move all containers from one host to another. This is useful
 when doing maintenance on hosts. <from host> and <to host> must be host names
-of existing docker servers. They can either be added to the docker:servers
-entry in the tsuru.conf file or added dynamically if using other schedulers,
-see `docker schedulers <../../provisioners/docker/schedulers.html#adding-a-node>`_ 
-for more details.
+of existing docker nodes.
 
 This command will go through the following steps:
 
