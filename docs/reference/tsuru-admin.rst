@@ -169,3 +169,38 @@ docker-node-list
 This command list all nodes present in the cluster. It will also show you metadata
 associated to each node and the IaaS ID if the node was added using tsuru builtin
 IaaS providers.
+
+docker-node-remove
+----------------
+
+.. highlight:: bash
+
+::
+
+    $ tsuru-admin docker-node-remove <address> [--destroy]
+
+This command removes a node from the cluster. Optionally it also destroys the
+created IaaS machine if the ``--destroy`` flag is passed.
+
+machines-list
+-------------
+
+.. highlight:: bash
+
+::
+
+    $ tsuru-admin machines-list
+
+This command will list all machines created using ``docker-node-add`` and a IaaS
+provider.
+
+machine-destroy
+-------------
+
+.. highlight:: bash
+
+::
+
+    $ tsuru-admin machines-list <machine id>
+
+This command will destroy a IaaS machine based on its ID.
