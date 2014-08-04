@@ -9,22 +9,22 @@ Creating a platform to tsuru
 Overview
 ========
 
-Tsuru allows you create apps the way you want using the platform you want.
+tsuru allows you create apps the way you want using the platform you want.
 But for that you need to be create a platform prepared for run with.
 
-To Tsuru be able to use your platform you need to configure the following scripts on **/var/lib/tsuru**:
+To tsuru be able to use your platform you need to configure the following scripts on **/var/lib/tsuru**:
 
     * deploy
     * restart
     * start
 
-Tsuru has a `base platform <https://github.com/tsuru/basebuilder>`_ that you can use to base yours.
+tsuru has a `base platform <https://github.com/tsuru/basebuilder>`_ that you can use to base yours.
 
 Using docker
 ============
 
 Now we will create a whole new platform `with docker <http://www.docker.com/>`_, `circus <https://circus.readthedocs.org/en/>`_ and tsuru basebuilder.
-Tsuru basebuilder provides to us some useful scripts like **install, setup and start**.
+tsuru basebuilder provides to us some useful scripts like **install, setup and start**.
 
 So, using the base platform provided by tsuru we can write a Dockerfile like that:
 

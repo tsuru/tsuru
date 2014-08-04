@@ -1,5 +1,5 @@
 :title: Documentation
-:description: Tsuru toctree
+:description: tsuru toctree
 
 .. _toctree:
 

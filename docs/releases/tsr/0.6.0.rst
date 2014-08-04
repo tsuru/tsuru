@@ -25,7 +25,7 @@ What's new in tsr 0.6.0
   won't create any new containers using a preconfigured SSH key. The version
   0.7.0 will delete ssh-agent completely.
 
-* Tsuru now supports managing IaaS providers, this allow Tsuru to provision new
+* tsuru now supports managing IaaS providers, this allow tsuru to provision new
   docker nodes making it a lot easier to install and maintain. The behavior of
   ``docker-node-*`` admin commands was changed to receive machine information and
   new commands have been added. See :doc:`tsuru-admin </reference/tsuru-admin>`

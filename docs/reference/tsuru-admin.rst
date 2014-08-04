@@ -167,5 +167,5 @@ docker-node-list
     $ tsuru-admin docker-node-list
 
 This command list all nodes present in the cluster. It will also show you metadata
-associated to each node and the IaaS ID if the node was added using Tsuru builtin
+associated to each node and the IaaS ID if the node was added using tsuru builtin
 IaaS providers.

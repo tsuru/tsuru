@@ -5,4 +5,4 @@ tsuru-admin 0.4.1 release notes
 Welcome to tsuru-admin 0.4.1!
 
 tsuru-admin 0.4.1 includes a bug fix in the authentication error detection when
-communicating with the Tsuru API.
+communicating with the tsuru API.

@@ -6,13 +6,13 @@
 Gandalf
 +++++++
 
-Tsuru uses gandalf to manage git repositories used to push applications to. It's
+tsuru uses gandalf to manage git repositories used to push applications to. It's
 also responsible for setting hooks in these repositories which will notify the
-Tsuru API when a new deploy is made. For more details check `Gandalf Documentation
+tsuru API when a new deploy is made. For more details check `Gandalf Documentation
 <http://gandalf.readthedocs.org/>`_
 
 This document will focus on how to setup a Gandalf installation with the necessary
-hooks to notify the Tsuru API.
+hooks to notify the tsuru API.
 
 
 Adding repositories
@@ -40,7 +40,7 @@ Installing
     sudo apt-get install gandalf-server
 
 A deploy is executed in the ``git push``. In order to get it working, you will
-need to add a pre-receive hook. Tsuru comes with three pre-receive hooks, all
+need to add a pre-receive hook. tsuru comes with three pre-receive hooks, all
 of them need further configuration:
 
     * s3cmd: uses `Amazon S3 <https://s3.amazonaws.com>`_ to store and server
@@ -100,10 +100,10 @@ Then start gandalf and archive-server:
     sudo start archive-server
 
 
-Token for authentication with Tsuru API
+Token for authentication with tsuru API
 =======================================
 
 There is one last step in configuring Gandalf. It involves generating an access
-token so that the hook we created can access the Tsuru API. This must be done
-after installing the Tsuru API and it's detailed in the next :ref:`installation
+token so that the hook we created can access the tsuru API. This must be done
+after installing the tsuru API and it's detailed in the next :ref:`installation
 step <gandalf_auth_token>`.

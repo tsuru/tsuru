@@ -9,11 +9,11 @@ Adding Nodes
 Nodes are a physical or virtual machines with a Docker installation.
 
 Nodes can be either created manually, by provisioning a machine and installing
-Docker on it, in which case they have to be registered in Tsuru. Or they can be
-automatically managed by Tsuru, which will handle machine provisioning and Docker
+Docker on it, in which case they have to be registered in tsuru. Or they can be
+automatically managed by tsuru, which will handle machine provisioning and Docker
 installation using your :ref:`IaaS configuration <iaas_configuration>`.
 
-The automatically managed option is prefered starting with Tsuru 0.6.0. There are
+The automatically managed option is prefered starting with tsuru 0.6.0. There are
 advantages like automatically healing and scaling of Nodes which will be
 implemented in the future.
 

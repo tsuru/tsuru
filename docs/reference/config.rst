@@ -159,7 +159,7 @@ Authentication configuration
 tsuru has support for ``native`` and ``oauth`` authentication schemes.
 
 The default scheme is ``native`` and it supports the creation of users in
-Tsuru's internal database. It hashes passwords brcypt and tokens are generated
+tsuru's internal database. It hashes passwords brcypt and tokens are generated
 during authentication, and are hashed using SHA512.
 
 The ``auth`` section also controls whether user registration is on or off. When
@@ -227,14 +227,14 @@ The scope for your authentication request.
 auth:oauth:auth-url
 +++++++++++++++++++
 
-The URL used in the authorization step of the OAuth flow. Tsuru CLI will
+The URL used in the authorization step of the OAuth flow. tsuru CLI will
 receive this URL and trigger the opening a browser on this URL with the necessary
 parameters.
 
-During the authorization step, Tsuru CLI will start a server locally and set the
-callback to http://localhost:<port>, if ``auth:oauth:callback-port`` is set Tsuru
+During the authorization step, tsuru CLI will start a server locally and set the
+callback to http://localhost:<port>, if ``auth:oauth:callback-port`` is set tsuru
 CLI will use its value as <port>. If ``auth:oauth:callback-port`` isn't present 
-Tsuru CLI will automatically choose an open port.
+tsuru CLI will automatically choose an open port.
 
 The callback URL should be registered on your OAuth server.
 
@@ -254,10 +254,10 @@ The URL used in the exchange token step of the OAuth flow.
 auth:oauth:info-url
 +++++++++++++++++++
 
-The URL used to fetch information about the authenticated user. Tsuru expects a
+The URL used to fetch information about the authenticated user. tsuru expects a
 json response containing a field called ``email``.
 
-Tsuru will also make call this URL on every request to the API to make sure the
+tsuru will also make call this URL on every request to the API to make sure the
 token is still valid and hasn't been revoked.
 
 auth:oauth:collection
@@ -394,7 +394,7 @@ tsuru has extensible support for provisioners. A provisioner is a Go type that
 satisfies the `provision.Provisioner` interface. By default, tsuru will use
 ``DockerProvisioner`` (identified by the string "docker"), and now that's the only
 supported provisioner (Ubuntu Juju was supported in the past but its support has
-been removed from Tsuru).
+been removed from tsuru).
 
 provisioner
 +++++++++++

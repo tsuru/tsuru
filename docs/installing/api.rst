@@ -2,14 +2,14 @@
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
-+++++++++
-Tsuru API
-+++++++++
+++++++++++
+API Server
+++++++++++
 
 Dependencies
 ============
 
-Tsuru API depends on a Mongodb server, Redis server, Hipache router, and Gandalf
+tsuru API depends on a Mongodb server, Redis server, Hipache router, and Gandalf
 server. Instructions for installing `Mongodb <http://docs.mongodb.org/>`_ and
 `Redis <http://redis.io/>`_ are outside the scope of this documentation, but it's
 pretty straight-forward following their docs. :doc:`Installing Gandalf

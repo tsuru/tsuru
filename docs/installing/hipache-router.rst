@@ -10,8 +10,8 @@ Hipache Router
 `Hipache <https://github.com/hipache/hipache/>`_ is a distributed HTTP and
 websocket proxy.
 
-Tsuru uses Hipache to route the requests to the containers. Routing information is
-stored by Tsuru in the configured Redis server, Hipache will read this
+tsuru uses Hipache to route the requests to the containers. Routing information is
+stored by tsuru in the configured Redis server, Hipache will read this
 configuration directly from Redis.
 
 

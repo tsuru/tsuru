@@ -2,8 +2,8 @@
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
-:title: Tsuru an extensible and open source Platform as a Service.
-:description: Welcome to Tsuru, an extensible and open source Platform as a Service (PaaS).
+:title: tsuru an extensible and open source Platform as a Service.
+:description: Welcome to tsuru, an extensible and open source Platform as a Service (PaaS).
 
 Welcome
 =======
