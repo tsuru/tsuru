@@ -40,8 +40,7 @@ Installing
 ::
 
     sudo apt-get install tsuru-server -qqy
-    sudo sed -i -e 's/=no/=yes/' /etc/default/tsuru-server
-    sudo start tsuru-server-api
+
 
 Now you need to customize the configuration in the ``/etc/tsuru/tsuru.conf``. A
 description of possible configuration values can be found in the
@@ -91,6 +90,47 @@ configuration is described below, please note that you should replace the values
     hipache:
         domain: <your-hipache-server-ip>.xip.io
         redis-server: <your-redis-server-with-port>
+
+
+Now you only need to start your tsuru api server:
+
+
+.. highlight:: bash
+
+::
+
+    sudo sed -i -e 's/=no/=yes/' /etc/default/tsuru-server
+    sudo start tsuru-server-api
+
+
+Creating admin user
+===================
+
+The creation of an admin user is necessary for the next steps, so we're going to
+describe how to install the ``tsuru-admin`` and create a new user belonging to the
+admin team configured in your ``tsuru.conf`` file. For a description of each
+command shown below please refer to the :doc:`client documentation </reference/tsuru-client>`.
+
+For a description
+
+.. highlight:: bash
+
+::
+
+    $ sudo apt-get install tsuru-admin
+
+    $ tsuru-admin target-add default http://<your-tsuru-api-addr>:8080
+    $ tsuru-admin target-set default
+    $ tsuru-admin user-create myemail@somewhere.com 
+    # type a password and confirmation
+
+    $ tsuru-admin login myemail@somewhere.com
+    # type the chosen password
+
+    $ tsuru-admin team-create admin
+
+And that's it, you now have registered an user in your tsuru API server ready to
+run admin commands.
 
 
 .. _gandalf_auth_token:
