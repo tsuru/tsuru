@@ -28,6 +28,7 @@ What's new in tsuru 0.11.0
     using the new service proxy endpoint;
 
     - ``TSURU_TOKEN``: token used to authenticate with the tsuru API.
+* Include the team owner in the ``app-info`` output
 
 Bug fixes
 =========
