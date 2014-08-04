@@ -10,7 +10,7 @@ Creating a platform
 Overview
 ========
 
-If need a platform that's not already available in our `platforms repository
+If you need a platform that's not already available in our `platforms repository
 <https://github.com/tsuru/basebuilder>`_ it's pretty easy to create a new one
 based on a existing one.
 
