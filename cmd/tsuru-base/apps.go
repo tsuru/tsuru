@@ -5,6 +5,7 @@
 package tsuru
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/tsuru/tsuru/cmd"
@@ -12,6 +13,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"text/template"
 )
 
 type AppInfo struct {
@@ -94,16 +96,20 @@ func (a *app) IsReady() string {
 	return "No"
 }
 
+func (a *app) GetTeams() string {
+	return strings.Join(a.Teams, ", ")
+}
+
 func (a *app) String() string {
-	format := `Application: %s
-Repository: %s
-Platform: %s
-Teams: %s
-Address: %s
-Owner: %s
-Deploys: %d
+	format := `Application: {{.Name}}
+Repository: {{.Repository}}
+Platform: {{.Platform}}
+Teams: {{.GetTeams}}
+Address: {{.Addr}}
+Owner: {{.Owner}}
+Deploys: {{.Deploys}}
 `
-	teams := strings.Join(a.Teams, ", ")
+	tmpl := template.Must(template.New("app").Parse(format))
 	units := cmd.NewTable()
 	units.Headers = cmd.Row([]string{"Unit", "State"})
 	for _, unit := range a.Units {
@@ -111,12 +117,13 @@ Deploys: %d
 			units.AddRow(cmd.Row([]string{unit.Name, unit.Status}))
 		}
 	}
-	args := []interface{}{a.Name, a.Repository, a.Platform, teams, a.Addr(), a.Owner, a.Deploys}
+	var buf bytes.Buffer
+	tmpl.Execute(&buf, a)
+	var suffix string
 	if units.Rows() > 0 {
-		format += "Units:\n%s"
-		args = append(args, units)
+		suffix = fmt.Sprintf("Units:\n%s", units)
 	}
-	return fmt.Sprintf(format, args...)
+	return buf.String() + suffix
 }
 
 func (c *AppInfo) Show(result []byte, context *cmd.Context) error {
