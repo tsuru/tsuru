@@ -18,9 +18,11 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 )
 
 var httpHeaderRegexp = regexp.MustCompile(`HTTP/.*? (\d+)`)
@@ -232,6 +234,13 @@ func (sshToContainerCmd) Run(context *cmd.Context, _ *cmd.Client) error {
 				return err
 			}
 			defer terminal.Restore(fd, oldState)
+			sigChan := make(chan os.Signal, 2)
+			go func(c <-chan os.Signal) {
+				if _, ok := <-c; ok {
+					terminal.Restore(fd, oldState)
+				}
+			}(sigChan)
+			signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGQUIT)
 		}
 	}
 	bytesLimit := 50
