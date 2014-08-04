@@ -206,7 +206,7 @@ associated to each node and the IaaS ID if the node was added using tsuru builti
 IaaS providers.
 
 docker-node-remove
-----------------
+------------------
 
 .. highlight:: bash
 
@@ -230,7 +230,7 @@ This command will list all machines created using ``docker-node-add`` and a IaaS
 provider.
 
 machine-destroy
--------------
+---------------
 
 .. highlight:: bash
 

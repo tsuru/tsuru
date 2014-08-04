@@ -36,7 +36,7 @@ to them over SSH.
 Registry
 --------
 
-The registry component hosts `Docker`_ images.
+The registry component hosts `Docker` images.
 
 Router
 ------
