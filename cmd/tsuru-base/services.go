@@ -57,13 +57,16 @@ func (s ServiceList) Run(ctx *cmd.Context, client *cmd.Client) error {
 	return nil
 }
 
-type ServiceAdd struct{}
+type ServiceAdd struct {
+	fs        *gnuflag.FlagSet
+	teamOwner string
+}
 
-func (sa ServiceAdd) Info() *cmd.Info {
-	usage := `service-add <servicename> <serviceinstancename> <plan>
+func (c *ServiceAdd) Info() *cmd.Info {
+	usage := `service-add <servicename> <serviceinstancename> [plan] [-t/--owner-team <team>]
 e.g.:
 
-    $ tsuru service-add mongodb tsuru_mongodb small
+    $ tsuru service-add mongodb tsuru_mongodb small -t myteam
 
 Will add a new instance of the "mongodb" service, named "tsuru_mongodb" with the plan "small".`
 	return &cmd.Info{
@@ -75,19 +78,28 @@ Will add a new instance of the "mongodb" service, named "tsuru_mongodb" with the
 	}
 }
 
-func (sa ServiceAdd) Run(ctx *cmd.Context, client *cmd.Client) error {
-	srvName, instName := ctx.Args[0], ctx.Args[1]
+func (c *ServiceAdd) Run(ctx *cmd.Context, client *cmd.Client) error {
+	serviceName, instanceName := ctx.Args[0], ctx.Args[1]
 	var plan string
-	if len(ctx.Args) == 3 {
+	if len(ctx.Args) > 2 {
 		plan = ctx.Args[2]
 	}
-	fmtBody := fmt.Sprintf(`{"name": "%s", "service_name": "%s", "plan": "%s"}`, instName, srvName, plan)
-	b := bytes.NewBufferString(fmtBody)
+	var b bytes.Buffer
+	params := map[string]string{
+		"name":         instanceName,
+		"service_name": serviceName,
+		"plan":         plan,
+		"owner":        c.teamOwner,
+	}
+	err := json.NewEncoder(&b).Encode(params)
+	if err != nil {
+		return err
+	}
 	url, err := cmd.GetURL("/services/instances")
 	if err != nil {
 		return err
 	}
-	request, err := http.NewRequest("POST", url, b)
+	request, err := http.NewRequest("POST", url, &b)
 	if err != nil {
 		return err
 	}
@@ -98,6 +110,16 @@ func (sa ServiceAdd) Run(ctx *cmd.Context, client *cmd.Client) error {
 	}
 	fmt.Fprint(ctx.Stdout, "Service successfully added.\n")
 	return nil
+}
+
+func (c *ServiceAdd) Flags() *gnuflag.FlagSet {
+	if c.fs == nil {
+		flagDesc := "the team that owns te service (mandatory if the user is member of more than one team"
+		c.fs = gnuflag.NewFlagSet("service-add", gnuflag.ExitOnError)
+		c.fs.StringVar(&c.teamOwner, "team-owner", "", flagDesc)
+		c.fs.StringVar(&c.teamOwner, "t", "", flagDesc)
+	}
+	return c.fs
 }
 
 type ServiceBind struct {

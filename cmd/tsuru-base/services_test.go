@@ -305,10 +305,10 @@ func (s *S) TestServiceUnbindIsAFlaggedComand(c *gocheck.C) {
 }
 
 func (s *S) TestServiceAddInfo(c *gocheck.C) {
-	usage := `service-add <servicename> <serviceinstancename> <plan>
+	usage := `service-add <servicename> <serviceinstancename> [plan] [-t/--owner-team <team>]
 e.g.:
 
-    $ tsuru service-add mongodb tsuru_mongodb small
+    $ tsuru service-add mongodb tsuru_mongodb small -t myteam
 
 Will add a new instance of the "mongodb" service, named "tsuru_mongodb" with the plan "small".`
 	expected := &cmd.Info{
@@ -340,6 +340,27 @@ func (s *S) TestServiceAddRun(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	obtained := stdout.String()
 	c.Assert(obtained, gocheck.Equals, result)
+}
+
+func (s *S) TestServiceAddFlags(c *gocheck.C) {
+	flagDesc := "the team that owns te service (mandatory if the user is member of more than one team"
+	command := ServiceAdd{}
+	flagset := command.Flags()
+	c.Assert(flagset, gocheck.NotNil)
+	flagset.Parse(true, []string{"-t", "wat"})
+	assume := flagset.Lookup("team-owner")
+	c.Check(assume, gocheck.NotNil)
+	c.Check(assume.Name, gocheck.Equals, "team-owner")
+	c.Check(assume.Usage, gocheck.Equals, flagDesc)
+	c.Check(assume.Value.String(), gocheck.Equals, "wat")
+	c.Check(assume.DefValue, gocheck.Equals, "")
+	sassume := flagset.Lookup("t")
+	c.Check(sassume, gocheck.NotNil)
+	c.Check(sassume.Name, gocheck.Equals, "t")
+	c.Check(sassume.Usage, gocheck.Equals, flagDesc)
+	c.Check(sassume.Value.String(), gocheck.Equals, "wat")
+	c.Check(sassume.DefValue, gocheck.Equals, "")
+	c.Check(command.teamOwner, gocheck.Equals, "wat")
 }
 
 func (s *S) TestServiceInstanceStatusInfo(c *gocheck.C) {
