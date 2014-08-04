@@ -238,6 +238,7 @@ func (sshToContainerCmd) Run(context *cmd.Context, _ *cmd.Client) error {
 			go func(c <-chan os.Signal) {
 				if _, ok := <-c; ok {
 					terminal.Restore(fd, oldState)
+					os.Exit(1)
 				}
 			}(sigChan)
 			signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGQUIT)
