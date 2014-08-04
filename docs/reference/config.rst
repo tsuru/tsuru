@@ -380,12 +380,15 @@ Hipache
 hipache:redis-server
 ++++++++++++++++++++
 
-TODO
+Redis server used by Hipache router. This same server (or a redis slave of it),
+must be configured in your hipache.conf file.
 
 hipache:domain
-++++++++++++++++++++
+++++++++++++++
 
-TODO
+The domain of the server running your hipache server. Applications created with
+tsuru will have a address of ``http://<app-name>.<hipache:domain>``
+
 
 Defining the provisioner
 ------------------------
@@ -413,71 +416,95 @@ Database collection name used to store containers information.
 docker:repository-namespace
 +++++++++++++++++++++++++++
 
-TODO: see `tsuru with docker </docker>`
+Docker repository namespace to be used for application and platform images. Images
+will be tagged in docker as <docker:repository-namespace>/<platform-name> and
+<docker:repository-namespace>/<app-name>
 
 docker:router
 +++++++++++++
 
-TODO: see `tsuru with docker </docker>`
+Router to be used to distribute requests to units. Right now only ``hipache`` is
+supported.
 
 docker:deploy-cmd
 +++++++++++++++++
 
-TODO: see `tsuru with docker </docker>`
+The command that will be called in your platform when a new deploy happens.
+The default value for platforms supported in tsuru's basebuilder repository is
+``/var/lib/tsuru/deploy``.
 
 docker:ssh-agent-port
 +++++++++++++++++++++
 
-TODO: see `tsuru with docker </docker>`
+Deprecated. You shouldn't set this value anymore.
 
 docker:segregate
 ++++++++++++++++
 
-TODO: see `tsuru with docker </docker>`
+Enable segregate scheduler. See :doc:`/managing/segregate-scheduler` for details.
 
 docker:cluster:storage
-+++++++++++++++++++++++++++++
+++++++++++++++++++++++
+
+Storage engine used by the cluster to save information about docker nodes, images
+and containers. Possible values are ``redis`` and ``mongodb``. The recommended
+engine is ``mongodb`` and support for ``redis`` may be dropped in the future.
 
 docker:cluster:mongo-url
-+++++++++++++++++++++++++++++
+++++++++++++++++++++++++
+
+Connection URL to the mongodb server must be set if ``docker:cluster:storage`` is
+``mongodb``.
 
 docker:cluster:mongo-database
 +++++++++++++++++++++++++++++
 
+Database name to be used, must be set if ``docker:cluster:storage`` is
+``mongodb``.
+
 docker:cluster:redis-server
 +++++++++++++++++++++++++++++
 
-TODO: see `tsuru with docker </docker>`
+Redis server address to be used by the cluster must be set if
+``docker:cluster:storage`` is ``redis``.
 
 docker:cluster:redis-prefix
 +++++++++++++++++++++++++++++
 
-TODO: see `tsuru with docker </docker>`
+Prefix to redis keys saved by the cluster must be set if
+``docker:cluster:storage`` is ``redis``.
 
 docker:run-cmd:bin
 ++++++++++++++++++
 
-TODO: see `tsuru with docker </docker>`
+The command that will be called on the application image to start the application.
+The default value for platforms supported in tsuru's basebuilder repository is
+``/var/lib/tsuru/start``.
 
 docker:run-cmd:port
 +++++++++++++++++++
 
-TODO: see `tsuru with docker </docker>`
+The tcp port that will be exported by the container to the node network. The
+default value expected by platforms defined in tsuru's basebuilder repository is
+``8888``.
 
 docker:ssh:add-key-cmd
 ++++++++++++++++++++++
 
-TODO: see `tsuru with docker </docker>`
+The command that will be called with the ssh public key created for the
+application. This allows us to connect directly to a running container using ssh.
+The value expected for basebuilder platforms is ``/var/lib/tsuru/add-key``.
 
 docker:ssh:public-key
 +++++++++++++++++++++
 
-TODO: see `tsuru with docker </docker>`
+Deprecated. You shouldn't set this value anymore.
 
 docker:ssh:user
 +++++++++++++++
 
-TODO: see `tsuru with docker </docker>`
+The user used to connect via ssh to running containers. The value expected for
+basebuilder platforms is ``ubuntu``.
 
 .. _iaas_configuration:
 
@@ -552,7 +579,6 @@ Here is a complete example:
         collection: docker_containers
         repository-namespace: tsuru
         deploy-cmd: /var/lib/tsuru/deploy
-        ssh-agent-port: 4545
         cluster:
             storage: mongodb
             mongo-url: <your-mongodb-server>:27017
@@ -564,5 +590,5 @@ Here is a complete example:
             add-key-cmd: /var/lib/tsuru/add-key
             user: ubuntu
     hipache:
-        domain: <your-hipache-server>.xip.io
+        domain: <your-hipache-server-ip>.xip.io
         redis-server: <your-redis-server-with-port>

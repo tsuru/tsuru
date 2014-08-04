@@ -78,7 +78,6 @@ configuration is described below, please note that you should replace the values
         collection: docker_containers
         repository-namespace: tsuru
         deploy-cmd: /var/lib/tsuru/deploy
-        ssh-agent-port: 4545
         cluster:
             storage: mongodb
             mongo-url: <your-mongodb-server>:27017
@@ -90,7 +89,7 @@ configuration is described below, please note that you should replace the values
             add-key-cmd: /var/lib/tsuru/add-key
             user: ubuntu
     hipache:
-        domain: <your-hipache-server>.xip.io
+        domain: <your-hipache-server-ip>.xip.io
         redis-server: <your-redis-server-with-port>
 
 
