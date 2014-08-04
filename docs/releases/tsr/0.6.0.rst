@@ -39,6 +39,9 @@ What's new in tsr 0.6.0
   beat. So the unit will change to the status "error" whenever the heart beat
   fails after 4 minutes or the unit informs that the process failed to install.
 
+* Add the capability to specify the owner of a service instance. tsuru will use
+  this information when communicating with the service API
+
 Bug fixes
 =========
 
@@ -56,11 +59,21 @@ Breaking changes
 * tsuru_unit_agent package is not optional anymore, it must be available in the
   image otherwise the container won't start.
 
-* docker cluster storage format in Redis has changed, also Mongodb is supported as
+* docker cluster storage format in Redis has changed, also MongoDB is supported as
   an alternative to Redis. There is a `migration script
   <https://gist.github.com/cezarsa/d2c8b8db611af9a2d67d>`_ available which convert
   data in Redis to the new format, and also allows importing Redis data in
-  Mongodb.
+  MongoDB.
+
+* since tsuru requires a service instance to have an owner team, i.e. a team
+  that owns the service, users that are members of more than one team aren't
+  able to create service instances using older versions of tsuru client (any
+  version older than 0.11).
+
+* in order to define the owner team of an already created service instance,
+  tsuru administrators should run `a migration script
+  <https://gist.github.com/fsouza/5e65879c5547fe753f48>`_, that get's the first
+  team of the service instance and use it as the owner team.
 
 Other improvements
 ==================
