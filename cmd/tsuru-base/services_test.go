@@ -343,7 +343,7 @@ func (s *S) TestServiceAddRun(c *gocheck.C) {
 }
 
 func (s *S) TestServiceAddFlags(c *gocheck.C) {
-	flagDesc := "the team that owns te service (mandatory if the user is member of more than one team"
+	flagDesc := "the team that owns te service (mandatory if the user is member of more than one team)"
 	command := ServiceAdd{}
 	flagset := command.Flags()
 	c.Assert(flagset, gocheck.NotNil)

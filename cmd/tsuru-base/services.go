@@ -114,7 +114,7 @@ func (c *ServiceAdd) Run(ctx *cmd.Context, client *cmd.Client) error {
 
 func (c *ServiceAdd) Flags() *gnuflag.FlagSet {
 	if c.fs == nil {
-		flagDesc := "the team that owns te service (mandatory if the user is member of more than one team"
+		flagDesc := "the team that owns te service (mandatory if the user is member of more than one team)"
 		c.fs = gnuflag.NewFlagSet("service-add", gnuflag.ExitOnError)
 		c.fs.StringVar(&c.teamOwner, "team-owner", "", flagDesc)
 		c.fs.StringVar(&c.teamOwner, "t", "", flagDesc)
