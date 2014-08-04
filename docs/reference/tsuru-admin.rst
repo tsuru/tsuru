@@ -142,9 +142,9 @@ docker-node-add
 
     $ tsuru-admin docker-node-add [param_name=param_value]... [--register]
 
-This command add a node to your docker cluster.
-By default, this command will call the configured IaaS to create a new
-machine. Every param will be sent to the IaaS implementation.
+This command add a node to your docker cluster. By default, this command will
+call the configured IaaS to create a new machine. Every param will be sent to
+the IaaS implementation.
 
 You should configure in **tsuru.conf** the protocol and port for IaaS be able
 to access your node (`you can see it here <config.html#iaas-configuration>`_).
@@ -154,6 +154,41 @@ flag with an **address=http://your-docker-node:docker-port**
 
 The command always check if your node address is accessible.
 
+.. _tsuru_admin_ssh_cmd:
+
+ssh
+---
+
+.. highlight:: bash
+
+::
+
+    $ tsuru-admin ssh <container-id>
+
+This command opens a SSH connection to the container, using the API server as a
+proxy. The user may specify part of the ID of the container. For example:
+
+.. highlight:: bash
+
+::
+
+    $ tsuru app-info -a myapp
+    Application: tsuru-dashboard
+    Repository: git@54.94.9.232:tsuru-dashboard.git
+    Platform: python
+    Teams: admin
+    Address: tsuru-dashboard.54.94.9.232.xip.io
+    Owner: admin@example.com
+    Deploys: 1
+    Units:
+    +------------------------------------------------------------------+---------+
+    | Unit                                                             | State   |
+    +------------------------------------------------------------------+---------+
+    | 39f82550514af3bbbec1fd204eba000546217a2fe6049e80eb28899db0419b2f | started |
+    +------------------------------------------------------------------+---------+
+    $ tsuru-admin ssh 39f8
+    Welcome to Ubuntu 14.04 LTS (GNU/Linux 3.13.0-24-generic x86_64)
+    ubuntu@ip-10-253-6-84:~$
 
 .. _docker_node_list_cmd:
 
