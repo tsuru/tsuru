@@ -101,6 +101,8 @@ would be created.
 All the "platform*"" commands below only exist when using the docker
 provisioner.
 
+.. _platform_add_cmd:
+
 platform-add
 ------------
 

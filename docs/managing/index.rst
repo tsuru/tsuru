@@ -8,6 +8,7 @@ Managing
 
 .. toctree::
 
+    add-platform
+    create-platform
     backup
-    add-a-platform
-    nodes
+    segregate-scheduler

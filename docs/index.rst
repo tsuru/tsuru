@@ -18,8 +18,8 @@ To get started, first read :ref:`understangind tsuru <understanding>`.
 
     understanding/index
     installing/index
-    using/index
     managing/index
+    using/index
     contributing/index
     services/index
     reference/index
