@@ -331,7 +331,7 @@ func sshToContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 			Message: "cannot hijack connection",
 		}
 	}
-	conn, rw, err := hj.Hijack()
+	conn, _, err := hj.Hijack()
 	if err != nil {
 		return &errors.HTTP{
 			Code:    http.StatusInternalServerError,
@@ -339,5 +339,5 @@ func sshToContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 		}
 	}
 	defer conn.Close()
-	return container.shell(rw, rw, rw)
+	return container.shell(conn, conn, conn)
 }

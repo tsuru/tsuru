@@ -11,6 +11,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	etesting "github.com/tsuru/tsuru/exec/testing"
+	"github.com/tsuru/tsuru/safe"
 	"io"
 	"net"
 	"net/http"
@@ -18,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 	"sync/atomic"
+	"time"
 )
 
 func startTestListener(addr string) net.Listener {
@@ -181,18 +183,56 @@ func (s *fakeScheduler) Register(nodes ...cluster.Node) error {
 
 type hijacker struct {
 	http.ResponseWriter
-	input io.Reader
-	conn  net.Conn
-	err   error
+	conn net.Conn
+	err  error
 }
 
 func (h *hijacker) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	if h.err != nil {
 		return nil, nil, h.err
 	}
-	rw := bufio.ReadWriter{
-		Reader: bufio.NewReader(h.input),
-		Writer: bufio.NewWriter(h.ResponseWriter),
+	return h.conn, nil, nil
+}
+
+type fakeConn struct {
+	buf *safe.Buffer
+}
+
+func (c *fakeConn) Read(b []byte) (int, error) {
+	if c.buf != nil {
+		return c.buf.Read(b)
 	}
-	return h.conn, &rw, nil
+	return 0, io.EOF
+}
+
+func (c *fakeConn) Write(b []byte) (int, error) {
+	if c.buf != nil {
+		return c.buf.Write(b)
+	}
+	return 0, io.ErrClosedPipe
+}
+
+func (c *fakeConn) Close() error {
+	c.buf = nil
+	return nil
+}
+
+func (c *fakeConn) LocalAddr() net.Addr {
+	return nil
+}
+
+func (c *fakeConn) RemoteAddr() net.Addr {
+	return nil
+}
+
+func (c *fakeConn) SetDeadline(t time.Time) error {
+	return nil
+}
+
+func (c *fakeConn) SetReadDeadline(t time.Time) error {
+	return nil
+}
+
+func (c *fakeConn) SetWriteDeadline(t time.Time) error {
+	return nil
 }

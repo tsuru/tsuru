@@ -15,12 +15,12 @@ import (
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"io/ioutil"
 	"launchpad.net/gocheck"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -659,13 +659,8 @@ func (s *HandlersSuite) TestSSHToContainerHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	file.Write([]byte("hello"))
 	file.Close()
-	conn, err := net.Dial("tcp", "localhost:"+sshServer.port)
-	c.Assert(err, gocheck.IsNil)
-	recorder := hijacker{
-		ResponseWriter: httptest.NewRecorder(),
-		input:          bytes.NewBufferString("cat " + filepath + "\nexit\n"),
-		conn:           conn,
-	}
+	buf := safe.NewBuffer([]byte("cat " + filepath + "\nexit\n"))
+	recorder := hijacker{conn: &fakeConn{buf}}
 	request, err := http.NewRequest("GET", "/?:container_id="+container.ID, nil)
 	c.Assert(err, gocheck.IsNil)
 	err = sshToContainerHandler(&recorder, request, nil)
