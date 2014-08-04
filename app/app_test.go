@@ -624,6 +624,19 @@ func (s *S) TestSetUnitStatus(c *gocheck.C) {
 	c.Assert(units[0].Status, gocheck.Equals, provision.StatusError)
 }
 
+func (s *S) TestSetUnitStatusPartialID(c *gocheck.C) {
+	a := App{Name: "appName", Platform: "python"}
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 3)
+	units := a.Units()
+	name := units[0].Name
+	err := a.SetUnitStatus(name[0:len(name)-2], provision.StatusError)
+	c.Assert(err, gocheck.IsNil)
+	units = a.Units()
+	c.Assert(units[0].Status, gocheck.Equals, provision.StatusError)
+}
+
 func (s *S) TestSetUnitStatusNotFound(c *gocheck.C) {
 	a := App{Name: "appName", Platform: "django"}
 	err := a.SetUnitStatus("someunit", provision.StatusError)

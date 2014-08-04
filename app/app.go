@@ -436,7 +436,7 @@ func (app *App) RemoveUnits(n uint) error {
 // SetUnitStatus changes the status of the given unit.
 func (app *App) SetUnitStatus(unitName string, status provision.Status) error {
 	for _, unit := range app.Units() {
-		if unit.Name == unitName {
+		if strings.HasPrefix(unit.Name, unitName) {
 			return Provisioner.SetUnitStatus(unit, status)
 		}
 	}
