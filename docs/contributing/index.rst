@@ -45,3 +45,11 @@ In order to build the HTML docs, just run on terminal:
 ::
 
     $ make doc
+
+
+.. toctree::
+    
+    setting-up-your-tsuru-development-environment
+    coding-style
+    community
+    vagrant

@@ -52,6 +52,13 @@ tsr
 
    tsr/0.4.0
 
+0.3.12 release
+--------------
+.. toctree::
+   :maxdepth: 1
+
+   tsr/0.3.12
+
 0.3.11 release
 --------------
 .. toctree::

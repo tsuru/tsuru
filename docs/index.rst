@@ -13,4 +13,15 @@ on your own servers.
 
 To get started, first read :ref:`understangind tsuru <understanding>`.
 
-The full documentation tree can be seen :ref:`here <toctree>`.
+.. toctree::
+    :maxdepth: 2
+
+    understanding/index
+    installing/index
+    using/index
+    managing/index
+    contributing/index
+    services/index
+    reference/index
+    faq
+    releases/index

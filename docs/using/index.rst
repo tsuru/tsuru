@@ -19,3 +19,5 @@ Using
     procfile
     deploy-hooks
     unit-states
+    cli/plugins
+    deployment

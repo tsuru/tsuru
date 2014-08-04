@@ -24,8 +24,8 @@ What's new in tsuru 0.11.0
   <https://github.com/tsuru/tsuru/issues/863>`_):
 
     - ``TSURU_TARGET``: the current target defined in the tsuru client, it's the
-    address of the tsuru server, to which the plugin should send requests,
-    using the new service proxy endpoint;
+      address of the tsuru server, to which the plugin should send requests, using
+      the new service proxy endpoint;
 
     - ``TSURU_TOKEN``: token used to authenticate with the tsuru API.
 * Include the team owner in the ``app-info`` output
