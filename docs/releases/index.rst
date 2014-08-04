@@ -223,6 +223,13 @@ tsuru-admin
 
 `tsuru-admin` is the tsuru administrative client.
 
+0.5.0 release
+-------------
+.. toctree::
+   :maxdepth: 1
+
+   tsuru-admin/0.5.0
+
 0.4.2 release
 -------------
 .. toctree::
