@@ -79,6 +79,7 @@ type app struct {
 	Units      []unit
 	Ready      bool
 	Owner      string
+	TeamOwner  string
 	Deploys    uint
 }
 
@@ -107,6 +108,7 @@ Platform: {{.Platform}}
 Teams: {{.GetTeams}}
 Address: {{.Addr}}
 Owner: {{.Owner}}
+Team owner: {{.TeamOwner}}
 Deploys: {{.Deploys}}
 `
 	tmpl := template.Must(template.New("app").Parse(format))

@@ -30,13 +30,14 @@ var appshortflag = &gnuflag.Flag{
 
 func (s *S) TestAppInfo(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `{"name":"app1","cname":"","ip":"myapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead", "units":[{"Ip":"10.10.10.10","Name":"app1/0","Status":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","Status":"started"}, {"Ip":"","Name":"app1/2","Status":"pending"}],"teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
+	result := `{"name":"app1","teamowner":"myteam","cname":"","ip":"myapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead", "units":[{"Ip":"10.10.10.10","Name":"app1/0","Status":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","Status":"started"}, {"Ip":"","Name":"app1/2","Status":"pending"}],"teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
 	expected := `Application: app1
 Repository: git@git.com:php.git
 Platform: php
 Teams: tsuruteam, crane
 Address: myapp.tsuru.io
 Owner: myapp_owner
+Team owner: myteam
 Deploys: 7
 Units:
 +--------+---------+
@@ -62,13 +63,14 @@ Units:
 
 func (s *S) TestAppInfoNoUnits(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `{"name":"app1","ip":"app1.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead","units":[],"teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
+	result := `{"name":"app1","ip":"app1.tsuru.io","teamowner":"myteam","platform":"php","repository":"git@git.com:php.git","state":"dead","units":[],"teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
 	expected := `Application: app1
 Repository: git@git.com:php.git
 Platform: php
 Teams: tsuruteam, crane
 Address: app1.tsuru.io
 Owner: myapp_owner
+Team owner: myteam
 Deploys: 7
 
 `
@@ -86,13 +88,14 @@ Deploys: 7
 
 func (s *S) TestAppInfoEmptyUnit(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `{"name":"app1","cname":"","ip":"myapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead", "units":[{"Name":"","Status":""}],"teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
+	result := `{"name":"app1","teamowner":"","cname":"","ip":"myapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead", "units":[{"Name":"","Status":""}],"teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
 	expected := `Application: app1
 Repository: git@git.com:php.git
 Platform: php
 Teams: tsuruteam, crane
 Address: myapp.tsuru.io
 Owner: myapp_owner
+Team owner: 
 Deploys: 7
 
 `
@@ -110,13 +113,14 @@ Deploys: 7
 
 func (s *S) TestAppInfoWithoutArgs(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `{"name":"secret","ip":"secret.tsuru.io","platform":"ruby","repository":"git@git.com:php.git","state":"dead","units":[{"Ip":"10.10.10.10","Name":"secret/0","Status":"started"}, {"Ip":"9.9.9.9","Name":"secret/1","Status":"pending"}],"Teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
+	result := `{"name":"secret","teamowner":"myteam","ip":"secret.tsuru.io","platform":"ruby","repository":"git@git.com:php.git","state":"dead","units":[{"Ip":"10.10.10.10","Name":"secret/0","Status":"started"}, {"Ip":"9.9.9.9","Name":"secret/1","Status":"pending"}],"Teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
 	expected := `Application: secret
 Repository: git@git.com:php.git
 Platform: ruby
 Teams: tsuruteam, crane
 Address: secret.tsuru.io
 Owner: myapp_owner
+Team owner: myteam
 Deploys: 7
 Units:
 +----------+---------+
@@ -149,13 +153,14 @@ Units:
 
 func (s *S) TestAppInfoCName(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `{"name":"app1","ip":"myapp.tsuru.io","cname":"yourapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead","units":[{"Ip":"10.10.10.10","Name":"app1/0","Status":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","Status":"started"}, {"Ip":"","Name":"app1/2","Status":"pending"}],"Teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
+	result := `{"name":"app1","teamowner":"myteam","ip":"myapp.tsuru.io","cname":"yourapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead","units":[{"Ip":"10.10.10.10","Name":"app1/0","Status":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","Status":"started"}, {"Ip":"","Name":"app1/2","Status":"pending"}],"Teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
 	expected := `Application: app1
 Repository: git@git.com:php.git
 Platform: php
 Teams: tsuruteam, crane
 Address: yourapp.tsuru.io, myapp.tsuru.io
 Owner: myapp_owner
+Team owner: myteam
 Deploys: 7
 Units:
 +--------+---------+
