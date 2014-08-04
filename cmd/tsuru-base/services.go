@@ -438,7 +438,6 @@ func (ServiceDoc) Run(ctx *cmd.Context, client *cmd.Client) error {
 }
 
 type ServiceRemove struct {
-	GuessingCommand
 	yes bool
 	fs  *gnuflag.FlagSet
 }
@@ -482,7 +481,7 @@ func (c *ServiceRemove) Run(ctx *cmd.Context, client *cmd.Client) error {
 
 func (c *ServiceRemove) Flags() *gnuflag.FlagSet {
 	if c.fs == nil {
-		c.fs = c.GuessingCommand.Flags()
+		c.fs = gnuflag.NewFlagSet("service-remove", gnuflag.ExitOnError)
 		c.fs.BoolVar(&c.yes, "assume-yes", false, "Don't ask for confirmation, just remove the service.")
 		c.fs.BoolVar(&c.yes, "y", false, "Don't ask for confirmation, just remove the service.")
 	}
