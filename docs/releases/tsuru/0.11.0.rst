@@ -1,0 +1,35 @@
+.. warning::
+
+    Version under development
+
+==========================
+tsuru 0.11.0 release notes
+==========================
+
+Welcome to tsuru 0.11.0!
+
+These release notes cover the `new features`_ you'll want to be aware of when
+upgrading from tsuru 0.10.x or older versions.
+
+.. _`new features`: `What's new in tsuru 0.11.0`_
+
+What's new in tsuru 0.11.0
+==========================
+
+* Add the flag ``-t/--team-owner`` to the ``service-add`` command. This flag is
+  used to specify the team that owns a service instance (related to the issue
+  `#698 <https://github.com/tsuru/tsuru/issues/698>`_)
+* Improve plugin handling, now plugins written to tsuru will get the following
+  environment variables (related to issue `#863
+  <https://github.com/tsuru/tsuru/issues/863>`_):
+
+    - ``TSURU_TARGET``: the current target defined in the tsuru client, it's the
+    address of the tsuru server, to which the plugin should send requests,
+    using the new service proxy endpoint;
+
+    - ``TSURU_TOKEN``: token used to authenticate with the tsuru API.
+
+Bug fixes
+=========
+
+* fixed handling of flags in the ``service-remove`` command.
