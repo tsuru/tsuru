@@ -131,6 +131,8 @@ platform on next deploy.
 
 The --dockerfile flag is an URL to a dockerfile which will update your platform.
 
+.. _docker_node_add_cmd:
+
 docker-node-add
 ---------------
 
@@ -151,3 +153,19 @@ If you want to just register an docker node, you should use the --register
 flag with an **address=http://your-docker-node:docker-port**
 
 The command always check if your node address is accessible.
+
+
+.. _docker_node_list_cmd:
+
+docker-node-list
+----------------
+
+.. highlight:: bash
+
+::
+
+    $ tsuru-admin docker-node-list
+
+This command list all nodes present in the cluster. It will also show you metadata
+associated to each node and the IaaS ID if the node was added using Tsuru builtin
+IaaS providers.

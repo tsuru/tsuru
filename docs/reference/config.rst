@@ -374,6 +374,19 @@ debug
 ``false`` is the default value, so you won't see any
 noises on logs, to turn it on set it to true, e.g.: ``debug: true``
 
+Hipache
+-------
+
+hipache:redis-server
+++++++++++++++++++++
+
+TODO
+
+hipache:domain
+++++++++++++++++++++
+
+TODO
+
 Defining the provisioner
 ------------------------
 
@@ -466,6 +479,8 @@ docker:ssh:user
 
 TODO: see `tsuru with docker </docker>`
 
+.. _iaas_configuration:
+
 IaaS configuration
 ------------------
 
@@ -514,44 +529,40 @@ Here is a complete example:
 ::
 
     listen: "0.0.0.0:8080"
-    host: http://{{{API_HOST}}}:8080
+    debug: true
+    host: http://<machine-public-addr>:8080 # This port must be the same as in the "listen" conf
     admin-team: admin
-
-    database:
-      url: {{{MONGO_HOST}}}:{{{MONGO_PORT}}}
-      name: tsurudb
-
-    git:
-      unit-repo: /home/application/current
-      api-server: http://{{{GANDALF_HOST}}}:8000
-      rw-host: {{{GANDALF_HOST}}}
-      ro-host: {{{GANDALF_HOST}}}
-
     auth:
-      user-registration: true
-      scheme: native
-
-    provisioner: docker
-    hipache:
-      domain: {{{HOST_NAME}}}
+        user-registration: true
+        scheme: native
+    database:
+        url: <your-mongodb-server>:27017
+        name: tsurudb
     queue: redis
     redis-queue:
-      host: localhost
-      port: 6379
+        host: <your-redis-server>
+        port: 6379
+    git:
+        unit-repo: /home/application/current
+        api-server: http://<your-gandalf-server>:8000
+    provisioner: docker
     docker:
-      collection: docker_containers
-      repository-namespace: tsuru
-      router: hipache
-      deploy-cmd: /var/lib/tsuru/deploy
-      ssh-agent-port: 4545
-      segregate: true
-      scheduler:
-        redis-server: 127.0.0.1:6379
-        redis-prefix: docker-cluster
-      run-cmd:
-        bin: /var/lib/tsuru/start
-        port: "8888"
-      ssh:
-        add-key-cmd: /var/lib/tsuru/add-key
-        public-key: /var/lib/tsuru/.ssh/id_rsa.pub
-        user: ubuntu
+        segregate: false
+        router: hipache
+        collection: docker_containers
+        repository-namespace: tsuru
+        deploy-cmd: /var/lib/tsuru/deploy
+        ssh-agent-port: 4545
+        cluster:
+            storage: mongodb
+            mongo-url: <your-mongodb-server>:27017
+            mongo-database: cluster
+        run-cmd:
+            bin: /var/lib/tsuru/start
+            port: "8888"
+        ssh:
+            add-key-cmd: /var/lib/tsuru/add-key
+            user: ubuntu
+    hipache:
+        domain: <your-hipache-server>.xip.io
+        redis-server: <your-redis-server-with-port>

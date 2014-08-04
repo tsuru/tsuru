@@ -1,3 +1,7 @@
+.. Copyright 2014 tsuru authors. All rights reserved.
+   Use of this source code is governed by a BSD-style
+   license that can be found in the LICENSE file.
+
 :title: Installing tsuru
 :description: Step-by-step guide about how to setup a private PaaS with tsuru. 
 
@@ -6,7 +10,24 @@
 Installing
 ==========
 
+If you're want to try Tsuru with a minimum effort we recommend you to use `Tsuru
+Now <https://github.com/tsuru/now>`_ (or `tsuru-bootstrap
+<https://github.com/tsuru/tsuru-bootstrap>`_, that runs Tsuru Now on vagrant).
+
+Tsuru Now will install Tsuru API, Tsuru Client, Tsuru Admin, and all its
+dependencies and on a single machine. Including the docker node which will run
+deployed applications.
+
+However, this is not the recommended approach for a production environment. This
+document will describe how to install each component separately.
+
+We assume that Tsuru is being installed on a Ubuntu Server 14.04 LTS 64-bit
+machine. This is currently the supported environment for Tsuru, you may try
+running it on other environments, but there's a chance it won't be a smooth ride.
+
 .. toctree::
 
-    docker
-    dns-forwarders
+    gandalf
+    api
+    hipache-router
+    adding-nodes

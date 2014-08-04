@@ -1,0 +1,41 @@
+.. Copyright 2014 tsuru authors. All rights reserved.
+   Use of this source code is governed by a BSD-style
+   license that can be found in the LICENSE file.
+
+++++++++++++++
+Hipache Router
+++++++++++++++
+
+
+`Hipache <https://github.com/hipache/hipache/>`_ is a distributed HTTP and
+websocket proxy.
+
+Tsuru uses Hipache to route the requests to the containers. Routing information is
+stored by Tsuru in the configured Redis server, Hipache will read this
+configuration directly from Redis.
+
+
+Installing
+==========
+
+In order to install Hipache, just use apt-get:
+
+.. highlight:: bash
+
+::
+
+    sudo apt-get install node-hipache
+
+
+Configuring
+===========
+
+In your ``/etc/hipache.conf`` file you must set the ``redisHost`` and
+``redisPort`` configuration values. After this, you only need to start hipache
+with:
+
+.. highlight:: bash
+
+::
+
+    sudo start hipache
