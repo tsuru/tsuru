@@ -443,7 +443,7 @@ type ServiceRemove struct {
 	fs  *gnuflag.FlagSet
 }
 
-func (c ServiceRemove) Info() *cmd.Info {
+func (c *ServiceRemove) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "service-remove",
 		Usage:   "service-remove <serviceinstancename> [--assume-yes]",
@@ -452,7 +452,7 @@ func (c ServiceRemove) Info() *cmd.Info {
 	}
 }
 
-func (c ServiceRemove) Run(ctx *cmd.Context, client *cmd.Client) error {
+func (c *ServiceRemove) Run(ctx *cmd.Context, client *cmd.Client) error {
 	name := ctx.Args[0]
 	var answer string
 	if !c.yes {
