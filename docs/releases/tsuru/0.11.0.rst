@@ -1,7 +1,3 @@
-.. warning::
-
-    Version under development
-
 ==========================
 tsuru 0.11.0 release notes
 ==========================
