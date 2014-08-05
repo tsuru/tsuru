@@ -44,6 +44,21 @@ Commands
 All the "container*"" commands below only exist when using the docker
 provisioner.
 
+.. _tsuru_admin_container_move_cmd:
+
+container-move
+--------------
+
+.. highlight:: bash
+
+::
+
+    $ tsuru-admin container-move <container id> <to host>
+
+This command allow you to specify a container id and a destination host, this
+will create a new container on the destination host and remove the container
+from its previous host.
+
 .. _tsuru_admin_containers_move_cmd:
 
 containers-move
@@ -64,21 +79,6 @@ This command will go through the following steps:
 * Enumerate all units at the origin host;
 * For each unit, create a new unit at the destination host;
 * Erase each unit from the origin host.
-
-.. _tsuru_admin_container_move_cmd:
-
-container-move
---------------
-
-.. highlight:: bash
-
-::
-
-    $ tsuru-admin container-move <container id> <to host>
-
-This command allow you to specify a container id and a destination host, this
-will create a new container on the destination host and remove the container
-from its previous host.
 
 .. _tsuru_admin_containers_rebalance_cmd:
 
@@ -102,6 +102,58 @@ would be created.
 
 All the "platform*"" commands below only exist when using the docker
 provisioner.
+
+.. _tsuru_admin_docker_node_add_cmd:
+
+docker-node-add
+---------------
+
+.. highlight:: bash
+
+::
+
+    $ tsuru-admin docker-node-add [param_name=param_value]... [--register]
+
+This command add a node to your docker cluster. By default, this command will
+call the configured IaaS to create a new machine. Every param will be sent to
+the IaaS implementation.
+
+You should configure in **tsuru.conf** the protocol and port for IaaS be able
+to access your node (`you can see it here <config.html#iaas-configuration>`_).
+
+If you want to just register an docker node, you should use the --register
+flag with an **address=http://your-docker-node:docker-port**
+
+The command always check if your node address is accessible.
+
+.. _tsuru_admin_docker_node_list_cmd:
+
+docker-node-list
+----------------
+
+.. highlight:: bash
+
+::
+
+    $ tsuru-admin docker-node-list
+
+This command list all nodes present in the cluster. It will also show you metadata
+associated to each node and the IaaS ID if the node was added using tsuru builtin
+IaaS providers.
+
+.. _tsuru_admin_docker_node_remove_cmd:
+
+docker-node-remove
+------------------
+
+.. highlight:: bash
+
+::
+
+    $ tsuru-admin docker-node-remove <address> [--destroy]
+
+This command removes a node from the cluster. Optionally it also destroys the
+created IaaS machine if the ``--destroy`` flag is passed.
 
 .. _tsuru_admin_platform_add_cmd:
 
@@ -129,7 +181,7 @@ platform-update
 
 ::
 
-    $ tsuru-admin platform-update <name> [--dockerfile]
+    $ tsuru-admin platform-update <name> [-d/--dockerfile]
 
 This command allow you to update a platform in your tsuru installation.
 It will automatically rebuild your platform and will flag apps to update
@@ -137,28 +189,32 @@ platform on next deploy.
 
 The --dockerfile flag is an URL to a dockerfile which will update your platform.
 
-.. _tsuru_admin_docker_node_add_cmd:
+.. _tsuru_admin_machines_list_cmd:
 
-docker-node-add
+machines-list
+-------------
+
+.. highlight:: bash
+
+::
+
+    $ tsuru-admin machines-list
+
+This command will list all machines created using ``docker-node-add`` and a IaaS
+provider.
+
+.. _tsuru_admin_machine_destroy_cmd:
+
+machine-destroy
 ---------------
 
 .. highlight:: bash
 
 ::
 
-    $ tsuru-admin docker-node-add [param_name=param_value]... [--register]
+    $ tsuru-admin machines-list <machine id>
 
-This command add a node to your docker cluster. By default, this command will
-call the configured IaaS to create a new machine. Every param will be sent to
-the IaaS implementation.
-
-You should configure in **tsuru.conf** the protocol and port for IaaS be able
-to access your node (`you can see it here <config.html#iaas-configuration>`_).
-
-If you want to just register an docker node, you should use the --register
-flag with an **address=http://your-docker-node:docker-port**
-
-The command always check if your node address is accessible.
+This command will destroy a IaaS machine based on its ID.
 
 .. _tsuru_admin_ssh_cmd:
 
@@ -195,59 +251,3 @@ proxy. The user may specify part of the ID of the container. For example:
     $ tsuru-admin ssh 39f8
     Welcome to Ubuntu 14.04 LTS (GNU/Linux 3.13.0-24-generic x86_64)
     ubuntu@ip-10-253-6-84:~$
-
-.. _tsuru_admin_docker_node_list_cmd:
-
-docker-node-list
-----------------
-
-.. highlight:: bash
-
-::
-
-    $ tsuru-admin docker-node-list
-
-This command list all nodes present in the cluster. It will also show you metadata
-associated to each node and the IaaS ID if the node was added using tsuru builtin
-IaaS providers.
-
-.. _tsuru_admin_docker_node_remove_cmd:
-
-docker-node-remove
-------------------
-
-.. highlight:: bash
-
-::
-
-    $ tsuru-admin docker-node-remove <address> [--destroy]
-
-This command removes a node from the cluster. Optionally it also destroys the
-created IaaS machine if the ``--destroy`` flag is passed.
-
-.. _tsuru_admin_machines_list_cmd:
-
-machines-list
--------------
-
-.. highlight:: bash
-
-::
-
-    $ tsuru-admin machines-list
-
-This command will list all machines created using ``docker-node-add`` and a IaaS
-provider.
-
-.. _tsuru_admin_machine_destroy_cmd:
-
-machine-destroy
----------------
-
-.. highlight:: bash
-
-::
-
-    $ tsuru-admin machines-list <machine id>
-
-This command will destroy a IaaS machine based on its ID.
