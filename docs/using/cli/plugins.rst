@@ -4,12 +4,12 @@ Guide to create tsuru cli plugins
 Installing a plugin
 -------------------
 
-Let's install a plugin. There are two ways to install. 
-The first way is to move your plugin to `$HOME/.tsuru/plugins`.
-The other way is to use `tsuru plugin-install` command.
+Let's install a plugin. There are two ways to install.  The first way is to
+move your plugin to ``$HOME/.tsuru/plugins``.  The other way is to use ``tsuru
+plugin-install`` command.
 
-`tsuru plugin-install` will download your plugin file to `$HOME/.tsuru/plugins`. 
-The `tsuru plugin-install` sintaxe is:
+``tsuru plugin-install`` will download the plugin file to
+``$HOME/.tsuru/plugins``.  The syntax for this command is:
 
 .. highlight:: bash
 
@@ -20,7 +20,7 @@ The `tsuru plugin-install` sintaxe is:
 Listing installed plugins
 -------------------------
 
-To list all installed plugins you can use the `tsuru <plugin-list>` command:
+To list all installed plugins, users can use the ``tsuru plugin-list`` command:
 
 .. highlight:: bash
 
@@ -33,7 +33,7 @@ To list all installed plugins you can use the `tsuru <plugin-list>` command:
 Executing a plugin
 ------------------
 
-To execute a plugin just follow this pattern `tsuru <plugin-name> <args>`:
+To execute a plugin just follow this pattern ``tsuru <plugin-name> <args>``:
 
 .. highlight:: bash
 
@@ -45,7 +45,8 @@ To execute a plugin just follow this pattern `tsuru <plugin-name> <args>`:
 Removing a plugin
 -----------------
 
-To remove a plugin just use the `plugin-remove` command passing the `<plugin-name>` as argument:
+To remove a plugin just use the ``tsuru plugin-remove`` command passing the
+name of the plugin as argument:
 
 .. highlight:: bash
 
@@ -57,9 +58,11 @@ To remove a plugin just use the `plugin-remove` command passing the `<plugin-nam
 Creating your own plugin
 ------------------------
 
-Everything you need to do is to create a new `executable`. You can use bash, python, ruby, eg.
+Everything you need to do is to create a new file that can be executed. You can
+use Bash, Python, Ruby, eg.
 
-Let's create a `Hello world` plugin that prints `hello world` as output. Let's use `bash` to write our new plugin.
+Let's create a Hello world plugin that prints "hello world" as output.  Let's
+use ``bash`` to write our new plugin.
 
 .. highlight:: bash
 
@@ -68,6 +71,5 @@ Let's create a `Hello world` plugin that prints `hello world` as output. Let's u
     #! /bin/bash
     echo "hello world!"
 
-You can use the gist (gist.github.com) as host for your plugin.
-
-To install your plugin you can use `tsuru plugin-install` command.
+You can use the gist (https://gist.github.com) as host for your plugin, and run
+``tsuru plugin-install`` to install it.
