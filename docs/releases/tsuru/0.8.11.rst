@@ -14,12 +14,13 @@ What's new in tsuru 0.8.11
 
 * new plugin system - `#737 <https://github.com/tsuru/tsuru/issues/737>`_
 
-  Now is possible customize tsuru client installing and creating plugins. See the `docs for more info <http://docs.tsuru.io/en/latest/using/cli/plugins.html>`_
+  Now is possible to customize tsuru client installing and creating plugins.
+  See the :doc:`docs for more info </using/cli/plugins>`
 
-* app team owner is configurable - `#620 <https://github.com/tsuru/tsuru/issues/620>`_
+* app team owner is configurable - `issue #620
+  <https://github.com/tsuru/tsuru/issues/620>`_
 
   Now you can define the app team owner on `app-create`:
-
 
 .. highlight:: bash
 
