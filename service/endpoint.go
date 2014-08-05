@@ -75,6 +75,7 @@ func (c *Client) Create(instance *ServiceInstance, user string) error {
 	params := map[string][]string{
 		"name": {instance.Name},
 		"user": {user},
+		"team": {instance.TeamOwner},
 	}
 	if instance.PlanName != "" {
 		params["plan"] = []string{instance.PlanName}

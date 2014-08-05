@@ -112,7 +112,7 @@ func (s *S) TestEndpointCreate(c *gocheck.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
-	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
+	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis", TeamOwner: "theteam"}
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.Create(&instance, "my@user")
 	c.Assert(err, gocheck.IsNil)
@@ -126,6 +126,7 @@ func (s *S) TestEndpointCreate(c *gocheck.C) {
 	c.Assert(map[string][]string(v), gocheck.DeepEquals, map[string][]string{
 		"name": {"my-redis"},
 		"user": {"my@user"},
+		"team": {"theteam"},
 	})
 	c.Assert("application/x-www-form-urlencoded", gocheck.DeepEquals, h.request.Header.Get("Content-Type"))
 	c.Assert("application/json", gocheck.Equals, h.request.Header.Get("Accept"))
@@ -140,6 +141,7 @@ func (s *S) TestEndpointCreatePlans(c *gocheck.C) {
 		Name:        "my-redis",
 		ServiceName: "redis",
 		PlanName:    "basic",
+		TeamOwner:   "myteam",
 	}
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.Create(&instance, "my@user")
@@ -155,6 +157,7 @@ func (s *S) TestEndpointCreatePlans(c *gocheck.C) {
 		"name": {"my-redis"},
 		"plan": {"basic"},
 		"user": {"my@user"},
+		"team": {"myteam"},
 	})
 	c.Assert("application/x-www-form-urlencoded", gocheck.DeepEquals, h.request.Header.Get("Content-Type"))
 	c.Assert("application/json", gocheck.Equals, h.request.Header.Get("Accept"))
@@ -165,7 +168,7 @@ func (s *S) TestCreateShouldSendTheNameOfTheResourceToTheEndpoint(c *gocheck.C) 
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
-	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
+	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis", TeamOwner: "myteam"}
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.Create(&instance, "my@user")
 	c.Assert(err, gocheck.IsNil)
@@ -179,6 +182,7 @@ func (s *S) TestCreateShouldSendTheNameOfTheResourceToTheEndpoint(c *gocheck.C) 
 	c.Assert(map[string][]string(v), gocheck.DeepEquals, map[string][]string{
 		"name": {"my-redis"},
 		"user": {"my@user"},
+		"team": {"myteam"},
 	})
 	c.Assert("application/x-www-form-urlencoded", gocheck.DeepEquals, h.request.Header.Get("Content-Type"))
 	c.Assert("application/json", gocheck.Equals, h.request.Header.Get("Accept"))
