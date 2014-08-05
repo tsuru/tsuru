@@ -7,11 +7,14 @@
 package router
 
 import (
+	"errors"
 	"fmt"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	"gopkg.in/mgo.v2/bson"
 )
+
+var ErrRouteNotFound = errors.New("Route not found")
 
 var routers = make(map[string]Router)
 

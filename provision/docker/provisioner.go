@@ -127,20 +127,6 @@ func (p *dockerProvisioner) Stop(app provision.App) error {
 	return <-errCh
 }
 
-func startInBackground(a provision.App, c container, imageId string, w io.Writer, errorChan chan error, wg *sync.WaitGroup) {
-	defer wg.Done()
-	_, err := start(a, imageId, w)
-	if err != nil {
-		log.Errorf("error on start the app %s - %s", a.GetName(), err)
-		errorChan <- fmt.Errorf("Error trying to start unit on app %s: %s", a.GetName(), err.Error())
-		return
-	}
-	if c.ID != "" {
-		removeContainer(&c)
-	}
-	errorChan <- nil
-}
-
 func (dockerProvisioner) Swap(app1, app2 provision.App) error {
 	r, err := getRouter()
 	if err != nil {
@@ -167,49 +153,20 @@ func (p *dockerProvisioner) ArchiveDeploy(a provision.App, archiveURL string, w 
 
 func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer) error {
 	containers, err := listContainersByApp(a.GetName())
-	chanSize := len(containers)
-	if chanSize == 0 {
-		chanSize = 1
-	}
-	errorChan := make(chan error, chanSize)
-	wg := sync.WaitGroup{}
-	wg.Add(chanSize)
-	if err == nil && len(containers) > 0 {
-		for _, c := range containers {
-			go startInBackground(a, c, imageId, w, errorChan, &wg)
-		}
+	if len(containers) == 0 {
+		_, err = runCreateUnitsPipeline(a, 1)
 	} else {
-		go startInBackground(a, container{}, imageId, w, errorChan, &wg)
+		_, err = runReplaceUnitsPipeline(a, containers)
 	}
-	go func() {
-		wg.Wait()
-		close(errorChan)
-	}()
-	var allErr error
-	counter := 0
-	plural := ""
-	if chanSize > 1 {
-		plural = "s"
-	}
-	fmt.Fprintf(w, "\n---- Starting %d unit%s ----\n", chanSize, plural)
-	for err = range errorChan {
-		counter++
-		if err == nil {
-			fmt.Fprintf(w, " ---> Started unit %d/%d...\n", counter, chanSize)
-			continue
-		}
-		fmt.Fprintf(w, " ---> Error to start unit %d/%d: %s\n", counter, chanSize, err.Error())
-		if allErr == nil {
-			allErr = fmt.Errorf("Multiple errors starting containers")
-		}
-		allErr = fmt.Errorf("%s; %s", allErr.Error(), err.Error())
-	}
-	if allErr != nil {
+	// TODO: Send writer to pipeline and log unit start progress, something like:
+	// fmt.Fprintf(w, "\n---- Starting %d unit%s ----\n", size, plural)
+	// fmt.Fprintf(w, " ---> Started unit %d/%d...\n", counter, size)
+	if err != nil {
 		fmt.Fprint(w, "\n ---> App failed to start, please check its logs for more details...\n\n")
 	} else {
 		fmt.Fprint(w, "\n ---> App will be restarted, please check its logs for more details...\n\n")
 	}
-	return allErr
+	return err
 }
 
 func (p *dockerProvisioner) Destroy(app provision.App) error {
@@ -261,27 +218,16 @@ func (*dockerProvisioner) Addr(app provision.App) (string, error) {
 	return addr, nil
 }
 
-func addUnitsWithHost(a provision.App, units uint, destinationHost ...string) ([]provision.Unit, error) {
+func addContainersWithHost(a provision.App, units int, destinationHost ...string) ([]container, error) {
 	if units == 0 {
 		return nil, errors.New("Cannot add 0 units")
 	}
-	length, err := getContainerCountForAppName(a.GetName())
-	if err != nil {
-		return nil, err
-	}
-	if length < 1 {
-		return nil, errors.New("New units can only be added after the first deployment")
-	}
 	writer := app.LogWriter{App: a, Writer: ioutil.Discard}
-	c, err := getOneContainerByAppName(a.GetName())
-	if err != nil {
-		return nil, err
-	}
-	imageId := c.Image
+	imageId := assembleImageName(a.GetName())
 	wg := sync.WaitGroup{}
-	createdContainers := make(chan *container, int(units))
-	errors := make(chan error, int(units))
-	for i := uint(0); i < units; i++ {
+	createdContainers := make(chan *container, units)
+	errors := make(chan error, units)
+	for i := 0; i < units; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -306,23 +252,32 @@ func addUnitsWithHost(a provision.App, units uint, destinationHost ...string) ([
 		}
 		return nil, err
 	}
-	result := make([]provision.Unit, int(units))
+	result := make([]container, units)
 	i := 0
 	for c := range createdContainers {
-		result[i] = provision.Unit{
-			Name:    c.ID,
-			AppName: a.GetName(),
-			Type:    a.GetPlatform(),
-			Ip:      c.HostAddr,
-			Status:  provision.StatusBuilding,
-		}
+		result[i] = *c
 		i++
 	}
 	return result, nil
 }
 
 func (*dockerProvisioner) AddUnits(a provision.App, units uint) ([]provision.Unit, error) {
-	return addUnitsWithHost(a, units)
+	length, err := getContainerCountForAppName(a.GetName())
+	if err != nil {
+		return nil, err
+	}
+	if length < 1 {
+		return nil, errors.New("New units can only be added after the first deployment")
+	}
+	conts, err := runCreateUnitsPipeline(a, int(units))
+	if err != nil {
+		return nil, err
+	}
+	result := make([]provision.Unit, len(conts))
+	for i, c := range conts {
+		result[i] = c.asUnit(a)
+	}
+	return result, nil
 }
 
 func (*dockerProvisioner) RemoveUnits(a provision.App, units uint) error {

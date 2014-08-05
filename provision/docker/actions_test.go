@@ -8,11 +8,11 @@ import (
 	"bytes"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/action"
-	"github.com/tsuru/tsuru/provision"
 	rtesting "github.com/tsuru/tsuru/router/testing"
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
+	"sort"
 )
 
 func (s *S) TestInsertEmptyContainerInDBName(c *gocheck.C) {
@@ -122,23 +122,142 @@ func (s *S) TestCreateContainerBackward(c *gocheck.C) {
 	c.Assert(err, gocheck.FitsTypeOf, &docker.NoSuchContainer{})
 }
 
-func (s *S) TestAddRouteName(c *gocheck.C) {
-	c.Assert(addRoute.Name, gocheck.Equals, "add-route")
+func (s *S) TestAddNewRouteName(c *gocheck.C) {
+	c.Assert(addNewRoutes.Name, gocheck.Equals, "add-new-routes")
 }
 
-func (s *S) TestAddRouteForward(c *gocheck.C) {
+func (s *S) TestAddNewRouteForward(c *gocheck.C) {
 	app := testing.NewFakeApp("myapp", "python", 1)
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
-	cont := container{ID: "ble", AppName: app.GetName()}
+	cont := container{ID: "ble-1", AppName: app.GetName()}
+	cont2 := container{ID: "ble-2", AppName: app.GetName()}
 	defer cont.remove()
-	context := action.FWContext{Previous: cont}
-	r, err := addRoute.Forward(context)
+	defer cont2.remove()
+	context := action.FWContext{Previous: []container{cont, cont2}}
+	r, err := addNewRoutes.Forward(context)
 	c.Assert(err, gocheck.IsNil)
-	cont = r.(container)
+	containers := r.([]container)
 	hasRoute := rtesting.FakeRouter.HasRoute(app.GetName(), cont.getAddress())
 	c.Assert(hasRoute, gocheck.Equals, true)
-	c.Assert(cont, gocheck.FitsTypeOf, container{})
+	hasRoute = rtesting.FakeRouter.HasRoute(app.GetName(), cont2.getAddress())
+	c.Assert(hasRoute, gocheck.Equals, true)
+	c.Assert(containers, gocheck.DeepEquals, []container{cont, cont2})
+}
+
+func (s *S) TestAddNewRouteForwardFailInMiddle(c *gocheck.C) {
+	app := testing.NewFakeApp("myapp", "python", 1)
+	rtesting.FakeRouter.AddBackend(app.GetName())
+	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
+	cont := container{ID: "ble-1", AppName: app.GetName()}
+	cont2 := container{ID: "ble-2", AppName: app.GetName()}
+	defer cont.remove()
+	defer cont2.remove()
+	rtesting.FakeRouter.FailForIp(cont2.getAddress())
+	context := action.FWContext{Previous: []container{cont, cont2}}
+	_, err := addNewRoutes.Forward(context)
+	c.Assert(err, gocheck.Equals, rtesting.ErrForcedFailure)
+	hasRoute := rtesting.FakeRouter.HasRoute(app.GetName(), cont.getAddress())
+	c.Assert(hasRoute, gocheck.Equals, false)
+	hasRoute = rtesting.FakeRouter.HasRoute(app.GetName(), cont2.getAddress())
+	c.Assert(hasRoute, gocheck.Equals, false)
+}
+
+func (s *S) TestAddNewRouteBackward(c *gocheck.C) {
+	app := testing.NewFakeApp("myapp", "python", 1)
+	rtesting.FakeRouter.AddBackend(app.GetName())
+	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
+	cont := container{ID: "ble-1", AppName: app.GetName()}
+	cont2 := container{ID: "ble-2", AppName: app.GetName()}
+	defer cont.remove()
+	defer cont2.remove()
+	err := rtesting.FakeRouter.AddRoute(app.GetName(), cont.getAddress())
+	c.Assert(err, gocheck.IsNil)
+	err = rtesting.FakeRouter.AddRoute(app.GetName(), cont2.getAddress())
+	c.Assert(err, gocheck.IsNil)
+	context := action.BWContext{FWResult: []container{cont, cont2}}
+	addNewRoutes.Backward(context)
+	hasRoute := rtesting.FakeRouter.HasRoute(app.GetName(), cont.getAddress())
+	c.Assert(hasRoute, gocheck.Equals, false)
+	hasRoute = rtesting.FakeRouter.HasRoute(app.GetName(), cont2.getAddress())
+	c.Assert(hasRoute, gocheck.Equals, false)
+}
+
+func (s *S) TestRemoveOldRoutesName(c *gocheck.C) {
+	c.Assert(removeOldRoutes.Name, gocheck.Equals, "remove-old-routes")
+}
+
+func (s *S) TestRemoveOldRoutesForward(c *gocheck.C) {
+	app := testing.NewFakeApp("myapp", "python", 1)
+	rtesting.FakeRouter.AddBackend(app.GetName())
+	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
+	cont := container{ID: "ble-1", AppName: app.GetName()}
+	cont2 := container{ID: "ble-2", AppName: app.GetName()}
+	defer cont.remove()
+	defer cont2.remove()
+	err := rtesting.FakeRouter.AddRoute(app.GetName(), cont.getAddress())
+	c.Assert(err, gocheck.IsNil)
+	err = rtesting.FakeRouter.AddRoute(app.GetName(), cont2.getAddress())
+	c.Assert(err, gocheck.IsNil)
+	args := changeUnitsPipelineArgs{
+		app:      app,
+		toRemove: []container{cont, cont2},
+	}
+	context := action.FWContext{Previous: []container{}, Params: []interface{}{args}}
+	r, err := removeOldRoutes.Forward(context)
+	c.Assert(err, gocheck.IsNil)
+	hasRoute := rtesting.FakeRouter.HasRoute(app.GetName(), cont.getAddress())
+	c.Assert(hasRoute, gocheck.Equals, false)
+	hasRoute = rtesting.FakeRouter.HasRoute(app.GetName(), cont2.getAddress())
+	c.Assert(hasRoute, gocheck.Equals, false)
+	containers := r.([]container)
+	c.Assert(containers, gocheck.DeepEquals, []container{})
+}
+
+func (s *S) TestRemoveOldRoutesForwardFailInMiddle(c *gocheck.C) {
+	app := testing.NewFakeApp("myapp", "python", 1)
+	rtesting.FakeRouter.AddBackend(app.GetName())
+	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
+	cont := container{ID: "ble-1", AppName: app.GetName()}
+	cont2 := container{ID: "ble-2", AppName: app.GetName()}
+	defer cont.remove()
+	defer cont2.remove()
+	err := rtesting.FakeRouter.AddRoute(app.GetName(), cont.getAddress())
+	c.Assert(err, gocheck.IsNil)
+	err = rtesting.FakeRouter.AddRoute(app.GetName(), cont2.getAddress())
+	c.Assert(err, gocheck.IsNil)
+	rtesting.FakeRouter.FailForIp(cont2.getAddress())
+	args := changeUnitsPipelineArgs{
+		app:      app,
+		toRemove: []container{cont, cont2},
+	}
+	context := action.FWContext{Previous: []container{}, Params: []interface{}{args}}
+	_, err = removeOldRoutes.Forward(context)
+	c.Assert(err, gocheck.Equals, rtesting.ErrForcedFailure)
+	hasRoute := rtesting.FakeRouter.HasRoute(app.GetName(), cont.getAddress())
+	c.Assert(hasRoute, gocheck.Equals, true)
+	hasRoute = rtesting.FakeRouter.HasRoute(app.GetName(), cont2.getAddress())
+	c.Assert(hasRoute, gocheck.Equals, true)
+}
+
+func (s *S) TestRemoveOldRoutesBackward(c *gocheck.C) {
+	app := testing.NewFakeApp("myapp", "python", 1)
+	rtesting.FakeRouter.AddBackend(app.GetName())
+	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
+	cont := container{ID: "ble-1", AppName: app.GetName()}
+	cont2 := container{ID: "ble-2", AppName: app.GetName()}
+	defer cont.remove()
+	defer cont2.remove()
+	args := changeUnitsPipelineArgs{
+		app:      app,
+		toRemove: []container{cont, cont2},
+	}
+	context := action.BWContext{Params: []interface{}{args}}
+	removeOldRoutes.Backward(context)
+	hasRoute := rtesting.FakeRouter.HasRoute(app.GetName(), cont.getAddress())
+	c.Assert(hasRoute, gocheck.Equals, true)
+	hasRoute = rtesting.FakeRouter.HasRoute(app.GetName(), cont2.getAddress())
+	c.Assert(hasRoute, gocheck.Equals, true)
 }
 
 func (s *S) TestSetNetworkInfoName(c *gocheck.C) {
@@ -210,11 +329,11 @@ func (s *S) TestStartContainerBackward(c *gocheck.C) {
 	c.Assert(cc.State.Running, gocheck.Equals, false)
 }
 
-func (s *S) TestProvisionAddUnitToHostName(c *gocheck.C) {
-	c.Assert(provisionAddUnitToHost.Name, gocheck.Equals, "provision-add-unit-to-host")
+func (s *S) TestProvisionAddUnitsToHostName(c *gocheck.C) {
+	c.Assert(provisionAddUnitsToHost.Name, gocheck.Equals, "provision-add-units-to-host")
 }
 
-func (s *S) TestProvisionAddUnitToHostForward(c *gocheck.C) {
+func (s *S) TestProvisionAddUnitsToHostForward(c *gocheck.C) {
 	cluster, err := s.startMultipleServersCluster()
 	c.Assert(err, gocheck.IsNil)
 	defer s.stopMultipleServersCluster(cluster)
@@ -228,65 +347,98 @@ func (s *S) TestProvisionAddUnitToHostForward(c *gocheck.C) {
 	defer coll.Close()
 	coll.Insert(container{ID: "container-id", AppName: app.GetName(), Version: "container-version", Image: "tsuru/python"})
 	defer coll.RemoveAll(bson.M{"appname": app.GetName()})
-	context := action.FWContext{Params: []interface{}{app, "localhost"}}
-	result, err := provisionAddUnitToHost.Forward(context)
+	args := changeUnitsPipelineArgs{
+		app:        app,
+		toHost:     "localhost",
+		unitsToAdd: 2,
+	}
+	context := action.FWContext{Params: []interface{}{args}}
+	result, err := provisionAddUnitsToHost.Forward(context)
 	c.Assert(err, gocheck.IsNil)
-	unit := result.(provision.Unit)
-	c.Assert(unit.Ip, gocheck.Equals, "localhost")
+	containers := result.([]container)
+	c.Assert(containers, gocheck.HasLen, 2)
+	c.Assert(containers[0].HostAddr, gocheck.Equals, "localhost")
+	c.Assert(containers[1].HostAddr, gocheck.Equals, "localhost")
 	count, err := coll.Find(bson.M{"appname": app.GetName()}).Count()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(count, gocheck.Equals, 2)
+	c.Assert(count, gocheck.Equals, 3)
 }
 
-func (s *S) TestProvisionAddUnitToHostBackward(c *gocheck.C) {
+func (s *S) TestProvisionAddUnitsToHostForwardWithoutHost(c *gocheck.C) {
+	cluster, err := s.startMultipleServersCluster()
+	c.Assert(err, gocheck.IsNil)
+	defer s.stopMultipleServersCluster(cluster)
+	err = newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	var p dockerProvisioner
+	app := testing.NewFakeApp("myapp-2", "python", 0)
+	defer p.Destroy(app)
+	p.Provision(app)
+	coll := collection()
+	defer coll.Close()
+	coll.Insert(container{ID: "container-id", AppName: app.GetName(), Version: "container-version", Image: "tsuru/python"})
+	defer coll.RemoveAll(bson.M{"appname": app.GetName()})
+	args := changeUnitsPipelineArgs{
+		app:        app,
+		unitsToAdd: 3,
+	}
+	context := action.FWContext{Params: []interface{}{args}}
+	result, err := provisionAddUnitsToHost.Forward(context)
+	c.Assert(err, gocheck.IsNil)
+	containers := result.([]container)
+	c.Assert(containers, gocheck.HasLen, 3)
+	addrs := []string{containers[0].HostAddr, containers[1].HostAddr}
+	sort.Strings(addrs)
+	c.Assert(addrs[0], gocheck.Equals, "127.0.0.1")
+	c.Assert(addrs[1], gocheck.Equals, "localhost")
+	count, err := coll.Find(bson.M{"appname": app.GetName()}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 4)
+}
+
+func (s *S) TestProvisionAddUnitsToHostBackward(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	container, err := s.newContainer(nil)
-	c.Assert(err, gocheck.IsNil)
-	defer s.removeTestContainer(container)
-	app := testing.NewFakeApp(container.AppName, "python", 0)
-	unit := provision.Unit{
-		Name:    container.ID,
-		AppName: app.GetName(),
-		Type:    app.GetPlatform(),
-		Ip:      container.HostAddr,
-		Status:  provision.StatusBuilding,
-	}
-	context := action.BWContext{Params: []interface{}{app, "server"}, FWResult: unit}
-	provisionAddUnitToHost.Backward(context)
-	_, err = getContainer(container.ID)
+	var p dockerProvisioner
+	app := testing.NewFakeApp("myapp-xxx-1", "python", 0)
+	defer p.Destroy(app)
+	p.Provision(app)
+	coll := collection()
+	defer coll.Close()
+	cont := container{ID: "container-id", AppName: app.GetName(), Version: "container-version", Image: "tsuru/python"}
+	coll.Insert(cont)
+	defer coll.RemoveAll(bson.M{"appname": app.GetName()})
+	context := action.BWContext{FWResult: []container{cont}}
+	provisionAddUnitsToHost.Backward(context)
+	_, err = getContainer(cont.ID)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "not found")
 }
 
-func (s *S) TestProvisionRemoveOldUnitName(c *gocheck.C) {
-	c.Assert(provisionRemoveOldUnit.Name, gocheck.Equals, "provision-remove-old-unit")
+func (s *S) TestProvisionRemoveOldUnitsName(c *gocheck.C) {
+	c.Assert(provisionRemoveOldUnits.Name, gocheck.Equals, "provision-remove-old-units")
 }
 
-func (s *S) TestProvisionRemoveOldUnitForward(c *gocheck.C) {
+func (s *S) TestProvisionRemoveOldUnitsForward(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	container, err := s.newContainer(nil)
+	cont, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
-	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
+	defer rtesting.FakeRouter.RemoveBackend(cont.AppName)
 	client, err := docker.NewClient(s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	err = client.StartContainer(container.ID, nil)
+	err = client.StartContainer(cont.ID, nil)
 	c.Assert(err, gocheck.IsNil)
-	app := testing.NewFakeApp(container.AppName, "python", 0)
-	unit := provision.Unit{
-		Name:    container.ID,
-		AppName: app.GetName(),
-		Type:    app.GetPlatform(),
-		Ip:      container.HostAddr,
-		Status:  provision.StatusBuilding,
+	testing.NewFakeApp(cont.AppName, "python", 0)
+	args := changeUnitsPipelineArgs{
+		toRemove: []container{*cont},
 	}
-	context := action.FWContext{Params: []interface{}{app, "", *container}, Previous: unit}
-	result, err := provisionRemoveOldUnit.Forward(context)
+	context := action.FWContext{Params: []interface{}{args}, Previous: []container{}}
+	result, err := provisionRemoveOldUnits.Forward(context)
 	c.Assert(err, gocheck.IsNil)
-	retUnit := result.(provision.Unit)
-	c.Assert(retUnit, gocheck.DeepEquals, unit)
-	_, err = getContainer(container.ID)
+	resultContainers := result.([]container)
+	c.Assert(resultContainers, gocheck.DeepEquals, []container{})
+	_, err = getContainer(cont.ID)
 	c.Assert(err, gocheck.NotNil)
 }
 

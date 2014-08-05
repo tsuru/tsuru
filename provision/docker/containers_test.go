@@ -29,21 +29,15 @@ func (s *S) TestMoveContainers(c *gocheck.C) {
 	defer coll.Close()
 	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
-	units, err := addUnitsWithHost(appInstance, 2, "localhost")
+	_, err = addContainersWithHost(appInstance, 2, "localhost")
 	c.Assert(err, gocheck.IsNil)
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	appStruct := &app.App{
-		Name:     appInstance.GetName(),
-		Platform: appInstance.GetPlatform(),
+		Name: appInstance.GetName(),
 	}
 	err = conn.Apps().Insert(appStruct)
-	c.Assert(err, gocheck.IsNil)
-	err = conn.Apps().Update(
-		bson.M{"name": appStruct.Name},
-		bson.M{"$set": bson.M{"units": units}},
-	)
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	var buf bytes.Buffer
@@ -78,21 +72,15 @@ func (s *S) TestMoveContainersUnknownDest(c *gocheck.C) {
 	defer coll.Close()
 	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
-	units, err := addUnitsWithHost(appInstance, 2, "localhost")
+	_, err = addContainersWithHost(appInstance, 2, "localhost")
 	c.Assert(err, gocheck.IsNil)
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	appStruct := &app.App{
-		Name:     appInstance.GetName(),
-		Platform: appInstance.GetPlatform(),
+		Name: appInstance.GetName(),
 	}
 	err = conn.Apps().Insert(appStruct)
-	c.Assert(err, gocheck.IsNil)
-	err = conn.Apps().Update(
-		bson.M{"name": appStruct.Name},
-		bson.M{"$set": bson.M{"units": units}},
-	)
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	var buf bytes.Buffer
@@ -123,26 +111,20 @@ func (s *S) TestMoveContainer(c *gocheck.C) {
 	defer coll.Close()
 	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
-	units, err := addUnitsWithHost(appInstance, 2, "localhost")
+	addedConts, err := addContainersWithHost(appInstance, 2, "localhost")
 	c.Assert(err, gocheck.IsNil)
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	appStruct := &app.App{
-		Name:     appInstance.GetName(),
-		Platform: appInstance.GetPlatform(),
+		Name: appInstance.GetName(),
 	}
 	err = conn.Apps().Insert(appStruct)
-	c.Assert(err, gocheck.IsNil)
-	err = conn.Apps().Update(
-		bson.M{"name": appStruct.Name},
-		bson.M{"$set": bson.M{"units": units}},
-	)
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
-	err = moveContainer(units[0].Name[0:6], "127.0.0.1", encoder)
+	err = moveContainer(addedConts[0].ID[0:6], "127.0.0.1", encoder)
 	c.Assert(err, gocheck.IsNil)
 	containers, err := listContainersByHost("localhost")
 	c.Assert(len(containers), gocheck.Equals, 1)
@@ -164,23 +146,17 @@ func (s *S) TestRebalanceContainers(c *gocheck.C) {
 	defer coll.Close()
 	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
-	units, err := addUnitsWithHost(appInstance, 5, "localhost")
+	_, err = addContainersWithHost(appInstance, 5, "localhost")
 	c.Assert(err, gocheck.IsNil)
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
 	appStruct := &app.App{
-		Name:     appInstance.GetName(),
-		Platform: appInstance.GetPlatform(),
+		Name: appInstance.GetName(),
 	}
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
-	err = conn.Apps().Update(
-		bson.M{"name": appStruct.Name},
-		bson.M{"$set": bson.M{"units": units}},
-	)
-	c.Assert(err, gocheck.IsNil)
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
 	err = rebalanceContainers(encoder, false)

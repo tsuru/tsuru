@@ -25,8 +25,6 @@ import (
 
 var pool *redis.Pool
 
-var errRouteNotFound = errors.New("Route not found")
-
 func init() {
 	router.Register("hipache", hipacheRouter{})
 }
@@ -256,7 +254,7 @@ func (hipacheRouter) Addr(name string) (string, error) {
 	}
 	backends := reply.([]interface{})
 	if len(backends) < 1 {
-		return "", errRouteNotFound
+		return "", router.ErrRouteNotFound
 	}
 	return fmt.Sprintf("%s.%s", backendName, domain), nil
 }

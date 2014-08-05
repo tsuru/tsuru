@@ -85,6 +85,46 @@ func handleMoveErrors(moveErrors chan error, encoder *json.Encoder) error {
 	return nil
 }
 
+func runReplaceUnitsPipeline(a provision.App, toRemoveContainers []container, toHosts ...string) ([]container, error) {
+	var toHost string
+	if len(toHosts) > 0 {
+		toHost = toHosts[0]
+	}
+	args := changeUnitsPipelineArgs{
+		app:        a,
+		toRemove:   toRemoveContainers,
+		unitsToAdd: len(toRemoveContainers),
+		toHost:     toHost,
+	}
+	pipeline := action.NewPipeline(
+		&provisionAddUnitsToHost,
+		&addNewRoutes,
+		&removeOldRoutes,
+		&provisionRemoveOldUnits,
+	)
+	err := pipeline.Execute(args)
+	if err != nil {
+		return nil, err
+	}
+	return pipeline.Result().([]container), nil
+}
+
+func runCreateUnitsPipeline(a provision.App, toAddCount int) ([]container, error) {
+	args := changeUnitsPipelineArgs{
+		app:        a,
+		unitsToAdd: toAddCount,
+	}
+	pipeline := action.NewPipeline(
+		&provisionAddUnitsToHost,
+		&addNewRoutes,
+	)
+	err := pipeline.Execute(args)
+	if err != nil {
+		return nil, err
+	}
+	return pipeline.Result().([]container), nil
+}
+
 func moveOneContainer(c container, toHost string, errors chan error, wg *sync.WaitGroup, encoder *json.Encoder, locker *appLocker) {
 	defer wg.Done()
 	locked := locker.lock(c.AppName)
@@ -102,11 +142,7 @@ func moveOneContainer(c container, toHost string, errors chan error, wg *sync.Wa
 		return
 	}
 	logProgress(encoder, "Moving unit %s for %q: %s -> %s...", c.ID, c.AppName, c.HostAddr, toHost)
-	pipeline := action.NewPipeline(
-		&provisionAddUnitToHost,
-		&provisionRemoveOldUnit,
-	)
-	err = pipeline.Execute(a, toHost, c)
+	addedContainers, err := runReplaceUnitsPipeline(a, []container{c}, toHost)
 	if err != nil {
 		errors <- &tsuruErrors.CompositeError{
 			Base:    err,
@@ -115,7 +151,7 @@ func moveOneContainer(c container, toHost string, errors chan error, wg *sync.Wa
 		return
 	}
 	logProgress(encoder, "Finished moving unit %s for %q.", c.ID, c.AppName)
-	addedUnit := pipeline.Result().(provision.Unit)
+	addedUnit := addedContainers[0].asUnit(a)
 	err = a.BindUnit(&addedUnit)
 	if err != nil {
 		errors <- &tsuruErrors.CompositeError{

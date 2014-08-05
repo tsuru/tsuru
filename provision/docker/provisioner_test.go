@@ -320,8 +320,17 @@ func (s *S) TestProvisionerAddUnitsWithErrorDoesntLeaveLostUnits(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerAddZeroUnits(c *gocheck.C) {
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
 	var p dockerProvisioner
-	units, err := p.AddUnits(nil, 0)
+	app := testing.NewFakeApp("myapp", "python", 0)
+	p.Provision(app)
+	defer p.Destroy(app)
+	coll := collection()
+	defer coll.Close()
+	coll.Insert(container{ID: "c-89320", AppName: app.GetName(), Version: "a345fe", Image: "tsuru/python"})
+	defer coll.RemoveId(bson.M{"id": "c-89320"})
+	units, err := p.AddUnits(app, 0)
 	c.Assert(units, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Cannot add 0 units")
@@ -352,11 +361,11 @@ func (s *S) TestProvisionerAddUnitsWithHost(c *gocheck.C) {
 	defer coll.Close()
 	coll.Insert(container{ID: "xxxfoo", AppName: app.GetName(), Version: "123987", Image: "tsuru/python"})
 	defer coll.RemoveId(bson.M{"id": "xxxfoo"})
-	units, err := addUnitsWithHost(app, 1, "localhost")
+	units, err := addContainersWithHost(app, 1, "localhost")
 	c.Assert(err, gocheck.IsNil)
 	defer coll.RemoveAll(bson.M{"appname": app.GetName()})
 	c.Assert(units, gocheck.HasLen, 1)
-	c.Assert(units[0].Ip, gocheck.Equals, "localhost")
+	c.Assert(units[0].HostAddr, gocheck.Equals, "localhost")
 	count, err := coll.Find(bson.M{"appname": app.GetName()}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(count, gocheck.Equals, 2)

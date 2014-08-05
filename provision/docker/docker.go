@@ -334,7 +334,6 @@ func start(app provision.App, imageId string, w io.Writer, destinationHosts ...s
 		&startContainer,
 		&updateContainerInDB,
 		&setNetworkInfo,
-		&addRoute,
 	}
 	pipeline := action.NewPipeline(actions...)
 	args := runContainerActionsArgs{
@@ -571,6 +570,16 @@ func (c *container) logs(w io.Writer) error {
 		Stream:       true,
 	}
 	return dockerCluster().AttachToContainer(opts)
+}
+
+func (c *container) asUnit(a provision.App) provision.Unit {
+	return provision.Unit{
+		Name:    c.ID,
+		AppName: a.GetName(),
+		Type:    a.GetPlatform(),
+		Ip:      c.HostAddr,
+		Status:  provision.StatusBuilding,
+	}
 }
 
 // getImage returns the image name or id from an app.

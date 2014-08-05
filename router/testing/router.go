@@ -10,17 +10,26 @@ import (
 	"sync"
 )
 
-var FakeRouter = fakeRouter{backends: make(map[string][]string)}
+var FakeRouter = fakeRouter{backends: make(map[string][]string), failuresByIp: make(map[string]bool)}
 
 var ErrBackendNotFound = errors.New("Backend not found")
+
+var ErrForcedFailure = errors.New("Forced failure")
 
 func init() {
 	router.Register("fake", &FakeRouter)
 }
 
 type fakeRouter struct {
-	backends map[string][]string
-	mutex    sync.Mutex
+	backends     map[string][]string
+	failuresByIp map[string]bool
+	mutex        sync.Mutex
+}
+
+func (r *fakeRouter) FailForIp(ip string) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	r.failuresByIp[ip] = true
 }
 
 func (r *fakeRouter) HasBackend(name string) bool {
@@ -79,6 +88,9 @@ func (r *fakeRouter) AddRoute(name, ip string) error {
 	}
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
+	if r.failuresByIp[ip] {
+		return ErrForcedFailure
+	}
 	routes := r.backends[backendName]
 	routes = append(routes, ip)
 	r.backends[backendName] = routes
@@ -95,6 +107,9 @@ func (r *fakeRouter) RemoveRoute(name, ip string) error {
 	}
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
+	if r.failuresByIp[ip] {
+		return ErrForcedFailure
+	}
 	index := -1
 	routes := r.backends[backendName]
 	for i := range routes {
@@ -104,7 +119,7 @@ func (r *fakeRouter) RemoveRoute(name, ip string) error {
 		}
 	}
 	if index < 0 {
-		return errors.New("Route not found")
+		return router.ErrRouteNotFound
 	}
 	routes[index] = routes[len(routes)-1]
 	r.backends[backendName] = routes[:len(routes)-1]
@@ -143,6 +158,7 @@ func (r *fakeRouter) Reset() {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	r.backends = make(map[string][]string)
+	r.failuresByIp = make(map[string]bool)
 }
 
 func (r *fakeRouter) Routes(name string) ([]string, error) {

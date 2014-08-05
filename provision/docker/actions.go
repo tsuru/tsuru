@@ -11,6 +11,7 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/router"
 	"gopkg.in/mgo.v2/bson"
 	"io"
 )
@@ -22,6 +23,14 @@ type runContainerActionsArgs struct {
 	destinationHosts []string
 	privateKey       []byte
 	writer           io.Writer
+}
+
+type changeUnitsPipelineArgs struct {
+	app        provision.App
+	writer     io.Writer
+	toRemove   []container
+	unitsToAdd int
+	toHost     string
 }
 
 var insertEmptyContainerInDB = action.Action{
@@ -107,21 +116,6 @@ var setNetworkInfo = action.Action{
 	},
 }
 
-var addRoute = action.Action{
-	Name: "add-route",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		c := ctx.Previous.(container)
-		r, err := getRouter()
-		if err != nil {
-			return nil, err
-		}
-		err = r.AddRoute(c.AppName, c.getAddress())
-		return c, err
-	},
-	Backward: func(ctx action.BWContext) {
-	},
-}
-
 var startContainer = action.Action{
 	Name: "start-container",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
@@ -143,45 +137,120 @@ var startContainer = action.Action{
 	},
 }
 
-var provisionAddUnitToHost = action.Action{
-	Name: "provision-add-unit-to-host",
+var provisionAddUnitsToHost = action.Action{
+	Name: "provision-add-units-to-host",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		a := ctx.Params[0].(provision.App)
-		destinationHost := ctx.Params[1].(string)
-		units, err := addUnitsWithHost(a, 1, destinationHost)
+		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		var destinationHosts []string
+		if args.toHost != "" {
+			destinationHosts = []string{args.toHost}
+		}
+		containers, err := addContainersWithHost(args.app, args.unitsToAdd, destinationHosts...)
 		if err != nil {
 			return nil, err
 		}
-		return units[0], nil
+		return containers, nil
 	},
 	Backward: func(ctx action.BWContext) {
-		unit := ctx.FWResult.(provision.Unit)
-		cont, err := getContainer(unit.Name)
-		if err != nil {
-			log.Errorf("Error removing added in getContainer for %s: %s", unit.Name, err.Error())
-		}
-		err = removeContainer(cont)
-		if err != nil {
-			log.Errorf("Error removing added unit %s: %s", unit.Name, err.Error())
+		containers := ctx.FWResult.([]container)
+		for _, cont := range containers {
+			err := removeContainer(&cont)
+			if err != nil {
+				log.Errorf("Error removing added container %s: %s", cont.ID, err.Error())
+			}
 		}
 	},
-	MinParams: 2,
+	MinParams: 1,
 }
 
-var provisionRemoveOldUnit = action.Action{
-	Name: "provision-remove-old-unit",
+var addNewRoutes = action.Action{
+	Name: "add-new-routes",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		unit := ctx.Previous.(provision.Unit)
-		cont := ctx.Params[2].(container)
-		err := removeContainer(&cont)
+		newContainers := ctx.Previous.([]container)
+		r, err := getRouter()
 		if err != nil {
-			return unit, err
+			return nil, err
 		}
-		return unit, nil
+		addedContainers := make([]container, 0, len(newContainers))
+		for _, cont := range newContainers {
+			err = r.AddRoute(cont.AppName, cont.getAddress())
+			if err != nil {
+				for _, toRemoveCont := range addedContainers {
+					r.RemoveRoute(toRemoveCont.AppName, toRemoveCont.getAddress())
+				}
+				return nil, err
+			}
+			addedContainers = append(addedContainers, cont)
+		}
+		return newContainers, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		newContainers := ctx.FWResult.([]container)
+		r, err := getRouter()
+		if err != nil {
+			log.Errorf("[add-new-routes:Backward] Error geting router: %s", err.Error())
+		}
+		for _, cont := range newContainers {
+			err = r.RemoveRoute(cont.AppName, cont.getAddress())
+			if err != nil {
+				log.Errorf("[add-new-routes:Backward] Error removing route for %s: %s", cont.ID, err.Error())
+			}
+		}
+	},
+}
+
+var removeOldRoutes = action.Action{
+	Name: "remove-old-routes",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		r, err := getRouter()
+		if err != nil {
+			return nil, err
+		}
+		removedConts := make([]container, 0, len(args.toRemove))
+		for _, cont := range args.toRemove {
+			err = r.RemoveRoute(cont.AppName, cont.getAddress())
+			if err != router.ErrRouteNotFound && err != nil {
+				for _, toAddCont := range removedConts {
+					r.AddRoute(toAddCont.AppName, toAddCont.getAddress())
+				}
+				return nil, err
+			}
+			removedConts = append(removedConts, cont)
+		}
+		return ctx.Previous, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		r, err := getRouter()
+		if err != nil {
+			log.Errorf("[add-new-routes:Backward] Error geting router: %s", err.Error())
+		}
+		for _, cont := range args.toRemove {
+			err = r.AddRoute(cont.AppName, cont.getAddress())
+			if err != nil {
+				log.Errorf("[remove-old-routes:Backward] Error adding back route for %s: %s", cont.ID, err.Error())
+			}
+		}
+	},
+	MinParams: 1,
+}
+
+var provisionRemoveOldUnits = action.Action{
+	Name: "provision-remove-old-units",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		for _, cont := range args.toRemove {
+			err := removeContainer(&cont)
+			if err != nil {
+				log.Errorf("Ignored error trying to remove old container %q: %s", cont.ID, err.Error())
+			}
+		}
+		return ctx.Previous, nil
 	},
 	Backward: func(ctx action.BWContext) {
 	},
-	MinParams: 3,
+	MinParams: 1,
 }
 
 var followLogsAndCommit = action.Action{

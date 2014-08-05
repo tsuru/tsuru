@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
+	rtesting "github.com/tsuru/tsuru/router/testing"
 	"github.com/tsuru/tsuru/service"
 	tTesting "github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
@@ -89,6 +90,7 @@ func (s *S) SetUpTest(c *gocheck.C) {
 	defer coll.Close()
 	coll.RemoveAll(nil)
 	clearRedisKeys("redis-scheduler-storage-test*", c)
+	rtesting.FakeRouter.Reset()
 }
 
 func clearRedisKeys(keysPattern string, c *gocheck.C) {
