@@ -44,9 +44,8 @@ for building applications or if you are deploying an application that already
 runs on Heroku.
 
 tsuru uses `Buildstep Docker <https://github.com/progrium/buildstep>`_ image to
-deploy applications using buildpacks. For more information, take a
-look at the buildpacks documentation page:
-http://docs.tsuru.io/en/latest/using/buildpacks.html.
+deploy applications using buildpacks. For more information, take a look at the
+:doc:`buildpacks documentation page </using/buildpacks>`.
 
 Other features
 --------------
