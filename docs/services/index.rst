@@ -11,4 +11,3 @@ Services
     usage
     api
     build
-    mysql-example
