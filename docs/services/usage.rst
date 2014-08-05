@@ -38,9 +38,10 @@ This will create a manifest.yaml in your current path with this content:
 ::
 
     id: servicename
+    password: abc123
     endpoint:
       production: production-endpoint.com
-        test: test-endpoint.com:8080
+      test: test-endpoint.com:8080
 
 The manifest.yaml is used by crane to define an id and an endpoint to your service.
 
