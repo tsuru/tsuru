@@ -11,15 +11,22 @@ Welcome to tsuru-admin 0.5.0!
 These release notes cover the `new features`_ when upgrading
 from tsuru-admin 0.4.x or older versions.
 
-.. _`new features`: `What's new in tsr 0.5.0`_
+.. _`new features`: `What's new in tsuru-admin 0.5.0`_
 
-What's new in tsr 0.5.0
-=======================
+What's new in tsuru-admin 0.5.0
+===============================
 
-New commands:
+New commands
+------------
 
-* ssh (`#853 <https://github.com/tsuru/tsuru/issues/853>`_): using this
-  command, tsuru administrators are able to connect directly to the cointainer
-  via SSH. tsuru will generate an RSA keypair per container, and the server
-  will use this keypair to communicate to the container via SSH. For more
-  details, check the :ref:`reference for this command <tsuru_admin_ssh_cmd>`.
+* :ref:`tsuru_admin_ssh_cmd` (issue `#853
+  <https://github.com/tsuru/tsuru/issues/853>`_)
+* :ref:`tsuru_admin_machines_list_cmd`
+* :ref:`tsuru_admin_machine_destroy_cmd`
+
+Updated commands
+----------------
+
+* :ref:`tsuru_admin_docker_node_add_cmd`
+* :ref:`tsuru_admin_docker_node_remove_cmd`
+* :ref:`tsuru_admin_docker_node_list_cmd`

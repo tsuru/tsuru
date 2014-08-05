@@ -137,7 +137,7 @@ platform on next deploy.
 
 The --dockerfile flag is an URL to a dockerfile which will update your platform.
 
-.. _docker_node_add_cmd:
+.. _tsuru_admin_docker_node_add_cmd:
 
 docker-node-add
 ---------------
@@ -196,7 +196,7 @@ proxy. The user may specify part of the ID of the container. For example:
     Welcome to Ubuntu 14.04 LTS (GNU/Linux 3.13.0-24-generic x86_64)
     ubuntu@ip-10-253-6-84:~$
 
-.. _docker_node_list_cmd:
+.. _tsuru_admin_docker_node_list_cmd:
 
 docker-node-list
 ----------------
@@ -211,6 +211,8 @@ This command list all nodes present in the cluster. It will also show you metada
 associated to each node and the IaaS ID if the node was added using tsuru builtin
 IaaS providers.
 
+.. _tsuru_admin_docker_node_remove_cmd:
+
 docker-node-remove
 ------------------
 
@@ -223,6 +225,8 @@ docker-node-remove
 This command removes a node from the cluster. Optionally it also destroys the
 created IaaS machine if the ``--destroy`` flag is passed.
 
+.. _tsuru_admin_machines_list_cmd:
+
 machines-list
 -------------
 
@@ -234,6 +238,8 @@ machines-list
 
 This command will list all machines created using ``docker-node-add`` and a IaaS
 provider.
+
+.. _tsuru_admin_machine_destroy_cmd:
 
 machine-destroy
 ---------------

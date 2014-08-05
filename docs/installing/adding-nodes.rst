@@ -26,7 +26,7 @@ Managed nodes
 First step is configuring your IaaS provider in your tsuru.conf file. Please see
 the details in :ref:`IaaS configuration <iaas_configuration>`
 
-Assuming you're using EC2, this will be something like: 
+Assuming you're using EC2, this will be something like:
 
 .. highlight:: yaml
 
@@ -40,18 +40,18 @@ Assuming you're using EC2, this will be something like:
       key-id: xxxxxxxxxxx
       secret-key: yyyyyyyyyyyyy
 
-After you have everything configured, adding a new docker done is done by calling
-:ref:`docker-node-add<docker_node_add_cmd>` in 
-:doc:`tsuru-admin</reference/tsuru-admin>` command. This command will receive a
-map of key=value params which are IaaS dependant. A list of possible key params
-can be seen calling:
+After you have everything configured, adding a new docker done is done by
+calling :ref:`docker-node-add <tsuru_admin_docker_node_add_cmd>` in
+:doc:`tsuru-admin </reference/tsuru-admin>` command. This command will receive
+a map of key=value params which are IaaS dependant. A list of possible key
+params can be seen calling:
 
 .. highlight:: bash
 
 ::
 
     $ tsuru-admin docker-node-add iaas=ec2
-    
+
     EC2 IaaS required params:
       image=<image id>         Image AMI ID
       type=<instance type>     Your template uuid
@@ -63,8 +63,8 @@ can be seen calling:
 
 
 Every key=value pair will be added as a metatada to the Node and you can send
-After registering your node, you can list it calling :ref:`docker-node-
-list<docker_node_list_cmd>`
+After registering your node, you can list it calling
+:ref:`tsuru_admin_docker_node_list_cmd`
 
 .. highlight:: bash
 
@@ -87,12 +87,12 @@ list<docker_node_list_cmd>`
 Manually created nodes
 ======================
 
-To add a previously provisioned nodes you call the :ref:`docker-node-
-add<docker_node_add_cmd>` with the ``--register`` flag and setting the address key
-with the url of the Docker API in the remote node.
+To add a previously provisioned nodes you call the
+:ref:`tsuru_admin_docker_node_add_cmd` with the ``--register`` flag and setting
+the address key with the URL of the Docker API in the remote node.
 
-The docker API must be responding in the referenced address. To instructions about
-how to install docker on your node, please refer to `Docker documentation
+The docker API must be responding in the referenced address. To instructions
+about how to install docker on your node, please refer to `Docker documentation
 <https://docs.docker.com/>`_
 
 
