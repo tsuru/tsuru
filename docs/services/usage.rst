@@ -79,7 +79,7 @@ To update a service manifest:
 
 ::
 
-    $ crane create path/to/your/manifest.yaml
+    $ crane update path/to/your/manifest.yaml
 
 To remove a service:
 
