@@ -120,6 +120,8 @@ will allow your users to create apps based on that platform.
 
 The --dockerfile flag is an URL to a dockerfile which will create your platform.
 
+.. _tsuru_admin_platform_update_cmd:
+
 platform-update
 ---------------
 

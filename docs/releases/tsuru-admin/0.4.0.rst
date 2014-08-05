@@ -14,4 +14,5 @@ What's new in tsuru-admin 0.4.0
 
 New commands:
 
-* platform-update(`#780 <https://github.com/tsuru/tsuru/issues/780>`_): http://docs.tsuru.io/en/latest/apps/tsuru-admin/usage.html#platform-update
+* :ref:`tsuru_admin_platform_update_cmd` (issue `#780
+  <https://github.com/tsuru/tsuru/issues/780>`_)
