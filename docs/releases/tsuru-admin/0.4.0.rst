@@ -7,10 +7,10 @@ Welcome to tsuru-admin 0.4.0!
 These release notes cover the `new features`_ when upgrading
 from tsuru-admin 0.3.x or older versions.
 
-.. _`new features`: `What's new in tsr 0.4.0`_
+.. _`new features`: `What's new in tsuru-admin 0.4.0`_
 
-What's new in tsr 0.4.0
-=======================
+What's new in tsuru-admin 0.4.0
+===============================
 
 New commands:
 
