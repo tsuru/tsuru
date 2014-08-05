@@ -64,7 +64,7 @@ Whenever a new version of any of tsuru's clients is out, you can just run:
     $ brew upgrade <formula> # tsuru/tsuru-admin/crane
 
 For more details on taps, check `homebrew documentation
-<https://github.com/mxcl/homebrew/wiki>`_.
+<https://github.com/Homebrew/homebrew/wiki/brew-tap>`_.
 
 **NOTE:** tsuru requires Go 1.2 or higher. Make sure you have the last version
 of Go installed in your system.
