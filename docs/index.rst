@@ -11,7 +11,7 @@ Welcome
 tsuru is an open source PaaS that makes it easy and fast to deploy and manage applications
 on your own servers. 
 
-To get started, first read :ref:`understangind tsuru <understanding>`.
+To get started, first read :ref:`understanding tsuru <understanding>`.
 
 .. toctree::
     :maxdepth: 2
