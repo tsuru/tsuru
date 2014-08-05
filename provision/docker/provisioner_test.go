@@ -291,6 +291,34 @@ func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
 	c.Assert(count, gocheck.Equals, 4)
 }
 
+func (s *S) TestProvisionerAddUnitsWithErrorDoesntLeaveLostUnits(c *gocheck.C) {
+	callCount := 0
+	s.server.CustomHandler("/containers/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount++
+		if callCount == 2 {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		s.server.DefaultHandler().ServeHTTP(w, r)
+	}))
+	defer s.server.CustomHandler("/containers/create", s.server.DefaultHandler())
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	var p dockerProvisioner
+	app := testing.NewFakeApp("myapp", "python", 0)
+	p.Provision(app)
+	defer p.Destroy(app)
+	coll := collection()
+	defer coll.Close()
+	coll.Insert(container{ID: "c-89320", AppName: app.GetName(), Version: "a345fe", Image: "tsuru/python"})
+	defer coll.RemoveId(bson.M{"id": "c-89320"})
+	_, err = p.AddUnits(app, 3)
+	c.Assert(err, gocheck.NotNil)
+	count, err := coll.Find(bson.M{"appname": app.GetName()}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 1)
+}
+
 func (s *S) TestProvisionerAddZeroUnits(c *gocheck.C) {
 	var p dockerProvisioner
 	units, err := p.AddUnits(nil, 0)

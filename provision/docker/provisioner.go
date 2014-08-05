@@ -273,24 +273,50 @@ func addUnitsWithHost(a provision.App, units uint, destinationHost ...string) ([
 		return nil, errors.New("New units can only be added after the first deployment")
 	}
 	writer := app.LogWriter{App: a, Writer: ioutil.Discard}
-	result := make([]provision.Unit, int(units))
-	container, err := getOneContainerByAppName(a.GetName())
+	c, err := getOneContainerByAppName(a.GetName())
 	if err != nil {
 		return nil, err
 	}
-	imageId := container.Image
+	imageId := c.Image
+	wg := sync.WaitGroup{}
+	createdContainers := make(chan *container, int(units))
+	errors := make(chan error, int(units))
 	for i := uint(0); i < units; i++ {
-		container, err := start(a, imageId, &writer, destinationHost...)
-		if err != nil {
-			return nil, err
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			c, err := start(a, imageId, &writer, destinationHost...)
+			if err != nil {
+				errors <- err
+				return
+			}
+			createdContainers <- c
+		}()
+	}
+	wg.Wait()
+	close(errors)
+	close(createdContainers)
+	if err := <-errors; err != nil {
+		for c := range createdContainers {
+			log.Errorf("Removing container %q due failed add units: %s", c.ID, err.Error())
+			errRem := removeContainer(c)
+			if errRem != nil {
+				log.Errorf("Unable to destroy container %s: %s", c.ID, err.Error())
+			}
 		}
+		return nil, err
+	}
+	result := make([]provision.Unit, int(units))
+	i := 0
+	for c := range createdContainers {
 		result[i] = provision.Unit{
-			Name:    container.ID,
+			Name:    c.ID,
 			AppName: a.GetName(),
 			Type:    a.GetPlatform(),
-			Ip:      container.HostAddr,
+			Ip:      c.HostAddr,
 			Status:  provision.StatusBuilding,
 		}
+		i++
 	}
 	return result, nil
 }
