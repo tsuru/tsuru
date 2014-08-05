@@ -155,10 +155,14 @@ var provisionAddUnitToHost = action.Action{
 		return units[0], nil
 	},
 	Backward: func(ctx action.BWContext) {
-		c := ctx.Params[2].(container)
-		err := removeContainer(&c)
+		unit := ctx.FWResult.(provision.Unit)
+		cont, err := getContainer(unit.Name)
 		if err != nil {
-			log.Errorf("Error removing added unit %s - %s", c.ID, err)
+			log.Errorf("Error removing added in getContainer for %s: %s", unit.Name, err.Error())
+		}
+		err = removeContainer(cont)
+		if err != nil {
+			log.Errorf("Error removing added unit %s: %s", unit.Name, err.Error())
 		}
 	},
 	MinParams: 2,

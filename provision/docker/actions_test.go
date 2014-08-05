@@ -15,17 +15,6 @@ import (
 	"launchpad.net/gocheck"
 )
 
-func getContainer(id string) (*container, error) {
-	var c container
-	coll := collection()
-	defer coll.Close()
-	err := coll.Find(bson.M{"id": id}).One(&c)
-	if err != nil {
-		return nil, err
-	}
-	return &c, nil
-}
-
 func (s *S) TestInsertEmptyContainerInDBName(c *gocheck.C) {
 	c.Assert(insertEmptyContainerInDB.Name, gocheck.Equals, "insert-empty-container")
 }
@@ -263,7 +252,7 @@ func (s *S) TestProvisionAddUnitToHostBackward(c *gocheck.C) {
 		Ip:      container.HostAddr,
 		Status:  provision.StatusBuilding,
 	}
-	context := action.BWContext{Params: []interface{}{app, "server", *container}, FWResult: unit}
+	context := action.BWContext{Params: []interface{}{app, "server"}, FWResult: unit}
 	provisionAddUnitToHost.Backward(context)
 	_, err = getContainer(container.ID)
 	c.Assert(err, gocheck.NotNil)
