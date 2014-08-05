@@ -44,4 +44,4 @@ tsuru supports the following hooks:
   unit.
 * ``restart:after``: this hook is like before, but runs after restarting an app.
 * ``build``: this hook lists commands that will be run during deploy, when the image is
-  being generated. (only for docker provisioner)
+  being generated.
