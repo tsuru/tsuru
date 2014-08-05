@@ -44,6 +44,8 @@ Commands
 All the "container*"" commands below only exist when using the docker
 provisioner.
 
+.. _tsuru_admin_containers_move_cmd:
+
 containers-move
 ---------------
 
@@ -63,6 +65,8 @@ This command will go through the following steps:
 * For each unit, create a new unit at the destination host;
 * Erase each unit from the origin host.
 
+.. _tsuru_admin_container_move_cmd:
+
 container-move
 --------------
 
@@ -76,6 +80,7 @@ This command allow you to specify a container id and a destination host, this
 will create a new container on the destination host and remove the container
 from its previous host.
 
+.. _tsuru_admin_containers_rebalance_cmd:
 
 containers-rebalance
 --------------------
@@ -98,7 +103,7 @@ would be created.
 All the "platform*"" commands below only exist when using the docker
 provisioner.
 
-.. _platform_add_cmd:
+.. _tsuru_admin_platform_add_cmd:
 
 platform-add
 ------------

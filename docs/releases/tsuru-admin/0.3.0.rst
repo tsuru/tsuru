@@ -14,11 +14,11 @@ What's new in tsuru-admin 0.3.0
 
 New commands:
 
-* containers-move (`#756 <https://github.com/tsuru/tsuru/issues/756>`_):
-  http://docs.tsuru.io/en/latest/apps/tsuru-admin/usage.html#containers-move
-* container-move (`#754 <https://github.com/tsuru/tsuru/issues/754>`_):
-  http://docs.tsuru.io/en/latest/apps/tsuru-admin/usage.html#container-move
-* containers-rebalance (`#646 <https://github.com/tsuru/tsuru/issues/646>`_):
-  http://docs.tsuru.io/en/latest/apps/tsuru-admin/usage.html#containers-rebalance
-* platform-add (`#283 <https://github.com/tsuru/tsuru/issues/283>`_):
-  http://docs.tsuru.io/en/latest/apps/tsuru-admin/usage.html#platform-add
+* :ref:`tsuru_admin_containers_move_cmd` (issue `#756
+  <https://github.com/tsuru/tsuru/issues/756>`_)
+* :ref:`tsuru_admin_container_move_cmd` (issue `#754
+  <https://github.com/tsuru/tsuru/issues/754>`_)
+* :ref:`tsuru_admin_containers_rebalance_cmd` (issue `#646
+  <https://github.com/tsuru/tsuru/issues/646>`_)
+* :ref:`tsuru_admin_platform_add_cmd` (issue `#283
+  <https://github.com/tsuru/tsuru/issues/283>`_)
