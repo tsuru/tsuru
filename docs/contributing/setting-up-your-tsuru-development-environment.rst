@@ -127,8 +127,8 @@ Also, you will definitely want to add $GOPATH/bin to your $PATH.
 For more details on GOPATH, please check this url:
 http://golang.org/cmd/go/#GOPATH_environment_variable
 
-Starting Redis, Beanstalkd and MongoDB
-======================================
+Starting Redis and MongoDB
+==========================
 
 Before building the code and running the tests, execute the following commands
 to start Redis and MongoDB:
