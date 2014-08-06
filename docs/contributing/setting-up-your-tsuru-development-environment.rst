@@ -46,25 +46,13 @@ installer:
 
     $ brew install mongodb
 
-Installing Beanstalkd
-=====================
-
-tsuru uses `Beanstalkd <http://kr.github.com/beanstalkd/>`_ as a work queue.
-Install the latest version, by doing this:
-
-.. highlight:: bash
-
-::
-
-    $ sudo apt-get install -y beanstalkd
-
-    $ brew install beanstalkd
-
 Installing Redis
 ================
 
 One of tsuru routing providers uses `Redis <http://redis.io>`_ to store
-information about frontends and backends. You will also need to install it:
+information about frontends and backend. You will also need to install it:
+
+tsuru also uses Redis as a work queue for processing tasks asynchronously.
 
 .. highlight:: bash
 
@@ -142,8 +130,8 @@ http://golang.org/cmd/go/#GOPATH_environment_variable
 Starting Redis, Beanstalkd and MongoDB
 ======================================
 
-Before building the code and running the tests, execute the following commands 
-to start Redis, Beanstalkd and MongoDB processes.
+Before building the code and running the tests, execute the following commands
+to start Redis and MongoDB:
 
 .. highlight:: bash
 
@@ -151,7 +139,6 @@ to start Redis, Beanstalkd and MongoDB processes.
 
     $ redis-server
     $ mongod
-    $ beanstalkd -l 127.0.0.1
 
 Installing tsuru dependencies and running tests
 ===============================================

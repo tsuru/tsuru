@@ -207,7 +207,7 @@ auth:oauth
 
 Every config entry inside ``auth:oauth`` are used when the ``auth:scheme`` is set
 to "oauth". Please check `rfc6749 <http://tools.ietf.org/html/rfc6749>`_ for more
-details. 
+details.
 
 auth:oauth:client-id
 ++++++++++++++++++++
@@ -233,7 +233,7 @@ parameters.
 
 During the authorization step, tsuru CLI will start a server locally and set the
 callback to http://localhost:<port>, if ``auth:oauth:callback-port`` is set tsuru
-CLI will use its value as <port>. If ``auth:oauth:callback-port`` isn't present 
+CLI will use its value as <port>. If ``auth:oauth:callback-port`` isn't present
 tsuru CLI will automatically choose an open port.
 
 The callback URL should be registered on your OAuth server.
@@ -277,29 +277,15 @@ queue configuration
 
 tsuru uses a work queue for asynchronous tasks.
 
-tsuru supports both ``redis`` and ``beanstalkd`` as queue backends. However,
-using ``beanstalkd`` is *deprecated* as of 0.5.0. The log live streaming feature
-"tsuru log -f" will not work if using ``beanstalkd``.
-
-For compatibility and historical reasons the default queue is `beanstalkd
-<http://kr.github.com/beanstalkd>`_. You can customize the used queue, and
-settings related to the queue (like the address where the server is listening).
-
-Creating a new queue provider is as easy as implementing `an interface
+Currently, tsuru supports only ``redis`` as queue backend. Creating a new queue
+provider is as easy as implementing `an interface
 <http://godoc.org/github.com/tsuru/tsuru/queue#Q>`_.
 
 queue
 +++++
 
 ``queue`` is the name of the queue implementation that tsuru will use. This
-setting defaults to ``beanstalkd``, but we strongly encourage you to change it to
-``redis``.
-
-queue-server
-++++++++++++
-
-``queue-server`` is the TCP address where beanstalkd is listening. This setting
-is optional and defaults to "localhost:11300".
+setting defaults to ``redis``.
 
 redis-queue:host
 ++++++++++++++++
