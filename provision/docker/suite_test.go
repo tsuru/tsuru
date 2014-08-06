@@ -162,6 +162,17 @@ func (s *S) addServiceInstance(c *gocheck.C, appName string, fn http.HandlerFunc
 	return ret
 }
 
+func getContainer(id string) (*container, error) {
+	var c container
+	coll := collection()
+	defer coll.Close()
+	err := coll.Find(bson.M{"id": id}).One(&c)
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
 type unitSlice []provision.Unit
 
 func (s unitSlice) Len() int {
