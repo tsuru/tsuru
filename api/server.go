@@ -118,6 +118,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Post", "/apps/{app}/log", logPostHandler)
 
 	m.Add("Get", "/deploys", AdminRequiredHandler(deploysList))
+	m.Add("Get", "/deploys/{deploy}", AdminRequiredHandler(deployInfo))
 
 	m.Add("Get", "/platforms", authorizationRequiredHandler(platformList))
 	m.Add("Post", "/platforms", AdminRequiredHandler(platformAdd))
