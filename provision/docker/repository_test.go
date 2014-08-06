@@ -108,7 +108,7 @@ func (s *S) TestGetContainerPartialIdAmbiguous(c *gocheck.C) {
 	cleanupFunc := s.getContainerCollection("some-app", containerIds...)
 	defer cleanupFunc()
 	_, err := getContainer("container")
-	c.Assert(err, gocheck.Equals, ambiguousContainerError)
+	c.Assert(err, gocheck.Equals, errAmbiguousContainer)
 }
 
 func (s *S) TestGetContainerPartialIdNotFound(c *gocheck.C) {

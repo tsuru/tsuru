@@ -13,7 +13,7 @@ import (
 	"sort"
 )
 
-var ambiguousContainerError error = errors.New("ambiguous container name")
+var errAmbiguousContainer error = errors.New("ambiguous container name")
 
 func getContainer(id string) (*container, error) {
 	var containers []container
@@ -29,7 +29,7 @@ func getContainer(id string) (*container, error) {
 		return nil, mgo.ErrNotFound
 	}
 	if lenContainers > 1 {
-		return nil, ambiguousContainerError
+		return nil, errAmbiguousContainer
 	}
 	return &containers[0], nil
 }
