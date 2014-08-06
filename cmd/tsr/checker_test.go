@@ -138,3 +138,31 @@ func (s *CheckerSuite) TestCheckRouterHipacheShouldHaveHipachConf(c *gocheck.C) 
 	err := CheckRouter()
 	c.Assert(err, gocheck.NotNil)
 }
+
+func (s *CheckerSuite) TestCheckBeanstalkdRedisQueue(c *gocheck.C) {
+	err := CheckBeanstalkd()
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *CheckerSuite) TestCheckBeanstalkdNoQueueConfigured(c *gocheck.C) {
+	old, _ := config.Get("queue")
+	defer config.Set("queue", old)
+	config.Unset("queue")
+	err := CheckBeanstalkd()
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *CheckerSuite) TestCheckBeanstalkdDefinedInQueue(c *gocheck.C) {
+	old, _ := config.Get("queue")
+	defer config.Set("queue", old)
+	config.Set("queue", "beanstalkd")
+	err := CheckBeanstalkd()
+	c.Assert(err.Error(), gocheck.Equals, "beanstalkd is no longer supported, please use redis instead")
+}
+
+func (w *CheckerSuite) TestCheckBeanstalkdQueueServerDefined(c *gocheck.C) {
+	config.Set("queue-server", "127.0.0.1:11300")
+	defer config.Unset("queue-server")
+	err := CheckBeanstalkd()
+	c.Assert(err.Error(), gocheck.Equals, `beanstalkd is no longer supported, please remove the "queue-server" setting from your config file`)
+}

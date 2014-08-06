@@ -18,6 +18,16 @@ func CheckProvisioner() error {
 	return nil
 }
 
+func CheckBeanstalkd() error {
+	if value, _ := config.Get("queue"); value == "beanstalkd" {
+		return errors.New("beanstalkd is no longer supported, please use redis instead")
+	}
+	if _, err := config.Get("queue-server"); err == nil {
+		return errors.New(`beanstalkd is no longer supported, please remove the "queue-server" setting from your config file`)
+	}
+	return nil
+}
+
 // Check Docker configs
 func CheckDocker() error {
 	if _, err := config.Get("docker"); err != nil {
