@@ -7,12 +7,12 @@ tsuru-admin usage
 +++++++++++++++++
 
 tsuru-admin command supports administrative operations on a tsuru server.
-Please make sure you have it :doc:`installed </using/install-clients>` before
+Please make sure you have it :doc:`installed </using/install-client>` before
 continuing on this guide.
 
-In order to use ``tsuru-admin`` commands, a user should be an `admin user
-<config.html#admin-users>`_.  To be an admin user you should be in an `admin
-team <config.html#admin-team>`_.
+In order to use ``tsuru-admin`` commands, a user should be an :ref:`admin user
+<config_admin_user>`.  To be an admin user you should be member of an
+:ref:`admin team <config_admin_team>`.
 
 Setting a target
 ================

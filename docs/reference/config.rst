@@ -312,12 +312,16 @@ redis-queue:db
 ``redis-queue:db`` is the database number of the Redis server to be used
 for the working queue. This settings is optional and defaults to 3.
 
+.. _config_admin_user:
+
 Admin users
 -----------
 
 tsuru has a very simple way to identify admin users: an admin user is a user
 that is the member of the admin team, and the admin team is defined in the
 configuration file, using the ``admin-team`` setting.
+
+.. _config_admin_team:
 
 admin-team
 ++++++++++
