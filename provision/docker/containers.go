@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2/bson"
+	"io"
 	"math"
 	"sync"
 )
@@ -85,7 +86,7 @@ func handleMoveErrors(moveErrors chan error, encoder *json.Encoder) error {
 	return nil
 }
 
-func runReplaceUnitsPipeline(a provision.App, toRemoveContainers []container, toHosts ...string) ([]container, error) {
+func runReplaceUnitsPipeline(w io.Writer, a provision.App, toRemoveContainers []container, toHosts ...string) ([]container, error) {
 	var toHost string
 	if len(toHosts) > 0 {
 		toHost = toHosts[0]
@@ -95,6 +96,7 @@ func runReplaceUnitsPipeline(a provision.App, toRemoveContainers []container, to
 		toRemove:   toRemoveContainers,
 		unitsToAdd: len(toRemoveContainers),
 		toHost:     toHost,
+		writer:     w,
 	}
 	pipeline := action.NewPipeline(
 		&provisionAddUnitsToHost,
@@ -109,10 +111,11 @@ func runReplaceUnitsPipeline(a provision.App, toRemoveContainers []container, to
 	return pipeline.Result().([]container), nil
 }
 
-func runCreateUnitsPipeline(a provision.App, toAddCount int) ([]container, error) {
+func runCreateUnitsPipeline(w io.Writer, a provision.App, toAddCount int) ([]container, error) {
 	args := changeUnitsPipelineArgs{
 		app:        a,
 		unitsToAdd: toAddCount,
+		writer:     w,
 	}
 	pipeline := action.NewPipeline(
 		&provisionAddUnitsToHost,
@@ -142,7 +145,7 @@ func moveOneContainer(c container, toHost string, errors chan error, wg *sync.Wa
 		return
 	}
 	logProgress(encoder, "Moving unit %s for %q: %s -> %s...", c.ID, c.AppName, c.HostAddr, toHost)
-	addedContainers, err := runReplaceUnitsPipeline(a, []container{c}, toHost)
+	addedContainers, err := runReplaceUnitsPipeline(nil, a, []container{c}, toHost)
 	if err != nil {
 		errors <- &tsuruErrors.CompositeError{
 			Base:    err,

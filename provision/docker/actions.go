@@ -145,7 +145,7 @@ var provisionAddUnitsToHost = action.Action{
 		if args.toHost != "" {
 			destinationHosts = []string{args.toHost}
 		}
-		containers, err := addContainersWithHost(args.app, args.unitsToAdd, destinationHosts...)
+		containers, err := addContainersWithHost(args.writer, args.app, args.unitsToAdd, destinationHosts...)
 		if err != nil {
 			return nil, err
 		}

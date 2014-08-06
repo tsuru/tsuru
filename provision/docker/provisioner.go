@@ -154,13 +154,10 @@ func (p *dockerProvisioner) ArchiveDeploy(a provision.App, archiveURL string, w 
 func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer) error {
 	containers, err := listContainersByApp(a.GetName())
 	if len(containers) == 0 {
-		_, err = runCreateUnitsPipeline(a, 1)
+		_, err = runCreateUnitsPipeline(w, a, 1)
 	} else {
-		_, err = runReplaceUnitsPipeline(a, containers)
+		_, err = runReplaceUnitsPipeline(w, a, containers)
 	}
-	// TODO: Send writer to pipeline and log unit start progress, something like:
-	// fmt.Fprintf(w, "\n---- Starting %d unit%s ----\n", size, plural)
-	// fmt.Fprintf(w, " ---> Started unit %d/%d...\n", counter, size)
 	if err != nil {
 		fmt.Fprint(w, "\n ---> App failed to start, please check its logs for more details...\n\n")
 	} else {
@@ -218,15 +215,23 @@ func (*dockerProvisioner) Addr(app provision.App) (string, error) {
 	return addr, nil
 }
 
-func addContainersWithHost(a provision.App, units int, destinationHost ...string) ([]container, error) {
+func addContainersWithHost(w io.Writer, a provision.App, units int, destinationHost ...string) ([]container, error) {
 	if units == 0 {
 		return nil, errors.New("Cannot add 0 units")
 	}
-	writer := app.LogWriter{App: a, Writer: ioutil.Discard}
+	if w == nil {
+		w = ioutil.Discard
+	}
+	writer := app.LogWriter{App: a, Writer: w}
 	imageId := assembleImageName(a.GetName())
 	wg := sync.WaitGroup{}
 	createdContainers := make(chan *container, units)
 	errors := make(chan error, units)
+	var plural string
+	if units > 1 {
+		plural = "s"
+	}
+	fmt.Fprintf(&writer, "\n---- Starting %d unit%s ----\n", units, plural)
 	for i := 0; i < units; i++ {
 		wg.Add(1)
 		go func() {
@@ -257,6 +262,7 @@ func addContainersWithHost(a provision.App, units int, destinationHost ...string
 	for c := range createdContainers {
 		result[i] = *c
 		i++
+		fmt.Fprintf(&writer, " ---> Started unit %d/%d...\n", i, units)
 	}
 	return result, nil
 }
@@ -269,7 +275,7 @@ func (*dockerProvisioner) AddUnits(a provision.App, units uint) ([]provision.Uni
 	if length < 1 {
 		return nil, errors.New("New units can only be added after the first deployment")
 	}
-	conts, err := runCreateUnitsPipeline(a, int(units))
+	conts, err := runCreateUnitsPipeline(nil, a, int(units))
 	if err != nil {
 		return nil, err
 	}
