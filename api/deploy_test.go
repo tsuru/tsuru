@@ -10,22 +10,22 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/testing"
+	"gopkg.in/mgo.v2/bson"
 	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
 	"time"
-	"gopkg.in/mgo.v2/bson"
-    "github.com/tsuru/tsuru/testing"
 )
 
 type Deploy struct {
-    ID        bson.ObjectId  `bson:"_id,omitempty"`
-    App       string
-    Timestamp time.Time
-    Duration  time.Duration
-    Commit    string
-    Error     string
+	ID        bson.ObjectId `bson:"_id,omitempty"`
+	App       string
+	Timestamp time.Time
+	Duration  time.Duration
+	Commit    string
+	Error     string
 }
 
 type DeploySuite struct {
@@ -150,24 +150,24 @@ func (s *DeploySuite) TestDeployInfo(c *gocheck.C) {
 	err = s.conn.Deploys().Insert(previousDeploy)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Deploys().RemoveAll(nil)
-    expected := "test_diff"
-    h := testHandler{content: expected}
-    ts := testing.StartGandalfTestServer(&h)
-    defer ts.Close()
+	expected := "test_diff"
+	h := testHandler{content: expected}
+	ts := testing.StartGandalfTestServer(&h)
+	defer ts.Close()
 	err = deployInfo(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
 	err = json.Unmarshal(body, &result)
 	c.Assert(err, gocheck.IsNil)
-	expected_deploy := map[string]interface{} {
-		"Id": depId.Hex(),
-		"App": "g1",
+	expected_deploy := map[string]interface{}{
+		"Id":        depId.Hex(),
+		"App":       "g1",
 		"Timestamp": timestamp.Format(time.RFC3339),
-		"Duration": 10.0,
-		"Commit": "e82nn93nd93mm12o2ueh83dhbd3iu112",
-		"Error": "" ,
-		"Diff": expected,
+		"Duration":  10.0,
+		"Commit":    "e82nn93nd93mm12o2ueh83dhbd3iu112",
+		"Error":     "",
+		"Diff":      expected,
 	}
 	c.Assert(result, gocheck.DeepEquals, expected_deploy)
 }

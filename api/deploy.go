@@ -40,21 +40,21 @@ func deploysList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 func deployInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	depId := r.URL.Query().Get(":deploy")
 	deploy, err := app.GetDeploy(depId)
-	if err!= nil {
+	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	diff, err := app.GetDiffInDeploys(deploy)
 	if err != nil {
 		return err
 	}
-	data := map[string]interface{} {
-		"Id": deploy.ID.Hex(),
-		"App": deploy.App,
+	data := map[string]interface{}{
+		"Id":        deploy.ID.Hex(),
+		"App":       deploy.App,
 		"Timestamp": deploy.Timestamp.Format(time.RFC3339),
-		"Duration": deploy.Duration.Seconds(),
-		"Commit": deploy.Commit,
-		"Error": deploy.Error,
-		"Diff": diff,
+		"Duration":  deploy.Duration.Seconds(),
+		"Commit":    deploy.Commit,
+		"Error":     deploy.Error,
+		"Diff":      diff,
 	}
 	return json.NewEncoder(w).Encode(data)
 }
