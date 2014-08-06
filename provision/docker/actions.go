@@ -14,6 +14,8 @@ import (
 	"github.com/tsuru/tsuru/router"
 	"gopkg.in/mgo.v2/bson"
 	"io"
+	"io/ioutil"
+	"sync"
 )
 
 type runContainerActionsArgs struct {
@@ -239,12 +241,38 @@ var removeOldRoutes = action.Action{
 var provisionRemoveOldUnits = action.Action{
 	Name: "provision-remove-old-units",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
+		var wg sync.WaitGroup
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		removedContainers := make(chan *container, len(args.toRemove))
+		writer := args.writer
+		if writer == nil {
+			writer = ioutil.Discard
+		}
+		total := len(args.toRemove)
+		var plural string
+		if total > 1 {
+			plural = "s"
+		}
+		fmt.Fprintf(writer, "\n---- Removing %d old unit%s ----\n", total, plural)
 		for _, cont := range args.toRemove {
-			err := removeContainer(&cont)
-			if err != nil {
-				log.Errorf("Ignored error trying to remove old container %q: %s", cont.ID, err.Error())
-			}
+			wg.Add(1)
+			go func(cont container) {
+				defer wg.Done()
+				err := removeContainer(&cont)
+				if err != nil {
+					log.Errorf("Ignored error trying to remove old container %q: %s", cont.ID, err.Error())
+				}
+				removedContainers <- &cont
+			}(cont)
+		}
+		go func() {
+			wg.Wait()
+			close(removedContainers)
+		}()
+		counter := 0
+		for _ = range removedContainers {
+			counter++
+			fmt.Fprintf(writer, " ---> Removed old unit %d/%d\n", counter, total)
 		}
 		return ctx.Previous, nil
 	},
