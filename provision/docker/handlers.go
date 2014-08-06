@@ -320,7 +320,7 @@ func unmarshal(body io.ReadCloser) (map[string]string, error) {
 
 func sshToContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	containerID := r.URL.Query().Get(":container_id")
-	container, err := getContainerPartialId(containerID)
+	container, err := getContainer(containerID)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}

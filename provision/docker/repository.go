@@ -13,14 +13,14 @@ import (
 	"sort"
 )
 
-var ambiguousContainerError error = errors.New("Ambiguous container name.")
+var ambiguousContainerError error = errors.New("ambiguous container name")
 
-func getContainerPartialId(partialId string) (*container, error) {
+func getContainer(id string) (*container, error) {
 	var containers []container
 	coll := collection()
 	defer coll.Close()
-	partialId = fmt.Sprintf("%s.*", partialId)
-	err := coll.Find(bson.M{"id": bson.RegEx{Pattern: partialId}}).All(&containers)
+	id = fmt.Sprintf("^%s.*", id)
+	err := coll.Find(bson.M{"id": bson.RegEx{Pattern: id}}).All(&containers)
 	if err != nil {
 		return nil, err
 	}

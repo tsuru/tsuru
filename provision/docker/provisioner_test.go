@@ -479,7 +479,7 @@ func (s *S) TestProvisionerSetUnitStatus(c *gocheck.C) {
 	var p dockerProvisioner
 	err = p.SetUnitStatus(provision.Unit{Name: container.ID, AppName: container.AppName}, provision.StatusError)
 	c.Assert(err, gocheck.IsNil)
-	container, err = getContainerPartialId(container.ID)
+	container, err = getContainer(container.ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(container.Status, gocheck.Equals, provision.StatusError.String())
 }
@@ -495,7 +495,7 @@ func (s *S) TestProvisionerSetUnitStatusWrongApp(c *gocheck.C) {
 	err = p.SetUnitStatus(provision.Unit{Name: container.ID, AppName: container.AppName + "a"}, provision.StatusError)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "wrong app name")
-	container, err = getContainerPartialId(container.ID)
+	container, err = getContainer(container.ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(container.Status, gocheck.Equals, provision.StatusStarted.String())
 }

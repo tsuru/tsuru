@@ -164,7 +164,7 @@ func moveOneContainer(c container, toHost string, errors chan error, wg *sync.Wa
 }
 
 func moveContainer(contId string, toHost string, encoder *json.Encoder) error {
-	cont, err := getContainerPartialId(contId)
+	cont, err := getContainer(contId)
 	if err != nil {
 		return err
 	}

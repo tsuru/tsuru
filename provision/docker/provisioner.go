@@ -307,7 +307,7 @@ func (*dockerProvisioner) RemoveUnits(a provision.App, units uint) error {
 }
 
 func (*dockerProvisioner) RemoveUnit(unit provision.Unit) error {
-	container, err := getContainerPartialId(unit.Name)
+	container, err := getContainer(unit.Name)
 	if err != nil {
 		return err
 	}
@@ -327,7 +327,7 @@ func removeContainer(c *container) error {
 }
 
 func (p *dockerProvisioner) SetUnitStatus(unit provision.Unit, status provision.Status) error {
-	container, err := getContainerPartialId(unit.Name)
+	container, err := getContainer(unit.Name)
 	if err != nil {
 		return err
 	}
