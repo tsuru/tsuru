@@ -75,6 +75,10 @@ Breaking changes
   <https://gist.github.com/fsouza/5e65879c5547fe753f48>`_, that get's the first
   team of the service instance and use it as the owner team.
 
+* all code related to beanstalkd has been removed, it isn't possible to use it
+  anymore, users that were still using beanstalkd need to change the
+  configuration of the API server to use redis instead
+
 Other improvements
 ==================
 
