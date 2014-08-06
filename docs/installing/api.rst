@@ -92,7 +92,7 @@ configuration is described below, please note that you should replace the values
         redis-server: <your-redis-server-with-port>
 
 
-Now you only need to start your tsuru api server:
+Now you only need to start your tsuru API server:
 
 
 .. highlight:: bash

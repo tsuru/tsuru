@@ -12,8 +12,8 @@ then distributes it as units across your cluster.
 Clusters
 --------
 
-A cluster is a named group of nodes. tsuru `api` has a scheduler algorithm
-that distribute applications intelligently across a cluster nodes.
+A cluster is a named group of nodes. `tsuru API` has a scheduler algorithm that
+distribute applications intelligently across a cluster nodes.
 
 Nodes
 -----

@@ -529,7 +529,7 @@ Secret-key to authenticate on IaaS.
 iaas:url
 ++++++++
 
-Endpoint api to use the IaaS
+Endpoint API to use the IaaS
 
 iaas:node-protocol
 ++++++++++++++++++

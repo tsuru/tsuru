@@ -9,9 +9,8 @@ Architecture
 API
 ---
 
-API component is a RESTful API server written with `Go`.
-The API is responsible to the deploy workflow and lifecycle
-of `apps`.
+API component is a RESTful API server written with ``Go``. The API is
+responsible to the deploy workflow and lifecycle of applications.
 
 Command-line clients interact with this component.
 
@@ -20,18 +19,16 @@ Database
 
 The database component is a `MongoDB` server.
 
-
 Queue/Cache
 -----------
 
 The queue and cache component uses `Redis`.
 
-
 Gandalf
 -------
 
-`Gandalf` is a REST api to manage git repositories, users and provide access
-to them over SSH.
+`Gandalf` is a REST API to manage git repositories, users and provide access to
+them over SSH.
 
 Registry
 --------
