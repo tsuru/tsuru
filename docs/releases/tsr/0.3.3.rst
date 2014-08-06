@@ -16,7 +16,7 @@ What's new in tsr 0.3.3
 Queue
 -----
 
-    * Add an option to use Redis instead of beanstalk for work queue
+    * Add an option to use Redis instead of beanstalkd for work queue
 
 In order to use Redis, you need to change the configuration file:
 

@@ -129,4 +129,4 @@ sense because we use the node name to identify a node group.
 Features deprecated in 0.5.0
 ============================
 
-Beanstalkd queue backend will be removed in 0.6.0.
+beanstalkd queue backend will be removed in 0.6.0.
