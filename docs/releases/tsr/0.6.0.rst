@@ -42,6 +42,11 @@ What's new in tsr 0.6.0
 * Add the capability to specify the owner of a service instance. tsuru will use
   this information when communicating with the service API
 
+* During the deployment process, tsuru will now remove old units only after
+  adding the new ones (related to the issue `#511
+  <https://github.com/tsuru/tsuru/issues/511>`_). It makes the process more
+  stable and resilient.
+
 Bug fixes
 =========
 
