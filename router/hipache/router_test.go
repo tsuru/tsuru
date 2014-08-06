@@ -514,7 +514,7 @@ func (s *S) TestAddrRouteNotFound(c *gocheck.C) {
 	}
 	addr, err := hipacheRouter{}.Addr("tip")
 	c.Assert(addr, gocheck.Equals, "")
-	c.Assert(err, gocheck.Equals, errRouteNotFound)
+	c.Assert(err, gocheck.Equals, router.ErrRouteNotFound)
 }
 
 func (s *S) TestRouteError(c *gocheck.C) {
