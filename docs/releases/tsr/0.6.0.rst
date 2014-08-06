@@ -83,9 +83,8 @@ Other improvements
 ==================
 
 * improved documentation search and structure
-* improved reliability of docker nodes, automatically trying another node in case
-  of failures
-* experimental support for automatically healing docker nodes added through a IaaS
-  provider
+* improved reliability of docker nodes, automatically trying another node in
+  case of failures
+* experimental support for automatically healing docker nodes added through the
+  IaaS provider
 * cmd: properly handle multiline cells in tables
-* added command ``tsuru-admin ssh`` command
