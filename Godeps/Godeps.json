@@ -70,15 +70,15 @@
 		},
 		{
 			"ImportPath": "github.com/tsuru/docker-cluster/cluster",
-			"Rev": "a86214a83eeb9caebdecca6bde284fb70babc77a"
+			"Rev": "d92e499ad2065b5bc4bf1ca427bc589aae645d5d"
 		},
 		{
 			"ImportPath": "github.com/tsuru/docker-cluster/log",
-			"Rev": "a86214a83eeb9caebdecca6bde284fb70babc77a"
+			"Rev": "d92e499ad2065b5bc4bf1ca427bc589aae645d5d"
 		},
 		{
 			"ImportPath": "github.com/tsuru/docker-cluster/storage",
-			"Rev": "a86214a83eeb9caebdecca6bde284fb70babc77a"
+			"Rev": "d92e499ad2065b5bc4bf1ca427bc589aae645d5d"
 		},
 		{
 			"ImportPath": "github.com/tsuru/gandalf/testing",
@@ -98,23 +98,18 @@
 			"Rev": "4914593b9558e85597f08346c798aea8f6fb899f"
 		},
 		{
-			"ImportPath": "labix.org/v2/mgo",
-			"Comment": "275",
-			"Rev": "gustavo@niemeyer.net-20130906162000-1oo19qtbrtr6xk98"
-		},
-		{
 			"ImportPath": "launchpad.net/gnuflag",
 			"Comment": "12",
 			"Rev": "roger.peppe@canonical.com-20121003093437-zcyyw0lpvj2nifpk"
 		},
 		{
 			"ImportPath": "launchpad.net/goamz/aws",
-			"Comment": "53",
+			"Comment": "50",
 			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
 		},
 		{
 			"ImportPath": "launchpad.net/goamz/ec2",
-			"Comment": "53",
+			"Comment": "50",
 			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
 		},
 		{
