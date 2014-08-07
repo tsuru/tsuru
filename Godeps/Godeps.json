@@ -1,24 +1,24 @@
 {
 	"ImportPath": "github.com/tsuru/tsuru",
-	"GoVersion": "devel +bfe2cc97b9e1 Fri Aug 01 06:21:08 2014 -0700",
+	"GoVersion": "go1.3",
 	"Packages": [
 		"./..."
 	],
 	"Deps": [
 		{
 			"ImportPath": "code.google.com/p/go.crypto/bcrypt",
-			"Comment": "null-213",
-			"Rev": "aa2644fe4aa50e3b38d75187b4799b1f0c9ddcef"
+			"Comment": "null-209",
+			"Rev": "23b39e4e860172e1983ded00a9d2f7e42b7683d0"
 		},
 		{
 			"ImportPath": "code.google.com/p/go.crypto/blowfish",
-			"Comment": "null-213",
-			"Rev": "aa2644fe4aa50e3b38d75187b4799b1f0c9ddcef"
+			"Comment": "null-209",
+			"Rev": "23b39e4e860172e1983ded00a9d2f7e42b7683d0"
 		},
 		{
 			"ImportPath": "code.google.com/p/go.crypto/ssh",
-			"Comment": "null-213",
-			"Rev": "aa2644fe4aa50e3b38d75187b4799b1f0c9ddcef"
+			"Comment": "null-209",
+			"Rev": "23b39e4e860172e1983ded00a9d2f7e42b7683d0"
 		},
 		{
 			"ImportPath": "code.google.com/p/goauth2/oauth",
@@ -66,7 +66,7 @@
 		},
 		{
 			"ImportPath": "github.com/tsuru/config",
-			"Rev": "f4d6d39615a37c66a013448cda92c2d3f889bdec"
+			"Rev": "97d4a7511ea73e02a62a1a381d17110b5372cc40"
 		},
 		{
 			"ImportPath": "github.com/tsuru/docker-cluster/cluster",
@@ -82,12 +82,12 @@
 		},
 		{
 			"ImportPath": "github.com/tsuru/gandalf/testing",
-			"Comment": "0.4.1-28-g4a0e57b",
-			"Rev": "4a0e57baca6f123b989fe389dcee30c352f30c70"
+			"Comment": "0.4.1-97-gca97e83",
+			"Rev": "ca97e8380d8c4cc8390ec73d33e7a4b28e18cf53"
 		},
 		{
 			"ImportPath": "github.com/tsuru/go-gandalfclient",
-			"Rev": "874ca26886fc17186993bb02d66655145e0e1c0b"
+			"Rev": "6805596abf1c1bd4ab6dc871384d4ed8148a638e"
 		},
 		{
 			"ImportPath": "gopkg.in/mgo.v2",
@@ -98,18 +98,23 @@
 			"Rev": "4914593b9558e85597f08346c798aea8f6fb899f"
 		},
 		{
+			"ImportPath": "labix.org/v2/mgo",
+			"Comment": "275",
+			"Rev": "gustavo@niemeyer.net-20130906162000-1oo19qtbrtr6xk98"
+		},
+		{
 			"ImportPath": "launchpad.net/gnuflag",
 			"Comment": "12",
 			"Rev": "roger.peppe@canonical.com-20121003093437-zcyyw0lpvj2nifpk"
 		},
 		{
 			"ImportPath": "launchpad.net/goamz/aws",
-			"Comment": "50",
+			"Comment": "53",
 			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
 		},
 		{
 			"ImportPath": "launchpad.net/goamz/ec2",
-			"Comment": "50",
+			"Comment": "53",
 			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
 		},
 		{
