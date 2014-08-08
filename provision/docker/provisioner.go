@@ -437,6 +437,10 @@ func (p *dockerProvisioner) PlatformUpdate(name string, args map[string]string, 
 	return p.PlatformAdd(name, args, w)
 }
 
+func (p *dockerProvisioner) PlatformRemove(name string) error {
+	return dockerCluster().RemoveImageWait(assembleImageName(name))
+}
+
 func (p *dockerProvisioner) Units(app provision.App) []provision.Unit {
 	containers, err := listContainersByApp(app.GetName())
 	if err != nil {

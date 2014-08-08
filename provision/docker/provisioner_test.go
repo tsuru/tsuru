@@ -23,8 +23,11 @@ import (
 	"io/ioutil"
 	"launchpad.net/gocheck"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -766,6 +769,36 @@ func (s *S) TestProvisionerPlatformAddShouldValidateArgs(c *gocheck.C) {
 	err := p.PlatformAdd("test", args, bytes.NewBuffer(nil))
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "dockerfile parameter should be an url.")
+}
+
+func (s *S) TestProvisionerPlatformRemove(c *gocheck.C) {
+	registryServer := httptest.NewServer(nil)
+	u, _ := url.Parse(registryServer.URL)
+	config.Set("docker:registry", u.Host)
+	defer config.Unset("docker:registry")
+	var requests []*http.Request
+	server, err := dtesting.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+		requests = append(requests, r)
+	})
+	c.Assert(err, gocheck.IsNil)
+	defer server.Stop()
+	var storage cluster.MapStorage
+	imageName := assembleImageName("test")
+	storage.StoreImage(imageName, server.URL())
+	cmutex.Lock()
+	oldDockerCluster := dCluster
+	dCluster, _ = cluster.New(nil, &storage,
+		cluster.Node{Address: server.URL()})
+	cmutex.Unlock()
+	defer func() {
+		cmutex.Lock()
+		dCluster = oldDockerCluster
+		cmutex.Unlock()
+	}()
+	p := dockerProvisioner{}
+	err = p.PlatformRemove("test")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(strings.Contains(requests[0].URL.RequestURI(), "tsuru/test"), gocheck.Equals, true)
 }
 
 func (s *S) TestProvisionerUnits(c *gocheck.C) {
