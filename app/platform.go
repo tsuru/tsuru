@@ -108,6 +108,28 @@ func PlatformUpdate(name string, args map[string]string, w io.Writer) error {
 	return nil
 }
 
+func PlatformRemove(name string) error {
+	var (
+		provisioner provision.ExtensibleProvisioner
+		ok          bool
+	)
+	if provisioner, ok = Provisioner.(provision.ExtensibleProvisioner); !ok {
+		return errors.New("Provisioner is not extensible")
+	}
+	if name == "" {
+		return errors.New("Platform name is required!")
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	apps, _ := conn.Apps().Find(bson.M{"framework": name}).Count()
+	if apps > 0 {
+		return errors.New("Platform has apps. You should remove them before remove the platform.")
+	}
+	return provisioner.PlatformRemove(name)
+}
+
 func getPlatform(name string) (*Platform, error) {
 	var p Platform
 	conn, err := db.Conn()
