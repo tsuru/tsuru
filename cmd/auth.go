@@ -6,10 +6,10 @@ package cmd
 
 import (
 	"bytes"
+	"code.google.com/p/go.crypto/ssh/terminal"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/tsuru/tsuru/cmd/term"
 	"io"
 	"io/ioutil"
 	"launchpad.net/gnuflag"
@@ -532,22 +532,22 @@ func (c *resetPassword) Flags() *gnuflag.FlagSet {
 
 func passwordFromReader(reader io.Reader) (string, error) {
 	var (
-		password string
+		password []byte
 		err      error
 	)
-	if file, ok := reader.(*os.File); ok {
-		password, err = term.ReadPassword(file.Fd())
+	if file, ok := reader.(*os.File); ok && terminal.IsTerminal(int(file.Fd())) {
+		password, err = terminal.ReadPassword(int(file.Fd()))
 		if err != nil {
 			return "", err
 		}
 	} else {
 		fmt.Fscanf(reader, "%s\n", &password)
 	}
-	if password == "" {
+	if len(password) == 0 {
 		msg := "You must provide the password!"
 		return "", errors.New(msg)
 	}
-	return password, err
+	return string(password), err
 }
 
 func schemeInfo() (*loginScheme, error) {

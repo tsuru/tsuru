@@ -71,7 +71,6 @@ _tsr_dry:
 	rm -f tsr
 
 _sh_tests:
-	@cmd/term/test.sh
 	@misc/test-hooks.bash
 
 test: _go_test _tsr_dry _sh_tests
