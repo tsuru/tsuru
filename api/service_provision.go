@@ -95,7 +95,7 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	if n != 0 {
 		msg := fmt.Sprintf("Service with name %s already exists.", sy.Id)
-		return &errors.HTTP{Code: http.StatusInternalServerError, Message: msg}
+		return &errors.HTTP{Code: http.StatusConflict, Message: msg}
 	}
 	s := service.Service{
 		Name:       sy.Id,
