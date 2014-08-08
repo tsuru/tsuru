@@ -210,6 +210,7 @@ type CustomizedDeployPipelineProvisioner interface {
 type ExtensibleProvisioner interface {
 	PlatformAdd(name string, args map[string]string, w io.Writer) error
 	PlatformUpdate(name string, args map[string]string, w io.Writer) error
+	PlatformRemove(name string) error
 }
 
 var provisioners = make(map[string]Provisioner)
