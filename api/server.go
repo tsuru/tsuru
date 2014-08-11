@@ -123,6 +123,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Get", "/platforms", authorizationRequiredHandler(platformList))
 	m.Add("Post", "/platforms", AdminRequiredHandler(platformAdd))
 	m.Add("Put", "/platforms/{name}", AdminRequiredHandler(platformUpdate))
+	m.Add("Delete", "/platforms/{name}", AdminRequiredHandler(platformRemove))
 
 	// These handlers don't use :app on purpose. Using :app means that only
 	// the token generate for the given app is valid, but these handlers

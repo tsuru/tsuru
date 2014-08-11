@@ -55,3 +55,20 @@ func (p *PlatformSuite) TestPlatformUpdate(c *gocheck.C) {
 	result := platformUpdate(recorder, request, nil)
 	c.Assert(result, gocheck.IsNil)
 }
+
+func (p *PlatformSuite) TestPlatformRemove(c *gocheck.C) {
+	provisioner := testing.ExtensibleFakeProvisioner{
+		FakeProvisioner: testing.NewFakeProvisioner(),
+	}
+	oldProvisioner := app.Provisioner
+	app.Provisioner = &provisioner
+	defer func() {
+		app.Provisioner = oldProvisioner
+	}()
+	err := app.PlatformAdd("test", nil, nil)
+	c.Assert(err, gocheck.IsNil)
+	request, _ := http.NewRequest("DELETE", "/platforms/test?:name=test", nil)
+	recorder := httptest.NewRecorder()
+	err = platformRemove(recorder, request, nil)
+	c.Assert(err, gocheck.IsNil)
+}

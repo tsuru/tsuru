@@ -29,3 +29,9 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	w.Header().Set("Content-Type", "text")
 	return app.PlatformUpdate(name, args, w)
 }
+
+func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	println("lambe")
+	name := r.URL.Query().Get(":name")
+	return app.PlatformRemove(name)
+}
