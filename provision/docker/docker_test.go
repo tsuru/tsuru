@@ -28,7 +28,6 @@ import (
 	"os"
 	"path"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -227,8 +226,6 @@ func (s *S) removeTestContainer(c *container) error {
 }
 
 func (s *S) TestContainerRemove(c *gocheck.C) {
-	handler, cleanup := startSSHAgentServer("")
-	defer cleanup()
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)
 	defer setExecut(nil)
@@ -239,8 +236,6 @@ func (s *S) TestContainerRemove(c *gocheck.C) {
 	defer s.removeTestContainer(container)
 	err = container.remove()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(handler.requests[0].Method, gocheck.Equals, "DELETE")
-	c.Assert(handler.requests[0].URL.Path, gocheck.Equals, "/container/"+container.IP)
 	coll := collection()
 	defer coll.Close()
 	err = coll.Find(bson.M{"id": container.ID}).One(&container)
@@ -255,8 +250,6 @@ func (s *S) TestContainerRemove(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveContainerIgnoreErrors(c *gocheck.C) {
-	handler, cleanup := startSSHAgentServer("")
-	defer cleanup()
 	fexec := &etesting.FakeExecutor{}
 	setExecut(fexec)
 	defer setExecut(nil)
@@ -270,8 +263,6 @@ func (s *S) TestRemoveContainerIgnoreErrors(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = container.remove()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(handler.requests[0].Method, gocheck.Equals, "DELETE")
-	c.Assert(handler.requests[0].URL.Path, gocheck.Equals, "/container/"+container.IP)
 	coll := collection()
 	defer coll.Close()
 	err = coll.Find(bson.M{"id": container.ID}).One(&container)
@@ -280,26 +271,7 @@ func (s *S) TestRemoveContainerIgnoreErrors(c *gocheck.C) {
 	c.Assert(rtesting.FakeRouter.HasRoute(container.AppName, container.getAddress()), gocheck.Equals, false)
 }
 
-func (s *S) TestContainerRemoveHost(c *gocheck.C) {
-	var handler FakeSSHServer
-	handler.output = ". .."
-	server := httptest.NewServer(&handler)
-	defer server.Close()
-	host, port, _ := net.SplitHostPort(server.Listener.Addr().String())
-	portNumber, _ := strconv.Atoi(port)
-	config.Set("docker:ssh-agent-port", portNumber)
-	defer config.Unset("docker:ssh-agent-port")
-	container := container{ID: "c-036", AppName: "starbreaker", Type: "python", IP: "10.10.10.1", HostAddr: host}
-	err := container.removeHost()
-	c.Assert(err, gocheck.IsNil)
-	request := handler.requests[0]
-	c.Assert(request.Method, gocheck.Equals, "DELETE")
-	c.Assert(request.URL.Path, gocheck.Equals, "/container/10.10.10.1")
-}
-
 func (s *S) TestContainerNetworkInfo(c *gocheck.C) {
-	_, cleanup := startSSHAgentServer("")
-	defer cleanup()
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer(nil)
@@ -367,47 +339,6 @@ func (s *S) TestContainerSSH(c *gocheck.C) {
 	err = container.ssh(&stdout, &stderr, "cat", filepath)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, "hello")
-}
-
-func (s *S) TestContainerLegacySSH(c *gocheck.C) {
-	var handler FakeSSHServer
-	handler.output = ". .."
-	server := httptest.NewServer(&handler)
-	defer server.Close()
-	host, port, _ := net.SplitHostPort(server.Listener.Addr().String())
-	portNumber, _ := strconv.Atoi(port)
-	config.Set("docker:ssh-agent-port", portNumber)
-	defer config.Unset("docker:ssh-agent-port")
-	var stdout, stderr bytes.Buffer
-	container, err := s.newContainer(nil)
-	c.Assert(err, gocheck.IsNil)
-	defer s.removeTestContainer(container)
-	container.HostAddr = host
-	err = container.ssh(&stdout, &stderr, "ls", "-a")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(stdout.String(), gocheck.Equals, handler.output)
-	body := handler.bodies[0]
-	input := cmdInput{Cmd: "ls", Args: []string{"-a"}}
-	c.Assert(body, gocheck.DeepEquals, input)
-}
-
-func (s *S) TestContainerLegacySSHFiltersStdout(c *gocheck.C) {
-	var handler FakeSSHServer
-	handler.output = "failed\nunable to resolve host abcdef"
-	server := httptest.NewServer(&handler)
-	defer server.Close()
-	host, port, _ := net.SplitHostPort(server.Listener.Addr().String())
-	portNumber, _ := strconv.Atoi(port)
-	config.Set("docker:ssh-agent-port", portNumber)
-	defer config.Unset("docker:ssh-agent-port")
-	var stdout, stderr bytes.Buffer
-	container, err := s.newContainer(nil)
-	c.Assert(err, gocheck.IsNil)
-	defer s.removeTestContainer(container)
-	container.HostAddr = host
-	err = container.ssh(&stdout, &stderr, "ls", "-a")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(stdout.String(), gocheck.Equals, "failed\n")
 }
 
 func (s *S) TestContainerShell(c *gocheck.C) {
@@ -752,8 +683,6 @@ func (s *S) TestContainerStopReturnsNilWhenContainerAlreadyMarkedAsStopped(c *go
 }
 
 func (s *S) TestContainerLogs(c *gocheck.C) {
-	_, cleanup := startSSHAgentServer("")
-	defer cleanup()
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer(nil)

@@ -383,12 +383,6 @@ func (p *dockerProvisioner) UnsetCName(app provision.App, cname string) error {
 	return r.UnsetCName(cname, app.GetName())
 }
 
-func (p *dockerProvisioner) Commands() []cmd.Command {
-	return []cmd.Command{
-		&sshAgentCmd{},
-	}
-}
-
 func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 	return []cmd.Command{
 		&moveContainerCmd{},

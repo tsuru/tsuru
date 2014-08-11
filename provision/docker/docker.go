@@ -5,12 +5,10 @@
 package docker
 
 import (
-	"bytes"
 	"code.google.com/p/go.crypto/ssh"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
-	"encoding/json"
 	"fmt"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
@@ -25,7 +23,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 	"io"
 	"net"
-	"net/http"
 	"net/url"
 	"strings"
 	"sync"
@@ -367,7 +364,6 @@ func (c *container) remove() error {
 	if err != nil {
 		log.Errorf("Failed to remove container from docker: %s", err)
 	}
-	c.removeHost()
 	log.Debugf("Removing container %s from database", c.ID)
 	coll := collection()
 	defer coll.Close()
@@ -384,21 +380,7 @@ func (c *container) remove() error {
 	return nil
 }
 
-func (c *container) removeHost() error {
-	url := fmt.Sprintf("http://%s:%d/container/%s", c.HostAddr, sshAgentPort(), c.IP)
-	request, _ := http.NewRequest("DELETE", url, nil)
-	resp, err := http.DefaultClient.Do(request)
-	if err != nil {
-		return err
-	}
-	resp.Body.Close()
-	return nil
-}
-
 func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) error {
-	if c.PrivateKey == "" || c.SSHHostPort == "" {
-		return c.legacySSH(stdout, stderr, cmd, args...)
-	}
 	client, err := c.dialSSH()
 	if err != nil {
 		return err
@@ -412,29 +394,6 @@ func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) er
 	session.Stdout = stdout
 	session.Stderr = stderr
 	return session.Run(cmd + " " + strings.Join(args, " "))
-}
-
-func (c *container) legacySSH(stdout, stderr io.Writer, cmd string, args ...string) error {
-	info, err := c.networkInfo()
-	if err != nil {
-		return err
-	}
-	stdout = &filter{w: stdout, content: []byte("unable to resolve host")}
-	url := fmt.Sprintf("http://%s:%d/container/%s/cmd", c.HostAddr, sshAgentPort(), info.IP)
-	input := cmdInput{Cmd: cmd, Args: args}
-	var buf bytes.Buffer
-	err = json.NewEncoder(&buf).Encode(input)
-	if err != nil {
-		return err
-	}
-	log.Debugf("Running SSH on %s:%d: %s %s", c.HostAddr, sshAgentPort(), cmd, args)
-	resp, err := http.Post(url, "application/json", &buf)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	_, err = io.Copy(stdout, resp.Body)
-	return err
 }
 
 func (c *container) shell(stdin io.Reader, stdout, stderr io.Writer) error {

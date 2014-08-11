@@ -6,7 +6,6 @@ package docker
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/fsouza/go-dockerclient"
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
@@ -25,11 +24,8 @@ import (
 	"gopkg.in/mgo.v2/bson"
 	"io/ioutil"
 	"launchpad.net/gocheck"
-	"net"
 	"net/http"
-	"net/http/httptest"
 	"runtime"
-	"strconv"
 	"time"
 )
 
@@ -507,19 +503,11 @@ func (s *S) TestProvisionerSetUnitStatusUnitNotFound(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {
-	var handler FakeSSHServer
-	handler.output = ". .."
-	server := httptest.NewServer(&handler)
-	defer server.Close()
-	host, port, _ := net.SplitHostPort(server.Listener.Addr().String())
-	portNumber, _ := strconv.Atoi(port)
-	config.Set("docker:ssh-agent-port", portNumber)
-	defer config.Unset("docker:ssh-agent-port")
+	c.Fatal("waiting for a real SSH server")
 	app := testing.NewFakeApp("starbreaker", "python", 1)
 	container, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(container)
-	container.HostAddr = host
 	coll := collection()
 	defer coll.Close()
 	coll.Update(bson.M{"id": container.ID}, container)
@@ -529,49 +517,26 @@ func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stderr.Bytes(), gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, ". ..")
-	body := handler.bodies[0]
-	input := cmdInput{Cmd: "ls", Args: []string{"-ar"}}
-	c.Assert(body, gocheck.DeepEquals, input)
-	info, _ := container.networkInfo()
-	path := fmt.Sprintf("/container/%s/cmd", info.IP)
-	c.Assert(handler.requests[0].URL.Path, gocheck.DeepEquals, path)
 }
 
 func (s *S) TestProvisionerExecuteCommandMultipleContainers(c *gocheck.C) {
-	var handler FakeSSHServer
-	handler.output = ". .."
-	server := httptest.NewServer(&handler)
-	defer server.Close()
-	host, port, _ := net.SplitHostPort(server.Listener.Addr().String())
-	portNumber, _ := strconv.Atoi(port)
-	config.Set("docker:ssh-agent-port", portNumber)
-	defer config.Unset("docker:ssh-agent-port")
+	c.Fatal("waiting for a real SSH server")
 	app := testing.NewFakeApp("starbreaker", "python", 1)
 	container1, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(container1)
-	container1.HostAddr = host
 	coll := collection()
 	defer coll.Close()
 	coll.Update(bson.M{"id": container1.ID}, container1)
 	container2, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(container2)
-	container2.HostAddr = host
 	coll.Update(bson.M{"id": container2.ID}, container2)
 	var stdout, stderr bytes.Buffer
 	var p dockerProvisioner
 	err = p.ExecuteCommand(&stdout, &stderr, app, "ls", "-ar")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stderr.Bytes(), gocheck.IsNil)
-	input := cmdInput{Cmd: "ls", Args: []string{"-ar"}}
-	c.Assert(handler.bodies, gocheck.DeepEquals, []cmdInput{input, input})
-	info1, _ := container1.networkInfo()
-	info2, _ := container2.networkInfo()
-	path1 := fmt.Sprintf("/container/%s/cmd", info1.IP)
-	path2 := fmt.Sprintf("/container/%s/cmd", info2.IP)
-	c.Assert(handler.requests[0].URL.Path, gocheck.Equals, path1)
-	c.Assert(handler.requests[1].URL.Path, gocheck.Equals, path2)
 }
 
 func (s *S) TestProvisionerExecuteCommandNoContainers(c *gocheck.C) {
@@ -627,18 +592,6 @@ func (s *S) TestProvisionerIsCNameManager(c *gocheck.C) {
 	var _ provision.CNameManager = &dockerProvisioner{}
 }
 
-func (s *S) TestCommands(c *gocheck.C) {
-	var p dockerProvisioner
-	expected := []cmd.Command{
-		&sshAgentCmd{},
-	}
-	c.Assert(p.Commands(), gocheck.DeepEquals, expected)
-}
-
-func (s *S) TestProvisionerIsCommandable(c *gocheck.C) {
-	var _ cmd.Commandable = &dockerProvisioner{}
-}
-
 func (s *S) TestAdminCommands(c *gocheck.C) {
 	expected := []cmd.Command{
 		&moveContainerCmd{},
@@ -680,20 +633,12 @@ func (s *S) TestSwap(c *gocheck.C) {
 }
 
 func (s *S) TestExecuteCommandOnce(c *gocheck.C) {
-	var handler FakeSSHServer
-	handler.output = ". .."
-	server := httptest.NewServer(&handler)
-	defer server.Close()
-	host, port, _ := net.SplitHostPort(server.Listener.Addr().String())
-	portNumber, _ := strconv.Atoi(port)
-	config.Set("docker:ssh-agent-port", portNumber)
-	defer config.Unset("docker:ssh-agent-port")
+	c.Fatal("waiting for a real SSH server")
 	app := testing.NewFakeApp("almah", "static", 1)
 	p := dockerProvisioner{}
 	container, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(container)
-	container.HostAddr = host
 	coll := collection()
 	defer coll.Close()
 	coll.Update(bson.M{"id": container.ID}, container)
@@ -702,9 +647,6 @@ func (s *S) TestExecuteCommandOnce(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stderr.Bytes(), gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, ". ..")
-	body := handler.bodies[0]
-	input := cmdInput{Cmd: "ls", Args: []string{"-lh"}}
-	c.Assert(body, gocheck.DeepEquals, input)
 }
 
 func (s *S) TestExecuteCommandOnceWithoutContainers(c *gocheck.C) {

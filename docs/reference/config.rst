@@ -423,11 +423,6 @@ The command that will be called in your platform when a new deploy happens.
 The default value for platforms supported in tsuru's basebuilder repository is
 ``/var/lib/tsuru/deploy``.
 
-docker:ssh-agent-port
-+++++++++++++++++++++
-
-Deprecated. You shouldn't set this value anymore.
-
 docker:segregate
 ++++++++++++++++
 

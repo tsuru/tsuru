@@ -50,7 +50,6 @@ func fixContainer(container *container, info containerNetworkInfo) error {
 		return err
 	}
 	router.RemoveRoute(container.AppName, container.getAddress())
-	container.removeHost()
 	container.IP = info.IP
 	container.HostPort = info.HTTPHostPort
 	container.SSHHostPort = info.SSHHostPort
