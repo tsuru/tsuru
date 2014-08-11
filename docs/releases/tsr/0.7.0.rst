@@ -1,0 +1,31 @@
+.. warning::
+
+    Version under development
+
+=======================
+tsr 0.7.0 release notes
+=======================
+
+Welcome to tsr 0.7.0!
+
+These release notes cover the `new features`_, `bug fixes`_ and `backward
+incompatible changes`_ you'll want to be aware of when upgrading from tsr 0.6.0
+or older versions.
+
+.. _`new features`: `What's new in tsr 0.7.0`_
+
+What's new in tsr 0.7.0
+=======================
+
+Nothing yet :)
+
+Bug fixes
+=========
+
+Nothing yet :)
+
+Backward incompatible changes
+=============================
+
+- ``tsr ssh-agent`` has been totally removed, it's no longe possible to use it
+  with tsuru server
