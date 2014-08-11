@@ -13,8 +13,6 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/exec"
-	etesting "github.com/tsuru/tsuru/exec/testing"
 	"github.com/tsuru/tsuru/provision"
 	rtesting "github.com/tsuru/tsuru/router/testing"
 	"github.com/tsuru/tsuru/safe"
@@ -29,12 +27,6 @@ import (
 	"runtime"
 	"time"
 )
-
-func setExecut(e exec.Executor) {
-	emutex.Lock()
-	execut = e
-	emutex.Unlock()
-}
 
 func (s *S) TestShouldBeRegistered(c *gocheck.C) {
 	p, err := provision.Get("docker")
@@ -113,8 +105,6 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	go s.stopContainers(1)
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	setExecut(&etesting.FakeExecutor{})
-	defer setExecut(nil)
 	p := dockerProvisioner{}
 	a := app.App{
 		Name:     "otherapp",
@@ -174,9 +164,6 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 	defer conn.Apps().Remove(bson.M{"name": a.Name})
 	p.Provision(&a)
 	defer p.Destroy(&a)
-	fexec := &etesting.FakeExecutor{}
-	setExecut(fexec)
-	defer setExecut(nil)
 	var w bytes.Buffer
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
@@ -228,9 +215,6 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerDestroyEmptyUnit(c *gocheck.C) {
-	fexec := &etesting.FakeExecutor{}
-	setExecut(fexec)
-	defer setExecut(nil)
 	app := testing.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner
 	p.Provision(app)
@@ -239,9 +223,6 @@ func (s *S) TestProvisionerDestroyEmptyUnit(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerDestroyRemovesRouterBackend(c *gocheck.C) {
-	fexec := &etesting.FakeExecutor{}
-	setExecut(fexec)
-	defer setExecut(nil)
 	app := testing.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner
 	err := p.Provision(app)

@@ -14,7 +14,6 @@ import (
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
-	"github.com/tsuru/tsuru/exec"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router"
@@ -28,20 +27,6 @@ import (
 
 func init() {
 	provision.Register("docker", &dockerProvisioner{})
-}
-
-var (
-	execut exec.Executor
-	emutex sync.Mutex
-)
-
-func executor() exec.Executor {
-	emutex.Lock()
-	defer emutex.Unlock()
-	if execut == nil {
-		execut = exec.OsExecutor{}
-	}
-	return execut
 }
 
 func getRouter() (router.Router, error) {

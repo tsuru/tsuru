@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/docker-cluster/cluster"
-	etesting "github.com/tsuru/tsuru/exec/testing"
 	"github.com/tsuru/tsuru/safe"
 	"io"
 	"net"
@@ -138,14 +137,6 @@ func startDockerTestServer(containerPort string, calls *int64) (func(), *httptes
 		server.Close()
 		dCluster = oldCluster
 	}, server
-}
-
-func mockExecutor() (*etesting.FakeExecutor, func()) {
-	fexec := &etesting.FakeExecutor{Output: map[string][][]byte{}}
-	setExecut(fexec)
-	return fexec, func() {
-		setExecut(nil)
-	}
 }
 
 type fakeScheduler struct {
