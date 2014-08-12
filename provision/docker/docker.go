@@ -171,7 +171,6 @@ func (c *container) create(app provision.App, imageId string, cmds []string, des
 		return err
 	}
 	user, _ := config.GetString("docker:ssh:user")
-	gitUnitRepo, _ := config.GetString("git:unit-repo")
 	sharedMount, _ := config.GetString("docker:sharedfs:mountpoint")
 	sharedBasedir, _ := config.GetString("docker:sharedfs:hostdir")
 	exposedPorts := map[docker.Port]struct{}{
@@ -189,12 +188,10 @@ func (c *container) create(app provision.App, imageId string, cmds []string, des
 		Memory:       int64(app.GetMemory() * 1024 * 1024),
 		MemorySwap:   int64(app.GetSwap() * 1024 * 1024),
 	}
-	config.Env = append(config.Env, fmt.Sprintf("TSURU_APP_DIR=%s", gitUnitRepo))
 	if sharedMount != "" && sharedBasedir != "" {
 		config.Volumes = map[string]struct{}{
 			sharedMount: {},
 		}
-
 		config.Env = append(config.Env, fmt.Sprintf("TSURU_SHAREDFS_MOUNTPOINT=%s", sharedMount))
 	}
 	opts := docker.CreateContainerOptions{Name: c.Name, Config: &config}
