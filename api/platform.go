@@ -33,7 +33,12 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		args[key] = values[0]
 	}
 	w.Header().Set("Content-Type", "text")
-	return app.PlatformUpdate(name, args, w)
+	err = app.PlatformUpdate(name, args, w)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(w, "\nOK!")
+	return nil
 }
 
 func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) error {

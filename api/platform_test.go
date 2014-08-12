@@ -55,6 +55,7 @@ func (p *PlatformSuite) TestPlatformUpdate(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	result := platformUpdate(recorder, request, nil)
 	c.Assert(result, gocheck.IsNil)
+	c.Assert(recorder.Body.String(), gocheck.Equals, "\nOK!\n")
 }
 
 func (p *PlatformSuite) TestPlatformRemove(c *gocheck.C) {
