@@ -153,7 +153,9 @@ tsr
 tsuru
 =====
 
-`tsuru` is the tsuru client.
+`tsuru` is the tsuru client. For details on releases of the client, check the
+release history in the `tsuru-client repository at GitHub
+<https://github.com/tsuru/tsuru-client/releases>`_.
 
 0.11.0 release
 --------------
@@ -235,7 +237,9 @@ tsuru
 tsuru-admin
 ===========
 
-`tsuru-admin` is the tsuru administrative client.
+`tsuru-admin` is the tsuru administrative client. For details on releases of
+tsuru-admin, check the release history in the `tsuru-admin repository at GitHub
+<https://github.com/tsuru/tsuru-admin/releases>`_.
 
 0.5.0 release
 -------------
@@ -271,3 +275,10 @@ tsuru-admin
    :maxdepth: 1
 
    tsuru-admin/0.3.0
+
+crane
+=====
+
+`crane` is the command line interface used by service providers. For details on
+releases of crane, check the release history in the `crane repository at GitHub
+<https://github.com/tsuru/crane/releases>`_.
