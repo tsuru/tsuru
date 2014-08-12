@@ -57,6 +57,7 @@ irc channel
 #tsuru channel on irc.freenode.net - chat with other tsuru users and developers.
 
 .. toctree::
+    :hidden:
 
     coding-style
     vagrant
