@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"net/http"
@@ -13,7 +14,12 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		args[key] = values[0]
 	}
 	w.Header().Set("Content-Type", "text")
-	return app.PlatformAdd(name, args, w)
+	err := app.PlatformAdd(name, args, w)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(w, "\nOK!")
+	return nil
 }
 
 func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {

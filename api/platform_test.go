@@ -34,6 +34,7 @@ func (p *PlatformSuite) TestPlatformAdd(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	result := platformAdd(recorder, request, nil)
 	c.Assert(result, gocheck.IsNil)
+	c.Assert(recorder.Body.String(), gocheck.Equals, "\nOK!\n")
 }
 
 func (p *PlatformSuite) TestPlatformUpdate(c *gocheck.C) {
