@@ -123,8 +123,10 @@ var exportEnvironmentsAction = action.Action{
 			return nil, err
 		}
 		host, _ := config.GetString("host")
+		appdir, _ := config.GetString("git:unit-repo")
 		envVars := []bind.EnvVar{
 			{Name: "TSURU_APPNAME", Value: app.Name},
+			{Name: "TSURU_APPDIR", Value: appdir},
 			{Name: "TSURU_HOST", Value: host},
 			{Name: "TSURU_APP_TOKEN", Value: t.GetValue()},
 		}

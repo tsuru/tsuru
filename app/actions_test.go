@@ -175,6 +175,8 @@ func (s *S) TestExportEnvironmentsForward(c *gocheck.C) {
 	c.Assert(appEnv["TSURU_HOST"].Public, gocheck.Equals, false)
 	c.Assert(appEnv["TSURU_APP_TOKEN"].Value, gocheck.Not(gocheck.Equals), "")
 	c.Assert(appEnv["TSURU_APP_TOKEN"].Public, gocheck.Equals, false)
+	c.Assert(appEnv["TSURU_APPDir"].Value, gocheck.Not(gocheck.Equals), "/home/application/current")
+	c.Assert(appEnv["TSURU_APPDir"].Public, gocheck.Equals, false)
 	t, err := nativeScheme.Auth(appEnv["TSURU_APP_TOKEN"].Value)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(t.IsAppToken(), gocheck.Equals, true)
