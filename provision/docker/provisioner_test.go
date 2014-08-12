@@ -10,6 +10,7 @@ import (
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
+	dstorage "github.com/tsuru/docker-cluster/storage"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
@@ -799,6 +800,34 @@ func (s *S) TestProvisionerPlatformRemove(c *gocheck.C) {
 	err = p.PlatformRemove("test")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(strings.Contains(requests[0].URL.RequestURI(), "tsuru/test"), gocheck.Equals, true)
+}
+
+func (s *S) TestProvisionerPlatformRemoveReturnsStorageError(c *gocheck.C) {
+	registryServer := httptest.NewServer(nil)
+	u, _ := url.Parse(registryServer.URL)
+	config.Set("docker:registry", u.Host)
+	defer config.Unset("docker:registry")
+	var requests []*http.Request
+	server, err := dtesting.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+		requests = append(requests, r)
+	})
+	c.Assert(err, gocheck.IsNil)
+	defer server.Stop()
+	var storage cluster.MapStorage
+	cmutex.Lock()
+	oldDockerCluster := dCluster
+	dCluster, _ = cluster.New(nil, &storage,
+		cluster.Node{Address: server.URL()})
+	cmutex.Unlock()
+	defer func() {
+		cmutex.Lock()
+		dCluster = oldDockerCluster
+		cmutex.Unlock()
+	}()
+	p := dockerProvisioner{}
+	err = p.PlatformRemove("test")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.DeepEquals, dstorage.ErrNoSuchImage)
 }
 
 func (s *S) TestProvisionerUnits(c *gocheck.C) {

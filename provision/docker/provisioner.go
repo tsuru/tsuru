@@ -438,7 +438,12 @@ func (p *dockerProvisioner) PlatformUpdate(name string, args map[string]string, 
 }
 
 func (p *dockerProvisioner) PlatformRemove(name string) error {
-	return dockerCluster().RemoveImageWait(assembleImageName(name))
+	err := dockerCluster().RemoveImageWait(assembleImageName(name))
+	if err != nil && err == docker.ErrNoSuchImage {
+		log.Errorf("error on remove image %s from docker.", name)
+		return nil
+	}
+	return err
 }
 
 func (p *dockerProvisioner) Units(app provision.App) []provision.Unit {
