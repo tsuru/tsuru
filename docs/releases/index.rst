@@ -1,3 +1,11 @@
+.. note::
+
+    For `tsuru-admin`, `tsuru` and `crane` release notes, check GitHub release history:
+
+    - crane: https://github.com/tsuru/crane/releases
+    - tsuru: https://github.com/tsuru/tsuru-client/releases
+    - tsuru-admin: https://github.com/tsuru/tsuru-admin/releases
+
 =============
 Release notes
 =============
