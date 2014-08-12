@@ -208,20 +208,19 @@ func (si *ServiceInstance) Status() (string, error) {
 	return endpoint.Status(si)
 }
 
-func genericServiceInstancesFilter(services interface{}, teams []string) (q, f bson.M) {
-	f = bson.M{"name": 1, "service_name": 1, "apps": 1}
-	q = bson.M{}
+func genericServiceInstancesFilter(services interface{}, teams []string) bson.M {
+	query := bson.M{}
 	if len(teams) != 0 {
-		q["teams"] = bson.M{"$in": teams}
+		query["teams"] = bson.M{"$in": teams}
 	}
 	if v, ok := services.([]Service); ok {
 		names := GetServicesNames(v)
-		q["service_name"] = bson.M{"$in": names}
+		query["service_name"] = bson.M{"$in": names}
 	}
 	if v, ok := services.(Service); ok {
-		q["service_name"] = v.Name
+		query["service_name"] = v.Name
 	}
-	return
+	return query
 }
 
 func validateServiceInstanceName(name string) error {
@@ -285,9 +284,9 @@ func GetServiceInstancesByServices(services []Service) ([]ServiceInstance, error
 		return nil, err
 	}
 	defer conn.Close()
-	q, _ := genericServiceInstancesFilter(services, []string{})
+	query := genericServiceInstancesFilter(services, []string{})
 	f := bson.M{"name": 1, "service_name": 1}
-	err = conn.ServiceInstances().Find(q).Select(f).All(&instances)
+	err = conn.ServiceInstances().Find(query).Select(f).All(&instances)
 	return instances, err
 }
 
@@ -305,8 +304,12 @@ func GetServiceInstancesByServicesAndTeams(services []Service, u *auth.User) ([]
 		return nil, err
 	}
 	defer conn.Close()
-	q, f := genericServiceInstancesFilter(services, auth.GetTeamsNames(teams))
-	err = conn.ServiceInstances().Find(q).Select(f).All(&instances)
+	var teamNames []string
+	if !u.IsAdmin() {
+		teamNames = auth.GetTeamsNames(teams)
+	}
+	query := genericServiceInstancesFilter(services, teamNames)
+	err = conn.ServiceInstances().Find(query).All(&instances)
 	return instances, err
 }
 

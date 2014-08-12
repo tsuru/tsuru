@@ -32,6 +32,7 @@ func (s *InstanceSuite) SetUpSuite(c *gocheck.C) {
 	var err error
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_service_instance_test")
+	config.Set("admin-team", "admin")
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	s.user = &auth.User{Email: "cidade@raul.com", Password: "123"}
@@ -179,9 +180,8 @@ func (s *InstanceSuite) TestGetServiceInstancesByServicesWithTwoServices(c *goch
 func (s *InstanceSuite) TestGenericServiceInstancesFilter(c *gocheck.C) {
 	srvc := Service{Name: "mysql"}
 	teams := []string{s.team.Name}
-	q, f := genericServiceInstancesFilter(srvc, teams)
-	c.Assert(q, gocheck.DeepEquals, bson.M{"service_name": srvc.Name, "teams": bson.M{"$in": teams}})
-	c.Assert(f, gocheck.DeepEquals, bson.M{"name": 1, "service_name": 1, "apps": 1})
+	query := genericServiceInstancesFilter(srvc, teams)
+	c.Assert(query, gocheck.DeepEquals, bson.M{"service_name": srvc.Name, "teams": bson.M{"$in": teams}})
 }
 
 func (s *InstanceSuite) TestGenericServiceInstancesFilterWithServiceSlice(c *gocheck.C) {
@@ -191,9 +191,8 @@ func (s *InstanceSuite) TestGenericServiceInstancesFilterWithServiceSlice(c *goc
 	}
 	names := []string{"mysql", "mongodb"}
 	teams := []string{s.team.Name}
-	q, f := genericServiceInstancesFilter(services, teams)
-	c.Assert(q, gocheck.DeepEquals, bson.M{"service_name": bson.M{"$in": names}, "teams": bson.M{"$in": teams}})
-	c.Assert(f, gocheck.DeepEquals, bson.M{"name": 1, "service_name": 1, "apps": 1})
+	query := genericServiceInstancesFilter(services, teams)
+	c.Assert(query, gocheck.DeepEquals, bson.M{"service_name": bson.M{"$in": names}, "teams": bson.M{"$in": teams}})
 }
 
 func (s *InstanceSuite) TestGenericServiceInstancesFilterWithoutSpecifingTeams(c *gocheck.C) {
@@ -203,9 +202,8 @@ func (s *InstanceSuite) TestGenericServiceInstancesFilterWithoutSpecifingTeams(c
 	}
 	names := []string{"mysql", "mongodb"}
 	teams := []string{}
-	q, f := genericServiceInstancesFilter(services, teams)
-	c.Assert(q, gocheck.DeepEquals, bson.M{"service_name": bson.M{"$in": names}})
-	c.Assert(f, gocheck.DeepEquals, bson.M{"name": 1, "service_name": 1, "apps": 1})
+	query := genericServiceInstancesFilter(services, teams)
+	c.Assert(query, gocheck.DeepEquals, bson.M{"service_name": bson.M{"$in": names}})
 }
 
 func (s *InstanceSuite) TestGetServiceInstancesByServicesAndTeams(c *gocheck.C) {
@@ -221,6 +219,7 @@ func (s *InstanceSuite) TestGetServiceInstancesByServicesAndTeams(c *gocheck.C) 
 		Name:        "j4sql",
 		ServiceName: srvc.Name,
 		Teams:       []string{s.team.Name},
+		Apps:        []string{},
 	}
 	err = s.conn.ServiceInstances().Insert(&sInstance)
 	c.Assert(err, gocheck.IsNil)
@@ -229,6 +228,7 @@ func (s *InstanceSuite) TestGetServiceInstancesByServicesAndTeams(c *gocheck.C) 
 		Name:        "j4nosql",
 		ServiceName: srvc2.Name,
 		Teams:       []string{s.team.Name},
+		Apps:        []string{},
 	}
 	err = s.conn.ServiceInstances().Insert(&sInstance2)
 	c.Assert(err, gocheck.IsNil)
@@ -240,20 +240,7 @@ func (s *InstanceSuite) TestGetServiceInstancesByServicesAndTeams(c *gocheck.C) 
 	err = s.conn.ServiceInstances().Insert(&sInstance3)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": sInstance3.Name})
-	expected := []ServiceInstance{
-		{
-			Name:        sInstance.Name,
-			ServiceName: sInstance.ServiceName,
-			Teams:       []string(nil),
-			Apps:        []string{},
-		},
-		{
-			Name:        sInstance2.Name,
-			ServiceName: sInstance2.ServiceName,
-			Teams:       []string(nil),
-			Apps:        []string{},
-		},
-	}
+	expected := []ServiceInstance{sInstance, sInstance2}
 	sInstances, err := GetServiceInstancesByServicesAndTeams([]Service{srvc, srvc2}, s.user)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(sInstances, gocheck.DeepEquals, expected)
@@ -271,6 +258,7 @@ func (s *InstanceSuite) TestGetServiceInstancesByServicesAndTeamsForUsersThatAre
 	instance := ServiceInstance{
 		Name:        "j4sql",
 		ServiceName: srvc.Name,
+		Teams:       []string{s.team.Name},
 	}
 	err = s.conn.ServiceInstances().Insert(&instance)
 	c.Assert(err, gocheck.IsNil)
@@ -278,6 +266,33 @@ func (s *InstanceSuite) TestGetServiceInstancesByServicesAndTeamsForUsersThatAre
 	instances, err := GetServiceInstancesByServicesAndTeams([]Service{srvc}, &u)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(instances, gocheck.IsNil)
+}
+
+func (s *InstanceSuite) TestGetServiceinstancesByServicesAndTeamsUserAdmin(c *gocheck.C) {
+	u := auth.User{Email: "adminuser@globo.com"}
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	team := auth.Team{Name: "admin", Users: []string{u.Email}}
+	err = s.conn.Teams().Insert(team)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Teams().RemoveId(team.Name)
+	srvc := Service{Name: "mysql", Teams: []string{s.team.Name}, IsRestricted: true}
+	err = s.conn.Services().Insert(&srvc)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().RemoveId(srvc.Name)
+	instance := ServiceInstance{
+		Name:        "j4sql",
+		ServiceName: srvc.Name,
+		Teams:       []string{s.team.Name},
+		Apps:        []string{},
+	}
+	err = s.conn.ServiceInstances().Insert(&instance)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": instance.Name})
+	instances, err := GetServiceInstancesByServicesAndTeams([]Service{srvc}, &u)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(instances, gocheck.DeepEquals, []ServiceInstance{instance})
 }
 
 func (s *InstanceSuite) TestAdditionalInfo(c *gocheck.C) {
