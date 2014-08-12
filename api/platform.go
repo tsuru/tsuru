@@ -31,7 +31,6 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 }
 
 func platformRemove(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	println("lambe")
 	name := r.URL.Query().Get(":name")
 	return app.PlatformRemove(name)
 }
