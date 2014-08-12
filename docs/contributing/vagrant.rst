@@ -2,9 +2,9 @@
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
-+++++++++++++++++++++++++++++++++++++++++++++++++++++
-Building a tsuru development environment with Vagrant
-+++++++++++++++++++++++++++++++++++++++++++++++++++++
++++++++++++++++++++++++++++++++++++++++++++++++
+Building a development environment with Vagrant
++++++++++++++++++++++++++++++++++++++++++++++++
 
 First, make sure that virtualbox, vagrant and git are installed on your machine.
 

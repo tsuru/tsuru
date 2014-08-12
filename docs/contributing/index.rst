@@ -12,14 +12,14 @@ Contributing
 Pull requests are very welcome! Make sure your patches are well tested and documented :)
 
 
-development environment
+Development environment
 =======================
 
-See this guide to :doc:`setting up you tsuru development environment </contributing/setting-up-your-tsuru-development-environment>`.
+See this guide to :doc:`to setup a development environment using vagrant </contributing/vagrant>`.
 
 And follow our :doc:`coding style guide </contributing/coding-style>`.
 
-running the tests
+Running the tests
 =================
 
 You can use `make` to install all tsuru dependencies and run tests. It will also check if everything is ok with your `GOPATH` setup:
@@ -30,12 +30,14 @@ You can use `make` to install all tsuru dependencies and run tests. It will also
 
     $ make
 
-writing docs
+Writing docs
 ============
 
-tsuru documentation is written using `Sphinx <http://sphinx.pocoo.org/>`_, which uses `RST <http://docutils.sourceforge.net/rst.html>`_. Check these tools docs to learn how to write docs for tsuru.
+tsuru documentation is written using `Sphinx <http://sphinx.pocoo.org/>`_,
+which uses `RST <http://docutils.sourceforge.net/rst.html>`_.
+Check these tools docs to learn how to write docs for tsuru.
 
-building docs
+Building docs
 =============
 
 In order to build the HTML docs, just run on terminal:
@@ -46,10 +48,15 @@ In order to build the HTML docs, just run on terminal:
 
     $ make doc
 
+Community
+=========
+
+irc channel
+-----------
+
+#tsuru channel on irc.freenode.net - chat with other tsuru users and developers.
 
 .. toctree::
-    
-    setting-up-your-tsuru-development-environment
+
     coding-style
-    community
     vagrant
