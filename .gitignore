@@ -1,13 +1,5 @@
-*.sw[a-z]
-*.db
-*.pyc
 *.test
-.test
-.DS_Store
 dist-*
-cmd/crane/crane
-cmd/tsuru/tsuru
-cmd/tsuru-admin/tsuru-admin
 cmd/tsr/tsr
 docs/_build
 Godeps/_workspace
