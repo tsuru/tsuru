@@ -21,7 +21,7 @@ var (
 	ErrTeamAlreadyExists = errors.New("team already exists")
 	ErrTeamNotFound      = errors.New("team not found")
 
-	teamNameRegexp = regexp.MustCompile(`^[a-zA-Z][-@_.+\w\s]+$`)
+	teamNameRegexp = regexp.MustCompile(`^[a-zA-Z][-@_.+\w]+$`)
 )
 
 type Team struct {

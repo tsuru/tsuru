@@ -174,7 +174,7 @@ func (s *S) TestCreateTeamValidation(c *gocheck.C) {
 		{"1abc", ErrInvalidTeamName},
 		{"a", ErrInvalidTeamName},
 		{"@abc", ErrInvalidTeamName},
-		{"my team", nil},
+		{"my team", ErrInvalidTeamName},
 		{"team-1", nil},
 		{"team_1", nil},
 		{"ab", nil},
