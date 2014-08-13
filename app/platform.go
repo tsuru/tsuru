@@ -55,9 +55,9 @@ func PlatformAdd(name string, args map[string]string, w io.Writer) error {
 	}
 	err = provisioner.PlatformAdd(name, args, w)
 	if err != nil {
-		db_err := conn.Platforms().RemoveId(p.Name)
-		if db_err != nil {
-			return fmt.Errorf("Caused by: %s and %s", err.Error(), db_err.Error())
+		dbErr := conn.Platforms().RemoveId(p.Name)
+		if dbErr != nil {
+			return fmt.Errorf("Caused by: %s and %s", err.Error(), dbErr.Error())
 		}
 		return err
 	}

@@ -109,8 +109,8 @@ func (s *S) TestGetDeploy(c *gocheck.C) {
 }
 
 func (s *S) TestGetDeployNotFound(c *gocheck.C) {
-	id_test := bson.NewObjectId()
-	deploy, err := GetDeploy(id_test.Hex())
+	idTest := bson.NewObjectId()
+	deploy, err := GetDeploy(idTest.Hex())
 	c.Assert(err.Error(), gocheck.Equals, "not found")
 	c.Assert(deploy, gocheck.IsNil)
 }
