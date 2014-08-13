@@ -22,20 +22,20 @@ import (
 	"time"
 )
 
-type S struct {
+type BindSuite struct {
 	conn   *db.Storage
 	user   auth.User
 	team   auth.Team
 	tmpdir string
 }
 
-var _ = gocheck.Suite(&S{})
+var _ = gocheck.Suite(&BindSuite{})
 
 func TestT(t *testing.T) {
 	gocheck.TestingT(t)
 }
 
-func (s *S) SetUpSuite(c *gocheck.C) {
+func (s *BindSuite) SetUpSuite(c *gocheck.C) {
 	var err error
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_service_bind_test")
@@ -48,7 +48,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	app.Provisioner = ttesting.NewFakeProvisioner()
 }
 
-func (s *S) TearDownSuite(c *gocheck.C) {
+func (s *BindSuite) TearDownSuite(c *gocheck.C) {
 	s.conn.Apps().Database.DropDatabase()
 }
 
@@ -62,7 +62,7 @@ func createTestApp(conn *db.Storage, name, framework string, teams []string) (ap
 	return a, err
 }
 
-func (s *S) TestBindUnit(c *gocheck.C) {
+func (s *BindSuite) TestBindUnit(c *gocheck.C) {
 	called := false
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = true
@@ -92,7 +92,7 @@ func (s *S) TestBindUnit(c *gocheck.C) {
 	c.Assert(envs, gocheck.DeepEquals, expectedEnvs)
 }
 
-func (s *S) TestBindAppFailsWhenEndpointIsDown(c *gocheck.C) {
+func (s *BindSuite) TestBindAppFailsWhenEndpointIsDown(c *gocheck.C) {
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ""}}
 	err := srvc.Create()
 	c.Assert(err, gocheck.IsNil)
@@ -110,7 +110,7 @@ func (s *S) TestBindAppFailsWhenEndpointIsDown(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 }
 
-func (s *S) TestBindAddsAppToTheServiceInstance(c *gocheck.C) {
+func (s *BindSuite) TestBindAddsAppToTheServiceInstance(c *gocheck.C) {
 	fakeProvisioner := app.Provisioner.(*ttesting.FakeProvisioner)
 	fakeProvisioner.PrepareOutput([]byte("exported"))
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -133,7 +133,7 @@ func (s *S) TestBindAddsAppToTheServiceInstance(c *gocheck.C) {
 	c.Assert(instance.Apps, gocheck.DeepEquals, []string{a.Name})
 }
 
-func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCall(c *gocheck.C) {
+func (s *BindSuite) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCall(c *gocheck.C) {
 	fakeProvisioner := app.Provisioner.(*ttesting.FakeProvisioner)
 	fakeProvisioner.PrepareOutput([]byte("exported"))
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -179,7 +179,7 @@ func (s *S) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCa
 	c.Assert(newApp.Env, gocheck.DeepEquals, expectedEnv)
 }
 
-func (s *S) TestBindAppMultiUnits(c *gocheck.C) {
+func (s *BindSuite) TestBindAppMultiUnits(c *gocheck.C) {
 	fakeProvisioner := app.Provisioner.(*ttesting.FakeProvisioner)
 	fakeProvisioner.PrepareOutput([]byte("exported"))
 	fakeProvisioner.PrepareOutput([]byte("exported"))
@@ -224,7 +224,7 @@ func (s *S) TestBindAppMultiUnits(c *gocheck.C) {
 	c.Assert(calls, gocheck.Equals, int32(1))
 }
 
-func (s *S) TestBindReturnConflictIfTheAppIsAlreadyBound(c *gocheck.C) {
+func (s *BindSuite) TestBindReturnConflictIfTheAppIsAlreadyBound(c *gocheck.C) {
 	srvc := service.Service{Name: "mysql"}
 	err := srvc.Create()
 	c.Assert(err, gocheck.IsNil)
@@ -249,7 +249,7 @@ func (s *S) TestBindReturnConflictIfTheAppIsAlreadyBound(c *gocheck.C) {
 	c.Assert(e, gocheck.ErrorMatches, "^This app is already bound to this service instance.$")
 }
 
-func (s *S) TestBindDoesNotFailsAndStopsWhenAppDoesNotHaveAnUnit(c *gocheck.C) {
+func (s *BindSuite) TestBindDoesNotFailsAndStopsWhenAppDoesNotHaveAnUnit(c *gocheck.C) {
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err := instance.Create()
 	c.Assert(err, gocheck.IsNil)
@@ -261,7 +261,7 @@ func (s *S) TestBindDoesNotFailsAndStopsWhenAppDoesNotHaveAnUnit(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 }
 
-func (s *S) TestUnbindUnit(c *gocheck.C) {
+func (s *BindSuite) TestUnbindUnit(c *gocheck.C) {
 	called := false
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = true
@@ -291,7 +291,7 @@ func (s *S) TestUnbindUnit(c *gocheck.C) {
 	c.Assert(called, gocheck.Equals, true)
 }
 
-func (s *S) TestUnbindMultiUnits(c *gocheck.C) {
+func (s *BindSuite) TestUnbindMultiUnits(c *gocheck.C) {
 	var calls int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		i := atomic.LoadInt32(&calls)
@@ -335,7 +335,7 @@ func (s *S) TestUnbindMultiUnits(c *gocheck.C) {
 	}
 }
 
-func (s *S) TestUnbindRemovesAppFromServiceInstance(c *gocheck.C) {
+func (s *BindSuite) TestUnbindRemovesAppFromServiceInstance(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
@@ -361,7 +361,7 @@ func (s *S) TestUnbindRemovesAppFromServiceInstance(c *gocheck.C) {
 	c.Assert(instance.Apps, gocheck.DeepEquals, []string{})
 }
 
-func (s *S) TestUnbindRemovesEnvironmentVariableFromApp(c *gocheck.C) {
+func (s *BindSuite) TestUnbindRemovesEnvironmentVariableFromApp(c *gocheck.C) {
 	fakeProvisioner := app.Provisioner.(*ttesting.FakeProvisioner)
 	fakeProvisioner.PrepareOutput([]byte("exported"))
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -415,7 +415,7 @@ func (s *S) TestUnbindRemovesEnvironmentVariableFromApp(c *gocheck.C) {
 	c.Assert(newApp.Env, gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestUnbindCallsTheUnbindMethodFromAPI(c *gocheck.C) {
+func (s *BindSuite) TestUnbindCallsTheUnbindMethodFromAPI(c *gocheck.C) {
 	var called int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/hostname/10.10.10.1" {
@@ -459,7 +459,7 @@ func (s *S) TestUnbindCallsTheUnbindMethodFromAPI(c *gocheck.C) {
 	}
 }
 
-func (s *S) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBoundToTheInstance(c *gocheck.C) {
+func (s *BindSuite) TestUnbindReturnsPreconditionFailedIfTheAppIsNotBoundToTheInstance(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
