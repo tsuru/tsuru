@@ -29,7 +29,6 @@ func (s *HandlerSuite) SetUpSuite(c *gocheck.C) {
 	var err error
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_handler_test")
-	config.Set("auth:salt", "tsuru-salt")
 	config.Set("auth:hash-cost", 4)
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
