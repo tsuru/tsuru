@@ -194,8 +194,8 @@ func (s *S) TestListKeysGandalfAPIError(c *gocheck.C) {
 
 func (s *S) TestKeyToMap(c *gocheck.C) {
 	keys := []Key{{Name: "testkey", Content: "somekey"}}
-	kMap := keyToMap(keys)
-	c.Assert(kMap, gocheck.DeepEquals, map[string]string{"testkey": "somekey"})
+	keysMap := keyToMap(keys)
+	c.Assert(keysMap, gocheck.DeepEquals, map[string]string{"testkey": "somekey"})
 }
 
 func (s *S) TestAddKeyInGandalfShouldCallGandalfAPI(c *gocheck.C) {

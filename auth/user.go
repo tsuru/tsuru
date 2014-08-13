@@ -38,11 +38,11 @@ type User struct {
 // keyToMap converts a Key array into a map maybe we should store a map
 // directly instead of having a convertion
 func keyToMap(keys []Key) map[string]string {
-	kMap := make(map[string]string, len(keys))
+	keysMap := make(map[string]string, len(keys))
 	for _, k := range keys {
-		kMap[k.Name] = k.Content
+		keysMap[k.Name] = k.Content
 	}
-	return kMap
+	return keysMap
 }
 
 func GetUserByEmail(email string) (*User, error) {
