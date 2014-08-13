@@ -5,6 +5,7 @@
 package cmd
 
 import (
+	gerrors "errors"
 	"fmt"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/fs"
@@ -16,6 +17,8 @@ import (
 	"strconv"
 	"strings"
 )
+
+var ErrAbortCommand = gerrors.New("")
 
 type exiter interface {
 	Exit(int)
@@ -161,7 +164,9 @@ func (m *Manager) Run(args []string) {
 		if !strings.HasSuffix(errorMsg, "\n") {
 			errorMsg += "\n"
 		}
-		io.WriteString(m.stderr, "Error: "+errorMsg)
+		if err != ErrAbortCommand {
+			io.WriteString(m.stderr, "Error: "+errorMsg)
+		}
 		status = 1
 	}
 	m.finisher().Exit(status)

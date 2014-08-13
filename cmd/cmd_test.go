@@ -73,6 +73,9 @@ func (c *ErrorCommand) Info() *Info {
 }
 
 func (c *ErrorCommand) Run(context *Context, client *Client) error {
+	if c.msg == "abort" {
+		return ErrAbortCommand
+	}
 	return errors.New(c.msg)
 }
 
@@ -191,6 +194,13 @@ func (s *S) TestManagerRunShouldAppendNewLineOnErrorWhenItsNotPresent(c *gocheck
 	manager.Register(&ErrorCommand{msg: "You are wrong"})
 	manager.Run([]string{"error"})
 	c.Assert(manager.stderr.(*bytes.Buffer).String(), gocheck.Equals, "Error: You are wrong\n")
+}
+
+func (s *S) TestManagerRunShouldNotWriteErrorOnStderrWhenErrAbortIsTriggered(c *gocheck.C) {
+	manager.Register(&ErrorCommand{msg: "abort"})
+	manager.Run([]string{"error"})
+	c.Assert(manager.stderr.(*bytes.Buffer).String(), gocheck.Equals, "")
+	c.Assert(manager.e.(*recordingExiter).value(), gocheck.Equals, 1)
 }
 
 func (s *S) TestManagerRunWithHTTPUnauthorizedError(c *gocheck.C) {
