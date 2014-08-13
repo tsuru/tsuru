@@ -9,10 +9,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"launchpad.net/gocheck"
-	"testing"
 )
-
-func Test(t *testing.T) { gocheck.TestingT(t) }
 
 type S struct {
 	conn    *db.Storage
