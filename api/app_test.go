@@ -1409,7 +1409,7 @@ func (s *S) TestRunOnceHandler(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = runCommand(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(recorder.Body.String(), gocheck.Equals, "lots of files")
+	c.Assert(recorder.Body.String(), gocheck.Equals, "lots of files\nOK!\n")
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
 	expected += " [ -d /home/application/current ] && cd /home/application/current;"
@@ -1444,7 +1444,7 @@ func (s *S) TestRunHandler(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = runCommand(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(recorder.Body.String(), gocheck.Equals, "lots of files")
+	c.Assert(recorder.Body.String(), gocheck.Equals, "lots of files\nOK!\n")
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
 	expected += " [ -d /home/application/current ] && cd /home/application/current;"

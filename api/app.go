@@ -435,7 +435,12 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	return app.Run(string(c), w, once == "true")
+	err = app.Run(string(c), w, once == "true")
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(w, "\nOK!")
+	return nil
 }
 
 func getEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
