@@ -7,6 +7,7 @@ package auth
 import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/quota"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 	"runtime"
@@ -199,4 +200,68 @@ func (s *S) TestReleaseAppIsSafe(c *gocheck.C) {
 	user, err = GetUserByEmail(email)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(user.Quota.InUse, gocheck.Equals, 0)
+}
+
+func (s *S) TestChangeQuota(c *gocheck.C) {
+	user := &User{
+		Email: "seven@corp.globo.com", Password: "123456",
+		Quota: quota.Quota{Limit: 4, InUse: 3},
+	}
+	err := user.Create()
+	c.Assert(err, gocheck.IsNil)
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	defer conn.Users().Remove(bson.M{"email": user.Email})
+	err = ChangeQuota(user, 40)
+	c.Assert(err, gocheck.IsNil)
+	user, err = GetUserByEmail(user.Email)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(user.Quota.InUse, gocheck.Equals, 3)
+	c.Assert(user.Quota.Limit, gocheck.Equals, 40)
+}
+
+func (s *S) TestChangeQuotaUnlimited(c *gocheck.C) {
+	user := &User{
+		Email: "seven@corp.globo.com", Password: "123456",
+		Quota: quota.Quota{Limit: 4, InUse: 3},
+	}
+	err := user.Create()
+	c.Assert(err, gocheck.IsNil)
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	defer conn.Users().Remove(bson.M{"email": user.Email})
+	err = ChangeQuota(user, -40)
+	c.Assert(err, gocheck.IsNil)
+	user, err = GetUserByEmail(user.Email)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(user.Quota.InUse, gocheck.Equals, 3)
+	c.Assert(user.Quota.Limit, gocheck.Equals, -1)
+}
+
+func (s *S) TestChangeQuotaLessThanInUse(c *gocheck.C) {
+	user := &User{
+		Email: "seven@corp.globo.com", Password: "123456",
+		Quota: quota.Quota{Limit: 4, InUse: 4},
+	}
+	err := user.Create()
+	c.Assert(err, gocheck.IsNil)
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	defer conn.Users().Remove(bson.M{"email": user.Email})
+	err = ChangeQuota(user, 3)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "new limit is lesser than the current allocated value")
+}
+
+func (s *S) TestChangeQuotaUserNotFound(c *gocheck.C) {
+	user := &User{
+		Email: "seven@corp.globo.com", Password: "123456",
+		Quota: quota.Quota{Limit: 4, InUse: 4},
+	}
+	err := ChangeQuota(user, 20)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.Equals, mgo.ErrNotFound)
 }
