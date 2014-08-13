@@ -6,6 +6,7 @@ package app
 
 import (
 	"github.com/tsuru/tsuru/quota"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 	"runtime"
@@ -142,4 +143,56 @@ func (s *S) TestReleaseUnitsAppNotFound(c *gocheck.C) {
 	}
 	err := releaseUnits(&app, 6)
 	c.Assert(err, gocheck.Equals, ErrAppNotFound)
+}
+
+func (s *S) TestChangeQuota(c *gocheck.C) {
+	app := &App{
+		Name:  "together",
+		Quota: quota.Quota{Limit: 3, InUse: 3},
+	}
+	s.conn.Apps().Insert(app)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	err := ChangeQuota(app, 30)
+	c.Assert(err, gocheck.IsNil)
+	app, err = GetByName(app.Name)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.Quota.InUse, gocheck.Equals, 3)
+	c.Assert(app.Quota.Limit, gocheck.Equals, 30)
+}
+
+func (s *S) TestChangeQuotaUnlimited(c *gocheck.C) {
+	app := &App{
+		Name:  "together",
+		Quota: quota.Quota{Limit: 3, InUse: 2},
+	}
+	s.conn.Apps().Insert(app)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	err := ChangeQuota(app, -5)
+	c.Assert(err, gocheck.IsNil)
+	app, err = GetByName(app.Name)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.Quota.InUse, gocheck.Equals, 2)
+	c.Assert(app.Quota.Limit, gocheck.Equals, -1)
+}
+
+func (s *S) TestChangeQuotaLessThanInUse(c *gocheck.C) {
+	app := &App{
+		Name:  "together",
+		Quota: quota.Quota{Limit: 3, InUse: 3},
+	}
+	s.conn.Apps().Insert(app)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	err := ChangeQuota(app, 2)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "new limit is lesser than the current allocated value")
+}
+
+func (s *S) TestChangeQuotaAppNotFound(c *gocheck.C) {
+	app := &App{
+		Name:  "together",
+		Quota: quota.Quota{Limit: 3, InUse: 3},
+	}
+	err := ChangeQuota(app, 20)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.Equals, mgo.ErrNotFound)
 }

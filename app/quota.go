@@ -90,3 +90,24 @@ func checkAppUsage(name string, quantity int) (*App, error) {
 	}
 	return app, nil
 }
+
+// ChangeQuota redefines the limit of the app. The new limit must be bigger
+// than or equal to the current number of units in the app. The new limit maybe
+// smaller than 0, which mean that the app should have an unlimited number of
+// units.
+func ChangeQuota(app *App, limit int) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	if limit < 0 {
+		limit = -1
+	} else if limit < app.Quota.InUse {
+		return errors.New("new limit is lesser than the current allocated value")
+	}
+	return conn.Apps().Update(
+		bson.M{"name": app.Name},
+		bson.M{"$set": bson.M{"quota.limit": limit}},
+	)
+}
