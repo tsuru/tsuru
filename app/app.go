@@ -160,7 +160,7 @@ func ReleaseApplicationLock(appName string) {
 	}
 }
 
-// GetAppByName queries the database to find an app identified by the given
+// GetByName queries the database to find an app identified by the given
 // name.
 func GetByName(name string) (*App, error) {
 	var app App
