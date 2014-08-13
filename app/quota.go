@@ -96,16 +96,16 @@ func checkAppUsage(name string, quantity int) (*App, error) {
 // smaller than 0, which mean that the app should have an unlimited number of
 // units.
 func ChangeQuota(app *App, limit int) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
 	if limit < 0 {
 		limit = -1
 	} else if limit < app.Quota.InUse {
 		return errors.New("new limit is lesser than the current allocated value")
 	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
 	return conn.Apps().Update(
 		bson.M{"name": app.Name},
 		bson.M{"$set": bson.M{"quota.limit": limit}},
