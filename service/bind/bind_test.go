@@ -39,7 +39,6 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	var err error
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_service_bind_test")
-	config.Set("auth:salt", "test_salt")
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	s.user = auth.User{Email: "sad-but-true@metallica.com"}
