@@ -9,7 +9,7 @@ tsuru is an open source polyglot cloud application platform (PaaS). With tsuru, 
 
 Links:
 
-- Full Documentation : http://docs.tsuru.io
-- How to Contribute : http://docs.tsuru.io/en/latest/contribute.html
-- Repository & Issue Tracker : https://github.com/tsuru/tsuru
-- IRC : Freenode, channel #tsuru
+- Full Documentation: http://docs.tsuru.io
+- How to Contribute: http://docs.tsuru.io/en/latest/contributing
+- Repository & Issue Tracker: https://github.com/tsuru/tsuru
+- IRC: Freenode, channel #tsuru
