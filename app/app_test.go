@@ -322,7 +322,7 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.app, gocheck.Equals, "appname")
 	c.Assert(e.Err, gocheck.NotNil)
-	c.Assert(e.Err.Error(), gocheck.Equals, "there is already an app with this name.")
+	c.Assert(e.Err.Error(), gocheck.Equals, "there is already an app with this name")
 }
 
 func (s *S) TestCantCreateAppWithInvalidName(c *gocheck.C) {

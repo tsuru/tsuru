@@ -22,8 +22,8 @@ import (
 )
 
 var (
-	ErrAppAlreadyExists = errors.New("there is already an app with this name.")
-	ErrAppNotFound      = errors.New("App not found")
+	ErrAppAlreadyExists = errors.New("there is already an app with this name")
+	ErrAppNotFound      = errors.New("app not found")
 )
 
 // reserveUserApp reserves the app for the user, only if the user has a quota

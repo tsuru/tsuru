@@ -122,9 +122,9 @@ type Applog struct {
 	Unit    string
 }
 
-// Acquire an application lock by setting the lock field in the database.
-// This method is already called by a connection middleware on requests with
-// :app or :appname params that have side-effects.
+// AcquireApplicationLock acquires an application lock by setting the lock
+// field in the database.  This method is already called by a connection
+// middleware on requests with :app or :appname params that have side-effects.
 func AcquireApplicationLock(appName string, owner string, reason string) (bool, error) {
 	conn, err := db.Conn()
 	if err != nil {
@@ -145,9 +145,9 @@ func AcquireApplicationLock(appName string, owner string, reason string) (bool, 
 	return err == nil, err
 }
 
-// Releases a lock hold on an app, currently it's called by a middleware,
-// however, ideally, it should be called individually by each handler since
-// they might be doing operations in background.
+// ReleaseApplicationLock releases a lock hold on an app, currently it's called
+// by a middleware, however, ideally, it should be called individually by each
+// handler since they might be doing operations in background.
 func ReleaseApplicationLock(appName string) {
 	conn, err := db.Conn()
 	if err != nil {
@@ -713,12 +713,12 @@ func (app *App) GetPlatform() string {
 	return app.Platform
 }
 
-//GetDeploys returns the amount of deploys of an app.
+// GetDeploys returns the amount of deploys of an app.
 func (app *App) GetDeploys() uint {
 	return app.Deploys
 }
 
-// Env returns app.Env
+// Envs returns a map representing the apps environment variables.
 func (app *App) Envs() map[string]bind.EnvVar {
 	return app.Env
 }
