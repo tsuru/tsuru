@@ -14,7 +14,7 @@ import (
 
 func (s *S) TestAppRun(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	expected := "http.go		http_test.go"
+	expected := "http.go		http_test.go\nOK!\n"
 	context := cmd.Context{
 		Args:   []string{"ls"},
 		Stdout: &stdout,
@@ -22,7 +22,7 @@ func (s *S) TestAppRun(c *gocheck.C) {
 	}
 	trans := &testing.ConditionalTransport{
 		Transport: testing.Transport{
-			Message: "http.go		http_test.go",
+			Message: "http.go		http_test.go\nOK!\n",
 			Status: http.StatusOK,
 		},
 		CondFunc: func(req *http.Request) bool {
@@ -41,7 +41,7 @@ func (s *S) TestAppRun(c *gocheck.C) {
 
 func (s *S) TestAppRunShouldUseAllSubsequentArgumentsAsArgumentsToTheGivenCommand(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	expected := "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go"
+	expected := "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go\nOK!\n"
 	context := cmd.Context{
 		Args:   []string{"ls", "-l"},
 		Stdout: &stdout,
@@ -49,7 +49,7 @@ func (s *S) TestAppRunShouldUseAllSubsequentArgumentsAsArgumentsToTheGivenComman
 	}
 	trans := &testing.ConditionalTransport{
 		Transport: testing.Transport{
-			Message: "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go",
+			Message: "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go\nOK!\n",
 			Status:  http.StatusOK,
 		},
 		CondFunc: func(req *http.Request) bool {
@@ -68,7 +68,7 @@ func (s *S) TestAppRunShouldUseAllSubsequentArgumentsAsArgumentsToTheGivenComman
 
 func (s *S) TestAppRunWithoutTheFlag(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	expected := "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go"
+	expected := "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go\nOK!\n"
 	context := cmd.Context{
 		Args:   []string{"ls", "-lh"},
 		Stdout: &stdout,
@@ -76,7 +76,7 @@ func (s *S) TestAppRunWithoutTheFlag(c *gocheck.C) {
 	}
 	trans := &testing.ConditionalTransport{
 		Transport: testing.Transport{
-			Message: "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go",
+			Message: "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go\nOK!\n",
 			Status:  http.StatusOK,
 		},
 		CondFunc: func(req *http.Request) bool {
@@ -92,6 +92,33 @@ func (s *S) TestAppRunWithoutTheFlag(c *gocheck.C) {
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestAppRunShouldReturnErrAbortCommandWhenCommandGoWrong(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	context := cmd.Context{
+		Args:   []string{"cmd_error"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{
+			Message: "command doesn't exists.",
+			Status:  http.StatusOK,
+		},
+		CondFunc: func(req *http.Request) bool {
+			b := make([]byte, 6)
+			req.Body.Read(b)
+			return req.URL.Path == "/apps/bla/run"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	fake := &FakeGuesser{name: "bla"}
+	command := AppRun{GuessingCommand: GuessingCommand{G: fake}}
+	command.Flags().Parse(true, nil)
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.Equals, cmd.ErrAbortCommand)
 }
 
 func (s *S) TestAppRunInfo(c *gocheck.C) {

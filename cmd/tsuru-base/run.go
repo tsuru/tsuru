@@ -5,6 +5,7 @@
 package tsuru
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/tsuru/tsuru/cmd"
 	"io"
@@ -52,8 +53,16 @@ func (c *AppRun) Run(context *cmd.Context, client *cmd.Client) error {
 		return err
 	}
 	defer r.Body.Close()
-	_, err = io.Copy(context.Stdout, r.Body)
-	return err
+	var buf bytes.Buffer
+	_, err = io.Copy(io.MultiWriter(&buf, context.Stdout), r.Body)
+	if err != nil {
+		return err
+	}
+	exit := buf.String()
+	if strings.HasSuffix(exit, "\nOK!\n") {
+		return nil
+	}
+	return cmd.ErrAbortCommand
 }
 
 func (c *AppRun) Flags() *gnuflag.FlagSet {
