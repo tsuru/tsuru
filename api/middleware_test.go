@@ -265,14 +265,14 @@ func (s *S) TestAppLockMiddlewareReturns404IfNotApp(c *gocheck.C) {
 	c.Assert(log.called, gocheck.Equals, false)
 	httpErr := context.GetRequestError(request).(*tsuruErr.HTTP)
 	c.Assert(httpErr.Code, gocheck.Equals, http.StatusNotFound)
-	c.Assert(httpErr.Message, gocheck.Equals, "App not found")
+	c.Assert(httpErr.Message, gocheck.Equals, "app not found")
 	request, err = http.NewRequest("POST", "/?:appname=abc", nil)
 	c.Assert(err, gocheck.IsNil)
 	m.ServeHTTP(recorder, request, h)
 	c.Assert(log.called, gocheck.Equals, false)
 	httpErr = context.GetRequestError(request).(*tsuruErr.HTTP)
 	c.Assert(httpErr.Code, gocheck.Equals, http.StatusNotFound)
-	c.Assert(httpErr.Message, gocheck.Equals, "App not found")
+	c.Assert(httpErr.Message, gocheck.Equals, "app not found")
 }
 
 func (s *S) TestAppLockMiddlewareOnLockedApp(c *gocheck.C) {

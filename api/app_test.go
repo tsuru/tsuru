@@ -994,7 +994,7 @@ func (s *S) TestSetUnitStatusAppNotFound(c *gocheck.C) {
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Check(e.Code, gocheck.Equals, http.StatusNotFound)
-	c.Check(e.Message, gocheck.Equals, "App not found")
+	c.Check(e.Message, gocheck.Equals, "app not found")
 }
 
 func (s *S) TestAddTeamToTheApp(c *gocheck.C) {
