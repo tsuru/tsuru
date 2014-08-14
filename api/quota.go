@@ -5,12 +5,27 @@
 package api
 
 import (
+	"encoding/json"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"net/http"
 	"strconv"
 )
+
+func getUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	email := r.URL.Query().Get(":email")
+	user, err := auth.GetUserByEmail(email)
+	if err == auth.ErrUserNotFound {
+		return &errors.HTTP{
+			Code:    http.StatusNotFound,
+			Message: err.Error(),
+		}
+	} else if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(user.Quota)
+}
 
 func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	limit, err := strconv.Atoi(r.FormValue("limit"))

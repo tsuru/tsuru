@@ -6,6 +6,7 @@ package api
 
 import (
 	"bytes"
+	"encoding/json"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -48,6 +49,62 @@ func (s *QuotaSuite) TearDownSuite(c *gocheck.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
 	conn.Apps().Database.DropDatabase()
+}
+
+func (s *QuotaSuite) TestGetUserQuota(c *gocheck.C) {
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	user := &auth.User{
+		Email:    "radio@gaga.com",
+		Password: "qwe123",
+		Quota:    quota.Quota{Limit: 4, InUse: 2},
+	}
+	_, err = nativeScheme.Create(user)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Users().Remove(bson.M{"email": user.Email})
+	request, _ := http.NewRequest("GET", "/users/radio@gaga.com/quota", nil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	handler := RunServer(true)
+	handler.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	var qt quota.Quota
+	err = json.NewDecoder(recorder.Body).Decode(&qt)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(qt, gocheck.DeepEquals, user.Quota)
+}
+
+func (s *QuotaSuite) TestGetUserQuotaRequiresAdmin(c *gocheck.C) {
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	user := &auth.User{
+		Email:    "radio@gaga.com",
+		Password: "qwe123",
+	}
+	_, err = nativeScheme.Create(user)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Users().Remove(bson.M{"email": user.Email})
+	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "qwe123"})
+	c.Assert(err, gocheck.IsNil)
+	request, _ := http.NewRequest("GET", "/users/radio@gaga.com/quota", nil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	handler := RunServer(true)
+	handler.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, adminRequiredErr.Code)
+	c.Assert(recorder.Body.String(), gocheck.Equals, adminRequiredErr.Message+"\n")
+}
+
+func (s *QuotaSuite) TestGetUserQuotaUserNotFound(c *gocheck.C) {
+	request, _ := http.NewRequest("GET", "/users/radio@gaga.com/quota", nil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	handler := RunServer(true)
+	handler.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(recorder.Body.String(), gocheck.Equals, auth.ErrUserNotFound.Error()+"\n")
 }
 
 func (s *QuotaSuite) TestChangeUserQuota(c *gocheck.C) {
