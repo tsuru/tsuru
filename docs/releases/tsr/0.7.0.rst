@@ -17,7 +17,9 @@ or older versions.
 What's new in tsr 0.7.0
 =======================
 
-Nothing yet :)
+- quota management via API is back: now tsuru administrators are able to change
+  the quota of a user of an application. It can be done from the remote API or
+  using tsuru-admin (issue `#869 <https://github.com/tsuru/tsuru/issues/869>`_)
 
 Bug fixes
 =========
