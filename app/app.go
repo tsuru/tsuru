@@ -86,7 +86,7 @@ type App struct {
 	hr hookRunner
 }
 
-// Units returns the ilist of units.
+// Units returns the list of units.
 func (app *App) Units() []provision.Unit {
 	return Provisioner.Units(app)
 }
