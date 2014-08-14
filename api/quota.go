@@ -48,6 +48,19 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	return auth.ChangeQuota(user, limit)
 }
 
+func getAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	a, err := app.GetByName(r.URL.Query().Get(":appname"))
+	if err == app.ErrAppNotFound {
+		return &errors.HTTP{
+			Code:    http.StatusNotFound,
+			Message: err.Error(),
+		}
+	} else if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(a.Quota)
+}
+
 func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	limit, err := strconv.Atoi(r.FormValue("limit"))
 	if err != nil {

@@ -185,6 +185,61 @@ func (s *QuotaSuite) TestChangeUserQuotaUserNotFound(c *gocheck.C) {
 	c.Assert(recorder.Body.String(), gocheck.Equals, auth.ErrUserNotFound.Error()+"\n")
 }
 
+func (s *QuotaSuite) TestGetAppQuota(c *gocheck.C) {
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	app := &app.App{
+		Name:  "civil",
+		Quota: quota.Quota{Limit: 4, InUse: 2},
+	}
+	err = conn.Apps().Insert(app)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": app.Name})
+	request, _ := http.NewRequest("GET", "/apps/civil/quota", nil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	handler := RunServer(true)
+	handler.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	var qt quota.Quota
+	err = json.NewDecoder(recorder.Body).Decode(&qt)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(qt, gocheck.DeepEquals, app.Quota)
+}
+
+func (s *QuotaSuite) TestGetAppQuotaRequiresAdmin(c *gocheck.C) {
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	user := &auth.User{
+		Email:    "radio@gaga.com",
+		Password: "qwe123",
+	}
+	_, err = nativeScheme.Create(user)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Users().Remove(bson.M{"email": user.Email})
+	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "qwe123"})
+	c.Assert(err, gocheck.IsNil)
+	request, _ := http.NewRequest("GET", "/apps/shangrila/quota", nil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	handler := RunServer(true)
+	handler.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, adminRequiredErr.Code)
+	c.Assert(recorder.Body.String(), gocheck.Equals, adminRequiredErr.Message+"\n")
+}
+
+func (s *QuotaSuite) TestGetAppQuotaAppNotFound(c *gocheck.C) {
+	request, _ := http.NewRequest("GET", "/apps/shangrila/quota", nil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	handler := RunServer(true)
+	handler.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(recorder.Body.String(), gocheck.Equals, app.ErrAppNotFound.Error()+"\n")
+}
+
 func (s *QuotaSuite) TestChangeAppQuota(c *gocheck.C) {
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)

@@ -103,6 +103,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Post", "/apps/{app}/restart", authorizationRequiredHandler(restart))
 	m.Add("Post", "/apps/{app}/start", authorizationRequiredHandler(start))
 	m.Add("Post", "/apps/{app}/stop", authorizationRequiredHandler(stop))
+	m.Add("Get", "/apps/{appname}/quota", AdminRequiredHandler(getAppQuota))
 	m.Add("Post", "/apps/{appname}/quota", AdminRequiredHandler(changeAppQuota))
 	m.Add("Get", "/apps/{app}/env", authorizationRequiredHandler(getEnv))
 	m.Add("Post", "/apps/{app}/env", authorizationRequiredHandler(setEnv))
