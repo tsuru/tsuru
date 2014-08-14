@@ -127,3 +127,96 @@ func (s *QuotaSuite) TestChangeUserQuotaUserNotFound(c *gocheck.C) {
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), gocheck.Equals, auth.ErrUserNotFound.Error()+"\n")
 }
+
+func (s *QuotaSuite) TestChangeAppQuota(c *gocheck.C) {
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	a := &app.App{
+		Name:  "shangrila",
+		Quota: quota.Quota{Limit: 4, InUse: 2},
+	}
+	err = conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": a.Name})
+	body := bytes.NewBufferString("limit=40")
+	request, _ := http.NewRequest("POST", "/apps/shangrila/quota", body)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	handler := RunServer(true)
+	handler.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	a, err = app.GetByName(a.Name)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(a.Quota.InUse, gocheck.Equals, 2)
+	c.Assert(a.Quota.Limit, gocheck.Equals, 40)
+}
+
+func (s *QuotaSuite) TestChangeAppQuotaRequiresAdmin(c *gocheck.C) {
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	app := app.App{
+		Name:  "shangrila",
+		Quota: quota.Quota{Limit: 4, InUse: 2},
+	}
+	err = conn.Apps().Insert(app)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": app.Name})
+	user := &auth.User{
+		Email:    "radio@gaga.com",
+		Password: "qwe123",
+	}
+	_, err = nativeScheme.Create(user)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Users().Remove(bson.M{"email": user.Email})
+	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "qwe123"})
+	c.Assert(err, gocheck.IsNil)
+	body := bytes.NewBufferString("limit=40")
+	request, _ := http.NewRequest("POST", "/apps/shangrila/quota", body)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	handler := RunServer(true)
+	handler.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, adminRequiredErr.Code)
+	c.Assert(recorder.Body.String(), gocheck.Equals, adminRequiredErr.Message+"\n")
+}
+
+func (s *QuotaSuite) TestChangeAppQuotaInvalidLimitValue(c *gocheck.C) {
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	app := app.App{
+		Name:  "shangrila",
+		Quota: quota.Quota{Limit: 4, InUse: 2},
+	}
+	err = conn.Apps().Insert(app)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": app.Name})
+	values := []string{"four", ""}
+	for _, value := range values {
+		body := bytes.NewBufferString("limit=" + value)
+		request, _ := http.NewRequest("POST", "/apps/shangrila/quota", body)
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+		recorder := httptest.NewRecorder()
+		handler := RunServer(true)
+		handler.ServeHTTP(recorder, request)
+		c.Assert(recorder.Code, gocheck.Equals, http.StatusBadRequest)
+		c.Assert(recorder.Body.String(), gocheck.Equals, "Invalid limit\n")
+	}
+}
+
+func (s *QuotaSuite) TestChangeAppQuotaAppNotFound(c *gocheck.C) {
+	body := bytes.NewBufferString("limit=2")
+	request, _ := http.NewRequest("POST", "/apps/shangrila/quota", body)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	handler := RunServer(true)
+	handler.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusNotFound)
+	c.Assert(recorder.Body.String(), gocheck.Equals, app.ErrAppNotFound.Error()+"\n")
+}

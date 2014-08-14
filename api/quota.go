@@ -5,6 +5,7 @@
 package api
 
 import (
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"net/http"
@@ -30,4 +31,20 @@ func changeUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error
 		return err
 	}
 	return auth.ChangeQuota(user, limit)
+}
+
+func changeAppQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	limit, err := strconv.Atoi(r.FormValue("limit"))
+	if err != nil {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "Invalid limit",
+		}
+	}
+	appName := r.URL.Query().Get(":appname")
+	a, err := app.GetByName(appName)
+	if err != nil {
+		return err
+	}
+	return app.ChangeQuota(a, limit)
 }
