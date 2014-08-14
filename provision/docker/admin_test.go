@@ -109,7 +109,7 @@ func (s *S) TestMoveContainerRun(c *gocheck.C) {
 func (s *S) TestRebalanceContainersInfo(c *gocheck.C) {
 	expected := &cmd.Info{
 		Name:    "containers-rebalance",
-		Usage:   "containers-rebalance [--dry]",
+		Usage:   "containers-rebalance [--dry] [-y/--force-yes]",
 		Desc:    "Move containers creating a more even distribution between docker nodes.",
 		MinArgs: 0,
 	}
@@ -143,15 +143,83 @@ func (s *S) TestRebalanceContainersRun(c *gocheck.C) {
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	cmd := rebalanceContainersCmd{}
-	cmd.Flags().Parse(true, []string{"--dry"})
-	err := cmd.Run(&context, client)
+	err := cmd.Flags().Parse(true, []string{"--dry", "-y"})
+	c.Assert(err, gocheck.IsNil)
+	err = cmd.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	expected := "progress msg\n"
 	c.Assert(stdout.String(), gocheck.Equals, expected)
 	expectedDry = "false"
 	cmd2 := rebalanceContainersCmd{}
+	cmd2.Flags().Parse(true, []string{"-y"})
 	err = cmd2.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestRebalanceContainersRunAskingForConfirmation(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Stdin:  bytes.NewBufferString("y"),
+	}
+	msg, _ := json.Marshal(progressLog{Message: "progress msg"})
+	result := string(msg)
+	expectedDry := "true"
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: result, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			defer req.Body.Close()
+			body, err := ioutil.ReadAll(req.Body)
+			c.Assert(err, gocheck.IsNil)
+			expected := map[string]string{
+				"dry": expectedDry,
+			}
+			result := map[string]string{}
+			err = json.Unmarshal(body, &result)
+			c.Assert(expected, gocheck.DeepEquals, result)
+			return req.URL.Path == "/docker/containers/rebalance" && req.Method == "POST"
+		},
+	}
+	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	cmd := rebalanceContainersCmd{}
+	cmd.Flags().Parse(true, []string{"--dry"})
+	err := cmd.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	expected := "progress msg\n"
+	c.Assert(stderr.String(), gocheck.Equals, "Are you sure? (y/n) ")
+	c.Assert(stdout.String(), gocheck.Equals, expected)
+	expectedDry = "false"
+	cmd2 := rebalanceContainersCmd{}
+	err = cmd2.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestRebalanceContainersRunGivingUp(c *gocheck.C) {
+	var called bool
+	var stdout, stderr bytes.Buffer
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Stdin:  bytes.NewBufferString("n\n"),
+	}
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: "", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			called = true
+			return true
+		},
+	}
+	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	cmd := rebalanceContainersCmd{}
+	cmd.Flags().Parse(true, []string{"--dry"})
+	err := cmd.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stderr.String(), gocheck.Equals, "Are you sure? (y/n) Abort.\n")
+	c.Assert(stdout.String(), gocheck.Equals, "")
+	c.Assert(called, gocheck.Equals, false)
 }
 
 func (s *S) TestFixContainersCmdRun(c *gocheck.C) {
