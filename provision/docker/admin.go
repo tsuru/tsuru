@@ -144,8 +144,8 @@ func (c *moveContainerCmd) Run(context *cmd.Context, client *cmd.Client) error {
 }
 
 type rebalanceContainersCmd struct {
-	fs  *gnuflag.FlagSet
-	dry bool
+	fs       *gnuflag.FlagSet
+	dry      bool
 	forceYes bool
 }
 
