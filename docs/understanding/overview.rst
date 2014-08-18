@@ -15,8 +15,8 @@ using the Git revision control system, all running on the tsuru infrastructure.
 Why tsuru?
 ==========
 
-Fast and easy and continuos deployment
---------------------------------------
+Fast and easy and continuous deployment
+---------------------------------------
 
 Deploying an app is simple and easy. No special tools needed, just a plain git
 push. The entire process is very simple. tsuru will also take care of all the
