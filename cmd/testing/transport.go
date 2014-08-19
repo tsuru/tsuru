@@ -37,3 +37,13 @@ func (t *ConditionalTransport) RoundTrip(req *http.Request) (*http.Response, err
 	}
 	return t.Transport.RoundTrip(req)
 }
+
+type MultiConditionalTransport struct {
+	ConditionalTransports []ConditionalTransport
+}
+
+func (m *MultiConditionalTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	ct := m.ConditionalTransports[0]
+	m.ConditionalTransports = m.ConditionalTransports[1:]
+	return ct.RoundTrip(req)
+}

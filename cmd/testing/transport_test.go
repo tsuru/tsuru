@@ -58,3 +58,37 @@ func (S) TestConditionalTransport(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, "condition failed")
 	c.Assert(r.StatusCode, gocheck.Equals, http.StatusInternalServerError)
 }
+
+func (S) TestMultiConditionalTransport(c *gocheck.C) {
+	t1 := ConditionalTransport{
+		Transport: Transport{
+			Message: "Unauthorized",
+			Status:  http.StatusUnauthorized,
+		},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Path == "/something"
+		},
+	}
+	t2 := ConditionalTransport{
+		Transport: Transport{
+			Message: "OK",
+			Status:  http.StatusOK,
+		},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Path == "/something"
+		},
+	}
+	m := MultiConditionalTransport{
+		ConditionalTransports: []ConditionalTransport{t1, t2},
+	}
+	c.Assert(len(m.ConditionalTransports), gocheck.Equals, 2)
+	req, _ := http.NewRequest("GET", "/something", nil)
+	r, err := m.RoundTrip(req)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(r.StatusCode, gocheck.Equals, http.StatusUnauthorized)
+	c.Assert(len(m.ConditionalTransports), gocheck.Equals, 1)
+	r, err = m.RoundTrip(req)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(r.StatusCode, gocheck.Equals, http.StatusOK)
+	c.Assert(len(m.ConditionalTransports), gocheck.Equals, 0)
+}
