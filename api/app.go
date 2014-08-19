@@ -781,6 +781,10 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	app1Name := r.URL.Query().Get("app1")
 	app2Name := r.URL.Query().Get("app2")
+	forceSwap := r.URL.Query().Get("force")
+	if forceSwap == "" {
+		forceSwap = "false"
+	}
 	locked1, err := app.AcquireApplicationLock(app1Name, t.GetUserName(), "/swap")
 	if err != nil {
 		return err
@@ -804,6 +808,10 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	if !locked2 {
 		return &errors.HTTP{Code: http.StatusConflict, Message: fmt.Sprintf("%s: %s", app2.Name, &app2.Lock)}
+	}
+	// compare apps by platform type and number of units
+	if forceSwap == "false" && ((len(app1.Units()) != len(app2.Units())) || (app1.Platform != app2.Platform)) {
+		return app.ErrAppNotEqual
 	}
 	rec.Log(u.Email, "swap", app1Name, app2Name)
 	return app.Swap(&app1, &app2)
