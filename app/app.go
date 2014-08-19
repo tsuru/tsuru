@@ -41,9 +41,7 @@ var (
 	ErrAppNotEqual = stderr.New("Apps are not equal.")
 )
 
-const (
-	InternalAppName = "tsr"
-)
+const InternalAppName = "tsr"
 
 // AppLock stores information about a lock hold on the app
 type AppLock struct {
