@@ -5,9 +5,10 @@
 package api
 
 import (
-	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
+
+	"launchpad.net/gocheck"
 )
 
 func (s *S) TestDelayedRouter(c *gocheck.C) {

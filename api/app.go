@@ -7,6 +7,12 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"strconv"
+	"time"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
 	"github.com/tsuru/tsuru/api/context"
@@ -23,11 +29,6 @@ import (
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/mgo.v2/bson"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"strconv"
-	"time"
 )
 
 func getApp(name string, u *auth.User) (app.App, error) {

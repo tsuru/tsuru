@@ -7,11 +7,12 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/tsuru/tsuru/heal"
 	"io/ioutil"
-	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
+
+	"github.com/tsuru/tsuru/heal"
+	"launchpad.net/gocheck"
 )
 
 type HealerSuite struct{}

@@ -6,16 +6,17 @@ package cmd
 
 import (
 	"bytes"
-	"code.google.com/p/go.crypto/ssh/terminal"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"launchpad.net/gnuflag"
 	"net/http"
 	"os"
 	"sort"
+
+	"code.google.com/p/go.crypto/ssh/terminal"
+	"launchpad.net/gnuflag"
 )
 
 type userCreate struct{}

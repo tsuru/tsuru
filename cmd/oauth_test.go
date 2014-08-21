@@ -6,14 +6,15 @@ package cmd
 
 import (
 	"fmt"
-	etesting "github.com/tsuru/tsuru/exec/testing"
-	ftesting "github.com/tsuru/tsuru/fs/testing"
 	"io/ioutil"
-	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
 	"runtime"
 	"strings"
+
+	etesting "github.com/tsuru/tsuru/exec/testing"
+	ftesting "github.com/tsuru/tsuru/fs/testing"
+	"launchpad.net/gocheck"
 )
 
 func (s *S) TestPort(c *gocheck.C) {

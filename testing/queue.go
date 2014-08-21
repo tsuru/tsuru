@@ -5,9 +5,10 @@
 package testing
 
 import (
-	"github.com/tsuru/tsuru/queue"
 	"sync"
 	"time"
+
+	"github.com/tsuru/tsuru/queue"
 )
 
 var (

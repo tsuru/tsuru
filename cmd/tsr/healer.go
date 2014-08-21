@@ -5,11 +5,12 @@
 package main
 
 import (
+	"time"
+
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/heal"
 	"github.com/tsuru/tsuru/log"
 	"launchpad.net/gnuflag"
-	"time"
 )
 
 type healerCmd struct {

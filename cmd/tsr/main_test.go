@@ -5,12 +5,13 @@
 package main
 
 import (
+	"os"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
-	"os"
 )
 
 func (s *S) TestCommandsFromBaseManagerAreRegistered(c *gocheck.C) {

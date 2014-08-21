@@ -6,11 +6,12 @@ package api
 
 import (
 	"fmt"
-	"github.com/tsuru/tsuru/auth"
 	"io/ioutil"
-	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
+
+	"github.com/tsuru/tsuru/auth"
+	"launchpad.net/gocheck"
 )
 
 func authorizedTsuruHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {

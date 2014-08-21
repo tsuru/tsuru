@@ -8,6 +8,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path"
+	"strings"
+	"time"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -17,15 +26,7 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
-	"io"
-	"io/ioutil"
 	"launchpad.net/gocheck"
-	"net/http"
-	"net/http/httptest"
-	"os"
-	"path"
-	"strings"
-	"time"
 )
 
 type AuthSuite struct {

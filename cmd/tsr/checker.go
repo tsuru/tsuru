@@ -7,6 +7,7 @@ package main
 import (
 	"errors"
 	"fmt"
+
 	"github.com/tsuru/config"
 )
 

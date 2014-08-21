@@ -6,14 +6,15 @@ package api
 
 import (
 	"fmt"
+	"net/http"
+	"reflect"
+
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
-	"net/http"
-	"reflect"
 )
 
 const (

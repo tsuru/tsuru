@@ -6,6 +6,7 @@ package auth
 
 import (
 	"errors"
+
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/quota"
 	"gopkg.in/mgo.v2"

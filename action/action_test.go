@@ -5,8 +5,9 @@
 package action
 
 import (
-	"launchpad.net/gocheck"
 	"testing"
+
+	"launchpad.net/gocheck"
 )
 
 func Test(t *testing.T) {

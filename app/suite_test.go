@@ -6,6 +6,14 @@ package app
 
 import (
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path"
+	"testing"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
@@ -14,14 +22,7 @@ import (
 	"github.com/tsuru/tsuru/service"
 	ttesting "github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
-	"io"
-	"io/ioutil"
 	"launchpad.net/gocheck"
-	"net/http"
-	"net/http/httptest"
-	"os"
-	"path"
-	"testing"
 )
 
 func Test(t *testing.T) { gocheck.TestingT(t) }

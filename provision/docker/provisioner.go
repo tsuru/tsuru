@@ -7,6 +7,11 @@ package docker
 import (
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/url"
+	"sync"
+
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
@@ -19,10 +24,6 @@ import (
 	"github.com/tsuru/tsuru/router"
 	_ "github.com/tsuru/tsuru/router/hipache"
 	_ "github.com/tsuru/tsuru/router/testing"
-	"io"
-	"io/ioutil"
-	"net/url"
-	"sync"
 )
 
 func init() {

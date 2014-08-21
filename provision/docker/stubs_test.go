@@ -7,9 +7,6 @@ package docker
 import (
 	"bufio"
 	"fmt"
-	"github.com/fsouza/go-dockerclient"
-	"github.com/tsuru/docker-cluster/cluster"
-	"github.com/tsuru/tsuru/safe"
 	"io"
 	"net"
 	"net/http"
@@ -17,6 +14,10 @@ import (
 	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/fsouza/go-dockerclient"
+	"github.com/tsuru/docker-cluster/cluster"
+	"github.com/tsuru/tsuru/safe"
 )
 
 func startTestListener(addr string) net.Listener {

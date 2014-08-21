@@ -5,18 +5,19 @@
 package native
 
 import (
-	"code.google.com/p/go.crypto/bcrypt"
 	"crypto"
 	"encoding/json"
 	"fmt"
+	"runtime"
+	"sync"
+	"time"
+
+	"code.google.com/p/go.crypto/bcrypt"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
-	"runtime"
-	"sync"
-	"time"
 )
 
 func (s *S) TestLoadConfigTokenExpire(c *gocheck.C) {

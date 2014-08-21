@@ -6,12 +6,13 @@ package ec2
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/ec2"
-	"time"
 )
 
 const maxWaitTime = time.Duration(1 * time.Minute)

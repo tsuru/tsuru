@@ -9,6 +9,14 @@ import (
 	"encoding/json"
 	stderr "errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"strconv"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
@@ -21,13 +29,6 @@ import (
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
-	"net/http"
-	"net/http/httptest"
-	"strconv"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 func (s *S) TestGetAppByName(c *gocheck.C) {

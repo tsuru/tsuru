@@ -5,8 +5,9 @@
 package cmd
 
 import (
-	"launchpad.net/gocheck"
 	"sort"
+
+	"launchpad.net/gocheck"
 )
 
 func (s *S) TestAddOneRow(c *gocheck.C) {

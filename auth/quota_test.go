@@ -5,13 +5,14 @@
 package auth
 
 import (
+	"runtime"
+	"sync"
+
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/quota"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
-	"runtime"
-	"sync"
 )
 
 func (s *S) TestReserveApp(c *gocheck.C) {

@@ -9,6 +9,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"math"
+	"net/http"
+	"strings"
+	"sync"
+
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
@@ -16,11 +22,6 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 	"gopkg.in/mgo.v2/bson"
-	"io/ioutil"
-	"math"
-	"net/http"
-	"strings"
-	"sync"
 )
 
 // errNoFallback is the error returned when no fallback hosts are configured in

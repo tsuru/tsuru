@@ -7,13 +7,14 @@ package heal
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/tsuru/tsuru/log"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/tsuru/tsuru/log"
 )
 
 var (

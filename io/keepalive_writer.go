@@ -6,10 +6,11 @@ package io
 
 import (
 	"errors"
-	"github.com/tsuru/tsuru/log"
 	"io"
 	"sync"
 	"time"
+
+	"github.com/tsuru/tsuru/log"
 )
 
 type keepAliveWriter struct {

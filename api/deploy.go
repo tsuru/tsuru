@@ -6,11 +6,12 @@ package api
 
 import (
 	"encoding/json"
+	"net/http"
+	"time"
+
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
-	"net/http"
-	"time"
 )
 
 func deploysList(w http.ResponseWriter, r *http.Request, t auth.Token) error {

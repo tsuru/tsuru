@@ -5,10 +5,11 @@
 package testing
 
 import (
-	"github.com/tsuru/tsuru/db"
-	"launchpad.net/gocheck"
 	"runtime"
 	"time"
+
+	"github.com/tsuru/tsuru/db"
+	"launchpad.net/gocheck"
 )
 
 type Action struct {

@@ -16,11 +16,12 @@ package hipache
 import (
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/garyburd/redigo/redis"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/router"
-	"strings"
 )
 
 var pool *redis.Pool

@@ -5,9 +5,10 @@
 package testing
 
 import (
-	"github.com/bradfitz/go-smtpd/smtpd"
 	"net"
 	"sync"
+
+	"github.com/bradfitz/go-smtpd/smtpd"
 )
 
 // Mail represents an email message that has been sent to the fake server.

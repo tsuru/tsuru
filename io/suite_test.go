@@ -5,8 +5,9 @@
 package io
 
 import (
-	"launchpad.net/gocheck"
 	"testing"
+
+	"launchpad.net/gocheck"
 )
 
 type S struct{}

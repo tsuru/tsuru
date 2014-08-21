@@ -2,10 +2,11 @@ package native
 
 import (
 	"errors"
-	"github.com/tsuru/config"
-	"launchpad.net/gocheck"
 	"runtime"
 	"sync"
+
+	"github.com/tsuru/config"
+	"launchpad.net/gocheck"
 )
 
 func (s *S) TestSendEmail(c *gocheck.C) {

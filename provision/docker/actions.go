@@ -7,15 +7,16 @@ package docker
 import (
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"sync"
+
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router"
 	"gopkg.in/mgo.v2/bson"
-	"io"
-	"io/ioutil"
-	"sync"
 )
 
 type runContainerActionsArgs struct {

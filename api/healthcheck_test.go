@@ -5,11 +5,12 @@
 package api
 
 import (
-	"github.com/tsuru/config"
 	"io/ioutil"
-	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
+
+	"github.com/tsuru/config"
+	"launchpad.net/gocheck"
 )
 
 type HealthCheckSuite struct{}

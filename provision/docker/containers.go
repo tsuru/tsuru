@@ -8,6 +8,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"math"
+	"sync"
+
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
@@ -15,9 +19,6 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2/bson"
-	"io"
-	"math"
-	"sync"
 )
 
 var (

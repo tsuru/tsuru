@@ -7,11 +7,12 @@ package docker
 import (
 	"bytes"
 	"encoding/json"
+	"io/ioutil"
+	"net/http"
+
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/testing"
-	"io/ioutil"
 	"launchpad.net/gocheck"
-	"net/http"
 )
 
 func (s *S) TestAddNodeToTheSchedulerCmdInfo(c *gocheck.C) {

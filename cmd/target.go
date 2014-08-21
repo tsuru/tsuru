@@ -8,11 +8,12 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"launchpad.net/gnuflag"
 	"regexp"
 	"sort"
 	"strings"
 	"syscall"
+
+	"launchpad.net/gnuflag"
 )
 
 type tsuruTarget struct {

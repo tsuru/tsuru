@@ -7,10 +7,11 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/heal"
-	"net/http"
 )
 
 func getProvisioner() (string, error) {

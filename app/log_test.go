@@ -5,10 +5,11 @@
 package app
 
 import (
-	"gopkg.in/mgo.v2/bson"
-	"launchpad.net/gocheck"
 	"sync"
 	"time"
+
+	"gopkg.in/mgo.v2/bson"
+	"launchpad.net/gocheck"
 )
 
 func (s *S) TestNewLogListener(c *gocheck.C) {

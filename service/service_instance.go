@@ -7,6 +7,10 @@ package service
 import (
 	"encoding/json"
 	stderrors "errors"
+	"io"
+	"net/http"
+	"regexp"
+
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
@@ -15,9 +19,6 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/rec"
 	"gopkg.in/mgo.v2/bson"
-	"io"
-	"net/http"
-	"regexp"
 )
 
 var (

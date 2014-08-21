@@ -4,11 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/tsuru/tsuru/cmd"
-	"launchpad.net/gnuflag"
 	"net/http"
 	"sort"
 	"strings"
+
+	"github.com/tsuru/tsuru/cmd"
+	"launchpad.net/gnuflag"
 )
 
 type addNodeToSchedulerCmd struct {

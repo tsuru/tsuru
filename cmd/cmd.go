@@ -7,15 +7,16 @@ package cmd
 import (
 	gerrors "errors"
 	"fmt"
-	"github.com/tsuru/tsuru/errors"
-	"github.com/tsuru/tsuru/fs"
 	"io"
-	"launchpad.net/gnuflag"
 	"net/http"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/fs"
+	"launchpad.net/gnuflag"
 )
 
 var ErrAbortCommand = gerrors.New("")

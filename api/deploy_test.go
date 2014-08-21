@@ -6,17 +6,18 @@ package api
 
 import (
 	"encoding/json"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"time"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
-	"io/ioutil"
 	"launchpad.net/gocheck"
-	"net/http"
-	"net/http/httptest"
-	"time"
 )
 
 type Deploy struct {

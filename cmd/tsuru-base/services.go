@@ -9,13 +9,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/tsuru/tsuru/cmd"
 	"io"
 	"io/ioutil"
-	"launchpad.net/gnuflag"
 	"net/http"
 	"sort"
 	"strings"
+
+	"github.com/tsuru/tsuru/cmd"
+	"launchpad.net/gnuflag"
 )
 
 type ServiceList struct{}

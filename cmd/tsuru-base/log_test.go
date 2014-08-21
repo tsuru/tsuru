@@ -7,11 +7,12 @@ package tsuru
 import (
 	"bytes"
 	"encoding/json"
+	"net/http"
+	"time"
+
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/testing"
 	"launchpad.net/gocheck"
-	"net/http"
-	"time"
 )
 
 func (s *S) TestFormatterUsesCurrentTimeZone(c *gocheck.C) {

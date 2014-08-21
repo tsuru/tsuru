@@ -6,10 +6,11 @@ package tsuru
 
 import (
 	"bytes"
+	"net/http"
+
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/testing"
 	"launchpad.net/gocheck"
-	"net/http"
 )
 
 func (s *S) TestAppRun(c *gocheck.C) {

@@ -4,9 +4,10 @@
 package testing
 
 import (
+	"testing"
+
 	"github.com/tsuru/tsuru/log"
 	"launchpad.net/gocheck"
-	"testing"
 )
 
 type FakeLoggerSuite struct {

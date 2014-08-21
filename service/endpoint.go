@@ -7,15 +7,16 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/tsuru/tsuru/app/bind"
-	"github.com/tsuru/tsuru/errors"
-	"github.com/tsuru/tsuru/log"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"regexp"
 	"strings"
+
+	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/log"
 )
 
 type Client struct {

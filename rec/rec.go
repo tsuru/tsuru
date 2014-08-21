@@ -8,8 +8,9 @@ package rec
 
 import (
 	"errors"
-	"github.com/tsuru/tsuru/db"
 	"time"
+
+	"github.com/tsuru/tsuru/db"
 )
 
 var (

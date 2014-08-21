@@ -7,12 +7,13 @@ package testing
 import (
 	"errors"
 	"fmt"
-	"github.com/tsuru/tsuru/action"
-	"github.com/tsuru/tsuru/app/bind"
-	"github.com/tsuru/tsuru/provision"
 	"io"
 	"sync"
 	"time"
+
+	"github.com/tsuru/tsuru/action"
+	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/provision"
 )
 
 var errNotProvisioned = &provision.Error{Reason: "App is not provisioned."}

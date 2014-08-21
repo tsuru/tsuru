@@ -7,14 +7,15 @@ package cloudstack
 import (
 	"encoding/base64"
 	"fmt"
-	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/iaas"
-	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/iaas"
+	"launchpad.net/gocheck"
 )
 
 func Test(t *testing.T) { gocheck.TestingT(t) }

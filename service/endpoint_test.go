@@ -6,15 +6,16 @@ package service
 
 import (
 	stderrors "errors"
-	"github.com/tsuru/tsuru/app/bind"
-	"github.com/tsuru/tsuru/errors"
 	"io/ioutil"
-	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"sync"
+
+	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/errors"
+	"launchpad.net/gocheck"
 )
 
 type FakeUnit struct {

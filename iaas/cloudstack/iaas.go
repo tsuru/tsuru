@@ -11,14 +11,15 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/iaas"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/iaas"
 )
 
 func init() {

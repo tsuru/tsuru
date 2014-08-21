@@ -6,6 +6,7 @@ package hipache_test
 
 import (
 	"fmt"
+
 	"github.com/tsuru/tsuru/router"
 	_ "github.com/tsuru/tsuru/router/hipache"
 )

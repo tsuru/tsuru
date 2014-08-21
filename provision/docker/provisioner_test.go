@@ -6,6 +6,15 @@ package docker
 
 import (
 	"bytes"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"os"
+	"runtime"
+	"strings"
+	"time"
+
 	"github.com/fsouza/go-dockerclient"
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
@@ -21,15 +30,7 @@ import (
 	tsrTesting "github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"io/ioutil"
 	"launchpad.net/gocheck"
-	"net/http"
-	"net/http/httptest"
-	"net/url"
-	"os"
-	"runtime"
-	"strings"
-	"time"
 )
 
 func (s *S) TestShouldBeRegistered(c *gocheck.C) {

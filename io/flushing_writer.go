@@ -8,10 +8,11 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"github.com/tsuru/tsuru/log"
 	"net"
 	"net/http"
 	"sync"
+
+	"github.com/tsuru/tsuru/log"
 )
 
 var writeMutex sync.Mutex

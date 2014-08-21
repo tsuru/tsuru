@@ -8,12 +8,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"github.com/tsuru/tsuru/cmd"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"text/template"
+
+	"github.com/tsuru/tsuru/cmd"
 )
 
 type AppInfo struct {

@@ -7,12 +7,13 @@ package docker
 import (
 	"bytes"
 	"encoding/json"
+	"strings"
+
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
-	"strings"
 )
 
 func (s *S) TestMoveContainers(c *gocheck.C) {

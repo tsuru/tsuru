@@ -5,10 +5,11 @@
 package native
 
 import (
+	"time"
+
 	"github.com/tsuru/tsuru/auth"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
-	"time"
 )
 
 func (s *S) TestCreatePasswordToken(c *gocheck.C) {

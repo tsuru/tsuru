@@ -6,9 +6,10 @@ package provision
 
 import (
 	"errors"
-	"launchpad.net/gocheck"
 	"reflect"
 	"testing"
+
+	"launchpad.net/gocheck"
 )
 
 type ProvisionSuite struct{}

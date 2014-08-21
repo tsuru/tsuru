@@ -6,6 +6,7 @@ package app
 
 import (
 	"errors"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/testing"

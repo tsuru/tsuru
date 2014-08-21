@@ -6,11 +6,12 @@ package api
 
 import (
 	"encoding/json"
+	"net/http"
+	"strconv"
+
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
-	"net/http"
-	"strconv"
 )
 
 func getUserQuota(w http.ResponseWriter, r *http.Request, t auth.Token) error {

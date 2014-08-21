@@ -6,13 +6,14 @@ package hipache
 
 import (
 	"errors"
+	"testing"
+
 	"github.com/garyburd/redigo/redis"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/router"
 	rtesting "github.com/tsuru/tsuru/testing/redis"
 	"launchpad.net/gocheck"
-	"testing"
 )
 
 func Test(t *testing.T) {

@@ -5,9 +5,10 @@
 package storage
 
 import (
-	"gopkg.in/mgo.v2"
 	"sync"
 	"time"
+
+	"gopkg.in/mgo.v2"
 )
 
 var (

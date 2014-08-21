@@ -6,11 +6,12 @@ package cmd
 
 import (
 	"bytes"
+	"net/http"
+
 	ttesting "github.com/tsuru/tsuru/cmd/testing"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/fs/testing"
 	"launchpad.net/gocheck"
-	"net/http"
 )
 
 func (s *S) TestShouldSetCloseToTrue(c *gocheck.C) {

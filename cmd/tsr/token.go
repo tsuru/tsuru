@@ -6,6 +6,7 @@ package main
 
 import (
 	"fmt"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"

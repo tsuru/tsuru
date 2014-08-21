@@ -8,6 +8,15 @@ import (
 	"encoding/json"
 	stderr "errors"
 	"fmt"
+	"io"
+	"os"
+	"regexp"
+	"sort"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
 	"github.com/tsuru/tsuru/action"
@@ -22,14 +31,6 @@ import (
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"io"
-	"os"
-	"regexp"
-	"sort"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
 )
 
 var Provisioner provision.Provisioner

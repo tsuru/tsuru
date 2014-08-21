@@ -8,9 +8,10 @@ package testing
 
 import (
 	"fmt"
-	"launchpad.net/gocheck"
 	"runtime"
 	"sync"
+
+	"launchpad.net/gocheck"
 )
 
 func (s *S) TestAddRouteAndRemoteRouteAreSafe(c *gocheck.C) {

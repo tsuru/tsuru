@@ -6,12 +6,13 @@ package native
 
 import (
 	"bytes"
+	"strings"
+	"time"
+
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
-	"strings"
-	"time"
 )
 
 func (s *S) TestNativeLoginWithoutEmail(c *gocheck.C) {

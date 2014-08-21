@@ -7,12 +7,13 @@ package tsuru
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/tsuru/tsuru/cmd"
-	tsuruIo "github.com/tsuru/tsuru/io"
 	"io"
-	"launchpad.net/gnuflag"
 	"net/http"
 	"time"
+
+	"github.com/tsuru/tsuru/cmd"
+	tsuruIo "github.com/tsuru/tsuru/io"
+	"launchpad.net/gnuflag"
 )
 
 type AppLog struct {

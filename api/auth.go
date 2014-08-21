@@ -7,6 +7,9 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
 	"github.com/tsuru/tsuru/action"
@@ -20,8 +23,6 @@ import (
 	"github.com/tsuru/tsuru/repository"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"io"
-	"net/http"
 )
 
 const (

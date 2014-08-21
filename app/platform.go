@@ -7,11 +7,12 @@ package app
 import (
 	"errors"
 	"fmt"
+	"io"
+
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"io"
 )
 
 type Platform struct {

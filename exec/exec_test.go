@@ -6,9 +6,10 @@ package exec
 
 import (
 	"bytes"
+	"testing"
+
 	"github.com/tsuru/commandmocker"
 	"launchpad.net/gocheck"
-	"testing"
 )
 
 type S struct{}

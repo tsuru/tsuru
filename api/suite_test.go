@@ -5,6 +5,13 @@
 package api
 
 import (
+	"io"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"path"
+	"testing"
+
 	"github.com/gorilla/context"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -14,13 +21,7 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/service"
 	tsuruTesting "github.com/tsuru/tsuru/testing"
-	"io"
-	"io/ioutil"
 	"launchpad.net/gocheck"
-	"net/http"
-	"os"
-	"path"
-	"testing"
 )
 
 type testHandler struct {

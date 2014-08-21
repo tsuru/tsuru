@@ -6,9 +6,14 @@ package api
 
 import (
 	"bytes"
-	"code.google.com/p/go.crypto/bcrypt"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"path/filepath"
+
+	"code.google.com/p/go.crypto/bcrypt"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
@@ -16,11 +21,7 @@ import (
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
-	"io/ioutil"
 	"launchpad.net/gocheck"
-	"net/http"
-	"net/http/httptest"
-	"path/filepath"
 )
 
 const (

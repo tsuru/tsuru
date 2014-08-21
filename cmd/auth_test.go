@@ -7,16 +7,17 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
-	ttesting "github.com/tsuru/tsuru/cmd/testing"
-	"github.com/tsuru/tsuru/fs/testing"
 	"io"
-	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
+
+	ttesting "github.com/tsuru/tsuru/cmd/testing"
+	"github.com/tsuru/tsuru/fs/testing"
+	"launchpad.net/gocheck"
 )
 
 func navitveScheme() {

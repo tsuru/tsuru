@@ -7,6 +7,9 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
@@ -14,8 +17,6 @@ import (
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/mgo.v2/bson"
 	"gopkg.in/v1/yaml"
-	"io/ioutil"
-	"net/http"
 )
 
 type serviceYaml struct {

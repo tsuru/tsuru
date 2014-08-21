@@ -6,6 +6,10 @@ package service
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"sync/atomic"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
@@ -13,9 +17,6 @@ import (
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
-	"net/http"
-	"net/http/httptest"
-	"sync/atomic"
 )
 
 type InstanceSuite struct {

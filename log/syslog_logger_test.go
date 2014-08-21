@@ -4,9 +4,10 @@
 package log
 
 import (
-	"launchpad.net/gocheck"
 	"log"
 	"log/syslog"
+
+	"launchpad.net/gocheck"
 )
 
 type SyslogLoggerSuite struct {

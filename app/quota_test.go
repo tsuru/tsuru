@@ -5,12 +5,13 @@
 package app
 
 import (
+	"runtime"
+	"sync"
+
 	"github.com/tsuru/tsuru/quota"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
-	"runtime"
-	"sync"
 )
 
 func (s *S) TestReserveUnits(c *gocheck.C) {

@@ -5,13 +5,14 @@
 package ec2
 
 import (
+	"testing"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/iaas"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/ec2"
 	"launchpad.net/goamz/ec2/ec2test"
 	"launchpad.net/gocheck"
-	"testing"
 )
 
 func Test(t *testing.T) { gocheck.TestingT(t) }

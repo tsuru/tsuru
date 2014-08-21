@@ -6,8 +6,9 @@ package action
 
 import (
 	"errors"
-	"github.com/tsuru/tsuru/log"
 	"sync"
+
+	"github.com/tsuru/tsuru/log"
 )
 
 // Result is the value returned by Forward. It is used in the call of the next

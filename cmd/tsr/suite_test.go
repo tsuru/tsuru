@@ -5,13 +5,14 @@
 package main
 
 import (
+	"sync/atomic"
+	"testing"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
 	tTesting "github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
-	"sync/atomic"
-	"testing"
 )
 
 type S struct{}

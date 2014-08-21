@@ -9,9 +9,10 @@ package provision
 import (
 	"errors"
 	"fmt"
+	"io"
+
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
-	"io"
 )
 
 var ErrInvalidStatus = errors.New("invalid status")

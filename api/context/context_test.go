@@ -6,15 +6,16 @@ package context
 
 import (
 	"errors"
+	"net/http"
+	"reflect"
+	"testing"
+
 	"github.com/gorilla/context"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"launchpad.net/gocheck"
-	"net/http"
-	"reflect"
-	"testing"
 )
 
 type S struct {

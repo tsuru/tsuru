@@ -6,15 +6,16 @@ package api
 
 import (
 	"errors"
+	"net/http"
+	"net/http/httptest"
+	"time"
+
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	tsuruErr "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
-	"net/http"
-	"net/http/httptest"
-	"time"
 )
 
 type handlerLog struct {

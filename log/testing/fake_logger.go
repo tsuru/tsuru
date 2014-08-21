@@ -5,9 +5,10 @@ package testing
 
 import (
 	"fmt"
+	stdLog "log"
+
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/safe"
-	stdLog "log"
 )
 
 func NewFakeLogger() log.Logger {

@@ -8,8 +8,9 @@ package safe
 
 import (
 	"bytes"
-	"launchpad.net/gocheck"
 	"sync"
+
+	"launchpad.net/gocheck"
 )
 
 func (s *S) TestSafeBufferIsThreadSafe(c *gocheck.C) {

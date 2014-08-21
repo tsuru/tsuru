@@ -7,10 +7,11 @@ package tsuru
 import (
 	"errors"
 	"fmt"
-	"github.com/tsuru/tsuru/git"
-	"launchpad.net/gnuflag"
 	"os"
 	"regexp"
+
+	"github.com/tsuru/tsuru/git"
+	"launchpad.net/gnuflag"
 )
 
 // AppGuesser is used to guess the name of an app based in a file path.

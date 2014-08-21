@@ -5,6 +5,12 @@
 package service_test
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"sync/atomic"
+	"testing"
+	"time"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
@@ -15,11 +21,6 @@ import (
 	ttesting "github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
-	"net/http"
-	"net/http/httptest"
-	"sync/atomic"
-	"testing"
-	"time"
 )
 
 type BindSuite struct {

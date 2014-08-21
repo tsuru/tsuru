@@ -5,10 +5,11 @@
 package docker
 
 import (
-	"code.google.com/p/go.crypto/ssh"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+
+	"code.google.com/p/go.crypto/ssh"
 )
 
 // marshalKey returns two byte slices: one represent the private key in the PEM

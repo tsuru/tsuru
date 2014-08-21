@@ -5,10 +5,11 @@
 package context
 
 import (
+	"net/http"
+
 	"github.com/gorilla/context"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
-	"net/http"
 )
 
 const (

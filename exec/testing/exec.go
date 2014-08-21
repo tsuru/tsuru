@@ -9,11 +9,12 @@ package testing
 
 import (
 	"errors"
-	"github.com/tsuru/tsuru/exec"
-	"github.com/tsuru/tsuru/safe"
 	"reflect"
 	"strings"
 	"sync"
+
+	"github.com/tsuru/tsuru/exec"
+	"github.com/tsuru/tsuru/safe"
 )
 
 type command struct {

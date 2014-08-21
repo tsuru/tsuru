@@ -6,14 +6,15 @@
 package testing
 
 import (
-	"github.com/tsuru/config"
-	"github.com/tsuru/gandalf/testing"
 	"io/ioutil"
-	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"os/exec"
+
+	"github.com/tsuru/config"
+	"github.com/tsuru/gandalf/testing"
+	"launchpad.net/gocheck"
 )
 
 type T struct {

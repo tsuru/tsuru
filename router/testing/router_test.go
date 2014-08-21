@@ -5,11 +5,12 @@
 package testing
 
 import (
+	"testing"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/router"
 	"launchpad.net/gocheck"
-	"testing"
 )
 
 func Test(t *testing.T) { gocheck.TestingT(t) }

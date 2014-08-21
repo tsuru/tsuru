@@ -6,8 +6,9 @@ package testing
 
 import (
 	"errors"
-	"github.com/tsuru/tsuru/router"
 	"sync"
+
+	"github.com/tsuru/tsuru/router"
 )
 
 var FakeRouter = fakeRouter{backends: make(map[string][]string), failuresByIp: make(map[string]bool)}

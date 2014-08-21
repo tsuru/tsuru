@@ -5,11 +5,12 @@
 package docker
 
 import (
+	"sort"
+
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
-	"sort"
 )
 
 func (s *S) getContainerCollection(appName string, containerIds ...string) func() {

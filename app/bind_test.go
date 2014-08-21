@@ -5,13 +5,14 @@
 package app
 
 import (
+	"net/http"
+	"net/http/httptest"
+
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
-	"net/http"
-	"net/http/httptest"
 )
 
 func (s *S) TestAppIsABinderApp(c *gocheck.C) {

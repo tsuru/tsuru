@@ -8,6 +8,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
@@ -16,9 +19,7 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
-	"io/ioutil"
 	"launchpad.net/gocheck"
-	"net/http"
 )
 
 func (s *S) TestReserveUserAppName(c *gocheck.C) {

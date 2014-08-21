@@ -7,6 +7,13 @@ package docker
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
+
 	"github.com/tsuru/tsuru/api"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
@@ -15,12 +22,6 @@ import (
 	_ "github.com/tsuru/tsuru/iaas/cloudstack"
 	_ "github.com/tsuru/tsuru/iaas/ec2"
 	"gopkg.in/mgo.v2"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"net/url"
-	"strconv"
-	"strings"
 )
 
 func init() {

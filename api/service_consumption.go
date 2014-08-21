@@ -7,15 +7,16 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/rec"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/mgo.v2/bson"
-	"io"
-	"io/ioutil"
-	"net/http"
 )
 
 func createServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {

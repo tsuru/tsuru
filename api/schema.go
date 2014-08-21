@@ -6,9 +6,10 @@ package api
 
 import (
 	"encoding/json"
+	"net/http"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
-	"net/http"
 )
 
 // schema represents a json schema.

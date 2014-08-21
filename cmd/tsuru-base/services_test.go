@@ -7,12 +7,13 @@ package tsuru
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/tsuru/tsuru/cmd"
-	"github.com/tsuru/tsuru/cmd/testing"
 	"io/ioutil"
-	"launchpad.net/gocheck"
 	"net/http"
 	"strings"
+
+	"github.com/tsuru/tsuru/cmd"
+	"github.com/tsuru/tsuru/cmd/testing"
+	"launchpad.net/gocheck"
 )
 
 type infoTransport struct{}

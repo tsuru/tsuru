@@ -6,6 +6,9 @@ package api
 
 import (
 	"fmt"
+	"net"
+	"net/http"
+
 	"github.com/codegangsta/negroni"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -15,8 +18,6 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
-	"net"
-	"net/http"
 )
 
 type TsuruHandler struct {

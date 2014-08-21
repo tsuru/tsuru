@@ -7,6 +7,7 @@ package auth
 import (
 	stderrors "errors"
 	"fmt"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
 	"github.com/tsuru/tsuru/db"

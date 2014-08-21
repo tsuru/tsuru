@@ -5,8 +5,9 @@ package log
 
 import (
 	"bytes"
-	"launchpad.net/gocheck"
 	"log"
+
+	"launchpad.net/gocheck"
 )
 
 type FileLoggerSuite struct {

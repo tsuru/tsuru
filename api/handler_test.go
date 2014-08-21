@@ -7,6 +7,9 @@ package api
 import (
 	stderrors "errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -14,8 +17,6 @@ import (
 	"github.com/tsuru/tsuru/errors"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
-	"net/http"
-	"net/http/httptest"
 )
 
 type HandlerSuite struct {

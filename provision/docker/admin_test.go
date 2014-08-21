@@ -8,15 +8,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"net/http/httptest"
+
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/testing"
 	"github.com/tsuru/tsuru/errors"
 	ttesting "github.com/tsuru/tsuru/testing"
-	"io/ioutil"
 	"launchpad.net/gocheck"
-	"net"
-	"net/http"
-	"net/http/httptest"
 )
 
 func (s *S) TestMoveContainersInfo(c *gocheck.C) {

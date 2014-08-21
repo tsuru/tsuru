@@ -5,10 +5,11 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
-	"net/http"
 )
 
 var (

@@ -6,10 +6,11 @@ package cmd
 
 import (
 	"bytes"
-	tTesting "github.com/tsuru/tsuru/testing"
-	"launchpad.net/gocheck"
 	"os"
 	"testing"
+
+	tTesting "github.com/tsuru/tsuru/testing"
+	"launchpad.net/gocheck"
 )
 
 func Test(t *testing.T) { gocheck.TestingT(t) }

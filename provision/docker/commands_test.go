@@ -6,12 +6,13 @@ package docker
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
-	"strings"
 )
 
 func (s *S) TestGitDeployCmds(c *gocheck.C) {

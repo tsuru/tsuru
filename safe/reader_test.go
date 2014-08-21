@@ -6,6 +6,7 @@ package safe
 
 import (
 	"bytes"
+
 	"launchpad.net/gocheck"
 )
 

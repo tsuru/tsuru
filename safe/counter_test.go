@@ -5,9 +5,10 @@
 package safe
 
 import (
-	"launchpad.net/gocheck"
 	"runtime"
 	"sync"
+
+	"launchpad.net/gocheck"
 )
 
 func (s *S) TestNewCounter(c *gocheck.C) {

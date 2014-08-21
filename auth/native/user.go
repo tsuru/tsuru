@@ -7,13 +7,14 @@ package native
 import (
 	"bytes"
 	"errors"
-	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/log"
 	"math/rand"
 	"net"
 	"net/smtp"
 	"strings"
+
+	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/log"
 )
 
 func sendResetPassword(u *auth.User, t *passwordToken) {

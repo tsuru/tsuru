@@ -9,14 +9,15 @@ package testing
 
 import (
 	"fmt"
-	"github.com/tsuru/tsuru/fs"
-	"github.com/tsuru/tsuru/safe"
 	"os"
 	"path"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
+
+	"github.com/tsuru/tsuru/fs"
+	"github.com/tsuru/tsuru/safe"
 )
 
 // FakeFile representss a fake instance of the File interface.

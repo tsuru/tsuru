@@ -6,13 +6,14 @@ package testing
 
 import (
 	"errors"
-	"github.com/tsuru/tsuru/fs"
 	"io/ioutil"
-	"launchpad.net/gocheck"
 	"os"
 	"strings"
 	"syscall"
 	"testing"
+
+	"github.com/tsuru/tsuru/fs"
+	"launchpad.net/gocheck"
 )
 
 type S struct{}

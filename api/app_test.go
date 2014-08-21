@@ -7,6 +7,17 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"sort"
+	"strconv"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
@@ -21,17 +32,7 @@ import (
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
-	"io"
-	"io/ioutil"
 	"launchpad.net/gocheck"
-	"net/http"
-	"net/http/httptest"
-	"sort"
-	"strconv"
-	"strings"
-	"sync"
-	"sync/atomic"
-	"time"
 )
 
 func (s *S) TestAppIsAvailableHandlerShouldReturnErrorWhenAppStatusIsnotStarted(c *gocheck.C) {

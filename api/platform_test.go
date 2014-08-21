@@ -6,12 +6,13 @@ package api
 
 import (
 	"fmt"
-	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/testing"
-	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+
+	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/testing"
+	"launchpad.net/gocheck"
 )
 
 type PlatformSuite struct{}

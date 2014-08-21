@@ -5,18 +5,19 @@
 package native
 
 import (
-	"code.google.com/p/go.crypto/bcrypt"
 	"crypto"
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"time"
+
+	"code.google.com/p/go.crypto/bcrypt"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/validation"
 	"gopkg.in/mgo.v2/bson"
-	"time"
 )
 
 const (

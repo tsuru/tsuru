@@ -5,8 +5,9 @@
 package testing
 
 import (
-	"launchpad.net/gocheck"
 	"time"
+
+	"launchpad.net/gocheck"
 )
 
 func (s *S) TestFakeQPubSub(c *gocheck.C) {

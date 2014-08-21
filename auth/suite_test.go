@@ -5,17 +5,18 @@
 package auth
 
 import (
-	"code.google.com/p/go.crypto/bcrypt"
-	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/db"
-	ttesting "github.com/tsuru/tsuru/testing"
 	"io"
 	"io/ioutil"
-	"launchpad.net/gocheck"
 	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"code.google.com/p/go.crypto/bcrypt"
+	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/db"
+	ttesting "github.com/tsuru/tsuru/testing"
+	"launchpad.net/gocheck"
 )
 
 type hasKeyChecker struct{}

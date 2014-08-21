@@ -6,11 +6,12 @@ package queue
 
 import (
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/garyburd/redigo/redis"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/log"
-	"sync"
-	"time"
 )
 
 type redismqQ struct {

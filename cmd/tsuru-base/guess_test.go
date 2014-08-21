@@ -7,12 +7,13 @@ package tsuru
 import (
 	"errors"
 	"io"
-	"launchpad.net/gnuflag"
-	"launchpad.net/gocheck"
 	"os"
 	"os/exec"
 	"path"
 	"syscall"
+
+	"launchpad.net/gnuflag"
+	"launchpad.net/gocheck"
 )
 
 func writeConfig(sourceFile string, c *gocheck.C) string {

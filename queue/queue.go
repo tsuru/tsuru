@@ -9,6 +9,7 @@ package queue
 
 import (
 	"fmt"
+
 	"github.com/tsuru/config"
 )
 

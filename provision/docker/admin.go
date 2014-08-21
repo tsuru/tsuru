@@ -6,14 +6,9 @@ package docker
 
 import (
 	"bytes"
-	"code.google.com/p/go.crypto/ssh/terminal"
 	"encoding/json"
 	"fmt"
-	"github.com/tsuru/tsuru/cmd"
-	"github.com/tsuru/tsuru/errors"
-	tsuruIo "github.com/tsuru/tsuru/io"
 	"io"
-	"launchpad.net/gnuflag"
 	"net"
 	"net/http"
 	"net/url"
@@ -23,6 +18,12 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"code.google.com/p/go.crypto/ssh/terminal"
+	"github.com/tsuru/tsuru/cmd"
+	"github.com/tsuru/tsuru/errors"
+	tsuruIo "github.com/tsuru/tsuru/io"
+	"launchpad.net/gnuflag"
 )
 
 var httpHeaderRegexp = regexp.MustCompile(`HTTP/.*? (\d+)`)

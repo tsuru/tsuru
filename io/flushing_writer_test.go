@@ -10,10 +10,11 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
-	"launchpad.net/gocheck"
 	"net"
 	"net/http"
 	"net/http/httptest"
+
+	"launchpad.net/gocheck"
 )
 
 func (s *S) TestFlushingWriter(c *gocheck.C) {

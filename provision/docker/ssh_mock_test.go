@@ -10,7 +10,6 @@ package docker
 import (
 	"bytes"
 	"io/ioutil"
-	"launchpad.net/gocheck"
 	"log"
 	"net"
 	"os"
@@ -19,6 +18,8 @@ import (
 	"path/filepath"
 	"text/template"
 	"time"
+
+	"launchpad.net/gocheck"
 )
 
 const sshd_config = `

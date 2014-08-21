@@ -8,10 +8,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/tsuru/tsuru/repository"
-	"gopkg.in/v1/yaml"
 	"io"
 	"path"
+
+	"github.com/tsuru/tsuru/repository"
+	"gopkg.in/v1/yaml"
 )
 
 var errCannotLoadAppYAML = errors.New("Cannot load app.yaml/app.yml file.")

@@ -5,10 +5,11 @@
 package testing
 
 import (
+	"time"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"launchpad.net/gocheck"
-	"time"
 )
 
 type CheckerSuite struct{}

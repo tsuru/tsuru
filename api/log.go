@@ -5,9 +5,10 @@
 package api
 
 import (
+	"net/http"
+
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"net/http"
 )
 
 func logRemove(w http.ResponseWriter, r *http.Request, t auth.Token) error {

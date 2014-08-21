@@ -5,13 +5,14 @@
 package docker
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"strings"
+
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
-	"net/http"
-	"net/http/httptest"
-	"strings"
 )
 
 func startDocker() (func(), *httptest.Server) {

@@ -6,9 +6,10 @@ package testing
 
 import (
 	"io/ioutil"
-	"launchpad.net/gocheck"
 	"net/http"
 	"testing"
+
+	"launchpad.net/gocheck"
 )
 
 type S struct{}

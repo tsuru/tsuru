@@ -5,11 +5,12 @@
 package repository
 
 import (
+	"net/http/httptest"
+	"testing"
+
 	"github.com/tsuru/config"
 	tsrTesting "github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
-	"net/http/httptest"
-	"testing"
 )
 
 func Test(t *testing.T) { gocheck.TestingT(t) }

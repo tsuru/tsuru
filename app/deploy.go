@@ -6,6 +6,9 @@ package app
 
 import (
 	"fmt"
+	"io"
+	"time"
+
 	"github.com/tsuru/go-gandalfclient"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/db"
@@ -13,8 +16,6 @@ import (
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/mgo.v2/bson"
-	"io"
-	"time"
 )
 
 type deploy struct {

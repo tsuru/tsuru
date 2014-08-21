@@ -7,8 +7,9 @@ package docker
 import (
 	"bytes"
 	"crypto/rsa"
-	"launchpad.net/gocheck"
 	"strings"
+
+	"launchpad.net/gocheck"
 )
 
 var _ = gocheck.Suite(&SSHKeySuite{})

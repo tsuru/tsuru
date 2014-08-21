@@ -5,11 +5,12 @@
 package main
 
 import (
+	"os"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/provision"
 	_ "github.com/tsuru/tsuru/provision/docker"
-	"os"
 )
 
 const defaultConfigPath = "/etc/tsuru/tsuru.conf"

@@ -6,11 +6,12 @@ package tsuru
 
 import (
 	"bytes"
+	"os"
+	"testing"
+
 	"github.com/tsuru/tsuru/cmd"
 	tTesting "github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
-	"os"
-	"testing"
 )
 
 type S struct {

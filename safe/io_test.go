@@ -7,6 +7,7 @@ package safe
 import (
 	"bytes"
 	"io/ioutil"
+
 	"launchpad.net/gocheck"
 )
 

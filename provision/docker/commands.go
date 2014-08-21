@@ -7,10 +7,11 @@ package docker
 import (
 	"bytes"
 	"fmt"
+	"strings"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/repository"
-	"strings"
 )
 
 // gitDeployCmds returns the list of commands that are used when the

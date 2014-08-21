@@ -5,10 +5,11 @@
 package router
 
 import (
+	"testing"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"launchpad.net/gocheck"
-	"testing"
 )
 
 func Test(t *testing.T) { gocheck.TestingT(t) }

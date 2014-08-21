@@ -6,11 +6,12 @@ package api
 
 import (
 	"encoding/json"
+	"net/http"
+
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/iaas"
 	"gopkg.in/mgo.v2"
-	"net/http"
 )
 
 func machinesList(w http.ResponseWriter, r *http.Request, token auth.Token) error {

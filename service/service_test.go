@@ -6,6 +6,7 @@ package service
 
 import (
 	"encoding/json"
+
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )

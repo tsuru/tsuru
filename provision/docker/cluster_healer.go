@@ -7,10 +7,11 @@ package docker
 import (
 	"bytes"
 	"encoding/json"
+	"time"
+
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
-	"time"
 )
 
 type Healer struct {

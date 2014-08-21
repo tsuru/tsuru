@@ -5,8 +5,9 @@
 package iaas
 
 import (
-	"launchpad.net/gocheck"
 	"testing"
+
+	"launchpad.net/gocheck"
 )
 
 func Test(t *testing.T) { gocheck.TestingT(t) }

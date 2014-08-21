@@ -8,6 +8,13 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path"
+	"strings"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
@@ -19,13 +26,7 @@ import (
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"io/ioutil"
 	"launchpad.net/gocheck"
-	"net/http"
-	"net/http/httptest"
-	"os"
-	"path"
-	"strings"
 )
 
 type TestIaaS struct{}

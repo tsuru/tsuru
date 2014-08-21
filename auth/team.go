@@ -7,13 +7,14 @@ package auth
 import (
 	"errors"
 	"fmt"
+	"regexp"
+	"strings"
+	"sync"
+
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"regexp"
-	"strings"
-	"sync"
 )
 
 var (

@@ -6,13 +6,14 @@ package git
 
 import (
 	"errors"
-	"launchpad.net/gocheck"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"reflect"
 	"testing"
+
+	"launchpad.net/gocheck"
 )
 
 func Test(t *testing.T) {

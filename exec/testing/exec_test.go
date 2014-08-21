@@ -6,9 +6,10 @@ package testing
 
 import (
 	"bytes"
+	"testing"
+
 	"github.com/tsuru/tsuru/exec"
 	"launchpad.net/gocheck"
-	"testing"
 )
 
 type S struct{}

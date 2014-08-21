@@ -8,6 +8,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"sync"
+
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
@@ -15,8 +18,6 @@ import (
 	"github.com/tsuru/tsuru/cmd/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
-	"net/http"
-	"sync"
 )
 
 func (s *S) TestSchedulerSchedule(c *gocheck.C) {

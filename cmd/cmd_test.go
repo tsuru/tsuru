@@ -8,14 +8,15 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
+
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/fs"
 	"github.com/tsuru/tsuru/fs/testing"
-	"io"
 	"launchpad.net/gnuflag"
 	"launchpad.net/gocheck"
-	"net/http"
-	"os"
 )
 
 type recordingExiter int

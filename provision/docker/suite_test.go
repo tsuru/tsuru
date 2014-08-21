@@ -5,6 +5,12 @@
 package docker
 
 import (
+	"net/http"
+	"net/http/httptest"
+	"sort"
+	"strings"
+	"testing"
+
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/garyburd/redigo/redis"
 	"github.com/tsuru/config"
@@ -17,11 +23,6 @@ import (
 	tTesting "github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
-	"net/http"
-	"net/http/httptest"
-	"sort"
-	"strings"
-	"testing"
 )
 
 func Test(t *testing.T) { gocheck.TestingT(t) }

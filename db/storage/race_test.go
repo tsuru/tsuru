@@ -7,9 +7,10 @@
 package storage
 
 import (
-	"launchpad.net/gocheck"
 	"sync"
 	"time"
+
+	"launchpad.net/gocheck"
 )
 
 func (s *S) TestOpenIsThreadSafe(c *gocheck.C) {

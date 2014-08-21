@@ -6,10 +6,11 @@ package service
 
 import (
 	"errors"
+	"regexp"
+
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"gopkg.in/mgo.v2/bson"
-	"regexp"
 )
 
 type Service struct {

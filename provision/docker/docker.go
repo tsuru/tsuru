@@ -5,11 +5,18 @@
 package docker
 
 import (
-	"code.google.com/p/go.crypto/ssh"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
+	"io"
+	"net"
+	"net/url"
+	"strings"
+	"sync"
+	"time"
+
+	"code.google.com/p/go.crypto/ssh"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
@@ -21,12 +28,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/mgo.v2/bson"
-	"io"
-	"net"
-	"net/url"
-	"strings"
-	"sync"
-	"time"
 )
 
 var (

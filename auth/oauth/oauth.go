@@ -5,15 +5,16 @@
 package oauth
 
 import (
-	goauth2 "code.google.com/p/goauth2/oauth"
 	"encoding/json"
+	"net/http"
+	"strconv"
+
+	goauth2 "code.google.com/p/goauth2/oauth"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
-	"net/http"
-	"strconv"
 )
 
 var (

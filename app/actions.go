@@ -6,6 +6,8 @@ package app
 
 import (
 	"errors"
+	"io"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
 	"github.com/tsuru/tsuru/action"
@@ -18,7 +20,6 @@ import (
 	"github.com/tsuru/tsuru/repository"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"io"
 )
 
 var (

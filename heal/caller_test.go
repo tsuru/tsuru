@@ -6,13 +6,14 @@ package heal
 
 import (
 	"fmt"
-	"github.com/tsuru/tsuru/log"
-	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"sync/atomic"
 	"time"
+
+	"github.com/tsuru/tsuru/log"
+	"launchpad.net/gocheck"
 )
 
 type CallerSuite struct {

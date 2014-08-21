@@ -7,9 +7,10 @@ package io
 import (
 	"bytes"
 	"errors"
-	"launchpad.net/gocheck"
 	"sync"
 	"time"
+
+	"launchpad.net/gocheck"
 )
 
 type closableBuffer struct {

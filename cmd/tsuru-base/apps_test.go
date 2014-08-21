@@ -7,11 +7,12 @@ package tsuru
 import (
 	"bytes"
 	"encoding/json"
+	"net/http"
+
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/testing"
 	"launchpad.net/gnuflag"
 	"launchpad.net/gocheck"
-	"net/http"
 )
 
 var appflag = &gnuflag.Flag{

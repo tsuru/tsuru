@@ -6,10 +6,11 @@ package api
 
 import (
 	"encoding/json"
-	"github.com/tsuru/tsuru/iaas"
-	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
+
+	"github.com/tsuru/tsuru/iaas"
+	"launchpad.net/gocheck"
 )
 
 type TestIaaS struct{}

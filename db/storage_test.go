@@ -5,11 +5,12 @@
 package db
 
 import (
+	"reflect"
+	"testing"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db/storage"
 	"launchpad.net/gocheck"
-	"reflect"
-	"testing"
 )
 
 type hasIndexChecker struct{}

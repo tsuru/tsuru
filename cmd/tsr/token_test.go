@@ -6,10 +6,11 @@ package main
 
 import (
 	"bytes"
-	"github.com/tsuru/tsuru/cmd"
-	"launchpad.net/gocheck"
 	"net/http"
 	"os"
+
+	"github.com/tsuru/tsuru/cmd"
+	"launchpad.net/gocheck"
 )
 
 func (s *S) TestTokenCmdInfo(c *gocheck.C) {

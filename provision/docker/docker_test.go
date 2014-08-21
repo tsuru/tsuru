@@ -7,6 +7,17 @@ package docker
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
+	"os"
+	"path"
+	"sort"
+	"strings"
+	"time"
+
 	"github.com/fsouza/go-dockerclient"
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
@@ -18,17 +29,7 @@ import (
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
-	"io/ioutil"
 	"launchpad.net/gocheck"
-	"net"
-	"net/http"
-	"net/http/httptest"
-	"net/url"
-	"os"
-	"path"
-	"sort"
-	"strings"
-	"time"
 )
 
 func (s *S) TestContainerGetAddress(c *gocheck.C) {

@@ -5,11 +5,12 @@
 package docker
 
 import (
+	"sync"
+
 	"github.com/tsuru/tsuru/log"
 	_ "github.com/tsuru/tsuru/router/hipache"
 	_ "github.com/tsuru/tsuru/router/testing"
 	"gopkg.in/mgo.v2/bson"
-	"sync"
 )
 
 func fixContainers() error {

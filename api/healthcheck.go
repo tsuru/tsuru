@@ -6,8 +6,9 @@ package api
 
 import (
 	"fmt"
-	"github.com/tsuru/tsuru/db"
 	"net/http"
+
+	"github.com/tsuru/tsuru/db"
 )
 
 func healthcheck(w http.ResponseWriter, r *http.Request) {

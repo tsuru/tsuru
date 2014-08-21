@@ -10,10 +10,11 @@
 package log
 
 import (
-	"github.com/tsuru/config"
 	"io"
 	"log"
 	"sync"
+
+	"github.com/tsuru/config"
 )
 
 type Logger interface {

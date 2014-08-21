@@ -6,15 +6,16 @@ package oauth
 
 import (
 	"bytes"
+	"io/ioutil"
+	"net/http"
+	"time"
+
 	goauth2 "code.google.com/p/goauth2/oauth"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"gopkg.in/mgo.v2/bson"
-	"io/ioutil"
 	"launchpad.net/gocheck"
-	"net/http"
-	"time"
 )
 
 func (s *S) TestOAuthLoginWithoutCode(c *gocheck.C) {

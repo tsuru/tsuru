@@ -7,10 +7,11 @@ package docker
 import (
 	"errors"
 	"fmt"
+	"sort"
+
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"sort"
 )
 
 var errAmbiguousContainer error = errors.New("ambiguous container name")

@@ -5,9 +5,10 @@
 package service
 
 import (
-	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
+
+	"launchpad.net/gocheck"
 )
 
 func (s *S) TestPlan(c *gocheck.C) {

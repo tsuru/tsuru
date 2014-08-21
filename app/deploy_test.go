@@ -6,11 +6,12 @@ package app
 
 import (
 	"bytes"
+	"time"
+
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
-	"time"
 )
 
 func (s *S) TestListAppDeploys(c *gocheck.C) {

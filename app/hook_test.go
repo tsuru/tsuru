@@ -4,8 +4,9 @@ package app
 
 import (
 	"bytes"
-	"github.com/tsuru/config"
 	"io"
+
+	"github.com/tsuru/config"
 	"launchpad.net/gocheck"
 )
 

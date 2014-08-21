@@ -7,10 +7,11 @@ package testing
 import (
 	"bytes"
 	"errors"
+	"testing"
+
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/provision"
 	"launchpad.net/gocheck"
-	"testing"
 )
 
 func Test(t *testing.T) {

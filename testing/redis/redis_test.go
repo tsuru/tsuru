@@ -5,9 +5,10 @@
 package redis
 
 import (
+	"testing"
+
 	"github.com/garyburd/redigo/redis"
 	"launchpad.net/gocheck"
-	"testing"
 )
 
 func Test(t *testing.T) {

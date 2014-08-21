@@ -5,9 +5,10 @@
 package fs
 
 import (
-	"launchpad.net/gocheck"
 	"os"
 	"testing"
+
+	"launchpad.net/gocheck"
 )
 
 type S struct{}

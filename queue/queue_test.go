@@ -5,9 +5,10 @@
 package queue
 
 import (
+	"testing"
+
 	"github.com/tsuru/config"
 	"launchpad.net/gocheck"
-	"testing"
 )
 
 func Test(t *testing.T) {

@@ -6,14 +6,15 @@ package service
 
 import (
 	stderrors "errors"
+	"net/http"
+	"sync"
+
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"gopkg.in/mgo.v2/bson"
-	"net/http"
-	"sync"
 )
 
 // createServiceInstance in an action that calls the service endpoint

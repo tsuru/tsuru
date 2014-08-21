@@ -5,10 +5,11 @@
 package testing
 
 import (
-	"launchpad.net/gocheck"
 	"net"
 	"net/smtp"
 	"strings"
+
+	"launchpad.net/gocheck"
 )
 
 type fakeMailAddress string

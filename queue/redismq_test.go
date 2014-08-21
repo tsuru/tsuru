@@ -5,9 +5,10 @@
 package queue
 
 import (
+	"time"
+
 	"github.com/tsuru/config"
 	"launchpad.net/gocheck"
-	"time"
 )
 
 type RedismqSuite struct {

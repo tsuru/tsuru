@@ -7,10 +7,11 @@ package native
 import (
 	"crypto"
 	"errors"
+	"time"
+
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"gopkg.in/mgo.v2/bson"
-	"time"
 )
 
 type passwordToken struct {

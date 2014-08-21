@@ -6,13 +6,14 @@ package docker
 
 import (
 	"bytes"
+	"sort"
+
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/action"
 	rtesting "github.com/tsuru/tsuru/router/testing"
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
-	"sort"
 )
 
 func (s *S) TestInsertEmptyContainerInDBName(c *gocheck.C) {

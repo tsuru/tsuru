@@ -5,14 +5,15 @@
 package oauth
 
 import (
-	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/db"
-	tsuruTesting "github.com/tsuru/tsuru/testing"
 	"io/ioutil"
-	"launchpad.net/gocheck"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/db"
+	tsuruTesting "github.com/tsuru/tsuru/testing"
+	"launchpad.net/gocheck"
 )
 
 func Test(t *testing.T) { gocheck.TestingT(t) }

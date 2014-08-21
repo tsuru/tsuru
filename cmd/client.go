@@ -7,10 +7,11 @@ package cmd
 import (
 	"crypto/x509"
 	"fmt"
-	"github.com/tsuru/tsuru/errors"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+
+	"github.com/tsuru/tsuru/errors"
 )
 
 type Client struct {

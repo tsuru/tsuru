@@ -6,12 +6,13 @@ package cmd
 
 import (
 	"bytes"
-	"github.com/tsuru/tsuru/fs/testing"
 	"io/ioutil"
-	"launchpad.net/gocheck"
 	"os"
 	"path"
 	"strings"
+
+	"github.com/tsuru/tsuru/fs/testing"
+	"launchpad.net/gocheck"
 )
 
 func readRecordedTarget(fs *testing.RecordingFs) string {

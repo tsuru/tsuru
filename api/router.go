@@ -5,10 +5,11 @@
 package api
 
 import (
-	"github.com/gorilla/mux"
-	"github.com/tsuru/tsuru/api/context"
 	"net/http"
 	"net/url"
+
+	"github.com/gorilla/mux"
+	"github.com/tsuru/tsuru/api/context"
 )
 
 type delayedRouter struct {

@@ -6,9 +6,10 @@ package log
 
 import (
 	"bytes"
-	"launchpad.net/gocheck"
 	"log"
 	"testing"
+
+	"launchpad.net/gocheck"
 )
 
 func Test(t *testing.T) { gocheck.TestingT(t) }

@@ -5,8 +5,9 @@
 package cmd
 
 import (
-	"github.com/tsuru/tsuru/fs/testing"
 	"io/ioutil"
+
+	"github.com/tsuru/tsuru/fs/testing"
 	"launchpad.net/gocheck"
 )
 

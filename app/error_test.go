@@ -6,6 +6,7 @@ package app
 
 import (
 	"errors"
+
 	"launchpad.net/gocheck"
 )
 
