@@ -54,6 +54,7 @@ func (c *Client) issueRequest(path, method string, params map[string][]string) (
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Add("Accept", "application/json")
 	req.SetBasicAuth(c.username, c.password)
+	req.Close = true
 	return http.DefaultClient.Do(req)
 }
 
