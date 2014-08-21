@@ -1,0 +1,19 @@
+=======================
+tsr 0.5.4 release notes
+=======================
+
+Welcome to tsr 0.5.4!
+
+These release notes cover the `bug fixes`_ you'll want to be aware of when
+upgrading from tsr 0.5.3 or older versions.
+
+.. _`new features`: `What's new in tsr 0.5.4`_
+
+What's new in tsr 0.5.4
+=======================
+
+Bug fixes
+=========
+
+* Fix leak of connections to OAuth provider. Only users using auth:scheme as
+  ``oauth`` are affected.
