@@ -225,52 +225,6 @@ func (s *S) TestCreateAppWithoutDefault(c *gocheck.C) {
 	c.Assert(retrievedApp.Swap, gocheck.Equals, 0)
 }
 
-func (s *S) TestCreateAppMemoryFromPlatform(c *gocheck.C) {
-	config.Set("docker:memory", 128)
-	defer config.Unset("docker:memory")
-	ts := testing.StartGandalfTestServer(&testHandler{})
-	defer ts.Close()
-	platform := Platform{
-		Name:   "python-limited",
-		Config: PlatformConfig{Memory: 1073741824},
-	}
-	s.conn.Platforms().Insert(platform)
-	defer s.conn.Platforms().Remove(bson.M{"_id": platform.Name})
-	expectedHost := "localhost"
-	config.Set("host", expectedHost)
-	app := App{Name: "myapp", Platform: "python-limited"}
-	err := CreateApp(&app, s.user)
-	c.Assert(err, gocheck.IsNil)
-	defer Delete(&app)
-	retrievedApp, err := GetByName(app.Name)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(retrievedApp.Memory, gocheck.Equals, int(platform.Config.Memory))
-	c.Assert(retrievedApp.Swap, gocheck.Equals, 0)
-}
-
-func (s *S) TestCreateAppSwapFromPlatform(c *gocheck.C) {
-	config.Set("docker:swap", 128)
-	defer config.Unset("docker:swap")
-	ts := testing.StartGandalfTestServer(&testHandler{})
-	defer ts.Close()
-	platform := Platform{
-		Name:   "python-limited",
-		Config: PlatformConfig{VirtualMemory: 1073741824},
-	}
-	s.conn.Platforms().Insert(platform)
-	defer s.conn.Platforms().Remove(bson.M{"_id": platform.Name})
-	expectedHost := "localhost"
-	config.Set("host", expectedHost)
-	app := App{Name: "myapp", Platform: "python-limited"}
-	err := CreateApp(&app, s.user)
-	c.Assert(err, gocheck.IsNil)
-	defer Delete(&app)
-	retrievedApp, err := GetByName(app.Name)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(retrievedApp.Memory, gocheck.Equals, 0)
-	c.Assert(retrievedApp.Swap, gocheck.Equals, int(platform.Config.VirtualMemory))
-}
-
 func (s *S) TestCreateAppUserQuotaExceeded(c *gocheck.C) {
 	app := App{Name: "america", Platform: "python"}
 	s.conn.Users().Update(

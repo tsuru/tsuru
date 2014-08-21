@@ -190,23 +190,32 @@ func CreateApp(app *App, user *auth.User) error {
 	if len(teams) == 0 {
 		return NoTeamsError{}
 	}
-	var platform *Platform
-	if platform, err = getPlatform(app.Platform); err != nil {
+	if _, err := getPlatform(app.Platform); err != nil {
 		return err
 	}
+	// app.Memory is empty, no custom memory passed from CLI
 	if app.Memory < 1 {
-		app.Memory = int(platform.Config.Memory)
+		// get default memory limit from tsuru config
+		configMemory, err := config.GetInt("docker:memory")
+		if err != nil {
+			// no default memory set in config (or error when reading), set it as unlimited (0)
+			app.Memory = 0
+		} else {
+			// default memory set in config, use that.
+			app.Memory = configMemory
+		}
 	}
-	if app.Memory < 1 {
-		configMemory, _ := config.GetInt("docker:memory")
-		app.Memory = configMemory
-	}
+	// app.Swap is empty, no custom swap passed from CLI
 	if app.Swap < 1 {
-		app.Swap = int(platform.Config.VirtualMemory)
-	}
-	if app.Swap < 1 {
-		configSwap, _ := config.GetInt("docker:swap")
-		app.Swap = configSwap
+		// get default swap limit from tsuru config
+		configSwap, err := config.GetInt("docker:swap")
+		if err != nil {
+			// no default swap set in config (or error when reading), set it as unlimited (0)
+			app.Swap = 0
+		} else {
+			// default swap set in config, use that.
+			app.Swap = configSwap
+		}
 	}
 	// Swap size must always be the sum of memory plus swap
 	if app.Swap > 0 {
