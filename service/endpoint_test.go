@@ -131,6 +131,7 @@ func (s *S) TestEndpointCreate(c *gocheck.C) {
 	c.Assert("application/x-www-form-urlencoded", gocheck.DeepEquals, h.request.Header.Get("Content-Type"))
 	c.Assert("application/json", gocheck.Equals, h.request.Header.Get("Accept"))
 	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
+	c.Assert("close", gocheck.Equals, h.request.Header.Get("Connection"))
 }
 
 func (s *S) TestEndpointCreatePlans(c *gocheck.C) {
@@ -162,6 +163,7 @@ func (s *S) TestEndpointCreatePlans(c *gocheck.C) {
 	c.Assert("application/x-www-form-urlencoded", gocheck.DeepEquals, h.request.Header.Get("Content-Type"))
 	c.Assert("application/json", gocheck.Equals, h.request.Header.Get("Accept"))
 	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
+	c.Assert("close", gocheck.Equals, h.request.Header.Get("Connection"))
 }
 
 func (s *S) TestCreateShouldSendTheNameOfTheResourceToTheEndpoint(c *gocheck.C) {
@@ -187,6 +189,7 @@ func (s *S) TestCreateShouldSendTheNameOfTheResourceToTheEndpoint(c *gocheck.C) 
 	c.Assert("application/x-www-form-urlencoded", gocheck.DeepEquals, h.request.Header.Get("Content-Type"))
 	c.Assert("application/json", gocheck.Equals, h.request.Header.Get("Accept"))
 	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
+	c.Assert("close", gocheck.Equals, h.request.Header.Get("Connection"))
 }
 
 func (s *S) TestCreateShouldReturnErrorIfTheRequestFail(c *gocheck.C) {
