@@ -15,13 +15,7 @@ import (
 )
 
 type Platform struct {
-	Name   string `bson:"_id"`
-	Config PlatformConfig
-}
-
-type PlatformConfig struct {
-	Memory       int64
-	VirtalMemory int64
+	Name string `bson:"_id"`
 }
 
 // Platforms returns the list of available platforms.
