@@ -15,8 +15,7 @@ What's new in tsr 0.6.1
 Bug fixes
 =========
 
+* Fix eternal application locks after a Ctrl-C during deploy. 
 * Fix leak of connections to OAuth provider. Only users using auth:scheme as
   ``oauth`` are affected.
-
-
 * Fix leak of connections to services.
