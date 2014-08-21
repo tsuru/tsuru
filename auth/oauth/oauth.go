@@ -59,6 +59,7 @@ func (c *DBTokenCache) PutToken(t *goauth2.Token) error {
 		if err != nil {
 			return err
 		}
+		defer response.Body.Close()
 		email, err = c.scheme.Parser.Parse(response)
 		if email == "" {
 			return ErrEmptyUserEmail
@@ -191,10 +192,11 @@ func (s *OAuthScheme) Auth(header string) (auth.Token, error) {
 	transport := goauth2.Transport{Config: &config}
 	transport.Token = &token.Token
 	client := transport.Client()
-	_, err = client.Get(s.InfoUrl)
+	rsp, err := client.Get(s.InfoUrl)
 	if err != nil {
 		return nil, err
 	}
+	defer rsp.Body.Close()
 	return makeToken(transport.Token), nil
 }
 
