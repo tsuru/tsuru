@@ -20,8 +20,8 @@ type Platform struct {
 }
 
 type PlatformConfig struct {
-	Memory       int64
-	VirtalMemory int64
+	Memory        int64
+	VirtualMemory int64
 }
 
 // Platforms returns the list of available platforms.
