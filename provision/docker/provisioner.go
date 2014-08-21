@@ -217,7 +217,6 @@ func addContainersWithHost(w io.Writer, a provision.App, units int, destinationH
 	if w == nil {
 		w = ioutil.Discard
 	}
-	writer := app.LogWriter{App: a, Writer: w}
 	imageId := assembleImageName(a.GetName())
 	wg := sync.WaitGroup{}
 	createdContainers := make(chan *container, units)
@@ -226,12 +225,12 @@ func addContainersWithHost(w io.Writer, a provision.App, units int, destinationH
 	if units > 1 {
 		plural = "s"
 	}
-	fmt.Fprintf(&writer, "\n---- Starting %d new unit%s ----\n", units, plural)
+	fmt.Fprintf(w, "\n---- Starting %d new unit%s ----\n", units, plural)
 	for i := 0; i < units; i++ {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			c, err := start(a, imageId, &writer, destinationHost...)
+			c, err := start(a, imageId, w, destinationHost...)
 			if err != nil {
 				errors <- err
 				return
@@ -257,7 +256,7 @@ func addContainersWithHost(w io.Writer, a provision.App, units int, destinationH
 	for c := range createdContainers {
 		result[i] = *c
 		i++
-		fmt.Fprintf(&writer, " ---> Started unit %d/%d...\n", i, units)
+		fmt.Fprintf(w, " ---> Started unit %d/%d...\n", i, units)
 	}
 	return result, nil
 }

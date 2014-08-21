@@ -75,11 +75,20 @@ func (w *keepAliveWriter) Write(b []byte) (int, error) {
 	if w.withError {
 		return 0, errors.New("Error in previous write.")
 	}
-	w.ping <- true
+	if w.ping != nil {
+		w.ping <- true
+	}
 	w.lastByte = b[len(b)-1]
 	written, err := w.w.Write(b)
 	if err != nil {
-		close(w.done)
+		if w.done != nil {
+			close(w.done)
+			w.done = nil
+		}
+		if w.ping != nil {
+			close(w.ping)
+			w.ping = nil
+		}
 	}
 	return written, err
 }
