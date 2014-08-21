@@ -17,3 +17,6 @@ Bug fixes
 
 * Fix leak of connections to OAuth provider. Only users using auth:scheme as
   ``oauth`` are affected.
+
+
+* Fix leak of connections to services.
