@@ -847,3 +847,10 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	return app.Stop(w)
 }
+
+func forceDeleteLock(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	appName := r.URL.Query().Get(":app")
+	app.ReleaseApplicationLock(appName)
+	w.WriteHeader(http.StatusNoContent)
+	return nil
+}

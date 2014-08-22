@@ -111,6 +111,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Delete", "/apps/{app}/env", authorizationRequiredHandler(unsetEnv))
 	m.Add("Get", "/apps", authorizationRequiredHandler(appList))
 	m.Add("Post", "/apps", authorizationRequiredHandler(createApp))
+	forceDeleteLockHandler := AdminRequiredHandler(forceDeleteLock)
+	m.Add("Delete", "/apps/{app}/lock", forceDeleteLockHandler)
 	m.Add("Put", "/apps/{app}/units", authorizationRequiredHandler(addUnits))
 	m.Add("Delete", "/apps/{app}/units", authorizationRequiredHandler(removeUnits))
 	m.Add("Post", "/apps/{app}/units/{unit}", authorizationRequiredHandler(setUnitStatus))
@@ -182,6 +184,7 @@ func RunServer(dry bool) http.Handler {
 	n.Use(&appLockMiddleware{excludedHandlers: []http.Handler{
 		logPostHandler,
 		runHandler,
+		forceDeleteLockHandler,
 	}})
 	n.UseHandler(http.HandlerFunc(runDelayedHandler))
 

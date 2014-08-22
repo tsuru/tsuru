@@ -3310,3 +3310,48 @@ func (s *S) TestStopHandler(c *gocheck.C) {
 	}
 	c.Assert(action, testing.IsRecorded)
 }
+
+func (s *S) TestForceDeleteLock(c *gocheck.C) {
+	a := app.App{
+		Name: "locked",
+		Lock: app.AppLock{Locked: true},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("DELETE", "/apps/locked/lock", nil)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.admintoken.GetValue())
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusNoContent)
+	c.Assert(recorder.Body.String(), gocheck.Equals, "")
+	var dbApp app.App
+	err = s.conn.Apps().Find(bson.M{"name": "locked"}).One(&dbApp)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dbApp.Lock.Locked, gocheck.Equals, false)
+}
+
+func (s *S) TestForceDeleteLockOnlyAdmins(c *gocheck.C) {
+	a := app.App{
+		Name:  "locked",
+		Lock:  app.AppLock{Locked: true},
+		Teams: []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("DELETE", "/apps/locked/lock", nil)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusForbidden)
+	c.Assert(recorder.Body.String(), gocheck.Equals, "You must be an admin\n")
+	var dbApp app.App
+	err = s.conn.Apps().Find(bson.M{"name": "locked"}).One(&dbApp)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dbApp.Lock.Locked, gocheck.Equals, true)
+}
