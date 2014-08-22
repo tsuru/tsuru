@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 
 	"github.com/tsuru/tsuru/fs/testing"
+	"launchpad.net/gnuflag"
 	"launchpad.net/gocheck"
 )
 
@@ -52,4 +53,17 @@ func (s *S) TestShowServicesInstancesList(c *gocheck.C) {
 	result, err := ShowServicesInstancesList([]byte(b))
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(string(result), gocheck.Equals, expected)
+}
+
+func (s *S) TestMergeFlagSet(c *gocheck.C) {
+	var x, y bool
+	fs1 := gnuflag.NewFlagSet("x", gnuflag.ExitOnError)
+	fs1.BoolVar(&x, "x", false, "Something")
+	fs2 := gnuflag.NewFlagSet("y", gnuflag.ExitOnError)
+	fs2.BoolVar(&y, "y", false, "Something")
+	ret := MergeFlagSet(fs1, fs2)
+	c.Assert(ret, gocheck.Equals, fs1)
+	fs1.Parse(true, []string{"-x", "-y"})
+	c.Assert(x, gocheck.Equals, true)
+	c.Assert(y, gocheck.Equals, true)
 }
