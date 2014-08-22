@@ -5,11 +5,11 @@
 package io
 
 import (
-	"errors"
-	"github.com/tsuru/tsuru/log"
 	"io"
 	"sync"
 	"time"
+
+	"github.com/tsuru/tsuru/log"
 )
 
 type keepAliveWriter struct {
@@ -19,7 +19,7 @@ type keepAliveWriter struct {
 	done      chan bool
 	msg       []byte
 	lastByte  byte
-	withError bool
+	running   bool
 	writeLock sync.Mutex
 }
 
@@ -27,6 +27,7 @@ func NewKeepAliveWriter(w io.Writer, interval time.Duration, msg string) *keepAl
 	writer := &keepAliveWriter{w: w, interval: interval, msg: append([]byte(msg), '\n')}
 	writer.ping = make(chan bool)
 	writer.done = make(chan bool)
+	writer.running = true
 	go writer.keepAlive()
 	return writer
 }
@@ -42,14 +43,20 @@ func (w *keepAliveWriter) writeInterval() {
 	numBytes, err := w.w.Write(msg)
 	if err != nil {
 		log.Debugf("Error writing keepalive, exiting loop: %s", err.Error())
-		w.withError = true
-		return
-	}
-	if numBytes != len(msg) {
+		w.stop()
+	} else if numBytes != len(msg) {
 		log.Debugf("Short write on keepalive, exiting loop.")
-		w.withError = true
+		w.stop()
+	}
+}
+
+func (w *keepAliveWriter) stop() {
+	if !w.running {
 		return
 	}
+	w.running = false
+	close(w.done)
+	close(w.ping)
 }
 
 func (w *keepAliveWriter) keepAlive() {
@@ -59,9 +66,7 @@ func (w *keepAliveWriter) keepAlive() {
 		case <-w.done:
 			return
 		case <-time.After(w.interval):
-			if w.writeInterval(); w.withError {
-				return
-			}
+			w.writeInterval()
 		}
 	}
 }
@@ -72,23 +77,13 @@ func (w *keepAliveWriter) Write(b []byte) (int, error) {
 	}
 	w.writeLock.Lock()
 	defer w.writeLock.Unlock()
-	if w.withError {
-		return 0, errors.New("Error in previous write.")
-	}
-	if w.ping != nil {
+	if w.running {
 		w.ping <- true
 	}
 	w.lastByte = b[len(b)-1]
 	written, err := w.w.Write(b)
 	if err != nil {
-		if w.done != nil {
-			close(w.done)
-			w.done = nil
-		}
-		if w.ping != nil {
-			close(w.ping)
-			w.ping = nil
-		}
+		w.stop()
 	}
 	return written, err
 }
