@@ -6,7 +6,7 @@ Docker
 
 Docker is an open source project to pack, ship and run any application as a
 lightweight, portable, self-sufficient container.
-When you deploy an app with git push, tsuru builds an create Docker image,
+When you deploy an app with git push, tsuru builds a Docker image,
 then distributes it as units across your cluster.
 
 Clusters
