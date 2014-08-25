@@ -125,9 +125,11 @@ func (segregatedScheduler) chooseNode(nodes []cluster.Node, contName string, app
 	}
 	chosenNode = hostsMap[minHost]
 	log.Debugf("[scheduler] Chosen node for container %s: %#v Count: %d", contName, chosenNode, minCount)
-	coll := collection()
-	defer coll.Close()
-	err = coll.Update(bson.M{"name": contName}, bson.M{"$set": bson.M{"hostaddr": minHost}})
+	if contName != "" {
+		coll := collection()
+		defer coll.Close()
+		err = coll.Update(bson.M{"name": contName}, bson.M{"$set": bson.M{"hostaddr": minHost}})
+	}
 	return chosenNode, err
 }
 

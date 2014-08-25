@@ -68,6 +68,48 @@ func (s *S) TestSchedulerSchedule(c *gocheck.C) {
 	c.Check(node.Address, gocheck.Equals, "http://url2:1234")
 }
 
+func (s *S) TestSchedulerScheduleNoName(c *gocheck.C) {
+	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}}
+	a2 := app.App{Name: "mirror", Teams: []string{"tsuruteam"}}
+	a3 := app.App{Name: "dedication", Teams: []string{"nodockerforme"}}
+	cont1 := container{ID: "1", Name: "impius1", AppName: a1.Name}
+	cont2 := container{ID: "2", Name: "mirror1", AppName: a2.Name}
+	cont3 := container{ID: "3", Name: "dedication1", AppName: a3.Name}
+	err := s.storage.Apps().Insert(a1, a2, a3)
+	c.Assert(err, gocheck.IsNil)
+	defer s.storage.Apps().RemoveAll(bson.M{"name": bson.M{"$in": []string{a1.Name, a2.Name, a3.Name}}})
+	coll := s.storage.Collection(schedulerCollection)
+	p := Pool{Name: "pool1", Teams: []string{
+		"tsuruteam",
+		"nodockerforme",
+	}}
+	err = coll.Insert(p)
+	c.Assert(err, gocheck.IsNil)
+	defer coll.RemoveAll(bson.M{"_id": p.Name})
+	contColl := collection()
+	err = contColl.Insert(
+		cont1, cont2, cont3,
+	)
+	c.Assert(err, gocheck.IsNil)
+	defer contColl.RemoveAll(bson.M{"name": bson.M{"$in": []string{cont1.Name, cont2.Name, cont3.Name}}})
+	var scheduler segregatedScheduler
+	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
+	c.Assert(err, gocheck.IsNil)
+	err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
+	c.Assert(err, gocheck.IsNil)
+	err = clusterInstance.Register("http://url1:1234", map[string]string{"pool": "pool1"})
+	c.Assert(err, gocheck.IsNil)
+	err = clusterInstance.Register("http://url2:1234", map[string]string{"pool": "pool1"})
+	c.Assert(err, gocheck.IsNil)
+	opts := docker.CreateContainerOptions{}
+	node, err := scheduler.Schedule(clusterInstance, opts, a1.Name)
+	c.Assert(err, gocheck.IsNil)
+	c.Check(node.Address, gocheck.Equals, "http://url0:1234")
+	container, err := getContainer(cont1.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(container.HostAddr, gocheck.Equals, "")
+}
+
 func (s *S) TestSchedulerScheduleFallback(c *gocheck.C) {
 	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}}
 	cont1 := container{ID: "1", Name: "impius1", AppName: a1.Name}
