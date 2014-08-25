@@ -143,8 +143,9 @@ func (s *S) TestGetDiffInDeploysWithOneCommit(c *gocheck.C) {
 	h := testHandler{content: expected}
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
-	_, err := GetDiffInDeploys(&lastDeploy)
-	c.Assert(err.Error(), gocheck.Equals, "The deployment must have at least two commits for the diff.")
+	diffOutput, err := GetDiffInDeploys(&lastDeploy)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(diffOutput, gocheck.Equals, "The deployment must have at least two commits for the diff.")
 }
 
 func (s *S) TestDeployApp(c *gocheck.C) {

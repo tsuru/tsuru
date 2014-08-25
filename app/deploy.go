@@ -91,7 +91,7 @@ func GetDiffInDeploys(d *deploy) (string, error) {
 		return "", err
 	}
 	if len(list) < 2 {
-		return "", fmt.Errorf("The deployment must have at least two commits for the diff.")
+		return "The deployment must have at least two commits for the diff.", nil
 	}
 	gandalfClient := gandalf.Client{Endpoint: repository.ServerURL()}
 	diffOutput, err := gandalfClient.GetDiff(d.App, list[1].Commit, list[0].Commit)

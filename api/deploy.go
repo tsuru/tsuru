@@ -105,7 +105,7 @@ func deployInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		"Id":        deploy.ID.Hex(),
 		"App":       deploy.App,
 		"Timestamp": deploy.Timestamp.Format(time.RFC3339),
-		"Duration":  deploy.Duration.Seconds(),
+		"Duration":  deploy.Duration.Nanoseconds(),
 		"Commit":    deploy.Commit,
 		"Error":     deploy.Error,
 		"Diff":      diff,

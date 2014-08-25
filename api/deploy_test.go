@@ -274,6 +274,7 @@ func (s *DeploySuite) TestDeployList(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = json.Unmarshal(body, &result)
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(result[0].ID, gocheck.NotNil)
 	c.Assert(result[0].App, gocheck.Equals, "g1")
 	c.Assert(result[0].Timestamp.In(time.UTC), gocheck.DeepEquals, timestamp.Add(time.Minute).In(time.UTC))
 	c.Assert(result[0].Duration, gocheck.DeepEquals, duration)
@@ -353,7 +354,7 @@ func (s *DeploySuite) TestDeployInfo(c *gocheck.C) {
 		"Id":        depId.Hex(),
 		"App":       "g1",
 		"Timestamp": timestamp.Format(time.RFC3339),
-		"Duration":  10.0,
+		"Duration":  10e9,
 		"Commit":    "e82nn93nd93mm12o2ueh83dhbd3iu112",
 		"Error":     "",
 		"Diff":      expected,
