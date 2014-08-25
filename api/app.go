@@ -11,7 +11,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
@@ -21,7 +20,6 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
-	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
@@ -43,43 +41,6 @@ func getApp(name string, u *auth.User) (app.App, error) {
 		return *a, &errors.HTTP{Code: http.StatusForbidden, Message: "User does not have access to this app"}
 	}
 	return *a, nil
-}
-
-func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	version := r.PostFormValue("version")
-	archiveURL := r.PostFormValue("archive-url")
-	if version == "" && archiveURL == "" {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: "you must specify either the version or the archive-url",
-		}
-	}
-	if version != "" && archiveURL != "" {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: "you must specify either the version or the archive-url, but not both",
-		}
-	}
-	commit := r.PostFormValue("commit")
-	w.Header().Set("Content-Type", "text")
-	appName := r.URL.Query().Get(":appname")
-	instance, err := app.GetByName(appName)
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
-	}
-	writer := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
-	err = app.Deploy(app.DeployOptions{
-		App:          instance,
-		Version:      version,
-		Commit:       commit,
-		ArchiveURL:   archiveURL,
-		OutputStream: writer,
-	})
-	if err == nil {
-		fmt.Fprintln(w, "\nOK")
-	}
-	return err
-
 }
 
 func appIsAvailable(w http.ResponseWriter, r *http.Request, t auth.Token) error {

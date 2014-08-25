@@ -6,13 +6,52 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/io"
 )
+
+func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	version := r.PostFormValue("version")
+	archiveURL := r.PostFormValue("archive-url")
+	if version == "" && archiveURL == "" {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "you must specify either the version or the archive-url",
+		}
+	}
+	if version != "" && archiveURL != "" {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "you must specify either the version or the archive-url, but not both",
+		}
+	}
+	commit := r.PostFormValue("commit")
+	w.Header().Set("Content-Type", "text")
+	appName := r.URL.Query().Get(":appname")
+	instance, err := app.GetByName(appName)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
+	}
+	writer := io.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
+	err = app.Deploy(app.DeployOptions{
+		App:          instance,
+		Version:      version,
+		Commit:       commit,
+		ArchiveURL:   archiveURL,
+		OutputStream: writer,
+	})
+	if err == nil {
+		fmt.Fprintln(w, "\nOK")
+	}
+	return err
+
+}
 
 func deploysList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
