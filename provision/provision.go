@@ -146,6 +146,12 @@ type GitDeployer interface {
 	GitDeploy(app App, version string, w io.Writer) error
 }
 
+// UploadDeployer is a provisioner that can deploy the application from an
+// uploaded file.
+type UploadDeployer interface {
+	UploadDeploy(app App, file io.ReadCloser, w io.Writer) error
+}
+
 // Provisioner is the basic interface of this package.
 //
 // Any tsuru provisioner must implement this interface in order to provision
