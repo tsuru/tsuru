@@ -5,9 +5,11 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -123,6 +125,37 @@ func (s *DeploySuite) TestDeployArchiveURL(c *gocheck.C) {
 	c.Assert(string(b), gocheck.Equals, "Archive deploy called\nOK\n")
 }
 
+func (s *DeploySuite) TestDeployUploadFile(c *gocheck.C) {
+	a := app.App{
+		Name:     "otherapp",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	file, err := writer.CreateFormFile("file", "archive.tar.gz")
+	c.Assert(err, gocheck.IsNil)
+	file.Write([]byte("hello world!"))
+	writer.Close()
+	request, err := http.NewRequest("POST", url, &body)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-Type", "multipart/form-data; boundary="+writer.Boundary())
+	recorder := httptest.NewRecorder()
+	err = deploy(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	b, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(string(b), gocheck.Equals, "Upload deploy called\nOK\n")
+}
+
 func (s *DeploySuite) TestDeployWithCommit(c *gocheck.C) {
 	a := app.App{
 		Name:     "otherapp",
@@ -203,7 +236,7 @@ func (s *DeploySuite) TestDeployWithoutVersionAndArchiveURL(c *gocheck.C) {
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
-	c.Assert(e.Message, gocheck.Equals, "you must specify either the version or the archive-url")
+	c.Assert(e.Message, gocheck.Equals, "you must specify either the version, the archive-url or upload a file")
 }
 
 func (s *DeploySuite) TestDeployWithVersionAndArchiveURL(c *gocheck.C) {

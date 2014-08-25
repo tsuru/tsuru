@@ -7,7 +7,9 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"mime/multipart"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/tsuru/tsuru/app"
@@ -17,12 +19,23 @@ import (
 )
 
 func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	var file multipart.File
+	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/") {
+		var err error
+		file, _, err = r.FormFile("file")
+		if err != nil {
+			return &errors.HTTP{
+				Code:    http.StatusBadRequest,
+				Message: err.Error(),
+			}
+		}
+	}
 	version := r.PostFormValue("version")
 	archiveURL := r.PostFormValue("archive-url")
-	if version == "" && archiveURL == "" {
+	if version == "" && archiveURL == "" && file == nil {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
-			Message: "you must specify either the version or the archive-url",
+			Message: "you must specify either the version, the archive-url or upload a file",
 		}
 	}
 	if version != "" && archiveURL != "" {
@@ -43,6 +56,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		App:          instance,
 		Version:      version,
 		Commit:       commit,
+		File:         file,
 		ArchiveURL:   archiveURL,
 		OutputStream: writer,
 	})
