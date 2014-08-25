@@ -5,6 +5,7 @@
 package service
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"github.com/tsuru/tsuru/app/bind"
@@ -213,8 +214,12 @@ func (c *Client) Plans() ([]Plan, error) {
 // Proxy is a proxy between tsuru and the service.
 // This method allow customized service methods.
 func (c *Client) Proxy(method, path string, body io.ReadCloser) (*http.Response, error) {
+	var b bytes.Buffer
+	if body != nil {
+		io.Copy(&b, body)
+	}
 	url := strings.TrimRight(c.endpoint, "/") + "/" + strings.Trim(path, "/")
-	req, err := http.NewRequest(method, url, body)
+	req, err := http.NewRequest(method, url, &b)
 	if err != nil {
 		log.Errorf("Got error while creating request: %s", err)
 		return nil, err
