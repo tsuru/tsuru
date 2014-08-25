@@ -106,6 +106,7 @@ type DeployOptions struct {
 	Version      string
 	Commit       string
 	ArchiveURL   string
+	File         io.ReadCloser
 	OutputStream io.Writer
 }
 
