@@ -21,6 +21,7 @@ import (
 
 	"code.google.com/p/go.crypto/ssh/terminal"
 	"github.com/tsuru/tsuru/cmd"
+	"github.com/tsuru/tsuru/cmd/tsuru-base"
 	"github.com/tsuru/tsuru/errors"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"launchpad.net/gnuflag"
@@ -145,33 +146,27 @@ func (c *moveContainerCmd) Run(context *cmd.Context, client *cmd.Client) error {
 }
 
 type rebalanceContainersCmd struct {
-	fs       *gnuflag.FlagSet
-	dry      bool
-	forceYes bool
+	tsuru.ConfirmationCommand
+	fs  *gnuflag.FlagSet
+	dry bool
 }
 
 func (c *rebalanceContainersCmd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "containers-rebalance",
-		Usage:   "containers-rebalance [--dry] [-y/--force-yes]",
+		Usage:   "containers-rebalance [--dry] [-y/--assume-yes]",
 		Desc:    "Move containers creating a more even distribution between docker nodes.",
 		MinArgs: 0,
 	}
 }
 
 func (c *rebalanceContainersCmd) Run(context *cmd.Context, client *cmd.Client) error {
+	if !c.dry && !c.Confirm(context, "Are you sure you want to rebalance containers?") {
+		return nil
+	}
 	url, err := cmd.GetURL("/docker/containers/rebalance")
 	if err != nil {
 		return err
-	}
-	if !c.forceYes {
-		var answer string
-		fmt.Fprint(context.Stderr, "Are you sure? (y/n) ")
-		fmt.Fscanf(context.Stdin, "%s", &answer)
-		if answer != "y" {
-			fmt.Fprintln(context.Stderr, "Abort.")
-			return nil
-		}
 	}
 	params := map[string]string{
 		"dry": fmt.Sprintf("%t", c.dry),
@@ -199,10 +194,8 @@ func (c *rebalanceContainersCmd) Run(context *cmd.Context, client *cmd.Client) e
 
 func (c *rebalanceContainersCmd) Flags() *gnuflag.FlagSet {
 	if c.fs == nil {
-		c.fs = gnuflag.NewFlagSet("containers-rebalance", gnuflag.ExitOnError)
+		c.fs = c.ConfirmationCommand.Flags()
 		c.fs.BoolVar(&c.dry, "dry", false, "Dry run, only shows what would be done")
-		c.fs.BoolVar(&c.forceYes, "force-yes", false, "Rebalance without asking")
-		c.fs.BoolVar(&c.forceYes, "y", false, "Rebalance without asking")
 	}
 	return c.fs
 }
