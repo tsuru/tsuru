@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/tsuru/tsuru/cmd"
+	"github.com/tsuru/tsuru/cmd/tsuru-base"
 	"launchpad.net/gnuflag"
 )
 
@@ -72,6 +73,7 @@ func (a *addNodeToSchedulerCmd) Flags() *gnuflag.FlagSet {
 }
 
 type removeNodeFromSchedulerCmd struct {
+	tsuru.ConfirmationCommand
 	fs      *gnuflag.FlagSet
 	destroy bool
 }
@@ -79,7 +81,7 @@ type removeNodeFromSchedulerCmd struct {
 func (removeNodeFromSchedulerCmd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "docker-node-remove",
-		Usage: "docker-node-remove <address> [--destroy]",
+		Usage: "docker-node-remove <address> [--destroy] [-y]",
 		Desc: `Removes a node from the cluster.
 
 --destroy: Destroy the machine in the IaaS used to create it, if it exists.
@@ -89,6 +91,13 @@ func (removeNodeFromSchedulerCmd) Info() *cmd.Info {
 }
 
 func (c *removeNodeFromSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
+	msg := "Are you sure you sure you want to remove \"%s\" from cluster"
+	if c.destroy {
+		msg += " and DESTROY the machine from IaaS"
+	}
+	if !c.Confirm(ctx, fmt.Sprintf(msg+"?", ctx.Args[0])) {
+		return nil
+	}
 	params := map[string]string{"address": ctx.Args[0]}
 	if c.destroy {
 		params["remove_iaas"] = "true"
@@ -115,7 +124,7 @@ func (c *removeNodeFromSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) e
 
 func (c *removeNodeFromSchedulerCmd) Flags() *gnuflag.FlagSet {
 	if c.fs == nil {
-		c.fs = gnuflag.NewFlagSet("with-flags", gnuflag.ContinueOnError)
+		c.fs = c.ConfirmationCommand.Flags()
 		c.fs.BoolVar(&c.destroy, "destroy", false, "Destroy node from IaaS")
 	}
 	return c.fs

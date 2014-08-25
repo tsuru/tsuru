@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"strings"
 
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/testing"
@@ -81,7 +82,7 @@ func (s *S) TestAddNodeWithErrorCmdRun(c *gocheck.C) {
 func (s *S) TestRemoveNodeFromTheSchedulerCmdInfo(c *gocheck.C) {
 	expected := cmd.Info{
 		Name:  "docker-node-remove",
-		Usage: "docker-node-remove <address> [--destroy]",
+		Usage: "docker-node-remove <address> [--destroy] [-y]",
 		Desc: `Removes a node from the cluster.
 
 --destroy: Destroy the machine in the IaaS used to create it, if it exists.
@@ -89,6 +90,7 @@ func (s *S) TestRemoveNodeFromTheSchedulerCmdInfo(c *gocheck.C) {
 		MinArgs: 1,
 	}
 	cmd := removeNodeFromSchedulerCmd{}
+	cmd.Flags().Parse(true, []string{"-y"})
 	c.Assert(cmd.Info(), gocheck.DeepEquals, &expected)
 }
 
@@ -107,6 +109,7 @@ func (s *S) TestRemoveNodeFromTheSchedulerCmdRun(c *gocheck.C) {
 	manager := cmd.Manager{}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
 	cmd := removeNodeFromSchedulerCmd{}
+	cmd.Flags().Parse(true, []string{"-y"})
 	err := cmd.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(buf.String(), gocheck.Equals, "Node successfully removed.\n")
@@ -127,10 +130,24 @@ func (s *S) TestRemoveNodeFromTheSchedulerWithDestroyCmdRun(c *gocheck.C) {
 	}
 	manager := cmd.Manager{}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
-	cmd := removeNodeFromSchedulerCmd{destroy: true}
+	cmd := removeNodeFromSchedulerCmd{}
+	cmd.Flags().Parse(true, []string{"-y", "--destroy"})
 	err := cmd.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(buf.String(), gocheck.Equals, "Node successfully removed.\n")
+}
+
+func (s *S) TestRemoveNodeFromTheSchedulerWithDestroyCmdRunConfirmation(c *gocheck.C) {
+	var stdout bytes.Buffer
+	context := cmd.Context{
+		Args:   []string{"http://localhost:8080"},
+		Stdout: &stdout,
+		Stdin:  strings.NewReader("n\n"),
+	}
+	command := removeNodeFromSchedulerCmd{}
+	err := command.Run(&context, nil)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, "Are you sure you sure you want to remove \"http://localhost:8080\" from cluster? (y/n) Abort.\n")
 }
 
 func (s *S) TestListNodesInTheSchedulerCmdInfo(c *gocheck.C) {
