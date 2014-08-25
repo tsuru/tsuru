@@ -363,6 +363,11 @@ var ProvisionerDeploy = action.Action{
 		if !ok {
 			return nil, errors.New("Second parameter must be an io.Writer")
 		}
+		if opts.File != nil {
+			if deployer, ok := Provisioner.(provision.UploadDeployer); ok {
+				return nil, deployer.UploadDeploy(opts.App, opts.File, writer)
+			}
+		}
 		if opts.ArchiveURL != "" {
 			if deployer, ok := Provisioner.(provision.ArchiveDeployer); ok {
 				return nil, deployer.ArchiveDeploy(opts.App, opts.ArchiveURL, writer)

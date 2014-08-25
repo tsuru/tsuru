@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -121,20 +122,77 @@ func (dockerProvisioner) Swap(app1, app2 provision.App) error {
 	return r.Swap(app1.GetName(), app2.GetName())
 }
 
-func (p *dockerProvisioner) GitDeploy(a provision.App, version string, w io.Writer) error {
-	imageId, err := gitDeploy(a, version, w)
+func (p *dockerProvisioner) GitDeploy(app provision.App, version string, w io.Writer) error {
+	imageId, err := gitDeploy(app, version, w)
 	if err != nil {
 		return err
 	}
-	return p.deploy(a, imageId, w)
+	return p.deploy(app, imageId, w)
 }
 
-func (p *dockerProvisioner) ArchiveDeploy(a provision.App, archiveURL string, w io.Writer) error {
-	imageId, err := archiveDeploy(a, archiveURL, w)
+func (p *dockerProvisioner) ArchiveDeploy(app provision.App, archiveURL string, w io.Writer) error {
+	imageId, err := archiveDeploy(app, getImage(app), archiveURL, w)
 	if err != nil {
 		return err
 	}
-	return p.deploy(a, imageId, w)
+	return p.deploy(app, imageId, w)
+}
+
+func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadCloser, w io.Writer) error {
+	defer archiveFile.Close()
+	filePath := "/home/application/archive.tar.gz"
+	options := docker.CreateContainerOptions{
+		Config: &docker.Config{
+			AttachStdout: true,
+			AttachStderr: true,
+			AttachStdin:  true,
+			OpenStdin:    true,
+			StdinOnce:    true,
+			Image:        getImage(app),
+			Cmd:          []string{"/bin/bash", "-c", "cat > " + filePath},
+		},
+	}
+	cluster := dockerCluster()
+	_, container, err := dockerCluster().CreateContainerSchedulerOpts(options, app.GetName())
+	if err != nil {
+		return err
+	}
+	defer cluster.RemoveContainer(docker.RemoveContainerOptions{ID: container.ID, Force: true})
+	err = cluster.StartContainer(container.ID, nil)
+	if err != nil {
+		return err
+	}
+	var output bytes.Buffer
+	err = cluster.AttachToContainer(docker.AttachToContainerOptions{
+		Container:    container.ID,
+		OutputStream: &output,
+		ErrorStream:  &output,
+		InputStream:  archiveFile,
+		Stream:       true,
+		Stdin:        true,
+		Stdout:       true,
+		Stderr:       true,
+	})
+	if err != nil {
+		return err
+	}
+	status, err := cluster.WaitContainer(container.ID)
+	if err != nil {
+		return err
+	}
+	if status != 0 {
+		log.Errorf("Failed to deploy container from upload: %s", &output)
+		return fmt.Errorf("container exited with status %d", status)
+	}
+	image, err := cluster.CommitContainer(docker.CommitContainerOptions{Container: container.ID})
+	if err != nil {
+		return err
+	}
+	imageId, err := archiveDeploy(app, image.ID, "file://"+filePath, w)
+	if err != nil {
+		return err
+	}
+	return p.deploy(app, imageId, w)
 }
 
 func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer) error {

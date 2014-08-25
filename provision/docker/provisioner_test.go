@@ -143,6 +143,46 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	c.Assert(serviceBodies[0], gocheck.Matches, ".*unit-host="+units[0].Ip)
 }
 
+func (s *S) TestProvisionerUploadDeploy(c *gocheck.C) {
+	h := &tsrTesting.TestHandler{}
+	gandalfServer := tsrTesting.StartGandalfTestServer(h)
+	defer gandalfServer.Close()
+	go s.stopContainers(1)
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	p := dockerProvisioner{}
+	a := app.App{
+		Name:     "otherapp",
+		Platform: "python",
+	}
+	conn, err := db.Conn()
+	defer conn.Close()
+	err = conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": a.Name})
+	p.Provision(&a)
+	defer p.Destroy(&a)
+	w := safe.NewBuffer(make([]byte, 2048))
+	var serviceBodies []string
+	rollback := s.addServiceInstance(c, a.Name, func(w http.ResponseWriter, r *http.Request) {
+		data, _ := ioutil.ReadAll(r.Body)
+		serviceBodies = append(serviceBodies, string(data))
+		w.WriteHeader(http.StatusOK)
+	})
+	defer rollback()
+	buf := bytes.NewBufferString("something wrong is not right")
+	err = app.Deploy(app.DeployOptions{
+		App:          &a,
+		File:         ioutil.NopCloser(buf),
+		OutputStream: w,
+	})
+	c.Assert(err, gocheck.IsNil)
+	units := a.Units()
+	c.Assert(units, gocheck.HasLen, 1)
+	c.Assert(serviceBodies, gocheck.HasLen, 1)
+	c.Assert(serviceBodies[0], gocheck.Matches, ".*unit-host="+units[0].Ip)
+}
+
 func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *gocheck.C) {
 	h := &tsrTesting.TestHandler{}
 	gandalfServer := tsrTesting.StartGandalfTestServer(h)
