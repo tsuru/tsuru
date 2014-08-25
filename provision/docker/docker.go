@@ -275,19 +275,18 @@ func gitDeploy(app provision.App, version string, w io.Writer) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return deploy(app, commands, w)
+	return deploy(app, getImage(app), commands, w)
 }
 
-func archiveDeploy(app provision.App, archiveURL string, w io.Writer) (string, error) {
+func archiveDeploy(app provision.App, image, archiveURL string, w io.Writer) (string, error) {
 	commands, err := archiveDeployCmds(app, archiveURL)
 	if err != nil {
 		return "", err
 	}
-	return deploy(app, commands, w)
+	return deploy(app, image, commands, w)
 }
 
-func deploy(app provision.App, commands []string, w io.Writer) (string, error) {
-	imageId := getImage(app)
+func deploy(app provision.App, imageId string, commands []string, w io.Writer) (string, error) {
 	actions := []*action.Action{
 		&insertEmptyContainerInDB,
 		&createContainer,

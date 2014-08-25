@@ -624,7 +624,7 @@ func (s *S) TestArchiveDeploy(c *gocheck.C) {
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
-	_, err = archiveDeploy(app, "https://s3.amazonaws.com/wat/archive.tar.gz", &buf)
+	_, err = archiveDeploy(app, getImage(app), "https://s3.amazonaws.com/wat/archive.tar.gz", &buf)
 	c.Assert(err, gocheck.IsNil)
 }
 
