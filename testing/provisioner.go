@@ -382,6 +382,22 @@ func (p *FakeProvisioner) ArchiveDeploy(app provision.App, archiveURL string, w 
 	return nil
 }
 
+func (p *FakeProvisioner) UploadDeploy(app provision.App, file io.ReadCloser, w io.Writer) error {
+	if err := p.getError("UploadDeploy"); err != nil {
+		return err
+	}
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	pApp, ok := p.apps[app.GetName()]
+	if !ok {
+		return errNotProvisioned
+	}
+	w.Write([]byte("Upload deploy called"))
+	pApp.lastFile = file
+	p.apps[app.GetName()] = pApp
+	return nil
+}
+
 func (p *FakeProvisioner) Provision(app provision.App) error {
 	if err := p.getError("Provision"); err != nil {
 		return err
@@ -802,6 +818,7 @@ type provisionedApp struct {
 	stops       int
 	version     string
 	lastArchive string
+	lastFile    io.ReadCloser
 	cname       string
 	addr        string
 	unitLen     int
