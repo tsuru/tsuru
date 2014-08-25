@@ -577,7 +577,7 @@ func (s *S) TestAdminCommands(c *gocheck.C) {
 		&removeNodeFromSchedulerCmd{},
 		listNodesInTheSchedulerCmd{},
 		addPoolToSchedulerCmd{},
-		removePoolFromSchedulerCmd{},
+		&removePoolFromSchedulerCmd{},
 		listPoolsInTheSchedulerCmd{},
 		addTeamsToPoolCmd{},
 		removeTeamsFromPoolCmd{},

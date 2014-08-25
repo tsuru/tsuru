@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
+	"github.com/tsuru/tsuru/cmd/tsuru-base"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 	"gopkg.in/mgo.v2/bson"
@@ -256,18 +257,23 @@ func (addPoolToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
 	return nil
 }
 
-type removePoolFromSchedulerCmd struct{}
+type removePoolFromSchedulerCmd struct {
+	tsuru.ConfirmationCommand
+}
 
-func (removePoolFromSchedulerCmd) Info() *cmd.Info {
+func (c *removePoolFromSchedulerCmd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "docker-pool-remove",
-		Usage:   "docker-pool-remove <pool>",
+		Usage:   "docker-pool-remove <pool> [-y]",
 		Desc:    "Remove a pool to cluster",
 		MinArgs: 1,
 	}
 }
 
-func (removePoolFromSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
+func (c *removePoolFromSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
+	if !c.Confirm(ctx, fmt.Sprintf("Are you sure you want to remove \"%s\" pool?", ctx.Args[0])) {
+		return nil
+	}
 	b, err := json.Marshal(map[string]string{"pool": ctx.Args[0]})
 	if err != nil {
 		return err

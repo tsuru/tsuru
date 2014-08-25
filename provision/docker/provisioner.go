@@ -377,7 +377,7 @@ func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 		&removeNodeFromSchedulerCmd{},
 		listNodesInTheSchedulerCmd{},
 		addPoolToSchedulerCmd{},
-		removePoolFromSchedulerCmd{},
+		&removePoolFromSchedulerCmd{},
 		listPoolsInTheSchedulerCmd{},
 		addTeamsToPoolCmd{},
 		removeTeamsFromPoolCmd{},

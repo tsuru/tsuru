@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 
 	"github.com/fsouza/go-dockerclient"
@@ -358,7 +359,7 @@ func (s *S) TestAddPoolToTheSchedulerCmd(c *gocheck.C) {
 func (s *S) TestRemovePoolFromSchedulerCmdInfo(c *gocheck.C) {
 	expected := cmd.Info{
 		Name:    "docker-pool-remove",
-		Usage:   "docker-pool-remove <pool>",
+		Usage:   "docker-pool-remove <pool> [-y]",
 		Desc:    "Remove a pool to cluster",
 		MinArgs: 1,
 	}
@@ -378,8 +379,22 @@ func (s *S) TestRemovePoolFromTheSchedulerCmd(c *gocheck.C) {
 	manager := cmd.Manager{}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
 	cmd := removePoolFromSchedulerCmd{}
+	cmd.Flags().Parse(true, []string{"-y"})
 	err := cmd.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestRemovePoolFromTheSchedulerCmdConfirmation(c *gocheck.C) {
+	var stdout bytes.Buffer
+	context := cmd.Context{
+		Args:   []string{"poolX"},
+		Stdout: &stdout,
+		Stdin:  strings.NewReader("n\n"),
+	}
+	command := removePoolFromSchedulerCmd{}
+	err := command.Run(&context, nil)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, "Are you sure you want to remove \"poolX\" pool? (y/n) Abort.\n")
 }
 
 func (s *S) TestListPoolsInTheSchedulerCmdInfo(c *gocheck.C) {
