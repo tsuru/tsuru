@@ -518,3 +518,15 @@ func (p *dockerProvisioner) Units(app provision.App) []provision.Unit {
 	}
 	return units
 }
+
+func (p *dockerProvisioner) RegisterUnit(unit provision.Unit) error {
+	container, err := getContainer(unit.Name)
+	if err != nil {
+		return err
+	}
+	err = container.setStatus(provision.StatusStarted.String())
+	if err != nil {
+		return err
+	}
+	return checkContainer(*container, nil)
+}

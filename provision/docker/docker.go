@@ -346,7 +346,7 @@ func start(app provision.App, imageId string, w io.Writer, destinationHosts ...s
 	if err != nil {
 		return nil, err
 	}
-	err = c.setStatus(provision.StatusStarted.String())
+	err = c.setStatus(provision.StatusStarting.String())
 	if err != nil {
 		return nil, err
 	}

@@ -30,19 +30,24 @@ func fixContainers() error {
 	return nil
 }
 
-func checkContainer(container container, wg *sync.WaitGroup) {
-	defer wg.Done()
+func checkContainer(container container, wg *sync.WaitGroup) error {
+	if wg != nil {
+		defer wg.Done()
+	}
 	if container.available() {
 		info, err := container.networkInfo()
-		if err == nil &&
-			(info.HTTPHostPort != container.HostPort || info.IP != container.IP || info.SSHHostPort != container.SSHHostPort) {
+		if err != nil {
+			return err
+		}
+		if info.HTTPHostPort != container.HostPort || info.IP != container.IP || info.SSHHostPort != container.SSHHostPort {
 			err = fixContainer(&container, info)
 			if err != nil {
 				log.Errorf("error on fix container hostport for [container %s]", container.ID)
-				return
+				return err
 			}
 		}
 	}
+	return nil
 }
 
 func fixContainer(container *container, info containerNetworkInfo) error {

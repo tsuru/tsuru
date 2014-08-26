@@ -960,3 +960,24 @@ func (s *S) TestProvisionerUnitsIp(c *gocheck.C) {
 	}
 	c.Assert(units, gocheck.DeepEquals, expected)
 }
+
+func (s *S) TestRegisterUnit(c *gocheck.C) {
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	opts := newContainerOpts{Status: provision.StatusStarting.String(), AppName: "myawesomeapp"}
+	container, err := s.newContainer(&opts)
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(container)
+	container.IP = "xinvalidx"
+	coll := collection()
+	defer coll.Close()
+	err = coll.Update(bson.M{"id": container.ID}, container)
+	c.Assert(err, gocheck.IsNil)
+	var p dockerProvisioner
+	err = p.RegisterUnit(provision.Unit{Name: container.ID})
+	c.Assert(err, gocheck.IsNil)
+	dbCont, err := getContainer(container.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dbCont.IP, gocheck.Matches, `\d+\.\d+\.\d+\.\d+`)
+	c.Assert(dbCont.Status, gocheck.Equals, provision.StatusStarted.String())
+}

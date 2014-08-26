@@ -62,8 +62,11 @@ const (
 	// the right host ("0.0.0.0") and/or right port ($PORT).
 	StatusUnreachable = Status("unreachable")
 
-	// StatusStarted is for cases where the unit is up and running, and
-	// bound to the proper status.
+	// StatusStarting is set when the container is started in docker.
+	StatusStarting = Status("starting")
+
+	// StatusStarted is for cases where the unit is up and running, and bound
+	// to the proper status, it's set by RegisterUnit and SetUnitStatus.
 	StatusStarted = Status("started")
 
 	// StatusStopped is for cases where the unit has been stopped.
@@ -204,6 +207,9 @@ type Provisioner interface {
 
 	// Units returns information about units by App.
 	Units(App) []Unit
+
+	// Register a unit after the container has been created or restarted.
+	RegisterUnit(Unit) error
 }
 
 // CustomizedDeployPipelineProvisioner is a provisioner with a customized
