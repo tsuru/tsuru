@@ -1793,3 +1793,29 @@ func (s *S) TestAppLockStringLocked(c *gocheck.C) {
 	}
 	c.Assert(lock.String(), gocheck.Matches, "App locked by someone, running /app/my-app/deploy. Acquired in 2048-11-10T.*")
 }
+
+func (s *S) TestAppRegisterUnit(c *gocheck.C) {
+	a := App{Name: "appName", Platform: "python"}
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 3)
+	units := a.Units()
+	var ips []string
+	for _, u := range units {
+		ips = append(ips, u.Ip)
+	}
+	err := a.RegisterUnit(units[0].Name)
+	c.Assert(err, gocheck.IsNil)
+	units = a.Units()
+	c.Assert(units[0].Ip, gocheck.Equals, ips[0]+"-updated")
+	c.Assert(units[1].Ip, gocheck.Equals, ips[1])
+	c.Assert(units[2].Ip, gocheck.Equals, ips[2])
+}
+
+func (s *S) TestAppRegisterUnitInvalidUnit(c *gocheck.C) {
+	a := App{Name: "appName", Platform: "python"}
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	err := a.RegisterUnit("oddity")
+	c.Assert(err, gocheck.Equals, ErrUnitNotFound)
+}

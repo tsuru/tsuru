@@ -37,9 +37,10 @@ var Provisioner provision.Provisioner
 var AuthScheme auth.Scheme
 
 var (
-	nameRegexp     = regexp.MustCompile(`^[a-z][a-z0-9-]{0,62}$`)
-	cnameRegexp    = regexp.MustCompile(`^(\*\.)?[a-zA-Z0-9][\w-.]+$`)
-	ErrAppNotEqual = stderr.New("Apps are not equal.")
+	nameRegexp      = regexp.MustCompile(`^[a-z][a-z0-9-]{0,62}$`)
+	cnameRegexp     = regexp.MustCompile(`^(\*\.)?[a-zA-Z0-9][\w-.]+$`)
+	ErrAppNotEqual  = stderr.New("Apps are not equal.")
+	ErrUnitNotFound = stderr.New("unit not found")
 )
 
 const InternalAppName = "tsr"
@@ -440,7 +441,7 @@ func (app *App) SetUnitStatus(unitName string, status provision.Status) error {
 			return Provisioner.SetUnitStatus(unit, status)
 		}
 	}
-	return stderr.New("unit not found")
+	return ErrUnitNotFound
 }
 
 // Available returns true if at least one of N units is started or unreachable.
@@ -983,4 +984,13 @@ func (app *App) SetUpdatePlatform(check bool) error {
 
 func (app *App) GetUpdatePlatform() bool {
 	return app.UpdatePlatform
+}
+
+func (app *App) RegisterUnit(unitId string) error {
+	for _, unit := range app.Units() {
+		if strings.HasPrefix(unit.Name, unitId) {
+			return Provisioner.RegisterUnit(unit)
+		}
+	}
+	return ErrUnitNotFound
 }
