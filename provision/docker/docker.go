@@ -302,6 +302,7 @@ func deploy(app provision.App, imageId string, commands []string, w io.Writer) (
 		imageID:  imageId,
 		commands: commands,
 		writer:   w,
+		isDeploy: true,
 	}
 	err := pipeline.Execute(args)
 	if err != nil {
@@ -475,7 +476,7 @@ func (c *container) stop() error {
 	return nil
 }
 
-func (c *container) start() error {
+func (c *container) start(shouldRestart bool) error {
 	port, err := getPort()
 	if err != nil {
 		return err
@@ -485,6 +486,9 @@ func (c *container) start() error {
 	sharedIsolation, _ := config.GetBool("docker:sharedfs:app-isolation")
 	sharedSalt, _ := config.GetString("docker:sharedfs:salt")
 	config := docker.HostConfig{}
+	if shouldRestart {
+		config.RestartPolicy = docker.AlwaysRestart()
+	}
 	config.PortBindings = map[docker.Port][]docker.PortBinding{
 		docker.Port(port + "/tcp"): {{HostIp: "", HostPort: ""}},
 		docker.Port("22/tcp"):      {{HostIp: "", HostPort: ""}},

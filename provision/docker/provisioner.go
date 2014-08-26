@@ -74,7 +74,7 @@ func (*dockerProvisioner) Start(app provision.App) error {
 		wg.Add(1)
 		go func(c container) {
 			defer wg.Done()
-			err := c.start()
+			err := c.start(true)
 			if err != nil {
 				errCh <- err
 				return

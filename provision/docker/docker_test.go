@@ -6,6 +6,7 @@ package docker
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -829,15 +830,47 @@ func (s *S) TestContainerStart(c *gocheck.C) {
 	defer s.removeTestContainer(cont)
 	client, err := docker.NewClient(s.server.URL())
 	c.Assert(err, gocheck.IsNil)
+	contPath := fmt.Sprintf("/containers/%s/start", cont.ID)
+	var restartPolicy string
+	s.server.CustomHandler(contPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		result := docker.HostConfig{}
+		err := json.NewDecoder(r.Body).Decode(&result)
+		if err == nil {
+			restartPolicy = result.RestartPolicy.Name
+		}
+		s.server.DefaultHandler().ServeHTTP(w, r)
+	}))
+	defer s.server.CustomHandler(contPath, s.server.DefaultHandler())
 	dockerContainer, err := client.InspectContainer(cont.ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(dockerContainer.State.Running, gocheck.Equals, false)
-	err = cont.start()
+	err = cont.start(true)
 	c.Assert(err, gocheck.IsNil)
 	dockerContainer, err = client.InspectContainer(cont.ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(dockerContainer.State.Running, gocheck.Equals, true)
 	c.Assert(cont.Status, gocheck.Equals, "pending")
+	c.Assert(restartPolicy, gocheck.Equals, "always")
+}
+
+func (s *S) TestContainerStartWithoutRestart(c *gocheck.C) {
+	cont, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(cont)
+	contPath := fmt.Sprintf("/containers/%s/start", cont.ID)
+	var restartPolicy string
+	s.server.CustomHandler(contPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		result := docker.HostConfig{}
+		err := json.NewDecoder(r.Body).Decode(&result)
+		if err == nil {
+			restartPolicy = result.RestartPolicy.Name
+		}
+		s.server.DefaultHandler().ServeHTTP(w, r)
+	}))
+	defer s.server.CustomHandler(contPath, s.server.DefaultHandler())
+	err = cont.start(false)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(restartPolicy, gocheck.Equals, "")
 }
 
 func (s *S) TestContainerStartWithoutPort(c *gocheck.C) {
@@ -847,7 +880,7 @@ func (s *S) TestContainerStartWithoutPort(c *gocheck.C) {
 	oldUser, _ := config.Get("docker:run-cmd:port")
 	defer config.Set("docker:run-cmd:port", oldUser)
 	config.Unset("docker:run-cmd:port")
-	err = cont.start()
+	err = cont.start(true)
 	c.Assert(err, gocheck.NotNil)
 }
 
@@ -855,9 +888,9 @@ func (s *S) TestContainerStartStartedUnits(c *gocheck.C) {
 	cont, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(cont)
-	err = cont.start()
+	err = cont.start(true)
 	c.Assert(err, gocheck.IsNil)
-	err = cont.start()
+	err = cont.start(true)
 	c.Assert(err, gocheck.NotNil)
 }
 

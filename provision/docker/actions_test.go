@@ -304,7 +304,7 @@ func (s *S) TestStartContainerForward(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(conta)
 	cont := *conta
-	context := action.FWContext{Previous: cont}
+	context := action.FWContext{Previous: cont, Params: []interface{}{runContainerActionsArgs{}}}
 	r, err := startContainer.Forward(context)
 	c.Assert(err, gocheck.IsNil)
 	cont = r.(container)
