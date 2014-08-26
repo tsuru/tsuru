@@ -717,6 +717,24 @@ func (p *FakeProvisioner) Stop(app provision.App) error {
 	return nil
 }
 
+func (p *FakeProvisioner) RegisterUnit(unit provision.Unit) error {
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	a, ok := p.apps[unit.AppName]
+	if !ok {
+		return errors.New("app not found")
+	}
+	for i, u := range a.units {
+		if u.Name == unit.Name {
+			u.Ip = u.Ip + "-updated"
+			a.units[i] = u
+			p.apps[unit.AppName] = a
+			return nil
+		}
+	}
+	return errors.New("unit not found")
+}
+
 type PipelineFakeProvisioner struct {
 	*FakeProvisioner
 	executedPipeline bool
