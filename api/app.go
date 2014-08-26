@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"strconv"
 
 	"github.com/tsuru/config"
@@ -266,7 +267,11 @@ func setUnitStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	return a.SetUnitStatus(unitName, status)
+	err = a.SetUnitStatus(unitName, status)
+	if err == app.ErrUnitNotFound {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	return err
 }
 
 func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -415,7 +420,7 @@ func getEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}
 	appName := r.URL.Query().Get(":app")
-	var u *auth.User = nil
+	var u *auth.User
 	var err error
 	if !t.IsAppToken() {
 		u, err = t.User()
@@ -428,11 +433,15 @@ func getEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+	return writeEnvVars(w, &app, variables...)
+}
+
+func writeEnvVars(w http.ResponseWriter, a *app.App, variables ...string) error {
 	var result []map[string]interface{}
 	w.Header().Set("Content-Type", "application/json")
 	if len(variables) > 0 {
 		for _, variable := range variables {
-			if v, ok := app.Env[variable]; ok {
+			if v, ok := a.Env[variable]; ok {
 				item := map[string]interface{}{
 					"name":   v.Name,
 					"value":  v.Value,
@@ -442,7 +451,7 @@ func getEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			}
 		}
 	} else {
-		for _, v := range app.Env {
+		for _, v := range a.Env {
 			item := map[string]interface{}{
 				"name":   v.Name,
 				"value":  v.Value,
@@ -814,4 +823,29 @@ func forceDeleteLock(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	app.ReleaseApplicationLock(appName)
 	w.WriteHeader(http.StatusNoContent)
 	return nil
+}
+
+func registerUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	appName := r.URL.Query().Get(":app")
+	data, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	val, err := url.ParseQuery(string(data))
+	if err != nil {
+		return err
+	}
+	hostname := val.Get("hostname")
+	a, err := app.GetByName(appName)
+	if err != nil {
+		return err
+	}
+	err = a.RegisterUnit(hostname)
+	if err != nil {
+		if err == app.ErrUnitNotFound {
+			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		}
+		return err
+	}
+	return writeEnvVars(w, a)
 }
