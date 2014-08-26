@@ -917,47 +917,52 @@ func (s *S) TestInstanceEnvironmentDoesNotPanicIfTheEnvMapIsNil(c *gocheck.C) {
 	c.Assert(a.InstanceEnv("mysql"), gocheck.DeepEquals, map[string]bind.EnvVar{})
 }
 
-func (s *S) TestSetCName(c *gocheck.C) {
+func (s *S) TestAddCName(c *gocheck.C) {
 	app := &App{Name: "ktulu"}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	s.provisioner.Provision(app)
 	defer s.provisioner.Destroy(app)
-	err = app.SetCName("ktulu.mycompany.com")
+	err = app.AddCName("ktulu.mycompany.com")
 	c.Assert(err, gocheck.IsNil)
 	app, err = GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.CName, gocheck.Equals, "ktulu.mycompany.com")
-}
-
-func (s *S) TestSetCNameWithWildCard(c *gocheck.C) {
-	app := &App{Name: "ktulu"}
-	err := s.conn.Apps().Insert(app)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	s.provisioner.Provision(app)
-	defer s.provisioner.Destroy(app)
-	err = app.SetCName("*.mycompany.com")
+	c.Assert(app.CName, gocheck.DeepEquals, []string{"ktulu.mycompany.com"})
+	err = app.AddCName("ktulu2.mycompany.com")
 	c.Assert(err, gocheck.IsNil)
 	app, err = GetByName(app.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.CName, gocheck.Equals, "*.mycompany.com")
+	c.Assert(app.CName, gocheck.DeepEquals, []string{"ktulu.mycompany.com", "ktulu2.mycompany.com"})
 }
 
-func (s *S) TestSetCNameErrsOnInvalid(c *gocheck.C) {
+func (s *S) TestAddCNameWithWildCard(c *gocheck.C) {
 	app := &App{Name: "ktulu"}
 	err := s.conn.Apps().Insert(app)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	s.provisioner.Provision(app)
 	defer s.provisioner.Destroy(app)
-	err = app.SetCName("_ktulu.mycompany.com")
+	err = app.AddCName("*.mycompany.com")
+	c.Assert(err, gocheck.IsNil)
+	app, err = GetByName(app.Name)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.CName, gocheck.DeepEquals, []string{"*.mycompany.com"})
+}
+
+func (s *S) TestAddCNameErrsOnInvalid(c *gocheck.C) {
+	app := &App{Name: "ktulu"}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	s.provisioner.Provision(app)
+	defer s.provisioner.Destroy(app)
+	err = app.AddCName("_ktulu.mycompany.com")
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Invalid cname")
 }
 
-func (s *S) TestSetCNamePartialUpdate(c *gocheck.C) {
+func (s *S) TestAddCNamePartialUpdate(c *gocheck.C) {
 	a := &App{Name: "master", Platform: "puppet"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -965,21 +970,21 @@ func (s *S) TestSetCNamePartialUpdate(c *gocheck.C) {
 	s.provisioner.Provision(a)
 	defer s.provisioner.Destroy(a)
 	other := App{Name: a.Name}
-	err = other.SetCName("ktulu.mycompany.com")
+	err = other.AddCName("ktulu.mycompany.com")
 	c.Assert(err, gocheck.IsNil)
 	a, err = GetByName(a.Name)
 	c.Assert(a.Platform, gocheck.Equals, "puppet")
 	c.Assert(a.Name, gocheck.Equals, "master")
-	c.Assert(a.CName, gocheck.Equals, "ktulu.mycompany.com")
+	c.Assert(a.CName, gocheck.DeepEquals, []string{"ktulu.mycompany.com"})
 }
 
-func (s *S) TestSetCNameUnknownApp(c *gocheck.C) {
+func (s *S) TestAddCNameUnknownApp(c *gocheck.C) {
 	a := App{Name: "ktulu"}
-	err := a.SetCName("ktulu.mycompany.com")
+	err := a.AddCName("ktulu.mycompany.com")
 	c.Assert(err, gocheck.NotNil)
 }
 
-func (s *S) TestSetCNameValidatesTheCName(c *gocheck.C) {
+func (s *S) TestAddCNameValidatesTheCName(c *gocheck.C) {
 	var data = []struct {
 		input string
 		valid bool
@@ -1005,7 +1010,7 @@ func (s *S) TestSetCNameValidatesTheCName(c *gocheck.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	for _, t := range data {
-		err := a.SetCName(t.input)
+		err := a.AddCName(t.input)
 		if !t.valid {
 			c.Check(err.Error(), gocheck.Equals, "Invalid cname")
 		} else {
@@ -1014,16 +1019,18 @@ func (s *S) TestSetCNameValidatesTheCName(c *gocheck.C) {
 	}
 }
 
-func (s *S) TestSetCNameCallsProvisionerSetCName(c *gocheck.C) {
+func (s *S) TestAddCNameCallsProvisionerSetCName(c *gocheck.C) {
 	a := App{Name: "ktulu"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
-	err = a.SetCName("ktulu.mycompany.com")
+	err = a.AddCName("ktulu.mycompany.com", "ktulu2.mycompany.com")
 	c.Assert(err, gocheck.IsNil)
 	hasCName := s.provisioner.HasCName(&a, "ktulu.mycompany.com")
+	c.Assert(hasCName, gocheck.Equals, true)
+	hasCName = s.provisioner.HasCName(&a, "ktulu2.mycompany.com")
 	c.Assert(hasCName, gocheck.Equals, true)
 }
 
@@ -1034,13 +1041,13 @@ func (s *S) TestUnsetCNameRemovesFromDatabase(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(a)
 	defer s.provisioner.Destroy(a)
-	err = a.SetCName("ktulu.mycompany.com")
+	err = a.AddCName("ktulu.mycompany.com")
 	c.Assert(err, gocheck.IsNil)
 	err = a.UnsetCName()
 	c.Assert(err, gocheck.IsNil)
 	a, err = GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(a.CName, gocheck.Equals, "")
+	c.Assert(a.CName, gocheck.DeepEquals, []string{})
 }
 
 func (s *S) TestUnsetCNameRemovesFromRouter(c *gocheck.C) {
@@ -1050,7 +1057,7 @@ func (s *S) TestUnsetCNameRemovesFromRouter(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
-	err = a.SetCName("ktulu.mycompany.com")
+	err = a.AddCName("ktulu.mycompany.com")
 	c.Assert(err, gocheck.IsNil)
 	err = a.UnsetCName()
 	c.Assert(err, gocheck.IsNil)
@@ -1397,7 +1404,7 @@ func (s *S) TestAppMarshalJSON(c *gocheck.C) {
 		Platform:  "Framework",
 		Teams:     []string{"team1"},
 		Ip:        "10.10.10.1",
-		CName:     "name.mycompany.com",
+		CName:     []string{"name.mycompany.com"},
 		Owner:     "appOwner",
 		Deploys:   7,
 		Memory:    64,
@@ -1411,7 +1418,7 @@ func (s *S) TestAppMarshalJSON(c *gocheck.C) {
 	expected["teams"] = []interface{}{"team1"}
 	expected["units"] = nil
 	expected["ip"] = "10.10.10.1"
-	expected["cname"] = "name.mycompany.com"
+	expected["cname"] = []interface{}{"name.mycompany.com"}
 	expected["owner"] = "appOwner"
 	expected["deploys"] = float64(7)
 	expected["memory"] = "64"
@@ -1433,7 +1440,7 @@ func (s *S) TestAppMarshalJSONReady(c *gocheck.C) {
 		Platform:  "Framework",
 		Teams:     []string{"team1"},
 		Ip:        "10.10.10.1",
-		CName:     "name.mycompany.com",
+		CName:     []string{"name.mycompany.com"},
 		State:     "ready",
 		Owner:     "appOwner",
 		Deploys:   7,
@@ -1448,7 +1455,7 @@ func (s *S) TestAppMarshalJSONReady(c *gocheck.C) {
 	expected["teams"] = []interface{}{"team1"}
 	expected["units"] = nil
 	expected["ip"] = "10.10.10.1"
-	expected["cname"] = "name.mycompany.com"
+	expected["cname"] = []interface{}{"name.mycompany.com"}
 	expected["owner"] = "appOwner"
 	expected["deploys"] = float64(7)
 	expected["memory"] = "64"
@@ -1673,7 +1680,7 @@ func (s *S) TestAppAvailable(c *gocheck.C) {
 
 func (s *S) TestSwap(c *gocheck.C) {
 	var err error
-	app1 := &App{Name: "app1", CName: "cname"}
+	app1 := &App{Name: "app1", CName: []string{"cname"}}
 	err = s.provisioner.Provision(app1)
 	c.Assert(err, gocheck.IsNil)
 	app1.Ip, err = s.provisioner.Addr(app1)
@@ -1695,8 +1702,8 @@ func (s *S) TestSwap(c *gocheck.C) {
 	}()
 	err = Swap(app1, app2)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app1.CName, gocheck.Equals, "")
-	c.Assert(app2.CName, gocheck.Equals, "cname")
+	c.Assert(app1.CName, gocheck.IsNil)
+	c.Assert(app2.CName, gocheck.DeepEquals, []string{"cname"})
 	c.Assert(app1.Ip, gocheck.Equals, oldIp2)
 	c.Assert(app2.Ip, gocheck.Equals, oldIp1)
 }

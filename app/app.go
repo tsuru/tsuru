@@ -72,7 +72,7 @@ type App struct {
 	Platform       string `bson:"framework"`
 	Name           string
 	Ip             string
-	CName          string
+	CName          []string
 	Teams          []string
 	TeamOwner      string
 	Owner          string
@@ -808,30 +808,36 @@ func (app *App) UnsetEnvs(variableNames []string, publicOnly bool) error {
 // calls the SetCName function on the provisioner and saves
 // the app in the database, returning an error when it cannot save the change
 // in the database or set the CName on the provisioner.
-func (app *App) SetCName(cname string) error {
-	if cname != "" && !cnameRegexp.MatchString(cname) {
-		return stderr.New("Invalid cname")
-	}
-	if s, ok := Provisioner.(provision.CNameManager); ok {
-		if err := s.SetCName(app, cname); err != nil {
+func (app *App) AddCName(cnames ...string) error {
+	for _, cname := range cnames {
+		if cname != "" && !cnameRegexp.MatchString(cname) {
+			return stderr.New("Invalid cname")
+		}
+		if s, ok := Provisioner.(provision.CNameManager); ok {
+			if err := s.SetCName(app, cname); err != nil {
+				return err
+			}
+		}
+		conn, err := db.Conn()
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
+		app.CName = append(app.CName, cname)
+		err = conn.Apps().Update(
+			bson.M{"name": app.Name},
+			bson.M{"$push": bson.M{"cname": cname}},
+		)
+		if err != nil {
 			return err
 		}
 	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	app.CName = cname
-	return conn.Apps().Update(
-		bson.M{"name": app.Name},
-		bson.M{"$set": bson.M{"cname": app.CName}},
-	)
+	return nil
 }
 
 func (app *App) UnsetCName() error {
 	if s, ok := Provisioner.(provision.CNameManager); ok {
-		if err := s.UnsetCName(app, app.CName); err != nil {
+		if err := s.UnsetCName(app, app.CName[0]); err != nil {
 			return err
 		}
 	}
@@ -840,7 +846,7 @@ func (app *App) UnsetCName() error {
 		return err
 	}
 	defer conn.Close()
-	app.CName = ""
+	app.CName = []string{}
 	return conn.Apps().Update(
 		bson.M{"name": app.Name},
 		bson.M{"$set": bson.M{"cname": app.CName}},
