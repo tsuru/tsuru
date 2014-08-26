@@ -1,0 +1,18 @@
+=======================
+tsr 0.6.2 release notes
+=======================
+
+Welcome to tsr 0.6.2!
+
+These release notes cover the `bug fixes`_ you'll want to be aware of when
+upgrading from tsr 0.6.1 or older versions.
+
+.. _`new features`: `What's new in tsr 0.6.2`_
+
+What's new in tsr 0.6.2
+=======================
+
+Bug fixes
+=========
+
+* Fix service proxy to read the request body properly.
