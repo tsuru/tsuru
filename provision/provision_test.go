@@ -71,6 +71,7 @@ func (ProvisionSuite) TestStatuses(c *gocheck.C) {
 	c.Check(StatusUnreachable.String(), gocheck.Equals, "unreachable")
 	c.Check(StatusStarted.String(), gocheck.Equals, "started")
 	c.Check(StatusStopped.String(), gocheck.Equals, "stopped")
+	c.Check(StatusStarting.String(), gocheck.Equals, "starting")
 }
 
 func (ProvisionSuite) TestParseStatus(c *gocheck.C) {
@@ -85,6 +86,7 @@ func (ProvisionSuite) TestParseStatus(c *gocheck.C) {
 		{"unreachable", StatusUnreachable, nil},
 		{"started", StatusStarted, nil},
 		{"stopped", StatusStopped, nil},
+		{"starting", StatusStarting, nil},
 		{"something", Status(""), ErrInvalidStatus},
 		{"otherthing", Status(""), ErrInvalidStatus},
 	}
@@ -100,6 +102,7 @@ func (ProvisionSuite) TestUnitAvailable(c *gocheck.C) {
 		input    Status
 		expected bool
 	}{
+		{StatusStarting, true},
 		{StatusStarted, true},
 		{StatusUnreachable, true},
 		{StatusBuilding, false},

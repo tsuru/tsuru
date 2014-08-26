@@ -904,6 +904,7 @@ func (s *S) TestUsePlatformImage(c *gocheck.C) {
 
 func (s *S) TestContainerAvailable(c *gocheck.C) {
 	cases := map[provision.Status]bool{
+		provision.StatusStarting:    true,
 		provision.StatusStarted:     true,
 		provision.StatusUnreachable: true,
 		provision.StatusDown:        false,

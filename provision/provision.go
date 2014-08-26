@@ -38,6 +38,8 @@ func ParseStatus(status string) (Status, error) {
 		return StatusUnreachable, nil
 	case "started":
 		return StatusStarted, nil
+	case "starting":
+		return StatusStarting, nil
 	case "stopped":
 		return StatusStopped, nil
 	}
@@ -90,7 +92,9 @@ func (u *Unit) GetIp() string {
 
 // Available returns true if the unit status is started or unreachable.
 func (u *Unit) Available() bool {
-	return u.Status == StatusStarted || u.Status == StatusUnreachable
+	return u.Status == StatusStarted ||
+		u.Status == StatusUnreachable ||
+		u.Status == StatusStarting
 }
 
 // Named is something that has a name, providing the GetName method.
