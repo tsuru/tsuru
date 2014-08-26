@@ -16,3 +16,4 @@ Bug fixes
 =========
 
 * Fix service proxy to read the request body properly.
+* Fix deploy when trying to remove images from nodes.
