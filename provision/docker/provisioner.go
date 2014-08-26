@@ -141,6 +141,7 @@ func (p *dockerProvisioner) ArchiveDeploy(app provision.App, archiveURL string, 
 func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadCloser, w io.Writer) error {
 	defer archiveFile.Close()
 	filePath := "/home/application/archive.tar.gz"
+	user, _ := config.GetString("docker:ssh:user")
 	options := docker.CreateContainerOptions{
 		Config: &docker.Config{
 			AttachStdout: true,
@@ -148,6 +149,7 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 			AttachStdin:  true,
 			OpenStdin:    true,
 			StdinOnce:    true,
+			User:         user,
 			Image:        getImage(app),
 			Cmd:          []string{"/bin/bash", "-c", "cat > " + filePath},
 		},
