@@ -674,7 +674,7 @@ func (p *FakeProvisioner) SetCName(app provision.App, cname string) error {
 	if !ok {
 		return errNotProvisioned
 	}
-	pApp.cname = cname
+	pApp.cnames = append(pApp.cnames, cname)
 	p.apps[app.GetName()] = pApp
 	return nil
 }
@@ -689,7 +689,7 @@ func (p *FakeProvisioner) UnsetCName(app provision.App, cname string) error {
 	if !ok {
 		return errNotProvisioned
 	}
-	pApp.cname = ""
+	pApp.cnames = []string{}
 	p.apps[app.GetName()] = pApp
 	return nil
 }
@@ -698,7 +698,12 @@ func (p *FakeProvisioner) HasCName(app provision.App, cname string) bool {
 	p.mut.RLock()
 	pApp, ok := p.apps[app.GetName()]
 	p.mut.RUnlock()
-	return ok && pApp.cname == cname
+	for _, cnameApp := range pApp.cnames {
+		if cnameApp == cname {
+			return ok && true
+		}
+	}
+	return false
 }
 
 func (p *FakeProvisioner) Stop(app provision.App) error {
@@ -837,7 +842,7 @@ type provisionedApp struct {
 	version     string
 	lastArchive string
 	lastFile    io.ReadCloser
-	cname       string
+	cnames      []string
 	addr        string
 	unitLen     int
 }
