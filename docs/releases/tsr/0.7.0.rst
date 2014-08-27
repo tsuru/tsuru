@@ -21,6 +21,12 @@ What's new in tsr 0.7.0
   and change the quota of a user of an application. It can be done from the
   remote API or using tsuru-admin (issue `#869
   <https://github.com/tsuru/tsuru/issues/869>`_)
+- deploy via upload: now it's possible to upload a tar archive to the API. In
+  this case, users are able to just drop the file in the tsuru server, without
+  using git. This feature enables the deployment of binaries, WAR files, and
+  other things that may need local processing (issue `#874
+  <https://github.com/tsuru/tsuru/issues/874>`_). The tsuru client also
+  includes a ``tsuru deploy`` command.
 
 Bug fixes
 =========
