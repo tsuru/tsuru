@@ -10,12 +10,11 @@ tsuru is an open source polyglot cloud application platform. With tsuru, you
 don't need to think about servers at all. You:
 
 - Write apps in the programming language of your choice
-- Back it with add-on resources (Tsuru calls these *services*) such as SQL and NoSQL
-databases, memcached, redis, and many others.
+- Back it with add-on resources (tsuru calls these *services*) such as SQL and NoSQL databases, memcached, redis, and many others.
 - Manage your app using the ``tsuru`` command-line tool
 - Deploy code using the Git revision control system
 
-Tsuru takes care of where in your cluster to run your apps and the services they use. You can focus on making your apps awesome. 
+tsuru takes care of where in your cluster to run your apps and the services they use. You can focus on making your apps awesome. 
 
 
 Install the tsuru client
