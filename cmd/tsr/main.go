@@ -6,6 +6,8 @@ package main
 
 import (
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/cmd"
@@ -14,6 +16,8 @@ import (
 )
 
 const defaultConfigPath = "/etc/tsuru/tsuru.conf"
+
+var configPath = defaultConfigPath
 
 func buildManager() *cmd.Manager {
 	m := cmd.NewManager("tsr", "0.6.2.1", "", os.Stdout, os.Stderr, os.Stdin, nil)
@@ -36,8 +40,19 @@ func registerProvisionersCommands(m *cmd.Manager) {
 	}
 }
 
+func listenSignals() {
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, syscall.SIGHUP)
+	go func() {
+		for _ = range ch {
+			config.ReadConfigFile(configPath)
+		}
+	}()
+}
+
 func main() {
-	config.ReadConfigFile(defaultConfigPath)
+	config.ReadConfigFile(configPath)
+	listenSignals()
 	m := buildManager()
 	m.Run(os.Args[1:])
 }

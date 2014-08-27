@@ -24,6 +24,7 @@ func (v *configFile) Set(value string) error {
 		return err
 	}
 	v.value = value
+	configPath = value
 	return nil
 }
 
