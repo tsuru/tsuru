@@ -8,11 +8,12 @@ tsr 0.7.0 release notes
 
 Welcome to tsr 0.7.0!
 
-These release notes cover the `new features`_, `bug fixes`_ and `backward
-incompatible changes`_ you'll want to be aware of when upgrading from tsr 0.6.0
-or older versions.
+These release notes cover the `new features`_, `bug fixes`_, `backward
+incompatible changes`_ and `general improvements`_ you'll want to be aware of
+when upgrading from tsr 0.6.0 or older versions.
 
 .. _`new features`: `What's new in tsr 0.7.0`_
+.. _`general improvements`: `Other improvements in tsr 0.7.0`_
 
 What's new in tsr 0.7.0
 =======================
@@ -26,7 +27,18 @@ What's new in tsr 0.7.0
   using git. This feature enables the deployment of binaries, WAR files, and
   other things that may need local processing (issue `#874
   <https://github.com/tsuru/tsuru/issues/874>`_). The tsuru client also
-  includes a ``tsuru deploy`` command.
+  includes a ``tsuru deploy`` command
+- removing platforms via API: now tsuru administrators are able to remove
+  platforms from tsuru. It can be done from the remote API or using tsuru-admin
+  (issue `#779 <https://github.com/tsuru/tsuru/issues/779>`_)
+- new apps now get a new environment variable: ``TSURU_APPDIR``. This
+  environment variable represents the path where the application was deployed,
+  the root directory of the application (issue `#783
+  <https://github.com/tsuru/tsuru/issues/783>`_)
+- now tsuru server will reload configuration on SIGHUP. Users running the API
+  under upstart or other services like that are now able to call the ``reload``
+  command and get the expected behaviour (issue `#898
+  <https://github.com/tsuru/tsuru/issues/898>`_)
 
 Bug fixes
 =========
@@ -35,8 +47,21 @@ Bug fixes
   instead of 500 when there's already a service registered with the provided
   name
 
+Other improvements in tsr 0.7.0
+===============================
+
+- API: improve the App swap endpoint, so it will refuse to swap incompatible
+  apps. Two apps are incompatible if they don't use the same platform or don't
+  have the same amount of units. Users can force the swap of incompatible apps
+  by providing the force parameter (issue `#582
+  <https://github.com/tsuru/tsuru/issues/582>`_)
+- API: admin users now see all service instances in the service instances list
+  endpoint (issue `#614 <https://github.com/tsuru/tsuru/issues/614>`_)
+
 Backward incompatible changes
 =============================
 
 - ``tsr ssh-agent`` has been totally removed, it's no longe possible to use it
   with tsuru server
+- tsuru no longer accepts teams with space in the name (issue `#674
+  <https://github.com/tsuru/tsuru/issues/674>`_)
