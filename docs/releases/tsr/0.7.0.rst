@@ -31,7 +31,9 @@ What's new in tsr 0.7.0
 Bug fixes
 =========
 
-Nothing yet :)
+- API: fix the endpoint for creating new services so it returns 409 Conflict
+  instead of 500 when there's already a service registered with the provided
+  name
 
 Backward incompatible changes
 =============================
