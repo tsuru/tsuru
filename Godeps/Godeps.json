@@ -26,10 +26,6 @@
 			"Rev": "696c088491246273e92442aa66b5281e5bb34faa"
 		},
 		{
-			"ImportPath": "github.com/bmizerany/pat",
-			"Rev": "51b7af73e39f6dc59846b22d56ca886d105ef0c3"
-		},
-		{
 			"ImportPath": "github.com/bradfitz/go-smtpd/smtpd",
 			"Rev": "5b56f4f917c7f54e3822b9c64df54da596b63c1d"
 		},
