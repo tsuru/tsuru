@@ -19,7 +19,7 @@ Install the tsuru client
 
 :doc:`Install the tsuru client </using/install-client>` for your development platform.
 
-The the tsuru client is a command-line tool for creating and managing apps.
+The ``tsuru`` client is a command-line tool for creating and managing apps.
 Check out the :doc:`CLI usage guide </reference/tsuru-client>` to learn more.
 
 Sign up
