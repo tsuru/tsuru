@@ -804,10 +804,10 @@ func (app *App) UnsetEnvs(variableNames []string, publicOnly bool) error {
 	return nil
 }
 
-// SetCName defines the CName of the app. It updates the attribute,
+// AddCName adds a CName to app. It updates the attribute,
 // calls the SetCName function on the provisioner and saves
 // the app in the database, returning an error when it cannot save the change
-// in the database or set the CName on the provisioner.
+// in the database or add the CName on the provisioner.
 func (app *App) AddCName(cnames ...string) error {
 	for _, cname := range cnames {
 		if cname != "" && !cnameRegexp.MatchString(cname) {
