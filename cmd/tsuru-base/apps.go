@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/cmd"
-	"github.com/tsuru/tsuru/errors"
 )
 
 type AppInfo struct {
@@ -69,12 +68,7 @@ func (c *AppInfo) Run(context *cmd.Context, client *cmd.Client) error {
 	}
 	response, err = client.Do(request)
 	var adminResult []byte
-	if err != nil {
-		httpErr, _ := err.(*errors.HTTP)
-		if httpErr == nil || httpErr.Code != http.StatusForbidden {
-			return err
-		}
-	} else {
+	if err == nil {
 		defer response.Body.Close()
 		adminResult, err = ioutil.ReadAll(response.Body)
 	}
@@ -153,14 +147,21 @@ Deploys: {{.Deploys}}
 	contMap := map[string]container{}
 	if len(a.containers) > 0 {
 		for _, cont := range a.containers {
-			contMap[cont.ID[:10]] = cont
+			id := cont.ID
+			if len(cont.ID) > 10 {
+				id = id[:10]
+			}
+			contMap[id] = cont
 		}
 		titles = append(titles, []string{"Host", "Port", "IP"}...)
 	}
 	units.Headers = cmd.Row(titles)
 	for _, unit := range a.Units {
 		if unit.Name != "" {
-			id := unit.Name[:10]
+			id := unit.Name
+			if len(unit.Name) > 10 {
+				id = id[:10]
+			}
 			row := []string{id, unit.Status}
 			cont, ok := contMap[id]
 			if ok {
