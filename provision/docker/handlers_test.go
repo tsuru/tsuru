@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/testing"
+	"github.com/tsuru/tsuru/testing/redis"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
@@ -73,7 +74,7 @@ func (s *HandlersSuite) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *HandlersSuite) SetUpTest(c *gocheck.C) {
-	clearRedisKeys("redis-scheduler-storage-handlers-test*", c)
+	redis.ClearRedisKeys("redis-scheduler-storage-handlers-test*", c)
 }
 
 func (s *HandlersSuite) TearDownSuite(c *gocheck.C) {

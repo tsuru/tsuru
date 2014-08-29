@@ -629,7 +629,7 @@ func (s *S) TestSetCName(c *gocheck.C) {
 	p.Provision(app)
 	err := p.SetCName(app, "cname.com")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(p.apps[app.GetName()].cname, gocheck.Equals, "cname.com")
+	c.Assert(p.apps[app.GetName()].cnames, gocheck.DeepEquals, []string{"cname.com"})
 }
 
 func (s *S) TestSetCNameNotProvisioned(c *gocheck.C) {
@@ -654,7 +654,7 @@ func (s *S) TestUnsetCName(c *gocheck.C) {
 	p.Provision(app)
 	err := p.SetCName(app, "cname.com")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(p.apps[app.GetName()].cname, gocheck.Equals, "cname.com")
+	c.Assert(p.apps[app.GetName()].cnames, gocheck.DeepEquals, []string{"cname.com"})
 	err = p.UnsetCName(app, "cname.com")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.HasCName(app, "cname.com"), gocheck.Equals, false)

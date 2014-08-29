@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	dtesting "github.com/fsouza/go-dockerclient/testing"
-	"github.com/garyburd/redigo/redis"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
@@ -21,6 +20,7 @@ import (
 	rtesting "github.com/tsuru/tsuru/router/testing"
 	"github.com/tsuru/tsuru/service"
 	tTesting "github.com/tsuru/tsuru/testing"
+	"github.com/tsuru/tsuru/testing/redis"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
@@ -90,21 +90,8 @@ func (s *S) SetUpTest(c *gocheck.C) {
 	coll := collection()
 	defer coll.Close()
 	coll.RemoveAll(nil)
-	clearRedisKeys("redis-scheduler-storage-test*", c)
+	redis.ClearRedisKeys("redis-scheduler-storage-test*", c)
 	rtesting.FakeRouter.Reset()
-}
-
-func clearRedisKeys(keysPattern string, c *gocheck.C) {
-	redisConn, err := redis.Dial("tcp", "127.0.0.1:6379")
-	c.Assert(err, gocheck.IsNil)
-	defer redisConn.Close()
-	result, err := redisConn.Do("KEYS", keysPattern)
-	c.Assert(err, gocheck.IsNil)
-	keys := result.([]interface{})
-	for _, key := range keys {
-		keyName := string(key.([]byte))
-		redisConn.Do("DEL", keyName)
-	}
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
