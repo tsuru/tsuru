@@ -6,6 +6,8 @@ package redis
 
 import (
 	"errors"
+	"github.com/garyburd/redigo/redis"
+	"launchpad.net/gocheck"
 	"sync/atomic"
 )
 
@@ -18,6 +20,19 @@ const (
 	// CmdDo represents a do call in redigo.
 	CmdDo
 )
+
+func ClearRedisKeys(keysPattern string, c *gocheck.C) {
+	redisConn, err := redis.Dial("tcp", "127.0.0.1:6379")
+	c.Assert(err, gocheck.IsNil)
+	defer redisConn.Close()
+	result, err := redisConn.Do("KEYS", keysPattern)
+	c.Assert(err, gocheck.IsNil)
+	keys := result.([]interface{})
+	for _, key := range keys {
+		keyName := string(key.([]byte))
+		redisConn.Do("DEL", keyName)
+	}
+}
 
 // RedisCommand is a command sent to the redis server.
 type RedisCommand struct {
