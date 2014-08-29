@@ -540,7 +540,7 @@ func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	if err = app.SetCName(v["cname"]); err == nil {
+	if err = app.AddCName(v["cname"]); err == nil {
 		return nil
 	}
 	if err.Error() == "Invalid cname" {

@@ -1876,7 +1876,7 @@ func (s *S) TestUnsetEnvHandlerReturnsForbiddenIfTheGivenUserDoesNotHaveAccessTo
 	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
 }
 
-func (s *S) TestSetCNameHandler(c *gocheck.C) {
+func (s *S) TestAddCNameHandler(c *gocheck.C) {
 	a := app.App{Name: "leper", Teams: []string{s.team.Name}}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -1893,7 +1893,7 @@ func (s *S) TestSetCNameHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.CName, gocheck.Equals, "leper.secretcompany.com")
+	c.Assert(app.CName, gocheck.DeepEquals, []string{"leper.secretcompany.com"})
 	action := testing.Action{
 		Action: "set-cname",
 		User:   s.user.Email,
@@ -1902,7 +1902,7 @@ func (s *S) TestSetCNameHandler(c *gocheck.C) {
 	c.Assert(action, testing.IsRecorded)
 }
 
-func (s *S) TestSetCNameHandlerAcceptsWildCard(c *gocheck.C) {
+func (s *S) TestAddCNameHandlerAcceptsWildCard(c *gocheck.C) {
 	a := app.App{Name: "leper", Teams: []string{s.team.Name}}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -1919,7 +1919,7 @@ func (s *S) TestSetCNameHandlerAcceptsWildCard(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.CName, gocheck.Equals, "*.leper.secretcompany.com")
+	c.Assert(app.CName, gocheck.DeepEquals, []string{"*.leper.secretcompany.com"})
 	action := testing.Action{
 		Action: "set-cname",
 		User:   s.user.Email,
@@ -1928,8 +1928,8 @@ func (s *S) TestSetCNameHandlerAcceptsWildCard(c *gocheck.C) {
 	c.Assert(action, testing.IsRecorded)
 }
 
-func (s *S) TestSetCNameHandlerAcceptsEmptyCName(c *gocheck.C) {
-	a := app.App{Name: "leper", Teams: []string{s.team.Name}, CName: "leper.secretcompany.com"}
+func (s *S) TestAddCNameHandlerAcceptsEmptyCName(c *gocheck.C) {
+	a := app.App{Name: "leper", Teams: []string{s.team.Name}, CName: []string{"leper.secretcompany.com"}}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
@@ -1945,10 +1945,10 @@ func (s *S) TestSetCNameHandlerAcceptsEmptyCName(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.CName, gocheck.Equals, "")
+	c.Assert(app.CName, gocheck.DeepEquals, []string{"leper.secretcompany.com", ""})
 }
 
-func (s *S) TestSetCNameHandlerErrsOnInvalidCName(c *gocheck.C) {
+func (s *S) TestAddCNameHandlerErrsOnInvalidCName(c *gocheck.C) {
 	a := app.App{Name: "leper", Teams: []string{s.team.Name}}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -2040,7 +2040,7 @@ func (s *S) TestSetCNameHandlerUserWithoutAccessToTheApp(c *gocheck.C) {
 	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
 }
 
-func (s *S) TestSetCNameHandlerInvalidCName(c *gocheck.C) {
+func (s *S) TestAddCNameHandlerInvalidCName(c *gocheck.C) {
 	a := app.App{Name: "leper", Teams: []string{s.team.Name}}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -2060,7 +2060,7 @@ func (s *S) TestSetCNameHandlerInvalidCName(c *gocheck.C) {
 }
 
 func (s *S) TestUnsetCNameHandler(c *gocheck.C) {
-	a := app.App{Name: "leper", Teams: []string{s.team.Name}, CName: "foo.bar.com"}
+	a := app.App{Name: "leper", Teams: []string{s.team.Name}, CName: []string{"foo.bar.com"}}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
@@ -2075,7 +2075,7 @@ func (s *S) TestUnsetCNameHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.CName, gocheck.Equals, "")
+	c.Assert(app.CName, gocheck.DeepEquals, []string{})
 	action := testing.Action{
 		Action: "unset-cname",
 		User:   s.user.Email,
