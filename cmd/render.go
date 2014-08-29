@@ -50,6 +50,10 @@ func (t *Table) Sort() {
 	sort.Sort(t.rows)
 }
 
+func (t *Table) SortByColumn(column int) {
+	sort.Sort(rowSliceByColumn{rowSlice: t.rows, column: column})
+}
+
 func (t *Table) addRows(rows rowSlice, sizes []int, result string) string {
 	for _, row := range rows {
 		extraRows := rowSlice{}
@@ -147,6 +151,23 @@ func (t *Table) separator() string {
 }
 
 type rowSlice []Row
+
+type rowSliceByColumn struct {
+	rowSlice
+	column int
+}
+
+func (l rowSliceByColumn) Len() int {
+	return len(l.rowSlice)
+}
+
+func (l rowSliceByColumn) Less(i, j int) bool {
+	return strings.ToLower(l.rowSlice[i][l.column]) < strings.ToLower(l.rowSlice[j][l.column])
+}
+
+func (l rowSliceByColumn) Swap(i, j int) {
+	l.rowSlice[i], l.rowSlice[j] = l.rowSlice[j], l.rowSlice[i]
+}
 
 func (l *rowSlice) add(r Row) {
 	*l = append(*l, r)

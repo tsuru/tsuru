@@ -13,8 +13,10 @@ import (
 	"net/http"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/tsuru/tsuru/cmd"
+	"github.com/tsuru/tsuru/errors"
 )
 
 type AppInfo struct {
@@ -57,7 +59,26 @@ func (c *AppInfo) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	return c.Show(result, context)
+	url, err = cmd.GetURL(fmt.Sprintf("/docker/node/apps/%s/containers", appName))
+	if err != nil {
+		return err
+	}
+	request, err = http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	response, err = client.Do(request)
+	var adminResult []byte
+	if err != nil {
+		httpErr, _ := err.(*errors.HTTP)
+		if httpErr == nil || httpErr.Code != http.StatusForbidden {
+			return err
+		}
+	} else {
+		defer response.Body.Close()
+		adminResult, err = ioutil.ReadAll(response.Body)
+	}
+	return c.Show(result, adminResult, context)
 }
 
 type unit struct {
@@ -82,6 +103,20 @@ type app struct {
 	Owner      string
 	TeamOwner  string
 	Deploys    uint
+	containers []container
+}
+
+type container struct {
+	ID               string
+	Type             string
+	IP               string
+	HostAddr         string
+	HostPort         string
+	SSHHostPort      string
+	Status           string
+	Version          string
+	Image            string
+	LastStatusUpdate time.Time
 }
 
 func (a *app) Addr() string {
@@ -114,11 +149,28 @@ Deploys: {{.Deploys}}
 `
 	tmpl := template.Must(template.New("app").Parse(format))
 	units := cmd.NewTable()
-	units.Headers = cmd.Row([]string{"Unit", "State"})
+	titles := []string{"Unit", "State"}
+	contMap := map[string]container{}
+	if len(a.containers) > 0 {
+		for _, cont := range a.containers {
+			contMap[cont.ID[:10]] = cont
+		}
+		titles = append(titles, []string{"Host", "Port", "IP"}...)
+	}
+	units.Headers = cmd.Row(titles)
 	for _, unit := range a.Units {
 		if unit.Name != "" {
-			units.AddRow(cmd.Row([]string{unit.Name, unit.Status}))
+			id := unit.Name[:10]
+			row := []string{id, unit.Status}
+			cont, ok := contMap[id]
+			if ok {
+				row = append(row, []string{cont.HostAddr, cont.HostPort, cont.IP}...)
+			}
+			units.AddRow(cmd.Row(row))
 		}
+	}
+	if len(a.containers) > 0 {
+		units.SortByColumn(2)
 	}
 	var buf bytes.Buffer
 	tmpl.Execute(&buf, a)
@@ -129,12 +181,13 @@ Deploys: {{.Deploys}}
 	return buf.String() + suffix
 }
 
-func (c *AppInfo) Show(result []byte, context *cmd.Context) error {
+func (c *AppInfo) Show(result []byte, adminResult []byte, context *cmd.Context) error {
 	var a app
 	err := json.Unmarshal(result, &a)
 	if err != nil {
 		return err
 	}
+	json.Unmarshal(adminResult, &a.containers)
 	fmt.Fprintln(context.Stdout, &a)
 	return nil
 }
