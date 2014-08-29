@@ -21,8 +21,8 @@ func Test(t *testing.T) {
 }
 
 type S struct {
-	pool *redis.Pool
 	fake *rtesting.FakeRedisConn
+	pool *redis.Pool
 	conn *db.Storage
 }
 
@@ -42,10 +42,17 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 }
 
 func (s *S) SetUpTest(c *gocheck.C) {
-	s.fake = &rtesting.FakeRedisConn{}
-	s.pool = redis.NewPool(fakeConnect, 5)
-	pool = s.pool
-	conn = s.fake
+	srv, err := config.GetString("hipache:redis-server")
+	if err != nil {
+		srv = "localhost:6379"
+	}
+	pool = redis.NewPool(func() (redis.Conn, error) {
+		return redis.Dial("tcp", srv)
+	}, 10)
+	conn = connect()
+	rtesting.ClearRedisKeys("frontend*", c)
+	rtesting.ClearRedisKeys("cname*", c)
+	rtesting.ClearRedisKeys("*.com", c)
 }
 
 func (s *S) TestConnect(c *gocheck.C) {
@@ -59,6 +66,7 @@ func (s *S) TestConnect(c *gocheck.C) {
 func (s *S) TestConnectWhenPoolIsNil(c *gocheck.C) {
 	pool = nil
 	got := connect()
+	defer got.Close()
 	_, err := got.Do("PING")
 	c.Assert(err, gocheck.IsNil)
 	got.Close()
@@ -83,94 +91,53 @@ func (s *S) TestShouldBeRegistered(c *gocheck.C) {
 }
 
 func (s *S) TestAddBackend(c *gocheck.C) {
-	conn = &rtesting.ResultCommandRedisConn{
-		FakeRedisConn: s.fake,
-		DefaultReply:  []interface{}{},
-	}
 	router := hipacheRouter{}
 	err := router.AddBackend("tip")
 	c.Assert(err, gocheck.IsNil)
-	expected := []rtesting.RedisCommand{
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:tip.golang.org", "tip"},
-			Type: rtesting.CmdDo},
-	}
-	c.Assert(s.fake.Cmds, gocheck.DeepEquals, expected)
+	backends, err := redis.Int(conn.Do("LLEN", "frontend:tip.golang.org"))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(1, gocheck.Equals, backends)
 }
 
 func (s *S) TestRemoveBackend(c *gocheck.C) {
-	reply := map[string]interface{}{"GET": ""}
-	conn = &rtesting.ResultCommandRedisConn{Reply: reply, FakeRedisConn: s.fake}
 	router := hipacheRouter{}
 	err := router.RemoveBackend("tip")
 	c.Assert(err, gocheck.IsNil)
-	expected := []rtesting.RedisCommand{
-		{Cmd: "DEL", Args: []interface{}{"frontend:tip.golang.org"},
-			Type: rtesting.CmdDo},
-		{Cmd: "GET", Args: []interface{}{"cname:tip"},
-			Type: rtesting.CmdDo},
-	}
-	c.Assert(s.fake.Cmds, gocheck.DeepEquals, expected)
+	backends, err := redis.Int(conn.Do("LLEN", "frontend:tip.golang.org"))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(0, gocheck.Equals, backends)
 }
 
 func (s *S) TestRemoveBackendAlsoRemovesRelatedCNameBackendAndControlRecord(c *gocheck.C) {
-	reply := map[string]interface{}{"GET": "mycname.com"}
-	conn = &rtesting.ResultCommandRedisConn{Reply: reply, FakeRedisConn: s.fake}
 	router := hipacheRouter{}
 	err := router.AddBackend("tip")
 	c.Assert(err, gocheck.IsNil)
+	err = router.SetCName("mycname.com", "tip")
+	c.Assert(err, gocheck.IsNil)
+	cnames, err := redis.Int(conn.Do("LLEN", "cname:tip"))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(1, gocheck.Equals, cnames)
 	err = router.RemoveBackend("tip")
 	c.Assert(err, gocheck.IsNil)
-	expected := []rtesting.RedisCommand{
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:tip.golang.org", "tip"},
-			Type: rtesting.CmdDo},
-		{Cmd: "DEL", Args: []interface{}{"frontend:tip.golang.org"},
-			Type: rtesting.CmdDo},
-		{Cmd: "GET", Args: []interface{}{"cname:tip"},
-			Type: rtesting.CmdDo},
-		{Cmd: "DEL", Args: []interface{}{"frontend:mycname.com"},
-			Type: rtesting.CmdDo},
-		{Cmd: "DEL", Args: []interface{}{"cname:tip"},
-			Type: rtesting.CmdDo},
-	}
-	c.Assert(s.fake.Cmds, gocheck.DeepEquals, expected)
+	cnames, err = redis.Int(conn.Do("LLEN", "cname:tip"))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(0, gocheck.Equals, cnames)
 }
 
 func (s *S) TestAddRouteWithoutAssemblingFrontend(c *gocheck.C) {
 	err := hipacheRouter{}.addRoute("test.com", "10.10.10.10")
 	c.Assert(err, gocheck.IsNil)
-	expected := []rtesting.RedisCommand{
-		{Cmd: "RPUSH", Args: []interface{}{"test.com", "10.10.10.10"},
-			Type: rtesting.CmdDo},
-	}
-	c.Assert(s.fake.Cmds, gocheck.DeepEquals, expected)
+	routes, err := redis.Strings(conn.Do("LRANGE", "test.com", 0, -1))
+	c.Assert(routes, gocheck.DeepEquals, []string{"10.10.10.10"})
 }
 
 func (s *S) TestAddRoute(c *gocheck.C) {
-	conn = &rtesting.ResultCommandRedisConn{DefaultReply: "", FakeRedisConn: s.fake}
 	router := hipacheRouter{}
 	err := router.AddRoute("tip", "http://10.10.10.10:8080")
 	c.Assert(err, gocheck.IsNil)
-	expected := []rtesting.RedisCommand{
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:tip.golang.org", "http://10.10.10.10:8080"},
-			Type: rtesting.CmdDo},
-		{Cmd: "GET", Args: []interface{}{"cname:tip"},
-			Type: rtesting.CmdDo},
-	}
-	c.Assert(s.fake.Cmds, gocheck.DeepEquals, expected)
-}
-
-func (s *S) TestAddTwoRoutes(c *gocheck.C) {
-	reply := map[string]interface{}{"GET": "", "SET": "", "LRANGE": []interface{}{[]byte("tip")}, "RPUSH": []interface{}{[]byte{}}}
-	conn = &rtesting.ResultCommandRedisConn{Reply: reply, FakeRedisConn: s.fake}
-	router := hipacheRouter{}
-	err := router.AddRoute("tip", "http://10.10.10.10:8081")
+	routes, err := redis.Int(conn.Do("LLEN", "frontend:tip.golang.org"))
 	c.Assert(err, gocheck.IsNil)
-	expected := []rtesting.RedisCommand{
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:tip.golang.org", "http://10.10.10.10:8081"},
-			Type: rtesting.CmdDo},
-		{Cmd: "GET", Args: []interface{}{"cname:tip"}, Type: rtesting.CmdDo},
-	}
-	c.Assert(s.fake.Cmds, gocheck.DeepEquals, expected)
+	c.Assert(1, gocheck.Equals, routes)
 }
 
 func (s *S) TestAddRouteNoDomainConfigured(c *gocheck.C) {
@@ -196,6 +163,7 @@ func (s *S) TestAddRouteConnectFailure(c *gocheck.C) {
 }
 
 func (s *S) TestAddRouteCommandFailure(c *gocheck.C) {
+	pool = redis.NewPool(fakeConnect, 5)
 	conn = &rtesting.FailingFakeRedisConn{}
 	err := hipacheRouter{}.AddRoute("tip", "http://www.tsuru.io")
 	c.Assert(err, gocheck.NotNil)
@@ -206,54 +174,34 @@ func (s *S) TestAddRouteCommandFailure(c *gocheck.C) {
 }
 
 func (s *S) TestAddRouteAlsoUpdatesCNameRecordsWhenExists(c *gocheck.C) {
-	reply := map[string]interface{}{"GET": "mycname.com", "SET": "", "LRANGE": []interface{}{[]byte("http://10.10.10.10:8080")}, "RPUSH": []interface{}{[]byte{}}}
-	conn = &rtesting.ResultCommandRedisConn{Reply: reply, FakeRedisConn: s.fake}
 	router := hipacheRouter{}
 	err := router.AddRoute("tip", "http://10.10.10.10:8080")
 	c.Assert(err, gocheck.IsNil)
 	err = router.SetCName("mycname.com", "tip")
 	c.Assert(err, gocheck.IsNil)
+	cnameRoutes, err := redis.Int(conn.Do("LLEN", "frontend:mycname.com"))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(1, gocheck.Equals, cnameRoutes)
 	err = router.AddRoute("tip", "http://10.10.10.11:8080")
 	c.Assert(err, gocheck.IsNil)
-	expected := []rtesting.RedisCommand{
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:tip.golang.org", "http://10.10.10.10:8080"},
-			Type: rtesting.CmdDo},
-		{Cmd: "GET", Args: []interface{}{"cname:tip"}, Type: rtesting.CmdDo},
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:mycname.com", "http://10.10.10.10:8080"},
-			Type: rtesting.CmdDo},
-		{Cmd: "LRANGE", Args: []interface{}{"frontend:tip.golang.org", 0, -1},
-			Type: rtesting.CmdDo},
-		{Cmd: "GET", Args: []interface{}{"cname:tip"}, Type: rtesting.CmdDo},
-		{Cmd: "DEL", Args: []interface{}{"cname:tip"}, Type: rtesting.CmdDo},
-		{Cmd: "DEL", Args: []interface{}{"frontend:mycname.com"}, Type: rtesting.CmdDo},
-		{Cmd: "SET", Args: []interface{}{"cname:tip", "mycname.com"}, Type: rtesting.CmdDo},
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:mycname.com", "http://10.10.10.10:8080"},
-			Type: rtesting.CmdDo},
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:tip.golang.org", "http://10.10.10.11:8080"},
-			Type: rtesting.CmdDo},
-		{Cmd: "GET", Args: []interface{}{"cname:tip"}, Type: rtesting.CmdDo},
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:mycname.com", "http://10.10.10.11:8080"},
-			Type: rtesting.CmdDo},
-	}
-	c.Assert(s.fake.Cmds, gocheck.DeepEquals, expected)
+	cnameRoutes, err = redis.Int(conn.Do("LLEN", "frontend:mycname.com"))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(2, gocheck.Equals, cnameRoutes)
 }
 
 func (s *S) TestRemoveRoute(c *gocheck.C) {
-	reply := map[string]interface{}{"GET": "", "LRANGE": []interface{}{[]byte("10.10.10.11")}}
-	conn = &rtesting.ResultCommandRedisConn{Reply: reply, FakeRedisConn: s.fake}
 	router := hipacheRouter{}
 	err := router.AddBackend("tip")
 	c.Assert(err, gocheck.IsNil)
-	err = router.RemoveRoute("tip", "tip.golang.org")
+	err = router.AddRoute("tip", "10.10.10.10")
 	c.Assert(err, gocheck.IsNil)
-	expected := []rtesting.RedisCommand{
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:tip.golang.org", "tip"},
-			Type: rtesting.CmdDo},
-		{Cmd: "LREM", Args: []interface{}{"frontend:tip.golang.org", 0, "tip.golang.org"},
-			Type: rtesting.CmdDo},
-		{Cmd: "GET", Args: []interface{}{"cname:tip"}, Type: rtesting.CmdDo},
-	}
-	c.Assert(s.fake.Cmds, gocheck.DeepEquals, expected)
+	err = router.RemoveRoute("tip", "10.10.10.10")
+	c.Assert(err, gocheck.IsNil)
+	err = router.RemoveBackend("tip")
+	c.Assert(err, gocheck.IsNil)
+	routes, err := redis.Int(conn.Do("LLEN", "frontend:tip.golang.org"))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(0, gocheck.Equals, routes)
 }
 
 func (s *S) TestRemoveRouteNoDomainConfigured(c *gocheck.C) {
@@ -279,6 +227,7 @@ func (s *S) TestRemoveRouteConnectFailure(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveRouteCommandFailure(c *gocheck.C) {
+	pool = redis.NewPool(fakeConnect, 5)
 	conn = &rtesting.FailingFakeRedisConn{}
 	err := hipacheRouter{}.RemoveRoute("tip", "tip.golang.org")
 	c.Assert(err, gocheck.NotNil)
@@ -289,75 +238,46 @@ func (s *S) TestRemoveRouteCommandFailure(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveRouteAlsoRemovesRespectiveCNameRecord(c *gocheck.C) {
-	reply := map[string]interface{}{"GET": "tip.cname.com", "LRANGE": []interface{}{[]byte("10.10.10.11")}}
-	conn = &rtesting.ResultCommandRedisConn{Reply: reply, FakeRedisConn: s.fake}
 	router := hipacheRouter{}
 	err := router.AddBackend("tip")
 	c.Assert(err, gocheck.IsNil)
+	err = router.AddRoute("tip", "10.10.10.10")
+	c.Assert(err, gocheck.IsNil)
+	err = router.SetCName("test.com", "tip")
+	c.Assert(err, gocheck.IsNil)
 	err = router.RemoveRoute("tip", "tip.golang.org")
 	c.Assert(err, gocheck.IsNil)
-	expected := []rtesting.RedisCommand{
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:tip.golang.org", "tip"},
-			Type: rtesting.CmdDo},
-		{Cmd: "LREM", Args: []interface{}{"frontend:tip.golang.org", 0, "tip.golang.org"},
-			Type: rtesting.CmdDo},
-		{Cmd: "GET", Args: []interface{}{"cname:tip"}, Type: rtesting.CmdDo},
-		{Cmd: "LREM", Args: []interface{}{"frontend:tip.cname.com", 0, "tip.golang.org"},
-			Type: rtesting.CmdDo},
-	}
-	c.Assert(s.fake.Cmds, gocheck.DeepEquals, expected)
+	cnames, err := redis.Int(conn.Do("LLEN", "cname:test.com"))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(cnames, gocheck.Equals, 0)
 }
 
-func (s *S) TestGetCName(c *gocheck.C) {
-	conn = &rtesting.ResultCommandRedisConn{DefaultReply: "coolcname.com", FakeRedisConn: s.fake}
-	cname, err := hipacheRouter{}.getCName("myapp")
+func (s *S) TestGetCNames(c *gocheck.C) {
+	router := hipacheRouter{}
+	err := router.AddBackend("myapp")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(cname, gocheck.Equals, "coolcname.com")
-	expected := []rtesting.RedisCommand{
-		{Cmd: "GET", Args: []interface{}{"cname:myapp"}, Type: rtesting.CmdDo},
-	}
-	c.Assert(s.fake.Cmds, gocheck.DeepEquals, expected)
+	err = router.SetCName("coolcname.com", "myapp")
+	c.Assert(err, gocheck.IsNil)
+	cnames, err := router.getCNames("myapp")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(cnames, gocheck.DeepEquals, []string{"coolcname.com"})
 }
 
 func (s *S) TestGetCNameIgnoresErrNil(c *gocheck.C) {
-	reply := map[string]interface{}{"GET": nil}
-	conn = &rtesting.ResultCommandRedisConn{Reply: reply, FakeRedisConn: s.fake}
-	cname, err := hipacheRouter{}.getCName("myapp")
+	cnames, err := hipacheRouter{}.getCNames("myapp")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(cname, gocheck.Equals, "")
+	c.Assert(cnames, gocheck.DeepEquals, []string{})
 }
 
 func (s *S) TestSetCName(c *gocheck.C) {
-	conn = &rtesting.ResultCommandRedisConn{
-		DefaultReply:  []interface{}{[]byte("10.10.10.10")},
-		FakeRedisConn: s.fake,
-	}
 	router := hipacheRouter{}
 	err := router.AddBackend("myapp")
 	c.Assert(err, gocheck.IsNil)
 	err = router.SetCName("myapp.com", "myapp")
 	c.Assert(err, gocheck.IsNil)
-	expected := []rtesting.RedisCommand{
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:myapp.golang.org", "myapp"},
-			Type: rtesting.CmdDo},
-		{Cmd: "LRANGE", Args: []interface{}{"frontend:myapp.golang.org", 0, -1},
-			Type: rtesting.CmdDo},
-		{Cmd: "GET", Args: []interface{}{"cname:myapp"}, Type: rtesting.CmdDo},
-		{Cmd: "SET", Args: []interface{}{"cname:myapp", "myapp.com"}, Type: rtesting.CmdDo},
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:myapp.com", "10.10.10.10"},
-			Type: rtesting.CmdDo},
-	}
-	c.Assert(s.fake.Cmds, gocheck.DeepEquals, expected)
 }
 
 func (s *S) TestSetCNameWithPreviousRoutes(c *gocheck.C) {
-	reply := map[string]interface{}{
-		"GET":    "",
-		"SET":    "",
-		"LRANGE": []interface{}{[]byte("10.10.10.10"), []byte("10.10.10.11")},
-		"RPUSH":  []interface{}{[]byte{}},
-	}
-	conn = &rtesting.ResultCommandRedisConn{Reply: reply, FakeRedisConn: s.fake}
 	router := hipacheRouter{}
 	err := router.AddBackend("myapp")
 	c.Assert(err, gocheck.IsNil)
@@ -367,48 +287,23 @@ func (s *S) TestSetCNameWithPreviousRoutes(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = router.SetCName("mycname.com", "myapp")
 	c.Assert(err, gocheck.IsNil)
-	expected := []rtesting.RedisCommand{
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:myapp.golang.org", "myapp"},
-			Type: rtesting.CmdDo},
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:myapp.golang.org", "10.10.10.10"},
-			Type: rtesting.CmdDo},
-		{Cmd: "GET", Args: []interface{}{"cname:myapp"}, Type: rtesting.CmdDo},
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:myapp.golang.org", "10.10.10.11"},
-			Type: rtesting.CmdDo},
-		{Cmd: "GET", Args: []interface{}{"cname:myapp"}, Type: rtesting.CmdDo},
-		{Cmd: "LRANGE", Args: []interface{}{"frontend:myapp.golang.org", 0, -1},
-			Type: rtesting.CmdDo},
-		{Cmd: "GET", Args: []interface{}{"cname:myapp"}, Type: rtesting.CmdDo},
-		{Cmd: "SET", Args: []interface{}{"cname:myapp", "mycname.com"}, Type: rtesting.CmdDo},
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:mycname.com", "10.10.10.10"},
-			Type: rtesting.CmdDo},
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:mycname.com", "10.10.10.11"},
-			Type: rtesting.CmdDo},
-	}
-	c.Assert(s.fake.Cmds, gocheck.DeepEquals, expected)
+	cnameRoutes, err := redis.Strings(conn.Do("LRANGE", "frontend:mycname.com", 0, -1))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert([]string{"myapp", "10.10.10.10", "10.10.10.11"}, gocheck.DeepEquals, cnameRoutes)
 }
 
 func (s *S) TestSetCNameShouldRecordAppAndCNameOnRedis(c *gocheck.C) {
-	conn = &rtesting.ResultCommandRedisConn{
-		DefaultReply:  []interface{}{[]byte("mycname.com")},
-		FakeRedisConn: s.fake,
-	}
 	router := hipacheRouter{}
 	err := router.AddBackend("myapp")
 	c.Assert(err, gocheck.IsNil)
 	err = router.SetCName("mycname.com", "myapp")
 	c.Assert(err, gocheck.IsNil)
-	expected := rtesting.RedisCommand{
-		Cmd:  "SET",
-		Args: []interface{}{"cname:myapp", "mycname.com"},
-		Type: rtesting.CmdDo,
-	}
-	c.Assert(s.fake.Cmds[3], gocheck.DeepEquals, expected)
+	cname, err := redis.Strings(conn.Do("LRANGE", "cname:myapp", 0, -1))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert([]string{"mycname.com"}, gocheck.DeepEquals, cname)
 }
 
-func (s *S) TestSetCNameRemovesPreviousDefinedCNamesAndKeepItsRoutes(c *gocheck.C) {
-	reply := map[string]interface{}{"GET": "mycname.com", "SET": "", "LRANGE": []interface{}{[]byte("10.10.10.10")}, "RPUSH": []interface{}{[]byte{}}}
-	conn = &rtesting.ResultCommandRedisConn{Reply: reply, FakeRedisConn: s.fake}
+func (s *S) TestSetCNameSetsMultipleCNames(c *gocheck.C) {
 	router := hipacheRouter{}
 	err := router.AddBackend("myapp")
 	c.Assert(err, gocheck.IsNil)
@@ -417,25 +312,12 @@ func (s *S) TestSetCNameRemovesPreviousDefinedCNamesAndKeepItsRoutes(c *gocheck.
 	err = router.SetCName("mycname.com", "myapp")
 	c.Assert(err, gocheck.IsNil)
 	err = router.SetCName("myothercname.com", "myapp")
-	expected := []rtesting.RedisCommand{
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:myapp.golang.org", "myapp"}, Type: rtesting.CmdDo},
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:myapp.golang.org", "10.10.10.10"}, Type: rtesting.CmdDo},
-		{Cmd: "GET", Args: []interface{}{"cname:myapp"}, Type: rtesting.CmdDo},
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:mycname.com", "10.10.10.10"}, Type: rtesting.CmdDo},
-		{Cmd: "LRANGE", Args: []interface{}{"frontend:myapp.golang.org", 0, -1}, Type: rtesting.CmdDo},
-		{Cmd: "GET", Args: []interface{}{"cname:myapp"}, Type: rtesting.CmdDo},
-		{Cmd: "DEL", Args: []interface{}{"cname:myapp"}, Type: rtesting.CmdDo},
-		{Cmd: "DEL", Args: []interface{}{"frontend:mycname.com"}, Type: rtesting.CmdDo},
-		{Cmd: "SET", Args: []interface{}{"cname:myapp", "mycname.com"}, Type: rtesting.CmdDo},
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:mycname.com", "10.10.10.10"}, Type: rtesting.CmdDo},
-		{Cmd: "LRANGE", Args: []interface{}{"frontend:myapp.golang.org", 0, -1}, Type: rtesting.CmdDo},
-		{Cmd: "GET", Args: []interface{}{"cname:myapp"}, Type: rtesting.CmdDo},
-		{Cmd: "DEL", Args: []interface{}{"cname:myapp"}, Type: rtesting.CmdDo},
-		{Cmd: "DEL", Args: []interface{}{"frontend:mycname.com"}, Type: rtesting.CmdDo},
-		{Cmd: "SET", Args: []interface{}{"cname:myapp", "myothercname.com"}, Type: rtesting.CmdDo},
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:myothercname.com", "10.10.10.10"}, Type: rtesting.CmdDo},
-	}
-	c.Assert(s.fake.Cmds, gocheck.DeepEquals, expected)
+	cname, err := redis.Strings(conn.Do("LRANGE", "frontend:mycname.com", 0, -1))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert([]string{"myapp", "10.10.10.10"}, gocheck.DeepEquals, cname)
+	cname, err = redis.Strings(conn.Do("LRANGE", "frontend:myothercname.com", 0, -1))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert([]string{"myapp", "10.10.10.10"}, gocheck.DeepEquals, cname)
 }
 
 func (s *S) TestSetCNameValidatesCNameAccordingToDomainConfig(c *gocheck.C) {
@@ -449,31 +331,28 @@ func (s *S) TestSetCNameValidatesCNameAccordingToDomainConfig(c *gocheck.C) {
 }
 
 func (s *S) TestUnsetCName(c *gocheck.C) {
-	conn = &rtesting.ResultCommandRedisConn{
-		DefaultReply:  []interface{}{},
-		FakeRedisConn: s.fake,
-	}
-	err := hipacheRouter{}.UnsetCName("myapp.com", "myapp")
+	router := hipacheRouter{}
+	err := router.SetCName("myapp.com", "myapp")
 	c.Assert(err, gocheck.IsNil)
-	expected := []rtesting.RedisCommand{
-		{Cmd: "DEL", Args: []interface{}{"cname:myapp"}, Type: rtesting.CmdDo},
-		{Cmd: "DEL", Args: []interface{}{"frontend:myapp.com"}, Type: rtesting.CmdDo},
-	}
-	c.Assert(s.fake.Cmds, gocheck.DeepEquals, expected)
+	cnames, err := redis.Int(conn.Do("LLEN", "cname:myapp"))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(1, gocheck.Equals, cnames)
+	err = router.UnsetCName("myapp.com", "myapp")
+	c.Assert(err, gocheck.IsNil)
+	cnames, err = redis.Int(conn.Do("LLEN", "cname:myapp"))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(0, gocheck.Equals, cnames)
 }
 
 func (s *S) TestAddr(c *gocheck.C) {
-	conn = &rtesting.ResultCommandRedisConn{
-		DefaultReply:  []interface{}{[]byte("10.10.10.10:8080")},
-		FakeRedisConn: s.fake,
-	}
-	addr, err := hipacheRouter{}.Addr("tip")
+	router := hipacheRouter{}
+	err := router.AddBackend("tip")
+	c.Assert(err, gocheck.IsNil)
+	err = router.AddRoute("tip", "10.10.10.10")
+	c.Assert(err, gocheck.IsNil)
+	addr, err := router.Addr("tip")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(addr, gocheck.Equals, "tip.golang.org")
-	expected := []rtesting.RedisCommand{
-		{Cmd: "LRANGE", Args: []interface{}{"frontend:tip.golang.org", 0, 0}, Type: rtesting.CmdDo},
-	}
-	c.Assert(s.fake.Cmds, gocheck.DeepEquals, expected)
 }
 
 func (s *S) TestAddrNoDomainConfigured(c *gocheck.C) {
@@ -499,6 +378,7 @@ func (s *S) TestAddrConnectFailure(c *gocheck.C) {
 }
 
 func (s *S) TestAddrCommandFailure(c *gocheck.C) {
+	pool = redis.NewPool(fakeConnect, 5)
 	conn = &rtesting.FailingFakeRedisConn{}
 	addr, err := hipacheRouter{}.Addr("tip")
 	c.Assert(addr, gocheck.Equals, "")
@@ -528,10 +408,6 @@ func (s *S) TestRouteError(c *gocheck.C) {
 func (s *S) TestRemoveElement(c *gocheck.C) {
 	err := hipacheRouter{}.removeElement("frontend:myapp.com", "10.10.10.10")
 	c.Assert(err, gocheck.IsNil)
-	cmds := []rtesting.RedisCommand{
-		{Cmd: "LREM", Args: []interface{}{"frontend:myapp.com", 0, "10.10.10.10"}, Type: rtesting.CmdDo},
-	}
-	c.Assert(s.fake.Cmds, gocheck.DeepEquals, cmds)
 }
 
 func (s *S) TestRoutes(c *gocheck.C) {
@@ -546,10 +422,6 @@ func (s *S) TestRoutes(c *gocheck.C) {
 }
 
 func (s *S) TestSwap(c *gocheck.C) {
-	reply := map[string]interface{}{
-		"LRANGE": []interface{}{[]byte("http://127.0.0.1")},
-	}
-	conn = &rtesting.ResultCommandRedisConn{Reply: reply, FakeRedisConn: s.fake}
 	backend1 := "b1"
 	backend2 := "b2"
 	router := hipacheRouter{}
@@ -559,23 +431,10 @@ func (s *S) TestSwap(c *gocheck.C) {
 	router.AddRoute(backend2, "http://10.10.10.10")
 	err := router.Swap(backend1, backend2)
 	c.Assert(err, gocheck.IsNil)
-	cmds := []rtesting.RedisCommand{
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:b1.golang.org", "b1"}, Type: rtesting.CmdDo},
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:b1.golang.org", "http://127.0.0.1"}, Type: rtesting.CmdDo},
-		{Cmd: "GET", Args: []interface{}{"cname:b1"}, Type: rtesting.CmdDo},
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:b2.golang.org", "b2"}, Type: rtesting.CmdDo},
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:b2.golang.org", "http://10.10.10.10"}, Type: rtesting.CmdDo},
-		{Cmd: "GET", Args: []interface{}{"cname:b2"}, Type: rtesting.CmdDo},
-		{Cmd: "LRANGE", Args: []interface{}{"frontend:b1.golang.org", 0, -1}, Type: rtesting.CmdDo},
-		{Cmd: "LRANGE", Args: []interface{}{"frontend:b2.golang.org", 0, -1}, Type: rtesting.CmdDo},
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:b2.golang.org", "http://127.0.0.1"}, Type: rtesting.CmdDo},
-		{Cmd: "GET", Args: []interface{}{"cname:b2"}, Type: rtesting.CmdDo},
-		{Cmd: "LREM", Args: []interface{}{"frontend:b1.golang.org", 0, "http://127.0.0.1"}, Type: rtesting.CmdDo},
-		{Cmd: "GET", Args: []interface{}{"cname:b1"}, Type: rtesting.CmdDo},
-		{Cmd: "RPUSH", Args: []interface{}{"frontend:b1.golang.org", "http://127.0.0.1"}, Type: rtesting.CmdDo},
-		{Cmd: "GET", Args: []interface{}{"cname:b1"}, Type: rtesting.CmdDo},
-		{Cmd: "LREM", Args: []interface{}{"frontend:b2.golang.org", 0, "http://127.0.0.1"}, Type: rtesting.CmdDo},
-		{Cmd: "GET", Args: []interface{}{"cname:b2"}, Type: rtesting.CmdDo},
-	}
-	c.Assert(s.fake.Cmds, gocheck.DeepEquals, cmds)
+	backend1Routes, err := redis.Strings(conn.Do("LRANGE", "frontend:b2.golang.org", 0, -1))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert([]string{"b1", "http://127.0.0.1"}, gocheck.DeepEquals, backend1Routes)
+	backend2Routes, err := redis.Strings(conn.Do("LRANGE", "frontend:b1.golang.org", 0, -1))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert([]string{"b2", "http://10.10.10.10"}, gocheck.DeepEquals, backend2Routes)
 }

@@ -81,16 +81,18 @@ func (r hipacheRouter) RemoveBackend(name string) error {
 	if err != nil {
 		return &routeError{"remove", err}
 	}
-	cname, err := r.getCName(backendName)
+	cnames, err := r.getCNames(backendName)
 	if err != nil {
 		return err
 	}
-	if cname == "" {
+	if cnames == nil {
 		return nil
 	}
-	_, err = conn.Do("DEL", "frontend:"+cname)
-	if err != nil {
-		return &routeError{"remove", err}
+	for _, cname := range cnames {
+		_, err = conn.Do("DEL", "frontend:"+cname)
+		if err != nil {
+			return &routeError{"remove", err}
+		}
 	}
 	_, err = conn.Do("DEL", "cname:"+backendName)
 	if err != nil {
@@ -114,15 +116,21 @@ func (r hipacheRouter) AddRoute(name, address string) error {
 		log.Errorf("error on add route for %s - %s", backendName, address)
 		return &routeError{"add", err}
 	}
-	cname, err := r.getCName(backendName)
+	cnames, err := r.getCNames(backendName)
 	if err != nil {
 		log.Errorf("error on get cname in add route for %s - %s", backendName, address)
 		return err
 	}
-	if cname == "" {
+	if cnames == nil {
 		return nil
 	}
-	return r.addRoute("frontend:"+cname, address)
+	for _, cname := range cnames {
+		err = r.addRoute("frontend:"+cname, address)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (hipacheRouter) addRoute(name, address string) error {
@@ -149,24 +157,30 @@ func (r hipacheRouter) RemoveRoute(name, address string) error {
 	if err := r.removeElement(frontend, address); err != nil {
 		return err
 	}
-	cname, err := r.getCName(backendName)
+	cnames, err := r.getCNames(backendName)
 	if err != nil {
 		return &routeError{"remove", err}
 	}
-	if cname == "" {
+	if cnames == nil {
 		return nil
 	}
-	return r.removeElement("frontend:"+cname, address)
+	for _, cname := range cnames {
+		err = r.removeElement("frontend:"+cname, address)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func (hipacheRouter) getCName(name string) (string, error) {
+func (hipacheRouter) getCNames(name string) ([]string, error) {
 	conn := connect()
 	defer conn.Close()
-	cname, err := redis.String(conn.Do("GET", "cname:"+name))
+	cnames, err := redis.Strings(conn.Do("LRANGE", "cname:"+name, 0, -1))
 	if err != nil && err != redis.ErrNil {
-		return "", &routeError{"getCName", err}
+		return nil, &routeError{"getCName", err}
 	}
-	return cname, nil
+	return cnames, nil
 }
 
 // validCName returns true if the cname is not a subdomain of
@@ -199,13 +213,7 @@ func (r hipacheRouter) SetCName(cname, name string) error {
 	if err != nil {
 		return &routeError{"get", err}
 	}
-	if oldCName, err := redis.String(conn.Do("GET", "cname:"+backendName)); err == nil && oldCName != "" {
-		err = r.UnsetCName(oldCName, backendName)
-		if err != nil {
-			return &routeError{"setCName", err}
-		}
-	}
-	_, err = conn.Do("SET", "cname:"+backendName, cname)
+	_, err = conn.Do("RPUSH", "cname:"+backendName, cname)
 	if err != nil {
 		return &routeError{"set", err}
 	}
