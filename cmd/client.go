@@ -57,17 +57,17 @@ func (c *Client) Do(request *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 	supported := response.Header.Get(c.versionHeader)
-	format := `################################################################
+	format := `#####################################################################
 
 WARNING: You're using an unsupported version of %s.
 
 You must have at least version %s, your current
 version is %s.
 
-Please go to http://docs.tsuru.io/en/latest/install/client.html
+Please go to http://docs.tsuru.io/en/latest/using/install-client.html
 and download the last version.
 
-################################################################
+#####################################################################
 
 `
 	if !validateVersion(supported, c.currentVersion) {

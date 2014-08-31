@@ -105,17 +105,17 @@ func (s *S) TestShouldValidateVersion(c *gocheck.C) {
 	client := NewClient(&http.Client{Transport: &trans}, &context, &manager)
 	_, err = client.Do(request)
 	c.Assert(err, gocheck.IsNil)
-	expected := `################################################################
+	expected := `#####################################################################
 
 WARNING: You're using an unsupported version of glb.
 
 You must have at least version 0.3, your current
 version is 0.2.1.
 
-Please go to http://docs.tsuru.io/en/latest/install/client.html
+Please go to http://docs.tsuru.io/en/latest/using/install-client.html
 and download the last version.
 
-################################################################
+#####################################################################
 
 `
 	c.Assert(buf.String(), gocheck.Equals, expected)
