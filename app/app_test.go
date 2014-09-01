@@ -1393,15 +1393,16 @@ func (s *S) TestGetUnits(c *gocheck.C) {
 
 func (s *S) TestAppMarshalJSON(c *gocheck.C) {
 	app := App{
-		Name:     "name",
-		Platform: "Framework",
-		Teams:    []string{"team1"},
-		Ip:       "10.10.10.1",
-		CName:    "name.mycompany.com",
-		Owner:    "appOwner",
-		Deploys:  7,
-		Memory:   64,
-		Swap:     128,
+		Name:      "name",
+		Platform:  "Framework",
+		Teams:     []string{"team1"},
+		Ip:        "10.10.10.1",
+		CName:     "name.mycompany.com",
+		Owner:     "appOwner",
+		Deploys:   7,
+		Memory:    64,
+		Swap:      128,
+		TeamOwner: "myteam",
 	}
 	expected := make(map[string]interface{})
 	expected["name"] = "name"
@@ -1414,6 +1415,7 @@ func (s *S) TestAppMarshalJSON(c *gocheck.C) {
 	expected["owner"] = "appOwner"
 	expected["deploys"] = float64(7)
 	expected["memory"] = "64"
+	expected["teamowner"] = "myteam"
 	// Expected swap is the "real" swap size. App object has the sum of memory + swap but in json we return it as real size (swap - memory)
 	expected["swap"] = "64"
 	expected["ready"] = false
@@ -1427,16 +1429,17 @@ func (s *S) TestAppMarshalJSON(c *gocheck.C) {
 
 func (s *S) TestAppMarshalJSONReady(c *gocheck.C) {
 	app := App{
-		Name:     "name",
-		Platform: "Framework",
-		Teams:    []string{"team1"},
-		Ip:       "10.10.10.1",
-		CName:    "name.mycompany.com",
-		State:    "ready",
-		Owner:    "appOwner",
-		Deploys:  7,
-		Memory:   64,
-		Swap:     128,
+		Name:      "name",
+		Platform:  "Framework",
+		Teams:     []string{"team1"},
+		Ip:        "10.10.10.1",
+		CName:     "name.mycompany.com",
+		State:     "ready",
+		Owner:     "appOwner",
+		Deploys:   7,
+		Memory:    64,
+		Swap:      128,
+		TeamOwner: "myteam",
 	}
 	expected := make(map[string]interface{})
 	expected["name"] = "name"
@@ -1449,6 +1452,7 @@ func (s *S) TestAppMarshalJSONReady(c *gocheck.C) {
 	expected["owner"] = "appOwner"
 	expected["deploys"] = float64(7)
 	expected["memory"] = "64"
+	expected["teamowner"] = "myteam"
 	// Expected swap is the "real" swap size. App object has the sum of memory + swap but in json we return it as real size (swap - memory)
 	expected["swap"] = "64"
 	expected["ready"] = true

@@ -108,6 +108,7 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["deploys"] = app.Deploys
 	result["memory"] = strconv.Itoa(app.Memory)
 	result["swap"] = "0"
+	result["teamowner"] = app.TeamOwner
 	if app.Swap > 0 {
 		result["swap"] = strconv.Itoa(app.Swap - app.Memory)
 	}
