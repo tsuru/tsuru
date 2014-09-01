@@ -26,16 +26,6 @@ func init() {
 	iaas.RegisterIaasProvider("cloudstack", &CloudstackIaaS{})
 }
 
-type ListVirtualMachinesResponse struct {
-	VirtualMachine []VirtualMachineStruct `json:"virtualmachine"`
-}
-type VirtualMachineStruct struct {
-	Nic []NicStruct `json:"nic"`
-}
-type NicStruct struct {
-	IpAddress string `json:"ipaddress"`
-}
-
 type CloudstackIaaS struct{}
 
 func (i *CloudstackIaaS) Describe() string {
@@ -59,22 +49,71 @@ func validateParams(params map[string]string) error {
 	return nil
 }
 
+func do(cmd string, params map[string]string, result interface{}) error {
+	url, err := buildUrl(cmd, params)
+	if err != nil {
+		return err
+	}
+	client := http.DefaultClient
+	client.Transport = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
+	resp, err := client.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("Unexpected response code for %s command %d: %s", cmd, resp.StatusCode, string(body))
+	}
+	if result != nil {
+		err = json.Unmarshal(body, result)
+		if err != nil {
+			return fmt.Errorf("Unexpected result data for %s command: %s - Body: %s", cmd, err.Error(), string(body))
+		}
+	}
+	return nil
+}
+
 func (i *CloudstackIaaS) DeleteMachine(machine *iaas.Machine) error {
-	url, err := buildUrl("destroyVirtualMachine", map[string]string{"id": machine.Id})
+	var volumesRsp ListVolumesResponse
+	err := do("listVolumes", ApiParams{
+		"virtualmachineid": machine.Id,
+		"projectid":        machine.CreationParams["projectid"],
+	}, &volumesRsp)
 	if err != nil {
 		return err
 	}
-	resp, err := httpClient().Get(url)
+	var destroyData DestroyVirtualMachineResponse
+	err = do("destroyVirtualMachine", ApiParams{
+		"id": machine.Id,
+	}, &destroyData)
 	if err != nil {
 		return err
 	}
-	if resp.StatusCode != 200 {
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
+	_, err = waitForAsyncJob(destroyData.DestroyVirtualMachineResponse.JobID)
+	if err != nil {
+		return err
+	}
+	for _, vol := range volumesRsp.ListVolumesResponse.Volume {
+		if vol.Type != DISK_TYPE_DATADISK {
+			continue
+		}
+		var detachRsp DetachVolumeResponse
+		err = do("detachVolume", ApiParams{"id": vol.ID}, &detachRsp)
 		if err != nil {
 			return err
 		}
-		return fmt.Errorf("DeleteMachine: Unexpected return code: %d body: %s", resp.StatusCode, body)
+		_, err = waitForAsyncJob(detachRsp.DetachVolumeResponse.JobID)
+		if err != nil {
+			return err
+		}
+		err = do("deleteVolume", ApiParams{"id": vol.ID}, nil)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -89,26 +128,17 @@ func (i *CloudstackIaaS) CreateMachine(params map[string]string) (*iaas.Machine,
 		return nil, err
 	}
 	params["userdata"] = userData
-	url, err := buildUrl("deployVirtualMachine", params)
+	var vmStatus DeployVirtualMachineResponse
+	err = do("deployVirtualMachine", params, &vmStatus)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := httpClient().Get(url)
-	if err != nil {
-		return nil, err
-	}
-	var vmStatus map[string]map[string]string
-	err = json.NewDecoder(resp.Body).Decode(&vmStatus)
-	if err != nil {
-		return nil, err
-	}
-	vmStatus["deployvirtualmachineresponse"]["projectid"] = params["projectid"]
-	IpAddress, err := waitVMIsCreated(vmStatus)
+	IpAddress, err := waitVMIsCreated(vmStatus.DeployVirtualMachineResponse.JobID, vmStatus.DeployVirtualMachineResponse.ID, params["projectid"])
 	if err != nil {
 		return nil, err
 	}
 	m := &iaas.Machine{
-		Id:      vmStatus["deployvirtualmachineresponse"]["id"],
+		Id:      vmStatus.DeployVirtualMachineResponse.ID,
 		Address: IpAddress,
 		Status:  "running",
 	}
@@ -136,12 +166,6 @@ func readUserData() (string, error) {
 		userData = string(body)
 	}
 	return base64.StdEncoding.EncodeToString([]byte(userData)), nil
-}
-
-func httpClient() *http.Client {
-	tr := &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
-	return &http.Client{Transport: tr}
-	// return http.DefaultClient
 }
 
 func buildUrl(command string, params map[string]string) (string, error) {
@@ -177,45 +201,39 @@ func buildUrl(command string, params map[string]string) (string, error) {
 	return fmt.Sprintf("%s?%s&signature=%s", cloudstackUrl, queryString, url.QueryEscape(signature)), nil
 }
 
-func waitVMIsCreated(vmStatus map[string]map[string]string) (string, error) {
-	jobData := vmStatus["deployvirtualmachineresponse"]
+func waitForAsyncJob(jobId string) (QueryAsyncJobResultResponse, error) {
 	count := 0
 	maxTry := 300
-	jobStatus := 0
-	for jobStatus != 0 || count > maxTry {
-		urlToJobCheck, _ := buildUrl("queryAsyncJobResult", map[string]string{"jobid": jobData["jobid"]})
-		resp, err := httpClient().Get(urlToJobCheck)
+	var jobResponse QueryAsyncJobResultResponse
+	for count < maxTry {
+		err := do("queryAsyncJobResult", ApiParams{"jobid": jobId}, &jobResponse)
 		if err != nil {
-			return "", err
+			return jobResponse, err
 		}
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return "", err
+		if jobResponse.QueryAsyncJobResultResponse.JobStatus != JOB_STATUS_IN_PROGRESS {
+			if jobResponse.QueryAsyncJobResultResponse.JobStatus == JOB_STATUS_FAILED {
+				return jobResponse, fmt.Errorf("Job failed to complete: %#v", jobResponse.QueryAsyncJobResultResponse.JobResult)
+			}
+			return jobResponse, nil
 		}
-		var jobCheckStatus map[string]interface{}
-		err = json.Unmarshal(body, &jobCheckStatus)
-		if err != nil {
-			return "", err
-		}
-		jobStatus = jobCheckStatus["jobstatus"].(int)
 		count = count + 1
 		time.Sleep(time.Second)
 	}
-	urlToGetMachineInfo, _ := buildUrl("listVirtualMachines", map[string]string{"id": jobData["id"], "projectid": jobData["projectid"]})
-	resp, err := httpClient().Get(urlToGetMachineInfo)
+	return jobResponse, fmt.Errorf("Maximum number of retries waiting for job %q", jobId)
+}
+
+func waitVMIsCreated(jobId, machineId, projectId string) (string, error) {
+	_, err := waitForAsyncJob(jobId)
 	if err != nil {
 		return "", err
 	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	var machineInfo ListVirtualMachinesResponse
+	err = do("listVirtualMachines", ApiParams{
+		"id":        machineId,
+		"projectid": projectId,
+	}, &machineInfo)
 	if err != nil {
 		return "", err
 	}
-	var machineInfo map[string]ListVirtualMachinesResponse
-	err = json.Unmarshal(body, &machineInfo)
-	if err != nil {
-		return "", err
-	}
-	return machineInfo["listvirtualmachinesresponse"].VirtualMachine[0].Nic[0].IpAddress, nil
+	return machineInfo.ListVirtualMachinesResponse.VirtualMachine[0].Nic[0].IpAddress, nil
 }
