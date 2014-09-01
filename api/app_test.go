@@ -1969,7 +1969,7 @@ func (s *S) TestAddCNameHandlerErrsOnInvalidCName(c *gocheck.C) {
 	c.Assert(e.Message, gocheck.Equals, "Invalid cname")
 }
 
-func (s *S) TestSetCNameHandlerReturnsInternalErrorIfItFailsToReadTheBody(c *gocheck.C) {
+func (s *S) TestAddCNameHandlerReturnsInternalErrorIfItFailsToReadTheBody(c *gocheck.C) {
 	b := s.getTestData("bodyToBeClosed.txt")
 	request, err := http.NewRequest("POST", "/apps/unkown/cname?:app=unknown", b)
 	c.Assert(err, gocheck.IsNil)
@@ -1979,7 +1979,7 @@ func (s *S) TestSetCNameHandlerReturnsInternalErrorIfItFailsToReadTheBody(c *goc
 	c.Assert(err, gocheck.NotNil)
 }
 
-func (s *S) TestSetCNameHandlerReturnsBadRequestWhenCNameIsMissingFromTheBody(c *gocheck.C) {
+func (s *S) TestAddCNameHandlerReturnsBadRequestWhenCNameIsMissingFromTheBody(c *gocheck.C) {
 	bodies := []io.Reader{nil, strings.NewReader(`{}`), strings.NewReader(`{"name":"something"}`)}
 	for _, b := range bodies {
 		request, err := http.NewRequest("POST", "/apps/unknown/cname?:app=unknown", b)
@@ -1994,7 +1994,7 @@ func (s *S) TestSetCNameHandlerReturnsBadRequestWhenCNameIsMissingFromTheBody(c 
 	}
 }
 
-func (s *S) TestSetCNameHandlerInvalidJSON(c *gocheck.C) {
+func (s *S) TestAddCNameHandlerInvalidJSON(c *gocheck.C) {
 	b := strings.NewReader(`}"I'm invalid json"`)
 	request, err := http.NewRequest("POST", "/apps/unknown/cname?:app=unknown", b)
 	c.Assert(err, gocheck.IsNil)
@@ -2007,7 +2007,7 @@ func (s *S) TestSetCNameHandlerInvalidJSON(c *gocheck.C) {
 	c.Assert(e.Message, gocheck.Equals, "Invalid JSON in request body.")
 }
 
-func (s *S) TestSetCNameHandlerUnknownApp(c *gocheck.C) {
+func (s *S) TestAddCNameHandlerUnknownApp(c *gocheck.C) {
 	b := strings.NewReader(`{"cname": "leper.secretcompany.com"}`)
 	request, err := http.NewRequest("POST", "/apps/unknown/cname?:app=unknown", b)
 	c.Assert(err, gocheck.IsNil)
@@ -2019,7 +2019,7 @@ func (s *S) TestSetCNameHandlerUnknownApp(c *gocheck.C) {
 	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
 }
 
-func (s *S) TestSetCNameHandlerUserWithoutAccessToTheApp(c *gocheck.C) {
+func (s *S) TestAddCNameHandlerUserWithoutAccessToTheApp(c *gocheck.C) {
 	a := app.App{
 		Name:     "lost",
 		Platform: "vougan",
