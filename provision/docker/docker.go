@@ -262,7 +262,8 @@ func (c *container) setStatus(status string) error {
 	c.LastStatusUpdate = time.Now().In(time.UTC)
 	coll := collection()
 	defer coll.Close()
-	return coll.Update(bson.M{"id": c.ID}, c)
+	update := bson.M{"$set": bson.M{"status": c.Status, "laststatusupdate": c.LastStatusUpdate}}
+	return coll.Update(bson.M{"id": c.ID}, update)
 }
 
 func (c *container) setImage(imageId string) error {
