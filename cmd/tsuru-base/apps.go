@@ -313,8 +313,10 @@ func (c AppList) Show(result []byte, context *cmd.Context) error {
 			}
 		}
 		summary := fmt.Sprintf("%d of %d units in-service", available, total)
-		table.AddRow(cmd.Row([]string{app.Name, summary, app.Addr(), app.IsReady()}))
+		addrs := strings.Replace(app.Addr(), ", ", "\n", -1)
+		table.AddRow(cmd.Row([]string{app.Name, summary, addrs, app.IsReady()}))
 	}
+	table.LineSeparator = true
 	table.Sort()
 	context.Stdout.Write(table.Bytes())
 	return nil
@@ -448,12 +450,12 @@ If you don't provide the app name, tsuru will try to guess it.`,
 	}
 }
 
-type SetCName struct {
+type AddCName struct {
 	GuessingCommand
 }
 
-func (c *SetCName) Run(context *cmd.Context, client *cmd.Client) error {
-	err := setCName(context.Args[0], c.GuessingCommand, client)
+func (c *AddCName) Run(context *cmd.Context, client *cmd.Client) error {
+	err := addCName(context.Args, c.GuessingCommand, client)
 	if err != nil {
 		return err
 	}
@@ -461,11 +463,11 @@ func (c *SetCName) Run(context *cmd.Context, client *cmd.Client) error {
 	return nil
 }
 
-func (c *SetCName) Info() *cmd.Info {
+func (c *AddCName) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "set-cname",
-		Usage:   "set-cname <cname> [--app appname]",
-		Desc:    `defines a cname for your app.`,
+		Name:    "add-cname",
+		Usage:   "add-cname <cname> [--app appname]",
+		Desc:    `adds a cname for your app.`,
 		MinArgs: 1,
 	}
 }
@@ -512,7 +514,7 @@ func unsetCName(g GuessingCommand, client *cmd.Client) error {
 	return nil
 }
 
-func setCName(v string, g GuessingCommand, client *cmd.Client) error {
+func addCName(v []string, g GuessingCommand, client *cmd.Client) error {
 	appName, err := g.Guess()
 	if err != nil {
 		return err
@@ -521,7 +523,13 @@ func setCName(v string, g GuessingCommand, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	body := strings.NewReader(fmt.Sprintf(`{"cname": "%s"}`, v))
+	cnames := make(map[string][]string)
+	cnames["cname"] = v
+	c, err := json.Marshal(cnames)
+	if err != nil {
+		return err
+	}
+	body := bytes.NewReader(c)
 	request, err := http.NewRequest("POST", url, body)
 	if err != nil {
 		return err

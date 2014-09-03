@@ -323,6 +323,7 @@ func (s *S) TestAppListDisplayAppsInAlphabeticalOrder(c *gocheck.C) {
 | Application | Units State Summary     | Address     | Ready? |
 +-------------+-------------------------+-------------+--------+
 | app1        | 1 of 1 units in-service | 10.10.10.10 | Yes    |
++-------------+-------------------------+-------------+--------+
 | sapp        | 1 of 1 units in-service | 10.10.10.11 | Yes    |
 +-------------+-------------------------+-------------+--------+
 `
@@ -425,11 +426,12 @@ func (s *S) TestAppListNotReady(c *gocheck.C) {
 func (s *S) TestAppListCName(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	result := `[{"ip":"10.10.10.10","cname":"app1.tsuru.io","name":"app1","ready":true,"units":[{"Name":"app1/0","Status":"started"}]}]`
-	expected := `+-------------+-------------------------+----------------------------+--------+
-| Application | Units State Summary     | Address                    | Ready? |
-+-------------+-------------------------+----------------------------+--------+
-| app1        | 1 of 1 units in-service | app1.tsuru.io, 10.10.10.10 | Yes    |
-+-------------+-------------------------+----------------------------+--------+
+	expected := `+-------------+-------------------------+---------------+--------+
+| Application | Units State Summary     | Address       | Ready? |
++-------------+-------------------------+---------------+--------+
+| app1        | 1 of 1 units in-service | app1.tsuru.io | Yes    |
+|             |                         | 10.10.10.10   |        |
++-------------+-------------------------+---------------+--------+
 `
 	context := cmd.Context{
 		Args:   []string{},
@@ -524,7 +526,7 @@ func (s *S) TestAppRestartIsAFlaggedCommand(c *gocheck.C) {
 	var _ cmd.FlaggedCommand = &AppRestart{}
 }
 
-func (s *S) TestSetCName(c *gocheck.C) {
+func (s *S) TestAddCName(c *gocheck.C) {
 	var (
 		called         bool
 		stdout, stderr bytes.Buffer
@@ -538,16 +540,16 @@ func (s *S) TestSetCName(c *gocheck.C) {
 		Transport: testing.Transport{Message: "Restarted", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			called = true
-			var m map[string]string
+			var m map[string][]string
 			err := json.NewDecoder(req.Body).Decode(&m)
 			c.Assert(err, gocheck.IsNil)
+			c.Assert(m["cname"], gocheck.DeepEquals, []string{"death.evergrey.mycompany.com"})
 			return req.URL.Path == "/apps/death/cname" &&
-				req.Method == "POST" &&
-				m["cname"] == "death.evergrey.mycompany.com"
+				req.Method == "POST"
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
-	command := SetCName{}
+	command := AddCName{}
 	command.Flags().Parse(true, []string{"-a", "death"})
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
@@ -555,7 +557,7 @@ func (s *S) TestSetCName(c *gocheck.C) {
 	c.Assert(stdout.String(), gocheck.Equals, "cname successfully defined.\n")
 }
 
-func (s *S) TestSetCNameWithoutTheFlag(c *gocheck.C) {
+func (s *S) TestAddCNameWithoutTheFlag(c *gocheck.C) {
 	var (
 		called         bool
 		stdout, stderr bytes.Buffer
@@ -570,22 +572,22 @@ func (s *S) TestSetCNameWithoutTheFlag(c *gocheck.C) {
 		Transport: testing.Transport{Message: "Restarted", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			called = true
-			var m map[string]string
+			var m map[string][]string
 			err := json.NewDecoder(req.Body).Decode(&m)
 			c.Assert(err, gocheck.IsNil)
+			c.Assert(m["cname"], gocheck.DeepEquals, []string{"corey.evergrey.mycompany.com"})
 			return req.URL.Path == "/apps/corey/cname" &&
-				req.Method == "POST" &&
-				m["cname"] == "corey.evergrey.mycompany.com"
+				req.Method == "POST"
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
-	err := (&SetCName{GuessingCommand{G: fake}}).Run(&context, client)
+	err := (&AddCName{GuessingCommand{G: fake}}).Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
 	c.Assert(stdout.String(), gocheck.Equals, "cname successfully defined.\n")
 }
 
-func (s *S) TestSetCNameFailure(c *gocheck.C) {
+func (s *S) TestAddCNameFailure(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Stdout: &stdout,
@@ -594,25 +596,25 @@ func (s *S) TestSetCNameFailure(c *gocheck.C) {
 	}
 	trans := &testing.Transport{Message: "Invalid cname", Status: http.StatusPreconditionFailed}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
-	command := SetCName{}
+	command := AddCName{}
 	command.Flags().Parse(true, []string{"-a", "masterplan"})
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Invalid cname")
 }
 
-func (s *S) TestSetCNameInfo(c *gocheck.C) {
+func (s *S) TestAddCNameInfo(c *gocheck.C) {
 	expected := &cmd.Info{
-		Name:    "set-cname",
-		Usage:   "set-cname <cname> [--app appname]",
-		Desc:    `defines a cname for your app.`,
+		Name:    "add-cname",
+		Usage:   "add-cname <cname> [--app appname]",
+		Desc:    `adds a cname for your app.`,
 		MinArgs: 1,
 	}
-	c.Assert((&SetCName{}).Info(), gocheck.DeepEquals, expected)
+	c.Assert((&AddCName{}).Info(), gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestSetCNameIsAFlaggedCommand(c *gocheck.C) {
-	var _ cmd.FlaggedCommand = &SetCName{}
+func (s *S) TestAddCNameIsAFlaggedCommand(c *gocheck.C) {
+	var _ cmd.FlaggedCommand = &AddCName{}
 }
 
 func (s *S) TestUnsetCName(c *gocheck.C) {
