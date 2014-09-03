@@ -1885,7 +1885,7 @@ func (s *S) TestAddCNameHandler(c *gocheck.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
-	b := strings.NewReader(`{"cname":"leper.secretcompany.com"}`)
+	b := strings.NewReader(`{"cname":["leper.secretcompany.com"]}`)
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1895,7 +1895,7 @@ func (s *S) TestAddCNameHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.CName, gocheck.DeepEquals, []string{"leper.secretcompany.com"})
 	action := testing.Action{
-		Action: "set-cname",
+		Action: "add-cname",
 		User:   s.user.Email,
 		Extra:  []interface{}{"app=" + app.Name, "cname=leper.secretcompany.com"},
 	}
@@ -1911,7 +1911,7 @@ func (s *S) TestAddCNameHandlerAcceptsWildCard(c *gocheck.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
-	b := strings.NewReader(`{"cname":"*.leper.secretcompany.com"}`)
+	b := strings.NewReader(`{"cname":["*.leper.secretcompany.com"]}`)
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1921,7 +1921,7 @@ func (s *S) TestAddCNameHandlerAcceptsWildCard(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.CName, gocheck.DeepEquals, []string{"*.leper.secretcompany.com"})
 	action := testing.Action{
-		Action: "set-cname",
+		Action: "add-cname",
 		User:   s.user.Email,
 		Extra:  []interface{}{"app=" + app.Name, "cname=*.leper.secretcompany.com"},
 	}
@@ -1937,7 +1937,7 @@ func (s *S) TestAddCNameHandlerAcceptsEmptyCName(c *gocheck.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
-	b := strings.NewReader(`{"cname":""}`)
+	b := strings.NewReader(`{"cname":[]}`)
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1945,7 +1945,7 @@ func (s *S) TestAddCNameHandlerAcceptsEmptyCName(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.CName, gocheck.DeepEquals, []string{"leper.secretcompany.com", ""})
+	c.Assert(app.CName, gocheck.DeepEquals, []string{"leper.secretcompany.com"})
 }
 
 func (s *S) TestAddCNameHandlerErrsOnInvalidCName(c *gocheck.C) {
@@ -1957,7 +1957,7 @@ func (s *S) TestAddCNameHandlerErrsOnInvalidCName(c *gocheck.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
-	b := strings.NewReader(`{"cname":"_leper.secretcompany.com"}`)
+	b := strings.NewReader(`{"cname":["_leper.secretcompany.com"]}`)
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1980,7 +1980,7 @@ func (s *S) TestAddCNameHandlerReturnsInternalErrorIfItFailsToReadTheBody(c *goc
 }
 
 func (s *S) TestAddCNameHandlerReturnsBadRequestWhenCNameIsMissingFromTheBody(c *gocheck.C) {
-	bodies := []io.Reader{nil, strings.NewReader(`{}`), strings.NewReader(`{"name":"something"}`)}
+	bodies := []io.Reader{nil, strings.NewReader(`{}`)}
 	for _, b := range bodies {
 		request, err := http.NewRequest("POST", "/apps/unknown/cname?:app=unknown", b)
 		c.Assert(err, gocheck.IsNil)
@@ -2008,7 +2008,7 @@ func (s *S) TestAddCNameHandlerInvalidJSON(c *gocheck.C) {
 }
 
 func (s *S) TestAddCNameHandlerUnknownApp(c *gocheck.C) {
-	b := strings.NewReader(`{"cname": "leper.secretcompany.com"}`)
+	b := strings.NewReader(`{"cname": ["leper.secretcompany.com"]}`)
 	request, err := http.NewRequest("POST", "/apps/unknown/cname?:app=unknown", b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -2029,7 +2029,7 @@ func (s *S) TestAddCNameHandlerUserWithoutAccessToTheApp(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs(a.Name).DropCollection()
 	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
-	b := strings.NewReader(`{"cname": "lost.secretcompany.com"}`)
+	b := strings.NewReader(`{"cname": ["lost.secretcompany.com"]}`)
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -2047,7 +2047,7 @@ func (s *S) TestAddCNameHandlerInvalidCName(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs(a.Name).DropCollection()
 	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
-	b := strings.NewReader(`{"cname": ".leper.secretcompany.com"}`)
+	b := strings.NewReader(`{"cname": [".leper.secretcompany.com"]}`)
 	request, err := http.NewRequest("POST", url, b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()

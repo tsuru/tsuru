@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
@@ -522,7 +523,7 @@ func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if r.Body == nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
 	}
-	var v map[string]string
+	var v map[string][]string
 	err := json.NewDecoder(r.Body).Decode(&v)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Invalid JSON in request body."}
@@ -535,12 +536,13 @@ func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	appName := r.URL.Query().Get(":app")
-	rec.Log(u.Email, "set-cname", "app="+appName, "cname="+v["cname"])
+	rawCName := strings.Join(v["cname"], ", ")
+	rec.Log(u.Email, "add-cname", "app="+appName, "cname="+rawCName)
 	app, err := getApp(appName, u)
 	if err != nil {
 		return err
 	}
-	if err = app.AddCName(v["cname"]); err == nil {
+	if err = app.AddCName(v["cname"]...); err == nil {
 		return nil
 	}
 	if err.Error() == "Invalid cname" {
