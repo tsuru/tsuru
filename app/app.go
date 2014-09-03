@@ -835,22 +835,27 @@ func (app *App) AddCName(cnames ...string) error {
 	return nil
 }
 
-func (app *App) UnsetCName() error {
-	if s, ok := Provisioner.(provision.CNameManager); ok {
-		if err := s.UnsetCName(app, app.CName[0]); err != nil {
+func (app *App) RemoveCName(cnames ...string) error {
+	for _, cname := range cnames {
+		if s, ok := Provisioner.(provision.CNameManager); ok {
+			if err := s.UnsetCName(app, cname); err != nil {
+				return err
+			}
+		}
+		conn, err := db.Conn()
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
+		err = conn.Apps().Update(
+			bson.M{"name": app.Name},
+			bson.M{"$pull": bson.M{"cname": cname}},
+		)
+		if err != nil {
 			return err
 		}
 	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	app.CName = []string{}
-	return conn.Apps().Update(
-		bson.M{"name": app.Name},
-		bson.M{"$set": bson.M{"cname": app.CName}},
-	)
+	return nil
 }
 
 // Log adds a log message to the app. Specifying a good source is good so the

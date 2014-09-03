@@ -1034,7 +1034,7 @@ func (s *S) TestAddCNameCallsProvisionerSetCName(c *gocheck.C) {
 	c.Assert(hasCName, gocheck.Equals, true)
 }
 
-func (s *S) TestUnsetCNameRemovesFromDatabase(c *gocheck.C) {
+func (s *S) TestRemoveCNameRemovesFromDatabase(c *gocheck.C) {
 	a := &App{Name: "ktulu"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -1043,14 +1043,32 @@ func (s *S) TestUnsetCNameRemovesFromDatabase(c *gocheck.C) {
 	defer s.provisioner.Destroy(a)
 	err = a.AddCName("ktulu.mycompany.com")
 	c.Assert(err, gocheck.IsNil)
-	err = a.UnsetCName()
+	err = a.RemoveCName("ktulu.mycompany.com")
 	c.Assert(err, gocheck.IsNil)
 	a, err = GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(a.CName, gocheck.DeepEquals, []string{})
 }
 
-func (s *S) TestUnsetCNameRemovesFromRouter(c *gocheck.C) {
+func (s *S) TestRemoveMoreThanOneCName(c *gocheck.C) {
+	a := &App{Name: "ktulu"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(a)
+	defer s.provisioner.Destroy(a)
+	err = a.AddCName("ktulu.mycompany.com")
+	c.Assert(err, gocheck.IsNil)
+	err = a.AddCName("ktulu2.mycompany.com")
+	c.Assert(err, gocheck.IsNil)
+	err = a.RemoveCName("ktulu.mycompany.com", "ktulu2.mycompany.com")
+	c.Assert(err, gocheck.IsNil)
+	a, err = GetByName(a.Name)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(a.CName, gocheck.DeepEquals, []string{})
+}
+
+func (s *S) TestRemoveCNameRemovesFromRouter(c *gocheck.C) {
 	a := App{Name: "ktulu"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -1059,7 +1077,7 @@ func (s *S) TestUnsetCNameRemovesFromRouter(c *gocheck.C) {
 	defer s.provisioner.Destroy(&a)
 	err = a.AddCName("ktulu.mycompany.com")
 	c.Assert(err, gocheck.IsNil)
-	err = a.UnsetCName()
+	err = a.RemoveCName("ktulu.mycompany.com")
 	c.Assert(err, gocheck.IsNil)
 	hasCName := s.provisioner.HasCName(&a, "ktulu.mycompany.com")
 	c.Assert(hasCName, gocheck.Equals, false)
