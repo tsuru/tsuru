@@ -234,7 +234,7 @@ func (r hipacheRouter) UnsetCName(cname, name string) error {
 	}
 	conn := connect()
 	defer conn.Close()
-	_, err = conn.Do("DEL", "cname:"+backendName)
+	_, err = conn.Do("LREM", "cname:"+backendName, 1, cname)
 	if err != nil {
 		return &routeError{"unsetCName", err}
 	}

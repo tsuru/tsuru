@@ -344,6 +344,30 @@ func (s *S) TestUnsetCName(c *gocheck.C) {
 	c.Assert(0, gocheck.Equals, cnames)
 }
 
+func (s *S) TestUnsetTwoCNames(c *gocheck.C) {
+	router := hipacheRouter{}
+	err := router.SetCName("myapp.com", "myapp")
+	c.Assert(err, gocheck.IsNil)
+	cnames, err := redis.Int(conn.Do("LLEN", "cname:myapp"))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(1, gocheck.Equals, cnames)
+	err = router.SetCName("myapptwo.com", "myapp")
+	c.Assert(err, gocheck.IsNil)
+	cnames, err = redis.Int(conn.Do("LLEN", "cname:myapp"))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(2, gocheck.Equals, cnames)
+	err = router.UnsetCName("myapp.com", "myapp")
+	c.Assert(err, gocheck.IsNil)
+	cnames, err = redis.Int(conn.Do("LLEN", "cname:myapp"))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(1, gocheck.Equals, cnames)
+	err = router.UnsetCName("myapptwo.com", "myapp")
+	c.Assert(err, gocheck.IsNil)
+	cnames, err = redis.Int(conn.Do("LLEN", "cname:myapp"))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(0, gocheck.Equals, cnames)
+}
+
 func (s *S) TestAddr(c *gocheck.C) {
 	router := hipacheRouter{}
 	err := router.AddBackend("tip")
