@@ -70,10 +70,7 @@ _tsr_dry:
 	./tsr api --dry --config ./etc/tsuru.conf
 	rm -f tsr
 
-_sh_tests:
-	@misc/test-hooks.bash
-
-test: _go_test _tsr_dry _sh_tests
+test: _go_test _tsr_dry
 
 _install_deadcode: git
 	go get $(GO_EXTRAFLAGS) github.com/remyoudompheng/go-misc/deadcode
