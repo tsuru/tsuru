@@ -57,6 +57,9 @@ Other improvements in tsr 0.7.0
   <https://github.com/tsuru/tsuru/issues/582>`_)
 - API: admin users now see all service instances in the service instances list
   endpoint (issue `#614 <https://github.com/tsuru/tsuru/issues/614>`_)
+- API: Handler that returns information about the deploy has implemented. Its
+  included the diff attribute that returns the difference between the last
+  commit and the preceding it.
 
 Backward incompatible changes
 =============================
