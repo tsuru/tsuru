@@ -552,17 +552,36 @@ func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func unsetCName(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	msg := "You must provide the cname."
+	if r.Body == nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
+	}
+	var v map[string][]string
+	err := json.NewDecoder(r.Body).Decode(&v)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Invalid JSON in request body."}
+	}
+	if _, ok := v["cname"]; !ok {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: msg}
+	}
 	u, err := t.User()
 	if err != nil {
 		return err
 	}
 	appName := r.URL.Query().Get(":app")
+	rawCName := strings.Join(v["cname"], ", ")
+	rec.Log(u.Email, "remove-cname", "app="+appName, "cnames="+rawCName)
 	app, err := getApp(appName, u)
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "unset-cname", "app="+appName)
-	return app.UnsetCName()
+	if err = app.RemoveCName(v["cname"]...); err == nil {
+		return nil
+	}
+	if err.Error() == "Invalid cname" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	return err
 }
 
 func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {

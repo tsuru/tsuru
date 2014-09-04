@@ -2068,7 +2068,8 @@ func (s *S) TestUnsetCNameHandler(c *gocheck.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
-	request, err := http.NewRequest("DELETE", url, nil)
+	b := strings.NewReader(`{"cname": ["foo.bar.com"]}`)
+	request, err := http.NewRequest("DELETE", url, b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = unsetCName(recorder, request, s.token)
@@ -2077,15 +2078,42 @@ func (s *S) TestUnsetCNameHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.CName, gocheck.DeepEquals, []string{})
 	action := testing.Action{
-		Action: "unset-cname",
+		Action: "remove-cname",
 		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + app.Name},
+		Extra:  []interface{}{"app=" + app.Name, "cnames=foo.bar.com"},
+	}
+	c.Assert(action, testing.IsRecorded)
+}
+
+func (s *S) TestUnsetTwoCnames(c *gocheck.C) {
+	a := app.App{Name: "leper", Teams: []string{s.team.Name}, CName: []string{"foo.bar.com", "bar.com"}}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs(a.Name).DropCollection()
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
+	b := strings.NewReader(`{"cname": ["foo.bar.com", "bar.com"]}`)
+	request, err := http.NewRequest("DELETE", url, b)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = unsetCName(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	app, err := app.GetByName(a.Name)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.CName, gocheck.DeepEquals, []string{})
+	action := testing.Action{
+		Action: "remove-cname",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=" + app.Name, "cnames=foo.bar.com, bar.com"},
 	}
 	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *S) TestUnsetCNameHandlerUnknownApp(c *gocheck.C) {
-	request, err := http.NewRequest("DELETE", "/apps/unknown/cname?:app=unknown", nil)
+	b := strings.NewReader(`{"cname": ["foo.bar.com"]}`)
+	request, err := http.NewRequest("DELETE", "/apps/unknown/cname?:app=unknown", b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = unsetCName(recorder, request, s.token)
@@ -2105,7 +2133,8 @@ func (s *S) TestUnsetCNameHandlerUserWithoutAccessToTheApp(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs(a.Name).DropCollection()
 	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
-	request, err := http.NewRequest("DELETE", url, nil)
+	b := strings.NewReader(`{"cname": ["foo.bar.com"]}`)
+	request, err := http.NewRequest("DELETE", url, b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = unsetCName(recorder, request, s.token)
