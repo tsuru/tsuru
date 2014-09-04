@@ -1436,7 +1436,7 @@ func (s *S) TestAppMarshalJSON(c *gocheck.C) {
 	expected["teams"] = []interface{}{"team1"}
 	expected["units"] = nil
 	expected["ip"] = "10.10.10.1"
-	expected["cname"] = "name.mycompany.com"
+	expected["cname"] = []interface{}{"name.mycompany.com"}
 	expected["owner"] = "appOwner"
 	expected["deploys"] = float64(7)
 	expected["memory"] = "64"
@@ -1473,7 +1473,7 @@ func (s *S) TestAppMarshalJSONReady(c *gocheck.C) {
 	expected["teams"] = []interface{}{"team1"}
 	expected["units"] = nil
 	expected["ip"] = "10.10.10.1"
-	expected["cname"] = "name.mycompany.com"
+	expected["cname"] = []interface{}{"name.mycompany.com"}
 	expected["owner"] = "appOwner"
 	expected["deploys"] = float64(7)
 	expected["memory"] = "64"

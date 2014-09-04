@@ -102,7 +102,7 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["units"] = app.Units()
 	result["repository"] = repository.ReadWriteURL(app.Name)
 	result["ip"] = app.Ip
-	result["cname"] = strings.Join(app.CName, ", ")
+	result["cname"] = app.CName
 	result["ready"] = app.State == "ready"
 	result["owner"] = app.Owner
 	result["deploys"] = app.Deploys
