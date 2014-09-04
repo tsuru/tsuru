@@ -93,8 +93,8 @@ func dockerCluster() *cluster.Cluster {
 			nodes = getDockerServers()
 			dCluster, _ = cluster.New(nil, clusterStorage, nodes...)
 		}
-		autoHealing, _ := config.GetBool("docker:healing:heal-nodes")
-		if autoHealing {
+		autoHealingNodes, _ := config.GetBool("docker:healing:heal-nodes")
+		if autoHealingNodes {
 			disabledSeconds, _ := config.GetDuration("docker:healing:disabled-time")
 			if disabledSeconds <= 0 {
 				disabledSeconds = 30
@@ -114,6 +114,10 @@ func dockerCluster() *cluster.Cluster {
 				failuresBeforeHealing: maxFailures,
 			}
 			dCluster.SetHealer(&healer)
+		}
+		healNodesTimeout, _ := config.GetDuration("docker:healing:heal-containers-timeout")
+		if healNodesTimeout > 0 {
+			go runContainerHealer(healNodesTimeout)
 		}
 		activeMonitoring, _ := config.GetDuration("docker:healing:active-monitoring-interval")
 		if activeMonitoring > 0 {
