@@ -617,7 +617,7 @@ func (s *S) TestAddCNameIsAFlaggedCommand(c *gocheck.C) {
 	var _ cmd.FlaggedCommand = &AddCName{}
 }
 
-func (s *S) TestUnsetCName(c *gocheck.C) {
+func (s *S) TestRemoveCName(c *gocheck.C) {
 	var (
 		called         bool
 		stdout, stderr bytes.Buffer
@@ -634,7 +634,7 @@ func (s *S) TestUnsetCName(c *gocheck.C) {
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
-	command := UnsetCName{}
+	command := RemoveCName{}
 	command.Flags().Parse(true, []string{"--app", "death"})
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
@@ -642,7 +642,7 @@ func (s *S) TestUnsetCName(c *gocheck.C) {
 	c.Assert(stdout.String(), gocheck.Equals, "cname successfully undefined.\n")
 }
 
-func (s *S) TestUnsetCNameWithoutTheFlag(c *gocheck.C) {
+func (s *S) TestRemoveCNameWithoutTheFlag(c *gocheck.C) {
 	var (
 		called         bool
 		stdout, stderr bytes.Buffer
@@ -660,24 +660,24 @@ func (s *S) TestUnsetCNameWithoutTheFlag(c *gocheck.C) {
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
-	err := (&UnsetCName{GuessingCommand{G: fake}}).Run(&context, client)
+	err := (&RemoveCName{GuessingCommand{G: fake}}).Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
 	c.Assert(stdout.String(), gocheck.Equals, "cname successfully undefined.\n")
 }
 
-func (s *S) TestUnsetCNameInfo(c *gocheck.C) {
+func (s *S) TestRemoveCNameInfo(c *gocheck.C) {
 	expected := &cmd.Info{
-		Name:    "unset-cname",
-		Usage:   "unset-cname [--app appname]",
-		Desc:    `unsets the current cname of your app.`,
-		MinArgs: 0,
+		Name:    "remove-cname",
+		Usage:   "remove-cname <cname> [--app appname]",
+		Desc:    `removes cnames of your app.`,
+		MinArgs: 1,
 	}
-	c.Assert((&UnsetCName{}).Info(), gocheck.DeepEquals, expected)
+	c.Assert((&RemoveCName{}).Info(), gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestUnsetCNameIsAFlaggedCommand(c *gocheck.C) {
-	var _ cmd.FlaggedCommand = &UnsetCName{}
+func (s *S) TestRemoveCNameIsAFlaggedCommand(c *gocheck.C) {
+	var _ cmd.FlaggedCommand = &RemoveCName{}
 }
 
 func (s *S) TestAppStartInfo(c *gocheck.C) {

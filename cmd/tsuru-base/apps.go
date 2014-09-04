@@ -473,12 +473,12 @@ func (c *AddCName) Info() *cmd.Info {
 	}
 }
 
-type UnsetCName struct {
+type RemoveCName struct {
 	GuessingCommand
 }
 
-func (c *UnsetCName) Run(context *cmd.Context, client *cmd.Client) error {
-	err := unsetCName(c.GuessingCommand, client)
+func (c *RemoveCName) Run(context *cmd.Context, client *cmd.Client) error {
+	err := unsetCName(context.Args, c.GuessingCommand, client)
 	if err != nil {
 		return err
 	}
@@ -486,16 +486,16 @@ func (c *UnsetCName) Run(context *cmd.Context, client *cmd.Client) error {
 	return nil
 }
 
-func (c *UnsetCName) Info() *cmd.Info {
+func (c *RemoveCName) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "unset-cname",
-		Usage:   "unset-cname [--app appname]",
-		Desc:    `unsets the current cname of your app.`,
-		MinArgs: 0,
+		Name:    "remove-cname",
+		Usage:   "remove-cname <cname> [--app appname]",
+		Desc:    `removes cnames of your app.`,
+		MinArgs: 1,
 	}
 }
 
-func unsetCName(g GuessingCommand, client *cmd.Client) error {
+func unsetCName(v []string, g GuessingCommand, client *cmd.Client) error {
 	appName, err := g.Guess()
 	if err != nil {
 		return err
@@ -504,7 +504,14 @@ func unsetCName(g GuessingCommand, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	request, err := http.NewRequest("DELETE", url, nil)
+	cnames := make(map[string][]string)
+	cnames["cname"] = v
+	c, err := json.Marshal(cnames)
+	if err != nil {
+		return err
+	}
+	body := bytes.NewReader(c)
+	request, err := http.NewRequest("DELETE", url, body)
 	if err != nil {
 		return err
 	}
