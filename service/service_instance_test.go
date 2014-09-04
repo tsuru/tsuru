@@ -651,9 +651,9 @@ func (s *InstanceSuite) TestProxy(c *gocheck.C) {
 
 func (s *InstanceSuite) TestGetIdentfier(c *gocheck.C) {
 	srv := ServiceInstance{Name: "mongodb"}
-	identfier := srv.GetIdentfier()
-	c.Assert(identfier, gocheck.Equals, srv.Name)
+	identifier := srv.GetIdentifier()
+	c.Assert(identifier, gocheck.Equals, srv.Name)
 	srv.Id = 10
-	identfier = srv.GetIdentfier()
-	c.Assert(identfier, gocheck.Equals, string(srv.Id))
+	identifier = srv.GetIdentifier()
+	c.Assert(identifier, gocheck.Equals, string(srv.Id))
 }

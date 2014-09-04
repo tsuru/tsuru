@@ -59,7 +59,7 @@ func DeleteInstance(si *ServiceInstance) error {
 	return conn.ServiceInstances().Remove(bson.M{"name": si.Name})
 }
 
-func (si *ServiceInstance) GetIdentfier() string {
+func (si *ServiceInstance) GetIdentifier() string {
 	if si.Id != 0 {
 		return string(si.Id)
 	}
