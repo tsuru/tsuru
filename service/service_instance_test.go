@@ -648,3 +648,12 @@ func (s *InstanceSuite) TestProxy(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(response.StatusCode, gocheck.Equals, http.StatusNoContent)
 }
+
+func (s *InstanceSuite) TestGetIdentfier(c *gocheck.C) {
+	srv := ServiceInstance{Name: "mongodb"}
+	identfier := srv.GetIdentfier()
+	c.Assert(identfier, gocheck.Equals, srv.Name)
+	srv.Id = 10
+	identfier = srv.GetIdentfier()
+	c.Assert(identfier, gocheck.Equals, string(srv.Id))
+}
