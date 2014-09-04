@@ -33,6 +33,7 @@ var (
 
 type ServiceInstance struct {
 	Name        string
+	Id          int
 	ServiceName string `bson:"service_name"`
 	PlanName    string `bson:"plan_name"`
 	Apps        []string
@@ -58,6 +59,13 @@ func DeleteInstance(si *ServiceInstance) error {
 	return conn.ServiceInstances().Remove(bson.M{"name": si.Name})
 }
 
+func (si *ServiceInstance) GetIdentfier() string {
+	if si.Id != 0 {
+		return string(si.Id)
+	}
+	return si.Name
+}
+
 // MarshalJSON marshals the ServiceName in json format.
 func (si *ServiceInstance) MarshalJSON() ([]byte, error) {
 	info, err := si.Info()
@@ -65,6 +73,7 @@ func (si *ServiceInstance) MarshalJSON() ([]byte, error) {
 		info = nil
 	}
 	data := map[string]interface{}{
+		"Id":          si.Id,
 		"Name":        si.Name,
 		"Teams":       si.Teams,
 		"Apps":        si.Apps,

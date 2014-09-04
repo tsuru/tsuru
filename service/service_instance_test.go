@@ -331,6 +331,7 @@ func (s *InstanceSuite) TestMarshalJSON(c *gocheck.C) {
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, gocheck.IsNil)
 	expected := map[string]interface{}{
+		"Id":          float64(0),
 		"Name":        "ql",
 		"Teams":       nil,
 		"Apps":        nil,
@@ -352,6 +353,7 @@ func (s *InstanceSuite) TestMarshalJSONWithoutInfo(c *gocheck.C) {
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, gocheck.IsNil)
 	expected := map[string]interface{}{
+		"Id":          float64(0),
 		"Name":        "ql",
 		"Teams":       nil,
 		"Apps":        nil,
@@ -373,6 +375,7 @@ func (s *InstanceSuite) TestMarshalJSONWithoutEndpoint(c *gocheck.C) {
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, gocheck.IsNil)
 	expected := map[string]interface{}{
+		"Id":          float64(0),
 		"Name":        "ql",
 		"Teams":       nil,
 		"Apps":        nil,
