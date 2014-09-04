@@ -27,8 +27,11 @@ import (
 	_ "github.com/tsuru/tsuru/router/testing"
 )
 
+var initializeDockerCluster func()
+
 func init() {
 	provision.Register("docker", &dockerProvisioner{})
+	initializeDockerCluster = initDockerCluster
 }
 
 func getRouter() (router.Router, error) {

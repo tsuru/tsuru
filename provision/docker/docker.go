@@ -75,54 +75,58 @@ func buildClusterStorage() (cluster.Storage, error) {
 	return nil, fmt.Errorf("Cluster Storage: Invalid value for docker:cluster:storage: %s", storageName)
 }
 
+func initDockerCluster() {
+	debug, _ := config.GetBool("debug")
+	clusterLog.SetDebug(debug)
+	clusterLog.SetLogger(log.GetStdLogger())
+	clusterStorage, err := buildClusterStorage()
+	if err != nil {
+		panic(err.Error())
+	}
+	var nodes []cluster.Node
+	if isSegregateScheduler() {
+		dCluster, _ = cluster.New(&segregatedScheduler{}, clusterStorage)
+	} else {
+		nodes = getDockerServers()
+		dCluster, _ = cluster.New(nil, clusterStorage, nodes...)
+	}
+	autoHealingNodes, _ := config.GetBool("docker:healing:heal-nodes")
+	if autoHealingNodes {
+		disabledSeconds, _ := config.GetDuration("docker:healing:disabled-time")
+		if disabledSeconds <= 0 {
+			disabledSeconds = 30
+		}
+		maxFailures, _ := config.GetInt("docker:healing:max-failures")
+		if maxFailures <= 0 {
+			maxFailures = 5
+		}
+		waitSecondsNewMachine, _ := config.GetDuration("docker:healing:wait-new-time")
+		if waitSecondsNewMachine <= 0 {
+			waitSecondsNewMachine = 5 * 60
+		}
+		healer := Healer{
+			cluster:               dCluster,
+			disabledTime:          disabledSeconds * time.Second,
+			waitTimeNewMachine:    waitSecondsNewMachine * time.Second,
+			failuresBeforeHealing: maxFailures,
+		}
+		dCluster.SetHealer(&healer)
+	}
+	healNodesTimeout, _ := config.GetDuration("docker:healing:heal-containers-timeout")
+	if healNodesTimeout > 0 {
+		go runContainerHealer(healNodesTimeout)
+	}
+	activeMonitoring, _ := config.GetDuration("docker:healing:active-monitoring-interval")
+	if activeMonitoring > 0 {
+		dCluster.StartActiveMonitoring(activeMonitoring * time.Second)
+	}
+}
+
 func dockerCluster() *cluster.Cluster {
 	cmutex.Lock()
 	defer cmutex.Unlock()
-	if dCluster == nil {
-		debug, _ := config.GetBool("debug")
-		clusterLog.SetDebug(debug)
-		clusterLog.SetLogger(log.GetStdLogger())
-		clusterStorage, err := buildClusterStorage()
-		if err != nil {
-			panic(err.Error())
-		}
-		var nodes []cluster.Node
-		if isSegregateScheduler() {
-			dCluster, _ = cluster.New(&segregatedScheduler{}, clusterStorage)
-		} else {
-			nodes = getDockerServers()
-			dCluster, _ = cluster.New(nil, clusterStorage, nodes...)
-		}
-		autoHealingNodes, _ := config.GetBool("docker:healing:heal-nodes")
-		if autoHealingNodes {
-			disabledSeconds, _ := config.GetDuration("docker:healing:disabled-time")
-			if disabledSeconds <= 0 {
-				disabledSeconds = 30
-			}
-			maxFailures, _ := config.GetInt("docker:healing:max-failures")
-			if maxFailures <= 0 {
-				maxFailures = 5
-			}
-			waitSecondsNewMachine, _ := config.GetDuration("docker:healing:wait-new-time")
-			if waitSecondsNewMachine <= 0 {
-				waitSecondsNewMachine = 5 * 60
-			}
-			healer := Healer{
-				cluster:               dCluster,
-				disabledTime:          disabledSeconds * time.Second,
-				waitTimeNewMachine:    waitSecondsNewMachine * time.Second,
-				failuresBeforeHealing: maxFailures,
-			}
-			dCluster.SetHealer(&healer)
-		}
-		healNodesTimeout, _ := config.GetDuration("docker:healing:heal-containers-timeout")
-		if healNodesTimeout > 0 {
-			go runContainerHealer(healNodesTimeout)
-		}
-		activeMonitoring, _ := config.GetDuration("docker:healing:active-monitoring-interval")
-		if activeMonitoring > 0 {
-			dCluster.StartActiveMonitoring(activeMonitoring * time.Second)
-		}
+	if dCluster == nil && initializeDockerCluster != nil {
+		initializeDockerCluster()
 	}
 	return dCluster
 }
