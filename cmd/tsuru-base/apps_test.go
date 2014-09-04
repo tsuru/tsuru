@@ -31,7 +31,7 @@ var appshortflag = &gnuflag.Flag{
 
 func (s *S) TestAppInfo(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `{"name":"app1","teamowner":"myteam","cname":"","ip":"myapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead", "units":[{"Ip":"10.10.10.10","Name":"app1/0","Status":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","Status":"started"}, {"Ip":"","Name":"app1/2","Status":"pending"}],"teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
+	result := `{"name":"app1","teamowner":"myteam","cname":[""],"ip":"myapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead", "units":[{"Ip":"10.10.10.10","Name":"app1/0","Status":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","Status":"started"}, {"Ip":"","Name":"app1/2","Status":"pending"}],"teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
 	expected := `Application: app1
 Repository: git@git.com:php.git
 Platform: php
@@ -89,7 +89,7 @@ Deploys: 7
 
 func (s *S) TestAppInfoEmptyUnit(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `{"name":"app1","teamowner":"","cname":"","ip":"myapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead", "units":[{"Name":"","Status":""}],"teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
+	result := `{"name":"app1","teamowner":"","cname":[""],"ip":"myapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead", "units":[{"Name":"","Status":""}],"teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
 	expected := `Application: app1
 Repository: git@git.com:php.git
 Platform: php
@@ -154,7 +154,7 @@ Units:
 
 func (s *S) TestAppInfoCName(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `{"name":"app1","teamowner":"myteam","ip":"myapp.tsuru.io","cname":"yourapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead","units":[{"Ip":"10.10.10.10","Name":"app1/0","Status":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","Status":"started"}, {"Ip":"","Name":"app1/2","Status":"pending"}],"Teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
+	result := `{"name":"app1","teamowner":"myteam","ip":"myapp.tsuru.io","cname":["yourapp.tsuru.io"],"platform":"php","repository":"git@git.com:php.git","state":"dead","units":[{"Ip":"10.10.10.10","Name":"app1/0","Status":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","Status":"started"}, {"Ip":"","Name":"app1/2","Status":"pending"}],"Teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
 	expected := `Application: app1
 Repository: git@git.com:php.git
 Platform: php
@@ -425,7 +425,7 @@ func (s *S) TestAppListNotReady(c *gocheck.C) {
 
 func (s *S) TestAppListCName(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `[{"ip":"10.10.10.10","cname":"app1.tsuru.io","name":"app1","ready":true,"units":[{"Name":"app1/0","Status":"started"}]}]`
+	result := `[{"ip":"10.10.10.10","cname":["app1.tsuru.io"],"name":"app1","ready":true,"units":[{"Name":"app1/0","Status":"started"}]}]`
 	expected := `+-------------+-------------------------+---------------+--------+
 | Application | Units State Summary     | Address       | Ready? |
 +-------------+-------------------------+---------------+--------+

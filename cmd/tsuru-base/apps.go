@@ -87,7 +87,7 @@ func (u *unit) Available() bool {
 
 type app struct {
 	Ip         string
-	CName      string
+	CName      []string
 	Name       string
 	Platform   string
 	Repository string
@@ -114,8 +114,9 @@ type container struct {
 }
 
 func (a *app) Addr() string {
-	if a.CName != "" {
-		return fmt.Sprintf("%s, %s", a.CName, a.Ip)
+	cnames := strings.Join(a.CName, ", ")
+	if cnames != "" {
+		return fmt.Sprintf("%s, %s", cnames, a.Ip)
 	}
 	return a.Ip
 }
