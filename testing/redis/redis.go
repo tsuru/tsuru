@@ -6,9 +6,10 @@ package redis
 
 import (
 	"errors"
+	"sync/atomic"
+
 	"github.com/garyburd/redigo/redis"
 	"launchpad.net/gocheck"
-	"sync/atomic"
 )
 
 // CmdType represents a type of command, it may be a send or a do.
