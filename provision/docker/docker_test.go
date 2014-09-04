@@ -159,7 +159,8 @@ func (s *S) TestContainerSetStatusStarted(c *gocheck.C) {
 	container := container{ID: "telnet"}
 	coll := collection()
 	defer coll.Close()
-	coll.Insert(container)
+	err := coll.Insert(container)
+	c.Assert(err, gocheck.IsNil)
 	defer coll.Remove(bson.M{"id": container.ID})
 	container.setStatus(provision.StatusStarted.String())
 	c2, err := getContainer(container.ID)
@@ -167,7 +168,8 @@ func (s *S) TestContainerSetStatusStarted(c *gocheck.C) {
 	c.Assert(c2.Status, gocheck.Equals, provision.StatusStarted.String())
 	c.Assert(c2.LastSuccessStatusUpdate.IsZero(), gocheck.Equals, false)
 	c2.LastSuccessStatusUpdate = time.Time{}
-	coll.Update(bson.M{"ID": c2.ID}, c2)
+	err = coll.Update(bson.M{"id": c2.ID}, c2)
+	c.Assert(err, gocheck.IsNil)
 	c2.setStatus(provision.StatusStarting.String())
 	c3, err := getContainer(container.ID)
 	c.Assert(err, gocheck.IsNil)
