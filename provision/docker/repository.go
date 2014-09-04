@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2"
@@ -102,4 +103,9 @@ func getContainerCountForAppName(appName string) (int, error) {
 	coll := collection()
 	defer coll.Close()
 	return coll.Find(bson.M{"appname": appName}).Count()
+}
+
+func listUnresponsiveContainers(maxUnresponsiveTime time.Duration) ([]container, error) {
+	now := time.Now().UTC()
+	return listContainersBy(bson.M{"lastsuccessstatusupdate": bson.M{"$lt": now.Add(-maxUnresponsiveTime)}})
 }

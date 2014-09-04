@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/safe"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -150,20 +151,22 @@ func hostToNodeAddress(host string) (string, error) {
 }
 
 type container struct {
-	ID               string
-	AppName          string
-	Type             string
-	IP               string
-	HostAddr         string
-	HostPort         string
-	SSHHostPort      string
-	PrivateKey       string
-	Status           string
-	Version          string
-	Image            string
-	Name             string
-	User             string
-	LastStatusUpdate time.Time
+	ID                      string
+	AppName                 string
+	Type                    string
+	IP                      string
+	HostAddr                string
+	HostPort                string
+	SSHHostPort             string
+	PrivateKey              string
+	Status                  string
+	Version                 string
+	Image                   string
+	Name                    string
+	User                    string
+	LastStatusUpdate        time.Time
+	LastSuccessStatusUpdate time.Time
+	LockedUntil             time.Time
 }
 
 // available returns true if the Status is Started or Unreachable.
@@ -277,10 +280,18 @@ func (c *container) networkInfo() (containerNetworkInfo, error) {
 func (c *container) setStatus(status string) error {
 	c.Status = status
 	c.LastStatusUpdate = time.Now().In(time.UTC)
+	updateData := bson.M{
+		"status":           c.Status,
+		"laststatusupdate": c.LastStatusUpdate,
+	}
+	if c.Status == provision.StatusStarted.String() ||
+		c.Status == provision.StatusStarting.String() {
+		c.LastSuccessStatusUpdate = c.LastStatusUpdate
+		updateData["lastsuccessstatusupdate"] = c.LastSuccessStatusUpdate
+	}
 	coll := collection()
 	defer coll.Close()
-	update := bson.M{"$set": bson.M{"status": c.Status, "laststatusupdate": c.LastStatusUpdate}}
-	return coll.Update(bson.M{"id": c.ID}, update)
+	return coll.Update(bson.M{"id": c.ID}, bson.M{"$set": updateData})
 }
 
 func (c *container) setImage(imageId string) error {
@@ -560,6 +571,36 @@ func (c *container) asUnit(a provision.App) provision.Unit {
 		Ip:      c.HostAddr,
 		Status:  provision.StatusBuilding,
 	}
+}
+
+func (c *container) lockForHealing(timeout time.Duration) (bool, error) {
+	coll := collection()
+	defer coll.Close()
+	now := time.Now().UTC()
+	until := now.Add(timeout)
+	err := coll.Update(bson.M{"id": c.ID, "lockeduntil": nil}, bson.M{"$set": bson.M{"lockeduntil": until}})
+	if err == mgo.ErrNotFound {
+		var dbCont container
+		err = coll.Find(bson.M{"id": c.ID}).One(&dbCont)
+		if dbCont.LockedUntil.After(now) {
+			return false, nil
+		}
+		err = coll.Update(bson.M{"id": c.ID, "lockeduntil": dbCont.LockedUntil}, bson.M{"$set": bson.M{"lockeduntil": until}})
+		if err == mgo.ErrNotFound {
+			return false, nil
+		}
+	}
+	if err == nil {
+		c.LockedUntil = until
+		return true, nil
+	}
+	return false, err
+}
+
+func (c *container) unlockForHealing() {
+	coll := collection()
+	defer coll.Close()
+	coll.Update(bson.M{"id": c.ID, "lockeduntil": c.LockedUntil}, bson.M{"$unset": bson.M{"lockeduntil": ""}})
 }
 
 // getImage returns the image name or id from an app.

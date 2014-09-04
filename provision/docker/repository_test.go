@@ -6,6 +6,7 @@ package docker
 
 import (
 	"sort"
+	"time"
 
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2"
@@ -190,4 +191,21 @@ func (S) TestcontainerSliceSort(c *gocheck.C) {
 	c.Assert(sort.IsSorted(containers), gocheck.Equals, false)
 	sort.Sort(containers)
 	c.Assert(sort.IsSorted(containers), gocheck.Equals, true)
+}
+
+func (S) TestListUnresponsiveContainers(c *gocheck.C) {
+	var result []container
+	coll := collection()
+	defer coll.Close()
+	now := time.Now().UTC()
+	coll.Insert(
+		container{ID: "c1", AppName: "app_time_test", LastSuccessStatusUpdate: now},
+		container{ID: "c2", AppName: "app_time_test", LastSuccessStatusUpdate: now.Add(-1 * time.Minute)},
+		container{ID: "c3", AppName: "app_time_test", LastSuccessStatusUpdate: now.Add(-5 * time.Minute)},
+	)
+	defer coll.RemoveAll(bson.M{"appname": "app_time_test"})
+	result, err := listUnresponsiveContainers(3 * time.Minute)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(len(result), gocheck.Equals, 1)
+	c.Assert(result[0].ID, gocheck.Equals, "c3")
 }
