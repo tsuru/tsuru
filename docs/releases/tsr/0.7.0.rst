@@ -39,6 +39,8 @@ What's new in tsr 0.7.0
   under upstart or other services like that are now able to call the ``reload``
   command and get the expected behaviour (issue `#898
   <https://github.com/tsuru/tsuru/issues/898>`_)
+- multiple cnames: now it's possible to app have multiple cnames. The ``tsuru set-cname`` and ``tsuru unset-cname`` commands
+  changed to ``tsuru add-cname`` and ``tsuru remove-cname`` respectively.
 
 Bug fixes
 =========
