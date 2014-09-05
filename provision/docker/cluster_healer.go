@@ -52,16 +52,11 @@ func (h *Healer) healNode(node cluster.Node) (bool, error) {
 		h.cluster.Register(failingAddr, nodeMetadata)
 		return false, fmt.Errorf("Can't auto-heal after %d failures for node %s: error registering new node: %s", failures, failingHost, err.Error())
 	}
-	containers, err := listContainersByHost(failingHost)
-	if err == nil {
-		for _, c := range containers {
-			err := healContainer(c)
-			if err != nil {
-				log.Errorf(err.Error())
-			}
-		}
-	} else {
-		log.Errorf("Unable to list containers for failing node %s, skipping container healing: %s", failingHost, err.Error())
+	var buf bytes.Buffer
+	encoder := json.NewEncoder(&buf)
+	err = moveContainers(failingHost, "", encoder)
+	if err != nil {
+		log.Errorf("Unable to move containers, skipping containers healing %q -> %q: %s: %s", failingHost, machine.Address, err.Error(), buf.String())
 	}
 	failingMachine, err := iaas.FindMachineByAddress(failingHost)
 	if err != nil {
@@ -102,18 +97,9 @@ func (h *Healer) HandleError(node cluster.Node) time.Duration {
 }
 
 func healContainer(cont container) error {
-	log.Debugf("Healing unresponsive container %s, no success since %s", cont.ID, cont.LastSuccessStatusUpdate)
-	locked, err := cont.lockForHealing(5 * time.Minute)
-	defer cont.unlockForHealing()
-	if err != nil {
-		return fmt.Errorf("Error trying to heal container %s: couldn't lock: %s", cont.ID, err.Error())
-	}
-	if !locked {
-		return nil
-	}
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
-	err = moveContainer(cont.ID, "", encoder)
+	err := moveContainer(cont.ID, "", encoder)
 	if err != nil {
 		return fmt.Errorf("Error trying to heal containers %s: couldn't move container: %s - %s", cont.ID, err.Error(), buf.String())
 	}
@@ -130,6 +116,7 @@ func runContainerHealer(maxUnresponsiveTime time.Duration) {
 			if cont.LastSuccessStatusUpdate.IsZero() {
 				continue
 			}
+			log.Errorf("Initiating healing process for container %s, unresponsive since %s.", cont.ID, cont.LastSuccessStatusUpdate)
 			err := healContainer(cont)
 			if err != nil {
 				log.Errorf(err.Error())

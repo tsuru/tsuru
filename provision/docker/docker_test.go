@@ -15,11 +15,8 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"runtime"
 	"sort"
 	"strings"
-	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
@@ -1006,86 +1003,4 @@ func (s *S) TestBuildClusterStorage(c *gocheck.C) {
 	config.Set("docker:cluster:storage", "xxxx")
 	_, err = buildClusterStorage()
 	c.Assert(err, gocheck.ErrorMatches, ".*Invalid value for docker:cluster:storage: xxxx.*")
-}
-
-func (s *S) TestContainerLockForHealing(c *gocheck.C) {
-	cont := container{
-		ID: "fool",
-	}
-	coll := collection()
-	defer coll.Close()
-	err := coll.Insert(cont)
-	c.Assert(err, gocheck.IsNil)
-	defer coll.Remove(bson.M{"id": "fool"})
-	locked, err := cont.lockForHealing(100 * time.Millisecond)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(locked, gocheck.Equals, true)
-	locked, err = cont.lockForHealing(100 * time.Millisecond)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(locked, gocheck.Equals, false)
-	time.Sleep(200 * time.Millisecond)
-	locked, err = cont.lockForHealing(100 * time.Millisecond)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(locked, gocheck.Equals, true)
-}
-
-func (s *S) TestContainerLockForHealingStress(c *gocheck.C) {
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(100))
-	cont := container{
-		ID: "fool",
-	}
-	coll := collection()
-	defer coll.Close()
-	err := coll.Insert(cont)
-	c.Assert(err, gocheck.IsNil)
-	defer coll.Remove(bson.M{"id": "fool"})
-	lockedCount := int32(0)
-	wg := sync.WaitGroup{}
-	for i := 0; i < 100; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			locked, err := cont.lockForHealing(200 * time.Millisecond)
-			c.Assert(err, gocheck.IsNil)
-			if locked {
-				atomic.AddInt32(&lockedCount, int32(1))
-			}
-		}()
-	}
-	wg.Wait()
-	c.Assert(lockedCount, gocheck.Equals, int32(1))
-	time.Sleep(400 * time.Millisecond)
-	wg = sync.WaitGroup{}
-	lockedAfterTimeout := int32(0)
-	for i := 0; i < 100; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			locked, err := cont.lockForHealing(300 * time.Millisecond)
-			c.Assert(err, gocheck.IsNil)
-			if locked {
-				atomic.AddInt32(&lockedAfterTimeout, int32(1))
-			}
-		}()
-	}
-	wg.Wait()
-	c.Assert(lockedAfterTimeout, gocheck.Equals, int32(1))
-}
-
-func (s *S) TestContainerUnlockForHealing(c *gocheck.C) {
-	cont := container{
-		ID: "fool",
-	}
-	coll := collection()
-	defer coll.Close()
-	err := coll.Insert(cont)
-	c.Assert(err, gocheck.IsNil)
-	defer coll.Remove(bson.M{"id": "fool"})
-	locked, err := cont.lockForHealing(100 * time.Millisecond)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(locked, gocheck.Equals, true)
-	cont.unlockForHealing()
-	locked, err = cont.lockForHealing(100 * time.Millisecond)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(locked, gocheck.Equals, true)
 }

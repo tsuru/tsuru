@@ -27,7 +27,6 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/safe"
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -112,14 +111,20 @@ func initDockerCluster() {
 		}
 		dCluster.SetHealer(&healer)
 	}
-	healNodesTimeout, _ := config.GetDuration("docker:healing:heal-containers-timeout")
-	if healNodesTimeout > 0 {
-		go runContainerHealer(healNodesTimeout)
+	healNodesSeconds, _ := config.GetDuration("docker:healing:heal-containers-timeout")
+	if healNodesSeconds > 0 {
+		go runContainerHealer(healNodesSeconds * time.Second)
 	}
 	activeMonitoring, _ := config.GetDuration("docker:healing:active-monitoring-interval")
 	if activeMonitoring > 0 {
 		dCluster.StartActiveMonitoring(activeMonitoring * time.Second)
 	}
+}
+
+var initializeDockerCluster func()
+
+func init() {
+	initializeDockerCluster = initDockerCluster
 }
 
 func dockerCluster() *cluster.Cluster {
@@ -579,36 +584,6 @@ func (c *container) asUnit(a provision.App) provision.Unit {
 		Ip:      c.HostAddr,
 		Status:  provision.StatusBuilding,
 	}
-}
-
-func (c *container) lockForHealing(timeout time.Duration) (bool, error) {
-	coll := collection()
-	defer coll.Close()
-	now := time.Now().UTC()
-	until := now.Add(timeout)
-	err := coll.Update(bson.M{"id": c.ID, "lockeduntil": nil}, bson.M{"$set": bson.M{"lockeduntil": until}})
-	if err == mgo.ErrNotFound {
-		var dbCont container
-		err = coll.Find(bson.M{"id": c.ID}).One(&dbCont)
-		if dbCont.LockedUntil.After(now) {
-			return false, nil
-		}
-		err = coll.Update(bson.M{"id": c.ID, "lockeduntil": dbCont.LockedUntil}, bson.M{"$set": bson.M{"lockeduntil": until}})
-		if err == mgo.ErrNotFound {
-			return false, nil
-		}
-	}
-	if err == nil {
-		c.LockedUntil = until
-		return true, nil
-	}
-	return false, err
-}
-
-func (c *container) unlockForHealing() {
-	coll := collection()
-	defer coll.Close()
-	coll.Update(bson.M{"id": c.ID, "lockeduntil": c.LockedUntil}, bson.M{"$unset": bson.M{"lockeduntil": ""}})
 }
 
 // getImage returns the image name or id from an app.
