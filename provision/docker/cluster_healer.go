@@ -22,7 +22,7 @@ type Healer struct {
 	failuresBeforeHealing int
 }
 
-func (h *Healer) healNode(node cluster.Node) (bool, error) {
+func (h *Healer) healNode(node *cluster.Node) (bool, error) {
 	failingAddr := node.Address
 	nodeMetadata := node.CleanMetadata()
 	failingHost := urlToHost(failingAddr)
@@ -33,6 +33,7 @@ func (h *Healer) healNode(node cluster.Node) (bool, error) {
 	}
 	machine, err := iaas.CreateMachineForIaaS(iaasName, nodeMetadata)
 	if err != nil {
+		node.ResetFailures()
 		return false, fmt.Errorf("Can't auto-heal after %d failures for node %s: error creating new machine: %s", failures, failingHost, err.Error())
 	}
 	newAddr, err := machine.FormatNodeAddress()
@@ -48,8 +49,9 @@ func (h *Healer) healNode(node cluster.Node) (bool, error) {
 	log.Debugf("New machine created during healing process: %s - Waiting for docker to start...", newAddr)
 	err = h.cluster.WaitAndRegister(newAddr, nodeMetadata, h.waitTimeNewMachine)
 	if err != nil {
-		machine.Destroy()
+		node.ResetFailures()
 		h.cluster.Register(failingAddr, nodeMetadata)
+		machine.Destroy()
 		return false, fmt.Errorf("Can't auto-heal after %d failures for node %s: error registering new node: %s", failures, failingHost, err.Error())
 	}
 	var buf bytes.Buffer
@@ -70,7 +72,7 @@ func (h *Healer) healNode(node cluster.Node) (bool, error) {
 	return true, nil
 }
 
-func (h *Healer) HandleError(node cluster.Node) time.Duration {
+func (h *Healer) HandleError(node *cluster.Node) time.Duration {
 	failures := node.FailureCount()
 	if failures < h.failuresBeforeHealing {
 		log.Debugf("%d failures detected in node %q, waiting for more failures before healing.", failures, node.Address)

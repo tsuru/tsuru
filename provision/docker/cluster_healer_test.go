@@ -130,7 +130,7 @@ func (s *S) TestHealerHealNode(c *gocheck.C) {
 	c.Assert(machines[0].Address, gocheck.Equals, "127.0.0.1")
 
 	nodes[0].Metadata["iaas"] = "my-healer-iaas"
-	created, err := healer.healNode(nodes[0])
+	created, err := healer.healNode(&nodes[0])
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(created, gocheck.Equals, true)
 	nodes, err = cluster.UnfilteredNodes()
@@ -178,7 +178,7 @@ func (s *S) TestHealerHealNodeWithoutIaaS(c *gocheck.C) {
 	nodes, err := cluster.UnfilteredNodes()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(nodes, gocheck.HasLen, 1)
-	created, err := healer.healNode(nodes[0])
+	created, err := healer.healNode(&nodes[0])
 	c.Assert(err, gocheck.ErrorMatches, ".*no IaaS information.*")
 	c.Assert(created, gocheck.Equals, false)
 	nodes, err = cluster.UnfilteredNodes()
@@ -207,6 +207,10 @@ func (s *S) TestHealerHealNodeCreateMachineError(c *gocheck.C) {
 		cluster.Node{Address: node1.URL()},
 	)
 	c.Assert(err, gocheck.IsNil)
+	node1.PrepareFailure("pingErr", "/_ping")
+	cluster.StartActiveMonitoring(100 * time.Millisecond)
+	time.Sleep(300 * time.Millisecond)
+	cluster.StopActiveMonitoring()
 	healer := Healer{
 		cluster:               cluster,
 		disabledTime:          0,
@@ -218,10 +222,12 @@ func (s *S) TestHealerHealNodeCreateMachineError(c *gocheck.C) {
 	c.Assert(nodes, gocheck.HasLen, 1)
 	c.Assert(urlPort(nodes[0].Address), gocheck.Equals, urlPort(node1.URL()))
 	c.Assert(urlToHost(nodes[0].Address), gocheck.Equals, "127.0.0.1")
+	c.Assert(nodes[0].FailureCount() > 0, gocheck.Equals, true)
 	nodes[0].Metadata["iaas"] = "my-healer-iaas"
-	created, err := healer.healNode(nodes[0])
+	created, err := healer.healNode(&nodes[0])
 	c.Assert(err, gocheck.ErrorMatches, ".*my create machine error.*")
 	c.Assert(created, gocheck.Equals, false)
+	c.Assert(nodes[0].FailureCount(), gocheck.Equals, 0)
 	nodes, err = cluster.UnfilteredNodes()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(nodes, gocheck.HasLen, 1)
@@ -264,7 +270,7 @@ func (s *S) TestHealerHealNodeFormatError(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(machines, gocheck.HasLen, 1)
 	c.Assert(machines[0].Address, gocheck.Equals, "127.0.0.1")
-	created, err := healer.healNode(nodes[0])
+	created, err := healer.healNode(&nodes[0])
 	c.Assert(err, gocheck.ErrorMatches, ".*error formatting address.*")
 	c.Assert(created, gocheck.Equals, false)
 	nodes, err = cluster.UnfilteredNodes()
@@ -304,6 +310,10 @@ func (s *S) TestHealerHealNodeWaitAndRegisterError(c *gocheck.C) {
 		cluster.Node{Address: node1.URL()},
 	)
 	c.Assert(err, gocheck.IsNil)
+	node1.PrepareFailure("pingErr", "/_ping")
+	cluster.StartActiveMonitoring(100 * time.Millisecond)
+	time.Sleep(300 * time.Millisecond)
+	cluster.StopActiveMonitoring()
 	healer := Healer{
 		cluster:               cluster,
 		disabledTime:          0,
@@ -315,10 +325,12 @@ func (s *S) TestHealerHealNodeWaitAndRegisterError(c *gocheck.C) {
 	c.Assert(nodes, gocheck.HasLen, 1)
 	c.Assert(urlPort(nodes[0].Address), gocheck.Equals, urlPort(node1.URL()))
 	c.Assert(urlToHost(nodes[0].Address), gocheck.Equals, "127.0.0.1")
+	c.Assert(nodes[0].FailureCount() > 0, gocheck.Equals, true)
 	nodes[0].Metadata["iaas"] = "my-healer-iaas"
-	created, err := healer.healNode(nodes[0])
+	created, err := healer.healNode(&nodes[0])
 	c.Assert(err, gocheck.ErrorMatches, ".*error registering new node.*")
 	c.Assert(created, gocheck.Equals, false)
+	c.Assert(nodes[0].FailureCount(), gocheck.Equals, 0)
 	nodes, err = cluster.UnfilteredNodes()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(nodes, gocheck.HasLen, 1)
@@ -400,7 +412,7 @@ func (s *S) TestHealerHealNodeDestroyError(c *gocheck.C) {
 	c.Assert(machines[0].Address, gocheck.Equals, "127.0.0.1")
 
 	nodes[0].Metadata["iaas"] = "my-healer-iaas"
-	created, err := healer.healNode(nodes[0])
+	created, err := healer.healNode(&nodes[0])
 	c.Assert(err, gocheck.ErrorMatches, "(?s)Unable to destroy machine.*my destroy error")
 	c.Assert(created, gocheck.Equals, true)
 
