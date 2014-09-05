@@ -606,7 +606,7 @@ func (s *S) TestAddCNameFailure(c *gocheck.C) {
 func (s *S) TestAddCNameInfo(c *gocheck.C) {
 	expected := &cmd.Info{
 		Name:    "add-cname",
-		Usage:   "add-cname <cname> [--app appname]",
+		Usage:   "add-cname <cname> [<cname> ...] [--app appname]",
 		Desc:    `adds a cname for your app.`,
 		MinArgs: 1,
 	}
@@ -669,7 +669,7 @@ func (s *S) TestRemoveCNameWithoutTheFlag(c *gocheck.C) {
 func (s *S) TestRemoveCNameInfo(c *gocheck.C) {
 	expected := &cmd.Info{
 		Name:    "remove-cname",
-		Usage:   "remove-cname <cname> [--app appname]",
+		Usage:   "remove-cname <cname> [<cname> ...] [--app appname]",
 		Desc:    `removes cnames of your app.`,
 		MinArgs: 1,
 	}
