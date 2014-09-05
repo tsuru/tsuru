@@ -93,7 +93,7 @@ func (c *Client) Create(instance *ServiceInstance, user string) error {
 
 func (c *Client) Destroy(instance *ServiceInstance) error {
 	log.Debug("Attempting to call destroy of service instance " + instance.Name + " at " + instance.ServiceName + " api")
-	resp, err := c.issueRequest("/resources/"+instance.Name, "DELETE", nil)
+	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier(), "DELETE", nil)
 	if err == nil && resp.StatusCode > 299 {
 		msg := "Failed to destroy the instance " + instance.Name + ": " + c.buildErrorMessage(err, resp)
 		log.Error(msg)
@@ -110,7 +110,7 @@ func (c *Client) Bind(instance *ServiceInstance, app bind.App, unit bind.Unit) (
 		"unit-host": {unit.GetIp()},
 		"app-host":  {app.GetIp()},
 	}
-	resp, err := c.issueRequest("/resources/"+instance.Name, "POST", params)
+	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier(), "POST", params)
 	if err != nil {
 		if m, _ := regexp.MatchString("", err.Error()); m {
 			return nil, fmt.Errorf("%s api is down.", instance.Name)
@@ -136,7 +136,7 @@ func (c *Client) Bind(instance *ServiceInstance, app bind.App, unit bind.Unit) (
 func (c *Client) Unbind(instance *ServiceInstance, unit bind.Unit) error {
 	log.Debug("Attempting to call unbind of service instance " + instance.Name + " and unit " + unit.GetIp() + " at " + instance.ServiceName + " api")
 	var resp *http.Response
-	url := "/resources/" + instance.Name + "/hostname/" + unit.GetIp()
+	url := "/resources/" + instance.GetIdentifier() + "/hostname/" + unit.GetIp()
 	resp, err := c.issueRequest(url, "DELETE", nil)
 	if err == nil && resp.StatusCode > 299 {
 		msg := fmt.Sprintf("Failed to unbind (%q): %s", url, c.buildErrorMessage(err, resp))
@@ -158,7 +158,7 @@ func (c *Client) Status(instance *ServiceInstance) (string, error) {
 		resp *http.Response
 		err  error
 	)
-	url := "/resources/" + instance.Name + "/status"
+	url := "/resources/" + instance.GetIdentifier() + "/status"
 	if resp, err = c.issueRequest(url, "GET", nil); err == nil {
 		switch resp.StatusCode {
 		case 202:
@@ -181,7 +181,7 @@ func (c *Client) Status(instance *ServiceInstance) (string, error) {
 // GET /resources/<name>
 func (c *Client) Info(instance *ServiceInstance) ([]map[string]string, error) {
 	log.Debug("Attempting to call info of service instance " + instance.Name + " at " + instance.ServiceName + " api")
-	url := "/resources/" + instance.Name
+	url := "/resources/" + instance.GetIdentifier()
 	resp, err := c.issueRequest(url, "GET", nil)
 	if err != nil || resp.StatusCode != 200 {
 		return nil, err
