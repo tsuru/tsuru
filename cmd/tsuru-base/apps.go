@@ -467,7 +467,7 @@ func (c *AddCName) Run(context *cmd.Context, client *cmd.Client) error {
 func (c *AddCName) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "add-cname",
-		Usage:   "add-cname <cname> [--app appname]",
+		Usage:   "add-cname <cname> [<cname> ...] [--app appname]",
 		Desc:    `adds a cname for your app.`,
 		MinArgs: 1,
 	}
@@ -489,7 +489,7 @@ func (c *RemoveCName) Run(context *cmd.Context, client *cmd.Client) error {
 func (c *RemoveCName) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "remove-cname",
-		Usage:   "remove-cname <cname> [--app appname]",
+		Usage:   "remove-cname <cname> [<cname> ...] [--app appname]",
 		Desc:    `removes cnames of your app.`,
 		MinArgs: 1,
 	}
