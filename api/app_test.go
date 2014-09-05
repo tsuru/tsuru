@@ -2059,7 +2059,7 @@ func (s *S) TestAddCNameHandlerInvalidCName(c *gocheck.C) {
 	c.Assert(e.Message, gocheck.Equals, "Invalid cname")
 }
 
-func (s *S) TestUnsetCNameHandler(c *gocheck.C) {
+func (s *S) TestRemoveCNameHandler(c *gocheck.C) {
 	a := app.App{Name: "leper", Teams: []string{s.team.Name}, CName: []string{"foo.bar.com"}}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -2111,7 +2111,7 @@ func (s *S) TestUnsetTwoCnames(c *gocheck.C) {
 	c.Assert(action, testing.IsRecorded)
 }
 
-func (s *S) TestUnsetCNameHandlerUnknownApp(c *gocheck.C) {
+func (s *S) TestRemoveCNameHandlerUnknownApp(c *gocheck.C) {
 	b := strings.NewReader(`{"cname": ["foo.bar.com"]}`)
 	request, err := http.NewRequest("DELETE", "/apps/unknown/cname?:app=unknown", b)
 	c.Assert(err, gocheck.IsNil)
@@ -2123,7 +2123,7 @@ func (s *S) TestUnsetCNameHandlerUnknownApp(c *gocheck.C) {
 	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
 }
 
-func (s *S) TestUnsetCNameHandlerUserWithoutAccessToTheApp(c *gocheck.C) {
+func (s *S) TestRemoveCNameHandlerUserWithoutAccessToTheApp(c *gocheck.C) {
 	a := app.App{
 		Name:     "lost",
 		Platform: "vougan",
