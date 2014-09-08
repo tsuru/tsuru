@@ -428,36 +428,24 @@ docker:segregate
 
 Enable segregate scheduler. See :doc:`/managing/segregate-scheduler` for details.
 
+.. _config_cluster_storage:
+
 docker:cluster:storage
 ++++++++++++++++++++++
 
-Storage engine used by the cluster to save information about docker nodes, images
-and containers. Possible values are ``redis`` and ``mongodb``. The recommended
-engine is ``mongodb`` and support for ``redis`` may be dropped in the future.
+This setting has been removed. You shouldn't define it anymore, the only storage
+available for the docker cluster is now ``mongodb``.
 
 docker:cluster:mongo-url
 ++++++++++++++++++++++++
 
-Connection URL to the mongodb server must be set if ``docker:cluster:storage`` is
-``mongodb``.
+Connection URL to the mongodb server used to store information about the docker
+cluster.
 
 docker:cluster:mongo-database
 +++++++++++++++++++++++++++++
 
-Database name to be used, must be set if ``docker:cluster:storage`` is
-``mongodb``.
-
-docker:cluster:redis-server
-+++++++++++++++++++++++++++++
-
-Redis server address to be used by the cluster must be set if
-``docker:cluster:storage`` is ``redis``.
-
-docker:cluster:redis-prefix
-+++++++++++++++++++++++++++++
-
-Prefix to redis keys saved by the cluster must be set if
-``docker:cluster:storage`` is ``redis``.
+Database name to be used to store information about the docker cluster.
 
 docker:run-cmd:bin
 ++++++++++++++++++

@@ -70,3 +70,8 @@ Backward incompatible changes
   with tsuru server
 - tsuru no longer accepts teams with space in the name (issue `#674
   <https://github.com/tsuru/tsuru/issues/674>`_)
+- tsuru no longer supports ``docker:cluster:storage`` set to ``redis``, the only
+  storage available is now ``mongodb``. See :ref:`config reference
+  <config_cluster_storage>` for more details. Also, there's a `python script
+  <https://gist.github.com/cezarsa/d2c8b8db611af9a2d67d>`_ that can be used to
+  migrate from ``redis`` to ``mongodb``.
