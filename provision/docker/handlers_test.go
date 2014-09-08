@@ -24,7 +24,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/testing"
-	"github.com/tsuru/tsuru/testing/redis"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
@@ -61,8 +60,8 @@ func (s *HandlersSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("docker:collection", "docker_handler_suite")
 	config.Set("docker:run-cmd:port", 8888)
 	config.Set("docker:router", "fake")
-	config.Set("docker:cluster:storage", "redis")
-	config.Set("docker:cluster:redis-prefix", "redis-scheduler-storage-handlers-test")
+	config.Set("docker:cluster:mongo-url", "127.0.0.1:27017")
+	config.Set("docker:cluster:mongo-database", "docker_provision_handlers_tests_cluster_stor")
 	config.Set("iaas:default", "test-iaas")
 	config.Set("iaas:node-protocol", "http")
 	config.Set("iaas:node-port", 1234)
@@ -74,7 +73,8 @@ func (s *HandlersSuite) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *HandlersSuite) SetUpTest(c *gocheck.C) {
-	redis.ClearRedisKeys("redis-scheduler-storage-handlers-test*", c)
+	err := clearClusterStorage()
+	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *HandlersSuite) TearDownSuite(c *gocheck.C) {

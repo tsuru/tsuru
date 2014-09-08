@@ -22,7 +22,6 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	clusterLog "github.com/tsuru/docker-cluster/log"
 	"github.com/tsuru/docker-cluster/storage/mongodb"
-	"github.com/tsuru/docker-cluster/storage/redis"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
@@ -53,25 +52,16 @@ func isSegregateScheduler() bool {
 }
 
 func buildClusterStorage() (cluster.Storage, error) {
-	storageName, _ := config.GetString("docker:cluster:storage")
-	if storageName == "redis" {
-		redisServer, _ := config.GetString("docker:cluster:redis-server")
-		prefix, _ := config.GetString("docker:cluster:redis-prefix")
-		if password, err := config.GetString("docker:cluster:redis-password"); err == nil {
-			return redis.AuthenticatedRedis(redisServer, password, prefix), nil
-		} else {
-			return redis.Redis(redisServer, prefix), nil
-		}
-	} else if storageName == "mongodb" {
-		mongoUrl, _ := config.GetString("docker:cluster:mongo-url")
-		mongoDatabase, _ := config.GetString("docker:cluster:mongo-database")
-		storage, err := mongodb.Mongodb(mongoUrl, mongoDatabase)
-		if err != nil {
-			return nil, fmt.Errorf("Cluster Storage: Unable to connnect to mongodb: %s", err.Error())
-		}
-		return storage, nil
+	mongoUrl, _ := config.GetString("docker:cluster:mongo-url")
+	mongoDatabase, _ := config.GetString("docker:cluster:mongo-database")
+	if mongoUrl == "" || mongoDatabase == "" {
+		return nil, fmt.Errorf("Cluster Storage: docker:cluster:{mongo-url,mongo-database} must be set.")
 	}
-	return nil, fmt.Errorf("Cluster Storage: Invalid value for docker:cluster:storage: %s", storageName)
+	storage, err := mongodb.Mongodb(mongoUrl, mongoDatabase)
+	if err != nil {
+		return nil, fmt.Errorf("Cluster Storage: Unable to connnect to mongodb: %s", err.Error())
+	}
+	return storage, nil
 }
 
 func initDockerCluster() {

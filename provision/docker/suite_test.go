@@ -20,7 +20,7 @@ import (
 	rtesting "github.com/tsuru/tsuru/router/testing"
 	"github.com/tsuru/tsuru/service"
 	tTesting "github.com/tsuru/tsuru/testing"
-	"github.com/tsuru/tsuru/testing/redis"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
@@ -62,8 +62,8 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("docker:run-cmd:port", "8888")
 	config.Set("docker:ssh:add-key-cmd", "/var/lib/tsuru/add-key")
 	config.Set("docker:ssh:user", s.sshUser)
-	config.Set("docker:cluster:storage", "redis")
-	config.Set("docker:cluster:redis-prefix", "redis-scheduler-storage-test")
+	config.Set("docker:cluster:mongo-url", "127.0.0.1:27017")
+	config.Set("docker:cluster:mongo-database", "docker_provision_tests_cluster_stor")
 	config.Set("queue", "fake")
 	s.deployCmd = "/var/lib/tsuru/deploy"
 	s.runBin = "/usr/local/bin/circusd"
@@ -90,8 +90,34 @@ func (s *S) SetUpTest(c *gocheck.C) {
 	coll := collection()
 	defer coll.Close()
 	coll.RemoveAll(nil)
-	redis.ClearRedisKeys("redis-scheduler-storage-test*", c)
+	err = clearClusterStorage()
+	c.Assert(err, gocheck.IsNil)
 	rtesting.FakeRouter.Reset()
+}
+
+func clearClusterStorage() error {
+	clusterDbUrl, _ := config.GetString("docker:cluster:mongo-url")
+	clusterDbName, _ := config.GetString("docker:cluster:mongo-database")
+	session, err := mgo.Dial(clusterDbUrl)
+	if err != nil {
+		return err
+	}
+	db := session.DB(clusterDbName)
+	colls, err := db.CollectionNames()
+	if err != nil {
+		return err
+	}
+	for _, collName := range colls {
+		if strings.Index(collName, ".") != -1 {
+			continue
+		}
+		_, err = db.C(collName).RemoveAll(nil)
+		if err != nil {
+			return err
+		}
+	}
+	session.Close()
+	return nil
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {

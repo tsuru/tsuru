@@ -991,16 +991,14 @@ func (s *S) TestUnitFromContainer(c *gocheck.C) {
 }
 
 func (s *S) TestBuildClusterStorage(c *gocheck.C) {
+	defer config.Set("docker:cluster:mongo-url", "127.0.0.1:27017")
+	defer config.Set("docker:cluster:mongo-database", "docker_provision_tests_cluster_stor")
+	config.Unset("docker:cluster:mongo-url")
 	_, err := buildClusterStorage()
-	c.Assert(err, gocheck.IsNil)
-	config.Unset("docker:cluster:storage")
-	defer config.Set("docker:cluster:storage", "redis")
+	c.Assert(err, gocheck.ErrorMatches, ".*docker:cluster:{mongo-url,mongo-database} must be set.")
+	config.Set("docker:cluster:mongo-url", "127.0.0.1:27017")
+	config.Unset("docker:cluster:mongo-database")
 	_, err = buildClusterStorage()
-	c.Assert(err, gocheck.ErrorMatches, ".*Invalid value for docker:cluster:storage.*")
-	config.Set("docker:cluster:storage", "mongodb")
-	_, err = buildClusterStorage()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, gocheck.ErrorMatches, ".*docker:cluster:{mongo-url,mongo-database} must be set.")
 	config.Set("docker:cluster:storage", "xxxx")
-	_, err = buildClusterStorage()
-	c.Assert(err, gocheck.ErrorMatches, ".*Invalid value for docker:cluster:storage: xxxx.*")
 }
