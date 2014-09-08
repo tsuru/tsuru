@@ -813,6 +813,33 @@ func (s *S) TestProvisionerPlatformAddShouldValidateArgs(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, "dockerfile parameter should be an url.")
 }
 
+func (s *S) TestProvisionerPlatformAddWithoutNode(c *gocheck.C) {
+	var requests []*http.Request
+	server, err := dtesting.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+		requests = append(requests, r)
+	})
+	c.Assert(err, gocheck.IsNil)
+	defer server.Stop()
+	config.Set("docker:registry", "localhost:3030")
+	defer config.Unset("docker:registry")
+	var storage cluster.MapStorage
+	storage.StoreImage("localhost:3030/base", server.URL())
+	cmutex.Lock()
+	oldDockerCluster := dCluster
+	dCluster, _ = cluster.New(nil, &storage)
+	cmutex.Unlock()
+	defer func() {
+		cmutex.Lock()
+		dCluster = oldDockerCluster
+		cmutex.Unlock()
+	}()
+	args := make(map[string]string)
+	args["dockerfile"] = "http://localhost/Dockerfile"
+	p := dockerProvisioner{}
+	err = p.PlatformAdd("test", args, bytes.NewBuffer(nil))
+	c.Assert(err, gocheck.NotNil)
+}
+
 func (s *S) TestProvisionerPlatformRemove(c *gocheck.C) {
 	registryServer := httptest.NewServer(nil)
 	u, _ := url.Parse(registryServer.URL)
