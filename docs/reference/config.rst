@@ -479,6 +479,55 @@ docker:ssh:user
 The user used to connect via ssh to running containers. The value expected for
 basebuilder platforms is ``ubuntu``.
 
+.. _config_healing:
+
+docker:healing:heal-nodes
++++++++++++++++++++++++++
+
+Boolean value that indicates whether tsuru should try to heal nodes that have
+failed a specified number of times. Healing nodes is only available if the node
+was created by tsuru itself using the IaaS configuration. Defaults to ``false``.
+
+docker:healing:active-monitoring-interval
++++++++++++++++++++++++++++++++++++++++++
+
+Number of seconds between calls to <server>/_ping in each one of the docker nodes.
+If this value is 0 or unset tsuru will never call the ping URL. Defaults to 0.
+
+docker:healing:disabled-time
+++++++++++++++++++++++++++++
+
+Number of seconds tsuru disables a node after a failure. This setting is only
+valid if ``heal-nodes`` is set to ``true``. Defaults to 30 seconds.
+
+docker:healing:max-failures
++++++++++++++++++++++++++++
+
+Number of consecutive failures a node should have before triggering a healing
+operation. Only valid if ``heal-nodes`` is set to ``true``. Defaults to 5.
+
+docker:healing:wait-new-time
+++++++++++++++++++++++++++++
+
+Number of seconds tsuru should wait for the creation of a new node during the
+healing process. Only valid if ``heal-nodes`` is set to ``true``. Defaults to 300
+seconds (5 minutes).
+
+docker:healing:heal-containers-timeout
+++++++++++++++++++++++++++++++++++++++
+
+Number of seconds a container should be unresponsive before triggering the
+recreation of the container. A container is deemed unresponsive if it doesn't call
+the set unit status URL (/apps/{app}/units/{unit}) with a ``started`` status. If
+this value is 0 or unset tsuru will never try to heal unresponsive containers.
+Defaults to 0.
+
+docker:healing:events_collection
+++++++++++++++++++++++++++++++++
+
+Collection name in mongodb used to store information about triggered healing
+events. Defaults to ``healing_events``.
+
 .. _iaas_configuration:
 
 IaaS configuration

@@ -39,8 +39,13 @@ What's new in tsr 0.7.0
   under upstart or other services like that are now able to call the ``reload``
   command and get the expected behaviour (issue `#898
   <https://github.com/tsuru/tsuru/issues/898>`_)
-- multiple cnames: now it's possible to app have multiple cnames. The ``tsuru set-cname`` and ``tsuru unset-cname`` commands
-  changed to ``tsuru add-cname`` and ``tsuru remove-cname`` respectively (issue `#677 <https://github.com/tsuru/tsuru/issues/677>`_).
+- multiple cnames: now it's possible to app have multiple cnames. The ``tsuru set-
+  cname`` and ``tsuru unset-cname`` commands changed to ``tsuru add-cname`` and
+  ``tsuru remove-cname`` respectively (issue `#677
+  <https://github.com/tsuru/tsuru/issues/677>`_).
+- tsuru is now able to heal failing nodes and containers automatically, this is
+  disabled by default. Instructions can be found in the :ref:`config reference
+  <config_healing>`
 
 Bug fixes
 =========
