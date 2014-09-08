@@ -267,7 +267,8 @@ func rebalanceContainers(encoder *json.Encoder, dryRun bool) error {
 		if err != nil {
 			return err
 		}
-		maxContPerUnit := int(math.Ceil(float64(appInfo.Count) / float64(len(possibleDests))))
+		maxContPerUnit := appInfo.Count / len(possibleDests)
+		overflowHosts := appInfo.Count % len(possibleDests)
 		pipe := coll.Pipe([]bson.M{
 			{"$match": bson.M{"hostaddr": bson.M{"$ne": ""}, "appname": appInfo.Name}},
 			{"$group": bson.M{
@@ -296,6 +297,13 @@ func rebalanceContainers(encoder *json.Encoder, dryRun bool) error {
 			toMoveCount := host.Count - maxContPerUnit
 			if toMoveCount <= 0 {
 				continue
+			}
+			if overflowHosts > 0 {
+				overflowHosts--
+				toMoveCount--
+				if toMoveCount <= 0 {
+					continue
+				}
 			}
 			anythingDone = true
 			logProgress(encoder, "Trying to move %d units for %q from %s...", toMoveCount, appInfo.Name, host.HostAddr)
