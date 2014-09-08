@@ -48,11 +48,11 @@ func (s *S) TestSchedulerSchedule(c *gocheck.C) {
 	var scheduler segregatedScheduler
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	c.Assert(err, gocheck.IsNil)
-	err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
+	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
 	c.Assert(err, gocheck.IsNil)
-	err = clusterInstance.Register("http://url1:1234", map[string]string{"pool": "pool1"})
+	_, err = clusterInstance.Register("http://url1:1234", map[string]string{"pool": "pool1"})
 	c.Assert(err, gocheck.IsNil)
-	err = clusterInstance.Register("http://url2:1234", map[string]string{"pool": "pool1"})
+	_, err = clusterInstance.Register("http://url2:1234", map[string]string{"pool": "pool1"})
 	c.Assert(err, gocheck.IsNil)
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
 	node, err := scheduler.Schedule(clusterInstance, opts, a1.Name)
@@ -95,11 +95,11 @@ func (s *S) TestSchedulerScheduleNoName(c *gocheck.C) {
 	var scheduler segregatedScheduler
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	c.Assert(err, gocheck.IsNil)
-	err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
+	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
 	c.Assert(err, gocheck.IsNil)
-	err = clusterInstance.Register("http://url1:1234", map[string]string{"pool": "pool1"})
+	_, err = clusterInstance.Register("http://url1:1234", map[string]string{"pool": "pool1"})
 	c.Assert(err, gocheck.IsNil)
-	err = clusterInstance.Register("http://url2:1234", map[string]string{"pool": "pool1"})
+	_, err = clusterInstance.Register("http://url2:1234", map[string]string{"pool": "pool1"})
 	c.Assert(err, gocheck.IsNil)
 	opts := docker.CreateContainerOptions{}
 	node, err := scheduler.Schedule(clusterInstance, opts, a1.Name)
@@ -128,7 +128,7 @@ func (s *S) TestSchedulerScheduleFallback(c *gocheck.C) {
 	var scheduler segregatedScheduler
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	c.Assert(err, gocheck.IsNil)
-	err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
+	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
 	c.Assert(err, gocheck.IsNil)
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
 	node, err := scheduler.Schedule(clusterInstance, opts, a1.Name)
@@ -158,7 +158,7 @@ func (s *S) TestSchedulerScheduleTeamOwner(c *gocheck.C) {
 	var scheduler segregatedScheduler
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	c.Assert(err, gocheck.IsNil)
-	err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
+	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
 	c.Assert(err, gocheck.IsNil)
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
 	node, err := scheduler.Schedule(clusterInstance, opts, a1.Name)

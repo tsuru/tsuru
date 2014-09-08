@@ -92,7 +92,7 @@ func addNodeForParams(params map[string]string, isRegister bool) (map[string]str
 	if err != nil {
 		return response, err
 	}
-	err = dockerCluster().Register(address, params)
+	_, err = dockerCluster().Register(address, params)
 	if err != nil {
 		return response, err
 	}
@@ -178,7 +178,7 @@ func moveContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		return fmt.Errorf("Invalid params: id: %s - to: %s", contId, to)
 	}
 	encoder := json.NewEncoder(w)
-	err = moveContainer(contId, to, encoder)
+	_, err = moveContainer(contId, to, encoder)
 	if err != nil {
 		logProgress(encoder, "Error trying to move container: %s", err.Error())
 	} else {

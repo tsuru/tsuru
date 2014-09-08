@@ -125,7 +125,7 @@ func (s *S) TestMoveContainer(c *gocheck.C) {
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
-	err = moveContainer(addedConts[0].ID[0:6], "127.0.0.1", encoder)
+	_, err = moveContainer(addedConts[0].ID[0:6], "127.0.0.1", encoder)
 	c.Assert(err, gocheck.IsNil)
 	containers, err := listContainersByHost("localhost")
 	c.Assert(len(containers), gocheck.Equals, 1)

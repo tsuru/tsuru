@@ -129,12 +129,12 @@ func runCreateUnitsPipeline(w io.Writer, a provision.App, toAddCount int) ([]con
 	return pipeline.Result().([]container), nil
 }
 
-func moveOneContainer(c container, toHost string, errors chan error, wg *sync.WaitGroup, encoder *json.Encoder, locker *appLocker) {
+func moveOneContainer(c container, toHost string, errors chan error, wg *sync.WaitGroup, encoder *json.Encoder, locker *appLocker) container {
 	defer wg.Done()
 	locked := locker.lock(c.AppName)
 	if !locked {
 		errors <- fmt.Errorf("Couldn't move %s, unable to lock %q.", c.ID, c.AppName)
-		return
+		return container{}
 	}
 	defer locker.unlock(c.AppName)
 	a, err := app.GetByName(c.AppName)
@@ -143,7 +143,7 @@ func moveOneContainer(c container, toHost string, errors chan error, wg *sync.Wa
 			Base:    err,
 			Message: fmt.Sprintf("Error getting app %q for unit %s.", c.AppName, c.ID),
 		}
-		return
+		return container{}
 	}
 	logProgress(encoder, "Moving unit %s for %q: %s -> %s...", c.ID, c.AppName, c.HostAddr, toHost)
 	addedContainers, err := runReplaceUnitsPipeline(nil, a, []container{c}, toHost)
@@ -152,7 +152,7 @@ func moveOneContainer(c container, toHost string, errors chan error, wg *sync.Wa
 			Base:    err,
 			Message: fmt.Sprintf("Error moving unit %s.", c.ID),
 		}
-		return
+		return container{}
 	}
 	logProgress(encoder, "Finished moving unit %s for %q.", c.ID, c.AppName)
 	addedUnit := addedContainers[0].asUnit(a)
@@ -162,23 +162,24 @@ func moveOneContainer(c container, toHost string, errors chan error, wg *sync.Wa
 			Base:    err,
 			Message: fmt.Sprintf("Error binding unit %s to service instances.", c.ID),
 		}
-		return
+		return container{}
 	}
 	logProgress(encoder, "Moved unit %s -> %s for %s with bindings.", c.ID, addedUnit.Name, c.AppName)
+	return addedContainers[0]
 }
 
-func moveContainer(contId string, toHost string, encoder *json.Encoder) error {
+func moveContainer(contId string, toHost string, encoder *json.Encoder) (container, error) {
 	cont, err := getContainer(contId)
 	if err != nil {
-		return err
+		return container{}, err
 	}
 	wg := sync.WaitGroup{}
 	wg.Add(1)
 	moveErrors := make(chan error, 1)
 	locker := &appLocker{}
-	moveOneContainer(*cont, toHost, moveErrors, &wg, encoder, locker)
+	createdContainer := moveOneContainer(*cont, toHost, moveErrors, &wg, encoder, locker)
 	close(moveErrors)
-	return handleMoveErrors(moveErrors, encoder)
+	return createdContainer, handleMoveErrors(moveErrors, encoder)
 }
 
 func moveContainers(fromHost, toHost string, encoder *json.Encoder) error {

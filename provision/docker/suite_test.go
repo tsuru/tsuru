@@ -93,6 +93,10 @@ func (s *S) SetUpTest(c *gocheck.C) {
 	err = clearClusterStorage()
 	c.Assert(err, gocheck.IsNil)
 	rtesting.FakeRouter.Reset()
+	healingColl, err := healingCollection()
+	c.Assert(err, gocheck.IsNil)
+	defer healingColl.Close()
+	healingColl.RemoveAll(nil)
 }
 
 func clearClusterStorage() error {
