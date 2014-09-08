@@ -49,6 +49,8 @@ Bug fixes
   instead of 500 when there's already a service registered with the provided
   name
 
+- PlatformAdd: returns better error when an platform is added but theres no node to build the platform image (issue `#906 <https://github.com/tsuru/tsuru/issues/906>`_).
+
 Other improvements in tsr 0.7.0
 ===============================
 
