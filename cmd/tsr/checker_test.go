@@ -47,9 +47,8 @@ docker:
   deploy-cmd: /var/lib/tsuru/deploy
   segregate: true
   cluster:
-    storage: redis
-    redis-server: 127.0.0.1:6379
-    redis-prefix: docker-cluster
+    mongo-url: mongodb://localhost:27017
+    mongo-database: docker-cluster
   run-cmd:
     bin: /var/lib/tsuru/start
     port: 8888
@@ -103,10 +102,10 @@ func (s *CheckerSuite) TestCheckSchedulerRoundRobinWithoutServersConfig(c *goche
 	c.Assert(err, gocheck.NotNil)
 }
 
-func (s *CheckerSuite) TestCheckClusterWithRedis(c *gocheck.C) {
+func (s *CheckerSuite) TestCheckClusterWithMongo(c *gocheck.C) {
 	err := checkCluster()
 	c.Assert(err, gocheck.IsNil)
-	toFail := []string{"docker:cluster:storage", "docker:cluster:redis-server", "docker:cluster:redis-prefix"}
+	toFail := []string{"docker:cluster:mongo-url", "docker:cluster:mongo-database"}
 	for _, prop := range toFail {
 		val, _ := config.Get(prop)
 		config.Unset(prop)
@@ -116,16 +115,14 @@ func (s *CheckerSuite) TestCheckClusterWithRedis(c *gocheck.C) {
 	}
 }
 
-func (s *CheckerSuite) TestCheckClusterWithMongo(c *gocheck.C) {
-	config.Set("docker:cluster:storage", "mongodb")
+func (s *CheckerSuite) TestCheckClusterWithDeprecatedStorage(c *gocheck.C) {
+	config.Set("docker:cluster:storage", "redis")
 	err := checkCluster()
 	c.Assert(err, gocheck.NotNil)
-	config.Set("docker:cluster:mongo-url", "xxx")
+	config.Set("docker:cluster:storage", "something")
 	err = checkCluster()
 	c.Assert(err, gocheck.NotNil)
-	config.Set("docker:cluster:mongo-database", "xxx")
-	err = checkCluster()
-	c.Assert(err, gocheck.IsNil)
+	config.Unset("docker:cluster:storage")
 }
 
 func (s *CheckerSuite) TestCheckRouter(c *gocheck.C) {

@@ -70,18 +70,11 @@ func CheckDockerBasicConfig() error {
 }
 
 func checkCluster() error {
-	storage, err := config.GetString("docker:cluster:storage")
-	if err != nil {
-		return fmt.Errorf("Config Error: you should configure %q", "docker:cluster:storage")
+	storage, _ := config.GetString("docker:cluster:storage")
+	if storage != "mongodb" && storage != "" {
+		return fmt.Errorf("Config Error: docker:cluster:storage is deprecated. mongodb is now the only storage available.")
 	}
-	var mustHave []string
-	if storage == "redis" {
-		mustHave = []string{"docker:cluster:redis-server", "docker:cluster:redis-prefix"}
-	} else if storage == "mongodb" {
-		mustHave = []string{"docker:cluster:mongo-url", "docker:cluster:mongo-database"}
-	} else {
-		return fmt.Errorf("Config Error: docker:cluster:storage must be either 'redis' or 'mongodb'")
-	}
+	mustHave := []string{"docker:cluster:mongo-url", "docker:cluster:mongo-database"}
 	for _, value := range mustHave {
 		if _, err := config.Get(value); err != nil {
 			return fmt.Errorf("Config Error: you should configure %q", value)
