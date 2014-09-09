@@ -7,9 +7,11 @@ package docker
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/testing"
@@ -231,8 +233,8 @@ var healingJsonData = `[{
 	"Error": ""
 },
 {
-	"StartTime": "2014-10-23T09:00:00.000Z",
-	"EndTime": "2014-10-23T09:30:00.000Z",
+	"StartTime": "2014-10-23T08:00:00.000Z",
+	"EndTime": "2014-10-23T08:30:00.000Z",
 	"Successful": true,
 	"Action": "container-healing",
 	"FailingContainer": {"ID": "123456789012"},
@@ -254,19 +256,23 @@ func (s *S) TestListHealingHistoryCmdRun(c *gocheck.C) {
 	healing := &listHealingHistoryCmd{}
 	err := healing.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
-	expected := `Node:
+	startT, _ := time.Parse(time.RFC3339, "2014-10-23T08:00:00.000Z")
+	endT, _ := time.Parse(time.RFC3339, "2014-10-23T08:30:00.000Z")
+	startTStr := startT.Local().Format(time.Stamp)
+	endTStr := endT.Local().Format(time.Stamp)
+	expected := fmt.Sprintf(`Node:
 +-----------------+-----------------+---------+---------+---------+-------+
 | Start           | Finish          | Success | Failing | Created | Error |
 +-----------------+-----------------+---------+---------+---------+-------+
-| Oct 23 06:00:00 | Oct 23 06:30:00 | true    | addr1   | addr2   |       |
+| %s | %s | true    | addr1   | addr2   |       |
 +-----------------+-----------------+---------+---------+---------+-------+
 Container:
 +-----------------+-----------------+---------+------------+------------+-------+
 | Start           | Finish          | Success | Failing    | Created    | Error |
 +-----------------+-----------------+---------+------------+------------+-------+
-| Oct 23 07:00:00 | Oct 23 07:30:00 | true    | 1234567890 | 9234567890 |       |
+| %s | %s | true    | 1234567890 | 9234567890 |       |
 +-----------------+-----------------+---------+------------+------------+-------+
-`
+`, startTStr, endTStr, startTStr, endTStr)
 	c.Assert(buf.String(), gocheck.Equals, expected)
 }
 
@@ -313,13 +319,17 @@ func (s *S) TestListHealingHistoryCmdRunFilterNode(c *gocheck.C) {
 	cmd.Flags().Parse(true, []string{"--node"})
 	err := cmd.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
-	expected := `Node:
+	startT, _ := time.Parse(time.RFC3339, "2014-10-23T08:00:00.000Z")
+	endT, _ := time.Parse(time.RFC3339, "2014-10-23T08:30:00.000Z")
+	startTStr := startT.Local().Format(time.Stamp)
+	endTStr := endT.Local().Format(time.Stamp)
+	expected := fmt.Sprintf(`Node:
 +-----------------+-----------------+---------+---------+---------+-------+
 | Start           | Finish          | Success | Failing | Created | Error |
 +-----------------+-----------------+---------+---------+---------+-------+
-| Oct 23 06:00:00 | Oct 23 06:30:00 | true    | addr1   | addr2   |       |
+| %s | %s | true    | addr1   | addr2   |       |
 +-----------------+-----------------+---------+---------+---------+-------+
-`
+`, startTStr, endTStr)
 	c.Assert(buf.String(), gocheck.Equals, expected)
 }
 
@@ -338,12 +348,16 @@ func (s *S) TestListHealingHistoryCmdRunFilterContainer(c *gocheck.C) {
 	cmd.Flags().Parse(true, []string{"--container"})
 	err := cmd.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
-	expected := `Container:
+	startT, _ := time.Parse(time.RFC3339, "2014-10-23T08:00:00.000Z")
+	endT, _ := time.Parse(time.RFC3339, "2014-10-23T08:30:00.000Z")
+	startTStr := startT.Local().Format(time.Stamp)
+	endTStr := endT.Local().Format(time.Stamp)
+	expected := fmt.Sprintf(`Container:
 +-----------------+-----------------+---------+------------+------------+-------+
 | Start           | Finish          | Success | Failing    | Created    | Error |
 +-----------------+-----------------+---------+------------+------------+-------+
-| Oct 23 07:00:00 | Oct 23 07:30:00 | true    | 1234567890 | 9234567890 |       |
+| %s | %s | true    | 1234567890 | 9234567890 |       |
 +-----------------+-----------------+---------+------------+------------+-------+
-`
+`, startTStr, endTStr)
 	c.Assert(buf.String(), gocheck.Equals, expected)
 }
