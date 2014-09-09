@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/tsuru-base"
@@ -194,4 +195,91 @@ func (listNodesInTheSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) erro
 	t.Sort()
 	ctx.Stdout.Write(t.Bytes())
 	return nil
+}
+
+type listHealingHistoryCmd struct {
+	fs            *gnuflag.FlagSet
+	nodeOnly      bool
+	containerOnly bool
+}
+
+func (c *listHealingHistoryCmd) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:  "docker-healing-list",
+		Usage: "docker-healing-list [--node] [--container]",
+		Desc:  "List healing history for nodes or containers.",
+	}
+}
+
+func renderHistoryTable(history []healingEvent, filter string, ctx *cmd.Context) {
+	fmt.Fprintln(ctx.Stdout, strings.ToUpper(filter[:1])+filter[1:]+":")
+	headers := cmd.Row([]string{"Start", "Finish", "Success", "Failing", "Created", "Error"})
+	t := cmd.Table{Headers: headers}
+	for _, event := range history {
+		if event.Action != filter+"-healing" {
+			continue
+		}
+		data := make([]string, 2)
+		if filter == "node" {
+			data[0] = event.FailingNode.Address
+			data[1] = event.CreatedNode.Address
+		} else {
+			data[0] = event.FailingContainer.ID[:10]
+			data[1] = event.CreatedContainer.ID[:10]
+		}
+		t.AddRow(cmd.Row([]string{
+			event.StartTime.Local().Format(time.Stamp),
+			event.EndTime.Local().Format(time.Stamp),
+			fmt.Sprintf("%t", event.Successful),
+			data[0],
+			data[1],
+			event.Error,
+		}))
+	}
+	t.Sort()
+	ctx.Stdout.Write(t.Bytes())
+}
+
+func (c *listHealingHistoryCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
+	var filter string
+	if c.nodeOnly && !c.containerOnly {
+		filter = "node"
+	}
+	if c.containerOnly && !c.nodeOnly {
+		filter = "container"
+	}
+	url, err := cmd.GetURL(fmt.Sprintf("/docker/healing?filter=%s", filter))
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	var history []healingEvent
+	err = json.NewDecoder(resp.Body).Decode(&history)
+	if err != nil {
+		return err
+	}
+	if filter != "" {
+		renderHistoryTable(history, filter, ctx)
+	} else {
+		renderHistoryTable(history, "node", ctx)
+		renderHistoryTable(history, "container", ctx)
+	}
+	return nil
+}
+
+func (c *listHealingHistoryCmd) Flags() *gnuflag.FlagSet {
+	if c.fs == nil {
+		c.fs = gnuflag.NewFlagSet("with-flags", gnuflag.ContinueOnError)
+		c.fs.BoolVar(&c.nodeOnly, "node", false, "List only healing process started for nodes")
+		c.fs.BoolVar(&c.containerOnly, "container", false, "List only healing process started for containers")
+	}
+	return c.fs
 }

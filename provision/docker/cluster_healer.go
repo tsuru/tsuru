@@ -212,3 +212,20 @@ func runContainerHealer(maxUnresponsiveTime time.Duration) {
 		time.Sleep(30 * time.Second)
 	}
 }
+
+func listHealingHistory(filter string) ([]healingEvent, error) {
+	coll, err := healingCollection()
+	if err != nil {
+		return nil, err
+	}
+	query := bson.M{}
+	if filter != "" {
+		query["action"] = filter + "-healing"
+	}
+	var history []healingEvent
+	err = coll.Find(query).Sort("_id").All(&history)
+	if err != nil {
+		return nil, err
+	}
+	return history, nil
+}

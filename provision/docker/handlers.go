@@ -40,6 +40,7 @@ func init() {
 	api.RegisterHandler("/docker/pool/team", "DELETE", api.AdminRequiredHandler(removeTeamToPoolHandler))
 	api.RegisterHandler("/docker/fix-containers", "POST", api.AdminRequiredHandler(fixContainersHandler))
 	api.RegisterHandler("/docker/ssh/{container_id}", "GET", api.AdminRequiredHandler(sshToContainerHandler))
+	api.RegisterHandler("/docker/healing", "GET", api.AdminRequiredHandler(healingHistoryHandler))
 }
 
 func validateNodeAddress(address string) error {
@@ -341,4 +342,19 @@ func sshToContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 	}
 	defer conn.Close()
 	return container.shell(conn, conn, conn)
+}
+
+func healingHistoryHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	filter := r.URL.Query().Get("filter")
+	if filter != "" && filter != "node" && filter != "container" {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "invalid filter, possible values are 'node' or 'container'",
+		}
+	}
+	history, err := listHealingHistory(filter)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(history)
 }

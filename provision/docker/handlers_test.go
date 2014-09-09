@@ -7,6 +7,7 @@ package docker
 import (
 	"bytes"
 	"encoding/json"
+	stdErrors "errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -14,14 +15,19 @@ import (
 	"os"
 	"path"
 	"strings"
+	"time"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
+	"github.com/tsuru/tsuru/api"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2"
@@ -51,6 +57,9 @@ func (TestIaaS) Describe() string {
 type HandlersSuite struct {
 	conn   *db.Storage
 	server *httptest.Server
+	user   *auth.User
+	token  auth.Token
+	team   *auth.Team
 }
 
 var _ = gocheck.Suite(&HandlersSuite{})
@@ -65,16 +74,34 @@ func (s *HandlersSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("iaas:default", "test-iaas")
 	config.Set("iaas:node-protocol", "http")
 	config.Set("iaas:node-port", 1234)
+	config.Set("admin-team", "admin")
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	s.conn.Collection(schedulerCollection).RemoveAll(nil)
 	s.server = httptest.NewServer(nil)
+	s.user = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: quota.Unlimited}
+	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
+	app.AuthScheme = nativeScheme
+	_, err = nativeScheme.Create(s.user)
+	c.Assert(err, gocheck.IsNil)
+	s.team = &auth.Team{Name: "admin", Users: []string{s.user.Email}}
+	err = s.conn.Teams().Insert(s.team)
+	c.Assert(err, gocheck.IsNil)
+	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
+	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *HandlersSuite) SetUpTest(c *gocheck.C) {
 	err := clearClusterStorage()
 	c.Assert(err, gocheck.IsNil)
+	coll := collection()
+	defer coll.Close()
+	coll.RemoveAll(nil)
+	healingColl, err := healingCollection()
+	c.Assert(err, gocheck.IsNil)
+	defer healingColl.Close()
+	healingColl.RemoveAll(nil)
 }
 
 func (s *HandlersSuite) TearDownSuite(c *gocheck.C) {
@@ -733,4 +760,96 @@ func (s *HandlersSuite) TestSSHToContainerFailToHijack(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusInternalServerError)
 	c.Assert(e.Message, gocheck.Equals, recorder.err.Error())
+}
+
+func (s *HandlersSuite) TestHealingHistoryHandler(c *gocheck.C) {
+	evt1, err := newHealingEvent(cluster.Node{Address: "addr1"})
+	c.Assert(err, gocheck.IsNil)
+	evt1.update(cluster.Node{Address: "addr2"}, nil)
+	evt2, err := newHealingEvent(cluster.Node{Address: "addr3"})
+	evt2.update(cluster.Node{}, stdErrors.New("some error"))
+	evt3, err := newHealingEvent(container{ID: "1234"})
+	evt3.update(container{ID: "9876"}, nil)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/docker/healing", nil)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	body := recorder.Body.Bytes()
+	healings := []healingEvent{}
+	err = json.Unmarshal(body, &healings)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(healings, gocheck.HasLen, 3)
+	c.Assert(healings[0].StartTime.UTC().Format(time.Stamp), gocheck.Equals, evt1.StartTime.UTC().Format(time.Stamp))
+	c.Assert(healings[0].EndTime.UTC().Format(time.Stamp), gocheck.Equals, evt1.EndTime.UTC().Format(time.Stamp))
+	c.Assert(healings[0].FailingNode.Address, gocheck.Equals, "addr1")
+	c.Assert(healings[0].CreatedNode.Address, gocheck.Equals, "addr2")
+	c.Assert(healings[0].Error, gocheck.Equals, "")
+	c.Assert(healings[0].Successful, gocheck.Equals, true)
+	c.Assert(healings[0].Action, gocheck.Equals, "node-healing")
+	c.Assert(healings[1].FailingNode.Address, gocheck.Equals, "addr3")
+	c.Assert(healings[1].CreatedNode.Address, gocheck.Equals, "")
+	c.Assert(healings[1].Error, gocheck.Equals, "some error")
+	c.Assert(healings[1].Successful, gocheck.Equals, false)
+	c.Assert(healings[1].Action, gocheck.Equals, "node-healing")
+	c.Assert(healings[2].FailingContainer.ID, gocheck.Equals, "1234")
+	c.Assert(healings[2].CreatedContainer.ID, gocheck.Equals, "9876")
+	c.Assert(healings[2].Successful, gocheck.Equals, true)
+	c.Assert(healings[2].Error, gocheck.Equals, "")
+	c.Assert(healings[2].Action, gocheck.Equals, "container-healing")
+}
+
+func (s *HandlersSuite) TestHealingHistoryHandlerFilterContainer(c *gocheck.C) {
+	evt1, err := newHealingEvent(cluster.Node{Address: "addr1"})
+	c.Assert(err, gocheck.IsNil)
+	evt1.update(cluster.Node{Address: "addr2"}, nil)
+	evt2, err := newHealingEvent(cluster.Node{Address: "addr3"})
+	evt2.update(cluster.Node{}, stdErrors.New("some error"))
+	evt3, err := newHealingEvent(container{ID: "1234"})
+	evt3.update(container{ID: "9876"}, nil)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/docker/healing?filter=container", nil)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	body := recorder.Body.Bytes()
+	healings := []healingEvent{}
+	err = json.Unmarshal(body, &healings)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(healings, gocheck.HasLen, 1)
+	c.Assert(healings[0].FailingContainer.ID, gocheck.Equals, "1234")
+	c.Assert(healings[0].CreatedContainer.ID, gocheck.Equals, "9876")
+	c.Assert(healings[0].Successful, gocheck.Equals, true)
+	c.Assert(healings[0].Error, gocheck.Equals, "")
+	c.Assert(healings[0].Action, gocheck.Equals, "container-healing")
+}
+
+func (s *HandlersSuite) TestHealingHistoryHandlerFilterNode(c *gocheck.C) {
+	evt1, err := newHealingEvent(cluster.Node{Address: "addr1"})
+	c.Assert(err, gocheck.IsNil)
+	evt1.update(cluster.Node{Address: "addr2"}, nil)
+	evt2, err := newHealingEvent(cluster.Node{Address: "addr3"})
+	evt2.update(cluster.Node{}, stdErrors.New("some error"))
+	evt3, err := newHealingEvent(container{ID: "1234"})
+	evt3.update(container{ID: "9876"}, nil)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/docker/healing?filter=node", nil)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	body := recorder.Body.Bytes()
+	healings := []healingEvent{}
+	err = json.Unmarshal(body, &healings)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(healings, gocheck.HasLen, 2)
+	c.Assert(healings[0].Action, gocheck.Equals, "node-healing")
+	c.Assert(healings[0].ID, gocheck.Equals, evt1.ID)
+	c.Assert(healings[1].Action, gocheck.Equals, "node-healing")
+	c.Assert(healings[1].ID, gocheck.Equals, evt2.ID)
 }

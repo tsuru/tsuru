@@ -443,6 +443,7 @@ func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 		removeTeamsFromPoolCmd{},
 		fixContainersCmd{},
 		sshToContainerCmd{},
+		&listHealingHistoryCmd{},
 	}
 }
 

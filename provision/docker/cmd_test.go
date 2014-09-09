@@ -210,3 +210,140 @@ func (s *S) TestListNodesInTheSchedulerCmdRunEmptyAll(c *gocheck.C) {
 `
 	c.Assert(buf.String(), gocheck.Equals, expected)
 }
+
+func (s *S) TestListHealingHistoryCmdInfo(c *gocheck.C) {
+	expected := cmd.Info{
+		Name:  "docker-healing-list",
+		Usage: "docker-healing-list [--node] [--container]",
+		Desc:  "List healing history for nodes or containers.",
+	}
+	cmd := listHealingHistoryCmd{}
+	c.Assert(cmd.Info(), gocheck.DeepEquals, &expected)
+}
+
+var healingJsonData = `[{
+	"StartTime": "2014-10-23T08:00:00.000Z",
+	"EndTime": "2014-10-23T08:30:00.000Z",
+	"Successful": true,
+	"Action": "node-healing",
+	"FailingNode": {"Address": "addr1"},
+	"CreatedNode": {"Address": "addr2"},
+	"Error": ""
+},
+{
+	"StartTime": "2014-10-23T09:00:00.000Z",
+	"EndTime": "2014-10-23T09:30:00.000Z",
+	"Successful": true,
+	"Action": "container-healing",
+	"FailingContainer": {"ID": "123456789012"},
+	"CreatedContainer": {"ID": "923456789012"},
+	"Error": ""
+}]`
+
+func (s *S) TestListHealingHistoryCmdRun(c *gocheck.C) {
+	var buf bytes.Buffer
+	context := cmd.Context{Stdout: &buf}
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: healingJsonData, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Path == "/docker/healing"
+		},
+	}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
+	healing := &listHealingHistoryCmd{}
+	err := healing.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	expected := `Node:
++-----------------+-----------------+---------+---------+---------+-------+
+| Start           | Finish          | Success | Failing | Created | Error |
++-----------------+-----------------+---------+---------+---------+-------+
+| Oct 23 06:00:00 | Oct 23 06:30:00 | true    | addr1   | addr2   |       |
++-----------------+-----------------+---------+---------+---------+-------+
+Container:
++-----------------+-----------------+---------+------------+------------+-------+
+| Start           | Finish          | Success | Failing    | Created    | Error |
++-----------------+-----------------+---------+------------+------------+-------+
+| Oct 23 07:00:00 | Oct 23 07:30:00 | true    | 1234567890 | 9234567890 |       |
++-----------------+-----------------+---------+------------+------------+-------+
+`
+	c.Assert(buf.String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestListHealingHistoryCmdRunEmpty(c *gocheck.C) {
+	var buf bytes.Buffer
+	context := cmd.Context{Stdout: &buf}
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: `[]`, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Path == "/docker/healing"
+		},
+	}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
+	healing := &listHealingHistoryCmd{}
+	err := healing.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	expected := `Node:
++-------+--------+---------+---------+---------+-------+
+| Start | Finish | Success | Failing | Created | Error |
++-------+--------+---------+---------+---------+-------+
++-------+--------+---------+---------+---------+-------+
+Container:
++-------+--------+---------+---------+---------+-------+
+| Start | Finish | Success | Failing | Created | Error |
++-------+--------+---------+---------+---------+-------+
++-------+--------+---------+---------+---------+-------+
+`
+	c.Assert(buf.String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestListHealingHistoryCmdRunFilterNode(c *gocheck.C) {
+	var buf bytes.Buffer
+	context := cmd.Context{Stdout: &buf}
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: healingJsonData, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Path == "/docker/healing" && req.URL.RawQuery == "filter=node"
+		},
+	}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
+	cmd := &listHealingHistoryCmd{}
+	cmd.Flags().Parse(true, []string{"--node"})
+	err := cmd.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	expected := `Node:
++-----------------+-----------------+---------+---------+---------+-------+
+| Start           | Finish          | Success | Failing | Created | Error |
++-----------------+-----------------+---------+---------+---------+-------+
+| Oct 23 06:00:00 | Oct 23 06:30:00 | true    | addr1   | addr2   |       |
++-----------------+-----------------+---------+---------+---------+-------+
+`
+	c.Assert(buf.String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestListHealingHistoryCmdRunFilterContainer(c *gocheck.C) {
+	var buf bytes.Buffer
+	context := cmd.Context{Stdout: &buf}
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: healingJsonData, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Path == "/docker/healing" && req.URL.RawQuery == "filter=container"
+		},
+	}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
+	cmd := &listHealingHistoryCmd{}
+	cmd.Flags().Parse(true, []string{"--container"})
+	err := cmd.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	expected := `Container:
++-----------------+-----------------+---------+------------+------------+-------+
+| Start           | Finish          | Success | Failing    | Created    | Error |
++-----------------+-----------------+---------+------------+------------+-------+
+| Oct 23 07:00:00 | Oct 23 07:30:00 | true    | 1234567890 | 9234567890 |       |
++-----------------+-----------------+---------+------------+------------+-------+
+`
+	c.Assert(buf.String(), gocheck.Equals, expected)
+}
