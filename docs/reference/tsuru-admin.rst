@@ -247,3 +247,15 @@ proxy. The user may specify part of the ID of the container. For example:
     $ tsuru-admin ssh 39f8
     Welcome to Ubuntu 14.04 LTS (GNU/Linux 3.13.0-24-generic x86_64)
     ubuntu@ip-10-253-6-84:~$
+
+
+docker-healing-list
+-------------------
+
+.. highlight:: bash
+
+::
+
+    $ tsuru-admin docker-healing-list [--node] [--container]
+
+This command will list all healing processes started for nodes or containers.
