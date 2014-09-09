@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"sync/atomic"
 
 	"github.com/tsuru/config"
@@ -655,5 +656,5 @@ func (s *InstanceSuite) TestGetIdentfier(c *gocheck.C) {
 	c.Assert(identifier, gocheck.Equals, srv.Name)
 	srv.Id = 10
 	identifier = srv.GetIdentifier()
-	c.Assert(identifier, gocheck.Equals, string(srv.Id))
+	c.Assert(identifier, gocheck.Equals, strconv.Itoa(srv.Id))
 }

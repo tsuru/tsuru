@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"regexp"
+	"strconv"
 
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
@@ -61,7 +62,7 @@ func DeleteInstance(si *ServiceInstance) error {
 
 func (si *ServiceInstance) GetIdentifier() string {
 	if si.Id != 0 {
-		return string(si.Id)
+		return strconv.Itoa(si.Id)
 	}
 	return si.Name
 }
