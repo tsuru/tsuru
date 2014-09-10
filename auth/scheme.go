@@ -6,10 +6,6 @@ package auth
 
 import "fmt"
 
-// TODO: These interfaces are a Work In Progress
-// Everything could change in minutes, please don't
-// rely on them until this notice is gone.
-
 type SchemeInfo map[string]interface{}
 
 type Scheme interface {
