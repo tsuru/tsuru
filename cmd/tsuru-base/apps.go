@@ -215,7 +215,7 @@ func (c *AppGrant) Run(context *cmd.Context, client *cmd.Client) error {
 		return err
 	}
 	teamName := context.Args[0]
-	url, err := cmd.GetURL(fmt.Sprintf("/apps/%s/%s", appName, teamName))
+	url, err := cmd.GetURL(fmt.Sprintf("/apps/%s/teams/%s", appName, teamName))
 	if err != nil {
 		return err
 	}
@@ -252,7 +252,7 @@ func (c *AppRevoke) Run(context *cmd.Context, client *cmd.Client) error {
 		return err
 	}
 	teamName := context.Args[0]
-	url, err := cmd.GetURL(fmt.Sprintf("/apps/%s/%s", appName, teamName))
+	url, err := cmd.GetURL(fmt.Sprintf("/apps/%s/teams/%s", appName, teamName))
 	if err != nil {
 		return err
 	}
