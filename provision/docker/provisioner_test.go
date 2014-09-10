@@ -295,7 +295,7 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
-	err := newImage("tsuru/python", s.server.URL())
+	err := newImage("tsuru/myapp", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	var p dockerProvisioner
 	app := testing.NewFakeApp("myapp", "python", 0)
@@ -374,7 +374,7 @@ func (s *S) TestProvisionerAddUnitsWithHost(c *gocheck.C) {
 	cluster, err := s.startMultipleServersCluster()
 	c.Assert(err, gocheck.IsNil)
 	defer s.stopMultipleServersCluster(cluster)
-	err = newImage("tsuru/python", s.server.URL())
+	err = newImage("tsuru/myapp", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	var p dockerProvisioner
 	app := testing.NewFakeApp("myapp", "python", 0)

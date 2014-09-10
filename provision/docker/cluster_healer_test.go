@@ -60,6 +60,8 @@ func urlPort(uStr string) int {
 }
 
 func (s *S) TestHealerHealNode(c *gocheck.C) {
+	rollback := startTestRepositoryServer()
+	defer rollback()
 	oldCluster := dCluster
 	defer func() {
 		cmutex.Lock()
@@ -339,6 +341,8 @@ func (s *S) TestHealerHealNodeWaitAndRegisterError(c *gocheck.C) {
 }
 
 func (s *S) TestHealerHealNodeDestroyError(c *gocheck.C) {
+	rollback := startTestRepositoryServer()
+	defer rollback()
 	iaasInstance := &TestHealerIaaS{}
 	oldCluster := dCluster
 	defer func() {
@@ -447,6 +451,8 @@ func (s *S) TestHealerHealNodeDestroyError(c *gocheck.C) {
 }
 
 func (s *S) TestHealContainer(c *gocheck.C) {
+	rollback := startTestRepositoryServer()
+	defer rollback()
 	oldCluster := dCluster
 	defer func() {
 		cmutex.Lock()
@@ -498,6 +504,8 @@ func (s *S) TestHealContainer(c *gocheck.C) {
 }
 
 func (s *S) TestRunContainerHealer(c *gocheck.C) {
+	rollback := startTestRepositoryServer()
+	defer rollback()
 	oldCluster := dCluster
 	defer func() {
 		cmutex.Lock()
@@ -592,6 +600,8 @@ func (s *S) TestRunContainerHealer(c *gocheck.C) {
 }
 
 func (s *S) TestRunContainerHealerWithError(c *gocheck.C) {
+	rollback := startTestRepositoryServer()
+	defer rollback()
 	oldCluster := dCluster
 	defer func() {
 		cmutex.Lock()
@@ -667,6 +677,8 @@ func (s *S) TestRunContainerHealerWithError(c *gocheck.C) {
 }
 
 func (s *S) TestHealerHandleError(c *gocheck.C) {
+	rollback := startTestRepositoryServer()
+	defer rollback()
 	oldCluster := dCluster
 	defer func() {
 		cmutex.Lock()

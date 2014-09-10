@@ -338,7 +338,7 @@ func (s *S) TestProvisionAddUnitsToHostForward(c *gocheck.C) {
 	cluster, err := s.startMultipleServersCluster()
 	c.Assert(err, gocheck.IsNil)
 	defer s.stopMultipleServersCluster(cluster)
-	err = newImage("tsuru/python", s.server.URL())
+	err = newImage("tsuru/myapp-2", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	var p dockerProvisioner
 	app := testing.NewFakeApp("myapp-2", "python", 0)
@@ -369,7 +369,7 @@ func (s *S) TestProvisionAddUnitsToHostForwardWithoutHost(c *gocheck.C) {
 	cluster, err := s.startMultipleServersCluster()
 	c.Assert(err, gocheck.IsNil)
 	defer s.stopMultipleServersCluster(cluster)
-	err = newImage("tsuru/python", s.server.URL())
+	err = newImage("tsuru/myapp-2", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	var p dockerProvisioner
 	app := testing.NewFakeApp("myapp-2", "python", 0)

@@ -106,7 +106,11 @@ func clearClusterStorage() error {
 	if err != nil {
 		return err
 	}
-	db := session.DB(clusterDbName)
+	defer session.Close()
+	return clearAllCollections(session.DB(clusterDbName))
+}
+
+func clearAllCollections(db *mgo.Database) error {
 	colls, err := db.CollectionNames()
 	if err != nil {
 		return err
@@ -115,19 +119,15 @@ func clearClusterStorage() error {
 		if strings.Index(collName, ".") != -1 {
 			continue
 		}
-		_, err = db.C(collName).RemoveAll(nil)
-		if err != nil {
-			return err
-		}
+		db.C(collName).RemoveAll(nil)
 	}
-	session.Close()
 	return nil
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
 	coll := collection()
 	defer coll.Close()
-	err := coll.Database.DropDatabase()
+	err := clearAllCollections(coll.Database)
 	c.Assert(err, gocheck.IsNil)
 	tTesting.RollbackFile(s.targetRecover)
 	s.storage.Apps().Database.DropDatabase()
@@ -178,6 +178,18 @@ func (s *S) addServiceInstance(c *gocheck.C, appName string, fn http.HandlerFunc
 	err = s.storage.ServiceInstances().Update(bson.M{"name": instance.Name}, instance)
 	c.Assert(err, gocheck.IsNil)
 	return ret
+}
+
+func startTestRepositoryServer() func() {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	repoUrl := strings.Replace(server.URL, "http://", "", 1)
+	config.Set("docker:registry", repoUrl)
+	return func() {
+		config.Unset("docker:registry")
+		server.Close()
+	}
 }
 
 type unitSlice []provision.Unit
