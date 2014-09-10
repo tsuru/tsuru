@@ -428,7 +428,12 @@ func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) er
 	return session.Run(cmd + " " + strings.Join(args, " "))
 }
 
-func (c *container) shell(stdin io.Reader, stdout, stderr io.Writer) error {
+type pty struct {
+	width  int
+	height int
+}
+
+func (c *container) shell(stdin io.Reader, stdout, stderr io.Writer, pty pty) error {
 	client, err := c.dialSSH()
 	if err != nil {
 		return err
@@ -447,7 +452,13 @@ func (c *container) shell(stdin io.Reader, stdout, stderr io.Writer) error {
 		ssh.TTY_OP_ISPEED: 14400,
 		ssh.TTY_OP_OSPEED: 14400,
 	}
-	err = session.RequestPty("xterm", 120, 80, modes)
+	if pty.height == 0 {
+		pty.height = 120
+	}
+	if pty.width == 0 {
+		pty.width = 80
+	}
+	err = session.RequestPty("xterm", pty.height, pty.width, modes)
 	if err != nil {
 		return err
 	}

@@ -376,7 +376,7 @@ func (s *S) TestContainerShell(c *gocheck.C) {
 	file.Close()
 	var stdout, stderr bytes.Buffer
 	stdin := bytes.NewBufferString("cat " + filepath + "\nexit\n")
-	err = container.shell(stdin, &stdout, &stderr)
+	err = container.shell(stdin, &stdout, &stderr, pty{})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(strings.Contains(stdout.String(), "hello"), gocheck.Equals, true)
 }

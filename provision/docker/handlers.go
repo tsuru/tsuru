@@ -322,6 +322,8 @@ func unmarshal(body io.ReadCloser) (map[string]string, error) {
 
 func sshToContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	containerID := r.URL.Query().Get(":container_id")
+	width, _ := strconv.Atoi(r.URL.Query().Get("width"))
+	height, _ := strconv.Atoi(r.URL.Query().Get("height"))
 	container, err := getContainer(containerID)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -341,7 +343,7 @@ func sshToContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 		}
 	}
 	defer conn.Close()
-	return container.shell(conn, conn, conn)
+	return container.shell(conn, conn, conn, pty{width: width, height: height})
 }
 
 func healingHistoryHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
