@@ -224,7 +224,7 @@ func CreateApp(app *App, user *auth.User) error {
 	if app.Swap > 0 {
 		app.Swap = app.Memory + app.Swap
 	}
-	if err := app.setTeamOwner(teams); err != nil {
+	if err := app.SetTeamOwner(teams); err != nil {
 		return err
 	}
 	app.setTeams(teams)
@@ -517,8 +517,8 @@ func (app *App) setTeams(teams []auth.Team) {
 	sort.Strings(app.Teams)
 }
 
-// setTeamOwner sets the TeamOwner value.
-func (app *App) setTeamOwner(teams []auth.Team) error {
+// SetTeamOwner sets the TeamOwner value.
+func (app *App) SetTeamOwner(teams []auth.Team) error {
 	if app.TeamOwner == "" {
 		if len(teams) > 1 {
 			return ManyTeamsError{}
@@ -530,7 +530,8 @@ func (app *App) setTeamOwner(teams []auth.Team) error {
 				return nil
 			}
 		}
-		return stderr.New("team not found.")
+		errorMsg := fmt.Sprintf("App can't be created. You are not member of team: %s. Please, create an app with one of your teams.", app.TeamOwner)
+		return stderr.New(errorMsg)
 	}
 	return nil
 }

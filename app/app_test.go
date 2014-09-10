@@ -289,7 +289,7 @@ func (s *S) TestCreateAppTeamOwnerTeamNotFound(c *gocheck.C) {
 	}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.ErrorMatches, ".*team not found.")
+	c.Assert(err, gocheck.ErrorMatches, "App can't be created. You are not member of team: not found. Please, create an app with one of your teams.")
 }
 
 func (s *S) TestCannotCreateAppWithUnknownPlatform(c *gocheck.C) {
