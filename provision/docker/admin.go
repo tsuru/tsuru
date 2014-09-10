@@ -212,7 +212,30 @@ func (sshToContainerCmd) Info() *cmd.Info {
 }
 
 func (sshToContainerCmd) Run(context *cmd.Context, _ *cmd.Client) error {
-	serverURL, err := cmd.GetURL("/docker/ssh/" + context.Args[0])
+	var width, height int
+	if stdin, ok := context.Stdin.(*os.File); ok {
+		fd := int(stdin.Fd())
+		if terminal.IsTerminal(fd) {
+			width, height, _ = terminal.GetSize(fd)
+			oldState, err := terminal.MakeRaw(fd)
+			if err != nil {
+				return err
+			}
+			defer terminal.Restore(fd, oldState)
+			sigChan := make(chan os.Signal, 2)
+			go func(c <-chan os.Signal) {
+				if _, ok := <-c; ok {
+					terminal.Restore(fd, oldState)
+					os.Exit(1)
+				}
+			}(sigChan)
+			signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGQUIT)
+		}
+	}
+	queryString := make(url.Values)
+	queryString.Set("width", strconv.Itoa(width))
+	queryString.Set("height", strconv.Itoa(height))
+	serverURL, err := cmd.GetURL("/docker/ssh/" + context.Args[0] + "?" + queryString.Encode())
 	if err != nil {
 		return err
 	}
@@ -232,24 +255,6 @@ func (sshToContainerCmd) Run(context *cmd.Context, _ *cmd.Client) error {
 	}
 	defer conn.Close()
 	request.Write(conn)
-	if stdin, ok := context.Stdin.(*os.File); ok {
-		fd := int(stdin.Fd())
-		if terminal.IsTerminal(fd) {
-			oldState, err := terminal.MakeRaw(fd)
-			if err != nil {
-				return err
-			}
-			defer terminal.Restore(fd, oldState)
-			sigChan := make(chan os.Signal, 2)
-			go func(c <-chan os.Signal) {
-				if _, ok := <-c; ok {
-					terminal.Restore(fd, oldState)
-					os.Exit(1)
-				}
-			}(sigChan)
-			signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL, syscall.SIGQUIT)
-		}
-	}
 	bytesLimit := 50
 	var readStr string
 	byteBuffer := make([]byte, 1)
