@@ -227,7 +227,7 @@ func CreateApp(app *App, user *auth.User) error {
 	if err := app.setTeamOwner(teams); err != nil {
 		return err
 	}
-	app.SetTeams(teams)
+	app.setTeams(teams)
 	app.Owner = user.Email
 	if !app.isValid() {
 		msg := "Invalid app name, your app should have at most 63 " +
@@ -509,10 +509,7 @@ func (app *App) GetTeams() []auth.Team {
 	return teams
 }
 
-// SetTeams sets the values of the internal te
-//
-// TODO(fss): this method should not be exported.
-func (app *App) SetTeams(teams []auth.Team) {
+func (app *App) setTeams(teams []auth.Team) {
 	app.Teams = make([]string, len(teams))
 	for i, team := range teams {
 		app.Teams[i] = team.Name

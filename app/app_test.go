@@ -1397,13 +1397,13 @@ func (s *S) TestGetTeams(c *gocheck.C) {
 
 func (s *S) TestSetTeams(c *gocheck.C) {
 	app := App{Name: "app"}
-	app.SetTeams([]auth.Team{s.team})
+	app.setTeams([]auth.Team{s.team})
 	c.Assert(app.Teams, gocheck.DeepEquals, []string{s.team.Name})
 }
 
 func (s *S) TestSetTeamsSortTeamNames(c *gocheck.C) {
 	app := App{Name: "app"}
-	app.SetTeams([]auth.Team{s.team, {Name: "zzz"}, {Name: "aaa"}})
+	app.setTeams([]auth.Team{s.team, {Name: "zzz"}, {Name: "aaa"}})
 	c.Assert(app.Teams, gocheck.DeepEquals, []string{"aaa", s.team.Name, "zzz"})
 }
 
