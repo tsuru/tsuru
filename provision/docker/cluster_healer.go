@@ -100,11 +100,7 @@ func (h *Healer) healNode(node *cluster.Node) (cluster.Node, error) {
 	nodeMetadata := node.CleanMetadata()
 	failingHost := urlToHost(failingAddr)
 	failures := node.FailureCount()
-	iaasName, hasIaas := nodeMetadata["iaas"]
-	if !hasIaas {
-		return emptyNode, fmt.Errorf("Can't auto-heal after %d failures for node %s: no IaaS information.", failures, failingHost)
-	}
-	machine, err := iaas.CreateMachineForIaaS(iaasName, nodeMetadata)
+	machine, err := iaas.CreateMachineForIaaS(nodeMetadata["iaas"], nodeMetadata)
 	if err != nil {
 		node.ResetFailures()
 		return emptyNode, fmt.Errorf("Can't auto-heal after %d failures for node %s: error creating new machine: %s", failures, failingHost, err.Error())
@@ -153,6 +149,11 @@ func (h *Healer) HandleError(node *cluster.Node) time.Duration {
 	}
 	if !node.HasSuccess() {
 		log.Debugf("Node %q has never been successfully reached, healing won't run on it.", node.Address)
+		return h.disabledTime
+	}
+	_, hasIaas := node.Metadata["iaas"]
+	if !hasIaas {
+		log.Debugf("Node %q doesn't have IaaS information, healing won't run on it.", node.Address)
 		return h.disabledTime
 	}
 	log.Errorf("Initiating healing process for node %q after %d failures.", node.Address, failures)

@@ -181,7 +181,7 @@ func (s *S) TestHealerHealNodeWithoutIaaS(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(nodes, gocheck.HasLen, 1)
 	created, err := healer.healNode(&nodes[0])
-	c.Assert(err, gocheck.ErrorMatches, ".*no IaaS information.*")
+	c.Assert(err, gocheck.ErrorMatches, ".*error creating new machine.*")
 	c.Assert(created.Address, gocheck.Equals, "")
 	nodes, err = cluster.UnfilteredNodes()
 	c.Assert(err, gocheck.IsNil)
@@ -774,45 +774,43 @@ func (s *S) TestHealerHandleError(c *gocheck.C) {
 	c.Assert(events[0].CreatedNode.Address, gocheck.Equals, fmt.Sprintf("http://localhost:%d", urlPort(node2.URL())))
 }
 
-func (s *S) TestHealerHandleErrorWithoutIaaS(c *gocheck.C) {
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, gocheck.IsNil)
-	cluster, err := cluster.New(nil, &cluster.MapStorage{},
-		cluster.Node{Address: node1.URL()},
-	)
-	c.Assert(err, gocheck.IsNil)
+func (s *S) TestHealerHandleErrorDoesntTriggerEventIfNotNeeded(c *gocheck.C) {
 	healer := Healer{
-		cluster:               cluster,
+		cluster:               nil,
 		disabledTime:          20,
 		failuresBeforeHealing: 1,
 		waitTimeNewMachine:    1 * time.Second,
 	}
-	nodes, err := cluster.UnfilteredNodes()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(nodes, gocheck.HasLen, 1)
-
-	nodes[0].Metadata["Failures"] = "2"
-	nodes[0].Metadata["LastSuccess"] = "xxx"
-
-	waitTime := healer.HandleError(&nodes[0])
+	node := cluster.Node{Address: "addr", Metadata: map[string]string{
+		"Failures":    "2",
+		"LastSuccess": "something",
+	}}
+	waitTime := healer.HandleError(&node)
 	c.Assert(waitTime, gocheck.Equals, time.Duration(20))
-
-	nodes, err = cluster.UnfilteredNodes()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(nodes, gocheck.HasLen, 1)
-	c.Assert(urlPort(nodes[0].Address), gocheck.Equals, urlPort(node1.URL()))
-	c.Assert(urlToHost(nodes[0].Address), gocheck.Equals, "127.0.0.1")
-
 	healingColl, err := healingCollection()
 	var events []healingEvent
 	err = healingColl.Find(nil).All(&events)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(events, gocheck.HasLen, 1)
-	c.Assert(events[0].Action, gocheck.Equals, "node-healing")
-	c.Assert(events[0].StartTime, gocheck.Not(gocheck.DeepEquals), time.Time{})
-	c.Assert(events[0].EndTime, gocheck.Not(gocheck.DeepEquals), time.Time{})
-	c.Assert(events[0].Error, gocheck.Matches, ".*no IaaS information.*")
-	c.Assert(events[0].Successful, gocheck.Equals, false)
-	c.Assert(events[0].FailingNode.Address, gocheck.Equals, fmt.Sprintf("http://127.0.0.1:%d/", urlPort(node1.URL())))
-	c.Assert(events[0].CreatedNode.Address, gocheck.Equals, "")
+	c.Assert(events, gocheck.HasLen, 0)
+	node = cluster.Node{Address: "addr", Metadata: map[string]string{
+		"Failures":    "0",
+		"LastSuccess": "something",
+		"iaas":        "invalid",
+	}}
+	waitTime = healer.HandleError(&node)
+	c.Assert(waitTime, gocheck.Equals, time.Duration(20))
+	healingColl, err = healingCollection()
+	err = healingColl.Find(nil).All(&events)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(events, gocheck.HasLen, 0)
+	node = cluster.Node{Address: "addr", Metadata: map[string]string{
+		"Failures": "2",
+		"iaas":     "invalid",
+	}}
+	waitTime = healer.HandleError(&node)
+	c.Assert(waitTime, gocheck.Equals, time.Duration(20))
+	healingColl, err = healingCollection()
+	err = healingColl.Find(nil).All(&events)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(events, gocheck.HasLen, 0)
 }
