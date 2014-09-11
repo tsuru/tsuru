@@ -241,3 +241,55 @@ func (s *S) TestColorBoldYellowGreenBG(c *gocheck.C) {
 	output := Colorfy("must return a bold yellow with green background", "yellow", "green", "bold")
 	c.Assert(output, gocheck.Equals, "\033[1;33;42mmust return a bold yellow with green background\033[0m")
 }
+
+func (s *S) TestResizeLastColumn(c *gocheck.C) {
+	t := NewTable()
+	t.AddRow(Row{"1", "abcdefghijk"})
+	t.AddRow(Row{"2", "1234567890"})
+	sizes := t.resizeLastColumn(11)
+	c.Assert(sizes, gocheck.DeepEquals, []int{1, 3})
+	c.Assert(t.rows[0], gocheck.DeepEquals, Row{"1", `ab↵
+cd↵
+ef↵
+gh↵
+ij↵
+k`})
+	c.Assert(t.rows[1], gocheck.DeepEquals, Row{"2", `12↵
+34↵
+56↵
+78↵
+90`})
+}
+
+func (s *S) TestResizeLastColumnNoTTYSize(c *gocheck.C) {
+	t := NewTable()
+	t.AddRow(Row{"1", "abcdefghijk"})
+	t.AddRow(Row{"2", "1234567890"})
+	sizes := t.resizeLastColumn(0)
+	c.Assert(sizes, gocheck.DeepEquals, []int{1, 11})
+	c.Assert(t.rows[0], gocheck.DeepEquals, Row{"1", "abcdefghijk"})
+	c.Assert(t.rows[1], gocheck.DeepEquals, Row{"2", "1234567890"})
+}
+
+func (s *S) TestResizeLastColumnNotEnoughSpace(c *gocheck.C) {
+	t := NewTable()
+	t.AddRow(Row{"1", "abcdefghijk"})
+	t.AddRow(Row{"2", "1234567890"})
+	sizes := t.resizeLastColumn(9)
+	c.Assert(sizes, gocheck.DeepEquals, []int{1, 11})
+	c.Assert(t.rows[0], gocheck.DeepEquals, Row{"1", "abcdefghijk"})
+	c.Assert(t.rows[1], gocheck.DeepEquals, Row{"2", "1234567890"})
+}
+
+func (s *S) TestResizeLastColumnWithLineBreaks(c *gocheck.C) {
+	t := NewTable()
+	t.AddRow(Row{"1", "abcde\nfgh\ni\njklm"})
+	sizes := t.resizeLastColumn(12)
+	c.Assert(sizes, gocheck.DeepEquals, []int{1, 4})
+	c.Assert(t.rows[0], gocheck.DeepEquals, Row{"1", `abc↵
+de
+fgh
+i
+jkl↵
+m`})
+}

@@ -6,9 +6,12 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"reflect"
 	"sort"
 	"strings"
+
+	"code.google.com/p/go.crypto/ssh/terminal"
 )
 
 const (
@@ -66,7 +69,7 @@ func (t *Table) addRows(rows rowSlice, sizes []int, result string) string {
 				extraRows.add(newRow)
 			}
 			result += "| " + field
-			result += strings.Repeat(" ", sizes[column]+1-len(field))
+			result += strings.Repeat(" ", sizes[column]+1-runeLen(field))
 		}
 		result += "|\n"
 		result = t.addRows(extraRows, sizes, result)
@@ -79,11 +82,69 @@ func (t *Table) addRows(rows rowSlice, sizes []int, result string) string {
 	return result
 }
 
+func splitJoinEvery(str string, n int) string {
+	n -= 1
+	str = strings.TrimSpace(str)
+	lines := strings.Split(str, "\n")
+	var parts []string
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		strLen := runeLen(line)
+		steps := strLen / n
+		var start, end int
+		for i := 0; i < steps; i++ {
+			start = i * n
+			end = start + n
+			if end > strLen {
+				end = strLen
+			}
+			part := line[start:end]
+			if end < strLen {
+				part += "↵"
+			}
+			parts = append(parts, part)
+		}
+		if end < strLen {
+			parts = append(parts, line[steps*n:strLen])
+		}
+	}
+	return strings.Join(parts, "\n")
+}
+
+func (t *Table) resizeLastColumn(ttyWidth int) []int {
+	sizes := t.columnsSize()
+	if ttyWidth == 0 {
+		return sizes
+	}
+	fullSize := 0
+	toLastSize := 0
+	for i, sz := range sizes {
+		fullSize += sz
+		if i != len(sizes)-1 {
+			toLastSize += sz
+		}
+	}
+	fullSize += len(sizes)*3 + 1
+	toLastSize += (len(sizes)-1)*3 + 4
+	available := ttyWidth - toLastSize
+	if fullSize > ttyWidth && available > 1 {
+		for _, row := range t.rows {
+			row[len(sizes)-1] = splitJoinEvery(row[len(sizes)-1], available)
+		}
+	}
+	return t.columnsSize()
+}
+
 func (t *Table) String() string {
 	if t.Headers == nil && len(t.rows) < 1 {
 		return ""
 	}
-	sizes := t.columnsSize()
+	var ttyWidth int
+	stdinFd := int(os.Stdin.Fd())
+	if terminal.IsTerminal(stdinFd) {
+		ttyWidth, _, _ = terminal.GetSize(stdinFd)
+	}
+	sizes := t.resizeLastColumn(ttyWidth)
 	result := t.separator()
 	if t.Headers != nil {
 		for column, header := range t.Headers {
@@ -112,6 +173,10 @@ func (t *Table) Rows() int {
 	return t.rows.Len()
 }
 
+func runeLen(s string) int {
+	return len([]rune(s))
+}
+
 func (t *Table) columnsSize() []int {
 	var columns int
 	if t.Headers != nil {
@@ -124,16 +189,18 @@ func (t *Table) columnsSize() []int {
 		for i := 0; i < columns; i++ {
 			rowParts := strings.Split(row[i], "\n")
 			for _, part := range rowParts {
-				if len(part) > sizes[i] {
-					sizes[i] = len(part)
+				partLen := runeLen(part)
+				if partLen > sizes[i] {
+					sizes[i] = partLen
 				}
 			}
 		}
 	}
 	if t.Headers != nil {
 		for i, header := range t.Headers {
-			if len(header) > sizes[i] {
-				sizes[i] = len(header)
+			headerLen := runeLen(header)
+			if headerLen > sizes[i] {
+				sizes[i] = headerLen
 			}
 		}
 	}
