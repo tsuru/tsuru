@@ -223,7 +223,7 @@ func listHealingHistory(filter string) ([]healingEvent, error) {
 		query["action"] = filter + "-healing"
 	}
 	var history []healingEvent
-	err = coll.Find(query).Sort("_id").All(&history)
+	err = coll.Find(query).Sort("-_id").Limit(200).All(&history)
 	if err != nil {
 		return nil, err
 	}

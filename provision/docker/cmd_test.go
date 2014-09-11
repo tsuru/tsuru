@@ -240,6 +240,14 @@ var healingJsonData = `[{
 	"FailingContainer": {"ID": "123456789012"},
 	"CreatedContainer": {"ID": "923456789012"},
 	"Error": ""
+},
+{
+	"StartTime": "2014-10-23T08:00:00.000Z",
+	"EndTime": "2014-10-23T08:30:00.000Z",
+	"Successful": false,
+	"Action": "container-healing",
+	"FailingContainer": {"ID": "123456789012"},
+	"Error": "err1"
 }]`
 
 func (s *S) TestListHealingHistoryCmdRun(c *gocheck.C) {
@@ -271,8 +279,9 @@ Container:
 | Start           | Finish          | Success | Failing    | Created    | Error |
 +-----------------+-----------------+---------+------------+------------+-------+
 | %s | %s | true    | 1234567890 | 9234567890 |       |
+| %s | %s | false   | 1234567890 |            | err1  |
 +-----------------+-----------------+---------+------------+------------+-------+
-`, startTStr, endTStr, startTStr, endTStr)
+`, startTStr, endTStr, startTStr, endTStr, startTStr, endTStr)
 	c.Assert(buf.String(), gocheck.Equals, expected)
 }
 
@@ -357,7 +366,8 @@ func (s *S) TestListHealingHistoryCmdRunFilterContainer(c *gocheck.C) {
 | Start           | Finish          | Success | Failing    | Created    | Error |
 +-----------------+-----------------+---------+------------+------------+-------+
 | %s | %s | true    | 1234567890 | 9234567890 |       |
+| %s | %s | false   | 1234567890 |            | err1  |
 +-----------------+-----------------+---------+------------+------------+-------+
-`, startTStr, endTStr)
+`, startTStr, endTStr, startTStr, endTStr)
 	c.Assert(buf.String(), gocheck.Equals, expected)
 }

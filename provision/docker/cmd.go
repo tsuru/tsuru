@@ -224,8 +224,14 @@ func renderHistoryTable(history []healingEvent, filter string, ctx *cmd.Context)
 			data[0] = event.FailingNode.Address
 			data[1] = event.CreatedNode.Address
 		} else {
-			data[0] = event.FailingContainer.ID[:10]
-			data[1] = event.CreatedContainer.ID[:10]
+			data[0] = event.FailingContainer.ID
+			data[1] = event.CreatedContainer.ID
+			if len(data[0]) > 10 {
+				data[0] = data[0][:10]
+			}
+			if len(data[1]) > 10 {
+				data[1] = data[1][:10]
+			}
 		}
 		t.AddRow(cmd.Row([]string{
 			event.StartTime.Local().Format(time.Stamp),
@@ -236,6 +242,7 @@ func renderHistoryTable(history []healingEvent, filter string, ctx *cmd.Context)
 			event.Error,
 		}))
 	}
+	t.LineSeparator = true
 	t.Sort()
 	ctx.Stdout.Write(t.Bytes())
 }
