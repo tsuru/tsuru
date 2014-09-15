@@ -526,7 +526,7 @@ func (app *App) ValidateTeamOwner(teams []auth.Team) error {
 			return nil
 		}
 	}
-	errorMsg := fmt.Sprintf("App can't be created. You are not member of team: %s. Please, create an app with one of your teams.", app.TeamOwner)
+	errorMsg := fmt.Sprintf("You can not set %s team as app's owner. Please set one of your teams as app's owner.", app.TeamOwner)
 	return stderr.New(errorMsg)
 }
 
