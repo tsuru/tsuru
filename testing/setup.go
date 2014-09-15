@@ -6,6 +6,7 @@
 package testing
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -89,7 +90,11 @@ func writeHomeFile(c *gocheck.C, filename string, content []byte) []string {
 	_, err := os.Stat(file)
 	var recover []string
 	if err == nil {
-		old := file + ".old"
+		var old string
+		for i := 0; err == nil; i++ {
+			old = file + fmt.Sprintf(".old-%d", i)
+			_, err = os.Stat(old)
+		}
 		recover = []string{"mv", old, file}
 		exec.Command("mv", file, old).Run()
 	} else {
