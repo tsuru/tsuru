@@ -692,6 +692,42 @@ If you don't provide the app name, tsuru will try to guess it.`,
 	c.Assert((&AppStart{}).Info(), gocheck.DeepEquals, expected)
 }
 
+func (s *S) TestSetTeamOwnerInfo(c *gocheck.C) {
+	expected := &cmd.Info{
+		Name:    "app-set-team-owner",
+		Usage:   "app-set-team-owner <new-team-owner> [--app appname]",
+		Desc:    "set app's owner team",
+		MinArgs: 1,
+	}
+	c.Assert((&SetTeamOwner{}).Info(), gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestSetTeamOwner(c *gocheck.C) {
+	var (
+		called         bool
+		stdout, stderr bytes.Buffer
+	)
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Args:   []string{"test"},
+	}
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: "app's owner team successfully changed.", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			called = true
+			return req.URL.Path == "/apps/app-fake/team-owner" && req.Method == "POST"
+		},
+	}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	command := SetTeamOwner{}
+	command.Flags().Parse(true, []string{"--app", "app-fake"})
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(called, gocheck.Equals, true)
+	c.Assert(stdout.String(), gocheck.Equals, "app's owner team successfully changed.\n")
+}
+
 func (s *S) TestAppStart(c *gocheck.C) {
 	var (
 		called         bool

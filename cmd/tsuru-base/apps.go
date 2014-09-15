@@ -548,3 +548,38 @@ func addCName(v []string, g GuessingCommand, client *cmd.Client) error {
 	}
 	return nil
 }
+
+type SetTeamOwner struct {
+	GuessingCommand
+}
+
+func (c *SetTeamOwner) Run(context *cmd.Context, client *cmd.Client) error {
+	appName, err := c.GuessingCommand.Guess()
+	if err != nil {
+		return err
+	}
+	url, err := cmd.GetURL(fmt.Sprintf("/apps/%s/team-owner", appName))
+	if err != nil {
+		return err
+	}
+	body := strings.NewReader(context.Args[0])
+	request, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(request)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(context.Stdout, "app's owner team successfully changed.")
+	return nil
+}
+
+func (c *SetTeamOwner) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "app-set-team-owner",
+		Usage:   "app-set-team-owner <new-team-owner> [--app appname]",
+		Desc:    "set app's owner team",
+		MinArgs: 1,
+	}
+}
