@@ -224,26 +224,23 @@ func CreateApp(app *App, user *auth.User) error {
 	if app.Swap > 0 {
 		app.Swap = app.Memory + app.Swap
 	}
-	if err := app.SetTeamOwner(teams); err != nil {
+	if app.TeamOwner == "" {
+		if len(teams) > 1 {
+			return ManyTeamsError{}
+		}
+		if err := app.SetTeamOwner(&teams[0]); err != nil {
+			return err
+		}
+	}
+	err = app.ValidateTeamOwner(teams)
+	if err != nil {
 		return err
 	}
 	app.setTeams(teams)
 	app.Owner = user.Email
-	if !app.isValid() {
-		msg := "Invalid app name, your app should have at most 63 " +
-			"characters, containing only lower case letters, numbers or dashes, " +
-			"starting with a letter."
-		return &errors.ValidationError{Message: msg}
-	}
-	if app.equalAppNameAndPlatformName() {
-		msg := "Invalid app name: platform name and app name " +
-			"can not be the same"
-		return &errors.ValidationError{Message: msg}
-	}
-	if app.equalToSomePlatformName() {
-		msg := "Invalid app name: platform name already exists " +
-			"with the same name"
-		return &errors.ValidationError{Message: msg}
+	err = app.validate()
+	if err != nil {
+		return err
 	}
 	actions := []*action.Action{
 		&reserveUserApp,
@@ -518,22 +515,19 @@ func (app *App) setTeams(teams []auth.Team) {
 }
 
 // SetTeamOwner sets the TeamOwner value.
-func (app *App) SetTeamOwner(teams []auth.Team) error {
-	if app.TeamOwner == "" {
-		if len(teams) > 1 {
-			return ManyTeamsError{}
-		}
-		app.TeamOwner = teams[0].Name
-	} else {
-		for _, t := range teams {
-			if t.Name == app.TeamOwner {
-				return nil
-			}
-		}
-		errorMsg := fmt.Sprintf("App can't be created. You are not member of team: %s. Please, create an app with one of your teams.", app.TeamOwner)
-		return stderr.New(errorMsg)
-	}
+func (app *App) SetTeamOwner(team *auth.Team) error {
+	app.TeamOwner = team.Name
 	return nil
+}
+
+func (app *App) ValidateTeamOwner(teams []auth.Team) error {
+	for _, t := range teams {
+		if t.Name == app.TeamOwner {
+			return nil
+		}
+	}
+	errorMsg := fmt.Sprintf("App can't be created. You are not member of team: %s. Please, create an app with one of your teams.", app.TeamOwner)
+	return stderr.New(errorMsg)
 }
 
 // setEnv sets the given environment variable in the app.
@@ -561,9 +555,25 @@ func (app *App) getEnv(name string) (bind.EnvVar, error) {
 	return env, err
 }
 
-// isValid indicates whether the name of the app is valid.
-func (app *App) isValid() bool {
-	return app.Name != InternalAppName && nameRegexp.MatchString(app.Name)
+// validate checks app name format, app and platform names are the same and app name is equal a platform name.
+func (app *App) validate() error {
+	if app.Name == InternalAppName || !nameRegexp.MatchString(app.Name) {
+		msg := "Invalid app name, your app should have at most 63 " +
+			"characters, containing only lower case letters, numbers or dashes, " +
+			"starting with a letter."
+		return &errors.ValidationError{Message: msg}
+	}
+	if app.equalAppNameAndPlatformName() {
+		msg := "Invalid app name: platform name and app name " +
+			"can not be the same"
+		return &errors.ValidationError{Message: msg}
+	}
+	if app.equalToSomePlatformName() {
+		msg := "Invalid app name: platform name already exists " +
+			"with the same name"
+		return &errors.ValidationError{Message: msg}
+	}
+	return nil
 }
 
 // equalAppNameAndPlatformName check if the app.Name and app.Platform have

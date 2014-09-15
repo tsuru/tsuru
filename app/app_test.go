@@ -1084,27 +1084,28 @@ func (s *S) TestRemoveCNameRemovesFromRouter(c *gocheck.C) {
 }
 
 func (s *S) TestIsValid(c *gocheck.C) {
+	errMsg := "Invalid app name, your app should have at most 63 characters, containing only lower case letters, numbers or dashes, starting with a letter."
 	var data = []struct {
 		name     string
-		expected bool
+		expected string
 	}{
-		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyapp", false},
-		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyap", false},
-		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmya", true},
-		{"myApp", false},
-		{"my app", false},
-		{"123myapp", false},
-		{"myapp", true},
-		{"_theirapp", false},
-		{"my-app", true},
-		{"-myapp", false},
-		{"my_app", false},
-		{"b", true},
-		{InternalAppName, false},
+		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyapp", errMsg},
+		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyap", errMsg},
+		{"myappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmyappmya", ""},
+		{"myApp", errMsg},
+		{"my app", errMsg},
+		{"123myapp", errMsg},
+		{"myapp", ""},
+		{"_theirapp", errMsg},
+		{"my-app", ""},
+		{"-myapp", errMsg},
+		{"my_app", errMsg},
+		{"b", ""},
+		{InternalAppName, errMsg},
 	}
 	for _, d := range data {
 		a := App{Name: d.name}
-		if valid := a.isValid(); valid != d.expected {
+		if valid := a.validate(); valid != nil && valid.Error() != d.expected {
 			c.Errorf("Is %q a valid app name? Expected: %v. Got: %v.", d.name, d.expected, valid)
 		}
 	}
