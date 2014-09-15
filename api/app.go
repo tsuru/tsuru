@@ -179,6 +179,53 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
+func setTeamOwner(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	if r.Body == nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a team name."}
+	}
+	defer r.Body.Close()
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	teamName := string(b)
+	u, err := t.User()
+	if err != nil {
+		return nil
+	}
+	appName := r.URL.Query().Get(":app")
+	app, err := getApp(appName, u)
+	if err != nil {
+		return nil
+	}
+	team, err := auth.GetTeam(teamName)
+	if err != nil {
+		return err
+	}
+	err = app.SetTeamOwner(team)
+	if err != nil {
+		return err
+	}
+	teams, err := u.Teams()
+	if err != nil {
+		return err
+	}
+	err = app.ValidateTeamOwner(teams)
+	if err != nil {
+		return err
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	err = conn.Apps().Update(bson.M{"name": app.Name}, app)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func numberOfUnits(r *http.Request) (uint, error) {
 	missingMsg := "You must provide the number of units."
 	if r.Body == nil {

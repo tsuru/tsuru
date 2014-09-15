@@ -3314,3 +3314,91 @@ func (s *S) TestRegisterUnitInvalidUnit(c *gocheck.C) {
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), gocheck.Equals, "unit not found\n")
 }
+
+func (s *S) TestSetTeamOwnerWithoutTeam(c *gocheck.C) {
+	a := app.App{
+		Name:     "myappx",
+		Platform: "python",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs(a.Name).DropCollection()
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.provisioner.Destroy(&a)
+	request, err := http.NewRequest("POST", "/apps/myappx/team-owner", nil)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), gocheck.Equals, "You must provide a team name.\n")
+}
+
+func (s *S) TestSetTeamOwner(c *gocheck.C) {
+	a := app.App{
+		Name:      "myappx",
+		Platform:  "python",
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs(a.Name).DropCollection()
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.provisioner.Destroy(&a)
+	team := &auth.Team{Name: "newowner", Users: []string{s.user.Email}}
+	err = s.conn.Teams().Insert(team)
+	defer s.conn.Teams().Remove(bson.M{"name": team.Name})
+	c.Assert(err, gocheck.IsNil)
+	body := strings.NewReader(team.Name)
+	req, err := http.NewRequest("POST", "/apps/myappx/team-owner", body)
+	c.Assert(err, gocheck.IsNil)
+	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	rec := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, gocheck.Equals, http.StatusOK)
+	s.conn.Apps().Find(bson.M{"name": "myappx"}).One(&a)
+	c.Assert(a.TeamOwner, gocheck.Equals, team.Name)
+}
+
+func (s *S) TestSetTeamOwnerToUserWhoCantBeOwner(c *gocheck.C) {
+	a := app.App{
+		Name:      "myappx",
+		Platform:  "python",
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs(a.Name).DropCollection()
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.provisioner.Destroy(&a)
+	user := &auth.User{Email: "teste@thewho.com", Password: "123456", Quota: quota.Unlimited}
+	_, err = nativeScheme.Create(user)
+	c.Assert(err, gocheck.IsNil)
+	team := &auth.Team{Name: "newowner", Users: []string{user.Email}}
+	err = s.conn.Teams().Insert(team)
+	defer s.conn.Teams().Remove(bson.M{"name": team.Name})
+	c.Assert(err, gocheck.IsNil)
+	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
+	c.Assert(err, gocheck.IsNil)
+	body := strings.NewReader(team.Name)
+	req, err := http.NewRequest("POST", "/apps/myappx/team-owner", body)
+	c.Assert(err, gocheck.IsNil)
+	req.Header.Set("Authorization", "bearer "+token.GetValue())
+	rec := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, gocheck.Equals, http.StatusForbidden)
+	s.conn.Apps().Find(bson.M{"name": "myappx"}).One(&a)
+	c.Assert(a.TeamOwner, gocheck.Equals, s.team.Name)
+}

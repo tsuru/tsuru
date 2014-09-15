@@ -111,6 +111,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Delete", "/apps/{app}/env", authorizationRequiredHandler(unsetEnv))
 	m.Add("Get", "/apps", authorizationRequiredHandler(appList))
 	m.Add("Post", "/apps", authorizationRequiredHandler(createApp))
+	m.Add("Post", "/apps/{app}/team-owner", authorizationRequiredHandler(setTeamOwner))
 	forceDeleteLockHandler := AdminRequiredHandler(forceDeleteLock)
 	m.Add("Delete", "/apps/{app}/lock", forceDeleteLockHandler)
 	m.Add("Put", "/apps/{app}/units", authorizationRequiredHandler(addUnits))
