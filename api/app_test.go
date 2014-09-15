@@ -3354,7 +3354,7 @@ func (s *S) TestSetTeamOwner(c *gocheck.C) {
 	defer s.provisioner.Destroy(&a)
 	team := &auth.Team{Name: "newowner", Users: []string{s.user.Email}}
 	err = s.conn.Teams().Insert(team)
-	defer s.conn.Teams().Remove(bson.M{"name": team.Name})
+	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
 	c.Assert(err, gocheck.IsNil)
 	body := strings.NewReader(team.Name)
 	req, err := http.NewRequest("POST", "/apps/myappx/team-owner", body)
@@ -3387,7 +3387,7 @@ func (s *S) TestSetTeamOwnerToUserWhoCantBeOwner(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	team := &auth.Team{Name: "newowner", Users: []string{user.Email}}
 	err = s.conn.Teams().Insert(team)
-	defer s.conn.Teams().Remove(bson.M{"name": team.Name})
+	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
 	c.Assert(err, gocheck.IsNil)
 	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, gocheck.IsNil)
