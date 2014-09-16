@@ -225,9 +225,15 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 		}(c)
 	}
 	containersGroup.Wait()
-	err = removeImage(assembleImageName(app.GetName()))
+	cluster := dockerCluster()
+	imageName := assembleImageName(app.GetName())
+	err = cluster.RemoveImage(imageName)
 	if err != nil {
 		log.Errorf("Failed to remove image: %s", err.Error())
+	}
+	err = cluster.RemoveFromRegistry(imageName)
+	if err != nil {
+		log.Errorf("Failed to remove image from registry: %s", err.Error())
 	}
 	r, err := getRouter()
 	if err != nil {
@@ -499,7 +505,7 @@ func (p *dockerProvisioner) PlatformUpdate(name string, args map[string]string, 
 }
 
 func (p *dockerProvisioner) PlatformRemove(name string) error {
-	err := dockerCluster().RemoveImageWait(assembleImageName(name))
+	err := dockerCluster().RemoveImage(assembleImageName(name))
 	if err != nil && err == docker.ErrNoSuchImage {
 		log.Errorf("error on remove image %s from docker.", name)
 		return nil

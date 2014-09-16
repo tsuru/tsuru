@@ -11,7 +11,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
-	"runtime"
+	"sort"
 	"strings"
 	"time"
 
@@ -143,11 +143,66 @@ func (s *S) TestDeploy(c *gocheck.C) {
 	c.Assert(serviceBodies[0], gocheck.Matches, ".*unit-host="+units[0].Ip)
 }
 
+func (s *S) TestDeployErasesOldImages(c *gocheck.C) {
+	h := &tsrTesting.TestHandler{}
+	gandalfServer := tsrTesting.StartGandalfTestServer(h)
+	defer gandalfServer.Close()
+	go s.stopContainers(3)
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	p := dockerProvisioner{}
+	a := app.App{
+		Name:     "appdeployimagetest",
+		Platform: "python",
+	}
+	conn, err := db.Conn()
+	defer conn.Close()
+	err = conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": a.Name})
+	err = p.Provision(&a)
+	c.Assert(err, gocheck.IsNil)
+	defer p.Destroy(&a)
+	w := safe.NewBuffer(make([]byte, 2048))
+
+	err = app.Deploy(app.DeployOptions{
+		App:          &a,
+		Version:      "master",
+		Commit:       "123",
+		OutputStream: w,
+	})
+	c.Assert(err, gocheck.IsNil)
+	imgs, err := dockerCluster().ListImages(true)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(imgs, gocheck.HasLen, 2)
+	c.Assert(imgs[0].RepoTags, gocheck.HasLen, 1)
+	c.Assert(imgs[1].RepoTags, gocheck.HasLen, 1)
+	expected := []string{"tsuru/appdeployimagetest", "tsuru/python"}
+	got := []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0]}
+	sort.Strings(got)
+	c.Assert(got, gocheck.DeepEquals, expected)
+	err = app.Deploy(app.DeployOptions{
+		App:          &a,
+		Version:      "master",
+		Commit:       "123",
+		OutputStream: w,
+	})
+	c.Assert(err, gocheck.IsNil)
+	imgs, err = dockerCluster().ListImages(true)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(imgs, gocheck.HasLen, 2)
+	c.Assert(imgs[0].RepoTags, gocheck.HasLen, 1)
+	c.Assert(imgs[1].RepoTags, gocheck.HasLen, 1)
+	got = []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0]}
+	sort.Strings(got)
+	c.Assert(got, gocheck.DeepEquals, expected)
+}
+
 func (s *S) TestProvisionerUploadDeploy(c *gocheck.C) {
 	h := &tsrTesting.TestHandler{}
 	gandalfServer := tsrTesting.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
-	go s.stopContainers(1)
+	go s.stopContainers(3)
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	p := dockerProvisioner{}
@@ -188,8 +243,6 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 	gandalfServer := tsrTesting.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(3)
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
 	cont1, err := s.newContainer(nil)
 	defer s.removeTestContainer(cont1)
 	c.Assert(err, gocheck.IsNil)
@@ -216,7 +269,6 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 		Commit:       "123",
 		OutputStream: &w,
 	})
-
 	c.Assert(err, gocheck.IsNil)
 	defer p.Destroy(&a)
 	coll := collection()
@@ -227,36 +279,69 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 }
 
 func (s *S) TestProvisionerDestroy(c *gocheck.C) {
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp(cont.AppName, "python", 1)
 	var p dockerProvisioner
 	p.Provision(app)
-	c.Assert(p.Destroy(app), gocheck.IsNil)
-	ok := make(chan bool, 1)
-	go func() {
-		coll := collection()
-		defer coll.Close()
-		for {
-			ct, err := coll.Find(bson.M{"appname": cont.AppName}).Count()
-			if err != nil {
-				c.Fatal(err)
-			}
-			if ct == 0 {
-				ok <- true
-				return
-			}
-			runtime.Gosched()
-		}
-	}()
-	select {
-	case <-ok:
-	case <-time.After(10e9):
-		c.Fatal("Timed out waiting for the container to be destroyed (10 seconds)")
-	}
+	err = p.Destroy(app)
+	c.Assert(err, gocheck.IsNil)
+	coll := collection()
+	count, err := coll.Find(bson.M{"appname": cont.AppName}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 0)
 	c.Assert(rtesting.FakeRouter.HasBackend("myapp"), gocheck.Equals, false)
+}
+
+func (s *S) TestProvisionerDestroyRemovesImage(c *gocheck.C) {
+	var registryRequests []*http.Request
+	registryServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		registryRequests = append(registryRequests, r)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer registryServer.Close()
+	registryURL := strings.Replace(registryServer.URL, "http://", "", 1)
+	config.Set("docker:registry", registryURL)
+	defer config.Unset("docker:registry")
+	h := &tsrTesting.TestHandler{}
+	gandalfServer := tsrTesting.StartGandalfTestServer(h)
+	defer gandalfServer.Close()
+	go s.stopContainers(1)
+	p := dockerProvisioner{}
+	a := app.App{
+		Name:     "mydoomedapp",
+		Platform: "python",
+	}
+	conn, err := db.Conn()
+	defer conn.Close()
+	err = conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": a.Name})
+	p.Provision(&a)
+	defer p.Destroy(&a)
+	w := safe.NewBuffer(make([]byte, 2048))
+	err = app.Deploy(app.DeployOptions{
+		App:          &a,
+		Version:      "master",
+		Commit:       "123",
+		OutputStream: w,
+	})
+	c.Assert(err, gocheck.IsNil)
+	err = p.Destroy(&a)
+	c.Assert(err, gocheck.IsNil)
+	coll := collection()
+	count, err := coll.Find(bson.M{"appname": a.Name}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 0)
+	c.Assert(rtesting.FakeRouter.HasBackend(a.Name), gocheck.Equals, false)
+	c.Assert(registryRequests, gocheck.HasLen, 1)
+	c.Assert(registryRequests[0].Method, gocheck.Equals, "DELETE")
+	c.Assert(registryRequests[0].URL.Path, gocheck.Equals, "/v1/repositories/tsuru/mydoomedapp/")
+	imgs, err := dockerCluster().ListImages(true)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(imgs, gocheck.HasLen, 1)
+	c.Assert(imgs[0].RepoTags, gocheck.HasLen, 1)
+	c.Assert(imgs[0].RepoTags[0], gocheck.Equals, registryURL+"/tsuru/python")
 }
 
 func (s *S) TestProvisionerDestroyEmptyUnit(c *gocheck.C) {
@@ -278,8 +363,6 @@ func (s *S) TestProvisionerDestroyRemovesRouterBackend(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerAddr(c *gocheck.C) {
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(cont)
@@ -423,9 +506,9 @@ func (s *S) TestProvisionerRemoveUnits(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerRemoveUnitsPriorityOrder(c *gocheck.C) {
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
 	container, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	err = newImage("tsuru/"+container.AppName, "")
 	c.Assert(err, gocheck.IsNil)
 	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
 	app := testing.NewFakeApp(container.AppName, "python", 0)
@@ -454,9 +537,9 @@ func (s *S) TestProvisionerRemoveUnitsZeroUnits(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerRemoveUnitsTooManyUnits(c *gocheck.C) {
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
 	container, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	err = newImage("tsuru/"+container.AppName, "")
 	c.Assert(err, gocheck.IsNil)
 	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
 	app := testing.NewFakeApp(container.AppName, "python", 0)
@@ -469,8 +552,6 @@ func (s *S) TestProvisionerRemoveUnitsTooManyUnits(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
 	container, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
@@ -775,11 +856,9 @@ func (s *S) TestProvisionerPlatformAdd(c *gocheck.C) {
 	defer server.Stop()
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
-	var storage cluster.MapStorage
-	storage.StoreImage("localhost:3030/base", server.URL())
 	cmutex.Lock()
 	oldDockerCluster := dCluster
-	dCluster, _ = cluster.New(nil, &storage,
+	dCluster, _ = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: server.URL()})
 	cmutex.Unlock()
 	defer func() {
@@ -792,10 +871,13 @@ func (s *S) TestProvisionerPlatformAdd(c *gocheck.C) {
 	p := dockerProvisioner{}
 	err = p.PlatformAdd("test", args, bytes.NewBuffer(nil))
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(requests, gocheck.HasLen, 2)
+	c.Assert(requests, gocheck.HasLen, 3)
+	c.Assert(requests[0].URL.Path, gocheck.Equals, "/build")
 	queryString := requests[0].URL.Query()
 	c.Assert(queryString.Get("t"), gocheck.Equals, assembleImageName("test"))
 	c.Assert(queryString.Get("remote"), gocheck.Equals, "http://localhost/Dockerfile")
+	c.Assert(requests[1].URL.Path, gocheck.Equals, "/images/localhost:3030/tsuru/test/json")
+	c.Assert(requests[2].URL.Path, gocheck.Equals, "/images/localhost:3030/tsuru/test/push")
 }
 
 func (s *S) TestProvisionerPlatformAddWithoutArgs(c *gocheck.C) {
@@ -823,11 +905,9 @@ func (s *S) TestProvisionerPlatformAddWithoutNode(c *gocheck.C) {
 	defer server.Stop()
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
-	var storage cluster.MapStorage
-	storage.StoreImage("localhost:3030/base", server.URL())
 	cmutex.Lock()
 	oldDockerCluster := dCluster
-	dCluster, _ = cluster.New(nil, &storage)
+	dCluster, _ = cluster.New(nil, &cluster.MapStorage{})
 	cmutex.Unlock()
 	defer func() {
 		cmutex.Lock()
@@ -852,12 +932,9 @@ func (s *S) TestProvisionerPlatformRemove(c *gocheck.C) {
 	})
 	c.Assert(err, gocheck.IsNil)
 	defer server.Stop()
-	var storage cluster.MapStorage
-	imageName := assembleImageName("test")
-	storage.StoreImage(imageName, server.URL())
 	cmutex.Lock()
 	oldDockerCluster := dCluster
-	dCluster, _ = cluster.New(nil, &storage,
+	dCluster, _ = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: server.URL()})
 	cmutex.Unlock()
 	defer func() {
@@ -866,9 +943,14 @@ func (s *S) TestProvisionerPlatformRemove(c *gocheck.C) {
 		cmutex.Unlock()
 	}()
 	p := dockerProvisioner{}
+	var buf bytes.Buffer
+	err = p.PlatformAdd("test", map[string]string{"dockerfile": "http://localhost/Dockerfile"}, &buf)
+	c.Assert(err, gocheck.IsNil)
 	err = p.PlatformRemove("test")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(strings.Contains(requests[0].URL.RequestURI(), "tsuru/test"), gocheck.Equals, true)
+	c.Assert(requests, gocheck.HasLen, 4)
+	c.Assert(requests[3].Method, gocheck.Equals, "DELETE")
+	c.Assert(requests[3].URL.Path, gocheck.Matches, "/images/[^/]+")
 }
 
 func (s *S) TestProvisionerPlatformRemoveReturnsStorageError(c *gocheck.C) {

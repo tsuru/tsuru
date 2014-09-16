@@ -70,8 +70,6 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	s.runArgs = "/etc/circus/circus.ini"
 	s.port = "8888"
 	var err error
-	s.server, err = dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, gocheck.IsNil)
 	s.targetRecover = tTesting.SetTargetFile(c, []byte("http://localhost"))
 	s.storage, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
@@ -83,6 +81,11 @@ func (s *S) SetUpTest(c *gocheck.C) {
 	var err error
 	cmutex.Lock()
 	defer cmutex.Unlock()
+	if s.server != nil {
+		s.server.Stop()
+	}
+	s.server, err = dtesting.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, gocheck.IsNil)
 	dCluster, err = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: s.server.URL()},
 	)

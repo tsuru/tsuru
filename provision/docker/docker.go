@@ -600,7 +600,7 @@ func getImage(app provision.App) string {
 
 // removeImage removes an image from docker cluster
 func removeImage(imageId string) error {
-	return dockerCluster().RemoveImage(imageId)
+	return dockerCluster().RemoveImageIgnoreLast(imageId)
 }
 
 // pushImage sends the given image to the registry server defined in the

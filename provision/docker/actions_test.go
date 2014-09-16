@@ -266,8 +266,6 @@ func (s *S) TestSetNetworkInfoName(c *gocheck.C) {
 }
 
 func (s *S) TestSetNetworkInfoForward(c *gocheck.C) {
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
 	conta, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(conta)
@@ -283,8 +281,6 @@ func (s *S) TestSetNetworkInfoForward(c *gocheck.C) {
 }
 
 func (s *S) TestSetImage(c *gocheck.C) {
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
 	conta, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(conta)
@@ -298,8 +294,6 @@ func (s *S) TestSetImage(c *gocheck.C) {
 }
 
 func (s *S) TestStartContainerForward(c *gocheck.C) {
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
 	conta, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(conta)
@@ -421,8 +415,6 @@ func (s *S) TestProvisionRemoveOldUnitsName(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionRemoveOldUnitsForward(c *gocheck.C) {
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer rtesting.FakeRouter.RemoveBackend(cont.AppName)

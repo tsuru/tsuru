@@ -197,6 +197,10 @@ type newContainerOpts struct {
 }
 
 func (s *S) newContainer(opts *newContainerOpts) (*container, error) {
+	err := newImage("tsuru/python", "")
+	if err != nil {
+		return nil, err
+	}
 	container := container{
 		ID:       "id",
 		IP:       "10.10.10.10",
@@ -249,8 +253,6 @@ func (s *S) removeTestContainer(c *container) error {
 }
 
 func (s *S) TestContainerRemove(c *gocheck.C) {
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
 	container, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(container)
@@ -270,8 +272,6 @@ func (s *S) TestContainerRemove(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveContainerIgnoreErrors(c *gocheck.C) {
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
 	container, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(container)
@@ -289,8 +289,6 @@ func (s *S) TestRemoveContainerIgnoreErrors(c *gocheck.C) {
 }
 
 func (s *S) TestContainerNetworkInfo(c *gocheck.C) {
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(cont)
@@ -474,8 +472,6 @@ func (s *S) TestGetImageWithRegistry(c *gocheck.C) {
 }
 
 func (s *S) TestContainerCommit(c *gocheck.C) {
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(cont)
@@ -489,8 +485,6 @@ func (s *S) TestContainerCommit(c *gocheck.C) {
 func (s *S) TestContainerCommitWithRegistry(c *gocheck.C) {
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(cont)
@@ -504,8 +498,6 @@ func (s *S) TestContainerCommitWithRegistry(c *gocheck.C) {
 func (s *S) TestContainerCommitErrorInCommit(c *gocheck.C) {
 	s.server.PrepareFailure("commit-failure", "/commit")
 	defer s.server.ResetFailure("commit-failure")
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(cont)
@@ -518,8 +510,6 @@ func (s *S) TestContainerCommitErrorInPush(c *gocheck.C) {
 	defer s.server.ResetFailure("push-failure")
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(cont)
@@ -527,62 +517,11 @@ func (s *S) TestContainerCommitErrorInPush(c *gocheck.C) {
 	c.Assert(err, gocheck.ErrorMatches, ".*push-failure\n")
 }
 
-func (s *S) TestContainerCommitRemovesOldImages(c *gocheck.C) {
-	appName := "commit-remove-test-app"
-	cont, err := s.newContainer(&newContainerOpts{AppName: appName})
-	c.Assert(err, gocheck.IsNil)
-	defer s.removeTestContainer(cont)
-	imageId, err := cont.commit()
-	c.Assert(err, gocheck.IsNil)
-	repoNamespace, _ := config.GetString("docker:repository-namespace")
-	repository := repoNamespace + "/" + cont.AppName
-	c.Assert(imageId, gocheck.Equals, repository)
-	images, err := dockerCluster().ListImages(true)
-	c.Assert(err, gocheck.IsNil)
-	var toEraseID string
-	for _, image := range images {
-		if len(image.RepoTags) > 0 && image.RepoTags[0] == "tsuru/"+appName {
-			toEraseID = image.ID
-			break
-		}
-	}
-	c.Assert(toEraseID, gocheck.Not(gocheck.Equals), "")
-	cont, err = s.newContainer(&newContainerOpts{AppName: appName})
-	c.Assert(err, gocheck.IsNil)
-	defer s.removeTestContainer(cont)
-	_, err = cont.commit()
-	c.Assert(err, gocheck.IsNil)
-	images, err = dockerCluster().ListImages(true)
-	c.Assert(err, gocheck.IsNil)
-	for _, image := range images {
-		if image.ID == toEraseID {
-			c.Fatalf("Image id %q shouldn't be in images list.", toEraseID)
-		}
-	}
-}
-
 func (s *S) TestRemoveImage(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	err = removeImage("tsuru/python")
 	c.Assert(err, gocheck.IsNil)
-}
-
-func (s *S) TestRemoveImageCallsRegistry(c *gocheck.C) {
-	var request http.Request
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		request = *r
-	}))
-	defer server.Close()
-	u, _ := url.Parse(server.URL)
-	imageRepo := u.Host + "/tsuru/python"
-	err := newImage(imageRepo, s.server.URL())
-	c.Assert(err, gocheck.IsNil)
-	err = removeImage(imageRepo)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(request.Method, gocheck.Equals, "DELETE")
-	path := "/v1/repositories/tsuru/python/tags"
-	c.Assert(request.URL.Path, gocheck.Equals, path)
 }
 
 func (s *S) TestGitDeploy(c *gocheck.C) {
@@ -670,8 +609,6 @@ func (s *S) TestStart(c *gocheck.C) {
 }
 
 func (s *S) TestContainerStop(c *gocheck.C) {
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(cont)
@@ -688,8 +625,6 @@ func (s *S) TestContainerStop(c *gocheck.C) {
 }
 
 func (s *S) TestContainerStopReturnsNilWhenContainerAlreadyMarkedAsStopped(c *gocheck.C) {
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(cont)
@@ -700,8 +635,6 @@ func (s *S) TestContainerStopReturnsNilWhenContainerAlreadyMarkedAsStopped(c *go
 }
 
 func (s *S) TestContainerLogs(c *gocheck.C) {
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
 	cont, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(cont)
@@ -793,19 +726,17 @@ func (s *S) TestGetDockerServersShouldSearchFromConfig(c *gocheck.C) {
 }
 
 func (s *S) TestPushImage(c *gocheck.C) {
-	var request *http.Request
+	var requests []*http.Request
 	server, err := dtesting.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
-		request = r
+		requests = append(requests, r)
 	})
 	c.Assert(err, gocheck.IsNil)
 	defer server.Stop()
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
-	var storage cluster.MapStorage
-	storage.StoreImage("localhost:3030/base", server.URL())
 	cmutex.Lock()
 	oldDockerCluster := dCluster
-	dCluster, _ = cluster.New(nil, &storage,
+	dCluster, _ = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: server.URL()})
 	cmutex.Unlock()
 	defer func() {
@@ -813,11 +744,14 @@ func (s *S) TestPushImage(c *gocheck.C) {
 		defer cmutex.Unlock()
 		dCluster = oldDockerCluster
 	}()
-	err = newImage("localhost:3030/base", "http://index.docker.io")
+	err = newImage("localhost:3030/base/img", "")
 	c.Assert(err, gocheck.IsNil)
-	err = pushImage("localhost:3030/base")
+	err = pushImage("localhost:3030/base/img")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(request.URL.Path, gocheck.Matches, ".*/images/localhost:3030/base/push$")
+	c.Assert(requests, gocheck.HasLen, 3)
+	c.Assert(requests[0].URL.Path, gocheck.Equals, "/images/create")
+	c.Assert(requests[1].URL.Path, gocheck.Equals, "/images/localhost:3030/base/img/json")
+	c.Assert(requests[2].URL.Path, gocheck.Equals, "/images/localhost:3030/base/img/push")
 }
 
 func (s *S) TestPushImageNoRegistry(c *gocheck.C) {
