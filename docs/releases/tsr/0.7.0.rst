@@ -46,6 +46,7 @@ What's new in tsr 0.7.0
 - tsuru is now able to heal failing nodes and containers automatically, this is
   disabled by default. Instructions can be found in the :ref:`config reference
   <config_healing>`
+- set app’s owner team: now it’s possible to user to change app’s owner team. App’s new owner team should be one of user’s team. Admin user can change app's owner team to any team. (issue `#894 <https://github.com/tsuru/tsuru/issues/894>`_).
 
 Bug fixes
 =========
