@@ -3444,5 +3444,30 @@ func (s *S) TestSetTeamOwnerAsAdmin(c *gocheck.C) {
 	c.Assert(rec.Code, gocheck.Equals, http.StatusOK)
 	s.conn.Apps().Find(bson.M{"name": "myappx"}).One(&a)
 	c.Assert(a.TeamOwner, gocheck.Equals, team.Name)
+}
 
+func (s *S) TestSaveAppCustomData(c *gocheck.C) {
+	a := app.App{
+		Name:  "mycustomdataapp",
+		Teams: []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	body := strings.NewReader(`{"a": "b", "c": {"d": [1, 2]}, "f": [{"a": "b"}]}`)
+	req, err := http.NewRequest("POST", "/apps/mycustomdataapp/customdata", body)
+	c.Assert(err, gocheck.IsNil)
+	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	rec := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, gocheck.Equals, http.StatusOK)
+	dbApp, err := app.GetByName(a.Name)
+	c.Assert(err, gocheck.IsNil)
+	expected := map[string]interface{}{
+		"a": "b",
+		"c": map[string]interface{}{"d": []interface{}{float64(1), float64(2)}},
+		"f": []interface{}{map[string]interface{}{"a": "b"}},
+	}
+	c.Assert(dbApp.CustomData, gocheck.DeepEquals, expected)
 }

@@ -913,3 +913,20 @@ func registerUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	return writeEnvVars(w, a)
 }
+
+func saveAppCustomData(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	appName := r.URL.Query().Get(":app")
+	var customData map[string]interface{}
+	err := json.NewDecoder(r.Body).Decode(&customData)
+	if err != nil {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: fmt.Sprintf("Unable to decode body: %s", err.Error()),
+		}
+	}
+	a, err := app.GetByName(appName)
+	if err != nil {
+		return err
+	}
+	return a.UpdateCustomData(customData)
+}

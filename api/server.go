@@ -124,6 +124,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Get", "/apps/{app}/log", authorizationRequiredHandler(appLog))
 	logPostHandler := authorizationRequiredHandler(addLog)
 	m.Add("Post", "/apps/{app}/log", logPostHandler)
+	saveCustomDataHandler := authorizationRequiredHandler(saveAppCustomData)
+	m.Add("Post", "/apps/{app}/customdata", saveCustomDataHandler)
 
 	m.Add("Get", "/deploys", AdminRequiredHandler(deploysList))
 	m.Add("Get", "/deploys/{deploy}", AdminRequiredHandler(deployInfo))
@@ -189,6 +191,7 @@ func RunServer(dry bool) http.Handler {
 		runHandler,
 		forceDeleteLockHandler,
 		registerUnitHandler,
+		saveCustomDataHandler,
 	}})
 	n.UseHandler(http.HandlerFunc(runDelayedHandler))
 
