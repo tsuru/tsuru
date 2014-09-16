@@ -82,6 +82,7 @@ type App struct {
 	Swap           int `json:",string"`
 	UpdatePlatform bool
 	Lock           AppLock
+	CustomData     map[string]interface{}
 
 	quota.Quota
 	hr hookRunner
@@ -1021,4 +1022,16 @@ func (app *App) RegisterUnit(unitId string) error {
 		}
 	}
 	return ErrUnitNotFound
+}
+
+func (app *App) UpdateCustomData(customData map[string]interface{}) error {
+	app.CustomData = customData
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	return conn.Apps().Update(
+		bson.M{"name": app.Name},
+		bson.M{"$set": bson.M{"customdata": app.CustomData}},
+	)
 }

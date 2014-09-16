@@ -1891,3 +1891,20 @@ func (s *S) TestAppValidateTeamOwnerAdminCanSetAppToAnyTeam(c *gocheck.C) {
 	err = a.ValidateTeamOwner(admin)
 	c.Assert(err, gocheck.IsNil)
 }
+
+func (s *S) TestUpdateCustomData(c *gocheck.C) {
+	a := App{Name: "my-test-app"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	customData := map[string]interface{}{
+		"hooks": map[string]interface{}{
+			"build": []interface{}{"a", "b"},
+		},
+	}
+	err = a.UpdateCustomData(customData)
+	c.Assert(err, gocheck.IsNil)
+	dbApp, err := GetByName(a.Name)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dbApp.CustomData, gocheck.DeepEquals, customData)
+}
