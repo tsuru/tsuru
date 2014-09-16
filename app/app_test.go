@@ -1849,3 +1849,45 @@ func (s *S) TestAppRegisterUnitInvalidUnit(c *gocheck.C) {
 	err := a.RegisterUnit("oddity")
 	c.Assert(err, gocheck.Equals, ErrUnitNotFound)
 }
+
+func (s *S) TestAppValidateTeamOwner(c *gocheck.C) {
+	team := auth.Team{Name: "test", Users: []string{s.user.Email}}
+	err := s.conn.Teams().Insert(team)
+	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
+	c.Assert(err, gocheck.IsNil)
+	a := App{Name: "test", Platform: "python", TeamOwner: team.Name}
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	err = a.ValidateTeamOwner(s.user)
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestAppValidateTeamOwnerToUserWhoIsNotThatTeam(c *gocheck.C) {
+	team := auth.Team{Name: "test"}
+	err := s.conn.Teams().Insert(team)
+	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
+	c.Assert(err, gocheck.IsNil)
+	a := App{Name: "test", Platform: "python", TeamOwner: team.Name}
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	err = a.ValidateTeamOwner(s.user)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "You can not set test team as app's owner. Please set one of your teams as app's owner.")
+}
+
+func (s *S) TestAppValidateTeamOwnerAdminCanSetAppToAnyTeam(c *gocheck.C) {
+	admin := &auth.User{Email: "admin@a.com"}
+	teamAdmin := auth.Team{Name: "admin", Users: []string{admin.Email}}
+	err := s.conn.Teams().Insert(teamAdmin)
+	defer s.conn.Teams().Remove(bson.M{"_id": teamAdmin.Name})
+	c.Assert(err, gocheck.IsNil)
+	team := auth.Team{Name: "test"}
+	err = s.conn.Teams().Insert(team)
+	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
+	c.Assert(err, gocheck.IsNil)
+	a := App{Name: "test", Platform: "python", TeamOwner: team.Name}
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	err = a.ValidateTeamOwner(admin)
+	c.Assert(err, gocheck.IsNil)
+}

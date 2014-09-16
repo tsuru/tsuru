@@ -206,11 +206,7 @@ func setTeamOwner(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	teams, err := u.Teams()
-	if err != nil {
-		return err
-	}
-	err = app.ValidateTeamOwner(teams)
+	err = app.ValidateTeamOwner(u)
 	if err != nil {
 		return err
 	}

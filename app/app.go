@@ -232,7 +232,7 @@ func CreateApp(app *App, user *auth.User) error {
 			return err
 		}
 	}
-	err = app.ValidateTeamOwner(teams)
+	err = app.ValidateTeamOwner(user)
 	if err != nil {
 		return err
 	}
@@ -520,7 +520,14 @@ func (app *App) SetTeamOwner(team *auth.Team) error {
 	return nil
 }
 
-func (app *App) ValidateTeamOwner(teams []auth.Team) error {
+func (app *App) ValidateTeamOwner(user *auth.User) error {
+	if user.IsAdmin() {
+		return nil
+	}
+	teams, err := user.Teams()
+	if err != nil {
+		return err
+	}
 	for _, t := range teams {
 		if t.Name == app.TeamOwner {
 			return nil
