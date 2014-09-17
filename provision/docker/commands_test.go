@@ -6,17 +6,18 @@ package docker
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
-	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
 
 func (s *S) TestGitDeployCmds(c *gocheck.C) {
 	h := &testing.TestHandler{}
+	h.Content = `{"git_url":"git://something/app-name.git"}`
 	gandalfServer := testing.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	app := testing.NewFakeApp("app-name", "python", 1)
@@ -26,14 +27,34 @@ func (s *S) TestGitDeployCmds(c *gocheck.C) {
 		Public: true,
 	}
 	app.SetEnv(env)
+	host_env := bind.EnvVar{
+		Name:   "TSURU_HOST",
+		Value:  "tsuru_host",
+		Public: true,
+	}
+	token_env := bind.EnvVar{
+		Name:   "TSURU_APP_TOKEN",
+		Value:  "app_token",
+		Public: true,
+	}
+	app.SetEnv(host_env)
+	app.SetEnv(token_env)
 	deployCmd, err := config.GetString("docker:deploy-cmd")
 	c.Assert(err, gocheck.IsNil)
-	version := "version"
-	appRepo := repository.ReadOnlyURL(app.GetName())
-	expected := []string{deployCmd, "git", appRepo, version, "http_proxy=[http://theirproxy.com:3128/,http://teste.com:3111] "}
-	cmds, err := gitDeployCmds(app, version)
+	expectedPart1 := fmt.Sprintf("%s git git://something/app-name.git version", deployCmd)
+	expectedAgent := fmt.Sprintf(`tsuru_unit_agent tsuru_host app_token app-name "%s" deploy`, expectedPart1)
+	expectedCmd := fmt.Sprintf("%s || %s", expectedAgent, expectedPart1)
+	cmds, err := gitDeployCmds(app, "version")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(cmds, gocheck.DeepEquals, expected)
+	c.Assert(cmds, gocheck.HasLen, 3)
+	c.Assert(cmds[0], gocheck.Equals, "/bin/bash")
+	c.Assert(cmds[1], gocheck.Equals, "-c")
+	c.Assert(strings.HasPrefix(cmds[2], expectedCmd), gocheck.Equals, true)
+	expectedVars := []string{"http_proxy=[http://theirproxy.com:3128/,http://teste.com:3111]", "TSURU_APP_TOKEN=app_token", "TSURU_HOST=tsuru_host"}
+	sort.Strings(expectedVars)
+	cmdVars := strings.Split(strings.TrimSpace(strings.Replace(cmds[2], expectedCmd, "", 1)), " ")
+	sort.Strings(cmdVars)
+	c.Assert(cmdVars, gocheck.DeepEquals, expectedVars)
 }
 
 func (s *S) TestArchiveDeployCmds(c *gocheck.C) {
@@ -44,16 +65,35 @@ func (s *S) TestArchiveDeployCmds(c *gocheck.C) {
 		Public: true,
 	}
 	app.SetEnv(env)
+	host_env := bind.EnvVar{
+		Name:   "TSURU_HOST",
+		Value:  "tsuru_host",
+		Public: true,
+	}
+	token_env := bind.EnvVar{
+		Name:   "TSURU_APP_TOKEN",
+		Value:  "app_token",
+		Public: true,
+	}
+	app.SetEnv(host_env)
+	app.SetEnv(token_env)
 	deployCmd, err := config.GetString("docker:deploy-cmd")
 	c.Assert(err, gocheck.IsNil)
 	archiveURL := "https://s3.amazonaws.com/wat/archive.tar.gz"
-	expected := []string{
-		deployCmd, "archive", archiveURL,
-		"http_proxy=[http://theirproxy.com:3128/,http://teste.com:3111] ",
-	}
+	expectedPart1 := fmt.Sprintf("%s archive %s", deployCmd, archiveURL)
+	expectedAgent := fmt.Sprintf(`tsuru_unit_agent tsuru_host app_token app-name "%s" deploy`, expectedPart1)
+	expectedCmd := fmt.Sprintf("%s || %s", expectedAgent, expectedPart1)
 	cmds, err := archiveDeployCmds(app, archiveURL)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(cmds, gocheck.DeepEquals, expected)
+	c.Assert(cmds, gocheck.HasLen, 3)
+	c.Assert(cmds[0], gocheck.Equals, "/bin/bash")
+	c.Assert(cmds[1], gocheck.Equals, "-c")
+	c.Assert(strings.HasPrefix(cmds[2], expectedCmd), gocheck.Equals, true)
+	expectedVars := []string{"http_proxy=[http://theirproxy.com:3128/,http://teste.com:3111]", "TSURU_APP_TOKEN=app_token", "TSURU_HOST=tsuru_host"}
+	sort.Strings(expectedVars)
+	cmdVars := strings.Split(strings.TrimSpace(strings.Replace(cmds[2], expectedCmd, "", 1)), " ")
+	sort.Strings(cmdVars)
+	c.Assert(cmdVars, gocheck.DeepEquals, expectedVars)
 }
 
 func (s *S) TestRunWithAgentCmds(c *gocheck.C) {
