@@ -3446,6 +3446,39 @@ func (s *S) TestSetTeamOwnerAsAdmin(c *gocheck.C) {
 	c.Assert(a.TeamOwner, gocheck.Equals, team.Name)
 }
 
+func (s *S) TestSetTeamOwnerSetNewTeamToAppAddThatTeamToAppTeamList(c *gocheck.C) {
+	a := app.App{
+		Name:      "myappx",
+		Platform:  "python",
+		Teams:     []string{s.team.Name},
+		TeamOwner: s.team.Name,
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs(a.Name).DropCollection()
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.provisioner.Destroy(&a)
+	user := &auth.User{Email: "teste@thewho3.com", Password: "123456", Quota: quota.Unlimited}
+	_, err = nativeScheme.Create(user)
+	c.Assert(err, gocheck.IsNil)
+	team := &auth.Team{Name: "newowner", Users: []string{user.Email}}
+	err = s.conn.Teams().Insert(team)
+	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
+	c.Assert(err, gocheck.IsNil)
+	body := strings.NewReader(team.Name)
+	req, err := http.NewRequest("POST", "/apps/myappx/team-owner", body)
+	c.Assert(err, gocheck.IsNil)
+	req.Header.Set("Authorization", "bearer "+s.admintoken.GetValue())
+	rec := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(rec, req)
+	c.Assert(rec.Code, gocheck.Equals, http.StatusOK)
+	s.conn.Apps().Find(bson.M{"name": "myappx"}).One(&a)
+	c.Assert([]string{team.Name, s.team.Name}, gocheck.DeepEquals, a.Teams)
+}
+
 func (s *S) TestSaveAppCustomData(c *gocheck.C) {
 	a := app.App{
 		Name:  "mycustomdataapp",

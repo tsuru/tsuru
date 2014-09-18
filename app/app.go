@@ -516,6 +516,7 @@ func (app *App) setTeams(teams []auth.Team) {
 
 // SetTeamOwner sets the TeamOwner value.
 func (app *App) SetTeamOwner(team *auth.Team) error {
+	app.Grant(team)
 	app.TeamOwner = team.Name
 	return nil
 }
