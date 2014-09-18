@@ -596,19 +596,18 @@ It would be boring to manually run ``syncdb`` and/or ``migrate`` after every
 deployment. So we can configure an automatic hook to always run before or after
 the app restarts.
 
-tsuru parses a file called ``app.yaml`` and runs restart hooks. As the
+tsuru parses a file called ``tsuru.yaml`` and runs restart hooks. As the
 extension suggests, this is a YAML file, that contains a list of commands that
-should run before and after the restart. Here is our example of app.yaml:
+should run before and after the restart. Here is our example of tsuru.yaml:
 
 .. highlight:: yaml
 
 ::
 
     hooks:
-      restart:
-        after:
-          - python manage.py syncdb --noinput
-          - python manage.py migrate
+      build:
+        - python manage.py syncdb --noinput
+        - python manage.py migrate
 
 For more details, check the :doc:`hooks documentation </using/deploy-hooks>`.
 
@@ -619,8 +618,8 @@ deploy it:
 
 ::
 
-    $ git add app.yaml
-    $ git commit -m "app.yaml: added file"
+    $ git add tsuru.yaml
+    $ git commit -m "tsuru.yaml: added file"
     $ git push tsuru master
     Counting objects: 4, done.
     Delta compression using up to 4 threads.

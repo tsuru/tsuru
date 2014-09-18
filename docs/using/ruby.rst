@@ -503,9 +503,9 @@ It would be boring to manually run ``rake db:migrate`` after every deployment.
 So we can configure an automatic hook to always run before or after
 the app restarts.
 
-tsuru parses a file called ``app.yaml`` and runs restart hooks. As the
+tsuru parses a file called ``tsuru.yaml`` and runs restart hooks. As the
 extension suggests, this is a YAML file, that contains a list of commands that
-should run before and after the restart. Here is our example of app.yaml:
+should run before and after the restart. Here is our example of tsuru.yaml:
 
 .. highlight:: yaml
 
@@ -525,8 +525,8 @@ deploy it:
 
 ::
 
-    $ git add app.yaml
-    $ git commit -m "app.yaml: added file"
+    $ git add tsuru.yaml
+    $ git commit -m "tsuru.yaml: added file"
     $ git push tsuru master
     #####################################
     #                OMIT               #
@@ -536,23 +536,22 @@ deploy it:
 
 It is necessary to compile de assets before the app restart. To do it we can
 use the ``rake assets:precompile`` command. Then let's add the command to
-compile the assets in app.yaml:
+compile the assets in tsuru.yaml:
 
 .. highlight:: yaml
 
 ::
 
     hooks:
-      restart:
-        before:
-          - RAILS_ENV=production bundle exec rake assets:precompile
+      build:
+        - RAILS_ENV=production bundle exec rake assets:precompile
 
 .. highlight:: bash
 
 ::
 
-    $ git add app.yaml
-    $ git commit -m "app.yaml: added file"
+    $ git add tsuru.yaml
+    $ git commit -m "tsuru.yaml: added file"
     $ git push tsuru master
     #####################################
     #                OMIT               #
