@@ -86,3 +86,24 @@ race:
 
 doc:
 	@cd docs && make html SPHINXOPTS="-N -W"
+
+release:
+	@echo "Releasing tsuru $(version) version."
+
+	$(eval MAJOR := $(shell echo $(version) | sed "s/^\([0-9][0-9]*\.[0-9][0-9]*\).*/\1/"))
+
+	@echo "Replacing version string."
+	@sed -i "" "s/release = '.*'/release = '$(version)'/g" docs/conf.py
+	@sed -i "" "s/version = '.*'/version = '$(MAJOR)'/g" docs/conf.py
+	@sed -i "" 's/.tsr., .[^,]*,/"tsr", "$(version)",/' cmd/tsr/main.go
+
+	@git add .
+	@git commit -m "bump to $(version)"
+
+	@echo "Creating $(version) tag."
+	@git tag $(version)
+
+	@git push --tags
+	@git push origin master
+
+	@echo "$(version) released!"
