@@ -1141,67 +1141,6 @@ func (s *S) TestRestart(c *gocheck.C) {
 	c.Assert(restarts, gocheck.Equals, 1)
 }
 
-func (s *S) TestRestartRunsHooksAfterAndBefore(c *gocheck.C) {
-	var runner fakeHookRunner
-	a := App{Name: "child", Platform: "django", hr: &runner}
-	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
-	var buf bytes.Buffer
-	err := a.Restart(&buf)
-	c.Assert(err, gocheck.IsNil)
-	expected := map[string]int{
-		"before": 1, "after": 1,
-	}
-	c.Assert(runner.calls, gocheck.DeepEquals, expected)
-}
-
-func (s *S) TestRestartHookFailureBefore(c *gocheck.C) {
-	errMock := stderr.New("Before failed")
-	runner := fakeHookRunner{
-		result: func(kind string) error {
-			if kind == "before" {
-				return errMock
-			}
-			return nil
-		},
-	}
-	app := App{Name: "pat", Platform: "python", hr: &runner}
-	var buf bytes.Buffer
-	err := app.Restart(&buf)
-	c.Assert(err, gocheck.Equals, errMock)
-}
-
-func (s *S) TestRestartHookFailureAfter(c *gocheck.C) {
-	errMock := stderr.New("Before failed")
-	runner := fakeHookRunner{
-		result: func(kind string) error {
-			if kind == "after" {
-				return errMock
-			}
-			return nil
-		},
-	}
-	app := App{Name: "pat", Platform: "python", hr: &runner}
-	s.provisioner.Provision(&app)
-	defer s.provisioner.Destroy(&app)
-	var buf bytes.Buffer
-	err := app.Restart(&buf)
-	c.Assert(err, gocheck.Equals, errMock)
-}
-
-func (s *S) TestHookRunnerNil(c *gocheck.C) {
-	a := App{Name: "jungle"}
-	runner := a.hookRunner()
-	c.Assert(runner, gocheck.FitsTypeOf, &yamlHookRunner{})
-}
-
-func (s *S) TestHookRunnerNotNil(c *gocheck.C) {
-	var fakeRunner fakeHookRunner
-	a := App{Name: "jungle", hr: &fakeRunner}
-	runner := a.hookRunner()
-	c.Assert(runner, gocheck.Equals, &fakeRunner)
-}
-
 func (s *S) TestStop(c *gocheck.C) {
 	a := App{Name: "app"}
 	s.provisioner.Provision(&a)

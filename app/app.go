@@ -85,7 +85,6 @@ type App struct {
 	CustomData     map[string]interface{}
 
 	quota.Quota
-	hr hookRunner
 }
 
 // Units returns the list of units.
@@ -653,11 +652,7 @@ func (app *App) run(cmd string, w io.Writer, once bool) error {
 
 // Restart runs the restart hook for the app, writing its output to w.
 func (app *App) Restart(w io.Writer) error {
-	err := app.hookRunner().Restart(app, w, "before")
-	if err != nil {
-		return err
-	}
-	err = log.Write(w, []byte("\n ---> Restarting your app\n"))
+	err := log.Write(w, []byte("\n ---> Restarting your app\n"))
 	if err != nil {
 		log.Errorf("[restart] error on write app log for the app %s - %s", app.Name, err)
 		return err
@@ -667,14 +662,7 @@ func (app *App) Restart(w io.Writer) error {
 		log.Errorf("[restart] error on restart the app %s - %s", app.Name, err)
 		return err
 	}
-	return app.hookRunner().Restart(app, w, "after")
-}
-
-func (app *App) hookRunner() hookRunner {
-	if app.hr == nil {
-		app.hr = &yamlHookRunner{}
-	}
-	return app.hr
+	return nil
 }
 
 func (app *App) Stop(w io.Writer) error {
