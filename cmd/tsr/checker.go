@@ -92,9 +92,6 @@ func CheckScheduler() error {
 		}
 		return nil
 	}
-	if servers, err := config.Get("docker:servers"); err != nil || servers == nil {
-		return fmt.Errorf("You should configure the docker servers.")
-	}
 	return nil
 }
 
