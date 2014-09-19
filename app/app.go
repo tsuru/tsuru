@@ -815,7 +815,6 @@ func (app *App) UnsetEnvs(variableNames []string, publicOnly bool) error {
 // in the database or add the CName on the provisioner.
 func (app *App) AddCName(cnames ...string) error {
 	for _, cname := range cnames {
-		println(cname)
 		if cname != "" && !cnameRegexp.MatchString(cname) {
 			return stderr.New("Invalid cname")
 		}
