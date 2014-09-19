@@ -12,4 +12,7 @@ from tsuru-admin 0.5.x or older versions.
 What's new in tsuru-admin 0.6.0
 ===============================
 
-* ``tsuru-admin set-cname`` and ``tsuru-admin unset-cname`` were removed from ``tsuru-admin``
+* ``tsuru-admin set-cname`` and ``tsuru-admin unset-cname`` were removed from
+  ``tsuru-admin``
+* added ``docker-healing-list`` command, see :doc:`reference </reference/tsuru-admin>` 
+  for more details.
