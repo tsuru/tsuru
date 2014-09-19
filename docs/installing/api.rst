@@ -92,6 +92,19 @@ configuration is described below, please note that you should replace the values
         redis-server: <your-redis-server-with-port>
 
 
+In particular, take note that you must set ``auth.user-registration`` to ``true``:
+
+.. highlight:: yaml
+
+::
+
+    auth:
+        user-registration: true
+        scheme: native
+
+
+Otherwise, tsuru will fail to create an admin user in the next section.
+
 Now you only need to start your tsuru API server:
 
 
