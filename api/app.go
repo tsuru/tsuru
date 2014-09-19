@@ -180,7 +180,6 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func setTeamOwner(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	println("xxx")
 	if r.Body == nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a team name."}
 	}
