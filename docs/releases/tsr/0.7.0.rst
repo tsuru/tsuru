@@ -46,7 +46,10 @@ What's new in tsr 0.7.0
 - tsuru is now able to heal failing nodes and containers automatically, this is
   disabled by default. Instructions can be found in the :ref:`config reference
   <config_healing>`
-- set app’s owner team: now it’s possible to user to change app’s owner team. App’s new owner team should be one of user’s team. Admin user can change app's owner team to any team. (issue `#894 <https://github.com/tsuru/tsuru/issues/894>`_).
+- set app’s owner team: now it’s possible to user to change app’s owner team.
+  App’s new owner team should be one of user’s team. Admin user can change app's
+  owner team to any team. (issue `#894
+  <https://github.com/tsuru/tsuru/issues/894>`_).
 
 Bug fixes
 =========
@@ -55,7 +58,9 @@ Bug fixes
   instead of 500 when there's already a service registered with the provided
   name
 
-- PlatformAdd: returns better error when an platform is added but theres no node to build the platform image (issue `#906 <https://github.com/tsuru/tsuru/issues/906>`_).
+- PlatformAdd: returns better error when an platform is added but theres no node
+  to build the platform image (issue `#906
+  <https://github.com/tsuru/tsuru/issues/906>`_).
 
 Other improvements in tsr 0.7.0
 ===============================
@@ -83,3 +88,10 @@ Backward incompatible changes
   <config_cluster_storage>` for more details. Also, there's a `python script
   <https://gist.github.com/cezarsa/d2c8b8db611af9a2d67d>`_ that can be used to
   migrate from ``redis`` to ``mongodb``.
+- Hooks semantic has changed, ``restart:before-each`` and ``restart:after-each``
+  no longer exist and now ``restart:before`` and ``restart:afer`` run on every
+  unit. Also existing ``app.yaml`` file should be renamed to ``tsuru.yaml``. See
+  :doc:`hooks </using/deploy-hooks>` for more details.
+- Existing platform images should be updated due to changes in tsuru-circus and
+  tsuru-unit-agent. Old platforms still work, but support will be dropped on the
+  next version.
