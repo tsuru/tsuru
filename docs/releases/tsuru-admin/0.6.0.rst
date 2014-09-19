@@ -1,0 +1,15 @@
+===============================
+tsuru-admin 0.6.0 release notes
+===============================
+
+Welcome to tsuru-admin 0.6.0!
+
+These release notes cover the `new features`_ when upgrading
+from tsuru-admin 0.5.x or older versions.
+
+.. _`new features`: `What's new in tsuru-admin 0.6.0`_
+
+What's new in tsuru-admin 0.6.0
+===============================
+
+* ``tsuru-admin set-cname`` and ``tsuru-admin unset-cname`` were removed from ``tsuru-admin``
