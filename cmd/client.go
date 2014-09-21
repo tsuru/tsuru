@@ -43,7 +43,10 @@ func (c *Client) detectClientError(err error) error {
 		return fmt.Errorf("Failed to connect to tsuru server (%s): %s", target, urlErr.Err)
 	}
 	target, _ := ReadTarget()
-	return fmt.Errorf("Failed to connect to tsuru server (%s), it's probably down.", target)
+	return fmt.Errorf(
+		"Failed to connect to tsuru server (%s), it's probably down.\n"+
+			"Did you forget to run `tsuru target-add <label> <target> --set-current` ?",
+		target)
 }
 
 func (c *Client) Do(request *http.Request) (*http.Response, error) {
