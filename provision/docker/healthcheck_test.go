@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
@@ -39,7 +40,7 @@ func (s *S) TestHealthcheck(c *gocheck.C) {
 	host, port, _ := net.SplitHostPort(url.Host)
 	cont := container{AppName: a.Name, HostAddr: host, HostPort: port}
 	buf := bytes.Buffer{}
-	err = runHealthcheck(&cont, &buf, 1*time.Second)
+	err = runHealthcheck(&cont, &buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(requests, gocheck.HasLen, 1)
 	c.Assert(requests[0].URL.Path, gocheck.Equals, "/x/y")
@@ -73,11 +74,11 @@ func (s *S) TestHealthcheckWithMatch(c *gocheck.C) {
 	host, port, _ := net.SplitHostPort(url.Host)
 	cont := container{AppName: a.Name, HostAddr: host, HostPort: port}
 	buf := bytes.Buffer{}
-	err = runHealthcheck(&cont, &buf, 1*time.Second)
+	err = runHealthcheck(&cont, &buf)
 	c.Assert(err, gocheck.ErrorMatches, ".*unexpected result, expected \"(?s).*some.*\", got: invalid")
 	c.Assert(requests, gocheck.HasLen, 1)
 	c.Assert(requests[0].Method, gocheck.Equals, "GET")
-	err = runHealthcheck(&cont, &buf, 1*time.Second)
+	err = runHealthcheck(&cont, &buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(requests, gocheck.HasLen, 2)
 	c.Assert(requests[1].URL.Path, gocheck.Equals, "/x/y")
@@ -103,7 +104,7 @@ func (s *S) TestHealthcheckDefaultCheck(c *gocheck.C) {
 	host, port, _ := net.SplitHostPort(url.Host)
 	cont := container{AppName: a.Name, HostAddr: host, HostPort: port}
 	buf := bytes.Buffer{}
-	err = runHealthcheck(&cont, &buf, 1*time.Second)
+	err = runHealthcheck(&cont, &buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(requests, gocheck.HasLen, 1)
 	c.Assert(requests[0].Method, gocheck.Equals, "GET")
@@ -125,7 +126,7 @@ func (s *S) TestHealthcheckNoHealthcheck(c *gocheck.C) {
 	host, port, _ := net.SplitHostPort(url.Host)
 	cont := container{AppName: a.Name, HostAddr: host, HostPort: port}
 	buf := bytes.Buffer{}
-	err = runHealthcheck(&cont, &buf, 1*time.Second)
+	err = runHealthcheck(&cont, &buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(requests, gocheck.HasLen, 0)
 }
@@ -150,7 +151,7 @@ func (s *S) TestHealthcheckNoPath(c *gocheck.C) {
 	host, port, _ := net.SplitHostPort(url.Host)
 	cont := container{AppName: a.Name, HostAddr: host, HostPort: port}
 	buf := bytes.Buffer{}
-	err = runHealthcheck(&cont, &buf, 1*time.Second)
+	err = runHealthcheck(&cont, &buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(requests, gocheck.HasLen, 0)
 }
@@ -189,7 +190,7 @@ func (s *S) TestHealthcheckKeepsTryingWithServerDown(c *gocheck.C) {
 		defer lock.Unlock()
 		shouldRun = true
 	}()
-	err = runHealthcheck(&cont, &buf, 3*time.Second)
+	err = runHealthcheck(&cont, &buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(buf.String(), gocheck.Matches, `(?s).*---> healthcheck fail.*?Trying again in 3s.*---> healthcheck successful.*`)
 	c.Assert(requests, gocheck.HasLen, 2)
@@ -197,4 +198,32 @@ func (s *S) TestHealthcheckKeepsTryingWithServerDown(c *gocheck.C) {
 	c.Assert(requests[0].URL.Path, gocheck.Equals, "/x/y")
 	c.Assert(requests[1].Method, gocheck.Equals, "GET")
 	c.Assert(requests[1].URL.Path, gocheck.Equals, "/x/y")
+}
+
+func (s *S) TestHealthcheckErrorsAfterMaxTime(c *gocheck.C) {
+	a := app.App{Name: "myapp1", CustomData: map[string]interface{}{
+		"healthcheck": map[string]interface{}{
+			"path": "/x/y",
+		},
+	}}
+	err := s.storage.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
+	url, _ := url.Parse("http://some-invalid-server-name.some-invalid-server-name.com:9123")
+	host, port, _ := net.SplitHostPort(url.Host)
+	cont := container{AppName: a.Name, HostAddr: host, HostPort: port}
+	buf := bytes.Buffer{}
+	config.Set("docker:healthcheck:max-time", 1)
+	defer config.Unset("docker:healthcheck:max-time")
+	done := make(chan struct{})
+	go func() {
+		err = runHealthcheck(&cont, &buf)
+		close(done)
+	}()
+	select {
+	case <-time.After(5 * time.Second):
+		c.Fatal("Timed out waiting for healthcheck to fail")
+	case <-done:
+	}
+	c.Assert(err, gocheck.ErrorMatches, "healthcheck fail.*lookup some-invalid-server-name.some-invalid-server-name.com: no such host")
 }

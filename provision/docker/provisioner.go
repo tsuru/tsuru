@@ -12,7 +12,6 @@ import (
 	"io/ioutil"
 	"net/url"
 	"sync"
-	"time"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
@@ -289,7 +288,7 @@ func addContainersWithHost(w io.Writer, a provision.App, units int, destinationH
 				return
 			}
 			createdContainers <- c
-			err = runHealthcheck(c, w, 120*time.Second)
+			err = runHealthcheck(c, w)
 			if err != nil {
 				errors <- err
 				return

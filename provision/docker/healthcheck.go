@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 )
 
@@ -31,7 +32,7 @@ func clientWithTimeout(timeout time.Duration) *http.Client {
 
 var timeoutHttpClient = clientWithTimeout(5 * time.Second)
 
-func runHealthcheck(cont *container, w io.Writer, maxWaitTime time.Duration) error {
+func runHealthcheck(cont *container, w io.Writer) error {
 	dbApp, err := app.GetByName(cont.AppName)
 	if err != nil {
 		return nil
@@ -70,6 +71,11 @@ func runHealthcheck(cont *container, w io.Writer, maxWaitTime time.Duration) err
 			return err
 		}
 	}
+	maxWaitTime, _ := config.GetDuration("docker:healthcheck:max-time")
+	if maxWaitTime == 0 {
+		maxWaitTime = 120
+	}
+	maxWaitTime = maxWaitTime * time.Second
 	sleepTime := 3 * time.Second
 	startedTime := time.Now()
 	url := fmt.Sprintf("http://%s:%s/%s", cont.HostAddr, cont.HostPort, path)
