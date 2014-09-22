@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"net/url"
 	"sync"
+	"time"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
@@ -288,6 +289,12 @@ func addContainersWithHost(w io.Writer, a provision.App, units int, destinationH
 				return
 			}
 			createdContainers <- c
+			err = runHealthcheck(c, w, 120*time.Second)
+			if err != nil {
+				errors <- err
+				return
+			}
+			fmt.Fprintf(w, " ---> Started unit %s...\n", c.shortID())
 		}()
 	}
 	wg.Wait()
@@ -308,7 +315,6 @@ func addContainersWithHost(w io.Writer, a provision.App, units int, destinationH
 	for c := range createdContainers {
 		result[i] = *c
 		i++
-		fmt.Fprintf(w, " ---> Started unit %d/%d...\n", i, units)
 	}
 	return result, nil
 }

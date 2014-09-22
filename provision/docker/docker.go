@@ -172,6 +172,13 @@ type container struct {
 	LockedUntil             time.Time
 }
 
+func (c *container) shortID() string {
+	if len(c.ID) > 10 {
+		return c.ID[:10]
+	}
+	return c.ID
+}
+
 // available returns true if the Status is Started or Unreachable.
 func (c *container) available() bool {
 	return c.Status == provision.StatusStarted.String() ||
