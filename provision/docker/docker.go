@@ -496,7 +496,7 @@ func (c *container) dialSSH() (*ssh.Client, error) {
 
 // commit commits an image in docker based in the container
 // and returns the image repository.
-func (c *container) commit() (string, error) {
+func (c *container) commit(writer io.Writer) (string, error) {
 	log.Debugf("commiting container %s", c.ID)
 	repository := assembleImageName(c.AppName)
 	opts := docker.CommitContainerOptions{Container: c.ID, Repository: repository}
@@ -505,6 +505,12 @@ func (c *container) commit() (string, error) {
 		log.Errorf("Could not commit docker image: %s", err)
 		return "", fmt.Errorf("error in commit container %s: %s", c.ID, err.Error())
 	}
+	imgData, err := dockerCluster().InspectImage(repository)
+	imgSize := ""
+	if err == nil {
+		imgSize = fmt.Sprintf("(%.02fMB)", float64(imgData.Size)/1024/1024)
+	}
+	fmt.Fprintf(writer, " ---> Sending image to repository %s\n", imgSize)
 	log.Debugf("image %s generated from container %s", image.ID, c.ID)
 	err = pushImage(repository)
 	if err != nil {

@@ -135,7 +135,10 @@ func (s *S) TestAddNewRouteForward(c *gocheck.C) {
 	cont2 := container{ID: "ble-2", AppName: app.GetName()}
 	defer cont.remove()
 	defer cont2.remove()
-	context := action.FWContext{Previous: []container{cont, cont2}}
+	args := changeUnitsPipelineArgs{
+		app: app,
+	}
+	context := action.FWContext{Previous: []container{cont, cont2}, Params: []interface{}{args}}
 	r, err := addNewRoutes.Forward(context)
 	c.Assert(err, gocheck.IsNil)
 	containers := r.([]container)
@@ -155,7 +158,10 @@ func (s *S) TestAddNewRouteForwardFailInMiddle(c *gocheck.C) {
 	defer cont.remove()
 	defer cont2.remove()
 	rtesting.FakeRouter.FailForIp(cont2.getAddress())
-	context := action.FWContext{Previous: []container{cont, cont2}}
+	args := changeUnitsPipelineArgs{
+		app: app,
+	}
+	context := action.FWContext{Previous: []container{cont, cont2}, Params: []interface{}{args}}
 	_, err := addNewRoutes.Forward(context)
 	c.Assert(err, gocheck.Equals, rtesting.ErrForcedFailure)
 	hasRoute := rtesting.FakeRouter.HasRoute(app.GetName(), cont.getAddress())

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math"
 	"sync"
 
@@ -92,6 +93,9 @@ func runReplaceUnitsPipeline(w io.Writer, a provision.App, toRemoveContainers []
 	if len(toHosts) > 0 {
 		toHost = toHosts[0]
 	}
+	if w == nil {
+		w = ioutil.Discard
+	}
 	args := changeUnitsPipelineArgs{
 		app:        a,
 		toRemove:   toRemoveContainers,
@@ -117,6 +121,9 @@ func runReplaceUnitsPipeline(w io.Writer, a provision.App, toRemoveContainers []
 }
 
 func runCreateUnitsPipeline(w io.Writer, a provision.App, toAddCount int) ([]container, error) {
+	if w == nil {
+		w = ioutil.Discard
+	}
 	args := changeUnitsPipelineArgs{
 		app:        a,
 		unitsToAdd: toAddCount,

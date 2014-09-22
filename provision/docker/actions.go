@@ -171,11 +171,17 @@ var provisionAddUnitsToHost = action.Action{
 var addNewRoutes = action.Action{
 	Name: "add-new-routes",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
+		args := ctx.Params[0].(changeUnitsPipelineArgs)
 		newContainers := ctx.Previous.([]container)
 		r, err := getRouter()
 		if err != nil {
 			return nil, err
 		}
+		writer := args.writer
+		if writer == nil {
+			writer = ioutil.Discard
+		}
+		fmt.Fprintf(writer, "\n---- Adding routes to %d new units ----\n", len(newContainers))
 		addedContainers := make([]container, 0, len(newContainers))
 		for _, cont := range newContainers {
 			err = r.AddRoute(cont.AppName, cont.getAddress())
@@ -186,6 +192,7 @@ var addNewRoutes = action.Action{
 				return nil, err
 			}
 			addedContainers = append(addedContainers, cont)
+			fmt.Fprintf(writer, " ---> Added route to unit %s\n", cont.shortID())
 		}
 		return newContainers, nil
 	},
@@ -212,6 +219,11 @@ var removeOldRoutes = action.Action{
 		if err != nil {
 			return nil, err
 		}
+		writer := args.writer
+		if writer == nil {
+			writer = ioutil.Discard
+		}
+		fmt.Fprintf(writer, "\n---- Removing routes from %d old units ----\n", len(args.toRemove))
 		removedConts := make([]container, 0, len(args.toRemove))
 		for _, cont := range args.toRemove {
 			err = r.RemoveRoute(cont.AppName, cont.getAddress())
@@ -222,6 +234,7 @@ var removeOldRoutes = action.Action{
 				return nil, err
 			}
 			removedConts = append(removedConts, cont)
+			fmt.Fprintf(writer, " ---> Removed route from unit %s\n", cont.shortID())
 		}
 		return ctx.Previous, nil
 	},
@@ -305,11 +318,13 @@ var followLogsAndCommit = action.Action{
 		if status != 0 {
 			return nil, fmt.Errorf("Exit status %d", status)
 		}
-		imageId, err := c.commit()
+		fmt.Fprintf(args.writer, "\n---- Building application image ----\n")
+		imageId, err := c.commit(args.writer)
 		if err != nil {
 			log.Errorf("error on commit container %s - %s", c.ID, err)
 			return nil, err
 		}
+		fmt.Fprintf(args.writer, " ---> Cleaning up\n")
 		c.remove()
 		return imageId, nil
 	},
