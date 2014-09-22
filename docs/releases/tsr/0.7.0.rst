@@ -95,3 +95,5 @@ Backward incompatible changes
 - Existing platform images should be updated due to changes in tsuru-circus and
   tsuru-unit-agent. Old platforms still work, but support will be dropped on the
   next version.
+- router cnames should be migrate from string to list in redis. There is a `python script
+  <https://gist.github.com/tarsisazevedo/c31c0e6ba62bee002784>_` that can be used to migrate it.
