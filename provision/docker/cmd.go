@@ -57,7 +57,10 @@ func (a *addNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error 
 	_, err = client.Do(req)
 	if err != nil {
 		result := make(map[string]string)
-		json.Unmarshal([]byte(err.Error()), &result)
+		unmarshalErr := json.Unmarshal([]byte(err.Error()), &result)
+		if unmarshalErr != nil {
+			return err
+		}
 		fmt.Fprintf(ctx.Stderr, "Error: %s\n\n%s\n", result["error"], result["description"])
 		return nil
 	}
