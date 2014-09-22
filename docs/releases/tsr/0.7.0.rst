@@ -1,7 +1,3 @@
-.. warning::
-
-    Version under development
-
 =======================
 tsr 0.7.0 release notes
 =======================
