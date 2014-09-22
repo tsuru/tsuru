@@ -17,7 +17,7 @@ Using
     buildpacks
     recovery
     procfile
-    deploy-hooks
+    tsuru.yaml
     unit-states
     cli/plugins
     deployment

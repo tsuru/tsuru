@@ -50,6 +50,10 @@ What's new in tsr 0.7.0
   App’s new owner team should be one of user’s team. Admin user can change app's
   owner team to any team. (issue `#894
   <https://github.com/tsuru/tsuru/issues/894>`_).
+- Now it's possible to configure a health check request path to be called during
+  the deployment process of an application. tsuru will make sure the health check
+  is passing before switching the router to the newly created units. See
+  :ref:`health check docs <yaml_healthcheck>` for more details.
 
 Bug fixes
 =========
@@ -91,7 +95,7 @@ Backward incompatible changes
 - Hooks semantic has changed, ``restart:before-each`` and ``restart:after-each``
   no longer exist and now ``restart:before`` and ``restart:afer`` run on every
   unit. Also existing ``app.yaml`` file should be renamed to ``tsuru.yaml``. See
-  :doc:`hooks </using/deploy-hooks>` for more details.
+  :ref:`hooks <yaml_deployment_hooks>` for more details.
 - Existing platform images should be updated due to changes in tsuru-circus and
   tsuru-unit-agent. Old platforms still work, but support will be dropped on the
   next version.

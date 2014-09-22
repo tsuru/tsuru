@@ -528,6 +528,13 @@ docker:healing:events_collection
 Collection name in mongodb used to store information about triggered healing
 events. Defaults to ``healing_events``.
 
+docker:healthcheck:max-time
++++++++++++++++++++++++++++
+
+Maximum time in seconds to wait for deployment time health check to be successful.
+Defaults to 120 seconds.
+
+
 .. _iaas_configuration:
 
 IaaS configuration

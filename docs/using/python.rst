@@ -609,7 +609,7 @@ should run before and after the restart. Here is our example of tsuru.yaml:
         - python manage.py syncdb --noinput
         - python manage.py migrate
 
-For more details, check the :doc:`hooks documentation </using/deploy-hooks>`.
+For more details, check the :ref:`hooks documentation <yaml_deployment_hooks>`.
 
 tsuru will look for the file in the root of the project. Let's commit and
 deploy it:

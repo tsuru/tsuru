@@ -69,7 +69,7 @@ Other features
 Platforms
 ---------
 
-* :doc:`deployment hooks </using/deploy-hooks>` support for static and PHP applications (`#607
+* :ref:`deployment hooks <yaml_deployment_hooks>` support for static and PHP applications (`#607
   <https://github.com/tsuru/tsuru/issues/607>`_)
 * new platform: buildpack (used for buildpack support)
 
