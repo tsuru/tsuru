@@ -89,7 +89,7 @@ Now you can install tsuru's clients:
 
 ::
 
-    $ sudo apt-get install tsuru
+    $ sudo apt-get install tsuru-client
     $ sudo apt-get install crane
     $ sudo apt-get install tsuru-admin
 
