@@ -105,5 +105,4 @@ func runHealthcheck(cont *container, w io.Writer, maxWaitTime time.Duration) err
 		fmt.Fprintf(w, " ---> %s. Trying again in %ds\n", lastError.Error(), sleepTime/time.Second)
 		time.Sleep(sleepTime)
 	}
-	return nil
 }
