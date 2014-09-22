@@ -89,6 +89,7 @@ func runHealthcheck(cont *container, w io.Writer) error {
 		if err != nil {
 			lastError = fmt.Errorf("healthcheck fail(%s): %s", cont.shortID(), err.Error())
 		} else {
+			defer rsp.Body.Close()
 			if status != 0 && rsp.StatusCode != status {
 				return fmt.Errorf("healthcheck fail(%s): wrong status code, expected %d, got: %d", cont.shortID(), status, rsp.StatusCode)
 			} else if matchRE != nil {
