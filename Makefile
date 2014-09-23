@@ -88,6 +88,11 @@ doc:
 	@cd docs && make html SPHINXOPTS="-N -W"
 
 release:
+	@if [ ! $(version) ]; then \
+		echo "version parameter is required... use: make release version=<value>"; \
+		exit 1; \
+	fi
+
 	@echo "Releasing tsuru $(version) version."
 
 	$(eval MAJOR := $(shell echo $(version) | sed "s/^\([0-9][0-9]*\.[0-9][0-9]*\).*/\1/"))
