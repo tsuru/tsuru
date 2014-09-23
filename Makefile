@@ -93,6 +93,11 @@ release:
 		exit 1; \
 	fi
 
+	@if [ ! -f docs/releases/tsr/$(version).rst ]; then \
+		echo "to release the $(version) version you should create a release notes first."; \
+		exit 1; \
+	fi
+
 	@echo "Releasing tsuru $(version) version."
 
 	$(eval MAJOR := $(shell echo $(version) | sed "s/^\([0-9][0-9]*\.[0-9][0-9]*\).*/\1/"))
