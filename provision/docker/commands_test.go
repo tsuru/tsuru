@@ -43,7 +43,7 @@ func (s *S) TestGitDeployCmds(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	expectedPart1 := fmt.Sprintf("%s git git://something/app-name.git version", deployCmd)
 	expectedAgent := fmt.Sprintf(`tsuru_unit_agent tsuru_host app_token app-name "%s" deploy`, expectedPart1)
-	expectedCmd := fmt.Sprintf("%s || %s", expectedAgent, expectedPart1)
+	expectedCmd := fmt.Sprintf("if [[ $(tsuru_unit_agent --help | head -n1 | grep deploy) ]]; then %s; else %s", expectedAgent, expectedPart1)
 	cmds, err := gitDeployCmds(app, "version")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cmds, gocheck.HasLen, 3)
@@ -52,7 +52,8 @@ func (s *S) TestGitDeployCmds(c *gocheck.C) {
 	c.Assert(strings.HasPrefix(cmds[2], expectedCmd), gocheck.Equals, true)
 	expectedVars := []string{"http_proxy=[http://theirproxy.com:3128/,http://teste.com:3111]", "TSURU_APP_TOKEN=app_token", "TSURU_HOST=tsuru_host"}
 	sort.Strings(expectedVars)
-	cmdVars := strings.Split(strings.TrimSpace(strings.Replace(cmds[2], expectedCmd, "", 1)), " ")
+	varsPart := strings.TrimSpace(strings.Replace(strings.Replace(cmds[2], expectedCmd, "", 1), "; fi", "", 1))
+	cmdVars := strings.Split(varsPart, " ")
 	sort.Strings(cmdVars)
 	c.Assert(cmdVars, gocheck.DeepEquals, expectedVars)
 }
@@ -82,7 +83,7 @@ func (s *S) TestArchiveDeployCmds(c *gocheck.C) {
 	archiveURL := "https://s3.amazonaws.com/wat/archive.tar.gz"
 	expectedPart1 := fmt.Sprintf("%s archive %s", deployCmd, archiveURL)
 	expectedAgent := fmt.Sprintf(`tsuru_unit_agent tsuru_host app_token app-name "%s" deploy`, expectedPart1)
-	expectedCmd := fmt.Sprintf("%s || %s", expectedAgent, expectedPart1)
+	expectedCmd := fmt.Sprintf("if [[ $(tsuru_unit_agent --help | head -n1 | grep deploy) ]]; then %s; else %s", expectedAgent, expectedPart1)
 	cmds, err := archiveDeployCmds(app, archiveURL)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cmds, gocheck.HasLen, 3)
@@ -91,7 +92,8 @@ func (s *S) TestArchiveDeployCmds(c *gocheck.C) {
 	c.Assert(strings.HasPrefix(cmds[2], expectedCmd), gocheck.Equals, true)
 	expectedVars := []string{"http_proxy=[http://theirproxy.com:3128/,http://teste.com:3111]", "TSURU_APP_TOKEN=app_token", "TSURU_HOST=tsuru_host"}
 	sort.Strings(expectedVars)
-	cmdVars := strings.Split(strings.TrimSpace(strings.Replace(cmds[2], expectedCmd, "", 1)), " ")
+	varsPart := strings.TrimSpace(strings.Replace(strings.Replace(cmds[2], expectedCmd, "", 1), "; fi", "", 1))
+	cmdVars := strings.Split(varsPart, " ")
 	sort.Strings(cmdVars)
 	c.Assert(cmdVars, gocheck.DeepEquals, expectedVars)
 }

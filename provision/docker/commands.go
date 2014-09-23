@@ -43,8 +43,9 @@ func deployCmds(app provision.App, params ...string) ([]string, error) {
 	cmdsWithEnv := strings.Join(append(cmds, envs), " ")
 	host := app.Envs()["TSURU_HOST"].Value
 	token := app.Envs()["TSURU_APP_TOKEN"].Value
+	template := "if [[ $(tsuru_unit_agent --help | head -n1 | grep deploy) ]]; then %s; else %s; fi"
 	unitAgentCmds := []string{"tsuru_unit_agent", host, token, app.GetName(), `"` + strings.Join(cmds, " ") + `"`, "deploy"}
-	alternatives := fmt.Sprintf("%s || %s", strings.Join(unitAgentCmds, " "), cmdsWithEnv)
+	alternatives := fmt.Sprintf(template, strings.Join(unitAgentCmds, " "), cmdsWithEnv)
 	return []string{"/bin/bash", "-c", alternatives}, nil
 }
 
