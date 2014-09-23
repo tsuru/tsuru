@@ -51,6 +51,9 @@ func checkContainer(container container, wg *sync.WaitGroup) error {
 }
 
 func fixContainer(container *container, info containerNetworkInfo) error {
+	if info.HTTPHostPort == "" {
+		return nil
+	}
 	router, err := getRouter()
 	if err != nil {
 		return err

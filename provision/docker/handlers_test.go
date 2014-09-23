@@ -357,7 +357,7 @@ func (s *HandlersSuite) TestFixContainerHandler(c *gocheck.C) {
 	)
 	c.Assert(err, gocheck.IsNil)
 	defer coll.RemoveAll(bson.M{"appname": "makea"})
-	cleanup, server := startDocker()
+	cleanup, server := startDocker("9999")
 	defer cleanup()
 	var storage cluster.MapStorage
 	storage.StoreContainer("9930c24f1c4x", server.URL)
