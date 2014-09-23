@@ -50,7 +50,7 @@ func (s *S) TestContainerCreate(c *gocheck.C) {
 		docker.AuthConfiguration{},
 	)
 	cont := container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
-	err := cont.create(app, getImage(app), []string{"docker", "run"})
+	err := cont.create(runContainerActionsArgs{app: app, imageID: getImage(app), commands: []string{"docker", "run"}})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(&cont)
 	c.Assert(cont.ID, gocheck.Not(gocheck.Equals), "")
@@ -82,7 +82,7 @@ func (s *S) TestContainerCreateUndefinedUser(c *gocheck.C) {
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	cont := container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
-	err = cont.create(app, getImage(app), []string{"docker", "run"})
+	err = cont.create(runContainerActionsArgs{app: app, imageID: getImage(app), commands: []string{"docker", "run"}})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(&cont)
 	dcli, _ := docker.NewClient(s.server.URL())

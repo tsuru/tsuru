@@ -451,7 +451,7 @@ func (s *S) TestFollowLogsAndCommitForward(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp("myapp", "python", 1)
 	cont := container{AppName: "mightyapp", ID: "myid123"}
-	err = cont.create(app, "tsuru/python", []string{"foo"})
+	err = cont.create(runContainerActionsArgs{app: app, imageID: "tsuru/python", commands: []string{"foo"}})
 	c.Assert(err, gocheck.IsNil)
 	var buf bytes.Buffer
 	args := runContainerActionsArgs{writer: &buf}
@@ -479,7 +479,7 @@ func (s *S) TestFollowLogsAndCommitForwardNonZeroStatus(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp("myapp", "python", 1)
 	cont := container{AppName: "mightyapp"}
-	err = cont.create(app, "tsuru/python", []string{"foo"})
+	err = cont.create(runContainerActionsArgs{app: app, imageID: "tsuru/python", commands: []string{"foo"}})
 	c.Assert(err, gocheck.IsNil)
 	err = s.server.MutateContainer(cont.ID, docker.State{ExitCode: 1})
 	c.Assert(err, gocheck.IsNil)
@@ -499,7 +499,7 @@ func (s *S) TestFollowLogsAndCommitForwardWaitFailure(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp("myapp", "python", 1)
 	cont := container{AppName: "mightyapp"}
-	err = cont.create(app, "tsuru/python", []string{"foo"})
+	err = cont.create(runContainerActionsArgs{app: app, imageID: "tsuru/python", commands: []string{"foo"}})
 	c.Assert(err, gocheck.IsNil)
 	var buf bytes.Buffer
 	args := runContainerActionsArgs{writer: &buf}

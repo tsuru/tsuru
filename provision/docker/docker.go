@@ -197,7 +197,7 @@ func containerName() string {
 }
 
 // creates a new container in Docker.
-func (c *container) create(app provision.App, imageId string, cmds []string, destinationHosts ...string) error {
+func (c *container) create(args runContainerActionsArgs) error {
 	port, err := getPort()
 	if err != nil {
 		log.Errorf("error on getting port for container %s - %s", c.AppName, port)
@@ -206,20 +206,21 @@ func (c *container) create(app provision.App, imageId string, cmds []string, des
 	user, _ := config.GetString("docker:ssh:user")
 	sharedMount, _ := config.GetString("docker:sharedfs:mountpoint")
 	sharedBasedir, _ := config.GetString("docker:sharedfs:hostdir")
+
 	exposedPorts := map[docker.Port]struct{}{
 		docker.Port(port + "/tcp"): {},
 		docker.Port("22/tcp"):      {},
 	}
 	config := docker.Config{
-		Image:        imageId,
-		Cmd:          cmds,
+		Image:        args.imageID,
+		Cmd:          args.commands,
 		User:         user,
 		ExposedPorts: exposedPorts,
 		AttachStdin:  false,
 		AttachStdout: false,
 		AttachStderr: false,
-		Memory:       int64(app.GetMemory() * 1024 * 1024),
-		MemorySwap:   int64(app.GetSwap() * 1024 * 1024),
+		Memory:       int64(args.app.GetMemory() * 1024 * 1024),
+		MemorySwap:   int64(args.app.GetSwap() * 1024 * 1024),
 	}
 	if sharedMount != "" && sharedBasedir != "" {
 		config.Volumes = map[string]struct{}{
@@ -229,14 +230,14 @@ func (c *container) create(app provision.App, imageId string, cmds []string, des
 	}
 	opts := docker.CreateContainerOptions{Name: c.Name, Config: &config}
 	var nodeList []string
-	if len(destinationHosts) > 0 {
-		nodeName, err := hostToNodeAddress(destinationHosts[0])
+	if len(args.destinationHosts) > 0 {
+		nodeName, err := hostToNodeAddress(args.destinationHosts[0])
 		if err != nil {
 			return err
 		}
 		nodeList = []string{nodeName}
 	}
-	addr, cont, err := dockerCluster().CreateContainerSchedulerOpts(opts, app.GetName(), nodeList...)
+	addr, cont, err := dockerCluster().CreateContainerSchedulerOpts(opts, args.app.GetName(), nodeList...)
 	if err != nil {
 		log.Errorf("error on creating container in docker %s - %s", c.AppName, err)
 		return err

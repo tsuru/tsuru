@@ -89,7 +89,7 @@ var createContainer = action.Action{
 		cont := ctx.Previous.(container)
 		args := ctx.Params[0].(runContainerActionsArgs)
 		log.Debugf("create container for app %s, based on image %s, with cmds %s", args.app.GetName(), args.imageID, args.commands)
-		err := cont.create(args.app, args.imageID, args.commands, args.destinationHosts...)
+		err := cont.create(args)
 		if err != nil {
 			log.Errorf("error on create container for app %s - %s", args.app.GetName(), err)
 			return nil, err
