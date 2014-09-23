@@ -818,6 +818,9 @@ func (app *App) AddCName(cnames ...string) error {
 		if cname != "" && !cnameRegexp.MatchString(cname) {
 			return stderr.New("Invalid cname")
 		}
+		if cnameExists(cname) {
+			return stderr.New("cname already exists!")
+		}
 		if s, ok := Provisioner.(provision.CNameManager); ok {
 			if err := s.SetCName(app, cname); err != nil {
 				return err
@@ -842,6 +845,15 @@ func (app *App) AddCName(cnames ...string) error {
 
 func (app *App) RemoveCName(cnames ...string) error {
 	for _, cname := range cnames {
+		count := 0
+		for _, appCname := range app.CName {
+			if cname == appCname {
+				count += 1
+			}
+		}
+		if count == 0 {
+			return stderr.New("cname not exists!")
+		}
 		if s, ok := Provisioner.(provision.CNameManager); ok {
 			if err := s.UnsetCName(app, cname); err != nil {
 				return err
@@ -861,6 +873,16 @@ func (app *App) RemoveCName(cnames ...string) error {
 		}
 	}
 	return nil
+}
+
+func cnameExists(cname string) bool {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	cnames, _ := conn.Apps().Find(bson.M{"cname": cname}).Count()
+	if cnames > 0 {
+		return true
+	}
+	return false
 }
 
 // Log adds a log message to the app. Specifying a good source is good so the

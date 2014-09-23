@@ -936,6 +936,27 @@ func (s *S) TestAddCName(c *gocheck.C) {
 	c.Assert(app.CName, gocheck.DeepEquals, []string{"ktulu.mycompany.com", "ktulu2.mycompany.com"})
 }
 
+func (s *S) TestAddCNameCantBeDuplicated(c *gocheck.C) {
+	app := &App{Name: "ktulu"}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	s.provisioner.Provision(app)
+	defer s.provisioner.Destroy(app)
+	err = app.AddCName("ktulu.mycompany.com")
+	c.Assert(err, gocheck.IsNil)
+	err = app.AddCName("ktulu.mycompany.com")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "cname already exists!")
+	app2 := &App{Name: "ktulu2"}
+	err = s.conn.Apps().Insert(app2)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app2.Name})
+	err = app2.AddCName("ktulu.mycompany.com")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "cname already exists!")
+}
+
 func (s *S) TestAddCNameWithWildCard(c *gocheck.C) {
 	app := &App{Name: "ktulu"}
 	err := s.conn.Apps().Insert(app)
@@ -1048,6 +1069,18 @@ func (s *S) TestRemoveCNameRemovesFromDatabase(c *gocheck.C) {
 	a, err = GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(a.CName, gocheck.DeepEquals, []string{})
+}
+
+func (s *S) TestRemoveCNameWhichNoExists(c *gocheck.C) {
+	a := &App{Name: "ktulu"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(a)
+	defer s.provisioner.Destroy(a)
+	err = a.RemoveCName("ktulu.mycompany.com")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "cname not exists!")
 }
 
 func (s *S) TestRemoveMoreThanOneCName(c *gocheck.C) {
