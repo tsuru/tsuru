@@ -1,0 +1,20 @@
+=======================
+tsr 0.7.1 release notes
+=======================
+
+Welcome to tsr 0.7.1!
+
+These release notes cover the `bug fixes`_ you'll want to be aware of when
+upgrading from tsr 0.7.0 or older versions.
+
+.. _`new features`: `What's new in tsr 0.7.1`_
+
+What's new in tsr 0.7.1
+=======================
+
+Bug fixes
+=========
+
+* Fix bug causing deployment containers to be added in the router;
+* Fix bug in deploy, causing it to run twice if tsuru_unit_agent is used and
+  there's a failure during the deploy;
