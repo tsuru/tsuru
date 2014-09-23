@@ -72,6 +72,42 @@ func (s *S) TestContainerCreate(c *gocheck.C) {
 	c.Assert(container.Config.Memory, gocheck.Equals, int64(app.Memory*1024*1024))
 }
 
+func (s *S) TestContainerCreateAlocatesPort(c *gocheck.C) {
+	app := testing.NewFakeApp("app-name", "brainfuck", 1)
+	app.Memory = 15
+	rtesting.FakeRouter.AddBackend(app.GetName())
+	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
+	dockerCluster().PullImage(
+		docker.PullImageOptions{Repository: "tsuru/brainfuck"},
+		docker.AuthConfiguration{},
+	)
+	cont := container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
+	err := cont.create(runContainerActionsArgs{app: app, imageID: getImage(app), commands: []string{"docker", "run"}})
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(&cont)
+	info, err := cont.networkInfo()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(info.HTTPHostPort, gocheck.Not(gocheck.Equals), "")
+}
+
+func (s *S) TestContainerCreateDoesNotAlocatesPortForDeploy(c *gocheck.C) {
+	app := testing.NewFakeApp("app-name", "brainfuck", 1)
+	app.Memory = 15
+	rtesting.FakeRouter.AddBackend(app.GetName())
+	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
+	dockerCluster().PullImage(
+		docker.PullImageOptions{Repository: "tsuru/brainfuck"},
+		docker.AuthConfiguration{},
+	)
+	cont := container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
+	err := cont.create(runContainerActionsArgs{isDeploy: true, app: app, imageID: getImage(app), commands: []string{"docker", "run"}})
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(&cont)
+	info, err := cont.networkInfo()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(info.HTTPHostPort, gocheck.Equals, "")
+}
+
 func (s *S) TestContainerCreateUndefinedUser(c *gocheck.C) {
 	oldUser, _ := config.Get("docker:ssh:user")
 	defer config.Set("docker:ssh:user", oldUser)
@@ -327,11 +363,10 @@ func (s *S) TestContainerNetworkInfoNotFound(c *gocheck.C) {
 	}()
 	container := container{ID: "c-01"}
 	info, err := container.networkInfo()
+	c.Assert(err, gocheck.IsNil)
 	c.Assert(info.IP, gocheck.Equals, "10.10.10.10")
 	c.Assert(info.SSHHostPort, gocheck.Equals, "")
 	c.Assert(info.HTTPHostPort, gocheck.Equals, "")
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Container port 8888 is not mapped to any host port")
 }
 
 func (s *S) TestContainerSSH(c *gocheck.C) {

@@ -206,10 +206,12 @@ func (c *container) create(args runContainerActionsArgs) error {
 	user, _ := config.GetString("docker:ssh:user")
 	sharedMount, _ := config.GetString("docker:sharedfs:mountpoint")
 	sharedBasedir, _ := config.GetString("docker:sharedfs:hostdir")
-
-	exposedPorts := map[docker.Port]struct{}{
-		docker.Port(port + "/tcp"): {},
-		docker.Port("22/tcp"):      {},
+	var exposedPorts map[docker.Port]struct{}
+	if !args.isDeploy {
+		exposedPorts = map[docker.Port]struct{}{
+			docker.Port(port + "/tcp"): {},
+			docker.Port("22/tcp"):      {},
+		}
 	}
 	config := docker.Config{
 		Image:        args.imageID,
@@ -281,9 +283,6 @@ func (c *container) networkInfo() (containerNetworkInfo, error) {
 				break
 			}
 		}
-	}
-	if netInfo.HTTPHostPort == "" {
-		err = fmt.Errorf("Container port %s is not mapped to any host port", port)
 	}
 	return netInfo, err
 }
