@@ -356,6 +356,21 @@ func (s *S) TestAddTeamToPollWithTeams(c *gocheck.C) {
 	c.Assert(p.Teams, gocheck.DeepEquals, []string{"test", "ateam", "pteam"})
 }
 
+func (s *S) TestAddTeamToPollShouldNotAcceptDuplicatedTeam(c *gocheck.C) {
+	var seg segregatedScheduler
+	coll := s.storage.Collection(schedulerCollection)
+	pool := Pool{Name: "pool1", Teams: []string{"test", "ateam"}}
+	err := coll.Insert(pool)
+	c.Assert(err, gocheck.IsNil)
+	defer coll.RemoveId(pool.Name)
+	err = seg.addTeamsToPool(pool.Name, []string{"ateam"})
+	c.Assert(err, gocheck.NotNil)
+	var p Pool
+	err = coll.FindId(pool.Name).One(&p)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(p.Teams, gocheck.DeepEquals, []string{"test", "ateam"})
+}
+
 func (s *S) TestRemoveTeamsFromPool(c *gocheck.C) {
 	var seg segregatedScheduler
 	coll := s.storage.Collection(schedulerCollection)

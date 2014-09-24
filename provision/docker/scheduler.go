@@ -215,6 +215,18 @@ func (segregatedScheduler) addTeamsToPool(poolName string, teams []string) error
 		return err
 	}
 	defer conn.Close()
+	var pool Pool
+	err = conn.Collection(schedulerCollection).Find(bson.M{"_id": poolName}).One(&pool)
+	if err != nil {
+		return err
+	}
+	for _, newTeam := range teams {
+		for _, team := range pool.Teams {
+			if newTeam == team {
+				return errors.New("Team already exists in pool.")
+			}
+		}
+	}
 	return conn.Collection(schedulerCollection).UpdateId(poolName, bson.M{"$push": bson.M{"teams": bson.M{"$each": teams}}})
 }
 
