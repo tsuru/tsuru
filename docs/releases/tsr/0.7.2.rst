@@ -1,0 +1,14 @@
+=======================
+tsr 0.7.2 release notes
+=======================
+
+Welcome to tsr 0.7.2!
+
+These release notes cover the `bug fixes`_ you'll want to be aware of when
+upgrading from tsr 0.7.1 or older versions.
+
+Bug fixes
+=========
+
+* Fix bug which allow duplicated cname among apps;
+* Fix bug on removing cname it doesn't exists;
