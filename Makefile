@@ -107,7 +107,7 @@ release:
 	@sed -i "" "s/version = '.*'/version = '$(MAJOR)'/g" docs/conf.py
 	@sed -i "" 's/.tsr., .[^,]*,/"tsr", "$(version)",/' cmd/tsr/main.go
 
-	@git add .
+	@git add docs/conf.py cmd/tsr/main.go
 	@git commit -m "bump to $(version)"
 
 	@echo "Creating $(version) tag."
