@@ -24,7 +24,7 @@ func (testFormatter) Format(out io.Writer, data []byte) error {
 	var entries []entry
 	err := json.Unmarshal(data, &entries)
 	if err != nil {
-		return err
+		return ErrInvalidStreamChunk
 	}
 	for _, e := range entries {
 		fmt.Fprintf(out, "%s-%s\n", e.Source, e.Message)
@@ -49,7 +49,7 @@ func (s *S) TestStreamWriterUsesFormatter(c *gocheck.C) {
 
 func (s *S) TestStreamWriterChukedWrite(c *gocheck.C) {
 	entries := []entry{
-		{Message: "Something happened", Source: "tsuru"},
+		{Message: "\nSome\nthing\nhappened\n", Source: "tsuru"},
 		{Message: "Something happened again", Source: "tsuru"},
 	}
 	data, err := json.Marshal(entries)
@@ -68,7 +68,7 @@ func (s *S) TestStreamWriterChukedWrite(c *gocheck.C) {
 	c.Assert(buf.String(), gocheck.Equals, "")
 	_, err = w.Write(data[l/4*3:])
 	c.Assert(err, gocheck.IsNil)
-	expected := "tsuru-Something happened\ntsuru-Something happened again\n"
+	expected := "tsuru-\nSome\nthing\nhappened\n\ntsuru-Something happened again\n"
 	c.Assert(buf.String(), gocheck.Equals, expected)
 	c.Assert(w.Remaining(), gocheck.DeepEquals, []byte{})
 }

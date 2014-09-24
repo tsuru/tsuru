@@ -42,7 +42,7 @@ func (logFormatter) Format(out io.Writer, data []byte) error {
 	var logs []log
 	err := json.Unmarshal(data, &logs)
 	if err != nil {
-		return err
+		return tsuruIo.ErrInvalidStreamChunk
 	}
 	for _, l := range logs {
 		date := l.Date.In(time.Local).Format("2006-01-02 15:04:05 -0700")

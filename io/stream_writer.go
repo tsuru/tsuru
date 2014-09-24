@@ -6,6 +6,7 @@ package io
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 )
@@ -15,6 +16,8 @@ type streamWriter struct {
 	b         []byte
 	formatter Formatter
 }
+
+var ErrInvalidStreamChunk = errors.New("invalid stream chunk")
 
 type Formatter interface {
 	Format(out io.Writer, data []byte) error
@@ -35,11 +38,14 @@ func (w *streamWriter) Write(b []byte) (int, error) {
 		parts := bytes.SplitAfterN(w.b, []byte("\n"), 2)
 		err := w.formatter.Format(w.w, parts[0])
 		if err != nil {
-			if len(parts) == 1 {
-				return writtenCount, nil
-			} else {
-				return writtenCount, fmt.Errorf("Unparseable chunk: %q", string(parts[0]))
+			if err == ErrInvalidStreamChunk {
+				if len(parts) == 1 {
+					return writtenCount, nil
+				} else {
+					err = fmt.Errorf("Unparseable chunk: %q", parts[0])
+				}
 			}
+			return writtenCount, err
 		}
 		if len(parts) == 1 {
 			w.b = []byte{}

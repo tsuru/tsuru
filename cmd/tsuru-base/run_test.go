@@ -6,6 +6,7 @@ package tsuru
 
 import (
 	"bytes"
+	"encoding/json"
 	"net/http"
 
 	"github.com/tsuru/tsuru/cmd"
@@ -15,16 +16,19 @@ import (
 
 func (s *S) TestAppRun(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	expected := "http.go		http_test.go\nOK!\n"
+	expected := "http.go		http_test.go"
 	context := cmd.Context{
 		Args:   []string{"ls"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
+	msg := runMessage{Message: expected}
+	result, err := json.Marshal(msg)
+	c.Assert(err, gocheck.IsNil)
 	trans := &testing.ConditionalTransport{
 		Transport: testing.Transport{
-			Message: "http.go		http_test.go\nOK!\n",
-			Status: http.StatusOK,
+			Message: string(result),
+			Status:  http.StatusOK,
 		},
 		CondFunc: func(req *http.Request) bool {
 			b := make([]byte, 2)
@@ -35,22 +39,25 @@ func (s *S) TestAppRun(c *gocheck.C) {
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	command := AppRun{}
 	command.Flags().Parse(true, []string{"--app", "ble"})
-	err := command.Run(&context, client)
+	err = command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
 func (s *S) TestAppRunShouldUseAllSubsequentArgumentsAsArgumentsToTheGivenCommand(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	expected := "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go\nOK!\n"
+	expected := "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go\n"
 	context := cmd.Context{
 		Args:   []string{"ls", "-l"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
+	msg := runMessage{Message: expected}
+	result, err := json.Marshal(msg)
+	c.Assert(err, gocheck.IsNil)
 	trans := &testing.ConditionalTransport{
 		Transport: testing.Transport{
-			Message: "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go\nOK!\n",
+			Message: string(result) + "\n" + string(result),
 			Status:  http.StatusOK,
 		},
 		CondFunc: func(req *http.Request) bool {
@@ -62,22 +69,25 @@ func (s *S) TestAppRunShouldUseAllSubsequentArgumentsAsArgumentsToTheGivenComman
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	command := AppRun{}
 	command.Flags().Parse(true, []string{"--app", "ble"})
-	err := command.Run(&context, client)
+	err = command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(stdout.String(), gocheck.Equals, expected)
+	c.Assert(stdout.String(), gocheck.Equals, expected+expected)
 }
 
 func (s *S) TestAppRunWithoutTheFlag(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	expected := "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go\nOK!\n"
+	expected := "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go"
 	context := cmd.Context{
 		Args:   []string{"ls", "-lh"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
+	msg := runMessage{Message: expected}
+	result, err := json.Marshal(msg)
+	c.Assert(err, gocheck.IsNil)
 	trans := &testing.ConditionalTransport{
 		Transport: testing.Transport{
-			Message: "-rw-r--r--  1 f  staff  119 Apr 26 18:23 http.go\nOK!\n",
+			Message: string(result),
 			Status:  http.StatusOK,
 		},
 		CondFunc: func(req *http.Request) bool {
@@ -90,26 +100,27 @@ func (s *S) TestAppRunWithoutTheFlag(c *gocheck.C) {
 	fake := &FakeGuesser{name: "bla"}
 	command := AppRun{GuessingCommand: GuessingCommand{G: fake}}
 	command.Flags().Parse(true, nil)
-	err := command.Run(&context, client)
+	err = command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)
 }
 
-func (s *S) TestAppRunShouldReturnErrAbortCommandWhenCommandGoWrong(c *gocheck.C) {
+func (s *S) TestAppRunShouldReturnErrorWhenCommandGoWrong(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Args:   []string{"cmd_error"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
+	msg := runMessage{Error: "command doesn't exist."}
+	result, err := json.Marshal(msg)
+	c.Assert(err, gocheck.IsNil)
 	trans := &testing.ConditionalTransport{
 		Transport: testing.Transport{
-			Message: "command doesn't exists.",
+			Message: string(result),
 			Status:  http.StatusOK,
 		},
 		CondFunc: func(req *http.Request) bool {
-			b := make([]byte, 6)
-			req.Body.Read(b)
 			return req.URL.Path == "/apps/bla/run"
 		},
 	}
@@ -117,9 +128,8 @@ func (s *S) TestAppRunShouldReturnErrAbortCommandWhenCommandGoWrong(c *gocheck.C
 	fake := &FakeGuesser{name: "bla"}
 	command := AppRun{GuessingCommand: GuessingCommand{G: fake}}
 	command.Flags().Parse(true, nil)
-	err := command.Run(&context, client)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.Equals, cmd.ErrAbortCommand)
+	err = command.Run(&context, client)
+	c.Assert(err, gocheck.ErrorMatches, "command doesn't exist.")
 }
 
 func (s *S) TestAppRunInfo(c *gocheck.C) {

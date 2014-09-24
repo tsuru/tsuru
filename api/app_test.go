@@ -1273,7 +1273,7 @@ func (s *S) TestRunOnceHandler(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = runCommand(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(recorder.Body.String(), gocheck.Equals, "lots of files\nOK!\n")
+	c.Assert(recorder.Body.String(), gocheck.Equals, `{"Message":"lots of files"}`+"\n")
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
 	expected += " [ -d /home/application/current ] && cd /home/application/current;"
@@ -1289,7 +1289,7 @@ func (s *S) TestRunOnceHandler(c *gocheck.C) {
 }
 
 func (s *S) TestRunHandler(c *gocheck.C) {
-	s.provisioner.PrepareOutput([]byte("lots of files"))
+	s.provisioner.PrepareOutput([]byte("lots of\nfiles"))
 	a := app.App{
 		Name:     "secrets",
 		Platform: "arch enemy",
@@ -1308,7 +1308,7 @@ func (s *S) TestRunHandler(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = runCommand(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(recorder.Body.String(), gocheck.Equals, "lots of files\nOK!\n")
+	c.Assert(recorder.Body.String(), gocheck.Equals, `{"Message":"lots of\nfiles"}`+"\n")
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
 	expected := "[ -f /home/application/apprc ] && source /home/application/apprc;"
 	expected += " [ -d /home/application/current ] && cd /home/application/current;"
@@ -1345,7 +1345,9 @@ func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *gocheck.C
 	err = runCommand(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "something went wrong")
-	c.Assert(recorder.Body.String(), gocheck.Equals, "failure output")
+	expected := `{"Message":"failure output"}` + "\n" +
+		`{"Message":"","Error":"something went wrong"}` + "\n"
+	c.Assert(recorder.Body.String(), gocheck.Equals, expected)
 }
 
 func (s *S) TestRunHandlerReturnsBadRequestIfTheCommandIsMissing(c *gocheck.C) {

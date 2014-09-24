@@ -5,19 +5,41 @@
 package tsuru
 
 import (
-	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"strings"
 
 	"github.com/tsuru/tsuru/cmd"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"launchpad.net/gnuflag"
 )
 
 type AppRun struct {
 	GuessingCommand
 	once bool
+}
+
+type runFormatter struct{}
+
+func (runFormatter) Format(out io.Writer, data []byte) error {
+	var msg runMessage
+	err := json.Unmarshal(data, &msg)
+	if err != nil {
+		return tsuruIo.ErrInvalidStreamChunk
+	}
+	if msg.Error != "" {
+		return errors.New(msg.Error)
+	}
+	out.Write([]byte(msg.Message))
+	return nil
+}
+
+type runMessage struct {
+	Message string
+	Error   string
 }
 
 func (c *AppRun) Info() *cmd.Info {
@@ -54,16 +76,17 @@ func (c *AppRun) Run(context *cmd.Context, client *cmd.Client) error {
 		return err
 	}
 	defer r.Body.Close()
-	var buf bytes.Buffer
-	_, err = io.Copy(io.MultiWriter(&buf, context.Stdout), r.Body)
+	w := tsuruIo.NewStreamWriter(context.Stdout, runFormatter{})
+	for n := int64(1); n > 0 && err == nil; n, err = io.Copy(w, r.Body) {
+	}
 	if err != nil {
 		return err
 	}
-	exit := buf.String()
-	if strings.HasSuffix(exit, "\nOK!\n") {
-		return nil
+	unparsed := w.Remaining()
+	if len(unparsed) > 0 {
+		return fmt.Errorf("unparsed message error: %s", string(unparsed))
 	}
-	return cmd.ErrAbortCommand
+	return nil
 }
 
 func (c *AppRun) Flags() *gnuflag.FlagSet {
