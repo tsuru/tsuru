@@ -46,7 +46,7 @@ func deployCmds(app provision.App, params ...string) ([]string, error) {
 	template := "if [[ $(tsuru_unit_agent --help | head -n1 | grep deploy) ]]; then %s; else %s; fi"
 	unitAgentCmds := []string{"tsuru_unit_agent", host, token, app.GetName(), `"` + strings.Join(cmds, " ") + `"`, "deploy"}
 	alternatives := fmt.Sprintf(template, strings.Join(unitAgentCmds, " "), cmdsWithEnv)
-	return []string{"/bin/bash", "-c", alternatives}, nil
+	return []string{"/bin/bash", "-lc", alternatives}, nil
 }
 
 // runWithAgentCmds returns the list of commands that should be passed when the
@@ -66,7 +66,7 @@ func runWithAgentCmds(app provision.App, publicKey []byte) ([]string, error) {
 	unitAgentCmd := strings.Join(unitAgentCmds, " ")
 	sshCmd := strings.Join(ssh, " && ")
 	cmd := fmt.Sprintf("%s && %s", unitAgentCmd, sshCmd)
-	cmds := []string{"/bin/bash", "-c", cmd}
+	cmds := []string{"/bin/bash", "-lc", cmd}
 	return cmds, nil
 }
 

@@ -48,7 +48,7 @@ func (s *S) TestGitDeployCmds(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cmds, gocheck.HasLen, 3)
 	c.Assert(cmds[0], gocheck.Equals, "/bin/bash")
-	c.Assert(cmds[1], gocheck.Equals, "-c")
+	c.Assert(cmds[1], gocheck.Equals, "-lc")
 	c.Assert(strings.HasPrefix(cmds[2], expectedCmd), gocheck.Equals, true)
 	expectedVars := []string{"http_proxy=[http://theirproxy.com:3128/,http://teste.com:3111]", "TSURU_APP_TOKEN=app_token", "TSURU_HOST=tsuru_host"}
 	sort.Strings(expectedVars)
@@ -88,7 +88,7 @@ func (s *S) TestArchiveDeployCmds(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cmds, gocheck.HasLen, 3)
 	c.Assert(cmds[0], gocheck.Equals, "/bin/bash")
-	c.Assert(cmds[1], gocheck.Equals, "-c")
+	c.Assert(cmds[1], gocheck.Equals, "-lc")
 	c.Assert(strings.HasPrefix(cmds[2], expectedCmd), gocheck.Equals, true)
 	expectedVars := []string{"http_proxy=[http://theirproxy.com:3128/,http://teste.com:3111]", "TSURU_APP_TOKEN=app_token", "TSURU_HOST=tsuru_host"}
 	sort.Strings(expectedVars)
@@ -120,7 +120,7 @@ func (s *S) TestRunWithAgentCmds(c *gocheck.C) {
 	sshCmd := strings.Join(ssh, " && ")
 	c.Assert(err, gocheck.IsNil)
 	cmd := fmt.Sprintf("%s && %s", unitAgentCmd, sshCmd)
-	expected := []string{"/bin/bash", "-c", cmd}
+	expected := []string{"/bin/bash", "-lc", cmd}
 	cmds, err := runWithAgentCmds(app, key)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cmds, gocheck.DeepEquals, expected)
