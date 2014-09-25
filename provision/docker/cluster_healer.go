@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/tsuru/config"
@@ -16,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -186,31 +188,57 @@ func healContainer(cont container) (container, error) {
 	return createdContainer, err
 }
 
+func hasProcfileWatcher(cont container) (bool, error) {
+	topResult, err := dockerCluster().TopContainer(cont.ID, "")
+	if err != nil {
+		return false, err
+	}
+	for _, psLine := range topResult.Processes {
+		line := strings.ToLower(strings.Join(psLine, " "))
+		if strings.Contains(line, "procfilewatcher") {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func runContainerHealer(maxUnresponsiveTime time.Duration) {
 	for {
-		containers, err := listUnresponsiveContainers(maxUnresponsiveTime)
-		if err != nil {
-			log.Errorf("Containers Healing: couldn't list unresponsive containers: %s", err.Error())
-		}
-		for _, cont := range containers {
-			if cont.LastSuccessStatusUpdate.IsZero() {
-				continue
-			}
-			log.Errorf("Initiating healing process for container %s, unresponsive since %s.", cont.ID, cont.LastSuccessStatusUpdate)
-			evt, err := newHealingEvent(cont)
-			if err != nil {
-				log.Errorf("Error trying to insert container healing event: %s", err.Error())
-			}
-			newCont, err := healContainer(cont)
-			if err != nil {
-				log.Errorf("Error containers healing: %s", err.Error())
-			}
-			err = evt.update(newCont, err)
-			if err != nil {
-				log.Errorf("Error trying to update containers healing event: %s", err.Error())
-			}
-		}
+		runContainerHealerOnce(maxUnresponsiveTime)
 		time.Sleep(30 * time.Second)
+	}
+}
+
+func runContainerHealerOnce(maxUnresponsiveTime time.Duration) {
+	containers, err := listUnresponsiveContainers(maxUnresponsiveTime)
+	if err != nil {
+		log.Errorf("Containers Healing: couldn't list unresponsive containers: %s", err.Error())
+	}
+	for _, cont := range containers {
+		if cont.LastSuccessStatusUpdate.IsZero() {
+			continue
+		}
+		hasProcfile, err := hasProcfileWatcher(cont)
+		if err != nil {
+			log.Errorf("Containers healing: couldn't verify running processes in container %s: %s ", cont.ID, err.Error())
+		}
+		if hasProcfile {
+			cont.setStatus(provision.StatusStarted.String())
+			continue
+		}
+		log.Errorf("Initiating healing process for container %s, unresponsive since %s.", cont.ID, cont.LastSuccessStatusUpdate)
+		evt, err := newHealingEvent(cont)
+		if err != nil {
+			log.Errorf("Error trying to insert container healing event: %s", err.Error())
+		}
+		newCont, err := healContainer(cont)
+		if err != nil {
+			log.Errorf("Error containers healing: %s", err.Error())
+		}
+		err = evt.update(newCont, err)
+		if err != nil {
+			log.Errorf("Error trying to update containers healing event: %s", err.Error())
+		}
 	}
 }
 

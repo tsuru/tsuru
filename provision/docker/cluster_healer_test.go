@@ -7,6 +7,7 @@ package docker
 import (
 	"fmt"
 	"net"
+	"net/http"
 	"net/url"
 	"sort"
 	"strconv"
@@ -554,28 +555,7 @@ func (s *S) TestRunContainerHealer(c *gocheck.C) {
 
 	node1.PrepareFailure("createError", "/containers/create")
 
-	go runContainerHealer(1 * time.Minute)
-
-	done := make(chan bool)
-	go func() {
-		for _ = range time.Tick(100 * time.Millisecond) {
-			containers, err := listAllContainers()
-			hosts := []string{containers[0].HostAddr, containers[1].HostAddr}
-			sort.Strings(hosts)
-			if err == nil && hosts[1] == "localhost" {
-				close(done)
-				return
-			}
-		}
-	}()
-
-	select {
-	case <-done:
-	case <-time.After(2 * time.Second):
-		c.Fatal("Timed out waiting for container to move")
-	}
-
-	time.Sleep(1 * time.Second)
+	runContainerHealerOnce(1 * time.Minute)
 
 	containers, err = listAllContainers()
 	c.Assert(err, gocheck.IsNil)
@@ -597,6 +577,53 @@ func (s *S) TestRunContainerHealer(c *gocheck.C) {
 	c.Assert(events[0].Successful, gocheck.Equals, true)
 	c.Assert(events[0].FailingContainer.HostAddr, gocheck.Equals, "127.0.0.1")
 	c.Assert(events[0].CreatedContainer.HostAddr, gocheck.Equals, "localhost")
+}
+
+func (s *S) TestRunContainerHealerDoesntHealWithProcfileInTop(c *gocheck.C) {
+	rollback := startTestRepositoryServer()
+	defer rollback()
+	oldCluster := dCluster
+	defer func() {
+		cmutex.Lock()
+		defer cmutex.Unlock()
+		dCluster = oldCluster
+	}()
+	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, gocheck.IsNil)
+	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, gocheck.IsNil)
+	cluster, err := cluster.New(nil, &cluster.MapStorage{},
+		cluster.Node{Address: node1.URL()},
+		cluster.Node{Address: fmt.Sprintf("http://localhost:%d", urlPort(node2.URL()))},
+	)
+	c.Assert(err, gocheck.IsNil)
+	dCluster = cluster
+
+	appInstance := testing.NewFakeApp("myapp", "python", 0)
+	var p dockerProvisioner
+	defer p.Destroy(appInstance)
+	p.Provision(appInstance)
+	cont, err := addContainersWithHost(nil, appInstance, 1, "127.0.0.1")
+	c.Assert(err, gocheck.IsNil)
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintf(w, `{"Titles": [], "Processes": [["x", "ProcfileWatcher"]]}`)
+	})
+	node1.CustomHandler("/containers/"+cont[0].ID+"/top", handler)
+
+	toMoveCont := cont[0]
+	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-2 * time.Minute)
+	coll := collection()
+	err = coll.Update(bson.M{"id": toMoveCont.ID}, toMoveCont)
+	c.Assert(err, gocheck.IsNil)
+
+	runContainerHealerOnce(1 * time.Minute)
+
+	healingColl, err := healingCollection()
+	var events []healingEvent
+	err = healingColl.Find(nil).All(&events)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(events, gocheck.HasLen, 0)
 }
 
 func (s *S) TestRunContainerHealerWithError(c *gocheck.C) {
@@ -651,9 +678,7 @@ func (s *S) TestRunContainerHealerWithError(c *gocheck.C) {
 	node1.PrepareFailure("createError", "/containers/create")
 	node2.PrepareFailure("createError", "/containers/create")
 
-	go runContainerHealer(1 * time.Minute)
-
-	time.Sleep(1 * time.Second)
+	runContainerHealerOnce(1 * time.Minute)
 
 	containers, err = listAllContainers()
 	c.Assert(err, gocheck.IsNil)
