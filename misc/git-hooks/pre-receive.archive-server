@@ -39,11 +39,11 @@ wait_archive() {
         done
 }
 
-app_dir=${PWD##*/}
-app_name=${app_dir/.git/}
+APP_DIR=${PWD##*/}
+APP_NAME=${APP_DIR/.git/}
 archive_id=`generate_archive $PWD $COMMIT`
 archive_url="${ARCHIVE_SERVER_READ}/?id=$archive_id"
 wait_archive $archive_url
-url="${TSURU_HOST}/apps/${app_name}/repository/clone"
+url="${TSURU_HOST}/apps/${APP_NAME}/repository/clone"
 curl -H "Authorization: bearer ${TSURU_TOKEN}" -d "archive-url=${archive_url}&commit=${COMMIT}" -s -N $url | tee /tmp/deploy-${APP_NAME}.log
 tail -1 /tmp/deploy-${APP_NAME}.log | grep -q "^OK$"
