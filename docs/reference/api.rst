@@ -161,6 +161,30 @@ Example:
 
     PUT /swap?app1=myapp&app2=anotherapp
 
+Get app log
+***********
+
+    * Method: GET
+    * URI: /apps/:appname/logs?lines=10&source=web&unit=abc123
+
+Returns 200 in case of success. Returns 404 if app is not found.
+
+Where:
+
+* `lines` is the number of the log lines. This parameter is required.
+* `source` is the source of the log, like `tsuru` (tsuru api) or a process.
+* `unit` is the `id` of an unit.
+
+Example:
+
+.. highlight: bash
+
+::
+
+    GET /apps/myapp/logs?lines=1&source=web&unit=83535b503c96
+    Content-Length: 142
+    [{"Date":"2014-09-26T00:26:30.036Z","Message":"Booting worker with pid: 53","Source":"web","AppName":"tsuru-dashboard","Unit":"83535b503c96"}]
+
 1.2 Services
 ------------
 
