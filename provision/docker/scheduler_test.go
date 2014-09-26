@@ -201,11 +201,13 @@ func (s *S) TestSchedulerNoNodesWithFallbackPool(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = scheduler.addPool("mypool")
 	c.Assert(err, gocheck.IsNil)
+	err = scheduler.addPool("mypool2")
+	c.Assert(err, gocheck.IsNil)
 	opts := docker.CreateContainerOptions{}
 	node, err := scheduler.Schedule(clusterInstance, opts, "")
 	c.Assert(node.Address, gocheck.Equals, "")
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Matches, "No nodes found in pools.*")
+	c.Assert(err.Error(), gocheck.Matches, "No nodes found with one of the following metadata: pool=mypool, pool=mypool2")
 }
 
 func (s *S) TestChooseNodeDistributesNodesEqually(c *gocheck.C) {

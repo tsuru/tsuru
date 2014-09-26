@@ -176,7 +176,12 @@ func nodesForApp(c *cluster.Cluster, app *app.App) ([]cluster.Node, error) {
 			return nodes, nil
 		}
 	}
-	return nil, fmt.Errorf("No nodes found in pools %v", pools)
+	var nameList []string
+	for _, pool := range pools {
+		nameList = append(nameList, pool.Name)
+	}
+	poolsStr := strings.Join(nameList, ", pool=")
+	return nil, fmt.Errorf("No nodes found with one of the following metadata: pool=%s", poolsStr)
 }
 
 func nodesForAppName(c *cluster.Cluster, appName string) ([]cluster.Node, error) {
