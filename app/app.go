@@ -12,12 +12,10 @@ import (
 	"os"
 	"regexp"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
@@ -78,11 +76,10 @@ type App struct {
 	Owner          string
 	State          string
 	Deploys        uint
-	Memory         int `json:",string"`
-	Swap           int `json:",string"`
 	UpdatePlatform bool
 	Lock           AppLock
 	CustomData     map[string]interface{}
+	Plan           Plan
 
 	quota.Quota
 }
@@ -92,8 +89,7 @@ func (app *App) Units() []provision.Unit {
 	return Provisioner.Units(app)
 }
 
-// MarshalJSON marshals the app in json format. It returns a JSON object with
-// the following keys: name, framework, teams, units, repository and ip.
+// MarshalJSON marshals the app in json format.
 func (app *App) MarshalJSON() ([]byte, error) {
 	result := make(map[string]interface{})
 	result["name"] = app.Name
@@ -106,12 +102,8 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["ready"] = app.State == "ready"
 	result["owner"] = app.Owner
 	result["deploys"] = app.Deploys
-	result["memory"] = strconv.Itoa(app.Memory)
-	result["swap"] = "0"
 	result["teamowner"] = app.TeamOwner
-	if app.Swap > 0 {
-		result["swap"] = strconv.Itoa(app.Swap - app.Memory)
-	}
+	result["plan"] = app.Plan
 	return json.Marshal(&result)
 }
 
@@ -196,34 +188,16 @@ func CreateApp(app *App, user *auth.User) error {
 	if _, err := getPlatform(app.Platform); err != nil {
 		return err
 	}
-	// app.Memory is empty, no custom memory passed from CLI
-	if app.Memory < 1 {
-		// get default memory limit from tsuru config
-		configMemory, err := config.GetInt("docker:memory")
-		if err != nil {
-			// no default memory set in config (or error when reading), set it as unlimited (0)
-			app.Memory = 0
-		} else {
-			// default memory set in config, use that.
-			app.Memory = configMemory
-		}
+	var plan *Plan
+	if app.Plan.Name == "" {
+		plan, err = defaultPlan()
+	} else {
+		plan, err = findPlanByName(app.Plan.Name)
 	}
-	// app.Swap is empty, no custom swap passed from CLI
-	if app.Swap < 1 {
-		// get default swap limit from tsuru config
-		configSwap, err := config.GetInt("docker:swap")
-		if err != nil {
-			// no default swap set in config (or error when reading), set it as unlimited (0)
-			app.Swap = 0
-		} else {
-			// default swap set in config, use that.
-			app.Swap = configSwap
-		}
+	if err != nil {
+		return err
 	}
-	// Swap size must always be the sum of memory plus swap
-	if app.Swap > 0 {
-		app.Swap = app.Memory + app.Swap
-	}
+	app.Plan = *plan
 	if app.TeamOwner == "" {
 		if len(teams) > 1 {
 			return ManyTeamsError{}
@@ -702,12 +676,12 @@ func (app *App) GetName() string {
 
 // GetMemory returns the memory limit (in MB) for the app.
 func (app *App) GetMemory() int {
-	return app.Memory
+	return int(app.Plan.Memory)
 }
 
 // GetSwap returns the swap limit (in MB) for the app.
 func (app *App) GetSwap() int {
-	return app.Swap
+	return int(app.Plan.Swap)
 }
 
 // GetIp returns the ip of the app.

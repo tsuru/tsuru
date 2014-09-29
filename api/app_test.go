@@ -296,7 +296,6 @@ func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *gocheck.C) {
 }
 
 func (s *S) TestCreateAppHandler(c *gocheck.C) {
-	config.Set("docker:allow-memory-set", true)
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
@@ -307,7 +306,7 @@ func (s *S) TestCreateAppHandler(c *gocheck.C) {
 		err = app.Delete(a)
 		c.Assert(err, gocheck.IsNil)
 	}()
-	data := `{"name":"someapp","platform":"zend","memory":"10","swap":"20"}`
+	data := `{"name":"someapp","platform":"zend"}`
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, gocheck.IsNil)
@@ -335,13 +334,12 @@ func (s *S) TestCreateAppHandler(c *gocheck.C) {
 	action := testing.Action{
 		Action: "create-app",
 		User:   s.user.Email,
-		Extra:  []interface{}{"name=someapp", "platform=zend", "memory=10", "swap=20"},
+		Extra:  []interface{}{"name=someapp", "platform=zend", "plan="},
 	}
 	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *S) TestCreateAppTeamOwner(c *gocheck.C) {
-	config.Set("docker:allow-memory-set", true)
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
@@ -352,7 +350,7 @@ func (s *S) TestCreateAppTeamOwner(c *gocheck.C) {
 		err = app.Delete(a)
 		c.Assert(err, gocheck.IsNil)
 	}()
-	data := `{"name":"someapp","platform":"zend","memory":"1","teamOwner":"tsuruteam"}`
+	data := `{"name":"someapp","platform":"zend","teamOwner":"tsuruteam"}`
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, gocheck.IsNil)
@@ -384,13 +382,66 @@ func (s *S) TestCreateAppTeamOwner(c *gocheck.C) {
 	action := testing.Action{
 		Action: "create-app",
 		User:   s.user.Email,
-		Extra:  []interface{}{"name=someapp", "platform=zend", "memory=1", "swap=0"},
+		Extra:  []interface{}{"name=someapp", "platform=zend", "plan="},
+	}
+	c.Assert(action, testing.IsRecorded)
+}
+
+func (s *S) TestCreateAppCustomPlan(c *gocheck.C) {
+	h := testHandler{}
+	ts := testing.StartGandalfTestServer(&h)
+	defer ts.Close()
+	a := app.App{Name: "someapp"}
+	defer func() {
+		a, err := app.GetByName("someapp")
+		c.Assert(err, gocheck.IsNil)
+		err = app.Delete(a)
+		c.Assert(err, gocheck.IsNil)
+	}()
+	expectedPlan := app.Plan{
+		Name:     "myplan",
+		Memory:   10,
+		Swap:     5,
+		CpuShare: 10,
+	}
+	err := expectedPlan.Save()
+	c.Assert(err, gocheck.IsNil)
+	defer app.PlanRemove(expectedPlan.Name)
+	data := `{"name":"someapp","platform":"zend","plan":{"name":"myplan"}}`
+	b := strings.NewReader(data)
+	request, err := http.NewRequest("POST", "/apps", b)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = createApp(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, gocheck.IsNil)
+	repoURL := repository.ReadWriteURL(a.Name)
+	var obtained map[string]string
+	expected := map[string]string{
+		"status":         "success",
+		"repository_url": repoURL,
+		"ip":             "someapp.fake-lb.tsuru.io",
+	}
+	err = json.Unmarshal(body, &obtained)
+	c.Assert(obtained, gocheck.DeepEquals, expected)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	var gotApp app.App
+	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(gotApp.Teams, gocheck.DeepEquals, []string{s.team.Name})
+	c.Assert(s.provisioner.GetUnits(&gotApp), gocheck.HasLen, 0)
+	c.Assert(gotApp.Plan, gocheck.DeepEquals, expectedPlan)
+	action := testing.Action{
+		Action: "create-app",
+		User:   s.user.Email,
+		Extra:  []interface{}{"name=someapp", "platform=zend", "plan=myplan"},
 	}
 	c.Assert(action, testing.IsRecorded)
 }
 
 func (s *S) TestCreateAppTwoTeamOwner(c *gocheck.C) {
-	config.Set("docker:allow-memory-set", true)
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
@@ -398,7 +449,7 @@ func (s *S) TestCreateAppTwoTeamOwner(c *gocheck.C) {
 	err := s.conn.Teams().Insert(team)
 	c.Check(err, gocheck.IsNil)
 	defer s.conn.Teams().RemoveId(team.Name)
-	data := `{"name":"someapp","platform":"zend","memory":"1"}`
+	data := `{"name":"someapp","platform":"zend"}`
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, gocheck.IsNil)
@@ -406,80 +457,6 @@ func (s *S) TestCreateAppTwoTeamOwner(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = createApp(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
-}
-
-func (s *S) TestCreateAppMemorySetNowAllowed(c *gocheck.C) {
-	config.Set("docker:allow-memory-set", false)
-	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Close()
-	b := strings.NewReader(`{"name":"someapp","platform":"zend","memory":"10"}`)
-	request, err := http.NewRequest("POST", "/apps", b)
-	c.Assert(err, gocheck.IsNil)
-	request.Header.Set("Content-Type", "application/json")
-	recorder := httptest.NewRecorder()
-	err = createApp(recorder, request, s.token)
-	c.Assert(err, gocheck.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
-	c.Assert(e.Message, gocheck.Matches, "^.*Memory setting not allowed.$")
-}
-
-func (s *S) TestCreateAppSwapSetNowAllowed(c *gocheck.C) {
-	config.Set("docker:allow-memory-set", false)
-	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Close()
-	b := strings.NewReader(`{"name":"someapp","platform":"zend","swap":"10"}`)
-	request, err := http.NewRequest("POST", "/apps", b)
-	c.Assert(err, gocheck.IsNil)
-	request.Header.Set("Content-Type", "application/json")
-	recorder := httptest.NewRecorder()
-	err = createApp(recorder, request, s.token)
-	c.Assert(err, gocheck.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
-	c.Assert(e.Message, gocheck.Matches, "^.*Memory setting not allowed.$")
-}
-
-func (s *S) TestCreateAppInvalidMemorySize(c *gocheck.C) {
-	config.Set("docker:allow-memory-set", true)
-	config.Set("docker:max-allowed-memory", 1)
-	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Close()
-	b := strings.NewReader(`{"name":"someapp","platform":"zend","memory":"10"}`)
-	request, err := http.NewRequest("POST", "/apps", b)
-	c.Assert(err, gocheck.IsNil)
-	request.Header.Set("Content-Type", "application/json")
-	recorder := httptest.NewRecorder()
-	err = createApp(recorder, request, s.token)
-	c.Assert(err, gocheck.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
-	c.Assert(e.Message, gocheck.Matches, "^.*Invalid memory size. You cannot request more than.*")
-}
-
-func (s *S) TestCreateAppInvalidSwapSize(c *gocheck.C) {
-	config.Set("docker:allow-memory-set", true)
-	config.Set("docker:max-allowed-swap", 1)
-	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Close()
-	b := strings.NewReader(`{"name":"someapp","platform":"zend","swap":"10"}`)
-	request, err := http.NewRequest("POST", "/apps", b)
-	c.Assert(err, gocheck.IsNil)
-	request.Header.Set("Content-Type", "application/json")
-	recorder := httptest.NewRecorder()
-	err = createApp(recorder, request, s.token)
-	c.Assert(err, gocheck.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
-	c.Assert(e.Message, gocheck.Matches, "^.*Invalid swap size. You cannot request more than.*")
 }
 
 func (s *S) TestCreateAppQuotaExceeded(c *gocheck.C) {

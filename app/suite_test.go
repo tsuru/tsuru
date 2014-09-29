@@ -35,6 +35,7 @@ type S struct {
 	admin       *auth.User
 	t           *ttesting.T
 	provisioner *ttesting.FakeProvisioner
+	defaultPlan Plan
 }
 
 var _ = gocheck.Suite(&S{})
@@ -93,6 +94,15 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	AuthScheme = nativeScheme
 	platform := Platform{Name: "python"}
 	s.conn.Platforms().Insert(platform)
+	s.defaultPlan = Plan{
+		Name:     "default-plan",
+		Memory:   1024,
+		Swap:     1024,
+		CpuShare: 100,
+		Default:  true,
+	}
+	err = s.conn.Plans().Insert(s.defaultPlan)
+	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
