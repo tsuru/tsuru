@@ -8,20 +8,13 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 )
 
-type Plan struct {
-	Name     string `bson:"_id"`
-	Memory   int64
-	Swap     int64
-	CpuShare int
-}
-
 func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	var plan Plan
+	var plan app.Plan
 	err := json.NewDecoder(r.Body).Decode(&plan)
 	if err != nil {
 		return &errors.HTTP{
@@ -29,51 +22,27 @@ func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			Message: "unable to parse request body",
 		}
 	}
-	if plan.Name == "" {
+	err = plan.Save()
+	if _, ok := err.(app.PlanValidationError); ok {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
-			Message: "name can't be empty",
+			Message: err.Error(),
 		}
 	}
-	if plan.Memory == 0 {
+	if err == app.ErrPlanAlreadyExists {
 		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: "memory can't be 0",
+			Code:    http.StatusConflict,
+			Message: err.Error(),
 		}
 	}
-	if plan.Swap == 0 {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: "swap can't be 0",
-		}
+	if err == nil {
+		w.WriteHeader(http.StatusCreated)
 	}
-	if plan.CpuShare == 0 {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: "cpushare can't be 0",
-		}
-	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = conn.Plans().Insert(plan)
-	if err != nil {
-		return err
-	}
-	w.WriteHeader(http.StatusCreated)
-	return nil
+	return err
 }
 
 func listPlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	var plans []Plan
-	err = conn.Plans().Find(nil).All(&plans)
+	plans, err := app.PlansList()
 	if err != nil {
 		return err
 	}
@@ -81,5 +50,13 @@ func listPlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func removePlan(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	return nil
+	planName := r.URL.Query().Get(":planname")
+	err := app.PlanRemove(planName)
+	if err == app.ErrPlanNotFound {
+		return &errors.HTTP{
+			Code:    http.StatusNotFound,
+			Message: err.Error(),
+		}
+	}
+	return err
 }
