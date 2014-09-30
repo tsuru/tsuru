@@ -223,6 +223,7 @@ func (c *container) create(args runContainerActionsArgs) error {
 		AttachStderr: false,
 		Memory:       args.app.GetMemory(),
 		MemorySwap:   args.app.GetMemory() + args.app.GetSwap(),
+		CpuShares:    int64(args.app.GetCpuShare()),
 	}
 	if sharedMount != "" && sharedBasedir != "" {
 		config.Volumes = map[string]struct{}{

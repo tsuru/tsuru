@@ -31,6 +31,8 @@ type FakeApp struct {
 	logMut         sync.Mutex
 	Commands       []string
 	Memory         int64
+	Swap           int64
+	CpuShare       int
 	commMut        sync.Mutex
 	ready          bool
 	deploys        uint
@@ -60,7 +62,11 @@ func (a *FakeApp) GetMemory() int64 {
 }
 
 func (a *FakeApp) GetSwap() int64 {
-	return a.Memory
+	return a.Swap
+}
+
+func (a *FakeApp) GetCpuShare() int {
+	return a.CpuShare
 }
 
 func (a *FakeApp) Logs() []string {

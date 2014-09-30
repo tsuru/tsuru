@@ -684,6 +684,11 @@ func (app *App) GetSwap() int64 {
 	return app.Plan.Swap
 }
 
+// GetCpuShare returns the cpu share for the app.
+func (app *App) GetCpuShare() int {
+	return app.Plan.CpuShare
+}
+
 // GetIp returns the ip of the app.
 func (app *App) GetIp() string {
 	return app.Ip

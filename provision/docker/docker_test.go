@@ -43,6 +43,8 @@ func (s *S) TestContainerGetAddress(c *gocheck.C) {
 func (s *S) TestContainerCreate(c *gocheck.C) {
 	app := testing.NewFakeApp("app-name", "brainfuck", 1)
 	app.Memory = 15
+	app.Swap = 15
+	app.CpuShare = 50
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	dockerCluster().PullImage(
@@ -70,6 +72,8 @@ func (s *S) TestContainerCreate(c *gocheck.C) {
 	c.Assert(container.Args, gocheck.DeepEquals, []string{"run"})
 	c.Assert(container.Config.User, gocheck.Equals, user)
 	c.Assert(container.Config.Memory, gocheck.Equals, app.Memory)
+	c.Assert(container.Config.MemorySwap, gocheck.Equals, app.Memory+app.Swap)
+	c.Assert(container.Config.CpuShares, gocheck.Equals, int64(app.CpuShare))
 }
 
 func (s *S) TestContainerCreateAlocatesPort(c *gocheck.C) {
