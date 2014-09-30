@@ -177,7 +177,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Get", "/iaas/machines", AdminRequiredHandler(machinesList))
 	m.Add("Delete", "/iaas/machines/{machine_id}", AdminRequiredHandler(machineDestroy))
 
-	m.Add("Get", "/plans", AdminRequiredHandler(listPlans))
+	m.Add("Get", "/plans", authorizationRequiredHandler(listPlans))
 	m.Add("Post", "/plans", AdminRequiredHandler(addPlan))
 	m.Add("Delete", "/plans/{planname}", AdminRequiredHandler(removePlan))
 
