@@ -259,3 +259,40 @@ docker-healing-list
     $ tsuru-admin docker-healing-list [--node] [--container]
 
 This command will list all healing processes started for nodes or containers.
+
+.. _tsuru_admin_plan_create:
+
+plan-create
+-----------
+
+::
+
+    $ tsuru-admin plan-create <name> -c/--cpu-share cpushare [-m/--memory memory] [-s/--swap swap] [-d/--default]
+
+This command creates a new plan for being used when creating new apps.
+
+The ``--cpushare`` flag defines a relative amount of cpu share for units created
+in apps using this plan. This value is unitless and relative, so specifying the
+same value for all plans means all units will equally share processing power.
+
+The ``--memory`` flag defines how much physical memory a unit is able to use, in
+bytes.
+
+The ``--swap`` flag defines how much virtual swap memory a unit is able to use, in
+bytes.
+
+The ``--default`` flag sets this plan as the default plan. It means this plan will
+be used when creating an app without explicitly setting a plan.
+
+
+plan-remove
+-----------
+
+::
+
+    $ tsuru-admin plan-remove <name>
+
+This command removes an existing plan, it will no longer be available for newly
+created apps. However, this won't change anything for existing apps that were
+created using the removed plan. They will keep using the same value amount of
+resources described by the plan.

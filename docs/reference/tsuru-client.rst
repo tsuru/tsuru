@@ -61,16 +61,34 @@ To create an app, use `app-create
 
 ::
 
-    $ tsuru app-create myblog <platform>
+    $ tsuru app-create myblog <platform> [--plan/-p plan_name] [--team/-t team_owner]
 
-This will return your app's remote url, you should add it to your git
-repository:
+
+The ``platform`` parameter is the name of the platform to be used when creating
+the app. This will definer how tsuru understands and executes your app. The list
+of available platforms can be found running ``tsuru platform-list``.
+
+The ``--plan`` parameter defines the plan to be used. The plan specifies how
+computational resources are allocated to your application. Typically this means
+limits for memory and swap usage, and how much cpu share is allocated. The list of
+available plans can be found running ``tsuru plan-list``.
+
+If this parameter is not informed, tsuru will choose the plan with the ``default``
+flag set to true.
+
+The ``team`` parameter describes which team is responsible for the created app,
+this is only needed if the current user belongs to more than one team, in which
+case this parameter will be mandatory.
+
+After running successfully the command will return your app's remote url, you
+should add it to your git repository:
 
 .. highlight:: bash
 
 ::
 
     $ git remote add tsuru git@tsuru.myhost.com:myblog.git
+
 
 Listing your apps
 -----------------

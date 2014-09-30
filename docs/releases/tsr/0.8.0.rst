@@ -14,6 +14,10 @@ when upgrading from tsr 0.7.0 or older versions.
 What's new in tsr 0.8.0
 =======================
 
+* tsuru now supports associating apps to plans which define how it can use machine
+  resources, see `backward incompatible changes`_ for more information about which
+  settings are no longer used with plans available, and how to use them.
+
 
 Bug fixes
 =========
@@ -29,3 +33,13 @@ Other improvements in tsr 0.8.0
 Backward incompatible changes
 =============================
 
+The following config settings have been deprecated:
+
+* docker:allow-memory-set
+* docker:max-allowed-memory
+* docker:max-allowed-swap
+* docker:memory
+* docker:swap
+
+You should now create plans specifying the limits for memory, swap and cpu share.
+See :ref:`tsuru-admin plan-create <tsuru_admin_plan_create>` for more details.
