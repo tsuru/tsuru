@@ -61,6 +61,33 @@ func (s *S) TestPlanAddDupp(c *gocheck.C) {
 	c.Assert(err, gocheck.Equals, ErrPlanAlreadyExists)
 }
 
+func (s *S) TestPlanAddAsDefault(c *gocheck.C) {
+	s.conn.Plans().RemoveAll(nil)
+	defer s.conn.Plans().Insert(s.defaultPlan)
+	p := Plan{
+		Name:     "plan1",
+		Memory:   9223372036854775807,
+		Swap:     1024,
+		CpuShare: 100,
+		Default:  true,
+	}
+	err := p.Save()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Plans().RemoveId("plan1")
+	p.Name = "plan2"
+	err = p.Save()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Plans().RemoveId("plan2")
+	var plan1, plan2 Plan
+	err = s.conn.Plans().FindId("plan1").One(&plan1)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(plan1.Default, gocheck.Equals, false)
+	err = s.conn.Plans().FindId("plan2").One(&plan2)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(plan2.Default, gocheck.Equals, true)
+
+}
+
 type planList []Plan
 
 func (l planList) Len() int           { return len(l) }

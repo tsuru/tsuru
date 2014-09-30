@@ -47,6 +47,12 @@ func (plan *Plan) Save() error {
 		return err
 	}
 	defer conn.Close()
+	if plan.Default {
+		_, err := conn.Plans().UpdateAll(bson.M{"default": true}, bson.M{"$unset": bson.M{"default": false}})
+		if err != nil {
+			return err
+		}
+	}
 	err = conn.Plans().Insert(plan)
 	if err != nil && strings.Contains(err.Error(), "duplicate key") {
 		return ErrPlanAlreadyExists
