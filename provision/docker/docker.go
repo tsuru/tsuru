@@ -221,8 +221,8 @@ func (c *container) create(args runContainerActionsArgs) error {
 		AttachStdin:  false,
 		AttachStdout: false,
 		AttachStderr: false,
-		Memory:       int64(args.app.GetMemory() * 1024 * 1024),
-		MemorySwap:   int64(args.app.GetSwap() * 1024 * 1024),
+		Memory:       args.app.GetMemory(),
+		MemorySwap:   args.app.GetMemory() + args.app.GetSwap(),
 	}
 	if sharedMount != "" && sharedBasedir != "" {
 		config.Volumes = map[string]struct{}{

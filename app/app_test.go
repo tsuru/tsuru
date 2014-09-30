@@ -1643,12 +1643,12 @@ func (s *S) TestGetDeploys(c *gocheck.C) {
 
 func (s *S) TestGetMemory(c *gocheck.C) {
 	a := App{Plan: Plan{Memory: 10}}
-	c.Assert(a.GetMemory(), gocheck.Equals, int(a.Plan.Memory))
+	c.Assert(a.GetMemory(), gocheck.Equals, a.Plan.Memory)
 }
 
 func (s *S) TestGetSwap(c *gocheck.C) {
 	a := App{Plan: Plan{Swap: 20}}
-	c.Assert(a.GetSwap(), gocheck.Equals, int(a.Plan.Swap))
+	c.Assert(a.GetSwap(), gocheck.Equals, a.Plan.Swap)
 }
 
 func (s *S) TestAppUnits(c *gocheck.C) {

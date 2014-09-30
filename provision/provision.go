@@ -131,8 +131,8 @@ type App interface {
 	// Ready marks the app as ready for deployment.
 	Ready() error
 
-	GetMemory() int
-	GetSwap() int
+	GetMemory() int64
+	GetSwap() int64
 	GetUpdatePlatform() bool
 }
 

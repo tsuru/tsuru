@@ -674,14 +674,14 @@ func (app *App) GetName() string {
 	return app.Name
 }
 
-// GetMemory returns the memory limit (in MB) for the app.
-func (app *App) GetMemory() int {
-	return int(app.Plan.Memory)
+// GetMemory returns the memory limit (in bytes) for the app.
+func (app *App) GetMemory() int64 {
+	return app.Plan.Memory
 }
 
-// GetSwap returns the swap limit (in MB) for the app.
-func (app *App) GetSwap() int {
-	return int(app.Plan.Swap)
+// GetSwap returns the swap limit (in bytes) for the app.
+func (app *App) GetSwap() int64 {
+	return app.Plan.Swap
 }
 
 // GetIp returns the ip of the app.
