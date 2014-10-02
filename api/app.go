@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
@@ -404,23 +405,6 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	return nil
 }
 
-type runJsonWriter struct {
-	*json.Encoder
-}
-
-func (w *runJsonWriter) Write(msg []byte) (int, error) {
-	err := w.Encode(runMessage{Message: string(msg)})
-	if err != nil {
-		return 0, err
-	}
-	return len(msg), nil
-}
-
-type runMessage struct {
-	Message string
-	Error   string `json:",omitempty"`
-}
-
 func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	w.Header().Set("Content-Type", "text")
 	msg := "You must provide the command to run"
@@ -445,10 +429,10 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	writer := &runJsonWriter{json.NewEncoder(w)}
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{json.NewEncoder(w)}
 	err = app.Run(string(c), writer, once == "true")
 	if err != nil {
-		writer.Encode(runMessage{Error: err.Error()})
+		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 		return err
 	}
 	return nil
@@ -765,7 +749,13 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	return instance.Restart(w)
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{json.NewEncoder(w)}
+	err = instance.Restart(writer)
+	if err != nil {
+		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
+		return err
+	}
+	return nil
 }
 
 func addLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {

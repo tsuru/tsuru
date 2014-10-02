@@ -606,7 +606,7 @@ func (s *S) TestProvisionAddUnitsBackward(c *gocheck.C) {
 	}
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
-	units, err := s.provisioner.AddUnits(&app, 3)
+	units, err := s.provisioner.AddUnits(&app, 3, nil)
 	c.Assert(err, gocheck.IsNil)
 	ctx := action.BWContext{Params: []interface{}{&app}, FWResult: units}
 	provisionAddUnits.Backward(ctx)
@@ -626,7 +626,7 @@ func (s *S) TestBindServiceForward(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
-	units, err := s.provisioner.AddUnits(&app, 3)
+	units, err := s.provisioner.AddUnits(&app, 3, nil)
 	c.Assert(err, gocheck.IsNil)
 	var bodies []string
 	rollback := s.addServiceInstance(c, app.Name, func(w http.ResponseWriter, r *http.Request) {
@@ -654,7 +654,7 @@ func (s *S) TestBindServiceForwardWithDeployOpts(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
-	units, err := s.provisioner.AddUnits(&app, 3)
+	units, err := s.provisioner.AddUnits(&app, 3, nil)
 	c.Assert(err, gocheck.IsNil)
 	callCount := 0
 	rollback := s.addServiceInstance(c, app.Name, func(w http.ResponseWriter, r *http.Request) {
@@ -680,7 +680,7 @@ func (s *S) TestBindServiceForwardNoPrevious(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
-	_, err := s.provisioner.AddUnits(&app, 3)
+	_, err := s.provisioner.AddUnits(&app, 3, nil)
 	c.Assert(err, gocheck.IsNil)
 	var bodies []string
 	rollback := s.addServiceInstance(c, app.Name, func(w http.ResponseWriter, r *http.Request) {

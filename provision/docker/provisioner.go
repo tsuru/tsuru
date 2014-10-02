@@ -55,12 +55,15 @@ func (p *dockerProvisioner) Provision(app provision.App) error {
 	return r.AddBackend(app.GetName())
 }
 
-func (*dockerProvisioner) Restart(a provision.App) error {
+func (*dockerProvisioner) Restart(a provision.App, w io.Writer) error {
 	containers, err := listContainersByApp(a.GetName())
 	if err != nil {
 		return err
 	}
-	writer := &app.LogWriter{App: a, Writer: ioutil.Discard}
+	if w == nil {
+		w = ioutil.Discard
+	}
+	writer := &app.LogWriter{App: a, Writer: w}
 	_, err = runReplaceUnitsPipeline(writer, a, containers)
 	return err
 }
@@ -320,7 +323,7 @@ func addContainersWithHost(w io.Writer, a provision.App, units int, destinationH
 	return result, nil
 }
 
-func (*dockerProvisioner) AddUnits(a provision.App, units uint) ([]provision.Unit, error) {
+func (*dockerProvisioner) AddUnits(a provision.App, units uint, w io.Writer) ([]provision.Unit, error) {
 	length, err := getContainerCountForAppName(a.GetName())
 	if err != nil {
 		return nil, err

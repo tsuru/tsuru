@@ -420,7 +420,7 @@ func (p *FakeProvisioner) Provision(app provision.App) error {
 	return nil
 }
 
-func (p *FakeProvisioner) Restart(app provision.App) error {
+func (p *FakeProvisioner) Restart(app provision.App, w io.Writer) error {
 	if err := p.getError("Restart"); err != nil {
 		return err
 	}
@@ -460,7 +460,7 @@ func (p *FakeProvisioner) Destroy(app provision.App) error {
 	return nil
 }
 
-func (p *FakeProvisioner) AddUnits(app provision.App, n uint) ([]provision.Unit, error) {
+func (p *FakeProvisioner) AddUnits(app provision.App, n uint, w io.Writer) ([]provision.Unit, error) {
 	if err := p.getError("AddUnits"); err != nil {
 		return nil, err
 	}

@@ -627,12 +627,12 @@ func (app *App) run(cmd string, w io.Writer, once bool) error {
 
 // Restart runs the restart hook for the app, writing its output to w.
 func (app *App) Restart(w io.Writer) error {
-	err := log.Write(w, []byte("\n ---> Restarting your app\n"))
+	err := log.Write(w, []byte("---- Restarting your app ----\n"))
 	if err != nil {
 		log.Errorf("[restart] error on write app log for the app %s - %s", app.Name, err)
 		return err
 	}
-	err = Provisioner.Restart(app)
+	err = Provisioner.Restart(app, w)
 	if err != nil {
 		log.Errorf("[restart] error on restart the app %s - %s", app.Name, err)
 		return err
@@ -751,7 +751,7 @@ func (app *App) setEnvsToApp(envs []bind.EnvVar, publicOnly, shouldRestart bool)
 		if !shouldRestart {
 			return nil
 		}
-		return Provisioner.Restart(app)
+		return Provisioner.Restart(app, nil)
 	}
 	return nil
 }
@@ -783,7 +783,7 @@ func (app *App) UnsetEnvs(variableNames []string, publicOnly bool) error {
 		if err != nil {
 			return err
 		}
-		return Provisioner.Restart(app)
+		return Provisioner.Restart(app, nil)
 	}
 	return nil
 }

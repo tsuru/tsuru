@@ -176,7 +176,7 @@ type Provisioner interface {
 	// second is the number of units to be added.
 	//
 	// It returns a slice containing all added units
-	AddUnits(App, uint) ([]Unit, error)
+	AddUnits(App, uint, io.Writer) ([]Unit, error)
 
 	// RemoveUnits "undoes" AddUnits, removing the given number of units
 	// from the app.
@@ -195,7 +195,7 @@ type Provisioner interface {
 	// ExecuteCommandOnce runs a command in one unit of the app.
 	ExecuteCommandOnce(stdout, stderr io.Writer, app App, cmd string, args ...string) error
 
-	Restart(App) error
+	Restart(App, io.Writer) error
 	Stop(App) error
 
 	// Start start the app units.

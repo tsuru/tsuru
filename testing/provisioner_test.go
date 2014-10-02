@@ -375,7 +375,7 @@ func (s *S) TestRestart(c *gocheck.C) {
 	app := NewFakeApp("kid-gloves", "rush", 1)
 	p := NewFakeProvisioner()
 	p.Provision(app)
-	err := p.Restart(app)
+	err := p.Restart(app, nil)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.Restarts(app), gocheck.Equals, 1)
 }
@@ -401,7 +401,7 @@ func (s *S) TestStop(c *gocheck.C) {
 func (s *S) TestRestartNotProvisioned(c *gocheck.C) {
 	app := NewFakeApp("kid-gloves", "rush", 1)
 	p := NewFakeProvisioner()
-	err := p.Restart(app)
+	err := p.Restart(app, nil)
 	c.Assert(err, gocheck.Equals, errNotProvisioned)
 }
 
@@ -409,7 +409,7 @@ func (s *S) TestRestartWithPreparedFailure(c *gocheck.C) {
 	app := NewFakeApp("fairy-tale", "shaman", 1)
 	p := NewFakeProvisioner()
 	p.PrepareFailure("Restart", errors.New("Failed to restart."))
-	err := p.Restart(app)
+	err := p.Restart(app, nil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Failed to restart.")
 }
@@ -443,7 +443,7 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	app := NewFakeApp("mystic-rhythms", "rush", 0)
 	p := NewFakeProvisioner()
 	p.Provision(app)
-	units, err := p.AddUnits(app, 2)
+	units, err := p.AddUnits(app, 2, nil)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.GetUnits(app), gocheck.HasLen, 2)
 	c.Assert(units, gocheck.HasLen, 2)
@@ -454,7 +454,7 @@ func (s *S) TestAddUnitsCopiesTheUnitsSlice(c *gocheck.C) {
 	p := NewFakeProvisioner()
 	p.Provision(app)
 	defer p.Destroy(app)
-	units, err := p.AddUnits(app, 3)
+	units, err := p.AddUnits(app, 3, nil)
 	c.Assert(err, gocheck.IsNil)
 	units[0].Name = "something-else"
 	c.Assert(units[0].Name, gocheck.Not(gocheck.Equals), p.GetUnits(app)[1].Name)
@@ -462,7 +462,7 @@ func (s *S) TestAddUnitsCopiesTheUnitsSlice(c *gocheck.C) {
 
 func (s *S) TestAddZeroUnits(c *gocheck.C) {
 	p := NewFakeProvisioner()
-	units, err := p.AddUnits(nil, 0)
+	units, err := p.AddUnits(nil, 0, nil)
 	c.Assert(units, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Cannot add 0 units.")
@@ -471,7 +471,7 @@ func (s *S) TestAddZeroUnits(c *gocheck.C) {
 func (s *S) TestAddUnitsUnprovisionedApp(c *gocheck.C) {
 	app := NewFakeApp("mystic-rhythms", "rush", 0)
 	p := NewFakeProvisioner()
-	units, err := p.AddUnits(app, 1)
+	units, err := p.AddUnits(app, 1, nil)
 	c.Assert(units, gocheck.IsNil)
 	c.Assert(err, gocheck.Equals, errNotProvisioned)
 }
@@ -479,7 +479,7 @@ func (s *S) TestAddUnitsUnprovisionedApp(c *gocheck.C) {
 func (s *S) TestAddUnitsFailure(c *gocheck.C) {
 	p := NewFakeProvisioner()
 	p.PrepareFailure("AddUnits", errors.New("Cannot add more units."))
-	units, err := p.AddUnits(nil, 10)
+	units, err := p.AddUnits(nil, 10, nil)
 	c.Assert(units, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Cannot add more units.")
@@ -489,7 +489,7 @@ func (s *S) TestRemoveUnits(c *gocheck.C) {
 	app := NewFakeApp("hemispheres", "rush", 0)
 	p := NewFakeProvisioner()
 	p.Provision(app)
-	_, err := p.AddUnits(app, 5)
+	_, err := p.AddUnits(app, 5, nil)
 	c.Assert(err, gocheck.IsNil)
 	err = p.RemoveUnits(app, 3)
 	c.Assert(err, gocheck.IsNil)
@@ -501,7 +501,7 @@ func (s *S) TestRemoveUnitsTooManyUnits(c *gocheck.C) {
 	app := NewFakeApp("hemispheres", "rush", 0)
 	p := NewFakeProvisioner()
 	p.Provision(app)
-	_, err := p.AddUnits(app, 1)
+	_, err := p.AddUnits(app, 1, nil)
 	c.Assert(err, gocheck.IsNil)
 	err = p.RemoveUnits(app, 3)
 	c.Assert(err, gocheck.NotNil)
@@ -527,7 +527,7 @@ func (s *S) TestRemoveUnit(c *gocheck.C) {
 	app := NewFakeApp("hemispheres", "rush", 0)
 	p := NewFakeProvisioner()
 	p.Provision(app)
-	units, err := p.AddUnits(app, 2)
+	units, err := p.AddUnits(app, 2, nil)
 	c.Assert(err, gocheck.IsNil)
 	err = p.RemoveUnit(units[0])
 	c.Assert(err, gocheck.IsNil)
@@ -539,7 +539,7 @@ func (s *S) TestRemoveUnitNotFound(c *gocheck.C) {
 	app := NewFakeApp("hemispheres", "rush", 0)
 	p := NewFakeProvisioner()
 	p.Provision(app)
-	units, err := p.AddUnits(app, 2)
+	units, err := p.AddUnits(app, 2, nil)
 	c.Assert(err, gocheck.IsNil)
 	err = p.RemoveUnit(provision.Unit{Name: units[0].Name + "wat", AppName: "hemispheres"})
 	c.Assert(err, gocheck.NotNil)

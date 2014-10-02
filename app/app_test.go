@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -542,7 +541,7 @@ func (s *S) TestRemoveUnitsWithQuota(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 5)
+	s.provisioner.AddUnits(&a, 5, nil)
 	defer s.provisioner.Destroy(&a)
 	err = a.RemoveUnits(4)
 	c.Assert(err, gocheck.IsNil)
@@ -613,7 +612,7 @@ func (s *S) TestRemoveUnitsInvalidValues(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
-	s.provisioner.AddUnits(&app, 3)
+	s.provisioner.AddUnits(&app, 3, nil)
 	for _, test := range tests {
 		err := app.RemoveUnits(test.n)
 		c.Check(err, gocheck.NotNil)
@@ -625,7 +624,7 @@ func (s *S) TestSetUnitStatus(c *gocheck.C) {
 	a := App{Name: "appName", Platform: "python"}
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 3)
+	s.provisioner.AddUnits(&a, 3, nil)
 	units := a.Units()
 	err := a.SetUnitStatus(units[0].Name, provision.StatusError)
 	c.Assert(err, gocheck.IsNil)
@@ -637,7 +636,7 @@ func (s *S) TestSetUnitStatusPartialID(c *gocheck.C) {
 	a := App{Name: "appName", Platform: "python"}
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 3)
+	s.provisioner.AddUnits(&a, 3, nil)
 	units := a.Units()
 	name := units[0].Name
 	err := a.SetUnitStatus(name[0:len(name)-2], provision.StatusError)
@@ -1176,8 +1175,7 @@ func (s *S) TestRestart(c *gocheck.C) {
 	var b bytes.Buffer
 	err := a.Restart(&b)
 	c.Assert(err, gocheck.IsNil)
-	result := strings.Replace(b.String(), "\n", "#", -1)
-	c.Assert(result, gocheck.Matches, ".*# ---> Restarting your app#.*")
+	c.Assert(b.String(), gocheck.Matches, "(?s).*---- Restarting your app ----.*")
 	restarts := s.provisioner.Restarts(&a)
 	c.Assert(restarts, gocheck.Equals, 1)
 }
@@ -1392,7 +1390,7 @@ func (s *S) TestGetUnits(c *gocheck.C) {
 	app := App{Name: "app"}
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
-	s.provisioner.AddUnits(&app, 1)
+	s.provisioner.AddUnits(&app, 1, nil)
 	c.Assert(app.GetUnits(), gocheck.HasLen, 1)
 	c.Assert(app.Units()[0].Ip, gocheck.Equals, app.GetUnits()[0].GetIp())
 }
@@ -1471,7 +1469,7 @@ func (s *S) TestRun(c *gocheck.C) {
 	}
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
-	s.provisioner.AddUnits(&app, 1)
+	s.provisioner.AddUnits(&app, 1, nil)
 	var buf bytes.Buffer
 	err := app.Run("ls -lh", &buf, false)
 	c.Assert(err, gocheck.IsNil)
@@ -1490,7 +1488,7 @@ func (s *S) TestRunOnce(c *gocheck.C) {
 	}
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
-	s.provisioner.AddUnits(&app, 1)
+	s.provisioner.AddUnits(&app, 1, nil)
 	var buf bytes.Buffer
 	err := app.Run("ls -lh", &buf, true)
 	c.Assert(err, gocheck.IsNil)
@@ -1509,7 +1507,7 @@ func (s *S) TestRunWithoutEnv(c *gocheck.C) {
 	}
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
-	s.provisioner.AddUnits(&app, 1)
+	s.provisioner.AddUnits(&app, 1, nil)
 	var buf bytes.Buffer
 	err := app.run("ls -lh", &buf, false)
 	c.Assert(err, gocheck.IsNil)
@@ -1655,7 +1653,7 @@ func (s *S) TestAppUnits(c *gocheck.C) {
 	a := App{Name: "anycolor"}
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 1)
+	s.provisioner.AddUnits(&a, 1, nil)
 	c.Assert(a.Units(), gocheck.HasLen, 1)
 }
 
@@ -1665,7 +1663,7 @@ func (s *S) TestAppAvailable(c *gocheck.C) {
 	}
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 1)
+	s.provisioner.AddUnits(&a, 1, nil)
 	c.Assert(a.Available(), gocheck.Equals, true)
 	s.provisioner.Stop(&a)
 	c.Assert(a.Available(), gocheck.Equals, false)
@@ -1802,7 +1800,7 @@ func (s *S) TestAppRegisterUnit(c *gocheck.C) {
 	a := App{Name: "appName", Platform: "python"}
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 3)
+	s.provisioner.AddUnits(&a, 3, nil)
 	units := a.Units()
 	var ips []string
 	for _, u := range units {
