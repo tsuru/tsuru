@@ -181,3 +181,29 @@ func (s *S) TestStreamWriterInvalidDataNotReadInMultipleChunks(c *gocheck.C) {
 	c.Assert(writer.String(), gocheck.Equals, expected)
 	c.Assert(w.Remaining(), gocheck.DeepEquals, []byte("invalid data\nmoreinvalid\nsomething"))
 }
+
+func (s *S) TestSimpleJsonMessageFormatter(c *gocheck.C) {
+	formatter := SimpleJsonMessageFormatter{}
+	buf := bytes.Buffer{}
+	err := formatter.Format(&buf, []byte(`{"message": "mymsg"}`))
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(buf.String(), gocheck.Equals, "mymsg")
+	buf = bytes.Buffer{}
+	err = formatter.Format(&buf, []byte(`{"message": "mym`))
+	c.Assert(err, gocheck.Equals, ErrInvalidStreamChunk)
+	c.Assert(buf.String(), gocheck.Equals, "")
+	buf = bytes.Buffer{}
+	err = formatter.Format(&buf, []byte(`{"message": "mymsg", "error": "myerror"}`))
+	c.Assert(err, gocheck.ErrorMatches, "myerror")
+	c.Assert(buf.String(), gocheck.Equals, "")
+}
+
+func (s *S) TestSimpleJsonMessageEncoderWriter(c *gocheck.C) {
+	buf := bytes.Buffer{}
+	encoder := json.NewEncoder(&buf)
+	writer := SimpleJsonMessageEncoderWriter{encoder}
+	written, err := writer.Write([]byte("my cool msg"))
+	c.Assert(written, gocheck.Equals, 11)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(buf.String(), gocheck.Equals, `{"Message":"my cool msg"}`+"\n")
+}

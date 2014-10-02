@@ -6,6 +6,7 @@ package io
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -24,6 +25,9 @@ type Formatter interface {
 }
 
 func NewStreamWriter(w io.Writer, formatter Formatter) *streamWriter {
+	if formatter == nil {
+		formatter = SimpleJsonMessageFormatter{}
+	}
 	return &streamWriter{w: w, formatter: formatter}
 }
 
@@ -54,4 +58,36 @@ func (w *streamWriter) Write(b []byte) (int, error) {
 		}
 	}
 	return writtenCount, nil
+}
+
+type SimpleJsonMessage struct {
+	Message string
+	Error   string `json:",omitempty"`
+}
+
+type SimpleJsonMessageFormatter struct{}
+
+func (SimpleJsonMessageFormatter) Format(out io.Writer, data []byte) error {
+	var msg SimpleJsonMessage
+	err := json.Unmarshal(data, &msg)
+	if err != nil {
+		return ErrInvalidStreamChunk
+	}
+	if msg.Error != "" {
+		return errors.New(msg.Error)
+	}
+	out.Write([]byte(msg.Message))
+	return nil
+}
+
+type SimpleJsonMessageEncoderWriter struct {
+	*json.Encoder
+}
+
+func (w *SimpleJsonMessageEncoderWriter) Write(msg []byte) (int, error) {
+	err := w.Encode(SimpleJsonMessage{Message: string(msg)})
+	if err != nil {
+		return 0, err
+	}
+	return len(msg), nil
 }
