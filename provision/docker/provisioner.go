@@ -55,12 +55,14 @@ func (p *dockerProvisioner) Provision(app provision.App) error {
 	return r.AddBackend(app.GetName())
 }
 
-func (p *dockerProvisioner) Restart(app provision.App) error {
-	err := p.Stop(app)
+func (*dockerProvisioner) Restart(a provision.App) error {
+	containers, err := listContainersByApp(a.GetName())
 	if err != nil {
 		return err
 	}
-	return p.Start(app)
+	writer := &app.LogWriter{App: a, Writer: ioutil.Discard}
+	_, err = runReplaceUnitsPipeline(writer, a, containers)
+	return err
 }
 
 func (*dockerProvisioner) Start(app provision.App) error {

@@ -49,35 +49,35 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerRestart(c *gocheck.C) {
+	err := newImage("tsuru/almah", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
 	var p dockerProvisioner
 	app := testing.NewFakeApp("almah", "static", 1)
-	container, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
+	cont, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, gocheck.IsNil)
-	defer s.removeTestContainer(container)
+	defer s.removeTestContainer(cont)
 	err = p.Start(app)
 	c.Assert(err, gocheck.IsNil)
-	dockerContainer, err := dCluster.InspectContainer(container.ID)
+	dockerContainer, err := dCluster.InspectContainer(cont.ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(dockerContainer.State.Running, gocheck.Equals, true)
-	container.IP = ""
-	container.HostPort = ""
-	coll := collection()
-	defer coll.Close()
-	coll.Update(bson.M{"id": container.ID}, container)
 	err = p.Restart(app)
 	c.Assert(err, gocheck.IsNil)
-	dockerContainer, err = dCluster.InspectContainer(container.ID)
+	dbConts, err := listAllContainers()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dbConts, gocheck.HasLen, 1)
+	c.Assert(dbConts[0].ID, gocheck.Not(gocheck.Equals), cont.ID)
+	c.Assert(dbConts[0].AppName, gocheck.Equals, app.GetName())
+	c.Assert(dbConts[0].Status, gocheck.Equals, provision.StatusStarting.String())
+	dockerContainer, err = dCluster.InspectContainer(dbConts[0].ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(dockerContainer.State.Running, gocheck.Equals, true)
-	container, err = getContainer(container.ID)
-	c.Assert(err, gocheck.IsNil)
 	expectedIP := dockerContainer.NetworkSettings.IPAddress
 	expectedPort := dockerContainer.NetworkSettings.Ports["8888/tcp"][0].HostPort
-	c.Assert(container.IP, gocheck.Equals, expectedIP)
-	c.Assert(container.HostPort, gocheck.Equals, expectedPort)
-	c.Assert(container.Status, gocheck.Equals, provision.StatusStarted.String())
+	c.Assert(dbConts[0].IP, gocheck.Equals, expectedIP)
+	c.Assert(dbConts[0].HostPort, gocheck.Equals, expectedPort)
 	expectedSSHPort := dockerContainer.NetworkSettings.Ports["22/tcp"][0].HostPort
-	c.Assert(container.SSHHostPort, gocheck.Equals, expectedSSHPort)
+	c.Assert(dbConts[0].SSHHostPort, gocheck.Equals, expectedSSHPort)
 }
 
 func (s *S) stopContainers(n uint) {
