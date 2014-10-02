@@ -428,6 +428,27 @@ docker:segregate
 
 Enable segregate scheduler. See :doc:`/managing/segregate-scheduler` for details.
 
+docker:scheduler:total-memory-metadata
+++++++++++++++++++++++++++++++++++++++
+
+Only valid if ``docker:segregate`` is true. This value describes which metadata
+key will describe the total amount of memory, in bytes, available to a docker
+node.
+
+docker:scheduler:max-used-memory
+++++++++++++++++++++++++++++++++
+
+Only valid if ``docker:segregate`` is true. This should be a value between 0.0 and
+1.0 which describes which fraction of the total amount of memory available to a
+server should be reserved for app units.
+
+The amount of memory available is found based on the node metadata described by
+``docker:scheduler:total-memory-metadata`` config setting.
+
+If this value is set, tsuru will only allow the creation of new units if there is
+at least one server with enough unreserved memory to fit the amount of memory
+needed by the unit, based on which plan was used to create the application.
+
 .. _config_cluster_storage:
 
 docker:cluster:storage
