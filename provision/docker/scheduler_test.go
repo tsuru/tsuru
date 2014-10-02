@@ -203,11 +203,79 @@ func (s *S) TestSchedulerNoNodesWithFallbackPool(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = scheduler.addPool("mypool2")
 	c.Assert(err, gocheck.IsNil)
+	defer scheduler.removePool("mypool")
+	defer scheduler.removePool("mypool2")
 	opts := docker.CreateContainerOptions{}
 	node, err := scheduler.Schedule(clusterInstance, opts, "")
 	c.Assert(node.Address, gocheck.Equals, "")
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Matches, "No nodes found with one of the following metadata: pool=mypool, pool=mypool2")
+}
+
+func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *gocheck.C) {
+	app1 := app.App{Name: "skyrim", Plan: app.Plan{Memory: 60000}}
+	err := s.storage.Apps().Insert(app1)
+	c.Assert(err, gocheck.IsNil)
+	defer s.storage.Apps().Remove(bson.M{"name": app1.Name})
+	app2 := app.App{Name: "oblivion", Plan: app.Plan{Memory: 20000}}
+	err = s.storage.Apps().Insert(app2)
+	c.Assert(err, gocheck.IsNil)
+	defer s.storage.Apps().Remove(bson.M{"name": app2.Name})
+	segSched := segregatedScheduler{
+		maxMemoryRatio:      0.8,
+		totalMemoryMetadata: "totalMemory",
+	}
+	err = segSched.addPool("mypool")
+	c.Assert(err, gocheck.IsNil)
+	defer segSched.removePool("mypool")
+	clusterInstance, err := cluster.New(&segSched, &cluster.MapStorage{},
+		cluster.Node{Address: "http://server1:1234", Metadata: map[string]string{
+			"totalMemory": "100000",
+			"pool":        "mypool",
+		}},
+		cluster.Node{Address: "http://server2:1234", Metadata: map[string]string{
+			"totalMemory": "100000",
+			"pool":        "mypool",
+		}},
+	)
+	c.Assert(err, gocheck.Equals, nil)
+	cont1 := container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "server1"}
+	contColl := collection()
+	defer contColl.RemoveAll(bson.M{"appname": "skyrim"})
+	defer contColl.RemoveAll(bson.M{"appname": "oblivion"})
+	err = contColl.Insert(cont1)
+	c.Assert(err, gocheck.Equals, nil)
+	for i := 0; i < 5; i++ {
+		cont := container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "oblivion"}
+		err := contColl.Insert(cont)
+		c.Assert(err, gocheck.IsNil)
+		opts := docker.CreateContainerOptions{
+			Name: cont.Name,
+		}
+		node, err := segSched.Schedule(clusterInstance, opts, cont.AppName)
+		c.Assert(err, gocheck.IsNil)
+		c.Assert(node, gocheck.NotNil)
+	}
+	n, err := contColl.Find(bson.M{"hostaddr": "server1"}).Count()
+	c.Assert(err, gocheck.Equals, nil)
+	c.Check(n, gocheck.Equals, 2)
+	n, err = contColl.Find(bson.M{"hostaddr": "server2"}).Count()
+	c.Assert(err, gocheck.Equals, nil)
+	c.Check(n, gocheck.Equals, 4)
+	n, err = contColl.Find(bson.M{"hostaddr": "server1", "appname": "oblivion"}).Count()
+	c.Assert(err, gocheck.Equals, nil)
+	c.Check(n, gocheck.Equals, 1)
+	n, err = contColl.Find(bson.M{"hostaddr": "server2", "appname": "oblivion"}).Count()
+	c.Assert(err, gocheck.Equals, nil)
+	c.Check(n, gocheck.Equals, 4)
+	cont := container{ID: "post-error", Name: "post-error-1", AppName: "oblivion"}
+	err = contColl.Insert(cont)
+	c.Assert(err, gocheck.IsNil)
+	opts := docker.CreateContainerOptions{
+		Name: cont.Name,
+	}
+	_, err = segSched.Schedule(clusterInstance, opts, cont.AppName)
+	c.Assert(err, gocheck.ErrorMatches, "No nodes found with enough memory for container of \"oblivion\": 0.0191MB.")
 }
 
 func (s *S) TestChooseNodeDistributesNodesEqually(c *gocheck.C) {

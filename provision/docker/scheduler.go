@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"math"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -36,12 +37,19 @@ type Pool struct {
 	Teams []string
 }
 
-type segregatedScheduler struct{}
+type segregatedScheduler struct {
+	maxMemoryRatio      float32
+	totalMemoryMetadata string
+}
 
 func (s segregatedScheduler) Schedule(c *cluster.Cluster, opts docker.CreateContainerOptions, schedulerOpts cluster.SchedulerOptions) (cluster.Node, error) {
 	appName, _ := schedulerOpts.(string)
 	a, _ := app.GetByName(appName)
 	nodes, err := nodesForApp(c, a)
+	if err != nil {
+		return cluster.Node{}, err
+	}
+	nodes, err = filterByMemoryUsage(a, nodes, s.maxMemoryRatio, s.totalMemoryMetadata)
 	if err != nil {
 		return cluster.Node{}, err
 	}
@@ -52,6 +60,56 @@ func (s segregatedScheduler) Schedule(c *cluster.Cluster, opts docker.CreateCont
 	return cluster.Node{Address: node}, nil
 }
 
+func filterByMemoryUsage(a *app.App, nodes []cluster.Node, maxMemoryRatio float32, totalMemoryMetadata string) ([]cluster.Node, error) {
+	if maxMemoryRatio == 0 || totalMemoryMetadata == "" {
+		return nodes, nil
+	}
+	hosts := make([]string, len(nodes))
+	for i := range nodes {
+		hosts[i] = urlToHost(nodes[i].Address)
+	}
+	containers, err := listContainersBy(bson.M{"hostaddr": bson.M{"$in": hosts}})
+	if err != nil {
+		return nil, err
+	}
+	hostReserved := make(map[string]int64)
+	for _, cont := range containers {
+		a, err := app.GetByName(cont.AppName)
+		if err != nil {
+			return nil, err
+		}
+		hostReserved[cont.HostAddr] += a.Plan.Memory
+	}
+	megabyte := float64(1024 * 1024)
+	nodeList := make([]cluster.Node, 0, len(nodes))
+	for _, node := range nodes {
+		totalMemory, _ := strconv.ParseFloat(node.Metadata[totalMemoryMetadata], 64)
+		shouldAdd := true
+		if totalMemory != 0 {
+			maxMemory := totalMemory * float64(maxMemoryRatio)
+			host := urlToHost(node.Address)
+			nodeReserved := hostReserved[host] + a.Plan.Memory
+			if nodeReserved > int64(maxMemory) {
+				shouldAdd = false
+				tryingToReserveMB := float64(a.Plan.Memory) / megabyte
+				reservedMB := float64(hostReserved[host]) / megabyte
+				limitMB := maxMemory / megabyte
+				log.Errorf("Node %q has reached its memory limit. "+
+					"Limit %0.4fMB. Reserved: %0.4fMB. Needed additional %0.4fMB",
+					host, limitMB, reservedMB, tryingToReserveMB)
+			}
+		}
+		if shouldAdd {
+			nodeList = append(nodeList, node)
+		}
+	}
+	if len(nodeList) == 0 {
+		return nil, fmt.Errorf("No nodes found with enough memory for container of %q: %0.4fMB.",
+			a.Name, float64(a.Plan.Memory)/megabyte)
+	}
+	return nodeList, nil
+}
+
 type nodeAggregate struct {
 	HostAddr string `bson:"_id"`
 	Count    int
@@ -59,9 +117,9 @@ type nodeAggregate struct {
 
 var hostMutex sync.Mutex
 
-// aggregateNodesBy aggregates and counts how many containers
+// aggregateContainersBy aggregates and counts how many containers
 // exist each node that matches received filters
-func aggregateNodesBy(matcher bson.M) (map[string]int, error) {
+func aggregateContainersBy(matcher bson.M) (map[string]int, error) {
 	coll := collection()
 	defer coll.Close()
 	pipe := coll.Pipe([]bson.M{
@@ -80,12 +138,12 @@ func aggregateNodesBy(matcher bson.M) (map[string]int, error) {
 	return countMap, nil
 }
 
-func aggregateNodesByHost(hosts []string) (map[string]int, error) {
-	return aggregateNodesBy(bson.M{"$match": bson.M{"hostaddr": bson.M{"$in": hosts}}})
+func aggregateContainersByHost(hosts []string) (map[string]int, error) {
+	return aggregateContainersBy(bson.M{"$match": bson.M{"hostaddr": bson.M{"$in": hosts}}})
 }
 
-func aggregateNodesByHostApp(hosts []string, appName string) (map[string]int, error) {
-	return aggregateNodesBy(bson.M{"$match": bson.M{"appname": appName, "hostaddr": bson.M{"$in": hosts}}})
+func aggregateContainersByHostApp(hosts []string, appName string) (map[string]int, error) {
+	return aggregateContainersBy(bson.M{"$match": bson.M{"appname": appName, "hostaddr": bson.M{"$in": hosts}}})
 }
 
 // chooseNode finds which is the node with the minimum number
@@ -104,11 +162,11 @@ func (segregatedScheduler) chooseNode(nodes []cluster.Node, contName string, app
 	log.Debugf("[scheduler] Possible nodes for container %s: %#v", contName, hosts)
 	hostMutex.Lock()
 	defer hostMutex.Unlock()
-	hostCountMap, err := aggregateNodesByHost(hosts)
+	hostCountMap, err := aggregateContainersByHost(hosts)
 	if err != nil {
 		return chosenNode, err
 	}
-	appCountMap, err := aggregateNodesByHostApp(hosts, appName)
+	appCountMap, err := aggregateContainersByHostApp(hosts, appName)
 	if err != nil {
 		return chosenNode, err
 	}
