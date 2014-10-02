@@ -74,7 +74,13 @@ func initDockerCluster() {
 	}
 	var nodes []cluster.Node
 	if isSegregateScheduler() {
-		dCluster, _ = cluster.New(&segregatedScheduler{}, clusterStorage)
+		totalMemoryMetadata, _ := config.GetString("docker:scheduler:total-memory-metadata")
+		maxUsedMemory, _ := config.GetFloat("docker:scheduler:max-used-memory")
+		scheduler := segregatedScheduler{
+			maxMemoryRatio:      float32(maxUsedMemory),
+			totalMemoryMetadata: totalMemoryMetadata,
+		}
+		dCluster, _ = cluster.New(&scheduler, clusterStorage)
 	} else {
 		nodes = getDockerServers()
 		dCluster, _ = cluster.New(nil, clusterStorage, nodes...)
