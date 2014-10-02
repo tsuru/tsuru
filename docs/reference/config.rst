@@ -403,6 +403,12 @@ docker:collection
 
 Database collection name used to store containers information.
 
+docker:registry
++++++++++++++++
+
+For tsuru to work with multiple docker nodes, you will need a docker-registry.
+This should be in the form of ``hostname:port``.
+
 docker:repository-namespace
 +++++++++++++++++++++++++++
 
