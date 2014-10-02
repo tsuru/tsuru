@@ -429,7 +429,7 @@ func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{json.NewEncoder(w)}
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
 	err = app.Run(string(c), writer, once == "true")
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
@@ -749,7 +749,7 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{json.NewEncoder(w)}
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
 	err = instance.Restart(writer)
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
