@@ -5,8 +5,6 @@
 package tsuru
 
 import (
-	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -20,26 +18,6 @@ import (
 type AppRun struct {
 	GuessingCommand
 	once bool
-}
-
-type runFormatter struct{}
-
-func (runFormatter) Format(out io.Writer, data []byte) error {
-	var msg runMessage
-	err := json.Unmarshal(data, &msg)
-	if err != nil {
-		return tsuruIo.ErrInvalidStreamChunk
-	}
-	if msg.Error != "" {
-		return errors.New(msg.Error)
-	}
-	out.Write([]byte(msg.Message))
-	return nil
-}
-
-type runMessage struct {
-	Message string
-	Error   string
 }
 
 func (c *AppRun) Info() *cmd.Info {
@@ -76,7 +54,7 @@ func (c *AppRun) Run(context *cmd.Context, client *cmd.Client) error {
 		return err
 	}
 	defer r.Body.Close()
-	w := tsuruIo.NewStreamWriter(context.Stdout, runFormatter{})
+	w := tsuruIo.NewStreamWriter(context.Stdout, nil)
 	for n := int64(1); n > 0 && err == nil; n, err = io.Copy(w, r.Body) {
 	}
 	if err != nil {

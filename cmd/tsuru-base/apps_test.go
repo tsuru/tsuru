@@ -11,6 +11,7 @@ import (
 
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/testing"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"launchpad.net/gnuflag"
 	"launchpad.net/gocheck"
 )
@@ -89,14 +90,14 @@ Deploys: 7
 
 func (s *S) TestAppInfoEmptyUnit(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := `{"name":"app1","teamowner":"","cname":[""],"ip":"myapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead", "units":[{"Name":"","Status":""}],"teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
+	result := `{"name":"app1","teamowner":"x","cname":[""],"ip":"myapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead", "units":[{"Name":"","Status":""}],"teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
 	expected := `Application: app1
 Repository: git@git.com:php.git
 Platform: php
 Teams: tsuruteam, crane
 Address: myapp.tsuru.io
 Owner: myapp_owner
-Team owner: 
+Team owner: x
 Deploys: 7
 
 `
@@ -468,8 +469,12 @@ func (s *S) TestAppRestart(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
+	expectedOut := "-- restarted --"
+	msg := tsuruIo.SimpleJsonMessage{Message: expectedOut}
+	result, err := json.Marshal(msg)
+	c.Assert(err, gocheck.IsNil)
 	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: "Restarted", Status: http.StatusOK},
+		Transport: testing.Transport{Message: string(result), Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			called = true
 			return req.URL.Path == "/apps/handful_of_nothing/restart" && req.Method == "POST"
@@ -478,10 +483,10 @@ func (s *S) TestAppRestart(c *gocheck.C) {
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	command := AppRestart{}
 	command.Flags().Parse(true, []string{"--app", "handful_of_nothing"})
-	err := command.Run(&context, client)
+	err = command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
-	c.Assert(stdout.String(), gocheck.Equals, "Restarted")
+	c.Assert(stdout.String(), gocheck.Equals, expectedOut)
 }
 
 func (s *S) TestAppRestartWithoutTheFlag(c *gocheck.C) {
@@ -493,8 +498,12 @@ func (s *S) TestAppRestartWithoutTheFlag(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
+	expectedOut := "-- restarted --"
+	msg := tsuruIo.SimpleJsonMessage{Message: expectedOut}
+	result, err := json.Marshal(msg)
+	c.Assert(err, gocheck.IsNil)
 	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: "Restarted", Status: http.StatusOK},
+		Transport: testing.Transport{Message: string(result), Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			called = true
 			return req.URL.Path == "/apps/motorbreath/restart" && req.Method == "POST"
@@ -504,10 +513,10 @@ func (s *S) TestAppRestartWithoutTheFlag(c *gocheck.C) {
 	fake := &FakeGuesser{name: "motorbreath"}
 	command := AppRestart{GuessingCommand: GuessingCommand{G: fake}}
 	command.Flags().Parse(true, nil)
-	err := command.Run(&context, client)
+	err = command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
-	c.Assert(stdout.String(), gocheck.Equals, "Restarted")
+	c.Assert(stdout.String(), gocheck.Equals, expectedOut)
 }
 
 func (s *S) TestAppRestartInfo(c *gocheck.C) {

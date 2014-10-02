@@ -11,6 +11,7 @@ import (
 
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/testing"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"launchpad.net/gocheck"
 )
 
@@ -22,7 +23,7 @@ func (s *S) TestAppRun(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	msg := runMessage{Message: expected}
+	msg := tsuruIo.SimpleJsonMessage{Message: expected}
 	result, err := json.Marshal(msg)
 	c.Assert(err, gocheck.IsNil)
 	trans := &testing.ConditionalTransport{
@@ -52,7 +53,7 @@ func (s *S) TestAppRunShouldUseAllSubsequentArgumentsAsArgumentsToTheGivenComman
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	msg := runMessage{Message: expected}
+	msg := tsuruIo.SimpleJsonMessage{Message: expected}
 	result, err := json.Marshal(msg)
 	c.Assert(err, gocheck.IsNil)
 	trans := &testing.ConditionalTransport{
@@ -82,7 +83,7 @@ func (s *S) TestAppRunWithoutTheFlag(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	msg := runMessage{Message: expected}
+	msg := tsuruIo.SimpleJsonMessage{Message: expected}
 	result, err := json.Marshal(msg)
 	c.Assert(err, gocheck.IsNil)
 	trans := &testing.ConditionalTransport{
@@ -112,7 +113,7 @@ func (s *S) TestAppRunShouldReturnErrorWhenCommandGoWrong(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	msg := runMessage{Error: "command doesn't exist."}
+	msg := tsuruIo.SimpleJsonMessage{Error: "command doesn't exist."}
 	result, err := json.Marshal(msg)
 	c.Assert(err, gocheck.IsNil)
 	trans := &testing.ConditionalTransport{
