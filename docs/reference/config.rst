@@ -434,6 +434,8 @@ docker:segregate
 
 Enable segregate scheduler. See :doc:`/managing/segregate-scheduler` for details.
 
+.. _config_scheduler_memory:
+
 docker:scheduler:total-memory-metadata
 ++++++++++++++++++++++++++++++++++++++
 

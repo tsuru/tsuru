@@ -17,6 +17,18 @@ What's new in tsr 0.8.0
 * tsuru now supports associating apps to plans which define how it can use machine
   resources, see `backward incompatible changes`_ for more information about which
   settings are no longer used with plans available, and how to use them.
+* When using segregate scheduler, it's now possible to set a limit on how much
+  memory of a memory will be reserved for app units. This can be done by defining
+  some new config options. See the :ref:`config reference
+  <config_scheduler_memory>` for more details.
+* The behavior of ``restart``, ``env-set`` and ``env-unset`` has changed. Now
+  they'll log their progress as they go through the following steps:
+
+  - add new units;
+  - wait for the health check if any is defined in tsuru.yaml;
+  - add routes to new units;
+  - remove routes from old units;
+  - remove old units.
 
 
 Bug fixes
