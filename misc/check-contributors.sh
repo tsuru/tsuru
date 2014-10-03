@@ -1,12 +1,12 @@
 #!/bin/sh
 
-# Copyright 2013 tsuru authors. All rights reserved.
+# Copyright 2014 tsuru authors. All rights reserved.
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
 status=0
 
-for email in `git log --format=%ae | sort | uniq | grep -v \\\.local$`
+for email in `git log --format=%ae | sort | uniq | grep -v \\\.local$| grep -v users.noreply.github.com`
 do
 	grep -q $email CONTRIBUTORS
 	if [ $? != 0  ]
