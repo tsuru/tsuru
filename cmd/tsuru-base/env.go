@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"regexp"
@@ -16,6 +17,7 @@ import (
 	"strings"
 
 	"github.com/tsuru/tsuru/cmd"
+	tsuruIo "github.com/tsuru/tsuru/io"
 )
 
 const envSetValidationMessage = `You must specify environment variables in the form "NAME=value".
@@ -103,11 +105,20 @@ func (c *EnvSet) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	_, err = client.Do(request)
+	response, err := client.Do(request)
 	if err != nil {
 		return err
 	}
-	fmt.Fprint(context.Stdout, "variable(s) successfully exported\n")
+	w := tsuruIo.NewStreamWriter(context.Stdout, nil)
+	for n := int64(1); n > 0 && err == nil; n, err = io.Copy(w, response.Body) {
+	}
+	if err != nil {
+		return err
+	}
+	unparsed := w.Remaining()
+	if len(unparsed) > 0 {
+		return fmt.Errorf("unparsed message error: %s", string(unparsed))
+	}
 	return nil
 }
 
@@ -127,11 +138,34 @@ If you don't provide the app name, tsuru will try to guess it.`,
 }
 
 func (c *EnvUnset) Run(context *cmd.Context, client *cmd.Client) error {
-	_, err := requestEnvURL("DELETE", c.GuessingCommand, context.Args, client)
+	appName, err := c.Guess()
 	if err != nil {
 		return err
 	}
-	fmt.Fprint(context.Stdout, "variable(s) successfully unset\n")
+	url, err := cmd.GetURL(fmt.Sprintf("/apps/%s/env", appName))
+	if err != nil {
+		return err
+	}
+	var buf bytes.Buffer
+	json.NewEncoder(&buf).Encode(context.Args)
+	request, err := http.NewRequest("DELETE", url, &buf)
+	if err != nil {
+		return err
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	w := tsuruIo.NewStreamWriter(context.Stdout, nil)
+	for n := int64(1); n > 0 && err == nil; n, err = io.Copy(w, response.Body) {
+	}
+	if err != nil {
+		return err
+	}
+	unparsed := w.Remaining()
+	if len(unparsed) > 0 {
+		return fmt.Errorf("unparsed message error: %s", string(unparsed))
+	}
 	return nil
 }
 

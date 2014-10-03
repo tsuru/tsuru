@@ -12,6 +12,7 @@ import (
 
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/testing"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"launchpad.net/gocheck"
 )
 
@@ -145,14 +146,17 @@ If you don't provide the app name, tsuru will try to guess it.`
 
 func (s *S) TestEnvSetRun(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := "variable(s) successfully exported\n"
 	context := cmd.Context{
 		Args:   []string{"DATABASE_HOST=somehost"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
+	expectedOut := "variable(s) successfully exported\n"
+	msg := tsuruIo.SimpleJsonMessage{Message: expectedOut}
+	result, err := json.Marshal(msg)
+	c.Assert(err, gocheck.IsNil)
 	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: result, Status: http.StatusOK},
+		Transport: testing.Transport{Message: string(result), Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			want := `{"DATABASE_HOST":"somehost"}` + "\n"
 			defer req.Body.Close()
@@ -164,30 +168,32 @@ func (s *S) TestEnvSetRun(c *gocheck.C) {
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	command := EnvSet{}
 	command.Flags().Parse(true, []string{"-a", "someapp"})
-	err := command.Run(&context, client)
+	err = command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(stdout.String(), gocheck.Equals, result)
+	c.Assert(stdout.String(), gocheck.Equals, expectedOut)
 }
 
 func (s *S) TestEnvSetRunWithMultipleParams(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := "variable(s) successfully exported\n"
 	context := cmd.Context{
 		Args:   []string{"DATABASE_HOST=somehost", "DATABASE_USER=user"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: result, Status: http.StatusOK}}, nil, manager)
+	expectedOut := "variable(s) successfully exported\n"
+	msg := tsuruIo.SimpleJsonMessage{Message: expectedOut}
+	result, err := json.Marshal(msg)
+	c.Assert(err, gocheck.IsNil)
+	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: string(result), Status: http.StatusOK}}, nil, manager)
 	command := EnvSet{}
 	command.Flags().Parse(true, []string{"-a", "someapp"})
-	err := command.Run(&context, client)
+	err = command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(stdout.String(), gocheck.Equals, result)
+	c.Assert(stdout.String(), gocheck.Equals, expectedOut)
 }
 
 func (s *S) TestEnvSetValues(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := "variable(s) successfully exported\n"
 	context := cmd.Context{
 		Args: []string{
 			"DATABASE_HOST=some host",
@@ -200,8 +206,12 @@ func (s *S) TestEnvSetValues(c *gocheck.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
+	expectedOut := "variable(s) successfully exported\n"
+	msg := tsuruIo.SimpleJsonMessage{Message: expectedOut}
+	result, err := json.Marshal(msg)
+	c.Assert(err, gocheck.IsNil)
 	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: result, Status: http.StatusOK},
+		Transport: testing.Transport{Message: string(result), Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			want := map[string]string{
 				"DATABASE_HOST":         "some host",
@@ -222,29 +232,33 @@ func (s *S) TestEnvSetValues(c *gocheck.C) {
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	command := EnvSet{}
 	command.Flags().Parse(true, []string{"-a", "someapp"})
-	err := command.Run(&context, client)
+	err = command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, expectedOut)
 }
 
 func (s *S) TestEnvSetWithoutFlag(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := "variable(s) successfully exported\n"
 	context := cmd.Context{
 		Args:   []string{"DATABASE_HOST=somehost", "DATABASE_USER=user"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
+	expectedOut := "variable(s) successfully exported\n"
+	msg := tsuruIo.SimpleJsonMessage{Message: expectedOut}
+	result, err := json.Marshal(msg)
+	c.Assert(err, gocheck.IsNil)
 	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: result, Status: http.StatusOK},
+		Transport: testing.Transport{Message: string(result), Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			return req.URL.Path == "/apps/otherapp/env" && req.Method == "POST"
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	fake := &FakeGuesser{name: "otherapp"}
-	err := (&EnvSet{GuessingCommand{G: fake}}).Run(&context, client)
+	err = (&EnvSet{GuessingCommand{G: fake}}).Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(stdout.String(), gocheck.Equals, result)
+	c.Assert(stdout.String(), gocheck.Equals, expectedOut)
 }
 
 func (s *S) TestEnvSetInvalidParameters(c *gocheck.C) {
@@ -275,14 +289,17 @@ If you don't provide the app name, tsuru will try to guess it.`
 
 func (s *S) TestEnvUnsetRun(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := "variable(s) successfully unset\n"
 	context := cmd.Context{
 		Args:   []string{"DATABASE_HOST"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
+	expectedOut := "variable(s) successfully unset\n"
+	msg := tsuruIo.SimpleJsonMessage{Message: expectedOut}
+	result, err := json.Marshal(msg)
+	c.Assert(err, gocheck.IsNil)
 	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: result, Status: http.StatusOK},
+		Transport: testing.Transport{Message: string(result), Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			want := `["DATABASE_HOST"]` + "\n"
 			defer req.Body.Close()
@@ -294,29 +311,32 @@ func (s *S) TestEnvUnsetRun(c *gocheck.C) {
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	command := EnvUnset{}
 	command.Flags().Parse(true, []string{"-a", "someapp"})
-	err := command.Run(&context, client)
+	err = command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(stdout.String(), gocheck.Equals, result)
+	c.Assert(stdout.String(), gocheck.Equals, expectedOut)
 }
 func (s *S) TestEnvUnsetWithoutFlag(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	result := "variable(s) successfully unset\n"
 	context := cmd.Context{
 		Args:   []string{"DATABASE_HOST"},
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
+	expectedOut := "variable(s) successfully unset\n"
+	msg := tsuruIo.SimpleJsonMessage{Message: expectedOut}
+	result, err := json.Marshal(msg)
+	c.Assert(err, gocheck.IsNil)
 	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: result, Status: http.StatusOK},
+		Transport: testing.Transport{Message: string(result), Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			return req.URL.Path == "/apps/otherapp/env" && req.Method == "DELETE"
 		},
 	}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	fake := &FakeGuesser{name: "otherapp"}
-	err := (&EnvUnset{GuessingCommand{G: fake}}).Run(&context, client)
+	err = (&EnvUnset{GuessingCommand{G: fake}}).Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(stdout.String(), gocheck.Equals, result)
+	c.Assert(stdout.String(), gocheck.Equals, expectedOut)
 }
 
 func (s *S) TestRequestEnvURL(c *gocheck.C) {
