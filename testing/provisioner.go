@@ -138,14 +138,14 @@ func (a *FakeApp) SetEnv(env bind.EnvVar) {
 	a.env[env.Name] = env
 }
 
-func (a *FakeApp) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
+func (a *FakeApp) SetEnvs(envs []bind.EnvVar, publicOnly bool, w io.Writer) error {
 	for _, env := range envs {
 		a.SetEnv(env)
 	}
 	return nil
 }
 
-func (a *FakeApp) UnsetEnvs(envs []string, publicOnly bool) error {
+func (a *FakeApp) UnsetEnvs(envs []string, publicOnly bool, w io.Writer) error {
 	for _, env := range envs {
 		delete(a.env, env)
 	}
@@ -432,6 +432,9 @@ func (p *FakeProvisioner) Restart(app provision.App, w io.Writer) error {
 	}
 	pApp.restarts++
 	p.apps[app.GetName()] = pApp
+	if w != nil {
+		fmt.Fprintf(w, "restarting app")
+	}
 	return nil
 }
 

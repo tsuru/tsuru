@@ -712,8 +712,11 @@ func (app *App) Envs() map[string]bind.EnvVar {
 // SetEnvs saves a list of environment variables in the app. The publicOnly
 // parameter indicates whether only public variables can be overridden (if set
 // to false, SetEnvs may override a private variable).
-func (app *App) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
-	return app.setEnvsToApp(envs, publicOnly, true)
+func (app *App) SetEnvs(envs []bind.EnvVar, publicOnly bool, w io.Writer) error {
+	if w != nil {
+		fmt.Fprintf(w, "---- Setting %d new environment variables ----\n", len(envs))
+	}
+	return app.setEnvsToApp(envs, publicOnly, true, w)
 }
 
 // setEnvsToApp adds environment variables to an app, serializing the resulting
@@ -725,7 +728,7 @@ func (app *App) SetEnvs(envs []bind.EnvVar, publicOnly bool) error {
 // overridden (if set to false, setEnvsToApp may override a private variable).
 //
 // shouldRestart defines if the server should be restarted after saving vars.
-func (app *App) setEnvsToApp(envs []bind.EnvVar, publicOnly, shouldRestart bool) error {
+func (app *App) setEnvsToApp(envs []bind.EnvVar, publicOnly, shouldRestart bool, w io.Writer) error {
 	if len(envs) > 0 {
 		for _, env := range envs {
 			set := true
@@ -751,7 +754,7 @@ func (app *App) setEnvsToApp(envs []bind.EnvVar, publicOnly, shouldRestart bool)
 		if !shouldRestart {
 			return nil
 		}
-		return Provisioner.Restart(app, nil)
+		return Provisioner.Restart(app, w)
 	}
 	return nil
 }
@@ -762,7 +765,10 @@ func (app *App) setEnvsToApp(envs []bind.EnvVar, publicOnly, shouldRestart bool)
 // Besides the slice with the name of the variables, this method also takes the
 // parameter publicOnly, which indicates whether only public variables can be
 // overridden (if set to false, setEnvsToApp may override a private variable).
-func (app *App) UnsetEnvs(variableNames []string, publicOnly bool) error {
+func (app *App) UnsetEnvs(variableNames []string, publicOnly bool, w io.Writer) error {
+	if w != nil {
+		fmt.Fprintf(w, "---- Unsetting %d environment variables ----\n", len(variableNames))
+	}
 	if len(variableNames) > 0 {
 		for _, name := range variableNames {
 			var unset bool
@@ -783,7 +789,7 @@ func (app *App) UnsetEnvs(variableNames []string, publicOnly bool) error {
 		if err != nil {
 			return err
 		}
-		return Provisioner.Restart(app, nil)
+		return Provisioner.Restart(app, w)
 	}
 	return nil
 }

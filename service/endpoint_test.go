@@ -7,6 +7,7 @@ package service
 import (
 	"bytes"
 	stderrors "errors"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -50,11 +51,11 @@ func (a *FakeApp) InstanceEnv(name string) map[string]bind.EnvVar {
 	return nil
 }
 
-func (a *FakeApp) SetEnvs(vars []bind.EnvVar, public bool) error {
+func (a *FakeApp) SetEnvs(vars []bind.EnvVar, public bool, w io.Writer) error {
 	return nil
 }
 
-func (a *FakeApp) UnsetEnvs(vars []string, public bool) error {
+func (a *FakeApp) UnsetEnvs(vars []string, public bool, w io.Writer) error {
 	return nil
 }
 

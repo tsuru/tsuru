@@ -514,7 +514,13 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	for k, v := range variables {
 		envs = append(envs, bind.EnvVar{Name: k, Value: v, Public: true})
 	}
-	return app.SetEnvs(envs, true)
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
+	err = app.SetEnvs(envs, true, writer)
+	if err != nil {
+		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
+		return nil
+	}
+	return nil
 }
 
 func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -541,7 +547,13 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	return app.UnsetEnvs(variables, true)
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
+	err = app.UnsetEnvs(variables, true, writer)
+	if err != nil {
+		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
+		return nil
+	}
+	return nil
 }
 
 func setCName(w http.ResponseWriter, r *http.Request, t auth.Token) error {

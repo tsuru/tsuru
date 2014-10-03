@@ -768,7 +768,8 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 	}
 	err = s.provisioner.Provision(&a)
 	c.Assert(err, gocheck.IsNil)
-	err = a.setEnvsToApp(envs, true, true)
+	var buf bytes.Buffer
+	err = a.setEnvsToApp(envs, true, true, &buf)
 	c.Assert(err, gocheck.IsNil)
 	newApp, err := GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
@@ -786,6 +787,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 	}
 	c.Assert(newApp.Env, gocheck.DeepEquals, expected)
 	c.Assert(s.provisioner.Restarts(&a), gocheck.Equals, 1)
+	c.Assert(buf.String(), gocheck.Equals, "restarting app")
 }
 
 func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFalse(c *gocheck.C) {
@@ -817,7 +819,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 	}
 	err = s.provisioner.Provision(&a)
 	c.Assert(err, gocheck.IsNil)
-	err = a.setEnvsToApp(envs, false, true)
+	err = a.setEnvsToApp(envs, false, true, nil)
 	c.Assert(err, gocheck.IsNil)
 	newApp, err := GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
@@ -859,7 +861,7 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = s.provisioner.Provision(&a)
 	c.Assert(err, gocheck.IsNil)
-	err = a.UnsetEnvs([]string{"DATABASE_HOST", "DATABASE_PASSWORD"}, true)
+	err = a.UnsetEnvs([]string{"DATABASE_HOST", "DATABASE_PASSWORD"}, true, nil)
 	c.Assert(err, gocheck.IsNil)
 	newApp, err := GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
@@ -896,7 +898,7 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFal
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = s.provisioner.Provision(&a)
 	c.Assert(err, gocheck.IsNil)
-	err = a.UnsetEnvs([]string{"DATABASE_HOST", "DATABASE_PASSWORD"}, false)
+	err = a.UnsetEnvs([]string{"DATABASE_HOST", "DATABASE_PASSWORD"}, false, nil)
 	c.Assert(err, gocheck.IsNil)
 	newApp, err := GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)

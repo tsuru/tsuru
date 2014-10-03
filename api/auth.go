@@ -599,7 +599,7 @@ func generateAppToken(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 					Public: false,
 				},
 			}
-			a.SetEnvs(envs, false)
+			a.SetEnvs(envs, false, nil)
 		}
 	}
 	return json.NewEncoder(w).Encode(token)

@@ -198,7 +198,7 @@ func (si *ServiceInstance) UnbindApp(app bind.App) error {
 	for k := range app.InstanceEnv(si.Name) {
 		envVars = append(envVars, k)
 	}
-	return app.UnsetEnvs(envVars, false)
+	return app.UnsetEnvs(envVars, false, nil)
 }
 
 // UnbindUnit makes the unbind between the service instance and an unit.

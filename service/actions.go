@@ -197,7 +197,7 @@ var setEnvironVariablesToApp = action.Action{
 				InstanceName: si.Name,
 			})
 		}
-		return envVars, app.SetEnvs(envVars, false)
+		return envVars, app.SetEnvs(envVars, false, nil)
 	},
 	Backward: func(ctx action.BWContext) {
 		app, ok := ctx.Params[0].(bind.App)
@@ -209,6 +209,6 @@ var setEnvironVariablesToApp = action.Action{
 		for k, envVar := range result {
 			envNames[k] = envVar.Name
 		}
-		app.UnsetEnvs(envNames, true)
+		app.UnsetEnvs(envNames, true, nil)
 	},
 }

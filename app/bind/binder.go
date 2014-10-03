@@ -6,6 +6,8 @@
 // service.
 package bind
 
+import "io"
+
 // EnvVar represents a environment variable for an app.
 type EnvVar struct {
 	Name         string
@@ -33,10 +35,10 @@ type App interface {
 	InstanceEnv(string) map[string]EnvVar
 
 	// SetEnvs adds enviroment variables in the app.
-	SetEnvs([]EnvVar, bool) error
+	SetEnvs([]EnvVar, bool, io.Writer) error
 
 	// UnsetEnvs removes the given enviroment variables from the app.
-	UnsetEnvs([]string, bool) error
+	UnsetEnvs([]string, bool, io.Writer) error
 }
 
 type Binder interface {

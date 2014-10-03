@@ -1569,6 +1569,10 @@ func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *goch
 		Extra:  []interface{}{"app=" + a.Name, envs},
 	}
 	c.Assert(action, testing.IsRecorded)
+	c.Assert(recorder.Body.String(), gocheck.Equals,
+		`{"Message":"---- Setting 1 new environment variables ----\n"}
+{"Message":"restarting app"}
+`)
 }
 
 func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *gocheck.C) {
@@ -1730,6 +1734,10 @@ func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *goche
 		Extra:  []interface{}{"app=" + a.Name, "envs=[DATABASE_HOST]"},
 	}
 	c.Assert(action, testing.IsRecorded)
+	c.Assert(recorder.Body.String(), gocheck.Equals,
+		`{"Message":"---- Unsetting 1 environment variables ----\n"}
+{"Message":"restarting app"}
+`)
 }
 
 func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *gocheck.C) {

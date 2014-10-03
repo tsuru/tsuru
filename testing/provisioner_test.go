@@ -95,7 +95,7 @@ func (s *S) TestSetEnvs(c *gocheck.C) {
 			Public: true,
 		},
 	}
-	app.SetEnvs(envs, false)
+	app.SetEnvs(envs, false, nil)
 	expected := map[string]bind.EnvVar{
 		"http_proxy": {
 			Name:   "http_proxy",
@@ -125,7 +125,7 @@ func (s *S) TestUnsetEnvs(c *gocheck.C) {
 		Public: true,
 	}
 	app.SetEnv(env)
-	app.UnsetEnvs([]string{"http_proxy"}, false)
+	app.UnsetEnvs([]string{"http_proxy"}, false, nil)
 	c.Assert(app.env, gocheck.DeepEquals, map[string]bind.EnvVar{})
 }
 
