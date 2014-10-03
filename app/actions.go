@@ -303,8 +303,12 @@ var provisionAddUnits = action.Action{
 		default:
 			return nil, errors.New("First parameter must be *App.")
 		}
+		var w io.Writer
+		if len(ctx.Params) >= 3 {
+			w, _ = ctx.Params[2].(io.Writer)
+		}
 		n := ctx.Previous.(int)
-		units, err := Provisioner.AddUnits(app, uint(n), nil)
+		units, err := Provisioner.AddUnits(app, uint(n), w)
 		if err != nil {
 			return nil, err
 		}

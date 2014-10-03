@@ -441,16 +441,36 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
 	})
 	defer rollback()
-	err = app.AddUnits(5)
+	err = app.AddUnits(5, nil)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Units(), gocheck.HasLen, 5)
-	err = app.AddUnits(2)
+	err = app.AddUnits(2, nil)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Units(), gocheck.HasLen, 7)
 	for _, unit := range app.Units() {
 		c.Assert(unit.AppName, gocheck.Equals, app.Name)
 	}
 	c.Assert(callCount, gocheck.Equals, 7)
+}
+
+func (s *S) TestAddUnitsWithWriter(c *gocheck.C) {
+	app := App{
+		Name: "warpaint", Platform: "python",
+		Quota: quota.Unlimited,
+	}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
+	var buf bytes.Buffer
+	err = app.AddUnits(2, &buf)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.Units(), gocheck.HasLen, 2)
+	for _, unit := range app.Units() {
+		c.Assert(unit.AppName, gocheck.Equals, app.Name)
+	}
+	c.Assert(buf.String(), gocheck.Equals, "added 2 units")
 }
 
 func (s *S) TestAddUnitsQuota(c *gocheck.C) {
@@ -464,11 +484,11 @@ func (s *S) TestAddUnitsQuota(c *gocheck.C) {
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
 	otherApp := App{Name: "warpaint"}
-	err = otherApp.AddUnits(5)
+	err = otherApp.AddUnits(5, nil)
 	c.Assert(err, gocheck.IsNil)
 	units := s.provisioner.GetUnits(&app)
 	c.Assert(units, gocheck.HasLen, 5)
-	err = otherApp.AddUnits(2)
+	err = otherApp.AddUnits(2, nil)
 	c.Assert(err, gocheck.IsNil)
 	units = s.provisioner.GetUnits(&app)
 	c.Assert(units, gocheck.HasLen, 7)
@@ -481,7 +501,7 @@ func (s *S) TestAddUnitsQuotaExceeded(c *gocheck.C) {
 	app := App{Name: "warpaint", Platform: "ruby"}
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	err := app.AddUnits(1)
+	err := app.AddUnits(1, nil)
 	e, ok := err.(*quota.QuotaExceededError)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Available, gocheck.Equals, uint(0))
@@ -497,7 +517,7 @@ func (s *S) TestAddUnitsMultiple(c *gocheck.C) {
 	}
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	err := app.AddUnits(11)
+	err := app.AddUnits(11, nil)
 	e, ok := err.(*quota.QuotaExceededError)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Available, gocheck.Equals, uint(10))
@@ -506,7 +526,7 @@ func (s *S) TestAddUnitsMultiple(c *gocheck.C) {
 
 func (s *S) TestAddZeroUnits(c *gocheck.C) {
 	app := App{Name: "warpaint", Platform: "ruby"}
-	err := app.AddUnits(0)
+	err := app.AddUnits(0, nil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Cannot add zero units.")
 }
@@ -515,7 +535,7 @@ func (s *S) TestAddUnitsFailureInProvisioner(c *gocheck.C) {
 	app := App{Name: "scars", Platform: "golang", Quota: quota.Unlimited}
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	err := app.AddUnits(2)
+	err := app.AddUnits(2, nil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "App is not provisioned.")
 }
@@ -525,7 +545,7 @@ func (s *S) TestAddUnitsIsAtomic(c *gocheck.C) {
 		Name: "warpaint", Platform: "golang",
 		Quota: quota.Unlimited,
 	}
-	err := app.AddUnits(2)
+	err := app.AddUnits(2, nil)
 	c.Assert(err, gocheck.NotNil)
 	_, err = GetByName(app.Name)
 	c.Assert(err, gocheck.Equals, ErrAppNotFound)
@@ -580,7 +600,7 @@ func (s *S) TestRemoveUnits(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
-	app.AddUnits(4)
+	app.AddUnits(4, nil)
 	err = app.RemoveUnits(2)
 	c.Assert(err, gocheck.IsNil)
 	time.Sleep(1e9)

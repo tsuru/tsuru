@@ -567,6 +567,7 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 		Extra:  []interface{}{"app=armorandsword", "units=3"},
 	}
 	c.Assert(action, testing.IsRecorded)
+	c.Assert(recorder.Body.String(), gocheck.Equals, `{"Message":"added 3 units"}`+"\n")
 }
 
 func (s *S) TestAddUnitsReturns404IfAppDoesNotExist(c *gocheck.C) {
@@ -652,11 +653,8 @@ func (s *S) TestAddUnitsQuotaExceeded(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = addUnits(recorder, request, s.token)
-	c.Assert(err, gocheck.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
-	c.Assert(e.Message, gocheck.Equals, "Quota exceeded. Available: 2. Requested: 3.")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Body.String(), gocheck.Equals, `{"Message":"","Error":"Quota exceeded. Available: 2. Requested: 3."}`+"\n")
 }
 
 func (s *S) TestRemoveUnits(c *gocheck.C) {

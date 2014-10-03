@@ -331,7 +331,10 @@ func (*dockerProvisioner) AddUnits(a provision.App, units uint, w io.Writer) ([]
 	if length < 1 {
 		return nil, errors.New("New units can only be added after the first deployment")
 	}
-	writer := &app.LogWriter{App: a, Writer: ioutil.Discard}
+	if w == nil {
+		w = ioutil.Discard
+	}
+	writer := &app.LogWriter{App: a, Writer: w}
 	conts, err := runCreateUnitsPipeline(writer, a, int(units))
 	if err != nil {
 		return nil, err

@@ -490,6 +490,9 @@ func (p *FakeProvisioner) AddUnits(app provision.App, n uint, w io.Writer) ([]pr
 	result := make([]provision.Unit, int(n))
 	copy(result, pApp.units[length:])
 	p.apps[app.GetName()] = pApp
+	if w != nil {
+		fmt.Fprintf(w, "added %d units", n)
+	}
 	return result, nil
 }
 

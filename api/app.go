@@ -244,14 +244,13 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	err = app.AddUnits(n)
-	if _, ok := err.(*quota.QuotaExceededError); ok {
-		return &errors.HTTP{
-			Code:    http.StatusForbidden,
-			Message: err.Error(),
-		}
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
+	err = app.AddUnits(n, writer)
+	if err != nil {
+		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
+		return nil
 	}
-	return err
+	return nil
 }
 
 func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) error {

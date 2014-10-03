@@ -354,7 +354,7 @@ func (app *App) BindUnit(unit *provision.Unit) error {
 
 // AddUnits creates n new units within the provisioner, saves new units in the
 // database and enqueues the apprc serialization.
-func (app *App) AddUnits(n uint) error {
+func (app *App) AddUnits(n uint, writer io.Writer) error {
 	if n == 0 {
 		return stderr.New("Cannot add zero units.")
 	}
@@ -362,7 +362,7 @@ func (app *App) AddUnits(n uint) error {
 		&reserveUnitsToAdd,
 		&provisionAddUnits,
 		&BindService,
-	).Execute(app, n)
+	).Execute(app, n, writer)
 	return err
 }
 
