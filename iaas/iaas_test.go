@@ -5,6 +5,9 @@
 package iaas
 
 import (
+	"reflect"
+
+	"github.com/tsuru/config"
 	"launchpad.net/gocheck"
 )
 
@@ -33,4 +36,20 @@ func (s *S) TestDescribe(c *gocheck.C) {
 	desc, err := Describe("withdesc-iaas")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(desc, gocheck.Equals, "ahoy desc!")
+}
+
+func (s *S) TestCustomizableIaaSProvider(c *gocheck.C) {
+	providerInstance := TestCustomizableIaaS{}
+	RegisterIaasProvider("customable-iaas", providerInstance)
+	config.Set("iaas:custom:abc:provider", "customable-iaas")
+	defer config.Unset("iaas:custom:abc:provider")
+	provider, err := getIaasProvider("abc")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(provider, gocheck.Not(gocheck.DeepEquals), providerInstance)
+	c.Assert(provider, gocheck.FitsTypeOf, providerInstance)
+	provider2, err := getIaasProvider("abc")
+	c.Assert(err, gocheck.IsNil)
+	value1 := reflect.ValueOf(provider2)
+	value2 := reflect.ValueOf(provider)
+	c.Assert(value1, gocheck.Equals, value2)
 }

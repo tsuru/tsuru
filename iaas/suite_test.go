@@ -16,11 +16,9 @@ type S struct{}
 
 var _ = gocheck.Suite(&S{})
 
-func (s *S) SetUpSuite(c *gocheck.C) {
-	RegisterIaasProvider("test-iaas", TestIaaS{})
-}
-
 func (s *S) SetUpTest(c *gocheck.C) {
+	iaasProviders = make(map[string]IaaS)
+	RegisterIaasProvider("test-iaas", TestIaaS{})
 	coll := collection()
 	defer coll.Close()
 	coll.RemoveAll(nil)
@@ -57,4 +55,22 @@ func (i TestDescriberIaaS) CreateMachine(params map[string]string) (*Machine, er
 
 func (i TestDescriberIaaS) Describe() string {
 	return "ahoy desc!"
+}
+
+type TestCustomizableIaaS struct {
+	name string
+	TestIaaS
+}
+
+func (i TestCustomizableIaaS) DeleteMachine(m *Machine) error {
+	return i.TestIaaS.DeleteMachine(m)
+}
+
+func (i TestCustomizableIaaS) CreateMachine(params map[string]string) (*Machine, error) {
+	return i.TestIaaS.CreateMachine(params)
+}
+
+func (i TestCustomizableIaaS) Clone(name string) IaaS {
+	i.name = name
+	return i
 }

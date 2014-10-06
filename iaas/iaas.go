@@ -29,6 +29,11 @@ type Describer interface {
 	Describe() string
 }
 
+type CustomIaaS interface {
+	IaaS
+	Clone(string) IaaS
+}
+
 var iaasProviders = make(map[string]IaaS)
 
 func RegisterIaasProvider(name string, iaas IaaS) {
@@ -38,7 +43,21 @@ func RegisterIaasProvider(name string, iaas IaaS) {
 func getIaasProvider(name string) (IaaS, error) {
 	provider, ok := iaasProviders[name]
 	if !ok {
-		return nil, fmt.Errorf("IaaS provider %q not registered", name)
+		customProvider, err := config.GetString(fmt.Sprintf("iaas:custom:%s:provider", name))
+		if err != nil {
+			return nil, fmt.Errorf("IaaS provider %q not registered", name)
+		}
+		originalProvider, ok := iaasProviders[customProvider]
+		if !ok {
+			return nil, fmt.Errorf("IaaS provider %q based on %q not registered", name, customProvider)
+		}
+		customIaaS, isValid := originalProvider.(CustomIaaS)
+		if !isValid {
+			return nil, fmt.Errorf("IaaS provider %q does not allow clonning", customProvider)
+		}
+		cloned := customIaaS.Clone(name)
+		RegisterIaasProvider(name, cloned)
+		return cloned, nil
 	}
 	return provider, nil
 }
