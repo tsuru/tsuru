@@ -701,6 +701,31 @@ func (s *S) TestRunContainerHealerWithError(c *gocheck.C) {
 	c.Assert(events[0].CreatedContainer.HostAddr, gocheck.Equals, "")
 }
 
+func (s *S) TestRunContainerHealerMaxCounterExceeded(c *gocheck.C) {
+	conts := []container{
+		{ID: "cont1"}, {ID: "cont2"}, {ID: "cont3"}, {ID: "cont4"},
+		{ID: "cont5"}, {ID: "cont6"}, {ID: "cont7"}, {ID: "cont8"},
+	}
+	for i := 0; i < len(conts)-1; i++ {
+		evt, err := newHealingEvent(conts[i])
+		c.Assert(err, gocheck.IsNil)
+		err = evt.update(conts[i+1], nil)
+		c.Assert(err, gocheck.IsNil)
+	}
+	toMoveCont := conts[7]
+	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-2 * time.Minute)
+	coll := collection()
+	err := coll.Insert(toMoveCont)
+	c.Assert(err, gocheck.IsNil)
+	err = healContainerIfNeeded(toMoveCont)
+	c.Assert(err, gocheck.ErrorMatches, "Containers healing: number of healings for container cont8 in the last 30 minutes exceeds limit of 3: 7")
+	healingColl, err := healingCollection()
+	var events []healingEvent
+	err = healingColl.Find(nil).All(&events)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(events, gocheck.HasLen, 7)
+}
+
 func (s *S) TestHealerHandleError(c *gocheck.C) {
 	rollback := startTestRepositoryServer()
 	defer rollback()
@@ -838,4 +863,93 @@ func (s *S) TestHealerHandleErrorDoesntTriggerEventIfNotNeeded(c *gocheck.C) {
 	err = healingColl.Find(nil).All(&events)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(events, gocheck.HasLen, 0)
+}
+
+func (s *S) TestHealerHandleErrorDoesntTriggerEventIfHealingCountTooLarge(c *gocheck.C) {
+	nodes := []cluster.Node{
+		{Address: "addr1"}, {Address: "addr2"}, {Address: "addr3"}, {Address: "addr4"},
+		{Address: "addr5"}, {Address: "addr6"}, {Address: "addr7"}, {Address: "addr8"},
+	}
+	for i := 0; i < len(nodes)-1; i++ {
+		evt, err := newHealingEvent(nodes[i])
+		c.Assert(err, gocheck.IsNil)
+		err = evt.update(nodes[i+1], nil)
+		c.Assert(err, gocheck.IsNil)
+	}
+	iaasInstance := &TestHealerIaaS{}
+	iaas.RegisterIaasProvider("my-healer-iaas", iaasInstance)
+	healer := Healer{
+		cluster:               nil,
+		disabledTime:          20,
+		failuresBeforeHealing: 1,
+		waitTimeNewMachine:    1 * time.Second,
+	}
+	nodes[7].Metadata = map[string]string{
+		"Failures":    "2",
+		"LastSuccess": "something",
+		"iaas":        "my-healer-iaas",
+	}
+	waitTime := healer.HandleError(&nodes[7])
+	c.Assert(waitTime, gocheck.Equals, time.Duration(20))
+	healingColl, err := healingCollection()
+	var events []healingEvent
+	err = healingColl.Find(nil).All(&events)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(events, gocheck.HasLen, 7)
+}
+
+func (s *S) TestHealingCountFor(c *gocheck.C) {
+	conts := []container{
+		{ID: "cont1"}, {ID: "cont2"}, {ID: "cont3"}, {ID: "cont4"},
+		{ID: "cont5"}, {ID: "cont6"}, {ID: "cont7"}, {ID: "cont8"},
+	}
+	for i := 0; i < len(conts)-1; i++ {
+		evt, err := newHealingEvent(conts[i])
+		c.Assert(err, gocheck.IsNil)
+		err = evt.update(conts[i+1], nil)
+		c.Assert(err, gocheck.IsNil)
+	}
+	count, err := healingCountFor("container", "cont8", time.Minute)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 7)
+}
+
+func (s *S) TestHealingCountForOldEventsNotConsidered(c *gocheck.C) {
+	conts := []container{
+		{ID: "cont1"}, {ID: "cont2"}, {ID: "cont3"}, {ID: "cont4"},
+		{ID: "cont5"}, {ID: "cont6"}, {ID: "cont7"}, {ID: "cont8"},
+	}
+	for i := 0; i < len(conts)-1; i++ {
+		evt, err := newHealingEvent(conts[i])
+		c.Assert(err, gocheck.IsNil)
+		err = evt.update(conts[i+1], nil)
+		c.Assert(err, gocheck.IsNil)
+		if i < 4 {
+			coll, err := healingCollection()
+			c.Assert(err, gocheck.IsNil)
+			defer coll.Close()
+			evt.StartTime = time.Now().UTC().Add(-2 * time.Minute)
+			err = coll.UpdateId(evt.ID, evt)
+			c.Assert(err, gocheck.IsNil)
+		}
+	}
+	count, err := healingCountFor("container", "cont8", time.Minute)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 3)
+}
+
+func (s *S) TestHealingCountForWithNode(c *gocheck.C) {
+	nodes := []cluster.Node{
+		{Address: "addr1"}, {Address: "addr2"}, {Address: "addr3"}, {Address: "addr4"},
+		{Address: "addr5"}, {Address: "addr6"}, {Address: "addr7"}, {Address: "addr8"},
+	}
+	for i := 0; i < len(nodes)-1; i++ {
+		evt, err := newHealingEvent(nodes[i])
+		c.Assert(err, gocheck.IsNil)
+		err = evt.update(nodes[i+1], nil)
+		c.Assert(err, gocheck.IsNil)
+	}
+	count, err := healingCountFor("node", "addr8", time.Minute)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 7)
 }

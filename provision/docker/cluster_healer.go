@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -40,6 +41,11 @@ type healingEvent struct {
 	Successful       bool
 	Error            string `bson:",omitempty"`
 }
+
+var (
+	consecutiveHealingsTimeframe        = 30 * time.Minute
+	consecutiveHealingsLimitInTimeframe = 3
+)
 
 func healingCollection() (*storage.Collection, error) {
 	name, _ := config.GetString("docker:healing:events_collection")
@@ -158,6 +164,16 @@ func (h *Healer) HandleError(node *cluster.Node) time.Duration {
 		log.Debugf("Node %q doesn't have IaaS information, healing won't run on it.", node.Address)
 		return h.disabledTime
 	}
+	healingCounter, err := healingCountFor("node", node.Address, consecutiveHealingsTimeframe)
+	if err != nil {
+		log.Errorf("Node healing: couldn't verify number of previous healings for %s: %s", node.Address, err.Error())
+		return h.disabledTime
+	}
+	if healingCounter > consecutiveHealingsLimitInTimeframe {
+		log.Errorf("Node healing: number of healings for node %s in the last %d minutes exceeds limit of %d: %d",
+			node.Address, consecutiveHealingsTimeframe/time.Minute, consecutiveHealingsLimitInTimeframe, healingCounter)
+		return h.disabledTime
+	}
 	log.Errorf("Initiating healing process for node %q after %d failures.", node.Address, failures)
 	evt, err := newHealingEvent(*node)
 	if err != nil {
@@ -209,35 +225,51 @@ func runContainerHealer(maxUnresponsiveTime time.Duration) {
 	}
 }
 
+func healContainerIfNeeded(cont container) error {
+	if cont.LastSuccessStatusUpdate.IsZero() {
+		return nil
+	}
+	hasProcfile, err := hasProcfileWatcher(cont)
+	if err != nil {
+		log.Errorf("Containers healing: couldn't verify running processes in container %s: %s", cont.ID, err.Error())
+	}
+	if hasProcfile {
+		cont.setStatus(provision.StatusStarted.String())
+		return nil
+	}
+	healingCounter, err := healingCountFor("container", cont.ID, consecutiveHealingsTimeframe)
+	if err != nil {
+		return fmt.Errorf("Containers healing: couldn't verify number of previous healings for %s: %s", cont.ID, err.Error())
+	}
+	if healingCounter > consecutiveHealingsLimitInTimeframe {
+		return fmt.Errorf("Containers healing: number of healings for container %s in the last %d minutes exceeds limit of %d: %d",
+			cont.ID, consecutiveHealingsTimeframe/time.Minute, consecutiveHealingsLimitInTimeframe, healingCounter)
+	}
+	log.Errorf("Initiating healing process for container %s, unresponsive since %s.", cont.ID, cont.LastSuccessStatusUpdate)
+	evt, err := newHealingEvent(cont)
+	if err != nil {
+		return fmt.Errorf("Error trying to insert container healing event, healing aborted: %s", err.Error())
+	}
+	newCont, healErr := healContainer(cont)
+	if healErr != nil {
+		healErr = fmt.Errorf("Error healing container %s: %s", cont.ID, healErr.Error())
+	}
+	err = evt.update(newCont, healErr)
+	if err != nil {
+		log.Errorf("Error trying to update containers healing event: %s", err.Error())
+	}
+	return healErr
+}
+
 func runContainerHealerOnce(maxUnresponsiveTime time.Duration) {
 	containers, err := listUnresponsiveContainers(maxUnresponsiveTime)
 	if err != nil {
 		log.Errorf("Containers Healing: couldn't list unresponsive containers: %s", err.Error())
 	}
 	for _, cont := range containers {
-		if cont.LastSuccessStatusUpdate.IsZero() {
-			continue
-		}
-		hasProcfile, err := hasProcfileWatcher(cont)
+		err := healContainerIfNeeded(cont)
 		if err != nil {
-			log.Errorf("Containers healing: couldn't verify running processes in container %s: %s ", cont.ID, err.Error())
-		}
-		if hasProcfile {
-			cont.setStatus(provision.StatusStarted.String())
-			continue
-		}
-		log.Errorf("Initiating healing process for container %s, unresponsive since %s.", cont.ID, cont.LastSuccessStatusUpdate)
-		evt, err := newHealingEvent(cont)
-		if err != nil {
-			log.Errorf("Error trying to insert container healing event: %s", err.Error())
-		}
-		newCont, err := healContainer(cont)
-		if err != nil {
-			log.Errorf("Error containers healing: %s", err.Error())
-		}
-		err = evt.update(newCont, err)
-		if err != nil {
-			log.Errorf("Error trying to update containers healing event: %s", err.Error())
+			log.Errorf(err.Error())
 		}
 	}
 }
@@ -257,4 +289,37 @@ func listHealingHistory(filter string) ([]healingEvent, error) {
 		return nil, err
 	}
 	return history, nil
+}
+
+func healingCountFor(action string, failingId string, duration time.Duration) (int, error) {
+	coll, err := healingCollection()
+	if err != nil {
+		return 0, err
+	}
+	minStartTime := time.Now().UTC().Add(-duration)
+	query := bson.M{"action": action + "-healing", "starttime": bson.M{"$gte": minStartTime}}
+	maxCount := 10
+	count := 0
+	for count < maxCount {
+		if action == "node" {
+			query["creatednode._id"] = failingId
+		} else {
+			query["createdcontainer.id"] = failingId
+		}
+		var parent healingEvent
+		err = coll.Find(query).One(&parent)
+		if err != nil {
+			if err == mgo.ErrNotFound {
+				break
+			}
+			return 0, err
+		}
+		if action == "node" {
+			failingId = parent.FailingNode.Address
+		} else {
+			failingId = parent.FailingContainer.ID
+		}
+		count += 1
+	}
+	return count, nil
 }
