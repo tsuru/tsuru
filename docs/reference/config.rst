@@ -567,42 +567,110 @@ Defaults to 120 seconds.
 .. _iaas_configuration:
 
 IaaS configuration
-------------------
+==================
+
+tsuru uses IaaS configuration to automatically create new docker nodes and adding
+them to your cluster when using ``docker-node-add`` command. See :doc:`adding
+nodes</installing/adding-nodes>` for more details about how to use this command.
+
+General settings
+----------------
 
 iaas:default
 ++++++++++++
 
-Define the default IaaS to tsuru use to create/list/delete your nodes.
-
-iaas:api-key
-++++++++++++
-
-Api-key to authenticate on IaaS.
-
-iaas:secret-key
-+++++++++++++++
-
-Secret-key to authenticate on IaaS.
-
-iaas:url
-++++++++
-
-Endpoint API to use the IaaS
+The default IaaS tsuru will use when calling ``docker-node-add`` without
+specifying ``iaas=<iaas_name>`` as a metadata. Defaults to ``ec2``.
 
 iaas:node-protocol
 ++++++++++++++++++
 
-Protocol to create node URL.
+Which protocol to use when accessing the docker api in the created node. Defaults
+to ``http``.
 
 iaas:node-port
 ++++++++++++++
 
-Port to create node URL.
+In which port the docker API will be accessible in the created node. Defaults to
+``2375``.
 
 iaas:collection
 +++++++++++++++
 
-Collection to handle machine data on database.
+Collection name on database containing information about created machines.
+Defaults to ``iaas_machines``.
+
+EC2 IaaS
+--------
+
+iaas:ec2:key-id
++++++++++++++++
+
+Your AWS key id.
+
+iaas:ec2:secret-key
++++++++++++++++++++
+
+Your AWS secret key.
+
+
+CloudStack IaaS
+---------------
+
+iaas:cloudstack:api-key
++++++++++++++++++++++++
+
+Your api key.
+
+iaas:cloudstack:secret-key
+++++++++++++++++++++++++++
+
+Your secret key.
+
+iaas:cloudstack:url
++++++++++++++++++++
+
+The url for the cloudstack api.
+
+iaas:cloudstack:user-data
++++++++++++++++++++++++++
+
+A url for which the response body will be sent to cloudstack as user-data.
+Defaults to a script which will run `tsuru now installation
+<https://github.com/tsuru/now>`_.
+
+Custom IaaS
+-----------
+
+You can define a custom IaaS based on an existing provider. Any configuration
+keys with the format ``iaas:custom:<name>`` will create a new IaaS with ``name``.
+
+iaas:custom:<name>:provider
++++++++++++++++++++++++++++
+
+The base provider name, it can be one of the supported providers: ``cloudstack``
+or ``ec2``.
+
+iaas:custom:<name>:<any_other_option>
++++++++++++++++++++++++++++++++++++++
+
+This will overwrite the value of ``iaas:<provider>:<any_other_option>`` for this
+IaaS. As an example, having the configuration bellow would allow you to call
+``tsuru-admin docker-node-add iaas=region1_cloudstack ...``:
+
+.. highlight:: yaml
+
+::
+    
+    iaas:
+        custom:
+            region1_cloudstack:
+                provider: cloudstack
+                url: http://region1.url/
+                secret-key: mysecretkey
+        cloudstack:
+            api-key: myapikey    
+
 
 Sample file
 ===========

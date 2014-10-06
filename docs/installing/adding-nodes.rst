@@ -43,7 +43,7 @@ Assuming you're using EC2, this will be something like:
 After you have everything configured, adding a new docker done is done by
 calling :ref:`docker-node-add <tsuru_admin_docker_node_add_cmd>` in
 :doc:`tsuru-admin </reference/tsuru-admin>` command. This command will receive
-a map of key=value params which are IaaS dependant. A list of possible key
+a map of key=value params which are IaaS dependent. A list of possible key
 params can be seen calling:
 
 .. highlight:: bash
