@@ -326,24 +326,27 @@ func (s *DeploySuite) TestDeployInfo(c *gocheck.C) {
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
-	request, err := http.NewRequest("GET", "/deploys/deploy?:deploy=53e143cb874ccb1f68000001", nil)
-	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	depId := bson.ObjectIdHex("53e143cb874ccb1f68000001")
-	otherDepId := bson.ObjectIdHex("53e143cb874ccb1f68000002")
 	timestamp := time.Now()
 	duration := time.Duration(10e9)
-	lastDeploy := Deploy{ID: depId, App: "g1", Timestamp: timestamp, Duration: duration, Commit: "e82nn93nd93mm12o2ueh83dhbd3iu112", Error: ""}
-	err = s.conn.Deploys().Insert(lastDeploy)
-	c.Assert(err, gocheck.IsNil)
-	previousDeploy := Deploy{ID: otherDepId, App: "g1", Timestamp: timestamp.Add(-3600 * time.Second), Duration: duration, Commit: "e293e3e3me03ejm3puejmp3ej3iejop32", Error: ""}
+	previousDeploy := Deploy{App: "g1", Timestamp: timestamp.Add(-3600 * time.Second), Duration: duration, Commit: "e293e3e3me03ejm3puejmp3ej3iejop32", Error: ""}
 	err = s.conn.Deploys().Insert(previousDeploy)
+	c.Assert(err, gocheck.IsNil)
+	lastDeploy := Deploy{App: "g1", Timestamp: timestamp, Duration: duration, Commit: "e82nn93nd93mm12o2ueh83dhbd3iu112", Error: ""}
+	err = s.conn.Deploys().Insert(lastDeploy)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Deploys().RemoveAll(nil)
 	expected := "test_diff"
 	h := testHandler{content: expected}
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
+	var d map[string]interface{}
+	err = s.conn.Deploys().Find(bson.M{"commit": lastDeploy.Commit}).One(&d)
+	c.Assert(err, gocheck.IsNil)
+	lastDeployId := d["_id"].(bson.ObjectId).Hex()
+	url := fmt.Sprintf("/deploys/deploy?:deploy=%s", lastDeployId)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, gocheck.IsNil)
 	err = deployInfo(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	body, err := ioutil.ReadAll(recorder.Body)
@@ -351,7 +354,7 @@ func (s *DeploySuite) TestDeployInfo(c *gocheck.C) {
 	err = json.Unmarshal(body, &result)
 	c.Assert(err, gocheck.IsNil)
 	expected_deploy := map[string]interface{}{
-		"Id":        depId.Hex(),
+		"Id":        lastDeployId,
 		"App":       "g1",
 		"Timestamp": timestamp.Format(time.RFC3339),
 		"Duration":  10e9,
