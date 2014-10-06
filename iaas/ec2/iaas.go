@@ -21,12 +21,12 @@ func init() {
 	iaas.RegisterIaasProvider("ec2", &EC2IaaS{})
 }
 
-func createEC2Handler(region aws.Region) (*ec2.EC2, error) {
-	keyId, err := config.GetString("iaas:ec2:key-id")
+func (i *EC2IaaS) createEC2Handler(region aws.Region) (*ec2.EC2, error) {
+	keyId, err := i.getConfigString("key-id")
 	if err != nil {
 		return nil, err
 	}
-	secretKey, err := config.GetString("iaas:ec2:secret-key")
+	secretKey, err := i.getConfigString("secret-key")
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,9 @@ func waitForDnsName(ec2Inst *ec2.EC2, instance *ec2.Instance) (*ec2.Instance, er
 	return instance, nil
 }
 
-type EC2IaaS struct{}
+type EC2IaaS struct {
+	iaasName string
+}
 
 func (i *EC2IaaS) Describe() string {
 	return `EC2 IaaS required params:
@@ -69,6 +71,20 @@ Optional params:
 `
 }
 
+func (i *EC2IaaS) getConfigString(name string) (string, error) {
+	val, err := config.GetString(fmt.Sprintf("iaas:custom:%s:%s", i.iaasName, name))
+	if err != nil {
+		val, err = config.GetString(fmt.Sprintf("iaas:ec2:%s", name))
+	}
+	return val, err
+}
+
+func (i *EC2IaaS) Clone(name string) iaas.IaaS {
+	clone := *i
+	clone.iaasName = name
+	return &clone
+}
+
 func (i *EC2IaaS) DeleteMachine(m *iaas.Machine) error {
 	regionName, ok := m.CreationParams["region"]
 	if !ok {
@@ -78,7 +94,7 @@ func (i *EC2IaaS) DeleteMachine(m *iaas.Machine) error {
 	if !ok {
 		return fmt.Errorf("region %q not found", regionName)
 	}
-	ec2Inst, err := createEC2Handler(region)
+	ec2Inst, err := i.createEC2Handler(region)
 	if err != nil {
 		return err
 	}
@@ -118,7 +134,7 @@ func (i *EC2IaaS) CreateMachine(params map[string]string) (*iaas.Machine, error)
 			{Name: securityGroup},
 		}
 	}
-	ec2Inst, err := createEC2Handler(region)
+	ec2Inst, err := i.createEC2Handler(region)
 	if err != nil {
 		return nil, err
 	}

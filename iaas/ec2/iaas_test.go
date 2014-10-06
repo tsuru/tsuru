@@ -42,7 +42,8 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 }
 
 func (s *S) TestCreateEC2Handler(c *gocheck.C) {
-	handler, err := createEC2Handler(aws.APNortheast)
+	iaas := &EC2IaaS{}
+	handler, err := iaas.createEC2Handler(aws.APNortheast)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(handler.Region, gocheck.DeepEquals, aws.APNortheast)
 	c.Assert(handler.Auth.AccessKey, gocheck.Equals, "mykey")
@@ -66,7 +67,8 @@ func (s *S) TestCreateMachine(c *gocheck.C) {
 }
 
 func (s *S) TestWaitForDnsName(c *gocheck.C) {
-	handler, err := createEC2Handler(s.region)
+	iaas := &EC2IaaS{}
+	handler, err := iaas.createEC2Handler(s.region)
 	c.Assert(err, gocheck.IsNil)
 	options := ec2.RunInstances{
 		ImageId:      "ami-xxx",
@@ -124,4 +126,29 @@ func (s *S) TestDeleteMachineValidations(c *gocheck.C) {
 	}
 	err = ec2Iaas.DeleteMachine(m)
 	c.Assert(err, gocheck.ErrorMatches, `region "invalid" not found`)
+}
+
+func (s *S) TestClone(c *gocheck.C) {
+	var iaas EC2IaaS
+	clonned := iaas.Clone("something")
+	c.Assert(clonned, gocheck.FitsTypeOf, &iaas)
+	clonnedIaas, _ := clonned.(*EC2IaaS)
+	c.Assert(iaas.iaasName, gocheck.Equals, "")
+	c.Assert(clonnedIaas.iaasName, gocheck.Equals, "something")
+}
+
+func (s *S) TestGetConfigString(c *gocheck.C) {
+	var iaas EC2IaaS
+	config.Set("iaas:ec2:url", "default_url")
+	val, err := iaas.getConfigString("url")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(val, gocheck.Equals, "default_url")
+	iaas2 := iaas.Clone("something").(*EC2IaaS)
+	val, err = iaas2.getConfigString("url")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(val, gocheck.Equals, "default_url")
+	config.Set("iaas:custom:something:url", "custom_url")
+	val, err = iaas2.getConfigString("url")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(val, gocheck.Equals, "custom_url")
 }
