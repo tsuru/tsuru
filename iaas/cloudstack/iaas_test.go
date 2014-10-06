@@ -30,31 +30,34 @@ func (s *cloudstackSuite) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *cloudstackSuite) TestReadUserDataDefault(c *gocheck.C) {
-	userData, err := readUserData()
+	var cs CloudstackIaaS
+	userData, err := cs.readUserData()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(userData, gocheck.Equals, base64.StdEncoding.EncodeToString([]byte(iaas.UserData)))
 }
 
 func (s *cloudstackSuite) TestReadUserData(c *gocheck.C) {
+	var cs CloudstackIaaS
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "abc def ghi")
 	}))
 	defer server.Close()
 	config.Set("iaas:cloudstack:user-data", server.URL)
 	defer config.Unset("iaas:cloudstack:user-data")
-	userData, err := readUserData()
+	userData, err := cs.readUserData()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(userData, gocheck.Equals, base64.StdEncoding.EncodeToString([]byte("abc def ghi")))
 }
 
 func (s *cloudstackSuite) TestReadUserDataError(c *gocheck.C) {
+	var cs CloudstackIaaS
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer server.Close()
 	config.Set("iaas:cloudstack:user-data", server.URL)
 	defer config.Unset("iaas:cloudstack:user-data")
-	_, err := readUserData()
+	_, err := cs.readUserData()
 	c.Assert(err, gocheck.NotNil)
 }
 
@@ -131,8 +134,9 @@ func (s *cloudstackSuite) TestCreateMachineValidateParams(c *gocheck.C) {
 }
 
 func (s *cloudstackSuite) TestBuildUrlToCloudstack(c *gocheck.C) {
+	var cs CloudstackIaaS
 	params := map[string]string{"atest": "2"}
-	urlBuilded, err := buildUrl("commandTest", params)
+	urlBuilded, err := cs.buildUrl("commandTest", params)
 	c.Assert(err, gocheck.IsNil)
 	u, err := url.Parse(urlBuilded)
 	c.Assert(err, gocheck.IsNil)
@@ -237,4 +241,29 @@ func (s *cloudstackSuite) TestDeleteMachineErrorNoServer(c *gocheck.C) {
 	machine := iaas.Machine{Id: "myMachineId"}
 	err := cs.DeleteMachine(&machine)
 	c.Assert(err, gocheck.ErrorMatches, ".*no such host.*")
+}
+
+func (s *cloudstackSuite) TestClone(c *gocheck.C) {
+	var cs CloudstackIaaS
+	clonned := cs.Clone("something")
+	c.Assert(clonned, gocheck.FitsTypeOf, &cs)
+	clonnedCS, _ := clonned.(*CloudstackIaaS)
+	c.Assert(cs.iaasName, gocheck.Equals, "")
+	c.Assert(clonnedCS.iaasName, gocheck.Equals, "something")
+}
+
+func (s *cloudstackSuite) TestGetConfigString(c *gocheck.C) {
+	var cs CloudstackIaaS
+	config.Set("iaas:cloudstack:url", "default_url")
+	val, err := cs.getConfigString("url")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(val, gocheck.Equals, "default_url")
+	cs2 := cs.Clone("something").(*CloudstackIaaS)
+	val, err = cs2.getConfigString("url")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(val, gocheck.Equals, "default_url")
+	config.Set("iaas:custom:something:url", "custom_url")
+	val, err = cs2.getConfigString("url")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(val, gocheck.Equals, "custom_url")
 }

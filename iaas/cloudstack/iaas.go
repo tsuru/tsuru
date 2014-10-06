@@ -26,7 +26,23 @@ func init() {
 	iaas.RegisterIaasProvider("cloudstack", &CloudstackIaaS{})
 }
 
-type CloudstackIaaS struct{}
+type CloudstackIaaS struct {
+	iaasName string
+}
+
+func (i *CloudstackIaaS) getConfigString(name string) (string, error) {
+	val, err := config.GetString(fmt.Sprintf("iaas:custom:%s:%s", i.iaasName, name))
+	if err != nil {
+		val, err = config.GetString(fmt.Sprintf("iaas:cloudstack:%s", name))
+	}
+	return val, err
+}
+
+func (i *CloudstackIaaS) Clone(name string) iaas.IaaS {
+	clone := *i
+	clone.iaasName = name
+	return &clone
+}
 
 func (i *CloudstackIaaS) Describe() string {
 	return `Cloudstack IaaS required params:
@@ -49,8 +65,8 @@ func validateParams(params map[string]string) error {
 	return nil
 }
 
-func do(cmd string, params map[string]string, result interface{}) error {
-	url, err := buildUrl(cmd, params)
+func (i *CloudstackIaaS) do(cmd string, params map[string]string, result interface{}) error {
+	url, err := i.buildUrl(cmd, params)
 	if err != nil {
 		return err
 	}
@@ -79,7 +95,7 @@ func do(cmd string, params map[string]string, result interface{}) error {
 
 func (i *CloudstackIaaS) DeleteMachine(machine *iaas.Machine) error {
 	var volumesRsp ListVolumesResponse
-	err := do("listVolumes", ApiParams{
+	err := i.do("listVolumes", ApiParams{
 		"virtualmachineid": machine.Id,
 		"projectid":        machine.CreationParams["projectid"],
 	}, &volumesRsp)
@@ -87,13 +103,13 @@ func (i *CloudstackIaaS) DeleteMachine(machine *iaas.Machine) error {
 		return err
 	}
 	var destroyData DestroyVirtualMachineResponse
-	err = do("destroyVirtualMachine", ApiParams{
+	err = i.do("destroyVirtualMachine", ApiParams{
 		"id": machine.Id,
 	}, &destroyData)
 	if err != nil {
 		return err
 	}
-	_, err = waitForAsyncJob(destroyData.DestroyVirtualMachineResponse.JobID)
+	_, err = i.waitForAsyncJob(destroyData.DestroyVirtualMachineResponse.JobID)
 	if err != nil {
 		return err
 	}
@@ -102,15 +118,15 @@ func (i *CloudstackIaaS) DeleteMachine(machine *iaas.Machine) error {
 			continue
 		}
 		var detachRsp DetachVolumeResponse
-		err = do("detachVolume", ApiParams{"id": vol.ID}, &detachRsp)
+		err = i.do("detachVolume", ApiParams{"id": vol.ID}, &detachRsp)
 		if err != nil {
 			return err
 		}
-		_, err = waitForAsyncJob(detachRsp.DetachVolumeResponse.JobID)
+		_, err = i.waitForAsyncJob(detachRsp.DetachVolumeResponse.JobID)
 		if err != nil {
 			return err
 		}
-		err = do("deleteVolume", ApiParams{"id": vol.ID}, nil)
+		err = i.do("deleteVolume", ApiParams{"id": vol.ID}, nil)
 		if err != nil {
 			return err
 		}
@@ -123,17 +139,17 @@ func (i *CloudstackIaaS) CreateMachine(params map[string]string) (*iaas.Machine,
 	if err != nil {
 		return nil, err
 	}
-	userData, err := readUserData()
+	userData, err := i.readUserData()
 	if err != nil {
 		return nil, err
 	}
 	params["userdata"] = userData
 	var vmStatus DeployVirtualMachineResponse
-	err = do("deployVirtualMachine", params, &vmStatus)
+	err = i.do("deployVirtualMachine", params, &vmStatus)
 	if err != nil {
 		return nil, err
 	}
-	IpAddress, err := waitVMIsCreated(vmStatus.DeployVirtualMachineResponse.JobID, vmStatus.DeployVirtualMachineResponse.ID, params["projectid"])
+	IpAddress, err := i.waitVMIsCreated(vmStatus.DeployVirtualMachineResponse.JobID, vmStatus.DeployVirtualMachineResponse.ID, params["projectid"])
 	if err != nil {
 		return nil, err
 	}
@@ -145,8 +161,8 @@ func (i *CloudstackIaaS) CreateMachine(params map[string]string) (*iaas.Machine,
 	return m, nil
 }
 
-func readUserData() (string, error) {
-	userDataUrl, _ := config.GetString("iaas:cloudstack:user-data")
+func (i *CloudstackIaaS) readUserData() (string, error) {
+	userDataUrl, _ := i.getConfigString("user-data")
 	var userData string
 	if userDataUrl == "" {
 		userData = iaas.UserData
@@ -168,12 +184,12 @@ func readUserData() (string, error) {
 	return base64.StdEncoding.EncodeToString([]byte(userData)), nil
 }
 
-func buildUrl(command string, params map[string]string) (string, error) {
-	apiKey, err := config.GetString("iaas:cloudstack:api-key")
+func (i *CloudstackIaaS) buildUrl(command string, params map[string]string) (string, error) {
+	apiKey, err := i.getConfigString("api-key")
 	if err != nil {
 		return "", err
 	}
-	secretKey, err := config.GetString("iaas:cloudstack:secret-key")
+	secretKey, err := i.getConfigString("secret-key")
 	if err != nil {
 		return "", err
 	}
@@ -194,19 +210,19 @@ func buildUrl(command string, params map[string]string) (string, error) {
 	digest := hmac.New(sha1.New, []byte(secretKey))
 	digest.Write([]byte(strings.ToLower(queryString)))
 	signature := base64.StdEncoding.EncodeToString(digest.Sum(nil))
-	cloudstackUrl, err := config.GetString("iaas:cloudstack:url")
+	cloudstackUrl, err := i.getConfigString("url")
 	if err != nil {
 		return "", err
 	}
 	return fmt.Sprintf("%s?%s&signature=%s", cloudstackUrl, queryString, url.QueryEscape(signature)), nil
 }
 
-func waitForAsyncJob(jobId string) (QueryAsyncJobResultResponse, error) {
+func (i *CloudstackIaaS) waitForAsyncJob(jobId string) (QueryAsyncJobResultResponse, error) {
 	count := 0
 	maxTry := 300
 	var jobResponse QueryAsyncJobResultResponse
 	for count < maxTry {
-		err := do("queryAsyncJobResult", ApiParams{"jobid": jobId}, &jobResponse)
+		err := i.do("queryAsyncJobResult", ApiParams{"jobid": jobId}, &jobResponse)
 		if err != nil {
 			return jobResponse, err
 		}
@@ -222,13 +238,13 @@ func waitForAsyncJob(jobId string) (QueryAsyncJobResultResponse, error) {
 	return jobResponse, fmt.Errorf("Maximum number of retries waiting for job %q", jobId)
 }
 
-func waitVMIsCreated(jobId, machineId, projectId string) (string, error) {
-	_, err := waitForAsyncJob(jobId)
+func (i *CloudstackIaaS) waitVMIsCreated(jobId, machineId, projectId string) (string, error) {
+	_, err := i.waitForAsyncJob(jobId)
 	if err != nil {
 		return "", err
 	}
 	var machineInfo ListVirtualMachinesResponse
-	err = do("listVirtualMachines", ApiParams{
+	err = i.do("listVirtualMachines", ApiParams{
 		"id":        machineId,
 		"projectid": projectId,
 	}, &machineInfo)
