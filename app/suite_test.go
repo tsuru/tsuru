@@ -170,6 +170,7 @@ type testHandler struct {
 	url     []string
 	content string
 	header  []http.Header
+	request *http.Request
 }
 
 func (h *testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -178,6 +179,7 @@ func (h *testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	b, _ := ioutil.ReadAll(r.Body)
 	h.body = append(h.body, b)
 	h.header = append(h.header, r.Header)
+	h.request = r
 	w.Write([]byte(h.content))
 }
 

@@ -87,7 +87,7 @@ func GetDiffInDeploys(d *deploy) (string, error) {
 		return "", err
 	}
 	defer conn.Close()
-	if err := conn.Deploys().Find(bson.M{"app": d.App}).Sort("-timestamp").All(&list); err != nil {
+	if err := conn.Deploys().Find(bson.M{"app": d.App, "_id": bson.M{"$lte": d.ID}}).Sort("-timestamp").All(&list); err != nil {
 		return "", err
 	}
 	if len(list) < 2 {

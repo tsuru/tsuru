@@ -118,20 +118,28 @@ func (s *S) TestGetDeployNotFound(c *gocheck.C) {
 
 func (s *S) TestGetDiffInDeploys(c *gocheck.C) {
 	s.conn.Deploys().RemoveAll(nil)
-	lastDeploy := deploy{App: "g1", Timestamp: time.Now(), Commit: "1b970b076bbb30d708e262b402d4e31910e1dc10"}
-	previousDeploy := deploy{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second), Commit: "545b1904af34458704e2aa06ff1aaffad5289f8f"}
-	otherAppDeploy := deploy{App: "ge", Timestamp: time.Now(), Commit: "hwed834hf8y34h8fhn8rnr823nr238runh23x"}
-	s.conn.Deploys().Insert(previousDeploy)
-	s.conn.Deploys().Insert(lastDeploy)
-	s.conn.Deploys().Insert(otherAppDeploy)
+	myDeploy := deploy{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second), Commit: "545b1904af34458704e2aa06ff1aaffad5289f8g"}
+	deploys := []deploy{
+		{App: "ge", Timestamp: time.Now(), Commit: "hwed834hf8y34h8fhn8rnr823nr238runh23x"},
+		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second * 2), Commit: "545b1904af34458704e2aa06ff1aaffad5289f8f"},
+		myDeploy,
+		{App: "g1", Timestamp: time.Now(), Commit: "1b970b076bbb30d708e262b402d4e31910e1dc10"},
+	}
+	for _, d := range deploys {
+		s.conn.Deploys().Insert(d)
+	}
 	defer s.conn.Deploys().RemoveAll(nil)
 	expected := "test_diff"
 	h := testHandler{content: expected}
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
-	diffOutput, err := GetDiffInDeploys(&lastDeploy)
+	err := s.conn.Deploys().Find(bson.M{"commit": myDeploy.Commit}).One(&myDeploy)
+	c.Assert(err, gocheck.IsNil)
+	diffOutput, err := GetDiffInDeploys(&myDeploy)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(diffOutput, gocheck.DeepEquals, expected)
+	c.Assert(h.request.URL.Query().Get("last_commit"), gocheck.Equals, "545b1904af34458704e2aa06ff1aaffad5289f8g")
+	c.Assert(h.request.URL.Query().Get("previous_commit"), gocheck.Equals, "545b1904af34458704e2aa06ff1aaffad5289f8f")
 }
 
 func (s *S) TestGetDiffInDeploysWithOneCommit(c *gocheck.C) {
@@ -143,6 +151,8 @@ func (s *S) TestGetDiffInDeploysWithOneCommit(c *gocheck.C) {
 	h := testHandler{content: expected}
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
+	err := s.conn.Deploys().Find(bson.M{"commit": lastDeploy.Commit}).One(&lastDeploy)
+	c.Assert(err, gocheck.IsNil)
 	diffOutput, err := GetDiffInDeploys(&lastDeploy)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(diffOutput, gocheck.Equals, "The deployment must have at least two commits for the diff.")
