@@ -91,13 +91,13 @@ func (m *Machine) Destroy() error {
 }
 
 func (m *Machine) FormatNodeAddress() (string, error) {
-	protocol, err := config.GetString("iaas:node-protocol")
-	if err != nil {
-		return "", err
+	protocol, _ := config.GetString("iaas:node-protocol")
+	if protocol == "" {
+		protocol = "http"
 	}
-	port, err := config.GetInt("iaas:node-port")
-	if err != nil {
-		return "", err
+	port, _ := config.GetInt("iaas:node-port")
+	if port == 0 {
+		port = 2375
 	}
 	return fmt.Sprintf("%s://%s:%d", protocol, m.Address, port), nil
 }
