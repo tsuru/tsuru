@@ -5,11 +5,15 @@
 package api
 
 import (
+	"bytes"
 	"errors"
+	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"time"
 
+	"github.com/codegangsta/negroni"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	tsuruErr "github.com/tsuru/tsuru/errors"
@@ -19,17 +23,25 @@ import (
 )
 
 type handlerLog struct {
-	w      http.ResponseWriter
-	r      *http.Request
-	called bool
+	w        http.ResponseWriter
+	r        *http.Request
+	called   bool
+	sleep    time.Duration
+	response int
 }
 
 func doHandler() (http.HandlerFunc, *handlerLog) {
 	h := &handlerLog{}
 	return func(w http.ResponseWriter, r *http.Request) {
+		if h.sleep != 0 {
+			time.Sleep(h.sleep)
+		}
 		h.called = true
 		h.w = w
 		h.r = r
+		if h.response != 0 {
+			w.WriteHeader(h.response)
+		}
 	}, h
 }
 
@@ -362,4 +374,21 @@ func (s *S) TestAppLockMiddlewareDoesNothingForExcludedHandlers(c *gocheck.C) {
 	}
 	m.ServeHTTP(recorder, request, h)
 	c.Assert(log.called, gocheck.Equals, true)
+}
+
+func (s *S) TestLoggerMiddleware(c *gocheck.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("PUT", "/my/path", nil)
+	c.Assert(err, gocheck.IsNil)
+	h, handlerLog := doHandler()
+	handlerLog.sleep = 100 * time.Millisecond
+	handlerLog.response = http.StatusOK
+	var out bytes.Buffer
+	middle := loggerMiddleware{
+		logger: log.New(&out, "", 0),
+	}
+	middle.ServeHTTP(negroni.NewResponseWriter(recorder), request, h)
+	c.Assert(handlerLog.called, gocheck.Equals, true)
+	timePart := time.Now().Format(time.RFC3339Nano)[:19]
+	c.Assert(out.String(), gocheck.Matches, fmt.Sprintf(`%s\..+? PUT /my/path 200 in 10\d\.\d+ms`+"\n", timePart))
 }

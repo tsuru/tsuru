@@ -6,9 +6,13 @@ package api
 
 import (
 	"fmt"
+	stdLog "log"
 	"net/http"
+	"os"
 	"reflect"
+	"time"
 
+	"github.com/codegangsta/negroni"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -175,4 +179,23 @@ func runDelayedHandler(w http.ResponseWriter, r *http.Request) {
 	if h != nil {
 		h.ServeHTTP(w, r)
 	}
+}
+
+type loggerMiddleware struct {
+	logger *stdLog.Logger
+}
+
+func newLoggerMiddleware() *loggerMiddleware {
+	return &loggerMiddleware{
+		logger: stdLog.New(os.Stdout, "", 0),
+	}
+}
+
+func (l *loggerMiddleware) ServeHTTP(rw http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
+	start := time.Now()
+	next(rw, r)
+	duration := time.Since(start)
+	res := rw.(negroni.ResponseWriter)
+	nowFormatted := time.Now().Format(time.RFC3339Nano)
+	l.logger.Printf("%s %s %s %d in %0.6fms", nowFormatted, r.Method, r.URL.Path, res.Status(), float64(duration)/float64(time.Millisecond))
 }
