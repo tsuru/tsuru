@@ -243,7 +243,40 @@ func (s *InstanceSuite) TestGetServiceInstancesByServicesAndTeams(c *gocheck.C) 
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": sInstance3.Name})
 	expected := []ServiceInstance{sInstance, sInstance2}
-	sInstances, err := GetServiceInstancesByServicesAndTeams([]Service{srvc, srvc2}, s.user)
+	sInstances, err := GetServiceInstancesByServicesAndTeams([]Service{srvc, srvc2}, s.user, "")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(sInstances, gocheck.DeepEquals, expected)
+}
+
+func (s *InstanceSuite) TestGetServiceInstancesByServicesAndTeamsAppFilter(c *gocheck.C) {
+	srvc := Service{Name: "mysql", Teams: []string{s.team.Name}, IsRestricted: true}
+	err := s.conn.Services().Insert(&srvc)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().RemoveId(srvc.Name)
+	srvc2 := Service{Name: "mongodb", Teams: []string{s.team.Name}, IsRestricted: false}
+	err = s.conn.Services().Insert(&srvc2)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().RemoveId(srvc2.Name)
+	sInstance := ServiceInstance{
+		Name:        "j4sql",
+		ServiceName: srvc.Name,
+		Teams:       []string{s.team.Name},
+		Apps:        []string{"app1"},
+	}
+	err = s.conn.ServiceInstances().Insert(&sInstance)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": sInstance.Name})
+	sInstance2 := ServiceInstance{
+		Name:        "j4nosql",
+		ServiceName: srvc2.Name,
+		Teams:       []string{s.team.Name},
+		Apps:        []string{},
+	}
+	err = s.conn.ServiceInstances().Insert(&sInstance2)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": sInstance2.Name})
+	expected := []ServiceInstance{sInstance}
+	sInstances, err := GetServiceInstancesByServicesAndTeams([]Service{srvc, srvc2}, s.user, "app1")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(sInstances, gocheck.DeepEquals, expected)
 }
@@ -265,7 +298,7 @@ func (s *InstanceSuite) TestGetServiceInstancesByServicesAndTeamsForUsersThatAre
 	err = s.conn.ServiceInstances().Insert(&instance)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": instance.Name})
-	instances, err := GetServiceInstancesByServicesAndTeams([]Service{srvc}, &u)
+	instances, err := GetServiceInstancesByServicesAndTeams([]Service{srvc}, &u, "")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(instances, gocheck.IsNil)
 }
@@ -292,7 +325,7 @@ func (s *InstanceSuite) TestGetServiceinstancesByServicesAndTeamsUserAdmin(c *go
 	err = s.conn.ServiceInstances().Insert(&instance)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": instance.Name})
-	instances, err := GetServiceInstancesByServicesAndTeams([]Service{srvc}, &u)
+	instances, err := GetServiceInstancesByServicesAndTeams([]Service{srvc}, &u, "")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(instances, gocheck.DeepEquals, []ServiceInstance{instance})
 }

@@ -71,12 +71,14 @@ func serviceInstances(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "list-service-instances")
+	appName := r.URL.Query().Get("app")
+	rec.Log(u.Email, "list-service-instances", "app="+appName)
 	services, _ := service.GetServicesByTeamKindAndNoRestriction("teams", u)
-	sInstances, _ := service.GetServiceInstancesByServicesAndTeams(services, u)
+	sInstances, _ := service.GetServiceInstancesByServicesAndTeams(services, u, appName)
 	result := make([]service.ServiceModel, len(services))
 	for i, s := range services {
 		result[i].Service = s.Name
+		result[i].Instances = []string{}
 		for _, si := range sInstances {
 			if si.ServiceName == s.Name {
 				result[i].Instances = append(result[i].Instances, si.Name)

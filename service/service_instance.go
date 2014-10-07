@@ -301,7 +301,7 @@ func GetServiceInstancesByServices(services []Service) ([]ServiceInstance, error
 	return instances, err
 }
 
-func GetServiceInstancesByServicesAndTeams(services []Service, u *auth.User) ([]ServiceInstance, error) {
+func GetServiceInstancesByServicesAndTeams(services []Service, u *auth.User, appName string) ([]ServiceInstance, error) {
 	var instances []ServiceInstance
 	teams, err := u.Teams()
 	if err != nil {
@@ -320,6 +320,9 @@ func GetServiceInstancesByServicesAndTeams(services []Service, u *auth.User) ([]
 		teamNames = auth.GetTeamsNames(teams)
 	}
 	query := genericServiceInstancesFilter(services, teamNames)
+	if appName != "" {
+		query["apps"] = appName
+	}
 	err = conn.ServiceInstances().Find(query).All(&instances)
 	return instances, err
 }

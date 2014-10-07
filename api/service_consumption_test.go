@@ -342,6 +342,48 @@ func (s *ConsumptionSuite) TestServicesInstancesHandler(c *gocheck.C) {
 	c.Assert(action, testing.IsRecorded)
 }
 
+func (s *ConsumptionSuite) TestServicesInstancesHandlerAppFilter(c *gocheck.C) {
+	srv := service.Service{Name: "redis", Teams: []string{s.team.Name}}
+	err := srv.Create()
+	c.Assert(err, gocheck.IsNil)
+	srv2 := service.Service{Name: "mongodb", Teams: []string{s.team.Name}}
+	err = srv2.Create()
+	c.Assert(err, gocheck.IsNil)
+	instance := service.ServiceInstance{
+		Name:        "redis-globo",
+		ServiceName: "redis",
+		Apps:        []string{"globo"},
+		Teams:       []string{s.team.Name},
+	}
+	err = instance.Create()
+	c.Assert(err, gocheck.IsNil)
+	instance2 := service.ServiceInstance{
+		Name:        "mongodb-other",
+		ServiceName: "mongodb",
+		Apps:        []string{"other"},
+		Teams:       []string{s.team.Name},
+	}
+	err = instance2.Create()
+	c.Assert(err, gocheck.IsNil)
+	request, err := http.NewRequest("GET", "/services/instances?app=other", nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = serviceInstances(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, gocheck.IsNil)
+	var instances []service.ServiceModel
+	err = json.Unmarshal(body, &instances)
+	c.Assert(err, gocheck.IsNil)
+	expected := []service.ServiceModel{
+		{Service: "redis", Instances: []string{}},
+		{Service: "mongodb", Instances: []string{"mongodb-other"}},
+	}
+	c.Assert(instances, gocheck.DeepEquals, expected)
+	action := testing.Action{Action: "list-service-instances", User: s.user.Email}
+	c.Assert(action, testing.IsRecorded)
+}
+
 func (s *ConsumptionSuite) TestServicesInstancesHandlerReturnsOnlyServicesThatTheUserHasAccess(c *gocheck.C) {
 	u := &auth.User{Email: "me@globo.com", Password: "123456"}
 	_, err := nativeScheme.Create(u)
@@ -415,7 +457,7 @@ func (s *ConsumptionSuite) TestServicesInstancesHandlerFilterInstancesPerService
 		{Service: "mysql", Instances: []string{"mysql1", "mysql2"}},
 		{Service: "pgsql", Instances: []string{"pgsql1", "pgsql2"}},
 		{Service: "memcached", Instances: []string{"memcached1", "memcached2"}},
-		{Service: "oracle", Instances: []string(nil)},
+		{Service: "oracle", Instances: []string{}},
 	}
 	c.Assert(instances, gocheck.DeepEquals, expected)
 }
