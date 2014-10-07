@@ -82,12 +82,8 @@ func addNodeForParams(params map[string]string, isRegister bool) (map[string]str
 		if err != nil {
 			return response, err
 		}
-		nodeAddress, err := m.FormatNodeAddress()
-		if err != nil {
-			return response, err
-		}
 		params["iaas"] = m.Iaas
-		address = nodeAddress
+		address = m.FormatNodeAddress()
 	}
 	err := validateNodeAddress(address)
 	if err != nil {

@@ -113,16 +113,12 @@ func (h *Healer) healNode(node *cluster.Node) (cluster.Node, error) {
 		node.ResetFailures()
 		return emptyNode, fmt.Errorf("Can't auto-heal after %d failures for node %s: error creating new machine: %s", failures, failingHost, err.Error())
 	}
-	newAddr, err := machine.FormatNodeAddress()
-	if err != nil {
-		machine.Destroy()
-		return emptyNode, fmt.Errorf("Can't auto-heal after %d failures for node %s: error formatting address: %s", failures, failingHost, err.Error())
-	}
 	err = h.cluster.Unregister(failingAddr)
 	if err != nil {
 		machine.Destroy()
 		return emptyNode, fmt.Errorf("Can't auto-heal after %d failures for node %s: error unregistering old node: %s", failures, failingHost, err.Error())
 	}
+	newAddr := machine.FormatNodeAddress()
 	log.Debugf("New machine created during healing process: %s - Waiting for docker to start...", newAddr)
 	createdNode, err := h.cluster.WaitAndRegister(newAddr, nodeMetadata, h.waitTimeNewMachine)
 	if err != nil {

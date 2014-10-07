@@ -238,55 +238,6 @@ func (s *S) TestHealerHealNodeCreateMachineError(c *gocheck.C) {
 	c.Assert(urlToHost(nodes[0].Address), gocheck.Equals, "127.0.0.1")
 }
 
-func (s *S) TestHealerHealNodeFormatError(c *gocheck.C) {
-	defer func() {
-		machines, _ := iaas.ListMachines()
-		for _, m := range machines {
-			m.Destroy()
-		}
-	}()
-	iaasInstance := &TestHealerIaaS{}
-	iaas.RegisterIaasProvider("my-healer-iaas", iaasInstance)
-	iaasInstance.addr = "127.0.0.1"
-	_, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
-	c.Assert(err, gocheck.IsNil)
-	iaasInstance.addr = "localhost"
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, gocheck.IsNil)
-	cluster, err := cluster.New(nil, &cluster.MapStorage{},
-		cluster.Node{Address: node1.URL()},
-	)
-	c.Assert(err, gocheck.IsNil)
-	healer := Healer{
-		cluster:               cluster,
-		disabledTime:          0,
-		failuresBeforeHealing: 1,
-		waitTimeNewMachine:    1 * time.Second,
-	}
-	nodes, err := cluster.UnfilteredNodes()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(nodes, gocheck.HasLen, 1)
-	c.Assert(urlPort(nodes[0].Address), gocheck.Equals, urlPort(node1.URL()))
-	c.Assert(urlToHost(nodes[0].Address), gocheck.Equals, "127.0.0.1")
-	nodes[0].Metadata["iaas"] = "my-healer-iaas"
-	machines, err := iaas.ListMachines()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(machines, gocheck.HasLen, 1)
-	c.Assert(machines[0].Address, gocheck.Equals, "127.0.0.1")
-	created, err := healer.healNode(&nodes[0])
-	c.Assert(err, gocheck.ErrorMatches, ".*error formatting address.*")
-	c.Assert(created.Address, gocheck.Equals, "")
-	nodes, err = cluster.UnfilteredNodes()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(nodes, gocheck.HasLen, 1)
-	c.Assert(urlPort(nodes[0].Address), gocheck.Equals, urlPort(node1.URL()))
-	c.Assert(urlToHost(nodes[0].Address), gocheck.Equals, "127.0.0.1")
-	machines, err = iaas.ListMachines()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(machines, gocheck.HasLen, 1)
-	c.Assert(machines[0].Address, gocheck.Equals, "127.0.0.1")
-}
-
 func (s *S) TestHealerHealNodeWaitAndRegisterError(c *gocheck.C) {
 	defer func() {
 		machines, _ := iaas.ListMachines()
