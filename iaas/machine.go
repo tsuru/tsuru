@@ -90,7 +90,7 @@ func (m *Machine) Destroy() error {
 	return m.removeFromDB()
 }
 
-func (m *Machine) FormatNodeAddress() (string, error) {
+func (m *Machine) FormatNodeAddress() string {
 	protocol, _ := config.GetString("iaas:node-protocol")
 	if protocol == "" {
 		protocol = "http"
@@ -99,7 +99,7 @@ func (m *Machine) FormatNodeAddress() (string, error) {
 	if port == 0 {
 		port = 2375
 	}
-	return fmt.Sprintf("%s://%s:%d", protocol, m.Address, port), nil
+	return fmt.Sprintf("%s://%s:%d", protocol, m.Address, port)
 }
 
 func (m *Machine) saveToDB() error {
