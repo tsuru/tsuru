@@ -7,6 +7,7 @@ package tsuru
 import (
 	"bytes"
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/tsuru/tsuru/cmd"
@@ -41,7 +42,7 @@ Address: myapp.tsuru.io
 Owner: myapp_owner
 Team owner: myteam
 Deploys: 7
-Units:
+Units: 3
 +--------+---------+
 | Unit   | State   |
 +--------+---------+
@@ -124,7 +125,7 @@ Address: secret.tsuru.io
 Owner: myapp_owner
 Team owner: myteam
 Deploys: 7
-Units:
+Units: 2
 +----------+---------+
 | Unit     | State   |
 +----------+---------+
@@ -164,7 +165,7 @@ Address: yourapp.tsuru.io, myapp.tsuru.io
 Owner: myapp_owner
 Team owner: myteam
 Deploys: 7
-Units:
+Units: 3
 +--------+---------+
 | Unit   | State   |
 +--------+---------+
@@ -179,6 +180,64 @@ Units:
 		Stderr: &stderr,
 	}
 	client := cmd.NewClient(&http.Client{Transport: &testing.Transport{Message: result, Status: http.StatusOK}}, nil, manager)
+	command := AppInfo{}
+	command.Flags().Parse(true, []string{"--app", "app1"})
+	err := command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, expected)
+}
+
+type transportFunc func(req *http.Request) (resp *http.Response, err error)
+
+func (fn transportFunc) RoundTrip(req *http.Request) (resp *http.Response, err error) {
+	return fn(req)
+}
+
+func (s *S) TestAppInfoWithServices(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	expected := `Application: app1
+Repository: git@git.com:php.git
+Platform: php
+Teams: tsuruteam, crane
+Address: myapp.tsuru.io
+Owner: myapp_owner
+Team owner: myteam
+Deploys: 7
+Units: 3
++--------+---------+
+| Unit   | State   |
++--------+---------+
+| app1/0 | started |
+| app1/1 | started |
+| app1/2 | pending |
++--------+---------+
+
+Service instances: 1
++----------+------------+
+| Service  | Instance   |
++----------+------------+
+| redisapi | myredisapi |
++----------+------------+
+
+`
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	transport := transportFunc(func(req *http.Request) (resp *http.Response, err error) {
+		var body string
+		if req.URL.Path == "/apps/app1" {
+			body = `{"name":"app1","teamowner":"myteam","ip":"myapp.tsuru.io","platform":"php","repository":"git@git.com:php.git","state":"dead","units":[{"Ip":"10.10.10.10","Name":"app1/0","Status":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","Status":"started"}, {"Ip":"","Name":"app1/2","Status":"pending"}],"Teams":["tsuruteam","crane"], "owner": "myapp_owner", "deploys": 7}`
+		} else if req.URL.Path == "/services/instances" && req.URL.RawQuery == "app=app1" {
+			body = `[{"service":"redisapi","instances":["myredisapi"]},
+					 {"service":"mongodb", "instances":[]}]`
+		}
+		return &http.Response{
+			Body:       ioutil.NopCloser(bytes.NewBufferString(body)),
+			StatusCode: http.StatusOK,
+		}, nil
+	})
+	client := cmd.NewClient(&http.Client{Transport: transport}, nil, manager)
 	command := AppInfo{}
 	command.Flags().Parse(true, []string{"--app", "app1"})
 	err := command.Run(&context, client)

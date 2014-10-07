@@ -72,8 +72,28 @@ func (c *AppInfo) Run(context *cmd.Context, client *cmd.Client) error {
 	if err == nil {
 		defer response.Body.Close()
 		adminResult, err = ioutil.ReadAll(response.Body)
+		if err != nil {
+			return err
+		}
 	}
-	return c.Show(result, adminResult, context)
+	url, err = cmd.GetURL(fmt.Sprintf("/services/instances?app=%s", appName))
+	if err != nil {
+		return err
+	}
+	request, err = http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	response, err = client.Do(request)
+	var servicesResult []byte
+	if err == nil {
+		defer response.Body.Close()
+		servicesResult, err = ioutil.ReadAll(response.Body)
+		if err != nil {
+			return err
+		}
+	}
+	return c.Show(result, adminResult, servicesResult, context)
 }
 
 type unit struct {
@@ -99,6 +119,12 @@ type app struct {
 	TeamOwner  string
 	Deploys    uint
 	containers []container
+	services   []serviceData
+}
+
+type serviceData struct {
+	Service   string
+	Instances []string
 }
 
 type container struct {
@@ -175,22 +201,34 @@ Deploys: {{.Deploys}}
 	if len(a.containers) > 0 {
 		units.SortByColumn(2)
 	}
+	servicesTable := cmd.NewTable()
+	servicesTable.Headers = []string{"Service", "Instance"}
+	for _, service := range a.services {
+		if len(service.Instances) == 0 {
+			continue
+		}
+		servicesTable.AddRow([]string{service.Service, strings.Join(service.Instances, ", ")})
+	}
 	var buf bytes.Buffer
 	tmpl.Execute(&buf, a)
 	var suffix string
 	if units.Rows() > 0 {
-		suffix = fmt.Sprintf("Units:\n%s", units)
+		suffix = fmt.Sprintf("Units: %d\n%s", units.Rows(), units)
+	}
+	if servicesTable.Rows() > 0 {
+		suffix = fmt.Sprintf("%s\nService instances: %d\n%s", suffix, servicesTable.Rows(), servicesTable)
 	}
 	return buf.String() + suffix
 }
 
-func (c *AppInfo) Show(result []byte, adminResult []byte, context *cmd.Context) error {
+func (c *AppInfo) Show(result []byte, adminResult []byte, servicesResult []byte, context *cmd.Context) error {
 	var a app
 	err := json.Unmarshal(result, &a)
 	if err != nil {
 		return err
 	}
 	json.Unmarshal(adminResult, &a.containers)
+	json.Unmarshal(servicesResult, &a.services)
 	fmt.Fprintln(context.Stdout, &a)
 	return nil
 }
