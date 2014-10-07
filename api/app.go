@@ -297,6 +297,9 @@ func setUnitStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err == app.ErrUnitNotFound {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
+	if err == nil {
+		w.WriteHeader(http.StatusOK)
+	}
 	return err
 }
 
