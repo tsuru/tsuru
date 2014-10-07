@@ -31,8 +31,14 @@ func (app *App) ListDeploys() ([]deploy, error) {
 	return listDeploys(app, nil)
 }
 
-func ListDeploys(s *service.Service) ([]deploy, error) {
-	return listDeploys(nil, s)
+// ListDeploys returns the list of deploy that the given user has access to.
+//
+// If the user does not have acces to any deploy, this function returns an empty
+// list and a nil error.
+//
+// The deploy list can be filtered by app or service.
+func ListDeploys(app *App, s *service.Service) ([]deploy, error) {
+	return listDeploys(app, s)
 }
 
 func listDeploys(app *App, s *service.Service) ([]deploy, error) {
@@ -49,6 +55,9 @@ func listDeploys(app *App, s *service.Service) ([]deploy, error) {
 	if s != nil {
 		var instances []service.ServiceInstance
 		q := bson.M{"service_name": s.Name}
+		if app != nil {
+			q["apps"] = app.Name
+		}
 		err = conn.ServiceInstances().Find(q).All(&instances)
 		if err != nil {
 			return nil, err

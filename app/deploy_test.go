@@ -14,6 +14,40 @@ import (
 	"launchpad.net/gocheck"
 )
 
+func (s *S) TestListDeployByAppAndService(c *gocheck.C) {
+	s.conn.Deploys().RemoveAll(nil)
+	srv := service.Service{Name: "mysql"}
+	instance := service.ServiceInstance{
+		Name:        "myinstance",
+		ServiceName: "mysql",
+		Apps:        []string{"g1"},
+	}
+	err := s.conn.ServiceInstances().Insert(instance)
+	err = s.conn.Services().Insert(srv)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"apps": instance.Apps})
+	defer s.conn.Services().Remove(bson.M{"_id": srv.Name})
+	a := App{Name: "g1"}
+	err = s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	a2 := App{Name: "ge"}
+	err = s.conn.Apps().Insert(a2)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a2.Name})
+	deploys := []deploy{
+		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
+		{App: "ge", Timestamp: time.Now()},
+	}
+	for _, deploy := range deploys {
+		s.conn.Deploys().Insert(deploy)
+	}
+	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
+	result, err := ListDeploys(&a2, &srv)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.IsNil)
+}
+
 func (s *S) TestListAppDeploys(c *gocheck.C) {
 	s.conn.Deploys().RemoveAll(nil)
 	a := App{Name: "g1"}
@@ -59,7 +93,7 @@ func (s *S) TestListServiceDeploys(c *gocheck.C) {
 	s.conn.Deploys().Insert(insert...)
 	defer s.conn.Deploys().RemoveAll(bson.M{"apps": instance.Apps})
 	expected := []deploy{insert[1].(deploy), insert[0].(deploy)}
-	deploys, err := ListDeploys(&srv)
+	deploys, err := ListDeploys(nil, &srv)
 	c.Assert(err, gocheck.IsNil)
 	for i := 0; i < 2; i++ {
 		ts := expected[i].Timestamp
@@ -80,7 +114,7 @@ func (s *S) TestListAllDeploys(c *gocheck.C) {
 	s.conn.Deploys().Insert(insert...)
 	defer s.conn.Deploys().RemoveAll(nil)
 	expected := []deploy{insert[1].(deploy), insert[0].(deploy)}
-	deploys, err := ListDeploys(nil)
+	deploys, err := ListDeploys(nil, nil)
 	c.Assert(err, gocheck.IsNil)
 	for i := 0; i < 2; i++ {
 		ts := expected[i].Timestamp

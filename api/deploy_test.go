@@ -299,6 +299,10 @@ func (s *DeploySuite) TestDeployListByService(c *gocheck.C) {
 	}
 	err = instance.Create()
 	c.Assert(err, gocheck.IsNil)
+	defer func() {
+		srv.Delete()
+		service.DeleteInstance(&instance)
+	}()
 	request, err := http.NewRequest("GET", "/deploys?service=redis", nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -319,6 +323,88 @@ func (s *DeploySuite) TestDeployListByService(c *gocheck.C) {
 	c.Assert(result[0].App, gocheck.Equals, "g1")
 	c.Assert(result[0].Timestamp.In(time.UTC), gocheck.DeepEquals, timestamp.In(time.UTC))
 	c.Assert(result[0].Duration, gocheck.DeepEquals, duration)
+}
+
+func (s *DeploySuite) TestDeployListByApp(c *gocheck.C) {
+	a := app.App{
+		Name:     "myblog",
+		Platform: "zend",
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs(a.Name).DropCollection()
+	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
+	duration := time.Since(timestamp)
+	deploys := []Deploy{
+		{App: "myblog", Timestamp: timestamp, Duration: duration},
+		{App: "yourblog", Timestamp: timestamp, Duration: duration},
+	}
+	for _, deploy := range deploys {
+		err := s.conn.Deploys().Insert(deploy)
+		c.Assert(err, gocheck.IsNil)
+	}
+	defer s.conn.Deploys().RemoveAll(nil)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/deploys?app=myblog", nil)
+	err = deploysList(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, gocheck.IsNil)
+	var result []Deploy
+	err = json.Unmarshal(body, &result)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.HasLen, 1)
+	c.Assert(result[0].App, gocheck.Equals, "myblog")
+	c.Assert(result[0].Timestamp.In(time.UTC), gocheck.DeepEquals, timestamp.In(time.UTC))
+	c.Assert(result[0].Duration, gocheck.DeepEquals, duration)
+}
+
+func (s *DeploySuite) TestDeployListByAppAndService(c *gocheck.C) {
+	srv := service.Service{Name: "redis", Teams: []string{s.team.Name}}
+	err := srv.Create()
+	c.Assert(err, gocheck.IsNil)
+	instance := service.ServiceInstance{
+		Name:        "redis-myblog",
+		ServiceName: "redis",
+		Apps:        []string{"yourblog"},
+		Teams:       []string{s.team.Name},
+	}
+	err = instance.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer func() {
+		srv.Delete()
+		service.DeleteInstance(&instance)
+	}()
+	a := app.App{
+		Name:     "myblog",
+		Platform: "zend",
+	}
+	err = s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs(a.Name).DropCollection()
+	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
+	duration := time.Since(timestamp)
+	deploys := []Deploy{
+		{App: "myblog", Timestamp: timestamp, Duration: duration},
+		{App: "yourblog", Timestamp: timestamp, Duration: duration},
+	}
+	for _, deploy := range deploys {
+		err := s.conn.Deploys().Insert(deploy)
+		c.Assert(err, gocheck.IsNil)
+	}
+	defer s.conn.Deploys().RemoveAll(nil)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/deploys?app=myblog&service=redis", nil)
+	err = deploysList(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, gocheck.IsNil)
+	var result []Deploy
+	err = json.Unmarshal(body, &result)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.HasLen, 0)
 }
 
 func (s *DeploySuite) TestDeployInfo(c *gocheck.C) {

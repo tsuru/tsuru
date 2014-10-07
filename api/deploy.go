@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
+	"github.com/tsuru/tsuru/service"
 )
 
 func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -72,19 +73,24 @@ func deploysList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	service := r.URL.Query().Get("service")
-	if service != "" {
-		s, err := getServiceOrError(service, u)
+	var s *service.Service
+	var a *app.App
+	appName := r.URL.Query().Get("app")
+	if appName != "" {
+		a, err = app.GetByName(appName)
 		if err != nil {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
-		deploys, err := app.ListDeploys(&s)
-		if err != nil {
-			return err
-		}
-		return json.NewEncoder(w).Encode(deploys)
 	}
-	deploys, err := app.ListDeploys(nil)
+	serviceName := r.URL.Query().Get("service")
+	if serviceName != "" {
+		srv, err := getServiceOrError(serviceName, u)
+		s = &srv
+		if err != nil {
+			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		}
+	}
+	deploys, err := app.ListDeploys(a, s)
 	if err != nil {
 		return err
 	}
