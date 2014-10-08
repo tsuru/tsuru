@@ -90,7 +90,7 @@ func deploysList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
 	}
-	deploys, err := app.ListDeploys(a, s)
+	deploys, err := app.ListDeploys(a, s, u)
 	if err != nil {
 		return err
 	}

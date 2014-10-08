@@ -11,6 +11,7 @@ import (
 
 	"github.com/tsuru/go-gandalfclient"
 	"github.com/tsuru/tsuru/action"
+	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/repository"
@@ -27,8 +28,8 @@ type deploy struct {
 	Error     string
 }
 
-func (app *App) ListDeploys() ([]deploy, error) {
-	return listDeploys(app, nil)
+func (app *App) ListDeploys(u *auth.User) ([]deploy, error) {
+	return listDeploys(app, nil, u)
 }
 
 // ListDeploys returns the list of deploy that the given user has access to.
@@ -37,11 +38,11 @@ func (app *App) ListDeploys() ([]deploy, error) {
 // list and a nil error.
 //
 // The deploy list can be filtered by app or service.
-func ListDeploys(app *App, s *service.Service) ([]deploy, error) {
-	return listDeploys(app, s)
+func ListDeploys(app *App, s *service.Service, u *auth.User) ([]deploy, error) {
+	return listDeploys(app, s, u)
 }
 
-func listDeploys(app *App, s *service.Service) ([]deploy, error) {
+func listDeploys(app *App, s *service.Service, u *auth.User) ([]deploy, error) {
 	var list []deploy
 	conn, err := db.Conn()
 	if err != nil {

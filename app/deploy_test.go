@@ -43,7 +43,7 @@ func (s *S) TestListDeployByAppAndService(c *gocheck.C) {
 		s.conn.Deploys().Insert(deploy)
 	}
 	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
-	result, err := ListDeploys(&a2, &srv)
+	result, err := ListDeploys(&a2, &srv, nil)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result, gocheck.IsNil)
 }
@@ -61,7 +61,7 @@ func (s *S) TestListAppDeploys(c *gocheck.C) {
 	s.conn.Deploys().Insert(insert...)
 	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
 	expected := []deploy{insert[1].(deploy), insert[0].(deploy)}
-	deploys, err := a.ListDeploys()
+	deploys, err := a.ListDeploys(nil)
 	c.Assert(err, gocheck.IsNil)
 	for i := 0; i < 2; i++ {
 		ts := expected[i].Timestamp
@@ -93,7 +93,7 @@ func (s *S) TestListServiceDeploys(c *gocheck.C) {
 	s.conn.Deploys().Insert(insert...)
 	defer s.conn.Deploys().RemoveAll(bson.M{"apps": instance.Apps})
 	expected := []deploy{insert[1].(deploy), insert[0].(deploy)}
-	deploys, err := ListDeploys(nil, &srv)
+	deploys, err := ListDeploys(nil, &srv, nil)
 	c.Assert(err, gocheck.IsNil)
 	for i := 0; i < 2; i++ {
 		ts := expected[i].Timestamp
@@ -114,7 +114,7 @@ func (s *S) TestListAllDeploys(c *gocheck.C) {
 	s.conn.Deploys().Insert(insert...)
 	defer s.conn.Deploys().RemoveAll(nil)
 	expected := []deploy{insert[1].(deploy), insert[0].(deploy)}
-	deploys, err := ListDeploys(nil, nil)
+	deploys, err := ListDeploys(nil, nil, nil)
 	c.Assert(err, gocheck.IsNil)
 	for i := 0; i < 2; i++ {
 		ts := expected[i].Timestamp
