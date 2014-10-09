@@ -18,8 +18,8 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
@@ -46,6 +46,8 @@ var _ = gocheck.Suite(&DeploySuite{})
 
 func (s *DeploySuite) createUserAndTeam(c *gocheck.C) {
 	user := &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
+	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
+	app.AuthScheme = nativeScheme
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, gocheck.IsNil)
 	s.team = &auth.Team{Name: "tsuruteam", Users: []string{user.Email}}
@@ -59,6 +61,7 @@ func (s *DeploySuite) SetUpSuite(c *gocheck.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_deploy_api_tests")
 	config.Set("aut:hash-cost", 4)
+	config.Set("admin-team", "tsuruteam")
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
@@ -90,8 +93,10 @@ func (s *DeploySuite) TestDeployHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	err = deploy(recorder, request, s.token)
-	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	b, err := ioutil.ReadAll(recorder.Body)
@@ -116,8 +121,10 @@ func (s *DeploySuite) TestDeployArchiveURL(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	err = deploy(recorder, request, s.token)
-	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	b, err := ioutil.ReadAll(recorder.Body)
@@ -147,8 +154,10 @@ func (s *DeploySuite) TestDeployUploadFile(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "multipart/form-data; boundary="+writer.Boundary())
 	recorder := httptest.NewRecorder()
-	err = deploy(recorder, request, s.token)
-	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	b, err := ioutil.ReadAll(recorder.Body)
@@ -172,8 +181,10 @@ func (s *DeploySuite) TestDeployWithCommit(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	err = deploy(recorder, request, s.token)
-	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	b, err := ioutil.ReadAll(recorder.Body)
@@ -201,8 +212,10 @@ func (s *DeploySuite) TestDeployShouldIncrementDeployNumberOnApp(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	err = deploy(recorder, request, s.token)
-	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
 	c.Assert(a.Deploys, gocheck.Equals, uint(1))
 	var result map[string]interface{}
@@ -214,43 +227,59 @@ func (s *DeploySuite) TestDeployShouldIncrementDeployNumberOnApp(c *gocheck.C) {
 }
 
 func (s *DeploySuite) TestDeployShouldReturnNotFoundWhenAppDoesNotExist(c *gocheck.C) {
-	request, err := http.NewRequest("POST", "/apps/abc/repository/clone?:appname=abc", strings.NewReader("version=abcdef"))
+	request, err := http.NewRequest("POST", "/apps/abc/repository/clone", strings.NewReader("version=abcdef"))
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	err = deploy(recorder, request, s.token)
-	c.Assert(err, gocheck.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
-	c.Assert(e, gocheck.ErrorMatches, "^App abc not found.$")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusNotFound)
+	message := recorder.Body.String()
+	c.Assert(message, gocheck.Equals, "app not found\n")
 }
 
 func (s *DeploySuite) TestDeployWithoutVersionAndArchiveURL(c *gocheck.C) {
-	request, err := http.NewRequest("POST", "/apps/abc/repository/clone?:appname=abc", nil)
+	a := app.App{
+		Name:     "abc",
+		Platform: "zend",
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs(a.Name).DropCollection()
+	request, err := http.NewRequest("POST", "/apps/abc/repository/clone", nil)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	err = deploy(recorder, request, s.token)
-	c.Assert(err, gocheck.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
-	c.Assert(e.Message, gocheck.Equals, "you must specify either the version, the archive-url or upload a file")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusBadRequest)
+	message := recorder.Body.String()
+	c.Assert(message, gocheck.Equals, "you must specify either the version, the archive-url or upload a file\n")
 }
 
 func (s *DeploySuite) TestDeployWithVersionAndArchiveURL(c *gocheck.C) {
+	a := app.App{
+		Name:     "abc",
+		Platform: "zend",
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs(a.Name).DropCollection()
 	body := strings.NewReader("version=abcdef&archive-url=http://google.com")
-	request, err := http.NewRequest("POST", "/apps/abc/repository/clone?:appname=abc", body)
+	request, err := http.NewRequest("POST", "/apps/abc/repository/clone", body)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
-	err = deploy(recorder, request, s.token)
-	c.Assert(err, gocheck.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
-	c.Assert(e.Message, gocheck.Equals, "you must specify either the version or the archive-url, but not both")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusBadRequest)
+	message := recorder.Body.String()
+	c.Assert(message, gocheck.Equals, "you must specify either the version or the archive-url, but not both\n")
 }
 
 func (s *DeploySuite) TestDeployList(c *gocheck.C) {
@@ -268,8 +297,10 @@ func (s *DeploySuite) TestDeployList(c *gocheck.C) {
 	err = s.conn.Deploys().Insert(Deploy{App: "ge", Timestamp: timestamp.Add(time.Second), Duration: duration})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Deploys().RemoveAll(nil)
-	err = deploysList(recorder, request, s.token)
-	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
 	err = json.Unmarshal(body, &result)
@@ -313,8 +344,10 @@ func (s *DeploySuite) TestDeployListByService(c *gocheck.C) {
 	err = s.conn.Deploys().Insert(Deploy{App: "ge", Timestamp: timestamp, Duration: duration})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Deploys().RemoveAll(nil)
-	err = deploysList(recorder, request, s.token)
-	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
 	err = json.Unmarshal(body, &result)
@@ -347,8 +380,10 @@ func (s *DeploySuite) TestDeployListByApp(c *gocheck.C) {
 	defer s.conn.Deploys().RemoveAll(nil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/deploys?app=myblog", nil)
-	err = deploysList(recorder, request, s.token)
-	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
 	var result []Deploy
@@ -397,8 +432,10 @@ func (s *DeploySuite) TestDeployListByAppAndService(c *gocheck.C) {
 	defer s.conn.Deploys().RemoveAll(nil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/deploys?app=myblog&service=redis", nil)
-	err = deploysList(recorder, request, s.token)
-	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
 	var result []Deploy
@@ -430,11 +467,13 @@ func (s *DeploySuite) TestDeployInfo(c *gocheck.C) {
 	err = s.conn.Deploys().Find(bson.M{"commit": lastDeploy.Commit}).One(&d)
 	c.Assert(err, gocheck.IsNil)
 	lastDeployId := d["_id"].(bson.ObjectId).Hex()
-	url := fmt.Sprintf("/deploys/deploy?:deploy=%s", lastDeployId)
+	url := fmt.Sprintf("/deploys/%s", lastDeployId)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
-	err = deployInfo(recorder, request, s.token)
-	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
 	err = json.Unmarshal(body, &result)
