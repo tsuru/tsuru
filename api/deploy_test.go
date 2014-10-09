@@ -236,7 +236,7 @@ func (s *DeploySuite) TestDeployShouldReturnNotFoundWhenAppDoesNotExist(c *goche
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusNotFound)
 	message := recorder.Body.String()
-	c.Assert(message, gocheck.Equals, "app not found\n")
+	c.Assert(message, gocheck.Equals, "App not found.\n")
 }
 
 func (s *DeploySuite) TestDeployWithoutVersionAndArchiveURL(c *gocheck.C) {

@@ -535,7 +535,7 @@ func (s *S) TestReserveUnitsToAddAppNotFound(c *gocheck.C) {
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, 3}})
 	c.Assert(result, gocheck.IsNil)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "app not found")
+	c.Assert(err.Error(), gocheck.Equals, "App not found.")
 }
 
 func (s *S) TestReserveUnitsToAddForwardInvalidNumber(c *gocheck.C) {
@@ -713,7 +713,7 @@ func (s *S) TestBindServiceAppNotFound(c *gocheck.C) {
 	ctx := action.FWContext{Previous: fwresult, Params: []interface{}{&app}}
 	result, err := BindService.Forward(ctx)
 	c.Assert(result, gocheck.IsNil)
-	c.Assert(err.Error(), gocheck.Equals, "app not found")
+	c.Assert(err.Error(), gocheck.Equals, "App not found.")
 }
 
 func (s *S) TestBindServiceBackward(c *gocheck.C) {
