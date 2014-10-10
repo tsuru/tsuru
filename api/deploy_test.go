@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
@@ -97,9 +96,7 @@ func (s *DeploySuite) TestDeployHandler(c *gocheck.C) {
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(string(b), gocheck.Equals, "Git deploy called\nOK\n")
+	c.Assert(recorder.Body.String(), gocheck.Equals, "Git deploy called\nOK\n")
 	c.Assert(s.provisioner.Version(&a), gocheck.Equals, "a345f3e")
 }
 
@@ -125,9 +122,7 @@ func (s *DeploySuite) TestDeployArchiveURL(c *gocheck.C) {
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(string(b), gocheck.Equals, "Archive deploy called\nOK\n")
+	c.Assert(recorder.Body.String(), gocheck.Equals, "Archive deploy called\nOK\n")
 }
 
 func (s *DeploySuite) TestDeployUploadFile(c *gocheck.C) {
@@ -158,9 +153,7 @@ func (s *DeploySuite) TestDeployUploadFile(c *gocheck.C) {
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(string(b), gocheck.Equals, "Upload deploy called\nOK\n")
+	c.Assert(recorder.Body.String(), gocheck.Equals, "Upload deploy called\nOK\n")
 }
 
 func (s *DeploySuite) TestDeployWithCommit(c *gocheck.C) {
@@ -185,9 +178,7 @@ func (s *DeploySuite) TestDeployWithCommit(c *gocheck.C) {
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(string(b), gocheck.Equals, "Git deploy called\nOK\n")
+	c.Assert(recorder.Body.String(), gocheck.Equals, "Git deploy called\nOK\n")
 	deploys, err := s.conn.Deploys().Find(bson.M{"commit": "123"}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(deploys, gocheck.Equals, 1)
@@ -312,9 +303,7 @@ func (s *DeploySuite) TestDeployList(c *gocheck.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, gocheck.IsNil)
-	err = json.Unmarshal(body, &result)
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result[0].ID, gocheck.NotNil)
 	c.Assert(result[0].App, gocheck.Equals, "g1")
@@ -364,9 +353,7 @@ func (s *DeploySuite) TestDeployListByService(c *gocheck.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, gocheck.IsNil)
-	err = json.Unmarshal(body, &result)
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result, gocheck.HasLen, 1)
 	c.Assert(result[0].App, gocheck.Equals, "g1")
@@ -400,10 +387,8 @@ func (s *DeploySuite) TestDeployListByApp(c *gocheck.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, gocheck.IsNil)
 	var result []Deploy
-	err = json.Unmarshal(body, &result)
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result, gocheck.HasLen, 1)
 	c.Assert(result[0].App, gocheck.Equals, "myblog")
@@ -452,10 +437,8 @@ func (s *DeploySuite) TestDeployListByAppAndService(c *gocheck.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, gocheck.IsNil)
 	var result []Deploy
-	err = json.Unmarshal(body, &result)
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result, gocheck.HasLen, 0)
 }
@@ -495,9 +478,7 @@ func (s *DeploySuite) TestDeployInfoByAdminUser(c *gocheck.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, gocheck.IsNil)
-	err = json.Unmarshal(body, &result)
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, gocheck.IsNil)
 	expected_deploy := map[string]interface{}{
 		"Id":        lastDeployId,
