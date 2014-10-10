@@ -283,6 +283,22 @@ func (s *DeploySuite) TestDeployWithVersionAndArchiveURL(c *gocheck.C) {
 }
 
 func (s *DeploySuite) TestDeployList(c *gocheck.C) {
+	a := app.App{
+		Name:     "g1",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	a = app.App{
+		Name:     "ge",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+	}
+	err = s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	var result []Deploy
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
@@ -315,6 +331,14 @@ func (s *DeploySuite) TestDeployList(c *gocheck.C) {
 }
 
 func (s *DeploySuite) TestDeployListByService(c *gocheck.C) {
+	a := app.App{
+		Name:     "g1",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	var result []Deploy
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
@@ -444,7 +468,15 @@ func (s *DeploySuite) TestDeployListByAppAndService(c *gocheck.C) {
 	c.Assert(result, gocheck.HasLen, 0)
 }
 
-func (s *DeploySuite) TestDeployInfo(c *gocheck.C) {
+func (s *DeploySuite) TestDeployInfoByAdminUser(c *gocheck.C) {
+	a := app.App{
+		Name:     "g1",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	var result map[string]interface{}
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
@@ -488,4 +520,106 @@ func (s *DeploySuite) TestDeployInfo(c *gocheck.C) {
 		"Diff":      expected,
 	}
 	c.Assert(result, gocheck.DeepEquals, expected_deploy)
+}
+
+func (s *DeploySuite) TestDeployInfoByNonAdminUser(c *gocheck.C) {
+	a := app.App{
+		Name:     "g1",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	user := &auth.User{Email: "user@user.com", Password: "123456"}
+	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
+	app.AuthScheme = nativeScheme
+	_, err = nativeScheme.Create(user)
+	c.Assert(err, gocheck.IsNil)
+	defer user.Delete()
+	team := &auth.Team{Name: "team", Users: []string{user.Email}}
+	err = s.conn.Teams().Insert(team)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Teams().Remove(team)
+	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	timestamp := time.Now()
+	duration := time.Duration(10e9)
+	previousDeploy := Deploy{App: "g1", Timestamp: timestamp.Add(-3600 * time.Second), Duration: duration, Commit: "e293e3e3me03ejm3puejmp3ej3iejop32", Error: ""}
+	err = s.conn.Deploys().Insert(previousDeploy)
+	c.Assert(err, gocheck.IsNil)
+	lastDeploy := Deploy{App: "g1", Timestamp: timestamp, Duration: duration, Commit: "e82nn93nd93mm12o2ueh83dhbd3iu112", Error: ""}
+	err = s.conn.Deploys().Insert(lastDeploy)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Deploys().RemoveAll(nil)
+	expected := "test_diff"
+	h := testHandler{content: expected}
+	ts := testing.StartGandalfTestServer(&h)
+	defer ts.Close()
+	var d map[string]interface{}
+	err = s.conn.Deploys().Find(bson.M{"commit": lastDeploy.Commit}).One(&d)
+	c.Assert(err, gocheck.IsNil)
+	lastDeployId := d["_id"].(bson.ObjectId).Hex()
+	url := fmt.Sprintf("/deploys/%s", lastDeployId)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusNotFound)
+	body := recorder.Body.String()
+	c.Assert(body, gocheck.Equals, "Deploy not found.\n")
+}
+
+func (s *DeploySuite) TestDeployInfoByNonAuthenticated(c *gocheck.C) {
+	recorder := httptest.NewRecorder()
+	url := fmt.Sprintf("/deploys/xpto")
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, gocheck.IsNil)
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusUnauthorized)
+}
+
+func (s *DeploySuite) TestDeployInfoByUserWithoutAccess(c *gocheck.C) {
+	user := &auth.User{Email: "user@user.com", Password: "123456"}
+	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
+	app.AuthScheme = nativeScheme
+	_, err := nativeScheme.Create(user)
+	c.Assert(err, gocheck.IsNil)
+	defer user.Delete()
+	team := &auth.Team{Name: "team", Users: []string{user.Email}}
+	err = s.conn.Teams().Insert(team)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Teams().Remove(team)
+	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	timestamp := time.Now()
+	duration := time.Duration(10e9)
+	previousDeploy := Deploy{App: "g1", Timestamp: timestamp.Add(-3600 * time.Second), Duration: duration, Commit: "e293e3e3me03ejm3puejmp3ej3iejop32", Error: ""}
+	err = s.conn.Deploys().Insert(previousDeploy)
+	c.Assert(err, gocheck.IsNil)
+	lastDeploy := Deploy{App: "g1", Timestamp: timestamp, Duration: duration, Commit: "e82nn93nd93mm12o2ueh83dhbd3iu112", Error: ""}
+	err = s.conn.Deploys().Insert(lastDeploy)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Deploys().RemoveAll(nil)
+	expected := "test_diff"
+	h := testHandler{content: expected}
+	ts := testing.StartGandalfTestServer(&h)
+	defer ts.Close()
+	var d map[string]interface{}
+	err = s.conn.Deploys().Find(bson.M{"commit": lastDeploy.Commit}).One(&d)
+	c.Assert(err, gocheck.IsNil)
+	lastDeployId := d["_id"].(bson.ObjectId).Hex()
+	url := fmt.Sprintf("/deploys/%s", lastDeployId)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusNotFound)
+	body := recorder.Body.String()
+	c.Assert(body, gocheck.Equals, "Deploy not found.\n")
 }

@@ -5,6 +5,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -42,42 +43,76 @@ func ListDeploys(app *App, s *service.Service, u *auth.User) ([]deploy, error) {
 	return listDeploys(app, s, u)
 }
 
+func userHasPermission(u *auth.User, appName string) bool {
+	appsByUser, err := List(u)
+	if err != nil {
+		return false
+	}
+	for _, app := range appsByUser {
+		if app.Name == appName {
+			return true
+		}
+	}
+	return false
+}
+
 func listDeploys(app *App, s *service.Service, u *auth.User) ([]deploy, error) {
-	var list []deploy
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	var qr bson.M
+	appsByName := map[string]struct{}{}
 	if app != nil {
-		qr = bson.M{"app": app.Name}
+		appsByName[app.Name] = struct{}{}
 	}
+	appsByUser := map[string]struct{}{}
+	if u != nil {
+		appsList, _ := List(u)
+		for _, a := range appsList {
+			appsByUser[a.Name] = struct{}{}
+		}
+	}
+	appsByService := map[string]struct{}{}
 	if s != nil {
 		var instances []service.ServiceInstance
 		q := bson.M{"service_name": s.Name}
-		if app != nil {
-			q["apps"] = app.Name
-		}
-		err = conn.ServiceInstances().Find(q).All(&instances)
-		if err != nil {
-			return nil, err
-		}
-		var appNames []string
+		conn.ServiceInstances().Find(q).All(&instances)
 		for _, instance := range instances {
-			for _, apps := range instance.Apps {
-				appNames = append(appNames, apps)
+			for _, app := range instance.Apps {
+				appsByService[app] = struct{}{}
 			}
 		}
-		qr = bson.M{"app": bson.M{"$in": appNames}}
 	}
-	if err := conn.Deploys().Find(qr).Sort("-timestamp").All(&list); err != nil {
+	appsIntersection := intersection(intersection(appsByName, appsByUser), appsByService)
+	apps := []string{}
+	for key := range appsIntersection {
+		apps = append(apps, key)
+	}
+	var list []deploy
+	if err := conn.Deploys().Find(bson.M{"app": bson.M{"$in": apps}}).Sort("-timestamp").All(&list); err != nil {
 		return nil, err
 	}
 	return list, err
 }
 
-func GetDeploy(id string) (*deploy, error) {
+func intersection(collection1, collection2 map[string]struct{}) map[string]struct{} {
+	if len(collection1) == 0 {
+		return collection2
+	}
+	if len(collection2) == 0 {
+		return collection1
+	}
+	apps := map[string]struct{}{}
+	for key, value := range collection1 {
+		if _, in := collection2[key]; in {
+			apps[key] = value
+		}
+	}
+	return apps
+}
+
+func GetDeploy(id string, u *auth.User) (*deploy, error) {
 	var dep deploy
 	conn, err := db.Conn()
 	if err != nil {
@@ -87,7 +122,10 @@ func GetDeploy(id string) (*deploy, error) {
 	if err := conn.Deploys().FindId(bson.ObjectIdHex(id)).One(&dep); err != nil {
 		return nil, err
 	}
-	return &dep, nil
+	if userHasPermission(u, dep.App) {
+		return &dep, nil
+	}
+	return nil, errors.New("Deploy not found.")
 }
 
 func GetDiffInDeploys(d *deploy) (string, error) {

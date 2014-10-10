@@ -98,8 +98,12 @@ func deploysList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func deployInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
 	depId := r.URL.Query().Get(":deploy")
-	deploy, err := app.GetDeploy(depId)
+	deploy, err := app.GetDeploy(depId, u)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
