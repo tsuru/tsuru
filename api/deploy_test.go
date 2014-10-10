@@ -71,10 +71,8 @@ func (s *DeploySuite) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *DeploySuite) TearDownSuite(c *gocheck.C) {
-	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Close()
-	conn.Apps().Database.DropDatabase()
+	defer s.conn.Close()
+	s.conn.Apps().Database.DropDatabase()
 }
 
 func (s *DeploySuite) TestDeployHandler(c *gocheck.C) {
@@ -300,9 +298,6 @@ func (s *DeploySuite) TestDeployList(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	var result []Deploy
-	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Close()
 	request, err := http.NewRequest("GET", "/deploys", nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
@@ -340,9 +335,6 @@ func (s *DeploySuite) TestDeployListByService(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	var result []Deploy
-	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Close()
 	srv := service.Service{Name: "redis", Teams: []string{s.team.Name}}
 	err = srv.Create()
 	c.Assert(err, gocheck.IsNil)
@@ -478,9 +470,6 @@ func (s *DeploySuite) TestDeployInfoByAdminUser(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	var result map[string]interface{}
-	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Close()
 	recorder := httptest.NewRecorder()
 	timestamp := time.Now()
 	duration := time.Duration(10e9)
