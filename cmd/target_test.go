@@ -57,6 +57,19 @@ func (s *S) TestReadTarget(c *gocheck.C) {
 	c.Assert(target, gocheck.Equals, "http://tsuru.google.com")
 }
 
+func (s *S) TestReadTargetEnvironmentVariable(c *gocheck.C) {
+	rfs := &testing.RecordingFs{FileContent: "http://tsuru.google.com"}
+	fsystem = rfs
+	defer func() {
+		fsystem = nil
+	}()
+	os.Setenv("TSURU_TARGET", "https://tsuru.google.com")
+	defer os.Setenv("TSURU_TARGET", "")
+	target, err := ReadTarget()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(target, gocheck.Equals, "https://tsuru.google.com")
+}
+
 func (s *S) TestReadTargetReturnsEmptyStringIfTheFileDoesNotExist(c *gocheck.C) {
 	fsystem = &testing.FileNotFoundFs{}
 	defer func() {

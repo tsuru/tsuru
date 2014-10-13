@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -87,6 +88,9 @@ func (t *targetSlice) String() string {
 }
 
 func ReadTarget() (string, error) {
+	if target := os.Getenv("TSURU_TARGET"); target != "" {
+		return target, nil
+	}
 	targetPath := JoinWithUserDir(".tsuru_target")
 	if f, err := filesystem().Open(targetPath); err == nil {
 		defer f.Close()
