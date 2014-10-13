@@ -36,6 +36,9 @@ Bug fixes
 
 - docker-pool-teams-add: fix to don't allow duplicate teams in a pool (issue `#926
   <https://github.com/tsuru/tsuru/issues/926>`_).
+- platform-remove: fix bug in the API that prevented the platform from being
+  removed from the database (issue `#936
+  <https://github.com/tsuru/tsuru/issues/936>`).
 
 Other improvements in tsr 0.8.0
 ===============================
