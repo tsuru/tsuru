@@ -879,3 +879,49 @@ Example:
 		"Expires": 1000,
 		"AppName": "appname",
 	}
+
+1.10 Deploy
+-----------
+
+Deploy list
+***********
+
+    * Method: GET
+    * URI: /deploys?app=appname&service=servicename
+    * Format: json
+
+Returns 200 in case of success, and json in the body of the response containing the deploy list.
+
+Where:
+
+* `app` is a `app` name.
+* `service` is a `service` name.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    GET /deploys HTTP/1.1
+    [{"Ip":"10.10.10.10","Name":"app1","Units":[{"Name":"app1/0","State":"started"}]}]
+    [{"ID":"543c20a09e7aea60156191c0","App":"myapp","Timestamp":"2013-11-01T00:01:00-02:00","Duration":29955456221322857,"Commit":"","Error":""},{"ID":"543c20a09e7aea60156191c1","App":"yourapp","Timestamp":"2013-11-01T00:00:01-02:00","Duration":29955456221322857,"Commit":"","Error":""}]
+
+Get info about a deploy
+***********************
+
+    * Method: GET
+    * Format: json
+    * URI: /deploys/:deployid
+
+Returns 200 in case of success. Returns 404 if deploy is not found.
+
+
+Example:
+
+.. highlight: bash
+
+::
+
+    GET /deploys/12345
+    {"App":"myapp","Commit":"e82nn93nd93mm12o2ueh83dhbd3iu112","Diff":"test_diff","Duration":10000000000,"Error":"","Id":"543c201d9e7aea6015618e9d","Timestamp":"2014-10-13T15:55:25-03:00"}
