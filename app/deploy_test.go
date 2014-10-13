@@ -154,6 +154,47 @@ func (s *S) TestListAllDeploys(c *gocheck.C) {
 	c.Assert(deploys, gocheck.DeepEquals, expected)
 }
 
+func (s *S) TestListDeployByAppAndUser(c *gocheck.C) {
+	user := &auth.User{Email: "user@user.com", Password: "123456"}
+	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
+	AuthScheme = nativeScheme
+	_, err := nativeScheme.Create(user)
+	c.Assert(err, gocheck.IsNil)
+	defer user.Delete()
+	team := &auth.Team{Name: "team", Users: []string{user.Email}}
+	err = s.conn.Teams().Insert(team)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Teams().Remove(team)
+	a := App{
+		Name:     "g1",
+		Platform: "zend",
+		Teams:    []string{team.Name},
+	}
+	err = s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	a = App{
+		Name:     "ge",
+		Platform: "zend",
+		Teams:    []string{team.Name},
+	}
+	err = s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.conn.Deploys().RemoveAll(nil)
+	insert := []interface{}{
+		deploy{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
+		deploy{App: "ge", Timestamp: time.Now()},
+	}
+	s.conn.Deploys().Insert(insert...)
+	defer s.conn.Deploys().RemoveAll(nil)
+	expected := []deploy{insert[1].(deploy)}
+	deploys, err := ListDeploys(&a, nil, user)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(expected[0].App, gocheck.DeepEquals, deploys[0].App)
+	c.Assert(len(expected), gocheck.Equals, len(deploys))
+}
+
 func (s *S) TestGetDeploy(c *gocheck.C) {
 	user := &auth.User{Email: "user@user.com", Password: "123456"}
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
@@ -187,6 +228,30 @@ func (s *S) TestGetDeploy(c *gocheck.C) {
 	c.Assert(lastDeploy.ID, gocheck.Equals, newDeploy.ID)
 	c.Assert(lastDeploy.App, gocheck.Equals, newDeploy.App)
 	c.Assert(lastDeploy.Timestamp, gocheck.Equals, newDeploy.Timestamp)
+}
+
+func (s *S) TestGetDeployWithoutAccess(c *gocheck.C) {
+	user := &auth.User{Email: "user@user.com", Password: "123456"}
+	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
+	AuthScheme = nativeScheme
+	_, err := nativeScheme.Create(user)
+	c.Assert(err, gocheck.IsNil)
+	defer user.Delete()
+	a := App{
+		Name:     "g1",
+		Platform: "zend",
+	}
+	err = s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.conn.Deploys().RemoveAll(nil)
+	newDeploy := deploy{ID: bson.NewObjectId(), App: "g1", Timestamp: time.Now()}
+	err = s.conn.Deploys().Insert(&newDeploy)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Deploys().Remove(bson.M{"name": newDeploy.App})
+	result, err := GetDeploy(newDeploy.ID.Hex(), user)
+	c.Assert(err.Error(), gocheck.Equals, "Deploy not found.")
+	c.Assert(result, gocheck.IsNil)
 }
 
 func (s *S) TestGetDeployNotFound(c *gocheck.C) {
@@ -402,4 +467,49 @@ func (s *S) TestDeployAppSaveDeployErrorData(c *gocheck.C) {
 	s.conn.Deploys().Find(bson.M{"app": a.Name}).One(&result)
 	c.Assert(result["app"], gocheck.Equals, a.Name)
 	c.Assert(result["error"], gocheck.NotNil)
+}
+
+func (s *S) TestUserHasPermission(c *gocheck.C) {
+	user := &auth.User{Email: "user@user.com", Password: "123456"}
+	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
+	AuthScheme = nativeScheme
+	_, err := nativeScheme.Create(user)
+	c.Assert(err, gocheck.IsNil)
+	defer user.Delete()
+	team := &auth.Team{Name: "team", Users: []string{user.Email}}
+	err = s.conn.Teams().Insert(team)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Teams().Remove(team)
+	a := App{
+		Name:     "g1",
+		Platform: "zend",
+		Teams:    []string{team.Name},
+	}
+	err = s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	hasPermission := userHasPermission(user, a.Name)
+	c.Assert(hasPermission, gocheck.Equals, true)
+}
+
+func (s *S) TestUserHasNoPermission(c *gocheck.C) {
+	user := &auth.User{Email: "user@user.com", Password: "123456"}
+	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
+	AuthScheme = nativeScheme
+	_, err := nativeScheme.Create(user)
+	c.Assert(err, gocheck.IsNil)
+	defer user.Delete()
+	team := &auth.Team{Name: "team", Users: []string{user.Email}}
+	err = s.conn.Teams().Insert(team)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Teams().Remove(team)
+	a := App{
+		Name:     "g1",
+		Platform: "zend",
+	}
+	err = s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	hasPermission := userHasPermission(user, a.Name)
+	c.Assert(hasPermission, gocheck.Equals, false)
 }
