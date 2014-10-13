@@ -134,17 +134,45 @@ func (c *removeNodeFromSchedulerCmd) Flags() *gnuflag.FlagSet {
 	return c.fs
 }
 
-type listNodesInTheSchedulerCmd struct{}
+type listNodesInTheSchedulerCmd struct {
+	fs     *gnuflag.FlagSet
+	filter filterList
+}
 
-func (listNodesInTheSchedulerCmd) Info() *cmd.Info {
+func (c *listNodesInTheSchedulerCmd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "docker-node-list",
-		Usage: "docker-node-list",
+		Usage: "docker-node-list [--filter/-f <metadata>=<value>]...",
 		Desc:  "List available nodes in the cluster",
 	}
 }
 
-func (listNodesInTheSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
+type filterList map[string]string
+
+func (s *filterList) String() string {
+	return fmt.Sprintf("%#v", s)
+}
+
+func (s *filterList) Set(val string) error {
+	parts := strings.SplitN(val, "=", 2)
+	if *s == nil {
+		*s = map[string]string{}
+	}
+	(*s)[parts[0]] = parts[1]
+	return nil
+}
+
+func (c *listNodesInTheSchedulerCmd) Flags() *gnuflag.FlagSet {
+	if c.fs == nil {
+		c.fs = gnuflag.NewFlagSet("with-flags", gnuflag.ContinueOnError)
+		filter := "Filter by metadata value"
+		c.fs.Var(&c.filter, "filter", filter)
+		c.fs.Var(&c.filter, "f", filter)
+	}
+	return c.fs
+}
+
+func (c *listNodesInTheSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
 	url, err := cmd.GetURL("/docker/node")
 	if err != nil {
 		return err
@@ -181,8 +209,22 @@ func (listNodesInTheSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) erro
 		status := node["Status"].(string)
 		result := []string{}
 		metadataField, _ := node["Metadata"]
+		if c.filter != nil && metadataField == nil {
+			continue
+		}
 		if metadataField != nil {
 			metadata := metadataField.(map[string]interface{})
+			valid := true
+			for key, value := range c.filter {
+				metaVal, _ := metadata[key]
+				if metaVal != value {
+					valid = false
+					break
+				}
+			}
+			if !valid {
+				continue
+			}
 			for key, value := range metadata {
 				result = append(result, fmt.Sprintf("%s=%s", key, value.(string)))
 			}

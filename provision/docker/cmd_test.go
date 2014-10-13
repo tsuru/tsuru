@@ -155,7 +155,7 @@ func (s *S) TestRemoveNodeFromTheSchedulerWithDestroyCmdRunConfirmation(c *goche
 func (s *S) TestListNodesInTheSchedulerCmdInfo(c *gocheck.C) {
 	expected := cmd.Info{
 		Name:  "docker-node-list",
-		Usage: "docker-node-list",
+		Usage: "docker-node-list [--filter/-f <metadata>=<value>]...",
 		Desc:  "List available nodes in the cluster",
 	}
 	cmd := listNodesInTheSchedulerCmd{}
@@ -179,7 +179,7 @@ func (s *S) TestListNodesInTheSchedulerCmdRun(c *gocheck.C) {
 	}
 	manager := cmd.Manager{}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
-	err := listNodesInTheSchedulerCmd{}.Run(&context, client)
+	err := (&listNodesInTheSchedulerCmd{}).Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	expected := `+------------------------+---------+----------+-----------+
 | Address                | IaaS ID | Status   | Metadata  |
@@ -188,6 +188,37 @@ func (s *S) TestListNodesInTheSchedulerCmdRun(c *gocheck.C) {
 |                        |         |          | meta2=bar |
 +------------------------+---------+----------+-----------+
 | http://localhost2:9090 | m-id-1  | ready    |           |
++------------------------+---------+----------+-----------+
+`
+	c.Assert(buf.String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestListNodesInTheSchedulerCmdRunWithFilters(c *gocheck.C) {
+	var buf bytes.Buffer
+	context := cmd.Context{Stdout: &buf}
+	trans := &testing.ConditionalTransport{
+		Transport: testing.Transport{Message: `{
+	"machines": [{"Id": "m-id-1", "Address": "localhost2"}],
+	"nodes": [
+		{"Address": "http://localhost1:8080", "Status": "disabled", "Metadata": {"meta1": "foo", "meta2": "bar"}},
+		{"Address": "http://localhost2:9090", "Status": "disabled", "Metadata": {"meta1": "foo"}}
+	]
+}`, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Path == "/docker/node"
+		},
+	}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
+	cmd := listNodesInTheSchedulerCmd{}
+	cmd.Flags().Parse(true, []string{"--filter", "meta1=foo", "-f", "meta2=bar"})
+	err := cmd.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	expected := `+------------------------+---------+----------+-----------+
+| Address                | IaaS ID | Status   | Metadata  |
++------------------------+---------+----------+-----------+
+| http://localhost1:8080 |         | disabled | meta1=foo |
+|                        |         |          | meta2=bar |
 +------------------------+---------+----------+-----------+
 `
 	c.Assert(buf.String(), gocheck.Equals, expected)
@@ -204,7 +235,7 @@ func (s *S) TestListNodesInTheSchedulerCmdRunEmptyAll(c *gocheck.C) {
 	}
 	manager := cmd.Manager{}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
-	err := listNodesInTheSchedulerCmd{}.Run(&context, client)
+	err := (&listNodesInTheSchedulerCmd{}).Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
 	expected := `+---------+---------+--------+----------+
 | Address | IaaS ID | Status | Metadata |

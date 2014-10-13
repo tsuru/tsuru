@@ -455,7 +455,7 @@ func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 		&rebalanceContainersCmd{},
 		&addNodeToSchedulerCmd{},
 		&removeNodeFromSchedulerCmd{},
-		listNodesInTheSchedulerCmd{},
+		&listNodesInTheSchedulerCmd{},
 		addPoolToSchedulerCmd{},
 		&removePoolFromSchedulerCmd{},
 		listPoolsInTheSchedulerCmd{},
