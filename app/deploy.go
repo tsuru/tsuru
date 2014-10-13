@@ -62,29 +62,25 @@ func listDeploys(app *App, s *service.Service, u *auth.User) ([]deploy, error) {
 		return nil, err
 	}
 	defer conn.Close()
-	appsByName := map[string]struct{}{}
+	appsByName := set{}
 	if app != nil {
-		appsByName[app.Name] = struct{}{}
+		appsByName.Add(app.Name)
 	}
-	appsByUser := map[string]struct{}{}
+	appsByUser := set{}
 	if u != nil {
 		appsList, _ := List(u)
 		for _, a := range appsList {
-			appsByUser[a.Name] = struct{}{}
+			appsByUser.Add(a.Name)
 		}
 	}
-	appsByService := map[string]struct{}{}
+	appsByService := set{}
 	if s != nil {
-		var instances []service.ServiceInstance
-		q := bson.M{"service_name": s.Name}
-		conn.ServiceInstances().Find(q).All(&instances)
-		for _, instance := range instances {
-			for _, app := range instance.Apps {
-				appsByService[app] = struct{}{}
-			}
+		appList := listAppsByService(s.Name)
+		for _, a := range appList {
+			appsByService.Add(a)
 		}
 	}
-	appsIntersection := intersection(intersection(appsByName, appsByUser), appsByService)
+	appsIntersection := appsByService.Intersection(appsByUser.Intersection(appsByName))
 	apps := []string{}
 	for key := range appsIntersection {
 		apps = append(apps, key)
@@ -96,17 +92,19 @@ func listDeploys(app *App, s *service.Service, u *auth.User) ([]deploy, error) {
 	return list, err
 }
 
-func intersection(collection1, collection2 map[string]struct{}) map[string]struct{} {
-	if len(collection1) == 0 {
-		return collection2
+func listAppsByService(serviceName string) []string {
+	var apps []string
+	var instances []service.ServiceInstance
+	q := bson.M{"service_name": serviceName}
+	conn, err := db.Conn()
+	if err != nil {
+		return nil
 	}
-	if len(collection2) == 0 {
-		return collection1
-	}
-	apps := map[string]struct{}{}
-	for key, value := range collection1 {
-		if _, in := collection2[key]; in {
-			apps[key] = value
+	defer conn.Close()
+	conn.ServiceInstances().Find(q).All(&instances)
+	for _, instance := range instances {
+		for _, app := range instance.Apps {
+			apps = append(apps, app)
 		}
 	}
 	return apps
