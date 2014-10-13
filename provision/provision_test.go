@@ -107,7 +107,7 @@ func (ProvisionSuite) TestUnitAvailable(c *gocheck.C) {
 		{StatusUnreachable, true},
 		{StatusBuilding, false},
 		{StatusDown, false},
-		{StatusError, false},
+		{StatusError, true},
 	}
 	for _, test := range tests {
 		u := Unit{Status: test.input}

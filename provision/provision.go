@@ -90,11 +90,14 @@ func (u *Unit) GetIp() string {
 	return u.Ip
 }
 
-// Available returns true if the unit status is started or unreachable.
+// Available returns true if the unit is available. It will return true
+// whenever the unit itself is available, even when the application process is
+// not.
 func (u *Unit) Available() bool {
 	return u.Status == StatusStarted ||
 		u.Status == StatusUnreachable ||
-		u.Status == StatusStarting
+		u.Status == StatusStarting ||
+		u.Status == StatusError
 }
 
 // Named is something that has a name, providing the GetName method.
