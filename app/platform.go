@@ -10,6 +10,7 @@ import (
 	"io"
 
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -128,7 +129,11 @@ func PlatformRemove(name string) error {
 	if apps > 0 {
 		return errors.New("Platform has apps. You should remove them before remove the platform.")
 	}
-	return provisioner.PlatformRemove(name)
+	err = provisioner.PlatformRemove(name)
+	if err != nil {
+		log.Errorf("Failed to remove platform from provisioner: %s", err)
+	}
+	return conn.Platforms().Remove(bson.M{"_id": name})
 }
 
 func getPlatform(name string) (*Platform, error) {

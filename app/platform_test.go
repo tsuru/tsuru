@@ -254,6 +254,9 @@ func (s *PlatformSuite) TestPlatformRemove(c *gocheck.C) {
 	defer conn.Platforms().Remove(bson.M{"_id": name})
 	err = PlatformRemove(name)
 	c.Assert(err, gocheck.IsNil)
+	count, err := conn.Platforms().Find(bson.M{"_id": name}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 0)
 	err = PlatformRemove("")
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Platform name is required!")
@@ -286,4 +289,31 @@ func (s *PlatformSuite) TestPlatformWithAppsCantBeRemoved(c *gocheck.C) {
 	defer conn.Apps().Remove(bson.M{"_id": appName})
 	err = PlatformRemove(name)
 	c.Assert(err, gocheck.NotNil)
+}
+
+func (s *PlatformSuite) TestPlatformRemoveAlwaysRemoveFromDB(c *gocheck.C) {
+	provisioner := testing.ExtensibleFakeProvisioner{
+		FakeProvisioner: testing.NewFakeProvisioner(),
+	}
+	Provisioner = &provisioner
+	defer func() {
+		Provisioner = s.provisioner
+	}()
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	err = PlatformRemove("platform_dont_exists")
+	c.Assert(err, gocheck.NotNil)
+	name := "test_platform_update"
+	args := make(map[string]string)
+	args["dockerfile"] = "http://localhost/Dockerfile"
+	err = PlatformAdd(name, nil, nil)
+	c.Assert(err, gocheck.IsNil)
+	provisioner.PlatformRemove(name)
+	defer conn.Platforms().Remove(bson.M{"_id": name})
+	err = PlatformRemove(name)
+	c.Assert(err, gocheck.IsNil)
+	count, err := conn.Platforms().Find(bson.M{"_id": name}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 0)
 }
