@@ -694,7 +694,7 @@ func (s *S) TestUrlToHost(c *gocheck.C) {
 	}{
 		{"http://localhost:8081", "localhost"},
 		{"http://localhost:3234", "localhost"},
-		{"http://10.10.10.10:4243", "10.10.10.10"},
+		{"http://10.10.10.10:2375", "10.10.10.10"},
 		{"", ""},
 	}
 	for _, t := range tests {
@@ -709,7 +709,7 @@ func (a NodeList) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a NodeList) Less(i, j int) bool { return a[i].Address < a[j].Address }
 
 func (s *S) TestDockerCluster(c *gocheck.C) {
-	config.Set("docker:servers", []string{"http://localhost:4243", "http://10.10.10.10:4243"})
+	config.Set("docker:servers", []string{"http://localhost:2375", "http://10.10.10.10:2375"})
 	defer config.Unset("docker:servers")
 	nodes, err := dCluster.Nodes()
 	c.Assert(err, gocheck.IsNil)
@@ -731,8 +731,8 @@ func (s *S) TestDockerCluster(c *gocheck.C) {
 	sortedNodes := NodeList(currentNodes)
 	sort.Sort(sortedNodes)
 	c.Assert(sortedNodes, gocheck.DeepEquals, NodeList([]cluster.Node{
-		{Address: "http://10.10.10.10:4243", Metadata: map[string]string{}},
-		{Address: "http://localhost:4243", Metadata: map[string]string{}},
+		{Address: "http://10.10.10.10:2375", Metadata: map[string]string{}},
+		{Address: "http://localhost:2375", Metadata: map[string]string{}},
 	}))
 }
 
@@ -758,12 +758,12 @@ func (s *S) TestDockerClusterSegregated(c *gocheck.C) {
 }
 
 func (s *S) TestGetDockerServersShouldSearchFromConfig(c *gocheck.C) {
-	config.Set("docker:servers", []string{"http://server01.com:4243", "http://server02.com:4243"})
+	config.Set("docker:servers", []string{"http://server01.com:2375", "http://server02.com:2375"})
 	defer config.Unset("docker:servers")
 	servers := getDockerServers()
 	expected := []cluster.Node{
-		{Address: "http://server01.com:4243"},
-		{Address: "http://server02.com:4243"},
+		{Address: "http://server01.com:2375"},
+		{Address: "http://server02.com:2375"},
 	}
 	c.Assert(servers, gocheck.DeepEquals, expected)
 }

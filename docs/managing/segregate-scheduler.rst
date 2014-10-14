@@ -94,7 +94,7 @@ nodes with the pool metadata:
 
 ::
 
-    $ tsuru-admin docker-node-add --register address=http://localhost:4243 pool=pool1
+    $ tsuru-admin docker-node-add --register address=http://localhost:2375 pool=pool1
 
 
 Removing a pool

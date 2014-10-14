@@ -35,7 +35,7 @@ Assuming you're using EC2, this will be something like:
   iaas:
     default: ec2
     node-protocol: http
-    node-port: 4243
+    node-port: 2375
     ec2:
       key-id: xxxxxxxxxxx
       secret-key: yyyyyyyyyyyyy
@@ -76,7 +76,7 @@ After registering your node, you can list it calling
     +-------------------------------------------------------+------------+---------+----------------------------+
     | Address                                               | IaaS ID    | Status  | Metadata                   |
     +-------------------------------------------------------+------------+---------+----------------------------+
-    | http://ec2-xxxxxxxxxxxxx.compute-1.amazonaws.com:4243 | i-xxxxxxxx | waiting | iaas=ec2                   |
+    | http://ec2-xxxxxxxxxxxxx.compute-1.amazonaws.com:2375 | i-xxxxxxxx | waiting | iaas=ec2                   |
     |                                                       |            |         | image=ami-dc5387b4         |
     |                                                       |            |         | keyName=my-key             |
     |                                                       |            |         | region=us-east-1           |
@@ -100,6 +100,6 @@ about how to install docker on your node, please refer to `Docker documentation
 
 ::
 
-    $ tsuru-admin docker-node-add --register address=http://node.address.com:4243
+    $ tsuru-admin docker-node-add --register address=http://node.address.com:2375
 
 
