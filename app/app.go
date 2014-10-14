@@ -210,7 +210,7 @@ func CreateApp(app *App, user *auth.User) error {
 	if err != nil {
 		return err
 	}
-	app.setTeams(teams)
+	app.Teams = []string{app.TeamOwner}
 	app.Owner = user.Email
 	err = app.validate()
 	if err != nil {
@@ -478,14 +478,6 @@ func (app *App) GetTeams() []auth.Team {
 	defer conn.Close()
 	conn.Teams().Find(bson.M{"_id": bson.M{"$in": app.Teams}}).All(&teams)
 	return teams
-}
-
-func (app *App) setTeams(teams []auth.Team) {
-	app.Teams = make([]string, len(teams))
-	for i, team := range teams {
-		app.Teams[i] = team.Name
-	}
-	sort.Strings(app.Teams)
 }
 
 // SetTeamOwner sets the TeamOwner value.

@@ -1396,18 +1396,6 @@ func (s *S) TestGetTeams(c *gocheck.C) {
 	c.Assert(teams[0].Name, gocheck.Equals, s.team.Name)
 }
 
-func (s *S) TestSetTeams(c *gocheck.C) {
-	app := App{Name: "app"}
-	app.setTeams([]auth.Team{s.team})
-	c.Assert(app.Teams, gocheck.DeepEquals, []string{s.team.Name})
-}
-
-func (s *S) TestSetTeamsSortTeamNames(c *gocheck.C) {
-	app := App{Name: "app"}
-	app.setTeams([]auth.Team{s.team, {Name: "zzz"}, {Name: "aaa"}})
-	c.Assert(app.Teams, gocheck.DeepEquals, []string{"aaa", s.team.Name, "zzz"})
-}
-
 func (s *S) TestGetUnits(c *gocheck.C) {
 	app := App{Name: "app"}
 	s.provisioner.Provision(&app)
