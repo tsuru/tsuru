@@ -17,6 +17,10 @@ import (
 	"launchpad.net/gnuflag"
 )
 
+var errUndefinedTarget = errors.New(`No target defined. Please use target-add/target-set to define a target.
+
+For more details, please run "tsuru help target".`)
+
 type tsuruTarget struct {
 	label, url string
 }
@@ -98,7 +102,7 @@ func ReadTarget() (string, error) {
 			return strings.TrimSpace(string(b)), nil
 		}
 	}
-	return "", undefinedTargetError{}
+	return "", errUndefinedTarget
 }
 
 func deleteTargetFile() {
@@ -355,12 +359,4 @@ func (t *targetSet) Run(ctx *Context, client *Client) error {
 		}
 	}
 	return nil
-}
-
-type undefinedTargetError struct{}
-
-func (t undefinedTargetError) Error() string {
-	return `No target defined. Please use target-add/target-set to define a target.
-
-For more details, please run "tsuru help target".`
 }

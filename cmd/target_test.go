@@ -77,9 +77,7 @@ func (s *S) TestReadTargetReturnsEmptyStringIfTheFileDoesNotExist(c *gocheck.C) 
 	}()
 	target, err := ReadTarget()
 	c.Assert(target, gocheck.Equals, "")
-	c.Assert(err, gocheck.NotNil)
-	_, ok := err.(undefinedTargetError)
-	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(err, gocheck.Equals, errUndefinedTarget)
 }
 
 func (s *S) TestReadTargetTrimsFileContent(c *gocheck.C) {
@@ -145,9 +143,7 @@ func (s *S) TestGetURLUndefinedTarget(c *gocheck.C) {
 	}()
 	got, err := GetURL("/apps")
 	c.Assert(got, gocheck.Equals, "")
-	c.Assert(err, gocheck.NotNil)
-	_, ok := err.(undefinedTargetError)
-	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(err, gocheck.Equals, errUndefinedTarget)
 }
 
 func (s *S) TestGetURLLeadingSlashes(c *gocheck.C) {
@@ -441,14 +437,6 @@ func (s *S) TestTargetSetRunUnknowTarget(c *gocheck.C) {
 	context := &Context{[]string{"doesnotexist"}, manager.stdout, manager.stderr, manager.stdin}
 	err := targetSet.Run(context, nil)
 	c.Assert(err, gocheck.ErrorMatches, "Target not found")
-}
-
-func (s *S) TestUndefinedTarget(c *gocheck.C) {
-	expectedMsg := `No target defined. Please use target-add/target-set to define a target.
-
-For more details, please run "tsuru help target".`
-	var e error = undefinedTargetError{}
-	c.Assert(e.Error(), gocheck.Equals, expectedMsg)
 }
 
 func (s *S) TestNewTargetSlice(c *gocheck.C) {
