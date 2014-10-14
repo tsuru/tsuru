@@ -108,16 +108,6 @@ func logout(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return app.AuthScheme.Logout(t.GetValue())
 }
 
-// ChangePassword changes the password from the logged in user.
-//
-// It reads the request body in JSON format. The JSON in the request body
-// should contain two attributes:
-//
-// - old: the old password
-// - new: the new password
-//
-// This handler will return 403 if the password didn't match the user, or 400
-// if the new password is invalid.
 func changePassword(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	managed, ok := app.AuthScheme.(auth.ManagedScheme)
 	if !ok {
