@@ -21,7 +21,6 @@ import (
 
 	"code.google.com/p/go.crypto/ssh/terminal"
 	"github.com/tsuru/tsuru/cmd"
-	"github.com/tsuru/tsuru/cmd/tsuru-base"
 	"github.com/tsuru/tsuru/errors"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"launchpad.net/gnuflag"
@@ -146,7 +145,7 @@ func (c *moveContainerCmd) Run(context *cmd.Context, client *cmd.Client) error {
 }
 
 type rebalanceContainersCmd struct {
-	tsuru.ConfirmationCommand
+	cmd.ConfirmationCommand
 	fs  *gnuflag.FlagSet
 	dry bool
 }

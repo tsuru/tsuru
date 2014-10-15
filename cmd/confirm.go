@@ -2,12 +2,11 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package tsuru
+package cmd
 
 import (
 	"fmt"
 
-	"github.com/tsuru/tsuru/cmd"
 	"launchpad.net/gnuflag"
 )
 
@@ -25,7 +24,7 @@ func (cmd *ConfirmationCommand) Flags() *gnuflag.FlagSet {
 	return cmd.fs
 }
 
-func (cmd *ConfirmationCommand) Confirm(context *cmd.Context, question string) bool {
+func (cmd *ConfirmationCommand) Confirm(context *Context, question string) bool {
 	if cmd.yes {
 		return true
 	}

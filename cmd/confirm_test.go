@@ -2,24 +2,19 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package tsuru
+package cmd
 
 import (
 	"bytes"
 	"strings"
 
-	"github.com/tsuru/tsuru/cmd"
 	"launchpad.net/gocheck"
 )
 
 func (s *S) TestConfirmationConfirmFalse(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	expected := "Are you sure you wanna do it? (y/n) Abort.\n"
-	context := cmd.Context{
-		Stdout: &stdout,
-		Stderr: &stderr,
-		Stdin:  strings.NewReader("n\n"),
-	}
+	context := Context{Stdout: &stdout, Stderr: &stderr, Stdin: strings.NewReader("n\n")}
 	cmd := ConfirmationCommand{}
 	result := cmd.Confirm(&context, "Are you sure you wanna do it?")
 	c.Assert(result, gocheck.Equals, false)
@@ -29,11 +24,7 @@ func (s *S) TestConfirmationConfirmFalse(c *gocheck.C) {
 func (s *S) TestConfirmationConfirmTrue(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	expected := "Are you sure you wanna do it? (y/n) "
-	context := cmd.Context{
-		Stdout: &stdout,
-		Stderr: &stderr,
-		Stdin:  strings.NewReader("y\n"),
-	}
+	context := Context{Stdout: &stdout, Stderr: &stderr, Stdin: strings.NewReader("y\n")}
 	cmd := ConfirmationCommand{}
 	result := cmd.Confirm(&context, "Are you sure you wanna do it?")
 	c.Assert(result, gocheck.Equals, true)
@@ -42,10 +33,7 @@ func (s *S) TestConfirmationConfirmTrue(c *gocheck.C) {
 
 func (s *S) TestConfirmationConfirmWithFlagShort(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	context := cmd.Context{
-		Stdout: &stdout,
-		Stderr: &stderr,
-	}
+	context := Context{Stdout: &stdout, Stderr: &stderr}
 	cmd := ConfirmationCommand{}
 	cmd.Flags().Parse(true, []string{"-y"})
 	result := cmd.Confirm(&context, "Are you sure you wanna do it?")
@@ -55,10 +43,7 @@ func (s *S) TestConfirmationConfirmWithFlagShort(c *gocheck.C) {
 
 func (s *S) TestConfirmationConfirmWithFlagLong(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
-	context := cmd.Context{
-		Stdout: &stdout,
-		Stderr: &stderr,
-	}
+	context := Context{Stdout: &stdout, Stderr: &stderr}
 	cmd := ConfirmationCommand{}
 	cmd.Flags().Parse(true, []string{"--assume-yes"})
 	result := cmd.Confirm(&context, "Are you sure you wanna do it?")

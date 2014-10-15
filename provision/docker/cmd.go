@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/cmd"
-	"github.com/tsuru/tsuru/cmd/tsuru-base"
 	"launchpad.net/gnuflag"
 )
 
@@ -77,7 +76,7 @@ func (a *addNodeToSchedulerCmd) Flags() *gnuflag.FlagSet {
 }
 
 type removeNodeFromSchedulerCmd struct {
-	tsuru.ConfirmationCommand
+	cmd.ConfirmationCommand
 	fs      *gnuflag.FlagSet
 	destroy bool
 }
