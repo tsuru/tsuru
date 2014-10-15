@@ -241,15 +241,14 @@ func (c *teamCreate) Run(context *Context, client *Client) error {
 	return nil
 }
 
-type teamRemove struct{}
+type teamRemove struct {
+	ConfirmationCommand
+}
 
 func (c *teamRemove) Run(context *Context, client *Client) error {
 	team := context.Args[0]
-	var answer string
-	fmt.Fprintf(context.Stdout, `Are you sure you want to remove team "%s"? (y/n) `, team)
-	fmt.Fscanf(context.Stdin, "%s", &answer)
-	if answer != "y" {
-		fmt.Fprintln(context.Stdout, "Abort.")
+	question := fmt.Sprintf("Are you sure you want to remove team %q?", team)
+	if !c.Confirm(context, question) {
 		return nil
 	}
 	url, err := GetURL(fmt.Sprintf("/teams/%s", team))
