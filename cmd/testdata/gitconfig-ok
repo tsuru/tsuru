@@ -1,0 +1,13 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+	ignorecase = true
+	precomposeunicode = false
+[remote "origin"]
+	url = git@github.com:tsuru/tsuru-django-sample.git
+	fetch = +refs/heads/*:refs/remotes/origin/*
+[remote "tsuru"]
+	url = git@tsuruhost.com:gopher.git
+	fetch = +refs/heads/*:refs/remotes/tsuru/*
