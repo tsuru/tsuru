@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/iaas"
 	_ "github.com/tsuru/tsuru/iaas/cloudstack"
 	_ "github.com/tsuru/tsuru/iaas/ec2"
+	_ "github.com/tsuru/tsuru/iaas/openstack"
 	"gopkg.in/mgo.v2"
 )
 
