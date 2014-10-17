@@ -93,10 +93,38 @@ func (c *CommandWithFlags) Flags() *gnuflag.FlagSet {
 	return c.fs
 }
 
+func (s *S) TestDeprecatedCommand(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	cmd := TestCommand{}
+	manager.RegisterDeprecated(&cmd, "bar")
+	manager.stdout = &stdout
+	manager.stderr = &stderr
+	manager.Run([]string{"bar"})
+	c.Assert(stdout.String(), gocheck.Equals, "Running TestCommand")
+	warnMessage := `WARNING: "bar" has been deprecated, please use "foo" instead.` + "\n\n"
+	c.Assert(stderr.String(), gocheck.Equals, warnMessage)
+	stdout.Reset()
+	stderr.Reset()
+	manager.Run([]string{"foo"})
+	c.Assert(stdout.String(), gocheck.Equals, "Running TestCommand")
+	c.Assert(stderr.String(), gocheck.Equals, "")
+}
+
 func (s *S) TestRegister(c *gocheck.C) {
 	manager.Register(&TestCommand{})
 	badCall := func() { manager.Register(&TestCommand{}) }
 	c.Assert(badCall, gocheck.PanicMatches, "command already registered: foo")
+}
+
+func (s *S) TestRegisterDeprecated(c *gocheck.C) {
+	originalCmd := &TestCommand{}
+	manager.RegisterDeprecated(originalCmd, "bar")
+	badCall := func() { manager.Register(originalCmd) }
+	c.Assert(badCall, gocheck.PanicMatches, "command already registered: foo")
+	cmd, ok := manager.Commands["bar"].(*deprecatedCommand)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(cmd.Command, gocheck.Equals, originalCmd)
+	c.Assert(manager.Commands["foo"], gocheck.Equals, originalCmd)
 }
 
 func (s *S) TestRegisterTopic(c *gocheck.C) {

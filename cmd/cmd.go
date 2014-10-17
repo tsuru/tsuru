@@ -89,6 +89,19 @@ func (m *Manager) Register(command Command) {
 	m.Commands[name] = command
 }
 
+func (m *Manager) RegisterDeprecated(command Command, oldName string) {
+	if m.Commands == nil {
+		m.Commands = make(map[string]Command)
+	}
+	name := command.Info().Name
+	_, found := m.Commands[name]
+	if found {
+		panic(fmt.Sprintf("command already registered: %s", name))
+	}
+	m.Commands[name] = command
+	m.Commands[oldName] = &deprecatedCommand{Command: command, oldName: oldName}
+}
+
 func (m *Manager) RegisterTopic(name, content string) {
 	if m.topics == nil {
 		m.topics = make(map[string]string)
@@ -182,6 +195,16 @@ type Command interface {
 type FlaggedCommand interface {
 	Command
 	Flags() *gnuflag.FlagSet
+}
+
+type deprecatedCommand struct {
+	Command
+	oldName string
+}
+
+func (c *deprecatedCommand) Run(context *Context, client *Client) error {
+	fmt.Fprintf(context.Stderr, "WARNING: %q has been deprecated, please use %q instead.\n\n", c.oldName, c.Command.Info().Name)
+	return c.Command.Run(context, client)
 }
 
 type Context struct {
