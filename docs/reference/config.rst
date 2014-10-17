@@ -355,14 +355,20 @@ quota:apps-per-user
 users will have at most the number of apps specified by this setting. This
 setting is optional, and defaults to "unlimited".
 
-Log level
----------
+Log
+---
 
 debug
 +++++
 
 ``false`` is the default value, so you won't see any
 noises on logs, to turn it on set it to true, e.g.: ``debug: true``
+
+log:file
+++++++++
+
+Use this to specify a path to a log file.  By default tsuru logs to syslog.
+If this is set, make sure tsuru has permissions to write to this file
 
 Hipache
 -------
