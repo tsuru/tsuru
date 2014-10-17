@@ -5,13 +5,13 @@
 package cmd
 
 import (
-	"errors"
 	"io"
 	"os"
 	"os/exec"
 	"path"
 	"syscall"
 
+	"github.com/tsuru/tsuru/cmd/testing"
 	"launchpad.net/gnuflag"
 	"launchpad.net/gocheck"
 )
@@ -117,13 +117,13 @@ func (s *S) TestGuessingCommandGuesserNil(c *gocheck.C) {
 }
 
 func (s *S) TestGuessingCommandGuesserNonNil(c *gocheck.C) {
-	fake := &FakeGuesser{}
+	fake := &testing.FakeGuesser{}
 	g := GuessingCommand{G: fake}
 	c.Assert(g.guesser(), gocheck.DeepEquals, fake)
 }
 
 func (s *S) TestGuessingCommandWithFlagDefined(c *gocheck.C) {
-	fake := &FakeGuesser{name: "other-app"}
+	fake := &testing.FakeGuesser{Name: "other-app"}
 	g := GuessingCommand{G: fake}
 	g.Flags().Parse(true, []string{"--app", "myapp"})
 	name, err := g.Guess()
@@ -135,7 +135,7 @@ func (s *S) TestGuessingCommandWithFlagDefined(c *gocheck.C) {
 }
 
 func (s *S) TestGuessingCommandWithShortFlagDefined(c *gocheck.C) {
-	fake := &FakeGuesser{name: "other-app"}
+	fake := &testing.FakeGuesser{Name: "other-app"}
 	g := GuessingCommand{G: fake}
 	g.Flags().Parse(true, []string{"-a", "myapp"})
 	name, err := g.Guess()
@@ -147,7 +147,7 @@ func (s *S) TestGuessingCommandWithShortFlagDefined(c *gocheck.C) {
 }
 
 func (s *S) TestGuessingCommandWithoutFlagDefined(c *gocheck.C) {
-	fake := &FakeGuesser{name: "other-app"}
+	fake := &testing.FakeGuesser{Name: "other-app"}
 	g := GuessingCommand{G: fake}
 	name, err := g.Guess()
 	c.Assert(err, gocheck.IsNil)
@@ -158,7 +158,7 @@ func (s *S) TestGuessingCommandWithoutFlagDefined(c *gocheck.C) {
 }
 
 func (s *S) TestGuessingCommandFailToGuess(c *gocheck.C) {
-	fake := &FailingFakeGuesser{}
+	fake := &testing.FailingFakeGuesser{}
 	g := GuessingCommand{G: fake}
 	name, err := g.Guess()
 	c.Assert(name, gocheck.Equals, "")
@@ -181,33 +181,4 @@ func (s *S) TestGuessingCommandFlags(c *gocheck.C) {
 		flags = append(flags, *f)
 	})
 	c.Assert(flags, gocheck.DeepEquals, expected)
-}
-
-type FakeGuesser struct {
-	guesses []string
-	name    string
-}
-
-func (f *FakeGuesser) HasGuess(path string) bool {
-	for _, g := range f.guesses {
-		if g == path {
-			return true
-		}
-	}
-	return false
-}
-
-func (f *FakeGuesser) GuessName(path string) (string, error) {
-	f.guesses = append(f.guesses, path)
-	return f.name, nil
-}
-
-type FailingFakeGuesser struct {
-	FakeGuesser
-	message string
-}
-
-func (f *FailingFakeGuesser) GuessName(path string) (string, error) {
-	f.FakeGuesser.GuessName(path)
-	return "", errors.New(f.message)
 }
