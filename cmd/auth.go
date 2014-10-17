@@ -169,10 +169,6 @@ func (c *login) Run(context *Context, client *Client) error {
 	return nativeLogin(context, client)
 }
 
-func (c *login) Name() string {
-	return "login"
-}
-
 func (c *login) Info() *Info {
 	args := 1
 	usage := "login <email>"
@@ -181,7 +177,7 @@ func (c *login) Info() *Info {
 		args = 0
 	}
 	return &Info{
-		Name:    c.Name(),
+		Name:    "login",
 		Usage:   usage,
 		Desc:    "log in with your credentials.",
 		MinArgs: args,
