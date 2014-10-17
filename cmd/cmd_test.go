@@ -354,6 +354,47 @@ Foo do anything or nothing.
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
 }
 
+func (s *S) TestHelpDeprecatedCmd(c *gocheck.C) {
+	expectedStdout := `glb version 1.0.
+
+Usage: glb foo
+
+Foo do anything or nothing.
+
+`
+	expectedStderr := `WARNING: "bar" is deprecated. Showing help for "foo" instead.` + "\n\n"
+	var stdout, stderr bytes.Buffer
+	manager.stdout = &stdout
+	manager.stderr = &stderr
+	manager.RegisterDeprecated(&TestCommand{}, "bar")
+	manager.Run([]string{"help", "bar"})
+	c.Assert(stdout.String(), gocheck.Equals, expectedStdout)
+	c.Assert(stderr.String(), gocheck.Equals, expectedStderr)
+	stdout.Reset()
+	stderr.Reset()
+	manager.Run([]string{"help", "foo"})
+	c.Assert(stdout.String(), gocheck.Equals, expectedStdout)
+	c.Assert(stderr.String(), gocheck.Equals, "")
+}
+
+func (s *S) TestHelpDeprecatedCmdWritesWarningFirst(c *gocheck.C) {
+	expected := `WARNING: "bar" is deprecated. Showing help for "foo" instead.
+
+glb version 1.0.
+
+Usage: glb foo
+
+Foo do anything or nothing.
+
+`
+	var output bytes.Buffer
+	manager.stdout = &output
+	manager.stderr = &output
+	manager.RegisterDeprecated(&TestCommand{}, "bar")
+	manager.Run([]string{"help", "bar"})
+	c.Assert(output.String(), gocheck.Equals, expected)
+}
+
 func (s *S) TestVersion(c *gocheck.C) {
 	var stdout, stderr bytes.Buffer
 	manager := NewManager("tsuru", "5.0", "", &stdout, &stderr, os.Stdin, nil)

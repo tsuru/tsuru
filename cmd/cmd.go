@@ -246,12 +246,16 @@ func (c *help) Info() *Info {
 }
 
 func (c *help) Run(context *Context, client *Client) error {
+	const deprecatedMsg = "WARNING: %q is deprecated. Showing help for %q instead.\n\n"
 	output := fmt.Sprintf("%s version %s.\n\n", c.manager.name, c.manager.version)
 	if c.manager.wrong {
 		output += fmt.Sprint("ERROR: wrong number of arguments.\n\n")
 	}
 	if len(context.Args) > 0 {
 		if cmd, ok := c.manager.Commands[context.Args[0]]; ok {
+			if deprecated, ok := cmd.(*deprecatedCommand); ok {
+				fmt.Fprintf(context.Stderr, deprecatedMsg, deprecated.oldName, cmd.Info().Name)
+			}
 			info := cmd.Info()
 			output += fmt.Sprintf("Usage: %s %s\n", c.manager.name, info.Usage)
 			output += fmt.Sprintf("\n%s\n", info.Desc)
