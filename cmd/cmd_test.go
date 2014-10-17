@@ -262,7 +262,7 @@ Available commands:
 
 Use glb help <commandname> to get more information about a command.
 `
-	manager.Register(&userCreate{})
+	manager.RegisterDeprecated(&userCreate{}, "create-user")
 	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
 	command := help{manager: manager}
 	err := command.Run(&context, nil)

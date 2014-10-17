@@ -274,8 +274,10 @@ func (c *help) Run(context *Context, client *Client) error {
 	} else {
 		output += fmt.Sprintf("Usage: %s %s\n\nAvailable commands:\n", c.manager.name, c.Info().Usage)
 		var commands []string
-		for k := range c.manager.Commands {
-			commands = append(commands, k)
+		for name, cmd := range c.manager.Commands {
+			if _, ok := cmd.(*deprecatedCommand); !ok {
+				commands = append(commands, name)
+			}
 		}
 		sort.Strings(commands)
 		for _, command := range commands {
