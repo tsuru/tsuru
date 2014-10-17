@@ -4,3 +4,4 @@ cmd/tsr/tsr
 docs/_build
 Godeps/_workspace
 Godeps/Readme
+*.sw[a-z]
