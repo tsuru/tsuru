@@ -703,7 +703,7 @@ func (s *S) TestAdminCommands(c *gocheck.C) {
 		addTeamsToPoolCmd{},
 		removeTeamsFromPoolCmd{},
 		fixContainersCmd{},
-		sshToContainerCmd{},
+		&sshToContainerCmd{},
 		&listHealingHistoryCmd{},
 	}
 	var p dockerProvisioner

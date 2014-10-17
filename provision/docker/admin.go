@@ -7,6 +7,7 @@ package docker
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -21,7 +22,6 @@ import (
 
 	"code.google.com/p/go.crypto/ssh/terminal"
 	"github.com/tsuru/tsuru/cmd"
-	"github.com/tsuru/tsuru/errors"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"launchpad.net/gnuflag"
 )
@@ -199,18 +199,20 @@ func (c *rebalanceContainersCmd) Flags() *gnuflag.FlagSet {
 	return c.fs
 }
 
-type sshToContainerCmd struct{}
+type sshToContainerCmd struct {
+	cmd.GuessingCommand
+}
 
-func (sshToContainerCmd) Info() *cmd.Info {
+func (c *sshToContainerCmd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "ssh",
-		Usage:   "ssh <container-id>",
-		Desc:    "Open a SSH shell to the given container.",
-		MinArgs: 1,
+		Usage:   "ssh <[-a/--app <appname>]|[container-id]>",
+		Desc:    "Open an SSH shell to the given container, or to one of the containers of the given app.",
+		MinArgs: 0,
 	}
 }
 
-func (sshToContainerCmd) Run(context *cmd.Context, _ *cmd.Client) error {
+func (c *sshToContainerCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	var width, height int
 	if stdin, ok := context.Stdin.(*os.File); ok {
 		fd := int(stdin.Fd())
@@ -234,7 +236,11 @@ func (sshToContainerCmd) Run(context *cmd.Context, _ *cmd.Client) error {
 	queryString := make(url.Values)
 	queryString.Set("width", strconv.Itoa(width))
 	queryString.Set("height", strconv.Itoa(height))
-	serverURL, err := cmd.GetURL("/docker/ssh/" + context.Args[0] + "?" + queryString.Encode())
+	container, err := c.getContainer(context, client)
+	if err != nil {
+		return err
+	}
+	serverURL, err := cmd.GetURL("/docker/ssh/" + container + "?" + queryString.Encode())
 	if err != nil {
 		return err
 	}
@@ -266,11 +272,7 @@ func (sshToContainerCmd) Run(context *cmd.Context, _ *cmd.Client) error {
 	}
 	matches := httpHeaderRegexp.FindAllStringSubmatch(readStr, -1)
 	if len(matches) > 0 && len(matches[0]) > 1 {
-		code, _ := strconv.Atoi(matches[0][1])
-		return &errors.HTTP{
-			Code:    code,
-			Message: strings.TrimSpace(readStr),
-		}
+		return errors.New(strings.TrimSpace(readStr))
 	} else {
 		context.Stdout.Write([]byte(readStr))
 	}
@@ -287,4 +289,40 @@ func (sshToContainerCmd) Run(context *cmd.Context, _ *cmd.Client) error {
 	<-quit
 	close(errs)
 	return <-errs
+}
+
+func (c *sshToContainerCmd) getContainer(ctx *cmd.Context, client *cmd.Client) (string, error) {
+	if appName, _ := c.Guess(); appName != "" {
+		url, err := cmd.GetURL("/apps/" + appName)
+		if err != nil {
+			return "", err
+		}
+		request, _ := http.NewRequest("GET", url, nil)
+		resp, err := client.Do(request)
+		if err != nil {
+			return "", err
+		}
+		defer resp.Body.Close()
+		var app apiApp
+		err = json.NewDecoder(resp.Body).Decode(&app)
+		if err != nil {
+			return "", err
+		}
+		if len(app.Units) < 1 {
+			return "", errors.New("app must have at least one container")
+		}
+		return app.Units[0].Name, nil
+	}
+	if len(ctx.Args) < 1 {
+		return "", errors.New("you need to specify either the container id or the app name")
+	}
+	return ctx.Args[0], nil
+}
+
+type unit struct {
+	Name string
+}
+
+type apiApp struct {
+	Units []unit
 }

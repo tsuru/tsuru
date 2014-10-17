@@ -15,7 +15,6 @@ import (
 
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/testing"
-	"github.com/tsuru/tsuru/errors"
 	ttesting "github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
@@ -235,9 +234,9 @@ func (s *S) TestFixContainersCmdInfo(c *gocheck.C) {
 func (s *S) TestSSHToContainerCmdInfo(c *gocheck.C) {
 	expected := cmd.Info{
 		Name:    "ssh",
-		Usage:   "ssh <container-id>",
-		Desc:    "Open a SSH shell to the given container.",
-		MinArgs: 1,
+		Usage:   "ssh <[-a/--app <appname>]|[container-id]>",
+		Desc:    "Open an SSH shell to the given container, or to one of the containers of the given app.",
+		MinArgs: 0,
 	}
 	var command sshToContainerCmd
 	info := command.Info()
@@ -277,6 +276,130 @@ func (s *S) TestSSHToContainerCmdRun(c *gocheck.C) {
 	c.Assert(stdout.String(), gocheck.Equals, "hello my friend\nglad to see you here\n")
 }
 
+func (s *S) TestSSHToContainerCmdRunWithApp(c *gocheck.C) {
+	guesser := testing.FakeGuesser{Name: "myapp"}
+	var closeClientConn func()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/apps/myapp" && r.Method == "GET" && r.Header.Get("Authorization") == "bearer abc123" {
+			app := apiApp{Units: []unit{{Name: "abc123f0"}, {Name: "abc123f1"}}}
+			json.NewEncoder(w).Encode(app)
+		} else if r.URL.Path == "/docker/ssh/abc123f0" && r.Method == "GET" && r.Header.Get("Authorization") == "bearer abc123" {
+			conn, _, err := w.(http.Hijacker).Hijack()
+			c.Assert(err, gocheck.IsNil)
+			conn.Write([]byte("hello my friend\n"))
+			conn.Write([]byte("glad to see you here\n"))
+			closeClientConn()
+		} else {
+			http.Error(w, "not found", http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+	closeClientConn = server.CloseClientConnections
+	target := "http://" + server.Listener.Addr().String()
+	targetRecover := ttesting.SetTargetFile(c, []byte(target))
+	defer ttesting.RollbackFile(targetRecover)
+	tokenRecover := ttesting.SetTokenFile(c, []byte("abc123"))
+	defer ttesting.RollbackFile(tokenRecover)
+	var stdout, stderr, stdin bytes.Buffer
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Stdin:  &stdin,
+	}
+	var command sshToContainerCmd
+	command.GuessingCommand = cmd.GuessingCommand{G: &guesser}
+	err := command.Flags().Parse(true, []string{"-a", "myapp"})
+	c.Assert(err, gocheck.IsNil)
+	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
+	client := cmd.NewClient(http.DefaultClient, &context, manager)
+	err = command.Run(&context, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, "hello my friend\nglad to see you here\n")
+}
+
+func (s *S) TestSSHToContainerAppNotFound(c *gocheck.C) {
+	guesser := testing.FakeGuesser{Name: "myapp"}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/apps/myapp" && r.Method == "GET" && r.Header.Get("Authorization") == "bearer abc123" {
+			http.Error(w, "app not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "not found", http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+	target := "http://" + server.Listener.Addr().String()
+	targetRecover := ttesting.SetTargetFile(c, []byte(target))
+	defer ttesting.RollbackFile(targetRecover)
+	tokenRecover := ttesting.SetTokenFile(c, []byte("abc123"))
+	defer ttesting.RollbackFile(tokenRecover)
+	var stdout, stderr, stdin bytes.Buffer
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Stdin:  &stdin,
+	}
+	var command sshToContainerCmd
+	command.GuessingCommand = cmd.GuessingCommand{G: &guesser}
+	err := command.Flags().Parse(true, []string{"-a", "myapp"})
+	c.Assert(err, gocheck.IsNil)
+	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
+	client := cmd.NewClient(http.DefaultClient, &context, manager)
+	err = command.Run(&context, client)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "app not found\n")
+}
+
+func (s *S) TestSSHToContainerAppWithNoUnits(c *gocheck.C) {
+	guesser := testing.FakeGuesser{Name: "myapp"}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/apps/myapp" && r.Method == "GET" && r.Header.Get("Authorization") == "bearer abc123" {
+			w.Write([]byte(`{"Units":[]}`))
+		} else {
+			http.Error(w, "not found", http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+	target := "http://" + server.Listener.Addr().String()
+	targetRecover := ttesting.SetTargetFile(c, []byte(target))
+	defer ttesting.RollbackFile(targetRecover)
+	tokenRecover := ttesting.SetTokenFile(c, []byte("abc123"))
+	defer ttesting.RollbackFile(tokenRecover)
+	var stdout, stderr, stdin bytes.Buffer
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Stdin:  &stdin,
+	}
+	var command sshToContainerCmd
+	command.GuessingCommand = cmd.GuessingCommand{G: &guesser}
+	err := command.Flags().Parse(true, []string{"-a", "myapp"})
+	c.Assert(err, gocheck.IsNil)
+	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
+	client := cmd.NewClient(http.DefaultClient, &context, manager)
+	err = command.Run(&context, client)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "app must have at least one container")
+}
+
+func (s *S) TestSSHToContainerNoAppNoArg(c *gocheck.C) {
+	guesser := testing.FailingFakeGuesser{}
+	var stdout, stderr, stdin bytes.Buffer
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Stdin:  &stdin,
+	}
+	var command sshToContainerCmd
+	command.GuessingCommand = cmd.GuessingCommand{G: &guesser}
+	err := command.Flags().Parse(true, []string{})
+	c.Assert(err, gocheck.IsNil)
+	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
+	client := cmd.NewClient(http.DefaultClient, &context, manager)
+	err = command.Run(&context, client)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "you need to specify either the container id or the app name")
+}
+
 func (s *S) TestSSHToContainerCmdNoToken(c *gocheck.C) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "You must provide a valid Authorization header", http.StatusUnauthorized)
@@ -294,10 +417,7 @@ func (s *S) TestSSHToContainerCmdNoToken(c *gocheck.C) {
 	}
 	var command sshToContainerCmd
 	err := command.Run(&context, nil)
-	c.Assert(err, gocheck.FitsTypeOf, &errors.HTTP{})
-	httpErr := err.(*errors.HTTP)
-	c.Assert(httpErr.Code, gocheck.Equals, 401)
-	c.Assert(httpErr.Message, gocheck.Equals, "HTTP/1.1 401 Unauthorized")
+	c.Assert(err.Error(), gocheck.Equals, "HTTP/1.1 401 Unauthorized")
 }
 
 func (s *S) TestSSHToContainerCmdSmallData(c *gocheck.C) {
