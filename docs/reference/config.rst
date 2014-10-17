@@ -355,6 +355,13 @@ quota:apps-per-user
 users will have at most the number of apps specified by this setting. This
 setting is optional, and defaults to "unlimited".
 
+log:file
+++++++++
+
+Use this to specify a path to a log file.  By default tsuru logs to syslog.
+If this is set, make sure tsuru has permissions to write to this file.
+
+
 Log level
 ---------
 
