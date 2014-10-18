@@ -191,7 +191,7 @@ func (si *ServiceInstance) UnbindApp(app bind.App) error {
 	}
 	for _, unit := range app.GetUnits() {
 		go func(unit bind.Unit) {
-			si.UnbindUnit(unit)
+			si.UnbindUnit(unit, app)
 		}(unit)
 	}
 	var envVars []string
@@ -202,12 +202,12 @@ func (si *ServiceInstance) UnbindApp(app bind.App) error {
 }
 
 // UnbindUnit makes the unbind between the service instance and an unit.
-func (si *ServiceInstance) UnbindUnit(unit bind.Unit) error {
+func (si *ServiceInstance) UnbindUnit(unit bind.Unit, app bind.App) error {
 	endpoint, err := si.Service().getClient("production")
 	if err != nil {
 		return err
 	}
-	return endpoint.Unbind(si, unit)
+	return endpoint.Unbind(si, app, unit)
 }
 
 // Status returns the service instance status.

@@ -42,7 +42,7 @@ func (c *Client) issueRequest(path, method string, params map[string][]string) (
 	v := url.Values(params)
 	var suffix string
 	var body io.Reader
-	if method == "DELETE" || method == "GET" {
+	if method == "GET" {
 		suffix = "?" + v.Encode()
 	} else {
 		body = strings.NewReader(v.Encode())
@@ -110,7 +110,7 @@ func (c *Client) Bind(instance *ServiceInstance, app bind.App, unit bind.Unit) (
 		"unit-host": {unit.GetIp()},
 		"app-host":  {app.GetIp()},
 	}
-	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier(), "POST", params)
+	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind", "POST", params)
 	if err != nil {
 		if m, _ := regexp.MatchString("", err.Error()); m {
 			return nil, fmt.Errorf("%s api is down.", instance.Name)
@@ -133,11 +133,15 @@ func (c *Client) Bind(instance *ServiceInstance, app bind.App, unit bind.Unit) (
 	return nil, &errors.HTTP{Code: http.StatusInternalServerError, Message: msg}
 }
 
-func (c *Client) Unbind(instance *ServiceInstance, unit bind.Unit) error {
+func (c *Client) Unbind(instance *ServiceInstance, app bind.App, unit bind.Unit) error {
 	log.Debug("Attempting to call unbind of service instance " + instance.Name + " and unit " + unit.GetIp() + " at " + instance.ServiceName + " api")
 	var resp *http.Response
-	url := "/resources/" + instance.GetIdentifier() + "/hostname/" + unit.GetIp()
-	resp, err := c.issueRequest(url, "DELETE", nil)
+    url := "/resources/" + instance.GetIdentifier() + "/bind"
+    params := map[string][]string{
+		"unit-host": {unit.GetIp()},
+		"app-host":  {app.GetIp()},
+	}
+	resp, err := c.issueRequest(url, "DELETE", params)
 	if err == nil && resp.StatusCode > 299 {
 		msg := fmt.Sprintf("Failed to unbind (%q): %s", url, c.buildErrorMessage(err, resp))
 		log.Error(msg)
