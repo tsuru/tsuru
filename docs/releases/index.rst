@@ -196,6 +196,12 @@ tsr
 tsuru
 =====
 
+.. note::
+
+    For `tsuru` release notes, check GitHub release history:
+
+    - tsuru: https://github.com/tsuru/tsuru-client/releases
+
 `tsuru` is the tsuru client. For details on releases of the client, check the
 release history in the `tsuru-client repository at GitHub
 <https://github.com/tsuru/tsuru-client/releases>`_.
@@ -286,6 +292,12 @@ release history in the `tsuru-client repository at GitHub
 
 tsuru-admin
 ===========
+
+.. note::
+
+    For `tsuru-admin` release notes, check GitHub release history:
+
+    - tsuru-admin: https://github.com/tsuru/tsuru-admin/releases
 
 `tsuru-admin` is the tsuru administrative client. For details on releases of
 tsuru-admin, check the release history in the `tsuru-admin repository at GitHub
