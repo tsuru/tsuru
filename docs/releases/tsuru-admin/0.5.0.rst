@@ -1,28 +1,15 @@
-===============================
-tsuru-admin 0.5.0 release notes
-===============================
+.. Copyright 2014 tsuru authors. All rights reserved.
+   Use of this source code is governed by a BSD-style
+   license that can be found in the LICENSE file.
 
-Welcome to tsuru-admin 0.5.0!
+:orphan:
 
-These release notes cover the `new features`_ when upgrading
-from tsuru-admin 0.4.x or older versions.
+.. raw:: html
 
-.. _`new features`: `What's new in tsuru-admin 0.5.0`_
+  <meta http-equiv="refresh" content="0; url=https://github.com/tsuru/tsuru-admin/releases/tag/0.5.0">
 
-What's new in tsuru-admin 0.5.0
-===============================
+++++++++++++++++++++++++++++++++++++++++++
+Deprecated tsuru-admin 0.5.0 release notes
+++++++++++++++++++++++++++++++++++++++++++
 
-New commands
-------------
-
-* :ref:`tsuru_admin_ssh_cmd` (issue `#853
-  <https://github.com/tsuru/tsuru/issues/853>`_)
-* :ref:`tsuru_admin_machines_list_cmd`
-* :ref:`tsuru_admin_machine_destroy_cmd`
-
-Updated commands
-----------------
-
-* :ref:`tsuru_admin_docker_node_add_cmd`
-* :ref:`tsuru_admin_docker_node_remove_cmd`
-* :ref:`tsuru_admin_docker_node_list_cmd`
+`New page that documents installing clients <https://github.com/tsuru/tsuru-admin/releases/tag/0.5.0>`_.

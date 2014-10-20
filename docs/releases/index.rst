@@ -293,57 +293,9 @@ release history in the `tsuru-client repository at GitHub
 tsuru-admin
 ===========
 
-.. note::
-
-    For `tsuru-admin` release notes, check GitHub release history:
-
-    - tsuru-admin: https://github.com/tsuru/tsuru-admin/releases
-
 `tsuru-admin` is the tsuru administrative client. For details on releases of
 tsuru-admin, check the release history in the `tsuru-admin repository at GitHub
 <https://github.com/tsuru/tsuru-admin/releases>`_.
-
-0.6.0 release
--------------
-.. toctree::
-   :maxdepth: 1
-
-   tsuru-admin/0.6.0
-
-0.5.0 release
--------------
-.. toctree::
-   :maxdepth: 1
-
-   tsuru-admin/0.5.0
-
-0.4.2 release
--------------
-.. toctree::
-   :maxdepth: 1
-
-   tsuru-admin/0.4.2
-
-0.4.1 release
--------------
-.. toctree::
-   :maxdepth: 1
-
-   tsuru-admin/0.4.1
-
-0.4.0 release
--------------
-.. toctree::
-   :maxdepth: 1
-
-   tsuru-admin/0.4.0
-
-0.3.0 release
--------------
-.. toctree::
-   :maxdepth: 1
-
-   tsuru-admin/0.3.0
 
 crane
 =====
