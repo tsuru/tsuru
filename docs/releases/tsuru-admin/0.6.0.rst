@@ -12,4 +12,4 @@
 Deprecated tsuru-admin 0.6.0 release notes
 ++++++++++++++++++++++++++++++++++++++++++
 
-`New page that documents installing clients <https://github.com/tsuru/tsuru-admin/releases/tag/0.6.0>`_.
+`New page with release notes <https://github.com/tsuru/tsuru-admin/releases/tag/0.6.0>`_.
