@@ -339,7 +339,7 @@ func (s *S) TestUnbindSendADELETERequestToTheResourceURL(c *gocheck.C) {
 	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, gocheck.IsNil)
-    expected := map[string][]string{"unit-host": {"2.2.2.2"}, "app-host": {"2.2.2.2"}}
+	expected := map[string][]string{"unit-host": {"2.2.2.2"}, "app-host": {"2.2.2.2"}}
 	c.Assert(map[string][]string(v), gocheck.DeepEquals, expected)
 }
 
