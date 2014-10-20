@@ -1,32 +1,15 @@
-==========================
-tsuru 0.11.0 release notes
-==========================
+.. Copyright 2014 tsuru authors. All rights reserved.
+   Use of this source code is governed by a BSD-style
+   license that can be found in the LICENSE file.
 
-Welcome to tsuru 0.11.0!
+:orphan:
 
-These release notes cover the `new features`_ you'll want to be aware of when
-upgrading from tsuru 0.10.x or older versions.
+.. raw:: html
 
-.. _`new features`: `What's new in tsuru 0.11.0`_
+  <meta http-equiv="refresh" content="0; url=https://github.com/tsuru/tsuru-client/releases/tag/0.11.0">
 
-What's new in tsuru 0.11.0
-==========================
++++++++++++++++++++++++++++++++++++++
+Deprecated tsuru 0.11.0 release notes
++++++++++++++++++++++++++++++++++++++
 
-* Add the flag ``-t/--team-owner`` to the ``service-add`` command. This flag is
-  used to specify the team that owns a service instance (related to the issue
-  `#698 <https://github.com/tsuru/tsuru/issues/698>`_)
-* Improve plugin handling, now plugins written to tsuru will get the following
-  environment variables (related to issue `#863
-  <https://github.com/tsuru/tsuru/issues/863>`_):
-
-    - ``TSURU_TARGET``: the current target defined in the tsuru client, it's the
-      address of the tsuru server, to which the plugin should send requests, using
-      the new service proxy endpoint;
-
-    - ``TSURU_TOKEN``: token used to authenticate with the tsuru API.
-* Include the team owner in the ``app-info`` output
-
-Bug fixes
-=========
-
-* fixed handling of flags in the ``service-remove`` command.
+`New page with release notes <https://github.com/tsuru/tsuru-client/releases/tag/0.11.0>`_.

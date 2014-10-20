@@ -1,32 +1,15 @@
-==========================
-tsuru 0.12.0 release notes
-==========================
+.. Copyright 2014 tsuru authors. All rights reserved.
+   Use of this source code is governed by a BSD-style
+   license that can be found in the LICENSE file.
 
-Welcome to tsuru 0.12.0!
+:orphan:
 
-These release notes cover the `new features`_ you'll want to be aware of when
-upgrading from tsuru 0.11.x or older versions.
+.. raw:: html
 
-.. _`new features`: `What's new in tsuru 0.12.0`_
+  <meta http-equiv="refresh" content="0; url=https://github.com/tsuru/tsuru-client/releases/tag/0.12.0">
 
-What's new in tsuru 0.12.0
-==========================
++++++++++++++++++++++++++++++++++++++
+Deprecated tsuru 0.12.0 release notes
++++++++++++++++++++++++++++++++++++++
 
-* Multiple cnames: now it's possible to app have multiple cnames with ``tsuru add-cname``.
-  You can remove multiple cnames with ``tsuru remove-cname``. The old commands ``set-cname`` and ``unset-cname``
-  was removed from tsuru (issue `#677
-  <https://github.com/tsuru/tsuru/issues/677>`_).
-
-* Change app's owner team: now tsuru has a new command ``tsuru app-set-team-owner``.
-  Admin users can change owner team to any team on tsuru.
-  The new owner team will be added to app's teams list (issue `#894 <https://github.com/tsuru/tsuru/issues/894>`_).
-
-* deploy via upload: now it's possible to deploy a set of files and/or directory to tsuru with ``tsuru deploy``.
-  To deploy the current directory, just do ``tsuru deploy .``.
-  To deploy a set of files, just do ``tsuru deploy somefile.jar another_file``.
-
-One more thing
-==============
-
-Now tsuru has responsive tables on terminal.
-When a tsuru command show a table, it adapt to terminal screen width.
+`New page with release notes <https://github.com/tsuru/tsuru-client/releases/tag/0.12.0>`_.

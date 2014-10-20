@@ -1,15 +1,15 @@
-==========================
-tsuru 0.10.0 release notes
-==========================
+.. Copyright 2014 tsuru authors. All rights reserved.
+   Use of this source code is governed by a BSD-style
+   license that can be found in the LICENSE file.
 
-Welcome to tsuru 0.10.0!
+:orphan:
 
-These release notes cover the new features you'll want to be aware of when
-upgrading from tsuru 0.9.x or older versions.
+.. raw:: html
 
-.. _`new features`: `What's new in tsuru 0.10.0`_
+  <meta http-equiv="refresh" content="0; url=https://github.com/tsuru/tsuru-client/releases/tag/0.10.0">
 
-What's new in tsuru 0.10.0
-==========================
++++++++++++++++++++++++++++++++++++++
+Deprecated tsuru 0.10.0 release notes
++++++++++++++++++++++++++++++++++++++
 
-* added stop command.
+`New page with release notes <https://github.com/tsuru/tsuru-client/releases/tag/0.10.0>`_.

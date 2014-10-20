@@ -1,30 +1,15 @@
-==========================
-tsuru 0.8.11 release notes
-==========================
+.. Copyright 2014 tsuru authors. All rights reserved.
+   Use of this source code is governed by a BSD-style
+   license that can be found in the LICENSE file.
 
-Welcome to tsuru 0.8.11!
+:orphan:
 
-These release notes cover the new features you'll want to be aware of when
-upgrading from tsuru 0.8.11 or older versions.
+.. raw:: html
 
-.. _`new features`: `What's new in tsuru 0.8.11`_
+  <meta http-equiv="refresh" content="0; url=https://github.com/tsuru/tsuru-client/releases/tag/0.8.11">
 
-What's new in tsuru 0.8.11
-==========================
++++++++++++++++++++++++++++++++++++++
+Deprecated tsuru 0.8.11 release notes
++++++++++++++++++++++++++++++++++++++
 
-* new plugin system - `#737 <https://github.com/tsuru/tsuru/issues/737>`_
-
-  Now is possible to customize tsuru client installing and creating plugins.
-  See the :doc:`docs for more info </using/cli/plugins>`
-
-* app team owner is configurable - `issue #620
-  <https://github.com/tsuru/tsuru/issues/620>`_
-
-  Now you can define the app team owner on `app-create`:
-
-.. highlight:: bash
-
-::
-
-    tsuru app-create appname platform -t teamname
-
+`New page with release notes <https://github.com/tsuru/tsuru-client/releases/tag/0.8.11>`_.

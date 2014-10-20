@@ -196,99 +196,9 @@ tsr
 tsuru
 =====
 
-.. note::
-
-    For `tsuru` release notes, check GitHub release history:
-
-    - tsuru: https://github.com/tsuru/tsuru-client/releases
-
 `tsuru` is the tsuru client. For details on releases of the client, check the
 release history in the `tsuru-client repository at GitHub
 <https://github.com/tsuru/tsuru-client/releases>`_.
-
-0.12.0 release
---------------
-.. toctree::
-   :maxdepth: 1
-
-   tsuru/0.12.0
-
-0.11.0 release
---------------
-.. toctree::
-   :maxdepth: 1
-
-   tsuru/0.11.0
-
-0.10.1 release
---------------
-.. toctree::
-   :maxdepth: 1
-
-   tsuru/0.10.1
-
-0.10.0 release
---------------
-.. toctree::
-   :maxdepth: 1
-
-   tsuru/0.10.0
-
-0.9.0 release
--------------
-.. toctree::
-   :maxdepth: 1
-
-   tsuru/0.9.0
-
-0.8.11 release
----------------
-.. toctree::
-   :maxdepth: 1
-
-   tsuru/0.8.11
-
-0.8.10 release
----------------
-.. toctree::
-   :maxdepth: 1
-
-   tsuru/0.8.10
-
-0.8.9.1 release
----------------
-.. toctree::
-   :maxdepth: 1
-
-   tsuru/0.8.9.1
-
-0.8.9 release
--------------
-.. toctree::
-   :maxdepth: 1
-
-   tsuru/0.8.9
-
-0.8.8 release
--------------
-.. toctree::
-   :maxdepth: 1
-
-   tsuru/0.8.8
-
-0.8.7 release
--------------
-.. toctree::
-   :maxdepth: 1
-
-   tsuru/0.8.7
-
-0.8.6 release
--------------
-.. toctree::
-   :maxdepth: 1
-
-   tsuru/0.8.6
 
 tsuru-admin
 ===========

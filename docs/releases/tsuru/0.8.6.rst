@@ -1,18 +1,15 @@
-=========================
-tsuru 0.8.6 release notes
-=========================
+.. Copyright 2014 tsuru authors. All rights reserved.
+   Use of this source code is governed by a BSD-style
+   license that can be found in the LICENSE file.
 
-Welcome to tsuru 0.8.6!
+:orphan:
 
-These release notes cover the new features you'll want to be aware of when
-upgrading from tsuru 0.8.5 or older versions.
+.. raw:: html
 
-.. _`new features`: `What's new in tsuru 0.8.6`_
+  <meta http-equiv="refresh" content="0; url=https://github.com/tsuru/tsuru-client/releases/tag/0.8.6">
 
-What's new in tsuru 0.8.6
-=========================
+++++++++++++++++++++++++++++++++++++
+Deprecated tsuru 0.8.6 release notes
+++++++++++++++++++++++++++++++++++++
 
-Improvements related to Services
---------------------------------
-
-    * Added confirmation on `service-remove` command.
+`New page with release notes <https://github.com/tsuru/tsuru-client/releases/tag/0.8.6>`_.
