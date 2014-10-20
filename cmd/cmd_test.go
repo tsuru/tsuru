@@ -29,27 +29,6 @@ func (e recordingExiter) value() int {
 	return int(e)
 }
 
-type TestNamedCommand struct {
-	nameCalls int
-	infoCalls int
-}
-
-func (c *TestNamedCommand) Name() string {
-	c.nameCalls++
-	return "nameInName"
-}
-
-func (c *TestNamedCommand) Info() *Info {
-	c.infoCalls++
-	return &Info{
-		Name: "nameInInfo",
-	}
-}
-
-func (c *TestNamedCommand) Run(context *Context, client *Client) error {
-	return nil
-}
-
 type TestCommand struct{}
 
 func (c *TestCommand) Info() *Info {
@@ -114,18 +93,38 @@ func (c *CommandWithFlags) Flags() *gnuflag.FlagSet {
 	return c.fs
 }
 
+func (s *S) TestDeprecatedCommand(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	cmd := TestCommand{}
+	manager.RegisterDeprecated(&cmd, "bar")
+	manager.stdout = &stdout
+	manager.stderr = &stderr
+	manager.Run([]string{"bar"})
+	c.Assert(stdout.String(), gocheck.Equals, "Running TestCommand")
+	warnMessage := `WARNING: "bar" has been deprecated, please use "foo" instead.` + "\n\n"
+	c.Assert(stderr.String(), gocheck.Equals, warnMessage)
+	stdout.Reset()
+	stderr.Reset()
+	manager.Run([]string{"foo"})
+	c.Assert(stdout.String(), gocheck.Equals, "Running TestCommand")
+	c.Assert(stderr.String(), gocheck.Equals, "")
+}
+
 func (s *S) TestRegister(c *gocheck.C) {
 	manager.Register(&TestCommand{})
 	badCall := func() { manager.Register(&TestCommand{}) }
 	c.Assert(badCall, gocheck.PanicMatches, "command already registered: foo")
 }
 
-func (s *S) TestRegisterCallsNameOnNamedCommand(c *gocheck.C) {
-	instance := &TestNamedCommand{}
-	manager.Register(instance)
-	c.Assert(manager.Commands["nameInName"], gocheck.Equals, instance)
-	c.Assert(instance.nameCalls, gocheck.Equals, 1)
-	c.Assert(instance.infoCalls, gocheck.Equals, 0)
+func (s *S) TestRegisterDeprecated(c *gocheck.C) {
+	originalCmd := &TestCommand{}
+	manager.RegisterDeprecated(originalCmd, "bar")
+	badCall := func() { manager.Register(originalCmd) }
+	c.Assert(badCall, gocheck.PanicMatches, "command already registered: foo")
+	cmd, ok := manager.Commands["bar"].(*deprecatedCommand)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(cmd.Command, gocheck.Equals, originalCmd)
+	c.Assert(manager.Commands["foo"], gocheck.Equals, originalCmd)
 }
 
 func (s *S) TestRegisterTopic(c *gocheck.C) {
@@ -263,7 +262,7 @@ Available commands:
 
 Use glb help <commandname> to get more information about a command.
 `
-	manager.Register(&userCreate{})
+	manager.RegisterDeprecated(&userCreate{}, "create-user")
 	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
 	command := help{manager: manager}
 	err := command.Run(&context, nil)
@@ -353,6 +352,47 @@ Foo do anything or nothing.
 	manager.Register(&TestCommand{})
 	manager.Run([]string{"help", "foo"})
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestHelpDeprecatedCmd(c *gocheck.C) {
+	expectedStdout := `glb version 1.0.
+
+Usage: glb foo
+
+Foo do anything or nothing.
+
+`
+	expectedStderr := `WARNING: "bar" is deprecated. Showing help for "foo" instead.` + "\n\n"
+	var stdout, stderr bytes.Buffer
+	manager.stdout = &stdout
+	manager.stderr = &stderr
+	manager.RegisterDeprecated(&TestCommand{}, "bar")
+	manager.Run([]string{"help", "bar"})
+	c.Assert(stdout.String(), gocheck.Equals, expectedStdout)
+	c.Assert(stderr.String(), gocheck.Equals, expectedStderr)
+	stdout.Reset()
+	stderr.Reset()
+	manager.Run([]string{"help", "foo"})
+	c.Assert(stdout.String(), gocheck.Equals, expectedStdout)
+	c.Assert(stderr.String(), gocheck.Equals, "")
+}
+
+func (s *S) TestHelpDeprecatedCmdWritesWarningFirst(c *gocheck.C) {
+	expected := `WARNING: "bar" is deprecated. Showing help for "foo" instead.
+
+glb version 1.0.
+
+Usage: glb foo
+
+Foo do anything or nothing.
+
+`
+	var output bytes.Buffer
+	manager.stdout = &output
+	manager.stderr = &output
+	manager.RegisterDeprecated(&TestCommand{}, "bar")
+	manager.Run([]string{"help", "bar"})
+	c.Assert(output.String(), gocheck.Equals, expected)
 }
 
 func (s *S) TestVersion(c *gocheck.C) {

@@ -81,18 +81,25 @@ func (m *Manager) Register(command Command) {
 	if m.Commands == nil {
 		m.Commands = make(map[string]Command)
 	}
-	var name string
-	namedCmd, ok := command.(NamedCommand)
-	if ok {
-		name = namedCmd.Name()
-	} else {
-		name = command.Info().Name
-	}
+	name := command.Info().Name
 	_, found := m.Commands[name]
 	if found {
 		panic(fmt.Sprintf("command already registered: %s", name))
 	}
 	m.Commands[name] = command
+}
+
+func (m *Manager) RegisterDeprecated(command Command, oldName string) {
+	if m.Commands == nil {
+		m.Commands = make(map[string]Command)
+	}
+	name := command.Info().Name
+	_, found := m.Commands[name]
+	if found {
+		panic(fmt.Sprintf("command already registered: %s", name))
+	}
+	m.Commands[name] = command
+	m.Commands[oldName] = &deprecatedCommand{Command: command, oldName: oldName}
 }
 
 func (m *Manager) RegisterTopic(name, content string) {
@@ -185,14 +192,19 @@ type Command interface {
 	Run(context *Context, client *Client) error
 }
 
-type NamedCommand interface {
-	Command
-	Name() string
-}
-
 type FlaggedCommand interface {
 	Command
 	Flags() *gnuflag.FlagSet
+}
+
+type deprecatedCommand struct {
+	Command
+	oldName string
+}
+
+func (c *deprecatedCommand) Run(context *Context, client *Client) error {
+	fmt.Fprintf(context.Stderr, "WARNING: %q has been deprecated, please use %q instead.\n\n", c.oldName, c.Command.Info().Name)
+	return c.Command.Run(context, client)
 }
 
 type Context struct {
@@ -234,12 +246,16 @@ func (c *help) Info() *Info {
 }
 
 func (c *help) Run(context *Context, client *Client) error {
+	const deprecatedMsg = "WARNING: %q is deprecated. Showing help for %q instead.\n\n"
 	output := fmt.Sprintf("%s version %s.\n\n", c.manager.name, c.manager.version)
 	if c.manager.wrong {
 		output += fmt.Sprint("ERROR: wrong number of arguments.\n\n")
 	}
 	if len(context.Args) > 0 {
 		if cmd, ok := c.manager.Commands[context.Args[0]]; ok {
+			if deprecated, ok := cmd.(*deprecatedCommand); ok {
+				fmt.Fprintf(context.Stderr, deprecatedMsg, deprecated.oldName, cmd.Info().Name)
+			}
 			info := cmd.Info()
 			output += fmt.Sprintf("Usage: %s %s\n", c.manager.name, info.Usage)
 			output += fmt.Sprintf("\n%s\n", info.Desc)
@@ -258,8 +274,10 @@ func (c *help) Run(context *Context, client *Client) error {
 	} else {
 		output += fmt.Sprintf("Usage: %s %s\n\nAvailable commands:\n", c.manager.name, c.Info().Usage)
 		var commands []string
-		for k := range c.manager.Commands {
-			commands = append(commands, k)
+		for name, cmd := range c.manager.Commands {
+			if _, ok := cmd.(*deprecatedCommand); !ok {
+				commands = append(commands, name)
+			}
 		}
 		sort.Strings(commands)
 		for _, command := range commands {
