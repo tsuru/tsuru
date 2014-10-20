@@ -52,5 +52,5 @@ type Binder interface {
 	UnbindApp(App) error
 
 	// UnbindUnit makes the unbind between the binder and an unit.
-	UnbindUnit(Unit) error
+	UnbindUnit(Unit, App) error
 }

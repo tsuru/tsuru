@@ -152,7 +152,7 @@ Binding instances to apps
 -------------------------
 
 In the bind action, tsuru calls your service via POST on
-``/resources/<service_name>`` with the parameters needed for binding an app
+``/resources/<service-instance-name>/bind`` with the parameters needed for binding an app
 into a service instance.
 
 If the bind operation succeeds, the API should return 201 as status code with
@@ -170,7 +170,7 @@ called "SOMEVAR" to be injected in the app environment:
     from flask import request
 
 
-    @app.route("/resources/<name>", methods=["POST"])
+    @app.route("/resources/<name>/bind", methods=["POST"])
     def bind(name):
         app_host = request.form.get("app-host")
         unit_host = request.form.get("unit-host")
@@ -183,7 +183,7 @@ Unbinding instances from apps
 -----------------------------
 
 In the unbind action, tsuru issues a ``DELETE`` request to the URL
-``/resources/<service_name>/hostname/<unit_hostname>``.
+``/resources/<service-instance-name>/bind``.
 
 If the unbind operation succeeds, the API should return 200 as status code.
 Let's create the view for this action:
@@ -192,9 +192,11 @@ Let's create the view for this action:
 
 ::
 
-    @app.route("/resources/<name>/hostname/<host>", methods=["DELETE"])
+    @app.route("/resources/<name>/bind", methods=["DELETE"])
     def unbind(name, host):
-        # use name and host to remove the bind
+        app_host = request.form.get("app-host")
+        unit_host = request.form.get("unit-host")
+        # use name, app-host and unit-host to remove the bind
         return "", 200
 
 Removing instances

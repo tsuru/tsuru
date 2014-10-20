@@ -287,7 +287,7 @@ func (s *BindSuite) TestUnbindUnit(c *gocheck.C) {
 	app.Provisioner.Provision(&a)
 	defer app.Provisioner.Destroy(&a)
 	app.Provisioner.AddUnits(&a, 1, nil)
-	err = instance.UnbindUnit(a.GetUnits()[0])
+	err = instance.UnbindUnit(a.GetUnits()[0], &a)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
 }
@@ -419,7 +419,7 @@ func (s *BindSuite) TestUnbindRemovesEnvironmentVariableFromApp(c *gocheck.C) {
 func (s *BindSuite) TestUnbindCallsTheUnbindMethodFromAPI(c *gocheck.C) {
 	var called int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/hostname/10.10.10.1" {
+		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/bind" {
 			atomic.StoreInt32(&called, 1)
 		}
 	}))

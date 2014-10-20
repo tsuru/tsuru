@@ -2704,8 +2704,7 @@ func (s *S) TestUnbindHandler(c *gocheck.C) {
 	defer gts.Close()
 	var called int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println(r.URL.Path)
-		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/hostname/10.10.10.1" {
+		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/bind" {
 			atomic.StoreInt32(&called, 1)
 		}
 	}))
