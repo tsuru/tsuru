@@ -131,11 +131,21 @@ docker-node-list
 
 ::
 
-    $ tsuru-admin docker-node-list
+    $ tsuru-admin docker-node-list [-f/--filter <metadata>=<value>]
 
 This command list all nodes present in the cluster. It will also show you metadata
 associated to each node and the IaaS ID if the node was added using tsuru builtin
 IaaS providers.
+
+Using the ``-f/--filter`` flag, the user is able to filter the nodes that
+appear in the list based on the key pairs displayed in the metadata column.
+Users can also combine filters with multiple listings of ``-f``:
+
+.. highlight:: bash
+
+::
+
+    $ tsuru-admin docker-node-list -f pool=mypool -f LastSuccess=2014-10-20T15:28:28-02:00
 
 .. _tsuru_admin_docker_node_remove_cmd:
 
