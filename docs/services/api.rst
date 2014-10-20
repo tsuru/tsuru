@@ -145,7 +145,7 @@ service via command line tool:
     $ tsuru bind mysql_instance --app my_app
 
 tsuru calls the service API to bind an app with an instance via POST on
-``/resources/<service-instance-name>`` (please notice that tsuru does not
+``/resources/<service-instance-name>/bind`` (please notice that tsuru does not
 include a trailing slash) with app-host and unit-host, where app-host
 represents the host to which the app is accessible, and unit-host is the
 address of the unit. Example of request:
@@ -154,7 +154,7 @@ address of the unit. Example of request:
 
 ::
 
-    POST /resources/myinstance HTTP/1.1
+    POST /resources/myinstance/bind HTTP/1.1
     Host: myserviceapi.com
     User-Agent: Go 1.1 package http
     Content-Length: 48
@@ -207,19 +207,21 @@ the service via command line:
     $ tsuru unbind mysql_instance --app my_app
 
 tsuru calls the service API to unbind the app from the instance via DELETE on
-``/resources/<service-name>/hostname/<app-hostname>`` (please notice that tsuru
+``/resources/<service-instance-name>/bind`` (please notice that tsuru
 does not include a trailing slash). Example of request:
 
 .. highlight:: text
 
 ::
 
-    DELETE /resources/myinstance/hostname/myapp.cloud.tsuru.io HTTP/1.1
+    DELETE /resources/myinstance/bind HTTP/1.1
     Host: myserviceapi.com
     User-Agent: Go 1.1 package http
     Accept: application/json
     Authorization: Basic dXNlcjpwYXNzd29yZA==
     Content-Type: application/x-www-form-urlencoded
+
+    app-host=myapp.cloud.tsuru.io&unit-host=10.4.3.2
 
 The API should return the following HTTP response code with the respective
 response body:
