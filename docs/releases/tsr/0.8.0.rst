@@ -5,11 +5,12 @@ tsr 0.8.0 release notes
 Welcome to tsr 0.8.0!
 
 These release notes cover the `new features`_, `bug fixes`_, `backward
-incompatible changes`_ and `general improvements`_ you'll want to be aware of
-when upgrading from tsr 0.7.0 or older versions.
+incompatible changes`_, `general improvements`_ and `changes in the API`_
+you'll want to be aware of when upgrading from tsr 0.7.0 or older versions.
 
 .. _`new features`: `What's new in tsr 0.8.0`_
 .. _`general improvements`: `Other improvements in tsr 0.8.0`_
+.. _`changes in the API`: `API changes`_
 
 What's new in tsr 0.8.0
 =======================
@@ -29,6 +30,9 @@ What's new in tsr 0.8.0
   - add routes to new units;
   - remove routes from old units;
   - remove old units.
+* tsuru now supports multiple configuration entries for the same IaaS provider,
+  allowing a multi-region CloudStack or EC2 setup, for example. For more
+  details, check the :ref:`Custom IaaS documentation <config_custom_iaas>`.
 
 
 Bug fixes
@@ -38,12 +42,23 @@ Bug fixes
   <https://github.com/tsuru/tsuru/issues/926>`_).
 - platform-remove: fix bug in the API that prevented the platform from being
   removed from the database (issue `#936
-  <https://github.com/tsuru/tsuru/issues/936>`).
+  <https://github.com/tsuru/tsuru/issues/936>`_).
+- Fix parameter mismatch between bind and unbind calls in service API (issue
+  `#794 <https://github.com/tsuru/tsuru/issues/794>`_).
 
 Other improvements in tsr 0.8.0
 ===============================
 
-
+- Allow platform customization of environment for new units. This allow the use
+  of virtualenv in the Python platform (contributes to fixing issue `#928
+  <https://github.com/tsuru/tsuru/issues/928>`_)
+- Improve tsuru API acccess log (issue `#608
+  <https://github.com/tsuru/tsuru/issues/608>`_)
+- Do not prevent users from running commands on units that are in the "error"
+  state (issue `#876 <https://github.com/tsuru/tsuru/issues/876>`_)
+- Now only the team that owns the application has access to it when the
+  application is created. Other teams may be added in the future, using
+  app-grant (issue `#871 <https://github.com/tsuru/tsuru/issues/871>`_)
 
 Backward incompatible changes
 =============================
@@ -58,3 +73,17 @@ The following config settings have been deprecated:
 
 You should now create plans specifying the limits for memory, swap and cpu share.
 See :ref:`tsuru-admin plan-create <tsuru_admin_plan_create>` for more details.
+
+API changes
+===========
+
+For more details on the API, please refer to the :doc:`tsuru API documentation
+</reference/api>`.
+
+* ``/app/<appname>/run``: the endpoint for running commands has changed.
+  Instead of streaming the output of the command in text format, now it streams
+  it in JSON format, allowing clients to properly detect failures in the
+  execution of the command.
+* ``/deploys``: list deployments in tsuru, with the possibility of filtering by
+  application, service and/or user (issue `#939
+  <https://github.com/tsuru/tsuru/issues/939>`_).

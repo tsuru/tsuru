@@ -645,6 +645,8 @@ A url for which the response body will be sent to cloudstack as user-data.
 Defaults to a script which will run `tsuru now installation
 <https://github.com/tsuru/now>`_.
 
+.. _config_custom_iaas:
+
 Custom IaaS
 -----------
 
