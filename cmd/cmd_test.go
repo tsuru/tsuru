@@ -121,7 +121,7 @@ func (s *S) TestRegisterDeprecated(c *gocheck.C) {
 	manager.RegisterDeprecated(originalCmd, "bar")
 	badCall := func() { manager.Register(originalCmd) }
 	c.Assert(badCall, gocheck.PanicMatches, "command already registered: foo")
-	cmd, ok := manager.Commands["bar"].(*deprecatedCommand)
+	cmd, ok := manager.Commands["bar"].(*DeprecatedCommand)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(cmd.Command, gocheck.Equals, originalCmd)
 	c.Assert(manager.Commands["foo"], gocheck.Equals, originalCmd)

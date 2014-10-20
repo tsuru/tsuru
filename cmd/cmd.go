@@ -99,7 +99,7 @@ func (m *Manager) RegisterDeprecated(command Command, oldName string) {
 		panic(fmt.Sprintf("command already registered: %s", name))
 	}
 	m.Commands[name] = command
-	m.Commands[oldName] = &deprecatedCommand{Command: command, oldName: oldName}
+	m.Commands[oldName] = &DeprecatedCommand{Command: command, oldName: oldName}
 }
 
 func (m *Manager) RegisterTopic(name, content string) {
@@ -197,12 +197,12 @@ type FlaggedCommand interface {
 	Flags() *gnuflag.FlagSet
 }
 
-type deprecatedCommand struct {
+type DeprecatedCommand struct {
 	Command
 	oldName string
 }
 
-func (c *deprecatedCommand) Run(context *Context, client *Client) error {
+func (c *DeprecatedCommand) Run(context *Context, client *Client) error {
 	fmt.Fprintf(context.Stderr, "WARNING: %q has been deprecated, please use %q instead.\n\n", c.oldName, c.Command.Info().Name)
 	return c.Command.Run(context, client)
 }
@@ -253,7 +253,7 @@ func (c *help) Run(context *Context, client *Client) error {
 	}
 	if len(context.Args) > 0 {
 		if cmd, ok := c.manager.Commands[context.Args[0]]; ok {
-			if deprecated, ok := cmd.(*deprecatedCommand); ok {
+			if deprecated, ok := cmd.(*DeprecatedCommand); ok {
 				fmt.Fprintf(context.Stderr, deprecatedMsg, deprecated.oldName, cmd.Info().Name)
 			}
 			info := cmd.Info()
@@ -275,7 +275,7 @@ func (c *help) Run(context *Context, client *Client) error {
 		output += fmt.Sprintf("Usage: %s %s\n\nAvailable commands:\n", c.manager.name, c.Info().Usage)
 		var commands []string
 		for name, cmd := range c.manager.Commands {
-			if _, ok := cmd.(*deprecatedCommand); !ok {
+			if _, ok := cmd.(*DeprecatedCommand); !ok {
 				commands = append(commands, name)
 			}
 		}
