@@ -207,6 +207,13 @@ func (c *DeprecatedCommand) Run(context *Context, client *Client) error {
 	return c.Command.Run(context, client)
 }
 
+func (c *DeprecatedCommand) Flags() *gnuflag.FlagSet {
+	if cmd, ok := c.Command.(FlaggedCommand); ok {
+		return cmd.Flags()
+	}
+	return gnuflag.NewFlagSet("", gnuflag.ContinueOnError)
+}
+
 type Context struct {
 	Args   []string
 	Stdout io.Writer

@@ -110,6 +110,18 @@ func (s *S) TestDeprecatedCommand(c *gocheck.C) {
 	c.Assert(stderr.String(), gocheck.Equals, "")
 }
 
+func (s *S) TestDeprecatedCommandFlags(c *gocheck.C) {
+	var stdout, stderr bytes.Buffer
+	cmd := CommandWithFlags{}
+	manager.RegisterDeprecated(&cmd, "bar")
+	manager.stdout = &stdout
+	manager.stderr = &stderr
+	manager.Run([]string{"bar", "--age", "10"})
+	warnMessage := `WARNING: "bar" has been deprecated, please use "with-flags" instead.` + "\n\n"
+	c.Assert(stderr.String(), gocheck.Equals, warnMessage)
+	c.Assert(cmd.age, gocheck.Equals, 10)
+}
+
 func (s *S) TestRegister(c *gocheck.C) {
 	manager.Register(&TestCommand{})
 	badCall := func() { manager.Register(&TestCommand{}) }
