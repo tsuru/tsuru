@@ -111,9 +111,6 @@ func (c *Client) Bind(instance *ServiceInstance, app bind.App, unit bind.Unit) (
 		"app-host":  {app.GetIp()},
 	}
 	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind", "POST", params)
-	if resp != nil && resp.StatusCode == http.StatusNotFound {
-		resp, err = c.issueRequest("/resources/"+instance.GetIdentifier(), "POST", params)
-	}
 	if err != nil {
 		if m, _ := regexp.MatchString("", err.Error()); m {
 			return nil, fmt.Errorf("%s api is down.", instance.Name)
@@ -145,10 +142,6 @@ func (c *Client) Unbind(instance *ServiceInstance, app bind.App, unit bind.Unit)
 		"app-host":  {app.GetIp()},
 	}
 	resp, err := c.issueRequest(url, "DELETE", params)
-	if resp != nil && resp.StatusCode == http.StatusNotFound {
-		url = "/resources/" + instance.GetIdentifier() + "/hostname/" + unit.GetIp()
-		resp, err = c.issueRequest(url, "DELETE", nil)
-	}
 	if err == nil && resp.StatusCode > 299 {
 		msg := fmt.Sprintf("Failed to unbind (%q): %s", url, c.buildErrorMessage(err, resp))
 		log.Error(msg)
