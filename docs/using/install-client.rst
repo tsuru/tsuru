@@ -21,15 +21,24 @@ tsuru contains three clients: ``tsuru``, ``tsuru-admin`` and ``crane``.
   it has gotten super powers :-)
 
 This document describes how you can install those clients, using pre-compiled
-binaries or building them from source.
+binaries, packages or building them from source.
 
-`Using homebrew (Mac OS X only)`_
+- `Downloading binaries (Mac OS X and Linux)`_
+- `Using homebrew (Mac OS X only)`_
+- `Using the PPA (Ubuntu only)`_
+- `Using AUR (ArchLinux only)`_
+- `Build from source (Linux and Mac OS X)`_
 
-`Using the PPA (Ubuntu only)`_
+Downloading binaries (Mac OS X and Linux)
+=========================================
 
-`Using AUR (ArchLinux only)`_
+We provide pre-built binaries for OS X and Linux, only for the amd64
+architecture. You can download these binaries directly from the releases page
+of the project:
 
-`Build from source (Linux and Mac OS X)`_
+    * crane: https://github.com/tsuru/crane/releases
+    * tsuru: https://github.com/tsuru/tsuru-client/releases
+    * tsuru-admin: https://github.com/tsuru/tsuru-admin/releases
 
 Using homebrew (Mac OS X only)
 ==============================
