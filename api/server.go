@@ -70,10 +70,6 @@ func RunServer(dry bool) http.Handler {
 		m.Add(handler.method, handler.path, handler.h)
 	}
 
-	m.Add("Get", "/schema/app", authorizationRequiredHandler(appSchema))
-	m.Add("Get", "/schema/service", authorizationRequiredHandler(serviceSchema))
-	m.Add("Get", "/schema/services", authorizationRequiredHandler(servicesSchema))
-
 	m.Add("Get", "/services/instances", authorizationRequiredHandler(serviceInstances))
 	m.Add("Get", "/services/instances/{name}", authorizationRequiredHandler(serviceInstance))
 	m.Add("Delete", "/services/instances/{name}", authorizationRequiredHandler(removeServiceInstance))

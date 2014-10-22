@@ -14,7 +14,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
@@ -101,11 +100,7 @@ func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	host, err := config.GetString("host")
-	if err != nil {
-		return err
-	}
-	w.Header().Set("Content-Type", "application/json; profile="+host+"/schema/app")
+	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(&app)
 }
 
