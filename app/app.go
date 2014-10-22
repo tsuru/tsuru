@@ -202,9 +202,7 @@ func CreateApp(app *App, user *auth.User) error {
 		if len(teams) > 1 {
 			return ManyTeamsError{}
 		}
-		if err := app.SetTeamOwner(&teams[0]); err != nil {
-			return err
-		}
+		app.TeamOwner = teams[0].Name
 	}
 	err = app.ValidateTeamOwner(user)
 	if err != nil {
@@ -481,9 +479,22 @@ func (app *App) GetTeams() []auth.Team {
 }
 
 // SetTeamOwner sets the TeamOwner value.
-func (app *App) SetTeamOwner(team *auth.Team) error {
-	app.Grant(team)
+func (app *App) SetTeamOwner(team *auth.Team, u *auth.User) error {
 	app.TeamOwner = team.Name
+	err := app.ValidateTeamOwner(u)
+	if err != nil {
+		return err
+	}
+	app.Grant(team)
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	err = conn.Apps().Update(bson.M{"name": app.Name}, app)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

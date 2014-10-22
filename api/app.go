@@ -167,33 +167,19 @@ func setTeamOwner(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	teamName := string(b)
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
-	appName := r.URL.Query().Get(":app")
-	app, err := getApp(appName, u)
-	if err != nil {
-		return err
-	}
 	team, err := auth.GetTeam(teamName)
 	if err != nil {
 		return err
 	}
-	err = app.SetTeamOwner(team)
+	u, err := t.User()
 	if err != nil {
 		return err
 	}
-	err = app.ValidateTeamOwner(u)
+	a, err := getApp(r.URL.Query().Get(":app"), u)
 	if err != nil {
 		return err
 	}
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	err = conn.Apps().Update(bson.M{"name": app.Name}, app)
+	err = a.SetTeamOwner(team, u)
 	if err != nil {
 		return err
 	}
