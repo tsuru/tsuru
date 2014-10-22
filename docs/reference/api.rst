@@ -515,8 +515,8 @@ Example:
 1.4 Quotas
 ----------
 
-Get quota info of an user
-*************************
+Get quota info of a user
+************************
 
     * Method: GET
     * URI: /quota/<user>
@@ -597,8 +597,8 @@ Example:
 1.7 Users
 ---------
 
-Create an user
-**************
+Create a user
+*************
 
     * Method: POST
     * URI: /users
@@ -697,8 +697,8 @@ Example:
     PUT /users/password HTTP/1.1
     Body: `{"old":"123456","new":"654321"}`
 
-Remove an user
-**************
+Remove a user
+*************
 
     * Method: DELETE
     * URI: /users

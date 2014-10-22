@@ -134,7 +134,7 @@ For a description
 
     $ tsuru-admin target-add default http://<your-tsuru-api-addr>:8080
     $ tsuru-admin target-set default
-    $ tsuru-admin user-create myemail@somewhere.com 
+    $ tsuru-admin user-create myemail@somewhere.com
     # type a password and confirmation
 
     $ tsuru-admin login myemail@somewhere.com
@@ -142,7 +142,7 @@ For a description
 
     $ tsuru-admin team-create admin
 
-And that's it, you now have registered an user in your tsuru API server ready to
+And that's it, you now have registered a user in your tsuru API server ready to
 run admin commands.
 
 
