@@ -153,7 +153,6 @@ func (c *login) getScheme() *loginScheme {
 	if c.scheme == nil {
 		info, err := schemeInfo()
 		if err != nil {
-			fmt.Printf("Error trying to figure auth scheme, using native as fallback: %s\n", err.Error())
 			c.scheme = &loginScheme{Name: "native", Data: make(map[string]string)}
 		} else {
 			c.scheme = info
