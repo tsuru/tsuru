@@ -296,7 +296,7 @@ func (s *S) TestCreateAppTeamOwnerTeamNotFound(c *gocheck.C) {
 	}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.ErrorMatches, "You can not set not found team as app's owner. Please set one of your teams as app's owner.")
+	c.Assert(err, gocheck.ErrorMatches, "team not found")
 }
 
 func (s *S) TestCannotCreateAppWithUnknownPlatform(c *gocheck.C) {
@@ -1842,6 +1842,15 @@ func (s *S) TestAppValidateTeamOwner(c *gocheck.C) {
 	defer s.provisioner.Destroy(&a)
 	err = a.ValidateTeamOwner(s.user)
 	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestAppValidateTeamOwnerSetAnTeamWhichNotExistsAndUserIsAdmin(c *gocheck.C) {
+	a := App{Name: "test", Platform: "python", TeamOwner: "not-exists"}
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	err := a.ValidateTeamOwner(s.admin)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.Equals, auth.ErrTeamNotFound)
 }
 
 func (s *S) TestAppValidateTeamOwnerToUserWhoIsNotThatTeam(c *gocheck.C) {
