@@ -37,6 +37,7 @@ type CustomIaaS interface {
 var iaasProviders = make(map[string]IaaS)
 
 func RegisterIaasProvider(name string, iaas IaaS) {
+	fmt.Println("name %s", name)
 	iaasProviders[name] = iaas
 }
 

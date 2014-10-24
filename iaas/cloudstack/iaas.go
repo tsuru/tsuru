@@ -186,6 +186,7 @@ func (i *CloudstackIaaS) readUserData() (string, error) {
 
 func (i *CloudstackIaaS) buildUrl(command string, params map[string]string) (string, error) {
 	apiKey, err := i.getConfigString("api-key")
+	fmt.Println("apiKey:", apiKey)
 	if err != nil {
 		return "", err
 	}

@@ -152,8 +152,6 @@ func (s *cloudstackSuite) TestBuildUrlToCloudstack(c *gocheck.C) {
 func (s *cloudstackSuite) TestDeleteMachine(c *gocheck.C) {
 	var calls []string
 	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cmd := r.URL.Query().Get("command")
-		calls = append(calls, cmd)
 		w.Header().Set("Content-type", "application/json")
 		if cmd == "listVolumes" {
 			c.Assert(r.URL.Query().Get("virtualmachineid"), gocheck.Equals, "myMachineId")
