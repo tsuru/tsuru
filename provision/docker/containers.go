@@ -141,7 +141,9 @@ func runCreateUnitsPipeline(w io.Writer, a provision.App, toAddCount int) ([]con
 }
 
 func moveOneContainer(c container, toHost string, errors chan error, wg *sync.WaitGroup, encoder *json.Encoder, locker *appLocker) container {
-	defer wg.Done()
+	if wg != nil {
+		defer wg.Done()
+	}
 	locked := locker.lock(c.AppName)
 	if !locked {
 		errors <- fmt.Errorf("Couldn't move %s, unable to lock %q.", c.ID, c.AppName)

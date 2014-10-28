@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"sort"
 	"strconv"
+	"sync"
 	"time"
 
 	dtesting "github.com/fsouza/go-dockerclient/testing"
@@ -446,7 +447,11 @@ func (s *S) TestHealContainer(c *gocheck.C) {
 
 	node1.PrepareFailure("createError", "/containers/create")
 
-	_, err = healContainer(containers[0])
+	locker := &appLocker{}
+	locked := locker.lock(containers[0].AppName)
+	c.Assert(locked, gocheck.Equals, true)
+	defer locker.unlock(containers[0].AppName)
+	_, err = healContainer(containers[0], locker)
 	c.Assert(err, gocheck.IsNil)
 
 	containers, err = listAllContainers()
@@ -507,6 +512,157 @@ func (s *S) TestRunContainerHealer(c *gocheck.C) {
 	node1.PrepareFailure("createError", "/containers/create")
 
 	runContainerHealerOnce(1 * time.Minute)
+
+	containers, err = listAllContainers()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(containers, gocheck.HasLen, 2)
+	hosts := []string{containers[0].HostAddr, containers[1].HostAddr}
+	sort.Strings(hosts)
+	c.Assert(hosts[0], gocheck.Equals, "127.0.0.1")
+	c.Assert(hosts[1], gocheck.Equals, "localhost")
+
+	healingColl, err := healingCollection()
+	var events []healingEvent
+	err = healingColl.Find(nil).All(&events)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(events, gocheck.HasLen, 1)
+	c.Assert(events[0].Action, gocheck.Equals, "container-healing")
+	c.Assert(events[0].StartTime, gocheck.Not(gocheck.DeepEquals), time.Time{})
+	c.Assert(events[0].EndTime, gocheck.Not(gocheck.DeepEquals), time.Time{})
+	c.Assert(events[0].Error, gocheck.Equals, "")
+	c.Assert(events[0].Successful, gocheck.Equals, true)
+	c.Assert(events[0].FailingContainer.HostAddr, gocheck.Equals, "127.0.0.1")
+	c.Assert(events[0].CreatedContainer.HostAddr, gocheck.Equals, "localhost")
+}
+
+func (s *S) TestRunContainerHealerConcurrency(c *gocheck.C) {
+	rollback := startTestRepositoryServer()
+	defer rollback()
+	oldCluster := dCluster
+	defer func() {
+		cmutex.Lock()
+		defer cmutex.Unlock()
+		dCluster = oldCluster
+	}()
+	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, gocheck.IsNil)
+	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, gocheck.IsNil)
+	cluster, err := cluster.New(nil, &cluster.MapStorage{},
+		cluster.Node{Address: node1.URL()},
+		cluster.Node{Address: fmt.Sprintf("http://localhost:%d", urlPort(node2.URL()))},
+	)
+	c.Assert(err, gocheck.IsNil)
+	dCluster = cluster
+
+	appInstance := testing.NewFakeApp("myapp", "python", 0)
+	var p dockerProvisioner
+	defer p.Destroy(appInstance)
+	p.Provision(appInstance)
+	_, err = addContainersWithHost(nil, appInstance, 2, "127.0.0.1")
+	c.Assert(err, gocheck.IsNil)
+
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	appStruct := &app.App{
+		Name: appInstance.GetName(),
+	}
+	err = conn.Apps().Insert(appStruct)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
+
+	containers, err := listAllContainers()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(containers, gocheck.HasLen, 2)
+	c.Assert(containers[0].HostAddr, gocheck.Equals, "127.0.0.1")
+	c.Assert(containers[1].HostAddr, gocheck.Equals, "127.0.0.1")
+	toMoveCont := containers[1]
+
+	node1.PrepareFailure("createError", "/containers/create")
+
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	go func() {
+		healContainerIfNeeded(toMoveCont)
+		wg.Done()
+	}()
+	go func() {
+		healContainerIfNeeded(toMoveCont)
+		wg.Done()
+	}()
+	wg.Wait()
+
+	containers, err = listAllContainers()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(containers, gocheck.HasLen, 2)
+	hosts := []string{containers[0].HostAddr, containers[1].HostAddr}
+	sort.Strings(hosts)
+	c.Assert(hosts[0], gocheck.Equals, "127.0.0.1")
+	c.Assert(hosts[1], gocheck.Equals, "localhost")
+
+	healingColl, err := healingCollection()
+	var events []healingEvent
+	err = healingColl.Find(nil).All(&events)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(events, gocheck.HasLen, 1)
+	c.Assert(events[0].Action, gocheck.Equals, "container-healing")
+	c.Assert(events[0].StartTime, gocheck.Not(gocheck.DeepEquals), time.Time{})
+	c.Assert(events[0].EndTime, gocheck.Not(gocheck.DeepEquals), time.Time{})
+	c.Assert(events[0].Error, gocheck.Equals, "")
+	c.Assert(events[0].Successful, gocheck.Equals, true)
+	c.Assert(events[0].FailingContainer.HostAddr, gocheck.Equals, "127.0.0.1")
+	c.Assert(events[0].CreatedContainer.HostAddr, gocheck.Equals, "localhost")
+}
+
+func (s *S) TestRunContainerHealerAlreadyHealed(c *gocheck.C) {
+	rollback := startTestRepositoryServer()
+	defer rollback()
+	oldCluster := dCluster
+	defer func() {
+		cmutex.Lock()
+		defer cmutex.Unlock()
+		dCluster = oldCluster
+	}()
+	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, gocheck.IsNil)
+	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, gocheck.IsNil)
+	cluster, err := cluster.New(nil, &cluster.MapStorage{},
+		cluster.Node{Address: node1.URL()},
+		cluster.Node{Address: fmt.Sprintf("http://localhost:%d", urlPort(node2.URL()))},
+	)
+	c.Assert(err, gocheck.IsNil)
+	dCluster = cluster
+
+	appInstance := testing.NewFakeApp("myapp", "python", 0)
+	var p dockerProvisioner
+	defer p.Destroy(appInstance)
+	p.Provision(appInstance)
+	_, err = addContainersWithHost(nil, appInstance, 2, "127.0.0.1")
+	c.Assert(err, gocheck.IsNil)
+
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	appStruct := &app.App{
+		Name: appInstance.GetName(),
+	}
+	err = conn.Apps().Insert(appStruct)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
+
+	containers, err := listAllContainers()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(containers, gocheck.HasLen, 2)
+	c.Assert(containers[0].HostAddr, gocheck.Equals, "127.0.0.1")
+	c.Assert(containers[1].HostAddr, gocheck.Equals, "127.0.0.1")
+	toMoveCont := containers[1]
+
+	node1.PrepareFailure("createError", "/containers/create")
+
+	healContainerIfNeeded(toMoveCont)
+	healContainerIfNeeded(toMoveCont)
 
 	containers, err = listAllContainers()
 	c.Assert(err, gocheck.IsNil)

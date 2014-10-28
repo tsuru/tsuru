@@ -190,10 +190,13 @@ func (h *Healer) HandleError(node *cluster.Node) time.Duration {
 	return h.disabledTime
 }
 
-func healContainer(cont container) (container, error) {
+func healContainer(cont container, locker *appLocker) (container, error) {
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
-	createdContainer, err := moveContainer(cont.ID, "", encoder)
+	moveErrors := make(chan error, 1)
+	createdContainer := moveOneContainer(cont, "", moveErrors, nil, encoder, locker)
+	close(moveErrors)
+	err := handleMoveErrors(moveErrors, encoder)
 	if err != nil {
 		err = fmt.Errorf("Error trying to heal containers %s: couldn't move container: %s - %s", cont.ID, err.Error(), buf.String())
 	}
@@ -241,12 +244,26 @@ func healContainerIfNeeded(cont container) error {
 		return fmt.Errorf("Containers healing: number of healings for container %s in the last %d minutes exceeds limit of %d: %d",
 			cont.ID, consecutiveHealingsTimeframe/time.Minute, consecutiveHealingsLimitInTimeframe, healingCounter)
 	}
+	locker := &appLocker{}
+	locked := locker.lock(cont.AppName)
+	if !locked {
+		return fmt.Errorf("Containers healing: unable to heal %s couldn't lock app %s", cont.ID, cont.AppName)
+	}
+	defer locker.unlock(cont.AppName)
+	// Sanity check, now we have a lock, let's find out if the container still exists
+	_, err = getContainer(cont.ID)
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return nil
+		}
+		return fmt.Errorf("Containers healing: unable to heal %s couldn't verify it still exists.", cont.ID)
+	}
 	log.Errorf("Initiating healing process for container %s, unresponsive since %s.", cont.ID, cont.LastSuccessStatusUpdate)
 	evt, err := newHealingEvent(cont)
 	if err != nil {
 		return fmt.Errorf("Error trying to insert container healing event, healing aborted: %s", err.Error())
 	}
-	newCont, healErr := healContainer(cont)
+	newCont, healErr := healContainer(cont, locker)
 	if healErr != nil {
 		healErr = fmt.Errorf("Error healing container %s: %s", cont.ID, healErr.Error())
 	}
