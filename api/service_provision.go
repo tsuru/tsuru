@@ -21,6 +21,7 @@ import (
 
 type serviceYaml struct {
 	Id       string
+	Username string
 	Password string
 	Endpoint map[string]string
 }
@@ -90,23 +91,20 @@ func serviceCreate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		msg := "In order to create a service, you should be member of at least one team"
 		return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 	}
-	n, err := conn.Services().Find(bson.M{"_id": sy.Id}).Count()
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusInternalServerError, Message: err.Error()}
-	}
-	if n != 0 {
-		msg := fmt.Sprintf("Service with name %s already exists.", sy.Id)
-		return &errors.HTTP{Code: http.StatusConflict, Message: msg}
-	}
 	s := service.Service{
 		Name:       sy.Id,
+		Username:   sy.Username,
 		Endpoint:   sy.Endpoint,
 		Password:   sy.Password,
 		OwnerTeams: auth.GetTeamsNames(teams),
 	}
 	err = s.Create()
 	if err != nil {
-		return err
+		httpError := http.StatusInternalServerError
+		if err == service.ErrServiceAlreadyExists {
+			httpError = http.StatusConflict
+		}
+		return &errors.HTTP{Code: httpError, Message: err.Error()}
 	}
 	fmt.Fprint(w, "success")
 	return nil

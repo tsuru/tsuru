@@ -36,6 +36,7 @@ func (s *S) TestCreateService(c *gocheck.C) {
 	}
 	service := &Service{
 		Name:       "my_service",
+		Username:   "test",
 		Endpoint:   endpt,
 		OwnerTeams: []string{s.team.Name},
 	}
@@ -49,6 +50,7 @@ func (s *S) TestCreateService(c *gocheck.C) {
 	c.Assert(se.Endpoint["test"], gocheck.Equals, endpt["test"])
 	c.Assert(se.OwnerTeams, gocheck.DeepEquals, []string{s.team.Name})
 	c.Assert(se.IsRestricted, gocheck.Equals, false)
+	c.Assert(se.Username, gocheck.Equals, "test")
 }
 
 func (s *S) TestDeleteService(c *gocheck.C) {

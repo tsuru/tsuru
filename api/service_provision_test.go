@@ -26,6 +26,7 @@ import (
 
 const (
 	baseManifest = `id: some_service
+username: test
 password: xxxx
 endpoint:
     production: someservice.com
@@ -145,7 +146,7 @@ func (s *ProvisionSuite) TestCreateHandlerSavesNameFromManifestID(c *gocheck.C) 
 	c.Assert(action, testing.IsRecorded)
 }
 
-func (s *ProvisionSuite) TestCreateHandlerSavesEndpointServiceProperty(c *gocheck.C) {
+func (s *ProvisionSuite) TestCreateHandlerSavesServiceMetadata(c *gocheck.C) {
 	recorder, request := makeRequestToCreateHandler(c)
 	err := serviceCreate(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
@@ -156,6 +157,7 @@ func (s *ProvisionSuite) TestCreateHandlerSavesEndpointServiceProperty(c *gochec
 	c.Assert(rService.Endpoint["production"], gocheck.Equals, "someservice.com")
 	c.Assert(rService.Endpoint["test"], gocheck.Equals, "test.someservice.com")
 	c.Assert(rService.Password, gocheck.Equals, "xxxx")
+	c.Assert(rService.Username, gocheck.Equals, "test")
 }
 
 func (s *ProvisionSuite) TestCreateHandlerWithContentOfRealYaml(c *gocheck.C) {
@@ -179,7 +181,7 @@ func (s *ProvisionSuite) TestCreateHandlerShouldReturnErrorWhenNameExists(c *goc
 	recorder, request = makeRequestToCreateHandler(c)
 	err = serviceCreate(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.ErrorMatches, "^Service with name some_service already exists.$")
+	c.Assert(err, gocheck.ErrorMatches, "^Service already exists.$")
 }
 
 func (s *ProvisionSuite) TestCreateHandlerSavesOwnerTeamsFromUserWhoCreated(c *gocheck.C) {

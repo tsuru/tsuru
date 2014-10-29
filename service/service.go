@@ -15,6 +15,7 @@ import (
 
 type Service struct {
 	Name         string `bson:"_id"`
+	Username     string
 	Password     string
 	Endpoint     map[string]string
 	OwnerTeams   []string `bson:"owner_teams"`
@@ -22,6 +23,10 @@ type Service struct {
 	Doc          string
 	IsRestricted bool `bson:"is_restricted"`
 }
+
+var (
+	ErrServiceAlreadyExists = errors.New("Service already exists.")
+)
 
 func (s *Service) Get() error {
 	conn, err := db.Conn()
@@ -39,6 +44,13 @@ func (s *Service) Create() error {
 		return err
 	}
 	defer conn.Close()
+	n, err := conn.Services().Find(bson.M{"_id": s.Name}).Count()
+	if err != nil {
+		return err
+	}
+	if n != 0 {
+		return ErrServiceAlreadyExists
+	}
 	return conn.Services().Insert(s)
 }
 
