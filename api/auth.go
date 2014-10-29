@@ -389,16 +389,15 @@ func getTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(team)
 }
 
-func getKeyFromBody(b io.Reader) (string, error) {
+func getKeyFromBody(b io.Reader) (auth.Key, error) {
+	var key auth.Key
 	var body map[string]string
 	err := json.NewDecoder(b).Decode(&body)
 	if err != nil {
-		return "", &errors.HTTP{Code: http.StatusBadRequest, Message: "Invalid JSON"}
+		return key, &errors.HTTP{Code: http.StatusBadRequest, Message: "Invalid JSON"}
 	}
-	key, ok := body["key"]
-	if !ok || key == "" {
-		return "", &errors.HTTP{Code: http.StatusBadRequest, Message: "Missing key"}
-	}
+	key.Content = body["key"]
+	key.Name = body["name"]
 	return key, nil
 }
 
@@ -408,16 +407,18 @@ func getKeyFromBody(b io.Reader) (string, error) {
 // exists to be used in other places in the package without the http stuff (request and
 // response).
 func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	content, err := getKeyFromBody(r.Body)
+	key, err := getKeyFromBody(r.Body)
 	if err != nil {
 		return err
+	}
+	if key.Content == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Missing key content"}
 	}
 	u, err := t.User()
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "add-key", content)
-	key := auth.Key{Content: content}
+	rec.Log(u.Email, "add-key", key.Name, key.Content)
 	err = u.AddKey(key)
 	if err == auth.ErrUserAlreadyHasKey {
 		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
@@ -431,16 +432,19 @@ func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // exists to be used in other places in the package without the http stuff (request and
 // response).
 func removeKeyFromUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	content, err := getKeyFromBody(r.Body)
+	key, err := getKeyFromBody(r.Body)
 	if err != nil {
 		return err
+	}
+	if key.Content == "" && key.Name == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Either the content or the name of the key must be provided"}
 	}
 	u, err := t.User()
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "remove-key", content)
-	err = u.RemoveKey(auth.Key{Content: content})
+	rec.Log(u.Email, "remove-key", key.Name, key.Content)
+	err = u.RemoveKey(key)
 	if err == auth.ErrKeyNotFound {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "User does not have this key"}
 	}

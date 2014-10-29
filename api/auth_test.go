@@ -94,30 +94,6 @@ func (s *AuthSuite) getTestData(p ...string) io.ReadCloser {
 	return f
 }
 
-type hasKeyChecker struct{}
-
-func (c *hasKeyChecker) Info() *gocheck.CheckerInfo {
-	return &gocheck.CheckerInfo{Name: "HasKey", Params: []string{"user", "key"}}
-}
-
-func (c *hasKeyChecker) Check(params []interface{}, names []string) (bool, string) {
-	if len(params) != 2 {
-		return false, "you should provide two parameters"
-	}
-	user, ok := params[0].(*auth.User)
-	if !ok {
-		return false, "first parameter should be a user pointer"
-	}
-	content, ok := params[1].(string)
-	if !ok {
-		return false, "second parameter should be a string"
-	}
-	key := auth.Key{Content: content}
-	return user.HasKey(key), ""
-}
-
-var HasKey gocheck.Checker = &hasKeyChecker{}
-
 type userPresenceChecker struct{}
 
 func (c *userPresenceChecker) Info() *gocheck.CheckerInfo {
@@ -1178,11 +1154,44 @@ func (s *AuthSuite) TestAddKeyToUserAddsAKeyToTheUser(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	s.user, err = auth.GetUserByEmail(s.user.Email)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(s.user, HasKey, "my-key")
+	key := auth.Key{Name: s.user.Email + "-1"}
+	gotKey, _ := s.user.FindKey(key)
+	key.Content = "my-key"
+	c.Assert(gotKey, gocheck.DeepEquals, key)
 	action := testing.Action{
 		Action: "add-key",
 		User:   s.user.Email,
-		Extra:  []interface{}{"my-key"},
+		Extra:  []interface{}{"", "my-key"},
+	}
+	c.Assert(action, testing.IsRecorded)
+}
+
+func (s *AuthSuite) TestAddKeyToUserAcceptsTheNameOfTheKey(c *gocheck.C) {
+	h := testHandler{}
+	ts := testing.StartGandalfTestServer(&h)
+	defer ts.Close()
+	conn, _ := db.Conn()
+	defer conn.Close()
+	defer func() {
+		s.user.RemoveKey(auth.Key{Content: "my-key"})
+		conn.Users().Update(bson.M{"email": s.user.Email}, s.user)
+	}()
+	b := bytes.NewBufferString(`{"key":"my-key","name":"super-key"}`)
+	request, err := http.NewRequest("POST", "/users/keys", b)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = addKeyToUser(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	s.user, err = auth.GetUserByEmail(s.user.Email)
+	c.Assert(err, gocheck.IsNil)
+	key := auth.Key{Name: "super-key"}
+	gotKey, _ := s.user.FindKey(key)
+	key.Content = "my-key"
+	c.Assert(gotKey, gocheck.DeepEquals, key)
+	action := testing.Action{
+		Action: "add-key",
+		User:   s.user.Email,
+		Extra:  []interface{}{"super-key", "my-key"},
 	}
 	c.Assert(action, testing.IsRecorded)
 }
@@ -1229,7 +1238,7 @@ func (s *AuthSuite) TestAddKeyToUserReturnsBadRequestIfTheKeyIsNotPresent(c *goc
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
-	c.Assert(e, gocheck.ErrorMatches, "^Missing key$")
+	c.Assert(e, gocheck.ErrorMatches, "^Missing key content$")
 }
 
 func (s *AuthSuite) TestAddKeyToUserReturnsBadRequestIfTheKeyIsEmpty(c *gocheck.C) {
@@ -1245,7 +1254,7 @@ func (s *AuthSuite) TestAddKeyToUserReturnsBadRequestIfTheKeyIsEmpty(c *gocheck.
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
-	c.Assert(e, gocheck.ErrorMatches, "^Missing key$")
+	c.Assert(e, gocheck.ErrorMatches, "^Missing key content$")
 }
 
 func (s *AuthSuite) TestAddKeyToUserReturnsConflictIfTheKeyIsAlreadyPresent(c *gocheck.C) {
@@ -1343,11 +1352,37 @@ func (s *AuthSuite) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	u2, err := auth.GetUserByEmail(s.user.Email)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(u2, gocheck.Not(HasKey), "my-key")
+	c.Assert(u2.HasKey(auth.Key{Content: "my-key"}), gocheck.Equals, false)
 	action := testing.Action{
 		Action: "remove-key",
 		User:   s.user.Email,
-		Extra:  []interface{}{"my-key"},
+		Extra:  []interface{}{"", "my-key"},
+	}
+	c.Assert(action, testing.IsRecorded)
+}
+
+func (s *AuthSuite) TestRemoveKeyHandlerCanRemoveByName(c *gocheck.C) {
+	h := testHandler{}
+	ts := testing.StartGandalfTestServer(&h)
+	defer ts.Close()
+	b := bytes.NewBufferString(`{"key":"my-key","name":"key-name"}`)
+	request, err := http.NewRequest("POST", "/users/keys", b)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	addKeyToUser(recorder, request, s.token)
+	b = bytes.NewBufferString(`{"name":"key-name"}`)
+	request, err = http.NewRequest("DELETE", "/users/key", b)
+	c.Assert(err, gocheck.IsNil)
+	recorder = httptest.NewRecorder()
+	err = removeKeyFromUser(recorder, request, s.token)
+	c.Assert(err, gocheck.IsNil)
+	u2, err := auth.GetUserByEmail(s.user.Email)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(u2.HasKey(auth.Key{Content: "my-key"}), gocheck.Equals, false)
+	action := testing.Action{
+		Action: "remove-key",
+		User:   s.user.Email,
+		Extra:  []interface{}{"key-name", ""},
 	}
 	c.Assert(action, testing.IsRecorded)
 }
@@ -1407,7 +1442,7 @@ func (s *AuthSuite) TestRemoveKeyHandlerReturnsBadRequestIfTheKeyIsNotPresent(c 
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
-	c.Assert(e, gocheck.ErrorMatches, "^Missing key$")
+	c.Assert(e, gocheck.ErrorMatches, "^Either the content or the name of the key must be provided$")
 }
 
 func (s *AuthSuite) TestRemoveKeyHandlerReturnsBadRequestIfTheKeyIsEmpty(c *gocheck.C) {
@@ -1420,7 +1455,7 @@ func (s *AuthSuite) TestRemoveKeyHandlerReturnsBadRequestIfTheKeyIsEmpty(c *goch
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
-	c.Assert(e, gocheck.ErrorMatches, "^Missing key$")
+	c.Assert(e, gocheck.ErrorMatches, "^Either the content or the name of the key must be provided$")
 }
 
 func (s *AuthSuite) TestRemoveKeyHandlerReturnsNotFoundIfTheUserDoesNotHaveTheKey(c *gocheck.C) {
