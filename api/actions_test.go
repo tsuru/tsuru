@@ -5,8 +5,6 @@
 package api
 
 import (
-	"fmt"
-
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/auth"
@@ -36,86 +34,12 @@ func (s *ActionsSuite) TearDownSuite(c *gocheck.C) {
 	conn.Apps().Database.DropDatabase()
 }
 
-func (s *ActionsSuite) TestAddKeyInGandalf(c *gocheck.C) {
-	c.Assert(addKeyInGandalfAction.Name, gocheck.Equals, "add-key-in-gandalf")
-}
-
-func (s *ActionsSuite) TestAddKeyInDatatabase(c *gocheck.C) {
-	c.Assert(addKeyInDatabaseAction.Name, gocheck.Equals, "add-key-in-database")
-}
-
 func (s *ActionsSuite) TestAddUserToTeamInGandalf(c *gocheck.C) {
 	c.Assert(addUserToTeamInGandalfAction.Name, gocheck.Equals, "add-user-to-team-in-gandalf")
 }
 
 func (s *ActionsSuite) TestAddUserToTeamInDatabase(c *gocheck.C) {
 	c.Assert(addUserToTeamInDatabaseAction.Name, gocheck.Equals, "add-user-to-team-in-database")
-}
-
-func (s *ActionsSuite) TestAddKeyInGandalfActionForward(c *gocheck.C) {
-	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
-	defer ts.Close()
-	key := &auth.Key{Name: "mysshkey", Content: "my-ssh-key"}
-	u := &auth.User{Email: "me@gmail.com", Password: "123456"}
-	ctx := action.FWContext{
-		Params: []interface{}{key, u},
-	}
-	result, err := addKeyInGandalfAction.Forward(ctx)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(result, gocheck.IsNil) // we're not gonna need the result
-	c.Assert(len(h.url), gocheck.Equals, 1)
-	expected := fmt.Sprintf("/user/%s/key", u.Email)
-	c.Assert(h.url[0], gocheck.Equals, expected)
-}
-
-func (s *ActionsSuite) TestAddKeyInGandalfActionBackward(c *gocheck.C) {
-	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
-	defer ts.Close()
-	key := &auth.Key{Name: "mysshkey", Content: "my-ssh-key"}
-	u := &auth.User{Email: "me@gmail.com", Password: "123456"}
-	ctx := action.BWContext{
-		Params: []interface{}{key, u},
-	}
-	addKeyInGandalfAction.Backward(ctx)
-	c.Assert(len(h.url), gocheck.Equals, 1)
-	expected := fmt.Sprintf("/user/%s/key/%s", u.Email, key.Name)
-	c.Assert(h.url[0], gocheck.Equals, expected)
-}
-
-func (s *ActionsSuite) TestAddKeyInDatabaseActionForward(c *gocheck.C) {
-	key := &auth.Key{Name: "mysshkey", Content: "my-ssh-key"}
-	u := &auth.User{Email: "me@gmail.com"}
-	err := u.Create()
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
-	c.Assert(err, gocheck.IsNil)
-	ctx := action.FWContext{
-		Params: []interface{}{key, u},
-	}
-	result, err := addKeyInDatabaseAction.Forward(ctx)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(result, gocheck.IsNil) // we do not need it
-	u, err = auth.GetUserByEmail(u.Email)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(u.Keys, gocheck.DeepEquals, []auth.Key{*key})
-}
-
-func (s *ActionsSuite) TestAddKeyInDatabaseActionBackward(c *gocheck.C) {
-	key := &auth.Key{Name: "mysshkey", Content: "my-ssh-key"}
-	u := &auth.User{Email: "me@gmail.com"}
-	u.AddKey(*key)
-	err := u.Create()
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
-	c.Assert(u.Keys, gocheck.DeepEquals, []auth.Key{*key}) // just in case
-	ctx := action.BWContext{
-		Params: []interface{}{key, u},
-	}
-	addKeyInDatabaseAction.Backward(ctx)
-	u, err = auth.GetUserByEmail(u.Email)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(u.Keys, gocheck.DeepEquals, []auth.Key{})
 }
 
 func (s *ActionsSuite) TestAddUserToTeamInGandalfActionForward(c *gocheck.C) {

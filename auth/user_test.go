@@ -5,6 +5,10 @@
 package auth
 
 import (
+	"fmt"
+	"io/ioutil"
+	"net/http"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/testing"
@@ -56,7 +60,7 @@ func (s *S) TestGetUserByEmailWithInvalidEmail(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.ValidationError)
 	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Message, gocheck.Equals, emailError)
+	c.Assert(e.Message, gocheck.Equals, "Invalid email.")
 }
 
 func (s *S) TestUpdateUser(c *gocheck.C) {
@@ -73,24 +77,52 @@ func (s *S) TestUpdateUser(c *gocheck.C) {
 }
 
 func (s *S) TestAddKeyAddsAKeyToTheUser(c *gocheck.C) {
+	var request *http.Request
+	var content []byte
+	server := testing.StartGandalfTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		request = r
+		content, _ = ioutil.ReadAll(r.Body)
+	}))
+	defer server.Close()
 	u := &User{Email: "sacefulofsecrets@pinkfloyd.com"}
-	err := u.AddKey(Key{Content: "my-key"})
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer u.Delete()
+	key := Key{Name: "some-key", Content: "my-key"}
+	err = u.AddKey(key)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(u, HasKey, "my-key")
+	expectedPath := fmt.Sprintf("/user/%s/key", u.Email)
+	expectedBody := `{"sacefulofsecrets@pinkfloyd.com-1":"my-key"}`
+	c.Assert(request.Method, gocheck.Equals, "POST")
+	c.Assert(request.URL.Path, gocheck.Equals, expectedPath)
+	c.Assert(string(content), gocheck.Equals, expectedBody)
 }
 
 func (s *S) TestRemoveKeyRemovesAKeyFromTheUser(c *gocheck.C) {
-	u := &User{Email: "shineon@pinkfloyd.com", Keys: []Key{{Content: "my-key"}}}
-	err := u.RemoveKey(Key{Content: "my-key"})
+	var request *http.Request
+	server := testing.StartGandalfTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		request = r
+	}))
+	defer server.Close()
+	key := Key{Content: "my-key", Name: "the-key"}
+	u := &User{Email: "shineon@pinkfloyd.com", Keys: []Key{key}}
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
+	err = u.RemoveKey(Key{Content: "my-key"})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(u, gocheck.Not(HasKey), "my-key")
+	expectedPath := fmt.Sprintf("/user/%s/key/%s", u.Email, key.Name)
+	c.Assert(request.Method, gocheck.Equals, "DELETE")
+	c.Assert(request.URL.Path, gocheck.Equals, expectedPath)
 }
 
 func (s *S) TestRemoveUnknownKey(c *gocheck.C) {
 	u := &User{Email: "shine@pinkfloyd.com", Keys: nil}
 	err := u.RemoveKey(Key{Content: "my-key"})
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Key not found")
+	c.Assert(err.Error(), gocheck.Equals, "key not found")
 }
 
 func (s *S) TestTeams(c *gocheck.C) {
@@ -207,7 +239,7 @@ func (s *S) TestAddKeyInGandalfShouldCallGandalfAPI(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer u.Delete()
 	key := Key{Content: "my-ssh-key", Name: "key1"}
-	err = u.AddKeyGandalf(&key)
+	err = u.addKeyGandalf(&key)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(h.Url, gocheck.Equals, "/user/me@gmail.com/key")
 }

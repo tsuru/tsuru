@@ -10,6 +10,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
+	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/quota"
@@ -18,11 +19,11 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-const (
-	emailError = "Invalid email."
+var (
+	ErrUserNotFound       = stderrors.New("user not found")
+	ErrUserAlreadyHaveKey = stderrors.New("user already has this key")
+	ErrKeyNotFound        = stderrors.New("key not found")
 )
-
-var ErrUserNotFound = stderrors.New("User not found")
 
 type Key struct {
 	Name    string
@@ -48,7 +49,7 @@ func keyToMap(keys []Key) map[string]string {
 
 func GetUserByEmail(email string) (*User, error) {
 	if !validation.ValidateEmail(email) {
-		return nil, &errors.ValidationError{Message: emailError}
+		return nil, &errors.ValidationError{Message: "Invalid email."}
 	}
 	var u User
 	conn, err := db.Conn()
@@ -126,25 +127,49 @@ func (u *User) HasKey(key Key) bool {
 }
 
 func (u *User) AddKey(key Key) error {
-	u.Keys = append(u.Keys, key)
-	return nil
-}
-
-func (u *User) RemoveKey(key Key) error {
-	_, index := u.FindKey(key)
-	if index < 0 {
-		return stderrors.New("Key not found")
+	if u.HasKey(key) {
+		return ErrUserAlreadyHaveKey
 	}
-	copy(u.Keys[index:], u.Keys[index+1:])
-	u.Keys = u.Keys[:len(u.Keys)-1]
-	return nil
+	actions := []*action.Action{
+		&addKeyInGandalfAction,
+		&addKeyInDatabaseAction,
+	}
+	pipeline := action.NewPipeline(actions...)
+	return pipeline.Execute(&key, u)
 }
 
-func (u *User) AddKeyGandalf(key *Key) error {
+func (u *User) addKeyGandalf(key *Key) error {
 	key.Name = fmt.Sprintf("%s-%d", u.Email, len(u.Keys)+1)
 	gURL := repository.ServerURL()
 	if err := (&gandalf.Client{Endpoint: gURL}).AddKey(u.Email, keyToMap([]Key{*key})); err != nil {
 		return fmt.Errorf("Failed to add key to git server: %s", err)
+	}
+	return nil
+}
+
+func (u *User) addKeyDB(key *Key) error {
+	u.Keys = append(u.Keys, *key)
+	return u.Update()
+}
+
+func (u *User) RemoveKey(key Key) error {
+	actualKey, index := u.FindKey(key)
+	if index < 0 {
+		return ErrKeyNotFound
+	}
+	err := u.removeKeyGandalf(&actualKey)
+	if err != nil {
+		return err
+	}
+	copy(u.Keys[index:], u.Keys[index+1:])
+	u.Keys = u.Keys[:len(u.Keys)-1]
+	return u.Update()
+}
+
+func (u *User) removeKeyGandalf(key *Key) error {
+	gandalfClient := gandalf.Client{Endpoint: repository.ServerURL()}
+	if err := gandalfClient.RemoveKey(u.Email, key.Name); err != nil {
+		return fmt.Errorf("Failed to remove the key from git server: %s", err)
 	}
 	return nil
 }

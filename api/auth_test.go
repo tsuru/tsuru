@@ -467,7 +467,7 @@ func (s *AuthSuite) TestLoginShouldReturnErrorAndNotFoundIfTheUserDoesNotExist(c
 	recorder := httptest.NewRecorder()
 	err = login(recorder, request)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.ErrorMatches, "^User not found$")
+	c.Assert(err, gocheck.ErrorMatches, "^user not found$")
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
@@ -1269,7 +1269,7 @@ func (s *AuthSuite) TestAddKeyToUserReturnsConflictIfTheKeyIsAlreadyPresent(c *g
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusConflict)
-	c.Assert(e.Message, gocheck.Equals, "User already has this key")
+	c.Assert(e.Message, gocheck.Equals, "user already has this key")
 }
 
 func (s *AuthSuite) TestAddKeyAddKeyToUserInGandalf(c *gocheck.C) {
@@ -1293,7 +1293,7 @@ func (s *AuthSuite) TestAddKeyAddKeyToUserInGandalf(c *gocheck.C) {
 	u, err = auth.GetUserByEmail(u.Email)
 	c.Assert(err, gocheck.IsNil)
 	defer func() {
-		removeKeyFromGandalf(&u.Keys[0], u)
+		u.RemoveKey(u.Keys[0])
 		conn.Users().RemoveAll(bson.M{"email": u.Email})
 	}()
 	c.Assert(u.Keys[0].Name, gocheck.Not(gocheck.Matches), "\\.pub$")
@@ -1321,75 +1321,6 @@ func (s *AuthSuite) TestAddKeyToUserShouldNotInsertKeyInDatabaseWhenGandalfAddit
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Failed to add key to git server: Failed to connect to Gandalf server, it's probably down.")
 	defer conn.Users().RemoveAll(bson.M{"email": u.Email})
-	u2, err := auth.GetUserByEmail(u.Email)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(u2.Keys, gocheck.DeepEquals, []auth.Key{})
-}
-
-func (s *AuthSuite) TestAddKeyInDatabaseShouldStoreUsersKeyInDB(c *gocheck.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
-	u := &auth.User{Email: "me@gmail.com"}
-	err := u.Create()
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Users().Remove(bson.M{"email": u.Email})
-	key := auth.Key{Content: "my-ssh-key", Name: "key1"}
-	err = addKeyInDatabase(&key, u)
-	c.Assert(err, gocheck.IsNil)
-	u2, err := auth.GetUserByEmail(u.Email)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(u2.Keys, gocheck.DeepEquals, []auth.Key{key})
-}
-
-func (s *AuthSuite) TestAddKeyInGandalfShouldCallGandalfAPI(c *gocheck.C) {
-	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
-	defer ts.Close()
-	conn, _ := db.Conn()
-	defer conn.Close()
-	u := &auth.User{Email: "me@gmail.com"}
-	err := u.Create()
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Users().Remove(bson.M{"email": u.Email})
-	key := auth.Key{Content: "my-ssh-key", Name: "key1"}
-	err = addKeyInGandalf(&key, u)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(len(h.url), gocheck.Equals, 1)
-	c.Assert(h.url[0], gocheck.Equals, "/user/me@gmail.com/key")
-}
-
-func (s *AuthSuite) TestRemoveKeyFromGandalfCallsGandalfAPI(c *gocheck.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
-	u := &auth.User{Email: "me@gmail.com"}
-	err := u.Create()
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Users().Remove(bson.M{"email": u.Email})
-	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
-	defer ts.Close()
-	key := auth.Key{Name: "mykey", Content: "my-ssh-key"}
-	err = addKeyInGandalf(&key, u)
-	c.Assert(err, gocheck.IsNil)
-	err = removeKeyFromGandalf(&key, u)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(len(h.url), gocheck.Equals, 2) // add and remove
-	expected := fmt.Sprintf("/user/me@gmail.com/key/%s", key.Name)
-	c.Assert(h.url[1], gocheck.Matches, expected)
-}
-
-func (s *AuthSuite) TestRemoveKeyFromDatabase(c *gocheck.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
-	u := &auth.User{Email: "me@gmail.com"}
-	err := u.Create()
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Users().Remove(bson.M{"email": u.Email})
-	key := auth.Key{Name: "mykey", Content: "my-ssh-key"}
-	err = addKeyInDatabase(&key, u)
-	c.Assert(err, gocheck.IsNil)
-	err = removeKeyFromDatabase(&key, u)
-	c.Assert(err, gocheck.IsNil)
 	u2, err := auth.GetUserByEmail(u.Email)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(u2.Keys, gocheck.DeepEquals, []auth.Key{})
@@ -1429,7 +1360,7 @@ func (s *AuthSuite) TestRemoveKeyHandlerCallsGandalfRemoveKey(c *gocheck.C) {
 	request, err := http.NewRequest("POST", "/users/keys", b)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = addKeyToUser(recorder, request, s.token) //fills the first position in h properties
+	err = addKeyToUser(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	b = bytes.NewBufferString(`{"key":"my-key"}`)
 	request, err = http.NewRequest("DELETE", "/users/key", b)
@@ -1788,7 +1719,7 @@ func (s *AuthSuite) TestResetPasswordUserNotFound(c *gocheck.C) {
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
-	c.Assert(e.Message, gocheck.Equals, "User not found")
+	c.Assert(e.Message, gocheck.Equals, "user not found")
 }
 
 func (s *AuthSuite) TestResetPasswordInvalidEmail(c *gocheck.C) {

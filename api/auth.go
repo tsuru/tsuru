@@ -402,15 +402,6 @@ func getKeyFromBody(b io.Reader) (string, error) {
 	return key, nil
 }
 
-func addKeyInDatabase(key *auth.Key, u *auth.User) error {
-	u.AddKey(*key)
-	return u.Update()
-}
-
-func addKeyInGandalf(key *auth.Key, u *auth.User) error {
-	return u.AddKeyGandalf(key)
-}
-
 // AddKeyToUser adds a key to a user.
 //
 // This function is just an http wrapper around addKeyToUser. The latter function
@@ -427,33 +418,11 @@ func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	rec.Log(u.Email, "add-key", content)
 	key := auth.Key{Content: content}
-	if u.HasKey(key) {
-		return &errors.HTTP{Code: http.StatusConflict, Message: "User already has this key"}
+	err = u.AddKey(key)
+	if err == auth.ErrUserAlreadyHaveKey {
+		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 	}
-	actions := []*action.Action{
-		&addKeyInGandalfAction,
-		&addKeyInDatabaseAction,
-	}
-	pipeline := action.NewPipeline(actions...)
-	return pipeline.Execute(&key, u)
-}
-
-func removeKeyFromDatabase(key *auth.Key, u *auth.User) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	u.RemoveKey(*key)
-	return conn.Users().Update(bson.M{"email": u.Email}, u)
-}
-
-func removeKeyFromGandalf(key *auth.Key, u *auth.User) error {
-	gURL := repository.ServerURL()
-	if err := (&gandalf.Client{Endpoint: gURL}).RemoveKey(u.Email, key.Name); err != nil {
-		return fmt.Errorf("Failed to remove the key from git server: %s", err)
-	}
-	return nil
+	return err
 }
 
 // RemoveKeyFromUser removes a key from a user.
@@ -471,15 +440,11 @@ func removeKeyFromUser(w http.ResponseWriter, r *http.Request, t auth.Token) err
 		return err
 	}
 	rec.Log(u.Email, "remove-key", content)
-	key, index := u.FindKey(auth.Key{Content: content})
-	if index < 0 {
+	err = u.RemoveKey(auth.Key{Content: content})
+	if err == auth.ErrKeyNotFound {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "User does not have this key"}
 	}
-	err = removeKeyFromGandalf(&key, u)
-	if err != nil {
-		return err
-	}
-	return removeKeyFromDatabase(&key, u)
+	return err
 }
 
 // listKeys list user's keys
