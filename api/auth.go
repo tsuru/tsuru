@@ -461,18 +461,7 @@ func listKeys(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(keys)
-	if err != nil {
-		return fmt.Errorf("Failed to marshal keys into json: %s", err)
-	}
-	n, err := w.Write(b)
-	if err != nil {
-		return err
-	}
-	if n != len(b) {
-		return &errors.HTTP{Code: http.StatusInternalServerError, Message: "Failed to write response body."}
-	}
-	return nil
+	return json.NewEncoder(w).Encode(keys)
 }
 
 // removeUser removes the user from the database and from gandalf server
