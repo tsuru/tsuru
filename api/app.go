@@ -830,8 +830,19 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return &errors.HTTP{Code: http.StatusConflict, Message: fmt.Sprintf("%s: %s", app2.Name, &app2.Lock)}
 	}
 	// compare apps by platform type and number of units
-	if forceSwap == "false" && ((len(app1.Units()) != len(app2.Units())) || (app1.Platform != app2.Platform)) {
-		return app.ErrAppNotEqual
+	if forceSwap == "false" {
+		if app1.Platform != app2.Platform {
+			return &errors.HTTP{
+				Code:    http.StatusPreconditionFailed,
+				Message: "platforms don't match",
+			}
+		}
+		if len(app1.Units()) != len(app2.Units()) {
+			return &errors.HTTP{
+				Code:    http.StatusPreconditionFailed,
+				Message: "number of units doesn't match",
+			}
+		}
 	}
 	rec.Log(u.Email, "swap", app1Name, app2Name)
 	return app.Swap(&app1, &app2)

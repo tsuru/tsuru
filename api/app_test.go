@@ -3091,7 +3091,7 @@ func (s *S) TestSwapApp2Locked(c *gocheck.C) {
 	c.Assert(err, gocheck.ErrorMatches, "app2: App locked by x, running /test. Acquired in .*")
 }
 
-func (s *S) TestSwapIncompatibleAppsShouldNotSwap(c *gocheck.C) {
+func (s *S) TestSwapIncompatiblePlatforms(c *gocheck.C) {
 	app1 := app.App{Name: "app1", Teams: []string{s.team.Name}, Platform: "x"}
 	err := s.conn.Apps().Insert(&app1)
 	c.Assert(err, gocheck.IsNil)
@@ -3108,7 +3108,34 @@ func (s *S) TestSwapIncompatibleAppsShouldNotSwap(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = swap(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.DeepEquals, app.ErrAppNotEqual)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusPreconditionFailed)
+	c.Assert(e.Message, gocheck.Equals, "platforms don't match")
+}
+
+func (s *S) TestSwapIncompatibleUnits(c *gocheck.C) {
+	app1 := app.App{Name: "app1", Teams: []string{s.team.Name}, Platform: "x"}
+	err := s.conn.Apps().Insert(&app1)
+	c.Assert(err, gocheck.IsNil)
+	err = s.provisioner.Provision(&app1)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app1.Name})
+	app2 := app.App{Name: "app2", Teams: []string{s.team.Name}, Platform: "x"}
+	err = s.conn.Apps().Insert(&app2)
+	c.Assert(err, gocheck.IsNil)
+	err = s.provisioner.Provision(&app2)
+	c.Assert(err, gocheck.IsNil)
+	s.provisioner.AddUnit(&app2, provision.Unit{})
+	defer s.conn.Apps().Remove(bson.M{"name": app2.Name})
+	request, _ := http.NewRequest("PUT", "/swap?app1=app1&app2=app2", nil)
+	recorder := httptest.NewRecorder()
+	err = swap(recorder, request, s.token)
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Code, gocheck.Equals, http.StatusPreconditionFailed)
+	c.Assert(e.Message, gocheck.Equals, "number of units doesn't match")
 }
 
 func (s *S) TestSwapIncompatibleAppsForceSwap(c *gocheck.C) {
