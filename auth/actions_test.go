@@ -23,7 +23,7 @@ var _ = gocheck.Suite(&ActionsSuite{})
 
 func (s *ActionsSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("database:url", "127.0.0.1:27017")
-	config.Set("database:name", "tsuru_api_actions_test")
+	config.Set("database:name", "tsuru_auth_actions_test")
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
