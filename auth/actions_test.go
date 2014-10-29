@@ -101,7 +101,6 @@ func (s *ActionsSuite) TestAddKeyInDatabaseActionBackward(c *gocheck.C) {
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
-	key.Name = "me@gmail.com-1"
 	c.Assert(u.Keys, gocheck.DeepEquals, []Key{key})
 	ctx := action.BWContext{
 		Params: []interface{}{&key, u},

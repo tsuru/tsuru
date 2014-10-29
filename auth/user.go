@@ -114,7 +114,7 @@ func (u *User) Teams() ([]Team, error) {
 
 func (u *User) FindKey(key Key) (Key, int) {
 	for i, k := range u.Keys {
-		if k.Content == key.Content {
+		if k.Name == key.Name || k.Content == key.Content {
 			return k, i
 		}
 	}
@@ -127,6 +127,9 @@ func (u *User) HasKey(key Key) bool {
 }
 
 func (u *User) AddKey(key Key) error {
+	if key.Name == "" {
+		key.Name = fmt.Sprintf("%s-%d", u.Email, len(u.Keys)+1)
+	}
 	if u.HasKey(key) {
 		return ErrUserAlreadyHaveKey
 	}
@@ -139,9 +142,8 @@ func (u *User) AddKey(key Key) error {
 }
 
 func (u *User) addKeyGandalf(key *Key) error {
-	key.Name = fmt.Sprintf("%s-%d", u.Email, len(u.Keys)+1)
-	gURL := repository.ServerURL()
-	if err := (&gandalf.Client{Endpoint: gURL}).AddKey(u.Email, keyToMap([]Key{*key})); err != nil {
+	gandalfClient := gandalf.Client{Endpoint: repository.ServerURL()}
+	if err := gandalfClient.AddKey(u.Email, keyToMap([]Key{*key})); err != nil {
 		return fmt.Errorf("Failed to add key to git server: %s", err)
 	}
 	return nil

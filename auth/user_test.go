@@ -94,6 +94,30 @@ func (s *S) TestAddKeyAddsAKeyToTheUser(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(u, HasKey, "my-key")
 	expectedPath := fmt.Sprintf("/user/%s/key", u.Email)
+	expectedBody := `{"some-key":"my-key"}`
+	c.Assert(request.Method, gocheck.Equals, "POST")
+	c.Assert(request.URL.Path, gocheck.Equals, expectedPath)
+	c.Assert(string(content), gocheck.Equals, expectedBody)
+}
+
+func (s *S) TestAddKeyGeneratesNameWhenEmpty(c *gocheck.C) {
+	var request *http.Request
+	var content []byte
+	server := testing.StartGandalfTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		request = r
+		content, _ = ioutil.ReadAll(r.Body)
+	}))
+	defer server.Close()
+	u := &User{Email: "sacefulofsecrets@pinkfloyd.com"}
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer u.Delete()
+	key := Key{Content: "my-key"}
+	err = u.AddKey(key)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(u, HasKey, "my-key")
+	expectedPath := fmt.Sprintf("/user/%s/key", u.Email)
 	expectedBody := `{"sacefulofsecrets@pinkfloyd.com-1":"my-key"}`
 	c.Assert(request.Method, gocheck.Equals, "POST")
 	c.Assert(request.URL.Path, gocheck.Equals, expectedPath)
@@ -148,8 +172,26 @@ func (s *S) TestTeams(c *gocheck.C) {
 	c.Assert(teams[1].Name, gocheck.Equals, t.Name)
 }
 
-func (s *S) TestFindKeyReturnsKeyWithNameAndContent(c *gocheck.C) {
-	u := User{Email: "me@tsuru.com", Password: "123", Keys: []Key{{Name: "me@tsuru.com-1", Content: "ssh-rsa somekey me@tsuru.com"}}}
+func (s *S) TestFindKeyByName(c *gocheck.C) {
+	u := User{
+		Email:    "me@tsuru.com",
+		Password: "123",
+		Keys:     []Key{{Name: "me@tsuru.com-1", Content: "ssh-rsa somekey me@tsuru.com"}},
+	}
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	k, index := u.FindKey(Key{Name: u.Keys[0].Name})
+	c.Assert(index, gocheck.Equals, 0)
+	c.Assert(k.Name, gocheck.Equals, u.Keys[0].Name)
+}
+
+func (s *S) TestFindKeyByBody(c *gocheck.C) {
+	u := User{
+		Email:    "me@tsuru.com",
+		Password: "123",
+		Keys:     []Key{{Name: "me@tsuru.com-1", Content: "ssh-rsa somekey me@tsuru.com"}},
+	}
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
