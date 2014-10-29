@@ -1,4 +1,5 @@
 id: mysqlapi
+username: mysqltest
 password: yyyy
 endpoint:
   production: mysqlapi.com

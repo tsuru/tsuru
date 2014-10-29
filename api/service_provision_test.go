@@ -270,6 +270,7 @@ func (s *ProvisionSuite) TestUpdateHandlerShouldUpdateTheServiceWithDataFromMani
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(service.Endpoint["production"], gocheck.Equals, "mysqlapi.com")
 	c.Assert(service.Password, gocheck.Equals, "yyyy")
+	c.Assert(service.Username, gocheck.Equals, "mysqltest")
 	endpoints := map[string]string{"production": "mysqlapi.com", "test": "localhost:8000"}
 	action := testing.Action{
 		Action: "update-service",

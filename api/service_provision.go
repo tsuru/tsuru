@@ -136,6 +136,7 @@ func serviceUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	s.Endpoint = y.Endpoint
 	s.Password = y.Password
+	s.Username = y.Username
 	if err = s.Update(); err != nil {
 		return err
 	}
