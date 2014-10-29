@@ -148,7 +148,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Delete", "/users/tokens", authorizationRequiredHandler(logout))
 	m.Add("Put", "/users/password", authorizationRequiredHandler(changePassword))
 	m.Add("Delete", "/users", authorizationRequiredHandler(removeUser))
-	m.Add("Get", "/users/{email}/keys", authorizationRequiredHandler(listKeys))
+	m.Add("Get", "/users/keys", authorizationRequiredHandler(listKeys))
 	m.Add("Post", "/users/keys", authorizationRequiredHandler(addKeyToUser))
 	m.Add("Delete", "/users/keys", authorizationRequiredHandler(removeKeyFromUser))
 
