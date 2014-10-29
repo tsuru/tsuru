@@ -107,5 +107,8 @@ func getContainerCountForAppName(appName string) (int, error) {
 
 func listUnresponsiveContainers(maxUnresponsiveTime time.Duration) ([]container, error) {
 	now := time.Now().UTC()
-	return listContainersBy(bson.M{"lastsuccessstatusupdate": bson.M{"$lt": now.Add(-maxUnresponsiveTime)}})
+	return listContainersBy(bson.M{
+		"lastsuccessstatusupdate": bson.M{"$lt": now.Add(-maxUnresponsiveTime)},
+		"hostport":                bson.M{"$ne": ""},
+	})
 }
