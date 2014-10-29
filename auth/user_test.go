@@ -124,6 +124,19 @@ func (s *S) TestAddKeyGeneratesNameWhenEmpty(c *gocheck.C) {
 	c.Assert(string(content), gocheck.Equals, expectedBody)
 }
 
+func (s *S) TestAddDuplicatedKey(c *gocheck.C) {
+	u := &User{
+		Email: "sacefulofsecrets@pinkfloyd.com",
+		Keys:  []Key{{Name: "my-key", Content: "some-key"}},
+	}
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer u.Delete()
+	key := Key{Name: "my-key", Content: "other-key"}
+	err = u.AddKey(key)
+	c.Assert(err, gocheck.Equals, ErrUserAlreadyHaveKey)
+}
+
 func (s *S) TestRemoveKeyRemovesAKeyFromTheUser(c *gocheck.C) {
 	var request *http.Request
 	server := testing.StartGandalfTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
