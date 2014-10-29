@@ -1,0 +1,43 @@
+=======================
+tsr 0.9.0 release notes
+=======================
+
+Welcome to tsr 0.8.0!
+
+These release notes cover the `new features`_, `bug fixes`_, `backward
+incompatible changes`_, `general improvements`_ and `changes in the API`_
+you'll want to be aware of when upgrading from tsr 0.8.0 or older versions.
+
+.. _`new features`: `What's new in tsr 0.9.0`_
+.. _`general improvements`: `Other improvements in tsr 0.9.0`_
+.. _`changes in the API`: `API changes`_
+
+What's new in tsr 0.9.0
+=======================
+
+Bug fixes
+=========
+
+Other improvements in tsr 0.9.0
+===============================
+
+Backward incompatible changes
+=============================
+
+API changes
+===========
+
+For more details on the API, please refer to the :doc:`tsuru API documentation
+</reference/api>`.
+
+* ``/users/keys``: in previous versions of the API, this endpoint was used for
+  adding and removing keys from the user account. Now it also lists the keys
+  registered in the account of the user. Here is a summary of the behavior of
+  this endpoint:
+
+    - ``GET``: return the list of keys registered in the user account
+    - ``POST``: add a new SSH key to the user account
+    - ``DELETE``: remove a SSH key from the user account
+
+  For the two last kind of requests, the user is now able to specify the name
+  of the key, as well as the content.
