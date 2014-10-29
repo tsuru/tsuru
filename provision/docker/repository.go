@@ -110,5 +110,6 @@ func listUnresponsiveContainers(maxUnresponsiveTime time.Duration) ([]container,
 	return listContainersBy(bson.M{
 		"lastsuccessstatusupdate": bson.M{"$lt": now.Add(-maxUnresponsiveTime)},
 		"hostport":                bson.M{"$ne": ""},
+		"status":                  bson.M{"$ne": provision.StatusStopped.String()},
 	})
 }
