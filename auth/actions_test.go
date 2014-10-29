@@ -96,8 +96,7 @@ func (s *ActionsSuite) TestAddKeyInDatabaseActionBackward(c *gocheck.C) {
 	ts := testing.StartGandalfTestServer(&testHandler{})
 	defer ts.Close()
 	key := Key{Name: "mysshkey", Content: "my-ssh-key"}
-	u := &User{Email: "me@gmail.com"}
-	u.AddKey(key)
+	u := &User{Email: "me@gmail.com", Keys: []Key{key}}
 	err := u.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": u.Email})
