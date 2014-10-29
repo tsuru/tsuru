@@ -79,6 +79,22 @@ func (s *S) TestGetClient(c *gocheck.C) {
 	c.Assert(cli, gocheck.DeepEquals, expected)
 }
 
+func (s *S) TestGetClientWithServiceUsername(c *gocheck.C) {
+	endpoints := map[string]string{
+		"production": "http://mysql.api.com",
+		"test":       "http://localhost:9090",
+	}
+	service := Service{Name: "redis", Username: "redis_test", Password: "abcde", Endpoint: endpoints}
+	cli, err := service.getClient("production")
+	expected := &Client{
+		endpoint: endpoints["production"],
+		username: "redis_test",
+		password: "abcde",
+	}
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(cli, gocheck.DeepEquals, expected)
+}
+
 func (s *S) TestGetClientWithouHTTP(c *gocheck.C) {
 	endpoints := map[string]string{
 		"production": "mysql.api.com",
@@ -111,6 +127,13 @@ func (s *S) TestGetClientWithUnknownEndpoint(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err, gocheck.ErrorMatches, "^Unknown endpoint: staging$")
 	c.Assert(cli, gocheck.IsNil)
+}
+
+func (s *S) TestGetUsername(c *gocheck.C) {
+	service := Service{Name: "test"}
+	c.Assert(service.Name, gocheck.Equals, service.GetUsername())
+	service.Username = "test_test"
+	c.Assert(service.Username, gocheck.Equals, service.GetUsername())
 }
 
 func (s *S) TestGrantAccessShouldAddTeamToTheService(c *gocheck.C) {

@@ -78,11 +78,18 @@ func (s *Service) getClient(endpoint string) (cli *Client, err error) {
 		if p, _ := regexp.MatchString("^https?://", e); !p {
 			e = "http://" + e
 		}
-		cli = &Client{endpoint: e, username: s.Name, password: s.Password}
+		cli = &Client{endpoint: e, username: s.GetUsername(), password: s.Password}
 	} else {
 		err = errors.New("Unknown endpoint: " + endpoint)
 	}
 	return
+}
+
+func (s *Service) GetUsername() string {
+	if s.Username != "" {
+		return s.Username
+	}
+	return s.Name
 }
 
 func (s *Service) findTeam(team *auth.Team) int {
