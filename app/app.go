@@ -204,13 +204,10 @@ func CreateApp(app *App, user *auth.User) error {
 		}
 		app.TeamOwner = teams[0].Name
 	}
-	println("validate")
 	err = app.ValidateTeamOwner(user)
 	if err != nil {
-		println("error")
 		return err
 	}
-	println("noerror")
 	app.Teams = []string{app.TeamOwner}
 	app.Owner = user.Email
 	err = app.validate()
