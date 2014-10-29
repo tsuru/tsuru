@@ -134,7 +134,7 @@ func (s *S) TestAddDuplicatedKey(c *gocheck.C) {
 	defer u.Delete()
 	key := Key{Name: "my-key", Content: "other-key"}
 	err = u.AddKey(key)
-	c.Assert(err, gocheck.Equals, ErrUserAlreadyHaveKey)
+	c.Assert(err, gocheck.Equals, ErrUserAlreadyHasKey)
 }
 
 func (s *S) TestRemoveKeyRemovesAKeyFromTheUser(c *gocheck.C) {

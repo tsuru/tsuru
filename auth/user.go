@@ -20,9 +20,9 @@ import (
 )
 
 var (
-	ErrUserNotFound       = stderrors.New("user not found")
-	ErrUserAlreadyHaveKey = stderrors.New("user already has this key")
-	ErrKeyNotFound        = stderrors.New("key not found")
+	ErrUserNotFound      = stderrors.New("user not found")
+	ErrUserAlreadyHasKey = stderrors.New("user already has this key")
+	ErrKeyNotFound       = stderrors.New("key not found")
 )
 
 type Key struct {
@@ -131,7 +131,7 @@ func (u *User) AddKey(key Key) error {
 		key.Name = fmt.Sprintf("%s-%d", u.Email, len(u.Keys)+1)
 	}
 	if u.HasKey(key) {
-		return ErrUserAlreadyHaveKey
+		return ErrUserAlreadyHasKey
 	}
 	actions := []*action.Action{
 		&addKeyInGandalfAction,

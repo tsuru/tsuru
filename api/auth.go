@@ -419,7 +419,7 @@ func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	rec.Log(u.Email, "add-key", content)
 	key := auth.Key{Content: content}
 	err = u.AddKey(key)
-	if err == auth.ErrUserAlreadyHaveKey {
+	if err == auth.ErrUserAlreadyHasKey {
 		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 	}
 	return err
