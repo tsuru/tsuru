@@ -223,3 +223,21 @@ func (S) TestListUnresponsiveContainersNoHostPort(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(len(result), gocheck.Equals, 0)
 }
+
+func (S) TestListUnresponsiveContainersStopped(c *gocheck.C) {
+	var result []container
+	coll := collection()
+	defer coll.Close()
+	now := time.Now().UTC()
+	coll.Insert(
+		container{ID: "c1", AppName: "app_time_test",
+			LastSuccessStatusUpdate: now.Add(-5 * time.Minute), HostPort: "80", Status: provision.StatusStopped.String()},
+		container{ID: "c2", AppName: "app_time_test",
+			LastSuccessStatusUpdate: now.Add(-5 * time.Minute), HostPort: "80", Status: provision.StatusStarted.String()},
+	)
+	defer coll.RemoveAll(bson.M{"appname": "app_time_test"})
+	result, err := listUnresponsiveContainers(3 * time.Minute)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(len(result), gocheck.Equals, 1)
+	c.Assert(result[0].ID, gocheck.Equals, "c2")
+}
