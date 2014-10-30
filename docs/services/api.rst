@@ -22,7 +22,7 @@ Authentication
 ==============
 
 tsuru will authenticate with the service API using HTTP basic authentication.
-The user is the name of the service and the password is defined in the
+The user can be username or name of the service, and the password is defined in the
 :ref:`service manifest <service_manifest>`.
 
 Content-types

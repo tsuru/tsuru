@@ -38,6 +38,7 @@ This will create a manifest.yaml in your current path with this content:
 ::
 
     id: servicename
+    username: username_to_auth
     password: abc123
     endpoint:
       production: production-endpoint.com
