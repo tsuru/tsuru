@@ -20,6 +20,14 @@ import (
 	"github.com/tsuru/tsuru/provision"
 )
 
+func getProvisioner() (string, error) {
+	provisioner, err := config.GetString("provisioner")
+	if provisioner == "" {
+		provisioner = "docker"
+	}
+	return provisioner, err
+}
+
 type TsuruHandler struct {
 	method string
 	path   string
@@ -162,9 +170,6 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Delete", "/teams/{name}", authorizationRequiredHandler(removeTeam))
 	m.Add("Put", "/teams/{team}/{user}", authorizationRequiredHandler(addUserToTeam))
 	m.Add("Delete", "/teams/{team}/{user}", authorizationRequiredHandler(removeUserFromTeam))
-
-	m.Add("Get", "/healers", authorizationRequiredHandler(healers))
-	m.Add("Get", "/healers/{healer}", authorizationRequiredHandler(healer))
 
 	m.Add("Put", "/swap", authorizationRequiredHandler(swap))
 
