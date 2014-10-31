@@ -722,7 +722,11 @@ func (app *App) SetEnvs(envs []bind.EnvVar, publicOnly bool, w io.Writer) error 
 	if w != nil {
 		fmt.Fprintf(w, "---- Setting %d new environment variables ----\n", len(envs))
 	}
-	return app.setEnvsToApp(envs, publicOnly, true, w)
+	units := app.GetUnits()
+	if len(units) > 0 {
+		return app.setEnvsToApp(envs, publicOnly, true, w)
+	}
+	return app.setEnvsToApp(envs, publicOnly, false, w)
 }
 
 // setEnvsToApp adds environment variables to an app, serializing the resulting
