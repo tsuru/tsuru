@@ -18,6 +18,9 @@ What's new in tsr 0.9.0
 Bug fixes
 =========
 
+- app: SetEnvs not return error in apps with no units (issue `#954 
+  <https://github.com/tsuru/tsuru/issues/954>`_).
+
 Other improvements in tsr 0.9.0
 ===============================
 
