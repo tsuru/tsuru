@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
@@ -46,6 +47,7 @@ func (s *ConsumptionSuite) SetUpSuite(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, gocheck.IsNil)
+	app.AuthScheme = nativeScheme
 }
 
 func (s *ConsumptionSuite) TearDownSuite(c *gocheck.C) {
@@ -796,7 +798,10 @@ func (s *ConsumptionSuite) TestServicePlansHandler(c *gocheck.C) {
 }
 
 func (s *ConsumptionSuite) TestServiceProxy(c *gocheck.C) {
+	var proxyedRequest *http.Request
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxyedRequest = r
+		w.Header().Set("X-Response-Custom", "custom response header")
 		w.WriteHeader(http.StatusCreated)
 		w.Write([]byte("a message"))
 	}))
@@ -809,14 +814,21 @@ func (s *ConsumptionSuite) TestServiceProxy(c *gocheck.C) {
 	err = si.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer service.DeleteInstance(&si)
-	url := fmt.Sprintf("/services/proxy/%s?:instance=%s&callback=/mypath", si.Name, si.Name)
+	url := fmt.Sprintf("/services/proxy/%s?callback=/mypath", si.Name)
 	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, gocheck.IsNil)
+	reqAuth := "bearer " + s.token.GetValue()
+	request.Header.Set("Authorization", reqAuth)
+	request.Header.Set("X-Custom", "my request header")
+	m := RunServer(true)
 	recorder := httptest.NewRecorder()
-	err = serviceProxy(recorder, request, s.token)
-	c.Assert(err, gocheck.IsNil)
+	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusCreated)
-	c.Assert(recorder.Body.Bytes(), gocheck.DeepEquals, []byte("a message"))
+	c.Assert(recorder.Header().Get("X-Response-Custom"), gocheck.Equals, "custom response header")
+	c.Assert(recorder.Body.String(), gocheck.Equals, "a message")
+	c.Assert(proxyedRequest, gocheck.NotNil)
+	c.Assert(proxyedRequest.Header.Get("X-Custom"), gocheck.Equals, "my request header")
+	c.Assert(proxyedRequest.Header.Get("Authorization"), gocheck.Not(gocheck.Equals), reqAuth)
+	c.Assert(proxyedRequest.URL.String(), gocheck.Equals, "/mypath")
 }
 
 func (s *ConsumptionSuite) TestServiceProxyNoContent(c *gocheck.C) {

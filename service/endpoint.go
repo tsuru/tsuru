@@ -5,12 +5,12 @@
 package service
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"regexp"
 	"strings"
@@ -218,17 +218,18 @@ func (c *Client) Plans() ([]Plan, error) {
 
 // Proxy is a proxy between tsuru and the service.
 // This method allow customized service methods.
-func (c *Client) Proxy(method, path string, body io.ReadCloser) (*http.Response, error) {
-	var b bytes.Buffer
-	if body != nil {
-		io.Copy(&b, body)
-	}
-	url := strings.TrimRight(c.endpoint, "/") + "/" + strings.Trim(path, "/")
-	req, err := http.NewRequest(method, url, &b)
+func (c *Client) Proxy(path string, w http.ResponseWriter, r *http.Request) error {
+	rawurl := strings.TrimRight(c.endpoint, "/") + "/" + strings.Trim(path, "/")
+	url, err := url.Parse(rawurl)
 	if err != nil {
-		log.Errorf("Got error while creating request: %s", err)
-		return nil, err
+		log.Errorf("Got error while creating service proxy url %s: %s", rawurl, err)
+		return err
 	}
-	req.SetBasicAuth(c.username, c.password)
-	return http.DefaultClient.Do(req)
+	director := func(req *http.Request) {
+		req.SetBasicAuth(c.username, c.password)
+		req.URL = url
+	}
+	proxy := &httputil.ReverseProxy{Director: director}
+	proxy.ServeHTTP(w, r)
+	return nil
 }
