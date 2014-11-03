@@ -7,7 +7,6 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net/http"
 
@@ -250,9 +249,5 @@ func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	path := r.URL.Query().Get("callback")
 	rec.Log(u.Email, "service-proxy-status", siName, path)
-	response, _ := service.Proxy(si, r.Method, path, r.Body)
-	w.WriteHeader(response.StatusCode)
-	defer response.Body.Close()
-	io.Copy(w, response.Body)
-	return nil
+	return service.Proxy(si, path, w, r)
 }
