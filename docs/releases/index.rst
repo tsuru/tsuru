@@ -18,6 +18,13 @@ tsr
 
 `tsr` is the tsuru server daemon.
 
+0.8.1 release
+-------------
+.. toctree::
+   :maxdepth: 1
+
+   tsr/0.8.1
+
 0.8.0 release
 -------------
 .. toctree::
