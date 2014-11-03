@@ -1571,7 +1571,6 @@ func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *goch
 	c.Assert(action, testing.IsRecorded)
 	c.Assert(recorder.Body.String(), gocheck.Equals,
 		`{"Message":"---- Setting 1 new environment variables ----\n"}
-{"Message":"restarting app"}
 `)
 }
 
