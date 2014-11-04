@@ -1,0 +1,16 @@
+=======================
+tsr 0.8.2 release notes
+=======================
+
+Welcome to tsr 0.8.2!
+
+These release notes cover the `bug fixes`_ you'll want to be aware of when
+upgrading from tsr 0.8.1 or older versions.
+
+Bug fixes
+=========
+
+* Requests to services using the proxy api call (/services/proxy/{instance}) now
+  send the Host header of the original service endpoint. This allow proxied
+  requests to be made to service apis running on tsuru. This fix is complementary
+  to those made in proxy requests in 0.8.1.
