@@ -492,7 +492,7 @@ func (s *S) TestProxyWithBodyAndHeaders(c *gocheck.C) {
 	defer ts.Close()
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	b := bytes.NewBufferString(`{"bla": "bla"}`)
-	request, err := http.NewRequest("POST", "/", b)
+	request, err := http.NewRequest("POST", "http://somewhere.com/", b)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Content-Type", "text/new-crobuzon")
 	recorder := httptest.NewRecorder()
@@ -502,5 +502,8 @@ func (s *S) TestProxyWithBodyAndHeaders(c *gocheck.C) {
 	c.Assert(proxiedRequest.Header.Get("Content-Type"), gocheck.Equals, "text/new-crobuzon")
 	c.Assert(proxiedRequest.Method, gocheck.Equals, "POST")
 	c.Assert(proxiedRequest.URL.String(), gocheck.Equals, "/backup")
+	tsUrl, err := url.Parse(ts.URL)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(proxiedRequest.Host, gocheck.Equals, tsUrl.Host)
 	c.Assert(string(readBodyStr), gocheck.Equals, `{"bla": "bla"}`)
 }

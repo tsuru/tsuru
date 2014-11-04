@@ -234,6 +234,7 @@ func (c *Client) Proxy(path string, w http.ResponseWriter, r *http.Request) erro
 	}
 	director := func(req *http.Request) {
 		req.SetBasicAuth(c.username, c.password)
+		req.Host = url.Host
 		req.URL = url
 	}
 	proxy := &httputil.ReverseProxy{Director: director}
