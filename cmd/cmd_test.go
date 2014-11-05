@@ -680,6 +680,11 @@ func (s *S) TestValidateVersion(c *gocheck.C) {
 			support:  "0.7.15",
 			expected: true,
 		},
+		{
+			current:  "0.8",
+			support:  "0.8",
+			expected: true,
+		},
 	}
 	for _, cs := range cases {
 		c.Check(validateVersion(cs.support, cs.current), gocheck.Equals, cs.expected)
