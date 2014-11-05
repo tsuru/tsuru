@@ -5,6 +5,7 @@
 package app
 
 import (
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 
@@ -12,8 +13,12 @@ import (
 	"launchpad.net/gocheck"
 )
 
-func metricHandler(w http.ResponseWriter, r *http.Request) {
-	content := `[{"target": "sometarget", "datapoints": [[2.2, 1415129040], [2.2, 1415129050], [2.2, 1415129060], [2.2, 1415129070], [50.2, 1415129080]]}]`
+type metricHandler struct {
+	cpuMax string
+}
+
+func (h *metricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	content := fmt.Sprintf(`[{"target": "sometarget", "datapoints": [[2.2, 1415129040], [2.2, 1415129050], [2.2, 1415129060], [2.2, 1415129070], [%s, 1415129080]]}]`, h.cpuMax)
 	w.Write([]byte(content))
 }
 
@@ -35,7 +40,8 @@ func (s *S) TestMetricsEnabled(c *gocheck.C) {
 }
 
 func (s *S) TestCpu(c *gocheck.C) {
-	ts := httptest.NewServer(http.HandlerFunc(metricHandler))
+	h := metricHandler{cpuMax: "8.2"}
+	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	newApp := App{
 		Name:     "myApp",
@@ -50,5 +56,5 @@ func (s *S) TestCpu(c *gocheck.C) {
 	}
 	cpu, err := newApp.Cpu()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(cpu, gocheck.Equals, 50.2)
+	c.Assert(cpu, gocheck.Equals, 8.2)
 }
