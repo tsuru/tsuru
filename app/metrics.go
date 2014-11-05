@@ -20,21 +20,30 @@ func hasMetricsEnabled(app *App) bool {
 	return ok
 }
 
+func getLastMetric(app *App, kind string) (float64, error) {
+	host := app.Env["GRAPHITE_HOST"].Value
+	url := fmt.Sprintf("%s/render/?target=keepLastValue(maxSeries(statsite.tsuru.%s.*.*.%s))&from=-10min", host, app.Name, kind)
+	resp, err := http.Get(url)
+	var data []metrics
+	err = json.NewDecoder(resp.Body).Decode(&data)
+	if err != nil {
+		return 0, errors.New("metrics disabled")
+	}
+	defer resp.Body.Close()
+	if len(data[0].DataPoints) > 0 {
+		index := len(data[0].DataPoints) - 1
+		return data[0].DataPoints[index][0], nil
+	}
+	return 0, errors.New("there is no metrics")
+}
+
 func (app *App) Cpu() (float64, error) {
 	if hasMetricsEnabled(app) {
-		host := app.Env["GRAPHITE_HOST"].Value
-		url := fmt.Sprintf("%s/render/?target=keepLastValue(maxSeries(statsite.tsuru.%s.*.*.cpu_max))&from=-10min", host, app.Name)
-		resp, err := http.Get(url)
-		var data []metrics
-		err = json.NewDecoder(resp.Body).Decode(&data)
+		m, err := getLastMetric(app, "cpu_max")
 		if err != nil {
-			return 0, errors.New("metrics disabled")
+			return 0, err
 		}
-		defer resp.Body.Close()
-		if len(data[0].DataPoints) > 0 {
-			index := len(data[0].DataPoints) - 1
-			return data[0].DataPoints[index][0], nil
-		}
+		return m, nil
 	}
 	return 0, errors.New("metrics disabled")
 }

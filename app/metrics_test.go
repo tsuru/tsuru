@@ -13,7 +13,7 @@ import (
 )
 
 func metricHandler(w http.ResponseWriter, r *http.Request) {
-	content := `[{"target": "sometarget", "datapoints": [[2.2, 1415129040], [2.2, 1415129050], [2.2, 1415129060], [2.2, 1415129070], [8.2, 1415129080]]}]`
+	content := `[{"target": "sometarget", "datapoints": [[2.2, 1415129040], [2.2, 1415129050], [2.2, 1415129060], [2.2, 1415129070], [50.2, 1415129080]]}]`
 	w.Write([]byte(content))
 }
 
@@ -50,5 +50,5 @@ func (s *S) TestCpu(c *gocheck.C) {
 	}
 	cpu, err := newApp.Cpu()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(cpu, gocheck.Equals, 8.2)
+	c.Assert(cpu, gocheck.Equals, 50.2)
 }
