@@ -2,7 +2,7 @@
 tsr 0.9.0 release notes
 =======================
 
-Welcome to tsr 0.8.0!
+Welcome to tsr 0.9.0!
 
 These release notes cover the `new features`_, `bug fixes`_, `backward
 incompatible changes`_, `general improvements`_ and `changes in the API`_
