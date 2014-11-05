@@ -1040,7 +1040,3 @@ func (app *App) UpdateCustomData(customData map[string]interface{}) error {
 		bson.M{"$set": bson.M{"customdata": app.CustomData}},
 	)
 }
-
-func (app *App) Cpu() (int, error) {
-	return 50, nil
-}

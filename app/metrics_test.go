@@ -5,9 +5,17 @@
 package app
 
 import (
+	"net/http"
+	"net/http/httptest"
+
 	"github.com/tsuru/tsuru/app/bind"
 	"launchpad.net/gocheck"
 )
+
+func metricHandler(w http.ResponseWriter, r *http.Request) {
+	content := `[{"target": "sometarget", "datapoints": [[2.2, 1415129040], [2.2, 1415129050], [2.2, 1415129060], [2.2, 1415129070], [8.2, 1415129080]]}]`
+	w.Write([]byte(content))
+}
 
 func (s *S) TestMetricsEnabled(c *gocheck.C) {
 	newApp := App{Name: "myApp", Platform: "Django"}
@@ -24,4 +32,23 @@ func (s *S) TestMetricsEnabled(c *gocheck.C) {
 		},
 	}
 	c.Assert(hasMetricsEnabled(&newApp), gocheck.Equals, true)
+}
+
+func (s *S) TestCpu(c *gocheck.C) {
+	ts := httptest.NewServer(http.HandlerFunc(metricHandler))
+	defer ts.Close()
+	newApp := App{
+		Name:     "myApp",
+		Platform: "Django",
+		Env: map[string]bind.EnvVar{
+			"GRAPHITE_HOST": {
+				Name:   "GRAPHITE_HOST",
+				Value:  ts.URL,
+				Public: true,
+			},
+		},
+	}
+	cpu, err := newApp.Cpu()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(cpu, gocheck.Equals, 8.2)
 }
