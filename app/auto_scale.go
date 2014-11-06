@@ -5,6 +5,8 @@
 package app
 
 import (
+	"time"
+
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 )
@@ -38,6 +40,13 @@ func runAutoScaleOnce() {
 		if err != nil {
 			log.Error(err.Error())
 		}
+	}
+}
+
+func runAutoScale() {
+	for {
+		runAutoScaleOnce()
+		time.Sleep(30 * time.Second)
 	}
 }
 
