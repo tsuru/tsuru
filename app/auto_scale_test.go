@@ -82,6 +82,7 @@ func (s *S) TestAutoScaleDown(c *gocheck.C) {
 	s.provisioner.AddUnits(&newApp, 2, nil)
 	err = scaleApplicationIfNeeded(&newApp)
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(newApp.Units(), gocheck.HasLen, 1)
 }
 
 func (s *S) TestRunAutoScaleOnce(c *gocheck.C) {
