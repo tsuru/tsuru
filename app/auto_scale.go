@@ -4,10 +4,42 @@
 
 package app
 
+import (
+	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/log"
+)
+
 const (
 	cpuMax = 80
 	cpuMin = 20
 )
+
+func allApps() ([]App, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	var apps []App
+	err = conn.Apps().Find(nil).All(&apps)
+	if err != nil {
+		return nil, err
+	}
+	return apps, nil
+}
+
+func runAutoScaleOnce() {
+	apps, err := allApps()
+	if err != nil {
+		log.Error(err.Error())
+	}
+	for _, app := range apps {
+		err := scaleApplicationIfNeeded(&app)
+		if err != nil {
+			log.Error(err.Error())
+		}
+	}
+}
 
 func scaleApplicationIfNeeded(app *App) error {
 	cpu, err := app.Cpu()
