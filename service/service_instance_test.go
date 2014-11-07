@@ -678,9 +678,12 @@ func (s *InstanceSuite) TestProxy(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Services().RemoveId(srv.Name)
 	si := ServiceInstance{Name: "instance", ServiceName: srv.Name}
-	response, err := Proxy(&si, "DELETE", "/aaa", nil)
+	request, err := http.NewRequest("DELETE", "/something", nil)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(response.StatusCode, gocheck.Equals, http.StatusNoContent)
+	recorder := httptest.NewRecorder()
+	err = Proxy(&si, "/aaa", recorder, request)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusNoContent)
 }
 
 func (s *InstanceSuite) TestGetIdentfier(c *gocheck.C) {

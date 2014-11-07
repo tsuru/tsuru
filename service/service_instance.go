@@ -7,7 +7,6 @@ package service
 import (
 	"encoding/json"
 	stderrors "errors"
-	"io"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -347,10 +346,10 @@ func GetServiceInstance(name string, u *auth.User) (*ServiceInstance, error) {
 
 // Proxy is a proxy between tsuru and the service.
 // This method allow customized service methods.
-func Proxy(si *ServiceInstance, method, path string, body io.ReadCloser) (*http.Response, error) {
+func Proxy(si *ServiceInstance, path string, w http.ResponseWriter, r *http.Request) error {
 	endpoint, err := si.Service().getClient("production")
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return endpoint.Proxy(method, path, body)
+	return endpoint.Proxy(path, w, r)
 }

@@ -467,29 +467,43 @@ func (s *S) TestProxy(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(handlerTest))
 	defer ts.Close()
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
-	result, err := client.Proxy("/backup", "GET", nil)
+	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(result.StatusCode, gocheck.Equals, http.StatusNoContent)
+	recorder := httptest.NewRecorder()
+	err = client.Proxy("/backup", recorder, request)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusNoContent)
 	client = &Client{endpoint: "http://10.1.2.3:12345", username: "user", password: "abcde"}
-	result, err = client.Proxy("/backup", "GET", nil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(result, gocheck.IsNil)
+	recorder = httptest.NewRecorder()
+	err = client.Proxy("/backup", recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, 500)
+	c.Assert(recorder.Body.String(), gocheck.Equals, "")
 }
 
-func (s *S) TestProxyWithBody(c *gocheck.C) {
+func (s *S) TestProxyWithBodyAndHeaders(c *gocheck.C) {
+	var proxiedRequest *http.Request
+	var readBodyStr []byte
 	handlerTest := func(w http.ResponseWriter, r *http.Request) {
+		readBodyStr, _ = ioutil.ReadAll(r.Body)
+		proxiedRequest = r
 		w.WriteHeader(http.StatusNoContent)
 	}
 	ts := httptest.NewServer(http.HandlerFunc(handlerTest))
 	defer ts.Close()
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	b := bytes.NewBufferString(`{"bla": "bla"}`)
-	rc := ioutil.NopCloser(b)
-	result, err := client.Proxy("/backup", "POST", rc)
+	request, err := http.NewRequest("POST", "http://somewhere.com/", b)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(result.StatusCode, gocheck.Equals, http.StatusNoContent)
-	client = &Client{endpoint: "http://10.1.2.3:12345", username: "user", password: "abcde"}
-	result, err = client.Proxy("/backup", "GET", nil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(result, gocheck.IsNil)
+	request.Header.Set("Content-Type", "text/new-crobuzon")
+	recorder := httptest.NewRecorder()
+	err = client.Proxy("/backup", recorder, request)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusNoContent)
+	c.Assert(proxiedRequest.Header.Get("Content-Type"), gocheck.Equals, "text/new-crobuzon")
+	c.Assert(proxiedRequest.Method, gocheck.Equals, "POST")
+	c.Assert(proxiedRequest.URL.String(), gocheck.Equals, "/backup")
+	tsUrl, err := url.Parse(ts.URL)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(proxiedRequest.Host, gocheck.Equals, tsUrl.Host)
+	c.Assert(string(readBodyStr), gocheck.Equals, `{"bla": "bla"}`)
 }

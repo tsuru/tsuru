@@ -342,7 +342,7 @@ func validateVersion(supported, current string) bool {
 		bigger bool
 		limit  int
 	)
-	if supported == "" {
+	if supported == "" || supported == current {
 		return true
 	}
 	partsSupported := strings.Split(supported, ".")
