@@ -1,5 +1,4 @@
 #tsuru
-[![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/tsuru/tsuru?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
 
 [![Build Status](https://drone.io/github.com/tsuru/tsuru/status.png?branch=master)](https://drone.io/github.com/tsuru/tsuru/latest)
 [![Build Status](https://travis-ci.org/tsuru/tsuru.png?branch=master)](https://travis-ci.org/tsuru/tsuru)
@@ -14,3 +13,4 @@ Links:
 - How to Contribute: http://docs.tsuru.io/en/latest/contributing
 - Repository & Issue Tracker: https://github.com/tsuru/tsuru
 - IRC: Freenode, channel #tsuru
+- [![Gitter](https://badges.gitter.im/Join Chat.svg)](https://gitter.im/tsuru/tsuru?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
