@@ -159,6 +159,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Get", "/users/keys", authorizationRequiredHandler(listKeys))
 	m.Add("Post", "/users/keys", authorizationRequiredHandler(addKeyToUser))
 	m.Add("Delete", "/users/keys", authorizationRequiredHandler(removeKeyFromUser))
+	m.Add("Get", "/users/api-key", authorizationRequiredHandler(showAPIToken))
+	m.Add("Post", "/users/api-key", authorizationRequiredHandler(regenerateAPIToken))
 
 	m.Add("Post", "/tokens", AdminRequiredHandler(generateAppToken))
 

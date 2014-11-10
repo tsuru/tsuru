@@ -566,3 +566,27 @@ func authScheme(w http.ResponseWriter, r *http.Request) error {
 	data := schemeData{Name: app.AuthScheme.Name(), Data: info}
 	return json.NewEncoder(w).Encode(data)
 }
+
+func regenerateAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
+	apiKey, err := u.RegenerateAPIKey()
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(apiKey)
+}
+
+func showAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
+	apiKey, err := u.ShowAPIKey()
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(apiKey)
+}

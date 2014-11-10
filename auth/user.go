@@ -5,8 +5,11 @@
 package auth
 
 import (
+	"crypto"
+	"crypto/rand"
 	stderrors "errors"
 	"fmt"
+	"time"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
@@ -35,6 +38,7 @@ type User struct {
 	Password string
 	Keys     []Key
 	quota.Quota
+	APIKey string
 }
 
 // keyToMap converts a Key array into a map maybe we should store a map
@@ -229,4 +233,25 @@ func (u *User) CreateOnGandalf() error {
 		return fmt.Errorf("Failed to create user in the git server: %s", err)
 	}
 	return nil
+}
+
+func (u *User) ShowAPIKey() (string, error) {
+	if u.APIKey == "" {
+		u.RegenerateAPIKey()
+	}
+	return u.APIKey, u.Update()
+}
+
+func (u *User) RegenerateAPIKey() (string, error) {
+	random_byte := make([]byte, 32)
+	_, err := rand.Read(random_byte)
+	if err != nil {
+		return "", err
+	}
+	h := crypto.SHA256.New()
+	h.Write([]byte(u.Email))
+	h.Write(random_byte)
+	h.Write([]byte(time.Now().Format(time.RFC3339Nano)))
+	u.APIKey = fmt.Sprintf("%x", h.Sum(nil))
+	return u.APIKey, u.Update()
 }

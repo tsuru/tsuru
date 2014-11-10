@@ -562,3 +562,83 @@ func schemeInfo() (*loginScheme, error) {
 	}
 	return &info, nil
 }
+
+type showAPIToken struct{}
+
+func (c *showAPIToken) Info() *Info {
+	return &Info{
+		Name:    "token-show",
+		Usage:   "token-show",
+		Desc:    "Show API token user. If him does not have a key, it is generated.",
+		MinArgs: 0,
+	}
+}
+
+func (c *showAPIToken) Run(context *Context, client *Client) error {
+	url, err := GetURL("/users/api-key")
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode == http.StatusOK {
+		defer resp.Body.Close()
+		b, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		var APIKey string
+		err = json.Unmarshal(b, &APIKey)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(context.Stdout, "API key: %s\n", APIKey)
+	}
+	return nil
+}
+
+type regenerateAPIToken struct{}
+
+func (c *regenerateAPIToken) Info() *Info {
+	return &Info{
+		Name:    "token-regenerate",
+		Usage:   "token-regenerate",
+		Desc:    "Generates a new API key. If there is already a key, it is replaced.",
+		MinArgs: 0,
+	}
+}
+
+func (c *regenerateAPIToken) Run(context *Context, client *Client) error {
+	url, err := GetURL("/users/api-key")
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode == http.StatusOK {
+		defer resp.Body.Close()
+		b, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return err
+		}
+		var APIKey string
+		err = json.Unmarshal(b, &APIKey)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(context.Stdout, "Your new API key is: %s\n", APIKey)
+	}
+	return nil
+}

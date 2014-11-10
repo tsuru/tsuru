@@ -1901,3 +1901,70 @@ func (s *AuthSuite) TestAuthScheme(c *gocheck.C) {
 	c.Assert(parsed["name"], gocheck.Equals, "test")
 	c.Assert(parsed["data"], gocheck.DeepEquals, map[string]interface{}{"foo": "bar", "foo2": "bar2"})
 }
+
+func (s *AuthSuite) TestRegenerateAPITokenHandler(c *gocheck.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456"}
+	_, err := nativeScheme.Create(&u)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Users().Remove(bson.M{"email": u.Email})
+	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
+	request, err := http.NewRequest("POST", "/users/api-key", nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = regenerateAPIToken(recorder, request, token)
+	c.Assert(err, gocheck.IsNil)
+	var got string
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, gocheck.IsNil)
+	count, err := conn.Users().Find(bson.M{"apikey": got}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 1)
+}
+
+func (s *AuthSuite) TestShowAPITokenForUserWithNoToken(c *gocheck.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456"}
+	_, err := nativeScheme.Create(&u)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Users().Remove(bson.M{"email": u.Email})
+	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
+	request, err := http.NewRequest("GET", "/users/api-key", nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = showAPIToken(recorder, request, token)
+	c.Assert(err, gocheck.IsNil)
+	var got string
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, gocheck.IsNil)
+	count, err := conn.Users().Find(bson.M{"apikey": got}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 1)
+}
+
+func (s *AuthSuite) TestShowAPITokenForUserWithToken(c *gocheck.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456", APIKey: "238hd23ubd923hd923j9d23ndibde"}
+	_, err := nativeScheme.Create(&u)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Users().Remove(bson.M{"email": u.Email})
+	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
+	request, err := http.NewRequest("GET", "/users/api-key", nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = showAPIToken(recorder, request, token)
+	c.Assert(err, gocheck.IsNil)
+	var got string
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(got, gocheck.Equals, "238hd23ubd923hd923j9d23ndibde")
+}
