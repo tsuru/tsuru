@@ -66,20 +66,21 @@ func (l *AppLock) String() string {
 // This struct holds information about the app: its name, address, list of
 // teams that have access to it, used platform, etc.
 type App struct {
-	Env            map[string]bind.EnvVar
-	Platform       string `bson:"framework"`
-	Name           string
-	Ip             string
-	CName          []string
-	Teams          []string
-	TeamOwner      string
-	Owner          string
-	State          string
-	Deploys        uint
-	UpdatePlatform bool
-	Lock           AppLock
-	CustomData     map[string]interface{}
-	Plan           Plan
+	Env             map[string]bind.EnvVar
+	Platform        string `bson:"framework"`
+	Name            string
+	Ip              string
+	CName           []string
+	Teams           []string
+	TeamOwner       string
+	Owner           string
+	State           string
+	Deploys         uint
+	UpdatePlatform  bool
+	Lock            AppLock
+	CustomData      map[string]interface{}
+	Plan            Plan
+	AutoScaleConfig AutoScaleConfig
 
 	quota.Quota
 }

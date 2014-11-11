@@ -16,6 +16,22 @@ const (
 	cpuMin = 20
 )
 
+// Action represents an AutoScale action to increase or decreate the
+// number of the units.
+type Action struct {
+	Wait       time.Duration
+	Expression string
+	Units      int
+}
+
+// AutoScaleConfig represents the App configuration for the auto scale.
+type AutoScaleConfig struct {
+	Increase Action
+	Decrease Action
+	MinUnits int
+	MaxUnits int
+}
+
 func allApps() ([]App, error) {
 	conn, err := db.Conn()
 	if err != nil {
