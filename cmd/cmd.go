@@ -166,7 +166,7 @@ func (m *Manager) Run(args []string) {
 	if err != nil {
 		errorMsg := err.Error()
 		httpErr, ok := err.(*errors.HTTP)
-		if ok && httpErr.Code == http.StatusUnauthorized {
+		if ok && httpErr.Code == http.StatusUnauthorized && name != "login" {
 			errorMsg = `You're not authenticated or your session has expired. Please use "login" command for authentication.`
 		}
 		if !strings.HasSuffix(errorMsg, "\n") {
