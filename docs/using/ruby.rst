@@ -490,7 +490,7 @@ write:
 
 ::
 
-    $ tsuru run -- RAILS_ENV=production bundle exec rake db:migrate
+    $ tsuru app-run -- RAILS_ENV=production bundle exec rake db:migrate
     ==  CreatePosts: migrating ====================================================
     -- create_table(:posts)
        -> 0.1126s
