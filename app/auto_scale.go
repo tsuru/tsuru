@@ -14,11 +14,6 @@ import (
 	"github.com/tsuru/tsuru/log"
 )
 
-const (
-	cpuMax = 80
-	cpuMin = 20
-)
-
 // Action represents an AutoScale action to increase or decreate the
 // number of the units.
 type Action struct {
