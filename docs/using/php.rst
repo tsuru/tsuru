@@ -80,7 +80,7 @@ project:
 
 ::
 
-    # Download and unpack wordpress    
+    # Download and unpack wordpress
     $ wget http://wordpress.org/latest.zip
     $ unzip latest.zip
     # Preparing wordpress for tsuru
@@ -214,7 +214,7 @@ application can have two kinds of dependencies:
 All ``apt-get`` dependencies must be specified in a ``requirements.apt`` file,
 located in the root of your application, and pip dependencies must be located
 in a file called ``requirements.txt``, also in the root of the application.
-Since we will use MySQL with PHP, we need to install the package depends on just 
+Since we will use MySQL with PHP, we need to install the package depends on just
 one ``apt-get`` package:
 ``php5-mysql``, so here is how ``requirements.apt``
 looks like:
@@ -282,21 +282,21 @@ You can see the complete output of installing these dependencies bellow:
     remote: debconf: unable to initialize frontend: Dialog
     remote: debconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)
     remote: debconf: falling back to frontend: Readline
-    remote: 
+    remote:
     remote: Creating config file /etc/php5/mods-available/mysql.ini with new version
     remote: debconf: unable to initialize frontend: Dialog
     remote: debconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)
     remote: debconf: falling back to frontend: Readline
-    remote: 
+    remote:
     remote: Creating config file /etc/php5/mods-available/mysqli.ini with new version
     remote: debconf: unable to initialize frontend: Dialog
     remote: debconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)
     remote: debconf: falling back to frontend: Readline
-    remote: 
+    remote:
     remote: Creating config file /etc/php5/mods-available/pdo_mysql.ini with new version
-    remote: 
+    remote:
     remote:  ---> App will be restarted, please check its log for more details...
-    remote: 
+    remote:
     To git@git.tsuru.io:ingress.git
      * [new branch]      master -> master
 
@@ -306,7 +306,7 @@ Running the application
 
 As you can see, in the deploy output there is a step described as "App will be
 restarted". In this step, tsuru will restart your app if it's running, or start
-it if it's not. 
+it if it's not.
 Now that the app is deployed, you can access it from your browser, getting the
 IP or host listed in ``app-list`` and opening it. For example,
 in the list below:
@@ -325,9 +325,9 @@ Using services
 ==============
 
 Now that php is running, we can accesss the application in the browser,
-but we get a database connection error: `"Error establishing a database connection"`. 
-This error means that we can't connect to MySQL. That's because we 
-should not connect to MySQL on localhost, we must use a service. 
+but we get a database connection error: `"Error establishing a database connection"`.
+This error means that we can't connect to MySQL. That's because we
+should not connect to MySQL on localhost, we must use a service.
 The service workflow can be resumed to two steps:
 
 #. Create a service instance
@@ -406,7 +406,7 @@ connect in the database:
 
 ::
 
-    $ grep getenv wp-config.php 
+    $ grep getenv wp-config.php
     define('DB_NAME', getenv('MYSQL_DATABASE_NAME'));
     define('DB_USER', getenv('MYSQL_USER'));
     define('DB_PASSWORD', getenv('MYSQL_PASSWORD'));
@@ -429,7 +429,7 @@ are adding the Amazon S3 capability to wordpress, just installing 2 more plugins
     $ rm -f amazon-web-services.0.1.zip amazon-s3-and-cloudfront.0.6.1.zip
     $ git add amazon-web-services/ amazon-s3-and-cloudfront/
 
-Now you need to add the amazon AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environments 
+Now you need to add the amazon AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environments
 support into wp-config.php. You could add these environments right after the WP_DEBUG as bellow:
 
 .. highlight:: bash
@@ -450,7 +450,7 @@ Now, just inject the right values for these environments with tsuru env-set as b
 
 ::
 
-    $ tsuru env-set AWS_ACCESS_KEY_ID="xxx" AWS_SECRET_ACCESS_KEY="xxxxx" -a blog 
+    $ tsuru env-set AWS_ACCESS_KEY_ID="xxx" AWS_SECRET_ACCESS_KEY="xxxxx" -a blog
 
 It's done! Now we have a PHP project deployed on tsuru, with S3 support using a MySQL
 service.
