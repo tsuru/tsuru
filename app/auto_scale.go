@@ -24,6 +24,10 @@ type Action struct {
 
 var expressionRegex = regexp.MustCompile("{(.*)} ([><=]) ([0-9]+)")
 
+func validateExpression(expression string) bool {
+	return expressionRegex.MatchString(expression)
+}
+
 func (action *Action) metric() string {
 	return expressionRegex.FindStringSubmatch(action.Expression)[1]
 }

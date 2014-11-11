@@ -166,3 +166,20 @@ func (s *S) TestActionValue(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(value, gocheck.Equals, float64(80))
 }
+
+func (s *S) TestValidateExpression(c *gocheck.C) {
+	cases := map[string]bool{
+		"{cpu} > 10": true,
+		"{cpu} = 10": true,
+		"{cpu} < 10": true,
+		"cpu < 10":   false,
+		"{cpu} 10":   false,
+		"{cpu} <":    false,
+		"{cpu}":      false,
+		"<":          false,
+		"100":        false,
+	}
+	for expression, expected := range cases {
+		c.Assert(validateExpression(expression), gocheck.Equals, expected)
+	}
+}
