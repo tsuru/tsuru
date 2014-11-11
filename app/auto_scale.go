@@ -88,11 +88,9 @@ func scaleApplicationIfNeeded(app *App) error {
 	if app.AutoScaleConfig == nil {
 		return errors.New("AutoScale is not configured.")
 	}
-	cpu, err := app.Cpu()
-	if err != nil {
-		return err
-	}
-	if cpu > cpuMax {
+	increaseMetric, _ := app.Metric(app.AutoScaleConfig.Increase.metric())
+	value, _ := app.AutoScaleConfig.Increase.value()
+	if increaseMetric > value {
 		_, err := AcquireApplicationLock(app.Name, InternalAppName, "auto-scale")
 		if err != nil {
 			return err
@@ -100,7 +98,9 @@ func scaleApplicationIfNeeded(app *App) error {
 		defer ReleaseApplicationLock(app.Name)
 		return app.AddUnits(app.AutoScaleConfig.Increase.Units, nil)
 	}
-	if cpu < cpuMin {
+	decreaseMetric, _ := app.Metric(app.AutoScaleConfig.Decrease.metric())
+	value, _ = app.AutoScaleConfig.Decrease.value()
+	if decreaseMetric < value {
 		_, err := AcquireApplicationLock(app.Name, InternalAppName, "auto-scale")
 		if err != nil {
 			return err

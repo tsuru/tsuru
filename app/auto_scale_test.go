@@ -27,7 +27,10 @@ func (s *S) TestAutoScale(c *gocheck.C) {
 				Public: true,
 			},
 		},
-		AutoScaleConfig: &AutoScaleConfig{Increase: Action{Units: 1}},
+		AutoScaleConfig: &AutoScaleConfig{
+			Increase: Action{Units: 1, Expression: "{cpu} > 80"},
+			Decrease: Action{Units: 1, Expression: "{cpu} < 20"},
+		},
 	}
 	err := scaleApplicationIfNeeded(&newApp)
 	c.Assert(err, gocheck.IsNil)
@@ -47,8 +50,10 @@ func (s *S) TestAutoScaleUp(c *gocheck.C) {
 				Public: true,
 			},
 		},
-		Quota:           quota.Unlimited,
-		AutoScaleConfig: &AutoScaleConfig{Increase: Action{Units: 1}},
+		Quota: quota.Unlimited,
+		AutoScaleConfig: &AutoScaleConfig{
+			Increase: Action{Units: 1, Expression: "{cpu_max} > 80"},
+		},
 	}
 	err := s.conn.Apps().Insert(newApp)
 	c.Assert(err, gocheck.IsNil)
@@ -74,8 +79,11 @@ func (s *S) TestAutoScaleDown(c *gocheck.C) {
 				Public: true,
 			},
 		},
-		Quota:           quota.Unlimited,
-		AutoScaleConfig: &AutoScaleConfig{Decrease: Action{Units: 1}},
+		Quota: quota.Unlimited,
+		AutoScaleConfig: &AutoScaleConfig{
+			Increase: Action{Units: 1, Expression: "{cpu_max} > 80"},
+			Decrease: Action{Units: 1, Expression: "{cpu_max} < 20"},
+		},
 	}
 	err := s.conn.Apps().Insert(newApp)
 	c.Assert(err, gocheck.IsNil)
@@ -102,8 +110,10 @@ func (s *S) TestRunAutoScaleOnce(c *gocheck.C) {
 				Public: true,
 			},
 		},
-		Quota:           quota.Unlimited,
-		AutoScaleConfig: &AutoScaleConfig{Increase: Action{Units: 1}},
+		Quota: quota.Unlimited,
+		AutoScaleConfig: &AutoScaleConfig{
+			Increase: Action{Units: 1, Expression: "{cpu_max} > 80"},
+		},
 	}
 	err := s.conn.Apps().Insert(up)
 	c.Assert(err, gocheck.IsNil)
@@ -123,8 +133,11 @@ func (s *S) TestRunAutoScaleOnce(c *gocheck.C) {
 				Public: true,
 			},
 		},
-		Quota:           quota.Unlimited,
-		AutoScaleConfig: &AutoScaleConfig{Decrease: Action{Units: 1}},
+		Quota: quota.Unlimited,
+		AutoScaleConfig: &AutoScaleConfig{
+			Increase: Action{Units: 1, Expression: "{cpu_max} > 80"},
+			Decrease: Action{Units: 1, Expression: "{cpu_max} < 20"},
+		},
 	}
 	err = s.conn.Apps().Insert(down)
 	c.Assert(err, gocheck.IsNil)
