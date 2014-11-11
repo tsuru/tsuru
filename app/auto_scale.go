@@ -7,6 +7,7 @@ package app
 import (
 	"errors"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/tsuru/tsuru/db"
@@ -34,6 +35,11 @@ func (action *Action) metric() string {
 func (action *Action) operator() string {
 	re := regexp.MustCompile("([><=])")
 	return re.FindStringSubmatch(action.Expression)[1]
+}
+
+func (action *Action) value() (float64, error) {
+	re := regexp.MustCompile("{.*} [><=] ([0-9]+)")
+	return strconv.ParseFloat(re.FindStringSubmatch(action.Expression)[1], 64)
 }
 
 // AutoScaleConfig represents the App configuration for the auto scale.
