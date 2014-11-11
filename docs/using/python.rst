@@ -555,7 +555,7 @@ write:
 
 ::
 
-    $ tsuru run -- python manage.py syncdb --noinput
+    $ tsuru app-run -- python manage.py syncdb --noinput
     Syncing...
     Creating tables ...
     Creating table auth_permission
