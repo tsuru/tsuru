@@ -47,3 +47,14 @@ func (app *App) Cpu() (float64, error) {
 	}
 	return 0, errors.New("metrics disabled")
 }
+
+func (app *App) Metric(kind string) (float64, error) {
+	if hasMetricsEnabled(app) {
+		m, err := getLastMetric(app, kind)
+		if err != nil {
+			return 0, err
+		}
+		return m, nil
+	}
+	return 0, errors.New("metrics disabled")
+}
