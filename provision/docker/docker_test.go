@@ -73,7 +73,7 @@ func (s *S) TestContainerCreate(c *gocheck.C) {
 	c.Assert(container.Config.User, gocheck.Equals, user)
 	c.Assert(container.Config.Memory, gocheck.Equals, app.Memory)
 	c.Assert(container.Config.MemorySwap, gocheck.Equals, app.Memory+app.Swap)
-	c.Assert(container.Config.CpuShares, gocheck.Equals, int64(app.CpuShare))
+	c.Assert(container.Config.CPUShares, gocheck.Equals, int64(app.CpuShare))
 }
 
 func (s *S) TestContainerCreateAlocatesPort(c *gocheck.C) {
