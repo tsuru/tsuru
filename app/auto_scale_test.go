@@ -27,6 +27,7 @@ func (s *S) TestAutoScale(c *gocheck.C) {
 				Public: true,
 			},
 		},
+		AutoScaleConfig: &AutoScaleConfig{Increase: Action{Units: 1}},
 	}
 	err := scaleApplicationIfNeeded(&newApp)
 	c.Assert(err, gocheck.IsNil)
@@ -46,7 +47,8 @@ func (s *S) TestAutoScaleUp(c *gocheck.C) {
 				Public: true,
 			},
 		},
-		Quota: quota.Unlimited,
+		Quota:           quota.Unlimited,
+		AutoScaleConfig: &AutoScaleConfig{Increase: Action{Units: 1}},
 	}
 	err := s.conn.Apps().Insert(newApp)
 	c.Assert(err, gocheck.IsNil)
@@ -72,7 +74,8 @@ func (s *S) TestAutoScaleDown(c *gocheck.C) {
 				Public: true,
 			},
 		},
-		Quota: quota.Unlimited,
+		Quota:           quota.Unlimited,
+		AutoScaleConfig: &AutoScaleConfig{Decrease: Action{Units: 1}},
 	}
 	err := s.conn.Apps().Insert(newApp)
 	c.Assert(err, gocheck.IsNil)
@@ -99,7 +102,8 @@ func (s *S) TestRunAutoScaleOnce(c *gocheck.C) {
 				Public: true,
 			},
 		},
-		Quota: quota.Unlimited,
+		Quota:           quota.Unlimited,
+		AutoScaleConfig: &AutoScaleConfig{Increase: Action{Units: 1}},
 	}
 	err := s.conn.Apps().Insert(up)
 	c.Assert(err, gocheck.IsNil)
@@ -119,7 +123,8 @@ func (s *S) TestRunAutoScaleOnce(c *gocheck.C) {
 				Public: true,
 			},
 		},
-		Quota: quota.Unlimited,
+		Quota:           quota.Unlimited,
+		AutoScaleConfig: &AutoScaleConfig{Decrease: Action{Units: 1}},
 	}
 	err = s.conn.Apps().Insert(down)
 	c.Assert(err, gocheck.IsNil)

@@ -5,6 +5,7 @@
 package app
 
 import (
+	"errors"
 	"time"
 
 	"github.com/tsuru/tsuru/db"
@@ -21,7 +22,7 @@ const (
 type Action struct {
 	Wait       time.Duration
 	Expression string
-	Units      int
+	Units      uint
 }
 
 // AutoScaleConfig represents the App configuration for the auto scale.
@@ -67,6 +68,9 @@ func runAutoScale() {
 }
 
 func scaleApplicationIfNeeded(app *App) error {
+	if app.AutoScaleConfig == nil {
+		return errors.New("AutoScale is not configured.")
+	}
 	cpu, err := app.Cpu()
 	if err != nil {
 		return err
@@ -77,7 +81,7 @@ func scaleApplicationIfNeeded(app *App) error {
 			return err
 		}
 		defer ReleaseApplicationLock(app.Name)
-		return app.AddUnits(1, nil)
+		return app.AddUnits(app.AutoScaleConfig.Increase.Units, nil)
 	}
 	if cpu < cpuMin {
 		_, err := AcquireApplicationLock(app.Name, InternalAppName, "auto-scale")
@@ -85,7 +89,7 @@ func scaleApplicationIfNeeded(app *App) error {
 			return err
 		}
 		defer ReleaseApplicationLock(app.Name)
-		return app.RemoveUnits(1)
+		return app.RemoveUnits(app.AutoScaleConfig.Decrease.Units)
 	}
 	return nil
 }

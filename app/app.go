@@ -80,7 +80,7 @@ type App struct {
 	Lock            AppLock
 	CustomData      map[string]interface{}
 	Plan            Plan
-	AutoScaleConfig AutoScaleConfig
+	AutoScaleConfig *AutoScaleConfig
 
 	quota.Quota
 }
