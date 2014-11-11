@@ -31,6 +31,11 @@ func (action *Action) metric() string {
 	return re.FindStringSubmatch(action.Expression)[1]
 }
 
+func (action *Action) operator() string {
+	re := regexp.MustCompile("([><=])")
+	return re.FindStringSubmatch(action.Expression)[1]
+}
+
 // AutoScaleConfig represents the App configuration for the auto scale.
 type AutoScaleConfig struct {
 	Increase Action

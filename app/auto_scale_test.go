@@ -141,3 +141,8 @@ func (s *S) TestActionMetric(c *gocheck.C) {
 	a := &Action{Expression: "{cpu} > 80"}
 	c.Assert(a.metric(), gocheck.Equals, "cpu")
 }
+
+func (s *S) TestActionOperator(c *gocheck.C) {
+	a := &Action{Expression: "{cpu} > 80"}
+	c.Assert(a.operator(), gocheck.Equals, ">")
+}
