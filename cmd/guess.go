@@ -71,9 +71,11 @@ func (cmd *GuessingCommand) Guess() (string, error) {
 	}
 	name, err := cmd.guesser().GuessName(path)
 	if err != nil {
-		return "", errors.New(`tsuru wasn't able to guess the name of the app.
+		return "", fmt.Errorf(`tsuru wasn't able to guess the name of the app.
 
-Use the --app flag to specify it.`)
+Use the --app flag to specify it.
+
+%s`, err)
 	}
 	return name, nil
 }
