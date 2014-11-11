@@ -13,6 +13,7 @@ Using
     python
     ruby
     go
+    java
     php
     buildpacks
     recovery
