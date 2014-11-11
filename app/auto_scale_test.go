@@ -136,3 +136,8 @@ func (s *S) TestRunAutoScaleOnce(c *gocheck.C) {
 	c.Assert(up.Units(), gocheck.HasLen, 1)
 	c.Assert(down.Units(), gocheck.HasLen, 2)
 }
+
+func (s *S) TestActionMetric(c *gocheck.C) {
+	a := &Action{Expression: "{cpu} > 80"}
+	c.Assert(a.metric(), gocheck.Equals, "cpu")
+}

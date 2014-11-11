@@ -6,6 +6,7 @@ package app
 
 import (
 	"errors"
+	"regexp"
 	"time"
 
 	"github.com/tsuru/tsuru/db"
@@ -23,6 +24,11 @@ type Action struct {
 	Wait       time.Duration
 	Expression string
 	Units      uint
+}
+
+func (action *Action) metric() string {
+	re := regexp.MustCompile("{(.*)}")
+	return re.FindStringSubmatch(action.Expression)[1]
 }
 
 // AutoScaleConfig represents the App configuration for the auto scale.
