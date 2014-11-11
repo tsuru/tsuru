@@ -22,19 +22,18 @@ type Action struct {
 	Units      uint
 }
 
+var expressionRegex = regexp.MustCompile("{(.*)} ([><=]) ([0-9]+)")
+
 func (action *Action) metric() string {
-	re := regexp.MustCompile("{(.*)}")
-	return re.FindStringSubmatch(action.Expression)[1]
+	return expressionRegex.FindStringSubmatch(action.Expression)[1]
 }
 
 func (action *Action) operator() string {
-	re := regexp.MustCompile("([><=])")
-	return re.FindStringSubmatch(action.Expression)[1]
+	return expressionRegex.FindStringSubmatch(action.Expression)[2]
 }
 
 func (action *Action) value() (float64, error) {
-	re := regexp.MustCompile("{.*} [><=] ([0-9]+)")
-	return strconv.ParseFloat(re.FindStringSubmatch(action.Expression)[1], 64)
+	return strconv.ParseFloat(expressionRegex.FindStringSubmatch(action.Expression)[3], 64)
 }
 
 // AutoScaleConfig represents the App configuration for the auto scale.
