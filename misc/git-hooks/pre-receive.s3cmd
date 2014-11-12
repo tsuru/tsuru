@@ -15,8 +15,21 @@
 
 while read oldrev newrev refname
 do
-        COMMIT=${newrev}
+        set +e
+        echo $refname | grep -q /master$
+        status=$?
+        set -e
+        if [ $status = 0 ]
+        then
+                COMMIT=${newrev}
+        fi
 done
+
+if [ -z ${COMMIT} ]
+then
+	echo "ERROR: please push to master"
+	exit 3
+fi
 
 APP_DIR=${PWD##*/}
 APP_NAME=${APP_DIR/.git/}
