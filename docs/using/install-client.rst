@@ -24,6 +24,7 @@ This document describes how you can install those clients, using pre-compiled
 binaries, packages or building them from source.
 
 - `Downloading binaries (Mac OS X and Linux)`_
+- `Using a script (Mac OS X and Ubuntu)`_
 - `Using homebrew (Mac OS X only)`_
 - `Using the PPA (Ubuntu only)`_
 - `Using AUR (ArchLinux only)`_
@@ -39,6 +40,28 @@ of the project:
     * crane: https://github.com/tsuru/crane/releases
     * tsuru: https://github.com/tsuru/tsuru-client/releases
     * tsuru-admin: https://github.com/tsuru/tsuru-admin/releases
+
+Using a script (Mac OS X and Ubuntu)
+====================================
+
+The following script was tested on:
+
+- OS X (with `Homebrew <http://brew.sh>`_ installed)
+- Ubuntu 14.04
+
+.. code-block:: bash
+
+    URL=https://raw.githubusercontent.com/msabramo/tsuru-setup-client/master/tsuru-setup-client.sh
+    curl -sk $URL | bash
+
+What the script does:
+
+- Install the tsuru client softare using Homebrew or ``apt-get``
+- Set the default tsuru target to ``${TSURU_TARGET}``
+- Logs into tsuru as ``${TSURU_USER}`` with password ``${TSURU_PASSWORD}``
+- Does ``tsuru key-add`` to add your ssh key to tsuru
+
+For issues and pull requests for this script, visit https://github.com/msabramo/tsuru-setup-client
 
 Using homebrew (Mac OS X only)
 ==============================
