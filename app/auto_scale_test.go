@@ -181,7 +181,7 @@ func (s *S) TestValidateExpression(c *gocheck.C) {
 		"100":        false,
 	}
 	for expression, expected := range cases {
-		c.Assert(validateExpression(expression), gocheck.Equals, expected)
+		c.Assert(expressionIsValid(expression), gocheck.Equals, expected)
 	}
 }
 
