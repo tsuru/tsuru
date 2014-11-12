@@ -22,6 +22,13 @@ type Action struct {
 	Units      uint
 }
 
+func NewAction(expression string, units uint, wait time.Duration) (*Action, error) {
+	if validateExpression(expression) {
+		return &Action{Wait: wait, Expression: expression, Units: units}, nil
+	}
+	return nil, errors.New("Expression is not valid.")
+}
+
 var expressionRegex = regexp.MustCompile("{(.*)} ([><=]) ([0-9]+)")
 
 func validateExpression(expression string) bool {

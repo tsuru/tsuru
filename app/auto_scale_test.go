@@ -6,6 +6,7 @@ package app
 
 import (
 	"net/http/httptest"
+	"time"
 
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/quota"
@@ -182,4 +183,21 @@ func (s *S) TestValidateExpression(c *gocheck.C) {
 	for expression, expected := range cases {
 		c.Assert(validateExpression(expression), gocheck.Equals, expected)
 	}
+}
+
+func (s *S) TestNewAction(c *gocheck.C) {
+	expression := "{cpu} > 10"
+	units := uint(2)
+	wait := time.Second
+	a, err := NewAction(expression, units, wait)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(a.Expression, gocheck.Equals, expression)
+	c.Assert(a.Units, gocheck.Equals, units)
+	c.Assert(a.Wait, gocheck.Equals, wait)
+	expression = "{cpu} >"
+	units = uint(2)
+	wait = time.Second
+	a, err = NewAction(expression, units, wait)
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(a, gocheck.IsNil)
 }
