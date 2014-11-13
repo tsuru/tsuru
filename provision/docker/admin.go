@@ -292,6 +292,9 @@ func (c *sshToContainerCmd) Run(context *cmd.Context, client *cmd.Client) error 
 }
 
 func (c *sshToContainerCmd) getContainer(ctx *cmd.Context, client *cmd.Client) (string, error) {
+	if len(ctx.Args) > 0 {
+		return ctx.Args[0], nil
+	}
 	if appName, _ := c.Guess(); appName != "" {
 		url, err := cmd.GetURL("/apps/" + appName)
 		if err != nil {
@@ -313,10 +316,7 @@ func (c *sshToContainerCmd) getContainer(ctx *cmd.Context, client *cmd.Client) (
 		}
 		return app.Units[0].Name, nil
 	}
-	if len(ctx.Args) < 1 {
-		return "", errors.New("you need to specify either the container id or the app name")
-	}
-	return ctx.Args[0], nil
+	return "", errors.New("you need to specify either the container id or the app name")
 }
 
 type unit struct {
