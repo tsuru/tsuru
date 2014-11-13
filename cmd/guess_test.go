@@ -6,13 +6,11 @@ package cmd
 
 import (
 	"io"
-	"net/http"
 	"os"
 	"os/exec"
 	"path"
 	"syscall"
 
-	"github.com/tsuru/tsuru/cmd/testing"
 	"launchpad.net/gnuflag"
 	"launchpad.net/gocheck"
 )
@@ -51,12 +49,6 @@ func writeConfig(sourceFile string, c *gocheck.C) string {
 	return p
 }
 
-func getClient() *Client {
-	trans := &testing.Transport{Message: "", Status: http.StatusOK}
-	manager := NewManager("admin", "0.1", "admin-ver", nil, nil, nil, nil)
-	return NewClient(&http.Client{Transport: trans}, nil, manager)
-}
-
 func (s *S) TestGitGuesser(c *gocheck.C) {
 	p := writeConfig("testdata/gitconfig-ok", c)
 	defer os.RemoveAll(p)
@@ -64,11 +56,10 @@ func (s *S) TestGitGuesser(c *gocheck.C) {
 	err := os.MkdirAll(dirPath, 0700) // Will be removed when p is removed.
 	c.Assert(err, gocheck.IsNil)
 	g := GitGuesser{}
-	client := getClient()
-	name, err := g.GuessName(p, client) // repository root
+	name, err := g.GuessName(p)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(name, gocheck.Equals, "gopher")
-	name, err = g.GuessName(dirPath, client) // subdirectory
+	name, err = g.GuessName(dirPath)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(name, gocheck.Equals, "gopher")
 }
@@ -77,14 +68,13 @@ func (s *S) TestGitGuesserNonGitUser(c *gocheck.C) {
 	p := writeConfig("testdata/gitconfig-ok-nongit-user", c)
 	defer os.RemoveAll(p)
 	dirPath := path.Join(p, "somepath")
-	err := os.MkdirAll(dirPath, 0700) // Will be removed when p is removed.
+	err := os.MkdirAll(dirPath, 0700)
 	c.Assert(err, gocheck.IsNil)
 	g := GitGuesser{}
-	client := getClient()
-	name, err := g.GuessName(p, client) // repository root
+	name, err := g.GuessName(p)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(name, gocheck.Equals, "gopher")
-	name, err = g.GuessName(dirPath, client) // subdirectory
+	name, err = g.GuessName(dirPath)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(name, gocheck.Equals, "gopher")
 }
@@ -96,8 +86,7 @@ func (s *S) TestGitGuesserWhenTheDirectoryIsNotAGitRepository(c *gocheck.C) {
 	err := os.MkdirAll(p, 0700)
 	c.Assert(err, gocheck.IsNil)
 	defer os.RemoveAll(p)
-	client := getClient()
-	name, err := GitGuesser{}.GuessName(p, client)
+	name, err := GitGuesser{}.GuessName(p)
 	c.Assert(name, gocheck.Equals, "")
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err, gocheck.ErrorMatches, "^Git repository not found:.*")
@@ -106,8 +95,7 @@ func (s *S) TestGitGuesserWhenTheDirectoryIsNotAGitRepository(c *gocheck.C) {
 func (s *S) TestGitGuesserWithoutTsuruRemote(c *gocheck.C) {
 	p := writeConfig("testdata/gitconfig-without-tsuru-remote", c)
 	defer os.RemoveAll(p)
-	client := getClient()
-	name, err := GitGuesser{}.GuessName(p, client)
+	name, err := GitGuesser{}.GuessName(p)
 	c.Assert(name, gocheck.Equals, "")
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "tsuru remote not declared.")
@@ -116,15 +104,14 @@ func (s *S) TestGitGuesserWithoutTsuruRemote(c *gocheck.C) {
 func (s *S) TestGitGuesserWithTsuruRemoteNotMatchingTsuruPattern(c *gocheck.C) {
 	p := writeConfig("testdata/gitconfig-not-matching", c)
 	defer os.RemoveAll(p)
-	client := getClient()
-	name, err := GitGuesser{}.GuessName(p, client)
+	name, err := GitGuesser{}.GuessName(p)
 	c.Assert(name, gocheck.Equals, "")
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, `"tsuru" remote did not match the pattern. Want something like <user>@<host>:<app-name>.git, got git://myhost.com/gopher.git`)
 }
 
 func (s *S) TestDirnameGuesser(c *gocheck.C) {
-	name, err := DirnameGuesser{}.GuessName("/something/wat", nil)
+	name, err := DirnameGuesser{}.GuessName("/something/wat")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(name, gocheck.Equals, "wat")
 }
@@ -144,8 +131,7 @@ func (s *S) TestGuessingCommandWithFlagDefined(c *gocheck.C) {
 	fake := &FakeGuesser{Name: "other-app"}
 	g := GuessingCommand{G: fake}
 	g.Flags().Parse(true, []string{"--app", "myapp"})
-	client := getClient()
-	name, err := g.Guess(client)
+	name, err := g.Guess()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(name, gocheck.Equals, "myapp")
 	pwd, err := os.Getwd()
@@ -157,8 +143,7 @@ func (s *S) TestGuessingCommandWithShortFlagDefined(c *gocheck.C) {
 	fake := &FakeGuesser{Name: "other-app"}
 	g := GuessingCommand{G: fake}
 	g.Flags().Parse(true, []string{"-a", "myapp"})
-	client := getClient()
-	name, err := g.Guess(client)
+	name, err := g.Guess()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(name, gocheck.Equals, "myapp")
 	pwd, err := os.Getwd()
@@ -169,8 +154,7 @@ func (s *S) TestGuessingCommandWithShortFlagDefined(c *gocheck.C) {
 func (s *S) TestGuessingCommandWithoutFlagDefined(c *gocheck.C) {
 	fake := &FakeGuesser{Name: "other-app"}
 	g := GuessingCommand{G: fake}
-	client := getClient()
-	name, err := g.Guess(client)
+	name, err := g.Guess()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(name, gocheck.Equals, "other-app")
 	pwd, err := os.Getwd()
@@ -181,8 +165,7 @@ func (s *S) TestGuessingCommandWithoutFlagDefined(c *gocheck.C) {
 func (s *S) TestGuessingCommandFailToGuess(c *gocheck.C) {
 	fake := &FailingFakeGuesser{ErrorMessage: "Something's always wrong"}
 	g := GuessingCommand{G: fake}
-	client := getClient()
-	name, err := g.Guess(client)
+	name, err := g.Guess()
 	c.Assert(name, gocheck.Equals, "")
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, `tsuru wasn't able to guess the name of the app.

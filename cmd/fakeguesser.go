@@ -6,11 +6,6 @@ package cmd
 
 import "errors"
 
-// This is in the "cmd" package rather than the "testing" package, because we
-// require access to cmd.Client
-// I couldn't figure out how to access cmd.Client from cmd/testing without
-// introducing a circular import.
-
 // FakeGuesser represents a fake implementation of the Guesser described in the
 // cmd package.
 type FakeGuesser struct {
@@ -28,7 +23,7 @@ func (f *FakeGuesser) HasGuess(path string) bool {
 	return false
 }
 
-func (f *FakeGuesser) GuessName(path string, client *Client) (string, error) {
+func (f *FakeGuesser) GuessName(path string) (string, error) {
 	f.guesses = append(f.guesses, path)
 	return f.Name, nil
 }
@@ -40,7 +35,7 @@ type FailingFakeGuesser struct {
 	ErrorMessage string
 }
 
-func (f *FailingFakeGuesser) GuessName(path string, client *Client) (string, error) {
-	f.FakeGuesser.GuessName(path, client)
+func (f *FailingFakeGuesser) GuessName(path string) (string, error) {
+	f.FakeGuesser.GuessName(path)
 	return "", errors.New(f.ErrorMessage)
 }

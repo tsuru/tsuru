@@ -17,7 +17,7 @@ import (
 
 // AppGuesser is used to guess the name of an app based in a file path.
 type AppGuesser interface {
-	GuessName(path string, client *Client) (string, error)
+	GuessName(path string) (string, error)
 }
 
 // GitGuesser uses git to guess the name of the app.
@@ -27,7 +27,7 @@ type AppGuesser interface {
 // GuessName will return an error.
 type GitGuesser struct{}
 
-func (g GitGuesser) GuessName(path string, client *Client) (string, error) {
+func (g GitGuesser) GuessName(path string) (string, error) {
 	repoPath, err := git.DiscoverRepositoryPath(path)
 	if err != nil {
 		return "", fmt.Errorf("Git repository not found: %s.", err)
@@ -51,7 +51,7 @@ func (g GitGuesser) GuessName(path string, client *Client) (string, error) {
 // DirnameGuesser uses the directory name to guess the name of the app
 type DirnameGuesser struct{}
 
-func (g DirnameGuesser) GuessName(pathname string, client *Client) (string, error) {
+func (g DirnameGuesser) GuessName(pathname string) (string, error) {
 	appName := path.Base(pathname)
 	return appName, nil
 }
@@ -61,11 +61,11 @@ type MultiGuesser struct {
 	guessers []AppGuesser
 }
 
-func (g MultiGuesser) GuessName(pathname string, client *Client) (string, error) {
+func (g MultiGuesser) GuessName(pathname string) (string, error) {
 	cumulativeErr := errors.New("")
 
 	for _, guesser := range g.guessers {
-		app, err := guesser.GuessName(pathname, client)
+		app, err := guesser.GuessName(pathname)
 		if err == nil {
 			return app, nil
 		}
@@ -89,7 +89,7 @@ func (cmd *GuessingCommand) guesser() AppGuesser {
 	return cmd.G
 }
 
-func (cmd *GuessingCommand) Guess(client *Client) (string, error) {
+func (cmd *GuessingCommand) Guess() (string, error) {
 	if cmd.appName != "" {
 		return cmd.appName, nil
 	}
@@ -97,7 +97,7 @@ func (cmd *GuessingCommand) Guess(client *Client) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("Unable to guess app name: %s.", err)
 	}
-	name, err := cmd.guesser().GuessName(path, client)
+	name, err := cmd.guesser().GuessName(path)
 	if err != nil {
 		return "", fmt.Errorf(`tsuru wasn't able to guess the name of the app.
 
