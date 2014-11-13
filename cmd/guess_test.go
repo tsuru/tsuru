@@ -123,6 +123,12 @@ func (s *S) TestGitGuesserWithTsuruRemoteNotMatchingTsuruPattern(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, `"tsuru" remote did not match the pattern. Want something like <user>@<host>:<app-name>.git, got git://myhost.com/gopher.git`)
 }
 
+func (s *S) TestDirnameGuesser(c *gocheck.C) {
+	name, err := DirnameGuesser{}.GuessName("/something/wat", nil)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(name, gocheck.Equals, "wat")
+}
+
 func (s *S) TestGuessingCommandGuesserNil(c *gocheck.C) {
 	g := GuessingCommand{G: nil}
 	c.Assert(g.guesser(), gocheck.FitsTypeOf, MultiGuesser{})

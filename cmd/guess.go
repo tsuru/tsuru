@@ -7,7 +7,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"net/http"
 	"os"
 	"path"
 	"regexp"
@@ -54,21 +53,6 @@ type DirnameGuesser struct{}
 
 func (g DirnameGuesser) GuessName(pathname string, client *Client) (string, error) {
 	appName := path.Base(pathname)
-	url, err := GetURL(fmt.Sprintf("/apps/%s", appName))
-	if err != nil {
-		return "", err
-	}
-	request, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return "", err
-	}
-	resp, err := client.Do(request)
-	if err != nil {
-		return "", fmt.Errorf("Current directory name (%s) is not the name of a tsuru app", appName)
-	}
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("Current directory name (%s) is not the name of a tsuru app", appName)
-	}
 	return appName, nil
 }
 
