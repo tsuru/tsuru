@@ -58,13 +58,13 @@ func (g DirnameGuesser) GuessName(pathname string) (string, error) {
 
 // MultiGuesser can use multiple guessers
 type MultiGuesser struct {
-	guessers []AppGuesser
+	Guessers []AppGuesser
 }
 
 func (g MultiGuesser) GuessName(pathname string) (string, error) {
 	cumulativeErr := errors.New("")
 
-	for _, guesser := range g.guessers {
+	for _, guesser := range g.Guessers {
 		app, err := guesser.GuessName(pathname)
 		if err == nil {
 			return app, nil
@@ -84,7 +84,7 @@ type GuessingCommand struct {
 
 func (cmd *GuessingCommand) guesser() AppGuesser {
 	if cmd.G == nil {
-		cmd.G = MultiGuesser{guessers: []AppGuesser{GitGuesser{}, DirnameGuesser{}}}
+		cmd.G = MultiGuesser{Guessers: []AppGuesser{GitGuesser{}, DirnameGuesser{}}}
 	}
 	return cmd.G
 }
