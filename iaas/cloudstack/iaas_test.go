@@ -130,7 +130,7 @@ func (s *cloudstackSuite) TestCreateMachineValidateParams(c *gocheck.C) {
 		"name": "something",
 	}
 	_, err := cs.CreateMachine(params)
-	c.Assert(err, gocheck.ErrorMatches, "param \"projectid\" is mandatory")
+	c.Assert(err, gocheck.ErrorMatches, "param \"networkids\" is mandatory")
 }
 
 func (s *cloudstackSuite) TestBuildUrlToCloudstack(c *gocheck.C) {

@@ -46,16 +46,17 @@ func (i *CloudstackIaaS) Clone(name string) iaas.IaaS {
 
 func (i *CloudstackIaaS) Describe() string {
 	return `Cloudstack IaaS required params:
-  projectid=<projectid>                     Your project uuid
   networkids=<networkids>                   Your network uuid
   templateid=<templateid>                   Your template uuid
   serviceofferingid=<serviceofferingid>     Your service offering uuid
   zoneid=<zoneid>                           Your zone uuid
+
+Further params will also be sent to cloudstack's deployVirtualMachine command.
 `
 }
 
 func validateParams(params map[string]string) error {
-	mandatory := []string{"projectid", "networkids", "templateid", "serviceofferingid", "zoneid"}
+	mandatory := []string{"networkids", "templateid", "serviceofferingid", "zoneid"}
 	for _, p := range mandatory {
 		_, isPresent := params[p]
 		if !isPresent {
