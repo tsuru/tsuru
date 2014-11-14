@@ -37,11 +37,7 @@ func CreateMachineForIaaS(iaasName string, params map[string]string) (*Machine, 
 	if err != nil {
 		return nil, err
 	}
-	paramsCopy := make(map[string]string)
-	for k, v := range params {
-		paramsCopy[k] = v
-	}
-	m, err := iaas.CreateMachine(paramsCopy)
+	m, err := iaas.CreateMachine(params)
 	if err != nil {
 		return nil, err
 	}

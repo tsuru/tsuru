@@ -26,6 +26,7 @@ func (s *S) TestCreateMachineForIaaS(c *gocheck.C) {
 	c.Assert(dbMachine.CreationParams, gocheck.DeepEquals, map[string]string{
 		"id":        "myid",
 		"something": "x",
+		"should":    "be in",
 	})
 }
 

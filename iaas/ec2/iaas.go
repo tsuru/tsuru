@@ -15,7 +15,10 @@ import (
 	"launchpad.net/goamz/ec2"
 )
 
-const maxWaitTime = time.Duration(1 * time.Minute)
+const (
+	maxWaitTime   = time.Duration(1 * time.Minute)
+	defaultRegion = "us-east-1"
+)
 
 func init() {
 	iaas.RegisterIaasProvider("ec2", &EC2IaaS{})
@@ -103,10 +106,10 @@ func (i *EC2IaaS) DeleteMachine(m *iaas.Machine) error {
 }
 
 func (i *EC2IaaS) CreateMachine(params map[string]string) (*iaas.Machine, error) {
-	regionName, ok := params["region"]
-	if !ok {
-		regionName = "us-east-1"
+	if _, ok := params["region"]; !ok {
+		params["region"] = defaultRegion
 	}
+	regionName := params["region"]
 	region, ok := aws.Regions[regionName]
 	if !ok {
 		return nil, fmt.Errorf("region %q not found", regionName)

@@ -24,7 +24,7 @@ type S struct {
 
 var _ = gocheck.Suite(&S{})
 
-func (s *S) SetUpSuite(c *gocheck.C) {
+func (s *S) SetUpTest(c *gocheck.C) {
 	var err error
 	s.srv, err = ec2test.NewServer()
 	c.Assert(err, gocheck.IsNil)
@@ -37,7 +37,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("iaas:ec2:secret-key", "mysecret")
 }
 
-func (s *S) TearDownSuite(c *gocheck.C) {
+func (s *S) TearDownTest(c *gocheck.C) {
 	s.srv.Quit()
 }
 
@@ -61,6 +61,34 @@ func (s *S) TestCreateMachine(c *gocheck.C) {
 	m.CreationParams = map[string]string{"region": "myregion"}
 	defer iaas.DeleteMachine(m)
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(m.Id, gocheck.Matches, `i-\d`)
+	c.Assert(m.Address, gocheck.Matches, `i-\d.testing.invalid`)
+	c.Assert(m.Status, gocheck.Equals, "pending")
+}
+
+func (s *S) TestCreateMachineDefaultRegion(c *gocheck.C) {
+	defaultRegionServer, err := ec2test.NewServer()
+	c.Assert(err, gocheck.IsNil)
+	region := aws.Region{
+		Name:        defaultRegion,
+		EC2Endpoint: defaultRegionServer.URL(),
+	}
+	aws.Regions[defaultRegion] = region
+	params := map[string]string{
+		"image": "ami-xxxxxx",
+		"type":  "m1.micro",
+	}
+	expectedParams := map[string]string{
+		"image":  "ami-xxxxxx",
+		"type":   "m1.micro",
+		"region": defaultRegion,
+	}
+	iaas := &EC2IaaS{}
+	m, err := iaas.CreateMachine(params)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(params, gocheck.DeepEquals, expectedParams)
+	m.CreationParams = params
+	defer iaas.DeleteMachine(m)
 	c.Assert(m.Id, gocheck.Matches, `i-\d`)
 	c.Assert(m.Address, gocheck.Matches, `i-\d.testing.invalid`)
 	c.Assert(m.Status, gocheck.Equals, "pending")
@@ -103,8 +131,9 @@ func (s *S) TestCreateMachineValidations(c *gocheck.C) {
 }
 
 func (s *S) TestDeleteMachine(c *gocheck.C) {
+	insts := s.srv.NewInstances(1, "m1.small", "ami-x", ec2.InstanceState{}, nil)
 	m := iaas.Machine{
-		Id:             "i-0",
+		Id:             insts[0],
 		CreationParams: map[string]string{"region": "myregion"},
 	}
 	iaas := &EC2IaaS{}
@@ -113,19 +142,20 @@ func (s *S) TestDeleteMachine(c *gocheck.C) {
 }
 
 func (s *S) TestDeleteMachineValidations(c *gocheck.C) {
-	m := &iaas.Machine{
-		Id:             "i-0",
-		CreationParams: map[string]string{},
-	}
+	insts := s.srv.NewInstances(1, "m1.small", "ami-x", ec2.InstanceState{}, nil)
 	ec2Iaas := &EC2IaaS{}
-	err := ec2Iaas.DeleteMachine(m)
-	c.Assert(err, gocheck.ErrorMatches, "region creation param required")
-	m = &iaas.Machine{
-		Id:             "i-0",
+	m := &iaas.Machine{
+		Id:             insts[0],
 		CreationParams: map[string]string{"region": "invalid"},
 	}
-	err = ec2Iaas.DeleteMachine(m)
+	err := ec2Iaas.DeleteMachine(m)
 	c.Assert(err, gocheck.ErrorMatches, `region "invalid" not found`)
+	m = &iaas.Machine{
+		Id:             insts[0],
+		CreationParams: map[string]string{},
+	}
+	err = ec2Iaas.DeleteMachine(m)
+	c.Assert(err, gocheck.ErrorMatches, `region creation param required`)
 }
 
 func (s *S) TestClone(c *gocheck.C) {
