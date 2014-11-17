@@ -64,10 +64,9 @@ func createTestApp(conn *db.Storage, name, framework string, teams []string) (ap
 }
 
 func (s *BindSuite) TestBindUnit(c *gocheck.C) {
-	called := false
+	var called bool
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = true
-		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
 	}))
 	defer ts.Close()
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
@@ -83,14 +82,9 @@ func (s *BindSuite) TestBindUnit(c *gocheck.C) {
 	app.Provisioner.Provision(&a)
 	defer app.Provisioner.Destroy(&a)
 	app.Provisioner.AddUnits(&a, 1, nil)
-	envs, err := instance.BindUnit(&a, a.GetUnits()[0])
+	err = instance.BindUnit(&a, a.GetUnits()[0])
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
-	expectedEnvs := map[string]string{
-		"DATABASE_USER":     "root",
-		"DATABASE_PASSWORD": "s3cr3t",
-	}
-	c.Assert(envs, gocheck.DeepEquals, expectedEnvs)
 }
 
 func (s *BindSuite) TestBindAppFailsWhenEndpointIsDown(c *gocheck.C) {
@@ -222,7 +216,7 @@ func (s *BindSuite) TestBindAppMultiUnits(c *gocheck.C) {
 	case <-time.After(2e9):
 		c.Errorf("Did not bind all units afters 2s.")
 	}
-	c.Assert(calls, gocheck.Equals, int32(1))
+	c.Assert(calls, gocheck.Equals, int32(2))
 }
 
 func (s *BindSuite) TestBindReturnConflictIfTheAppIsAlreadyBound(c *gocheck.C) {
@@ -250,9 +244,19 @@ func (s *BindSuite) TestBindReturnConflictIfTheAppIsAlreadyBound(c *gocheck.C) {
 	c.Assert(e, gocheck.ErrorMatches, "^This app is already bound to this service instance.$")
 }
 
-func (s *BindSuite) TestBindDoesNotFailsAndStopsWhenAppDoesNotHaveAnUnit(c *gocheck.C) {
+func (s *BindSuite) TestBindAppWithNoUnits(c *gocheck.C) {
+	var called bool
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
+	}))
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := srvc.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
-	err := instance.Create()
+	err = instance.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name})
@@ -260,6 +264,23 @@ func (s *BindSuite) TestBindDoesNotFailsAndStopsWhenAppDoesNotHaveAnUnit(c *goch
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = instance.BindApp(&a)
 	c.Assert(err, gocheck.IsNil)
+	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
+	c.Assert(err, gocheck.IsNil)
+	expectedEnv := map[string]bind.EnvVar{
+		"DATABASE_USER": {
+			Name:         "DATABASE_USER",
+			Value:        "root",
+			Public:       false,
+			InstanceName: instance.Name,
+		},
+		"DATABASE_PASSWORD": {
+			Name:         "DATABASE_PASSWORD",
+			Value:        "s3cr3t",
+			Public:       false,
+			InstanceName: instance.Name,
+		},
+	}
+	c.Assert(a.Env, gocheck.DeepEquals, expectedEnv)
 }
 
 func (s *BindSuite) TestUnbindUnit(c *gocheck.C) {
