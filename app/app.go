@@ -342,7 +342,7 @@ func (app *App) BindUnit(unit *provision.Unit) error {
 		return err
 	}
 	for _, instance := range instances {
-		_, err = instance.BindUnit(app, unit)
+		err = instance.BindUnit(app, unit)
 		if err != nil {
 			log.Errorf("Error binding the unit %s with the service instance %s: %s", unit.Name, instance.Name, err)
 		}
