@@ -31,6 +31,7 @@ func (s *S) TestAutoScale(c *gocheck.C) {
 		AutoScaleConfig: &AutoScaleConfig{
 			Increase: Action{Units: 1, Expression: "{cpu} > 80"},
 			Decrease: Action{Units: 1, Expression: "{cpu} < 20"},
+			Enabled:  true,
 		},
 	}
 	err := scaleApplicationIfNeeded(&newApp)
@@ -54,6 +55,7 @@ func (s *S) TestAutoScaleUp(c *gocheck.C) {
 		Quota: quota.Unlimited,
 		AutoScaleConfig: &AutoScaleConfig{
 			Increase: Action{Units: 1, Expression: "{cpu_max} > 80"},
+			Enabled:  true,
 		},
 	}
 	err := s.conn.Apps().Insert(newApp)
@@ -84,6 +86,7 @@ func (s *S) TestAutoScaleDown(c *gocheck.C) {
 		AutoScaleConfig: &AutoScaleConfig{
 			Increase: Action{Units: 1, Expression: "{cpu_max} > 80"},
 			Decrease: Action{Units: 1, Expression: "{cpu_max} < 20"},
+			Enabled:  true,
 		},
 	}
 	err := s.conn.Apps().Insert(newApp)
@@ -114,6 +117,7 @@ func (s *S) TestRunAutoScaleOnce(c *gocheck.C) {
 		Quota: quota.Unlimited,
 		AutoScaleConfig: &AutoScaleConfig{
 			Increase: Action{Units: 1, Expression: "{cpu_max} > 80"},
+			Enabled:  true,
 		},
 	}
 	err := s.conn.Apps().Insert(up)
@@ -138,6 +142,7 @@ func (s *S) TestRunAutoScaleOnce(c *gocheck.C) {
 		AutoScaleConfig: &AutoScaleConfig{
 			Increase: Action{Units: 1, Expression: "{cpu_max} > 80"},
 			Decrease: Action{Units: 1, Expression: "{cpu_max} < 20"},
+			Enabled:  true,
 		},
 	}
 	err = s.conn.Apps().Insert(down)
@@ -200,4 +205,31 @@ func (s *S) TestNewAction(c *gocheck.C) {
 	a, err = NewAction(expression, units, wait)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(a, gocheck.IsNil)
+}
+
+func (s *S) TestAutoScalebleApps(c *gocheck.C) {
+	newApp := App{
+		Name:     "myApp",
+		Platform: "Django",
+		AutoScaleConfig: &AutoScaleConfig{
+			Enabled: true,
+		},
+	}
+	err := s.conn.Apps().Insert(newApp)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": newApp.Name})
+	disabledApp := App{
+		Name:     "disabled",
+		Platform: "Django",
+		AutoScaleConfig: &AutoScaleConfig{
+			Enabled: false,
+		},
+	}
+	err = s.conn.Apps().Insert(disabledApp)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": disabledApp.Name})
+	apps, err := autoScalableApps()
+	c.Assert(err, gocheck.Equals, nil)
+	c.Assert(apps[0].Name, gocheck.DeepEquals, newApp.Name)
+	c.Assert(apps, gocheck.HasLen, 1)
 }

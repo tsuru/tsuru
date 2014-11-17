@@ -12,6 +12,7 @@ import (
 
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // Action represents an AutoScale action to increase or decreate the
@@ -53,16 +54,17 @@ type AutoScaleConfig struct {
 	Decrease Action
 	MinUnits int
 	MaxUnits int
+	Enabled  bool
 }
 
-func allApps() ([]App, error) {
+func autoScalableApps() ([]App, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 	var apps []App
-	err = conn.Apps().Find(nil).All(&apps)
+	err = conn.Apps().Find(bson.M{"autoscaleconfig.enabled": true}).All(&apps)
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +72,7 @@ func allApps() ([]App, error) {
 }
 
 func runAutoScaleOnce() {
-	apps, err := allApps()
+	apps, err := autoScalableApps()
 	if err != nil {
 		log.Error(err.Error())
 	}
