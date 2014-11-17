@@ -129,6 +129,14 @@ func (s *S) TestUnsetEnvs(c *gocheck.C) {
 	c.Assert(app.env, gocheck.DeepEquals, map[string]bind.EnvVar{})
 }
 
+func (s *S) TestFakeAppBindUnit(c *gocheck.C) {
+	var unit provision.Unit
+	app := NewFakeApp("sou", "otm", 0)
+	err := app.BindUnit(&unit)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(app.bindCalls[0], gocheck.Equals, &unit)
+}
+
 func (s *S) TestFakeAppLogs(c *gocheck.C) {
 	app := NewFakeApp("sou", "otm", 0)
 	app.Log("something happened", "[tsuru]", "[api]")

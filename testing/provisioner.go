@@ -37,6 +37,7 @@ type FakeApp struct {
 	ready          bool
 	deploys        uint
 	env            map[string]bind.EnvVar
+	bindCalls      []*provision.Unit
 	UpdatePlatform bool
 }
 
@@ -67,6 +68,11 @@ func (a *FakeApp) GetSwap() int64 {
 
 func (a *FakeApp) GetCpuShare() int {
 	return a.CpuShare
+}
+
+func (a *FakeApp) BindUnit(unit *provision.Unit) error {
+	a.bindCalls = append(a.bindCalls, unit)
+	return nil
 }
 
 func (a *FakeApp) Logs() []string {

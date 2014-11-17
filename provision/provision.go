@@ -110,6 +110,9 @@ type Named interface {
 // It contains only relevant information for provisioning.
 type App interface {
 	Named
+
+	BindUnit(*Unit) error
+
 	// Log should be used to log messages in the app.
 	Log(message, source, unit string) error
 
