@@ -355,7 +355,7 @@ var BindService = action.Action{
 	MinParams: 1,
 }
 
-// ProvisionerDeploy is an actions that call the Provisioner.Deploy.
+// ProvisionerDeploy is an action that calls the Provisioner.Deploy.
 var ProvisionerDeploy = action.Action{
 	Name: "provisioner-deploy",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
