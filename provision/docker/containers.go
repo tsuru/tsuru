@@ -78,8 +78,8 @@ func handleMoveErrors(moveErrors chan error, encoder *json.Encoder) error {
 	hasError := false
 	for err := range moveErrors {
 		errMsg := fmt.Sprintf("Error moving container: %s", err.Error())
-		log.Errorf(errMsg)
-		logProgress(encoder, errMsg)
+		log.Error(errMsg)
+		logProgress(encoder, "%s", errMsg)
 		hasError = true
 	}
 	if hasError {
