@@ -71,7 +71,29 @@ func (a *FakeApp) GetCpuShare() int {
 }
 
 func (a *FakeApp) BindUnit(unit *provision.Unit) error {
+	for _, u := range a.bindCalls {
+		if u.Ip == unit.Ip {
+			return errors.New("already bound")
+		}
+	}
 	a.bindCalls = append(a.bindCalls, unit)
+	return nil
+}
+
+func (a *FakeApp) UnbindUnit(unit *provision.Unit) error {
+	index := -1
+	for i, u := range a.bindCalls {
+		if u.Ip == unit.Ip {
+			index = i
+			break
+		}
+	}
+	if index < 0 {
+		return errors.New("not bound")
+	}
+	length := len(a.bindCalls)
+	a.bindCalls[index] = a.bindCalls[length-1]
+	a.bindCalls = a.bindCalls[:length-1]
 	return nil
 }
 
@@ -573,7 +595,7 @@ func (p *FakeProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 	p.cmdMut.Lock()
 	p.cmds = append(p.cmds, command)
 	p.cmdMut.Unlock()
-	for _ = range app.Units() {
+	for range app.Units() {
 		select {
 		case output = <-p.outputs:
 			select {

@@ -425,6 +425,86 @@ func (s *S) TestCreateAppDoesNotSaveTheAppWhenGandalfFailstoCreateTheRepository(
 	c.Assert(count, gocheck.Equals, 0)
 }
 
+func (s *S) TestBindUnit(c *gocheck.C) {
+	var requests []*http.Request
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r)
+	}))
+	defer server.Close()
+	app := App{
+		Name: "warpaint", Platform: "python",
+		Quota: quota.Unlimited,
+	}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
+	srvc := service.Service{
+		Name:     "mysql",
+		Endpoint: map[string]string{"production": server.URL},
+	}
+	err = srvc.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer srvc.Delete()
+	si1 := service.ServiceInstance{Name: "mydb", ServiceName: "mysql", Apps: []string{app.Name}}
+	err = si1.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": si1.Name})
+	si2 := service.ServiceInstance{Name: "yourdb", ServiceName: "mysql", Apps: []string{app.Name}}
+	err = si2.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": si2.Name})
+	unit := provision.Unit{Name: "some-unit", Ip: "127.0.2.1"}
+	err = app.BindUnit(&unit)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(requests, gocheck.HasLen, 2)
+	c.Assert(requests[0].Method, gocheck.Equals, "POST")
+	c.Assert(requests[0].URL.Path, gocheck.Equals, "/resources/mydb/bind-unit")
+	c.Assert(requests[1].Method, gocheck.Equals, "POST")
+	c.Assert(requests[1].URL.Path, gocheck.Equals, "/resources/yourdb/bind-unit")
+}
+
+func (s *S) TestUnbindUnit(c *gocheck.C) {
+	var requests []*http.Request
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests = append(requests, r)
+	}))
+	defer server.Close()
+	app := App{
+		Name: "warpaint", Platform: "python",
+		Quota: quota.Unlimited,
+	}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	s.provisioner.Provision(&app)
+	defer s.provisioner.Destroy(&app)
+	srvc := service.Service{
+		Name:     "mysql",
+		Endpoint: map[string]string{"production": server.URL},
+	}
+	err = srvc.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer srvc.Delete()
+	si1 := service.ServiceInstance{Name: "mydb", ServiceName: "mysql", Apps: []string{app.Name}}
+	err = si1.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": si1.Name})
+	si2 := service.ServiceInstance{Name: "yourdb", ServiceName: "mysql", Apps: []string{app.Name}}
+	err = si2.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": si2.Name})
+	unit := provision.Unit{Name: "some-unit", Ip: "127.0.2.1"}
+	err = app.UnbindUnit(&unit)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(requests, gocheck.HasLen, 2)
+	c.Assert(requests[0].Method, gocheck.Equals, "DELETE")
+	c.Assert(requests[0].URL.Path, gocheck.Equals, "/resources/mydb/bind-unit")
+	c.Assert(requests[1].Method, gocheck.Equals, "DELETE")
+	c.Assert(requests[1].URL.Path, gocheck.Equals, "/resources/yourdb/bind-unit")
+}
+
 func (s *S) TestAddUnits(c *gocheck.C) {
 	app := App{
 		Name: "warpaint", Platform: "python",
@@ -435,12 +515,6 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
-	callCount := 0
-	rollback := s.addServiceInstance(c, app.Name, func(w http.ResponseWriter, r *http.Request) {
-		callCount++
-		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
-	})
-	defer rollback()
 	err = app.AddUnits(5, nil)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Units(), gocheck.HasLen, 5)
@@ -450,7 +524,6 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	for _, unit := range app.Units() {
 		c.Assert(unit.AppName, gocheck.Equals, app.Name)
 	}
-	c.Assert(callCount, gocheck.Equals, 7)
 }
 
 func (s *S) TestAddUnitsWithWriter(c *gocheck.C) {
@@ -1346,7 +1419,7 @@ func (s *S) TestLogWithListeners(c *gocheck.C) {
 	done := make(chan bool, 1)
 	q := make(chan bool)
 	go func(quit chan bool) {
-		for _ = range time.Tick(1e3) {
+		for range time.Tick(1e3) {
 			select {
 			case <-quit:
 				return

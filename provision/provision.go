@@ -112,6 +112,7 @@ type App interface {
 	Named
 
 	BindUnit(*Unit) error
+	UnbindUnit(*Unit) error
 
 	// Log should be used to log messages in the app.
 	Log(message, source, unit string) error

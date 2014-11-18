@@ -234,14 +234,7 @@ func CreateApp(app *App, user *auth.User) error {
 // them. This method is used by Destroy (before destroying the app, it unbinds
 // all service instances). Refer to Destroy docs for more details.
 func (app *App) unbind() error {
-	var instances []service.ServiceInstance
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	q := bson.M{"apps": bson.M{"$in": []string{app.Name}}}
-	err = conn.ServiceInstances().Find(q).All(&instances)
+	instances, err := app.serviceInstances()
 	if err != nil {
 		return err
 	}
@@ -330,14 +323,7 @@ func Delete(app *App) error {
 }
 
 func (app *App) BindUnit(unit *provision.Unit) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	var instances []service.ServiceInstance
-	q := bson.M{"apps": bson.M{"$in": []string{app.Name}}}
-	err = conn.ServiceInstances().Find(q).All(&instances)
+	instances, err := app.serviceInstances()
 	if err != nil {
 		return err
 	}
@@ -350,6 +336,35 @@ func (app *App) BindUnit(unit *provision.Unit) error {
 	return nil
 }
 
+func (app *App) UnbindUnit(unit *provision.Unit) error {
+	instances, err := app.serviceInstances()
+	if err != nil {
+		return err
+	}
+	for _, instance := range instances {
+		err = instance.UnbindUnit(app, unit)
+		if err != nil {
+			log.Errorf("Error unbinding the unit %s with the service instance %s: %s", unit.Name, instance.Name, err)
+		}
+	}
+	return nil
+}
+
+func (app *App) serviceInstances() ([]service.ServiceInstance, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	var instances []service.ServiceInstance
+	q := bson.M{"apps": bson.M{"$in": []string{app.Name}}}
+	err = conn.ServiceInstances().Find(q).All(&instances)
+	if err != nil {
+		return nil, err
+	}
+	return instances, nil
+}
+
 // AddUnits creates n new units within the provisioner, saves new units in the
 // database and enqueues the apprc serialization.
 func (app *App) AddUnits(n uint, writer io.Writer) error {
@@ -359,7 +374,6 @@ func (app *App) AddUnits(n uint, writer io.Writer) error {
 	err := action.NewPipeline(
 		&reserveUnitsToAdd,
 		&provisionAddUnits,
-		&BindService,
 	).Execute(app, n, writer)
 	return err
 }
