@@ -308,7 +308,7 @@ func (s *BindSuite) TestUnbindUnit(c *gocheck.C) {
 	app.Provisioner.Provision(&a)
 	defer app.Provisioner.Destroy(&a)
 	app.Provisioner.AddUnits(&a, 1, nil)
-	err = instance.UnbindUnit(a.GetUnits()[0], &a)
+	err = instance.UnbindUnit(&a, a.GetUnits()[0])
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(called, gocheck.Equals, true)
 }
