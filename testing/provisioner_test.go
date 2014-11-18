@@ -137,16 +137,6 @@ func (s *S) TestFakeAppBindUnit(c *gocheck.C) {
 	c.Assert(app.bindCalls[0], gocheck.Equals, &unit)
 }
 
-func (s *S) TestFakeAppBindUnitDuplicated(c *gocheck.C) {
-	var unit provision.Unit
-	app := NewFakeApp("sou", "otm", 0)
-	err := app.BindUnit(&unit)
-	c.Assert(err, gocheck.IsNil)
-	err = app.BindUnit(&unit)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "already bound")
-}
-
 func (s *S) TestFakeAppUnbindUnit(c *gocheck.C) {
 	var unit provision.Unit
 	app := NewFakeApp("sou", "otm", 0)

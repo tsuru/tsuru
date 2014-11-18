@@ -71,11 +71,6 @@ func (a *FakeApp) GetCpuShare() int {
 }
 
 func (a *FakeApp) BindUnit(unit *provision.Unit) error {
-	for _, u := range a.bindCalls {
-		if u.Ip == unit.Ip {
-			return errors.New("already bound")
-		}
-	}
 	a.bindCalls = append(a.bindCalls, unit)
 	return nil
 }
