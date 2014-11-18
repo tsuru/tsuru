@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"sync"
 
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
@@ -189,15 +190,19 @@ func (si *ServiceInstance) UnbindApp(app bind.App) error {
 	if err != nil {
 		return err
 	}
+	var wg sync.WaitGroup
 	for _, unit := range app.GetUnits() {
+		wg.Add(1)
 		go func(unit bind.Unit) {
-			si.UnbindUnit(unit, app)
+			si.UnbindUnit(app, unit)
+			wg.Done()
 		}(unit)
 	}
 	var envVars []string
 	for k := range app.InstanceEnv(si.Name) {
 		envVars = append(envVars, k)
 	}
+	wg.Wait()
 	if endpoint, err := si.Service().getClient("production"); err == nil {
 		endpoint.UnbindApp(si, app)
 	}
@@ -205,7 +210,7 @@ func (si *ServiceInstance) UnbindApp(app bind.App) error {
 }
 
 // UnbindUnit makes the unbind between the service instance and an unit.
-func (si *ServiceInstance) UnbindUnit(unit bind.Unit, app bind.App) error {
+func (si *ServiceInstance) UnbindUnit(app bind.App, unit bind.Unit) error {
 	endpoint, err := si.Service().getClient("production")
 	if err != nil {
 		return err
