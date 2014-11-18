@@ -323,38 +323,6 @@ var provisionAddUnits = action.Action{
 	MinParams: 1,
 }
 
-var BindService = action.Action{
-	Name: "bind-service",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var app *App
-		switch ctx.Params[0].(type) {
-		case *App:
-			app = ctx.Params[0].(*App)
-		case DeployOptions:
-			opts := ctx.Params[0].(DeployOptions)
-			app = opts.App
-		default:
-			return nil, errors.New("First parameter must be *App or DeployOptions.")
-		}
-		units, _ := ctx.Previous.([]provision.Unit)
-		app, err := GetByName(app.Name)
-		if err != nil {
-			return nil, ErrAppNotFound
-		}
-		if len(units) == 0 {
-			units = app.Units()
-		}
-		for _, unit := range units {
-			err := app.BindUnit(&unit)
-			if err != nil {
-				return nil, err
-			}
-		}
-		return nil, nil
-	},
-	MinParams: 1,
-}
-
 // ProvisionerDeploy is an action that calls the Provisioner.Deploy.
 var ProvisionerDeploy = action.Action{
 	Name: "provisioner-deploy",

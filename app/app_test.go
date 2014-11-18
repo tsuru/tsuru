@@ -1419,7 +1419,7 @@ func (s *S) TestLogWithListeners(c *gocheck.C) {
 	done := make(chan bool, 1)
 	q := make(chan bool)
 	go func(quit chan bool) {
-		for range time.Tick(1e3) {
+		for _ = range time.Tick(1e3) {
 			select {
 			case <-quit:
 				return

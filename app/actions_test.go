@@ -8,8 +8,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
@@ -48,10 +46,6 @@ func (s *S) TestReserveUnitsToAddName(c *gocheck.C) {
 
 func (s *S) TestProvisionAddUnitsName(c *gocheck.C) {
 	c.Assert(provisionAddUnits.Name, gocheck.Equals, "provision-add-units")
-}
-
-func (s *S) TestBindServiceName(c *gocheck.C) {
-	c.Assert(BindService.Name, gocheck.Equals, "bind-service")
 }
 
 func (s *S) TestSetAppIpName(c *gocheck.C) {
@@ -615,113 +609,6 @@ func (s *S) TestProvisionAddUnitsBackward(c *gocheck.C) {
 
 func (s *S) TestProvisionAddUnitsMinParams(c *gocheck.C) {
 	c.Assert(provisionAddUnits.MinParams, gocheck.Equals, 1)
-}
-
-func (s *S) TestBindServiceForward(c *gocheck.C) {
-	app := App{
-		Name:     "visions",
-		Platform: "django",
-	}
-	s.conn.Apps().Insert(app)
-	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	s.provisioner.Provision(&app)
-	defer s.provisioner.Destroy(&app)
-	units, err := s.provisioner.AddUnits(&app, 3, nil)
-	c.Assert(err, gocheck.IsNil)
-	var bodies []string
-	rollback := s.addServiceInstance(c, app.Name, func(w http.ResponseWriter, r *http.Request) {
-		data, _ := ioutil.ReadAll(r.Body)
-		bodies = append(bodies, string(data))
-		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
-	})
-	defer rollback()
-	ctx := action.FWContext{Previous: units[:2], Params: []interface{}{&app}}
-	fwresult, err := BindService.Forward(ctx)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(fwresult, gocheck.IsNil)
-	c.Assert(app.Units(), gocheck.HasLen, 3)
-	c.Assert(bodies, gocheck.HasLen, 2)
-	c.Assert(bodies[0], gocheck.Matches, ".*unit-host="+units[0].Ip)
-	c.Assert(bodies[1], gocheck.Matches, ".*unit-host="+units[1].Ip)
-}
-
-func (s *S) TestBindServiceForwardWithDeployOpts(c *gocheck.C) {
-	app := App{
-		Name:     "visions",
-		Platform: "django",
-	}
-	s.conn.Apps().Insert(app)
-	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	s.provisioner.Provision(&app)
-	defer s.provisioner.Destroy(&app)
-	units, err := s.provisioner.AddUnits(&app, 3, nil)
-	c.Assert(err, gocheck.IsNil)
-	callCount := 0
-	rollback := s.addServiceInstance(c, app.Name, func(w http.ResponseWriter, r *http.Request) {
-		callCount++
-		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
-	})
-	defer rollback()
-	opts := DeployOptions{App: &app}
-	ctx := action.FWContext{Previous: units, Params: []interface{}{opts}}
-	fwresult, err := BindService.Forward(ctx)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(fwresult, gocheck.IsNil)
-	c.Assert(app.Units(), gocheck.HasLen, 3)
-	c.Assert(callCount, gocheck.Equals, 3)
-}
-
-func (s *S) TestBindServiceForwardNoPrevious(c *gocheck.C) {
-	app := App{
-		Name:     "visions",
-		Platform: "django",
-	}
-	s.conn.Apps().Insert(app)
-	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	s.provisioner.Provision(&app)
-	defer s.provisioner.Destroy(&app)
-	_, err := s.provisioner.AddUnits(&app, 3, nil)
-	c.Assert(err, gocheck.IsNil)
-	var bodies []string
-	rollback := s.addServiceInstance(c, app.Name, func(w http.ResponseWriter, r *http.Request) {
-		data, _ := ioutil.ReadAll(r.Body)
-		bodies = append(bodies, string(data))
-		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
-	})
-	defer rollback()
-	ctx := action.FWContext{Previous: nil, Params: []interface{}{&app}}
-	fwresult, err := BindService.Forward(ctx)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(fwresult, gocheck.IsNil)
-	units := app.Units()
-	c.Assert(units, gocheck.HasLen, 3)
-	c.Assert(bodies, gocheck.HasLen, 3)
-	c.Assert(bodies[0], gocheck.Matches, ".*unit-host="+units[0].Ip)
-	c.Assert(bodies[1], gocheck.Matches, ".*unit-host="+units[1].Ip)
-	c.Assert(bodies[2], gocheck.Matches, ".*unit-host="+units[2].Ip)
-}
-
-func (s *S) TestBindServiceForwardInvalidApp(c *gocheck.C) {
-	result, err := BindService.Forward(action.FWContext{Params: []interface{}{"something"}})
-	c.Assert(result, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-}
-
-func (s *S) TestBindServiceAppNotFound(c *gocheck.C) {
-	app := App{Name: "something"}
-	fwresult := []provision.Unit{}
-	ctx := action.FWContext{Previous: fwresult, Params: []interface{}{&app}}
-	result, err := BindService.Forward(ctx)
-	c.Assert(result, gocheck.IsNil)
-	c.Assert(err.Error(), gocheck.Equals, "App not found.")
-}
-
-func (s *S) TestBindServiceBackward(c *gocheck.C) {
-	c.Assert(BindService.Backward, gocheck.IsNil)
-}
-
-func (s *S) TestSaveNewUnitsMinParams(c *gocheck.C) {
-	c.Assert(BindService.MinParams, gocheck.Equals, 1)
 }
 
 func (s *S) TestProvisionerDeployName(c *gocheck.C) {

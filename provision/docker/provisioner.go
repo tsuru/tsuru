@@ -292,6 +292,12 @@ func addContainersWithHost(w io.Writer, a provision.App, units int, destinationH
 				errors <- err
 				return
 			}
+			unit := c.asUnit(a)
+			err = a.BindUnit(&unit)
+			if err != nil {
+				errors <- err
+				return
+			}
 			createdContainers <- c
 			err = runHealthcheck(c, w)
 			if err != nil {
@@ -306,10 +312,15 @@ func addContainersWithHost(w io.Writer, a provision.App, units int, destinationH
 	close(createdContainers)
 	if err := <-errors; err != nil {
 		for c := range createdContainers {
-			log.Errorf("Removing container %q due failed add units: %s", c.ID, err.Error())
+			log.Errorf("Removing container %q due failed add units: %s", c.ID, err)
+			unit := c.asUnit(a)
+			errUnbind := a.UnbindUnit(&unit)
+			if errUnbind != nil {
+				log.Errorf("Unable to unbind unit %q: %s", c.ID, err)
+			}
 			errRem := removeContainer(c)
 			if errRem != nil {
-				log.Errorf("Unable to destroy container %s: %s", c.ID, err.Error())
+				log.Errorf("Unable to destroy container %q: %s", c.ID, err)
 			}
 		}
 		return nil, err
@@ -483,7 +494,6 @@ func (p *dockerProvisioner) DeployPipeline() *action.Pipeline {
 	actions := []*action.Action{
 		&app.ProvisionerDeploy,
 		&app.IncrementDeploy,
-		&app.BindService,
 	}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline
