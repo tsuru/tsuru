@@ -25,11 +25,16 @@ type Machine struct {
 }
 
 func CreateMachine(params map[string]string) (*Machine, error) {
-	defaultIaaS, err := config.GetString("iaas:default")
-	if err != nil {
-		defaultIaaS = "ec2"
+	iaasName, _ := params["iaas"]
+	if iaasName == "" {
+		defaultIaaS, err := config.GetString("iaas:default")
+		if err != nil {
+			defaultIaaS = defaultIaaSProviderName
+		}
+		iaasName = defaultIaaS
 	}
-	return CreateMachineForIaaS(defaultIaaS, params)
+	delete(params, "iaas")
+	return CreateMachineForIaaS(iaasName, params)
 }
 
 func CreateMachineForIaaS(iaasName string, params map[string]string) (*Machine, error) {

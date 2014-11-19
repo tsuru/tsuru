@@ -12,9 +12,12 @@ import (
 	"github.com/tsuru/config"
 )
 
-const UserData = `#!/bin/bash
+const (
+	UserData = `#!/bin/bash
 curl -sL https://raw.github.com/tsuru/now/master/run.bash | bash -s -- --docker-only
 `
+	defaultIaaSProviderName = "ec2"
+)
 
 // Every Tsuru IaaS must implement this interface.
 type IaaS interface {
@@ -66,7 +69,7 @@ func Describe(iaasName ...string) (string, error) {
 	if len(iaasName) == 0 || iaasName[0] == "" {
 		defaultIaaS, err := config.GetString("iaas:default")
 		if err != nil {
-			defaultIaaS = "ec2"
+			defaultIaaS = defaultIaaSProviderName
 		}
 		iaasName = []string{defaultIaaS}
 	}

@@ -38,6 +38,14 @@ func (s *S) TestCreateMachine(c *gocheck.C) {
 	c.Assert(m.Iaas, gocheck.Equals, "test-iaas")
 }
 
+func (s *S) TestCreateMachineIaaSInParams(c *gocheck.C) {
+	config.Set("iaas:default", "invalid")
+	m, err := CreateMachine(map[string]string{"id": "myid", "iaas": "test-iaas"})
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(m.Id, gocheck.Equals, "myid")
+	c.Assert(m.Iaas, gocheck.Equals, "test-iaas")
+}
+
 func (s *S) TestListMachines(c *gocheck.C) {
 	_, err := CreateMachineForIaaS("test-iaas", map[string]string{"id": "myid1"})
 	c.Assert(err, gocheck.IsNil)
