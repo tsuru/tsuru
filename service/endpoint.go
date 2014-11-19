@@ -109,7 +109,7 @@ func (c *Client) BindApp(instance *ServiceInstance, app bind.App) (map[string]st
 	params := map[string][]string{
 		"app-host": {app.GetIp()},
 	}
-	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind", "POST", params)
+	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind-app", "POST", params)
 	if err != nil {
 		if m, _ := regexp.MatchString("", err.Error()); m {
 			return nil, fmt.Errorf("%s api is down.", instance.Name)
@@ -140,7 +140,7 @@ func (c *Client) BindUnit(instance *ServiceInstance, app bind.App, unit bind.Uni
 		"app-host":  {app.GetIp()},
 		"unit-host": {unit.GetIp()},
 	}
-	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind-unit", "POST", params)
+	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind", "POST", params)
 	if err != nil {
 		if m, _ := regexp.MatchString("", err.Error()); m {
 			return fmt.Errorf("%s api is down.", instance.Name)
