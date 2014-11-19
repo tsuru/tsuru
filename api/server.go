@@ -182,6 +182,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Post", "/plans", AdminRequiredHandler(addPlan))
 	m.Add("Delete", "/plans/{planname}", AdminRequiredHandler(removePlan))
 
+	m.Add("Get", "/debug/goroutines", AdminRequiredHandler(dumpGoroutines))
+
 	n := negroni.New()
 	n.Use(negroni.NewRecovery())
 	n.Use(newLoggerMiddleware())
