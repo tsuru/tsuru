@@ -26,7 +26,7 @@ var _ = gocheck.Suite(&AutoScaleSuite{})
 
 func (s *AutoScaleSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("database:url", "127.0.0.1:27017")
-	config.Set("database:name", "tsuru_deploy_api_tests")
+	config.Set("database:name", "tsuru_autoscale_api_tests")
 	config.Set("aut:hash-cost", 4)
 	config.Set("admin-team", "tsuruteam")
 	var err error
@@ -49,12 +49,37 @@ func (s *AutoScaleSuite) TearDownSuite(c *gocheck.C) {
 	s.conn.Apps().Database.DropDatabase()
 }
 
+func (s *AutoScaleSuite) TearDownTest(c *gocheck.C) {
+	s.conn.AutoScale().RemoveAll(nil)
+}
+
 func (s *AutoScaleSuite) TestAutoScaleHistoryHandler(c *gocheck.C) {
 	a := app.App{Name: "myApp", Platform: "Django"}
 	_, err := app.NewAutoScaleEvent(&a, "increase")
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/autoscale", nil)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	body := recorder.Body.Bytes()
+	events := []app.AutoScaleEvent{}
+	err = json.Unmarshal(body, &events)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(events, gocheck.HasLen, 1)
+}
+
+func (s *AutoScaleSuite) TestAutoScaleHistoryHandlerByApp(c *gocheck.C) {
+	a := app.App{Name: "myApp", Platform: "Django"}
+	_, err := app.NewAutoScaleEvent(&a, "increase")
+	c.Assert(err, gocheck.IsNil)
+	a = app.App{Name: "another", Platform: "Django"}
+	_, err = app.NewAutoScaleEvent(&a, "increase")
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/autoscale?app=another", nil)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := RunServer(true)

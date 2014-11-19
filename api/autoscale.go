@@ -13,7 +13,8 @@ import (
 )
 
 func autoScaleHistoryHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	history, err := app.ListAutoScaleHistory()
+	appName := r.URL.Query().Get("app")
+	history, err := app.ListAutoScaleHistory(appName)
 	if err != nil {
 		return err
 	}

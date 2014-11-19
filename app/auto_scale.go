@@ -180,14 +180,18 @@ func scaleApplicationIfNeeded(app *App) error {
 	return nil
 }
 
-func ListAutoScaleHistory() ([]AutoScaleEvent, error) {
+func ListAutoScaleHistory(appName string) ([]AutoScaleEvent, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
 	var history []AutoScaleEvent
-	err = conn.AutoScale().Find(nil).Sort("-_id").Limit(200).All(&history)
+	q := bson.M{}
+	if appName != "" {
+		q["appname"] = appName
+	}
+	err = conn.AutoScale().Find(q).Sort("-_id").Limit(200).All(&history)
 	if err != nil {
 		return nil, err
 	}
