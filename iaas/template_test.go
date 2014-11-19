@@ -61,3 +61,19 @@ func (s *S) TestParamsMap(c *gocheck.C) {
 		"iaas": "ec2",
 	})
 }
+
+func (s *S) TestListTemplates(c *gocheck.C) {
+	tpl1, err := NewTemplate("tpl1", "ec2", map[string]string{
+		"key1": "val1",
+		"key2": "val2",
+	})
+	c.Assert(err, gocheck.IsNil)
+	tpl2, err := NewTemplate("tpl2", "ec2", map[string]string{
+		"key1": "val9",
+		"key2": "val8",
+	})
+	c.Assert(err, gocheck.IsNil)
+	templates, err := ListTemplates()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(templates, gocheck.DeepEquals, []Template{*tpl1, *tpl2})
+}

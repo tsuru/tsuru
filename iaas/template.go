@@ -38,6 +38,14 @@ func FindTemplate(name string) (*Template, error) {
 	return &template, err
 }
 
+func ListTemplates() ([]Template, error) {
+	coll := template_collection()
+	defer coll.Close()
+	var templates []Template
+	err := coll.Find(nil).Sort("_id").All(&templates)
+	return templates, err
+}
+
 func (t *Template) saveToDB() error {
 	coll := template_collection()
 	defer coll.Close()
