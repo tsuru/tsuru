@@ -276,7 +276,12 @@ var provisionRemoveOldUnits = action.Action{
 				defer wg.Done()
 				err := removeContainer(&cont)
 				if err != nil {
-					log.Errorf("Ignored error trying to remove old container %q: %s", cont.ID, err.Error())
+					log.Errorf("Ignored error trying to remove old container %q: %s", cont.ID, err)
+				}
+				unit := cont.asUnit(args.app)
+				err = args.app.UnbindUnit(&unit)
+				if err != nil {
+					log.Errorf("Ignorer error trying to unbind old container %q: %s", cont.ID, err)
 				}
 				removedContainers <- &cont
 			}(cont)
