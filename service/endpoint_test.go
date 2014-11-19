@@ -377,7 +377,7 @@ func (s *S) TestUnbindApp(c *gocheck.C) {
 	h.Lock()
 	defer h.Unlock()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(h.url, gocheck.Equals, "/resources/heaven-can-wait/bind")
+	c.Assert(h.url, gocheck.Equals, "/resources/heaven-can-wait/bind-app")
 	c.Assert(h.method, gocheck.Equals, "DELETE")
 	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
 	v, err := url.ParseQuery(string(h.body))
@@ -397,7 +397,7 @@ func (s *S) TestUnbindAppRequestFailure(c *gocheck.C) {
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.UnbindApp(&instance, &a)
 	c.Assert(err, gocheck.NotNil)
-	expected := `Failed to unbind ("/resources/heaven-can-wait/bind"): Server failed to do its job.`
+	expected := `Failed to unbind ("/resources/heaven-can-wait/bind-app"): Server failed to do its job.`
 	c.Assert(err.Error(), gocheck.Equals, expected)
 }
 
@@ -415,7 +415,7 @@ func (s *S) TestUnbindUnit(c *gocheck.C) {
 	h.Lock()
 	defer h.Unlock()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(h.url, gocheck.Equals, "/resources/heaven-can-wait/bind-unit")
+	c.Assert(h.url, gocheck.Equals, "/resources/heaven-can-wait/bind")
 	c.Assert(h.method, gocheck.Equals, "DELETE")
 	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
 	v, err := url.ParseQuery(string(h.body))
@@ -435,7 +435,7 @@ func (s *S) TestUnbindUnitRequestFailure(c *gocheck.C) {
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.UnbindUnit(&instance, &a, a.GetUnits()[0])
 	c.Assert(err, gocheck.NotNil)
-	expected := `Failed to unbind ("/resources/heaven-can-wait/bind-unit"): Server failed to do its job.`
+	expected := `Failed to unbind ("/resources/heaven-can-wait/bind"): Server failed to do its job.`
 	c.Assert(err.Error(), gocheck.Equals, expected)
 }
 

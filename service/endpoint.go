@@ -161,7 +161,7 @@ func (c *Client) BindUnit(instance *ServiceInstance, app bind.App, unit bind.Uni
 func (c *Client) UnbindApp(instance *ServiceInstance, app bind.App) error {
 	log.Debugf("Calling unbind of service instance %q and app %q at %q", instance.Name, app.GetName(), instance.ServiceName)
 	var resp *http.Response
-	url := "/resources/" + instance.GetIdentifier() + "/bind"
+	url := "/resources/" + instance.GetIdentifier() + "/bind-app"
 	params := map[string][]string{
 		"app-host": {app.GetIp()},
 	}
@@ -177,7 +177,7 @@ func (c *Client) UnbindApp(instance *ServiceInstance, app bind.App) error {
 func (c *Client) UnbindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error {
 	log.Debugf("Calling unbind of service instance %q and unit %q at %q", instance.Name, unit.GetIp(), instance.ServiceName)
 	var resp *http.Response
-	url := "/resources/" + instance.GetIdentifier() + "/bind-unit"
+	url := "/resources/" + instance.GetIdentifier() + "/bind"
 	params := map[string][]string{
 		"app-host":  {app.GetIp()},
 		"unit-host": {unit.GetIp()},
