@@ -70,6 +70,15 @@ func (a *FakeApp) GetCpuShare() int {
 	return a.CpuShare
 }
 
+func (a *FakeApp) HasBind(unit *provision.Unit) bool {
+	for _, u := range a.bindCalls {
+		if u.Ip == unit.Ip {
+			return true
+		}
+	}
+	return false
+}
+
 func (a *FakeApp) BindUnit(unit *provision.Unit) error {
 	a.bindCalls = append(a.bindCalls, unit)
 	return nil

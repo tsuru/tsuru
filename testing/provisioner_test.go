@@ -134,7 +134,7 @@ func (s *S) TestFakeAppBindUnit(c *gocheck.C) {
 	app := NewFakeApp("sou", "otm", 0)
 	err := app.BindUnit(&unit)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.bindCalls[0], gocheck.Equals, &unit)
+	c.Assert(app.HasBind(&unit), gocheck.Equals, true)
 }
 
 func (s *S) TestFakeAppUnbindUnit(c *gocheck.C) {
@@ -144,7 +144,7 @@ func (s *S) TestFakeAppUnbindUnit(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = app.UnbindUnit(&unit)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.bindCalls, gocheck.HasLen, 0)
+	c.Assert(app.HasBind(&unit), gocheck.Equals, false)
 }
 
 func (s *S) TestFakeAppUnbindUnitNotBound(c *gocheck.C) {
