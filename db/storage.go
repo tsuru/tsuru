@@ -59,6 +59,12 @@ func (s *Storage) Apps() *storage.Collection {
 	return c
 }
 
+// AutoScale returns the auto scale collection from MongoDB.
+func (s *Storage) AutoScale() *storage.Collection {
+	c := s.Collection("autoscale")
+	return c
+}
+
 func (s *Storage) Deploys() *storage.Collection {
 	return s.Collection("deploys")
 }

@@ -133,6 +133,14 @@ func (s *S) TestApps(c *gocheck.C) {
 	c.Assert(apps, HasUniqueIndex, []string{"name"})
 }
 
+func (s *S) TestAutoScale(c *gocheck.C) {
+	strg, err := Conn()
+	c.Assert(err, gocheck.IsNil)
+	autoscale := strg.AutoScale()
+	autoscalec := strg.Collection("autoscale")
+	c.Assert(autoscale, gocheck.DeepEquals, autoscalec)
+}
+
 func (s *S) TestDeploys(c *gocheck.C) {
 	strg, err := Conn()
 	c.Assert(err, gocheck.IsNil)

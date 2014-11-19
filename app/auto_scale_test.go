@@ -36,10 +36,8 @@ func (s *S) TestAutoScale(c *gocheck.C) {
 	}
 	err := scaleApplicationIfNeeded(&newApp)
 	c.Assert(err, gocheck.IsNil)
-	autoScaleColl, err := autoScaleCollection()
-	c.Assert(err, gocheck.IsNil)
-	var events []autoScaleEvent
-	err = autoScaleColl.Find(nil).All(&events)
+	var events []AutoScaleEvent
+	err = s.conn.AutoScale().Find(nil).All(&events)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(events, gocheck.HasLen, 0)
 }
@@ -72,10 +70,8 @@ func (s *S) TestAutoScaleUp(c *gocheck.C) {
 	err = scaleApplicationIfNeeded(&newApp)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(newApp.Units(), gocheck.HasLen, 1)
-	autoScaleColl, err := autoScaleCollection()
-	c.Assert(err, gocheck.IsNil)
-	var events []autoScaleEvent
-	err = autoScaleColl.Find(nil).All(&events)
+	var events []AutoScaleEvent
+	err = s.conn.AutoScale().Find(nil).All(&events)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(events, gocheck.HasLen, 1)
 	c.Assert(events[0].Type, gocheck.Equals, "increase")
@@ -117,10 +113,8 @@ func (s *S) TestAutoScaleDown(c *gocheck.C) {
 	err = scaleApplicationIfNeeded(&newApp)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(newApp.Units(), gocheck.HasLen, 1)
-	autoScaleColl, err := autoScaleCollection()
-	c.Assert(err, gocheck.IsNil)
-	var events []autoScaleEvent
-	err = autoScaleColl.Find(nil).All(&events)
+	var events []AutoScaleEvent
+	err = s.conn.AutoScale().Find(nil).All(&events)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(events, gocheck.HasLen, 1)
 	c.Assert(events[0].Type, gocheck.Equals, "decrease")
@@ -186,10 +180,8 @@ func (s *S) TestRunAutoScaleOnce(c *gocheck.C) {
 	runAutoScaleOnce()
 	c.Assert(up.Units(), gocheck.HasLen, 1)
 	c.Assert(down.Units(), gocheck.HasLen, 2)
-	autoScaleColl, err := autoScaleCollection()
-	c.Assert(err, gocheck.IsNil)
-	var events []autoScaleEvent
-	err = autoScaleColl.Find(nil).All(&events)
+	var events []AutoScaleEvent
+	err = s.conn.AutoScale().Find(nil).All(&events)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(events, gocheck.HasLen, 2)
 	c.Assert(events[0].Type, gocheck.Equals, "increase")

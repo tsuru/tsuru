@@ -131,6 +131,8 @@ func RunServer(dry bool) http.Handler {
 	saveCustomDataHandler := authorizationRequiredHandler(saveAppCustomData)
 	m.Add("Post", "/apps/{app}/customdata", saveCustomDataHandler)
 
+	m.Add("Get", "/autoscale", authorizationRequiredHandler(autoScaleHistoryHandler))
+
 	m.Add("Get", "/deploys", AdminRequiredHandler(deploysList))
 	m.Add("Get", "/deploys/{deploy}", authorizationRequiredHandler(deployInfo))
 
