@@ -460,9 +460,9 @@ func (s *S) TestBindUnit(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(requests, gocheck.HasLen, 2)
 	c.Assert(requests[0].Method, gocheck.Equals, "POST")
-	c.Assert(requests[0].URL.Path, gocheck.Equals, "/resources/mydb/bind-unit")
+	c.Assert(requests[0].URL.Path, gocheck.Equals, "/resources/mydb/bind")
 	c.Assert(requests[1].Method, gocheck.Equals, "POST")
-	c.Assert(requests[1].URL.Path, gocheck.Equals, "/resources/yourdb/bind-unit")
+	c.Assert(requests[1].URL.Path, gocheck.Equals, "/resources/yourdb/bind")
 }
 
 func (s *S) TestUnbindUnit(c *gocheck.C) {
@@ -500,9 +500,9 @@ func (s *S) TestUnbindUnit(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(requests, gocheck.HasLen, 2)
 	c.Assert(requests[0].Method, gocheck.Equals, "DELETE")
-	c.Assert(requests[0].URL.Path, gocheck.Equals, "/resources/mydb/bind-unit")
+	c.Assert(requests[0].URL.Path, gocheck.Equals, "/resources/mydb/bind")
 	c.Assert(requests[1].Method, gocheck.Equals, "DELETE")
-	c.Assert(requests[1].URL.Path, gocheck.Equals, "/resources/yourdb/bind-unit")
+	c.Assert(requests[1].URL.Path, gocheck.Equals, "/resources/yourdb/bind")
 }
 
 func (s *S) TestAddUnits(c *gocheck.C) {
