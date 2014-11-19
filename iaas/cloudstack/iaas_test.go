@@ -5,7 +5,6 @@
 package cloudstack
 
 import (
-	"encoding/base64"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -27,38 +26,6 @@ func (s *cloudstackSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("iaas:cloudstack:api-key", "test")
 	config.Set("iaas:cloudstack:secret-key", "test")
 	config.Set("iaas:cloudstack:url", "test")
-}
-
-func (s *cloudstackSuite) TestReadUserDataDefault(c *gocheck.C) {
-	cs := NewCloudstackIaaS()
-	userData, err := cs.readUserData()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(userData, gocheck.Equals, base64.StdEncoding.EncodeToString([]byte(iaas.UserData)))
-}
-
-func (s *cloudstackSuite) TestReadUserData(c *gocheck.C) {
-	cs := NewCloudstackIaaS()
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "abc def ghi")
-	}))
-	defer server.Close()
-	config.Set("iaas:cloudstack:user-data", server.URL)
-	defer config.Unset("iaas:cloudstack:user-data")
-	userData, err := cs.readUserData()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(userData, gocheck.Equals, base64.StdEncoding.EncodeToString([]byte("abc def ghi")))
-}
-
-func (s *cloudstackSuite) TestReadUserDataError(c *gocheck.C) {
-	cs := NewCloudstackIaaS()
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-	defer server.Close()
-	config.Set("iaas:cloudstack:user-data", server.URL)
-	defer config.Unset("iaas:cloudstack:user-data")
-	_, err := cs.readUserData()
-	c.Assert(err, gocheck.NotNil)
 }
 
 func (s *cloudstackSuite) TestCreateMachine(c *gocheck.C) {
@@ -248,22 +215,6 @@ func (s *cloudstackSuite) TestClone(c *gocheck.C) {
 	clonned := cs.Clone("something")
 	c.Assert(clonned, gocheck.FitsTypeOf, cs)
 	clonnedCS, _ := clonned.(*CloudstackIaaS)
-	c.Assert(cs.IaaSName, gocheck.Equals, "")
-	c.Assert(clonnedCS.IaaSName, gocheck.Equals, "something")
-}
-
-func (s *cloudstackSuite) TestGetConfigString(c *gocheck.C) {
-	cs := NewCloudstackIaaS()
-	config.Set("iaas:cloudstack:url", "default_url")
-	val, err := cs.NamedIaaS.GetConfigString("url")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(val, gocheck.Equals, "default_url")
-	cs2 := cs.Clone("something").(*CloudstackIaaS)
-	val, err = cs2.NamedIaaS.GetConfigString("url")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(val, gocheck.Equals, "default_url")
-	config.Set("iaas:custom:something:url", "custom_url")
-	val, err = cs2.NamedIaaS.GetConfigString("url")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(val, gocheck.Equals, "custom_url")
+	c.Assert(cs.base.IaaSName, gocheck.Equals, "")
+	c.Assert(clonnedCS.base.IaaSName, gocheck.Equals, "something")
 }

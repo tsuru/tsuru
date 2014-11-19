@@ -24,19 +24,19 @@ func init() {
 }
 
 type EC2IaaS struct {
-	iaas.NamedIaaS
+	base iaas.UserDataIaaS
 }
 
 func NewEC2IaaS() *EC2IaaS {
-	return &EC2IaaS{NamedIaaS: iaas.NamedIaaS{BaseIaaSName: "ec2"}}
+	return &EC2IaaS{base: iaas.UserDataIaaS{NamedIaaS: iaas.NamedIaaS{BaseIaaSName: "ec2"}}}
 }
 
 func (i *EC2IaaS) createEC2Handler(region aws.Region) (*ec2.EC2, error) {
-	keyId, err := i.NamedIaaS.GetConfigString("key-id")
+	keyId, err := i.base.GetConfigString("key-id")
 	if err != nil {
 		return nil, err
 	}
-	secretKey, err := i.NamedIaaS.GetConfigString("secret-key")
+	secretKey, err := i.base.GetConfigString("secret-key")
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ Optional params:
 
 func (i *EC2IaaS) Clone(name string) iaas.IaaS {
 	clone := *i
-	clone.IaaSName = name
+	clone.base.IaaSName = name
 	return &clone
 }
 
@@ -117,11 +117,15 @@ func (i *EC2IaaS) CreateMachine(params map[string]string) (*iaas.Machine, error)
 	if !ok {
 		return nil, fmt.Errorf("type param required")
 	}
+	userData, err := i.base.ReadUserData()
+	if err != nil {
+		return nil, err
+	}
 	keyName, _ := params["keyName"]
 	options := ec2.RunInstances{
 		ImageId:      imageId,
 		InstanceType: instanceType,
-		UserData:     []byte(iaas.UserData),
+		UserData:     []byte(userData),
 		MinCount:     1,
 		MaxCount:     1,
 		KeyName:      keyName,

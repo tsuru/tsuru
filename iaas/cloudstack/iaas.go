@@ -26,16 +26,16 @@ func init() {
 }
 
 type CloudstackIaaS struct {
-	iaas.NamedIaaS
+	base iaas.UserDataIaaS
 }
 
 func NewCloudstackIaaS() *CloudstackIaaS {
-	return &CloudstackIaaS{iaas.NamedIaaS{BaseIaaSName: "cloudstack"}}
+	return &CloudstackIaaS{base: iaas.UserDataIaaS{NamedIaaS: iaas.NamedIaaS{BaseIaaSName: "cloudstack"}}}
 }
 
 func (i *CloudstackIaaS) Clone(name string) iaas.IaaS {
 	clone := *i
-	clone.IaaSName = name
+	clone.base.IaaSName = name
 	return &clone
 }
 
@@ -135,7 +135,7 @@ func (i *CloudstackIaaS) CreateMachine(params map[string]string) (*iaas.Machine,
 	if err != nil {
 		return nil, err
 	}
-	userData, err := i.readUserData()
+	userData, err := i.base.ReadUserData()
 	if err != nil {
 		return nil, err
 	}
@@ -161,35 +161,12 @@ func (i *CloudstackIaaS) CreateMachine(params map[string]string) (*iaas.Machine,
 	return m, nil
 }
 
-func (i *CloudstackIaaS) readUserData() (string, error) {
-	userDataUrl, _ := i.NamedIaaS.GetConfigString("user-data")
-	var userData string
-	if userDataUrl == "" {
-		userData = iaas.UserData
-	} else {
-		resp, err := http.Get(userDataUrl)
-		if err != nil {
-			return "", err
-		}
-		if resp.StatusCode != http.StatusOK {
-			return "", fmt.Errorf("Invalid user-data status code: %d", resp.StatusCode)
-		}
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return "", err
-		}
-		userData = string(body)
-	}
-	return base64.StdEncoding.EncodeToString([]byte(userData)), nil
-}
-
 func (i *CloudstackIaaS) buildUrl(command string, params map[string]string) (string, error) {
-	apiKey, err := i.NamedIaaS.GetConfigString("api-key")
+	apiKey, err := i.base.GetConfigString("api-key")
 	if err != nil {
 		return "", err
 	}
-	secretKey, err := i.NamedIaaS.GetConfigString("secret-key")
+	secretKey, err := i.base.GetConfigString("secret-key")
 	if err != nil {
 		return "", err
 	}
@@ -210,7 +187,7 @@ func (i *CloudstackIaaS) buildUrl(command string, params map[string]string) (str
 	digest := hmac.New(sha1.New, []byte(secretKey))
 	digest.Write([]byte(strings.ToLower(queryString)))
 	signature := base64.StdEncoding.EncodeToString(digest.Sum(nil))
-	cloudstackUrl, err := i.NamedIaaS.GetConfigString("url")
+	cloudstackUrl, err := i.base.GetConfigString("url")
 	if err != nil {
 		return "", err
 	}

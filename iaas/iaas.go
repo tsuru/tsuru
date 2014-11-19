@@ -7,13 +7,16 @@
 package iaas
 
 import (
+	"encoding/base64"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 
 	"github.com/tsuru/config"
 )
 
 const (
-	UserData = `#!/bin/bash
+	defaultUserData = `#!/bin/bash
 curl -sL https://raw.github.com/tsuru/now/master/run.bash | bash -s -- --docker-only
 `
 	defaultIaaSProviderName = "ec2"
@@ -40,6 +43,33 @@ type CustomIaaS interface {
 type NamedIaaS struct {
 	BaseIaaSName string
 	IaaSName     string
+}
+
+type UserDataIaaS struct {
+	NamedIaaS
+}
+
+func (i *UserDataIaaS) ReadUserData() (string, error) {
+	userDataUrl, _ := i.NamedIaaS.GetConfigString("user-data")
+	var userData string
+	if userDataUrl == "" {
+		userData = defaultUserData
+	} else {
+		resp, err := http.Get(userDataUrl)
+		if err != nil {
+			return "", err
+		}
+		if resp.StatusCode != http.StatusOK {
+			return "", fmt.Errorf("Invalid user-data status code: %d", resp.StatusCode)
+		}
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return "", err
+		}
+		userData = string(body)
+	}
+	return base64.StdEncoding.EncodeToString([]byte(userData)), nil
 }
 
 func (i *NamedIaaS) GetConfigString(name string) (string, error) {

@@ -163,22 +163,6 @@ func (s *S) TestClone(c *gocheck.C) {
 	clonned := iaas.Clone("something")
 	c.Assert(clonned, gocheck.FitsTypeOf, iaas)
 	clonnedIaas, _ := clonned.(*EC2IaaS)
-	c.Assert(iaas.IaaSName, gocheck.Equals, "")
-	c.Assert(clonnedIaas.IaaSName, gocheck.Equals, "something")
-}
-
-func (s *S) TestGetConfigString(c *gocheck.C) {
-	iaas := NewEC2IaaS()
-	config.Set("iaas:ec2:url", "default_url")
-	val, err := iaas.NamedIaaS.GetConfigString("url")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(val, gocheck.Equals, "default_url")
-	iaas2 := iaas.Clone("something").(*EC2IaaS)
-	val, err = iaas2.NamedIaaS.GetConfigString("url")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(val, gocheck.Equals, "default_url")
-	config.Set("iaas:custom:something:url", "custom_url")
-	val, err = iaas2.NamedIaaS.GetConfigString("url")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(val, gocheck.Equals, "custom_url")
+	c.Assert(iaas.base.IaaSName, gocheck.Equals, "")
+	c.Assert(clonnedIaas.base.IaaSName, gocheck.Equals, "something")
 }
