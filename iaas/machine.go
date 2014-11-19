@@ -25,6 +25,22 @@ type Machine struct {
 }
 
 func CreateMachine(params map[string]string) (*Machine, error) {
+	templateName := params["template"]
+	if templateName != "" {
+		template, err := FindTemplate(templateName)
+		if err != nil {
+			return nil, err
+		}
+		templateParams := template.paramsMap()
+		delete(params, "template")
+		// User params will override template params
+		for k, v := range templateParams {
+			_, isSet := params[k]
+			if !isSet {
+				params[k] = v
+			}
+		}
+	}
 	iaasName, _ := params["iaas"]
 	if iaasName == "" {
 		defaultIaaS, err := config.GetString("iaas:default")
