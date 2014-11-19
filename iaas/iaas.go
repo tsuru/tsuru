@@ -37,6 +37,19 @@ type CustomIaaS interface {
 	Clone(string) IaaS
 }
 
+type NamedIaaS struct {
+	BaseIaaSName string
+	IaaSName     string
+}
+
+func (i *NamedIaaS) GetConfigString(name string) (string, error) {
+	val, err := config.GetString(fmt.Sprintf("iaas:custom:%s:%s", i.IaaSName, name))
+	if err != nil {
+		val, err = config.GetString(fmt.Sprintf("iaas:%s:%s", i.BaseIaaSName, name))
+	}
+	return val, err
+}
+
 var iaasProviders = make(map[string]IaaS)
 
 func RegisterIaasProvider(name string, iaas IaaS) {

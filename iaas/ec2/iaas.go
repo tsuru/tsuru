@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
 	"launchpad.net/goamz/aws"
@@ -21,15 +20,23 @@ const (
 )
 
 func init() {
-	iaas.RegisterIaasProvider("ec2", &EC2IaaS{})
+	iaas.RegisterIaasProvider("ec2", NewEC2IaaS())
+}
+
+type EC2IaaS struct {
+	iaas.NamedIaaS
+}
+
+func NewEC2IaaS() *EC2IaaS {
+	return &EC2IaaS{NamedIaaS: iaas.NamedIaaS{BaseIaaSName: "ec2"}}
 }
 
 func (i *EC2IaaS) createEC2Handler(region aws.Region) (*ec2.EC2, error) {
-	keyId, err := i.getConfigString("key-id")
+	keyId, err := i.NamedIaaS.GetConfigString("key-id")
 	if err != nil {
 		return nil, err
 	}
-	secretKey, err := i.getConfigString("secret-key")
+	secretKey, err := i.NamedIaaS.GetConfigString("secret-key")
 	if err != nil {
 		return nil, err
 	}
@@ -58,10 +65,6 @@ func waitForDnsName(ec2Inst *ec2.EC2, instance *ec2.Instance) (*ec2.Instance, er
 	return instance, nil
 }
 
-type EC2IaaS struct {
-	iaasName string
-}
-
 func (i *EC2IaaS) Describe() string {
 	return `EC2 IaaS required params:
   image=<image id>         Image AMI ID
@@ -74,17 +77,9 @@ Optional params:
 `
 }
 
-func (i *EC2IaaS) getConfigString(name string) (string, error) {
-	val, err := config.GetString(fmt.Sprintf("iaas:custom:%s:%s", i.iaasName, name))
-	if err != nil {
-		val, err = config.GetString(fmt.Sprintf("iaas:ec2:%s", name))
-	}
-	return val, err
-}
-
 func (i *EC2IaaS) Clone(name string) iaas.IaaS {
 	clone := *i
-	clone.iaasName = name
+	clone.IaaSName = name
 	return &clone
 }
 

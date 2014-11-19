@@ -18,29 +18,24 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/iaas"
 )
 
 func init() {
-	iaas.RegisterIaasProvider("cloudstack", &CloudstackIaaS{})
+	iaas.RegisterIaasProvider("cloudstack", NewCloudstackIaaS())
 }
 
 type CloudstackIaaS struct {
-	iaasName string
+	iaas.NamedIaaS
 }
 
-func (i *CloudstackIaaS) getConfigString(name string) (string, error) {
-	val, err := config.GetString(fmt.Sprintf("iaas:custom:%s:%s", i.iaasName, name))
-	if err != nil {
-		val, err = config.GetString(fmt.Sprintf("iaas:cloudstack:%s", name))
-	}
-	return val, err
+func NewCloudstackIaaS() *CloudstackIaaS {
+	return &CloudstackIaaS{iaas.NamedIaaS{BaseIaaSName: "cloudstack"}}
 }
 
 func (i *CloudstackIaaS) Clone(name string) iaas.IaaS {
 	clone := *i
-	clone.iaasName = name
+	clone.IaaSName = name
 	return &clone
 }
 
@@ -167,7 +162,7 @@ func (i *CloudstackIaaS) CreateMachine(params map[string]string) (*iaas.Machine,
 }
 
 func (i *CloudstackIaaS) readUserData() (string, error) {
-	userDataUrl, _ := i.getConfigString("user-data")
+	userDataUrl, _ := i.NamedIaaS.GetConfigString("user-data")
 	var userData string
 	if userDataUrl == "" {
 		userData = iaas.UserData
@@ -190,11 +185,11 @@ func (i *CloudstackIaaS) readUserData() (string, error) {
 }
 
 func (i *CloudstackIaaS) buildUrl(command string, params map[string]string) (string, error) {
-	apiKey, err := i.getConfigString("api-key")
+	apiKey, err := i.NamedIaaS.GetConfigString("api-key")
 	if err != nil {
 		return "", err
 	}
-	secretKey, err := i.getConfigString("secret-key")
+	secretKey, err := i.NamedIaaS.GetConfigString("secret-key")
 	if err != nil {
 		return "", err
 	}
@@ -215,7 +210,7 @@ func (i *CloudstackIaaS) buildUrl(command string, params map[string]string) (str
 	digest := hmac.New(sha1.New, []byte(secretKey))
 	digest.Write([]byte(strings.ToLower(queryString)))
 	signature := base64.StdEncoding.EncodeToString(digest.Sum(nil))
-	cloudstackUrl, err := i.getConfigString("url")
+	cloudstackUrl, err := i.NamedIaaS.GetConfigString("url")
 	if err != nil {
 		return "", err
 	}

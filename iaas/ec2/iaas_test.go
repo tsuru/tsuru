@@ -42,8 +42,8 @@ func (s *S) TearDownTest(c *gocheck.C) {
 }
 
 func (s *S) TestCreateEC2Handler(c *gocheck.C) {
-	iaas := &EC2IaaS{}
-	handler, err := iaas.createEC2Handler(aws.APNortheast)
+	ec2iaas := NewEC2IaaS()
+	handler, err := ec2iaas.createEC2Handler(aws.APNortheast)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(handler.Region, gocheck.DeepEquals, aws.APNortheast)
 	c.Assert(handler.Auth.AccessKey, gocheck.Equals, "mykey")
@@ -56,10 +56,10 @@ func (s *S) TestCreateMachine(c *gocheck.C) {
 		"image":  "ami-xxxxxx",
 		"type":   "m1.micro",
 	}
-	iaas := &EC2IaaS{}
-	m, err := iaas.CreateMachine(params)
+	ec2iaas := NewEC2IaaS()
+	m, err := ec2iaas.CreateMachine(params)
 	m.CreationParams = map[string]string{"region": "myregion"}
-	defer iaas.DeleteMachine(m)
+	defer ec2iaas.DeleteMachine(m)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(m.Id, gocheck.Matches, `i-\d`)
 	c.Assert(m.Address, gocheck.Matches, `i-\d.testing.invalid`)
@@ -83,20 +83,20 @@ func (s *S) TestCreateMachineDefaultRegion(c *gocheck.C) {
 		"type":   "m1.micro",
 		"region": defaultRegion,
 	}
-	iaas := &EC2IaaS{}
-	m, err := iaas.CreateMachine(params)
+	ec2iaas := NewEC2IaaS()
+	m, err := ec2iaas.CreateMachine(params)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(params, gocheck.DeepEquals, expectedParams)
 	m.CreationParams = params
-	defer iaas.DeleteMachine(m)
+	defer ec2iaas.DeleteMachine(m)
 	c.Assert(m.Id, gocheck.Matches, `i-\d`)
 	c.Assert(m.Address, gocheck.Matches, `i-\d.testing.invalid`)
 	c.Assert(m.Status, gocheck.Equals, "pending")
 }
 
 func (s *S) TestWaitForDnsName(c *gocheck.C) {
-	iaas := &EC2IaaS{}
-	handler, err := iaas.createEC2Handler(s.region)
+	ec2iaas := NewEC2IaaS()
+	handler, err := ec2iaas.createEC2Handler(s.region)
 	c.Assert(err, gocheck.IsNil)
 	options := ec2.RunInstances{
 		ImageId:      "ami-xxx",
@@ -114,16 +114,16 @@ func (s *S) TestWaitForDnsName(c *gocheck.C) {
 }
 
 func (s *S) TestCreateMachineValidations(c *gocheck.C) {
-	iaas := &EC2IaaS{}
-	_, err := iaas.CreateMachine(map[string]string{
+	ec2iaas := NewEC2IaaS()
+	_, err := ec2iaas.CreateMachine(map[string]string{
 		"region": "invalid-region",
 	})
 	c.Assert(err, gocheck.ErrorMatches, `region "invalid-region" not found`)
-	_, err = iaas.CreateMachine(map[string]string{
+	_, err = ec2iaas.CreateMachine(map[string]string{
 		"region": "myregion",
 	})
 	c.Assert(err, gocheck.ErrorMatches, "image param required")
-	_, err = iaas.CreateMachine(map[string]string{
+	_, err = ec2iaas.CreateMachine(map[string]string{
 		"region": "myregion",
 		"image":  "ami-xxxxx",
 	})
@@ -136,49 +136,49 @@ func (s *S) TestDeleteMachine(c *gocheck.C) {
 		Id:             insts[0],
 		CreationParams: map[string]string{"region": "myregion"},
 	}
-	iaas := &EC2IaaS{}
-	err := iaas.DeleteMachine(&m)
+	ec2iaas := NewEC2IaaS()
+	err := ec2iaas.DeleteMachine(&m)
 	c.Assert(err, gocheck.IsNil)
 }
 
 func (s *S) TestDeleteMachineValidations(c *gocheck.C) {
 	insts := s.srv.NewInstances(1, "m1.small", "ami-x", ec2.InstanceState{}, nil)
-	ec2Iaas := &EC2IaaS{}
+	ec2iaas := NewEC2IaaS()
 	m := &iaas.Machine{
 		Id:             insts[0],
 		CreationParams: map[string]string{"region": "invalid"},
 	}
-	err := ec2Iaas.DeleteMachine(m)
+	err := ec2iaas.DeleteMachine(m)
 	c.Assert(err, gocheck.ErrorMatches, `region "invalid" not found`)
 	m = &iaas.Machine{
 		Id:             insts[0],
 		CreationParams: map[string]string{},
 	}
-	err = ec2Iaas.DeleteMachine(m)
+	err = ec2iaas.DeleteMachine(m)
 	c.Assert(err, gocheck.ErrorMatches, `region creation param required`)
 }
 
 func (s *S) TestClone(c *gocheck.C) {
-	var iaas EC2IaaS
+	iaas := NewEC2IaaS()
 	clonned := iaas.Clone("something")
-	c.Assert(clonned, gocheck.FitsTypeOf, &iaas)
+	c.Assert(clonned, gocheck.FitsTypeOf, iaas)
 	clonnedIaas, _ := clonned.(*EC2IaaS)
-	c.Assert(iaas.iaasName, gocheck.Equals, "")
-	c.Assert(clonnedIaas.iaasName, gocheck.Equals, "something")
+	c.Assert(iaas.IaaSName, gocheck.Equals, "")
+	c.Assert(clonnedIaas.IaaSName, gocheck.Equals, "something")
 }
 
 func (s *S) TestGetConfigString(c *gocheck.C) {
-	var iaas EC2IaaS
+	iaas := NewEC2IaaS()
 	config.Set("iaas:ec2:url", "default_url")
-	val, err := iaas.getConfigString("url")
+	val, err := iaas.NamedIaaS.GetConfigString("url")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(val, gocheck.Equals, "default_url")
 	iaas2 := iaas.Clone("something").(*EC2IaaS)
-	val, err = iaas2.getConfigString("url")
+	val, err = iaas2.NamedIaaS.GetConfigString("url")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(val, gocheck.Equals, "default_url")
 	config.Set("iaas:custom:something:url", "custom_url")
-	val, err = iaas2.getConfigString("url")
+	val, err = iaas2.NamedIaaS.GetConfigString("url")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(val, gocheck.Equals, "custom_url")
 }
