@@ -36,6 +36,12 @@ func (s *S) TestAutoScale(c *gocheck.C) {
 	}
 	err := scaleApplicationIfNeeded(&newApp)
 	c.Assert(err, gocheck.IsNil)
+	autoScaleColl, err := autoScaleCollection()
+	c.Assert(err, gocheck.IsNil)
+	var events []autoScaleEvent
+	err = autoScaleColl.Find(nil).All(&events)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(events, gocheck.HasLen, 0)
 }
 
 func (s *S) TestAutoScaleUp(c *gocheck.C) {
@@ -66,6 +72,19 @@ func (s *S) TestAutoScaleUp(c *gocheck.C) {
 	err = scaleApplicationIfNeeded(&newApp)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(newApp.Units(), gocheck.HasLen, 1)
+	autoScaleColl, err := autoScaleCollection()
+	c.Assert(err, gocheck.IsNil)
+	var events []autoScaleEvent
+	err = autoScaleColl.Find(nil).All(&events)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(events, gocheck.HasLen, 1)
+	c.Assert(events[0].Type, gocheck.Equals, "increase")
+	c.Assert(events[0].AppName, gocheck.Equals, newApp.Name)
+	c.Assert(events[0].StartTime, gocheck.Not(gocheck.DeepEquals), time.Time{})
+	c.Assert(events[0].EndTime, gocheck.Not(gocheck.DeepEquals), time.Time{})
+	c.Assert(events[0].Error, gocheck.Equals, "")
+	c.Assert(events[0].Successful, gocheck.Equals, true)
+	c.Assert(events[0].AutoScaleConfig, gocheck.DeepEquals, newApp.AutoScaleConfig)
 }
 
 func (s *S) TestAutoScaleDown(c *gocheck.C) {
@@ -98,6 +117,19 @@ func (s *S) TestAutoScaleDown(c *gocheck.C) {
 	err = scaleApplicationIfNeeded(&newApp)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(newApp.Units(), gocheck.HasLen, 1)
+	autoScaleColl, err := autoScaleCollection()
+	c.Assert(err, gocheck.IsNil)
+	var events []autoScaleEvent
+	err = autoScaleColl.Find(nil).All(&events)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(events, gocheck.HasLen, 1)
+	c.Assert(events[0].Type, gocheck.Equals, "decrease")
+	c.Assert(events[0].AppName, gocheck.Equals, newApp.Name)
+	c.Assert(events[0].StartTime, gocheck.Not(gocheck.DeepEquals), time.Time{})
+	c.Assert(events[0].EndTime, gocheck.Not(gocheck.DeepEquals), time.Time{})
+	c.Assert(events[0].Error, gocheck.Equals, "")
+	c.Assert(events[0].Successful, gocheck.Equals, true)
+	c.Assert(events[0].AutoScaleConfig, gocheck.DeepEquals, newApp.AutoScaleConfig)
 }
 
 func (s *S) TestRunAutoScaleOnce(c *gocheck.C) {
@@ -154,6 +186,26 @@ func (s *S) TestRunAutoScaleOnce(c *gocheck.C) {
 	runAutoScaleOnce()
 	c.Assert(up.Units(), gocheck.HasLen, 1)
 	c.Assert(down.Units(), gocheck.HasLen, 2)
+	autoScaleColl, err := autoScaleCollection()
+	c.Assert(err, gocheck.IsNil)
+	var events []autoScaleEvent
+	err = autoScaleColl.Find(nil).All(&events)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(events, gocheck.HasLen, 2)
+	c.Assert(events[0].Type, gocheck.Equals, "increase")
+	c.Assert(events[0].AppName, gocheck.Equals, up.Name)
+	c.Assert(events[0].StartTime, gocheck.Not(gocheck.DeepEquals), time.Time{})
+	c.Assert(events[0].EndTime, gocheck.Not(gocheck.DeepEquals), time.Time{})
+	c.Assert(events[0].Error, gocheck.Equals, "")
+	c.Assert(events[0].Successful, gocheck.Equals, true)
+	c.Assert(events[0].AutoScaleConfig, gocheck.DeepEquals, up.AutoScaleConfig)
+	c.Assert(events[1].Type, gocheck.Equals, "decrease")
+	c.Assert(events[1].AppName, gocheck.Equals, down.Name)
+	c.Assert(events[1].StartTime, gocheck.Not(gocheck.DeepEquals), time.Time{})
+	c.Assert(events[1].EndTime, gocheck.Not(gocheck.DeepEquals), time.Time{})
+	c.Assert(events[1].Error, gocheck.Equals, "")
+	c.Assert(events[1].Successful, gocheck.Equals, true)
+	c.Assert(events[1].AutoScaleConfig, gocheck.DeepEquals, down.AutoScaleConfig)
 }
 
 func (s *S) TestActionMetric(c *gocheck.C) {
