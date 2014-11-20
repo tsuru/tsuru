@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"time"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -69,6 +70,9 @@ func (s *AutoScaleSuite) TestAutoScaleHistoryHandler(c *gocheck.C) {
 	err = json.Unmarshal(body, &events)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(events, gocheck.HasLen, 1)
+	c.Assert(events[0].Type, gocheck.Equals, "increase")
+	c.Assert(events[0].AppName, gocheck.Equals, a.Name)
+	c.Assert(events[0].StartTime, gocheck.Not(gocheck.DeepEquals), time.Time{})
 }
 
 func (s *AutoScaleSuite) TestAutoScaleHistoryHandlerByApp(c *gocheck.C) {
@@ -90,4 +94,7 @@ func (s *AutoScaleSuite) TestAutoScaleHistoryHandlerByApp(c *gocheck.C) {
 	err = json.Unmarshal(body, &events)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(events, gocheck.HasLen, 1)
+	c.Assert(events[0].Type, gocheck.Equals, "increase")
+	c.Assert(events[0].AppName, gocheck.Equals, a.Name)
+	c.Assert(events[0].StartTime, gocheck.Not(gocheck.DeepEquals), time.Time{})
 }

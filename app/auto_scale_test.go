@@ -277,3 +277,30 @@ func (s *S) TestAutoScalebleApps(c *gocheck.C) {
 	c.Assert(apps[0].Name, gocheck.DeepEquals, newApp.Name)
 	c.Assert(apps, gocheck.HasLen, 1)
 }
+
+func (s *S) TestListAutoScaleHistory(c *gocheck.C) {
+	a := App{Name: "myApp", Platform: "Django"}
+	_, err := NewAutoScaleEvent(&a, "increase")
+	c.Assert(err, gocheck.IsNil)
+	events, err := ListAutoScaleHistory("")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(events, gocheck.HasLen, 1)
+	c.Assert(events[0].Type, gocheck.Equals, "increase")
+	c.Assert(events[0].AppName, gocheck.Equals, a.Name)
+	c.Assert(events[0].StartTime, gocheck.Not(gocheck.DeepEquals), time.Time{})
+}
+
+func (s *S) TestListAutoScaleHistoryByAppName(c *gocheck.C) {
+	a := App{Name: "myApp", Platform: "Django"}
+	_, err := NewAutoScaleEvent(&a, "increase")
+	c.Assert(err, gocheck.IsNil)
+	a = App{Name: "another", Platform: "Django"}
+	_, err = NewAutoScaleEvent(&a, "increase")
+	c.Assert(err, gocheck.IsNil)
+	events, err := ListAutoScaleHistory("another")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(events, gocheck.HasLen, 1)
+	c.Assert(events[0].Type, gocheck.Equals, "increase")
+	c.Assert(events[0].AppName, gocheck.Equals, a.Name)
+	c.Assert(events[0].StartTime, gocheck.Not(gocheck.DeepEquals), time.Time{})
+}
