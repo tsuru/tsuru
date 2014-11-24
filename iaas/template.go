@@ -5,6 +5,8 @@
 package iaas
 
 import (
+	"errors"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
@@ -16,18 +18,16 @@ type TemplateData struct {
 	Value string
 }
 
+type TemplateDataList []TemplateData
+
+func (l TemplateDataList) Len() int           { return len(l) }
+func (l TemplateDataList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
+func (l TemplateDataList) Less(i, j int) bool { return l[i].Name < l[j].Name }
+
 type Template struct {
 	Name     string `bson:"_id"`
 	IaaSName string
-	Data     []TemplateData
-}
-
-func NewTemplate(name string, iaasName string, data map[string]string) (*Template, error) {
-	t := Template{Name: name, IaaSName: iaasName}
-	for k, v := range data {
-		t.Data = append(t.Data, TemplateData{Name: k, Value: v})
-	}
-	return &t, t.saveToDB()
+	Data     TemplateDataList
 }
 
 func FindTemplate(name string) (*Template, error) {
@@ -50,6 +50,17 @@ func DestroyTemplate(name string) error {
 	coll := template_collection()
 	defer coll.Close()
 	return coll.RemoveId(name)
+}
+
+func (t *Template) Save() error {
+	if t.Name == "" {
+		return errors.New("template name cannot be empty")
+	}
+	_, err := getIaasProvider(t.IaaSName)
+	if err != nil {
+		return err
+	}
+	return t.saveToDB()
 }
 
 func (t *Template) saveToDB() error {
