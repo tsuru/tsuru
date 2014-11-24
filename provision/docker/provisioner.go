@@ -224,8 +224,8 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 		go func(c container) {
 			defer containersGroup.Done()
 			unit := c.asUnit(app)
-			errUnbind := app.UnbindUnit(&unit)
-			if errUnbind != nil {
+			err := app.UnbindUnit(&unit)
+			if err != nil {
 				log.Errorf("Unable to unbind unit %q: %s", c.ID, err)
 			}
 			err = removeContainer(&c)
