@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/errors"
@@ -251,6 +252,35 @@ func (s *S) TestBindAppShouldSendAPOSTToTheResourceURL(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	expected := map[string][]string{"app-host": {"10.0.10.1"}}
 	c.Assert(map[string][]string(v), gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestBindAppBackwardCompatible(c *gocheck.C) {
+	var calls int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&calls, 1)
+		if strings.HasSuffix(r.URL.Path, "bind-app") {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		var h TestHandler
+		h.ServeHTTP(w, r)
+	}))
+	defer ts.Close()
+	expected := map[string]string{
+		"MYSQL_DATABASE_NAME": "CHICO",
+		"MYSQL_HOST":          "localhost",
+		"MYSQL_PORT":          "3306",
+	}
+	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
+	a := FakeApp{
+		name: "her-app",
+		ip:   "10.0.10.1",
+	}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	env, err := client.BindApp(&instance, &a)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(env, gocheck.DeepEquals, expected)
+	c.Assert(atomic.LoadInt32(&calls), gocheck.Equals, int32(2))
 }
 
 func (s *S) TestBindAppShouldReturnMapWithTheEnvironmentVariable(c *gocheck.C) {
