@@ -569,11 +569,16 @@ func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
 	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
 	client, err := docker.NewClient(s.server.URL())
 	c.Assert(err, gocheck.IsNil)
+	a := app.App{Name: container.AppName, Platform: "python"}
+	conn, err := db.Conn()
+	defer conn.Close()
+	err = conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": a.Name})
 	err = client.StartContainer(container.ID, nil)
 	c.Assert(err, gocheck.IsNil)
-	app := testing.NewFakeApp(container.AppName, "python", 0)
 	var p dockerProvisioner
-	err = p.RemoveUnit(provision.Unit{AppName: app.GetName(), Name: container.ID})
+	err = p.RemoveUnit(provision.Unit{AppName: a.Name, Name: container.ID})
 	c.Assert(err, gocheck.IsNil)
 	_, err = getContainer(container.ID)
 	c.Assert(err, gocheck.NotNil)

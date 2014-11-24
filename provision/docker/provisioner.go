@@ -401,6 +401,12 @@ func (*dockerProvisioner) RemoveUnit(unit provision.Unit) error {
 	if err != nil {
 		return err
 	}
+	if a, err := app.GetByName(unit.AppName); err == nil {
+		err := a.UnbindUnit(&unit)
+		if err != nil {
+			log.Errorf("Failed to unbind unit %q: %s", container.ID, err)
+		}
+	}
 	return removeContainer(container)
 }
 
