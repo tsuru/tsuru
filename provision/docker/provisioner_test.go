@@ -282,6 +282,8 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	cont, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp(cont.AppName, "python", 1)
+	unit := cont.asUnit(app)
+	app.BindUnit(&unit)
 	var p dockerProvisioner
 	p.Provision(app)
 	err = p.Destroy(app)
@@ -291,6 +293,7 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(count, gocheck.Equals, 0)
 	c.Assert(rtesting.FakeRouter.HasBackend("myapp"), gocheck.Equals, false)
+	c.Assert(app.HasBind(&unit), gocheck.Equals, false)
 }
 
 func (s *S) TestProvisionerDestroyRemovesImage(c *gocheck.C) {

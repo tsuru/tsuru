@@ -223,7 +223,12 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 	for _, c := range containers {
 		go func(c container) {
 			defer containersGroup.Done()
-			err := removeContainer(&c)
+			unit := c.asUnit(app)
+			errUnbind := app.UnbindUnit(&unit)
+			if errUnbind != nil {
+				log.Errorf("Unable to unbind unit %q: %s", c.ID, err)
+			}
+			err = removeContainer(&c)
 			if err != nil {
 				log.Errorf("Unable to destroy container %s: %s", c.ID, err.Error())
 			}
