@@ -10,7 +10,7 @@ import (
 	"launchpad.net/gocheck"
 )
 
-type tplDataList []templateData
+type tplDataList []TemplateData
 
 func (l tplDataList) Len() int           { return len(l) }
 func (l tplDataList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
@@ -25,7 +25,7 @@ func (s *S) TestNewTemplate(c *gocheck.C) {
 	c.Assert(t.Name, gocheck.Equals, "tpl1")
 	c.Assert(t.IaaSName, gocheck.Equals, "ec2")
 	sort.Sort(tplDataList(t.Data))
-	c.Assert(t.Data, gocheck.DeepEquals, []templateData{
+	c.Assert(t.Data, gocheck.DeepEquals, []TemplateData{
 		{Name: "key1", Value: "val1"},
 		{Name: "key2", Value: "val2"},
 	})
@@ -42,7 +42,7 @@ func (s *S) TestFindTemplate(c *gocheck.C) {
 	c.Assert(t.Name, gocheck.Equals, "tpl1")
 	c.Assert(t.IaaSName, gocheck.Equals, "ec2")
 	sort.Sort(tplDataList(t.Data))
-	c.Assert(t.Data, gocheck.DeepEquals, []templateData{
+	c.Assert(t.Data, gocheck.DeepEquals, []TemplateData{
 		{Name: "key1", Value: "val1"},
 		{Name: "key2", Value: "val2"},
 	})
@@ -76,4 +76,17 @@ func (s *S) TestListTemplates(c *gocheck.C) {
 	templates, err := ListTemplates()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(templates, gocheck.DeepEquals, []Template{*tpl1, *tpl2})
+}
+
+func (s *S) TestDestroyTemplate(c *gocheck.C) {
+	_, err := NewTemplate("tpl1", "ec2", map[string]string{
+		"key1": "val1",
+		"key2": "val2",
+	})
+	c.Assert(err, gocheck.IsNil)
+	err = DestroyTemplate("tpl1")
+	c.Assert(err, gocheck.IsNil)
+	templates, err := ListTemplates()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(templates, gocheck.HasLen, 0)
 }

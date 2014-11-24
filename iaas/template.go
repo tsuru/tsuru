@@ -11,7 +11,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 )
 
-type templateData struct {
+type TemplateData struct {
 	Name  string
 	Value string
 }
@@ -19,13 +19,13 @@ type templateData struct {
 type Template struct {
 	Name     string `bson:"_id"`
 	IaaSName string
-	Data     []templateData
+	Data     []TemplateData
 }
 
 func NewTemplate(name string, iaasName string, data map[string]string) (*Template, error) {
 	t := Template{Name: name, IaaSName: iaasName}
 	for k, v := range data {
-		t.Data = append(t.Data, templateData{Name: k, Value: v})
+		t.Data = append(t.Data, TemplateData{Name: k, Value: v})
 	}
 	return &t, t.saveToDB()
 }
@@ -44,6 +44,12 @@ func ListTemplates() ([]Template, error) {
 	var templates []Template
 	err := coll.Find(nil).Sort("_id").All(&templates)
 	return templates, err
+}
+
+func DestroyTemplate(name string) error {
+	coll := template_collection()
+	defer coll.Close()
+	return coll.RemoveId(name)
 }
 
 func (t *Template) saveToDB() error {

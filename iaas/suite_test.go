@@ -22,6 +22,9 @@ func (s *S) SetUpTest(c *gocheck.C) {
 	coll := collection()
 	defer coll.Close()
 	coll.RemoveAll(nil)
+	tplColl := template_collection()
+	defer tplColl.Close()
+	tplColl.RemoveAll(nil)
 }
 
 type TestIaaS struct{}
