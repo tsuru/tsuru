@@ -499,6 +499,12 @@ func (s *S) TestProvisionerRemoveUnits(c *gocheck.C) {
 	err = client.StartContainer(container2.ID, nil)
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp(container1.AppName, "python", 0)
+	unit1 := container1.asUnit(app)
+	unit2 := container2.asUnit(app)
+	unit3 := container3.asUnit(app)
+	app.BindUnit(&unit1)
+	app.BindUnit(&unit2)
+	app.BindUnit(&unit3)
 	var p dockerProvisioner
 	err = p.RemoveUnits(app, 2)
 	c.Assert(err, gocheck.IsNil)
@@ -506,6 +512,9 @@ func (s *S) TestProvisionerRemoveUnits(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	_, err = getContainer(container2.ID)
 	c.Assert(err, gocheck.NotNil)
+	c.Check(app.HasBind(&unit1), gocheck.Equals, false)
+	c.Check(app.HasBind(&unit2), gocheck.Equals, false)
+	c.Check(app.HasBind(&unit3), gocheck.Equals, true)
 }
 
 func (s *S) TestProvisionerRemoveUnitsPriorityOrder(c *gocheck.C) {

@@ -380,7 +380,15 @@ func (*dockerProvisioner) RemoveUnits(a provision.App, units uint) error {
 	for i := 0; i < int(units); i++ {
 		wg.Add(1)
 		go func(c container) {
-			removeContainer(&c)
+			unit := c.asUnit(a)
+			err := a.UnbindUnit(&unit)
+			if err != nil {
+				log.Errorf("Failed to unbind unit %q: %s", c.ID, err)
+			}
+			err = removeContainer(&c)
+			if err != nil {
+				log.Errorf("Failed to remove container %q: %s", c.ID, err)
+			}
 			wg.Done()
 		}(containers[i])
 	}
