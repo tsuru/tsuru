@@ -38,6 +38,7 @@ type FakeApp struct {
 	deploys        uint
 	env            map[string]bind.EnvVar
 	bindCalls      []*provision.Unit
+	bindLock       sync.Mutex
 	UpdatePlatform bool
 }
 
@@ -71,8 +72,10 @@ func (a *FakeApp) GetCpuShare() int {
 }
 
 func (a *FakeApp) HasBind(unit *provision.Unit) bool {
+	a.bindLock.Lock()
+	defer a.bindLock.Unlock()
 	for _, u := range a.bindCalls {
-		if u.Ip == unit.Ip {
+		if u.Name == unit.Name {
 			return true
 		}
 	}
@@ -80,14 +83,18 @@ func (a *FakeApp) HasBind(unit *provision.Unit) bool {
 }
 
 func (a *FakeApp) BindUnit(unit *provision.Unit) error {
+	a.bindLock.Lock()
+	defer a.bindLock.Unlock()
 	a.bindCalls = append(a.bindCalls, unit)
 	return nil
 }
 
 func (a *FakeApp) UnbindUnit(unit *provision.Unit) error {
+	a.bindLock.Lock()
+	defer a.bindLock.Unlock()
 	index := -1
 	for i, u := range a.bindCalls {
-		if u.Ip == unit.Ip {
+		if u.Name == unit.Name {
 			index = i
 			break
 		}
