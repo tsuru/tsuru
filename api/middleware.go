@@ -30,7 +30,10 @@ const (
 func validate(token string, r *http.Request) (auth.Token, error) {
 	t, err := app.AuthScheme.Auth(token)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid token")
+		t, err = auth.APIAuth(token)
+		if err != nil {
+			return nil, fmt.Errorf("Invalid token")
+		}
 	}
 	if t.IsAppToken() {
 		if q := r.URL.Query().Get(":app"); q != "" && t.GetAppName() != q {

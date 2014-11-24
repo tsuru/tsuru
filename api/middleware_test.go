@@ -16,6 +16,7 @@ import (
 	"github.com/codegangsta/negroni"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/auth"
 	tsuruErr "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
 	"gopkg.in/mgo.v2/bson"
@@ -136,6 +137,23 @@ func (s *S) TestAuthTokenMiddlewareWithToken(c *gocheck.C) {
 	c.Assert(t.GetUserName(), gocheck.Equals, s.token.GetUserName())
 }
 
+func (s *S) TestAuthTokenMiddlewareWithAPIToken(c *gocheck.C) {
+	user := auth.User{Email: "para@xmen.com", APIKey: "347r3487rh3489hr34897rh487hr0377rg308rg32"}
+	err := s.conn.Users().Insert(&user)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Users().Remove(bson.M{"email": user.Email})
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/", nil)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+user.APIKey)
+	h, log := doHandler()
+	authTokenMiddleware(recorder, request, h)
+	c.Assert(log.called, gocheck.Equals, true)
+	t := context.GetAuthToken(request)
+	c.Assert(t.GetValue(), gocheck.Equals, user.APIKey)
+	c.Assert(t.GetUserName(), gocheck.Equals, user.Email)
+}
+
 func (s *S) TestAuthTokenMiddlewareWithAppToken(c *gocheck.C) {
 	token, err := nativeScheme.AppLogin("abc")
 	c.Assert(err, gocheck.IsNil)
@@ -173,6 +191,22 @@ func (s *S) TestAuthTokenMiddlewareWithInvalidToken(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Authorization", "bearer ifyougotozah'ha'dumyoulldie")
+	h, log := doHandler()
+	authTokenMiddleware(recorder, request, h)
+	c.Assert(log.called, gocheck.Equals, true)
+	t := context.GetAuthToken(request)
+	c.Assert(t, gocheck.IsNil)
+}
+
+func (s *S) TestAuthTokenMiddlewareWithInvalidAPIToken(c *gocheck.C) {
+	user := auth.User{Email: "para@xmen.com", APIKey: "347r3487rh3489hr34897rh487hr0377rg308rg32"}
+	err := s.conn.Users().Insert(&user)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Users().Remove(bson.M{"email": user.Email})
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/", nil)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer 12eh923d8ydh238eun`1po2ueh1`p2")
 	h, log := doHandler()
 	authTokenMiddleware(recorder, request, h)
 	c.Assert(log.called, gocheck.Equals, true)
