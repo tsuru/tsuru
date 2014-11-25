@@ -5,7 +5,6 @@
 package auth
 
 import (
-	"errors"
 	"github.com/tsuru/tsuru/db"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -33,23 +32,6 @@ func (t *APIToken) GetUserName() string {
 
 func (t *APIToken) GetAppName() string {
 	return ""
-}
-
-func regenerateAPIToken(u *User) (*APIToken, error) {
-	if u == nil {
-		return nil, errors.New("User is nil")
-	}
-	if u.Email == "" {
-		return nil, errors.New("Impossible to generate tokens for users without email")
-	}
-	t := APIToken{}
-	APIKey, err := u.RegenerateAPIKey()
-	if err != nil {
-		return nil, errors.New("This user not exists")
-	}
-	t.Token = APIKey
-	t.UserEmail = u.Email
-	return &t, nil
 }
 
 func getAPIToken(header string) (*APIToken, error) {
