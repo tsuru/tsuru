@@ -39,14 +39,16 @@ type FakeApp struct {
 	env            map[string]bind.EnvVar
 	bindCalls      []*provision.Unit
 	bindLock       sync.Mutex
+	instances      map[string][]bind.ServiceInstance
 	UpdatePlatform bool
 }
 
 func NewFakeApp(name, platform string, units int) *FakeApp {
 	app := FakeApp{
-		name:     name,
-		platform: platform,
-		units:    make([]provision.Unit, units),
+		name:      name,
+		platform:  platform,
+		units:     make([]provision.Unit, units),
+		instances: make(map[string][]bind.ServiceInstance),
 	}
 	namefmt := "%s/%d"
 	for i := 0; i < units; i++ {
@@ -105,6 +107,36 @@ func (a *FakeApp) UnbindUnit(unit *provision.Unit) error {
 	length := len(a.bindCalls)
 	a.bindCalls[index] = a.bindCalls[length-1]
 	a.bindCalls = a.bindCalls[:length-1]
+	return nil
+}
+
+func (a *FakeApp) GetInstances(serviceName string) []bind.ServiceInstance {
+	return a.instances[serviceName]
+}
+
+func (a *FakeApp) AddInstance(serviceName string, instance bind.ServiceInstance) error {
+	instances := a.instances[serviceName]
+	instances = append(instances, instance)
+	a.instances[serviceName] = instances
+	return nil
+}
+
+func (a *FakeApp) RemoveInstance(serviceName string, instance bind.ServiceInstance) error {
+	instances := a.instances[serviceName]
+	index := -1
+	for i, inst := range instances {
+		if inst.Name == instance.Name {
+			index = i
+			break
+		}
+	}
+	if index < 0 {
+		return errors.New("instance not found")
+	}
+	for i := index; i < len(instances)-1; i++ {
+		instances[i] = instances[i+1]
+	}
+	a.instances[serviceName] = instances[:len(instances)-1]
 	return nil
 }
 
@@ -606,7 +638,7 @@ func (p *FakeProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 	p.cmdMut.Lock()
 	p.cmds = append(p.cmds, command)
 	p.cmdMut.Unlock()
-	for _ = range app.Units() {
+	for range app.Units() {
 		select {
 		case output = <-p.outputs:
 			select {

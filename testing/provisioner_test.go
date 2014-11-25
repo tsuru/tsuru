@@ -155,6 +155,63 @@ func (s *S) TestFakeAppUnbindUnitNotBound(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, "not bound")
 }
 
+func (s *S) TestFakeAppGetInstances(c *gocheck.C) {
+	instance1 := bind.ServiceInstance{Name: "inst1"}
+	instance2 := bind.ServiceInstance{Name: "inst2"}
+	app := NewFakeApp("sou", "otm", 0)
+	app.instances["mysql"] = []bind.ServiceInstance{instance1, instance2}
+	instances := app.GetInstances("mysql")
+	c.Assert(instances, gocheck.DeepEquals, []bind.ServiceInstance{instance1, instance2})
+	instances = app.GetInstances("mongodb")
+	c.Assert(instances, gocheck.HasLen, 0)
+}
+
+func (s *S) TestFakeAppAddInstance(c *gocheck.C) {
+	instance1 := bind.ServiceInstance{Name: "inst1"}
+	instance2 := bind.ServiceInstance{Name: "inst2"}
+	app := NewFakeApp("sou", "otm", 0)
+	err := app.AddInstance("mysql", instance1)
+	c.Assert(err, gocheck.IsNil)
+	err = app.AddInstance("mongodb", instance2)
+	c.Assert(err, gocheck.IsNil)
+	instances := app.GetInstances("mysql")
+	c.Assert(instances, gocheck.DeepEquals, []bind.ServiceInstance{instance1})
+	instances = app.GetInstances("mongodb")
+	c.Assert(instances, gocheck.DeepEquals, []bind.ServiceInstance{instance2})
+	instances = app.GetInstances("redis")
+	c.Assert(instances, gocheck.HasLen, 0)
+}
+
+func (s *S) TestFakeAppRemoveInstance(c *gocheck.C) {
+	instance1 := bind.ServiceInstance{Name: "inst1"}
+	instance2 := bind.ServiceInstance{Name: "inst2"}
+	app := NewFakeApp("sou", "otm", 0)
+	app.AddInstance("mysql", instance1)
+	app.AddInstance("mongodb", instance2)
+	err := app.RemoveInstance("mysql", instance1)
+	c.Assert(err, gocheck.IsNil)
+	instances := app.GetInstances("mysql")
+	c.Assert(instances, gocheck.HasLen, 0)
+	instances = app.GetInstances("mongodb")
+	c.Assert(instances, gocheck.HasLen, 1)
+}
+
+func (s *S) TestFakeAppRemoveInstanceNotFound(c *gocheck.C) {
+	instance1 := bind.ServiceInstance{Name: "inst1"}
+	instance2 := bind.ServiceInstance{Name: "inst2"}
+	app := NewFakeApp("sou", "otm", 0)
+	app.AddInstance("mysql", instance1)
+	err := app.RemoveInstance("mysql", instance2)
+	c.Assert(err.Error(), gocheck.Equals, "instance not found")
+}
+
+func (s *S) TestFakeAppRemoveInstanceServiceNotFound(c *gocheck.C) {
+	instance := bind.ServiceInstance{Name: "inst1"}
+	app := NewFakeApp("sou", "otm", 0)
+	err := app.RemoveInstance("mysql", instance)
+	c.Assert(err.Error(), gocheck.Equals, "instance not found")
+}
+
 func (s *S) TestFakeAppLogs(c *gocheck.C) {
 	app := NewFakeApp("sou", "otm", 0)
 	app.Log("something happened", "[tsuru]", "[api]")
