@@ -35,10 +35,10 @@ type App interface {
 	InstanceEnv(string) map[string]EnvVar
 
 	// SetEnvs adds enviroment variables in the app.
-	SetEnvs([]EnvVar, bool, io.Writer) error
+	SetEnvs(envs []EnvVar, publicOnly bool, w io.Writer) error
 
 	// UnsetEnvs removes the given enviroment variables from the app.
-	UnsetEnvs([]string, bool, io.Writer) error
+	UnsetEnvs(envNames []string, publicOnly bool, w io.Writer) error
 }
 
 type Binder interface {
