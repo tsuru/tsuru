@@ -912,6 +912,26 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 	c.Assert(s.provisioner.Restarts(&a), gocheck.Equals, 1)
 }
 
+func (s *S) TestGetEnv(c *gocheck.C) {
+	a := App{
+		Name: "myapp",
+		Env: map[string]bind.EnvVar{
+			"DATABASE_HOST": {
+				Name:   "DATABASE_HOST",
+				Value:  "localhost",
+				Public: false,
+			},
+		},
+	}
+	env, err := a.GetEnv("DATABASE_HOST")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(env.Name, gocheck.Equals, "DATABASE_HOST")
+	c.Assert(env.Value, gocheck.Equals, "localhost")
+	c.Assert(env.Public, gocheck.Equals, false)
+	_, err = a.GetEnv("DATABASE_PASSWORD")
+	c.Assert(err.Error(), gocheck.Equals, "environment variable not defined")
+}
+
 func (s *S) TestSetEnvsWhenAppHaveNoUnits(c *gocheck.C) {
 	a := App{
 		Name: "myapp",

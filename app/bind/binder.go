@@ -34,6 +34,9 @@ type App interface {
 	// InstanceEnv returns the app enviroment variables.
 	InstanceEnv(string) map[string]EnvVar
 
+	// GetEnv returns the given env var, or an error when it's not defined.
+	GetEnv(name string) (EnvVar, error)
+
 	// SetEnvs adds enviroment variables in the app.
 	SetEnvs(envs []EnvVar, publicOnly bool, w io.Writer) error
 

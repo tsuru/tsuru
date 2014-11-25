@@ -729,6 +729,17 @@ func (app *App) Envs() map[string]bind.EnvVar {
 	return app.Env
 }
 
+// GetEnv returns the given environment variable, or an error when it's not
+// defined.
+func (app *App) GetEnv(name string) (bind.EnvVar, error) {
+	for _, e := range app.Env {
+		if e.Name == name {
+			return e, nil
+		}
+	}
+	return bind.EnvVar{}, stderr.New("environment variable not defined")
+}
+
 // SetEnvs saves a list of environment variables in the app. The publicOnly
 // parameter indicates whether only public variables can be overridden (if set
 // to false, SetEnvs may override a private variable).
