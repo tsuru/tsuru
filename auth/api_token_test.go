@@ -10,9 +10,15 @@ import (
 )
 
 func (s *S) TestRegenerateAPIToken(c *gocheck.C) {
-	t, err := regenerateAPIToken(s.user)
+	user := User{Email: "never@xmen.com"}
+	err := s.conn.Users().Insert(&user)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(t.UserEmail, gocheck.Equals, s.user.Email)
+	defer s.conn.Users().Remove(bson.M{"email": user.Email})
+	t, err := regenerateAPIToken(&user)
+	count, err := s.conn.Users().Find(bson.M{"apikey": t.Token}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 1)
+	c.Assert(t.UserEmail, gocheck.Equals, user.Email)
 }
 
 func (s *S) TestRegenerateAPITokenReturnsErrorWhenUserReferenceDoesNotContainsEmail(c *gocheck.C) {
@@ -35,11 +41,11 @@ func (s *S) TestGetAPIToken(c *gocheck.C) {
 	err := s.conn.Users().Insert(&user)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": user.Email})
-	APIKey, err := user.RegenerateAPIKey()
+	t, err := regenerateAPIToken(&user)
 	c.Assert(err, gocheck.IsNil)
-	t, err := getAPIToken("bearer " + APIKey)
+	t, err = getAPIToken("bearer " + t.Token)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(t.Token, gocheck.Equals, APIKey)
+	c.Assert(t.Token, gocheck.Equals, t.Token)
 }
 
 func (s *S) TestGetAPITokenEmptyToken(c *gocheck.C) {
