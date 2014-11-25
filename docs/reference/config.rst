@@ -619,6 +619,18 @@ iaas:ec2:secret-key
 
 Your AWS secret key.
 
+iaas:ec2:user-data
++++++++++++++++++++++++++
+
+A url for which the response body will be sent to ec2 as user-data.
+Defaults to a script which will run `tsuru now installation
+<https://github.com/tsuru/now>`_.
+
+iaas:ec2:wait-timeout
++++++++++++++++++++++++++
+
+Number of seconds to wait for the machine to be created. Defaults to 300 (5
+minutes).
 
 CloudStack IaaS
 ---------------
