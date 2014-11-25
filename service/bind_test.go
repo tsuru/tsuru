@@ -5,6 +5,7 @@
 package service_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
@@ -171,6 +172,19 @@ func (s *BindSuite) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedF
 			InstanceName: instance.Name,
 		},
 	}
+	expectedTsuruServices := map[string][]bind.ServiceInstance{
+		"mysql": {
+			bind.ServiceInstance{
+				Name: instance.Name,
+				Envs: map[string]string{"DATABASE_USER": "root", "DATABASE_PASSWORD": "s3cr3t"},
+			},
+		},
+	}
+	servicesEnv := newApp.Env["TSURU_SERVICES"]
+	var tsuruServices map[string][]bind.ServiceInstance
+	json.Unmarshal([]byte(servicesEnv.Value), &tsuruServices)
+	c.Assert(tsuruServices, gocheck.DeepEquals, expectedTsuruServices)
+	delete(newApp.Env, "TSURU_SERVICES")
 	c.Assert(newApp.Env, gocheck.DeepEquals, expectedEnv)
 }
 
@@ -280,6 +294,19 @@ func (s *BindSuite) TestBindAppWithNoUnits(c *gocheck.C) {
 			InstanceName: instance.Name,
 		},
 	}
+	expectedTsuruServices := map[string][]bind.ServiceInstance{
+		"mysql": {
+			bind.ServiceInstance{
+				Name: instance.Name,
+				Envs: map[string]string{"DATABASE_USER": "root", "DATABASE_PASSWORD": "s3cr3t"},
+			},
+		},
+	}
+	servicesEnv := a.Env["TSURU_SERVICES"]
+	var tsuruServices map[string][]bind.ServiceInstance
+	json.Unmarshal([]byte(servicesEnv.Value), &tsuruServices)
+	c.Assert(tsuruServices, gocheck.DeepEquals, expectedTsuruServices)
+	delete(a.Env, "TSURU_SERVICES")
 	c.Assert(a.Env, gocheck.DeepEquals, expectedEnv)
 }
 
