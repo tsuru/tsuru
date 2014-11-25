@@ -6,6 +6,7 @@ package ec2
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/tsuru/tsuru/iaas"
@@ -15,7 +16,6 @@ import (
 )
 
 const (
-	maxWaitTime   = time.Duration(1 * time.Minute)
 	defaultRegion = "us-east-1"
 )
 
@@ -44,11 +44,16 @@ func (i *EC2IaaS) createEC2Handler(region aws.Region) (*ec2.EC2, error) {
 	return ec2.New(auth, region), nil
 }
 
-func waitForDnsName(ec2Inst *ec2.EC2, instance *ec2.Instance) (*ec2.Instance, error) {
+func (i *EC2IaaS) waitForDnsName(ec2Inst *ec2.EC2, instance *ec2.Instance) (*ec2.Instance, error) {
 	t0 := time.Now()
 	for instance.DNSName == "" {
+		rawWait, _ := i.base.GetConfigString("wait-timeout")
+		maxWaitTime, _ := strconv.Atoi(rawWait)
+		if maxWaitTime == 0 {
+			maxWaitTime = 300
+		}
 		instId := instance.InstanceId
-		if time.Now().Sub(t0) > maxWaitTime {
+		if time.Now().Sub(t0) > time.Duration(maxWaitTime)*time.Second {
 			return nil, fmt.Errorf("ec2: time out waiting for instance %s to start", instId)
 		}
 		log.Debugf("ec2: waiting for dnsname for instance %s", instId)
@@ -147,9 +152,10 @@ func (i *EC2IaaS) CreateMachine(params map[string]string) (*iaas.Machine, error)
 	if len(resp.Instances) == 0 {
 		return nil, fmt.Errorf("no instance created")
 	}
-	instance, err := waitForDnsName(ec2Inst, &resp.Instances[0])
+	runInst := &resp.Instances[0]
+	instance, err := i.waitForDnsName(ec2Inst, runInst)
 	if err != nil {
-		ec2Inst.TerminateInstances([]string{instance.InstanceId})
+		ec2Inst.TerminateInstances([]string{runInst.InstanceId})
 		return nil, err
 	}
 	machine := iaas.Machine{

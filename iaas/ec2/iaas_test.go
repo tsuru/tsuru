@@ -5,6 +5,10 @@
 package ec2
 
 import (
+	"io/ioutil"
+	"net/http"
+	"net/http/httptest"
+	"regexp"
 	"testing"
 
 	"github.com/tsuru/config"
@@ -66,6 +70,59 @@ func (s *S) TestCreateMachine(c *gocheck.C) {
 	c.Assert(m.Status, gocheck.Equals, "pending")
 }
 
+func (s *S) TestCreateMachineTimeoutError(c *gocheck.C) {
+	config.Set("iaas:ec2:wait-timeout", "1")
+	defer config.Unset("iaas:ec2:wait-timeout")
+	var calledActions []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		action := r.URL.Query().Get("Action")
+		calledActions = append(calledActions, action)
+		if action == "DescribeInstances" {
+			w.Write([]byte(`
+<DescribeInstancesResponse xmlns="http://ec2.amazonaws.com/doc/2014-10-01/">
+<requestId>xxx</requestId>
+<reservationSet>
+      <item>
+        <reservationId>r-1</reservationId>
+        <instancesSet>
+          <item>
+            <instanceId>i-1</instanceId>
+          </item>
+        </instancesSet>
+      </item>
+</reservationSet>
+</DescribeInstancesResponse>`))
+			return
+		}
+		req, err := http.NewRequest(r.Method, s.srv.URL()+r.RequestURI, r.Body)
+		c.Assert(err, gocheck.IsNil)
+		rsp, err := http.DefaultClient.Do(req)
+		c.Assert(err, gocheck.IsNil)
+		w.WriteHeader(rsp.StatusCode)
+		bytes, err := ioutil.ReadAll(rsp.Body)
+		if action == "RunInstances" {
+			re := regexp.MustCompile(`<dnsName>.+</dnsName>`)
+			bytes = re.ReplaceAll(bytes, []byte{})
+		}
+		c.Assert(err, gocheck.IsNil)
+		w.Write(bytes)
+	}))
+	timeoutRegion := aws.Region{
+		Name:        "timeoutregion",
+		EC2Endpoint: server.URL,
+	}
+	aws.Regions["timeoutregion"] = timeoutRegion
+	params := map[string]string{
+		"region": "timeoutregion",
+		"image":  "ami-xxxxxx",
+		"type":   "m1.micro",
+	}
+	ec2iaas := NewEC2IaaS()
+	_, err := ec2iaas.CreateMachine(params)
+	c.Assert(err, gocheck.ErrorMatches, `ec2: time out waiting for instance.*`)
+	c.Assert(calledActions[len(calledActions)-1], gocheck.Equals, "TerminateInstances")
+}
+
 func (s *S) TestCreateMachineDefaultRegion(c *gocheck.C) {
 	defaultRegionServer, err := ec2test.NewServer()
 	c.Assert(err, gocheck.IsNil)
@@ -108,7 +165,7 @@ func (s *S) TestWaitForDnsName(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	instance := &resp.Instances[0]
 	instance.DNSName = ""
-	instance, err = waitForDnsName(handler, instance)
+	instance, err = ec2iaas.waitForDnsName(handler, instance)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(instance.DNSName, gocheck.Matches, `i-\d.testing.invalid`)
 }
