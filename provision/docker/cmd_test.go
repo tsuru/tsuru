@@ -26,6 +26,14 @@ func (s *S) TestAddNodeToTheSchedulerCmdInfo(c *gocheck.C) {
 By default, this command will call the configured IaaS to create a new
 machine. Every param will be sent to the IaaS implementation.
 
+Parameters with special meaning:
+  iaas=<iaas name>          Which iaas provider should be used, if not set
+                            tsuru will use the default iaas specified in
+                            tsuru.conf file.
+  template=<template name>  A machine template with predefined parameters,
+                            additional parameters will override template
+                            ones. See 'machine-template-add' command.
+
 --register: Registers an existing docker endpoint. The IaaS won't be called.
             Having a address=<docker_api_url> param is mandatory.
 `,
