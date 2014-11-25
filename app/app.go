@@ -729,17 +729,6 @@ func (app *App) Envs() map[string]bind.EnvVar {
 	return app.Env
 }
 
-// GetEnv returns the given environment variable, or an error when it's not
-// defined.
-func (app *App) GetEnv(name string) (bind.EnvVar, error) {
-	for _, e := range app.Env {
-		if e.Name == name {
-			return e, nil
-		}
-	}
-	return bind.EnvVar{}, stderr.New("environment variable not defined")
-}
-
 // SetEnvs saves a list of environment variables in the app. The publicOnly
 // parameter indicates whether only public variables can be overridden (if set
 // to false, SetEnvs may override a private variable).
@@ -903,6 +892,55 @@ func cnameExists(cname string) bool {
 		return true
 	}
 	return false
+}
+
+func (app *App) AddInstance(serviceName string, instance bind.ServiceInstance) error {
+	var tsuruServices map[string][]bind.ServiceInstance
+	if servicesEnv, ok := app.Env["TSURU_SERVICES"]; ok {
+		json.Unmarshal([]byte(servicesEnv.Value), &tsuruServices)
+	} else {
+		tsuruServices = make(map[string][]bind.ServiceInstance)
+	}
+	serviceInstances := tsuruServices[serviceName]
+	serviceInstances = append(serviceInstances, instance)
+	tsuruServices[serviceName] = serviceInstances
+	return app.setTsuruServices(tsuruServices)
+}
+
+func (app *App) RemoveInstance(serviceName string, instance bind.ServiceInstance) error {
+	var tsuruServices map[string][]bind.ServiceInstance
+	if servicesEnv, ok := app.Env["TSURU_SERVICES"]; ok {
+		json.Unmarshal([]byte(servicesEnv.Value), &tsuruServices)
+	}
+	index := -1
+	serviceInstances := tsuruServices[serviceName]
+	for i, si := range serviceInstances {
+		if si.Name == instance.Name {
+			index = i
+			break
+		}
+	}
+	if index < 0 {
+		return stderr.New("instance not found")
+	}
+	for i := index; i < len(serviceInstances)-1; i++ {
+		serviceInstances[i] = serviceInstances[i+1]
+	}
+	tsuruServices[serviceName] = serviceInstances[:len(serviceInstances)-1]
+	return app.setTsuruServices(tsuruServices)
+}
+
+func (app *App) setTsuruServices(services map[string][]bind.ServiceInstance) error {
+	servicesJson, err := json.Marshal(services)
+	if err != nil {
+		return err
+	}
+	envVar := bind.EnvVar{
+		Name:   "TSURU_SERVICES",
+		Value:  string(servicesJson),
+		Public: false,
+	}
+	return app.SetEnvs([]bind.EnvVar{envVar}, false, nil)
 }
 
 // Log adds a log message to the app. Specifying a good source is good so the

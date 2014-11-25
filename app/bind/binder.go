@@ -34,14 +34,17 @@ type App interface {
 	// InstanceEnv returns the app enviroment variables.
 	InstanceEnv(string) map[string]EnvVar
 
-	// GetEnv returns the given env var, or an error when it's not defined.
-	GetEnv(name string) (EnvVar, error)
-
 	// SetEnvs adds enviroment variables in the app.
 	SetEnvs(envs []EnvVar, publicOnly bool, w io.Writer) error
 
 	// UnsetEnvs removes the given enviroment variables from the app.
 	UnsetEnvs(envNames []string, publicOnly bool, w io.Writer) error
+
+	// AddInstance adds an instance to the application.
+	AddInstance(serviceName string, instance ServiceInstance) error
+
+	// RemoveInstance removes an instance from the application.
+	RemoveInstance(serviceName string, instance ServiceInstance) error
 }
 
 type Binder interface {
@@ -56,4 +59,9 @@ type Binder interface {
 
 	// UnbindUnit makes the unbind between the binder and an unit.
 	UnbindUnit(App, Unit) error
+}
+
+type ServiceInstance struct {
+	Name string            `json:"instance_name"`
+	Envs map[string]string `json:"envs"`
 }

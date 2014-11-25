@@ -912,26 +912,6 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 	c.Assert(s.provisioner.Restarts(&a), gocheck.Equals, 1)
 }
 
-func (s *S) TestGetEnv(c *gocheck.C) {
-	a := App{
-		Name: "myapp",
-		Env: map[string]bind.EnvVar{
-			"DATABASE_HOST": {
-				Name:   "DATABASE_HOST",
-				Value:  "localhost",
-				Public: false,
-			},
-		},
-	}
-	env, err := a.GetEnv("DATABASE_HOST")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(env.Name, gocheck.Equals, "DATABASE_HOST")
-	c.Assert(env.Value, gocheck.Equals, "localhost")
-	c.Assert(env.Public, gocheck.Equals, false)
-	_, err = a.GetEnv("DATABASE_PASSWORD")
-	c.Assert(err.Error(), gocheck.Equals, "environment variable not defined")
-}
-
 func (s *S) TestSetEnvsWhenAppHaveNoUnits(c *gocheck.C) {
 	a := App{
 		Name: "myapp",
@@ -1284,6 +1264,185 @@ func (s *S) TestRemoveCNameRemovesFromRouter(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	hasCName := s.provisioner.HasCName(&a, "ktulu.mycompany.com")
 	c.Assert(hasCName, gocheck.Equals, false)
+}
+
+func (s *S) TestAddFirstInstance(c *gocheck.C) {
+	a := &App{Name: "dark"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(a)
+	defer s.provisioner.Destroy(a)
+	instance := bind.ServiceInstance{
+		Name: "myinstance",
+		Envs: map[string]string{
+			"DATABASE_HOST": "localhost",
+			"DATABASE_PORT": "3306",
+			"DATABASE_USER": "root",
+		},
+	}
+	err = a.AddInstance("myservice", instance)
+	c.Assert(err, gocheck.IsNil)
+	a, err = GetByName(a.Name)
+	c.Assert(err, gocheck.IsNil)
+	expected := map[string][]bind.ServiceInstance{"myservice": {instance}}
+	env, ok := a.Env["TSURU_SERVICES"]
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(env.Public, gocheck.Equals, false)
+	c.Assert(env.Name, gocheck.Equals, "TSURU_SERVICES")
+	var got map[string][]bind.ServiceInstance
+	err = json.Unmarshal([]byte(env.Value), &got)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(got, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestAddInstanceMultipleServices(c *gocheck.C) {
+	a := &App{
+		Name: "dark",
+		Env: map[string]bind.EnvVar{
+			"TSURU_SERVICES": {
+				Name:   "TSURU_SERVICES",
+				Public: false,
+				Value:  `{"mysql": [{"instance_name": "mydb", "envs": {"DATABASE_NAME": "mydb"}}]}`,
+			},
+		},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(a)
+	defer s.provisioner.Destroy(a)
+	instance1 := bind.ServiceInstance{
+		Name: "myinstance",
+		Envs: map[string]string{"DATABASE_NAME": "myinstance"},
+	}
+	err = a.AddInstance("mysql", instance1)
+	c.Assert(err, gocheck.IsNil)
+	instance2 := bind.ServiceInstance{
+		Name: "yourinstance",
+		Envs: map[string]string{"DATABASE_NAME": "supermongo"},
+	}
+	err = a.AddInstance("mongodb", instance2)
+	c.Assert(err, gocheck.IsNil)
+	expected := map[string][]bind.ServiceInstance{
+		"mysql":   {bind.ServiceInstance{Name: "mydb", Envs: map[string]string{"DATABASE_NAME": "mydb"}}, instance1},
+		"mongodb": {instance2},
+	}
+	a, err = GetByName(a.Name)
+	c.Assert(err, gocheck.IsNil)
+	env, ok := a.Env["TSURU_SERVICES"]
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(env.Public, gocheck.Equals, false)
+	c.Assert(env.Name, gocheck.Equals, "TSURU_SERVICES")
+	var got map[string][]bind.ServiceInstance
+	err = json.Unmarshal([]byte(env.Value), &got)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(got, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestRemoveInstance(c *gocheck.C) {
+	a := &App{
+		Name: "dark",
+		Env: map[string]bind.EnvVar{
+			"TSURU_SERVICES": {
+				Name:   "TSURU_SERVICES",
+				Public: false,
+				Value:  `{"mysql": [{"instance_name": "mydb", "envs": {"DATABASE_NAME": "mydb"}}]}`,
+			},
+		},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(a)
+	defer s.provisioner.Destroy(a)
+	instance := bind.ServiceInstance{Name: "mydb"}
+	err = a.RemoveInstance("mysql", instance)
+	c.Assert(err, gocheck.IsNil)
+	a, err = GetByName(a.Name)
+	c.Assert(err, gocheck.IsNil)
+	env, ok := a.Env["TSURU_SERVICES"]
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(env.Value, gocheck.Equals, `{"mysql":[]}`)
+	c.Assert(env.Public, gocheck.Equals, false)
+	c.Assert(env.Name, gocheck.Equals, "TSURU_SERVICES")
+}
+
+func (s *S) TestRemoveInstanceShifts(c *gocheck.C) {
+	value := `{"mysql": [{"instance_name": "mydb", "envs": {"DATABASE_NAME": "mydb"}},
+{"instance_name": "yourdb", "envs": {"DATABASE_NAME": "yourdb"}},
+{"instance_name": "hisdb", "envs": {"DATABASE_NAME": "hisdb"}},
+{"instance_name": "herdb", "envs": {"DATABASE_NAME": "herdb"}},
+{"instance_name": "ourdb", "envs": {"DATABASE_NAME": "ourdb"}}
+]}`
+	a := &App{
+		Name: "dark",
+		Env: map[string]bind.EnvVar{
+			"TSURU_SERVICES": {
+				Name:   "TSURU_SERVICES",
+				Public: false,
+				Value:  value,
+			},
+		},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(a)
+	defer s.provisioner.Destroy(a)
+	instance := bind.ServiceInstance{Name: "hisdb"}
+	err = a.RemoveInstance("mysql", instance)
+	c.Assert(err, gocheck.IsNil)
+	expected := map[string][]bind.ServiceInstance{
+		"mysql": {
+			bind.ServiceInstance{Name: "mydb", Envs: map[string]string{"DATABASE_NAME": "mydb"}},
+			bind.ServiceInstance{Name: "yourdb", Envs: map[string]string{"DATABASE_NAME": "yourdb"}},
+			bind.ServiceInstance{Name: "herdb", Envs: map[string]string{"DATABASE_NAME": "herdb"}},
+			bind.ServiceInstance{Name: "ourdb", Envs: map[string]string{"DATABASE_NAME": "ourdb"}},
+		},
+	}
+	a, err = GetByName(a.Name)
+	c.Assert(err, gocheck.IsNil)
+	env, ok := a.Env["TSURU_SERVICES"]
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(env.Public, gocheck.Equals, false)
+	c.Assert(env.Name, gocheck.Equals, "TSURU_SERVICES")
+	var got map[string][]bind.ServiceInstance
+	err = json.Unmarshal([]byte(env.Value), &got)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(got, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestRemoveInstanceNotFound(c *gocheck.C) {
+	a := &App{
+		Name: "dark",
+		Env: map[string]bind.EnvVar{
+			"TSURU_SERVICES": {
+				Name:   "TSURU_SERVICES",
+				Public: false,
+				Value:  `{"mysql": [{"instance_name": "mydb", "envs": {"DATABASE_NAME": "mydb"}}]}`,
+			},
+		},
+	}
+	instance := bind.ServiceInstance{Name: "yourdb"}
+	err := a.RemoveInstance("mysql", instance)
+	c.Assert(err.Error(), gocheck.Equals, "instance not found")
+}
+
+func (s *S) TestRemoveInstanceServiceNotFound(c *gocheck.C) {
+	a := &App{
+		Name: "dark",
+		Env: map[string]bind.EnvVar{
+			"TSURU_SERVICES": {
+				Name:   "TSURU_SERVICES",
+				Public: false,
+				Value:  `{"mysql": [{"instance_name": "mydb", "envs": {"DATABASE_NAME": "mydb"}}]}`,
+			},
+		},
+	}
+	instance := bind.ServiceInstance{Name: "mydb"}
+	err := a.RemoveInstance("mongodb", instance)
+	c.Assert(err.Error(), gocheck.Equals, "instance not found")
 }
 
 func (s *S) TestIsValid(c *gocheck.C) {
