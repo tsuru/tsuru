@@ -479,7 +479,7 @@ command:
 
 ::
 
-    $ tsuru bind blogsql
+    $ tsuru service-bind blogsql
     Instance blogsql is now bound to the app blog.
 
     The following environment variables are now available for use in your app:
