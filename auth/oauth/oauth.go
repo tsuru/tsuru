@@ -233,12 +233,8 @@ func (s *OAuthScheme) Create(user *auth.User) (*auth.User, error) {
 	return user, nil
 }
 
-func (s *OAuthScheme) Remove(token auth.Token) error {
-	u, err := token.User()
-	if err != nil {
-		return err
-	}
-	err = deleteAllTokens(u.Email)
+func (s *OAuthScheme) Remove(u *auth.User) error {
+	err := deleteAllTokens(u.Email)
 	if err != nil {
 		return err
 	}

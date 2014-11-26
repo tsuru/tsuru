@@ -129,12 +129,8 @@ func (s NativeScheme) ResetPassword(user *auth.User, resetToken string) error {
 	return user.Update()
 }
 
-func (s NativeScheme) Remove(token auth.Token) error {
-	u, err := token.User()
-	if err != nil {
-		return err
-	}
-	err = deleteAllTokens(u.Email)
+func (s NativeScheme) Remove(u *auth.User) error {
+	err := deleteAllTokens(u.Email)
 	if err != nil {
 		return err
 	}

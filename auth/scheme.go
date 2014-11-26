@@ -16,7 +16,7 @@ type Scheme interface {
 	Info() (SchemeInfo, error)
 	Name() string
 	Create(user *User) (*User, error)
-	Remove(token Token) error
+	Remove(user *User) error
 }
 
 type ManagedScheme interface {

@@ -223,7 +223,9 @@ func (s *S) TestNativeRemove(c *gocheck.C) {
 	params["password"] = "123456"
 	token, err := scheme.Login(params)
 	c.Assert(err, gocheck.IsNil)
-	err = scheme.Remove(token)
+	u, err := token.User()
+	c.Assert(err, gocheck.IsNil)
+	err = scheme.Remove(u)
 	c.Assert(err, gocheck.IsNil)
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)

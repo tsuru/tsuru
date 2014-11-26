@@ -340,6 +340,22 @@ func (s *AuthSuite) TestCreateUserWorksWithRegistrationDisabledAndAdminUser(c *g
 	c.Assert(err, gocheck.IsNil)
 }
 
+func (s *AuthSuite) TestCreateUserRollsbackAfterGandalfError(c *gocheck.C) {
+	h := testHandler{rspCode: http.StatusInternalServerError}
+	ts := testing.StartGandalfTestServer(&h)
+	defer ts.Close()
+	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
+	request, err := http.NewRequest("POST", "/users", b)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-type", "application/json")
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusInternalServerError)
+	_, err = auth.GetUserByEmail("nobody@globo.com")
+	c.Assert(err, gocheck.NotNil)
+}
+
 func (s *AuthSuite) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheResponse(c *gocheck.C) {
 	u := auth.User{Email: "nobody@globo.com", Password: "123456"}
 	_, err := nativeScheme.Create(&u)
@@ -1883,7 +1899,7 @@ func (t TestScheme) Name() string {
 func (t TestScheme) Create(u *auth.User) (*auth.User, error) {
 	return nil, nil
 }
-func (t TestScheme) Remove(token auth.Token) error {
+func (t TestScheme) Remove(u *auth.User) error {
 	return nil
 }
 

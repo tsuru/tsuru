@@ -77,6 +77,10 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 	}
 	err = u.CreateOnGandalf()
 	if err != nil {
+		rollbackErr := app.AuthScheme.Remove(&u)
+		if rollbackErr != nil {
+			log.Errorf("error trying to rollback user creation: %s", rollbackErr.Error())
+		}
 		return err
 	}
 	rec.Log(u.Email, "create-user")
@@ -513,7 +517,7 @@ Please remove the team, then remove the user.`, team.Name)
 		log.Errorf("Failed to remove user from gandalf: %s", err)
 		return fmt.Errorf("Failed to remove the user from the git server: %s", err)
 	}
-	return app.AuthScheme.Remove(t)
+	return app.AuthScheme.Remove(u)
 }
 
 type jToken struct {
