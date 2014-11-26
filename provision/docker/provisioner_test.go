@@ -282,6 +282,8 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	cont, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp(cont.AppName, "python", 1)
+	unit := cont.asUnit(app)
+	app.BindUnit(&unit)
 	var p dockerProvisioner
 	p.Provision(app)
 	err = p.Destroy(app)
@@ -291,6 +293,7 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(count, gocheck.Equals, 0)
 	c.Assert(rtesting.FakeRouter.HasBackend("myapp"), gocheck.Equals, false)
+	c.Assert(app.HasBind(&unit), gocheck.Equals, false)
 }
 
 func (s *S) TestProvisionerDestroyRemovesImage(c *gocheck.C) {
@@ -496,6 +499,12 @@ func (s *S) TestProvisionerRemoveUnits(c *gocheck.C) {
 	err = client.StartContainer(container2.ID, nil)
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp(container1.AppName, "python", 0)
+	unit1 := container1.asUnit(app)
+	unit2 := container2.asUnit(app)
+	unit3 := container3.asUnit(app)
+	app.BindUnit(&unit1)
+	app.BindUnit(&unit2)
+	app.BindUnit(&unit3)
 	var p dockerProvisioner
 	err = p.RemoveUnits(app, 2)
 	c.Assert(err, gocheck.IsNil)
@@ -503,6 +512,9 @@ func (s *S) TestProvisionerRemoveUnits(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	_, err = getContainer(container2.ID)
 	c.Assert(err, gocheck.NotNil)
+	c.Check(app.HasBind(&unit1), gocheck.Equals, false)
+	c.Check(app.HasBind(&unit2), gocheck.Equals, false)
+	c.Check(app.HasBind(&unit3), gocheck.Equals, true)
 }
 
 func (s *S) TestProvisionerRemoveUnitsPriorityOrder(c *gocheck.C) {
@@ -557,11 +569,16 @@ func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
 	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
 	client, err := docker.NewClient(s.server.URL())
 	c.Assert(err, gocheck.IsNil)
+	a := app.App{Name: container.AppName, Platform: "python"}
+	conn, err := db.Conn()
+	defer conn.Close()
+	err = conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": a.Name})
 	err = client.StartContainer(container.ID, nil)
 	c.Assert(err, gocheck.IsNil)
-	app := testing.NewFakeApp(container.AppName, "python", 0)
 	var p dockerProvisioner
-	err = p.RemoveUnit(provision.Unit{AppName: app.GetName(), Name: container.ID})
+	err = p.RemoveUnit(provision.Unit{AppName: a.Name, Name: container.ID})
 	c.Assert(err, gocheck.IsNil)
 	_, err = getContainer(container.ID)
 	c.Assert(err, gocheck.NotNil)

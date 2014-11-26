@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"regexp"
 
 	"github.com/tsuru/tsuru/git"
@@ -47,6 +48,33 @@ func (g GitGuesser) GuessName(path string) (string, error) {
 	return matches[1], nil
 }
 
+// DirnameGuesser uses the directory name to guess the name of the app
+type DirnameGuesser struct{}
+
+func (g DirnameGuesser) GuessName(pathname string) (string, error) {
+	appName := path.Base(pathname)
+	return appName, nil
+}
+
+// MultiGuesser can use multiple guessers
+type MultiGuesser struct {
+	Guessers []AppGuesser
+}
+
+func (g MultiGuesser) GuessName(pathname string) (string, error) {
+	cumulativeErr := errors.New("")
+
+	for _, guesser := range g.Guessers {
+		app, err := guesser.GuessName(pathname)
+		if err == nil {
+			return app, nil
+		}
+		cumulativeErr = fmt.Errorf("%s%s\n", cumulativeErr, err)
+	}
+
+	return "", cumulativeErr
+}
+
 // Embed this struct if you want your command to guess the name of the app.
 type GuessingCommand struct {
 	G       AppGuesser
@@ -56,7 +84,7 @@ type GuessingCommand struct {
 
 func (cmd *GuessingCommand) guesser() AppGuesser {
 	if cmd.G == nil {
-		cmd.G = GitGuesser{}
+		cmd.G = MultiGuesser{Guessers: []AppGuesser{GitGuesser{}, DirnameGuesser{}}}
 	}
 	return cmd.G
 }
@@ -71,9 +99,11 @@ func (cmd *GuessingCommand) Guess() (string, error) {
 	}
 	name, err := cmd.guesser().GuessName(path)
 	if err != nil {
-		return "", errors.New(`tsuru wasn't able to guess the name of the app.
+		return "", fmt.Errorf(`tsuru wasn't able to guess the name of the app.
 
-Use the --app flag to specify it.`)
+Use the --app flag to specify it.
+
+%s`, err)
 	}
 	return name, nil
 }

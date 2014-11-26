@@ -107,7 +107,7 @@ func (s *HandlersSuite) SetUpTest(c *gocheck.C) {
 func (s *HandlersSuite) TearDownSuite(c *gocheck.C) {
 	coll := collection()
 	defer coll.Close()
-	err := coll.Database.DropDatabase()
+	err := testing.ClearAllCollections(coll.Database)
 	c.Assert(err, gocheck.IsNil)
 	s.conn.Close()
 }

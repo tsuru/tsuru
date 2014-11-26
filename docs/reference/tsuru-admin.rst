@@ -120,7 +120,15 @@ to access your node (`you can see it here <config.html#iaas-configuration>`_).
 If you want to just register an docker node, you should use the --register
 flag with an **address=http://your-docker-node:docker-port**
 
-The command always check if your node address is accessible.
+Parameters have special meaning
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+* ``iaas=<iaas name>`` Which iaas provider should be used, if not set tsuru will use
+  the default iaas specified in tsuru.conf file.
+
+* ``template=<template name>`` A machine template with predefined parameters,
+  additional parameters will override template ones. See 
+  :ref:`machine-template-add <tsuru_admin_machine_template_add_cmd>` command.
 
 .. _tsuru_admin_docker_node_list_cmd:
 
@@ -221,6 +229,32 @@ machine-destroy
     $ tsuru-admin machines-list <machine id>
 
 This command will destroy a IaaS machine based on its ID.
+
+machine-template-list
+---------------------
+
+.. highlight:: bash
+
+::
+
+    $ tsuru-admin machine-template-list
+
+This command will list all templates created using ``machine-template-add``.
+
+.. _tsuru_admin_machine_template_add_cmd:
+
+machine-template-add
+--------------------
+
+.. highlight:: bash
+
+::
+
+    $ tsuru-admin machine-template-add <name> <iaas> <param>=<value>...
+
+This command creates a new machine template to be used with ``docker-node-add``
+command. This template will contain a list of parameters that will be sent to the
+IaaS provider.
 
 .. _tsuru_admin_ssh_cmd:
 

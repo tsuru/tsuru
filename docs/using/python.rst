@@ -479,7 +479,7 @@ command:
 
 ::
 
-    $ tsuru bind blogsql
+    $ tsuru service-bind blogsql
     Instance blogsql is now bound to the app blog.
 
     The following environment variables are now available for use in your app:
@@ -555,7 +555,7 @@ write:
 
 ::
 
-    $ tsuru run -- python manage.py syncdb --noinput
+    $ tsuru app-run -- python manage.py syncdb --noinput
     Syncing...
     Creating tables ...
     Creating table auth_permission

@@ -25,11 +25,32 @@ type Machine struct {
 }
 
 func CreateMachine(params map[string]string) (*Machine, error) {
-	defaultIaaS, err := config.GetString("iaas:default")
-	if err != nil {
-		defaultIaaS = "ec2"
+	templateName := params["template"]
+	if templateName != "" {
+		template, err := FindTemplate(templateName)
+		if err != nil {
+			return nil, err
+		}
+		templateParams := template.paramsMap()
+		delete(params, "template")
+		// User params will override template params
+		for k, v := range templateParams {
+			_, isSet := params[k]
+			if !isSet {
+				params[k] = v
+			}
+		}
 	}
-	return CreateMachineForIaaS(defaultIaaS, params)
+	iaasName, _ := params["iaas"]
+	if iaasName == "" {
+		defaultIaaS, err := config.GetString("iaas:default")
+		if err != nil {
+			defaultIaaS = defaultIaaSProviderName
+		}
+		iaasName = defaultIaaS
+	}
+	delete(params, "iaas")
+	return CreateMachineForIaaS(iaasName, params)
 }
 
 func CreateMachineForIaaS(iaasName string, params map[string]string) (*Machine, error) {
@@ -37,11 +58,7 @@ func CreateMachineForIaaS(iaasName string, params map[string]string) (*Machine, 
 	if err != nil {
 		return nil, err
 	}
-	paramsCopy := make(map[string]string)
-	for k, v := range params {
-		paramsCopy[k] = v
-	}
-	m, err := iaas.CreateMachine(paramsCopy)
+	m, err := iaas.CreateMachine(params)
 	if err != nil {
 		return nil, err
 	}

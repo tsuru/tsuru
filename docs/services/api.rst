@@ -9,8 +9,8 @@ API workflow
 tsuru sends requests to the service API to the following actions:
 
 * create a new instance of the service (``tsuru service-add``)
-* bind an app with the service instance (``tsuru bind``)
-* unbind an app from the service instance (``tsuru unbind``)
+* bind an app with the service instance (``tsuru service-bind``)
+* unbind an app from the service instance (``tsuru service-unbind``)
 * destroy the service instance (``tsuru service-remove``)
 * check the status of the service instance (``tsuru service-status``)
 * display additional info about a service, including instances and available
@@ -142,7 +142,7 @@ service via command line tool:
 
 ::
 
-    $ tsuru bind mysql_instance --app my_app
+    $ tsuru service-bind mysql_instance --app my_app
 
 tsuru calls the service API to bind an app with an instance via POST on
 ``/resources/<service-instance-name>/bind`` (please notice that tsuru does not
@@ -204,7 +204,7 @@ the service via command line:
 
 ::
 
-    $ tsuru unbind mysql_instance --app my_app
+    $ tsuru service-unbind mysql_instance --app my_app
 
 tsuru calls the service API to unbind the app from the instance via DELETE on
 ``/resources/<service-instance-name>/bind`` (please notice that tsuru

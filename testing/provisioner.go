@@ -37,14 +37,18 @@ type FakeApp struct {
 	ready          bool
 	deploys        uint
 	env            map[string]bind.EnvVar
+	bindCalls      []*provision.Unit
+	bindLock       sync.Mutex
+	instances      map[string][]bind.ServiceInstance
 	UpdatePlatform bool
 }
 
 func NewFakeApp(name, platform string, units int) *FakeApp {
 	app := FakeApp{
-		name:     name,
-		platform: platform,
-		units:    make([]provision.Unit, units),
+		name:      name,
+		platform:  platform,
+		units:     make([]provision.Unit, units),
+		instances: make(map[string][]bind.ServiceInstance),
 	}
 	namefmt := "%s/%d"
 	for i := 0; i < units; i++ {
@@ -67,6 +71,73 @@ func (a *FakeApp) GetSwap() int64 {
 
 func (a *FakeApp) GetCpuShare() int {
 	return a.CpuShare
+}
+
+func (a *FakeApp) HasBind(unit *provision.Unit) bool {
+	a.bindLock.Lock()
+	defer a.bindLock.Unlock()
+	for _, u := range a.bindCalls {
+		if u.Name == unit.Name {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *FakeApp) BindUnit(unit *provision.Unit) error {
+	a.bindLock.Lock()
+	defer a.bindLock.Unlock()
+	a.bindCalls = append(a.bindCalls, unit)
+	return nil
+}
+
+func (a *FakeApp) UnbindUnit(unit *provision.Unit) error {
+	a.bindLock.Lock()
+	defer a.bindLock.Unlock()
+	index := -1
+	for i, u := range a.bindCalls {
+		if u.Name == unit.Name {
+			index = i
+			break
+		}
+	}
+	if index < 0 {
+		return errors.New("not bound")
+	}
+	length := len(a.bindCalls)
+	a.bindCalls[index] = a.bindCalls[length-1]
+	a.bindCalls = a.bindCalls[:length-1]
+	return nil
+}
+
+func (a *FakeApp) GetInstances(serviceName string) []bind.ServiceInstance {
+	return a.instances[serviceName]
+}
+
+func (a *FakeApp) AddInstance(serviceName string, instance bind.ServiceInstance) error {
+	instances := a.instances[serviceName]
+	instances = append(instances, instance)
+	a.instances[serviceName] = instances
+	return nil
+}
+
+func (a *FakeApp) RemoveInstance(serviceName string, instance bind.ServiceInstance) error {
+	instances := a.instances[serviceName]
+	index := -1
+	for i, inst := range instances {
+		if inst.Name == instance.Name {
+			index = i
+			break
+		}
+	}
+	if index < 0 {
+		return errors.New("instance not found")
+	}
+	for i := index; i < len(instances)-1; i++ {
+		instances[i] = instances[i+1]
+	}
+	a.instances[serviceName] = instances[:len(instances)-1]
+	return nil
 }
 
 func (a *FakeApp) Logs() []string {

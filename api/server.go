@@ -151,6 +151,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Post", "/apps/{appname}/repository/clone", authorizationRequiredHandler(deploy))
 	m.Add("Post", "/apps/{appname}/deploy", authorizationRequiredHandler(deploy))
 
+	m.Add("Get", "/users", AdminRequiredHandler(listUsers))
 	m.Add("Post", "/users", Handler(createUser))
 	m.Add("Get", "/auth/scheme", Handler(authScheme))
 	m.Add("Post", "/auth/login", Handler(login))
@@ -164,6 +165,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Get", "/users/keys", authorizationRequiredHandler(listKeys))
 	m.Add("Post", "/users/keys", authorizationRequiredHandler(addKeyToUser))
 	m.Add("Delete", "/users/keys", authorizationRequiredHandler(removeKeyFromUser))
+	m.Add("Get", "/users/api-key", authorizationRequiredHandler(showAPIToken))
+	m.Add("Post", "/users/api-key", authorizationRequiredHandler(regenerateAPIToken))
 
 	m.Add("Post", "/tokens", AdminRequiredHandler(generateAppToken))
 
@@ -182,10 +185,15 @@ func RunServer(dry bool) http.Handler {
 
 	m.Add("Get", "/iaas/machines", AdminRequiredHandler(machinesList))
 	m.Add("Delete", "/iaas/machines/{machine_id}", AdminRequiredHandler(machineDestroy))
+	m.Add("Get", "/iaas/templates", AdminRequiredHandler(templatesList))
+	m.Add("Post", "/iaas/templates", AdminRequiredHandler(templateCreate))
+	m.Add("Delete", "/iaas/templates/{template_name}", AdminRequiredHandler(templateDestroy))
 
 	m.Add("Get", "/plans", authorizationRequiredHandler(listPlans))
 	m.Add("Post", "/plans", AdminRequiredHandler(addPlan))
 	m.Add("Delete", "/plans/{planname}", AdminRequiredHandler(removePlan))
+
+	m.Add("Get", "/debug/goroutines", AdminRequiredHandler(dumpGoroutines))
 
 	n := negroni.New()
 	n.Use(negroni.NewRecovery())

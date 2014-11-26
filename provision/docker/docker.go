@@ -229,7 +229,7 @@ func (c *container) create(args runContainerActionsArgs) error {
 		AttachStderr: false,
 		Memory:       args.app.GetMemory(),
 		MemorySwap:   args.app.GetMemory() + args.app.GetSwap(),
-		CpuShares:    int64(args.app.GetCpuShare()),
+		CPUShares:    int64(args.app.GetCpuShare()),
 	}
 	if sharedMount != "" && sharedBasedir != "" {
 		config.Volumes = map[string]struct{}{
@@ -278,14 +278,14 @@ func (c *container) networkInfo() (containerNetworkInfo, error) {
 		netInfo.IP = dockerContainer.NetworkSettings.IPAddress
 		httpPort := docker.Port(port + "/tcp")
 		for _, port := range dockerContainer.NetworkSettings.Ports[httpPort] {
-			if port.HostPort != "" && port.HostIp != "" {
+			if port.HostPort != "" && port.HostIP != "" {
 				netInfo.HTTPHostPort = port.HostPort
 				break
 			}
 		}
 		sshPort := docker.Port("22/tcp")
 		for _, port := range dockerContainer.NetworkSettings.Ports[sshPort] {
-			if port.HostPort != "" && port.HostIp != "" {
+			if port.HostPort != "" && port.HostIP != "" {
 				netInfo.SSHHostPort = port.HostPort
 				break
 			}
@@ -553,8 +553,8 @@ func (c *container) start(shouldRestart bool) error {
 		config.RestartPolicy = docker.AlwaysRestart()
 	}
 	config.PortBindings = map[docker.Port][]docker.PortBinding{
-		docker.Port(port + "/tcp"): {{HostIp: "", HostPort: ""}},
-		docker.Port("22/tcp"):      {{HostIp: "", HostPort: ""}},
+		docker.Port(port + "/tcp"): {{HostIP: "", HostPort: ""}},
+		docker.Port("22/tcp"):      {{HostIP: "", HostPort: ""}},
 	}
 	if sharedBasedir != "" && sharedMount != "" {
 		if sharedIsolation {

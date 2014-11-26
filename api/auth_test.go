@@ -58,7 +58,7 @@ func (s *AuthSuite) SetUpSuite(c *gocheck.C) {
 func (s *AuthSuite) TearDownSuite(c *gocheck.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
-	conn.Apps().Database.DropDatabase()
+	testing.ClearAllCollections(conn.Apps().Database)
 	s.server.Stop()
 }
 
@@ -338,6 +338,22 @@ func (s *AuthSuite) TestCreateUserWorksWithRegistrationDisabledAndAdminUser(c *g
 	recorder := httptest.NewRecorder()
 	err = createUser(recorder, request)
 	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *AuthSuite) TestCreateUserRollsbackAfterGandalfError(c *gocheck.C) {
+	h := testHandler{rspCode: http.StatusInternalServerError}
+	ts := testing.StartGandalfTestServer(&h)
+	defer ts.Close()
+	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
+	request, err := http.NewRequest("POST", "/users", b)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-type", "application/json")
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusInternalServerError)
+	_, err = auth.GetUserByEmail("nobody@globo.com")
+	c.Assert(err, gocheck.NotNil)
 }
 
 func (s *AuthSuite) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheResponse(c *gocheck.C) {
@@ -1883,7 +1899,7 @@ func (t TestScheme) Name() string {
 func (t TestScheme) Create(u *auth.User) (*auth.User, error) {
 	return nil, nil
 }
-func (t TestScheme) Remove(token auth.Token) error {
+func (t TestScheme) Remove(u *auth.User) error {
 	return nil
 }
 
@@ -1900,4 +1916,89 @@ func (s *AuthSuite) TestAuthScheme(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(parsed["name"], gocheck.Equals, "test")
 	c.Assert(parsed["data"], gocheck.DeepEquals, map[string]interface{}{"foo": "bar", "foo2": "bar2"})
+}
+
+func (s *AuthSuite) TestRegenerateAPITokenHandler(c *gocheck.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456"}
+	_, err := nativeScheme.Create(&u)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Users().Remove(bson.M{"email": u.Email})
+	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
+	request, err := http.NewRequest("POST", "/users/api-key", nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = regenerateAPIToken(recorder, request, token)
+	c.Assert(err, gocheck.IsNil)
+	var got string
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, gocheck.IsNil)
+	count, err := conn.Users().Find(bson.M{"apikey": got}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 1)
+}
+
+func (s *AuthSuite) TestShowAPITokenForUserWithNoToken(c *gocheck.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456"}
+	_, err := nativeScheme.Create(&u)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Users().Remove(bson.M{"email": u.Email})
+	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
+	request, err := http.NewRequest("GET", "/users/api-key", nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = showAPIToken(recorder, request, token)
+	c.Assert(err, gocheck.IsNil)
+	var got string
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, gocheck.IsNil)
+	count, err := conn.Users().Find(bson.M{"apikey": got}).Count()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(count, gocheck.Equals, 1)
+}
+
+func (s *AuthSuite) TestShowAPITokenForUserWithToken(c *gocheck.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	u := auth.User{Email: "zobomafoo@zimbabue.com", Password: "123456", APIKey: "238hd23ubd923hd923j9d23ndibde"}
+	_, err := nativeScheme.Create(&u)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Users().Remove(bson.M{"email": u.Email})
+	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
+	request, err := http.NewRequest("GET", "/users/api-key", nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = showAPIToken(recorder, request, token)
+	c.Assert(err, gocheck.IsNil)
+	var got string
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(got, gocheck.Equals, "238hd23ubd923hd923j9d23ndibde")
+}
+
+func (s *AuthSuite) TestListUsers(c *gocheck.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	token, err := nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
+	request, err := http.NewRequest("GET", "/users", nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = listUsers(recorder, request, token)
+	c.Assert(err, gocheck.IsNil)
+	var users []auth.User
+	err = json.NewDecoder(recorder.Body).Decode(&users)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(len(users), gocheck.Equals, 1)
+	c.Assert(users[0].Email, gocheck.Equals, s.user.Email)
 }

@@ -30,7 +30,7 @@ func (s *PlatformSuite) SetUpSuite(c *gocheck.C) {
 func (s *PlatformSuite) TearDownSuite(c *gocheck.C) {
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
-	conn.Apps().Database.DropDatabase()
+	testing.ClearAllCollections(conn.Apps().Database)
 	conn.Close()
 }
 

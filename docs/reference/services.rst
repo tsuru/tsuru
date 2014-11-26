@@ -38,7 +38,7 @@ command:
 
     $ tsuru service-remove <service_instance_name>
 
-To bind a service instance with an app you can use the `bind
+To bind a service instance with an app you can use the `service-bind
 <http://godoc.org/github.com/tsuru/tsuru-client/tsuru#hdr-Bind_an_application_to_a_service_instance>`_
 command.  If this service has any variable to be used by your app, tsuru will
 inject this variables in the app's environment.
@@ -47,9 +47,9 @@ inject this variables in the app's environment.
 
 ::
 
-    $ tsuru bind <service_instance_name> [--app appname]
+    $ tsuru service-bind <service_instance_name> [--app appname]
 
-And to unbind, use `unbind
+And to unbind, use `service-unbind
 <http://godoc.org/github.com/tsuru/tsuru-client/tsuru#hdr-Unbind_an_application_from_a_service_instance>`_
 command:
 
@@ -57,7 +57,7 @@ command:
 
 ::
 
-    $ tsuru unbind <service_instance_name> [--app appname]
+    $ tsuru service-unbind <service_instance_name> [--app appname]
 
 For more details on the ``--app`` flag, see `"Guessing app names"
 <http://godoc.org/github.com/tsuru/tsuru-client/tsuru#hdr-Guessing_app_names>`_

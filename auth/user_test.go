@@ -311,3 +311,39 @@ func (s *S) TestCreateUserOnGandalf(c *gocheck.C) {
 	c.Assert(string(h.Body), gocheck.Equals, expected)
 	c.Assert(h.Method, gocheck.Equals, "POST")
 }
+
+func (s *S) TestShowAPIKeyWhenAPITokenAlreadyExists(c *gocheck.C) {
+	u := User{
+		Email:    "me@tsuru.com",
+		Password: "123",
+		Keys:     []Key{{Name: "me@tsuru.com-1", Content: "ssh-rsa somekey me@tsuru.com"}},
+		APIKey:   "1ioudh8ydb2idn1ehnpoqwjmhdjqwz12po1",
+	}
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	API_Token, err := u.ShowAPIKey()
+	c.Assert(API_Token, gocheck.Equals, u.APIKey)
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestShowAPIKeyWhenAPITokenNotExists(c *gocheck.C) {
+	u := User{
+		Email:    "me@tsuru.com",
+		Password: "123",
+		Keys:     []Key{{Name: "me@tsuru.com-1", Content: "ssh-rsa somekey me@tsuru.com"}},
+		APIKey:   "",
+	}
+	err := u.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	API_Token, err := u.ShowAPIKey()
+	c.Assert(API_Token, gocheck.Equals, u.APIKey)
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestListAllUsers(c *gocheck.C) {
+	users, err := ListUsers()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(len(users), gocheck.Equals, 1)
+}

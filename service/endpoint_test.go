@@ -7,16 +7,16 @@ package service
 import (
 	"bytes"
 	stderrors "errors"
-	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strings"
 	"sync"
+	"sync/atomic"
 
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
 
@@ -26,37 +26,6 @@ type FakeUnit struct {
 
 func (a *FakeUnit) GetIp() string {
 	return a.ip
-}
-
-type FakeApp struct {
-	ip   string
-	name string
-}
-
-func (a *FakeApp) GetIp() string {
-	return a.ip
-}
-
-func (a *FakeApp) GetName() string {
-	return a.name
-}
-
-func (a *FakeApp) GetUnits() []bind.Unit {
-	return []bind.Unit{
-		&FakeUnit{ip: a.ip},
-	}
-}
-
-func (a *FakeApp) InstanceEnv(name string) map[string]bind.EnvVar {
-	return nil
-}
-
-func (a *FakeApp) SetEnvs(vars []bind.EnvVar, public bool, w io.Writer) error {
-	return nil
-}
-
-func (a *FakeApp) UnsetEnvs(vars []string, public bool, w io.Writer) error {
-	return nil
 }
 
 func noContentHandler(w http.ResponseWriter, r *http.Request) {
@@ -230,44 +199,53 @@ func (s *S) TestDestroyShouldReturnErrorIfTheRequestFails(c *gocheck.C) {
 	c.Assert(err, gocheck.ErrorMatches, "^Failed to destroy the instance "+instance.Name+": Server failed to do its job.$")
 }
 
-func (s *S) TestBindWithEndpointDown(c *gocheck.C) {
-	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := FakeApp{
-		name: "her-app",
-		ip:   "10.0.10.1",
-	}
-	// Use http://tools.ietf.org/html/rfc5737 'TEST-NET' to avoid broken
-	// resolvers redirecting to a search page.
-	client := &Client{endpoint: "http://192.0.2.42", username: "user", password: "abcde"}
-	_, err := client.Bind(&instance, &a, a.GetUnits()[0])
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.ErrorMatches, "^her-redis api is down.$")
-}
-
-func (s *S) TestBindShouldSendAPOSTToTheResourceURL(c *gocheck.C) {
+func (s *S) TestBindAppShouldSendAPOSTToTheResourceURL(c *gocheck.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := FakeApp{
-		name: "her-app",
-		ip:   "10.0.10.1",
-	}
+	a := testing.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
-	_, err := client.Bind(&instance, &a, a.GetUnits()[0])
+	_, err := client.BindApp(&instance, a)
 	h.Lock()
 	defer h.Unlock()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(h.url, gocheck.Equals, "/resources/"+instance.Name+"/bind")
+	c.Assert(h.url, gocheck.Equals, "/resources/"+instance.Name+"/bind-app")
 	c.Assert(h.method, gocheck.Equals, "POST")
 	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, gocheck.IsNil)
-	expected := map[string][]string{"unit-host": {"10.0.10.1"}, "app-host": {"10.0.10.1"}}
+	expected := map[string][]string{"app-host": {a.GetIp()}}
 	c.Assert(map[string][]string(v), gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestBindShouldReturnMapWithTheEnvironmentVariable(c *gocheck.C) {
+func (s *S) TestBindAppBackwardCompatible(c *gocheck.C) {
+	var calls int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&calls, 1)
+		if strings.HasSuffix(r.URL.Path, "bind-app") {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		var h TestHandler
+		h.ServeHTTP(w, r)
+	}))
+	defer ts.Close()
+	expected := map[string]string{
+		"MYSQL_DATABASE_NAME": "CHICO",
+		"MYSQL_HOST":          "localhost",
+		"MYSQL_PORT":          "3306",
+	}
+	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
+	a := testing.NewFakeApp("her-app", "python", 1)
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	env, err := client.BindApp(&instance, a)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(env, gocheck.DeepEquals, expected)
+	c.Assert(atomic.LoadInt32(&calls), gocheck.Equals, int32(2))
+}
+
+func (s *S) TestBindAppShouldReturnMapWithTheEnvironmentVariable(c *gocheck.C) {
 	expected := map[string]string{
 		"MYSQL_DATABASE_NAME": "CHICO",
 		"MYSQL_HOST":          "localhost",
@@ -277,60 +255,128 @@ func (s *S) TestBindShouldReturnMapWithTheEnvironmentVariable(c *gocheck.C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := FakeApp{
-		name: "her-app",
-		ip:   "10.0.10.1",
-	}
+	a := testing.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
-	env, err := client.Bind(&instance, &a, a.GetUnits()[0])
+	env, err := client.BindApp(&instance, a)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(env, gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestBindShouldReturnErrorIfTheRequestFail(c *gocheck.C) {
+func (s *S) TestBindAppShouldReturnErrorIfTheRequestFail(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := FakeApp{
-		name: "her-app",
-		ip:   "10.0.10.1",
-	}
+	a := testing.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
-	_, err := client.Bind(&instance, &a, a.GetUnits()[0])
+	_, err := client.BindApp(&instance, a)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.ErrorMatches, "^Failed to bind instance her-redis to the unit 10.0.10.1: Server failed to do its job.$")
+	c.Assert(err, gocheck.ErrorMatches, `^Failed to bind the instance "her-redis" to the app "her-app": Server failed to do its job.$`)
 }
 
-func (s *S) TestBindShouldReturnPreconditionFailedIfServiceAPIReturnPreconditionFailed(c *gocheck.C) {
+func (s *S) TestBindAppShouldReturnPreconditionFailedIfServiceAPIReturnPreconditionFailed(c *gocheck.C) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(412)
 	})
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := FakeApp{
-		name: "her-app",
-		ip:   "10.0.10.1",
-	}
+	a := testing.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
-	_, err := client.Bind(&instance, &a, a.GetUnits()[0])
+	_, err := client.BindApp(&instance, a)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Message, gocheck.Equals, "You cannot bind any app to this service instance because it is not ready yet.")
 }
 
-func (s *S) TestUnbindSendADELETERequestToTheResourceURL(c *gocheck.C) {
+func (s *S) TestBindUnit(c *gocheck.C) {
+	h := TestHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
+	a := testing.NewFakeApp("her-app", "python", 1)
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	err := client.BindUnit(&instance, a, a.GetUnits()[0])
+	c.Assert(err, gocheck.IsNil)
+	h.Lock()
+	defer h.Unlock()
+	c.Assert(h.url, gocheck.Equals, "/resources/"+instance.Name+"/bind")
+	c.Assert(h.method, gocheck.Equals, "POST")
+	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
+	v, err := url.ParseQuery(string(h.body))
+	c.Assert(err, gocheck.IsNil)
+	expected := map[string][]string{"app-host": {a.GetIp()}, "unit-host": {a.GetUnits()[0].GetIp()}}
+	c.Assert(map[string][]string(v), gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestBindUnitRequestFailure(c *gocheck.C) {
+	ts := httptest.NewServer(http.HandlerFunc(failHandler))
+	defer ts.Close()
+	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
+	a := testing.NewFakeApp("her-app", "python", 1)
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	err := client.BindUnit(&instance, a, a.GetUnits()[0])
+	c.Assert(err, gocheck.NotNil)
+	expectedMsg := `^Failed to bind the instance "her-redis" to the unit "10.10.10.1": Server failed to do its job.$`
+	c.Assert(err, gocheck.ErrorMatches, expectedMsg)
+}
+
+func (s *S) TestBindUnitPreconditionFailed(c *gocheck.C) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusPreconditionFailed)
+	})
+	ts := httptest.NewServer(handler)
+	defer ts.Close()
+	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
+	a := testing.NewFakeApp("her-app", "python", 1)
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	err := client.BindUnit(&instance, a, a.GetUnits()[0])
+	c.Assert(err, gocheck.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(e.Message, gocheck.Equals, "You cannot bind any app to this service instance because it is not ready yet.")
+}
+
+func (s *S) TestUnbindApp(c *gocheck.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
-	a := FakeApp{
-		name: "arch-enemy",
-		ip:   "2.2.2.2",
-	}
+	a := testing.NewFakeApp("arch-enemy", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
-	err := client.Unbind(&instance, &a, a.GetUnits()[0])
+	err := client.UnbindApp(&instance, a)
+	h.Lock()
+	defer h.Unlock()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(h.url, gocheck.Equals, "/resources/heaven-can-wait/bind-app")
+	c.Assert(h.method, gocheck.Equals, "DELETE")
+	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
+	v, err := url.ParseQuery(string(h.body))
+	c.Assert(err, gocheck.IsNil)
+	expected := map[string][]string{"app-host": {a.GetIp()}}
+	c.Assert(map[string][]string(v), gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestUnbindAppRequestFailure(c *gocheck.C) {
+	ts := httptest.NewServer(http.HandlerFunc(failHandler))
+	defer ts.Close()
+	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
+	a := testing.NewFakeApp("arch-enemy", "python", 1)
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	err := client.UnbindApp(&instance, a)
+	c.Assert(err, gocheck.NotNil)
+	expected := `Failed to unbind ("/resources/heaven-can-wait/bind-app"): Server failed to do its job.`
+	c.Assert(err.Error(), gocheck.Equals, expected)
+}
+
+func (s *S) TestUnbindUnit(c *gocheck.C) {
+	h := TestHandler{}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
+	a := testing.NewFakeApp("arch-enemy", "python", 1)
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	err := client.UnbindUnit(&instance, a, a.GetUnits()[0])
 	h.Lock()
 	defer h.Unlock()
 	c.Assert(err, gocheck.IsNil)
@@ -339,20 +385,17 @@ func (s *S) TestUnbindSendADELETERequestToTheResourceURL(c *gocheck.C) {
 	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, gocheck.IsNil)
-	expected := map[string][]string{"unit-host": {"2.2.2.2"}, "app-host": {"2.2.2.2"}}
+	expected := map[string][]string{"app-host": {a.GetIp()}, "unit-host": {a.GetUnits()[0].GetIp()}}
 	c.Assert(map[string][]string(v), gocheck.DeepEquals, expected)
 }
 
-func (s *S) TestUnbindReturnsErrorIfTheRequestFails(c *gocheck.C) {
+func (s *S) TestUnbindUnitRequestFailure(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
-	a := FakeApp{
-		name: "arch-enemy",
-		ip:   "2.2.2.2",
-	}
+	a := testing.NewFakeApp("arch-enemy", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
-	err := client.Unbind(&instance, &a, a.GetUnits()[0])
+	err := client.UnbindUnit(&instance, a, a.GetUnits()[0])
 	c.Assert(err, gocheck.NotNil)
 	expected := `Failed to unbind ("/resources/heaven-can-wait/bind"): Server failed to do its job.`
 	c.Assert(err.Error(), gocheck.Equals, expected)

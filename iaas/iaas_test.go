@@ -5,6 +5,10 @@
 package iaas
 
 import (
+	"encoding/base64"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 
 	"github.com/tsuru/config"
@@ -52,4 +56,52 @@ func (s *S) TestCustomizableIaaSProvider(c *gocheck.C) {
 	value1 := reflect.ValueOf(provider2)
 	value2 := reflect.ValueOf(provider)
 	c.Assert(value1, gocheck.Equals, value2)
+}
+
+func (s *S) TestReadUserDataDefault(c *gocheck.C) {
+	iaasInst := UserDataIaaS{}
+	userData, err := iaasInst.ReadUserData()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(userData, gocheck.Equals, base64.StdEncoding.EncodeToString([]byte(defaultUserData)))
+}
+
+func (s *S) TestReadUserData(c *gocheck.C) {
+	iaasInst := UserDataIaaS{NamedIaaS: NamedIaaS{BaseIaaSName: "x"}}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "abc def ghi")
+	}))
+	defer server.Close()
+	config.Set("iaas:x:user-data", server.URL)
+	defer config.Unset("iaas:x:user-data")
+	userData, err := iaasInst.ReadUserData()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(userData, gocheck.Equals, base64.StdEncoding.EncodeToString([]byte("abc def ghi")))
+}
+
+func (s *S) TestReadUserDataError(c *gocheck.C) {
+	iaasInst := UserDataIaaS{NamedIaaS: NamedIaaS{BaseIaaSName: "x"}}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+	config.Set("iaas:x:user-data", server.URL)
+	defer config.Unset("iaas:x:user-data")
+	_, err := iaasInst.ReadUserData()
+	c.Assert(err, gocheck.NotNil)
+}
+
+func (s *S) TestGetConfigString(c *gocheck.C) {
+	iaasInst := NamedIaaS{BaseIaaSName: "base-iaas"}
+	config.Set("iaas:base-iaas:url", "default_url")
+	val, err := iaasInst.GetConfigString("url")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(val, gocheck.Equals, "default_url")
+	iaasInst.IaaSName = "something"
+	val, err = iaasInst.GetConfigString("url")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(val, gocheck.Equals, "default_url")
+	config.Set("iaas:custom:something:url", "custom_url")
+	val, err = iaasInst.GetConfigString("url")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(val, gocheck.Equals, "custom_url")
 }

@@ -7,14 +7,20 @@
 package iaas
 
 import (
+	"encoding/base64"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 
 	"github.com/tsuru/config"
 )
 
-const UserData = `#!/bin/bash
+const (
+	defaultUserData = `#!/bin/bash
 curl -sL https://raw.github.com/tsuru/now/master/run.bash | bash -s -- --docker-only
 `
+	defaultIaaSProviderName = "ec2"
+)
 
 // Every Tsuru IaaS must implement this interface.
 type IaaS interface {
@@ -32,6 +38,46 @@ type Describer interface {
 type CustomIaaS interface {
 	IaaS
 	Clone(string) IaaS
+}
+
+type NamedIaaS struct {
+	BaseIaaSName string
+	IaaSName     string
+}
+
+type UserDataIaaS struct {
+	NamedIaaS
+}
+
+func (i *UserDataIaaS) ReadUserData() (string, error) {
+	userDataUrl, _ := i.NamedIaaS.GetConfigString("user-data")
+	var userData string
+	if userDataUrl == "" {
+		userData = defaultUserData
+	} else {
+		resp, err := http.Get(userDataUrl)
+		if err != nil {
+			return "", err
+		}
+		if resp.StatusCode != http.StatusOK {
+			return "", fmt.Errorf("Invalid user-data status code: %d", resp.StatusCode)
+		}
+		defer resp.Body.Close()
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return "", err
+		}
+		userData = string(body)
+	}
+	return base64.StdEncoding.EncodeToString([]byte(userData)), nil
+}
+
+func (i *NamedIaaS) GetConfigString(name string) (string, error) {
+	val, err := config.GetString(fmt.Sprintf("iaas:custom:%s:%s", i.IaaSName, name))
+	if err != nil {
+		val, err = config.GetString(fmt.Sprintf("iaas:%s:%s", i.BaseIaaSName, name))
+	}
+	return val, err
 }
 
 var iaasProviders = make(map[string]IaaS)
@@ -66,7 +112,7 @@ func Describe(iaasName ...string) (string, error) {
 	if len(iaasName) == 0 || iaasName[0] == "" {
 		defaultIaaS, err := config.GetString("iaas:default")
 		if err != nil {
-			defaultIaaS = "ec2"
+			defaultIaaS = defaultIaaSProviderName
 		}
 		iaasName = []string{defaultIaaS}
 	}

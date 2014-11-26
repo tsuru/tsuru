@@ -22,6 +22,9 @@ func (s *S) SetUpTest(c *gocheck.C) {
 	coll := collection()
 	defer coll.Close()
 	coll.RemoveAll(nil)
+	tplColl := template_collection()
+	defer tplColl.Close()
+	tplColl.RemoveAll(nil)
 }
 
 type TestIaaS struct{}
@@ -32,7 +35,7 @@ func (TestIaaS) DeleteMachine(m *Machine) error {
 }
 
 func (TestIaaS) CreateMachine(params map[string]string) (*Machine, error) {
-	params["you"] = "shouldnot"
+	params["should"] = "be in"
 	m := Machine{
 		Id:      params["id"],
 		Status:  "running",

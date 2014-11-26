@@ -219,7 +219,9 @@ func (s *S) TestOAuthRemove(c *gocheck.C) {
 	params["redirectUrl"] = "http://localhost"
 	token, err := scheme.Login(params)
 	c.Assert(err, gocheck.IsNil)
-	err = scheme.Remove(token)
+	u, err := token.User()
+	c.Assert(err, gocheck.IsNil)
+	err = scheme.Remove(u)
 	c.Assert(err, gocheck.IsNil)
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)

@@ -64,7 +64,7 @@ func (s *ProvisionSuite) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *ProvisionSuite) TearDownSuite(c *gocheck.C) {
-	s.conn.Apps().Database.DropDatabase()
+	testing.ClearAllCollections(s.conn.Apps().Database)
 }
 
 func (s *ProvisionSuite) TearDownTest(c *gocheck.C) {

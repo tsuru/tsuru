@@ -235,14 +235,7 @@ func CreateApp(app *App, user *auth.User) error {
 // them. This method is used by Destroy (before destroying the app, it unbinds
 // all service instances). Refer to Destroy docs for more details.
 func (app *App) unbind() error {
-	var instances []service.ServiceInstance
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	q := bson.M{"apps": bson.M{"$in": []string{app.Name}}}
-	err = conn.ServiceInstances().Find(q).All(&instances)
+	instances, err := app.serviceInstances()
 	if err != nil {
 		return err
 	}
@@ -331,24 +324,46 @@ func Delete(app *App) error {
 }
 
 func (app *App) BindUnit(unit *provision.Unit) error {
-	conn, err := db.Conn()
+	instances, err := app.serviceInstances()
 	if err != nil {
 		return err
+	}
+	for _, instance := range instances {
+		err = instance.BindUnit(app, unit)
+		if err != nil {
+			log.Errorf("Error binding the unit %s with the service instance %s: %s", unit.Name, instance.Name, err)
+		}
+	}
+	return nil
+}
+
+func (app *App) UnbindUnit(unit *provision.Unit) error {
+	instances, err := app.serviceInstances()
+	if err != nil {
+		return err
+	}
+	for _, instance := range instances {
+		err = instance.UnbindUnit(app, unit)
+		if err != nil {
+			log.Errorf("Error unbinding the unit %s with the service instance %s: %s", unit.Name, instance.Name, err)
+		}
+	}
+	return nil
+}
+
+func (app *App) serviceInstances() ([]service.ServiceInstance, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
 	}
 	defer conn.Close()
 	var instances []service.ServiceInstance
 	q := bson.M{"apps": bson.M{"$in": []string{app.Name}}}
 	err = conn.ServiceInstances().Find(q).All(&instances)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	for _, instance := range instances {
-		_, err = instance.BindUnit(app, unit)
-		if err != nil {
-			log.Errorf("Error binding the unit %s with the service instance %s: %s", unit.Name, instance.Name, err)
-		}
-	}
-	return nil
+	return instances, nil
 }
 
 // AddUnits creates n new units within the provisioner, saves new units in the
@@ -360,7 +375,6 @@ func (app *App) AddUnits(n uint, writer io.Writer) error {
 	err := action.NewPipeline(
 		&reserveUnitsToAdd,
 		&provisionAddUnits,
-		&BindService,
 	).Execute(app, n, writer)
 	return err
 }
@@ -879,6 +893,55 @@ func cnameExists(cname string) bool {
 		return true
 	}
 	return false
+}
+
+func (app *App) AddInstance(serviceName string, instance bind.ServiceInstance) error {
+	var tsuruServices map[string][]bind.ServiceInstance
+	if servicesEnv, ok := app.Env["TSURU_SERVICES"]; ok {
+		json.Unmarshal([]byte(servicesEnv.Value), &tsuruServices)
+	} else {
+		tsuruServices = make(map[string][]bind.ServiceInstance)
+	}
+	serviceInstances := tsuruServices[serviceName]
+	serviceInstances = append(serviceInstances, instance)
+	tsuruServices[serviceName] = serviceInstances
+	return app.setTsuruServices(tsuruServices)
+}
+
+func (app *App) RemoveInstance(serviceName string, instance bind.ServiceInstance) error {
+	var tsuruServices map[string][]bind.ServiceInstance
+	if servicesEnv, ok := app.Env["TSURU_SERVICES"]; ok {
+		json.Unmarshal([]byte(servicesEnv.Value), &tsuruServices)
+	}
+	index := -1
+	serviceInstances := tsuruServices[serviceName]
+	for i, si := range serviceInstances {
+		if si.Name == instance.Name {
+			index = i
+			break
+		}
+	}
+	if index < 0 {
+		return stderr.New("instance not found")
+	}
+	for i := index; i < len(serviceInstances)-1; i++ {
+		serviceInstances[i] = serviceInstances[i+1]
+	}
+	tsuruServices[serviceName] = serviceInstances[:len(serviceInstances)-1]
+	return app.setTsuruServices(tsuruServices)
+}
+
+func (app *App) setTsuruServices(services map[string][]bind.ServiceInstance) error {
+	servicesJson, err := json.Marshal(services)
+	if err != nil {
+		return err
+	}
+	envVar := bind.EnvVar{
+		Name:   "TSURU_SERVICES",
+		Value:  string(servicesJson),
+		Public: false,
+	}
+	return app.SetEnvs([]bind.EnvVar{envVar}, false, nil)
 }
 
 // Log adds a log message to the app. Specifying a good source is good so the

@@ -31,7 +31,7 @@ func (t TestScheme) Name() string {
 func (t TestScheme) Create(u *User) (*User, error) {
 	return nil, nil
 }
-func (t TestScheme) Remove(token Token) error {
+func (t TestScheme) Remove(u *User) error {
 	return nil
 }
 

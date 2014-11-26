@@ -30,6 +30,7 @@ type testHandler struct {
 	url     []string
 	content string
 	header  []http.Header
+	rspCode int
 }
 
 func (h *testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -38,6 +39,10 @@ func (h *testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	b, _ := ioutil.ReadAll(r.Body)
 	h.body = append(h.body, b)
 	h.header = append(h.header, r.Header)
+	if h.rspCode == 0 {
+		h.rspCode = http.StatusOK
+	}
+	w.WriteHeader(h.rspCode)
 	w.Write([]byte(h.content))
 }
 
@@ -121,7 +126,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
-	s.conn.Apps().Database.DropDatabase()
+	tsuruTesting.ClearAllCollections(s.conn.Apps().Database)
 }
 
 func (s *S) TearDownTest(c *gocheck.C) {

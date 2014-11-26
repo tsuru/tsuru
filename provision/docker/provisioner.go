@@ -223,7 +223,12 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 	for _, c := range containers {
 		go func(c container) {
 			defer containersGroup.Done()
-			err := removeContainer(&c)
+			unit := c.asUnit(app)
+			err := app.UnbindUnit(&unit)
+			if err != nil {
+				log.Errorf("Unable to unbind unit %q: %s", c.ID, err)
+			}
+			err = removeContainer(&c)
 			if err != nil {
 				log.Errorf("Unable to destroy container %s: %s", c.ID, err.Error())
 			}
@@ -292,6 +297,12 @@ func addContainersWithHost(w io.Writer, a provision.App, units int, destinationH
 				errors <- err
 				return
 			}
+			unit := c.asUnit(a)
+			err = a.BindUnit(&unit)
+			if err != nil {
+				errors <- err
+				return
+			}
 			createdContainers <- c
 			err = runHealthcheck(c, w)
 			if err != nil {
@@ -306,10 +317,15 @@ func addContainersWithHost(w io.Writer, a provision.App, units int, destinationH
 	close(createdContainers)
 	if err := <-errors; err != nil {
 		for c := range createdContainers {
-			log.Errorf("Removing container %q due failed add units: %s", c.ID, err.Error())
+			log.Errorf("Removing container %q due failed add units: %s", c.ID, err)
+			unit := c.asUnit(a)
+			errUnbind := a.UnbindUnit(&unit)
+			if errUnbind != nil {
+				log.Errorf("Unable to unbind unit %q: %s", c.ID, err)
+			}
 			errRem := removeContainer(c)
 			if errRem != nil {
-				log.Errorf("Unable to destroy container %s: %s", c.ID, err.Error())
+				log.Errorf("Unable to destroy container %q: %s", c.ID, err)
 			}
 		}
 		return nil, err
@@ -364,7 +380,15 @@ func (*dockerProvisioner) RemoveUnits(a provision.App, units uint) error {
 	for i := 0; i < int(units); i++ {
 		wg.Add(1)
 		go func(c container) {
-			removeContainer(&c)
+			unit := c.asUnit(a)
+			err := a.UnbindUnit(&unit)
+			if err != nil {
+				log.Errorf("Failed to unbind unit %q: %s", c.ID, err)
+			}
+			err = removeContainer(&c)
+			if err != nil {
+				log.Errorf("Failed to remove container %q: %s", c.ID, err)
+			}
 			wg.Done()
 		}(containers[i])
 	}
@@ -376,6 +400,12 @@ func (*dockerProvisioner) RemoveUnit(unit provision.Unit) error {
 	container, err := getContainer(unit.Name)
 	if err != nil {
 		return err
+	}
+	if a, err := app.GetByName(unit.AppName); err == nil {
+		err := a.UnbindUnit(&unit)
+		if err != nil {
+			log.Errorf("Failed to unbind unit %q: %s", container.ID, err)
+		}
 	}
 	return removeContainer(container)
 }
@@ -483,7 +513,6 @@ func (p *dockerProvisioner) DeployPipeline() *action.Pipeline {
 	actions := []*action.Action{
 		&app.ProvisionerDeploy,
 		&app.IncrementDeploy,
-		&app.BindService,
 	}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline

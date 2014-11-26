@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"sync"
 
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
@@ -164,18 +165,20 @@ func (si *ServiceInstance) BindApp(app bind.App) error {
 	actions := []*action.Action{
 		&addAppToServiceInstance,
 		&setEnvironVariablesToApp,
+		&setTsuruServices,
+		&bindUnitsToServiceInstance,
 	}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(app, *si)
 }
 
 // BindUnit makes the bind between the binder and an unit.
-func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) (map[string]string, error) {
+func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
 	endpoint, err := si.Service().getClient("production")
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return endpoint.Bind(si, app, unit)
+	return endpoint.BindUnit(si, app, unit)
 }
 
 // UnbindApp makes the unbind between the service instance and an app.
@@ -188,25 +191,34 @@ func (si *ServiceInstance) UnbindApp(app bind.App) error {
 	if err != nil {
 		return err
 	}
+	var wg sync.WaitGroup
 	for _, unit := range app.GetUnits() {
+		wg.Add(1)
 		go func(unit bind.Unit) {
-			si.UnbindUnit(unit, app)
+			si.UnbindUnit(app, unit)
+			wg.Done()
 		}(unit)
 	}
 	var envVars []string
 	for k := range app.InstanceEnv(si.Name) {
 		envVars = append(envVars, k)
 	}
+	wg.Wait()
+	if endpoint, err := si.Service().getClient("production"); err == nil {
+		endpoint.UnbindApp(si, app)
+	}
+	instance := bind.ServiceInstance{Name: si.Name}
+	app.RemoveInstance(si.ServiceName, instance)
 	return app.UnsetEnvs(envVars, false, nil)
 }
 
 // UnbindUnit makes the unbind between the service instance and an unit.
-func (si *ServiceInstance) UnbindUnit(unit bind.Unit, app bind.App) error {
+func (si *ServiceInstance) UnbindUnit(app bind.App, unit bind.Unit) error {
 	endpoint, err := si.Service().getClient("production")
 	if err != nil {
 		return err
 	}
-	return endpoint.Unbind(si, app, unit)
+	return endpoint.UnbindUnit(si, app, unit)
 }
 
 // Status returns the service instance status.

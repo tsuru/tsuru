@@ -9,6 +9,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
+	ttesting "github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
 
@@ -29,5 +30,5 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
-	s.conn.Collection("router").Database.DropDatabase()
+	ttesting.ClearAllCollections(s.conn.Collection("router").Database)
 }

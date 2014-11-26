@@ -26,6 +26,7 @@ func (s *S) TestCreateMachineForIaaS(c *gocheck.C) {
 	c.Assert(dbMachine.CreationParams, gocheck.DeepEquals, map[string]string{
 		"id":        "myid",
 		"something": "x",
+		"should":    "be in",
 	})
 }
 
@@ -35,6 +36,46 @@ func (s *S) TestCreateMachine(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(m.Id, gocheck.Equals, "myid")
 	c.Assert(m.Iaas, gocheck.Equals, "test-iaas")
+}
+
+func (s *S) TestCreateMachineIaaSInParams(c *gocheck.C) {
+	config.Set("iaas:default", "invalid")
+	m, err := CreateMachine(map[string]string{"id": "myid", "iaas": "test-iaas"})
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(m.Id, gocheck.Equals, "myid")
+	c.Assert(m.Iaas, gocheck.Equals, "test-iaas")
+}
+
+func (s *S) TestCreateMachineWithTemplate(c *gocheck.C) {
+	t := Template{
+		Name:     "tpl1",
+		IaaSName: "test-iaas",
+		Data: TemplateDataList{
+			{Name: "key1", Value: "val1"},
+			{Name: "key2", Value: "val2"},
+			{Name: "key3", Value: "val3"},
+		},
+	}
+	err := t.Save()
+	c.Assert(err, gocheck.IsNil)
+	params := map[string]string{
+		"id":       "myid",
+		"template": "tpl1",
+		"key3":     "override3",
+	}
+	m, err := CreateMachine(params)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(m.Id, gocheck.Equals, "myid")
+	c.Assert(m.Iaas, gocheck.Equals, "test-iaas")
+	expected := map[string]string{
+		"id":     "myid",
+		"key1":   "val1",
+		"key2":   "val2",
+		"key3":   "override3",
+		"should": "be in",
+	}
+	c.Assert(m.CreationParams, gocheck.DeepEquals, expected)
+	c.Assert(params, gocheck.DeepEquals, expected)
 }
 
 func (s *S) TestListMachines(c *gocheck.C) {

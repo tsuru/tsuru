@@ -57,10 +57,10 @@ func (s *S) TestGitGuesser(c *gocheck.C) {
 	err := os.MkdirAll(dirPath, 0700) // Will be removed when p is removed.
 	c.Assert(err, gocheck.IsNil)
 	g := GitGuesser{}
-	name, err := g.GuessName(p) // repository root
+	name, err := g.GuessName(p)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(name, gocheck.Equals, "gopher")
-	name, err = g.GuessName(dirPath) // subdirectory
+	name, err = g.GuessName(dirPath)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(name, gocheck.Equals, "gopher")
 }
@@ -69,13 +69,13 @@ func (s *S) TestGitGuesserNonGitUser(c *gocheck.C) {
 	p := writeConfig("testdata/gitconfig-ok-nongit-user", c)
 	defer os.RemoveAll(p)
 	dirPath := path.Join(p, "somepath")
-	err := os.MkdirAll(dirPath, 0700) // Will be removed when p is removed.
+	err := os.MkdirAll(dirPath, 0700)
 	c.Assert(err, gocheck.IsNil)
 	g := GitGuesser{}
-	name, err := g.GuessName(p) // repository root
+	name, err := g.GuessName(p)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(name, gocheck.Equals, "gopher")
-	name, err = g.GuessName(dirPath) // subdirectory
+	name, err = g.GuessName(dirPath)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(name, gocheck.Equals, "gopher")
 }
@@ -111,9 +111,15 @@ func (s *S) TestGitGuesserWithTsuruRemoteNotMatchingTsuruPattern(c *gocheck.C) {
 	c.Assert(err.Error(), gocheck.Equals, `"tsuru" remote did not match the pattern. Want something like <user>@<host>:<app-name>.git, got git://myhost.com/gopher.git`)
 }
 
+func (s *S) TestDirnameGuesser(c *gocheck.C) {
+	name, err := DirnameGuesser{}.GuessName("/something/wat")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(name, gocheck.Equals, "wat")
+}
+
 func (s *S) TestGuessingCommandGuesserNil(c *gocheck.C) {
 	g := GuessingCommand{G: nil}
-	c.Assert(g.guesser(), gocheck.FitsTypeOf, GitGuesser{})
+	c.Assert(g.guesser(), gocheck.FitsTypeOf, MultiGuesser{})
 }
 
 func (s *S) TestGuessingCommandGuesserNonNil(c *gocheck.C) {
@@ -158,14 +164,16 @@ func (s *S) TestGuessingCommandWithoutFlagDefined(c *gocheck.C) {
 }
 
 func (s *S) TestGuessingCommandFailToGuess(c *gocheck.C) {
-	fake := &testing.FailingFakeGuesser{}
+	fake := &testing.FailingFakeGuesser{ErrorMessage: "Something's always wrong"}
 	g := GuessingCommand{G: fake}
 	name, err := g.Guess()
 	c.Assert(name, gocheck.Equals, "")
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, `tsuru wasn't able to guess the name of the app.
 
-Use the --app flag to specify it.`)
+Use the --app flag to specify it.
+
+Something's always wrong`)
 	pwd, err := os.Getwd()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(fake.HasGuess(pwd), gocheck.Equals, true)

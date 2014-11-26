@@ -69,6 +69,14 @@ func (c *UnauthorizedErrorCommand) Run(context *Context, client *Client) error {
 	return &tsuruErrors.HTTP{Code: http.StatusUnauthorized, Message: "my error"}
 }
 
+type UnauthorizedLoginErrorCommand struct {
+	UnauthorizedErrorCommand
+}
+
+func (c *UnauthorizedLoginErrorCommand) Info() *Info {
+	return &Info{Name: "login"}
+}
+
 type CommandWithFlags struct {
 	fs      *gnuflag.FlagSet
 	age     int
@@ -219,6 +227,12 @@ func (s *S) TestManagerRunWithHTTPUnauthorizedError(c *gocheck.C) {
 	manager.Register(&UnauthorizedErrorCommand{})
 	manager.Run([]string{"unauthorized-error"})
 	c.Assert(manager.stderr.(*bytes.Buffer).String(), gocheck.Equals, `Error: You're not authenticated or your session has expired. Please use "login" command for authentication.`+"\n")
+}
+
+func (s *S) TestManagerRunLoginWithHTTPUnauthorizedError(c *gocheck.C) {
+	manager.Register(&UnauthorizedLoginErrorCommand{})
+	manager.Run([]string{"login"})
+	c.Assert(manager.stderr.(*bytes.Buffer).String(), gocheck.Equals, "Error: my error\n")
 }
 
 func (s *S) TestManagerRunWithFlags(c *gocheck.C) {

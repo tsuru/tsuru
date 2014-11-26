@@ -12,9 +12,11 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"strings"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/gandalf/testing"
+	"gopkg.in/mgo.v2"
 	"launchpad.net/gocheck"
 )
 
@@ -105,4 +107,22 @@ func writeHomeFile(c *gocheck.C, filename string, content []byte) []string {
 	f.Write(content)
 	f.Close()
 	return recover
+}
+
+func ClearAllCollections(db *mgo.Database) error {
+	colls, err := db.CollectionNames()
+	if err != nil {
+		return err
+	}
+	for _, collName := range colls {
+		if strings.Index(collName, "system.") != -1 {
+			continue
+		}
+		coll := db.C(collName)
+		_, err = coll.RemoveAll(nil)
+		if err != nil {
+			coll.DropCollection()
+		}
+	}
+	return nil
 }

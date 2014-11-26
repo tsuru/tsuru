@@ -5,7 +5,6 @@
 package cloudstack
 
 import (
-	"encoding/base64"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -29,38 +28,6 @@ func (s *cloudstackSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("iaas:cloudstack:url", "test")
 }
 
-func (s *cloudstackSuite) TestReadUserDataDefault(c *gocheck.C) {
-	var cs CloudstackIaaS
-	userData, err := cs.readUserData()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(userData, gocheck.Equals, base64.StdEncoding.EncodeToString([]byte(iaas.UserData)))
-}
-
-func (s *cloudstackSuite) TestReadUserData(c *gocheck.C) {
-	var cs CloudstackIaaS
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "abc def ghi")
-	}))
-	defer server.Close()
-	config.Set("iaas:cloudstack:user-data", server.URL)
-	defer config.Unset("iaas:cloudstack:user-data")
-	userData, err := cs.readUserData()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(userData, gocheck.Equals, base64.StdEncoding.EncodeToString([]byte("abc def ghi")))
-}
-
-func (s *cloudstackSuite) TestReadUserDataError(c *gocheck.C) {
-	var cs CloudstackIaaS
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-	defer server.Close()
-	config.Set("iaas:cloudstack:user-data", server.URL)
-	defer config.Unset("iaas:cloudstack:user-data")
-	_, err := cs.readUserData()
-	c.Assert(err, gocheck.NotNil)
-}
-
 func (s *cloudstackSuite) TestCreateMachine(c *gocheck.C) {
 	var calls []string
 	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -80,7 +47,7 @@ func (s *cloudstackSuite) TestCreateMachine(c *gocheck.C) {
 	}))
 	defer fakeServer.Close()
 	config.Set("iaas:cloudstack:url", fakeServer.URL)
-	var cs CloudstackIaaS
+	cs := NewCloudstackIaaS()
 	params := map[string]string{
 		"projectid":         "val",
 		"networkids":        "val",
@@ -111,7 +78,7 @@ func (s *cloudstackSuite) TestCreateMachineAsyncFailure(c *gocheck.C) {
 	}))
 	defer fakeServer.Close()
 	config.Set("iaas:cloudstack:url", fakeServer.URL)
-	var cs CloudstackIaaS
+	cs := NewCloudstackIaaS()
 	params := map[string]string{
 		"projectid":         "val",
 		"networkids":        "val",
@@ -125,16 +92,16 @@ func (s *cloudstackSuite) TestCreateMachineAsyncFailure(c *gocheck.C) {
 }
 
 func (s *cloudstackSuite) TestCreateMachineValidateParams(c *gocheck.C) {
-	var cs CloudstackIaaS
+	cs := NewCloudstackIaaS()
 	params := map[string]string{
 		"name": "something",
 	}
 	_, err := cs.CreateMachine(params)
-	c.Assert(err, gocheck.ErrorMatches, "param \"projectid\" is mandatory")
+	c.Assert(err, gocheck.ErrorMatches, "param \"networkids\" is mandatory")
 }
 
 func (s *cloudstackSuite) TestBuildUrlToCloudstack(c *gocheck.C) {
-	var cs CloudstackIaaS
+	cs := NewCloudstackIaaS()
 	params := map[string]string{"atest": "2"}
 	urlBuilded, err := cs.buildUrl("commandTest", params)
 	c.Assert(err, gocheck.IsNil)
@@ -177,7 +144,7 @@ func (s *cloudstackSuite) TestDeleteMachine(c *gocheck.C) {
 	}))
 	defer fakeServer.Close()
 	config.Set("iaas:cloudstack:url", fakeServer.URL)
-	var cs CloudstackIaaS
+	cs := NewCloudstackIaaS()
 	machine := iaas.Machine{Id: "myMachineId", CreationParams: map[string]string{"projectid": "projid"}}
 	err := cs.DeleteMachine(&machine)
 	c.Assert(err, gocheck.IsNil)
@@ -212,7 +179,7 @@ func (s *cloudstackSuite) TestDeleteMachineAsyncFail(c *gocheck.C) {
 	}))
 	defer fakeServer.Close()
 	config.Set("iaas:cloudstack:url", fakeServer.URL)
-	var cs CloudstackIaaS
+	cs := NewCloudstackIaaS()
 	machine := iaas.Machine{Id: "myMachineId", CreationParams: map[string]string{"projectid": "projid"}}
 	err := cs.DeleteMachine(&machine)
 	c.Assert(err, gocheck.ErrorMatches, ".*my awesome err.*")
@@ -229,7 +196,7 @@ func (s *cloudstackSuite) TestDeleteMachineError(c *gocheck.C) {
 	}))
 	config.Set("iaas:cloudstack:url", server.URL)
 	defer server.Close()
-	var cs CloudstackIaaS
+	cs := NewCloudstackIaaS()
 	machine := iaas.Machine{Id: "myMachineId"}
 	err := cs.DeleteMachine(&machine)
 	c.Assert(err, gocheck.ErrorMatches, ".*Unexpected response code.*")
@@ -237,33 +204,17 @@ func (s *cloudstackSuite) TestDeleteMachineError(c *gocheck.C) {
 
 func (s *cloudstackSuite) TestDeleteMachineErrorNoServer(c *gocheck.C) {
 	config.Set("iaas:cloudstack:url", "http://invalidurl.invalid.invalid")
-	var cs CloudstackIaaS
+	cs := NewCloudstackIaaS()
 	machine := iaas.Machine{Id: "myMachineId"}
 	err := cs.DeleteMachine(&machine)
 	c.Assert(err, gocheck.ErrorMatches, ".*no such host.*")
 }
 
 func (s *cloudstackSuite) TestClone(c *gocheck.C) {
-	var cs CloudstackIaaS
+	cs := NewCloudstackIaaS()
 	clonned := cs.Clone("something")
-	c.Assert(clonned, gocheck.FitsTypeOf, &cs)
+	c.Assert(clonned, gocheck.FitsTypeOf, cs)
 	clonnedCS, _ := clonned.(*CloudstackIaaS)
-	c.Assert(cs.iaasName, gocheck.Equals, "")
-	c.Assert(clonnedCS.iaasName, gocheck.Equals, "something")
-}
-
-func (s *cloudstackSuite) TestGetConfigString(c *gocheck.C) {
-	var cs CloudstackIaaS
-	config.Set("iaas:cloudstack:url", "default_url")
-	val, err := cs.getConfigString("url")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(val, gocheck.Equals, "default_url")
-	cs2 := cs.Clone("something").(*CloudstackIaaS)
-	val, err = cs2.getConfigString("url")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(val, gocheck.Equals, "default_url")
-	config.Set("iaas:custom:something:url", "custom_url")
-	val, err = cs2.getConfigString("url")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(val, gocheck.Equals, "custom_url")
+	c.Assert(cs.base.IaaSName, gocheck.Equals, "")
+	c.Assert(clonnedCS.base.IaaSName, gocheck.Equals, "something")
 }

@@ -71,7 +71,7 @@ func (s *DeploySuite) SetUpSuite(c *gocheck.C) {
 
 func (s *DeploySuite) TearDownSuite(c *gocheck.C) {
 	defer s.conn.Close()
-	s.conn.Apps().Database.DropDatabase()
+	testing.ClearAllCollections(s.conn.Apps().Database)
 }
 
 func (s *DeploySuite) TestDeployHandler(c *gocheck.C) {

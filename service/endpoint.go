@@ -102,15 +102,17 @@ func (c *Client) Destroy(instance *ServiceInstance) error {
 	return err
 }
 
-func (c *Client) Bind(instance *ServiceInstance, app bind.App, unit bind.Unit) (map[string]string, error) {
-	log.Debugf("Calling bind of instance %q and unit %q at %q API",
-		instance.Name, unit.GetIp(), instance.ServiceName)
+func (c *Client) BindApp(instance *ServiceInstance, app bind.App) (map[string]string, error) {
+	log.Debugf("Calling bind of instance %q and %q app at %q API",
+		instance.Name, app.GetName(), instance.ServiceName)
 	var resp *http.Response
 	params := map[string][]string{
-		"unit-host": {unit.GetIp()},
-		"app-host":  {app.GetIp()},
+		"app-host": {app.GetIp()},
 	}
-	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind", "POST", params)
+	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind-app", "POST", params)
+	if resp != nil && resp.StatusCode == http.StatusNotFound {
+		resp, err = c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind", "POST", params)
+	}
 	if err != nil {
 		if m, _ := regexp.MatchString("", err.Error()); m {
 			return nil, fmt.Errorf("%s api is down.", instance.Name)
@@ -128,18 +130,60 @@ func (c *Client) Bind(instance *ServiceInstance, app bind.App, unit bind.Unit) (
 	if resp.StatusCode == http.StatusPreconditionFailed {
 		return nil, &errors.HTTP{Code: resp.StatusCode, Message: "You cannot bind any app to this service instance because it is not ready yet."}
 	}
-	msg := "Failed to bind instance " + instance.Name + " to the unit " + unit.GetIp() + ": " + c.buildErrorMessage(err, resp)
+	msg := fmt.Sprintf("Failed to bind the instance %q to the app %q: %s", instance.Name, app.GetName(), c.buildErrorMessage(err, resp))
 	log.Error(msg)
 	return nil, &errors.HTTP{Code: http.StatusInternalServerError, Message: msg}
 }
 
-func (c *Client) Unbind(instance *ServiceInstance, app bind.App, unit bind.Unit) error {
-	log.Debug("Attempting to call unbind of service instance " + instance.Name + " and unit " + unit.GetIp() + " at " + instance.ServiceName + " api")
+func (c *Client) BindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error {
+	log.Debugf("Calling bind of instance %q and %q unit at %q API",
+		instance.Name, unit.GetIp(), instance.ServiceName)
+	var resp *http.Response
+	params := map[string][]string{
+		"app-host":  {app.GetIp()},
+		"unit-host": {unit.GetIp()},
+	}
+	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier()+"/bind", "POST", params)
+	if err != nil {
+		if m, _ := regexp.MatchString("", err.Error()); m {
+			return fmt.Errorf("%s api is down.", instance.Name)
+		}
+		return err
+	}
+	if resp.StatusCode == http.StatusPreconditionFailed {
+		return &errors.HTTP{Code: resp.StatusCode, Message: "You cannot bind any app to this service instance because it is not ready yet."}
+	}
+	if resp.StatusCode > 299 {
+		msg := fmt.Sprintf("Failed to bind the instance %q to the unit %q: %s", instance.Name, unit.GetIp(), c.buildErrorMessage(err, resp))
+		log.Error(msg)
+		return &errors.HTTP{Code: http.StatusInternalServerError, Message: msg}
+	}
+	return nil
+}
+
+func (c *Client) UnbindApp(instance *ServiceInstance, app bind.App) error {
+	log.Debugf("Calling unbind of service instance %q and app %q at %q", instance.Name, app.GetName(), instance.ServiceName)
+	var resp *http.Response
+	url := "/resources/" + instance.GetIdentifier() + "/bind-app"
+	params := map[string][]string{
+		"app-host": {app.GetIp()},
+	}
+	resp, err := c.issueRequest(url, "DELETE", params)
+	if err == nil && resp.StatusCode > 299 {
+		msg := fmt.Sprintf("Failed to unbind (%q): %s", url, c.buildErrorMessage(err, resp))
+		log.Error(msg)
+		return &errors.HTTP{Code: http.StatusInternalServerError, Message: msg}
+	}
+	return err
+}
+
+func (c *Client) UnbindUnit(instance *ServiceInstance, app bind.App, unit bind.Unit) error {
+	log.Debugf("Calling unbind of service instance %q and unit %q at %q", instance.Name, unit.GetIp(), instance.ServiceName)
 	var resp *http.Response
 	url := "/resources/" + instance.GetIdentifier() + "/bind"
 	params := map[string][]string{
-		"unit-host": {unit.GetIp()},
 		"app-host":  {app.GetIp()},
+		"unit-host": {unit.GetIp()},
 	}
 	resp, err := c.issueRequest(url, "DELETE", params)
 	if err == nil && resp.StatusCode > 299 {

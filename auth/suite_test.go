@@ -87,7 +87,7 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
-	err = conn.Apps().Database.DropDatabase()
+	err = ttesting.ClearAllCollections(conn.Apps().Database)
 	c.Assert(err, gocheck.IsNil)
 	s.server.Stop()
 }

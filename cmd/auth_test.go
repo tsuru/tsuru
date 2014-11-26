@@ -796,3 +796,81 @@ func (s *S) TestSchemeInfoInvalidData(c *gocheck.C) {
 	_, err := schemeInfo()
 	c.Assert(err, gocheck.NotNil)
 }
+
+func (s *S) TestShowAPITokenRun(c *gocheck.C) {
+	var called bool
+	trans := &ttesting.ConditionalTransport{
+		Transport: ttesting.Transport{Message: `"23iou32nd3i2udnu23jd"`, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			called = true
+			return req.Method == "GET" && req.URL.Path == "/users/api-key"
+		},
+	}
+	expected := `API key: 23iou32nd3i2udnu23jd
+`
+	client := NewClient(&http.Client{Transport: trans}, nil, manager)
+	err := (&showAPIToken{}).Run(&Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(called, gocheck.Equals, true)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestShowAPITokenRunWithNoContent(c *gocheck.C) {
+	client := NewClient(&http.Client{Transport: &ttesting.Transport{Message: "", Status: http.StatusNoContent}}, nil, manager)
+	err := (&showAPIToken{}).Run(&Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, "")
+}
+
+func (s *S) TestShowAPITokenInfo(c *gocheck.C) {
+	expected := &Info{
+		Name:    "token-show",
+		Usage:   "token-show",
+		Desc:    "Show API token user. If him does not have a key, it is generated.",
+		MinArgs: 0,
+	}
+	c.Assert((&showAPIToken{}).Info(), gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestTShowAPITokenIsACommand(c *gocheck.C) {
+	var _ Command = &showAPIToken{}
+}
+
+func (s *S) TestRegenerateAPITokenRun(c *gocheck.C) {
+	var called bool
+	trans := &ttesting.ConditionalTransport{
+		Transport: ttesting.Transport{Message: `"23iou32nd3i2udnu23jd"`, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			called = true
+			return req.Method == "POST" && req.URL.Path == "/users/api-key"
+		},
+	}
+	expected := `Your new API key is: 23iou32nd3i2udnu23jd
+`
+	client := NewClient(&http.Client{Transport: trans}, nil, manager)
+	err := (&regenerateAPIToken{}).Run(&Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(called, gocheck.Equals, true)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestRegenerateAPITokenRunWithNoContent(c *gocheck.C) {
+	client := NewClient(&http.Client{Transport: &ttesting.Transport{Message: "", Status: http.StatusNoContent}}, nil, manager)
+	err := (&regenerateAPIToken{}).Run(&Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}, client)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, "")
+}
+
+func (s *S) TestRegenerateAPITokenInfo(c *gocheck.C) {
+	expected := &Info{
+		Name:    "token-regenerate",
+		Usage:   "token-regenerate",
+		Desc:    "Generates a new API key. If there is already a key, it is replaced.",
+		MinArgs: 0,
+	}
+	c.Assert((&regenerateAPIToken{}).Info(), gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestTRegenerateAPITokenIsACommand(c *gocheck.C) {
+	var _ Command = &regenerateAPIToken{}
+}

@@ -67,18 +67,9 @@ func addNodeForParams(params map[string]string, isRegister bool) (map[string]str
 		address, _ = params["address"]
 		delete(params, "address")
 	} else {
-		iaasName, _ := params["iaas"]
-		desc, err := iaas.Describe(iaasName)
-		if err != nil {
-			return response, err
-		}
+		desc, _ := iaas.Describe(params["iaas"])
 		response["description"] = desc
-		var m *iaas.Machine
-		if iaasName != "" {
-			m, err = iaas.CreateMachineForIaaS(iaasName, params)
-		} else {
-			m, err = iaas.CreateMachine(params)
-		}
+		m, err := iaas.CreateMachine(params)
 		if err != nil {
 			return response, err
 		}

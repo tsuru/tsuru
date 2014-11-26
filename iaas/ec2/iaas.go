@@ -6,27 +6,37 @@ package ec2
 
 import (
 	"fmt"
+	"strconv"
 	"time"
 
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
 	"launchpad.net/goamz/aws"
 	"launchpad.net/goamz/ec2"
 )
 
-const maxWaitTime = time.Duration(1 * time.Minute)
+const (
+	defaultRegion = "us-east-1"
+)
 
 func init() {
-	iaas.RegisterIaasProvider("ec2", &EC2IaaS{})
+	iaas.RegisterIaasProvider("ec2", NewEC2IaaS())
+}
+
+type EC2IaaS struct {
+	base iaas.UserDataIaaS
+}
+
+func NewEC2IaaS() *EC2IaaS {
+	return &EC2IaaS{base: iaas.UserDataIaaS{NamedIaaS: iaas.NamedIaaS{BaseIaaSName: "ec2"}}}
 }
 
 func (i *EC2IaaS) createEC2Handler(region aws.Region) (*ec2.EC2, error) {
-	keyId, err := i.getConfigString("key-id")
+	keyId, err := i.base.GetConfigString("key-id")
 	if err != nil {
 		return nil, err
 	}
-	secretKey, err := i.getConfigString("secret-key")
+	secretKey, err := i.base.GetConfigString("secret-key")
 	if err != nil {
 		return nil, err
 	}
@@ -34,11 +44,16 @@ func (i *EC2IaaS) createEC2Handler(region aws.Region) (*ec2.EC2, error) {
 	return ec2.New(auth, region), nil
 }
 
-func waitForDnsName(ec2Inst *ec2.EC2, instance *ec2.Instance) (*ec2.Instance, error) {
+func (i *EC2IaaS) waitForDnsName(ec2Inst *ec2.EC2, instance *ec2.Instance) (*ec2.Instance, error) {
 	t0 := time.Now()
 	for instance.DNSName == "" {
+		rawWait, _ := i.base.GetConfigString("wait-timeout")
+		maxWaitTime, _ := strconv.Atoi(rawWait)
+		if maxWaitTime == 0 {
+			maxWaitTime = 300
+		}
 		instId := instance.InstanceId
-		if time.Now().Sub(t0) > maxWaitTime {
+		if time.Now().Sub(t0) > time.Duration(maxWaitTime)*time.Second {
 			return nil, fmt.Errorf("ec2: time out waiting for instance %s to start", instId)
 		}
 		log.Debugf("ec2: waiting for dnsname for instance %s", instId)
@@ -55,10 +70,6 @@ func waitForDnsName(ec2Inst *ec2.EC2, instance *ec2.Instance) (*ec2.Instance, er
 	return instance, nil
 }
 
-type EC2IaaS struct {
-	iaasName string
-}
-
 func (i *EC2IaaS) Describe() string {
 	return `EC2 IaaS required params:
   image=<image id>         Image AMI ID
@@ -71,17 +82,9 @@ Optional params:
 `
 }
 
-func (i *EC2IaaS) getConfigString(name string) (string, error) {
-	val, err := config.GetString(fmt.Sprintf("iaas:custom:%s:%s", i.iaasName, name))
-	if err != nil {
-		val, err = config.GetString(fmt.Sprintf("iaas:ec2:%s", name))
-	}
-	return val, err
-}
-
 func (i *EC2IaaS) Clone(name string) iaas.IaaS {
 	clone := *i
-	clone.iaasName = name
+	clone.base.IaaSName = name
 	return &clone
 }
 
@@ -103,10 +106,10 @@ func (i *EC2IaaS) DeleteMachine(m *iaas.Machine) error {
 }
 
 func (i *EC2IaaS) CreateMachine(params map[string]string) (*iaas.Machine, error) {
-	regionName, ok := params["region"]
-	if !ok {
-		regionName = "us-east-1"
+	if _, ok := params["region"]; !ok {
+		params["region"] = defaultRegion
 	}
+	regionName := params["region"]
 	region, ok := aws.Regions[regionName]
 	if !ok {
 		return nil, fmt.Errorf("region %q not found", regionName)
@@ -119,11 +122,15 @@ func (i *EC2IaaS) CreateMachine(params map[string]string) (*iaas.Machine, error)
 	if !ok {
 		return nil, fmt.Errorf("type param required")
 	}
+	userData, err := i.base.ReadUserData()
+	if err != nil {
+		return nil, err
+	}
 	keyName, _ := params["keyName"]
 	options := ec2.RunInstances{
 		ImageId:      imageId,
 		InstanceType: instanceType,
-		UserData:     []byte(iaas.UserData),
+		UserData:     []byte(userData),
 		MinCount:     1,
 		MaxCount:     1,
 		KeyName:      keyName,
@@ -145,9 +152,10 @@ func (i *EC2IaaS) CreateMachine(params map[string]string) (*iaas.Machine, error)
 	if len(resp.Instances) == 0 {
 		return nil, fmt.Errorf("no instance created")
 	}
-	instance, err := waitForDnsName(ec2Inst, &resp.Instances[0])
+	runInst := &resp.Instances[0]
+	instance, err := i.waitForDnsName(ec2Inst, runInst)
 	if err != nil {
-		ec2Inst.TerminateInstances([]string{instance.InstanceId})
+		ec2Inst.TerminateInstances([]string{runInst.InstanceId})
 		return nil, err
 	}
 	machine := iaas.Machine{

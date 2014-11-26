@@ -160,34 +160,15 @@ var setEnvironVariablesToApp = action.Action{
 			log.Error(msg)
 			return nil, stderrors.New(msg)
 		}
-		units := app.GetUnits()
-		if len(units) == 0 {
-			return nil, nil
+		endpoint, err := si.Service().getClient("production")
+		if err != nil {
+			return nil, err
 		}
-		envsChan := make(chan map[string]string, len(units)+1)
-		errChan := make(chan error, len(units)+1)
-		var wg sync.WaitGroup
-		wg.Add(len(units))
-		for _, unit := range units {
-			go func(unit bind.Unit) {
-				defer wg.Done()
-				vars, err := si.BindUnit(app, unit)
-				if err != nil {
-					errChan <- err
-					return
-				}
-				envsChan <- vars
-			}(unit)
-		}
-		wg.Wait()
-		close(errChan)
-		err, ok := <-errChan
-		if ok {
-			log.Error(err.Error())
+		envs, err := endpoint.BindApp(&si, app)
+		if err != nil {
 			return nil, err
 		}
 		var envVars []bind.EnvVar
-		envs := <-envsChan
 		envVars = make([]bind.EnvVar, 0, len(envs))
 		for k, v := range envs {
 			envVars = append(envVars, bind.EnvVar{
@@ -203,6 +184,7 @@ var setEnvironVariablesToApp = action.Action{
 		app, ok := ctx.Params[0].(bind.App)
 		if !ok {
 			log.Error("First parameter must be a bind.App.")
+			return
 		}
 		result := ctx.FWResult.([]bind.EnvVar)
 		envNames := make([]string, len(result))
@@ -210,5 +192,87 @@ var setEnvironVariablesToApp = action.Action{
 			envNames[k] = envVar.Name
 		}
 		app.UnsetEnvs(envNames, true, nil)
+	},
+}
+
+var setTsuruServices = action.Action{
+	Name: "set-TSURU_SERVICES-env-var",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		si, ok := ctx.Params[1].(ServiceInstance)
+		if !ok {
+			msg := "Second parameter must be a ServiceInstance."
+			log.Error(msg)
+			return nil, stderrors.New(msg)
+		}
+		app, ok := ctx.Params[0].(bind.App)
+		if !ok {
+			msg := "First parameter must be a bind.App."
+			log.Error(msg)
+			return nil, stderrors.New(msg)
+		}
+		envVars := ctx.Previous.([]bind.EnvVar)
+		instance := bind.ServiceInstance{Name: si.Name, Envs: make(map[string]string)}
+		for _, envVar := range envVars {
+			instance.Envs[envVar.Name] = envVar.Value
+		}
+		return instance, app.AddInstance(si.ServiceName, instance)
+	},
+	Backward: func(ctx action.BWContext) {
+		si, ok := ctx.Params[1].(ServiceInstance)
+		if !ok {
+			log.Error("Second parameter must be a ServiceInstance.")
+			return
+		}
+		app, ok := ctx.Params[0].(bind.App)
+		if !ok {
+			log.Error("First parameter must be a bind.App.")
+			return
+		}
+		instance := ctx.FWResult.(bind.ServiceInstance)
+		app.RemoveInstance(si.ServiceName, instance)
+	},
+}
+
+var bindUnitsToServiceInstance = action.Action{
+	Name: "bind-units-to-service-instance",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		si, ok := ctx.Params[1].(ServiceInstance)
+		if !ok {
+			msg := "Second parameter must be a ServiceInstance."
+			log.Error(msg)
+			return nil, stderrors.New(msg)
+		}
+		app, ok := ctx.Params[0].(bind.App)
+		if !ok {
+			msg := "First parameter must be a bind.App."
+			log.Error(msg)
+			return nil, stderrors.New(msg)
+		}
+		units := app.GetUnits()
+		if len(units) == 0 {
+			return nil, nil
+		}
+		errChan := make(chan error, len(units)+1)
+		var wg sync.WaitGroup
+		wg.Add(len(units))
+		for _, unit := range units {
+			go func(unit bind.Unit) {
+				defer wg.Done()
+				err := si.BindUnit(app, unit)
+				if err != nil {
+					errChan <- err
+					return
+				}
+			}(unit)
+		}
+		wg.Wait()
+		close(errChan)
+		if err, ok := <-errChan; ok {
+			log.Error(err.Error())
+			return nil, err
+		}
+		return nil, nil
+	},
+	Backward: func(ctx action.BWContext) {
 	},
 }

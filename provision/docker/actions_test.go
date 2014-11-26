@@ -428,8 +428,11 @@ func (s *S) TestProvisionRemoveOldUnitsForward(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = client.StartContainer(cont.ID, nil)
 	c.Assert(err, gocheck.IsNil)
-	testing.NewFakeApp(cont.AppName, "python", 0)
+	app := testing.NewFakeApp(cont.AppName, "python", 0)
+	unit := cont.asUnit(app)
+	app.BindUnit(&unit)
 	args := changeUnitsPipelineArgs{
+		app:      app,
 		toRemove: []container{*cont},
 	}
 	context := action.FWContext{Params: []interface{}{args}, Previous: []container{}}
@@ -439,6 +442,7 @@ func (s *S) TestProvisionRemoveOldUnitsForward(c *gocheck.C) {
 	c.Assert(resultContainers, gocheck.DeepEquals, []container{})
 	_, err = getContainer(cont.ID)
 	c.Assert(err, gocheck.NotNil)
+	c.Assert(app.HasBind(&unit), gocheck.Equals, false)
 }
 
 func (s *S) TestFollowLogsAndCommitName(c *gocheck.C) {

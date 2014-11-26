@@ -51,7 +51,7 @@ func (s *ConsumptionSuite) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *ConsumptionSuite) TearDownSuite(c *gocheck.C) {
-	s.conn.Apps().Database.DropDatabase()
+	testing.ClearAllCollections(s.conn.Apps().Database)
 }
 
 func (s *ConsumptionSuite) TearDownTest(c *gocheck.C) {

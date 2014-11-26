@@ -58,7 +58,7 @@ func (s *S) SetUpTest(c *gocheck.C) {
 }
 
 func (s *S) TearDownTest(c *gocheck.C) {
-	err := s.conn.Users().Database.DropDatabase()
+	err := ttesting.ClearAllCollections(s.conn.Users().Database)
 	c.Assert(err, gocheck.IsNil)
 	s.conn.Close()
 	cost = 0

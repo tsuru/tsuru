@@ -73,6 +73,8 @@ func BuildBaseManager(name, version, versionHeader string, lookup Lookup) *Manag
 	m.Register(&targetAdd{})
 	m.Register(&targetRemove{})
 	m.Register(&targetSet{})
+	m.Register(&showAPIToken{})
+	m.Register(&regenerateAPIToken{})
 	m.RegisterTopic("target", fmt.Sprintf(targetTopic, name))
 	return m
 }
@@ -166,7 +168,7 @@ func (m *Manager) Run(args []string) {
 	if err != nil {
 		errorMsg := err.Error()
 		httpErr, ok := err.(*errors.HTTP)
-		if ok && httpErr.Code == http.StatusUnauthorized {
+		if ok && httpErr.Code == http.StatusUnauthorized && name != "login" {
 			errorMsg = `You're not authenticated or your session has expired. Please use "login" command for authentication.`
 		}
 		if !strings.HasSuffix(errorMsg, "\n") {
