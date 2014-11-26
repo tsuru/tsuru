@@ -5,6 +5,7 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -136,4 +137,31 @@ func (s *AutoScaleSuite) TestAutoScaleDisable(c *gocheck.C) {
 	err = s.conn.Apps().Find(bson.M{"name": "myApp"}).One(&gotApp)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(gotApp.AutoScaleConfig.Enabled, gocheck.Equals, false)
+}
+
+func (s *AutoScaleSuite) TestAutoScaleConfig(c *gocheck.C) {
+	a := app.App{Name: "myApp", Platform: "Django"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs(a.Name).DropCollection()
+	recorder := httptest.NewRecorder()
+	config := app.AutoScaleConfig{
+		Enabled:  true,
+		MinUnits: 2,
+		MaxUnits: 10,
+	}
+	body, err := json.Marshal(&config)
+	c.Assert(err, gocheck.IsNil)
+	request, err := http.NewRequest("PUT", "/autoscale/myApp", bytes.NewReader(body))
+	request.Header.Add("Content-Type", "application/json")
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	var gotApp app.App
+	err = s.conn.Apps().Find(bson.M{"name": "myApp"}).One(&gotApp)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(gotApp.AutoScaleConfig, gocheck.DeepEquals, &config)
 }

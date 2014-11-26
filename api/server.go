@@ -132,8 +132,9 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Post", "/apps/{app}/customdata", saveCustomDataHandler)
 
 	m.Add("Get", "/autoscale", authorizationRequiredHandler(autoScaleHistoryHandler))
-	m.Add("PUT", "/autoscale/{app}/enable", authorizationRequiredHandler(autoScaleEnable))
-	m.Add("PUT", "/autoscale/{app}/disable", authorizationRequiredHandler(autoScaleDisable))
+	m.Add("Put", "/autoscale/{app}", authorizationRequiredHandler(autoScaleConfig))
+	m.Add("Put", "/autoscale/{app}/enable", authorizationRequiredHandler(autoScaleEnable))
+	m.Add("Put", "/autoscale/{app}/disable", authorizationRequiredHandler(autoScaleDisable))
 
 	m.Add("Get", "/deploys", AdminRequiredHandler(deploysList))
 	m.Add("Get", "/deploys/{deploy}", authorizationRequiredHandler(deployInfo))
