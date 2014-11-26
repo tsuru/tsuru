@@ -175,6 +175,33 @@ func (s *InstanceSuite) TestBindApp(c *gocheck.C) {
 	c.Assert(params, gocheck.DeepEquals, expectedParams)
 }
 
+func (s *InstanceSuite) TestUnbindApp(c *gocheck.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
+	}))
+	defer ts.Close()
+	service := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := service.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Services().RemoveId(service.Name)
+	a := testing.NewFakeApp("myapp", "static", 1)
+	si := ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{a.GetName()},
+	}
+	err = si.Create()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.ServiceInstances().RemoveId(si.Name)
+	instance := bind.ServiceInstance{Name: si.Name}
+	err = a.AddInstance(si.ServiceName, instance)
+	c.Assert(err, gocheck.IsNil)
+	err = si.UnbindApp(a)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(a.GetInstances("mysql"), gocheck.HasLen, 0)
+}
+
 func (s *InstanceSuite) TestServiceInstanceIsABinder(c *gocheck.C) {
 	var _ bind.Binder = &ServiceInstance{}
 }

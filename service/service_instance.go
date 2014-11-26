@@ -207,6 +207,8 @@ func (si *ServiceInstance) UnbindApp(app bind.App) error {
 	if endpoint, err := si.Service().getClient("production"); err == nil {
 		endpoint.UnbindApp(si, app)
 	}
+	instance := bind.ServiceInstance{Name: si.Name}
+	app.RemoveInstance(si.ServiceName, instance)
 	return app.UnsetEnvs(envVars, false, nil)
 }
 
