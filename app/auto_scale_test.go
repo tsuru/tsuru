@@ -331,7 +331,7 @@ func (s *S) TestAutoScaleConfig(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	config := AutoScaleConfig{
-		Enabled: true,
+		Enabled:  true,
 		MinUnits: 2,
 		MaxUnits: 10,
 	}
