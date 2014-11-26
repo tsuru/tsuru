@@ -11,3 +11,4 @@ Services
     usage
     api
     build
+    tsuru-services-env-var
