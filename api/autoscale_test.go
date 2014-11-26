@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
+	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
 
@@ -97,4 +98,23 @@ func (s *AutoScaleSuite) TestAutoScaleHistoryHandlerByApp(c *gocheck.C) {
 	c.Assert(events[0].Type, gocheck.Equals, "increase")
 	c.Assert(events[0].AppName, gocheck.Equals, a.Name)
 	c.Assert(events[0].StartTime, gocheck.Not(gocheck.DeepEquals), time.Time{})
+}
+
+func (s *AutoScaleSuite) TestAutoScaleEnable(c *gocheck.C) {
+	a := app.App{Name: "myApp", Platform: "Django"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs(a.Name).DropCollection()
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("PUT", "/autoscale/myApp/enable", nil)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	var gotApp app.App
+	err = s.conn.Apps().Find(bson.M{"name": "myApp"}).One(&gotApp)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(gotApp.AutoScaleConfig.Enabled, gocheck.Equals, true)
 }

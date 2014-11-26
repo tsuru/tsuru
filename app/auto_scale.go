@@ -197,3 +197,18 @@ func ListAutoScaleHistory(appName string) ([]AutoScaleEvent, error) {
 	}
 	return history, nil
 }
+
+func AutoScaleEnable(app *App) error {
+	if app.AutoScaleConfig == nil {
+		app.AutoScaleConfig = &AutoScaleConfig{}
+	}
+	app.AutoScaleConfig.Enabled = true
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	return conn.Apps().Update(
+		bson.M{"name": app.Name},
+		bson.M{"$set": bson.M{"autoscaleconfig": app.AutoScaleConfig}},
+	)
+}

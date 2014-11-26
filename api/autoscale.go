@@ -20,3 +20,12 @@ func autoScaleHistoryHandler(w http.ResponseWriter, r *http.Request, t auth.Toke
 	}
 	return json.NewEncoder(w).Encode(history)
 }
+
+func autoScaleEnable(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	appName := r.URL.Query().Get(":app")
+	a, err := app.GetByName(appName)
+	if err != nil {
+		return err
+	}
+	return app.AutoScaleEnable(a)
+}

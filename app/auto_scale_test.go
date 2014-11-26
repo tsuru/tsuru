@@ -304,3 +304,13 @@ func (s *S) TestListAutoScaleHistoryByAppName(c *gocheck.C) {
 	c.Assert(events[0].AppName, gocheck.Equals, a.Name)
 	c.Assert(events[0].StartTime, gocheck.Not(gocheck.DeepEquals), time.Time{})
 }
+
+func (s *S) TestAutoScaleEnable(c *gocheck.C) {
+	a := App{Name: "myApp"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = AutoScaleEnable(&a)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(a.AutoScaleConfig.Enabled, gocheck.Equals, true)
+}
