@@ -139,7 +139,8 @@ func removeOldTokens(userEmail string) error {
 		return nil
 	}
 	var tokens []map[string]interface{}
-	err = conn.Tokens().Find(bson.M{"useremail": userEmail}).Select(bson.M{"_id": 1}).Limit(diff).All(&tokens)
+	err = conn.Tokens().Find(bson.M{"useremail": userEmail}).
+		Select(bson.M{"_id": 1}).Sort("creation").Limit(diff).All(&tokens)
 	if err != nil {
 		return nil
 	}
