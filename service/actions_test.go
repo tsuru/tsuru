@@ -354,3 +354,57 @@ func (s *S) TestSetEnvironVariablesToAppBackward(c *gocheck.C) {
 	setEnvironVariablesToApp.Backward(bwCtx)
 	c.Assert(a.Envs(), gocheck.DeepEquals, map[string]bind.EnvVar{})
 }
+
+func (s *S) TestSetTsuruServicesName(c *gocheck.C) {
+	c.Assert(setTsuruServices.Name, gocheck.Equals, "set-TSURU_SERVICES-env-var")
+}
+
+func (s *S) TestSetTsuruServicesForward(c *gocheck.C) {
+	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
+	a := testing.NewFakeApp("myapp", "static", 1)
+	ctx := action.FWContext{
+		Params:   []interface{}{a, si},
+		Previous: []bind.EnvVar{{Name: "DATABASE_NAME", Value: "mydb"}, {Name: "DATABASE_USER", Value: "root"}},
+	}
+	result, err := setTsuruServices.Forward(ctx)
+	c.Assert(err, gocheck.IsNil)
+	instance := bind.ServiceInstance{
+		Name: "my-mysql",
+		Envs: map[string]string{"DATABASE_NAME": "mydb", "DATABASE_USER": "root"},
+	}
+	c.Assert(result, gocheck.DeepEquals, instance)
+	instances := a.GetInstances("mysql")
+	c.Assert(instances, gocheck.DeepEquals, []bind.ServiceInstance{instance})
+}
+
+func (s *S) TestSetTsuruServicesForwardWrongFirstParameter(c *gocheck.C) {
+	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
+	ctx := action.FWContext{Params: []interface{}{"something", si}}
+	_, err := setTsuruServices.Forward(ctx)
+	c.Assert(err.Error(), gocheck.Equals, "First parameter must be a bind.App.")
+}
+
+func (s *S) TestSetTsuruServicesForwardWrongSecondParameter(c *gocheck.C) {
+	a := testing.NewFakeApp("myapp", "python", 1)
+	ctx := action.FWContext{Params: []interface{}{a, "something"}}
+	_, err := setTsuruServices.Forward(ctx)
+	c.Assert(err.Error(), gocheck.Equals, "Second parameter must be a ServiceInstance.")
+}
+
+func (s *S) TestSetTsuruServicesBackward(c *gocheck.C) {
+	instance := bind.ServiceInstance{
+		Name: "my-mysql",
+		Envs: map[string]string{"DATABASE_NAME": "mydb", "DATABASE_USER": "root"},
+	}
+	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
+	a := testing.NewFakeApp("myapp", "static", 1)
+	err := a.AddInstance("mysql", instance)
+	c.Assert(err, gocheck.IsNil)
+	ctx := action.BWContext{
+		Params:   []interface{}{a, si},
+		FWResult: instance,
+	}
+	setTsuruServices.Backward(ctx)
+	instances := a.GetInstances("mysql")
+	c.Assert(instances, gocheck.HasLen, 0)
+}

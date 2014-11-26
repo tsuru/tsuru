@@ -165,6 +165,7 @@ func (si *ServiceInstance) BindApp(app bind.App) error {
 	actions := []*action.Action{
 		&addAppToServiceInstance,
 		&setEnvironVariablesToApp,
+		&setTsuruServices,
 		&bindUnitsToServiceInstance,
 	}
 	pipeline := action.NewPipeline(actions...)

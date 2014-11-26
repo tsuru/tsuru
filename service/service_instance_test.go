@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
@@ -121,6 +122,57 @@ func (s *InstanceSuite) TestRemoveAppReturnsErrorWhenTheAppIsNotBoundToTheInstan
 	err := instance.RemoveApp("app4")
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err, gocheck.ErrorMatches, "^This app is not bound to this service instance.$")
+}
+
+func (s *InstanceSuite) TestBindApp(c *gocheck.C) {
+	oldAddAppToServiceInstance := addAppToServiceInstance
+	oldSetEnvironVariablesToApp := setEnvironVariablesToApp
+	oldSetTsuruServices := setTsuruServices
+	oldBindUnitsToServiceInstance := bindUnitsToServiceInstance
+	defer func() {
+		addAppToServiceInstance = oldAddAppToServiceInstance
+		setEnvironVariablesToApp = oldSetEnvironVariablesToApp
+		setTsuruServices = oldSetTsuruServices
+		bindUnitsToServiceInstance = oldBindUnitsToServiceInstance
+	}()
+	var calls []string
+	var params []interface{}
+	addAppToServiceInstance = action.Action{
+		Forward: func(ctx action.FWContext) (action.Result, error) {
+			calls = append(calls, "addAppToServiceInstance")
+			params = ctx.Params
+			return nil, nil
+		},
+	}
+	setEnvironVariablesToApp = action.Action{
+		Forward: func(ctx action.FWContext) (action.Result, error) {
+			calls = append(calls, "setEnvironVariablesToApp")
+			return nil, nil
+		},
+	}
+	setTsuruServices = action.Action{
+		Forward: func(ctx action.FWContext) (action.Result, error) {
+			calls = append(calls, "setTsuruServices")
+			return nil, nil
+		},
+	}
+	bindUnitsToServiceInstance = action.Action{
+		Forward: func(ctx action.FWContext) (action.Result, error) {
+			calls = append(calls, "bindUnitsToServiceInstance")
+			return nil, nil
+		},
+	}
+	var si ServiceInstance
+	a := testing.NewFakeApp("myapp", "python", 1)
+	err := si.BindApp(a)
+	c.Assert(err, gocheck.IsNil)
+	expectedCalls := []string{
+		"addAppToServiceInstance", "setEnvironVariablesToApp",
+		"setTsuruServices", "bindUnitsToServiceInstance",
+	}
+	expectedParams := []interface{}{a, si}
+	c.Assert(calls, gocheck.DeepEquals, expectedCalls)
+	c.Assert(params, gocheck.DeepEquals, expectedParams)
 }
 
 func (s *InstanceSuite) TestServiceInstanceIsABinder(c *gocheck.C) {
