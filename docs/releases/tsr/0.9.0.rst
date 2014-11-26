@@ -15,15 +15,21 @@ you'll want to be aware of when upgrading from tsr 0.8.0 or older versions.
 What's new in tsr 0.9.0
 =======================
 
-* Now tsuru users can generate an API key to that enables authentication that
-  don't require interaction and never expires. Users can generate a new API key
-  at any time using the command ``tsuru token-regenerate`` to replace the old
-  one. To view the current key that you own, just use the command ``tsuru
-  token-show``.
+* Now tsuru users can generate an API key, enabling authentication with no
+  interactions required and having a token that never expires. Users can
+  generate a new API key at any time using the command ``tsuru token-regenerate`` to
+  replace the old one. To view the current key that you own, just use the
+  command ``tsuru token-show``.
 
 * It's possible to use templates to create machines in the IaaS provider with
   ``docker-node-add``. See :ref:`machine-template-add
   <tsuru_admin_machine_template_add_cmd>` command for more details.
+
+* ``TSURU_SERVICES`` environment variable: this environment variable lists all
+  service instances that the application is bound. This enables binding an
+  application to multiple instances of a service (issue `#991
+  <https://github.com/tsuru/tsuru/issues/991>`_). For more details, check the
+  :doc:`TSURU_SERVICES documentation </services/tsuru-services-env-var>`.
 
 Bug fixes
 =========
@@ -43,6 +49,11 @@ Other improvements in tsr 0.9.0
 
 Backward incompatible changes
 =============================
+
+* Service API flow: the service API flow has changed, splitting the bind
+  process in two steps: binding/unbinding the application and binding/unbinding
+  the units. The old flow is now deprecated (issue `#982
+  <https://github.com/tsuru/tsuru/issues/982>`_).
 
 API changes
 ===========
