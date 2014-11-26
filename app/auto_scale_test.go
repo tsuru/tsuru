@@ -314,3 +314,13 @@ func (s *S) TestAutoScaleEnable(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(a.AutoScaleConfig.Enabled, gocheck.Equals, true)
 }
+
+func (s *S) TestAutoScaleDisable(c *gocheck.C) {
+	a := App{Name: "myApp"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = AutoScaleDisable(&a)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(a.AutoScaleConfig.Enabled, gocheck.Equals, false)
+}

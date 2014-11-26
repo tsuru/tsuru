@@ -29,3 +29,12 @@ func autoScaleEnable(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	}
 	return app.AutoScaleEnable(a)
 }
+
+func autoScaleDisable(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	appName := r.URL.Query().Get(":app")
+	a, err := app.GetByName(appName)
+	if err != nil {
+		return err
+	}
+	return app.AutoScaleDisable(a)
+}

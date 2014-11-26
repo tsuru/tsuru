@@ -212,3 +212,18 @@ func AutoScaleEnable(app *App) error {
 		bson.M{"$set": bson.M{"autoscaleconfig": app.AutoScaleConfig}},
 	)
 }
+
+func AutoScaleDisable(app *App) error {
+	if app.AutoScaleConfig == nil {
+		app.AutoScaleConfig = &AutoScaleConfig{}
+	}
+	app.AutoScaleConfig.Enabled = false
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	return conn.Apps().Update(
+		bson.M{"name": app.Name},
+		bson.M{"$set": bson.M{"autoscaleconfig": app.AutoScaleConfig}},
+	)
+}
