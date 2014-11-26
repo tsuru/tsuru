@@ -51,6 +51,20 @@ func keyToMap(keys []Key) map[string]string {
 	return keysMap
 }
 
+func ListUsers() ([]User, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	var users []User
+	err = conn.Users().Find(nil).All(&users)
+	if err != nil {
+		return nil, err
+	}
+	return users, nil
+}
+
 func GetUserByEmail(email string) (*User, error) {
 	if !validation.ValidateEmail(email) {
 		return nil, &errors.ValidationError{Message: "Invalid email."}

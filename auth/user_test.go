@@ -341,3 +341,9 @@ func (s *S) TestShowAPIKeyWhenAPITokenNotExists(c *gocheck.C) {
 	c.Assert(API_Token, gocheck.Equals, u.APIKey)
 	c.Assert(err, gocheck.IsNil)
 }
+
+func (s *S) TestListAllUsers(c *gocheck.C) {
+	users, err := ListUsers()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(len(users), gocheck.Equals, 1)
+}
