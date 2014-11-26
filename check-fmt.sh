@@ -44,7 +44,8 @@ then
     cat <<END
 ${out}
 END
-    status=1
+    echo
+    echo "WARNING: vet won't break the build, see golang.org/issue/9171"
 fi
 
 rm .vet || true
