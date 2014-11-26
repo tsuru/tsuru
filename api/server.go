@@ -146,6 +146,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Post", "/apps/{appname}/repository/clone", authorizationRequiredHandler(deploy))
 	m.Add("Post", "/apps/{appname}/deploy", authorizationRequiredHandler(deploy))
 
+	m.Add("Get", "/users", AdminRequiredHandler(listUsers))
 	m.Add("Post", "/users", Handler(createUser))
 	m.Add("Get", "/auth/scheme", Handler(authScheme))
 	m.Add("Post", "/auth/login", Handler(login))

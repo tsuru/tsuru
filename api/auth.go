@@ -594,3 +594,11 @@ func showAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	return json.NewEncoder(w).Encode(apiKey)
 }
+
+func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	users, err := auth.ListUsers()
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(users)
+}

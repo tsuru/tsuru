@@ -1984,3 +1984,21 @@ func (s *AuthSuite) TestShowAPITokenForUserWithToken(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(got, gocheck.Equals, "238hd23ubd923hd923j9d23ndibde")
 }
+
+func (s *AuthSuite) TestListUsers(c *gocheck.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	token, err := nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
+	request, err := http.NewRequest("GET", "/users", nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	err = listUsers(recorder, request, token)
+	c.Assert(err, gocheck.IsNil)
+	var users []auth.User
+	err = json.NewDecoder(recorder.Body).Decode(&users)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(len(users), gocheck.Equals, 1)
+	c.Assert(users[0].Email, gocheck.Equals, s.user.Email)
+}
