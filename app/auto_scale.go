@@ -11,10 +11,18 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 	"gopkg.in/mgo.v2/bson"
 )
+
+func init() {
+	autoScaleEnabled, _ := config.GetBool("autoscale")
+	if autoScaleEnabled {
+		go runAutoScale()
+	}
+}
 
 // AutoScaleEvent represents an auto scale event with
 // the scale metadata.
