@@ -10,6 +10,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/router"
+	ttesting "github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
 
@@ -30,7 +31,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
-	s.conn.Collection("router_fake_tests").Database.DropDatabase()
+	ttesting.ClearAllCollections(s.conn.Collection("router_fake_tests").Database)
 }
 
 func (s *S) TestShouldBeRegistered(c *gocheck.C) {

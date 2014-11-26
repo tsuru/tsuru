@@ -45,7 +45,7 @@ func (s *InstanceSuite) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *InstanceSuite) TearDownSuite(c *gocheck.C) {
-	s.conn.Apps().Database.DropDatabase()
+	testing.ClearAllCollections(s.conn.Apps().Database)
 	s.conn.Close()
 }
 

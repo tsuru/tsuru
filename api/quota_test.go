@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/quota"
+	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
@@ -49,7 +50,7 @@ func (s *QuotaSuite) SetUpSuite(c *gocheck.C) {
 func (s *QuotaSuite) TearDownSuite(c *gocheck.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
-	conn.Apps().Database.DropDatabase()
+	testing.ClearAllCollections(conn.Apps().Database)
 }
 
 func (s *QuotaSuite) TestGetUserQuota(c *gocheck.C) {

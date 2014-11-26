@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
+	ttesting "github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
 
@@ -40,7 +41,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 func (s *S) TearDownSuite(c *gocheck.C) {
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
-	conn.Apps().Database.DropDatabase()
+	ttesting.ClearAllCollections(conn.Apps().Database)
 }
 
 func (s *S) TestClear(c *gocheck.C) {

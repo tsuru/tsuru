@@ -51,7 +51,7 @@ func (s *BindSuite) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *BindSuite) TearDownSuite(c *gocheck.C) {
-	s.conn.Apps().Database.DropDatabase()
+	ttesting.ClearAllCollections(s.conn.Apps().Database)
 }
 
 func createTestApp(conn *db.Storage, name, framework string, teams []string) (app.App, error) {

@@ -119,7 +119,7 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 	err := tTesting.ClearAllCollections(coll.Database)
 	c.Assert(err, gocheck.IsNil)
 	tTesting.RollbackFile(s.targetRecover)
-	s.storage.Apps().Database.DropDatabase()
+	tTesting.ClearAllCollections(s.storage.Apps().Database)
 	s.storage.Close()
 	app.Provisioner = s.oldProvisioner
 }

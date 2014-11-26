@@ -126,7 +126,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
-	s.conn.Apps().Database.DropDatabase()
+	tsuruTesting.ClearAllCollections(s.conn.Apps().Database)
 }
 
 func (s *S) TearDownTest(c *gocheck.C) {

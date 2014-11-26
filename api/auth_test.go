@@ -58,7 +58,7 @@ func (s *AuthSuite) SetUpSuite(c *gocheck.C) {
 func (s *AuthSuite) TearDownSuite(c *gocheck.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
-	conn.Apps().Database.DropDatabase()
+	testing.ClearAllCollections(conn.Apps().Database)
 	s.server.Stop()
 }
 

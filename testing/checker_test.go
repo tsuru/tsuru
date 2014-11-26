@@ -44,7 +44,7 @@ func (CheckerSuite) TearDownSuite(c *gocheck.C) {
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
-	conn.Apps().Database.DropDatabase()
+	ClearAllCollections(conn.Apps().Database)
 }
 
 func (CheckerSuite) TestIsRecordedInfo(c *gocheck.C) {

@@ -29,7 +29,7 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
-	conn.Apps().Database.DropDatabase()
+	tTesting.ClearAllCollections(conn.Apps().Database)
 }
 
 type CommandableProvisioner struct {

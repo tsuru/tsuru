@@ -9,6 +9,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
+	ttesting "github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
 
@@ -28,7 +29,7 @@ func (RecSuite) SetUpSuite(c *gocheck.C) {
 func (RecSuite) TearDownSuite(c *gocheck.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
-	conn.Apps().Database.DropDatabase()
+	ttesting.ClearAllCollections(conn.Apps().Database)
 }
 
 func (RecSuite) TestLog(c *gocheck.C) {

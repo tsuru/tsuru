@@ -9,6 +9,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
@@ -28,7 +29,7 @@ func (s *WriterSuite) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *WriterSuite) TearDownSuite(c *gocheck.C) {
-	s.conn.Apps().Database.DropDatabase()
+	testing.ClearAllCollections(s.conn.Apps().Database)
 }
 
 func (s *WriterSuite) TestLogWriter(c *gocheck.C) {

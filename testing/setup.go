@@ -115,10 +115,14 @@ func ClearAllCollections(db *mgo.Database) error {
 		return err
 	}
 	for _, collName := range colls {
-		if strings.Index(collName, ".") != -1 {
+		if strings.Index(collName, "system.") != -1 {
 			continue
 		}
-		db.C(collName).RemoveAll(nil)
+		coll := db.C(collName)
+		_, err = coll.RemoveAll(nil)
+		if err != nil {
+			coll.DropCollection()
+		}
 	}
 	return nil
 }
