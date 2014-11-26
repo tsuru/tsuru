@@ -51,6 +51,7 @@ func keyToMap(keys []Key) map[string]string {
 	return keysMap
 }
 
+// ListUsers list all users registred in tsuru
 func ListUsers() ([]User, error) {
 	conn, err := db.Conn()
 	if err != nil {
