@@ -285,6 +285,7 @@ func (s *S) TestLastScaleEvent(c *gocheck.C) {
 	a := App{Name: "myApp", Platform: "Django"}
 	event1, err := NewAutoScaleEvent(&a, "increase")
 	c.Assert(err, gocheck.IsNil)
+	event1.StartTime = event1.StartTime.Add(-1 * time.Hour)
 	err = event1.update(nil)
 	c.Assert(err, gocheck.IsNil)
 	event2, err := NewAutoScaleEvent(&a, "increase")
