@@ -22,7 +22,7 @@ func hasMetricsEnabled(app *App) bool {
 
 func getLastMetric(app *App, kind string) (float64, error) {
 	host := app.Env["GRAPHITE_HOST"].Value
-	url := fmt.Sprintf("%s/render/?target=keepLastValue(maxSeries(statsite.tsuru.%s.*.*.%s))&from=-10min", host, app.Name, kind)
+	url := fmt.Sprintf("%s/render/?target=keepLastValue(maxSeries(statsite.tsuru.%s.*.*.%s))&from=-10min&format=json", host, app.Name, kind)
 	resp, err := http.Get(url)
 	var data []metrics
 	err = json.NewDecoder(resp.Body).Decode(&data)
