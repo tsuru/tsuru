@@ -31,6 +31,10 @@ What's new in tsr 0.9.0
   <https://github.com/tsuru/tsuru/issues/991>`_). For more details, check the
   :doc:`TSURU_SERVICES documentation </services/tsuru-services-env-var>`.
 
+* auto scale: tsuru now includes an experimental support for auto scale. The auto scale uses the
+  metric system to know when scale.
+  To enable auto scale you should add the ``autoscale: true`` in then ``tsuru.conf``.
+
 Bug fixes
 =========
 
