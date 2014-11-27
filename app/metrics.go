@@ -37,17 +37,6 @@ func getLastMetric(app *App, kind string) (float64, error) {
 	return 0, errors.New("there is no metrics")
 }
 
-func (app *App) Cpu() (float64, error) {
-	if hasMetricsEnabled(app) {
-		m, err := getLastMetric(app, "cpu_max")
-		if err != nil {
-			return 0, err
-		}
-		return m, nil
-	}
-	return 0, errors.New("metrics disabled")
-}
-
 func (app *App) Metric(kind string) (float64, error) {
 	if hasMetricsEnabled(app) {
 		m, err := getLastMetric(app, kind)
