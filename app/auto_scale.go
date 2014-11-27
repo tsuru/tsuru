@@ -18,7 +18,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-func init() {
+func StartAutoScale() {
 	autoScaleEnabled, _ := config.GetBool("autoscale")
 	if autoScaleEnabled {
 		go runAutoScale()

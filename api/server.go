@@ -236,6 +236,7 @@ func RunServer(dry bool) http.Handler {
 		if err != nil {
 			fatal(err)
 		}
+		app.StartAutoScale()
 		tls, _ := config.GetBool("use-tls")
 		if tls {
 			certFile, err := config.GetString("tls:cert-file")
