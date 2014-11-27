@@ -383,3 +383,47 @@ func (s *S) TestAutoScaleMaxUnits(c *gocheck.C) {
 	c.Assert(events[0].Successful, gocheck.Equals, true)
 	c.Assert(events[0].AutoScaleConfig, gocheck.DeepEquals, newApp.AutoScaleConfig)
 }
+
+func (s *S) TestAutoScaleMinUnits(c *gocheck.C) {
+	h := metricHandler{cpuMax: "10.2"}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	newApp := App{
+		Name:     "myApp",
+		Platform: "Django",
+		Env: map[string]bind.EnvVar{
+			"GRAPHITE_HOST": {
+				Name:   "GRAPHITE_HOST",
+				Value:  ts.URL,
+				Public: true,
+			},
+		},
+		Quota: quota.Unlimited,
+		AutoScaleConfig: &AutoScaleConfig{
+			Increase: Action{Units: 1, Expression: "{cpu_max} > 80"},
+			Decrease: Action{Units: 3, Expression: "{cpu_max} < 20"},
+			Enabled:  true,
+			MinUnits: uint(3),
+		},
+	}
+	err := s.conn.Apps().Insert(newApp)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": newApp.Name})
+	s.provisioner.Provision(&newApp)
+	defer s.provisioner.Destroy(&newApp)
+	s.provisioner.AddUnits(&newApp, 5, nil)
+	err = scaleApplicationIfNeeded(&newApp)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(newApp.Units(), gocheck.HasLen, 3)
+	var events []AutoScaleEvent
+	err = s.conn.AutoScale().Find(nil).All(&events)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(events, gocheck.HasLen, 1)
+	c.Assert(events[0].Type, gocheck.Equals, "decrease")
+	c.Assert(events[0].AppName, gocheck.Equals, newApp.Name)
+	c.Assert(events[0].StartTime, gocheck.Not(gocheck.DeepEquals), time.Time{})
+	c.Assert(events[0].EndTime, gocheck.Not(gocheck.DeepEquals), time.Time{})
+	c.Assert(events[0].Error, gocheck.Equals, "")
+	c.Assert(events[0].Successful, gocheck.Equals, true)
+	c.Assert(events[0].AutoScaleConfig, gocheck.DeepEquals, newApp.AutoScaleConfig)
+}

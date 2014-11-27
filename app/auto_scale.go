@@ -183,7 +183,12 @@ func scaleApplicationIfNeeded(app *App) error {
 		if err != nil {
 			return fmt.Errorf("Error trying to insert auto scale event, auto scale aborted: %s", err.Error())
 		}
-		AutoScaleErr := app.RemoveUnits(app.AutoScaleConfig.Decrease.Units)
+		currentUnits := uint(len(app.Units()))
+		dec := app.AutoScaleConfig.Decrease.Units
+		if currentUnits-dec < app.AutoScaleConfig.MinUnits {
+			dec = currentUnits - app.AutoScaleConfig.MinUnits
+		}
+		AutoScaleErr := app.RemoveUnits(dec)
 		err = evt.update(AutoScaleErr)
 		if err != nil {
 			log.Errorf("Error trying to update auto scale event: %s", err.Error())
