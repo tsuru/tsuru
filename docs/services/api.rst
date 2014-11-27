@@ -144,9 +144,9 @@ service via command line tool:
 
     $ tsuru service-bind mysql_instance --app my_app
 
-tsuru calls the service API to bind an app with an instance via POST on
-``/resources/<service-instance-name>/bind`` (please notice that tsuru does not
-include a trailing slash) with app-host and unit-host, where app-host
+Now, tsuru services has two bind endpoints: ``/resources/<service-instance-name>/bind`` and ``/resources/<service-instance-name>/bind-app``.
+The first endpoint will be called every time an app adds an unit.
+This endpoint is a POST with app-host and unit-host, where app-host
 represents the host to which the app is accessible, and unit-host is the
 address of the unit. Example of request:
 
@@ -163,6 +163,25 @@ address of the unit. Example of request:
     Content-Type: application/x-www-form-urlencoded
 
     app-host=myapp.cloud.tsuru.io&unit-host=10.4.3.2
+
+The second endpoint ``/resources/<service-instance-name>/bind-app`` will be called once
+when an app is binded with a service.
+This endpoint is a POST with app-host, where app-host
+represents the host to which the app is accessible. Example of request:
+
+.. highlight:: text
+
+::
+
+    POST /resources/myinstance/bind-app HTTP/1.1
+    Host: myserviceapi.com
+    User-Agent: Go 1.1 package http
+    Content-Length: 48
+    Accept: application/json
+    Authorization: Basic dXNlcjpwYXNzd29yZA==
+    Content-Type: application/x-www-form-urlencoded
+
+    app-host=myapp.cloud.tsuru.io
 
 The service API should return the following HTTP response code with the
 respective response body:
@@ -206,9 +225,9 @@ the service via command line:
 
     $ tsuru service-unbind mysql_instance --app my_app
 
-tsuru calls the service API to unbind the app from the instance via DELETE on
-``/resources/<service-instance-name>/bind`` (please notice that tsuru
-does not include a trailing slash). Example of request:
+Now, tsuru services has two unbind endpoints: ``/resources/<service-instance-name>/bind`` and ``/resources/<service-instance-name>/bind-app``.
+The first endpoint will be called every time an app removes an unit.
+This endpoint is a DELETE with app-host and unit-host. Example of request:
 
 .. highlight:: text
 
@@ -222,6 +241,23 @@ does not include a trailing slash). Example of request:
     Content-Type: application/x-www-form-urlencoded
 
     app-host=myapp.cloud.tsuru.io&unit-host=10.4.3.2
+
+The second endpoint ``/resources/<service-instance-name>/bind-app`` will be called once
+when an app is unbinded with a service.
+This endpoint is a DELETE with app-host. Example of request:
+
+.. highlight:: text
+
+::
+
+    DELETE /resources/myinstance/bind-app HTTP/1.1
+    Host: myserviceapi.com
+    User-Agent: Go 1.1 package http
+    Accept: application/json
+    Authorization: Basic dXNlcjpwYXNzd29yZA==
+    Content-Type: application/x-www-form-urlencoded
+
+    app-host=myapp.cloud.tsuru.io
 
 The API should return the following HTTP response code with the respective
 response body:
