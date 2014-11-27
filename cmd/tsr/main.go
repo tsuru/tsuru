@@ -20,7 +20,7 @@ const defaultConfigPath = "/etc/tsuru/tsuru.conf"
 var configPath = defaultConfigPath
 
 func buildManager() *cmd.Manager {
-	m := cmd.NewManager("tsr", "0.8.2", "", os.Stdout, os.Stderr, os.Stdin, nil)
+	m := cmd.NewManager("tsr", "0.9.0", "", os.Stdout, os.Stderr, os.Stdin, nil)
 	m.Register(&tsrCommand{Command: &apiCmd{}})
 	m.Register(&tsrCommand{Command: tokenCmd{}})
 	registerProvisionersCommands(m)
