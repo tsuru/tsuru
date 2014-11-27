@@ -60,6 +60,7 @@ func (s *S) TestAutoScaleUp(c *gocheck.C) {
 		AutoScaleConfig: &AutoScaleConfig{
 			Increase: Action{Units: 1, Expression: "{cpu_max} > 80"},
 			Enabled:  true,
+			MaxUnits: uint(10),
 		},
 	}
 	err := s.conn.Apps().Insert(newApp)
@@ -144,6 +145,7 @@ func (s *S) TestRunAutoScaleOnce(c *gocheck.C) {
 		AutoScaleConfig: &AutoScaleConfig{
 			Increase: Action{Units: 1, Expression: "{cpu_max} > 80"},
 			Enabled:  true,
+			MaxUnits: uint(10),
 		},
 	}
 	err := s.conn.Apps().Insert(up)
@@ -338,4 +340,46 @@ func (s *S) TestAutoScaleConfig(c *gocheck.C) {
 	err = SetAutoScaleConfig(&a, &config)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(a.AutoScaleConfig, gocheck.DeepEquals, &config)
+}
+
+func (s *S) TestAutoScaleMaxUnits(c *gocheck.C) {
+	h := metricHandler{cpuMax: "90.2"}
+	ts := httptest.NewServer(&h)
+	defer ts.Close()
+	newApp := App{
+		Name:     "myApp",
+		Platform: "Django",
+		Env: map[string]bind.EnvVar{
+			"GRAPHITE_HOST": {
+				Name:   "GRAPHITE_HOST",
+				Value:  ts.URL,
+				Public: true,
+			},
+		},
+		Quota: quota.Unlimited,
+		AutoScaleConfig: &AutoScaleConfig{
+			Increase: Action{Units: 5, Expression: "{cpu_max} > 80"},
+			Enabled:  true,
+			MaxUnits: 4,
+		},
+	}
+	err := s.conn.Apps().Insert(newApp)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": newApp.Name})
+	s.provisioner.Provision(&newApp)
+	defer s.provisioner.Destroy(&newApp)
+	err = scaleApplicationIfNeeded(&newApp)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(newApp.Units(), gocheck.HasLen, 4)
+	var events []AutoScaleEvent
+	err = s.conn.AutoScale().Find(nil).All(&events)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(events, gocheck.HasLen, 1)
+	c.Assert(events[0].Type, gocheck.Equals, "increase")
+	c.Assert(events[0].AppName, gocheck.Equals, newApp.Name)
+	c.Assert(events[0].StartTime, gocheck.Not(gocheck.DeepEquals), time.Time{})
+	c.Assert(events[0].EndTime, gocheck.Not(gocheck.DeepEquals), time.Time{})
+	c.Assert(events[0].Error, gocheck.Equals, "")
+	c.Assert(events[0].Successful, gocheck.Equals, true)
+	c.Assert(events[0].AutoScaleConfig, gocheck.DeepEquals, newApp.AutoScaleConfig)
 }

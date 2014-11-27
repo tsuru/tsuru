@@ -104,8 +104,8 @@ func (action *Action) value() (float64, error) {
 type AutoScaleConfig struct {
 	Increase Action
 	Decrease Action
-	MinUnits int
-	MaxUnits int
+	MinUnits uint
+	MaxUnits uint
 	Enabled  bool
 }
 
@@ -159,7 +159,12 @@ func scaleApplicationIfNeeded(app *App) error {
 		if err != nil {
 			return fmt.Errorf("Error trying to insert auto scale event, auto scale aborted: %s", err.Error())
 		}
-		AutoScaleErr := app.AddUnits(app.AutoScaleConfig.Increase.Units, nil)
+		currentUnits := uint(len(app.Units()))
+		inc := app.AutoScaleConfig.Increase.Units
+		if currentUnits+inc > app.AutoScaleConfig.MaxUnits {
+			inc = app.AutoScaleConfig.MaxUnits - currentUnits
+		}
+		AutoScaleErr := app.AddUnits(inc, nil)
 		err = evt.update(AutoScaleErr)
 		if err != nil {
 			log.Errorf("Error trying to update auto scale event: %s", err.Error())
