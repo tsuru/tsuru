@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -67,7 +68,7 @@ func (evt *AutoScaleEvent) update(err error) error {
 	return conn.AutoScale().UpdateId(evt.ID, evt)
 }
 
-// Action represents an AutoScale action to increase or decreate the
+// Action represents an AutoScale action to increase or decrease the
 // number of the units.
 type Action struct {
 	Wait       time.Duration
@@ -150,6 +151,11 @@ func scaleApplicationIfNeeded(app *App) error {
 	increaseMetric, _ := app.Metric(app.AutoScaleConfig.Increase.metric())
 	value, _ := app.AutoScaleConfig.Increase.value()
 	if increaseMetric > value {
+		if wait, err := shouldWait(app, app.AutoScaleConfig.Increase.Wait); err != nil {
+			return err
+		} else if wait {
+			return nil
+		}
 		_, err := AcquireApplicationLock(app.Name, InternalAppName, "auto-scale")
 		if err != nil {
 			return err
@@ -164,16 +170,21 @@ func scaleApplicationIfNeeded(app *App) error {
 		if currentUnits+inc > app.AutoScaleConfig.MaxUnits {
 			inc = app.AutoScaleConfig.MaxUnits - currentUnits
 		}
-		AutoScaleErr := app.AddUnits(inc, nil)
-		err = evt.update(AutoScaleErr)
+		addUnitsErr := app.AddUnits(inc, nil)
+		err = evt.update(addUnitsErr)
 		if err != nil {
 			log.Errorf("Error trying to update auto scale event: %s", err.Error())
 		}
-		return AutoScaleErr
+		return addUnitsErr
 	}
 	decreaseMetric, _ := app.Metric(app.AutoScaleConfig.Decrease.metric())
 	value, _ = app.AutoScaleConfig.Decrease.value()
 	if decreaseMetric < value {
+		if wait, err := shouldWait(app, app.AutoScaleConfig.Decrease.Wait); err != nil {
+			return err
+		} else if wait {
+			return nil
+		}
 		_, err := AcquireApplicationLock(app.Name, InternalAppName, "auto-scale")
 		if err != nil {
 			return err
@@ -188,14 +199,41 @@ func scaleApplicationIfNeeded(app *App) error {
 		if currentUnits-dec < app.AutoScaleConfig.MinUnits {
 			dec = currentUnits - app.AutoScaleConfig.MinUnits
 		}
-		AutoScaleErr := app.RemoveUnits(dec)
-		err = evt.update(AutoScaleErr)
+		removeUnitsErr := app.RemoveUnits(dec)
+		err = evt.update(removeUnitsErr)
 		if err != nil {
 			log.Errorf("Error trying to update auto scale event: %s", err.Error())
 		}
-		return AutoScaleErr
+		return removeUnitsErr
 	}
 	return nil
+}
+
+func shouldWait(app *App, waitPeriod time.Duration) (bool, error) {
+	now := time.Now().UTC()
+	lastEvent, err := lastScaleEvent(app.Name)
+	if err != nil && err != mgo.ErrNotFound {
+		return false, err
+	}
+	if err != mgo.ErrNotFound && lastEvent.EndTime.IsZero() {
+		return true, nil
+	}
+	diff := now.Sub(lastEvent.EndTime)
+	if diff > waitPeriod {
+		return false, nil
+	}
+	return true, nil
+}
+
+func lastScaleEvent(appName string) (AutoScaleEvent, error) {
+	var event AutoScaleEvent
+	conn, err := db.Conn()
+	if err != nil {
+		return event, err
+	}
+	defer conn.Close()
+	err = conn.AutoScale().Find(bson.M{"appname": appName}).Sort("-starttime").One(&event)
+	return event, err
 }
 
 func ListAutoScaleHistory(appName string) ([]AutoScaleEvent, error) {
