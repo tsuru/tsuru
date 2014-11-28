@@ -33,3 +33,15 @@ you simply have to call:
 
     tsuru-admin platform-add python --dockerfile https://raw.githubusercontent.com/tsuru/basebuilder/master/python/Dockerfile
 
+
+.. attention::
+
+    If you have more than one docker node, you may use `docker-registry <https://github.com/docker/docker-registry>`_
+    to add and distribute your platforms among your docker nodes.
+
+    You can use the official `docker registry <https://registry.hub.docker.com/>`_ or install it by yourself.
+    To do this you should first have to install `docker-registry <https://github.com/docker/docker-registry>`_ in any
+    server you have. It should have a public ip to communicate with your docker nodes.
+
+    Then you should `add registry address to tsuru.conf <http://docs.tsuru.io/en/latest/reference/config.html#docker-registry>`_.
+
