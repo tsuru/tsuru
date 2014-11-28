@@ -1,6 +1,6 @@
-=======================
+========================
 tsr 0.10.0 release notes
-=======================
+========================
 
 Welcome to tsr 0.10.0!
 
@@ -13,7 +13,7 @@ you'll want to be aware of when upgrading from tsr 0.8.0 or older versions.
 .. _`changes in the API`: `API changes`_
 
 What's new in tsr 0.10.0
-=======================
+========================
 
 * Now tsuru admins can list all users with ``tsuru-admin user-list``.
 
@@ -22,7 +22,7 @@ Bug fixes
 
 
 Other improvements in tsr 0.10.0
-===============================
+================================
 
 Backward incompatible changes
 =============================
