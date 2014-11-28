@@ -340,3 +340,13 @@ This command removes an existing plan, it will no longer be available for newly
 created apps. However, this won't change anything for existing apps that were
 created using the removed plan. They will keep using the same value amount of
 resources described by the plan.
+
+
+user-list
+---------
+
+::
+
+    $ tsuru-admin user-list
+
+This command list all users in tsuru.
