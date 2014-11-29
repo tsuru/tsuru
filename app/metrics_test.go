@@ -58,3 +58,22 @@ func (s *S) TestMetric(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cpu, gocheck.Equals, 8.2)
 }
+
+func (s *S) TestMetricServerDown(c *gocheck.C) {
+	h := metricHandler{cpuMax: "8.2"}
+	ts := httptest.NewServer(&h)
+	newApp := App{
+		Name:     "myApp",
+		Platform: "Django",
+		Env: map[string]bind.EnvVar{
+			"GRAPHITE_HOST": {
+				Name:   "GRAPHITE_HOST",
+				Value:  ts.URL,
+				Public: true,
+			},
+		},
+	}
+	ts.Close()
+	_, err := newApp.Metric("cpu")
+	c.Assert(err, gocheck.Not(gocheck.IsNil))
+}
