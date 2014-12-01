@@ -50,7 +50,7 @@ func NewFakeApp(name, platform string, units int) *FakeApp {
 		units:     make([]provision.Unit, units),
 		instances: make(map[string][]bind.ServiceInstance),
 	}
-	namefmt := "%s/%d"
+	namefmt := "%s-%d"
 	for i := 0; i < units; i++ {
 		app.units[i] = provision.Unit{
 			Name:   fmt.Sprintf(namefmt, name, i),
@@ -552,7 +552,7 @@ func (p *FakeProvisioner) AddUnits(app provision.App, n uint, w io.Writer) ([]pr
 	length := uint(len(pApp.units))
 	for i := uint(0); i < n; i++ {
 		unit := provision.Unit{
-			Name:    fmt.Sprintf("%s/%d", name, pApp.unitLen),
+			Name:    fmt.Sprintf("%s-%d", name, pApp.unitLen),
 			AppName: name,
 			Type:    platform,
 			Status:  provision.StatusStarted,

@@ -25,7 +25,7 @@ var _ = gocheck.Suite(&S{})
 
 func (s *S) TestFakeAppAddUnit(c *gocheck.C) {
 	app := NewFakeApp("jean", "mj", 0)
-	app.AddUnit(provision.Unit{Name: "jean/0"})
+	app.AddUnit(provision.Unit{Name: "jean-0"})
 	c.Assert(app.units, gocheck.HasLen, 1)
 }
 
@@ -292,8 +292,8 @@ func (s *S) TestGetCmds(c *gocheck.C) {
 
 func (s *S) TestGetUnits(c *gocheck.C) {
 	list := []provision.Unit{
-		{"chain-lighting/0", "chain-lighting", "django", "10.10.10.10", provision.StatusStarted},
-		{"chain-lighting/1", "chain-lighting", "django", "10.10.10.15", provision.StatusStarted},
+		{"chain-lighting-0", "chain-lighting", "django", "10.10.10.10", provision.StatusStarted},
+		{"chain-lighting-1", "chain-lighting", "django", "10.10.10.15", provision.StatusStarted},
 	}
 	app := NewFakeApp("chain-lighting", "rush", 1)
 	p := NewFakeProvisioner()
@@ -577,7 +577,7 @@ func (s *S) TestRemoveUnits(c *gocheck.C) {
 	err = p.RemoveUnits(app, 3)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.GetUnits(app), gocheck.HasLen, 2)
-	c.Assert(p.GetUnits(app)[0].Name, gocheck.Equals, "hemispheres/3")
+	c.Assert(p.GetUnits(app)[0].Name, gocheck.Equals, "hemispheres-3")
 }
 
 func (s *S) TestRemoveUnitsTooManyUnits(c *gocheck.C) {
@@ -615,7 +615,7 @@ func (s *S) TestRemoveUnit(c *gocheck.C) {
 	err = p.RemoveUnit(units[0])
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.GetUnits(app), gocheck.HasLen, 1)
-	c.Assert(p.GetUnits(app)[0].Name, gocheck.Equals, "hemispheres/1")
+	c.Assert(p.GetUnits(app)[0].Name, gocheck.Equals, "hemispheres-1")
 }
 
 func (s *S) TestRemoveUnitNotFound(c *gocheck.C) {
