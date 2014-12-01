@@ -225,6 +225,12 @@ type Provisioner interface {
 	RegisterUnit(Unit) error
 }
 
+// InitializableProvisioner is a provisioner that provides an initialization
+// method that should be called when the app is started
+type InitializableProvisioner interface {
+	Initialize() error
+}
+
 // CustomizedDeployPipelineProvisioner is a provisioner with a customized
 // deploy pipeline.
 type CustomizedDeployPipelineProvisioner interface {

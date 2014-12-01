@@ -64,13 +64,18 @@ func buildClusterStorage() (cluster.Storage, error) {
 	return storage, nil
 }
 
-func initDockerCluster() {
+func initDockerCluster() error {
+	cmutex.Lock()
+	defer cmutex.Unlock()
+	if dCluster != nil {
+		return nil
+	}
 	debug, _ := config.GetBool("debug")
 	clusterLog.SetDebug(debug)
 	clusterLog.SetLogger(log.GetStdLogger())
 	clusterStorage, err := buildClusterStorage()
 	if err != nil {
-		panic(err.Error())
+		return err
 	}
 	var nodes []cluster.Node
 	if isSegregateScheduler() {
@@ -80,10 +85,16 @@ func initDockerCluster() {
 			maxMemoryRatio:      float32(maxUsedMemory),
 			totalMemoryMetadata: totalMemoryMetadata,
 		}
-		dCluster, _ = cluster.New(&scheduler, clusterStorage)
+		dCluster, err = cluster.New(&scheduler, clusterStorage)
+		if err != nil {
+			return err
+		}
 	} else {
 		nodes = getDockerServers()
-		dCluster, _ = cluster.New(nil, clusterStorage, nodes...)
+		dCluster, err = cluster.New(nil, clusterStorage, nodes...)
+		if err != nil {
+			return err
+		}
 	}
 	autoHealingNodes, _ := config.GetBool("docker:healing:heal-nodes")
 	if autoHealingNodes {
@@ -115,19 +126,21 @@ func initDockerCluster() {
 	if activeMonitoring > 0 {
 		dCluster.StartActiveMonitoring(activeMonitoring * time.Second)
 	}
+	return nil
 }
 
-var initializeDockerCluster func()
+var initializeDockerCluster func() error
 
 func init() {
 	initializeDockerCluster = initDockerCluster
 }
 
 func dockerCluster() *cluster.Cluster {
-	cmutex.Lock()
-	defer cmutex.Unlock()
-	if dCluster == nil && initializeDockerCluster != nil {
-		initializeDockerCluster()
+	if initializeDockerCluster != nil {
+		err := initializeDockerCluster()
+		if err != nil {
+			panic(err.Error())
+		}
 	}
 	return dCluster
 }

@@ -41,6 +41,10 @@ func getRouter() (router.Router, error) {
 
 type dockerProvisioner struct{}
 
+func (p *dockerProvisioner) Initialize() error {
+	return initDockerCluster()
+}
+
 // Provision creates a route for the container
 func (p *dockerProvisioner) Provision(app provision.App) error {
 	r, err := getRouter()
