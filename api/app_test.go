@@ -825,6 +825,37 @@ func (s *S) TestSetUnitStatusAppNotFound(c *gocheck.C) {
 	c.Check(e.Message, gocheck.Equals, "App not found.")
 }
 
+func (s *S) TestSetUnitStatusDoesntRequireLock(c *gocheck.C) {
+	a := app.App{
+		Name:     "telegram",
+		Platform: "python",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	locked, err := app.AcquireApplicationLock(a.Name, "test", "test")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(locked, gocheck.Equals, true)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs(a.Name).DropCollection()
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 1, nil)
+	unit := a.Units()[0]
+	body := strings.NewReader("status=error")
+	request, err := http.NewRequest("POST", "/apps/telegram/units/"+unit.Name, body)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	unit = a.Units()[0]
+	c.Assert(unit.Status, gocheck.Equals, provision.StatusError)
+}
+
 func (s *S) TestAddTeamToTheApp(c *gocheck.C) {
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
