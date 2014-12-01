@@ -225,6 +225,12 @@ func RunServer(dry bool) http.Handler {
 			fatal(err)
 		}
 		fmt.Printf("Using %q provisioner.\n\n", provisioner)
+		if initializableProvisioner, ok := app.Provisioner.(provision.InitializableProvisioner); ok {
+			err = initializableProvisioner.Initialize()
+			if err != nil {
+				fatal(err)
+			}
+		}
 		scheme, err := getAuthScheme()
 		if err != nil {
 			fmt.Printf("Warning: configuration didn't declare a auth:scheme, using default scheme.\n")
