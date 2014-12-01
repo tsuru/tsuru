@@ -201,7 +201,6 @@ func (c *container) shortID() string {
 // available returns true if the Status is Started or Unreachable.
 func (c *container) available() bool {
 	return c.Status == provision.StatusStarted.String() ||
-		c.Status == provision.StatusUnreachable.String() ||
 		c.Status == provision.StatusStarting.String()
 }
 
@@ -212,6 +211,7 @@ func (c *container) getAddress() string {
 func containerName() string {
 	h := crypto.MD5.New()
 	h.Write([]byte(time.Now().Format(time.RFC3339Nano)))
+	io.CopyN(h, rand.Reader, 10)
 	return fmt.Sprintf("%x", h.Sum(nil))[:20]
 }
 
@@ -307,7 +307,7 @@ func (c *container) networkInfo() (containerNetworkInfo, error) {
 	return netInfo, err
 }
 
-func (c *container) setStatus(status string) error {
+func (c *container) setStatus(status string, updateDB ...bool) error {
 	c.Status = status
 	c.LastStatusUpdate = time.Now().In(time.UTC)
 	updateData := bson.M{
@@ -318,6 +318,9 @@ func (c *container) setStatus(status string) error {
 		c.Status == provision.StatusStarting.String() {
 		c.LastSuccessStatusUpdate = c.LastStatusUpdate
 		updateData["lastsuccessstatusupdate"] = c.LastSuccessStatusUpdate
+	}
+	if len(updateDB) > 0 && !updateDB[0] {
+		return nil
 	}
 	coll := collection()
 	defer coll.Close()
@@ -405,10 +408,6 @@ func start(app provision.App, imageId string, w io.Writer, destinationHosts ...s
 	}
 	c := pipeline.Result().(container)
 	err = c.setImage(imageId)
-	if err != nil {
-		return nil, err
-	}
-	err = c.setStatus(provision.StatusStarting.String())
 	if err != nil {
 		return nil, err
 	}
@@ -552,7 +551,7 @@ func (c *container) stop() error {
 	return nil
 }
 
-func (c *container) start(shouldRestart bool) error {
+func (c *container) start(isDeploy bool) error {
 	port, err := getPort()
 	if err != nil {
 		return err
@@ -562,12 +561,12 @@ func (c *container) start(shouldRestart bool) error {
 	sharedIsolation, _ := config.GetBool("docker:sharedfs:app-isolation")
 	sharedSalt, _ := config.GetString("docker:sharedfs:salt")
 	config := docker.HostConfig{}
-	if shouldRestart {
+	if !isDeploy {
 		config.RestartPolicy = docker.AlwaysRestart()
-	}
-	config.PortBindings = map[docker.Port][]docker.PortBinding{
-		docker.Port(port + "/tcp"): {{HostIP: "", HostPort: ""}},
-		docker.Port("22/tcp"):      {{HostIP: "", HostPort: ""}},
+		config.PortBindings = map[docker.Port][]docker.PortBinding{
+			docker.Port(port + "/tcp"): {{HostIP: "", HostPort: ""}},
+			docker.Port("22/tcp"):      {{HostIP: "", HostPort: ""}},
+		}
 	}
 	if sharedBasedir != "" && sharedMount != "" {
 		if sharedIsolation {
@@ -588,7 +587,11 @@ func (c *container) start(shouldRestart bool) error {
 	if err != nil {
 		return err
 	}
-	return nil
+	initialStatus := provision.StatusStarting.String()
+	if isDeploy {
+		initialStatus = provision.StatusBuilding.String()
+	}
+	return c.setStatus(initialStatus, false)
 }
 
 // logs returns logs for the container.

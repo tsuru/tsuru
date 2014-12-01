@@ -46,7 +46,7 @@ var insertEmptyContainerInDB = action.Action{
 			AppName:    args.app.GetName(),
 			Type:       args.app.GetPlatform(),
 			Name:       contName,
-			Status:     "created",
+			Status:     provision.StatusCreated.String(),
 			Image:      args.imageID,
 			PrivateKey: string(args.privateKey),
 		}
@@ -126,7 +126,7 @@ var startContainer = action.Action{
 		c := ctx.Previous.(container)
 		log.Debugf("starting container %s", c.ID)
 		args := ctx.Params[0].(runContainerActionsArgs)
-		err := c.start(!args.isDeploy)
+		err := c.start(args.isDeploy)
 		if err != nil {
 			log.Errorf("error on start container %s - %s", c.ID, err)
 			return nil, err

@@ -808,7 +808,7 @@ func (s *S) TestProvisionerStart(c *gocheck.C) {
 	expectedPort := dockerContainer.NetworkSettings.Ports["8888/tcp"][0].HostPort
 	c.Assert(container.IP, gocheck.Equals, expectedIP)
 	c.Assert(container.HostPort, gocheck.Equals, expectedPort)
-	c.Assert(container.Status, gocheck.Equals, provision.StatusStarted.String())
+	c.Assert(container.Status, gocheck.Equals, provision.StatusStarting.String())
 	expectedSSHPort := dockerContainer.NetworkSettings.Ports["22/tcp"][0].HostPort
 	c.Assert(container.SSHHostPort, gocheck.Equals, expectedSSHPort)
 }
@@ -1047,7 +1047,7 @@ func (s *S) TestProvisionerUnitsStatus(c *gocheck.C) {
 			ID:       "9930c24f1c4j",
 			AppName:  app.Name,
 			Type:     "python",
-			Status:   provision.StatusDown.String(),
+			Status:   provision.StatusError.String(),
 			IP:       "127.0.0.4",
 			HostPort: "9025",
 		},
@@ -1058,7 +1058,7 @@ func (s *S) TestProvisionerUnitsStatus(c *gocheck.C) {
 	units := p.Units(&app)
 	expected := []provision.Unit{
 		{Name: "9930c24f1c4f", AppName: "myapplication", Type: "python", Status: provision.StatusBuilding},
-		{Name: "9930c24f1c4j", AppName: "myapplication", Type: "python", Status: provision.StatusDown},
+		{Name: "9930c24f1c4j", AppName: "myapplication", Type: "python", Status: provision.StatusError},
 	}
 	c.Assert(units, gocheck.DeepEquals, expected)
 }
@@ -1107,4 +1107,25 @@ func (s *S) TestRegisterUnit(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(dbCont.IP, gocheck.Matches, `\d+\.\d+\.\d+\.\d+`)
 	c.Assert(dbCont.Status, gocheck.Equals, provision.StatusStarted.String())
+}
+
+func (s *S) TestRegisterUnitBuildingContainer(c *gocheck.C) {
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	opts := newContainerOpts{Status: provision.StatusBuilding.String(), AppName: "myawesomeapp"}
+	container, err := s.newContainer(&opts)
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(container)
+	container.IP = "xinvalidx"
+	coll := collection()
+	defer coll.Close()
+	err = coll.Update(bson.M{"id": container.ID}, container)
+	c.Assert(err, gocheck.IsNil)
+	var p dockerProvisioner
+	err = p.RegisterUnit(provision.Unit{Name: container.ID})
+	c.Assert(err, gocheck.IsNil)
+	dbCont, err := getContainer(container.ID)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dbCont.IP, gocheck.Matches, `xinvalidx`)
+	c.Assert(dbCont.Status, gocheck.Equals, provision.StatusBuilding.String())
 }

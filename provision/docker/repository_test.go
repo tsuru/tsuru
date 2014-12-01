@@ -136,17 +136,21 @@ func (s *S) TestListContainersByAppOrderedByStatus(c *gocheck.C) {
 	coll.Insert(
 		container{AppName: "myapp", ID: "0", Status: provision.StatusStarted.String()},
 		container{AppName: "myapp", ID: "1", Status: provision.StatusBuilding.String()},
-		container{AppName: "myapp", ID: "2", Status: provision.StatusUnreachable.String()},
-		container{AppName: "myapp", ID: "3", Status: provision.StatusDown.String()},
+		container{AppName: "myapp", ID: "2", Status: provision.StatusError.String()},
+		container{AppName: "myapp", ID: "3", Status: provision.StatusCreated.String()},
+		container{AppName: "myapp", ID: "4", Status: provision.StatusStopped.String()},
+		container{AppName: "myapp", ID: "5", Status: provision.StatusStarting.String()},
 	)
 	defer coll.RemoveAll(bson.M{"appname": "myapp"})
 	containers, err := listContainersByAppOrderedByStatus("myapp")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(len(containers), gocheck.Equals, 4)
-	c.Assert(containers[0].Status, gocheck.Equals, provision.StatusDown.String())
+	c.Assert(len(containers), gocheck.Equals, 6)
+	c.Assert(containers[0].Status, gocheck.Equals, provision.StatusCreated.String())
 	c.Assert(containers[1].Status, gocheck.Equals, provision.StatusBuilding.String())
-	c.Assert(containers[2].Status, gocheck.Equals, provision.StatusUnreachable.String())
-	c.Assert(containers[3].Status, gocheck.Equals, provision.StatusStarted.String())
+	c.Assert(containers[2].Status, gocheck.Equals, provision.StatusError.String())
+	c.Assert(containers[3].Status, gocheck.Equals, provision.StatusStopped.String())
+	c.Assert(containers[4].Status, gocheck.Equals, provision.StatusStarting.String())
+	c.Assert(containers[5].Status, gocheck.Equals, provision.StatusStarted.String())
 }
 
 func (S) TestcontainerSliceLen(c *gocheck.C) {
@@ -156,37 +160,40 @@ func (S) TestcontainerSliceLen(c *gocheck.C) {
 
 func (S) TestcontainerSliceLess(c *gocheck.C) {
 	containers := containerSlice{
-		container{Name: "b", Status: provision.StatusDown.String()},
+		container{Name: "b", Status: provision.StatusError.String()},
 		container{Name: "d", Status: provision.StatusBuilding.String()},
 		container{Name: "e", Status: provision.StatusStarted.String()},
-		container{Name: "s", Status: provision.StatusUnreachable.String()},
+		container{Name: "s", Status: provision.StatusStarting.String()},
 		container{Name: "z", Status: provision.StatusStopped.String()},
+		container{Name: "p", Status: provision.StatusCreated.String()},
 	}
-	c.Assert(containers.Less(0, 1), gocheck.Equals, true)
+	c.Assert(containers.Less(0, 1), gocheck.Equals, false)
 	c.Assert(containers.Less(1, 2), gocheck.Equals, true)
 	c.Assert(containers.Less(2, 0), gocheck.Equals, false)
 	c.Assert(containers.Less(3, 2), gocheck.Equals, true)
 	c.Assert(containers.Less(3, 1), gocheck.Equals, false)
 	c.Assert(containers.Less(4, 3), gocheck.Equals, true)
 	c.Assert(containers.Less(4, 1), gocheck.Equals, false)
+	c.Assert(containers.Less(5, 1), gocheck.Equals, true)
+	c.Assert(containers.Less(5, 0), gocheck.Equals, true)
 }
 
 func (S) TestcontainerSliceSwap(c *gocheck.C) {
 	containers := containerSlice{
-		container{Name: "b", Status: provision.StatusDown.String()},
+		container{Name: "b", Status: provision.StatusError.String()},
 		container{Name: "f", Status: provision.StatusBuilding.String()},
 		container{Name: "g", Status: provision.StatusStarted.String()},
 	}
 	containers.Swap(0, 1)
 	c.Assert(containers[0].Status, gocheck.Equals, provision.StatusBuilding.String())
-	c.Assert(containers[1].Status, gocheck.Equals, provision.StatusDown.String())
+	c.Assert(containers[1].Status, gocheck.Equals, provision.StatusError.String())
 }
 
 func (S) TestcontainerSliceSort(c *gocheck.C) {
 	containers := containerSlice{
 		container{Name: "f", Status: provision.StatusBuilding.String()},
 		container{Name: "g", Status: provision.StatusStarted.String()},
-		container{Name: "b", Status: provision.StatusDown.String()},
+		container{Name: "b", Status: provision.StatusError.String()},
 	}
 	c.Assert(sort.IsSorted(containers), gocheck.Equals, false)
 	sort.Sort(containers)

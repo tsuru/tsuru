@@ -28,14 +28,12 @@ func (s Status) String() string {
 
 func ParseStatus(status string) (Status, error) {
 	switch status {
+	case "created":
+		return StatusCreated, nil
 	case "building":
 		return StatusBuilding, nil
 	case "error":
 		return StatusError, nil
-	case "down":
-		return StatusDown, nil
-	case "unreachable":
-		return StatusUnreachable, nil
 	case "started":
 		return StatusStarted, nil
 	case "starting":
@@ -46,23 +44,39 @@ func ParseStatus(status string) (Status, error) {
 	return Status(""), ErrInvalidStatus
 }
 
+// Flow:
+//
+// +----------+                           Start          +---------+
+// | Building |                   +---------------------+| Stopped |
+// +----------+                   |                      +---------+
+//       ^                        |                           ^
+//       |                        |                           |
+//  deploy unit                   |                         Stop
+//       |                        |                           |
+//       +                        v       RegisterUnit        +
+//  +---------+  app unit   +----------+  SetUnitStatus  +---------+
+//  | Created | +---------> | Starting | +-------------> | Started |
+//  +---------+             +----------+                 +---------+
+//                                +                         ^ +
+//                                |                         | |
+//                          SetUnitStatus                   | |
+//                                |                         | |
+//                                v                         | |
+//                            +-------+     SetUnitStatus   | |
+//                            | Error | +-------------------+ |
+//                            +-------+ <---------------------+
 const (
-	// StatusBuilding is the status for units being provisined by the
+	// StatusCreated is the initial status of a unit in the database,
+	// it should transition shortly to a more specific status
+	StatusCreated = Status("created")
+
+	// StatusBuilding is the status for units being provisioned by the
 	// provisioner, like in the deployment.
 	StatusBuilding = Status("building")
 
 	// StatusError is the status for units that failed to start, because of
 	// an application error.
 	StatusError = Status("error")
-
-	// StatusDown is the status for units that failed to start, because of
-	// some internal error on tsuru.
-	StatusDown = Status("down")
-
-	// StatusUnreachable is the case where the process is up and running,
-	// but the unit is not reachable. Probably because it's not bound to
-	// the right host ("0.0.0.0") and/or right port ($PORT).
-	StatusUnreachable = Status("unreachable")
 
 	// StatusStarting is set when the container is started in docker.
 	StatusStarting = Status("starting")
@@ -95,7 +109,6 @@ func (u *Unit) GetIp() string {
 // not.
 func (u *Unit) Available() bool {
 	return u.Status == StatusStarted ||
-		u.Status == StatusUnreachable ||
 		u.Status == StatusStarting ||
 		u.Status == StatusError
 }

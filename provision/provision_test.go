@@ -65,10 +65,9 @@ func (ProvisionSuite) TestStatusString(c *gocheck.C) {
 }
 
 func (ProvisionSuite) TestStatuses(c *gocheck.C) {
+	c.Check(StatusCreated.String(), gocheck.Equals, "created")
 	c.Check(StatusBuilding.String(), gocheck.Equals, "building")
 	c.Check(StatusError.String(), gocheck.Equals, "error")
-	c.Check(StatusDown.String(), gocheck.Equals, "down")
-	c.Check(StatusUnreachable.String(), gocheck.Equals, "unreachable")
 	c.Check(StatusStarted.String(), gocheck.Equals, "started")
 	c.Check(StatusStopped.String(), gocheck.Equals, "stopped")
 	c.Check(StatusStarting.String(), gocheck.Equals, "starting")
@@ -80,10 +79,9 @@ func (ProvisionSuite) TestParseStatus(c *gocheck.C) {
 		output Status
 		err    error
 	}{
+		{"created", StatusCreated, nil},
 		{"building", StatusBuilding, nil},
 		{"error", StatusError, nil},
-		{"down", StatusDown, nil},
-		{"unreachable", StatusUnreachable, nil},
 		{"started", StatusStarted, nil},
 		{"stopped", StatusStopped, nil},
 		{"starting", StatusStarting, nil},
@@ -102,11 +100,10 @@ func (ProvisionSuite) TestUnitAvailable(c *gocheck.C) {
 		input    Status
 		expected bool
 	}{
+		{StatusCreated, false},
 		{StatusStarting, true},
 		{StatusStarted, true},
-		{StatusUnreachable, true},
 		{StatusBuilding, false},
-		{StatusDown, false},
 		{StatusError, true},
 	}
 	for _, test := range tests {

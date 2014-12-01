@@ -824,7 +824,6 @@ func (s *S) TestBuildImageNameWithRegistry(c *gocheck.C) {
 
 func (s *S) TestContainerStart(c *gocheck.C) {
 	cont, err := s.newContainer(nil)
-	cont.Status = "pending"
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(cont)
 	client, err := docker.NewClient(s.server.URL())
@@ -843,16 +842,16 @@ func (s *S) TestContainerStart(c *gocheck.C) {
 	dockerContainer, err := client.InspectContainer(cont.ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(dockerContainer.State.Running, gocheck.Equals, false)
-	err = cont.start(true)
+	err = cont.start(false)
 	c.Assert(err, gocheck.IsNil)
 	dockerContainer, err = client.InspectContainer(cont.ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(dockerContainer.State.Running, gocheck.Equals, true)
-	c.Assert(cont.Status, gocheck.Equals, "pending")
+	c.Assert(cont.Status, gocheck.Equals, "starting")
 	c.Assert(restartPolicy, gocheck.Equals, "always")
 }
 
-func (s *S) TestContainerStartWithoutRestart(c *gocheck.C) {
+func (s *S) TestContainerStartDeployContainer(c *gocheck.C) {
 	cont, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(cont)
@@ -867,8 +866,9 @@ func (s *S) TestContainerStartWithoutRestart(c *gocheck.C) {
 		s.server.DefaultHandler().ServeHTTP(w, r)
 	}))
 	defer s.server.CustomHandler(contPath, s.server.DefaultHandler())
-	err = cont.start(false)
+	err = cont.start(true)
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(cont.Status, gocheck.Equals, "building")
 	c.Assert(restartPolicy, gocheck.Equals, "")
 }
 
@@ -879,7 +879,7 @@ func (s *S) TestContainerStartWithoutPort(c *gocheck.C) {
 	oldUser, _ := config.Get("docker:run-cmd:port")
 	defer config.Set("docker:run-cmd:port", oldUser)
 	config.Unset("docker:run-cmd:port")
-	err = cont.start(true)
+	err = cont.start(false)
 	c.Assert(err, gocheck.NotNil)
 }
 
@@ -887,9 +887,9 @@ func (s *S) TestContainerStartStartedUnits(c *gocheck.C) {
 	cont, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(cont)
-	err = cont.start(true)
+	err = cont.start(false)
 	c.Assert(err, gocheck.IsNil)
-	err = cont.start(true)
+	err = cont.start(false)
 	c.Assert(err, gocheck.NotNil)
 }
 
@@ -936,12 +936,12 @@ func (s *S) TestUsePlatformImage(c *gocheck.C) {
 
 func (s *S) TestContainerAvailable(c *gocheck.C) {
 	cases := map[provision.Status]bool{
-		provision.StatusStarting:    true,
-		provision.StatusStarted:     true,
-		provision.StatusUnreachable: true,
-		provision.StatusDown:        false,
-		provision.StatusStopped:     false,
-		provision.StatusBuilding:    false,
+		provision.StatusCreated:  false,
+		provision.StatusStarting: true,
+		provision.StatusStarted:  true,
+		provision.StatusError:    false,
+		provision.StatusStopped:  false,
+		provision.StatusBuilding: false,
 	}
 	for status, expected := range cases {
 		cont := container{Status: status.String()}

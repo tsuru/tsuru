@@ -83,12 +83,12 @@ func (*dockerProvisioner) Start(app provision.App) error {
 		wg.Add(1)
 		go func(c container) {
 			defer wg.Done()
-			err := c.start(true)
+			err := c.start(false)
 			if err != nil {
 				errCh <- err
 				return
 			}
-			c.setStatus(provision.StatusStarted.String())
+			c.setStatus(provision.StatusStarting.String())
 			if info, err := c.networkInfo(); err == nil {
 				fixContainer(&c, info)
 			}
@@ -577,6 +577,9 @@ func (p *dockerProvisioner) RegisterUnit(unit provision.Unit) error {
 	container, err := getContainer(unit.Name)
 	if err != nil {
 		return err
+	}
+	if container.Status == provision.StatusBuilding.String() {
+		return nil
 	}
 	err = container.setStatus(provision.StatusStarted.String())
 	if err != nil {
