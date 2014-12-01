@@ -1716,6 +1716,13 @@ func (s *S) TestAppMarshalJSON(c *gocheck.C) {
 		Deploys:   7,
 		Plan:      Plan{Name: "myplan", Memory: 64, Swap: 128, CpuShare: 100},
 		TeamOwner: "myteam",
+		AutoScaleConfig: &AutoScaleConfig{
+			Increase: Action{Units: 1, Expression: "{cpu} > 80"},
+			Decrease: Action{Units: 1, Expression: "{cpu} < 20"},
+			Enabled:  true,
+			MaxUnits: 10,
+			MinUnits: 2,
+		},
 	}
 	expected := make(map[string]interface{})
 	expected["name"] = "name"
@@ -1730,12 +1737,41 @@ func (s *S) TestAppMarshalJSON(c *gocheck.C) {
 	expected["plan"] = map[string]interface{}{"name": "myplan", "memory": float64(64), "swap": float64(128), "cpushare": float64(100)}
 	expected["teamowner"] = "myteam"
 	expected["ready"] = false
+	expected["autoScaleConfig"] = map[string]interface{}{
+		"increase": map[string]interface{}{
+			"wait":       float64(0),
+			"expression": "{cpu} > 80",
+			"units":      float64(1),
+		},
+		"decrease": map[string]interface{}{
+			"wait":       float64(0),
+			"expression": "{cpu} < 20",
+			"units":      float64(1),
+		},
+		"minUnits": float64(2),
+		"maxUnits": float64(10),
+		"enabled":  true,
+	}
 	data, err := app.MarshalJSON()
 	c.Assert(err, gocheck.IsNil)
 	result := make(map[string]interface{})
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(result, gocheck.DeepEquals, expected)
+	autoScaleConfig := result["autoScaleConfig"].(map[string]interface{})
+	autoScaleConfigExpected := expected["autoScaleConfig"].(map[string]interface{})
+	c.Assert(autoScaleConfig["enabled"], gocheck.Equals, autoScaleConfigExpected["enabled"])
+	c.Assert(autoScaleConfig["minUnits"], gocheck.Equals, autoScaleConfigExpected["minUnits"])
+	c.Assert(autoScaleConfig["maxUnits"], gocheck.Equals, autoScaleConfigExpected["maxUnits"])
+	increase := autoScaleConfig["increase"].(map[string]interface{})
+	increaseExpected := autoScaleConfigExpected["increase"].(map[string]interface{})
+	c.Assert(increase["expression"], gocheck.Equals, increaseExpected["expression"])
+	c.Assert(increase["units"], gocheck.Equals, increaseExpected["units"])
+	c.Assert(increase["wait"], gocheck.Equals, increaseExpected["wait"])
+	decrease := autoScaleConfig["decrease"].(map[string]interface{})
+	decreaseExpected := autoScaleConfigExpected["decrease"].(map[string]interface{})
+	c.Assert(decrease["expression"], gocheck.Equals, decreaseExpected["expression"])
+	c.Assert(decrease["units"], gocheck.Equals, decreaseExpected["units"])
+	c.Assert(decrease["wait"], gocheck.Equals, decreaseExpected["wait"])
 }
 
 func (s *S) TestAppMarshalJSONReady(c *gocheck.C) {
@@ -1762,6 +1798,7 @@ func (s *S) TestAppMarshalJSONReady(c *gocheck.C) {
 	expected["owner"] = "appOwner"
 	expected["deploys"] = float64(7)
 	expected["teamowner"] = "myteam"
+	expected["autoScaleConfig"] = nil
 	expected["plan"] = map[string]interface{}{"name": "myplan", "memory": float64(64), "swap": float64(128), "cpushare": float64(100)}
 	expected["ready"] = true
 	data, err := app.MarshalJSON()

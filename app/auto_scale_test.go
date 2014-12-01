@@ -5,6 +5,7 @@
 package app
 
 import (
+	"encoding/json"
 	"net/http/httptest"
 	"time"
 
@@ -601,4 +602,35 @@ func (s *S) TestAutoScaleMinUnits(c *gocheck.C) {
 	c.Assert(events[0].Error, gocheck.Equals, "")
 	c.Assert(events[0].Successful, gocheck.Equals, true)
 	c.Assert(events[0].AutoScaleConfig, gocheck.DeepEquals, newApp.AutoScaleConfig)
+}
+
+func (s *S) TestAutoScaleConfigMarshalJSON(c *gocheck.C) {
+	conf := &AutoScaleConfig{
+		Increase: Action{Units: 1, Expression: "{cpu} > 80"},
+		Decrease: Action{Units: 1, Expression: "{cpu} < 20"},
+		Enabled:  true,
+		MaxUnits: 10,
+		MinUnits: 2,
+	}
+	expected := map[string]interface{}{
+		"increase": map[string]interface{}{
+			"wait":       float64(0),
+			"expression": "{cpu} > 80",
+			"units":      float64(1),
+		},
+		"decrease": map[string]interface{}{
+			"wait":       float64(0),
+			"expression": "{cpu} < 20",
+			"units":      float64(1),
+		},
+		"minUnits": float64(2),
+		"maxUnits": float64(10),
+		"enabled":  true,
+	}
+	data, err := json.Marshal(conf)
+	c.Assert(err, gocheck.IsNil)
+	result := make(map[string]interface{})
+	err = json.Unmarshal(data, &result)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.DeepEquals, expected)
 }

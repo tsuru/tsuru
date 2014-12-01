@@ -71,9 +71,9 @@ func (evt *AutoScaleEvent) update(err error) error {
 // Action represents an AutoScale action to increase or decrease the
 // number of the units.
 type Action struct {
-	Wait       time.Duration
-	Expression string
-	Units      uint
+	Wait       time.Duration `json:"wait"`
+	Expression string        `json:"expression"`
+	Units      uint          `json:"units"`
 }
 
 func NewAction(expression string, units uint, wait time.Duration) (*Action, error) {
@@ -103,11 +103,11 @@ func (action *Action) value() (float64, error) {
 
 // AutoScaleConfig represents the App configuration for the auto scale.
 type AutoScaleConfig struct {
-	Increase Action
-	Decrease Action
-	MinUnits uint
-	MaxUnits uint
-	Enabled  bool
+	Increase Action `json:"increase"`
+	Decrease Action `json:"decrease"`
+	MinUnits uint   `json:"minUnits"`
+	MaxUnits uint   `json:"maxUnits"`
+	Enabled  bool   `json:"enabled"`
 }
 
 func autoScalableApps() ([]App, error) {

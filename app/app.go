@@ -105,6 +105,7 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["deploys"] = app.Deploys
 	result["teamowner"] = app.TeamOwner
 	result["plan"] = app.Plan
+	result["autoScaleConfig"] = app.AutoScaleConfig
 	return json.Marshal(&result)
 }
 
