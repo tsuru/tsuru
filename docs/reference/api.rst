@@ -102,7 +102,7 @@ Get app environment variables
     * Method: GET
     * URI: /apps/<appname>/env
 
-Returns 200 in case of success, and json in the body returning a dictionary with environment names and values..
+Returns 200 in case of success, and json in the body returning a dictionary with environment names and values.
 
 Example:
 
@@ -748,6 +748,39 @@ Example:
 
     DELETE /users/keys HTTP/1.1
     Body: `{"key":"my-key"}`
+
+Show API key
+************
+    * Method: GET
+    * URI: /users/api-key
+    * Format: json
+
+Returns 200 in case of success, and json in the body with the API key.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    GET /users/api-key HTTP/1.1
+    Body: `{"token": "e275317394fb099f62b3993fd09e5f23b258d55f", "users": "user@email.com"}`
+
+Regenerate API key
+******************
+
+    * Method: POST
+    * URI: /users/api-key
+
+Returns 200 in case of success.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    POST /users/api-key HTTP/1.1
 
 1.8 Teams
 ---------
