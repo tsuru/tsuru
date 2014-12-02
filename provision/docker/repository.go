@@ -44,6 +44,19 @@ func listContainersByApp(appName string) ([]container, error) {
 	return listContainersBy(bson.M{"appname": appName})
 }
 
+func listRunnableContainersByApp(appName string) ([]container, error) {
+	return listContainersBy(bson.M{
+		"appname": appName,
+		"status": bson.M{
+			"$nin": []string{
+				provision.StatusCreated.String(),
+				provision.StatusBuilding.String(),
+				provision.StatusStopped.String(),
+			},
+		},
+	})
+}
+
 // ContainerSlice attaches the methods of sort.Interface to []container, sorting in increasing order.
 type containerSlice []container
 

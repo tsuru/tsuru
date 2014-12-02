@@ -669,6 +669,44 @@ func (s *S) TestProvisionerExecuteCommandNoContainers(c *gocheck.C) {
 	c.Assert(err, gocheck.Equals, provision.ErrEmptyApp)
 }
 
+func (s *S) TestProvisionerExecuteCommandExcludesBuildContainers(c *gocheck.C) {
+	server := newMockSSHServer(c, 5e9)
+	defer server.Shutdown()
+	app := testing.NewFakeApp("starbreaker", "python", 1)
+	container1, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
+	c.Assert(err, gocheck.IsNil)
+	container2, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
+	c.Assert(err, gocheck.IsNil)
+	container3, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
+	c.Assert(err, gocheck.IsNil)
+	container4, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
+	c.Assert(err, gocheck.IsNil)
+	container2.setStatus(provision.StatusCreated.String())
+	container3.setStatus(provision.StatusBuilding.String())
+	container4.setStatus(provision.StatusStopped.String())
+	containers := []*container{
+		container1,
+		container2,
+		container3,
+		container4,
+	}
+	coll := collection()
+	defer coll.Close()
+	for _, c := range containers {
+		defer s.removeTestContainer(c)
+		c.SSHHostPort = server.port
+		c.HostAddr = "localhost"
+		c.PrivateKey = string(fakeServerPrivateKey)
+		c.User = sshUsername()
+		coll.Update(bson.M{"id": c.ID}, c)
+	}
+	var stdout, stderr bytes.Buffer
+	var p dockerProvisioner
+	err = p.ExecuteCommand(&stdout, &stderr, app, "echo x")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(stdout.String(), gocheck.Equals, "x\n")
+}
+
 func (s *S) TestProvisionCollection(c *gocheck.C) {
 	collection := collection()
 	defer collection.Close()

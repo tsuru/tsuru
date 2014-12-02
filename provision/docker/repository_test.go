@@ -248,3 +248,27 @@ func (S) TestListUnresponsiveContainersStopped(c *gocheck.C) {
 	c.Assert(len(result), gocheck.Equals, 1)
 	c.Assert(result[0].ID, gocheck.Equals, "c2")
 }
+
+func (S) TestListRunnableContainersByApp(c *gocheck.C) {
+	var result []container
+	coll := collection()
+	defer coll.Close()
+	coll.Insert(
+		container{Name: "a", AppName: "myapp", Status: provision.StatusCreated.String()},
+		container{Name: "b", AppName: "myapp", Status: provision.StatusBuilding.String()},
+		container{Name: "c", AppName: "myapp", Status: provision.StatusStarting.String()},
+		container{Name: "d", AppName: "myapp", Status: provision.StatusError.String()},
+		container{Name: "e", AppName: "myapp", Status: provision.StatusStarted.String()},
+		container{Name: "f", AppName: "myapp", Status: provision.StatusStopped.String()},
+	)
+	defer coll.RemoveAll(bson.M{"appname": "myapp"})
+	result, err := listRunnableContainersByApp("myapp")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(len(result), gocheck.Equals, 3)
+	var names []string
+	for _, c := range result {
+		names = append(names, c.Name)
+	}
+	sort.Strings(names)
+	c.Assert(names, gocheck.DeepEquals, []string{"c", "d", "e"})
+}

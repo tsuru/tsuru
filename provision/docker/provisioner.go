@@ -438,7 +438,7 @@ func (p *dockerProvisioner) SetUnitStatus(unit provision.Unit, status provision.
 }
 
 func (*dockerProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
-	containers, err := listContainersByApp(app.GetName())
+	containers, err := listRunnableContainersByApp(app.GetName())
 	if err != nil {
 		return err
 	}
@@ -450,7 +450,7 @@ func (*dockerProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provi
 }
 
 func (*dockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
-	containers, err := listContainersByApp(app.GetName())
+	containers, err := listRunnableContainersByApp(app.GetName())
 	if err != nil {
 		return err
 	}
