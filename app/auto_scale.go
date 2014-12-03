@@ -180,6 +180,14 @@ func scaleApplicationIfNeeded(app *App) error {
 	decreaseMetric, _ := app.Metric(app.AutoScaleConfig.Decrease.metric())
 	value, _ = app.AutoScaleConfig.Decrease.value()
 	if decreaseMetric < value {
+		currentUnits := uint(len(app.Units()))
+		minUnits := app.AutoScaleConfig.MinUnits
+		if minUnits == 0 {
+			minUnits = 1
+		}
+		if currentUnits <= minUnits {
+			return nil
+		}
 		if wait, err := shouldWait(app, app.AutoScaleConfig.Decrease.Wait); err != nil {
 			return err
 		} else if wait {
@@ -194,7 +202,6 @@ func scaleApplicationIfNeeded(app *App) error {
 		if err != nil {
 			return fmt.Errorf("Error trying to insert auto scale event, auto scale aborted: %s", err.Error())
 		}
-		currentUnits := uint(len(app.Units()))
 		dec := app.AutoScaleConfig.Decrease.Units
 		if currentUnits-dec < app.AutoScaleConfig.MinUnits {
 			dec = currentUnits - app.AutoScaleConfig.MinUnits
