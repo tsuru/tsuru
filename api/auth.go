@@ -595,10 +595,23 @@ func showAPIToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(apiKey)
 }
 
+type apiUser struct {
+	Email string
+	Teams []string
+}
+
 func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	users, err := auth.ListUsers()
 	if err != nil {
 		return err
 	}
-	return json.NewEncoder(w).Encode(users)
+	apiUsers := make([]apiUser, len(users))
+	for i, user := range users {
+		var teamsNames []string
+		if teams, err := user.Teams(); err == nil {
+			teamsNames = auth.GetTeamsNames(teams)
+		}
+		apiUsers[i] = apiUser{Email: user.Email, Teams: teamsNames}
+	}
+	return json.NewEncoder(w).Encode(apiUsers)
 }

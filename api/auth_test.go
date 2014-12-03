@@ -1996,9 +1996,10 @@ func (s *AuthSuite) TestListUsers(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = listUsers(recorder, request, token)
 	c.Assert(err, gocheck.IsNil)
-	var users []auth.User
+	var users []apiUser
 	err = json.NewDecoder(recorder.Body).Decode(&users)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(len(users), gocheck.Equals, 1)
 	c.Assert(users[0].Email, gocheck.Equals, s.user.Email)
+	c.Assert(users[0].Teams, gocheck.DeepEquals, []string{s.team.Name})
 }
