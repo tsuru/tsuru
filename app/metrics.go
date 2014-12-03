@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 )
 
 type metrics struct {
@@ -22,6 +23,9 @@ func hasMetricsEnabled(app *App) bool {
 
 func getLastMetric(app *App, kind string) (float64, error) {
 	host := app.Env["GRAPHITE_HOST"].Value
+	if !strings.Contains(host, "http") {
+		host = fmt.Sprintf("http://%s", host)
+	}
 	url := fmt.Sprintf("%s/render/?target=keepLastValue(maxSeries(statsite.tsuru.%s.*.*.%s))&from=-10min&format=json", host, app.Name, kind)
 	resp, err := http.Get(url)
 	if err != nil {
