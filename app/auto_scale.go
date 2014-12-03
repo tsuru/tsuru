@@ -151,6 +151,14 @@ func scaleApplicationIfNeeded(app *App) error {
 	increaseMetric, _ := app.Metric(app.AutoScaleConfig.Increase.metric())
 	value, _ := app.AutoScaleConfig.Increase.value()
 	if increaseMetric > value {
+		currentUnits := uint(len(app.Units()))
+		maxUnits := app.AutoScaleConfig.MaxUnits
+		if maxUnits == 0 {
+			maxUnits = 1
+		}
+		if currentUnits >= maxUnits {
+			return nil
+		}
 		if wait, err := shouldWait(app, app.AutoScaleConfig.Increase.Wait); err != nil {
 			return err
 		} else if wait {
@@ -165,7 +173,6 @@ func scaleApplicationIfNeeded(app *App) error {
 		if err != nil {
 			return fmt.Errorf("Error trying to insert auto scale event, auto scale aborted: %s", err.Error())
 		}
-		currentUnits := uint(len(app.Units()))
 		inc := app.AutoScaleConfig.Increase.Units
 		if currentUnits+inc > app.AutoScaleConfig.MaxUnits {
 			inc = app.AutoScaleConfig.MaxUnits - currentUnits
