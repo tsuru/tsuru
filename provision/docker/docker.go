@@ -514,7 +514,7 @@ func (c *container) dialSSH() (*ssh.Client, error) {
 }
 
 func (c *container) exec(stdout, stderr io.Writer, cmd string, args ...string) error {
-	cmds := []string{"/bin/bash -c", cmd}
+	cmds := []string{"/bin/bash", "-c", cmd}
 	cmds = append(cmds, args...)
 	execCreateOpts := docker.CreateExecOptions{
 		AttachStdin:  false,
