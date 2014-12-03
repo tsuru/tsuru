@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"sort"
 	"strings"
 	"time"
@@ -628,37 +627,21 @@ func (s *S) TestProvisionerSetUnitStatusUnitNotFound(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerExecuteCommand(c *gocheck.C) {
-	file, err := ioutil.TempFile("", "tsuru-docker-tests-cmd")
-	c.Assert(err, gocheck.IsNil)
-	defer os.Remove(file.Name())
-	defer file.Close()
-	file.Write([]byte("ashes in the flesh\n"))
-	server := newMockSSHServer(c, 5e9)
-	defer server.Shutdown()
 	app := testing.NewFakeApp("starbreaker", "python", 1)
 	container1, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(container1)
-	container1.SSHHostPort = server.port
-	container1.HostAddr = "localhost"
-	container1.PrivateKey = string(fakeServerPrivateKey)
-	container1.User = sshUsername()
 	coll := collection()
 	defer coll.Close()
 	coll.Update(bson.M{"id": container1.ID}, container1)
 	container2, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(container2)
-	container2.SSHHostPort = server.port
-	container2.HostAddr = "localhost"
-	container2.PrivateKey = string(fakeServerPrivateKey)
-	container2.User = sshUsername()
 	coll.Update(bson.M{"id": container2.ID}, container2)
 	var stdout, stderr bytes.Buffer
 	var p dockerProvisioner
-	err = p.ExecuteCommand(&stdout, &stderr, app, "cat", file.Name())
+	err = p.ExecuteCommand(&stdout, &stderr, app, "ls", "-l")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(stdout.String(), gocheck.Equals, "ashes in the flesh\nashes in the flesh\n")
 }
 
 func (s *S) TestProvisionerExecuteCommandNoContainers(c *gocheck.C) {
@@ -670,8 +653,6 @@ func (s *S) TestProvisionerExecuteCommandNoContainers(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerExecuteCommandExcludesBuildContainers(c *gocheck.C) {
-	server := newMockSSHServer(c, 5e9)
-	defer server.Shutdown()
 	app := testing.NewFakeApp("starbreaker", "python", 1)
 	container1, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, gocheck.IsNil)
@@ -694,17 +675,33 @@ func (s *S) TestProvisionerExecuteCommandExcludesBuildContainers(c *gocheck.C) {
 	defer coll.Close()
 	for _, c := range containers {
 		defer s.removeTestContainer(c)
-		c.SSHHostPort = server.port
-		c.HostAddr = "localhost"
-		c.PrivateKey = string(fakeServerPrivateKey)
-		c.User = sshUsername()
-		coll.Update(bson.M{"id": c.ID}, c)
 	}
 	var stdout, stderr bytes.Buffer
 	var p dockerProvisioner
 	err = p.ExecuteCommand(&stdout, &stderr, app, "echo x")
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(stdout.String(), gocheck.Equals, "x\n")
+}
+
+func (s *S) TestProvisionerExecuteCommandOnce(c *gocheck.C) {
+	app := testing.NewFakeApp("almah", "static", 1)
+	p := dockerProvisioner{}
+	container, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(container)
+	coll := collection()
+	defer coll.Close()
+	coll.Update(bson.M{"id": container.ID}, container)
+	var stdout, stderr bytes.Buffer
+	err = p.ExecuteCommandOnce(&stdout, &stderr, app, "ls", "-l")
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestProvisionerExecuteCommandOnceNoContainers(c *gocheck.C) {
+	var p dockerProvisioner
+	app := testing.NewFakeApp("almah", "static", 2)
+	var buf bytes.Buffer
+	err := p.ExecuteCommandOnce(&buf, &buf, app, "ls", "-lh")
+	c.Assert(err, gocheck.Equals, provision.ErrEmptyApp)
 }
 
 func (s *S) TestProvisionCollection(c *gocheck.C) {
@@ -783,40 +780,6 @@ func (s *S) TestSwap(c *gocheck.C) {
 	c.Assert(rtesting.FakeRouter.HasBackend(app2.GetName()), gocheck.Equals, true)
 	c.Assert(rtesting.FakeRouter.HasRoute(app2.GetName(), "127.0.0.1"), gocheck.Equals, true)
 	c.Assert(rtesting.FakeRouter.HasRoute(app1.GetName(), "127.0.0.2"), gocheck.Equals, true)
-}
-
-func (s *S) TestExecuteCommandOnce(c *gocheck.C) {
-	file, err := ioutil.TempFile("", "tsuru-docker-tests")
-	c.Assert(err, gocheck.IsNil)
-	defer os.Remove(file.Name())
-	defer file.Close()
-	file.Write([]byte("good bye cruel world"))
-	server := newMockSSHServer(c, 5e9)
-	defer server.Shutdown()
-	app := testing.NewFakeApp("almah", "static", 1)
-	p := dockerProvisioner{}
-	container, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
-	c.Assert(err, gocheck.IsNil)
-	defer s.removeTestContainer(container)
-	container.HostAddr = "localhost"
-	container.SSHHostPort = server.port
-	container.PrivateKey = string(fakeServerPrivateKey)
-	container.User = sshUsername()
-	coll := collection()
-	defer coll.Close()
-	coll.Update(bson.M{"id": container.ID}, container)
-	var stdout, stderr bytes.Buffer
-	err = p.ExecuteCommandOnce(&stdout, &stderr, app, "cat", file.Name())
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(stdout.String(), gocheck.Equals, "good bye cruel world")
-}
-
-func (s *S) TestProvisionerExecuteCommandOnceNoContainers(c *gocheck.C) {
-	var p dockerProvisioner
-	app := testing.NewFakeApp("almah", "static", 2)
-	var buf bytes.Buffer
-	err := p.ExecuteCommandOnce(&buf, &buf, app, "ls", "-lh")
-	c.Assert(err, gocheck.Equals, provision.ErrEmptyApp)
 }
 
 func (s *S) TestDeployPipeline(c *gocheck.C) {

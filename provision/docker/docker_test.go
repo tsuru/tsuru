@@ -979,3 +979,11 @@ func (s *S) TestBuildClusterStorage(c *gocheck.C) {
 	c.Assert(err, gocheck.ErrorMatches, ".*docker:cluster:{mongo-url,mongo-database} must be set.")
 	config.Set("docker:cluster:storage", "xxxx")
 }
+
+func (s *S) TestContainerExec(c *gocheck.C) {
+	container, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	var stdout, stderr bytes.Buffer
+	err = container.exec(&stdout, &stderr, "ls", "-lh")
+	c.Assert(err, gocheck.IsNil)
+}

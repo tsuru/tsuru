@@ -513,6 +513,29 @@ func (c *container) dialSSH() (*ssh.Client, error) {
 	return ssh.Dial("tcp", host, &config)
 }
 
+func (c *container) exec(stdout, stderr io.Writer, cmd string, args ...string) error {
+	cmds := []string{cmd}
+	cmds = append(cmds, args...)
+	execCreateOpts := docker.CreateExecOptions{
+		AttachStdin:  false,
+		AttachStdout: true,
+		AttachStderr: true,
+		Tty:          false,
+		Cmd:          cmds,
+		Container:    c.ID,
+	}
+	exec, err := dockerCluster().CreateExec(execCreateOpts)
+	if err != nil {
+		return err
+	}
+	startExecOptions := docker.StartExecOptions{
+		OutputStream: stdout,
+		ErrorStream:  stderr,
+		RawTerminal:  true,
+	}
+	return dockerCluster().StartExec(exec.ID, c.ID, startExecOptions)
+}
+
 // commit commits an image in docker based in the container
 // and returns the image repository.
 func (c *container) commit(writer io.Writer) (string, error) {

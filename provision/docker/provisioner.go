@@ -446,7 +446,7 @@ func (*dockerProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provi
 		return provision.ErrEmptyApp
 	}
 	container := containers[0]
-	return container.ssh(stdout, stderr, cmd, args...)
+	return container.exec(stdout, stderr, cmd, args...)
 }
 
 func (*dockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
@@ -458,7 +458,7 @@ func (*dockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 		return provision.ErrEmptyApp
 	}
 	for _, c := range containers {
-		err = c.ssh(stdout, stderr, cmd, args...)
+		err = c.exec(stdout, stderr, cmd, args...)
 		if err != nil {
 			return err
 		}
