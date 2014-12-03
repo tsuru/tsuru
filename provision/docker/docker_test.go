@@ -609,8 +609,7 @@ func (s *S) TestGitDeployRollsbackAfterErrorOnAttach(c *gocheck.C) {
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	var buf errBuffer
 	_, err = gitDeploy(app, "ff13e", &buf)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "My write error")
+	c.Assert(err, gocheck.ErrorMatches, ".*My write error")
 	var conts []container
 	coll := collection()
 	defer coll.Close()
