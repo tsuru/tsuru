@@ -173,7 +173,7 @@ var addNewRoutes = action.Action{
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
 		newContainers := ctx.Previous.([]container)
-		r, err := getRouter()
+		r, err := getRouterForApp(args.app)
 		if err != nil {
 			return nil, err
 		}
@@ -197,8 +197,9 @@ var addNewRoutes = action.Action{
 		return newContainers, nil
 	},
 	Backward: func(ctx action.BWContext) {
+		args := ctx.Params[0].(changeUnitsPipelineArgs)
 		newContainers := ctx.FWResult.([]container)
-		r, err := getRouter()
+		r, err := getRouterForApp(args.app)
 		if err != nil {
 			log.Errorf("[add-new-routes:Backward] Error geting router: %s", err.Error())
 		}
@@ -215,7 +216,7 @@ var removeOldRoutes = action.Action{
 	Name: "remove-old-routes",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
-		r, err := getRouter()
+		r, err := getRouterForApp(args.app)
 		if err != nil {
 			return nil, err
 		}
@@ -240,7 +241,7 @@ var removeOldRoutes = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
-		r, err := getRouter()
+		r, err := getRouterForApp(args.app)
 		if err != nil {
 			log.Errorf("[add-new-routes:Backward] Error geting router: %s", err.Error())
 		}

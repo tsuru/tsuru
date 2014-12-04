@@ -7,6 +7,7 @@ package docker
 import (
 	"sync"
 
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/log"
 	_ "github.com/tsuru/tsuru/router/hipache"
 	_ "github.com/tsuru/tsuru/router/testing"
@@ -54,7 +55,11 @@ func fixContainer(container *container, info containerNetworkInfo) error {
 	if info.HTTPHostPort == "" {
 		return nil
 	}
-	router, err := getRouter()
+	appInstance, err := app.GetByName(container.AppName)
+	if err != nil {
+		return err
+	}
+	router, err := getRouterForApp(appInstance)
 	if err != nil {
 		return err
 	}

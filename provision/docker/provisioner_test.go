@@ -372,7 +372,7 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 	var p dockerProvisioner
 	addr, err := p.Addr(app)
 	c.Assert(err, gocheck.IsNil)
-	r, err := getRouter()
+	r, err := getRouterForApp(app)
 	c.Assert(err, gocheck.IsNil)
 	expected, err := r.Addr(cont.AppName)
 	c.Assert(err, gocheck.IsNil)
@@ -789,6 +789,12 @@ func (s *S) TestDeployPipeline(c *gocheck.C) {
 
 func (s *S) TestProvisionerStart(c *gocheck.C) {
 	var p dockerProvisioner
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	err = conn.Apps().Insert(&app.App{Name: "almah"})
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().RemoveAll(bson.M{"name": "almah"})
 	app := testing.NewFakeApp("almah", "static", 1)
 	container, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, gocheck.IsNil)
@@ -1090,7 +1096,12 @@ func (s *S) TestProvisionerUnitsIp(c *gocheck.C) {
 }
 
 func (s *S) TestRegisterUnit(c *gocheck.C) {
-	err := newImage("tsuru/python", s.server.URL())
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	err = conn.Apps().Insert(&app.App{Name: "myawesomeapp"})
+	c.Assert(err, gocheck.IsNil)
+	err = newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	opts := newContainerOpts{Status: provision.StatusStarting.String(), AppName: "myawesomeapp"}
 	container, err := s.newContainer(&opts)

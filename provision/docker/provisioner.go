@@ -31,12 +31,12 @@ func init() {
 	provision.Register("docker", &dockerProvisioner{})
 }
 
-func getRouter() (router.Router, error) {
-	r, err := config.GetString("docker:router")
+func getRouterForApp(app provision.App) (router.Router, error) {
+	routerName, err := app.GetRouter()
 	if err != nil {
 		return nil, err
 	}
-	return router.Get(r)
+	return router.Get(routerName)
 }
 
 type dockerProvisioner struct{}
@@ -47,7 +47,7 @@ func (p *dockerProvisioner) Initialize() error {
 
 // Provision creates a route for the container
 func (p *dockerProvisioner) Provision(app provision.App) error {
-	r, err := getRouter()
+	r, err := getRouterForApp(app)
 	if err != nil {
 		log.Fatalf("Failed to get router: %s", err)
 		return err
@@ -124,7 +124,7 @@ func (p *dockerProvisioner) Stop(app provision.App) error {
 }
 
 func (dockerProvisioner) Swap(app1, app2 provision.App) error {
-	r, err := getRouter()
+	r, err := getRouterForApp(app1)
 	if err != nil {
 		return err
 	}
@@ -249,7 +249,7 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 	if err != nil {
 		log.Errorf("Failed to remove image from registry: %s", err.Error())
 	}
-	r, err := getRouter()
+	r, err := getRouterForApp(app)
 	if err != nil {
 		log.Errorf("Failed to get router: %s", err.Error())
 		return err
@@ -263,7 +263,7 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 }
 
 func (*dockerProvisioner) Addr(app provision.App) (string, error) {
-	r, err := getRouter()
+	r, err := getRouterForApp(app)
 	if err != nil {
 		log.Errorf("Failed to get router: %s", err)
 		return "", err
@@ -405,11 +405,13 @@ func (*dockerProvisioner) RemoveUnit(unit provision.Unit) error {
 	if err != nil {
 		return err
 	}
-	if a, err := app.GetByName(unit.AppName); err == nil {
-		err := a.UnbindUnit(&unit)
-		if err != nil {
-			log.Errorf("Failed to unbind unit %q: %s", container.ID, err)
-		}
+	a, err := container.getApp()
+	if err != nil {
+		return err
+	}
+	err = a.UnbindUnit(&unit)
+	if err != nil {
+		log.Errorf("Failed to unbind unit %q: %s", container.ID, err)
 	}
 	return removeContainer(container)
 }
@@ -467,7 +469,7 @@ func (*dockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 }
 
 func (p *dockerProvisioner) SetCName(app provision.App, cname string) error {
-	r, err := getRouter()
+	r, err := getRouterForApp(app)
 	if err != nil {
 		return err
 	}
@@ -475,7 +477,7 @@ func (p *dockerProvisioner) SetCName(app provision.App, cname string) error {
 }
 
 func (p *dockerProvisioner) UnsetCName(app provision.App, cname string) error {
-	r, err := getRouter()
+	r, err := getRouterForApp(app)
 	if err != nil {
 		return err
 	}

@@ -11,6 +11,8 @@ import (
 	"strings"
 
 	"github.com/tsuru/docker-cluster/cluster"
+	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
@@ -76,6 +78,12 @@ func (s *S) TestFixContainers(c *gocheck.C) {
 	)
 	c.Assert(err, gocheck.IsNil)
 	defer coll.RemoveAll(bson.M{"appname": "makea"})
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	err = conn.Apps().Insert(&app.App{Name: "makea"})
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().RemoveAll(bson.M{"name": "makea"})
 	cleanup, server := startDocker("9999")
 	defer cleanup()
 	var storage cluster.MapStorage

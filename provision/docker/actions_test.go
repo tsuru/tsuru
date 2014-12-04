@@ -182,7 +182,10 @@ func (s *S) TestAddNewRouteBackward(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = rtesting.FakeRouter.AddRoute(app.GetName(), cont2.getAddress())
 	c.Assert(err, gocheck.IsNil)
-	context := action.BWContext{FWResult: []container{cont, cont2}}
+	args := changeUnitsPipelineArgs{
+		app: app,
+	}
+	context := action.BWContext{FWResult: []container{cont, cont2}, Params: []interface{}{args}}
 	addNewRoutes.Backward(context)
 	hasRoute := rtesting.FakeRouter.HasRoute(app.GetName(), cont.getAddress())
 	c.Assert(hasRoute, gocheck.Equals, false)

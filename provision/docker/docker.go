@@ -23,6 +23,7 @@ import (
 	clusterLog "github.com/tsuru/docker-cluster/log"
 	"github.com/tsuru/docker-cluster/storage/mongodb"
 	"github.com/tsuru/tsuru/action"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/safe"
@@ -189,6 +190,7 @@ type container struct {
 	LastStatusUpdate        time.Time
 	LastSuccessStatusUpdate time.Time
 	LockedUntil             time.Time
+	appCache                provision.App
 }
 
 func (c *container) shortID() string {
@@ -414,6 +416,15 @@ func start(app provision.App, imageId string, w io.Writer, destinationHosts ...s
 	return &c, nil
 }
 
+func (c *container) getApp() (provision.App, error) {
+	if c.appCache != nil {
+		return c.appCache, nil
+	}
+	var err error
+	c.appCache, err = app.GetByName(c.AppName)
+	return c.appCache, err
+}
+
 // remove removes a docker container.
 func (c *container) remove() error {
 	address := c.getAddress()
@@ -428,7 +439,11 @@ func (c *container) remove() error {
 	if err := coll.Remove(bson.M{"id": c.ID}); err != nil {
 		log.Errorf("Failed to remove container from database: %s", err)
 	}
-	r, err := getRouter()
+	a, err := c.getApp()
+	if err != nil {
+		log.Errorf("Failed to obtain app: %s", err)
+	}
+	r, err := getRouterForApp(a)
 	if err != nil {
 		log.Errorf("Failed to obtain router: %s", err)
 	}

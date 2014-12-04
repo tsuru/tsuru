@@ -344,7 +344,13 @@ func (s *HandlersSuite) TestListNodeHandler(c *gocheck.C) {
 func (s *HandlersSuite) TestFixContainerHandler(c *gocheck.C) {
 	coll := collection()
 	defer coll.Close()
-	err := coll.Insert(
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	err = conn.Apps().Insert(&app.App{Name: "makea"})
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().RemoveAll(bson.M{"name": "makea"})
+	err = coll.Insert(
 		container{
 			ID:       "9930c24f1c4x",
 			AppName:  "makea",
