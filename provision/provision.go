@@ -156,6 +156,8 @@ type App interface {
 	GetCpuShare() int
 
 	GetUpdatePlatform() bool
+
+	GetRouter() (string, error)
 }
 
 // CNameManager represents a provisioner that supports cname on applications.

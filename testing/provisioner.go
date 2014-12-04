@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/provision"
@@ -268,6 +269,10 @@ func (a *FakeApp) Run(cmd string, w io.Writer, once bool) error {
 
 func (app *FakeApp) GetUpdatePlatform() bool {
 	return app.UpdatePlatform
+}
+
+func (app *FakeApp) GetRouter() (string, error) {
+	return config.GetString("docker:router")
 }
 
 type Cmd struct {
