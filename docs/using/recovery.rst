@@ -6,8 +6,8 @@
 Recovering an application
 +++++++++++++++++++++++++
 
-Your application may be downtime for a number of reasons. 
-This page will help you discover why and what you can do to fix the problem.
+Your application may be down for a number of reasons. 
+This page can help you discover why and guide you to fix the problem.
 
 Check your application logs
 ===========================
