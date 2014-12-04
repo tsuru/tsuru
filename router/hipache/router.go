@@ -26,8 +26,10 @@ import (
 
 var pool *redis.Pool
 
+const routerName = "hipache"
+
 func init() {
-	router.Register("hipache", hipacheRouter{})
+	router.Register(routerName, hipacheRouter{})
 }
 
 func connect() redis.Conn {
@@ -58,7 +60,7 @@ func (hipacheRouter) AddBackend(name string) error {
 	if err != nil {
 		return &routeError{"add", err}
 	}
-	return router.Store(name, name)
+	return router.Store(name, name, routerName)
 }
 
 func (r hipacheRouter) RemoveBackend(name string) error {

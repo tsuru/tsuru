@@ -61,7 +61,7 @@ func collection() (*storage.Collection, error) {
 
 // Store stores the app name related with the
 // router name.
-func Store(appName, routerName string) error {
+func Store(appName, routerName, kind string) error {
 	coll, err := collection()
 	if err != nil {
 		return err
@@ -69,17 +69,23 @@ func Store(appName, routerName string) error {
 	data := map[string]string{
 		"app":    appName,
 		"router": routerName,
+		"kind":   kind,
 	}
 	return coll.Insert(&data)
 }
 
-func Retrieve(appName string) (string, error) {
+func retrieveRouterData(appName string) (map[string]string, error) {
+	data := map[string]string{}
 	coll, err := collection()
 	if err != nil {
-		return "", err
+		return data, err
 	}
-	data := map[string]string{}
 	err = coll.Find(bson.M{"app": appName}).One(&data)
+	return data, err
+}
+
+func Retrieve(appName string) (string, error) {
+	data, err := retrieveRouterData(appName)
 	if err != nil {
 		return "", err
 	}
@@ -113,13 +119,22 @@ func swapBackendName(backend1, backend2 string) error {
 		return err
 	}
 	update = bson.M{"$set": bson.M{"router": router1}}
-	err = coll.Update(bson.M{"app": backend2}, update)
-	var result []interface{}
-	coll.Find(nil).All(&result)
-	return err
+	return coll.Update(bson.M{"app": backend2}, update)
 }
 
 func Swap(r Router, backend1, backend2 string) error {
+	data1, err := retrieveRouterData(backend1)
+	if err != nil {
+		return err
+	}
+	data2, err := retrieveRouterData(backend2)
+	if err != nil {
+		return err
+	}
+	if data1["kind"] != data2["kind"] {
+		return fmt.Errorf("swap is only allowed between routers of the same kind. %q uses %q, %q uses %q",
+			backend1, data1["kind"], backend2, data2["kind"])
+	}
 	routes1, err := r.Routes(backend1)
 	if err != nil {
 		return err

@@ -62,7 +62,7 @@ func (r *fakeRouter) AddBackend(name string) error {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	r.backends[name] = nil
-	return router.Store(name, name)
+	return router.Store(name, name, "fake")
 }
 
 func (r *fakeRouter) RemoveBackend(name string) error {
