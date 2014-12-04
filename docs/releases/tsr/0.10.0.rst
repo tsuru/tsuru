@@ -1,0 +1,29 @@
+=======================
+tsr 0.10.0 release notes
+=======================
+
+Welcome to tsr 0.10.0!
+
+These release notes cover the `new features`_, `bug fixes`_,
+`general improvements`_ and `changes in the API`_
+you'll want to be aware of when upgrading from tsr 0.9.0 or older versions.
+
+.. _`new features`: `What's new in tsr 0.10.0`_
+.. _`general improvements`: `Other improvements in tsr 0.10.0`_
+.. _`changes in the API`: `API changes`_
+
+What's new in tsr 0.10.0
+=======================
+
+* Now ``tsuru run`` use ``docker exec`` to run commands on containers.
+
+Bug fixes
+=========
+
+
+Other improvements in tsr 0.10.0
+===============================
+
+API changes
+===========
+
