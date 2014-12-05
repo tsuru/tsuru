@@ -11,12 +11,13 @@ import (
 	"strings"
 
 	"github.com/tsuru/tsuru/app"
+	_ "github.com/tsuru/tsuru/router/testing"
 	"launchpad.net/gocheck"
 )
 
 func (s *S) TestPlanAdd(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
-	body := strings.NewReader(`{"name": "xyz", "memory": 9223372036854775807, "swap": 1024, "cpushare": 100 }`)
+	body := strings.NewReader(`{"name": "xyz", "memory": 9223372036854775807, "swap": 1024, "cpushare": 100, "router": "fake" }`)
 	request, err := http.NewRequest("POST", "/plans", body)
 	c.Assert(err, gocheck.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.admintoken.GetValue())
@@ -28,7 +29,7 @@ func (s *S) TestPlanAdd(c *gocheck.C) {
 	err = s.conn.Plans().Find(nil).All(&plans)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(plans, gocheck.DeepEquals, []app.Plan{
-		{Name: "xyz", Memory: 9223372036854775807, Swap: 1024, CpuShare: 100},
+		{Name: "xyz", Memory: 9223372036854775807, Swap: 1024, CpuShare: 100, Router: "fake"},
 	})
 }
 
