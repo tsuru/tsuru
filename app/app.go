@@ -16,7 +16,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
@@ -1108,5 +1107,5 @@ func (app *App) UpdateCustomData(customData map[string]interface{}) error {
 }
 
 func (app *App) GetRouter() (string, error) {
-	return config.GetString("docker:router")
+	return app.Plan.getRouter()
 }

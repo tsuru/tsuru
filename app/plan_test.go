@@ -8,7 +8,7 @@ import (
 	"sort"
 
 	"github.com/tsuru/config"
-
+	_ "github.com/tsuru/tsuru/router/testing"
 	"launchpad.net/gocheck"
 )
 
@@ -28,6 +28,26 @@ func (s *S) TestPlanAdd(c *gocheck.C) {
 	c.Assert(plan, gocheck.DeepEquals, p)
 }
 
+func (s *S) TestPlanAddWithInvalidRouter(c *gocheck.C) {
+	p := Plan{
+		Name:     "plan1",
+		Memory:   9223372036854775807,
+		Swap:     1024,
+		CpuShare: 100,
+		Router:   "fake",
+	}
+	err := p.Save()
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Plans().RemoveId(p.Name)
+	var plan Plan
+	err = s.conn.Plans().FindId(p.Name).One(&plan)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(plan, gocheck.DeepEquals, p)
+	r, err := plan.getRouter()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(r, gocheck.Equals, "fake")
+}
+
 func (s *S) TestPlanAddInvalid(c *gocheck.C) {
 	invalidPlans := []Plan{
 		{
@@ -39,6 +59,13 @@ func (s *S) TestPlanAddInvalid(c *gocheck.C) {
 			Name:   "plan1",
 			Memory: 9223372036854775807,
 			Swap:   1024,
+		},
+		{
+			Name:     "plan1",
+			Memory:   1024,
+			Swap:     1024,
+			CpuShare: 100,
+			Router:   "invalid",
 		},
 	}
 	for _, p := range invalidPlans {
@@ -177,4 +204,22 @@ func (s *S) TestFindPlanByName(c *gocheck.C) {
 	dbPlan, err := findPlanByName(p.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(*dbPlan, gocheck.DeepEquals, p)
+}
+
+func (s *S) TestPlanGetRouter(c *gocheck.C) {
+	config.Set("docker:router", "defaultrouter")
+	defer config.Unset("docker:router")
+	p := Plan{
+		Name:   "plan1",
+		Router: "myrouter",
+	}
+	r, err := p.getRouter()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(r, gocheck.Equals, "myrouter")
+	p2 := Plan{
+		Name: "plan2",
+	}
+	r2, err := p2.getRouter()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(r2, gocheck.Equals, "defaultrouter")
 }
