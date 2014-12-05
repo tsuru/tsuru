@@ -67,6 +67,28 @@ func (h *TestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(h.Content))
 }
 
+type MultiTestHandler struct {
+	Body    [][]byte
+	Method  []string
+	Url     []string
+	Content string
+	Header  []http.Header
+	RspCode int
+}
+
+func (h *MultiTestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	h.Method = append(h.Method, r.Method)
+	h.Url = append(h.Url, r.URL.String())
+	b, _ := ioutil.ReadAll(r.Body)
+	h.Body = append(h.Body, b)
+	h.Header = append(h.Header, r.Header)
+	if h.RspCode == 0 {
+		h.RspCode = http.StatusOK
+	}
+	w.WriteHeader(h.RspCode)
+	w.Write([]byte(h.Content))
+}
+
 // starts a new httptest.Server and returns it
 // Also changes git:host, git:port and git:protocol to match the server's url
 func StartGandalfTestServer(h http.Handler) *httptest.Server {
