@@ -293,7 +293,12 @@ func (s *S) removeTestContainer(c *container) error {
 }
 
 func (s *S) TestContainerRemove(c *gocheck.C) {
-	container, err := s.newContainer(nil)
+	conn, err := db.Conn()
+	defer conn.Close()
+	err = conn.Apps().Insert(app.App{Name: "test-app"})
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": "test-app"})
+	container, err := s.newContainer(&newContainerOpts{AppName: "test-app"})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(container)
 	err = container.remove()
@@ -312,7 +317,12 @@ func (s *S) TestContainerRemove(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveContainerIgnoreErrors(c *gocheck.C) {
-	container, err := s.newContainer(nil)
+	conn, err := db.Conn()
+	defer conn.Close()
+	err = conn.Apps().Insert(app.App{Name: "test-app"})
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": "test-app"})
+	container, err := s.newContainer(&newContainerOpts{AppName: "test-app"})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(container)
 	client, _ := docker.NewClient(s.server.URL())

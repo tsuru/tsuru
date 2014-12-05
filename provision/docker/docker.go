@@ -442,10 +442,12 @@ func (c *container) remove() error {
 	a, err := c.getApp()
 	if err != nil {
 		log.Errorf("Failed to obtain app: %s", err)
+		return nil
 	}
 	r, err := getRouterForApp(a)
 	if err != nil {
 		log.Errorf("Failed to obtain router: %s", err)
+		return nil
 	}
 	if err := r.RemoveRoute(c.AppName, address); err != nil {
 		log.Errorf("Failed to remove route: %s", err)
