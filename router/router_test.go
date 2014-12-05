@@ -28,6 +28,19 @@ func (s *S) TestStore(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 }
 
+func (s *S) TestRetrieveWithoutKind(c *gocheck.C) {
+	err := Store("appname", "routername", "")
+	c.Assert(err, gocheck.IsNil)
+	data, err := retrieveRouterData("appname")
+	c.Assert(err, gocheck.IsNil)
+	delete(data, "_id")
+	c.Assert(data, gocheck.DeepEquals, map[string]string{
+		"app":    "appname",
+		"router": "routername",
+		"kind":   "hipache",
+	})
+}
+
 func (s *S) TestRetireveNotFound(c *gocheck.C) {
 	name, err := Retrieve("notfound")
 	c.Assert(err, gocheck.Not(gocheck.IsNil))

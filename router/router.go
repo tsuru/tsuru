@@ -81,6 +81,11 @@ func retrieveRouterData(appName string) (map[string]string, error) {
 		return data, err
 	}
 	err = coll.Find(bson.M{"app": appName}).One(&data)
+	// Avoid need for data migrations, before kind existed we only supported
+	// hipache as a router so we set is as default here.
+	if data["kind"] == "" {
+		data["kind"] = "hipache"
+	}
 	return data, err
 }
 
