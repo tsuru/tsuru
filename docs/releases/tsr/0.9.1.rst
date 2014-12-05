@@ -4,25 +4,21 @@ tsr 0.9.1 release notes
 
 Welcome to tsr 0.9.1!
 
-These release notes cover the `new features`_, `bug fixes`_,
-`general improvements`_ and `changes in the API`_
-you'll want to be aware of when upgrading from tsr 0.9.0 or older versions.
+These release notes cover the `bug fixes`_, `general improvements`_ and
+`changes in the API`_ you'll want to be aware of when upgrading from tsr 0.9.0
+or older versions.
 
-.. _`new features`: `What's new in tsr 0.9.1`_
 .. _`general improvements`: `Other improvements in tsr 0.9.1`_
 .. _`changes in the API`: `API changes`_
-
-What's new in tsr 0.9.1
-=======================
-
-* Now tsuru admins can list all users with ``tsuru-admin user-list``.
 
 Bug fixes
 =========
 
-* api don't panic when auto scale is actived and the metric data is invalid.
-* auto scale honors the min and max units on scale.
-* ``app-run`` ignore build containers (issue `#987 <https://github.com/tsuru/tsuru/issues/987>`_).
+* fix panic in the API when auto scale is enabled and the metric data is
+  invalid.
+* auto scale honors the min and max units when scaling
+* ``app-run`` ignore build containers (issue `#987
+  <https://github.com/tsuru/tsuru/issues/987>`_).
 
 Other improvements in tsr 0.9.1
 ===============================
@@ -59,4 +55,4 @@ Other improvements in tsr 0.9.1
 API changes
 ===========
 
-* auto scale config info is returned by app info endpoint.
+* auto scale config info is now returned in the app-info endpoint.
