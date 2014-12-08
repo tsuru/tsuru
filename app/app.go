@@ -559,22 +559,12 @@ func (app *App) getEnv(name string) (bind.EnvVar, error) {
 	return env, err
 }
 
-// validate checks app name format, app and platform names are the same and app name is equal a platform name.
+// validate checks app name format
 func (app *App) validate() error {
 	if app.Name == InternalAppName || !nameRegexp.MatchString(app.Name) {
 		msg := "Invalid app name, your app should have at most 63 " +
 			"characters, containing only lower case letters, numbers or dashes, " +
 			"starting with a letter."
-		return &errors.ValidationError{Message: msg}
-	}
-	if app.equalAppNameAndPlatformName() {
-		msg := "Invalid app name: platform name and app name " +
-			"can not be the same"
-		return &errors.ValidationError{Message: msg}
-	}
-	if app.equalToSomePlatformName() {
-		msg := "Invalid app name: platform name already exists " +
-			"with the same name"
 		return &errors.ValidationError{Message: msg}
 	}
 	return nil

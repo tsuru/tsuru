@@ -348,34 +348,6 @@ func (s *S) TestCantCreateAppWithInvalidName(c *gocheck.C) {
 	c.Assert(e.Message, gocheck.Equals, msg)
 }
 
-func (s *S) TestCantCreateAppWithSamePlatformName(c *gocheck.C) {
-	a := App{Name: "python", Platform: "python"}
-	err := CreateApp(&a, s.user)
-	e, ok := err.(*errors.ValidationError)
-	c.Assert(ok, gocheck.Equals, true)
-	msg := "Invalid app name: platform name and app name can not be the same"
-	c.Assert(e.Message, gocheck.Equals, msg)
-}
-
-func (s *S) TestCantCreateAppWhenEqualToSomePlatformName(c *gocheck.C) {
-	a := App{Name: "django", Platform: "python"}
-	platforms := []Platform{
-		{Name: "django"},
-	}
-	conn, _ := db.Conn()
-	defer conn.Close()
-	for _, p := range platforms {
-		conn.Platforms().Insert(p)
-		defer conn.Platforms().Remove(p)
-	}
-	err := CreateApp(&a, s.user)
-	e, ok := err.(*errors.ValidationError)
-	c.Assert(ok, gocheck.Equals, true)
-	msg := "Invalid app name: platform name already exists " +
-		"with the same name"
-	c.Assert(e.Message, gocheck.Equals, msg)
-}
-
 func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfProvisionerFail(c *gocheck.C) {
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
