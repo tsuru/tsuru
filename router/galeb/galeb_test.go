@@ -102,7 +102,7 @@ func (s *S) TestGalebAddBackendPoolInvalidStatusCode(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	params := backendPoolParams{}
 	fullId, err := client.AddBackendPool(&params)
-	c.Assert(err, gocheck.ErrorMatches, "/backendpool/: invalid response code: 200: invalid content")
+	c.Assert(err, gocheck.ErrorMatches, "POST /backendpool/: invalid response code: 200: invalid content")
 	c.Assert(fullId, gocheck.Equals, "")
 }
 
@@ -113,7 +113,7 @@ func (s *S) TestGalebAddBackendPoolInvalidResponse(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	params := backendPoolParams{}
 	fullId, err := client.AddBackendPool(&params)
-	c.Assert(err, gocheck.ErrorMatches, "/backendpool/: unable to parse response: invalid content: invalid character 'i' looking for beginning of value")
+	c.Assert(err, gocheck.ErrorMatches, "POST /backendpool/: unable to parse response: invalid content: invalid character 'i' looking for beginning of value")
 	c.Assert(fullId, gocheck.Equals, "")
 }
 
@@ -293,4 +293,23 @@ func (s *S) TestGalebAddVirtualHostRule(c *gocheck.C) {
 	c.Assert(parsedParams, gocheck.DeepEquals, params)
 	c.Assert(s.handler.Header[0].Get("Content-Type"), gocheck.Equals, "application/json")
 	c.Assert(fullId, gocheck.Equals, "http://galeb.somewhere/api/virtualhostrule/9/")
+}
+
+func (s *S) TestGalebRemoveResource(c *gocheck.C) {
+	s.handler.RspCode = http.StatusNoContent
+	client, err := NewGalebClient()
+	c.Assert(err, gocheck.IsNil)
+	err = client.RemoveResource(client.apiUrl + "/backendpool/10/")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(s.handler.Method, gocheck.DeepEquals, []string{"DELETE"})
+	c.Assert(s.handler.Url, gocheck.DeepEquals, []string{"/api/backendpool/10/"})
+}
+
+func (s *S) TestGalebRemoveResourceInvalidResponse(c *gocheck.C) {
+	s.handler.RspCode = http.StatusOK
+	s.handler.Content = "invalid content"
+	client, err := NewGalebClient()
+	c.Assert(err, gocheck.IsNil)
+	err = client.RemoveResource(client.apiUrl + "/backendpool/10/")
+	c.Assert(err, gocheck.ErrorMatches, "DELETE /backendpool/10/: invalid response code: 200: invalid content")
 }

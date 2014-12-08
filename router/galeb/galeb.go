@@ -109,11 +109,25 @@ func NewGalebClient() (*galebClient, error) {
 	}, nil
 }
 
+func clientWithTimeout(timeout time.Duration) *http.Client {
+	dialTimeout := func(network, addr string) (net.Conn, error) {
+		return net.DialTimeout(network, addr, timeout)
+	}
+	transport := http.Transport{
+		Dial: dialTimeout,
+	}
+	return &http.Client{
+		Transport: &transport,
+	}
+}
+
 func (c *galebClient) doRequest(method, path string, params interface{}) (*http.Response, error) {
 	buf := bytes.Buffer{}
-	err := json.NewEncoder(&buf).Encode(params)
-	if err != nil {
-		return nil, err
+	if params != nil {
+		err := json.NewEncoder(&buf).Encode(params)
+		if err != nil {
+			return nil, err
+		}
 	}
 	url := fmt.Sprintf("%s/%s", strings.TrimRight(c.apiUrl, "/"), strings.TrimLeft(path, "/"))
 	req, err := http.NewRequest(method, url, &buf)
@@ -133,12 +147,12 @@ func (c *galebClient) doCreateResource(path string, params interface{}) (string,
 	}
 	responseData, _ := ioutil.ReadAll(rsp.Body)
 	if rsp.StatusCode != http.StatusCreated {
-		return "", fmt.Errorf("%s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
+		return "", fmt.Errorf("POST %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
 	}
 	var commonRsp commonResponse
 	err = json.Unmarshal(responseData, &commonRsp)
 	if err != nil {
-		return "", fmt.Errorf("%s: unable to parse response: %s: %s", path, string(responseData), err.Error())
+		return "", fmt.Errorf("POST %s: unable to parse response: %s: %s", path, string(responseData), err.Error())
 	}
 	return commonRsp.FullId(), nil
 }
@@ -208,14 +222,15 @@ func (c *galebClient) AddVirtualHostRule(params *virtualHostRuleParams) (string,
 	return c.doCreateResource("/virtualhostrule/", params)
 }
 
-func clientWithTimeout(timeout time.Duration) *http.Client {
-	dialTimeout := func(network, addr string) (net.Conn, error) {
-		return net.DialTimeout(network, addr, timeout)
+func (c *galebClient) RemoveResource(resourceURI string) error {
+	path := strings.TrimPrefix(resourceURI, c.apiUrl)
+	rsp, err := c.doRequest("DELETE", path, nil)
+	if err != nil {
+		return err
 	}
-	transport := http.Transport{
-		Dial: dialTimeout,
+	responseData, _ := ioutil.ReadAll(rsp.Body)
+	if rsp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("DELETE %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
 	}
-	return &http.Client{
-		Transport: &transport,
-	}
+	return nil
 }
