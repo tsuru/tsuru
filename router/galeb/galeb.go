@@ -11,41 +11,36 @@ import (
 	"time"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/errors"
 )
 
 var timeoutHttpClient = clientWithTimeout(10 * time.Second)
 
+type commonResponse struct {
+	Links struct {
+		Self string `json:"self"`
+	} `json:"_links"`
+	Id     int    `json:"id"`
+	Status string `json:"status"`
+}
+
+func (c commonResponse) FullId() string {
+	return c.Links.Self
+}
+
 type backendPoolParams struct {
 	Name              string `json:"name"`
 	Environment       string `json:"environment"`
+	FarmType          string `json:"farmtype"`
 	Plan              string `json:"plan"`
 	Project           string `json:"project"`
 	LoadBalancePolicy string `json:"loadbalancepolicy"`
 }
-
-// curl -H "Content-Type: application/json" -X POST http://user:123@galeb.somewhere.com/api/backendpool/ -d '
-// {
-//   "name": "curl test",
-//   "environment": "http://galeb.somewhere.com/api/environment/1/",
-//   "farmtype": "http://galeb.somewhere.com/api/farmtype/1/",
-//   "plan": "http://galeb.somewhere.com/api/plan/1/",
-//   "project": "http://galeb.somewhere.com/api/project/1/",
-//   "loadbalancepolicy": "http://galeb.somewhere.com/api/loadbalancepolicy/1/"
-// }'
 
 type backendParams struct {
 	Ip          string `json:"ip"`
 	Port        int    `json:"port"`
 	BackendPool string `json:"backendpool"`
 }
-
-// curl -H "Content-Type: application/json" -X POST http://user:123@galeb.somewhere.com/api/backend/ -d '
-// {
-//   "ip": "10.10.10.10",
-//   "port": 80,
-//   "backendpool": "http://galeb.somewhere.com/api/backendpool/1/"
-// }'
 
 type ruleParams struct {
 	Name        string `json:"name"`
@@ -54,15 +49,6 @@ type ruleParams struct {
 	RuleType    string `json:"ruletype"`
 	Project     string `json:"project"`
 }
-
-// curl -H "Content-Type: application/json" -X POST http://user:123@galeb.somewhere.com/api/rule/ -d '
-// {
-//    "name": "root rule",
-//    "match": "/",
-//    "backendpool": "http://galeb.somewhere.com/api/backendpool/1/",
-//    "ruletype": "http://galeb.somewhere.com/api/ruletype/1/",
-//    "project": "http://galeb.somewhere.com/api/project/1/"
-// }'
 
 type virtualHostParams struct {
 	Name        string `json:"name"`
@@ -73,36 +59,25 @@ type virtualHostParams struct {
 	RuleDefault string `json:"rule_default"`
 }
 
-// curl -H "Content-Type: application/json" -X POST http://user:123@galeb.somewhere.com/api/virtualhost/ -d '
-// {
-//    "name": "test.virtualhost.api",
-//    "farmtype": "http://galeb.somewhere.com/api/farmtype/1/",
-//    "plan": "http://galeb.somewhere.com/api/plan/1/",
-//    "environment": "http://galeb.somewhere.com/api/environment/1/",
-//    "project": "http://galeb.somewhere.com/api/project/1/",
-//    "rule_default": "http://galeb.somewhere.com/api/rule/1/"
-// }'
-
 type virtualHostRuleParams struct {
 	Order       int    `json:"order"`
 	VirtualHost string `json:"virtualhost"`
 	Rule        string `json:"rule"`
 }
 
-// curl -H "Content-Type: application/json" -X POST http://user:123@galeb.somewhere.com/api/virtualhostrule/ -d '
-// {
-//    "order": 1,
-//    "virtualhost": "http://galeb.somewhere.com/api/virtualhost/1/",
-//    "rule": "http://galeb.somewhere.com/api/rule/1/"
-// }'
-
 type galebClient struct {
-	apiUrl   string
-	username string
-	password string
+	apiUrl            string
+	username          string
+	password          string
+	environment       string
+	farmType          string
+	plan              string
+	project           string
+	loadBalancePolicy string
+	ruleType          string
 }
 
-func newGalebClient() (*galebClient, error) {
+func NewGalebClient() (*galebClient, error) {
 	apiUrl, err := config.GetString("galeb:api-url")
 	if err != nil {
 		return nil, err
@@ -115,16 +90,28 @@ func newGalebClient() (*galebClient, error) {
 	if err != nil {
 		return nil, err
 	}
+	environment, _ := config.GetString("galeb:environment")
+	farmType, _ := config.GetString("galeb:farm-type")
+	plan, _ := config.GetString("galeb:plan")
+	project, _ := config.GetString("galeb:project")
+	loadBalancePolicy, _ := config.GetString("galeb:load-balance-policy")
+	ruleType, _ := config.GetString("galeb:rule-type")
 	return &galebClient{
-		apiUrl:   apiUrl,
-		username: username,
-		password: password,
+		apiUrl:            apiUrl,
+		username:          username,
+		password:          password,
+		environment:       environment,
+		farmType:          farmType,
+		plan:              plan,
+		project:           project,
+		loadBalancePolicy: loadBalancePolicy,
+		ruleType:          ruleType,
 	}, nil
 }
 
-func (c *galebClient) doRequest(method, path string, body interface{}) (*http.Response, error) {
+func (c *galebClient) doRequest(method, path string, params interface{}) (*http.Response, error) {
 	buf := bytes.Buffer{}
-	err := json.NewEncoder(&buf).Encode(body)
+	err := json.NewEncoder(&buf).Encode(params)
 	if err != nil {
 		return nil, err
 	}
@@ -139,16 +126,86 @@ func (c *galebClient) doRequest(method, path string, body interface{}) (*http.Re
 	return rsp, err
 }
 
-func (c *galebClient) addBackendPool(params *backendPoolParams) error {
-	rsp, err := c.doRequest("POST", "/api/backendpool/", params)
+func (c *galebClient) doCreateResource(path string, params interface{}) (string, error) {
+	rsp, err := c.doRequest("POST", path, params)
 	if err != nil {
-		return err
+		return "", err
 	}
+	responseData, _ := ioutil.ReadAll(rsp.Body)
 	if rsp.StatusCode != http.StatusCreated {
-		responseData, _ := ioutil.ReadAll(rsp.Body)
-		return &errors.HTTP{Code: rsp.StatusCode, Message: string(responseData)}
+		return "", fmt.Errorf("%s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
 	}
-	return nil
+	var commonRsp commonResponse
+	err = json.Unmarshal(responseData, &commonRsp)
+	if err != nil {
+		return "", fmt.Errorf("%s: unable to parse response: %s: %s", path, string(responseData), err.Error())
+	}
+	return commonRsp.FullId(), nil
+}
+
+func (c *galebClient) fillDefaultBackendPoolValues(params *backendPoolParams) {
+	if params.Environment == "" {
+		params.Environment = c.environment
+	}
+	if params.LoadBalancePolicy == "" {
+		params.LoadBalancePolicy = c.loadBalancePolicy
+	}
+	if params.Plan == "" {
+		params.Plan = c.plan
+	}
+	if params.Project == "" {
+		params.Project = c.project
+	}
+	if params.FarmType == "" {
+		params.FarmType = c.farmType
+	}
+}
+
+func (c *galebClient) fillDefaultRuleValues(params *ruleParams) {
+	if params.RuleType == "" {
+		params.RuleType = c.ruleType
+	}
+	if params.Project == "" {
+		params.Project = c.project
+	}
+}
+
+func (c *galebClient) fillDefaultVirtualHostValues(params *virtualHostParams) {
+	if params.Environment == "" {
+		params.Environment = c.environment
+	}
+	if params.FarmType == "" {
+		params.FarmType = c.farmType
+	}
+	if params.Plan == "" {
+		params.Plan = c.plan
+	}
+	if params.Project == "" {
+		params.Project = c.project
+	}
+}
+
+func (c *galebClient) AddBackendPool(params *backendPoolParams) (string, error) {
+	c.fillDefaultBackendPoolValues(params)
+	return c.doCreateResource("/backendpool/", params)
+}
+
+func (c *galebClient) AddBackend(params *backendParams) (string, error) {
+	return c.doCreateResource("/backend/", params)
+}
+
+func (c *galebClient) AddRule(params *ruleParams) (string, error) {
+	c.fillDefaultRuleValues(params)
+	return c.doCreateResource("/rule/", params)
+}
+
+func (c *galebClient) AddVirtualHost(params *virtualHostParams) (string, error) {
+	c.fillDefaultVirtualHostValues(params)
+	return c.doCreateResource("/virtualhost/", params)
+}
+
+func (c *galebClient) AddVirtualHostRule(params *virtualHostRuleParams) (string, error) {
+	return c.doCreateResource("/virtualhostrule/", params)
 }
 
 func clientWithTimeout(timeout time.Duration) *http.Client {

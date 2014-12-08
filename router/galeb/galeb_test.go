@@ -5,6 +5,7 @@
 package galeb
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -38,7 +39,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 func (s *S) SetUpTest(c *gocheck.C) {
 	s.handler = ttesting.MultiTestHandler{}
 	s.server = httptest.NewServer(&s.handler)
-	config.Set("galeb:api-url", s.server.URL)
+	config.Set("galeb:api-url", s.server.URL+"/api")
 }
 
 func (s *S) TearDownTest(c *gocheck.C) {
@@ -50,18 +51,246 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 }
 
 func (s *S) TestNewGalebClient(c *gocheck.C) {
-	client, err := newGalebClient()
+	client, err := NewGalebClient()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(client.apiUrl, gocheck.Equals, s.server.URL)
+	c.Assert(client.apiUrl, gocheck.Equals, s.server.URL+"/api")
 	c.Assert(client.username, gocheck.Equals, "myusername")
 	c.Assert(client.password, gocheck.Equals, "mypassword")
 }
 
 func (s *S) TestGalebAddBackendPool(c *gocheck.C) {
+	s.handler.Content = `{
+      "_links": {
+        "self": "http://galeb.somewhere/api/backendpool/3/"
+      },
+      "id": 3,
+      "name": "pool2",
+      "environment": "http://galeb.somewhere/api/environment/1/",
+      "farmtype": "http://galeb.somewhere/api/farmtype/1/",
+      "plan": "http://galeb.somewhere/api/plan/1/",
+      "project": "http://galeb.somewhere/api/project/3/",
+      "loadbalancepolicy": "http://galeb.somewhere/api/loadbalancepolicy/1/",
+      "status": "201"
+    }`
 	s.handler.RspCode = http.StatusCreated
-	client, err := newGalebClient()
+	client, err := NewGalebClient()
+	c.Assert(err, gocheck.IsNil)
+	params := backendPoolParams{
+		Name:              "myname",
+		Environment:       "myenv",
+		Plan:              "myplan",
+		Project:           "myproject",
+		LoadBalancePolicy: "mypolicy",
+		FarmType:          "mytype",
+	}
+	fullId, err := client.AddBackendPool(&params)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(s.handler.Method, gocheck.DeepEquals, []string{"POST"})
+	c.Assert(s.handler.Url, gocheck.DeepEquals, []string{"/api/backendpool/"})
+	var parsedParams backendPoolParams
+	err = json.Unmarshal(s.handler.Body[0], &parsedParams)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(parsedParams, gocheck.DeepEquals, params)
+	c.Assert(s.handler.Header[0].Get("Content-Type"), gocheck.Equals, "application/json")
+	c.Assert(fullId, gocheck.Equals, "http://galeb.somewhere/api/backendpool/3/")
+}
+
+func (s *S) TestGalebAddBackendPoolInvalidStatusCode(c *gocheck.C) {
+	s.handler.RspCode = http.StatusOK
+	s.handler.Content = "invalid content"
+	client, err := NewGalebClient()
 	c.Assert(err, gocheck.IsNil)
 	params := backendPoolParams{}
-	err = client.addBackendPool(&params)
+	fullId, err := client.AddBackendPool(&params)
+	c.Assert(err, gocheck.ErrorMatches, "/backendpool/: invalid response code: 200: invalid content")
+	c.Assert(fullId, gocheck.Equals, "")
+}
+
+func (s *S) TestGalebAddBackendPoolInvalidResponse(c *gocheck.C) {
+	s.handler.RspCode = http.StatusCreated
+	s.handler.Content = "invalid content"
+	client, err := NewGalebClient()
 	c.Assert(err, gocheck.IsNil)
+	params := backendPoolParams{}
+	fullId, err := client.AddBackendPool(&params)
+	c.Assert(err, gocheck.ErrorMatches, "/backendpool/: unable to parse response: invalid content: invalid character 'i' looking for beginning of value")
+	c.Assert(fullId, gocheck.Equals, "")
+}
+
+func (s *S) TestGalebAddBackendPoolDefaultValues(c *gocheck.C) {
+	config.Set("galeb:environment", "env1")
+	config.Set("galeb:farm-type", "type1")
+	config.Set("galeb:plan", "plan1")
+	config.Set("galeb:project", "project1")
+	config.Set("galeb:load-balance-policy", "policy1")
+	defer config.Unset("galeb:environment")
+	defer config.Unset("galeb:farm-type")
+	defer config.Unset("galeb:plan")
+	defer config.Unset("galeb:project")
+	defer config.Unset("galeb:load-balance-policy")
+	s.handler.RspCode = http.StatusCreated
+	s.handler.Content = `{
+      "_links": {
+        "self": "http://galeb.somewhere/api/backendpool/999/"
+      }
+    }`
+	client, err := NewGalebClient()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(client.environment, gocheck.Equals, "env1")
+	c.Assert(client.farmType, gocheck.Equals, "type1")
+	c.Assert(client.plan, gocheck.Equals, "plan1")
+	c.Assert(client.project, gocheck.Equals, "project1")
+	c.Assert(client.loadBalancePolicy, gocheck.Equals, "policy1")
+	params := backendPoolParams{Name: "mypool"}
+	fullId, err := client.AddBackendPool(&params)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(fullId, gocheck.Equals, "http://galeb.somewhere/api/backendpool/999/")
+	var parsedParams backendPoolParams
+	err = json.Unmarshal(s.handler.Body[0], &parsedParams)
+	c.Assert(err, gocheck.IsNil)
+	expected := backendPoolParams{
+		Name:              "mypool",
+		Environment:       "env1",
+		Plan:              "plan1",
+		Project:           "project1",
+		LoadBalancePolicy: "policy1",
+		FarmType:          "type1",
+	}
+	c.Assert(parsedParams, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestGalebAddBackend(c *gocheck.C) {
+	s.handler.Content = `{
+      "_links": {
+        "self": "http://galeb.somewhere/api/backend/9/"
+      },
+      "id": 9,
+      "ip": "10.0.0.1",
+      "port": 8080,
+      "backendpool": "http://galeb.somewhere/api/backendpool/1/",
+      "status": "201"
+    }`
+	s.handler.RspCode = http.StatusCreated
+	client, err := NewGalebClient()
+	c.Assert(err, gocheck.IsNil)
+	params := backendParams{
+		Ip:          "10.0.0.1",
+		Port:        8080,
+		BackendPool: "http://galeb.somewhere/api/backendpool/1/",
+	}
+	fullId, err := client.AddBackend(&params)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(s.handler.Method, gocheck.DeepEquals, []string{"POST"})
+	c.Assert(s.handler.Url, gocheck.DeepEquals, []string{"/api/backend/"})
+	var parsedParams backendParams
+	err = json.Unmarshal(s.handler.Body[0], &parsedParams)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(parsedParams, gocheck.DeepEquals, params)
+	c.Assert(s.handler.Header[0].Get("Content-Type"), gocheck.Equals, "application/json")
+	c.Assert(fullId, gocheck.Equals, "http://galeb.somewhere/api/backend/9/")
+}
+
+func (s *S) TestGalebAddRuleDefaultValues(c *gocheck.C) {
+	config.Set("galeb:rule-type", "rule1")
+	config.Set("galeb:project", "project1")
+	defer config.Unset("galeb:rule-type")
+	defer config.Unset("galeb:project")
+	s.handler.RspCode = http.StatusCreated
+	s.handler.Content = `{
+      "_links": {
+        "self": "http://galeb.somewhere/api/rule/999/"
+      }
+    }`
+	client, err := NewGalebClient()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(client.ruleType, gocheck.Equals, "rule1")
+	c.Assert(client.project, gocheck.Equals, "project1")
+	params := ruleParams{
+		Name:        "myrule",
+		Match:       "/",
+		BackendPool: "pool1",
+	}
+	fullId, err := client.AddRule(&params)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(fullId, gocheck.Equals, "http://galeb.somewhere/api/rule/999/")
+	var parsedParams ruleParams
+	err = json.Unmarshal(s.handler.Body[0], &parsedParams)
+	c.Assert(err, gocheck.IsNil)
+	expected := ruleParams{
+		Name:        "myrule",
+		Match:       "/",
+		BackendPool: "pool1",
+		RuleType:    "rule1",
+		Project:     "project1",
+	}
+	c.Assert(parsedParams, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestGalebAddVirtualHostDefaultValues(c *gocheck.C) {
+	config.Set("galeb:farm-type", "farm1")
+	config.Set("galeb:plan", "plan1")
+	config.Set("galeb:environment", "env1")
+	config.Set("galeb:project", "project1")
+	defer config.Unset("galeb:farm-type")
+	defer config.Unset("galeb:plan")
+	defer config.Unset("galeb:environment")
+	defer config.Unset("galeb:project")
+	s.handler.RspCode = http.StatusCreated
+	s.handler.Content = `{
+      "_links": {
+        "self": "http://galeb.somewhere/api/virtualhost/999/"
+      }
+    }`
+	client, err := NewGalebClient()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(client.farmType, gocheck.Equals, "farm1")
+	c.Assert(client.project, gocheck.Equals, "project1")
+	c.Assert(client.plan, gocheck.Equals, "plan1")
+	c.Assert(client.environment, gocheck.Equals, "env1")
+	params := virtualHostParams{
+		Name:        "myvirtualhost.com",
+		RuleDefault: "myrule",
+	}
+	fullId, err := client.AddVirtualHost(&params)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(fullId, gocheck.Equals, "http://galeb.somewhere/api/virtualhost/999/")
+	var parsedParams virtualHostParams
+	err = json.Unmarshal(s.handler.Body[0], &parsedParams)
+	c.Assert(err, gocheck.IsNil)
+	expected := virtualHostParams{
+		Name:        "myvirtualhost.com",
+		RuleDefault: "myrule",
+		FarmType:    "farm1",
+		Plan:        "plan1",
+		Environment: "env1",
+		Project:     "project1",
+	}
+	c.Assert(parsedParams, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestGalebAddVirtualHostRule(c *gocheck.C) {
+	s.handler.Content = `{
+      "_links": {
+        "self": "http://galeb.somewhere/api/virtualhostrule/9/"
+      },
+      "status": "201"
+    }`
+	s.handler.RspCode = http.StatusCreated
+	client, err := NewGalebClient()
+	c.Assert(err, gocheck.IsNil)
+	params := virtualHostRuleParams{
+		Order:       1,
+		Rule:        "rule1",
+		VirtualHost: "virtualhost1",
+	}
+	fullId, err := client.AddVirtualHostRule(&params)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(s.handler.Method, gocheck.DeepEquals, []string{"POST"})
+	c.Assert(s.handler.Url, gocheck.DeepEquals, []string{"/api/virtualhostrule/"})
+	var parsedParams virtualHostRuleParams
+	err = json.Unmarshal(s.handler.Body[0], &parsedParams)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(parsedParams, gocheck.DeepEquals, params)
+	c.Assert(s.handler.Header[0].Get("Content-Type"), gocheck.Equals, "application/json")
+	c.Assert(fullId, gocheck.Equals, "http://galeb.somewhere/api/virtualhostrule/9/")
 }
