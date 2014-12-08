@@ -90,10 +90,10 @@ func (s *S) TestTemplateList(c *gocheck.C) {
 	tpl1 := iaas.Template{
 		Name:     "tpl1",
 		IaaSName: "ec2",
-		Data: iaas.TemplateDataList{
+		Data: iaas.TemplateDataList([]iaas.TemplateData{
 			{Name: "key1", Value: "val1"},
 			{Name: "key2", Value: "val2"},
-		},
+		}),
 	}
 	err := tpl1.Save()
 	c.Assert(err, gocheck.IsNil)
@@ -101,10 +101,10 @@ func (s *S) TestTemplateList(c *gocheck.C) {
 	tpl2 := iaas.Template{
 		Name:     "tpl2",
 		IaaSName: "other",
-		Data: iaas.TemplateDataList{
+		Data: iaas.TemplateDataList([]iaas.TemplateData{
 			{Name: "key4", Value: "valX"},
 			{Name: "key5", Value: "valY"},
-		},
+		}),
 	}
 	err = tpl2.Save()
 	c.Assert(err, gocheck.IsNil)
@@ -124,14 +124,14 @@ func (s *S) TestTemplateList(c *gocheck.C) {
 	c.Assert(templates[1].Name, gocheck.Equals, "tpl2")
 	c.Assert(templates[0].IaaSName, gocheck.Equals, "ec2")
 	c.Assert(templates[1].IaaSName, gocheck.Equals, "other")
-	c.Assert(templates[0].Data, gocheck.DeepEquals, iaas.TemplateDataList{
+	c.Assert(templates[0].Data, gocheck.DeepEquals, iaas.TemplateDataList([]iaas.TemplateData{
 		{Name: "key1", Value: "val1"},
 		{Name: "key2", Value: "val2"},
-	})
-	c.Assert(templates[1].Data, gocheck.DeepEquals, iaas.TemplateDataList{
+	}))
+	c.Assert(templates[1].Data, gocheck.DeepEquals, iaas.TemplateDataList([]iaas.TemplateData{
 		{Name: "key4", Value: "valX"},
 		{Name: "key5", Value: "valY"},
-	})
+	}))
 }
 
 func (s *S) TestTemplateCreate(c *gocheck.C) {
@@ -139,10 +139,10 @@ func (s *S) TestTemplateCreate(c *gocheck.C) {
 	data := iaas.Template{
 		Name:     "my-tpl",
 		IaaSName: "my-iaas",
-		Data: iaas.TemplateDataList{
+		Data: iaas.TemplateDataList([]iaas.TemplateData{
 			{Name: "x", Value: "y"},
 			{Name: "a", Value: "b"},
-		},
+		}),
 	}
 	bodyData, err := json.Marshal(data)
 	c.Assert(err, gocheck.IsNil)
@@ -160,10 +160,10 @@ func (s *S) TestTemplateCreate(c *gocheck.C) {
 	c.Assert(templates, gocheck.HasLen, 1)
 	c.Assert(templates[0].Name, gocheck.Equals, "my-tpl")
 	c.Assert(templates[0].IaaSName, gocheck.Equals, "my-iaas")
-	c.Assert(templates[0].Data, gocheck.DeepEquals, iaas.TemplateDataList{
+	c.Assert(templates[0].Data, gocheck.DeepEquals, iaas.TemplateDataList([]iaas.TemplateData{
 		{Name: "x", Value: "y"},
 		{Name: "a", Value: "b"},
-	})
+	}))
 }
 
 func (s *S) TestTemplateDestroy(c *gocheck.C) {
@@ -171,10 +171,10 @@ func (s *S) TestTemplateDestroy(c *gocheck.C) {
 	tpl1 := iaas.Template{
 		Name:     "tpl1",
 		IaaSName: "ec2",
-		Data: iaas.TemplateDataList{
+		Data: iaas.TemplateDataList([]iaas.TemplateData{
 			{Name: "key1", Value: "val1"},
 			{Name: "key2", Value: "val2"},
-		},
+		}),
 	}
 	err := tpl1.Save()
 	c.Assert(err, gocheck.IsNil)
