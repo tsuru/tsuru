@@ -240,7 +240,7 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 	}
 	containersGroup.Wait()
 	cluster := dockerCluster()
-	imageName := assembleImageName(app.GetName())
+	imageName := assembleImageName(app.GetName(), app.GetPlatform())
 	err = cluster.RemoveImage(imageName)
 	if err != nil {
 		log.Errorf("Failed to remove image: %s", err.Error())
@@ -283,7 +283,7 @@ func addContainersWithHost(w io.Writer, a provision.App, units int, destinationH
 	if w == nil {
 		w = ioutil.Discard
 	}
-	imageId := assembleImageName(a.GetName())
+	imageId := assembleImageName(a.GetName(), a.GetPlatform())
 	wg := sync.WaitGroup{}
 	createdContainers := make(chan *container, units)
 	errors := make(chan error, units)
@@ -532,7 +532,7 @@ func (p *dockerProvisioner) PlatformAdd(name string, args map[string]string, w i
 	if _, err := url.ParseRequestURI(args["dockerfile"]); err != nil {
 		return errors.New("dockerfile parameter should be an url.")
 	}
-	imageName := assembleImageName(name)
+	imageName := assembleImageName("", name)
 	dockerCluster := dockerCluster()
 	buildOptions := docker.BuildImageOptions{
 		Name:           imageName,
@@ -554,7 +554,7 @@ func (p *dockerProvisioner) PlatformUpdate(name string, args map[string]string, 
 }
 
 func (p *dockerProvisioner) PlatformRemove(name string) error {
-	err := dockerCluster().RemoveImage(assembleImageName(name))
+	err := dockerCluster().RemoveImage(assembleImageName("", name))
 	if err != nil && err == docker.ErrNoSuchImage {
 		log.Errorf("error on remove image %s from docker.", name)
 		return nil

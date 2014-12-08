@@ -113,7 +113,7 @@ func runReplaceUnitsPipeline(w io.Writer, a provision.App, toRemoveContainers []
 	if err != nil {
 		return nil, err
 	}
-	err = removeImage(assembleImageName(a.GetName()))
+	err = removeImage(assembleImageName(a.GetName(), a.GetPlatform()))
 	if err != nil {
 		log.Debugf("Ignored error removing old images: %s", err.Error())
 	}

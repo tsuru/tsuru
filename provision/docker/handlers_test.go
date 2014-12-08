@@ -490,7 +490,7 @@ func (s *S) TestRebalanceContainersEmptyBodyHandler(c *gocheck.C) {
 	cluster, err := s.startMultipleServersCluster()
 	c.Assert(err, gocheck.IsNil)
 	defer s.stopMultipleServersCluster(cluster)
-	err = newImage("tsuru/myapp", s.server.URL())
+	err = newImage("tsuru/app-myapp", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	appInstance := testing.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner
@@ -541,7 +541,7 @@ func (s *S) TestRebalanceContainersDryBodyHandler(c *gocheck.C) {
 	cluster, err := s.startMultipleServersCluster()
 	c.Assert(err, gocheck.IsNil)
 	defer s.stopMultipleServersCluster(cluster)
-	err = newImage("tsuru/myapp", s.server.URL())
+	err = newImage("tsuru/app-myapp", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	appInstance := testing.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner

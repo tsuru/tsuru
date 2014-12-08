@@ -528,7 +528,7 @@ func (s *S) TestContainerCommit(c *gocheck.C) {
 	imageId, err := cont.commit(&buf)
 	c.Assert(err, gocheck.IsNil)
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
-	repository := repoNamespace + "/" + cont.AppName
+	repository := repoNamespace + "/app-" + cont.AppName
 	c.Assert(imageId, gocheck.Equals, repository)
 }
 
@@ -542,7 +542,7 @@ func (s *S) TestContainerCommitWithRegistry(c *gocheck.C) {
 	imageId, err := cont.commit(&buf)
 	c.Assert(err, gocheck.IsNil)
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
-	repository := "localhost:3030/" + repoNamespace + "/" + cont.AppName
+	repository := "localhost:3030/" + repoNamespace + "/app-" + cont.AppName
 	c.Assert(imageId, gocheck.Equals, repository)
 }
 
@@ -590,14 +590,14 @@ func (s *S) TestGitDeploy(c *gocheck.C) {
 	var buf bytes.Buffer
 	imageId, err := gitDeploy(app, "ff13e", &buf)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(imageId, gocheck.Equals, "tsuru/myapp")
+	c.Assert(imageId, gocheck.Equals, "tsuru/app-myapp")
 	var conts []container
 	coll := collection()
 	defer coll.Close()
 	err = coll.Find(nil).All(&conts)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(conts, gocheck.HasLen, 0)
-	err = dockerCluster().RemoveImage("tsuru/myapp")
+	err = dockerCluster().RemoveImage("tsuru/app-myapp")
 	c.Assert(err, gocheck.IsNil)
 }
 
@@ -818,16 +818,29 @@ func (s *S) TestPushImageNoRegistry(c *gocheck.C) {
 	c.Assert(request, gocheck.IsNil)
 }
 
-func (s *S) TestBuildImageName(c *gocheck.C) {
-	repository := assembleImageName("raising")
+func (s *S) TestAssembleImageNamePlatform(c *gocheck.C) {
+	repository := assembleImageName("", "raising")
 	c.Assert(repository, gocheck.Equals, s.repoNamespace+"/raising")
 }
 
-func (s *S) TestBuildImageNameWithRegistry(c *gocheck.C) {
+func (s *S) TestAssembleImageNamePlatformWithRegistry(c *gocheck.C) {
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
-	repository := assembleImageName("raising")
+	repository := assembleImageName("", "raising")
 	expected := "localhost:3030/" + s.repoNamespace + "/raising"
+	c.Assert(repository, gocheck.Equals, expected)
+}
+
+func (s *S) TestAssembleImageNameApp(c *gocheck.C) {
+	repository := assembleImageName("myapp", "raising")
+	c.Assert(repository, gocheck.Equals, s.repoNamespace+"/app-myapp")
+}
+
+func (s *S) TestAssembleImageNameAppWithRegistry(c *gocheck.C) {
+	config.Set("docker:registry", "localhost:3030")
+	defer config.Unset("docker:registry")
+	repository := assembleImageName("myapp", "raising")
+	expected := "localhost:3030/" + s.repoNamespace + "/app-myapp"
 	c.Assert(repository, gocheck.Equals, expected)
 }
 

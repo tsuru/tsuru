@@ -48,7 +48,7 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerRestart(c *gocheck.C) {
-	err := newImage("tsuru/almah", s.server.URL())
+	err := newImage("tsuru/app-almah", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	var p dockerProvisioner
 	app := testing.NewFakeApp("almah", "static", 1)
@@ -176,7 +176,7 @@ func (s *S) TestDeployErasesOldImages(c *gocheck.C) {
 	c.Assert(imgs, gocheck.HasLen, 2)
 	c.Assert(imgs[0].RepoTags, gocheck.HasLen, 1)
 	c.Assert(imgs[1].RepoTags, gocheck.HasLen, 1)
-	expected := []string{"tsuru/appdeployimagetest", "tsuru/python"}
+	expected := []string{"tsuru/app-appdeployimagetest", "tsuru/python"}
 	got := []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0]}
 	sort.Strings(got)
 	c.Assert(got, gocheck.DeepEquals, expected)
@@ -338,7 +338,7 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *gocheck.C) {
 	c.Assert(rtesting.FakeRouter.HasBackend(a.Name), gocheck.Equals, false)
 	c.Assert(registryRequests, gocheck.HasLen, 1)
 	c.Assert(registryRequests[0].Method, gocheck.Equals, "DELETE")
-	c.Assert(registryRequests[0].URL.Path, gocheck.Equals, "/v1/repositories/tsuru/mydoomedapp/")
+	c.Assert(registryRequests[0].URL.Path, gocheck.Equals, "/v1/repositories/tsuru/app-mydoomedapp/")
 	imgs, err := dockerCluster().ListImages(true)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(imgs, gocheck.HasLen, 1)
@@ -380,7 +380,7 @@ func (s *S) TestProvisionerAddr(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerAddUnits(c *gocheck.C) {
-	err := newImage("tsuru/myapp", s.server.URL())
+	err := newImage("tsuru/app-myapp", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	var p dockerProvisioner
 	app := testing.NewFakeApp("myapp", "python", 0)
@@ -459,7 +459,7 @@ func (s *S) TestProvisionerAddUnitsWithHost(c *gocheck.C) {
 	cluster, err := s.startMultipleServersCluster()
 	c.Assert(err, gocheck.IsNil)
 	defer s.stopMultipleServersCluster(cluster)
-	err = newImage("tsuru/myapp", s.server.URL())
+	err = newImage("tsuru/app-myapp", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	var p dockerProvisioner
 	app := testing.NewFakeApp("myapp", "python", 0)
@@ -519,7 +519,7 @@ func (s *S) TestProvisionerRemoveUnits(c *gocheck.C) {
 func (s *S) TestProvisionerRemoveUnitsPriorityOrder(c *gocheck.C) {
 	container, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
-	err = newImage("tsuru/"+container.AppName, "")
+	err = newImage("tsuru/app-"+container.AppName, "")
 	c.Assert(err, gocheck.IsNil)
 	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
 	app := testing.NewFakeApp(container.AppName, "python", 0)
@@ -550,7 +550,7 @@ func (s *S) TestProvisionerRemoveUnitsZeroUnits(c *gocheck.C) {
 func (s *S) TestProvisionerRemoveUnitsTooManyUnits(c *gocheck.C) {
 	container, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
-	err = newImage("tsuru/"+container.AppName, "")
+	err = newImage("tsuru/app-"+container.AppName, "")
 	c.Assert(err, gocheck.IsNil)
 	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
 	app := testing.NewFakeApp(container.AppName, "python", 0)
@@ -898,7 +898,7 @@ func (s *S) TestProvisionerPlatformAdd(c *gocheck.C) {
 	c.Assert(requests, gocheck.HasLen, 3)
 	c.Assert(requests[0].URL.Path, gocheck.Equals, "/build")
 	queryString := requests[0].URL.Query()
-	c.Assert(queryString.Get("t"), gocheck.Equals, assembleImageName("test"))
+	c.Assert(queryString.Get("t"), gocheck.Equals, assembleImageName("", "test"))
 	c.Assert(queryString.Get("remote"), gocheck.Equals, "http://localhost/Dockerfile")
 	c.Assert(requests[1].URL.Path, gocheck.Equals, "/images/localhost:3030/tsuru/test/json")
 	c.Assert(requests[2].URL.Path, gocheck.Equals, "/images/localhost:3030/tsuru/test/push")

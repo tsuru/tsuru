@@ -557,7 +557,7 @@ func (c *container) exec(stdout, stderr io.Writer, cmd string, args ...string) e
 // and returns the image repository.
 func (c *container) commit(writer io.Writer) (string, error) {
 	log.Debugf("commiting container %s", c.ID)
-	repository := assembleImageName(c.AppName)
+	repository := assembleImageName(c.AppName, "")
 	opts := docker.CommitContainerOptions{Container: c.ID, Repository: repository}
 	image, err := dockerCluster().CommitContainer(opts)
 	if err != nil {
@@ -669,7 +669,7 @@ func (c *container) asUnit(a provision.App) provision.Unit {
 func getImage(app provision.App) string {
 	c, err := getOneContainerByAppName(app.GetName())
 	if err != nil || c.Image == "" || usePlatformImage(app) {
-		return assembleImageName(app.GetPlatform())
+		return assembleImageName("", app.GetPlatform())
 	}
 	return c.Image
 }
@@ -694,14 +694,20 @@ func pushImage(name string) error {
 	return nil
 }
 
-func assembleImageName(appName string) string {
+func assembleImageName(appName, platformName string) string {
+	var baseName string
+	if appName != "" {
+		baseName = "app-" + appName
+	} else {
+		baseName = platformName
+	}
 	parts := make([]string, 0, 3)
 	registry, _ := config.GetString("docker:registry")
 	if registry != "" {
 		parts = append(parts, registry)
 	}
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
-	parts = append(parts, repoNamespace, appName)
+	parts = append(parts, repoNamespace, baseName)
 	return strings.Join(parts, "/")
 }
 
