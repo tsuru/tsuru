@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package galeb
+package client
 
 import (
 	"encoding/json"
@@ -47,7 +47,7 @@ func (s *S) TearDownTest(c *gocheck.C) {
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
-	ttesting.ClearAllCollections(s.conn.Collection("router_hipache_tests").Database)
+	ttesting.ClearAllCollections(s.conn.Collection("router_galeb_client_tests").Database)
 }
 
 func (s *S) TestNewGalebClient(c *gocheck.C) {
@@ -75,7 +75,7 @@ func (s *S) TestGalebAddBackendPool(c *gocheck.C) {
 	s.handler.RspCode = http.StatusCreated
 	client, err := NewGalebClient()
 	c.Assert(err, gocheck.IsNil)
-	params := backendPoolParams{
+	params := BackendPoolParams{
 		Name:              "myname",
 		Environment:       "myenv",
 		Plan:              "myplan",
@@ -87,7 +87,7 @@ func (s *S) TestGalebAddBackendPool(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(s.handler.Method, gocheck.DeepEquals, []string{"POST"})
 	c.Assert(s.handler.Url, gocheck.DeepEquals, []string{"/api/backendpool/"})
-	var parsedParams backendPoolParams
+	var parsedParams BackendPoolParams
 	err = json.Unmarshal(s.handler.Body[0], &parsedParams)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(parsedParams, gocheck.DeepEquals, params)
@@ -100,7 +100,7 @@ func (s *S) TestGalebAddBackendPoolInvalidStatusCode(c *gocheck.C) {
 	s.handler.Content = "invalid content"
 	client, err := NewGalebClient()
 	c.Assert(err, gocheck.IsNil)
-	params := backendPoolParams{}
+	params := BackendPoolParams{}
 	fullId, err := client.AddBackendPool(&params)
 	c.Assert(err, gocheck.ErrorMatches, "POST /backendpool/: invalid response code: 200: invalid content")
 	c.Assert(fullId, gocheck.Equals, "")
@@ -111,7 +111,7 @@ func (s *S) TestGalebAddBackendPoolInvalidResponse(c *gocheck.C) {
 	s.handler.Content = "invalid content"
 	client, err := NewGalebClient()
 	c.Assert(err, gocheck.IsNil)
-	params := backendPoolParams{}
+	params := BackendPoolParams{}
 	fullId, err := client.AddBackendPool(&params)
 	c.Assert(err, gocheck.ErrorMatches, "POST /backendpool/: unable to parse response: invalid content: invalid character 'i' looking for beginning of value")
 	c.Assert(fullId, gocheck.Equals, "")
@@ -141,14 +141,14 @@ func (s *S) TestGalebAddBackendPoolDefaultValues(c *gocheck.C) {
 	c.Assert(client.plan, gocheck.Equals, "plan1")
 	c.Assert(client.project, gocheck.Equals, "project1")
 	c.Assert(client.loadBalancePolicy, gocheck.Equals, "policy1")
-	params := backendPoolParams{Name: "mypool"}
+	params := BackendPoolParams{Name: "mypool"}
 	fullId, err := client.AddBackendPool(&params)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(fullId, gocheck.Equals, "http://galeb.somewhere/api/backendpool/999/")
-	var parsedParams backendPoolParams
+	var parsedParams BackendPoolParams
 	err = json.Unmarshal(s.handler.Body[0], &parsedParams)
 	c.Assert(err, gocheck.IsNil)
-	expected := backendPoolParams{
+	expected := BackendPoolParams{
 		Name:              "mypool",
 		Environment:       "env1",
 		Plan:              "plan1",
@@ -173,7 +173,7 @@ func (s *S) TestGalebAddBackend(c *gocheck.C) {
 	s.handler.RspCode = http.StatusCreated
 	client, err := NewGalebClient()
 	c.Assert(err, gocheck.IsNil)
-	params := backendParams{
+	params := BackendParams{
 		Ip:          "10.0.0.1",
 		Port:        8080,
 		BackendPool: "http://galeb.somewhere/api/backendpool/1/",
@@ -182,7 +182,7 @@ func (s *S) TestGalebAddBackend(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(s.handler.Method, gocheck.DeepEquals, []string{"POST"})
 	c.Assert(s.handler.Url, gocheck.DeepEquals, []string{"/api/backend/"})
-	var parsedParams backendParams
+	var parsedParams BackendParams
 	err = json.Unmarshal(s.handler.Body[0], &parsedParams)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(parsedParams, gocheck.DeepEquals, params)
@@ -205,7 +205,7 @@ func (s *S) TestGalebAddRuleDefaultValues(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(client.ruleType, gocheck.Equals, "rule1")
 	c.Assert(client.project, gocheck.Equals, "project1")
-	params := ruleParams{
+	params := RuleParams{
 		Name:        "myrule",
 		Match:       "/",
 		BackendPool: "pool1",
@@ -213,10 +213,10 @@ func (s *S) TestGalebAddRuleDefaultValues(c *gocheck.C) {
 	fullId, err := client.AddRule(&params)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(fullId, gocheck.Equals, "http://galeb.somewhere/api/rule/999/")
-	var parsedParams ruleParams
+	var parsedParams RuleParams
 	err = json.Unmarshal(s.handler.Body[0], &parsedParams)
 	c.Assert(err, gocheck.IsNil)
-	expected := ruleParams{
+	expected := RuleParams{
 		Name:        "myrule",
 		Match:       "/",
 		BackendPool: "pool1",
@@ -247,17 +247,17 @@ func (s *S) TestGalebAddVirtualHostDefaultValues(c *gocheck.C) {
 	c.Assert(client.project, gocheck.Equals, "project1")
 	c.Assert(client.plan, gocheck.Equals, "plan1")
 	c.Assert(client.environment, gocheck.Equals, "env1")
-	params := virtualHostParams{
+	params := VirtualHostParams{
 		Name:        "myvirtualhost.com",
 		RuleDefault: "myrule",
 	}
 	fullId, err := client.AddVirtualHost(&params)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(fullId, gocheck.Equals, "http://galeb.somewhere/api/virtualhost/999/")
-	var parsedParams virtualHostParams
+	var parsedParams VirtualHostParams
 	err = json.Unmarshal(s.handler.Body[0], &parsedParams)
 	c.Assert(err, gocheck.IsNil)
-	expected := virtualHostParams{
+	expected := VirtualHostParams{
 		Name:        "myvirtualhost.com",
 		RuleDefault: "myrule",
 		FarmType:    "farm1",
@@ -278,7 +278,7 @@ func (s *S) TestGalebAddVirtualHostRule(c *gocheck.C) {
 	s.handler.RspCode = http.StatusCreated
 	client, err := NewGalebClient()
 	c.Assert(err, gocheck.IsNil)
-	params := virtualHostRuleParams{
+	params := VirtualHostRuleParams{
 		Order:       1,
 		Rule:        "rule1",
 		VirtualHost: "virtualhost1",
@@ -287,7 +287,7 @@ func (s *S) TestGalebAddVirtualHostRule(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(s.handler.Method, gocheck.DeepEquals, []string{"POST"})
 	c.Assert(s.handler.Url, gocheck.DeepEquals, []string{"/api/virtualhostrule/"})
-	var parsedParams virtualHostRuleParams
+	var parsedParams VirtualHostRuleParams
 	err = json.Unmarshal(s.handler.Body[0], &parsedParams)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(parsedParams, gocheck.DeepEquals, params)
