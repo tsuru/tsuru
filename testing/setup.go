@@ -68,12 +68,13 @@ func (h *TestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 type MultiTestHandler struct {
-	Body    [][]byte
-	Method  []string
-	Url     []string
-	Content string
-	Header  []http.Header
-	RspCode int
+	Body               [][]byte
+	Method             []string
+	Url                []string
+	Content            string
+	ConditionalContent map[string]string
+	Header             []http.Header
+	RspCode            int
 }
 
 func (h *MultiTestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -86,7 +87,12 @@ func (h *MultiTestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.RspCode = http.StatusOK
 	}
 	w.WriteHeader(h.RspCode)
-	w.Write([]byte(h.Content))
+	condContent := h.ConditionalContent[r.URL.String()]
+	if condContent != "" {
+		w.Write([]byte(condContent))
+	} else {
+		w.Write([]byte(h.Content))
+	}
 }
 
 // starts a new httptest.Server and returns it
