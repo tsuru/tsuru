@@ -70,6 +70,26 @@ func (g *galebData) removeReal(address string) error {
 	}})
 }
 
+func (g *galebData) addCName(cname, virtualHostId string) error {
+	coll, err := collection()
+	if err != nil {
+		return err
+	}
+	return coll.UpdateId(g.Name, bson.M{"$push": bson.M{
+		"cnames": bson.M{"cname": cname, "virtualhostid": virtualHostId},
+	}})
+}
+
+func (g *galebData) removeCName(cname string) error {
+	coll, err := collection()
+	if err != nil {
+		return err
+	}
+	return coll.UpdateId(g.Name, bson.M{"$pull": bson.M{
+		"cnames": bson.M{"cname": cname},
+	}})
+}
+
 func (g *galebData) remove() error {
 	coll, err := collection()
 	if err != nil {
@@ -255,21 +275,82 @@ func (r *galebRouter) RemoveRoute(name, address string) error {
 }
 
 func (r *galebRouter) SetCName(cname, name string) error {
-	return nil
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	data, err := getGalebData(backendName)
+	if err != nil {
+		return err
+	}
+	client, err := r.getClient()
+	if err != nil {
+		return err
+	}
+	virtualHostParams := galebClient.VirtualHostParams{
+		Name:        cname,
+		RuleDefault: data.RootRuleId,
+	}
+	virtualHostId, err := client.AddVirtualHost(&virtualHostParams)
+	if err != nil {
+		return err
+	}
+	return data.addCName(cname, virtualHostId)
 }
 
 func (r *galebRouter) UnsetCName(cname, name string) error {
-	return nil
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	data, err := getGalebData(backendName)
+	if err != nil {
+		return err
+	}
+	client, err := r.getClient()
+	if err != nil {
+		return err
+	}
+	for _, cnameData := range data.CNames {
+		if cnameData.CName == cname {
+			err = client.RemoveResource(cnameData.VirtualHostId)
+			if err != nil {
+				return err
+			}
+			break
+		}
+	}
+	return data.removeCName(cname)
 }
 
 func (r *galebRouter) Addr(name string) (string, error) {
-	return "", nil
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return "", err
+	}
+	_, err = getGalebData(backendName)
+	if err != nil {
+		return "", err
+	}
+	return virtualHostName(backendName), nil
 }
 
-func (r *galebRouter) Swap(string, string) error {
-	return nil
+func (r *galebRouter) Swap(backend1, backend2 string) error {
+	return router.Swap(r, backend1, backend2)
 }
 
 func (r *galebRouter) Routes(name string) ([]string, error) {
-	return nil, nil
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return nil, err
+	}
+	data, err := getGalebData(backendName)
+	if err != nil {
+		return nil, err
+	}
+	var hosts []string
+	for _, real := range data.Reals {
+		hosts = append(hosts, real.Real)
+	}
+	return hosts, nil
 }

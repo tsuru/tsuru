@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 
 	"github.com/tsuru/config"
@@ -72,7 +73,7 @@ type MultiTestHandler struct {
 	Method             []string
 	Url                []string
 	Content            string
-	ConditionalContent map[string]string
+	ConditionalContent map[string]interface{}
 	Header             []http.Header
 	RspCode            int
 }
@@ -86,11 +87,16 @@ func (h *MultiTestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if h.RspCode == 0 {
 		h.RspCode = http.StatusOK
 	}
-	w.WriteHeader(h.RspCode)
 	condContent := h.ConditionalContent[r.URL.String()]
-	if condContent != "" {
-		w.Write([]byte(condContent))
+	if content, ok := condContent.(string); ok {
+		w.WriteHeader(h.RspCode)
+		w.Write([]byte(content))
+	} else if content, ok := condContent.([]string); ok {
+		code, _ := strconv.Atoi(content[0])
+		w.WriteHeader(code)
+		w.Write([]byte(content[1]))
 	} else {
+		w.WriteHeader(h.RspCode)
 		w.Write([]byte(h.Content))
 	}
 }

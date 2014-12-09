@@ -50,7 +50,7 @@ func (s *S) TearDownTest(c *gocheck.C) {
 }
 
 func (s *S) TestAddBackend(c *gocheck.C) {
-	s.handler.ConditionalContent = map[string]string{
+	s.handler.ConditionalContent = map[string]interface{}{
 		"/api/backendpool/": `{"_links":{"self":"pool1"}}`,
 		"/api/rule/":        `{"_links":{"self":"rule1"}}`,
 		"/api/virtualhost/": `{"_links":{"self":"vh1"}}`,
@@ -122,7 +122,6 @@ func (s *S) TestRemoveBackend(c *gocheck.C) {
 }
 
 func (s *S) TestAddRoute(c *gocheck.C) {
-	s.handler.RspCode = http.StatusNoContent
 	err := router.Store("myapp", "myapp", routerName)
 	c.Assert(err, gocheck.IsNil)
 	data := galebData{
@@ -131,7 +130,7 @@ func (s *S) TestAddRoute(c *gocheck.C) {
 	}
 	err = data.save()
 	c.Assert(err, gocheck.IsNil)
-	s.handler.ConditionalContent = map[string]string{
+	s.handler.ConditionalContent = map[string]interface{}{
 		"/api/backend/": `{"_links":{"self":"backend1"}}`,
 	}
 	s.handler.RspCode = http.StatusCreated
@@ -153,7 +152,6 @@ func (s *S) TestAddRoute(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveRoute(c *gocheck.C) {
-	s.handler.RspCode = http.StatusNoContent
 	err := router.Store("myapp", "myapp", routerName)
 	c.Assert(err, gocheck.IsNil)
 	data := galebData{
@@ -172,4 +170,115 @@ func (s *S) TestRemoveRoute(c *gocheck.C) {
 	dbData, err := getGalebData("myapp")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(dbData.Reals, gocheck.DeepEquals, []galebRealData{})
+}
+
+func (s *S) TestSetCName(c *gocheck.C) {
+	err := router.Store("myapp", "myapp", routerName)
+	c.Assert(err, gocheck.IsNil)
+	data := galebData{
+		Name:       "myapp",
+		RootRuleId: "myrootrule",
+	}
+	err = data.save()
+	c.Assert(err, gocheck.IsNil)
+	s.handler.ConditionalContent = map[string]interface{}{
+		"/api/virtualhost/": `{"_links":{"self":"vhX"}}`,
+	}
+	s.handler.RspCode = http.StatusCreated
+	gRouter := galebRouter{}
+	err = gRouter.SetCName("my.new.cname", "myapp")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(s.handler.Url, gocheck.DeepEquals, []string{"/api/virtualhost/"})
+	dbData, err := getGalebData("myapp")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dbData.CNames, gocheck.DeepEquals, []galebCNameData{
+		{CName: "my.new.cname", VirtualHostId: "vhX"},
+	})
+	result := map[string]interface{}{}
+	err = json.Unmarshal(s.handler.Body[0], &result)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.DeepEquals, map[string]interface{}{
+		"name": "my.new.cname", "farmtype": "", "plan": "", "environment": "", "project": "", "rule_default": "myrootrule",
+	})
+}
+
+func (s *S) TestUnsetCName(c *gocheck.C) {
+	err := router.Store("myapp", "myapp", routerName)
+	c.Assert(err, gocheck.IsNil)
+	data := galebData{
+		Name: "myapp",
+		CNames: []galebCNameData{
+			{CName: "my.new.cname", VirtualHostId: s.server.URL + "/api/vh999"},
+		},
+	}
+	err = data.save()
+	c.Assert(err, gocheck.IsNil)
+	s.handler.RspCode = http.StatusNoContent
+	gRouter := galebRouter{}
+	err = gRouter.UnsetCName("my.new.cname", "myapp")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(s.handler.Url, gocheck.DeepEquals, []string{"/api/vh999"})
+	dbData, err := getGalebData("myapp")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dbData.CNames, gocheck.DeepEquals, []galebCNameData{})
+}
+
+func (s *S) TestRoutes(c *gocheck.C) {
+	err := router.Store("myapp", "myapp", routerName)
+	c.Assert(err, gocheck.IsNil)
+	data := galebData{
+		Name: "myapp",
+		Reals: []galebRealData{
+			{Real: "10.1.1.10", BackendId: s.server.URL + "/api/backend1"},
+			{Real: "10.1.1.11", BackendId: s.server.URL + "/api/backend2"},
+		},
+	}
+	err = data.save()
+	c.Assert(err, gocheck.IsNil)
+	gRouter := galebRouter{}
+	routes, err := gRouter.Routes("myapp")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(routes, gocheck.DeepEquals, []string{"10.1.1.10", "10.1.1.11"})
+}
+
+func (s *S) TestSwap(c *gocheck.C) {
+	s.handler.RspCode = http.StatusNoContent
+	s.handler.ConditionalContent = map[string]interface{}{
+		"/api/backendpool/": []string{"201", `{"_links":{"self":"/pool1"}}`},
+		"/api/rule/":        []string{"201", `{"_links":{"self":"/rule1"}}`},
+		"/api/virtualhost/": []string{"201", `{"_links":{"self":"/vh1"}}`},
+		"/api/backend/":     []string{"201", `{"_links":{"self":"/backendX"}}`},
+	}
+	backend1 := "b1"
+	backend2 := "b2"
+	gRouter := galebRouter{}
+	err := gRouter.AddBackend(backend1)
+	c.Assert(err, gocheck.IsNil)
+	err = gRouter.AddRoute(backend1, "http://127.0.0.1")
+	c.Assert(err, gocheck.IsNil)
+	err = gRouter.AddBackend(backend2)
+	c.Assert(err, gocheck.IsNil)
+	err = gRouter.AddRoute(backend2, "http://10.10.10.10")
+	c.Assert(err, gocheck.IsNil)
+	err = gRouter.Swap(backend1, backend2)
+	c.Assert(err, gocheck.IsNil)
+	data1, err := getGalebData(backend1)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(data1.Reals, gocheck.DeepEquals, []galebRealData{{Real: "http://10.10.10.10", BackendId: "/backendX"}})
+	data2, err := getGalebData(backend2)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(data2.Reals, gocheck.DeepEquals, []galebRealData{{Real: "http://127.0.0.1", BackendId: "/backendX"}})
+}
+
+func (s *S) TestAddr(c *gocheck.C) {
+	err := router.Store("myapp", "myapp", routerName)
+	c.Assert(err, gocheck.IsNil)
+	data := galebData{
+		Name: "myapp",
+	}
+	err = data.save()
+	c.Assert(err, gocheck.IsNil)
+	gRouter := galebRouter{}
+	addr, err := gRouter.Addr("myapp")
+	c.Assert(addr, gocheck.Equals, "myapp.galeb.com")
 }
