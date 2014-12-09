@@ -6,6 +6,8 @@ package galeb
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
@@ -21,12 +23,23 @@ type galebRouter struct {
 	client *galebClient.GalebClient
 }
 
+type galebCNameData struct {
+	CName         string
+	VirtualHostId string
+}
+
+type galebRealData struct {
+	Real      string
+	BackendId string
+}
+
 type galebData struct {
 	Name          string `bson:"_id"`
 	BackendPoolId string
 	RootRuleId    string
 	VirtualHostId string
-	CNameVHIds    []string
+	CNames        []galebCNameData
+	Reals         []galebRealData
 }
 
 func (g *galebData) save() error {
@@ -35,6 +48,26 @@ func (g *galebData) save() error {
 		return err
 	}
 	return coll.Insert(g)
+}
+
+func (g *galebData) addReal(address, backendId string) error {
+	coll, err := collection()
+	if err != nil {
+		return err
+	}
+	return coll.UpdateId(g.Name, bson.M{"$push": bson.M{
+		"reals": bson.M{"real": address, "backendid": backendId},
+	}})
+}
+
+func (g *galebData) removeReal(address string) error {
+	coll, err := collection()
+	if err != nil {
+		return err
+	}
+	return coll.UpdateId(g.Name, bson.M{"$pull": bson.M{
+		"reals": bson.M{"real": address},
+	}})
 }
 
 func (g *galebData) remove() error {
@@ -145,8 +178,8 @@ func (r *galebRouter) RemoveBackend(name string) error {
 	if err != nil {
 		return err
 	}
-	for _, cname := range data.CNameVHIds {
-		err = client.RemoveResource(cname)
+	for _, cnameData := range data.CNames {
+		err = client.RemoveResource(cnameData.VirtualHostId)
 		if err != nil {
 			return err
 		}
@@ -167,11 +200,58 @@ func (r *galebRouter) RemoveBackend(name string) error {
 }
 
 func (r *galebRouter) AddRoute(name, address string) error {
-	return nil
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	addressParts := strings.SplitN(address, ":", 2)
+	if len(addressParts) != 2 {
+		return fmt.Errorf("invalid address, need host:port")
+	}
+	data, err := getGalebData(backendName)
+	if err != nil {
+		return err
+	}
+	client, err := r.getClient()
+	if err != nil {
+		return err
+	}
+	port, _ := strconv.Atoi(addressParts[1])
+	params := galebClient.BackendParams{
+		Ip:          addressParts[0],
+		Port:        port,
+		BackendPool: data.BackendPoolId,
+	}
+	backendId, err := client.AddBackend(&params)
+	if err != nil {
+		return err
+	}
+	return data.addReal(address, backendId)
 }
 
 func (r *galebRouter) RemoveRoute(name, address string) error {
-	return nil
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	data, err := getGalebData(backendName)
+	if err != nil {
+		return err
+	}
+	client, err := r.getClient()
+	if err != nil {
+		return err
+	}
+	for _, real := range data.Reals {
+		if real.Real == address {
+			err = client.RemoveResource(real.BackendId)
+			if err != nil {
+				return err
+			}
+			break
+		}
+	}
+	return data.removeReal(address)
 }
 
 func (r *galebRouter) SetCName(cname, name string) error {

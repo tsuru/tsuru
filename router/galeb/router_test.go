@@ -67,7 +67,8 @@ func (s *S) TestAddBackend(c *gocheck.C) {
 		BackendPoolId: "pool1",
 		RootRuleId:    "rule1",
 		VirtualHostId: "vh1",
-		CNameVHIds:    []string{},
+		CNames:        []galebCNameData{},
+		Reals:         []galebRealData{},
 	})
 	result := map[string]string{}
 	err = json.Unmarshal(s.handler.Body[0], &result)
@@ -101,7 +102,10 @@ func (s *S) TestRemoveBackend(c *gocheck.C) {
 		BackendPoolId: s.server.URL + "/api/backend1",
 		RootRuleId:    s.server.URL + "/api/rule1",
 		VirtualHostId: s.server.URL + "/api/vh1",
-		CNameVHIds:    []string{s.server.URL + "/api/vh2", s.server.URL + "/api/vh3"},
+		CNames: []galebCNameData{
+			{CName: "my.1.cname", VirtualHostId: s.server.URL + "/api/vh2"},
+			{CName: "my.2.cname", VirtualHostId: s.server.URL + "/api/vh3"},
+		},
 	}
 	err = data.save()
 	c.Assert(err, gocheck.IsNil)
@@ -115,4 +119,57 @@ func (s *S) TestRemoveBackend(c *gocheck.C) {
 	c.Assert(err, gocheck.ErrorMatches, "not found")
 	_, err = getGalebData("myapp")
 	c.Assert(err, gocheck.ErrorMatches, "not found")
+}
+
+func (s *S) TestAddRoute(c *gocheck.C) {
+	s.handler.RspCode = http.StatusNoContent
+	err := router.Store("myapp", "myapp", routerName)
+	c.Assert(err, gocheck.IsNil)
+	data := galebData{
+		Name:          "myapp",
+		BackendPoolId: "mybackendpoolid",
+	}
+	err = data.save()
+	c.Assert(err, gocheck.IsNil)
+	s.handler.ConditionalContent = map[string]string{
+		"/api/backend/": `{"_links":{"self":"backend1"}}`,
+	}
+	s.handler.RspCode = http.StatusCreated
+	gRouter := galebRouter{}
+	err = gRouter.AddRoute("myapp", "10.9.2.1:44001")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(s.handler.Url, gocheck.DeepEquals, []string{"/api/backend/"})
+	dbData, err := getGalebData("myapp")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dbData.Reals, gocheck.DeepEquals, []galebRealData{
+		{Real: "10.9.2.1:44001", BackendId: "backend1"},
+	})
+	result := map[string]interface{}{}
+	err = json.Unmarshal(s.handler.Body[0], &result)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.DeepEquals, map[string]interface{}{
+		"ip": "10.9.2.1", "port": float64(44001), "backendpool": "mybackendpoolid",
+	})
+}
+
+func (s *S) TestRemoveRoute(c *gocheck.C) {
+	s.handler.RspCode = http.StatusNoContent
+	err := router.Store("myapp", "myapp", routerName)
+	c.Assert(err, gocheck.IsNil)
+	data := galebData{
+		Name: "myapp",
+		Reals: []galebRealData{
+			{Real: "10.1.1.10", BackendId: s.server.URL + "/api/backend1"},
+		},
+	}
+	err = data.save()
+	c.Assert(err, gocheck.IsNil)
+	s.handler.RspCode = http.StatusNoContent
+	gRouter := galebRouter{}
+	err = gRouter.RemoveRoute("myapp", "10.1.1.10")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(s.handler.Url, gocheck.DeepEquals, []string{"/api/backend1"})
+	dbData, err := getGalebData("myapp")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dbData.Reals, gocheck.DeepEquals, []galebRealData{})
 }
