@@ -15,102 +15,60 @@ import (
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/router"
 	galebClient "github.com/tsuru/tsuru/router/galeb/client"
-	"gopkg.in/mgo.v2/bson"
 )
 
 const routerName = "galeb"
 
 type galebRouter struct {
 	client *galebClient.GalebClient
-}
-
-type galebCNameData struct {
-	CName         string
-	VirtualHostId string
-}
-
-type galebRealData struct {
-	Real      string
-	BackendId string
-}
-
-type galebData struct {
-	Name          string `bson:"_id"`
-	BackendPoolId string
-	RootRuleId    string
-	VirtualHostId string
-	CNames        []galebCNameData
-	Reals         []galebRealData
-}
-
-func (g *galebData) save() error {
-	coll, err := collection()
-	if err != nil {
-		return err
-	}
-	return coll.Insert(g)
-}
-
-func (g *galebData) addReal(address, backendId string) error {
-	coll, err := collection()
-	if err != nil {
-		return err
-	}
-	return coll.UpdateId(g.Name, bson.M{"$push": bson.M{
-		"reals": bson.M{"real": address, "backendid": backendId},
-	}})
-}
-
-func (g *galebData) removeReal(address string) error {
-	coll, err := collection()
-	if err != nil {
-		return err
-	}
-	return coll.UpdateId(g.Name, bson.M{"$pull": bson.M{
-		"reals": bson.M{"real": address},
-	}})
-}
-
-func (g *galebData) addCName(cname, virtualHostId string) error {
-	coll, err := collection()
-	if err != nil {
-		return err
-	}
-	return coll.UpdateId(g.Name, bson.M{"$push": bson.M{
-		"cnames": bson.M{"cname": cname, "virtualhostid": virtualHostId},
-	}})
-}
-
-func (g *galebData) removeCName(cname string) error {
-	coll, err := collection()
-	if err != nil {
-		return err
-	}
-	return coll.UpdateId(g.Name, bson.M{"$pull": bson.M{
-		"cnames": bson.M{"cname": cname},
-	}})
-}
-
-func (g *galebData) remove() error {
-	coll, err := collection()
-	if err != nil {
-		return err
-	}
-	return coll.RemoveId(g.Name)
-}
-
-func getGalebData(name string) (*galebData, error) {
-	coll, err := collection()
-	if err != nil {
-		return nil, err
-	}
-	var result galebData
-	err = coll.Find(bson.M{"_id": name}).One(&result)
-	return &result, err
+	domain string
+	prefix string
 }
 
 func init() {
-	router.Register(routerName, &galebRouter{})
+	router.Register(routerName, createRouter)
+}
+
+func createRouter(prefix string) (router.Router, error) {
+	apiUrl, err := config.GetString(prefix + ":api-url")
+	if err != nil {
+		return nil, err
+	}
+	username, err := config.GetString(prefix + ":username")
+	if err != nil {
+		return nil, err
+	}
+	password, err := config.GetString(prefix + ":password")
+	if err != nil {
+		return nil, err
+	}
+	domain, err := config.GetString(prefix + ":domain")
+	if err != nil {
+		return nil, err
+	}
+	environment, _ := config.GetString(prefix + ":environment")
+	farmType, _ := config.GetString(prefix + ":farm-type")
+	plan, _ := config.GetString(prefix + ":plan")
+	project, _ := config.GetString(prefix + ":project")
+	loadBalancePolicy, _ := config.GetString(prefix + ":load-balance-policy")
+	ruleType, _ := config.GetString(prefix + ":rule-type")
+	client := galebClient.GalebClient{
+		ApiUrl:            apiUrl,
+		Username:          username,
+		Password:          password,
+		Environment:       environment,
+		FarmType:          farmType,
+		Plan:              plan,
+		Project:           project,
+		LoadBalancePolicy: loadBalancePolicy,
+		RuleType:          ruleType,
+	}
+	r := galebRouter{
+		client: &client,
+		domain: domain,
+		prefix: prefix,
+	}
+	return &r, nil
 }
 
 func collection() (*storage.Collection, error) {
@@ -129,19 +87,11 @@ func rootRuleName(base string) string {
 	return fmt.Sprintf("tsuru-rootrule-%s", base)
 }
 
-func virtualHostName(base string) string {
-	domain, _ := config.GetString("galeb:domain")
-	return fmt.Sprintf("%s.%s", base, domain)
+func (r *galebRouter) virtualHostName(base string) string {
+	return fmt.Sprintf("%s.%s", base, r.domain)
 }
 
 func (r *galebRouter) getClient() (*galebClient.GalebClient, error) {
-	if r.client == nil {
-		var err error
-		r.client, err = galebClient.NewGalebClient()
-		if err != nil {
-			return nil, err
-		}
-	}
 	return r.client, nil
 }
 
@@ -168,7 +118,7 @@ func (r *galebRouter) AddBackend(name string) error {
 		return err
 	}
 	virtualHostParams := galebClient.VirtualHostParams{
-		Name:        virtualHostName(name),
+		Name:        r.virtualHostName(name),
 		RuleDefault: data.RootRuleId,
 	}
 	data.VirtualHostId, err = client.AddVirtualHost(&virtualHostParams)
@@ -338,7 +288,7 @@ func (r *galebRouter) Addr(name string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return virtualHostName(backendName), nil
+	return r.virtualHostName(backendName), nil
 }
 
 func (r *galebRouter) Swap(backend1, backend2 string) error {

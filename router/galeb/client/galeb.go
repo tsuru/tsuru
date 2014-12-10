@@ -13,54 +13,20 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
-	"github.com/tsuru/config"
 )
 
 var timeoutHttpClient = clientWithTimeout(10 * time.Second)
 
 type GalebClient struct {
-	apiUrl            string
-	username          string
-	password          string
-	environment       string
-	farmType          string
-	plan              string
-	project           string
-	loadBalancePolicy string
-	ruleType          string
-}
-
-func NewGalebClient() (*GalebClient, error) {
-	apiUrl, err := config.GetString("galeb:api-url")
-	if err != nil {
-		return nil, err
-	}
-	username, err := config.GetString("galeb:username")
-	if err != nil {
-		return nil, err
-	}
-	password, err := config.GetString("galeb:password")
-	if err != nil {
-		return nil, err
-	}
-	environment, _ := config.GetString("galeb:environment")
-	farmType, _ := config.GetString("galeb:farm-type")
-	plan, _ := config.GetString("galeb:plan")
-	project, _ := config.GetString("galeb:project")
-	loadBalancePolicy, _ := config.GetString("galeb:load-balance-policy")
-	ruleType, _ := config.GetString("galeb:rule-type")
-	return &GalebClient{
-		apiUrl:            apiUrl,
-		username:          username,
-		password:          password,
-		environment:       environment,
-		farmType:          farmType,
-		plan:              plan,
-		project:           project,
-		loadBalancePolicy: loadBalancePolicy,
-		ruleType:          ruleType,
-	}, nil
+	ApiUrl            string
+	Username          string
+	Password          string
+	Environment       string
+	FarmType          string
+	Plan              string
+	Project           string
+	LoadBalancePolicy string
+	RuleType          string
 }
 
 func clientWithTimeout(timeout time.Duration) *http.Client {
@@ -83,12 +49,12 @@ func (c *GalebClient) doRequest(method, path string, params interface{}) (*http.
 			return nil, err
 		}
 	}
-	url := fmt.Sprintf("%s/%s", strings.TrimRight(c.apiUrl, "/"), strings.TrimLeft(path, "/"))
+	url := fmt.Sprintf("%s/%s", strings.TrimRight(c.ApiUrl, "/"), strings.TrimLeft(path, "/"))
 	req, err := http.NewRequest(method, url, &buf)
 	if err != nil {
 		return nil, err
 	}
-	req.SetBasicAuth(c.username, c.password)
+	req.SetBasicAuth(c.Username, c.Password)
 	req.Header.Set("Content-Type", "application/json")
 	rsp, err := timeoutHttpClient.Do(req)
 	return rsp, err
@@ -113,43 +79,43 @@ func (c *GalebClient) doCreateResource(path string, params interface{}) (string,
 
 func (c *GalebClient) fillDefaultBackendPoolValues(params *BackendPoolParams) {
 	if params.Environment == "" {
-		params.Environment = c.environment
+		params.Environment = c.Environment
 	}
 	if params.LoadBalancePolicy == "" {
-		params.LoadBalancePolicy = c.loadBalancePolicy
+		params.LoadBalancePolicy = c.LoadBalancePolicy
 	}
 	if params.Plan == "" {
-		params.Plan = c.plan
+		params.Plan = c.Plan
 	}
 	if params.Project == "" {
-		params.Project = c.project
+		params.Project = c.Project
 	}
 	if params.FarmType == "" {
-		params.FarmType = c.farmType
+		params.FarmType = c.FarmType
 	}
 }
 
 func (c *GalebClient) fillDefaultRuleValues(params *RuleParams) {
 	if params.RuleType == "" {
-		params.RuleType = c.ruleType
+		params.RuleType = c.RuleType
 	}
 	if params.Project == "" {
-		params.Project = c.project
+		params.Project = c.Project
 	}
 }
 
 func (c *GalebClient) fillDefaultVirtualHostValues(params *VirtualHostParams) {
 	if params.Environment == "" {
-		params.Environment = c.environment
+		params.Environment = c.Environment
 	}
 	if params.FarmType == "" {
-		params.FarmType = c.farmType
+		params.FarmType = c.FarmType
 	}
 	if params.Plan == "" {
-		params.Plan = c.plan
+		params.Plan = c.Plan
 	}
 	if params.Project == "" {
-		params.Project = c.project
+		params.Project = c.Project
 	}
 }
 
@@ -177,7 +143,7 @@ func (c *GalebClient) AddVirtualHostRule(params *VirtualHostRuleParams) (string,
 }
 
 func (c *GalebClient) RemoveResource(resourceURI string) error {
-	path := strings.TrimPrefix(resourceURI, c.apiUrl)
+	path := strings.TrimPrefix(resourceURI, c.ApiUrl)
 	rsp, err := c.doRequest("DELETE", path, nil)
 	if err != nil {
 		return err

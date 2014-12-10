@@ -18,7 +18,11 @@ var ErrBackendNotFound = errors.New("Backend not found")
 var ErrForcedFailure = errors.New("Forced failure")
 
 func init() {
-	router.Register("fake", &FakeRouter)
+	router.Register("fake", createRouter)
+}
+
+func createRouter(prefix string) (router.Router, error) {
+	return &FakeRouter, nil
 }
 
 type fakeRouter struct {

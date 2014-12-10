@@ -29,12 +29,16 @@ var pool *redis.Pool
 const routerName = "hipache"
 
 func init() {
-	router.Register(routerName, hipacheRouter{})
+	router.Register(routerName, createRouter)
 }
 
-func connect() redis.Conn {
+func createRouter(prefix string) (router.Router, error) {
+	return hipacheRouter{prefix: prefix}, nil
+}
+
+func (r hipacheRouter) connect() redis.Conn {
 	if pool == nil {
-		srv, err := config.GetString("hipache:redis-server")
+		srv, err := config.GetString(r.prefix + ":redis-server")
 		if err != nil {
 			srv = "localhost:6379"
 		}
@@ -46,15 +50,17 @@ func connect() redis.Conn {
 	return pool.Get()
 }
 
-type hipacheRouter struct{}
+type hipacheRouter struct {
+	prefix string
+}
 
-func (hipacheRouter) AddBackend(name string) error {
-	domain, err := config.GetString("hipache:domain")
+func (r hipacheRouter) AddBackend(name string) error {
+	domain, err := config.GetString(r.prefix + ":domain")
 	if err != nil {
 		return &routeError{"add", err}
 	}
 	frontend := "frontend:" + name + "." + domain
-	conn := connect()
+	conn := r.connect()
 	defer conn.Close()
 	_, err = conn.Do("RPUSH", frontend, name)
 	if err != nil {
@@ -68,12 +74,12 @@ func (r hipacheRouter) RemoveBackend(name string) error {
 	if err != nil {
 		return err
 	}
-	domain, err := config.GetString("hipache:domain")
+	domain, err := config.GetString(r.prefix + ":domain")
 	if err != nil {
 		return &routeError{"remove", err}
 	}
 	frontend := "frontend:" + backendName + "." + domain
-	conn := connect()
+	conn := r.connect()
 	defer conn.Close()
 	_, err = conn.Do("DEL", frontend)
 	if err != nil {
@@ -108,7 +114,7 @@ func (r hipacheRouter) AddRoute(name, address string) error {
 	if err != nil {
 		return err
 	}
-	domain, err := config.GetString("hipache:domain")
+	domain, err := config.GetString(r.prefix + ":domain")
 	if err != nil {
 		log.Errorf("error on getting hipache domain in add route for %s - %s", backendName, address)
 		return &routeError{"add", err}
@@ -135,8 +141,8 @@ func (r hipacheRouter) AddRoute(name, address string) error {
 	return nil
 }
 
-func (hipacheRouter) addRoute(name, address string) error {
-	conn := connect()
+func (r hipacheRouter) addRoute(name, address string) error {
+	conn := r.connect()
 	defer conn.Close()
 	_, err := conn.Do("RPUSH", name, address)
 	if err != nil {
@@ -151,7 +157,7 @@ func (r hipacheRouter) RemoveRoute(name, address string) error {
 	if err != nil {
 		return err
 	}
-	domain, err := config.GetString("hipache:domain")
+	domain, err := config.GetString(r.prefix + ":domain")
 	if err != nil {
 		return &routeError{"remove", err}
 	}
@@ -175,8 +181,8 @@ func (r hipacheRouter) RemoveRoute(name, address string) error {
 	return nil
 }
 
-func (hipacheRouter) getCNames(name string) ([]string, error) {
-	conn := connect()
+func (r hipacheRouter) getCNames(name string) ([]string, error) {
+	conn := r.connect()
 	defer conn.Close()
 	cnames, err := redis.Strings(conn.Do("LRANGE", "cname:"+name, 0, -1))
 	if err != nil && err != redis.ErrNil {
@@ -187,8 +193,8 @@ func (hipacheRouter) getCNames(name string) ([]string, error) {
 
 // validCName returns true if the cname is not a subdomain of
 // hipache:domain conf, false otherwise
-func (hipacheRouter) validCName(cname string) bool {
-	domain, err := config.GetString("hipache:domain")
+func (r hipacheRouter) validCName(cname string) bool {
+	domain, err := config.GetString(r.prefix + ":domain")
 	if err != nil {
 		return false
 	}
@@ -200,7 +206,7 @@ func (r hipacheRouter) SetCName(cname, name string) error {
 	if err != nil {
 		return err
 	}
-	domain, err := config.GetString("hipache:domain")
+	domain, err := config.GetString(r.prefix + ":domain")
 	if err != nil {
 		return &routeError{"setCName", err}
 	}
@@ -209,7 +215,7 @@ func (r hipacheRouter) SetCName(cname, name string) error {
 		return &routeError{"setCName", err}
 	}
 	frontend := "frontend:" + backendName + "." + domain
-	conn := connect()
+	conn := r.connect()
 	defer conn.Close()
 	routes, err := redis.Strings(conn.Do("LRANGE", frontend, 0, -1))
 	if err != nil {
@@ -234,7 +240,7 @@ func (r hipacheRouter) UnsetCName(cname, name string) error {
 	if err != nil {
 		return err
 	}
-	conn := connect()
+	conn := r.connect()
 	defer conn.Close()
 	_, err = conn.Do("LREM", "cname:"+backendName, 1, cname)
 	if err != nil {
@@ -247,17 +253,17 @@ func (r hipacheRouter) UnsetCName(cname, name string) error {
 	return nil
 }
 
-func (hipacheRouter) Addr(name string) (string, error) {
+func (r hipacheRouter) Addr(name string) (string, error) {
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return "", err
 	}
-	domain, err := config.GetString("hipache:domain")
+	domain, err := config.GetString(r.prefix + ":domain")
 	if err != nil {
 		return "", &routeError{"get", err}
 	}
 	frontend := "frontend:" + backendName + "." + domain
-	conn := connect()
+	conn := r.connect()
 	defer conn.Close()
 	reply, err := conn.Do("LRANGE", frontend, 0, 0)
 	if err != nil {
@@ -270,17 +276,17 @@ func (hipacheRouter) Addr(name string) (string, error) {
 	return fmt.Sprintf("%s.%s", backendName, domain), nil
 }
 
-func (hipacheRouter) Routes(name string) ([]string, error) {
+func (r hipacheRouter) Routes(name string) ([]string, error) {
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return nil, err
 	}
-	domain, err := config.GetString("hipache:domain")
+	domain, err := config.GetString(r.prefix + ":domain")
 	if err != nil {
 		return nil, &routeError{"routes", err}
 	}
 	frontend := "frontend:" + backendName + "." + domain
-	conn := connect()
+	conn := r.connect()
 	defer conn.Close()
 	routes, err := redis.Strings(conn.Do("LRANGE", frontend, 0, -1))
 	if err != nil {
@@ -289,8 +295,8 @@ func (hipacheRouter) Routes(name string) ([]string, error) {
 	return routes, nil
 }
 
-func (hipacheRouter) removeElement(name, address string) error {
-	conn := connect()
+func (r hipacheRouter) removeElement(name, address string) error {
+	conn := r.connect()
 	defer conn.Close()
 	_, err := conn.Do("LREM", name, 0, address)
 	if err != nil {

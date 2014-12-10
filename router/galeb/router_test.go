@@ -33,6 +33,8 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("galeb:username", "myusername")
 	config.Set("galeb:password", "mypassword")
 	config.Set("galeb:domain", "galeb.com")
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "router_galeb_tests_s")
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
@@ -56,8 +58,9 @@ func (s *S) TestAddBackend(c *gocheck.C) {
 		"/api/virtualhost/": `{"_links":{"self":"vh1"}}`,
 	}
 	s.handler.RspCode = http.StatusCreated
-	gRouter := galebRouter{}
-	err := gRouter.AddBackend("myapp")
+	gRouter, err := createRouter("galeb")
+	c.Assert(err, gocheck.IsNil)
+	err = gRouter.AddBackend("myapp")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(s.handler.Url, gocheck.DeepEquals, []string{"/api/backendpool/", "/api/rule/", "/api/virtualhost/"})
 	data, err := getGalebData("myapp")
@@ -109,7 +112,8 @@ func (s *S) TestRemoveBackend(c *gocheck.C) {
 	}
 	err = data.save()
 	c.Assert(err, gocheck.IsNil)
-	gRouter := galebRouter{}
+	gRouter, err := createRouter("galeb")
+	c.Assert(err, gocheck.IsNil)
 	err = gRouter.RemoveBackend("myapp")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(s.handler.Url, gocheck.DeepEquals, []string{
@@ -134,7 +138,8 @@ func (s *S) TestAddRoute(c *gocheck.C) {
 		"/api/backend/": `{"_links":{"self":"backend1"}}`,
 	}
 	s.handler.RspCode = http.StatusCreated
-	gRouter := galebRouter{}
+	gRouter, err := createRouter("galeb")
+	c.Assert(err, gocheck.IsNil)
 	err = gRouter.AddRoute("myapp", "10.9.2.1:44001")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(s.handler.Url, gocheck.DeepEquals, []string{"/api/backend/"})
@@ -164,7 +169,8 @@ func (s *S) TestAddRouteParsesURL(c *gocheck.C) {
 		"/api/backend/": `{"_links":{"self":"backend1"}}`,
 	}
 	s.handler.RspCode = http.StatusCreated
-	gRouter := galebRouter{}
+	gRouter, err := createRouter("galeb")
+	c.Assert(err, gocheck.IsNil)
 	err = gRouter.AddRoute("myapp", "http://10.9.9.9:11001/")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(s.handler.Url, gocheck.DeepEquals, []string{"/api/backend/"})
@@ -193,7 +199,8 @@ func (s *S) TestRemoveRoute(c *gocheck.C) {
 	err = data.save()
 	c.Assert(err, gocheck.IsNil)
 	s.handler.RspCode = http.StatusNoContent
-	gRouter := galebRouter{}
+	gRouter, err := createRouter("galeb")
+	c.Assert(err, gocheck.IsNil)
 	err = gRouter.RemoveRoute("myapp", "10.1.1.10")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(s.handler.Url, gocheck.DeepEquals, []string{"/api/backend1"})
@@ -214,7 +221,8 @@ func (s *S) TestRemoveRouteParsesURL(c *gocheck.C) {
 	err = data.save()
 	c.Assert(err, gocheck.IsNil)
 	s.handler.RspCode = http.StatusNoContent
-	gRouter := galebRouter{}
+	gRouter, err := createRouter("galeb")
+	c.Assert(err, gocheck.IsNil)
 	err = gRouter.RemoveRoute("myapp", "https://10.1.1.10:1010/")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(s.handler.Url, gocheck.DeepEquals, []string{"/api/backend1"})
@@ -236,7 +244,8 @@ func (s *S) TestSetCName(c *gocheck.C) {
 		"/api/virtualhost/": `{"_links":{"self":"vhX"}}`,
 	}
 	s.handler.RspCode = http.StatusCreated
-	gRouter := galebRouter{}
+	gRouter, err := createRouter("galeb")
+	c.Assert(err, gocheck.IsNil)
 	err = gRouter.SetCName("my.new.cname", "myapp")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(s.handler.Url, gocheck.DeepEquals, []string{"/api/virtualhost/"})
@@ -265,7 +274,8 @@ func (s *S) TestUnsetCName(c *gocheck.C) {
 	err = data.save()
 	c.Assert(err, gocheck.IsNil)
 	s.handler.RspCode = http.StatusNoContent
-	gRouter := galebRouter{}
+	gRouter, err := createRouter("galeb")
+	c.Assert(err, gocheck.IsNil)
 	err = gRouter.UnsetCName("my.new.cname", "myapp")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(s.handler.Url, gocheck.DeepEquals, []string{"/api/vh999"})
@@ -286,7 +296,8 @@ func (s *S) TestRoutes(c *gocheck.C) {
 	}
 	err = data.save()
 	c.Assert(err, gocheck.IsNil)
-	gRouter := galebRouter{}
+	gRouter, err := createRouter("galeb")
+	c.Assert(err, gocheck.IsNil)
 	routes, err := gRouter.Routes("myapp")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(routes, gocheck.DeepEquals, []string{"10.1.1.10", "10.1.1.11"})
@@ -302,8 +313,9 @@ func (s *S) TestSwap(c *gocheck.C) {
 	}
 	backend1 := "b1"
 	backend2 := "b2"
-	gRouter := galebRouter{}
-	err := gRouter.AddBackend(backend1)
+	gRouter, err := createRouter("galeb")
+	c.Assert(err, gocheck.IsNil)
+	err = gRouter.AddBackend(backend1)
 	c.Assert(err, gocheck.IsNil)
 	err = gRouter.AddRoute(backend1, "http://127.0.0.1")
 	c.Assert(err, gocheck.IsNil)
@@ -329,7 +341,56 @@ func (s *S) TestAddr(c *gocheck.C) {
 	}
 	err = data.save()
 	c.Assert(err, gocheck.IsNil)
-	gRouter := galebRouter{}
+	gRouter, err := createRouter("galeb")
+	c.Assert(err, gocheck.IsNil)
 	addr, err := gRouter.Addr("myapp")
 	c.Assert(addr, gocheck.Equals, "myapp.galeb.com")
+}
+
+func (s *S) TestShouldBeRegistered(c *gocheck.C) {
+	r, err := router.Get("galeb")
+	c.Assert(err, gocheck.IsNil)
+	_, ok := r.(*galebRouter)
+	c.Assert(ok, gocheck.Equals, true)
+}
+
+func (s *S) TestShouldBeRegisteredAllowingPrefixes(c *gocheck.C) {
+	config.Set("routers:inst1:api-url", "url1")
+	config.Set("routers:inst1:username", "username1")
+	config.Set("routers:inst1:password", "pass1")
+	config.Set("routers:inst1:domain", "domain1")
+	config.Set("routers:inst2:api-url", "url2")
+	config.Set("routers:inst2:username", "username2")
+	config.Set("routers:inst2:password", "pass2")
+	config.Set("routers:inst2:domain", "domain2")
+	config.Set("routers:inst1:type", "galeb")
+	config.Set("routers:inst2:type", "galeb")
+	defer config.Unset("routers:inst1:type")
+	defer config.Unset("routers:inst2:type")
+	defer config.Unset("routers:inst1:api-url")
+	defer config.Unset("routers:inst1:username")
+	defer config.Unset("routers:inst1:password")
+	defer config.Unset("routers:inst1:domain")
+	defer config.Unset("routers:inst2:api-url")
+	defer config.Unset("routers:inst2:username")
+	defer config.Unset("routers:inst2:password")
+	defer config.Unset("routers:inst2:domain")
+	got1, err := router.Get("inst1")
+	c.Assert(err, gocheck.IsNil)
+	got2, err := router.Get("inst2")
+	c.Assert(err, gocheck.IsNil)
+	r1, ok := got1.(*galebRouter)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(r1.prefix, gocheck.Equals, "routers:inst1")
+	c.Assert(r1.client.ApiUrl, gocheck.Equals, "url1")
+	c.Assert(r1.client.Username, gocheck.Equals, "username1")
+	c.Assert(r1.client.Password, gocheck.Equals, "pass1")
+	c.Assert(r1.domain, gocheck.Equals, "domain1")
+	r2, ok := got2.(*galebRouter)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(r2.prefix, gocheck.Equals, "routers:inst2")
+	c.Assert(r2.client.ApiUrl, gocheck.Equals, "url2")
+	c.Assert(r2.client.Username, gocheck.Equals, "username2")
+	c.Assert(r2.client.Password, gocheck.Equals, "pass2")
+	c.Assert(r2.domain, gocheck.Equals, "domain2")
 }

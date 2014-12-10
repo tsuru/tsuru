@@ -10,25 +10,40 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/log"
 	"gopkg.in/mgo.v2/bson"
 )
 
+type routerFactory func(string) (Router, error)
+
 var ErrRouteNotFound = errors.New("Route not found")
 
-var routers = make(map[string]Router)
+var routers = make(map[string]routerFactory)
 
 // Register registers a new router.
-func Register(name string, r Router) {
+func Register(name string, r routerFactory) {
 	routers[name] = r
 }
 
 // Get gets the named router from the registry.
 func Get(name string) (Router, error) {
-	r, ok := routers[name]
+	prefix := "routers:" + name
+	routerType, err := config.GetString(prefix + ":type")
+	if err != nil {
+		log.Errorf("WARNING: config key '%s:type' not found, fallback to top level '%s:*' router config", prefix, name)
+		routerType = name
+		prefix = name
+	}
+	factory, ok := routers[routerType]
 	if !ok {
-		return nil, fmt.Errorf("Unknown router: %q.", name)
+		return nil, fmt.Errorf("Unknown router: %q.", routerType)
+	}
+	r, err := factory(prefix)
+	if err != nil {
+		return nil, err
 	}
 	return r, nil
 }

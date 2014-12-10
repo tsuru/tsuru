@@ -10,8 +10,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/db"
 	ttesting "github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
@@ -21,41 +19,31 @@ func Test(t *testing.T) {
 }
 
 type S struct {
-	conn    *db.Storage
 	server  *httptest.Server
 	handler ttesting.MultiTestHandler
+	client  *GalebClient
 }
 
 var _ = gocheck.Suite(&S{})
 
-func (s *S) SetUpSuite(c *gocheck.C) {
-	config.Set("galeb:username", "myusername")
-	config.Set("galeb:password", "mypassword")
-	var err error
-	s.conn, err = db.Conn()
-	c.Assert(err, gocheck.IsNil)
-}
-
 func (s *S) SetUpTest(c *gocheck.C) {
 	s.handler = ttesting.MultiTestHandler{}
 	s.server = httptest.NewServer(&s.handler)
-	config.Set("galeb:api-url", s.server.URL+"/api")
+	s.client = &GalebClient{
+		ApiUrl:   s.server.URL + "/api",
+		Username: "myusername",
+		Password: "mypassword",
+	}
 }
 
 func (s *S) TearDownTest(c *gocheck.C) {
 	s.server.Close()
 }
 
-func (s *S) TearDownSuite(c *gocheck.C) {
-	ttesting.ClearAllCollections(s.conn.Collection("router_galeb_client_tests").Database)
-}
-
 func (s *S) TestNewGalebClient(c *gocheck.C) {
-	client, err := NewGalebClient()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(client.apiUrl, gocheck.Equals, s.server.URL+"/api")
-	c.Assert(client.username, gocheck.Equals, "myusername")
-	c.Assert(client.password, gocheck.Equals, "mypassword")
+	c.Assert(s.client.ApiUrl, gocheck.Equals, s.server.URL+"/api")
+	c.Assert(s.client.Username, gocheck.Equals, "myusername")
+	c.Assert(s.client.Password, gocheck.Equals, "mypassword")
 }
 
 func (s *S) TestGalebAddBackendPool(c *gocheck.C) {
@@ -73,8 +61,6 @@ func (s *S) TestGalebAddBackendPool(c *gocheck.C) {
       "status": "201"
     }`
 	s.handler.RspCode = http.StatusCreated
-	client, err := NewGalebClient()
-	c.Assert(err, gocheck.IsNil)
 	params := BackendPoolParams{
 		Name:              "myname",
 		Environment:       "myenv",
@@ -83,7 +69,7 @@ func (s *S) TestGalebAddBackendPool(c *gocheck.C) {
 		LoadBalancePolicy: "mypolicy",
 		FarmType:          "mytype",
 	}
-	fullId, err := client.AddBackendPool(&params)
+	fullId, err := s.client.AddBackendPool(&params)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(s.handler.Method, gocheck.DeepEquals, []string{"POST"})
 	c.Assert(s.handler.Url, gocheck.DeepEquals, []string{"/api/backendpool/"})
@@ -98,51 +84,42 @@ func (s *S) TestGalebAddBackendPool(c *gocheck.C) {
 func (s *S) TestGalebAddBackendPoolInvalidStatusCode(c *gocheck.C) {
 	s.handler.RspCode = http.StatusOK
 	s.handler.Content = "invalid content"
-	client, err := NewGalebClient()
-	c.Assert(err, gocheck.IsNil)
 	params := BackendPoolParams{}
-	fullId, err := client.AddBackendPool(&params)
-	c.Assert(err, gocheck.ErrorMatches, "POST /backendpool/: invalid response code: 200: invalid content")
+	fullId, err := s.client.AddBackendPool(&params)
+	c.Assert(err, gocheck.ErrorMatches,
+		"POST /backendpool/: invalid response code: 200: invalid content - PARAMS: .+")
 	c.Assert(fullId, gocheck.Equals, "")
 }
 
 func (s *S) TestGalebAddBackendPoolInvalidResponse(c *gocheck.C) {
 	s.handler.RspCode = http.StatusCreated
 	s.handler.Content = "invalid content"
-	client, err := NewGalebClient()
-	c.Assert(err, gocheck.IsNil)
 	params := BackendPoolParams{}
-	fullId, err := client.AddBackendPool(&params)
-	c.Assert(err, gocheck.ErrorMatches, "POST /backendpool/: unable to parse response: invalid content: invalid character 'i' looking for beginning of value")
+	fullId, err := s.client.AddBackendPool(&params)
+	c.Assert(err, gocheck.ErrorMatches,
+		"POST /backendpool/: unable to parse response: invalid content: invalid character 'i' looking for beginning of value - PARAMS: .+")
 	c.Assert(fullId, gocheck.Equals, "")
 }
 
 func (s *S) TestGalebAddBackendPoolDefaultValues(c *gocheck.C) {
-	config.Set("galeb:environment", "env1")
-	config.Set("galeb:farm-type", "type1")
-	config.Set("galeb:plan", "plan1")
-	config.Set("galeb:project", "project1")
-	config.Set("galeb:load-balance-policy", "policy1")
-	defer config.Unset("galeb:environment")
-	defer config.Unset("galeb:farm-type")
-	defer config.Unset("galeb:plan")
-	defer config.Unset("galeb:project")
-	defer config.Unset("galeb:load-balance-policy")
+	s.client.Environment = "env1"
+	s.client.FarmType = "type1"
+	s.client.Plan = "plan1"
+	s.client.Project = "project1"
+	s.client.LoadBalancePolicy = "policy1"
 	s.handler.RspCode = http.StatusCreated
 	s.handler.Content = `{
       "_links": {
         "self": "http://galeb.somewhere/api/backendpool/999/"
       }
     }`
-	client, err := NewGalebClient()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(client.environment, gocheck.Equals, "env1")
-	c.Assert(client.farmType, gocheck.Equals, "type1")
-	c.Assert(client.plan, gocheck.Equals, "plan1")
-	c.Assert(client.project, gocheck.Equals, "project1")
-	c.Assert(client.loadBalancePolicy, gocheck.Equals, "policy1")
+	c.Assert(s.client.Environment, gocheck.Equals, "env1")
+	c.Assert(s.client.FarmType, gocheck.Equals, "type1")
+	c.Assert(s.client.Plan, gocheck.Equals, "plan1")
+	c.Assert(s.client.Project, gocheck.Equals, "project1")
+	c.Assert(s.client.LoadBalancePolicy, gocheck.Equals, "policy1")
 	params := BackendPoolParams{Name: "mypool"}
-	fullId, err := client.AddBackendPool(&params)
+	fullId, err := s.client.AddBackendPool(&params)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(fullId, gocheck.Equals, "http://galeb.somewhere/api/backendpool/999/")
 	var parsedParams BackendPoolParams
@@ -171,14 +148,12 @@ func (s *S) TestGalebAddBackend(c *gocheck.C) {
       "status": "201"
     }`
 	s.handler.RspCode = http.StatusCreated
-	client, err := NewGalebClient()
-	c.Assert(err, gocheck.IsNil)
 	params := BackendParams{
 		Ip:          "10.0.0.1",
 		Port:        8080,
 		BackendPool: "http://galeb.somewhere/api/backendpool/1/",
 	}
-	fullId, err := client.AddBackend(&params)
+	fullId, err := s.client.AddBackend(&params)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(s.handler.Method, gocheck.DeepEquals, []string{"POST"})
 	c.Assert(s.handler.Url, gocheck.DeepEquals, []string{"/api/backend/"})
@@ -191,26 +166,22 @@ func (s *S) TestGalebAddBackend(c *gocheck.C) {
 }
 
 func (s *S) TestGalebAddRuleDefaultValues(c *gocheck.C) {
-	config.Set("galeb:rule-type", "rule1")
-	config.Set("galeb:project", "project1")
-	defer config.Unset("galeb:rule-type")
-	defer config.Unset("galeb:project")
+	s.client.RuleType = "rule1"
+	s.client.Project = "project1"
 	s.handler.RspCode = http.StatusCreated
 	s.handler.Content = `{
       "_links": {
         "self": "http://galeb.somewhere/api/rule/999/"
       }
     }`
-	client, err := NewGalebClient()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(client.ruleType, gocheck.Equals, "rule1")
-	c.Assert(client.project, gocheck.Equals, "project1")
+	c.Assert(s.client.RuleType, gocheck.Equals, "rule1")
+	c.Assert(s.client.Project, gocheck.Equals, "project1")
 	params := RuleParams{
 		Name:        "myrule",
 		Match:       "/",
 		BackendPool: "pool1",
 	}
-	fullId, err := client.AddRule(&params)
+	fullId, err := s.client.AddRule(&params)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(fullId, gocheck.Equals, "http://galeb.somewhere/api/rule/999/")
 	var parsedParams RuleParams
@@ -227,31 +198,25 @@ func (s *S) TestGalebAddRuleDefaultValues(c *gocheck.C) {
 }
 
 func (s *S) TestGalebAddVirtualHostDefaultValues(c *gocheck.C) {
-	config.Set("galeb:farm-type", "farm1")
-	config.Set("galeb:plan", "plan1")
-	config.Set("galeb:environment", "env1")
-	config.Set("galeb:project", "project1")
-	defer config.Unset("galeb:farm-type")
-	defer config.Unset("galeb:plan")
-	defer config.Unset("galeb:environment")
-	defer config.Unset("galeb:project")
+	s.client.FarmType = "farm1"
+	s.client.Plan = "plan1"
+	s.client.Environment = "env1"
+	s.client.Project = "project1"
 	s.handler.RspCode = http.StatusCreated
 	s.handler.Content = `{
       "_links": {
         "self": "http://galeb.somewhere/api/virtualhost/999/"
       }
     }`
-	client, err := NewGalebClient()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(client.farmType, gocheck.Equals, "farm1")
-	c.Assert(client.project, gocheck.Equals, "project1")
-	c.Assert(client.plan, gocheck.Equals, "plan1")
-	c.Assert(client.environment, gocheck.Equals, "env1")
+	c.Assert(s.client.FarmType, gocheck.Equals, "farm1")
+	c.Assert(s.client.Project, gocheck.Equals, "project1")
+	c.Assert(s.client.Plan, gocheck.Equals, "plan1")
+	c.Assert(s.client.Environment, gocheck.Equals, "env1")
 	params := VirtualHostParams{
 		Name:        "myvirtualhost.com",
 		RuleDefault: "myrule",
 	}
-	fullId, err := client.AddVirtualHost(&params)
+	fullId, err := s.client.AddVirtualHost(&params)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(fullId, gocheck.Equals, "http://galeb.somewhere/api/virtualhost/999/")
 	var parsedParams VirtualHostParams
@@ -276,14 +241,12 @@ func (s *S) TestGalebAddVirtualHostRule(c *gocheck.C) {
       "status": "201"
     }`
 	s.handler.RspCode = http.StatusCreated
-	client, err := NewGalebClient()
-	c.Assert(err, gocheck.IsNil)
 	params := VirtualHostRuleParams{
 		Order:       1,
 		Rule:        "rule1",
 		VirtualHost: "virtualhost1",
 	}
-	fullId, err := client.AddVirtualHostRule(&params)
+	fullId, err := s.client.AddVirtualHostRule(&params)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(s.handler.Method, gocheck.DeepEquals, []string{"POST"})
 	c.Assert(s.handler.Url, gocheck.DeepEquals, []string{"/api/virtualhostrule/"})
@@ -297,9 +260,7 @@ func (s *S) TestGalebAddVirtualHostRule(c *gocheck.C) {
 
 func (s *S) TestGalebRemoveResource(c *gocheck.C) {
 	s.handler.RspCode = http.StatusNoContent
-	client, err := NewGalebClient()
-	c.Assert(err, gocheck.IsNil)
-	err = client.RemoveResource(client.apiUrl + "/backendpool/10/")
+	err := s.client.RemoveResource(s.client.ApiUrl + "/backendpool/10/")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(s.handler.Method, gocheck.DeepEquals, []string{"DELETE"})
 	c.Assert(s.handler.Url, gocheck.DeepEquals, []string{"/api/backendpool/10/"})
@@ -308,8 +269,6 @@ func (s *S) TestGalebRemoveResource(c *gocheck.C) {
 func (s *S) TestGalebRemoveResourceInvalidResponse(c *gocheck.C) {
 	s.handler.RspCode = http.StatusOK
 	s.handler.Content = "invalid content"
-	client, err := NewGalebClient()
-	c.Assert(err, gocheck.IsNil)
-	err = client.RemoveResource(client.apiUrl + "/backendpool/10/")
+	err := s.client.RemoveResource(s.client.ApiUrl + "/backendpool/10/")
 	c.Assert(err, gocheck.ErrorMatches, "DELETE /backendpool/10/: invalid response code: 200: invalid content")
 }
