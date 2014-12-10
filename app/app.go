@@ -1002,7 +1002,7 @@ func List(u *auth.User) ([]App, error) {
 		return nil, err
 	}
 	defer conn.Close()
-	if u.IsAdmin() {
+	if u == nil || u.IsAdmin() {
 		if err := conn.Apps().Find(nil).All(&apps); err != nil {
 			return []App{}, err
 		}

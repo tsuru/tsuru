@@ -1872,6 +1872,28 @@ func (s *S) TestListReturnsAppsForAGivenUser(c *gocheck.C) {
 	c.Assert(len(apps), gocheck.Equals, 2)
 }
 
+func (s *S) TestListAll(c *gocheck.C) {
+	a := App{
+		Name:  "testapp",
+		Teams: []string{s.team.Name},
+	}
+	a2 := App{
+		Name:  "othertestapp",
+		Teams: []string{"commonteam", s.team.Name},
+	}
+	err := s.conn.Apps().Insert(&a)
+	c.Assert(err, gocheck.IsNil)
+	err = s.conn.Apps().Insert(&a2)
+	c.Assert(err, gocheck.IsNil)
+	defer func() {
+		s.conn.Apps().Remove(bson.M{"name": a.Name})
+		s.conn.Apps().Remove(bson.M{"name": a2.Name})
+	}()
+	apps, err := List(nil)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(len(apps), gocheck.Equals, 2)
+}
+
 func (s *S) TestListReturnsEmptyAppArrayWhenUserHasNoAccessToAnyApp(c *gocheck.C) {
 	apps, err := List(s.user)
 	c.Assert(err, gocheck.IsNil)
