@@ -31,7 +31,7 @@ Info about an app
 *****************
 
     * Method: GET
-    * URI: /apps/:appname
+    * URI: /apps/<appname>
     * Format: json
 
 Returns 200 in case of success, and a json in the body of the response containing the app content.
@@ -50,7 +50,7 @@ Remove an app
 *************
 
     * Method: DELETE
-    * URI: /apps/:appname
+    * URI: /apps/<appname>
 
 Returns 200 in case of success.
 
@@ -129,6 +129,36 @@ Example:
 
     POST /apps/myapp/env HTTP/1.1
 
+Execute a command
+**********************
+
+    * Method: POST
+    * URI: /apps/<appname>/run?once=true
+
+Returns 200 in case of success.
+
+Where:
+
+* `once` is a boolean and indicates if the command will run just in an unit(once=true) or all of them(once=false). This parameter is not required, and the default is false.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    POST /apps/myapp/run HTTP/1.1
+    ls -la
+
+CLI Example:
+
+.. highlight:: bash
+
+::
+
+    curl -H "Authorization: bearer $(<~/.tsuru_token)" $(<~/.tsuru_target)/apps/<appname>/run?once=true -d 'ls -la'
+
+
 Delete an app environment
 *************************
 
@@ -165,7 +195,7 @@ Get app log
 ***********
 
     * Method: GET
-    * URI: /apps/:appname/logs?lines=10&source=web&unit=abc123
+    * URI: /apps/appname/log?lines=10&source=web&unit=abc123
 
 Returns 200 in case of success. Returns 404 if app is not found.
 
@@ -181,7 +211,7 @@ Example:
 
 ::
 
-    GET /apps/myapp/logs?lines=1&source=web&unit=83535b503c96
+    GET /apps/myapp/log?lines=20&source=web&unit=83535b503c96
     Content-Length: 142
     [{"Date":"2014-09-26T00:26:30.036Z","Message":"Booting worker with pid: 53","Source":"web","AppName":"tsuru-dashboard","Unit":"83535b503c96"}]
 
