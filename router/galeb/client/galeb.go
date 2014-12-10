@@ -101,12 +101,12 @@ func (c *GalebClient) doCreateResource(path string, params interface{}) (string,
 	}
 	responseData, _ := ioutil.ReadAll(rsp.Body)
 	if rsp.StatusCode != http.StatusCreated {
-		return "", fmt.Errorf("POST %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
+		return "", fmt.Errorf("POST %s: invalid response code: %d: %s - PARAMS: %#v", path, rsp.StatusCode, string(responseData), params)
 	}
 	var commonRsp commonResponse
 	err = json.Unmarshal(responseData, &commonRsp)
 	if err != nil {
-		return "", fmt.Errorf("POST %s: unable to parse response: %s: %s", path, string(responseData), err.Error())
+		return "", fmt.Errorf("POST %s: unable to parse response: %s: %s - PARAMS: %#v", path, string(responseData), err.Error(), params)
 	}
 	return commonRsp.FullId(), nil
 }

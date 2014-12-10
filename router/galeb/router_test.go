@@ -151,6 +151,36 @@ func (s *S) TestAddRoute(c *gocheck.C) {
 	})
 }
 
+func (s *S) TestAddRouteParsesURL(c *gocheck.C) {
+	err := router.Store("myapp", "myapp", routerName)
+	c.Assert(err, gocheck.IsNil)
+	data := galebData{
+		Name:          "myapp",
+		BackendPoolId: "mybackendpoolid",
+	}
+	err = data.save()
+	c.Assert(err, gocheck.IsNil)
+	s.handler.ConditionalContent = map[string]interface{}{
+		"/api/backend/": `{"_links":{"self":"backend1"}}`,
+	}
+	s.handler.RspCode = http.StatusCreated
+	gRouter := galebRouter{}
+	err = gRouter.AddRoute("myapp", "http://10.9.9.9:11001/")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(s.handler.Url, gocheck.DeepEquals, []string{"/api/backend/"})
+	dbData, err := getGalebData("myapp")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dbData.Reals, gocheck.DeepEquals, []galebRealData{
+		{Real: "10.9.9.9:11001", BackendId: "backend1"},
+	})
+	result := map[string]interface{}{}
+	err = json.Unmarshal(s.handler.Body[0], &result)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.DeepEquals, map[string]interface{}{
+		"ip": "10.9.9.9", "port": float64(11001), "backendpool": "mybackendpoolid",
+	})
+}
+
 func (s *S) TestRemoveRoute(c *gocheck.C) {
 	err := router.Store("myapp", "myapp", routerName)
 	c.Assert(err, gocheck.IsNil)
@@ -165,6 +195,27 @@ func (s *S) TestRemoveRoute(c *gocheck.C) {
 	s.handler.RspCode = http.StatusNoContent
 	gRouter := galebRouter{}
 	err = gRouter.RemoveRoute("myapp", "10.1.1.10")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(s.handler.Url, gocheck.DeepEquals, []string{"/api/backend1"})
+	dbData, err := getGalebData("myapp")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(dbData.Reals, gocheck.DeepEquals, []galebRealData{})
+}
+
+func (s *S) TestRemoveRouteParsesURL(c *gocheck.C) {
+	err := router.Store("myapp", "myapp", routerName)
+	c.Assert(err, gocheck.IsNil)
+	data := galebData{
+		Name: "myapp",
+		Reals: []galebRealData{
+			{Real: "10.1.1.10:1010", BackendId: s.server.URL + "/api/backend1"},
+		},
+	}
+	err = data.save()
+	c.Assert(err, gocheck.IsNil)
+	s.handler.RspCode = http.StatusNoContent
+	gRouter := galebRouter{}
+	err = gRouter.RemoveRoute("myapp", "https://10.1.1.10:1010/")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(s.handler.Url, gocheck.DeepEquals, []string{"/api/backend1"})
 	dbData, err := getGalebData("myapp")
@@ -264,10 +315,10 @@ func (s *S) TestSwap(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	data1, err := getGalebData(backend1)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(data1.Reals, gocheck.DeepEquals, []galebRealData{{Real: "http://10.10.10.10", BackendId: "/backendX"}})
+	c.Assert(data1.Reals, gocheck.DeepEquals, []galebRealData{{Real: "10.10.10.10", BackendId: "/backendX"}})
 	data2, err := getGalebData(backend2)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(data2.Reals, gocheck.DeepEquals, []galebRealData{{Real: "http://127.0.0.1", BackendId: "/backendX"}})
+	c.Assert(data2.Reals, gocheck.DeepEquals, []galebRealData{{Real: "127.0.0.1", BackendId: "/backendX"}})
 }
 
 func (s *S) TestAddr(c *gocheck.C) {

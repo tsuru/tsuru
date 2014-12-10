@@ -6,8 +6,9 @@ package galeb
 
 import (
 	"fmt"
+	"net"
+	"net/url"
 	"strconv"
-	"strings"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
@@ -224,10 +225,6 @@ func (r *galebRouter) AddRoute(name, address string) error {
 	if err != nil {
 		return err
 	}
-	addressParts := strings.SplitN(address, ":", 2)
-	if len(addressParts) != 2 {
-		return fmt.Errorf("invalid address, need host:port")
-	}
 	data, err := getGalebData(backendName)
 	if err != nil {
 		return err
@@ -236,9 +233,14 @@ func (r *galebRouter) AddRoute(name, address string) error {
 	if err != nil {
 		return err
 	}
-	port, _ := strconv.Atoi(addressParts[1])
+	parsed, _ := url.Parse(address)
+	if parsed != nil && parsed.Host != "" {
+		address = parsed.Host
+	}
+	host, portStr, _ := net.SplitHostPort(address)
+	port, _ := strconv.Atoi(portStr)
 	params := galebClient.BackendParams{
-		Ip:          addressParts[0],
+		Ip:          host,
 		Port:        port,
 		BackendPool: data.BackendPoolId,
 	}
@@ -261,6 +263,10 @@ func (r *galebRouter) RemoveRoute(name, address string) error {
 	client, err := r.getClient()
 	if err != nil {
 		return err
+	}
+	parsed, _ := url.Parse(address)
+	if parsed != nil && parsed.Host != "" {
+		address = parsed.Host
 	}
 	for _, real := range data.Reals {
 		if real.Real == address {
