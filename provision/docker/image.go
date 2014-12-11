@@ -33,6 +33,11 @@ func migrateImages() error {
 		if err != nil && err != docker.ErrNoSuchImage {
 			return err
 		}
+		pushOpts := docker.PushImageOptions{Name: newImage}
+		err = cluster.PushImage(pushOpts, docker.AuthConfiguration{})
+		if err != nil {
+			return err
+		}
 		err = updateContainers(bson.M{"appname": app.Name}, bson.M{"$set": bson.M{"image": newImage}})
 		if err != nil {
 			return err
