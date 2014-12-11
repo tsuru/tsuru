@@ -12,7 +12,7 @@ import (
 )
 
 func migrateImages() error {
-	registry, _ := config.GetString("config:registry")
+	registry, _ := config.GetString("docker:registry")
 	if registry != "" {
 		registry += "/"
 	}
