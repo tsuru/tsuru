@@ -75,6 +75,27 @@ func (s *S) TestListAllContainers(c *gocheck.C) {
 	c.Assert(check, gocheck.Equals, true)
 }
 
+func (s *S) TestUpdateContainers(c *gocheck.C) {
+	appName := "myapp"
+	containerIds := []string{"some-container-1", "some-container-2", "some-container-3"}
+	cleanupFunc := s.getContainerCollection(appName, containerIds...)
+	defer cleanupFunc()
+	err := updateContainers(bson.M{"appname": "myapp"}, bson.M{"$set": bson.M{"appname": "yourapp"}})
+	c.Assert(err, gocheck.IsNil)
+	containers, err := listAllContainers()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(len(containers), gocheck.Equals, 3)
+	ids := make([]string, len(containers))
+	names := make([]string, len(containers))
+	for i, container := range containers {
+		ids[i] = container.ID
+		names[i] = container.AppName
+	}
+	sort.Strings(ids)
+	c.Assert(ids, gocheck.DeepEquals, containerIds)
+	c.Assert(names, gocheck.DeepEquals, []string{"yourapp", "yourapp", "yourapp"})
+}
+
 func (s *S) TestGetOneContainerByAppName(c *gocheck.C) {
 	appName := "some-app"
 	containerIds := []string{"some-container-1", "some-container-2"}

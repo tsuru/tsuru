@@ -101,6 +101,13 @@ func listContainersBy(query bson.M) ([]container, error) {
 	return list, err
 }
 
+func updateContainers(query bson.M, update bson.M) error {
+	coll := collection()
+	defer coll.Close()
+	_, err := coll.UpdateAll(query, update)
+	return err
+}
+
 func getOneContainerByAppName(appName string) (*container, error) {
 	var c container
 	coll := collection()
