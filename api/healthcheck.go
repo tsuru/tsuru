@@ -9,9 +9,12 @@ import (
 	"net/http"
 
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/config"
+	"github.com/tsuru/go-gandalfclient"
 )
 
 func healthcheck(w http.ResponseWriter, r *http.Request) {
+	
 	conn, err := db.Conn()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -23,6 +26,19 @@ func healthcheck(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "Failed to ping MongoDB: %s", err)
+		return
+	}
+	server, err := config.GetString("git:api-server")
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, "Failed to connect to Gandalf: %s", err)
+		return
+	}
+	c := gandalf.Client{Endpoint: server}
+	_, err = c.GetHealthCheck()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(w, err.Error())
 		return
 	}
 	w.Write([]byte("WORKING"))
