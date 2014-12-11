@@ -9,7 +9,6 @@ import (
 	stderr "errors"
 	"fmt"
 	"io"
-	"os"
 	"regexp"
 	"sort"
 	"strings"
@@ -615,18 +614,9 @@ func (app *App) Run(cmd string, w io.Writer, once bool) error {
 }
 
 func (app *App) sourced(cmd string, w io.Writer, once bool) error {
-	var mapEnv = func(name string) string {
-		if e, ok := app.Env[name]; ok {
-			return e.Value
-		}
-		if e := os.Getenv(name); e != "" {
-			return e
-		}
-		return "${" + name + "}"
-	}
 	source := "[ -f /home/application/apprc ] && source /home/application/apprc"
 	cd := "[ -d /home/application/current ] && cd /home/application/current"
-	cmd = fmt.Sprintf("%s; %s; %s", source, cd, os.Expand(cmd, mapEnv))
+	cmd = fmt.Sprintf("%s; %s; %s", source, cd ,cmd)
 	return app.run(cmd, w, once)
 }
 
