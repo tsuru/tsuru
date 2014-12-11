@@ -9,7 +9,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 
-	"code.google.com/p/go.crypto/ssh"
+	"golang.org/x/crypto/ssh"
 )
 
 // marshalKey returns two byte slices: one represent the private key in the PEM

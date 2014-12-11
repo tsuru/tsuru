@@ -16,7 +16,6 @@ import (
 	"sync"
 	"time"
 
-	"code.google.com/p/go.crypto/ssh"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
@@ -27,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/safe"
+	"golang.org/x/crypto/ssh"
 	"gopkg.in/mgo.v2/bson"
 )
 

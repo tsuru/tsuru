@@ -7,11 +7,11 @@ package native
 import (
 	"testing"
 
-	"code.google.com/p/go.crypto/bcrypt"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	ttesting "github.com/tsuru/tsuru/testing"
+	"golang.org/x/crypto/bcrypt"
 	"launchpad.net/gocheck"
 )
 

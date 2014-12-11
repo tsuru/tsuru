@@ -20,9 +20,9 @@ import (
 	"strings"
 	"syscall"
 
-	"code.google.com/p/go.crypto/ssh/terminal"
 	"github.com/tsuru/tsuru/cmd"
 	tsuruIo "github.com/tsuru/tsuru/io"
+	"golang.org/x/crypto/ssh/terminal"
 	"launchpad.net/gnuflag"
 )
 

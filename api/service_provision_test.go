@@ -13,13 +13,13 @@ import (
 	"net/http/httptest"
 	"path/filepath"
 
-	"code.google.com/p/go.crypto/bcrypt"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/testing"
+	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )

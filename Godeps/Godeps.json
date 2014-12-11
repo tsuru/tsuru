@@ -1,25 +1,10 @@
 {
 	"ImportPath": "github.com/tsuru/tsuru",
-	"GoVersion": "devel +e45c4110ec90 Mon Nov 10 08:12:43 2014 -0800",
+	"GoVersion": "devel +1757b5c Thu Dec 11 07:31:32 2014 +0000",
 	"Packages": [
 		"./..."
 	],
 	"Deps": [
-		{
-			"ImportPath": "code.google.com/p/go.crypto/bcrypt",
-			"Comment": "null-209",
-			"Rev": "23b39e4e860172e1983ded00a9d2f7e42b7683d0"
-		},
-		{
-			"ImportPath": "code.google.com/p/go.crypto/blowfish",
-			"Comment": "null-209",
-			"Rev": "23b39e4e860172e1983ded00a9d2f7e42b7683d0"
-		},
-		{
-			"ImportPath": "code.google.com/p/go.crypto/ssh",
-			"Comment": "null-209",
-			"Rev": "23b39e4e860172e1983ded00a9d2f7e42b7683d0"
-		},
 		{
 			"ImportPath": "code.google.com/p/goauth2/oauth",
 			"Comment": "weekly-44",
@@ -124,6 +109,18 @@
 		{
 			"ImportPath": "github.com/tsuru/go-gandalfclient",
 			"Rev": "6805596abf1c1bd4ab6dc871384d4ed8148a638e"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/bcrypt",
+			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/blowfish",
+			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/ssh",
+			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
 		},
 		{
 			"ImportPath": "gopkg.in/mgo.v2",

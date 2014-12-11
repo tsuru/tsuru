@@ -3,7 +3,7 @@
 // license that can be found in the http://golang.org/LICENSE file.
 
 // This code is inspired by integration tests present in the package
-// code.google.com/p/go.crypto/ssh, with some changes by the tsuru authors.
+// golang.org/x/crypto/ssh, with some changes by the tsuru authors.
 
 package docker
 
