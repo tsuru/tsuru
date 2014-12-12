@@ -616,7 +616,7 @@ func (app *App) Run(cmd string, w io.Writer, once bool) error {
 func (app *App) sourced(cmd string, w io.Writer, once bool) error {
 	source := "[ -f /home/application/apprc ] && source /home/application/apprc"
 	cd := "[ -d /home/application/current ] && cd /home/application/current"
-	cmd = fmt.Sprintf("%s; %s; %s", source, cd ,cmd)
+	cmd = fmt.Sprintf("%s; %s; %s", source, cd, cmd)
 	return app.run(cmd, w, once)
 }
 
