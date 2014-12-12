@@ -267,7 +267,8 @@ func renderHistoryTable(history []healingEvent, filter string, ctx *cmd.Context)
 	fmt.Fprintln(ctx.Stdout, strings.ToUpper(filter[:1])+filter[1:]+":")
 	headers := cmd.Row([]string{"Start", "Finish", "Success", "Failing", "Created", "Error"})
 	t := cmd.Table{Headers: headers}
-	for _, event := range history {
+	for i := len(history) - 1; i >= 0; i-- {
+		event := history[i]
 		if event.Action != filter+"-healing" {
 			continue
 		}
@@ -295,7 +296,6 @@ func renderHistoryTable(history []healingEvent, filter string, ctx *cmd.Context)
 		}))
 	}
 	t.LineSeparator = true
-	t.Sort()
 	ctx.Stdout.Write(t.Bytes())
 }
 
