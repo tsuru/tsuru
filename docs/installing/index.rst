@@ -10,7 +10,7 @@
 Installing
 ==========
 
-If you're want to try tsuru with a minimum effort we recommend you to use `tsuru
+If you want to try tsuru with a minimum effort we recommend you to use `tsuru
 Now <https://github.com/tsuru/now>`_ (or `tsuru-bootstrap
 <https://github.com/tsuru/tsuru-bootstrap>`_, that runs tsuru Now on vagrant).
 
