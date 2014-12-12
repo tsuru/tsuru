@@ -7,6 +7,7 @@ package docker
 import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
+	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -24,25 +25,26 @@ func migrateImages() error {
 	if err != nil {
 		return err
 	}
-	cluster := dockerCluster()
+	dcluster := dockerCluster()
 	for _, app := range apps {
 		oldImage := registry + repoNamespace + "/" + app.Name
 		newImage := registry + repoNamespace + "/app-" + app.Name
 		opts := docker.TagImageOptions{Repo: newImage, Force: true}
-		err = cluster.TagImage(oldImage, opts)
-		if err != nil && err != docker.ErrNoSuchImage {
+		err = dcluster.TagImage(oldImage, opts)
+		if err != nil && err.(cluster.DockerNodeError).BaseError() != docker.ErrNoSuchImage {
 			return err
 		}
-		pushOpts := docker.PushImageOptions{Name: newImage}
-		err = cluster.PushImage(pushOpts, docker.AuthConfiguration{})
-		if err != nil {
-			return err
+		if registry != "" {
+			pushOpts := docker.PushImageOptions{Name: newImage}
+			err = dcluster.PushImage(pushOpts, docker.AuthConfiguration{})
+			if err != nil {
+				return err
+			}
 		}
 		err = updateContainers(bson.M{"appname": app.Name}, bson.M{"$set": bson.M{"image": newImage}})
 		if err != nil {
 			return err
 		}
-		cluster.RemoveImage(oldImage)
 	}
 	return nil
 }
