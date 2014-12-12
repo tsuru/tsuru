@@ -8,13 +8,13 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
+	"github.com/tsuru/tsuru/db"
 )
 
 func healthcheck(w http.ResponseWriter, r *http.Request) {
-	
+
 	conn, err := db.Conn()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

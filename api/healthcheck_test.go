@@ -9,14 +9,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"launchpad.net/gocheck"
 	"github.com/tsuru/config"
 	tsuruTesting "github.com/tsuru/tsuru/testing"
+	"launchpad.net/gocheck"
 )
 
-type HealthCheckSuite struct{
-	ts 			*httptest.Server
-	h  			*tsuruTesting.TestHandler
+type HealthCheckSuite struct {
+	ts *httptest.Server
+	h  *tsuruTesting.TestHandler
 }
 
 var _ = gocheck.Suite(&HealthCheckSuite{})
