@@ -61,8 +61,8 @@
 		},
 		{
 			"ImportPath": "github.com/fsouza/go-dockerclient",
-			"Comment": "0.2.1-326-g5c0c5e0",
-			"Rev": "5c0c5e04def381b4337afeec37523e667b72dbec"
+			"Comment": "0.2.1-328-g446890d",
+			"Rev": "446890d53ef68f11e6fb154092e8774a65ae511c"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
