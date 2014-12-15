@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package exec provides a interface to run external commans as an
+// Package exec provides a interface to run external commands as an
 // abstraction layer.
 package exec
 
