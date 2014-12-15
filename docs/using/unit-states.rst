@@ -1,35 +1,54 @@
-unit states
+Unit states
 ===========
 
-pending
-----------
+Unit status a the way to know what is happening with an unit. You can use the
+`tsuru app-info -a <appname>` to see the unit status:
 
-Is when the unit is waiting to be provisioned by the tsuru provisioner.
+.. highlight:: bash
 
-bulding
------------
+::
 
-Is while the unit is provisioned, it's occurs while a deploy.
+    $ tsuru app-info -a tsuru-dashboard
+    Application: tsuru-dashboard
+    Repository: git@localhost:tsuru-dashboard.git
+    Platform: python
+    ...
+    Units: 1
+    +------------+---------+
+    | Unit       | State   |
+    +------------+---------+
+    | 9cf863c2c1 | started |
+    +------------+---------+
 
-error
-------
+The unit state flow is:
 
-Is when the an error occurs caused by the application code.
+.. highlight:: bash
 
-down
--------
+::
 
-Is when an error occurs caused by tsuru internal problems.
+    +----------+                           start          +---------+
+    | building |                   +---------------------+| stopped |
+    +----------+                   |                      +---------+
+          ^                        |                           ^
+          |                        |                           |
+     deploy unit                   |                         stop
+          |                        |                           |
+          +                        v       RegisterUnit        +
+     +---------+  app unit   +----------+  SetUnitStatus  +---------+
+     | created | +---------> | starting | +-------------> | started |
+     +---------+             +----------+                 +---------+
+                                   +                         ^ +
+                                   |                         | |
+                             SetUnitStatus                   | |
+                                   |                         | |
+                                   v                         | |
+                               +-------+     SetUnitStatus   | |
+                               | error | +-------------------+ |
+                               +-------+ <---------------------+
 
-unreachable
------------------
-
-Is when the app process is up, but it is not bound to the right host
-("0.0.0.0") and/or right port ($PORT). If your process is a worker it's state
-will be `unreachable`.
-
-started
----------
-
-Is when the app process is up binded  in the right host ("0.0.0.0") and right
-port ($PORT).
+* `created`: is the initial status of an unit.
+* `building`: is the status for units being provisioned by the provisioner, like in the deployment.
+* `error`: is the status for units that failed to start, because of an application error.
+* `starting`: is set when the container is started in docker.
+* `started`: is for cases where the unit is up and running.
+* `stopped`: is for cases where the unit has been stopped.
