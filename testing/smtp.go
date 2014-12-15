@@ -28,7 +28,7 @@ type Mail struct {
 // closing the listener. Every message that arrive at the server is stored in
 // the MailBox slice.
 type SMTPServer struct {
-	// MailBox is the slice that stores all messages that has arrived to
+	// MailBox is the slice that stores all messages that have arrived to
 	// the server while it's listening. Use the mutex to access it, or bad
 	// things can happen.
 	MailBox []Mail
