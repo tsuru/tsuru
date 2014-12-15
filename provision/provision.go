@@ -44,27 +44,27 @@ func ParseStatus(status string) (Status, error) {
 	return Status(""), ErrInvalidStatus
 }
 
-// Flow:
+//     Flow:
 //
-// +----------+                           Start          +---------+
-// | Building |                   +---------------------+| Stopped |
-// +----------+                   |                      +---------+
-//       ^                        |                           ^
-//       |                        |                           |
-//  deploy unit                   |                         Stop
-//       |                        |                           |
-//       +                        v       RegisterUnit        +
-//  +---------+  app unit   +----------+  SetUnitStatus  +---------+
-//  | Created | +---------> | Starting | +-------------> | Started |
-//  +---------+             +----------+                 +---------+
-//                                +                         ^ +
-//                                |                         | |
-//                          SetUnitStatus                   | |
-//                                |                         | |
-//                                v                         | |
-//                            +-------+     SetUnitStatus   | |
-//                            | Error | +-------------------+ |
-//                            +-------+ <---------------------+
+//     +----------+                           Start          +---------+
+//     | Building |                   +---------------------+| Stopped |
+//     +----------+                   |                      +---------+
+//           ^                        |                           ^
+//           |                        |                           |
+//      deploy unit                   |                         Stop
+//           |                        |                           |
+//           +                        v       RegisterUnit        +
+//      +---------+  app unit   +----------+  SetUnitStatus  +---------+
+//      | Created | +---------> | Starting | +-------------> | Started |
+//      +---------+             +----------+                 +---------+
+//                                    +                         ^ +
+//                                    |                         | |
+//                              SetUnitStatus                   | |
+//                                    |                         | |
+//                                    v                         | |
+//                                +-------+     SetUnitStatus   | |
+//                                | Error | +-------------------+ |
+//                                +-------+ <---------------------+
 const (
 	// StatusCreated is the initial status of a unit in the database,
 	// it should transition shortly to a more specific status
