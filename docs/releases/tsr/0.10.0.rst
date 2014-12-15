@@ -20,6 +20,8 @@ What's new in tsr 0.10.0
 Bug fixes
 =========
 
+* Fix error message for unauthorized access in the ``team-user-add`` endpoint
+  (issue `#1006 <https://github.com/tsuru/tsuru/issues/1006>`_)
 
 Other improvements in tsr 0.10.0
 ================================
