@@ -770,7 +770,7 @@ func (s *AuthSuite) TestAddUserToTeamShouldReturnNotFoundIfThereIsNoTeamWithTheG
 	c.Assert(e, gocheck.ErrorMatches, "^Team not found$")
 }
 
-func (s *AuthSuite) TestAddUserToTeamShouldReturnUnauthorizedIfTheGivenUserIsNotInTheGivenTeam(c *gocheck.C) {
+func (s *AuthSuite) TestAddUserToTeamShouldReturnForbiddenIfTheGivenUserIsNotInTheGivenTeam(c *gocheck.C) {
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
@@ -790,7 +790,7 @@ func (s *AuthSuite) TestAddUserToTeamShouldReturnUnauthorizedIfTheGivenUserIsNot
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusUnauthorized)
+	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
 	c.Assert(e, gocheck.ErrorMatches, "^You are not authorized to add new users to the team tsuruteam$")
 }
 

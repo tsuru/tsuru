@@ -283,7 +283,7 @@ func addUserToTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	if !team.ContainsUser(u) {
 		msg := fmt.Sprintf("You are not authorized to add new users to the team %s", team.Name)
-		return &errors.HTTP{Code: http.StatusUnauthorized, Message: msg}
+		return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 	}
 	user, err := auth.GetUserByEmail(email)
 	if err != nil {
