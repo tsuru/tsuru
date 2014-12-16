@@ -8,6 +8,7 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
+	"github.com/tsuru/docker-cluster/storage"
 	"github.com/tsuru/tsuru/app"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -31,7 +32,11 @@ func migrateImages() error {
 		newImage := registry + repoNamespace + "/app-" + app.Name
 		opts := docker.TagImageOptions{Repo: newImage, Force: true}
 		err = dcluster.TagImage(oldImage, opts)
-		if err != nil && err.(cluster.DockerNodeError).BaseError() != docker.ErrNoSuchImage {
+		var baseErr error
+		if nodeErr, ok := err.(cluster.DockerNodeError); ok {
+			baseErr = nodeErr.BaseError()
+		}
+		if err != nil && err != storage.ErrNoSuchImage && baseErr != docker.ErrNoSuchImage {
 			return err
 		}
 		if registry != "" {
