@@ -643,7 +643,7 @@ func (p *FakeProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 	p.cmdMut.Lock()
 	p.cmds = append(p.cmds, command)
 	p.cmdMut.Unlock()
-	for _ = range app.Units() {
+	for range app.Units() {
 		select {
 		case output = <-p.outputs:
 			select {

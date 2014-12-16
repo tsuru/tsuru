@@ -108,7 +108,7 @@ func init() {
 
 // retire retires old connections
 func retire(t *time.Ticker) {
-	for _ = range t.C {
+	for range t.C {
 		now := time.Now()
 		var old []string
 		mut.RLock()

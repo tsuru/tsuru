@@ -43,7 +43,7 @@ func listenSignals() {
 	ch := make(chan os.Signal, 1)
 	signal.Notify(ch, syscall.SIGHUP)
 	go func() {
-		for _ = range ch {
+		for range ch {
 			config.ReadConfigFile(configPath)
 		}
 	}()

@@ -150,7 +150,7 @@ func (s *S) TestHealerHealNode(c *gocheck.C) {
 
 	done := make(chan bool)
 	go func() {
-		for _ = range time.Tick(100 * time.Millisecond) {
+		for range time.Tick(100 * time.Millisecond) {
 			containers, err := listAllContainers()
 			if err == nil && len(containers) == 1 && containers[0].HostAddr == "localhost" {
 				close(done)
@@ -387,7 +387,7 @@ func (s *S) TestHealerHealNodeDestroyError(c *gocheck.C) {
 
 	done := make(chan bool)
 	go func() {
-		for _ = range time.Tick(100 * time.Millisecond) {
+		for range time.Tick(100 * time.Millisecond) {
 			containers, err := listAllContainers()
 			if err == nil && len(containers) == 1 && containers[0].HostAddr == "localhost" {
 				close(done)

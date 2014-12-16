@@ -292,7 +292,7 @@ var provisionRemoveOldUnits = action.Action{
 			close(removedContainers)
 		}()
 		counter := 0
-		for _ = range removedContainers {
+		for range removedContainers {
 			counter++
 			fmt.Fprintf(writer, " ---> Removed old unit %d/%d\n", counter, total)
 		}

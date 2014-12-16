@@ -80,7 +80,7 @@ func (s *S) TestNotify(c *gocheck.C) {
 	done := make(chan bool, 1)
 	q := make(chan bool)
 	go func(quit chan bool) {
-		for _ = range time.Tick(1e3) {
+		for range time.Tick(1e3) {
 			select {
 			case <-quit:
 				return
@@ -132,7 +132,7 @@ func (s *S) TestNotifyFiltered(c *gocheck.C) {
 	done := make(chan bool, 1)
 	q := make(chan bool)
 	go func(quit chan bool) {
-		for _ = range time.Tick(1e3) {
+		for range time.Tick(1e3) {
 			select {
 			case <-quit:
 				return
