@@ -19,7 +19,7 @@ then
     status=1
 fi
 
-go get code.google.com/p/go.tools/cmd/goimports
+go get golang.org/x/tools/cmd/goimports
 out=`goimports -l .`
 if [ "${out}" != "" ]
 then
@@ -34,7 +34,7 @@ then
 fi
 
 
-go get code.google.com/p/go.tools/cmd/vet
+go get golang.org/x/tools/cmd/vet
 `go vet ./... > .vet 2>&1`
 out=`cat .vet`
 if [ "${out}" != "" ]
