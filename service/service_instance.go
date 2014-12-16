@@ -7,6 +7,7 @@ package service
 import (
 	"encoding/json"
 	stderrors "errors"
+	"io"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -161,7 +162,7 @@ func (si *ServiceInstance) update() error {
 }
 
 // BindApp makes the bind between the service instance and an app.
-func (si *ServiceInstance) BindApp(app bind.App) error {
+func (si *ServiceInstance) BindApp(app bind.App, writer io.Writer) error {
 	actions := []*action.Action{
 		&addAppToServiceInstance,
 		&setEnvironVariablesToApp,
@@ -169,7 +170,7 @@ func (si *ServiceInstance) BindApp(app bind.App) error {
 		&bindUnitsToServiceInstance,
 	}
 	pipeline := action.NewPipeline(actions...)
-	return pipeline.Execute(app, *si)
+	return pipeline.Execute(app, *si, writer)
 }
 
 // BindUnit makes the bind between the binder and an unit.
@@ -182,7 +183,7 @@ func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
 }
 
 // UnbindApp makes the unbind between the service instance and an app.
-func (si *ServiceInstance) UnbindApp(app bind.App) error {
+func (si *ServiceInstance) UnbindApp(app bind.App, writer io.Writer) error {
 	err := si.RemoveApp(app.GetName())
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusPreconditionFailed, Message: "This app is not bound to this service instance."}
@@ -209,7 +210,7 @@ func (si *ServiceInstance) UnbindApp(app bind.App) error {
 	}
 	instance := bind.ServiceInstance{Name: si.Name}
 	app.RemoveInstance(si.ServiceName, instance)
-	return app.UnsetEnvs(envVars, false, nil)
+	return app.UnsetEnvs(envVars, false, writer)
 }
 
 // UnbindUnit makes the unbind between the service instance and an unit.

@@ -49,13 +49,13 @@ type App interface {
 
 type Binder interface {
 	// BindApp makes the bind between the binder and an app.
-	BindApp(App) error
+	BindApp(App, io.Writer) error
 
 	// BindUnit makes the bind between the binder and an unit.
 	BindUnit(App, Unit) error
 
 	// UnbindApp makes the unbind between the binder and an app.
-	UnbindApp(App) error
+	UnbindApp(App, io.Writer) error
 
 	// UnbindUnit makes the unbind between the binder and an unit.
 	UnbindUnit(App, Unit) error

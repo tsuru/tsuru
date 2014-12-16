@@ -2575,7 +2575,8 @@ func (s *S) TestBindHandlerEndpointIsDown(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = bindServiceInstance(recorder, request, s.token)
-	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Body.String(), gocheck.Equals, `{"Message":"","Error":"my-mysql api is down."}`+"\n")
 }
 
 func (s *S) TestBindHandler(c *gocheck.C) {
@@ -2623,11 +2624,15 @@ func (s *S) TestBindHandler(c *gocheck.C) {
 	expectedPassword := bind.EnvVar{Name: "DATABASE_PASSWORD", Value: "s3cr3t", Public: false, InstanceName: instance.Name}
 	c.Assert(a.Env["DATABASE_USER"], gocheck.DeepEquals, expectedUser)
 	c.Assert(a.Env["DATABASE_PASSWORD"], gocheck.DeepEquals, expectedPassword)
-	var envs []string
-	err = json.Unmarshal(recorder.Body.Bytes(), &envs)
-	c.Assert(err, gocheck.IsNil)
-	sort.Strings(envs)
-	c.Assert(envs, gocheck.DeepEquals, []string{"DATABASE_PASSWORD", "DATABASE_USER"})
+	parts := strings.Split(recorder.Body.String(), "\n")
+	c.Assert(parts, gocheck.HasLen, 7)
+	c.Assert(parts[0], gocheck.Equals, `{"Message":"---- Setting 2 new environment variables ----\n"}`)
+	c.Assert(parts[1], gocheck.Equals, `{"Message":"restarting app"}`)
+	c.Assert(parts[2], gocheck.Equals, `{"Message":"\nInstance \"my-mysql\" is now bound to the app \"painkiller\".\n"}`)
+	c.Assert(parts[3], gocheck.Equals, `{"Message":"The following environment variables are now available for use in your app:\n\n"}`)
+	c.Assert(parts[4], gocheck.Matches, `{"Message":"- DATABASE_(USER|PASSWORD)\\n"}`)
+	c.Assert(parts[5], gocheck.Matches, `{"Message":"- DATABASE_(USER|PASSWORD)\\n"}`)
+	c.Assert(parts[6], gocheck.Equals, "")
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
 	action := testing.Action{
 		Action: "bind-app",
@@ -2806,6 +2811,13 @@ func (s *S) TestUnbindHandler(c *gocheck.C) {
 	case <-time.After(1e9):
 		c.Errorf("Failed to call API after 1 second.")
 	}
+	parts := strings.Split(recorder.Body.String(), "\n")
+	c.Assert(parts, gocheck.HasLen, 4)
+	c.Assert(parts[0], gocheck.Equals, `{"Message":"---- Unsetting 1 environment variables ----\n"}`)
+	c.Assert(parts[1], gocheck.Equals, `{"Message":"restarting app"}`)
+	c.Assert(parts[2], gocheck.Equals, `{"Message":"\nInstance \"my-mysql\" is not bound to the app \"painkiller\" anymore.\n"}`)
+	c.Assert(parts[3], gocheck.Equals, "")
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
 	action := testing.Action{
 		Action: "unbind-app",
 		User:   s.user.Email,

@@ -5,6 +5,7 @@
 package service
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -164,15 +165,17 @@ func (s *InstanceSuite) TestBindApp(c *gocheck.C) {
 	}
 	var si ServiceInstance
 	a := testing.NewFakeApp("myapp", "python", 1)
-	err := si.BindApp(a)
+	var buf bytes.Buffer
+	err := si.BindApp(a, &buf)
 	c.Assert(err, gocheck.IsNil)
 	expectedCalls := []string{
 		"addAppToServiceInstance", "setEnvironVariablesToApp",
 		"setTsuruServices", "bindUnitsToServiceInstance",
 	}
-	expectedParams := []interface{}{a, si}
+	expectedParams := []interface{}{a, si, &buf}
 	c.Assert(calls, gocheck.DeepEquals, expectedCalls)
 	c.Assert(params, gocheck.DeepEquals, expectedParams)
+	c.Assert(buf.String(), gocheck.Equals, "")
 }
 
 func (s *InstanceSuite) TestUnbindApp(c *gocheck.C) {
@@ -197,9 +200,11 @@ func (s *InstanceSuite) TestUnbindApp(c *gocheck.C) {
 	instance := bind.ServiceInstance{Name: si.Name}
 	err = a.AddInstance(si.ServiceName, instance)
 	c.Assert(err, gocheck.IsNil)
-	err = si.UnbindApp(a)
+	var buf bytes.Buffer
+	err = si.UnbindApp(a, &buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(a.GetInstances("mysql"), gocheck.HasLen, 0)
+	c.Assert(buf.String(), gocheck.Equals, "")
 }
 
 func (s *InstanceSuite) TestServiceInstanceIsABinder(c *gocheck.C) {

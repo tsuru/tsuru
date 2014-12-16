@@ -6,6 +6,7 @@ package service
 
 import (
 	stderrors "errors"
+	"io"
 	"net/http"
 	"sync"
 
@@ -148,6 +149,16 @@ var addAppToServiceInstance = action.Action{
 var setEnvironVariablesToApp = action.Action{
 	Name: "set-environ-variables-to-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
+		var writer io.Writer
+		if len(ctx.Params) > 2 && ctx.Params[2] != nil {
+			var ok bool
+			writer, ok = ctx.Params[2].(io.Writer)
+			if !ok {
+				msg := "Third parameter must be a io.Writer."
+				log.Error(msg)
+				return nil, stderrors.New(msg)
+			}
+		}
 		si, ok := ctx.Params[1].(ServiceInstance)
 		if !ok {
 			msg := "Second parameter must be a ServiceInstance."
@@ -178,7 +189,7 @@ var setEnvironVariablesToApp = action.Action{
 				InstanceName: si.Name,
 			})
 		}
-		return envVars, app.SetEnvs(envVars, false, nil)
+		return envVars, app.SetEnvs(envVars, false, writer)
 	},
 	Backward: func(ctx action.BWContext) {
 		app, ok := ctx.Params[0].(bind.App)

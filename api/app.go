@@ -705,17 +705,22 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) e
 		return err
 	}
 	rec.Log(u.Email, "bind-app", "instance="+instanceName, "app="+appName)
-	err = instance.BindApp(a)
-	if err != nil {
-		return err
-	}
-	var envs []string
-	for k := range a.InstanceEnv(instanceName) {
-		envs = append(envs, k)
-	}
 	w.Header().Set("Content-Type", "application/json")
-	enc := json.NewEncoder(w)
-	return enc.Encode(envs)
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
+	err = instance.BindApp(a, writer)
+	if err != nil {
+		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
+		return nil
+	}
+	fmt.Fprintf(writer, "\nInstance %q is now bound to the app %q.\n", instanceName, appName)
+	envs := a.InstanceEnv(instanceName)
+	if len(envs) > 0 {
+		fmt.Fprintf(writer, "The following environment variables are now available for use in your app:\n\n")
+	}
+	for k := range envs {
+		fmt.Fprintf(writer, "- %s\n", k)
+	}
+	return nil
 }
 
 func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -729,7 +734,15 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return err
 	}
 	rec.Log(u.Email, "unbind-app", "instance="+instanceName, "app="+appName)
-	return instance.UnbindApp(a)
+	w.Header().Set("Content-Type", "application/json")
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
+	err = instance.UnbindApp(a, writer)
+	if err != nil {
+		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
+		return nil
+	}
+	fmt.Fprintf(writer, "\nInstance %q is not bound to the app %q anymore.\n", instanceName, appName)
+	return nil
 }
 
 func restart(w http.ResponseWriter, r *http.Request, t auth.Token) error {
