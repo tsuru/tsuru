@@ -50,7 +50,7 @@ func (s *S) TestMigrateImages(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	client, err := docker.NewClient(server.URL())
 	c.Assert(err, gocheck.IsNil)
-	images, err := client.ListImages(true)
+	images, err := client.ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(images, gocheck.HasLen, 2)
 	tags1 := images[0].RepoTags
@@ -88,7 +88,7 @@ func (s *S) TestMigrateImagesWithoutImageInStorage(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	client, err := docker.NewClient(server.URL())
 	c.Assert(err, gocheck.IsNil)
-	images, err := client.ListImages(true)
+	images, err := client.ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(images, gocheck.HasLen, 0)
 }
@@ -127,7 +127,7 @@ func (s *S) TestMigrateImagesWithRegistry(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	client, err := docker.NewClient(server.URL())
 	c.Assert(err, gocheck.IsNil)
-	images, err := client.ListImages(true)
+	images, err := client.ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(images, gocheck.HasLen, 2)
 	tags1 := images[0].RepoTags

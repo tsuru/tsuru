@@ -85,7 +85,7 @@ func (s *S) TestCreateContainerForward(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	client, err := docker.NewClient(s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	images, err := client.ListImages(true)
+	images, err := client.ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, gocheck.IsNil)
 	cmds := []string{"ps", "-ef"}
 	app := testing.NewFakeApp("myapp", "python", 1)

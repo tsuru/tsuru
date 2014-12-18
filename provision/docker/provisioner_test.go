@@ -171,7 +171,7 @@ func (s *S) TestDeployErasesOldImages(c *gocheck.C) {
 		OutputStream: w,
 	})
 	c.Assert(err, gocheck.IsNil)
-	imgs, err := dockerCluster().ListImages(true)
+	imgs, err := dockerCluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(imgs, gocheck.HasLen, 2)
 	c.Assert(imgs[0].RepoTags, gocheck.HasLen, 1)
@@ -187,7 +187,7 @@ func (s *S) TestDeployErasesOldImages(c *gocheck.C) {
 		OutputStream: w,
 	})
 	c.Assert(err, gocheck.IsNil)
-	imgs, err = dockerCluster().ListImages(true)
+	imgs, err = dockerCluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(imgs, gocheck.HasLen, 2)
 	c.Assert(imgs[0].RepoTags, gocheck.HasLen, 1)
@@ -339,7 +339,7 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *gocheck.C) {
 	c.Assert(registryRequests, gocheck.HasLen, 1)
 	c.Assert(registryRequests[0].Method, gocheck.Equals, "DELETE")
 	c.Assert(registryRequests[0].URL.Path, gocheck.Equals, "/v1/repositories/tsuru/app-mydoomedapp/")
-	imgs, err := dockerCluster().ListImages(true)
+	imgs, err := dockerCluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(imgs, gocheck.HasLen, 1)
 	c.Assert(imgs[0].RepoTags, gocheck.HasLen, 1)
