@@ -35,7 +35,7 @@ you can use the `-l/--lines` parameter:
 
 ::
 
-    $ tsuru log -a <appname> --lines 100
+    $ tsuru app-log -a <appname> --lines 100
 
 Filtering
 ---------
@@ -48,7 +48,7 @@ To filter by unit you should use `-u/--unit` parameter:
 
 ::
 
-    $ tsuru log -a <appname> --unit 11f863b2c14b
+    $ tsuru app-log -a <appname> --unit 11f863b2c14b
     2014-12-11 16:36:22 -0200 [app][11f863b2c14b]: Starting gunicorn 18.0
     2014-12-11 16:36:22 -0200 [app][11f863b2c14b]: Listening at: http://0.0.0.0:8888 (51)
     2014-12-11 16:36:22 -0200 [app][11f863b2c14b]: Using worker: sync
@@ -64,19 +64,19 @@ you should use `-s/--source` parameter:
 
 ::
 
-    $ tsuru log -a <appname> --source app
+    $ tsuru app-log -a <appname> --source app
     2014-12-11 16:36:22 -0200 [app][11f863b2c14b]: Starting gunicorn 18.0
     2014-12-11 16:36:22 -0200 [app][11f863b2c14b]: Listening at: http://0.0.0.0:8888 (51)
     2014-12-11 16:36:22 -0200 [app][11f863b2c14b]: Using worker: sync
 
-    $ tsuru log -a <appname> --source tsuru
+    $ tsuru app-log -a <appname> --source tsuru
     2014-12-11 16:36:17 -0200 [tsuru][api]:  ---> Removed route from unit 1d913e0910
     2014-12-11 16:36:17 -0200 [tsuru][api]: ---- Removing 1 old unit ----
 
 Realtime logging
 ----------------
 
-`tsuru log` has a `-f/--follow` option that causes the log not stop and wait for the
+`tsuru app-log` has a `-f/--follow` option that causes the log not stop and wait for the
 new log data. With it you can see in real time the behaviour of your application that
 is useful to debug problems:
 
@@ -84,7 +84,7 @@ is useful to debug problems:
 
 ::
 
-    $ tsuru log -a <appname> --follow
+    $ tsuru app-log -a <appname> --follow
 
 You can close the session pressing Ctrl-C.
 
