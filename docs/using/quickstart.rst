@@ -14,7 +14,7 @@ don't need to think about servers at all. You:
 - Manage your app using the ``tsuru`` command-line tool
 - Deploy code using the Git revision control system
 
-tsuru takes care of where in your cluster to run your apps and the services they use. You can focus on making your apps awesome. 
+tsuru takes care of where in your cluster to run your apps and the services they use. You can focus on making your apps awesome.
 
 
 Install the tsuru client

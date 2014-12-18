@@ -17,6 +17,7 @@ Using
     php
     buildpacks
     recovery
+    logging
     procfile
     tsuru.yaml
     unit-states

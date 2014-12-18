@@ -6,25 +6,22 @@
 Recovering an application
 +++++++++++++++++++++++++
 
-Your application may be down for a number of reasons. 
+Your application may be down for a number of reasons.
 This page can help you discover why and guide you to fix the problem.
 
 Check your application logs
 ===========================
 
-The first step is to check the application logs. To view your logs, run:
+tsuru aggregates stdout and stderr from every application process making
+easier to troubleshoot problems.
 
-.. highlight:: bash
-
-::
-
-    $ tsuru log -a appname
+To know more how the tsuru log works see the :doc:`log documentation </using/logging>`.
 
 Restart your application
 ========================
 
-Some application issues are solved by restart. 
-For example, your application may need to be restarted after a 
+Some application issues are solved by restart.
+For example, your application may need to be restarted after a
 schema change to your database.
 
 .. highlight:: bash
