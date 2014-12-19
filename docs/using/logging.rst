@@ -76,8 +76,8 @@ you should use `-s/--source` parameter:
 Realtime logging
 ----------------
 
-`tsuru app-log` has a `-f/--follow` option that causes the log not stop and wait for the
-new log data. With it you can see in real time the behaviour of your application that
+`tsuru app-log` has a `-f/--follow` option that causes the log to not stop and wait for the
+new log data. With this option you can see in real time the behaviour of your application that
 is useful to debug problems:
 
 .. highlight:: bash
@@ -92,14 +92,14 @@ Limitations
 -----------
 
 The tsuru native log system is designed to be fast and show the recent
-log of your application. The tsuru log do not store all log entries for your application.
+log of your application. The tsuru log doesn't store all log entries for your application.
 
 If you want to store and see all log entries you should use an external log aggregator.
 
 Using an external log aggregator
 ================================
 
-You can sent the log to an external aggregator log too. To do it tsuru uses the `syslog <https://tools.ietf.org/html/rfc5424>`_ protocol.
+You can also send the log to an external log aggregator. To do this, tsuru uses the `syslog <https://tools.ietf.org/html/rfc5424>`_ protocol.
 
 To use syslog you should set these variables in your application:
 
