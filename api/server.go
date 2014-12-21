@@ -35,6 +35,7 @@ type TsuruHandler struct {
 }
 
 func fatal(err error) {
+	fmt.Println(err.Error())
 	log.Fatal(err.Error())
 }
 
