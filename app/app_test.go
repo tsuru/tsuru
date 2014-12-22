@@ -1268,19 +1268,19 @@ func (s *S) TestAddInstanceFirst(c *gocheck.C) {
 	c.Assert(got, gocheck.DeepEquals, expected)
 	delete(a.Env, TsuruServicesEnvVar)
 	c.Assert(a.Env, gocheck.DeepEquals, map[string]bind.EnvVar{
-		"DATABASE_HOST": bind.EnvVar{
+		"DATABASE_HOST": {
 			Name:         "DATABASE_HOST",
 			Value:        "localhost",
 			Public:       false,
 			InstanceName: "myinstance",
 		},
-		"DATABASE_PORT": bind.EnvVar{
+		"DATABASE_PORT": {
 			Name:         "DATABASE_PORT",
 			Value:        "3306",
 			Public:       false,
 			InstanceName: "myinstance",
 		},
-		"DATABASE_USER": bind.EnvVar{
+		"DATABASE_USER": {
 			Name:         "DATABASE_USER",
 			Value:        "root",
 			Public:       false,
@@ -1437,7 +1437,7 @@ func (s *S) TestRemoveInstanceNotFound(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	services := a.parsedTsuruServices()
 	c.Assert(services, gocheck.DeepEquals, map[string][]bind.ServiceInstance{
-		"mysql": []bind.ServiceInstance{
+		"mysql": {
 			{
 				Name: "mydb",
 				Envs: map[string]string{"DATABASE_NAME": "mydb"},
@@ -1469,7 +1469,7 @@ func (s *S) TestRemoveInstanceServiceNotFound(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	services := a.parsedTsuruServices()
 	c.Assert(services, gocheck.DeepEquals, map[string][]bind.ServiceInstance{
-		"mysql": []bind.ServiceInstance{
+		"mysql": {
 			{
 				Name: "mydb",
 				Envs: map[string]string{"DATABASE_NAME": "mydb"},

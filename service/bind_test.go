@@ -469,7 +469,7 @@ func (s *BindSuite) TestUnbindRemovesEnvironmentVariableFromApp(c *gocheck.C) {
 	err = json.Unmarshal([]byte(services), &tsuruServices)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(tsuruServices, gocheck.DeepEquals, map[string][]bind.ServiceInstance{
-		"mysql": []bind.ServiceInstance{
+		"mysql": {
 			{
 				Name: "other-mysql",
 				Envs: map[string]string{"DATABASE_USER": "1", "DATABASE_PASSWORD": "2"},
