@@ -776,6 +776,14 @@ func (app *App) UnsetEnvs(variableNames []string, publicOnly bool, w io.Writer) 
 	if w != nil {
 		fmt.Fprintf(w, "---- Unsetting %d environment variables ----\n", len(variableNames))
 	}
+	units := app.GetUnits()
+	if len(units) > 0 {
+		return app.unsetEnvsToApp(variableNames, publicOnly, true, w)
+	}
+	return app.unsetEnvsToApp(variableNames, publicOnly, false, w)
+}
+
+func (app *App) unsetEnvsToApp(variableNames []string, publicOnly, shouldRestart bool, w io.Writer) error {
 	if len(variableNames) > 0 {
 		for _, name := range variableNames {
 			var unset bool
@@ -795,6 +803,9 @@ func (app *App) UnsetEnvs(variableNames []string, publicOnly bool, w io.Writer) 
 		err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"env": app.Env}})
 		if err != nil {
 			return err
+		}
+		if !shouldRestart {
+			return nil
 		}
 		return Provisioner.Restart(app, w)
 	}
@@ -913,6 +924,17 @@ func (app *App) AddInstance(serviceName string, instance bind.ServiceInstance, w
 	return app.SetEnvs(envVars, false, writer)
 }
 
+func findServiceEnv(tsuruServices map[string][]bind.ServiceInstance, name string) (string, string) {
+	for _, serviceInstances := range tsuruServices {
+		for _, instance := range serviceInstances {
+			if instance.Envs[name] != "" {
+				return instance.Name, instance.Envs[name]
+			}
+		}
+	}
+	return "", ""
+}
+
 func (app *App) RemoveInstance(serviceName string, instance bind.ServiceInstance, writer io.Writer) error {
 	tsuruServices := app.parsedTsuruServices()
 	toUnsetEnvs := make([]string, 0, len(instance.Envs))
@@ -939,18 +961,34 @@ func (app *App) RemoveInstance(serviceName string, instance bind.ServiceInstance
 			return err
 		}
 	}
+	var envsToSet []bind.EnvVar
+	for _, varName := range toUnsetEnvs {
+		instanceName, envValue := findServiceEnv(tsuruServices, varName)
+		if envValue == "" || instanceName == "" {
+			break
+		}
+		envsToSet = append(envsToSet, bind.EnvVar{
+			Name:         varName,
+			Value:        envValue,
+			Public:       false,
+			InstanceName: instanceName,
+		})
+	}
 	if servicesJson != nil {
-		shouldRestart := len(toUnsetEnvs) == 0
-		err = app.setEnvsToApp([]bind.EnvVar{{
+		envsToSet = append(envsToSet, bind.EnvVar{
 			Name:   TsuruServicesEnvVar,
 			Value:  string(servicesJson),
 			Public: false,
-		}}, false, shouldRestart, writer)
+		})
+	}
+	if len(toUnsetEnvs) > 0 {
+		shouldRestart := len(envsToSet) == 0
+		err = app.unsetEnvsToApp(toUnsetEnvs, false, shouldRestart, writer)
 		if err != nil {
 			return err
 		}
 	}
-	return app.UnsetEnvs(toUnsetEnvs, false, writer)
+	return app.setEnvsToApp(envsToSet, false, true, writer)
 }
 
 // Log adds a log message to the app. Specifying a good source is good so the

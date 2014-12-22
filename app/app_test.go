@@ -1323,14 +1323,57 @@ func (s *S) TestAddInstanceMultipleServices(c *gocheck.C) {
 	}
 	a, err = GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	env, ok := a.Env[TsuruServicesEnvVar]
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(env.Public, gocheck.Equals, false)
-	c.Assert(env.Name, gocheck.Equals, TsuruServicesEnvVar)
-	var got map[string][]bind.ServiceInstance
-	err = json.Unmarshal([]byte(env.Value), &got)
+	c.Assert(a.parsedTsuruServices(), gocheck.DeepEquals, expected)
+	delete(a.Env, "TSURU_SERVICES")
+	c.Assert(a.Env, gocheck.DeepEquals, map[string]bind.EnvVar{
+		"DATABASE_NAME": {
+			Name:         "DATABASE_NAME",
+			Value:        "supermongo",
+			Public:       false,
+			InstanceName: "yourinstance",
+		},
+	})
+}
+
+func (s *S) TestAddInstanceAndRemoveInstanceMultipleServices(c *gocheck.C) {
+	a := &App{
+		Name: "fuchsia",
+	}
+	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(got, gocheck.DeepEquals, expected)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(a)
+	defer s.provisioner.Destroy(a)
+	instance1 := bind.ServiceInstance{
+		Name: "myinstance",
+		Envs: map[string]string{"DATABASE_NAME": "myinstance"},
+	}
+	err = a.AddInstance("mysql", instance1, nil)
+	c.Assert(err, gocheck.IsNil)
+	instance2 := bind.ServiceInstance{
+		Name: "yourinstance",
+		Envs: map[string]string{"DATABASE_NAME": "supermongo"},
+	}
+	err = a.AddInstance("mongodb", instance2, nil)
+	c.Assert(err, gocheck.IsNil)
+	err = a.RemoveInstance("mysql", instance1, nil)
+	c.Assert(err, gocheck.IsNil)
+	expected := map[string][]bind.ServiceInstance{
+		"mysql":   {},
+		"mongodb": {instance2},
+	}
+	a, err = GetByName(a.Name)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(a.parsedTsuruServices(), gocheck.DeepEquals, expected)
+	delete(a.Env, "TSURU_SERVICES")
+	c.Assert(a.Env, gocheck.DeepEquals, map[string]bind.EnvVar{
+		"DATABASE_NAME": {
+			Name:         "DATABASE_NAME",
+			Value:        "supermongo",
+			Public:       false,
+			InstanceName: "yourinstance",
+		},
+	})
 }
 
 func (s *S) TestRemoveInstance(c *gocheck.C) {
