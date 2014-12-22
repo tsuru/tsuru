@@ -41,6 +41,7 @@ var (
 )
 
 const InternalAppName = "tsr"
+const TsuruServicesEnvVar = "TSURU_SERVICES"
 
 // AppLock stores information about a lock hold on the app
 type AppLock struct {
@@ -878,7 +879,7 @@ func cnameExists(cname string) bool {
 
 func (app *App) parsedTsuruServices() map[string][]bind.ServiceInstance {
 	var tsuruServices map[string][]bind.ServiceInstance
-	if servicesEnv, ok := app.Env["TSURU_SERVICES"]; ok {
+	if servicesEnv, ok := app.Env[TsuruServicesEnvVar]; ok {
 		json.Unmarshal([]byte(servicesEnv.Value), &tsuruServices)
 	} else {
 		tsuruServices = make(map[string][]bind.ServiceInstance)
@@ -905,7 +906,7 @@ func (app *App) AddInstance(serviceName string, instance bind.ServiceInstance, w
 		})
 	}
 	envVars = append(envVars, bind.EnvVar{
-		Name:   "TSURU_SERVICES",
+		Name:   TsuruServicesEnvVar,
 		Value:  string(servicesJson),
 		Public: false,
 	})
@@ -941,7 +942,7 @@ func (app *App) RemoveInstance(serviceName string, instance bind.ServiceInstance
 	if servicesJson != nil {
 		shouldRestart := len(toUnsetEnvs) == 0
 		err = app.setEnvsToApp([]bind.EnvVar{{
-			Name:   "TSURU_SERVICES",
+			Name:   TsuruServicesEnvVar,
 			Value:  string(servicesJson),
 			Public: false,
 		}}, false, shouldRestart, writer)

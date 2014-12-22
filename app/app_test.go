@@ -1258,15 +1258,15 @@ func (s *S) TestAddInstanceFirst(c *gocheck.C) {
 	a, err = GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	expected := map[string][]bind.ServiceInstance{"myservice": {instance}}
-	env, ok := a.Env["TSURU_SERVICES"]
+	env, ok := a.Env[TsuruServicesEnvVar]
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(env.Public, gocheck.Equals, false)
-	c.Assert(env.Name, gocheck.Equals, "TSURU_SERVICES")
+	c.Assert(env.Name, gocheck.Equals, TsuruServicesEnvVar)
 	var got map[string][]bind.ServiceInstance
 	err = json.Unmarshal([]byte(env.Value), &got)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(got, gocheck.DeepEquals, expected)
-	delete(a.Env, "TSURU_SERVICES")
+	delete(a.Env, TsuruServicesEnvVar)
 	c.Assert(a.Env, gocheck.DeepEquals, map[string]bind.EnvVar{
 		"DATABASE_HOST": bind.EnvVar{
 			Name:         "DATABASE_HOST",
@@ -1293,8 +1293,8 @@ func (s *S) TestAddInstanceMultipleServices(c *gocheck.C) {
 	a := &App{
 		Name: "dark",
 		Env: map[string]bind.EnvVar{
-			"TSURU_SERVICES": {
-				Name:   "TSURU_SERVICES",
+			TsuruServicesEnvVar: {
+				Name:   TsuruServicesEnvVar,
 				Public: false,
 				Value:  `{"mysql": [{"instance_name": "mydb", "envs": {"DATABASE_NAME": "mydb"}}]}`,
 			},
@@ -1323,10 +1323,10 @@ func (s *S) TestAddInstanceMultipleServices(c *gocheck.C) {
 	}
 	a, err = GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	env, ok := a.Env["TSURU_SERVICES"]
+	env, ok := a.Env[TsuruServicesEnvVar]
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(env.Public, gocheck.Equals, false)
-	c.Assert(env.Name, gocheck.Equals, "TSURU_SERVICES")
+	c.Assert(env.Name, gocheck.Equals, TsuruServicesEnvVar)
 	var got map[string][]bind.ServiceInstance
 	err = json.Unmarshal([]byte(env.Value), &got)
 	c.Assert(err, gocheck.IsNil)
@@ -1337,8 +1337,8 @@ func (s *S) TestRemoveInstance(c *gocheck.C) {
 	a := &App{
 		Name: "dark",
 		Env: map[string]bind.EnvVar{
-			"TSURU_SERVICES": {
-				Name:   "TSURU_SERVICES",
+			TsuruServicesEnvVar: {
+				Name:   TsuruServicesEnvVar,
 				Public: false,
 				Value:  `{"mysql": [{"instance_name": "mydb", "envs": {"DATABASE_NAME": "mydb"}}]}`,
 			},
@@ -1360,12 +1360,12 @@ func (s *S) TestRemoveInstance(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	a, err = GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	env, ok := a.Env["TSURU_SERVICES"]
+	env, ok := a.Env[TsuruServicesEnvVar]
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(env.Value, gocheck.Equals, `{"mysql":[]}`)
 	c.Assert(env.Public, gocheck.Equals, false)
-	c.Assert(env.Name, gocheck.Equals, "TSURU_SERVICES")
-	delete(a.Env, "TSURU_SERVICES")
+	c.Assert(env.Name, gocheck.Equals, TsuruServicesEnvVar)
+	delete(a.Env, TsuruServicesEnvVar)
 	c.Assert(a.Env, gocheck.DeepEquals, map[string]bind.EnvVar{})
 }
 
@@ -1379,8 +1379,8 @@ func (s *S) TestRemoveInstanceShifts(c *gocheck.C) {
 	a := &App{
 		Name: "dark",
 		Env: map[string]bind.EnvVar{
-			"TSURU_SERVICES": {
-				Name:   "TSURU_SERVICES",
+			TsuruServicesEnvVar: {
+				Name:   TsuruServicesEnvVar,
 				Public: false,
 				Value:  value,
 			},
@@ -1404,10 +1404,10 @@ func (s *S) TestRemoveInstanceShifts(c *gocheck.C) {
 	}
 	a, err = GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	env, ok := a.Env["TSURU_SERVICES"]
+	env, ok := a.Env[TsuruServicesEnvVar]
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(env.Public, gocheck.Equals, false)
-	c.Assert(env.Name, gocheck.Equals, "TSURU_SERVICES")
+	c.Assert(env.Name, gocheck.Equals, TsuruServicesEnvVar)
 	var got map[string][]bind.ServiceInstance
 	err = json.Unmarshal([]byte(env.Value), &got)
 	c.Assert(err, gocheck.IsNil)
@@ -1418,8 +1418,8 @@ func (s *S) TestRemoveInstanceNotFound(c *gocheck.C) {
 	a := &App{
 		Name: "dark",
 		Env: map[string]bind.EnvVar{
-			"TSURU_SERVICES": {
-				Name:   "TSURU_SERVICES",
+			TsuruServicesEnvVar: {
+				Name:   TsuruServicesEnvVar,
 				Public: false,
 				Value:  `{"mysql": [{"instance_name": "mydb", "envs": {"DATABASE_NAME": "mydb"}}]}`,
 			},
@@ -1450,8 +1450,8 @@ func (s *S) TestRemoveInstanceServiceNotFound(c *gocheck.C) {
 	a := &App{
 		Name: "dark",
 		Env: map[string]bind.EnvVar{
-			"TSURU_SERVICES": {
-				Name:   "TSURU_SERVICES",
+			TsuruServicesEnvVar: {
+				Name:   TsuruServicesEnvVar,
 				Public: false,
 				Value:  `{"mysql": [{"instance_name": "mydb", "envs": {"DATABASE_NAME": "mydb"}}]}`,
 			},

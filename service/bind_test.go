@@ -180,11 +180,11 @@ func (s *BindSuite) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedF
 			},
 		},
 	}
-	servicesEnv := newApp.Env["TSURU_SERVICES"]
+	servicesEnv := newApp.Env[app.TsuruServicesEnvVar]
 	var tsuruServices map[string][]bind.ServiceInstance
 	json.Unmarshal([]byte(servicesEnv.Value), &tsuruServices)
 	c.Assert(tsuruServices, gocheck.DeepEquals, expectedTsuruServices)
-	delete(newApp.Env, "TSURU_SERVICES")
+	delete(newApp.Env, app.TsuruServicesEnvVar)
 	c.Assert(newApp.Env, gocheck.DeepEquals, expectedEnv)
 }
 
@@ -302,11 +302,11 @@ func (s *BindSuite) TestBindAppWithNoUnits(c *gocheck.C) {
 			},
 		},
 	}
-	servicesEnv := a.Env["TSURU_SERVICES"]
+	servicesEnv := a.Env[app.TsuruServicesEnvVar]
 	var tsuruServices map[string][]bind.ServiceInstance
 	json.Unmarshal([]byte(servicesEnv.Value), &tsuruServices)
 	c.Assert(tsuruServices, gocheck.DeepEquals, expectedTsuruServices)
-	delete(a.Env, "TSURU_SERVICES")
+	delete(a.Env, app.TsuruServicesEnvVar)
 	c.Assert(a.Env, gocheck.DeepEquals, expectedEnv)
 }
 
@@ -447,8 +447,8 @@ func (s *BindSuite) TestUnbindRemovesEnvironmentVariableFromApp(c *gocheck.C) {
 				Name:  "MY_VAR",
 				Value: "123",
 			},
-			"TSURU_SERVICES": {
-				Name: "TSURU_SERVICES",
+			app.TsuruServicesEnvVar: {
+				Name: app.TsuruServicesEnvVar,
 				Value: `{"mysql": [{"instance_name": "my-mysql", "envs": {"DATABASE_USER": "root", "DATABASE_PASSWORD": "s3cre3t"}},
 					               {"instance_name": "other-mysql", "envs": {"DATABASE_USER": "1", "DATABASE_PASSWORD": "2"}}]}`,
 			},
@@ -464,7 +464,7 @@ func (s *BindSuite) TestUnbindRemovesEnvironmentVariableFromApp(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	newApp, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
-	services := newApp.Env["TSURU_SERVICES"].Value
+	services := newApp.Env[app.TsuruServicesEnvVar].Value
 	var tsuruServices map[string][]bind.ServiceInstance
 	err = json.Unmarshal([]byte(services), &tsuruServices)
 	c.Assert(err, gocheck.IsNil)
@@ -476,7 +476,7 @@ func (s *BindSuite) TestUnbindRemovesEnvironmentVariableFromApp(c *gocheck.C) {
 			},
 		},
 	})
-	delete(newApp.Env, "TSURU_SERVICES")
+	delete(newApp.Env, app.TsuruServicesEnvVar)
 	expected := map[string]bind.EnvVar{
 		"MY_VAR": {
 			Name:  "MY_VAR",
