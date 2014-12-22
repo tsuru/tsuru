@@ -548,7 +548,6 @@ func (c *container) exec(stdout, stderr io.Writer, cmd string, args ...string) e
 	startExecOptions := docker.StartExecOptions{
 		OutputStream: stdout,
 		ErrorStream:  stderr,
-		RawTerminal:  true,
 	}
 	return dockerCluster().StartExec(exec.ID, c.ID, startExecOptions)
 }
