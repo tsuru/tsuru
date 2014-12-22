@@ -832,7 +832,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 	}
 	c.Assert(newApp.Env, gocheck.DeepEquals, expected)
 	c.Assert(s.provisioner.Restarts(&a), gocheck.Equals, 1)
-	c.Assert(buf.String(), gocheck.Equals, "restarting app")
+	c.Assert(buf.String(), gocheck.Equals, "---- Setting 2 new environment variables ----\nrestarting app")
 }
 
 func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFalse(c *gocheck.C) {
@@ -930,6 +930,7 @@ func (s *S) TestSetEnvsWhenAppHaveNoUnits(c *gocheck.C) {
 		},
 	}
 	c.Assert(newApp.Env, gocheck.DeepEquals, expected)
+	c.Assert(s.provisioner.Restarts(&a), gocheck.Equals, 0)
 }
 
 func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c *gocheck.C) {
@@ -947,12 +948,17 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue
 				Public: true,
 			},
 		},
+		Quota: quota.Quota{
+			Limit: 10,
+		},
 	}
 	s.provisioner.PrepareOutput([]byte("exported"))
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = s.provisioner.Provision(&a)
+	c.Assert(err, gocheck.IsNil)
+	err = a.AddUnits(1, nil)
 	c.Assert(err, gocheck.IsNil)
 	err = a.UnsetEnvs([]string{"DATABASE_HOST", "DATABASE_PASSWORD"}, true, nil)
 	c.Assert(err, gocheck.IsNil)
@@ -984,6 +990,41 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFal
 				Public: true,
 			},
 		},
+		Quota: quota.Quota{
+			Limit: 10,
+		},
+	}
+	s.provisioner.PrepareOutput([]byte("exported"))
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, gocheck.IsNil)
+	err = a.AddUnits(1, nil)
+	c.Assert(err, gocheck.IsNil)
+	err = a.UnsetEnvs([]string{"DATABASE_HOST", "DATABASE_PASSWORD"}, false, nil)
+	c.Assert(err, gocheck.IsNil)
+	newApp, err := GetByName(a.Name)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(newApp.Env, gocheck.DeepEquals, map[string]bind.EnvVar{})
+	c.Assert(s.provisioner.Restarts(&a), gocheck.Equals, 1)
+}
+
+func (s *S) TestUnsetEnvNoUnits(c *gocheck.C) {
+	a := App{
+		Name: "myapp",
+		Env: map[string]bind.EnvVar{
+			"DATABASE_HOST": {
+				Name:   "DATABASE_HOST",
+				Value:  "localhost",
+				Public: false,
+			},
+			"DATABASE_PASSWORD": {
+				Name:   "DATABASE_PASSWORD",
+				Value:  "123",
+				Public: true,
+			},
+		},
 	}
 	s.provisioner.PrepareOutput([]byte("exported"))
 	err := s.conn.Apps().Insert(a)
@@ -996,7 +1037,7 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFal
 	newApp, err := GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(newApp.Env, gocheck.DeepEquals, map[string]bind.EnvVar{})
-	c.Assert(s.provisioner.Restarts(&a), gocheck.Equals, 1)
+	c.Assert(s.provisioner.Restarts(&a), gocheck.Equals, 0)
 }
 
 func (s *S) TestGetEnvironmentVariableFromApp(c *gocheck.C) {

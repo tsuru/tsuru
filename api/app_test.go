@@ -1766,7 +1766,6 @@ func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *goche
 	c.Assert(action, testing.IsRecorded)
 	c.Assert(recorder.Body.String(), gocheck.Equals,
 		`{"Message":"---- Unsetting 1 environment variables ----\n"}
-{"Message":"restarting app"}
 `)
 }
 

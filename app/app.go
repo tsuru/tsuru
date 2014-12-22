@@ -716,9 +716,6 @@ func (app *App) Envs() map[string]bind.EnvVar {
 // parameter indicates whether only public variables can be overridden (if set
 // to false, SetEnvs may override a private variable).
 func (app *App) SetEnvs(envs []bind.EnvVar, publicOnly bool, w io.Writer) error {
-	if w != nil {
-		fmt.Fprintf(w, "---- Setting %d new environment variables ----\n", len(envs))
-	}
 	units := app.GetUnits()
 	if len(units) > 0 {
 		return app.setEnvsToApp(envs, publicOnly, true, w)
@@ -737,6 +734,9 @@ func (app *App) SetEnvs(envs []bind.EnvVar, publicOnly bool, w io.Writer) error 
 // shouldRestart defines if the server should be restarted after saving vars.
 func (app *App) setEnvsToApp(envs []bind.EnvVar, publicOnly, shouldRestart bool, w io.Writer) error {
 	if len(envs) > 0 {
+		if w != nil {
+			fmt.Fprintf(w, "---- Setting %d new environment variables ----\n", len(envs))
+		}
 		for _, env := range envs {
 			set := true
 			if publicOnly {
@@ -773,9 +773,6 @@ func (app *App) setEnvsToApp(envs []bind.EnvVar, publicOnly, shouldRestart bool,
 // parameter publicOnly, which indicates whether only public variables can be
 // overridden (if set to false, setEnvsToApp may override a private variable).
 func (app *App) UnsetEnvs(variableNames []string, publicOnly bool, w io.Writer) error {
-	if w != nil {
-		fmt.Fprintf(w, "---- Unsetting %d environment variables ----\n", len(variableNames))
-	}
 	units := app.GetUnits()
 	if len(units) > 0 {
 		return app.unsetEnvsToApp(variableNames, publicOnly, true, w)
@@ -785,6 +782,9 @@ func (app *App) UnsetEnvs(variableNames []string, publicOnly bool, w io.Writer) 
 
 func (app *App) unsetEnvsToApp(variableNames []string, publicOnly, shouldRestart bool, w io.Writer) error {
 	if len(variableNames) > 0 {
+		if w != nil {
+			fmt.Fprintf(w, "---- Unsetting %d environment variables ----\n", len(variableNames))
+		}
 		for _, name := range variableNames {
 			var unset bool
 			e, err := app.getEnv(name)
