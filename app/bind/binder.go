@@ -41,10 +41,10 @@ type App interface {
 	UnsetEnvs(envNames []string, publicOnly bool, w io.Writer) error
 
 	// AddInstance adds an instance to the application.
-	AddInstance(serviceName string, instance ServiceInstance) error
+	AddInstance(serviceName string, instance ServiceInstance, writer io.Writer) error
 
 	// RemoveInstance removes an instance from the application.
-	RemoveInstance(serviceName string, instance ServiceInstance) error
+	RemoveInstance(serviceName string, instance ServiceInstance, writer io.Writer) error
 }
 
 type Binder interface {

@@ -115,14 +115,17 @@ func (a *FakeApp) GetInstances(serviceName string) []bind.ServiceInstance {
 	return a.instances[serviceName]
 }
 
-func (a *FakeApp) AddInstance(serviceName string, instance bind.ServiceInstance) error {
+func (a *FakeApp) AddInstance(serviceName string, instance bind.ServiceInstance, w io.Writer) error {
 	instances := a.instances[serviceName]
 	instances = append(instances, instance)
 	a.instances[serviceName] = instances
+	if w != nil {
+		w.Write([]byte("add instance"))
+	}
 	return nil
 }
 
-func (a *FakeApp) RemoveInstance(serviceName string, instance bind.ServiceInstance) error {
+func (a *FakeApp) RemoveInstance(serviceName string, instance bind.ServiceInstance, w io.Writer) error {
 	instances := a.instances[serviceName]
 	index := -1
 	for i, inst := range instances {
@@ -138,6 +141,9 @@ func (a *FakeApp) RemoveInstance(serviceName string, instance bind.ServiceInstan
 		instances[i] = instances[i+1]
 	}
 	a.instances[serviceName] = instances[:len(instances)-1]
+	if w != nil {
+		w.Write([]byte("remove instance"))
+	}
 	return nil
 }
 

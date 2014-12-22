@@ -127,12 +127,12 @@ func (s *InstanceSuite) TestRemoveAppReturnsErrorWhenTheAppIsNotBoundToTheInstan
 
 func (s *InstanceSuite) TestBindApp(c *gocheck.C) {
 	oldAddAppToServiceInstance := addAppToServiceInstance
-	oldSetEnvironVariablesToApp := setEnvironVariablesToApp
+	oldSetBindAppAction := setBindAppAction
 	oldSetTsuruServices := setTsuruServices
 	oldBindUnitsToServiceInstance := bindUnitsToServiceInstance
 	defer func() {
 		addAppToServiceInstance = oldAddAppToServiceInstance
-		setEnvironVariablesToApp = oldSetEnvironVariablesToApp
+		setBindAppAction = oldSetBindAppAction
 		setTsuruServices = oldSetTsuruServices
 		bindUnitsToServiceInstance = oldBindUnitsToServiceInstance
 	}()
@@ -145,9 +145,9 @@ func (s *InstanceSuite) TestBindApp(c *gocheck.C) {
 			return nil, nil
 		},
 	}
-	setEnvironVariablesToApp = action.Action{
+	setBindAppAction = action.Action{
 		Forward: func(ctx action.FWContext) (action.Result, error) {
-			calls = append(calls, "setEnvironVariablesToApp")
+			calls = append(calls, "setBindAppAction")
 			return nil, nil
 		},
 	}
@@ -169,7 +169,7 @@ func (s *InstanceSuite) TestBindApp(c *gocheck.C) {
 	err := si.BindApp(a, &buf)
 	c.Assert(err, gocheck.IsNil)
 	expectedCalls := []string{
-		"addAppToServiceInstance", "setEnvironVariablesToApp",
+		"addAppToServiceInstance", "setBindAppAction",
 		"setTsuruServices", "bindUnitsToServiceInstance",
 	}
 	expectedParams := []interface{}{a, si, &buf}
@@ -198,13 +198,13 @@ func (s *InstanceSuite) TestUnbindApp(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().RemoveId(si.Name)
 	instance := bind.ServiceInstance{Name: si.Name}
-	err = a.AddInstance(si.ServiceName, instance)
+	err = a.AddInstance(si.ServiceName, instance, nil)
 	c.Assert(err, gocheck.IsNil)
 	var buf bytes.Buffer
 	err = si.UnbindApp(a, &buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(a.GetInstances("mysql"), gocheck.HasLen, 0)
-	c.Assert(buf.String(), gocheck.Equals, "")
+	c.Assert(buf.String(), gocheck.Equals, "remove instance")
 }
 
 func (s *InstanceSuite) TestServiceInstanceIsABinder(c *gocheck.C) {

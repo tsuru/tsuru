@@ -170,9 +170,9 @@ func (s *S) TestFakeAppAddInstance(c *gocheck.C) {
 	instance1 := bind.ServiceInstance{Name: "inst1"}
 	instance2 := bind.ServiceInstance{Name: "inst2"}
 	app := NewFakeApp("sou", "otm", 0)
-	err := app.AddInstance("mysql", instance1)
+	err := app.AddInstance("mysql", instance1, nil)
 	c.Assert(err, gocheck.IsNil)
-	err = app.AddInstance("mongodb", instance2)
+	err = app.AddInstance("mongodb", instance2, nil)
 	c.Assert(err, gocheck.IsNil)
 	instances := app.GetInstances("mysql")
 	c.Assert(instances, gocheck.DeepEquals, []bind.ServiceInstance{instance1})
@@ -186,9 +186,9 @@ func (s *S) TestFakeAppRemoveInstance(c *gocheck.C) {
 	instance1 := bind.ServiceInstance{Name: "inst1"}
 	instance2 := bind.ServiceInstance{Name: "inst2"}
 	app := NewFakeApp("sou", "otm", 0)
-	app.AddInstance("mysql", instance1)
-	app.AddInstance("mongodb", instance2)
-	err := app.RemoveInstance("mysql", instance1)
+	app.AddInstance("mysql", instance1, nil)
+	app.AddInstance("mongodb", instance2, nil)
+	err := app.RemoveInstance("mysql", instance1, nil)
 	c.Assert(err, gocheck.IsNil)
 	instances := app.GetInstances("mysql")
 	c.Assert(instances, gocheck.HasLen, 0)
@@ -200,15 +200,15 @@ func (s *S) TestFakeAppRemoveInstanceNotFound(c *gocheck.C) {
 	instance1 := bind.ServiceInstance{Name: "inst1"}
 	instance2 := bind.ServiceInstance{Name: "inst2"}
 	app := NewFakeApp("sou", "otm", 0)
-	app.AddInstance("mysql", instance1)
-	err := app.RemoveInstance("mysql", instance2)
+	app.AddInstance("mysql", instance1, nil)
+	err := app.RemoveInstance("mysql", instance2, nil)
 	c.Assert(err.Error(), gocheck.Equals, "instance not found")
 }
 
 func (s *S) TestFakeAppRemoveInstanceServiceNotFound(c *gocheck.C) {
 	instance := bind.ServiceInstance{Name: "inst1"}
 	app := NewFakeApp("sou", "otm", 0)
-	err := app.RemoveInstance("mysql", instance)
+	err := app.RemoveInstance("mysql", instance, nil)
 	c.Assert(err.Error(), gocheck.Equals, "instance not found")
 }
 

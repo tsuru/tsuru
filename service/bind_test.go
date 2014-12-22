@@ -404,6 +404,9 @@ func (s *BindSuite) TestUnbindRemovesAppFromServiceInstance(c *gocheck.C) {
 	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name})
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = app.Provisioner.Provision(&a)
+	c.Assert(err, gocheck.IsNil)
+	defer app.Provisioner.Destroy(&a)
 	err = instance.UnbindApp(&a, nil)
 	c.Assert(err, gocheck.IsNil)
 	s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
@@ -444,17 +447,36 @@ func (s *BindSuite) TestUnbindRemovesEnvironmentVariableFromApp(c *gocheck.C) {
 				Name:  "MY_VAR",
 				Value: "123",
 			},
+			"TSURU_SERVICES": {
+				Name: "TSURU_SERVICES",
+				Value: `{"mysql": [{"instance_name": "my-mysql", "envs": {"DATABASE_USER": "root", "DATABASE_PASSWORD": "s3cre3t"}},
+					               {"instance_name": "other-mysql", "envs": {"DATABASE_USER": "1", "DATABASE_PASSWORD": "2"}}]}`,
+			},
 		},
 	}
 	err = s.conn.Apps().Insert(&a)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	err = fakeProvisioner.Provision(&a)
+	err = app.Provisioner.Provision(&a)
 	c.Assert(err, gocheck.IsNil)
+	defer app.Provisioner.Destroy(&a)
 	err = instance.UnbindApp(&a, nil)
 	c.Assert(err, gocheck.IsNil)
 	newApp, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
+	services := newApp.Env["TSURU_SERVICES"].Value
+	var tsuruServices map[string][]bind.ServiceInstance
+	err = json.Unmarshal([]byte(services), &tsuruServices)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(tsuruServices, gocheck.DeepEquals, map[string][]bind.ServiceInstance{
+		"mysql": []bind.ServiceInstance{
+			{
+				Name: "other-mysql",
+				Envs: map[string]string{"DATABASE_USER": "1", "DATABASE_PASSWORD": "2"},
+			},
+		},
+	})
+	delete(newApp.Env, "TSURU_SERVICES")
 	expected := map[string]bind.EnvVar{
 		"MY_VAR": {
 			Name:  "MY_VAR",

@@ -876,23 +876,47 @@ func cnameExists(cname string) bool {
 	return false
 }
 
-func (app *App) AddInstance(serviceName string, instance bind.ServiceInstance) error {
+func (app *App) parsedTsuruServices() map[string][]bind.ServiceInstance {
 	var tsuruServices map[string][]bind.ServiceInstance
 	if servicesEnv, ok := app.Env["TSURU_SERVICES"]; ok {
 		json.Unmarshal([]byte(servicesEnv.Value), &tsuruServices)
 	} else {
 		tsuruServices = make(map[string][]bind.ServiceInstance)
 	}
+	return tsuruServices
+}
+
+func (app *App) AddInstance(serviceName string, instance bind.ServiceInstance, writer io.Writer) error {
+	tsuruServices := app.parsedTsuruServices()
 	serviceInstances := tsuruServices[serviceName]
 	serviceInstances = append(serviceInstances, instance)
 	tsuruServices[serviceName] = serviceInstances
-	return app.setTsuruServices(tsuruServices)
+	servicesJson, err := json.Marshal(tsuruServices)
+	if err != nil {
+		return err
+	}
+	envVars := make([]bind.EnvVar, 0, len(instance.Envs)+1)
+	for k, v := range instance.Envs {
+		envVars = append(envVars, bind.EnvVar{
+			Name:         k,
+			Value:        v,
+			Public:       false,
+			InstanceName: instance.Name,
+		})
+	}
+	envVars = append(envVars, bind.EnvVar{
+		Name:   "TSURU_SERVICES",
+		Value:  string(servicesJson),
+		Public: false,
+	})
+	return app.SetEnvs(envVars, false, writer)
 }
 
-func (app *App) RemoveInstance(serviceName string, instance bind.ServiceInstance) error {
-	var tsuruServices map[string][]bind.ServiceInstance
-	if servicesEnv, ok := app.Env["TSURU_SERVICES"]; ok {
-		json.Unmarshal([]byte(servicesEnv.Value), &tsuruServices)
+func (app *App) RemoveInstance(serviceName string, instance bind.ServiceInstance, writer io.Writer) error {
+	tsuruServices := app.parsedTsuruServices()
+	toUnsetEnvs := make([]string, 0, len(instance.Envs))
+	for varName := range instance.Envs {
+		toUnsetEnvs = append(toUnsetEnvs, varName)
 	}
 	index := -1
 	serviceInstances := tsuruServices[serviceName]
@@ -902,27 +926,30 @@ func (app *App) RemoveInstance(serviceName string, instance bind.ServiceInstance
 			break
 		}
 	}
-	if index < 0 {
-		return stderr.New("instance not found")
+	var servicesJson []byte
+	var err error
+	if index >= 0 {
+		for i := index; i < len(serviceInstances)-1; i++ {
+			serviceInstances[i] = serviceInstances[i+1]
+		}
+		tsuruServices[serviceName] = serviceInstances[:len(serviceInstances)-1]
+		servicesJson, err = json.Marshal(tsuruServices)
+		if err != nil {
+			return err
+		}
 	}
-	for i := index; i < len(serviceInstances)-1; i++ {
-		serviceInstances[i] = serviceInstances[i+1]
+	if servicesJson != nil {
+		shouldRestart := len(toUnsetEnvs) == 0
+		err = app.setEnvsToApp([]bind.EnvVar{{
+			Name:   "TSURU_SERVICES",
+			Value:  string(servicesJson),
+			Public: false,
+		}}, false, shouldRestart, writer)
+		if err != nil {
+			return err
+		}
 	}
-	tsuruServices[serviceName] = serviceInstances[:len(serviceInstances)-1]
-	return app.setTsuruServices(tsuruServices)
-}
-
-func (app *App) setTsuruServices(services map[string][]bind.ServiceInstance) error {
-	servicesJson, err := json.Marshal(services)
-	if err != nil {
-		return err
-	}
-	envVar := bind.EnvVar{
-		Name:   "TSURU_SERVICES",
-		Value:  string(servicesJson),
-		Public: false,
-	}
-	return app.SetEnvs([]bind.EnvVar{envVar}, false, nil)
+	return app.UnsetEnvs(toUnsetEnvs, false, writer)
 }
 
 // Log adds a log message to the app. Specifying a good source is good so the

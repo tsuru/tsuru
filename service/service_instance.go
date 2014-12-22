@@ -165,7 +165,7 @@ func (si *ServiceInstance) update() error {
 func (si *ServiceInstance) BindApp(app bind.App, writer io.Writer) error {
 	actions := []*action.Action{
 		&addAppToServiceInstance,
-		&setEnvironVariablesToApp,
+		&setBindAppAction,
 		&setTsuruServices,
 		&bindUnitsToServiceInstance,
 	}
@@ -200,17 +200,15 @@ func (si *ServiceInstance) UnbindApp(app bind.App, writer io.Writer) error {
 			wg.Done()
 		}(unit)
 	}
-	var envVars []string
-	for k := range app.InstanceEnv(si.Name) {
-		envVars = append(envVars, k)
+	instance := bind.ServiceInstance{Name: si.Name, Envs: make(map[string]string)}
+	for k, envVar := range app.InstanceEnv(si.Name) {
+		instance.Envs[k] = envVar.Value
 	}
 	wg.Wait()
 	if endpoint, err := si.Service().getClient("production"); err == nil {
 		endpoint.UnbindApp(si, app)
 	}
-	instance := bind.ServiceInstance{Name: si.Name}
-	app.RemoveInstance(si.ServiceName, instance)
-	return app.UnsetEnvs(envVars, false, writer)
+	return app.RemoveInstance(si.ServiceName, instance, writer)
 }
 
 // UnbindUnit makes the unbind between the service instance and an unit.

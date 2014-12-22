@@ -242,7 +242,7 @@ func (s *S) TestAddAppToServiceInstanceBackwardRemovesAppFromServiceInstance(c *
 	c.Assert(len(si.Apps), gocheck.Equals, 0)
 }
 
-func (s *S) TestSetEnvironVariablesToAppForward(c *gocheck.C) {
+func (s *S) TestSetBindAppActionForwardReturnsEnvVars(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
 	}))
@@ -263,28 +263,19 @@ func (s *S) TestSetEnvironVariablesToAppForward(c *gocheck.C) {
 	ctx := action.FWContext{
 		Params: []interface{}{a, si},
 	}
-	_, err = setEnvironVariablesToApp.Forward(ctx)
+	envs, err := setBindAppAction.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
-	expected := map[string]bind.EnvVar{
-		"DATABASE_USER": {
-			Name:         "DATABASE_USER",
-			Value:        "root",
-			Public:       false,
-			InstanceName: si.Name,
-		},
-		"DATABASE_PASSWORD": {
-			Name:         "DATABASE_PASSWORD",
-			Value:        "s3cr3t",
-			Public:       false,
-			InstanceName: si.Name,
-		},
-	}
-	c.Assert(a.Envs(), gocheck.DeepEquals, expected)
+	c.Assert(envs, gocheck.DeepEquals, map[string]string{
+		"DATABASE_USER":     "root",
+		"DATABASE_PASSWORD": "s3cr3t",
+	})
 }
 
-func (s *S) TestSetEnvironVariablesToAppForwardReturnsEnvVars(c *gocheck.C) {
+func (s *S) TestSetBindAppActionBackward(c *gocheck.C) {
+	var called bool
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
+		called = true
+		w.WriteHeader(http.StatusOK)
 	}))
 	defer ts.Close()
 	service := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
@@ -300,59 +291,12 @@ func (s *S) TestSetEnvironVariablesToAppForwardReturnsEnvVars(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().RemoveId(si.Name)
 	a := testing.NewFakeApp("myapp", "static", 1)
-	ctx := action.FWContext{
-		Params: []interface{}{a, si},
-	}
-	result, err := setEnvironVariablesToApp.Forward(ctx)
-	c.Assert(err, gocheck.IsNil)
-	expected := []bind.EnvVar{
-		{Name: "DATABASE_USER",
-			Value:        "root",
-			Public:       false,
-			InstanceName: si.Name,
-		},
-		{Name: "DATABASE_PASSWORD",
-			Value:        "s3cr3t",
-			Public:       false,
-			InstanceName: si.Name,
-		},
-	}
-	got := result.([]bind.EnvVar)
-	if got[0].Name == "DATABASE_PASSWORD" {
-		got[0], got[1] = got[1], got[0]
-	}
-	c.Assert(got, gocheck.DeepEquals, expected)
-}
-
-func (s *S) TestSetEnvironVariablesToAppBackward(c *gocheck.C) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
-	}))
-	defer ts.Close()
-	service := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
-	err := service.Create()
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Services().RemoveId(service.Name)
-	si := ServiceInstance{
-		Name:        "my-mysql",
-		ServiceName: "mysql",
-		Teams:       []string{s.team.Name},
-	}
-	err = si.Create()
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.ServiceInstances().RemoveId(si.Name)
-	a := testing.NewFakeApp("myapp", "static", 1)
-	ctx := action.FWContext{
-		Params: []interface{}{a, si},
-	}
-	r, err := setEnvironVariablesToApp.Forward(ctx)
-	c.Assert(err, gocheck.IsNil)
 	bwCtx := action.BWContext{
-		Params:   []interface{}{a},
-		FWResult: r,
+		Params:   []interface{}{a, si},
+		FWResult: nil,
 	}
-	setEnvironVariablesToApp.Backward(bwCtx)
-	c.Assert(a.Envs(), gocheck.DeepEquals, map[string]bind.EnvVar{})
+	setBindAppAction.Backward(bwCtx)
+	c.Assert(called, gocheck.Equals, true)
 }
 
 func (s *S) TestSetTsuruServicesName(c *gocheck.C) {
@@ -364,7 +308,7 @@ func (s *S) TestSetTsuruServicesForward(c *gocheck.C) {
 	a := testing.NewFakeApp("myapp", "static", 1)
 	ctx := action.FWContext{
 		Params:   []interface{}{a, si},
-		Previous: []bind.EnvVar{{Name: "DATABASE_NAME", Value: "mydb"}, {Name: "DATABASE_USER", Value: "root"}},
+		Previous: map[string]string{"DATABASE_NAME": "mydb", "DATABASE_USER": "root"},
 	}
 	result, err := setTsuruServices.Forward(ctx)
 	c.Assert(err, gocheck.IsNil)
@@ -398,7 +342,7 @@ func (s *S) TestSetTsuruServicesBackward(c *gocheck.C) {
 	}
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
 	a := testing.NewFakeApp("myapp", "static", 1)
-	err := a.AddInstance("mysql", instance)
+	err := a.AddInstance("mysql", instance, nil)
 	c.Assert(err, gocheck.IsNil)
 	ctx := action.BWContext{
 		Params:   []interface{}{a, si},

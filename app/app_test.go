@@ -1238,7 +1238,7 @@ func (s *S) TestRemoveCNameRemovesFromRouter(c *gocheck.C) {
 	c.Assert(hasCName, gocheck.Equals, false)
 }
 
-func (s *S) TestAddFirstInstance(c *gocheck.C) {
+func (s *S) TestAddInstanceFirst(c *gocheck.C) {
 	a := &App{Name: "dark"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -1253,7 +1253,7 @@ func (s *S) TestAddFirstInstance(c *gocheck.C) {
 			"DATABASE_USER": "root",
 		},
 	}
-	err = a.AddInstance("myservice", instance)
+	err = a.AddInstance("myservice", instance, nil)
 	c.Assert(err, gocheck.IsNil)
 	a, err = GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
@@ -1266,6 +1266,27 @@ func (s *S) TestAddFirstInstance(c *gocheck.C) {
 	err = json.Unmarshal([]byte(env.Value), &got)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(got, gocheck.DeepEquals, expected)
+	delete(a.Env, "TSURU_SERVICES")
+	c.Assert(a.Env, gocheck.DeepEquals, map[string]bind.EnvVar{
+		"DATABASE_HOST": bind.EnvVar{
+			Name:         "DATABASE_HOST",
+			Value:        "localhost",
+			Public:       false,
+			InstanceName: "myinstance",
+		},
+		"DATABASE_PORT": bind.EnvVar{
+			Name:         "DATABASE_PORT",
+			Value:        "3306",
+			Public:       false,
+			InstanceName: "myinstance",
+		},
+		"DATABASE_USER": bind.EnvVar{
+			Name:         "DATABASE_USER",
+			Value:        "root",
+			Public:       false,
+			InstanceName: "myinstance",
+		},
+	})
 }
 
 func (s *S) TestAddInstanceMultipleServices(c *gocheck.C) {
@@ -1288,13 +1309,13 @@ func (s *S) TestAddInstanceMultipleServices(c *gocheck.C) {
 		Name: "myinstance",
 		Envs: map[string]string{"DATABASE_NAME": "myinstance"},
 	}
-	err = a.AddInstance("mysql", instance1)
+	err = a.AddInstance("mysql", instance1, nil)
 	c.Assert(err, gocheck.IsNil)
 	instance2 := bind.ServiceInstance{
 		Name: "yourinstance",
 		Envs: map[string]string{"DATABASE_NAME": "supermongo"},
 	}
-	err = a.AddInstance("mongodb", instance2)
+	err = a.AddInstance("mongodb", instance2, nil)
 	c.Assert(err, gocheck.IsNil)
 	expected := map[string][]bind.ServiceInstance{
 		"mysql":   {bind.ServiceInstance{Name: "mydb", Envs: map[string]string{"DATABASE_NAME": "mydb"}}, instance1},
@@ -1321,6 +1342,12 @@ func (s *S) TestRemoveInstance(c *gocheck.C) {
 				Public: false,
 				Value:  `{"mysql": [{"instance_name": "mydb", "envs": {"DATABASE_NAME": "mydb"}}]}`,
 			},
+			"DATABASE_NAME": {
+				Name:         "DATABASE_NAME",
+				Public:       false,
+				Value:        "mydb",
+				InstanceName: "mydb",
+			},
 		},
 	}
 	err := s.conn.Apps().Insert(a)
@@ -1328,8 +1355,8 @@ func (s *S) TestRemoveInstance(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(a)
 	defer s.provisioner.Destroy(a)
-	instance := bind.ServiceInstance{Name: "mydb"}
-	err = a.RemoveInstance("mysql", instance)
+	instance := bind.ServiceInstance{Name: "mydb", Envs: map[string]string{"DATABASE_NAME": "mydb"}}
+	err = a.RemoveInstance("mysql", instance, nil)
 	c.Assert(err, gocheck.IsNil)
 	a, err = GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
@@ -1338,6 +1365,8 @@ func (s *S) TestRemoveInstance(c *gocheck.C) {
 	c.Assert(env.Value, gocheck.Equals, `{"mysql":[]}`)
 	c.Assert(env.Public, gocheck.Equals, false)
 	c.Assert(env.Name, gocheck.Equals, "TSURU_SERVICES")
+	delete(a.Env, "TSURU_SERVICES")
+	c.Assert(a.Env, gocheck.DeepEquals, map[string]bind.EnvVar{})
 }
 
 func (s *S) TestRemoveInstanceShifts(c *gocheck.C) {
@@ -1363,7 +1392,7 @@ func (s *S) TestRemoveInstanceShifts(c *gocheck.C) {
 	s.provisioner.Provision(a)
 	defer s.provisioner.Destroy(a)
 	instance := bind.ServiceInstance{Name: "hisdb"}
-	err = a.RemoveInstance("mysql", instance)
+	err = a.RemoveInstance("mysql", instance, nil)
 	c.Assert(err, gocheck.IsNil)
 	expected := map[string][]bind.ServiceInstance{
 		"mysql": {
@@ -1396,9 +1425,25 @@ func (s *S) TestRemoveInstanceNotFound(c *gocheck.C) {
 			},
 		},
 	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(a)
+	defer s.provisioner.Destroy(a)
 	instance := bind.ServiceInstance{Name: "yourdb"}
-	err := a.RemoveInstance("mysql", instance)
-	c.Assert(err.Error(), gocheck.Equals, "instance not found")
+	err = a.RemoveInstance("mysql", instance, nil)
+	c.Assert(err, gocheck.IsNil)
+	a, err = GetByName(a.Name)
+	c.Assert(err, gocheck.IsNil)
+	services := a.parsedTsuruServices()
+	c.Assert(services, gocheck.DeepEquals, map[string][]bind.ServiceInstance{
+		"mysql": []bind.ServiceInstance{
+			{
+				Name: "mydb",
+				Envs: map[string]string{"DATABASE_NAME": "mydb"},
+			},
+		},
+	})
 }
 
 func (s *S) TestRemoveInstanceServiceNotFound(c *gocheck.C) {
@@ -1412,9 +1457,25 @@ func (s *S) TestRemoveInstanceServiceNotFound(c *gocheck.C) {
 			},
 		},
 	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(a)
+	defer s.provisioner.Destroy(a)
 	instance := bind.ServiceInstance{Name: "mydb"}
-	err := a.RemoveInstance("mongodb", instance)
-	c.Assert(err.Error(), gocheck.Equals, "instance not found")
+	err = a.RemoveInstance("mongodb", instance, nil)
+	c.Assert(err, gocheck.IsNil)
+	a, err = GetByName(a.Name)
+	c.Assert(err, gocheck.IsNil)
+	services := a.parsedTsuruServices()
+	c.Assert(services, gocheck.DeepEquals, map[string][]bind.ServiceInstance{
+		"mysql": []bind.ServiceInstance{
+			{
+				Name: "mydb",
+				Envs: map[string]string{"DATABASE_NAME": "mydb"},
+			},
+		},
+	})
 }
 
 func (s *S) TestIsValid(c *gocheck.C) {

@@ -146,8 +146,49 @@ var addAppToServiceInstance = action.Action{
 	MinParams: 2,
 }
 
-var setEnvironVariablesToApp = action.Action{
+var setBindAppAction = action.Action{
 	Name: "set-environ-variables-to-app",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		si, ok := ctx.Params[1].(ServiceInstance)
+		if !ok {
+			msg := "Second parameter must be a ServiceInstance."
+			log.Error(msg)
+			return nil, stderrors.New(msg)
+		}
+		app, ok := ctx.Params[0].(bind.App)
+		if !ok {
+			msg := "First parameter must be a bind.App."
+			log.Error(msg)
+			return nil, stderrors.New(msg)
+		}
+		endpoint, err := si.Service().getClient("production")
+		if err != nil {
+			return nil, err
+		}
+		return endpoint.BindApp(&si, app)
+	},
+	Backward: func(ctx action.BWContext) {
+		app, ok := ctx.Params[0].(bind.App)
+		if !ok {
+			log.Error("First parameter must be a bind.App.")
+			return
+		}
+		si, ok := ctx.Params[1].(ServiceInstance)
+		if !ok {
+			log.Error("Second parameter must be a ServiceInstance.")
+			return
+		}
+		endpoint, err := si.Service().getClient("production")
+		if err != nil {
+			log.Errorf("Could not get endpoint: %s.", err.Error())
+			return
+		}
+		endpoint.UnbindApp(&si, app)
+	},
+}
+
+var setTsuruServices = action.Action{
+	Name: "set-TSURU_SERVICES-env-var",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		var writer io.Writer
 		if len(ctx.Params) > 2 && ctx.Params[2] != nil {
@@ -171,64 +212,22 @@ var setEnvironVariablesToApp = action.Action{
 			log.Error(msg)
 			return nil, stderrors.New(msg)
 		}
-		endpoint, err := si.Service().getClient("production")
-		if err != nil {
-			return nil, err
+		instance := bind.ServiceInstance{
+			Name: si.Name,
+			Envs: ctx.Previous.(map[string]string),
 		}
-		envs, err := endpoint.BindApp(&si, app)
-		if err != nil {
-			return nil, err
-		}
-		var envVars []bind.EnvVar
-		envVars = make([]bind.EnvVar, 0, len(envs))
-		for k, v := range envs {
-			envVars = append(envVars, bind.EnvVar{
-				Name:         k,
-				Value:        v,
-				Public:       false,
-				InstanceName: si.Name,
-			})
-		}
-		return envVars, app.SetEnvs(envVars, false, writer)
+		return instance, app.AddInstance(si.ServiceName, instance, writer)
 	},
 	Backward: func(ctx action.BWContext) {
-		app, ok := ctx.Params[0].(bind.App)
-		if !ok {
-			log.Error("First parameter must be a bind.App.")
-			return
+		var writer io.Writer
+		if len(ctx.Params) > 2 && ctx.Params[2] != nil {
+			var ok bool
+			writer, ok = ctx.Params[2].(io.Writer)
+			if !ok {
+				log.Error("Third parameter must be a io.Writer.")
+				return
+			}
 		}
-		result := ctx.FWResult.([]bind.EnvVar)
-		envNames := make([]string, len(result))
-		for k, envVar := range result {
-			envNames[k] = envVar.Name
-		}
-		app.UnsetEnvs(envNames, true, nil)
-	},
-}
-
-var setTsuruServices = action.Action{
-	Name: "set-TSURU_SERVICES-env-var",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		si, ok := ctx.Params[1].(ServiceInstance)
-		if !ok {
-			msg := "Second parameter must be a ServiceInstance."
-			log.Error(msg)
-			return nil, stderrors.New(msg)
-		}
-		app, ok := ctx.Params[0].(bind.App)
-		if !ok {
-			msg := "First parameter must be a bind.App."
-			log.Error(msg)
-			return nil, stderrors.New(msg)
-		}
-		envVars := ctx.Previous.([]bind.EnvVar)
-		instance := bind.ServiceInstance{Name: si.Name, Envs: make(map[string]string)}
-		for _, envVar := range envVars {
-			instance.Envs[envVar.Name] = envVar.Value
-		}
-		return instance, app.AddInstance(si.ServiceName, instance)
-	},
-	Backward: func(ctx action.BWContext) {
 		si, ok := ctx.Params[1].(ServiceInstance)
 		if !ok {
 			log.Error("Second parameter must be a ServiceInstance.")
@@ -240,7 +239,7 @@ var setTsuruServices = action.Action{
 			return
 		}
 		instance := ctx.FWResult.(bind.ServiceInstance)
-		app.RemoveInstance(si.ServiceName, instance)
+		app.RemoveInstance(si.ServiceName, instance, writer)
 	},
 }
 
