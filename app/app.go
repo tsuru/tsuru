@@ -733,37 +733,37 @@ func (app *App) SetEnvs(envs []bind.EnvVar, publicOnly bool, w io.Writer) error 
 //
 // shouldRestart defines if the server should be restarted after saving vars.
 func (app *App) setEnvsToApp(envs []bind.EnvVar, publicOnly, shouldRestart bool, w io.Writer) error {
-	if len(envs) > 0 {
-		if w != nil {
-			fmt.Fprintf(w, "---- Setting %d new environment variables ----\n", len(envs))
-		}
-		for _, env := range envs {
-			set := true
-			if publicOnly {
-				e, err := app.getEnv(env.Name)
-				if err == nil && !e.Public {
-					set = false
-				}
-			}
-			if set {
-				app.setEnv(env)
-			}
-		}
-		conn, err := db.Conn()
-		if err != nil {
-			return err
-		}
-		defer conn.Close()
-		err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"env": app.Env}})
-		if err != nil {
-			return err
-		}
-		if !shouldRestart {
-			return nil
-		}
-		return Provisioner.Restart(app, w)
+	if len(envs) == 0 {
+		return nil
 	}
-	return nil
+	if w != nil {
+		fmt.Fprintf(w, "---- Setting %d new environment variables ----\n", len(envs))
+	}
+	for _, env := range envs {
+		set := true
+		if publicOnly {
+			e, err := app.getEnv(env.Name)
+			if err == nil && !e.Public {
+				set = false
+			}
+		}
+		if set {
+			app.setEnv(env)
+		}
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"env": app.Env}})
+	if err != nil {
+		return err
+	}
+	if !shouldRestart {
+		return nil
+	}
+	return Provisioner.Restart(app, w)
 }
 
 // UnsetEnvs removes environment variables from an app, serializing the
@@ -781,35 +781,35 @@ func (app *App) UnsetEnvs(variableNames []string, publicOnly bool, w io.Writer) 
 }
 
 func (app *App) unsetEnvsToApp(variableNames []string, publicOnly, shouldRestart bool, w io.Writer) error {
-	if len(variableNames) > 0 {
-		if w != nil {
-			fmt.Fprintf(w, "---- Unsetting %d environment variables ----\n", len(variableNames))
-		}
-		for _, name := range variableNames {
-			var unset bool
-			e, err := app.getEnv(name)
-			if !publicOnly || (err == nil && e.Public) {
-				unset = true
-			}
-			if unset {
-				delete(app.Env, name)
-			}
-		}
-		conn, err := db.Conn()
-		if err != nil {
-			return err
-		}
-		defer conn.Close()
-		err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"env": app.Env}})
-		if err != nil {
-			return err
-		}
-		if !shouldRestart {
-			return nil
-		}
-		return Provisioner.Restart(app, w)
+	if len(variableNames) == 0 {
+		return nil
 	}
-	return nil
+	if w != nil {
+		fmt.Fprintf(w, "---- Unsetting %d environment variables ----\n", len(variableNames))
+	}
+	for _, name := range variableNames {
+		var unset bool
+		e, err := app.getEnv(name)
+		if !publicOnly || (err == nil && e.Public) {
+			unset = true
+		}
+		if unset {
+			delete(app.Env, name)
+		}
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"env": app.Env}})
+	if err != nil {
+		return err
+	}
+	if !shouldRestart {
+		return nil
+	}
+	return Provisioner.Restart(app, w)
 }
 
 // AddCName adds a CName to app. It updates the attribute,
