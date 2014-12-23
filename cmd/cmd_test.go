@@ -52,7 +52,6 @@ func (c *TestNamedCommand) Name() string {
 	return "bar"
 }
 
-
 type ErrorCommand struct {
 	msg string
 }
