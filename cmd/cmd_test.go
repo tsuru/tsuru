@@ -44,6 +44,15 @@ func (c *TestCommand) Run(context *Context, client *Client) error {
 	return nil
 }
 
+type TestNamedCommand struct {
+	TestCommand
+}
+
+func (c *TestNamedCommand) Name() string {
+	return "bar"
+}
+
+
 type ErrorCommand struct {
 	msg string
 }
@@ -145,6 +154,22 @@ func (s *S) TestRegisterDeprecated(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(cmd.Command, gocheck.Equals, originalCmd)
 	c.Assert(manager.Commands["foo"], gocheck.Equals, originalCmd)
+}
+
+func (s *S) TestRegisterNamed(c *gocheck.C) {
+	manager.Register(&TestNamedCommand{})
+	badCall := func() { manager.Register(&TestNamedCommand{}) }
+	c.Assert(badCall, gocheck.PanicMatches, "command already registered: bar")
+}
+
+func (s *S) TestRegisterDeprecatedName(c *gocheck.C) {
+	originalCmd := &TestNamedCommand{}
+	manager.RegisterDeprecated(originalCmd, "foo")
+	badCall := func() { manager.Register(originalCmd) }
+	c.Assert(badCall, gocheck.PanicMatches, "command already registered: bar")
+	cmd, ok := manager.Commands["foo"].(*DeprecatedCommand)
+	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(cmd.Command, gocheck.Equals, originalCmd)
 }
 
 func (s *S) TestRegisterTopic(c *gocheck.C) {
