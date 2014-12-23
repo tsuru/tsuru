@@ -15,8 +15,7 @@ tsuru contains three clients: ``tsuru``, ``tsuru-admin`` and ``crane``.
 * **tsuru** is the command line utility used by application developers, that
   will allow users to create, list, bind and manage apps. For more details,
   check :doc:`tsuru usage </reference/tsuru-client>`;
-* **crane** is used by service administrators. For more detail, check
-  :doc:`crane usage </reference/services>`;
+* **crane** is used by service administrators.
 * **tsuru-admin** is used by cloud administrators. Whoever is allowed to use
   it has gotten super powers :-)
 
