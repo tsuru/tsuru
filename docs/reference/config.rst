@@ -2,9 +2,9 @@
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
-+++++++++++++++++
-Configuring tsuru
-+++++++++++++++++
+++++++++++++++++++++
+tsuru.conf reference
+++++++++++++++++++++
 
 tsuru uses a configuration file in `YAML <http://www.yaml.org/>`_ format. This
 document describes what each option means, and how it should look like.
