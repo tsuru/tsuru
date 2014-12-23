@@ -168,6 +168,10 @@ func (c *login) Run(context *Context, client *Client) error {
 	return nativeLogin(context, client)
 }
 
+func (c *login) Name() string {
+	return "login"
+}
+
 func (c *login) Info() *Info {
 	args := 1
 	usage := "login <email>"

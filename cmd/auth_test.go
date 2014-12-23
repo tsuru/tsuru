@@ -46,6 +46,10 @@ func (s *S) TestLoginInfo(c *gocheck.C) {
 	c.Assert((&login{}).Info(), gocheck.DeepEquals, expected)
 }
 
+func (s *S) TestLoginName(c *gocheck.C) {
+	c.Assert((&login{}).Name(), gocheck.Equals, "login")
+}
+
 func (s *S) TestNativeLogin(c *gocheck.C) {
 	navitveScheme()
 	fsystem = &testing.RecordingFs{FileContent: "old-token"}
