@@ -406,26 +406,13 @@ func (s *S) TestContainerSSH(c *gocheck.C) {
 }
 
 func (s *S) TestContainerShell(c *gocheck.C) {
-	sshServer := newMockSSHServer(c, 2e9)
-	defer sshServer.Shutdown()
 	container, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
-	container.SSHHostPort = sshServer.port
-	container.HostAddr = "localhost"
-	container.PrivateKey = string(fakeServerPrivateKey)
-	container.User = sshUsername()
-	tmpDir, err := ioutil.TempDir("", "containerssh")
-	defer os.RemoveAll(tmpDir)
-	filepath := path.Join(tmpDir, "file.txt")
-	file, err := os.Create(filepath)
-	c.Assert(err, gocheck.IsNil)
-	file.Write([]byte("hello"))
-	file.Close()
 	var stdout, stderr bytes.Buffer
-	stdin := bytes.NewBufferString("cat " + filepath + "\nexit\n")
+	stdin := bytes.NewBufferString("")
 	err = container.shell(stdin, &stdout, &stderr, pty{})
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(strings.Contains(stdout.String(), "hello"), gocheck.Equals, true)
+	c.Assert(strings.Contains(stdout.String(), ""), gocheck.Equals, true)
 }
 
 func (s *S) TestGetContainer(c *gocheck.C) {

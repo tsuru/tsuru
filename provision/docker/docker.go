@@ -477,39 +477,32 @@ type pty struct {
 }
 
 func (c *container) shell(stdin io.Reader, stdout, stderr io.Writer, pty pty) error {
-	client, err := c.dialSSH()
+	cmds := []string{"/bin/bash"}
+	execCreateOpts := docker.CreateExecOptions{
+		AttachStdin:  true,
+		AttachStdout: true,
+		AttachStderr: true,
+		Cmd:          cmds,
+		Container:    c.ID,
+		Tty:          true,
+	}
+	exec, err := dockerCluster().CreateExec(execCreateOpts)
 	if err != nil {
 		return err
 	}
-	defer client.Close()
-	session, err := client.NewSession()
+	startExecOptions := docker.StartExecOptions{
+		InputStream:  stdin,
+		OutputStream: stdout,
+		ErrorStream:  stderr,
+		Tty:          true,
+		RawTerminal:  true,
+	}
+	err = dockerCluster().StartExec(exec.ID, c.ID, startExecOptions)
 	if err != nil {
 		return err
 	}
-	defer session.Close()
-	session.Stdout = stdout
-	session.Stderr = stderr
-	session.Stdin = stdin
-	modes := ssh.TerminalModes{
-		ssh.ECHOCTL:       0,
-		ssh.TTY_OP_ISPEED: 14400,
-		ssh.TTY_OP_OSPEED: 14400,
-	}
-	if pty.height == 0 {
-		pty.height = 120
-	}
-	if pty.width == 0 {
-		pty.width = 80
-	}
-	err = session.RequestPty("xterm", pty.height, pty.width, modes)
-	if err != nil {
-		return err
-	}
-	err = session.Shell()
-	if err != nil {
-		return err
-	}
-	return session.Wait()
+	return dockerCluster().ResizeExecTTY(exec.ID, c.ID, pty.height, pty.width)
+
 }
 
 func (c *container) dialSSH() (*ssh.Client, error) {
