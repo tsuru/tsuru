@@ -11,9 +11,19 @@ import (
 	"github.com/tsuru/config"
 )
 
+func CheckBasicConfig() error {
+	return checkConfigPresent([]string{
+		"listen",
+		"host",
+		"database:url",
+		"database:name",
+		"git:api-server",
+	}, "Config Error: you should have %q key set in your config file")
+}
+
 // Check provisioner configs
 func CheckProvisioner() error {
-	if value, _ := config.Get("provisioner"); value == "docker" {
+	if value, _ := config.Get("provisioner"); value == "docker" || value == "" {
 		return CheckDocker()
 	}
 	return nil
@@ -51,7 +61,7 @@ func CheckDocker() error {
 
 // Check default configs to Docker.
 func CheckDockerBasicConfig() error {
-	basicConfigs := []string{
+	return checkConfigPresent([]string{
 		"docker:repository-namespace",
 		"docker:collection",
 		"docker:deploy-cmd",
@@ -60,13 +70,7 @@ func CheckDockerBasicConfig() error {
 		"docker:ssh:add-key-cmd",
 		"docker:run-cmd:bin",
 		"docker:run-cmd:port",
-	}
-	for _, key := range basicConfigs {
-		if _, err := config.Get(key); err != nil {
-			return fmt.Errorf("Config Error: you should configure %s", key)
-		}
-	}
-	return nil
+	}, "Config Error: you should configure %q")
 }
 
 func checkCluster() error {
@@ -101,6 +105,15 @@ func CheckRouter() error {
 	if router, err := config.Get("docker:router"); err == nil && router == "hipache" {
 		if hipache, err := config.Get("hipache"); err != nil || hipache == nil {
 			return fmt.Errorf("You should configure hipache router")
+		}
+	}
+	return nil
+}
+
+func checkConfigPresent(keys []string, fmtMsg string) error {
+	for _, key := range keys {
+		if _, err := config.Get(key); err != nil {
+			return fmt.Errorf(fmtMsg, key)
 		}
 	}
 	return nil
