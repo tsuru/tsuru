@@ -982,13 +982,14 @@ func (app *App) RemoveInstance(serviceName string, instance bind.ServiceInstance
 		})
 	}
 	if len(toUnsetEnvs) > 0 {
-		shouldRestart := len(envsToSet) == 0
+		units := app.GetUnits()
+		shouldRestart := len(envsToSet) == 0 && len(units) > 0
 		err = app.unsetEnvsToApp(toUnsetEnvs, false, shouldRestart, writer)
 		if err != nil {
 			return err
 		}
 	}
-	return app.setEnvsToApp(envsToSet, false, true, writer)
+	return app.SetEnvs(envsToSet, false, writer)
 }
 
 // Log adds a log message to the app. Specifying a good source is good so the
