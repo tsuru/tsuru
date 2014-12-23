@@ -260,7 +260,7 @@ func (c *sshToContainerCmd) Run(context *cmd.Context, client *cmd.Client) error 
 	}
 	defer conn.Close()
 	request.Write(conn)
-	bytesLimit := 50
+	bytesLimit := 5
 	var readStr string
 	byteBuffer := make([]byte, 1)
 	for i := 0; i < bytesLimit && byteBuffer[0] != '\n'; i++ {
