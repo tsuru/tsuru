@@ -6,6 +6,7 @@ Reference
 =========
 
 .. toctree::
+    :maxdepth: 1
 
     config
     api
