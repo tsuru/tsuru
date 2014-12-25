@@ -129,7 +129,13 @@ func (m *Manager) Run(args []string) {
 			if err != nil {
 				msg := ""
 				if os.IsNotExist(err) {
-					msg = fmt.Sprintf("Error: command %q does not exist\n", args[0])
+					msg = fmt.Sprintf("%s: %q is not a tsuru command. See %q.\n", os.Args[0], args[0], "tsuru help")
+					msg = fmt.Sprintf("%s\nDid you mean?\n", msg)
+					for key, _ := range m.Commands {
+						if strings.HasPrefix(key, args[0]) {
+							msg = fmt.Sprintf("%s	%s\n", msg, key)
+						}
+					}
 				} else {
 					msg = err.Error()
 				}
