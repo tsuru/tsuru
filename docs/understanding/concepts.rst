@@ -4,10 +4,10 @@ Concepts
 Docker
 ------
 
-`Docker <https://www.docker.com/>`_ is an open source project to pack, ship and
+`Docker <https://www.docker.com/>`_ is an open source project to pack, ship, and
 run any application as a lightweight, portable, self-sufficient container.
 When you deploy an app with ``git push``, tsuru builds a Docker image and
-then distributes it as `units` across your cluster.
+then distributes it as `units` (Docker containers) across your cluster.
 
 Clusters
 --------
@@ -25,7 +25,7 @@ Applications
 
 An application consists of:
 
-- the program's source code - e.g.: Python, Ruby, Go, PHP
+- the program's source code - e.g.: Python, Ruby, Go, PHP, JavaScript, Java, etc.
 - an operating system dependencies list -- in a file called ``requirements.apt``
 - a language-level dependencies list -- e.g.: ``requirements.txt``, ``Gemfile``, etc.
 - instructions on how to run the program -- in a file called ``Procfile``
