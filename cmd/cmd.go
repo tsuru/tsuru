@@ -131,6 +131,15 @@ func (m *Manager) Run(args []string) {
 	if len(args) == 0 {
 		args = append(args, "help")
 	}
+	for i, j := range args {
+		if j == "--help" {
+			args = append(args[0:i], args[i+1:]...)
+			args = append([]string{"help"}, args...)
+		}
+	}
+	if args[0] == "--version" {
+		args[0] = "version"
+	}
 	flagset := gnuflag.NewFlagSet("tsuru flags", gnuflag.ExitOnError)
 	verbosity := flagset.Int("verbosity", 0, "Verbosity: 1 => print HTTP requests; 2 => print HTTP requests/responses")
 	flagset.IntVar(verbosity, "v", 0, "Verbosity: 1 => print HTTP requests; 2 => print HTTP requests/responses")
