@@ -5,18 +5,19 @@
 Frequently Asked Questions
 --------------------------
 
-* `How does environment variables work?`_
-* `How does the quota system works?`_
-* `How routing works?`_
+* `How do environment variables work?`_
+* `How does the quota system work?`_
+* `How does routing work?`_
 * `How are Git repositories managed?`_
+* `Client installation fails with "undefined: bufio.Scanner". What does it mean?`_
 
 This document is an attempt to explain concepts you'll face when deploying and
 managing applications using tsuru.  To request additional explanations you can
 open an issue on our issue tracker, talk to us at #tsuru @ freenode.net or open
 a thread on our mailing list.
 
-How does environment variables work?
-====================================
+How do environment variables work?
+==================================
 
 All configurations in tsuru are handled by the use of environment variables. If
 you need to connect with a third party service, e.g. twitter's API,
@@ -30,8 +31,8 @@ variables by telling tsuru what they need, so whenever you bind your
 application with a service, its API can return environment variables for tsuru
 to export on your application's units.
 
-How does the quota system works?
-================================
+How does the quota system work?
+===============================
 
 Quotas are handled per application and user. Every user has a quota number for
 applications. For example, users may have a default quota of 2 applications, so
@@ -39,10 +40,10 @@ whenever a user tries to create more than two applications, he/she will receive
 a quota exceeded error. There are also per applications quota. This one limits
 the maximum number of units that an application may have.
 
-How routing works?
-==================
+How does routing work?
+======================
 
-tsuru has a router interface, which makes extremely easy to change the way
+tsuru has a router interface, which makes it extremely easy to change the way
 routing works with any provisioner. There are two ready-to-go routers: one
 using `hipache <https://github.com/dotcloud/hipache>`_ and another with `elb
 <http://http://aws.amazon.com/elasticloadbalancing/>`_.
