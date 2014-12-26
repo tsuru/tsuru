@@ -6,9 +6,9 @@
 Building a development environment with Vagrant
 +++++++++++++++++++++++++++++++++++++++++++++++
 
-First, make sure that virtualbox, vagrant and git are installed on your machine.
+First, make sure that VirtualBox_, Vagrant_, and git_ are installed on your machine.
 
-Then clone the `tsuru-bootstrap` project from github:
+Then clone the tsuru-bootstrap_ project from GitHub:
 
 .. highlight:: bash
 
@@ -34,3 +34,9 @@ After it, configure the tsuru target with the address of the server that's runni
     tsuru target-add development http://192.168.50.4:8080 -s
 
 Now you can create your user and deploy your apps.
+
+
+.. _VirtualBox: https://www.virtualbox.org/
+.. _Vagrant: http://vagrantup.com/
+.. _git: http://git-scm.com/
+.. _tsuru-bootstrap: https://github.com/tsuru/tsuru-bootstrap
