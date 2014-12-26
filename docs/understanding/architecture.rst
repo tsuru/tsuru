@@ -9,8 +9,8 @@ Architecture
 API
 ---
 
-API component is a RESTful API server written with ``Go``. The API is
-responsible to the deploy workflow and lifecycle of applications.
+The API component (also called `tsr`) is a RESTful API server written with ``Go``. The API is
+responsible for the deploy workflow and the lifecycle of applications.
 
 Command-line clients interact with this component.
 
@@ -27,7 +27,7 @@ The queue and cache component uses `Redis`.
 Gandalf
 -------
 
-`Gandalf` is a REST API to manage git repositories, users and provide access to
+`Gandalf` is a REST API to manage git repositories and users and provides access to
 them over SSH.
 
 Registry
@@ -38,4 +38,4 @@ The registry component hosts `Docker` images.
 Router
 ------
 
-The router component routes traffic to application units.
+The router component routes traffic to application units (Docker containers).
