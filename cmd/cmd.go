@@ -131,6 +131,16 @@ func (m *Manager) Run(args []string) {
 	if len(args) == 0 {
 		args = append(args, "help")
 	}
+	flagset := gnuflag.NewFlagSet("tsuru flags", gnuflag.ExitOnError)
+	verbosity := flagset.Int("verbosity", 0, "Verbosity: 1 => print HTTP requests; 2 => print HTTP requests/responses")
+	flagset.IntVar(verbosity, "v", 0, "Verbosity: 1 => print HTTP requests; 2 => print HTTP requests/responses")
+	parseErr := flagset.Parse(false, args)
+	args = flagset.Args()
+	if parseErr != nil {
+		fmt.Fprint(m.stderr, parseErr)
+		m.finisher().Exit(1)
+		return
+	}
 	name := args[0]
 	command, ok := m.Commands[name]
 	if !ok {
@@ -187,6 +197,7 @@ func (m *Manager) Run(args []string) {
 	}
 	context := Context{args, m.stdout, m.stderr, m.stdin}
 	client := NewClient(&http.Client{}, &context, m)
+	client.Verbosity = *verbosity
 	err := command.Run(&context, client)
 	if err != nil {
 		errorMsg := err.Error()

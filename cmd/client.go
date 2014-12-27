@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 
 	"github.com/tsuru/tsuru/errors"
@@ -20,6 +21,7 @@ type Client struct {
 	progname       string
 	currentVersion string
 	versionHeader  string
+	Verbosity      int
 }
 
 func NewClient(client *http.Client, context *Context, manager *Manager) *Client {
@@ -51,10 +53,28 @@ func (c *Client) Do(request *http.Request) (*http.Response, error) {
 		request.Header.Set("Authorization", "bearer "+token)
 	}
 	request.Close = true
+	if c.Verbosity >= 1 {
+		fmt.Fprintf(c.context.Stdout, "*************************** <Request uri=%q> **********************************\n", request.URL.RequestURI())
+		requestDump, err := httputil.DumpRequest(request, true)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Fprintf(c.context.Stdout, string(requestDump))
+		fmt.Fprintf(c.context.Stdout, "*************************** </Request uri=%q> **********************************\n", request.URL.RequestURI())
+	}
 	response, err := c.HTTPClient.Do(request)
 	err = c.detectClientError(err)
 	if err != nil {
 		return nil, err
+	}
+	if c.Verbosity >= 2 {
+		fmt.Fprintf(c.context.Stdout, "*************************** <Response uri=%q> **********************************\n", request.URL.RequestURI())
+		responseDump, err := httputil.DumpResponse(response, true)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Fprintf(c.context.Stdout, string(responseDump))
+		fmt.Fprintf(c.context.Stdout, "*************************** </Response uri=%q> **********************************\n", request.URL.RequestURI())
 	}
 	supported := response.Header.Get(c.versionHeader)
 	format := `#####################################################################

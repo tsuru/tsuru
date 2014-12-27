@@ -7,6 +7,7 @@ package cmd
 import (
 	"bytes"
 	"net/http"
+	"strings"
 
 	ttesting "github.com/tsuru/tsuru/cmd/testing"
 	"github.com/tsuru/tsuru/errors"
@@ -21,15 +22,36 @@ func (s *S) TestShouldSetCloseToTrue(c *gocheck.C) {
 		Status:  http.StatusOK,
 		Message: "OK",
 	}
-	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
+	var buf bytes.Buffer
+	context := Context{
+		Stdout: &buf,
+	}
+	client := NewClient(&http.Client{Transport: &transport}, &context, manager)
+	client.Verbosity = 2
 	client.Do(request)
 	c.Assert(request.Close, gocheck.Equals, true)
+	c.Assert(strings.Replace(buf.String(), "\n", "\\n", -1), gocheck.Matches,
+		``+
+			`.*<Request uri="/">.*`+
+			`GET / HTTP/1.1\r\\n.*`+
+			`Connection: close.*`+
+			`Authorization: bearer.*`+
+			`<Response uri="/">.*`+
+			`HTTP/0.0 200 OK.*`)
 }
 
 func (s *S) TestShouldReturnBodyMessageOnError(c *gocheck.C) {
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, gocheck.IsNil)
-	client := NewClient(&http.Client{Transport: &ttesting.Transport{Message: "You must be authenticated to execute this command.", Status: http.StatusUnauthorized}}, nil, manager)
+	var buf bytes.Buffer
+	context := Context{
+		Stdout: &buf,
+	}
+	client := NewClient(
+		&http.Client{Transport: &ttesting.Transport{Message: "You must be authenticated to execute this command.", Status: http.StatusUnauthorized}},
+		&context,
+		manager)
+	client.Verbosity = 2
 	response, err := client.Do(request)
 	c.Assert(response, gocheck.NotNil)
 	c.Assert(err, gocheck.NotNil)
@@ -39,6 +61,15 @@ func (s *S) TestShouldReturnBodyMessageOnError(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(httpErr.Code, gocheck.Equals, http.StatusUnauthorized)
 	c.Assert(httpErr.Message, gocheck.Equals, expectedMsg)
+	c.Assert(strings.Replace(buf.String(), "\n", "\\n", -1), gocheck.Matches,
+		``+
+			`.*<Request uri="/">.*`+
+			`GET / HTTP/1.1\r\\n.*`+
+			`Connection: close.*`+
+			`Authorization: bearer.*`+
+			`<Response uri="/">.*`+
+			`HTTP/0.0 401 Unauthorized.*`+
+			`You must be authenticated to execute this command\..*`)
 }
 
 func (s *S) TestShouldReturnErrorWhenServerIsDown(c *gocheck.C) {
@@ -49,10 +80,21 @@ func (s *S) TestShouldReturnErrorWhenServerIsDown(c *gocheck.C) {
 	}()
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, gocheck.IsNil)
-	client := NewClient(&http.Client{}, nil, manager)
+	var buf bytes.Buffer
+	context := Context{
+		Stdout: &buf,
+	}
+	client := NewClient(&http.Client{}, &context, manager)
+	client.Verbosity = 2
 	_, err = client.Do(request)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "Failed to connect to tsuru server (http://tsuru.google.com), it's probably down.")
+	c.Assert(strings.Replace(buf.String(), "\n", "\\n", -1), gocheck.Matches,
+		``+
+			`.*<Request uri="/">.*`+
+			`GET / HTTP/1.1\r\\n.*`+
+			`Connection: close.*`+
+			`Authorization: bearer.*`)
 }
 
 func (s *S) TestShouldNotIncludeTheHeaderAuthorizationWhenTheTsuruTokenFileIsMissing(c *gocheck.C) {
@@ -63,12 +105,22 @@ func (s *S) TestShouldNotIncludeTheHeaderAuthorizationWhenTheTsuruTokenFileIsMis
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, gocheck.IsNil)
 	trans := ttesting.Transport{Message: "", Status: http.StatusOK}
-	client := NewClient(&http.Client{Transport: &trans}, nil, manager)
+	var buf bytes.Buffer
+	context := Context{
+		Stdout: &buf,
+	}
+	client := NewClient(&http.Client{Transport: &trans}, &context, manager)
+	client.Verbosity = 2
 	_, err = client.Do(request)
 	c.Assert(err, gocheck.IsNil)
 	header := map[string][]string(request.Header)
 	_, ok := header["Authorization"]
 	c.Assert(ok, gocheck.Equals, false)
+	c.Assert(strings.Replace(buf.String(), "\n", "\\n", -1), gocheck.Matches,
+		``+
+			`.*<Request uri="/">.*`+
+			`GET / HTTP/1.1\r\\n.*`+
+			`Connection: close.*`)
 }
 
 func (s *S) TestShouldIncludeTheHeaderAuthorizationWhenTsuruTokenFileExists(c *gocheck.C) {
@@ -79,10 +131,21 @@ func (s *S) TestShouldIncludeTheHeaderAuthorizationWhenTsuruTokenFileExists(c *g
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, gocheck.IsNil)
 	trans := ttesting.Transport{Message: "", Status: http.StatusOK}
-	client := NewClient(&http.Client{Transport: &trans}, nil, manager)
+	var buf bytes.Buffer
+	context := Context{
+		Stdout: &buf,
+	}
+	client := NewClient(&http.Client{Transport: &trans}, &context, manager)
+	client.Verbosity = 2
 	_, err = client.Do(request)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(request.Header.Get("Authorization"), gocheck.Equals, "bearer mytoken")
+	c.Assert(strings.Replace(buf.String(), "\n", "\\n", -1), gocheck.Matches,
+		``+
+			`.*<Request uri="/">.*`+
+			`GET / HTTP/1.1\r\\n.*`+
+			`Connection: close.*`+
+			`Authorization: bearer.*`)
 }
 
 func (s *S) TestShouldValidateVersion(c *gocheck.C) {
