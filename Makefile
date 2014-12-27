@@ -120,3 +120,6 @@ release:
 
 install:
 	go install $(GO_EXTRAFLAGS) ./... ../tsuru-client/...
+
+serve:
+	$(HOME)/go/bin/tsr api
