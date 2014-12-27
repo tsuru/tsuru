@@ -81,6 +81,8 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 		if rollbackErr != nil {
 			log.Errorf("error trying to rollback user creation: %s", rollbackErr.Error())
 		}
+		gURL := repository.ServerURL()
+		log.Errorf("error trying to create user %q in gandalf (%s): %s", u.Email, gURL, err.Error())
 		return err
 	}
 	rec.Log(u.Email, "create-user")
