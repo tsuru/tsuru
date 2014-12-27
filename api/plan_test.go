@@ -116,6 +116,7 @@ func (s *S) TestPlanList(c *gocheck.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
 	var plans []app.Plan
 	err = json.Unmarshal(recorder.Body.Bytes(), &plans)
 	c.Assert(err, gocheck.IsNil)
