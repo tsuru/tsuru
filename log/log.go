@@ -39,7 +39,11 @@ func Init() {
 	} else {
 		logger = NewFileLogger(logFileName, debug)
 	}
-	SetLogger(logger)
+	stderrLogger := NewFileLogger("/dev/stderr", debug)
+	if logger != nil && stderrLogger != nil {
+		logger2 := NewMultiLogger(&logger, &stderrLogger)
+		SetLogger(logger2)
+	}
 }
 
 // Target is the current target for the log package.
