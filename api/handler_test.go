@@ -178,6 +178,7 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldReturnUnauthorizedI
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusUnauthorized)
+	c.Assert(recorder.Header().Get("WWW-Authenticate"), gocheck.Equals, "Bearer realm=\"tsuru\" scope=\"tsuru\"")
 	c.Assert(recorder.Body.String(), gocheck.Equals, "You must provide a valid Authorization header\n")
 }
 
@@ -191,6 +192,7 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerShouldReturnUnauthorizedI
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusUnauthorized)
+	c.Assert(recorder.Header().Get("WWW-Authenticate"), gocheck.Equals, "Bearer realm=\"tsuru\" scope=\"tsuru\"")
 	c.Assert(recorder.Body.String(), gocheck.Equals, "You must provide a valid Authorization header\n")
 }
 
@@ -281,6 +283,7 @@ func (s *HandlerSuite) TestAdminRequiredHandlerShouldReturnUnauthorizedIfTheAuth
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusUnauthorized)
+	c.Assert(recorder.Header().Get("WWW-Authenticate"), gocheck.Equals, "Bearer realm=\"tsuru\" scope=\"tsuru\"")
 	c.Assert(recorder.Body.String(), gocheck.Equals, "You must provide a valid Authorization header\n")
 }
 
@@ -294,6 +297,7 @@ func (s *HandlerSuite) TestAdminRequiredHandlerShouldReturnUnauthorizedIfTheToke
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusUnauthorized)
+	c.Assert(recorder.Header().Get("WWW-Authenticate"), gocheck.Equals, "Bearer realm=\"tsuru\" scope=\"tsuru\"")
 	c.Assert(recorder.Body.String(), gocheck.Equals, "You must provide a valid Authorization header\n")
 }
 

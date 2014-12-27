@@ -34,6 +34,7 @@ type authorizationRequiredHandler func(http.ResponseWriter, *http.Request, auth.
 func (fn authorizationRequiredHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	t := context.GetAuthToken(r)
 	if t == nil {
+		w.Header().Set("WWW-Authenticate", "Bearer realm=\"tsuru\" scope=\"tsuru\"")
 		context.AddRequestError(r, tokenRequiredErr)
 	} else {
 		context.AddRequestError(r, fn(w, r, t))
