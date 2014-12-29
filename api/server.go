@@ -71,7 +71,7 @@ func RunServer(dry bool) http.Handler {
 	if err != nil {
 		dbName = db.DefaultDatabaseName
 	}
-	fmt.Printf("Using the database %q from the server %q.\n\n", dbName, connString)
+	fmt.Printf("Using the database %q from the server %q.\n", dbName, connString)
 
 	m := &delayedRouter{}
 
@@ -225,7 +225,7 @@ func RunServer(dry bool) http.Handler {
 		if err != nil {
 			fatal(err)
 		}
-		fmt.Printf("Using %q provisioner.\n\n", provisioner)
+		fmt.Printf("Using %q provisioner.\n", provisioner)
 		if initializableProvisioner, ok := app.Provisioner.(provision.InitializableProvisioner); ok {
 			err = initializableProvisioner.Initialize()
 			if err != nil {
@@ -240,7 +240,7 @@ func RunServer(dry bool) http.Handler {
 		if err != nil {
 			fatal(err)
 		}
-		fmt.Printf("Using %q auth scheme.\n\n", scheme)
+		fmt.Printf("Using %q auth scheme.\n", scheme)
 		listen, err := config.GetString("listen")
 		if err != nil {
 			fatal(err)
