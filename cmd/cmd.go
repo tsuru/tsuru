@@ -143,7 +143,7 @@ func (m *Manager) Run(args []string) {
 					msg = fmt.Sprintf("%s: %q is not a tsuru command. See %q.\n", os.Args[0], args[0], "tsuru help")
 					msg += fmt.Sprintf("\nDid you mean?\n")
 					var keys []string
-					for key, _ := range m.Commands {
+					for key := range m.Commands {
 						keys = append(keys, key)
 					}
 					sort.Strings(keys)
