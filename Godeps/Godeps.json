@@ -81,6 +81,10 @@
 			"Rev": "5102fde921d31f59c6e45d835aa01f0213aade0f"
 		},
 		{
+			"ImportPath": "github.com/sajari/fuzzy",
+			"Rev": "bbbcac964e38148a7b43491a83d83b6b584600dc"
+		},
+		{
 			"ImportPath": "github.com/tsuru/commandmocker",
 			"Rev": "adc1ee2fa7604e1663b2564ca1283d71c9153cac"
 		},
