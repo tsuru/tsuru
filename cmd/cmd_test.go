@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/fs"
@@ -218,7 +219,7 @@ func (s *S) TestCustomLookupNotFound(c *gocheck.C) {
 	var exiter recordingExiter
 	manager.e = &exiter
 	manager.Run([]string{"custom"})
-	c.Assert(stderr.String(), gocheck.Equals, "Error: command \"custom\" does not exist\n")
+	c.Assert(strings.Replace(stderr.String(), "\n", "\\n", -1), gocheck.Matches, `.*: "custom" is not a tsuru command. See "tsuru help".*`)
 	c.Assert(manager.e.(*recordingExiter).value(), gocheck.Equals, 1)
 }
 
@@ -664,6 +665,97 @@ func (s *S) TestVersionIsRegisteredByNewManager(c *gocheck.C) {
 	ver, ok := manager.Commands["version"]
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(ver, gocheck.FitsTypeOf, &version{})
+}
+
+func (s *S) TestInvalidCommandFuzzyMatch01(c *gocheck.C) {
+	lookup := func(ctx *Context) error {
+		return os.ErrNotExist
+	}
+	manager := BuildBaseManager("tsuru", "1.0", "", lookup)
+	var stdout, stderr bytes.Buffer
+	var exiter recordingExiter
+	manager.e = &exiter
+	manager.stdout = &stdout
+	manager.stderr = &stderr
+	manager.Run([]string{"target"})
+	expectedOutput := `.*: "target" is not a tsuru command. See "tsuru help".
+
+Did you mean?
+	target-add
+	target-list
+	target-remove
+	target-set
+`
+	expectedOutput = strings.Replace(expectedOutput, "\n", "\\W", -1)
+	expectedOutput = strings.Replace(expectedOutput, "\t", "\\W+", -1)
+	c.Assert(stderr.String(), gocheck.Matches, expectedOutput)
+	c.Assert(manager.e.(*recordingExiter).value(), gocheck.Equals, 1)
+}
+
+func (s *S) TestInvalidCommandFuzzyMatch02(c *gocheck.C) {
+	lookup := func(ctx *Context) error {
+		return os.ErrNotExist
+	}
+	manager := BuildBaseManager("tsuru", "1.0", "", lookup)
+	var stdout, stderr bytes.Buffer
+	var exiter recordingExiter
+	manager.e = &exiter
+	manager.stdout = &stdout
+	manager.stderr = &stderr
+	manager.Run([]string{"target-lisr"})
+	expectedOutput := `.*: "target-lisr" is not a tsuru command. See "tsuru help".
+
+Did you mean?
+	target-list
+`
+	expectedOutput = strings.Replace(expectedOutput, "\n", "\\W", -1)
+	expectedOutput = strings.Replace(expectedOutput, "\t", "\\W+", -1)
+	c.Assert(stderr.String(), gocheck.Matches, expectedOutput)
+	c.Assert(manager.e.(*recordingExiter).value(), gocheck.Equals, 1)
+}
+
+func (s *S) TestInvalidCommandFuzzyMatch03(c *gocheck.C) {
+	lookup := func(ctx *Context) error {
+		return os.ErrNotExist
+	}
+	manager := BuildBaseManager("tsuru", "1.0", "", lookup)
+	var stdout, stderr bytes.Buffer
+	var exiter recordingExiter
+	manager.e = &exiter
+	manager.stdout = &stdout
+	manager.stderr = &stderr
+	manager.Run([]string{"teamlist"})
+	expectedOutput := `.*: "teamlist" is not a tsuru command. See "tsuru help".
+
+Did you mean?
+	team-list
+`
+	expectedOutput = strings.Replace(expectedOutput, "\n", "\\W", -1)
+	expectedOutput = strings.Replace(expectedOutput, "\t", "\\W+", -1)
+	c.Assert(stderr.String(), gocheck.Matches, expectedOutput)
+	c.Assert(manager.e.(*recordingExiter).value(), gocheck.Equals, 1)
+}
+
+func (s *S) TestInvalidCommandFuzzyMatch04(c *gocheck.C) {
+	lookup := func(ctx *Context) error {
+		return os.ErrNotExist
+	}
+	manager := BuildBaseManager("tsuru", "1.0", "", lookup)
+	var stdout, stderr bytes.Buffer
+	var exiter recordingExiter
+	manager.e = &exiter
+	manager.stdout = &stdout
+	manager.stderr = &stderr
+	manager.Run([]string{"resetpasswurd"})
+	expectedOutput := `.*: "resetpasswurd" is not a tsuru command. See "tsuru help".
+
+Did you mean?
+	reset-password
+`
+	expectedOutput = strings.Replace(expectedOutput, "\n", "\\W", -1)
+	expectedOutput = strings.Replace(expectedOutput, "\t", "\\W+", -1)
+	c.Assert(stderr.String(), gocheck.Matches, expectedOutput)
+	c.Assert(manager.e.(*recordingExiter).value(), gocheck.Equals, 1)
 }
 
 func (s *S) TestFileSystem(c *gocheck.C) {

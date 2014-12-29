@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/sajari/fuzzy"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/fs"
 	"launchpad.net/gnuflag"
@@ -139,7 +140,19 @@ func (m *Manager) Run(args []string) {
 			if err != nil {
 				msg := ""
 				if os.IsNotExist(err) {
-					msg = fmt.Sprintf("Error: command %q does not exist\n", args[0])
+					msg = fmt.Sprintf("%s: %q is not a tsuru command. See %q.\n", os.Args[0], args[0], "tsuru help")
+					msg += fmt.Sprintf("\nDid you mean?\n")
+					var keys []string
+					for key, _ := range m.Commands {
+						keys = append(keys, key)
+					}
+					sort.Strings(keys)
+					for _, key := range keys {
+						levenshtein := fuzzy.Levenshtein(&key, &args[0])
+						if levenshtein < 3 || strings.HasPrefix(key, args[0]) {
+							msg += fmt.Sprintf("\t%s\n", key)
+						}
+					}
 				} else {
 					msg = err.Error()
 				}
