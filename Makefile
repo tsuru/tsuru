@@ -117,3 +117,9 @@ release:
 	@git push origin master
 
 	@echo "$(version) released!"
+
+install:
+	go install $(GO_EXTRAFLAGS) ./... ../tsuru-client/...
+
+serve:
+	$(HOME)/go/bin/tsr api
