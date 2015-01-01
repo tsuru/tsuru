@@ -103,6 +103,7 @@ func (s *S) TestAppList(c *gocheck.C) {
 	err = appList(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
 	apps := []app.App{}
@@ -146,6 +147,7 @@ func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserIsAMember(c *gochec
 	err = appList(recorder, request, token)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
 	var apps []app.App
@@ -558,6 +560,7 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = addUnits(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Units(), gocheck.HasLen, 3)
@@ -1587,6 +1590,7 @@ func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *goch
 	c.Assert(err, gocheck.IsNil)
 	err = setEnv(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
 	app, err := app.GetByName("black-dog")
 	c.Assert(err, gocheck.IsNil)
 	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true}
@@ -1624,6 +1628,7 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *go
 	c.Assert(err, gocheck.IsNil)
 	err = setEnv(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
 	app, err := app.GetByName("vigil")
 	c.Assert(err, gocheck.IsNil)
 	expectedHost := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: true}
@@ -1668,6 +1673,7 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfPrivateVariables(c *gocheck.C
 	c.Assert(err, gocheck.IsNil)
 	err = setEnv(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
 	app, err := app.GetByName("losers")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Env, gocheck.DeepEquals, original)
@@ -1755,6 +1761,7 @@ func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *goche
 	c.Assert(err, gocheck.IsNil)
 	err = unsetEnv(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
 	app, err := app.GetByName("swift")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Env, gocheck.DeepEquals, expected)
@@ -1791,6 +1798,7 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *gocheck.C)
 	c.Assert(err, gocheck.IsNil)
 	err = unsetEnv(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
 	app, err := app.GetByName("let-it-be")
 	c.Assert(err, gocheck.IsNil)
 	expected := map[string]bind.EnvVar{
@@ -1832,6 +1840,7 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = unsetEnv(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
 	app, err := app.GetByName("letitbe")
 	c.Assert(err, gocheck.IsNil)
 	expected := map[string]bind.EnvVar{
@@ -2575,6 +2584,7 @@ func (s *S) TestBindHandlerEndpointIsDown(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = bindServiceInstance(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
 	c.Assert(recorder.Body.String(), gocheck.Equals, `{"Message":"","Error":"my-mysql api is down."}`+"\n")
 }
 
@@ -2614,6 +2624,7 @@ func (s *S) TestBindHandler(c *gocheck.C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
 	err = bindServiceInstance(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
 	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(instance.Apps, gocheck.DeepEquals, []string{a.Name})
@@ -3050,6 +3061,7 @@ func (s *S) TestPlatformList(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err := platformList(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
 	var got []app.Platform
 	err = json.NewDecoder(recorder.Body).Decode(&got)
 	c.Assert(err, gocheck.IsNil)
@@ -3327,6 +3339,7 @@ func (s *S) TestRegisterUnit(c *gocheck.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
 	expected := []map[string]interface{}{{
 		"name":   "MY_VAR_1",
 		"value":  "value1",

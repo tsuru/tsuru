@@ -30,7 +30,7 @@ func (tokenCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintf(context.Stdout, t.GetValue())
+	fmt.Fprintln(context.Stdout, t.GetValue())
 	return nil
 }
 
