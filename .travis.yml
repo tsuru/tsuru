@@ -7,6 +7,8 @@ env:
 matrix:
   allow_failures:
     - go: tip
+before_script:
+  - sleep 15
 before_install:
   - sed -i "s|git://github.com/tsuru/tsuru.git|https://github.com/tsuru/tsuru|g" .git/config
   - sudo apt-get update -qq > apt-get.out 2>&1  || (cat apt-get.out && exit 1)
@@ -18,7 +20,7 @@ install:
 before_script:
   - nc -zvv localhost 27017; while [[ $! -ne 0 ]]; do nc -zvv localhost 27017; done
 script:
-  - make test GO_EXTRAFLAGS=-x
+  - make test
 notifications:
   email:
     recipients:
