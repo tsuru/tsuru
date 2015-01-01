@@ -16,7 +16,7 @@ install:
   - echo http://localhost > $HOME/.tsuru_target
   - make get GO_EXTRAFLAGS=-x
 script:
-  - make test GO_EXTRAFLAGS=-x
+  - travis_retry make test GO_EXTRAFLAGS=-x
 notifications:
   email:
     recipients:
