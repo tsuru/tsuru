@@ -225,6 +225,7 @@ func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		for _, team := range teams {
 			result = append(result, map[string]string{"name": team.Name})
 		}
+		w.Header().Set("Content-Type", "application/json")
 		b, err := json.Marshal(result)
 		if err != nil {
 			return err

@@ -87,6 +87,7 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		w.WriteHeader(http.StatusNoContent)
 		return nil
 	}
+	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(apps)
 }
 
@@ -225,6 +226,7 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+	w.Header().Set("Content-Type", "application/json")
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
 	err = app.AddUnits(n, writer)
 	if err != nil {
@@ -498,6 +500,7 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	for k, v := range variables {
 		envs = append(envs, bind.EnvVar{Name: k, Value: v, Public: true})
 	}
+	w.Header().Set("Content-Type", "application/json")
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
 	err = app.SetEnvs(envs, true, writer)
 	if err != nil {
@@ -531,6 +534,7 @@ func unsetEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+	w.Header().Set("Content-Type", "application/json")
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
 	err = app.UnsetEnvs(variables, true, writer)
 	if err != nil {
@@ -805,6 +809,7 @@ func platformList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(platforms)
 }
 

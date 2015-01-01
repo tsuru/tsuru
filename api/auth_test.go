@@ -696,6 +696,7 @@ func (s *AuthSuite) TestListTeamsListsAllTeamsThatTheUserIsMember(c *gocheck.C) 
 	recorder := httptest.NewRecorder()
 	err = teamList(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
 	b, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
 	var m []map[string]string
