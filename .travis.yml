@@ -20,6 +20,9 @@ before_script:
   - nc -zvv localhost 6379; while [[ $! -ne 0 ]]; do echo "Retry hit port 6379..."; nc -zvv localhost 6379; sleep 1; done
 script:
   - make test GO_EXTRAFLAGS=-x
+after_failure:
+  # check for OOM; see https://github.com/travis-ci/travis-ci/issues/3075#issuecomment-68629130
+  - sudo dmesg
 notifications:
   email:
     recipients:
