@@ -4,6 +4,9 @@ go:
   - tip
 env:
   - GOARCH=amd64
+services:
+  - mongodb
+  - redis
 matrix:
   allow_failures:
     - go: tip
@@ -26,6 +29,3 @@ notifications:
       - tsuru@corp.globo.com
     on_success: change
     on_failure: always
-services:
-  - mongodb
-  - redis
