@@ -408,16 +408,17 @@ func (s *S) TestSSHToContainerCmdNoToken(c *gocheck.C) {
 	target := "http://" + server.Listener.Addr().String()
 	targetRecover := ttesting.SetTargetFile(c, []byte(target))
 	defer ttesting.RollbackFile(targetRecover)
-	var buf bytes.Buffer
+	var stdin, stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Args:   []string{"af3332d"},
-		Stdout: &buf,
-		Stderr: &buf,
-		Stdin:  &buf,
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Stdin:  &stdin,
 	}
 	var command sshToContainerCmd
 	err := command.Run(&context, nil)
-	c.Assert(err.Error(), gocheck.Equals, "HTTP/1.1 401 Unauthorized")
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "HTTP/1.1 401")
 }
 
 func (s *S) TestSSHToContainerCmdSmallData(c *gocheck.C) {
