@@ -79,7 +79,8 @@ func (s *S) TestTsrCommandRunInvalidConfig(c *gocheck.C) {
 	c.Assert(stderr.String(), gocheck.Equals, `Opening config file: /invalid/file
 Could not open tsuru config file at /invalid/file (open /invalid/file: no such file or directory).
   For an example, see: tsuru/etc/tsuru.conf
-  Note that you can specify a different config file with the --config option -- e.g.: --config=./etc/tsuru.conf`)
+  Note that you can specify a different config file with the --config option -- e.g.: --config=./etc/tsuru.conf
+`)
 	c.Assert(stdout.String(), gocheck.Equals, "")
 	c.Assert(fakeCmd.Calls(), gocheck.Equals, int32(0))
 }
