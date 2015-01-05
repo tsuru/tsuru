@@ -16,8 +16,9 @@ import (
 func Test(t *testing.T) { gocheck.TestingT(t) }
 
 type S struct {
-	stdin   *os.File
-	recover []string
+	stdin        *os.File
+	recover      []string
+	recoverToken []string
 }
 
 var _ = gocheck.Suite(&S{})
@@ -25,10 +26,12 @@ var manager *Manager
 
 func (s *S) SetUpSuite(c *gocheck.C) {
 	s.recover = tTesting.SetTargetFile(c, []byte("http://localhost"))
+	s.recoverToken = tTesting.SetTokenFile(c, []byte("abc123"))
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
 	tTesting.RollbackFile(s.recover)
+	tTesting.RollbackFile(s.recoverToken)
 }
 
 func (s *S) SetUpTest(c *gocheck.C) {

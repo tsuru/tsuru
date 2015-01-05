@@ -30,10 +30,10 @@ func (s *S) TestShouldSetCloseToTrue(c *gocheck.C) {
 	client.Verbosity = 2
 	client.Do(request)
 	c.Assert(request.Close, gocheck.Equals, true)
-	c.Assert(strings.Replace(buf.String(), "\n", "\\n", -1), gocheck.Matches,
-		``+
+	c.Assert(buf.String(), gocheck.Matches,
+		`(?s)`+
 			`.*<Request uri="/">.*`+
-			`GET / HTTP/1.1\r\\n.*`+
+			`GET / HTTP/1.1\r\n.*`+
 			`Connection: close.*`+
 			`Authorization: bearer.*`+
 			`<Response uri="/">.*`+
@@ -61,10 +61,10 @@ func (s *S) TestShouldReturnBodyMessageOnError(c *gocheck.C) {
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(httpErr.Code, gocheck.Equals, http.StatusUnauthorized)
 	c.Assert(httpErr.Message, gocheck.Equals, expectedMsg)
-	c.Assert(strings.Replace(buf.String(), "\n", "\\n", -1), gocheck.Matches,
-		``+
+	c.Assert(buf.String(), gocheck.Matches,
+		`(?s)`+
 			`.*<Request uri="/">.*`+
-			`GET / HTTP/1.1\r\\n.*`+
+			`GET / HTTP/1.1\r\n.*`+
 			`Connection: close.*`+
 			`Authorization: bearer.*`+
 			`<Response uri="/">.*`+
