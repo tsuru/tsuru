@@ -2,6 +2,10 @@
 # Use of this source code is governed by a BSD-style
 # license that can be found in the LICENSE file.
 
+BUILD_DIR = build
+TSR_BIN = $(BUILD_DIR)/tsr
+TSR_SRC = cmd/tsr/*.go
+
 define HG_ERROR
 
 FATAL: You need Mercurial (hg) to download tsuru dependencies.
@@ -121,5 +125,19 @@ release:
 install:
 	go install $(GO_EXTRAFLAGS) ./... ../tsuru-client/...
 
-serve:
-	$(HOME)/go/bin/tsr api
+serve: run-tsr-api
+
+run: run-tsr-api
+
+binaries: tsr
+
+tsr: $(TSR_BIN)
+
+$(TSR_BIN):
+	godep go build -o $(TSR_BIN) $(TSR_SRC)
+
+run-tsr-api: $(TSR_BIN)
+	$(TSR_BIN) api
+
+run-tsr-token: $(TSR_BIN)
+	$(TSR_BIN) token
