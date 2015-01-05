@@ -12,11 +12,10 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path"
 	"strings"
 	"time"
 
+	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/api"
@@ -668,33 +667,35 @@ func (s *HandlersSuite) TestRemoveTeamsToPoolHandler(c *gocheck.C) {
 }
 
 func (s *HandlersSuite) TestSSHToContainerHandler(c *gocheck.C) {
-	sshServer := newMockSSHServer(c, 2e9)
-	defer sshServer.Shutdown()
+	s.server.Close()
+	targetRecover := testing.SetTargetFile(c, []byte("http://localhost"))
+	defer testing.RollbackFile(targetRecover)
+	server, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, gocheck.IsNil)
+	defer server.Stop()
+	var storage cluster.MapStorage
+	dCluster, err = cluster.New(nil, &storage,
+		cluster.Node{Address: server.URL()},
+	)
+	c.Assert(err, gocheck.IsNil)
 	coll := collection()
 	defer coll.Close()
 	container := container{
-		ID:          "9930c24f1c4x",
-		AppName:     "makea",
-		Type:        "python",
-		Status:      provision.StatusStarted.String(),
-		IP:          "127.0.0.4",
-		HostPort:    "9025",
-		HostAddr:    "localhost",
-		SSHHostPort: sshServer.port,
-		PrivateKey:  string(fakeServerPrivateKey),
-		User:        sshUsername(),
+		ID:       "9930c24f1c4x",
+		AppName:  "makea",
+		Type:     "python",
+		Status:   provision.StatusStarted.String(),
+		IP:       "127.0.0.4",
+		HostPort: "9025",
+		HostAddr: "localhost",
 	}
-	err := coll.Insert(container)
-	c.Assert(err, gocheck.IsNil)
+	err = coll.Insert(container)
 	defer coll.RemoveAll(bson.M{"appname": "makea"})
-	tmpDir, err := ioutil.TempDir("", "containerssh")
-	defer os.RemoveAll(tmpDir)
-	filepath := path.Join(tmpDir, "file.txt")
-	file, err := os.Create(filepath)
 	c.Assert(err, gocheck.IsNil)
-	file.Write([]byte("hello"))
-	file.Close()
-	buf := safe.NewBuffer([]byte("cat " + filepath + "\nexit\n"))
+	err = storage.StoreContainer(container.ID, server.URL())
+	defer storage.RemoveContainer(container.ID)
+	c.Assert(err, gocheck.IsNil)
+	buf := safe.NewBuffer([]byte("echo teste"))
 	recorder := hijacker{conn: &fakeConn{buf}}
 	request, err := http.NewRequest("GET", "/?:container_id="+container.ID, nil)
 	c.Assert(err, gocheck.IsNil)
