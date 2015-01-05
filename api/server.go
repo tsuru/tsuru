@@ -71,7 +71,7 @@ func RunServer(dry bool) http.Handler {
 	if err != nil {
 		dbName = db.DefaultDatabaseName
 	}
-	fmt.Printf("Using the database %q from the server %q.\n", dbName, connString)
+	fmt.Printf("Using mongodb database %q from the server %q.\n", dbName, connString)
 
 	m := &delayedRouter{}
 
