@@ -1,14 +1,10 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 package main
 
 import (
-	"fmt"
-	"log"
-	"os"
-
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api"
 	"github.com/tsuru/tsuru/cmd"
@@ -22,17 +18,7 @@ type apiCmd struct {
 }
 
 func (c *apiCmd) Run(context *cmd.Context, client *cmd.Client) error {
-	log.Printf("Opening config file: %s\n", configPath)
-	err := config.ReadConfigFile(configPath)
-	if err != nil {
-		msg := `Could not open tsuru config file at %s (%s).
-  For an example, see: tsuru/etc/tsuru.conf
-  Note that you can specify a different config file with the --config option -- e.g.: --config=./etc/tsuru.conf`
-		log.Fatalf(msg, configPath, err)
-		os.Exit(1)
-	}
-	fmt.Fprintf(context.Stdout, "Done reading config file: %s\n", configPath)
-	err = config.Check([]config.Checker{CheckProvisioner, CheckBeanstalkd, CheckBasicConfig})
+	err := config.Check([]config.Checker{CheckProvisioner, CheckBeanstalkd, CheckBasicConfig})
 	if err != nil {
 		return err
 	}
