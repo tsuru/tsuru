@@ -60,7 +60,8 @@ func buildClusterStorage() (cluster.Storage, error) {
 	}
 	storage, err := mongodb.Mongodb(mongoUrl, mongoDatabase)
 	if err != nil {
-		return nil, fmt.Errorf("Cluster Storage: Unable to connnect to mongodb: %s", err.Error())
+		return nil, fmt.Errorf("Cluster Storage: Unable to connect to mongodb: %s (docker:cluster:mongo-url = %q; docker:cluster:mongo-database = %q)",
+			err.Error(), mongoUrl, mongoDatabase)
 	}
 	return storage, nil
 }
