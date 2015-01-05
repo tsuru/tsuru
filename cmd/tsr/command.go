@@ -51,7 +51,8 @@ func (c *tsrCommand) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		msg := `Could not open tsuru config file at %s (%s).
   For an example, see: tsuru/etc/tsuru.conf
-  Note that you can specify a different config file with the --config option -- e.g.: --config=./etc/tsuru.conf`
+  Note that you can specify a different config file with the --config option -- e.g.: --config=./etc/tsuru.conf
+`
 		fmt.Fprintf(context.Stderr, msg, configPath, err)
 		return err
 	}
