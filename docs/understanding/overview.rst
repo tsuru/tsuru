@@ -9,8 +9,7 @@ With tsuru, you don’t need to think about servers at all.
 As an application developer, you can:
 
 - Write apps in the programming language of your choice,
-- Back apps with add-on resources such as SQL and NoSQL databases, including memcached, redis, and many
-others.
+- Back apps with add-on resources such as SQL and NoSQL databases, including memcached, redis, and many others.
 - Manage apps using the ``tsuru`` command-line tool
 - Deploy apps using the Git revision control system
 
@@ -43,3 +42,4 @@ Open source
 -----------
 
 tsuru is free, open source software released under the BSD 3-Clause license.
+
