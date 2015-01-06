@@ -128,27 +128,6 @@ func (s *S) TestContainerCreateUndefinedUser(c *gocheck.C) {
 	c.Assert(container.Config.User, gocheck.Equals, "")
 }
 
-func (s *S) TestGetSSHCommandsDefaultSSHDPath(c *gocheck.C) {
-	commands, err := sshCmds([]byte("mykey"))
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(commands[1], gocheck.Equals, "sudo /usr/sbin/sshd -D")
-}
-
-func (s *S) TestGetSSHCommandsDefaultKeyFile(c *gocheck.C) {
-	commands, err := sshCmds([]byte("ssh-rsa ohwait! me@machine"))
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(commands[0], gocheck.Equals, "/var/lib/tsuru/add-key ssh-rsa ohwait! me@machine")
-}
-
-func (s *S) TestGetSSHCommandsMissingAddKeyCommand(c *gocheck.C) {
-	old, _ := config.Get("docker:ssh:add-key-cmd")
-	defer config.Set("docker:ssh:add-key-cmd", old)
-	config.Unset("docker:ssh:add-key-cmd")
-	commands, err := sshCmds([]byte("my-key"))
-	c.Assert(commands, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-}
-
 func (s *S) TestGetPort(c *gocheck.C) {
 	port, err := getPort()
 	c.Assert(err, gocheck.IsNil)

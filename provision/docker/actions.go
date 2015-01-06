@@ -24,7 +24,6 @@ type runContainerActionsArgs struct {
 	imageID          string
 	commands         []string
 	destinationHosts []string
-	privateKey       []byte
 	writer           io.Writer
 	isDeploy         bool
 }
@@ -43,12 +42,11 @@ var insertEmptyContainerInDB = action.Action{
 		args := ctx.Params[0].(runContainerActionsArgs)
 		contName := containerName()
 		cont := container{
-			AppName:    args.app.GetName(),
-			Type:       args.app.GetPlatform(),
-			Name:       contName,
-			Status:     provision.StatusCreated.String(),
-			Image:      args.imageID,
-			PrivateKey: string(args.privateKey),
+			AppName: args.app.GetName(),
+			Type:    args.app.GetPlatform(),
+			Name:    contName,
+			Status:  provision.StatusCreated.String(),
+			Image:   args.imageID,
 		}
 		coll := collection()
 		defer coll.Close()

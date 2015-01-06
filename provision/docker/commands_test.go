@@ -115,43 +115,9 @@ func (s *S) TestRunWithAgentCmds(c *gocheck.C) {
 	runCmd, err := config.GetString("docker:run-cmd:bin")
 	c.Assert(err, gocheck.IsNil)
 	unitAgentCmd := fmt.Sprintf("tsuru_unit_agent tsuru_host app_token app-name %s", runCmd)
-	key := []byte("key-content")
-	ssh, err := sshCmds(key)
-	sshCmd := strings.Join(ssh, " && ")
-	c.Assert(err, gocheck.IsNil)
-	cmd := fmt.Sprintf("%s && %s", unitAgentCmd, sshCmd)
+	cmd := fmt.Sprintf("%s", unitAgentCmd)
 	expected := []string{"/bin/bash", "-lc", cmd}
-	cmds, err := runWithAgentCmds(app, key)
+	cmds, err := runWithAgentCmds(app)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(cmds, gocheck.DeepEquals, expected)
-}
-
-func (s *S) TestSSHCmds(c *gocheck.C) {
-	addKeyCommand, err := config.GetString("docker:ssh:add-key-cmd")
-	c.Assert(err, gocheck.IsNil)
-	keyContent := "key-content"
-	sshdPath := "sudo /usr/sbin/sshd"
-	expected := []string{
-		fmt.Sprintf("%s %s", addKeyCommand, keyContent),
-		sshdPath + " -D",
-	}
-	cmds, err := sshCmds([]byte(keyContent))
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(cmds, gocheck.DeepEquals, expected)
-}
-
-func (s *S) TestSSHCmdsDefaultSSHDPath(c *gocheck.C) {
-	keyContent := []byte("ssh-rsa ohwait! me@machine")
-	commands, err := sshCmds(keyContent)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(commands[1], gocheck.Equals, "sudo /usr/sbin/sshd -D")
-}
-
-func (s *S) TestSSHCmdsMissingAddKeyCommand(c *gocheck.C) {
-	old, _ := config.Get("docker:ssh:add-key-cmd")
-	defer config.Set("docker:ssh:add-key-cmd", old)
-	config.Unset("docker:ssh:add-key-cmd")
-	commands, err := sshCmds([]byte("mykey"))
-	c.Assert(commands, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
 }

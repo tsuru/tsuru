@@ -7,7 +7,6 @@ package docker
 import (
 	"crypto"
 	"crypto/rand"
-	"crypto/rsa"
 	"fmt"
 	"io"
 	"net"
@@ -377,15 +376,7 @@ func deploy(app provision.App, imageId string, commands []string, w io.Writer) (
 }
 
 func start(app provision.App, imageId string, w io.Writer, destinationHosts ...string) (*container, error) {
-	keyPair, err := rsa.GenerateKey(rand.Reader, 1024)
-	if err != nil {
-		return nil, err
-	}
-	privateKey, publicKey, err := marshalKey(keyPair)
-	if err != nil {
-		return nil, err
-	}
-	commands, err := runWithAgentCmds(app, publicKey)
+	commands, err := runWithAgentCmds(app)
 	if err != nil {
 		return nil, err
 	}
@@ -402,7 +393,6 @@ func start(app provision.App, imageId string, w io.Writer, destinationHosts ...s
 		imageID:          imageId,
 		commands:         commands,
 		destinationHosts: destinationHosts,
-		privateKey:       privateKey,
 	}
 	err = pipeline.Execute(args)
 	if err != nil {
