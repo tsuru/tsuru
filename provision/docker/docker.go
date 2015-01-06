@@ -26,7 +26,6 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/safe"
-	"golang.org/x/crypto/ssh"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -456,22 +455,6 @@ func (c *container) remove() error {
 	return nil
 }
 
-func (c *container) ssh(stdout, stderr io.Writer, cmd string, args ...string) error {
-	client, err := c.dialSSH()
-	if err != nil {
-		return err
-	}
-	defer client.Close()
-	session, err := client.NewSession()
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-	session.Stdout = stdout
-	session.Stderr = stderr
-	return session.Run(cmd + " " + strings.Join(args, " "))
-}
-
 type pty struct {
 	width  int
 	height int
@@ -504,24 +487,6 @@ func (c *container) shell(stdin io.Reader, stdout, stderr io.Writer, pty pty) er
 	}
 	return dockerCluster().ResizeExecTTY(exec.ID, c.ID, pty.height, pty.width)
 
-}
-
-func (c *container) dialSSH() (*ssh.Client, error) {
-	key, err := ssh.ParseRawPrivateKey([]byte(c.PrivateKey))
-	if err != nil {
-		return nil, err
-	}
-	signer, err := ssh.NewSignerFromKey(key)
-	if err != nil {
-		return nil, err
-	}
-	host := c.HostAddr + ":" + c.SSHHostPort
-	config := ssh.ClientConfig{
-		Config: ssh.Config{Rand: rand.Reader},
-		Auth:   []ssh.AuthMethod{ssh.PublicKeys(signer)},
-		User:   c.User,
-	}
-	return ssh.Dial("tcp", host, &config)
 }
 
 func (c *container) exec(stdout, stderr io.Writer, cmd string, args ...string) error {

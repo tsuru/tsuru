@@ -8,13 +8,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
-	"path"
 	"sort"
 	"strings"
 	"time"
@@ -381,28 +378,6 @@ func (s *S) TestContainerNetworkInfoNotFound(c *gocheck.C) {
 	c.Assert(info.IP, gocheck.Equals, "10.10.10.10")
 	c.Assert(info.SSHHostPort, gocheck.Equals, "")
 	c.Assert(info.HTTPHostPort, gocheck.Equals, "")
-}
-
-func (s *S) TestContainerSSH(c *gocheck.C) {
-	sshServer := newMockSSHServer(c, 2e9)
-	defer sshServer.Shutdown()
-	container, err := s.newContainer(nil)
-	c.Assert(err, gocheck.IsNil)
-	container.SSHHostPort = sshServer.port
-	container.HostAddr = "localhost"
-	container.PrivateKey = string(fakeServerPrivateKey)
-	container.User = sshUsername()
-	tmpDir, err := ioutil.TempDir("", "containerssh")
-	defer os.RemoveAll(tmpDir)
-	filepath := path.Join(tmpDir, "file.txt")
-	file, err := os.Create(filepath)
-	c.Assert(err, gocheck.IsNil)
-	file.Write([]byte("hello"))
-	file.Close()
-	var stdout, stderr bytes.Buffer
-	err = container.ssh(&stdout, &stderr, "cat", filepath)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(stdout.String(), gocheck.Equals, "hello")
 }
 
 func (s *S) TestContainerShell(c *gocheck.C) {
