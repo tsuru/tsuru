@@ -11,8 +11,8 @@ import (
 
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
-	"launchpad.net/goamz/aws"
-	"launchpad.net/goamz/ec2"
+	"gopkg.in/amz.v1/aws"
+	"gopkg.in/amz.v1/ec2"
 )
 
 const (

@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/tsuru/tsuru",
-	"GoVersion": "devel +1757b5c Thu Dec 11 07:31:32 2014 +0000",
+	"GoVersion": "devel +ffe33f1f1f17 Tue Nov 25 15:41:33 2014 +1100",
 	"Packages": [
 		"./..."
 	],
@@ -127,6 +127,14 @@
 			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
 		},
 		{
+			"ImportPath": "gopkg.in/amz.v1/aws",
+			"Rev": "b757cfd07d59a59f454bcf1d8526b5f91a5a9b4d"
+		},
+		{
+			"ImportPath": "gopkg.in/amz.v1/ec2",
+			"Rev": "b757cfd07d59a59f454bcf1d8526b5f91a5a9b4d"
+		},
+		{
 			"ImportPath": "gopkg.in/mgo.v2",
 			"Rev": "dc255bb679efa273b6544a03261c4053505498a4"
 		},
@@ -138,16 +146,6 @@
 			"ImportPath": "launchpad.net/gnuflag",
 			"Comment": "12",
 			"Rev": "roger.peppe@canonical.com-20121003093437-zcyyw0lpvj2nifpk"
-		},
-		{
-			"ImportPath": "launchpad.net/goamz/aws",
-			"Comment": "50",
-			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
-		},
-		{
-			"ImportPath": "launchpad.net/goamz/ec2",
-			"Comment": "50",
-			"Rev": "gustavo@niemeyer.net-20131004171246-efk7aix6irtazp2m"
 		},
 		{
 			"ImportPath": "launchpad.net/gocheck",

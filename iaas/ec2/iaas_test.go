@@ -13,9 +13,9 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/iaas"
-	"launchpad.net/goamz/aws"
-	"launchpad.net/goamz/ec2"
-	"launchpad.net/goamz/ec2/ec2test"
+	"gopkg.in/amz.v1/aws"
+	"gopkg.in/amz.v1/ec2"
+	"gopkg.in/amz.v1/ec2/ec2test"
 	"launchpad.net/gocheck"
 )
 
@@ -35,6 +35,7 @@ func (s *S) SetUpTest(c *gocheck.C) {
 	s.region = aws.Region{
 		Name:        "myregion",
 		EC2Endpoint: s.srv.URL(),
+		Sign:        aws.SignV2,
 	}
 	aws.Regions["myregion"] = s.region
 	config.Set("iaas:ec2:key-id", "mykey")
@@ -49,7 +50,7 @@ func (s *S) TestCreateEC2Handler(c *gocheck.C) {
 	ec2iaas := NewEC2IaaS()
 	handler, err := ec2iaas.createEC2Handler(aws.APNortheast)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(handler.Region, gocheck.DeepEquals, aws.APNortheast)
+	c.Assert(handler.Region.EC2Endpoint, gocheck.DeepEquals, aws.APNortheast.EC2Endpoint)
 	c.Assert(handler.Auth.AccessKey, gocheck.Equals, "mykey")
 	c.Assert(handler.Auth.SecretKey, gocheck.Equals, "mysecret")
 }
@@ -110,6 +111,7 @@ func (s *S) TestCreateMachineTimeoutError(c *gocheck.C) {
 	timeoutRegion := aws.Region{
 		Name:        "timeoutregion",
 		EC2Endpoint: server.URL,
+		Sign:        aws.SignV2,
 	}
 	aws.Regions["timeoutregion"] = timeoutRegion
 	params := map[string]string{
@@ -129,6 +131,7 @@ func (s *S) TestCreateMachineDefaultRegion(c *gocheck.C) {
 	region := aws.Region{
 		Name:        defaultRegion,
 		EC2Endpoint: defaultRegionServer.URL(),
+		Sign:        aws.SignV2,
 	}
 	aws.Regions[defaultRegion] = region
 	params := map[string]string{
