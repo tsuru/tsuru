@@ -66,6 +66,10 @@ type Router interface {
 	Routes(name string) ([]string, error)
 }
 
+type MessageRouter interface {
+	StartupMessage() (string, error)
+}
+
 func collection() (*storage.Collection, error) {
 	conn, err := db.Conn()
 	if err != nil {
