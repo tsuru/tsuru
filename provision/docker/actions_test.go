@@ -392,7 +392,7 @@ func (s *S) TestProvisionAddUnitsToHostForwardWithoutHost(c *gocheck.C) {
 	addrs := []string{containers[0].HostAddr, containers[1].HostAddr, containers[2].HostAddr}
 	sort.Strings(addrs)
 	isValid := reflect.DeepEqual(addrs, []string{"127.0.0.1", "localhost", "localhost"}) ||
-		reflect.DeepEqual(addrs, []string{"127.0.0.11", "127.0.0.1", "localhost"})
+		reflect.DeepEqual(addrs, []string{"127.0.0.1", "127.0.0.1", "localhost"})
 	if !isValid {
 		clusterNodes, _ := dockerCluster().UnfilteredNodes()
 		c.Fatalf("Expected multiple hosts, got: %#v\nAvailable nodes: %#v", containers, clusterNodes)
