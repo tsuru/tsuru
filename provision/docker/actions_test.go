@@ -6,6 +6,7 @@ package docker
 
 import (
 	"bytes"
+	"reflect"
 	"sort"
 
 	"github.com/fsouza/go-dockerclient"
@@ -368,9 +369,9 @@ func (s *S) TestProvisionAddUnitsToHostForward(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionAddUnitsToHostForwardWithoutHost(c *gocheck.C) {
-	cluster, err := s.startMultipleServersCluster()
+	oldCluster, err := s.startMultipleServersCluster()
 	c.Assert(err, gocheck.IsNil)
-	defer s.stopMultipleServersCluster(cluster)
+	defer s.stopMultipleServersCluster(oldCluster)
 	err = newImage("tsuru/app-myapp-2", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	var p dockerProvisioner
@@ -379,8 +380,6 @@ func (s *S) TestProvisionAddUnitsToHostForwardWithoutHost(c *gocheck.C) {
 	p.Provision(app)
 	coll := collection()
 	defer coll.Close()
-	coll.Insert(container{ID: "container-id", AppName: app.GetName(), Version: "container-version", Image: "tsuru/python"})
-	defer coll.RemoveAll(bson.M{"appname": app.GetName()})
 	args := changeUnitsPipelineArgs{
 		app:        app,
 		unitsToAdd: 3,
@@ -390,13 +389,17 @@ func (s *S) TestProvisionAddUnitsToHostForwardWithoutHost(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	containers := result.([]container)
 	c.Assert(containers, gocheck.HasLen, 3)
-	addrs := []string{containers[0].HostAddr, containers[1].HostAddr}
+	addrs := []string{containers[0].HostAddr, containers[1].HostAddr, containers[2].HostAddr}
 	sort.Strings(addrs)
-	c.Assert(addrs[0], gocheck.Equals, "127.0.0.1")
-	c.Assert(addrs[1], gocheck.Equals, "localhost")
+	isValid := reflect.DeepEqual(addrs, []string{"127.0.0.1", "localhost", "localhost"}) ||
+		reflect.DeepEqual(addrs, []string{"127.0.0.11", "127.0.0.1", "localhost"})
+	if !isValid {
+		clusterNodes, _ := dockerCluster().UnfilteredNodes()
+		c.Fatalf("Expected multiple hosts, got: %#v\nAvailable nodes: %#v", containers, clusterNodes)
+	}
 	count, err := coll.Find(bson.M{"appname": app.GetName()}).Count()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(count, gocheck.Equals, 4)
+	c.Assert(count, gocheck.Equals, 3)
 }
 
 func (s *S) TestProvisionAddUnitsToHostBackward(c *gocheck.C) {
