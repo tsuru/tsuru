@@ -27,7 +27,7 @@ before_script:
   - nc -zvv localhost 27017; out=$?; while [[ $out -ne 0 ]]; do echo "Retry hit port 27017..."; nc -zvv localhost 27017; out=$?; sleep 1; done
   - nc -zvv localhost 6379; out=$?; while [[ $out -ne 0 ]]; do echo "Retry hit port 6379..."; nc -zvv localhost 6379; out=$?; sleep 1; done
 script:
-  - travis_retry make test GO_EXTRAFLAGS=-x
+  - travis_retry make test GO_EXTRAFLAGS=-x GOMAXPROCS=1
 after_failure:
   # check for OOM; see https://github.com/travis-ci/travis-ci/issues/3075#issuecomment-68629130
   - sudo dmesg
