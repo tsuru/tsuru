@@ -13,6 +13,13 @@ before_install:
   - sudo apt-get install bzr mercurial git -qq > apt-get.out 2>&1 || (cat apt-get.out && exit 1)
   - sudo /etc/init.d/postgresql stop
   - sudo /etc/init.d/mysql stop
+  - mongod --version
+  - sudo /etc/init.d/mongodb stop
+  - sudo sed -i 's/^journal=true//' /etc/mongodb.conf
+  - echo "nojournal = true" | sudo tee -a /etc/mongodb.conf
+  - echo "smallfiles = true" | sudo tee -a /etc/mongodb.conf
+  - cat /etc/mongodb.conf
+  - sudo /etc/init.d/mongodb start
 install:
   - export PATH="$HOME/gopath/bin:$PATH"
   - echo http://localhost > $HOME/.tsuru_target
