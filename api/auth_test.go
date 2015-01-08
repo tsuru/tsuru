@@ -1815,68 +1815,6 @@ func (s *AuthSuite) TestResetPasswordStep2(c *gocheck.C) {
 	c.Assert(action, testing.IsRecorded)
 }
 
-func (s *AuthSuite) TestGenerateApplicationToken(c *gocheck.C) {
-	body := bytes.NewBufferString(`{"client":"tsuru-healer"}`)
-	request, _ := http.NewRequest("POST", "/tokens", body)
-	recorder := httptest.NewRecorder()
-	err := generateAppToken(recorder, request, s.token)
-	c.Assert(err, gocheck.IsNil)
-	var jsonToken map[string]interface{}
-	err = json.NewDecoder(recorder.Body).Decode(&jsonToken)
-	c.Assert(err, gocheck.IsNil)
-	conn, _ := db.Conn()
-	defer conn.Close()
-	defer conn.Tokens().Remove(bson.M{"token": jsonToken["token"]})
-	t, err := nativeScheme.Auth(jsonToken["token"].(string))
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(t.IsAppToken(), gocheck.Equals, true)
-	c.Assert(t.GetAppName(), gocheck.Equals, "tsuru-healer")
-}
-
-func (s *AuthSuite) TestGenerateApplicationTokenInvalidJSON(c *gocheck.C) {
-	body := bytes.NewBufferString(`{"client":"tsuru-`)
-	request, _ := http.NewRequest("POST", "/tokens", body)
-	recorder := httptest.NewRecorder()
-	err := generateAppToken(recorder, request, s.token)
-	c.Assert(err, gocheck.NotNil)
-}
-
-func (s *AuthSuite) TestGenerateApplicationTokenMissingClient(c *gocheck.C) {
-	body := bytes.NewBufferString(`{"client":""}`)
-	request, _ := http.NewRequest("POST", "/tokens", body)
-	recorder := httptest.NewRecorder()
-	err := generateAppToken(recorder, request, s.token)
-	c.Assert(err, gocheck.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
-	c.Assert(e.Message, gocheck.Equals, "Missing client name in JSON body")
-}
-
-func (s *AuthSuite) TestGenerateApplictionTokenExport(c *gocheck.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
-	a := app.App{Name: "myapp"}
-	err := conn.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": a.Name})
-	body := bytes.NewBufferString(`{"client":"myapp","export":true}`)
-	request, _ := http.NewRequest("POST", "/tokens", body)
-	recorder := httptest.NewRecorder()
-	err = generateAppToken(recorder, request, s.token)
-	c.Assert(err, gocheck.IsNil)
-	var jsonToken map[string]interface{}
-	err = json.NewDecoder(recorder.Body).Decode(&jsonToken)
-	c.Assert(err, gocheck.IsNil)
-	app, err := app.GetByName(a.Name)
-	c.Assert(err, gocheck.IsNil)
-	tokenVar := app.Env["TSURU_APP_TOKEN"]
-	c.Assert(tokenVar.Name, gocheck.Equals, "TSURU_APP_TOKEN")
-	c.Assert(tokenVar.Value, gocheck.Equals, jsonToken["token"].(string))
-	c.Assert(tokenVar.Public, gocheck.Equals, false)
-	c.Assert(tokenVar.InstanceName, gocheck.Equals, "")
-}
-
 type TestScheme native.NativeScheme
 
 func (t TestScheme) AppLogin(appName string) (auth.Token, error) {

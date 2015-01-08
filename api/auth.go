@@ -14,7 +14,6 @@ import (
 	"github.com/tsuru/go-gandalfclient"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
@@ -521,43 +520,6 @@ Please remove the team, then remove the user.`, team.Name)
 		return fmt.Errorf("Failed to remove the user from the git server: %s", err)
 	}
 	return app.AuthScheme.Remove(u)
-}
-
-type jToken struct {
-	Client string `json:"client"`
-	Export bool   `json:"export"`
-}
-
-func generateAppToken(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	var body jToken
-	defer r.Body.Close()
-	err := json.NewDecoder(r.Body).Decode(&body)
-	if err != nil {
-		return err
-	}
-	if body.Client == "" {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: "Missing client name in JSON body",
-		}
-	}
-	token, err := app.AuthScheme.AppLogin(body.Client)
-	if err != nil {
-		return err
-	}
-	if body.Export {
-		if a, err := app.GetByName(body.Client); err == nil {
-			envs := []bind.EnvVar{
-				{
-					Name:   "TSURU_APP_TOKEN",
-					Value:  token.GetValue(),
-					Public: false,
-				},
-			}
-			a.SetEnvs(envs, false, nil)
-		}
-	}
-	return json.NewEncoder(w).Encode(token)
 }
 
 type schemeData struct {
