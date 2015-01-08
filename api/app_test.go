@@ -218,7 +218,7 @@ func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccesToTheAp
 }
 
 func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *gocheck.C) {
-	request, err := http.NewRequest("DELETE", "/apps/unkown?:app=unknown", nil)
+	request, err := http.NewRequest("DELETE", "/apps/unknown?:app=unknown", nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
 	err = appDelete(recorder, request, s.token)
@@ -1362,7 +1362,7 @@ func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *gocheck.C
 func (s *S) TestRunHandlerReturnsBadRequestIfTheCommandIsMissing(c *gocheck.C) {
 	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, body := range bodies {
-		request, err := http.NewRequest("POST", "/apps/unknown/run/?:app=unkown", body)
+		request, err := http.NewRequest("POST", "/apps/unknown/run/?:app=unknown", body)
 		c.Assert(err, gocheck.IsNil)
 		recorder := httptest.NewRecorder()
 		err = runCommand(recorder, request, s.token)
@@ -1495,7 +1495,7 @@ func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *gocheck.C) {
 
 func (s *S) TestGetEnvHandlerReturnsInternalErrorIfReadAllFails(c *gocheck.C) {
 	b := s.getTestData("bodyToBeClosed.txt")
-	request, err := http.NewRequest("GET", "/apps/unkown/env/?:app=unknown", b)
+	request, err := http.NewRequest("GET", "/apps/unknown/env/?:app=unknown", b)
 	c.Assert(err, gocheck.IsNil)
 	request.Body.Close()
 	recorder := httptest.NewRecorder()
@@ -1681,7 +1681,7 @@ func (s *S) TestSetEnvHandlerShouldNotChangeValueOfPrivateVariables(c *gocheck.C
 
 func (s *S) TestSetEnvHandlerReturnsInternalErrorIfReadAllFails(c *gocheck.C) {
 	b := s.getTestData("bodyToBeClosed.txt")
-	request, err := http.NewRequest("POST", "/apps/unkown/env/?:app=unknown", b)
+	request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown", b)
 	c.Assert(err, gocheck.IsNil)
 	request.Body.Close()
 	recorder := httptest.NewRecorder()
@@ -1692,7 +1692,7 @@ func (s *S) TestSetEnvHandlerReturnsInternalErrorIfReadAllFails(c *gocheck.C) {
 func (s *S) TestSetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *gocheck.C) {
 	bodies := []io.Reader{nil, strings.NewReader("")}
 	for _, body := range bodies {
-		request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unkown", body)
+		request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown", body)
 		c.Assert(err, gocheck.IsNil)
 		recorder := httptest.NewRecorder()
 		err = setEnv(recorder, request, s.token)
@@ -1855,7 +1855,7 @@ func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *gocheck.C) {
 
 func (s *S) TestUnsetEnvHandlerReturnsInternalErrorIfReadAllFails(c *gocheck.C) {
 	b := s.getTestData("bodyToBeClosed.txt")
-	request, err := http.NewRequest("POST", "/apps/unkown/env/?:app=unknown", b)
+	request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown", b)
 	c.Assert(err, gocheck.IsNil)
 	request.Body.Close()
 	recorder := httptest.NewRecorder()
@@ -1866,7 +1866,7 @@ func (s *S) TestUnsetEnvHandlerReturnsInternalErrorIfReadAllFails(c *gocheck.C) 
 func (s *S) TestUnsetEnvHandlerReturnsBadRequestIfVariablesAreMissing(c *gocheck.C) {
 	bodies := []io.Reader{nil, strings.NewReader(""), strings.NewReader("[]")}
 	for _, body := range bodies {
-		request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unkown", body)
+		request, err := http.NewRequest("POST", "/apps/unknown/env/?:app=unknown", body)
 		c.Assert(err, gocheck.IsNil)
 		recorder := httptest.NewRecorder()
 		err = unsetEnv(recorder, request, s.token)
@@ -2005,7 +2005,7 @@ func (s *S) TestAddCNameHandlerErrsOnInvalidCName(c *gocheck.C) {
 
 func (s *S) TestAddCNameHandlerReturnsInternalErrorIfItFailsToReadTheBody(c *gocheck.C) {
 	b := s.getTestData("bodyToBeClosed.txt")
-	request, err := http.NewRequest("POST", "/apps/unkown/cname?:app=unknown", b)
+	request, err := http.NewRequest("POST", "/apps/unknown/cname?:app=unknown", b)
 	c.Assert(err, gocheck.IsNil)
 	request.Body.Close()
 	recorder := httptest.NewRecorder()
