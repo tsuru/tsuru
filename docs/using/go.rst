@@ -80,12 +80,13 @@ A simple web application in go `main.go`:
     import (
         "fmt"
         "net/http"
+        "os"
     )
 
     func main() {
         http.HandleFunc("/", hello)
         fmt.Println("listening...")
-        err := http.ListenAndServe(":8888", nil)
+        err := http.ListenAndServe(":" + os.Getenv("PORT"), nil)
         if err != nil {
             panic(err)
         }

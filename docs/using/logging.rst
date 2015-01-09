@@ -23,7 +23,7 @@ To see the logs for your application. You can use the `tsuru app-log` command:
     2014-12-11 16:36:17 -0200 [tsuru][api]:  ---> Removed route from unit 1d913e0910
     2014-12-11 16:36:17 -0200 [tsuru][api]: ---- Removing 1 old unit ----
     2014-12-11 16:36:22 -0200 [app][11f863b2c14b]: Starting gunicorn 18.0
-    2014-12-11 16:36:22 -0200 [app][11f863b2c14b]: Listening at: http://0.0.0.0:8888 (51)
+    2014-12-11 16:36:22 -0200 [app][11f863b2c14b]: Listening at: http://0.0.0.0:8100 (51)
     2014-12-11 16:36:22 -0200 [app][11f863b2c14b]: Using worker: sync
     2014-12-11 16:36:22 -0200 [app][11f863b2c14b]: Booting worker with pid: 60
     2014-12-11 16:36:28 -0200 [tsuru][api]:  ---> Removed old unit 1/1
@@ -50,7 +50,7 @@ To filter by unit you should use `-u/--unit` parameter:
 
     $ tsuru app-log -a <appname> --unit 11f863b2c14b
     2014-12-11 16:36:22 -0200 [app][11f863b2c14b]: Starting gunicorn 18.0
-    2014-12-11 16:36:22 -0200 [app][11f863b2c14b]: Listening at: http://0.0.0.0:8888 (51)
+    2014-12-11 16:36:22 -0200 [app][11f863b2c14b]: Listening at: http://0.0.0.0:8100 (51)
     2014-12-11 16:36:22 -0200 [app][11f863b2c14b]: Using worker: sync
 
 .. seealso::
@@ -66,7 +66,7 @@ you should use `-s/--source` parameter:
 
     $ tsuru app-log -a <appname> --source app
     2014-12-11 16:36:22 -0200 [app][11f863b2c14b]: Starting gunicorn 18.0
-    2014-12-11 16:36:22 -0200 [app][11f863b2c14b]: Listening at: http://0.0.0.0:8888 (51)
+    2014-12-11 16:36:22 -0200 [app][11f863b2c14b]: Listening at: http://0.0.0.0:8100 (51)
     2014-12-11 16:36:22 -0200 [app][11f863b2c14b]: Using worker: sync
 
     $ tsuru app-log -a <appname> --source tsuru
