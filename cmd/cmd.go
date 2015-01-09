@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	"code.google.com/p/go-columnize"
 	"github.com/sajari/fuzzy"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/fs"
@@ -328,9 +329,9 @@ func (c *help) Run(context *Context, client *Client) error {
 			}
 		}
 		sort.Strings(commands)
-		for _, command := range commands {
-			output += fmt.Sprintf("  %s\n", command)
-		}
+		opts := columnize.DefaultOptions()
+		opts.ArrangeVertical = false
+		output += fmt.Sprintf(columnize.Columnize(commands, opts))
 		output += fmt.Sprintf("\nUse %s help <commandname> to get more information about a command.\n", c.manager.name)
 		if len(c.manager.topics) > 0 {
 			output += fmt.Sprintln("\nAvailable topics:")
