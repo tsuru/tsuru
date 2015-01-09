@@ -115,7 +115,7 @@ func (s *S) TestRunWithAgentCmds(c *gocheck.C) {
 	runCmd, err := config.GetString("docker:run-cmd:bin")
 	c.Assert(err, gocheck.IsNil)
 	unitAgentCmd := fmt.Sprintf("tsuru_unit_agent tsuru_host app_token app-name %s", runCmd)
-	cmd := fmt.Sprintf("%s", unitAgentCmd)
+	cmd := fmt.Sprintf("%s && tail -f /dev/null", unitAgentCmd)
 	expected := []string{"/bin/bash", "-lc", cmd}
 	cmds, err := runWithAgentCmds(app)
 	c.Assert(err, gocheck.IsNil)

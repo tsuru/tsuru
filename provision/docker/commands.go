@@ -59,7 +59,7 @@ func runWithAgentCmds(app provision.App) ([]string, error) {
 	token := app.Envs()["TSURU_APP_TOKEN"].Value
 	unitAgentCmds := []string{"tsuru_unit_agent", host, token, app.GetName(), runCmd}
 	unitAgentCmd := strings.Join(unitAgentCmds, " ")
-	cmd := fmt.Sprintf("%s", unitAgentCmd)
+	cmd := fmt.Sprintf("%s && tail -f /dev/null", unitAgentCmd)
 	cmds := []string{"/bin/bash", "-lc", cmd}
 	return cmds, nil
 }
