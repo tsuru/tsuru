@@ -329,7 +329,13 @@ func (c *help) Run(context *Context, client *Client) error {
 		}
 		sort.Strings(commands)
 		for _, command := range commands {
-			output += fmt.Sprintf("  %s\n", command)
+			description := c.manager.Commands[command].Info().Desc
+			description = strings.Split(description, "\n")[0]
+			description = strings.Split(description, ".")[0]
+			if len(description) > 2 {
+				description = strings.ToUpper(description[0:1]) + description[1:]
+			}
+			output += fmt.Sprintf("  %-20s %s\n", command, description)
 		}
 		output += fmt.Sprintf("\nUse %s help <commandname> to get more information about a command.\n", c.manager.name)
 		if len(c.manager.topics) > 0 {
