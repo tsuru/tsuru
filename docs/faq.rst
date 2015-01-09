@@ -45,8 +45,12 @@ How does routing work?
 
 tsuru has a router interface, which makes it extremely easy to change the way
 routing works with any provisioner. There are two ready-to-go routers: one
-using `hipache <https://github.com/dotcloud/hipache>`_ and another with `elb
-<http://http://aws.amazon.com/elasticloadbalancing/>`_.
+using `hipache <https://github.com/dotcloud/hipache>`_ and another with `galeb
+<http://galeb.io/>`_.
+
+.. note::
+
+    as of 0.10.0 version **tsuru** will support more than one router. You can have a default router, configured by "docker:router" and you can define a custom router by plan
 
 How are Git repositories managed?
 =================================
