@@ -61,5 +61,5 @@ func (s *S) TestGetScheme(c *gocheck.C) {
 func (s *S) TestGetSchemeInvalidScheme(c *gocheck.C) {
 	_, err := GetScheme("x")
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, `Unknown scheme: "x".`)
+	c.Assert(err.Error(), gocheck.Equals, `Unknown auth scheme: "x".`)
 }
