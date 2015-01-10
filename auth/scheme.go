@@ -50,7 +50,7 @@ func UnregisterScheme(name string) {
 func GetScheme(name string) (Scheme, error) {
 	scheme, ok := schemes[name]
 	if !ok {
-		return nil, fmt.Errorf("Unknown scheme: %q.", name)
+		return nil, fmt.Errorf("Unknown auth scheme: %q.", name)
 	}
 	return scheme, nil
 }
