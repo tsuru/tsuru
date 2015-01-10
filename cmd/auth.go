@@ -477,9 +477,9 @@ func (c *resetPassword) Info() *Info {
 	return &Info{
 		Name:  "reset-password",
 		Usage: "reset-password <email> [--token|-t <token>]",
-		Desc: `Redefines the user password.
+		Desc: `Resets the user password.
 
-This process is composed by two steps:
+This process is composed of two steps:
 
 1. Generate a new token
 2. Reset the password using the token
@@ -499,7 +499,7 @@ func (c *resetPassword) msg() string {
 
 Please check your email.`
 	}
-	return `Your password has been redefined and mailed to you.
+	return `Your password has been reset and mailed to you.
 
 Please check your email.`
 }
