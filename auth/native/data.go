@@ -16,12 +16,12 @@ need to use the following token to finish this process:
 
 If you think this is email is wrong, just ignore it.`))
 
-var passwordResetConfirm = template.Must(template.New("reset").Parse(`Subject: [tsuru] Password successfuly redefined
+var passwordResetConfirm = template.Must(template.New("reset").Parse(`Subject: [tsuru] Password successfully reset
 To: {{.email}}
 
 Greetings!
 
-This message is the confirmation that your password has been redefined. The new password is:
+This message is the confirmation that your password has been reset. The new password is:
 
 {{.password}}
 

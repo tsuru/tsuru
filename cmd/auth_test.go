@@ -659,7 +659,7 @@ func (s *S) TestResetPasswordStepTwo(c *gocheck.C) {
 	client := NewClient(&http.Client{Transport: &trans}, nil, manager)
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
-	expected := `Your password has been redefined and mailed to you.
+	expected := `Your password has been reset and mailed to you.
 
 Please check your email.` + "\n"
 	c.Assert(buf.String(), gocheck.Equals, expected)
@@ -670,9 +670,9 @@ func (s *S) TestResetPasswordInfo(c *gocheck.C) {
 	expected := &Info{
 		Name:  "reset-password",
 		Usage: "reset-password <email> [--token|-t <token>]",
-		Desc: `Redefines the user password.
+		Desc: `Resets the user password.
 
-This process is composed by two steps:
+This process is composed of two steps:
 
 1. Generate a new token
 2. Reset the password using the token
