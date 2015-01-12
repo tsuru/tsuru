@@ -80,6 +80,7 @@ Here is how you can configure a health check in your yaml file:
       method: GET
       status: 200
       match: .*OKAY.*
+      allowed_failures: 0
 
 * ``healthcheck:path``: Which path to call in your application. This path will be
   called for each unit. It is the only mandatory field, if it's not set your
@@ -93,3 +94,5 @@ Here is how you can configure a health check in your yaml file:
   checked. This regular expression uses `go syntax
   <https://code.google.com/p/re2/wiki/Syntax>`_ and runs with ``.`` matching
   ``\n`` (``s`` flag).
+* ``healthcheck:allowed_failures``: The number of allowed failures before that the 
+  health check consider the application as unhealthy. Defaults to 0.

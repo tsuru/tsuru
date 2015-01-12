@@ -227,3 +227,56 @@ func (s *S) TestHealthcheckErrorsAfterMaxTime(c *gocheck.C) {
 	}
 	c.Assert(err, gocheck.ErrorMatches, "healthcheck fail.*lookup some-invalid-server-name.some-invalid-server-name.com: no such host")
 }
+
+func (s *S) TestSuccessfulHealthcheckWithAllowedFailures(c *gocheck.C) {
+	var requests []*http.Request
+	lock := sync.Mutex{}
+	step := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		lock.Lock()
+		defer lock.Unlock()
+		requests = append(requests, r)
+		if step == 2 {
+			w.WriteHeader(http.StatusOK)
+		} else if step == 1 {
+			w.WriteHeader(http.StatusBadGateway)
+		} else {
+			hj := w.(http.Hijacker)
+			conn, _, _ := hj.Hijack()
+			conn.Close()
+		}
+	}))
+	a := app.App{Name: "myapp1", CustomData: map[string]interface{}{
+		"healthcheck": map[string]interface{}{
+			"path": "/x/y",
+			"allowed_failures": 1,
+		},
+	}}
+	err := s.storage.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
+	url, _ := url.Parse(server.URL)
+	host, port, _ := net.SplitHostPort(url.Host)
+	cont := container{AppName: a.Name, HostAddr: host, HostPort: port}
+	buf := bytes.Buffer{}
+	go func() {
+		time.Sleep(1 * time.Second)
+		lock.Lock()
+		step = 1
+		lock.Unlock()
+		time.Sleep(3 * time.Second)
+		lock.Lock()
+		defer lock.Unlock()
+		step = 2
+	}()
+	err = runHealthcheck(&cont, &buf)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(buf.String(), gocheck.Matches, `(?s).*---> healthcheck fail.*?Trying again in 3s.*---> healthcheck fail.*?Trying again in 3s.*---> healthcheck successful.*`)
+	c.Assert(requests, gocheck.HasLen, 3)
+	c.Assert(requests[0].Method, gocheck.Equals, "GET")
+	c.Assert(requests[0].URL.Path, gocheck.Equals, "/x/y")
+	c.Assert(requests[1].Method, gocheck.Equals, "GET")
+	c.Assert(requests[1].URL.Path, gocheck.Equals, "/x/y")
+	c.Assert(requests[2].Method, gocheck.Equals, "GET")
+	c.Assert(requests[2].URL.Path, gocheck.Equals, "/x/y")
+}
