@@ -57,7 +57,6 @@ func runHealthcheck(cont *container, w io.Writer) error {
 		status = val
 	case float64:
 		status = int(val)
-	default:
 	}
 	match, _ := hc["match"].(string)
 	if status == 0 && match == "" {
@@ -70,6 +69,13 @@ func runHealthcheck(cont *container, w io.Writer) error {
 		if err != nil {
 			return err
 		}
+	}
+	var allowedFailures int
+	switch val := hc["allowed_failures"].(type) {
+	case int:
+		allowedFailures = val
+	case float64:
+		allowedFailures = int(val)
 	}
 	maxWaitTime, _ := config.GetDuration("docker:healthcheck:max-time")
 	if maxWaitTime == 0 {
@@ -91,15 +97,22 @@ func runHealthcheck(cont *container, w io.Writer) error {
 		} else {
 			defer rsp.Body.Close()
 			if status != 0 && rsp.StatusCode != status {
-				return fmt.Errorf("healthcheck fail(%s): wrong status code, expected %d, got: %d", cont.shortID(), status, rsp.StatusCode)
+				lastError = fmt.Errorf("healthcheck fail(%s): wrong status code, expected %d, got: %d", cont.shortID(), status, rsp.StatusCode)
 			} else if matchRE != nil {
 				result, err := ioutil.ReadAll(rsp.Body)
+
 				if err != nil {
-					return err
+					lastError = err
 				}
 				if !matchRE.Match(result) {
-					return fmt.Errorf("healthcheck fail(%s): unexpected result, expected %q, got: %s", cont.shortID(), match, string(result))
+					lastError = fmt.Errorf("healthcheck fail(%s): unexpected result, expected %q, got: %s", cont.shortID(), match, string(result))
 				}
+			}
+			if lastError != nil {
+				if allowedFailures == 0 {
+					return lastError
+				}
+				allowedFailures--
 			}
 		}
 		if lastError == nil {
