@@ -248,7 +248,7 @@ func (s *S) TestSuccessfulHealthcheckWithAllowedFailures(c *gocheck.C) {
 	}))
 	a := app.App{Name: "myapp1", CustomData: map[string]interface{}{
 		"healthcheck": map[string]interface{}{
-			"path": "/x/y",
+			"path":             "/x/y",
 			"allowed_failures": 1,
 		},
 	}}
