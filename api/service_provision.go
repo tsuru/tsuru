@@ -16,7 +16,7 @@ import (
 	"github.com/tsuru/tsuru/rec"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/mgo.v2/bson"
-	"gopkg.in/v1/yaml"
+	"gopkg.in/yaml.v1"
 )
 
 type serviceYaml struct {
