@@ -179,7 +179,6 @@ type container struct {
 	IP                      string
 	HostAddr                string
 	HostPort                string
-	SSHHostPort             string
 	PrivateKey              string
 	Status                  string
 	Version                 string
@@ -230,7 +229,6 @@ func (c *container) create(args runContainerActionsArgs) error {
 	if !args.isDeploy {
 		exposedPorts = map[docker.Port]struct{}{
 			docker.Port(port + "/tcp"): {},
-			docker.Port("22/tcp"):      {},
 		}
 	}
 	config := docker.Config{
@@ -273,7 +271,6 @@ func (c *container) create(args runContainerActionsArgs) error {
 
 type containerNetworkInfo struct {
 	HTTPHostPort string
-	SSHHostPort  string
 	IP           string
 }
 
@@ -294,13 +291,6 @@ func (c *container) networkInfo() (containerNetworkInfo, error) {
 		for _, port := range dockerContainer.NetworkSettings.Ports[httpPort] {
 			if port.HostPort != "" && port.HostIP != "" {
 				netInfo.HTTPHostPort = port.HostPort
-				break
-			}
-		}
-		sshPort := docker.Port("22/tcp")
-		for _, port := range dockerContainer.NetworkSettings.Ports[sshPort] {
-			if port.HostPort != "" && port.HostIP != "" {
-				netInfo.SSHHostPort = port.HostPort
 				break
 			}
 		}
@@ -553,7 +543,6 @@ func (c *container) start(isDeploy bool) error {
 		config.RestartPolicy = docker.AlwaysRestart()
 		config.PortBindings = map[docker.Port][]docker.PortBinding{
 			docker.Port(port + "/tcp"): {{HostIP: "", HostPort: ""}},
-			docker.Port("22/tcp"):      {{HostIP: "", HostPort: ""}},
 		}
 	}
 	if sharedBasedir != "" && sharedMount != "" {

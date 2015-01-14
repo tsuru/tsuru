@@ -40,7 +40,7 @@ func checkContainer(container container, wg *sync.WaitGroup) error {
 		if err != nil {
 			return err
 		}
-		if info.HTTPHostPort != container.HostPort || info.IP != container.IP || info.SSHHostPort != container.SSHHostPort {
+		if info.HTTPHostPort != container.HostPort || info.IP != container.IP {
 			err = fixContainer(&container, info)
 			if err != nil {
 				log.Errorf("error on fix container hostport for [container %s]", container.ID)
@@ -66,7 +66,6 @@ func fixContainer(container *container, info containerNetworkInfo) error {
 	router.RemoveRoute(container.AppName, container.getAddress())
 	container.IP = info.IP
 	container.HostPort = info.HTTPHostPort
-	container.SSHHostPort = info.SSHHostPort
 	router.AddRoute(container.AppName, container.getAddress())
 	coll := collection()
 	defer coll.Close()

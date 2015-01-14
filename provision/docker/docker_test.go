@@ -238,7 +238,6 @@ func (s *S) newContainer(opts *newContainerOpts) (*container, error) {
 	}
 	ports := map[docker.Port]struct{}{
 		docker.Port(port + "/tcp"): {},
-		docker.Port("22/tcp"):      {},
 	}
 	config := docker.Config{
 		Image:        "tsuru/python",
@@ -322,7 +321,6 @@ func (s *S) TestContainerNetworkInfo(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(info.IP, gocheck.Not(gocheck.Equals), "")
 	c.Assert(info.HTTPHostPort, gocheck.Not(gocheck.Equals), "")
-	c.Assert(info.SSHHostPort, gocheck.Not(gocheck.Equals), "")
 }
 
 func (s *S) TestContainerNetworkInfoNotFound(c *gocheck.C) {
@@ -355,7 +353,6 @@ func (s *S) TestContainerNetworkInfoNotFound(c *gocheck.C) {
 	info, err := container.networkInfo()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(info.IP, gocheck.Equals, "10.10.10.10")
-	c.Assert(info.SSHHostPort, gocheck.Equals, "")
 	c.Assert(info.HTTPHostPort, gocheck.Equals, "")
 }
 

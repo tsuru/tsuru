@@ -75,8 +75,6 @@ func (s *S) TestProvisionerRestart(c *gocheck.C) {
 	expectedPort := dockerContainer.NetworkSettings.Ports["8888/tcp"][0].HostPort
 	c.Assert(dbConts[0].IP, gocheck.Equals, expectedIP)
 	c.Assert(dbConts[0].HostPort, gocheck.Equals, expectedPort)
-	expectedSSHPort := dockerContainer.NetworkSettings.Ports["22/tcp"][0].HostPort
-	c.Assert(dbConts[0].SSHHostPort, gocheck.Equals, expectedSSHPort)
 }
 
 func (s *S) stopContainers(n uint) {
@@ -816,8 +814,6 @@ func (s *S) TestProvisionerStart(c *gocheck.C) {
 	c.Assert(container.IP, gocheck.Equals, expectedIP)
 	c.Assert(container.HostPort, gocheck.Equals, expectedPort)
 	c.Assert(container.Status, gocheck.Equals, provision.StatusStarting.String())
-	expectedSSHPort := dockerContainer.NetworkSettings.Ports["22/tcp"][0].HostPort
-	c.Assert(container.SSHHostPort, gocheck.Equals, expectedSSHPort)
 }
 
 func (s *S) TestProvisionerStop(c *gocheck.C) {
