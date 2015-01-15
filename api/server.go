@@ -230,6 +230,12 @@ func RunServer(dry bool) http.Handler {
 				fatal(err)
 			}
 		}
+		if messageProvisioner, ok := app.Provisioner.(provision.MessageProvisioner); ok {
+			startupMessage, err := messageProvisioner.StartupMessage()
+			if err == nil && startupMessage != "" {
+				fmt.Print(startupMessage)
+			}
+		}
 		scheme, err := getAuthScheme()
 		if err != nil {
 			fmt.Printf("Warning: configuration didn't declare a auth:scheme, using default scheme.\n")

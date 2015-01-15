@@ -240,6 +240,10 @@ type Provisioner interface {
 	RegisterUnit(Unit) error
 }
 
+type MessageProvisioner interface {
+	StartupMessage() (string, error)
+}
+
 // InitializableProvisioner is a provisioner that provides an initialization
 // method that should be called when the app is started
 type InitializableProvisioner interface {
