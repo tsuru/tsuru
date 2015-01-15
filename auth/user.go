@@ -245,6 +245,7 @@ func (u *User) CreateOnGandalf() error {
 	gURL := repository.ServerURL()
 	c := gandalf.Client{Endpoint: gURL}
 	if _, err := c.NewUser(u.Email, keyToMap(u.Keys)); err != nil {
+		fmt.Printf("Failed to create user in the git server: %s\n", err)
 		return fmt.Errorf("Failed to create user in the git server: %s", err)
 	}
 	return nil
