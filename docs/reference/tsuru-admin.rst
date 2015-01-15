@@ -311,7 +311,7 @@ plan-create
 
 ::
 
-    $ tsuru-admin plan-create <name> -c/--cpu-share cpushare [-m/--memory memory] [-s/--swap swap] [-d/--default]
+    $ tsuru-admin plan-create <name> -c/--cpu-share cpushare [-m/--memory memory] [-s/--swap swap] [-r/--router router_name] [-d/--default] 
 
 This command creates a new plan for being used when creating new apps.
 
@@ -324,6 +324,10 @@ bytes.
 
 The ``--swap`` flag defines how much virtual swap memory a unit is able to use, in
 bytes.
+
+The ``--router`` flag defines which router configuration will be used by
+applications using this plan. See :ref:`routers <config_routers>` configuration
+reference.
 
 The ``--default`` flag sets this plan as the default plan. It means this plan will
 be used when creating an app without explicitly setting a plan.

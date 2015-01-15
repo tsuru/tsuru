@@ -15,7 +15,25 @@ you'll want to be aware of when upgrading from tsr 0.9.0 or older versions.
 What's new in tsr 0.10.0
 ========================
 
-* Now ``tsuru app-run`` uses ``docker exec`` to run commands on containers.
+* Now ``tsuru app-run`` and ``tsuru-admin ssh`` use ``docker exec`` to run
+  commands on containers, this means we don't run sshd inside the containers
+  anymore, making the containers more lightweight and saving some machine
+  resources.
+
+  If you're running basebuilder platforms, it's recommended that you update your
+  platforms **after** installing tsuru 0.10.0 using the "tsuru_0.10.0" (TODO!!!)
+  branch. tsuru will remain working with older platforms but this will be dropped
+  in the future.
+
+* It's now possible to have multiple routers configurations in your tsuru.conf
+  file. The configuration to be used will be defined by which plan the application
+  is using. See :ref:`routers <config_routers>` configuration reference and
+  :ref:`plan-create <tsuru_admin_plan_create>` command for more details.
+
+  For plans without a router configuration, the value defined in ``docker:router``
+  will still be used. So nothing will break with this change. See
+  :ref:`docker:router <config_docker_router>` for more information.
+
 
 Bug fixes
 =========

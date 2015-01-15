@@ -370,6 +370,88 @@ log:file
 Use this to specify a path to a log file.  By default tsuru logs to syslog.
 If this is set, make sure tsuru has permissions to write to this file
 
+.. _config_routers:
+
+Routers
+-------
+
+As of 0.10.0, all your router configuration should live under entries with the
+format ``routers:<router name>``.
+
+routers:<router name>:type
+++++++++++++++++++++++++++
+
+Indicates the type of this router configuration. Currently only the value
+``hipache`` is supported. tsuru also has an experimental router implementation
+using `Galeb router <http://galeb.io/>`_ which is available using ``galeb`` type
+value.
+
+Depending on the type, there are some specific configuration options available.
+
+routers:<router name>:redis-server (type: hipache)
+++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Redis server used by Hipache router. This same server (or a redis slave of it),
+must be configured in your hipache.conf file.
+
+routers:<router name>:domain (type: hipache)
+++++++++++++++++++++++++++++++++++++++++++++
+
+The domain of the server running your hipache server. Applications created with
+tsuru will have a address of ``http://<app-name>.<domain>``
+
+
+routers:<router name>:api-url (type: galeb)
++++++++++++++++++++++++++++++++++++++++++++
+
+The url for the Galeb manager api.
+
+routers:<router name>:username (type: galeb)
+++++++++++++++++++++++++++++++++++++++++++++
+
+Galeb manager username.
+
+routers:<router name>:password (type: galeb)
+++++++++++++++++++++++++++++++++++++++++++++
+
+Galeb manager password.
+
+routers:<router name>:domain (type: galeb)
+++++++++++++++++++++++++++++++++++++++++++
+
+The domain of the server running your Galeb server. Applications created with
+tsuru will have a address of ``http://<app-name>.<domain>``
+
+routers:<router name>:environment (type: galeb)
++++++++++++++++++++++++++++++++++++++++++++++++
+
+Galeb manager environment used to create virtual hosts and backend pools.
+
+routers:<router name>:farm-type (type: galeb)
++++++++++++++++++++++++++++++++++++++++++++++
+
+Galeb manager farm type used to create virtual hosts and backend pools.
+
+routers:<router name>:plan (type: galeb)
+++++++++++++++++++++++++++++++++++++++++
+
+Galeb manager plan used to create virtual hosts and backend pools.
+
+routers:<router name>:project (type: galeb)
++++++++++++++++++++++++++++++++++++++++++++
+
+Galeb manager project used to create virtual hosts, backend pools and pools.
+
+routers:<router name>:load-balance-policy (type: galeb)
++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+Galeb manager load balancing policy used to create backend pools.
+
+routers:<router name>:rule-type (type: galeb)
++++++++++++++++++++++++++++++++++++++++++++++
+
+Galeb manager rule type used to create rules.
+
 Hipache
 -------
 
@@ -379,11 +461,17 @@ hipache:redis-server
 Redis server used by Hipache router. This same server (or a redis slave of it),
 must be configured in your hipache.conf file.
 
+This setting is deprecated in favor
+of ``routers:<router name>:type = hipache`` and ``routers:<router name>:redis-server``.
+
 hipache:domain
 ++++++++++++++
 
 The domain of the server running your hipache server. Applications created with
-tsuru will have a address of ``http://<app-name>.<hipache:domain>``
+tsuru will have a address of ``http://<app-name>.<hipache:domain>``.
+
+This setting is deprecated in favor
+of ``routers:<router name>:type = hipache`` and ``routers:<router name>:domain``
 
 
 Defining the provisioner
@@ -422,11 +510,25 @@ Docker repository namespace to be used for application and platform images. Imag
 will be tagged in docker as <docker:repository-namespace>/<platform-name> and
 <docker:repository-namespace>/<app-name>
 
+.. _config_docker_router:
+
 docker:router
 +++++++++++++
 
-Router to be used to distribute requests to units. Right now only ``hipache`` is
-supported.
+Default router to be used to distribute requests to units. This should be the name
+of a router configured under the ``routers:<name>`` key, see :ref:`routers
+<config_routers>`.
+
+For backward compatibility reasons, the value ``hipache`` is also supported, and
+it will use either configuration available under ``router:hipache:*`` or
+``hipache:*``, in this order.
+
+Note that as of 0.10.0, routers may be associated to plans, if when creating an
+application the chosen plan has a router value it will be used instead of the
+value set in ``docker:router``.
+
+The router defined in ``docker:router`` will only be used if the chosen plan
+doesn't specify one.
 
 docker:deploy-cmd
 +++++++++++++++++
