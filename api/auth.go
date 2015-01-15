@@ -105,7 +105,7 @@ func login(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	rec.Log(u.Email, "login")
-	fmt.Fprintf(w, `{"token":"%s","is_admin":%v}`, token.GetValue(), u.IsAdmin())
+	fmt.Fprintf(w, `{"token":"%s","is_admin":%v}\n`, token.GetValue(), u.IsAdmin())
 	return nil
 }
 
