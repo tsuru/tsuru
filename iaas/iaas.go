@@ -99,7 +99,7 @@ func getIaasProvider(name string) (IaaS, error) {
 		}
 		customIaaS, isValid := originalProvider.(CustomIaaS)
 		if !isValid {
-			return nil, fmt.Errorf("IaaS provider %q does not allow clonning", customProvider)
+			return nil, fmt.Errorf("IaaS provider %q does not allow cloning", customProvider)
 		}
 		cloned := customIaaS.Clone(name)
 		RegisterIaasProvider(name, cloned)
