@@ -20,10 +20,10 @@ import (
 	"github.com/tsuru/tsuru/safe"
 )
 
-// FakeFile representss a fake instance of the File interface.
+// FakeFile represents a fake instance of the File interface.
 //
 // Methods from FakeFile act like methods in os.File, but instead of working in
-// a real file, them work in an internal string.
+// a real file, they work in an internal string.
 //
 // An instance of FakeFile is returned by RecordingFs.Open method.
 type FakeFile struct {
