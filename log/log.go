@@ -5,7 +5,7 @@
 // Package log provides logging utility.
 //
 // It abstracts the logger from the standard log package, allowing the
-// developer to patck the logging target, changing this to a file, or syslog,
+// developer to pick the logging target, changing this to a file, or syslog,
 // for example.
 package log
 
