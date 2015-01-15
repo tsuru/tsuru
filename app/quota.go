@@ -93,8 +93,8 @@ func checkAppUsage(name string, quantity int) (*App, error) {
 }
 
 // ChangeQuota redefines the limit of the app. The new limit must be bigger
-// than or equal to the current number of units in the app. The new limit maybe
-// smaller than 0, which mean that the app should have an unlimited number of
+// than or equal to the current number of units in the app. The new limit may be
+// smaller than 0, which means that the app should have an unlimited number of
 // units.
 func ChangeQuota(app *App, limit int) error {
 	if limit < 0 {
