@@ -60,6 +60,9 @@ func (c *Client) Do(request *http.Request) (*http.Response, error) {
 			return nil, err
 		}
 		fmt.Fprintf(c.context.Stdout, string(requestDump))
+		if requestDump[len(requestDump)-1] != '\n' {
+			fmt.Fprintln(c.context.Stdout)
+		}
 		fmt.Fprintf(c.context.Stdout, "*************************** </Request uri=%q> **********************************\n", request.URL.RequestURI())
 	}
 	response, err := c.HTTPClient.Do(request)
@@ -74,6 +77,9 @@ func (c *Client) Do(request *http.Request) (*http.Response, error) {
 			return nil, err
 		}
 		fmt.Fprintf(c.context.Stdout, string(responseDump))
+		if responseDump[len(responseDump)-1] != '\n' {
+			fmt.Fprintln(c.context.Stdout)
+		}
 		fmt.Fprintf(c.context.Stdout, "*************************** </Response uri=%q> **********************************\n", request.URL.RequestURI())
 	}
 	supported := response.Header.Get(c.versionHeader)
