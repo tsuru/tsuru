@@ -310,3 +310,15 @@ func (r *galebRouter) Routes(name string) ([]string, error) {
 	}
 	return hosts, nil
 }
+
+func (r galebRouter) StartupMessage() (string, error) {
+	domain, err := config.GetString(r.prefix + ":domain")
+	if err != nil {
+		return "", err
+	}
+	apiUrl, err := config.GetString(r.prefix + ":api-url")
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("Using galeb router %q with API URL %q.\n", domain, apiUrl), nil
+}

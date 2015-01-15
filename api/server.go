@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/router"
 )
 
 func getProvisioner() (string, error) {
@@ -215,6 +216,20 @@ func RunServer(dry bool) http.Handler {
 	n.UseHandler(http.HandlerFunc(runDelayedHandler))
 
 	if !dry {
+		routerType, err := config.GetString("docker:router")
+		if err != nil {
+			fatal(err)
+		}
+		routerObj, err := router.Get(routerType)
+		if err != nil {
+			fatal(err)
+		}
+		if messageRouter, ok := routerObj.(router.MessageRouter); ok {
+			startupMessage, err := messageRouter.StartupMessage()
+			if err == nil && startupMessage != "" {
+				fmt.Print(startupMessage)
+			}
+		}
 		provisioner, err := getProvisioner()
 		if err != nil {
 			fmt.Printf("Warning: configuration didn't declare a provisioner, using default provisioner.\n")

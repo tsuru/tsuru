@@ -38,16 +38,21 @@ func createRouter(prefix string) (router.Router, error) {
 
 func (r hipacheRouter) connect() redis.Conn {
 	if pool == nil {
-		srv, err := config.GetString(r.prefix + ":redis-server")
-		if err != nil {
-			srv = "localhost:6379"
-		}
+		srv := r.redisServer()
 		pool = redis.NewPool(func() (redis.Conn, error) {
 			return redis.Dial("tcp", srv)
 		}, 10)
 	}
 	pool.IdleTimeout = 180e9
 	return pool.Get()
+}
+
+func (r hipacheRouter) redisServer() string {
+	srv, err := config.GetString(r.prefix + ":redis-server")
+	if err != nil {
+		srv = "localhost:6379"
+	}
+	return srv
 }
 
 type hipacheRouter struct {
@@ -307,6 +312,14 @@ func (r hipacheRouter) removeElement(name, address string) error {
 
 func (r hipacheRouter) Swap(backend1, backend2 string) error {
 	return router.Swap(r, backend1, backend2)
+}
+
+func (r hipacheRouter) StartupMessage() (string, error) {
+	domain, err := config.GetString(r.prefix + ":domain")
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("Using hipache router %q with redis at %q.\n", domain, r.redisServer()), nil
 }
 
 type routeError struct {
