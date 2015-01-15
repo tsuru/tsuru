@@ -40,7 +40,7 @@ func getRouterForApp(app provision.App) (router.Router, error) {
 	return router.Get(routerName)
 }
 
-type dockerProvisioner struct {}
+type dockerProvisioner struct{}
 
 func (p *dockerProvisioner) StartupMessage() (string, error) {
 	nodeList, err := dockerCluster().UnfilteredNodes()
