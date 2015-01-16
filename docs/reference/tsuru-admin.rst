@@ -1,4 +1,4 @@
-.. Copyright 2014 tsuru authors. All rights reserved.
+.. Copyright 2015 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -153,7 +153,7 @@ Users can also combine filters with multiple listings of ``-f``:
 
 ::
 
-    $ tsuru-admin docker-node-list -f pool=mypool -f LastSuccess=2014-10-20T15:28:28-02:00
+    $ tsuru-admin docker-node-list -f pool=mypool -f LastSuccess=2015-10-20T15:28:28-02:00
 
 .. _tsuru_admin_docker_node_remove_cmd:
 
