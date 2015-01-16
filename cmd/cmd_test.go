@@ -392,6 +392,21 @@ Use glb help <commandname> to get more information about a command.
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
 }
 
+func (s *S) TestDashDashHelp(c *gocheck.C) {
+	expected := `glb version 1.0.
+
+Usage: glb command [args]
+
+Available commands:
+  help
+  version
+
+Use glb help <commandname> to get more information about a command.
+`
+	manager.Run([]string{"--help"})
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
+}
+
 func (s *S) TestHelpShouldReturnHelpForACmd(c *gocheck.C) {
 	expected := `glb version 1.0.
 
@@ -402,6 +417,19 @@ Foo do anything or nothing.
 `
 	manager.Register(&TestCommand{})
 	manager.Run([]string{"help", "foo"})
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
+}
+
+func (s *S) TestDashDashHelpShouldReturnHelpForACmd(c *gocheck.C) {
+	expected := `glb version 1.0.
+
+Usage: glb foo
+
+Foo do anything or nothing.
+
+`
+	manager.Register(&TestCommand{})
+	manager.Run([]string{"--help", "foo"})
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
 }
 
@@ -454,6 +482,12 @@ func (s *S) TestVersion(c *gocheck.C) {
 	err := command.Run(&context, nil)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, "tsuru version 5.0.\n")
+}
+
+func (s *S) TestDashDashVersion(c *gocheck.C) {
+	expected := "glb version 1.0.\n"
+	manager.Run([]string{"--version"})
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
 }
 
 func (s *S) TestVersionInfo(c *gocheck.C) {
