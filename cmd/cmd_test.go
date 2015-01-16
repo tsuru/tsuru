@@ -398,8 +398,8 @@ func (s *S) TestDashDashHelp(c *gocheck.C) {
 Usage: glb command [args]
 
 Available commands:
-  help
-  version
+  help                 
+  version              Display the current version
 
 Use glb help <commandname> to get more information about a command.
 `
