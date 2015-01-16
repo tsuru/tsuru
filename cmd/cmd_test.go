@@ -307,9 +307,9 @@ func (s *S) TestHelp(c *gocheck.C) {
 Usage: glb command [args]
 
 Available commands:
-  help
-  user-create
-  version
+  help                 
+  user-create          Creates a user
+  version              Display the current version
 
 Use glb help <commandname> to get more information about a command.
 `
@@ -327,9 +327,9 @@ func (s *S) TestHelpWithTopics(c *gocheck.C) {
 Usage: glb command [args]
 
 Available commands:
-  help
-  user-create
-  version
+  help                 
+  user-create          Creates a user
+  version              Display the current version
 
 Use glb help <commandname> to get more information about a command.
 
@@ -383,8 +383,8 @@ func (s *S) TestRunWithoutArgsShouldRunHelp(c *gocheck.C) {
 Usage: glb command [args]
 
 Available commands:
-  help
-  version
+  help                 
+  version              Display the current version
 
 Use glb help <commandname> to get more information about a command.
 `
