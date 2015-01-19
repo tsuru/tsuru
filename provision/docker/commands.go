@@ -31,21 +31,12 @@ func deployCmds(app provision.App, params ...string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	// This method is overly complicated for us to be able to support platform
-	// images with old versions of tsuru-unit-agent. After 0.8.0 we'll
-	// probably drop support for old images simplifying this function.
-	var envs string
-	for _, env := range app.Envs() {
-		envs += fmt.Sprintf(`%s=%s `, env.Name, strings.Replace(env.Value, " ", "", -1))
-	}
 	cmds := append([]string{deployCmd}, params...)
-	cmdsWithEnv := strings.Join(append(cmds, envs), " ")
 	host := app.Envs()["TSURU_HOST"].Value
 	token := app.Envs()["TSURU_APP_TOKEN"].Value
-	template := "if [[ $(tsuru_unit_agent --help | head -n1 | grep deploy) ]]; then %s; else %s; fi"
 	unitAgentCmds := []string{"tsuru_unit_agent", host, token, app.GetName(), `"` + strings.Join(cmds, " ") + `"`, "deploy"}
-	alternatives := fmt.Sprintf(template, strings.Join(unitAgentCmds, " "), cmdsWithEnv)
-	return []string{"/bin/bash", "-lc", alternatives}, nil
+	finalCmd := strings.Join(unitAgentCmds, " ")
+	return []string{"/bin/bash", "-lc", finalCmd}, nil
 }
 
 // runWithAgentCmds returns the list of commands that should be passed when the
