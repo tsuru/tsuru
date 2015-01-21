@@ -10,5 +10,6 @@ Reference
 
     tsuru-client
     tsuru-admin
+    crane
     config
     api
