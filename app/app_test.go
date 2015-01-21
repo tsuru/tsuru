@@ -2457,3 +2457,46 @@ func (s *S) TestUpdateCustomData(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(dbApp.CustomData, gocheck.DeepEquals, customData)
 }
+
+func (s *S) TestGetTsuruYamlData(c *gocheck.C) {
+	a := App{Name: "my-test-app"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	customData := map[string]interface{}{
+		"hooks": map[string]interface{}{
+			"restart": map[string]interface{}{
+				"before": []interface{}{"rb1", "rb2"},
+				"after":  []interface{}{"ra1", "ra2"},
+			},
+			"build": []interface{}{"ba1", "ba2"},
+		},
+		"healthcheck": map[string]interface{}{
+			"path":             "/test",
+			"method":           "PUT",
+			"status":           200,
+			"match":            ".*a.*",
+			"allowed_failures": 10,
+		},
+	}
+	err = a.UpdateCustomData(customData)
+	c.Assert(err, gocheck.IsNil)
+	yamlData, err := a.GetTsuruYamlData()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(yamlData, gocheck.DeepEquals, TsuruYamlData{
+		Hooks: TsuruYamlHooks{
+			Restart: TsuruYamlRestartHooks{
+				Before: []string{"rb1", "rb2"},
+				After:  []string{"ra1", "ra2"},
+			},
+			Build: []string{"ba1", "ba2"},
+		},
+		Healthcheck: TsuruYamlHealthcheck{
+			Path:            "/test",
+			Method:          "PUT",
+			Status:          200,
+			Match:           ".*a.*",
+			AllowedFailures: 10,
+		},
+	})
+}

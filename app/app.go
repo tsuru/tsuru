@@ -85,6 +85,29 @@ type App struct {
 	quota.Quota
 }
 
+type TsuruYamlRestartHooks struct {
+	Before []string
+	After  []string
+}
+
+type TsuruYamlHooks struct {
+	Restart TsuruYamlRestartHooks
+	Build   []string
+}
+
+type TsuruYamlHealthcheck struct {
+	Path            string
+	Method          string
+	Status          int
+	Match           string
+	AllowedFailures int `json:"allowed_failures"`
+}
+
+type TsuruYamlData struct {
+	Hooks       TsuruYamlHooks
+	Healthcheck TsuruYamlHealthcheck
+}
+
 // Units returns the list of units.
 func (app *App) Units() []provision.Unit {
 	return Provisioner.Units(app)
@@ -1151,6 +1174,16 @@ func (app *App) UpdateCustomData(customData map[string]interface{}) error {
 		bson.M{"name": app.Name},
 		bson.M{"$set": bson.M{"customdata": app.CustomData}},
 	)
+}
+
+func (app *App) GetTsuruYamlData() (TsuruYamlData, error) {
+	rawData, err := json.Marshal(app.CustomData)
+	var data TsuruYamlData
+	err = json.Unmarshal(rawData, &data)
+	if err != nil {
+		return data, err
+	}
+	return data, nil
 }
 
 func (app *App) GetRouter() (string, error) {
