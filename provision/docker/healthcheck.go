@@ -37,28 +37,23 @@ func runHealthcheck(cont *container, w io.Writer) error {
 	if err != nil {
 		return nil
 	}
-	hc, ok := dbApp.CustomData["healthcheck"].(map[string]interface{})
-	if !ok {
-		return nil
+	yamlData, err := dbApp.GetTsuruYamlData()
+	if err != nil {
+		return err
 	}
-	path, _ := hc["path"].(string)
+	path := yamlData.Healthcheck.Path
+	method := yamlData.Healthcheck.Method
+	match := yamlData.Healthcheck.Match
+	status := yamlData.Healthcheck.Status
+	allowedFailures := yamlData.Healthcheck.AllowedFailures
 	if path == "" {
 		return nil
 	}
 	path = strings.TrimSpace(strings.TrimLeft(path, "/"))
-	method, _ := hc["method"].(string)
 	if method == "" {
 		method = "get"
 	}
 	method = strings.ToUpper(method)
-	var status int
-	switch val := hc["status"].(type) {
-	case int:
-		status = val
-	case float64:
-		status = int(val)
-	}
-	match, _ := hc["match"].(string)
 	if status == 0 && match == "" {
 		status = 200
 	}
@@ -69,13 +64,6 @@ func runHealthcheck(cont *container, w io.Writer) error {
 		if err != nil {
 			return err
 		}
-	}
-	var allowedFailures int
-	switch val := hc["allowed_failures"].(type) {
-	case int:
-		allowedFailures = val
-	case float64:
-		allowedFailures = int(val)
 	}
 	maxWaitTime, _ := config.GetDuration("docker:healthcheck:max-time")
 	if maxWaitTime == 0 {
