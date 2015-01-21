@@ -72,7 +72,7 @@ The following config settings have been deprecated:
 * docker:swap
 
 You should now create plans specifying the limits for memory, swap and cpu share.
-See :ref:`tsuru-admin plan-create <tsuru_admin_plan_create>` for more details.
+See `tsuru-admin plan-create <http://tsuru-admin.readthedocs.org/en/latest/#plan-create>`_ for more details.
 
 API changes
 ===========

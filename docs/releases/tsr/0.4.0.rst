@@ -26,13 +26,13 @@ Docker
   https://github.com/tsuru/tsuru-unit-agent.
 * added an administrative command to move and rebalance containers between
   nodes (issue `#646 <https://github.com/tsuru/tsuru/issues/646>`_). For more
-  details, see the :ref:`containers-rebalance reference
-  <tsuru_admin_containers_rebalance_cmd>`.
+  details, see the `containers-rebalance reference
+  <http://tsuru-admin.readthedocs.org/en/latest/#containers-rebalance>`_.
 * memory swap limit is configurable (issue `#764
   <https://github.com/tsuru/tsuru/issues/764>`_)
 * added a command to add a new platform (issue `#780
   <https://github.com/tsuru/tsuru/issues/780>`_). For more details, see the
-  :ref:`platform-add reference <tsuru_admin_platform_add_cmd>`.
+  `platform-add reference <http://tsuru-admin.readthedocs.org/en/latest/#platform-add>`_.
 
 Backwards incompatible changes
 ==============================

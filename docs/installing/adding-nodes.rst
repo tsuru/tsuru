@@ -41,7 +41,7 @@ Assuming you're using EC2, this will be something like:
       secret-key: yyyyyyyyyyyyy
 
 After you have everything configured, adding a new docker done is done by
-calling :ref:`docker-node-add <tsuru_admin_docker_node_add_cmd>` in
+calling `docker-node-add <http://tsuru-admin.readthedocs.org/en/latest/#docker-node-add>`_ in
 :doc:`tsuru-admin </reference/tsuru-admin>` command. This command will receive
 a map of key=value params which are IaaS dependent. A list of possible key
 params can be seen calling:
@@ -63,8 +63,7 @@ params can be seen calling:
 
 
 Every key=value pair will be added as a metatada to the Node and you can send
-After registering your node, you can list it calling
-:ref:`tsuru_admin_docker_node_list_cmd`
+After registering your node, you can list it calling `tsuru-admin docker-node-list <http://tsuru-admin.readthedocs.org/en/latest/#docker-node-list>`_
 
 .. highlight:: bash
 
@@ -88,7 +87,7 @@ Manually created nodes
 ======================
 
 To add a previously provisioned nodes you call the
-:ref:`tsuru_admin_docker_node_add_cmd` with the ``--register`` flag and setting
+`tsuru-admin docker-node-add <http://tsuru-admin.readthedocs.org/en/latest/#docker-node-add>`_ with the ``--register`` flag and setting
 the address key with the URL of the Docker API in the remote node.
 
 The docker API must be responding in the referenced address. To instructions

@@ -15,8 +15,8 @@ ones listed in `https://github.com/tsuru/basebuilder
 <https://github.com/tsuru/basebuilder>`_
 
 These platforms don't come pre-installed in tsuru, you have to add them to your
-server using the :ref:`platform-add <tsuru_admin_platform_add_cmd>` command in
-:doc:`tsuru- admin </reference/tsuru-admin>`.
+server using the `platform-add <http://tsuru-admin.readthedocs.org/en/latest/#platform-add>`_ command in
+:doc:`tsuru-admin </reference/tsuru-admin>`.
 
 .. highlight:: bash
 

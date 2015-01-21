@@ -22,8 +22,8 @@ What's new in tsr 0.9.0
   command ``tsuru token-show``.
 
 * It's possible to use templates to create machines in the IaaS provider with
-  ``docker-node-add``. See :ref:`machine-template-add
-  <tsuru_admin_machine_template_add_cmd>` command for more details.
+  ``docker-node-add``. See `machine-template-add
+  <http://tsuru-admin.readthedocs.org/en/latest/#machine-template-add>`_ command for more details.
 
 * ``TSURU_SERVICES`` environment variable: this environment variable lists all
   service instances that the application is bound. This enables binding an
