@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -141,5 +141,6 @@ func (c *login) oauthLogin(context *Context, client *Client) error {
 	go server.Serve(l)
 	open(authUrl)
 	<-finish
+	fmt.Fprintln(context.Stdout, "Successfully logged in!")
 	return nil
 }
