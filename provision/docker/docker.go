@@ -469,6 +469,14 @@ func (c *container) shell(stdin io.Reader, stdout, stderr io.Writer, pty pty) er
 
 }
 
+type execErr struct {
+	code int
+}
+
+func (e *execErr) Error() string {
+	return fmt.Sprintf("unexpected exit code: %d", e.code)
+}
+
 func (c *container) exec(stdout, stderr io.Writer, cmd string, args ...string) error {
 	cmds := []string{"/bin/bash", "-lc", cmd}
 	cmds = append(cmds, args...)
@@ -488,7 +496,19 @@ func (c *container) exec(stdout, stderr io.Writer, cmd string, args ...string) e
 		OutputStream: stdout,
 		ErrorStream:  stderr,
 	}
-	return dockerCluster().StartExec(exec.ID, c.ID, startExecOptions)
+	err = dockerCluster().StartExec(exec.ID, c.ID, startExecOptions)
+	if err != nil {
+		return err
+	}
+	execData, err := dockerCluster().InspectExec(exec.ID, c.ID)
+	if err != nil {
+		return err
+	}
+	if execData.ExitCode != 0 {
+		return &execErr{code: execData.ExitCode}
+	}
+	return nil
+
 }
 
 // commit commits an image in docker based in the container

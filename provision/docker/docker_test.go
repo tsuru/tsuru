@@ -947,3 +947,15 @@ func (s *S) TestContainerExec(c *gocheck.C) {
 	err = container.exec(&stdout, &stderr, "ls", "-lh")
 	c.Assert(err, gocheck.IsNil)
 }
+
+func (s *S) TestContainerExecErrorCode(c *gocheck.C) {
+	s.server.CustomHandler("/exec/id-exec-created-by-test/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"ID": "id-exec-created-by-test", "ExitCode": 9}`))
+	}))
+	container, err := s.newContainer(nil)
+	c.Assert(err, gocheck.IsNil)
+	var stdout, stderr bytes.Buffer
+	err = container.exec(&stdout, &stderr, "ls", "-lh")
+	c.Assert(err, gocheck.DeepEquals, &execErr{code: 9})
+}
