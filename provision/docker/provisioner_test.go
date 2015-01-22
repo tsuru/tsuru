@@ -468,7 +468,12 @@ func (s *S) TestProvisionerAddUnitsWithHost(c *gocheck.C) {
 	defer coll.Close()
 	coll.Insert(container{ID: "xxxfoo", AppName: app.GetName(), Version: "123987", Image: "tsuru/python"})
 	defer coll.RemoveId(bson.M{"id": "xxxfoo"})
-	units, err := addContainersWithHost(nil, app, 1, "localhost")
+	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:     "localhost",
+		unitsToAdd: 1,
+		app:        app,
+		imageId:    assembleImageName(app.GetName(), ""),
+	})
 	c.Assert(err, gocheck.IsNil)
 	defer coll.RemoveAll(bson.M{"appname": app.GetName()})
 	c.Assert(units, gocheck.HasLen, 1)
@@ -1220,7 +1225,12 @@ func (s *S) TestAddContainersWithHostFailsUnlessRestartAfter(c *gocheck.C) {
 	p.Provision(app)
 	defer p.Destroy(app)
 	var buf bytes.Buffer
-	_, err = addContainersWithHost(&buf, app, 1)
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		unitsToAdd: 1,
+		app:        app,
+		writer:     &buf,
+		imageId:    "tsuru/app-" + a.Name,
+	})
 	c.Assert(err, gocheck.ErrorMatches, `couldn't execute restart:after hook "will fail"\(.+?\): unexpected exit code: 9`)
 }
 

@@ -30,7 +30,12 @@ func (s *S) TestMoveContainers(c *gocheck.C) {
 	defer coll.Close()
 	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
-	_, err = addContainersWithHost(nil, appInstance, 2, "localhost")
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:     "localhost",
+		unitsToAdd: 2,
+		app:        appInstance,
+		imageId:    assembleImageName(appInstance.GetName(), ""),
+	})
 	c.Assert(err, gocheck.IsNil)
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
@@ -73,7 +78,12 @@ func (s *S) TestMoveContainersUnknownDest(c *gocheck.C) {
 	defer coll.Close()
 	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
-	_, err = addContainersWithHost(nil, appInstance, 2, "localhost")
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:     "localhost",
+		unitsToAdd: 2,
+		app:        appInstance,
+		imageId:    assembleImageName(appInstance.GetName(), ""),
+	})
 	c.Assert(err, gocheck.IsNil)
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
@@ -112,7 +122,12 @@ func (s *S) TestMoveContainer(c *gocheck.C) {
 	defer coll.Close()
 	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
-	addedConts, err := addContainersWithHost(nil, appInstance, 2, "localhost")
+	addedConts, err := addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:     "localhost",
+		unitsToAdd: 2,
+		app:        appInstance,
+		imageId:    assembleImageName(appInstance.GetName(), ""),
+	})
 	c.Assert(err, gocheck.IsNil)
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
@@ -147,7 +162,12 @@ func (s *S) TestRebalanceContainers(c *gocheck.C) {
 	defer coll.Close()
 	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
-	_, err = addContainersWithHost(nil, appInstance, 5, "localhost")
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:     "localhost",
+		unitsToAdd: 5,
+		app:        appInstance,
+		imageId:    assembleImageName(appInstance.GetName(), ""),
+	})
 	c.Assert(err, gocheck.IsNil)
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)

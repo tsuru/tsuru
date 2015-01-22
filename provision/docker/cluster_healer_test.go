@@ -98,7 +98,12 @@ func (s *S) TestHealerHealNode(c *gocheck.C) {
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
-	_, err = addContainersWithHost(nil, appInstance, 1, "127.0.0.1")
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:     "127.0.0.1",
+		unitsToAdd: 1,
+		app:        appInstance,
+		imageId:    assembleImageName(appInstance.GetName(), ""),
+	})
 	c.Assert(err, gocheck.IsNil)
 
 	conn, err := db.Conn()
@@ -333,7 +338,12 @@ func (s *S) TestHealerHealNodeDestroyError(c *gocheck.C) {
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
-	_, err = addContainersWithHost(nil, appInstance, 1, "127.0.0.1")
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:     "127.0.0.1",
+		unitsToAdd: 1,
+		app:        appInstance,
+		imageId:    assembleImageName(appInstance.GetName(), ""),
+	})
 	c.Assert(err, gocheck.IsNil)
 
 	conn, err := db.Conn()
@@ -427,7 +437,12 @@ func (s *S) TestHealContainer(c *gocheck.C) {
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
-	_, err = addContainersWithHost(nil, appInstance, 1, "127.0.0.1")
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:     "127.0.0.1",
+		unitsToAdd: 1,
+		app:        appInstance,
+		imageId:    assembleImageName(appInstance.GetName(), ""),
+	})
 	c.Assert(err, gocheck.IsNil)
 
 	conn, err := db.Conn()
@@ -484,7 +499,12 @@ func (s *S) TestRunContainerHealer(c *gocheck.C) {
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
-	_, err = addContainersWithHost(nil, appInstance, 2, "127.0.0.1")
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:     "127.0.0.1",
+		unitsToAdd: 2,
+		app:        appInstance,
+		imageId:    assembleImageName(appInstance.GetName(), ""),
+	})
 	c.Assert(err, gocheck.IsNil)
 
 	conn, err := db.Conn()
@@ -559,7 +579,12 @@ func (s *S) TestRunContainerHealerConcurrency(c *gocheck.C) {
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
-	_, err = addContainersWithHost(nil, appInstance, 2, "127.0.0.1")
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:     "127.0.0.1",
+		unitsToAdd: 2,
+		app:        appInstance,
+		imageId:    assembleImageName(appInstance.GetName(), ""),
+	})
 	c.Assert(err, gocheck.IsNil)
 
 	conn, err := db.Conn()
@@ -639,7 +664,12 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *gocheck.C) {
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
-	_, err = addContainersWithHost(nil, appInstance, 2, "127.0.0.1")
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:     "127.0.0.1",
+		unitsToAdd: 2,
+		app:        appInstance,
+		imageId:    assembleImageName(appInstance.GetName(), ""),
+	})
 	c.Assert(err, gocheck.IsNil)
 
 	conn, err := db.Conn()
@@ -710,7 +740,12 @@ func (s *S) TestRunContainerHealerDoesntHealWithProcfileInTop(c *gocheck.C) {
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
-	cont, err := addContainersWithHost(nil, appInstance, 1, "127.0.0.1")
+	cont, err := addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:     "127.0.0.1",
+		unitsToAdd: 1,
+		app:        appInstance,
+		imageId:    assembleImageName(appInstance.GetName(), ""),
+	})
 	c.Assert(err, gocheck.IsNil)
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -757,7 +792,12 @@ func (s *S) TestRunContainerHealerWithError(c *gocheck.C) {
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
-	_, err = addContainersWithHost(nil, appInstance, 2, "127.0.0.1")
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:     "127.0.0.1",
+		unitsToAdd: 2,
+		app:        appInstance,
+		imageId:    assembleImageName(appInstance.GetName(), ""),
+	})
 	c.Assert(err, gocheck.IsNil)
 
 	conn, err := db.Conn()
@@ -870,7 +910,12 @@ func (s *S) TestHealerHandleError(c *gocheck.C) {
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
-	_, err = addContainersWithHost(nil, appInstance, 1, "127.0.0.1")
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:     "127.0.0.1",
+		unitsToAdd: 1,
+		app:        appInstance,
+		imageId:    assembleImageName(appInstance.GetName(), ""),
+	})
 	c.Assert(err, gocheck.IsNil)
 
 	conn, err := db.Conn()

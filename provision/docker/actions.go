@@ -34,6 +34,7 @@ type changeUnitsPipelineArgs struct {
 	toRemove   []container
 	unitsToAdd int
 	toHost     string
+	imageId    string
 }
 
 var insertEmptyContainerInDB = action.Action{
@@ -143,11 +144,7 @@ var provisionAddUnitsToHost = action.Action{
 	Name: "provision-add-units-to-host",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
-		var destinationHosts []string
-		if args.toHost != "" {
-			destinationHosts = []string{args.toHost}
-		}
-		containers, err := addContainersWithHost(args.writer, args.app, args.unitsToAdd, destinationHosts...)
+		containers, err := addContainersWithHost(&args)
 		if err != nil {
 			return nil, err
 		}

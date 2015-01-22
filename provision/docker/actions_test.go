@@ -354,6 +354,7 @@ func (s *S) TestProvisionAddUnitsToHostForward(c *gocheck.C) {
 		app:        app,
 		toHost:     "localhost",
 		unitsToAdd: 2,
+		imageId:    assembleImageName(app.GetName(), ""),
 	}
 	context := action.FWContext{Params: []interface{}{args}}
 	result, err := provisionAddUnitsToHost.Forward(context)
@@ -382,6 +383,7 @@ func (s *S) TestProvisionAddUnitsToHostForwardWithoutHost(c *gocheck.C) {
 	args := changeUnitsPipelineArgs{
 		app:        app,
 		unitsToAdd: 3,
+		imageId:    assembleImageName(app.GetName(), ""),
 	}
 	context := action.FWContext{Params: []interface{}{args}}
 	result, err := provisionAddUnitsToHost.Forward(context)

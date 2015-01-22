@@ -86,7 +86,8 @@ func (*dockerProvisioner) Restart(a provision.App, w io.Writer) error {
 		w = ioutil.Discard
 	}
 	writer := &app.LogWriter{App: a, Writer: w}
-	_, err = runReplaceUnitsPipeline(writer, a, containers)
+	imageId := assembleImageName(a.GetName(), "")
+	_, err = runReplaceUnitsPipeline(writer, a, containers, imageId)
 	return err
 }
 
@@ -227,9 +228,9 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer) error {
 	containers, err := listContainersByApp(a.GetName())
 	if len(containers) == 0 {
-		_, err = runCreateUnitsPipeline(w, a, 1)
+		_, err = runCreateUnitsPipeline(w, a, 1, imageId)
 	} else {
-		_, err = runReplaceUnitsPipeline(w, a, containers)
+		_, err = runReplaceUnitsPipeline(w, a, containers, imageId)
 	}
 	return err
 }
@@ -313,14 +314,21 @@ func runRestartAfterHooks(cont *container, w io.Writer) error {
 	return nil
 }
 
-func addContainersWithHost(w io.Writer, a provision.App, units int, destinationHost ...string) ([]container, error) {
+func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
+	a := args.app
+	w := args.writer
+	units := args.unitsToAdd
+	imageId := args.imageId
+	var destinationHost []string
+	if args.toHost != "" {
+		destinationHost = []string{args.toHost}
+	}
 	if units == 0 {
 		return nil, errors.New("Cannot add 0 units")
 	}
 	if w == nil {
 		w = ioutil.Discard
 	}
-	imageId := assembleImageName(a.GetName(), a.GetPlatform())
 	wg := sync.WaitGroup{}
 	createdContainers := make(chan *container, units)
 	errors := make(chan error, units)
@@ -397,7 +405,8 @@ func (*dockerProvisioner) AddUnits(a provision.App, units uint, w io.Writer) ([]
 		w = ioutil.Discard
 	}
 	writer := &app.LogWriter{App: a, Writer: w}
-	conts, err := runCreateUnitsPipeline(writer, a, int(units))
+	imageId := assembleImageName(a.GetName(), "")
+	conts, err := runCreateUnitsPipeline(writer, a, int(units), imageId)
 	if err != nil {
 		return nil, err
 	}

@@ -88,7 +88,7 @@ func handleMoveErrors(moveErrors chan error, encoder *json.Encoder) error {
 	return nil
 }
 
-func runReplaceUnitsPipeline(w io.Writer, a provision.App, toRemoveContainers []container, toHosts ...string) ([]container, error) {
+func runReplaceUnitsPipeline(w io.Writer, a provision.App, toRemoveContainers []container, imageId string, toHosts ...string) ([]container, error) {
 	var toHost string
 	if len(toHosts) > 0 {
 		toHost = toHosts[0]
@@ -102,6 +102,7 @@ func runReplaceUnitsPipeline(w io.Writer, a provision.App, toRemoveContainers []
 		unitsToAdd: len(toRemoveContainers),
 		toHost:     toHost,
 		writer:     w,
+		imageId:    imageId,
 	}
 	pipeline := action.NewPipeline(
 		&provisionAddUnitsToHost,
@@ -120,7 +121,7 @@ func runReplaceUnitsPipeline(w io.Writer, a provision.App, toRemoveContainers []
 	return pipeline.Result().([]container), nil
 }
 
-func runCreateUnitsPipeline(w io.Writer, a provision.App, toAddCount int) ([]container, error) {
+func runCreateUnitsPipeline(w io.Writer, a provision.App, toAddCount int, imageId string) ([]container, error) {
 	if w == nil {
 		w = ioutil.Discard
 	}
@@ -128,6 +129,7 @@ func runCreateUnitsPipeline(w io.Writer, a provision.App, toAddCount int) ([]con
 		app:        a,
 		unitsToAdd: toAddCount,
 		writer:     w,
+		imageId:    imageId,
 	}
 	pipeline := action.NewPipeline(
 		&provisionAddUnitsToHost,
@@ -159,7 +161,8 @@ func moveOneContainer(c container, toHost string, errors chan error, wg *sync.Wa
 		return container{}
 	}
 	logProgress(encoder, "Moving unit %s for %q: %s -> %s...", c.ID, c.AppName, c.HostAddr, toHost)
-	addedContainers, err := runReplaceUnitsPipeline(nil, a, []container{c}, toHost)
+	imageId := assembleImageName(a.GetName(), "")
+	addedContainers, err := runReplaceUnitsPipeline(nil, a, []container{c}, imageId, toHost)
 	if err != nil {
 		errors <- &tsuruErrors.CompositeError{
 			Base:    err,
