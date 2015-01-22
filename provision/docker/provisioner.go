@@ -293,6 +293,26 @@ func (*dockerProvisioner) Addr(app provision.App) (string, error) {
 	return addr, nil
 }
 
+func runRestartAfterHooks(cont *container, w io.Writer) error {
+	dbApp, err := app.GetByName(cont.AppName)
+	if err != nil {
+		fmt.Println("err")
+		return nil
+	}
+	yamlData, err := dbApp.GetTsuruYamlData()
+	if err != nil {
+		return err
+	}
+	cmds := yamlData.Hooks.Restart.After
+	for _, cmd := range cmds {
+		err := cont.exec(w, w, cmd)
+		if err != nil {
+			return fmt.Errorf("couldn't execute restart:after hook %q(%s): %s", cmd, cont.shortID(), err.Error())
+		}
+	}
+	return nil
+}
+
 func addContainersWithHost(w io.Writer, a provision.App, units int, destinationHost ...string) ([]container, error) {
 	if units == 0 {
 		return nil, errors.New("Cannot add 0 units")
@@ -326,6 +346,11 @@ func addContainersWithHost(w io.Writer, a provision.App, units int, destinationH
 			}
 			createdContainers <- c
 			err = runHealthcheck(c, w)
+			if err != nil {
+				errors <- err
+				return
+			}
+			err = runRestartAfterHooks(c, w)
 			if err != nil {
 				errors <- err
 				return

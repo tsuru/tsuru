@@ -6,6 +6,7 @@ package docker
 
 import (
 	"bytes"
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -1136,4 +1137,89 @@ func (s *S) TestRegisterUnitBuildingContainer(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(dbCont.IP, gocheck.Matches, `xinvalidx`)
 	c.Assert(dbCont.Status, gocheck.Equals, provision.StatusBuilding.String())
+}
+
+func (s *S) TestRunRestartAfterHooks(c *gocheck.C) {
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	a := &app.App{
+		Name: "myrestartafterapp",
+		CustomData: map[string]interface{}{
+			"hooks": map[string]interface{}{
+				"restart": map[string]interface{}{
+					"after": []string{"cmd1", "cmd2"},
+				},
+			},
+		},
+	}
+	err = conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": a.Name})
+	opts := newContainerOpts{AppName: a.Name}
+	container, err := s.newContainer(&opts)
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(container)
+	var reqBodies [][]byte
+	s.server.CustomHandler("/containers/"+container.ID+"/exec", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		data, _ := ioutil.ReadAll(r.Body)
+		r.Body = ioutil.NopCloser(bytes.NewBuffer(data))
+		reqBodies = append(reqBodies, data)
+		s.server.DefaultHandler().ServeHTTP(w, r)
+	}))
+	defer container.remove()
+	var buf bytes.Buffer
+	err = runRestartAfterHooks(container, &buf)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(buf.String(), gocheck.Equals, "")
+	c.Assert(reqBodies, gocheck.HasLen, 2)
+	var req1, req2 map[string]interface{}
+	err = json.Unmarshal(reqBodies[0], &req1)
+	c.Assert(err, gocheck.IsNil)
+	err = json.Unmarshal(reqBodies[1], &req2)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(req1, gocheck.DeepEquals, map[string]interface{}{
+		"AttachStdout": true,
+		"AttachStderr": true,
+		"Cmd":          []interface{}{"/bin/bash", "-lc", "cmd1"},
+		"Container":    container.ID,
+	})
+	c.Assert(req2, gocheck.DeepEquals, map[string]interface{}{
+		"AttachStdout": true,
+		"AttachStderr": true,
+		"Cmd":          []interface{}{"/bin/bash", "-lc", "cmd2"},
+		"Container":    container.ID,
+	})
+}
+
+func (s *S) TestAddContainersWithHostFailsUnlessRestartAfter(c *gocheck.C) {
+	s.server.CustomHandler("/exec/id-exec-created-by-test/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"ID": "id-exec-created-by-test", "ExitCode": 9}`))
+	}))
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	a := &app.App{
+		Name: "myapp",
+		CustomData: map[string]interface{}{
+			"hooks": map[string]interface{}{
+				"restart": map[string]interface{}{
+					"after": []string{"will fail"},
+				},
+			},
+		},
+	}
+	err = conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": a.Name})
+	err = newImage("tsuru/app-"+a.Name, s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	var p dockerProvisioner
+	app := testing.NewFakeApp(a.Name, "python", 0)
+	p.Provision(app)
+	defer p.Destroy(app)
+	var buf bytes.Buffer
+	_, err = addContainersWithHost(&buf, app, 1)
+	c.Assert(err, gocheck.ErrorMatches, `couldn't execute restart:after hook "will fail"\(.+?\): unexpected exit code: 9`)
 }
