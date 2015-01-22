@@ -27,37 +27,37 @@
 		{
 			"ImportPath": "github.com/docker/docker/pkg/archive",
 			"Comment": "v1.3.0-221-g29ebb53",
-			"Rev": "29ebb53b522436b9f405b36616a1eeec8b087d2b"
+			"Rev": "3c77e7d63446f0e0b133010fb3731af5556628bb"
 		},
 		{
 			"ImportPath": "github.com/docker/docker/pkg/fileutils",
 			"Comment": "v1.3.0-221-g29ebb53",
-			"Rev": "29ebb53b522436b9f405b36616a1eeec8b087d2b"
+			"Rev": "3c77e7d63446f0e0b133010fb3731af5556628bb"
 		},
 		{
 			"ImportPath": "github.com/docker/docker/pkg/ioutils",
 			"Comment": "v1.3.0-221-g29ebb53",
-			"Rev": "29ebb53b522436b9f405b36616a1eeec8b087d2b"
+			"Rev": "3c77e7d63446f0e0b133010fb3731af5556628bb"
 		},
 		{
 			"ImportPath": "github.com/docker/docker/pkg/pools",
 			"Comment": "v1.3.0-221-g29ebb53",
-			"Rev": "29ebb53b522436b9f405b36616a1eeec8b087d2b"
+			"Rev": "3c77e7d63446f0e0b133010fb3731af5556628bb"
 		},
 		{
 			"ImportPath": "github.com/docker/docker/pkg/promise",
 			"Comment": "v1.3.0-221-g29ebb53",
-			"Rev": "29ebb53b522436b9f405b36616a1eeec8b087d2b"
+			"Rev": "3c77e7d63446f0e0b133010fb3731af5556628bb"
 		},
 		{
 			"ImportPath": "github.com/docker/docker/pkg/system",
 			"Comment": "v1.3.0-221-g29ebb53",
-			"Rev": "29ebb53b522436b9f405b36616a1eeec8b087d2b"
+			"Rev": "3c77e7d63446f0e0b133010fb3731af5556628bb"
 		},
 		{
 			"ImportPath": "github.com/docker/docker/vendor/src/code.google.com/p/go/src/pkg/archive/tar",
 			"Comment": "v1.3.0-221-g29ebb53",
-			"Rev": "29ebb53b522436b9f405b36616a1eeec8b087d2b"
+			"Rev": "3c77e7d63446f0e0b133010fb3731af5556628bb"
 		},
 		{
 			"ImportPath": "github.com/fsouza/go-dockerclient",
