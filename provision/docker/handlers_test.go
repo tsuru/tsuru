@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/fsouza/go-dockerclient"
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
@@ -678,22 +679,23 @@ func (s *HandlersSuite) TestSSHToContainerHandler(c *gocheck.C) {
 		cluster.Node{Address: server.URL()},
 	)
 	c.Assert(err, gocheck.IsNil)
+	err = newImage("tsuru/python", "")
+	c.Assert(err, gocheck.IsNil)
+	container := container{
+		AppName: "makea",
+	}
+	config := docker.Config{
+		Image: "tsuru/python",
+		Cmd:   []string{"ps"},
+	}
+	_, cont, err := dCluster.CreateContainer(docker.CreateContainerOptions{Config: &config})
+	c.Assert(err, gocheck.IsNil)
+	container.ID = cont.ID
+	defer container.remove()
 	coll := collection()
 	defer coll.Close()
-	container := container{
-		ID:       "9930c24f1c4x",
-		AppName:  "makea",
-		Type:     "python",
-		Status:   provision.StatusStarted.String(),
-		IP:       "127.0.0.4",
-		HostPort: "9025",
-		HostAddr: "localhost",
-	}
 	err = coll.Insert(container)
 	defer coll.RemoveAll(bson.M{"appname": "makea"})
-	c.Assert(err, gocheck.IsNil)
-	err = storage.StoreContainer(container.ID, server.URL())
-	defer storage.RemoveContainer(container.ID)
 	c.Assert(err, gocheck.IsNil)
 	buf := safe.NewBuffer([]byte("echo teste"))
 	recorder := hijacker{conn: &fakeConn{buf}}
