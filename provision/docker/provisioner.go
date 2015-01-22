@@ -296,7 +296,6 @@ func (*dockerProvisioner) Addr(app provision.App) (string, error) {
 func runRestartAfterHooks(cont *container, w io.Writer) error {
 	dbApp, err := app.GetByName(cont.AppName)
 	if err != nil {
-		fmt.Println("err")
 		return nil
 	}
 	yamlData, err := dbApp.GetTsuruYamlData()
