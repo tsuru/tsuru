@@ -610,48 +610,6 @@ func (s *S) TestLogoutIsRegistered(c *gocheck.C) {
 	c.Assert(lgt, gocheck.FitsTypeOf, &logout{})
 }
 
-func (s *S) TestUserCreateIsRegistered(c *gocheck.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "", nil)
-	user, ok := manager.Commands["user-create"]
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(user, gocheck.FitsTypeOf, &userCreate{})
-}
-
-func (s *S) TestTeamCreateIsRegistered(c *gocheck.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "", nil)
-	create, ok := manager.Commands["team-create"]
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(create, gocheck.FitsTypeOf, &teamCreate{})
-}
-
-func (s *S) TestTeamListIsRegistered(c *gocheck.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "", nil)
-	list, ok := manager.Commands["team-list"]
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(list, gocheck.FitsTypeOf, &teamList{})
-}
-
-func (s *S) TestTeamAddUserIsRegistered(c *gocheck.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "", nil)
-	adduser, ok := manager.Commands["team-user-add"]
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(adduser, gocheck.FitsTypeOf, &teamUserAdd{})
-}
-
-func (s *S) TestTeamRemoveUserIsRegistered(c *gocheck.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "", nil)
-	removeuser, ok := manager.Commands["team-user-remove"]
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(removeuser, gocheck.FitsTypeOf, &teamUserRemove{})
-}
-
-func (s *S) TestTeamUserListIsRegistered(c *gocheck.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "", nil)
-	listuser, ok := manager.Commands["team-user-list"]
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(listuser, gocheck.FitsTypeOf, teamUserList{})
-}
-
 func (s *S) TestTargetListIsRegistered(c *gocheck.C) {
 	manager := BuildBaseManager("tsuru", "1.0", "", nil)
 	tgt, ok := manager.Commands["target-list"]
@@ -663,34 +621,6 @@ func (s *S) TestTargetTopicIsRegistered(c *gocheck.C) {
 	manager := BuildBaseManager("tsuru", "1.0", "", nil)
 	expected := fmt.Sprintf(targetTopic, "tsuru")
 	c.Assert(manager.topics["target"], gocheck.Equals, expected)
-}
-
-func (s *S) TestUserRemoveIsRegistered(c *gocheck.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "", nil)
-	rmUser, ok := manager.Commands["user-remove"]
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(rmUser, gocheck.FitsTypeOf, &userRemove{})
-}
-
-func (s *S) TestTeamRemoveIsRegistered(c *gocheck.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "", nil)
-	rmTeam, ok := manager.Commands["team-remove"]
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(rmTeam, gocheck.FitsTypeOf, &teamRemove{})
-}
-
-func (s *S) TestChangePasswordIsRegistered(c *gocheck.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "", nil)
-	chpass, ok := manager.Commands["change-password"]
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(chpass, gocheck.FitsTypeOf, &changePassword{})
-}
-
-func (s *S) TestResetPasswordIsRegistered(c *gocheck.C) {
-	manager := BuildBaseManager("tsuru", "1.0", "", nil)
-	reset, ok := manager.Commands["reset-password"]
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(reset, gocheck.FitsTypeOf, &resetPassword{})
 }
 
 func (s *S) TestVersionIsRegisteredByNewManager(c *gocheck.C) {
@@ -741,50 +671,6 @@ func (s *S) TestInvalidCommandFuzzyMatch02(c *gocheck.C) {
 
 Did you mean?
 	target-list
-`
-	expectedOutput = strings.Replace(expectedOutput, "\n", "\\W", -1)
-	expectedOutput = strings.Replace(expectedOutput, "\t", "\\W+", -1)
-	c.Assert(stderr.String(), gocheck.Matches, expectedOutput)
-	c.Assert(manager.e.(*recordingExiter).value(), gocheck.Equals, 1)
-}
-
-func (s *S) TestInvalidCommandFuzzyMatch03(c *gocheck.C) {
-	lookup := func(ctx *Context) error {
-		return os.ErrNotExist
-	}
-	manager := BuildBaseManager("tsuru", "1.0", "", lookup)
-	var stdout, stderr bytes.Buffer
-	var exiter recordingExiter
-	manager.e = &exiter
-	manager.stdout = &stdout
-	manager.stderr = &stderr
-	manager.Run([]string{"teamlist"})
-	expectedOutput := `.*: "teamlist" is not a tsuru command. See "tsuru help".
-
-Did you mean?
-	team-list
-`
-	expectedOutput = strings.Replace(expectedOutput, "\n", "\\W", -1)
-	expectedOutput = strings.Replace(expectedOutput, "\t", "\\W+", -1)
-	c.Assert(stderr.String(), gocheck.Matches, expectedOutput)
-	c.Assert(manager.e.(*recordingExiter).value(), gocheck.Equals, 1)
-}
-
-func (s *S) TestInvalidCommandFuzzyMatch04(c *gocheck.C) {
-	lookup := func(ctx *Context) error {
-		return os.ErrNotExist
-	}
-	manager := BuildBaseManager("tsuru", "1.0", "", lookup)
-	var stdout, stderr bytes.Buffer
-	var exiter recordingExiter
-	manager.e = &exiter
-	manager.stdout = &stdout
-	manager.stderr = &stderr
-	manager.Run([]string{"resetpasswurd"})
-	expectedOutput := `.*: "resetpasswurd" is not a tsuru command. See "tsuru help".
-
-Did you mean?
-	reset-password
 `
 	expectedOutput = strings.Replace(expectedOutput, "\n", "\\W", -1)
 	expectedOutput = strings.Replace(expectedOutput, "\t", "\\W+", -1)
