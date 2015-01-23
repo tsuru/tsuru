@@ -508,13 +508,6 @@ func (s *S) TestContainerCommitErrorInPush(c *gocheck.C) {
 	c.Assert(err, gocheck.ErrorMatches, ".*push-failure\n")
 }
 
-func (s *S) TestRemoveImage(c *gocheck.C) {
-	err := newImage("tsuru/python", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
-	err = removeImage("tsuru/python")
-	c.Assert(err, gocheck.IsNil)
-}
-
 func (s *S) TestGitDeploy(c *gocheck.C) {
 	h := &testing.TestHandler{}
 	gandalfServer := testing.StartGandalfTestServer(h)

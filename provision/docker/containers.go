@@ -114,7 +114,7 @@ func runReplaceUnitsPipeline(w io.Writer, a provision.App, toRemoveContainers []
 	if err != nil {
 		return nil, err
 	}
-	err = removeImage(assembleImageName(a.GetName(), a.GetPlatform()))
+	err = dockerCluster().RemoveImageIgnoreLast(imageId)
 	if err != nil {
 		log.Debugf("Ignored error removing old images: %s", err.Error())
 	}
