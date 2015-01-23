@@ -308,12 +308,11 @@ Usage: glb command [args]
 
 Available commands:
   help                 
-  user-create          Creates a user
   version              Display the current version
 
 Use glb help <commandname> to get more information about a command.
 `
-	manager.RegisterDeprecated(&userCreate{}, "create-user")
+	manager.RegisterDeprecated(&login{}, "login")
 	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
 	command := help{manager: manager}
 	err := command.Run(&context, nil)
@@ -328,7 +327,7 @@ Usage: glb command [args]
 
 Available commands:
   help                 
-  user-create          Creates a user
+  login                Log in with your credentials
   version              Display the current version
 
 Use glb help <commandname> to get more information about a command.
@@ -338,7 +337,7 @@ Available topics:
 
 Use glb help <topicname> to get more information about a topic.
 `
-	manager.Register(&userCreate{})
+	manager.Register(&login{})
 	manager.RegisterTopic("target", "something")
 	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
 	command := help{manager: manager}
