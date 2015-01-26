@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
@@ -331,4 +332,60 @@ var followLogsAndCommit = action.Action{
 	Backward: func(ctx action.BWContext) {
 	},
 	MinParams: 1,
+}
+
+var updateAppImage = action.Action{
+	Name: "update-app-image",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		currentImageName, _ := appCurrentImageName(args.app.GetName())
+		if currentImageName != args.imageId {
+			err := appendAppImageName(args.app.GetName(), args.imageId)
+			if err != nil {
+				return nil, fmt.Errorf("unable to save image name: %s", err.Error())
+			}
+		}
+		imgHistorySize, _ := config.GetInt("docker:image-history-size")
+		if imgHistorySize == 0 {
+			imgHistorySize = 10
+		}
+		allImages, err := listAppImages(args.app.GetName())
+		if err != nil {
+			log.Errorf("Couldn't list images for cleaning: %s", err.Error())
+			return ctx.Previous, nil
+		}
+		var toRemove []string
+		for i, imgName := range allImages {
+			if i > len(allImages)-imgHistorySize-1 {
+				err := dockerCluster().RemoveImageIgnoreLast(imgName)
+				if err != nil {
+					log.Debugf("Ignored error removing old image %q: %s", imgName, err.Error())
+				}
+				continue
+			}
+			shouldRemove := true
+			err := dockerCluster().RemoveImage(imgName)
+			if err != nil {
+				shouldRemove = false
+				log.Errorf("Ignored error removing old image %q: %s. Image kept on list to retry later.",
+					imgName, err.Error())
+			}
+			err = dockerCluster().RemoveFromRegistry(imgName)
+			if err != nil {
+				shouldRemove = false
+				log.Errorf("Ignored error removing old image from registry %q: %s. Image kept on list to retry later.",
+					imgName, err.Error())
+			}
+			if shouldRemove {
+				toRemove = append(toRemove, imgName)
+			}
+		}
+		if len(toRemove) > 0 {
+			err = pullAppImageNames(args.app.GetName(), toRemove)
+			if err != nil {
+				log.Errorf("Ignored error pulling old images from database: %s", err.Error())
+			}
+		}
+		return ctx.Previous, nil
+	},
 }

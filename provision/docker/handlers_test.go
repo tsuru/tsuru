@@ -500,11 +500,13 @@ func (s *S) TestRebalanceContainersEmptyBodyHandler(c *gocheck.C) {
 	defer coll.Close()
 	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, gocheck.IsNil)
 	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:     "localhost",
 		unitsToAdd: 5,
 		app:        appInstance,
-		imageId:    assembleImageName(appInstance.GetName(), ""),
+		imageId:    imageId,
 	})
 	c.Assert(err, gocheck.IsNil)
 	conn, err := db.Conn()
@@ -556,11 +558,13 @@ func (s *S) TestRebalanceContainersDryBodyHandler(c *gocheck.C) {
 	defer coll.Close()
 	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, gocheck.IsNil)
 	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:     "localhost",
 		unitsToAdd: 5,
 		app:        appInstance,
-		imageId:    assembleImageName(appInstance.GetName(), ""),
+		imageId:    imageId,
 	})
 	c.Assert(err, gocheck.IsNil)
 	conn, err := db.Conn()

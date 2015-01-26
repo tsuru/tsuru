@@ -340,8 +340,6 @@ func (s *S) TestProvisionAddUnitsToHostForward(c *gocheck.C) {
 	cluster, err := s.startMultipleServersCluster()
 	c.Assert(err, gocheck.IsNil)
 	defer s.stopMultipleServersCluster(cluster)
-	err = newImage("tsuru/app-myapp-2", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
 	var p dockerProvisioner
 	app := testing.NewFakeApp("myapp-2", "python", 0)
 	defer p.Destroy(app)
@@ -350,11 +348,15 @@ func (s *S) TestProvisionAddUnitsToHostForward(c *gocheck.C) {
 	defer coll.Close()
 	coll.Insert(container{ID: "container-id", AppName: app.GetName(), Version: "container-version", Image: "tsuru/python"})
 	defer coll.RemoveAll(bson.M{"appname": app.GetName()})
+	imageId, err := appNewImageName(app.GetName())
+	c.Assert(err, gocheck.IsNil)
+	err = newImage(imageId, "")
+	c.Assert(err, gocheck.IsNil)
 	args := changeUnitsPipelineArgs{
 		app:        app,
 		toHost:     "localhost",
 		unitsToAdd: 2,
-		imageId:    assembleImageName(app.GetName(), ""),
+		imageId:    imageId,
 	}
 	context := action.FWContext{Params: []interface{}{args}}
 	result, err := provisionAddUnitsToHost.Forward(context)
@@ -372,18 +374,20 @@ func (s *S) TestProvisionAddUnitsToHostForwardWithoutHost(c *gocheck.C) {
 	oldCluster, err := s.startMultipleServersCluster()
 	c.Assert(err, gocheck.IsNil)
 	defer s.stopMultipleServersCluster(oldCluster)
-	err = newImage("tsuru/app-myapp-2", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
 	var p dockerProvisioner
 	app := testing.NewFakeApp("myapp-2", "python", 0)
 	defer p.Destroy(app)
 	p.Provision(app)
 	coll := collection()
 	defer coll.Close()
+	imageId, err := appNewImageName(app.GetName())
+	c.Assert(err, gocheck.IsNil)
+	err = newImage(imageId, "")
+	c.Assert(err, gocheck.IsNil)
 	args := changeUnitsPipelineArgs{
 		app:        app,
 		unitsToAdd: 3,
-		imageId:    assembleImageName(app.GetName(), ""),
+		imageId:    imageId,
 	}
 	context := action.FWContext{Params: []interface{}{args}}
 	result, err := provisionAddUnitsToHost.Forward(context)
@@ -468,7 +472,7 @@ func (s *S) TestFollowLogsAndCommitForward(c *gocheck.C) {
 	context := action.FWContext{Params: []interface{}{args}, Previous: cont}
 	imageId, err := followLogsAndCommit.Forward(context)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(imageId, gocheck.Equals, "tsuru/app-mightyapp")
+	c.Assert(imageId, gocheck.Equals, "tsuru/app-mightyapp:v1")
 	c.Assert(buf.String(), gocheck.Not(gocheck.Equals), "")
 	var dbCont container
 	coll := collection()
@@ -479,7 +483,7 @@ func (s *S) TestFollowLogsAndCommitForward(c *gocheck.C) {
 	_, err = dockerCluster().InspectContainer(cont.ID)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Matches, "No such container.*")
-	err = dockerCluster().RemoveImage("tsuru/app-mightyapp")
+	err = dockerCluster().RemoveImage("tsuru/app-mightyapp:v1")
 	c.Assert(err, gocheck.IsNil)
 }
 

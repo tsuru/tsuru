@@ -98,11 +98,13 @@ func (s *S) TestHealerHealNode(c *gocheck.C) {
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, gocheck.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:     "127.0.0.1",
 		unitsToAdd: 1,
 		app:        appInstance,
-		imageId:    assembleImageName(appInstance.GetName(), ""),
+		imageId:    imageId,
 	})
 	c.Assert(err, gocheck.IsNil)
 
@@ -338,11 +340,13 @@ func (s *S) TestHealerHealNodeDestroyError(c *gocheck.C) {
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, gocheck.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:     "127.0.0.1",
 		unitsToAdd: 1,
 		app:        appInstance,
-		imageId:    assembleImageName(appInstance.GetName(), ""),
+		imageId:    imageId,
 	})
 	c.Assert(err, gocheck.IsNil)
 
@@ -437,11 +441,13 @@ func (s *S) TestHealContainer(c *gocheck.C) {
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, gocheck.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:     "127.0.0.1",
 		unitsToAdd: 1,
 		app:        appInstance,
-		imageId:    assembleImageName(appInstance.GetName(), ""),
+		imageId:    imageId,
 	})
 	c.Assert(err, gocheck.IsNil)
 
@@ -499,11 +505,13 @@ func (s *S) TestRunContainerHealer(c *gocheck.C) {
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, gocheck.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:     "127.0.0.1",
 		unitsToAdd: 2,
 		app:        appInstance,
-		imageId:    assembleImageName(appInstance.GetName(), ""),
+		imageId:    imageId,
 	})
 	c.Assert(err, gocheck.IsNil)
 
@@ -579,11 +587,13 @@ func (s *S) TestRunContainerHealerConcurrency(c *gocheck.C) {
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, gocheck.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:     "127.0.0.1",
 		unitsToAdd: 2,
 		app:        appInstance,
-		imageId:    assembleImageName(appInstance.GetName(), ""),
+		imageId:    imageId,
 	})
 	c.Assert(err, gocheck.IsNil)
 
@@ -664,11 +674,13 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *gocheck.C) {
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, gocheck.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:     "127.0.0.1",
 		unitsToAdd: 2,
 		app:        appInstance,
-		imageId:    assembleImageName(appInstance.GetName(), ""),
+		imageId:    imageId,
 	})
 	c.Assert(err, gocheck.IsNil)
 
@@ -740,11 +752,13 @@ func (s *S) TestRunContainerHealerDoesntHealWithProcfileInTop(c *gocheck.C) {
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, gocheck.IsNil)
 	cont, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:     "127.0.0.1",
 		unitsToAdd: 1,
 		app:        appInstance,
-		imageId:    assembleImageName(appInstance.GetName(), ""),
+		imageId:    imageId,
 	})
 	c.Assert(err, gocheck.IsNil)
 
@@ -792,11 +806,13 @@ func (s *S) TestRunContainerHealerWithError(c *gocheck.C) {
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, gocheck.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:     "127.0.0.1",
 		unitsToAdd: 2,
 		app:        appInstance,
-		imageId:    assembleImageName(appInstance.GetName(), ""),
+		imageId:    imageId,
 	})
 	c.Assert(err, gocheck.IsNil)
 
@@ -910,11 +926,13 @@ func (s *S) TestHealerHandleError(c *gocheck.C) {
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, gocheck.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:     "127.0.0.1",
 		unitsToAdd: 1,
 		app:        appInstance,
-		imageId:    assembleImageName(appInstance.GetName(), ""),
+		imageId:    imageId,
 	})
 	c.Assert(err, gocheck.IsNil)
 

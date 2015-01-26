@@ -330,7 +330,7 @@ func gitDeploy(app provision.App, version string, w io.Writer) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return deploy(app, getImage(app), commands, w)
+	return deploy(app, getBuildImage(app), commands, w)
 }
 
 func archiveDeploy(app provision.App, image, archiveURL string, w io.Writer) (string, error) {
@@ -515,25 +515,33 @@ func (c *container) exec(stdout, stderr io.Writer, cmd string, args ...string) e
 // and returns the image repository.
 func (c *container) commit(writer io.Writer) (string, error) {
 	log.Debugf("commiting container %s", c.ID)
-	repository := assembleImageName(c.AppName, "")
-	opts := docker.CommitContainerOptions{Container: c.ID, Repository: repository}
+	imgName, err := appNewImageName(c.AppName)
+	if err != nil {
+		return "", log.WrapError(fmt.Errorf("error getting new image name for app %s", c.AppName))
+	}
+	parts := strings.Split(imgName, ":")
+	if len(parts) < 2 {
+		return "", log.WrapError(fmt.Errorf("error parsing image name, not enough parts: %s", imgName))
+	}
+	repository := strings.Join(parts[:len(parts)-1], ":")
+	tag := parts[len(parts)-1]
+	opts := docker.CommitContainerOptions{Container: c.ID, Repository: repository, Tag: tag}
 	image, err := dockerCluster().CommitContainer(opts)
 	if err != nil {
-		log.Errorf("Could not commit docker image: %s", err)
-		return "", fmt.Errorf("error in commit container %s: %s", c.ID, err.Error())
+		return "", log.WrapError(fmt.Errorf("error in commit container %s: %s", c.ID, err.Error()))
 	}
-	imgData, err := dockerCluster().InspectImage(repository)
+	imgData, err := dockerCluster().InspectImage(imgName)
 	imgSize := ""
 	if err == nil {
 		imgSize = fmt.Sprintf("(%.02fMB)", float64(imgData.Size)/1024/1024)
 	}
 	fmt.Fprintf(writer, " ---> Sending image to repository %s\n", imgSize)
 	log.Debugf("image %s generated from container %s", image.ID, c.ID)
-	err = pushImage(repository)
+	err = pushImage(repository, tag)
 	if err != nil {
-		return "", fmt.Errorf("error in push image %s: %s", repository, err.Error())
+		return "", log.WrapError(fmt.Errorf("error in push image %s: %s", imgName, err.Error()))
 	}
-	return repository, nil
+	return imgName, nil
 }
 
 // stop stops the container.
@@ -620,23 +628,12 @@ func (c *container) asUnit(a provision.App) provision.Unit {
 	}
 }
 
-// getImage returns the image name or id from an app.
-// when the container image is empty is returned the platform image.
-// when a deploy is multiple of 10 is returned the platform image.
-func getImage(app provision.App) string {
-	c, err := getOneContainerByAppName(app.GetName())
-	if err != nil || c.Image == "" || usePlatformImage(app) {
-		return assembleImageName("", app.GetPlatform())
-	}
-	return c.Image
-}
-
 // pushImage sends the given image to the registry server defined in the
 // configuration file.
-func pushImage(name string) error {
+func pushImage(name, tag string) error {
 	if _, err := config.GetString("docker:registry"); err == nil {
 		var buf safe.Buffer
-		pushOpts := docker.PushImageOptions{Name: name, OutputStream: &buf}
+		pushOpts := docker.PushImageOptions{Name: name, Tag: tag, OutputStream: &buf}
 		err = dockerCluster().PushImage(pushOpts, docker.AuthConfiguration{})
 		if err != nil {
 			log.Errorf("[docker] Failed to push image %q (%s): %s", name, err, buf.String())
@@ -644,31 +641,6 @@ func pushImage(name string) error {
 		}
 	}
 	return nil
-}
-
-func assembleImageName(appName, platformName string) string {
-	var baseName string
-	if appName != "" {
-		baseName = "app-" + appName
-	} else {
-		baseName = platformName
-	}
-	parts := make([]string, 0, 3)
-	registry, _ := config.GetString("docker:registry")
-	if registry != "" {
-		parts = append(parts, registry)
-	}
-	repoNamespace, _ := config.GetString("docker:repository-namespace")
-	parts = append(parts, repoNamespace, baseName)
-	return strings.Join(parts, "/")
-}
-
-func usePlatformImage(app provision.App) bool {
-	deploys := app.GetDeploys()
-	if (deploys != 0 && deploys%10 == 0) || app.GetUpdatePlatform() {
-		return true
-	}
-	return false
 }
 
 // unitFromContainer returns a unit that represents a container.

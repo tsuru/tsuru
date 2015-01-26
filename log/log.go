@@ -170,6 +170,13 @@ func SetLogger(logger Logger) {
 	DefaultTarget.SetLogger(logger)
 }
 
+func WrapError(err error) error {
+	if err != nil {
+		Error(err.Error())
+	}
+	return err
+}
+
 func Write(w io.Writer, content []byte) error {
 	n, err := w.Write(content)
 	if err != nil {

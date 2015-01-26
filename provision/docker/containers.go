@@ -109,14 +109,11 @@ func runReplaceUnitsPipeline(w io.Writer, a provision.App, toRemoveContainers []
 		&addNewRoutes,
 		&removeOldRoutes,
 		&provisionRemoveOldUnits,
+		&updateAppImage,
 	)
 	err := pipeline.Execute(args)
 	if err != nil {
 		return nil, err
-	}
-	err = dockerCluster().RemoveImageIgnoreLast(imageId)
-	if err != nil {
-		log.Debugf("Ignored error removing old images: %s", err.Error())
 	}
 	return pipeline.Result().([]container), nil
 }
@@ -134,6 +131,7 @@ func runCreateUnitsPipeline(w io.Writer, a provision.App, toAddCount int, imageI
 	pipeline := action.NewPipeline(
 		&provisionAddUnitsToHost,
 		&addNewRoutes,
+		&updateAppImage,
 	)
 	err := pipeline.Execute(args)
 	if err != nil {
@@ -160,8 +158,15 @@ func moveOneContainer(c container, toHost string, errors chan error, wg *sync.Wa
 		}
 		return container{}
 	}
+	imageId, err := appCurrentImageName(a.GetName())
+	if err != nil {
+		errors <- &tsuruErrors.CompositeError{
+			Base:    err,
+			Message: fmt.Sprintf("Error getting app %q image name for unit %s.", c.AppName, c.ID),
+		}
+		return container{}
+	}
 	logProgress(encoder, "Moving unit %s for %q: %s -> %s...", c.ID, c.AppName, c.HostAddr, toHost)
-	imageId := assembleImageName(a.GetName(), "")
 	addedContainers, err := runReplaceUnitsPipeline(nil, a, []container{c}, imageId, toHost)
 	if err != nil {
 		errors <- &tsuruErrors.CompositeError{

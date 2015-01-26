@@ -30,6 +30,80 @@ import (
 	"launchpad.net/gocheck"
 )
 
+type newContainerOpts struct {
+	AppName string
+	Status  string
+}
+
+func (s *S) newContainer(opts *newContainerOpts) (*container, error) {
+	err := newImage("tsuru/python", "")
+	if err != nil {
+		return nil, err
+	}
+	container := container{
+		ID:       "id",
+		IP:       "10.10.10.10",
+		HostPort: "3333",
+		HostAddr: "127.0.0.1",
+	}
+	if opts != nil {
+		container.Status = opts.Status
+		container.AppName = opts.AppName
+	}
+	if container.AppName == "" {
+		container.AppName = "container"
+	}
+	rtesting.FakeRouter.AddBackend(container.AppName)
+	rtesting.FakeRouter.AddRoute(container.AppName, container.getAddress())
+	port, err := getPort()
+	if err != nil {
+		return nil, err
+	}
+	ports := map[docker.Port]struct{}{
+		docker.Port(port + "/tcp"): {},
+	}
+	config := docker.Config{
+		Image:        "tsuru/python",
+		Cmd:          []string{"ps"},
+		ExposedPorts: ports,
+	}
+	_, c, err := dCluster.CreateContainer(docker.CreateContainerOptions{Config: &config})
+	if err != nil {
+		return nil, err
+	}
+	container.ID = c.ID
+	container.Image = "tsuru/python"
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	err = conn.Collection(s.collName).Insert(&container)
+	if err != nil {
+		return nil, err
+	}
+	imageId, err := appCurrentImageName(container.AppName)
+	if err != nil {
+		return nil, err
+	}
+	err = newImage(imageId, "")
+	if err != nil {
+		return nil, err
+	}
+	return &container, nil
+}
+
+func (s *S) removeTestContainer(c *container) error {
+	rtesting.FakeRouter.RemoveBackend(c.AppName)
+	return c.remove()
+}
+
+func newImage(repo, serverURL string) error {
+	var buf safe.Buffer
+	opts := docker.PullImageOptions{Repository: repo, OutputStream: &buf}
+	return dCluster.PullImage(opts, docker.AuthConfiguration{})
+}
+
 func (s *S) TestContainerGetAddress(c *gocheck.C) {
 	container := container{ID: "id123", HostAddr: "10.10.10.10", HostPort: "49153"}
 	address := container.getAddress()
@@ -49,7 +123,7 @@ func (s *S) TestContainerCreate(c *gocheck.C) {
 		docker.AuthConfiguration{},
 	)
 	cont := container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
-	err := cont.create(runContainerActionsArgs{app: app, imageID: getImage(app), commands: []string{"docker", "run"}})
+	err := cont.create(runContainerActionsArgs{app: app, imageID: getBuildImage(app), commands: []string{"docker", "run"}})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(&cont)
 	c.Assert(cont.ID, gocheck.Not(gocheck.Equals), "")
@@ -83,7 +157,7 @@ func (s *S) TestContainerCreateAlocatesPort(c *gocheck.C) {
 		docker.AuthConfiguration{},
 	)
 	cont := container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
-	err := cont.create(runContainerActionsArgs{app: app, imageID: getImage(app), commands: []string{"docker", "run"}})
+	err := cont.create(runContainerActionsArgs{app: app, imageID: getBuildImage(app), commands: []string{"docker", "run"}})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(&cont)
 	info, err := cont.networkInfo()
@@ -101,7 +175,7 @@ func (s *S) TestContainerCreateDoesNotAlocatesPortForDeploy(c *gocheck.C) {
 		docker.AuthConfiguration{},
 	)
 	cont := container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
-	err := cont.create(runContainerActionsArgs{isDeploy: true, app: app, imageID: getImage(app), commands: []string{"docker", "run"}})
+	err := cont.create(runContainerActionsArgs{isDeploy: true, app: app, imageID: getBuildImage(app), commands: []string{"docker", "run"}})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(&cont)
 	info, err := cont.networkInfo()
@@ -119,7 +193,7 @@ func (s *S) TestContainerCreateUndefinedUser(c *gocheck.C) {
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	cont := container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
-	err = cont.create(runContainerActionsArgs{app: app, imageID: getImage(app), commands: []string{"docker", "run"}})
+	err = cont.create(runContainerActionsArgs{app: app, imageID: getBuildImage(app), commands: []string{"docker", "run"}})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(&cont)
 	dcli, _ := docker.NewClient(s.server.URL())
@@ -199,72 +273,6 @@ func (s *S) TestContainerSetImage(c *gocheck.C) {
 	c2, err := getContainer(container.ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(c2.Image, gocheck.Equals, "newimage")
-}
-
-func newImage(repo, serverURL string) error {
-	var buf safe.Buffer
-	opts := docker.PullImageOptions{Repository: repo, OutputStream: &buf}
-	return dCluster.PullImage(opts, docker.AuthConfiguration{})
-}
-
-type newContainerOpts struct {
-	AppName string
-	Status  string
-}
-
-func (s *S) newContainer(opts *newContainerOpts) (*container, error) {
-	err := newImage("tsuru/python", "")
-	if err != nil {
-		return nil, err
-	}
-	container := container{
-		ID:       "id",
-		IP:       "10.10.10.10",
-		HostPort: "3333",
-		HostAddr: "127.0.0.1",
-	}
-	if opts != nil {
-		container.Status = opts.Status
-		container.AppName = opts.AppName
-	}
-	if container.AppName == "" {
-		container.AppName = "container"
-	}
-	rtesting.FakeRouter.AddBackend(container.AppName)
-	rtesting.FakeRouter.AddRoute(container.AppName, container.getAddress())
-	port, err := getPort()
-	if err != nil {
-		return nil, err
-	}
-	ports := map[docker.Port]struct{}{
-		docker.Port(port + "/tcp"): {},
-	}
-	config := docker.Config{
-		Image:        "tsuru/python",
-		Cmd:          []string{"ps"},
-		ExposedPorts: ports,
-	}
-	_, c, err := dCluster.CreateContainer(docker.CreateContainerOptions{Config: &config})
-	if err != nil {
-		return nil, err
-	}
-	container.ID = c.ID
-	container.Image = "tsuru/python"
-	conn, err := db.Conn()
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-	err = conn.Collection(s.collName).Insert(&container)
-	if err != nil {
-		return nil, err
-	}
-	return &container, err
-}
-
-func (s *S) removeTestContainer(c *container) error {
-	rtesting.FakeRouter.RemoveBackend(c.AppName)
-	return c.remove()
 }
 
 func (s *S) TestContainerRemove(c *gocheck.C) {
@@ -409,7 +417,7 @@ func (s *S) TestGetContainers(c *gocheck.C) {
 
 func (s *S) TestGetImageFromAppPlatform(c *gocheck.C) {
 	app := testing.NewFakeApp("myapp", "python", 1)
-	img := getImage(app)
+	img := getBuildImage(app)
 	repoNamespace, err := config.GetString("docker:repository-namespace")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(img, gocheck.Equals, fmt.Sprintf("%s/python", repoNamespace))
@@ -430,29 +438,29 @@ func (s *S) TestGetImageAppWhenDeployIsMultipleOf10(c *gocheck.C) {
 	defer coll.Close()
 	c.Assert(err, gocheck.IsNil)
 	defer coll.RemoveAll(bson.M{"id": cont.ID})
-	img := getImage(app)
+	img := getBuildImage(app)
 	repoNamespace, err := config.GetString("docker:repository-namespace")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(img, gocheck.Equals, fmt.Sprintf("%s/%s", repoNamespace, app.Platform))
 }
 
-func (s *S) TestGetImageFromDatabase(c *gocheck.C) {
-	cont := container{ID: "bleble", Type: "python", AppName: "myapp", Image: "someimageid"}
+func (s *S) TestGetImageUseAppImageIfContainersExist(c *gocheck.C) {
+	cont := container{ID: "bleble", Type: "python", AppName: "myapp", Image: "ignored"}
 	coll := collection()
 	err := coll.Insert(cont)
 	defer coll.Close()
 	c.Assert(err, gocheck.IsNil)
 	defer coll.RemoveAll(bson.M{"id": "bleble"})
 	app := testing.NewFakeApp("myapp", "python", 1)
-	img := getImage(app)
-	c.Assert(img, gocheck.Equals, "someimageid")
+	img := getBuildImage(app)
+	c.Assert(img, gocheck.Equals, "tsuru/app-myapp")
 }
 
 func (s *S) TestGetImageWithRegistry(c *gocheck.C) {
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
 	app := testing.NewFakeApp("myapp", "python", 1)
-	img := getImage(app)
+	img := getBuildImage(app)
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
 	expected := fmt.Sprintf("localhost:3030/%s/python", repoNamespace)
 	c.Assert(img, gocheck.Equals, expected)
@@ -466,7 +474,7 @@ func (s *S) TestContainerCommit(c *gocheck.C) {
 	imageId, err := cont.commit(&buf)
 	c.Assert(err, gocheck.IsNil)
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
-	repository := repoNamespace + "/app-" + cont.AppName
+	repository := repoNamespace + "/app-" + cont.AppName + ":v1"
 	c.Assert(imageId, gocheck.Equals, repository)
 }
 
@@ -480,7 +488,7 @@ func (s *S) TestContainerCommitWithRegistry(c *gocheck.C) {
 	imageId, err := cont.commit(&buf)
 	c.Assert(err, gocheck.IsNil)
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
-	repository := "localhost:3030/" + repoNamespace + "/app-" + cont.AppName
+	repository := "localhost:3030/" + repoNamespace + "/app-" + cont.AppName + ":v1"
 	c.Assert(imageId, gocheck.Equals, repository)
 }
 
@@ -521,14 +529,14 @@ func (s *S) TestGitDeploy(c *gocheck.C) {
 	var buf bytes.Buffer
 	imageId, err := gitDeploy(app, "ff13e", &buf)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(imageId, gocheck.Equals, "tsuru/app-myapp")
+	c.Assert(imageId, gocheck.Equals, "tsuru/app-myapp:v1")
 	var conts []container
 	coll := collection()
 	defer coll.Close()
 	err = coll.Find(nil).All(&conts)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(conts, gocheck.HasLen, 0)
-	err = dockerCluster().RemoveImage("tsuru/app-myapp")
+	err = dockerCluster().RemoveImage("tsuru/app-myapp:v1")
 	c.Assert(err, gocheck.IsNil)
 }
 
@@ -569,7 +577,7 @@ func (s *S) TestArchiveDeploy(c *gocheck.C) {
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
-	_, err = archiveDeploy(app, getImage(app), "https://s3.amazonaws.com/wat/archive.tar.gz", &buf)
+	_, err = archiveDeploy(app, getBuildImage(app), "https://s3.amazonaws.com/wat/archive.tar.gz", &buf)
 	c.Assert(err, gocheck.IsNil)
 }
 
@@ -577,7 +585,7 @@ func (s *S) TestStart(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp("myapp", "python", 1)
-	imageId := getImage(app)
+	imageId := getBuildImage(app)
 	rtesting.FakeRouter.AddBackend(app.GetName())
 	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
@@ -729,12 +737,22 @@ func (s *S) TestPushImage(c *gocheck.C) {
 	}()
 	err = newImage("localhost:3030/base/img", "")
 	c.Assert(err, gocheck.IsNil)
-	err = pushImage("localhost:3030/base/img")
+	err = pushImage("localhost:3030/base/img", "")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(requests, gocheck.HasLen, 3)
 	c.Assert(requests[0].URL.Path, gocheck.Equals, "/images/create")
 	c.Assert(requests[1].URL.Path, gocheck.Equals, "/images/localhost:3030/base/img/json")
 	c.Assert(requests[2].URL.Path, gocheck.Equals, "/images/localhost:3030/base/img/push")
+	c.Assert(requests[2].URL.RawQuery, gocheck.Equals, "")
+	err = newImage("localhost:3030/base/img:v2", "")
+	c.Assert(err, gocheck.IsNil)
+	err = pushImage("localhost:3030/base/img", "v2")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(requests, gocheck.HasLen, 6)
+	c.Assert(requests[3].URL.Path, gocheck.Equals, "/images/create")
+	c.Assert(requests[4].URL.Path, gocheck.Equals, "/images/localhost:3030/base/img:v2/json")
+	c.Assert(requests[5].URL.Path, gocheck.Equals, "/images/localhost:3030/base/img/push")
+	c.Assert(requests[5].URL.RawQuery, gocheck.Equals, "tag=v2")
 }
 
 func (s *S) TestPushImageNoRegistry(c *gocheck.C) {
@@ -744,35 +762,9 @@ func (s *S) TestPushImageNoRegistry(c *gocheck.C) {
 	})
 	c.Assert(err, gocheck.IsNil)
 	defer server.Stop()
-	err = pushImage("localhost:3030/base")
+	err = pushImage("localhost:3030/base", "")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(request, gocheck.IsNil)
-}
-
-func (s *S) TestAssembleImageNamePlatform(c *gocheck.C) {
-	repository := assembleImageName("", "raising")
-	c.Assert(repository, gocheck.Equals, s.repoNamespace+"/raising")
-}
-
-func (s *S) TestAssembleImageNamePlatformWithRegistry(c *gocheck.C) {
-	config.Set("docker:registry", "localhost:3030")
-	defer config.Unset("docker:registry")
-	repository := assembleImageName("", "raising")
-	expected := "localhost:3030/" + s.repoNamespace + "/raising"
-	c.Assert(repository, gocheck.Equals, expected)
-}
-
-func (s *S) TestAssembleImageNameApp(c *gocheck.C) {
-	repository := assembleImageName("myapp", "raising")
-	c.Assert(repository, gocheck.Equals, s.repoNamespace+"/app-myapp")
-}
-
-func (s *S) TestAssembleImageNameAppWithRegistry(c *gocheck.C) {
-	config.Set("docker:registry", "localhost:3030")
-	defer config.Unset("docker:registry")
-	repository := assembleImageName("myapp", "raising")
-	expected := "localhost:3030/" + s.repoNamespace + "/app-myapp"
-	c.Assert(repository, gocheck.Equals, expected)
 }
 
 func (s *S) TestContainerStart(c *gocheck.C) {
@@ -844,47 +836,6 @@ func (s *S) TestContainerStartStartedUnits(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = cont.start(false)
 	c.Assert(err, gocheck.NotNil)
-}
-
-func (s *S) TestUsePlatformImage(c *gocheck.C) {
-	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
-	defer conn.Close()
-	app1 := &app.App{Name: "app1", Platform: "python", Deploys: 40}
-	err = conn.Apps().Insert(app1)
-	c.Assert(err, gocheck.IsNil)
-	ok := usePlatformImage(app1)
-	c.Assert(ok, gocheck.Equals, true)
-	defer conn.Apps().Remove(bson.M{"name": "app1"})
-	app2 := &app.App{Name: "app2", Platform: "python", Deploys: 20}
-	err = conn.Apps().Insert(app2)
-	c.Assert(err, gocheck.IsNil)
-	ok = usePlatformImage(app2)
-	c.Assert(ok, gocheck.Equals, true)
-	defer conn.Apps().Remove(bson.M{"name": "app2"})
-	app3 := &app.App{Name: "app3", Platform: "python", Deploys: 0}
-	err = conn.Apps().Insert(app3)
-	c.Assert(err, gocheck.IsNil)
-	ok = usePlatformImage(app3)
-	c.Assert(ok, gocheck.Equals, false)
-	defer conn.Apps().Remove(bson.M{"name": "app3"})
-	app4 := &app.App{Name: "app4", Platform: "python", Deploys: 19}
-	err = conn.Apps().Insert(app4)
-	c.Assert(err, gocheck.IsNil)
-	ok = usePlatformImage(app4)
-	c.Assert(ok, gocheck.Equals, false)
-	defer conn.Apps().Remove(bson.M{"name": "app4"})
-	app5 := &app.App{
-		Name:           "app5",
-		Platform:       "python",
-		Deploys:        19,
-		UpdatePlatform: true,
-	}
-	err = conn.Apps().Insert(app5)
-	c.Assert(err, gocheck.IsNil)
-	ok = usePlatformImage(app5)
-	c.Assert(ok, gocheck.Equals, true)
-	defer conn.Apps().Remove(bson.M{"name": "app5"})
 }
 
 func (s *S) TestContainerAvailable(c *gocheck.C) {

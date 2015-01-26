@@ -82,11 +82,14 @@ func (*dockerProvisioner) Restart(a provision.App, w io.Writer) error {
 	if err != nil {
 		return err
 	}
+	imageId, err := appCurrentImageName(a.GetName())
+	if err != nil {
+		return err
+	}
 	if w == nil {
 		w = ioutil.Discard
 	}
 	writer := &app.LogWriter{App: a, Writer: w}
-	imageId := assembleImageName(a.GetName(), "")
 	_, err = runReplaceUnitsPipeline(writer, a, containers, imageId)
 	return err
 }
@@ -159,7 +162,7 @@ func (p *dockerProvisioner) GitDeploy(app provision.App, version string, w io.Wr
 }
 
 func (p *dockerProvisioner) ArchiveDeploy(app provision.App, archiveURL string, w io.Writer) error {
-	imageId, err := archiveDeploy(app, getImage(app), archiveURL, w)
+	imageId, err := archiveDeploy(app, getBuildImage(app), archiveURL, w)
 	if err != nil {
 		return err
 	}
@@ -178,7 +181,7 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 			OpenStdin:    true,
 			StdinOnce:    true,
 			User:         user,
-			Image:        getImage(app),
+			Image:        getBuildImage(app),
 			Cmd:          []string{"/bin/bash", "-c", "cat > " + filePath},
 		},
 	}
@@ -258,15 +261,24 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 		}(c)
 	}
 	containersGroup.Wait()
-	cluster := dockerCluster()
-	imageName := assembleImageName(app.GetName(), app.GetPlatform())
-	err = cluster.RemoveImage(imageName)
+	images, err := listAppImages(app.GetName())
 	if err != nil {
-		log.Errorf("Failed to remove image: %s", err.Error())
+		log.Errorf("Failed to get image ids for app %s: %s", app.GetName(), err.Error())
 	}
-	err = cluster.RemoveFromRegistry(imageName)
+	cluster := dockerCluster()
+	for _, imageId := range images {
+		err := cluster.RemoveImage(imageId)
+		if err != nil {
+			log.Errorf("Failed to remove image %s: %s", imageId, err.Error())
+		}
+		err = cluster.RemoveFromRegistry(imageId)
+		if err != nil {
+			log.Errorf("Failed to remove image %s from registry: %s", imageId, err.Error())
+		}
+	}
+	err = deleteAllAppImageNames(app.GetName())
 	if err != nil {
-		log.Errorf("Failed to remove image from registry: %s", err.Error())
+		log.Errorf("Failed to remove image names from storage for app %s: %s", app.GetName(), err.Error())
 	}
 	r, err := getRouterForApp(app)
 	if err != nil {
@@ -322,9 +334,6 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 	var destinationHost []string
 	if args.toHost != "" {
 		destinationHost = []string{args.toHost}
-	}
-	if units == 0 {
-		return nil, errors.New("Cannot add 0 units")
 	}
 	if w == nil {
 		w = ioutil.Discard
@@ -401,11 +410,17 @@ func (*dockerProvisioner) AddUnits(a provision.App, units uint, w io.Writer) ([]
 	if length < 1 {
 		return nil, errors.New("New units can only be added after the first deployment")
 	}
+	if units == 0 {
+		return nil, errors.New("Cannot add 0 units")
+	}
 	if w == nil {
 		w = ioutil.Discard
 	}
 	writer := &app.LogWriter{App: a, Writer: w}
-	imageId := assembleImageName(a.GetName(), "")
+	imageId, err := appCurrentImageName(a.GetName())
+	if err != nil {
+		return nil, err
+	}
 	conts, err := runCreateUnitsPipeline(writer, a, int(units), imageId)
 	if err != nil {
 		return nil, err
@@ -583,7 +598,7 @@ func (p *dockerProvisioner) PlatformAdd(name string, args map[string]string, w i
 	if _, err := url.ParseRequestURI(args["dockerfile"]); err != nil {
 		return errors.New("dockerfile parameter should be an url.")
 	}
-	imageName := assembleImageName("", name)
+	imageName := platformImageName(name)
 	dockerCluster := dockerCluster()
 	buildOptions := docker.BuildImageOptions{
 		Name:           imageName,
@@ -597,7 +612,7 @@ func (p *dockerProvisioner) PlatformAdd(name string, args map[string]string, w i
 	if err != nil {
 		return err
 	}
-	return pushImage(imageName)
+	return pushImage(imageName, "")
 }
 
 func (p *dockerProvisioner) PlatformUpdate(name string, args map[string]string, w io.Writer) error {
@@ -605,7 +620,7 @@ func (p *dockerProvisioner) PlatformUpdate(name string, args map[string]string, 
 }
 
 func (p *dockerProvisioner) PlatformRemove(name string) error {
-	err := dockerCluster().RemoveImage(assembleImageName("", name))
+	err := dockerCluster().RemoveImage(platformImageName(name))
 	if err != nil && err == docker.ErrNoSuchImage {
 		log.Errorf("error on remove image %s from docker.", name)
 		return nil
