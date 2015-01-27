@@ -61,8 +61,7 @@
 		},
 		{
 			"ImportPath": "github.com/fsouza/go-dockerclient",
-			"Comment": "0.2.1-337-gb523834",
-			"Rev": "64b7c775fc9b3c1cfa0ba00e94243f7ba2983a88"
+			"Rev": "0758f407f25a8df60c540b0ec758905192687e14"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
@@ -95,15 +94,15 @@
 		},
 		{
 			"ImportPath": "github.com/tsuru/docker-cluster/cluster",
-			"Rev": "a731ea0eb216b3a2289afc2fda95a6edef4f0a08"
+			"Rev": "cb29b031995539329c5961182f93dd805fd4c945"
 		},
 		{
 			"ImportPath": "github.com/tsuru/docker-cluster/log",
-			"Rev": "a731ea0eb216b3a2289afc2fda95a6edef4f0a08"
+			"Rev": "cb29b031995539329c5961182f93dd805fd4c945"
 		},
 		{
 			"ImportPath": "github.com/tsuru/docker-cluster/storage",
-			"Rev": "a731ea0eb216b3a2289afc2fda95a6edef4f0a08"
+			"Rev": "cb29b031995539329c5961182f93dd805fd4c945"
 		},
 		{
 			"ImportPath": "github.com/tsuru/gandalf/testing",
