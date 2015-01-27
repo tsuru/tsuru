@@ -38,6 +38,9 @@ func writeToken(token string) error {
 }
 
 func ReadToken() (string, error) {
+	if token := os.Getenv("TSURU_TOKEN"); token != "" {
+		return token, nil
+	}
 	tokenPath := JoinWithUserDir(".tsuru_token")
 	file, err := filesystem().Open(tokenPath)
 	if err != nil {

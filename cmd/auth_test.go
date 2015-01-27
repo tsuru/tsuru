@@ -243,3 +243,11 @@ func (s *S) TestSchemeInfoInvalidData(c *gocheck.C) {
 	_, err := schemeInfo()
 	c.Assert(err, gocheck.NotNil)
 }
+
+func (s *S) TestReadTokenEnvironmentVariable(c *gocheck.C) {
+	os.Setenv("TSURU_TOKEN", "ABCDEFGH")
+	defer os.Setenv("TSURU_TOKEN", "")
+	token, err := ReadToken()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(token, gocheck.Equals, "ABCDEFGH")
+}
