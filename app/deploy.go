@@ -5,15 +5,16 @@
 package app
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"time"
 
 	"github.com/tsuru/go-gandalfclient"
-	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/service"
@@ -27,6 +28,9 @@ type deploy struct {
 	Duration  time.Duration
 	Commit    string
 	Error     string
+	Image     string
+	Log       string
+	User      string
 }
 
 func (app *App) ListDeploys(u *auth.User) ([]deploy, error) {
@@ -158,44 +162,64 @@ type DeployOptions struct {
 	ArchiveURL   string
 	File         io.ReadCloser
 	OutputStream io.Writer
+	User         string
 }
 
 // Deploy runs a deployment of an application. It will first try to run an
 // archive based deploy (if opts.ArchiveURL is not empty), and then fallback to
 // the Git based deployment.
 func Deploy(opts DeployOptions) error {
-	var pipeline *action.Pipeline
+	var outBuffer bytes.Buffer
 	start := time.Now()
-	if cprovisioner, ok := Provisioner.(provision.CustomizedDeployPipelineProvisioner); ok {
-		pipeline = cprovisioner.DeployPipeline()
-	} else {
-		actions := []*action.Action{&ProvisionerDeploy, &IncrementDeploy}
-		pipeline = action.NewPipeline(actions...)
-	}
 	logWriter := LogWriter{App: opts.App, Writer: opts.OutputStream}
-	err := pipeline.Execute(opts, &logWriter)
+	writer := io.MultiWriter(&outBuffer, &logWriter)
+	imageId, err := deployToProvisioner(&opts, writer)
 	elapsed := time.Since(start)
+	saveErr := saveDeployData(&opts, imageId, outBuffer.String(), elapsed, err)
+	if saveErr != nil {
+		log.Errorf("WARNING: couldn't save deploy data, deploy opts: %#v", opts)
+	}
 	if err != nil {
-		saveDeployData(opts.App.Name, opts.Commit, elapsed, err)
 		return err
+	}
+	err = incrementDeploy(opts.App)
+	if err != nil {
+		log.Errorf("WARNING: couldn't increment deploy count, deploy opts: %#v", opts)
 	}
 	if opts.App.UpdatePlatform == true {
 		opts.App.SetUpdatePlatform(false)
 	}
-	return saveDeployData(opts.App.Name, opts.Commit, elapsed, nil)
+	return nil
 }
 
-func saveDeployData(appName, commit string, duration time.Duration, deployError error) error {
+func deployToProvisioner(opts *DeployOptions, writer io.Writer) (string, error) {
+	if opts.File != nil {
+		if deployer, ok := Provisioner.(provision.UploadDeployer); ok {
+			return deployer.UploadDeploy(opts.App, opts.File, writer)
+		}
+	}
+	if opts.ArchiveURL != "" {
+		if deployer, ok := Provisioner.(provision.ArchiveDeployer); ok {
+			return deployer.ArchiveDeploy(opts.App, opts.ArchiveURL, writer)
+		}
+	}
+	return Provisioner.(provision.GitDeployer).GitDeploy(opts.App, opts.Version, writer)
+}
+
+func saveDeployData(opts *DeployOptions, imageId, log string, duration time.Duration, deployError error) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
 	deploy := deploy{
-		App:       appName,
+		App:       opts.App.Name,
 		Timestamp: time.Now(),
 		Duration:  duration,
-		Commit:    commit,
+		Commit:    opts.Commit,
+		Image:     imageId,
+		Log:       log,
+		User:      opts.User,
 	}
 	if deployError != nil {
 		deploy.Error = deployError.Error()

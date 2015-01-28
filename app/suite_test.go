@@ -118,6 +118,7 @@ func (s *S) TearDownTest(c *gocheck.C) {
 		bson.M{"$set": bson.M{"quota": quota.Unlimited}},
 	)
 	s.conn.AutoScale().RemoveAll(nil)
+	s.conn.Deploys().RemoveAll(nil)
 }
 
 func (s *S) getTestData(p ...string) io.ReadCloser {

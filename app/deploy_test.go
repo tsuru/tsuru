@@ -6,6 +6,8 @@ package app
 
 import (
 	"bytes"
+	"errors"
+	"io/ioutil"
 	"time"
 
 	"github.com/tsuru/config"
@@ -468,6 +470,7 @@ func (s *S) TestDeployAppSaveDeployData(c *gocheck.C) {
 		Version:      "version",
 		Commit:       commit,
 		OutputStream: writer,
+		User:         "someone@themoon",
 	})
 	c.Assert(err, gocheck.IsNil)
 	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
@@ -480,42 +483,15 @@ func (s *S) TestDeployAppSaveDeployData(c *gocheck.C) {
 	c.Assert(diff < 60*time.Second, gocheck.Equals, true)
 	c.Assert(result["duration"], gocheck.Not(gocheck.Equals), 0)
 	c.Assert(result["commit"], gocheck.Equals, commit)
-}
-
-func (s *S) TestDeployCustomPipeline(c *gocheck.C) {
-	provisioner := testing.PipelineFakeProvisioner{
-		FakeProvisioner: testing.NewFakeProvisioner(),
-	}
-	Provisioner = &provisioner
-	defer func() {
-		Provisioner = s.provisioner
-	}()
-	a := App{
-		Name:     "otherapp",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
-	}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	provisioner.Provision(&a)
-	defer provisioner.Destroy(&a)
-	writer := &bytes.Buffer{}
-	err = Deploy(DeployOptions{
-		App:          &a,
-		Version:      "version",
-		Commit:       "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
-		OutputStream: writer,
-	})
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(provisioner.ExecutedPipeline(), gocheck.Equals, true)
+	c.Assert(result["image"], gocheck.Equals, "app-image")
+	c.Assert(result["log"], gocheck.Equals, "Git deploy called")
+	c.Assert(result["user"], gocheck.Equals, "someone@themoon")
 }
 
 func (s *S) TestDeployAppSaveDeployErrorData(c *gocheck.C) {
-	provisioner := testing.PipelineErrorFakeProvisioner{
-		FakeProvisioner: testing.NewFakeProvisioner(),
-	}
-	Provisioner = &provisioner
+	provisioner := testing.NewFakeProvisioner()
+	provisioner.PrepareFailure("GitDeploy", errors.New("deploy error"))
+	Provisioner = provisioner
 	defer func() {
 		Provisioner = s.provisioner
 	}()
@@ -586,4 +562,75 @@ func (s *S) TestUserHasNoPermission(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	hasPermission := userHasPermission(user, a.Name)
 	c.Assert(hasPermission, gocheck.Equals, false)
+}
+
+func (s *S) TestIncrementDeploy(c *gocheck.C) {
+	a := App{
+		Name:     "otherapp",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	incrementDeploy(&a)
+	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
+	c.Assert(a.Deploys, gocheck.Equals, uint(1))
+}
+
+func (s *S) TestDeployToProvisioner(c *gocheck.C) {
+	a := App{
+		Name:     "someApp",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	writer := &bytes.Buffer{}
+	opts := DeployOptions{App: &a, Version: "version"}
+	_, err = deployToProvisioner(&opts, writer)
+	c.Assert(err, gocheck.IsNil)
+	logs := writer.String()
+	c.Assert(logs, gocheck.Equals, "Git deploy called")
+}
+
+func (s *S) TestDeployToProvisionerArchive(c *gocheck.C) {
+	a := App{
+		Name:     "someApp",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	writer := &bytes.Buffer{}
+	opts := DeployOptions{App: &a, ArchiveURL: "https://s3.amazonaws.com/smt/archive.tar.gz"}
+	_, err = deployToProvisioner(&opts, writer)
+	c.Assert(err, gocheck.IsNil)
+	logs := writer.String()
+	c.Assert(logs, gocheck.Equals, "Archive deploy called")
+}
+
+func (s *S) TestDeployToProvisionerUpload(c *gocheck.C) {
+	a := App{
+		Name:     "someApp",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	writer := &bytes.Buffer{}
+	opts := DeployOptions{App: &a, File: ioutil.NopCloser(bytes.NewBuffer([]byte("my file")))}
+	_, err = deployToProvisioner(&opts, writer)
+	c.Assert(err, gocheck.IsNil)
+	logs := writer.String()
+	c.Assert(logs, gocheck.Equals, "Upload deploy called")
 }

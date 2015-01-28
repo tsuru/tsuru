@@ -16,7 +16,6 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
@@ -153,23 +152,23 @@ func (dockerProvisioner) Swap(app1, app2 provision.App) error {
 	return r.Swap(app1.GetName(), app2.GetName())
 }
 
-func (p *dockerProvisioner) GitDeploy(app provision.App, version string, w io.Writer) error {
+func (p *dockerProvisioner) GitDeploy(app provision.App, version string, w io.Writer) (string, error) {
 	imageId, err := gitDeploy(app, version, w)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return p.deploy(app, imageId, w)
+	return imageId, p.deploy(app, imageId, w)
 }
 
-func (p *dockerProvisioner) ArchiveDeploy(app provision.App, archiveURL string, w io.Writer) error {
+func (p *dockerProvisioner) ArchiveDeploy(app provision.App, archiveURL string, w io.Writer) (string, error) {
 	imageId, err := archiveDeploy(app, getBuildImage(app), archiveURL, w)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return p.deploy(app, imageId, w)
+	return imageId, p.deploy(app, imageId, w)
 }
 
-func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadCloser, w io.Writer) error {
+func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadCloser, w io.Writer) (string, error) {
 	defer archiveFile.Close()
 	filePath := "/home/application/archive.tar.gz"
 	user, _ := config.GetString("docker:ssh:user")
@@ -188,12 +187,12 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 	cluster := dockerCluster()
 	_, container, err := dockerCluster().CreateContainerSchedulerOpts(options, app.GetName())
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer cluster.RemoveContainer(docker.RemoveContainerOptions{ID: container.ID, Force: true})
 	err = cluster.StartContainer(container.ID, nil)
 	if err != nil {
-		return err
+		return "", err
 	}
 	var output bytes.Buffer
 	err = cluster.AttachToContainer(docker.AttachToContainerOptions{
@@ -207,29 +206,32 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 		Stderr:       true,
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 	status, err := cluster.WaitContainer(container.ID)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if status != 0 {
 		log.Errorf("Failed to deploy container from upload: %s", &output)
-		return fmt.Errorf("container exited with status %d", status)
+		return "", fmt.Errorf("container exited with status %d", status)
 	}
 	image, err := cluster.CommitContainer(docker.CommitContainerOptions{Container: container.ID})
 	if err != nil {
-		return err
+		return "", err
 	}
 	imageId, err := archiveDeploy(app, image.ID, "file://"+filePath, w)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return p.deploy(app, imageId, w)
+	return imageId, p.deploy(app, imageId, w)
 }
 
 func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer) error {
 	containers, err := listContainersByApp(a.GetName())
+	if err != nil {
+		return err
+	}
 	if len(containers) == 0 {
 		_, err = runCreateUnitsPipeline(w, a, 1, imageId)
 	} else {
@@ -579,15 +581,6 @@ func collection() *storage.Collection {
 		log.Errorf("Failed to connect to the database: %s", err)
 	}
 	return conn.Collection(name)
-}
-
-func (p *dockerProvisioner) DeployPipeline() *action.Pipeline {
-	actions := []*action.Action{
-		&app.ProvisionerDeploy,
-		&app.IncrementDeploy,
-	}
-	pipeline := action.NewPipeline(actions...)
-	return pipeline
 }
 
 // PlatformAdd build and push a new docker platform to register

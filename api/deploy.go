@@ -53,6 +53,12 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
 	}
 	writer := io.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
+	var user string
+	if t.IsAppToken() {
+		user = r.PostFormValue("user")
+	} else {
+		user = t.GetUserName()
+	}
 	err = app.Deploy(app.DeployOptions{
 		App:          instance,
 		Version:      version,
@@ -60,6 +66,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		File:         file,
 		ArchiveURL:   archiveURL,
 		OutputStream: writer,
+		User:         user,
 	})
 	if err == nil {
 		fmt.Fprintln(w, "\nOK")

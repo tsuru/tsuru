@@ -309,10 +309,10 @@ func (s *S) TestVersion(c *gocheck.C) {
 	app := NewFakeApp("free", "matos", 1)
 	p := NewFakeProvisioner()
 	p.Provision(app)
-	err := p.GitDeploy(app, "master", &buf)
+	_, err := p.GitDeploy(app, "master", &buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.Version(app), gocheck.Equals, "master")
-	err = p.GitDeploy(app, "1.0", &buf)
+	_, err = p.GitDeploy(app, "1.0", &buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.Version(app), gocheck.Equals, "1.0")
 }
@@ -339,7 +339,7 @@ func (s *S) TestGitDeploy(c *gocheck.C) {
 	app := NewFakeApp("soul", "arch", 1)
 	p := NewFakeProvisioner()
 	p.Provision(app)
-	err := p.GitDeploy(app, "1.0", &buf)
+	_, err := p.GitDeploy(app, "1.0", &buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(buf.String(), gocheck.Equals, "Git deploy called")
 	c.Assert(p.apps[app.GetName()].version, gocheck.Equals, "1.0")
@@ -349,7 +349,7 @@ func (s *S) TestGitDeployUnknownApp(c *gocheck.C) {
 	var buf bytes.Buffer
 	app := NewFakeApp("soul", "arch", 1)
 	p := NewFakeProvisioner()
-	err := p.GitDeploy(app, "1.0", &buf)
+	_, err := p.GitDeploy(app, "1.0", &buf)
 	c.Assert(err, gocheck.Equals, errNotProvisioned)
 }
 
@@ -359,7 +359,7 @@ func (s *S) TestGitDeployWithPreparedFailure(c *gocheck.C) {
 	app := NewFakeApp("soul", "arch", 1)
 	p := NewFakeProvisioner()
 	p.PrepareFailure("GitDeploy", err)
-	e := p.GitDeploy(app, "1.0", &buf)
+	_, e := p.GitDeploy(app, "1.0", &buf)
 	c.Assert(e, gocheck.NotNil)
 	c.Assert(e, gocheck.Equals, err)
 }
@@ -369,7 +369,7 @@ func (s *S) TestArchiveDeploy(c *gocheck.C) {
 	app := NewFakeApp("soul", "arch", 1)
 	p := NewFakeProvisioner()
 	p.Provision(app)
-	err := p.ArchiveDeploy(app, "https://s3.amazonaws.com/smt/archive.tar.gz", &buf)
+	_, err := p.ArchiveDeploy(app, "https://s3.amazonaws.com/smt/archive.tar.gz", &buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(buf.String(), gocheck.Equals, "Archive deploy called")
 	c.Assert(p.apps[app.GetName()].lastArchive, gocheck.Equals, "https://s3.amazonaws.com/smt/archive.tar.gz")
@@ -379,7 +379,7 @@ func (s *S) TestArchiveDeployUnknownApp(c *gocheck.C) {
 	var buf bytes.Buffer
 	app := NewFakeApp("soul", "arch", 1)
 	p := NewFakeProvisioner()
-	err := p.ArchiveDeploy(app, "https://s3.amazonaws.com/smt/archive.tar.gz", &buf)
+	_, err := p.ArchiveDeploy(app, "https://s3.amazonaws.com/smt/archive.tar.gz", &buf)
 	c.Assert(err, gocheck.Equals, errNotProvisioned)
 }
 
@@ -389,7 +389,7 @@ func (s *S) TestArchiveDeployWithPreparedFailure(c *gocheck.C) {
 	app := NewFakeApp("soul", "arch", 1)
 	p := NewFakeProvisioner()
 	p.PrepareFailure("ArchiveDeploy", err)
-	e := p.ArchiveDeploy(app, "https://s3.amazonaws.com/smt/archive.tar.gz", &buf)
+	_, e := p.ArchiveDeploy(app, "https://s3.amazonaws.com/smt/archive.tar.gz", &buf)
 	c.Assert(e, gocheck.NotNil)
 	c.Assert(e, gocheck.Equals, err)
 }
@@ -400,7 +400,7 @@ func (s *S) TestUploadDeploy(c *gocheck.C) {
 	app := NewFakeApp("soul", "arch", 1)
 	p := NewFakeProvisioner()
 	p.Provision(app)
-	err := p.UploadDeploy(app, file, &buf)
+	_, err := p.UploadDeploy(app, file, &buf)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(buf.String(), gocheck.Equals, "Upload deploy called")
 	c.Assert(p.apps[app.GetName()].lastFile, gocheck.Equals, file)
@@ -410,7 +410,7 @@ func (s *S) TestUploadDeployUnknownApp(c *gocheck.C) {
 	var buf bytes.Buffer
 	app := NewFakeApp("soul", "arch", 1)
 	p := NewFakeProvisioner()
-	err := p.UploadDeploy(app, nil, &buf)
+	_, err := p.UploadDeploy(app, nil, &buf)
 	c.Assert(err, gocheck.Equals, errNotProvisioned)
 }
 
@@ -420,7 +420,7 @@ func (s *S) TestUploadDeployWithPreparedFailure(c *gocheck.C) {
 	app := NewFakeApp("soul", "arch", 1)
 	p := NewFakeProvisioner()
 	p.PrepareFailure("UploadDeploy", err)
-	e := p.UploadDeploy(app, nil, &buf)
+	_, e := p.UploadDeploy(app, nil, &buf)
 	c.Assert(e, gocheck.NotNil)
 	c.Assert(e, gocheck.Equals, err)
 }
@@ -782,15 +782,6 @@ func (s *S) TestExecuteCommandOnce(c *gocheck.C) {
 	cmds := p.GetCmds("ls", app)
 	c.Assert(cmds, gocheck.HasLen, 1)
 	c.Assert(buf.String(), gocheck.Equals, string(output))
-}
-
-func (s *S) TestExecutedPipeline(c *gocheck.C) {
-	p := PipelineFakeProvisioner{FakeProvisioner: NewFakeProvisioner()}
-	c.Assert(p.ExecutedPipeline(), gocheck.Equals, false)
-	pipeline := p.DeployPipeline()
-	err := pipeline.Execute()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(p.ExecutedPipeline(), gocheck.Equals, true)
 }
 
 func (s *S) TestExtensiblePlatformAdd(c *gocheck.C) {

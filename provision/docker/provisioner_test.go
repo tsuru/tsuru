@@ -863,11 +863,6 @@ func (s *S) TestSwap(c *gocheck.C) {
 	c.Assert(rtesting.FakeRouter.HasRoute(app1.GetName(), "127.0.0.2"), gocheck.Equals, true)
 }
 
-func (s *S) TestDeployPipeline(c *gocheck.C) {
-	p := dockerProvisioner{}
-	c.Assert(p.DeployPipeline(), gocheck.NotNil)
-}
-
 func (s *S) TestProvisionerStart(c *gocheck.C) {
 	var p dockerProvisioner
 	conn, err := db.Conn()

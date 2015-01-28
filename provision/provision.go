@@ -12,7 +12,6 @@ import (
 	"io"
 	"net"
 
-	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 )
 
@@ -169,19 +168,19 @@ type CNameManager interface {
 
 // ArchiveDeployer is a provisioner that can deploy archives.
 type ArchiveDeployer interface {
-	ArchiveDeploy(app App, archiveURL string, w io.Writer) error
+	ArchiveDeploy(app App, archiveURL string, w io.Writer) (string, error)
 }
 
 // GitDeployer is a provisioner that can deploy the application from a Git
 // repository.
 type GitDeployer interface {
-	GitDeploy(app App, version string, w io.Writer) error
+	GitDeploy(app App, version string, w io.Writer) (string, error)
 }
 
 // UploadDeployer is a provisioner that can deploy the application from an
 // uploaded file.
 type UploadDeployer interface {
-	UploadDeploy(app App, file io.ReadCloser, w io.Writer) error
+	UploadDeploy(app App, file io.ReadCloser, w io.Writer) (string, error)
 }
 
 // Provisioner is the basic interface of this package.
@@ -252,12 +251,6 @@ type MessageProvisioner interface {
 // method that should be called when the app is started
 type InitializableProvisioner interface {
 	Initialize() error
-}
-
-// CustomizedDeployPipelineProvisioner is a provisioner with a customized
-// deploy pipeline.
-type CustomizedDeployPipelineProvisioner interface {
-	DeployPipeline() *action.Pipeline
 }
 
 // ExtensibleProvisioner is a provisioner where administrators can manage

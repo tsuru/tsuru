@@ -5,7 +5,6 @@
 package app
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 
@@ -609,95 +608,6 @@ func (s *S) TestProvisionAddUnitsBackward(c *gocheck.C) {
 
 func (s *S) TestProvisionAddUnitsMinParams(c *gocheck.C) {
 	c.Assert(provisionAddUnits.MinParams, gocheck.Equals, 1)
-}
-
-func (s *S) TestProvisionerDeployName(c *gocheck.C) {
-	c.Assert(ProvisionerDeploy.Name, gocheck.Equals, "provisioner-deploy")
-}
-
-func (s *S) TestProvisionerDeployMinParams(c *gocheck.C) {
-	c.Assert(ProvisionerDeploy.MinParams, gocheck.Equals, 2)
-}
-
-func (s *S) TestProvisionerDeployGitForward(c *gocheck.C) {
-	a := App{
-		Name:     "someApp",
-		Platform: "django",
-		Teams:    []string{s.team.Name},
-	}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
-	writer := &bytes.Buffer{}
-	opts := DeployOptions{App: &a, Version: "version"}
-	ctx := action.FWContext{Params: []interface{}{opts, writer}}
-	_, err = ProvisionerDeploy.Forward(ctx)
-	c.Assert(err, gocheck.IsNil)
-	logs := writer.String()
-	c.Assert(logs, gocheck.Equals, "Git deploy called")
-}
-
-func (s *S) TestProvisionerDeployArchiveForward(c *gocheck.C) {
-	a := App{
-		Name:     "someApp",
-		Platform: "django",
-		Teams:    []string{s.team.Name},
-	}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
-	writer := &bytes.Buffer{}
-	opts := DeployOptions{App: &a, ArchiveURL: "https://s3.amazonaws.com/smt/archive.tar.gz"}
-	ctx := action.FWContext{Params: []interface{}{opts, writer}}
-	_, err = ProvisionerDeploy.Forward(ctx)
-	c.Assert(err, gocheck.IsNil)
-	logs := writer.String()
-	c.Assert(logs, gocheck.Equals, "Archive deploy called")
-}
-
-func (s *S) TestProvisionerDeployParams(c *gocheck.C) {
-	ctx := action.FWContext{Params: []interface{}{""}}
-	_, err := ProvisionerDeploy.Forward(ctx)
-	c.Assert(err.Error(), gocheck.Equals, "First parameter must be DeployOptions")
-	ctx = action.FWContext{Params: []interface{}{DeployOptions{}, ""}}
-	_, err = ProvisionerDeploy.Forward(ctx)
-	c.Assert(err.Error(), gocheck.Equals, "Second parameter must be an io.Writer")
-}
-
-func (s *S) TestIncrementDeployName(c *gocheck.C) {
-	c.Assert(IncrementDeploy.Name, gocheck.Equals, "increment-deploy")
-}
-
-func (s *S) TestIncrementDeployMinParams(c *gocheck.C) {
-	c.Assert(IncrementDeploy.MinParams, gocheck.Equals, 1)
-}
-
-func (s *S) TestIncrementDeployForward(c *gocheck.C) {
-	a := App{
-		Name:     "otherapp",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
-	}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	writer := &bytes.Buffer{}
-	opts := DeployOptions{App: &a, Version: "version"}
-	ctx := action.FWContext{Params: []interface{}{opts, writer}}
-	_, err = IncrementDeploy.Forward(ctx)
-	c.Assert(err, gocheck.IsNil)
-	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
-	c.Assert(a.Deploys, gocheck.Equals, uint(1))
-}
-
-func (s *S) TestIncrementDeployParams(c *gocheck.C) {
-	ctx := action.FWContext{Params: []interface{}{""}}
-	_, err := IncrementDeploy.Forward(ctx)
-	c.Assert(err.Error(), gocheck.Equals, "First parameter must be DeployOptions")
 }
 
 func (s *S) TestSetAppIpForward(c *gocheck.C) {

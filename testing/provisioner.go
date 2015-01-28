@@ -439,52 +439,52 @@ func (p *FakeProvisioner) Swap(app1, app2 provision.App) error {
 	return nil
 }
 
-func (p *FakeProvisioner) GitDeploy(app provision.App, version string, w io.Writer) error {
+func (p *FakeProvisioner) GitDeploy(app provision.App, version string, w io.Writer) (string, error) {
 	if err := p.getError("GitDeploy"); err != nil {
-		return err
+		return "", err
 	}
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	pApp, ok := p.apps[app.GetName()]
 	if !ok {
-		return errNotProvisioned
+		return "", errNotProvisioned
 	}
 	w.Write([]byte("Git deploy called"))
 	pApp.version = version
 	p.apps[app.GetName()] = pApp
-	return nil
+	return "app-image", nil
 }
 
-func (p *FakeProvisioner) ArchiveDeploy(app provision.App, archiveURL string, w io.Writer) error {
+func (p *FakeProvisioner) ArchiveDeploy(app provision.App, archiveURL string, w io.Writer) (string, error) {
 	if err := p.getError("ArchiveDeploy"); err != nil {
-		return err
+		return "", err
 	}
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	pApp, ok := p.apps[app.GetName()]
 	if !ok {
-		return errNotProvisioned
+		return "", errNotProvisioned
 	}
 	w.Write([]byte("Archive deploy called"))
 	pApp.lastArchive = archiveURL
 	p.apps[app.GetName()] = pApp
-	return nil
+	return "app-image", nil
 }
 
-func (p *FakeProvisioner) UploadDeploy(app provision.App, file io.ReadCloser, w io.Writer) error {
+func (p *FakeProvisioner) UploadDeploy(app provision.App, file io.ReadCloser, w io.Writer) (string, error) {
 	if err := p.getError("UploadDeploy"); err != nil {
-		return err
+		return "", err
 	}
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	pApp, ok := p.apps[app.GetName()]
 	if !ok {
-		return errNotProvisioned
+		return "", errNotProvisioned
 	}
 	w.Write([]byte("Upload deploy called"))
 	pApp.lastFile = file
 	p.apps[app.GetName()] = pApp
-	return nil
+	return "app-image", nil
 }
 
 func (p *FakeProvisioner) Provision(app provision.App) error {
