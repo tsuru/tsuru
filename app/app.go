@@ -328,8 +328,10 @@ func Delete(app *App) error {
 			log.Errorf("Error trying to destroy app %s from db: %s", appName, err.Error())
 		}
 	}()
-	gandalfClient := gandalf.Client{Endpoint: repository.ServerURL()}
-	gandalfClient.RemoveRepository(appName)
+	if serverURL, err := repository.ServerURL(); err == nil {
+		gandalfClient := gandalf.Client{Endpoint: serverURL}
+		gandalfClient.RemoveRepository(appName)
+	}
 	token := app.Env["TSURU_APP_TOKEN"].Value
 	err := AuthScheme.Logout(token)
 	if err != nil {
