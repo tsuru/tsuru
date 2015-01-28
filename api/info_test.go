@@ -6,7 +6,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 
@@ -22,11 +21,11 @@ func (s *S) TestInfo(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
-	fmt.Println(recorder)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
 	expected := map[string]interface{}{
 		"autoscale": true,
+		"version":   Version,
 	}
 	var info map[string]interface{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &info)
