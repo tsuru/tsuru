@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/api"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/provision"
 	_ "github.com/tsuru/tsuru/provision/docker"
@@ -20,7 +21,7 @@ const defaultConfigPath = "/etc/tsuru/tsuru.conf"
 var configPath = defaultConfigPath
 
 func buildManager() *cmd.Manager {
-	m := cmd.NewManager("tsr", "0.9.1", "", os.Stdout, os.Stderr, os.Stdin, nil)
+	m := cmd.NewManager("tsr", api.Version, "", os.Stdout, os.Stderr, os.Stdin, nil)
 	m.Register(&tsrCommand{Command: &apiCmd{}})
 	m.Register(&tsrCommand{Command: tokenCmd{}})
 	registerProvisionersCommands(m)
