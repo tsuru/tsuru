@@ -962,3 +962,23 @@ Example:
 
     GET /deploys/12345
     {"App":"myapp","Commit":"e82nn93nd93mm12o2ueh83dhbd3iu112","Diff":"test_diff","Duration":10000000000,"Error":"","Id":"543c201d9e7aea6015618e9d","Timestamp":"2014-10-13T15:55:25-03:00"}
+
+1.10 Metadata
+-------------
+
+There is an endpoint to get metadata about tsuru api:
+
+    * Method: GET
+    * URI: /info
+    * Format: json
+
+Returns 200 in case of success, and json in the body of the response containing the metadata.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    GET /info HTTP/1.1
+    {"autoscale": true, "version": "1.0"}
