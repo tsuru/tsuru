@@ -161,7 +161,11 @@ func (u *User) AddKey(key Key) error {
 }
 
 func (u *User) addKeyGandalf(key *Key) error {
-	gandalfClient := gandalf.Client{Endpoint: repository.ServerURL()}
+	serverURL, err := repository.ServerURL()
+	if err != nil {
+		return err
+	}
+	gandalfClient := gandalf.Client{Endpoint: serverURL}
 	if err := gandalfClient.AddKey(u.Email, keyToMap([]Key{*key})); err != nil {
 		return fmt.Errorf("Failed to add key to git server: %s", err)
 	}
@@ -188,7 +192,11 @@ func (u *User) RemoveKey(key Key) error {
 }
 
 func (u *User) removeKeyGandalf(key *Key) error {
-	gandalfClient := gandalf.Client{Endpoint: repository.ServerURL()}
+	serverURL, err := repository.ServerURL()
+	if err != nil {
+		return err
+	}
+	gandalfClient := gandalf.Client{Endpoint: serverURL}
 	if err := gandalfClient.RemoveKey(u.Email, key.Name); err != nil {
 		return fmt.Errorf("Failed to remove the key from git server: %s", err)
 	}
@@ -236,13 +244,19 @@ func (u *User) AllowedApps() ([]string, error) {
 }
 
 func (u *User) ListKeys() (map[string]string, error) {
-	gURL := repository.ServerURL()
+	gURL, err := repository.ServerURL()
+	if err != nil {
+		return nil, err
+	}
 	c := gandalf.Client{Endpoint: gURL}
 	return c.ListKeys(u.Email)
 }
 
 func (u *User) CreateOnGandalf() error {
-	gURL := repository.ServerURL()
+	gURL, err := repository.ServerURL()
+	if err != nil {
+		return err
+	}
 	c := gandalf.Client{Endpoint: gURL}
 	if _, err := c.NewUser(u.Email, keyToMap(u.Keys)); err != nil {
 		return fmt.Errorf("Failed to create user in the git server: %s", err)
