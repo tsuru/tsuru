@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/tsuru/tsuru",
-	"GoVersion": "devel +ffe33f1f1f17 Tue Nov 25 15:41:33 2014 +1100",
+	"GoVersion": "devel +f4a2617 Tue Jan 27 21:14:42 2015 +0000",
 	"Packages": [
 		"./..."
 	],
@@ -127,16 +127,20 @@
 			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
 		},
 		{
-			"ImportPath": "gopkg.in/amz.v1/aws",
-			"Rev": "b757cfd07d59a59f454bcf1d8526b5f91a5a9b4d"
+			"ImportPath": "gopkg.in/amz.v2/aws",
+			"Rev": "e902e769a04d5c84fb6b61d2cd362bc8f973b787"
 		},
 		{
-			"ImportPath": "gopkg.in/amz.v1/ec2",
-			"Rev": "b757cfd07d59a59f454bcf1d8526b5f91a5a9b4d"
+			"ImportPath": "gopkg.in/amz.v2/ec2",
+			"Rev": "e902e769a04d5c84fb6b61d2cd362bc8f973b787"
 		},
 		{
 			"ImportPath": "gopkg.in/mgo.v2",
 			"Rev": "dc255bb679efa273b6544a03261c4053505498a4"
+		},
+		{
+			"ImportPath": "gopkg.in/v1/yaml",
+			"Rev": "4914593b9558e85597f08346c798aea8f6fb899f"
 		},
 		{
 			"ImportPath": "gopkg.in/yaml.v1",

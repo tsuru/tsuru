@@ -13,9 +13,9 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/iaas"
-	"gopkg.in/amz.v1/aws"
-	"gopkg.in/amz.v1/ec2"
-	"gopkg.in/amz.v1/ec2/ec2test"
+	"gopkg.in/amz.v2/aws"
+	"gopkg.in/amz.v2/ec2"
+	"gopkg.in/amz.v2/ec2/ec2test"
 	"launchpad.net/gocheck"
 )
 
