@@ -14,6 +14,19 @@ tsuru uses Hipache to route the requests to the containers. Routing information 
 stored by tsuru in the configured Redis server, Hipache will read this
 configuration directly from Redis.
 
+Adding repositories
+===================
+
+Let's start adding the repositories for tsuru which contain the Hipache package.
+
+.. highlight:: bash
+
+::
+
+    sudo apt-get update
+    sudo apt-get install python-software-properties
+    sudo apt-add-repository ppa:tsuru/ppa -y
+    sudo apt-get update
 
 Installing
 ==========
