@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -14,11 +14,13 @@ import (
 	"github.com/tsuru/tsuru/log"
 )
 
+var ErrGandalfDisabled = errors.New("git server is disabled")
+
 // ServerURL returns the URL to Gandalf API.
 func ServerURL() (string, error) {
 	server, err := config.GetString("git:api-server")
 	if err != nil {
-		return "", errors.New("git server is disabled")
+		return "", ErrGandalfDisabled
 	}
 	return server, nil
 }

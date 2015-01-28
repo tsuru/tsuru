@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -45,5 +45,5 @@ func (s *S) TestGetServerURLWithoutSetting(c *gocheck.C) {
 	config.Unset("git:api-server")
 	url, err := ServerURL()
 	c.Assert(url, gocheck.Equals, "")
-	c.Assert(err.Error(), gocheck.Equals, "git server is disabled")
+	c.Assert(err, gocheck.Equals, ErrGandalfDisabled)
 }
