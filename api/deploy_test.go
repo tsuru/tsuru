@@ -271,6 +271,48 @@ func (s *DeploySuite) TestDeployWithVersionAndArchiveURL(c *gocheck.C) {
 	c.Assert(message, gocheck.Equals, "you must specify either the version or the archive-url, but not both\n")
 }
 
+func (s *DeploySuite) TestDeployListNonAdmin(c *gocheck.C) {
+	user := &auth.User{Email: "nonadmin@nonadmin.com", Password: "123456"}
+	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
+	app.AuthScheme = nativeScheme
+	_, err := nativeScheme.Create(user)
+	c.Assert(err, gocheck.IsNil)
+	team := &auth.Team{Name: "newteam", Users: []string{user.Email}}
+	err = s.conn.Teams().Insert(team)
+	c.Assert(err, gocheck.IsNil)
+	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
+	c.Assert(err, gocheck.IsNil)
+	a := app.App{
+		Name:     "g1",
+		Platform: "zend",
+		Teams:    []string{team.Name},
+	}
+	err = s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	var result []Deploy
+	request, err := http.NewRequest("GET", "/deploys", nil)
+	c.Assert(err, gocheck.IsNil)
+	recorder := httptest.NewRecorder()
+	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
+	duration := time.Since(timestamp)
+	err = s.conn.Deploys().Insert(Deploy{App: "g1", Timestamp: timestamp.Add(time.Minute), Duration: duration})
+	c.Assert(err, gocheck.IsNil)
+	err = s.conn.Deploys().Insert(Deploy{App: "ge", Timestamp: timestamp.Add(time.Second), Duration: duration})
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Deploys().RemoveAll(nil)
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result[0].ID, gocheck.NotNil)
+	c.Assert(result[0].App, gocheck.Equals, "g1")
+	c.Assert(result[0].Timestamp.In(time.UTC), gocheck.DeepEquals, timestamp.Add(time.Minute).In(time.UTC))
+	c.Assert(result[0].Duration, gocheck.DeepEquals, duration)
+}
+
 func (s *DeploySuite) TestDeployList(c *gocheck.C) {
 	a := app.App{
 		Name:     "g1",
