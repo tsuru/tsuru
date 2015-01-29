@@ -1,29 +1,28 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 package api
 
 import (
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 
 	"github.com/tsuru/config"
-	tsuruTesting "github.com/tsuru/tsuru/testing"
+	"github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
 
 type HealthCheckSuite struct {
 	ts *httptest.Server
-	h  *tsuruTesting.TestHandler
+	h  *testing.TestHandler
 }
 
 var _ = gocheck.Suite(&HealthCheckSuite{})
 
 func (s *HealthCheckSuite) SetUpSuite(c *gocheck.C) {
-	s.h = &tsuruTesting.TestHandler{}
-	s.ts = tsuruTesting.StartGandalfTestServer(s.h)
+	s.h = &testing.TestHandler{}
+	s.ts = testing.StartGandalfTestServer(s.h)
 }
 
 func (s *HealthCheckSuite) TearDownSuite(c *gocheck.C) {
@@ -36,9 +35,10 @@ func (s *HealthCheckSuite) TestHealthCheck(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	healthcheck(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(body, gocheck.DeepEquals, []byte("WORKING"))
+	expected := `MongoDB: WORKING
+Gandalf: WORKING
+`
+	c.Assert(recorder.Body.String(), gocheck.Equals, expected)
 }
 
 func (s *HealthCheckSuite) TestHealthCheckMongoAccess(c *gocheck.C) {
@@ -49,9 +49,8 @@ func (s *HealthCheckSuite) TestHealthCheckMongoAccess(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	healthcheck(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusInternalServerError)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(string(body), gocheck.Equals, "Failed to connect to MongoDB: no reachable servers")
+	expected := "MongoDB: failed to connect - no reachable servers\n"
+	c.Assert(recorder.Body.String(), gocheck.Equals, expected)
 }
 
 func (s *HealthCheckSuite) TestHealthCheckGandalfAccess(c *gocheck.C) {
@@ -62,7 +61,8 @@ func (s *HealthCheckSuite) TestHealthCheckGandalfAccess(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	healthcheck(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusInternalServerError)
-	body, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(string(body), gocheck.Equals, "Failed to connect to Gandalf server, it's probably down.")
+	expected := `MongoDB: WORKING
+Gandalf: Failed to connect to Gandalf server, it's probably down.
+`
+	c.Assert(recorder.Body.String(), gocheck.Equals, expected)
 }

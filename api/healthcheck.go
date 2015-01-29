@@ -5,41 +5,48 @@
 package api
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 
-	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/repository"
 )
 
 func healthcheck(w http.ResponseWriter, r *http.Request) {
-
+	var buf bytes.Buffer
+	status := http.StatusOK
+	mongoDBStatus := "WORKING"
+	fmt.Fprint(&buf, "MongoDB: ")
 	conn, err := db.Conn()
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Failed to connect to MongoDB: %s", err)
-		return
+		status = http.StatusInternalServerError
+		mongoDBStatus = fmt.Sprintf("failed to connect - %s", err)
+	} else {
+		defer conn.Close()
+		err = conn.Apps().Database.Session.Ping()
+		if err != nil {
+			status = http.StatusInternalServerError
+			mongoDBStatus = fmt.Sprintf("failed to ping - %s", err)
+		}
 	}
-	defer conn.Close()
-	err = conn.Apps().Database.Session.Ping()
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Failed to ping MongoDB: %s", err)
-		return
+	fmt.Fprintln(&buf, mongoDBStatus)
+	server, err := repository.ServerURL()
+	if err != nil && err != repository.ErrGandalfDisabled {
+		status = http.StatusInternalServerError
+		fmt.Fprintf(&buf, "Gandalf: %s\n", err)
+	} else if err == nil {
+		gandalfStatus := "WORKING"
+		fmt.Fprint(&buf, "Gandalf: ")
+		c := gandalf.Client{Endpoint: server}
+		_, err = c.GetHealthCheck()
+		if err != nil {
+			gandalfStatus = fmt.Sprintf("%s", err)
+			status = http.StatusInternalServerError
+		}
+		fmt.Fprintln(&buf, gandalfStatus)
 	}
-	server, err := config.GetString("git:api-server")
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, "Failed to connect to Gandalf: %s", err)
-		return
-	}
-	c := gandalf.Client{Endpoint: server}
-	_, err = c.GetHealthCheck()
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, err.Error())
-		return
-	}
-	w.Write([]byte("WORKING"))
+	w.WriteHeader(status)
+	w.Write(buf.Bytes())
 }
