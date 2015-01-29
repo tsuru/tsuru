@@ -38,7 +38,7 @@ func healthcheck(w http.ResponseWriter, r *http.Request) {
 	_, err = c.GetHealthCheck()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintf(w, err.Error())
+		fmt.Fprint(w, err.Error())
 		return
 	}
 	w.Write([]byte("WORKING"))
