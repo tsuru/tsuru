@@ -21,7 +21,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-type deploy struct {
+type DeployData struct {
 	ID        bson.ObjectId `bson:"_id,omitempty"`
 	App       string
 	Timestamp time.Time
@@ -33,8 +33,8 @@ type deploy struct {
 	User      string
 }
 
-func (app *App) ListDeploys(u *auth.User) ([]deploy, error) {
-	return listDeploys(app, nil, u)
+func (app *App) ListDeploys(u *auth.User) ([]DeployData, error) {
+	return listDeploys(app, nil, u, 0, 0)
 }
 
 // ListDeploys returns the list of deploy that the given user has access to.
@@ -43,8 +43,8 @@ func (app *App) ListDeploys(u *auth.User) ([]deploy, error) {
 // list and a nil error.
 //
 // The deploy list can be filtered by app or service.
-func ListDeploys(app *App, s *service.Service, u *auth.User) ([]deploy, error) {
-	return listDeploys(app, s, u)
+func ListDeploys(app *App, s *service.Service, u *auth.User, skip, limit int) ([]DeployData, error) {
+	return listDeploys(app, s, u, skip, limit)
 }
 
 func userHasPermission(u *auth.User, appName string) bool {
@@ -60,7 +60,7 @@ func userHasPermission(u *auth.User, appName string) bool {
 	return false
 }
 
-func listDeploys(app *App, s *service.Service, u *auth.User) ([]deploy, error) {
+func listDeploys(app *App, s *service.Service, u *auth.User, skip, limit int) ([]DeployData, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -89,8 +89,15 @@ func listDeploys(app *App, s *service.Service, u *auth.User) ([]deploy, error) {
 	for key := range appsIntersection {
 		apps = append(apps, key)
 	}
-	var list []deploy
-	if err := conn.Deploys().Find(bson.M{"app": bson.M{"$in": apps}}).Sort("-timestamp").All(&list); err != nil {
+	var list []DeployData
+	query := conn.Deploys().Find(bson.M{"app": bson.M{"$in": apps}}).Sort("-timestamp")
+	if skip != 0 {
+		query = query.Skip(skip)
+	}
+	if limit != 0 {
+		query = query.Limit(limit)
+	}
+	if err := query.All(&list); err != nil {
 		return nil, err
 	}
 	return list, err
@@ -114,8 +121,8 @@ func listAppsByService(serviceName string) []string {
 	return apps
 }
 
-func GetDeploy(id string, u *auth.User) (*deploy, error) {
-	var dep deploy
+func GetDeploy(id string, u *auth.User) (*DeployData, error) {
+	var dep DeployData
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -130,8 +137,8 @@ func GetDeploy(id string, u *auth.User) (*deploy, error) {
 	return nil, errors.New("Deploy not found.")
 }
 
-func GetDiffInDeploys(d *deploy) (string, error) {
-	var list []deploy
+func GetDiffInDeploys(d *DeployData) (string, error) {
+	var list []DeployData
 	conn, err := db.Conn()
 	if err != nil {
 		return "", err
@@ -212,7 +219,7 @@ func saveDeployData(opts *DeployOptions, imageId, log string, duration time.Dura
 		return err
 	}
 	defer conn.Close()
-	deploy := deploy{
+	deploy := DeployData{
 		App:       opts.App.Name,
 		Timestamp: time.Now(),
 		Duration:  duration,

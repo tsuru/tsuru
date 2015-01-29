@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -97,7 +98,11 @@ func deploysList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
 	}
-	deploys, err := app.ListDeploys(a, s, u)
+	skip := r.URL.Query().Get("skip")
+	limit := r.URL.Query().Get("limit")
+	skipInt, _ := strconv.Atoi(skip)
+	limitInt, _ := strconv.Atoi(limit)
+	deploys, err := app.ListDeploys(a, s, u, skipInt, limitInt)
 	if err != nil {
 		return err
 	}

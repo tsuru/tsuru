@@ -39,7 +39,7 @@ func (s *S) TestListDeployByNonAdminUsers(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Apps().Remove(bson.M{"name": a2.Name})
-	deploys := []deploy{
+	deploys := []DeployData{
 		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
 		{App: "ge", Timestamp: time.Now()},
 	}
@@ -121,7 +121,7 @@ func (s *S) TestListDeployByAppAndService(c *gocheck.C) {
 		s.conn.Deploys().Insert(deploy)
 	}
 	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
-	result, err := ListDeploys(&a2, &srv, nil)
+	result, err := ListDeploys(&a2, &srv, nil, 0, 0)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result, gocheck.IsNil)
 }
@@ -133,12 +133,12 @@ func (s *S) TestListAppDeploys(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	insert := []interface{}{
-		deploy{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
-		deploy{App: "g1", Timestamp: time.Now()},
+		DeployData{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
+		DeployData{App: "g1", Timestamp: time.Now()},
 	}
 	s.conn.Deploys().Insert(insert...)
 	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
-	expected := []deploy{insert[1].(deploy), insert[0].(deploy)}
+	expected := []DeployData{insert[1].(DeployData), insert[0].(DeployData)}
 	deploys, err := a.ListDeploys(nil)
 	c.Assert(err, gocheck.IsNil)
 	for i := 0; i < 2; i++ {
@@ -165,13 +165,13 @@ func (s *S) TestListServiceDeploys(c *gocheck.C) {
 	defer s.conn.ServiceInstances().Remove(bson.M{"apps": instance.Apps})
 	defer s.conn.Services().Remove(bson.M{"_id": srv.Name})
 	insert := []interface{}{
-		deploy{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
-		deploy{App: "g1", Timestamp: time.Now()},
+		DeployData{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
+		DeployData{App: "g1", Timestamp: time.Now()},
 	}
 	s.conn.Deploys().Insert(insert...)
 	defer s.conn.Deploys().RemoveAll(bson.M{"apps": instance.Apps})
-	expected := []deploy{insert[1].(deploy), insert[0].(deploy)}
-	deploys, err := ListDeploys(nil, &srv, nil)
+	expected := []DeployData{insert[1].(DeployData), insert[0].(DeployData)}
+	deploys, err := ListDeploys(nil, &srv, nil, 0, 0)
 	c.Assert(err, gocheck.IsNil)
 	for i := 0; i < 2; i++ {
 		ts := expected[i].Timestamp
@@ -212,19 +212,62 @@ func (s *S) TestListAllDeploys(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.conn.Deploys().RemoveAll(nil)
 	insert := []interface{}{
-		deploy{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
-		deploy{App: "ge", Timestamp: time.Now()},
+		DeployData{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
+		DeployData{App: "ge", Timestamp: time.Now()},
 	}
 	s.conn.Deploys().Insert(insert...)
 	defer s.conn.Deploys().RemoveAll(nil)
-	expected := []deploy{insert[1].(deploy), insert[0].(deploy)}
-	deploys, err := ListDeploys(nil, nil, user)
+	expected := []DeployData{insert[1].(DeployData), insert[0].(DeployData)}
+	deploys, err := ListDeploys(nil, nil, user, 0, 0)
 	c.Assert(err, gocheck.IsNil)
 	for i := 0; i < 2; i++ {
 		ts := expected[i].Timestamp
 		expected[i].Timestamp = time.Date(ts.Year(), ts.Month(), ts.Day(), ts.Hour(), ts.Minute(), ts.Second(), 0, time.UTC)
 		ts = deploys[i].Timestamp
 		deploys[i].Timestamp = time.Date(ts.Year(), ts.Month(), ts.Day(), ts.Hour(), ts.Minute(), ts.Second(), 0, time.UTC)
+		expected[i].ID = deploys[i].ID
+	}
+	c.Assert(deploys, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestListAllDeploysSkipAndLimit(c *gocheck.C) {
+	user := &auth.User{Email: "user@user.com", Password: "123456"}
+	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
+	AuthScheme = nativeScheme
+	_, err := nativeScheme.Create(user)
+	c.Assert(err, gocheck.IsNil)
+	defer user.Delete()
+	team := &auth.Team{Name: "team", Users: []string{user.Email}}
+	err = s.conn.Teams().Insert(team)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Teams().Remove(team)
+	a := App{
+		Name:     "app1",
+		Platform: "zend",
+		Teams:    []string{team.Name},
+	}
+	err = s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.conn.Deploys().RemoveAll(nil)
+	insert := []interface{}{
+		DeployData{App: "app1", Commit: "v1", Timestamp: time.Now().Add(-30 * time.Second)},
+		DeployData{App: "app1", Commit: "v2", Timestamp: time.Now().Add(-20 * time.Second)},
+		DeployData{App: "app1", Commit: "v3", Timestamp: time.Now().Add(-10 * time.Second)},
+		DeployData{App: "app1", Commit: "v4", Timestamp: time.Now()},
+	}
+	s.conn.Deploys().Insert(insert...)
+	defer s.conn.Deploys().RemoveAll(nil)
+	expected := []DeployData{insert[2].(DeployData), insert[1].(DeployData)}
+	deploys, err := ListDeploys(nil, nil, user, 1, 2)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(deploys, gocheck.HasLen, 2)
+	for i := 0; i < len(deploys); i++ {
+		ts := expected[i].Timestamp
+		newTs := time.Date(ts.Year(), ts.Month(), ts.Day(), ts.Hour(), ts.Minute(), ts.Second(), 0, time.UTC)
+		expected[i].Timestamp = newTs
+		ts = deploys[i].Timestamp
+		deploys[i].Timestamp = newTs
 		expected[i].ID = deploys[i].ID
 	}
 	c.Assert(deploys, gocheck.DeepEquals, expected)
@@ -259,13 +302,13 @@ func (s *S) TestListDeployByAppAndUser(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.conn.Deploys().RemoveAll(nil)
 	insert := []interface{}{
-		deploy{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
-		deploy{App: "ge", Timestamp: time.Now()},
+		DeployData{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
+		DeployData{App: "ge", Timestamp: time.Now()},
 	}
 	s.conn.Deploys().Insert(insert...)
 	defer s.conn.Deploys().RemoveAll(nil)
-	expected := []deploy{insert[1].(deploy)}
-	deploys, err := ListDeploys(&a, nil, user)
+	expected := []DeployData{insert[1].(DeployData)}
+	deploys, err := ListDeploys(&a, nil, user, 0, 0)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(expected[0].App, gocheck.DeepEquals, deploys[0].App)
 	c.Assert(len(expected), gocheck.Equals, len(deploys))
@@ -291,7 +334,7 @@ func (s *S) TestGetDeploy(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.conn.Deploys().RemoveAll(nil)
-	newDeploy := deploy{ID: bson.NewObjectId(), App: "g1", Timestamp: time.Now()}
+	newDeploy := DeployData{ID: bson.NewObjectId(), App: "g1", Timestamp: time.Now()}
 	err = s.conn.Deploys().Insert(&newDeploy)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Deploys().Remove(bson.M{"name": newDeploy.App})
@@ -321,7 +364,7 @@ func (s *S) TestGetDeployWithoutAccess(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.conn.Deploys().RemoveAll(nil)
-	newDeploy := deploy{ID: bson.NewObjectId(), App: "g1", Timestamp: time.Now()}
+	newDeploy := DeployData{ID: bson.NewObjectId(), App: "g1", Timestamp: time.Now()}
 	err = s.conn.Deploys().Insert(&newDeploy)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Deploys().Remove(bson.M{"name": newDeploy.App})
@@ -339,8 +382,8 @@ func (s *S) TestGetDeployNotFound(c *gocheck.C) {
 
 func (s *S) TestGetDiffInDeploys(c *gocheck.C) {
 	s.conn.Deploys().RemoveAll(nil)
-	myDeploy := deploy{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second), Commit: "545b1904af34458704e2aa06ff1aaffad5289f8g"}
-	deploys := []deploy{
+	myDeploy := DeployData{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second), Commit: "545b1904af34458704e2aa06ff1aaffad5289f8g"}
+	deploys := []DeployData{
 		{App: "ge", Timestamp: time.Now(), Commit: "hwed834hf8y34h8fhn8rnr823nr238runh23x"},
 		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second * 2), Commit: "545b1904af34458704e2aa06ff1aaffad5289f8f"},
 		myDeploy,
@@ -365,7 +408,7 @@ func (s *S) TestGetDiffInDeploys(c *gocheck.C) {
 
 func (s *S) TestGetDiffInDeploysWithOneCommit(c *gocheck.C) {
 	s.conn.Deploys().RemoveAll(nil)
-	lastDeploy := deploy{App: "g1", Timestamp: time.Now(), Commit: "1b970b076bbb30d708e262b402d4e31910e1dc10"}
+	lastDeploy := DeployData{App: "g1", Timestamp: time.Now(), Commit: "1b970b076bbb30d708e262b402d4e31910e1dc10"}
 	s.conn.Deploys().Insert(lastDeploy)
 	defer s.conn.Deploys().RemoveAll(nil)
 	expected := "test_diff"
