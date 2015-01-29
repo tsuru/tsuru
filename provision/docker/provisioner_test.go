@@ -1223,3 +1223,33 @@ func (s *S) TestAddContainersWithHostFailsUnlessRestartAfter(c *gocheck.C) {
 	_, err = addContainersWithHost(&buf, app, 1)
 	c.Assert(err, gocheck.ErrorMatches, `couldn't execute restart:after hook "will fail"\(.+?\): unexpected exit code: 9`)
 }
+
+func (s *S) TestSshToAnAppByContainerID(c *gocheck.C) {
+	err := newImage("tsuru/app-almah", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	var p dockerProvisioner
+	app := testing.NewFakeApp("almah", "static", 1)
+	cont, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(cont)
+	buf := safe.NewBuffer([]byte("echo teste"))
+	conn := &fakeConn{buf}
+	c.Assert(err, gocheck.IsNil)
+	err = p.Ssh(app, conn, 10, 10, cont.ID)
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestSshToAnAppByAppName(c *gocheck.C) {
+	err := newImage("tsuru/app-almah", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	var p dockerProvisioner
+	app := testing.NewFakeApp("almah", "static", 1)
+	cont, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(cont)
+	buf := safe.NewBuffer([]byte("echo teste"))
+	conn := &fakeConn{buf}
+	c.Assert(err, gocheck.IsNil)
+	err = p.Ssh(app, conn, 10, 10)
+	c.Assert(err, gocheck.IsNil)
+}

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/url"
 	"sync"
 
@@ -629,4 +630,20 @@ func (p *dockerProvisioner) RegisterUnit(unit provision.Unit) error {
 		return err
 	}
 	return checkContainer(*container, nil)
+}
+
+func (p *dockerProvisioner) Ssh(app provision.App, conn net.Conn, width, height int, args ...string) error {
+	var (
+		c   *container
+		err error
+	)
+	if len(args) > 0 {
+		c, err = getContainer(args[0])
+	} else {
+		c, err = getOneContainerByAppName(app.GetName())
+	}
+	if err != nil {
+		return err
+	}
+	return c.shell(conn, conn, conn, pty{width: width, height: height})
 }

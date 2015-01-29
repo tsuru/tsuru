@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"sync"
 	"time"
 
@@ -832,6 +833,10 @@ func (p *FakeProvisioner) RegisterUnit(unit provision.Unit) error {
 		}
 	}
 	return errors.New("unit not found")
+}
+
+func (p *FakeProvisioner) Ssh(app provision.App, conn net.Conn, width, height int, args ...string) error {
+	return nil
 }
 
 type PipelineFakeProvisioner struct {

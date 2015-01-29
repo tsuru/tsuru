@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
@@ -238,6 +239,9 @@ type Provisioner interface {
 
 	// Register a unit after the container has been created or restarted.
 	RegisterUnit(Unit) error
+
+	// Ssh into a container.
+	Ssh(app App, conn net.Conn, width, height int, args ...string) error
 }
 
 type MessageProvisioner interface {
