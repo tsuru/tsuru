@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"time"
 
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/service"
@@ -15,6 +16,79 @@ import (
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
+
+func (s *S) TestListDeployByNonAdminUsers(c *gocheck.C) {
+	user := &auth.User{Email: "user@user.com", Password: "123456"}
+	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
+	AuthScheme = nativeScheme
+	_, err := nativeScheme.Create(user)
+	c.Assert(err, gocheck.IsNil)
+	defer nativeScheme.Remove(user)
+	team := &auth.Team{Name: "someteam", Users: []string{user.Email}}
+	err = s.conn.Teams().Insert(team)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Teams().RemoveId("someteam")
+	s.conn.Deploys().RemoveAll(nil)
+	a := App{Name: "g1", Teams: []string{team.Name}}
+	err = s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	a2 := App{Name: "ge"}
+	err = s.conn.Apps().Insert(a2)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a2.Name})
+	deploys := []deploy{
+		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
+		{App: "ge", Timestamp: time.Now()},
+	}
+	for _, deploy := range deploys {
+		s.conn.Deploys().Insert(deploy)
+	}
+	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
+	result, err := ListDeploys(nil, nil, user)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.HasLen, 1)
+	c.Assert(result[0].App, gocheck.Equals, "g1")
+}
+
+func (s *S) TestListDeployByAdminUsers(c *gocheck.C) {
+	user := &auth.User{Email: "user@user.com", Password: "123456"}
+	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
+	AuthScheme = nativeScheme
+	_, err := nativeScheme.Create(user)
+	c.Assert(err, gocheck.IsNil)
+	defer nativeScheme.Remove(user)
+	team := &auth.Team{Name: "adminteam", Users: []string{user.Email}}
+	err = s.conn.Teams().Insert(team)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Teams().RemoveId("adminteam")
+	s.conn.Deploys().RemoveAll(nil)
+	adminTeamName, err := config.GetString("admin-team")
+	c.Assert(err, gocheck.IsNil)
+	config.Set("admin-team", "adminteam")
+	defer config.Set("admin-team", adminTeamName)
+	a := App{Name: "g1", Teams: []string{team.Name}}
+	err = s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	a2 := App{Name: "ge"}
+	err = s.conn.Apps().Insert(a2)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Apps().Remove(bson.M{"name": a2.Name})
+	deploys := []deploy{
+		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
+		{App: "ge", Timestamp: time.Now()},
+	}
+	for _, deploy := range deploys {
+		s.conn.Deploys().Insert(deploy)
+	}
+	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
+	result, err := ListDeploys(nil, nil, user)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.HasLen, 2)
+	c.Assert(result[0].App, gocheck.Equals, "ge")
+	c.Assert(result[1].App, gocheck.Equals, "g1")
+}
 
 func (s *S) TestListDeployByAppAndService(c *gocheck.C) {
 	s.conn.Deploys().RemoveAll(nil)

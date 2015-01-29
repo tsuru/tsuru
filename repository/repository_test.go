@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -31,20 +31,19 @@ func (s *S) TestGetPath(c *gocheck.C) {
 	c.Assert(path, gocheck.Equals, expected)
 }
 
-func (s *S) TestGetServerUri(c *gocheck.C) {
+func (s *S) TestGetServerURL(c *gocheck.C) {
 	server, err := config.GetString("git:api-server")
 	c.Assert(err, gocheck.IsNil)
-	uri := ServerURL()
-	c.Assert(uri, gocheck.Equals, server)
+	url, err := ServerURL()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(url, gocheck.Equals, server)
 }
 
-func (s *S) TestGetServerUriWithoutSetting(c *gocheck.C) {
+func (s *S) TestGetServerURLWithoutSetting(c *gocheck.C) {
 	old, _ := config.Get("git:api-server")
 	defer config.Set("git:api-server", old)
 	config.Unset("git:api-server")
-	defer func() {
-		r := recover()
-		c.Assert(r, gocheck.NotNil)
-	}()
-	ServerURL()
+	url, err := ServerURL()
+	c.Assert(url, gocheck.Equals, "")
+	c.Assert(err, gocheck.Equals, ErrGandalfDisabled)
 }

@@ -80,8 +80,7 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 		if rollbackErr != nil {
 			log.Errorf("error trying to rollback user creation: %s", rollbackErr.Error())
 		}
-		gURL := repository.ServerURL()
-		log.Errorf("error trying to create user %q in gandalf (%s): %s", u.Email, gURL, err.Error())
+		log.Errorf("error trying to create user %q in gandalf: %s", u.Email, err)
 		return err
 	}
 	rec.Log(u.Email, "create-user")
@@ -255,7 +254,10 @@ func addUserToTeamInDatabase(user *auth.User, team *auth.Team) error {
 }
 
 func addUserToTeamInGandalf(user *auth.User, t *auth.Team) error {
-	gURL := repository.ServerURL()
+	gURL, err := repository.ServerURL()
+	if err != nil {
+		return err
+	}
 	alwdApps, err := t.AllowedApps()
 	if err != nil {
 		return fmt.Errorf("Failed to obtain allowed apps to grant: %s", err)
@@ -312,7 +314,10 @@ func removeUserFromTeamInDatabase(u *auth.User, team *auth.Team) error {
 }
 
 func removeUserFromTeamInGandalf(u *auth.User, team *auth.Team) error {
-	gURL := repository.ServerURL()
+	gURL, err := repository.ServerURL()
+	if err != nil {
+		return err
+	}
 	teamApps, err := team.AllowedApps()
 	if err != nil {
 		return err
@@ -478,7 +483,10 @@ func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	gURL := repository.ServerURL()
+	gURL, err := repository.ServerURL()
+	if err != nil {
+		return err
+	}
 	c := gandalf.Client{Endpoint: gURL}
 	alwdApps, err := u.AllowedApps()
 	if err != nil {

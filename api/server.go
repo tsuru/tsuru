@@ -21,6 +21,8 @@ import (
 	"github.com/tsuru/tsuru/router"
 )
 
+const Version = "0.9.1"
+
 func getProvisioner() (string, error) {
 	provisioner, err := config.GetString("provisioner")
 	if provisioner == "" {
@@ -141,7 +143,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Put", "/autoscale/{app}/enable", authorizationRequiredHandler(autoScaleEnable))
 	m.Add("Put", "/autoscale/{app}/disable", authorizationRequiredHandler(autoScaleDisable))
 
-	m.Add("Get", "/deploys", AdminRequiredHandler(deploysList))
+	m.Add("Get", "/deploys", authorizationRequiredHandler(deploysList))
 	m.Add("Get", "/deploys/{deploy}", authorizationRequiredHandler(deployInfo))
 
 	m.Add("Get", "/platforms", authorizationRequiredHandler(platformList))

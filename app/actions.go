@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -160,20 +160,24 @@ var createRepository = action.Action{
 		default:
 			return nil, errors.New("First parameter must be *App.")
 		}
-		gURL := repository.ServerURL()
+		gURL, err := repository.ServerURL()
+		if err != nil {
+			return nil, err
+		}
 		var users []string
 		for _, t := range app.GetTeams() {
 			users = append(users, t.Users...)
 		}
 		c := gandalf.Client{Endpoint: gURL}
-		_, err := c.NewRepository(app.Name, users, false)
+		_, err = c.NewRepository(app.Name, users, false)
 		return app, err
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.FWResult.(*App)
-		gURL := repository.ServerURL()
-		c := gandalf.Client{Endpoint: gURL}
-		c.RemoveRepository(app.Name)
+		if gURL, err := repository.ServerURL(); err == nil {
+			c := gandalf.Client{Endpoint: gURL}
+			c.RemoveRepository(app.Name)
+		}
 	},
 	MinParams: 1,
 }

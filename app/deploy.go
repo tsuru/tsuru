@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -139,7 +139,11 @@ func GetDiffInDeploys(d *deploy) (string, error) {
 	if len(list) < 2 {
 		return "The deployment must have at least two commits for the diff.", nil
 	}
-	gandalfClient := gandalf.Client{Endpoint: repository.ServerURL()}
+	serverURL, err := repository.ServerURL()
+	if err != nil {
+		return "", err
+	}
+	gandalfClient := gandalf.Client{Endpoint: serverURL}
 	diffOutput, err := gandalfClient.GetDiff(d.App, list[1].Commit, list[0].Commit)
 	if err != nil {
 		return "", fmt.Errorf("Caught error getting repository metadata: %s", err.Error())

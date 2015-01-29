@@ -11,8 +11,8 @@ import (
 
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
-	"gopkg.in/amz.v1/aws"
-	"gopkg.in/amz.v1/ec2"
+	"gopkg.in/amz.v2/aws"
+	"gopkg.in/amz.v2/ec2"
 )
 
 const (
@@ -122,6 +122,8 @@ func (i *EC2IaaS) CreateMachine(params map[string]string) (*iaas.Machine, error)
 	if !ok {
 		return nil, fmt.Errorf("type param required")
 	}
+	optimized, _ := params["ebs-optimized"]
+	ebsOptimized, _ := strconv.ParseBool(optimized)
 	userData, err := i.base.ReadUserData()
 	if err != nil {
 		return nil, err
@@ -134,6 +136,7 @@ func (i *EC2IaaS) CreateMachine(params map[string]string) (*iaas.Machine, error)
 		MinCount:     1,
 		MaxCount:     1,
 		KeyName:      keyName,
+		EBSOptimized: ebsOptimized,
 	}
 	securityGroup, ok := params["securityGroup"]
 	if ok {
