@@ -22,15 +22,16 @@ import (
 )
 
 type DeployData struct {
-	ID        bson.ObjectId `bson:"_id,omitempty"`
-	App       string
-	Timestamp time.Time
-	Duration  time.Duration
-	Commit    string
-	Error     string
-	Image     string
-	Log       string
-	User      string
+	ID          bson.ObjectId `bson:"_id,omitempty"`
+	App         string
+	Timestamp   time.Time
+	Duration    time.Duration
+	Commit      string
+	Error       string
+	Image       string
+	Log         string
+	User        string
+	CanRollback bool
 }
 
 func (app *App) ListDeploys(u *auth.User) ([]DeployData, error) {
@@ -99,6 +100,17 @@ func listDeploys(app *App, s *service.Service, u *auth.User, skip, limit int) ([
 	}
 	if err := query.All(&list); err != nil {
 		return nil, err
+	}
+	validImages := set{}
+	for _, appName := range apps {
+		imgs, err := Provisioner.ValidAppImages(appName)
+		if err != nil {
+			return nil, err
+		}
+		validImages.Add(imgs...)
+	}
+	for i := range list {
+		list[i].CanRollback = validImages.Includes(list[i].Image)
 	}
 	return list, err
 }

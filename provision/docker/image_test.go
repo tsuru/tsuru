@@ -244,6 +244,20 @@ func (s *S) TestListAppImages(c *gocheck.C) {
 	c.Assert(images, gocheck.DeepEquals, []string{"tsuru/app-myapp:v1", "tsuru/app-myapp:v2"})
 }
 
+func (s *S) TestValidListAppImages(c *gocheck.C) {
+	config.Set("docker:image-history-size", 2)
+	defer config.Unset("docker:image-history-size")
+	err := appendAppImageName("myapp", "tsuru/app-myapp:v1")
+	c.Assert(err, gocheck.IsNil)
+	err = appendAppImageName("myapp", "tsuru/app-myapp:v2")
+	c.Assert(err, gocheck.IsNil)
+	err = appendAppImageName("myapp", "tsuru/app-myapp:v3")
+	c.Assert(err, gocheck.IsNil)
+	images, err := listValidAppImages("myapp")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(images, gocheck.DeepEquals, []string{"tsuru/app-myapp:v2", "tsuru/app-myapp:v3"})
+}
+
 func (s *S) TestPlatformImageName(c *gocheck.C) {
 	platName := platformImageName("python")
 	c.Assert(platName, gocheck.Equals, "tsuru/python")

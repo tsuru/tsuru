@@ -839,6 +839,13 @@ func (p *FakeProvisioner) Ssh(app provision.App, conn net.Conn, width, height in
 	return nil
 }
 
+func (p *FakeProvisioner) ValidAppImages(appName string) ([]string, error) {
+	if err := p.getError("ValidAppImages"); err != nil {
+		return nil, err
+	}
+	return []string{"app-image-old", "app-image"}, nil
+}
+
 type PipelineFakeProvisioner struct {
 	*FakeProvisioner
 	executedPipeline bool

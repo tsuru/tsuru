@@ -8,8 +8,15 @@ var none struct{}
 
 type set map[string]struct{}
 
-func (s set) Add(value string) {
-	s[value] = none
+func (s set) Add(value ...string) {
+	for _, v := range value {
+		s[v] = none
+	}
+}
+
+func (s set) Includes(v string) bool {
+	_, ok := s[v]
+	return ok
 }
 
 func (s set) Intersection(other set) set {

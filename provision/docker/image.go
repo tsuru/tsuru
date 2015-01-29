@@ -158,6 +158,32 @@ func listAppImages(appName string) ([]string, error) {
 	return imgs.Images, nil
 }
 
+func listValidAppImages(appName string) ([]string, error) {
+	coll, err := appImagesColl()
+	if err != nil {
+		return nil, err
+	}
+	defer coll.Close()
+	var img appImages
+	err = coll.FindId(appName).One(&img)
+	if err != nil {
+		return nil, err
+	}
+	historySize := imageHistorySize()
+	if len(img.Images) > historySize {
+		img.Images = img.Images[len(img.Images)-historySize:]
+	}
+	return img.Images, nil
+}
+
+func imageHistorySize() int {
+	imgHistorySize, _ := config.GetInt("docker:image-history-size")
+	if imgHistorySize == 0 {
+		imgHistorySize = 10
+	}
+	return imgHistorySize
+}
+
 func deleteAllAppImageNames(appName string) error {
 	coll, err := appImagesColl()
 	if err != nil {

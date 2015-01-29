@@ -12,7 +12,6 @@ import (
 	"sync"
 
 	"github.com/fsouza/go-dockerclient"
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
@@ -345,10 +344,7 @@ var updateAppImage = action.Action{
 				return nil, fmt.Errorf("unable to save image name: %s", err.Error())
 			}
 		}
-		imgHistorySize, _ := config.GetInt("docker:image-history-size")
-		if imgHistorySize == 0 {
-			imgHistorySize = 10
-		}
+		imgHistorySize := imageHistorySize()
 		allImages, err := listAppImages(args.app.GetName())
 		if err != nil {
 			log.Errorf("Couldn't list images for cleaning: %s", err.Error())

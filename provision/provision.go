@@ -241,6 +241,10 @@ type Provisioner interface {
 
 	// Ssh into a container.
 	Ssh(app App, conn net.Conn, width, height int, args ...string) error
+
+	// Returns list of valid image names for app, these can be used for
+	// rollback.
+	ValidAppImages(string) ([]string, error)
 }
 
 type MessageProvisioner interface {

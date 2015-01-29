@@ -664,3 +664,7 @@ func (p *dockerProvisioner) Ssh(app provision.App, conn net.Conn, width, height 
 	}
 	return c.shell(conn, conn, conn, pty{width: width, height: height})
 }
+
+func (p *dockerProvisioner) ValidAppImages(appName string) ([]string, error) {
+	return listValidAppImages(appName)
+}

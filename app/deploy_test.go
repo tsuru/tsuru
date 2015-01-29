@@ -213,11 +213,12 @@ func (s *S) TestListAllDeploys(c *gocheck.C) {
 	s.conn.Deploys().RemoveAll(nil)
 	insert := []interface{}{
 		DeployData{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
-		DeployData{App: "ge", Timestamp: time.Now()},
+		DeployData{App: "ge", Timestamp: time.Now(), Image: "app-image"},
 	}
 	s.conn.Deploys().Insert(insert...)
 	defer s.conn.Deploys().RemoveAll(nil)
 	expected := []DeployData{insert[1].(DeployData), insert[0].(DeployData)}
+	expected[0].CanRollback = true
 	deploys, err := ListDeploys(nil, nil, user, 0, 0)
 	c.Assert(err, gocheck.IsNil)
 	for i := 0; i < 2; i++ {
