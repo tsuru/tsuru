@@ -9,23 +9,32 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/repository"
+	"github.com/tsuru/tsuru/router"
 )
+
+const hcOk = "WORKING"
+
+type healthchecker interface {
+	Healthcheck() error
+}
 
 func healthcheck(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("check") == "all" {
 		fullHealthcheck(w, r)
 		return
 	}
-	w.Write([]byte("WORKING"))
+	w.Write([]byte(hcOk))
 }
 
 func fullHealthcheck(w http.ResponseWriter, r *http.Request) {
 	var buf bytes.Buffer
 	status := http.StatusOK
-	mongoDBStatus := "WORKING"
+	mongoDBStatus := hcOk
 	fmt.Fprint(&buf, "MongoDB: ")
 	conn, err := db.Conn()
 	if err != nil {
@@ -45,7 +54,7 @@ func fullHealthcheck(w http.ResponseWriter, r *http.Request) {
 		status = http.StatusInternalServerError
 		fmt.Fprintf(&buf, "Gandalf: %s\n", err)
 	} else if err == nil {
-		gandalfStatus := "WORKING"
+		gandalfStatus := hcOk
 		fmt.Fprint(&buf, "Gandalf: ")
 		c := gandalf.Client{Endpoint: server}
 		_, err = c.GetHealthCheck()
@@ -54,6 +63,31 @@ func fullHealthcheck(w http.ResponseWriter, r *http.Request) {
 			status = http.StatusInternalServerError
 		}
 		fmt.Fprintln(&buf, gandalfStatus)
+	}
+	if routers, err := config.Get("routers"); err == nil {
+		if routersMap, ok := routers.(map[string]interface{}); ok {
+			for routerName := range routersMap {
+				r, _ := router.Get(routerName)
+				if hrouter, ok := r.(healthchecker); ok {
+					fmt.Fprintf(&buf, "Router %q: ", routerName)
+					routerStatus := hcOk
+					if err := hrouter.Healthcheck(); err != nil {
+						status = http.StatusInternalServerError
+						routerStatus = fmt.Sprintf("fail - %s", err)
+					}
+					fmt.Fprintln(&buf, routerStatus)
+				}
+			}
+		}
+	}
+	if hprovisioner, ok := app.Provisioner.(healthchecker); ok {
+		fmt.Fprint(&buf, "Provisioner: ")
+		provisionerStatus := hcOk
+		if err := hprovisioner.Healthcheck(); err != nil {
+			status = http.StatusInternalServerError
+			provisionerStatus = fmt.Sprintf("fail - %s", err)
+		}
+		fmt.Fprintln(&buf, provisionerStatus)
 	}
 	w.WriteHeader(status)
 	w.Write(buf.Bytes())
