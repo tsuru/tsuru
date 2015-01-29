@@ -12,3 +12,4 @@ Managing
     create-platform
     backup
     segregate-scheduler
+    upgrading-docker

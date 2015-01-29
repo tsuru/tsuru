@@ -15,6 +15,8 @@ Clusters
 A cluster is a named group of nodes. `tsuru API` has a scheduler algorithm that
 distributes applications intelligently across a cluster of nodes.
 
+.. _concepts_nodes:
+
 Nodes
 -----
 
