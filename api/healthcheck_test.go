@@ -35,17 +35,26 @@ func (s *HealthCheckSuite) TestHealthCheck(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	healthcheck(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), gocheck.Equals, "WORKING")
+}
+
+func (s *HealthCheckSuite) TestFullHealthCheck(c *gocheck.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/healthcheck?check=all", nil)
+	c.Assert(err, gocheck.IsNil)
+	healthcheck(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
 	expected := `MongoDB: WORKING
 Gandalf: WORKING
 `
 	c.Assert(recorder.Body.String(), gocheck.Equals, expected)
 }
 
-func (s *HealthCheckSuite) TestHealthCheckMongoAccess(c *gocheck.C) {
+func (s *HealthCheckSuite) TestFullHealthCheckMongoAccess(c *gocheck.C) {
 	config.Set("database:url", "localhost:34456")
 	defer config.Unset("database:url")
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/healthcheck", nil)
+	request, err := http.NewRequest("GET", "/healthcheck?check=all", nil)
 	c.Assert(err, gocheck.IsNil)
 	healthcheck(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusInternalServerError)
@@ -53,11 +62,11 @@ func (s *HealthCheckSuite) TestHealthCheckMongoAccess(c *gocheck.C) {
 	c.Assert(recorder.Body.String(), gocheck.Equals, expected)
 }
 
-func (s *HealthCheckSuite) TestHealthCheckGandalfAccess(c *gocheck.C) {
+func (s *HealthCheckSuite) TestFullHealthCheckGandalfAccess(c *gocheck.C) {
 	config.Set("git:api-server", "localhost:0")
 	defer config.Unset("git:api-server")
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/healthcheck", nil)
+	request, err := http.NewRequest("GET", "/healthcheck?check=all", nil)
 	c.Assert(err, gocheck.IsNil)
 	healthcheck(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusInternalServerError)

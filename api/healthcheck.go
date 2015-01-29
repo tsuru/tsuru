@@ -15,6 +15,14 @@ import (
 )
 
 func healthcheck(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("check") == "all" {
+		fullHealthcheck(w, r)
+		return
+	}
+	w.Write([]byte("WORKING"))
+}
+
+func fullHealthcheck(w http.ResponseWriter, r *http.Request) {
 	var buf bytes.Buffer
 	status := http.StatusOK
 	mongoDBStatus := "WORKING"
