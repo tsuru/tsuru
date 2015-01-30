@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
-	"sync"
 
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
@@ -146,20 +145,10 @@ func CheckUserAccess(teamNames []string, u *User) bool {
 	}
 	defer conn.Close()
 	conn.Teams().Find(q).All(&teams)
-	var wg sync.WaitGroup
-	found := make(chan bool, len(teams)+1)
 	for _, team := range teams {
-		wg.Add(1)
-		go func(t Team) {
-			if t.ContainsUser(u) {
-				found <- true
-			}
-			wg.Done()
-		}(team)
+		if team.ContainsUser(u) {
+			return true
+		}
 	}
-	go func() {
-		wg.Wait()
-		found <- false
-	}()
-	return <-found
+	return false
 }
