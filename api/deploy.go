@@ -82,6 +82,12 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
 	}
 	image := r.PostFormValue("image")
+	if image == "" {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "you cannot rollback without an image name",
+		}
+	}
 	w.Header().Set("Content-Type", "application/json")
 	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
 	err = app.Deploy(app.DeployOptions{
