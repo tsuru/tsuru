@@ -24,11 +24,14 @@ var (
 	teamNameRegexp = regexp.MustCompile(`^[a-zA-Z][-@_.+\w]+$`)
 )
 
+// Team represents a real world team, a team has team members (users) and
+// a name.
 type Team struct {
 	Name  string   `bson:"_id" json:"name"`
 	Users []string `json:"users"`
 }
 
+// ContainsUser checks if the team contains the user.
 func (t *Team) ContainsUser(u *User) bool {
 	for _, user := range t.Users {
 		if u.Email == user {
@@ -38,6 +41,7 @@ func (t *Team) ContainsUser(u *User) bool {
 	return false
 }
 
+// AddUser adds a user to the team.
 func (t *Team) AddUser(u *User) error {
 	if t.ContainsUser(u) {
 		return fmt.Errorf("User %s is already in the team %s.", u.Email, t.Name)
@@ -46,6 +50,7 @@ func (t *Team) AddUser(u *User) error {
 	return nil
 }
 
+// RemoveUser removes a user from the team.
 func (t *Team) RemoveUser(u *User) error {
 	index := -1
 	for i, user := range t.Users {
@@ -65,6 +70,7 @@ func (t *Team) RemoveUser(u *User) error {
 	return nil
 }
 
+// AllowedApps returns the apps that the team has access.
 func (t *Team) AllowedApps() ([]string, error) {
 	conn, err := db.Conn()
 	if err != nil {
@@ -83,6 +89,7 @@ func (t *Team) AllowedApps() ([]string, error) {
 	return appNames, nil
 }
 
+// CreateTeam creates a team and add users to this team.
 func CreateTeam(name string, user ...*User) error {
 	name = strings.TrimSpace(name)
 	if !isTeamNameValid(name) {
@@ -111,6 +118,7 @@ func isTeamNameValid(name string) bool {
 	return teamNameRegexp.MatchString(name)
 }
 
+// GetTeam find a team by name.
 func GetTeam(name string) (*Team, error) {
 	var t Team
 	conn, err := db.Conn()
@@ -127,6 +135,7 @@ func GetTeam(name string) (*Team, error) {
 	return &t, nil
 }
 
+// GetTeamsNames find teams by a list of team names.
 func GetTeamsNames(teams []Team) []string {
 	tn := make([]string, len(teams))
 	for i, t := range teams {
@@ -135,6 +144,8 @@ func GetTeamsNames(teams []Team) []string {
 	return tn
 }
 
+// CheckUserAccess verifies if the user has access to a list
+// of teams.
 func CheckUserAccess(teamNames []string, u *User) bool {
 	q := bson.M{"_id": bson.M{"$in": teamNames}}
 	var teams []Team
