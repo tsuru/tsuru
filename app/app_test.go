@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
+	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
@@ -2499,4 +2500,17 @@ func (s *S) TestGetTsuruYamlData(c *gocheck.C) {
 			AllowedFailures: 10,
 		},
 	})
+}
+
+func (s *S) TestSshToAnApp(c *gocheck.C) {
+	a := App{Name: "my-test-app"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, gocheck.IsNil)
+	buf := safe.NewBuffer([]byte("echo teste"))
+	conn := &testing.FakeConn{buf}
+	err = a.Ssh(conn, 10, 10)
+	c.Assert(err, gocheck.IsNil)
 }

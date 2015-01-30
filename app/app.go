@@ -9,6 +9,7 @@ import (
 	stderr "errors"
 	"fmt"
 	"io"
+	"net"
 	"regexp"
 	"sort"
 	"strings"
@@ -1190,4 +1191,8 @@ func (app *App) GetTsuruYamlData() (TsuruYamlData, error) {
 
 func (app *App) GetRouter() (string, error) {
 	return app.Plan.getRouter()
+}
+
+func (app *App) Ssh(conn net.Conn, width, height int, args ...string) error {
+	return Provisioner.Ssh(app, conn, width, height, args...)
 }
