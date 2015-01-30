@@ -1233,7 +1233,7 @@ func (s *S) TestSshToAnAppByContainerID(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(cont)
 	buf := safe.NewBuffer([]byte("echo teste"))
-	conn := &fakeConn{buf}
+	conn := &tsrTesting.FakeConn{buf}
 	c.Assert(err, gocheck.IsNil)
 	err = p.Ssh(app, conn, 10, 10, cont.ID)
 	c.Assert(err, gocheck.IsNil)
@@ -1248,7 +1248,7 @@ func (s *S) TestSshToAnAppByAppName(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(cont)
 	buf := safe.NewBuffer([]byte("echo teste"))
-	conn := &fakeConn{buf}
+	conn := &tsrTesting.FakeConn{buf}
 	c.Assert(err, gocheck.IsNil)
 	err = p.Ssh(app, conn, 10, 10)
 	c.Assert(err, gocheck.IsNil)

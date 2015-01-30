@@ -698,7 +698,7 @@ func (s *HandlersSuite) TestSSHToContainerHandler(c *gocheck.C) {
 	defer coll.RemoveAll(bson.M{"appname": "makea"})
 	c.Assert(err, gocheck.IsNil)
 	buf := safe.NewBuffer([]byte("echo teste"))
-	recorder := hijacker{conn: &fakeConn{buf}}
+	recorder := hijacker{conn: &testing.FakeConn{buf}}
 	request, err := http.NewRequest("GET", "/?:container_id="+container.ID, nil)
 	c.Assert(err, gocheck.IsNil)
 	err = sshToContainerHandler(&recorder, request, nil)
