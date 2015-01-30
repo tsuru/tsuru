@@ -12,18 +12,12 @@ import (
 	"github.com/tsuru/tsuru/hc"
 )
 
-const hcOk = "WORKING"
-
-type healthchecker interface {
-	Healthcheck() error
-}
-
 func healthcheck(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Query().Get("check") == "all" {
 		fullHealthcheck(w, r)
 		return
 	}
-	w.Write([]byte(hcOk))
+	w.Write([]byte(hc.HealthCheckOK))
 }
 
 func fullHealthcheck(w http.ResponseWriter, r *http.Request) {
