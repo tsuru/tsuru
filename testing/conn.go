@@ -5,10 +5,11 @@
 package testing
 
 import (
-	"github.com/tsuru/tsuru/safe"
 	"io"
 	"net"
 	"time"
+
+	"github.com/tsuru/tsuru/safe"
 )
 
 type FakeConn struct {
