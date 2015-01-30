@@ -140,6 +140,10 @@ func appendAppImageName(appName, imageId string) error {
 		return err
 	}
 	defer coll.Close()
+	_, err = coll.UpsertId(appName, bson.M{"$pull": bson.M{"images": imageId}})
+	if err != nil {
+		return err
+	}
 	_, err = coll.UpsertId(appName, bson.M{"$push": bson.M{"images": imageId}})
 	return err
 }

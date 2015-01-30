@@ -221,6 +221,18 @@ func (s *S) TestAppCurrentImageNameWithoutImage(c *gocheck.C) {
 	c.Assert(img1, gocheck.Equals, "tsuru/app-myapp")
 }
 
+func (s *S) TestAppendAppImageChangeImagePosition(c *gocheck.C) {
+	err := appendAppImageName("myapp", "tsuru/app-myapp:v1")
+	c.Assert(err, gocheck.IsNil)
+	err = appendAppImageName("myapp", "tsuru/app-myapp:v2")
+	c.Assert(err, gocheck.IsNil)
+	err = appendAppImageName("myapp", "tsuru/app-myapp:v1")
+	c.Assert(err, gocheck.IsNil)
+	images, err := listAppImages("myapp")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(images, gocheck.DeepEquals, []string{"tsuru/app-myapp:v2", "tsuru/app-myapp:v1"})
+}
+
 func (s *S) TestAppCurrentImageName(c *gocheck.C) {
 	err := appendAppImageName("myapp", "tsuru/app-myapp:v1")
 	c.Assert(err, gocheck.IsNil)
