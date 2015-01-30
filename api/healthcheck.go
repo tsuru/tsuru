@@ -89,6 +89,38 @@ func fullHealthcheck(w http.ResponseWriter, r *http.Request) {
 		}
 		fmt.Fprintln(&buf, provisionerStatus)
 	}
+	if iaases, err := config.Get("iaas"); err == nil {
+		if iaasesMap, ok := iaases.(map[string]interface{}); ok {
+			var names []string
+			for iaasname := range iaasesMap {
+				switch iaasname {
+				case "default":
+					names = append(names, iaasesMap[iaasname].(string))
+				case "custom":
+					customIaas, ok := iaasesMap[iaasname].(map[string]interface{})
+					if ok {
+						for name := range customIaas {
+							names = append(names, name)
+						}
+					}
+				default:
+					names = append(names, iaasname)
+				}
+			}
+			for _, name := range names {
+				provider, _ := iaas.GetIaasProvider(name)
+				if hprovider, ok := provider.(healthchecker); ok {
+					fmt.Fprintf(&buf, "IaaS %q: ", name)
+					iaasStatus := hcOk
+					if err := hprovider.Healthcheck(); err != nil {
+						status = http.StatusInternalServerError
+						iaasStatus = fmt.Sprintf("fail - %s", err)
+					}
+					fmt.Fprintln(&buf, iaaStatus)
+				}
+			}
+		}
+	}
 	w.WriteHeader(status)
 	w.Write(buf.Bytes())
 }
