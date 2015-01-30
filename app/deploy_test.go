@@ -530,6 +530,71 @@ func (s *S) TestDeployAppSaveDeployData(c *gocheck.C) {
 	c.Assert(result["image"], gocheck.Equals, "app-image")
 	c.Assert(result["log"], gocheck.Equals, "Git deploy called")
 	c.Assert(result["user"], gocheck.Equals, "someone@themoon")
+	c.Assert(result["origin"], gocheck.Equals, "git")
+}
+
+func (s *S) TestDeployAppSaveDeployDataOriginRollback(c *gocheck.C) {
+	a := App{
+		Name:     "otherapp",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	writer := &bytes.Buffer{}
+	err = Deploy(DeployOptions{
+		App:          &a,
+		OutputStream: writer,
+		Image:        "some-image",
+	})
+	c.Assert(err, gocheck.IsNil)
+	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
+	c.Assert(a.Deploys, gocheck.Equals, uint(1))
+	var result map[string]interface{}
+	s.conn.Deploys().Find(bson.M{"app": a.Name}).One(&result)
+	c.Assert(result["app"], gocheck.Equals, a.Name)
+	now := time.Now()
+	diff := now.Sub(result["timestamp"].(time.Time))
+	c.Assert(diff < 60*time.Second, gocheck.Equals, true)
+	c.Assert(result["duration"], gocheck.Not(gocheck.Equals), 0)
+	c.Assert(result["image"], gocheck.Equals, "some-image")
+	c.Assert(result["log"], gocheck.Equals, "Image deploy called")
+	c.Assert(result["origin"], gocheck.Equals, "rollback")
+}
+
+func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *gocheck.C) {
+	a := App{
+		Name:     "otherapp",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	writer := &bytes.Buffer{}
+	err = Deploy(DeployOptions{
+		App:          &a,
+		OutputStream: writer,
+		File:         ioutil.NopCloser(bytes.NewBuffer([]byte("my file"))),
+	})
+	c.Assert(err, gocheck.IsNil)
+	s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
+	c.Assert(a.Deploys, gocheck.Equals, uint(1))
+	var result map[string]interface{}
+	s.conn.Deploys().Find(bson.M{"app": a.Name}).One(&result)
+	c.Assert(result["app"], gocheck.Equals, a.Name)
+	now := time.Now()
+	diff := now.Sub(result["timestamp"].(time.Time))
+	c.Assert(diff < 60*time.Second, gocheck.Equals, true)
+	c.Assert(result["duration"], gocheck.Not(gocheck.Equals), 0)
+	c.Assert(result["image"], gocheck.Equals, "app-image")
+	c.Assert(result["log"], gocheck.Equals, "Upload deploy called")
+	c.Assert(result["origin"], gocheck.Equals, "app-deploy")
 }
 
 func (s *S) TestDeployAppSaveDeployErrorData(c *gocheck.C) {
@@ -677,4 +742,23 @@ func (s *S) TestDeployToProvisionerUpload(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	logs := writer.String()
 	c.Assert(logs, gocheck.Equals, "Upload deploy called")
+}
+
+func (s *S) TestDeployToProvisionerImage(c *gocheck.C) {
+	a := App{
+		Name:     "someApp",
+		Platform: "django",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	writer := &bytes.Buffer{}
+	opts := DeployOptions{App: &a, Image: "my-image-x"}
+	_, err = deployToProvisioner(&opts, writer)
+	c.Assert(err, gocheck.IsNil)
+	logs := writer.String()
+	c.Assert(logs, gocheck.Equals, "Image deploy called")
 }

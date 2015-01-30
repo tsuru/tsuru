@@ -487,6 +487,21 @@ func (p *FakeProvisioner) UploadDeploy(app provision.App, file io.ReadCloser, w 
 	return "app-image", nil
 }
 
+func (p *FakeProvisioner) ImageDeploy(app provision.App, img string, w io.Writer) (string, error) {
+	if err := p.getError("ImageDeploy"); err != nil {
+		return "", err
+	}
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	pApp, ok := p.apps[app.GetName()]
+	if !ok {
+		return "", errNotProvisioned
+	}
+	w.Write([]byte("Image deploy called"))
+	p.apps[app.GetName()] = pApp
+	return img, nil
+}
+
 func (p *FakeProvisioner) Provision(app provision.App) error {
 	if err := p.getError("Provision"); err != nil {
 		return err

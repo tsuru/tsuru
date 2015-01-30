@@ -31,7 +31,19 @@ type DeployData struct {
 	Image       string
 	Log         string
 	User        string
+	Origin      string
 	CanRollback bool
+}
+
+type DeployOptions struct {
+	App          *App
+	Version      string
+	Commit       string
+	ArchiveURL   string
+	File         io.ReadCloser
+	OutputStream io.Writer
+	User         string
+	Image        string
 }
 
 func (app *App) ListDeploys(u *auth.User) ([]DeployData, error) {
@@ -174,16 +186,6 @@ func GetDiffInDeploys(d *DeployData) (string, error) {
 	return diffOutput, nil
 }
 
-type DeployOptions struct {
-	App          *App
-	Version      string
-	Commit       string
-	ArchiveURL   string
-	File         io.ReadCloser
-	OutputStream io.Writer
-	User         string
-}
-
 // Deploy runs a deployment of an application. It will first try to run an
 // archive based deploy (if opts.ArchiveURL is not empty), and then fallback to
 // the Git based deployment.
@@ -212,6 +214,11 @@ func Deploy(opts DeployOptions) error {
 }
 
 func deployToProvisioner(opts *DeployOptions, writer io.Writer) (string, error) {
+	if opts.Image != "" {
+		if deployer, ok := Provisioner.(provision.ImageDeployer); ok {
+			return deployer.ImageDeploy(opts.App, opts.Image, writer)
+		}
+	}
 	if opts.File != nil {
 		if deployer, ok := Provisioner.(provision.UploadDeployer); ok {
 			return deployer.UploadDeploy(opts.App, opts.File, writer)
@@ -239,6 +246,13 @@ func saveDeployData(opts *DeployOptions, imageId, log string, duration time.Dura
 		Image:     imageId,
 		Log:       log,
 		User:      opts.User,
+	}
+	if opts.Commit != "" {
+		deploy.Origin = "git"
+	} else if opts.Image != "" {
+		deploy.Origin = "rollback"
+	} else {
+		deploy.Origin = "app-deploy"
 	}
 	if deployError != nil {
 		deploy.Error = deployError.Error()

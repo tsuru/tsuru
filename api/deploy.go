@@ -73,7 +73,27 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		fmt.Fprintln(w, "\nOK")
 	}
 	return err
+}
 
+func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	appName := r.URL.Query().Get(":appname")
+	instance, err := app.GetByName(appName)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
+	}
+	image := r.PostFormValue("image")
+	w.Header().Set("Content-Type", "application/json")
+	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
+	err = app.Deploy(app.DeployOptions{
+		App:          instance,
+		OutputStream: writer,
+		Image:        image,
+		User:         t.GetUserName(),
+	})
+	if err != nil {
+		writer.Encode(io.SimpleJsonMessage{Error: err.Error()})
+	}
+	return nil
 }
 
 func deploysList(w http.ResponseWriter, r *http.Request, t auth.Token) error {

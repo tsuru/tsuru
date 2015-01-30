@@ -635,3 +635,28 @@ func (s *DeploySuite) TestDeployInfoByUserWithoutAccess(c *gocheck.C) {
 	body := recorder.Body.String()
 	c.Assert(body, gocheck.Equals, "Deploy not found.\n")
 }
+
+func (s *DeploySuite) TestDeployRollbackHandler(c *gocheck.C) {
+	a := app.App{
+		Name:     "otherapp",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	url := fmt.Sprintf("/apps/%s/deploy/rollback", a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("image=my-image-123"))
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), gocheck.Equals, "{\"Message\":\"Image deploy called\"}\n")
+}
