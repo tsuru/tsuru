@@ -86,7 +86,7 @@ func RegisterIaasProvider(name string, iaas IaaS) {
 	iaasProviders[name] = iaas
 }
 
-func getIaasProvider(name string) (IaaS, error) {
+func GetIaasProvider(name string) (IaaS, error) {
 	provider, ok := iaasProviders[name]
 	if !ok {
 		customProvider, err := config.GetString(fmt.Sprintf("iaas:custom:%s:provider", name))
@@ -116,7 +116,7 @@ func Describe(iaasName ...string) (string, error) {
 		}
 		iaasName = []string{defaultIaaS}
 	}
-	iaas, err := getIaasProvider(iaasName[0])
+	iaas, err := GetIaasProvider(iaasName[0])
 	if err != nil {
 		return "", err
 	}
