@@ -183,6 +183,12 @@ type UploadDeployer interface {
 	UploadDeploy(app App, file io.ReadCloser, w io.Writer) (string, error)
 }
 
+// ImageDeployer is a provisioner that can deploy the application from a
+// previously generated image.
+type ImageDeployer interface {
+	ImageDeploy(app App, image string, w io.Writer) (string, error)
+}
+
 // Provisioner is the basic interface of this package.
 //
 // Any tsuru provisioner must implement this interface in order to provision
