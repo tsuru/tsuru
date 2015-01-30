@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -7,17 +7,14 @@ package docker
 import (
 	"bufio"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"sync/atomic"
-	"time"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/docker-cluster/cluster"
-	"github.com/tsuru/tsuru/safe"
 )
 
 func startTestListener(addr string) net.Listener {
@@ -169,47 +166,4 @@ func (h *hijacker) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 		return nil, nil, h.err
 	}
 	return h.conn, nil, nil
-}
-
-type fakeConn struct {
-	buf *safe.Buffer
-}
-
-func (c *fakeConn) Read(b []byte) (int, error) {
-	if c.buf != nil {
-		return c.buf.Read(b)
-	}
-	return 0, io.EOF
-}
-
-func (c *fakeConn) Write(b []byte) (int, error) {
-	if c.buf != nil {
-		return c.buf.Write(b)
-	}
-	return 0, io.ErrClosedPipe
-}
-
-func (c *fakeConn) Close() error {
-	c.buf = nil
-	return nil
-}
-
-func (c *fakeConn) LocalAddr() net.Addr {
-	return nil
-}
-
-func (c *fakeConn) RemoteAddr() net.Addr {
-	return nil
-}
-
-func (c *fakeConn) SetDeadline(t time.Time) error {
-	return nil
-}
-
-func (c *fakeConn) SetReadDeadline(t time.Time) error {
-	return nil
-}
-
-func (c *fakeConn) SetWriteDeadline(t time.Time) error {
-	return nil
 }
