@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/go-gandalfclient"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router"
 )
@@ -116,7 +117,7 @@ func fullHealthcheck(w http.ResponseWriter, r *http.Request) {
 						status = http.StatusInternalServerError
 						iaasStatus = fmt.Sprintf("fail - %s", err)
 					}
-					fmt.Fprintln(&buf, iaaStatus)
+					fmt.Fprintln(&buf, iaasStatus)
 				}
 			}
 		}
