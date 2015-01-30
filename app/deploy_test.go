@@ -47,7 +47,7 @@ func (s *S) TestListDeployByNonAdminUsers(c *gocheck.C) {
 		s.conn.Deploys().Insert(deploy)
 	}
 	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
-	result, err := ListDeploys(nil, nil, user)
+	result, err := ListDeploys(nil, nil, user, 0, 0)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result, gocheck.HasLen, 1)
 	c.Assert(result[0].App, gocheck.Equals, "g1")
@@ -77,7 +77,7 @@ func (s *S) TestListDeployByAdminUsers(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Apps().Remove(bson.M{"name": a2.Name})
-	deploys := []deploy{
+	deploys := []DeployData{
 		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
 		{App: "ge", Timestamp: time.Now()},
 	}
@@ -85,7 +85,7 @@ func (s *S) TestListDeployByAdminUsers(c *gocheck.C) {
 		s.conn.Deploys().Insert(deploy)
 	}
 	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
-	result, err := ListDeploys(nil, nil, user)
+	result, err := ListDeploys(nil, nil, user, 0, 0)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result, gocheck.HasLen, 2)
 	c.Assert(result[0].App, gocheck.Equals, "ge")
@@ -113,7 +113,7 @@ func (s *S) TestListDeployByAppAndService(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Apps().Remove(bson.M{"name": a2.Name})
-	deploys := []deploy{
+	deploys := []DeployData{
 		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second)},
 		{App: "ge", Timestamp: time.Now()},
 	}
