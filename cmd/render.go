@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -15,9 +16,12 @@ import (
 )
 
 const (
-	pattern  = "\033[%d;%d;%dm%s\033[0m"
-	bgFactor = 10
+	pattern                 = "\033[%d;%d;%dm%s\033[0m"
+	bgFactor                = 10
+	colorPatternTermination = "\033[0m"
 )
+
+var colorPatternRegex = regexp.MustCompile("\033\\[\\d+;\\d+;\\d+m")
 
 var fontColors = map[string]int{
 	"black":   30,
@@ -174,6 +178,8 @@ func (t *Table) Rows() int {
 }
 
 func runeLen(s string) int {
+	s = colorPatternRegex.ReplaceAllString(s, "")
+	s = strings.Replace(s, colorPatternTermination, "", -1)
 	return len([]rune(s))
 }
 

@@ -293,3 +293,19 @@ i
 jkl↵
 m`})
 }
+
+func (s *S) TestColoredString(c *gocheck.C) {
+	table := NewTable()
+	two := Colorfy("str", "red", "", "")
+	two = two + " - " + two
+	table.AddRow(Row{"Some large string", "1"})
+	table.AddRow(Row{two, "2"})
+	table.AddRow(Row{"Three", "3"})
+	expected := `+-------------------+---+
+| Some large string | 1 |
+| ` + two + `         | 2 |
+| Three             | 3 |
++-------------------+---+
+`
+	c.Assert(table.String(), gocheck.Equals, expected)
+}
