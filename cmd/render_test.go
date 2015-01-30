@@ -294,6 +294,57 @@ jkl↵
 m`})
 }
 
+func (s *S) TestResizeLastColumnWithColors(c *gocheck.C) {
+	t := NewTable()
+	color1 := Colorfy("abcdefghijk", "red", "", "")
+	color2 := Colorfy("1234567890", "red", "", "")
+	color3 := "123" + Colorfy("456789", "red", "", "") + "012"
+	t.AddRow(Row{"1", color1})
+	t.AddRow(Row{"2", color2})
+	t.AddRow(Row{"3", color3})
+	sizes := t.resizeLastColumn(11)
+	c.Assert(sizes, gocheck.DeepEquals, []int{1, 3})
+	redInit := "\033[0;31;10m"
+	colorReset := "\033[0m"
+	colorResetBreak := "\033[0m\n"
+	c.Assert(t.rows[0], gocheck.DeepEquals, Row{"1", redInit + "ab↵" + colorResetBreak +
+		redInit + "cd↵" + colorResetBreak +
+		redInit + "ef↵" + colorResetBreak +
+		redInit + "gh↵" + colorResetBreak +
+		redInit + "ij↵" + colorResetBreak +
+		redInit + "k" + colorReset})
+	c.Assert(t.rows[1], gocheck.DeepEquals, Row{"2", redInit + "12↵" + colorResetBreak +
+		redInit + "34↵" + colorResetBreak +
+		redInit + "56↵" + colorResetBreak +
+		redInit + "78↵" + colorResetBreak +
+		redInit + "90" + colorReset})
+	c.Assert(t.rows[2], gocheck.DeepEquals, Row{"3", "12↵\n" +
+		"3" + redInit + "4↵" + colorResetBreak +
+		redInit + "56↵" + colorResetBreak +
+		redInit + "78↵" + colorResetBreak +
+		redInit + "9" + colorReset + "0↵\n" +
+		"12"})
+}
+
+func (s *S) TestResizeLastColumnUnicode(c *gocheck.C) {
+	t := NewTable()
+	t.AddRow(Row{"1", "åß∂¬ƒ˚©“œ¡™"})
+	t.AddRow(Row{"2", "åß∂¬ƒ˚©“œ¡"})
+	sizes := t.resizeLastColumn(11)
+	c.Assert(sizes, gocheck.DeepEquals, []int{1, 3})
+	c.Assert(t.rows[0], gocheck.DeepEquals, Row{"1", `åß↵
+∂¬↵
+ƒ˚↵
+©“↵
+œ¡↵
+™`})
+	c.Assert(t.rows[1], gocheck.DeepEquals, Row{"2", `åß↵
+∂¬↵
+ƒ˚↵
+©“↵
+œ¡`})
+}
+
 func (s *S) TestColoredString(c *gocheck.C) {
 	table := NewTable()
 	two := Colorfy("str", "red", "", "")

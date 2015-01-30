@@ -16,12 +16,14 @@ import (
 )
 
 const (
-	pattern                 = "\033[%d;%d;%dm%s\033[0m"
-	bgFactor                = 10
-	colorPatternTermination = "\033[0m"
+	pattern  = "\033[%d;%d;%dm%s\033[0m"
+	bgFactor = 10
 )
 
-var colorPatternRegex = regexp.MustCompile("\033\\[\\d+;\\d+;\\d+m")
+var ignoredPatterns = []*regexp.Regexp{
+	regexp.MustCompile("\033\\[\\d+;\\d+;\\d+m"),
+	regexp.MustCompile("\033\\[0m"),
+}
 
 var fontColors = map[string]int{
 	"black":   30,
@@ -90,29 +92,61 @@ func splitJoinEvery(str string, n int) string {
 	n -= 1
 	str = strings.TrimSpace(str)
 	lines := strings.Split(str, "\n")
-	var parts []string
+	var parts [][]rune
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		strLen := runeLen(line)
-		steps := strLen / n
+		lineRunes := []rune(line)
+		strLen := len(lineRunes)
 		var start, end int
-		for i := 0; i < steps; i++ {
-			start = i * n
+		for ; start < strLen; start = end {
 			end = start + n
+			for _, p := range ignoredPatterns {
+				pos := p.FindStringIndex(string(lineRunes[start:]))
+				if pos != nil && pos[0] < (end-start+1) {
+					end += pos[1] - pos[0]
+				}
+			}
 			if end > strLen {
 				end = strLen
 			}
-			part := line[start:end]
+			part := make([]rune, end-start)
+			copy(part, lineRunes[start:end])
 			if end < strLen {
-				part += "↵"
+				part = append(part, rune('↵'))
 			}
 			parts = append(parts, part)
 		}
-		if end < strLen {
-			parts = append(parts, line[steps*n:strLen])
-		}
 	}
-	return strings.Join(parts, "\n")
+	return redistributeColors(parts)
+}
+
+func redistributeColors(parts [][]rune) string {
+	var result string
+	var lastStartColor, nextResetStr string
+	for _, part := range parts {
+		nextStartColor := lastStartColor
+		partStr := string(part)
+		startPos := ignoredPatterns[0].FindStringIndex(partStr)
+		resetPos := ignoredPatterns[1].FindStringIndex(partStr)
+		if startPos != nil {
+			if resetPos == nil || resetPos[0] < startPos[0] {
+				nextStartColor = partStr[startPos[0]:startPos[1]]
+				nextResetStr = "\033[0m"
+			} else {
+				nextStartColor = ""
+			}
+		}
+		if resetPos != nil {
+			if startPos == nil || resetPos[0] > startPos[0] {
+				nextResetStr = ""
+				nextStartColor = ""
+			}
+		}
+		partStr = lastStartColor + partStr + nextResetStr
+		lastStartColor = nextStartColor
+		result += partStr + "\n"
+	}
+	return strings.TrimRight(result, "\n")
 }
 
 func (t *Table) resizeLastColumn(ttyWidth int) []int {
@@ -178,8 +212,9 @@ func (t *Table) Rows() int {
 }
 
 func runeLen(s string) int {
-	s = colorPatternRegex.ReplaceAllString(s, "")
-	s = strings.Replace(s, colorPatternTermination, "", -1)
+	for _, p := range ignoredPatterns {
+		s = p.ReplaceAllString(s, "")
+	}
 	return len([]rune(s))
 }
 
