@@ -2509,6 +2509,8 @@ func (s *S) TestSshToAnApp(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = s.provisioner.Provision(&a)
 	c.Assert(err, gocheck.IsNil)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 1, nil)
 	buf := safe.NewBuffer([]byte("echo teste"))
 	conn := &testing.FakeConn{buf}
 	err = a.Ssh(conn, 10, 10)
