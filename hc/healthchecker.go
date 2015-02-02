@@ -7,21 +7,18 @@
 // use.
 package hc
 
-import "reflect"
-
 // HealthCheckOK is the status returned when the healthcheck works.
 const HealthCheckOK = "WORKING"
 
-var checkers []HealthChecker
+var checkers []healthChecker
 
-// HealthChecker represents a checker, that will be used to validate the
-// current status of some component or service.
-type HealthChecker interface {
-	HealthCheck() error
+type healthChecker struct {
+	name  string
+	check func() error
 }
 
 // Result represents a result of a processed healthcheck call. It will contain
-// the name of the healthchecker and the status returned in the HelthCheck()
+// the name of the healthchecker and the status returned in the checker
 // call.
 type Result struct {
 	Name   string
@@ -30,7 +27,8 @@ type Result struct {
 
 // AddChecker adds a new checker to the internal list of checkers. Checkers
 // added to this list can then be checked using the Check function.
-func AddChecker(checker HealthChecker) {
+func AddChecker(name string, check func() error) {
+	checker := healthChecker{name: name, check: check}
 	checkers = append(checkers, checker)
 }
 
@@ -39,17 +37,11 @@ func AddChecker(checker HealthChecker) {
 func Check() []Result {
 	results := make([]Result, len(checkers))
 	for i, checker := range checkers {
-		name := reflect.TypeOf(checker).Name()
-		typeof := reflect.TypeOf(checker)
-		if typeof.Kind() == reflect.Ptr {
-			typeof = reflect.ValueOf(checker).Elem().Type()
-			name = typeof.Name()
-		}
 		status := HealthCheckOK
-		if err := checker.HealthCheck(); err != nil {
+		if err := checker.check(); err != nil {
 			status = "fail - " + err.Error()
 		}
-		results[i] = Result{Name: name, Status: status}
+		results[i] = Result{Name: checker.name, Status: status}
 	}
 	return results
 }

@@ -20,32 +20,21 @@ type HCSuite struct{}
 var _ = gocheck.Suite(HCSuite{})
 
 func (HCSuite) TestCheck(c *gocheck.C) {
-	AddChecker(SuccessChecker{})
-	AddChecker(&PointerChecker{})
-	AddChecker(FailingChecker{})
+	AddChecker("success", successChecker)
+	AddChecker("failing", failingChecker)
 	expected := []Result{
-		{Name: "SuccessChecker", Status: HealthCheckOK},
-		{Name: "PointerChecker", Status: HealthCheckOK},
-		{Name: "FailingChecker", Status: "fail - something went wrong"},
+		{Name: "success", Status: HealthCheckOK},
+		{Name: "failing", Status: "fail - something went wrong"},
 	}
 	result := Check()
 	c.Assert(result, gocheck.DeepEquals, expected)
 }
 
-type SuccessChecker struct{}
 
-func (SuccessChecker) HealthCheck() error {
+func successChecker() error {
 	return nil
 }
 
-type PointerChecker struct{}
-
-func (*PointerChecker) HealthCheck() error {
-	return nil
-}
-
-type FailingChecker struct{}
-
-func (FailingChecker) HealthCheck() error {
+func failingChecker() error {
 	return errors.New("something went wrong")
 }
