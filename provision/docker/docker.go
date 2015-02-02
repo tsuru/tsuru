@@ -185,6 +185,7 @@ type container struct {
 	Image                   string
 	Name                    string
 	User                    string
+	BuildingImage           string
 	LastStatusUpdate        time.Time
 	LastSuccessStatusUpdate time.Time
 	LockedUntil             time.Time
@@ -350,19 +351,24 @@ func deploy(app provision.App, imageId string, commands []string, w io.Writer) (
 		&followLogsAndCommit,
 	}
 	pipeline := action.NewPipeline(actions...)
-	args := runContainerActionsArgs{
-		app:      app,
-		imageID:  imageId,
-		commands: commands,
-		writer:   w,
-		isDeploy: true,
+	buildingImage, err := appNewImageName(app.GetName())
+	if err != nil {
+		return "", log.WrapError(fmt.Errorf("error getting new image name for app %s", app.GetName()))
 	}
-	err := pipeline.Execute(args)
+	args := runContainerActionsArgs{
+		app:           app,
+		imageID:       imageId,
+		commands:      commands,
+		writer:        w,
+		isDeploy:      true,
+		buildingImage: buildingImage,
+	}
+	err = pipeline.Execute(args)
 	if err != nil {
 		log.Errorf("error on execute deploy pipeline for app %s - %s", app.GetName(), err)
 		return "", err
 	}
-	return pipeline.Result().(string), nil
+	return buildingImage, nil
 }
 
 func start(app provision.App, imageId string, w io.Writer, destinationHosts ...string) (*container, error) {
@@ -515,13 +521,9 @@ func (c *container) exec(stdout, stderr io.Writer, cmd string, args ...string) e
 // and returns the image repository.
 func (c *container) commit(writer io.Writer) (string, error) {
 	log.Debugf("commiting container %s", c.ID)
-	imgName, err := appNewImageName(c.AppName)
-	if err != nil {
-		return "", log.WrapError(fmt.Errorf("error getting new image name for app %s", c.AppName))
-	}
-	parts := strings.Split(imgName, ":")
+	parts := strings.Split(c.BuildingImage, ":")
 	if len(parts) < 2 {
-		return "", log.WrapError(fmt.Errorf("error parsing image name, not enough parts: %s", imgName))
+		return "", log.WrapError(fmt.Errorf("error parsing image name, not enough parts: %s", c.BuildingImage))
 	}
 	repository := strings.Join(parts[:len(parts)-1], ":")
 	tag := parts[len(parts)-1]
@@ -530,7 +532,7 @@ func (c *container) commit(writer io.Writer) (string, error) {
 	if err != nil {
 		return "", log.WrapError(fmt.Errorf("error in commit container %s: %s", c.ID, err.Error()))
 	}
-	imgData, err := dockerCluster().InspectImage(imgName)
+	imgData, err := dockerCluster().InspectImage(c.BuildingImage)
 	imgSize := ""
 	if err == nil {
 		imgSize = fmt.Sprintf("(%.02fMB)", float64(imgData.Size)/1024/1024)
@@ -539,9 +541,9 @@ func (c *container) commit(writer io.Writer) (string, error) {
 	log.Debugf("image %s generated from container %s", image.ID, c.ID)
 	err = pushImage(repository, tag)
 	if err != nil {
-		return "", log.WrapError(fmt.Errorf("error in push image %s: %s", imgName, err.Error()))
+		return "", log.WrapError(fmt.Errorf("error in push image %s: %s", c.BuildingImage, err.Error()))
 	}
-	return imgName, nil
+	return c.BuildingImage, nil
 }
 
 // stop stops the container.

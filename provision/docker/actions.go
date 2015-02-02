@@ -26,6 +26,7 @@ type runContainerActionsArgs struct {
 	destinationHosts []string
 	writer           io.Writer
 	isDeploy         bool
+	buildingImage    string
 }
 
 type changeUnitsPipelineArgs struct {
@@ -43,11 +44,12 @@ var insertEmptyContainerInDB = action.Action{
 		args := ctx.Params[0].(runContainerActionsArgs)
 		contName := containerName()
 		cont := container{
-			AppName: args.app.GetName(),
-			Type:    args.app.GetPlatform(),
-			Name:    contName,
-			Status:  provision.StatusCreated.String(),
-			Image:   args.imageID,
+			AppName:       args.app.GetName(),
+			Type:          args.app.GetPlatform(),
+			Name:          contName,
+			Status:        provision.StatusCreated.String(),
+			Image:         args.imageID,
+			BuildingImage: args.buildingImage,
 		}
 		coll := collection()
 		defer coll.Close()

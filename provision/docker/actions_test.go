@@ -23,7 +23,7 @@ func (s *S) TestInsertEmptyContainerInDBName(c *gocheck.C) {
 
 func (s *S) TestInsertEmptyContainerInDBForward(c *gocheck.C) {
 	app := testing.NewFakeApp("myapp", "python", 1)
-	args := runContainerActionsArgs{app: app, imageID: "image-id"}
+	args := runContainerActionsArgs{app: app, imageID: "image-id", buildingImage: "next-image"}
 	context := action.FWContext{Params: []interface{}{args}}
 	r, err := insertEmptyContainerInDB.Forward(context)
 	c.Assert(err, gocheck.IsNil)
@@ -35,6 +35,7 @@ func (s *S) TestInsertEmptyContainerInDBForward(c *gocheck.C) {
 	c.Assert(cont.Name, gocheck.HasLen, 20)
 	c.Assert(cont.Status, gocheck.Equals, "created")
 	c.Assert(cont.Image, gocheck.Equals, "image-id")
+	c.Assert(cont.BuildingImage, gocheck.Equals, "next-image")
 	coll := collection()
 	defer coll.Close()
 	defer coll.Remove(bson.M{"name": cont.Name})
@@ -463,8 +464,10 @@ func (s *S) TestFollowLogsAndCommitForward(c *gocheck.C) {
 	go s.stopContainers(1)
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	app := testing.NewFakeApp("myapp", "python", 1)
-	cont := container{AppName: "mightyapp", ID: "myid123"}
+	app := testing.NewFakeApp("mightyapp", "python", 1)
+	nextImgName, err := appNewImageName(app.GetName())
+	c.Assert(err, gocheck.IsNil)
+	cont := container{AppName: "mightyapp", ID: "myid123", BuildingImage: nextImgName}
 	err = cont.create(runContainerActionsArgs{app: app, imageID: "tsuru/python", commands: []string{"foo"}})
 	c.Assert(err, gocheck.IsNil)
 	var buf bytes.Buffer

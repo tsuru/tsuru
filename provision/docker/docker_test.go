@@ -471,6 +471,9 @@ func (s *S) TestContainerCommit(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(cont)
 	buf := bytes.Buffer{}
+	nextImgName, err := appNewImageName(cont.AppName)
+	c.Assert(err, gocheck.IsNil)
+	cont.BuildingImage = nextImgName
 	imageId, err := cont.commit(&buf)
 	c.Assert(err, gocheck.IsNil)
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
@@ -485,6 +488,9 @@ func (s *S) TestContainerCommitWithRegistry(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(cont)
 	buf := bytes.Buffer{}
+	nextImgName, err := appNewImageName(cont.AppName)
+	c.Assert(err, gocheck.IsNil)
+	cont.BuildingImage = nextImgName
 	imageId, err := cont.commit(&buf)
 	c.Assert(err, gocheck.IsNil)
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
@@ -499,6 +505,9 @@ func (s *S) TestContainerCommitErrorInCommit(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(cont)
 	buf := bytes.Buffer{}
+	nextImgName, err := appNewImageName(cont.AppName)
+	c.Assert(err, gocheck.IsNil)
+	cont.BuildingImage = nextImgName
 	_, err = cont.commit(&buf)
 	c.Assert(err, gocheck.ErrorMatches, ".*commit-failure\n")
 }
@@ -512,6 +521,9 @@ func (s *S) TestContainerCommitErrorInPush(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(cont)
 	buf := bytes.Buffer{}
+	nextImgName, err := appNewImageName(cont.AppName)
+	c.Assert(err, gocheck.IsNil)
+	cont.BuildingImage = nextImgName
 	_, err = cont.commit(&buf)
 	c.Assert(err, gocheck.ErrorMatches, ".*push-failure\n")
 }
