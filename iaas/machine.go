@@ -54,7 +54,7 @@ func CreateMachine(params map[string]string) (*Machine, error) {
 }
 
 func CreateMachineForIaaS(iaasName string, params map[string]string) (*Machine, error) {
-	iaas, err := GetIaasProvider(iaasName)
+	iaas, err := getIaasProvider(iaasName)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +96,7 @@ func FindMachineById(id string) (Machine, error) {
 }
 
 func (m *Machine) Destroy() error {
-	iaas, err := GetIaasProvider(m.Iaas)
+	iaas, err := getIaasProvider(m.Iaas)
 	if err != nil {
 		return err
 	}

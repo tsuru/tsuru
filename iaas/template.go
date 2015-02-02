@@ -56,7 +56,7 @@ func (t *Template) Save() error {
 	if t.Name == "" {
 		return errors.New("template name cannot be empty")
 	}
-	_, err := GetIaasProvider(t.IaaSName)
+	_, err := getIaasProvider(t.IaaSName)
 	if err != nil {
 		return err
 	}

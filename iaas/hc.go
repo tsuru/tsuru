@@ -45,7 +45,7 @@ func BuildHealthCheck(providerName string) func() error {
 }
 
 func healthCheck(name string) error {
-	provider, err := GetIaasProvider(name)
+	provider, err := getIaasProvider(name)
 	if err != nil {
 		return err
 	}

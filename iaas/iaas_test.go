@@ -16,12 +16,12 @@ import (
 )
 
 func (s *S) TestRegisterIaasProvider(c *gocheck.C) {
-	provider, err := GetIaasProvider("abc")
+	provider, err := getIaasProvider("abc")
 	c.Assert(err, gocheck.ErrorMatches, "IaaS provider \"abc\" not registered")
 	c.Assert(provider, gocheck.IsNil)
 	providerInstance := TestIaaS{}
 	RegisterIaasProvider("abc", providerInstance)
-	provider, err = GetIaasProvider("abc")
+	provider, err = getIaasProvider("abc")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(provider, gocheck.Equals, providerInstance)
 }
@@ -47,11 +47,11 @@ func (s *S) TestCustomizableIaaSProvider(c *gocheck.C) {
 	RegisterIaasProvider("customable-iaas", providerInstance)
 	config.Set("iaas:custom:abc:provider", "customable-iaas")
 	defer config.Unset("iaas:custom:abc:provider")
-	provider, err := GetIaasProvider("abc")
+	provider, err := getIaasProvider("abc")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(provider, gocheck.Not(gocheck.DeepEquals), providerInstance)
 	c.Assert(provider, gocheck.FitsTypeOf, providerInstance)
-	provider2, err := GetIaasProvider("abc")
+	provider2, err := getIaasProvider("abc")
 	c.Assert(err, gocheck.IsNil)
 	value1 := reflect.ValueOf(provider2)
 	value2 := reflect.ValueOf(provider)
