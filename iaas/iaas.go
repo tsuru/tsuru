@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package provision provides interfaces that need to be satisfied in order to
+// Package iaas provides interfaces that need to be satisfied in order to
 // implement a new iaas on tsuru.
 package iaas
 
@@ -33,6 +33,10 @@ type IaaS interface {
 
 type Describer interface {
 	Describe() string
+}
+
+type HealthChecker interface {
+	HealthCheck() error
 }
 
 type CustomIaaS interface {

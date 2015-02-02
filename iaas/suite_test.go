@@ -77,3 +77,12 @@ func (i TestCustomizableIaaS) Clone(name string) IaaS {
 	i.name = name
 	return i
 }
+
+type TestHealthCheckerIaaS struct {
+	TestIaaS
+	err error
+}
+
+func (i TestHealthCheckerIaaS) HealthCheck() error {
+	return i.err
+}
