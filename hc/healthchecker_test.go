@@ -30,7 +30,6 @@ func (HCSuite) TestCheck(c *gocheck.C) {
 	c.Assert(result, gocheck.DeepEquals, expected)
 }
 
-
 func successChecker() error {
 	return nil
 }
