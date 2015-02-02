@@ -6,14 +6,15 @@ package api
 
 import (
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
-	"net/http"
-	"net/http/httptest"
 )
 
 func (s *S) TestAppSshWithAppName(c *gocheck.C) {
@@ -34,7 +35,7 @@ func (s *S) TestAppSshWithAppName(c *gocheck.C) {
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	buf := safe.NewBuffer([]byte("echo teste"))
-	recorder := testing.Hijacker{Conn: &testing.FakeConn{buf}}
+	recorder := testing.Hijacker{Conn: &testing.FakeConn{Buf: buf}}
 	err = sshHandler(&recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 }

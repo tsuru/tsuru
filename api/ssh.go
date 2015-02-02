@@ -5,10 +5,11 @@
 package api
 
 import (
-	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/errors"
 	"net/http"
 	"strconv"
+
+	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/errors"
 )
 
 func sshHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
