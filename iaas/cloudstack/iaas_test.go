@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/iaas"
 	"launchpad.net/gocheck"
 )
@@ -27,77 +26,6 @@ func (s *cloudstackSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("iaas:cloudstack:api-key", "test")
 	config.Set("iaas:cloudstack:secret-key", "test")
 	config.Set("iaas:cloudstack:url", "test")
-}
-
-func (s *cloudstackSuite) TestHealthChecker(c *gocheck.C) {
-	var command string
-	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, `{"listzonesresponse":{"count":8,"zone":[]}}`)
-		command = r.URL.Query().Get("command")
-	}))
-	defer fakeServer.Close()
-	config.Set("iaas:cloudstack:url", fakeServer.URL)
-	err := healthChecker()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(command, gocheck.Equals, "listZones")
-}
-
-func (s *cloudstackSuite) TestHealthCheckerFailure(c *gocheck.C) {
-	var command string
-	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, `{"listzonesresponse":{"count":0,"zone":[]}}`)
-		command = r.URL.Query().Get("command")
-	}))
-	defer fakeServer.Close()
-	config.Set("iaas:cloudstack:url", fakeServer.URL)
-	err := healthChecker()
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, `"cloudstack" - not enough zones available, want at least 1, got 0`)
-	c.Assert(command, gocheck.Equals, "listZones")
-}
-
-func (s *cloudstackSuite) TestHealthCheckerCustom(c *gocheck.C) {
-	var cmds []string
-	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, `{"listzonesresponse":{"count":8,"zone":[]}}`)
-		cmds = append(cmds, r.URL.Query().Get("command"))
-	}))
-	defer fakeServer.Close()
-	config.Set("iaas:cloudstack:url", fakeServer.URL)
-	config.Set("iaas:custom:cs_qa:provider", "cloudstack")
-	defer config.Unset("iaas:custom:cs_qa:url")
-	defer config.Unset("iaas:custom:cs_qa:provider")
-	defer config.Unset("iaas:custom:cs_qa")
-	err := healthChecker()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(cmds, gocheck.DeepEquals, []string{"listZones", "listZones"})
-}
-
-func (s *cloudstackSuite) TestHealthCheckerCustomFailure(c *gocheck.C) {
-	var command string
-	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, `{"listzonesresponse":{"count":-1,"zone":[]}}`)
-		command = r.URL.Query().Get("command")
-	}))
-	defer fakeServer.Close()
-	config.Set("iaas:cloudstack:url", fakeServer.URL)
-	config.Set("iaas:custom:cs_qa:provider", "cloudstack")
-	defer config.Unset("iaas:custom:cs_qa:url")
-	defer config.Unset("iaas:custom:cs_qa:provider")
-	defer config.Unset("iaas:custom:cs_qa")
-	err := healthChecker()
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, `"cs_qa" - not enough zones available, want at least 1, got -1`)
-	c.Assert(command, gocheck.Equals, "listZones")
-}
-
-func (s *cloudstackSuite) TestHealthCheckerDisabled(c *gocheck.C) {
-	if oldValue, err := config.Get("iaas"); err == nil {
-		defer config.Set("iaas", oldValue)
-	}
-	config.Unset("iaas")
-	err := healthChecker()
-	c.Assert(err, gocheck.Equals, hc.ErrDisabledComponent)
 }
 
 func (s *cloudstackSuite) TestCreateMachine(c *gocheck.C) {
@@ -289,4 +217,33 @@ func (s *cloudstackSuite) TestClone(c *gocheck.C) {
 	clonnedCS, _ := clonned.(*CloudstackIaaS)
 	c.Assert(cs.base.IaaSName, gocheck.Equals, "")
 	c.Assert(clonnedCS.base.IaaSName, gocheck.Equals, "something")
+}
+
+func (s *cloudstackSuite) TestHealthCheck(c *gocheck.C) {
+	var command string
+	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, `{"listzonesresponse":{"count":8,"zone":[]}}`)
+		command = r.URL.Query().Get("command")
+	}))
+	defer fakeServer.Close()
+	config.Set("iaas:cloudstack:url", fakeServer.URL)
+	cs := NewCloudstackIaaS()
+	err := cs.HealthCheck()
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(command, gocheck.Equals, "listZones")
+}
+
+func (s *cloudstackSuite) TestHealthCheckFailure(c *gocheck.C) {
+	var command string
+	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, `{"listzonesresponse":{"count":0,"zone":[]}}`)
+		command = r.URL.Query().Get("command")
+	}))
+	defer fakeServer.Close()
+	config.Set("iaas:cloudstack:url", fakeServer.URL)
+	cs := NewCloudstackIaaS()
+	err := cs.HealthCheck()
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, `"cloudstack" - not enough zones available, want at least 1, got 0`)
+	c.Assert(command, gocheck.Equals, "listZones")
 }

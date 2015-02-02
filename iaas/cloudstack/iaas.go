@@ -17,62 +17,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/iaas"
 )
 
 func init() {
 	iaas.RegisterIaasProvider("cloudstack", NewCloudstackIaaS())
-	hc.AddChecker("cloudstack", healthChecker)
-}
-
-func healthChecker() error {
-	iaasConfig, err := config.Get("iaas")
-	if err != nil {
-		return hc.ErrDisabledComponent
-	}
-	iaases, _ := iaasConfig.(map[interface{}]interface{})
-	for ifaceName := range iaases {
-		name := ifaceName.(string)
-		if name == "custom" {
-			customIaases := iaases[name].(map[interface{}]interface{})
-			for ifaceName := range customIaases {
-				iaas := customIaases[ifaceName.(string)].(map[interface{}]interface{})
-				if iaas["provider"].(string) != "cloudstack" {
-					continue
-				}
-				name = ifaceName.(string)
-			}
-		} else if name != "cloudstack" {
-			continue
-		}
-		err := healthCheck(name)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func healthCheck(name string) error {
-	provider, err := iaas.GetIaasProvider(name)
-	if err != nil {
-		return nil
-	}
-	cstack, ok := provider.(*CloudstackIaaS)
-	if !ok {
-		return nil
-	}
-	var resp ListZonesResponse
-	err = cstack.do("listZones", map[string]string{}, &resp)
-	if err != nil {
-		return err
-	}
-	if resp.ListZonesResponse.Count < 1 {
-		return fmt.Errorf("%q - not enough zones available, want at least 1, got %d", name, resp.ListZonesResponse.Count)
-	}
-	return nil
+	hc.AddChecker("cloudstack", iaas.BuildHealthCheck("cloudstack"))
 }
 
 type CloudstackIaaS struct {
@@ -98,6 +49,22 @@ func (i *CloudstackIaaS) Describe() string {
 
 Further params will also be sent to cloudstack's deployVirtualMachine command.
 `
+}
+
+func (i *CloudstackIaaS) HealthCheck() error {
+	var resp ListZonesResponse
+	err := i.do("listZones", map[string]string{}, &resp)
+	if err != nil {
+		return err
+	}
+	if resp.ListZonesResponse.Count < 1 {
+		name := i.base.IaaSName
+		if name == "" {
+			name = i.base.BaseIaaSName
+		}
+		return fmt.Errorf("%q - not enough zones available, want at least 1, got %d", name, resp.ListZonesResponse.Count)
+	}
+	return nil
 }
 
 func validateParams(params map[string]string) error {
