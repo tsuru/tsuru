@@ -180,6 +180,19 @@ func listValidAppImages(appName string) ([]string, error) {
 	return img.Images, nil
 }
 
+func isValidAppImage(appName, imageId string) (bool, error) {
+	images, err := listValidAppImages(appName)
+	if err != nil && err != mgo.ErrNotFound {
+		return false, err
+	}
+	for _, img := range images {
+		if img == imageId {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func imageHistorySize() int {
 	imgHistorySize, _ := config.GetInt("docker:image-history-size")
 	if imgHistorySize == 0 {

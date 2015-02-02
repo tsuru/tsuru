@@ -351,6 +351,66 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 	c.Assert(n, gocheck.Equals, 2)
 }
 
+func (s *S) TestImageDeploy(c *gocheck.C) {
+	h := &tsrTesting.TestHandler{}
+	gandalfServer := tsrTesting.StartGandalfTestServer(h)
+	defer gandalfServer.Close()
+	go s.stopContainers(1)
+	err := newImage("tsuru/app-otherapp:v1", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	err = appendAppImageName("otherapp", "tsuru/app-otherapp:v1")
+	c.Assert(err, gocheck.IsNil)
+	p := dockerProvisioner{}
+	a := app.App{
+		Name:     "otherapp",
+		Platform: "python",
+	}
+	conn, err := db.Conn()
+	defer conn.Close()
+	err = conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": a.Name})
+	p.Provision(&a)
+	defer p.Destroy(&a)
+	w := safe.NewBuffer(make([]byte, 2048))
+	err = app.Deploy(app.DeployOptions{
+		App:          &a,
+		OutputStream: w,
+		Image:        "tsuru/app-otherapp:v1",
+	})
+	c.Assert(err, gocheck.IsNil)
+	units := a.Units()
+	c.Assert(units, gocheck.HasLen, 1)
+}
+
+func (s *S) TestImageDeployInvalidImage(c *gocheck.C) {
+	h := &tsrTesting.TestHandler{}
+	gandalfServer := tsrTesting.StartGandalfTestServer(h)
+	defer gandalfServer.Close()
+	go s.stopContainers(1)
+	p := dockerProvisioner{}
+	a := app.App{
+		Name:     "otherapp",
+		Platform: "python",
+	}
+	conn, err := db.Conn()
+	defer conn.Close()
+	err = conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": a.Name})
+	p.Provision(&a)
+	defer p.Destroy(&a)
+	w := safe.NewBuffer(make([]byte, 2048))
+	err = app.Deploy(app.DeployOptions{
+		App:          &a,
+		OutputStream: w,
+		Image:        "tsuru/app-otherapp:v1",
+	})
+	c.Assert(err, gocheck.ErrorMatches, "invalid image for app otherapp: tsuru/app-otherapp:v1")
+	units := a.Units()
+	c.Assert(units, gocheck.HasLen, 0)
+}
+
 func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	cont, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)

@@ -153,6 +153,13 @@ func (dockerProvisioner) Swap(app1, app2 provision.App) error {
 }
 
 func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.Writer) (string, error) {
+	isValid, err := isValidAppImage(app.GetName(), imageId)
+	if err != nil {
+		return "", err
+	}
+	if !isValid {
+		return "", fmt.Errorf("invalid image for app %s: %s", app.GetName(), imageId)
+	}
 	return imageId, p.deploy(app, imageId, w)
 }
 
