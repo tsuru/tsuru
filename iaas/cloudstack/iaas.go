@@ -30,7 +30,7 @@ func init() {
 func healthChecker() error {
 	iaasConfig, err := config.Get("iaas")
 	if err != nil {
-		return err
+		return hc.ErrDisabledComponent
 	}
 	iaases, _ := iaasConfig.(map[interface{}]interface{})
 	for ifaceName := range iaases {

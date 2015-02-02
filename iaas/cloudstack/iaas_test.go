@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/iaas"
 	"launchpad.net/gocheck"
 )
@@ -88,6 +89,15 @@ func (s *cloudstackSuite) TestHealthCheckerCustomFailure(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, `"cs_qa" - not enough zones available, want at least 1, got -1`)
 	c.Assert(command, gocheck.Equals, "listZones")
+}
+
+func (s *cloudstackSuite) TestHealthCheckerDisabled(c *gocheck.C) {
+	if oldValue, err := config.Get("iaas"); err == nil {
+		defer config.Set("iaas", oldValue)
+	}
+	config.Unset("iaas")
+	err := healthChecker()
+	c.Assert(err, gocheck.Equals, hc.ErrDisabledComponent)
 }
 
 func (s *cloudstackSuite) TestCreateMachine(c *gocheck.C) {
