@@ -23,7 +23,7 @@ import (
 
 func init() {
 	iaas.RegisterIaasProvider("cloudstack", NewCloudstackIaaS())
-	hc.AddChecker("cloudstack", iaas.BuildHealthCheck("cloudstack"))
+	hc.AddChecker("CloudStack", iaas.BuildHealthCheck("cloudstack"))
 }
 
 type CloudstackIaaS struct {
