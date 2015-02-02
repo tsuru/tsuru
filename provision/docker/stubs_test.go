@@ -5,7 +5,6 @@
 package docker
 
 import (
-	"bufio"
 	"fmt"
 	"net"
 	"net/http"
@@ -153,17 +152,4 @@ func (s *fakeScheduler) Schedule(config *docker.Config) (string, *docker.Contain
 func (s *fakeScheduler) Register(nodes ...cluster.Node) error {
 	s.nodes = append(s.nodes, nodes...)
 	return nil
-}
-
-type hijacker struct {
-	http.ResponseWriter
-	conn net.Conn
-	err  error
-}
-
-func (h *hijacker) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	if h.err != nil {
-		return nil, nil, h.err
-	}
-	return h.conn, nil, nil
 }

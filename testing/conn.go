@@ -5,8 +5,10 @@
 package testing
 
 import (
+	"bufio"
 	"io"
 	"net"
+	"net/http"
 	"time"
 
 	"github.com/tsuru/tsuru/safe"
@@ -53,4 +55,17 @@ func (c *FakeConn) SetReadDeadline(t time.Time) error {
 
 func (c *FakeConn) SetWriteDeadline(t time.Time) error {
 	return nil
+}
+
+type Hijacker struct {
+	http.ResponseWriter
+	Conn net.Conn
+	err  error
+}
+
+func (h *Hijacker) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if h.err != nil {
+		return nil, nil, h.err
+	}
+	return h.Conn, nil, nil
 }
