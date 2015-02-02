@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -66,4 +66,10 @@ type DetachVolumeResponse struct {
 	DetachVolumeResponse struct {
 		JobID string `json:"jobid"`
 	} `json:"detachvolumeresponse"`
+}
+
+type ListZonesResponse struct {
+	ListZonesResponse struct {
+		Count int `json:"count"`
+	} `json:"listzonesresponse"`
 }
