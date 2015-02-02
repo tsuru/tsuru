@@ -60,12 +60,12 @@ func (c *FakeConn) SetWriteDeadline(t time.Time) error {
 type Hijacker struct {
 	http.ResponseWriter
 	Conn net.Conn
-	err  error
+	Err  error
 }
 
 func (h *Hijacker) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	if h.err != nil {
-		return nil, nil, h.err
+	if h.Err != nil {
+		return nil, nil, h.Err
 	}
 	return h.Conn, nil, nil
 }
