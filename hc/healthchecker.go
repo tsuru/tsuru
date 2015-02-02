@@ -7,8 +7,12 @@
 // use.
 package hc
 
+import "errors"
+
 // HealthCheckOK is the status returned when the healthcheck works.
 const HealthCheckOK = "WORKING"
+
+var ErrDisabledComponent = errors.New("disabled component")
 
 var checkers []healthChecker
 
@@ -35,13 +39,13 @@ func AddChecker(name string, check func() error) {
 // Check check the status of all registered checkers and return a list of
 // results.
 func Check() []Result {
-	results := make([]Result, len(checkers))
-	for i, checker := range checkers {
-		status := HealthCheckOK
-		if err := checker.check(); err != nil {
-			status = "fail - " + err.Error()
+	results := make([]Result, 0, len(checkers))
+	for _, checker := range checkers {
+		if err := checker.check(); err != nil && err != ErrDisabledComponent {
+			results = append(results, Result{Name: checker.name, Status: "fail - " + err.Error()})
+		} else if err == nil {
+			results = append(results, Result{Name: checker.name, Status: HealthCheckOK})
 		}
-		results[i] = Result{Name: checker.name, Status: status}
 	}
 	return results
 }

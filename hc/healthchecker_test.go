@@ -22,6 +22,7 @@ var _ = gocheck.Suite(HCSuite{})
 func (HCSuite) TestCheck(c *gocheck.C) {
 	AddChecker("success", successChecker)
 	AddChecker("failing", failingChecker)
+	AddChecker("disabled", disabledChecker)
 	expected := []Result{
 		{Name: "success", Status: HealthCheckOK},
 		{Name: "failing", Status: "fail - something went wrong"},
@@ -36,4 +37,8 @@ func successChecker() error {
 
 func failingChecker() error {
 	return errors.New("something went wrong")
+}
+
+func disabledChecker() error {
+	return ErrDisabledComponent
 }
