@@ -857,7 +857,7 @@ func (p *FakeProvisioner) Ssh(app provision.App, conn net.Conn, width, height in
 				return nil
 			}
 		}
-		return errors.New("app has no container")
+		return errors.New("container not found")
 	}
 	units := p.Units(app)
 	if len(units) == 0 {
