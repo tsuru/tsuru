@@ -138,6 +138,7 @@ func RunServer(dry bool) http.Handler {
 	saveCustomDataHandler := authorizationRequiredHandler(saveAppCustomData)
 	m.Add("Post", "/apps/{app}/customdata", saveCustomDataHandler)
 	m.Add("Post", "/apps/{appname}/deploy/rollback", authorizationRequiredHandler(deployRollback))
+	m.Add("Get", "/apps/{app}/ssh", authorizationRequiredHandler(sshHandler))
 
 	m.Add("Get", "/autoscale", authorizationRequiredHandler(autoScaleHistoryHandler))
 	m.Add("Put", "/autoscale/{app}", authorizationRequiredHandler(autoScaleConfig))
