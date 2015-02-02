@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -89,6 +89,19 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 	config.Unset("database:url")
 	config.Unset("database:name")
 	strg.Collection("apps").Database.DropDatabase()
+}
+
+func (s *S) TestHealthCheck(c *gocheck.C) {
+	err := healthCheck()
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestHealthCheckFailure(c *gocheck.C) {
+	config.Set("database:url", "localhost:34456")
+	defer config.Unset("database:url")
+	err := healthCheck()
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "no reachable servers")
 }
 
 func (s *S) TestUsers(c *gocheck.C) {

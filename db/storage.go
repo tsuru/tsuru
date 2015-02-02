@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -14,6 +14,7 @@ package db
 import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/hc"
 	"gopkg.in/mgo.v2"
 )
 
@@ -24,6 +25,19 @@ const (
 
 type Storage struct {
 	*storage.Storage
+}
+
+func init() {
+	hc.AddChecker("MongoDB", healthCheck)
+}
+
+func healthCheck() error {
+	conn, err := Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.Apps().Database.Session.Ping()
 }
 
 // conn reads the tsuru config and calls storage.Open to get a database connection.
