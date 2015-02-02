@@ -7,7 +7,6 @@ package cloudstack
 import (
 	"crypto/hmac"
 	"crypto/sha1"
-	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -67,7 +66,6 @@ func (i *CloudstackIaaS) do(cmd string, params map[string]string, result interfa
 		return err
 	}
 	client := http.DefaultClient
-	client.Transport = &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 	resp, err := client.Get(url)
 	if err != nil {
 		return err
