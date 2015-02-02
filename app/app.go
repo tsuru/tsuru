@@ -86,29 +86,6 @@ type App struct {
 	quota.Quota
 }
 
-type TsuruYamlRestartHooks struct {
-	Before []string
-	After  []string
-}
-
-type TsuruYamlHooks struct {
-	Restart TsuruYamlRestartHooks
-	Build   []string
-}
-
-type TsuruYamlHealthcheck struct {
-	Path            string
-	Method          string
-	Status          int
-	Match           string
-	AllowedFailures int `json:"allowed_failures"`
-}
-
-type TsuruYamlData struct {
-	Hooks       TsuruYamlHooks
-	Healthcheck TsuruYamlHealthcheck
-}
-
 // Units returns the list of units.
 func (app *App) Units() []provision.Unit {
 	return Provisioner.Units(app)
@@ -1158,15 +1135,18 @@ func (app *App) GetUpdatePlatform() bool {
 	return app.UpdatePlatform
 }
 
-func (app *App) RegisterUnit(unitId string) error {
+func (app *App) RegisterUnit(unitId string, customData map[string]interface{}) error {
 	for _, unit := range app.Units() {
 		if strings.HasPrefix(unit.Name, unitId) {
-			return Provisioner.RegisterUnit(unit)
+			return Provisioner.RegisterUnit(unit, customData)
 		}
 	}
 	return ErrUnitNotFound
 }
 
+// TODO(cezarsa): This method only exist to keep tsuru compatible with older
+// platforms. It should be removed in the next major after 0.10.0. Provisioner
+// is now responsible for saving custom data associated to image.
 func (app *App) UpdateCustomData(customData map[string]interface{}) error {
 	app.CustomData = customData
 	conn, err := db.Conn()
@@ -1179,9 +1159,12 @@ func (app *App) UpdateCustomData(customData map[string]interface{}) error {
 	)
 }
 
-func (app *App) GetTsuruYamlData() (TsuruYamlData, error) {
+// TODO(cezarsa): This method only exist to keep tsuru compatible with older
+// platforms. It should be removed in the next major after 0.10.0. Provisioner
+// is now responsible for saving custom data associated to image.
+func (app *App) GetTsuruYamlData() (provision.TsuruYamlData, error) {
 	rawData, err := json.Marshal(app.CustomData)
-	var data TsuruYamlData
+	var data provision.TsuruYamlData
 	err = json.Unmarshal(rawData, &data)
 	if err != nil {
 		return data, err

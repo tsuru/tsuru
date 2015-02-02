@@ -2375,19 +2375,21 @@ func (s *S) TestAppRegisterUnit(c *gocheck.C) {
 	for _, u := range units {
 		ips = append(ips, u.Ip)
 	}
-	err := a.RegisterUnit(units[0].Name)
+	customData := map[string]interface{}{"x": "y"}
+	err := a.RegisterUnit(units[0].Name, customData)
 	c.Assert(err, gocheck.IsNil)
 	units = a.Units()
 	c.Assert(units[0].Ip, gocheck.Equals, ips[0]+"-updated")
 	c.Assert(units[1].Ip, gocheck.Equals, ips[1])
 	c.Assert(units[2].Ip, gocheck.Equals, ips[2])
+	c.Assert(s.provisioner.CustomData(&a), gocheck.DeepEquals, customData)
 }
 
 func (s *S) TestAppRegisterUnitInvalidUnit(c *gocheck.C) {
 	a := App{Name: "appName", Platform: "python"}
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
-	err := a.RegisterUnit("oddity")
+	err := a.RegisterUnit("oddity", nil)
 	c.Assert(err, gocheck.Equals, ErrUnitNotFound)
 }
 
@@ -2484,15 +2486,15 @@ func (s *S) TestGetTsuruYamlData(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	yamlData, err := a.GetTsuruYamlData()
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(yamlData, gocheck.DeepEquals, TsuruYamlData{
-		Hooks: TsuruYamlHooks{
-			Restart: TsuruYamlRestartHooks{
+	c.Assert(yamlData, gocheck.DeepEquals, provision.TsuruYamlData{
+		Hooks: provision.TsuruYamlHooks{
+			Restart: provision.TsuruYamlRestartHooks{
 				Before: []string{"rb1", "rb2"},
 				After:  []string{"ra1", "ra2"},
 			},
 			Build: []string{"ba1", "ba2"},
 		},
-		Healthcheck: TsuruYamlHealthcheck{
+		Healthcheck: provision.TsuruYamlHealthcheck{
 			Path:            "/test",
 			Method:          "PUT",
 			Status:          200,

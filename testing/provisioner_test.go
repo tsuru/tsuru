@@ -908,7 +908,7 @@ func (s *S) TestFakeProvisionerRegisterUnit(c *gocheck.C) {
 	p.AddUnit(app, unit)
 	units := p.Units(app)
 	ip := units[0].Ip
-	err = p.RegisterUnit(unit)
+	err = p.RegisterUnit(unit, nil)
 	c.Assert(err, gocheck.IsNil)
 	units = p.Units(app)
 	c.Assert(units[0].Ip, gocheck.Equals, ip+"-updated")
@@ -920,6 +920,23 @@ func (s *S) TestFakeProvisionerRegisterUnitNotFound(c *gocheck.C) {
 	err := p.Provision(app)
 	c.Assert(err, gocheck.IsNil)
 	unit := provision.Unit{AppName: "shine-on", Name: "unit/1"}
-	err = p.RegisterUnit(unit)
+	err = p.RegisterUnit(unit, nil)
 	c.Assert(err, gocheck.ErrorMatches, "unit not found")
+}
+
+func (s *S) TestFakeProvisionerRegisterUnitSavesData(c *gocheck.C) {
+	app := NewFakeApp("shine-on", "diamond", 1)
+	p := NewFakeProvisioner()
+	err := p.Provision(app)
+	c.Assert(err, gocheck.IsNil)
+	unit := provision.Unit{AppName: "shine-on", Name: "unit/1"}
+	p.AddUnit(app, unit)
+	units := p.Units(app)
+	ip := units[0].Ip
+	data := map[string]interface{}{"my": "data"}
+	err = p.RegisterUnit(unit, data)
+	c.Assert(err, gocheck.IsNil)
+	units = p.Units(app)
+	c.Assert(units[0].Ip, gocheck.Equals, ip+"-updated")
+	c.Assert(p.CustomData(app), gocheck.DeepEquals, data)
 }

@@ -921,11 +921,19 @@ func registerUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	hostname := val.Get("hostname")
+	var customData map[string]interface{}
+	rawCustomData := val.Get("customdata")
+	if rawCustomData != "" {
+		err = json.Unmarshal([]byte(data), &customData)
+		if err != nil {
+			return err
+		}
+	}
 	a, err := app.GetByName(appName)
 	if err != nil {
 		return err
 	}
-	err = a.RegisterUnit(hostname)
+	err = a.RegisterUnit(hostname, customData)
 	if err != nil {
 		if err == app.ErrUnitNotFound {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
@@ -935,6 +943,9 @@ func registerUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return writeEnvVars(w, a)
 }
 
+// TODO(cezarsa): This method only exist to keep tsuru compatible with older
+// platforms. It should be removed in the next major after 0.10.0. Custom data
+// is now handled in unit registration.
 func saveAppCustomData(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	appName := r.URL.Query().Get(":app")
 	var customData map[string]interface{}

@@ -97,6 +97,55 @@ func appImagesColl() (*dbStorage.Collection, error) {
 	return conn.Collection(fmt.Sprintf("%s_app_image", name)), nil
 }
 
+func imageCustomDataColl() (*dbStorage.Collection, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	name, err := config.GetString("docker:collection")
+	if err != nil {
+		return nil, err
+	}
+	return conn.Collection(fmt.Sprintf("%s_image_custom_data", name)), nil
+}
+
+func saveImageCustomData(imageName string, customData map[string]interface{}) error {
+	coll, err := imageCustomDataColl()
+	if err != nil {
+		return err
+	}
+	defer coll.Close()
+	return coll.Insert(bson.M{"_id": imageName, "customdata": customData})
+}
+
+func getImageTsuruYamlData(imageName string) (provision.TsuruYamlData, error) {
+	var customData struct {
+		Customdata provision.TsuruYamlData
+	}
+	coll, err := imageCustomDataColl()
+	if err != nil {
+		return customData.Customdata, err
+	}
+	defer coll.Close()
+	err = coll.FindId(imageName).One(&customData)
+	return customData.Customdata, err
+}
+
+// TODO(cezarsa): This method only exist to keep tsuru compatible with older
+// platforms. It should be deprecated in the next major after 0.10.0.
+func getImageTsuruYamlDataWithFallback(imageName, appName string) (provision.TsuruYamlData, error) {
+	yamlData, err := getImageTsuruYamlData(imageName)
+	if err != nil {
+		a, err := app.GetByName(appName)
+		if err != nil {
+			// Ignored error if app not found
+			return yamlData, nil
+		}
+		return a.GetTsuruYamlData()
+	}
+	return yamlData, nil
+}
+
 func appNewImageName(appName string) (string, error) {
 	coll, err := appImagesColl()
 	if err != nil {
@@ -202,6 +251,19 @@ func imageHistorySize() int {
 }
 
 func deleteAllAppImageNames(appName string) error {
+	images, err := listAppImages(appName)
+	if err != nil {
+		return err
+	}
+	dataColl, err := imageCustomDataColl()
+	if err != nil {
+		return err
+	}
+	defer dataColl.Close()
+	_, err = dataColl.RemoveAll(bson.M{"_id": bson.M{"$in": images}})
+	if err != nil {
+		return err
+	}
 	coll, err := appImagesColl()
 	if err != nil {
 		return err
@@ -211,6 +273,15 @@ func deleteAllAppImageNames(appName string) error {
 }
 
 func pullAppImageNames(appName string, images []string) error {
+	dataColl, err := imageCustomDataColl()
+	if err != nil {
+		return err
+	}
+	defer dataColl.Close()
+	_, err = dataColl.RemoveAll(bson.M{"_id": bson.M{"$in": images}})
+	if err != nil {
+		return err
+	}
 	coll, err := appImagesColl()
 	if err != nil {
 		return err

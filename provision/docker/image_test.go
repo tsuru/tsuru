@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
@@ -288,4 +289,99 @@ func (s *S) TestDeleteAllAppImageNames(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	_, err = listAppImages("myapp")
 	c.Assert(err, gocheck.ErrorMatches, "not found")
+}
+
+func (s *S) TestDeleteAllAppImageNamesRemovesCustomData(c *gocheck.C) {
+	imgName := "tsuru/app-myapp:v1"
+	err := appendAppImageName("myapp", imgName)
+	c.Assert(err, gocheck.IsNil)
+	data := map[string]interface{}{"healthcheck": map[string]interface{}{"path": "/test"}}
+	err = saveImageCustomData(imgName, data)
+	c.Assert(err, gocheck.IsNil)
+	err = deleteAllAppImageNames("myapp")
+	c.Assert(err, gocheck.IsNil)
+	_, err = listAppImages("myapp")
+	c.Assert(err, gocheck.ErrorMatches, "not found")
+	yamlData, err := getImageTsuruYamlDataWithFallback(imgName, "")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(yamlData, gocheck.DeepEquals, provision.TsuruYamlData{})
+}
+
+func (s *S) TestGetImageTsuruYamlDataWithFallback(c *gocheck.C) {
+	data1 := map[string]interface{}{
+		"hooks": map[string]interface{}{
+			"restart": map[string]interface{}{
+				"after": []string{"cmd1", "cmd2"},
+			},
+		},
+	}
+	data2 := map[string]interface{}{
+		"hooks": map[string]interface{}{
+			"restart": map[string]interface{}{
+				"after": []string{"cmd3"},
+			},
+		},
+	}
+	a := &app.App{
+		Name:       "mytestapp",
+		CustomData: data1,
+	}
+	conn, err := db.Conn()
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Close()
+	err = conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": a.Name})
+	yamlData, err := getImageTsuruYamlDataWithFallback("tsuru/some-image", a.Name)
+	c.Assert(err, gocheck.IsNil)
+	expected := provision.TsuruYamlData{
+		Hooks: provision.TsuruYamlHooks{
+			Restart: provision.TsuruYamlRestartHooks{
+				After: []string{"cmd1", "cmd2"},
+			},
+		},
+	}
+	c.Assert(yamlData, gocheck.DeepEquals, expected)
+	// Overriden by image specific custom data
+	err = saveImageCustomData("tsuru/some-image", data2)
+	c.Assert(err, gocheck.IsNil)
+	yamlData, err = getImageTsuruYamlDataWithFallback("tsuru/some-image", a.Name)
+	c.Assert(err, gocheck.IsNil)
+	expected.Hooks.Restart.After = []string{"cmd3"}
+	c.Assert(yamlData, gocheck.DeepEquals, expected)
+}
+
+func (s *S) TestPullAppImageNames(c *gocheck.C) {
+	err := appendAppImageName("myapp", "tsuru/app-myapp:v1")
+	c.Assert(err, gocheck.IsNil)
+	err = appendAppImageName("myapp", "tsuru/app-myapp:v2")
+	c.Assert(err, gocheck.IsNil)
+	err = appendAppImageName("myapp", "tsuru/app-myapp:v3")
+	c.Assert(err, gocheck.IsNil)
+	err = pullAppImageNames("myapp", []string{"tsuru/app-myapp:v1", "tsuru/app-myapp:v3"})
+	c.Assert(err, gocheck.IsNil)
+	images, err := listAppImages("myapp")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(images, gocheck.DeepEquals, []string{"tsuru/app-myapp:v2"})
+}
+
+func (s *S) TestPullAppImageNamesRemovesCustomData(c *gocheck.C) {
+	img1Name := "tsuru/app-myapp:v1"
+	err := appendAppImageName("myapp", img1Name)
+	c.Assert(err, gocheck.IsNil)
+	err = appendAppImageName("myapp", "tsuru/app-myapp:v2")
+	c.Assert(err, gocheck.IsNil)
+	err = appendAppImageName("myapp", "tsuru/app-myapp:v3")
+	c.Assert(err, gocheck.IsNil)
+	data := map[string]interface{}{"healthcheck": map[string]interface{}{"path": "/test"}}
+	err = saveImageCustomData(img1Name, data)
+	c.Assert(err, gocheck.IsNil)
+	err = pullAppImageNames("myapp", []string{img1Name})
+	c.Assert(err, gocheck.IsNil)
+	images, err := listAppImages("myapp")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(images, gocheck.DeepEquals, []string{"tsuru/app-myapp:v2", "tsuru/app-myapp:v3"})
+	yamlData, err := getImageTsuruYamlDataWithFallback(img1Name, "")
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(yamlData, gocheck.DeepEquals, provision.TsuruYamlData{})
 }

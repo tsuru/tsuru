@@ -243,7 +243,7 @@ type Provisioner interface {
 	Units(App) []Unit
 
 	// Register a unit after the container has been created or restarted.
-	RegisterUnit(Unit) error
+	RegisterUnit(Unit, map[string]interface{}) error
 
 	// Ssh into a container.
 	Ssh(app App, conn net.Conn, width, height int, args ...string) error
@@ -311,4 +311,27 @@ func (e *Error) Error() string {
 		err = e.Reason
 	}
 	return err
+}
+
+type TsuruYamlRestartHooks struct {
+	Before []string
+	After  []string
+}
+
+type TsuruYamlHooks struct {
+	Restart TsuruYamlRestartHooks
+	Build   []string
+}
+
+type TsuruYamlHealthcheck struct {
+	Path            string
+	Method          string
+	Status          int
+	Match           string
+	AllowedFailures int `json:"allowed_failures"`
+}
+
+type TsuruYamlData struct {
+	Hooks       TsuruYamlHooks
+	Healthcheck TsuruYamlHealthcheck
 }

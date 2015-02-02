@@ -321,11 +321,7 @@ func (*dockerProvisioner) Addr(app provision.App) (string, error) {
 }
 
 func runRestartAfterHooks(cont *container, w io.Writer) error {
-	dbApp, err := app.GetByName(cont.AppName)
-	if err != nil {
-		return nil
-	}
-	yamlData, err := dbApp.GetTsuruYamlData()
+	yamlData, err := getImageTsuruYamlDataWithFallback(cont.Image, cont.AppName)
 	if err != nil {
 		return err
 	}
@@ -645,12 +641,15 @@ func (p *dockerProvisioner) Units(app provision.App) []provision.Unit {
 	return units
 }
 
-func (p *dockerProvisioner) RegisterUnit(unit provision.Unit) error {
+func (p *dockerProvisioner) RegisterUnit(unit provision.Unit, customData map[string]interface{}) error {
 	container, err := getContainer(unit.Name)
 	if err != nil {
 		return err
 	}
 	if container.Status == provision.StatusBuilding.String() {
+		if container.BuildingImage != "" && customData != nil {
+			return saveImageCustomData(container.BuildingImage, customData)
+		}
 		return nil
 	}
 	err = container.setStatus(provision.StatusStarted.String())

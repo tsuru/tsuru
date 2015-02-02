@@ -344,6 +344,12 @@ func (p *FakeProvisioner) Stops(app provision.App) int {
 	return p.apps[app.GetName()].stops
 }
 
+func (p *FakeProvisioner) CustomData(app provision.App) map[string]interface{} {
+	p.mut.RLock()
+	defer p.mut.RUnlock()
+	return p.apps[app.GetName()].lastData
+}
+
 // Returns the number of calls to restart.
 // GetCmds returns a list of commands executed in an app. If you don't specify
 // the command (an empty string), it will return all commands executed in the
@@ -832,13 +838,14 @@ func (p *FakeProvisioner) Stop(app provision.App) error {
 	return nil
 }
 
-func (p *FakeProvisioner) RegisterUnit(unit provision.Unit) error {
+func (p *FakeProvisioner) RegisterUnit(unit provision.Unit, customData map[string]interface{}) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	a, ok := p.apps[unit.AppName]
 	if !ok {
 		return errors.New("app not found")
 	}
+	a.lastData = customData
 	for i, u := range a.units {
 		if u.Name == unit.Name {
 			u.Ip = u.Ip + "-updated"
@@ -978,6 +985,7 @@ type provisionedApp struct {
 	cnames      []string
 	addr        string
 	unitLen     int
+	lastData    map[string]interface{}
 }
 
 type provisionedPlatform struct {

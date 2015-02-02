@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/app"
 )
 
 func clientWithTimeout(timeout time.Duration) *http.Client {
@@ -33,11 +32,7 @@ func clientWithTimeout(timeout time.Duration) *http.Client {
 var timeoutHttpClient = clientWithTimeout(5 * time.Second)
 
 func runHealthcheck(cont *container, w io.Writer) error {
-	dbApp, err := app.GetByName(cont.AppName)
-	if err != nil {
-		return nil
-	}
-	yamlData, err := dbApp.GetTsuruYamlData()
+	yamlData, err := getImageTsuruYamlDataWithFallback(cont.Image, cont.AppName)
 	if err != nil {
 		return err
 	}

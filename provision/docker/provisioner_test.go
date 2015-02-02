@@ -1247,7 +1247,7 @@ func (s *S) TestRegisterUnit(c *gocheck.C) {
 	err = coll.Update(bson.M{"id": container.ID}, container)
 	c.Assert(err, gocheck.IsNil)
 	var p dockerProvisioner
-	err = p.RegisterUnit(provision.Unit{Name: container.ID})
+	err = p.RegisterUnit(provision.Unit{Name: container.ID}, nil)
 	c.Assert(err, gocheck.IsNil)
 	dbCont, err := getContainer(container.ID)
 	c.Assert(err, gocheck.IsNil)
@@ -1268,12 +1268,37 @@ func (s *S) TestRegisterUnitBuildingContainer(c *gocheck.C) {
 	err = coll.Update(bson.M{"id": container.ID}, container)
 	c.Assert(err, gocheck.IsNil)
 	var p dockerProvisioner
-	err = p.RegisterUnit(provision.Unit{Name: container.ID})
+	err = p.RegisterUnit(provision.Unit{Name: container.ID}, nil)
 	c.Assert(err, gocheck.IsNil)
 	dbCont, err := getContainer(container.ID)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(dbCont.IP, gocheck.Matches, `xinvalidx`)
 	c.Assert(dbCont.Status, gocheck.Equals, provision.StatusBuilding.String())
+}
+
+func (s *S) TestRegisterUnitSavesCustomData(c *gocheck.C) {
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	opts := newContainerOpts{Status: provision.StatusBuilding.String(), AppName: "myawesomeapp"}
+	container, err := s.newContainer(&opts)
+	c.Assert(err, gocheck.IsNil)
+	defer s.removeTestContainer(container)
+	container.IP = "xinvalidx"
+	container.BuildingImage = "my-building-image"
+	coll := collection()
+	defer coll.Close()
+	err = coll.Update(bson.M{"id": container.ID}, container)
+	c.Assert(err, gocheck.IsNil)
+	var p dockerProvisioner
+	data := map[string]interface{}{"mydata": "value"}
+	err = p.RegisterUnit(provision.Unit{Name: container.ID}, data)
+	c.Assert(err, gocheck.IsNil)
+	dataColl, err := imageCustomDataColl()
+	c.Assert(err, gocheck.IsNil)
+	var customData map[string]interface{}
+	err = dataColl.FindId(container.BuildingImage).One(&customData)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(customData["customdata"], gocheck.DeepEquals, data)
 }
 
 func (s *S) TestRunRestartAfterHooks(c *gocheck.C) {
