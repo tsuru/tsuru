@@ -6,8 +6,33 @@ package repository
 
 import (
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/hc"
+	"github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
+
+func (s *S) TestHealthCheck(c *gocheck.C) {
+	handler := testing.TestHandler{Content: "WORKING"}
+	server := testing.StartGandalfTestServer(&handler)
+	defer server.Close()
+	err := healthCheck()
+	c.Assert(err, gocheck.IsNil)
+}
+
+func (s *S) TestHealthCheckFailure(c *gocheck.C) {
+	handler := testing.TestHandler{Content: "epic fail"}
+	server := testing.StartGandalfTestServer(&handler)
+	defer server.Close()
+	err := healthCheck()
+	c.Assert(err, gocheck.NotNil)
+	c.Assert(err.Error(), gocheck.Equals, "unexpected status - epic fail")
+}
+
+func (s *S) TestHealthCheckDisabled(c *gocheck.C) {
+	config.Unset("git:api-server")
+	err := healthCheck()
+	c.Assert(err, gocheck.Equals, hc.ErrDisabledComponent)
+}
 
 func (s *S) TestGetRepositoryURLCallsGandalfGetRepository(c *gocheck.C) {
 	url := ReadWriteURL("foobar")

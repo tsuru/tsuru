@@ -11,8 +11,30 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
+	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/log"
 )
+
+func init() {
+	hc.AddChecker("Gandalf", healthCheck)
+}
+
+func healthCheck() error {
+	serverURL, err := ServerURL()
+	if err == ErrGandalfDisabled {
+		return hc.ErrDisabledComponent
+	}
+	client := gandalf.Client{Endpoint: serverURL}
+	result, err := client.GetHealthCheck()
+	if err != nil {
+		return err
+	}
+	status := string(result)
+	if status == "WORKING" {
+		return nil
+	}
+	return errors.New("unexpected status - " + status)
+}
 
 var ErrGandalfDisabled = errors.New("git server is disabled")
 
