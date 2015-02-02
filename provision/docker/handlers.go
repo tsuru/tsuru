@@ -39,7 +39,6 @@ func init() {
 	api.RegisterHandler("/docker/pool/team", "POST", api.AdminRequiredHandler(addTeamToPoolHandler))
 	api.RegisterHandler("/docker/pool/team", "DELETE", api.AdminRequiredHandler(removeTeamToPoolHandler))
 	api.RegisterHandler("/docker/fix-containers", "POST", api.AdminRequiredHandler(fixContainersHandler))
-	api.RegisterHandler("/docker/ssh/{container_id}", "GET", api.AdminRequiredHandler(sshToContainerHandler))
 	api.RegisterHandler("/docker/healing", "GET", api.AdminRequiredHandler(healingHistoryHandler))
 }
 
@@ -305,32 +304,6 @@ func unmarshal(body io.ReadCloser) (map[string]string, error) {
 		return nil, err
 	}
 	return params, nil
-}
-
-func sshToContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	containerID := r.URL.Query().Get(":container_id")
-	width, _ := strconv.Atoi(r.URL.Query().Get("width"))
-	height, _ := strconv.Atoi(r.URL.Query().Get("height"))
-	container, err := getContainer(containerID)
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
-	}
-	hj, ok := w.(http.Hijacker)
-	if !ok {
-		return &errors.HTTP{
-			Code:    http.StatusInternalServerError,
-			Message: "cannot hijack connection",
-		}
-	}
-	conn, _, err := hj.Hijack()
-	if err != nil {
-		return &errors.HTTP{
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		}
-	}
-	defer conn.Close()
-	return container.shell(conn, conn, conn, pty{width: width, height: height})
 }
 
 func healingHistoryHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {

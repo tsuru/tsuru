@@ -15,8 +15,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/fsouza/go-dockerclient"
-	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/api"
@@ -24,11 +22,9 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
-	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -679,110 +675,6 @@ func (s *HandlersSuite) TestRemoveTeamsToPoolHandler(c *gocheck.C) {
 	err = s.conn.Collection(schedulerCollection).FindId("pool1").One(&p)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(p.Teams, gocheck.DeepEquals, []string{})
-}
-
-func (s *HandlersSuite) TestSSHToContainerHandler(c *gocheck.C) {
-	s.server.Close()
-	targetRecover := testing.SetTargetFile(c, []byte("http://localhost"))
-	defer testing.RollbackFile(targetRecover)
-	server, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, gocheck.IsNil)
-	defer server.Stop()
-	var storage cluster.MapStorage
-	dCluster, err = cluster.New(nil, &storage,
-		cluster.Node{Address: server.URL()},
-	)
-	c.Assert(err, gocheck.IsNil)
-	err = newImage("tsuru/python", "")
-	c.Assert(err, gocheck.IsNil)
-	container := container{
-		AppName: "makea",
-	}
-	config := docker.Config{
-		Image: "tsuru/python",
-		Cmd:   []string{"ps"},
-	}
-	_, cont, err := dCluster.CreateContainer(docker.CreateContainerOptions{Config: &config})
-	c.Assert(err, gocheck.IsNil)
-	container.ID = cont.ID
-	defer container.remove()
-	coll := collection()
-	defer coll.Close()
-	err = coll.Insert(container)
-	defer coll.RemoveAll(bson.M{"appname": "makea"})
-	c.Assert(err, gocheck.IsNil)
-	buf := safe.NewBuffer([]byte("echo teste"))
-	recorder := hijacker{conn: &testing.FakeConn{buf}}
-	request, err := http.NewRequest("GET", "/?:container_id="+container.ID, nil)
-	c.Assert(err, gocheck.IsNil)
-	err = sshToContainerHandler(&recorder, request, nil)
-	c.Assert(err, gocheck.IsNil)
-}
-
-func (s *HandlersSuite) TestSSHToContainerHandlerUnhijackable(c *gocheck.C) {
-	coll := collection()
-	defer coll.Close()
-	container := container{
-		ID:       "9930c24f1c4x",
-		AppName:  "makea",
-		Type:     "python",
-		Status:   provision.StatusStarted.String(),
-		IP:       "127.0.0.4",
-		HostPort: "9025",
-		HostAddr: "127.0.0.1",
-	}
-	err := coll.Insert(container)
-	c.Assert(err, gocheck.IsNil)
-	defer coll.RemoveAll(bson.M{"appname": "makea"})
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/?:container_id="+container.ID, nil)
-	c.Assert(err, gocheck.IsNil)
-	err = sshToContainerHandler(recorder, request, nil)
-	c.Assert(err, gocheck.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusInternalServerError)
-	c.Assert(e.Message, gocheck.Equals, "cannot hijack connection")
-}
-
-func (s *HandlersSuite) TestSSHToContainerHandlerContainerNotFound(c *gocheck.C) {
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/?:container_id=a12345", nil)
-	c.Assert(err, gocheck.IsNil)
-	err = sshToContainerHandler(recorder, request, nil)
-	c.Assert(err, gocheck.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
-	c.Assert(e.Message, gocheck.Equals, "not found")
-}
-
-func (s *HandlersSuite) TestSSHToContainerFailToHijack(c *gocheck.C) {
-	coll := collection()
-	defer coll.Close()
-	container := container{
-		ID:       "9930c24f1c4x",
-		AppName:  "makea",
-		Type:     "python",
-		Status:   provision.StatusStarted.String(),
-		IP:       "127.0.0.4",
-		HostPort: "9025",
-		HostAddr: "127.0.0.1",
-	}
-	err := coll.Insert(container)
-	c.Assert(err, gocheck.IsNil)
-	defer coll.RemoveAll(bson.M{"appname": "makea"})
-	recorder := hijacker{
-		err: fmt.Errorf("are you going to hijack the connection? seriously?"),
-	}
-	request, err := http.NewRequest("GET", "/?:container_id="+container.ID, nil)
-	c.Assert(err, gocheck.IsNil)
-	err = sshToContainerHandler(&recorder, request, nil)
-	c.Assert(err, gocheck.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Code, gocheck.Equals, http.StatusInternalServerError)
-	c.Assert(e.Message, gocheck.Equals, recorder.err.Error())
 }
 
 func (s *HandlersSuite) TestHealingHistoryHandler(c *gocheck.C) {
