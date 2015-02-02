@@ -851,6 +851,18 @@ func (p *FakeProvisioner) RegisterUnit(unit provision.Unit) error {
 }
 
 func (p *FakeProvisioner) Ssh(app provision.App, conn net.Conn, width, height int, args ...string) error {
+	if len(args) > 0 && args[0] != "" {
+		for _, u := range p.Units(app) {
+			if u.Name == args[0] {
+				return nil
+			}
+		}
+		return errors.New("app has no container")
+	}
+	units := p.Units(app)
+	if len(units) == 0 {
+		return errors.New("app has no container")
+	}
 	return nil
 }
 
