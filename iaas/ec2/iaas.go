@@ -15,9 +15,7 @@ import (
 	"gopkg.in/amz.v2/ec2"
 )
 
-const (
-	defaultRegion = "us-east-1"
-)
+const defaultRegion = "us-east-1"
 
 func init() {
 	iaas.RegisterIaasProvider("ec2", NewEC2IaaS())
