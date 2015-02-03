@@ -70,6 +70,10 @@ type MessageRouter interface {
 	StartupMessage() (string, error)
 }
 
+type HealthChecker interface {
+	HealthCheck() error
+}
+
 func collection() (*storage.Collection, error) {
 	conn, err := db.Conn()
 	if err != nil {
