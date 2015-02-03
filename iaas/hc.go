@@ -9,7 +9,7 @@ import (
 	"github.com/tsuru/tsuru/hc"
 )
 
-// BuildHealthCheck creates a healthcheck functions for the given providerName.
+// BuildHealthCheck creates a healthcheck function for the given providerName.
 //
 // It will call the HealthCheck() method in the provider (only if it's also a
 // HealthChecker), for each instance of it (including the "main" instance and
