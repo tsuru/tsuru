@@ -206,7 +206,7 @@ type sshToContainerCmd struct {
 func (c *sshToContainerCmd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "ssh",
-		Usage:   "ssh <[-a/--app <appname>]|[container-id]>",
+		Usage:   "ssh [container-id] -a/--app <appname>",
 		Desc:    "Open an SSH shell to the given container, or to one of the containers of the given app.",
 		MinArgs: 0,
 	}
@@ -236,11 +236,14 @@ func (c *sshToContainerCmd) Run(context *cmd.Context, client *cmd.Client) error 
 	queryString := make(url.Values)
 	queryString.Set("width", strconv.Itoa(width))
 	queryString.Set("height", strconv.Itoa(height))
-	container, err := c.getContainer(context, client)
+	if len(context.Args) > 0 {
+		queryString.Set("container", context.Args[0])
+	}
+	appName, err := c.Guess()
 	if err != nil {
 		return err
 	}
-	serverURL, err := cmd.GetURL("/docker/ssh/" + container + "?" + queryString.Encode())
+	serverURL, err := cmd.GetURL(fmt.Sprintf("/apps/%s/ssh?%s", appName, queryString.Encode()))
 	if err != nil {
 		return err
 	}
@@ -289,40 +292,4 @@ func (c *sshToContainerCmd) Run(context *cmd.Context, client *cmd.Client) error 
 	<-quit
 	close(errs)
 	return <-errs
-}
-
-func (c *sshToContainerCmd) getContainer(ctx *cmd.Context, client *cmd.Client) (string, error) {
-	if len(ctx.Args) > 0 {
-		return ctx.Args[0], nil
-	}
-	if appName, _ := c.Guess(); appName != "" {
-		url, err := cmd.GetURL("/apps/" + appName)
-		if err != nil {
-			return "", err
-		}
-		request, _ := http.NewRequest("GET", url, nil)
-		resp, err := client.Do(request)
-		if err != nil {
-			return "", err
-		}
-		defer resp.Body.Close()
-		var app apiApp
-		err = json.NewDecoder(resp.Body).Decode(&app)
-		if err != nil {
-			return "", err
-		}
-		if len(app.Units) < 1 {
-			return "", errors.New("app must have at least one container")
-		}
-		return app.Units[0].Name, nil
-	}
-	return "", errors.New("you need to specify either the container id or the app name")
-}
-
-type unit struct {
-	Name string
-}
-
-type apiApp struct {
-	Units []unit
 }
