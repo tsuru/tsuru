@@ -20,6 +20,7 @@ import (
 
 	"github.com/garyburd/redigo/redis"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/router"
 )
@@ -30,6 +31,7 @@ const routerName = "hipache"
 
 func init() {
 	router.Register(routerName, createRouter)
+	hc.AddChecker("Router Hipache", router.BuildHealthCheck("hipache"))
 }
 
 func createRouter(prefix string) (router.Router, error) {
@@ -182,6 +184,19 @@ func (r hipacheRouter) RemoveRoute(name, address string) error {
 		if err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func (r hipacheRouter) HealthCheck() error {
+	conn := r.connect()
+	defer conn.Close()
+	result, err := redis.String(conn.Do("PING"))
+	if err != nil {
+		return err
+	}
+	if result != "PONG" {
+		return fmt.Errorf("unexpected PING response from Redis server, want %q, got %q", "PONG", result)
 	}
 	return nil
 }

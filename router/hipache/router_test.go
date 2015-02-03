@@ -274,6 +274,24 @@ func (s *S) TestRemoveRouteAlsoRemovesRespectiveCNameRecord(c *gocheck.C) {
 	c.Assert(cnames, gocheck.Equals, 0)
 }
 
+func (s *S) TestHealthCheck(c *gocheck.C) {
+	router := hipacheRouter{prefix: "hipache"}
+	c.Assert(router.HealthCheck(), gocheck.IsNil)
+}
+
+func (s *S) TestHealthCheckFailure(c *gocheck.C) {
+	oldPool := pool
+	defer func() {
+		pool = oldPool
+	}()
+	pool = nil
+	config.Set("super-hipache:redis-server", "localhost:6739")
+	defer config.Unset("super-hipache:redis-server")
+	router := hipacheRouter{prefix: "super-hipache"}
+	err := router.HealthCheck()
+	c.Assert(err, gocheck.NotNil)
+}
+
 func (s *S) TestGetCNames(c *gocheck.C) {
 	router := hipacheRouter{prefix: "hipache"}
 	err := router.AddBackend("myapp")
