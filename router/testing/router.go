@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -13,16 +13,23 @@ import (
 
 var FakeRouter = fakeRouter{backends: make(map[string][]string), failuresByIp: make(map[string]bool)}
 
+var HCRouter = hcRouter{fakeRouter: fakeRouter{backends: make(map[string][]string), failuresByIp: make(map[string]bool)}}
+
 var ErrBackendNotFound = errors.New("Backend not found")
 
 var ErrForcedFailure = errors.New("Forced failure")
 
 func init() {
 	router.Register("fake", createRouter)
+	router.Register("fake-hc", createHCRouter)
 }
 
 func createRouter(prefix string) (router.Router, error) {
 	return &FakeRouter, nil
+}
+
+func createHCRouter(prefix string) (router.Router, error) {
+	return &HCRouter, nil
 }
 
 type fakeRouter struct {
@@ -179,4 +186,17 @@ func (r *fakeRouter) Routes(name string) ([]string, error) {
 
 func (r *fakeRouter) Swap(backend1, backend2 string) error {
 	return router.Swap(r, backend1, backend2)
+}
+
+type hcRouter struct {
+	fakeRouter
+	err error
+}
+
+func (r *hcRouter) SetErr(err error) {
+	r.err = err
+}
+
+func (r *hcRouter) HealthCheck() error {
+	return r.err
 }
