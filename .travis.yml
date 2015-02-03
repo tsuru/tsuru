@@ -59,6 +59,8 @@ notifications:
       - tsuru@corp.globo.com
     on_success: change
     on_failure: always
+  slack:
+    secure: QJe4k18ACRUP4CDo245vBFu1hpVlcR3JPWjT7NL/vAE/Y5KDn5pNXIREPYIx9F/f8lvjF2RrQxjApeUujRh1PPt2Q53JulvaDCfM5a5SYnk5yoqu3ynlfqU4AOTDa6kzoJ3K4M9X8JhMpOtr3+IOPbwV88FjPvwviZN4p0L/0wc=
 services:
   - mongodb
   - redis
