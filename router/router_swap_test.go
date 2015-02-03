@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -14,26 +14,26 @@ import (
 	"launchpad.net/gocheck"
 )
 
-type SwapSuite struct {
+type ExternalSuite struct {
 	conn *db.Storage
 }
 
-var _ = gocheck.Suite(&SwapSuite{})
+var _ = gocheck.Suite(&ExternalSuite{})
 
-func (s *SwapSuite) SetUpSuite(c *gocheck.C) {
+func (s *ExternalSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("hipache:domain", "swaptest.org")
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "router_swap_tests")
 }
 
-func (s *SwapSuite) SetUpTest(c *gocheck.C) {
+func (s *ExternalSuite) SetUpTest(c *gocheck.C) {
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	testing.ClearAllCollections(s.conn.Collection("router").Database)
 }
 
-func (s *SwapSuite) TestSwap(c *gocheck.C) {
+func (s *ExternalSuite) TestSwap(c *gocheck.C) {
 	backend1 := "b1"
 	backend2 := "b2"
 	r, err := router.Get("fake")
@@ -58,7 +58,7 @@ func (s *SwapSuite) TestSwap(c *gocheck.C) {
 	c.Assert(name2, gocheck.Equals, backend1)
 }
 
-func (s *SwapSuite) TestSwapWithDifferentRouterKinds(c *gocheck.C) {
+func (s *ExternalSuite) TestSwapWithDifferentRouterKinds(c *gocheck.C) {
 	backend1 := "bb1"
 	backend2 := "bb2"
 	r1, err := router.Get("fake")
