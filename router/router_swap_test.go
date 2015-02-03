@@ -10,7 +10,7 @@ import (
 	"github.com/tsuru/tsuru/router"
 	_ "github.com/tsuru/tsuru/router/hipache"
 	_ "github.com/tsuru/tsuru/router/testing"
-	ttesting "github.com/tsuru/tsuru/testing"
+	"github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
 
@@ -30,7 +30,7 @@ func (s *SwapSuite) SetUpTest(c *gocheck.C) {
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
-	ttesting.ClearAllCollections(s.conn.Collection("router").Database)
+	testing.ClearAllCollections(s.conn.Collection("router").Database)
 }
 
 func (s *SwapSuite) TestSwap(c *gocheck.C) {
