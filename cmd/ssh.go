@@ -7,7 +7,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"golang.org/x/crypto/ssh/terminal"
 	"io"
 	"net"
 	"net/http"
@@ -18,6 +17,8 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 var httpHeaderRegexp = regexp.MustCompile(`HTTP/.*? (\d+)`)

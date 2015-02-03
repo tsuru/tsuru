@@ -7,12 +7,13 @@ package cmd
 import (
 	"bytes"
 	"fmt"
-	"github.com/tsuru/tsuru/cmd/testing"
-	ttesting "github.com/tsuru/tsuru/testing"
-	"launchpad.net/gocheck"
 	"net"
 	"net/http"
 	"net/http/httptest"
+
+	"github.com/tsuru/tsuru/cmd/testing"
+	ttesting "github.com/tsuru/tsuru/testing"
+	"launchpad.net/gocheck"
 )
 
 func (s *S) TestSSHToContainerCmdInfo(c *gocheck.C) {
