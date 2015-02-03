@@ -23,11 +23,11 @@ import (
 
 var httpHeaderRegexp = regexp.MustCompile(`HTTP/.*? (\d+)`)
 
-type sshToContainerCmd struct {
+type SshToContainerCmd struct {
 	GuessingCommand
 }
 
-func (c *sshToContainerCmd) Info() *Info {
+func (c *SshToContainerCmd) Info() *Info {
 	return &Info{
 		Name:    "ssh",
 		Usage:   "ssh [container-id] -a/--app <appname>",
@@ -36,7 +36,7 @@ func (c *sshToContainerCmd) Info() *Info {
 	}
 }
 
-func (c *sshToContainerCmd) Run(context *Context, client *Client) error {
+func (c *SshToContainerCmd) Run(context *Context, client *Client) error {
 	var width, height int
 	if stdin, ok := context.Stdin.(*os.File); ok {
 		fd := int(stdin.Fd())
