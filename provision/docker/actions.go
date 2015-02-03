@@ -352,7 +352,6 @@ var updateAppImage = action.Action{
 			log.Errorf("Couldn't list images for cleaning: %s", err.Error())
 			return ctx.Previous, nil
 		}
-		var toRemove []string
 		for i, imgName := range allImages {
 			if i > len(allImages)-imgHistorySize-1 {
 				err := dockerCluster().RemoveImageIgnoreLast(imgName)
@@ -361,28 +360,7 @@ var updateAppImage = action.Action{
 				}
 				continue
 			}
-			shouldRemove := true
-			err := dockerCluster().RemoveImage(imgName)
-			if err != nil {
-				shouldRemove = false
-				log.Errorf("Ignored error removing old image %q: %s. Image kept on list to retry later.",
-					imgName, err.Error())
-			}
-			err = dockerCluster().RemoveFromRegistry(imgName)
-			if err != nil {
-				shouldRemove = false
-				log.Errorf("Ignored error removing old image from registry %q: %s. Image kept on list to retry later.",
-					imgName, err.Error())
-			}
-			if shouldRemove {
-				toRemove = append(toRemove, imgName)
-			}
-		}
-		if len(toRemove) > 0 {
-			err = pullAppImageNames(args.app.GetName(), toRemove)
-			if err != nil {
-				log.Errorf("Ignored error pulling old images from database: %s", err.Error())
-			}
+			cleanImage(args.app.GetName(), imgName)
 		}
 		return ctx.Previous, nil
 	},

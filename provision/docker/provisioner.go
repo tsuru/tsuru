@@ -168,7 +168,7 @@ func (p *dockerProvisioner) GitDeploy(app provision.App, version string, w io.Wr
 	if err != nil {
 		return "", err
 	}
-	return imageId, p.deploy(app, imageId, w)
+	return imageId, p.deployAndClean(app, imageId, w)
 }
 
 func (p *dockerProvisioner) ArchiveDeploy(app provision.App, archiveURL string, w io.Writer) (string, error) {
@@ -176,7 +176,7 @@ func (p *dockerProvisioner) ArchiveDeploy(app provision.App, archiveURL string, 
 	if err != nil {
 		return "", err
 	}
-	return imageId, p.deploy(app, imageId, w)
+	return imageId, p.deployAndClean(app, imageId, w)
 }
 
 func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadCloser, w io.Writer) (string, error) {
@@ -235,7 +235,15 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 	if err != nil {
 		return "", err
 	}
-	return imageId, p.deploy(app, imageId, w)
+	return imageId, p.deployAndClean(app, imageId, w)
+}
+
+func (p *dockerProvisioner) deployAndClean(a provision.App, imageId string, w io.Writer) error {
+	err := p.deploy(a, imageId, w)
+	if err != nil {
+		cleanImage(a.GetName(), imageId)
+	}
+	return err
 }
 
 func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer) error {

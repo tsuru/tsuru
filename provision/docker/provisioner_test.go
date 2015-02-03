@@ -196,6 +196,53 @@ func (s *S) TestDeployErasesOldImages(c *gocheck.C) {
 	c.Assert(got, gocheck.DeepEquals, expected)
 }
 
+func (s *S) TestDeployErasesOldImagesIfFailed(c *gocheck.C) {
+	config.Set("docker:image-history-size", 1)
+	defer config.Unset("docker:image-history-size")
+	go s.stopContainers(1)
+	err := newImage("tsuru/python", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	p := dockerProvisioner{}
+	a := app.App{
+		Name:     "appdeployimagetest",
+		Platform: "python",
+	}
+	conn, err := db.Conn()
+	defer conn.Close()
+	err = conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": a.Name})
+	err = p.Provision(&a)
+	c.Assert(err, gocheck.IsNil)
+	defer p.Destroy(&a)
+	s.server.CustomHandler("/containers/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		data, _ := ioutil.ReadAll(r.Body)
+		r.Body = ioutil.NopCloser(bytes.NewBuffer(data))
+		var result docker.Config
+		err := json.Unmarshal(data, &result)
+		if err == nil {
+			if result.Image == "tsuru/app-appdeployimagetest:v1" {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}
+		s.server.DefaultHandler().ServeHTTP(w, r)
+	}))
+	w := safe.NewBuffer(make([]byte, 2048))
+	err = app.Deploy(app.DeployOptions{
+		App:          &a,
+		Version:      "master",
+		Commit:       "123",
+		OutputStream: w,
+	})
+	c.Assert(err, gocheck.NotNil)
+	imgs, err := dockerCluster().ListImages(docker.ListImagesOptions{All: true})
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(imgs, gocheck.HasLen, 1)
+	c.Assert(imgs[0].RepoTags, gocheck.HasLen, 1)
+	c.Assert("tsuru/python", gocheck.Equals, imgs[0].RepoTags[0])
+}
+
 func (s *S) TestDeployErasesOldImagesWithLongHistory(c *gocheck.C) {
 	config.Set("docker:image-history-size", 2)
 	defer config.Unset("docker:image-history-size")
@@ -409,6 +456,52 @@ func (s *S) TestImageDeployInvalidImage(c *gocheck.C) {
 	c.Assert(err, gocheck.ErrorMatches, "invalid image for app otherapp: tsuru/app-otherapp:v1")
 	units := a.Units()
 	c.Assert(units, gocheck.HasLen, 0)
+}
+
+func (s *S) TestImageDeployFailureDoesntEraseImage(c *gocheck.C) {
+	err := newImage("tsuru/app-otherapp:v1", s.server.URL())
+	c.Assert(err, gocheck.IsNil)
+	err = appendAppImageName("otherapp", "tsuru/app-otherapp:v1")
+	c.Assert(err, gocheck.IsNil)
+	p := dockerProvisioner{}
+	a := app.App{
+		Name:     "otherapp",
+		Platform: "python",
+	}
+	conn, err := db.Conn()
+	defer conn.Close()
+	err = conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": a.Name})
+	p.Provision(&a)
+	defer p.Destroy(&a)
+	s.server.CustomHandler("/containers/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		data, _ := ioutil.ReadAll(r.Body)
+		r.Body = ioutil.NopCloser(bytes.NewBuffer(data))
+		var result docker.Config
+		err := json.Unmarshal(data, &result)
+		if err == nil {
+			if result.Image == "tsuru/app-otherapp:v1" {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}
+		s.server.DefaultHandler().ServeHTTP(w, r)
+	}))
+	w := safe.NewBuffer(make([]byte, 2048))
+	err = app.Deploy(app.DeployOptions{
+		App:          &a,
+		OutputStream: w,
+		Image:        "tsuru/app-otherapp:v1",
+	})
+	c.Assert(err, gocheck.NotNil)
+	units := a.Units()
+	c.Assert(units, gocheck.HasLen, 0)
+	imgs, err := dockerCluster().ListImages(docker.ListImagesOptions{All: true})
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(imgs, gocheck.HasLen, 1)
+	c.Assert(imgs[0].RepoTags, gocheck.HasLen, 1)
+	c.Assert("tsuru/app-otherapp:v1", gocheck.Equals, imgs[0].RepoTags[0])
 }
 
 func (s *S) TestProvisionerDestroy(c *gocheck.C) {

@@ -322,3 +322,25 @@ func usePlatformImage(app provision.App) bool {
 	}
 	return false
 }
+
+func cleanImage(appName, imgName string) {
+	shouldRemove := true
+	err := dockerCluster().RemoveImage(imgName)
+	if err != nil {
+		shouldRemove = false
+		log.Errorf("Ignored error removing old image %q: %s. Image kept on list to retry later.",
+			imgName, err.Error())
+	}
+	err = dockerCluster().RemoveFromRegistry(imgName)
+	if err != nil {
+		shouldRemove = false
+		log.Errorf("Ignored error removing old image from registry %q: %s. Image kept on list to retry later.",
+			imgName, err.Error())
+	}
+	if shouldRemove {
+		err = pullAppImageNames(appName, []string{imgName})
+		if err != nil {
+			log.Errorf("Ignored error pulling old images from database: %s", err.Error())
+		}
+	}
+}
