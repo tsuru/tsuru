@@ -50,7 +50,10 @@ func migrateImages() error {
 		if nodeErr, ok := err.(cluster.DockerNodeError); ok {
 			baseErr = nodeErr.BaseError()
 		}
-		if err != nil && err != storage.ErrNoSuchImage && baseErr != docker.ErrNoSuchImage {
+		if err != nil {
+			if err == storage.ErrNoSuchImage || baseErr == docker.ErrNoSuchImage {
+				continue
+			}
 			return err
 		}
 		if registry != "" {
