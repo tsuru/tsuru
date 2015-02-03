@@ -16,7 +16,6 @@ func sshHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	containerID := r.URL.Query().Get("container_id")
 	width, _ := strconv.Atoi(r.URL.Query().Get("width"))
 	height, _ := strconv.Atoi(r.URL.Query().Get("height"))
-	hj, ok := w.(http.Hijacker)
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -26,6 +25,7 @@ func sshHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+	hj, ok := w.(http.Hijacker)
 	if !ok {
 		return &errors.HTTP{
 			Code:    http.StatusInternalServerError,
