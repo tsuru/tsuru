@@ -1509,6 +1509,6 @@ func (s *S) TestSshToAnAppByAppName(c *gocheck.C) {
 	buf := safe.NewBuffer([]byte("echo teste"))
 	conn := &tsrTesting.FakeConn{buf}
 	c.Assert(err, gocheck.IsNil)
-	err = p.Ssh(app, conn, 10, 10)
+	err = p.Ssh(app, conn, 10, 10, "")
 	c.Assert(err, gocheck.IsNil)
 }

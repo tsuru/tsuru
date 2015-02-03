@@ -671,7 +671,7 @@ func (p *dockerProvisioner) Ssh(app provision.App, conn net.Conn, width, height 
 		c   *container
 		err error
 	)
-	if len(args) > 0 {
+	if len(args) > 0 && args[0] != "" {
 		c, err = getContainer(args[0])
 	} else {
 		c, err = getOneContainerByAppName(app.GetName())
