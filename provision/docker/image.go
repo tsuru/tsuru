@@ -220,6 +220,9 @@ func listValidAppImages(appName string) ([]string, error) {
 	var img appImages
 	err = coll.FindId(appName).One(&img)
 	if err != nil {
+		if err == mgo.ErrNotFound {
+			return []string{}, nil
+		}
 		return nil, err
 	}
 	historySize := imageHistorySize()
