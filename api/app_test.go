@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -3378,6 +3379,53 @@ func (s *S) TestRegisterUnitInvalidUnit(c *gocheck.C) {
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, gocheck.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), gocheck.Equals, "unit not found\n")
+}
+
+func (s *S) TestRegisterUnitWithCustomData(c *gocheck.C) {
+	a := app.App{
+		Name:     "myappx",
+		Platform: "python",
+		Teams:    []string{s.team.Name},
+		Env: map[string]bind.EnvVar{
+			"MY_VAR_1": {Name: "MY_VAR_1", Value: "value1", Public: true},
+		},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.conn.Logs(a.Name).DropCollection()
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 1, nil)
+	units := a.Units()
+	oldIp := units[0].Ip
+	v := url.Values{}
+	v.Set("hostname", units[0].Name)
+	v.Set("customdata", `{"mydata": "something"}`)
+	body := strings.NewReader(v.Encode())
+	request, err := http.NewRequest("POST", "/apps/myappx/units/register", body)
+	c.Assert(err, gocheck.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
+	expected := []map[string]interface{}{{
+		"name":   "MY_VAR_1",
+		"value":  "value1",
+		"public": true,
+	}}
+	result := []map[string]interface{}{}
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.DeepEquals, expected)
+	units = a.Units()
+	c.Assert(units[0].Ip, gocheck.Equals, oldIp+"-updated")
+	c.Assert(s.provisioner.CustomData(&a), gocheck.DeepEquals, map[string]interface{}{
+		"mydata": "something",
+	})
 }
 
 func (s *S) TestSetTeamOwnerWithoutTeam(c *gocheck.C) {

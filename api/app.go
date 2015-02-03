@@ -924,7 +924,7 @@ func registerUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	var customData map[string]interface{}
 	rawCustomData := val.Get("customdata")
 	if rawCustomData != "" {
-		err = json.Unmarshal([]byte(data), &customData)
+		err = json.Unmarshal([]byte(rawCustomData), &customData)
 		if err != nil {
 			return err
 		}
