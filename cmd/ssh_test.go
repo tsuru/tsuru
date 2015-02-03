@@ -23,7 +23,7 @@ func (s *S) TestSSHToContainerCmdInfo(c *gocheck.C) {
 		Desc:    "Open an SSH shell to the given container, or to one of the containers of the given app.",
 		MinArgs: 0,
 	}
-	var command sshToContainerCmd
+	var command SshToContainerCmd
 	info := command.Info()
 	c.Assert(*info, gocheck.DeepEquals, expected)
 }
@@ -55,7 +55,7 @@ func (s *S) TestSSHToContainerCmdRunWithApp(c *gocheck.C) {
 		Stderr: &stderr,
 		Stdin:  &stdin,
 	}
-	var command sshToContainerCmd
+	var command SshToContainerCmd
 	command.GuessingCommand = GuessingCommand{G: &guesser}
 	err := command.Flags().Parse(true, []string{"-a", "myapp"})
 	c.Assert(err, gocheck.IsNil)
@@ -81,7 +81,7 @@ func (s *S) TestSSHToContainerCmdNoToken(c *gocheck.C) {
 		Stderr: &stderr,
 		Stdin:  &stdin,
 	}
-	var command sshToContainerCmd
+	var command SshToContainerCmd
 	err := command.Run(&context, nil)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "HTTP/1.1 401")
@@ -107,7 +107,7 @@ func (s *S) TestSSHToContainerCmdSmallData(c *gocheck.C) {
 		Stderr: &stderr,
 		Stdin:  &stdin,
 	}
-	var command sshToContainerCmd
+	var command SshToContainerCmd
 	err := command.Run(&context, nil)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, "hello")
@@ -134,7 +134,7 @@ func (s *S) TestSSHToContainerCmdLongNoNewLine(c *gocheck.C) {
 		Stderr: &stderr,
 		Stdin:  &stdin,
 	}
-	var command sshToContainerCmd
+	var command SshToContainerCmd
 	err := command.Run(&context, nil)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(stdout.String(), gocheck.Equals, expected)
@@ -155,7 +155,7 @@ func (s *S) TestSSHToContainerCmdConnectionRefused(c *gocheck.C) {
 		Stderr: &buf,
 		Stdin:  &buf,
 	}
-	var command sshToContainerCmd
+	var command SshToContainerCmd
 	err := command.Run(&context, nil)
 	c.Assert(err, gocheck.NotNil)
 	opErr, ok := err.(*net.OpError)
