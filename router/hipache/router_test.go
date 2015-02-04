@@ -11,8 +11,8 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/router"
-	ttesting "github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
 
@@ -38,7 +38,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
-	ttesting.ClearAllCollections(s.conn.Collection("router_hipache_tests").Database)
+	dbtest.ClearAllCollections(s.conn.Collection("router_hipache_tests").Database)
 }
 
 func (s *S) SetUpTest(c *gocheck.C) {

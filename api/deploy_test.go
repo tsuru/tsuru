@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
@@ -71,7 +72,7 @@ func (s *DeploySuite) SetUpSuite(c *gocheck.C) {
 
 func (s *DeploySuite) TearDownSuite(c *gocheck.C) {
 	defer s.conn.Close()
-	testing.ClearAllCollections(s.conn.Apps().Database)
+	dbtest.ClearAllCollections(s.conn.Apps().Database)
 }
 
 func (s *DeploySuite) TestDeployHandler(c *gocheck.C) {

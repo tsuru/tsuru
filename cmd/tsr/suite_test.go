@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -11,6 +11,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/dbtest"
 	tTesting "github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
@@ -29,7 +30,7 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
-	tTesting.ClearAllCollections(conn.Apps().Database)
+	dbtest.ClearAllCollections(conn.Apps().Database)
 }
 
 type CommandableProvisioner struct {

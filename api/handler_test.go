@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
@@ -48,7 +49,7 @@ func (s *HandlerSuite) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *HandlerSuite) TearDownSuite(c *gocheck.C) {
-	testing.ClearAllCollections(s.conn.Apps().Database)
+	dbtest.ClearAllCollections(s.conn.Apps().Database)
 }
 
 func errorHandler(w http.ResponseWriter, r *http.Request) error {

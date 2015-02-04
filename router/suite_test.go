@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -9,7 +9,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
-	ttesting "github.com/tsuru/tsuru/testing"
+	"github.com/tsuru/tsuru/db/dbtest"
 	"launchpad.net/gocheck"
 )
 
@@ -30,5 +30,5 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
-	ttesting.ClearAllCollections(s.conn.Collection("router").Database)
+	dbtest.ClearAllCollections(s.conn.Collection("router").Database)
 }

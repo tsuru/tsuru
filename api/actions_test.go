@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -9,6 +9,7 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
@@ -31,7 +32,7 @@ func (s *ActionsSuite) SetUpSuite(c *gocheck.C) {
 func (s *ActionsSuite) TearDownSuite(c *gocheck.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
-	testing.ClearAllCollections(conn.Apps().Database)
+	dbtest.ClearAllCollections(conn.Apps().Database)
 }
 
 func (s *ActionsSuite) TestAddUserToTeamInGandalf(c *gocheck.C) {

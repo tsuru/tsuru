@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
@@ -91,7 +92,7 @@ func (s *S) SetUpTest(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	coll := collection()
 	defer coll.Close()
-	err = tTesting.ClearAllCollections(coll.Database)
+	err = dbtest.ClearAllCollections(coll.Database)
 	c.Assert(err, gocheck.IsNil)
 	err = clearClusterStorage()
 	c.Assert(err, gocheck.IsNil)
@@ -110,16 +111,16 @@ func clearClusterStorage() error {
 		return err
 	}
 	defer session.Close()
-	return tTesting.ClearAllCollections(session.DB(clusterDbName))
+	return dbtest.ClearAllCollections(session.DB(clusterDbName))
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
 	coll := collection()
 	defer coll.Close()
-	err := tTesting.ClearAllCollections(coll.Database)
+	err := dbtest.ClearAllCollections(coll.Database)
 	c.Assert(err, gocheck.IsNil)
 	tTesting.RollbackFile(s.targetRecover)
-	tTesting.ClearAllCollections(s.storage.Apps().Database)
+	dbtest.ClearAllCollections(s.storage.Apps().Database)
 	s.storage.Close()
 	app.Provisioner = s.oldProvisioner
 }

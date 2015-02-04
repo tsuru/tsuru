@@ -15,7 +15,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth/authtest"
 	"github.com/tsuru/tsuru/db"
-	ttesting "github.com/tsuru/tsuru/testing"
+	"github.com/tsuru/tsuru/db/dbtest"
 	"golang.org/x/crypto/bcrypt"
 	"launchpad.net/gocheck"
 )
@@ -88,7 +88,7 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 	conn, err := db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	defer conn.Close()
-	err = ttesting.ClearAllCollections(conn.Apps().Database)
+	err = dbtest.ClearAllCollections(conn.Apps().Database)
 	c.Assert(err, gocheck.IsNil)
 	s.server.Stop()
 }

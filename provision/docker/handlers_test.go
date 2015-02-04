@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
@@ -103,7 +104,7 @@ func (s *HandlersSuite) SetUpTest(c *gocheck.C) {
 func (s *HandlersSuite) TearDownSuite(c *gocheck.C) {
 	coll := collection()
 	defer coll.Close()
-	err := testing.ClearAllCollections(coll.Database)
+	err := dbtest.ClearAllCollections(coll.Database)
 	c.Assert(err, gocheck.IsNil)
 	s.conn.Close()
 }

@@ -7,10 +7,10 @@ package router_test
 import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/router"
 	_ "github.com/tsuru/tsuru/router/hipache"
 	_ "github.com/tsuru/tsuru/router/routertest"
-	"github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
 
@@ -30,7 +30,7 @@ func (s *ExternalSuite) SetUpTest(c *gocheck.C) {
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
-	testing.ClearAllCollections(s.conn.Collection("router").Database)
+	dbtest.ClearAllCollections(s.conn.Collection("router").Database)
 }
 
 func (s *ExternalSuite) TestSwap(c *gocheck.C) {

@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -12,6 +12,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/router"
 	ttesting "github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
@@ -44,7 +45,7 @@ func (s *S) SetUpTest(c *gocheck.C) {
 	s.handler = ttesting.MultiTestHandler{}
 	s.server = httptest.NewServer(&s.handler)
 	config.Set("galeb:api-url", s.server.URL+"/api")
-	ttesting.ClearAllCollections(s.conn.Collection("router_galeb_tests").Database)
+	dbtest.ClearAllCollections(s.conn.Collection("router_galeb_tests").Database)
 }
 
 func (s *S) TearDownTest(c *gocheck.C) {

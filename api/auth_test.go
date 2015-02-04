@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/auth/authtest"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/testing"
@@ -59,7 +60,7 @@ func (s *AuthSuite) SetUpSuite(c *gocheck.C) {
 func (s *AuthSuite) TearDownSuite(c *gocheck.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
-	testing.ClearAllCollections(conn.Apps().Database)
+	dbtest.ClearAllCollections(conn.Apps().Database)
 	s.server.Stop()
 }
 
