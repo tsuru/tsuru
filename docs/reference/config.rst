@@ -816,9 +816,6 @@ Here is a complete example:
         run-cmd:
             bin: /var/lib/tsuru/start
             port: "8888"
-        ssh:
-            add-key-cmd: /var/lib/tsuru/add-key
-            user: ubuntu
     hipache:
         domain: <your-hipache-server-ip>.xip.io
         redis-server: <your-redis-server-with-port>

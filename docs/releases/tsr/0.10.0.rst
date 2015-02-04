@@ -47,3 +47,7 @@ Other improvements in tsr 0.10.0
 API changes
 ===========
 
+* ``/apps/{appname}/ssh``: New ssh route to access app containers.
+  In previous versions of API this route was in provision/docker package and just allowed admin access to app containers.
+  Now, standart users and admin users can access app containers through ssh.
+  Admins can access any app in tsuru and standart users can only access your apps.
