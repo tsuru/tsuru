@@ -1,11 +1,11 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 package oauth
 
 import (
-	goauth2 "code.google.com/p/goauth2/oauth"
+	"code.google.com/p/goauth2/oauth"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
@@ -15,7 +15,7 @@ import (
 )
 
 type Token struct {
-	goauth2.Token
+	oauth.Token
 	UserEmail string `json:"email"`
 }
 
@@ -39,7 +39,7 @@ func (t *Token) GetAppName() string {
 	return ""
 }
 
-func makeToken(t *goauth2.Token) *Token {
+func makeToken(t *oauth.Token) *Token {
 	return &Token{*t, t.Extra["email"]}
 }
 

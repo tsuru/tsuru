@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -9,19 +9,19 @@ import (
 	"net/http"
 	"strconv"
 
-	goauth2 "code.google.com/p/goauth2/oauth"
+	"code.google.com/p/goauth2/oauth"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
-	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 )
 
 var (
-	ErrMissingCodeError       = &tsuruErrors.ValidationError{Message: "You must provide code to login"}
-	ErrMissingCodeRedirectUrl = &tsuruErrors.ValidationError{Message: "You must provide the used redirect url to login"}
-	ErrEmptyAccessToken       = &tsuruErrors.NotAuthorizedError{Message: "Couldn't convert code to access token."}
-	ErrEmptyUserEmail         = &tsuruErrors.NotAuthorizedError{Message: "Couldn't parse user email."}
+	ErrMissingCodeError       = &errors.ValidationError{Message: "You must provide code to login"}
+	ErrMissingCodeRedirectUrl = &errors.ValidationError{Message: "You must provide the used redirect url to login"}
+	ErrEmptyAccessToken       = &errors.NotAuthorizedError{Message: "Couldn't convert code to access token."}
+	ErrEmptyUserEmail         = &errors.NotAuthorizedError{Message: "Couldn't parse user email."}
 )
 
 type OAuthParser interface {
@@ -29,7 +29,7 @@ type OAuthParser interface {
 }
 
 type OAuthScheme struct {
-	BaseConfig   goauth2.Config
+	BaseConfig   oauth.Config
 	InfoUrl      string
 	CallbackPort int
 	Parser       OAuthParser
@@ -39,11 +39,11 @@ type DBTokenCache struct {
 	scheme *OAuthScheme
 }
 
-func (c *DBTokenCache) Token() (*goauth2.Token, error) {
+func (c *DBTokenCache) Token() (*oauth.Token, error) {
 	return nil, nil
 }
 
-func (c *DBTokenCache) PutToken(t *goauth2.Token) error {
+func (c *DBTokenCache) PutToken(t *oauth.Token) error {
 	if t.AccessToken == "" {
 		return ErrEmptyAccessToken
 	}
@@ -53,7 +53,7 @@ func (c *DBTokenCache) PutToken(t *goauth2.Token) error {
 		if err != nil {
 			return err
 		}
-		transport := &goauth2.Transport{Config: &conf}
+		transport := &oauth.Transport{Config: &conf}
 		transport.Token = t
 		client := transport.Client()
 		response, err := client.Get(c.scheme.InfoUrl)
@@ -96,14 +96,14 @@ func init() {
 
 // This method loads basic config and returns a copy of the
 // config object.
-func (s *OAuthScheme) loadConfig() (goauth2.Config, error) {
+func (s *OAuthScheme) loadConfig() (oauth.Config, error) {
 	if s.BaseConfig.ClientId != "" {
 		return s.BaseConfig, nil
 	}
 	if s.Parser == nil {
 		s.Parser = s
 	}
-	var emptyConfig goauth2.Config
+	var emptyConfig oauth.Config
 	clientId, err := config.GetString("auth:oauth:client-id")
 	if err != nil {
 		return emptyConfig, err
@@ -134,7 +134,7 @@ func (s *OAuthScheme) loadConfig() (goauth2.Config, error) {
 	}
 	s.InfoUrl = infoURL
 	s.CallbackPort = callbackPort
-	s.BaseConfig = goauth2.Config{
+	s.BaseConfig = oauth.Config{
 		ClientId:     clientId,
 		ClientSecret: clientSecret,
 		Scope:        scope,
@@ -159,7 +159,7 @@ func (s *OAuthScheme) Login(params map[string]string) (auth.Token, error) {
 		return nil, ErrMissingCodeRedirectUrl
 	}
 	config.RedirectURL = redirectUrl
-	transport := &goauth2.Transport{Config: &config}
+	transport := &oauth.Transport{Config: &config}
 	oauthToken, err := transport.Exchange(code)
 	if err != nil {
 		return nil, err
@@ -190,7 +190,7 @@ func (s *OAuthScheme) Auth(header string) (auth.Token, error) {
 	if err != nil {
 		return nil, err
 	}
-	transport := goauth2.Transport{Config: &config}
+	transport := oauth.Transport{Config: &config}
 	transport.Token = &token.Token
 	client := transport.Client()
 	rsp, err := client.Get(s.InfoUrl)

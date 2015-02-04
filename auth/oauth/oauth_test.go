@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -10,7 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	goauth2 "code.google.com/p/goauth2/oauth"
+	"code.google.com/p/goauth2/oauth"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
@@ -144,7 +144,7 @@ func (s *S) TestOAuthParseInvalid(c *gocheck.C) {
 }
 
 func (s *S) TestOAuthAuth(c *gocheck.C) {
-	existing := Token{Token: goauth2.Token{AccessToken: "myvalidtoken"}, UserEmail: "x@x.com"}
+	existing := Token{Token: oauth.Token{AccessToken: "myvalidtoken"}, UserEmail: "x@x.com"}
 	err := existing.save()
 	c.Assert(err, gocheck.IsNil)
 	scheme := OAuthScheme{}
@@ -156,7 +156,7 @@ func (s *S) TestOAuthAuth(c *gocheck.C) {
 }
 
 func (s *S) TestOAuthAuthWithExchange(c *gocheck.C) {
-	existing := Token{Token: goauth2.Token{
+	existing := Token{Token: oauth.Token{
 		AccessToken:  "my_expired_token",
 		RefreshToken: "my_refresh_token",
 		Expiry:       time.Now().Add(-time.Hour),

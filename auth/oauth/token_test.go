@@ -1,17 +1,17 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 package oauth
 
 import (
-	goauth2 "code.google.com/p/goauth2/oauth"
+	"code.google.com/p/goauth2/oauth"
 	"github.com/tsuru/tsuru/auth"
 	"launchpad.net/gocheck"
 )
 
 func (s *S) TestGetToken(c *gocheck.C) {
-	existing := Token{Token: goauth2.Token{AccessToken: "myvalidtoken"}, UserEmail: "x@x.com"}
+	existing := Token{Token: oauth.Token{AccessToken: "myvalidtoken"}, UserEmail: "x@x.com"}
 	err := existing.save()
 	c.Assert(err, gocheck.IsNil)
 	var result []Token
@@ -41,7 +41,7 @@ func (s *S) TestGetTokenInvalid(c *gocheck.C) {
 }
 
 func (s *S) TestSave(c *gocheck.C) {
-	existing := Token{Token: goauth2.Token{AccessToken: "myvalidtoken"}, UserEmail: "x@x.com"}
+	existing := Token{Token: oauth.Token{AccessToken: "myvalidtoken"}, UserEmail: "x@x.com"}
 	err := existing.save()
 	c.Assert(err, gocheck.IsNil)
 	coll := collection()
@@ -54,7 +54,7 @@ func (s *S) TestSave(c *gocheck.C) {
 }
 
 func (s *S) TestDelete(c *gocheck.C) {
-	existing := Token{Token: goauth2.Token{AccessToken: "myvalidtoken"}, UserEmail: "x@x.com"}
+	existing := Token{Token: oauth.Token{AccessToken: "myvalidtoken"}, UserEmail: "x@x.com"}
 	err := existing.save()
 	c.Assert(err, gocheck.IsNil)
 	err = deleteToken("myvalidtoken")
