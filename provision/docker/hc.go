@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -19,6 +20,7 @@ var httpRegexp = regexp.MustCompile(`^https?://`)
 
 func init() {
 	hc.AddChecker("docker-registry", healthCheckDockerRegistry)
+	hc.AddChecker("docker", healthCheckDocker)
 }
 
 func healthCheckDockerRegistry() error {
@@ -42,6 +44,28 @@ func healthCheckDockerRegistry() error {
 	}
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected status - %s", body)
+	}
+	return nil
+}
+
+func healthCheckDocker() error {
+	nodes, err := dockerCluster().Nodes()
+	if err != nil {
+		return err
+	}
+	if len(nodes) < 1 {
+		return errors.New("error - no nodes available for running containers")
+	}
+	if len(nodes) > 1 {
+		return hc.ErrDisabledComponent
+	}
+	client, err := nodes[0].Client()
+	if err != nil {
+		return err
+	}
+	err = client.Ping()
+	if err != nil {
+		return fmt.Errorf("ping failed - %s", err.Error())
 	}
 	return nil
 }
