@@ -305,6 +305,10 @@ func Delete(app *App) error {
 		if err != nil {
 			log.Errorf("Error trying to destroy app %s from db: %s", appName, err.Error())
 		}
+		err = markDeploysAsRemoved(appName)
+		if err != nil {
+			log.Errorf("Error trying to mark old deploys as removed for app %s: %s", appName, err.Error())
+		}
 	}()
 	if serverURL, err := repository.ServerURL(); err == nil {
 		gandalfClient := gandalf.Client{Endpoint: serverURL}

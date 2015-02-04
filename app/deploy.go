@@ -33,6 +33,7 @@ type DeployData struct {
 	User        string
 	Origin      string
 	CanRollback bool
+	RemoveDate  time.Time `bson:",omitempty"`
 }
 
 type DeployOptions struct {
@@ -103,7 +104,7 @@ func listDeploys(app *App, s *service.Service, u *auth.User, skip, limit int) ([
 		apps = append(apps, key)
 	}
 	var list []DeployData
-	query := conn.Deploys().Find(bson.M{"app": bson.M{"$in": apps}}).Sort("-timestamp")
+	query := conn.Deploys().Find(bson.M{"app": bson.M{"$in": apps}, "removedate": bson.M{"$exists": false}}).Sort("-timestamp")
 	if skip != 0 {
 		query = query.Skip(skip)
 	}
@@ -125,6 +126,19 @@ func listDeploys(app *App, s *service.Service, u *auth.User, skip, limit int) ([
 		list[i].CanRollback = validImages.Includes(list[i].Image)
 	}
 	return list, err
+}
+
+func markDeploysAsRemoved(appName string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	_, err = conn.Deploys().UpdateAll(
+		bson.M{"app": appName, "removedate": bson.M{"$exists": false}},
+		bson.M{"$set": bson.M{"removedate": time.Now()}},
+	)
+	return err
 }
 
 func listAppsByService(serviceName string) []string {

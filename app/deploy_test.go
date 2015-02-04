@@ -762,3 +762,35 @@ func (s *S) TestDeployToProvisionerImage(c *gocheck.C) {
 	logs := writer.String()
 	c.Assert(logs, gocheck.Equals, "Image deploy called")
 }
+
+func (s *S) TestMarkDeploysAsRemoved(c *gocheck.C) {
+	s.createAdminUserAndTeam(c)
+	a := App{Name: "someApp"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	opts := DeployOptions{
+		App:     &a,
+		Version: "version",
+		Commit:  "1ee1f1084927b3a5db59c9033bc5c4abefb7b93c",
+	}
+	err = saveDeployData(&opts, "myid", "mylog", time.Second, nil)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
+	result, err := ListDeploys(nil, nil, s.admin, 0, 0)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.HasLen, 1)
+	c.Assert(result[0].Image, gocheck.Equals, "myid")
+	err = markDeploysAsRemoved(a.Name)
+	c.Assert(err, gocheck.IsNil)
+	result, err = ListDeploys(nil, nil, s.admin, 0, 0)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(result, gocheck.HasLen, 0)
+	var allDeploys []DeployData
+	err = s.conn.Deploys().Find(nil).All(&allDeploys)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(allDeploys, gocheck.HasLen, 1)
+	c.Assert(allDeploys[0].Image, gocheck.Equals, "myid")
+	c.Assert(allDeploys[0].RemoveDate.IsZero(), gocheck.Equals, false)
+}

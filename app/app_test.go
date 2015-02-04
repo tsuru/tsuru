@@ -86,6 +86,31 @@ func (s *S) TestDelete(c *gocheck.C) {
 	c.Assert(count, gocheck.Equals, 0)
 }
 
+func (s *S) TestDeleteWithDeploys(c *gocheck.C) {
+	h := testHandler{}
+	ts := testing.StartGandalfTestServer(&h)
+	defer ts.Close()
+	a := App{
+		Name:     "ritual",
+		Platform: "python",
+	}
+	err := CreateApp(&a, s.user)
+	c.Assert(err, gocheck.IsNil)
+	app, err := GetByName(a.Name)
+	c.Assert(err, gocheck.IsNil)
+	err = s.conn.Deploys().Insert(DeployData{App: a.Name, Timestamp: time.Now()})
+	c.Assert(err, gocheck.IsNil)
+	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
+	err = Delete(app)
+	c.Assert(err, gocheck.IsNil)
+	time.Sleep(200 * time.Millisecond)
+	var allDeploys []DeployData
+	err = s.conn.Deploys().Find(nil).All(&allDeploys)
+	c.Assert(err, gocheck.IsNil)
+	c.Assert(allDeploys, gocheck.HasLen, 1)
+	c.Assert(allDeploys[0].RemoveDate.IsZero(), gocheck.Equals, false)
+}
+
 func (s *S) TestDestroy(c *gocheck.C) {
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
