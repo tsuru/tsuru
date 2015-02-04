@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -8,9 +8,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 
-	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/config"
 	"launchpad.net/gocheck"
 )
 
@@ -23,37 +22,15 @@ func (h *metricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(content))
 }
 
-func (s *S) TestMetricsEnabled(c *gocheck.C) {
-	newApp := App{Name: "myApp", Platform: "Django"}
-	c.Assert(hasMetricsEnabled(&newApp), gocheck.Equals, false)
-	newApp = App{
-		Name:     "myApp",
-		Platform: "Django",
-		Env: map[string]bind.EnvVar{
-			"GRAPHITE_HOST": {
-				Name:   "GRAPHITE_HOST",
-				Value:  "host",
-				Public: true,
-			},
-		},
-	}
-	c.Assert(hasMetricsEnabled(&newApp), gocheck.Equals, true)
-}
-
 func (s *S) TestMetric(c *gocheck.C) {
 	h := metricHandler{cpuMax: "8.2"}
 	ts := httptest.NewServer(&h)
+	config.Set("metrics:db", "graphite")
+	config.Set("graphite:host", ts.URL)
 	defer ts.Close()
 	newApp := App{
 		Name:     "myApp",
 		Platform: "Django",
-		Env: map[string]bind.EnvVar{
-			"GRAPHITE_HOST": {
-				Name:   "GRAPHITE_HOST",
-				Value:  ts.URL,
-				Public: true,
-			},
-		},
 	}
 	cpu, err := newApp.Metric("cpu")
 	c.Assert(err, gocheck.IsNil)
@@ -63,38 +40,13 @@ func (s *S) TestMetric(c *gocheck.C) {
 func (s *S) TestMetricServerDown(c *gocheck.C) {
 	h := metricHandler{cpuMax: "8.2"}
 	ts := httptest.NewServer(&h)
+	config.Set("metrics:db", "graphite")
+	config.Set("graphite:host", ts.URL)
 	newApp := App{
 		Name:     "myApp",
 		Platform: "Django",
-		Env: map[string]bind.EnvVar{
-			"GRAPHITE_HOST": {
-				Name:   "GRAPHITE_HOST",
-				Value:  ts.URL,
-				Public: true,
-			},
-		},
 	}
 	ts.Close()
 	_, err := newApp.Metric("cpu")
 	c.Assert(err, gocheck.Not(gocheck.IsNil))
-}
-
-func (s *S) TestMetricEnvWithoutSchema(c *gocheck.C) {
-	h := metricHandler{cpuMax: "8.2"}
-	ts := httptest.NewServer(&h)
-	defer ts.Close()
-	newApp := App{
-		Name:     "myApp",
-		Platform: "Django",
-		Env: map[string]bind.EnvVar{
-			"GRAPHITE_HOST": {
-				Name:   "GRAPHITE_HOST",
-				Value:  strings.Replace(ts.URL, "http://", "", -1),
-				Public: true,
-			},
-		},
-	}
-	cpu, err := newApp.Metric("cpu")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(cpu, gocheck.Equals, 8.2)
 }
