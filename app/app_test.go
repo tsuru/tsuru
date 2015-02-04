@@ -7,7 +7,6 @@ package app
 import (
 	"bytes"
 	"encoding/json"
-	stderr "errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -378,7 +377,7 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfProvisionerFail(c *gocheck.C) {
 	h := testHandler{}
 	ts := testing.StartGandalfTestServer(&h)
 	defer ts.Close()
-	s.provisioner.PrepareFailure("Provision", stderr.New("exit status 1"))
+	s.provisioner.PrepareFailure("Provision", fmt.Errorf("exit status 1"))
 	a := App{
 		Name:     "theirapp",
 		Platform: "python",
