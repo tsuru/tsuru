@@ -84,6 +84,11 @@ deadcode: _install_deadcode
 
 deadc0de: deadcode
 
+lint: deadcode
+	./check-fmt.sh
+	misc/check-license.sh
+	misc/check-contributors.sh
+
 race:
 	go test $(GO_EXTRAFLAGS) -race -i ./...
 	go test $(GO_EXTRAFLAGS) -race ./...
