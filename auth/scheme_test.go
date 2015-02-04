@@ -4,9 +4,7 @@
 
 package auth
 
-import (
-	"launchpad.net/gocheck"
-)
+import "launchpad.net/gocheck"
 
 type TestScheme struct{}
 

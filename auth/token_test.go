@@ -1,12 +1,10 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 package auth
 
-import (
-	"launchpad.net/gocheck"
-)
+import "launchpad.net/gocheck"
 
 func (s *S) TestParseToken(c *gocheck.C) {
 	t, err := ParseToken("type token")
