@@ -7,6 +7,7 @@ package metrics
 import (
 	"testing"
 
+	"github.com/tsuru/config"
 	"launchpad.net/gocheck"
 )
 
@@ -26,5 +27,17 @@ func (s *S) TestRegister(c *gocheck.C) {
 	Register("influx", influx{})
 	db, ok := dbs["influx"]
 	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(db, gocheck.FitsTypeOf, influx{})
+}
+
+func (s *S) TestGet(c *gocheck.C) {
+	_, err := Get()
+	c.Assert(err, gocheck.Not(gocheck.IsNil))
+	config.Set("metrics:db", "influx")
+	_, err = Get()
+	c.Assert(err, gocheck.Not(gocheck.IsNil))
+	Register("influx", influx{})
+	db, err := Get()
+	c.Assert(err, gocheck.IsNil)
 	c.Assert(db, gocheck.FitsTypeOf, influx{})
 }
