@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/rec/rectest"
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
@@ -739,12 +740,12 @@ func (s *InstanceSuite) TestGetServiceInstance(c *gocheck.C) {
 	c.Assert(instance.Name, gocheck.Equals, "mongo-1")
 	c.Assert(instance.ServiceName, gocheck.Equals, "mongodb")
 	c.Assert(instance.Teams, gocheck.DeepEquals, []string{s.team.Name})
-	action := testing.Action{
+	action := rectest.Action{
 		User:   s.user.Email,
 		Action: "get-service-instance",
 		Extra:  []interface{}{"mongo-1"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 	instance, err = GetServiceInstance("mongo-6", s.user)
 	c.Assert(instance, gocheck.IsNil)
 	c.Assert(err, gocheck.Equals, ErrServiceInstanceNotFound)

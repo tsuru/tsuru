@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/quota"
+	"github.com/tsuru/tsuru/rec/rectest"
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
@@ -130,11 +131,11 @@ func (s *AuthSuite) TestCreateUserHandlerSavesTheUserInTheDatabase(c *gocheck.C)
 	c.Assert(err, gocheck.IsNil)
 	user, err := auth.GetUserByEmail("nobody@globo.com")
 	c.Assert(err, gocheck.IsNil)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "create-user",
 		User:   "nobody@globo.com",
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 	c.Assert(user.Quota, gocheck.DeepEquals, quota.Unlimited)
 }
 
@@ -379,11 +380,11 @@ func (s *AuthSuite) TestLoginShouldCreateTokenInTheDatabaseAndReturnItWithinTheR
 	n, err := conn.Tokens().Find(bson.M{"token": recorderJSON["token"]}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, 1)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "login",
 		User:   u.Email,
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *AuthSuite) TestLoginShouldInformWhenUserIsNotAdmin(c *gocheck.C) {
@@ -560,12 +561,12 @@ func (s *AuthSuite) TestCreateTeamHandlerSavesTheTeamInTheDatabaseWithTheAuthent
 	defer conn.Teams().Remove(bson.M{"_id": "timeredbull"})
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(t, ContainsUser, s.user)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "create-team",
 		User:   s.user.Email,
 		Extra:  []interface{}{"timeredbull"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *AuthSuite) TestCreateTeamHandlerReturnsBadRequestIfTheRequestBodyIsAnInvalidJSON(c *gocheck.C) {
@@ -629,12 +630,12 @@ func (s *AuthSuite) TestRemoveTeam(c *gocheck.C) {
 	n, err := conn.Teams().Find(bson.M{"name": team.Name}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, 0)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "remove-team",
 		User:   s.user.Email,
 		Extra:  []interface{}{team.Name},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *AuthSuite) TestRemoveTeamGives404WhenTeamDoesNotExist(c *gocheck.C) {
@@ -705,11 +706,11 @@ func (s *AuthSuite) TestListTeamsListsAllTeamsThatTheUserIsMember(c *gocheck.C) 
 	err = json.Unmarshal(b, &m)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(m, gocheck.DeepEquals, []map[string]string{{"name": s.team.Name}})
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "list-teams",
 		User:   s.user.Email,
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *AuthSuite) TestListTeamsReturns204IfTheUserHasNoTeam(c *gocheck.C) {
@@ -750,12 +751,12 @@ func (s *AuthSuite) TestAddUserToTeam(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(t, ContainsUser, s.user)
 	c.Assert(t, ContainsUser, u)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "add-user-to-team",
 		User:   s.user.Email,
 		Extra:  []interface{}{"team=tsuruteam", "user=" + u.Email},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *AuthSuite) TestAddUserToTeamShouldReturnNotFoundIfThereIsNoTeamWithTheGivenName(c *gocheck.C) {
@@ -908,12 +909,12 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExi
 	err = conn.Teams().Find(bson.M{"_id": s.team.Name}).One(s.team)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(s.team, gocheck.Not(ContainsUser), &u)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "remove-user-from-team",
 		User:   s.user.Email,
 		Extra:  []interface{}{"team=tsuruteam", "user=" + u.Email},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveOnlyAppsInThatTeamInGandalfWhenUserIsInMoreThanOneTeam(c *gocheck.C) {
@@ -1115,12 +1116,12 @@ func (s *AuthSuite) TestGetTeam(c *gocheck.C) {
 	err = json.NewDecoder(recorder.Body).Decode(&got)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(got, gocheck.DeepEquals, *team)
-	action := testing.Action{
+	action := rectest.Action{
 		User:   s.user.Email,
 		Action: "get-team",
 		Extra:  []interface{}{team.Name},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *AuthSuite) TestGetTeamNotFound(c *gocheck.C) {
@@ -1177,12 +1178,12 @@ func (s *AuthSuite) TestAddKeyToUserAddsAKeyToTheUser(c *gocheck.C) {
 	gotKey, _ := s.user.FindKey(key)
 	key.Content = "my-key"
 	c.Assert(gotKey, gocheck.DeepEquals, key)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "add-key",
 		User:   s.user.Email,
 		Extra:  []interface{}{"", "my-key"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *AuthSuite) TestAddKeyToUserAcceptsTheNameOfTheKey(c *gocheck.C) {
@@ -1207,12 +1208,12 @@ func (s *AuthSuite) TestAddKeyToUserAcceptsTheNameOfTheKey(c *gocheck.C) {
 	gotKey, _ := s.user.FindKey(key)
 	key.Content = "my-key"
 	c.Assert(gotKey, gocheck.DeepEquals, key)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "add-key",
 		User:   s.user.Email,
 		Extra:  []interface{}{"super-key", "my-key"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *AuthSuite) TestAddKeyToUserReturnsErrorIfTheReadingOfTheBodyFails(c *gocheck.C) {
@@ -1372,12 +1373,12 @@ func (s *AuthSuite) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *gocheck.C) {
 	u2, err := auth.GetUserByEmail(s.user.Email)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(u2.HasKey(auth.Key{Content: "my-key"}), gocheck.Equals, false)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "remove-key",
 		User:   s.user.Email,
 		Extra:  []interface{}{"", "my-key"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *AuthSuite) TestRemoveKeyHandlerCanRemoveByName(c *gocheck.C) {
@@ -1398,12 +1399,12 @@ func (s *AuthSuite) TestRemoveKeyHandlerCanRemoveByName(c *gocheck.C) {
 	u2, err := auth.GetUserByEmail(s.user.Email)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(u2.HasKey(auth.Key{Content: "my-key"}), gocheck.Equals, false)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "remove-key",
 		User:   s.user.Email,
 		Extra:  []interface{}{"key-name", ""},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *AuthSuite) TestRemoveKeyHandlerCallsGandalfRemoveKey(c *gocheck.C) {
@@ -1541,8 +1542,8 @@ func (s *AuthSuite) TestRemoveUser(c *gocheck.C) {
 	n, err := conn.Users().Find(bson.M{"email": u.Email}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, 0)
-	action := testing.Action{Action: "remove-user", User: u.Email}
-	c.Assert(action, testing.IsRecorded)
+	action := rectest.Action{Action: "remove-user", User: u.Email}
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *AuthSuite) TestRemoveUserWithTheUserBeingLastMemberOfATeam(c *gocheck.C) {
@@ -1664,11 +1665,11 @@ func (s *AuthSuite) TestChangePasswordHandler(c *gocheck.C) {
 	otherUser, err := auth.GetUserByEmail(s.user.Email)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(otherUser.Password, gocheck.Not(gocheck.Equals), oldPassword)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "change-password",
 		User:   u.Email,
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *AuthSuite) TestChangePasswordReturns412IfNewPasswordIsInvalid(c *gocheck.C) {
@@ -1757,11 +1758,11 @@ func (s *AuthSuite) TestResetPasswordStep1(c *gocheck.C) {
 	u, err := auth.GetUserByEmail(s.user.Email)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(u.Password, gocheck.Equals, oldPassword)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "reset-password-gen-token",
 		User:   s.user.Email,
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *AuthSuite) TestResetPasswordUserNotFound(c *gocheck.C) {
@@ -1810,11 +1811,11 @@ func (s *AuthSuite) TestResetPasswordStep2(c *gocheck.C) {
 	u2, err := auth.GetUserByEmail(user.Email)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(u2.Password, gocheck.Not(gocheck.Equals), oldPassword)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "reset-password",
 		User:   user.Email,
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 type TestScheme native.NativeScheme

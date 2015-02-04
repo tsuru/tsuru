@@ -18,8 +18,8 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/rec/rectest"
 	"github.com/tsuru/tsuru/service"
-	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
@@ -259,12 +259,12 @@ func (s *ConsumptionSuite) TestRemoveServiceInstanceHandler(c *gocheck.C) {
 	n, err := s.conn.ServiceInstances().Find(bson.M{"name": "foo-instance"}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(n, gocheck.Equals, 0)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "remove-service-instance",
 		User:   s.user.Email,
 		Extra:  []interface{}{"foo-instance"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *ConsumptionSuite) TestRemoveServiceHandlerWithoutPermissionShouldReturn401(c *gocheck.C) {
@@ -341,8 +341,8 @@ func (s *ConsumptionSuite) TestServicesInstancesHandler(c *gocheck.C) {
 		{Service: "redis", Instances: []string{"redis-globo"}},
 	}
 	c.Assert(instances, gocheck.DeepEquals, expected)
-	action := testing.Action{Action: "list-service-instances", User: s.user.Email}
-	c.Assert(action, testing.IsRecorded)
+	action := rectest.Action{Action: "list-service-instances", User: s.user.Email}
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *ConsumptionSuite) TestServicesInstancesHandlerAppFilter(c *gocheck.C) {
@@ -383,8 +383,8 @@ func (s *ConsumptionSuite) TestServicesInstancesHandlerAppFilter(c *gocheck.C) {
 		{Service: "mongodb", Instances: []string{"mongodb-other"}},
 	}
 	c.Assert(instances, gocheck.DeepEquals, expected)
-	action := testing.Action{Action: "list-service-instances", User: s.user.Email}
-	c.Assert(action, testing.IsRecorded)
+	action := rectest.Action{Action: "list-service-instances", User: s.user.Email}
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *ConsumptionSuite) TestServicesInstancesHandlerReturnsOnlyServicesThatTheUserHasAccess(c *gocheck.C) {
@@ -493,12 +493,12 @@ func (s *ConsumptionSuite) TestServiceInstanceStatusHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	b, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(string(b), gocheck.Equals, "Service instance \"my_nosql\" is up")
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "service-instance-status",
 		User:   s.user.Email,
 		Extra:  []interface{}{"my_nosql"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *ConsumptionSuite) TestServiceInstanceStatusHandlerShouldReturnErrorWhenServiceInstanceNotExists(c *gocheck.C) {
@@ -559,12 +559,12 @@ func (s *ConsumptionSuite) TestServiceInfoHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	expected := []service.ServiceInstance{si1, si2}
 	c.Assert(instances, gocheck.DeepEquals, expected)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "service-info",
 		User:   s.user.Email,
 		Extra:  []interface{}{"mongodb"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *ConsumptionSuite) TestServiceInfoHandlerShouldReturnOnlyInstancesOfTheSameTeamOfTheUser(c *gocheck.C) {
@@ -704,12 +704,12 @@ Collnosql is a really really cool nosql`
 	b, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(string(b), gocheck.Equals, doc)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "service-doc",
 		User:   s.user.Email,
 		Extra:  []interface{}{"coolnosql"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *ConsumptionSuite) TestDocHandlerReturns401WhenUserHasNoAccessToService(c *gocheck.C) {
@@ -790,12 +790,12 @@ func (s *ConsumptionSuite) TestServicePlansHandler(c *gocheck.C) {
 		{Name: "small", Description: "not space left for you"},
 	}
 	c.Assert(plans, gocheck.DeepEquals, expected)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "service-plans",
 		User:   s.user.Email,
 		Extra:  []interface{}{"mysql"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *ConsumptionSuite) TestServiceProxy(c *gocheck.C) {

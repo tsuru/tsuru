@@ -18,8 +18,8 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/rec/rectest"
 	"github.com/tsuru/tsuru/service"
-	"github.com/tsuru/tsuru/testing"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
@@ -110,8 +110,8 @@ func (s *ProvisionSuite) TestServicesHandlerShoudGetAllServicesFromUsersTeam(c *
 		{Service: "mongodb", Instances: []string{"my_nosql"}},
 	}
 	c.Assert(services, gocheck.DeepEquals, expected)
-	action := testing.Action{Action: "list-services", User: s.user.Email}
-	c.Assert(action, testing.IsRecorded)
+	action := rectest.Action{Action: "list-services", User: s.user.Email}
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func makeRequestToCreateHandler(c *gocheck.C) (*httptest.ResponseRecorder, *http.Request) {
@@ -139,12 +139,12 @@ func (s *ProvisionSuite) TestCreateHandlerSavesNameFromManifestID(c *gocheck.C) 
 		"production": "someservice.com",
 		"test":       "test.someservice.com",
 	}
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "create-service",
 		User:   s.user.Email,
 		Extra:  []interface{}{"some_service", endpoints},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *ProvisionSuite) TestCreateHandlerSavesServiceMetadata(c *gocheck.C) {
@@ -273,12 +273,12 @@ func (s *ProvisionSuite) TestUpdateHandlerShouldUpdateTheServiceWithDataFromMani
 	c.Assert(service.Password, gocheck.Equals, "yyyy")
 	c.Assert(service.Username, gocheck.Equals, "mysqltest")
 	endpoints := map[string]string{"production": "mysqlapi.com", "test": "localhost:8000"}
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "update-service",
 		User:   s.user.Email,
 		Extra:  []interface{}{service.Name, endpoints},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *ProvisionSuite) TestUpdateHandlerReturnsBadRequestWithoutPassword(c *gocheck.C) {
@@ -353,12 +353,12 @@ func (s *ProvisionSuite) TestDeleteHandler(c *gocheck.C) {
 	count, err := s.conn.Services().Find(query).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(count, gocheck.Equals, 0)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "delete-service",
 		User:   s.user.Email,
 		Extra:  []interface{}{se.Name},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *ProvisionSuite) TestDeleteHandlerReturns404WhenTheServiceDoesNotExist(c *gocheck.C) {
@@ -425,12 +425,12 @@ func (s *ProvisionSuite) TestGrantServiceAccessToTeam(c *gocheck.C) {
 	err = se.Get()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(*s.team, HasAccessTo, se)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "grant-service-access",
 		User:   s.user.Email,
 		Extra:  []interface{}{"service=" + se.Name, "team=" + t.Name},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *ProvisionSuite) TestGrantAccesToTeamReturnNotFoundIfTheServiceDoesNotExist(c *gocheck.C) {
@@ -511,12 +511,12 @@ func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamRemovesTeamFromService(c
 	err = se.Get()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(*s.team, gocheck.Not(HasAccessTo), se)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "revoke-service-access",
 		User:   s.user.Email,
 		Extra:  []interface{}{"service=" + se.Name, "team=" + s.team.Name},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *ProvisionSuite) TestRevokeServiceAccessFromTeamReturnsNotFoundIfTheServiceDoesNotExist(c *gocheck.C) {
@@ -631,12 +631,12 @@ func (s *ProvisionSuite) TestAddDocHandler(c *gocheck.C) {
 	err = s.conn.Services().Find(query).One(&serv)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(serv.Doc, gocheck.Equals, "doc")
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "service-add-doc",
 		User:   s.user.Email,
 		Extra:  []interface{}{"some_service", "doc"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *ProvisionSuite) TestAddDocHandlerReturns403WhenTheUserDoesNotHaveAccessToTheService(c *gocheck.C) {

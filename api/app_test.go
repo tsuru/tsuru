@@ -29,6 +29,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
+	"github.com/tsuru/tsuru/rec/rectest"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/testing"
@@ -116,8 +117,8 @@ func (s *S) TestAppList(c *gocheck.C) {
 		c.Assert(app.Name, gocheck.DeepEquals, expected[i].Name)
 		c.Assert(app.Units(), gocheck.DeepEquals, expected[i].Units())
 	}
-	action := testing.Action{Action: "app-list", User: s.user.Email}
-	c.Assert(action, testing.IsRecorded)
+	action := rectest.Action{Action: "app-list", User: s.user.Email}
+	c.Assert(action, rectest.IsRecorded)
 }
 
 // Issue #52.
@@ -190,12 +191,12 @@ func (s *S) TestDelete(c *gocheck.C) {
 	c.Assert(h.url[1], gocheck.Equals, "/repository/myapptodelete") // increment the index because of CreateApp action
 	c.Assert(h.method[1], gocheck.Equals, "DELETE")
 	c.Assert(string(h.body[1]), gocheck.Equals, "null")
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "app-delete",
 		User:   s.user.Email,
 		Extra:  []interface{}{myApp.Name},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccesToTheApp(c *gocheck.C) {
@@ -256,12 +257,12 @@ func (s *S) TestAppInfo(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(myApp["name"], gocheck.Equals, expectedApp.Name)
 	c.Assert(myApp["repository"], gocheck.Equals, repository.ReadWriteURL(expectedApp.Name))
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "app-info",
 		User:   s.user.Email,
 		Extra:  []interface{}{expectedApp.Name},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestAppInfoReturnsForbiddenWhenTheUserDoesNotHaveAccessToTheApp(c *gocheck.C) {
@@ -334,12 +335,12 @@ func (s *S) TestCreateAppHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(gotApp.Teams, gocheck.DeepEquals, []string{s.team.Name})
 	c.Assert(s.provisioner.GetUnits(&gotApp), gocheck.HasLen, 0)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "create-app",
 		User:   s.user.Email,
 		Extra:  []interface{}{"name=someapp", "platform=zend", "plan="},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestCreateAppTeamOwner(c *gocheck.C) {
@@ -382,12 +383,12 @@ func (s *S) TestCreateAppTeamOwner(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(gotApp.Teams, gocheck.DeepEquals, []string{s.team.Name})
 	c.Assert(s.provisioner.GetUnits(&gotApp), gocheck.HasLen, 0)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "create-app",
 		User:   s.user.Email,
 		Extra:  []interface{}{"name=someapp", "platform=zend", "plan="},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestCreateAppCustomPlan(c *gocheck.C) {
@@ -436,12 +437,12 @@ func (s *S) TestCreateAppCustomPlan(c *gocheck.C) {
 	c.Assert(gotApp.Teams, gocheck.DeepEquals, []string{s.team.Name})
 	c.Assert(s.provisioner.GetUnits(&gotApp), gocheck.HasLen, 0)
 	c.Assert(gotApp.Plan, gocheck.DeepEquals, expectedPlan)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "create-app",
 		User:   s.user.Email,
 		Extra:  []interface{}{"name=someapp", "platform=zend", "plan=myplan"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestCreateAppTwoTeamOwner(c *gocheck.C) {
@@ -565,12 +566,12 @@ func (s *S) TestAddUnits(c *gocheck.C) {
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Units(), gocheck.HasLen, 3)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "add-units",
 		User:   s.user.Email,
 		Extra:  []interface{}{"app=armorandsword", "units=3"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 	c.Assert(recorder.Body.String(), gocheck.Equals, `{"Message":"added 3 units"}`+"\n")
 }
 
@@ -686,12 +687,12 @@ func (s *S) TestRemoveUnits(c *gocheck.C) {
 	c.Assert(context.IsPreventUnlock(request), gocheck.Equals, true)
 	c.Assert(app.Units(), gocheck.HasLen, 1)
 	c.Assert(s.provisioner.GetUnits(app), gocheck.HasLen, 1)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "remove-units",
 		User:   s.user.Email,
 		Extra:  []interface{}{"app=velha", "units=2"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestRemoveUnitsReturns404IfAppDoesNotExist(c *gocheck.C) {
@@ -889,12 +890,12 @@ func (s *S) TestAddTeamToTheApp(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Teams, gocheck.HasLen, 2)
 	c.Assert(app.Teams[1], gocheck.Equals, s.team.Name)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "grant-app-access",
 		User:   s.user.Email,
 		Extra:  []interface{}{"app=" + app.Name, "team=" + s.team.Name},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestGrantAccessToTeamReturn404IfTheAppDoesNotExist(c *gocheck.C) {
@@ -1028,12 +1029,12 @@ func (s *S) TestRevokeAccessFromTeam(c *gocheck.C) {
 	app, err := app.GetByName(a.Name)
 	c.Assert(app.Teams, gocheck.HasLen, 1)
 	c.Assert(app.Teams[0], gocheck.Equals, "abcd")
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "revoke-app-access",
 		User:   s.user.Email,
 		Extra:  []interface{}{"app=" + app.Name, "team=" + s.team.Name},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestRevokeAccessFromTeamReturn404IfTheAppDoesNotExist(c *gocheck.C) {
@@ -1290,12 +1291,12 @@ func (s *S) TestRunOnceHandler(c *gocheck.C) {
 	expected += " ls"
 	cmds := s.provisioner.GetCmds(expected, &a)
 	c.Assert(cmds, gocheck.HasLen, 1)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "run-command",
 		User:   s.user.Email,
 		Extra:  []interface{}{"app=" + a.Name, "command=ls"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestRunHandler(c *gocheck.C) {
@@ -1325,12 +1326,12 @@ func (s *S) TestRunHandler(c *gocheck.C) {
 	expected += " ls"
 	cmds := s.provisioner.GetCmds(expected, &a)
 	c.Assert(cmds, gocheck.HasLen, 1)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "run-command",
 		User:   s.user.Email,
 		Extra:  []interface{}{"app=" + a.Name, "command=ls"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *gocheck.C) {
@@ -1449,12 +1450,12 @@ func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(result, gocheck.DeepEquals, expected)
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "get-env",
 		User:   s.user.Email,
 		Extra:  []interface{}{"app=" + a.Name, "envs=[DATABASE_HOST]"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *gocheck.C) {
@@ -1486,12 +1487,12 @@ func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *gocheck.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &got)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(got, gocheck.DeepEquals, expected)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "get-env",
 		User:   s.user.Email,
 		Extra:  []interface{}{"app=" + a.Name, "envs=[DATABASE_HOST DATABASE_USER]"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestGetEnvHandlerReturnsInternalErrorIfReadAllFails(c *gocheck.C) {
@@ -1599,12 +1600,12 @@ func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *goch
 	envs := map[string]string{
 		"DATABASE_HOST": "localhost",
 	}
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "set-env",
 		User:   s.user.Email,
 		Extra:  []interface{}{"app=" + a.Name, envs},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 	c.Assert(recorder.Body.String(), gocheck.Equals,
 		`{"Message":"---- Setting 1 new environment variables ----\n"}
 `)
@@ -1640,12 +1641,12 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *go
 		"DATABASE_HOST": "localhost",
 		"DATABASE_USER": "root",
 	}
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "set-env",
 		User:   s.user.Email,
 		Extra:  []interface{}{"app=" + a.Name, envs},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestSetEnvHandlerShouldNotChangeValueOfPrivateVariables(c *gocheck.C) {
@@ -1766,12 +1767,12 @@ func (s *S) TestUnsetEnvHandlerRemovesTheEnvironmentVariablesFromTheApp(c *goche
 	app, err := app.GetByName("swift")
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.Env, gocheck.DeepEquals, expected)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "unset-env",
 		User:   s.user.Email,
 		Extra:  []interface{}{"app=" + a.Name, "envs=[DATABASE_HOST]"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 	c.Assert(recorder.Body.String(), gocheck.Equals,
 		`{"Message":"---- Unsetting 1 environment variables ----\n"}
 `)
@@ -1810,12 +1811,12 @@ func (s *S) TestUnsetEnvHandlerRemovesAllGivenEnvironmentVariables(c *gocheck.C)
 		},
 	}
 	c.Assert(app.Env, gocheck.DeepEquals, expected)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "unset-env",
 		User:   s.user.Email,
 		Extra:  []interface{}{"app=" + a.Name, "envs=[DATABASE_HOST DATABASE_USER]"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestUnsetHandlerDoesNotRemovePrivateVariables(c *gocheck.C) {
@@ -1929,12 +1930,12 @@ func (s *S) TestAddCNameHandler(c *gocheck.C) {
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.CName, gocheck.DeepEquals, []string{"leper.secretcompany.com"})
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "add-cname",
 		User:   s.user.Email,
 		Extra:  []interface{}{"app=" + app.Name, "cname=leper.secretcompany.com"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestAddCNameHandlerAcceptsWildCard(c *gocheck.C) {
@@ -1955,12 +1956,12 @@ func (s *S) TestAddCNameHandlerAcceptsWildCard(c *gocheck.C) {
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.CName, gocheck.DeepEquals, []string{"*.leper.secretcompany.com"})
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "add-cname",
 		User:   s.user.Email,
 		Extra:  []interface{}{"app=" + app.Name, "cname=*.leper.secretcompany.com"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestAddCNameHandlerAcceptsEmptyCName(c *gocheck.C) {
@@ -2112,12 +2113,12 @@ func (s *S) TestRemoveCNameHandler(c *gocheck.C) {
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.CName, gocheck.DeepEquals, []string{})
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "remove-cname",
 		User:   s.user.Email,
 		Extra:  []interface{}{"app=" + app.Name, "cnames=foo.bar.com"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestUnsetTwoCnames(c *gocheck.C) {
@@ -2138,12 +2139,12 @@ func (s *S) TestUnsetTwoCnames(c *gocheck.C) {
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(app.CName, gocheck.DeepEquals, []string{})
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "remove-cname",
 		User:   s.user.Email,
 		Extra:  []interface{}{"app=" + app.Name, "cnames=foo.bar.com, bar.com"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestRemoveCNameHandlerUnknownApp(c *gocheck.C) {
@@ -2374,12 +2375,12 @@ func (s *S) TestAppLogSelectByLines(c *gocheck.C) {
 	err = json.Unmarshal(body, &logs)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(logs, gocheck.HasLen, 10)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "app-log",
 		User:   s.user.Email,
 		Extra:  []interface{}{"app=" + a.Name, "lines=10"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestAppLogSelectBySource(c *gocheck.C) {
@@ -2410,12 +2411,12 @@ func (s *S) TestAppLogSelectBySource(c *gocheck.C) {
 	c.Assert(logs, gocheck.HasLen, 1)
 	c.Assert(logs[0].Message, gocheck.Equals, "mars log")
 	c.Assert(logs[0].Source, gocheck.Equals, "mars")
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "app-log",
 		User:   s.user.Email,
 		Extra:  []interface{}{"app=" + a.Name, "lines=10", "source=mars"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestAppLogSelectByUnit(c *gocheck.C) {
@@ -2447,12 +2448,12 @@ func (s *S) TestAppLogSelectByUnit(c *gocheck.C) {
 	c.Assert(logs[0].Message, gocheck.Equals, "earth log")
 	c.Assert(logs[0].Source, gocheck.Equals, "earth")
 	c.Assert(logs[0].Unit, gocheck.Equals, "caliban")
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "app-log",
 		User:   s.user.Email,
 		Extra:  []interface{}{"app=" + a.Name, "lines=10", "unit=caliban"},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestAppLogSelectByLinesShouldReturnTheLastestEntries(c *gocheck.C) {
@@ -2646,12 +2647,12 @@ func (s *S) TestBindHandler(c *gocheck.C) {
 	c.Assert(parts[6], gocheck.Matches, `{"Message":"- TSURU_SERVICES\\n"}`)
 	c.Assert(parts[7], gocheck.Equals, "")
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "bind-app",
 		User:   s.user.Email,
 		Extra:  []interface{}{"instance=" + instance.Name, "app=" + a.Name},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestBindHandlerReturns404IfTheInstanceDoesNotExist(c *gocheck.C) {
@@ -2830,12 +2831,12 @@ func (s *S) TestUnbindHandler(c *gocheck.C) {
 	c.Assert(parts[2], gocheck.Equals, `{"Message":"\nInstance \"my-mysql\" is not bound to the app \"painkiller\" anymore.\n"}`)
 	c.Assert(parts[3], gocheck.Equals, "")
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/json")
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "unbind-app",
 		User:   s.user.Email,
 		Extra:  []interface{}{"instance=" + instance.Name, "app=" + a.Name},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestUnbindHandlerReturns404IfTheInstanceDoesNotExist(c *gocheck.C) {
@@ -2949,12 +2950,12 @@ func (s *S) TestRestartHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(recorder.Body.String(), gocheck.Matches, "(?s).*---- Restarting your app ----.*")
 	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "text")
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "restart",
 		User:   s.user.Email,
 		Extra:  []interface{}{a.Name},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestRestartHandlerReturns404IfTheAppDoesNotExist(c *gocheck.C) {
@@ -3067,8 +3068,8 @@ func (s *S) TestPlatformList(c *gocheck.C) {
 	err = json.NewDecoder(recorder.Body).Decode(&got)
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(got, gocheck.DeepEquals, want)
-	action := testing.Action{Action: "platform-list", User: s.user.Email}
-	c.Assert(action, testing.IsRecorded)
+	action := rectest.Action{Action: "platform-list", User: s.user.Email}
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestgetAppOrErrorWhenUserIsAdmin(c *gocheck.C) {
@@ -3101,8 +3102,8 @@ func (s *S) TestSwap(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	err = swap(recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
-	action := testing.Action{Action: "swap", User: s.user.Email, Extra: []interface{}{"app1", "app2"}}
-	c.Assert(action, testing.IsRecorded)
+	action := rectest.Action{Action: "swap", User: s.user.Email, Extra: []interface{}{"app1", "app2"}}
+	c.Assert(action, rectest.IsRecorded)
 	var dbApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": app1.Name}).One(&dbApp)
 	c.Assert(err, gocheck.IsNil)
@@ -3233,12 +3234,12 @@ func (s *S) TestStartHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	starts := s.provisioner.Starts(&a)
 	c.Assert(starts, gocheck.Equals, 1)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "start",
 		User:   s.user.Email,
 		Extra:  []interface{}{a.Name},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestStopHandler(c *gocheck.C) {
@@ -3260,12 +3261,12 @@ func (s *S) TestStopHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	stops := s.provisioner.Stops(&a)
 	c.Assert(stops, gocheck.Equals, 1)
-	action := testing.Action{
+	action := rectest.Action{
 		Action: "stop",
 		User:   s.user.Email,
 		Extra:  []interface{}{a.Name},
 	}
-	c.Assert(action, testing.IsRecorded)
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestForceDeleteLock(c *gocheck.C) {
