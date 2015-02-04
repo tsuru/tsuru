@@ -598,24 +598,6 @@ The tcp port that will be exported by the container to the node network. The
 default value expected by platforms defined in tsuru's basebuilder repository is
 ``8888``.
 
-docker:ssh:add-key-cmd
-++++++++++++++++++++++
-
-The command that will be called with the ssh public key created for the
-application. This allows us to connect directly to a running container using ssh.
-The value expected for basebuilder platforms is ``/var/lib/tsuru/add-key``.
-
-docker:ssh:public-key
-+++++++++++++++++++++
-
-Deprecated. You shouldn't set this value anymore.
-
-docker:ssh:user
-+++++++++++++++
-
-The user used to connect via ssh to running containers. The value expected for
-basebuilder platforms is ``ubuntu``.
-
 .. _config_healing:
 
 docker:healing:heal-nodes
