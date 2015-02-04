@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/tsuru/tsuru/cmd/testing"
+	"github.com/tsuru/tsuru/cmd/cmdtest"
 	ttesting "github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
@@ -30,7 +30,7 @@ func (s *S) TestShellToContainerCmdInfo(c *gocheck.C) {
 
 func (s *S) TestShellToContainerCmdRunWithApp(c *gocheck.C) {
 	var closeClientConn func()
-	guesser := testing.FakeGuesser{Name: "myapp"}
+	guesser := cmdtest.FakeGuesser{Name: "myapp"}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/apps/myapp/shell" && r.Method == "GET" && r.Header.Get("Authorization") == "bearer abc123" {
 			conn, _, err := w.(http.Hijacker).Hijack()

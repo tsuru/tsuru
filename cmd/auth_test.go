@@ -11,7 +11,7 @@ import (
 	"os"
 	"strings"
 
-	ttesting "github.com/tsuru/tsuru/cmd/testing"
+	"github.com/tsuru/tsuru/cmd/cmdtest"
 	"github.com/tsuru/tsuru/fs/testing"
 	"launchpad.net/gocheck"
 )
@@ -55,7 +55,7 @@ func (s *S) TestNativeLogin(c *gocheck.C) {
 	expected := "Password: \nSuccessfully logged in!\n"
 	reader := strings.NewReader("chico\n")
 	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, reader}
-	client := NewClient(&http.Client{Transport: &ttesting.Transport{Message: `{"token": "sometoken", "is_admin": true}`, Status: http.StatusOK}}, nil, manager)
+	client := NewClient(&http.Client{Transport: &cmdtest.Transport{Message: `{"token": "sometoken", "is_admin": true}`, Status: http.StatusOK}}, nil, manager)
 	command := login{}
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
@@ -78,7 +78,7 @@ func (s *S) TestNativeLoginShouldNotDependOnTsuruTokenFile(c *gocheck.C) {
 	expected := "Password: \nSuccessfully logged in!\n"
 	reader := strings.NewReader("chico\n")
 	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, reader}
-	client := NewClient(&http.Client{Transport: &ttesting.Transport{Message: `{"token":"anothertoken"}`, Status: http.StatusOK}}, nil, manager)
+	client := NewClient(&http.Client{Transport: &cmdtest.Transport{Message: `{"token":"anothertoken"}`, Status: http.StatusOK}}, nil, manager)
 	command := login{}
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)
@@ -106,8 +106,8 @@ func (s *S) TestLogout(c *gocheck.C) {
 	expected := "Successfully logged out!\n"
 	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
 	command := logout{}
-	transport := ttesting.ConditionalTransport{
-		Transport: ttesting.Transport{
+	transport := cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{
 			Message: "",
 			Status:  http.StatusOK,
 		},
@@ -147,7 +147,7 @@ func (s *S) TestLogoutNoTarget(c *gocheck.C) {
 	expected := "Successfully logged out!\n"
 	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
 	command := logout{}
-	transport := ttesting.Transport{Message: "", Status: http.StatusOK}
+	transport := cmdtest.Transport{Message: "", Status: http.StatusOK}
 	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
 	err := command.Run(&context, client)
 	c.Assert(err, gocheck.IsNil)

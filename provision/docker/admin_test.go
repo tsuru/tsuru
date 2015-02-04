@@ -11,7 +11,7 @@ import (
 	"net/http"
 
 	"github.com/tsuru/tsuru/cmd"
-	"github.com/tsuru/tsuru/cmd/testing"
+	"github.com/tsuru/tsuru/cmd/cmdtest"
 	"launchpad.net/gocheck"
 )
 
@@ -34,8 +34,8 @@ func (s *S) TestMoveContainersRun(c *gocheck.C) {
 	}
 	msg, _ := json.Marshal(progressLog{Message: "progress msg"})
 	result := string(msg)
-	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: result, Status: http.StatusOK},
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: result, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
@@ -78,8 +78,8 @@ func (s *S) TestMoveContainerRun(c *gocheck.C) {
 	}
 	msg, _ := json.Marshal(progressLog{Message: "progress msg"})
 	result := string(msg)
-	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: result, Status: http.StatusOK},
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: result, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
@@ -121,8 +121,8 @@ func (s *S) TestRebalanceContainersRun(c *gocheck.C) {
 	msg, _ := json.Marshal(progressLog{Message: "progress msg"})
 	result := string(msg)
 	expectedDry := "true"
-	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: result, Status: http.StatusOK},
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: result, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
@@ -161,8 +161,8 @@ func (s *S) TestRebalanceContainersRunAskingForConfirmation(c *gocheck.C) {
 	}
 	msg, _ := json.Marshal(progressLog{Message: "progress msg"})
 	result := string(msg)
-	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: result, Status: http.StatusOK},
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: result, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
@@ -202,8 +202,8 @@ func (s *S) TestRebalanceContainersRunGivingUp(c *gocheck.C) {
 func (s *S) TestFixContainersCmdRun(c *gocheck.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Stdout: &buf, Stderr: &buf}
-	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: "", Status: http.StatusOK},
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			return req.URL.Path == "/docker/fix-containers" && req.Method == "POST"
 		},

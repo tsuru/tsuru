@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -16,7 +16,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
-	"github.com/tsuru/tsuru/cmd/testing"
+	"github.com/tsuru/tsuru/cmd/cmdtest"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
@@ -470,8 +470,8 @@ func (s *S) TestAddPoolToSchedulerCmdInfo(c *gocheck.C) {
 func (s *S) TestAddPoolToTheSchedulerCmd(c *gocheck.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Args: []string{"poolTest"}, Stdout: &buf}
-	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: "", Status: http.StatusOK},
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			return req.URL.Path == "/docker/pool"
 		},
@@ -497,8 +497,8 @@ func (s *S) TestRemovePoolFromSchedulerCmdInfo(c *gocheck.C) {
 func (s *S) TestRemovePoolFromTheSchedulerCmd(c *gocheck.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Args: []string{"poolTest"}, Stdout: &buf}
-	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: "", Status: http.StatusOK},
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			return req.URL.Path == "/docker/pool"
 		},
@@ -540,8 +540,8 @@ func (s *S) TestListPoolsInTheSchedulerCmdRun(c *gocheck.C) {
 	pools := []Pool{pool}
 	poolsJson, _ := json.Marshal(pools)
 	ctx := cmd.Context{Stdout: &buf}
-	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: string(poolsJson), Status: http.StatusOK},
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: string(poolsJson), Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			return req.URL.Path == "/docker/pool"
 		},
@@ -573,8 +573,8 @@ func (s *S) TestAddTeamsToPoolCmdInfo(c *gocheck.C) {
 func (s *S) TestAddTeamsToPoolCmdRun(c *gocheck.C) {
 	var buf bytes.Buffer
 	ctx := cmd.Context{Stdout: &buf, Args: []string{"pool1", "team1", "team2"}}
-	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: "", Status: http.StatusOK},
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			return req.URL.Path == "/docker/pool/team"
 		},
@@ -599,8 +599,8 @@ func (s *S) TestRemoveTeamsFromPoolCmdInfo(c *gocheck.C) {
 func (s *S) TestRemoveTeamsFromPoolCmdRun(c *gocheck.C) {
 	var buf bytes.Buffer
 	ctx := cmd.Context{Stdout: &buf, Args: []string{"pool1", "team1"}}
-	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: "", Status: http.StatusOK},
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			return req.URL.Path == "/docker/pool/team"
 		},

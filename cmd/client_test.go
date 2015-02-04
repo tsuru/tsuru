@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"strings"
 
-	ttesting "github.com/tsuru/tsuru/cmd/testing"
+	"github.com/tsuru/tsuru/cmd/cmdtest"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/fs/testing"
 	"launchpad.net/gocheck"
@@ -18,7 +18,7 @@ import (
 func (s *S) TestShouldSetCloseToTrue(c *gocheck.C) {
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, gocheck.IsNil)
-	transport := ttesting.Transport{
+	transport := cmdtest.Transport{
 		Status:  http.StatusOK,
 		Message: "OK",
 	}
@@ -48,7 +48,7 @@ func (s *S) TestShouldReturnBodyMessageOnError(c *gocheck.C) {
 		Stdout: &buf,
 	}
 	client := NewClient(
-		&http.Client{Transport: &ttesting.Transport{Message: "You must be authenticated to execute this command.", Status: http.StatusUnauthorized}},
+		&http.Client{Transport: &cmdtest.Transport{Message: "You must be authenticated to execute this command.", Status: http.StatusUnauthorized}},
 		&context,
 		manager)
 	client.Verbosity = 2
@@ -104,7 +104,7 @@ func (s *S) TestShouldNotIncludeTheHeaderAuthorizationWhenTheTsuruTokenFileIsMis
 	}()
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, gocheck.IsNil)
-	trans := ttesting.Transport{Message: "", Status: http.StatusOK}
+	trans := cmdtest.Transport{Message: "", Status: http.StatusOK}
 	var buf bytes.Buffer
 	context := Context{
 		Stdout: &buf,
@@ -130,7 +130,7 @@ func (s *S) TestShouldIncludeTheHeaderAuthorizationWhenTsuruTokenFileExists(c *g
 	}()
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, gocheck.IsNil)
-	trans := ttesting.Transport{Message: "", Status: http.StatusOK}
+	trans := cmdtest.Transport{Message: "", Status: http.StatusOK}
 	var buf bytes.Buffer
 	context := Context{
 		Stdout: &buf,
@@ -155,7 +155,7 @@ func (s *S) TestShouldValidateVersion(c *gocheck.C) {
 	context := Context{
 		Stderr: &buf,
 	}
-	trans := ttesting.Transport{
+	trans := cmdtest.Transport{
 		Message: "",
 		Status:  http.StatusOK,
 		Headers: map[string][]string{"Supported-Tsuru": {"0.3"}},
@@ -191,7 +191,7 @@ func (s *S) TestShouldSkipValidationIfThereIsNoSupportedHeaderDeclared(c *gochec
 	context := Context{
 		Stderr: &buf,
 	}
-	trans := ttesting.Transport{Message: "", Status: http.StatusOK, Headers: map[string][]string{"Supported-Tsuru": {"0.3"}}}
+	trans := cmdtest.Transport{Message: "", Status: http.StatusOK, Headers: map[string][]string{"Supported-Tsuru": {"0.3"}}}
 	manager := Manager{
 		version: "0.2.1",
 	}
@@ -208,7 +208,7 @@ func (s *S) TestShouldSkupValidationIfServerDoesNotReturnSupportedHeader(c *goch
 	context := Context{
 		Stderr: &buf,
 	}
-	trans := ttesting.Transport{Message: "", Status: http.StatusOK}
+	trans := cmdtest.Transport{Message: "", Status: http.StatusOK}
 	manager := Manager{
 		name:          "glb",
 		version:       "0.2.1",

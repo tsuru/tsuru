@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/cmd"
-	"github.com/tsuru/tsuru/cmd/testing"
+	"github.com/tsuru/tsuru/cmd/cmdtest"
 	"launchpad.net/gocheck"
 )
 
@@ -47,8 +47,8 @@ func (s *S) TestAddNodeToTheSchedulerCmdRun(c *gocheck.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Args: []string{"pool=poolTest", "address=http://localhost:8080"}, Stdout: &buf}
 	expectedBody := `{"address":"http://localhost:8080","pool":"poolTest"}`
-	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: "", Status: http.StatusOK},
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			body, _ := ioutil.ReadAll(req.Body)
 			c.Assert(string(body), gocheck.DeepEquals, expectedBody)
@@ -70,8 +70,8 @@ func (s *S) TestAddNodeWithErrorCmdRun(c *gocheck.C) {
 		Stdout: &buf, Stderr: &buf,
 	}
 	expectedBody := `{"address":"http://localhost:8080","pool":"poolTest"}`
-	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{
 			Message: `{"error": "some err", "description": "my iaas desc"}`,
 			Status:  http.StatusBadRequest,
 		},
@@ -107,8 +107,8 @@ func (s *S) TestRemoveNodeFromTheSchedulerCmdInfo(c *gocheck.C) {
 func (s *S) TestRemoveNodeFromTheSchedulerCmdRun(c *gocheck.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Args: []string{"http://localhost:8080"}, Stdout: &buf}
-	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: "", Status: http.StatusOK},
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			var result map[string]string
 			json.NewDecoder(req.Body).Decode(&result)
@@ -128,8 +128,8 @@ func (s *S) TestRemoveNodeFromTheSchedulerCmdRun(c *gocheck.C) {
 func (s *S) TestRemoveNodeFromTheSchedulerWithDestroyCmdRun(c *gocheck.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Args: []string{"http://localhost:8080"}, Stdout: &buf}
-	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: "", Status: http.StatusOK},
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			var result map[string]string
 			json.NewDecoder(req.Body).Decode(&result)
@@ -173,8 +173,8 @@ func (s *S) TestListNodesInTheSchedulerCmdInfo(c *gocheck.C) {
 func (s *S) TestListNodesInTheSchedulerCmdRun(c *gocheck.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Stdout: &buf}
-	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: `{
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: `{
 	"machines": [{"Id": "m-id-1", "Address": "localhost2"}],
 	"nodes": [
 		{"Address": "http://localhost1:8080", "Status": "disabled", "Metadata": {"meta1": "foo", "meta2": "bar"}},
@@ -204,8 +204,8 @@ func (s *S) TestListNodesInTheSchedulerCmdRun(c *gocheck.C) {
 func (s *S) TestListNodesInTheSchedulerCmdRunWithFilters(c *gocheck.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Stdout: &buf}
-	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: `{
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: `{
 	"machines": [{"Id": "m-id-1", "Address": "localhost2"}],
 	"nodes": [
 		{"Address": "http://localhost1:8080", "Status": "disabled", "Metadata": {"meta1": "foo", "meta2": "bar"}},
@@ -235,8 +235,8 @@ func (s *S) TestListNodesInTheSchedulerCmdRunWithFilters(c *gocheck.C) {
 func (s *S) TestListNodesInTheSchedulerCmdRunEmptyAll(c *gocheck.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Stdout: &buf}
-	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: `{}`, Status: http.StatusOK},
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: `{}`, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			return req.URL.Path == "/docker/node"
 		},
@@ -292,8 +292,8 @@ var healingJsonData = `[{
 func (s *S) TestListHealingHistoryCmdRun(c *gocheck.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Stdout: &buf}
-	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: healingJsonData, Status: http.StatusOK},
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: healingJsonData, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			return req.URL.Path == "/docker/healing"
 		},
@@ -328,8 +328,8 @@ Container:
 func (s *S) TestListHealingHistoryCmdRunEmpty(c *gocheck.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Stdout: &buf}
-	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: `[]`, Status: http.StatusOK},
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: `[]`, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			return req.URL.Path == "/docker/healing"
 		},
@@ -354,8 +354,8 @@ Container:
 func (s *S) TestListHealingHistoryCmdRunFilterNode(c *gocheck.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Stdout: &buf}
-	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: healingJsonData, Status: http.StatusOK},
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: healingJsonData, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			return req.URL.Path == "/docker/healing" && req.URL.RawQuery == "filter=node"
 		},
@@ -383,8 +383,8 @@ func (s *S) TestListHealingHistoryCmdRunFilterNode(c *gocheck.C) {
 func (s *S) TestListHealingHistoryCmdRunFilterContainer(c *gocheck.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Stdout: &buf}
-	trans := &testing.ConditionalTransport{
-		Transport: testing.Transport{Message: healingJsonData, Status: http.StatusOK},
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: healingJsonData, Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			return req.URL.Path == "/docker/healing" && req.URL.RawQuery == "filter=container"
 		},

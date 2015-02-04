@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -11,7 +11,7 @@ import (
 	"path"
 	"syscall"
 
-	"github.com/tsuru/tsuru/cmd/testing"
+	"github.com/tsuru/tsuru/cmd/cmdtest"
 	"launchpad.net/gnuflag"
 	"launchpad.net/gocheck"
 )
@@ -123,13 +123,13 @@ func (s *S) TestGuessingCommandGuesserNil(c *gocheck.C) {
 }
 
 func (s *S) TestGuessingCommandGuesserNonNil(c *gocheck.C) {
-	fake := &testing.FakeGuesser{}
+	fake := &cmdtest.FakeGuesser{}
 	g := GuessingCommand{G: fake}
 	c.Assert(g.guesser(), gocheck.DeepEquals, fake)
 }
 
 func (s *S) TestGuessingCommandWithFlagDefined(c *gocheck.C) {
-	fake := &testing.FakeGuesser{Name: "other-app"}
+	fake := &cmdtest.FakeGuesser{Name: "other-app"}
 	g := GuessingCommand{G: fake}
 	g.Flags().Parse(true, []string{"--app", "myapp"})
 	name, err := g.Guess()
@@ -141,7 +141,7 @@ func (s *S) TestGuessingCommandWithFlagDefined(c *gocheck.C) {
 }
 
 func (s *S) TestGuessingCommandWithShortFlagDefined(c *gocheck.C) {
-	fake := &testing.FakeGuesser{Name: "other-app"}
+	fake := &cmdtest.FakeGuesser{Name: "other-app"}
 	g := GuessingCommand{G: fake}
 	g.Flags().Parse(true, []string{"-a", "myapp"})
 	name, err := g.Guess()
@@ -153,7 +153,7 @@ func (s *S) TestGuessingCommandWithShortFlagDefined(c *gocheck.C) {
 }
 
 func (s *S) TestGuessingCommandWithoutFlagDefined(c *gocheck.C) {
-	fake := &testing.FakeGuesser{Name: "other-app"}
+	fake := &cmdtest.FakeGuesser{Name: "other-app"}
 	g := GuessingCommand{G: fake}
 	name, err := g.Guess()
 	c.Assert(err, gocheck.IsNil)
@@ -164,7 +164,7 @@ func (s *S) TestGuessingCommandWithoutFlagDefined(c *gocheck.C) {
 }
 
 func (s *S) TestGuessingCommandFailToGuess(c *gocheck.C) {
-	fake := &testing.FailingFakeGuesser{ErrorMessage: "Something's always wrong"}
+	fake := &cmdtest.FailingFakeGuesser{ErrorMessage: "Something's always wrong"}
 	g := GuessingCommand{G: fake}
 	name, err := g.Guess()
 	c.Assert(name, gocheck.Equals, "")
