@@ -13,7 +13,6 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/router"
 	ttesting "github.com/tsuru/tsuru/testing"
-	rtesting "github.com/tsuru/tsuru/testing/redis"
 	"launchpad.net/gocheck"
 )
 
@@ -22,7 +21,7 @@ func Test(t *testing.T) {
 }
 
 type S struct {
-	fake *rtesting.FakeRedisConn
+	fake *FakeRedisConn
 	pool *redis.Pool
 	conn *db.Storage
 }
@@ -52,9 +51,9 @@ func (s *S) SetUpTest(c *gocheck.C) {
 	}, 10)
 	rtest := hipacheRouter{prefix: "hipache"}
 	conn = rtest.connect()
-	rtesting.ClearRedisKeys("frontend*", c)
-	rtesting.ClearRedisKeys("cname*", c)
-	rtesting.ClearRedisKeys("*.com", c)
+	ClearRedisKeys("frontend*", c)
+	ClearRedisKeys("cname*", c)
+	ClearRedisKeys("*.com", c)
 }
 
 func (s *S) TestConnect(c *gocheck.C) {
@@ -186,7 +185,7 @@ func (s *S) TestAddRouteConnectFailure(c *gocheck.C) {
 
 func (s *S) TestAddRouteCommandFailure(c *gocheck.C) {
 	pool = redis.NewPool(fakeConnect, 5)
-	conn = &rtesting.FailingFakeRedisConn{}
+	conn = &FailingFakeRedisConn{}
 	err := hipacheRouter{prefix: "hipache"}.AddRoute("tip", "http://www.tsuru.io")
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*routeError)
@@ -250,7 +249,7 @@ func (s *S) TestRemoveRouteConnectFailure(c *gocheck.C) {
 
 func (s *S) TestRemoveRouteCommandFailure(c *gocheck.C) {
 	pool = redis.NewPool(fakeConnect, 5)
-	conn = &rtesting.FailingFakeRedisConn{}
+	conn = &FailingFakeRedisConn{}
 	err := hipacheRouter{prefix: "hipache"}.RemoveRoute("tip", "tip.golang.org")
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*routeError)
@@ -362,7 +361,7 @@ func (s *S) TestSetCNameSetsMultipleCNames(c *gocheck.C) {
 
 func (s *S) TestSetCNameValidatesCNameAccordingToDomainConfig(c *gocheck.C) {
 	reply := map[string]interface{}{"GET": "", "SET": "", "LRANGE": []interface{}{[]byte{}}, "RPUSH": []interface{}{[]byte{}}}
-	conn = &rtesting.ResultCommandRedisConn{Reply: reply, FakeRedisConn: s.fake}
+	conn = &ResultCommandRedisConn{Reply: reply, FakeRedisConn: s.fake}
 	router := hipacheRouter{prefix: "hipache"}
 	err := router.SetCName("mycname.golang.org", "myapp")
 	c.Assert(err, gocheck.NotNil)
@@ -443,7 +442,7 @@ func (s *S) TestAddrConnectFailure(c *gocheck.C) {
 
 func (s *S) TestAddrCommandFailure(c *gocheck.C) {
 	pool = redis.NewPool(fakeConnect, 5)
-	conn = &rtesting.FailingFakeRedisConn{}
+	conn = &FailingFakeRedisConn{}
 	addr, err := hipacheRouter{prefix: "hipache"}.Addr("tip")
 	c.Assert(addr, gocheck.Equals, "")
 	e, ok := err.(*routeError)
@@ -453,7 +452,7 @@ func (s *S) TestAddrCommandFailure(c *gocheck.C) {
 }
 
 func (s *S) TestAddrRouteNotFound(c *gocheck.C) {
-	conn = &rtesting.ResultCommandRedisConn{
+	conn = &ResultCommandRedisConn{
 		DefaultReply:  []interface{}{},
 		FakeRedisConn: s.fake,
 	}
@@ -476,7 +475,7 @@ func (s *S) TestRemoveElement(c *gocheck.C) {
 
 func (s *S) TestRoutes(c *gocheck.C) {
 	reply := map[string]interface{}{"GET": "tip", "SET": "", "LRANGE": []interface{}{[]byte("http://10.10.10.10:8080")}}
-	conn = &rtesting.ResultCommandRedisConn{Reply: reply, FakeRedisConn: s.fake}
+	conn = &ResultCommandRedisConn{Reply: reply, FakeRedisConn: s.fake}
 	router := hipacheRouter{prefix: "hipache"}
 	err := router.AddRoute("tip", "http://10.10.10.10:8080")
 	c.Assert(err, gocheck.IsNil)
