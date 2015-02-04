@@ -245,8 +245,8 @@ type Provisioner interface {
 	// Register a unit after the container has been created or restarted.
 	RegisterUnit(Unit, map[string]interface{}) error
 
-	// Ssh into a container.
-	Ssh(app App, conn net.Conn, width, height int, args ...string) error
+	// Open a remote shel in container.
+	Shell(app App, conn net.Conn, width, height int, args ...string) error
 
 	// Returns list of valid image names for app, these can be used for
 	// rollback.

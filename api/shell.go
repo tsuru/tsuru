@@ -12,7 +12,7 @@ import (
 	"github.com/tsuru/tsuru/errors"
 )
 
-func sshHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func remoteShellHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	containerID := r.URL.Query().Get("container_id")
 	width, _ := strconv.Atoi(r.URL.Query().Get("width"))
 	height, _ := strconv.Atoi(r.URL.Query().Get("height"))
@@ -40,5 +40,5 @@ func sshHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}
 	defer conn.Close()
-	return app.Ssh(conn, width, height, containerID)
+	return app.Shell(conn, width, height, containerID)
 }

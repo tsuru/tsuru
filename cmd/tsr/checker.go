@@ -67,7 +67,6 @@ func CheckDockerBasicConfig() error {
 		"docker:deploy-cmd",
 		"docker:ssh",
 		"docker:ssh:user",
-		"docker:ssh:add-key-cmd",
 		"docker:run-cmd:bin",
 		"docker:run-cmd:port",
 	}, "Config Error: you should configure %q")

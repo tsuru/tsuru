@@ -2504,7 +2504,7 @@ func (s *S) TestGetTsuruYamlData(c *gocheck.C) {
 	})
 }
 
-func (s *S) TestSshToAnApp(c *gocheck.C) {
+func (s *S) TestShellToAnApp(c *gocheck.C) {
 	a := App{Name: "my-test-app"}
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, gocheck.IsNil)
@@ -2515,6 +2515,6 @@ func (s *S) TestSshToAnApp(c *gocheck.C) {
 	s.provisioner.AddUnits(&a, 1, nil)
 	buf := safe.NewBuffer([]byte("echo teste"))
 	conn := &testing.FakeConn{buf}
-	err = a.Ssh(conn, 10, 10)
+	err = a.Shell(conn, 10, 10)
 	c.Assert(err, gocheck.IsNil)
 }

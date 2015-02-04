@@ -1176,6 +1176,6 @@ func (app *App) GetRouter() (string, error) {
 	return app.Plan.getRouter()
 }
 
-func (app *App) Ssh(conn net.Conn, width, height int, args ...string) error {
-	return Provisioner.Ssh(app, conn, width, height, args...)
+func (app *App) Shell(conn net.Conn, width, height int, args ...string) error {
+	return Provisioner.Shell(app, conn, width, height, args...)
 }

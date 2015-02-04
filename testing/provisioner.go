@@ -857,7 +857,7 @@ func (p *FakeProvisioner) RegisterUnit(unit provision.Unit, customData map[strin
 	return errors.New("unit not found")
 }
 
-func (p *FakeProvisioner) Ssh(app provision.App, conn net.Conn, width, height int, args ...string) error {
+func (p *FakeProvisioner) Shell(app provision.App, conn net.Conn, width, height int, args ...string) error {
 	if len(args) > 0 && args[0] != "" {
 		for _, u := range p.Units(app) {
 			if u.Name == args[0] {

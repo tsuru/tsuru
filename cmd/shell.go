@@ -23,20 +23,20 @@ import (
 
 var httpHeaderRegexp = regexp.MustCompile(`HTTP/.*? (\d+)`)
 
-type SshToContainerCmd struct {
+type ShellToContainerCmd struct {
 	GuessingCommand
 }
 
-func (c *SshToContainerCmd) Info() *Info {
+func (c *ShellToContainerCmd) Info() *Info {
 	return &Info{
-		Name:    "ssh",
-		Usage:   "ssh [container-id] -a/--app <appname>",
-		Desc:    "Open an SSH shell to the given container, or to one of the containers of the given app.",
+		Name:    "app-shell",
+		Usage:   "app-shell [container-id] -a/--app <appname>",
+		Desc:    "Open a remote shell to the given container, or to one of the containers of the given app.",
 		MinArgs: 0,
 	}
 }
 
-func (c *SshToContainerCmd) Run(context *Context, client *Client) error {
+func (c *ShellToContainerCmd) Run(context *Context, client *Client) error {
 	var width, height int
 	if stdin, ok := context.Stdin.(*os.File); ok {
 		fd := int(stdin.Fd())
@@ -67,7 +67,7 @@ func (c *SshToContainerCmd) Run(context *Context, client *Client) error {
 	if err != nil {
 		return err
 	}
-	serverURL, err := GetURL(fmt.Sprintf("/apps/%s/ssh?%s", appName, queryString.Encode()))
+	serverURL, err := GetURL(fmt.Sprintf("/apps/%s/shell?%s", appName, queryString.Encode()))
 	if err != nil {
 		return err
 	}

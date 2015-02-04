@@ -17,7 +17,7 @@ import (
 	"launchpad.net/gocheck"
 )
 
-func (s *S) TestAppSshWithAppName(c *gocheck.C) {
+func (s *S) TestAppShellWithAppName(c *gocheck.C) {
 	a := app.App{
 		Name:     "someapp",
 		Platform: "zend",
@@ -31,16 +31,16 @@ func (s *S) TestAppSshWithAppName(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 1, nil)
-	url := fmt.Sprintf("/ssh?:app=%s&width=2&height=2", a.Name)
+	url := fmt.Sprintf("/shell?:app=%s&width=2&height=2", a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	buf := safe.NewBuffer([]byte("echo teste"))
 	recorder := testing.Hijacker{Conn: &testing.FakeConn{Buf: buf}}
-	err = sshHandler(&recorder, request, s.token)
+	err = remoteShellHandler(&recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 }
 
-func (s *S) TestAppSshHandlerUnhijackable(c *gocheck.C) {
+func (s *S) TestAppShellHandlerUnhijackable(c *gocheck.C) {
 	a := app.App{
 		Name:     "someapp",
 		Platform: "zend",
@@ -50,11 +50,11 @@ func (s *S) TestAppSshHandlerUnhijackable(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	defer s.conn.Logs(a.Name).DropCollection()
-	url := fmt.Sprintf("/ssh?:app=%s&width=2&height=2", a.Name)
+	url := fmt.Sprintf("/shell?:app=%s&width=2&height=2", a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := httptest.NewRecorder()
-	err = sshHandler(recorder, request, s.token)
+	err = remoteShellHandler(recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
@@ -62,7 +62,7 @@ func (s *S) TestAppSshHandlerUnhijackable(c *gocheck.C) {
 	c.Assert(e.Message, gocheck.Equals, "cannot hijack connection")
 }
 
-func (s *S) TestAppSshFailToHijack(c *gocheck.C) {
+func (s *S) TestAppShellFailToHijack(c *gocheck.C) {
 	a := app.App{
 		Name:     "someapp",
 		Platform: "zend",
@@ -76,12 +76,12 @@ func (s *S) TestAppSshFailToHijack(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 1, nil)
-	url := fmt.Sprintf("/ssh?:app=%s&width=2&height=2", a.Name)
+	url := fmt.Sprintf("/shell?:app=%s&width=2&height=2", a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	recorder := testing.Hijacker{
 		Err: fmt.Errorf("are you going to hijack the connection? seriously?")}
-	err = sshHandler(&recorder, request, s.token)
+	err = remoteShellHandler(&recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)

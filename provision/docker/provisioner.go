@@ -666,7 +666,7 @@ func (p *dockerProvisioner) RegisterUnit(unit provision.Unit, customData map[str
 	return checkContainer(*container, nil)
 }
 
-func (p *dockerProvisioner) Ssh(app provision.App, conn net.Conn, width, height int, args ...string) error {
+func (p *dockerProvisioner) Shell(app provision.App, conn net.Conn, width, height int, args ...string) error {
 	var (
 		c   *container
 		err error
