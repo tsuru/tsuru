@@ -7,7 +7,7 @@ package docker
 import (
 	"bytes"
 	"encoding/json"
-	stdErrors "errors"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -682,7 +682,7 @@ func (s *HandlersSuite) TestHealingHistoryHandler(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	evt1.update(cluster.Node{Address: "addr2"}, nil)
 	evt2, err := newHealingEvent(cluster.Node{Address: "addr3"})
-	evt2.update(cluster.Node{}, stdErrors.New("some error"))
+	evt2.update(cluster.Node{}, errors.New("some error"))
 	evt3, err := newHealingEvent(container{ID: "1234"})
 	evt3.update(container{ID: "9876"}, nil)
 	recorder := httptest.NewRecorder()
@@ -721,7 +721,7 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterContainer(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	evt1.update(cluster.Node{Address: "addr2"}, nil)
 	evt2, err := newHealingEvent(cluster.Node{Address: "addr3"})
-	evt2.update(cluster.Node{}, stdErrors.New("some error"))
+	evt2.update(cluster.Node{}, errors.New("some error"))
 	evt3, err := newHealingEvent(container{ID: "1234"})
 	evt3.update(container{ID: "9876"}, nil)
 	recorder := httptest.NewRecorder()
@@ -748,7 +748,7 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterNode(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	evt1.update(cluster.Node{Address: "addr2"}, nil)
 	evt2, err := newHealingEvent(cluster.Node{Address: "addr3"})
-	evt2.update(cluster.Node{}, stdErrors.New("some error"))
+	evt2.update(cluster.Node{}, errors.New("some error"))
 	evt3, err := newHealingEvent(container{ID: "1234"})
 	evt3.update(container{ID: "9876"}, nil)
 	recorder := httptest.NewRecorder()

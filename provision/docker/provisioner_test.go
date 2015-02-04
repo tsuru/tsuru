@@ -19,7 +19,7 @@ import (
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
-	dstorage "github.com/tsuru/docker-cluster/storage"
+	"github.com/tsuru/docker-cluster/storage"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
@@ -27,7 +27,6 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/testing"
-	tsrTesting "github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
@@ -100,8 +99,8 @@ func (s *S) stopContainers(n uint) {
 }
 
 func (s *S) TestDeploy(c *gocheck.C) {
-	h := &tsrTesting.TestHandler{}
-	gandalfServer := tsrTesting.StartGandalfTestServer(h)
+	h := &testing.TestHandler{}
+	gandalfServer := testing.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(1)
 	err := newImage("tsuru/python", s.server.URL())
@@ -142,8 +141,8 @@ func (s *S) TestDeploy(c *gocheck.C) {
 func (s *S) TestDeployErasesOldImages(c *gocheck.C) {
 	config.Set("docker:image-history-size", 1)
 	defer config.Unset("docker:image-history-size")
-	h := &tsrTesting.TestHandler{}
-	gandalfServer := tsrTesting.StartGandalfTestServer(h)
+	h := &testing.TestHandler{}
+	gandalfServer := testing.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(3)
 	err := newImage("tsuru/python", s.server.URL())
@@ -246,8 +245,8 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *gocheck.C) {
 func (s *S) TestDeployErasesOldImagesWithLongHistory(c *gocheck.C) {
 	config.Set("docker:image-history-size", 2)
 	defer config.Unset("docker:image-history-size")
-	h := &tsrTesting.TestHandler{}
-	gandalfServer := tsrTesting.StartGandalfTestServer(h)
+	h := &testing.TestHandler{}
+	gandalfServer := testing.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(5)
 	err := newImage("tsuru/python", s.server.URL())
@@ -319,8 +318,8 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerUploadDeploy(c *gocheck.C) {
-	h := &tsrTesting.TestHandler{}
-	gandalfServer := tsrTesting.StartGandalfTestServer(h)
+	h := &testing.TestHandler{}
+	gandalfServer := testing.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(3)
 	err := newImage("tsuru/python", s.server.URL())
@@ -359,8 +358,8 @@ func (s *S) TestProvisionerUploadDeploy(c *gocheck.C) {
 }
 
 func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *gocheck.C) {
-	h := &tsrTesting.TestHandler{}
-	gandalfServer := tsrTesting.StartGandalfTestServer(h)
+	h := &testing.TestHandler{}
+	gandalfServer := testing.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(3)
 	cont1, err := s.newContainer(nil)
@@ -399,8 +398,8 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 }
 
 func (s *S) TestImageDeploy(c *gocheck.C) {
-	h := &tsrTesting.TestHandler{}
-	gandalfServer := tsrTesting.StartGandalfTestServer(h)
+	h := &testing.TestHandler{}
+	gandalfServer := testing.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(1)
 	err := newImage("tsuru/app-otherapp:v1", s.server.URL())
@@ -431,8 +430,8 @@ func (s *S) TestImageDeploy(c *gocheck.C) {
 }
 
 func (s *S) TestImageDeployInvalidImage(c *gocheck.C) {
-	h := &tsrTesting.TestHandler{}
-	gandalfServer := tsrTesting.StartGandalfTestServer(h)
+	h := &testing.TestHandler{}
+	gandalfServer := testing.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(1)
 	p := dockerProvisioner{}
@@ -532,8 +531,8 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *gocheck.C) {
 	registryURL := strings.Replace(registryServer.URL, "http://", "", 1)
 	config.Set("docker:registry", registryURL)
 	defer config.Unset("docker:registry")
-	h := &tsrTesting.TestHandler{}
-	gandalfServer := tsrTesting.StartGandalfTestServer(h)
+	h := &testing.TestHandler{}
+	gandalfServer := testing.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(1)
 	p := dockerProvisioner{}
@@ -1214,10 +1213,10 @@ func (s *S) TestProvisionerPlatformRemoveReturnsStorageError(c *gocheck.C) {
 	})
 	c.Assert(err, gocheck.IsNil)
 	defer server.Stop()
-	var storage cluster.MapStorage
+	var strg cluster.MapStorage
 	cmutex.Lock()
 	oldDockerCluster := dCluster
-	dCluster, _ = cluster.New(nil, &storage,
+	dCluster, _ = cluster.New(nil, &strg,
 		cluster.Node{Address: server.URL()})
 	cmutex.Unlock()
 	defer func() {
@@ -1228,7 +1227,7 @@ func (s *S) TestProvisionerPlatformRemoveReturnsStorageError(c *gocheck.C) {
 	p := dockerProvisioner{}
 	err = p.PlatformRemove("test")
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.DeepEquals, dstorage.ErrNoSuchImage)
+	c.Assert(err, gocheck.DeepEquals, storage.ErrNoSuchImage)
 }
 
 func (s *S) TestProvisionerUnits(c *gocheck.C) {
@@ -1492,7 +1491,7 @@ func (s *S) TestShellToAnAppByContainerID(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(cont)
 	buf := safe.NewBuffer([]byte("echo teste"))
-	conn := &tsrTesting.FakeConn{buf}
+	conn := &testing.FakeConn{buf}
 	c.Assert(err, gocheck.IsNil)
 	err = p.Shell(app, conn, 10, 10, cont.ID)
 	c.Assert(err, gocheck.IsNil)
@@ -1507,7 +1506,7 @@ func (s *S) TestShellToAnAppByAppName(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(cont)
 	buf := safe.NewBuffer([]byte("echo teste"))
-	conn := &tsrTesting.FakeConn{buf}
+	conn := &testing.FakeConn{buf}
 	c.Assert(err, gocheck.IsNil)
 	err = p.Shell(app, conn, 10, 10, "")
 	c.Assert(err, gocheck.IsNil)
