@@ -9,7 +9,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/router"
 	_ "github.com/tsuru/tsuru/router/hipache"
-	_ "github.com/tsuru/tsuru/router/testing"
+	_ "github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )

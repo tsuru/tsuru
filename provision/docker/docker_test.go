@@ -23,7 +23,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
-	rtesting "github.com/tsuru/tsuru/router/testing"
+	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
@@ -53,8 +53,8 @@ func (s *S) newContainer(opts *newContainerOpts) (*container, error) {
 	if container.AppName == "" {
 		container.AppName = "container"
 	}
-	rtesting.FakeRouter.AddBackend(container.AppName)
-	rtesting.FakeRouter.AddRoute(container.AppName, container.getAddress())
+	routertest.FakeRouter.AddBackend(container.AppName)
+	routertest.FakeRouter.AddRoute(container.AppName, container.getAddress())
 	port, err := getPort()
 	if err != nil {
 		return nil, err
@@ -94,7 +94,7 @@ func (s *S) newContainer(opts *newContainerOpts) (*container, error) {
 }
 
 func (s *S) removeTestContainer(c *container) error {
-	rtesting.FakeRouter.RemoveBackend(c.AppName)
+	routertest.FakeRouter.RemoveBackend(c.AppName)
 	return c.remove()
 }
 
@@ -116,8 +116,8 @@ func (s *S) TestContainerCreate(c *gocheck.C) {
 	app.Memory = 15
 	app.Swap = 15
 	app.CpuShare = 50
-	rtesting.FakeRouter.AddBackend(app.GetName())
-	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
+	routertest.FakeRouter.AddBackend(app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	dockerCluster().PullImage(
 		docker.PullImageOptions{Repository: "tsuru/brainfuck"},
 		docker.AuthConfiguration{},
@@ -150,8 +150,8 @@ func (s *S) TestContainerCreate(c *gocheck.C) {
 func (s *S) TestContainerCreateAlocatesPort(c *gocheck.C) {
 	app := testing.NewFakeApp("app-name", "brainfuck", 1)
 	app.Memory = 15
-	rtesting.FakeRouter.AddBackend(app.GetName())
-	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
+	routertest.FakeRouter.AddBackend(app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	dockerCluster().PullImage(
 		docker.PullImageOptions{Repository: "tsuru/brainfuck"},
 		docker.AuthConfiguration{},
@@ -168,8 +168,8 @@ func (s *S) TestContainerCreateAlocatesPort(c *gocheck.C) {
 func (s *S) TestContainerCreateDoesNotAlocatesPortForDeploy(c *gocheck.C) {
 	app := testing.NewFakeApp("app-name", "brainfuck", 1)
 	app.Memory = 15
-	rtesting.FakeRouter.AddBackend(app.GetName())
-	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
+	routertest.FakeRouter.AddBackend(app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	dockerCluster().PullImage(
 		docker.PullImageOptions{Repository: "tsuru/brainfuck"},
 		docker.AuthConfiguration{},
@@ -190,8 +190,8 @@ func (s *S) TestContainerCreateUndefinedUser(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp("app-name", "python", 1)
-	rtesting.FakeRouter.AddBackend(app.GetName())
-	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
+	routertest.FakeRouter.AddBackend(app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	cont := container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
 	err = cont.create(runContainerActionsArgs{app: app, imageID: getBuildImage(app), commands: []string{"docker", "run"}})
 	c.Assert(err, gocheck.IsNil)
@@ -291,7 +291,7 @@ func (s *S) TestContainerRemove(c *gocheck.C) {
 	err = coll.Find(bson.M{"id": container.ID}).One(&container)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "not found")
-	c.Assert(rtesting.FakeRouter.HasRoute(container.AppName, container.getAddress()), gocheck.Equals, false)
+	c.Assert(routertest.FakeRouter.HasRoute(container.AppName, container.getAddress()), gocheck.Equals, false)
 	client, _ := docker.NewClient(s.server.URL())
 	_, err = client.InspectContainer(container.ID)
 	c.Assert(err, gocheck.NotNil)
@@ -318,7 +318,7 @@ func (s *S) TestRemoveContainerIgnoreErrors(c *gocheck.C) {
 	err = coll.Find(bson.M{"id": container.ID}).One(&container)
 	c.Assert(err, gocheck.NotNil)
 	c.Assert(err.Error(), gocheck.Equals, "not found")
-	c.Assert(rtesting.FakeRouter.HasRoute(container.AppName, container.getAddress()), gocheck.Equals, false)
+	c.Assert(routertest.FakeRouter.HasRoute(container.AppName, container.getAddress()), gocheck.Equals, false)
 }
 
 func (s *S) TestContainerNetworkInfo(c *gocheck.C) {
@@ -536,8 +536,8 @@ func (s *S) TestGitDeploy(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp("myapp", "python", 1)
-	rtesting.FakeRouter.AddBackend(app.GetName())
-	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
+	routertest.FakeRouter.AddBackend(app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
 	imageId, err := gitDeploy(app, "ff13e", &buf)
 	c.Assert(err, gocheck.IsNil)
@@ -566,8 +566,8 @@ func (s *S) TestGitDeployRollsbackAfterErrorOnAttach(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp("myapp", "python", 1)
-	rtesting.FakeRouter.AddBackend(app.GetName())
-	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
+	routertest.FakeRouter.AddBackend(app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	var buf errBuffer
 	_, err = gitDeploy(app, "ff13e", &buf)
 	c.Assert(err, gocheck.ErrorMatches, ".*My write error")
@@ -586,8 +586,8 @@ func (s *S) TestArchiveDeploy(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp("myapp", "python", 1)
-	rtesting.FakeRouter.AddBackend(app.GetName())
-	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
+	routertest.FakeRouter.AddBackend(app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
 	_, err = archiveDeploy(app, getBuildImage(app), "https://s3.amazonaws.com/wat/archive.tar.gz", &buf)
 	c.Assert(err, gocheck.IsNil)
@@ -598,8 +598,8 @@ func (s *S) TestStart(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	app := testing.NewFakeApp("myapp", "python", 1)
 	imageId := getBuildImage(app)
-	rtesting.FakeRouter.AddBackend(app.GetName())
-	defer rtesting.FakeRouter.RemoveBackend(app.GetName())
+	routertest.FakeRouter.AddBackend(app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
 	cont, err := start(app, imageId, &buf)
 	c.Assert(err, gocheck.IsNil)

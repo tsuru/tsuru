@@ -17,7 +17,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
-	rtesting "github.com/tsuru/tsuru/router/testing"
+	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
 	tTesting "github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2"
@@ -95,7 +95,7 @@ func (s *S) SetUpTest(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = clearClusterStorage()
 	c.Assert(err, gocheck.IsNil)
-	rtesting.FakeRouter.Reset()
+	routertest.FakeRouter.Reset()
 	healingColl, err := healingCollection()
 	c.Assert(err, gocheck.IsNil)
 	defer healingColl.Close()

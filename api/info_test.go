@@ -10,7 +10,7 @@ import (
 	"net/http/httptest"
 
 	"github.com/tsuru/config"
-	_ "github.com/tsuru/tsuru/router/testing"
+	_ "github.com/tsuru/tsuru/router/routertest"
 	"launchpad.net/gocheck"
 )
 

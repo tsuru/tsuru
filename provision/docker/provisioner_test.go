@@ -24,7 +24,7 @@ import (
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
-	rtesting "github.com/tsuru/tsuru/router/testing"
+	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/testing"
 	tsrTesting "github.com/tsuru/tsuru/testing"
@@ -44,7 +44,7 @@ func (s *S) TestProvisionerProvision(c *gocheck.C) {
 	var p dockerProvisioner
 	err := p.Provision(app)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(rtesting.FakeRouter.HasBackend("myapp"), gocheck.Equals, true)
+	c.Assert(routertest.FakeRouter.HasBackend("myapp"), gocheck.Equals, true)
 	c.Assert(app.IsReady(), gocheck.Equals, true)
 }
 
@@ -369,7 +369,7 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 	cont2, err := s.newContainer(nil)
 	defer s.removeTestContainer(cont2)
 	c.Assert(err, gocheck.IsNil)
-	defer rtesting.FakeRouter.RemoveBackend(cont1.AppName)
+	defer routertest.FakeRouter.RemoveBackend(cont1.AppName)
 	var p dockerProvisioner
 	a := app.App{
 		Name:     "otherapp",
@@ -518,7 +518,7 @@ func (s *S) TestProvisionerDestroy(c *gocheck.C) {
 	count, err := coll.Find(bson.M{"appname": cont.AppName}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(count, gocheck.Equals, 0)
-	c.Assert(rtesting.FakeRouter.HasBackend("myapp"), gocheck.Equals, false)
+	c.Assert(routertest.FakeRouter.HasBackend("myapp"), gocheck.Equals, false)
 	c.Assert(app.HasBind(&unit), gocheck.Equals, false)
 }
 
@@ -562,7 +562,7 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *gocheck.C) {
 	count, err := coll.Find(bson.M{"appname": a.Name}).Count()
 	c.Assert(err, gocheck.IsNil)
 	c.Assert(count, gocheck.Equals, 0)
-	c.Assert(rtesting.FakeRouter.HasBackend(a.Name), gocheck.Equals, false)
+	c.Assert(routertest.FakeRouter.HasBackend(a.Name), gocheck.Equals, false)
 	c.Assert(registryRequests, gocheck.HasLen, 1)
 	c.Assert(registryRequests[0].Method, gocheck.Equals, "DELETE")
 	c.Assert(registryRequests[0].URL.Path, gocheck.Equals, "/v1/repositories/tsuru/app-mydoomedapp:v1/")
@@ -588,7 +588,7 @@ func (s *S) TestProvisionerDestroyRemovesRouterBackend(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = p.Destroy(app)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(rtesting.FakeRouter.HasBackend("myapp"), gocheck.Equals, false)
+	c.Assert(routertest.FakeRouter.HasBackend("myapp"), gocheck.Equals, false)
 }
 
 func (s *S) TestProvisionerAddr(c *gocheck.C) {
@@ -718,10 +718,10 @@ func (s *S) TestProvisionerRemoveUnits(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	container1, err := s.newContainer(&newContainerOpts{Status: "building"})
 	c.Assert(err, gocheck.IsNil)
-	defer rtesting.FakeRouter.RemoveBackend(container1.AppName)
+	defer routertest.FakeRouter.RemoveBackend(container1.AppName)
 	container2, err := s.newContainer(&newContainerOpts{Status: "building"})
 	c.Assert(err, gocheck.IsNil)
-	defer rtesting.FakeRouter.RemoveBackend(container2.AppName)
+	defer routertest.FakeRouter.RemoveBackend(container2.AppName)
 	container3, err := s.newContainer(&newContainerOpts{Status: "started"})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(container3)
@@ -755,7 +755,7 @@ func (s *S) TestProvisionerRemoveUnitsPriorityOrder(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = newImage("tsuru/app-"+container.AppName, "")
 	c.Assert(err, gocheck.IsNil)
-	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
+	defer routertest.FakeRouter.RemoveBackend(container.AppName)
 	app := testing.NewFakeApp(container.AppName, "python", 0)
 	var p dockerProvisioner
 	_, err = p.AddUnits(app, 3, nil)
@@ -786,7 +786,7 @@ func (s *S) TestProvisionerRemoveUnitsTooManyUnits(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = newImage("tsuru/app-"+container.AppName, "")
 	c.Assert(err, gocheck.IsNil)
-	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
+	defer routertest.FakeRouter.RemoveBackend(container.AppName)
 	app := testing.NewFakeApp(container.AppName, "python", 0)
 	var p dockerProvisioner
 	_, err = p.AddUnits(app, 2, nil)
@@ -799,7 +799,7 @@ func (s *S) TestProvisionerRemoveUnitsTooManyUnits(c *gocheck.C) {
 func (s *S) TestProvisionerRemoveUnit(c *gocheck.C) {
 	container, err := s.newContainer(nil)
 	c.Assert(err, gocheck.IsNil)
-	defer rtesting.FakeRouter.RemoveBackend(container.AppName)
+	defer routertest.FakeRouter.RemoveBackend(container.AppName)
 	client, err := docker.NewClient(s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	a := app.App{Name: container.AppName, Platform: "python"}
@@ -947,28 +947,28 @@ func (s *S) TestProvisionCollection(c *gocheck.C) {
 func (s *S) TestProvisionSetCName(c *gocheck.C) {
 	var p dockerProvisioner
 	app := testing.NewFakeApp("myapp", "python", 1)
-	rtesting.FakeRouter.AddBackend("myapp")
-	rtesting.FakeRouter.AddRoute("myapp", "127.0.0.1")
+	routertest.FakeRouter.AddBackend("myapp")
+	routertest.FakeRouter.AddRoute("myapp", "127.0.0.1")
 	cname := "mycname.com"
 	err := p.SetCName(app, cname)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(rtesting.FakeRouter.HasBackend(cname), gocheck.Equals, true)
-	c.Assert(rtesting.FakeRouter.HasRoute(cname, "127.0.0.1"), gocheck.Equals, true)
+	c.Assert(routertest.FakeRouter.HasBackend(cname), gocheck.Equals, true)
+	c.Assert(routertest.FakeRouter.HasRoute(cname, "127.0.0.1"), gocheck.Equals, true)
 }
 
 func (s *S) TestProvisionUnsetCName(c *gocheck.C) {
 	var p dockerProvisioner
 	app := testing.NewFakeApp("myapp", "python", 1)
-	rtesting.FakeRouter.AddBackend("myapp")
-	rtesting.FakeRouter.AddRoute("myapp", "127.0.0.1")
+	routertest.FakeRouter.AddBackend("myapp")
+	routertest.FakeRouter.AddRoute("myapp", "127.0.0.1")
 	cname := "mycname.com"
 	err := p.SetCName(app, cname)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(rtesting.FakeRouter.HasBackend(cname), gocheck.Equals, true)
-	c.Assert(rtesting.FakeRouter.HasRoute(cname, "127.0.0.1"), gocheck.Equals, true)
+	c.Assert(routertest.FakeRouter.HasBackend(cname), gocheck.Equals, true)
+	c.Assert(routertest.FakeRouter.HasRoute(cname, "127.0.0.1"), gocheck.Equals, true)
 	err = p.UnsetCName(app, cname)
-	c.Assert(rtesting.FakeRouter.HasBackend(cname), gocheck.Equals, false)
-	c.Assert(rtesting.FakeRouter.HasRoute(cname, "127.0.0.1"), gocheck.Equals, false)
+	c.Assert(routertest.FakeRouter.HasBackend(cname), gocheck.Equals, false)
+	c.Assert(routertest.FakeRouter.HasRoute(cname, "127.0.0.1"), gocheck.Equals, false)
 }
 
 func (s *S) TestProvisionerIsCNameManager(c *gocheck.C) {
@@ -1003,16 +1003,16 @@ func (s *S) TestSwap(c *gocheck.C) {
 	var p dockerProvisioner
 	app1 := testing.NewFakeApp("app1", "python", 1)
 	app2 := testing.NewFakeApp("app2", "python", 1)
-	rtesting.FakeRouter.AddBackend(app1.GetName())
-	rtesting.FakeRouter.AddRoute(app1.GetName(), "127.0.0.1")
-	rtesting.FakeRouter.AddBackend(app2.GetName())
-	rtesting.FakeRouter.AddRoute(app2.GetName(), "127.0.0.2")
+	routertest.FakeRouter.AddBackend(app1.GetName())
+	routertest.FakeRouter.AddRoute(app1.GetName(), "127.0.0.1")
+	routertest.FakeRouter.AddBackend(app2.GetName())
+	routertest.FakeRouter.AddRoute(app2.GetName(), "127.0.0.2")
 	err := p.Swap(app1, app2)
 	c.Assert(err, gocheck.IsNil)
-	c.Assert(rtesting.FakeRouter.HasBackend(app1.GetName()), gocheck.Equals, true)
-	c.Assert(rtesting.FakeRouter.HasBackend(app2.GetName()), gocheck.Equals, true)
-	c.Assert(rtesting.FakeRouter.HasRoute(app2.GetName(), "127.0.0.1"), gocheck.Equals, true)
-	c.Assert(rtesting.FakeRouter.HasRoute(app1.GetName(), "127.0.0.2"), gocheck.Equals, true)
+	c.Assert(routertest.FakeRouter.HasBackend(app1.GetName()), gocheck.Equals, true)
+	c.Assert(routertest.FakeRouter.HasBackend(app2.GetName()), gocheck.Equals, true)
+	c.Assert(routertest.FakeRouter.HasRoute(app2.GetName(), "127.0.0.1"), gocheck.Equals, true)
+	c.Assert(routertest.FakeRouter.HasRoute(app1.GetName(), "127.0.0.2"), gocheck.Equals, true)
 }
 
 func (s *S) TestProvisionerStart(c *gocheck.C) {

@@ -10,7 +10,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/log"
 	_ "github.com/tsuru/tsuru/router/hipache"
-	_ "github.com/tsuru/tsuru/router/testing"
+	_ "github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/mgo.v2/bson"
 )
 

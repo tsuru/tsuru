@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/tsuru/tsuru/app"
-	_ "github.com/tsuru/tsuru/router/testing"
+	_ "github.com/tsuru/tsuru/router/routertest"
 	"launchpad.net/gocheck"
 )
 

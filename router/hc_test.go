@@ -10,7 +10,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/router"
-	"github.com/tsuru/tsuru/router/testing"
+	"github.com/tsuru/tsuru/router/routertest"
 	"launchpad.net/gocheck"
 )
 
@@ -29,8 +29,8 @@ func (s *ExternalSuite) TestBuildHealthCheckCustomRouter(c *gocheck.C) {
 func (s *ExternalSuite) TestBuildHealthCheckFailure(c *gocheck.C) {
 	config.Set("routers:fake-hc:type", "fake-hc")
 	err := errors.New("fatal error")
-	testing.HCRouter.SetErr(err)
-	defer testing.HCRouter.SetErr(nil)
+	routertest.HCRouter.SetErr(err)
+	defer routertest.HCRouter.SetErr(nil)
 	fn := router.BuildHealthCheck("fake-hc")
 	c.Assert(fn(), gocheck.Equals, err)
 }
