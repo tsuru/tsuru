@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -12,7 +12,7 @@ import (
 	"runtime"
 	"strings"
 
-	etesting "github.com/tsuru/tsuru/exec/testing"
+	"github.com/tsuru/tsuru/exec/exectest"
 	ftesting "github.com/tsuru/tsuru/fs/testing"
 	"launchpad.net/gocheck"
 )
@@ -23,7 +23,7 @@ func (s *S) TestPort(c *gocheck.C) {
 }
 
 func (s *S) TestOpen(c *gocheck.C) {
-	fexec := etesting.FakeExecutor{}
+	fexec := exectest.FakeExecutor{}
 	execut = &fexec
 	defer func() {
 		execut = nil
