@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -14,7 +14,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
-	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/errors"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
@@ -407,7 +407,7 @@ func (s *S) TestUserCheckPasswordValidatesThePassword(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = checkPassword(u.Password, "123")
 	c.Check(err, gocheck.NotNil)
-	e, ok := err.(*tsuruErrors.ValidationError)
+	e, ok := err.(*errors.ValidationError)
 	c.Check(ok, gocheck.Equals, true)
 	c.Check(e.Message, gocheck.Equals, passwordError)
 	var p [51]byte
@@ -415,7 +415,7 @@ func (s *S) TestUserCheckPasswordValidatesThePassword(c *gocheck.C) {
 	p[50] = 'z'
 	err = checkPassword(u.Password, string(p[:]))
 	c.Check(err, gocheck.NotNil)
-	e, ok = err.(*tsuruErrors.ValidationError)
+	e, ok = err.(*errors.ValidationError)
 	c.Check(ok, gocheck.Equals, true)
 	c.Check(e.Message, gocheck.Equals, passwordError)
 }

@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -7,17 +7,17 @@ package native
 import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
-	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/validation"
 )
 
 var (
-	ErrMissingPasswordError = &tsuruErrors.ValidationError{Message: "You must provide a password to login"}
-	ErrMissingEmailError    = &tsuruErrors.ValidationError{Message: "You must provide a email to login"}
-	ErrInvalidEmail         = &tsuruErrors.ValidationError{Message: "Invalid email."}
-	ErrInvalidPassword      = &tsuruErrors.ValidationError{Message: "Password length should be least 6 characters and at most 50 characters."}
-	ErrEmailRegistered      = &tsuruErrors.ConflictError{Message: "This email is already registered."}
-	ErrPasswordMismatch     = &tsuruErrors.NotAuthorizedError{Message: "The given password didn't match the user's current password."}
+	ErrMissingPasswordError = &errors.ValidationError{Message: "You must provide a password to login"}
+	ErrMissingEmailError    = &errors.ValidationError{Message: "You must provide a email to login"}
+	ErrInvalidEmail         = &errors.ValidationError{Message: "Invalid email."}
+	ErrInvalidPassword      = &errors.ValidationError{Message: "Password length should be least 6 characters and at most 50 characters."}
+	ErrEmailRegistered      = &errors.ConflictError{Message: "This email is already registered."}
+	ErrPasswordMismatch     = &errors.NotAuthorizedError{Message: "The given password didn't match the user's current password."}
 )
 
 type NativeScheme struct{}
