@@ -6,6 +6,8 @@
 // implement a new metric backend on tsuru.
 package metrics
 
+var dbs = make(map[string]TimeSeriesDatabase)
+
 // TimeSeriesDatabase is the basic interface of this package. It provides methods for
 // time series databases.
 type TimeSeriesDatabase interface {
@@ -17,4 +19,9 @@ type Series []Data
 type Data struct {
 	Timestamp float64
 	Value     float64
+}
+
+// Register registers a new time series database.
+func Register(name string, db TimeSeriesDatabase) {
+	dbs[name] = db
 }
