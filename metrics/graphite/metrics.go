@@ -15,6 +15,10 @@ import (
 	"github.com/tsuru/tsuru/metrics"
 )
 
+func init() {
+	metrics.Register("graphite", graphite{})
+}
+
 type graphiteData struct {
 	DataPoints [][]float64
 }
@@ -34,7 +38,7 @@ func getHost() string {
 }
 
 // Summarize summarizes the data into interval buckets of a certain size.
-func (g *graphite) Summarize(key, interval, function string) (metrics.Series, error) {
+func (g graphite) Summarize(key, interval, function string) (metrics.Series, error) {
 	url := fmt.Sprintf("%s/render/?target=keepLastValue(maxSeries(%s))&from=%s&format=json", getHost(), key, interval)
 	resp, err := http.Get(url)
 	if err != nil {
