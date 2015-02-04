@@ -13,7 +13,7 @@ import (
 	"strings"
 
 	"github.com/tsuru/tsuru/exec/exectest"
-	ftesting "github.com/tsuru/tsuru/fs/testing"
+	"github.com/tsuru/tsuru/fs/fstest"
 	"launchpad.net/gocheck"
 )
 
@@ -43,7 +43,7 @@ func (s *S) TestCallbackHandler(c *gocheck.C) {
 		w.Write([]byte(`{"token": "xpto"}`))
 	}))
 	defer ts.Close()
-	rfs := &ftesting.RecordingFs{}
+	rfs := &fstest.RecordingFs{}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil

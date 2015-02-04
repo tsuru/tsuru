@@ -12,7 +12,7 @@ import (
 	"strings"
 
 	"github.com/tsuru/tsuru/cmd/cmdtest"
-	"github.com/tsuru/tsuru/fs/testing"
+	"github.com/tsuru/tsuru/fs/fstest"
 	"launchpad.net/gocheck"
 )
 
@@ -48,7 +48,7 @@ func (s *S) TestLoginName(c *gocheck.C) {
 
 func (s *S) TestNativeLogin(c *gocheck.C) {
 	navitveScheme()
-	fsystem = &testing.RecordingFs{FileContent: "old-token"}
+	fsystem = &fstest.RecordingFs{FileContent: "old-token"}
 	defer func() {
 		fsystem = nil
 	}()
@@ -67,7 +67,7 @@ func (s *S) TestNativeLogin(c *gocheck.C) {
 
 func (s *S) TestNativeLoginShouldNotDependOnTsuruTokenFile(c *gocheck.C) {
 	navitveScheme()
-	rfs := &testing.RecordingFs{}
+	rfs := &fstest.RecordingFs{}
 	f, _ := rfs.Create(JoinWithUserDir(".tsuru_target"))
 	f.Write([]byte("http://localhost"))
 	f.Close()
@@ -96,7 +96,7 @@ func (s *S) TestNativeLoginShouldReturnErrorIfThePasswordIsNotGiven(c *gocheck.C
 
 func (s *S) TestLogout(c *gocheck.C) {
 	var called bool
-	rfs := &testing.RecordingFs{}
+	rfs := &fstest.RecordingFs{}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
@@ -126,7 +126,7 @@ func (s *S) TestLogout(c *gocheck.C) {
 }
 
 func (s *S) TestLogoutWhenNotLoggedIn(c *gocheck.C) {
-	fsystem = &testing.FileNotFoundFs{}
+	fsystem = &fstest.FileNotFoundFs{}
 	defer func() {
 		fsystem = nil
 	}()
@@ -138,7 +138,7 @@ func (s *S) TestLogoutWhenNotLoggedIn(c *gocheck.C) {
 }
 
 func (s *S) TestLogoutNoTarget(c *gocheck.C) {
-	rfs := &testing.RecordingFs{}
+	rfs := &fstest.RecordingFs{}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil

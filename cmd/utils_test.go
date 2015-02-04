@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -7,13 +7,13 @@ package cmd
 import (
 	"io/ioutil"
 
-	"github.com/tsuru/tsuru/fs/testing"
+	"github.com/tsuru/tsuru/fs/fstest"
 	"launchpad.net/gnuflag"
 	"launchpad.net/gocheck"
 )
 
 func (s *S) TestWriteToken(c *gocheck.C) {
-	rfs := &testing.RecordingFs{}
+	rfs := &fstest.RecordingFs{}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
@@ -29,7 +29,7 @@ func (s *S) TestWriteToken(c *gocheck.C) {
 }
 
 func (s *S) TestReadToken(c *gocheck.C) {
-	rfs := &testing.RecordingFs{FileContent: "123"}
+	rfs := &fstest.RecordingFs{FileContent: "123"}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil

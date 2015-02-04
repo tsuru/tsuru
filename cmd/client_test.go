@@ -11,7 +11,7 @@ import (
 
 	"github.com/tsuru/tsuru/cmd/cmdtest"
 	"github.com/tsuru/tsuru/errors"
-	"github.com/tsuru/tsuru/fs/testing"
+	"github.com/tsuru/tsuru/fs/fstest"
 	"launchpad.net/gocheck"
 )
 
@@ -73,7 +73,7 @@ func (s *S) TestShouldReturnBodyMessageOnError(c *gocheck.C) {
 }
 
 func (s *S) TestShouldReturnErrorWhenServerIsDown(c *gocheck.C) {
-	rfs := &testing.RecordingFs{FileContent: "http://tsuru.google.com"}
+	rfs := &fstest.RecordingFs{FileContent: "http://tsuru.google.com"}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
@@ -98,7 +98,7 @@ func (s *S) TestShouldReturnErrorWhenServerIsDown(c *gocheck.C) {
 }
 
 func (s *S) TestShouldNotIncludeTheHeaderAuthorizationWhenTheTsuruTokenFileIsMissing(c *gocheck.C) {
-	fsystem = &testing.FileNotFoundFs{}
+	fsystem = &fstest.FileNotFoundFs{}
 	defer func() {
 		fsystem = nil
 	}()
@@ -124,7 +124,7 @@ func (s *S) TestShouldNotIncludeTheHeaderAuthorizationWhenTheTsuruTokenFileIsMis
 }
 
 func (s *S) TestShouldIncludeTheHeaderAuthorizationWhenTsuruTokenFileExists(c *gocheck.C) {
-	fsystem = &testing.RecordingFs{FileContent: "mytoken"}
+	fsystem = &fstest.RecordingFs{FileContent: "mytoken"}
 	defer func() {
 		fsystem = nil
 	}()

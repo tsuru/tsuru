@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package testing provides fake implementations of the fs package.
+// Package fstest provides fake implementations of the fs package.
 //
 // These implementations can be used to mock out the file system in tests.
-package testing
+package fstest
 
 import (
 	"fmt"

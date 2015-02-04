@@ -6,16 +6,15 @@ package cmd
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"strings"
 
-	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/fs"
-	"github.com/tsuru/tsuru/fs/testing"
+	"github.com/tsuru/tsuru/fs/fstest"
 	"launchpad.net/gnuflag"
 	"launchpad.net/gocheck"
 )
@@ -65,7 +64,7 @@ func (c *ErrorCommand) Run(context *Context, client *Client) error {
 	if c.msg == "abort" {
 		return ErrAbortCommand
 	}
-	return errors.New(c.msg)
+	return fmt.Errorf(c.msg)
 }
 
 type UnauthorizedErrorCommand struct{}
@@ -75,7 +74,7 @@ func (c *UnauthorizedErrorCommand) Info() *Info {
 }
 
 func (c *UnauthorizedErrorCommand) Run(context *Context, client *Client) error {
-	return &tsuruErrors.HTTP{Code: http.StatusUnauthorized, Message: "my error"}
+	return &errors.HTTP{Code: http.StatusUnauthorized, Message: "my error"}
 }
 
 type UnauthorizedLoginErrorCommand struct {
@@ -678,7 +677,7 @@ Did you mean?
 }
 
 func (s *S) TestFileSystem(c *gocheck.C) {
-	fsystem = &testing.RecordingFs{}
+	fsystem = &fstest.RecordingFs{}
 	c.Assert(filesystem(), gocheck.DeepEquals, fsystem)
 	fsystem = nil
 	c.Assert(filesystem(), gocheck.DeepEquals, fs.OsFs{})

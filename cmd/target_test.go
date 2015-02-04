@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -11,11 +11,11 @@ import (
 	"path"
 	"strings"
 
-	"github.com/tsuru/tsuru/fs/testing"
+	"github.com/tsuru/tsuru/fs/fstest"
 	"launchpad.net/gocheck"
 )
 
-func readRecordedTarget(fs *testing.RecordingFs) string {
+func readRecordedTarget(fs *fstest.RecordingFs) string {
 	filePath := path.Join(os.ExpandEnv("${HOME}"), ".tsuru_target")
 	fil, _ := fsystem.Open(filePath)
 	b, _ := ioutil.ReadAll(fil)
@@ -23,7 +23,7 @@ func readRecordedTarget(fs *testing.RecordingFs) string {
 }
 
 func (s *S) TestWriteTarget(c *gocheck.C) {
-	rfs := &testing.RecordingFs{}
+	rfs := &fstest.RecordingFs{}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
@@ -36,7 +36,7 @@ func (s *S) TestWriteTarget(c *gocheck.C) {
 }
 
 func (s *S) TestWriteTargetKeepsLeadingSlashs(c *gocheck.C) {
-	rfs := &testing.RecordingFs{}
+	rfs := &fstest.RecordingFs{}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
@@ -47,7 +47,7 @@ func (s *S) TestWriteTargetKeepsLeadingSlashs(c *gocheck.C) {
 }
 
 func (s *S) TestReadTarget(c *gocheck.C) {
-	rfs := &testing.RecordingFs{FileContent: "http://tsuru.google.com"}
+	rfs := &fstest.RecordingFs{FileContent: "http://tsuru.google.com"}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
@@ -58,7 +58,7 @@ func (s *S) TestReadTarget(c *gocheck.C) {
 }
 
 func (s *S) TestReadTargetEnvironmentVariable(c *gocheck.C) {
-	rfs := &testing.RecordingFs{FileContent: "http://tsuru.google.com"}
+	rfs := &fstest.RecordingFs{FileContent: "http://tsuru.google.com"}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
@@ -71,7 +71,7 @@ func (s *S) TestReadTargetEnvironmentVariable(c *gocheck.C) {
 }
 
 func (s *S) TestReadTargetReturnsEmptyStringIfTheFileDoesNotExist(c *gocheck.C) {
-	fsystem = &testing.FileNotFoundFs{}
+	fsystem = &fstest.FileNotFoundFs{}
 	defer func() {
 		fsystem = nil
 	}()
@@ -81,7 +81,7 @@ func (s *S) TestReadTargetReturnsEmptyStringIfTheFileDoesNotExist(c *gocheck.C) 
 }
 
 func (s *S) TestReadTargetTrimsFileContent(c *gocheck.C) {
-	fsystem = &testing.RecordingFs{FileContent: "   http://tsuru.io\n\n"}
+	fsystem = &fstest.RecordingFs{FileContent: "   http://tsuru.io\n\n"}
 	defer func() {
 		fsystem = nil
 	}()
@@ -91,7 +91,7 @@ func (s *S) TestReadTargetTrimsFileContent(c *gocheck.C) {
 }
 
 func (s *S) TestDeleteTargetFile(c *gocheck.C) {
-	rfs := &testing.RecordingFs{FileContent: "   http://tsuru.io\n\n"}
+	rfs := &fstest.RecordingFs{FileContent: "   http://tsuru.io\n\n"}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
@@ -102,7 +102,7 @@ func (s *S) TestDeleteTargetFile(c *gocheck.C) {
 }
 
 func (s *S) TestGetURL(c *gocheck.C) {
-	fsystem = &testing.RecordingFs{FileContent: "http://localhost"}
+	fsystem = &fstest.RecordingFs{FileContent: "http://localhost"}
 	defer func() {
 		fsystem = nil
 	}()
@@ -113,7 +113,7 @@ func (s *S) TestGetURL(c *gocheck.C) {
 }
 
 func (s *S) TestGetURLPutsHTTPIfItIsNotPresent(c *gocheck.C) {
-	rfs := &testing.RecordingFs{FileContent: "remotehost"}
+	rfs := &fstest.RecordingFs{FileContent: "remotehost"}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
@@ -125,7 +125,7 @@ func (s *S) TestGetURLPutsHTTPIfItIsNotPresent(c *gocheck.C) {
 }
 
 func (s *S) TestGetURLShouldNotPrependHTTPIfTheTargetIsHTTPs(c *gocheck.C) {
-	rfs := &testing.RecordingFs{FileContent: "https://localhost"}
+	rfs := &fstest.RecordingFs{FileContent: "https://localhost"}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
@@ -136,7 +136,7 @@ func (s *S) TestGetURLShouldNotPrependHTTPIfTheTargetIsHTTPs(c *gocheck.C) {
 }
 
 func (s *S) TestGetURLUndefinedTarget(c *gocheck.C) {
-	rfs := &testing.FileNotFoundFs{}
+	rfs := &fstest.FileNotFoundFs{}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
@@ -147,7 +147,7 @@ func (s *S) TestGetURLUndefinedTarget(c *gocheck.C) {
 }
 
 func (s *S) TestGetURLLeadingSlashes(c *gocheck.C) {
-	rfs := &testing.RecordingFs{FileContent: "https://localhost/tsuru/"}
+	rfs := &fstest.RecordingFs{FileContent: "https://localhost/tsuru/"}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
@@ -169,7 +169,7 @@ func (s *S) TestTargetAddInfo(c *gocheck.C) {
 }
 
 func (s *S) TestTargetAddRun(c *gocheck.C) {
-	rfs := &testing.RecordingFs{FileContent: "default   http://tsuru.google.com"}
+	rfs := &fstest.RecordingFs{FileContent: "default   http://tsuru.google.com"}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
@@ -182,7 +182,7 @@ func (s *S) TestTargetAddRun(c *gocheck.C) {
 }
 
 func (s *S) TestTargetAddRunOnlyOneArg(c *gocheck.C) {
-	rfs := &testing.RecordingFs{FileContent: "default   http://tsuru.google.com"}
+	rfs := &fstest.RecordingFs{FileContent: "default   http://tsuru.google.com"}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
@@ -195,7 +195,7 @@ func (s *S) TestTargetAddRunOnlyOneArg(c *gocheck.C) {
 }
 
 func (s *S) TestTargetAddWithSet(c *gocheck.C) {
-	rfs := &testing.RecordingFs{FileContent: "old\thttp://tsuru.io"}
+	rfs := &fstest.RecordingFs{FileContent: "old\thttp://tsuru.io"}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
@@ -232,7 +232,7 @@ func (s *S) TestTargetAddFlags(c *gocheck.C) {
 }
 
 func (s *S) TestIfTargetLabelExists(c *gocheck.C) {
-	rfs := &testing.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
+	rfs := &fstest.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
@@ -243,7 +243,7 @@ func (s *S) TestIfTargetLabelExists(c *gocheck.C) {
 }
 
 func (s *S) TestIfTargetLabelDoesNotExist(c *gocheck.C) {
-	rfs := &testing.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
+	rfs := &fstest.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
@@ -254,7 +254,7 @@ func (s *S) TestIfTargetLabelDoesNotExist(c *gocheck.C) {
 }
 
 func (s *S) TestGetTargets(c *gocheck.C) {
-	rfs := &testing.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
+	rfs := &fstest.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
@@ -293,7 +293,7 @@ func (s *S) TestTargetRun(c *gocheck.C) {
 	content := `first	http://tsuru.io
 default	http://tsuru.google.com
 other	http://other.tsuru.io`
-	rfs := &testing.RecordingFs{}
+	rfs := &fstest.RecordingFs{}
 	f, _ := rfs.Create(JoinWithUserDir(".tsuru_target"))
 	f.Write([]byte("http://tsuru.io"))
 	f.Close()
@@ -316,7 +316,7 @@ other	http://other.tsuru.io`
 }
 
 func (s *S) TestResetTargetList(c *gocheck.C) {
-	rfs := &testing.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
+	rfs := &fstest.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
@@ -349,7 +349,7 @@ func (s *S) TestTargetRemoveInfo(c *gocheck.C) {
 }
 
 func (s *S) TestTargetRemove(c *gocheck.C) {
-	rfs := &testing.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
+	rfs := &fstest.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
 	f, _ := rfs.Create(JoinWithUserDir(".tsuru_target"))
 	f.Write([]byte("http://tsuru.google.com"))
 	f.Close()
@@ -381,7 +381,7 @@ func (s *S) TestTargetRemove(c *gocheck.C) {
 }
 
 func (s *S) TestTargetRemoveCurrentTarget(c *gocheck.C) {
-	rfs := &testing.RecordingFs{}
+	rfs := &fstest.RecordingFs{}
 	f, _ := rfs.Create(JoinWithUserDir(".tsuru_targets"))
 	f.Write([]byte("first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"))
 	f.Close()
@@ -414,7 +414,7 @@ func (s *S) TestTargetSetInfo(c *gocheck.C) {
 }
 
 func (s *S) TestTargetSetRun(c *gocheck.C) {
-	rfs := &testing.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
+	rfs := &fstest.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
@@ -428,7 +428,7 @@ func (s *S) TestTargetSetRun(c *gocheck.C) {
 }
 
 func (s *S) TestTargetSetRunUnknowTarget(c *gocheck.C) {
-	rfs := &testing.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
+	rfs := &fstest.RecordingFs{FileContent: "first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
