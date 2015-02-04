@@ -1,30 +1,25 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package testing
+package authtest
 
 import (
 	"net"
 	"net/smtp"
 	"strings"
+	"testing"
 
 	"launchpad.net/gocheck"
 )
 
-type fakeMailAddress string
-
-func (m fakeMailAddress) Email() string {
-	return string(m)
+func Test(t *testing.T) {
+	gocheck.TestingT(t)
 }
 
-func (m fakeMailAddress) Hostname() string {
-	s := string(m)
-	if p := strings.Index(s, "@"); p > -1 {
-		return s[p+1:]
-	}
-	return ""
-}
+type S struct{}
+
+var _ = gocheck.Suite(&S{})
 
 func (s *S) TestFakeMailAddress(c *gocheck.C) {
 	fake := fakeMailAddress("gopher@tsuru.io")
@@ -92,4 +87,18 @@ func (s *S) TestSMTPServerReset(c *gocheck.C) {
 	c.Assert(server.MailBox, gocheck.HasLen, 1)
 	server.Reset()
 	c.Assert(server.MailBox, gocheck.HasLen, 0)
+}
+
+type fakeMailAddress string
+
+func (m fakeMailAddress) Email() string {
+	return string(m)
+}
+
+func (m fakeMailAddress) Hostname() string {
+	s := string(m)
+	if p := strings.Index(s, "@"); p > -1 {
+		return s[p+1:]
+	}
+	return ""
 }

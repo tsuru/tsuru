@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/auth/authtest"
 	"github.com/tsuru/tsuru/db"
 	ttesting "github.com/tsuru/tsuru/testing"
 	"golang.org/x/crypto/bcrypt"
@@ -50,7 +51,7 @@ type S struct {
 	hashed  string
 	user    *User
 	team    *Team
-	server  *ttesting.SMTPServer
+	server  *authtest.SMTPServer
 	gitRoot string
 	gitHost string
 	gitPort string
@@ -76,7 +77,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	s.gitHost, _ = config.GetString("git:host")
 	s.gitPort, _ = config.GetString("git:port")
 	s.gitProt, _ = config.GetString("git:protocol")
-	s.server, err = ttesting.NewSMTPServer()
+	s.server, err = authtest.NewSMTPServer()
 	c.Assert(err, gocheck.IsNil)
 	config.Set("smtp:server", s.server.Addr())
 	config.Set("smtp:user", "root")

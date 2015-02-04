@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/auth/authtest"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
@@ -33,7 +34,7 @@ type AuthSuite struct {
 	team   *auth.Team
 	user   *auth.User
 	token  auth.Token
-	server *testing.SMTPServer
+	server *authtest.SMTPServer
 }
 
 var _ = gocheck.Suite(&AuthSuite{})
@@ -46,7 +47,7 @@ func (s *AuthSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("auth:hash-cost", 4)
 	s.createUserAndTeam(c)
 	config.Set("admin-team", s.team.Name)
-	s.server, err = testing.NewSMTPServer()
+	s.server, err = authtest.NewSMTPServer()
 	c.Assert(err, gocheck.IsNil)
 	config.Set("smtp:server", s.server.Addr())
 	config.Set("smtp:user", "root")
