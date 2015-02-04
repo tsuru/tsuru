@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,7 +6,6 @@ package api
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -17,7 +16,7 @@ import (
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	tsuruErr "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
@@ -50,7 +49,7 @@ func (s *S) TestContextClearerMiddleware(c *gocheck.C) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, gocheck.IsNil)
-	context.AddRequestError(request, errors.New("Some Error"))
+	context.AddRequestError(request, fmt.Errorf("Some Error"))
 	h, log := doHandler()
 	contextClearerMiddleware(recorder, request, h)
 	c.Assert(log.called, gocheck.Equals, true)
@@ -96,7 +95,7 @@ func (s *S) TestErrorHandlingMiddlewareWithError(c *gocheck.C) {
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, gocheck.IsNil)
 	h, log := doHandler()
-	context.AddRequestError(request, errors.New("something"))
+	context.AddRequestError(request, fmt.Errorf("something"))
 	errorHandlingMiddleware(recorder, request, h)
 	c.Assert(log.called, gocheck.Equals, true)
 	c.Assert(recorder.Code, gocheck.Equals, 500)
@@ -107,7 +106,7 @@ func (s *S) TestErrorHandlingMiddlewareWithHTTPError(c *gocheck.C) {
 	request, err := http.NewRequest("GET", "/", nil)
 	c.Assert(err, gocheck.IsNil)
 	h, log := doHandler()
-	context.AddRequestError(request, &tsuruErr.HTTP{Code: 403, Message: "other msg"})
+	context.AddRequestError(request, &errors.HTTP{Code: 403, Message: "other msg"})
 	errorHandlingMiddleware(recorder, request, h)
 	c.Assert(log.called, gocheck.Equals, true)
 	c.Assert(recorder.Code, gocheck.Equals, 403)
@@ -241,7 +240,7 @@ func (s *S) TestAuthTokenMiddlewareUserTokenAppNotFound(c *gocheck.C) {
 	c.Assert(log.called, gocheck.Equals, false)
 	err = context.GetRequestError(request)
 	c.Assert(err, gocheck.NotNil)
-	e, ok := err.(*tsuruErr.HTTP)
+	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusNotFound)
 }
@@ -260,7 +259,7 @@ func (s *S) TestAuthTokenMiddlewareUserTokenNoAccessToTheApp(c *gocheck.C) {
 	c.Assert(log.called, gocheck.Equals, false)
 	err = context.GetRequestError(request)
 	c.Assert(err, gocheck.NotNil)
-	e, ok := err.(*tsuruErr.HTTP)
+	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusForbidden)
 }
@@ -310,14 +309,14 @@ func (s *S) TestAppLockMiddlewareReturns404IfNotApp(c *gocheck.C) {
 	m := &appLockMiddleware{}
 	m.ServeHTTP(recorder, request, h)
 	c.Assert(log.called, gocheck.Equals, false)
-	httpErr := context.GetRequestError(request).(*tsuruErr.HTTP)
+	httpErr := context.GetRequestError(request).(*errors.HTTP)
 	c.Assert(httpErr.Code, gocheck.Equals, http.StatusNotFound)
 	c.Assert(httpErr.Message, gocheck.Equals, "App not found.")
 	request, err = http.NewRequest("POST", "/?:appname=abc", nil)
 	c.Assert(err, gocheck.IsNil)
 	m.ServeHTTP(recorder, request, h)
 	c.Assert(log.called, gocheck.Equals, false)
-	httpErr = context.GetRequestError(request).(*tsuruErr.HTTP)
+	httpErr = context.GetRequestError(request).(*errors.HTTP)
 	c.Assert(httpErr.Code, gocheck.Equals, http.StatusNotFound)
 	c.Assert(httpErr.Message, gocheck.Equals, "App not found.")
 }
@@ -342,7 +341,7 @@ func (s *S) TestAppLockMiddlewareOnLockedApp(c *gocheck.C) {
 	m := &appLockMiddleware{}
 	m.ServeHTTP(recorder, request, h)
 	c.Assert(log.called, gocheck.Equals, false)
-	httpErr := context.GetRequestError(request).(*tsuruErr.HTTP)
+	httpErr := context.GetRequestError(request).(*errors.HTTP)
 	c.Assert(httpErr.Code, gocheck.Equals, http.StatusConflict)
 	c.Assert(httpErr.Message, gocheck.Matches, "App locked by someone, running /app/my-app/deploy. Acquired in 2048-11-10.*")
 }

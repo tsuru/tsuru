@@ -5,7 +5,6 @@
 package api
 
 import (
-	stderrors "errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -53,7 +52,7 @@ func (s *HandlerSuite) TearDownSuite(c *gocheck.C) {
 }
 
 func errorHandler(w http.ResponseWriter, r *http.Request) error {
-	return stderrors.New("some error")
+	return fmt.Errorf("some error")
 }
 
 func errorHandlerWriteHeader(w http.ResponseWriter, r *http.Request) error {
