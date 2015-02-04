@@ -1,13 +1,11 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 // Package validation provide utilities functions for data validation.
 package validation
 
-import (
-	"regexp"
-)
+import "regexp"
 
 func ValidateEmail(email string) bool {
 	re := regexp.MustCompile(`^([^@\s]+)@((?:[-a-z0-9]+\.)+[a-z]{2,})$`)
