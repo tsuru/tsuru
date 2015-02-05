@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -10,7 +10,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	ttesting "github.com/tsuru/tsuru/testing"
+	"github.com/tsuru/tsuru/api/apitest"
 	"launchpad.net/gocheck"
 )
 
@@ -20,14 +20,14 @@ func Test(t *testing.T) {
 
 type S struct {
 	server  *httptest.Server
-	handler ttesting.MultiTestHandler
+	handler apitest.MultiTestHandler
 	client  *GalebClient
 }
 
 var _ = gocheck.Suite(&S{})
 
 func (s *S) SetUpTest(c *gocheck.C) {
-	s.handler = ttesting.MultiTestHandler{}
+	s.handler = apitest.MultiTestHandler{}
 	s.server = httptest.NewServer(&s.handler)
 	s.client = &GalebClient{
 		ApiUrl:   s.server.URL + "/api",

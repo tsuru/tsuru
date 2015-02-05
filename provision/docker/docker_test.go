@@ -17,9 +17,10 @@ import (
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
-	dtesting "github.com/fsouza/go-dockerclient/testing"
+	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
+	"github.com/tsuru/tsuru/api/apitest"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
@@ -27,7 +28,6 @@ import (
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
-	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
@@ -531,7 +531,7 @@ func (s *S) TestContainerCommitErrorInPush(c *gocheck.C) {
 }
 
 func (s *S) TestGitDeploy(c *gocheck.C) {
-	h := &testing.TestHandler{}
+	h := &apitest.TestHandler{}
 	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(1)
@@ -561,7 +561,7 @@ func (errBuffer) Write(data []byte) (int, error) {
 }
 
 func (s *S) TestGitDeployRollsbackAfterErrorOnAttach(c *gocheck.C) {
-	h := &testing.TestHandler{}
+	h := &apitest.TestHandler{}
 	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(1)
@@ -732,7 +732,7 @@ func (s *S) TestGetDockerServersShouldSearchFromConfig(c *gocheck.C) {
 
 func (s *S) TestPushImage(c *gocheck.C) {
 	var requests []*http.Request
-	server, err := dtesting.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
 		requests = append(requests, r)
 	})
 	c.Assert(err, gocheck.IsNil)
@@ -771,7 +771,7 @@ func (s *S) TestPushImage(c *gocheck.C) {
 
 func (s *S) TestPushImageNoRegistry(c *gocheck.C) {
 	var request *http.Request
-	server, err := dtesting.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
 		request = r
 	})
 	c.Assert(err, gocheck.IsNil)

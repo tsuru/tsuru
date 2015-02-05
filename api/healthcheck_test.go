@@ -8,20 +8,20 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/tsuru/tsuru/api/apitest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
-	"github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
 
 type HealthCheckSuite struct {
 	ts *httptest.Server
-	h  *testing.TestHandler
+	h  *apitest.TestHandler
 }
 
 var _ = gocheck.Suite(&HealthCheckSuite{})
 
 func (s *HealthCheckSuite) SetUpSuite(c *gocheck.C) {
-	s.h = &testing.TestHandler{}
+	s.h = &apitest.TestHandler{}
 	s.ts = repositorytest.StartGandalfTestServer(s.h)
 }
 

@@ -11,10 +11,10 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/api/apitest"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
-	tsuruTesting "github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
 
@@ -27,7 +27,7 @@ type S struct {
 	reqs        []*http.Request
 	bodies      []string
 	rsps        map[string]string
-	testHandler tsuruTesting.TestHandler
+	testHandler apitest.TestHandler
 }
 
 var _ = gocheck.Suite(&S{})
@@ -58,7 +58,7 @@ func (s *S) SetUpTest(c *gocheck.C) {
 	s.reqs = make([]*http.Request, 0)
 	s.bodies = make([]string, 0)
 	s.rsps = make(map[string]string)
-	s.testHandler = tsuruTesting.TestHandler{}
+	s.testHandler = apitest.TestHandler{}
 	s.gandalf = repositorytest.StartGandalfTestServer(&s.testHandler)
 }
 

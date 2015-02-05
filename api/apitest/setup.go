@@ -3,7 +3,7 @@
 // license that can be found in the LICENSE file.
 
 // Package testing provide test helpers for various actions.
-package testing
+package apitest
 
 import (
 	"io/ioutil"

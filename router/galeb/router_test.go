@@ -11,10 +11,10 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/api/apitest"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/router"
-	ttesting "github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
 
@@ -25,7 +25,7 @@ func Test(t *testing.T) {
 type S struct {
 	conn    *db.Storage
 	server  *httptest.Server
-	handler ttesting.MultiTestHandler
+	handler apitest.MultiTestHandler
 }
 
 var _ = gocheck.Suite(&S{})
@@ -42,7 +42,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 }
 
 func (s *S) SetUpTest(c *gocheck.C) {
-	s.handler = ttesting.MultiTestHandler{}
+	s.handler = apitest.MultiTestHandler{}
 	s.server = httptest.NewServer(&s.handler)
 	config.Set("galeb:api-url", s.server.URL+"/api")
 	dbtest.ClearAllCollections(s.conn.Collection("router_galeb_tests").Database)

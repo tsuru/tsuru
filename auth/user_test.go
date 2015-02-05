@@ -10,9 +10,9 @@ import (
 	"net/http"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/api/apitest"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/repository/repositorytest"
-	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
@@ -287,7 +287,7 @@ func (s *S) TestKeyToMap(c *gocheck.C) {
 }
 
 func (s *S) TestAddKeyInGandalfShouldCallGandalfAPI(c *gocheck.C) {
-	h := testing.TestHandler{}
+	h := apitest.TestHandler{}
 	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	u := &User{Email: "me@gmail.com"}
@@ -301,7 +301,7 @@ func (s *S) TestAddKeyInGandalfShouldCallGandalfAPI(c *gocheck.C) {
 }
 
 func (s *S) TestCreateUserOnGandalf(c *gocheck.C) {
-	h := testing.TestHandler{}
+	h := apitest.TestHandler{}
 	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	u := &User{Email: "me@gmail.com"}

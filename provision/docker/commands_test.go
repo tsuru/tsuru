@@ -8,15 +8,15 @@ import (
 	"fmt"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/api/apitest"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
-	"github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
 
 func (s *S) TestGitDeployCmds(c *gocheck.C) {
-	h := &testing.TestHandler{}
+	h := &apitest.TestHandler{}
 	h.Content = `{"git_url":"git://something/app-name.git"}`
 	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()

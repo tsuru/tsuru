@@ -16,10 +16,11 @@ import (
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
-	dtesting "github.com/fsouza/go-dockerclient/testing"
+	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/docker-cluster/storage"
+	"github.com/tsuru/tsuru/api/apitest"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
@@ -28,7 +29,6 @@ import (
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
-	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
@@ -101,7 +101,7 @@ func (s *S) stopContainers(n uint) {
 }
 
 func (s *S) TestDeploy(c *gocheck.C) {
-	h := &testing.TestHandler{}
+	h := &apitest.TestHandler{}
 	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(1)
@@ -143,7 +143,7 @@ func (s *S) TestDeploy(c *gocheck.C) {
 func (s *S) TestDeployErasesOldImages(c *gocheck.C) {
 	config.Set("docker:image-history-size", 1)
 	defer config.Unset("docker:image-history-size")
-	h := &testing.TestHandler{}
+	h := &apitest.TestHandler{}
 	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(3)
@@ -247,7 +247,7 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *gocheck.C) {
 func (s *S) TestDeployErasesOldImagesWithLongHistory(c *gocheck.C) {
 	config.Set("docker:image-history-size", 2)
 	defer config.Unset("docker:image-history-size")
-	h := &testing.TestHandler{}
+	h := &apitest.TestHandler{}
 	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(5)
@@ -320,7 +320,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *gocheck.C) {
 }
 
 func (s *S) TestProvisionerUploadDeploy(c *gocheck.C) {
-	h := &testing.TestHandler{}
+	h := &apitest.TestHandler{}
 	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(3)
@@ -360,7 +360,7 @@ func (s *S) TestProvisionerUploadDeploy(c *gocheck.C) {
 }
 
 func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *gocheck.C) {
-	h := &testing.TestHandler{}
+	h := &apitest.TestHandler{}
 	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(3)
@@ -400,7 +400,7 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 }
 
 func (s *S) TestImageDeploy(c *gocheck.C) {
-	h := &testing.TestHandler{}
+	h := &apitest.TestHandler{}
 	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(1)
@@ -432,7 +432,7 @@ func (s *S) TestImageDeploy(c *gocheck.C) {
 }
 
 func (s *S) TestImageDeployInvalidImage(c *gocheck.C) {
-	h := &testing.TestHandler{}
+	h := &apitest.TestHandler{}
 	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(1)
@@ -533,7 +533,7 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *gocheck.C) {
 	registryURL := strings.Replace(registryServer.URL, "http://", "", 1)
 	config.Set("docker:registry", registryURL)
 	defer config.Unset("docker:registry")
-	h := &testing.TestHandler{}
+	h := &apitest.TestHandler{}
 	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(1)
@@ -1100,7 +1100,7 @@ func (s *S) TestProvisionerStopSkipAlreadyStoppedContainers(c *gocheck.C) {
 
 func (s *S) TestProvisionerPlatformAdd(c *gocheck.C) {
 	var requests []*http.Request
-	server, err := dtesting.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
 		requests = append(requests, r)
 	})
 	c.Assert(err, gocheck.IsNil)
@@ -1149,7 +1149,7 @@ func (s *S) TestProvisionerPlatformAddShouldValidateArgs(c *gocheck.C) {
 
 func (s *S) TestProvisionerPlatformAddWithoutNode(c *gocheck.C) {
 	var requests []*http.Request
-	server, err := dtesting.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
 		requests = append(requests, r)
 	})
 	c.Assert(err, gocheck.IsNil)
@@ -1178,7 +1178,7 @@ func (s *S) TestProvisionerPlatformRemove(c *gocheck.C) {
 	config.Set("docker:registry", u.Host)
 	defer config.Unset("docker:registry")
 	var requests []*http.Request
-	server, err := dtesting.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
 		requests = append(requests, r)
 	})
 	c.Assert(err, gocheck.IsNil)
@@ -1210,7 +1210,7 @@ func (s *S) TestProvisionerPlatformRemoveReturnsStorageError(c *gocheck.C) {
 	config.Set("docker:registry", u.Host)
 	defer config.Unset("docker:registry")
 	var requests []*http.Request
-	server, err := dtesting.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
 		requests = append(requests, r)
 	})
 	c.Assert(err, gocheck.IsNil)

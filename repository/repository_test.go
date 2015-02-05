@@ -6,14 +6,14 @@ package repository
 
 import (
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/api/apitest"
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/repository/repositorytest"
-	"github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
 
 func (s *S) TestHealthCheck(c *gocheck.C) {
-	handler := testing.TestHandler{Content: "WORKING"}
+	handler := apitest.TestHandler{Content: "WORKING"}
 	server := repositorytest.StartGandalfTestServer(&handler)
 	defer server.Close()
 	err := healthCheck()
@@ -21,7 +21,7 @@ func (s *S) TestHealthCheck(c *gocheck.C) {
 }
 
 func (s *S) TestHealthCheckFailure(c *gocheck.C) {
-	handler := testing.TestHandler{Content: "epic fail"}
+	handler := apitest.TestHandler{Content: "epic fail"}
 	server := repositorytest.StartGandalfTestServer(&handler)
 	defer server.Close()
 	err := healthCheck()
