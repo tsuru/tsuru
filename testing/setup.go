@@ -9,40 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strconv"
-
-	"github.com/tsuru/config"
-	"launchpad.net/gocheck"
 )
-
-type T struct {
-	Admin        user
-	AdminTeam    team
-	GitAPIServer string
-	GitRWHost    string
-	GitROHost    string
-}
-
-type user struct {
-	Email    string
-	Password string
-}
-
-type team struct {
-	Name  string `bson:"_id"`
-	Users []string
-}
-
-func (t *T) SetGitConfs(c *gocheck.C) {
-	t.GitAPIServer, _ = config.GetString("git:api-server")
-	t.GitROHost, _ = config.GetString("git:ro-host")
-	t.GitRWHost, _ = config.GetString("git:rw-host")
-}
-
-func (t *T) RollbackGitConfs(c *gocheck.C) {
-	config.Set("git:api-server", t.GitAPIServer)
-	config.Set("git:ro-host", t.GitROHost)
-	config.Set("git:rw-host", t.GitRWHost)
-}
 
 type TestHandler struct {
 	Body    []byte
