@@ -23,7 +23,6 @@ import (
 	_ "github.com/tsuru/tsuru/queue/queuetest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/service"
-	ttesting "github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
@@ -36,7 +35,6 @@ type S struct {
 	user        *auth.User
 	adminTeam   auth.Team
 	admin       *auth.User
-	t           *ttesting.T
 	provisioner *provisiontest.FakeProvisioner
 	defaultPlan Plan
 }
@@ -89,9 +87,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
-	s.t = &ttesting.T{}
 	s.createUserAndTeam(c)
-	s.t.SetGitConfs(c)
 	s.provisioner = provisiontest.NewFakeProvisioner()
 	Provisioner = s.provisioner
 	AuthScheme = nativeScheme
@@ -113,7 +109,6 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 }
 
 func (s *S) TearDownTest(c *gocheck.C) {
-	s.t.RollbackGitConfs(c)
 	s.provisioner.Reset()
 	LogRemove(nil)
 	s.conn.Users().Update(
