@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/safe"
@@ -2538,7 +2539,7 @@ func (s *S) TestShellToAnApp(c *gocheck.C) {
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 1, nil)
 	buf := safe.NewBuffer([]byte("echo teste"))
-	conn := &testing.FakeConn{buf}
+	conn := &provisiontest.FakeConn{buf}
 	err = a.Shell(conn, 10, 10)
 	c.Assert(err, gocheck.IsNil)
 }

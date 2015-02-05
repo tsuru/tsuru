@@ -11,8 +11,8 @@ import (
 
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/safe"
-	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
@@ -35,7 +35,7 @@ func (s *S) TestAppShellWithAppName(c *gocheck.C) {
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
 	buf := safe.NewBuffer([]byte("echo teste"))
-	recorder := testing.Hijacker{Conn: &testing.FakeConn{Buf: buf}}
+	recorder := provisiontest.Hijacker{Conn: &provisiontest.FakeConn{Buf: buf}}
 	err = remoteShellHandler(&recorder, request, s.token)
 	c.Assert(err, gocheck.IsNil)
 }
@@ -79,7 +79,7 @@ func (s *S) TestAppShellFailToHijack(c *gocheck.C) {
 	url := fmt.Sprintf("/shell?:app=%s&width=2&height=2", a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, gocheck.IsNil)
-	recorder := testing.Hijacker{
+	recorder := provisiontest.Hijacker{
 		Err: fmt.Errorf("are you going to hijack the connection? seriously?")}
 	err = remoteShellHandler(&recorder, request, s.token)
 	c.Assert(err, gocheck.NotNil)
