@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/testing"
@@ -531,7 +532,7 @@ func (s *S) TestContainerCommitErrorInPush(c *gocheck.C) {
 
 func (s *S) TestGitDeploy(c *gocheck.C) {
 	h := &testing.TestHandler{}
-	gandalfServer := testing.StartGandalfTestServer(h)
+	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(1)
 	err := newImage("tsuru/python", s.server.URL())
@@ -561,7 +562,7 @@ func (errBuffer) Write(data []byte) (int, error) {
 
 func (s *S) TestGitDeployRollsbackAfterErrorOnAttach(c *gocheck.C) {
 	h := &testing.TestHandler{}
-	gandalfServer := testing.StartGandalfTestServer(h)
+	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(1)
 	err := newImage("tsuru/python", s.server.URL())

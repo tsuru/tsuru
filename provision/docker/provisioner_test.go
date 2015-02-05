@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/testing"
@@ -101,7 +102,7 @@ func (s *S) stopContainers(n uint) {
 
 func (s *S) TestDeploy(c *gocheck.C) {
 	h := &testing.TestHandler{}
-	gandalfServer := testing.StartGandalfTestServer(h)
+	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(1)
 	err := newImage("tsuru/python", s.server.URL())
@@ -143,7 +144,7 @@ func (s *S) TestDeployErasesOldImages(c *gocheck.C) {
 	config.Set("docker:image-history-size", 1)
 	defer config.Unset("docker:image-history-size")
 	h := &testing.TestHandler{}
-	gandalfServer := testing.StartGandalfTestServer(h)
+	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(3)
 	err := newImage("tsuru/python", s.server.URL())
@@ -247,7 +248,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *gocheck.C) {
 	config.Set("docker:image-history-size", 2)
 	defer config.Unset("docker:image-history-size")
 	h := &testing.TestHandler{}
-	gandalfServer := testing.StartGandalfTestServer(h)
+	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(5)
 	err := newImage("tsuru/python", s.server.URL())
@@ -320,7 +321,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *gocheck.C) {
 
 func (s *S) TestProvisionerUploadDeploy(c *gocheck.C) {
 	h := &testing.TestHandler{}
-	gandalfServer := testing.StartGandalfTestServer(h)
+	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(3)
 	err := newImage("tsuru/python", s.server.URL())
@@ -360,7 +361,7 @@ func (s *S) TestProvisionerUploadDeploy(c *gocheck.C) {
 
 func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *gocheck.C) {
 	h := &testing.TestHandler{}
-	gandalfServer := testing.StartGandalfTestServer(h)
+	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(3)
 	cont1, err := s.newContainer(nil)
@@ -400,7 +401,7 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *go
 
 func (s *S) TestImageDeploy(c *gocheck.C) {
 	h := &testing.TestHandler{}
-	gandalfServer := testing.StartGandalfTestServer(h)
+	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(1)
 	err := newImage("tsuru/app-otherapp:v1", s.server.URL())
@@ -432,7 +433,7 @@ func (s *S) TestImageDeploy(c *gocheck.C) {
 
 func (s *S) TestImageDeployInvalidImage(c *gocheck.C) {
 	h := &testing.TestHandler{}
-	gandalfServer := testing.StartGandalfTestServer(h)
+	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(1)
 	p := dockerProvisioner{}
@@ -533,7 +534,7 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *gocheck.C) {
 	config.Set("docker:registry", registryURL)
 	defer config.Unset("docker:registry")
 	h := &testing.TestHandler{}
-	gandalfServer := testing.StartGandalfTestServer(h)
+	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(1)
 	p := dockerProvisioner{}

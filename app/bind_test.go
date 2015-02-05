@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -9,8 +9,8 @@ import (
 	"net/http/httptest"
 
 	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/service"
-	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
@@ -21,7 +21,7 @@ func (s *S) TestAppIsABinderApp(c *gocheck.C) {
 
 func (s *S) TestDestroyShouldUnbindAppFromInstance(c *gocheck.C) {
 	h := testHandler{}
-	tsg := testing.StartGandalfTestServer(&h)
+	tsg := repositorytest.StartGandalfTestServer(&h)
 	defer tsg.Close()
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)

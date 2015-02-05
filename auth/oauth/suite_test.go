@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	tsuruTesting "github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
@@ -58,7 +59,7 @@ func (s *S) SetUpTest(c *gocheck.C) {
 	s.bodies = make([]string, 0)
 	s.rsps = make(map[string]string)
 	s.testHandler = tsuruTesting.TestHandler{}
-	s.gandalf = tsuruTesting.StartGandalfTestServer(&s.testHandler)
+	s.gandalf = repositorytest.StartGandalfTestServer(&s.testHandler)
 }
 
 func (s *S) TearDownTest(c *gocheck.C) {

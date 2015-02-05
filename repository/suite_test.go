@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	tsrTesting "github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
@@ -29,7 +30,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("git:unit-repo", "/home/application/current")
 	content := `{"git_url":"git://git.tsuru.io/foobar.git","ssh_url":"git@git.tsuru.io:foobar.git"}`
 	s.h = &tsrTesting.TestHandler{Content: content}
-	s.ts = tsrTesting.StartGandalfTestServer(s.h)
+	s.ts = repositorytest.StartGandalfTestServer(s.h)
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {

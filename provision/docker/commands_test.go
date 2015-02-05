@@ -10,6 +10,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
@@ -17,7 +18,7 @@ import (
 func (s *S) TestGitDeployCmds(c *gocheck.C) {
 	h := &testing.TestHandler{}
 	h.Content = `{"git_url":"git://something/app-name.git"}`
-	gandalfServer := testing.StartGandalfTestServer(h)
+	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	app := provisiontest.NewFakeApp("app-name", "python", 1)
 	host_env := bind.EnvVar{

@@ -14,8 +14,8 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/service"
-	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
@@ -397,7 +397,7 @@ func (s *S) TestGetDiffInDeploys(c *gocheck.C) {
 	defer s.conn.Deploys().RemoveAll(nil)
 	expected := "test_diff"
 	h := testHandler{content: expected}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	err := s.conn.Deploys().Find(bson.M{"commit": myDeploy.Commit}).One(&myDeploy)
 	c.Assert(err, gocheck.IsNil)
@@ -415,7 +415,7 @@ func (s *S) TestGetDiffInDeploysWithOneCommit(c *gocheck.C) {
 	defer s.conn.Deploys().RemoveAll(nil)
 	expected := "test_diff"
 	h := testHandler{content: expected}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	err := s.conn.Deploys().Find(bson.M{"commit": lastDeploy.Commit}).One(&lastDeploy)
 	c.Assert(err, gocheck.IsNil)

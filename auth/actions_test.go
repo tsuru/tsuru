@@ -11,7 +11,7 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	"github.com/tsuru/tsuru/testing"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
@@ -46,7 +46,7 @@ func (s *ActionsSuite) TestAddKeyInDatatabase(c *gocheck.C) {
 
 func (s *ActionsSuite) TestAddKeyInGandalfActionForward(c *gocheck.C) {
 	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	key := &Key{Name: "mysshkey", Content: "my-ssh-key"}
 	u := &User{Email: "me@gmail.com", Password: "123456"}
@@ -63,7 +63,7 @@ func (s *ActionsSuite) TestAddKeyInGandalfActionForward(c *gocheck.C) {
 
 func (s *ActionsSuite) TestAddKeyInGandalfActionBackward(c *gocheck.C) {
 	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	key := &Key{Name: "mysshkey", Content: "my-ssh-key"}
 	u := &User{Email: "me@gmail.com", Password: "123456"}
@@ -94,7 +94,7 @@ func (s *ActionsSuite) TestAddKeyInDatabaseActionForward(c *gocheck.C) {
 }
 
 func (s *ActionsSuite) TestAddKeyInDatabaseActionBackward(c *gocheck.C) {
-	ts := testing.StartGandalfTestServer(&testHandler{})
+	ts := repositorytest.StartGandalfTestServer(&testHandler{})
 	defer ts.Close()
 	key := Key{Name: "mysshkey", Content: "my-ssh-key"}
 	u := &User{Email: "me@gmail.com", Keys: []Key{key}}

@@ -21,8 +21,8 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/service"
-	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
@@ -509,7 +509,7 @@ func (s *DeploySuite) TestDeployInfoByAdminUser(c *gocheck.C) {
 	defer s.conn.Deploys().RemoveAll(nil)
 	expected := "test_diff"
 	h := testHandler{content: expected}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	var d map[string]interface{}
 	err = s.conn.Deploys().Find(bson.M{"commit": lastDeploy.Commit}).One(&d)
@@ -569,7 +569,7 @@ func (s *DeploySuite) TestDeployInfoByNonAdminUser(c *gocheck.C) {
 	defer s.conn.Deploys().RemoveAll(nil)
 	expected := "test_diff"
 	h := testHandler{content: expected}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	var d map[string]interface{}
 	err = s.conn.Deploys().Find(bson.M{"commit": lastDeploy.Commit}).One(&d)
@@ -621,7 +621,7 @@ func (s *DeploySuite) TestDeployInfoByUserWithoutAccess(c *gocheck.C) {
 	defer s.conn.Deploys().RemoveAll(nil)
 	expected := "test_diff"
 	h := testHandler{content: expected}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	var d map[string]interface{}
 	err = s.conn.Deploys().Find(bson.M{"commit": lastDeploy.Commit}).One(&d)

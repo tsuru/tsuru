@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
@@ -21,7 +22,7 @@ var _ = gocheck.Suite(&HealthCheckSuite{})
 
 func (s *HealthCheckSuite) SetUpSuite(c *gocheck.C) {
 	s.h = &testing.TestHandler{}
-	s.ts = testing.StartGandalfTestServer(s.h)
+	s.ts = repositorytest.StartGandalfTestServer(s.h)
 }
 
 func (s *HealthCheckSuite) TearDownSuite(c *gocheck.C) {

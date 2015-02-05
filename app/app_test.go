@@ -24,9 +24,9 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/service"
-	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
@@ -60,7 +60,7 @@ func (s *S) TestDelete(c *gocheck.C) {
 		bson.M{"$set": bson.M{"quota": quota.Unlimited}},
 	)
 	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	a := App{
 		Name:     "ritual",
@@ -88,7 +88,7 @@ func (s *S) TestDelete(c *gocheck.C) {
 
 func (s *S) TestDeleteWithDeploys(c *gocheck.C) {
 	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	a := App{
 		Name:     "ritual",
@@ -113,7 +113,7 @@ func (s *S) TestDeleteWithDeploys(c *gocheck.C) {
 
 func (s *S) TestDestroy(c *gocheck.C) {
 	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	a := App{
 		Name:     "ritual",
@@ -136,7 +136,7 @@ func (s *S) TestDestroy(c *gocheck.C) {
 
 func (s *S) TestDestroyWithoutUnits(c *gocheck.C) {
 	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	app := App{Name: "x4", Platform: "python"}
 	err := CreateApp(&app, s.user)
@@ -149,7 +149,7 @@ func (s *S) TestDestroyWithoutUnits(c *gocheck.C) {
 }
 
 func (s *S) TestCreateApp(c *gocheck.C) {
-	ts := testing.StartGandalfTestServer(&testHandler{})
+	ts := repositorytest.StartGandalfTestServer(&testHandler{})
 	defer ts.Close()
 	a := App{
 		Name:     "appname",
@@ -181,7 +181,7 @@ func (s *S) TestCreateApp(c *gocheck.C) {
 }
 
 func (s *S) TestCreateAppDefaultPlan(c *gocheck.C) {
-	ts := testing.StartGandalfTestServer(&testHandler{})
+	ts := repositorytest.StartGandalfTestServer(&testHandler{})
 	defer ts.Close()
 	a := App{
 		Name:     "appname",
@@ -204,7 +204,7 @@ func (s *S) TestCreateAppDefaultPlan(c *gocheck.C) {
 func (s *S) TestCreateAppWithoutDefaultPlan(c *gocheck.C) {
 	s.conn.Plans().RemoveAll(nil)
 	defer s.conn.Plans().Insert(s.defaultPlan)
-	ts := testing.StartGandalfTestServer(&testHandler{})
+	ts := repositorytest.StartGandalfTestServer(&testHandler{})
 	defer ts.Close()
 	a := App{
 		Name:     "appname",
@@ -239,7 +239,7 @@ func (s *S) TestCreateAppWithExplicitPlan(c *gocheck.C) {
 	err := myPlan.Save()
 	c.Assert(err, gocheck.IsNil)
 	defer PlanRemove(myPlan.Name)
-	ts := testing.StartGandalfTestServer(&testHandler{})
+	ts := repositorytest.StartGandalfTestServer(&testHandler{})
 	defer ts.Close()
 	a := App{
 		Name:     "appname",
@@ -278,7 +278,7 @@ func (s *S) TestCreateAppUserQuotaExceeded(c *gocheck.C) {
 
 func (s *S) TestCreateAppTeamOwner(c *gocheck.C) {
 	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	app := App{Name: "america", Platform: "python", TeamOwner: "tsuruteam"}
 	err := CreateApp(&app, s.user)
@@ -288,7 +288,7 @@ func (s *S) TestCreateAppTeamOwner(c *gocheck.C) {
 
 func (s *S) TestCreateAppTeamOwnerOneTeam(c *gocheck.C) {
 	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	app := App{Name: "america", Platform: "python"}
 	err := CreateApp(&app, s.user)
@@ -299,7 +299,7 @@ func (s *S) TestCreateAppTeamOwnerOneTeam(c *gocheck.C) {
 
 func (s *S) TestCreateAppTeamOwnerMoreTeamShouldReturnError(c *gocheck.C) {
 	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	app := App{Name: "america", Platform: "python"}
 	team := auth.Team{Name: "tsurutwo", Users: []string{s.user.Email}}
@@ -313,7 +313,7 @@ func (s *S) TestCreateAppTeamOwnerMoreTeamShouldReturnError(c *gocheck.C) {
 
 func (s *S) TestCreateAppTeamOwnerTeamNotFound(c *gocheck.C) {
 	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	app := App{
 		Name:      "someapp",
@@ -376,7 +376,7 @@ func (s *S) TestCantCreateAppWithInvalidName(c *gocheck.C) {
 
 func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfProvisionerFail(c *gocheck.C) {
 	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	s.provisioner.PrepareFailure("Provision", fmt.Errorf("exit status 1"))
 	a := App{
@@ -394,7 +394,7 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfProvisionerFail(c *gocheck.C) {
 
 func (s *S) TestCreateAppCreatesRepositoryInGandalf(c *gocheck.C) {
 	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	a := App{
 		Name:     "someapp",
@@ -413,7 +413,7 @@ func (s *S) TestCreateAppCreatesRepositoryInGandalf(c *gocheck.C) {
 }
 
 func (s *S) TestCreateAppDoesNotSaveTheAppWhenGandalfFailstoCreateTheRepository(c *gocheck.C) {
-	ts := testing.StartGandalfTestServer(&testBadHandler{msg: "could not create the repository"})
+	ts := repositorytest.StartGandalfTestServer(&testBadHandler{msg: "could not create the repository"})
 	defer ts.Close()
 	a := App{Name: "otherapp", Platform: "python"}
 	err := CreateApp(&a, s.user)

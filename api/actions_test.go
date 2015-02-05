@@ -10,7 +10,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	"github.com/tsuru/tsuru/testing"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
@@ -45,7 +45,7 @@ func (s *ActionsSuite) TestAddUserToTeamInDatabase(c *gocheck.C) {
 
 func (s *ActionsSuite) TestAddUserToTeamInGandalfActionForward(c *gocheck.C) {
 	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	u := &auth.User{Email: "nobody@gmail.com"}
 	err := u.Create()
@@ -64,7 +64,7 @@ func (s *ActionsSuite) TestAddUserToTeamInGandalfActionForward(c *gocheck.C) {
 
 func (s *ActionsSuite) TestAddUserToTeamInGandalfActionBackward(c *gocheck.C) {
 	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	u := &auth.User{Email: "nobody@gmail.com"}
 	err := u.Create()

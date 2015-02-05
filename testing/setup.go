@@ -8,11 +8,9 @@ package testing
 import (
 	"io/ioutil"
 	"net/http"
-	"net/http/httptest"
 	"strconv"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/gandalf/testing"
 	"launchpad.net/gocheck"
 )
 
@@ -94,12 +92,4 @@ func (h *MultiTestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(h.RspCode)
 		w.Write([]byte(h.Content))
 	}
-}
-
-// starts a new httptest.Server and returns it
-// Also changes git:host, git:port and git:protocol to match the server's url
-func StartGandalfTestServer(h http.Handler) *httptest.Server {
-	ts := testing.TestServer(h)
-	config.Set("git:api-server", ts.URL)
-	return ts
 }

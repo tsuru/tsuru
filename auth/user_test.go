@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -11,6 +11,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
@@ -79,7 +80,7 @@ func (s *S) TestUpdateUser(c *gocheck.C) {
 func (s *S) TestAddKeyAddsAKeyToTheUser(c *gocheck.C) {
 	var request *http.Request
 	var content []byte
-	server := testing.StartGandalfTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := repositorytest.StartGandalfTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 		request = r
 		content, _ = ioutil.ReadAll(r.Body)
@@ -103,7 +104,7 @@ func (s *S) TestAddKeyAddsAKeyToTheUser(c *gocheck.C) {
 func (s *S) TestAddKeyGeneratesNameWhenEmpty(c *gocheck.C) {
 	var request *http.Request
 	var content []byte
-	server := testing.StartGandalfTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := repositorytest.StartGandalfTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 		request = r
 		content, _ = ioutil.ReadAll(r.Body)
@@ -139,7 +140,7 @@ func (s *S) TestAddDuplicatedKey(c *gocheck.C) {
 
 func (s *S) TestRemoveKeyRemovesAKeyFromTheUser(c *gocheck.C) {
 	var request *http.Request
-	server := testing.StartGandalfTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := repositorytest.StartGandalfTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		request = r
 	}))
 	defer server.Close()
@@ -252,7 +253,7 @@ func (s *S) TestUserAllowedApps(c *gocheck.C) {
 
 func (s *S) TestListKeysShouldCallGandalfAPI(c *gocheck.C) {
 	h := testHandler{content: `{"mypckey":"ssh-rsa keystuff keycomment"}`}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
 	err := u.Create()
@@ -268,7 +269,7 @@ func (s *S) TestListKeysShouldCallGandalfAPI(c *gocheck.C) {
 
 func (s *S) TestListKeysGandalfAPIError(c *gocheck.C) {
 	h := testBadHandler{content: "some terrible error"}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
 	err := u.Create()
@@ -287,7 +288,7 @@ func (s *S) TestKeyToMap(c *gocheck.C) {
 
 func (s *S) TestAddKeyInGandalfShouldCallGandalfAPI(c *gocheck.C) {
 	h := testing.TestHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	u := &User{Email: "me@gmail.com"}
 	err := u.Create()
@@ -301,7 +302,7 @@ func (s *S) TestAddKeyInGandalfShouldCallGandalfAPI(c *gocheck.C) {
 
 func (s *S) TestCreateUserOnGandalf(c *gocheck.C) {
 	h := testing.TestHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	u := &User{Email: "me@gmail.com"}
 	err := u.CreateOnGandalf()

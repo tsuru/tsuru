@@ -31,8 +31,8 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/rec/rectest"
 	"github.com/tsuru/tsuru/repository"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/service"
-	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
@@ -170,7 +170,7 @@ func (s *S) TestListShouldReturnStatusNoContentWhenAppListIsNil(c *gocheck.C) {
 
 func (s *S) TestDelete(c *gocheck.C) {
 	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	myApp := &app.App{
 		Name:     "myapptodelete",
@@ -301,7 +301,7 @@ func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *gocheck.C) {
 
 func (s *S) TestCreateAppHandler(c *gocheck.C) {
 	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	a := app.App{Name: "someapp"}
 	defer func() {
@@ -345,7 +345,7 @@ func (s *S) TestCreateAppHandler(c *gocheck.C) {
 
 func (s *S) TestCreateAppTeamOwner(c *gocheck.C) {
 	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	a := app.App{Name: "someapp"}
 	defer func() {
@@ -393,7 +393,7 @@ func (s *S) TestCreateAppTeamOwner(c *gocheck.C) {
 
 func (s *S) TestCreateAppCustomPlan(c *gocheck.C) {
 	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	a := app.App{Name: "someapp"}
 	defer func() {
@@ -447,7 +447,7 @@ func (s *S) TestCreateAppCustomPlan(c *gocheck.C) {
 
 func (s *S) TestCreateAppTwoTeamOwner(c *gocheck.C) {
 	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	team := auth.Team{Name: "tsurutwo", Users: []string{s.user.Email}}
 	err := s.conn.Teams().Insert(team)
@@ -863,7 +863,7 @@ func (s *S) TestSetUnitStatusDoesntRequireLock(c *gocheck.C) {
 
 func (s *S) TestAddTeamToTheApp(c *gocheck.C) {
 	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	t := auth.Team{Name: "itshardteam", Users: []string{s.user.Email}}
 	err := s.conn.Teams().Insert(t)
@@ -972,7 +972,7 @@ func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *g
 
 func (s *S) TestGrantAccessToTeamCallsGandalf(c *gocheck.C) {
 	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	t := &auth.Team{Name: "anything", Users: []string{s.user.Email}}
 	err := s.conn.Teams().Insert(t)
@@ -1003,7 +1003,7 @@ func (s *S) TestGrantAccessToTeamCallsGandalf(c *gocheck.C) {
 
 func (s *S) TestRevokeAccessFromTeam(c *gocheck.C) {
 	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	t := auth.Team{Name: "abcd"}
 	err := s.conn.Teams().Insert(t)
@@ -1039,7 +1039,7 @@ func (s *S) TestRevokeAccessFromTeam(c *gocheck.C) {
 
 func (s *S) TestRevokeAccessFromTeamReturn404IfTheAppDoesNotExist(c *gocheck.C) {
 	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	request, err := http.NewRequest("DELETE", "/apps/a/teams/b", nil)
 	c.Assert(err, gocheck.IsNil)
@@ -1142,7 +1142,7 @@ func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheAp
 
 func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromGandalf(c *gocheck.C) {
 	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	u := auth.User{Email: "again@live.com", Password: "123456"}
 	_, err := nativeScheme.Create(&u)
@@ -1187,7 +1187,7 @@ func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromGandalf(c *gocheck.C) {
 
 func (s *S) TestRevokeAccessFromTeamDontRemoveTheUserIfItHasAccesToTheAppThroughAnotherTeam(c *gocheck.C) {
 	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	u := auth.User{Email: "burning@angel.com"}
 	err := s.conn.Users().Insert(u)
@@ -1229,7 +1229,7 @@ func (s *S) TestRevokeAccessFromTeamDontRemoveTheUserIfItHasAccesToTheAppThrough
 
 func (s *S) TestRevokeAccessFromTeamDontCallGandalfIfNoUserNeedToBeRevoked(c *gocheck.C) {
 	h := testHandler{}
-	ts := testing.StartGandalfTestServer(&h)
+	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	t := auth.Team{Name: "anything", Users: []string{s.user.Email}}
 	err := s.conn.Teams().Insert(t)
@@ -2748,7 +2748,7 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheApp(c *goche
 func (s *S) TestUnbindHandler(c *gocheck.C) {
 	s.provisioner.PrepareOutput([]byte("exported"))
 	h := testHandler{}
-	gts := testing.StartGandalfTestServer(&h)
+	gts := repositorytest.StartGandalfTestServer(&h)
 	defer gts.Close()
 	var called int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
