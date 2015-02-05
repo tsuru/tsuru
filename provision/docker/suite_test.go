@@ -15,12 +15,12 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/cmd/cmdtest"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
-	tTesting "github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
@@ -70,7 +70,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	s.runArgs = "/etc/circus/circus.ini"
 	s.port = "8888"
 	var err error
-	s.targetRecover = tTesting.SetTargetFile(c, []byte("http://localhost"))
+	s.targetRecover = cmdtest.SetTargetFile(c, []byte("http://localhost"))
 	s.storage, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	s.oldProvisioner = app.Provisioner
@@ -119,7 +119,7 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 	defer coll.Close()
 	err := dbtest.ClearAllCollections(coll.Database)
 	c.Assert(err, gocheck.IsNil)
-	tTesting.RollbackFile(s.targetRecover)
+	cmdtest.RollbackFile(s.targetRecover)
 	dbtest.ClearAllCollections(s.storage.Apps().Database)
 	s.storage.Close()
 	app.Provisioner = s.oldProvisioner

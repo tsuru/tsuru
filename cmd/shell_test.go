@@ -12,7 +12,6 @@ import (
 	"net/http/httptest"
 
 	"github.com/tsuru/tsuru/cmd/cmdtest"
-	"github.com/tsuru/tsuru/testing"
 	"launchpad.net/gocheck"
 )
 
@@ -45,10 +44,10 @@ func (s *S) TestShellToContainerCmdRunWithApp(c *gocheck.C) {
 	defer server.Close()
 	closeClientConn = server.CloseClientConnections
 	target := "http://" + server.Listener.Addr().String()
-	targetRecover := testing.SetTargetFile(c, []byte(target))
-	defer testing.RollbackFile(targetRecover)
-	tokenRecover := testing.SetTokenFile(c, []byte("abc123"))
-	defer testing.RollbackFile(tokenRecover)
+	targetRecover := cmdtest.SetTargetFile(c, []byte(target))
+	defer cmdtest.RollbackFile(targetRecover)
+	tokenRecover := cmdtest.SetTokenFile(c, []byte("abc123"))
+	defer cmdtest.RollbackFile(tokenRecover)
 	var stdout, stderr, stdin bytes.Buffer
 	context := Context{
 		Stdout: &stdout,
@@ -72,8 +71,8 @@ func (s *S) TestShellToContainerCmdNoToken(c *gocheck.C) {
 	}))
 	defer server.Close()
 	target := "http://" + server.Listener.Addr().String()
-	targetRecover := testing.SetTargetFile(c, []byte(target))
-	defer testing.RollbackFile(targetRecover)
+	targetRecover := cmdtest.SetTargetFile(c, []byte(target))
+	defer cmdtest.RollbackFile(targetRecover)
 	var stdin, stdout, stderr bytes.Buffer
 	context := Context{
 		Args:   []string{"af3332d"},
@@ -98,8 +97,8 @@ func (s *S) TestShellToContainerCmdSmallData(c *gocheck.C) {
 	defer server.Close()
 	closeClientConn = server.CloseClientConnections
 	target := "http://" + server.Listener.Addr().String()
-	targetRecover := testing.SetTargetFile(c, []byte(target))
-	defer testing.RollbackFile(targetRecover)
+	targetRecover := cmdtest.SetTargetFile(c, []byte(target))
+	defer cmdtest.RollbackFile(targetRecover)
 	var stdout, stderr, stdin bytes.Buffer
 	context := Context{
 		Args:   []string{"af3332d"},
@@ -125,8 +124,8 @@ func (s *S) TestShellToContainerCmdLongNoNewLine(c *gocheck.C) {
 	defer server.Close()
 	closeClientConn = server.CloseClientConnections
 	target := "http://" + server.Listener.Addr().String()
-	targetRecover := testing.SetTargetFile(c, []byte(target))
-	defer testing.RollbackFile(targetRecover)
+	targetRecover := cmdtest.SetTargetFile(c, []byte(target))
+	defer cmdtest.RollbackFile(targetRecover)
 	var stdout, stderr, stdin bytes.Buffer
 	context := Context{
 		Args:   []string{"af3332d"},
@@ -144,10 +143,10 @@ func (s *S) TestShellToContainerCmdConnectionRefused(c *gocheck.C) {
 	server := httptest.NewServer(nil)
 	addr := server.Listener.Addr().String()
 	server.Close()
-	targetRecover := testing.SetTargetFile(c, []byte("http://"+addr))
-	defer testing.RollbackFile(targetRecover)
-	tokenRecover := testing.SetTokenFile(c, []byte("abc123"))
-	defer testing.RollbackFile(tokenRecover)
+	targetRecover := cmdtest.SetTargetFile(c, []byte("http://"+addr))
+	defer cmdtest.RollbackFile(targetRecover)
+	tokenRecover := cmdtest.SetTokenFile(c, []byte("abc123"))
+	defer cmdtest.RollbackFile(tokenRecover)
 	var buf bytes.Buffer
 	context := Context{
 		Args:   []string{"af3332d"},

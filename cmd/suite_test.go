@@ -9,7 +9,7 @@ import (
 	"os"
 	"testing"
 
-	tTesting "github.com/tsuru/tsuru/testing"
+	"github.com/tsuru/tsuru/cmd/cmdtest"
 	"launchpad.net/gocheck"
 )
 
@@ -25,13 +25,13 @@ var _ = gocheck.Suite(&S{})
 var manager *Manager
 
 func (s *S) SetUpSuite(c *gocheck.C) {
-	s.recover = tTesting.SetTargetFile(c, []byte("http://localhost"))
-	s.recoverToken = tTesting.SetTokenFile(c, []byte("abc123"))
+	s.recover = cmdtest.SetTargetFile(c, []byte("http://localhost"))
+	s.recoverToken = cmdtest.SetTokenFile(c, []byte("abc123"))
 }
 
 func (s *S) TearDownSuite(c *gocheck.C) {
-	tTesting.RollbackFile(s.recover)
-	tTesting.RollbackFile(s.recoverToken)
+	cmdtest.RollbackFile(s.recover)
+	cmdtest.RollbackFile(s.recoverToken)
 }
 
 func (s *S) SetUpTest(c *gocheck.C) {
