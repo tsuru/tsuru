@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/tsuru/tsuru",
-	"GoVersion": "devel +f4a2617 Tue Jan 27 21:14:42 2015 +0000",
+	"GoVersion": "devel +c768a84 Wed Feb 4 10:16:38 2015 +0000",
 	"Packages": [
 		"./..."
 	],
@@ -136,10 +136,6 @@
 		{
 			"ImportPath": "gopkg.in/mgo.v2",
 			"Rev": "dc255bb679efa273b6544a03261c4053505498a4"
-		},
-		{
-			"ImportPath": "gopkg.in/v1/yaml",
-			"Rev": "4914593b9558e85597f08346c798aea8f6fb899f"
 		},
 		{
 			"ImportPath": "gopkg.in/yaml.v1",
