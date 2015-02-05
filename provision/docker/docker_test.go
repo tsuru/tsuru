@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/testing"
@@ -112,7 +113,7 @@ func (s *S) TestContainerGetAddress(c *gocheck.C) {
 }
 
 func (s *S) TestContainerCreate(c *gocheck.C) {
-	app := testing.NewFakeApp("app-name", "brainfuck", 1)
+	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
 	app.Memory = 15
 	app.Swap = 15
 	app.CpuShare = 50
@@ -148,7 +149,7 @@ func (s *S) TestContainerCreate(c *gocheck.C) {
 }
 
 func (s *S) TestContainerCreateAlocatesPort(c *gocheck.C) {
-	app := testing.NewFakeApp("app-name", "brainfuck", 1)
+	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
 	app.Memory = 15
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
@@ -166,7 +167,7 @@ func (s *S) TestContainerCreateAlocatesPort(c *gocheck.C) {
 }
 
 func (s *S) TestContainerCreateDoesNotAlocatesPortForDeploy(c *gocheck.C) {
-	app := testing.NewFakeApp("app-name", "brainfuck", 1)
+	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
 	app.Memory = 15
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
@@ -189,7 +190,7 @@ func (s *S) TestContainerCreateUndefinedUser(c *gocheck.C) {
 	config.Unset("docker:ssh:user")
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	app := testing.NewFakeApp("app-name", "python", 1)
+	app := provisiontest.NewFakeApp("app-name", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	cont := container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
@@ -416,7 +417,7 @@ func (s *S) TestGetContainers(c *gocheck.C) {
 }
 
 func (s *S) TestGetImageFromAppPlatform(c *gocheck.C) {
-	app := testing.NewFakeApp("myapp", "python", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	img := getBuildImage(app)
 	repoNamespace, err := config.GetString("docker:repository-namespace")
 	c.Assert(err, gocheck.IsNil)
@@ -451,7 +452,7 @@ func (s *S) TestGetImageUseAppImageIfContainersExist(c *gocheck.C) {
 	defer coll.Close()
 	c.Assert(err, gocheck.IsNil)
 	defer coll.RemoveAll(bson.M{"id": "bleble"})
-	app := testing.NewFakeApp("myapp", "python", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	img := getBuildImage(app)
 	c.Assert(img, gocheck.Equals, "tsuru/app-myapp")
 }
@@ -459,7 +460,7 @@ func (s *S) TestGetImageUseAppImageIfContainersExist(c *gocheck.C) {
 func (s *S) TestGetImageWithRegistry(c *gocheck.C) {
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
-	app := testing.NewFakeApp("myapp", "python", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	img := getBuildImage(app)
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
 	expected := fmt.Sprintf("localhost:3030/%s/python", repoNamespace)
@@ -535,7 +536,7 @@ func (s *S) TestGitDeploy(c *gocheck.C) {
 	go s.stopContainers(1)
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	app := testing.NewFakeApp("myapp", "python", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
@@ -565,7 +566,7 @@ func (s *S) TestGitDeployRollsbackAfterErrorOnAttach(c *gocheck.C) {
 	go s.stopContainers(1)
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	app := testing.NewFakeApp("myapp", "python", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	var buf errBuffer
@@ -585,7 +586,7 @@ func (s *S) TestArchiveDeploy(c *gocheck.C) {
 	go s.stopContainers(1)
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	app := testing.NewFakeApp("myapp", "python", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
@@ -596,7 +597,7 @@ func (s *S) TestArchiveDeploy(c *gocheck.C) {
 func (s *S) TestStart(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	app := testing.NewFakeApp("myapp", "python", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	imageId := getBuildImage(app)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())

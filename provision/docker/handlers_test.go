@@ -25,8 +25,8 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
-	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
@@ -489,7 +489,7 @@ func (s *S) TestRebalanceContainersEmptyBodyHandler(c *gocheck.C) {
 	defer s.stopMultipleServersCluster(cluster)
 	err = newImage("tsuru/app-myapp", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	appInstance := testing.NewFakeApp("myapp", "python", 0)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
@@ -547,7 +547,7 @@ func (s *S) TestRebalanceContainersDryBodyHandler(c *gocheck.C) {
 	defer s.stopMultipleServersCluster(cluster)
 	err = newImage("tsuru/app-myapp", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	appInstance := testing.NewFakeApp("myapp", "python", 0)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)

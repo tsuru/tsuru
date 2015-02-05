@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	_ "github.com/tsuru/tsuru/queue/queuetest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/service"
@@ -65,7 +66,7 @@ type S struct {
 	adminuser   *auth.User
 	admintoken  auth.Token
 	t           *tsuruTesting.T
-	provisioner *tsuruTesting.FakeProvisioner
+	provisioner *provisiontest.FakeProvisioner
 }
 
 var _ = gocheck.Suite(&S{})
@@ -120,7 +121,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	s.createUserAndTeam(c)
 	s.t = &tsuruTesting.T{}
-	s.provisioner = tsuruTesting.NewFakeProvisioner()
+	s.provisioner = provisiontest.NewFakeProvisioner()
 	app.Provisioner = s.provisioner
 	app.AuthScheme = nativeScheme
 	p := app.Platform{Name: "zend"}

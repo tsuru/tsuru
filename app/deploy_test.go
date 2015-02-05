@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
@@ -598,7 +599,7 @@ func (s *S) TestDeployAppSaveDeployDataOriginAppDeploy(c *gocheck.C) {
 }
 
 func (s *S) TestDeployAppSaveDeployErrorData(c *gocheck.C) {
-	provisioner := testing.NewFakeProvisioner()
+	provisioner := provisiontest.NewFakeProvisioner()
 	provisioner.PrepareFailure("GitDeploy", errors.New("deploy error"))
 	Provisioner = provisioner
 	defer func() {

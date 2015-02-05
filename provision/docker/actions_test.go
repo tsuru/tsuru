@@ -11,8 +11,8 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/action"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
-	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
@@ -22,7 +22,7 @@ func (s *S) TestInsertEmptyContainerInDBName(c *gocheck.C) {
 }
 
 func (s *S) TestInsertEmptyContainerInDBForward(c *gocheck.C) {
-	app := testing.NewFakeApp("myapp", "python", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	args := runContainerActionsArgs{app: app, imageID: "image-id", buildingImage: "next-image"}
 	context := action.FWContext{Params: []interface{}{args}}
 	r, err := insertEmptyContainerInDB.Forward(context)
@@ -89,7 +89,7 @@ func (s *S) TestCreateContainerForward(c *gocheck.C) {
 	images, err := client.ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, gocheck.IsNil)
 	cmds := []string{"ps", "-ef"}
-	app := testing.NewFakeApp("myapp", "python", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	cont := container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
 	args := runContainerActionsArgs{app: app, imageID: images[0].ID, commands: cmds}
 	context := action.FWContext{Previous: cont, Params: []interface{}{args}}
@@ -129,7 +129,7 @@ func (s *S) TestAddNewRouteName(c *gocheck.C) {
 }
 
 func (s *S) TestAddNewRouteForward(c *gocheck.C) {
-	app := testing.NewFakeApp("myapp", "python", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	cont := container{ID: "ble-1", AppName: app.GetName()}
@@ -151,7 +151,7 @@ func (s *S) TestAddNewRouteForward(c *gocheck.C) {
 }
 
 func (s *S) TestAddNewRouteForwardFailInMiddle(c *gocheck.C) {
-	app := testing.NewFakeApp("myapp", "python", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	cont := container{ID: "ble-1", AppName: app.GetName()}
@@ -172,7 +172,7 @@ func (s *S) TestAddNewRouteForwardFailInMiddle(c *gocheck.C) {
 }
 
 func (s *S) TestAddNewRouteBackward(c *gocheck.C) {
-	app := testing.NewFakeApp("myapp", "python", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	cont := container{ID: "ble-1", AppName: app.GetName()}
@@ -199,7 +199,7 @@ func (s *S) TestRemoveOldRoutesName(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveOldRoutesForward(c *gocheck.C) {
-	app := testing.NewFakeApp("myapp", "python", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	cont := container{ID: "ble-1", AppName: app.GetName()}
@@ -226,7 +226,7 @@ func (s *S) TestRemoveOldRoutesForward(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveOldRoutesForwardFailInMiddle(c *gocheck.C) {
-	app := testing.NewFakeApp("myapp", "python", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	cont := container{ID: "ble-1", AppName: app.GetName()}
@@ -252,7 +252,7 @@ func (s *S) TestRemoveOldRoutesForwardFailInMiddle(c *gocheck.C) {
 }
 
 func (s *S) TestRemoveOldRoutesBackward(c *gocheck.C) {
-	app := testing.NewFakeApp("myapp", "python", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	cont := container{ID: "ble-1", AppName: app.GetName()}
@@ -342,7 +342,7 @@ func (s *S) TestProvisionAddUnitsToHostForward(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.stopMultipleServersCluster(cluster)
 	var p dockerProvisioner
-	app := testing.NewFakeApp("myapp-2", "python", 0)
+	app := provisiontest.NewFakeApp("myapp-2", "python", 0)
 	defer p.Destroy(app)
 	p.Provision(app)
 	coll := collection()
@@ -376,7 +376,7 @@ func (s *S) TestProvisionAddUnitsToHostForwardWithoutHost(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	defer s.stopMultipleServersCluster(oldCluster)
 	var p dockerProvisioner
-	app := testing.NewFakeApp("myapp-2", "python", 0)
+	app := provisiontest.NewFakeApp("myapp-2", "python", 0)
 	defer p.Destroy(app)
 	p.Provision(app)
 	coll := collection()
@@ -412,7 +412,7 @@ func (s *S) TestProvisionAddUnitsToHostBackward(c *gocheck.C) {
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
 	var p dockerProvisioner
-	app := testing.NewFakeApp("myapp-xxx-1", "python", 0)
+	app := provisiontest.NewFakeApp("myapp-xxx-1", "python", 0)
 	defer p.Destroy(app)
 	p.Provision(app)
 	coll := collection()
@@ -439,7 +439,7 @@ func (s *S) TestProvisionRemoveOldUnitsForward(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	err = client.StartContainer(cont.ID, nil)
 	c.Assert(err, gocheck.IsNil)
-	app := testing.NewFakeApp(cont.AppName, "python", 0)
+	app := provisiontest.NewFakeApp(cont.AppName, "python", 0)
 	unit := cont.asUnit(app)
 	app.BindUnit(&unit)
 	args := changeUnitsPipelineArgs{
@@ -464,7 +464,7 @@ func (s *S) TestFollowLogsAndCommitForward(c *gocheck.C) {
 	go s.stopContainers(1)
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	app := testing.NewFakeApp("mightyapp", "python", 1)
+	app := provisiontest.NewFakeApp("mightyapp", "python", 1)
 	nextImgName, err := appNewImageName(app.GetName())
 	c.Assert(err, gocheck.IsNil)
 	cont := container{AppName: "mightyapp", ID: "myid123", BuildingImage: nextImgName}
@@ -494,7 +494,7 @@ func (s *S) TestFollowLogsAndCommitForwardNonZeroStatus(c *gocheck.C) {
 	go s.stopContainers(1)
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	app := testing.NewFakeApp("myapp", "python", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	cont := container{AppName: "mightyapp"}
 	err = cont.create(runContainerActionsArgs{app: app, imageID: "tsuru/python", commands: []string{"foo"}})
 	c.Assert(err, gocheck.IsNil)
@@ -514,7 +514,7 @@ func (s *S) TestFollowLogsAndCommitForwardWaitFailure(c *gocheck.C) {
 	defer s.server.ResetFailure("failed to wait for the container")
 	err := newImage("tsuru/python", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	app := testing.NewFakeApp("myapp", "python", 1)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	cont := container{AppName: "mightyapp"}
 	err = cont.create(runContainerActionsArgs{app: app, imageID: "tsuru/python", commands: []string{"foo"}})
 	c.Assert(err, gocheck.IsNil)

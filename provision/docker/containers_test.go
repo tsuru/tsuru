@@ -11,7 +11,7 @@ import (
 
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/testing"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
@@ -22,7 +22,7 @@ func (s *S) TestMoveContainers(c *gocheck.C) {
 	defer s.stopMultipleServersCluster(cluster)
 	err = newImage("tsuru/app-myapp", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	appInstance := testing.NewFakeApp("myapp", "python", 0)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
@@ -72,7 +72,7 @@ func (s *S) TestMoveContainersUnknownDest(c *gocheck.C) {
 	defer s.stopMultipleServersCluster(cluster)
 	err = newImage("tsuru/app-myapp", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	appInstance := testing.NewFakeApp("myapp", "python", 0)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
@@ -118,7 +118,7 @@ func (s *S) TestMoveContainer(c *gocheck.C) {
 	defer s.stopMultipleServersCluster(cluster)
 	err = newImage("tsuru/app-myapp", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	appInstance := testing.NewFakeApp("myapp", "python", 0)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
@@ -160,7 +160,7 @@ func (s *S) TestRebalanceContainers(c *gocheck.C) {
 	defer s.stopMultipleServersCluster(cluster)
 	err = newImage("tsuru/app-myapp", s.server.URL())
 	c.Assert(err, gocheck.IsNil)
-	appInstance := testing.NewFakeApp("myapp", "python", 0)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)

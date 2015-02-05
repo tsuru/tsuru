@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/rec/rectest"
 	"github.com/tsuru/tsuru/testing"
@@ -54,7 +55,7 @@ func (s *AuthSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("smtp:server", s.server.Addr())
 	config.Set("smtp:user", "root")
 	config.Set("smtp:password", "123456")
-	app.Provisioner = testing.NewFakeProvisioner()
+	app.Provisioner = provisiontest.NewFakeProvisioner()
 	app.AuthScheme = nativeScheme
 }
 

@@ -12,7 +12,7 @@ import (
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	tTesting "github.com/tsuru/tsuru/testing"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"launchpad.net/gocheck"
 )
 
@@ -34,7 +34,7 @@ func (s *S) TearDownSuite(c *gocheck.C) {
 }
 
 type CommandableProvisioner struct {
-	tTesting.FakeProvisioner
+	provisiontest.FakeProvisioner
 	cmd *FakeCommand
 }
 

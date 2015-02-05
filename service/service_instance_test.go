@@ -18,8 +18,8 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/rec/rectest"
-	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
@@ -166,7 +166,7 @@ func (s *InstanceSuite) TestBindApp(c *gocheck.C) {
 		},
 	}
 	var si ServiceInstance
-	a := testing.NewFakeApp("myapp", "python", 1)
+	a := provisiontest.NewFakeApp("myapp", "python", 1)
 	var buf bytes.Buffer
 	err := si.BindApp(a, &buf)
 	c.Assert(err, gocheck.IsNil)
@@ -189,7 +189,7 @@ func (s *InstanceSuite) TestUnbindApp(c *gocheck.C) {
 	err := service.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.Services().RemoveId(service.Name)
-	a := testing.NewFakeApp("myapp", "static", 1)
+	a := provisiontest.NewFakeApp("myapp", "static", 1)
 	si := ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",

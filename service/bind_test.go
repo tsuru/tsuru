@@ -19,8 +19,8 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/service"
-	ttesting "github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
@@ -48,7 +48,7 @@ func (s *BindSuite) SetUpSuite(c *gocheck.C) {
 	s.user.Create()
 	s.team = auth.Team{Name: "metallica", Users: []string{s.user.Email}}
 	s.conn.Teams().Insert(s.team)
-	app.Provisioner = ttesting.NewFakeProvisioner()
+	app.Provisioner = provisiontest.NewFakeProvisioner()
 }
 
 func (s *BindSuite) TearDownSuite(c *gocheck.C) {
@@ -108,7 +108,7 @@ func (s *BindSuite) TestBindAppFailsWhenEndpointIsDown(c *gocheck.C) {
 }
 
 func (s *BindSuite) TestBindAddsAppToTheServiceInstance(c *gocheck.C) {
-	fakeProvisioner := app.Provisioner.(*ttesting.FakeProvisioner)
+	fakeProvisioner := app.Provisioner.(*provisiontest.FakeProvisioner)
 	fakeProvisioner.PrepareOutput([]byte("exported"))
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
@@ -131,7 +131,7 @@ func (s *BindSuite) TestBindAddsAppToTheServiceInstance(c *gocheck.C) {
 }
 
 func (s *BindSuite) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedFromTheCall(c *gocheck.C) {
-	fakeProvisioner := app.Provisioner.(*ttesting.FakeProvisioner)
+	fakeProvisioner := app.Provisioner.(*provisiontest.FakeProvisioner)
 	fakeProvisioner.PrepareOutput([]byte("exported"))
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
@@ -190,7 +190,7 @@ func (s *BindSuite) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedF
 }
 
 func (s *BindSuite) TestBindAppMultiUnits(c *gocheck.C) {
-	fakeProvisioner := app.Provisioner.(*ttesting.FakeProvisioner)
+	fakeProvisioner := app.Provisioner.(*provisiontest.FakeProvisioner)
 	fakeProvisioner.PrepareOutput([]byte("exported"))
 	fakeProvisioner.PrepareOutput([]byte("exported"))
 	var calls int32
@@ -415,7 +415,7 @@ func (s *BindSuite) TestUnbindRemovesAppFromServiceInstance(c *gocheck.C) {
 }
 
 func (s *BindSuite) TestUnbindRemovesEnvironmentVariableFromApp(c *gocheck.C) {
-	fakeProvisioner := app.Provisioner.(*ttesting.FakeProvisioner)
+	fakeProvisioner := app.Provisioner.(*provisiontest.FakeProvisioner)
 	fakeProvisioner.PrepareOutput([]byte("exported"))
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)

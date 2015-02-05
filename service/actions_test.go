@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -11,7 +11,7 @@ import (
 
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
-	"github.com/tsuru/tsuru/testing"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
@@ -168,7 +168,7 @@ func (s *S) TestAddAppToServiceInstanceForward(c *gocheck.C) {
 	err := s.conn.ServiceInstances().Insert(&si)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": si.Name})
-	a := testing.NewFakeApp("myapp", "static", 1)
+	a := provisiontest.NewFakeApp("myapp", "static", 1)
 	defer s.conn.Apps().Remove(bson.M{"name": a.GetName()})
 	ctx := action.FWContext{
 		Params: []interface{}{a, si},
@@ -181,7 +181,7 @@ func (s *S) TestAddAppToServiceInstanceForward(c *gocheck.C) {
 }
 
 func (s *S) TestAddAppToServiceInstanceForwardInvalidServiceInstance(c *gocheck.C) {
-	a := testing.NewFakeApp("myapp", "static", 1)
+	a := provisiontest.NewFakeApp("myapp", "static", 1)
 	defer s.conn.Apps().Remove(bson.M{"name": a.GetName()})
 	ctx := action.FWContext{
 		Params: []interface{}{a, "wrong parameter"},
@@ -209,7 +209,7 @@ func (s *S) TestAddAppToServiceInstanceForwardTwice(c *gocheck.C) {
 	err := s.conn.ServiceInstances().Insert(&si)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": si.Name})
-	a := testing.NewFakeApp("myapp", "static", 1)
+	a := provisiontest.NewFakeApp("myapp", "static", 1)
 	defer s.conn.Apps().Remove(bson.M{"name": a.GetName()})
 	ctx := action.FWContext{
 		Params: []interface{}{a, si},
@@ -226,7 +226,7 @@ func (s *S) TestAddAppToServiceInstanceBackwardRemovesAppFromServiceInstance(c *
 	err := s.conn.ServiceInstances().Insert(&si)
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": si.Name})
-	a := testing.NewFakeApp("myapp", "static", 1)
+	a := provisiontest.NewFakeApp("myapp", "static", 1)
 	defer s.conn.Apps().Remove(bson.M{"name": a.GetName()})
 	err = si.AddApp(a.GetName())
 	c.Assert(err, gocheck.IsNil)
@@ -259,7 +259,7 @@ func (s *S) TestSetBindAppActionForwardReturnsEnvVars(c *gocheck.C) {
 	err = si.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().RemoveId(si.Name)
-	a := testing.NewFakeApp("myapp", "static", 1)
+	a := provisiontest.NewFakeApp("myapp", "static", 1)
 	ctx := action.FWContext{
 		Params: []interface{}{a, si},
 	}
@@ -290,7 +290,7 @@ func (s *S) TestSetBindAppActionBackward(c *gocheck.C) {
 	err = si.Create()
 	c.Assert(err, gocheck.IsNil)
 	defer s.conn.ServiceInstances().RemoveId(si.Name)
-	a := testing.NewFakeApp("myapp", "static", 1)
+	a := provisiontest.NewFakeApp("myapp", "static", 1)
 	bwCtx := action.BWContext{
 		Params:   []interface{}{a, si},
 		FWResult: nil,
@@ -305,7 +305,7 @@ func (s *S) TestSetTsuruServicesName(c *gocheck.C) {
 
 func (s *S) TestSetTsuruServicesForward(c *gocheck.C) {
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
-	a := testing.NewFakeApp("myapp", "static", 1)
+	a := provisiontest.NewFakeApp("myapp", "static", 1)
 	ctx := action.FWContext{
 		Params:   []interface{}{a, si},
 		Previous: map[string]string{"DATABASE_NAME": "mydb", "DATABASE_USER": "root"},
@@ -329,7 +329,7 @@ func (s *S) TestSetTsuruServicesForwardWrongFirstParameter(c *gocheck.C) {
 }
 
 func (s *S) TestSetTsuruServicesForwardWrongSecondParameter(c *gocheck.C) {
-	a := testing.NewFakeApp("myapp", "python", 1)
+	a := provisiontest.NewFakeApp("myapp", "python", 1)
 	ctx := action.FWContext{Params: []interface{}{a, "something"}}
 	_, err := setTsuruServices.Forward(ctx)
 	c.Assert(err.Error(), gocheck.Equals, "Second parameter must be a ServiceInstance.")
@@ -341,7 +341,7 @@ func (s *S) TestSetTsuruServicesBackward(c *gocheck.C) {
 		Envs: map[string]string{"DATABASE_NAME": "mydb", "DATABASE_USER": "root"},
 	}
 	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql"}
-	a := testing.NewFakeApp("myapp", "static", 1)
+	a := provisiontest.NewFakeApp("myapp", "static", 1)
 	err := a.AddInstance("mysql", instance, nil)
 	c.Assert(err, gocheck.IsNil)
 	ctx := action.BWContext{

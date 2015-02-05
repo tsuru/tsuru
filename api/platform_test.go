@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/testing"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"launchpad.net/gocheck"
 )
 
@@ -20,8 +20,8 @@ type PlatformSuite struct{}
 var _ = gocheck.Suite(&PlatformSuite{})
 
 func (p *PlatformSuite) TestPlatformAdd(c *gocheck.C) {
-	provisioner := testing.ExtensibleFakeProvisioner{
-		FakeProvisioner: testing.NewFakeProvisioner(),
+	provisioner := provisiontest.ExtensibleFakeProvisioner{
+		FakeProvisioner: provisiontest.NewFakeProvisioner(),
 	}
 	oldProvisioner := app.Provisioner
 	app.Provisioner = &provisioner
@@ -39,8 +39,8 @@ func (p *PlatformSuite) TestPlatformAdd(c *gocheck.C) {
 }
 
 func (p *PlatformSuite) TestPlatformUpdate(c *gocheck.C) {
-	provisioner := testing.ExtensibleFakeProvisioner{
-		FakeProvisioner: testing.NewFakeProvisioner(),
+	provisioner := provisiontest.ExtensibleFakeProvisioner{
+		FakeProvisioner: provisiontest.NewFakeProvisioner(),
 	}
 	oldProvisioner := app.Provisioner
 	app.Provisioner = &provisioner
@@ -60,8 +60,8 @@ func (p *PlatformSuite) TestPlatformUpdate(c *gocheck.C) {
 }
 
 func (p *PlatformSuite) TestPlatformRemove(c *gocheck.C) {
-	provisioner := testing.ExtensibleFakeProvisioner{
-		FakeProvisioner: testing.NewFakeProvisioner(),
+	provisioner := provisiontest.ExtensibleFakeProvisioner{
+		FakeProvisioner: provisiontest.NewFakeProvisioner(),
 	}
 	oldProvisioner := app.Provisioner
 	app.Provisioner = &provisioner

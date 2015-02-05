@@ -10,13 +10,13 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	"github.com/tsuru/tsuru/testing"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
 
 type PlatformSuite struct {
-	provisioner *testing.FakeProvisioner
+	provisioner *provisiontest.FakeProvisioner
 }
 
 var _ = gocheck.Suite(&PlatformSuite{})
@@ -24,7 +24,7 @@ var _ = gocheck.Suite(&PlatformSuite{})
 func (s *PlatformSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "platform_tests")
-	s.provisioner = testing.NewFakeProvisioner()
+	s.provisioner = provisiontest.NewFakeProvisioner()
 	Provisioner = s.provisioner
 }
 
@@ -78,8 +78,8 @@ func (s *PlatformSuite) TestGetPlatform(c *gocheck.C) {
 }
 
 func (s *PlatformSuite) TestPlatformAdd(c *gocheck.C) {
-	provisioner := testing.ExtensibleFakeProvisioner{
-		FakeProvisioner: testing.NewFakeProvisioner(),
+	provisioner := provisiontest.ExtensibleFakeProvisioner{
+		FakeProvisioner: provisiontest.NewFakeProvisioner(),
 	}
 	Provisioner = &provisioner
 	defer func() {
@@ -101,8 +101,8 @@ func (s *PlatformSuite) TestPlatformAdd(c *gocheck.C) {
 }
 
 func (s *PlatformSuite) TestPlatformAddDuplicate(c *gocheck.C) {
-	provisioner := testing.ExtensibleFakeProvisioner{
-		FakeProvisioner: testing.NewFakeProvisioner(),
+	provisioner := provisiontest.ExtensibleFakeProvisioner{
+		FakeProvisioner: provisiontest.NewFakeProvisioner(),
 	}
 	Provisioner = &provisioner
 	defer func() {
@@ -124,8 +124,8 @@ func (s *PlatformSuite) TestPlatformAddDuplicate(c *gocheck.C) {
 }
 
 func (s *PlatformSuite) TestPlatformAddWithProvisionerError(c *gocheck.C) {
-	provisioner := testing.ExtensibleFakeProvisioner{
-		FakeProvisioner: testing.NewFakeProvisioner(),
+	provisioner := provisiontest.ExtensibleFakeProvisioner{
+		FakeProvisioner: provisiontest.NewFakeProvisioner(),
 	}
 	provisioner.PrepareFailure("PlatformAdd", errors.New("build error"))
 	Provisioner = &provisioner
@@ -153,8 +153,8 @@ func (s *PlatformSuite) TestPlatformAddNotExtensibleProvisioner(c *gocheck.C) {
 }
 
 func (s *PlatformSuite) TestPlatformAddWithoutName(c *gocheck.C) {
-	provisioner := testing.ExtensibleFakeProvisioner{
-		FakeProvisioner: testing.NewFakeProvisioner(),
+	provisioner := provisiontest.ExtensibleFakeProvisioner{
+		FakeProvisioner: provisiontest.NewFakeProvisioner(),
 	}
 	Provisioner = &provisioner
 	defer func() {
@@ -166,8 +166,8 @@ func (s *PlatformSuite) TestPlatformAddWithoutName(c *gocheck.C) {
 }
 
 func (s *PlatformSuite) TestPlatformUpdate(c *gocheck.C) {
-	provisioner := testing.ExtensibleFakeProvisioner{
-		FakeProvisioner: testing.NewFakeProvisioner(),
+	provisioner := provisiontest.ExtensibleFakeProvisioner{
+		FakeProvisioner: provisiontest.NewFakeProvisioner(),
 	}
 	Provisioner = &provisioner
 	defer func() {
@@ -190,8 +190,8 @@ func (s *PlatformSuite) TestPlatformUpdate(c *gocheck.C) {
 }
 
 func (s *PlatformSuite) TestPlatformUpdateWithoutName(c *gocheck.C) {
-	provisioner := testing.ExtensibleFakeProvisioner{
-		FakeProvisioner: testing.NewFakeProvisioner(),
+	provisioner := provisiontest.ExtensibleFakeProvisioner{
+		FakeProvisioner: provisiontest.NewFakeProvisioner(),
 	}
 	Provisioner = &provisioner
 	defer func() {
@@ -203,8 +203,8 @@ func (s *PlatformSuite) TestPlatformUpdateWithoutName(c *gocheck.C) {
 }
 
 func (s *PlatformSuite) TestPlatformUpdateShouldSetUpdatePlatformFlagOnApps(c *gocheck.C) {
-	provisioner := testing.ExtensibleFakeProvisioner{
-		FakeProvisioner: testing.NewFakeProvisioner(),
+	provisioner := provisiontest.ExtensibleFakeProvisioner{
+		FakeProvisioner: provisiontest.NewFakeProvisioner(),
 	}
 	Provisioner = &provisioner
 	defer func() {
@@ -235,8 +235,8 @@ func (s *PlatformSuite) TestPlatformUpdateShouldSetUpdatePlatformFlagOnApps(c *g
 }
 
 func (s *PlatformSuite) TestPlatformRemove(c *gocheck.C) {
-	provisioner := testing.ExtensibleFakeProvisioner{
-		FakeProvisioner: testing.NewFakeProvisioner(),
+	provisioner := provisiontest.ExtensibleFakeProvisioner{
+		FakeProvisioner: provisiontest.NewFakeProvisioner(),
 	}
 	Provisioner = &provisioner
 	defer func() {
@@ -264,8 +264,8 @@ func (s *PlatformSuite) TestPlatformRemove(c *gocheck.C) {
 }
 
 func (s *PlatformSuite) TestPlatformWithAppsCantBeRemoved(c *gocheck.C) {
-	provisioner := testing.ExtensibleFakeProvisioner{
-		FakeProvisioner: testing.NewFakeProvisioner(),
+	provisioner := provisiontest.ExtensibleFakeProvisioner{
+		FakeProvisioner: provisiontest.NewFakeProvisioner(),
 	}
 	Provisioner = &provisioner
 	defer func() {
@@ -293,8 +293,8 @@ func (s *PlatformSuite) TestPlatformWithAppsCantBeRemoved(c *gocheck.C) {
 }
 
 func (s *PlatformSuite) TestPlatformRemoveAlwaysRemoveFromDB(c *gocheck.C) {
-	provisioner := testing.ExtensibleFakeProvisioner{
-		FakeProvisioner: testing.NewFakeProvisioner(),
+	provisioner := provisiontest.ExtensibleFakeProvisioner{
+		FakeProvisioner: provisiontest.NewFakeProvisioner(),
 	}
 	Provisioner = &provisioner
 	defer func() {

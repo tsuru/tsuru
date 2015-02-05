@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	_ "github.com/tsuru/tsuru/queue/queuetest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/service"
@@ -36,7 +37,7 @@ type S struct {
 	adminTeam   auth.Team
 	admin       *auth.User
 	t           *ttesting.T
-	provisioner *ttesting.FakeProvisioner
+	provisioner *provisiontest.FakeProvisioner
 	defaultPlan Plan
 }
 
@@ -91,7 +92,7 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	s.t = &ttesting.T{}
 	s.createUserAndTeam(c)
 	s.t.SetGitConfs(c)
-	s.provisioner = ttesting.NewFakeProvisioner()
+	s.provisioner = provisiontest.NewFakeProvisioner()
 	Provisioner = s.provisioner
 	AuthScheme = nativeScheme
 	platform := Platform{Name: "python"}

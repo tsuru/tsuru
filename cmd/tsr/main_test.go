@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -10,7 +10,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/testing"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"launchpad.net/gocheck"
 )
 
@@ -51,7 +51,7 @@ func (s *S) TestTokenCmdIsRegistered(c *gocheck.C) {
 }
 
 func (s *S) TestShouldRegisterAllCommandsFromProvisioners(c *gocheck.C) {
-	fp := testing.NewFakeProvisioner()
+	fp := provisiontest.NewFakeProvisioner()
 	p := CommandableProvisioner{FakeProvisioner: *fp}
 	provision.Register("comm", &p)
 	manager := buildManager()

@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -16,7 +16,7 @@ import (
 	"sync/atomic"
 
 	"github.com/tsuru/tsuru/errors"
-	"github.com/tsuru/tsuru/testing"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"launchpad.net/gocheck"
 )
 
@@ -204,7 +204,7 @@ func (s *S) TestBindAppShouldSendAPOSTToTheResourceURL(c *gocheck.C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := testing.NewFakeApp("her-app", "python", 1)
+	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	_, err := client.BindApp(&instance, a)
 	h.Lock()
@@ -237,7 +237,7 @@ func (s *S) TestBindAppBackwardCompatible(c *gocheck.C) {
 		"MYSQL_PORT":          "3306",
 	}
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := testing.NewFakeApp("her-app", "python", 1)
+	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	env, err := client.BindApp(&instance, a)
 	c.Assert(err, gocheck.IsNil)
@@ -255,7 +255,7 @@ func (s *S) TestBindAppShouldReturnMapWithTheEnvironmentVariable(c *gocheck.C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := testing.NewFakeApp("her-app", "python", 1)
+	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	env, err := client.BindApp(&instance, a)
 	c.Assert(err, gocheck.IsNil)
@@ -266,7 +266,7 @@ func (s *S) TestBindAppShouldReturnErrorIfTheRequestFail(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := testing.NewFakeApp("her-app", "python", 1)
+	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	_, err := client.BindApp(&instance, a)
 	c.Assert(err, gocheck.NotNil)
@@ -280,7 +280,7 @@ func (s *S) TestBindAppShouldReturnPreconditionFailedIfServiceAPIReturnPrecondit
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := testing.NewFakeApp("her-app", "python", 1)
+	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	_, err := client.BindApp(&instance, a)
 	c.Assert(err, gocheck.NotNil)
@@ -294,7 +294,7 @@ func (s *S) TestBindUnit(c *gocheck.C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := testing.NewFakeApp("her-app", "python", 1)
+	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.BindUnit(&instance, a, a.GetUnits()[0])
 	c.Assert(err, gocheck.IsNil)
@@ -313,7 +313,7 @@ func (s *S) TestBindUnitRequestFailure(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := testing.NewFakeApp("her-app", "python", 1)
+	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.BindUnit(&instance, a, a.GetUnits()[0])
 	c.Assert(err, gocheck.NotNil)
@@ -328,7 +328,7 @@ func (s *S) TestBindUnitPreconditionFailed(c *gocheck.C) {
 	ts := httptest.NewServer(handler)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
-	a := testing.NewFakeApp("her-app", "python", 1)
+	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.BindUnit(&instance, a, a.GetUnits()[0])
 	c.Assert(err, gocheck.NotNil)
@@ -342,7 +342,7 @@ func (s *S) TestUnbindApp(c *gocheck.C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
-	a := testing.NewFakeApp("arch-enemy", "python", 1)
+	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.UnbindApp(&instance, a)
 	h.Lock()
@@ -361,7 +361,7 @@ func (s *S) TestUnbindAppRequestFailure(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
-	a := testing.NewFakeApp("arch-enemy", "python", 1)
+	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.UnbindApp(&instance, a)
 	c.Assert(err, gocheck.NotNil)
@@ -374,7 +374,7 @@ func (s *S) TestUnbindUnit(c *gocheck.C) {
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
-	a := testing.NewFakeApp("arch-enemy", "python", 1)
+	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.UnbindUnit(&instance, a, a.GetUnits()[0])
 	h.Lock()
@@ -393,7 +393,7 @@ func (s *S) TestUnbindUnitRequestFailure(c *gocheck.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
-	a := testing.NewFakeApp("arch-enemy", "python", 1)
+	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.UnbindUnit(&instance, a, a.GetUnits()[0])
 	c.Assert(err, gocheck.NotNil)

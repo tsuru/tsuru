@@ -14,13 +14,13 @@ import (
 	"sync"
 	"time"
 
-	dtesting "github.com/fsouza/go-dockerclient/testing"
+	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/iaas"
-	"github.com/tsuru/tsuru/testing"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gocheck"
 )
@@ -80,9 +80,9 @@ func (s *S) TestHealerHealNode(c *gocheck.C) {
 	_, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
 	c.Assert(err, gocheck.IsNil)
 	iaasInstance.addr = "localhost"
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, gocheck.IsNil)
-	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	node2, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, gocheck.IsNil)
 	config.Set("iaas:node-protocol", "http")
 	config.Set("iaas:node-port", urlPort(node2.URL()))
@@ -94,7 +94,7 @@ func (s *S) TestHealerHealNode(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	dCluster = cluster
 
-	appInstance := testing.NewFakeApp("myapp", "python", 0)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
@@ -174,7 +174,7 @@ func (s *S) TestHealerHealNode(c *gocheck.C) {
 }
 
 func (s *S) TestHealerHealNodeWithoutIaaS(c *gocheck.C) {
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, gocheck.IsNil)
 	cluster, err := cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: node1.URL()},
@@ -212,7 +212,7 @@ func (s *S) TestHealerHealNodeCreateMachineError(c *gocheck.C) {
 	_, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
 	c.Assert(err, gocheck.IsNil)
 	iaasInstance.err = fmt.Errorf("my create machine error")
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, gocheck.IsNil)
 	cluster, err := cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: node1.URL()},
@@ -259,9 +259,9 @@ func (s *S) TestHealerHealNodeWaitAndRegisterError(c *gocheck.C) {
 	_, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
 	c.Assert(err, gocheck.IsNil)
 	iaasInstance.addr = "localhost"
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, gocheck.IsNil)
-	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	node2, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, gocheck.IsNil)
 	node2.PrepareFailure("ping-failure", "/_ping")
 	config.Set("iaas:node-protocol", "http")
@@ -322,9 +322,9 @@ func (s *S) TestHealerHealNodeDestroyError(c *gocheck.C) {
 	_, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
 	c.Assert(err, gocheck.IsNil)
 	iaasInstance.addr = "localhost"
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, gocheck.IsNil)
-	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	node2, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, gocheck.IsNil)
 	config.Set("iaas:node-protocol", "http")
 	config.Set("iaas:node-port", urlPort(node2.URL()))
@@ -336,7 +336,7 @@ func (s *S) TestHealerHealNodeDestroyError(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	dCluster = cluster
 
-	appInstance := testing.NewFakeApp("myapp", "python", 0)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
@@ -426,9 +426,9 @@ func (s *S) TestHealContainer(c *gocheck.C) {
 		defer cmutex.Unlock()
 		dCluster = oldCluster
 	}()
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, gocheck.IsNil)
-	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	node2, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, gocheck.IsNil)
 	cluster, err := cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: node1.URL()},
@@ -437,7 +437,7 @@ func (s *S) TestHealContainer(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	dCluster = cluster
 
-	appInstance := testing.NewFakeApp("myapp", "python", 0)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
@@ -490,9 +490,9 @@ func (s *S) TestRunContainerHealer(c *gocheck.C) {
 		defer cmutex.Unlock()
 		dCluster = oldCluster
 	}()
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, gocheck.IsNil)
-	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	node2, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, gocheck.IsNil)
 	cluster, err := cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: node1.URL()},
@@ -501,7 +501,7 @@ func (s *S) TestRunContainerHealer(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	dCluster = cluster
 
-	appInstance := testing.NewFakeApp("myapp", "python", 0)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
@@ -572,9 +572,9 @@ func (s *S) TestRunContainerHealerConcurrency(c *gocheck.C) {
 		defer cmutex.Unlock()
 		dCluster = oldCluster
 	}()
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, gocheck.IsNil)
-	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	node2, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, gocheck.IsNil)
 	cluster, err := cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: node1.URL()},
@@ -583,7 +583,7 @@ func (s *S) TestRunContainerHealerConcurrency(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	dCluster = cluster
 
-	appInstance := testing.NewFakeApp("myapp", "python", 0)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
@@ -659,9 +659,9 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *gocheck.C) {
 		defer cmutex.Unlock()
 		dCluster = oldCluster
 	}()
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, gocheck.IsNil)
-	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	node2, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, gocheck.IsNil)
 	cluster, err := cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: node1.URL()},
@@ -670,7 +670,7 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	dCluster = cluster
 
-	appInstance := testing.NewFakeApp("myapp", "python", 0)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
@@ -737,9 +737,9 @@ func (s *S) TestRunContainerHealerDoesntHealWithProcfileInTop(c *gocheck.C) {
 		defer cmutex.Unlock()
 		dCluster = oldCluster
 	}()
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, gocheck.IsNil)
-	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	node2, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, gocheck.IsNil)
 	cluster, err := cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: node1.URL()},
@@ -748,7 +748,7 @@ func (s *S) TestRunContainerHealerDoesntHealWithProcfileInTop(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	dCluster = cluster
 
-	appInstance := testing.NewFakeApp("myapp", "python", 0)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
@@ -791,9 +791,9 @@ func (s *S) TestRunContainerHealerWithError(c *gocheck.C) {
 		defer cmutex.Unlock()
 		dCluster = oldCluster
 	}()
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, gocheck.IsNil)
-	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	node2, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, gocheck.IsNil)
 	cluster, err := cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: node1.URL()},
@@ -802,7 +802,7 @@ func (s *S) TestRunContainerHealerWithError(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	dCluster = cluster
 
-	appInstance := testing.NewFakeApp("myapp", "python", 0)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
@@ -908,9 +908,9 @@ func (s *S) TestHealerHandleError(c *gocheck.C) {
 	_, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
 	c.Assert(err, gocheck.IsNil)
 	iaasInstance.addr = "localhost"
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, gocheck.IsNil)
-	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	node2, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, gocheck.IsNil)
 	config.Set("iaas:node-protocol", "http")
 	config.Set("iaas:node-port", urlPort(node2.URL()))
@@ -922,7 +922,7 @@ func (s *S) TestHealerHandleError(c *gocheck.C) {
 	c.Assert(err, gocheck.IsNil)
 	dCluster = cluster
 
-	appInstance := testing.NewFakeApp("myapp", "python", 0)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)

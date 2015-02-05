@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/testing"
 	"gopkg.in/mgo.v2/bson"
@@ -39,7 +40,7 @@ type DeploySuite struct {
 	conn        *db.Storage
 	token       auth.Token
 	team        *auth.Team
-	provisioner *testing.FakeProvisioner
+	provisioner *provisiontest.FakeProvisioner
 }
 
 var _ = gocheck.Suite(&DeploySuite{})
@@ -66,7 +67,7 @@ func (s *DeploySuite) SetUpSuite(c *gocheck.C) {
 	s.conn, err = db.Conn()
 	c.Assert(err, gocheck.IsNil)
 	s.createUserAndTeam(c)
-	s.provisioner = testing.NewFakeProvisioner()
+	s.provisioner = provisiontest.NewFakeProvisioner()
 	app.Provisioner = s.provisioner
 }
 
