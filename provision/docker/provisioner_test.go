@@ -1491,9 +1491,8 @@ func (s *S) TestShellToAnAppByContainerID(c *gocheck.C) {
 	cont, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(cont)
-	buf := safe.NewBuffer([]byte("echo teste"))
+	buf := safe.NewBuffer([]byte("echo test"))
 	conn := &testing.FakeConn{buf}
-	c.Assert(err, gocheck.IsNil)
 	err = p.Shell(app, conn, 10, 10, cont.ID)
 	c.Assert(err, gocheck.IsNil)
 }
@@ -1506,9 +1505,8 @@ func (s *S) TestShellToAnAppByAppName(c *gocheck.C) {
 	cont, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, gocheck.IsNil)
 	defer s.removeTestContainer(cont)
-	buf := safe.NewBuffer([]byte("echo teste"))
+	buf := safe.NewBuffer([]byte("echo test"))
 	conn := &testing.FakeConn{buf}
-	c.Assert(err, gocheck.IsNil)
 	err = p.Shell(app, conn, 10, 10, "")
 	c.Assert(err, gocheck.IsNil)
 }
