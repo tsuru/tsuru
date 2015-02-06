@@ -326,7 +326,7 @@ Usage: glb command [args]
 
 Available commands:
   help                 
-  login                Log in with your credentials
+  login                Initiates a new tsuru session for a user
   version              Display the current version
 
 Use glb help <commandname> to get more information about a command.

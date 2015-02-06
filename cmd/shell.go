@@ -29,9 +29,17 @@ type ShellToContainerCmd struct {
 
 func (c *ShellToContainerCmd) Info() *Info {
 	return &Info{
-		Name:    "app-shell",
-		Usage:   "app-shell [container-id] -a/--app <appname>",
-		Desc:    "Open a remote shell to the given container, or to one of the containers of the given app.",
+		Name:  "app-shell",
+		Usage: "app-shell [container-id] -a/--app <appname>",
+		Desc: `Opens a remote shell inside container, using the API server as a proxy. You
+can access an app container just giving app name.
+
+Also, you can access a specific container from this app. In this case, you
+have to specify part of the container's ID. You can list current container's
+IDs using [[tsuru app-info]].
+
+
+Open a remote shell to the given container, or to one of the containers of the given app.`,
 		MinArgs: 0,
 	}
 }
