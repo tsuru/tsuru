@@ -246,7 +246,7 @@ func (s *AuthSuite) TestCreateUserHandlerReturnsBadRequestIfEmailIsNotValid(c *g
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
-	c.Assert(e.Message, gocheck.Equals, "Invalid email.")
+	c.Assert(e.Message, gocheck.Equals, "invalid email")
 }
 
 func (s *AuthSuite) TestCreateUserHandlerReturnsBadRequestIfPasswordHasLessThan6CharactersOrMoreThan50Characters(c *gocheck.C) {
@@ -1787,7 +1787,7 @@ func (s *AuthSuite) TestResetPasswordInvalidEmail(c *gocheck.C) {
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
-	c.Assert(e.Message, gocheck.Equals, "Invalid email.")
+	c.Assert(e.Message, gocheck.Equals, "invalid email")
 }
 
 func (s *AuthSuite) TestResetPasswordStep2(c *gocheck.C) {
