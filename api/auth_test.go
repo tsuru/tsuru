@@ -229,7 +229,7 @@ func (s *AuthSuite) TestCreateUserHandlerReturnErrorAndConflictIfItFailsToCreate
 	recorder := httptest.NewRecorder()
 	err = createUser(recorder, request)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.ErrorMatches, "This email is already registered.")
+	c.Assert(err, gocheck.ErrorMatches, "this email is already registered")
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusConflict)
@@ -262,7 +262,7 @@ func (s *AuthSuite) TestCreateUserHandlerReturnsBadRequestIfPasswordHasLessThan6
 		e, ok := err.(*errors.HTTP)
 		c.Assert(ok, gocheck.Equals, true)
 		c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
-		c.Assert(e.Message, gocheck.Equals, "Password length should be least 6 characters and at most 50 characters.")
+		c.Assert(e.Message, gocheck.Equals, "password length should be least 6 characters and at most 50 characters")
 	}
 }
 
@@ -449,7 +449,7 @@ func (s *AuthSuite) TestLoginShouldReturnErrorAndBadRequestIfTheJSONDoesNotConta
 	recorder := httptest.NewRecorder()
 	err = login(recorder, request)
 	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.ErrorMatches, "^You must provide a password to login$")
+	c.Assert(err, gocheck.ErrorMatches, "^you must provide a password to login$")
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Assert(e.Code, gocheck.Equals, http.StatusBadRequest)
@@ -1692,7 +1692,7 @@ func (s *AuthSuite) TestChangePasswordReturns412IfNewPasswordIsInvalid(c *gochec
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Check(e.Code, gocheck.Equals, http.StatusBadRequest)
-	c.Check(e.Message, gocheck.Equals, "Password length should be least 6 characters and at most 50 characters.")
+	c.Check(e.Message, gocheck.Equals, "password length should be least 6 characters and at most 50 characters")
 }
 
 func (s *AuthSuite) TestChangePasswordReturns404IfOldPasswordDidntMatch(c *gocheck.C) {
@@ -1705,7 +1705,7 @@ func (s *AuthSuite) TestChangePasswordReturns404IfOldPasswordDidntMatch(c *goche
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, gocheck.Equals, true)
 	c.Check(e.Code, gocheck.Equals, http.StatusForbidden)
-	c.Check(e.Message, gocheck.Equals, "The given password didn't match the user's current password.")
+	c.Check(e.Message, gocheck.Equals, "the given password didn't match the user's current password")
 }
 
 func (s *AuthSuite) TestChangePasswordReturns400IfRequestBodyIsInvalidJSON(c *gocheck.C) {

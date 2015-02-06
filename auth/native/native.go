@@ -12,12 +12,12 @@ import (
 )
 
 var (
-	ErrMissingPasswordError = &errors.ValidationError{Message: "You must provide a password to login"}
-	ErrMissingEmailError    = &errors.ValidationError{Message: "You must provide a email to login"}
-	ErrInvalidEmail         = &errors.ValidationError{Message: "Invalid email."}
-	ErrInvalidPassword      = &errors.ValidationError{Message: "Password length should be least 6 characters and at most 50 characters."}
-	ErrEmailRegistered      = &errors.ConflictError{Message: "This email is already registered."}
-	ErrPasswordMismatch     = &errors.NotAuthorizedError{Message: "The given password didn't match the user's current password."}
+	ErrMissingPasswordError = &errors.ValidationError{Message: "you must provide a password to login"}
+	ErrMissingEmailError    = &errors.ValidationError{Message: "you must provide a email to login"}
+	ErrInvalidEmail         = &errors.ValidationError{Message: "invalid email"}
+	ErrInvalidPassword      = &errors.ValidationError{Message: "password length should be least 6 characters and at most 50 characters"}
+	ErrEmailRegistered      = &errors.ConflictError{Message: "this email is already registered"}
+	ErrPasswordMismatch     = &errors.NotAuthorizedError{Message: "the given password didn't match the user's current password"}
 )
 
 type NativeScheme struct{}
