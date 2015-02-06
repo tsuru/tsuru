@@ -37,7 +37,6 @@ var AuthScheme auth.Scheme
 var (
 	nameRegexp      = regexp.MustCompile(`^[a-z][a-z0-9-]{0,62}$`)
 	cnameRegexp     = regexp.MustCompile(`^(\*\.)?[a-zA-Z0-9][\w-.]+$`)
-	ErrAppNotEqual  = stderr.New("Apps are not equal.")
 	ErrUnitNotFound = stderr.New("unit not found")
 )
 
