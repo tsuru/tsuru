@@ -68,7 +68,7 @@ func ListUsers() ([]User, error) {
 
 func GetUserByEmail(email string) (*User, error) {
 	if !validation.ValidateEmail(email) {
-		return nil, &errors.ValidationError{Message: "Invalid email."}
+		return nil, &errors.ValidationError{Message: "invalid email"}
 	}
 	var u User
 	conn, err := db.Conn()

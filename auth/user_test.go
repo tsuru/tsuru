@@ -61,7 +61,7 @@ func (s *S) TestGetUserByEmailWithInvalidEmail(c *gocheck.C) {
 	c.Assert(err, gocheck.NotNil)
 	e, ok := err.(*errors.ValidationError)
 	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Message, gocheck.Equals, "Invalid email.")
+	c.Assert(e.Message, gocheck.Equals, "invalid email")
 }
 
 func (s *S) TestUpdateUser(c *gocheck.C) {
