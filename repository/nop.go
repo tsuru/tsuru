@@ -34,6 +34,10 @@ func (nopManager) RemoveKey(username string, key Key) error {
 	return nil
 }
 
+func (nopManager) ListKeys(username string) ([]Key, error) {
+	return nil, nil
+}
+
 func (nopManager) ReadOnlyURL(repository string) (string, error) {
 	return "", nil
 }

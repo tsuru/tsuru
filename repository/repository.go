@@ -59,6 +59,7 @@ type RepositoryManager interface {
 
 	AddKey(username string, key Key) error
 	RemoveKey(username string, key Key) error
+	ListKeys(username string) ([]Key, error)
 
 	ReadOnlyURL(repository string) (string, error)
 	ReadWriteURL(repository string) (string, error)
