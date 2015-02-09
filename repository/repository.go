@@ -15,6 +15,8 @@ import (
 	"github.com/tsuru/tsuru/log"
 )
 
+const defaultManager = "gandalf"
+
 func init() {
 	hc.AddChecker("Gandalf", healthCheck)
 }
@@ -37,6 +39,52 @@ func healthCheck() error {
 }
 
 var ErrGandalfDisabled = errors.New("git server is disabled")
+
+var managers map[string]RepositoryManager
+
+// Key represents a public key, that is added to a repository to allow access
+// to it.
+type Key struct {
+	Name string
+	Body string
+}
+
+// RepositoryManager represents a manager of application repositories.
+type RepositoryManager interface {
+	CreateUser(username string) error
+	RemoveUser(username string) error
+
+	GrantAccess(repository, user string) error
+	RevokeAccess(repository, user string) error
+
+	AddKey(username string, key Key) error
+	RemoveKey(username string, key Key) error
+
+	ReadOnlyURL(repository string) (string, error)
+	ReadWriteURL(repository string) (string, error)
+}
+
+// Manager returns the current configured manager, as defined in the
+// configuration file.
+func Manager() RepositoryManager {
+	managerName, err := config.GetString("repo-manager")
+	if err != nil {
+		managerName = defaultManager
+	}
+	if _, ok := managers[managerName]; !ok {
+		managerName = "nop"
+	}
+	return managers[managerName]
+}
+
+// Register registers a new repository manager, that can be later configured
+// and used.
+func Register(name string, manager RepositoryManager) {
+	if managers == nil {
+		managers = make(map[string]RepositoryManager)
+	}
+	managers[name] = manager
+}
 
 // ServerURL returns the URL to Gandalf API.
 func ServerURL() (string, error) {
