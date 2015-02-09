@@ -140,6 +140,28 @@ func (s *AuthSuite) TestCreateUserHandlerSavesTheUserInTheDatabase(c *check.C) {
 	c.Assert(user.Quota, check.DeepEquals, quota.Unlimited)
 }
 
+func (s *AuthSuite) TestCreateUserWithoutGandalf(c *check.C) {
+	if old, err := config.Get("git:api-server"); err == nil {
+		defer config.Set("git:api-server", old)
+	}
+	config.Unset("git:api-server")
+	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
+	request, err := http.NewRequest("POST", "/users", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = createUser(recorder, request)
+	c.Assert(err, check.IsNil)
+	user, err := auth.GetUserByEmail("nobody@globo.com")
+	c.Assert(err, check.IsNil)
+	action := rectest.Action{
+		Action: "create-user",
+		User:   "nobody@globo.com",
+	}
+	c.Assert(action, rectest.IsRecorded)
+	c.Assert(user.Quota, check.DeepEquals, quota.Unlimited)
+}
+
 func (s *AuthSuite) TestCreateUserQuota(c *check.C) {
 	config.Set("quota:apps-per-user", 1)
 	defer config.Unset("quota:apps-per-user")

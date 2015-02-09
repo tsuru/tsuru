@@ -75,7 +75,7 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 		return handleAuthError(err)
 	}
 	err = u.CreateOnGandalf()
-	if err != nil {
+	if err != nil && err != repository.ErrGandalfDisabled {
 		rollbackErr := app.AuthScheme.Remove(&u)
 		if rollbackErr != nil {
 			log.Errorf("error trying to rollback user creation: %s", rollbackErr.Error())
