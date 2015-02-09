@@ -41,8 +41,8 @@ func (s *S) TestListContainersByApp(c *check.C) {
 	result, err := listContainersByApp("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(len(result), check.Equals, 2)
-	check := (result[0].ID == "Hey" && result[1].ID == "Ho") || (result[0].ID == "Ho" && result[1].ID == "Hey")
-	c.Assert(check, check.Equals, true)
+	cond := (result[0].ID == "Hey" && result[1].ID == "Ho") || (result[0].ID == "Ho" && result[1].ID == "Hey")
+	c.Assert(cond, check.Equals, true)
 }
 
 func (s *S) TestListContainersByHost(c *check.C) {
@@ -58,8 +58,8 @@ func (s *S) TestListContainersByHost(c *check.C) {
 	result, err := listContainersByHost("http://cittavld1182.globoi.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(len(result), check.Equals, 2)
-	check := (result[0].ID == "1" && result[1].ID == "2") || (result[0].ID == "2" && result[1].ID == "1")
-	c.Assert(check, check.Equals, true)
+	cond := (result[0].ID == "1" && result[1].ID == "2") || (result[0].ID == "2" && result[1].ID == "1")
+	c.Assert(cond, check.Equals, true)
 }
 
 func (s *S) TestListAllContainers(c *check.C) {
@@ -70,9 +70,9 @@ func (s *S) TestListAllContainers(c *check.C) {
 	containers, err := listAllContainers()
 	c.Assert(err, check.IsNil)
 	c.Assert(len(containers), check.Equals, 2)
-	check := (containers[0].ID == containerIds[0] && containers[1].ID == containerIds[1]) ||
+	cond := (containers[0].ID == containerIds[0] && containers[1].ID == containerIds[1]) ||
 		(containers[0].ID == containerIds[1] && containers[1].ID == containerIds[0])
-	c.Assert(check, check.Equals, true)
+	c.Assert(cond, check.Equals, true)
 }
 
 func (s *S) TestUpdateContainers(c *check.C) {
