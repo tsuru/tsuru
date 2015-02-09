@@ -13,10 +13,10 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"golang.org/x/crypto/bcrypt"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
-func Test(t *testing.T) { gocheck.TestingT(t) }
+func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
 	conn   *db.Storage
@@ -27,11 +27,11 @@ type S struct {
 	token  auth.Token
 }
 
-var _ = gocheck.Suite(&S{})
+var _ = check.Suite(&S{})
 
 var nativeScheme = NativeScheme{}
 
-func (s *S) SetUpSuite(c *gocheck.C) {
+func (s *S) SetUpSuite(c *check.C) {
 	config.Set("auth:token-expire-days", 2)
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	config.Set("admin-team", "admin")
@@ -39,33 +39,33 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	config.Set("database:name", "tsuru_auth_native_test")
 	var err error
 	s.server, err = authtest.NewSMTPServer()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	config.Set("smtp:server", s.server.Addr())
 	config.Set("smtp:user", "root")
 	config.Set("smtp:password", "123456")
 }
 
-func (s *S) SetUpTest(c *gocheck.C) {
+func (s *S) SetUpTest(c *check.C) {
 	s.conn, _ = db.Conn()
 	s.user = &auth.User{Email: "timeredbull@globo.com", Password: "123456"}
 	_, err := nativeScheme.Create(s.user)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	team := &auth.Team{Name: "cobrateam", Users: []string{s.user.Email}}
 	err = s.conn.Teams().Insert(team)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	s.team = team
 }
 
-func (s *S) TearDownTest(c *gocheck.C) {
+func (s *S) TearDownTest(c *check.C) {
 	err := dbtest.ClearAllCollections(s.conn.Users().Database)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	s.conn.Close()
 	cost = 0
 	tokenExpire = 0
 }
 
-func (s *S) TearDownSuite(c *gocheck.C) {
+func (s *S) TearDownSuite(c *check.C) {
 	s.server.Stop()
 }

@@ -8,14 +8,14 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
-func Test(t *testing.T) { gocheck.TestingT(t) }
+func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct{}
 
-var _ = gocheck.Suite(&S{})
+var _ = check.Suite(&S{})
 
 type influx struct{}
 
@@ -23,21 +23,21 @@ func (i influx) Summarize(key, interval, function string) (Series, error) {
 	return nil, nil
 }
 
-func (s *S) TestRegister(c *gocheck.C) {
+func (s *S) TestRegister(c *check.C) {
 	Register("influx", influx{})
 	db, ok := dbs["influx"]
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(db, gocheck.FitsTypeOf, influx{})
+	c.Assert(ok, check.Equals, true)
+	c.Assert(db, check.FitsTypeOf, influx{})
 }
 
-func (s *S) TestGet(c *gocheck.C) {
+func (s *S) TestGet(c *check.C) {
 	_, err := Get()
-	c.Assert(err, gocheck.Not(gocheck.IsNil))
+	c.Assert(err, check.Not(check.IsNil))
 	config.Set("metrics:db", "influx")
 	_, err = Get()
-	c.Assert(err, gocheck.Not(gocheck.IsNil))
+	c.Assert(err, check.Not(check.IsNil))
 	Register("influx", influx{})
 	db, err := Get()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(db, gocheck.FitsTypeOf, influx{})
+	c.Assert(err, check.IsNil)
+	c.Assert(db, check.FitsTypeOf, influx{})
 }

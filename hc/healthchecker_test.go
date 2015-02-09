@@ -8,18 +8,18 @@ import (
 	"errors"
 	"testing"
 
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) {
-	gocheck.TestingT(t)
+	check.TestingT(t)
 }
 
 type HCSuite struct{}
 
-var _ = gocheck.Suite(HCSuite{})
+var _ = check.Suite(HCSuite{})
 
-func (HCSuite) TestCheck(c *gocheck.C) {
+func (HCSuite) TestCheck(c *check.C) {
 	AddChecker("success", successChecker)
 	AddChecker("failing", failingChecker)
 	AddChecker("disabled", disabledChecker)
@@ -28,7 +28,7 @@ func (HCSuite) TestCheck(c *gocheck.C) {
 		{Name: "failing", Status: "fail - something went wrong"},
 	}
 	result := Check()
-	c.Assert(result, gocheck.DeepEquals, expected)
+	c.Assert(result, check.DeepEquals, expected)
 }
 
 func successChecker() error {

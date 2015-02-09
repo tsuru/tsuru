@@ -7,13 +7,13 @@ package io
 import (
 	"testing"
 
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
 type S struct{}
 
-var _ = gocheck.Suite(&S{})
+var _ = check.Suite(&S{})
 
 func Test(t *testing.T) {
-	gocheck.TestingT(t)
+	check.TestingT(t)
 }

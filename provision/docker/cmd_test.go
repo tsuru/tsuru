@@ -15,10 +15,10 @@ import (
 
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/cmdtest"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
-func (s *S) TestAddNodeToTheSchedulerCmdInfo(c *gocheck.C) {
+func (s *S) TestAddNodeToTheSchedulerCmdInfo(c *check.C) {
 	expected := cmd.Info{
 		Name:  "docker-node-add",
 		Usage: "docker-node-add [param_name=param_value]... [--register]",
@@ -40,10 +40,10 @@ Parameters with special meaning:
 		MinArgs: 0,
 	}
 	cmd := addNodeToSchedulerCmd{}
-	c.Assert(cmd.Info(), gocheck.DeepEquals, &expected)
+	c.Assert(cmd.Info(), check.DeepEquals, &expected)
 }
 
-func (s *S) TestAddNodeToTheSchedulerCmdRun(c *gocheck.C) {
+func (s *S) TestAddNodeToTheSchedulerCmdRun(c *check.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Args: []string{"pool=poolTest", "address=http://localhost:8080"}, Stdout: &buf}
 	expectedBody := `{"address":"http://localhost:8080","pool":"poolTest"}`
@@ -51,7 +51,7 @@ func (s *S) TestAddNodeToTheSchedulerCmdRun(c *gocheck.C) {
 		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
 		CondFunc: func(req *http.Request) bool {
 			body, _ := ioutil.ReadAll(req.Body)
-			c.Assert(string(body), gocheck.DeepEquals, expectedBody)
+			c.Assert(string(body), check.DeepEquals, expectedBody)
 			return req.URL.Path == "/docker/node" && req.URL.RawQuery == "register=false"
 		},
 	}
@@ -59,11 +59,11 @@ func (s *S) TestAddNodeToTheSchedulerCmdRun(c *gocheck.C) {
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
 	cmd := addNodeToSchedulerCmd{register: false}
 	err := cmd.Run(&context, client)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(buf.String(), gocheck.Equals, "Node successfully registered.\n")
+	c.Assert(err, check.IsNil)
+	c.Assert(buf.String(), check.Equals, "Node successfully registered.\n")
 }
 
-func (s *S) TestAddNodeWithErrorCmdRun(c *gocheck.C) {
+func (s *S) TestAddNodeWithErrorCmdRun(c *check.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{
 		Args:   []string{"pool=poolTest", "address=http://localhost:8080"},
@@ -77,7 +77,7 @@ func (s *S) TestAddNodeWithErrorCmdRun(c *gocheck.C) {
 		},
 		CondFunc: func(req *http.Request) bool {
 			body, _ := ioutil.ReadAll(req.Body)
-			c.Assert(string(body), gocheck.DeepEquals, expectedBody)
+			c.Assert(string(body), check.DeepEquals, expectedBody)
 			return req.URL.Path == "/docker/node" && req.URL.RawQuery == "register=false"
 		},
 	}
@@ -85,11 +85,11 @@ func (s *S) TestAddNodeWithErrorCmdRun(c *gocheck.C) {
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
 	cmd := addNodeToSchedulerCmd{register: false}
 	err := cmd.Run(&context, client)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(buf.String(), gocheck.Equals, "Error: some err\n\nmy iaas desc\n")
+	c.Assert(err, check.IsNil)
+	c.Assert(buf.String(), check.Equals, "Error: some err\n\nmy iaas desc\n")
 }
 
-func (s *S) TestRemoveNodeFromTheSchedulerCmdInfo(c *gocheck.C) {
+func (s *S) TestRemoveNodeFromTheSchedulerCmdInfo(c *check.C) {
 	expected := cmd.Info{
 		Name:  "docker-node-remove",
 		Usage: "docker-node-remove <address> [--destroy] [-y]",
@@ -101,10 +101,10 @@ func (s *S) TestRemoveNodeFromTheSchedulerCmdInfo(c *gocheck.C) {
 	}
 	cmd := removeNodeFromSchedulerCmd{}
 	cmd.Flags().Parse(true, []string{"-y"})
-	c.Assert(cmd.Info(), gocheck.DeepEquals, &expected)
+	c.Assert(cmd.Info(), check.DeepEquals, &expected)
 }
 
-func (s *S) TestRemoveNodeFromTheSchedulerCmdRun(c *gocheck.C) {
+func (s *S) TestRemoveNodeFromTheSchedulerCmdRun(c *check.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Args: []string{"http://localhost:8080"}, Stdout: &buf}
 	trans := &cmdtest.ConditionalTransport{
@@ -121,11 +121,11 @@ func (s *S) TestRemoveNodeFromTheSchedulerCmdRun(c *gocheck.C) {
 	cmd := removeNodeFromSchedulerCmd{}
 	cmd.Flags().Parse(true, []string{"-y"})
 	err := cmd.Run(&context, client)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(buf.String(), gocheck.Equals, "Node successfully removed.\n")
+	c.Assert(err, check.IsNil)
+	c.Assert(buf.String(), check.Equals, "Node successfully removed.\n")
 }
 
-func (s *S) TestRemoveNodeFromTheSchedulerWithDestroyCmdRun(c *gocheck.C) {
+func (s *S) TestRemoveNodeFromTheSchedulerWithDestroyCmdRun(c *check.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Args: []string{"http://localhost:8080"}, Stdout: &buf}
 	trans := &cmdtest.ConditionalTransport{
@@ -143,11 +143,11 @@ func (s *S) TestRemoveNodeFromTheSchedulerWithDestroyCmdRun(c *gocheck.C) {
 	cmd := removeNodeFromSchedulerCmd{}
 	cmd.Flags().Parse(true, []string{"-y", "--destroy"})
 	err := cmd.Run(&context, client)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(buf.String(), gocheck.Equals, "Node successfully removed.\n")
+	c.Assert(err, check.IsNil)
+	c.Assert(buf.String(), check.Equals, "Node successfully removed.\n")
 }
 
-func (s *S) TestRemoveNodeFromTheSchedulerWithDestroyCmdRunConfirmation(c *gocheck.C) {
+func (s *S) TestRemoveNodeFromTheSchedulerWithDestroyCmdRunConfirmation(c *check.C) {
 	var stdout bytes.Buffer
 	context := cmd.Context{
 		Args:   []string{"http://localhost:8080"},
@@ -156,21 +156,21 @@ func (s *S) TestRemoveNodeFromTheSchedulerWithDestroyCmdRunConfirmation(c *goche
 	}
 	command := removeNodeFromSchedulerCmd{}
 	err := command.Run(&context, nil)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(stdout.String(), gocheck.Equals, "Are you sure you sure you want to remove \"http://localhost:8080\" from cluster? (y/n) Abort.\n")
+	c.Assert(err, check.IsNil)
+	c.Assert(stdout.String(), check.Equals, "Are you sure you sure you want to remove \"http://localhost:8080\" from cluster? (y/n) Abort.\n")
 }
 
-func (s *S) TestListNodesInTheSchedulerCmdInfo(c *gocheck.C) {
+func (s *S) TestListNodesInTheSchedulerCmdInfo(c *check.C) {
 	expected := cmd.Info{
 		Name:  "docker-node-list",
 		Usage: "docker-node-list [--filter/-f <metadata>=<value>]...",
 		Desc:  "List available nodes in the cluster",
 	}
 	cmd := listNodesInTheSchedulerCmd{}
-	c.Assert(cmd.Info(), gocheck.DeepEquals, &expected)
+	c.Assert(cmd.Info(), check.DeepEquals, &expected)
 }
 
-func (s *S) TestListNodesInTheSchedulerCmdRun(c *gocheck.C) {
+func (s *S) TestListNodesInTheSchedulerCmdRun(c *check.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Stdout: &buf}
 	trans := &cmdtest.ConditionalTransport{
@@ -188,7 +188,7 @@ func (s *S) TestListNodesInTheSchedulerCmdRun(c *gocheck.C) {
 	manager := cmd.Manager{}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
 	err := (&listNodesInTheSchedulerCmd{}).Run(&context, client)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	expected := `+------------------------+---------+----------+-----------+
 | Address                | IaaS ID | Status   | Metadata  |
 +------------------------+---------+----------+-----------+
@@ -198,10 +198,10 @@ func (s *S) TestListNodesInTheSchedulerCmdRun(c *gocheck.C) {
 | http://localhost2:9090 | m-id-1  | ready    |           |
 +------------------------+---------+----------+-----------+
 `
-	c.Assert(buf.String(), gocheck.Equals, expected)
+	c.Assert(buf.String(), check.Equals, expected)
 }
 
-func (s *S) TestListNodesInTheSchedulerCmdRunWithFilters(c *gocheck.C) {
+func (s *S) TestListNodesInTheSchedulerCmdRunWithFilters(c *check.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Stdout: &buf}
 	trans := &cmdtest.ConditionalTransport{
@@ -221,7 +221,7 @@ func (s *S) TestListNodesInTheSchedulerCmdRunWithFilters(c *gocheck.C) {
 	cmd := listNodesInTheSchedulerCmd{}
 	cmd.Flags().Parse(true, []string{"--filter", "meta1=foo", "-f", "meta2=bar"})
 	err := cmd.Run(&context, client)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	expected := `+------------------------+---------+----------+-----------+
 | Address                | IaaS ID | Status   | Metadata  |
 +------------------------+---------+----------+-----------+
@@ -229,10 +229,10 @@ func (s *S) TestListNodesInTheSchedulerCmdRunWithFilters(c *gocheck.C) {
 |                        |         |          | meta2=bar |
 +------------------------+---------+----------+-----------+
 `
-	c.Assert(buf.String(), gocheck.Equals, expected)
+	c.Assert(buf.String(), check.Equals, expected)
 }
 
-func (s *S) TestListNodesInTheSchedulerCmdRunEmptyAll(c *gocheck.C) {
+func (s *S) TestListNodesInTheSchedulerCmdRunEmptyAll(c *check.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Stdout: &buf}
 	trans := &cmdtest.ConditionalTransport{
@@ -244,22 +244,22 @@ func (s *S) TestListNodesInTheSchedulerCmdRunEmptyAll(c *gocheck.C) {
 	manager := cmd.Manager{}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
 	err := (&listNodesInTheSchedulerCmd{}).Run(&context, client)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	expected := `+---------+---------+--------+----------+
 | Address | IaaS ID | Status | Metadata |
 +---------+---------+--------+----------+
 `
-	c.Assert(buf.String(), gocheck.Equals, expected)
+	c.Assert(buf.String(), check.Equals, expected)
 }
 
-func (s *S) TestListHealingHistoryCmdInfo(c *gocheck.C) {
+func (s *S) TestListHealingHistoryCmdInfo(c *check.C) {
 	expected := cmd.Info{
 		Name:  "docker-healing-list",
 		Usage: "docker-healing-list [--node] [--container]",
 		Desc:  "List healing history for nodes or containers.",
 	}
 	cmd := listHealingHistoryCmd{}
-	c.Assert(cmd.Info(), gocheck.DeepEquals, &expected)
+	c.Assert(cmd.Info(), check.DeepEquals, &expected)
 }
 
 var healingJsonData = `[{
@@ -289,7 +289,7 @@ var healingJsonData = `[{
 	"Error": "err1"
 }]`
 
-func (s *S) TestListHealingHistoryCmdRun(c *gocheck.C) {
+func (s *S) TestListHealingHistoryCmdRun(c *check.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Stdout: &buf}
 	trans := &cmdtest.ConditionalTransport{
@@ -302,7 +302,7 @@ func (s *S) TestListHealingHistoryCmdRun(c *gocheck.C) {
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
 	healing := &listHealingHistoryCmd{}
 	err := healing.Run(&context, client)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	startT, _ := time.Parse(time.RFC3339, "2014-10-23T08:00:00.000Z")
 	endT, _ := time.Parse(time.RFC3339, "2014-10-23T08:30:00.000Z")
 	startTStr := startT.Local().Format(time.Stamp)
@@ -322,10 +322,10 @@ Container:
 | %s | %s | true    | 1234567890 | 9234567890 |       |
 +-----------------+-----------------+---------+------------+------------+-------+
 `, startTStr, endTStr, startTStr, endTStr, startTStr, endTStr)
-	c.Assert(buf.String(), gocheck.Equals, expected)
+	c.Assert(buf.String(), check.Equals, expected)
 }
 
-func (s *S) TestListHealingHistoryCmdRunEmpty(c *gocheck.C) {
+func (s *S) TestListHealingHistoryCmdRunEmpty(c *check.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Stdout: &buf}
 	trans := &cmdtest.ConditionalTransport{
@@ -338,7 +338,7 @@ func (s *S) TestListHealingHistoryCmdRunEmpty(c *gocheck.C) {
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
 	healing := &listHealingHistoryCmd{}
 	err := healing.Run(&context, client)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	expected := `Node:
 +-------+--------+---------+---------+---------+-------+
 | Start | Finish | Success | Failing | Created | Error |
@@ -348,10 +348,10 @@ Container:
 | Start | Finish | Success | Failing | Created | Error |
 +-------+--------+---------+---------+---------+-------+
 `
-	c.Assert(buf.String(), gocheck.Equals, expected)
+	c.Assert(buf.String(), check.Equals, expected)
 }
 
-func (s *S) TestListHealingHistoryCmdRunFilterNode(c *gocheck.C) {
+func (s *S) TestListHealingHistoryCmdRunFilterNode(c *check.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Stdout: &buf}
 	trans := &cmdtest.ConditionalTransport{
@@ -365,7 +365,7 @@ func (s *S) TestListHealingHistoryCmdRunFilterNode(c *gocheck.C) {
 	cmd := &listHealingHistoryCmd{}
 	cmd.Flags().Parse(true, []string{"--node"})
 	err := cmd.Run(&context, client)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	startT, _ := time.Parse(time.RFC3339, "2014-10-23T08:00:00.000Z")
 	endT, _ := time.Parse(time.RFC3339, "2014-10-23T08:30:00.000Z")
 	startTStr := startT.Local().Format(time.Stamp)
@@ -377,10 +377,10 @@ func (s *S) TestListHealingHistoryCmdRunFilterNode(c *gocheck.C) {
 | %s | %s | true    | addr1   | addr2   |       |
 +-----------------+-----------------+---------+---------+---------+-------+
 `, startTStr, endTStr)
-	c.Assert(buf.String(), gocheck.Equals, expected)
+	c.Assert(buf.String(), check.Equals, expected)
 }
 
-func (s *S) TestListHealingHistoryCmdRunFilterContainer(c *gocheck.C) {
+func (s *S) TestListHealingHistoryCmdRunFilterContainer(c *check.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Stdout: &buf}
 	trans := &cmdtest.ConditionalTransport{
@@ -394,7 +394,7 @@ func (s *S) TestListHealingHistoryCmdRunFilterContainer(c *gocheck.C) {
 	cmd := &listHealingHistoryCmd{}
 	cmd.Flags().Parse(true, []string{"--container"})
 	err := cmd.Run(&context, client)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	startT, _ := time.Parse(time.RFC3339, "2014-10-23T08:00:00.000Z")
 	endT, _ := time.Parse(time.RFC3339, "2014-10-23T08:30:00.000Z")
 	startTStr := startT.Local().Format(time.Stamp)
@@ -408,5 +408,5 @@ func (s *S) TestListHealingHistoryCmdRunFilterContainer(c *gocheck.C) {
 | %s | %s | true    | 1234567890 | 9234567890 |       |
 +-----------------+-----------------+---------+------------+------------+-------+
 `, startTStr, endTStr, startTStr, endTStr)
-	c.Assert(buf.String(), gocheck.Equals, expected)
+	c.Assert(buf.String(), check.Equals, expected)
 }

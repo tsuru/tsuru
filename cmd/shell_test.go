@@ -12,22 +12,22 @@ import (
 	"net/http/httptest"
 
 	"github.com/tsuru/tsuru/cmd/cmdtest"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
-func (s *S) TestShellToContainerCmdInfo(c *gocheck.C) {
+func (s *S) TestShellToContainerCmdInfo(c *check.C) {
 	var command ShellToContainerCmd
 	info := command.Info()
-	c.Assert(info, gocheck.NotNil)
+	c.Assert(info, check.NotNil)
 }
 
-func (s *S) TestShellToContainerCmdRunWithApp(c *gocheck.C) {
+func (s *S) TestShellToContainerCmdRunWithApp(c *check.C) {
 	var closeClientConn func()
 	guesser := cmdtest.FakeGuesser{Name: "myapp"}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/apps/myapp/shell" && r.Method == "GET" && r.Header.Get("Authorization") == "bearer abc123" {
 			conn, _, err := w.(http.Hijacker).Hijack()
-			c.Assert(err, gocheck.IsNil)
+			c.Assert(err, check.IsNil)
 			conn.Write([]byte("hello my friend\n"))
 			conn.Write([]byte("glad to see you here\n"))
 			closeClientConn()
@@ -51,15 +51,15 @@ func (s *S) TestShellToContainerCmdRunWithApp(c *gocheck.C) {
 	var command ShellToContainerCmd
 	command.GuessingCommand = GuessingCommand{G: &guesser}
 	err := command.Flags().Parse(true, []string{"-a", "myapp"})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	manager := NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
 	client := NewClient(http.DefaultClient, &context, manager)
 	err = command.Run(&context, client)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(stdout.String(), gocheck.Equals, "hello my friend\nglad to see you here\n")
+	c.Assert(err, check.IsNil)
+	c.Assert(stdout.String(), check.Equals, "hello my friend\nglad to see you here\n")
 }
 
-func (s *S) TestShellToContainerCmdNoToken(c *gocheck.C) {
+func (s *S) TestShellToContainerCmdNoToken(c *check.C) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "You must provide a valid Authorization header", http.StatusUnauthorized)
 	}))
@@ -76,15 +76,15 @@ func (s *S) TestShellToContainerCmdNoToken(c *gocheck.C) {
 	}
 	var command ShellToContainerCmd
 	err := command.Run(&context, nil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "HTTP/1.1 401")
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "HTTP/1.1 401")
 }
 
-func (s *S) TestShellToContainerCmdSmallData(c *gocheck.C) {
+func (s *S) TestShellToContainerCmdSmallData(c *check.C) {
 	var closeClientConn func()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, _, err := w.(http.Hijacker).Hijack()
-		c.Assert(err, gocheck.IsNil)
+		c.Assert(err, check.IsNil)
 		conn.Write([]byte("hello"))
 		closeClientConn()
 	}))
@@ -102,16 +102,16 @@ func (s *S) TestShellToContainerCmdSmallData(c *gocheck.C) {
 	}
 	var command ShellToContainerCmd
 	err := command.Run(&context, nil)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(stdout.String(), gocheck.Equals, "hello")
+	c.Assert(err, check.IsNil)
+	c.Assert(stdout.String(), check.Equals, "hello")
 }
 
-func (s *S) TestShellToContainerCmdLongNoNewLine(c *gocheck.C) {
+func (s *S) TestShellToContainerCmdLongNoNewLine(c *check.C) {
 	var closeClientConn func()
 	expected := fmt.Sprintf("%0200s", "x")
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		conn, _, err := w.(http.Hijacker).Hijack()
-		c.Assert(err, gocheck.IsNil)
+		c.Assert(err, check.IsNil)
 		conn.Write([]byte(expected))
 		closeClientConn()
 	}))
@@ -129,11 +129,11 @@ func (s *S) TestShellToContainerCmdLongNoNewLine(c *gocheck.C) {
 	}
 	var command ShellToContainerCmd
 	err := command.Run(&context, nil)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(stdout.String(), gocheck.Equals, expected)
+	c.Assert(err, check.IsNil)
+	c.Assert(stdout.String(), check.Equals, expected)
 }
 
-func (s *S) TestShellToContainerCmdConnectionRefused(c *gocheck.C) {
+func (s *S) TestShellToContainerCmdConnectionRefused(c *check.C) {
 	server := httptest.NewServer(nil)
 	addr := server.Listener.Addr().String()
 	server.Close()
@@ -150,10 +150,10 @@ func (s *S) TestShellToContainerCmdConnectionRefused(c *gocheck.C) {
 	}
 	var command ShellToContainerCmd
 	err := command.Run(&context, nil)
-	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, check.NotNil)
 	opErr, ok := err.(*net.OpError)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(opErr.Net, gocheck.Equals, "tcp")
-	c.Assert(opErr.Op, gocheck.Equals, "dial")
-	c.Assert(opErr.Addr.String(), gocheck.Equals, addr)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(opErr.Net, check.Equals, "tcp")
+	c.Assert(opErr.Op, check.Equals, "dial")
+	c.Assert(opErr.Addr.String(), check.Equals, addr)
 }

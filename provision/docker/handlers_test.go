@@ -27,9 +27,9 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
+	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"launchpad.net/gocheck"
 )
 
 type TestIaaS struct{}
@@ -59,9 +59,9 @@ type HandlersSuite struct {
 	team   *auth.Team
 }
 
-var _ = gocheck.Suite(&HandlersSuite{})
+var _ = check.Suite(&HandlersSuite{})
 
-func (s *HandlersSuite) SetUpSuite(c *gocheck.C) {
+func (s *HandlersSuite) SetUpSuite(c *check.C) {
 	config.Set("database:name", "docker_provision_handlers_tests_s")
 	config.Set("docker:collection", "docker_handler_suite")
 	config.Set("docker:run-cmd:port", 8888)
@@ -74,42 +74,42 @@ func (s *HandlersSuite) SetUpSuite(c *gocheck.C) {
 	config.Set("admin-team", "admin")
 	var err error
 	s.conn, err = db.Conn()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	s.conn.Collection(schedulerCollection).RemoveAll(nil)
 	s.server = httptest.NewServer(nil)
 	s.user = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: quota.Unlimited}
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
 	_, err = nativeScheme.Create(s.user)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	s.team = &auth.Team{Name: "admin", Users: []string{s.user.Email}}
 	err = s.conn.Teams().Insert(s.team)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }
 
-func (s *HandlersSuite) SetUpTest(c *gocheck.C) {
+func (s *HandlersSuite) SetUpTest(c *check.C) {
 	err := clearClusterStorage()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	coll := collection()
 	defer coll.Close()
 	coll.RemoveAll(nil)
 	healingColl, err := healingCollection()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer healingColl.Close()
 	healingColl.RemoveAll(nil)
 }
 
-func (s *HandlersSuite) TearDownSuite(c *gocheck.C) {
+func (s *HandlersSuite) TearDownSuite(c *check.C) {
 	coll := collection()
 	defer coll.Close()
 	err := dbtest.ClearAllCollections(coll.Database)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	s.conn.Close()
 }
 
-func (s *HandlersSuite) TestAddNodeHandler(c *gocheck.C) {
+func (s *HandlersSuite) TestAddNodeHandler(c *check.C) {
 	dCluster, _ = cluster.New(segregatedScheduler{}, &cluster.MapStorage{})
 	p := Pool{Name: "pool1"}
 	s.conn.Collection(schedulerCollection).Insert(p)
@@ -117,20 +117,20 @@ func (s *HandlersSuite) TestAddNodeHandler(c *gocheck.C) {
 	json := fmt.Sprintf(`{"address": "%s", "pool": "pool1"}`, s.server.URL)
 	b := bytes.NewBufferString(json)
 	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	nodes, err := dCluster.Nodes()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(nodes, gocheck.HasLen, 1)
-	c.Assert(nodes[0].Address, gocheck.Equals, s.server.URL)
-	c.Assert(nodes[0].Metadata, gocheck.DeepEquals, map[string]string{
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address, check.Equals, s.server.URL)
+	c.Assert(nodes[0].Metadata, check.DeepEquals, map[string]string{
 		"pool": "pool1",
 	})
 }
 
-func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *gocheck.C) {
+func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 	iaas.RegisterIaasProvider("test-iaas", TestIaaS{})
 	dCluster, _ = cluster.New(segregatedScheduler{}, &cluster.MapStorage{})
 	p := Pool{Name: "pool1"}
@@ -138,26 +138,26 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *gocheck.C) {
 	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
 	b := bytes.NewBufferString(`{"pool": "pool1", "id": "test1"}`)
 	req, err := http.NewRequest("POST", "/docker/node?register=false", b)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	var result map[string]string
 	err = json.NewDecoder(rec.Body).Decode(&result)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(result, gocheck.DeepEquals, map[string]string{"description": "my iaas description"})
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.DeepEquals, map[string]string{"description": "my iaas description"})
 	nodes, err := dCluster.Nodes()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(nodes, gocheck.HasLen, 1)
-	c.Assert(nodes[0].Address, gocheck.Equals, "http://test1.fake.host:1234")
-	c.Assert(nodes[0].Metadata, gocheck.DeepEquals, map[string]string{
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address, check.Equals, "http://test1.fake.host:1234")
+	c.Assert(nodes[0].Metadata, check.DeepEquals, map[string]string{
 		"id":   "test1",
 		"pool": "pool1",
 		"iaas": "test-iaas",
 	})
 }
 
-func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachineExplicit(c *gocheck.C) {
+func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachineExplicit(c *check.C) {
 	iaas.RegisterIaasProvider("test-iaas", TestIaaS{})
 	iaas.RegisterIaasProvider("another-test-iaas", TestIaaS{})
 	dCluster, _ = cluster.New(segregatedScheduler{}, &cluster.MapStorage{})
@@ -166,22 +166,22 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachineExplicit(c *goche
 	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
 	b := bytes.NewBufferString(`{"pool": "pool1", "id": "test1", "iaas": "another-test-iaas"}`)
 	req, err := http.NewRequest("POST", "/docker/node?register=false", b)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	nodes, err := dCluster.Nodes()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(nodes, gocheck.HasLen, 1)
-	c.Assert(nodes[0].Address, gocheck.Equals, "http://test1.fake.host:1234")
-	c.Assert(nodes[0].Metadata, gocheck.DeepEquals, map[string]string{
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address, check.Equals, "http://test1.fake.host:1234")
+	c.Assert(nodes[0].Metadata, check.DeepEquals, map[string]string{
 		"id":   "test1",
 		"pool": "pool1",
 		"iaas": "another-test-iaas",
 	})
 }
 
-func (s *HandlersSuite) TestAddNodeHandlerWithoutdCluster(c *gocheck.C) {
+func (s *HandlersSuite) TestAddNodeHandlerWithoutdCluster(c *check.C) {
 	p := Pool{Name: "pool1"}
 	s.conn.Collection(schedulerCollection).Insert(p)
 	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
@@ -192,160 +192,160 @@ func (s *HandlersSuite) TestAddNodeHandlerWithoutdCluster(c *gocheck.C) {
 	dCluster = nil
 	b := bytes.NewBufferString(fmt.Sprintf(`{"address": "%s", "pool": "pool1"}`, s.server.URL))
 	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	nodes, err := dockerCluster().Nodes()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(nodes, gocheck.HasLen, 1)
-	c.Assert(nodes[0].Address, gocheck.Equals, s.server.URL)
-	c.Assert(nodes[0].Metadata, gocheck.DeepEquals, map[string]string{
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address, check.Equals, s.server.URL)
+	c.Assert(nodes[0].Metadata, check.DeepEquals, map[string]string{
 		"pool": "pool1",
 	})
 }
 
-func (s *HandlersSuite) TestAddNodeHandlerWithoutdAddress(c *gocheck.C) {
+func (s *HandlersSuite) TestAddNodeHandlerWithoutdAddress(c *check.C) {
 	config.Set("docker:cluster:redis-server", "127.0.0.1:6379")
 	defer config.Unset("docker:cluster:redis-server")
 	b := bytes.NewBufferString(`{"pool": "pool1"}`)
 	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
 	var result map[string]string
 	err = json.NewDecoder(rec.Body).Decode(&result)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(rec.Code, gocheck.Equals, http.StatusBadRequest)
-	c.Assert(result["error"], gocheck.Matches, "address=url parameter is required")
+	c.Assert(err, check.IsNil)
+	c.Assert(rec.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(result["error"], check.Matches, "address=url parameter is required")
 }
 
-func (s *HandlersSuite) TestAddNodeHandlerWithInvalidURLAddress(c *gocheck.C) {
+func (s *HandlersSuite) TestAddNodeHandlerWithInvalidURLAddress(c *check.C) {
 	config.Set("docker:cluster:redis-server", "127.0.0.1:6379")
 	defer config.Unset("docker:cluster:redis-server")
 	b := bytes.NewBufferString(`{"address": "/invalid", "pool": "pool1"}`)
 	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	var result map[string]string
 	err = json.NewDecoder(rec.Body).Decode(&result)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(rec.Code, gocheck.Equals, http.StatusBadRequest)
-	c.Assert(result["error"], gocheck.Matches, "Invalid address url: host cannot be empty")
+	c.Assert(err, check.IsNil)
+	c.Assert(rec.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(result["error"], check.Matches, "Invalid address url: host cannot be empty")
 	b = bytes.NewBufferString(`{"address": "xxx://abc/invalid", "pool": "pool1"}`)
 	req, err = http.NewRequest("POST", "/docker/node?register=true", b)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	rec = httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = json.NewDecoder(rec.Body).Decode(&result)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(rec.Code, gocheck.Equals, http.StatusBadRequest)
-	c.Assert(result["error"], gocheck.Matches, `Invalid address url: scheme must be http\[s\]`)
+	c.Assert(err, check.IsNil)
+	c.Assert(rec.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(result["error"], check.Matches, `Invalid address url: scheme must be http\[s\]`)
 }
 
-func (s *HandlersSuite) TestValidateNodeAddress(c *gocheck.C) {
+func (s *HandlersSuite) TestValidateNodeAddress(c *check.C) {
 	err := validateNodeAddress("/invalid")
-	c.Assert(err, gocheck.ErrorMatches, "Invalid address url: host cannot be empty")
+	c.Assert(err, check.ErrorMatches, "Invalid address url: host cannot be empty")
 	err = validateNodeAddress("xxx://abc/invalid")
-	c.Assert(err, gocheck.ErrorMatches, `Invalid address url: scheme must be http\[s\]`)
+	c.Assert(err, check.ErrorMatches, `Invalid address url: scheme must be http\[s\]`)
 	err = validateNodeAddress("")
-	c.Assert(err, gocheck.ErrorMatches, "address=url parameter is required")
+	c.Assert(err, check.ErrorMatches, "address=url parameter is required")
 }
 
-func (s *HandlersSuite) TestRemoveNodeHandler(c *gocheck.C) {
+func (s *HandlersSuite) TestRemoveNodeHandler(c *check.C) {
 	var err error
 	dCluster, err = cluster.New(nil, &cluster.MapStorage{})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	_, err = dCluster.Register("host.com:2375", nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	b := bytes.NewBufferString(`{"address": "host.com:2375"}`)
 	req, err := http.NewRequest("POST", "/node/remove", b)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = removeNodeHandler(rec, req, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	nodes, err := dCluster.Nodes()
-	c.Assert(len(nodes), gocheck.Equals, 0)
+	c.Assert(len(nodes), check.Equals, 0)
 }
 
-func (s *HandlersSuite) TestRemoveNodeHandlerWithoutRemoveIaaS(c *gocheck.C) {
+func (s *HandlersSuite) TestRemoveNodeHandlerWithoutRemoveIaaS(c *check.C) {
 	iaas.RegisterIaasProvider("some-iaas", TestIaaS{})
 	machine, err := iaas.CreateMachineForIaaS("some-iaas", map[string]string{})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	dCluster, err = cluster.New(nil, &cluster.MapStorage{})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	_, err = dCluster.Register(fmt.Sprintf("http://%s:2375", machine.Address), nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	b := bytes.NewBufferString(fmt.Sprintf(`{"address": "http://%s:2375", "remove_iaas": "false"}`, machine.Address))
 	req, err := http.NewRequest("POST", "/node/remove", b)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = removeNodeHandler(rec, req, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	nodes, err := dCluster.Nodes()
-	c.Assert(len(nodes), gocheck.Equals, 0)
+	c.Assert(len(nodes), check.Equals, 0)
 	dbM, err := iaas.FindMachineById(machine.Id)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(dbM.Id, gocheck.Equals, machine.Id)
+	c.Assert(err, check.IsNil)
+	c.Assert(dbM.Id, check.Equals, machine.Id)
 }
 
-func (s *HandlersSuite) TestRemoveNodeHandlerRemoveIaaS(c *gocheck.C) {
+func (s *HandlersSuite) TestRemoveNodeHandlerRemoveIaaS(c *check.C) {
 	iaas.RegisterIaasProvider("my-xxx-iaas", TestIaaS{})
 	machine, err := iaas.CreateMachineForIaaS("my-xxx-iaas", map[string]string{})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	dCluster, err = cluster.New(nil, &cluster.MapStorage{})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	_, err = dCluster.Register(fmt.Sprintf("http://%s:2375", machine.Address), nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	b := bytes.NewBufferString(fmt.Sprintf(`{"address": "http://%s:2375", "remove_iaas": "true"}`, machine.Address))
 	req, err := http.NewRequest("POST", "/node/remove", b)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = removeNodeHandler(rec, req, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	nodes, err := dCluster.Nodes()
-	c.Assert(len(nodes), gocheck.Equals, 0)
+	c.Assert(len(nodes), check.Equals, 0)
 	_, err = iaas.FindMachineById(machine.Id)
-	c.Assert(err, gocheck.Equals, mgo.ErrNotFound)
+	c.Assert(err, check.Equals, mgo.ErrNotFound)
 }
 
-func (s *HandlersSuite) TestListNodeHandler(c *gocheck.C) {
+func (s *HandlersSuite) TestListNodeHandler(c *check.C) {
 	var result struct {
 		Nodes    []cluster.Node `json:"nodes"`
 		Machines []iaas.Machine `json:"machines"`
 	}
 	var err error
 	dCluster, err = cluster.New(nil, &cluster.MapStorage{})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	_, err = dCluster.Register("host1.com:2375", map[string]string{"pool": "pool1"})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	_, err = dCluster.Register("host2.com:2375", map[string]string{"pool": "pool2", "foo": "bar"})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("GET", "/node/", nil)
 	rec := httptest.NewRecorder()
 	err = listNodeHandler(rec, req, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	body, err := ioutil.ReadAll(rec.Body)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = json.Unmarshal(body, &result)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(result.Nodes[0].Address, gocheck.Equals, "host1.com:2375")
-	c.Assert(result.Nodes[0].Metadata, gocheck.DeepEquals, map[string]string{"pool": "pool1"})
-	c.Assert(result.Nodes[1].Address, gocheck.Equals, "host2.com:2375")
-	c.Assert(result.Nodes[1].Metadata, gocheck.DeepEquals, map[string]string{"pool": "pool2", "foo": "bar"})
+	c.Assert(err, check.IsNil)
+	c.Assert(result.Nodes[0].Address, check.Equals, "host1.com:2375")
+	c.Assert(result.Nodes[0].Metadata, check.DeepEquals, map[string]string{"pool": "pool1"})
+	c.Assert(result.Nodes[1].Address, check.Equals, "host2.com:2375")
+	c.Assert(result.Nodes[1].Metadata, check.DeepEquals, map[string]string{"pool": "pool2", "foo": "bar"})
 }
 
-func (s *HandlersSuite) TestFixContainerHandler(c *gocheck.C) {
+func (s *HandlersSuite) TestFixContainerHandler(c *check.C) {
 	coll := collection()
 	defer coll.Close()
 	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	err = conn.Apps().Insert(&app.App{Name: "makea"})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer conn.Apps().RemoveAll(bson.M{"name": "makea"})
 	err = coll.Insert(
 		container{
@@ -358,7 +358,7 @@ func (s *HandlersSuite) TestFixContainerHandler(c *gocheck.C) {
 			HostAddr: "127.0.0.1",
 		},
 	)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer coll.RemoveAll(bson.M{"appname": "makea"})
 	cleanup, server := startDocker("9999")
 	defer cleanup()
@@ -370,125 +370,125 @@ func (s *HandlersSuite) TestFixContainerHandler(c *gocheck.C) {
 	)
 	cmutex.Unlock()
 	request, err := http.NewRequest("POST", "/fix-containers", nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	err = fixContainersHandler(recorder, request, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	cont, err := getContainer("9930c24f1c4x")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(cont.IP, gocheck.Equals, "127.0.0.9")
-	c.Assert(cont.HostPort, gocheck.Equals, "9999")
+	c.Assert(err, check.IsNil)
+	c.Assert(cont.IP, check.Equals, "127.0.0.9")
+	c.Assert(cont.HostPort, check.Equals, "9999")
 }
 
-func (s *HandlersSuite) TestListContainersByHostHandler(c *gocheck.C) {
+func (s *HandlersSuite) TestListContainersByHostHandler(c *check.C) {
 	var result []container
 	coll := collection()
 	dCluster, _ = cluster.New(segregatedScheduler{}, nil)
 	err := coll.Insert(container{ID: "blabla", Type: "python", HostAddr: "http://cittavld1182.globoi.com"})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer coll.Remove(bson.M{"id": "blabla"})
 	err = coll.Insert(container{ID: "bleble", Type: "java", HostAddr: "http://cittavld1182.globoi.com"})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer coll.Remove(bson.M{"id": "bleble"})
 	req, err := http.NewRequest("GET", "/node/cittavld1182.globoi.com/containers?:address=http://cittavld1182.globoi.com", nil)
 	rec := httptest.NewRecorder()
 	err = listContainersHandler(rec, req, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	body, err := ioutil.ReadAll(rec.Body)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = json.Unmarshal(body, &result)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(result[0].ID, gocheck.DeepEquals, "blabla")
-	c.Assert(result[0].Type, gocheck.DeepEquals, "python")
-	c.Assert(result[0].HostAddr, gocheck.DeepEquals, "http://cittavld1182.globoi.com")
-	c.Assert(result[1].ID, gocheck.DeepEquals, "bleble")
-	c.Assert(result[1].Type, gocheck.DeepEquals, "java")
-	c.Assert(result[1].HostAddr, gocheck.DeepEquals, "http://cittavld1182.globoi.com")
+	c.Assert(err, check.IsNil)
+	c.Assert(result[0].ID, check.DeepEquals, "blabla")
+	c.Assert(result[0].Type, check.DeepEquals, "python")
+	c.Assert(result[0].HostAddr, check.DeepEquals, "http://cittavld1182.globoi.com")
+	c.Assert(result[1].ID, check.DeepEquals, "bleble")
+	c.Assert(result[1].Type, check.DeepEquals, "java")
+	c.Assert(result[1].HostAddr, check.DeepEquals, "http://cittavld1182.globoi.com")
 }
 
-func (s *HandlersSuite) TestListContainersByAppHandler(c *gocheck.C) {
+func (s *HandlersSuite) TestListContainersByAppHandler(c *check.C) {
 	var result []container
 	coll := collection()
 	dCluster, _ = cluster.New(segregatedScheduler{}, nil)
 	err := coll.Insert(container{ID: "blabla", AppName: "appbla", HostAddr: "http://cittavld1182.globoi.com"})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer coll.Remove(bson.M{"id": "blabla"})
 	err = coll.Insert(container{ID: "bleble", AppName: "appbla", HostAddr: "http://cittavld1180.globoi.com"})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer coll.Remove(bson.M{"id": "bleble"})
 	req, err := http.NewRequest("GET", "/node/appbla/containers?:appname=appbla", nil)
 	rec := httptest.NewRecorder()
 	err = listContainersHandler(rec, req, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	body, err := ioutil.ReadAll(rec.Body)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = json.Unmarshal(body, &result)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(result[0].ID, gocheck.DeepEquals, "blabla")
-	c.Assert(result[0].AppName, gocheck.DeepEquals, "appbla")
-	c.Assert(result[0].HostAddr, gocheck.DeepEquals, "http://cittavld1182.globoi.com")
-	c.Assert(result[1].ID, gocheck.DeepEquals, "bleble")
-	c.Assert(result[1].AppName, gocheck.DeepEquals, "appbla")
-	c.Assert(result[1].HostAddr, gocheck.DeepEquals, "http://cittavld1180.globoi.com")
+	c.Assert(err, check.IsNil)
+	c.Assert(result[0].ID, check.DeepEquals, "blabla")
+	c.Assert(result[0].AppName, check.DeepEquals, "appbla")
+	c.Assert(result[0].HostAddr, check.DeepEquals, "http://cittavld1182.globoi.com")
+	c.Assert(result[1].ID, check.DeepEquals, "bleble")
+	c.Assert(result[1].AppName, check.DeepEquals, "appbla")
+	c.Assert(result[1].HostAddr, check.DeepEquals, "http://cittavld1180.globoi.com")
 }
 
-func (s *HandlersSuite) TestMoveContainersEmptyBodyHandler(c *gocheck.C) {
+func (s *HandlersSuite) TestMoveContainersEmptyBodyHandler(c *check.C) {
 	b := bytes.NewBufferString("")
 	req, err := http.NewRequest("POST", "/containers/move", b)
 	rec := httptest.NewRecorder()
 	err = moveContainersHandler(rec, req, nil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "unexpected end of JSON input")
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "unexpected end of JSON input")
 }
 
-func (s *HandlersSuite) TestMoveContainersEmptyToHandler(c *gocheck.C) {
+func (s *HandlersSuite) TestMoveContainersEmptyToHandler(c *check.C) {
 	b := bytes.NewBufferString(`{"from": "fromhost", "to": ""}`)
 	req, err := http.NewRequest("POST", "/containers/move", b)
 	rec := httptest.NewRecorder()
 	err = moveContainersHandler(rec, req, nil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Invalid params: from: fromhost - to: ")
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "Invalid params: from: fromhost - to: ")
 }
 
-func (s *HandlersSuite) TestMoveContainersHandler(c *gocheck.C) {
+func (s *HandlersSuite) TestMoveContainersHandler(c *check.C) {
 	b := bytes.NewBufferString(`{"from": "localhost", "to": "127.0.0.1"}`)
 	req, err := http.NewRequest("POST", "/containers/move", b)
 	rec := httptest.NewRecorder()
 	err = moveContainersHandler(rec, req, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	body, err := ioutil.ReadAll(rec.Body)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	validJson := fmt.Sprintf("[%s]", strings.Replace(strings.Trim(string(body), "\n "), "\n", ",", -1))
 	var result []progressLog
 	err = json.Unmarshal([]byte(validJson), &result)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(result, gocheck.DeepEquals, []progressLog{
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.DeepEquals, []progressLog{
 		{Message: "No units to move in localhost."},
 		{Message: "Containers moved successfully!"},
 	})
 }
 
-func (s *HandlersSuite) TestMoveContainerHandler(c *gocheck.C) {
+func (s *HandlersSuite) TestMoveContainerHandler(c *check.C) {
 	b := bytes.NewBufferString(`{"to": "127.0.0.1"}`)
 	req, err := http.NewRequest("POST", "/container/myid/move?:id=myid", b)
 	rec := httptest.NewRecorder()
 	err = moveContainerHandler(rec, req, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	body, err := ioutil.ReadAll(rec.Body)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	var result progressLog
 	err = json.Unmarshal(body, &result)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	expected := progressLog{Message: "Error trying to move container: not found"}
-	c.Assert(result, gocheck.DeepEquals, expected)
+	c.Assert(result, check.DeepEquals, expected)
 }
 
-func (s *S) TestRebalanceContainersEmptyBodyHandler(c *gocheck.C) {
+func (s *S) TestRebalanceContainersEmptyBodyHandler(c *check.C) {
 	cluster, err := s.startMultipleServersCluster()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.stopMultipleServersCluster(cluster)
 	err = newImage("tsuru/app-myapp", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
@@ -498,55 +498,55 @@ func (s *S) TestRebalanceContainersEmptyBodyHandler(c *gocheck.C) {
 	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
 	imageId, err := appCurrentImageName(appInstance.GetName())
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:     "localhost",
 		unitsToAdd: 5,
 		app:        appInstance,
 		imageId:    imageId,
 	})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	appStruct := &app.App{
 		Name:     appInstance.GetName(),
 		Platform: appInstance.GetPlatform(),
 	}
 	err = conn.Apps().Insert(appStruct)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	err = conn.Apps().Update(
 		bson.M{"name": appStruct.Name},
 		bson.M{"$set": bson.M{"units": units}},
 	)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	b := bytes.NewBufferString("")
 	req, err := http.NewRequest("POST", "/containers/move", b)
 	rec := httptest.NewRecorder()
 	err = rebalanceContainersHandler(rec, req, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	body, err := ioutil.ReadAll(rec.Body)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	validJson := fmt.Sprintf("[%s]", strings.Replace(strings.Trim(string(body), "\n "), "\n", ",", -1))
 	var result []progressLog
 	err = json.Unmarshal([]byte(validJson), &result)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(len(result), gocheck.Equals, 10)
-	c.Assert(result[0].Message, gocheck.Equals, "Rebalancing app \"myapp\" (6 units)...")
-	c.Assert(result[1].Message, gocheck.Equals, "Trying to move 2 units for \"myapp\" from localhost...")
-	c.Assert(result[2].Message, gocheck.Matches, "Moving unit .*")
-	c.Assert(result[3].Message, gocheck.Matches, "Moving unit .*")
-	c.Assert(result[8].Message, gocheck.Equals, "Rebalance finished for \"myapp\"")
-	c.Assert(result[9].Message, gocheck.Equals, "Containers rebalanced successfully!")
+	c.Assert(err, check.IsNil)
+	c.Assert(len(result), check.Equals, 10)
+	c.Assert(result[0].Message, check.Equals, "Rebalancing app \"myapp\" (6 units)...")
+	c.Assert(result[1].Message, check.Equals, "Trying to move 2 units for \"myapp\" from localhost...")
+	c.Assert(result[2].Message, check.Matches, "Moving unit .*")
+	c.Assert(result[3].Message, check.Matches, "Moving unit .*")
+	c.Assert(result[8].Message, check.Equals, "Rebalance finished for \"myapp\"")
+	c.Assert(result[9].Message, check.Equals, "Containers rebalanced successfully!")
 }
 
-func (s *S) TestRebalanceContainersDryBodyHandler(c *gocheck.C) {
+func (s *S) TestRebalanceContainersDryBodyHandler(c *check.C) {
 	cluster, err := s.startMultipleServersCluster()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.stopMultipleServersCluster(cluster)
 	err = newImage("tsuru/app-myapp", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
@@ -556,131 +556,131 @@ func (s *S) TestRebalanceContainersDryBodyHandler(c *gocheck.C) {
 	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
 	imageId, err := appCurrentImageName(appInstance.GetName())
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:     "localhost",
 		unitsToAdd: 5,
 		app:        appInstance,
 		imageId:    imageId,
 	})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	appStruct := &app.App{
 		Name:     appInstance.GetName(),
 		Platform: appInstance.GetPlatform(),
 	}
 	err = conn.Apps().Insert(appStruct)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	err = conn.Apps().Update(
 		bson.M{"name": appStruct.Name},
 		bson.M{"$set": bson.M{"units": units}},
 	)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	b := bytes.NewBufferString(`{"dry": "true"}`)
 	req, err := http.NewRequest("POST", "/containers/move", b)
 	rec := httptest.NewRecorder()
 	err = rebalanceContainersHandler(rec, req, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	body, err := ioutil.ReadAll(rec.Body)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	validJson := fmt.Sprintf("[%s]", strings.Replace(strings.Trim(string(body), "\n "), "\n", ",", -1))
 	var result []progressLog
 	err = json.Unmarshal([]byte(validJson), &result)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(len(result), gocheck.Equals, 6)
-	c.Assert(result[0].Message, gocheck.Equals, "Rebalancing app \"myapp\" (6 units)...")
-	c.Assert(result[1].Message, gocheck.Equals, "Trying to move 2 units for \"myapp\" from localhost...")
-	c.Assert(result[2].Message, gocheck.Matches, "Would move unit .*")
-	c.Assert(result[3].Message, gocheck.Matches, "Would move unit .*")
-	c.Assert(result[4].Message, gocheck.Equals, "Rebalance finished for \"myapp\"")
-	c.Assert(result[5].Message, gocheck.Equals, "Containers rebalanced successfully!")
+	c.Assert(err, check.IsNil)
+	c.Assert(len(result), check.Equals, 6)
+	c.Assert(result[0].Message, check.Equals, "Rebalancing app \"myapp\" (6 units)...")
+	c.Assert(result[1].Message, check.Equals, "Trying to move 2 units for \"myapp\" from localhost...")
+	c.Assert(result[2].Message, check.Matches, "Would move unit .*")
+	c.Assert(result[3].Message, check.Matches, "Would move unit .*")
+	c.Assert(result[4].Message, check.Equals, "Rebalance finished for \"myapp\"")
+	c.Assert(result[5].Message, check.Equals, "Containers rebalanced successfully!")
 }
 
-func (s *HandlersSuite) TestAddPoolHandler(c *gocheck.C) {
+func (s *HandlersSuite) TestAddPoolHandler(c *check.C) {
 	b := bytes.NewBufferString(`{"pool": "pool1"}`)
 	req, err := http.NewRequest("POST", "/pool", b)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = addPoolHandler(rec, req, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
 	n, err := s.conn.Collection(schedulerCollection).FindId("pool1").Count()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 1)
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 1)
 }
 
-func (s *HandlersSuite) TestRemovePoolHandler(c *gocheck.C) {
+func (s *HandlersSuite) TestRemovePoolHandler(c *check.C) {
 	pool := Pool{Name: "pool1"}
 	err := s.conn.Collection(schedulerCollection).Insert(pool)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	b := bytes.NewBufferString(`{"pool": "pool1"}`)
 	req, err := http.NewRequest("DELETE", "/pool", b)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = removePoolHandler(rec, req, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	p, err := s.conn.Collection(schedulerCollection).FindId("pool1").Count()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(p, gocheck.Equals, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(p, check.Equals, 0)
 }
 
-func (s *HandlersSuite) TestListPoolsHandler(c *gocheck.C) {
+func (s *HandlersSuite) TestListPoolsHandler(c *check.C) {
 	pool := Pool{Name: "pool1", Teams: []string{"tsuruteam", "ateam"}}
 	err := s.conn.Collection(schedulerCollection).Insert(pool)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Collection(schedulerCollection).RemoveId(pool.Name)
 	poolsExpected := []Pool{pool}
 	req, err := http.NewRequest("GET", "/pool", nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = listPoolHandler(rec, req, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	var pools []Pool
 	err = json.NewDecoder(rec.Body).Decode(&pools)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(pools, gocheck.DeepEquals, poolsExpected)
+	c.Assert(err, check.IsNil)
+	c.Assert(pools, check.DeepEquals, poolsExpected)
 }
 
-func (s *HandlersSuite) TestAddTeamsToPoolHandler(c *gocheck.C) {
+func (s *HandlersSuite) TestAddTeamsToPoolHandler(c *check.C) {
 	pool := Pool{Name: "pool1"}
 	err := s.conn.Collection(schedulerCollection).Insert(pool)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Collection(schedulerCollection).RemoveId(pool.Name)
 	b := bytes.NewBufferString(`{"pool": "pool1", "teams": ["test"]}`)
 	req, err := http.NewRequest("POST", "/pool/team", b)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = addTeamToPoolHandler(rec, req, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	var p Pool
 	err = s.conn.Collection(schedulerCollection).FindId("pool1").One(&p)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(p.Teams, gocheck.DeepEquals, []string{"test"})
+	c.Assert(err, check.IsNil)
+	c.Assert(p.Teams, check.DeepEquals, []string{"test"})
 }
 
-func (s *HandlersSuite) TestRemoveTeamsToPoolHandler(c *gocheck.C) {
+func (s *HandlersSuite) TestRemoveTeamsToPoolHandler(c *check.C) {
 	pool := Pool{Name: "pool1", Teams: []string{"test"}}
 	err := s.conn.Collection(schedulerCollection).Insert(pool)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Collection(schedulerCollection).RemoveId(pool.Name)
 	b := bytes.NewBufferString(`{"pool": "pool1", "teams": ["test"]}`)
 	req, err := http.NewRequest("DELETE", "/pool/team", b)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = removeTeamToPoolHandler(rec, req, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	var p Pool
 	err = s.conn.Collection(schedulerCollection).FindId("pool1").One(&p)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(p.Teams, gocheck.DeepEquals, []string{})
+	c.Assert(err, check.IsNil)
+	c.Assert(p.Teams, check.DeepEquals, []string{})
 }
 
-func (s *HandlersSuite) TestHealingHistoryHandler(c *gocheck.C) {
+func (s *HandlersSuite) TestHealingHistoryHandler(c *check.C) {
 	evt1, err := newHealingEvent(cluster.Node{Address: "addr1"})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	evt1.update(cluster.Node{Address: "addr2"}, nil)
 	evt2, err := newHealingEvent(cluster.Node{Address: "addr3"})
 	evt2.update(cluster.Node{}, errors.New("some error"))
@@ -688,38 +688,38 @@ func (s *HandlersSuite) TestHealingHistoryHandler(c *gocheck.C) {
 	evt3.update(container{ID: "9876"}, nil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/docker/healing", nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	body := recorder.Body.Bytes()
 	healings := []healingEvent{}
 	err = json.Unmarshal(body, &healings)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(healings, gocheck.HasLen, 3)
-	c.Assert(healings[2].StartTime.UTC().Format(time.Stamp), gocheck.Equals, evt1.StartTime.UTC().Format(time.Stamp))
-	c.Assert(healings[2].EndTime.UTC().Format(time.Stamp), gocheck.Equals, evt1.EndTime.UTC().Format(time.Stamp))
-	c.Assert(healings[2].FailingNode.Address, gocheck.Equals, "addr1")
-	c.Assert(healings[2].CreatedNode.Address, gocheck.Equals, "addr2")
-	c.Assert(healings[2].Error, gocheck.Equals, "")
-	c.Assert(healings[2].Successful, gocheck.Equals, true)
-	c.Assert(healings[2].Action, gocheck.Equals, "node-healing")
-	c.Assert(healings[1].FailingNode.Address, gocheck.Equals, "addr3")
-	c.Assert(healings[1].CreatedNode.Address, gocheck.Equals, "")
-	c.Assert(healings[1].Error, gocheck.Equals, "some error")
-	c.Assert(healings[1].Successful, gocheck.Equals, false)
-	c.Assert(healings[1].Action, gocheck.Equals, "node-healing")
-	c.Assert(healings[0].FailingContainer.ID, gocheck.Equals, "1234")
-	c.Assert(healings[0].CreatedContainer.ID, gocheck.Equals, "9876")
-	c.Assert(healings[0].Successful, gocheck.Equals, true)
-	c.Assert(healings[0].Error, gocheck.Equals, "")
-	c.Assert(healings[0].Action, gocheck.Equals, "container-healing")
+	c.Assert(err, check.IsNil)
+	c.Assert(healings, check.HasLen, 3)
+	c.Assert(healings[2].StartTime.UTC().Format(time.Stamp), check.Equals, evt1.StartTime.UTC().Format(time.Stamp))
+	c.Assert(healings[2].EndTime.UTC().Format(time.Stamp), check.Equals, evt1.EndTime.UTC().Format(time.Stamp))
+	c.Assert(healings[2].FailingNode.Address, check.Equals, "addr1")
+	c.Assert(healings[2].CreatedNode.Address, check.Equals, "addr2")
+	c.Assert(healings[2].Error, check.Equals, "")
+	c.Assert(healings[2].Successful, check.Equals, true)
+	c.Assert(healings[2].Action, check.Equals, "node-healing")
+	c.Assert(healings[1].FailingNode.Address, check.Equals, "addr3")
+	c.Assert(healings[1].CreatedNode.Address, check.Equals, "")
+	c.Assert(healings[1].Error, check.Equals, "some error")
+	c.Assert(healings[1].Successful, check.Equals, false)
+	c.Assert(healings[1].Action, check.Equals, "node-healing")
+	c.Assert(healings[0].FailingContainer.ID, check.Equals, "1234")
+	c.Assert(healings[0].CreatedContainer.ID, check.Equals, "9876")
+	c.Assert(healings[0].Successful, check.Equals, true)
+	c.Assert(healings[0].Error, check.Equals, "")
+	c.Assert(healings[0].Action, check.Equals, "container-healing")
 }
 
-func (s *HandlersSuite) TestHealingHistoryHandlerFilterContainer(c *gocheck.C) {
+func (s *HandlersSuite) TestHealingHistoryHandlerFilterContainer(c *check.C) {
 	evt1, err := newHealingEvent(cluster.Node{Address: "addr1"})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	evt1.update(cluster.Node{Address: "addr2"}, nil)
 	evt2, err := newHealingEvent(cluster.Node{Address: "addr3"})
 	evt2.update(cluster.Node{}, errors.New("some error"))
@@ -727,26 +727,26 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterContainer(c *gocheck.C) {
 	evt3.update(container{ID: "9876"}, nil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/docker/healing?filter=container", nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	body := recorder.Body.Bytes()
 	healings := []healingEvent{}
 	err = json.Unmarshal(body, &healings)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(healings, gocheck.HasLen, 1)
-	c.Assert(healings[0].FailingContainer.ID, gocheck.Equals, "1234")
-	c.Assert(healings[0].CreatedContainer.ID, gocheck.Equals, "9876")
-	c.Assert(healings[0].Successful, gocheck.Equals, true)
-	c.Assert(healings[0].Error, gocheck.Equals, "")
-	c.Assert(healings[0].Action, gocheck.Equals, "container-healing")
+	c.Assert(err, check.IsNil)
+	c.Assert(healings, check.HasLen, 1)
+	c.Assert(healings[0].FailingContainer.ID, check.Equals, "1234")
+	c.Assert(healings[0].CreatedContainer.ID, check.Equals, "9876")
+	c.Assert(healings[0].Successful, check.Equals, true)
+	c.Assert(healings[0].Error, check.Equals, "")
+	c.Assert(healings[0].Action, check.Equals, "container-healing")
 }
 
-func (s *HandlersSuite) TestHealingHistoryHandlerFilterNode(c *gocheck.C) {
+func (s *HandlersSuite) TestHealingHistoryHandlerFilterNode(c *check.C) {
 	evt1, err := newHealingEvent(cluster.Node{Address: "addr1"})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	evt1.update(cluster.Node{Address: "addr2"}, nil)
 	evt2, err := newHealingEvent(cluster.Node{Address: "addr3"})
 	evt2.update(cluster.Node{}, errors.New("some error"))
@@ -754,18 +754,18 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterNode(c *gocheck.C) {
 	evt3.update(container{ID: "9876"}, nil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/docker/healing?filter=node", nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	body := recorder.Body.Bytes()
 	healings := []healingEvent{}
 	err = json.Unmarshal(body, &healings)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(healings, gocheck.HasLen, 2)
-	c.Assert(healings[0].Action, gocheck.Equals, "node-healing")
-	c.Assert(healings[0].ID, gocheck.Equals, evt2.ID)
-	c.Assert(healings[1].Action, gocheck.Equals, "node-healing")
-	c.Assert(healings[1].ID, gocheck.Equals, evt1.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(healings, check.HasLen, 2)
+	c.Assert(healings[0].Action, check.Equals, "node-healing")
+	c.Assert(healings[0].ID, check.Equals, evt2.ID)
+	c.Assert(healings[1].Action, check.Equals, "node-healing")
+	c.Assert(healings[1].ID, check.Equals, evt1.ID)
 }

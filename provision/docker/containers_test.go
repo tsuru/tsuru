@@ -12,16 +12,16 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
-	"launchpad.net/gocheck"
 )
 
-func (s *S) TestMoveContainers(c *gocheck.C) {
+func (s *S) TestMoveContainers(c *check.C) {
 	cluster, err := s.startMultipleServersCluster()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.stopMultipleServersCluster(cluster)
 	err = newImage("tsuru/app-myapp", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
@@ -31,47 +31,47 @@ func (s *S) TestMoveContainers(c *gocheck.C) {
 	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
 	imageId, err := appCurrentImageName(appInstance.GetName())
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:     "localhost",
 		unitsToAdd: 2,
 		app:        appInstance,
 		imageId:    imageId,
 	})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
 	}
 	err = conn.Apps().Insert(appStruct)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
 	err = moveContainers("localhost", "127.0.0.1", encoder)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	containers, err := listContainersByHost("localhost")
-	c.Assert(len(containers), gocheck.Equals, 0)
+	c.Assert(len(containers), check.Equals, 0)
 	containers, err = listContainersByHost("127.0.0.1")
-	c.Assert(len(containers), gocheck.Equals, 2)
+	c.Assert(len(containers), check.Equals, 2)
 	parts := strings.Split(buf.String(), "\n")
 	var logEntry progressLog
 	json.Unmarshal([]byte(parts[0]), &logEntry)
-	c.Assert(logEntry.Message, gocheck.Matches, ".*Moving 2 units.*")
+	c.Assert(logEntry.Message, check.Matches, ".*Moving 2 units.*")
 	json.Unmarshal([]byte(parts[1]), &logEntry)
-	c.Assert(logEntry.Message, gocheck.Matches, ".*Moving unit.*for.*myapp.*localhost.*127.0.0.1.*")
+	c.Assert(logEntry.Message, check.Matches, ".*Moving unit.*for.*myapp.*localhost.*127.0.0.1.*")
 	json.Unmarshal([]byte(parts[2]), &logEntry)
-	c.Assert(logEntry.Message, gocheck.Matches, ".*Moving unit.*for.*myapp.*localhost.*127.0.0.1.*")
+	c.Assert(logEntry.Message, check.Matches, ".*Moving unit.*for.*myapp.*localhost.*127.0.0.1.*")
 }
 
-func (s *S) TestMoveContainersUnknownDest(c *gocheck.C) {
+func (s *S) TestMoveContainersUnknownDest(c *check.C) {
 	cluster, err := s.startMultipleServersCluster()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.stopMultipleServersCluster(cluster)
 	err = newImage("tsuru/app-myapp", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
@@ -81,43 +81,43 @@ func (s *S) TestMoveContainersUnknownDest(c *gocheck.C) {
 	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
 	imageId, err := appCurrentImageName(appInstance.GetName())
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:     "localhost",
 		unitsToAdd: 2,
 		app:        appInstance,
 		imageId:    imageId,
 	})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
 	}
 	err = conn.Apps().Insert(appStruct)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
 	err = moveContainers("localhost", "unknown", encoder)
-	c.Assert(err, gocheck.Equals, containerMovementErr)
+	c.Assert(err, check.Equals, containerMovementErr)
 	parts := strings.Split(buf.String(), "\n")
 	var logEntry progressLog
 	json.Unmarshal([]byte(parts[0]), &logEntry)
-	c.Assert(logEntry.Message, gocheck.Matches, ".*Moving 2 units.*")
+	c.Assert(logEntry.Message, check.Matches, ".*Moving 2 units.*")
 	json.Unmarshal([]byte(parts[3]), &logEntry)
-	c.Assert(logEntry.Message, gocheck.Matches, ".*Error moving unit.*Caused by:.*unknown.*not found")
+	c.Assert(logEntry.Message, check.Matches, ".*Error moving unit.*Caused by:.*unknown.*not found")
 	json.Unmarshal([]byte(parts[4]), &logEntry)
-	c.Assert(logEntry.Message, gocheck.Matches, ".*Error moving unit.*Caused by:.*unknown.*not found")
+	c.Assert(logEntry.Message, check.Matches, ".*Error moving unit.*Caused by:.*unknown.*not found")
 }
 
-func (s *S) TestMoveContainer(c *gocheck.C) {
+func (s *S) TestMoveContainer(c *check.C) {
 	cluster, err := s.startMultipleServersCluster()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.stopMultipleServersCluster(cluster)
 	err = newImage("tsuru/app-myapp", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
@@ -127,39 +127,39 @@ func (s *S) TestMoveContainer(c *gocheck.C) {
 	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
 	imageId, err := appCurrentImageName(appInstance.GetName())
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	addedConts, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:     "localhost",
 		unitsToAdd: 2,
 		app:        appInstance,
 		imageId:    imageId,
 	})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
 	}
 	err = conn.Apps().Insert(appStruct)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
 	_, err = moveContainer(addedConts[0].ID[0:6], "127.0.0.1", encoder)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	containers, err := listContainersByHost("localhost")
-	c.Assert(len(containers), gocheck.Equals, 1)
+	c.Assert(len(containers), check.Equals, 1)
 	containers, err = listContainersByHost("127.0.0.1")
-	c.Assert(len(containers), gocheck.Equals, 1)
+	c.Assert(len(containers), check.Equals, 1)
 }
 
-func (s *S) TestRebalanceContainers(c *gocheck.C) {
+func (s *S) TestRebalanceContainers(c *check.C) {
 	cluster, err := s.startMultipleServersCluster()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.stopMultipleServersCluster(cluster)
 	err = newImage("tsuru/app-myapp", s.server.URL())
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner
 	defer p.Destroy(appInstance)
@@ -169,83 +169,83 @@ func (s *S) TestRebalanceContainers(c *gocheck.C) {
 	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
 	imageId, err := appCurrentImageName(appInstance.GetName())
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:     "localhost",
 		unitsToAdd: 5,
 		app:        appInstance,
 		imageId:    imageId,
 	})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
 	}
 	err = conn.Apps().Insert(appStruct)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
 	err = rebalanceContainers(encoder, false)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	c1, err := listContainersByHost("localhost")
-	c.Assert(len(c1), gocheck.Equals, 3)
+	c.Assert(len(c1), check.Equals, 3)
 	c2, err := listContainersByHost("127.0.0.1")
-	c.Assert(len(c2), gocheck.Equals, 2)
+	c.Assert(len(c2), check.Equals, 2)
 }
 
-func (s *S) TestAppLocker(c *gocheck.C) {
+func (s *S) TestAppLocker(c *check.C) {
 	appName := "myapp"
 	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	appDB := &app.App{Name: appName}
 	defer conn.Apps().Remove(bson.M{"name": appName})
 	err = conn.Apps().Insert(appDB)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	locker := &appLocker{}
 	hasLock := locker.lock(appName)
-	c.Assert(hasLock, gocheck.Equals, true)
-	c.Assert(locker.refCount[appName], gocheck.Equals, 1)
+	c.Assert(hasLock, check.Equals, true)
+	c.Assert(locker.refCount[appName], check.Equals, 1)
 	appDB, err = app.GetByName(appName)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(appDB.Lock.Locked, gocheck.Equals, true)
-	c.Assert(appDB.Lock.Owner, gocheck.Equals, app.InternalAppName)
-	c.Assert(appDB.Lock.Reason, gocheck.Equals, "container-move")
+	c.Assert(err, check.IsNil)
+	c.Assert(appDB.Lock.Locked, check.Equals, true)
+	c.Assert(appDB.Lock.Owner, check.Equals, app.InternalAppName)
+	c.Assert(appDB.Lock.Reason, check.Equals, "container-move")
 	hasLock = locker.lock(appName)
-	c.Assert(hasLock, gocheck.Equals, true)
-	c.Assert(locker.refCount[appName], gocheck.Equals, 2)
+	c.Assert(hasLock, check.Equals, true)
+	c.Assert(locker.refCount[appName], check.Equals, 2)
 	locker.unlock(appName)
-	c.Assert(locker.refCount[appName], gocheck.Equals, 1)
+	c.Assert(locker.refCount[appName], check.Equals, 1)
 	appDB, err = app.GetByName(appName)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(appDB.Lock.Locked, gocheck.Equals, true)
+	c.Assert(err, check.IsNil)
+	c.Assert(appDB.Lock.Locked, check.Equals, true)
 	locker.unlock(appName)
-	c.Assert(locker.refCount[appName], gocheck.Equals, 0)
+	c.Assert(locker.refCount[appName], check.Equals, 0)
 	appDB, err = app.GetByName(appName)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(appDB.Lock.Locked, gocheck.Equals, false)
+	c.Assert(err, check.IsNil)
+	c.Assert(appDB.Lock.Locked, check.Equals, false)
 }
 
-func (s *S) TestAppLockerBlockOtherLockers(c *gocheck.C) {
+func (s *S) TestAppLockerBlockOtherLockers(c *check.C) {
 	appName := "myapp"
 	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	appDB := &app.App{Name: appName}
 	defer conn.Apps().Remove(bson.M{"name": appName})
 	err = conn.Apps().Insert(appDB)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	locker := &appLocker{}
 	hasLock := locker.lock(appName)
-	c.Assert(hasLock, gocheck.Equals, true)
-	c.Assert(locker.refCount[appName], gocheck.Equals, 1)
+	c.Assert(hasLock, check.Equals, true)
+	c.Assert(locker.refCount[appName], check.Equals, 1)
 	appDB, err = app.GetByName(appName)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(appDB.Lock.Locked, gocheck.Equals, true)
+	c.Assert(err, check.IsNil)
+	c.Assert(appDB.Lock.Locked, check.Equals, true)
 	otherLocker := &appLocker{}
 	hasLock = otherLocker.lock(appName)
-	c.Assert(hasLock, gocheck.Equals, false)
+	c.Assert(hasLock, check.Equals, false)
 }

@@ -7,16 +7,16 @@ package iaas
 import (
 	"testing"
 
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
-func Test(t *testing.T) { gocheck.TestingT(t) }
+func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct{}
 
-var _ = gocheck.Suite(&S{})
+var _ = check.Suite(&S{})
 
-func (s *S) SetUpTest(c *gocheck.C) {
+func (s *S) SetUpTest(c *check.C) {
 	iaasProviders = make(map[string]IaaS)
 	RegisterIaasProvider("test-iaas", TestIaaS{})
 	coll := collection()

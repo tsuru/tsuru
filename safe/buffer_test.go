@@ -7,216 +7,216 @@ package safe
 import (
 	"testing"
 
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
 type S struct{}
 
-var _ = gocheck.Suite(&S{})
+var _ = check.Suite(&S{})
 
 func Test(t *testing.T) {
-	gocheck.TestingT(t)
+	check.TestingT(t)
 }
 
-func (s *S) TestSafeBufferBytes(c *gocheck.C) {
+func (s *S) TestSafeBufferBytes(c *check.C) {
 	buf := NewBuffer([]byte("something"))
-	c.Assert(buf.Bytes(), gocheck.DeepEquals, []byte("something"))
+	c.Assert(buf.Bytes(), check.DeepEquals, []byte("something"))
 }
 
-func (s *S) TestSafeBufferLen(c *gocheck.C) {
+func (s *S) TestSafeBufferLen(c *check.C) {
 	buf := NewBuffer([]byte("something"))
-	c.Assert(buf.Len(), gocheck.Equals, 9)
+	c.Assert(buf.Len(), check.Equals, 9)
 }
 
-func (s *S) TestSafeBufferNext(c *gocheck.C) {
+func (s *S) TestSafeBufferNext(c *check.C) {
 	buf := NewBuffer([]byte("something"))
 	p := buf.Next(3)
-	c.Assert(p, gocheck.DeepEquals, []byte("som"))
+	c.Assert(p, check.DeepEquals, []byte("som"))
 	p = buf.Next(3)
-	c.Assert(p, gocheck.DeepEquals, []byte("eth"))
+	c.Assert(p, check.DeepEquals, []byte("eth"))
 }
 
-func (s *S) TestSafeBufferRead(c *gocheck.C) {
+func (s *S) TestSafeBufferRead(c *check.C) {
 	var p [8]byte
 	input := []byte("something")
 	buf := NewBuffer(input)
 	n, err := buf.Read(p[:])
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 8)
-	c.Assert(p[:], gocheck.DeepEquals, input[:8])
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 8)
+	c.Assert(p[:], check.DeepEquals, input[:8])
 	n, err = buf.Read(p[:])
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 1)
-	c.Assert(p[0], gocheck.Equals, byte('g'))
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 1)
+	c.Assert(p[0], check.Equals, byte('g'))
 }
 
-func (s *S) TestSafeBufferReadByte(c *gocheck.C) {
+func (s *S) TestSafeBufferReadByte(c *check.C) {
 	buf := NewBuffer([]byte("something"))
 	b, err := buf.ReadByte()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(b, gocheck.Equals, byte('s'))
+	c.Assert(err, check.IsNil)
+	c.Assert(b, check.Equals, byte('s'))
 	b, err = buf.ReadByte()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(b, gocheck.Equals, byte('o'))
+	c.Assert(err, check.IsNil)
+	c.Assert(b, check.Equals, byte('o'))
 }
 
-func (s *S) TestSafeBufferReadBytes(c *gocheck.C) {
+func (s *S) TestSafeBufferReadBytes(c *check.C) {
 	buf := NewBuffer([]byte("something"))
 	b, err := buf.ReadBytes('n')
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(b, gocheck.DeepEquals, []byte("somethin"))
+	c.Assert(err, check.IsNil)
+	c.Assert(b, check.DeepEquals, []byte("somethin"))
 }
 
-func (s *S) TestSafeBufferReadFrom(c *gocheck.C) {
+func (s *S) TestSafeBufferReadFrom(c *check.C) {
 	var p [9]byte
 	buf1 := NewBuffer([]byte("something"))
 	buf2 := NewBuffer(nil)
 	n, err := buf2.ReadFrom(buf1)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, int64(9))
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, int64(9))
 	x, err := buf2.Read(p[:])
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(x, gocheck.Equals, 9)
-	c.Assert(p[:], gocheck.DeepEquals, []byte("something"))
+	c.Assert(err, check.IsNil)
+	c.Assert(x, check.Equals, 9)
+	c.Assert(p[:], check.DeepEquals, []byte("something"))
 }
 
-func (s *S) TestSafeBufferReadRune(c *gocheck.C) {
+func (s *S) TestSafeBufferReadRune(c *check.C) {
 	buf := NewBuffer([]byte("something"))
 	r, n, err := buf.ReadRune()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 1)
-	c.Assert(r, gocheck.Equals, 's')
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 1)
+	c.Assert(r, check.Equals, 's')
 	r, n, err = buf.ReadRune()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 1)
-	c.Assert(r, gocheck.Equals, 'o')
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 1)
+	c.Assert(r, check.Equals, 'o')
 }
 
-func (s *S) TestSafeBufferReadString(c *gocheck.C) {
+func (s *S) TestSafeBufferReadString(c *check.C) {
 	buf := NewBuffer([]byte("something"))
 	v, err := buf.ReadString('n')
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(v, gocheck.Equals, "somethin")
+	c.Assert(err, check.IsNil)
+	c.Assert(v, check.Equals, "somethin")
 }
 
-func (s *S) TestSafeBufferReset(c *gocheck.C) {
+func (s *S) TestSafeBufferReset(c *check.C) {
 	var (
 		buf Buffer
 		p   [10]byte
 	)
 	n, err := buf.Write([]byte("something"))
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 9)
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 9)
 	buf.Reset()
 	n, err = buf.Write([]byte("otherthing"))
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 10)
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 10)
 	n, err = buf.Read(p[:])
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 10)
-	c.Assert(p[:], gocheck.DeepEquals, []byte("otherthing"))
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 10)
+	c.Assert(p[:], check.DeepEquals, []byte("otherthing"))
 }
 
-func (s *S) TestSafeBufferString(c *gocheck.C) {
+func (s *S) TestSafeBufferString(c *check.C) {
 	buf := NewBuffer([]byte("something"))
-	c.Assert(buf.String(), gocheck.Equals, "something")
+	c.Assert(buf.String(), check.Equals, "something")
 }
 
-func (s *S) TestSafeBufferTruncate(c *gocheck.C) {
+func (s *S) TestSafeBufferTruncate(c *check.C) {
 	var (
 		buf Buffer
 		p   [9]byte
 	)
 	n, err := buf.Write([]byte("something"))
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 9)
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 9)
 	buf.Truncate(4)
 	n, err = buf.Write([]byte("thong"))
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 5)
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 5)
 	n, err = buf.Read(p[:])
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 9)
-	c.Assert(p[:], gocheck.DeepEquals, []byte("somethong"))
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 9)
+	c.Assert(p[:], check.DeepEquals, []byte("somethong"))
 }
 
-func (s *S) TestSafeBufferUnreadByte(c *gocheck.C) {
+func (s *S) TestSafeBufferUnreadByte(c *check.C) {
 	buf := NewBuffer([]byte("something"))
 	b, err := buf.ReadByte()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(b, gocheck.Equals, byte('s'))
+	c.Assert(err, check.IsNil)
+	c.Assert(b, check.Equals, byte('s'))
 	err = buf.UnreadByte()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	b, err = buf.ReadByte()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(b, gocheck.Equals, byte('s'))
+	c.Assert(err, check.IsNil)
+	c.Assert(b, check.Equals, byte('s'))
 }
 
-func (s *S) TestSafeBufferUnreadRune(c *gocheck.C) {
+func (s *S) TestSafeBufferUnreadRune(c *check.C) {
 	buf := NewBuffer([]byte("something"))
 	r, _, err := buf.ReadRune()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(r, gocheck.Equals, 's')
+	c.Assert(err, check.IsNil)
+	c.Assert(r, check.Equals, 's')
 	err = buf.UnreadRune()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	r, _, err = buf.ReadRune()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(r, gocheck.Equals, 's')
+	c.Assert(err, check.IsNil)
+	c.Assert(r, check.Equals, 's')
 }
 
-func (s *S) TestSafeBufferWrite(c *gocheck.C) {
+func (s *S) TestSafeBufferWrite(c *check.C) {
 	var p [9]byte
 	buf := NewBuffer(nil)
 	n, err := buf.Write([]byte("something"))
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 9)
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 9)
 	n, err = buf.Read(p[:])
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 9)
-	c.Assert(p[:], gocheck.DeepEquals, []byte("something"))
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 9)
+	c.Assert(p[:], check.DeepEquals, []byte("something"))
 }
 
-func (s *S) TestSafeBufferWriteByte(c *gocheck.C) {
+func (s *S) TestSafeBufferWriteByte(c *check.C) {
 	var buf Buffer
 	err := buf.WriteByte(byte('a'))
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	b, err := buf.ReadByte()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(b, gocheck.Equals, byte('a'))
+	c.Assert(err, check.IsNil)
+	c.Assert(b, check.Equals, byte('a'))
 }
 
-func (s *S) TestSafeBufferWriteRune(c *gocheck.C) {
+func (s *S) TestSafeBufferWriteRune(c *check.C) {
 	var buf Buffer
 	n, err := buf.WriteRune('a')
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 1)
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 1)
 	r, n, err := buf.ReadRune()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 1)
-	c.Assert(r, gocheck.Equals, 'a')
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 1)
+	c.Assert(r, check.Equals, 'a')
 }
 
-func (s *S) TestSafeBufferWriteTo(c *gocheck.C) {
+func (s *S) TestSafeBufferWriteTo(c *check.C) {
 	var p [9]byte
 	buf1 := NewBuffer([]byte("something"))
 	buf2 := NewBuffer(nil)
 	n, err := buf1.WriteTo(buf2)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, int64(9))
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, int64(9))
 	x, err := buf2.Read(p[:])
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(x, gocheck.Equals, 9)
-	c.Assert(p[:], gocheck.DeepEquals, []byte("something"))
+	c.Assert(err, check.IsNil)
+	c.Assert(x, check.Equals, 9)
+	c.Assert(p[:], check.DeepEquals, []byte("something"))
 }
 
-func (s *S) TestSafeBufferWriteString(c *gocheck.C) {
+func (s *S) TestSafeBufferWriteString(c *check.C) {
 	buf := NewBuffer(nil)
 	n, err := buf.WriteString("something")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 9)
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 9)
 	var p [9]byte
 	n, err = buf.Read(p[:])
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 9)
-	c.Assert(p[:], gocheck.DeepEquals, []byte("something"))
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 9)
+	c.Assert(p[:], check.DeepEquals, []byte("something"))
 }

@@ -15,11 +15,11 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
+	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
-	"launchpad.net/gocheck"
 )
 
-func (s *S) TestHealthcheck(c *gocheck.C) {
+func (s *S) TestHealthcheck(c *check.C) {
 	var requests []*http.Request
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests = append(requests, r)
@@ -34,21 +34,21 @@ func (s *S) TestHealthcheck(c *gocheck.C) {
 		},
 	}}
 	err := s.storage.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
 	cont := container{AppName: a.Name, HostAddr: host, HostPort: port}
 	buf := bytes.Buffer{}
 	err = runHealthcheck(&cont, &buf)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(requests, gocheck.HasLen, 1)
-	c.Assert(requests[0].URL.Path, gocheck.Equals, "/x/y")
-	c.Assert(requests[0].Method, gocheck.Equals, "POST")
-	c.Assert(buf.String(), gocheck.Equals, " ---> healthcheck successful()\n")
+	c.Assert(err, check.IsNil)
+	c.Assert(requests, check.HasLen, 1)
+	c.Assert(requests[0].URL.Path, check.Equals, "/x/y")
+	c.Assert(requests[0].Method, check.Equals, "POST")
+	c.Assert(buf.String(), check.Equals, " ---> healthcheck successful()\n")
 }
 
-func (s *S) TestHealthcheckWithMatch(c *gocheck.C) {
+func (s *S) TestHealthcheckWithMatch(c *check.C) {
 	var requests []*http.Request
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests = append(requests, r)
@@ -68,24 +68,24 @@ func (s *S) TestHealthcheckWithMatch(c *gocheck.C) {
 		},
 	}}
 	err := s.storage.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
 	cont := container{AppName: a.Name, HostAddr: host, HostPort: port}
 	buf := bytes.Buffer{}
 	err = runHealthcheck(&cont, &buf)
-	c.Assert(err, gocheck.ErrorMatches, ".*unexpected result, expected \"(?s).*some.*\", got: invalid")
-	c.Assert(requests, gocheck.HasLen, 1)
-	c.Assert(requests[0].Method, gocheck.Equals, "GET")
+	c.Assert(err, check.ErrorMatches, ".*unexpected result, expected \"(?s).*some.*\", got: invalid")
+	c.Assert(requests, check.HasLen, 1)
+	c.Assert(requests[0].Method, check.Equals, "GET")
 	err = runHealthcheck(&cont, &buf)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(requests, gocheck.HasLen, 2)
-	c.Assert(requests[1].URL.Path, gocheck.Equals, "/x/y")
-	c.Assert(requests[1].Method, gocheck.Equals, "GET")
+	c.Assert(err, check.IsNil)
+	c.Assert(requests, check.HasLen, 2)
+	c.Assert(requests[1].URL.Path, check.Equals, "/x/y")
+	c.Assert(requests[1].Method, check.Equals, "GET")
 }
 
-func (s *S) TestHealthcheckDefaultCheck(c *gocheck.C) {
+func (s *S) TestHealthcheckDefaultCheck(c *check.C) {
 	var requests []*http.Request
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests = append(requests, r)
@@ -98,20 +98,20 @@ func (s *S) TestHealthcheckDefaultCheck(c *gocheck.C) {
 		},
 	}}
 	err := s.storage.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
 	cont := container{AppName: a.Name, HostAddr: host, HostPort: port}
 	buf := bytes.Buffer{}
 	err = runHealthcheck(&cont, &buf)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(requests, gocheck.HasLen, 1)
-	c.Assert(requests[0].Method, gocheck.Equals, "GET")
-	c.Assert(requests[0].URL.Path, gocheck.Equals, "/x/y")
+	c.Assert(err, check.IsNil)
+	c.Assert(requests, check.HasLen, 1)
+	c.Assert(requests[0].Method, check.Equals, "GET")
+	c.Assert(requests[0].URL.Path, check.Equals, "/x/y")
 }
 
-func (s *S) TestHealthcheckNoHealthcheck(c *gocheck.C) {
+func (s *S) TestHealthcheckNoHealthcheck(c *check.C) {
 	var requests []*http.Request
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests = append(requests, r)
@@ -120,18 +120,18 @@ func (s *S) TestHealthcheckNoHealthcheck(c *gocheck.C) {
 	defer server.Close()
 	a := app.App{Name: "myapp1"}
 	err := s.storage.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
 	cont := container{AppName: a.Name, HostAddr: host, HostPort: port}
 	buf := bytes.Buffer{}
 	err = runHealthcheck(&cont, &buf)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(requests, gocheck.HasLen, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(requests, check.HasLen, 0)
 }
 
-func (s *S) TestHealthcheckNoPath(c *gocheck.C) {
+func (s *S) TestHealthcheckNoPath(c *check.C) {
 	var requests []*http.Request
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests = append(requests, r)
@@ -145,18 +145,18 @@ func (s *S) TestHealthcheckNoPath(c *gocheck.C) {
 		},
 	}}
 	err := s.storage.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
 	cont := container{AppName: a.Name, HostAddr: host, HostPort: port}
 	buf := bytes.Buffer{}
 	err = runHealthcheck(&cont, &buf)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(requests, gocheck.HasLen, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(requests, check.HasLen, 0)
 }
 
-func (s *S) TestHealthcheckKeepsTryingWithServerDown(c *gocheck.C) {
+func (s *S) TestHealthcheckKeepsTryingWithServerDown(c *check.C) {
 	var requests []*http.Request
 	lock := sync.Mutex{}
 	shouldRun := false
@@ -178,7 +178,7 @@ func (s *S) TestHealthcheckKeepsTryingWithServerDown(c *gocheck.C) {
 		},
 	}}
 	err := s.storage.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
@@ -191,23 +191,23 @@ func (s *S) TestHealthcheckKeepsTryingWithServerDown(c *gocheck.C) {
 		shouldRun = true
 	}()
 	err = runHealthcheck(&cont, &buf)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(buf.String(), gocheck.Matches, `(?s).*---> healthcheck fail.*?Trying again in 3s.*---> healthcheck successful.*`)
-	c.Assert(requests, gocheck.HasLen, 2)
-	c.Assert(requests[0].Method, gocheck.Equals, "GET")
-	c.Assert(requests[0].URL.Path, gocheck.Equals, "/x/y")
-	c.Assert(requests[1].Method, gocheck.Equals, "GET")
-	c.Assert(requests[1].URL.Path, gocheck.Equals, "/x/y")
+	c.Assert(err, check.IsNil)
+	c.Assert(buf.String(), check.Matches, `(?s).*---> healthcheck fail.*?Trying again in 3s.*---> healthcheck successful.*`)
+	c.Assert(requests, check.HasLen, 2)
+	c.Assert(requests[0].Method, check.Equals, "GET")
+	c.Assert(requests[0].URL.Path, check.Equals, "/x/y")
+	c.Assert(requests[1].Method, check.Equals, "GET")
+	c.Assert(requests[1].URL.Path, check.Equals, "/x/y")
 }
 
-func (s *S) TestHealthcheckErrorsAfterMaxTime(c *gocheck.C) {
+func (s *S) TestHealthcheckErrorsAfterMaxTime(c *check.C) {
 	a := app.App{Name: "myapp1", CustomData: map[string]interface{}{
 		"healthcheck": map[string]interface{}{
 			"path": "/x/y",
 		},
 	}}
 	err := s.storage.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse("http://some-invalid-server-name.some-invalid-server-name.com:9123")
 	host, port, _ := net.SplitHostPort(url.Host)
@@ -225,10 +225,10 @@ func (s *S) TestHealthcheckErrorsAfterMaxTime(c *gocheck.C) {
 		c.Fatal("Timed out waiting for healthcheck to fail")
 	case <-done:
 	}
-	c.Assert(err, gocheck.ErrorMatches, "healthcheck fail.*lookup some-invalid-server-name.some-invalid-server-name.com: no such host")
+	c.Assert(err, check.ErrorMatches, "healthcheck fail.*lookup some-invalid-server-name.some-invalid-server-name.com: no such host")
 }
 
-func (s *S) TestSuccessfulHealthcheckWithAllowedFailures(c *gocheck.C) {
+func (s *S) TestSuccessfulHealthcheckWithAllowedFailures(c *check.C) {
 	var requests []*http.Request
 	lock := sync.Mutex{}
 	step := 0
@@ -253,7 +253,7 @@ func (s *S) TestSuccessfulHealthcheckWithAllowedFailures(c *gocheck.C) {
 		},
 	}}
 	err := s.storage.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
@@ -270,13 +270,13 @@ func (s *S) TestSuccessfulHealthcheckWithAllowedFailures(c *gocheck.C) {
 		step = 2
 	}()
 	err = runHealthcheck(&cont, &buf)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(buf.String(), gocheck.Matches, `(?s).*---> healthcheck fail.*?Trying again in 3s.*---> healthcheck fail.*?Trying again in 3s.*---> healthcheck successful.*`)
-	c.Assert(requests, gocheck.HasLen, 3)
-	c.Assert(requests[0].Method, gocheck.Equals, "GET")
-	c.Assert(requests[0].URL.Path, gocheck.Equals, "/x/y")
-	c.Assert(requests[1].Method, gocheck.Equals, "GET")
-	c.Assert(requests[1].URL.Path, gocheck.Equals, "/x/y")
-	c.Assert(requests[2].Method, gocheck.Equals, "GET")
-	c.Assert(requests[2].URL.Path, gocheck.Equals, "/x/y")
+	c.Assert(err, check.IsNil)
+	c.Assert(buf.String(), check.Matches, `(?s).*---> healthcheck fail.*?Trying again in 3s.*---> healthcheck fail.*?Trying again in 3s.*---> healthcheck successful.*`)
+	c.Assert(requests, check.HasLen, 3)
+	c.Assert(requests[0].Method, check.Equals, "GET")
+	c.Assert(requests[0].URL.Path, check.Equals, "/x/y")
+	c.Assert(requests[1].Method, check.Equals, "GET")
+	c.Assert(requests[1].URL.Path, check.Equals, "/x/y")
+	c.Assert(requests[2].Method, check.Equals, "GET")
+	c.Assert(requests[2].URL.Path, check.Equals, "/x/y")
 }

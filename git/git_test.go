@@ -13,41 +13,41 @@ import (
 	"reflect"
 	"testing"
 
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) {
-	gocheck.TestingT(t)
+	check.TestingT(t)
 }
 
 type S struct {
 	repoPath string
 }
 
-var _ = gocheck.Suite(&S{})
+var _ = check.Suite(&S{})
 
-func (s *S) SetUpSuite(c *gocheck.C) {
+func (s *S) SetUpSuite(c *check.C) {
 	tmpdir, err := filepath.EvalSymlinks(os.TempDir())
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	s.repoPath = path.Join(tmpdir, "git")
 	err = os.MkdirAll(s.repoPath, 0755)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	cmd := exec.Command("git", "init")
 	cmd.Dir = s.repoPath
 	err = cmd.Run()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = exec.Command("cp", "testdata/gitconfig", path.Join(s.repoPath, ".git", "config")).Run()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	subdir := path.Join(s.repoPath, "a", "b", "c")
 	err = os.MkdirAll(subdir, 0755)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TearDownSuite(c *gocheck.C) {
+func (s *S) TearDownSuite(c *check.C) {
 	os.RemoveAll(s.repoPath)
 }
 
-func (s *S) TestDiscoverRepositoryPath(c *gocheck.C) {
+func (s *S) TestDiscoverRepositoryPath(c *check.C) {
 	var data = []struct {
 		path     string
 		expected string
@@ -102,7 +102,7 @@ func (s *S) TestDiscoverRepositoryPath(c *gocheck.C) {
 	}
 }
 
-func (s *S) TestOpenRepository(c *gocheck.C) {
+func (s *S) TestOpenRepository(c *check.C) {
 	var data = []struct {
 		path     string
 		expected *Repository
@@ -142,7 +142,7 @@ func (s *S) TestOpenRepository(c *gocheck.C) {
 	}
 }
 
-func (s *S) TestGetRemoteURL(c *gocheck.C) {
+func (s *S) TestGetRemoteURL(c *check.C) {
 	var data = []struct {
 		name     string
 		expected string
@@ -153,7 +153,7 @@ func (s *S) TestGetRemoteURL(c *gocheck.C) {
 		{"wut", "", errors.New(`Remote "wut" not found.`)},
 	}
 	repo, err := OpenRepository(s.repoPath)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	for _, d := range data {
 		got, err := repo.RemoteURL(d.name)
 		if got != d.expected {

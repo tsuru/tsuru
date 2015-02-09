@@ -6,12 +6,12 @@ package main
 
 import (
 	"github.com/tsuru/config"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
 type CheckerSuite struct{}
 
-var _ = gocheck.Suite(&CheckerSuite{})
+var _ = check.Suite(&CheckerSuite{})
 
 var configFixture = `
 listen: 0.0.0.0:8080
@@ -56,103 +56,103 @@ docker:
     user: ubuntu
 `
 
-func (s *CheckerSuite) SetUpTest(c *gocheck.C) {
+func (s *CheckerSuite) SetUpTest(c *check.C) {
 	err := config.ReadConfigBytes([]byte(configFixture))
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }
 
-func (s *CheckerSuite) TestCheckDockerJustCheckIfProvisionerIsDocker(c *gocheck.C) {
+func (s *CheckerSuite) TestCheckDockerJustCheckIfProvisionerIsDocker(c *check.C) {
 	config.Set("provisioner", "test")
 	err := CheckProvisioner()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }
 
-func (s *CheckerSuite) TestCheckDockerIsNotConfigured(c *gocheck.C) {
+func (s *CheckerSuite) TestCheckDockerIsNotConfigured(c *check.C) {
 	config.Unset("docker")
 	err := CheckDocker()
-	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, check.NotNil)
 }
 
-func (s *CheckerSuite) TestCheckDockerBasicConfig(c *gocheck.C) {
+func (s *CheckerSuite) TestCheckDockerBasicConfig(c *check.C) {
 	err := CheckDockerBasicConfig()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }
 
-func (s *CheckerSuite) TestCheckDockerBasicConfigError(c *gocheck.C) {
+func (s *CheckerSuite) TestCheckDockerBasicConfigError(c *check.C) {
 	config.Unset("docker:collection")
 	err := CheckDockerBasicConfig()
-	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, check.NotNil)
 }
 
-func (s *CheckerSuite) TestCheckSchedulerConfig(c *gocheck.C) {
+func (s *CheckerSuite) TestCheckSchedulerConfig(c *check.C) {
 	err := CheckScheduler()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }
 
-func (s *CheckerSuite) TestCheckSchedulerRoundRobinWithoutServersConfig(c *gocheck.C) {
+func (s *CheckerSuite) TestCheckSchedulerRoundRobinWithoutServersConfig(c *check.C) {
 	config.Set("docker:segregate", false)
 	err := CheckScheduler()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }
 
-func (s *CheckerSuite) TestCheckClusterWithMongo(c *gocheck.C) {
+func (s *CheckerSuite) TestCheckClusterWithMongo(c *check.C) {
 	err := checkCluster()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	toFail := []string{"docker:cluster:mongo-url", "docker:cluster:mongo-database"}
 	for _, prop := range toFail {
 		val, _ := config.Get(prop)
 		config.Unset(prop)
 		err := checkCluster()
-		c.Assert(err, gocheck.NotNil)
+		c.Assert(err, check.NotNil)
 		config.Set(prop, val)
 	}
 }
 
-func (s *CheckerSuite) TestCheckClusterWithDeprecatedStorage(c *gocheck.C) {
+func (s *CheckerSuite) TestCheckClusterWithDeprecatedStorage(c *check.C) {
 	config.Set("docker:cluster:storage", "redis")
 	err := checkCluster()
-	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, check.NotNil)
 	config.Set("docker:cluster:storage", "something")
 	err = checkCluster()
-	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, check.NotNil)
 	config.Unset("docker:cluster:storage")
 }
 
-func (s *CheckerSuite) TestCheckRouter(c *gocheck.C) {
+func (s *CheckerSuite) TestCheckRouter(c *check.C) {
 	err := CheckRouter()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }
 
-func (s *CheckerSuite) TestCheckRouterHipacheShouldHaveHipachConf(c *gocheck.C) {
+func (s *CheckerSuite) TestCheckRouterHipacheShouldHaveHipachConf(c *check.C) {
 	config.Unset("hipache")
 	err := CheckRouter()
-	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, check.NotNil)
 }
 
-func (s *CheckerSuite) TestCheckBeanstalkdRedisQueue(c *gocheck.C) {
+func (s *CheckerSuite) TestCheckBeanstalkdRedisQueue(c *check.C) {
 	err := CheckBeanstalkd()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }
 
-func (s *CheckerSuite) TestCheckBeanstalkdNoQueueConfigured(c *gocheck.C) {
+func (s *CheckerSuite) TestCheckBeanstalkdNoQueueConfigured(c *check.C) {
 	old, _ := config.Get("queue")
 	defer config.Set("queue", old)
 	config.Unset("queue")
 	err := CheckBeanstalkd()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }
 
-func (s *CheckerSuite) TestCheckBeanstalkdDefinedInQueue(c *gocheck.C) {
+func (s *CheckerSuite) TestCheckBeanstalkdDefinedInQueue(c *check.C) {
 	old, _ := config.Get("queue")
 	defer config.Set("queue", old)
 	config.Set("queue", "beanstalkd")
 	err := CheckBeanstalkd()
-	c.Assert(err.Error(), gocheck.Equals, "beanstalkd is no longer supported, please use redis instead")
+	c.Assert(err.Error(), check.Equals, "beanstalkd is no longer supported, please use redis instead")
 }
 
-func (w *CheckerSuite) TestCheckBeanstalkdQueueServerDefined(c *gocheck.C) {
+func (w *CheckerSuite) TestCheckBeanstalkdQueueServerDefined(c *check.C) {
 	config.Set("queue-server", "127.0.0.1:11300")
 	defer config.Unset("queue-server")
 	err := CheckBeanstalkd()
-	c.Assert(err.Error(), gocheck.Equals, `beanstalkd is no longer supported, please remove the "queue-server" setting from your config file`)
+	c.Assert(err.Error(), check.Equals, `beanstalkd is no longer supported, please remove the "queue-server" setting from your config file`)
 }

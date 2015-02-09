@@ -6,10 +6,10 @@ package router
 
 import (
 	"github.com/tsuru/config"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
-func (s *S) TestRegisterAndGet(c *gocheck.C) {
+func (s *S) TestRegisterAndGet(c *check.C) {
 	var r Router
 	var prefixes []string
 	routerCreator := func(prefix string) (Router, error) {
@@ -18,16 +18,16 @@ func (s *S) TestRegisterAndGet(c *gocheck.C) {
 	}
 	Register("router", routerCreator)
 	got, err := Get("router")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(r, gocheck.DeepEquals, got)
-	c.Assert(prefixes, gocheck.DeepEquals, []string{"router"})
+	c.Assert(err, check.IsNil)
+	c.Assert(r, check.DeepEquals, got)
+	c.Assert(prefixes, check.DeepEquals, []string{"router"})
 	_, err = Get("unknown-router")
-	c.Assert(err, gocheck.Not(gocheck.IsNil))
+	c.Assert(err, check.Not(check.IsNil))
 	expectedMessage := `Unknown router: "unknown-router".`
-	c.Assert(expectedMessage, gocheck.Equals, err.Error())
+	c.Assert(expectedMessage, check.Equals, err.Error())
 }
 
-func (s *S) TestRegisterAndGetCustomNamedRouter(c *gocheck.C) {
+func (s *S) TestRegisterAndGetCustomNamedRouter(c *check.C) {
 	var prefixes []string
 	routerCreator := func(prefix string) (Router, error) {
 		prefixes = append(prefixes, prefix)
@@ -40,53 +40,53 @@ func (s *S) TestRegisterAndGetCustomNamedRouter(c *gocheck.C) {
 	defer config.Unset("routers:inst1:type")
 	defer config.Unset("routers:inst2:type")
 	_, err := Get("inst1")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	_, err = Get("inst2")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(prefixes, gocheck.DeepEquals, []string{"routers:inst1", "routers:inst2"})
+	c.Assert(err, check.IsNil)
+	c.Assert(prefixes, check.DeepEquals, []string{"routers:inst1", "routers:inst2"})
 }
 
-func (s *S) TestStore(c *gocheck.C) {
+func (s *S) TestStore(c *check.C) {
 	err := Store("appname", "routername", "fake")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	name, err := Retrieve("appname")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(name, gocheck.Equals, "routername")
+	c.Assert(err, check.IsNil)
+	c.Assert(name, check.Equals, "routername")
 	err = Remove("appname")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestRetrieveWithoutKind(c *gocheck.C) {
+func (s *S) TestRetrieveWithoutKind(c *check.C) {
 	err := Store("appname", "routername", "")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	data, err := retrieveRouterData("appname")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	delete(data, "_id")
-	c.Assert(data, gocheck.DeepEquals, map[string]string{
+	c.Assert(data, check.DeepEquals, map[string]string{
 		"app":    "appname",
 		"router": "routername",
 		"kind":   "hipache",
 	})
 }
 
-func (s *S) TestRetireveNotFound(c *gocheck.C) {
+func (s *S) TestRetireveNotFound(c *check.C) {
 	name, err := Retrieve("notfound")
-	c.Assert(err, gocheck.Not(gocheck.IsNil))
-	c.Assert("", gocheck.Equals, name)
+	c.Assert(err, check.Not(check.IsNil))
+	c.Assert("", check.Equals, name)
 }
 
-func (s *S) TestSwapBackendName(c *gocheck.C) {
+func (s *S) TestSwapBackendName(c *check.C) {
 	err := Store("appname", "routername", "fake")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer Remove("appname")
 	err = Store("appname2", "routername2", "fake")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer Remove("appname2")
 	err = swapBackendName("appname", "appname2")
 	name, err := Retrieve("appname")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(name, gocheck.Equals, "routername2")
+	c.Assert(err, check.IsNil)
+	c.Assert(name, check.Equals, "routername2")
 	name, err = Retrieve("appname2")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(name, gocheck.Equals, "routername")
+	c.Assert(err, check.IsNil)
+	c.Assert(name, check.Equals, "routername")
 }

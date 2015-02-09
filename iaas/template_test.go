@@ -4,9 +4,9 @@
 
 package iaas
 
-import "launchpad.net/gocheck"
+import "gopkg.in/check.v1"
 
-func (s *S) TestTemplateSave(c *gocheck.C) {
+func (s *S) TestTemplateSave(c *check.C) {
 	t := Template{
 		Name:     "tpl1",
 		IaaSName: "test-iaas",
@@ -16,16 +16,16 @@ func (s *S) TestTemplateSave(c *gocheck.C) {
 		},
 	}
 	err := t.Save()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(t.Name, gocheck.Equals, "tpl1")
-	c.Assert(t.IaaSName, gocheck.Equals, "test-iaas")
-	c.Assert(t.Data, gocheck.DeepEquals, TemplateDataList{
+	c.Assert(err, check.IsNil)
+	c.Assert(t.Name, check.Equals, "tpl1")
+	c.Assert(t.IaaSName, check.Equals, "test-iaas")
+	c.Assert(t.Data, check.DeepEquals, TemplateDataList{
 		{Name: "key1", Value: "val1"},
 		{Name: "key2", Value: "val2"},
 	})
 }
 
-func (s *S) TestTemplateSaveInvalidIaaS(c *gocheck.C) {
+func (s *S) TestTemplateSaveInvalidIaaS(c *check.C) {
 	t := Template{
 		Name:     "tpl1",
 		IaaSName: "something",
@@ -35,10 +35,10 @@ func (s *S) TestTemplateSaveInvalidIaaS(c *gocheck.C) {
 		},
 	}
 	err := t.Save()
-	c.Assert(err, gocheck.ErrorMatches, ".*something.*not registered")
+	c.Assert(err, check.ErrorMatches, ".*something.*not registered")
 }
 
-func (s *S) TestTemplateSaveEmptyName(c *gocheck.C) {
+func (s *S) TestTemplateSaveEmptyName(c *check.C) {
 	t := Template{
 		Name:     "",
 		IaaSName: "test-iaas",
@@ -48,10 +48,10 @@ func (s *S) TestTemplateSaveEmptyName(c *gocheck.C) {
 		},
 	}
 	err := t.Save()
-	c.Assert(err, gocheck.ErrorMatches, "template name cannot be empty")
+	c.Assert(err, check.ErrorMatches, "template name cannot be empty")
 }
 
-func (s *S) TestFindTemplate(c *gocheck.C) {
+func (s *S) TestFindTemplate(c *check.C) {
 	tpl1 := Template{
 		Name:     "tpl1",
 		IaaSName: "test-iaas",
@@ -61,18 +61,18 @@ func (s *S) TestFindTemplate(c *gocheck.C) {
 		},
 	}
 	err := tpl1.Save()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	t, err := FindTemplate("tpl1")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(t.Name, gocheck.Equals, "tpl1")
-	c.Assert(t.IaaSName, gocheck.Equals, "test-iaas")
-	c.Assert(t.Data, gocheck.DeepEquals, TemplateDataList{
+	c.Assert(err, check.IsNil)
+	c.Assert(t.Name, check.Equals, "tpl1")
+	c.Assert(t.IaaSName, check.Equals, "test-iaas")
+	c.Assert(t.Data, check.DeepEquals, TemplateDataList{
 		{Name: "key1", Value: "val1"},
 		{Name: "key2", Value: "val2"},
 	})
 }
 
-func (s *S) TestParamsMap(c *gocheck.C) {
+func (s *S) TestParamsMap(c *check.C) {
 	t := Template{
 		Name:     "tpl1",
 		IaaSName: "test-iaas",
@@ -82,16 +82,16 @@ func (s *S) TestParamsMap(c *gocheck.C) {
 		},
 	}
 	err := t.Save()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	params := t.paramsMap()
-	c.Assert(params, gocheck.DeepEquals, map[string]string{
+	c.Assert(params, check.DeepEquals, map[string]string{
 		"key1": "val1",
 		"key2": "val2",
 		"iaas": "test-iaas",
 	})
 }
 
-func (s *S) TestListTemplates(c *gocheck.C) {
+func (s *S) TestListTemplates(c *check.C) {
 	tpl1 := Template{
 		Name:     "tpl1",
 		IaaSName: "test-iaas",
@@ -101,7 +101,7 @@ func (s *S) TestListTemplates(c *gocheck.C) {
 		},
 	}
 	err := tpl1.Save()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	tpl2 := Template{
 		Name:     "tpl2",
 		IaaSName: "test-iaas",
@@ -111,13 +111,13 @@ func (s *S) TestListTemplates(c *gocheck.C) {
 		},
 	}
 	err = tpl2.Save()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	templates, err := ListTemplates()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(templates, gocheck.DeepEquals, []Template{tpl1, tpl2})
+	c.Assert(err, check.IsNil)
+	c.Assert(templates, check.DeepEquals, []Template{tpl1, tpl2})
 }
 
-func (s *S) TestDestroyTemplate(c *gocheck.C) {
+func (s *S) TestDestroyTemplate(c *check.C) {
 	t := Template{
 		Name:     "tpl1",
 		IaaSName: "test-iaas",
@@ -127,10 +127,10 @@ func (s *S) TestDestroyTemplate(c *gocheck.C) {
 		},
 	}
 	err := t.Save()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = DestroyTemplate("tpl1")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	templates, err := ListTemplates()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(templates, gocheck.HasLen, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(templates, check.HasLen, 0)
 }

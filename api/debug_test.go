@@ -8,16 +8,16 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
-func (s *S) TestDumpGoroutines(c *gocheck.C) {
+func (s *S) TestDumpGoroutines(c *check.C) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/debug/goroutines", nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.admintoken.GetValue())
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), gocheck.Matches, `(?s)goroutine \d+ \[running\]:.*`)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), check.Matches, `(?s)goroutine \d+ \[running\]:.*`)
 }

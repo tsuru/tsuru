@@ -8,10 +8,10 @@ import (
 	"runtime"
 	"sync"
 
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
-func (*S) TestMultiLocker(c *gocheck.C) {
+func (*S) TestMultiLocker(c *check.C) {
 	locker := multiLocker{m: make(map[string]*sync.Mutex)}
 	locker.Lock("user@tsuru.io")
 	locker.Lock("another.user@tsuru.io")
@@ -19,7 +19,7 @@ func (*S) TestMultiLocker(c *gocheck.C) {
 	locker.Unlock("another.user@tsuru.io")
 }
 
-func (*S) TestMultiLockerSingle(c *gocheck.C) {
+func (*S) TestMultiLockerSingle(c *check.C) {
 	locker := multiLocker{m: make(map[string]*sync.Mutex)}
 	locker.Lock("user@tsuru.io")
 	locker.Unlock("user@tsuru.io")
@@ -27,7 +27,7 @@ func (*S) TestMultiLockerSingle(c *gocheck.C) {
 	locker.Unlock("user@tsuru.io")
 }
 
-func (*S) TestMultiLockerUsage(c *gocheck.C) {
+func (*S) TestMultiLockerUsage(c *check.C) {
 	locker := multiLocker{m: make(map[string]*sync.Mutex)}
 	locker.Lock("user@tsuru.io")
 	count := 0
@@ -40,22 +40,22 @@ func (*S) TestMultiLockerUsage(c *gocheck.C) {
 		wg.Done()
 	}()
 	runtime.Gosched()
-	c.Assert(count, gocheck.Equals, 0)
+	c.Assert(count, check.Equals, 0)
 	locker.Unlock("user@tsuru.io")
 	wg.Wait()
-	c.Assert(count, gocheck.Equals, -1)
+	c.Assert(count, check.Equals, -1)
 }
 
-func (*S) TestMultiLockerUnlocked(c *gocheck.C) {
+func (*S) TestMultiLockerUnlocked(c *check.C) {
 	defer func() {
 		r := recover()
-		c.Assert(r, gocheck.NotNil)
+		c.Assert(r, check.NotNil)
 	}()
 	locker := multiLocker{m: make(map[string]*sync.Mutex)}
 	locker.Unlock("user@tsuru.io")
 }
 
-func (*S) TestMultiLockerFunction(c *gocheck.C) {
+func (*S) TestMultiLockerFunction(c *check.C) {
 	locker := MultiLocker()
 	locker.Lock("user@tsuru.io")
 	defer locker.Unlock("user@tsuru.io")

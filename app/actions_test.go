@@ -15,60 +15,60 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
-	"launchpad.net/gocheck"
 )
 
-func (s *S) TestReserveUserAppName(c *gocheck.C) {
-	c.Assert(reserveUserApp.Name, gocheck.Equals, "reserve-user-app")
+func (s *S) TestReserveUserAppName(c *check.C) {
+	c.Assert(reserveUserApp.Name, check.Equals, "reserve-user-app")
 }
 
-func (s *S) TestInsertAppName(c *gocheck.C) {
-	c.Assert(insertApp.Name, gocheck.Equals, "insert-app")
+func (s *S) TestInsertAppName(c *check.C) {
+	c.Assert(insertApp.Name, check.Equals, "insert-app")
 }
 
-func (s *S) TestExportEnvironmentsName(c *gocheck.C) {
-	c.Assert(exportEnvironmentsAction.Name, gocheck.Equals, "export-environments")
+func (s *S) TestExportEnvironmentsName(c *check.C) {
+	c.Assert(exportEnvironmentsAction.Name, check.Equals, "export-environments")
 }
 
-func (s *S) TestCreateRepositoryName(c *gocheck.C) {
-	c.Assert(createRepository.Name, gocheck.Equals, "create-repository")
+func (s *S) TestCreateRepositoryName(c *check.C) {
+	c.Assert(createRepository.Name, check.Equals, "create-repository")
 }
 
-func (s *S) TestProvisionAppName(c *gocheck.C) {
-	c.Assert(provisionApp.Name, gocheck.Equals, "provision-app")
+func (s *S) TestProvisionAppName(c *check.C) {
+	c.Assert(provisionApp.Name, check.Equals, "provision-app")
 }
 
-func (s *S) TestReserveUnitsToAddName(c *gocheck.C) {
-	c.Assert(reserveUnitsToAdd.Name, gocheck.Equals, "reserve-units-to-add")
+func (s *S) TestReserveUnitsToAddName(c *check.C) {
+	c.Assert(reserveUnitsToAdd.Name, check.Equals, "reserve-units-to-add")
 }
 
-func (s *S) TestProvisionAddUnitsName(c *gocheck.C) {
-	c.Assert(provisionAddUnits.Name, gocheck.Equals, "provision-add-units")
+func (s *S) TestProvisionAddUnitsName(c *check.C) {
+	c.Assert(provisionAddUnits.Name, check.Equals, "provision-add-units")
 }
 
-func (s *S) TestSetAppIpName(c *gocheck.C) {
-	c.Assert(setAppIp.Name, gocheck.Equals, "set-app-ip")
+func (s *S) TestSetAppIpName(c *check.C) {
+	c.Assert(setAppIp.Name, check.Equals, "set-app-ip")
 }
 
-func (s *S) TestInsertAppForward(c *gocheck.C) {
+func (s *S) TestInsertAppForward(c *check.C) {
 	app := &App{Name: "conviction", Platform: "evergrey"}
 	ctx := action.FWContext{
 		Params: []interface{}{app},
 	}
 	r, err := insertApp.Forward(ctx)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	a, ok := r.(*App)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(a.Name, gocheck.Equals, app.Name)
-	c.Assert(a.Platform, gocheck.Equals, app.Platform)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(a.Name, check.Equals, app.Name)
+	c.Assert(a.Platform, check.Equals, app.Platform)
 	gotApp, err := GetByName(app.Name)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(gotApp.Quota, gocheck.DeepEquals, quota.Unlimited)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotApp.Quota, check.DeepEquals, quota.Unlimited)
 }
 
-func (s *S) TestInsertAppForwardWithQuota(c *gocheck.C) {
+func (s *S) TestInsertAppForwardWithQuota(c *check.C) {
 	config.Set("quota:units-per-app", 2)
 	defer config.Unset("quota:units-per-app")
 	app := &App{Name: "come", Platform: "beatles"}
@@ -76,108 +76,108 @@ func (s *S) TestInsertAppForwardWithQuota(c *gocheck.C) {
 		Params: []interface{}{app},
 	}
 	r, err := insertApp.Forward(ctx)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	expected := quota.Quota{Limit: 2}
 	a, ok := r.(*App)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(app.Quota, gocheck.DeepEquals, expected)
-	c.Assert(a.Name, gocheck.Equals, app.Name)
-	c.Assert(a.Platform, gocheck.Equals, app.Platform)
-	c.Assert(a.Quota, gocheck.DeepEquals, expected)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(app.Quota, check.DeepEquals, expected)
+	c.Assert(a.Name, check.Equals, app.Name)
+	c.Assert(a.Platform, check.Equals, app.Platform)
+	c.Assert(a.Quota, check.DeepEquals, expected)
 	gotApp, err := GetByName(app.Name)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(gotApp.Quota, gocheck.DeepEquals, expected)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotApp.Quota, check.DeepEquals, expected)
 }
 
-func (s *S) TestInsertAppForwardAppPointer(c *gocheck.C) {
+func (s *S) TestInsertAppForwardAppPointer(c *check.C) {
 	app := App{Name: "conviction", Platform: "evergrey"}
 	ctx := action.FWContext{
 		Params: []interface{}{&app},
 	}
 	r, err := insertApp.Forward(ctx)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	a, ok := r.(*App)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(a.Name, gocheck.Equals, app.Name)
-	c.Assert(a.Platform, gocheck.Equals, app.Platform)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(a.Name, check.Equals, app.Name)
+	c.Assert(a.Platform, check.Equals, app.Platform)
 	_, err = GetByName(app.Name)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestInsertAppForwardInvalidValue(c *gocheck.C) {
+func (s *S) TestInsertAppForwardInvalidValue(c *check.C) {
 	app := App{Name: "conviction", Platform: "evergrey"}
 	ctx := action.FWContext{
 		Params: []interface{}{app},
 	}
 	r, err := insertApp.Forward(ctx)
-	c.Assert(r, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "First parameter must be *App.")
+	c.Assert(r, check.IsNil)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "First parameter must be *App.")
 }
 
-func (s *S) TestInsertAppDuplication(c *gocheck.C) {
+func (s *S) TestInsertAppDuplication(c *check.C) {
 	app := App{Name: "come", Platform: "gotthard"}
 	err := s.conn.Apps().Insert(app)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	ctx := action.FWContext{
 		Params: []interface{}{&app},
 	}
 	r, err := insertApp.Forward(ctx)
-	c.Assert(r, gocheck.IsNil)
-	c.Assert(err, gocheck.Equals, ErrAppAlreadyExists)
+	c.Assert(r, check.IsNil)
+	c.Assert(err, check.Equals, ErrAppAlreadyExists)
 }
 
-func (s *S) TestInsertAppBackward(c *gocheck.C) {
+func (s *S) TestInsertAppBackward(c *check.C) {
 	app := App{Name: "conviction", Platform: "evergrey"}
 	ctx := action.BWContext{
 		Params:   []interface{}{app},
 		FWResult: &app,
 	}
 	err := s.conn.Apps().Insert(app)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name}) // sanity
 	insertApp.Backward(ctx)
 	n, err := s.conn.Apps().Find(bson.M{"name": app.Name}).Count()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 0)
 }
 
-func (s *S) TestInsertAppMinimumParams(c *gocheck.C) {
-	c.Assert(insertApp.MinParams, gocheck.Equals, 1)
+func (s *S) TestInsertAppMinimumParams(c *check.C) {
+	c.Assert(insertApp.MinParams, check.Equals, 1)
 }
 
-func (s *S) TestExportEnvironmentsForward(c *gocheck.C) {
+func (s *S) TestExportEnvironmentsForward(c *check.C) {
 	expectedHost := "localhost"
 	config.Set("host", expectedHost)
 	app := App{Name: "mist", Platform: "opeth"}
 	err := s.conn.Apps().Insert(app)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	ctx := action.FWContext{Params: []interface{}{&app}}
 	result, err := exportEnvironmentsAction.Forward(ctx)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(result, gocheck.Equals, nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.Equals, nil)
 	gotApp, err := GetByName(app.Name)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	appEnv := gotApp.InstanceEnv("")
-	c.Assert(appEnv["TSURU_APPNAME"].Value, gocheck.Equals, app.Name)
-	c.Assert(appEnv["TSURU_APPNAME"].Public, gocheck.Equals, false)
-	c.Assert(appEnv["TSURU_HOST"].Value, gocheck.Equals, expectedHost)
-	c.Assert(appEnv["TSURU_HOST"].Public, gocheck.Equals, false)
-	c.Assert(appEnv["TSURU_APP_TOKEN"].Value, gocheck.Not(gocheck.Equals), "")
-	c.Assert(appEnv["TSURU_APP_TOKEN"].Public, gocheck.Equals, false)
-	c.Assert(appEnv["TSURU_APPDir"].Value, gocheck.Not(gocheck.Equals), "/home/application/current")
-	c.Assert(appEnv["TSURU_APPDir"].Public, gocheck.Equals, false)
+	c.Assert(appEnv["TSURU_APPNAME"].Value, check.Equals, app.Name)
+	c.Assert(appEnv["TSURU_APPNAME"].Public, check.Equals, false)
+	c.Assert(appEnv["TSURU_HOST"].Value, check.Equals, expectedHost)
+	c.Assert(appEnv["TSURU_HOST"].Public, check.Equals, false)
+	c.Assert(appEnv["TSURU_APP_TOKEN"].Value, check.Not(check.Equals), "")
+	c.Assert(appEnv["TSURU_APP_TOKEN"].Public, check.Equals, false)
+	c.Assert(appEnv["TSURU_APPDir"].Value, check.Not(check.Equals), "/home/application/current")
+	c.Assert(appEnv["TSURU_APPDir"].Public, check.Equals, false)
 	t, err := nativeScheme.Auth(appEnv["TSURU_APP_TOKEN"].Value)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(t.IsAppToken(), gocheck.Equals, true)
-	c.Assert(t.GetAppName(), gocheck.Equals, app.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(t.IsAppToken(), check.Equals, true)
+	c.Assert(t.GetAppName(), check.Equals, app.Name)
 }
 
-func (s *S) TestExportEnvironmentsBackward(c *gocheck.C) {
+func (s *S) TestExportEnvironmentsBackward(c *check.C) {
 	envNames := []string{
 		"TSURU_APP_TOKEN",
 	}
@@ -187,29 +187,29 @@ func (s *S) TestExportEnvironmentsBackward(c *gocheck.C) {
 		app.Env[name] = envVar
 	}
 	token, err := nativeScheme.AppLogin(app.Name)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	app.Env["TSURU_APP_TOKEN"] = bind.EnvVar{Name: "TSURU_APP_NAME", Value: token.GetValue()}
 	err = s.conn.Apps().Insert(app)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	ctx := action.BWContext{Params: []interface{}{&app}}
 	exportEnvironmentsAction.Backward(ctx)
 	copy, err := GetByName(app.Name)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	for _, name := range envNames {
 		if _, ok := copy.Env[name]; ok {
 			c.Errorf("Variable %q should be unexported, but it's still exported.", name)
 		}
 	}
 	_, err = nativeScheme.Auth(token.GetValue())
-	c.Assert(err, gocheck.Equals, auth.ErrInvalidToken)
+	c.Assert(err, check.Equals, auth.ErrInvalidToken)
 }
 
-func (s *S) TestExportEnvironmentsMinParams(c *gocheck.C) {
-	c.Assert(exportEnvironmentsAction.MinParams, gocheck.Equals, 1)
+func (s *S) TestExportEnvironmentsMinParams(c *check.C) {
+	c.Assert(exportEnvironmentsAction.MinParams, check.Equals, 1)
 }
 
-func (s *S) TestCreateRepositoryForward(c *gocheck.C) {
+func (s *S) TestCreateRepositoryForward(c *check.C) {
 	h := testHandler{}
 	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
@@ -217,16 +217,16 @@ func (s *S) TestCreateRepositoryForward(c *gocheck.C) {
 	ctx := action.FWContext{Params: []interface{}{&app}}
 	result, err := createRepository.Forward(ctx)
 	a, ok := result.(*App)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(a.Name, gocheck.Equals, app.Name)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(h.url[0], gocheck.Equals, "/repository")
-	c.Assert(h.method[0], gocheck.Equals, "POST")
+	c.Assert(ok, check.Equals, true)
+	c.Assert(a.Name, check.Equals, app.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(h.url[0], check.Equals, "/repository")
+	c.Assert(h.method[0], check.Equals, "POST")
 	expected := fmt.Sprintf(`{"name":"someapp","users":["%s"],"ispublic":false}`, s.user.Email)
-	c.Assert(string(h.body[0]), gocheck.Equals, expected)
+	c.Assert(string(h.body[0]), check.Equals, expected)
 }
 
-func (s *S) TestCreateRepositoryForwardAppPointer(c *gocheck.C) {
+func (s *S) TestCreateRepositoryForwardAppPointer(c *check.C) {
 	h := testHandler{}
 	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
@@ -234,107 +234,107 @@ func (s *S) TestCreateRepositoryForwardAppPointer(c *gocheck.C) {
 	ctx := action.FWContext{Params: []interface{}{&app}}
 	result, err := createRepository.Forward(ctx)
 	a, ok := result.(*App)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(a.Name, gocheck.Equals, app.Name)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(h.url[0], gocheck.Equals, "/repository")
-	c.Assert(h.method[0], gocheck.Equals, "POST")
+	c.Assert(ok, check.Equals, true)
+	c.Assert(a.Name, check.Equals, app.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(h.url[0], check.Equals, "/repository")
+	c.Assert(h.method[0], check.Equals, "POST")
 	expected := fmt.Sprintf(`{"name":"someapp","users":["%s"],"ispublic":false}`, s.user.Email)
-	c.Assert(string(h.body[0]), gocheck.Equals, expected)
+	c.Assert(string(h.body[0]), check.Equals, expected)
 }
 
-func (s *S) TestCreateRepositoryForwardInvalidType(c *gocheck.C) {
+func (s *S) TestCreateRepositoryForwardInvalidType(c *check.C) {
 	ctx := action.FWContext{Params: []interface{}{"something"}}
 	_, err := createRepository.Forward(ctx)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "First parameter must be *App.")
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "First parameter must be *App.")
 }
 
-func (s *S) TestCreateRepositoryBackward(c *gocheck.C) {
+func (s *S) TestCreateRepositoryBackward(c *check.C) {
 	h := testHandler{}
 	ts := repositorytest.StartGandalfTestServer(&h)
 	defer ts.Close()
 	app := App{Name: "someapp"}
 	ctx := action.BWContext{FWResult: &app, Params: []interface{}{app}}
 	createRepository.Backward(ctx)
-	c.Assert(h.url[0], gocheck.Equals, "/repository/someapp")
-	c.Assert(h.method[0], gocheck.Equals, "DELETE")
-	c.Assert(string(h.body[0]), gocheck.Equals, "null")
+	c.Assert(h.url[0], check.Equals, "/repository/someapp")
+	c.Assert(h.method[0], check.Equals, "DELETE")
+	c.Assert(string(h.body[0]), check.Equals, "null")
 }
 
-func (s *S) TestCreateRepositoryMinParams(c *gocheck.C) {
-	c.Assert(createRepository.MinParams, gocheck.Equals, 1)
+func (s *S) TestCreateRepositoryMinParams(c *check.C) {
+	c.Assert(createRepository.MinParams, check.Equals, 1)
 }
 
-func (s *S) TestProvisionAppForward(c *gocheck.C) {
+func (s *S) TestProvisionAppForward(c *check.C) {
 	app := App{
 		Name:     "earthshine",
 		Platform: "django",
 	}
 	err := s.conn.Apps().Insert(app)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	ctx := action.FWContext{Params: []interface{}{&app, 4}}
 	result, err := provisionApp.Forward(ctx)
 	defer s.provisioner.Destroy(&app)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	a, ok := result.(*App)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(a.Name, gocheck.Equals, app.Name)
-	c.Assert(s.provisioner.Provisioned(&app), gocheck.Equals, true)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(a.Name, check.Equals, app.Name)
+	c.Assert(s.provisioner.Provisioned(&app), check.Equals, true)
 }
 
-func (s *S) TestProvisionAppForwardAppPointer(c *gocheck.C) {
+func (s *S) TestProvisionAppForwardAppPointer(c *check.C) {
 	app := App{
 		Name:     "earthshine",
 		Platform: "django",
 	}
 	err := s.conn.Apps().Insert(app)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	ctx := action.FWContext{Params: []interface{}{&app, 4}}
 	result, err := provisionApp.Forward(ctx)
 	defer s.provisioner.Destroy(&app)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	a, ok := result.(*App)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(a.Name, gocheck.Equals, app.Name)
-	c.Assert(s.provisioner.Provisioned(&app), gocheck.Equals, true)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(a.Name, check.Equals, app.Name)
+	c.Assert(s.provisioner.Provisioned(&app), check.Equals, true)
 }
 
-func (s *S) TestProvisionAppForwardInvalidApp(c *gocheck.C) {
+func (s *S) TestProvisionAppForwardInvalidApp(c *check.C) {
 	ctx := action.FWContext{Params: []interface{}{"something", 1}}
 	_, err := provisionApp.Forward(ctx)
-	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, check.NotNil)
 }
 
-func (s *S) TestProvisionAppBackward(c *gocheck.C) {
+func (s *S) TestProvisionAppBackward(c *check.C) {
 	app := App{
 		Name:     "earthshine",
 		Platform: "django",
 	}
 	err := s.conn.Apps().Insert(app)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	fwctx := action.FWContext{Params: []interface{}{&app, 4}}
 	result, err := provisionApp.Forward(fwctx)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	bwctx := action.BWContext{Params: []interface{}{&app, 4}, FWResult: result}
 	provisionApp.Backward(bwctx)
-	c.Assert(s.provisioner.Provisioned(&app), gocheck.Equals, false)
+	c.Assert(s.provisioner.Provisioned(&app), check.Equals, false)
 }
 
-func (s *S) TestProvisionAppMinParams(c *gocheck.C) {
-	c.Assert(provisionApp.MinParams, gocheck.Equals, 1)
+func (s *S) TestProvisionAppMinParams(c *check.C) {
+	c.Assert(provisionApp.MinParams, check.Equals, 1)
 }
 
-func (s *S) TestReserveUserAppForward(c *gocheck.C) {
+func (s *S) TestReserveUserAppForward(c *check.C) {
 	user := auth.User{
 		Email: "clap@yes.com",
 		Quota: quota.Quota{Limit: 1},
 	}
 	err := user.Create()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": user.Email})
 	app := App{
 		Name:     "clap",
@@ -342,24 +342,24 @@ func (s *S) TestReserveUserAppForward(c *gocheck.C) {
 	}
 	expected := map[string]string{"user": user.Email, "app": app.Name}
 	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{&app, &user}})
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(previous, gocheck.DeepEquals, expected)
+	c.Assert(err, check.IsNil)
+	c.Assert(previous, check.DeepEquals, expected)
 	err = auth.ReserveApp(&user)
 	_, ok := err.(*quota.QuotaExceededError)
-	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(ok, check.Equals, true)
 	err = auth.ReleaseApp(&user)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = auth.ReserveApp(&user)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestReserveUserAppForwardNonPointer(c *gocheck.C) {
+func (s *S) TestReserveUserAppForwardNonPointer(c *check.C) {
 	user := auth.User{
 		Email: "clap@yes.com",
 		Quota: quota.Quota{Limit: 1},
 	}
 	err := user.Create()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": user.Email})
 	app := App{
 		Name:     "clap",
@@ -367,24 +367,24 @@ func (s *S) TestReserveUserAppForwardNonPointer(c *gocheck.C) {
 	}
 	expected := map[string]string{"user": user.Email, "app": app.Name}
 	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{&app, user}})
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(previous, gocheck.DeepEquals, expected)
+	c.Assert(err, check.IsNil)
+	c.Assert(previous, check.DeepEquals, expected)
 	err = auth.ReserveApp(&user)
 	_, ok := err.(*quota.QuotaExceededError)
-	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(ok, check.Equals, true)
 	err = auth.ReleaseApp(&user)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = auth.ReserveApp(&user)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestReserveUserAppForwardAppNotPointer(c *gocheck.C) {
+func (s *S) TestReserveUserAppForwardAppNotPointer(c *check.C) {
 	user := auth.User{
 		Email: "clap@yes.com",
 		Quota: quota.Quota{Limit: 1},
 	}
 	err := user.Create()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": user.Email})
 	app := App{
 		Name:     "clap",
@@ -392,61 +392,61 @@ func (s *S) TestReserveUserAppForwardAppNotPointer(c *gocheck.C) {
 	}
 	expected := map[string]string{"user": user.Email, "app": app.Name}
 	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{&app, user}})
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(previous, gocheck.DeepEquals, expected)
+	c.Assert(err, check.IsNil)
+	c.Assert(previous, check.DeepEquals, expected)
 	err = auth.ReserveApp(&user)
 	_, ok := err.(*quota.QuotaExceededError)
-	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(ok, check.Equals, true)
 	err = auth.ReleaseApp(&user)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = auth.ReserveApp(&user)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestReserveUserAppForwardInvalidApp(c *gocheck.C) {
+func (s *S) TestReserveUserAppForwardInvalidApp(c *check.C) {
 	user := auth.User{Email: "clap@yes.com"}
 	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{"something", user}})
-	c.Assert(previous, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "First parameter must be *App.")
+	c.Assert(previous, check.IsNil)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "First parameter must be *App.")
 }
 
-func (s *S) TestReserveUserAppForwardInvalidUser(c *gocheck.C) {
+func (s *S) TestReserveUserAppForwardInvalidUser(c *check.C) {
 	app := App{
 		Name:     "clap",
 		Platform: "django",
 	}
 	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{&app, "something"}})
-	c.Assert(previous, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Third parameter must be auth.User or *auth.User.")
+	c.Assert(previous, check.IsNil)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "Third parameter must be auth.User or *auth.User.")
 }
 
-func (s *S) TestReserveUserAppForwardQuotaExceeded(c *gocheck.C) {
+func (s *S) TestReserveUserAppForwardQuotaExceeded(c *check.C) {
 	user := auth.User{
 		Email: "clap@yes.com",
 		Quota: quota.Quota{Limit: 1, InUse: 1},
 	}
 	err := user.Create()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": user.Email})
 	app := App{
 		Name:     "clap",
 		Platform: "django",
 	}
 	previous, err := reserveUserApp.Forward(action.FWContext{Params: []interface{}{&app, user}})
-	c.Assert(previous, gocheck.IsNil)
+	c.Assert(previous, check.IsNil)
 	_, ok := err.(*quota.QuotaExceededError)
-	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(ok, check.Equals, true)
 }
 
-func (s *S) TestReserveUserAppBackward(c *gocheck.C) {
+func (s *S) TestReserveUserAppBackward(c *check.C) {
 	user := auth.User{
 		Email: "clap@yes.com",
 		Quota: quota.Quota{Limit: 1, InUse: 1},
 	}
 	err := user.Create()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": user.Email})
 	app := App{
 		Name:     "clap",
@@ -460,14 +460,14 @@ func (s *S) TestReserveUserAppBackward(c *gocheck.C) {
 	}
 	reserveUserApp.Backward(ctx)
 	err = auth.ReserveApp(&user)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestReserveUserAppMinParams(c *gocheck.C) {
-	c.Assert(reserveUserApp.MinParams, gocheck.Equals, 2)
+func (s *S) TestReserveUserAppMinParams(c *check.C) {
+	c.Assert(reserveUserApp.MinParams, check.Equals, 2)
 }
 
-func (s *S) TestReserveUnitsToAddForward(c *gocheck.C) {
+func (s *S) TestReserveUnitsToAddForward(c *check.C) {
 	app := App{
 		Name:     "visions",
 		Platform: "django",
@@ -476,14 +476,14 @@ func (s *S) TestReserveUnitsToAddForward(c *gocheck.C) {
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, 3}})
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(result.(int), gocheck.Equals, 3)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.(int), check.Equals, 3)
 	gotApp, err := GetByName(app.Name)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(gotApp.InUse, gocheck.Equals, 3)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotApp.InUse, check.Equals, 3)
 }
 
-func (s *S) TestReserveUnitsToAddForwardUint(c *gocheck.C) {
+func (s *S) TestReserveUnitsToAddForwardUint(c *check.C) {
 	app := App{
 		Name:     "visions",
 		Platform: "django",
@@ -492,14 +492,14 @@ func (s *S) TestReserveUnitsToAddForwardUint(c *gocheck.C) {
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, uint(3)}})
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(result.(int), gocheck.Equals, 3)
+	c.Assert(err, check.IsNil)
+	c.Assert(result.(int), check.Equals, 3)
 	gotApp, err := GetByName(app.Name)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(gotApp.InUse, gocheck.Equals, 3)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotApp.InUse, check.Equals, 3)
 }
 
-func (s *S) TestReserveUnitsToAddForwardQuotaExceeded(c *gocheck.C) {
+func (s *S) TestReserveUnitsToAddForwardQuotaExceeded(c *check.C) {
 	app := App{
 		Name:     "visions",
 		Platform: "django",
@@ -508,37 +508,37 @@ func (s *S) TestReserveUnitsToAddForwardQuotaExceeded(c *gocheck.C) {
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, 1}})
-	c.Assert(result, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
+	c.Assert(result, check.IsNil)
+	c.Assert(err, check.NotNil)
 	e, ok := err.(*quota.QuotaExceededError)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Available, gocheck.Equals, uint(0))
-	c.Assert(e.Requested, gocheck.Equals, uint(1))
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Available, check.Equals, uint(0))
+	c.Assert(e.Requested, check.Equals, uint(1))
 }
 
-func (s *S) TestReserveUnitsToAddForwardInvalidApp(c *gocheck.C) {
+func (s *S) TestReserveUnitsToAddForwardInvalidApp(c *check.C) {
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{"something", 3}})
-	c.Assert(result, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "First parameter must be *App.")
+	c.Assert(result, check.IsNil)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "First parameter must be *App.")
 }
 
-func (s *S) TestReserveUnitsToAddAppNotFound(c *gocheck.C) {
+func (s *S) TestReserveUnitsToAddAppNotFound(c *check.C) {
 	app := App{Name: "something"}
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&app, 3}})
-	c.Assert(result, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "App not found.")
+	c.Assert(result, check.IsNil)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "App not found.")
 }
 
-func (s *S) TestReserveUnitsToAddForwardInvalidNumber(c *gocheck.C) {
+func (s *S) TestReserveUnitsToAddForwardInvalidNumber(c *check.C) {
 	result, err := reserveUnitsToAdd.Forward(action.FWContext{Params: []interface{}{&App{}, "what"}})
-	c.Assert(result, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Second parameter must be int or uint.")
+	c.Assert(result, check.IsNil)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "Second parameter must be int or uint.")
 }
 
-func (s *S) TestReserveUnitsToAddBackward(c *gocheck.C) {
+func (s *S) TestReserveUnitsToAddBackward(c *check.C) {
 	app := App{
 		Name:     "visions",
 		Platform: "django",
@@ -548,15 +548,15 @@ func (s *S) TestReserveUnitsToAddBackward(c *gocheck.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	reserveUnitsToAdd.Backward(action.BWContext{Params: []interface{}{&app, 3}, FWResult: 3})
 	gotApp, err := GetByName(app.Name)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(gotApp.InUse, gocheck.Equals, 1)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotApp.InUse, check.Equals, 1)
 }
 
-func (s *S) TestReserveUnitsMinParams(c *gocheck.C) {
-	c.Assert(reserveUnitsToAdd.MinParams, gocheck.Equals, 2)
+func (s *S) TestReserveUnitsMinParams(c *check.C) {
+	c.Assert(reserveUnitsToAdd.MinParams, check.Equals, 2)
 }
 
-func (s *S) TestProvisionAddUnits(c *gocheck.C) {
+func (s *S) TestProvisionAddUnits(c *check.C) {
 	app := App{
 		Name:     "visions",
 		Platform: "django",
@@ -565,14 +565,14 @@ func (s *S) TestProvisionAddUnits(c *gocheck.C) {
 	defer s.provisioner.Destroy(&app)
 	ctx := action.FWContext{Previous: 3, Params: []interface{}{&app}}
 	fwresult, err := provisionAddUnits.Forward(ctx)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	units, ok := fwresult.([]provision.Unit)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(units, gocheck.HasLen, 3)
-	c.Assert(units, gocheck.DeepEquals, s.provisioner.GetUnits(&app))
+	c.Assert(ok, check.Equals, true)
+	c.Assert(units, check.HasLen, 3)
+	c.Assert(units, check.DeepEquals, s.provisioner.GetUnits(&app))
 }
 
-func (s *S) TestProvisionAddUnitsProvisionFailure(c *gocheck.C) {
+func (s *S) TestProvisionAddUnitsProvisionFailure(c *check.C) {
 	s.provisioner.PrepareFailure("AddUnits", errors.New("Failed to add units"))
 	app := App{
 		Name:     "visions",
@@ -580,19 +580,19 @@ func (s *S) TestProvisionAddUnitsProvisionFailure(c *gocheck.C) {
 	}
 	ctx := action.FWContext{Previous: 3, Params: []interface{}{&app}}
 	result, err := provisionAddUnits.Forward(ctx)
-	c.Assert(result, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Failed to add units")
+	c.Assert(result, check.IsNil)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "Failed to add units")
 }
 
-func (s *S) TestProvisionAddUnitsInvalidApp(c *gocheck.C) {
+func (s *S) TestProvisionAddUnitsInvalidApp(c *check.C) {
 	result, err := provisionAddUnits.Forward(action.FWContext{Params: []interface{}{"something"}})
-	c.Assert(result, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "First parameter must be *App.")
+	c.Assert(result, check.IsNil)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "First parameter must be *App.")
 }
 
-func (s *S) TestProvisionAddUnitsBackward(c *gocheck.C) {
+func (s *S) TestProvisionAddUnitsBackward(c *check.C) {
 	app := App{
 		Name:     "fiction",
 		Platform: "django",
@@ -600,50 +600,50 @@ func (s *S) TestProvisionAddUnitsBackward(c *gocheck.C) {
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
 	units, err := s.provisioner.AddUnits(&app, 3, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	ctx := action.BWContext{Params: []interface{}{&app}, FWResult: units}
 	provisionAddUnits.Backward(ctx)
-	c.Assert(s.provisioner.GetUnits(&app), gocheck.HasLen, 0)
+	c.Assert(s.provisioner.GetUnits(&app), check.HasLen, 0)
 }
 
-func (s *S) TestProvisionAddUnitsMinParams(c *gocheck.C) {
-	c.Assert(provisionAddUnits.MinParams, gocheck.Equals, 1)
+func (s *S) TestProvisionAddUnitsMinParams(c *check.C) {
+	c.Assert(provisionAddUnits.MinParams, check.Equals, 1)
 }
 
-func (s *S) TestSetAppIpForward(c *gocheck.C) {
+func (s *S) TestSetAppIpForward(c *check.C) {
 	app := &App{Name: "conviction", Platform: "evergrey"}
 	err := s.provisioner.Provision(app)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = s.conn.Apps().Insert(app)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	ctx := action.FWContext{
 		Params: []interface{}{app},
 	}
 	r, err := setAppIp.Forward(ctx)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.Ip, gocheck.Equals, "conviction.fake-lb.tsuru.io")
+	c.Assert(err, check.IsNil)
+	c.Assert(app.Ip, check.Equals, "conviction.fake-lb.tsuru.io")
 	a, ok := r.(*App)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(a.Ip, gocheck.Equals, "conviction.fake-lb.tsuru.io")
+	c.Assert(ok, check.Equals, true)
+	c.Assert(a.Ip, check.Equals, "conviction.fake-lb.tsuru.io")
 	gotApp, err := GetByName(app.Name)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(gotApp.Ip, gocheck.Equals, "conviction.fake-lb.tsuru.io")
+	c.Assert(err, check.IsNil)
+	c.Assert(gotApp.Ip, check.Equals, "conviction.fake-lb.tsuru.io")
 }
 
-func (s *S) TestSetAppIpBackward(c *gocheck.C) {
+func (s *S) TestSetAppIpBackward(c *check.C) {
 	app := &App{Name: "conviction", Platform: "evergrey", Ip: "some-value"}
 	err := s.conn.Apps().Insert(app)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	ctx := action.BWContext{
 		Params:   []interface{}{app},
 		FWResult: app,
 	}
 	setAppIp.Backward(ctx)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(app.Ip, gocheck.Equals, "")
+	c.Assert(err, check.IsNil)
+	c.Assert(app.Ip, check.Equals, "")
 	gotApp, err := GetByName(app.Name)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(gotApp.Ip, gocheck.Equals, "")
+	c.Assert(err, check.IsNil)
+	c.Assert(gotApp.Ip, check.Equals, "")
 }

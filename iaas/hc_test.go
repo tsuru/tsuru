@@ -9,40 +9,40 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/hc"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
-func (s *S) TestBuildHealthCheck(c *gocheck.C) {
+func (s *S) TestBuildHealthCheck(c *check.C) {
 	RegisterIaasProvider("hc", TestHealthCheckerIaaS{err: nil})
 	config.Set("iaas:hc", "something")
 	fn := BuildHealthCheck("hc")
 	err := fn()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestBuildHealthCheckFailure(c *gocheck.C) {
+func (s *S) TestBuildHealthCheckFailure(c *check.C) {
 	err := errors.New("fatal failure")
 	RegisterIaasProvider("hc", TestHealthCheckerIaaS{err: err})
 	config.Set("iaas:hc", "something")
 	fn := BuildHealthCheck("hc")
 	hcErr := fn()
-	c.Assert(hcErr, gocheck.Equals, err)
+	c.Assert(hcErr, check.Equals, err)
 }
 
-func (s *S) TestBuildHealthCheckUnconfigured(c *gocheck.C) {
+func (s *S) TestBuildHealthCheckUnconfigured(c *check.C) {
 	if oldValue, err := config.Get("iaas"); err == nil {
 		defer config.Set("iaas", oldValue)
 	}
 	config.Unset("iaas")
 	fn := BuildHealthCheck("hc")
 	err := fn()
-	c.Assert(err, gocheck.Equals, hc.ErrDisabledComponent)
+	c.Assert(err, check.Equals, hc.ErrDisabledComponent)
 }
 
-func (s *S) TestBuildHealthCheckNotChecker(c *gocheck.C) {
+func (s *S) TestBuildHealthCheckNotChecker(c *check.C) {
 	RegisterIaasProvider("test-iaas", TestIaaS{})
 	config.Set("iaas:test-iaas", "something")
 	fn := BuildHealthCheck("test-iaas")
 	err := fn()
-	c.Assert(err, gocheck.Equals, hc.ErrDisabledComponent)
+	c.Assert(err, check.Equals, hc.ErrDisabledComponent)
 }

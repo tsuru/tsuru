@@ -10,10 +10,10 @@ import (
 	"testing"
 
 	"github.com/tsuru/tsuru/cmd/cmdtest"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
-func Test(t *testing.T) { gocheck.TestingT(t) }
+func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
 	stdin        *os.File
@@ -21,20 +21,20 @@ type S struct {
 	recoverToken []string
 }
 
-var _ = gocheck.Suite(&S{})
+var _ = check.Suite(&S{})
 var manager *Manager
 
-func (s *S) SetUpSuite(c *gocheck.C) {
+func (s *S) SetUpSuite(c *check.C) {
 	s.recover = cmdtest.SetTargetFile(c, []byte("http://localhost"))
 	s.recoverToken = cmdtest.SetTokenFile(c, []byte("abc123"))
 }
 
-func (s *S) TearDownSuite(c *gocheck.C) {
+func (s *S) TearDownSuite(c *check.C) {
 	cmdtest.RollbackFile(s.recover)
 	cmdtest.RollbackFile(s.recoverToken)
 }
 
-func (s *S) SetUpTest(c *gocheck.C) {
+func (s *S) SetUpTest(c *check.C) {
 	var stdout, stderr bytes.Buffer
 	manager = NewManager("glb", "1.0", "", &stdout, &stderr, os.Stdin, nil)
 	var exiter recordingExiter

@@ -23,7 +23,7 @@ import (
 	_ "github.com/tsuru/tsuru/queue/queuetest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/service"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
 type testHandler struct {
@@ -54,7 +54,7 @@ func (h *testBadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "some error", http.StatusInternalServerError)
 }
 
-func Test(t *testing.T) { gocheck.TestingT(t) }
+func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
 	conn        *db.Storage
@@ -67,12 +67,12 @@ type S struct {
 	provisioner *provisiontest.FakeProvisioner
 }
 
-var _ = gocheck.Suite(&S{})
+var _ = check.Suite(&S{})
 
 type hasAccessToChecker struct{}
 
-func (c *hasAccessToChecker) Info() *gocheck.CheckerInfo {
-	return &gocheck.CheckerInfo{Name: "HasAccessTo", Params: []string{"team", "service"}}
+func (c *hasAccessToChecker) Info() *check.CheckerInfo {
+	return &check.CheckerInfo{Name: "HasAccessTo", Params: []string{"team", "service"}}
 }
 
 func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, string) {
@@ -90,33 +90,33 @@ func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, 
 	return srv.HasTeam(&team), ""
 }
 
-var HasAccessTo gocheck.Checker = &hasAccessToChecker{}
+var HasAccessTo check.Checker = &hasAccessToChecker{}
 
-func (s *S) createUserAndTeam(c *gocheck.C) {
+func (s *S) createUserAndTeam(c *check.C) {
 	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123456", Quota: quota.Unlimited}
 	_, err := nativeScheme.Create(s.user)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	s.adminuser = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: quota.Unlimited}
 	_, err = nativeScheme.Create(s.adminuser)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	s.team = &auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
 	err = s.conn.Teams().Insert(s.team)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	s.adminteam = &auth.Team{Name: "admin", Users: []string{s.adminuser.Email}}
 	err = s.conn.Teams().Insert(s.adminteam)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	s.admintoken, err = nativeScheme.Login(map[string]string{"email": s.adminuser.Email, "password": "123456"})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }
 
 var nativeScheme = auth.ManagedScheme(native.NativeScheme{})
 
-func (s *S) SetUpSuite(c *gocheck.C) {
+func (s *S) SetUpSuite(c *check.C) {
 	err := config.ReadConfigFile("testdata/config.yaml")
 	s.conn, err = db.Conn()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	s.createUserAndTeam(c)
 	s.provisioner = provisiontest.NewFakeProvisioner()
 	app.Provisioner = s.provisioner
@@ -125,11 +125,11 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	s.conn.Platforms().Insert(p)
 }
 
-func (s *S) TearDownSuite(c *gocheck.C) {
+func (s *S) TearDownSuite(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 }
 
-func (s *S) TearDownTest(c *gocheck.C) {
+func (s *S) TearDownTest(c *check.C) {
 	s.provisioner.Reset()
 	context.Purge(-1)
 }

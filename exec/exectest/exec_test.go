@@ -9,35 +9,35 @@ import (
 	"testing"
 
 	"github.com/tsuru/tsuru/exec"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
 type S struct{}
 
-var _ = gocheck.Suite(&S{})
+var _ = check.Suite(&S{})
 
-func Test(t *testing.T) { gocheck.TestingT(t) }
+func Test(t *testing.T) { check.TestingT(t) }
 
-func (s *S) TestCommandGetName(c *gocheck.C) {
+func (s *S) TestCommandGetName(c *check.C) {
 	cmd := command{name: "docker", args: []string{"run", "some/img"}}
-	c.Assert(cmd.GetName(), gocheck.Equals, cmd.name)
+	c.Assert(cmd.GetName(), check.Equals, cmd.name)
 }
 
-func (s *S) TestCommandGetArgs(c *gocheck.C) {
+func (s *S) TestCommandGetArgs(c *check.C) {
 	cmd := command{name: "docker", args: []string{"run", "some/img"}}
-	c.Assert(cmd.GetArgs(), gocheck.DeepEquals, cmd.args)
+	c.Assert(cmd.GetArgs(), check.DeepEquals, cmd.args)
 }
 
-func (s *S) TestCommandGetEnvs(c *gocheck.C) {
+func (s *S) TestCommandGetEnvs(c *check.C) {
 	cmd := command{name: "docker", envs: []string{"BLA=ble"}}
-	c.Assert(cmd.GetEnvs(), gocheck.DeepEquals, cmd.envs)
+	c.Assert(cmd.GetEnvs(), check.DeepEquals, cmd.envs)
 }
 
-func (s *S) TestFakeExecutorImplementsExecutor(c *gocheck.C) {
+func (s *S) TestFakeExecutorImplementsExecutor(c *check.C) {
 	var _ exec.Executor = &FakeExecutor{}
 }
 
-func (s *S) TestExecute(c *gocheck.C) {
+func (s *S) TestExecute(c *check.C) {
 	var e FakeExecutor
 	var b bytes.Buffer
 	opts := exec.ExecuteOptions{
@@ -47,7 +47,7 @@ func (s *S) TestExecute(c *gocheck.C) {
 		Stderr: &b,
 	}
 	err := e.Execute(opts)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	opts = exec.ExecuteOptions{
 		Cmd:    "ps",
 		Args:   []string{"aux"},
@@ -55,7 +55,7 @@ func (s *S) TestExecute(c *gocheck.C) {
 		Stderr: &b,
 	}
 	err = e.Execute(opts)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	opts = exec.ExecuteOptions{
 		Cmd:    "ps",
 		Args:   []string{"-ef"},
@@ -63,13 +63,13 @@ func (s *S) TestExecute(c *gocheck.C) {
 		Stderr: &b,
 	}
 	err = e.Execute(opts)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(e.ExecutedCmd("ls", []string{"-lsa"}), gocheck.Equals, true)
-	c.Assert(e.ExecutedCmd("ps", []string{"aux"}), gocheck.Equals, true)
-	c.Assert(e.ExecutedCmd("ps", []string{"-ef"}), gocheck.Equals, true)
+	c.Assert(err, check.IsNil)
+	c.Assert(e.ExecutedCmd("ls", []string{"-lsa"}), check.Equals, true)
+	c.Assert(e.ExecutedCmd("ps", []string{"aux"}), check.Equals, true)
+	c.Assert(e.ExecutedCmd("ps", []string{"-ef"}), check.Equals, true)
 }
 
-func (s *S) TestFakeExecutorOutput(c *gocheck.C) {
+func (s *S) TestFakeExecutorOutput(c *check.C) {
 	e := FakeExecutor{
 		Output: map[string][][]byte{
 			"*": {[]byte("ble")},
@@ -83,12 +83,12 @@ func (s *S) TestFakeExecutorOutput(c *gocheck.C) {
 		Stderr: &b,
 	}
 	err := e.Execute(opts)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(e.ExecutedCmd("ls", []string{"-lsa"}), gocheck.Equals, true)
-	c.Assert(b.String(), gocheck.Equals, "ble")
+	c.Assert(err, check.IsNil)
+	c.Assert(e.ExecutedCmd("ls", []string{"-lsa"}), check.Equals, true)
+	c.Assert(b.String(), check.Equals, "ble")
 }
 
-func (s *S) TestFakeExecutorMultipleOutputs(c *gocheck.C) {
+func (s *S) TestFakeExecutorMultipleOutputs(c *check.C) {
 	e := FakeExecutor{
 		Output: map[string][][]byte{
 			"*": {[]byte("bla"), []byte("ble")},
@@ -101,19 +101,19 @@ func (s *S) TestFakeExecutorMultipleOutputs(c *gocheck.C) {
 		Stderr: &b,
 	}
 	err := e.Execute(opts)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(b.String(), gocheck.Equals, "bla")
+	c.Assert(err, check.IsNil)
+	c.Assert(b.String(), check.Equals, "bla")
 	b.Reset()
 	err = e.Execute(opts)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(b.String(), gocheck.Equals, "ble")
+	c.Assert(err, check.IsNil)
+	c.Assert(b.String(), check.Equals, "ble")
 	b.Reset()
 	err = e.Execute(opts)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(b.String(), gocheck.Equals, "bla")
+	c.Assert(err, check.IsNil)
+	c.Assert(b.String(), check.Equals, "bla")
 }
 
-func (s *S) TestFakeExecutorMultipleOutputsDifferentCalls(c *gocheck.C) {
+func (s *S) TestFakeExecutorMultipleOutputsDifferentCalls(c *check.C) {
 	e := FakeExecutor{
 		Output: map[string][][]byte{
 			"*":  {[]byte("bla"), []byte("ble")},
@@ -128,8 +128,8 @@ func (s *S) TestFakeExecutorMultipleOutputsDifferentCalls(c *gocheck.C) {
 		Stderr: &b,
 	}
 	err := e.Execute(opts)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(b.String(), gocheck.Equals, "hello")
+	c.Assert(err, check.IsNil)
+	c.Assert(b.String(), check.Equals, "hello")
 	b.Reset()
 	opts = exec.ExecuteOptions{
 		Cmd:    "ls",
@@ -137,15 +137,15 @@ func (s *S) TestFakeExecutorMultipleOutputsDifferentCalls(c *gocheck.C) {
 		Stderr: &b,
 	}
 	err = e.Execute(opts)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(b.String(), gocheck.Equals, "bla")
+	c.Assert(err, check.IsNil)
+	c.Assert(b.String(), check.Equals, "bla")
 	b.Reset()
 	err = e.Execute(opts)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(b.String(), gocheck.Equals, "ble")
+	c.Assert(err, check.IsNil)
+	c.Assert(b.String(), check.Equals, "ble")
 }
 
-func (s *S) TestFakeExecutorHasOutputForAnyArgsUsingWildCard(c *gocheck.C) {
+func (s *S) TestFakeExecutorHasOutputForAnyArgsUsingWildCard(c *check.C) {
 	e := FakeExecutor{
 		Output: map[string][][]byte{
 			"*": {[]byte("ble")},
@@ -153,10 +153,10 @@ func (s *S) TestFakeExecutorHasOutputForAnyArgsUsingWildCard(c *gocheck.C) {
 	}
 	args := []string{"-i", "-t"}
 	has, _ := e.hasOutputForArgs(args)
-	c.Assert(has, gocheck.Equals, true)
+	c.Assert(has, check.Equals, true)
 }
 
-func (s *S) TestFakeExecutorHasOutputForArgsSpecifyingArgs(c *gocheck.C) {
+func (s *S) TestFakeExecutorHasOutputForArgsSpecifyingArgs(c *check.C) {
 	e := FakeExecutor{
 		Output: map[string][][]byte{
 			"*": {[]byte("ble")},
@@ -164,10 +164,10 @@ func (s *S) TestFakeExecutorHasOutputForArgsSpecifyingArgs(c *gocheck.C) {
 	}
 	args := []string{"-i", "-t"}
 	has, _ := e.hasOutputForArgs(args)
-	c.Assert(has, gocheck.Equals, true)
+	c.Assert(has, check.Equals, true)
 }
 
-func (s *S) TestFakeExecutorDoesNotHasOutputForNoMatchingArgs(c *gocheck.C) {
+func (s *S) TestFakeExecutorDoesNotHasOutputForNoMatchingArgs(c *check.C) {
 	e := FakeExecutor{
 		Output: map[string][][]byte{
 			"-t -i": {[]byte("ble")},
@@ -175,10 +175,10 @@ func (s *S) TestFakeExecutorDoesNotHasOutputForNoMatchingArgs(c *gocheck.C) {
 	}
 	args := []string{"-d", "-f"}
 	has, _ := e.hasOutputForArgs(args)
-	c.Assert(has, gocheck.Equals, false)
+	c.Assert(has, check.Equals, false)
 }
 
-func (s *S) TestFakeExecutorWithArgsAndWildCard(c *gocheck.C) {
+func (s *S) TestFakeExecutorWithArgsAndWildCard(c *check.C) {
 	e := FakeExecutor{
 		Output: map[string][][]byte{
 			"*":     {[]byte("ble")},
@@ -187,18 +187,18 @@ func (s *S) TestFakeExecutorWithArgsAndWildCard(c *gocheck.C) {
 	}
 	args := []string{"-i", "-t"}
 	has, out := e.hasOutputForArgs(args)
-	c.Assert(has, gocheck.Equals, true)
-	c.Assert(string(out), gocheck.Equals, "bla")
+	c.Assert(has, check.Equals, true)
+	c.Assert(string(out), check.Equals, "bla")
 	has, out = e.hasOutputForArgs([]string{"-i", "-x"})
-	c.Assert(has, gocheck.Equals, true)
-	c.Assert(string(out), gocheck.Equals, "ble")
+	c.Assert(has, check.Equals, true)
+	c.Assert(string(out), check.Equals, "ble")
 }
 
-func (s *S) TestErrorExecutorImplementsExecutor(c *gocheck.C) {
+func (s *S) TestErrorExecutorImplementsExecutor(c *check.C) {
 	var _ exec.Executor = &ErrorExecutor{}
 }
 
-func (s *S) TestErrorExecute(c *gocheck.C) {
+func (s *S) TestErrorExecute(c *check.C) {
 	var e ErrorExecutor
 	var b bytes.Buffer
 	opts := exec.ExecuteOptions{
@@ -208,7 +208,7 @@ func (s *S) TestErrorExecute(c *gocheck.C) {
 		Stderr: &b,
 	}
 	err := e.Execute(opts)
-	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, check.NotNil)
 	opts = exec.ExecuteOptions{
 		Cmd:    "ps",
 		Args:   []string{"aux"},
@@ -216,7 +216,7 @@ func (s *S) TestErrorExecute(c *gocheck.C) {
 		Stderr: &b,
 	}
 	err = e.Execute(opts)
-	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, check.NotNil)
 	opts = exec.ExecuteOptions{
 		Cmd:    "ps",
 		Args:   []string{"-ef"},
@@ -224,13 +224,13 @@ func (s *S) TestErrorExecute(c *gocheck.C) {
 		Stderr: &b,
 	}
 	err = e.Execute(opts)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(e.ExecutedCmd("ls", []string{"-lsa"}), gocheck.Equals, true)
-	c.Assert(e.ExecutedCmd("ps", []string{"aux"}), gocheck.Equals, true)
-	c.Assert(e.ExecutedCmd("ps", []string{"-ef"}), gocheck.Equals, true)
+	c.Assert(err, check.NotNil)
+	c.Assert(e.ExecutedCmd("ls", []string{"-lsa"}), check.Equals, true)
+	c.Assert(e.ExecutedCmd("ps", []string{"aux"}), check.Equals, true)
+	c.Assert(e.ExecutedCmd("ps", []string{"-ef"}), check.Equals, true)
 }
 
-func (s *S) TestErrorExecutorOutput(c *gocheck.C) {
+func (s *S) TestErrorExecutorOutput(c *check.C) {
 	e := ErrorExecutor{
 		FakeExecutor: FakeExecutor{
 			Output: map[string][][]byte{
@@ -246,12 +246,12 @@ func (s *S) TestErrorExecutorOutput(c *gocheck.C) {
 		Stderr: &b,
 	}
 	err := e.Execute(opts)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(e.ExecutedCmd("ls", []string{"-lsa"}), gocheck.Equals, true)
-	c.Assert(b.String(), gocheck.Equals, "ble")
+	c.Assert(err, check.NotNil)
+	c.Assert(e.ExecutedCmd("ls", []string{"-lsa"}), check.Equals, true)
+	c.Assert(b.String(), check.Equals, "ble")
 }
 
-func (s *S) TestErrorExecutorHasOutputForAnyArgsUsingWildCard(c *gocheck.C) {
+func (s *S) TestErrorExecutorHasOutputForAnyArgsUsingWildCard(c *check.C) {
 	e := ErrorExecutor{
 		FakeExecutor: FakeExecutor{
 			Output: map[string][][]byte{
@@ -261,10 +261,10 @@ func (s *S) TestErrorExecutorHasOutputForAnyArgsUsingWildCard(c *gocheck.C) {
 	}
 	args := []string{"-i", "-t"}
 	has, _ := e.hasOutputForArgs(args)
-	c.Assert(has, gocheck.Equals, true)
+	c.Assert(has, check.Equals, true)
 }
 
-func (s *S) TestErrorExecutorHasOutputForArgsSpecifyingArgs(c *gocheck.C) {
+func (s *S) TestErrorExecutorHasOutputForArgsSpecifyingArgs(c *check.C) {
 	e := ErrorExecutor{
 		FakeExecutor: FakeExecutor{
 			Output: map[string][][]byte{
@@ -274,10 +274,10 @@ func (s *S) TestErrorExecutorHasOutputForArgsSpecifyingArgs(c *gocheck.C) {
 	}
 	args := []string{"-i", "-t"}
 	has, _ := e.hasOutputForArgs(args)
-	c.Assert(has, gocheck.Equals, true)
+	c.Assert(has, check.Equals, true)
 }
 
-func (s *S) TestErrorExecutorDoesNotHaveOutputForNoMatchingArgs(c *gocheck.C) {
+func (s *S) TestErrorExecutorDoesNotHaveOutputForNoMatchingArgs(c *check.C) {
 	e := ErrorExecutor{
 		FakeExecutor: FakeExecutor{
 			Output: map[string][][]byte{
@@ -287,10 +287,10 @@ func (s *S) TestErrorExecutorDoesNotHaveOutputForNoMatchingArgs(c *gocheck.C) {
 	}
 	args := []string{"-d", "-f"}
 	has, _ := e.hasOutputForArgs(args)
-	c.Assert(has, gocheck.Equals, false)
+	c.Assert(has, check.Equals, false)
 }
 
-func (s *S) TestGetCommands(c *gocheck.C) {
+func (s *S) TestGetCommands(c *check.C) {
 	var (
 		e FakeExecutor
 		b bytes.Buffer
@@ -303,7 +303,7 @@ func (s *S) TestGetCommands(c *gocheck.C) {
 		Envs:   []string{"BLA=bla"},
 	}
 	err := e.Execute(opts)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	cmds := e.GetCommands("sudo")
 	expected := []command{
 		{
@@ -312,10 +312,10 @@ func (s *S) TestGetCommands(c *gocheck.C) {
 			envs: []string{"BLA=bla"},
 		},
 	}
-	c.Assert(cmds, gocheck.DeepEquals, expected)
+	c.Assert(cmds, check.DeepEquals, expected)
 }
 
-func (s *S) TestRetryExecutor(c *gocheck.C) {
+func (s *S) TestRetryExecutor(c *check.C) {
 	e := RetryExecutor{
 		Failures: 2,
 		FakeExecutor: FakeExecutor{
@@ -332,27 +332,27 @@ func (s *S) TestRetryExecutor(c *gocheck.C) {
 		Stderr: &stderr,
 	}
 	err := e.Execute(opts)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(stderr.String(), gocheck.Equals, "hello")
-	c.Assert(stdout.String(), gocheck.Equals, "")
+	c.Assert(err, check.NotNil)
+	c.Assert(stderr.String(), check.Equals, "hello")
+	c.Assert(stdout.String(), check.Equals, "")
 	stderr.Reset()
 	err = e.Execute(opts)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(stderr.String(), gocheck.Equals, "hello")
-	c.Assert(stdout.String(), gocheck.Equals, "")
+	c.Assert(err, check.NotNil)
+	c.Assert(stderr.String(), check.Equals, "hello")
+	c.Assert(stdout.String(), check.Equals, "")
 	stderr.Reset()
 	err = e.Execute(opts)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(stdout.String(), gocheck.Equals, "hello")
-	c.Assert(stderr.String(), gocheck.Equals, "")
+	c.Assert(err, check.IsNil)
+	c.Assert(stdout.String(), check.Equals, "hello")
+	c.Assert(stderr.String(), check.Equals, "")
 	stdout.Reset()
 	err = e.Execute(opts)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(stdout.String(), gocheck.Equals, "hello")
-	c.Assert(stderr.String(), gocheck.Equals, "")
+	c.Assert(err, check.IsNil)
+	c.Assert(stdout.String(), check.Equals, "hello")
+	c.Assert(stderr.String(), check.Equals, "")
 }
 
-func (s *S) TestFailLaterExecutor(c *gocheck.C) {
+func (s *S) TestFailLaterExecutor(c *check.C) {
 	e := FailLaterExecutor{
 		Succeeds: 2,
 		FakeExecutor: FakeExecutor{
@@ -369,22 +369,22 @@ func (s *S) TestFailLaterExecutor(c *gocheck.C) {
 		Stderr: &stderr,
 	}
 	err := e.Execute(opts)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(stdout.String(), gocheck.Equals, "hello!")
-	c.Assert(stderr.String(), gocheck.Equals, "")
+	c.Assert(err, check.IsNil)
+	c.Assert(stdout.String(), check.Equals, "hello!")
+	c.Assert(stderr.String(), check.Equals, "")
 	stdout.Reset()
 	err = e.Execute(opts)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(stdout.String(), gocheck.Equals, "hello!")
-	c.Assert(stderr.String(), gocheck.Equals, "")
+	c.Assert(err, check.IsNil)
+	c.Assert(stdout.String(), check.Equals, "hello!")
+	c.Assert(stderr.String(), check.Equals, "")
 	stdout.Reset()
 	err = e.Execute(opts)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(stdout.String(), gocheck.Equals, "")
-	c.Assert(stderr.String(), gocheck.Equals, "hello!")
+	c.Assert(err, check.NotNil)
+	c.Assert(stdout.String(), check.Equals, "")
+	c.Assert(stderr.String(), check.Equals, "hello!")
 	stderr.Reset()
 	err = e.Execute(opts)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(stdout.String(), gocheck.Equals, "")
-	c.Assert(stderr.String(), gocheck.Equals, "hello!")
+	c.Assert(err, check.NotNil)
+	c.Assert(stdout.String(), check.Equals, "")
+	c.Assert(stderr.String(), check.Equals, "hello!")
 }

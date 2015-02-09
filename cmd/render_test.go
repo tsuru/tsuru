@@ -7,16 +7,16 @@ package cmd
 import (
 	"sort"
 
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
-func (s *S) TestAddOneRow(c *gocheck.C) {
+func (s *S) TestAddOneRow(c *check.C) {
 	table := NewTable()
 	table.AddRow(Row{"Three", "foo"})
-	c.Assert(table.String(), gocheck.Equals, "+-------+-----+\n| Three | foo |\n+-------+-----+\n")
+	c.Assert(table.String(), check.Equals, "+-------+-----+\n| Three | foo |\n+-------+-----+\n")
 }
 
-func (s *S) TestAddRows(c *gocheck.C) {
+func (s *S) TestAddRows(c *check.C) {
 	table := NewTable()
 	table.AddRow(Row{"One", "1"})
 	table.AddRow(Row{"Two", "2"})
@@ -27,23 +27,23 @@ func (s *S) TestAddRows(c *gocheck.C) {
 | Three | 3 |
 +-------+---+
 `
-	c.Assert(table.String(), gocheck.Equals, expected)
+	c.Assert(table.String(), check.Equals, expected)
 }
 
-func (s *S) TestRows(c *gocheck.C) {
+func (s *S) TestRows(c *check.C) {
 	table := NewTable()
-	c.Assert(table.Rows(), gocheck.Equals, 0)
+	c.Assert(table.Rows(), check.Equals, 0)
 	table.AddRow(Row{"One", "1"})
-	c.Assert(table.Rows(), gocheck.Equals, 1)
+	c.Assert(table.Rows(), check.Equals, 1)
 	table.AddRow(Row{"One", "1"})
-	c.Assert(table.Rows(), gocheck.Equals, 2)
+	c.Assert(table.Rows(), check.Equals, 2)
 	table.AddRow(Row{"One", "1"})
 	table.AddRow(Row{"One", "1"})
 	table.AddRow(Row{"One", "1"})
-	c.Assert(table.Rows(), gocheck.Equals, 5)
+	c.Assert(table.Rows(), check.Equals, 5)
 }
 
-func (s *S) TestSort(c *gocheck.C) {
+func (s *S) TestSort(c *check.C) {
 	table := NewTable()
 	table.AddRow(Row{"Three", "3"})
 	table.AddRow(Row{"Zero", "0"})
@@ -57,27 +57,27 @@ func (s *S) TestSort(c *gocheck.C) {
 +-------+---+
 `
 	table.Sort()
-	c.Assert(table.String(), gocheck.Equals, expected)
+	c.Assert(table.String(), check.Equals, expected)
 }
 
-func (s *S) TestColumnsSize(c *gocheck.C) {
+func (s *S) TestColumnsSize(c *check.C) {
 	table := NewTable()
 	table.AddRow(Row{"One", "1"})
 	table.AddRow(Row{"Two", "2"})
 	table.AddRow(Row{"Three", "3"})
-	c.Assert(table.columnsSize(), gocheck.DeepEquals, []int{5, 1})
+	c.Assert(table.columnsSize(), check.DeepEquals, []int{5, 1})
 }
 
-func (s *S) TestSeparator(c *gocheck.C) {
+func (s *S) TestSeparator(c *check.C) {
 	table := NewTable()
 	table.AddRow(Row{"One", "1"})
 	table.AddRow(Row{"Two", "2"})
 	table.AddRow(Row{"Three", "3"})
 	expected := "+-------+---+\n"
-	c.Assert(table.separator(), gocheck.Equals, expected)
+	c.Assert(table.separator(), check.Equals, expected)
 }
 
-func (s *S) TestHeadings(c *gocheck.C) {
+func (s *S) TestHeadings(c *check.C) {
 	table := NewTable()
 	table.Headers = Row{"Word", "Number"}
 	table.AddRow(Row{"One", "1"})
@@ -91,10 +91,10 @@ func (s *S) TestHeadings(c *gocheck.C) {
 | Three | 3      |
 +-------+--------+
 `
-	c.Assert(table.String(), gocheck.Equals, expected)
+	c.Assert(table.String(), check.Equals, expected)
 }
 
-func (s *S) TestString(c *gocheck.C) {
+func (s *S) TestString(c *check.C) {
 	table := NewTable()
 	table.AddRow(Row{"One", "1"})
 	table.AddRow(Row{"Two", "2"})
@@ -105,10 +105,10 @@ func (s *S) TestString(c *gocheck.C) {
 | Three | 3 |
 +-------+---+
 `
-	c.Assert(table.String(), gocheck.Equals, expected)
+	c.Assert(table.String(), check.Equals, expected)
 }
 
-func (s *S) TestStringWithSeparator(c *gocheck.C) {
+func (s *S) TestStringWithSeparator(c *check.C) {
 	table := NewTable()
 	table.LineSeparator = true
 	table.AddRow(Row{"One", "1"})
@@ -122,10 +122,10 @@ func (s *S) TestStringWithSeparator(c *gocheck.C) {
 | Three | 3 |
 +-------+---+
 `
-	c.Assert(table.String(), gocheck.Equals, expected)
+	c.Assert(table.String(), check.Equals, expected)
 }
 
-func (s *S) TestStringWithNewLine(c *gocheck.C) {
+func (s *S) TestStringWithNewLine(c *check.C) {
 	table := NewTable()
 	table.AddRow(Row{"One", "xxx\nyyy"})
 	table.AddRow(Row{"Two", "2"})
@@ -137,10 +137,10 @@ func (s *S) TestStringWithNewLine(c *gocheck.C) {
 | Three | 3   |
 +-------+-----+
 `
-	c.Assert(table.String(), gocheck.Equals, expected)
+	c.Assert(table.String(), check.Equals, expected)
 }
 
-func (s *S) TestStringWithNewLineWithSeparator(c *gocheck.C) {
+func (s *S) TestStringWithNewLineWithSeparator(c *check.C) {
 	table := NewTable()
 	table.LineSeparator = true
 	table.AddRow(Row{"One", "xxx\nyyy\nzzzz"})
@@ -156,10 +156,10 @@ func (s *S) TestStringWithNewLineWithSeparator(c *gocheck.C) {
 | Three | 3    |
 +-------+------+
 `
-	c.Assert(table.String(), gocheck.Equals, expected)
+	c.Assert(table.String(), check.Equals, expected)
 }
 
-func (s *S) TestRenderNoRows(c *gocheck.C) {
+func (s *S) TestRenderNoRows(c *check.C) {
 	table := NewTable()
 	table.Headers = Row{"Word", "Number"}
 	expected := `+------+--------+
@@ -167,126 +167,126 @@ func (s *S) TestRenderNoRows(c *gocheck.C) {
 +------+--------+
 +------+--------+
 `
-	c.Assert(table.String(), gocheck.Equals, expected)
+	c.Assert(table.String(), check.Equals, expected)
 }
 
-func (s *S) TestRenderEmpty(c *gocheck.C) {
+func (s *S) TestRenderEmpty(c *check.C) {
 	table := NewTable()
-	c.Assert(table.String(), gocheck.Equals, "")
+	c.Assert(table.String(), check.Equals, "")
 }
 
-func (s *S) TestBytes(c *gocheck.C) {
+func (s *S) TestBytes(c *check.C) {
 	table := NewTable()
 	table.AddRow(Row{"One", "1"})
 	table.AddRow(Row{"Two", "2"})
 	table.AddRow(Row{"Three", "3"})
-	c.Assert(table.Bytes(), gocheck.DeepEquals, []byte(table.String()))
+	c.Assert(table.Bytes(), check.DeepEquals, []byte(table.String()))
 }
 
-func (s *S) TestRowListAdd(c *gocheck.C) {
+func (s *S) TestRowListAdd(c *check.C) {
 	l := rowSlice([]Row{{"one", "1"}})
 	l.add(Row{"two", "2"})
-	c.Assert(len(l), gocheck.Equals, 2)
+	c.Assert(len(l), check.Equals, 2)
 }
 
-func (s *S) TestRowListLen(c *gocheck.C) {
+func (s *S) TestRowListLen(c *check.C) {
 	l := rowSlice([]Row{{"one", "1"}})
-	c.Assert(l.Len(), gocheck.Equals, 1)
+	c.Assert(l.Len(), check.Equals, 1)
 	l.add(Row{"two", "2"})
-	c.Assert(l.Len(), gocheck.Equals, 2)
+	c.Assert(l.Len(), check.Equals, 2)
 }
 
-func (s *S) TestRowListLess(c *gocheck.C) {
+func (s *S) TestRowListLess(c *check.C) {
 	l := rowSlice([]Row{{"zero", "0"}, {"one", "1"}, {"two", "2"}})
-	c.Assert(l.Less(0, 1), gocheck.Equals, false)
-	c.Assert(l.Less(0, 2), gocheck.Equals, false)
-	c.Assert(l.Less(1, 2), gocheck.Equals, true)
-	c.Assert(l.Less(1, 0), gocheck.Equals, true)
+	c.Assert(l.Less(0, 1), check.Equals, false)
+	c.Assert(l.Less(0, 2), check.Equals, false)
+	c.Assert(l.Less(1, 2), check.Equals, true)
+	c.Assert(l.Less(1, 0), check.Equals, true)
 }
 
-func (s *S) TestRowListLessDifferentCase(c *gocheck.C) {
+func (s *S) TestRowListLessDifferentCase(c *check.C) {
 	l := rowSlice([]Row{{"Zero", "0"}, {"one", "1"}, {"two", "2"}})
-	c.Assert(l.Less(0, 1), gocheck.Equals, false)
-	c.Assert(l.Less(0, 2), gocheck.Equals, false)
-	c.Assert(l.Less(1, 2), gocheck.Equals, true)
-	c.Assert(l.Less(1, 0), gocheck.Equals, true)
+	c.Assert(l.Less(0, 1), check.Equals, false)
+	c.Assert(l.Less(0, 2), check.Equals, false)
+	c.Assert(l.Less(1, 2), check.Equals, true)
+	c.Assert(l.Less(1, 0), check.Equals, true)
 }
 
-func (s *S) TestRowListSwap(c *gocheck.C) {
+func (s *S) TestRowListSwap(c *check.C) {
 	l := rowSlice([]Row{{"zero", "0"}, {"one", "1"}, {"two", "2"}})
 	l.Swap(0, 2)
-	c.Assert(l.Less(0, 2), gocheck.Equals, true)
+	c.Assert(l.Less(0, 2), check.Equals, true)
 }
 
-func (s *S) TestRowListIsSortable(c *gocheck.C) {
+func (s *S) TestRowListIsSortable(c *check.C) {
 	var _ sort.Interface = rowSlice{}
 }
 
-func (s *S) TestColorRed(c *gocheck.C) {
+func (s *S) TestColorRed(c *check.C) {
 	output := Colorfy("must return a red font pattern", "red", "", "")
-	c.Assert(output, gocheck.Equals, "\033[0;31;10mmust return a red font pattern\033[0m")
+	c.Assert(output, check.Equals, "\033[0;31;10mmust return a red font pattern\033[0m")
 }
 
-func (s *S) TestColorGreen(c *gocheck.C) {
+func (s *S) TestColorGreen(c *check.C) {
 	output := Colorfy("must return a green font pattern", "green", "", "")
-	c.Assert(output, gocheck.Equals, "\033[0;32;10mmust return a green font pattern\033[0m")
+	c.Assert(output, check.Equals, "\033[0;32;10mmust return a green font pattern\033[0m")
 }
 
-func (s *S) TestColorBoldWhite(c *gocheck.C) {
+func (s *S) TestColorBoldWhite(c *check.C) {
 	output := Colorfy("must return a bold white font pattern", "white", "", "bold")
-	c.Assert(output, gocheck.Equals, "\033[1;37;10mmust return a bold white font pattern\033[0m")
+	c.Assert(output, check.Equals, "\033[1;37;10mmust return a bold white font pattern\033[0m")
 }
 
-func (s *S) TestColorBoldYellowGreenBG(c *gocheck.C) {
+func (s *S) TestColorBoldYellowGreenBG(c *check.C) {
 	output := Colorfy("must return a bold yellow with green background", "yellow", "green", "bold")
-	c.Assert(output, gocheck.Equals, "\033[1;33;42mmust return a bold yellow with green background\033[0m")
+	c.Assert(output, check.Equals, "\033[1;33;42mmust return a bold yellow with green background\033[0m")
 }
 
-func (s *S) TestResizeLastColumn(c *gocheck.C) {
+func (s *S) TestResizeLastColumn(c *check.C) {
 	t := NewTable()
 	t.AddRow(Row{"1", "abcdefghijk"})
 	t.AddRow(Row{"2", "1234567890"})
 	sizes := t.resizeLastColumn(11)
-	c.Assert(sizes, gocheck.DeepEquals, []int{1, 3})
-	c.Assert(t.rows[0], gocheck.DeepEquals, Row{"1", `ab↵
+	c.Assert(sizes, check.DeepEquals, []int{1, 3})
+	c.Assert(t.rows[0], check.DeepEquals, Row{"1", `ab↵
 cd↵
 ef↵
 gh↵
 ij↵
 k`})
-	c.Assert(t.rows[1], gocheck.DeepEquals, Row{"2", `12↵
+	c.Assert(t.rows[1], check.DeepEquals, Row{"2", `12↵
 34↵
 56↵
 78↵
 90`})
 }
 
-func (s *S) TestResizeLastColumnNoTTYSize(c *gocheck.C) {
+func (s *S) TestResizeLastColumnNoTTYSize(c *check.C) {
 	t := NewTable()
 	t.AddRow(Row{"1", "abcdefghijk"})
 	t.AddRow(Row{"2", "1234567890"})
 	sizes := t.resizeLastColumn(0)
-	c.Assert(sizes, gocheck.DeepEquals, []int{1, 11})
-	c.Assert(t.rows[0], gocheck.DeepEquals, Row{"1", "abcdefghijk"})
-	c.Assert(t.rows[1], gocheck.DeepEquals, Row{"2", "1234567890"})
+	c.Assert(sizes, check.DeepEquals, []int{1, 11})
+	c.Assert(t.rows[0], check.DeepEquals, Row{"1", "abcdefghijk"})
+	c.Assert(t.rows[1], check.DeepEquals, Row{"2", "1234567890"})
 }
 
-func (s *S) TestResizeLastColumnNotEnoughSpace(c *gocheck.C) {
+func (s *S) TestResizeLastColumnNotEnoughSpace(c *check.C) {
 	t := NewTable()
 	t.AddRow(Row{"1", "abcdefghijk"})
 	t.AddRow(Row{"2", "1234567890"})
 	sizes := t.resizeLastColumn(9)
-	c.Assert(sizes, gocheck.DeepEquals, []int{1, 11})
-	c.Assert(t.rows[0], gocheck.DeepEquals, Row{"1", "abcdefghijk"})
-	c.Assert(t.rows[1], gocheck.DeepEquals, Row{"2", "1234567890"})
+	c.Assert(sizes, check.DeepEquals, []int{1, 11})
+	c.Assert(t.rows[0], check.DeepEquals, Row{"1", "abcdefghijk"})
+	c.Assert(t.rows[1], check.DeepEquals, Row{"2", "1234567890"})
 }
 
-func (s *S) TestResizeLastColumnWithLineBreaks(c *gocheck.C) {
+func (s *S) TestResizeLastColumnWithLineBreaks(c *check.C) {
 	t := NewTable()
 	t.AddRow(Row{"1", "abcde\nfgh\ni\njklm"})
 	sizes := t.resizeLastColumn(12)
-	c.Assert(sizes, gocheck.DeepEquals, []int{1, 4})
-	c.Assert(t.rows[0], gocheck.DeepEquals, Row{"1", `abc↵
+	c.Assert(sizes, check.DeepEquals, []int{1, 4})
+	c.Assert(t.rows[0], check.DeepEquals, Row{"1", `abc↵
 de
 fgh
 i
@@ -294,7 +294,7 @@ jkl↵
 m`})
 }
 
-func (s *S) TestResizeLastColumnWithColors(c *gocheck.C) {
+func (s *S) TestResizeLastColumnWithColors(c *check.C) {
 	t := NewTable()
 	color1 := Colorfy("abcdefghijk", "red", "", "")
 	color2 := Colorfy("1234567890", "red", "", "")
@@ -303,22 +303,22 @@ func (s *S) TestResizeLastColumnWithColors(c *gocheck.C) {
 	t.AddRow(Row{"2", color2})
 	t.AddRow(Row{"3", color3})
 	sizes := t.resizeLastColumn(11)
-	c.Assert(sizes, gocheck.DeepEquals, []int{1, 3})
+	c.Assert(sizes, check.DeepEquals, []int{1, 3})
 	redInit := "\033[0;31;10m"
 	colorReset := "\033[0m"
 	colorResetBreak := "\033[0m\n"
-	c.Assert(t.rows[0], gocheck.DeepEquals, Row{"1", redInit + "ab↵" + colorResetBreak +
+	c.Assert(t.rows[0], check.DeepEquals, Row{"1", redInit + "ab↵" + colorResetBreak +
 		redInit + "cd↵" + colorResetBreak +
 		redInit + "ef↵" + colorResetBreak +
 		redInit + "gh↵" + colorResetBreak +
 		redInit + "ij↵" + colorResetBreak +
 		redInit + "k" + colorReset})
-	c.Assert(t.rows[1], gocheck.DeepEquals, Row{"2", redInit + "12↵" + colorResetBreak +
+	c.Assert(t.rows[1], check.DeepEquals, Row{"2", redInit + "12↵" + colorResetBreak +
 		redInit + "34↵" + colorResetBreak +
 		redInit + "56↵" + colorResetBreak +
 		redInit + "78↵" + colorResetBreak +
 		redInit + "90" + colorReset})
-	c.Assert(t.rows[2], gocheck.DeepEquals, Row{"3", "12↵\n" +
+	c.Assert(t.rows[2], check.DeepEquals, Row{"3", "12↵\n" +
 		"3" + redInit + "4↵" + colorResetBreak +
 		redInit + "56↵" + colorResetBreak +
 		redInit + "78↵" + colorResetBreak +
@@ -326,26 +326,26 @@ func (s *S) TestResizeLastColumnWithColors(c *gocheck.C) {
 		"12"})
 }
 
-func (s *S) TestResizeLastColumnUnicode(c *gocheck.C) {
+func (s *S) TestResizeLastColumnUnicode(c *check.C) {
 	t := NewTable()
 	t.AddRow(Row{"1", "åß∂¬ƒ˚©“œ¡™"})
 	t.AddRow(Row{"2", "åß∂¬ƒ˚©“œ¡"})
 	sizes := t.resizeLastColumn(11)
-	c.Assert(sizes, gocheck.DeepEquals, []int{1, 3})
-	c.Assert(t.rows[0], gocheck.DeepEquals, Row{"1", `åß↵
+	c.Assert(sizes, check.DeepEquals, []int{1, 3})
+	c.Assert(t.rows[0], check.DeepEquals, Row{"1", `åß↵
 ∂¬↵
 ƒ˚↵
 ©“↵
 œ¡↵
 ™`})
-	c.Assert(t.rows[1], gocheck.DeepEquals, Row{"2", `åß↵
+	c.Assert(t.rows[1], check.DeepEquals, Row{"2", `åß↵
 ∂¬↵
 ƒ˚↵
 ©“↵
 œ¡`})
 }
 
-func (s *S) TestColoredString(c *gocheck.C) {
+func (s *S) TestColoredString(c *check.C) {
 	table := NewTable()
 	two := Colorfy("str", "red", "", "")
 	two = two + " - " + two
@@ -358,5 +358,5 @@ func (s *S) TestColoredString(c *gocheck.C) {
 | Three             | 3 |
 +-------------------+---+
 `
-	c.Assert(table.String(), gocheck.Equals, expected)
+	c.Assert(table.String(), check.Equals, expected)
 }

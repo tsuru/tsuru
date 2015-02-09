@@ -5,37 +5,37 @@
 package auth
 
 import (
+	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
-	"launchpad.net/gocheck"
 )
 
-func (s *S) TestGetAPIToken(c *gocheck.C) {
+func (s *S) TestGetAPIToken(c *check.C) {
 	user := User{Email: "para@xmen.com", APIKey: "Quenço"}
 	err := s.conn.Users().Insert(&user)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Users().Remove(bson.M{"email": user.Email})
 	APIKey, err := user.RegenerateAPIKey()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	t, err := getAPIToken("bearer " + APIKey)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(t.Token, gocheck.Equals, APIKey)
-	c.Assert(t.UserEmail, gocheck.Equals, user.Email)
+	c.Assert(err, check.IsNil)
+	c.Assert(t.Token, check.Equals, APIKey)
+	c.Assert(t.UserEmail, check.Equals, user.Email)
 }
 
-func (s *S) TestGetAPITokenEmptyToken(c *gocheck.C) {
+func (s *S) TestGetAPITokenEmptyToken(c *check.C) {
 	u, err := getAPIToken("bearer tokenthatdoesnotexist")
-	c.Assert(u, gocheck.IsNil)
-	c.Assert(err, gocheck.Equals, ErrInvalidToken)
+	c.Assert(u, check.IsNil)
+	c.Assert(err, check.Equals, ErrInvalidToken)
 }
 
-func (s *S) TestGetAPITokennNotFound(c *gocheck.C) {
+func (s *S) TestGetAPITokennNotFound(c *check.C) {
 	t, err := getAPIToken("bearer invalid")
-	c.Assert(t, gocheck.IsNil)
-	c.Assert(err, gocheck.Equals, ErrInvalidToken)
+	c.Assert(t, check.IsNil)
+	c.Assert(err, check.Equals, ErrInvalidToken)
 }
 
-func (s *S) TestGetAPITokenInvalid(c *gocheck.C) {
+func (s *S) TestGetAPITokenInvalid(c *check.C) {
 	t, err := getAPIToken("invalid")
-	c.Assert(t, gocheck.IsNil)
-	c.Assert(err, gocheck.Equals, ErrInvalidToken)
+	c.Assert(t, check.IsNil)
+	c.Assert(err, check.Equals, ErrInvalidToken)
 }

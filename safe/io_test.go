@@ -8,20 +8,20 @@ import (
 	"bytes"
 	"io/ioutil"
 
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
-func (s *S) TestSafeWriter(c *gocheck.C) {
+func (s *S) TestSafeWriter(c *check.C) {
 	var buf bytes.Buffer
 	writer := NewWriter(&buf)
 	writer.Write([]byte("hello world"))
-	c.Assert(buf.String(), gocheck.Equals, "hello world")
+	c.Assert(buf.String(), check.Equals, "hello world")
 }
 
-func (s *S) TestSafeReader(c *gocheck.C) {
+func (s *S) TestSafeReader(c *check.C) {
 	buf := bytes.NewBufferString("hello world")
 	reader := NewReader(buf)
 	b, err := ioutil.ReadAll(reader)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(string(b), gocheck.Equals, "hello world")
+	c.Assert(err, check.IsNil)
+	c.Assert(string(b), check.Equals, "hello world")
 }

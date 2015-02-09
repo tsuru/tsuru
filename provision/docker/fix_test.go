@@ -14,8 +14,8 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
+	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
-	"launchpad.net/gocheck"
 )
 
 func startDocker(hostPort string) (func(), *httptest.Server) {
@@ -62,7 +62,7 @@ func startDocker(hostPort string) (func(), *httptest.Server) {
 	}, server
 }
 
-func (s *S) TestFixContainers(c *gocheck.C) {
+func (s *S) TestFixContainers(c *check.C) {
 	coll := collection()
 	defer coll.Close()
 	err := coll.Insert(
@@ -76,13 +76,13 @@ func (s *S) TestFixContainers(c *gocheck.C) {
 			HostAddr: "127.0.0.1",
 		},
 	)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer coll.RemoveAll(bson.M{"appname": "makea"})
 	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	err = conn.Apps().Insert(&app.App{Name: "makea"})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer conn.Apps().RemoveAll(bson.M{"name": "makea"})
 	cleanup, server := startDocker("9999")
 	defer cleanup()
@@ -93,16 +93,16 @@ func (s *S) TestFixContainers(c *gocheck.C) {
 		cluster.Node{Address: server.URL},
 	)
 	cmutex.Unlock()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = fixContainers()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	cont, err := getContainer("9930c24f1c4x")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(cont.IP, gocheck.Equals, "127.0.0.9")
-	c.Assert(cont.HostPort, gocheck.Equals, "9999")
+	c.Assert(err, check.IsNil)
+	c.Assert(cont.IP, check.Equals, "127.0.0.9")
+	c.Assert(cont.HostPort, check.Equals, "9999")
 }
 
-func (s *S) TestFixContainersEmptyPortDoesNothing(c *gocheck.C) {
+func (s *S) TestFixContainersEmptyPortDoesNothing(c *check.C) {
 	coll := collection()
 	defer coll.Close()
 	err := coll.Insert(
@@ -116,7 +116,7 @@ func (s *S) TestFixContainersEmptyPortDoesNothing(c *gocheck.C) {
 			HostAddr: "127.0.0.1",
 		},
 	)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer coll.RemoveAll(bson.M{"appname": "makea"})
 	cleanup, server := startDocker("")
 	defer cleanup()
@@ -127,11 +127,11 @@ func (s *S) TestFixContainersEmptyPortDoesNothing(c *gocheck.C) {
 		cluster.Node{Address: server.URL},
 	)
 	cmutex.Unlock()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = fixContainers()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	cont, err := getContainer("9930c24f1c4x")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(cont.IP, gocheck.Equals, "")
-	c.Assert(cont.HostPort, gocheck.Equals, "")
+	c.Assert(err, check.IsNil)
+	c.Assert(cont.IP, check.Equals, "")
+	c.Assert(cont.HostPort, check.Equals, "")
 }

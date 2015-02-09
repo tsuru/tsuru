@@ -10,7 +10,7 @@ import (
 	"net/http/httptest"
 
 	"github.com/tsuru/config"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
 type metricHandler struct {
@@ -22,7 +22,7 @@ func (h *metricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(content))
 }
 
-func (s *S) TestMetric(c *gocheck.C) {
+func (s *S) TestMetric(c *check.C) {
 	h := metricHandler{cpuMax: "8.2"}
 	ts := httptest.NewServer(&h)
 	config.Set("metrics:db", "graphite")
@@ -33,11 +33,11 @@ func (s *S) TestMetric(c *gocheck.C) {
 		Platform: "Django",
 	}
 	cpu, err := newApp.Metric("cpu")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(cpu, gocheck.Equals, 8.2)
+	c.Assert(err, check.IsNil)
+	c.Assert(cpu, check.Equals, 8.2)
 }
 
-func (s *S) TestMetricServerDown(c *gocheck.C) {
+func (s *S) TestMetricServerDown(c *check.C) {
 	h := metricHandler{cpuMax: "8.2"}
 	ts := httptest.NewServer(&h)
 	config.Set("metrics:db", "graphite")
@@ -48,5 +48,5 @@ func (s *S) TestMetricServerDown(c *gocheck.C) {
 	}
 	ts.Close()
 	_, err := newApp.Metric("cpu")
-	c.Assert(err, gocheck.Not(gocheck.IsNil))
+	c.Assert(err, check.Not(check.IsNil))
 }

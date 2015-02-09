@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 
 	"github.com/garyburd/redigo/redis"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
 // CmdType represents a type of command, it may be a send or a do.
@@ -22,12 +22,12 @@ const (
 	CmdDo
 )
 
-func ClearRedisKeys(keysPattern string, c *gocheck.C) {
+func ClearRedisKeys(keysPattern string, c *check.C) {
 	redisConn, err := redis.Dial("tcp", "127.0.0.1:6379")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer redisConn.Close()
 	result, err := redisConn.Do("KEYS", keysPattern)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	keys := result.([]interface{})
 	for _, key := range keys {
 		keyName := string(key.([]byte))

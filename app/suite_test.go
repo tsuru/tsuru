@@ -23,11 +23,11 @@ import (
 	_ "github.com/tsuru/tsuru/queue/queuetest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/service"
+	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
-	"launchpad.net/gocheck"
 )
 
-func Test(t *testing.T) { gocheck.TestingT(t) }
+func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
 	conn        *db.Storage
@@ -39,12 +39,12 @@ type S struct {
 	defaultPlan Plan
 }
 
-var _ = gocheck.Suite(&S{})
+var _ = check.Suite(&S{})
 
 type greaterChecker struct{}
 
-func (c *greaterChecker) Info() *gocheck.CheckerInfo {
-	return &gocheck.CheckerInfo{Name: "Greater", Params: []string{"expected", "obtained"}}
+func (c *greaterChecker) Info() *check.CheckerInfo {
+	return &check.CheckerInfo{Name: "Greater", Params: []string{"expected", "obtained"}}
 }
 
 func (c *greaterChecker) Check(params []interface{}, names []string) (bool, string) {
@@ -66,27 +66,27 @@ func (c *greaterChecker) Check(params []interface{}, names []string) (bool, stri
 	return false, err
 }
 
-var Greater gocheck.Checker = &greaterChecker{}
+var Greater check.Checker = &greaterChecker{}
 
-func (s *S) createUserAndTeam(c *gocheck.C) {
+func (s *S) createUserAndTeam(c *check.C) {
 	s.user = &auth.User{
 		Email: "whydidifall@thewho.com",
 		Quota: quota.Unlimited,
 	}
 	err := s.user.Create()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	s.team = auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
 	err = s.conn.Teams().Insert(s.team)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }
 
 var nativeScheme = auth.Scheme(native.NativeScheme{})
 
-func (s *S) SetUpSuite(c *gocheck.C) {
+func (s *S) SetUpSuite(c *check.C) {
 	err := config.ReadConfigFile("testdata/config.yaml")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	s.conn, err = db.Conn()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	s.createUserAndTeam(c)
 	s.provisioner = provisiontest.NewFakeProvisioner()
 	Provisioner = s.provisioner
@@ -101,14 +101,14 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 		Default:  true,
 	}
 	err = s.conn.Plans().Insert(s.defaultPlan)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TearDownSuite(c *gocheck.C) {
+func (s *S) TearDownSuite(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 }
 
-func (s *S) TearDownTest(c *gocheck.C) {
+func (s *S) TearDownTest(c *check.C) {
 	s.provisioner.Reset()
 	LogRemove(nil)
 	s.conn.Users().Update(
@@ -126,25 +126,25 @@ func (s *S) getTestData(p ...string) io.ReadCloser {
 	return f
 }
 
-func (s *S) createAdminUserAndTeam(c *gocheck.C) {
+func (s *S) createAdminUserAndTeam(c *check.C) {
 	s.admin = &auth.User{Email: "superuser@gmail.com"}
 	err := s.admin.Create()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	adminTeamName, err := config.GetString("admin-team")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	s.adminTeam = auth.Team{Name: adminTeamName, Users: []string{s.admin.Email}}
 	err = s.conn.Teams().Insert(&s.adminTeam)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }
 
-func (s *S) removeAdminUserAndTeam(c *gocheck.C) {
+func (s *S) removeAdminUserAndTeam(c *check.C) {
 	err := s.conn.Teams().RemoveId(s.adminTeam.Name)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = s.conn.Users().Remove(bson.M{"email": s.admin.Email})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }
 
-func (s *S) addServiceInstance(c *gocheck.C, appName string, fn http.HandlerFunc) func() {
+func (s *S) addServiceInstance(c *check.C, appName string, fn http.HandlerFunc) func() {
 	ts := httptest.NewServer(fn)
 	ret := func() {
 		ts.Close()
@@ -153,14 +153,14 @@ func (s *S) addServiceInstance(c *gocheck.C, appName string, fn http.HandlerFunc
 	}
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
 	err = instance.Create()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = instance.AddApp(appName)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = s.conn.ServiceInstances().Update(bson.M{"name": instance.Name}, instance)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	return ret
 }
 

@@ -10,24 +10,24 @@ import (
 	"os"
 
 	"github.com/tsuru/tsuru/cmd"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
-func (s *S) TestTokenCmdInfo(c *gocheck.C) {
+func (s *S) TestTokenCmdInfo(c *check.C) {
 	expected := &cmd.Info{
 		Name:    "token",
 		Usage:   "token",
 		Desc:    "Generates a tsuru token.",
 		MinArgs: 0,
 	}
-	c.Assert(tokenCmd{}.Info(), gocheck.DeepEquals, expected)
+	c.Assert(tokenCmd{}.Info(), check.DeepEquals, expected)
 }
 
-func (s *S) TestTokenCmdIsACommand(c *gocheck.C) {
+func (s *S) TestTokenCmdIsACommand(c *check.C) {
 	var _ cmd.Command = &tokenCmd{}
 }
 
-func (s *S) TestTokenRun(c *gocheck.C) {
+func (s *S) TestTokenRun(c *check.C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Args:   []string{},
@@ -38,6 +38,6 @@ func (s *S) TestTokenRun(c *gocheck.C) {
 	client := cmd.NewClient(&http.Client{}, nil, manager)
 	command := tokenCmd{}
 	err := command.Run(&context, client)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(stdout.String(), gocheck.Not(gocheck.Equals), "")
+	c.Assert(err, check.IsNil)
+	c.Assert(stdout.String(), check.Not(check.Equals), "")
 }

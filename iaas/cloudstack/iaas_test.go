@@ -13,22 +13,22 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/iaas"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
-func Test(t *testing.T) { gocheck.TestingT(t) }
+func Test(t *testing.T) { check.TestingT(t) }
 
 type cloudstackSuite struct{}
 
-var _ = gocheck.Suite(&cloudstackSuite{})
+var _ = check.Suite(&cloudstackSuite{})
 
-func (s *cloudstackSuite) SetUpSuite(c *gocheck.C) {
+func (s *cloudstackSuite) SetUpSuite(c *check.C) {
 	config.Set("iaas:cloudstack:api-key", "test")
 	config.Set("iaas:cloudstack:secret-key", "test")
 	config.Set("iaas:cloudstack:url", "test")
 }
 
-func (s *cloudstackSuite) TestCreateMachine(c *gocheck.C) {
+func (s *cloudstackSuite) TestCreateMachine(c *check.C) {
 	var calls []string
 	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cmd := r.URL.Query().Get("command")
@@ -56,14 +56,14 @@ func (s *cloudstackSuite) TestCreateMachine(c *gocheck.C) {
 		"zoneid":            "val",
 	}
 	vm, err := cs.CreateMachine(params)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(vm, gocheck.NotNil)
-	c.Assert(vm.Address, gocheck.Equals, "10.24.16.241")
-	c.Assert(vm.Id, gocheck.Equals, "0366ae09-0a77-4e2b-8595-3b749764a107")
-	c.Assert(calls, gocheck.DeepEquals, []string{"deployVirtualMachine", "queryAsyncJobResult", "listVirtualMachines"})
+	c.Assert(err, check.IsNil)
+	c.Assert(vm, check.NotNil)
+	c.Assert(vm.Address, check.Equals, "10.24.16.241")
+	c.Assert(vm.Id, check.Equals, "0366ae09-0a77-4e2b-8595-3b749764a107")
+	c.Assert(calls, check.DeepEquals, []string{"deployVirtualMachine", "queryAsyncJobResult", "listVirtualMachines"})
 }
 
-func (s *cloudstackSuite) TestCreateMachineAsyncFailure(c *gocheck.C) {
+func (s *cloudstackSuite) TestCreateMachineAsyncFailure(c *check.C) {
 	var calls []string
 	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cmd := r.URL.Query().Get("command")
@@ -87,59 +87,59 @@ func (s *cloudstackSuite) TestCreateMachineAsyncFailure(c *gocheck.C) {
 		"zoneid":            "val",
 	}
 	_, err := cs.CreateMachine(params)
-	c.Assert(err, gocheck.ErrorMatches, ".*my weird error.*")
-	c.Assert(calls, gocheck.DeepEquals, []string{"deployVirtualMachine", "queryAsyncJobResult"})
+	c.Assert(err, check.ErrorMatches, ".*my weird error.*")
+	c.Assert(calls, check.DeepEquals, []string{"deployVirtualMachine", "queryAsyncJobResult"})
 }
 
-func (s *cloudstackSuite) TestCreateMachineValidateParams(c *gocheck.C) {
+func (s *cloudstackSuite) TestCreateMachineValidateParams(c *check.C) {
 	cs := NewCloudstackIaaS()
 	params := map[string]string{
 		"name": "something",
 	}
 	_, err := cs.CreateMachine(params)
-	c.Assert(err, gocheck.ErrorMatches, "param \"networkids\" is mandatory")
+	c.Assert(err, check.ErrorMatches, "param \"networkids\" is mandatory")
 }
 
-func (s *cloudstackSuite) TestBuildUrlToCloudstack(c *gocheck.C) {
+func (s *cloudstackSuite) TestBuildUrlToCloudstack(c *check.C) {
 	cs := NewCloudstackIaaS()
 	params := map[string]string{"atest": "2"}
 	urlBuilded, err := cs.buildUrl("commandTest", params)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	u, err := url.Parse(urlBuilded)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	q, err := url.ParseQuery(u.RawQuery)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(q["signature"], gocheck.NotNil)
-	c.Assert(q["apiKey"], gocheck.NotNil)
-	c.Assert(q["atest"], gocheck.NotNil)
-	c.Assert(q["response"], gocheck.DeepEquals, []string{"json"})
-	c.Assert(q["command"], gocheck.DeepEquals, []string{"commandTest"})
+	c.Assert(err, check.IsNil)
+	c.Assert(q["signature"], check.NotNil)
+	c.Assert(q["apiKey"], check.NotNil)
+	c.Assert(q["atest"], check.NotNil)
+	c.Assert(q["response"], check.DeepEquals, []string{"json"})
+	c.Assert(q["command"], check.DeepEquals, []string{"commandTest"})
 }
 
-func (s *cloudstackSuite) TestDeleteMachine(c *gocheck.C) {
+func (s *cloudstackSuite) TestDeleteMachine(c *check.C) {
 	var calls []string
 	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cmd := r.URL.Query().Get("command")
 		calls = append(calls, cmd)
 		w.Header().Set("Content-type", "application/json")
 		if cmd == "listVolumes" {
-			c.Assert(r.URL.Query().Get("virtualmachineid"), gocheck.Equals, "myMachineId")
+			c.Assert(r.URL.Query().Get("virtualmachineid"), check.Equals, "myMachineId")
 			fmt.Fprintln(w, `{"listvolumesresponse": {"volume": [ {"id": "v1", "type": "ROOT"}, {"id": "v2", "type": "DATADISK"} ]}}`)
 		}
 		if cmd == "destroyVirtualMachine" {
-			c.Assert(r.URL.Query().Get("id"), gocheck.Equals, "myMachineId")
+			c.Assert(r.URL.Query().Get("id"), check.Equals, "myMachineId")
 			fmt.Fprintln(w, `{"destroyvirtualmachineresponse": {"jobid": "job1"}}`)
 		}
 		if cmd == "queryAsyncJobResult" {
-			c.Assert(r.URL.Query().Get("jobid"), gocheck.Equals, "job1")
+			c.Assert(r.URL.Query().Get("jobid"), check.Equals, "job1")
 			fmt.Fprintln(w, `{"queryasyncjobresultresponse": {"jobstatus": 1}}`)
 		}
 		if cmd == "detachVolume" {
-			c.Assert(r.URL.Query().Get("id"), gocheck.Equals, "v2")
+			c.Assert(r.URL.Query().Get("id"), check.Equals, "v2")
 			fmt.Fprintln(w, `{"detachvolumeresponse": {"jobid": "job1"}}`)
 		}
 		if cmd == "deleteVolume" {
-			c.Assert(r.URL.Query().Get("id"), gocheck.Equals, "v2")
+			c.Assert(r.URL.Query().Get("id"), check.Equals, "v2")
 		}
 	}))
 	defer fakeServer.Close()
@@ -147,8 +147,8 @@ func (s *cloudstackSuite) TestDeleteMachine(c *gocheck.C) {
 	cs := NewCloudstackIaaS()
 	machine := iaas.Machine{Id: "myMachineId", CreationParams: map[string]string{"projectid": "projid"}}
 	err := cs.DeleteMachine(&machine)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(calls, gocheck.DeepEquals, []string{
+	c.Assert(err, check.IsNil)
+	c.Assert(calls, check.DeepEquals, []string{
 		"listVolumes",
 		"destroyVirtualMachine",
 		"queryAsyncJobResult",
@@ -158,22 +158,22 @@ func (s *cloudstackSuite) TestDeleteMachine(c *gocheck.C) {
 	})
 }
 
-func (s *cloudstackSuite) TestDeleteMachineAsyncFail(c *gocheck.C) {
+func (s *cloudstackSuite) TestDeleteMachineAsyncFail(c *check.C) {
 	var calls []string
 	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cmd := r.URL.Query().Get("command")
 		calls = append(calls, cmd)
 		w.Header().Set("Content-type", "application/json")
 		if cmd == "listVolumes" {
-			c.Assert(r.URL.Query().Get("virtualmachineid"), gocheck.Equals, "myMachineId")
+			c.Assert(r.URL.Query().Get("virtualmachineid"), check.Equals, "myMachineId")
 			fmt.Fprintln(w, `{"listvolumesresponse": {"volume": [  ]}}`)
 		}
 		if cmd == "destroyVirtualMachine" {
-			c.Assert(r.URL.Query().Get("id"), gocheck.Equals, "myMachineId")
+			c.Assert(r.URL.Query().Get("id"), check.Equals, "myMachineId")
 			fmt.Fprintln(w, `{"destroyvirtualmachineresponse": {"jobid": "job1"}}`)
 		}
 		if cmd == "queryAsyncJobResult" {
-			c.Assert(r.URL.Query().Get("jobid"), gocheck.Equals, "job1")
+			c.Assert(r.URL.Query().Get("jobid"), check.Equals, "job1")
 			fmt.Fprintln(w, `{"queryasyncjobresultresponse": {"jobstatus": 2, "jobresult": "my awesome err"}}`)
 		}
 	}))
@@ -182,15 +182,15 @@ func (s *cloudstackSuite) TestDeleteMachineAsyncFail(c *gocheck.C) {
 	cs := NewCloudstackIaaS()
 	machine := iaas.Machine{Id: "myMachineId", CreationParams: map[string]string{"projectid": "projid"}}
 	err := cs.DeleteMachine(&machine)
-	c.Assert(err, gocheck.ErrorMatches, ".*my awesome err.*")
-	c.Assert(calls, gocheck.DeepEquals, []string{
+	c.Assert(err, check.ErrorMatches, ".*my awesome err.*")
+	c.Assert(calls, check.DeepEquals, []string{
 		"listVolumes",
 		"destroyVirtualMachine",
 		"queryAsyncJobResult",
 	})
 }
 
-func (s *cloudstackSuite) TestDeleteMachineError(c *gocheck.C) {
+func (s *cloudstackSuite) TestDeleteMachineError(c *check.C) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
@@ -199,27 +199,27 @@ func (s *cloudstackSuite) TestDeleteMachineError(c *gocheck.C) {
 	cs := NewCloudstackIaaS()
 	machine := iaas.Machine{Id: "myMachineId"}
 	err := cs.DeleteMachine(&machine)
-	c.Assert(err, gocheck.ErrorMatches, ".*Unexpected response code.*")
+	c.Assert(err, check.ErrorMatches, ".*Unexpected response code.*")
 }
 
-func (s *cloudstackSuite) TestDeleteMachineErrorNoServer(c *gocheck.C) {
+func (s *cloudstackSuite) TestDeleteMachineErrorNoServer(c *check.C) {
 	config.Set("iaas:cloudstack:url", "http://invalidurl.invalid.invalid")
 	cs := NewCloudstackIaaS()
 	machine := iaas.Machine{Id: "myMachineId"}
 	err := cs.DeleteMachine(&machine)
-	c.Assert(err, gocheck.ErrorMatches, ".*no such host.*")
+	c.Assert(err, check.ErrorMatches, ".*no such host.*")
 }
 
-func (s *cloudstackSuite) TestClone(c *gocheck.C) {
+func (s *cloudstackSuite) TestClone(c *check.C) {
 	cs := NewCloudstackIaaS()
 	clonned := cs.Clone("something")
-	c.Assert(clonned, gocheck.FitsTypeOf, cs)
+	c.Assert(clonned, check.FitsTypeOf, cs)
 	clonnedCS, _ := clonned.(*CloudstackIaaS)
-	c.Assert(cs.base.IaaSName, gocheck.Equals, "")
-	c.Assert(clonnedCS.base.IaaSName, gocheck.Equals, "something")
+	c.Assert(cs.base.IaaSName, check.Equals, "")
+	c.Assert(clonnedCS.base.IaaSName, check.Equals, "something")
 }
 
-func (s *cloudstackSuite) TestHealthCheck(c *gocheck.C) {
+func (s *cloudstackSuite) TestHealthCheck(c *check.C) {
 	var command string
 	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `{"listzonesresponse":{"count":8,"zone":[]}}`)
@@ -229,11 +229,11 @@ func (s *cloudstackSuite) TestHealthCheck(c *gocheck.C) {
 	config.Set("iaas:cloudstack:url", fakeServer.URL)
 	cs := NewCloudstackIaaS()
 	err := cs.HealthCheck()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(command, gocheck.Equals, "listZones")
+	c.Assert(err, check.IsNil)
+	c.Assert(command, check.Equals, "listZones")
 }
 
-func (s *cloudstackSuite) TestHealthCheckFailure(c *gocheck.C) {
+func (s *cloudstackSuite) TestHealthCheckFailure(c *check.C) {
 	var command string
 	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `{"listzonesresponse":{"count":0,"zone":[]}}`)
@@ -243,7 +243,7 @@ func (s *cloudstackSuite) TestHealthCheckFailure(c *gocheck.C) {
 	config.Set("iaas:cloudstack:url", fakeServer.URL)
 	cs := NewCloudstackIaaS()
 	err := cs.HealthCheck()
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, `"cloudstack" - not enough zones available, want at least 1, got 0`)
-	c.Assert(command, gocheck.Equals, "listZones")
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, `"cloudstack" - not enough zones available, want at least 1, got 0`)
+	c.Assert(command, check.Equals, "listZones")
 }

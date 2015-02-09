@@ -17,13 +17,13 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"golang.org/x/crypto/bcrypt"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
 type hasKeyChecker struct{}
 
-func (c *hasKeyChecker) Info() *gocheck.CheckerInfo {
-	return &gocheck.CheckerInfo{Name: "HasKey", Params: []string{"user", "key"}}
+func (c *hasKeyChecker) Info() *check.CheckerInfo {
+	return &check.CheckerInfo{Name: "HasKey", Params: []string{"user", "key"}}
 }
 
 func (c *hasKeyChecker) Check(params []interface{}, names []string) (bool, string) {
@@ -42,9 +42,9 @@ func (c *hasKeyChecker) Check(params []interface{}, names []string) (bool, strin
 	return user.HasKey(key), ""
 }
 
-var HasKey gocheck.Checker = &hasKeyChecker{}
+var HasKey check.Checker = &hasKeyChecker{}
 
-func Test(t *testing.T) { gocheck.TestingT(t) }
+func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
 	conn    *db.Storage
@@ -58,9 +58,9 @@ type S struct {
 	gitProt string
 }
 
-var _ = gocheck.Suite(&S{})
+var _ = check.Suite(&S{})
 
-func (s *S) SetUpSuite(c *gocheck.C) {
+func (s *S) SetUpSuite(c *check.C) {
 	config.Set("auth:token-expire-days", 2)
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	config.Set("admin-team", "admin")
@@ -72,32 +72,32 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	s.hashed = s.user.Password
 	team := &Team{Name: "cobrateam", Users: []string{s.user.Email}}
 	err := s.conn.Teams().Insert(team)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	s.team = team
 	s.gitHost, _ = config.GetString("git:host")
 	s.gitPort, _ = config.GetString("git:port")
 	s.gitProt, _ = config.GetString("git:protocol")
 	s.server, err = authtest.NewSMTPServer()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	config.Set("smtp:server", s.server.Addr())
 	config.Set("smtp:user", "root")
 	config.Set("smtp:password", "123456")
 }
 
-func (s *S) TearDownSuite(c *gocheck.C) {
+func (s *S) TearDownSuite(c *check.C) {
 	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	err = dbtest.ClearAllCollections(conn.Apps().Database)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	s.server.Stop()
 }
 
-func (s *S) TearDownTest(c *gocheck.C) {
+func (s *S) TearDownTest(c *check.C) {
 	if s.user.Password != s.hashed {
 		s.user.Password = s.hashed
 		err := s.user.Update()
-		c.Assert(err, gocheck.IsNil)
+		c.Assert(err, check.IsNil)
 	}
 	config.Set("git:host", s.gitHost)
 	config.Set("git:port", s.gitPort)

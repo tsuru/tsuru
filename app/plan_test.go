@@ -9,10 +9,10 @@ import (
 
 	"github.com/tsuru/config"
 	_ "github.com/tsuru/tsuru/router/routertest"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
-func (s *S) TestPlanAdd(c *gocheck.C) {
+func (s *S) TestPlanAdd(c *check.C) {
 	p := Plan{
 		Name:     "plan1",
 		Memory:   9223372036854775807,
@@ -20,15 +20,15 @@ func (s *S) TestPlanAdd(c *gocheck.C) {
 		CpuShare: 100,
 	}
 	err := p.Save()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Plans().RemoveId(p.Name)
 	var plan Plan
 	err = s.conn.Plans().FindId(p.Name).One(&plan)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(plan, gocheck.DeepEquals, p)
+	c.Assert(err, check.IsNil)
+	c.Assert(plan, check.DeepEquals, p)
 }
 
-func (s *S) TestPlanAddWithInvalidRouter(c *gocheck.C) {
+func (s *S) TestPlanAddWithInvalidRouter(c *check.C) {
 	p := Plan{
 		Name:     "plan1",
 		Memory:   9223372036854775807,
@@ -37,18 +37,18 @@ func (s *S) TestPlanAddWithInvalidRouter(c *gocheck.C) {
 		Router:   "fake",
 	}
 	err := p.Save()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Plans().RemoveId(p.Name)
 	var plan Plan
 	err = s.conn.Plans().FindId(p.Name).One(&plan)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(plan, gocheck.DeepEquals, p)
+	c.Assert(err, check.IsNil)
+	c.Assert(plan, check.DeepEquals, p)
 	r, err := plan.getRouter()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(r, gocheck.Equals, "fake")
+	c.Assert(err, check.IsNil)
+	c.Assert(r, check.Equals, "fake")
 }
 
-func (s *S) TestPlanAddInvalid(c *gocheck.C) {
+func (s *S) TestPlanAddInvalid(c *check.C) {
 	invalidPlans := []Plan{
 		{
 			Memory:   9223372036854775807,
@@ -70,11 +70,11 @@ func (s *S) TestPlanAddInvalid(c *gocheck.C) {
 	}
 	for _, p := range invalidPlans {
 		err := p.Save()
-		c.Assert(err, gocheck.FitsTypeOf, PlanValidationError{})
+		c.Assert(err, check.FitsTypeOf, PlanValidationError{})
 	}
 }
 
-func (s *S) TestPlanAddDupp(c *gocheck.C) {
+func (s *S) TestPlanAddDupp(c *check.C) {
 	p := Plan{
 		Name:     "plan1",
 		Memory:   9223372036854775807,
@@ -83,12 +83,12 @@ func (s *S) TestPlanAddDupp(c *gocheck.C) {
 	}
 	defer s.conn.Plans().RemoveId(p.Name)
 	err := p.Save()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = p.Save()
-	c.Assert(err, gocheck.Equals, ErrPlanAlreadyExists)
+	c.Assert(err, check.Equals, ErrPlanAlreadyExists)
 }
 
-func (s *S) TestPlanAddAsDefault(c *gocheck.C) {
+func (s *S) TestPlanAddAsDefault(c *check.C) {
 	s.conn.Plans().RemoveAll(nil)
 	defer s.conn.Plans().Insert(s.defaultPlan)
 	p := Plan{
@@ -99,19 +99,19 @@ func (s *S) TestPlanAddAsDefault(c *gocheck.C) {
 		Default:  true,
 	}
 	err := p.Save()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Plans().RemoveId("plan1")
 	p.Name = "plan2"
 	err = p.Save()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Plans().RemoveId("plan2")
 	var plan1, plan2 Plan
 	err = s.conn.Plans().FindId("plan1").One(&plan1)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(plan1.Default, gocheck.Equals, false)
+	c.Assert(err, check.IsNil)
+	c.Assert(plan1.Default, check.Equals, false)
 	err = s.conn.Plans().FindId("plan2").One(&plan2)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(plan2.Default, gocheck.Equals, true)
+	c.Assert(err, check.IsNil)
+	c.Assert(plan2.Default, check.Equals, true)
 
 }
 
@@ -121,59 +121,59 @@ func (l planList) Len() int           { return len(l) }
 func (l planList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 func (l planList) Less(i, j int) bool { return l[i].Name < l[j].Name }
 
-func (s *S) TestPlansList(c *gocheck.C) {
+func (s *S) TestPlansList(c *check.C) {
 	expected := []Plan{
 		s.defaultPlan,
 		{Name: "plan1", Memory: 1, Swap: 2, CpuShare: 3},
 		{Name: "plan2", Memory: 3, Swap: 4, CpuShare: 5},
 	}
 	err := s.conn.Plans().Insert(expected[1])
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = s.conn.Plans().Insert(expected[2])
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Plans().RemoveId(expected[1].Name)
 	defer s.conn.Plans().RemoveId(expected[2].Name)
 	plans, err := PlansList()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	sort.Sort(planList(plans))
-	c.Assert(plans, gocheck.DeepEquals, expected)
+	c.Assert(plans, check.DeepEquals, expected)
 }
 
-func (s *S) TestPlanRemove(c *gocheck.C) {
+func (s *S) TestPlanRemove(c *check.C) {
 	plans := []Plan{
 		{Name: "plan1", Memory: 1, Swap: 2, CpuShare: 3},
 		{Name: "plan2", Memory: 3, Swap: 4, CpuShare: 5},
 	}
 	err := s.conn.Plans().Insert(plans[0])
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = s.conn.Plans().Insert(plans[1])
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Plans().RemoveId(plans[0].Name)
 	defer s.conn.Plans().RemoveId(plans[1].Name)
 	err = PlanRemove(plans[0].Name)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	var dbPlans []Plan
 	err = s.conn.Plans().Find(nil).All(&dbPlans)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	sort.Sort(planList(dbPlans))
-	c.Assert(dbPlans, gocheck.DeepEquals, []Plan{
+	c.Assert(dbPlans, check.DeepEquals, []Plan{
 		s.defaultPlan,
 		{Name: "plan2", Memory: 3, Swap: 4, CpuShare: 5},
 	})
 }
 
-func (s *S) TestPlanRemoveInvalid(c *gocheck.C) {
+func (s *S) TestPlanRemoveInvalid(c *check.C) {
 	err := PlanRemove("xxxx")
-	c.Assert(err, gocheck.Equals, ErrPlanNotFound)
+	c.Assert(err, check.Equals, ErrPlanNotFound)
 }
 
-func (s *S) TestDefaultPlan(c *gocheck.C) {
+func (s *S) TestDefaultPlan(c *check.C) {
 	p, err := defaultPlan()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(*p, gocheck.DeepEquals, s.defaultPlan)
+	c.Assert(err, check.IsNil)
+	c.Assert(*p, check.DeepEquals, s.defaultPlan)
 }
 
-func (s *S) TestDefaultPlanWithoutDefault(c *gocheck.C) {
+func (s *S) TestDefaultPlanWithoutDefault(c *check.C) {
 	s.conn.Plans().RemoveAll(nil)
 	defer s.conn.Plans().Insert(s.defaultPlan)
 	config.Set("docker:memory", 12)
@@ -181,17 +181,17 @@ func (s *S) TestDefaultPlanWithoutDefault(c *gocheck.C) {
 	defer config.Unset("docker:memory")
 	defer config.Unset("docker:swap")
 	p, err := defaultPlan()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	expected := Plan{
 		Name:     "autogenerated",
 		Memory:   12 * 1024 * 1024,
 		Swap:     20 * 1024 * 1024,
 		CpuShare: 100,
 	}
-	c.Assert(*p, gocheck.DeepEquals, expected)
+	c.Assert(*p, check.DeepEquals, expected)
 }
 
-func (s *S) TestFindPlanByName(c *gocheck.C) {
+func (s *S) TestFindPlanByName(c *check.C) {
 	p := Plan{
 		Name:     "plan1",
 		Memory:   9223372036854775807,
@@ -199,14 +199,14 @@ func (s *S) TestFindPlanByName(c *gocheck.C) {
 		CpuShare: 100,
 	}
 	err := p.Save()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Plans().RemoveId(p.Name)
 	dbPlan, err := findPlanByName(p.Name)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(*dbPlan, gocheck.DeepEquals, p)
+	c.Assert(err, check.IsNil)
+	c.Assert(*dbPlan, check.DeepEquals, p)
 }
 
-func (s *S) TestPlanGetRouter(c *gocheck.C) {
+func (s *S) TestPlanGetRouter(c *check.C) {
 	config.Set("docker:router", "defaultrouter")
 	defer config.Unset("docker:router")
 	p := Plan{
@@ -214,12 +214,12 @@ func (s *S) TestPlanGetRouter(c *gocheck.C) {
 		Router: "myrouter",
 	}
 	r, err := p.getRouter()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(r, gocheck.Equals, "myrouter")
+	c.Assert(err, check.IsNil)
+	c.Assert(r, check.Equals, "myrouter")
 	p2 := Plan{
 		Name: "plan2",
 	}
 	r2, err := p2.getRouter()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(r2, gocheck.Equals, "defaultrouter")
+	c.Assert(err, check.IsNil)
+	c.Assert(r2, check.Equals, "defaultrouter")
 }

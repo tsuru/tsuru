@@ -9,22 +9,22 @@ import (
 	"testing"
 
 	"github.com/tsuru/commandmocker"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
 type S struct{}
 
-var _ = gocheck.Suite(&S{})
+var _ = check.Suite(&S{})
 
-func Test(t *testing.T) { gocheck.TestingT(t) }
+func Test(t *testing.T) { check.TestingT(t) }
 
-func (s *S) TestOsExecutorImplementsExecutor(c *gocheck.C) {
+func (s *S) TestOsExecutorImplementsExecutor(c *check.C) {
 	var _ Executor = OsExecutor{}
 }
 
-func (s *S) TestExecute(c *gocheck.C) {
+func (s *S) TestExecute(c *check.C) {
 	tmpdir, err := commandmocker.Add("ls", "ok")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	var e OsExecutor
 	var b bytes.Buffer
@@ -35,16 +35,16 @@ func (s *S) TestExecute(c *gocheck.C) {
 		Stderr: &b,
 	}
 	err = e.Execute(opts)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
+	c.Assert(err, check.IsNil)
+	c.Assert(commandmocker.Ran(tmpdir), check.Equals, true)
 	expected := []string{"-lsa"}
-	c.Assert(commandmocker.Parameters(tmpdir), gocheck.DeepEquals, expected)
-	c.Assert(b.String(), gocheck.Equals, "ok")
+	c.Assert(commandmocker.Parameters(tmpdir), check.DeepEquals, expected)
+	c.Assert(b.String(), check.Equals, "ok")
 }
 
-func (s *S) TestExecuteWithoutArgs(c *gocheck.C) {
+func (s *S) TestExecuteWithoutArgs(c *check.C) {
 	tmpdir, err := commandmocker.Add("ls", "ok")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer commandmocker.Remove(tmpdir)
 	var e OsExecutor
 	var b bytes.Buffer
@@ -54,8 +54,8 @@ func (s *S) TestExecuteWithoutArgs(c *gocheck.C) {
 		Stderr: &b,
 	}
 	err = e.Execute(opts)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(commandmocker.Ran(tmpdir), gocheck.Equals, true)
-	c.Assert(commandmocker.Parameters(tmpdir), gocheck.IsNil)
-	c.Assert(b.String(), gocheck.Equals, "ok")
+	c.Assert(err, check.IsNil)
+	c.Assert(commandmocker.Ran(tmpdir), check.Equals, true)
+	c.Assert(commandmocker.Parameters(tmpdir), check.IsNil)
+	c.Assert(b.String(), check.Equals, "ok")
 }

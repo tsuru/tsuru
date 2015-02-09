@@ -9,7 +9,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
 type S struct {
@@ -20,12 +20,12 @@ type S struct {
 	tmpdir  string
 }
 
-var _ = gocheck.Suite(&S{})
+var _ = check.Suite(&S{})
 
 type hasAccessToChecker struct{}
 
-func (c *hasAccessToChecker) Info() *gocheck.CheckerInfo {
-	return &gocheck.CheckerInfo{Name: "HasAccessTo", Params: []string{"team", "service"}}
+func (c *hasAccessToChecker) Info() *check.CheckerInfo {
+	return &check.CheckerInfo{Name: "HasAccessTo", Params: []string{"team", "service"}}
 }
 
 func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, string) {
@@ -43,30 +43,30 @@ func (c *hasAccessToChecker) Check(params []interface{}, names []string) (bool, 
 	return service.HasTeam(&team), ""
 }
 
-var HasAccessTo gocheck.Checker = &hasAccessToChecker{}
+var HasAccessTo check.Checker = &hasAccessToChecker{}
 
-func (s *S) SetUpSuite(c *gocheck.C) {
+func (s *S) SetUpSuite(c *check.C) {
 	var err error
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_service_test")
 	s.conn, err = db.Conn()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	s.user = &auth.User{Email: "cidade@raul.com"}
 	err = s.user.Create()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	s.team = &auth.Team{Name: "Raul", Users: []string{s.user.Email}}
 	err = s.conn.Teams().Insert(s.team)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	if err != nil {
 		c.Fail()
 	}
 }
 
-func (s *S) TearDownSuite(c *gocheck.C) {
+func (s *S) TearDownSuite(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 }
 
-func (s *S) TearDownTest(c *gocheck.C) {
+func (s *S) TearDownTest(c *check.C) {
 	_, err := s.conn.Services().RemoveAll(nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }

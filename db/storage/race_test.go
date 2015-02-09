@@ -10,12 +10,12 @@ import (
 	"sync"
 	"time"
 
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
-func (s *S) TestOpenIsThreadSafe(c *gocheck.C) {
+func (s *S) TestOpenIsThreadSafe(c *check.C) {
 	storage, err := Open("127.0.0.1:27017", "tsuru_db_race_tests")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer storage.session.Close()
 	sess := conn["127.0.0.1:27017"]
 	sess.used = time.Now().Add(-1 * time.Hour)
@@ -24,20 +24,20 @@ func (s *S) TestOpenIsThreadSafe(c *gocheck.C) {
 	wg.Add(3)
 	go func() {
 		st1, err := Open("127.0.0.1:27017", "tsuru_db_race_tests_2")
-		c.Check(err, gocheck.IsNil)
-		c.Check(st1.session.LiveServers(), gocheck.DeepEquals, storage.session.LiveServers())
+		c.Check(err, check.IsNil)
+		c.Check(st1.session.LiveServers(), check.DeepEquals, storage.session.LiveServers())
 		wg.Done()
 	}()
 	go func() {
 		st2, err := Open("127.0.0.1:27017", "tsuru_db_race_tests_3")
-		c.Check(err, gocheck.IsNil)
-		c.Check(st2.session.LiveServers(), gocheck.DeepEquals, storage.session.LiveServers())
+		c.Check(err, check.IsNil)
+		c.Check(st2.session.LiveServers(), check.DeepEquals, storage.session.LiveServers())
 		wg.Done()
 	}()
 	go func() {
 		st3, err := Open("127.0.0.1:27017", "tsuru_db_race_tests_4")
-		c.Check(err, gocheck.IsNil)
-		c.Check(st3.session.LiveServers(), gocheck.DeepEquals, storage.session.LiveServers())
+		c.Check(err, check.IsNil)
+		c.Check(st3.session.LiveServers(), check.DeepEquals, storage.session.LiveServers())
 		wg.Done()
 	}()
 	wg.Wait()

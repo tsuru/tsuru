@@ -12,14 +12,14 @@ import (
 
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
 type PlatformSuite struct{}
 
-var _ = gocheck.Suite(&PlatformSuite{})
+var _ = check.Suite(&PlatformSuite{})
 
-func (p *PlatformSuite) TestPlatformAdd(c *gocheck.C) {
+func (p *PlatformSuite) TestPlatformAdd(c *check.C) {
 	provisioner := provisiontest.ExtensibleFakeProvisioner{
 		FakeProvisioner: provisiontest.NewFakeProvisioner(),
 	}
@@ -34,11 +34,11 @@ func (p *PlatformSuite) TestPlatformAdd(c *gocheck.C) {
 	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	result := platformAdd(recorder, request, nil)
-	c.Assert(result, gocheck.IsNil)
-	c.Assert(recorder.Body.String(), gocheck.Equals, "\nOK!\n")
+	c.Assert(result, check.IsNil)
+	c.Assert(recorder.Body.String(), check.Equals, "\nOK!\n")
 }
 
-func (p *PlatformSuite) TestPlatformUpdate(c *gocheck.C) {
+func (p *PlatformSuite) TestPlatformUpdate(c *check.C) {
 	provisioner := provisiontest.ExtensibleFakeProvisioner{
 		FakeProvisioner: provisiontest.NewFakeProvisioner(),
 	}
@@ -48,18 +48,18 @@ func (p *PlatformSuite) TestPlatformUpdate(c *gocheck.C) {
 		app.Provisioner = oldProvisioner
 	}()
 	err := app.PlatformAdd("wat", nil, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	dockerfile_url := "http://localhost/Dockerfile"
 	body := fmt.Sprintf("dockerfile=%s", dockerfile_url)
 	request, _ := http.NewRequest("PUT", "/platforms/wat?:name=wat", strings.NewReader(body))
 	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	result := platformUpdate(recorder, request, nil)
-	c.Assert(result, gocheck.IsNil)
-	c.Assert(recorder.Body.String(), gocheck.Equals, "\nOK!\n")
+	c.Assert(result, check.IsNil)
+	c.Assert(recorder.Body.String(), check.Equals, "\nOK!\n")
 }
 
-func (p *PlatformSuite) TestPlatformRemove(c *gocheck.C) {
+func (p *PlatformSuite) TestPlatformRemove(c *check.C) {
 	provisioner := provisiontest.ExtensibleFakeProvisioner{
 		FakeProvisioner: provisiontest.NewFakeProvisioner(),
 	}
@@ -69,9 +69,9 @@ func (p *PlatformSuite) TestPlatformRemove(c *gocheck.C) {
 		app.Provisioner = oldProvisioner
 	}()
 	err := app.PlatformAdd("test", nil, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	request, _ := http.NewRequest("DELETE", "/platforms/test?:name=test", nil)
 	recorder := httptest.NewRecorder()
 	err = platformRemove(recorder, request, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }

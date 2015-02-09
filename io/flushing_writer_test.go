@@ -14,58 +14,58 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
-func (s *S) TestFlushingWriter(c *gocheck.C) {
+func (s *S) TestFlushingWriter(c *check.C) {
 	recorder := httptest.NewRecorder()
 	writer := FlushingWriter{recorder, false}
 	data := []byte("ble")
 	_, err := writer.Write(data)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(recorder.Body.Bytes(), gocheck.DeepEquals, data)
-	c.Assert(writer.wrote, gocheck.Equals, true)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Body.Bytes(), check.DeepEquals, data)
+	c.Assert(writer.wrote, check.Equals, true)
 }
 
-func (s *S) TestFlushingWriterShouldReturnTheDataSize(c *gocheck.C) {
+func (s *S) TestFlushingWriterShouldReturnTheDataSize(c *check.C) {
 	recorder := httptest.NewRecorder()
 	writer := FlushingWriter{recorder, false}
 	data := []byte("ble")
 	n, err := writer.Write(data)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, len(data))
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, len(data))
 }
 
-func (s *S) TestFlushingWriterHeader(c *gocheck.C) {
+func (s *S) TestFlushingWriterHeader(c *check.C) {
 	recorder := httptest.NewRecorder()
 	writer := FlushingWriter{recorder, false}
 	writer.Header().Set("Content-Type", "application/xml")
-	c.Assert(recorder.Header().Get("Content-Type"), gocheck.Equals, "application/xml")
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/xml")
 }
 
-func (s *S) TestFlushingWriterWriteHeader(c *gocheck.C) {
+func (s *S) TestFlushingWriterWriteHeader(c *check.C) {
 	recorder := httptest.NewRecorder()
 	writer := FlushingWriter{recorder, false}
 	expectedCode := 333
 	writer.WriteHeader(expectedCode)
-	c.Assert(recorder.Code, gocheck.Equals, expectedCode)
-	c.Assert(writer.wrote, gocheck.Equals, true)
+	c.Assert(recorder.Code, check.Equals, expectedCode)
+	c.Assert(writer.wrote, check.Equals, true)
 }
 
-func (s *S) TestFlushingWriterWrote(c *gocheck.C) {
+func (s *S) TestFlushingWriterWrote(c *check.C) {
 	writer := FlushingWriter{nil, false}
-	c.Assert(writer.Wrote(), gocheck.Equals, false)
+	c.Assert(writer.Wrote(), check.Equals, false)
 	writer.wrote = true
-	c.Assert(writer.Wrote(), gocheck.Equals, true)
+	c.Assert(writer.Wrote(), check.Equals, true)
 }
 
-func (s *S) TestFlushingWriterHijack(c *gocheck.C) {
+func (s *S) TestFlushingWriterHijack(c *check.C) {
 	var buf bytes.Buffer
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer listener.Close()
 	expectedConn, err := net.Dial("tcp", listener.Addr().String())
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	recorder := hijacker{
 		ResponseWriter: httptest.NewRecorder(),
 		input:          &buf,
@@ -73,35 +73,35 @@ func (s *S) TestFlushingWriterHijack(c *gocheck.C) {
 	}
 	writer := FlushingWriter{&recorder, false}
 	conn, rw, err := writer.Hijack()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(conn, gocheck.Equals, expectedConn)
+	c.Assert(err, check.IsNil)
+	c.Assert(conn, check.Equals, expectedConn)
 	buf.Write([]byte("hello world"))
 	b, err := ioutil.ReadAll(rw)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(string(b), gocheck.Equals, "hello world")
+	c.Assert(err, check.IsNil)
+	c.Assert(string(b), check.Equals, "hello world")
 	rw.Write([]byte("hi, how are you?"))
 	body := recorder.ResponseWriter.(*httptest.ResponseRecorder).Body.String()
-	c.Assert(body, gocheck.Equals, "hi, how are you?")
+	c.Assert(body, check.Equals, "hi, how are you?")
 }
 
-func (s *S) TestFlushingWriterFailureToHijack(c *gocheck.C) {
+func (s *S) TestFlushingWriterFailureToHijack(c *check.C) {
 	expectedErr := errors.New("failed to hijack, man")
 	recorder := hijacker{err: expectedErr}
 	writer := FlushingWriter{&recorder, false}
 	conn, rw, err := writer.Hijack()
-	c.Assert(conn, gocheck.IsNil)
-	c.Assert(rw, gocheck.IsNil)
-	c.Assert(err, gocheck.Equals, expectedErr)
+	c.Assert(conn, check.IsNil)
+	c.Assert(rw, check.IsNil)
+	c.Assert(err, check.Equals, expectedErr)
 }
 
-func (s *S) TestFlushingWriterHijackUnhijackable(c *gocheck.C) {
+func (s *S) TestFlushingWriterHijackUnhijackable(c *check.C) {
 	recorder := httptest.NewRecorder()
 	writer := FlushingWriter{recorder, false}
 	conn, rw, err := writer.Hijack()
-	c.Assert(conn, gocheck.IsNil)
-	c.Assert(rw, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "cannot hijack connection")
+	c.Assert(conn, check.IsNil)
+	c.Assert(rw, check.IsNil)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "cannot hijack connection")
 }
 
 type hijacker struct {

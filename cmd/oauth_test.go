@@ -14,15 +14,15 @@ import (
 
 	"github.com/tsuru/tsuru/exec/exectest"
 	"github.com/tsuru/tsuru/fs/fstest"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
-func (s *S) TestPort(c *gocheck.C) {
-	c.Assert(":0", gocheck.Equals, port(map[string]string{}))
-	c.Assert(":4242", gocheck.Equals, port(map[string]string{"port": "4242"}))
+func (s *S) TestPort(c *check.C) {
+	c.Assert(":0", check.Equals, port(map[string]string{}))
+	c.Assert(":4242", check.Equals, port(map[string]string{"port": "4242"}))
 }
 
-func (s *S) TestOpen(c *gocheck.C) {
+func (s *S) TestOpen(c *check.C) {
 	fexec := exectest.FakeExecutor{}
 	execut = &fexec
 	defer func() {
@@ -30,15 +30,15 @@ func (s *S) TestOpen(c *gocheck.C) {
 	}()
 	url := "http://someurl"
 	err := open(url)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	if runtime.GOOS == "linux" {
-		c.Assert(fexec.ExecutedCmd("xdg-open", []string{url}), gocheck.Equals, true)
+		c.Assert(fexec.ExecutedCmd("xdg-open", []string{url}), check.Equals, true)
 	} else {
-		c.Assert(fexec.ExecutedCmd("open", []string{url}), gocheck.Equals, true)
+		c.Assert(fexec.ExecutedCmd("open", []string{url}), check.Equals, true)
 	}
 }
 
-func (s *S) TestCallbackHandler(c *gocheck.C) {
+func (s *S) TestCallbackHandler(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"token": "xpto"}`))
 	}))
@@ -54,15 +54,15 @@ func (s *S) TestCallbackHandler(c *gocheck.C) {
 	handler := callback(redirectUrl, finish)
 	body := `{"code":"xpto"}`
 	request, err := http.NewRequest("GET", "/", strings.NewReader(body))
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	handler(recorder, request)
-	c.Assert(<-finish, gocheck.Equals, true)
+	c.Assert(<-finish, check.Equals, true)
 	expectedPage := fmt.Sprintf(callbackPage, successMarkup)
-	c.Assert(expectedPage, gocheck.Equals, recorder.Body.String())
+	c.Assert(expectedPage, check.Equals, recorder.Body.String())
 	file, err := rfs.Open(JoinWithUserDir(".tsuru_token"))
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	data, err := ioutil.ReadAll(file)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(string(data), gocheck.Equals, "xpto")
+	c.Assert(err, check.IsNil)
+	c.Assert(string(data), check.Equals, "xpto")
 }

@@ -7,21 +7,21 @@ package errors
 import (
 	"testing"
 
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
-func Test(t *testing.T) { gocheck.TestingT(t) }
+func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct{}
 
-var _ = gocheck.Suite(&S{})
+var _ = check.Suite(&S{})
 
-func (s *S) TestHTTPError(c *gocheck.C) {
+func (s *S) TestHTTPError(c *check.C) {
 	e := HTTP{500, "Internal server error"}
-	c.Assert(e.Error(), gocheck.Equals, e.Message)
+	c.Assert(e.Error(), check.Equals, e.Message)
 }
 
-func (s *S) TestValidationError(c *gocheck.C) {
+func (s *S) TestValidationError(c *check.C) {
 	e := ValidationError{Message: "something"}
-	c.Assert(e.Error(), gocheck.Equals, "something")
+	c.Assert(e.Error(), check.Equals, "something")
 }

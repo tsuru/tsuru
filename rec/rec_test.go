@@ -10,34 +10,34 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) {
-	gocheck.TestingT(t)
+	check.TestingT(t)
 }
 
-var _ = gocheck.Suite(RecSuite{})
+var _ = check.Suite(RecSuite{})
 
 type RecSuite struct{}
 
-func (RecSuite) SetUpSuite(c *gocheck.C) {
+func (RecSuite) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_rec_test")
 }
 
-func (RecSuite) TearDownSuite(c *gocheck.C) {
+func (RecSuite) TearDownSuite(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
 	dbtest.ClearAllCollections(conn.Apps().Database)
 }
 
-func (RecSuite) TestLog(c *gocheck.C) {
+func (RecSuite) TestLog(c *check.C) {
 	ch := Log("user@tsuru.io", "run-command", "ls", "-ltr")
 	_, ok := <-ch
-	c.Assert(ok, gocheck.Equals, false)
+	c.Assert(ok, check.Equals, false)
 	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	query := map[string]interface{}{
 		"user":   "user@tsuru.io",
@@ -46,21 +46,21 @@ func (RecSuite) TestLog(c *gocheck.C) {
 	}
 	defer conn.UserActions().RemoveAll(query)
 	count, err := conn.UserActions().Find(query).Count()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(count, gocheck.Equals, 1)
+	c.Assert(err, check.IsNil)
+	c.Assert(count, check.Equals, 1)
 }
 
-func (RecSuite) TestLogConnError(c *gocheck.C) {
+func (RecSuite) TestLogConnError(c *check.C) {
 	old, _ := config.Get("database:url")
 	defer config.Set("database:url", old)
 	config.Set("database:url", "127.0.0.1:29999")
 	ch := Log("user@tsuru.io", "run-command", "ls", "-ltr")
 	err, ok := <-ch
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(err, gocheck.NotNil)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(err, check.NotNil)
 	config.Set("database:url", old)
 	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	query := map[string]interface{}{
 		"user":   "user@tsuru.io",
@@ -69,11 +69,11 @@ func (RecSuite) TestLogConnError(c *gocheck.C) {
 	}
 	defer conn.UserActions().RemoveAll(query)
 	count, err := conn.UserActions().Find(query).Count()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(count, gocheck.Equals, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(count, check.Equals, 0)
 }
 
-func (RecSuite) TestLogInvalidData(c *gocheck.C) {
+func (RecSuite) TestLogInvalidData(c *check.C) {
 	var tests = []struct {
 		user     string
 		action   string
@@ -102,14 +102,14 @@ func (RecSuite) TestLogInvalidData(c *gocheck.C) {
 	for _, t := range tests {
 		ch := Log(t.user, t.action, t.extra...)
 		err := <-ch
-		c.Check(err, gocheck.Equals, t.expected)
+		c.Check(err, check.Equals, t.expected)
 	}
 	conn, err := db.Conn()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	var action userAction
 	err = conn.UserActions().Find(nil).One(&action)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(action.User, gocheck.Equals, "gopher@golang.org")
-	c.Assert(action.Action, gocheck.Equals, "do-something")
+	c.Assert(err, check.IsNil)
+	c.Assert(action.User, check.Equals, "gopher@golang.org")
+	c.Assert(action.Action, check.Equals, "do-something")
 }

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/db"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
 type Action struct {
@@ -25,8 +25,8 @@ type userAction struct {
 
 type isRecordedChecker struct{}
 
-func (isRecordedChecker) Info() *gocheck.CheckerInfo {
-	return &gocheck.CheckerInfo{Name: "IsRecorded", Params: []string{"action"}}
+func (isRecordedChecker) Info() *check.CheckerInfo {
+	return &check.CheckerInfo{Name: "IsRecorded", Params: []string{"action"}}
 }
 
 func (isRecordedChecker) Check(params []interface{}, names []string) (bool, string) {
@@ -82,4 +82,4 @@ func (isRecordedChecker) Check(params []interface{}, names []string) (bool, stri
 	return true, ""
 }
 
-var IsRecorded gocheck.Checker = isRecordedChecker{}
+var IsRecorded check.Checker = isRecordedChecker{}

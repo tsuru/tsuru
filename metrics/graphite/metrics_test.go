@@ -12,7 +12,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/metrics"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
 type metricHandler struct {
@@ -24,20 +24,20 @@ func (h *metricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(content))
 }
 
-func Test(t *testing.T) { gocheck.TestingT(t) }
+func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct{}
 
-var _ = gocheck.Suite(&S{})
+var _ = check.Suite(&S{})
 
-func (s *S) TestMetric(c *gocheck.C) {
+func (s *S) TestMetric(c *check.C) {
 	h := metricHandler{cpuMax: "8.2"}
 	ts := httptest.NewServer(&h)
 	config.Set("graphite:host", ts.URL)
 	defer ts.Close()
 	g := graphite{}
 	series, err := g.Summarize("cpu", "1h", "max")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	expected := metrics.Series([]metrics.Data{
 		{Timestamp: 1.41512904e+09, Value: 2.2},
 		{Timestamp: 1.41512905e+09, Value: 2.2},
@@ -45,27 +45,27 @@ func (s *S) TestMetric(c *gocheck.C) {
 		{Timestamp: 1.41512907e+09, Value: 2.2},
 		{Timestamp: 1.41512908e+09, Value: 8.2},
 	})
-	c.Assert(series, gocheck.DeepEquals, expected)
+	c.Assert(series, check.DeepEquals, expected)
 }
 
-func (s *S) TestMetricServerDown(c *gocheck.C) {
+func (s *S) TestMetricServerDown(c *check.C) {
 	h := metricHandler{cpuMax: "8.2"}
 	ts := httptest.NewServer(&h)
 	config.Set("graphite:host", ts.URL)
 	ts.Close()
 	g := graphite{}
 	_, err := g.Summarize("cpu", "1h", "max")
-	c.Assert(err, gocheck.Not(gocheck.IsNil))
+	c.Assert(err, check.Not(check.IsNil))
 }
 
-func (s *S) TestMetricEnvWithoutSchema(c *gocheck.C) {
+func (s *S) TestMetricEnvWithoutSchema(c *check.C) {
 	h := metricHandler{cpuMax: "8.2"}
 	ts := httptest.NewServer(&h)
 	config.Set("graphite:host", ts.URL)
 	defer ts.Close()
 	g := graphite{}
 	series, err := g.Summarize("cpu", "1h", "max")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	expected := metrics.Series([]metrics.Data{
 		{Timestamp: 1.41512904e+09, Value: 2.2},
 		{Timestamp: 1.41512905e+09, Value: 2.2},
@@ -73,5 +73,5 @@ func (s *S) TestMetricEnvWithoutSchema(c *gocheck.C) {
 		{Timestamp: 1.41512907e+09, Value: 2.2},
 		{Timestamp: 1.41512908e+09, Value: 8.2},
 	})
-	c.Assert(series, gocheck.DeepEquals, expected)
+	c.Assert(series, check.DeepEquals, expected)
 }

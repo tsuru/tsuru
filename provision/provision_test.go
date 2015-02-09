@@ -9,30 +9,30 @@ import (
 	"reflect"
 	"testing"
 
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
 type ProvisionSuite struct{}
 
-var _ = gocheck.Suite(ProvisionSuite{})
+var _ = check.Suite(ProvisionSuite{})
 
 func Test(t *testing.T) {
-	gocheck.TestingT(t)
+	check.TestingT(t)
 }
 
-func (ProvisionSuite) TestRegisterAndGetProvisioner(c *gocheck.C) {
+func (ProvisionSuite) TestRegisterAndGetProvisioner(c *check.C) {
 	var p Provisioner
 	Register("my-provisioner", p)
 	got, err := Get("my-provisioner")
-	c.Assert(err, gocheck.IsNil)
-	c.Check(got, gocheck.DeepEquals, p)
+	c.Assert(err, check.IsNil)
+	c.Check(got, check.DeepEquals, p)
 	_, err = Get("unknown-provisioner")
-	c.Check(err, gocheck.NotNil)
+	c.Check(err, check.NotNil)
 	expectedMessage := `unknown provisioner: "unknown-provisioner"`
-	c.Assert(err.Error(), gocheck.Equals, expectedMessage)
+	c.Assert(err.Error(), check.Equals, expectedMessage)
 }
 
-func (ProvisionSuite) TestRegistry(c *gocheck.C) {
+func (ProvisionSuite) TestRegistry(c *check.C) {
 	var p1, p2 Provisioner
 	Register("my-provisioner", p1)
 	Register("your-provisioner", p2)
@@ -44,36 +44,36 @@ func (ProvisionSuite) TestRegistry(c *gocheck.C) {
 	}
 }
 
-func (ProvisionSuite) TestError(c *gocheck.C) {
+func (ProvisionSuite) TestError(c *check.C) {
 	errs := []*Error{
 		{Reason: "something", Err: errors.New("went wrong")},
 		{Reason: "something went wrong"},
 	}
 	expected := []string{"went wrong: something", "something went wrong"}
 	for i := range errs {
-		c.Check(errs[i].Error(), gocheck.Equals, expected[i])
+		c.Check(errs[i].Error(), check.Equals, expected[i])
 	}
 }
 
-func (ProvisionSuite) TestErrorImplementsError(c *gocheck.C) {
+func (ProvisionSuite) TestErrorImplementsError(c *check.C) {
 	var _ error = &Error{}
 }
 
-func (ProvisionSuite) TestStatusString(c *gocheck.C) {
+func (ProvisionSuite) TestStatusString(c *check.C) {
 	var s Status = "pending"
-	c.Assert(s.String(), gocheck.Equals, "pending")
+	c.Assert(s.String(), check.Equals, "pending")
 }
 
-func (ProvisionSuite) TestStatuses(c *gocheck.C) {
-	c.Check(StatusCreated.String(), gocheck.Equals, "created")
-	c.Check(StatusBuilding.String(), gocheck.Equals, "building")
-	c.Check(StatusError.String(), gocheck.Equals, "error")
-	c.Check(StatusStarted.String(), gocheck.Equals, "started")
-	c.Check(StatusStopped.String(), gocheck.Equals, "stopped")
-	c.Check(StatusStarting.String(), gocheck.Equals, "starting")
+func (ProvisionSuite) TestStatuses(c *check.C) {
+	c.Check(StatusCreated.String(), check.Equals, "created")
+	c.Check(StatusBuilding.String(), check.Equals, "building")
+	c.Check(StatusError.String(), check.Equals, "error")
+	c.Check(StatusStarted.String(), check.Equals, "started")
+	c.Check(StatusStopped.String(), check.Equals, "stopped")
+	c.Check(StatusStarting.String(), check.Equals, "starting")
 }
 
-func (ProvisionSuite) TestParseStatus(c *gocheck.C) {
+func (ProvisionSuite) TestParseStatus(c *check.C) {
 	var tests = []struct {
 		input  string
 		output Status
@@ -90,12 +90,12 @@ func (ProvisionSuite) TestParseStatus(c *gocheck.C) {
 	}
 	for _, t := range tests {
 		got, err := ParseStatus(t.input)
-		c.Check(got, gocheck.Equals, t.output)
-		c.Check(err, gocheck.Equals, t.err)
+		c.Check(got, check.Equals, t.output)
+		c.Check(err, check.Equals, t.err)
 	}
 }
 
-func (ProvisionSuite) TestUnitAvailable(c *gocheck.C) {
+func (ProvisionSuite) TestUnitAvailable(c *check.C) {
 	var tests = []struct {
 		input    Status
 		expected bool
@@ -108,11 +108,11 @@ func (ProvisionSuite) TestUnitAvailable(c *gocheck.C) {
 	}
 	for _, test := range tests {
 		u := Unit{Status: test.input}
-		c.Check(u.Available(), gocheck.Equals, test.expected)
+		c.Check(u.Available(), check.Equals, test.expected)
 	}
 }
 
-func (ProvisionSuite) TestUnitGetIp(c *gocheck.C) {
+func (ProvisionSuite) TestUnitGetIp(c *check.C) {
 	u := Unit{Ip: "10.3.3.1"}
-	c.Assert(u.Ip, gocheck.Equals, u.GetIp())
+	c.Assert(u.Ip, check.Equals, u.GetIp())
 }

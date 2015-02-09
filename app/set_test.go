@@ -7,14 +7,14 @@ package app
 import (
 	"sort"
 
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
 type SetSuite struct{}
 
-var _ = gocheck.Suite(&SetSuite{})
+var _ = check.Suite(&SetSuite{})
 
-func (s *SetSuite) TestSet(c *gocheck.C) {
+func (s *SetSuite) TestSet(c *check.C) {
 	animals := []string{"dog", "elephant", "snake", "frog"}
 	mammals := []string{"dog", "elephant"}
 	animalsSet := set{}
@@ -33,5 +33,5 @@ func (s *SetSuite) TestSet(c *gocheck.C) {
 	expected := []string{"dog", "elephant"}
 	sort.Strings(expected)
 	sort.Strings(result)
-	c.Assert(result, gocheck.DeepEquals, expected)
+	c.Assert(result, check.DeepEquals, expected)
 }

@@ -7,104 +7,104 @@ package safe
 import (
 	"bytes"
 
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
-func (s *S) TestSafeBytesReaderLen(c *gocheck.C) {
+func (s *S) TestSafeBytesReaderLen(c *check.C) {
 	content := []byte("something")
 	reader := NewBytesReader(content)
 	length := reader.Len()
-	c.Assert(length, gocheck.Equals, len(content))
+	c.Assert(length, check.Equals, len(content))
 }
 
-func (s *S) TestSafeBytesReaderRead(c *gocheck.C) {
+func (s *S) TestSafeBytesReaderRead(c *check.C) {
 	var buf [4]byte
 	content := []byte("something")
 	reader := NewBytesReader(content)
 	n, err := reader.Read(buf[:])
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 4)
-	c.Assert(string(buf[:]), gocheck.Equals, "some")
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 4)
+	c.Assert(string(buf[:]), check.Equals, "some")
 }
 
-func (s *S) TestSafeBytesReaderReadAt(c *gocheck.C) {
+func (s *S) TestSafeBytesReaderReadAt(c *check.C) {
 	var buf [4]byte
 	content := []byte("something")
 	reader := NewBytesReader(content)
 	n, err := reader.ReadAt(buf[:], 1)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, 4)
-	c.Assert(string(buf[:]), gocheck.Equals, "omet")
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 4)
+	c.Assert(string(buf[:]), check.Equals, "omet")
 }
 
-func (s *S) TestSafeBytesReaderReadByte(c *gocheck.C) {
+func (s *S) TestSafeBytesReaderReadByte(c *check.C) {
 	content := []byte("something")
 	reader := NewBytesReader(content)
 	b, err := reader.ReadByte()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(b, gocheck.Equals, content[0])
+	c.Assert(err, check.IsNil)
+	c.Assert(b, check.Equals, content[0])
 	b, err = reader.ReadByte()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(b, gocheck.Equals, content[1])
+	c.Assert(err, check.IsNil)
+	c.Assert(b, check.Equals, content[1])
 }
 
-func (s *S) TestSafeBytesReaderReadRune(c *gocheck.C) {
+func (s *S) TestSafeBytesReaderReadRune(c *check.C) {
 	content := []byte("something")
 	reader := NewBytesReader(content)
 	b, size, err := reader.ReadRune()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(size, gocheck.Equals, 1)
-	c.Assert(b, gocheck.Equals, 's')
+	c.Assert(err, check.IsNil)
+	c.Assert(size, check.Equals, 1)
+	c.Assert(b, check.Equals, 's')
 }
 
-func (s *S) TestSafeBytesReaderSeek(c *gocheck.C) {
+func (s *S) TestSafeBytesReaderSeek(c *check.C) {
 	content := []byte("something")
 	reader := NewBytesReader(content)
 	b, err := reader.ReadByte()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(b, gocheck.Equals, content[0])
+	c.Assert(err, check.IsNil)
+	c.Assert(b, check.Equals, content[0])
 	off, err := reader.Seek(0, 0)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(off, gocheck.Equals, int64(0))
+	c.Assert(err, check.IsNil)
+	c.Assert(off, check.Equals, int64(0))
 	b, err = reader.ReadByte()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(b, gocheck.Equals, content[0])
+	c.Assert(err, check.IsNil)
+	c.Assert(b, check.Equals, content[0])
 }
 
-func (s *S) TestSafeBytesReaderUnreadByte(c *gocheck.C) {
+func (s *S) TestSafeBytesReaderUnreadByte(c *check.C) {
 	content := []byte("something")
 	reader := NewBytesReader(content)
 	b, err := reader.ReadByte()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(b, gocheck.Equals, content[0])
+	c.Assert(err, check.IsNil)
+	c.Assert(b, check.Equals, content[0])
 	err = reader.UnreadByte()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	b, err = reader.ReadByte()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(b, gocheck.Equals, content[0])
+	c.Assert(err, check.IsNil)
+	c.Assert(b, check.Equals, content[0])
 }
 
-func (s *S) TestSafeBytesReaderUnreadRune(c *gocheck.C) {
+func (s *S) TestSafeBytesReaderUnreadRune(c *check.C) {
 	content := []byte("something")
 	reader := NewBytesReader(content)
 	b, size, err := reader.ReadRune()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(size, gocheck.Equals, 1)
-	c.Assert(b, gocheck.Equals, 's')
+	c.Assert(err, check.IsNil)
+	c.Assert(size, check.Equals, 1)
+	c.Assert(b, check.Equals, 's')
 	err = reader.UnreadRune()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	b, size, err = reader.ReadRune()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(size, gocheck.Equals, 1)
-	c.Assert(b, gocheck.Equals, 's')
+	c.Assert(err, check.IsNil)
+	c.Assert(size, check.Equals, 1)
+	c.Assert(b, check.Equals, 's')
 }
 
-func (s *S) TestSafeBytesReaderWriteTo(c *gocheck.C) {
+func (s *S) TestSafeBytesReaderWriteTo(c *check.C) {
 	var buf bytes.Buffer
 	content := []byte("something")
 	reader := NewBytesReader(content)
 	n, err := reader.WriteTo(&buf)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(n, gocheck.Equals, int64(len(content)))
-	c.Assert(buf.String(), gocheck.Equals, "something")
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, int64(len(content)))
+	c.Assert(buf.String(), check.Equals, "something")
 }

@@ -8,41 +8,41 @@ import (
 	"io/ioutil"
 
 	"github.com/tsuru/tsuru/fs/fstest"
+	"gopkg.in/check.v1"
 	"launchpad.net/gnuflag"
-	"launchpad.net/gocheck"
 )
 
-func (s *S) TestWriteToken(c *gocheck.C) {
+func (s *S) TestWriteToken(c *check.C) {
 	rfs := &fstest.RecordingFs{}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
 	}()
 	err := writeToken("abc")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	tokenPath := JoinWithUserDir(".tsuru_token")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(rfs.HasAction("create "+tokenPath), gocheck.Equals, true)
+	c.Assert(err, check.IsNil)
+	c.Assert(rfs.HasAction("create "+tokenPath), check.Equals, true)
 	fil, _ := fsystem.Open(tokenPath)
 	b, _ := ioutil.ReadAll(fil)
-	c.Assert(string(b), gocheck.Equals, "abc")
+	c.Assert(string(b), check.Equals, "abc")
 }
 
-func (s *S) TestReadToken(c *gocheck.C) {
+func (s *S) TestReadToken(c *check.C) {
 	rfs := &fstest.RecordingFs{FileContent: "123"}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
 	}()
 	token, err := ReadToken()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	tokenPath := JoinWithUserDir(".tsuru_token")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(rfs.HasAction("open "+tokenPath), gocheck.Equals, true)
-	c.Assert(token, gocheck.Equals, "123")
+	c.Assert(err, check.IsNil)
+	c.Assert(rfs.HasAction("open "+tokenPath), check.Equals, true)
+	c.Assert(token, check.Equals, "123")
 }
 
-func (s *S) TestShowServicesInstancesList(c *gocheck.C) {
+func (s *S) TestShowServicesInstancesList(c *check.C) {
 	expected := `+----------+-----------+
 | Services | Instances |
 +----------+-----------+
@@ -51,19 +51,19 @@ func (s *S) TestShowServicesInstancesList(c *gocheck.C) {
 `
 	b := `[{"service": "mongodb", "instances": ["my_nosql"]}]`
 	result, err := ShowServicesInstancesList([]byte(b))
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(string(result), gocheck.Equals, expected)
+	c.Assert(err, check.IsNil)
+	c.Assert(string(result), check.Equals, expected)
 }
 
-func (s *S) TestMergeFlagSet(c *gocheck.C) {
+func (s *S) TestMergeFlagSet(c *check.C) {
 	var x, y bool
 	fs1 := gnuflag.NewFlagSet("x", gnuflag.ExitOnError)
 	fs1.BoolVar(&x, "x", false, "Something")
 	fs2 := gnuflag.NewFlagSet("y", gnuflag.ExitOnError)
 	fs2.BoolVar(&y, "y", false, "Something")
 	ret := MergeFlagSet(fs1, fs2)
-	c.Assert(ret, gocheck.Equals, fs1)
+	c.Assert(ret, check.Equals, fs1)
 	fs1.Parse(true, []string{"-x", "-y"})
-	c.Assert(x, gocheck.Equals, true)
-	c.Assert(y, gocheck.Equals, true)
+	c.Assert(x, check.Equals, true)
+	c.Assert(y, check.Equals, true)
 }

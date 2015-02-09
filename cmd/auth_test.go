@@ -13,28 +13,28 @@ import (
 
 	"github.com/tsuru/tsuru/cmd/cmdtest"
 	"github.com/tsuru/tsuru/fs/fstest"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
 func navitveScheme() {
 	os.Setenv("TSURU_AUTH_SCHEME", "")
 }
 
-func (s *S) TestLoginInfo(c *gocheck.C) {
-	c.Assert((&login{}).Info().Usage, gocheck.Equals, "login <email>")
+func (s *S) TestLoginInfo(c *check.C) {
+	c.Assert((&login{}).Info().Usage, check.Equals, "login <email>")
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"name": "oauth", "data": {}}`))
 	}))
 	defer ts.Close()
 	writeTarget(ts.URL)
-	c.Assert((&login{}).Info().Usage, gocheck.Equals, "login")
+	c.Assert((&login{}).Info().Usage, check.Equals, "login")
 }
 
-func (s *S) TestLoginName(c *gocheck.C) {
-	c.Assert((&login{}).Name(), gocheck.Equals, "login")
+func (s *S) TestLoginName(c *check.C) {
+	c.Assert((&login{}).Name(), check.Equals, "login")
 }
 
-func (s *S) TestNativeLogin(c *gocheck.C) {
+func (s *S) TestNativeLogin(c *check.C) {
 	navitveScheme()
 	fsystem = &fstest.RecordingFs{FileContent: "old-token"}
 	defer func() {
@@ -46,14 +46,14 @@ func (s *S) TestNativeLogin(c *gocheck.C) {
 	client := NewClient(&http.Client{Transport: &cmdtest.Transport{Message: `{"token": "sometoken", "is_admin": true}`, Status: http.StatusOK}}, nil, manager)
 	command := login{}
 	err := command.Run(&context, client)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
+	c.Assert(err, check.IsNil)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 	token, err := ReadToken()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(token, gocheck.Equals, "sometoken")
+	c.Assert(err, check.IsNil)
+	c.Assert(token, check.Equals, "sometoken")
 }
 
-func (s *S) TestNativeLoginShouldNotDependOnTsuruTokenFile(c *gocheck.C) {
+func (s *S) TestNativeLoginShouldNotDependOnTsuruTokenFile(c *check.C) {
 	navitveScheme()
 	rfs := &fstest.RecordingFs{}
 	f, _ := rfs.Create(JoinWithUserDir(".tsuru_target"))
@@ -69,20 +69,20 @@ func (s *S) TestNativeLoginShouldNotDependOnTsuruTokenFile(c *gocheck.C) {
 	client := NewClient(&http.Client{Transport: &cmdtest.Transport{Message: `{"token":"anothertoken"}`, Status: http.StatusOK}}, nil, manager)
 	command := login{}
 	err := command.Run(&context, client)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
+	c.Assert(err, check.IsNil)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
 
-func (s *S) TestNativeLoginShouldReturnErrorIfThePasswordIsNotGiven(c *gocheck.C) {
+func (s *S) TestNativeLoginShouldReturnErrorIfThePasswordIsNotGiven(c *check.C) {
 	navitveScheme()
 	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, strings.NewReader("\n")}
 	command := login{}
 	err := command.Run(&context, nil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.ErrorMatches, "^You must provide the password!$")
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "^You must provide the password!$")
 }
 
-func (s *S) TestLogout(c *gocheck.C) {
+func (s *S) TestLogout(c *check.C) {
 	var called bool
 	rfs := &fstest.RecordingFs{}
 	fsystem = rfs
@@ -107,13 +107,13 @@ func (s *S) TestLogout(c *gocheck.C) {
 	}
 	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
 	err := command.Run(&context, client)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
-	c.Assert(rfs.HasAction("remove "+JoinWithUserDir(".tsuru_token")), gocheck.Equals, true)
-	c.Assert(called, gocheck.Equals, true)
+	c.Assert(err, check.IsNil)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	c.Assert(rfs.HasAction("remove "+JoinWithUserDir(".tsuru_token")), check.Equals, true)
+	c.Assert(called, check.Equals, true)
 }
 
-func (s *S) TestLogoutWhenNotLoggedIn(c *gocheck.C) {
+func (s *S) TestLogoutWhenNotLoggedIn(c *check.C) {
 	fsystem = &fstest.FileNotFoundFs{}
 	defer func() {
 		fsystem = nil
@@ -121,11 +121,11 @@ func (s *S) TestLogoutWhenNotLoggedIn(c *gocheck.C) {
 	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
 	command := logout{}
 	err := command.Run(&context, nil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "You're not logged in!")
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "You're not logged in!")
 }
 
-func (s *S) TestLogoutNoTarget(c *gocheck.C) {
+func (s *S) TestLogoutNoTarget(c *check.C) {
 	rfs := &fstest.RecordingFs{}
 	fsystem = rfs
 	defer func() {
@@ -138,12 +138,12 @@ func (s *S) TestLogoutNoTarget(c *gocheck.C) {
 	transport := cmdtest.Transport{Message: "", Status: http.StatusOK}
 	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
 	err := command.Run(&context, client)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(manager.stdout.(*bytes.Buffer).String(), gocheck.Equals, expected)
-	c.Assert(rfs.HasAction("remove "+JoinWithUserDir(".tsuru_token")), gocheck.Equals, true)
+	c.Assert(err, check.IsNil)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	c.Assert(rfs.HasAction("remove "+JoinWithUserDir(".tsuru_token")), check.Equals, true)
 }
 
-func (s *S) TestLoginGetSchemeCachesResult(c *gocheck.C) {
+func (s *S) TestLoginGetSchemeCachesResult(c *check.C) {
 	callCount := 0
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		callCount++
@@ -153,21 +153,21 @@ func (s *S) TestLoginGetSchemeCachesResult(c *gocheck.C) {
 	writeTarget(ts.URL)
 	loginCmd := login{}
 	scheme := loginCmd.getScheme()
-	c.Assert(scheme.Name, gocheck.Equals, "oauth")
-	c.Assert(scheme.Data, gocheck.DeepEquals, map[string]string{})
-	c.Assert(callCount, gocheck.Equals, 1)
+	c.Assert(scheme.Name, check.Equals, "oauth")
+	c.Assert(scheme.Data, check.DeepEquals, map[string]string{})
+	c.Assert(callCount, check.Equals, 1)
 	loginCmd.getScheme()
-	c.Assert(callCount, gocheck.Equals, 1)
+	c.Assert(callCount, check.Equals, 1)
 }
 
-func (s *S) TestLoginGetSchemeDefault(c *gocheck.C) {
+func (s *S) TestLoginGetSchemeDefault(c *check.C) {
 	loginCmd := login{}
 	scheme := loginCmd.getScheme()
-	c.Assert(scheme.Name, gocheck.Equals, "native")
-	c.Assert(scheme.Data, gocheck.DeepEquals, map[string]string{})
+	c.Assert(scheme.Name, check.Equals, "native")
+	c.Assert(scheme.Data, check.DeepEquals, map[string]string{})
 }
 
-func (s *S) TestLoginGetScheme(c *gocheck.C) {
+func (s *S) TestLoginGetScheme(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"name": "oauth", "data": {}}`))
 	}))
@@ -175,7 +175,7 @@ func (s *S) TestLoginGetScheme(c *gocheck.C) {
 	writeTarget(ts.URL)
 	loginCmd := login{}
 	scheme := loginCmd.getScheme()
-	c.Assert(scheme.Name, gocheck.Equals, "oauth")
+	c.Assert(scheme.Name, check.Equals, "oauth")
 	ts = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"name": "native", "data": {}}`))
 	}))
@@ -183,10 +183,10 @@ func (s *S) TestLoginGetScheme(c *gocheck.C) {
 	writeTarget(ts.URL)
 	loginCmd = login{}
 	scheme = loginCmd.getScheme()
-	c.Assert(scheme.Name, gocheck.Equals, "native")
+	c.Assert(scheme.Name, check.Equals, "native")
 }
 
-func (s *S) TestLoginGetSchemeParsesData(c *gocheck.C) {
+func (s *S) TestLoginGetSchemeParsesData(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"name": "oauth", "data": {"x": "y", "z": "w"}}`))
 	}))
@@ -194,11 +194,11 @@ func (s *S) TestLoginGetSchemeParsesData(c *gocheck.C) {
 	writeTarget(ts.URL)
 	loginCmd := login{}
 	scheme := loginCmd.getScheme()
-	c.Assert(scheme.Name, gocheck.Equals, "oauth")
-	c.Assert(scheme.Data, gocheck.DeepEquals, map[string]string{"x": "y", "z": "w"})
+	c.Assert(scheme.Name, check.Equals, "oauth")
+	c.Assert(scheme.Data, check.DeepEquals, map[string]string{"x": "y", "z": "w"})
 }
 
-func (s *S) TestLoginGetSchemeInvalidData(c *gocheck.C) {
+func (s *S) TestLoginGetSchemeInvalidData(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"name": "oauth", "data": {"x": 9, "z": "w"}}`))
 	}))
@@ -206,36 +206,36 @@ func (s *S) TestLoginGetSchemeInvalidData(c *gocheck.C) {
 	writeTarget(ts.URL)
 	loginCmd := login{}
 	scheme := loginCmd.getScheme()
-	c.Assert(scheme.Name, gocheck.Equals, "native")
-	c.Assert(scheme.Data, gocheck.DeepEquals, map[string]string{})
+	c.Assert(scheme.Name, check.Equals, "native")
+	c.Assert(scheme.Data, check.DeepEquals, map[string]string{})
 }
 
-func (s *S) TestSchemeInfo(c *gocheck.C) {
+func (s *S) TestSchemeInfo(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"name": "oauth", "data": {"x": "y"}}`))
 	}))
 	defer ts.Close()
 	writeTarget(ts.URL)
 	info, err := schemeInfo()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(info.Name, gocheck.Equals, "oauth")
-	c.Assert(info.Data, gocheck.DeepEquals, map[string]string{"x": "y"})
+	c.Assert(err, check.IsNil)
+	c.Assert(info.Name, check.Equals, "oauth")
+	c.Assert(info.Data, check.DeepEquals, map[string]string{"x": "y"})
 }
 
-func (s *S) TestSchemeInfoInvalidData(c *gocheck.C) {
+func (s *S) TestSchemeInfoInvalidData(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`{"name": "oauth", "data": {"x": 9}}`))
 	}))
 	defer ts.Close()
 	writeTarget(ts.URL)
 	_, err := schemeInfo()
-	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, check.NotNil)
 }
 
-func (s *S) TestReadTokenEnvironmentVariable(c *gocheck.C) {
+func (s *S) TestReadTokenEnvironmentVariable(c *check.C) {
 	os.Setenv("TSURU_TOKEN", "ABCDEFGH")
 	defer os.Setenv("TSURU_TOKEN", "")
 	token, err := ReadToken()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(token, gocheck.Equals, "ABCDEFGH")
+	c.Assert(err, check.IsNil)
+	c.Assert(token, check.Equals, "ABCDEFGH")
 }

@@ -12,20 +12,20 @@ import (
 
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/cmdtest"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
-func (s *S) TestMoveContainersInfo(c *gocheck.C) {
+func (s *S) TestMoveContainersInfo(c *check.C) {
 	expected := &cmd.Info{
 		Name:    "containers-move",
 		Usage:   "containers-move <from host> <to host>",
 		Desc:    "Move all containers from one host to another.\nThis command is especially useful for host maintenance.",
 		MinArgs: 2,
 	}
-	c.Assert((&moveContainersCmd{}).Info(), gocheck.DeepEquals, expected)
+	c.Assert((&moveContainersCmd{}).Info(), check.DeepEquals, expected)
 }
 
-func (s *S) TestMoveContainersRun(c *gocheck.C) {
+func (s *S) TestMoveContainersRun(c *check.C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Stdout: &stdout,
@@ -39,14 +39,14 @@ func (s *S) TestMoveContainersRun(c *gocheck.C) {
 		CondFunc: func(req *http.Request) bool {
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
-			c.Assert(err, gocheck.IsNil)
+			c.Assert(err, check.IsNil)
 			expected := map[string]string{
 				"from": "from",
 				"to":   "to",
 			}
 			result := map[string]string{}
 			err = json.Unmarshal(body, &result)
-			c.Assert(expected, gocheck.DeepEquals, result)
+			c.Assert(expected, check.DeepEquals, result)
 			return req.URL.Path == "/docker/containers/move" && req.Method == "POST"
 		},
 	}
@@ -54,22 +54,22 @@ func (s *S) TestMoveContainersRun(c *gocheck.C) {
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	cmd := moveContainersCmd{}
 	err := cmd.Run(&context, client)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	expected := "progress msg\n"
-	c.Assert(stdout.String(), gocheck.Equals, expected)
+	c.Assert(stdout.String(), check.Equals, expected)
 }
 
-func (s *S) TestMoveContainerInfo(c *gocheck.C) {
+func (s *S) TestMoveContainerInfo(c *check.C) {
 	expected := &cmd.Info{
 		Name:    "container-move",
 		Usage:   "container-move <container id> <to host>",
 		Desc:    "Move specified container to another host.",
 		MinArgs: 2,
 	}
-	c.Assert((&moveContainerCmd{}).Info(), gocheck.DeepEquals, expected)
+	c.Assert((&moveContainerCmd{}).Info(), check.DeepEquals, expected)
 }
 
-func (s *S) TestMoveContainerRun(c *gocheck.C) {
+func (s *S) TestMoveContainerRun(c *check.C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Stdout: &stdout,
@@ -83,13 +83,13 @@ func (s *S) TestMoveContainerRun(c *gocheck.C) {
 		CondFunc: func(req *http.Request) bool {
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
-			c.Assert(err, gocheck.IsNil)
+			c.Assert(err, check.IsNil)
 			expected := map[string]string{
 				"to": "toHost",
 			}
 			result := map[string]string{}
 			err = json.Unmarshal(body, &result)
-			c.Assert(expected, gocheck.DeepEquals, result)
+			c.Assert(expected, check.DeepEquals, result)
 			return req.URL.Path == "/docker/container/contId/move" && req.Method == "POST"
 		},
 	}
@@ -97,22 +97,22 @@ func (s *S) TestMoveContainerRun(c *gocheck.C) {
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	cmd := moveContainerCmd{}
 	err := cmd.Run(&context, client)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	expected := "progress msg\n"
-	c.Assert(stdout.String(), gocheck.Equals, expected)
+	c.Assert(stdout.String(), check.Equals, expected)
 }
 
-func (s *S) TestRebalanceContainersInfo(c *gocheck.C) {
+func (s *S) TestRebalanceContainersInfo(c *check.C) {
 	expected := &cmd.Info{
 		Name:    "containers-rebalance",
 		Usage:   "containers-rebalance [--dry] [-y/--assume-yes]",
 		Desc:    "Move containers creating a more even distribution between docker nodes.",
 		MinArgs: 0,
 	}
-	c.Assert((&rebalanceContainersCmd{}).Info(), gocheck.DeepEquals, expected)
+	c.Assert((&rebalanceContainersCmd{}).Info(), check.DeepEquals, expected)
 }
 
-func (s *S) TestRebalanceContainersRun(c *gocheck.C) {
+func (s *S) TestRebalanceContainersRun(c *check.C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Stdout: &stdout,
@@ -126,13 +126,13 @@ func (s *S) TestRebalanceContainersRun(c *gocheck.C) {
 		CondFunc: func(req *http.Request) bool {
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
-			c.Assert(err, gocheck.IsNil)
+			c.Assert(err, check.IsNil)
 			expected := map[string]string{
 				"dry": expectedDry,
 			}
 			result := map[string]string{}
 			err = json.Unmarshal(body, &result)
-			c.Assert(expected, gocheck.DeepEquals, result)
+			c.Assert(expected, check.DeepEquals, result)
 			return req.URL.Path == "/docker/containers/rebalance" && req.Method == "POST"
 		},
 	}
@@ -140,19 +140,19 @@ func (s *S) TestRebalanceContainersRun(c *gocheck.C) {
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	cmd := rebalanceContainersCmd{}
 	err := cmd.Flags().Parse(true, []string{"--dry", "-y"})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = cmd.Run(&context, client)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	expected := "progress msg\n"
-	c.Assert(stdout.String(), gocheck.Equals, expected)
+	c.Assert(stdout.String(), check.Equals, expected)
 	expectedDry = "false"
 	cmd2 := rebalanceContainersCmd{}
 	cmd2.Flags().Parse(true, []string{"-y"})
 	err = cmd2.Run(&context, client)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestRebalanceContainersRunAskingForConfirmation(c *gocheck.C) {
+func (s *S) TestRebalanceContainersRunAskingForConfirmation(c *check.C) {
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
 		Stdout: &stdout,
@@ -166,13 +166,13 @@ func (s *S) TestRebalanceContainersRunAskingForConfirmation(c *gocheck.C) {
 		CondFunc: func(req *http.Request) bool {
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
-			c.Assert(err, gocheck.IsNil)
+			c.Assert(err, check.IsNil)
 			expected := map[string]string{
 				"dry": "false",
 			}
 			result := map[string]string{}
 			err = json.Unmarshal(body, &result)
-			c.Assert(expected, gocheck.DeepEquals, result)
+			c.Assert(expected, check.DeepEquals, result)
 			return req.URL.Path == "/docker/containers/rebalance" && req.Method == "POST"
 		},
 	}
@@ -180,14 +180,14 @@ func (s *S) TestRebalanceContainersRunAskingForConfirmation(c *gocheck.C) {
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	cmd := rebalanceContainersCmd{}
 	err := cmd.Run(&context, client)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(stdout.String(), gocheck.Equals, "Are you sure you want to rebalance containers? (y/n) progress msg\n")
+	c.Assert(err, check.IsNil)
+	c.Assert(stdout.String(), check.Equals, "Are you sure you want to rebalance containers? (y/n) progress msg\n")
 	cmd2 := rebalanceContainersCmd{}
 	err = cmd2.Run(&context, client)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestRebalanceContainersRunGivingUp(c *gocheck.C) {
+func (s *S) TestRebalanceContainersRunGivingUp(c *check.C) {
 	var stdout bytes.Buffer
 	context := cmd.Context{
 		Stdout: &stdout,
@@ -195,11 +195,11 @@ func (s *S) TestRebalanceContainersRunGivingUp(c *gocheck.C) {
 	}
 	cmd := rebalanceContainersCmd{}
 	err := cmd.Run(&context, nil)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(stdout.String(), gocheck.Equals, "Are you sure you want to rebalance containers? (y/n) Abort.\n")
+	c.Assert(err, check.IsNil)
+	c.Assert(stdout.String(), check.Equals, "Are you sure you want to rebalance containers? (y/n) Abort.\n")
 }
 
-func (s *S) TestFixContainersCmdRun(c *gocheck.C) {
+func (s *S) TestFixContainersCmdRun(c *check.C) {
 	var buf bytes.Buffer
 	context := cmd.Context{Stdout: &buf, Stderr: &buf}
 	trans := &cmdtest.ConditionalTransport{
@@ -212,11 +212,11 @@ func (s *S) TestFixContainersCmdRun(c *gocheck.C) {
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
 	cmd := fixContainersCmd{}
 	err := cmd.Run(&context, client)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(buf.String(), gocheck.Equals, "")
+	c.Assert(err, check.IsNil)
+	c.Assert(buf.String(), check.Equals, "")
 }
 
-func (s *S) TestFixContainersCmdInfo(c *gocheck.C) {
+func (s *S) TestFixContainersCmdInfo(c *check.C) {
 	expected := cmd.Info{
 		Name:  "fix-containers",
 		Usage: "fix-containers",
@@ -224,5 +224,5 @@ func (s *S) TestFixContainersCmdInfo(c *gocheck.C) {
 	}
 	command := fixContainersCmd{}
 	info := command.Info()
-	c.Assert(*info, gocheck.DeepEquals, expected)
+	c.Assert(*info, check.DeepEquals, expected)
 }

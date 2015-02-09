@@ -8,61 +8,61 @@ import (
 	"sync"
 	"time"
 
+	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
-	"launchpad.net/gocheck"
 )
 
-func (s *S) TestNewLogListener(c *gocheck.C) {
+func (s *S) TestNewLogListener(c *check.C) {
 	app := App{Name: "myapp"}
 	l, err := NewLogListener(&app, Applog{})
 	defer l.Close()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(l.q, gocheck.NotNil)
-	c.Assert(l.C, gocheck.NotNil)
+	c.Assert(err, check.IsNil)
+	c.Assert(l.q, check.NotNil)
+	c.Assert(l.C, check.NotNil)
 	notify("myapp", []interface{}{Applog{Message: "123"}})
 	logMsg := <-l.C
-	c.Assert(logMsg.Message, gocheck.Equals, "123")
+	c.Assert(logMsg.Message, check.Equals, "123")
 }
 
-func (s *S) TestNewLogListenerClosingChannel(c *gocheck.C) {
+func (s *S) TestNewLogListenerClosingChannel(c *check.C) {
 	app := App{Name: "myapp"}
 	l, err := NewLogListener(&app, Applog{})
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(l.q, gocheck.NotNil)
-	c.Assert(l.C, gocheck.NotNil)
+	c.Assert(err, check.IsNil)
+	c.Assert(l.q, check.NotNil)
+	c.Assert(l.C, check.NotNil)
 	l.Close()
 	_, ok := <-l.C
-	c.Assert(ok, gocheck.Equals, false)
+	c.Assert(ok, check.Equals, false)
 }
 
-func (s *S) TestLogListenerClose(c *gocheck.C) {
+func (s *S) TestLogListenerClose(c *check.C) {
 	app := App{Name: "myapp"}
 	l, err := NewLogListener(&app, Applog{})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = l.Close()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	_, ok := <-l.C
-	c.Assert(ok, gocheck.Equals, false)
+	c.Assert(ok, check.Equals, false)
 }
 
-func (s *S) TestLogListenerDoubleClose(c *gocheck.C) {
+func (s *S) TestLogListenerDoubleClose(c *check.C) {
 	app := App{Name: "yourapp"}
 	l, err := NewLogListener(&app, Applog{})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = l.Close()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = l.Close()
-	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, check.NotNil)
 }
 
-func (s *S) TestNotify(c *gocheck.C) {
+func (s *S) TestNotify(c *check.C) {
 	var logs struct {
 		l []interface{}
 		sync.Mutex
 	}
 	app := App{Name: "fade"}
 	l, err := NewLogListener(&app, Applog{})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer l.Close()
 	go func() {
 		for log := range l.C {
@@ -103,17 +103,17 @@ func (s *S) TestNotify(c *gocheck.C) {
 	}
 	logs.Lock()
 	defer logs.Unlock()
-	c.Assert(logs.l, gocheck.DeepEquals, ms)
+	c.Assert(logs.l, check.DeepEquals, ms)
 }
 
-func (s *S) TestNotifyFiltered(c *gocheck.C) {
+func (s *S) TestNotifyFiltered(c *check.C) {
 	var logs struct {
 		l []interface{}
 		sync.Mutex
 	}
 	app := App{Name: "fade"}
 	l, err := NewLogListener(&app, Applog{Source: "tsuru", Unit: "unit1"})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer l.Close()
 	go func() {
 		for log := range l.C {
@@ -158,53 +158,53 @@ func (s *S) TestNotifyFiltered(c *gocheck.C) {
 	expected := []interface{}{
 		Applog{Date: t, Message: "Something went wrong. Check it out:", Source: "tsuru", Unit: "unit1"},
 	}
-	c.Assert(logs.l, gocheck.DeepEquals, expected)
+	c.Assert(logs.l, check.DeepEquals, expected)
 }
 
-func (s *S) TestNotifySendOnClosedChannel(c *gocheck.C) {
+func (s *S) TestNotifySendOnClosedChannel(c *check.C) {
 	defer func() {
-		c.Assert(recover(), gocheck.IsNil)
+		c.Assert(recover(), check.IsNil)
 	}()
 	app := App{Name: "fade"}
 	l, err := NewLogListener(&app, Applog{})
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = l.Close()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	ms := []interface{}{
 		Applog{Date: time.Now(), Message: "Something went wrong. Check it out:", Source: "tsuru"},
 	}
 	notify(app.Name, ms)
 }
 
-func (s *S) TestLogRemove(c *gocheck.C) {
+func (s *S) TestLogRemove(c *check.C) {
 	a := App{Name: "newApp"}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	a2 := App{Name: "newApp2"}
 	err = s.conn.Apps().Insert(a2)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().RemoveAll(nil)
 	err = a.Log("last log msg", "tsuru", "hari")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = LogRemove(nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	count, err := s.conn.Logs(a.Name).Find(nil).Count()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(count, gocheck.Equals, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(count, check.Equals, 0)
 	count, err = s.conn.Logs(a2.Name).Find(nil).Count()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(count, gocheck.Equals, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(count, check.Equals, 0)
 }
 
-func (s *S) TestLogRemoveByApp(c *gocheck.C) {
+func (s *S) TestLogRemoveByApp(c *check.C) {
 	a := App{Name: "newApp"}
 	err := s.conn.Apps().Insert(a)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = a.Log("last log msg", "tsuru", "hari")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	a2 := App{Name: "oldApp"}
 	err = s.conn.Apps().Insert(a2)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer func() {
 		s.conn.Apps().Remove(bson.M{"name": a.Name})
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
@@ -212,10 +212,10 @@ func (s *S) TestLogRemoveByApp(c *gocheck.C) {
 		s.conn.Logs(a2.Name).DropCollection()
 	}()
 	err = a2.Log("last log msg", "tsuru", "hari")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = LogRemove(&a)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	count, err := s.conn.Logs(a2.Name).Find(nil).Count()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(count, gocheck.Equals, 1)
+	c.Assert(err, check.IsNil)
+	c.Assert(count, check.Equals, 1)
 }

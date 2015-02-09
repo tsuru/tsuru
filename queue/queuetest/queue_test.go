@@ -8,32 +8,32 @@ import (
 	"testing"
 	"time"
 
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) {
-	gocheck.TestingT(t)
+	check.TestingT(t)
 }
 
 type S struct{}
 
-var _ = gocheck.Suite(&S{})
+var _ = check.Suite(&S{})
 
-func (s *S) TestFakeQPubSub(c *gocheck.C) {
+func (s *S) TestFakeQPubSub(c *check.C) {
 	q := FakePubSubQ{}
 	msgChan, err := q.Sub()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = q.Pub([]byte("muad'dib"))
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(<-msgChan, gocheck.DeepEquals, []byte("muad'dib"))
+	c.Assert(err, check.IsNil)
+	c.Assert(<-msgChan, check.DeepEquals, []byte("muad'dib"))
 }
 
-func (s *S) TestFakeQPubSubUnSub(c *gocheck.C) {
+func (s *S) TestFakeQPubSubUnSub(c *check.C) {
 	q := FakePubSubQ{}
 	msgChan, err := q.Sub()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = q.Pub([]byte("arrakis"))
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	done := make(chan bool)
 	go func() {
 		time.Sleep(5e8)
@@ -44,7 +44,7 @@ func (s *S) TestFakeQPubSubUnSub(c *gocheck.C) {
 		for msg := range msgChan {
 			msgs = append(msgs, msg)
 		}
-		c.Assert(msgs, gocheck.DeepEquals, [][]byte{[]byte("arrakis")})
+		c.Assert(msgs, check.DeepEquals, [][]byte{[]byte("arrakis")})
 		done <- true
 	}()
 	select {
@@ -54,16 +54,16 @@ func (s *S) TestFakeQPubSubUnSub(c *gocheck.C) {
 	}
 }
 
-func (s *S) TestFakeQFactoryGet(c *gocheck.C) {
+func (s *S) TestFakeQFactoryGet(c *check.C) {
 	f := NewFakePubSubQFactory()
 	q, err := f.Get("default")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	_, ok := q.(*FakePubSubQ)
-	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(ok, check.Equals, true)
 	q2, err := f.Get("default")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(q, gocheck.Equals, q2)
+	c.Assert(err, check.IsNil)
+	c.Assert(q, check.Equals, q2)
 	q3, err := f.Get("non-default")
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(q, gocheck.Not(gocheck.Equals), q3)
+	c.Assert(err, check.IsNil)
+	c.Assert(q, check.Not(check.Equals), q3)
 }

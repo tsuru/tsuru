@@ -21,12 +21,12 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
+	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	"launchpad.net/gocheck"
 )
 
-func Test(t *testing.T) { gocheck.TestingT(t) }
+func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
 	collName       string
@@ -44,9 +44,9 @@ type S struct {
 	oldProvisioner provision.Provisioner
 }
 
-var _ = gocheck.Suite(&S{})
+var _ = check.Suite(&S{})
 
-func (s *S) SetUpSuite(c *gocheck.C) {
+func (s *S) SetUpSuite(c *check.C) {
 	s.collName = "docker_unit"
 	s.imageCollName = "docker_image"
 	s.gitHost = "my.gandalf.com"
@@ -72,12 +72,12 @@ func (s *S) SetUpSuite(c *gocheck.C) {
 	var err error
 	s.targetRecover = cmdtest.SetTargetFile(c, []byte("http://localhost"))
 	s.storage, err = db.Conn()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	s.oldProvisioner = app.Provisioner
 	app.Provisioner = &dockerProvisioner{}
 }
 
-func (s *S) SetUpTest(c *gocheck.C) {
+func (s *S) SetUpTest(c *check.C) {
 	var err error
 	cmutex.Lock()
 	defer cmutex.Unlock()
@@ -85,20 +85,20 @@ func (s *S) SetUpTest(c *gocheck.C) {
 		s.server.Stop()
 	}
 	s.server, err = dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	dCluster, err = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: s.server.URL()},
 	)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	coll := collection()
 	defer coll.Close()
 	err = dbtest.ClearAllCollections(coll.Database)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = clearClusterStorage()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.Reset()
 	healingColl, err := healingCollection()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	defer healingColl.Close()
 	healingColl.RemoveAll(nil)
 }
@@ -114,11 +114,11 @@ func clearClusterStorage() error {
 	return dbtest.ClearAllCollections(session.DB(clusterDbName))
 }
 
-func (s *S) TearDownSuite(c *gocheck.C) {
+func (s *S) TearDownSuite(c *check.C) {
 	coll := collection()
 	defer coll.Close()
 	err := dbtest.ClearAllCollections(coll.Database)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	cmdtest.RollbackFile(s.targetRecover)
 	dbtest.ClearAllCollections(s.storage.Apps().Database)
 	s.storage.Close()
@@ -150,7 +150,7 @@ func (s *S) startMultipleServersCluster() (*cluster.Cluster, error) {
 	return oldCluster, nil
 }
 
-func (s *S) addServiceInstance(c *gocheck.C, appName string, fn http.HandlerFunc) func() {
+func (s *S) addServiceInstance(c *check.C, appName string, fn http.HandlerFunc) func() {
 	ts := httptest.NewServer(fn)
 	ret := func() {
 		ts.Close()
@@ -159,14 +159,14 @@ func (s *S) addServiceInstance(c *gocheck.C, appName string, fn http.HandlerFunc
 	}
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{}}
 	err = instance.Create()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = instance.AddApp(appName)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	err = s.storage.ServiceInstances().Update(bson.M{"name": instance.Name}, instance)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	return ret
 }
 

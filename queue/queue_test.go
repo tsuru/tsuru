@@ -8,46 +8,46 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) {
-	gocheck.TestingT(t)
+	check.TestingT(t)
 }
 
 type S struct{}
 
-var _ = gocheck.Suite(&S{})
+var _ = check.Suite(&S{})
 
-func (s *S) TestFactory(c *gocheck.C) {
+func (s *S) TestFactory(c *check.C) {
 	config.Set("queue", "redis")
 	defer config.Unset("queue")
 	f, err := Factory()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	_, ok := f.(*redismqQFactory)
-	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(ok, check.Equals, true)
 }
 
-func (s *S) TestFactoryConfigUndefined(c *gocheck.C) {
+func (s *S) TestFactoryConfigUndefined(c *check.C) {
 	f, err := Factory()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	_, ok := f.(*redismqQFactory)
-	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(ok, check.Equals, true)
 }
 
-func (s *S) TestFactoryConfigUnknown(c *gocheck.C) {
+func (s *S) TestFactoryConfigUnknown(c *check.C) {
 	config.Set("queue", "unknown")
 	defer config.Unset("queue")
 	f, err := Factory()
-	c.Assert(f, gocheck.IsNil)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, `Queue "unknown" is not known.`)
+	c.Assert(f, check.IsNil)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, `Queue "unknown" is not known.`)
 }
 
-func (s *S) TestRegister(c *gocheck.C) {
+func (s *S) TestRegister(c *check.C) {
 	config.Set("queue", "unregistered")
 	defer config.Unset("queue")
 	Register("unregistered", &redismqQFactory{})
 	_, err := Factory()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 }

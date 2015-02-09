@@ -17,7 +17,7 @@ import (
 
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
 type FakeUnit struct {
@@ -80,33 +80,33 @@ func (h *TestHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(content))
 }
 
-func (s *S) TestEndpointCreate(c *gocheck.C) {
+func (s *S) TestEndpointCreate(c *check.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis", TeamOwner: "theteam"}
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.Create(&instance, "my@user")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	expectedURL := "/resources"
 	h.Lock()
 	defer h.Unlock()
-	c.Assert(h.url, gocheck.Equals, expectedURL)
-	c.Assert(h.method, gocheck.Equals, "POST")
+	c.Assert(h.url, check.Equals, expectedURL)
+	c.Assert(h.method, check.Equals, "POST")
 	v, err := url.ParseQuery(string(h.body))
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(map[string][]string(v), gocheck.DeepEquals, map[string][]string{
+	c.Assert(err, check.IsNil)
+	c.Assert(map[string][]string(v), check.DeepEquals, map[string][]string{
 		"name": {"my-redis"},
 		"user": {"my@user"},
 		"team": {"theteam"},
 	})
-	c.Assert("application/x-www-form-urlencoded", gocheck.DeepEquals, h.request.Header.Get("Content-Type"))
-	c.Assert("application/json", gocheck.Equals, h.request.Header.Get("Accept"))
-	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
-	c.Assert("close", gocheck.Equals, h.request.Header.Get("Connection"))
+	c.Assert("application/x-www-form-urlencoded", check.DeepEquals, h.request.Header.Get("Content-Type"))
+	c.Assert("application/json", check.Equals, h.request.Header.Get("Accept"))
+	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
+	c.Assert("close", check.Equals, h.request.Header.Get("Connection"))
 }
 
-func (s *S) TestEndpointCreatePlans(c *gocheck.C) {
+func (s *S) TestEndpointCreatePlans(c *check.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
@@ -118,63 +118,63 @@ func (s *S) TestEndpointCreatePlans(c *gocheck.C) {
 	}
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.Create(&instance, "my@user")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	expectedURL := "/resources"
 	h.Lock()
 	defer h.Unlock()
-	c.Assert(h.url, gocheck.Equals, expectedURL)
-	c.Assert(h.method, gocheck.Equals, "POST")
+	c.Assert(h.url, check.Equals, expectedURL)
+	c.Assert(h.method, check.Equals, "POST")
 	v, err := url.ParseQuery(string(h.body))
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(map[string][]string(v), gocheck.DeepEquals, map[string][]string{
+	c.Assert(err, check.IsNil)
+	c.Assert(map[string][]string(v), check.DeepEquals, map[string][]string{
 		"name": {"my-redis"},
 		"plan": {"basic"},
 		"user": {"my@user"},
 		"team": {"myteam"},
 	})
-	c.Assert("application/x-www-form-urlencoded", gocheck.DeepEquals, h.request.Header.Get("Content-Type"))
-	c.Assert("application/json", gocheck.Equals, h.request.Header.Get("Accept"))
-	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
-	c.Assert("close", gocheck.Equals, h.request.Header.Get("Connection"))
+	c.Assert("application/x-www-form-urlencoded", check.DeepEquals, h.request.Header.Get("Content-Type"))
+	c.Assert("application/json", check.Equals, h.request.Header.Get("Accept"))
+	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
+	c.Assert("close", check.Equals, h.request.Header.Get("Connection"))
 }
 
-func (s *S) TestCreateShouldSendTheNameOfTheResourceToTheEndpoint(c *gocheck.C) {
+func (s *S) TestCreateShouldSendTheNameOfTheResourceToTheEndpoint(c *check.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis", TeamOwner: "myteam"}
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.Create(&instance, "my@user")
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	expectedURL := "/resources"
 	h.Lock()
 	defer h.Unlock()
-	c.Assert(h.url, gocheck.Equals, expectedURL)
-	c.Assert(h.method, gocheck.Equals, "POST")
+	c.Assert(h.url, check.Equals, expectedURL)
+	c.Assert(h.method, check.Equals, "POST")
 	v, err := url.ParseQuery(string(h.body))
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(map[string][]string(v), gocheck.DeepEquals, map[string][]string{
+	c.Assert(err, check.IsNil)
+	c.Assert(map[string][]string(v), check.DeepEquals, map[string][]string{
 		"name": {"my-redis"},
 		"user": {"my@user"},
 		"team": {"myteam"},
 	})
-	c.Assert("application/x-www-form-urlencoded", gocheck.DeepEquals, h.request.Header.Get("Content-Type"))
-	c.Assert("application/json", gocheck.Equals, h.request.Header.Get("Accept"))
-	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
-	c.Assert("close", gocheck.Equals, h.request.Header.Get("Connection"))
+	c.Assert("application/x-www-form-urlencoded", check.DeepEquals, h.request.Header.Get("Content-Type"))
+	c.Assert("application/json", check.Equals, h.request.Header.Get("Accept"))
+	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
+	c.Assert("close", check.Equals, h.request.Header.Get("Connection"))
 }
 
-func (s *S) TestCreateShouldReturnErrorIfTheRequestFail(c *gocheck.C) {
+func (s *S) TestCreateShouldReturnErrorIfTheRequestFail(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.Create(&instance, "my@user")
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.ErrorMatches, "^Failed to create the instance "+instance.Name+": Server failed to do its job.$")
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "^Failed to create the instance "+instance.Name+": Server failed to do its job.$")
 }
 
-func (s *S) TestDestroyShouldSendADELETERequestToTheResourceURL(c *gocheck.C) {
+func (s *S) TestDestroyShouldSendADELETERequestToTheResourceURL(c *check.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
@@ -183,23 +183,23 @@ func (s *S) TestDestroyShouldSendADELETERequestToTheResourceURL(c *gocheck.C) {
 	err := client.Destroy(&instance)
 	h.Lock()
 	defer h.Unlock()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(h.url, gocheck.Equals, "/resources/"+instance.Name)
-	c.Assert(h.method, gocheck.Equals, "DELETE")
-	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
+	c.Assert(err, check.IsNil)
+	c.Assert(h.url, check.Equals, "/resources/"+instance.Name)
+	c.Assert(h.method, check.Equals, "DELETE")
+	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
 }
 
-func (s *S) TestDestroyShouldReturnErrorIfTheRequestFails(c *gocheck.C) {
+func (s *S) TestDestroyShouldReturnErrorIfTheRequestFails(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "his-redis", ServiceName: "redis"}
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.Destroy(&instance)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.ErrorMatches, "^Failed to destroy the instance "+instance.Name+": Server failed to do its job.$")
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "^Failed to destroy the instance "+instance.Name+": Server failed to do its job.$")
 }
 
-func (s *S) TestBindAppShouldSendAPOSTToTheResourceURL(c *gocheck.C) {
+func (s *S) TestBindAppShouldSendAPOSTToTheResourceURL(c *check.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
@@ -209,17 +209,17 @@ func (s *S) TestBindAppShouldSendAPOSTToTheResourceURL(c *gocheck.C) {
 	_, err := client.BindApp(&instance, a)
 	h.Lock()
 	defer h.Unlock()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(h.url, gocheck.Equals, "/resources/"+instance.Name+"/bind-app")
-	c.Assert(h.method, gocheck.Equals, "POST")
-	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
+	c.Assert(err, check.IsNil)
+	c.Assert(h.url, check.Equals, "/resources/"+instance.Name+"/bind-app")
+	c.Assert(h.method, check.Equals, "POST")
+	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
 	v, err := url.ParseQuery(string(h.body))
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	expected := map[string][]string{"app-host": {a.GetIp()}}
-	c.Assert(map[string][]string(v), gocheck.DeepEquals, expected)
+	c.Assert(map[string][]string(v), check.DeepEquals, expected)
 }
 
-func (s *S) TestBindAppBackwardCompatible(c *gocheck.C) {
+func (s *S) TestBindAppBackwardCompatible(c *check.C) {
 	var calls int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		atomic.AddInt32(&calls, 1)
@@ -240,12 +240,12 @@ func (s *S) TestBindAppBackwardCompatible(c *gocheck.C) {
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	env, err := client.BindApp(&instance, a)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(env, gocheck.DeepEquals, expected)
-	c.Assert(atomic.LoadInt32(&calls), gocheck.Equals, int32(2))
+	c.Assert(err, check.IsNil)
+	c.Assert(env, check.DeepEquals, expected)
+	c.Assert(atomic.LoadInt32(&calls), check.Equals, int32(2))
 }
 
-func (s *S) TestBindAppShouldReturnMapWithTheEnvironmentVariable(c *gocheck.C) {
+func (s *S) TestBindAppShouldReturnMapWithTheEnvironmentVariable(c *check.C) {
 	expected := map[string]string{
 		"MYSQL_DATABASE_NAME": "CHICO",
 		"MYSQL_HOST":          "localhost",
@@ -258,22 +258,22 @@ func (s *S) TestBindAppShouldReturnMapWithTheEnvironmentVariable(c *gocheck.C) {
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	env, err := client.BindApp(&instance, a)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(env, gocheck.DeepEquals, expected)
+	c.Assert(err, check.IsNil)
+	c.Assert(env, check.DeepEquals, expected)
 }
 
-func (s *S) TestBindAppShouldReturnErrorIfTheRequestFail(c *gocheck.C) {
+func (s *S) TestBindAppShouldReturnErrorIfTheRequestFail(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	_, err := client.BindApp(&instance, a)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err, gocheck.ErrorMatches, `^Failed to bind the instance "her-redis" to the app "her-app": Server failed to do its job.$`)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, `^Failed to bind the instance "her-redis" to the app "her-app": Server failed to do its job.$`)
 }
 
-func (s *S) TestBindAppShouldReturnPreconditionFailedIfServiceAPIReturnPreconditionFailed(c *gocheck.C) {
+func (s *S) TestBindAppShouldReturnPreconditionFailedIfServiceAPIReturnPreconditionFailed(c *check.C) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(412)
 	})
@@ -283,13 +283,13 @@ func (s *S) TestBindAppShouldReturnPreconditionFailedIfServiceAPIReturnPrecondit
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	_, err := client.BindApp(&instance, a)
-	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, check.NotNil)
 	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Message, gocheck.Equals, "You cannot bind any app to this service instance because it is not ready yet.")
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Message, check.Equals, "You cannot bind any app to this service instance because it is not ready yet.")
 }
 
-func (s *S) TestBindUnit(c *gocheck.C) {
+func (s *S) TestBindUnit(c *check.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
@@ -297,31 +297,31 @@ func (s *S) TestBindUnit(c *gocheck.C) {
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.BindUnit(&instance, a, a.GetUnits()[0])
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	h.Lock()
 	defer h.Unlock()
-	c.Assert(h.url, gocheck.Equals, "/resources/"+instance.Name+"/bind")
-	c.Assert(h.method, gocheck.Equals, "POST")
-	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
+	c.Assert(h.url, check.Equals, "/resources/"+instance.Name+"/bind")
+	c.Assert(h.method, check.Equals, "POST")
+	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
 	v, err := url.ParseQuery(string(h.body))
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	expected := map[string][]string{"app-host": {a.GetIp()}, "unit-host": {a.GetUnits()[0].GetIp()}}
-	c.Assert(map[string][]string(v), gocheck.DeepEquals, expected)
+	c.Assert(map[string][]string(v), check.DeepEquals, expected)
 }
 
-func (s *S) TestBindUnitRequestFailure(c *gocheck.C) {
+func (s *S) TestBindUnitRequestFailure(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.BindUnit(&instance, a, a.GetUnits()[0])
-	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, check.NotNil)
 	expectedMsg := `^Failed to bind the instance "her-redis" to the unit "10.10.10.1": Server failed to do its job.$`
-	c.Assert(err, gocheck.ErrorMatches, expectedMsg)
+	c.Assert(err, check.ErrorMatches, expectedMsg)
 }
 
-func (s *S) TestBindUnitPreconditionFailed(c *gocheck.C) {
+func (s *S) TestBindUnitPreconditionFailed(c *check.C) {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusPreconditionFailed)
 	})
@@ -331,13 +331,13 @@ func (s *S) TestBindUnitPreconditionFailed(c *gocheck.C) {
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.BindUnit(&instance, a, a.GetUnits()[0])
-	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, check.NotNil)
 	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(e.Message, gocheck.Equals, "You cannot bind any app to this service instance because it is not ready yet.")
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Message, check.Equals, "You cannot bind any app to this service instance because it is not ready yet.")
 }
 
-func (s *S) TestUnbindApp(c *gocheck.C) {
+func (s *S) TestUnbindApp(c *check.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
@@ -347,29 +347,29 @@ func (s *S) TestUnbindApp(c *gocheck.C) {
 	err := client.UnbindApp(&instance, a)
 	h.Lock()
 	defer h.Unlock()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(h.url, gocheck.Equals, "/resources/heaven-can-wait/bind-app")
-	c.Assert(h.method, gocheck.Equals, "DELETE")
-	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
+	c.Assert(err, check.IsNil)
+	c.Assert(h.url, check.Equals, "/resources/heaven-can-wait/bind-app")
+	c.Assert(h.method, check.Equals, "DELETE")
+	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
 	v, err := url.ParseQuery(string(h.body))
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	expected := map[string][]string{"app-host": {a.GetIp()}}
-	c.Assert(map[string][]string(v), gocheck.DeepEquals, expected)
+	c.Assert(map[string][]string(v), check.DeepEquals, expected)
 }
 
-func (s *S) TestUnbindAppRequestFailure(c *gocheck.C) {
+func (s *S) TestUnbindAppRequestFailure(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
 	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.UnbindApp(&instance, a)
-	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, check.NotNil)
 	expected := `Failed to unbind ("/resources/heaven-can-wait/bind-app"): Server failed to do its job.`
-	c.Assert(err.Error(), gocheck.Equals, expected)
+	c.Assert(err.Error(), check.Equals, expected)
 }
 
-func (s *S) TestUnbindUnit(c *gocheck.C) {
+func (s *S) TestUnbindUnit(c *check.C) {
 	h := TestHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
@@ -379,75 +379,75 @@ func (s *S) TestUnbindUnit(c *gocheck.C) {
 	err := client.UnbindUnit(&instance, a, a.GetUnits()[0])
 	h.Lock()
 	defer h.Unlock()
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(h.url, gocheck.Equals, "/resources/heaven-can-wait/bind")
-	c.Assert(h.method, gocheck.Equals, "DELETE")
-	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.request.Header.Get("Authorization"))
+	c.Assert(err, check.IsNil)
+	c.Assert(h.url, check.Equals, "/resources/heaven-can-wait/bind")
+	c.Assert(h.method, check.Equals, "DELETE")
+	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
 	v, err := url.ParseQuery(string(h.body))
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	expected := map[string][]string{"app-host": {a.GetIp()}, "unit-host": {a.GetUnits()[0].GetIp()}}
-	c.Assert(map[string][]string(v), gocheck.DeepEquals, expected)
+	c.Assert(map[string][]string(v), check.DeepEquals, expected)
 }
 
-func (s *S) TestUnbindUnitRequestFailure(c *gocheck.C) {
+func (s *S) TestUnbindUnitRequestFailure(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
 	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.UnbindUnit(&instance, a, a.GetUnits()[0])
-	c.Assert(err, gocheck.NotNil)
+	c.Assert(err, check.NotNil)
 	expected := `Failed to unbind ("/resources/heaven-can-wait/bind"): Server failed to do its job.`
-	c.Assert(err.Error(), gocheck.Equals, expected)
+	c.Assert(err.Error(), check.Equals, expected)
 }
 
-func (s *S) TestBuildErrorMessageWithNilResponse(c *gocheck.C) {
+func (s *S) TestBuildErrorMessageWithNilResponse(c *check.C) {
 	cli := Client{}
 	err := stderrors.New("epic fail")
-	c.Assert(cli.buildErrorMessage(err, nil), gocheck.Equals, "epic fail")
+	c.Assert(cli.buildErrorMessage(err, nil), check.Equals, "epic fail")
 }
 
-func (s *S) TestBuildErrorMessageWithNilErrorAndNilResponse(c *gocheck.C) {
+func (s *S) TestBuildErrorMessageWithNilErrorAndNilResponse(c *check.C) {
 	cli := Client{}
-	c.Assert(cli.buildErrorMessage(nil, nil), gocheck.Equals, "")
+	c.Assert(cli.buildErrorMessage(nil, nil), check.Equals, "")
 }
 
-func (s *S) TestBuildErrorMessageWithNonNilResponseAndNilError(c *gocheck.C) {
+func (s *S) TestBuildErrorMessageWithNonNilResponseAndNilError(c *check.C) {
 	cli := Client{}
 	body := strings.NewReader("something went wrong")
 	resp := &http.Response{Body: ioutil.NopCloser(body)}
-	c.Assert(cli.buildErrorMessage(nil, resp), gocheck.Equals, "something went wrong")
+	c.Assert(cli.buildErrorMessage(nil, resp), check.Equals, "something went wrong")
 }
 
-func (s *S) TestBuildErrorMessageWithNonNilResponseAndNonNilError(c *gocheck.C) {
+func (s *S) TestBuildErrorMessageWithNonNilResponseAndNonNilError(c *check.C) {
 	cli := Client{}
 	err := stderrors.New("epic fail")
 	body := strings.NewReader("something went wrong")
 	resp := &http.Response{Body: ioutil.NopCloser(body)}
-	c.Assert(cli.buildErrorMessage(err, resp), gocheck.Equals, "epic fail")
+	c.Assert(cli.buildErrorMessage(err, resp), check.Equals, "epic fail")
 }
 
-func (s *S) TestStatusShouldSendTheNameAndHostOfTheService(c *gocheck.C) {
+func (s *S) TestStatusShouldSendTheNameAndHostOfTheService(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(noContentHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	state, err := client.Status(&instance)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(state, gocheck.Equals, "up")
+	c.Assert(err, check.IsNil)
+	c.Assert(state, check.Equals, "up")
 }
 
-func (s *S) TestStatusShouldReturnDownWhenAPIReturns500(c *gocheck.C) {
+func (s *S) TestStatusShouldReturnDownWhenAPIReturns500(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(failHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	state, err := client.Status(&instance)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(state, gocheck.Equals, "down")
+	c.Assert(err, check.IsNil)
+	c.Assert(state, check.Equals, "down")
 }
 
-func (s *S) TestStatusShouldReturnPendingWhenAPIReturns202(c *gocheck.C) {
+func (s *S) TestStatusShouldReturnPendingWhenAPIReturns202(c *check.C) {
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusAccepted)
 	})
@@ -456,54 +456,54 @@ func (s *S) TestStatusShouldReturnPendingWhenAPIReturns202(c *gocheck.C) {
 	instance := ServiceInstance{Name: "hi_there", ServiceName: "redis"}
 	client := Client{endpoint: ts.URL}
 	state, err := client.Status(&instance)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(state, gocheck.Equals, "pending")
+	c.Assert(err, check.IsNil)
+	c.Assert(state, check.Equals, "pending")
 }
 
-func (s *S) TestInfo(c *gocheck.C) {
+func (s *S) TestInfo(c *check.C) {
 	h := infoHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	result, err := client.Info(&instance)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	expected := []map[string]string{
 		{"label": "some label", "value": "some value"},
 		{"label": "label2.0", "value": "v2"},
 	}
-	c.Assert(result, gocheck.DeepEquals, expected)
-	c.Assert(h.r.URL.Path, gocheck.Equals, "/resources/my-redis")
-	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.r.Header.Get("Authorization"))
+	c.Assert(result, check.DeepEquals, expected)
+	c.Assert(h.r.URL.Path, check.Equals, "/resources/my-redis")
+	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.r.Header.Get("Authorization"))
 }
 
-func (s *S) TestInfoNotFound(c *gocheck.C) {
+func (s *S) TestInfoNotFound(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(notFoundHandler))
 	defer ts.Close()
 	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	result, err := client.Info(&instance)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(result, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.IsNil)
 }
 
-func (s *S) TestPlans(c *gocheck.C) {
+func (s *S) TestPlans(c *check.C) {
 	h := plansHandler{}
 	ts := httptest.NewServer(&h)
 	defer ts.Close()
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	result, err := client.Plans()
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	expected := []Plan{
 		{Name: "ignite", Description: "some value"},
 		{Name: "small", Description: "not space left for you"},
 	}
-	c.Assert(result, gocheck.DeepEquals, expected)
-	c.Assert(h.r.URL.Path, gocheck.Equals, "/resources/plans")
-	c.Assert("Basic dXNlcjphYmNkZQ==", gocheck.Equals, h.r.Header.Get("Authorization"))
+	c.Assert(result, check.DeepEquals, expected)
+	c.Assert(h.r.URL.Path, check.Equals, "/resources/plans")
+	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.r.Header.Get("Authorization"))
 }
 
-func (s *S) TestProxy(c *gocheck.C) {
+func (s *S) TestProxy(c *check.C) {
 	handlerTest := func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}
@@ -511,19 +511,19 @@ func (s *S) TestProxy(c *gocheck.C) {
 	defer ts.Close()
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	request, err := http.NewRequest("GET", "/", nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	err = client.Proxy("/backup", recorder, request)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(recorder.Code, gocheck.Equals, http.StatusNoContent)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 	client = &Client{endpoint: "http://10.1.2.3:12345", username: "user", password: "abcde"}
 	recorder = httptest.NewRecorder()
 	err = client.Proxy("/backup", recorder, request)
-	c.Assert(recorder.Code, gocheck.Equals, 500)
-	c.Assert(recorder.Body.String(), gocheck.Equals, "")
+	c.Assert(recorder.Code, check.Equals, 500)
+	c.Assert(recorder.Body.String(), check.Equals, "")
 }
 
-func (s *S) TestProxyWithBodyAndHeaders(c *gocheck.C) {
+func (s *S) TestProxyWithBodyAndHeaders(c *check.C) {
 	var proxiedRequest *http.Request
 	var readBodyStr []byte
 	handlerTest := func(w http.ResponseWriter, r *http.Request) {
@@ -536,17 +536,17 @@ func (s *S) TestProxyWithBodyAndHeaders(c *gocheck.C) {
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	b := bytes.NewBufferString(`{"bla": "bla"}`)
 	request, err := http.NewRequest("POST", "http://somewhere.com/", b)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "text/new-crobuzon")
 	recorder := httptest.NewRecorder()
 	err = client.Proxy("/backup", recorder, request)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(recorder.Code, gocheck.Equals, http.StatusNoContent)
-	c.Assert(proxiedRequest.Header.Get("Content-Type"), gocheck.Equals, "text/new-crobuzon")
-	c.Assert(proxiedRequest.Method, gocheck.Equals, "POST")
-	c.Assert(proxiedRequest.URL.String(), gocheck.Equals, "/backup")
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+	c.Assert(proxiedRequest.Header.Get("Content-Type"), check.Equals, "text/new-crobuzon")
+	c.Assert(proxiedRequest.Method, check.Equals, "POST")
+	c.Assert(proxiedRequest.URL.String(), check.Equals, "/backup")
 	tsUrl, err := url.Parse(ts.URL)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(proxiedRequest.Host, gocheck.Equals, tsUrl.Host)
-	c.Assert(string(readBodyStr), gocheck.Equals, `{"bla": "bla"}`)
+	c.Assert(err, check.IsNil)
+	c.Assert(proxiedRequest.Host, check.Equals, tsUrl.Host)
+	c.Assert(string(readBodyStr), check.Equals, `{"bla": "bla"}`)
 }

@@ -10,7 +10,7 @@ import (
 
 	"github.com/tsuru/tsuru/api/apitest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
 type HealthCheckSuite struct {
@@ -18,22 +18,22 @@ type HealthCheckSuite struct {
 	h  *apitest.TestHandler
 }
 
-var _ = gocheck.Suite(&HealthCheckSuite{})
+var _ = check.Suite(&HealthCheckSuite{})
 
-func (s *HealthCheckSuite) SetUpSuite(c *gocheck.C) {
+func (s *HealthCheckSuite) SetUpSuite(c *check.C) {
 	s.h = &apitest.TestHandler{}
 	s.ts = repositorytest.StartGandalfTestServer(s.h)
 }
 
-func (s *HealthCheckSuite) TearDownSuite(c *gocheck.C) {
+func (s *HealthCheckSuite) TearDownSuite(c *check.C) {
 	s.ts.Close()
 }
 
-func (s *HealthCheckSuite) TestHealthCheck(c *gocheck.C) {
+func (s *HealthCheckSuite) TestHealthCheck(c *check.C) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/healthcheck", nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	healthcheck(recorder, request)
-	c.Assert(recorder.Code, gocheck.Equals, http.StatusOK)
-	c.Assert(recorder.Body.String(), gocheck.Equals, "WORKING")
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), check.Equals, "WORKING")
 }

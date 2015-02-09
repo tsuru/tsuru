@@ -7,18 +7,18 @@ package validation
 import (
 	"testing"
 
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
 type S struct{}
 
-var _ = gocheck.Suite(&S{})
+var _ = check.Suite(&S{})
 
 func Test(t *testing.T) {
-	gocheck.TestingT(t)
+	check.TestingT(t)
 }
 
-func (s *S) TestValidateEmail(c *gocheck.C) {
+func (s *S) TestValidateEmail(c *check.C) {
 	var data = []struct {
 		input    string
 		expected bool
@@ -35,11 +35,11 @@ func (s *S) TestValidateEmail(c *gocheck.C) {
 		{"invalid@validate", false},
 	}
 	for _, d := range data {
-		c.Assert(ValidateEmail(d.input), gocheck.Equals, d.expected)
+		c.Assert(ValidateEmail(d.input), check.Equals, d.expected)
 	}
 }
 
-func (s *S) TestValidateLength(c *gocheck.C) {
+func (s *S) TestValidateLength(c *check.C) {
 	var data = []struct {
 		input    string
 		min      int
@@ -51,6 +51,6 @@ func (s *S) TestValidateLength(c *gocheck.C) {
 		{"gopher", -1, 3, false},
 	}
 	for _, d := range data {
-		c.Assert(ValidateLength(d.input, d.min, d.max), gocheck.Equals, d.expected)
+		c.Assert(ValidateLength(d.input, d.min, d.max), check.Equals, d.expected)
 	}
 }

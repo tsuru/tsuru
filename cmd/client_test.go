@@ -12,12 +12,12 @@ import (
 	"github.com/tsuru/tsuru/cmd/cmdtest"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/fs/fstest"
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
-func (s *S) TestShouldSetCloseToTrue(c *gocheck.C) {
+func (s *S) TestShouldSetCloseToTrue(c *check.C) {
 	request, err := http.NewRequest("GET", "/", nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	transport := cmdtest.Transport{
 		Status:  http.StatusOK,
 		Message: "OK",
@@ -29,8 +29,8 @@ func (s *S) TestShouldSetCloseToTrue(c *gocheck.C) {
 	client := NewClient(&http.Client{Transport: &transport}, &context, manager)
 	client.Verbosity = 2
 	client.Do(request)
-	c.Assert(request.Close, gocheck.Equals, true)
-	c.Assert(buf.String(), gocheck.Matches,
+	c.Assert(request.Close, check.Equals, true)
+	c.Assert(buf.String(), check.Matches,
 		`(?s)`+
 			`.*<Request uri="/">.*`+
 			`GET / HTTP/1.1\r\n.*`+
@@ -40,9 +40,9 @@ func (s *S) TestShouldSetCloseToTrue(c *gocheck.C) {
 			`HTTP/0.0 200 OK.*`)
 }
 
-func (s *S) TestShouldReturnBodyMessageOnError(c *gocheck.C) {
+func (s *S) TestShouldReturnBodyMessageOnError(c *check.C) {
 	request, err := http.NewRequest("GET", "/", nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	var buf bytes.Buffer
 	context := Context{
 		Stdout: &buf,
@@ -53,15 +53,15 @@ func (s *S) TestShouldReturnBodyMessageOnError(c *gocheck.C) {
 		manager)
 	client.Verbosity = 2
 	response, err := client.Do(request)
-	c.Assert(response, gocheck.NotNil)
-	c.Assert(err, gocheck.NotNil)
+	c.Assert(response, check.NotNil)
+	c.Assert(err, check.NotNil)
 	expectedMsg := "You must be authenticated to execute this command."
-	c.Assert(err.Error(), gocheck.Equals, expectedMsg)
+	c.Assert(err.Error(), check.Equals, expectedMsg)
 	httpErr, ok := err.(*errors.HTTP)
-	c.Assert(ok, gocheck.Equals, true)
-	c.Assert(httpErr.Code, gocheck.Equals, http.StatusUnauthorized)
-	c.Assert(httpErr.Message, gocheck.Equals, expectedMsg)
-	c.Assert(buf.String(), gocheck.Matches,
+	c.Assert(ok, check.Equals, true)
+	c.Assert(httpErr.Code, check.Equals, http.StatusUnauthorized)
+	c.Assert(httpErr.Message, check.Equals, expectedMsg)
+	c.Assert(buf.String(), check.Matches,
 		`(?s)`+
 			`.*<Request uri="/">.*`+
 			`GET / HTTP/1.1\r\n.*`+
@@ -72,14 +72,14 @@ func (s *S) TestShouldReturnBodyMessageOnError(c *gocheck.C) {
 			`You must be authenticated to execute this command\..*`)
 }
 
-func (s *S) TestShouldReturnErrorWhenServerIsDown(c *gocheck.C) {
+func (s *S) TestShouldReturnErrorWhenServerIsDown(c *check.C) {
 	rfs := &fstest.RecordingFs{FileContent: "http://tsuru.google.com"}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
 	}()
 	request, err := http.NewRequest("GET", "/", nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	var buf bytes.Buffer
 	context := Context{
 		Stdout: &buf,
@@ -87,9 +87,9 @@ func (s *S) TestShouldReturnErrorWhenServerIsDown(c *gocheck.C) {
 	client := NewClient(&http.Client{}, &context, manager)
 	client.Verbosity = 2
 	_, err = client.Do(request)
-	c.Assert(err, gocheck.NotNil)
-	c.Assert(err.Error(), gocheck.Equals, "Failed to connect to tsuru server (http://tsuru.google.com), it's probably down.")
-	c.Assert(strings.Replace(buf.String(), "\n", "\\n", -1), gocheck.Matches,
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "Failed to connect to tsuru server (http://tsuru.google.com), it's probably down.")
+	c.Assert(strings.Replace(buf.String(), "\n", "\\n", -1), check.Matches,
 		``+
 			`.*<Request uri="/">.*`+
 			`GET / HTTP/1.1\r\\n.*`+
@@ -97,13 +97,13 @@ func (s *S) TestShouldReturnErrorWhenServerIsDown(c *gocheck.C) {
 			`Authorization: bearer.*`)
 }
 
-func (s *S) TestShouldNotIncludeTheHeaderAuthorizationWhenTheTsuruTokenFileIsMissing(c *gocheck.C) {
+func (s *S) TestShouldNotIncludeTheHeaderAuthorizationWhenTheTsuruTokenFileIsMissing(c *check.C) {
 	fsystem = &fstest.FileNotFoundFs{}
 	defer func() {
 		fsystem = nil
 	}()
 	request, err := http.NewRequest("GET", "/", nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	trans := cmdtest.Transport{Message: "", Status: http.StatusOK}
 	var buf bytes.Buffer
 	context := Context{
@@ -112,24 +112,24 @@ func (s *S) TestShouldNotIncludeTheHeaderAuthorizationWhenTheTsuruTokenFileIsMis
 	client := NewClient(&http.Client{Transport: &trans}, &context, manager)
 	client.Verbosity = 2
 	_, err = client.Do(request)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	header := map[string][]string(request.Header)
 	_, ok := header["Authorization"]
-	c.Assert(ok, gocheck.Equals, false)
-	c.Assert(strings.Replace(buf.String(), "\n", "\\n", -1), gocheck.Matches,
+	c.Assert(ok, check.Equals, false)
+	c.Assert(strings.Replace(buf.String(), "\n", "\\n", -1), check.Matches,
 		``+
 			`.*<Request uri="/">.*`+
 			`GET / HTTP/1.1\r\\n.*`+
 			`Connection: close.*`)
 }
 
-func (s *S) TestShouldIncludeTheHeaderAuthorizationWhenTsuruTokenFileExists(c *gocheck.C) {
+func (s *S) TestShouldIncludeTheHeaderAuthorizationWhenTsuruTokenFileExists(c *check.C) {
 	fsystem = &fstest.RecordingFs{FileContent: "mytoken"}
 	defer func() {
 		fsystem = nil
 	}()
 	request, err := http.NewRequest("GET", "/", nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	trans := cmdtest.Transport{Message: "", Status: http.StatusOK}
 	var buf bytes.Buffer
 	context := Context{
@@ -138,9 +138,9 @@ func (s *S) TestShouldIncludeTheHeaderAuthorizationWhenTsuruTokenFileExists(c *g
 	client := NewClient(&http.Client{Transport: &trans}, &context, manager)
 	client.Verbosity = 2
 	_, err = client.Do(request)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(request.Header.Get("Authorization"), gocheck.Equals, "bearer mytoken")
-	c.Assert(strings.Replace(buf.String(), "\n", "\\n", -1), gocheck.Matches,
+	c.Assert(err, check.IsNil)
+	c.Assert(request.Header.Get("Authorization"), check.Equals, "bearer mytoken")
+	c.Assert(strings.Replace(buf.String(), "\n", "\\n", -1), check.Matches,
 		``+
 			`.*<Request uri="/">.*`+
 			`GET / HTTP/1.1\r\\n.*`+
@@ -148,10 +148,10 @@ func (s *S) TestShouldIncludeTheHeaderAuthorizationWhenTsuruTokenFileExists(c *g
 			`Authorization: bearer.*`)
 }
 
-func (s *S) TestShouldValidateVersion(c *gocheck.C) {
+func (s *S) TestShouldValidateVersion(c *check.C) {
 	var buf bytes.Buffer
 	request, err := http.NewRequest("GET", "/", nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	context := Context{
 		Stderr: &buf,
 	}
@@ -167,7 +167,7 @@ func (s *S) TestShouldValidateVersion(c *gocheck.C) {
 	}
 	client := NewClient(&http.Client{Transport: &trans}, &context, &manager)
 	_, err = client.Do(request)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	expected := `#####################################################################
 
 WARNING: You're using an unsupported version of glb.
@@ -181,13 +181,13 @@ and download the last version.
 #####################################################################
 
 `
-	c.Assert(buf.String(), gocheck.Equals, expected)
+	c.Assert(buf.String(), check.Equals, expected)
 }
 
-func (s *S) TestShouldSkipValidationIfThereIsNoSupportedHeaderDeclared(c *gocheck.C) {
+func (s *S) TestShouldSkipValidationIfThereIsNoSupportedHeaderDeclared(c *check.C) {
 	var buf bytes.Buffer
 	request, err := http.NewRequest("GET", "/", nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	context := Context{
 		Stderr: &buf,
 	}
@@ -197,14 +197,14 @@ func (s *S) TestShouldSkipValidationIfThereIsNoSupportedHeaderDeclared(c *gochec
 	}
 	client := NewClient(&http.Client{Transport: &trans}, &context, &manager)
 	_, err = client.Do(request)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(buf.String(), gocheck.Equals, "")
+	c.Assert(err, check.IsNil)
+	c.Assert(buf.String(), check.Equals, "")
 }
 
-func (s *S) TestShouldSkupValidationIfServerDoesNotReturnSupportedHeader(c *gocheck.C) {
+func (s *S) TestShouldSkupValidationIfServerDoesNotReturnSupportedHeader(c *check.C) {
 	var buf bytes.Buffer
 	request, err := http.NewRequest("GET", "/", nil)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	context := Context{
 		Stderr: &buf,
 	}
@@ -216,6 +216,6 @@ func (s *S) TestShouldSkupValidationIfServerDoesNotReturnSupportedHeader(c *goch
 	}
 	client := NewClient(&http.Client{Transport: &trans}, &context, &manager)
 	_, err = client.Do(request)
-	c.Assert(err, gocheck.IsNil)
-	c.Assert(buf.String(), gocheck.Equals, "")
+	c.Assert(err, check.IsNil)
+	c.Assert(buf.String(), check.Equals, "")
 }

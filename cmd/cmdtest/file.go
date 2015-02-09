@@ -9,14 +9,14 @@ import (
 	"os"
 	"os/exec"
 
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
-func SetTargetFile(c *gocheck.C, target []byte) []string {
+func SetTargetFile(c *check.C, target []byte) []string {
 	return writeHomeFile(c, ".tsuru_target", target)
 }
 
-func SetTokenFile(c *gocheck.C, token []byte) []string {
+func SetTokenFile(c *check.C, token []byte) []string {
 	return writeHomeFile(c, ".tsuru_token", token)
 }
 
@@ -24,7 +24,7 @@ func RollbackFile(rollbackCmds []string) {
 	exec.Command(rollbackCmds[0], rollbackCmds[1:]...).Run()
 }
 
-func writeHomeFile(c *gocheck.C, filename string, content []byte) []string {
+func writeHomeFile(c *check.C, filename string, content []byte) []string {
 	file := os.Getenv("HOME") + "/" + filename
 	_, err := os.Stat(file)
 	var recover []string
@@ -40,7 +40,7 @@ func writeHomeFile(c *gocheck.C, filename string, content []byte) []string {
 		recover = []string{"rm", file}
 	}
 	f, err := os.Create(file)
-	c.Assert(err, gocheck.IsNil)
+	c.Assert(err, check.IsNil)
 	f.Write(content)
 	f.Close()
 	return recover

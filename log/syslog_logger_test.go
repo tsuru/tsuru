@@ -7,7 +7,7 @@ import (
 	"log"
 	"log/syslog"
 
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
 type SyslogLoggerSuite struct {
@@ -15,22 +15,22 @@ type SyslogLoggerSuite struct {
 	sl *syslogLogger
 }
 
-var _ = gocheck.Suite(&SyslogLoggerSuite{})
+var _ = check.Suite(&SyslogLoggerSuite{})
 
-func (s *SyslogLoggerSuite) SetUpSuite(c *gocheck.C) {
+func (s *SyslogLoggerSuite) SetUpSuite(c *check.C) {
 	s.l = NewSyslogLogger("tsr", true)
 	s.sl = s.l.(*syslogLogger)
 }
 
-func (s *SyslogLoggerSuite) TestNewSyslogLoggerReturnsALogger(c *gocheck.C) {
+func (s *SyslogLoggerSuite) TestNewSyslogLoggerReturnsALogger(c *check.C) {
 	_, ok := s.l.(Logger)
-	c.Assert(ok, gocheck.Equals, true)
+	c.Assert(ok, check.Equals, true)
 }
 
-func (s *SyslogLoggerSuite) TestNewSyslogLoggerInstantiatesSyslogWriter(c *gocheck.C) {
-	c.Assert(s.sl.w, gocheck.FitsTypeOf, &syslog.Writer{})
+func (s *SyslogLoggerSuite) TestNewSyslogLoggerInstantiatesSyslogWriter(c *check.C) {
+	c.Assert(s.sl.w, check.FitsTypeOf, &syslog.Writer{})
 }
 
-func (s *SyslogLoggerSuite) TestGetStdLoggerShouldReturnValidLogger(c *gocheck.C) {
-	c.Assert(s.sl.GetStdLogger(), gocheck.FitsTypeOf, &log.Logger{})
+func (s *SyslogLoggerSuite) TestGetStdLoggerShouldReturnValidLogger(c *check.C) {
+	c.Assert(s.sl.GetStdLogger(), check.FitsTypeOf, &log.Logger{})
 }

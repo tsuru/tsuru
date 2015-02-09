@@ -11,10 +11,10 @@ import (
 	"runtime"
 	"sync"
 
-	"launchpad.net/gocheck"
+	"gopkg.in/check.v1"
 )
 
-func (s *S) TestAddRouteAndRemoteRouteAreSafe(c *gocheck.C) {
+func (s *S) TestAddRouteAndRemoteRouteAreSafe(c *check.C) {
 	var wg sync.WaitGroup
 	fake := fakeRouter{backends: make(map[string][]string)}
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(4))
