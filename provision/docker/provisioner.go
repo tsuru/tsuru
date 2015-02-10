@@ -226,7 +226,7 @@ func (p *dockerProvisioner) Stop(app provision.App) error {
 	return <-errCh
 }
 
-func (dockerProvisioner) Swap(app1, app2 provision.App) error {
+func (p *dockerProvisioner) Swap(app1, app2 provision.App) error {
 	r, err := getRouterForApp(app1)
 	if err != nil {
 		return err
