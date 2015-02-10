@@ -49,6 +49,13 @@ type Key struct {
 	Body string
 }
 
+// Repository represents a repository in the manager.
+type Repository struct {
+	Name         string
+	ReadOnlyURL  string
+	ReadWriteURL string
+}
+
 // RepositoryManager represents a manager of application repositories.
 type RepositoryManager interface {
 	CreateUser(username string) error
@@ -61,8 +68,9 @@ type RepositoryManager interface {
 	RemoveKey(username string, key Key) error
 	ListKeys(username string) ([]Key, error)
 
-	ReadOnlyURL(repository string) (string, error)
-	ReadWriteURL(repository string) (string, error)
+	CreateRepository(name string) error
+	RemoveRepository(name string) error
+	GetRepository(name string) (Repository, error)
 }
 
 // Manager returns the current configured manager, as defined in the
