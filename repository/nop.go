@@ -38,10 +38,14 @@ func (nopManager) ListKeys(username string) ([]Key, error) {
 	return nil, nil
 }
 
-func (nopManager) ReadOnlyURL(repository string) (string, error) {
-	return "", nil
+func (nopManager) CreateRepository(name string) error {
+	return nil
 }
 
-func (nopManager) ReadWriteURL(repository string) (string, error) {
-	return "", nil
+func (nopManager) RemoveRepository(name string) error {
+	return nil
+}
+
+func (nopManager) GetRepository(name string) (Repository, error) {
+	return Repository{}, nil
 }
