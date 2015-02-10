@@ -59,7 +59,7 @@ func validateNodeAddress(address string) error {
 	return nil
 }
 
-func addNodeForParams(params map[string]string, isRegister bool) (map[string]string, error) {
+func (p *dockerProvisioner) addNodeForParams(params map[string]string, isRegister bool) (map[string]string, error) {
 	response := make(map[string]string)
 	var address string
 	if isRegister {
@@ -79,7 +79,7 @@ func addNodeForParams(params map[string]string, isRegister bool) (map[string]str
 	if err != nil {
 		return response, err
 	}
-	_, err = dockerCluster().Register(address, params)
+	_, err = p.getCluster().Register(address, params)
 	if err != nil {
 		return response, err
 	}
@@ -95,7 +95,7 @@ func addNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		return err
 	}
 	isRegister, _ := strconv.ParseBool(r.URL.Query().Get("register"))
-	response, err := addNodeForParams(params, isRegister)
+	response, err := mainDockerProvisioner.addNodeForParams(params, isRegister)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		response["error"] = err.Error()
@@ -113,7 +113,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if address == "" {
 		return fmt.Errorf("Node address is required.")
 	}
-	err = dockerCluster().Unregister(address)
+	err = mainDockerProvisioner.getCluster().Unregister(address)
 	if err != nil {
 		return err
 	}
@@ -130,7 +130,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 
 //listNodeHandler call scheduler.Nodes to list all nodes into it.
 func listNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	nodeList, err := dockerCluster().UnfilteredNodes()
+	nodeList, err := mainDockerProvisioner.getCluster().UnfilteredNodes()
 	if err != nil {
 		return err
 	}
@@ -146,7 +146,7 @@ func listNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 }
 
 func fixContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	err := fixContainers()
+	err := mainDockerProvisioner.fixContainers()
 	if err != nil {
 		return err
 	}
@@ -165,7 +165,7 @@ func moveContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		return fmt.Errorf("Invalid params: id: %s - to: %s", contId, to)
 	}
 	encoder := json.NewEncoder(w)
-	_, err = moveContainer(contId, to, encoder)
+	_, err = mainDockerProvisioner.moveContainer(contId, to, encoder)
 	if err != nil {
 		logProgress(encoder, "Error trying to move container: %s", err.Error())
 	} else {
@@ -185,7 +185,7 @@ func moveContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return fmt.Errorf("Invalid params: from: %s - to: %s", from, to)
 	}
 	encoder := json.NewEncoder(w)
-	err = moveContainers(from, to, encoder)
+	err = mainDockerProvisioner.moveContainers(from, to, encoder)
 	if err != nil {
 		logProgress(encoder, "Error: %s", err.Error())
 	} else {
@@ -201,7 +201,7 @@ func rebalanceContainersHandler(w http.ResponseWriter, r *http.Request, t auth.T
 		dry = params["dry"] == "true"
 	}
 	encoder := json.NewEncoder(w)
-	err = rebalanceContainers(encoder, dry)
+	err = mainDockerProvisioner.rebalanceContainers(encoder, dry)
 	if err != nil {
 		logProgress(encoder, "Error trying to rebalance containers: %s", err.Error())
 	} else {

@@ -12,13 +12,11 @@ import (
 	"net"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
-	clusterLog "github.com/tsuru/docker-cluster/log"
 	"github.com/tsuru/docker-cluster/storage/mongodb"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
@@ -26,11 +24,6 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/mgo.v2/bson"
-)
-
-var (
-	dCluster *cluster.Cluster
-	cmutex   sync.Mutex
 )
 
 func getDockerServers() []cluster.Node {
@@ -64,87 +57,6 @@ func buildClusterStorage() (cluster.Storage, error) {
 	return storage, nil
 }
 
-func initDockerCluster() error {
-	cmutex.Lock()
-	defer cmutex.Unlock()
-	if dCluster != nil {
-		return nil
-	}
-	debug, _ := config.GetBool("debug")
-	clusterLog.SetDebug(debug)
-	clusterLog.SetLogger(log.GetStdLogger())
-	clusterStorage, err := buildClusterStorage()
-	if err != nil {
-		return err
-	}
-	var nodes []cluster.Node
-	if isSegregateScheduler() {
-		totalMemoryMetadata, _ := config.GetString("docker:scheduler:total-memory-metadata")
-		maxUsedMemory, _ := config.GetFloat("docker:scheduler:max-used-memory")
-		scheduler := segregatedScheduler{
-			maxMemoryRatio:      float32(maxUsedMemory),
-			totalMemoryMetadata: totalMemoryMetadata,
-		}
-		dCluster, err = cluster.New(&scheduler, clusterStorage)
-		if err != nil {
-			return err
-		}
-	} else {
-		nodes = getDockerServers()
-		dCluster, err = cluster.New(nil, clusterStorage, nodes...)
-		if err != nil {
-			return err
-		}
-	}
-	autoHealingNodes, _ := config.GetBool("docker:healing:heal-nodes")
-	if autoHealingNodes {
-		disabledSeconds, _ := config.GetDuration("docker:healing:disabled-time")
-		if disabledSeconds <= 0 {
-			disabledSeconds = 30
-		}
-		maxFailures, _ := config.GetInt("docker:healing:max-failures")
-		if maxFailures <= 0 {
-			maxFailures = 5
-		}
-		waitSecondsNewMachine, _ := config.GetDuration("docker:healing:wait-new-time")
-		if waitSecondsNewMachine <= 0 {
-			waitSecondsNewMachine = 5 * 60
-		}
-		healer := Healer{
-			cluster:               dCluster,
-			disabledTime:          disabledSeconds * time.Second,
-			waitTimeNewMachine:    waitSecondsNewMachine * time.Second,
-			failuresBeforeHealing: maxFailures,
-		}
-		dCluster.SetHealer(&healer)
-	}
-	healNodesSeconds, _ := config.GetDuration("docker:healing:heal-containers-timeout")
-	if healNodesSeconds > 0 {
-		go runContainerHealer(healNodesSeconds * time.Second)
-	}
-	activeMonitoring, _ := config.GetDuration("docker:healing:active-monitoring-interval")
-	if activeMonitoring > 0 {
-		dCluster.StartActiveMonitoring(activeMonitoring * time.Second)
-	}
-	return nil
-}
-
-var initializeDockerCluster func() error
-
-func init() {
-	initializeDockerCluster = initDockerCluster
-}
-
-func dockerCluster() *cluster.Cluster {
-	if initializeDockerCluster != nil {
-		err := initializeDockerCluster()
-		if err != nil {
-			panic(err.Error())
-		}
-	}
-	return dCluster
-}
-
 func getPort() (string, error) {
 	port, err := config.Get("docker:run-cmd:port")
 	if err != nil {
@@ -159,8 +71,8 @@ func urlToHost(urlStr string) string {
 	return host
 }
 
-func hostToNodeAddress(host string) (string, error) {
-	nodes, err := dockerCluster().Nodes()
+func (p *dockerProvisioner) hostToNodeAddress(host string) (string, error) {
+	nodes, err := p.getCluster().Nodes()
 	if err != nil {
 		return "", err
 	}
@@ -253,13 +165,13 @@ func (c *container) create(args runContainerActionsArgs) error {
 	opts := docker.CreateContainerOptions{Name: c.Name, Config: &config}
 	var nodeList []string
 	if len(args.destinationHosts) > 0 {
-		nodeName, err := hostToNodeAddress(args.destinationHosts[0])
+		nodeName, err := args.provisioner.hostToNodeAddress(args.destinationHosts[0])
 		if err != nil {
 			return err
 		}
 		nodeList = []string{nodeName}
 	}
-	addr, cont, err := dockerCluster().CreateContainerSchedulerOpts(opts, args.app.GetName(), nodeList...)
+	addr, cont, err := args.provisioner.getCluster().CreateContainerSchedulerOpts(opts, args.app.GetName(), nodeList...)
 	if err != nil {
 		log.Errorf("error on creating container in docker %s - %s", c.AppName, err)
 		return err
@@ -276,13 +188,13 @@ type containerNetworkInfo struct {
 }
 
 // networkInfo returns the IP and the host port for the container.
-func (c *container) networkInfo() (containerNetworkInfo, error) {
+func (c *container) networkInfo(p *dockerProvisioner) (containerNetworkInfo, error) {
 	var netInfo containerNetworkInfo
 	port, err := getPort()
 	if err != nil {
 		return netInfo, err
 	}
-	dockerContainer, err := dockerCluster().InspectContainer(c.ID)
+	dockerContainer, err := p.getCluster().InspectContainer(c.ID)
 	if err != nil {
 		return netInfo, err
 	}
@@ -326,23 +238,23 @@ func (c *container) setImage(imageId string) error {
 	return coll.Update(bson.M{"id": c.ID}, c)
 }
 
-func gitDeploy(app provision.App, version string, w io.Writer) (string, error) {
+func (p *dockerProvisioner) gitDeploy(app provision.App, version string, w io.Writer) (string, error) {
 	commands, err := gitDeployCmds(app, version)
 	if err != nil {
 		return "", err
 	}
-	return deploy(app, getBuildImage(app), commands, w)
+	return p.deployPipeline(app, getBuildImage(app), commands, w)
 }
 
-func archiveDeploy(app provision.App, image, archiveURL string, w io.Writer) (string, error) {
+func (p *dockerProvisioner) archiveDeploy(app provision.App, image, archiveURL string, w io.Writer) (string, error) {
 	commands, err := archiveDeployCmds(app, archiveURL)
 	if err != nil {
 		return "", err
 	}
-	return deploy(app, image, commands, w)
+	return p.deployPipeline(app, image, commands, w)
 }
 
-func deploy(app provision.App, imageId string, commands []string, w io.Writer) (string, error) {
+func (p *dockerProvisioner) deployPipeline(app provision.App, imageId string, commands []string, w io.Writer) (string, error) {
 	actions := []*action.Action{
 		&insertEmptyContainerInDB,
 		&createContainer,
@@ -362,6 +274,7 @@ func deploy(app provision.App, imageId string, commands []string, w io.Writer) (
 		writer:        w,
 		isDeploy:      true,
 		buildingImage: buildingImage,
+		provisioner:   p,
 	}
 	err = pipeline.Execute(args)
 	if err != nil {
@@ -371,7 +284,7 @@ func deploy(app provision.App, imageId string, commands []string, w io.Writer) (
 	return buildingImage, nil
 }
 
-func start(app provision.App, imageId string, w io.Writer, destinationHosts ...string) (*container, error) {
+func (p *dockerProvisioner) start(app provision.App, imageId string, w io.Writer, destinationHosts ...string) (*container, error) {
 	commands, err := runWithAgentCmds(app)
 	if err != nil {
 		return nil, err
@@ -389,6 +302,7 @@ func start(app provision.App, imageId string, w io.Writer, destinationHosts ...s
 		imageID:          imageId,
 		commands:         commands,
 		destinationHosts: destinationHosts,
+		provisioner:      p,
 	}
 	err = pipeline.Execute(args)
 	if err != nil {
@@ -412,10 +326,10 @@ func (c *container) getApp() (provision.App, error) {
 }
 
 // remove removes a docker container.
-func (c *container) remove() error {
+func (c *container) remove(p *dockerProvisioner) error {
 	address := c.getAddress()
 	log.Debugf("Removing container %s from docker", c.ID)
-	err := dockerCluster().RemoveContainer(docker.RemoveContainerOptions{ID: c.ID})
+	err := p.getCluster().RemoveContainer(docker.RemoveContainerOptions{ID: c.ID})
 	if err != nil {
 		log.Errorf("Failed to remove container from docker: %s", err)
 	}
@@ -446,7 +360,7 @@ type pty struct {
 	height int
 }
 
-func (c *container) shell(stdin io.Reader, stdout, stderr io.Writer, pty pty) error {
+func (c *container) shell(p *dockerProvisioner, stdin io.Reader, stdout, stderr io.Writer, pty pty) error {
 	cmds := []string{"/bin/bash"}
 	execCreateOpts := docker.CreateExecOptions{
 		AttachStdin:  true,
@@ -456,7 +370,7 @@ func (c *container) shell(stdin io.Reader, stdout, stderr io.Writer, pty pty) er
 		Container:    c.ID,
 		Tty:          true,
 	}
-	exec, err := dockerCluster().CreateExec(execCreateOpts)
+	exec, err := p.getCluster().CreateExec(execCreateOpts)
 	if err != nil {
 		return err
 	}
@@ -467,11 +381,11 @@ func (c *container) shell(stdin io.Reader, stdout, stderr io.Writer, pty pty) er
 		Tty:          true,
 		RawTerminal:  true,
 	}
-	err = dockerCluster().StartExec(exec.ID, c.ID, startExecOptions)
+	err = p.getCluster().StartExec(exec.ID, c.ID, startExecOptions)
 	if err != nil {
 		return err
 	}
-	return dockerCluster().ResizeExecTTY(exec.ID, c.ID, pty.height, pty.width)
+	return p.getCluster().ResizeExecTTY(exec.ID, c.ID, pty.height, pty.width)
 
 }
 
@@ -483,7 +397,7 @@ func (e *execErr) Error() string {
 	return fmt.Sprintf("unexpected exit code: %d", e.code)
 }
 
-func (c *container) exec(stdout, stderr io.Writer, cmd string, args ...string) error {
+func (c *container) exec(p *dockerProvisioner, stdout, stderr io.Writer, cmd string, args ...string) error {
 	cmds := []string{"/bin/bash", "-lc", cmd}
 	cmds = append(cmds, args...)
 	execCreateOpts := docker.CreateExecOptions{
@@ -494,7 +408,7 @@ func (c *container) exec(stdout, stderr io.Writer, cmd string, args ...string) e
 		Cmd:          cmds,
 		Container:    c.ID,
 	}
-	exec, err := dockerCluster().CreateExec(execCreateOpts)
+	exec, err := p.getCluster().CreateExec(execCreateOpts)
 	if err != nil {
 		return err
 	}
@@ -502,11 +416,11 @@ func (c *container) exec(stdout, stderr io.Writer, cmd string, args ...string) e
 		OutputStream: stdout,
 		ErrorStream:  stderr,
 	}
-	err = dockerCluster().StartExec(exec.ID, c.ID, startExecOptions)
+	err = p.getCluster().StartExec(exec.ID, c.ID, startExecOptions)
 	if err != nil {
 		return err
 	}
-	execData, err := dockerCluster().InspectExec(exec.ID, c.ID)
+	execData, err := p.getCluster().InspectExec(exec.ID, c.ID)
 	if err != nil {
 		return err
 	}
@@ -519,7 +433,7 @@ func (c *container) exec(stdout, stderr io.Writer, cmd string, args ...string) e
 
 // commit commits an image in docker based in the container
 // and returns the image repository.
-func (c *container) commit(writer io.Writer) (string, error) {
+func (c *container) commit(p *dockerProvisioner, writer io.Writer) (string, error) {
 	log.Debugf("commiting container %s", c.ID)
 	parts := strings.Split(c.BuildingImage, ":")
 	if len(parts) < 2 {
@@ -528,18 +442,18 @@ func (c *container) commit(writer io.Writer) (string, error) {
 	repository := strings.Join(parts[:len(parts)-1], ":")
 	tag := parts[len(parts)-1]
 	opts := docker.CommitContainerOptions{Container: c.ID, Repository: repository, Tag: tag}
-	image, err := dockerCluster().CommitContainer(opts)
+	image, err := p.getCluster().CommitContainer(opts)
 	if err != nil {
 		return "", log.WrapError(fmt.Errorf("error in commit container %s: %s", c.ID, err.Error()))
 	}
-	imgData, err := dockerCluster().InspectImage(c.BuildingImage)
+	imgData, err := p.getCluster().InspectImage(c.BuildingImage)
 	imgSize := ""
 	if err == nil {
 		imgSize = fmt.Sprintf("(%.02fMB)", float64(imgData.Size)/1024/1024)
 	}
 	fmt.Fprintf(writer, " ---> Sending image to repository %s\n", imgSize)
 	log.Debugf("image %s generated from container %s", image.ID, c.ID)
-	err = pushImage(repository, tag)
+	err = p.pushImage(repository, tag)
 	if err != nil {
 		return "", log.WrapError(fmt.Errorf("error in push image %s: %s", c.BuildingImage, err.Error()))
 	}
@@ -547,11 +461,11 @@ func (c *container) commit(writer io.Writer) (string, error) {
 }
 
 // stop stops the container.
-func (c *container) stop() error {
+func (c *container) stop(p *dockerProvisioner) error {
 	if c.Status == provision.StatusStopped.String() {
 		return nil
 	}
-	err := dockerCluster().StopContainer(c.ID, 10)
+	err := p.cluster.StopContainer(c.ID, 10)
 	if err != nil {
 		log.Errorf("error on stop container %s: %s", c.ID, err)
 	}
@@ -559,7 +473,7 @@ func (c *container) stop() error {
 	return nil
 }
 
-func (c *container) start(isDeploy bool) error {
+func (c *container) start(p *dockerProvisioner, isDeploy bool) error {
 	port, err := getPort()
 	if err != nil {
 		return err
@@ -590,7 +504,7 @@ func (c *container) start(isDeploy bool) error {
 			config.Binds = append(config.Binds, fmt.Sprintf("%s:%s:rw", sharedBasedir, sharedMount))
 		}
 	}
-	err = dockerCluster().StartContainer(c.ID, &config)
+	err = p.getCluster().StartContainer(c.ID, &config)
 	if err != nil {
 		return err
 	}
@@ -602,8 +516,8 @@ func (c *container) start(isDeploy bool) error {
 }
 
 // logs returns logs for the container.
-func (c *container) logs(w io.Writer) error {
-	container, err := dockerCluster().InspectContainer(c.ID)
+func (c *container) logs(p *dockerProvisioner, w io.Writer) error {
+	container, err := p.getCluster().InspectContainer(c.ID)
 	if err != nil {
 		return err
 	}
@@ -617,7 +531,7 @@ func (c *container) logs(w io.Writer) error {
 		RawTerminal:  container.Config.Tty,
 		Stream:       true,
 	}
-	return dockerCluster().AttachToContainer(opts)
+	return p.getCluster().AttachToContainer(opts)
 }
 
 func (c *container) asUnit(a provision.App) provision.Unit {
@@ -632,11 +546,11 @@ func (c *container) asUnit(a provision.App) provision.Unit {
 
 // pushImage sends the given image to the registry server defined in the
 // configuration file.
-func pushImage(name, tag string) error {
+func (p *dockerProvisioner) pushImage(name, tag string) error {
 	if _, err := config.GetString("docker:registry"); err == nil {
 		var buf safe.Buffer
 		pushOpts := docker.PushImageOptions{Name: name, Tag: tag, OutputStream: &buf}
-		err = dockerCluster().PushImage(pushOpts, docker.AuthConfiguration{})
+		err = p.getCluster().PushImage(pushOpts, docker.AuthConfiguration{})
 		if err != nil {
 			log.Errorf("[docker] Failed to push image %q (%s): %s", name, err, buf.String())
 			return err

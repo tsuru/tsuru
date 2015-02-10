@@ -88,7 +88,7 @@ func handleMoveErrors(moveErrors chan error, encoder *json.Encoder) error {
 	return nil
 }
 
-func runReplaceUnitsPipeline(w io.Writer, a provision.App, toRemoveContainers []container, imageId string, toHosts ...string) ([]container, error) {
+func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App, toRemoveContainers []container, imageId string, toHosts ...string) ([]container, error) {
 	var toHost string
 	if len(toHosts) > 0 {
 		toHost = toHosts[0]
@@ -97,12 +97,13 @@ func runReplaceUnitsPipeline(w io.Writer, a provision.App, toRemoveContainers []
 		w = ioutil.Discard
 	}
 	args := changeUnitsPipelineArgs{
-		app:        a,
-		toRemove:   toRemoveContainers,
-		unitsToAdd: len(toRemoveContainers),
-		toHost:     toHost,
-		writer:     w,
-		imageId:    imageId,
+		app:         a,
+		toRemove:    toRemoveContainers,
+		unitsToAdd:  len(toRemoveContainers),
+		toHost:      toHost,
+		writer:      w,
+		imageId:     imageId,
+		provisioner: p,
 	}
 	pipeline := action.NewPipeline(
 		&provisionAddUnitsToHost,
@@ -118,15 +119,16 @@ func runReplaceUnitsPipeline(w io.Writer, a provision.App, toRemoveContainers []
 	return pipeline.Result().([]container), nil
 }
 
-func runCreateUnitsPipeline(w io.Writer, a provision.App, toAddCount int, imageId string) ([]container, error) {
+func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App, toAddCount int, imageId string) ([]container, error) {
 	if w == nil {
 		w = ioutil.Discard
 	}
 	args := changeUnitsPipelineArgs{
-		app:        a,
-		unitsToAdd: toAddCount,
-		writer:     w,
-		imageId:    imageId,
+		app:         a,
+		unitsToAdd:  toAddCount,
+		writer:      w,
+		imageId:     imageId,
+		provisioner: p,
 	}
 	pipeline := action.NewPipeline(
 		&provisionAddUnitsToHost,
@@ -140,7 +142,7 @@ func runCreateUnitsPipeline(w io.Writer, a provision.App, toAddCount int, imageI
 	return pipeline.Result().([]container), nil
 }
 
-func moveOneContainer(c container, toHost string, errors chan error, wg *sync.WaitGroup, encoder *json.Encoder, locker *appLocker) container {
+func (p *dockerProvisioner) moveOneContainer(c container, toHost string, errors chan error, wg *sync.WaitGroup, encoder *json.Encoder, locker *appLocker) container {
 	if wg != nil {
 		defer wg.Done()
 	}
@@ -167,7 +169,7 @@ func moveOneContainer(c container, toHost string, errors chan error, wg *sync.Wa
 		return container{}
 	}
 	logProgress(encoder, "Moving unit %s for %q: %s -> %s...", c.ID, c.AppName, c.HostAddr, toHost)
-	addedContainers, err := runReplaceUnitsPipeline(nil, a, []container{c}, imageId, toHost)
+	addedContainers, err := p.runReplaceUnitsPipeline(nil, a, []container{c}, imageId, toHost)
 	if err != nil {
 		errors <- &tsuruErrors.CompositeError{
 			Base:    err,
@@ -189,7 +191,7 @@ func moveOneContainer(c container, toHost string, errors chan error, wg *sync.Wa
 	return addedContainers[0]
 }
 
-func moveContainer(contId string, toHost string, encoder *json.Encoder) (container, error) {
+func (p *dockerProvisioner) moveContainer(contId string, toHost string, encoder *json.Encoder) (container, error) {
 	cont, err := getContainer(contId)
 	if err != nil {
 		return container{}, err
@@ -198,12 +200,12 @@ func moveContainer(contId string, toHost string, encoder *json.Encoder) (contain
 	wg.Add(1)
 	moveErrors := make(chan error, 1)
 	locker := &appLocker{}
-	createdContainer := moveOneContainer(*cont, toHost, moveErrors, &wg, encoder, locker)
+	createdContainer := p.moveOneContainer(*cont, toHost, moveErrors, &wg, encoder, locker)
 	close(moveErrors)
 	return createdContainer, handleMoveErrors(moveErrors, encoder)
 }
 
-func moveContainers(fromHost, toHost string, encoder *json.Encoder) error {
+func (p *dockerProvisioner) moveContainers(fromHost, toHost string, encoder *json.Encoder) error {
 	containers, err := listContainersByHost(fromHost)
 	if err != nil {
 		return err
@@ -219,7 +221,7 @@ func moveContainers(fromHost, toHost string, encoder *json.Encoder) error {
 	wg := sync.WaitGroup{}
 	wg.Add(numberContainers)
 	for _, c := range containers {
-		go moveOneContainer(c, toHost, moveErrors, &wg, encoder, locker)
+		go p.moveOneContainer(c, toHost, moveErrors, &wg, encoder, locker)
 	}
 	go func() {
 		wg.Wait()
@@ -246,7 +248,7 @@ func minCountHost(hosts []hostWithContainers) *hostWithContainers {
 	return minCountHost
 }
 
-func rebalanceContainers(encoder *json.Encoder, dryRun bool) error {
+func (p *dockerProvisioner) rebalanceContainers(encoder *json.Encoder, dryRun bool) error {
 	coll := collection()
 	defer coll.Close()
 	fullDocQuery := bson.M{
@@ -274,7 +276,7 @@ func rebalanceContainers(encoder *json.Encoder, dryRun bool) error {
 	if err != nil {
 		return err
 	}
-	clusterInstance := dockerCluster()
+	clusterInstance := p.getCluster()
 	for _, appInfo := range appsInfo {
 		if appInfo.Count < 2 {
 			continue
@@ -341,7 +343,7 @@ func rebalanceContainers(encoder *json.Encoder, dryRun bool) error {
 						logProgress(encoder, "Would move unit %s for %q: %s -> %s...", cont.ID, appInfo.Name, cont.HostAddr, minDest.HostAddr)
 					} else {
 						wg.Add(1)
-						go moveOneContainer(cont, minDest.HostAddr, moveErrors, &wg, encoder, locker)
+						go p.moveOneContainer(cont, minDest.HostAddr, moveErrors, &wg, encoder, locker)
 					}
 				}
 				if toMoveCount == 0 {

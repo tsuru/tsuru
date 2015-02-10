@@ -26,16 +26,9 @@ func (s *S) TestMigrateImages(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	defer server.Stop()
-	cmutex.Lock()
-	oldDockerCluster := dCluster
-	dCluster, _ = cluster.New(nil, &cluster.MapStorage{},
+	var p dockerProvisioner
+	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: server.URL()})
-	cmutex.Unlock()
-	defer func() {
-		cmutex.Lock()
-		defer cmutex.Unlock()
-		dCluster = oldDockerCluster
-	}()
 	app1 := app.App{Name: "app1"}
 	app2 := app.App{Name: "app2"}
 	conn, err := db.Conn()
@@ -43,11 +36,11 @@ func (s *S) TestMigrateImages(c *check.C) {
 	defer conn.Close()
 	conn.Apps().Insert(app1, app2)
 	defer conn.Apps().RemoveAll(bson.M{"name": bson.M{"$in": []string{app1.Name, app2.Name}}})
-	err = newImage("tsuru/app1", "")
+	err = s.newFakeImage(&p, "tsuru/app1")
 	c.Assert(err, check.IsNil)
-	err = newImage("tsuru/app2", "")
+	err = s.newFakeImage(&p, "tsuru/app2")
 	c.Assert(err, check.IsNil)
-	err = migrateImages()
+	err = p.migrateImages()
 	c.Assert(err, check.IsNil)
 	client, err := docker.NewClient(server.URL())
 	c.Assert(err, check.IsNil)
@@ -69,23 +62,16 @@ func (s *S) TestMigrateImagesWithoutImageInStorage(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	defer server.Stop()
-	cmutex.Lock()
-	oldDockerCluster := dCluster
-	dCluster, _ = cluster.New(nil, &cluster.MapStorage{},
+	var p dockerProvisioner
+	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: server.URL()})
-	cmutex.Unlock()
-	defer func() {
-		cmutex.Lock()
-		defer cmutex.Unlock()
-		dCluster = oldDockerCluster
-	}()
 	app1 := app.App{Name: "app1"}
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	conn.Apps().Insert(app1)
 	defer conn.Apps().RemoveAll(bson.M{"name": bson.M{"$in": []string{app1.Name}}})
-	err = migrateImages()
+	err = p.migrateImages()
 	c.Assert(err, check.IsNil)
 	client, err := docker.NewClient(server.URL())
 	c.Assert(err, check.IsNil)
@@ -103,16 +89,9 @@ func (s *S) TestMigrateImagesWithRegistry(c *check.C) {
 	defer server.Stop()
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
-	cmutex.Lock()
-	oldDockerCluster := dCluster
-	dCluster, _ = cluster.New(nil, &cluster.MapStorage{},
+	var p dockerProvisioner
+	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: server.URL()})
-	cmutex.Unlock()
-	defer func() {
-		cmutex.Lock()
-		defer cmutex.Unlock()
-		dCluster = oldDockerCluster
-	}()
 	app1 := app.App{Name: "app1"}
 	app2 := app.App{Name: "app2"}
 	conn, err := db.Conn()
@@ -120,11 +99,11 @@ func (s *S) TestMigrateImagesWithRegistry(c *check.C) {
 	defer conn.Close()
 	conn.Apps().Insert(app1, app2)
 	defer conn.Apps().RemoveAll(bson.M{"name": bson.M{"$in": []string{app1.Name, app2.Name}}})
-	err = newImage("localhost:3030/tsuru/app1", "")
+	err = s.newFakeImage(&p, "localhost:3030/tsuru/app1")
 	c.Assert(err, check.IsNil)
-	err = newImage("localhost:3030/tsuru/app2", "")
+	err = s.newFakeImage(&p, "localhost:3030/tsuru/app2")
 	c.Assert(err, check.IsNil)
-	err = migrateImages()
+	err = p.migrateImages()
 	c.Assert(err, check.IsNil)
 	client, err := docker.NewClient(server.URL())
 	c.Assert(err, check.IsNil)

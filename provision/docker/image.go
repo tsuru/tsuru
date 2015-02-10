@@ -27,7 +27,7 @@ type appImages struct {
 	Count   int
 }
 
-func migrateImages() error {
+func (p *dockerProvisioner) migrateImages() error {
 	registry, _ := config.GetString("docker:registry")
 	if registry != "" {
 		registry += "/"
@@ -40,7 +40,7 @@ func migrateImages() error {
 	if err != nil {
 		return err
 	}
-	dcluster := dockerCluster()
+	dcluster := p.getCluster()
 	for _, app := range apps {
 		oldImage := registry + repoNamespace + "/" + app.Name
 		newImage := registry + repoNamespace + "/app-" + app.Name
@@ -323,15 +323,15 @@ func usePlatformImage(app provision.App) bool {
 	return false
 }
 
-func cleanImage(appName, imgName string) {
+func (p *dockerProvisioner) cleanImage(appName, imgName string) {
 	shouldRemove := true
-	err := dockerCluster().RemoveImage(imgName)
+	err := p.getCluster().RemoveImage(imgName)
 	if err != nil {
 		shouldRemove = false
 		log.Errorf("Ignored error removing old image %q: %s. Image kept on list to retry later.",
 			imgName, err.Error())
 	}
-	err = dockerCluster().RemoveFromRegistry(imgName)
+	err = p.getCluster().RemoveFromRegistry(imgName)
 	if err != nil {
 		shouldRemove = false
 		log.Errorf("Ignored error removing old image from registry %q: %s. Image kept on list to retry later.",

@@ -17,13 +17,12 @@ import (
 )
 
 func (s *S) TestMoveContainers(c *check.C) {
-	cluster, err := s.startMultipleServersCluster()
+	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	defer s.stopMultipleServersCluster(cluster)
-	err = newImage("tsuru/app-myapp", s.server.URL())
+	defer s.stopMultipleServersCluster(p)
+	err = s.newFakeImage(p, "tsuru/app-myapp")
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
 	coll := collection()
@@ -33,10 +32,11 @@ func (s *S) TestMoveContainers(c *check.C) {
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		toHost:     "localhost",
-		unitsToAdd: 2,
-		app:        appInstance,
-		imageId:    imageId,
+		toHost:      "localhost",
+		unitsToAdd:  2,
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
 	conn, err := db.Conn()
@@ -50,7 +50,7 @@ func (s *S) TestMoveContainers(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
-	err = moveContainers("localhost", "127.0.0.1", encoder)
+	err = p.moveContainers("localhost", "127.0.0.1", encoder)
 	c.Assert(err, check.IsNil)
 	containers, err := listContainersByHost("localhost")
 	c.Assert(len(containers), check.Equals, 0)
@@ -67,13 +67,12 @@ func (s *S) TestMoveContainers(c *check.C) {
 }
 
 func (s *S) TestMoveContainersUnknownDest(c *check.C) {
-	cluster, err := s.startMultipleServersCluster()
+	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	defer s.stopMultipleServersCluster(cluster)
-	err = newImage("tsuru/app-myapp", s.server.URL())
+	defer s.stopMultipleServersCluster(p)
+	err = s.newFakeImage(p, "tsuru/app-myapp")
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
 	coll := collection()
@@ -83,10 +82,11 @@ func (s *S) TestMoveContainersUnknownDest(c *check.C) {
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		toHost:     "localhost",
-		unitsToAdd: 2,
-		app:        appInstance,
-		imageId:    imageId,
+		toHost:      "localhost",
+		unitsToAdd:  2,
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
 	conn, err := db.Conn()
@@ -100,7 +100,7 @@ func (s *S) TestMoveContainersUnknownDest(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
-	err = moveContainers("localhost", "unknown", encoder)
+	err = p.moveContainers("localhost", "unknown", encoder)
 	c.Assert(err, check.Equals, containerMovementErr)
 	parts := strings.Split(buf.String(), "\n")
 	var logEntry progressLog
@@ -113,13 +113,12 @@ func (s *S) TestMoveContainersUnknownDest(c *check.C) {
 }
 
 func (s *S) TestMoveContainer(c *check.C) {
-	cluster, err := s.startMultipleServersCluster()
+	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	defer s.stopMultipleServersCluster(cluster)
-	err = newImage("tsuru/app-myapp", s.server.URL())
+	defer s.stopMultipleServersCluster(p)
+	err = s.newFakeImage(p, "tsuru/app-myapp")
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
 	coll := collection()
@@ -129,10 +128,11 @@ func (s *S) TestMoveContainer(c *check.C) {
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	addedConts, err := addContainersWithHost(&changeUnitsPipelineArgs{
-		toHost:     "localhost",
-		unitsToAdd: 2,
-		app:        appInstance,
-		imageId:    imageId,
+		toHost:      "localhost",
+		unitsToAdd:  2,
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
 	conn, err := db.Conn()
@@ -146,7 +146,7 @@ func (s *S) TestMoveContainer(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
-	_, err = moveContainer(addedConts[0].ID[0:6], "127.0.0.1", encoder)
+	_, err = p.moveContainer(addedConts[0].ID[0:6], "127.0.0.1", encoder)
 	c.Assert(err, check.IsNil)
 	containers, err := listContainersByHost("localhost")
 	c.Assert(len(containers), check.Equals, 1)
@@ -155,22 +155,22 @@ func (s *S) TestMoveContainer(c *check.C) {
 }
 
 func (s *S) TestRebalanceContainers(c *check.C) {
-	cluster, err := s.startMultipleServersCluster()
+	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	defer s.stopMultipleServersCluster(cluster)
-	err = newImage("tsuru/app-myapp", s.server.URL())
+	defer s.stopMultipleServersCluster(p)
+	err = s.newFakeImage(p, "tsuru/app-myapp")
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		toHost:     "localhost",
-		unitsToAdd: 5,
-		app:        appInstance,
-		imageId:    imageId,
+		toHost:      "localhost",
+		unitsToAdd:  5,
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
 	conn, err := db.Conn()
@@ -184,7 +184,7 @@ func (s *S) TestRebalanceContainers(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
-	err = rebalanceContainers(encoder, false)
+	err = p.rebalanceContainers(encoder, false)
 	c.Assert(err, check.IsNil)
 	c1, err := listContainersByHost("localhost")
 	c.Assert(err, check.IsNil)
@@ -249,15 +249,14 @@ func (s *S) TestAppLockerBlockOtherLockers(c *check.C) {
 
 func (s *S) TestRebalanceContainersManyApps(c *check.C) {
 	c.ExpectFailure("Rebalance scheduling does not distribute applications across hosts")
-	cluster, err := s.startMultipleServersCluster()
+	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	defer s.stopMultipleServersCluster(cluster)
-	err = newImage("tsuru/app-myapp", s.server.URL())
+	defer s.stopMultipleServersCluster(p)
+	err = s.newFakeImage(p, "tsuru/app-myapp")
 	c.Assert(err, check.IsNil)
-	err = newImage("tsuru/app-otherapp", s.server.URL())
+	err = s.newFakeImage(p, "tsuru/app-otherapp")
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
 	appInstance2 := provisiontest.NewFakeApp("otherapp", "python", 0)
@@ -266,19 +265,21 @@ func (s *S) TestRebalanceContainersManyApps(c *check.C) {
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		toHost:     "localhost",
-		unitsToAdd: 1,
-		app:        appInstance,
-		imageId:    imageId,
+		toHost:      "localhost",
+		unitsToAdd:  1,
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
 	imageId2, err := appCurrentImageName(appInstance2.GetName())
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		toHost:     "localhost",
-		unitsToAdd: 1,
-		app:        appInstance2,
-		imageId:    imageId2,
+		toHost:      "localhost",
+		unitsToAdd:  1,
+		app:         appInstance2,
+		imageId:     imageId2,
+		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
 	conn, err := db.Conn()
@@ -300,7 +301,7 @@ func (s *S) TestRebalanceContainersManyApps(c *check.C) {
 	encoder := json.NewEncoder(&buf)
 	c1, err := listContainersByHost("localhost")
 	c.Assert(len(c1), check.Equals, 2)
-	err = rebalanceContainers(encoder, false)
+	err = p.rebalanceContainers(encoder, false)
 	c.Assert(err, check.IsNil)
 	c1, err = listContainersByHost("localhost")
 	c.Assert(len(c1), check.Equals, 1)

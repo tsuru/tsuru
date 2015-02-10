@@ -13,9 +13,12 @@ import (
 	"net"
 	"net/url"
 	"sync"
+	"time"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
+	"github.com/tsuru/docker-cluster/cluster"
+	clusterLog "github.com/tsuru/docker-cluster/log"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
@@ -28,8 +31,16 @@ import (
 	_ "github.com/tsuru/tsuru/router/routertest"
 )
 
+var (
+	mainDockerProvisioner *dockerProvisioner
+	initDockerClusterFunc func(*dockerProvisioner)
+)
+
 func init() {
-	provision.Register("docker", &dockerProvisioner{})
+	mainDockerProvisioner = &dockerProvisioner{}
+	// Small hack to avoid initializtion loop error
+	initDockerClusterFunc = initDockerCluster
+	provision.Register("docker", mainDockerProvisioner)
 }
 
 func getRouterForApp(app provision.App) (router.Router, error) {
@@ -40,10 +51,82 @@ func getRouterForApp(app provision.App) (router.Router, error) {
 	return router.Get(routerName)
 }
 
-type dockerProvisioner struct{}
+type dockerProvisioner struct {
+	cluster *cluster.Cluster
+	cmutex  sync.Mutex
+}
+
+func initDockerCluster(p *dockerProvisioner) {
+	debug, _ := config.GetBool("debug")
+	clusterLog.SetDebug(debug)
+	clusterLog.SetLogger(log.GetStdLogger())
+	clusterStorage, err := buildClusterStorage()
+	if err != nil {
+		panic(err)
+	}
+	var nodes []cluster.Node
+	if isSegregateScheduler() {
+		totalMemoryMetadata, _ := config.GetString("docker:scheduler:total-memory-metadata")
+		maxUsedMemory, _ := config.GetFloat("docker:scheduler:max-used-memory")
+		scheduler := segregatedScheduler{
+			maxMemoryRatio:      float32(maxUsedMemory),
+			totalMemoryMetadata: totalMemoryMetadata,
+		}
+		p.cluster, err = cluster.New(&scheduler, clusterStorage)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		nodes = getDockerServers()
+		p.cluster, err = cluster.New(nil, clusterStorage, nodes...)
+		if err != nil {
+			panic(err)
+		}
+	}
+	autoHealingNodes, _ := config.GetBool("docker:healing:heal-nodes")
+	if autoHealingNodes {
+		disabledSeconds, _ := config.GetDuration("docker:healing:disabled-time")
+		if disabledSeconds <= 0 {
+			disabledSeconds = 30
+		}
+		maxFailures, _ := config.GetInt("docker:healing:max-failures")
+		if maxFailures <= 0 {
+			maxFailures = 5
+		}
+		waitSecondsNewMachine, _ := config.GetDuration("docker:healing:wait-new-time")
+		if waitSecondsNewMachine <= 0 {
+			waitSecondsNewMachine = 5 * 60
+		}
+		healer := Healer{
+			provisioner:           p,
+			disabledTime:          disabledSeconds * time.Second,
+			waitTimeNewMachine:    waitSecondsNewMachine * time.Second,
+			failuresBeforeHealing: maxFailures,
+		}
+		p.cluster.SetHealer(&healer)
+	}
+	healNodesSeconds, _ := config.GetDuration("docker:healing:heal-containers-timeout")
+	if healNodesSeconds > 0 {
+		go p.runContainerHealer(healNodesSeconds * time.Second)
+	}
+	activeMonitoring, _ := config.GetDuration("docker:healing:active-monitoring-interval")
+	if activeMonitoring > 0 {
+		p.cluster.StartActiveMonitoring(activeMonitoring * time.Second)
+	}
+}
+
+func (p *dockerProvisioner) getCluster() *cluster.Cluster {
+	p.cmutex.Lock()
+	defer p.cmutex.Unlock()
+	if p.cluster != nil {
+		return p.cluster
+	}
+	initDockerClusterFunc(p)
+	return p.cluster
+}
 
 func (p *dockerProvisioner) StartupMessage() (string, error) {
-	nodeList, err := dockerCluster().UnfilteredNodes()
+	nodeList, err := p.getCluster().UnfilteredNodes()
 	if err != nil {
 		return "", err
 	}
@@ -55,11 +138,8 @@ func (p *dockerProvisioner) StartupMessage() (string, error) {
 }
 
 func (p *dockerProvisioner) Initialize() error {
-	err := initDockerCluster()
-	if err != nil {
-		return err
-	}
-	return migrateImages()
+	p.getCluster()
+	return p.migrateImages()
 }
 
 // Provision creates a route for the container
@@ -76,7 +156,7 @@ func (p *dockerProvisioner) Provision(app provision.App) error {
 	return r.AddBackend(app.GetName())
 }
 
-func (*dockerProvisioner) Restart(a provision.App, w io.Writer) error {
+func (p *dockerProvisioner) Restart(a provision.App, w io.Writer) error {
 	containers, err := listContainersByApp(a.GetName())
 	if err != nil {
 		return err
@@ -89,11 +169,11 @@ func (*dockerProvisioner) Restart(a provision.App, w io.Writer) error {
 		w = ioutil.Discard
 	}
 	writer := &app.LogWriter{App: a, Writer: w}
-	_, err = runReplaceUnitsPipeline(writer, a, containers, imageId)
+	_, err = p.runReplaceUnitsPipeline(writer, a, containers, imageId)
 	return err
 }
 
-func (*dockerProvisioner) Start(app provision.App) error {
+func (p *dockerProvisioner) Start(app provision.App) error {
 	containers, err := listContainersByApp(app.GetName())
 	if err != nil {
 		return errors.New(fmt.Sprintf("Got error while getting app containers: %s", err))
@@ -104,13 +184,13 @@ func (*dockerProvisioner) Start(app provision.App) error {
 		wg.Add(1)
 		go func(c container) {
 			defer wg.Done()
-			err := c.start(false)
+			err := c.start(p, false)
 			if err != nil {
 				errCh <- err
 				return
 			}
 			c.setStatus(provision.StatusStarting.String())
-			if info, err := c.networkInfo(); err == nil {
+			if info, err := c.networkInfo(p); err == nil {
 				fixContainer(&c, info)
 			}
 		}(c)
@@ -132,7 +212,7 @@ func (p *dockerProvisioner) Stop(app provision.App) error {
 		wg.Add(1)
 		go func(c container) {
 			defer wg.Done()
-			err := c.stop()
+			err := c.stop(p)
 			if err != nil {
 				log.Errorf("Failed to stop %q: %s", app.GetName(), err)
 				errCh <- err
@@ -164,7 +244,7 @@ func (p *dockerProvisioner) ImageDeploy(app provision.App, imageId string, w io.
 }
 
 func (p *dockerProvisioner) GitDeploy(app provision.App, version string, w io.Writer) (string, error) {
-	imageId, err := gitDeploy(app, version, w)
+	imageId, err := p.gitDeploy(app, version, w)
 	if err != nil {
 		return "", err
 	}
@@ -172,7 +252,7 @@ func (p *dockerProvisioner) GitDeploy(app provision.App, version string, w io.Wr
 }
 
 func (p *dockerProvisioner) ArchiveDeploy(app provision.App, archiveURL string, w io.Writer) (string, error) {
-	imageId, err := archiveDeploy(app, getBuildImage(app), archiveURL, w)
+	imageId, err := p.archiveDeploy(app, getBuildImage(app), archiveURL, w)
 	if err != nil {
 		return "", err
 	}
@@ -195,8 +275,8 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 			Cmd:          []string{"/bin/bash", "-c", "cat > " + filePath},
 		},
 	}
-	cluster := dockerCluster()
-	_, container, err := dockerCluster().CreateContainerSchedulerOpts(options, app.GetName())
+	cluster := p.getCluster()
+	_, container, err := cluster.CreateContainerSchedulerOpts(options, app.GetName())
 	if err != nil {
 		return "", err
 	}
@@ -231,7 +311,7 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 	if err != nil {
 		return "", err
 	}
-	imageId, err := archiveDeploy(app, image.ID, "file://"+filePath, w)
+	imageId, err := p.archiveDeploy(app, image.ID, "file://"+filePath, w)
 	if err != nil {
 		return "", err
 	}
@@ -241,7 +321,7 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 func (p *dockerProvisioner) deployAndClean(a provision.App, imageId string, w io.Writer) error {
 	err := p.deploy(a, imageId, w)
 	if err != nil {
-		cleanImage(a.GetName(), imageId)
+		p.cleanImage(a.GetName(), imageId)
 	}
 	return err
 }
@@ -252,9 +332,9 @@ func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer)
 		return err
 	}
 	if len(containers) == 0 {
-		_, err = runCreateUnitsPipeline(w, a, 1, imageId)
+		_, err = p.runCreateUnitsPipeline(w, a, 1, imageId)
 	} else {
-		_, err = runReplaceUnitsPipeline(w, a, containers, imageId)
+		_, err = p.runReplaceUnitsPipeline(w, a, containers, imageId)
 	}
 	return err
 }
@@ -275,7 +355,7 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 			if err != nil {
 				log.Errorf("Unable to unbind unit %q: %s", c.ID, err)
 			}
-			err = removeContainer(&c)
+			err = p.removeContainer(&c)
 			if err != nil {
 				log.Errorf("Unable to destroy container %s: %s", c.ID, err.Error())
 			}
@@ -286,7 +366,7 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 	if err != nil {
 		log.Errorf("Failed to get image ids for app %s: %s", app.GetName(), err.Error())
 	}
-	cluster := dockerCluster()
+	cluster := p.getCluster()
 	for _, imageId := range images {
 		err := cluster.RemoveImage(imageId)
 		if err != nil {
@@ -328,14 +408,14 @@ func (*dockerProvisioner) Addr(app provision.App) (string, error) {
 	return addr, nil
 }
 
-func runRestartAfterHooks(cont *container, w io.Writer) error {
+func (p *dockerProvisioner) runRestartAfterHooks(cont *container, w io.Writer) error {
 	yamlData, err := getImageTsuruYamlDataWithFallback(cont.Image, cont.AppName)
 	if err != nil {
 		return err
 	}
 	cmds := yamlData.Hooks.Restart.After
 	for _, cmd := range cmds {
-		err := cont.exec(w, w, cmd)
+		err := cont.exec(p, w, w, cmd)
 		if err != nil {
 			return fmt.Errorf("couldn't execute restart:after hook %q(%s): %s", cmd, cont.shortID(), err.Error())
 		}
@@ -367,7 +447,7 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			c, err := start(a, imageId, w, destinationHost...)
+			c, err := args.provisioner.start(a, imageId, w, destinationHost...)
 			if err != nil {
 				errors <- err
 				return
@@ -384,7 +464,7 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 				errors <- err
 				return
 			}
-			err = runRestartAfterHooks(c, w)
+			err = args.provisioner.runRestartAfterHooks(c, w)
 			if err != nil {
 				errors <- err
 				return
@@ -403,7 +483,7 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 			if errUnbind != nil {
 				log.Errorf("Unable to unbind unit %q: %s", c.ID, err)
 			}
-			errRem := removeContainer(c)
+			errRem := args.provisioner.removeContainer(c)
 			if errRem != nil {
 				log.Errorf("Unable to destroy container %q: %s", c.ID, err)
 			}
@@ -419,7 +499,7 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 	return result, nil
 }
 
-func (*dockerProvisioner) AddUnits(a provision.App, units uint, w io.Writer) ([]provision.Unit, error) {
+func (p *dockerProvisioner) AddUnits(a provision.App, units uint, w io.Writer) ([]provision.Unit, error) {
 	length, err := getContainerCountForAppName(a.GetName())
 	if err != nil {
 		return nil, err
@@ -438,7 +518,7 @@ func (*dockerProvisioner) AddUnits(a provision.App, units uint, w io.Writer) ([]
 	if err != nil {
 		return nil, err
 	}
-	conts, err := runCreateUnitsPipeline(writer, a, int(units), imageId)
+	conts, err := p.runCreateUnitsPipeline(writer, a, int(units), imageId)
 	if err != nil {
 		return nil, err
 	}
@@ -449,7 +529,7 @@ func (*dockerProvisioner) AddUnits(a provision.App, units uint, w io.Writer) ([]
 	return result, nil
 }
 
-func (*dockerProvisioner) RemoveUnits(a provision.App, units uint) error {
+func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint) error {
 	if a == nil {
 		return errors.New("remove units: app should not be nil")
 	}
@@ -472,7 +552,7 @@ func (*dockerProvisioner) RemoveUnits(a provision.App, units uint) error {
 			if err != nil {
 				log.Errorf("Failed to unbind unit %q: %s", c.ID, err)
 			}
-			err = removeContainer(&c)
+			err = p.removeContainer(&c)
 			if err != nil {
 				log.Errorf("Failed to remove container %q: %s", c.ID, err)
 			}
@@ -483,7 +563,7 @@ func (*dockerProvisioner) RemoveUnits(a provision.App, units uint) error {
 	return nil
 }
 
-func (*dockerProvisioner) RemoveUnit(unit provision.Unit) error {
+func (p *dockerProvisioner) RemoveUnit(unit provision.Unit) error {
 	container, err := getContainer(unit.Name)
 	if err != nil {
 		return err
@@ -496,15 +576,15 @@ func (*dockerProvisioner) RemoveUnit(unit provision.Unit) error {
 	if err != nil {
 		log.Errorf("Failed to unbind unit %q: %s", container.ID, err)
 	}
-	return removeContainer(container)
+	return p.removeContainer(container)
 }
 
-func removeContainer(c *container) error {
-	err := c.stop()
+func (p *dockerProvisioner) removeContainer(c *container) error {
+	err := c.stop(p)
 	if err != nil {
 		log.Errorf("error on stop unit %s - %s", c.ID, err)
 	}
-	err = c.remove()
+	err = c.remove(p)
 	if err != nil {
 		log.Errorf("error on remove container %s - %s", c.ID, err)
 	}
@@ -522,7 +602,7 @@ func (p *dockerProvisioner) SetUnitStatus(unit provision.Unit, status provision.
 	return container.setStatus(status.String())
 }
 
-func (*dockerProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
+func (p *dockerProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
 	containers, err := listRunnableContainersByApp(app.GetName())
 	if err != nil {
 		return err
@@ -531,10 +611,10 @@ func (*dockerProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provi
 		return provision.ErrEmptyApp
 	}
 	container := containers[0]
-	return container.exec(stdout, stderr, cmd, args...)
+	return container.exec(p, stdout, stderr, cmd, args...)
 }
 
-func (*dockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
+func (p *dockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
 	containers, err := listRunnableContainersByApp(app.GetName())
 	if err != nil {
 		return err
@@ -543,7 +623,7 @@ func (*dockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 		return provision.ErrEmptyApp
 	}
 	for _, c := range containers {
-		err = c.exec(stdout, stderr, cmd, args...)
+		err = c.exec(p, stdout, stderr, cmd, args...)
 		if err != nil {
 			return err
 		}
@@ -606,7 +686,7 @@ func (p *dockerProvisioner) PlatformAdd(name string, args map[string]string, w i
 		return errors.New("dockerfile parameter should be an url.")
 	}
 	imageName := platformImageName(name)
-	dockerCluster := dockerCluster()
+	cluster := p.getCluster()
 	buildOptions := docker.BuildImageOptions{
 		Name:           imageName,
 		NoCache:        true,
@@ -615,11 +695,11 @@ func (p *dockerProvisioner) PlatformAdd(name string, args map[string]string, w i
 		InputStream:    nil,
 		OutputStream:   w,
 	}
-	err := dockerCluster.BuildImage(buildOptions)
+	err := cluster.BuildImage(buildOptions)
 	if err != nil {
 		return err
 	}
-	return pushImage(imageName, "")
+	return p.pushImage(imageName, "")
 }
 
 func (p *dockerProvisioner) PlatformUpdate(name string, args map[string]string, w io.Writer) error {
@@ -627,7 +707,7 @@ func (p *dockerProvisioner) PlatformUpdate(name string, args map[string]string, 
 }
 
 func (p *dockerProvisioner) PlatformRemove(name string) error {
-	err := dockerCluster().RemoveImage(platformImageName(name))
+	err := p.getCluster().RemoveImage(platformImageName(name))
 	if err != nil && err == docker.ErrNoSuchImage {
 		log.Errorf("error on remove image %s from docker.", name)
 		return nil
@@ -663,7 +743,7 @@ func (p *dockerProvisioner) RegisterUnit(unit provision.Unit, customData map[str
 	if err != nil {
 		return err
 	}
-	return checkContainer(*container, nil)
+	return p.checkContainer(*container, nil)
 }
 
 func (p *dockerProvisioner) Shell(app provision.App, conn net.Conn, width, height int, args ...string) error {
@@ -679,7 +759,7 @@ func (p *dockerProvisioner) Shell(app provision.App, conn net.Conn, width, heigh
 	if err != nil {
 		return err
 	}
-	return c.shell(conn, conn, conn, pty{width: width, height: height})
+	return c.shell(p, conn, conn, conn, pty{width: width, height: height})
 }
 
 func (p *dockerProvisioner) ValidAppImages(appName string) ([]string, error) {

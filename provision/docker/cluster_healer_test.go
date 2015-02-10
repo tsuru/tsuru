@@ -64,15 +64,11 @@ func urlPort(uStr string) int {
 func (s *S) TestHealerHealNode(c *check.C) {
 	rollback := startTestRepositoryServer()
 	defer rollback()
-	oldCluster := dCluster
 	defer func() {
-		cmutex.Lock()
-		defer cmutex.Unlock()
 		machines, _ := iaas.ListMachines()
 		for _, m := range machines {
 			m.Destroy()
 		}
-		dCluster = oldCluster
 	}()
 	iaasInstance := &TestHealerIaaS{}
 	iaas.RegisterIaasProvider("my-healer-iaas", iaasInstance)
@@ -92,19 +88,19 @@ func (s *S) TestHealerHealNode(c *check.C) {
 		cluster.Node{Address: node1.URL()},
 	)
 	c.Assert(err, check.IsNil)
-	dCluster = cluster
-
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner
+	p.cluster = cluster
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		toHost:     "127.0.0.1",
-		unitsToAdd: 1,
-		app:        appInstance,
-		imageId:    imageId,
+		toHost:      "127.0.0.1",
+		unitsToAdd:  1,
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: &p,
 	})
 	c.Assert(err, check.IsNil)
 
@@ -119,12 +115,12 @@ func (s *S) TestHealerHealNode(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	healer := Healer{
-		cluster:               cluster,
+		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
 		waitTimeNewMachine:    1 * time.Second,
 	}
-	nodes, err := cluster.UnfilteredNodes()
+	nodes, err := p.getCluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(urlPort(nodes[0].Address), check.Equals, urlPort(node1.URL()))
@@ -180,19 +176,21 @@ func (s *S) TestHealerHealNodeWithoutIaaS(c *check.C) {
 		cluster.Node{Address: node1.URL()},
 	)
 	c.Assert(err, check.IsNil)
+	var p dockerProvisioner
+	p.cluster = cluster
 	healer := Healer{
-		cluster:               cluster,
+		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
 		waitTimeNewMachine:    1 * time.Second,
 	}
-	nodes, err := cluster.UnfilteredNodes()
+	nodes, err := p.getCluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	created, err := healer.healNode(&nodes[0])
 	c.Assert(err, check.ErrorMatches, ".*error creating new machine.*")
 	c.Assert(created.Address, check.Equals, "")
-	nodes, err = cluster.UnfilteredNodes()
+	nodes, err = p.getCluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(urlPort(nodes[0].Address), check.Equals, urlPort(node1.URL()))
@@ -222,13 +220,15 @@ func (s *S) TestHealerHealNodeCreateMachineError(c *check.C) {
 	cluster.StartActiveMonitoring(100 * time.Millisecond)
 	time.Sleep(300 * time.Millisecond)
 	cluster.StopActiveMonitoring()
+	var p dockerProvisioner
+	p.cluster = cluster
 	healer := Healer{
-		cluster:               cluster,
+		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
 		waitTimeNewMachine:    1 * time.Second,
 	}
-	nodes, err := cluster.UnfilteredNodes()
+	nodes, err := p.getCluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(urlPort(nodes[0].Address), check.Equals, urlPort(node1.URL()))
@@ -239,7 +239,7 @@ func (s *S) TestHealerHealNodeCreateMachineError(c *check.C) {
 	c.Assert(err, check.ErrorMatches, ".*my create machine error.*")
 	c.Assert(created.Address, check.Equals, "")
 	c.Assert(nodes[0].FailureCount(), check.Equals, 0)
-	nodes, err = cluster.UnfilteredNodes()
+	nodes, err = p.getCluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(urlPort(nodes[0].Address), check.Equals, urlPort(node1.URL()))
@@ -276,13 +276,15 @@ func (s *S) TestHealerHealNodeWaitAndRegisterError(c *check.C) {
 	cluster.StartActiveMonitoring(100 * time.Millisecond)
 	time.Sleep(300 * time.Millisecond)
 	cluster.StopActiveMonitoring()
+	var p dockerProvisioner
+	p.cluster = cluster
 	healer := Healer{
-		cluster:               cluster,
+		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
 		waitTimeNewMachine:    1 * time.Second,
 	}
-	nodes, err := cluster.UnfilteredNodes()
+	nodes, err := p.getCluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(urlPort(nodes[0].Address), check.Equals, urlPort(node1.URL()))
@@ -293,7 +295,7 @@ func (s *S) TestHealerHealNodeWaitAndRegisterError(c *check.C) {
 	c.Assert(err, check.ErrorMatches, ".*error registering new node.*")
 	c.Assert(created.Address, check.Equals, "")
 	c.Assert(nodes[0].FailureCount(), check.Equals, 0)
-	nodes, err = cluster.UnfilteredNodes()
+	nodes, err = p.getCluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(urlPort(nodes[0].Address), check.Equals, urlPort(node1.URL()))
@@ -304,16 +306,12 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 	rollback := startTestRepositoryServer()
 	defer rollback()
 	iaasInstance := &TestHealerIaaS{}
-	oldCluster := dCluster
 	defer func() {
-		cmutex.Lock()
-		defer cmutex.Unlock()
 		iaasInstance.delErr = nil
 		machines, _ := iaas.ListMachines()
 		for _, m := range machines {
 			m.Destroy()
 		}
-		dCluster = oldCluster
 		machines, _ = iaas.ListMachines()
 	}()
 	iaasInstance.delErr = fmt.Errorf("my destroy error")
@@ -334,19 +332,20 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 		cluster.Node{Address: node1.URL()},
 	)
 	c.Assert(err, check.IsNil)
-	dCluster = cluster
+	var p dockerProvisioner
+	p.cluster = cluster
 
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		toHost:     "127.0.0.1",
-		unitsToAdd: 1,
-		app:        appInstance,
-		imageId:    imageId,
+		toHost:      "127.0.0.1",
+		unitsToAdd:  1,
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: &p,
 	})
 	c.Assert(err, check.IsNil)
 
@@ -361,12 +360,12 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	healer := Healer{
-		cluster:               cluster,
+		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
 		waitTimeNewMachine:    1 * time.Second,
 	}
-	nodes, err := cluster.UnfilteredNodes()
+	nodes, err := p.getCluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(urlPort(nodes[0].Address), check.Equals, urlPort(node1.URL()))
@@ -387,7 +386,7 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 	c.Assert(err, check.ErrorMatches, "(?s)Unable to destroy machine.*my destroy error")
 	c.Assert(created.Address, check.Equals, fmt.Sprintf("http://localhost:%d", urlPort(node2.URL())))
 
-	nodes, err = cluster.UnfilteredNodes()
+	nodes, err = p.getCluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(urlPort(nodes[0].Address), check.Equals, urlPort(node2.URL()))
@@ -420,12 +419,6 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 func (s *S) TestHealContainer(c *check.C) {
 	rollback := startTestRepositoryServer()
 	defer rollback()
-	oldCluster := dCluster
-	defer func() {
-		cmutex.Lock()
-		defer cmutex.Unlock()
-		dCluster = oldCluster
-	}()
 	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	node2, err := testing.NewServer("127.0.0.1:0", nil, nil)
@@ -435,19 +428,20 @@ func (s *S) TestHealContainer(c *check.C) {
 		cluster.Node{Address: fmt.Sprintf("http://localhost:%d", urlPort(node2.URL()))},
 	)
 	c.Assert(err, check.IsNil)
-	dCluster = cluster
+	var p dockerProvisioner
+	p.cluster = cluster
 
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		toHost:     "127.0.0.1",
-		unitsToAdd: 1,
-		app:        appInstance,
-		imageId:    imageId,
+		toHost:      "127.0.0.1",
+		unitsToAdd:  1,
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: &p,
 	})
 	c.Assert(err, check.IsNil)
 
@@ -472,7 +466,7 @@ func (s *S) TestHealContainer(c *check.C) {
 	locked := locker.lock(containers[0].AppName)
 	c.Assert(locked, check.Equals, true)
 	defer locker.unlock(containers[0].AppName)
-	_, err = healContainer(containers[0], locker)
+	_, err = p.healContainer(containers[0], locker)
 	c.Assert(err, check.IsNil)
 
 	containers, err = listAllContainers()
@@ -484,12 +478,6 @@ func (s *S) TestHealContainer(c *check.C) {
 func (s *S) TestRunContainerHealer(c *check.C) {
 	rollback := startTestRepositoryServer()
 	defer rollback()
-	oldCluster := dCluster
-	defer func() {
-		cmutex.Lock()
-		defer cmutex.Unlock()
-		dCluster = oldCluster
-	}()
 	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	node2, err := testing.NewServer("127.0.0.1:0", nil, nil)
@@ -499,19 +487,20 @@ func (s *S) TestRunContainerHealer(c *check.C) {
 		cluster.Node{Address: fmt.Sprintf("http://localhost:%d", urlPort(node2.URL()))},
 	)
 	c.Assert(err, check.IsNil)
-	dCluster = cluster
+	var p dockerProvisioner
+	p.cluster = cluster
 
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		toHost:     "127.0.0.1",
-		unitsToAdd: 2,
-		app:        appInstance,
-		imageId:    imageId,
+		toHost:      "127.0.0.1",
+		unitsToAdd:  2,
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: &p,
 	})
 	c.Assert(err, check.IsNil)
 
@@ -539,7 +528,7 @@ func (s *S) TestRunContainerHealer(c *check.C) {
 
 	node1.PrepareFailure("createError", "/containers/create")
 
-	runContainerHealerOnce(1 * time.Minute)
+	p.runContainerHealerOnce(1 * time.Minute)
 
 	containers, err = listAllContainers()
 	c.Assert(err, check.IsNil)
@@ -566,12 +555,6 @@ func (s *S) TestRunContainerHealer(c *check.C) {
 func (s *S) TestRunContainerHealerConcurrency(c *check.C) {
 	rollback := startTestRepositoryServer()
 	defer rollback()
-	oldCluster := dCluster
-	defer func() {
-		cmutex.Lock()
-		defer cmutex.Unlock()
-		dCluster = oldCluster
-	}()
 	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	node2, err := testing.NewServer("127.0.0.1:0", nil, nil)
@@ -581,19 +564,20 @@ func (s *S) TestRunContainerHealerConcurrency(c *check.C) {
 		cluster.Node{Address: fmt.Sprintf("http://localhost:%d", urlPort(node2.URL()))},
 	)
 	c.Assert(err, check.IsNil)
-	dCluster = cluster
+	var p dockerProvisioner
+	p.cluster = cluster
 
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		toHost:     "127.0.0.1",
-		unitsToAdd: 2,
-		app:        appInstance,
-		imageId:    imageId,
+		toHost:      "127.0.0.1",
+		unitsToAdd:  2,
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: &p,
 	})
 	c.Assert(err, check.IsNil)
 
@@ -619,11 +603,11 @@ func (s *S) TestRunContainerHealerConcurrency(c *check.C) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	go func() {
-		healContainerIfNeeded(toMoveCont)
+		p.healContainerIfNeeded(toMoveCont)
 		wg.Done()
 	}()
 	go func() {
-		healContainerIfNeeded(toMoveCont)
+		p.healContainerIfNeeded(toMoveCont)
 		wg.Done()
 	}()
 	wg.Wait()
@@ -653,12 +637,6 @@ func (s *S) TestRunContainerHealerConcurrency(c *check.C) {
 func (s *S) TestRunContainerHealerAlreadyHealed(c *check.C) {
 	rollback := startTestRepositoryServer()
 	defer rollback()
-	oldCluster := dCluster
-	defer func() {
-		cmutex.Lock()
-		defer cmutex.Unlock()
-		dCluster = oldCluster
-	}()
 	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	node2, err := testing.NewServer("127.0.0.1:0", nil, nil)
@@ -668,19 +646,20 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *check.C) {
 		cluster.Node{Address: fmt.Sprintf("http://localhost:%d", urlPort(node2.URL()))},
 	)
 	c.Assert(err, check.IsNil)
-	dCluster = cluster
+	var p dockerProvisioner
+	p.cluster = cluster
 
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		toHost:     "127.0.0.1",
-		unitsToAdd: 2,
-		app:        appInstance,
-		imageId:    imageId,
+		toHost:      "127.0.0.1",
+		unitsToAdd:  2,
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: &p,
 	})
 	c.Assert(err, check.IsNil)
 
@@ -703,8 +682,8 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *check.C) {
 
 	node1.PrepareFailure("createError", "/containers/create")
 
-	healContainerIfNeeded(toMoveCont)
-	healContainerIfNeeded(toMoveCont)
+	p.healContainerIfNeeded(toMoveCont)
+	p.healContainerIfNeeded(toMoveCont)
 
 	containers, err = listAllContainers()
 	c.Assert(err, check.IsNil)
@@ -731,12 +710,6 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *check.C) {
 func (s *S) TestRunContainerHealerDoesntHealWithProcfileInTop(c *check.C) {
 	rollback := startTestRepositoryServer()
 	defer rollback()
-	oldCluster := dCluster
-	defer func() {
-		cmutex.Lock()
-		defer cmutex.Unlock()
-		dCluster = oldCluster
-	}()
 	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	node2, err := testing.NewServer("127.0.0.1:0", nil, nil)
@@ -746,19 +719,20 @@ func (s *S) TestRunContainerHealerDoesntHealWithProcfileInTop(c *check.C) {
 		cluster.Node{Address: fmt.Sprintf("http://localhost:%d", urlPort(node2.URL()))},
 	)
 	c.Assert(err, check.IsNil)
-	dCluster = cluster
+	var p dockerProvisioner
+	p.cluster = cluster
 
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	cont, err := addContainersWithHost(&changeUnitsPipelineArgs{
-		toHost:     "127.0.0.1",
-		unitsToAdd: 1,
-		app:        appInstance,
-		imageId:    imageId,
+		toHost:      "127.0.0.1",
+		unitsToAdd:  1,
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: &p,
 	})
 	c.Assert(err, check.IsNil)
 
@@ -773,7 +747,7 @@ func (s *S) TestRunContainerHealerDoesntHealWithProcfileInTop(c *check.C) {
 	err = coll.Update(bson.M{"id": toMoveCont.ID}, toMoveCont)
 	c.Assert(err, check.IsNil)
 
-	runContainerHealerOnce(1 * time.Minute)
+	p.runContainerHealerOnce(1 * time.Minute)
 
 	healingColl, err := healingCollection()
 	var events []healingEvent
@@ -785,12 +759,6 @@ func (s *S) TestRunContainerHealerDoesntHealWithProcfileInTop(c *check.C) {
 func (s *S) TestRunContainerHealerWithError(c *check.C) {
 	rollback := startTestRepositoryServer()
 	defer rollback()
-	oldCluster := dCluster
-	defer func() {
-		cmutex.Lock()
-		defer cmutex.Unlock()
-		dCluster = oldCluster
-	}()
 	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	node2, err := testing.NewServer("127.0.0.1:0", nil, nil)
@@ -800,19 +768,20 @@ func (s *S) TestRunContainerHealerWithError(c *check.C) {
 		cluster.Node{Address: fmt.Sprintf("http://localhost:%d", urlPort(node2.URL()))},
 	)
 	c.Assert(err, check.IsNil)
-	dCluster = cluster
+	var p dockerProvisioner
+	p.cluster = cluster
 
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		toHost:     "127.0.0.1",
-		unitsToAdd: 2,
-		app:        appInstance,
-		imageId:    imageId,
+		toHost:      "127.0.0.1",
+		unitsToAdd:  2,
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: &p,
 	})
 	c.Assert(err, check.IsNil)
 
@@ -841,7 +810,7 @@ func (s *S) TestRunContainerHealerWithError(c *check.C) {
 	node1.PrepareFailure("createError", "/containers/create")
 	node2.PrepareFailure("createError", "/containers/create")
 
-	runContainerHealerOnce(1 * time.Minute)
+	p.runContainerHealerOnce(1 * time.Minute)
 
 	containers, err = listAllContainers()
 	c.Assert(err, check.IsNil)
@@ -880,7 +849,7 @@ func (s *S) TestRunContainerHealerMaxCounterExceeded(c *check.C) {
 	coll := collection()
 	err := coll.Insert(toMoveCont)
 	c.Assert(err, check.IsNil)
-	err = healContainerIfNeeded(toMoveCont)
+	err = s.p.healContainerIfNeeded(toMoveCont)
 	c.Assert(err, check.ErrorMatches, "Containers healing: number of healings for container cont8 in the last 30 minutes exceeds limit of 3: 7")
 	healingColl, err := healingCollection()
 	var events []healingEvent
@@ -892,15 +861,11 @@ func (s *S) TestRunContainerHealerMaxCounterExceeded(c *check.C) {
 func (s *S) TestHealerHandleError(c *check.C) {
 	rollback := startTestRepositoryServer()
 	defer rollback()
-	oldCluster := dCluster
 	defer func() {
-		cmutex.Lock()
-		defer cmutex.Unlock()
 		machines, _ := iaas.ListMachines()
 		for _, m := range machines {
 			m.Destroy()
 		}
-		dCluster = oldCluster
 	}()
 	iaasInstance := &TestHealerIaaS{}
 	iaas.RegisterIaasProvider("my-healer-iaas", iaasInstance)
@@ -920,19 +885,20 @@ func (s *S) TestHealerHandleError(c *check.C) {
 		cluster.Node{Address: node1.URL()},
 	)
 	c.Assert(err, check.IsNil)
-	dCluster = cluster
+	var p dockerProvisioner
+	p.cluster = cluster
 
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		toHost:     "127.0.0.1",
-		unitsToAdd: 1,
-		app:        appInstance,
-		imageId:    imageId,
+		toHost:      "127.0.0.1",
+		unitsToAdd:  1,
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: &p,
 	})
 	c.Assert(err, check.IsNil)
 
@@ -947,7 +913,7 @@ func (s *S) TestHealerHandleError(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	healer := Healer{
-		cluster:               cluster,
+		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
 		waitTimeNewMachine:    1 * time.Second,
@@ -996,7 +962,7 @@ func (s *S) TestHealerHandleError(c *check.C) {
 
 func (s *S) TestHealerHandleErrorDoesntTriggerEventIfNotNeeded(c *check.C) {
 	healer := Healer{
-		cluster:               nil,
+		provisioner:           nil,
 		disabledTime:          20,
 		failuresBeforeHealing: 1,
 		waitTimeNewMachine:    1 * time.Second,
@@ -1049,7 +1015,7 @@ func (s *S) TestHealerHandleErrorDoesntTriggerEventIfHealingCountTooLarge(c *che
 	iaasInstance := &TestHealerIaaS{}
 	iaas.RegisterIaasProvider("my-healer-iaas", iaasInstance)
 	healer := Healer{
-		cluster:               nil,
+		provisioner:           nil,
 		disabledTime:          20,
 		failuresBeforeHealing: 1,
 		waitTimeNewMachine:    1 * time.Second,

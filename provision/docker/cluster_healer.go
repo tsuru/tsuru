@@ -23,7 +23,7 @@ import (
 )
 
 type Healer struct {
-	cluster               *cluster.Cluster
+	provisioner           *dockerProvisioner
 	disabledTime          time.Duration
 	waitTimeNewMachine    time.Duration
 	failuresBeforeHealing int
@@ -113,23 +113,23 @@ func (h *Healer) healNode(node *cluster.Node) (cluster.Node, error) {
 		node.ResetFailures()
 		return emptyNode, fmt.Errorf("Can't auto-heal after %d failures for node %s: error creating new machine: %s", failures, failingHost, err.Error())
 	}
-	err = h.cluster.Unregister(failingAddr)
+	err = h.provisioner.getCluster().Unregister(failingAddr)
 	if err != nil {
 		machine.Destroy()
 		return emptyNode, fmt.Errorf("Can't auto-heal after %d failures for node %s: error unregistering old node: %s", failures, failingHost, err.Error())
 	}
 	newAddr := machine.FormatNodeAddress()
 	log.Debugf("New machine created during healing process: %s - Waiting for docker to start...", newAddr)
-	createdNode, err := h.cluster.WaitAndRegister(newAddr, nodeMetadata, h.waitTimeNewMachine)
+	createdNode, err := h.provisioner.getCluster().WaitAndRegister(newAddr, nodeMetadata, h.waitTimeNewMachine)
 	if err != nil {
 		node.ResetFailures()
-		h.cluster.Register(failingAddr, nodeMetadata)
+		h.provisioner.getCluster().Register(failingAddr, nodeMetadata)
 		machine.Destroy()
 		return emptyNode, fmt.Errorf("Can't auto-heal after %d failures for node %s: error registering new node: %s", failures, failingHost, err.Error())
 	}
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
-	err = moveContainers(failingHost, "", encoder)
+	err = h.provisioner.moveContainers(failingHost, "", encoder)
 	if err != nil {
 		log.Errorf("Unable to move containers, skipping containers healing %q -> %q: %s: %s", failingHost, machine.Address, err.Error(), buf.String())
 	}
@@ -190,11 +190,11 @@ func (h *Healer) HandleError(node *cluster.Node) time.Duration {
 	return h.disabledTime
 }
 
-func healContainer(cont container, locker *appLocker) (container, error) {
+func (p *dockerProvisioner) healContainer(cont container, locker *appLocker) (container, error) {
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
 	moveErrors := make(chan error, 1)
-	createdContainer := moveOneContainer(cont, "", moveErrors, nil, encoder, locker)
+	createdContainer := p.moveOneContainer(cont, "", moveErrors, nil, encoder, locker)
 	close(moveErrors)
 	err := handleMoveErrors(moveErrors, encoder)
 	if err != nil {
@@ -203,8 +203,8 @@ func healContainer(cont container, locker *appLocker) (container, error) {
 	return createdContainer, err
 }
 
-func hasProcfileWatcher(cont container) (bool, error) {
-	topResult, err := dockerCluster().TopContainer(cont.ID, "")
+func (p *dockerProvisioner) hasProcfileWatcher(cont container) (bool, error) {
+	topResult, err := p.getCluster().TopContainer(cont.ID, "")
 	if err != nil {
 		return false, err
 	}
@@ -217,18 +217,18 @@ func hasProcfileWatcher(cont container) (bool, error) {
 	return false, nil
 }
 
-func runContainerHealer(maxUnresponsiveTime time.Duration) {
+func (p *dockerProvisioner) runContainerHealer(maxUnresponsiveTime time.Duration) {
 	for {
-		runContainerHealerOnce(maxUnresponsiveTime)
+		p.runContainerHealerOnce(maxUnresponsiveTime)
 		time.Sleep(30 * time.Second)
 	}
 }
 
-func healContainerIfNeeded(cont container) error {
+func (p *dockerProvisioner) healContainerIfNeeded(cont container) error {
 	if cont.LastSuccessStatusUpdate.IsZero() {
 		return nil
 	}
-	hasProcfile, err := hasProcfileWatcher(cont)
+	hasProcfile, err := p.hasProcfileWatcher(cont)
 	if err != nil {
 		log.Errorf("Containers healing: couldn't verify running processes in container %s: %s", cont.ID, err.Error())
 	}
@@ -263,7 +263,7 @@ func healContainerIfNeeded(cont container) error {
 	if err != nil {
 		return fmt.Errorf("Error trying to insert container healing event, healing aborted: %s", err.Error())
 	}
-	newCont, healErr := healContainer(cont, locker)
+	newCont, healErr := p.healContainer(cont, locker)
 	if healErr != nil {
 		healErr = fmt.Errorf("Error healing container %s: %s", cont.ID, healErr.Error())
 	}
@@ -274,13 +274,13 @@ func healContainerIfNeeded(cont container) error {
 	return healErr
 }
 
-func runContainerHealerOnce(maxUnresponsiveTime time.Duration) {
+func (p *dockerProvisioner) runContainerHealerOnce(maxUnresponsiveTime time.Duration) {
 	containers, err := listUnresponsiveContainers(maxUnresponsiveTime)
 	if err != nil {
 		log.Errorf("Containers Healing: couldn't list unresponsive containers: %s", err.Error())
 	}
 	for _, cont := range containers {
-		err := healContainerIfNeeded(cont)
+		err := p.healContainerIfNeeded(cont)
 		if err != nil {
 			log.Errorf(err.Error())
 		}

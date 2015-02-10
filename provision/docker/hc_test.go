@@ -87,12 +87,10 @@ func (s *S) TestHealthCheckDocker(c *check.C) {
 		w.Write([]byte("OK"))
 	}))
 	defer server.Close()
-	oldCluster := dCluster
-	defer func() {
-		dCluster = oldCluster
-	}()
-	dCluster, _ = cluster.New(nil, &cluster.MapStorage{}, cluster.Node{Address: server.URL})
-	err := healthCheckDocker()
+	var err error
+	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{}, cluster.Node{Address: server.URL})
+	c.Assert(err, check.IsNil)
+	err = healthCheckDocker()
 	c.Assert(err, check.IsNil)
 	c.Assert(request.Method, check.Equals, "GET")
 	c.Assert(request.URL.Path, check.Equals, "/_ping")
@@ -110,24 +108,20 @@ func (s *S) TestHealthCheckDockerMultipleNodes(c *check.C) {
 		w.Write([]byte("OK"))
 	}))
 	defer server2.Close()
-	oldCluster := dCluster
-	defer func() {
-		dCluster = oldCluster
-	}()
-	dCluster, _ = cluster.New(nil, &cluster.MapStorage{},
+	var err error
+	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: server1.URL}, cluster.Node{Address: server2.URL})
-	err := healthCheckDocker()
+	c.Assert(err, check.IsNil)
+	err = healthCheckDocker()
 	c.Assert(err, check.Equals, hc.ErrDisabledComponent)
 	c.Assert(request, check.IsNil)
 }
 
 func (s *S) TestHealthCheckDockerNoNodes(c *check.C) {
-	oldCluster := dCluster
-	defer func() {
-		dCluster = oldCluster
-	}()
-	dCluster, _ = cluster.New(nil, &cluster.MapStorage{})
-	err := healthCheckDocker()
+	var err error
+	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{})
+	c.Assert(err, check.IsNil)
+	err = healthCheckDocker()
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "error - no nodes available for running containers")
 }
@@ -138,12 +132,10 @@ func (s *S) TestHealthCheckDockerFailure(c *check.C) {
 		w.Write([]byte("something went wrong"))
 	}))
 	defer server.Close()
-	oldCluster := dCluster
-	defer func() {
-		dCluster = oldCluster
-	}()
-	dCluster, _ = cluster.New(nil, &cluster.MapStorage{}, cluster.Node{Address: server.URL})
-	err := healthCheckDocker()
+	var err error
+	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{}, cluster.Node{Address: server.URL})
+	c.Assert(err, check.IsNil)
+	err = healthCheckDocker()
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "ping failed - API error (500): something went wrong")
 }

@@ -42,6 +42,7 @@ type S struct {
 	targetRecover  []string
 	storage        *db.Storage
 	oldProvisioner provision.Provisioner
+	p              *dockerProvisioner
 }
 
 var _ = check.Suite(&S{})
@@ -73,23 +74,23 @@ func (s *S) SetUpSuite(c *check.C) {
 	s.targetRecover = cmdtest.SetTargetFile(c, []byte("http://localhost"))
 	s.storage, err = db.Conn()
 	c.Assert(err, check.IsNil)
+	s.p = &dockerProvisioner{}
 	s.oldProvisioner = app.Provisioner
-	app.Provisioner = &dockerProvisioner{}
+	app.Provisioner = s.p
 }
 
 func (s *S) SetUpTest(c *check.C) {
 	var err error
-	cmutex.Lock()
-	defer cmutex.Unlock()
 	if s.server != nil {
 		s.server.Stop()
 	}
 	s.server, err = dtesting.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
-	dCluster, err = cluster.New(nil, &cluster.MapStorage{},
+	s.p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: s.server.URL()},
 	)
 	c.Assert(err, check.IsNil)
+	mainDockerProvisioner = s.p
 	coll := collection()
 	defer coll.Close()
 	err = dbtest.ClearAllCollections(coll.Database)
@@ -125,29 +126,24 @@ func (s *S) TearDownSuite(c *check.C) {
 	app.Provisioner = s.oldProvisioner
 }
 
-func (s *S) stopMultipleServersCluster(cluster *cluster.Cluster) {
-	cmutex.Lock()
-	defer cmutex.Unlock()
-	dCluster = cluster
+func (s *S) stopMultipleServersCluster(p *dockerProvisioner) {
 }
 
-func (s *S) startMultipleServersCluster() (*cluster.Cluster, error) {
+func (s *S) startMultipleServersCluster() (*dockerProvisioner, error) {
 	otherServer, err := dtesting.NewServer("localhost:0", nil, nil)
 	if err != nil {
 		return nil, err
 	}
-	cmutex.Lock()
-	defer cmutex.Unlock()
-	oldCluster := dCluster
 	otherUrl := strings.Replace(otherServer.URL(), "127.0.0.1", "localhost", 1)
-	dCluster, err = cluster.New(nil, &cluster.MapStorage{},
+	var p dockerProvisioner
+	p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: s.server.URL()},
 		cluster.Node{Address: otherUrl},
 	)
 	if err != nil {
 		return nil, err
 	}
-	return oldCluster, nil
+	return &p, nil
 }
 
 func (s *S) addServiceInstance(c *check.C, appName string, fn http.HandlerFunc) func() {

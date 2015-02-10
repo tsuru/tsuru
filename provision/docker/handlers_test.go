@@ -110,7 +110,8 @@ func (s *HandlersSuite) TearDownSuite(c *check.C) {
 }
 
 func (s *HandlersSuite) TestAddNodeHandler(c *check.C) {
-	dCluster, _ = cluster.New(segregatedScheduler{}, &cluster.MapStorage{})
+	mainDockerProvisioner = &dockerProvisioner{}
+	mainDockerProvisioner.cluster, _ = cluster.New(segregatedScheduler{}, &cluster.MapStorage{})
 	p := Pool{Name: "pool1"}
 	s.conn.Collection(schedulerCollection).Insert(p)
 	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
@@ -121,7 +122,7 @@ func (s *HandlersSuite) TestAddNodeHandler(c *check.C) {
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
 	c.Assert(err, check.IsNil)
-	nodes, err := dCluster.Nodes()
+	nodes, err := mainDockerProvisioner.getCluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address, check.Equals, s.server.URL)
@@ -132,7 +133,8 @@ func (s *HandlersSuite) TestAddNodeHandler(c *check.C) {
 
 func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 	iaas.RegisterIaasProvider("test-iaas", TestIaaS{})
-	dCluster, _ = cluster.New(segregatedScheduler{}, &cluster.MapStorage{})
+	mainDockerProvisioner = &dockerProvisioner{}
+	mainDockerProvisioner.cluster, _ = cluster.New(segregatedScheduler{}, &cluster.MapStorage{})
 	p := Pool{Name: "pool1"}
 	s.conn.Collection(schedulerCollection).Insert(p)
 	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
@@ -146,7 +148,7 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 	err = json.NewDecoder(rec.Body).Decode(&result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.DeepEquals, map[string]string{"description": "my iaas description"})
-	nodes, err := dCluster.Nodes()
+	nodes, err := mainDockerProvisioner.getCluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address, check.Equals, "http://test1.fake.host:1234")
@@ -160,7 +162,8 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachineExplicit(c *check.C) {
 	iaas.RegisterIaasProvider("test-iaas", TestIaaS{})
 	iaas.RegisterIaasProvider("another-test-iaas", TestIaaS{})
-	dCluster, _ = cluster.New(segregatedScheduler{}, &cluster.MapStorage{})
+	mainDockerProvisioner = &dockerProvisioner{}
+	mainDockerProvisioner.cluster, _ = cluster.New(segregatedScheduler{}, &cluster.MapStorage{})
 	p := Pool{Name: "pool1"}
 	s.conn.Collection(schedulerCollection).Insert(p)
 	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
@@ -170,7 +173,7 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachineExplicit(c *check
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
 	c.Assert(err, check.IsNil)
-	nodes, err := dCluster.Nodes()
+	nodes, err := mainDockerProvisioner.getCluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address, check.Equals, "http://test1.fake.host:1234")
@@ -189,14 +192,14 @@ func (s *HandlersSuite) TestAddNodeHandlerWithoutdCluster(c *check.C) {
 	defer config.Unset("docker:segregate")
 	config.Set("docker:cluster:redis-server", "127.0.0.1:6379")
 	defer config.Unset("docker:cluster:redis-server")
-	dCluster = nil
+	mainDockerProvisioner = &dockerProvisioner{}
 	b := bytes.NewBufferString(fmt.Sprintf(`{"address": "%s", "pool": "pool1"}`, s.server.URL))
 	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
 	c.Assert(err, check.IsNil)
-	nodes, err := dockerCluster().Nodes()
+	nodes, err := mainDockerProvisioner.getCluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address, check.Equals, s.server.URL)
@@ -257,9 +260,10 @@ func (s *HandlersSuite) TestValidateNodeAddress(c *check.C) {
 
 func (s *HandlersSuite) TestRemoveNodeHandler(c *check.C) {
 	var err error
-	dCluster, err = cluster.New(nil, &cluster.MapStorage{})
+	mainDockerProvisioner = &dockerProvisioner{}
+	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
-	_, err = dCluster.Register("host.com:2375", nil)
+	_, err = mainDockerProvisioner.getCluster().Register("host.com:2375", nil)
 	c.Assert(err, check.IsNil)
 	b := bytes.NewBufferString(`{"address": "host.com:2375"}`)
 	req, err := http.NewRequest("POST", "/node/remove", b)
@@ -267,7 +271,7 @@ func (s *HandlersSuite) TestRemoveNodeHandler(c *check.C) {
 	rec := httptest.NewRecorder()
 	err = removeNodeHandler(rec, req, nil)
 	c.Assert(err, check.IsNil)
-	nodes, err := dCluster.Nodes()
+	nodes, err := mainDockerProvisioner.getCluster().Nodes()
 	c.Assert(len(nodes), check.Equals, 0)
 }
 
@@ -275,9 +279,10 @@ func (s *HandlersSuite) TestRemoveNodeHandlerWithoutRemoveIaaS(c *check.C) {
 	iaas.RegisterIaasProvider("some-iaas", TestIaaS{})
 	machine, err := iaas.CreateMachineForIaaS("some-iaas", map[string]string{})
 	c.Assert(err, check.IsNil)
-	dCluster, err = cluster.New(nil, &cluster.MapStorage{})
+	mainDockerProvisioner = &dockerProvisioner{}
+	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
-	_, err = dCluster.Register(fmt.Sprintf("http://%s:2375", machine.Address), nil)
+	_, err = mainDockerProvisioner.getCluster().Register(fmt.Sprintf("http://%s:2375", machine.Address), nil)
 	c.Assert(err, check.IsNil)
 	b := bytes.NewBufferString(fmt.Sprintf(`{"address": "http://%s:2375", "remove_iaas": "false"}`, machine.Address))
 	req, err := http.NewRequest("POST", "/node/remove", b)
@@ -285,7 +290,7 @@ func (s *HandlersSuite) TestRemoveNodeHandlerWithoutRemoveIaaS(c *check.C) {
 	rec := httptest.NewRecorder()
 	err = removeNodeHandler(rec, req, nil)
 	c.Assert(err, check.IsNil)
-	nodes, err := dCluster.Nodes()
+	nodes, err := mainDockerProvisioner.getCluster().Nodes()
 	c.Assert(len(nodes), check.Equals, 0)
 	dbM, err := iaas.FindMachineById(machine.Id)
 	c.Assert(err, check.IsNil)
@@ -296,9 +301,10 @@ func (s *HandlersSuite) TestRemoveNodeHandlerRemoveIaaS(c *check.C) {
 	iaas.RegisterIaasProvider("my-xxx-iaas", TestIaaS{})
 	machine, err := iaas.CreateMachineForIaaS("my-xxx-iaas", map[string]string{})
 	c.Assert(err, check.IsNil)
-	dCluster, err = cluster.New(nil, &cluster.MapStorage{})
+	mainDockerProvisioner = &dockerProvisioner{}
+	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
-	_, err = dCluster.Register(fmt.Sprintf("http://%s:2375", machine.Address), nil)
+	_, err = mainDockerProvisioner.getCluster().Register(fmt.Sprintf("http://%s:2375", machine.Address), nil)
 	c.Assert(err, check.IsNil)
 	b := bytes.NewBufferString(fmt.Sprintf(`{"address": "http://%s:2375", "remove_iaas": "true"}`, machine.Address))
 	req, err := http.NewRequest("POST", "/node/remove", b)
@@ -306,7 +312,7 @@ func (s *HandlersSuite) TestRemoveNodeHandlerRemoveIaaS(c *check.C) {
 	rec := httptest.NewRecorder()
 	err = removeNodeHandler(rec, req, nil)
 	c.Assert(err, check.IsNil)
-	nodes, err := dCluster.Nodes()
+	nodes, err := mainDockerProvisioner.getCluster().Nodes()
 	c.Assert(len(nodes), check.Equals, 0)
 	_, err = iaas.FindMachineById(machine.Id)
 	c.Assert(err, check.Equals, mgo.ErrNotFound)
@@ -318,11 +324,12 @@ func (s *HandlersSuite) TestListNodeHandler(c *check.C) {
 		Machines []iaas.Machine `json:"machines"`
 	}
 	var err error
-	dCluster, err = cluster.New(nil, &cluster.MapStorage{})
+	mainDockerProvisioner = &dockerProvisioner{}
+	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
-	_, err = dCluster.Register("host1.com:2375", map[string]string{"pool": "pool1"})
+	_, err = mainDockerProvisioner.getCluster().Register("host1.com:2375", map[string]string{"pool": "pool1"})
 	c.Assert(err, check.IsNil)
-	_, err = dCluster.Register("host2.com:2375", map[string]string{"pool": "pool2", "foo": "bar"})
+	_, err = mainDockerProvisioner.getCluster().Register("host2.com:2375", map[string]string{"pool": "pool2", "foo": "bar"})
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("GET", "/node/", nil)
 	rec := httptest.NewRecorder()
@@ -360,15 +367,15 @@ func (s *HandlersSuite) TestFixContainerHandler(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveAll(bson.M{"appname": "makea"})
-	cleanup, server := startDocker("9999")
+	cleanup, server, _ := startDocker("9999")
 	defer cleanup()
 	var storage cluster.MapStorage
 	storage.StoreContainer("9930c24f1c4x", server.URL)
-	cmutex.Lock()
-	dCluster, err = cluster.New(nil, &storage,
+	mainDockerProvisioner = &dockerProvisioner{}
+	mainDockerProvisioner.cluster, err = cluster.New(nil, &storage,
 		cluster.Node{Address: server.URL},
 	)
-	cmutex.Unlock()
+	c.Assert(err, check.IsNil)
 	request, err := http.NewRequest("POST", "/fix-containers", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -382,9 +389,12 @@ func (s *HandlersSuite) TestFixContainerHandler(c *check.C) {
 
 func (s *HandlersSuite) TestListContainersByHostHandler(c *check.C) {
 	var result []container
+	var err error
 	coll := collection()
-	dCluster, _ = cluster.New(segregatedScheduler{}, nil)
-	err := coll.Insert(container{ID: "blabla", Type: "python", HostAddr: "http://cittavld1182.globoi.com"})
+	mainDockerProvisioner = &dockerProvisioner{}
+	mainDockerProvisioner.cluster, err = cluster.New(segregatedScheduler{}, &cluster.MapStorage{})
+	c.Assert(err, check.IsNil)
+	err = coll.Insert(container{ID: "blabla", Type: "python", HostAddr: "http://cittavld1182.globoi.com"})
 	c.Assert(err, check.IsNil)
 	defer coll.Remove(bson.M{"id": "blabla"})
 	err = coll.Insert(container{ID: "bleble", Type: "java", HostAddr: "http://cittavld1182.globoi.com"})
@@ -408,9 +418,11 @@ func (s *HandlersSuite) TestListContainersByHostHandler(c *check.C) {
 
 func (s *HandlersSuite) TestListContainersByAppHandler(c *check.C) {
 	var result []container
+	var err error
 	coll := collection()
-	dCluster, _ = cluster.New(segregatedScheduler{}, nil)
-	err := coll.Insert(container{ID: "blabla", AppName: "appbla", HostAddr: "http://cittavld1182.globoi.com"})
+	mainDockerProvisioner = &dockerProvisioner{}
+	mainDockerProvisioner.cluster, err = cluster.New(segregatedScheduler{}, &cluster.MapStorage{})
+	err = coll.Insert(container{ID: "blabla", AppName: "appbla", HostAddr: "http://cittavld1182.globoi.com"})
 	c.Assert(err, check.IsNil)
 	defer coll.Remove(bson.M{"id": "blabla"})
 	err = coll.Insert(container{ID: "bleble", AppName: "appbla", HostAddr: "http://cittavld1180.globoi.com"})
@@ -484,13 +496,13 @@ func (s *HandlersSuite) TestMoveContainerHandler(c *check.C) {
 }
 
 func (s *S) TestRebalanceContainersEmptyBodyHandler(c *check.C) {
-	cluster, err := s.startMultipleServersCluster()
+	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	defer s.stopMultipleServersCluster(cluster)
-	err = newImage("tsuru/app-myapp", s.server.URL())
+	mainDockerProvisioner = p
+	defer s.stopMultipleServersCluster(p)
+	err = s.newFakeImage(p, "tsuru/app-myapp")
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
 	coll := collection()
@@ -500,10 +512,11 @@ func (s *S) TestRebalanceContainersEmptyBodyHandler(c *check.C) {
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
-		toHost:     "localhost",
-		unitsToAdd: 5,
-		app:        appInstance,
-		imageId:    imageId,
+		toHost:      "localhost",
+		unitsToAdd:  5,
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
 	conn, err := db.Conn()
@@ -542,13 +555,13 @@ func (s *S) TestRebalanceContainersEmptyBodyHandler(c *check.C) {
 }
 
 func (s *S) TestRebalanceContainersDryBodyHandler(c *check.C) {
-	cluster, err := s.startMultipleServersCluster()
+	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	defer s.stopMultipleServersCluster(cluster)
-	err = newImage("tsuru/app-myapp", s.server.URL())
+	mainDockerProvisioner = p
+	defer s.stopMultipleServersCluster(p)
+	err = s.newFakeImage(p, "tsuru/app-myapp")
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	var p dockerProvisioner
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
 	coll := collection()
@@ -558,10 +571,11 @@ func (s *S) TestRebalanceContainersDryBodyHandler(c *check.C) {
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
-		toHost:     "localhost",
-		unitsToAdd: 5,
-		app:        appInstance,
-		imageId:    imageId,
+		toHost:      "localhost",
+		unitsToAdd:  5,
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
 	conn, err := db.Conn()

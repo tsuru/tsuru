@@ -14,7 +14,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-func fixContainers() error {
+func (p *dockerProvisioner) fixContainers() error {
 	var containersGroup sync.WaitGroup
 	containers, err := listAllContainers()
 	if err != nil {
@@ -25,18 +25,18 @@ func fixContainers() error {
 	}
 	for _, container := range containers {
 		containersGroup.Add(1)
-		go checkContainer(container, &containersGroup)
+		go p.checkContainer(container, &containersGroup)
 	}
 	containersGroup.Wait()
 	return nil
 }
 
-func checkContainer(container container, wg *sync.WaitGroup) error {
+func (p *dockerProvisioner) checkContainer(container container, wg *sync.WaitGroup) error {
 	if wg != nil {
 		defer wg.Done()
 	}
 	if container.available() {
-		info, err := container.networkInfo()
+		info, err := container.networkInfo(p)
 		if err != nil {
 			return err
 		}

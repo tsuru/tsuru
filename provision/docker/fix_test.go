@@ -18,7 +18,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-func startDocker(hostPort string) (func(), *httptest.Server) {
+func startDocker(hostPort string) (func(), *httptest.Server, *dockerProvisioner) {
 	output := `{
     "State": {
         "Running": true,
@@ -49,8 +49,8 @@ func startDocker(hostPort string) (func(), *httptest.Server) {
 		}
 	}))
 	var err error
-	oldCluster := dockerCluster()
-	dCluster, err = cluster.New(nil, &cluster.MapStorage{},
+	var p dockerProvisioner
+	p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: server.URL},
 	)
 	if err != nil {
@@ -58,8 +58,7 @@ func startDocker(hostPort string) (func(), *httptest.Server) {
 	}
 	return func() {
 		server.Close()
-		dCluster = oldCluster
-	}, server
+	}, server, &p
 }
 
 func (s *S) TestFixContainers(c *check.C) {
@@ -84,17 +83,15 @@ func (s *S) TestFixContainers(c *check.C) {
 	err = conn.Apps().Insert(&app.App{Name: "makea"})
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().RemoveAll(bson.M{"name": "makea"})
-	cleanup, server := startDocker("9999")
+	cleanup, server, p := startDocker("9999")
 	defer cleanup()
 	var storage cluster.MapStorage
 	storage.StoreContainer("9930c24f1c4x", server.URL)
-	cmutex.Lock()
-	dCluster, err = cluster.New(nil, &storage,
+	p.cluster, err = cluster.New(nil, &storage,
 		cluster.Node{Address: server.URL},
 	)
-	cmutex.Unlock()
 	c.Assert(err, check.IsNil)
-	err = fixContainers()
+	err = p.fixContainers()
 	c.Assert(err, check.IsNil)
 	cont, err := getContainer("9930c24f1c4x")
 	c.Assert(err, check.IsNil)
@@ -118,17 +115,15 @@ func (s *S) TestFixContainersEmptyPortDoesNothing(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveAll(bson.M{"appname": "makea"})
-	cleanup, server := startDocker("")
+	cleanup, server, p := startDocker("")
 	defer cleanup()
 	var storage cluster.MapStorage
 	storage.StoreContainer("9930c24f1c4x", server.URL)
-	cmutex.Lock()
-	dCluster, err = cluster.New(nil, &storage,
+	p.cluster, err = cluster.New(nil, &storage,
 		cluster.Node{Address: server.URL},
 	)
-	cmutex.Unlock()
 	c.Assert(err, check.IsNil)
-	err = fixContainers()
+	err = p.fixContainers()
 	c.Assert(err, check.IsNil)
 	cont, err := getContainer("9930c24f1c4x")
 	c.Assert(err, check.IsNil)

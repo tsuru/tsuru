@@ -27,15 +27,17 @@ type runContainerActionsArgs struct {
 	writer           io.Writer
 	isDeploy         bool
 	buildingImage    string
+	provisioner      *dockerProvisioner
 }
 
 type changeUnitsPipelineArgs struct {
-	app        provision.App
-	writer     io.Writer
-	toRemove   []container
-	unitsToAdd int
-	toHost     string
-	imageId    string
+	app         provision.App
+	writer      io.Writer
+	toRemove    []container
+	unitsToAdd  int
+	toHost      string
+	imageId     string
+	provisioner *dockerProvisioner
 }
 
 var insertEmptyContainerInDB = action.Action{
@@ -99,7 +101,8 @@ var createContainer = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		c := ctx.FWResult.(container)
-		err := dockerCluster().RemoveContainer(docker.RemoveContainerOptions{ID: c.ID})
+		args := ctx.Params[0].(runContainerActionsArgs)
+		err := args.provisioner.getCluster().RemoveContainer(docker.RemoveContainerOptions{ID: c.ID})
 		if err != nil {
 			log.Errorf("Failed to remove the container %q: %s", c.ID, err)
 		}
@@ -110,7 +113,8 @@ var setNetworkInfo = action.Action{
 	Name: "set-network-info",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		c := ctx.Previous.(container)
-		info, err := c.networkInfo()
+		args := ctx.Params[0].(runContainerActionsArgs)
+		info, err := c.networkInfo(args.provisioner)
 		if err != nil {
 			return nil, err
 		}
@@ -126,7 +130,7 @@ var startContainer = action.Action{
 		c := ctx.Previous.(container)
 		log.Debugf("starting container %s", c.ID)
 		args := ctx.Params[0].(runContainerActionsArgs)
-		err := c.start(args.isDeploy)
+		err := c.start(args.provisioner, args.isDeploy)
 		if err != nil {
 			log.Errorf("error on start container %s - %s", c.ID, err)
 			return nil, err
@@ -135,7 +139,8 @@ var startContainer = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		c := ctx.FWResult.(container)
-		err := dockerCluster().StopContainer(c.ID, 10)
+		args := ctx.Params[0].(runContainerActionsArgs)
+		err := args.provisioner.getCluster().StopContainer(c.ID, 10)
 		if err != nil {
 			log.Errorf("Failed to stop the container %q: %s", c.ID, err)
 		}
@@ -153,9 +158,10 @@ var provisionAddUnitsToHost = action.Action{
 		return containers, nil
 	},
 	Backward: func(ctx action.BWContext) {
+		args := ctx.Params[0].(changeUnitsPipelineArgs)
 		containers := ctx.FWResult.([]container)
 		for _, cont := range containers {
-			err := removeContainer(&cont)
+			err := args.provisioner.removeContainer(&cont)
 			if err != nil {
 				log.Errorf("Error removing added container %s: %s", cont.ID, err.Error())
 			}
@@ -271,7 +277,7 @@ var provisionRemoveOldUnits = action.Action{
 			wg.Add(1)
 			go func(cont container) {
 				defer wg.Done()
-				err := removeContainer(&cont)
+				err := args.provisioner.removeContainer(&cont)
 				if err != nil {
 					log.Errorf("Ignored error trying to remove old container %q: %s", cont.ID, err)
 				}
@@ -307,12 +313,12 @@ var followLogsAndCommit = action.Action{
 			return nil, errors.New("Previous result must be a container.")
 		}
 		args := ctx.Params[0].(runContainerActionsArgs)
-		err := c.logs(args.writer)
+		err := c.logs(args.provisioner, args.writer)
 		if err != nil {
 			log.Errorf("error on get logs for container %s - %s", c.ID, err)
 			return nil, err
 		}
-		status, err := dockerCluster().WaitContainer(c.ID)
+		status, err := args.provisioner.getCluster().WaitContainer(c.ID)
 		if err != nil {
 			log.Errorf("Process failed for container %q: %s", c.ID, err)
 			return nil, err
@@ -321,13 +327,13 @@ var followLogsAndCommit = action.Action{
 			return nil, fmt.Errorf("Exit status %d", status)
 		}
 		fmt.Fprintf(args.writer, "\n---- Building application image ----\n")
-		imageId, err := c.commit(args.writer)
+		imageId, err := c.commit(args.provisioner, args.writer)
 		if err != nil {
 			log.Errorf("error on commit container %s - %s", c.ID, err)
 			return nil, err
 		}
 		fmt.Fprintf(args.writer, " ---> Cleaning up\n")
-		c.remove()
+		c.remove(args.provisioner)
 		return imageId, nil
 	},
 	Backward: func(ctx action.BWContext) {
@@ -354,13 +360,13 @@ var updateAppImage = action.Action{
 		}
 		for i, imgName := range allImages {
 			if i > len(allImages)-imgHistorySize-1 {
-				err := dockerCluster().RemoveImageIgnoreLast(imgName)
+				err := args.provisioner.getCluster().RemoveImageIgnoreLast(imgName)
 				if err != nil {
 					log.Debugf("Ignored error removing old image %q: %s", imgName, err.Error())
 				}
 				continue
 			}
-			cleanImage(args.app.GetName(), imgName)
+			args.provisioner.cleanImage(args.app.GetName(), imgName)
 		}
 		return ctx.Previous, nil
 	},

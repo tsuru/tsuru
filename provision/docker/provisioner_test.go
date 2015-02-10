@@ -42,25 +42,23 @@ func (s *S) TestShouldBeRegistered(c *check.C) {
 
 func (s *S) TestProvisionerProvision(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	var p dockerProvisioner
-	err := p.Provision(app)
+	err := s.p.Provision(app)
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.FakeRouter.HasBackend("myapp"), check.Equals, true)
 	c.Assert(app.IsReady(), check.Equals, true)
 }
 
 func (s *S) TestProvisionerRestart(c *check.C) {
-	var p dockerProvisioner
 	app := provisiontest.NewFakeApp("almah", "static", 1)
 	cont, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
-	err = p.Start(app)
+	err = s.p.Start(app)
 	c.Assert(err, check.IsNil)
-	dockerContainer, err := dCluster.InspectContainer(cont.ID)
+	dockerContainer, err := s.p.getCluster().InspectContainer(cont.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, true)
-	err = p.Restart(app, nil)
+	err = s.p.Restart(app, nil)
 	c.Assert(err, check.IsNil)
 	dbConts, err := listAllContainers()
 	c.Assert(err, check.IsNil)
@@ -68,7 +66,7 @@ func (s *S) TestProvisionerRestart(c *check.C) {
 	c.Assert(dbConts[0].ID, check.Not(check.Equals), cont.ID)
 	c.Assert(dbConts[0].AppName, check.Equals, app.GetName())
 	c.Assert(dbConts[0].Status, check.Equals, provision.StatusStarting.String())
-	dockerContainer, err = dCluster.InspectContainer(dbConts[0].ID)
+	dockerContainer, err = s.p.getCluster().InspectContainer(dbConts[0].ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, true)
 	expectedIP := dockerContainer.NetworkSettings.IPAddress
@@ -105,9 +103,8 @@ func (s *S) TestDeploy(c *check.C) {
 	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(1)
-	err := newImage("tsuru/python", s.server.URL())
+	err := s.newFakeImage(s.p, "tsuru/python")
 	c.Assert(err, check.IsNil)
-	p := dockerProvisioner{}
 	a := app.App{
 		Name:     "otherapp",
 		Platform: "python",
@@ -117,8 +114,8 @@ func (s *S) TestDeploy(c *check.C) {
 	err = conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": a.Name})
-	p.Provision(&a)
-	defer p.Destroy(&a)
+	s.p.Provision(&a)
+	defer s.p.Destroy(&a)
 	w := safe.NewBuffer(make([]byte, 2048))
 	var serviceBodies []string
 	rollback := s.addServiceInstance(c, a.Name, func(w http.ResponseWriter, r *http.Request) {
@@ -147,9 +144,8 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(3)
-	err := newImage("tsuru/python", s.server.URL())
+	err := s.newFakeImage(s.p, "tsuru/python")
 	c.Assert(err, check.IsNil)
-	p := dockerProvisioner{}
 	a := app.App{
 		Name:     "appdeployimagetest",
 		Platform: "python",
@@ -159,9 +155,9 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 	err = conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": a.Name})
-	err = p.Provision(&a)
+	err = s.p.Provision(&a)
 	c.Assert(err, check.IsNil)
-	defer p.Destroy(&a)
+	defer s.p.Destroy(&a)
 	w := safe.NewBuffer(make([]byte, 2048))
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
@@ -170,7 +166,7 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 		OutputStream: w,
 	})
 	c.Assert(err, check.IsNil)
-	imgs, err := dockerCluster().ListImages(docker.ListImagesOptions{All: true})
+	imgs, err := s.p.getCluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(imgs, check.HasLen, 2)
 	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
@@ -186,7 +182,7 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 		OutputStream: w,
 	})
 	c.Assert(err, check.IsNil)
-	imgs, err = dockerCluster().ListImages(docker.ListImagesOptions{All: true})
+	imgs, err = s.p.getCluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(imgs, check.HasLen, 2)
 	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
@@ -201,9 +197,8 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 	config.Set("docker:image-history-size", 1)
 	defer config.Unset("docker:image-history-size")
 	go s.stopContainers(1)
-	err := newImage("tsuru/python", s.server.URL())
+	err := s.newFakeImage(s.p, "tsuru/python")
 	c.Assert(err, check.IsNil)
-	p := dockerProvisioner{}
 	a := app.App{
 		Name:     "appdeployimagetest",
 		Platform: "python",
@@ -213,9 +208,9 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 	err = conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": a.Name})
-	err = p.Provision(&a)
+	err = s.p.Provision(&a)
 	c.Assert(err, check.IsNil)
-	defer p.Destroy(&a)
+	defer s.p.Destroy(&a)
 	s.server.CustomHandler("/containers/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		data, _ := ioutil.ReadAll(r.Body)
 		r.Body = ioutil.NopCloser(bytes.NewBuffer(data))
@@ -237,7 +232,7 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 		OutputStream: w,
 	})
 	c.Assert(err, check.NotNil)
-	imgs, err := dockerCluster().ListImages(docker.ListImagesOptions{All: true})
+	imgs, err := s.p.getCluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(imgs, check.HasLen, 1)
 	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
@@ -251,9 +246,8 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(5)
-	err := newImage("tsuru/python", s.server.URL())
+	err := s.newFakeImage(s.p, "tsuru/python")
 	c.Assert(err, check.IsNil)
-	p := dockerProvisioner{}
 	a := app.App{
 		Name:     "appdeployimagetest",
 		Platform: "python",
@@ -263,9 +257,9 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	err = conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": a.Name})
-	err = p.Provision(&a)
+	err = s.p.Provision(&a)
 	c.Assert(err, check.IsNil)
-	defer p.Destroy(&a)
+	defer s.p.Destroy(&a)
 	w := safe.NewBuffer(make([]byte, 2048))
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
@@ -274,7 +268,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 		OutputStream: w,
 	})
 	c.Assert(err, check.IsNil)
-	imgs, err := dockerCluster().ListImages(docker.ListImagesOptions{All: true})
+	imgs, err := s.p.getCluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(imgs, check.HasLen, 2)
 	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
@@ -290,7 +284,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 		OutputStream: w,
 	})
 	c.Assert(err, check.IsNil)
-	imgs, err = dockerCluster().ListImages(docker.ListImagesOptions{All: true})
+	imgs, err = s.p.getCluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(imgs, check.HasLen, 3)
 	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
@@ -307,7 +301,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 		OutputStream: w,
 	})
 	c.Assert(err, check.IsNil)
-	imgs, err = dockerCluster().ListImages(docker.ListImagesOptions{All: true})
+	imgs, err = s.p.getCluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(imgs, check.HasLen, 3)
 	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
@@ -324,9 +318,8 @@ func (s *S) TestProvisionerUploadDeploy(c *check.C) {
 	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(3)
-	err := newImage("tsuru/python", s.server.URL())
+	err := s.newFakeImage(s.p, "tsuru/python")
 	c.Assert(err, check.IsNil)
-	p := dockerProvisioner{}
 	a := app.App{
 		Name:     "otherapp",
 		Platform: "python",
@@ -336,8 +329,8 @@ func (s *S) TestProvisionerUploadDeploy(c *check.C) {
 	err = conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": a.Name})
-	p.Provision(&a)
-	defer p.Destroy(&a)
+	s.p.Provision(&a)
+	defer s.p.Destroy(&a)
 	w := safe.NewBuffer(make([]byte, 2048))
 	var serviceBodies []string
 	rollback := s.addServiceInstance(c, a.Name, func(w http.ResponseWriter, r *http.Request) {
@@ -371,7 +364,6 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *ch
 	defer s.removeTestContainer(cont2)
 	c.Assert(err, check.IsNil)
 	defer routertest.FakeRouter.RemoveBackend(cont1.AppName)
-	var p dockerProvisioner
 	a := app.App{
 		Name:     "otherapp",
 		Platform: "python",
@@ -381,8 +373,8 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *ch
 	err = conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": a.Name})
-	p.Provision(&a)
-	defer p.Destroy(&a)
+	s.p.Provision(&a)
+	defer s.p.Destroy(&a)
 	var w bytes.Buffer
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
@@ -391,7 +383,7 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *ch
 		OutputStream: &w,
 	})
 	c.Assert(err, check.IsNil)
-	defer p.Destroy(&a)
+	defer s.p.Destroy(&a)
 	coll := collection()
 	defer coll.Close()
 	n, err := coll.Find(bson.M{"appname": cont1.AppName}).Count()
@@ -404,11 +396,10 @@ func (s *S) TestImageDeploy(c *check.C) {
 	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(1)
-	err := newImage("tsuru/app-otherapp:v1", s.server.URL())
+	err := s.newFakeImage(s.p, "tsuru/app-otherapp:v1")
 	c.Assert(err, check.IsNil)
 	err = appendAppImageName("otherapp", "tsuru/app-otherapp:v1")
 	c.Assert(err, check.IsNil)
-	p := dockerProvisioner{}
 	a := app.App{
 		Name:     "otherapp",
 		Platform: "python",
@@ -418,8 +409,8 @@ func (s *S) TestImageDeploy(c *check.C) {
 	err = conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": a.Name})
-	p.Provision(&a)
-	defer p.Destroy(&a)
+	s.p.Provision(&a)
+	defer s.p.Destroy(&a)
 	w := safe.NewBuffer(make([]byte, 2048))
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
@@ -436,7 +427,6 @@ func (s *S) TestImageDeployInvalidImage(c *check.C) {
 	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(1)
-	p := dockerProvisioner{}
 	a := app.App{
 		Name:     "otherapp",
 		Platform: "python",
@@ -446,8 +436,8 @@ func (s *S) TestImageDeployInvalidImage(c *check.C) {
 	err = conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": a.Name})
-	p.Provision(&a)
-	defer p.Destroy(&a)
+	s.p.Provision(&a)
+	defer s.p.Destroy(&a)
 	w := safe.NewBuffer(make([]byte, 2048))
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
@@ -460,11 +450,10 @@ func (s *S) TestImageDeployInvalidImage(c *check.C) {
 }
 
 func (s *S) TestImageDeployFailureDoesntEraseImage(c *check.C) {
-	err := newImage("tsuru/app-otherapp:v1", s.server.URL())
+	err := s.newFakeImage(s.p, "tsuru/app-otherapp:v1")
 	c.Assert(err, check.IsNil)
 	err = appendAppImageName("otherapp", "tsuru/app-otherapp:v1")
 	c.Assert(err, check.IsNil)
-	p := dockerProvisioner{}
 	a := app.App{
 		Name:     "otherapp",
 		Platform: "python",
@@ -474,8 +463,8 @@ func (s *S) TestImageDeployFailureDoesntEraseImage(c *check.C) {
 	err = conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": a.Name})
-	p.Provision(&a)
-	defer p.Destroy(&a)
+	s.p.Provision(&a)
+	defer s.p.Destroy(&a)
 	s.server.CustomHandler("/containers/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		data, _ := ioutil.ReadAll(r.Body)
 		r.Body = ioutil.NopCloser(bytes.NewBuffer(data))
@@ -498,7 +487,7 @@ func (s *S) TestImageDeployFailureDoesntEraseImage(c *check.C) {
 	c.Assert(err, check.NotNil)
 	units := a.Units()
 	c.Assert(units, check.HasLen, 0)
-	imgs, err := dockerCluster().ListImages(docker.ListImagesOptions{All: true})
+	imgs, err := s.p.getCluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(imgs, check.HasLen, 1)
 	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
@@ -511,9 +500,8 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 	app := provisiontest.NewFakeApp(cont.AppName, "python", 1)
 	unit := cont.asUnit(app)
 	app.BindUnit(&unit)
-	var p dockerProvisioner
-	p.Provision(app)
-	err = p.Destroy(app)
+	s.p.Provision(app)
+	err = s.p.Destroy(app)
 	c.Assert(err, check.IsNil)
 	coll := collection()
 	count, err := coll.Find(bson.M{"appname": cont.AppName}).Count()
@@ -537,7 +525,6 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 	gandalfServer := repositorytest.StartGandalfTestServer(h)
 	defer gandalfServer.Close()
 	go s.stopContainers(1)
-	p := dockerProvisioner{}
 	a := app.App{
 		Name:     "mydoomedapp",
 		Platform: "python",
@@ -547,8 +534,8 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 	err = conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": a.Name})
-	p.Provision(&a)
-	defer p.Destroy(&a)
+	s.p.Provision(&a)
+	defer s.p.Destroy(&a)
 	w := safe.NewBuffer(make([]byte, 2048))
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
@@ -557,7 +544,7 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 		OutputStream: w,
 	})
 	c.Assert(err, check.IsNil)
-	err = p.Destroy(&a)
+	err = s.p.Destroy(&a)
 	c.Assert(err, check.IsNil)
 	coll := collection()
 	count, err := coll.Find(bson.M{"appname": a.Name}).Count()
@@ -567,7 +554,7 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 	c.Assert(registryRequests, check.HasLen, 1)
 	c.Assert(registryRequests[0].Method, check.Equals, "DELETE")
 	c.Assert(registryRequests[0].URL.Path, check.Equals, "/v1/repositories/tsuru/app-mydoomedapp:v1/")
-	imgs, err := dockerCluster().ListImages(docker.ListImagesOptions{All: true})
+	imgs, err := s.p.getCluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
 	c.Assert(imgs, check.HasLen, 1)
 	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
@@ -576,18 +563,16 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 
 func (s *S) TestProvisionerDestroyEmptyUnit(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 0)
-	var p dockerProvisioner
-	p.Provision(app)
-	err := p.Destroy(app)
+	s.p.Provision(app)
+	err := s.p.Destroy(app)
 	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestProvisionerDestroyRemovesRouterBackend(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 0)
-	var p dockerProvisioner
-	err := p.Provision(app)
+	err := s.p.Provision(app)
 	c.Assert(err, check.IsNil)
-	err = p.Destroy(app)
+	err = s.p.Destroy(app)
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.FakeRouter.HasBackend("myapp"), check.Equals, false)
 }
@@ -597,8 +582,7 @@ func (s *S) TestProvisionerAddr(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
 	app := provisiontest.NewFakeApp(cont.AppName, "python", 1)
-	var p dockerProvisioner
-	addr, err := p.Addr(app)
+	addr, err := s.p.Addr(app)
 	c.Assert(err, check.IsNil)
 	r, err := getRouterForApp(app)
 	c.Assert(err, check.IsNil)
@@ -608,15 +592,14 @@ func (s *S) TestProvisionerAddr(c *check.C) {
 }
 
 func (s *S) TestProvisionerAddUnits(c *check.C) {
-	err := newImage("tsuru/app-myapp", s.server.URL())
+	err := s.newFakeImage(s.p, "tsuru/app-myapp")
 	c.Assert(err, check.IsNil)
-	var p dockerProvisioner
 	app := provisiontest.NewFakeApp("myapp", "python", 0)
-	p.Provision(app)
-	defer p.Destroy(app)
+	s.p.Provision(app)
+	defer s.p.Destroy(app)
 	_, err = s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, check.IsNil)
-	units, err := p.AddUnits(app, 3, nil)
+	units, err := s.p.AddUnits(app, 3, nil)
 	c.Assert(err, check.IsNil)
 	coll := collection()
 	defer coll.Close()
@@ -638,17 +621,16 @@ func (s *S) TestProvisionerAddUnitsWithErrorDoesntLeaveLostUnits(c *check.C) {
 		s.server.DefaultHandler().ServeHTTP(w, r)
 	}))
 	defer s.server.CustomHandler("/containers/create", s.server.DefaultHandler())
-	err := newImage("tsuru/python", s.server.URL())
+	err := s.newFakeImage(s.p, "tsuru/python")
 	c.Assert(err, check.IsNil)
-	var p dockerProvisioner
 	app := provisiontest.NewFakeApp("myapp", "python", 0)
-	p.Provision(app)
-	defer p.Destroy(app)
+	s.p.Provision(app)
+	defer s.p.Destroy(app)
 	coll := collection()
 	defer coll.Close()
 	coll.Insert(container{ID: "c-89320", AppName: app.GetName(), Version: "a345fe", Image: "tsuru/python"})
 	defer coll.RemoveId(bson.M{"id": "c-89320"})
-	_, err = p.AddUnits(app, 3, nil)
+	_, err = s.p.AddUnits(app, 3, nil)
 	c.Assert(err, check.NotNil)
 	count, err := coll.Find(bson.M{"appname": app.GetName()}).Count()
 	c.Assert(err, check.IsNil)
@@ -656,17 +638,16 @@ func (s *S) TestProvisionerAddUnitsWithErrorDoesntLeaveLostUnits(c *check.C) {
 }
 
 func (s *S) TestProvisionerAddZeroUnits(c *check.C) {
-	err := newImage("tsuru/python", s.server.URL())
+	err := s.newFakeImage(s.p, "tsuru/python")
 	c.Assert(err, check.IsNil)
-	var p dockerProvisioner
 	app := provisiontest.NewFakeApp("myapp", "python", 0)
-	p.Provision(app)
-	defer p.Destroy(app)
+	s.p.Provision(app)
+	defer s.p.Destroy(app)
 	coll := collection()
 	defer coll.Close()
 	coll.Insert(container{ID: "c-89320", AppName: app.GetName(), Version: "a345fe", Image: "tsuru/python"})
 	defer coll.RemoveId(bson.M{"id": "c-89320"})
-	units, err := p.AddUnits(app, 0, nil)
+	units, err := s.p.AddUnits(app, 0, nil)
 	c.Assert(units, check.IsNil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Cannot add 0 units")
@@ -674,22 +655,20 @@ func (s *S) TestProvisionerAddZeroUnits(c *check.C) {
 
 func (s *S) TestProvisionerAddUnitsWithoutContainers(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	var p dockerProvisioner
-	p.Provision(app)
-	defer p.Destroy(app)
-	units, err := p.AddUnits(app, 1, nil)
+	s.p.Provision(app)
+	defer s.p.Destroy(app)
+	units, err := s.p.AddUnits(app, 1, nil)
 	c.Assert(units, check.IsNil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "New units can only be added after the first deployment")
 }
 
 func (s *S) TestProvisionerAddUnitsWithHost(c *check.C) {
-	cluster, err := s.startMultipleServersCluster()
+	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	defer s.stopMultipleServersCluster(cluster)
-	err = newImage("tsuru/app-myapp", s.server.URL())
+	defer s.stopMultipleServersCluster(p)
+	err = s.newFakeImage(p, "tsuru/app-myapp")
 	c.Assert(err, check.IsNil)
-	var p dockerProvisioner
 	app := provisiontest.NewFakeApp("myapp", "python", 0)
 	p.Provision(app)
 	defer p.Destroy(app)
@@ -700,10 +679,11 @@ func (s *S) TestProvisionerAddUnitsWithHost(c *check.C) {
 	imageId, err := appCurrentImageName(app.GetName())
 	c.Assert(err, check.IsNil)
 	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
-		toHost:     "localhost",
-		unitsToAdd: 1,
-		app:        app,
-		imageId:    imageId,
+		toHost:      "localhost",
+		unitsToAdd:  1,
+		app:         app,
+		imageId:     imageId,
+		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveAll(bson.M{"appname": app.GetName()})
@@ -715,7 +695,7 @@ func (s *S) TestProvisionerAddUnitsWithHost(c *check.C) {
 }
 
 func (s *S) TestProvisionerRemoveUnits(c *check.C) {
-	err := newImage("tsuru/python", s.server.URL())
+	err := s.newFakeImage(s.p, "tsuru/python")
 	c.Assert(err, check.IsNil)
 	container1, err := s.newContainer(&newContainerOpts{Status: "building"})
 	c.Assert(err, check.IsNil)
@@ -739,8 +719,7 @@ func (s *S) TestProvisionerRemoveUnits(c *check.C) {
 	app.BindUnit(&unit1)
 	app.BindUnit(&unit2)
 	app.BindUnit(&unit3)
-	var p dockerProvisioner
-	err = p.RemoveUnits(app, 2)
+	err = s.p.RemoveUnits(app, 2)
 	c.Assert(err, check.IsNil)
 	_, err = getContainer(container1.ID)
 	c.Assert(err, check.NotNil)
@@ -754,30 +733,27 @@ func (s *S) TestProvisionerRemoveUnits(c *check.C) {
 func (s *S) TestProvisionerRemoveUnitsPriorityOrder(c *check.C) {
 	container, err := s.newContainer(nil)
 	c.Assert(err, check.IsNil)
-	err = newImage("tsuru/app-"+container.AppName, "")
+	err = s.newFakeImage(s.p, "tsuru/app-"+container.AppName)
 	c.Assert(err, check.IsNil)
 	defer routertest.FakeRouter.RemoveBackend(container.AppName)
 	app := provisiontest.NewFakeApp(container.AppName, "python", 0)
-	var p dockerProvisioner
-	_, err = p.AddUnits(app, 3, nil)
+	_, err = s.p.AddUnits(app, 3, nil)
 	c.Assert(err, check.IsNil)
-	err = p.RemoveUnits(app, 1)
+	err = s.p.RemoveUnits(app, 1)
 	c.Assert(err, check.IsNil)
 	_, err = getContainer(container.ID)
 	c.Assert(err, check.NotNil)
-	c.Assert(p.Units(app), check.HasLen, 3)
+	c.Assert(s.p.Units(app), check.HasLen, 3)
 }
 
 func (s *S) TestProvisionerRemoveUnitsNotFound(c *check.C) {
-	var p dockerProvisioner
-	err := p.RemoveUnits(nil, 1)
+	err := s.p.RemoveUnits(nil, 1)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "remove units: app should not be nil")
 }
 
 func (s *S) TestProvisionerRemoveUnitsZeroUnits(c *check.C) {
-	var p dockerProvisioner
-	err := p.RemoveUnits(provisiontest.NewFakeApp("something", "python", 0), 0)
+	err := s.p.RemoveUnits(provisiontest.NewFakeApp("something", "python", 0), 0)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "remove units: units must be at least 1")
 }
@@ -785,14 +761,13 @@ func (s *S) TestProvisionerRemoveUnitsZeroUnits(c *check.C) {
 func (s *S) TestProvisionerRemoveUnitsTooManyUnits(c *check.C) {
 	container, err := s.newContainer(nil)
 	c.Assert(err, check.IsNil)
-	err = newImage("tsuru/app-"+container.AppName, "")
+	err = s.newFakeImage(s.p, "tsuru/app-"+container.AppName)
 	c.Assert(err, check.IsNil)
 	defer routertest.FakeRouter.RemoveBackend(container.AppName)
 	app := provisiontest.NewFakeApp(container.AppName, "python", 0)
-	var p dockerProvisioner
-	_, err = p.AddUnits(app, 2, nil)
+	_, err = s.p.AddUnits(app, 2, nil)
 	c.Assert(err, check.IsNil)
-	err = p.RemoveUnits(app, 3)
+	err = s.p.RemoveUnits(app, 3)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "remove units: cannot remove all units from app")
 }
@@ -811,28 +786,25 @@ func (s *S) TestProvisionerRemoveUnit(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": a.Name})
 	err = client.StartContainer(container.ID, nil)
 	c.Assert(err, check.IsNil)
-	var p dockerProvisioner
-	err = p.RemoveUnit(provision.Unit{AppName: a.Name, Name: container.ID})
+	err = s.p.RemoveUnit(provision.Unit{AppName: a.Name, Name: container.ID})
 	c.Assert(err, check.IsNil)
 	_, err = getContainer(container.ID)
 	c.Assert(err, check.NotNil)
 }
 
 func (s *S) TestProvisionerRemoveUnitNotFound(c *check.C) {
-	var p dockerProvisioner
-	err := p.RemoveUnit(provision.Unit{Name: "wat de reu"})
+	err := s.p.RemoveUnit(provision.Unit{Name: "wat de reu"})
 	c.Assert(err, check.Equals, mgo.ErrNotFound)
 }
 
 func (s *S) TestProvisionerSetUnitStatus(c *check.C) {
-	err := newImage("tsuru/python", s.server.URL())
+	err := s.newFakeImage(s.p, "tsuru/python")
 	c.Assert(err, check.IsNil)
 	opts := newContainerOpts{Status: provision.StatusStarted.String(), AppName: "someapp"}
 	container, err := s.newContainer(&opts)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container)
-	var p dockerProvisioner
-	err = p.SetUnitStatus(provision.Unit{Name: container.ID, AppName: container.AppName}, provision.StatusError)
+	err = s.p.SetUnitStatus(provision.Unit{Name: container.ID, AppName: container.AppName}, provision.StatusError)
 	c.Assert(err, check.IsNil)
 	container, err = getContainer(container.ID)
 	c.Assert(err, check.IsNil)
@@ -840,14 +812,13 @@ func (s *S) TestProvisionerSetUnitStatus(c *check.C) {
 }
 
 func (s *S) TestProvisionerSetUnitStatusWrongApp(c *check.C) {
-	err := newImage("tsuru/python", s.server.URL())
+	err := s.newFakeImage(s.p, "tsuru/python")
 	c.Assert(err, check.IsNil)
 	opts := newContainerOpts{Status: provision.StatusStarted.String(), AppName: "someapp"}
 	container, err := s.newContainer(&opts)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container)
-	var p dockerProvisioner
-	err = p.SetUnitStatus(provision.Unit{Name: container.ID, AppName: container.AppName + "a"}, provision.StatusError)
+	err = s.p.SetUnitStatus(provision.Unit{Name: container.ID, AppName: container.AppName + "a"}, provision.StatusError)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "wrong app name")
 	container, err = getContainer(container.ID)
@@ -856,8 +827,7 @@ func (s *S) TestProvisionerSetUnitStatusWrongApp(c *check.C) {
 }
 
 func (s *S) TestProvisionerSetUnitStatusUnitNotFound(c *check.C) {
-	var p dockerProvisioner
-	err := p.SetUnitStatus(provision.Unit{Name: "mycontainer", AppName: "myapp"}, provision.StatusError)
+	err := s.p.SetUnitStatus(provision.Unit{Name: "mycontainer", AppName: "myapp"}, provision.StatusError)
 	c.Assert(err, check.Equals, mgo.ErrNotFound)
 }
 
@@ -874,16 +844,14 @@ func (s *S) TestProvisionerExecuteCommand(c *check.C) {
 	defer s.removeTestContainer(container2)
 	coll.Update(bson.M{"id": container2.ID}, container2)
 	var stdout, stderr bytes.Buffer
-	var p dockerProvisioner
-	err = p.ExecuteCommand(&stdout, &stderr, app, "ls", "-l")
+	err = s.p.ExecuteCommand(&stdout, &stderr, app, "ls", "-l")
 	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestProvisionerExecuteCommandNoContainers(c *check.C) {
-	var p dockerProvisioner
 	app := provisiontest.NewFakeApp("almah", "static", 2)
 	var buf bytes.Buffer
-	err := p.ExecuteCommand(&buf, &buf, app, "ls", "-lh")
+	err := s.p.ExecuteCommand(&buf, &buf, app, "ls", "-lh")
 	c.Assert(err, check.Equals, provision.ErrEmptyApp)
 }
 
@@ -912,14 +880,12 @@ func (s *S) TestProvisionerExecuteCommandExcludesBuildContainers(c *check.C) {
 		defer s.removeTestContainer(c)
 	}
 	var stdout, stderr bytes.Buffer
-	var p dockerProvisioner
-	err = p.ExecuteCommand(&stdout, &stderr, app, "echo x")
+	err = s.p.ExecuteCommand(&stdout, &stderr, app, "echo x")
 	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestProvisionerExecuteCommandOnce(c *check.C) {
 	app := provisiontest.NewFakeApp("almah", "static", 1)
-	p := dockerProvisioner{}
 	container, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container)
@@ -927,15 +893,14 @@ func (s *S) TestProvisionerExecuteCommandOnce(c *check.C) {
 	defer coll.Close()
 	coll.Update(bson.M{"id": container.ID}, container)
 	var stdout, stderr bytes.Buffer
-	err = p.ExecuteCommandOnce(&stdout, &stderr, app, "ls", "-l")
+	err = s.p.ExecuteCommandOnce(&stdout, &stderr, app, "ls", "-l")
 	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestProvisionerExecuteCommandOnceNoContainers(c *check.C) {
-	var p dockerProvisioner
 	app := provisiontest.NewFakeApp("almah", "static", 2)
 	var buf bytes.Buffer
-	err := p.ExecuteCommandOnce(&buf, &buf, app, "ls", "-lh")
+	err := s.p.ExecuteCommandOnce(&buf, &buf, app, "ls", "-lh")
 	c.Assert(err, check.Equals, provision.ErrEmptyApp)
 }
 
@@ -946,28 +911,26 @@ func (s *S) TestProvisionCollection(c *check.C) {
 }
 
 func (s *S) TestProvisionSetCName(c *check.C) {
-	var p dockerProvisioner
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend("myapp")
 	routertest.FakeRouter.AddRoute("myapp", "127.0.0.1")
 	cname := "mycname.com"
-	err := p.SetCName(app, cname)
+	err := s.p.SetCName(app, cname)
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.FakeRouter.HasBackend(cname), check.Equals, true)
 	c.Assert(routertest.FakeRouter.HasRoute(cname, "127.0.0.1"), check.Equals, true)
 }
 
 func (s *S) TestProvisionUnsetCName(c *check.C) {
-	var p dockerProvisioner
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend("myapp")
 	routertest.FakeRouter.AddRoute("myapp", "127.0.0.1")
 	cname := "mycname.com"
-	err := p.SetCName(app, cname)
+	err := s.p.SetCName(app, cname)
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.FakeRouter.HasBackend(cname), check.Equals, true)
 	c.Assert(routertest.FakeRouter.HasRoute(cname, "127.0.0.1"), check.Equals, true)
-	err = p.UnsetCName(app, cname)
+	err = s.p.UnsetCName(app, cname)
 	c.Assert(routertest.FakeRouter.HasBackend(cname), check.Equals, false)
 	c.Assert(routertest.FakeRouter.HasRoute(cname, "127.0.0.1"), check.Equals, false)
 }
@@ -992,8 +955,7 @@ func (s *S) TestAdminCommands(c *check.C) {
 		fixContainersCmd{},
 		&listHealingHistoryCmd{},
 	}
-	var p dockerProvisioner
-	c.Assert(p.AdminCommands(), check.DeepEquals, expected)
+	c.Assert(s.p.AdminCommands(), check.DeepEquals, expected)
 }
 
 func (s *S) TestProvisionerIsAdminCommandable(c *check.C) {
@@ -1001,14 +963,13 @@ func (s *S) TestProvisionerIsAdminCommandable(c *check.C) {
 }
 
 func (s *S) TestSwap(c *check.C) {
-	var p dockerProvisioner
 	app1 := provisiontest.NewFakeApp("app1", "python", 1)
 	app2 := provisiontest.NewFakeApp("app2", "python", 1)
 	routertest.FakeRouter.AddBackend(app1.GetName())
 	routertest.FakeRouter.AddRoute(app1.GetName(), "127.0.0.1")
 	routertest.FakeRouter.AddBackend(app2.GetName())
 	routertest.FakeRouter.AddRoute(app2.GetName(), "127.0.0.2")
-	err := p.Swap(app1, app2)
+	err := s.p.Swap(app1, app2)
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.FakeRouter.HasBackend(app1.GetName()), check.Equals, true)
 	c.Assert(routertest.FakeRouter.HasBackend(app2.GetName()), check.Equals, true)
@@ -1017,7 +978,6 @@ func (s *S) TestSwap(c *check.C) {
 }
 
 func (s *S) TestProvisionerStart(c *check.C) {
-	var p dockerProvisioner
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
@@ -1033,7 +993,7 @@ func (s *S) TestProvisionerStart(c *check.C) {
 	dockerContainer, err := dcli.InspectContainer(container.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, false)
-	err = p.Start(app)
+	err = s.p.Start(app)
 	c.Assert(err, check.IsNil)
 	dockerContainer, err = dcli.InspectContainer(container.ID)
 	c.Assert(err, check.IsNil)
@@ -1050,7 +1010,6 @@ func (s *S) TestProvisionerStart(c *check.C) {
 func (s *S) TestProvisionerStop(c *check.C) {
 	dcli, _ := docker.NewClient(s.server.URL())
 	app := provisiontest.NewFakeApp("almah", "static", 2)
-	p := dockerProvisioner{}
 	container, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container)
@@ -1059,7 +1018,7 @@ func (s *S) TestProvisionerStop(c *check.C) {
 	dockerContainer, err := dcli.InspectContainer(container.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, true)
-	err = p.Stop(app)
+	err = s.p.Stop(app)
 	c.Assert(err, check.IsNil)
 	dockerContainer, err = dcli.InspectContainer(container.ID)
 	c.Assert(err, check.IsNil)
@@ -1069,7 +1028,6 @@ func (s *S) TestProvisionerStop(c *check.C) {
 func (s *S) TestProvisionerStopSkipAlreadyStoppedContainers(c *check.C) {
 	dcli, _ := docker.NewClient(s.server.URL())
 	app := provisiontest.NewFakeApp("almah", "static", 2)
-	p := dockerProvisioner{}
 	container, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container)
@@ -1088,7 +1046,7 @@ func (s *S) TestProvisionerStopSkipAlreadyStoppedContainers(c *check.C) {
 	dockerContainer2, err := dcli.InspectContainer(container2.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer2.State.Running, check.Equals, false)
-	err = p.Stop(app)
+	err = s.p.Stop(app)
 	c.Assert(err, check.IsNil)
 	dockerContainer, err = dcli.InspectContainer(container.ID)
 	c.Assert(err, check.IsNil)
@@ -1107,19 +1065,11 @@ func (s *S) TestProvisionerPlatformAdd(c *check.C) {
 	defer server.Stop()
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
-	cmutex.Lock()
-	oldDockerCluster := dCluster
-	dCluster, _ = cluster.New(nil, &cluster.MapStorage{},
+	var p dockerProvisioner
+	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: server.URL()})
-	cmutex.Unlock()
-	defer func() {
-		cmutex.Lock()
-		dCluster = oldDockerCluster
-		cmutex.Unlock()
-	}()
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
-	p := dockerProvisioner{}
 	err = p.PlatformAdd("test", args, bytes.NewBuffer(nil))
 	c.Assert(err, check.IsNil)
 	c.Assert(requests, check.HasLen, 3)
@@ -1132,8 +1082,7 @@ func (s *S) TestProvisionerPlatformAdd(c *check.C) {
 }
 
 func (s *S) TestProvisionerPlatformAddWithoutArgs(c *check.C) {
-	p := dockerProvisioner{}
-	err := p.PlatformAdd("test", nil, nil)
+	err := s.p.PlatformAdd("test", nil, nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Dockerfile is required.")
 }
@@ -1141,8 +1090,7 @@ func (s *S) TestProvisionerPlatformAddWithoutArgs(c *check.C) {
 func (s *S) TestProvisionerPlatformAddShouldValidateArgs(c *check.C) {
 	args := make(map[string]string)
 	args["dockerfile"] = "not_a_url"
-	p := dockerProvisioner{}
-	err := p.PlatformAdd("test", args, bytes.NewBuffer(nil))
+	err := s.p.PlatformAdd("test", args, bytes.NewBuffer(nil))
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "dockerfile parameter should be an url.")
 }
@@ -1156,18 +1104,10 @@ func (s *S) TestProvisionerPlatformAddWithoutNode(c *check.C) {
 	defer server.Stop()
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
-	cmutex.Lock()
-	oldDockerCluster := dCluster
-	dCluster, _ = cluster.New(nil, &cluster.MapStorage{})
-	cmutex.Unlock()
-	defer func() {
-		cmutex.Lock()
-		dCluster = oldDockerCluster
-		cmutex.Unlock()
-	}()
+	var p dockerProvisioner
+	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{})
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
-	p := dockerProvisioner{}
 	err = p.PlatformAdd("test", args, bytes.NewBuffer(nil))
 	c.Assert(err, check.NotNil)
 }
@@ -1183,17 +1123,9 @@ func (s *S) TestProvisionerPlatformRemove(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	defer server.Stop()
-	cmutex.Lock()
-	oldDockerCluster := dCluster
-	dCluster, _ = cluster.New(nil, &cluster.MapStorage{},
+	var p dockerProvisioner
+	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: server.URL()})
-	cmutex.Unlock()
-	defer func() {
-		cmutex.Lock()
-		dCluster = oldDockerCluster
-		cmutex.Unlock()
-	}()
-	p := dockerProvisioner{}
 	var buf bytes.Buffer
 	err = p.PlatformAdd("test", map[string]string{"dockerfile": "http://localhost/Dockerfile"}, &buf)
 	c.Assert(err, check.IsNil)
@@ -1216,17 +1148,9 @@ func (s *S) TestProvisionerPlatformRemoveReturnsStorageError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer server.Stop()
 	var strg cluster.MapStorage
-	cmutex.Lock()
-	oldDockerCluster := dCluster
-	dCluster, _ = cluster.New(nil, &strg,
+	var p dockerProvisioner
+	p.cluster, _ = cluster.New(nil, &strg,
 		cluster.Node{Address: server.URL()})
-	cmutex.Unlock()
-	defer func() {
-		cmutex.Lock()
-		dCluster = oldDockerCluster
-		cmutex.Unlock()
-	}()
-	p := dockerProvisioner{}
 	err = p.PlatformRemove("test")
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.DeepEquals, storage.ErrNoSuchImage)
@@ -1248,8 +1172,7 @@ func (s *S) TestProvisionerUnits(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveAll(bson.M{"appname": app.Name})
-	p := dockerProvisioner{}
-	units := p.Units(&app)
+	units := s.p.Units(&app)
 	expected := []provision.Unit{
 		{Name: "9930c24f1c4f", AppName: "myapplication", Type: "python", Status: provision.StatusBuilding},
 	}
@@ -1258,8 +1181,7 @@ func (s *S) TestProvisionerUnits(c *check.C) {
 
 func (s *S) TestProvisionerUnitsAppDoesNotExist(c *check.C) {
 	app := app.App{Name: "myapplication"}
-	p := dockerProvisioner{}
-	units := p.Units(&app)
+	units := s.p.Units(&app)
 	expected := []provision.Unit{}
 	c.Assert(units, check.DeepEquals, expected)
 }
@@ -1288,8 +1210,7 @@ func (s *S) TestProvisionerUnitsStatus(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveAll(bson.M{"appname": app.Name})
-	p := dockerProvisioner{}
-	units := p.Units(&app)
+	units := s.p.Units(&app)
 	expected := []provision.Unit{
 		{Name: "9930c24f1c4f", AppName: "myapplication", Type: "python", Status: provision.StatusBuilding},
 		{Name: "9930c24f1c4j", AppName: "myapplication", Type: "python", Status: provision.StatusError},
@@ -1314,8 +1235,7 @@ func (s *S) TestProvisionerUnitsIp(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveAll(bson.M{"appname": app.Name})
-	p := dockerProvisioner{}
-	units := p.Units(&app)
+	units := s.p.Units(&app)
 	expected := []provision.Unit{
 		{Name: "9930c24f1c4f", AppName: "myapplication", Type: "python", Ip: "127.0.0.1", Status: provision.StatusBuilding},
 	}
@@ -1328,7 +1248,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	defer conn.Close()
 	err = conn.Apps().Insert(&app.App{Name: "myawesomeapp"})
 	c.Assert(err, check.IsNil)
-	err = newImage("tsuru/python", s.server.URL())
+	err = s.newFakeImage(s.p, "tsuru/python")
 	c.Assert(err, check.IsNil)
 	opts := newContainerOpts{Status: provision.StatusStarting.String(), AppName: "myawesomeapp"}
 	container, err := s.newContainer(&opts)
@@ -1339,8 +1259,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	defer coll.Close()
 	err = coll.Update(bson.M{"id": container.ID}, container)
 	c.Assert(err, check.IsNil)
-	var p dockerProvisioner
-	err = p.RegisterUnit(provision.Unit{Name: container.ID}, nil)
+	err = s.p.RegisterUnit(provision.Unit{Name: container.ID}, nil)
 	c.Assert(err, check.IsNil)
 	dbCont, err := getContainer(container.ID)
 	c.Assert(err, check.IsNil)
@@ -1349,7 +1268,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 }
 
 func (s *S) TestRegisterUnitBuildingContainer(c *check.C) {
-	err := newImage("tsuru/python", s.server.URL())
+	err := s.newFakeImage(s.p, "tsuru/python")
 	c.Assert(err, check.IsNil)
 	opts := newContainerOpts{Status: provision.StatusBuilding.String(), AppName: "myawesomeapp"}
 	container, err := s.newContainer(&opts)
@@ -1360,8 +1279,7 @@ func (s *S) TestRegisterUnitBuildingContainer(c *check.C) {
 	defer coll.Close()
 	err = coll.Update(bson.M{"id": container.ID}, container)
 	c.Assert(err, check.IsNil)
-	var p dockerProvisioner
-	err = p.RegisterUnit(provision.Unit{Name: container.ID}, nil)
+	err = s.p.RegisterUnit(provision.Unit{Name: container.ID}, nil)
 	c.Assert(err, check.IsNil)
 	dbCont, err := getContainer(container.ID)
 	c.Assert(err, check.IsNil)
@@ -1370,7 +1288,7 @@ func (s *S) TestRegisterUnitBuildingContainer(c *check.C) {
 }
 
 func (s *S) TestRegisterUnitSavesCustomData(c *check.C) {
-	err := newImage("tsuru/python", s.server.URL())
+	err := s.newFakeImage(s.p, "tsuru/python")
 	c.Assert(err, check.IsNil)
 	opts := newContainerOpts{Status: provision.StatusBuilding.String(), AppName: "myawesomeapp"}
 	container, err := s.newContainer(&opts)
@@ -1382,9 +1300,8 @@ func (s *S) TestRegisterUnitSavesCustomData(c *check.C) {
 	defer coll.Close()
 	err = coll.Update(bson.M{"id": container.ID}, container)
 	c.Assert(err, check.IsNil)
-	var p dockerProvisioner
 	data := map[string]interface{}{"mydata": "value"}
-	err = p.RegisterUnit(provision.Unit{Name: container.ID}, data)
+	err = s.p.RegisterUnit(provision.Unit{Name: container.ID}, data)
 	c.Assert(err, check.IsNil)
 	dataColl, err := imageCustomDataColl()
 	c.Assert(err, check.IsNil)
@@ -1422,9 +1339,9 @@ func (s *S) TestRunRestartAfterHooks(c *check.C) {
 		reqBodies = append(reqBodies, data)
 		s.server.DefaultHandler().ServeHTTP(w, r)
 	}))
-	defer container.remove()
+	defer container.remove(s.p)
 	var buf bytes.Buffer
-	err = runRestartAfterHooks(container, &buf)
+	err = s.p.runRestartAfterHooks(container, &buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Equals, "")
 	c.Assert(reqBodies, check.HasLen, 2)
@@ -1468,46 +1385,44 @@ func (s *S) TestAddContainersWithHostFailsUnlessRestartAfter(c *check.C) {
 	err = conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": a.Name})
-	err = newImage("tsuru/app-"+a.Name, s.server.URL())
+	err = s.newFakeImage(s.p, "tsuru/app-"+a.Name)
 	c.Assert(err, check.IsNil)
-	var p dockerProvisioner
 	app := provisiontest.NewFakeApp(a.Name, "python", 0)
-	p.Provision(app)
-	defer p.Destroy(app)
+	s.p.Provision(app)
+	defer s.p.Destroy(app)
 	var buf bytes.Buffer
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		unitsToAdd: 1,
-		app:        app,
-		writer:     &buf,
-		imageId:    "tsuru/app-" + a.Name,
+		unitsToAdd:  1,
+		app:         app,
+		writer:      &buf,
+		imageId:     "tsuru/app-" + a.Name,
+		provisioner: s.p,
 	})
 	c.Assert(err, check.ErrorMatches, `couldn't execute restart:after hook "will fail"\(.+?\): unexpected exit code: 9`)
 }
 
 func (s *S) TestShellToAnAppByContainerID(c *check.C) {
-	err := newImage("tsuru/app-almah", s.server.URL())
+	err := s.newFakeImage(s.p, "tsuru/app-almah")
 	c.Assert(err, check.IsNil)
-	var p dockerProvisioner
 	app := provisiontest.NewFakeApp("almah", "static", 1)
 	cont, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
 	buf := safe.NewBuffer([]byte("echo test"))
 	conn := &provisiontest.FakeConn{buf}
-	err = p.Shell(app, conn, 10, 10, cont.ID)
+	err = s.p.Shell(app, conn, 10, 10, cont.ID)
 	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestShellToAnAppByAppName(c *check.C) {
-	err := newImage("tsuru/app-almah", s.server.URL())
+	err := s.newFakeImage(s.p, "tsuru/app-almah")
 	c.Assert(err, check.IsNil)
-	var p dockerProvisioner
 	app := provisiontest.NewFakeApp("almah", "static", 1)
 	cont, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
 	buf := safe.NewBuffer([]byte("echo test"))
 	conn := &provisiontest.FakeConn{buf}
-	err = p.Shell(app, conn, 10, 10, "")
+	err = s.p.Shell(app, conn, 10, 10, "")
 	c.Assert(err, check.IsNil)
 }
