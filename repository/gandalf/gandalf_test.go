@@ -5,10 +5,12 @@
 package gandalf
 
 import (
+	"net/http"
 	"testing"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/gandalf/gandalftest"
+	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/repository"
 	"gopkg.in/check.v1"
 )
@@ -37,6 +39,34 @@ func (s *GandalfSuite) TearDownSuite(c *check.C) {
 
 func (s *GandalfSuite) TearDownTest(c *check.C) {
 	s.server.Reset()
+}
+
+func (s *GandalfSuite) TestHealthCheck(c *check.C) {
+	err := healthCheck()
+	c.Assert(err, check.IsNil)
+}
+
+func (s *GandalfSuite) TestHealthCheckStatusFailure(c *check.C) {
+	s.server.PrepareFailure(gandalftest.Failure{Path: "/healthcheck", Method: "GET", Response: "epic fail"})
+	err := healthCheck()
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "epic fail\n")
+}
+
+func (s *GandalfSuite) TestHealthCheckContentFailure(c *check.C) {
+	s.server.PrepareFailure(gandalftest.Failure{Code: http.StatusOK, Path: "/healthcheck", Method: "GET", Response: "epic fail"})
+	err := healthCheck()
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "unexpected status - epic fail\n")
+}
+
+func (s *GandalfSuite) TestHealthCheckDisabled(c *check.C) {
+	old, err := config.Get("git:api-server")
+	c.Assert(err, check.IsNil)
+	defer config.Set("git:api-server", old)
+	config.Unset("git:api-server")
+	err = healthCheck()
+	c.Assert(err, check.Equals, hc.ErrDisabledComponent)
 }
 
 func (s *GandalfSuite) TestCreateUser(c *check.C) {

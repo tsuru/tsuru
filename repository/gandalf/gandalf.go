@@ -11,19 +11,42 @@
 package gandalf
 
 import (
+	"errors"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
+	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/repository"
 )
 
 func init() {
 	repository.Register("gandalf", gandalfManager{})
+	hc.AddChecker("Gandalf", healthCheck)
+}
+
+const endpointConfig = "git:api-server"
+
+func healthCheck() error {
+	serverURL, _ := config.GetString(endpointConfig)
+	if serverURL == "" {
+		return hc.ErrDisabledComponent
+	}
+	client := gandalf.Client{Endpoint: serverURL}
+	result, err := client.GetHealthCheck()
+	if err != nil {
+		return err
+	}
+	status := string(result)
+	if status == "WORKING" {
+		return nil
+	}
+	return errors.New("unexpected status - " + status)
 }
 
 type gandalfManager struct{}
 
 func (gandalfManager) client() (*gandalf.Client, error) {
-	url, err := config.GetString("git:api-server")
+	url, err := config.GetString(endpointConfig)
 	if err != nil {
 		return nil, err
 	}
