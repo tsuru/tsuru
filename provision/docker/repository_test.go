@@ -15,7 +15,7 @@ import (
 )
 
 func (s *S) getContainerCollection(appName string, containerIds ...string) func() {
-	coll := collection()
+	coll := s.p.collection()
 	for _, containerId := range containerIds {
 		container := container{AppName: appName, ID: containerId}
 		coll.Insert(container)
@@ -30,7 +30,7 @@ func (s *S) getContainerCollection(appName string, containerIds ...string) func(
 
 func (s *S) TestListContainersByApp(c *check.C) {
 	var result []container
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	coll.Insert(
 		container{ID: "Hey", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1180.globoi.com"},
@@ -38,7 +38,7 @@ func (s *S) TestListContainersByApp(c *check.C) {
 		container{ID: "Let's Go", Type: "java", AppName: "other", HostAddr: "http://cittavld597.globoi.com"},
 	)
 	defer coll.RemoveAll(bson.M{"appname": "myapp"})
-	result, err := listContainersByApp("myapp")
+	result, err := s.p.listContainersByApp("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(len(result), check.Equals, 2)
 	cond := (result[0].ID == "Hey" && result[1].ID == "Ho") || (result[0].ID == "Ho" && result[1].ID == "Hey")
@@ -47,7 +47,7 @@ func (s *S) TestListContainersByApp(c *check.C) {
 
 func (s *S) TestListContainersByHost(c *check.C) {
 	var result []container
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	coll.Insert(
 		container{ID: "1", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1182.globoi.com"},
@@ -55,7 +55,7 @@ func (s *S) TestListContainersByHost(c *check.C) {
 		container{ID: "3", Type: "java", AppName: "masoq", HostAddr: "http://cittavld9999.globoi.com"},
 	)
 	defer coll.RemoveAll(bson.M{"hostaddr": "http://cittavld1182.globoi.com"})
-	result, err := listContainersByHost("http://cittavld1182.globoi.com")
+	result, err := s.p.listContainersByHost("http://cittavld1182.globoi.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(len(result), check.Equals, 2)
 	cond := (result[0].ID == "1" && result[1].ID == "2") || (result[0].ID == "2" && result[1].ID == "1")
@@ -67,7 +67,7 @@ func (s *S) TestListAllContainers(c *check.C) {
 	containerIds := []string{"some-container-1", "some-container-2"}
 	cleanupFunc := s.getContainerCollection(appName, containerIds...)
 	defer cleanupFunc()
-	containers, err := listAllContainers()
+	containers, err := s.p.listAllContainers()
 	c.Assert(err, check.IsNil)
 	c.Assert(len(containers), check.Equals, 2)
 	cond := (containers[0].ID == containerIds[0] && containers[1].ID == containerIds[1]) ||
@@ -80,9 +80,9 @@ func (s *S) TestUpdateContainers(c *check.C) {
 	containerIds := []string{"some-container-1", "some-container-2", "some-container-3"}
 	cleanupFunc := s.getContainerCollection(appName, containerIds...)
 	defer cleanupFunc()
-	err := updateContainers(bson.M{"appname": "myapp"}, bson.M{"$set": bson.M{"appname": "yourapp"}})
+	err := s.p.updateContainers(bson.M{"appname": "myapp"}, bson.M{"$set": bson.M{"appname": "yourapp"}})
 	c.Assert(err, check.IsNil)
-	containers, err := listAllContainers()
+	containers, err := s.p.listAllContainers()
 	c.Assert(err, check.IsNil)
 	c.Assert(len(containers), check.Equals, 3)
 	ids := make([]string, len(containers))
@@ -101,7 +101,7 @@ func (s *S) TestGetOneContainerByAppName(c *check.C) {
 	containerIds := []string{"some-container-1", "some-container-2"}
 	cleanupFunc := s.getContainerCollection(appName, containerIds...)
 	defer cleanupFunc()
-	container, err := getOneContainerByAppName(appName)
+	container, err := s.p.getOneContainerByAppName(appName)
 	c.Assert(err, check.IsNil)
 	c.Assert(container.AppName, check.Equals, appName)
 	checkId := container.ID == containerIds[0] || container.ID == containerIds[1]
@@ -109,9 +109,9 @@ func (s *S) TestGetOneContainerByAppName(c *check.C) {
 }
 
 func (s *S) TestShouldNotGetOneContainerByAppName(c *check.C) {
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
-	container, err := getOneContainerByAppName("unexisting-app-name")
+	container, err := s.p.getOneContainerByAppName("unexisting-app-name")
 	c.Assert(err, check.NotNil)
 	c.Assert(container, check.IsNil)
 }
@@ -121,7 +121,7 @@ func (s *S) TestGetContainerCountForAppName(c *check.C) {
 	containerIds := []string{"some-container-1", "some-container-2"}
 	cleanupFunc := s.getContainerCollection(appName, containerIds...)
 	defer cleanupFunc()
-	count, err := getContainerCountForAppName(appName)
+	count, err := s.p.getContainerCountForAppName(appName)
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, len(containerIds))
 }
@@ -130,7 +130,7 @@ func (s *S) TestGetContainerPartialIdAmbiguous(c *check.C) {
 	containerIds := []string{"container-1", "container-2"}
 	cleanupFunc := s.getContainerCollection("some-app", containerIds...)
 	defer cleanupFunc()
-	_, err := getContainer("container")
+	_, err := s.p.getContainer("container")
 	c.Assert(err, check.Equals, errAmbiguousContainer)
 }
 
@@ -138,7 +138,7 @@ func (s *S) TestGetContainerPartialIdNotFound(c *check.C) {
 	containerIds := []string{"container-1", "container-2"}
 	cleanupFunc := s.getContainerCollection("some-app", containerIds...)
 	defer cleanupFunc()
-	_, err := getContainer("container-9")
+	_, err := s.p.getContainer("container-9")
 	c.Assert(err, check.Equals, mgo.ErrNotFound)
 }
 
@@ -146,13 +146,13 @@ func (s *S) TestGetContainerPartialId(c *check.C) {
 	containerIds := []string{"container-a1", "container-b2"}
 	cleanupFunc := s.getContainerCollection("some-app", containerIds...)
 	defer cleanupFunc()
-	cont, err := getContainer("container-a")
+	cont, err := s.p.getContainer("container-a")
 	c.Assert(err, check.IsNil)
 	c.Assert(cont.ID, check.Equals, "container-a1")
 }
 
 func (s *S) TestListContainersByAppOrderedByStatus(c *check.C) {
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	coll.Insert(
 		container{AppName: "myapp", ID: "0", Status: provision.StatusStarted.String()},
@@ -163,7 +163,7 @@ func (s *S) TestListContainersByAppOrderedByStatus(c *check.C) {
 		container{AppName: "myapp", ID: "5", Status: provision.StatusStarting.String()},
 	)
 	defer coll.RemoveAll(bson.M{"appname": "myapp"})
-	containers, err := listContainersByAppOrderedByStatus("myapp")
+	containers, err := s.p.listContainersByAppOrderedByStatus("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(len(containers), check.Equals, 6)
 	c.Assert(containers[0].Status, check.Equals, provision.StatusCreated.String())
@@ -174,12 +174,12 @@ func (s *S) TestListContainersByAppOrderedByStatus(c *check.C) {
 	c.Assert(containers[5].Status, check.Equals, provision.StatusStarted.String())
 }
 
-func (S) TestcontainerSliceLen(c *check.C) {
+func (s *S) TestcontainerSliceLen(c *check.C) {
 	containers := containerSlice{container{}, container{}}
 	c.Assert(containers.Len(), check.Equals, 2)
 }
 
-func (S) TestcontainerSliceLess(c *check.C) {
+func (s *S) TestcontainerSliceLess(c *check.C) {
 	containers := containerSlice{
 		container{Name: "b", Status: provision.StatusError.String()},
 		container{Name: "d", Status: provision.StatusBuilding.String()},
@@ -199,7 +199,7 @@ func (S) TestcontainerSliceLess(c *check.C) {
 	c.Assert(containers.Less(5, 0), check.Equals, true)
 }
 
-func (S) TestcontainerSliceSwap(c *check.C) {
+func (s *S) TestcontainerSliceSwap(c *check.C) {
 	containers := containerSlice{
 		container{Name: "b", Status: provision.StatusError.String()},
 		container{Name: "f", Status: provision.StatusBuilding.String()},
@@ -210,7 +210,7 @@ func (S) TestcontainerSliceSwap(c *check.C) {
 	c.Assert(containers[1].Status, check.Equals, provision.StatusError.String())
 }
 
-func (S) TestcontainerSliceSort(c *check.C) {
+func (s *S) TestcontainerSliceSort(c *check.C) {
 	containers := containerSlice{
 		container{Name: "f", Status: provision.StatusBuilding.String()},
 		container{Name: "g", Status: provision.StatusStarted.String()},
@@ -221,9 +221,9 @@ func (S) TestcontainerSliceSort(c *check.C) {
 	c.Assert(sort.IsSorted(containers), check.Equals, true)
 }
 
-func (S) TestListUnresponsiveContainers(c *check.C) {
+func (s *S) TestListUnresponsiveContainers(c *check.C) {
 	var result []container
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	now := time.Now().UTC()
 	coll.Insert(
@@ -232,29 +232,29 @@ func (S) TestListUnresponsiveContainers(c *check.C) {
 		container{ID: "c3", AppName: "app_time_test", LastSuccessStatusUpdate: now.Add(-5 * time.Minute), HostPort: "80"},
 	)
 	defer coll.RemoveAll(bson.M{"appname": "app_time_test"})
-	result, err := listUnresponsiveContainers(3 * time.Minute)
+	result, err := s.p.listUnresponsiveContainers(3 * time.Minute)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(result), check.Equals, 1)
 	c.Assert(result[0].ID, check.Equals, "c3")
 }
 
-func (S) TestListUnresponsiveContainersNoHostPort(c *check.C) {
+func (s *S) TestListUnresponsiveContainersNoHostPort(c *check.C) {
 	var result []container
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	now := time.Now().UTC()
 	coll.Insert(
 		container{ID: "c1", AppName: "app_time_test", LastSuccessStatusUpdate: now.Add(-10 * time.Minute)},
 	)
 	defer coll.RemoveAll(bson.M{"appname": "app_time_test"})
-	result, err := listUnresponsiveContainers(3 * time.Minute)
+	result, err := s.p.listUnresponsiveContainers(3 * time.Minute)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(result), check.Equals, 0)
 }
 
-func (S) TestListUnresponsiveContainersStopped(c *check.C) {
+func (s *S) TestListUnresponsiveContainersStopped(c *check.C) {
 	var result []container
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	now := time.Now().UTC()
 	coll.Insert(
@@ -264,15 +264,15 @@ func (S) TestListUnresponsiveContainersStopped(c *check.C) {
 			LastSuccessStatusUpdate: now.Add(-5 * time.Minute), HostPort: "80", Status: provision.StatusStarted.String()},
 	)
 	defer coll.RemoveAll(bson.M{"appname": "app_time_test"})
-	result, err := listUnresponsiveContainers(3 * time.Minute)
+	result, err := s.p.listUnresponsiveContainers(3 * time.Minute)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(result), check.Equals, 1)
 	c.Assert(result[0].ID, check.Equals, "c2")
 }
 
-func (S) TestListRunnableContainersByApp(c *check.C) {
+func (s *S) TestListRunnableContainersByApp(c *check.C) {
 	var result []container
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	coll.Insert(
 		container{Name: "a", AppName: "myapp", Status: provision.StatusCreated.String()},
@@ -283,7 +283,7 @@ func (S) TestListRunnableContainersByApp(c *check.C) {
 		container{Name: "f", AppName: "myapp", Status: provision.StatusStopped.String()},
 	)
 	defer coll.RemoveAll(bson.M{"appname": "myapp"})
-	result, err := listRunnableContainersByApp("myapp")
+	result, err := s.p.listRunnableContainersByApp("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(len(result), check.Equals, 3)
 	var names []string

@@ -92,7 +92,7 @@ func (s *HandlersSuite) SetUpSuite(c *check.C) {
 func (s *HandlersSuite) SetUpTest(c *check.C) {
 	err := clearClusterStorage()
 	c.Assert(err, check.IsNil)
-	coll := collection()
+	coll := mainDockerProvisioner.collection()
 	defer coll.Close()
 	coll.RemoveAll(nil)
 	healingColl, err := healingCollection()
@@ -102,7 +102,7 @@ func (s *HandlersSuite) SetUpTest(c *check.C) {
 }
 
 func (s *HandlersSuite) TearDownSuite(c *check.C) {
-	coll := collection()
+	coll := mainDockerProvisioner.collection()
 	defer coll.Close()
 	err := dbtest.ClearAllCollections(coll.Database)
 	c.Assert(err, check.IsNil)
@@ -346,7 +346,9 @@ func (s *HandlersSuite) TestListNodeHandler(c *check.C) {
 }
 
 func (s *HandlersSuite) TestFixContainerHandler(c *check.C) {
-	coll := collection()
+	cleanup, server, p := startDocker("9999")
+	defer cleanup()
+	coll := p.collection()
 	defer coll.Close()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
@@ -367,11 +369,9 @@ func (s *HandlersSuite) TestFixContainerHandler(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveAll(bson.M{"appname": "makea"})
-	cleanup, server, _ := startDocker("9999")
-	defer cleanup()
 	var storage cluster.MapStorage
 	storage.StoreContainer("9930c24f1c4x", server.URL)
-	mainDockerProvisioner = &dockerProvisioner{}
+	mainDockerProvisioner = p
 	mainDockerProvisioner.cluster, err = cluster.New(nil, &storage,
 		cluster.Node{Address: server.URL},
 	)
@@ -381,7 +381,7 @@ func (s *HandlersSuite) TestFixContainerHandler(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err = fixContainersHandler(recorder, request, nil)
 	c.Assert(err, check.IsNil)
-	cont, err := getContainer("9930c24f1c4x")
+	cont, err := p.getContainer("9930c24f1c4x")
 	c.Assert(err, check.IsNil)
 	c.Assert(cont.IP, check.Equals, "127.0.0.9")
 	c.Assert(cont.HostPort, check.Equals, "9999")
@@ -390,9 +390,9 @@ func (s *HandlersSuite) TestFixContainerHandler(c *check.C) {
 func (s *HandlersSuite) TestListContainersByHostHandler(c *check.C) {
 	var result []container
 	var err error
-	coll := collection()
 	mainDockerProvisioner = &dockerProvisioner{}
 	mainDockerProvisioner.cluster, err = cluster.New(segregatedScheduler{}, &cluster.MapStorage{})
+	coll := mainDockerProvisioner.collection()
 	c.Assert(err, check.IsNil)
 	err = coll.Insert(container{ID: "blabla", Type: "python", HostAddr: "http://cittavld1182.globoi.com"})
 	c.Assert(err, check.IsNil)
@@ -419,9 +419,9 @@ func (s *HandlersSuite) TestListContainersByHostHandler(c *check.C) {
 func (s *HandlersSuite) TestListContainersByAppHandler(c *check.C) {
 	var result []container
 	var err error
-	coll := collection()
 	mainDockerProvisioner = &dockerProvisioner{}
 	mainDockerProvisioner.cluster, err = cluster.New(segregatedScheduler{}, &cluster.MapStorage{})
+	coll := mainDockerProvisioner.collection()
 	err = coll.Insert(container{ID: "blabla", AppName: "appbla", HostAddr: "http://cittavld1182.globoi.com"})
 	c.Assert(err, check.IsNil)
 	defer coll.Remove(bson.M{"id": "blabla"})
@@ -505,7 +505,7 @@ func (s *S) TestRebalanceContainersEmptyBodyHandler(c *check.C) {
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
-	coll := collection()
+	coll := p.collection()
 	defer coll.Close()
 	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
@@ -564,7 +564,7 @@ func (s *S) TestRebalanceContainersDryBodyHandler(c *check.C) {
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
-	coll := collection()
+	coll := p.collection()
 	defer coll.Close()
 	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})

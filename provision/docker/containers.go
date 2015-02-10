@@ -192,7 +192,7 @@ func (p *dockerProvisioner) moveOneContainer(c container, toHost string, errors 
 }
 
 func (p *dockerProvisioner) moveContainer(contId string, toHost string, encoder *json.Encoder) (container, error) {
-	cont, err := getContainer(contId)
+	cont, err := p.getContainer(contId)
 	if err != nil {
 		return container{}, err
 	}
@@ -206,7 +206,7 @@ func (p *dockerProvisioner) moveContainer(contId string, toHost string, encoder 
 }
 
 func (p *dockerProvisioner) moveContainers(fromHost, toHost string, encoder *json.Encoder) error {
-	containers, err := listContainersByHost(fromHost)
+	containers, err := p.listContainersByHost(fromHost)
 	if err != nil {
 		return err
 	}
@@ -249,7 +249,7 @@ func minCountHost(hosts []hostWithContainers) *hostWithContainers {
 }
 
 func (p *dockerProvisioner) rebalanceContainers(encoder *json.Encoder, dryRun bool) error {
-	coll := collection()
+	coll := p.collection()
 	defer coll.Close()
 	fullDocQuery := bson.M{
 		// Could use $$ROOT instead of repeating fields but only in Mongo 2.6+.

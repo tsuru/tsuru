@@ -39,13 +39,13 @@ func (s *S) TestSchedulerSchedule(c *check.C) {
 	err = coll.Insert(p)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveAll(bson.M{"_id": p.Name})
-	contColl := collection()
+	contColl := s.p.collection()
 	err = contColl.Insert(
 		cont1, cont2, cont3,
 	)
 	c.Assert(err, check.IsNil)
 	defer contColl.RemoveAll(bson.M{"name": bson.M{"$in": []string{cont1.Name, cont2.Name, cont3.Name}}})
-	var scheduler segregatedScheduler
+	scheduler := segregatedScheduler{provisioner: s.p}
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
 	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
@@ -86,13 +86,13 @@ func (s *S) TestSchedulerScheduleNoName(c *check.C) {
 	err = coll.Insert(p)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveAll(bson.M{"_id": p.Name})
-	contColl := collection()
+	contColl := s.p.collection()
 	err = contColl.Insert(
 		cont1, cont2, cont3,
 	)
 	c.Assert(err, check.IsNil)
 	defer contColl.RemoveAll(bson.M{"name": bson.M{"$in": []string{cont1.Name, cont2.Name, cont3.Name}}})
-	var scheduler segregatedScheduler
+	scheduler := segregatedScheduler{provisioner: s.p}
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
 	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
@@ -105,7 +105,7 @@ func (s *S) TestSchedulerScheduleNoName(c *check.C) {
 	node, err := scheduler.Schedule(clusterInstance, opts, a1.Name)
 	c.Assert(err, check.IsNil)
 	c.Check(node.Address, check.Equals, "http://url0:1234")
-	container, err := getContainer(cont1.ID)
+	container, err := s.p.getContainer(cont1.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(container.HostAddr, check.Equals, "")
 }
@@ -121,11 +121,11 @@ func (s *S) TestSchedulerScheduleFallback(c *check.C) {
 	err = coll.Insert(p)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveAll(bson.M{"_id": p.Name})
-	contColl := collection()
+	contColl := s.p.collection()
 	err = contColl.Insert(cont1)
 	c.Assert(err, check.IsNil)
 	defer contColl.RemoveAll(bson.M{"name": cont1.Name})
-	var scheduler segregatedScheduler
+	scheduler := segregatedScheduler{provisioner: s.p}
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
 	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
@@ -151,11 +151,11 @@ func (s *S) TestSchedulerScheduleTeamOwner(c *check.C) {
 	err = coll.Insert(p)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveAll(bson.M{"_id": p.Name})
-	contColl := collection()
+	contColl := s.p.collection()
 	err = contColl.Insert(cont1)
 	c.Assert(err, check.IsNil)
 	defer contColl.RemoveAll(bson.M{"name": cont1.Name})
-	var scheduler segregatedScheduler
+	scheduler := segregatedScheduler{provisioner: s.p}
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
 	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
@@ -172,11 +172,11 @@ func (s *S) TestSchedulerNoFallback(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().Remove(bson.M{"name": app.Name})
 	cont1 := container{ID: "1", Name: "bill", AppName: app.Name}
-	contColl := collection()
+	contColl := s.p.collection()
 	err = contColl.Insert(cont1)
 	c.Assert(err, check.IsNil)
 	defer contColl.Remove(bson.M{"name": cont1.Name})
-	var scheduler segregatedScheduler
+	scheduler := segregatedScheduler{provisioner: s.p}
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
@@ -186,7 +186,7 @@ func (s *S) TestSchedulerNoFallback(c *check.C) {
 }
 
 func (s *S) TestSchedulerNoNodesNoPool(c *check.C) {
-	var scheduler segregatedScheduler
+	scheduler := segregatedScheduler{provisioner: s.p}
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{}
@@ -196,7 +196,7 @@ func (s *S) TestSchedulerNoNodesNoPool(c *check.C) {
 }
 
 func (s *S) TestSchedulerNoNodesWithFallbackPool(c *check.C) {
-	var scheduler segregatedScheduler
+	scheduler := segregatedScheduler{provisioner: s.p}
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
 	err = scheduler.addPool("mypool")
@@ -224,6 +224,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 	segSched := segregatedScheduler{
 		maxMemoryRatio:      0.8,
 		totalMemoryMetadata: "totalMemory",
+		provisioner:         s.p,
 	}
 	err = segSched.addPool("mypool")
 	c.Assert(err, check.IsNil)
@@ -240,7 +241,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 	)
 	c.Assert(err, check.Equals, nil)
 	cont1 := container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "server1"}
-	contColl := collection()
+	contColl := s.p.collection()
 	defer contColl.RemoveAll(bson.M{"appname": "skyrim"})
 	defer contColl.RemoveAll(bson.M{"appname": "oblivion"})
 	err = contColl.Insert(cont1)
@@ -285,7 +286,7 @@ func (s *S) TestChooseNodeDistributesNodesEqually(c *check.C) {
 		{Address: "http://server3:1234"},
 		{Address: "http://server4:1234"},
 	}
-	contColl := collection()
+	contColl := s.p.collection()
 	defer contColl.RemoveAll(bson.M{"appname": "coolapp9"})
 	cont1 := container{ID: "pre1", Name: "existingUnit1", AppName: "coolapp9", HostAddr: "server1"}
 	err := contColl.Insert(cont1)
@@ -297,14 +298,14 @@ func (s *S) TestChooseNodeDistributesNodesEqually(c *check.C) {
 	unitsPerNode := (numberOfUnits + 2) / 4
 	wg := sync.WaitGroup{}
 	wg.Add(numberOfUnits)
+	sched := segregatedScheduler{provisioner: s.p}
 	for i := 0; i < numberOfUnits; i++ {
 		go func(i int) {
 			defer wg.Done()
 			cont := container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "coolapp9"}
 			err := contColl.Insert(cont)
 			c.Assert(err, check.IsNil)
-			var s segregatedScheduler
-			node, err := s.chooseNode(nodes, cont.Name, "coolapp9")
+			node, err := sched.chooseNode(nodes, cont.Name, "coolapp9")
 			c.Assert(err, check.IsNil)
 			c.Assert(node, check.NotNil)
 		}(i)
@@ -329,7 +330,7 @@ func (s *S) TestChooseNodeDistributesNodesEquallyDifferentApps(c *check.C) {
 		{Address: "http://server1:1234"},
 		{Address: "http://server2:1234"},
 	}
-	contColl := collection()
+	contColl := s.p.collection()
 	defer contColl.RemoveAll(bson.M{"appname": "skyrim"})
 	defer contColl.RemoveAll(bson.M{"appname": "oblivion"})
 	cont1 := container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "server1"}
@@ -341,14 +342,14 @@ func (s *S) TestChooseNodeDistributesNodesEquallyDifferentApps(c *check.C) {
 	numberOfUnits := 2
 	wg := sync.WaitGroup{}
 	wg.Add(numberOfUnits)
+	sched := segregatedScheduler{provisioner: s.p}
 	for i := 0; i < numberOfUnits; i++ {
 		go func(i int) {
 			defer wg.Done()
 			cont := container{ID: string(i), Name: fmt.Sprintf("unit%d", i), AppName: "oblivion"}
 			err := contColl.Insert(cont)
 			c.Assert(err, check.IsNil)
-			var s segregatedScheduler
-			node, err := s.chooseNode(nodes, cont.Name, "oblivion")
+			node, err := sched.chooseNode(nodes, cont.Name, "oblivion")
 			c.Assert(err, check.IsNil)
 			c.Assert(node, check.NotNil)
 		}(i)

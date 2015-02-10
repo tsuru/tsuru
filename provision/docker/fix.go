@@ -16,7 +16,7 @@ import (
 
 func (p *dockerProvisioner) fixContainers() error {
 	var containersGroup sync.WaitGroup
-	containers, err := listAllContainers()
+	containers, err := p.listAllContainers()
 	if err != nil {
 		return err
 	}
@@ -41,7 +41,7 @@ func (p *dockerProvisioner) checkContainer(container container, wg *sync.WaitGro
 			return err
 		}
 		if info.HTTPHostPort != container.HostPort || info.IP != container.IP {
-			err = fixContainer(&container, info)
+			err = p.fixContainer(&container, info)
 			if err != nil {
 				log.Errorf("error on fix container hostport for [container %s]", container.ID)
 				return err
@@ -51,7 +51,7 @@ func (p *dockerProvisioner) checkContainer(container container, wg *sync.WaitGro
 	return nil
 }
 
-func fixContainer(container *container, info containerNetworkInfo) error {
+func (p *dockerProvisioner) fixContainer(container *container, info containerNetworkInfo) error {
 	if info.HTTPHostPort == "" {
 		return nil
 	}
@@ -67,7 +67,7 @@ func fixContainer(container *container, info containerNetworkInfo) error {
 	container.IP = info.IP
 	container.HostPort = info.HTTPHostPort
 	router.AddRoute(container.AppName, container.getAddress())
-	coll := collection()
+	coll := p.collection()
 	defer coll.Close()
 	return coll.Update(bson.M{"id": container.ID}, container)
 }

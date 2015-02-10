@@ -132,7 +132,7 @@ func (s *S) TestContainerCreate(c *check.C) {
 	cont := container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
 	err := cont.create(runContainerActionsArgs{
 		app:         app,
-		imageID:     getBuildImage(app),
+		imageID:     s.p.getBuildImage(app),
 		commands:    []string{"docker", "run"},
 		provisioner: s.p,
 	})
@@ -171,7 +171,7 @@ func (s *S) TestContainerCreateAlocatesPort(c *check.C) {
 	cont := container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
 	err := cont.create(runContainerActionsArgs{
 		app:         app,
-		imageID:     getBuildImage(app),
+		imageID:     s.p.getBuildImage(app),
 		commands:    []string{"docker", "run"},
 		provisioner: s.p,
 	})
@@ -195,7 +195,7 @@ func (s *S) TestContainerCreateDoesNotAlocatesPortForDeploy(c *check.C) {
 	err := cont.create(runContainerActionsArgs{
 		isDeploy:    true,
 		app:         app,
-		imageID:     getBuildImage(app),
+		imageID:     s.p.getBuildImage(app),
 		commands:    []string{"docker", "run"},
 		provisioner: s.p,
 	})
@@ -218,7 +218,7 @@ func (s *S) TestContainerCreateUndefinedUser(c *check.C) {
 	cont := container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
 	err = cont.create(runContainerActionsArgs{
 		app:         app,
-		imageID:     getBuildImage(app),
+		imageID:     s.p.getBuildImage(app),
 		commands:    []string{"docker", "run"},
 		provisioner: s.p,
 	})
@@ -257,12 +257,12 @@ func (s *S) TestGetPortInteger(c *check.C) {
 func (s *S) TestContainerSetStatus(c *check.C) {
 	update := time.Date(1989, 2, 2, 14, 59, 32, 0, time.UTC).In(time.UTC)
 	container := container{ID: "something-300", LastStatusUpdate: update}
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	coll.Insert(container)
 	defer coll.Remove(bson.M{"id": container.ID})
-	container.setStatus("what?!")
-	c2, err := getContainer(container.ID)
+	container.setStatus(s.p, "what?!")
+	c2, err := s.p.getContainer(container.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(c2.Status, check.Equals, "what?!")
 	lastUpdate := c2.LastStatusUpdate.In(time.UTC).Format(time.RFC822)
@@ -272,33 +272,33 @@ func (s *S) TestContainerSetStatus(c *check.C) {
 
 func (s *S) TestContainerSetStatusStarted(c *check.C) {
 	container := container{ID: "telnet"}
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	err := coll.Insert(container)
 	c.Assert(err, check.IsNil)
 	defer coll.Remove(bson.M{"id": container.ID})
-	container.setStatus(provision.StatusStarted.String())
-	c2, err := getContainer(container.ID)
+	container.setStatus(s.p, provision.StatusStarted.String())
+	c2, err := s.p.getContainer(container.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(c2.Status, check.Equals, provision.StatusStarted.String())
 	c.Assert(c2.LastSuccessStatusUpdate.IsZero(), check.Equals, false)
 	c2.LastSuccessStatusUpdate = time.Time{}
 	err = coll.Update(bson.M{"id": c2.ID}, c2)
 	c.Assert(err, check.IsNil)
-	c2.setStatus(provision.StatusStarting.String())
-	c3, err := getContainer(container.ID)
+	c2.setStatus(s.p, provision.StatusStarting.String())
+	c3, err := s.p.getContainer(container.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(c3.LastSuccessStatusUpdate.IsZero(), check.Equals, false)
 }
 
 func (s *S) TestContainerSetImage(c *check.C) {
 	container := container{ID: "something-300"}
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	coll.Insert(container)
 	defer coll.Remove(bson.M{"id": container.ID})
-	container.setImage("newimage")
-	c2, err := getContainer(container.ID)
+	container.setImage(s.p, "newimage")
+	c2, err := s.p.getContainer(container.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(c2.Image, check.Equals, "newimage")
 }
@@ -314,7 +314,7 @@ func (s *S) TestContainerRemove(c *check.C) {
 	defer s.removeTestContainer(container)
 	err = container.remove(s.p)
 	c.Assert(err, check.IsNil)
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	err = coll.Find(bson.M{"id": container.ID}).One(&container)
 	c.Assert(err, check.NotNil)
@@ -341,7 +341,7 @@ func (s *S) TestRemoveContainerIgnoreErrors(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = container.remove(s.p)
 	c.Assert(err, check.IsNil)
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	err = coll.Find(bson.M{"id": container.ID}).One(&container)
 	c.Assert(err, check.NotNil)
@@ -400,7 +400,7 @@ func (s *S) TestContainerShell(c *check.C) {
 }
 
 func (s *S) TestGetContainer(c *check.C) {
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	coll.Insert(
 		container{ID: "abcdef", Type: "python"},
@@ -408,17 +408,17 @@ func (s *S) TestGetContainer(c *check.C) {
 		container{ID: "wat", Type: "java"},
 	)
 	defer coll.RemoveAll(bson.M{"id": bson.M{"$in": []string{"abcdef", "fedajs", "wat"}}})
-	container, err := getContainer("abcdef")
+	container, err := s.p.getContainer("abcdef")
 	c.Assert(err, check.IsNil)
 	c.Assert(container.ID, check.Equals, "abcdef")
 	c.Assert(container.Type, check.Equals, "python")
-	container, err = getContainer("wut")
+	container, err = s.p.getContainer("wut")
 	c.Assert(container, check.IsNil)
 	c.Assert(err.Error(), check.Equals, "not found")
 }
 
 func (s *S) TestGetContainers(c *check.C) {
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	coll.Insert(
 		container{ID: "abcdef", Type: "python", AppName: "something"},
@@ -426,23 +426,23 @@ func (s *S) TestGetContainers(c *check.C) {
 		container{ID: "wat", Type: "java", AppName: "otherthing"},
 	)
 	defer coll.RemoveAll(bson.M{"id": bson.M{"$in": []string{"abcdef", "fedajs", "wat"}}})
-	containers, err := listContainersByApp("something")
+	containers, err := s.p.listContainersByApp("something")
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
 	c.Assert(containers[0].ID, check.Equals, "abcdef")
 	c.Assert(containers[1].ID, check.Equals, "fedajs")
-	containers, err = listContainersByApp("otherthing")
+	containers, err = s.p.listContainersByApp("otherthing")
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 1)
 	c.Assert(containers[0].ID, check.Equals, "wat")
-	containers, err = listContainersByApp("unknown")
+	containers, err = s.p.listContainersByApp("unknown")
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 0)
 }
 
 func (s *S) TestGetImageFromAppPlatform(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	img := getBuildImage(app)
+	img := s.p.getBuildImage(app)
 	repoNamespace, err := config.GetString("docker:repository-namespace")
 	c.Assert(err, check.IsNil)
 	c.Assert(img, check.Equals, fmt.Sprintf("%s/python", repoNamespace))
@@ -457,13 +457,13 @@ func (s *S) TestGetImageAppWhenDeployIsMultipleOf10(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": app.Name})
 	cont := container{ID: "bleble", Type: app.Platform, AppName: app.Name, Image: "tsuru/app1"}
-	coll := collection()
+	coll := s.p.collection()
 	err = coll.Insert(cont)
 	c.Assert(err, check.IsNil)
 	defer coll.Close()
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveAll(bson.M{"id": cont.ID})
-	img := getBuildImage(app)
+	img := s.p.getBuildImage(app)
 	repoNamespace, err := config.GetString("docker:repository-namespace")
 	c.Assert(err, check.IsNil)
 	c.Assert(img, check.Equals, fmt.Sprintf("%s/%s", repoNamespace, app.Platform))
@@ -471,13 +471,13 @@ func (s *S) TestGetImageAppWhenDeployIsMultipleOf10(c *check.C) {
 
 func (s *S) TestGetImageUseAppImageIfContainersExist(c *check.C) {
 	cont := container{ID: "bleble", Type: "python", AppName: "myapp", Image: "ignored"}
-	coll := collection()
+	coll := s.p.collection()
 	err := coll.Insert(cont)
 	defer coll.Close()
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveAll(bson.M{"id": "bleble"})
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	img := getBuildImage(app)
+	img := s.p.getBuildImage(app)
 	c.Assert(img, check.Equals, "tsuru/app-myapp")
 }
 
@@ -485,7 +485,7 @@ func (s *S) TestGetImageWithRegistry(c *check.C) {
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	img := getBuildImage(app)
+	img := s.p.getBuildImage(app)
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
 	expected := fmt.Sprintf("localhost:3030/%s/python", repoNamespace)
 	c.Assert(img, check.Equals, expected)
@@ -568,7 +568,7 @@ func (s *S) TestGitDeploy(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(imageId, check.Equals, "tsuru/app-myapp:v1")
 	var conts []container
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	err = coll.Find(nil).All(&conts)
 	c.Assert(err, check.IsNil)
@@ -597,7 +597,7 @@ func (s *S) TestGitDeployRollsbackAfterErrorOnAttach(c *check.C) {
 	_, err = s.p.gitDeploy(app, "ff13e", &buf)
 	c.Assert(err, check.ErrorMatches, ".*My write error")
 	var conts []container
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	err = coll.Find(nil).All(&conts)
 	c.Assert(err, check.IsNil)
@@ -614,7 +614,7 @@ func (s *S) TestArchiveDeploy(c *check.C) {
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
-	_, err = s.p.archiveDeploy(app, getBuildImage(app), "https://s3.amazonaws.com/wat/archive.tar.gz", &buf)
+	_, err = s.p.archiveDeploy(app, s.p.getBuildImage(app), "https://s3.amazonaws.com/wat/archive.tar.gz", &buf)
 	c.Assert(err, check.IsNil)
 }
 
@@ -622,7 +622,7 @@ func (s *S) TestStart(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/python")
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	imageId := getBuildImage(app)
+	imageId := s.p.getBuildImage(app)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
@@ -630,7 +630,7 @@ func (s *S) TestStart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer cont.remove(s.p)
 	c.Assert(cont.ID, check.Not(check.Equals), "")
-	cont2, err := getContainer(cont.ID)
+	cont2, err := s.p.getContainer(cont.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(cont2.Image, check.Equals, imageId)
 	c.Assert(cont2.Status, check.Equals, provision.StatusStarting.String())
@@ -656,7 +656,7 @@ func (s *S) TestContainerStopReturnsNilWhenContainerAlreadyMarkedAsStopped(c *ch
 	cont, err := s.newContainer(nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
-	cont.setStatus(provision.StatusStopped.String())
+	cont.setStatus(s.p, provision.StatusStopped.String())
 	err = cont.stop(s.p)
 	c.Assert(err, check.IsNil)
 }

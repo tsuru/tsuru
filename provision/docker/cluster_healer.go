@@ -233,7 +233,7 @@ func (p *dockerProvisioner) healContainerIfNeeded(cont container) error {
 		log.Errorf("Containers healing: couldn't verify running processes in container %s: %s", cont.ID, err.Error())
 	}
 	if hasProcfile {
-		cont.setStatus(provision.StatusStarted.String())
+		cont.setStatus(p, provision.StatusStarted.String())
 		return nil
 	}
 	healingCounter, err := healingCountFor("container", cont.ID, consecutiveHealingsTimeframe)
@@ -251,7 +251,7 @@ func (p *dockerProvisioner) healContainerIfNeeded(cont container) error {
 	}
 	defer locker.unlock(cont.AppName)
 	// Sanity check, now we have a lock, let's find out if the container still exists
-	_, err = getContainer(cont.ID)
+	_, err = p.getContainer(cont.ID)
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			return nil
@@ -275,7 +275,7 @@ func (p *dockerProvisioner) healContainerIfNeeded(cont container) error {
 }
 
 func (p *dockerProvisioner) runContainerHealerOnce(maxUnresponsiveTime time.Duration) {
-	containers, err := listUnresponsiveContainers(maxUnresponsiveTime)
+	containers, err := p.listUnresponsiveContainers(maxUnresponsiveTime)
 	if err != nil {
 		log.Errorf("Containers Healing: couldn't list unresponsive containers: %s", err.Error())
 	}

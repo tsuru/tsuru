@@ -91,7 +91,7 @@ func (s *S) SetUpTest(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner = s.p
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	err = dbtest.ClearAllCollections(coll.Database)
 	c.Assert(err, check.IsNil)
@@ -116,7 +116,7 @@ func clearClusterStorage() error {
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	err := dbtest.ClearAllCollections(coll.Database)
 	c.Assert(err, check.IsNil)

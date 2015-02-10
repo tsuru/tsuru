@@ -53,7 +53,7 @@ var insertEmptyContainerInDB = action.Action{
 			Image:         args.imageID,
 			BuildingImage: args.buildingImage,
 		}
-		coll := collection()
+		coll := args.provisioner.collection()
 		defer coll.Close()
 		if err := coll.Insert(cont); err != nil {
 			log.Errorf("error on inserting container into database %s - %s", cont.Name, err)
@@ -63,7 +63,8 @@ var insertEmptyContainerInDB = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		c := ctx.FWResult.(container)
-		coll := collection()
+		args := ctx.Params[0].(runContainerActionsArgs)
+		coll := args.provisioner.collection()
 		defer coll.Close()
 		coll.Remove(bson.M{"name": c.Name})
 	},
@@ -72,7 +73,8 @@ var insertEmptyContainerInDB = action.Action{
 var updateContainerInDB = action.Action{
 	Name: "update-database-container",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		coll := collection()
+		args := ctx.Params[0].(runContainerActionsArgs)
+		coll := args.provisioner.collection()
 		defer coll.Close()
 		cont := ctx.Previous.(container)
 		err := coll.Update(bson.M{"name": cont.Name}, cont)

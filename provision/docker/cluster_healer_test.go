@@ -126,7 +126,7 @@ func (s *S) TestHealerHealNode(c *check.C) {
 	c.Assert(urlPort(nodes[0].Address), check.Equals, urlPort(node1.URL()))
 	c.Assert(urlToHost(nodes[0].Address), check.Equals, "127.0.0.1")
 
-	containers, err := listAllContainers()
+	containers, err := p.listAllContainers()
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 1)
 	c.Assert(containers[0].HostAddr, check.Equals, "127.0.0.1")
@@ -154,7 +154,7 @@ func (s *S) TestHealerHealNode(c *check.C) {
 	done := make(chan bool)
 	go func() {
 		for range time.Tick(100 * time.Millisecond) {
-			containers, err := listAllContainers()
+			containers, err := p.listAllContainers()
 			if err == nil && len(containers) == 1 && containers[0].HostAddr == "localhost" {
 				close(done)
 				return
@@ -371,7 +371,7 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 	c.Assert(urlPort(nodes[0].Address), check.Equals, urlPort(node1.URL()))
 	c.Assert(urlToHost(nodes[0].Address), check.Equals, "127.0.0.1")
 
-	containers, err := listAllContainers()
+	containers, err := p.listAllContainers()
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 1)
 	c.Assert(containers[0].HostAddr, check.Equals, "127.0.0.1")
@@ -401,7 +401,7 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 	done := make(chan bool)
 	go func() {
 		for range time.Tick(100 * time.Millisecond) {
-			containers, err := listAllContainers()
+			containers, err := p.listAllContainers()
 			if err == nil && len(containers) == 1 && containers[0].HostAddr == "localhost" {
 				close(done)
 				return
@@ -455,7 +455,7 @@ func (s *S) TestHealContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
-	containers, err := listAllContainers()
+	containers, err := p.listAllContainers()
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 1)
 	c.Assert(containers[0].HostAddr, check.Equals, "127.0.0.1")
@@ -469,7 +469,7 @@ func (s *S) TestHealContainer(c *check.C) {
 	_, err = p.healContainer(containers[0], locker)
 	c.Assert(err, check.IsNil)
 
-	containers, err = listAllContainers()
+	containers, err = p.listAllContainers()
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 1)
 	c.Assert(containers[0].HostAddr, check.Equals, "localhost")
@@ -514,7 +514,7 @@ func (s *S) TestRunContainerHealer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
-	containers, err := listAllContainers()
+	containers, err := p.listAllContainers()
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
 	c.Assert(containers[0].HostAddr, check.Equals, "127.0.0.1")
@@ -522,7 +522,7 @@ func (s *S) TestRunContainerHealer(c *check.C) {
 
 	toMoveCont := containers[1]
 	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-2 * time.Minute)
-	coll := collection()
+	coll := p.collection()
 	err = coll.Update(bson.M{"id": toMoveCont.ID}, toMoveCont)
 	c.Assert(err, check.IsNil)
 
@@ -530,7 +530,7 @@ func (s *S) TestRunContainerHealer(c *check.C) {
 
 	p.runContainerHealerOnce(1 * time.Minute)
 
-	containers, err = listAllContainers()
+	containers, err = p.listAllContainers()
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
 	hosts := []string{containers[0].HostAddr, containers[1].HostAddr}
@@ -591,7 +591,7 @@ func (s *S) TestRunContainerHealerConcurrency(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
-	containers, err := listAllContainers()
+	containers, err := p.listAllContainers()
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
 	c.Assert(containers[0].HostAddr, check.Equals, "127.0.0.1")
@@ -612,7 +612,7 @@ func (s *S) TestRunContainerHealerConcurrency(c *check.C) {
 	}()
 	wg.Wait()
 
-	containers, err = listAllContainers()
+	containers, err = p.listAllContainers()
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
 	hosts := []string{containers[0].HostAddr, containers[1].HostAddr}
@@ -673,7 +673,7 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
-	containers, err := listAllContainers()
+	containers, err := p.listAllContainers()
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
 	c.Assert(containers[0].HostAddr, check.Equals, "127.0.0.1")
@@ -685,7 +685,7 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *check.C) {
 	p.healContainerIfNeeded(toMoveCont)
 	p.healContainerIfNeeded(toMoveCont)
 
-	containers, err = listAllContainers()
+	containers, err = p.listAllContainers()
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
 	hosts := []string{containers[0].HostAddr, containers[1].HostAddr}
@@ -743,7 +743,7 @@ func (s *S) TestRunContainerHealerDoesntHealWithProcfileInTop(c *check.C) {
 
 	toMoveCont := cont[0]
 	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-2 * time.Minute)
-	coll := collection()
+	coll := p.collection()
 	err = coll.Update(bson.M{"id": toMoveCont.ID}, toMoveCont)
 	c.Assert(err, check.IsNil)
 
@@ -795,7 +795,7 @@ func (s *S) TestRunContainerHealerWithError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
-	containers, err := listAllContainers()
+	containers, err := p.listAllContainers()
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
 	c.Assert(containers[0].HostAddr, check.Equals, "127.0.0.1")
@@ -803,7 +803,7 @@ func (s *S) TestRunContainerHealerWithError(c *check.C) {
 
 	toMoveCont := containers[1]
 	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-2 * time.Minute)
-	coll := collection()
+	coll := p.collection()
 	err = coll.Update(bson.M{"id": toMoveCont.ID}, toMoveCont)
 	c.Assert(err, check.IsNil)
 
@@ -812,7 +812,7 @@ func (s *S) TestRunContainerHealerWithError(c *check.C) {
 
 	p.runContainerHealerOnce(1 * time.Minute)
 
-	containers, err = listAllContainers()
+	containers, err = p.listAllContainers()
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
 	hosts := []string{containers[0].HostAddr, containers[1].HostAddr}
@@ -846,7 +846,7 @@ func (s *S) TestRunContainerHealerMaxCounterExceeded(c *check.C) {
 	}
 	toMoveCont := conts[7]
 	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-2 * time.Minute)
-	coll := collection()
+	coll := s.p.collection()
 	err := coll.Insert(toMoveCont)
 	c.Assert(err, check.IsNil)
 	err = s.p.healContainerIfNeeded(toMoveCont)

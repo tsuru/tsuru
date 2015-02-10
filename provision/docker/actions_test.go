@@ -41,7 +41,7 @@ func (s *S) TestInsertEmptyContainerInDBForward(c *check.C) {
 	c.Assert(cont.Status, check.Equals, "created")
 	c.Assert(cont.Image, check.Equals, "image-id")
 	c.Assert(cont.BuildingImage, check.Equals, "next-image")
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	defer coll.Remove(bson.M{"name": cont.Name})
 	var retrieved container
@@ -52,11 +52,13 @@ func (s *S) TestInsertEmptyContainerInDBForward(c *check.C) {
 
 func (s *S) TestInsertEmptyContainerInDBBackward(c *check.C) {
 	cont := container{Name: "myName"}
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	err := coll.Insert(&cont)
 	c.Assert(err, check.IsNil)
-	context := action.BWContext{FWResult: cont}
+	context := action.BWContext{FWResult: cont, Params: []interface{}{runContainerActionsArgs{
+		provisioner: s.p,
+	}}}
 	insertEmptyContainerInDB.Backward(context)
 	err = coll.Find(bson.M{"name": cont.Name}).One(&cont)
 	c.Assert(err, check.NotNil)
@@ -69,15 +71,17 @@ func (s *S) TestUpdateContainerInDBName(c *check.C) {
 
 func (s *S) TestUpdateContainerInDBForward(c *check.C) {
 	cont := container{Name: "myName"}
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	err := coll.Insert(cont)
 	c.Assert(err, check.IsNil)
 	cont.ID = "myID"
-	context := action.FWContext{Previous: cont}
+	context := action.FWContext{Previous: cont, Params: []interface{}{runContainerActionsArgs{
+		provisioner: s.p,
+	}}}
 	r, err := updateContainerInDB.Forward(context)
 	c.Assert(r, check.FitsTypeOf, container{})
-	retrieved, err := getContainer(cont.ID)
+	retrieved, err := s.p.getContainer(cont.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(retrieved.ID, check.Equals, cont.ID)
 }
@@ -371,7 +375,7 @@ func (s *S) TestProvisionAddUnitsToHostForward(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp-2", "python", 0)
 	defer p.Destroy(app)
 	p.Provision(app)
-	coll := collection()
+	coll := p.collection()
 	defer coll.Close()
 	coll.Insert(container{ID: "container-id", AppName: app.GetName(), Version: "container-version", Image: "tsuru/python"})
 	defer coll.RemoveAll(bson.M{"appname": app.GetName()})
@@ -405,7 +409,7 @@ func (s *S) TestProvisionAddUnitsToHostForwardWithoutHost(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp-2", "python", 0)
 	defer p.Destroy(app)
 	p.Provision(app)
-	coll := collection()
+	coll := p.collection()
 	defer coll.Close()
 	imageId, err := appNewImageName(app.GetName())
 	c.Assert(err, check.IsNil)
@@ -441,7 +445,7 @@ func (s *S) TestProvisionAddUnitsToHostBackward(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp-xxx-1", "python", 0)
 	defer s.p.Destroy(app)
 	s.p.Provision(app)
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	cont := container{ID: "container-id", AppName: app.GetName(), Version: "container-version", Image: "tsuru/python"}
 	coll.Insert(cont)
@@ -451,7 +455,7 @@ func (s *S) TestProvisionAddUnitsToHostBackward(c *check.C) {
 	}
 	context := action.BWContext{FWResult: []container{cont}, Params: []interface{}{args}}
 	provisionAddUnitsToHost.Backward(context)
-	_, err = getContainer(cont.ID)
+	_, err = s.p.getContainer(cont.ID)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "not found")
 }
@@ -481,7 +485,7 @@ func (s *S) TestProvisionRemoveOldUnitsForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	resultContainers := result.([]container)
 	c.Assert(resultContainers, check.DeepEquals, []container{})
-	_, err = getContainer(cont.ID)
+	_, err = s.p.getContainer(cont.ID)
 	c.Assert(err, check.NotNil)
 	c.Assert(app.HasBind(&unit), check.Equals, false)
 }
@@ -513,7 +517,7 @@ func (s *S) TestFollowLogsAndCommitForward(c *check.C) {
 	c.Assert(imageId, check.Equals, "tsuru/app-mightyapp:v1")
 	c.Assert(buf.String(), check.Not(check.Equals), "")
 	var dbCont container
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	err = coll.Find(bson.M{"id": cont.ID}).One(&dbCont)
 	c.Assert(err, check.NotNil)

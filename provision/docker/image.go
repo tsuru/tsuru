@@ -63,7 +63,7 @@ func (p *dockerProvisioner) migrateImages() error {
 				return err
 			}
 		}
-		err = updateContainers(bson.M{"appname": app.Name}, bson.M{"$set": bson.M{"image": newImage}})
+		err = p.updateContainers(bson.M{"appname": app.Name}, bson.M{"$set": bson.M{"image": newImage}})
 		if err != nil {
 			return err
 		}
@@ -77,8 +77,8 @@ func (p *dockerProvisioner) migrateImages() error {
 // * the container have an empty image name;
 // * the deploy number is multiple of 10.
 // in all other cases the app image name will be returne.
-func getBuildImage(app provision.App) string {
-	if usePlatformImage(app) {
+func (p *dockerProvisioner) getBuildImage(app provision.App) string {
+	if p.usePlatformImage(app) {
 		return platformImageName(app.GetPlatform())
 	}
 	appImageName, err := appCurrentImageName(app.GetName())
@@ -311,12 +311,12 @@ func basicImageName() string {
 	return strings.Join(parts, "/")
 }
 
-func usePlatformImage(app provision.App) bool {
+func (p *dockerProvisioner) usePlatformImage(app provision.App) bool {
 	deploys := app.GetDeploys()
 	if (deploys != 0 && deploys%10 == 0) || app.GetUpdatePlatform() {
 		return true
 	}
-	c, err := getOneContainerByAppName(app.GetName())
+	c, err := p.getOneContainerByAppName(app.GetName())
 	if err != nil || c.Image == "" {
 		return true
 	}

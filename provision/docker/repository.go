@@ -17,9 +17,9 @@ import (
 
 var errAmbiguousContainer error = errors.New("ambiguous container name")
 
-func getContainer(id string) (*container, error) {
+func (p *dockerProvisioner) getContainer(id string) (*container, error) {
 	var containers []container
-	coll := collection()
+	coll := p.collection()
 	defer coll.Close()
 	id = fmt.Sprintf("^%s.*", id)
 	err := coll.Find(bson.M{"id": bson.RegEx{Pattern: id}}).All(&containers)
@@ -36,16 +36,16 @@ func getContainer(id string) (*container, error) {
 	return &containers[0], nil
 }
 
-func listContainersByHost(address string) ([]container, error) {
-	return listContainersBy(bson.M{"hostaddr": address})
+func (p *dockerProvisioner) listContainersByHost(address string) ([]container, error) {
+	return p.listContainersBy(bson.M{"hostaddr": address})
 }
 
-func listContainersByApp(appName string) ([]container, error) {
-	return listContainersBy(bson.M{"appname": appName})
+func (p *dockerProvisioner) listContainersByApp(appName string) ([]container, error) {
+	return p.listContainersBy(bson.M{"appname": appName})
 }
 
-func listRunnableContainersByApp(appName string) ([]container, error) {
-	return listContainersBy(bson.M{
+func (p *dockerProvisioner) listRunnableContainersByApp(appName string) ([]container, error) {
+	return p.listContainersBy(bson.M{
 		"appname": appName,
 		"status": bson.M{
 			"$nin": []string{
@@ -80,8 +80,8 @@ func (c containerSlice) Swap(i, j int) {
 	c[i], c[j] = c[j], c[i]
 }
 
-func listContainersByAppOrderedByStatus(appName string) ([]container, error) {
-	containers, err := listContainersBy(bson.M{"appname": appName})
+func (p *dockerProvisioner) listContainersByAppOrderedByStatus(appName string) ([]container, error) {
+	containers, err := p.listContainersBy(bson.M{"appname": appName})
 	if err != nil {
 		return nil, err
 	}
@@ -89,28 +89,28 @@ func listContainersByAppOrderedByStatus(appName string) ([]container, error) {
 	return containers, nil
 }
 
-func listAllContainers() ([]container, error) {
-	return listContainersBy(nil)
+func (p *dockerProvisioner) listAllContainers() ([]container, error) {
+	return p.listContainersBy(nil)
 }
 
-func listContainersBy(query bson.M) ([]container, error) {
+func (p *dockerProvisioner) listContainersBy(query bson.M) ([]container, error) {
 	var list []container
-	coll := collection()
+	coll := p.collection()
 	defer coll.Close()
 	err := coll.Find(query).All(&list)
 	return list, err
 }
 
-func updateContainers(query bson.M, update bson.M) error {
-	coll := collection()
+func (p *dockerProvisioner) updateContainers(query bson.M, update bson.M) error {
+	coll := p.collection()
 	defer coll.Close()
 	_, err := coll.UpdateAll(query, update)
 	return err
 }
 
-func getOneContainerByAppName(appName string) (*container, error) {
+func (p *dockerProvisioner) getOneContainerByAppName(appName string) (*container, error) {
 	var c container
-	coll := collection()
+	coll := p.collection()
 	defer coll.Close()
 	err := coll.Find(bson.M{"appname": appName}).One(&c)
 	if err != nil {
@@ -119,15 +119,15 @@ func getOneContainerByAppName(appName string) (*container, error) {
 	return &c, nil
 }
 
-func getContainerCountForAppName(appName string) (int, error) {
-	coll := collection()
+func (p *dockerProvisioner) getContainerCountForAppName(appName string) (int, error) {
+	coll := p.collection()
 	defer coll.Close()
 	return coll.Find(bson.M{"appname": appName}).Count()
 }
 
-func listUnresponsiveContainers(maxUnresponsiveTime time.Duration) ([]container, error) {
+func (p *dockerProvisioner) listUnresponsiveContainers(maxUnresponsiveTime time.Duration) ([]container, error) {
 	now := time.Now().UTC()
-	return listContainersBy(bson.M{
+	return p.listContainersBy(bson.M{
 		"lastsuccessstatusupdate": bson.M{"$lt": now.Add(-maxUnresponsiveTime)},
 		"hostport":                bson.M{"$ne": ""},
 		"status":                  bson.M{"$ne": provision.StatusStopped.String()},

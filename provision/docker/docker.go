@@ -211,7 +211,7 @@ func (c *container) networkInfo(p *dockerProvisioner) (containerNetworkInfo, err
 	return netInfo, err
 }
 
-func (c *container) setStatus(status string, updateDB ...bool) error {
+func (c *container) setStatus(p *dockerProvisioner, status string, updateDB ...bool) error {
 	c.Status = status
 	c.LastStatusUpdate = time.Now().In(time.UTC)
 	updateData := bson.M{
@@ -226,14 +226,14 @@ func (c *container) setStatus(status string, updateDB ...bool) error {
 	if len(updateDB) > 0 && !updateDB[0] {
 		return nil
 	}
-	coll := collection()
+	coll := p.collection()
 	defer coll.Close()
 	return coll.Update(bson.M{"id": c.ID}, bson.M{"$set": updateData})
 }
 
-func (c *container) setImage(imageId string) error {
+func (c *container) setImage(p *dockerProvisioner, imageId string) error {
 	c.Image = imageId
-	coll := collection()
+	coll := p.collection()
 	defer coll.Close()
 	return coll.Update(bson.M{"id": c.ID}, c)
 }
@@ -243,7 +243,7 @@ func (p *dockerProvisioner) gitDeploy(app provision.App, version string, w io.Wr
 	if err != nil {
 		return "", err
 	}
-	return p.deployPipeline(app, getBuildImage(app), commands, w)
+	return p.deployPipeline(app, p.getBuildImage(app), commands, w)
 }
 
 func (p *dockerProvisioner) archiveDeploy(app provision.App, image, archiveURL string, w io.Writer) (string, error) {
@@ -309,7 +309,7 @@ func (p *dockerProvisioner) start(app provision.App, imageId string, w io.Writer
 		return nil, err
 	}
 	c := pipeline.Result().(container)
-	err = c.setImage(imageId)
+	err = c.setImage(p, imageId)
 	if err != nil {
 		return nil, err
 	}
@@ -334,7 +334,7 @@ func (c *container) remove(p *dockerProvisioner) error {
 		log.Errorf("Failed to remove container from docker: %s", err)
 	}
 	log.Debugf("Removing container %s from database", c.ID)
-	coll := collection()
+	coll := p.collection()
 	defer coll.Close()
 	if err := coll.Remove(bson.M{"id": c.ID}); err != nil {
 		log.Errorf("Failed to remove container from database: %s", err)
@@ -469,7 +469,7 @@ func (c *container) stop(p *dockerProvisioner) error {
 	if err != nil {
 		log.Errorf("error on stop container %s: %s", c.ID, err)
 	}
-	c.setStatus(provision.StatusStopped.String())
+	c.setStatus(p, provision.StatusStopped.String())
 	return nil
 }
 
@@ -512,7 +512,7 @@ func (c *container) start(p *dockerProvisioner, isDeploy bool) error {
 	if isDeploy {
 		initialStatus = provision.StatusBuilding.String()
 	}
-	return c.setStatus(initialStatus, false)
+	return c.setStatus(p, initialStatus, false)
 }
 
 // logs returns logs for the container.

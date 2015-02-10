@@ -60,7 +60,7 @@ func (s *S) TestProvisionerRestart(c *check.C) {
 	c.Assert(dockerContainer.State.Running, check.Equals, true)
 	err = s.p.Restart(app, nil)
 	c.Assert(err, check.IsNil)
-	dbConts, err := listAllContainers()
+	dbConts, err := s.p.listAllContainers()
 	c.Assert(err, check.IsNil)
 	c.Assert(dbConts, check.HasLen, 1)
 	c.Assert(dbConts[0].ID, check.Not(check.Equals), cont.ID)
@@ -384,7 +384,7 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *ch
 	})
 	c.Assert(err, check.IsNil)
 	defer s.p.Destroy(&a)
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	n, err := coll.Find(bson.M{"appname": cont1.AppName}).Count()
 	c.Assert(err, check.IsNil)
@@ -503,7 +503,7 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 	s.p.Provision(app)
 	err = s.p.Destroy(app)
 	c.Assert(err, check.IsNil)
-	coll := collection()
+	coll := s.p.collection()
 	count, err := coll.Find(bson.M{"appname": cont.AppName}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 0)
@@ -546,7 +546,7 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.Destroy(&a)
 	c.Assert(err, check.IsNil)
-	coll := collection()
+	coll := s.p.collection()
 	count, err := coll.Find(bson.M{"appname": a.Name}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 0)
@@ -601,7 +601,7 @@ func (s *S) TestProvisionerAddUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	units, err := s.p.AddUnits(app, 3, nil)
 	c.Assert(err, check.IsNil)
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	defer coll.RemoveAll(bson.M{"appname": app.GetName()})
 	c.Assert(units, check.HasLen, 3)
@@ -626,7 +626,7 @@ func (s *S) TestProvisionerAddUnitsWithErrorDoesntLeaveLostUnits(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 0)
 	s.p.Provision(app)
 	defer s.p.Destroy(app)
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	coll.Insert(container{ID: "c-89320", AppName: app.GetName(), Version: "a345fe", Image: "tsuru/python"})
 	defer coll.RemoveId(bson.M{"id": "c-89320"})
@@ -643,7 +643,7 @@ func (s *S) TestProvisionerAddZeroUnits(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 0)
 	s.p.Provision(app)
 	defer s.p.Destroy(app)
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	coll.Insert(container{ID: "c-89320", AppName: app.GetName(), Version: "a345fe", Image: "tsuru/python"})
 	defer coll.RemoveId(bson.M{"id": "c-89320"})
@@ -672,7 +672,7 @@ func (s *S) TestProvisionerAddUnitsWithHost(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 0)
 	p.Provision(app)
 	defer p.Destroy(app)
-	coll := collection()
+	coll := p.collection()
 	defer coll.Close()
 	coll.Insert(container{ID: "xxxfoo", AppName: app.GetName(), Version: "123987", Image: "tsuru/python"})
 	defer coll.RemoveId(bson.M{"id": "xxxfoo"})
@@ -721,9 +721,9 @@ func (s *S) TestProvisionerRemoveUnits(c *check.C) {
 	app.BindUnit(&unit3)
 	err = s.p.RemoveUnits(app, 2)
 	c.Assert(err, check.IsNil)
-	_, err = getContainer(container1.ID)
+	_, err = s.p.getContainer(container1.ID)
 	c.Assert(err, check.NotNil)
-	_, err = getContainer(container2.ID)
+	_, err = s.p.getContainer(container2.ID)
 	c.Assert(err, check.NotNil)
 	c.Check(app.HasBind(&unit1), check.Equals, false)
 	c.Check(app.HasBind(&unit2), check.Equals, false)
@@ -741,7 +741,7 @@ func (s *S) TestProvisionerRemoveUnitsPriorityOrder(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.RemoveUnits(app, 1)
 	c.Assert(err, check.IsNil)
-	_, err = getContainer(container.ID)
+	_, err = s.p.getContainer(container.ID)
 	c.Assert(err, check.NotNil)
 	c.Assert(s.p.Units(app), check.HasLen, 3)
 }
@@ -788,7 +788,7 @@ func (s *S) TestProvisionerRemoveUnit(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.RemoveUnit(provision.Unit{AppName: a.Name, Name: container.ID})
 	c.Assert(err, check.IsNil)
-	_, err = getContainer(container.ID)
+	_, err = s.p.getContainer(container.ID)
 	c.Assert(err, check.NotNil)
 }
 
@@ -806,7 +806,7 @@ func (s *S) TestProvisionerSetUnitStatus(c *check.C) {
 	defer s.removeTestContainer(container)
 	err = s.p.SetUnitStatus(provision.Unit{Name: container.ID, AppName: container.AppName}, provision.StatusError)
 	c.Assert(err, check.IsNil)
-	container, err = getContainer(container.ID)
+	container, err = s.p.getContainer(container.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(container.Status, check.Equals, provision.StatusError.String())
 }
@@ -821,7 +821,7 @@ func (s *S) TestProvisionerSetUnitStatusWrongApp(c *check.C) {
 	err = s.p.SetUnitStatus(provision.Unit{Name: container.ID, AppName: container.AppName + "a"}, provision.StatusError)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "wrong app name")
-	container, err = getContainer(container.ID)
+	container, err = s.p.getContainer(container.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(container.Status, check.Equals, provision.StatusStarted.String())
 }
@@ -836,7 +836,7 @@ func (s *S) TestProvisionerExecuteCommand(c *check.C) {
 	container1, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container1)
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	coll.Update(bson.M{"id": container1.ID}, container1)
 	container2, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
@@ -865,16 +865,16 @@ func (s *S) TestProvisionerExecuteCommandExcludesBuildContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	container4, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, check.IsNil)
-	container2.setStatus(provision.StatusCreated.String())
-	container3.setStatus(provision.StatusBuilding.String())
-	container4.setStatus(provision.StatusStopped.String())
+	container2.setStatus(s.p, provision.StatusCreated.String())
+	container3.setStatus(s.p, provision.StatusBuilding.String())
+	container4.setStatus(s.p, provision.StatusStopped.String())
 	containers := []*container{
 		container1,
 		container2,
 		container3,
 		container4,
 	}
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	for _, c := range containers {
 		defer s.removeTestContainer(c)
@@ -889,7 +889,7 @@ func (s *S) TestProvisionerExecuteCommandOnce(c *check.C) {
 	container, err := s.newContainer(&newContainerOpts{AppName: app.GetName()})
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container)
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	coll.Update(bson.M{"id": container.ID}, container)
 	var stdout, stderr bytes.Buffer
@@ -905,7 +905,7 @@ func (s *S) TestProvisionerExecuteCommandOnceNoContainers(c *check.C) {
 }
 
 func (s *S) TestProvisionCollection(c *check.C) {
-	collection := collection()
+	collection := s.p.collection()
 	defer collection.Close()
 	c.Assert(collection.Name, check.Equals, s.collName)
 }
@@ -998,7 +998,7 @@ func (s *S) TestProvisionerStart(c *check.C) {
 	dockerContainer, err = dcli.InspectContainer(container.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, true)
-	container, err = getContainer(container.ID)
+	container, err = s.p.getContainer(container.ID)
 	c.Assert(err, check.IsNil)
 	expectedIP := dockerContainer.NetworkSettings.IPAddress
 	expectedPort := dockerContainer.NetworkSettings.Ports["8888/tcp"][0].HostPort
@@ -1158,7 +1158,7 @@ func (s *S) TestProvisionerPlatformRemoveReturnsStorageError(c *check.C) {
 
 func (s *S) TestProvisionerUnits(c *check.C) {
 	app := app.App{Name: "myapplication"}
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	err := coll.Insert(
 		container{
@@ -1188,7 +1188,7 @@ func (s *S) TestProvisionerUnitsAppDoesNotExist(c *check.C) {
 
 func (s *S) TestProvisionerUnitsStatus(c *check.C) {
 	app := app.App{Name: "myapplication"}
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	err := coll.Insert(
 		container{
@@ -1220,7 +1220,7 @@ func (s *S) TestProvisionerUnitsStatus(c *check.C) {
 
 func (s *S) TestProvisionerUnitsIp(c *check.C) {
 	app := app.App{Name: "myapplication"}
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	err := coll.Insert(
 		container{
@@ -1255,13 +1255,13 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container)
 	container.IP = "xinvalidx"
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	err = coll.Update(bson.M{"id": container.ID}, container)
 	c.Assert(err, check.IsNil)
 	err = s.p.RegisterUnit(provision.Unit{Name: container.ID}, nil)
 	c.Assert(err, check.IsNil)
-	dbCont, err := getContainer(container.ID)
+	dbCont, err := s.p.getContainer(container.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbCont.IP, check.Matches, `\d+\.\d+\.\d+\.\d+`)
 	c.Assert(dbCont.Status, check.Equals, provision.StatusStarted.String())
@@ -1275,13 +1275,13 @@ func (s *S) TestRegisterUnitBuildingContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container)
 	container.IP = "xinvalidx"
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	err = coll.Update(bson.M{"id": container.ID}, container)
 	c.Assert(err, check.IsNil)
 	err = s.p.RegisterUnit(provision.Unit{Name: container.ID}, nil)
 	c.Assert(err, check.IsNil)
-	dbCont, err := getContainer(container.ID)
+	dbCont, err := s.p.getContainer(container.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbCont.IP, check.Matches, `xinvalidx`)
 	c.Assert(dbCont.Status, check.Equals, provision.StatusBuilding.String())
@@ -1296,7 +1296,7 @@ func (s *S) TestRegisterUnitSavesCustomData(c *check.C) {
 	defer s.removeTestContainer(container)
 	container.IP = "xinvalidx"
 	container.BuildingImage = "my-building-image"
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	err = coll.Update(bson.M{"id": container.ID}, container)
 	c.Assert(err, check.IsNil)

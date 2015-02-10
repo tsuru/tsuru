@@ -52,8 +52,9 @@ func getRouterForApp(app provision.App) (router.Router, error) {
 }
 
 type dockerProvisioner struct {
-	cluster *cluster.Cluster
-	cmutex  sync.Mutex
+	cluster        *cluster.Cluster
+	cmutex         sync.Mutex
+	collectionName string
 }
 
 func initDockerCluster(p *dockerProvisioner) {
@@ -71,6 +72,7 @@ func initDockerCluster(p *dockerProvisioner) {
 		scheduler := segregatedScheduler{
 			maxMemoryRatio:      float32(maxUsedMemory),
 			totalMemoryMetadata: totalMemoryMetadata,
+			provisioner:         p,
 		}
 		p.cluster, err = cluster.New(&scheduler, clusterStorage)
 		if err != nil {
@@ -157,7 +159,7 @@ func (p *dockerProvisioner) Provision(app provision.App) error {
 }
 
 func (p *dockerProvisioner) Restart(a provision.App, w io.Writer) error {
-	containers, err := listContainersByApp(a.GetName())
+	containers, err := p.listContainersByApp(a.GetName())
 	if err != nil {
 		return err
 	}
@@ -174,7 +176,7 @@ func (p *dockerProvisioner) Restart(a provision.App, w io.Writer) error {
 }
 
 func (p *dockerProvisioner) Start(app provision.App) error {
-	containers, err := listContainersByApp(app.GetName())
+	containers, err := p.listContainersByApp(app.GetName())
 	if err != nil {
 		return errors.New(fmt.Sprintf("Got error while getting app containers: %s", err))
 	}
@@ -189,9 +191,9 @@ func (p *dockerProvisioner) Start(app provision.App) error {
 				errCh <- err
 				return
 			}
-			c.setStatus(provision.StatusStarting.String())
+			c.setStatus(p, provision.StatusStarting.String())
 			if info, err := c.networkInfo(p); err == nil {
-				fixContainer(&c, info)
+				p.fixContainer(&c, info)
 			}
 		}(c)
 	}
@@ -201,7 +203,7 @@ func (p *dockerProvisioner) Start(app provision.App) error {
 }
 
 func (p *dockerProvisioner) Stop(app provision.App) error {
-	containers, err := listContainersByApp(app.GetName())
+	containers, err := p.listContainersByApp(app.GetName())
 	if err != nil {
 		log.Errorf("Got error while getting app containers: %s", err)
 		return nil
@@ -252,7 +254,7 @@ func (p *dockerProvisioner) GitDeploy(app provision.App, version string, w io.Wr
 }
 
 func (p *dockerProvisioner) ArchiveDeploy(app provision.App, archiveURL string, w io.Writer) (string, error) {
-	imageId, err := p.archiveDeploy(app, getBuildImage(app), archiveURL, w)
+	imageId, err := p.archiveDeploy(app, p.getBuildImage(app), archiveURL, w)
 	if err != nil {
 		return "", err
 	}
@@ -271,7 +273,7 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 			OpenStdin:    true,
 			StdinOnce:    true,
 			User:         user,
-			Image:        getBuildImage(app),
+			Image:        p.getBuildImage(app),
 			Cmd:          []string{"/bin/bash", "-c", "cat > " + filePath},
 		},
 	}
@@ -327,7 +329,7 @@ func (p *dockerProvisioner) deployAndClean(a provision.App, imageId string, w io
 }
 
 func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer) error {
-	containers, err := listContainersByApp(a.GetName())
+	containers, err := p.listContainersByApp(a.GetName())
 	if err != nil {
 		return err
 	}
@@ -340,7 +342,7 @@ func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer)
 }
 
 func (p *dockerProvisioner) Destroy(app provision.App) error {
-	containers, err := listContainersByApp(app.GetName())
+	containers, err := p.listContainersByApp(app.GetName())
 	if err != nil {
 		log.Errorf("Failed to list app containers: %s", err.Error())
 		return err
@@ -500,7 +502,7 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 }
 
 func (p *dockerProvisioner) AddUnits(a provision.App, units uint, w io.Writer) ([]provision.Unit, error) {
-	length, err := getContainerCountForAppName(a.GetName())
+	length, err := p.getContainerCountForAppName(a.GetName())
 	if err != nil {
 		return nil, err
 	}
@@ -536,7 +538,7 @@ func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint) error {
 	if units < 1 {
 		return errors.New("remove units: units must be at least 1")
 	}
-	containers, err := listContainersByAppOrderedByStatus(a.GetName())
+	containers, err := p.listContainersByAppOrderedByStatus(a.GetName())
 	if err != nil {
 		return err
 	}
@@ -564,7 +566,7 @@ func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint) error {
 }
 
 func (p *dockerProvisioner) RemoveUnit(unit provision.Unit) error {
-	container, err := getContainer(unit.Name)
+	container, err := p.getContainer(unit.Name)
 	if err != nil {
 		return err
 	}
@@ -592,18 +594,18 @@ func (p *dockerProvisioner) removeContainer(c *container) error {
 }
 
 func (p *dockerProvisioner) SetUnitStatus(unit provision.Unit, status provision.Status) error {
-	container, err := getContainer(unit.Name)
+	container, err := p.getContainer(unit.Name)
 	if err != nil {
 		return err
 	}
 	if container.AppName != unit.AppName {
 		return errors.New("wrong app name")
 	}
-	return container.setStatus(status.String())
+	return container.setStatus(p, status.String())
 }
 
 func (p *dockerProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
-	containers, err := listRunnableContainersByApp(app.GetName())
+	containers, err := p.listRunnableContainersByApp(app.GetName())
 	if err != nil {
 		return err
 	}
@@ -615,7 +617,7 @@ func (p *dockerProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app pro
 }
 
 func (p *dockerProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
-	containers, err := listRunnableContainersByApp(app.GetName())
+	containers, err := p.listRunnableContainersByApp(app.GetName())
 	if err != nil {
 		return err
 	}
@@ -665,16 +667,19 @@ func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 	}
 }
 
-func collection() *storage.Collection {
-	name, err := config.GetString("docker:collection")
-	if err != nil {
-		log.Fatal(err.Error())
+func (p *dockerProvisioner) collection() *storage.Collection {
+	if p.collectionName == "" {
+		name, err := config.GetString("docker:collection")
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		p.collectionName = name
 	}
 	conn, err := db.Conn()
 	if err != nil {
 		log.Errorf("Failed to connect to the database: %s", err)
 	}
-	return conn.Collection(name)
+	return conn.Collection(p.collectionName)
 }
 
 // PlatformAdd build and push a new docker platform to register
@@ -716,7 +721,7 @@ func (p *dockerProvisioner) PlatformRemove(name string) error {
 }
 
 func (p *dockerProvisioner) Units(app provision.App) []provision.Unit {
-	containers, err := listContainersByApp(app.GetName())
+	containers, err := p.listContainersByApp(app.GetName())
 	if err != nil {
 		return nil
 	}
@@ -729,7 +734,7 @@ func (p *dockerProvisioner) Units(app provision.App) []provision.Unit {
 }
 
 func (p *dockerProvisioner) RegisterUnit(unit provision.Unit, customData map[string]interface{}) error {
-	container, err := getContainer(unit.Name)
+	container, err := p.getContainer(unit.Name)
 	if err != nil {
 		return err
 	}
@@ -739,7 +744,7 @@ func (p *dockerProvisioner) RegisterUnit(unit provision.Unit, customData map[str
 		}
 		return nil
 	}
-	err = container.setStatus(provision.StatusStarted.String())
+	err = container.setStatus(p, provision.StatusStarted.String())
 	if err != nil {
 		return err
 	}
@@ -752,9 +757,9 @@ func (p *dockerProvisioner) Shell(app provision.App, conn net.Conn, width, heigh
 		err error
 	)
 	if len(args) > 0 && args[0] != "" {
-		c, err = getContainer(args[0])
+		c, err = p.getContainer(args[0])
 	} else {
-		c, err = getOneContainerByAppName(app.GetName())
+		c, err = p.getOneContainerByAppName(app.GetName())
 	}
 	if err != nil {
 		return err

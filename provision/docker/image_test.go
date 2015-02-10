@@ -125,25 +125,25 @@ func (s *S) TestUsePlatformImage(c *check.C) {
 	app1 := &app.App{Name: "app1", Platform: "python", Deploys: 40}
 	err = conn.Apps().Insert(app1)
 	c.Assert(err, check.IsNil)
-	ok := usePlatformImage(app1)
+	ok := s.p.usePlatformImage(app1)
 	c.Assert(ok, check.Equals, true)
 	defer conn.Apps().Remove(bson.M{"name": "app1"})
 	app2 := &app.App{Name: "app2", Platform: "python", Deploys: 20}
 	err = conn.Apps().Insert(app2)
 	c.Assert(err, check.IsNil)
-	ok = usePlatformImage(app2)
+	ok = s.p.usePlatformImage(app2)
 	c.Assert(ok, check.Equals, true)
 	defer conn.Apps().Remove(bson.M{"name": "app2"})
 	app3 := &app.App{Name: "app3", Platform: "python", Deploys: 0}
 	err = conn.Apps().Insert(app3)
 	c.Assert(err, check.IsNil)
-	ok = usePlatformImage(app3)
+	ok = s.p.usePlatformImage(app3)
 	c.Assert(ok, check.Equals, true)
 	defer conn.Apps().Remove(bson.M{"name": "app3"})
 	app4 := &app.App{Name: "app4", Platform: "python", Deploys: 19}
 	err = conn.Apps().Insert(app4)
 	c.Assert(err, check.IsNil)
-	ok = usePlatformImage(app4)
+	ok = s.p.usePlatformImage(app4)
 	c.Assert(ok, check.Equals, true)
 	defer conn.Apps().Remove(bson.M{"name": "app4"})
 	app5 := &app.App{
@@ -154,18 +154,18 @@ func (s *S) TestUsePlatformImage(c *check.C) {
 	}
 	err = conn.Apps().Insert(app5)
 	c.Assert(err, check.IsNil)
-	ok = usePlatformImage(app5)
+	ok = s.p.usePlatformImage(app5)
 	c.Assert(ok, check.Equals, true)
 	defer conn.Apps().Remove(bson.M{"name": "app5"})
 	app6 := &app.App{Name: "app6", Platform: "python", Deploys: 19}
 	err = conn.Apps().Insert(app6)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": "app6"})
-	coll := collection()
+	coll := s.p.collection()
 	defer coll.Close()
 	err = coll.Insert(container{AppName: app6.Name, Image: "tsuru/app-app6"})
 	c.Assert(err, check.IsNil)
-	ok = usePlatformImage(app6)
+	ok = s.p.usePlatformImage(app6)
 	c.Assert(ok, check.Equals, false)
 }
 
