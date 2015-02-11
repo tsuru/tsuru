@@ -242,14 +242,6 @@ func nodesForApp(c *cluster.Cluster, app *app.App) ([]cluster.Node, error) {
 	return nil, fmt.Errorf("No nodes found with one of the following metadata: pool=%s", poolsStr)
 }
 
-func nodesForAppName(c *cluster.Cluster, appName string) ([]cluster.Node, error) {
-	a, err := app.GetByName(appName)
-	if err != nil {
-		return nil, err
-	}
-	return nodesForApp(c, a)
-}
-
 func (segregatedScheduler) addPool(poolName string) error {
 	if poolName == "" {
 		return errors.New("Pool name is required.")
