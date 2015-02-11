@@ -13,6 +13,7 @@
 package repositorytest
 
 import (
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"sync"
@@ -151,6 +152,11 @@ func (m *fakeManager) AddKey(username string, key repository.Key) error {
 	keys, ok := m.keys[username]
 	if !ok {
 		return errors.New("user not found")
+	}
+	if key.Name == "" {
+		var p [32]byte
+		rand.Read(p[:])
+		key.Name = string(p[:])
 	}
 	if _, ok := keys[key.Name]; ok {
 		return errors.New("user already have a key with this name")
