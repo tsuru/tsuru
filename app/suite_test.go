@@ -7,7 +7,6 @@ package app
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -22,6 +21,8 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	_ "github.com/tsuru/tsuru/queue/queuetest"
 	"github.com/tsuru/tsuru/quota"
+	"github.com/tsuru/tsuru/repository"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -108,7 +109,12 @@ func (s *S) TearDownSuite(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 }
 
+func (s *S) SetUpTest(c *check.C) {
+	repository.Manager().CreateUser(s.user.Email)
+}
+
 func (s *S) TearDownTest(c *check.C) {
+	repositorytest.Reset()
 	s.provisioner.Reset()
 	LogRemove(nil)
 	s.conn.Users().Update(
@@ -162,31 +168,4 @@ func (s *S) addServiceInstance(c *check.C, appName string, fn http.HandlerFunc) 
 	err = s.conn.ServiceInstances().Update(bson.M{"name": instance.Name}, instance)
 	c.Assert(err, check.IsNil)
 	return ret
-}
-
-type testHandler struct {
-	body    [][]byte
-	method  []string
-	url     []string
-	content string
-	header  []http.Header
-	request *http.Request
-}
-
-func (h *testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.method = append(h.method, r.Method)
-	h.url = append(h.url, r.URL.String())
-	b, _ := ioutil.ReadAll(r.Body)
-	h.body = append(h.body, b)
-	h.header = append(h.header, r.Header)
-	h.request = r
-	w.Write([]byte(h.content))
-}
-
-type testBadHandler struct {
-	msg string
-}
-
-func (h *testBadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, h.msg, http.StatusInternalServerError)
 }

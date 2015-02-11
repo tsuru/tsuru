@@ -16,7 +16,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/tsuru/go-gandalfclient"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
@@ -92,12 +91,16 @@ func (app *App) Units() []provision.Unit {
 
 // MarshalJSON marshals the app in json format.
 func (app *App) MarshalJSON() ([]byte, error) {
+	repo, err := repository.Manager().GetRepository(app.Name)
+	if err != nil {
+		return nil, err
+	}
 	result := make(map[string]interface{})
 	result["name"] = app.Name
 	result["platform"] = app.Platform
 	result["teams"] = app.Teams
 	result["units"] = app.Units()
-	result["repository"] = repository.ReadWriteURL(app.Name)
+	result["repository"] = repo.ReadWriteURL
 	result["ip"] = app.Ip
 	result["cname"] = app.CName
 	result["ready"] = app.State == "ready"
@@ -177,7 +180,7 @@ func GetByName(name string) (*App, error) {
 // Creating a new app is a process composed of the following steps:
 //
 //       1. Save the app in the database
-//       2. Create the git repository using gandalf
+//       2. Create the git repository using the repository manager
 //       3. Provision the app using the provisioner
 func CreateApp(app *App, user *auth.User) error {
 	teams, err := user.Teams()
@@ -309,12 +312,12 @@ func Delete(app *App) error {
 			log.Errorf("Error trying to mark old deploys as removed for app %s: %s", appName, err.Error())
 		}
 	}()
-	if serverURL, err := repository.ServerURL(); err == nil {
-		gandalfClient := gandalf.Client{Endpoint: serverURL}
-		gandalfClient.RemoveRepository(appName)
+	err := repository.Manager().RemoveRepository(appName)
+	if err != nil {
+		log.Errorf("failed to remove app %q from repository manager: %s", appName, err)
 	}
 	token := app.Env["TSURU_APP_TOKEN"].Value
-	err := AuthScheme.Logout(token)
+	err = AuthScheme.Logout(token)
 	if err != nil {
 		log.Errorf("Unable to remove app token in destroy: %s", err.Error())
 	}

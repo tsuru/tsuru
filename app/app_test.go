@@ -59,15 +59,14 @@ func (s *S) TestDelete(c *check.C) {
 		bson.M{"email": s.user.Email},
 		bson.M{"$set": bson.M{"quota": quota.Unlimited}},
 	)
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	a := App{
 		Name:     "ritual",
 		Platform: "ruby",
 		Owner:    s.user.Email,
 	}
-	err := s.conn.Apps().Insert(&a)
+	err := repository.Manager().CreateRepository(a.Name)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Insert(&a)
 	c.Assert(err, check.IsNil)
 	app, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
@@ -84,12 +83,12 @@ func (s *S) TestDelete(c *check.C) {
 	count, err := s.conn.Logs(app.Name).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 0)
+	_, err = repository.Manager().GetRepository(a.Name)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "repository not found")
 }
 
 func (s *S) TestDeleteWithDeploys(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	a := App{
 		Name:     "ritual",
 		Platform: "python",
@@ -109,35 +108,12 @@ func (s *S) TestDeleteWithDeploys(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(allDeploys, check.HasLen, 1)
 	c.Assert(allDeploys[0].RemoveDate.IsZero(), check.Equals, false)
-}
-
-func (s *S) TestDestroy(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
-	a := App{
-		Name:     "ritual",
-		Platform: "python",
-	}
-	err := CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	app, err := GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	token := app.Env["TSURU_APP_TOKEN"].Value
-	err = Delete(app)
-	time.Sleep(200 * time.Millisecond)
-	c.Assert(err, check.IsNil)
-	_, err = GetByName(app.Name)
+	_, err = repository.Manager().GetRepository(a.Name)
 	c.Assert(err, check.NotNil)
-	c.Assert(s.provisioner.Provisioned(&a), check.Equals, false)
-	_, err = nativeScheme.Auth(token)
-	c.Assert(err, check.Equals, auth.ErrInvalidToken)
+	c.Assert(err.Error(), check.Equals, "repository not found")
 }
 
-func (s *S) TestDestroyWithoutUnits(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
+func (s *S) TestDeleteWithoutUnits(c *check.C) {
 	app := App{Name: "x4", Platform: "python"}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
@@ -146,11 +122,12 @@ func (s *S) TestDestroyWithoutUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = Delete(a)
 	c.Assert(err, check.IsNil)
+	_, err = repository.Manager().GetRepository(app.Name)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "repository not found")
 }
 
 func (s *S) TestCreateApp(c *check.C) {
-	ts := repositorytest.StartGandalfTestServer(&testHandler{})
-	defer ts.Close()
 	a := App{
 		Name:     "appname",
 		Platform: "python",
@@ -178,11 +155,11 @@ func (s *S) TestCreateApp(c *check.C) {
 	err = auth.ReserveApp(s.user)
 	_, ok := err.(*quota.QuotaExceededError)
 	c.Assert(ok, check.Equals, true)
+	_, err = repository.Manager().GetRepository(a.Name)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestCreateAppDefaultPlan(c *check.C) {
-	ts := repositorytest.StartGandalfTestServer(&testHandler{})
-	defer ts.Close()
 	a := App{
 		Name:     "appname",
 		Platform: "python",
@@ -199,13 +176,13 @@ func (s *S) TestCreateAppDefaultPlan(c *check.C) {
 	retrievedApp, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(retrievedApp.Plan, check.DeepEquals, s.defaultPlan)
+	_, err = repository.Manager().GetRepository(a.Name)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestCreateAppWithoutDefaultPlan(c *check.C) {
 	s.conn.Plans().RemoveAll(nil)
 	defer s.conn.Plans().Insert(s.defaultPlan)
-	ts := repositorytest.StartGandalfTestServer(&testHandler{})
-	defer ts.Close()
 	a := App{
 		Name:     "appname",
 		Platform: "python",
@@ -227,6 +204,8 @@ func (s *S) TestCreateAppWithoutDefaultPlan(c *check.C) {
 		Swap:     0,
 		CpuShare: 100,
 	})
+	_, err = repository.Manager().GetRepository(a.Name)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestCreateAppWithExplicitPlan(c *check.C) {
@@ -239,8 +218,6 @@ func (s *S) TestCreateAppWithExplicitPlan(c *check.C) {
 	err := myPlan.Save()
 	c.Assert(err, check.IsNil)
 	defer PlanRemove(myPlan.Name)
-	ts := repositorytest.StartGandalfTestServer(&testHandler{})
-	defer ts.Close()
 	a := App{
 		Name:     "appname",
 		Platform: "python",
@@ -257,6 +234,8 @@ func (s *S) TestCreateAppWithExplicitPlan(c *check.C) {
 	defer Delete(&a)
 	retrievedApp, err := GetByName(a.Name)
 	c.Assert(retrievedApp.Plan, check.DeepEquals, myPlan)
+	_, err = repository.Manager().GetRepository(a.Name)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestCreateAppUserQuotaExceeded(c *check.C) {
@@ -277,30 +256,22 @@ func (s *S) TestCreateAppUserQuotaExceeded(c *check.C) {
 }
 
 func (s *S) TestCreateAppTeamOwner(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	app := App{Name: "america", Platform: "python", TeamOwner: "tsuruteam"}
 	err := CreateApp(&app, s.user)
-	c.Check(err, check.IsNil)
+	c.Assert(err, check.IsNil)
 	defer Delete(&app)
+	c.Assert(app.TeamOwner, check.Equals, "tsuruteam")
 }
 
 func (s *S) TestCreateAppTeamOwnerOneTeam(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	app := App{Name: "america", Platform: "python"}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
-	c.Assert(app.TeamOwner, check.Equals, "tsuruteam")
 	defer Delete(&app)
+	c.Assert(app.TeamOwner, check.Equals, "tsuruteam")
 }
 
 func (s *S) TestCreateAppTeamOwnerMoreTeamShouldReturnError(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	app := App{Name: "america", Platform: "python"}
 	team := auth.Team{Name: "tsurutwo", Users: []string{s.user.Email}}
 	err := s.conn.Teams().Insert(team)
@@ -312,9 +283,6 @@ func (s *S) TestCreateAppTeamOwnerMoreTeamShouldReturnError(c *check.C) {
 }
 
 func (s *S) TestCreateAppTeamOwnerTeamNotFound(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	app := App{
 		Name:      "someapp",
 		Platform:  "python",
@@ -322,7 +290,7 @@ func (s *S) TestCreateAppTeamOwnerTeamNotFound(c *check.C) {
 	}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, "team not found")
+	c.Assert(err.Error(), check.Equals, "team not found")
 }
 
 func (s *S) TestCannotCreateAppWithUnknownPlatform(c *check.C) {
@@ -374,10 +342,7 @@ func (s *S) TestCantCreateAppWithInvalidName(c *check.C) {
 	c.Assert(e.Message, check.Equals, msg)
 }
 
-func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfProvisionerFail(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
+func (s *S) TestCreateAppProvisionerFailures(c *check.C) {
 	s.provisioner.PrepareFailure("Provision", fmt.Errorf("exit status 1"))
 	a := App{
 		Name:     "theirapp",
@@ -392,29 +357,8 @@ func (s *S) TestDoesNotSaveTheAppInTheDatabaseIfProvisionerFail(c *check.C) {
 	c.Assert(err, check.NotNil)
 }
 
-func (s *S) TestCreateAppCreatesRepositoryInGandalf(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
-	a := App{
-		Name:     "someapp",
-		Platform: "python",
-		Teams:    []string{s.team.Name},
-	}
-	err := CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	app, err := GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	defer Delete(app)
-	c.Assert(h.url[0], check.Equals, "/repository")
-	c.Assert(h.method[0], check.Equals, "POST")
-	expected := fmt.Sprintf(`{"name":"someapp","users":["%s"],"ispublic":false}`, s.user.Email)
-	c.Assert(string(h.body[0]), check.Equals, expected)
-}
-
-func (s *S) TestCreateAppDoesNotSaveTheAppWhenGandalfFailstoCreateTheRepository(c *check.C) {
-	ts := repositorytest.StartGandalfTestServer(&testBadHandler{msg: "could not create the repository"})
-	defer ts.Close()
+func (s *S) TestCreateAppRepositoryManagerFailure(c *check.C) {
+	repository.Manager().CreateRepository("otherapp")
 	a := App{Name: "otherapp", Platform: "python"}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.NotNil)
@@ -1931,6 +1875,7 @@ func (s *S) TestGetUnits(c *check.C) {
 }
 
 func (s *S) TestAppMarshalJSON(c *check.C) {
+	repository.Manager().CreateRepository("name")
 	app := App{
 		Name:      "name",
 		Platform:  "Framework",
@@ -1952,7 +1897,7 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 	expected := make(map[string]interface{})
 	expected["name"] = "name"
 	expected["platform"] = "Framework"
-	expected["repository"] = repository.ReadWriteURL(app.Name)
+	expected["repository"] = "git@" + repositorytest.ServerHost + ":name.git"
 	expected["teams"] = []interface{}{"team1"}
 	expected["units"] = nil
 	expected["ip"] = "10.10.10.1"
@@ -2000,6 +1945,7 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 }
 
 func (s *S) TestAppMarshalJSONReady(c *check.C) {
+	repository.Manager().CreateRepository("name")
 	app := App{
 		Name:      "name",
 		Platform:  "Framework",
@@ -2015,7 +1961,7 @@ func (s *S) TestAppMarshalJSONReady(c *check.C) {
 	expected := make(map[string]interface{})
 	expected["name"] = "name"
 	expected["platform"] = "Framework"
-	expected["repository"] = repository.ReadWriteURL(app.Name)
+	expected["repository"] = "git@" + repositorytest.ServerHost + ":name.git"
 	expected["teams"] = []interface{}{"team1"}
 	expected["units"] = nil
 	expected["ip"] = "10.10.10.1"

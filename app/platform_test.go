@@ -11,6 +11,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -33,6 +34,10 @@ func (s *PlatformSuite) TearDownSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dbtest.ClearAllCollections(conn.Apps().Database)
 	conn.Close()
+}
+
+func (s *PlatformSuite) SetUpTest(c *check.C) {
+	repositorytest.Reset()
 }
 
 func (s *PlatformSuite) TestPlatforms(c *check.C) {

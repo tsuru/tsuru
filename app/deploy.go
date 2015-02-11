@@ -7,11 +7,9 @@ package app
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"time"
 
-	"github.com/tsuru/go-gandalfclient"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
@@ -188,16 +186,7 @@ func GetDiffInDeploys(d *DeployData) (string, error) {
 	if len(list) < 2 {
 		return "The deployment must have at least two commits for the diff.", nil
 	}
-	serverURL, err := repository.ServerURL()
-	if err != nil {
-		return "", err
-	}
-	gandalfClient := gandalf.Client{Endpoint: serverURL}
-	diffOutput, err := gandalfClient.GetDiff(d.App, list[1].Commit, list[0].Commit)
-	if err != nil {
-		return "", fmt.Errorf("Caught error getting repository metadata: %s", err.Error())
-	}
-	return diffOutput, nil
+	return repository.Manager().Diff(d.App, list[1].Commit, list[0].Commit)
 }
 
 // Deploy runs a deployment of an application. It will first try to run an

@@ -14,7 +14,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/repository/repositorytest"
+	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -395,17 +395,12 @@ func (s *S) TestGetDiffInDeploys(c *check.C) {
 		s.conn.Deploys().Insert(d)
 	}
 	defer s.conn.Deploys().RemoveAll(nil)
-	expected := "test_diff"
-	h := testHandler{content: expected}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	err := s.conn.Deploys().Find(bson.M{"commit": myDeploy.Commit}).One(&myDeploy)
 	c.Assert(err, check.IsNil)
+	repository.Manager().CreateRepository("g1")
 	diffOutput, err := GetDiffInDeploys(&myDeploy)
 	c.Assert(err, check.IsNil)
-	c.Assert(diffOutput, check.DeepEquals, expected)
-	c.Assert(h.request.URL.Query().Get("last_commit"), check.Equals, "545b1904af34458704e2aa06ff1aaffad5289f8g")
-	c.Assert(h.request.URL.Query().Get("previous_commit"), check.Equals, "545b1904af34458704e2aa06ff1aaffad5289f8f")
+	c.Assert(diffOutput, check.Equals, "")
 }
 
 func (s *S) TestGetDiffInDeploysWithOneCommit(c *check.C) {
@@ -413,10 +408,6 @@ func (s *S) TestGetDiffInDeploysWithOneCommit(c *check.C) {
 	lastDeploy := DeployData{App: "g1", Timestamp: time.Now(), Commit: "1b970b076bbb30d708e262b402d4e31910e1dc10"}
 	s.conn.Deploys().Insert(lastDeploy)
 	defer s.conn.Deploys().RemoveAll(nil)
-	expected := "test_diff"
-	h := testHandler{content: expected}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	err := s.conn.Deploys().Find(bson.M{"commit": lastDeploy.Commit}).One(&lastDeploy)
 	c.Assert(err, check.IsNil)
 	diffOutput, err := GetDiffInDeploys(&lastDeploy)

@@ -9,7 +9,6 @@ import (
 	"net/http/httptest"
 
 	"github.com/tsuru/tsuru/app/bind"
-	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -19,10 +18,7 @@ func (s *S) TestAppIsABinderApp(c *check.C) {
 	var _ bind.App = &App{}
 }
 
-func (s *S) TestDestroyShouldUnbindAppFromInstance(c *check.C) {
-	h := testHandler{}
-	tsg := repositorytest.StartGandalfTestServer(&h)
-	defer tsg.Close()
+func (s *S) TestDeleteShouldUnbindAppFromInstance(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))

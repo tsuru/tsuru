@@ -6,7 +6,6 @@ package app
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
@@ -14,7 +13,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
-	"github.com/tsuru/tsuru/repository/repositorytest"
+	"github.com/tsuru/tsuru/repository"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -210,9 +209,6 @@ func (s *S) TestExportEnvironmentsMinParams(c *check.C) {
 }
 
 func (s *S) TestCreateRepositoryForward(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	app := App{Name: "someapp", Teams: []string{s.team.Name}}
 	ctx := action.FWContext{Params: []interface{}{&app}}
 	result, err := createRepository.Forward(ctx)
@@ -220,16 +216,11 @@ func (s *S) TestCreateRepositoryForward(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	c.Assert(a.Name, check.Equals, app.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(h.url[0], check.Equals, "/repository")
-	c.Assert(h.method[0], check.Equals, "POST")
-	expected := fmt.Sprintf(`{"name":"someapp","users":["%s"],"ispublic":false}`, s.user.Email)
-	c.Assert(string(h.body[0]), check.Equals, expected)
+	_, err = repository.Manager().GetRepository(app.Name)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestCreateRepositoryForwardAppPointer(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	app := App{Name: "someapp", Teams: []string{s.team.Name}}
 	ctx := action.FWContext{Params: []interface{}{&app}}
 	result, err := createRepository.Forward(ctx)
@@ -237,10 +228,8 @@ func (s *S) TestCreateRepositoryForwardAppPointer(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	c.Assert(a.Name, check.Equals, app.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(h.url[0], check.Equals, "/repository")
-	c.Assert(h.method[0], check.Equals, "POST")
-	expected := fmt.Sprintf(`{"name":"someapp","users":["%s"],"ispublic":false}`, s.user.Email)
-	c.Assert(string(h.body[0]), check.Equals, expected)
+	_, err = repository.Manager().GetRepository(app.Name)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestCreateRepositoryForwardInvalidType(c *check.C) {
@@ -251,15 +240,14 @@ func (s *S) TestCreateRepositoryForwardInvalidType(c *check.C) {
 }
 
 func (s *S) TestCreateRepositoryBackward(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	app := App{Name: "someapp"}
+	err := repository.Manager().CreateRepository(app.Name)
+	c.Assert(err, check.IsNil)
 	ctx := action.BWContext{FWResult: &app, Params: []interface{}{app}}
 	createRepository.Backward(ctx)
-	c.Assert(h.url[0], check.Equals, "/repository/someapp")
-	c.Assert(h.method[0], check.Equals, "DELETE")
-	c.Assert(string(h.body[0]), check.Equals, "null")
+	_, err = repository.Manager().GetRepository(app.Name)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "repository not found")
 }
 
 func (s *S) TestCreateRepositoryMinParams(c *check.C) {

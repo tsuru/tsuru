@@ -9,7 +9,6 @@ import (
 	"io"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/go-gandalfclient"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
@@ -149,7 +148,7 @@ var exportEnvironmentsAction = action.Action{
 	MinParams: 1,
 }
 
-// createRepository creates a repository for the app in Gandalf.
+// createRepository creates a repository for the app in the repository manager.
 var createRepository = action.Action{
 	Name: "create-repository",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
@@ -160,7 +159,8 @@ var createRepository = action.Action{
 		default:
 			return nil, errors.New("First parameter must be *App.")
 		}
-		gURL, err := repository.ServerURL()
+		manager := repository.Manager()
+		err := manager.CreateRepository(app.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -168,16 +168,18 @@ var createRepository = action.Action{
 		for _, t := range app.GetTeams() {
 			users = append(users, t.Users...)
 		}
-		c := gandalf.Client{Endpoint: gURL}
-		_, err = c.NewRepository(app.Name, users, false)
+		for _, user := range users {
+			err = manager.GrantAccess(app.Name, user)
+			if err != nil {
+				manager.RemoveRepository(app.Name)
+				return nil, err
+			}
+		}
 		return app, err
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.FWResult.(*App)
-		if gURL, err := repository.ServerURL(); err == nil {
-			c := gandalf.Client{Endpoint: gURL}
-			c.RemoveRepository(app.Name)
-		}
+		repository.Manager().RemoveRepository(app.Name)
 	},
 	MinParams: 1,
 }
