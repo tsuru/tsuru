@@ -132,3 +132,13 @@ func (Suite) TestManagerKeys(c *check.C) {
 	err = manager.RemoveKey("gopheraa", repository.Key{Name: "name"})
 	c.Check(err.Error(), check.Equals, "user not found")
 }
+
+func (Suite) TestManagerDiff(c *check.C) {
+	err := manager.CreateRepository("mycode")
+	c.Assert(err, check.IsNil)
+	diff, err := manager.Diff("mycode", "1.0", "2.0")
+	c.Assert(err, check.IsNil)
+	c.Assert(diff, check.Equals, "")
+	_, err = manager.Diff("yourcode", "1.0", "2.0")
+	c.Assert(err.Error(), check.Equals, "repository not found")
+}

@@ -189,6 +189,15 @@ func (m *fakeManager) ListKeys(username string) ([]repository.Key, error) {
 	return result, nil
 }
 
+func (m *fakeManager) Diff(repositoryName, from, to string) (string, error) {
+	m.grantsLock.Lock()
+	defer m.grantsLock.Unlock()
+	if _, ok := m.grants[repositoryName]; !ok {
+		return "", errors.New("repository not found")
+	}
+	return "", nil
+}
+
 // Reset resets the internal state of the fake manager.
 func Reset() {
 	manager.grantsLock.Lock()
