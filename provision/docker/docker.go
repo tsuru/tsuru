@@ -121,7 +121,7 @@ func (c *container) getAddress() string {
 	return fmt.Sprintf("http://%s:%s", c.HostAddr, c.HostPort)
 }
 
-func containerName() string {
+func randomString() string {
 	h := crypto.MD5.New()
 	h.Write([]byte(time.Now().Format(time.RFC3339Nano)))
 	io.CopyN(h, rand.Reader, 10)

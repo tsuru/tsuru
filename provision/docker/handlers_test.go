@@ -545,13 +545,15 @@ func (s *S) TestRebalanceContainersEmptyBodyHandler(c *check.C) {
 	var result []progressLog
 	err = json.Unmarshal([]byte(validJson), &result)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(result), check.Equals, 10)
-	c.Assert(result[0].Message, check.Equals, "Rebalancing app \"myapp\" (6 units)...")
-	c.Assert(result[1].Message, check.Equals, "Trying to move 2 units for \"myapp\" from localhost...")
-	c.Assert(result[2].Message, check.Matches, "Moving unit .*")
-	c.Assert(result[3].Message, check.Matches, "Moving unit .*")
-	c.Assert(result[8].Message, check.Equals, "Rebalance finished for \"myapp\"")
-	c.Assert(result[9].Message, check.Equals, "Containers rebalanced successfully!")
+	c.Assert(len(result), check.Equals, 8)
+	c.Assert(result[0].Message, check.Equals, "Rebalancing 6 units...")
+	c.Assert(result[1].Message, check.Matches, "Moved unit .*")
+	c.Assert(result[2].Message, check.Matches, "Moved unit .*")
+	c.Assert(result[3].Message, check.Matches, "Moved unit .*")
+	c.Assert(result[4].Message, check.Matches, "Moved unit .*")
+	c.Assert(result[5].Message, check.Matches, "Moved unit .*")
+	c.Assert(result[6].Message, check.Matches, "Moved unit .*")
+	c.Assert(result[7].Message, check.Equals, "Containers rebalanced successfully!")
 }
 
 func (s *S) TestRebalanceContainersDryBodyHandler(c *check.C) {
@@ -604,13 +606,15 @@ func (s *S) TestRebalanceContainersDryBodyHandler(c *check.C) {
 	var result []progressLog
 	err = json.Unmarshal([]byte(validJson), &result)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(result), check.Equals, 6)
-	c.Assert(result[0].Message, check.Equals, "Rebalancing app \"myapp\" (6 units)...")
-	c.Assert(result[1].Message, check.Equals, "Trying to move 2 units for \"myapp\" from localhost...")
+	c.Assert(len(result), check.Equals, 8)
+	c.Assert(result[0].Message, check.Equals, "Rebalancing 6 units...")
+	c.Assert(result[1].Message, check.Matches, "Would move unit .*")
 	c.Assert(result[2].Message, check.Matches, "Would move unit .*")
 	c.Assert(result[3].Message, check.Matches, "Would move unit .*")
-	c.Assert(result[4].Message, check.Equals, "Rebalance finished for \"myapp\"")
-	c.Assert(result[5].Message, check.Equals, "Containers rebalanced successfully!")
+	c.Assert(result[4].Message, check.Matches, "Would move unit .*")
+	c.Assert(result[5].Message, check.Matches, "Would move unit .*")
+	c.Assert(result[6].Message, check.Matches, "Would move unit .*")
+	c.Assert(result[7].Message, check.Equals, "Containers rebalanced successfully!")
 }
 
 func (s *HandlersSuite) TestAddPoolHandler(c *check.C) {

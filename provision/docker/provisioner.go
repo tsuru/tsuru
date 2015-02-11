@@ -55,13 +55,16 @@ type dockerProvisioner struct {
 	cluster        *cluster.Cluster
 	cmutex         sync.Mutex
 	collectionName string
+	storage        cluster.Storage
+	scheduler      *segregatedScheduler
 }
 
 func initDockerCluster(p *dockerProvisioner) {
 	debug, _ := config.GetBool("debug")
 	clusterLog.SetDebug(debug)
 	clusterLog.SetLogger(log.GetStdLogger())
-	clusterStorage, err := buildClusterStorage()
+	var err error
+	p.storage, err = buildClusterStorage()
 	if err != nil {
 		panic(err)
 	}
@@ -69,21 +72,17 @@ func initDockerCluster(p *dockerProvisioner) {
 	if isSegregateScheduler() {
 		totalMemoryMetadata, _ := config.GetString("docker:scheduler:total-memory-metadata")
 		maxUsedMemory, _ := config.GetFloat("docker:scheduler:max-used-memory")
-		scheduler := segregatedScheduler{
+		p.scheduler = &segregatedScheduler{
 			maxMemoryRatio:      float32(maxUsedMemory),
 			totalMemoryMetadata: totalMemoryMetadata,
 			provisioner:         p,
 		}
-		p.cluster, err = cluster.New(&scheduler, clusterStorage)
-		if err != nil {
-			panic(err)
-		}
 	} else {
 		nodes = getDockerServers()
-		p.cluster, err = cluster.New(nil, clusterStorage, nodes...)
-		if err != nil {
-			panic(err)
-		}
+	}
+	p.cluster, err = cluster.New(p.scheduler, p.storage, nodes...)
+	if err != nil {
+		panic(err)
 	}
 	autoHealingNodes, _ := config.GetBool("docker:healing:heal-nodes")
 	if autoHealingNodes {
@@ -115,6 +114,33 @@ func initDockerCluster(p *dockerProvisioner) {
 	if activeMonitoring > 0 {
 		p.cluster.StartActiveMonitoring(activeMonitoring * time.Second)
 	}
+}
+
+func (p *dockerProvisioner) DryMode(containersToCopy []container) (*dockerProvisioner, error) {
+	var scheduler cluster.Scheduler
+	var err error
+	overridenProvisioner := &dockerProvisioner{
+		collectionName: "containers_dry_" + randomString(),
+	}
+	if p.scheduler != nil {
+		scheduler = &segregatedScheduler{
+			maxMemoryRatio:      p.scheduler.maxMemoryRatio,
+			totalMemoryMetadata: p.scheduler.totalMemoryMetadata,
+			provisioner:         overridenProvisioner,
+		}
+	}
+	overridenProvisioner.cluster, err = cluster.New(scheduler, p.storage)
+	if err != nil {
+		return nil, err
+	}
+	overridenProvisioner.cluster.DryMode()
+	coll := overridenProvisioner.collection()
+	defer coll.Close()
+	err = coll.Insert(containersToCopy)
+	if err != nil {
+		return nil, err
+	}
+	return overridenProvisioner, nil
 }
 
 func (p *dockerProvisioner) getCluster() *cluster.Cluster {

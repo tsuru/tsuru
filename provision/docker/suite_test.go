@@ -136,7 +136,8 @@ func (s *S) startMultipleServersCluster() (*dockerProvisioner, error) {
 	}
 	otherUrl := strings.Replace(otherServer.URL(), "127.0.0.1", "localhost", 1)
 	var p dockerProvisioner
-	p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
+	p.storage = &cluster.MapStorage{}
+	p.cluster, err = cluster.New(nil, p.storage,
 		cluster.Node{Address: s.server.URL()},
 		cluster.Node{Address: otherUrl},
 	)

@@ -248,7 +248,6 @@ func (s *S) TestAppLockerBlockOtherLockers(c *check.C) {
 }
 
 func (s *S) TestRebalanceContainersManyApps(c *check.C) {
-	c.ExpectFailure("Rebalance scheduling does not distribute applications across hosts")
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
 	defer s.stopMultipleServersCluster(p)
@@ -307,4 +306,44 @@ func (s *S) TestRebalanceContainersManyApps(c *check.C) {
 	c.Assert(len(c1), check.Equals, 1)
 	c2, err := p.listContainersByHost("127.0.0.1")
 	c.Assert(len(c2), check.Equals, 1)
+}
+
+func (s *S) TestRebalanceContainersDry(c *check.C) {
+	p, err := s.startMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	defer s.stopMultipleServersCluster(p)
+	err = s.newFakeImage(p, "tsuru/app-myapp")
+	c.Assert(err, check.IsNil)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
+	defer p.Destroy(appInstance)
+	p.Provision(appInstance)
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, check.IsNil)
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:      "localhost",
+		unitsToAdd:  5,
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: p,
+	})
+	c.Assert(err, check.IsNil)
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	appStruct := &app.App{
+		Name: appInstance.GetName(),
+	}
+	err = conn.Apps().Insert(appStruct)
+	c.Assert(err, check.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
+	var buf bytes.Buffer
+	encoder := json.NewEncoder(&buf)
+	err = p.rebalanceContainers(encoder, true)
+	c.Assert(err, check.IsNil)
+	c1, err := p.listContainersByHost("localhost")
+	c.Assert(err, check.IsNil)
+	c2, err := p.listContainersByHost("127.0.0.1")
+	c.Assert(err, check.IsNil)
+	c.Assert(len(c1), check.Equals, 5)
+	c.Assert(len(c2), check.Equals, 0)
 }

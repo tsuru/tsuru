@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,13 +14,11 @@ import (
 	"math"
 	"sync"
 
-	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
-	"gopkg.in/mgo.v2/bson"
 )
 
 var (
@@ -249,124 +248,37 @@ func minCountHost(hosts []hostWithContainers) *hostWithContainers {
 }
 
 func (p *dockerProvisioner) rebalanceContainers(encoder *json.Encoder, dryRun bool) error {
-	coll := p.collection()
-	defer coll.Close()
-	fullDocQuery := bson.M{
-		// Could use $$ROOT instead of repeating fields but only in Mongo 2.6+.
-		"_id":      "$_id",
-		"id":       "$id",
-		"name":     "$name",
-		"appname":  "$appname",
-		"type":     "$type",
-		"ip":       "$ip",
-		"image":    "$image",
-		"hostaddr": "$hostaddr",
-		"hostport": "$hostport",
-		"status":   "$status",
-		"version":  "$version",
-	}
-	appsPipe := coll.Pipe([]bson.M{
-		{"$group": bson.M{"_id": "$appname", "count": bson.M{"$sum": 1}}},
-	})
-	var appsInfo []struct {
-		Name  string `bson:"_id"`
-		Count int
-	}
-	err := appsPipe.All(&appsInfo)
+	containers, err := p.listAllContainers()
 	if err != nil {
 		return err
 	}
-	clusterInstance := p.getCluster()
-	for _, appInfo := range appsInfo {
-		if appInfo.Count < 2 {
-			continue
-		}
-		logProgress(encoder, "Rebalancing app %q (%d units)...", appInfo.Name, appInfo.Count)
-		var possibleDests []cluster.Node
-		if isSegregateScheduler() {
-			possibleDests, err = nodesForAppName(clusterInstance, appInfo.Name)
-		} else {
-			possibleDests, err = clusterInstance.Nodes()
-		}
+	if dryRun {
+		p, err = p.DryMode(containers)
 		if err != nil {
 			return err
 		}
-		maxContPerUnit := appInfo.Count / len(possibleDests)
-		overflowHosts := appInfo.Count % len(possibleDests)
-		pipe := coll.Pipe([]bson.M{
-			{"$match": bson.M{"hostaddr": bson.M{"$ne": ""}, "appname": appInfo.Name}},
-			{"$group": bson.M{
-				"_id":        "$hostaddr",
-				"count":      bson.M{"$sum": 1},
-				"containers": bson.M{"$push": fullDocQuery}}},
-		})
-		var hosts []hostWithContainers
-		hostsSet := make(map[string]bool)
-		err = pipe.All(&hosts)
+		defer p.collection().DropCollection()
+	}
+	logProgress(encoder, "Rebalancing %d units...", len(containers))
+	for _, cont := range containers {
+		contApp, err := cont.getApp()
 		if err != nil {
 			return err
 		}
-		for _, host := range hosts {
-			hostsSet[host.HostAddr] = true
+		imageId, err := appCurrentImageName(contApp.GetName())
+		if err != nil {
+			return err
 		}
-		for _, node := range possibleDests {
-			hostAddr := urlToHost(node.Address)
-			_, present := hostsSet[hostAddr]
-			if !present {
-				hosts = append(hosts, hostWithContainers{HostAddr: hostAddr})
-			}
+		var buf bytes.Buffer
+		newConts, err := p.runReplaceUnitsPipeline(&buf, contApp, []container{cont}, imageId)
+		if err != nil {
+			return fmt.Errorf("error trying to replace unit: %s - log: %s", err.Error(), buf.String())
 		}
-		anythingDone := false
-		for _, host := range hosts {
-			toMoveCount := host.Count - maxContPerUnit
-			if toMoveCount <= 0 {
-				continue
-			}
-			if overflowHosts > 0 {
-				overflowHosts--
-				toMoveCount--
-				if toMoveCount <= 0 {
-					continue
-				}
-			}
-			anythingDone = true
-			logProgress(encoder, "Trying to move %d units for %q from %s...", toMoveCount, appInfo.Name, host.HostAddr)
-			locker := &appLocker{}
-			wg := sync.WaitGroup{}
-			moveErrors := make(chan error, toMoveCount)
-			for _, cont := range host.Containers {
-				minDest := minCountHost(hosts)
-				if minDest.Count < maxContPerUnit {
-					toMoveCount--
-					minDest.Count++
-					if dryRun {
-						logProgress(encoder, "Would move unit %s for %q: %s -> %s...", cont.ID, appInfo.Name, cont.HostAddr, minDest.HostAddr)
-					} else {
-						wg.Add(1)
-						go p.moveOneContainer(cont, minDest.HostAddr, moveErrors, &wg, encoder, locker)
-					}
-				}
-				if toMoveCount == 0 {
-					break
-				}
-			}
-			if toMoveCount > 0 {
-				logProgress(encoder, "Couldn't find suitable destination for %d units for app %q", toMoveCount, appInfo.Name)
-			}
-			go func() {
-				wg.Wait()
-				close(moveErrors)
-			}()
-			err := handleMoveErrors(moveErrors, encoder)
-			if err != nil {
-				return err
-			}
+		prefix := "Moved unit"
+		if dryRun {
+			prefix = "Would move unit"
 		}
-		if anythingDone {
-			logProgress(encoder, "Rebalance finished for %q", appInfo.Name)
-		} else {
-			logProgress(encoder, "Nothing to do for %q", appInfo.Name)
-		}
+		logProgress(encoder, "%s %s for %q: %s -> %s...", prefix, cont.ID, contApp.GetName(), cont.HostAddr, newConts[0].HostAddr)
 	}
 	return nil
 }
