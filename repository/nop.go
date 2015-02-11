@@ -49,3 +49,7 @@ func (nopManager) RemoveRepository(name string) error {
 func (nopManager) GetRepository(name string) (Repository, error) {
 	return Repository{}, nil
 }
+
+func (nopManager) Diff(repositoryName, from, to string) (string, error) {
+	return "", nil
+}

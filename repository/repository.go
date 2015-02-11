@@ -41,6 +41,8 @@ type RepositoryManager interface {
 	CreateRepository(name string) error
 	RemoveRepository(name string) error
 	GetRepository(name string) (Repository, error)
+
+	Diff(repositoryName, fromVersion, toVersion string) (string, error)
 }
 
 // Manager returns the current configured manager, as defined in the
