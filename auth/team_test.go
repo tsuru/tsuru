@@ -100,11 +100,11 @@ func (s *S) TestCheckUserAccess(c *check.C) {
 	u1 := User{Email: "how-many-more-times@ledzeppelin.com"}
 	err := u1.Create()
 	c.Assert(err, check.IsNil)
+	defer u1.Delete()
 	u2 := User{Email: "whola-lotta-love@ledzeppelin.com"}
 	err = u2.Create()
 	c.Assert(err, check.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u1.Email})
-	defer s.conn.Users().Remove(bson.M{"email": u2.Email})
+	defer u2.Delete()
 	t := Team{Name: "ledzeppelin", Users: []string{u1.Email}}
 	err = s.conn.Teams().Insert(t)
 	c.Assert(err, check.IsNil)

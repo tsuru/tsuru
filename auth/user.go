@@ -7,15 +7,16 @@ package auth
 import (
 	"crypto"
 	"crypto/rand"
+	_ "crypto/sha256"
 	stderrors "errors"
 	"fmt"
 	"time"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/go-gandalfclient"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/validation"
@@ -33,22 +34,16 @@ type Key struct {
 	Content string
 }
 
+func (k *Key) RepoKey() repository.Key {
+	return repository.Key{Name: k.Name, Body: k.Content}
+}
+
 type User struct {
 	Email    string
 	Password string
 	Keys     []Key
 	quota.Quota
 	APIKey string
-}
-
-// keyToMap converts a Key array into a map maybe we should store a map
-// directly instead of having a convertion
-func keyToMap(keys []Key) map[string]string {
-	keysMap := make(map[string]string, len(keys))
-	for _, k := range keys {
-		keysMap[k.Name] = k.Content
-	}
-	return keysMap
 }
 
 // ListUsers list all users registred in tsuru
@@ -88,14 +83,22 @@ func (u *User) Create() error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	if u.Quota.Limit == 0 {
 		u.Quota = quota.Unlimited
 		if limit, err := config.GetInt("quota:apps-per-user"); err == nil && limit > -1 {
 			u.Quota.Limit = limit
 		}
 	}
-	defer conn.Close()
-	return conn.Users().Insert(u)
+	err = conn.Users().Insert(u)
+	if err != nil {
+		return err
+	}
+	err = u.createOnRepositoryManager()
+	if err != nil {
+		u.Delete()
+	}
+	return err
 }
 
 func (u *User) Delete() error {
@@ -104,7 +107,15 @@ func (u *User) Delete() error {
 		return err
 	}
 	defer conn.Close()
-	return conn.Users().Remove(bson.M{"email": u.Email})
+	err = conn.Users().Remove(bson.M{"email": u.Email})
+	if err != nil {
+		log.Errorf("failed to remove user %q from the database: %s", u.Email, err)
+	}
+	err = repository.Manager().RemoveUser(u.Email)
+	if err != nil {
+		log.Errorf("failed to remove user %q from the repository manager: %s", u.Email, err)
+	}
+	return nil
 }
 
 func (u *User) Update() error {
@@ -153,21 +164,17 @@ func (u *User) AddKey(key Key) error {
 		return ErrUserAlreadyHasKey
 	}
 	actions := []*action.Action{
-		&addKeyInGandalfAction,
+		&addKeyInRepositoryAction,
 		&addKeyInDatabaseAction,
 	}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(&key, u)
 }
 
-func (u *User) addKeyGandalf(key *Key) error {
-	serverURL, err := repository.ServerURL()
+func (u *User) addKeyRepository(key *Key) error {
+	err := repository.Manager().AddKey(u.Email, key.RepoKey())
 	if err != nil {
-		return err
-	}
-	gandalfClient := gandalf.Client{Endpoint: serverURL}
-	if err := gandalfClient.AddKey(u.Email, keyToMap([]Key{*key})); err != nil {
-		return fmt.Errorf("Failed to add key to git server: %s", err)
+		return fmt.Errorf("failed to add key to git server: %s", err)
 	}
 	return nil
 }
@@ -182,7 +189,7 @@ func (u *User) RemoveKey(key Key) error {
 	if index < 0 {
 		return ErrKeyNotFound
 	}
-	err := u.removeKeyGandalf(&actualKey)
+	err := u.removeKeyRepository(&actualKey)
 	if err != nil {
 		return err
 	}
@@ -191,14 +198,10 @@ func (u *User) RemoveKey(key Key) error {
 	return u.Update()
 }
 
-func (u *User) removeKeyGandalf(key *Key) error {
-	serverURL, err := repository.ServerURL()
+func (u *User) removeKeyRepository(key *Key) error {
+	err := repository.Manager().RemoveKey(u.Email, key.RepoKey())
 	if err != nil {
-		return err
-	}
-	gandalfClient := gandalf.Client{Endpoint: serverURL}
-	if err := gandalfClient.RemoveKey(u.Email, key.Name); err != nil {
-		return fmt.Errorf("Failed to remove the key from git server: %s", err)
+		return fmt.Errorf("failed to remove the key from git server: %s", err)
 	}
 	return nil
 }
@@ -244,22 +247,28 @@ func (u *User) AllowedApps() ([]string, error) {
 }
 
 func (u *User) ListKeys() (map[string]string, error) {
-	gURL, err := repository.ServerURL()
+	keys, err := repository.Manager().ListKeys(u.Email)
 	if err != nil {
 		return nil, err
 	}
-	c := gandalf.Client{Endpoint: gURL}
-	return c.ListKeys(u.Email)
+	keysMap := make(map[string]string, len(keys))
+	for _, key := range keys {
+		keysMap[key.Name] = key.Body
+	}
+	return keysMap, nil
 }
 
-func (u *User) CreateOnGandalf() error {
-	gURL, err := repository.ServerURL()
+func (u *User) createOnRepositoryManager() error {
+	err := repository.Manager().CreateUser(u.Email)
 	if err != nil {
 		return err
 	}
-	c := gandalf.Client{Endpoint: gURL}
-	if _, err := c.NewUser(u.Email, keyToMap(u.Keys)); err != nil {
-		return fmt.Errorf("Failed to create user in the git server: %s", err)
+	for _, key := range u.Keys {
+		copy := key
+		err = u.addKeyRepository(&copy)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

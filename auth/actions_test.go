@@ -5,15 +5,13 @@
 package auth
 
 import (
-	"fmt"
-
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type ActionsSuite struct {
@@ -36,52 +34,57 @@ func (s *ActionsSuite) TearDownSuite(c *check.C) {
 	dbtest.ClearAllCollections(conn.Apps().Database)
 }
 
-func (s *ActionsSuite) TestAddKeyInGandalf(c *check.C) {
-	c.Assert(addKeyInGandalfAction.Name, check.Equals, "add-key-in-gandalf")
+func (s *ActionsSuite) SetUpTest(c *check.C) {
+	config.Set("repo-manager", "fake")
+	repositorytest.Reset()
+}
+
+func (s *ActionsSuite) TestAddKeyInRepository(c *check.C) {
+	c.Assert(addKeyInRepositoryAction.Name, check.Equals, "add-key-in-repository")
 }
 
 func (s *ActionsSuite) TestAddKeyInDatatabase(c *check.C) {
 	c.Assert(addKeyInDatabaseAction.Name, check.Equals, "add-key-in-database")
 }
 
-func (s *ActionsSuite) TestAddKeyInGandalfActionForward(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
+func (s *ActionsSuite) TestAddKeyInRepositoryActionForward(c *check.C) {
+	err := repository.Manager().CreateUser("me@gmail.com")
+	c.Assert(err, check.IsNil)
 	key := &Key{Name: "mysshkey", Content: "my-ssh-key"}
 	u := &User{Email: "me@gmail.com", Password: "123456"}
 	ctx := action.FWContext{
 		Params: []interface{}{key, u},
 	}
-	result, err := addKeyInGandalfAction.Forward(ctx)
+	result, err := addKeyInRepositoryAction.Forward(ctx)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.IsNil)
-	c.Assert(len(h.url), check.Equals, 1)
-	expected := fmt.Sprintf("/user/%s/key", u.Email)
-	c.Assert(h.url[0], check.Equals, expected)
+	keys, err := repository.Manager().ListKeys("me@gmail.com")
+	c.Assert(err, check.IsNil)
+	c.Assert(keys, check.DeepEquals, []repository.Key{key.RepoKey()})
 }
 
-func (s *ActionsSuite) TestAddKeyInGandalfActionBackward(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
+func (s *ActionsSuite) TestAddKeyInRepositoryActionBackward(c *check.C) {
+	err := repository.Manager().CreateUser("me@gmail.com")
+	c.Assert(err, check.IsNil)
 	key := &Key{Name: "mysshkey", Content: "my-ssh-key"}
+	err = repository.Manager().AddKey("me@gmail.com", key.RepoKey())
+	c.Assert(err, check.IsNil)
 	u := &User{Email: "me@gmail.com", Password: "123456"}
 	ctx := action.BWContext{
 		Params: []interface{}{key, u},
 	}
-	addKeyInGandalfAction.Backward(ctx)
-	c.Assert(len(h.url), check.Equals, 1)
-	expected := fmt.Sprintf("/user/%s/key/%s", u.Email, key.Name)
-	c.Assert(h.url[0], check.Equals, expected)
+	addKeyInRepositoryAction.Backward(ctx)
+	keys, err := repository.Manager().ListKeys("me@gmail.com")
+	c.Assert(err, check.IsNil)
+	c.Assert(keys, check.HasLen, 0)
 }
 
 func (s *ActionsSuite) TestAddKeyInDatabaseActionForward(c *check.C) {
 	key := &Key{Name: "mysshkey", Content: "my-ssh-key"}
 	u := &User{Email: "me@gmail.com"}
 	err := u.Create()
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	c.Assert(err, check.IsNil)
+	defer u.Delete()
 	ctx := action.FWContext{
 		Params: []interface{}{key, u},
 	}
@@ -94,13 +97,11 @@ func (s *ActionsSuite) TestAddKeyInDatabaseActionForward(c *check.C) {
 }
 
 func (s *ActionsSuite) TestAddKeyInDatabaseActionBackward(c *check.C) {
-	ts := repositorytest.StartGandalfTestServer(&testHandler{})
-	defer ts.Close()
 	key := Key{Name: "mysshkey", Content: "my-ssh-key"}
-	u := &User{Email: "me@gmail.com", Keys: []Key{key}}
+	u := &User{Email: "super.me@gmail.com", Keys: []Key{key}}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	defer u.Delete()
 	c.Assert(u.Keys, check.DeepEquals, []Key{key})
 	ctx := action.BWContext{
 		Params: []interface{}{&key, u},
@@ -108,5 +109,5 @@ func (s *ActionsSuite) TestAddKeyInDatabaseActionBackward(c *check.C) {
 	addKeyInDatabaseAction.Backward(ctx)
 	u, err = GetUserByEmail(u.Email)
 	c.Assert(err, check.IsNil)
-	c.Assert(u.Keys, check.DeepEquals, []Key{})
+	c.Assert(u.Keys, check.HasLen, 0)
 }

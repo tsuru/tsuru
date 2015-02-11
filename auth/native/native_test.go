@@ -164,8 +164,8 @@ func (s *S) TestResetPassword(c *check.C) {
 	u := auth.User{Email: "blues@rush.com"}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
+	defer u.Delete()
 	p := u.Password
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
 	err = scheme.StartPasswordReset(&u)
 	c.Assert(err, check.IsNil)
 	time.Sleep(1e6) // Let the email flow
@@ -200,7 +200,7 @@ func (s *S) TestResetPasswordThirdToken(c *check.C) {
 	u := auth.User{Email: "profecia@raul.com"}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	defer u.Delete()
 	t, err := createPasswordToken(&u)
 	c.Assert(err, check.IsNil)
 	defer s.conn.PasswordTokens().Remove(bson.M{"_id": t.Token})

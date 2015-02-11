@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -59,7 +60,7 @@ func (s *S) TestOAuthLogin(c *check.C) {
 	c.Assert(dbToken.AccessToken, check.Equals, "my_token")
 	c.Assert(dbToken.UserEmail, check.Equals, "rand@althor.com")
 	c.Assert(dbToken.Extra["email"], check.Equals, "rand@althor.com")
-	c.Assert(s.testHandler.Url, check.Equals, "/user")
+	c.Assert(repositorytest.Users(), check.DeepEquals, []string{"rand@althor.com"})
 }
 
 func (s *S) TestOAuthLoginRegistrationDisabled(c *check.C) {
@@ -207,7 +208,7 @@ func (s *S) TestOAuthCreate(c *check.C) {
 	dbUser, err := auth.GetUserByEmail(user.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbUser.Email, check.Equals, user.Email)
-	c.Assert(s.testHandler.Url, check.Equals, "")
+	c.Assert(repositorytest.Users(), check.DeepEquals, []string{user.Email})
 }
 
 func (s *S) TestOAuthRemove(c *check.C) {

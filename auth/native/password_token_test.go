@@ -46,7 +46,7 @@ func (s *S) TestPasswordTokenUser(c *check.C) {
 	u := auth.User{Email: "need@who.com", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	defer u.Delete()
 	t, err := createPasswordToken(&u)
 	c.Assert(err, check.IsNil)
 	u2, err := t.user()

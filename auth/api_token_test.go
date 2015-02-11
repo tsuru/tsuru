@@ -4,16 +4,13 @@
 
 package auth
 
-import (
-	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
-)
+import "gopkg.in/check.v1"
 
 func (s *S) TestGetAPIToken(c *check.C) {
 	user := User{Email: "para@xmen.com", APIKey: "Quenço"}
-	err := s.conn.Users().Insert(&user)
+	err := user.Create()
 	c.Assert(err, check.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": user.Email})
+	defer user.Delete()
 	APIKey, err := user.RegenerateAPIKey()
 	c.Assert(err, check.IsNil)
 	t, err := getAPIToken("bearer " + APIKey)

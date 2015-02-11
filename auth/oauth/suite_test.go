@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/api/apitest"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
@@ -21,13 +20,11 @@ import (
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
-	conn        *db.Storage
-	server      *httptest.Server
-	gandalf     *httptest.Server
-	reqs        []*http.Request
-	bodies      []string
-	rsps        map[string]string
-	testHandler apitest.TestHandler
+	conn   *db.Storage
+	server *httptest.Server
+	reqs   []*http.Request
+	bodies []string
+	rsps   map[string]string
 }
 
 var _ = check.Suite(&S{})
@@ -51,6 +48,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_auth_oauth_test")
 	config.Set("auth:user-registration", true)
+	config.Set("repo-manager", "fake")
 }
 
 func (s *S) SetUpTest(c *check.C) {
@@ -58,15 +56,13 @@ func (s *S) SetUpTest(c *check.C) {
 	s.reqs = make([]*http.Request, 0)
 	s.bodies = make([]string, 0)
 	s.rsps = make(map[string]string)
-	s.testHandler = apitest.TestHandler{}
-	s.gandalf = repositorytest.StartGandalfTestServer(&s.testHandler)
+	repositorytest.Reset()
 }
 
 func (s *S) TearDownTest(c *check.C) {
 	err := dbtest.ClearAllCollections(s.conn.Users().Database)
 	c.Assert(err, check.IsNil)
 	s.conn.Close()
-	s.gandalf.Close()
 }
 
 func (s *S) TearDownSuite(c *check.C) {

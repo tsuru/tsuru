@@ -5,13 +5,9 @@
 package auth
 
 import (
-	"fmt"
-	"io/ioutil"
-	"net/http"
-
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/api/apitest"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -21,19 +17,20 @@ func (s *S) TestCreateUser(c *check.C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	defer u.Delete()
 	var result User
 	collection := s.conn.Users()
 	err = collection.Find(bson.M{"email": u.Email}).One(&result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result.Email, check.Equals, u.Email)
+	c.Assert(repositorytest.Users(), check.DeepEquals, []string{u.Email})
 }
 
 func (s *S) TestCreateUserReturnsErrorWhenTryingToCreateAUserWithDuplicatedEmail(c *check.C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	defer u.Delete()
 	err = u.Create()
 	c.Assert(err, check.NotNil)
 }
@@ -42,7 +39,7 @@ func (s *S) TestGetUserByEmail(c *check.C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123456"}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	defer u.Delete()
 	u2, err := GetUserByEmail(u.Email)
 	c.Assert(err, check.IsNil)
 	c.Check(u2.Email, check.Equals, u.Email)
@@ -68,7 +65,7 @@ func (s *S) TestUpdateUser(c *check.C) {
 	u := User{Email: "wolverine@xmen.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	defer u.Delete()
 	u.Password = "1234"
 	err = u.Update()
 	c.Assert(err, check.IsNil)
@@ -77,15 +74,19 @@ func (s *S) TestUpdateUser(c *check.C) {
 	c.Assert(u2.Password, check.Equals, "1234")
 }
 
+func (s *S) TestDeleteUser(c *check.C) {
+	u := User{Email: "wolverine@xmen.com", Password: "123"}
+	err := u.Create()
+	c.Assert(err, check.IsNil)
+	err = u.Delete()
+	c.Assert(err, check.IsNil)
+	user, err := GetUserByEmail(u.Email)
+	c.Assert(err, check.Equals, ErrUserNotFound)
+	c.Assert(user, check.IsNil)
+	c.Assert(repositorytest.Users(), check.HasLen, 0)
+}
+
 func (s *S) TestAddKeyAddsAKeyToTheUser(c *check.C) {
-	var request *http.Request
-	var content []byte
-	server := repositorytest.StartGandalfTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
-		request = r
-		content, _ = ioutil.ReadAll(r.Body)
-	}))
-	defer server.Close()
 	u := &User{Email: "sacefulofsecrets@pinkfloyd.com"}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
@@ -94,22 +95,12 @@ func (s *S) TestAddKeyAddsAKeyToTheUser(c *check.C) {
 	err = u.AddKey(key)
 	c.Assert(err, check.IsNil)
 	c.Assert(u, HasKey, "my-key")
-	expectedPath := fmt.Sprintf("/user/%s/key", u.Email)
-	expectedBody := `{"some-key":"my-key"}`
-	c.Assert(request.Method, check.Equals, "POST")
-	c.Assert(request.URL.Path, check.Equals, expectedPath)
-	c.Assert(string(content), check.Equals, expectedBody)
+	keys, err := repository.Manager().ListKeys(u.Email)
+	c.Assert(err, check.IsNil)
+	c.Assert(keys, check.DeepEquals, []repository.Key{key.RepoKey()})
 }
 
 func (s *S) TestAddKeyGeneratesNameWhenEmpty(c *check.C) {
-	var request *http.Request
-	var content []byte
-	server := repositorytest.StartGandalfTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
-		request = r
-		content, _ = ioutil.ReadAll(r.Body)
-	}))
-	defer server.Close()
 	u := &User{Email: "sacefulofsecrets@pinkfloyd.com"}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
@@ -118,11 +109,11 @@ func (s *S) TestAddKeyGeneratesNameWhenEmpty(c *check.C) {
 	err = u.AddKey(key)
 	c.Assert(err, check.IsNil)
 	c.Assert(u, HasKey, "my-key")
-	expectedPath := fmt.Sprintf("/user/%s/key", u.Email)
-	expectedBody := `{"sacefulofsecrets@pinkfloyd.com-1":"my-key"}`
-	c.Assert(request.Method, check.Equals, "POST")
-	c.Assert(request.URL.Path, check.Equals, expectedPath)
-	c.Assert(string(content), check.Equals, expectedBody)
+	repoKey := key.RepoKey()
+	repoKey.Name = u.Email + "-1"
+	keys, err := repository.Manager().ListKeys(u.Email)
+	c.Assert(err, check.IsNil)
+	c.Assert(keys, check.DeepEquals, []repository.Key{repoKey})
 }
 
 func (s *S) TestAddDuplicatedKey(c *check.C) {
@@ -139,11 +130,6 @@ func (s *S) TestAddDuplicatedKey(c *check.C) {
 }
 
 func (s *S) TestRemoveKeyRemovesAKeyFromTheUser(c *check.C) {
-	var request *http.Request
-	server := repositorytest.StartGandalfTestServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		request = r
-	}))
-	defer server.Close()
 	key := Key{Content: "my-key", Name: "the-key"}
 	u := &User{Email: "shineon@pinkfloyd.com", Keys: []Key{key}}
 	err := u.Create()
@@ -151,9 +137,9 @@ func (s *S) TestRemoveKeyRemovesAKeyFromTheUser(c *check.C) {
 	err = u.RemoveKey(Key{Content: "my-key"})
 	c.Assert(err, check.IsNil)
 	c.Assert(u, check.Not(HasKey), "my-key")
-	expectedPath := fmt.Sprintf("/user/%s/key/%s", u.Email, key.Name)
-	c.Assert(request.Method, check.Equals, "DELETE")
-	c.Assert(request.URL.Path, check.Equals, expectedPath)
+	keys, err := repository.Manager().ListKeys(u.Email)
+	c.Assert(err, check.IsNil)
+	c.Assert(keys, check.HasLen, 0)
 }
 
 func (s *S) TestRemoveUnknownKey(c *check.C) {
@@ -167,7 +153,7 @@ func (s *S) TestTeams(c *check.C) {
 	u := User{Email: "me@tsuru.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	defer u.Delete()
 	s.team.AddUser(&u)
 	err = s.conn.Teams().Update(bson.M{"_id": s.team.Name}, s.team)
 	c.Assert(err, check.IsNil)
@@ -194,7 +180,7 @@ func (s *S) TestFindKeyByName(c *check.C) {
 	}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	defer u.Delete()
 	k, index := u.FindKey(Key{Name: u.Keys[0].Name})
 	c.Assert(index, check.Equals, 0)
 	c.Assert(k.Name, check.Equals, u.Keys[0].Name)
@@ -208,7 +194,7 @@ func (s *S) TestFindKeyByBody(c *check.C) {
 	}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	defer u.Delete()
 	k, index := u.FindKey(Key{Content: u.Keys[0].Content})
 	c.Assert(index, check.Equals, 0)
 	c.Assert(k.Name, check.Equals, u.Keys[0].Name)
@@ -244,73 +230,40 @@ func (s *S) TestUserAllowedApps(c *check.C) {
 	err = s.conn.Apps().Insert(&a2)
 	c.Assert(err, check.IsNil)
 	defer func() {
-		s.conn.Apps().Remove(bson.M{"name": bson.M{"$in": []string{a.Name, a2.Name}}})
+		s.conn.Apps().RemoveAll(bson.M{"name": bson.M{"$in": []string{a.Name, a2.Name}}})
 		s.conn.Teams().RemoveId(team.Name)
 	}()
 	aApps, err := s.user.AllowedApps()
 	c.Assert(aApps, check.DeepEquals, []string{a.Name, a2.Name})
 }
 
-func (s *S) TestListKeysShouldCallGandalfAPI(c *check.C) {
-	h := testHandler{content: `{"mypckey":"ssh-rsa keystuff keycomment"}`}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
-	u := User{Email: "wolverine@xmen.com", Password: "123456"}
-	err := u.Create()
-	c.Assert(err, check.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
-	keys, err := u.ListKeys()
-	c.Assert(err, check.IsNil)
-	expected := map[string]string{"mypckey": "ssh-rsa keystuff keycomment"}
-	c.Assert(expected, check.DeepEquals, keys)
-	c.Assert(h.url[0], check.Equals, "/user/wolverine@xmen.com/keys")
-	c.Assert(h.method[0], check.Equals, "GET")
-}
-
-func (s *S) TestListKeysGandalfAPIError(c *check.C) {
-	h := testBadHandler{content: "some terrible error"}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
-	u := User{Email: "wolverine@xmen.com", Password: "123456"}
-	err := u.Create()
-	c.Assert(err, check.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
-	keys, err := u.ListKeys()
-	c.Assert(keys, check.DeepEquals, map[string]string(nil))
-	c.Assert(err.Error(), check.Equals, "some terrible error\n")
-}
-
-func (s *S) TestKeyToMap(c *check.C) {
-	keys := []Key{{Name: "testkey", Content: "somekey"}}
-	keysMap := keyToMap(keys)
-	c.Assert(keysMap, check.DeepEquals, map[string]string{"testkey": "somekey"})
-}
-
-func (s *S) TestAddKeyInGandalfShouldCallGandalfAPI(c *check.C) {
-	h := apitest.TestHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
-	u := &User{Email: "me@gmail.com"}
+func (s *S) TestListKeysShouldGetKeysFromTheRepositoryManager(c *check.C) {
+	u := User{
+		Email:    "wolverine@xmen.com",
+		Password: "123456",
+	}
+	newKeys := []Key{{Name: "key1", Content: "superkey"}, {Name: "key2", Content: "hiperkey"}}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
-	key := Key{Content: "my-ssh-key", Name: "key1"}
-	err = u.addKeyGandalf(&key)
+	repository.Manager().AddKey(u.Email, newKeys[0].RepoKey())
+	repository.Manager().AddKey(u.Email, newKeys[1].RepoKey())
+	keys, err := u.ListKeys()
 	c.Assert(err, check.IsNil)
-	c.Assert(h.Url, check.Equals, "/user/me@gmail.com/key")
+	expected := map[string]string{"key1": "superkey", "key2": "hiperkey"}
+	c.Assert(keys, check.DeepEquals, expected)
 }
 
-func (s *S) TestCreateUserOnGandalf(c *check.C) {
-	h := apitest.TestHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
-	u := &User{Email: "me@gmail.com"}
-	err := u.CreateOnGandalf()
+func (s *S) TestListKeysRepositoryManagerFailure(c *check.C) {
+	u := User{Email: "wolverine@xmen.com", Password: "123456"}
+	err := u.Create()
 	c.Assert(err, check.IsNil)
-	c.Assert(h.Url, check.Equals, "/user")
-	expected := `{"name":"me@gmail.com","keys":{}}`
-	c.Assert(string(h.Body), check.Equals, expected)
-	c.Assert(h.Method, check.Equals, "POST")
+	defer u.Delete()
+	err = repository.Manager().RemoveUser(u.Email)
+	c.Assert(err, check.IsNil)
+	keys, err := u.ListKeys()
+	c.Assert(keys, check.HasLen, 0)
+	c.Assert(err.Error(), check.Equals, "user not found")
 }
 
 func (s *S) TestShowAPIKeyWhenAPITokenAlreadyExists(c *check.C) {
@@ -322,7 +275,7 @@ func (s *S) TestShowAPIKeyWhenAPITokenAlreadyExists(c *check.C) {
 	}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	defer u.Delete()
 	API_Token, err := u.ShowAPIKey()
 	c.Assert(API_Token, check.Equals, u.APIKey)
 	c.Assert(err, check.IsNil)
@@ -337,7 +290,7 @@ func (s *S) TestShowAPIKeyWhenAPITokenNotExists(c *check.C) {
 	}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	defer u.Delete()
 	API_Token, err := u.ShowAPIKey()
 	c.Assert(API_Token, check.Equals, u.APIKey)
 	c.Assert(err, check.IsNil)

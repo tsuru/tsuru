@@ -6,8 +6,6 @@ package auth
 
 import (
 	"io"
-	"io/ioutil"
-	"net/http"
 	"os"
 	"path/filepath"
 	"testing"
@@ -16,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/auth/authtest"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 )
@@ -93,6 +92,10 @@ func (s *S) TearDownSuite(c *check.C) {
 	s.server.Stop()
 }
 
+func (s *S) SetUpTest(c *check.C) {
+	repositorytest.Reset()
+}
+
 func (s *S) TearDownTest(c *check.C) {
 	if s.user.Password != s.hashed {
 		s.user.Password = s.hashed
@@ -109,29 +112,4 @@ func (s *S) getTestData(path ...string) io.ReadCloser {
 	p := filepath.Join(path...)
 	f, _ := os.OpenFile(p, os.O_RDONLY, 0)
 	return f
-}
-
-type testHandler struct {
-	body    [][]byte
-	method  []string
-	url     []string
-	content string
-	header  []http.Header
-}
-
-func (h *testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.method = append(h.method, r.Method)
-	h.url = append(h.url, r.URL.String())
-	b, _ := ioutil.ReadAll(r.Body)
-	h.body = append(h.body, b)
-	h.header = append(h.header, r.Header)
-	w.Write([]byte(h.content))
-}
-
-type testBadHandler struct {
-	content string
-}
-
-func (h *testBadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, h.content, http.StatusInternalServerError)
 }

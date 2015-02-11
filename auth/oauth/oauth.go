@@ -80,10 +80,6 @@ func (c *DBTokenCache) PutToken(t *oauth.Token) error {
 				return err
 			}
 		}
-		err = user.CreateOnGandalf()
-		if err != nil {
-			log.Errorf("Ignored error trying to create user on gandalf: %s", err.Error())
-		}
 		t.Extra = make(map[string]string)
 		t.Extra["email"] = email
 	}

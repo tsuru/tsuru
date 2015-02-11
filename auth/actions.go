@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -6,17 +6,17 @@ package auth
 
 import "github.com/tsuru/tsuru/action"
 
-var addKeyInGandalfAction = action.Action{
-	Name: "add-key-in-gandalf",
+var addKeyInRepositoryAction = action.Action{
+	Name: "add-key-in-repository",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		key := ctx.Params[0].(*Key)
 		u := ctx.Params[1].(*User)
-		return nil, u.addKeyGandalf(key)
+		return nil, u.addKeyRepository(key)
 	},
 	Backward: func(ctx action.BWContext) {
 		key := ctx.Params[0].(*Key)
 		u := ctx.Params[1].(*User)
-		u.removeKeyGandalf(key)
+		u.removeKeyRepository(key)
 	},
 }
 
@@ -32,6 +32,9 @@ var addKeyInDatabaseAction = action.Action{
 	Backward: func(ctx action.BWContext) {
 		key := ctx.Params[0].(*Key)
 		u := ctx.Params[1].(*User)
-		u.RemoveKey(*key)
+		err := u.RemoveKey(*key)
+		if err != nil {
+			println(err.Error())
+		}
 	},
 }

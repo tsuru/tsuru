@@ -12,7 +12,6 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
 )
 
 func (s *S) TestReserveApp(c *check.C) {
@@ -23,10 +22,10 @@ func (s *S) TestReserveApp(c *check.C) {
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
+	defer user.Delete()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	defer conn.Users().Remove(bson.M{"email": user.Email})
 	err = ReserveApp(user)
 	c.Assert(err, check.IsNil)
 	user, err = GetUserByEmail(email)
@@ -48,10 +47,10 @@ func (s *S) TestReserveAppAlwaysRefreshFromDatabase(c *check.C) {
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
+	defer user.Delete()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	defer conn.Users().Remove(bson.M{"email": user.Email})
 	user.InUse = 4
 	err = ReserveApp(user)
 	c.Assert(err, check.IsNil)
@@ -68,10 +67,10 @@ func (s *S) TestReserveAppQuotaExceeded(c *check.C) {
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
+	defer user.Delete()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	defer conn.Users().Remove(bson.M{"email": user.Email})
 	err = ReserveApp(user)
 	e, ok := err.(*quota.QuotaExceededError)
 	c.Assert(ok, check.Equals, true)
@@ -88,10 +87,10 @@ func (s *S) TestReserveAppIsSafe(c *check.C) {
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
+	defer user.Delete()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	defer conn.Users().Remove(bson.M{"email": user.Email})
 	var wg sync.WaitGroup
 	for i := 0; i < 24; i++ {
 		wg.Add(1)
@@ -114,10 +113,10 @@ func (s *S) TestReleaseApp(c *check.C) {
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
+	defer user.Delete()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	defer conn.Users().Remove(bson.M{"email": user.Email})
 	err = ReserveApp(user)
 	c.Assert(err, check.IsNil)
 	err = ReleaseApp(user)
@@ -145,10 +144,10 @@ func (s *S) TestReleaseAppAlwaysRefreshFromDatabase(c *check.C) {
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
+	defer user.Delete()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	defer conn.Users().Remove(bson.M{"email": user.Email})
 	err = ReserveApp(user)
 	c.Assert(err, check.IsNil)
 	user.InUse = 4
@@ -167,10 +166,10 @@ func (s *S) TestReleaseAppNonReserved(c *check.C) {
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
+	defer user.Delete()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	defer conn.Users().Remove(bson.M{"email": user.Email})
 	err = ReleaseApp(user)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Cannot release unreserved app")
@@ -185,10 +184,10 @@ func (s *S) TestReleaseAppIsSafe(c *check.C) {
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
+	defer user.Delete()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	defer conn.Users().Remove(bson.M{"email": user.Email})
 	var wg sync.WaitGroup
 	for i := 0; i < 24; i++ {
 		wg.Add(1)
@@ -210,10 +209,10 @@ func (s *S) TestChangeQuota(c *check.C) {
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
+	defer user.Delete()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	defer conn.Users().Remove(bson.M{"email": user.Email})
 	err = ChangeQuota(user, 40)
 	c.Assert(err, check.IsNil)
 	user, err = GetUserByEmail(user.Email)
@@ -229,10 +228,10 @@ func (s *S) TestChangeQuotaUnlimited(c *check.C) {
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
+	defer user.Delete()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	defer conn.Users().Remove(bson.M{"email": user.Email})
 	err = ChangeQuota(user, -40)
 	c.Assert(err, check.IsNil)
 	user, err = GetUserByEmail(user.Email)
@@ -248,10 +247,10 @@ func (s *S) TestChangeQuotaLessThanInUse(c *check.C) {
 	}
 	err := user.Create()
 	c.Assert(err, check.IsNil)
+	defer user.Delete()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	defer conn.Users().Remove(bson.M{"email": user.Email})
 	err = ChangeQuota(user, 3)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "new limit is lesser than the current allocated value")

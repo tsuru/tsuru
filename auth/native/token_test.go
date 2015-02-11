@@ -200,7 +200,7 @@ func (s *S) TestCreateTokenShouldSaveTheTokenInTheDatabase(c *check.C) {
 	u := auth.User{Email: "wolverine@xmen.com", Password: "123456"}
 	_, err := nativeScheme.Create(&u)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	defer u.Delete()
 	_, err = createToken(&u, "123456")
 	c.Assert(err, check.IsNil)
 	var result Token
@@ -214,7 +214,7 @@ func (s *S) TestCreateTokenRemoveOldTokens(c *check.C) {
 	u := auth.User{Email: "para@xmen.com", Password: "123456"}
 	_, err := nativeScheme.Create(&u)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	defer u.Delete()
 	defer s.conn.Tokens().RemoveAll(bson.M{"useremail": u.Email})
 	t1, err := newUserToken(&u)
 	c.Assert(err, check.IsNil)
@@ -249,7 +249,7 @@ func (s *S) TestCreateTokenUsesDefaultCostWhenHasCostIsUndefined(c *check.C) {
 	u := auth.User{Email: "wolverine@xmen.com", Password: "123456"}
 	_, err = nativeScheme.Create(&u)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	defer u.Delete()
 	cost = 0
 	tokenExpire = 0
 	_, err = createToken(&u, "123456")
@@ -267,7 +267,7 @@ func (s *S) TestCreateTokenShouldValidateThePassword(c *check.C) {
 	u := auth.User{Email: "me@gmail.com", Password: "123456"}
 	_, err := nativeScheme.Create(&u)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	defer u.Delete()
 	_, err = createToken(&u, "123")
 	c.Assert(err, check.NotNil)
 }
