@@ -152,3 +152,11 @@ func (m gandalfManager) ListKeys(username string) ([]repository.Key, error) {
 	}
 	return keys, nil
 }
+
+func (m gandalfManager) Diff(name, from, to string) (string, error) {
+	client, err := m.client()
+	if err != nil {
+		return "", err
+	}
+	return client.GetDiff(name, from, to)
+}

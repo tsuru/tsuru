@@ -190,4 +190,14 @@ func (s *GandalfSuite) TestListKeys(c *check.C) {
 	c.Assert(keys, check.DeepEquals, expected)
 }
 
+func (s *GandalfSuite) TestDiff(c *check.C) {
+	var manager gandalfManager
+	err := manager.CreateRepository("myrepo")
+	c.Assert(err, check.IsNil)
+	s.server.PrepareDiff("myrepo", "some diff")
+	diff, err := manager.Diff("myrepo", "10", "11")
+	c.Assert(err, check.IsNil)
+	c.Assert(diff, check.Equals, "some diff")
+}
+
 const publicKey = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDD91CO+YIU6nIb+l+JewPMLbUB9IZx4g6IUuqyLbmCi+8DNliEjE/KWUISPlkPWoDK4ibEY/gZPLPRMT3acA+2cAf3uApBwegvDgtDv1lgtTbkMc8QJaT044Vg+JtVDFraXU4T8fn/apVMMXro0Kr/DaLzUsxSigGrCIRyT1vkMCnya8oaQHu1Qa/wnOjd6tZzvzIsxJirAbQvzlLOb89c7LTPhUByySTQmgSnoNR6ZdPpjDwnaQgyAjbsPKjhkQ1AkcxOxBi0GwwSCO7aZ+T3F/mJ1bUhEE5BMh+vO3HQ3gGkc1xeQW4H7ZL33sJkP0Tb9zslaE1lT+fuOi7NBUK5 f@somewhere"
