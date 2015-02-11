@@ -257,7 +257,7 @@ func (p *dockerProvisioner) rebalanceContainers(encoder *json.Encoder, dryRun bo
 		if err != nil {
 			return err
 		}
-		defer p.collection().DropCollection()
+		defer p.StopDryMode()
 	}
 	logProgress(encoder, "Rebalancing %d units...", len(containers))
 	for _, cont := range containers {

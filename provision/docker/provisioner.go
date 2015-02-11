@@ -57,6 +57,7 @@ type dockerProvisioner struct {
 	collectionName string
 	storage        cluster.Storage
 	scheduler      *segregatedScheduler
+	dryMode        bool
 }
 
 func initDockerCluster(p *dockerProvisioner) {
@@ -116,11 +117,19 @@ func initDockerCluster(p *dockerProvisioner) {
 	}
 }
 
+func (p *dockerProvisioner) StopDryMode() {
+	if p.dryMode {
+		p.cluster.StopDryMode()
+		p.collection().DropCollection()
+	}
+}
+
 func (p *dockerProvisioner) DryMode(containersToCopy []container) (*dockerProvisioner, error) {
 	var scheduler cluster.Scheduler
 	var err error
 	overridenProvisioner := &dockerProvisioner{
 		collectionName: "containers_dry_" + randomString(),
+		dryMode:        true,
 	}
 	if p.scheduler != nil {
 		scheduler = &segregatedScheduler{
