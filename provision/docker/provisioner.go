@@ -70,6 +70,7 @@ func initDockerCluster(p *dockerProvisioner) {
 		panic(err)
 	}
 	var nodes []cluster.Node
+	var scheduler cluster.Scheduler
 	if isSegregateScheduler() {
 		totalMemoryMetadata, _ := config.GetString("docker:scheduler:total-memory-metadata")
 		maxUsedMemory, _ := config.GetFloat("docker:scheduler:max-used-memory")
@@ -78,10 +79,11 @@ func initDockerCluster(p *dockerProvisioner) {
 			totalMemoryMetadata: totalMemoryMetadata,
 			provisioner:         p,
 		}
+		scheduler = p.scheduler
 	} else {
 		nodes = getDockerServers()
 	}
-	p.cluster, err = cluster.New(p.scheduler, p.storage, nodes...)
+	p.cluster, err = cluster.New(scheduler, p.storage, nodes...)
 	if err != nil {
 		panic(err)
 	}
