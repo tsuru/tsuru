@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/quota"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -29,10 +30,12 @@ type QuotaSuite struct {
 var _ = check.Suite(&QuotaSuite{})
 
 func (s *QuotaSuite) SetUpSuite(c *check.C) {
+	repositorytest.Reset()
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_auth_test")
 	config.Set("admin-team", "superteam")
 	config.Set("auth:hash-cost", 4)
+	config.Set("repo-manager", "fake")
 	s.user = &auth.User{Email: "unspoken@gotthard.com", Password: "123456"}
 	_, err := nativeScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
@@ -51,6 +54,10 @@ func (s *QuotaSuite) TearDownSuite(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
 	dbtest.ClearAllCollections(conn.Apps().Database)
+}
+
+func (s *QuotaSuite) SetUpTest(c *check.C) {
+	repositorytest.Reset()
 }
 
 func (s *QuotaSuite) TestGetUserQuota(c *check.C) {

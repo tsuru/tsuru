@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -28,10 +29,12 @@ type AutoScaleSuite struct {
 var _ = check.Suite(&AutoScaleSuite{})
 
 func (s *AutoScaleSuite) SetUpSuite(c *check.C) {
+	repositorytest.Reset()
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_autoscale_api_tests")
 	config.Set("aut:hash-cost", 4)
 	config.Set("admin-team", "tsuruteam")
+	config.Set("repo-manager", "fake")
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
@@ -50,6 +53,10 @@ func (s *AutoScaleSuite) SetUpSuite(c *check.C) {
 func (s *AutoScaleSuite) TearDownSuite(c *check.C) {
 	defer s.conn.Close()
 	s.conn.Apps().Database.DropDatabase()
+}
+
+func (s *AutoScaleSuite) SetUpTest(c *check.C) {
+	repositorytest.Reset()
 }
 
 func (s *AutoScaleSuite) TearDownTest(c *check.C) {

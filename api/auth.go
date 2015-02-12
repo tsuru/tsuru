@@ -11,7 +11,6 @@ import (
 	"net/http"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/go-gandalfclient"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -73,15 +72,6 @@ func createUser(w http.ResponseWriter, r *http.Request) error {
 	_, err = app.AuthScheme.Create(&u)
 	if err != nil {
 		return handleAuthError(err)
-	}
-	err = u.CreateOnGandalf()
-	if err != nil && err != repository.ErrGandalfDisabled {
-		rollbackErr := app.AuthScheme.Remove(&u)
-		if rollbackErr != nil {
-			log.Errorf("error trying to rollback user creation: %s", rollbackErr.Error())
-		}
-		log.Errorf("error trying to create user %q in gandalf: %s", u.Email, err)
-		return err
 	}
 	rec.Log(u.Email, "create-user")
 	w.WriteHeader(http.StatusCreated)
@@ -253,17 +243,17 @@ func addUserToTeamInDatabase(user *auth.User, team *auth.Team) error {
 	return conn.Teams().UpdateId(team.Name, team)
 }
 
-func addUserToTeamInGandalf(user *auth.User, t *auth.Team) error {
-	gURL, err := repository.ServerURL()
-	if err != nil {
-		return err
-	}
+func addUserToTeamInRepository(user *auth.User, t *auth.Team) error {
 	alwdApps, err := t.AllowedApps()
 	if err != nil {
 		return fmt.Errorf("Failed to obtain allowed apps to grant: %s", err)
 	}
-	if err := (&gandalf.Client{Endpoint: gURL}).GrantAccess(alwdApps, []string{user.Email}); err != nil {
-		return fmt.Errorf("Failed to grant access to git repositories: %s", err)
+	manager := repository.Manager()
+	for _, app := range alwdApps {
+		err = manager.GrantAccess(app, user.Email)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -294,7 +284,7 @@ func addUserToTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "User not found"}
 	}
 	actions := []*action.Action{
-		&addUserToTeamInGandalfAction,
+		&addUserToTeamInRepositoryAction,
 		&addUserToTeamInDatabaseAction,
 	}
 	pipeline := action.NewPipeline(actions...)
@@ -313,11 +303,7 @@ func removeUserFromTeamInDatabase(u *auth.User, team *auth.Team) error {
 	return conn.Teams().UpdateId(team.Name, team)
 }
 
-func removeUserFromTeamInGandalf(u *auth.User, team *auth.Team) error {
-	gURL, err := repository.ServerURL()
-	if err != nil {
-		return err
-	}
+func removeUserFromTeamInRepository(u *auth.User, team *auth.Team) error {
 	teamApps, err := team.AllowedApps()
 	if err != nil {
 		return err
@@ -339,9 +325,9 @@ func removeUserFromTeamInGandalf(u *auth.User, team *auth.Team) error {
 			appsToRemove = append(appsToRemove, teamApp)
 		}
 	}
-	client := gandalf.Client{Endpoint: gURL}
-	if err := client.RevokeAccess(appsToRemove, []string{u.Email}); err != nil {
-		return fmt.Errorf("Failed to revoke access from git repositories: %s", err)
+	manager := repository.Manager()
+	for _, app := range appsToRemove {
+		manager.RevokeAccess(app, u.Email)
 	}
 	return nil
 }
@@ -379,7 +365,7 @@ func removeUserFromTeam(w http.ResponseWriter, r *http.Request, t auth.Token) er
 	if err != nil {
 		return err
 	}
-	return removeUserFromTeamInGandalf(user, team)
+	return removeUserFromTeamInRepository(user, team)
 }
 
 func getTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -475,7 +461,7 @@ func listKeys(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(keys)
 }
 
-// removeUser removes the user from the database and from gandalf server
+// removeUser removes the user from the database and from repository server
 //
 // If the user is the only one in a team an error will be returned.
 func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -483,18 +469,13 @@ func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	gURL, err := repository.ServerURL()
-	if err != nil {
-		return err
-	}
-	c := gandalf.Client{Endpoint: gURL}
 	alwdApps, err := u.AllowedApps()
 	if err != nil {
 		return err
 	}
-	if err := c.RevokeAccess(alwdApps, []string{u.Email}); err != nil {
-		log.Errorf("Failed to revoke access in Gandalf: %s", err)
-		return fmt.Errorf("Failed to revoke acess from git repositories: %s", err)
+	manager := repository.Manager()
+	for _, app := range alwdApps {
+		manager.RevokeAccess(app, u.Email)
 	}
 	teams, err := u.Teams()
 	if err != nil {
@@ -523,9 +504,8 @@ Please remove the team, then remove the user.`, team.Name)
 		}
 	}
 	rec.Log(u.Email, "remove-user")
-	if err := c.RemoveUser(u.Email); err != nil {
-		log.Errorf("Failed to remove user from gandalf: %s", err)
-		return fmt.Errorf("Failed to remove the user from the git server: %s", err)
+	if err := manager.RemoveUser(u.Email); err != nil {
+		log.Errorf("Failed to remove user from repository manager: %s", err)
 	}
 	return app.AuthScheme.Remove(u)
 }

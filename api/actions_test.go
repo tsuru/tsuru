@@ -22,11 +22,13 @@ type ActionsSuite struct {
 var _ = check.Suite(&ActionsSuite{})
 
 func (s *ActionsSuite) SetUpSuite(c *check.C) {
+	repositorytest.Reset()
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_actions_test")
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
+	config.Set("repo-manager", "fake")
 }
 
 func (s *ActionsSuite) TearDownSuite(c *check.C) {
@@ -35,18 +37,19 @@ func (s *ActionsSuite) TearDownSuite(c *check.C) {
 	dbtest.ClearAllCollections(conn.Apps().Database)
 }
 
-func (s *ActionsSuite) TestAddUserToTeamInGandalf(c *check.C) {
-	c.Assert(addUserToTeamInGandalfAction.Name, check.Equals, "add-user-to-team-in-gandalf")
+func (s *ActionsSuite) SetUpTest(c *check.C) {
+	repositorytest.Reset()
+}
+
+func (s *ActionsSuite) TestAddUserToTeamInRepository(c *check.C) {
+	c.Assert(addUserToTeamInRepositoryAction.Name, check.Equals, "add-user-to-team-in-repository")
 }
 
 func (s *ActionsSuite) TestAddUserToTeamInDatabase(c *check.C) {
 	c.Assert(addUserToTeamInDatabaseAction.Name, check.Equals, "add-user-to-team-in-database")
 }
 
-func (s *ActionsSuite) TestAddUserToTeamInGandalfActionForward(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
+func (s *ActionsSuite) TestAddUserToTeamInRepositoryActionForward(c *check.C) {
 	u := &auth.User{Email: "nobody@gmail.com"}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
@@ -55,17 +58,12 @@ func (s *ActionsSuite) TestAddUserToTeamInGandalfActionForward(c *check.C) {
 	ctx := action.FWContext{
 		Params: []interface{}{u, t},
 	}
-	result, err := addUserToTeamInGandalfAction.Forward(ctx)
+	result, err := addUserToTeamInRepositoryAction.Forward(ctx)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.IsNil)
-	c.Assert(len(h.url), check.Equals, 1)
-	c.Assert(h.url[0], check.Equals, "/repository/grant")
 }
 
-func (s *ActionsSuite) TestAddUserToTeamInGandalfActionBackward(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
+func (s *ActionsSuite) TestAddUserToTeamInRepositoryActionBackward(c *check.C) {
 	u := &auth.User{Email: "nobody@gmail.com"}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
@@ -74,9 +72,7 @@ func (s *ActionsSuite) TestAddUserToTeamInGandalfActionBackward(c *check.C) {
 	ctx := action.BWContext{
 		Params: []interface{}{u, t},
 	}
-	addUserToTeamInGandalfAction.Backward(ctx)
-	c.Assert(len(h.url), check.Equals, 1)
-	c.Assert(h.url[0], check.Equals, "/repository/revoke")
+	addUserToTeamInRepositoryAction.Backward(ctx)
 }
 
 func (s *ActionsSuite) TestAddUserToTeamInDatabaseActionForward(c *check.C) {

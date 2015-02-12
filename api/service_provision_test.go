@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/rec/rectest"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/service"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
@@ -55,10 +56,12 @@ type ProvisionSuite struct {
 var _ = check.Suite(&ProvisionSuite{})
 
 func (s *ProvisionSuite) SetUpSuite(c *check.C) {
+	repositorytest.Reset()
 	var err error
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_provision_test")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
+	config.Set("repo-manager", "fake")
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
 	s.createUserAndTeam(c)
@@ -69,6 +72,7 @@ func (s *ProvisionSuite) TearDownSuite(c *check.C) {
 }
 
 func (s *ProvisionSuite) TearDownTest(c *check.C) {
+	repositorytest.Reset()
 	_, err := s.conn.Services().RemoveAll(nil)
 	c.Assert(err, check.IsNil)
 }

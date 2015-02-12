@@ -9,17 +9,17 @@ import (
 	"github.com/tsuru/tsuru/auth"
 )
 
-var addUserToTeamInGandalfAction = action.Action{
-	Name: "add-user-to-team-in-gandalf",
+var addUserToTeamInRepositoryAction = action.Action{
+	Name: "add-user-to-team-in-repository",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		u := ctx.Params[0].(*auth.User)
 		t := ctx.Params[1].(*auth.Team)
-		return nil, addUserToTeamInGandalf(u, t)
+		return nil, addUserToTeamInRepository(u, t)
 	},
 	Backward: func(ctx action.BWContext) {
 		u := ctx.Params[0].(*auth.User)
 		team := ctx.Params[1].(*auth.Team)
-		removeUserFromTeamInGandalf(u, team)
+		removeUserFromTeamInRepository(u, team)
 	},
 }
 

@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/check.v1"
 )
 
@@ -30,7 +31,9 @@ var nativeScheme = auth.ManagedScheme(native.NativeScheme{})
 func Test(t *testing.T) { check.TestingT(t) }
 
 func (s *S) SetUpSuite(c *check.C) {
+	repositorytest.Reset()
 	config.Set("database:name", "api_context_tests_s")
+	config.Set("repo-manager", "fake")
 	user := &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -42,6 +45,10 @@ func (s *S) TearDownSuite(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	dbtest.ClearAllCollections(conn.Apps().Database)
+}
+
+func (s *S) SetUpTest(c *check.C) {
+	repositorytest.Reset()
 }
 
 func (s *S) TestClear(c *check.C) {

@@ -8,26 +8,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/tsuru/tsuru/api/apitest"
-	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/check.v1"
 )
 
-type HealthCheckSuite struct {
-	ts *httptest.Server
-	h  *apitest.TestHandler
-}
+type HealthCheckSuite struct{}
 
 var _ = check.Suite(&HealthCheckSuite{})
-
-func (s *HealthCheckSuite) SetUpSuite(c *check.C) {
-	s.h = &apitest.TestHandler{}
-	s.ts = repositorytest.StartGandalfTestServer(s.h)
-}
-
-func (s *HealthCheckSuite) TearDownSuite(c *check.C) {
-	s.ts.Close()
-}
 
 func (s *HealthCheckSuite) TestHealthCheck(c *check.C) {
 	recorder := httptest.NewRecorder()

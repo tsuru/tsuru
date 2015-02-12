@@ -6,8 +6,6 @@ package api
 
 import (
 	"io"
-	"io/ioutil"
-	"net/http"
 	"os"
 	"path"
 	"testing"
@@ -22,37 +20,11 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	_ "github.com/tsuru/tsuru/queue/queuetest"
 	"github.com/tsuru/tsuru/quota"
+	"github.com/tsuru/tsuru/repository"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/check.v1"
 )
-
-type testHandler struct {
-	body    [][]byte
-	method  []string
-	url     []string
-	content string
-	header  []http.Header
-	rspCode int
-}
-
-func (h *testHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	h.method = append(h.method, r.Method)
-	h.url = append(h.url, r.URL.String())
-	b, _ := ioutil.ReadAll(r.Body)
-	h.body = append(h.body, b)
-	h.header = append(h.header, r.Header)
-	if h.rspCode == 0 {
-		h.rspCode = http.StatusOK
-	}
-	w.WriteHeader(h.rspCode)
-	w.Write([]byte(h.content))
-}
-
-type testBadHandler struct{}
-
-func (h *testBadHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "some error", http.StatusInternalServerError)
-}
 
 func Test(t *testing.T) { check.TestingT(t) }
 
@@ -114,6 +86,7 @@ func (s *S) createUserAndTeam(c *check.C) {
 var nativeScheme = auth.ManagedScheme(native.NativeScheme{})
 
 func (s *S) SetUpSuite(c *check.C) {
+	repositorytest.Reset()
 	err := config.ReadConfigFile("testdata/config.yaml")
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
@@ -127,6 +100,11 @@ func (s *S) SetUpSuite(c *check.C) {
 
 func (s *S) TearDownSuite(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
+}
+
+func (s *S) SetUpTest(c *check.C) {
+	repositorytest.Reset()
+	repository.Manager().CreateUser(s.user.Email)
 }
 
 func (s *S) TearDownTest(c *check.C) {

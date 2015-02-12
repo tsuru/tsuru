@@ -28,6 +28,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/rec/rectest"
+	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -43,11 +44,13 @@ type AuthSuite struct {
 var _ = check.Suite(&AuthSuite{})
 
 func (s *AuthSuite) SetUpSuite(c *check.C) {
+	repositorytest.Reset()
 	var err error
 	config.Set("auth:user-registration", true)
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_auth_test")
 	config.Set("auth:hash-cost", 4)
+	config.Set("repo-manager", "fake")
 	s.createUserAndTeam(c)
 	config.Set("admin-team", s.team.Name)
 	s.server, err = authtest.NewSMTPServer()
@@ -57,6 +60,10 @@ func (s *AuthSuite) SetUpSuite(c *check.C) {
 	config.Set("smtp:password", "123456")
 	app.Provisioner = provisiontest.NewFakeProvisioner()
 	app.AuthScheme = nativeScheme
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	conn.Platforms().Insert(app.Platform{Name: "python"})
 }
 
 func (s *AuthSuite) TearDownSuite(c *check.C) {
@@ -67,15 +74,14 @@ func (s *AuthSuite) TearDownSuite(c *check.C) {
 }
 
 func (s *AuthSuite) TearDownTest(c *check.C) {
+	repositorytest.Reset()
 	conn, _ := db.Conn()
 	defer conn.Close()
 	_, err := conn.Users().RemoveAll(nil)
 	c.Assert(err, check.IsNil)
-	_, err = conn.Teams().RemoveAll(bson.M{"_id": bson.M{"$ne": s.team.Name}})
+	_, err = conn.Teams().RemoveAll(nil)
 	c.Assert(err, check.IsNil)
-	s.user.Password = "123456"
-	s.user, err = nativeScheme.Create(s.user)
-	c.Assert(err, check.IsNil)
+	s.createUserAndTeam(c)
 }
 
 func (s *AuthSuite) createUserAndTeam(c *check.C) {
@@ -120,31 +126,6 @@ func (c *userPresenceChecker) Check(params []interface{}, names []string) (bool,
 var ContainsUser check.Checker = &userPresenceChecker{}
 
 func (s *AuthSuite) TestCreateUserHandlerSavesTheUserInTheDatabase(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
-	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
-	request, err := http.NewRequest("POST", "/users", b)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-type", "application/json")
-	recorder := httptest.NewRecorder()
-	err = createUser(recorder, request)
-	c.Assert(err, check.IsNil)
-	user, err := auth.GetUserByEmail("nobody@globo.com")
-	c.Assert(err, check.IsNil)
-	action := rectest.Action{
-		Action: "create-user",
-		User:   "nobody@globo.com",
-	}
-	c.Assert(action, rectest.IsRecorded)
-	c.Assert(user.Quota, check.DeepEquals, quota.Unlimited)
-}
-
-func (s *AuthSuite) TestCreateUserWithoutGandalf(c *check.C) {
-	if old, err := config.Get("git:api-server"); err == nil {
-		defer config.Set("git:api-server", old)
-	}
-	config.Unset("git:api-server")
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, check.IsNil)
@@ -165,9 +146,6 @@ func (s *AuthSuite) TestCreateUserWithoutGandalf(c *check.C) {
 func (s *AuthSuite) TestCreateUserQuota(c *check.C) {
 	config.Set("quota:apps-per-user", 1)
 	defer config.Unset("quota:apps-per-user")
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, check.IsNil)
@@ -182,9 +160,6 @@ func (s *AuthSuite) TestCreateUserQuota(c *check.C) {
 }
 
 func (s *AuthSuite) TestCreateUserUnlimitedQuota(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, check.IsNil)
@@ -198,9 +173,6 @@ func (s *AuthSuite) TestCreateUserUnlimitedQuota(c *check.C) {
 }
 
 func (s *AuthSuite) TestCreateUserHandlerReturnsStatus201AfterCreateTheUser(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, check.IsNil)
@@ -238,9 +210,6 @@ func (s *AuthSuite) TestCreateUserHandlerReturnErrorAndBadRequestIfInvalidJSONIs
 }
 
 func (s *AuthSuite) TestCreateUserHandlerReturnErrorAndConflictIfItFailsToCreateUser(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	u := auth.User{Email: "nobody@globo.com"}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
@@ -288,10 +257,7 @@ func (s *AuthSuite) TestCreateUserHandlerReturnsBadRequestIfPasswordHasLessThan6
 	}
 }
 
-func (s *AuthSuite) TestCreateUserCreatesUserInGandalf(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
+func (s *AuthSuite) TestCreateUserCreatesUserInRepository(c *check.C) {
 	b := bytes.NewBufferString(`{"email":"nobody@me.myself","password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, check.IsNil)
@@ -302,16 +268,11 @@ func (s *AuthSuite) TestCreateUserCreatesUserInGandalf(c *check.C) {
 	defer conn.Users().Remove(bson.M{"email": "nobody@me.myself"})
 	err = createUser(recorder, request)
 	c.Assert(err, check.IsNil)
-	c.Assert(h.url[0], check.Equals, "/user")
-	expected := `{"name":"nobody@me.myself","keys":{}}`
-	c.Assert(string(h.body[0]), check.Equals, expected)
-	c.Assert(h.method[0], check.Equals, "POST")
+	_, err = repository.Manager().ListKeys("nobody@me.myself")
+	c.Assert(err, check.IsNil)
 }
 
 func (s *AuthSuite) TestCreateUserFailWithRegistrationDisabled(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, check.IsNil)
@@ -331,9 +292,6 @@ func (s *AuthSuite) TestCreateUserFailWithRegistrationDisabledAndCommonUser(c *c
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(map[string]string{"email": simpleUser.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, check.IsNil)
@@ -349,9 +307,6 @@ func (s *AuthSuite) TestCreateUserFailWithRegistrationDisabledAndCommonUser(c *c
 }
 
 func (s *AuthSuite) TestCreateUserWorksWithRegistrationDisabledAndAdminUser(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, check.IsNil)
@@ -366,10 +321,8 @@ func (s *AuthSuite) TestCreateUserWorksWithRegistrationDisabledAndAdminUser(c *c
 	c.Assert(err, check.IsNil)
 }
 
-func (s *AuthSuite) TestCreateUserRollsbackAfterGandalfError(c *check.C) {
-	h := testHandler{rspCode: http.StatusInternalServerError}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
+func (s *AuthSuite) TestCreateUserRollsbackAfterRepositoryError(c *check.C) {
+	repository.Manager().CreateUser("nobody@globo.com")
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
 	request, err := http.NewRequest("POST", "/users", b)
 	c.Assert(err, check.IsNil)
@@ -698,10 +651,10 @@ func (s *AuthSuite) TestRemoveTeamGives403WhenTeamHasAccessToAnyApp(c *check.C) 
 	err := conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
 	defer conn.Teams().Remove(bson.M{"_id": team.Name})
-	a := App{Name: "i-should", Teams: []string{team.Name}}
-	err = conn.Apps().Insert(a)
+	a := app.App{Name: "i-should", Platform: "python", Teams: []string{team.Name}, TeamOwner: team.Name}
+	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": a.Name})
+	defer app.Delete(&a)
 	request, err := http.NewRequest("DELETE", fmt.Sprintf("/teams/%s?:name=%s", team.Name, team.Name), nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -757,9 +710,6 @@ func (s *AuthSuite) TestListTeamsReturns204IfTheUserHasNoTeam(c *check.C) {
 func (s *AuthSuite) TestAddUserToTeam(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	u := &auth.User{Email: "wolverine@xmen.com", Password: "123456"}
 	_, err := nativeScheme.Create(u)
 	c.Assert(err, check.IsNil)
@@ -783,9 +733,6 @@ func (s *AuthSuite) TestAddUserToTeam(c *check.C) {
 }
 
 func (s *AuthSuite) TestAddUserToTeamShouldReturnNotFoundIfThereIsNoTeamWithTheGivenName(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	request, err := http.NewRequest("PUT", "/teams/abc/me@me.me?:team=abc&:user=me@me.me", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -798,9 +745,6 @@ func (s *AuthSuite) TestAddUserToTeamShouldReturnNotFoundIfThereIsNoTeamWithTheG
 }
 
 func (s *AuthSuite) TestAddUserToTeamShouldReturnForbiddenIfTheGivenUserIsNotInTheGivenTeam(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	u := &auth.User{Email: "hi@me.me", Password: "123456"}
 	_, err := nativeScheme.Create(u)
 	c.Assert(err, check.IsNil)
@@ -822,9 +766,6 @@ func (s *AuthSuite) TestAddUserToTeamShouldReturnForbiddenIfTheGivenUserIsNotInT
 }
 
 func (s *AuthSuite) TestAddUserToTeamShouldReturnNotFoundIfTheEmailInTheBodyDoesNotExistInTheDatabase(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	request, err := http.NewRequest("PUT", "/teams/tsuruteam/hi2@me.me?:team=tsuruteam&:user=hi2@me.me", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -837,9 +778,6 @@ func (s *AuthSuite) TestAddUserToTeamShouldReturnNotFoundIfTheEmailInTheBodyDoes
 }
 
 func (s *AuthSuite) TestAddUserToTeamShouldReturnConflictIfTheUserIsAlreadyInTheGroup(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	url := fmt.Sprintf("/teams/%s/%s?:team=%s&:user=%s", s.team.Name, s.user.Email, s.team.Name, s.user.Email)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
@@ -851,10 +789,7 @@ func (s *AuthSuite) TestAddUserToTeamShouldReturnConflictIfTheUserIsAlreadyInThe
 	c.Assert(e.Code, check.Equals, http.StatusConflict)
 }
 
-func (s *AuthSuite) TestAddUserToTeamShoulGrantAccessInGandalf(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
+func (s *AuthSuite) TestAddUserToTeamShoulGrantAccessInRepository(c *check.C) {
 	u := &auth.User{Email: "marathon@rush.com", Password: "123456"}
 	_, err := nativeScheme.Create(u)
 	c.Assert(err, check.IsNil)
@@ -864,10 +799,10 @@ func (s *AuthSuite) TestAddUserToTeamShoulGrantAccessInGandalf(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
 	defer conn.Users().Remove(bson.M{"email": u.Email})
-	a := App{Name: "i-should", Teams: []string{s.team.Name}}
-	err = conn.Apps().Insert(a)
+	a := app.App{Name: "i-should", Platform: "python", Teams: []string{s.team.Name}}
+	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": a.Name})
+	defer app.Delete(&a)
 	b := bytes.NewBufferString(`{"key":"my-key"}`)
 	request, err := http.NewRequest("POST", "/users/keys", b)
 	c.Assert(err, check.IsNil)
@@ -880,11 +815,9 @@ func (s *AuthSuite) TestAddUserToTeamShoulGrantAccessInGandalf(c *check.C) {
 	recorder = httptest.NewRecorder()
 	err = addUserToTeam(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	c.Check(len(h.url), check.Equals, 2)
-	c.Assert(h.url[1], check.Equals, "/repository/grant")
-	c.Assert(h.method[1], check.Equals, "POST")
-	expected := fmt.Sprintf(`{"repositories":["%s"],"users":["marathon@rush.com"]}`, a.Name)
-	c.Assert(string(h.body[1]), check.Equals, expected)
+	grants, err := repositorytest.Granted(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(grants, check.DeepEquals, []string{s.user.Email, "marathon@rush.com"})
 }
 
 func (s *AuthSuite) TestAddUserToTeamInDatabase(c *check.C) {
@@ -901,21 +834,7 @@ func (s *AuthSuite) TestAddUserToTeamInDatabase(c *check.C) {
 	c.Assert(team.Users, check.DeepEquals, []string{user.Email})
 }
 
-func (s *AuthSuite) TestAddUserToTeamInGandalfShouldCallGandalfAPI(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
-	u := auth.User{Email: "nonee@me.me", Password: "none"}
-	err := addUserToTeamInGandalf(&u, s.team)
-	c.Assert(err, check.IsNil)
-	c.Assert(len(h.url), check.Equals, 1)
-	c.Assert(h.url[0], check.Equals, "/repository/grant")
-}
-
 func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExistAndTheUserIsMemberOfTheTeam(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	u := auth.User{Email: "nonee@me.me"}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
@@ -940,10 +859,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExi
 	c.Assert(action, rectest.IsRecorded)
 }
 
-func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveOnlyAppsInThatTeamInGandalfWhenUserIsInMoreThanOneTeam(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
+func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveOnlyAppsInThatTeamInRepositoryWhenUserIsInMoreThanOneTeam(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
 	u := auth.User{Email: "nobody@me.me"}
@@ -956,31 +872,26 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveOnlyAppsInThatTeamInGandal
 	err = conn.Teams().Insert(&team2)
 	c.Assert(err, check.IsNil)
 	defer conn.Teams().RemoveId(team2.Name)
-	app1 := app.App{Name: "app1", Teams: []string{s.team.Name}}
-	err = conn.Apps().Insert(&app1)
+	app1 := app.App{Name: "app1", Platform: "python", Teams: []string{s.team.Name}}
+	err = app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": app1.Name})
-	app2 := app.App{Name: "app2", Teams: []string{s.team.Name, team2.Name}}
-	err = conn.Apps().Insert(&app2)
+	defer app.Delete(&app1)
+	app2 := app.App{Name: "app2", Platform: "python", Teams: []string{s.team.Name, team2.Name}}
+	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": app2.Name})
+	defer app.Delete(&app2)
 	url := fmt.Sprintf("/teams/%s/%s?:team=%s&:user=%s", s.team.Name, u.Email, s.team.Name, u.Email)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	err = removeUserFromTeam(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	expected := `{"repositories":["app1"],"users":["nobody@me.me"]}`
-	c.Assert(len(h.body), check.Equals, 1)
-	c.Assert(string(h.body[0]), check.Equals, expected)
-	conn.Teams().FindId(s.team.Name).One(s.team)
-	c.Assert(s.team, check.Not(ContainsUser), &u) // just in case
+	grants, err := repositorytest.Granted("app1")
+	c.Assert(err, check.IsNil)
+	c.Assert(grants, check.DeepEquals, []string{s.user.Email})
 }
 
 func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnNotFoundIfTheTeamDoesNotExist(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	request, err := http.NewRequest("DELETE", "/teams/tsuruteam/none@me.me?:team=unknown&:user=none@me.me", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -993,9 +904,6 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnNotFoundIfTheTeamDoesNotEx
 }
 
 func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnUnauthorizedIfTheGivenUserIsNotMemberOfTheTeam(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	request, err := http.NewRequest("DELETE", "/teams/tsuruteam/none@me.me?:team=tsuruteam&:user=none@me.me", nil)
 	c.Assert(err, check.IsNil)
 	u := &auth.User{Email: "unknown@gmail.com", Password: "123456"}
@@ -1016,9 +924,6 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnUnauthorizedIfTheGivenUser
 }
 
 func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnNotFoundWhenTheUserIsNotMemberOfTheTeam(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	conn, _ := db.Conn()
 	defer conn.Close()
 	u := &auth.User{Email: "nobody@me.me", Password: "132"}
@@ -1039,9 +944,6 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnNotFoundWhenTheUserIsNotMe
 }
 
 func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnForbiddenIfTheUserIsTheLastInTheTeam(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	url := "/teams/tsuruteam/whydidifall@thewho.com?:team=tsuruteam&:user=whydidifall@thewho.com"
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
@@ -1054,10 +956,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamShouldReturnForbiddenIfTheUserIsTheLas
 	c.Assert(e, check.ErrorMatches, "^You can not remove this user from this team, because it is the last user within the team, and a team can not be orphaned$")
 }
 
-func (s *AuthSuite) TestRemoveUserFromTeamRevokesAccessInGandalf(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
+func (s *AuthSuite) TestRemoveUserFromTeamRevokesAccessInRepository(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
 	u := &auth.User{Email: "pomar@nando-reis.com", Password: "123456"}
@@ -1079,23 +978,19 @@ func (s *AuthSuite) TestRemoveUserFromTeamRevokesAccessInGandalf(c *check.C) {
 	recorder = httptest.NewRecorder()
 	err = addUserToTeam(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	a := struct {
-		Name  string
-		Teams []string
-	}{Name: "myApp", Teams: []string{s.team.Name}}
-	err = conn.Apps().Insert(a)
+	a := app.App{Name: "myapp", Platform: "python", Teams: []string{s.team.Name}}
+	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": a.Name})
+	defer app.Delete(&a)
 	url = fmt.Sprintf("/teams/%s/%s?:team=%s&:user=%s", s.team.Name, u.Email, s.team.Name, u.Email)
 	request, err = http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder = httptest.NewRecorder()
 	err = removeUserFromTeam(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	c.Assert(h.url[2], check.Equals, "/repository/revoke")
-	c.Assert(h.method[2], check.Equals, "DELETE")
-	expected := `{"repositories":["myApp"],"users":["pomar@nando-reis.com"]}`
-	c.Assert(string(h.body[2]), check.Equals, expected)
+	grants, err := repositorytest.Granted("myapp")
+	c.Assert(err, check.IsNil)
+	c.Assert(grants, check.DeepEquals, []string{s.user.Email})
 }
 
 func (s *AuthSuite) TestRemoveUserFromTeamInDatabase(c *check.C) {
@@ -1112,17 +1007,6 @@ func (s *AuthSuite) TestRemoveUserFromTeamInDatabase(c *check.C) {
 	err = conn.Teams().FindId(s.team.Name).One(s.team)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.team, check.Not(ContainsUser), u)
-}
-
-func (s *AuthSuite) TestRemoveUserFromTeamInGandalf(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
-	u := &auth.User{Email: "nobody@gmail.com"}
-	err := removeUserFromTeamInGandalf(u, &auth.Team{Name: "someteam"})
-	c.Assert(err, check.IsNil)
-	c.Assert(len(h.url), check.Equals, 1)
-	c.Assert(h.url[0], check.Equals, "/repository/revoke")
 }
 
 func (s *AuthSuite) TestGetTeam(c *check.C) {
@@ -1180,9 +1064,6 @@ func (s *AuthSuite) TestGetTeamForbidden(c *check.C) {
 }
 
 func (s *AuthSuite) TestAddKeyToUserAddsAKeyToTheUser(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	conn, _ := db.Conn()
 	defer conn.Close()
 	defer func() {
@@ -1210,9 +1091,6 @@ func (s *AuthSuite) TestAddKeyToUserAddsAKeyToTheUser(c *check.C) {
 }
 
 func (s *AuthSuite) TestAddKeyToUserAcceptsTheNameOfTheKey(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	conn, _ := db.Conn()
 	defer conn.Close()
 	defer func() {
@@ -1240,9 +1118,6 @@ func (s *AuthSuite) TestAddKeyToUserAcceptsTheNameOfTheKey(c *check.C) {
 }
 
 func (s *AuthSuite) TestAddKeyToUserReturnsErrorIfTheReadingOfTheBodyFails(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	b := s.getTestData("bodyToBeClosed.txt")
 	b.Close()
 	request, err := http.NewRequest("POST", "/users/keys", b)
@@ -1253,9 +1128,6 @@ func (s *AuthSuite) TestAddKeyToUserReturnsErrorIfTheReadingOfTheBodyFails(c *ch
 }
 
 func (s *AuthSuite) TestAddKeyToUserReturnsBadRequestIfTheJSONIsInvalid(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	b := bytes.NewBufferString(`"aaaa}`)
 	request, err := http.NewRequest("POST", "/users/key", b)
 	c.Assert(err, check.IsNil)
@@ -1269,9 +1141,6 @@ func (s *AuthSuite) TestAddKeyToUserReturnsBadRequestIfTheJSONIsInvalid(c *check
 }
 
 func (s *AuthSuite) TestAddKeyToUserReturnsBadRequestIfTheKeyIsNotPresent(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	b := bytes.NewBufferString(`{}`)
 	request, err := http.NewRequest("POST", "/users/key", b)
 	c.Assert(err, check.IsNil)
@@ -1285,9 +1154,6 @@ func (s *AuthSuite) TestAddKeyToUserReturnsBadRequestIfTheKeyIsNotPresent(c *che
 }
 
 func (s *AuthSuite) TestAddKeyToUserReturnsBadRequestIfTheKeyIsEmpty(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	b := bytes.NewBufferString(`{"key":""}`)
 	request, err := http.NewRequest("POST", "/users/key", b)
 	c.Assert(err, check.IsNil)
@@ -1301,9 +1167,6 @@ func (s *AuthSuite) TestAddKeyToUserReturnsBadRequestIfTheKeyIsEmpty(c *check.C)
 }
 
 func (s *AuthSuite) TestAddKeyToUserReturnsConflictIfTheKeyIsAlreadyPresent(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	conn, _ := db.Conn()
 	defer conn.Close()
 	s.user.AddKey(auth.Key{Content: "my-key"})
@@ -1324,10 +1187,7 @@ func (s *AuthSuite) TestAddKeyToUserReturnsConflictIfTheKeyIsAlreadyPresent(c *c
 	c.Assert(e.Message, check.Equals, "user already has this key")
 }
 
-func (s *AuthSuite) TestAddKeyAddKeyToUserInGandalf(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
+func (s *AuthSuite) TestAddKeyAddKeyToUserInRepository(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
 	u := &auth.User{Email: "francisco@franciscosouza.net", Password: "123456"}
@@ -1349,14 +1209,14 @@ func (s *AuthSuite) TestAddKeyAddKeyToUserInGandalf(c *check.C) {
 		conn.Users().RemoveAll(bson.M{"email": u.Email})
 	}()
 	c.Assert(u.Keys[0].Name, check.Not(check.Matches), "\\.pub$")
-	expectedURL := fmt.Sprintf("/user/%s/key", u.Email)
-	c.Assert(h.url[0], check.Equals, expectedURL)
-	c.Assert(h.method[0], check.Equals, "POST")
-	expected := fmt.Sprintf(`{"%s-1":"my-key"}`, u.Email)
-	c.Assert(string(h.body[0]), check.Equals, expected)
+	keys, err := repository.Manager().ListKeys(u.Email)
+	c.Assert(err, check.IsNil)
+	c.Assert(keys, check.HasLen, 1)
+	c.Assert(keys[0].Name, check.Equals, "francisco@franciscosouza.net-1")
+	c.Assert(keys[0].Body, check.Equals, "my-key")
 }
 
-func (s *AuthSuite) TestAddKeyToUserShouldNotInsertKeyInDatabaseWhenGandalfAdditionFails(c *check.C) {
+func (s *AuthSuite) TestAddKeyToUserShouldNotInsertKeyInDatabaseWhenRepositoryAdditionFails(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
 	u := &auth.User{Email: "me@gmail.com", Password: "123456"}
@@ -1368,10 +1228,11 @@ func (s *AuthSuite) TestAddKeyToUserShouldNotInsertKeyInDatabaseWhenGandalfAddit
 	b := bytes.NewBufferString(`{"key":"my-key"}`)
 	request, err := http.NewRequest("POST", "/users/keys", b)
 	c.Assert(err, check.IsNil)
+	repository.Manager().RemoveUser(u.Email)
 	recorder := httptest.NewRecorder()
 	err = addKeyToUser(recorder, request, t)
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Failed to add key to git server: Failed to connect to Gandalf server, it's probably down.")
+	c.Assert(err.Error(), check.Equals, "failed to add key to git server: user not found")
 	defer conn.Users().RemoveAll(bson.M{"email": u.Email})
 	u2, err := auth.GetUserByEmail(u.Email)
 	c.Assert(err, check.IsNil)
@@ -1379,9 +1240,6 @@ func (s *AuthSuite) TestAddKeyToUserShouldNotInsertKeyInDatabaseWhenGandalfAddit
 }
 
 func (s *AuthSuite) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	b := bytes.NewBufferString(`{"key":"my-key"}`)
 	request, err := http.NewRequest("POST", "/users/keys", b)
 	c.Assert(err, check.IsNil)
@@ -1405,9 +1263,6 @@ func (s *AuthSuite) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *check.C) {
 }
 
 func (s *AuthSuite) TestRemoveKeyHandlerCanRemoveByName(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	b := bytes.NewBufferString(`{"key":"my-key","name":"key-name"}`)
 	request, err := http.NewRequest("POST", "/users/keys", b)
 	c.Assert(err, check.IsNil)
@@ -1430,10 +1285,7 @@ func (s *AuthSuite) TestRemoveKeyHandlerCanRemoveByName(c *check.C) {
 	c.Assert(action, rectest.IsRecorded)
 }
 
-func (s *AuthSuite) TestRemoveKeyHandlerCallsGandalfRemoveKey(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
+func (s *AuthSuite) TestRemoveKeyHandlerRepositoryManager(c *check.C) {
 	b := bytes.NewBufferString(`{"key":"my-key"}`)
 	request, err := http.NewRequest("POST", "/users/keys", b)
 	c.Assert(err, check.IsNil)
@@ -1447,9 +1299,9 @@ func (s *AuthSuite) TestRemoveKeyHandlerCallsGandalfRemoveKey(c *check.C) {
 	err = removeKeyFromUser(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
 	s.user, _ = auth.GetUserByEmail(s.user.Email)
-	c.Assert(h.url[1], check.Equals, fmt.Sprintf("/user/%s/key/%s-%d", s.user.Email, s.user.Email, len(s.user.Keys)+1))
-	c.Assert(h.method[1], check.Equals, "DELETE")
-	c.Assert(string(h.body[1]), check.Equals, "null")
+	keys, err := repository.Manager().ListKeys(s.user.Email)
+	c.Assert(err, check.IsNil)
+	c.Assert(keys, check.HasLen, 0)
 }
 
 func (s *AuthSuite) TestRemoveKeyHandlerReturnsErrorInCaseOfAnyIOFailure(c *check.C) {
@@ -1514,16 +1366,19 @@ func (s *AuthSuite) TestRemoveKeyHandlerReturnsNotFoundIfTheUserDoesNotHaveTheKe
 }
 
 func (s *AuthSuite) TestListKeysHandler(c *check.C) {
-	h := testHandler{
-		content: `{"homekey": "lol somekey somecomment", "workkey": "lol someotherkey someothercomment"}`,
+	keys := []repository.Key{
+		{Name: "homekey", Body: "lol somekey somecomment"},
+		{Name: "workkey", Body: "lol someotherkey someothercomment"},
 	}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
+	repository.Manager().AddKey(s.user.Email, keys[0])
+	repository.Manager().AddKey(s.user.Email, keys[1])
 	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/users/cartman@south.park/keys?email=cartman@south.park", nil)
+	request, err := http.NewRequest("GET", "/users/keys", nil)
 	c.Assert(err, check.IsNil)
-	err = listKeys(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
+	request.Header.Add("Authorization", "bearer "+s.token.GetValue())
+	handler := RunServer(true)
+	handler.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	got := map[string]string{}
 	err = json.NewDecoder(recorder.Body).Decode(&got)
 	c.Assert(err, check.IsNil)
@@ -1534,20 +1389,7 @@ func (s *AuthSuite) TestListKeysHandler(c *check.C) {
 	c.Assert(expected, check.DeepEquals, got)
 }
 
-func (s *AuthSuite) TestListKeysRepassesGandalfsErrors(c *check.C) {
-	h := testBadHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
-	recorder := httptest.NewRecorder()
-	request, err := http.NewRequest("GET", "/users/cartman@south.park/keys?email=cartman@south.park", nil)
-	err = listKeys(recorder, request, s.token)
-	c.Assert(err.Error(), check.Equals, "some error\n")
-}
-
 func (s *AuthSuite) TestRemoveUser(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	conn, _ := db.Conn()
 	defer conn.Close()
 	u := auth.User{Email: "her-voices@painofsalvation.com", Password: "123456"}
@@ -1567,12 +1409,10 @@ func (s *AuthSuite) TestRemoveUser(c *check.C) {
 	c.Assert(n, check.Equals, 0)
 	action := rectest.Action{Action: "remove-user", User: u.Email}
 	c.Assert(action, rectest.IsRecorded)
+	c.Assert(repositorytest.Users(), check.DeepEquals, []string{"whydidifall@thewho.com"})
 }
 
 func (s *AuthSuite) TestRemoveUserWithTheUserBeingLastMemberOfATeam(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	conn, _ := db.Conn()
 	defer conn.Close()
 	u := auth.User{Email: "of-two-beginnings@painofsalvation.com", Password: "123456"}
@@ -1601,9 +1441,6 @@ Please remove the team, then remove the user.`
 }
 
 func (s *AuthSuite) TestRemoveUserShouldRemoveTheUserFromAllTeamsThatHeIsMember(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	conn, _ := db.Conn()
 	defer conn.Close()
 	u := auth.User{Email: "of-two-beginnings@painofsalvation.com", Password: "123456"}
@@ -1626,46 +1463,6 @@ func (s *AuthSuite) TestRemoveUserShouldRemoveTheUserFromAllTeamsThatHeIsMember(
 	c.Assert(err, check.IsNil)
 	c.Assert(t.Users, check.HasLen, 1)
 	c.Assert(t.Users[0], check.Equals, s.user.Email)
-}
-
-type App struct {
-	Name  string
-	Teams []string
-}
-
-func (s *AuthSuite) TestRemoveUserRevokesAccessInGandalf(c *check.C) {
-	h := testHandler{}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
-	conn, _ := db.Conn()
-	defer conn.Close()
-	u := auth.User{Email: "of-two-beginnings@painofsalvation.com", Password: "123456"}
-	_, err := nativeScheme.Create(&u)
-	c.Assert(err, check.IsNil)
-	defer conn.Users().Remove(bson.M{"email": u.Email})
-	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
-	c.Assert(err, check.IsNil)
-	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
-	t := auth.Team{Name: "painofsalvation", Users: []string{u.Email, s.user.Email}}
-	err = conn.Teams().Insert(t)
-	c.Assert(err, check.IsNil)
-	defer conn.Teams().Remove(bson.M{"_id": t.Name})
-	a := struct {
-		Name  string
-		Teams []string
-	}{Name: "myApp", Teams: []string{t.Name}}
-	err = conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": a.Name})
-	request, err := http.NewRequest("DELETE", "/users", nil)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = removeUser(recorder, request, token)
-	c.Assert(err, check.IsNil)
-	c.Assert(h.url[0], check.Equals, "/repository/revoke")
-	c.Assert(h.method[0], check.Equals, "DELETE")
-	expected := `{"repositories":["myApp"],"users":["of-two-beginnings@painofsalvation.com"]}`
-	c.Assert(string(h.body[0]), check.Equals, expected)
 }
 
 func (s *AuthSuite) TestChangePasswordHandler(c *check.C) {

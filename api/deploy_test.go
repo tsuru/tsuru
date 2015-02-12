@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/check.v1"
@@ -59,16 +60,19 @@ func (s *DeploySuite) createUserAndTeam(c *check.C) {
 }
 
 func (s *DeploySuite) SetUpSuite(c *check.C) {
+	repositorytest.Reset()
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_deploy_api_tests")
 	config.Set("aut:hash-cost", 4)
 	config.Set("admin-team", "tsuruteam")
+	config.Set("repo-manager", "fake")
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
 	s.createUserAndTeam(c)
 	s.provisioner = provisiontest.NewFakeProvisioner()
 	app.Provisioner = s.provisioner
+	s.conn.Platforms().Insert(app.Platform{Name: "python"})
 }
 
 func (s *DeploySuite) TearDownSuite(c *check.C) {
@@ -76,17 +80,18 @@ func (s *DeploySuite) TearDownSuite(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 }
 
+func (s *DeploySuite) SetUpTest(c *check.C) {
+	repositorytest.Reset()
+	user, _ := s.token.User()
+	repository.Manager().CreateUser(user.Email)
+}
+
 func (s *DeploySuite) TestDeployHandler(c *check.C) {
-	a := app.App{
-		Name:     "otherapp",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
-	}
-	err := s.conn.Apps().Insert(a)
+	a := app.App{Name: "otherapp", Platform: "python", Teams: []string{s.team.Name}}
+	user, _ := s.token.User()
+	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
+	defer app.Delete(&a)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("version=a345f3e&user=fulano"))
 	c.Assert(err, check.IsNil)
@@ -103,16 +108,11 @@ func (s *DeploySuite) TestDeployHandler(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployArchiveURL(c *check.C) {
-	a := app.App{
-		Name:     "otherapp",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
-	}
-	err := s.conn.Apps().Insert(a)
+	user, _ := s.token.User()
+	a := app.App{Name: "otherapp", Platform: "python", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
+	defer app.Delete(&a)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano"))
 	c.Assert(err, check.IsNil)
@@ -128,16 +128,11 @@ func (s *DeploySuite) TestDeployArchiveURL(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
-	a := app.App{
-		Name:     "otherapp",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
-	}
-	err := s.conn.Apps().Insert(a)
+	user, _ := s.token.User()
+	a := app.App{Name: "otherapp", Platform: "python", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
+	defer app.Delete(&a)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
@@ -159,16 +154,11 @@ func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
-	a := app.App{
-		Name:     "otherapp",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
-	}
-	err := s.conn.Apps().Insert(a)
+	user, _ := s.token.User()
+	a := app.App{Name: "otherapp", Platform: "python", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
+	defer app.Delete(&a)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("version=a345f3e&user=fulano&commit=123"))
 	c.Assert(err, check.IsNil)
@@ -188,16 +178,11 @@ func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployShouldIncrementDeployNumberOnApp(c *check.C) {
-	a := app.App{
-		Name:     "otherapp",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
-	}
-	err := s.conn.Apps().Insert(a)
+	user, _ := s.token.User()
+	a := app.App{Name: "otherapp", Platform: "python", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
+	defer app.Delete(&a)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("version=a345f3e"))
 	c.Assert(err, check.IsNil)
@@ -231,13 +216,11 @@ func (s *DeploySuite) TestDeployShouldReturnNotFoundWhenAppDoesNotExist(c *check
 }
 
 func (s *DeploySuite) TestDeployWithoutVersionAndArchiveURL(c *check.C) {
-	a := app.App{
-		Name:     "abc",
-		Platform: "zend",
-	}
-	err := s.conn.Apps().Insert(a)
+	user, _ := s.token.User()
+	a := app.App{Name: "abc", Platform: "python", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer app.Delete(&a)
 	defer s.conn.Logs(a.Name).DropCollection()
 	request, err := http.NewRequest("POST", "/apps/abc/repository/clone", nil)
 	c.Assert(err, check.IsNil)
@@ -252,13 +235,11 @@ func (s *DeploySuite) TestDeployWithoutVersionAndArchiveURL(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployWithVersionAndArchiveURL(c *check.C) {
-	a := app.App{
-		Name:     "abc",
-		Platform: "zend",
-	}
-	err := s.conn.Apps().Insert(a)
+	user, _ := s.token.User()
+	a := app.App{Name: "abc", Platform: "python", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer app.Delete(&a)
 	defer s.conn.Logs(a.Name).DropCollection()
 	body := strings.NewReader("version=abcdef&archive-url=http://google.com")
 	request, err := http.NewRequest("POST", "/apps/abc/repository/clone", body)
@@ -284,14 +265,10 @@ func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
-	a := app.App{
-		Name:     "g1",
-		Platform: "zend",
-		Teams:    []string{team.Name},
-	}
-	err = s.conn.Apps().Insert(a)
+	a := app.App{Name: "g1", Platform: "python", Teams: []string{team.Name}}
+	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer app.Delete(&a)
 	var result []Deploy
 	request, err := http.NewRequest("GET", "/deploys", nil)
 	c.Assert(err, check.IsNil)
@@ -316,22 +293,15 @@ func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployList(c *check.C) {
-	a := app.App{
-		Name:     "g1",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
-	}
-	err := s.conn.Apps().Insert(a)
+	user, _ := s.token.User()
+	app1 := app.App{Name: "g1", Platform: "python", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&app1, user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	a = app.App{
-		Name:     "ge",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
-	}
-	err = s.conn.Apps().Insert(a)
+	defer app.Delete(&app1)
+	app2 := app.App{Name: "ge", Platform: "python", Teams: []string{s.team.Name}}
+	err = app.CreateApp(&app2, user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer app.Delete(&app2)
 	var result []Deploy
 	request, err := http.NewRequest("GET", "/deploys", nil)
 	c.Assert(err, check.IsNil)
@@ -359,14 +329,11 @@ func (s *DeploySuite) TestDeployList(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployListByService(c *check.C) {
-	a := app.App{
-		Name:     "g1",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
-	}
-	err := s.conn.Apps().Insert(a)
+	user, _ := s.token.User()
+	a := app.App{Name: "g1", Platform: "python", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer app.Delete(&a)
 	var result []Deploy
 	srv := service.Service{Name: "redis", Teams: []string{s.team.Name}}
 	err = srv.Create()
@@ -406,13 +373,11 @@ func (s *DeploySuite) TestDeployListByService(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployListByApp(c *check.C) {
-	a := app.App{
-		Name:     "myblog",
-		Platform: "zend",
-	}
-	err := s.conn.Apps().Insert(a)
+	user, _ := s.token.User()
+	a := app.App{Name: "myblog", Platform: "python", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer app.Delete(&a)
 	defer s.conn.Logs(a.Name).DropCollection()
 	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
 	duration := time.Since(timestamp)
@@ -456,13 +421,11 @@ func (s *DeploySuite) TestDeployListByAppAndService(c *check.C) {
 		srv.Delete()
 		service.DeleteInstance(&instance)
 	}()
-	a := app.App{
-		Name:     "myblog",
-		Platform: "zend",
-	}
-	err = s.conn.Apps().Insert(a)
+	user, _ := s.token.User()
+	a := app.App{Name: "myblog", Platform: "python", Teams: []string{s.team.Name}}
+	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer app.Delete(&a)
 	defer s.conn.Logs(a.Name).DropCollection()
 	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
 	duration := time.Since(timestamp)
@@ -488,14 +451,11 @@ func (s *DeploySuite) TestDeployListByAppAndService(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployInfoByAdminUser(c *check.C) {
-	a := app.App{
-		Name:     "g1",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
-	}
-	err := s.conn.Apps().Insert(a)
+	a := app.App{Name: "g1", Platform: "python", Teams: []string{s.team.Name}}
+	user, _ := s.token.User()
+	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer app.Delete(&a)
 	var result map[string]interface{}
 	recorder := httptest.NewRecorder()
 	timestamp := time.Now()
@@ -507,10 +467,6 @@ func (s *DeploySuite) TestDeployInfoByAdminUser(c *check.C) {
 	err = s.conn.Deploys().Insert(lastDeploy)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Deploys().RemoveAll(nil)
-	expected := "test_diff"
-	h := testHandler{content: expected}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	var d map[string]interface{}
 	err = s.conn.Deploys().Find(bson.M{"commit": lastDeploy.Commit}).One(&d)
 	c.Assert(err, check.IsNil)
@@ -531,21 +487,18 @@ func (s *DeploySuite) TestDeployInfoByAdminUser(c *check.C) {
 		"Duration":  10e9,
 		"Commit":    "e82nn93nd93mm12o2ueh83dhbd3iu112",
 		"Error":     "",
-		"Diff":      expected,
+		"Diff":      "",
 	}
 	c.Assert(result, check.DeepEquals, expected_deploy)
 }
 
 func (s *DeploySuite) TestDeployInfoByNonAdminUser(c *check.C) {
-	a := app.App{
-		Name:     "g1",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
-	}
-	err := s.conn.Apps().Insert(a)
+	user, _ := s.token.User()
+	a := app.App{Name: "g1", Platform: "python", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	user := &auth.User{Email: "user@user.com", Password: "123456"}
+	defer app.Delete(&a)
+	user = &auth.User{Email: "user@user.com", Password: "123456"}
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
 	_, err = nativeScheme.Create(user)
@@ -567,10 +520,6 @@ func (s *DeploySuite) TestDeployInfoByNonAdminUser(c *check.C) {
 	err = s.conn.Deploys().Insert(lastDeploy)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Deploys().RemoveAll(nil)
-	expected := "test_diff"
-	h := testHandler{content: expected}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	var d map[string]interface{}
 	err = s.conn.Deploys().Find(bson.M{"commit": lastDeploy.Commit}).One(&d)
 	c.Assert(err, check.IsNil)
@@ -619,10 +568,6 @@ func (s *DeploySuite) TestDeployInfoByUserWithoutAccess(c *check.C) {
 	err = s.conn.Deploys().Insert(lastDeploy)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Deploys().RemoveAll(nil)
-	expected := "test_diff"
-	h := testHandler{content: expected}
-	ts := repositorytest.StartGandalfTestServer(&h)
-	defer ts.Close()
 	var d map[string]interface{}
 	err = s.conn.Deploys().Find(bson.M{"commit": lastDeploy.Commit}).One(&d)
 	c.Assert(err, check.IsNil)
@@ -639,16 +584,11 @@ func (s *DeploySuite) TestDeployInfoByUserWithoutAccess(c *check.C) {
 }
 
 func (s *DeploySuite) TestDeployRollbackHandler(c *check.C) {
-	a := app.App{
-		Name:     "otherapp",
-		Platform: "zend",
-		Teams:    []string{s.team.Name},
-	}
-	err := s.conn.Apps().Insert(a)
+	user, _ := s.token.User()
+	a := app.App{Name: "otherapp", Platform: "python", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	s.provisioner.Provision(&a)
-	defer s.provisioner.Destroy(&a)
+	defer app.Delete(&a)
 	url := fmt.Sprintf("/apps/%s/deploy/rollback", a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("image=my-image-123"))
 	c.Assert(err, check.IsNil)

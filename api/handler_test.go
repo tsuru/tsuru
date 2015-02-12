@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -27,10 +28,12 @@ type HandlerSuite struct {
 var _ = check.Suite(&HandlerSuite{})
 
 func (s *HandlerSuite) SetUpSuite(c *check.C) {
+	repositorytest.Reset()
 	var err error
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_handler_test")
 	config.Set("auth:hash-cost", 4)
+	config.Set("repo-manager", "fake")
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
 	user := &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
@@ -49,6 +52,10 @@ func (s *HandlerSuite) SetUpSuite(c *check.C) {
 
 func (s *HandlerSuite) TearDownSuite(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
+}
+
+func (s *HandlerSuite) SetUpTest(c *check.C) {
+	repositorytest.Reset()
 }
 
 func errorHandler(w http.ResponseWriter, r *http.Request) error {

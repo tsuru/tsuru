@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/rec/rectest"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -34,10 +35,12 @@ type ConsumptionSuite struct {
 var _ = check.Suite(&ConsumptionSuite{})
 
 func (s *ConsumptionSuite) SetUpSuite(c *check.C) {
+	repositorytest.Reset()
 	var err error
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_consumption_test")
 	config.Set("auth:hash-cost", 4)
+	config.Set("repo-manager", "fake")
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
 	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
@@ -56,6 +59,7 @@ func (s *ConsumptionSuite) TearDownSuite(c *check.C) {
 }
 
 func (s *ConsumptionSuite) TearDownTest(c *check.C) {
+	repositorytest.Reset()
 	_, err := s.conn.Services().RemoveAll(nil)
 	c.Assert(err, check.IsNil)
 	_, err = s.conn.ServiceInstances().RemoveAll(nil)

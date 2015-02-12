@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -38,9 +39,11 @@ func (s *LogSuite) createUserAndTeam(c *check.C) {
 }
 
 func (s *LogSuite) SetUpSuite(c *check.C) {
+	repositorytest.Reset()
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_log_api_tests")
 	config.Set("auth:hash-cost", 4)
+	config.Set("repo-manager", "fake")
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
@@ -49,6 +52,10 @@ func (s *LogSuite) SetUpSuite(c *check.C) {
 
 func (s *LogSuite) TearDownSuite(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
+}
+
+func (s *LogSuite) SetUpTest(c *check.C) {
+	repositorytest.Reset()
 }
 
 func (s *LogSuite) TestLogRemoveAll(c *check.C) {

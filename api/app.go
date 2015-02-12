@@ -14,7 +14,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/tsuru/go-gandalfclient"
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
@@ -145,9 +144,10 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 		return err
 	}
+	repo, _ := repository.Manager().GetRepository(a.Name)
 	msg := map[string]string{
 		"status":         "success",
-		"repository_url": repository.ReadWriteURL(a.Name),
+		"repository_url": repo.ReadWriteURL,
 		"ip":             a.Ip,
 	}
 	jsonMsg, err := json.Marshal(msg)
@@ -316,13 +316,11 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if err != nil {
 		return err
 	}
-	gURL, err := repository.ServerURL()
-	if err != nil {
-		return err
-	}
-	gClient := gandalf.Client{Endpoint: gURL}
-	if err := gClient.GrantAccess([]string{app.Name}, team.Users); err != nil {
-		return fmt.Errorf("Failed to grant access in the git server: %s.", err)
+	for _, user := range team.Users {
+		err = repository.Manager().GrantAccess(app.Name, user)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -385,12 +383,9 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	}
 	users := getEmailsForRevoking(&app, team)
 	if len(users) > 0 {
-		gURL, err := repository.ServerURL()
-		if err != nil {
-			return err
-		}
-		if err := (&gandalf.Client{Endpoint: gURL}).RevokeAccess([]string{app.Name}, users); err != nil {
-			return fmt.Errorf("Failed to revoke access in the git server: %s", err)
+		manager := repository.Manager()
+		for _, user := range users {
+			manager.RevokeAccess(app.Name, user)
 		}
 	}
 	return nil

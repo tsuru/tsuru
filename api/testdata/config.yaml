@@ -1,14 +1,10 @@
 database:
   url: 127.0.0.1:27017
   name: tsuru_api_test
-git:
-  unit-repo: /home/application/current
-  api-server: http://127.0.0.1:8000
-  rw-host: my.gandalf.domain
-  ro-host: 10.10.10.10
 auth:
   salt: tsuru-salt
   token-expire-days: 2
   hash-cost: 4
 queue: fake
 admin-team: admin
+repo-manager: fake
