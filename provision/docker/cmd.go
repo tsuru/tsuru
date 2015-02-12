@@ -143,7 +143,7 @@ func (c *removeNodeFromSchedulerCmd) Flags() *gnuflag.FlagSet {
 
 type listNodesInTheSchedulerCmd struct {
 	fs     *gnuflag.FlagSet
-	filter filterList
+	filter cmd.MapFlag
 }
 
 func (c *listNodesInTheSchedulerCmd) Info() *cmd.Info {
@@ -152,21 +152,6 @@ func (c *listNodesInTheSchedulerCmd) Info() *cmd.Info {
 		Usage: "docker-node-list [--filter/-f <metadata>=<value>]...",
 		Desc:  "List available nodes in the cluster",
 	}
-}
-
-type filterList map[string]string
-
-func (s *filterList) String() string {
-	return fmt.Sprintf("%#v", s)
-}
-
-func (s *filterList) Set(val string) error {
-	parts := strings.SplitN(val, "=", 2)
-	if *s == nil {
-		*s = map[string]string{}
-	}
-	(*s)[parts[0]] = parts[1]
-	return nil
 }
 
 func (c *listNodesInTheSchedulerCmd) Flags() *gnuflag.FlagSet {

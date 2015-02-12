@@ -134,14 +134,16 @@ func (c *moveContainerCmd) Run(context *cmd.Context, client *cmd.Client) error {
 
 type rebalanceContainersCmd struct {
 	cmd.ConfirmationCommand
-	fs  *gnuflag.FlagSet
-	dry bool
+	fs             *gnuflag.FlagSet
+	dry            bool
+	metadataFilter cmd.MapFlag
+	appFilter      cmd.StringSliceFlag
 }
 
 func (c *rebalanceContainersCmd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "containers-rebalance",
-		Usage:   "containers-rebalance [--dry] [-y/--assume-yes]",
+		Usage:   "containers-rebalance [--dry] [-y/--assume-yes] [-m/--metadata <metadata>=<value>]... [-a/--app <appname>]...",
 		Desc:    "Move containers creating a more even distribution between docker nodes.",
 		MinArgs: 0,
 	}
@@ -155,8 +157,14 @@ func (c *rebalanceContainersCmd) Run(context *cmd.Context, client *cmd.Client) e
 	if err != nil {
 		return err
 	}
-	params := map[string]string{
+	params := map[string]interface{}{
 		"dry": fmt.Sprintf("%t", c.dry),
+	}
+	if len(c.metadataFilter) > 0 {
+		params["metadataFilter"] = c.metadataFilter
+	}
+	if len(c.appFilter) > 0 {
+		params["appFilter"] = c.appFilter
 	}
 	b, err := json.Marshal(params)
 	if err != nil {
@@ -183,6 +191,12 @@ func (c *rebalanceContainersCmd) Flags() *gnuflag.FlagSet {
 	if c.fs == nil {
 		c.fs = c.ConfirmationCommand.Flags()
 		c.fs.BoolVar(&c.dry, "dry", false, "Dry run, only shows what would be done")
+		desc := "Filter by host metadata"
+		c.fs.Var(&c.metadataFilter, "metadata", desc)
+		c.fs.Var(&c.metadataFilter, "m", desc)
+		desc = "Filter by app name"
+		c.fs.Var(&c.appFilter, "app", desc)
+		c.fs.Var(&c.appFilter, "a", desc)
 	}
 	return c.fs
 }

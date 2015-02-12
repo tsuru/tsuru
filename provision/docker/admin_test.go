@@ -105,7 +105,7 @@ func (s *S) TestMoveContainerRun(c *check.C) {
 func (s *S) TestRebalanceContainersInfo(c *check.C) {
 	expected := &cmd.Info{
 		Name:    "containers-rebalance",
-		Usage:   "containers-rebalance [--dry] [-y/--assume-yes]",
+		Usage:   "containers-rebalance [--dry] [-y/--assume-yes] [-m/--metadata <metadata>=<value>]... [-a/--app <appname>]...",
 		Desc:    "Move containers creating a more even distribution between docker nodes.",
 		MinArgs: 0,
 	}
@@ -150,6 +150,43 @@ func (s *S) TestRebalanceContainersRun(c *check.C) {
 	cmd2.Flags().Parse(true, []string{"-y"})
 	err = cmd2.Run(&context, client)
 	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestRebalanceContainersRunWithFilters(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	msg, _ := json.Marshal(progressLog{Message: "progress msg"})
+	result := string(msg)
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: result, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			defer req.Body.Close()
+			body, err := ioutil.ReadAll(req.Body)
+			c.Assert(err, check.IsNil)
+			expected := map[string]interface{}{
+				"dry":            "false",
+				"metadataFilter": map[string]interface{}{"pool": "x", "a": "b"},
+				"appFilter":      []interface{}{"x", "y"},
+			}
+			var result map[string]interface{}
+			err = json.Unmarshal(body, &result)
+			c.Assert(err, check.IsNil)
+			c.Assert(result, check.DeepEquals, expected)
+			return req.URL.Path == "/docker/containers/rebalance" && req.Method == "POST"
+		},
+	}
+	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	cmd := rebalanceContainersCmd{}
+	err := cmd.Flags().Parse(true, []string{"-y", "--metadata", "pool=x", "--metadata", "a=b", "--app", "x", "--app", "y"})
+	c.Assert(err, check.IsNil)
+	err = cmd.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	expected := "progress msg\n"
+	c.Assert(stdout.String(), check.Equals, expected)
 }
 
 func (s *S) TestRebalanceContainersRunAskingForConfirmation(c *check.C) {
