@@ -247,7 +247,7 @@ var removeOldRoutes = action.Action{
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
 		r, err := getRouterForApp(args.app)
 		if err != nil {
-			log.Errorf("[add-new-routes:Backward] Error geting router: %s", err.Error())
+			log.Errorf("[remove-old-routes:Backward] Error geting router: %s", err.Error())
 		}
 		for _, cont := range args.toRemove {
 			err = r.AddRoute(cont.AppName, cont.getAddress())
