@@ -8,18 +8,14 @@ import (
 	"fmt"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/api/apitest"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/check.v1"
 )
 
 func (s *S) TestGitDeployCmds(c *check.C) {
-	h := &apitest.TestHandler{}
-	h.Content = `{"git_url":"git://something/app-name.git"}`
-	gandalfServer := repositorytest.StartGandalfTestServer(h)
-	defer gandalfServer.Close()
 	app := provisiontest.NewFakeApp("app-name", "python", 1)
 	host_env := bind.EnvVar{
 		Name:   "TSURU_HOST",
@@ -33,9 +29,10 @@ func (s *S) TestGitDeployCmds(c *check.C) {
 	}
 	app.SetEnv(host_env)
 	app.SetEnv(token_env)
+	repository.Manager().CreateRepository("app-name")
 	deployCmd, err := config.GetString("docker:deploy-cmd")
 	c.Assert(err, check.IsNil)
-	expectedPart1 := fmt.Sprintf("%s git git://something/app-name.git version", deployCmd)
+	expectedPart1 := fmt.Sprintf("%s git git://"+repositorytest.ServerHost+"/app-name.git version", deployCmd)
 	expectedAgent := fmt.Sprintf(`tsuru_unit_agent tsuru_host app_token app-name "%s" deploy`, expectedPart1)
 	cmds, err := gitDeployCmds(app, "version")
 	c.Assert(err, check.IsNil)

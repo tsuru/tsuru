@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/check.v1"
@@ -31,7 +32,6 @@ func Test(t *testing.T) { check.TestingT(t) }
 type S struct {
 	collName       string
 	imageCollName  string
-	gitHost        string
 	repoNamespace  string
 	deployCmd      string
 	runBin         string
@@ -50,10 +50,8 @@ var _ = check.Suite(&S{})
 func (s *S) SetUpSuite(c *check.C) {
 	s.collName = "docker_unit"
 	s.imageCollName = "docker_image"
-	s.gitHost = "my.gandalf.com"
 	s.repoNamespace = "tsuru"
 	s.sshUser = "root"
-	config.Set("git:ro-host", s.gitHost)
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "docker_provision_tests_s")
 	config.Set("docker:repository-namespace", s.repoNamespace)
@@ -66,6 +64,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("docker:cluster:mongo-url", "127.0.0.1:27017")
 	config.Set("docker:cluster:mongo-database", "docker_provision_tests_cluster_stor")
 	config.Set("queue", "fake")
+	config.Set("repo-manager", "fake")
 	s.deployCmd = "/var/lib/tsuru/deploy"
 	s.runBin = "/usr/local/bin/circusd"
 	s.runArgs = "/etc/circus/circus.ini"
@@ -80,6 +79,7 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	repositorytest.Reset()
 	var err error
 	if s.server != nil {
 		s.server.Stop()

@@ -20,12 +20,11 @@ import (
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
-	"github.com/tsuru/tsuru/api/apitest"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/repository/repositorytest"
+	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
@@ -554,13 +553,11 @@ func (s *S) TestContainerCommitErrorInPush(c *check.C) {
 }
 
 func (s *S) TestGitDeploy(c *check.C) {
-	h := &apitest.TestHandler{}
-	gandalfServer := repositorytest.StartGandalfTestServer(h)
-	defer gandalfServer.Close()
 	go s.stopContainers(1)
 	err := s.newFakeImage(s.p, "tsuru/python")
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	repository.Manager().CreateRepository("myapp")
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
@@ -584,13 +581,11 @@ func (errBuffer) Write(data []byte) (int, error) {
 }
 
 func (s *S) TestGitDeployRollsbackAfterErrorOnAttach(c *check.C) {
-	h := &apitest.TestHandler{}
-	gandalfServer := repositorytest.StartGandalfTestServer(h)
-	defer gandalfServer.Close()
 	go s.stopContainers(1)
 	err := s.newFakeImage(s.p, "tsuru/python")
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	repository.Manager().CreateRepository("myapp")
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	var buf errBuffer

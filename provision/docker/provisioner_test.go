@@ -20,13 +20,12 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/docker-cluster/storage"
-	"github.com/tsuru/tsuru/api/apitest"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	"github.com/tsuru/tsuru/repository/repositorytest"
+	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
@@ -99,9 +98,6 @@ func (s *S) stopContainers(n uint) {
 }
 
 func (s *S) TestDeploy(c *check.C) {
-	h := &apitest.TestHandler{}
-	gandalfServer := repositorytest.StartGandalfTestServer(h)
-	defer gandalfServer.Close()
 	go s.stopContainers(1)
 	err := s.newFakeImage(s.p, "tsuru/python")
 	c.Assert(err, check.IsNil)
@@ -114,6 +110,7 @@ func (s *S) TestDeploy(c *check.C) {
 	err = conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": a.Name})
+	repository.Manager().CreateRepository(a.Name)
 	s.p.Provision(&a)
 	defer s.p.Destroy(&a)
 	w := safe.NewBuffer(make([]byte, 2048))
@@ -140,9 +137,6 @@ func (s *S) TestDeploy(c *check.C) {
 func (s *S) TestDeployErasesOldImages(c *check.C) {
 	config.Set("docker:image-history-size", 1)
 	defer config.Unset("docker:image-history-size")
-	h := &apitest.TestHandler{}
-	gandalfServer := repositorytest.StartGandalfTestServer(h)
-	defer gandalfServer.Close()
 	go s.stopContainers(3)
 	err := s.newFakeImage(s.p, "tsuru/python")
 	c.Assert(err, check.IsNil)
@@ -155,6 +149,7 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 	err = conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": a.Name})
+	repository.Manager().CreateRepository(a.Name)
 	err = s.p.Provision(&a)
 	c.Assert(err, check.IsNil)
 	defer s.p.Destroy(&a)
@@ -242,9 +237,6 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	config.Set("docker:image-history-size", 2)
 	defer config.Unset("docker:image-history-size")
-	h := &apitest.TestHandler{}
-	gandalfServer := repositorytest.StartGandalfTestServer(h)
-	defer gandalfServer.Close()
 	go s.stopContainers(5)
 	err := s.newFakeImage(s.p, "tsuru/python")
 	c.Assert(err, check.IsNil)
@@ -257,6 +249,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	err = conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": a.Name})
+	repository.Manager().CreateRepository(a.Name)
 	err = s.p.Provision(&a)
 	c.Assert(err, check.IsNil)
 	defer s.p.Destroy(&a)
@@ -314,9 +307,6 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 }
 
 func (s *S) TestProvisionerUploadDeploy(c *check.C) {
-	h := &apitest.TestHandler{}
-	gandalfServer := repositorytest.StartGandalfTestServer(h)
-	defer gandalfServer.Close()
 	go s.stopContainers(3)
 	err := s.newFakeImage(s.p, "tsuru/python")
 	c.Assert(err, check.IsNil)
@@ -353,9 +343,6 @@ func (s *S) TestProvisionerUploadDeploy(c *check.C) {
 }
 
 func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *check.C) {
-	h := &apitest.TestHandler{}
-	gandalfServer := repositorytest.StartGandalfTestServer(h)
-	defer gandalfServer.Close()
 	go s.stopContainers(3)
 	cont1, err := s.newContainer(nil)
 	defer s.removeTestContainer(cont1)
@@ -373,6 +360,7 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *ch
 	err = conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": a.Name})
+	repository.Manager().CreateRepository(a.Name)
 	s.p.Provision(&a)
 	defer s.p.Destroy(&a)
 	var w bytes.Buffer
@@ -392,9 +380,6 @@ func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *ch
 }
 
 func (s *S) TestImageDeploy(c *check.C) {
-	h := &apitest.TestHandler{}
-	gandalfServer := repositorytest.StartGandalfTestServer(h)
-	defer gandalfServer.Close()
 	go s.stopContainers(1)
 	err := s.newFakeImage(s.p, "tsuru/app-otherapp:v1")
 	c.Assert(err, check.IsNil)
@@ -423,9 +408,6 @@ func (s *S) TestImageDeploy(c *check.C) {
 }
 
 func (s *S) TestImageDeployInvalidImage(c *check.C) {
-	h := &apitest.TestHandler{}
-	gandalfServer := repositorytest.StartGandalfTestServer(h)
-	defer gandalfServer.Close()
 	go s.stopContainers(1)
 	a := app.App{
 		Name:     "otherapp",
@@ -521,9 +503,6 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 	registryURL := strings.Replace(registryServer.URL, "http://", "", 1)
 	config.Set("docker:registry", registryURL)
 	defer config.Unset("docker:registry")
-	h := &apitest.TestHandler{}
-	gandalfServer := repositorytest.StartGandalfTestServer(h)
-	defer gandalfServer.Close()
 	go s.stopContainers(1)
 	a := app.App{
 		Name:     "mydoomedapp",
@@ -534,6 +513,7 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 	err = conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": a.Name})
+	repository.Manager().CreateRepository(a.Name)
 	s.p.Provision(&a)
 	defer s.p.Destroy(&a)
 	w := safe.NewBuffer(make([]byte, 2048))
