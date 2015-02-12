@@ -487,6 +487,33 @@ func (s *S) TestProvisionRemoveOldUnitsForward(c *check.C) {
 	c.Assert(resultContainers, check.DeepEquals, []container{})
 	_, err = s.p.getContainer(cont.ID)
 	c.Assert(err, check.NotNil)
+}
+
+func (s *S) TestProvisionUnbindOldUnitsName(c *check.C) {
+	c.Assert(provisionUnbindOldUnits.Name, check.Equals, "provision-unbind-old-units")
+}
+
+func (s *S) TestProvisionUnbindOldUnitsForward(c *check.C) {
+	cont, err := s.newContainer(nil)
+	c.Assert(err, check.IsNil)
+	defer routertest.FakeRouter.RemoveBackend(cont.AppName)
+	client, err := docker.NewClient(s.server.URL())
+	c.Assert(err, check.IsNil)
+	err = client.StartContainer(cont.ID, nil)
+	c.Assert(err, check.IsNil)
+	app := provisiontest.NewFakeApp(cont.AppName, "python", 0)
+	unit := cont.asUnit(app)
+	app.BindUnit(&unit)
+	args := changeUnitsPipelineArgs{
+		app:         app,
+		toRemove:    []container{*cont},
+		provisioner: s.p,
+	}
+	context := action.FWContext{Params: []interface{}{args}, Previous: []container{}}
+	result, err := provisionUnbindOldUnits.Forward(context)
+	c.Assert(err, check.IsNil)
+	resultContainers := result.([]container)
+	c.Assert(resultContainers, check.DeepEquals, []container{})
 	c.Assert(app.HasBind(&unit), check.Equals, false)
 }
 

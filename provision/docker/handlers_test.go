@@ -475,7 +475,7 @@ func (s *HandlersSuite) TestMoveContainersHandler(c *check.C) {
 	err = json.Unmarshal([]byte(validJson), &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.DeepEquals, []progressLog{
-		{Message: "No units to move in localhost."},
+		{Message: "No units to move in localhost"},
 		{Message: "Containers moved successfully!"},
 	})
 }

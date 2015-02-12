@@ -283,11 +283,6 @@ var provisionRemoveOldUnits = action.Action{
 				if err != nil {
 					log.Errorf("Ignored error trying to remove old container %q: %s", cont.ID, err)
 				}
-				unit := cont.asUnit(args.app)
-				err = args.app.UnbindUnit(&unit)
-				if err != nil {
-					log.Errorf("Ignorer error trying to unbind old container %q: %s", cont.ID, err)
-				}
 				removedContainers <- &cont
 			}(cont)
 		}
@@ -303,6 +298,49 @@ var provisionRemoveOldUnits = action.Action{
 		return ctx.Previous, nil
 	},
 	Backward: func(ctx action.BWContext) {
+	},
+	MinParams: 1,
+}
+
+var provisionUnbindOldUnits = action.Action{
+	Name: "provision-unbind-old-units",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		var wg sync.WaitGroup
+		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		unbindedConts := make(chan *container, len(args.toRemove))
+		writer := args.writer
+		if writer == nil {
+			writer = ioutil.Discard
+		}
+		total := len(args.toRemove)
+		var plural string
+		if total > 1 {
+			plural = "s"
+		}
+		fmt.Fprintf(writer, "\n---- Unbinding %d old unit%s ----\n", total, plural)
+		for _, cont := range args.toRemove {
+			wg.Add(1)
+			go func(cont container) {
+				defer wg.Done()
+				unit := cont.asUnit(args.app)
+				err := args.app.UnbindUnit(&unit)
+				if err != nil {
+					log.Errorf("Ignorer error trying to unbind old container %q: %s", cont.ID, err)
+				}
+				unbindedConts <- &cont
+			}(cont)
+		}
+		go func() {
+			wg.Wait()
+			close(unbindedConts)
+		}()
+		counter := 0
+		for range unbindedConts {
+			counter++
+			fmt.Fprintf(writer, " ---> Unbinded old unit %d/%d\n", counter, total)
+		}
+		return ctx.Previous, nil
+	}, Backward: func(ctx action.BWContext) {
 	},
 	MinParams: 1,
 }

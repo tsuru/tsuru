@@ -5,7 +5,6 @@
 package docker
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -104,13 +103,22 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 		imageId:     imageId,
 		provisioner: p,
 	}
-	pipeline := action.NewPipeline(
-		&provisionAddUnitsToHost,
-		&addNewRoutes,
-		&removeOldRoutes,
-		&provisionRemoveOldUnits,
-		&updateAppImage,
-	)
+	var pipeline *action.Pipeline
+	if p.dryMode {
+		pipeline = action.NewPipeline(
+			&provisionAddUnitsToHost,
+			&provisionRemoveOldUnits,
+		)
+	} else {
+		pipeline = action.NewPipeline(
+			&provisionAddUnitsToHost,
+			&addNewRoutes,
+			&removeOldRoutes,
+			&provisionRemoveOldUnits,
+			&provisionUnbindOldUnits,
+			&updateAppImage,
+		)
+	}
 	err := pipeline.Execute(args)
 	if err != nil {
 		return nil, err
@@ -147,7 +155,7 @@ func (p *dockerProvisioner) moveOneContainer(c container, toHost string, errors 
 	}
 	locked := locker.lock(c.AppName)
 	if !locked {
-		errors <- fmt.Errorf("Couldn't move %s, unable to lock %q.", c.ID, c.AppName)
+		errors <- fmt.Errorf("couldn't move %s, unable to lock %q", c.ID, c.AppName)
 		return container{}
 	}
 	defer locker.unlock(c.AppName)
@@ -155,7 +163,7 @@ func (p *dockerProvisioner) moveOneContainer(c container, toHost string, errors 
 	if err != nil {
 		errors <- &tsuruErrors.CompositeError{
 			Base:    err,
-			Message: fmt.Sprintf("Error getting app %q for unit %s.", c.AppName, c.ID),
+			Message: fmt.Sprintf("error getting app %q for unit %s", c.AppName, c.ID),
 		}
 		return container{}
 	}
@@ -163,7 +171,7 @@ func (p *dockerProvisioner) moveOneContainer(c container, toHost string, errors 
 	if err != nil {
 		errors <- &tsuruErrors.CompositeError{
 			Base:    err,
-			Message: fmt.Sprintf("Error getting app %q image name for unit %s.", c.AppName, c.ID),
+			Message: fmt.Sprintf("error getting app %q image name for unit %s", c.AppName, c.ID),
 		}
 		return container{}
 	}
@@ -176,12 +184,11 @@ func (p *dockerProvisioner) moveOneContainer(c container, toHost string, errors 
 	if !p.dryMode {
 		logProgress(encoder, "Moving unit %s for %q from %s%s...", c.ID, c.AppName, c.HostAddr, suffix)
 	}
-	var buf bytes.Buffer
-	addedContainers, err := p.runReplaceUnitsPipeline(&buf, a, []container{c}, imageId, destHosts...)
+	addedContainers, err := p.runReplaceUnitsPipeline(nil, a, []container{c}, imageId, destHosts...)
 	if err != nil {
 		errors <- &tsuruErrors.CompositeError{
 			Base:    err,
-			Message: fmt.Sprintf("Error moving unit %s. Log: %s", c.ID, buf.String()),
+			Message: fmt.Sprintf("Error moving unit %s", c.ID),
 		}
 		return container{}
 	}
@@ -189,7 +196,7 @@ func (p *dockerProvisioner) moveOneContainer(c container, toHost string, errors 
 	if p.dryMode {
 		prefix = "Would move unit"
 	}
-	logProgress(encoder, "%s %s -> %s for %s from %s -> %s.", prefix, c.ID, addedContainers[0].ID, c.AppName, c.HostAddr, addedContainers[0].HostAddr)
+	logProgress(encoder, "%s %s -> %s for %q from %s -> %s", prefix, c.ID, addedContainers[0].ID, c.AppName, c.HostAddr, addedContainers[0].HostAddr)
 	return addedContainers[0]
 }
 
@@ -228,7 +235,7 @@ func (p *dockerProvisioner) moveContainers(fromHost, toHost string, encoder *jso
 		return err
 	}
 	if len(containers) == 0 {
-		logProgress(encoder, "No units to move in %s.", fromHost)
+		logProgress(encoder, "No units to move in %s", fromHost)
 		return nil
 	}
 	logProgress(encoder, "Moving %d units...", len(containers))

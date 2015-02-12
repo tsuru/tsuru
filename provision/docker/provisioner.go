@@ -491,22 +491,24 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 				errors <- err
 				return
 			}
-			unit := c.asUnit(a)
-			err = a.BindUnit(&unit)
-			if err != nil {
-				errors <- err
-				return
-			}
 			createdContainers <- c
-			err = runHealthcheck(c, w)
-			if err != nil {
-				errors <- err
-				return
-			}
-			err = args.provisioner.runRestartAfterHooks(c, w)
-			if err != nil {
-				errors <- err
-				return
+			if !args.provisioner.dryMode {
+				unit := c.asUnit(a)
+				err = a.BindUnit(&unit)
+				if err != nil {
+					errors <- err
+					return
+				}
+				err = runHealthcheck(c, w)
+				if err != nil {
+					errors <- err
+					return
+				}
+				err = args.provisioner.runRestartAfterHooks(c, w)
+				if err != nil {
+					errors <- err
+					return
+				}
 			}
 			fmt.Fprintf(w, " ---> Started unit %s...\n", c.shortID())
 		}()
@@ -517,10 +519,12 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 	if err := <-errors; err != nil {
 		for c := range createdContainers {
 			log.Errorf("Removing container %q due failed add units: %s", c.ID, err)
-			unit := c.asUnit(a)
-			errUnbind := a.UnbindUnit(&unit)
-			if errUnbind != nil {
-				log.Errorf("Unable to unbind unit %q: %s", c.ID, err)
+			if !args.provisioner.dryMode {
+				unit := c.asUnit(a)
+				errUnbind := a.UnbindUnit(&unit)
+				if errUnbind != nil {
+					log.Errorf("Unable to unbind unit %q: %s", c.ID, err)
+				}
 			}
 			errRem := args.provisioner.removeContainer(c)
 			if errRem != nil {
