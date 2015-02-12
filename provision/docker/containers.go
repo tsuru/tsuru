@@ -176,17 +176,7 @@ func (p *dockerProvisioner) moveOneContainer(c container, toHost string, errors 
 		}
 		return container{}
 	}
-	logProgress(encoder, "Finished moving unit %s for %q.", c.ID, c.AppName)
-	addedUnit := addedContainers[0].asUnit(a)
-	err = a.BindUnit(&addedUnit)
-	if err != nil {
-		errors <- &tsuruErrors.CompositeError{
-			Base:    err,
-			Message: fmt.Sprintf("Error binding unit %s to service instances.", c.ID),
-		}
-		return container{}
-	}
-	logProgress(encoder, "Moved unit %s -> %s for %s with bindings.", c.ID, addedUnit.Name, c.AppName)
+	logProgress(encoder, "Moved unit %s -> %s for %s.", c.ID, addedContainers[0].ID, c.AppName)
 	return addedContainers[0]
 }
 

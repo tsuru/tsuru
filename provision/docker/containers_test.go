@@ -7,6 +7,8 @@ package docker
 import (
 	"bytes"
 	"encoding/json"
+	"io/ioutil"
+	"net/http"
 	"strings"
 
 	"github.com/tsuru/tsuru/app"
@@ -146,12 +148,27 @@ func (s *S) TestMoveContainer(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	var buf bytes.Buffer
 	encoder := json.NewEncoder(&buf)
+	var serviceBodies []string
+	var serviceMethods []string
+	rollback := s.addServiceInstance(c, appInstance.GetName(), func(w http.ResponseWriter, r *http.Request) {
+		data, _ := ioutil.ReadAll(r.Body)
+		serviceBodies = append(serviceBodies, string(data))
+		serviceMethods = append(serviceMethods, r.Method)
+		w.WriteHeader(http.StatusOK)
+	})
+	defer rollback()
 	_, err = p.moveContainer(addedConts[0].ID[0:6], "127.0.0.1", encoder)
 	c.Assert(err, check.IsNil)
 	containers, err := p.listContainersByHost("localhost")
 	c.Assert(len(containers), check.Equals, 1)
 	containers, err = p.listContainersByHost("127.0.0.1")
 	c.Assert(len(containers), check.Equals, 1)
+	c.Assert(serviceBodies, check.HasLen, 2)
+	c.Assert(serviceMethods, check.HasLen, 2)
+	c.Assert(serviceMethods[0], check.Equals, "POST")
+	c.Assert(serviceBodies[0], check.Matches, ".*unit-host=127.0.0.1")
+	c.Assert(serviceMethods[1], check.Equals, "DELETE")
+	c.Assert(serviceBodies[1], check.Matches, ".*unit-host=localhost")
 }
 
 func (s *S) TestRebalanceContainers(c *check.C) {
