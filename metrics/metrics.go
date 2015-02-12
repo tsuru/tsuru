@@ -6,17 +6,14 @@
 // implement a new metric backend on tsuru.
 package metrics
 
-import (
-	"fmt"
-
-	"github.com/tsuru/config"
-)
+import "errors"
 
 var dbs = make(map[string]TimeSeriesDatabase)
 
 // TimeSeriesDatabase is the basic interface of this package. It provides methods for
 // time series databases.
 type TimeSeriesDatabase interface {
+	Detect(config map[string]string) bool
 	Summarize(key, interval, function string) (Series, error)
 }
 
@@ -32,14 +29,11 @@ func Register(name string, db TimeSeriesDatabase) {
 	dbs[name] = db
 }
 
-func Get() (TimeSeriesDatabase, error) {
-	dbName, err := config.GetString("metrics:db")
-	if err != nil {
-		return nil, err
+func Get(config map[string]string) (TimeSeriesDatabase, error) {
+	for _, db := range dbs {
+		if db.Detect(config) {
+			return db, nil
+		}
 	}
-	db, ok := dbs[dbName]
-	if ok {
-		return db, nil
-	}
-	return nil, fmt.Errorf("Unknown time series database: %q.", dbName)
+	return nil, errors.New("Time series database not found.")
 }

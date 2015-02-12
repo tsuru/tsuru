@@ -19,6 +19,10 @@ var _ = check.Suite(&S{})
 
 type influx struct{}
 
+func (i influx) Detect(config map[string]string) bool {
+	return true
+}
+
 func (i influx) Summarize(key, interval, function string) (Series, error) {
 	return nil, nil
 }
@@ -31,13 +35,13 @@ func (s *S) TestRegister(c *check.C) {
 }
 
 func (s *S) TestGet(c *check.C) {
-	_, err := Get()
+	_, err := Get(map[string]string{})
 	c.Assert(err, check.Not(check.IsNil))
 	config.Set("metrics:db", "influx")
-	_, err = Get()
+	_, err = Get(map[string]string{})
 	c.Assert(err, check.Not(check.IsNil))
 	Register("influx", influx{})
-	db, err := Get()
+	db, err := Get(map[string]string{})
 	c.Assert(err, check.IsNil)
 	c.Assert(db, check.FitsTypeOf, influx{})
 }
