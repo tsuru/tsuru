@@ -111,7 +111,7 @@
 		},
 		{
 			"ImportPath": "github.com/tsuru/go-gandalfclient",
-			"Rev": "3258e77c4d89405f083a9912c7bf58629fb763bc"
+			"Rev": "502d962c10e338402abd5a3755f4dbdd7dbc68dd"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/bcrypt",
