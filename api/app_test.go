@@ -163,7 +163,7 @@ func (s *S) TestDelete(c *check.C) {
 	action := rectest.Action{
 		Action: "app-delete",
 		User:   s.user.Email,
-		Extra:  []interface{}{myApp.Name},
+		Extra:  []interface{}{"app=" + myApp.Name},
 	}
 	c.Assert(action, rectest.IsRecorded)
 	_, err = repository.Manager().GetRepository(myApp.Name)
@@ -222,7 +222,7 @@ func (s *S) TestAppInfo(c *check.C) {
 	action := rectest.Action{
 		Action: "app-info",
 		User:   s.user.Email,
-		Extra:  []interface{}{expectedApp.Name},
+		Extra:  []interface{}{"app=" + expectedApp.Name},
 	}
 	c.Assert(action, rectest.IsRecorded)
 }
@@ -292,7 +292,7 @@ func (s *S) TestCreateAppHandler(c *check.C) {
 	action := rectest.Action{
 		Action: "create-app",
 		User:   s.user.Email,
-		Extra:  []interface{}{"name=someapp", "platform=zend", "plan="},
+		Extra:  []interface{}{"app=someapp", "platform=zend", "plan="},
 	}
 	c.Assert(action, rectest.IsRecorded)
 	_, err = repository.Manager().GetRepository(a.Name)
@@ -338,7 +338,7 @@ func (s *S) TestCreateAppTeamOwner(c *check.C) {
 	action := rectest.Action{
 		Action: "create-app",
 		User:   s.user.Email,
-		Extra:  []interface{}{"name=someapp", "platform=zend", "plan="},
+		Extra:  []interface{}{"app=someapp", "platform=zend", "plan="},
 	}
 	c.Assert(action, rectest.IsRecorded)
 }
@@ -388,7 +388,7 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 	action := rectest.Action{
 		Action: "create-app",
 		User:   s.user.Email,
-		Extra:  []interface{}{"name=someapp", "platform=zend", "plan=myplan"},
+		Extra:  []interface{}{"app=someapp", "platform=zend", "plan=myplan"},
 	}
 	c.Assert(action, rectest.IsRecorded)
 }
@@ -2534,7 +2534,7 @@ func (s *S) TestRestartHandler(c *check.C) {
 	action := rectest.Action{
 		Action: "restart",
 		User:   s.user.Email,
-		Extra:  []interface{}{a.Name},
+		Extra:  []interface{}{"app=" + a.Name},
 	}
 	c.Assert(action, rectest.IsRecorded)
 }
@@ -2671,7 +2671,7 @@ func (s *S) TestSwap(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err = swap(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	action := rectest.Action{Action: "swap", User: s.user.Email, Extra: []interface{}{"app1", "app2"}}
+	action := rectest.Action{Action: "swap", User: s.user.Email, Extra: []interface{}{"app1=app1", "app2=app2"}}
 	c.Assert(action, rectest.IsRecorded)
 	var dbApp app.App
 	err = s.conn.Apps().Find(bson.M{"name": app1.Name}).One(&dbApp)
@@ -2798,7 +2798,7 @@ func (s *S) TestStartHandler(c *check.C) {
 	action := rectest.Action{
 		Action: "start",
 		User:   s.user.Email,
-		Extra:  []interface{}{a.Name},
+		Extra:  []interface{}{"app=" + a.Name},
 	}
 	c.Assert(action, rectest.IsRecorded)
 }
@@ -2819,7 +2819,7 @@ func (s *S) TestStopHandler(c *check.C) {
 	action := rectest.Action{
 		Action: "stop",
 		User:   s.user.Email,
-		Extra:  []interface{}{a.Name},
+		Extra:  []interface{}{"app=" + a.Name},
 	}
 	c.Assert(action, rectest.IsRecorded)
 }

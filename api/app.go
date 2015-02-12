@@ -61,7 +61,7 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "app-delete", r.URL.Query().Get(":app"))
+	rec.Log(u.Email, "app-delete", "app="+r.URL.Query().Get(":app"))
 	a, err := getApp(r.URL.Query().Get(":app"), u)
 	if err != nil {
 		return err
@@ -95,7 +95,7 @@ func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "app-info", r.URL.Query().Get(":app"))
+	rec.Log(u.Email, "app-info", "app="+r.URL.Query().Get(":app"))
 	app, err := getApp(r.URL.Query().Get(":app"), u)
 	if err != nil {
 		return err
@@ -118,7 +118,7 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "create-app", "name="+a.Name, "platform="+a.Platform, "plan="+a.Plan.Name)
+	rec.Log(u.Email, "create-app", "app="+a.Name, "platform="+a.Platform, "plan="+a.Plan.Name)
 	err = app.CreateApp(&a, u)
 	if err != nil {
 		log.Errorf("Got error while creating app: %s", err)
@@ -758,7 +758,7 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	appName := r.URL.Query().Get(":app")
-	rec.Log(u.Email, "restart", appName)
+	rec.Log(u.Email, "restart", "app="+appName)
 	instance, err := getApp(appName, u)
 	if err != nil {
 		return err
@@ -864,7 +864,7 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 			}
 		}
 	}
-	rec.Log(u.Email, "swap", app1Name, app2Name)
+	rec.Log(u.Email, "swap", "app1="+app1Name, "app2="+app2Name)
 	return app.Swap(&app1, &app2)
 }
 
@@ -875,7 +875,7 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	appName := r.URL.Query().Get(":app")
-	rec.Log(u.Email, "start", appName)
+	rec.Log(u.Email, "start", "app="+appName)
 	app, err := getApp(appName, u)
 	if err != nil {
 		return err
@@ -890,7 +890,7 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	appName := r.URL.Query().Get(":app")
-	rec.Log(u.Email, "stop", appName)
+	rec.Log(u.Email, "stop", "app="+appName)
 	app, err := getApp(appName, u)
 	if err != nil {
 		return err
