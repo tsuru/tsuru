@@ -114,9 +114,9 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 			&provisionAddUnitsToHost,
 			&addNewRoutes,
 			&removeOldRoutes,
+			&updateAppImage,
 			&provisionRemoveOldUnits,
 			&provisionUnbindOldUnits,
-			&updateAppImage,
 		)
 	}
 	err := pipeline.Execute(args)
