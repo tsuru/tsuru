@@ -247,10 +247,24 @@ func minCountHost(hosts []hostWithContainers) *hostWithContainers {
 	return minCountHost
 }
 
-func (p *dockerProvisioner) rebalanceContainers(encoder *json.Encoder, dryRun bool) error {
-	containers, err := p.listAllContainers()
+func (p *dockerProvisioner) rebalanceContainersByFilter(encoder *json.Encoder, appFilter []string, metadataFilter map[string]string, dryRun bool) error {
+	var hostsFilter []string
+	if metadataFilter != nil {
+		nodes, err := p.cluster.NodesForMetadata(metadataFilter)
+		if err != nil {
+			return err
+		}
+		for _, n := range nodes {
+			hostsFilter = append(hostsFilter, urlToHost(n.Address))
+		}
+	}
+	containers, err := p.listContainersByAppAndHost(appFilter, hostsFilter)
 	if err != nil {
 		return err
+	}
+	if len(containers) == 0 {
+		logProgress(encoder, "No containers found to rebalance")
+		return nil
 	}
 	if dryRun {
 		p, err = p.DryMode(containers)
@@ -281,4 +295,8 @@ func (p *dockerProvisioner) rebalanceContainers(encoder *json.Encoder, dryRun bo
 		logProgress(encoder, "%s %s for %q: %s -> %s...", prefix, cont.ID, contApp.GetName(), cont.HostAddr, newConts[0].HostAddr)
 	}
 	return nil
+}
+
+func (p *dockerProvisioner) rebalanceContainers(encoder *json.Encoder, dryRun bool) error {
+	return p.rebalanceContainersByFilter(encoder, nil, nil, dryRun)
 }

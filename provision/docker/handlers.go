@@ -196,12 +196,17 @@ func moveContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 
 func rebalanceContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	dry := false
-	params, err := unmarshal(r.Body)
+	params := struct {
+		Dry            string
+		MetadataFilter map[string]string
+		AppFilter      []string
+	}{}
+	err := json.NewDecoder(r.Body).Decode(&params)
 	if err == nil {
-		dry = params["dry"] == "true"
+		dry, _ = strconv.ParseBool(params.Dry)
 	}
 	encoder := json.NewEncoder(w)
-	err = mainDockerProvisioner.rebalanceContainers(encoder, dry)
+	err = mainDockerProvisioner.rebalanceContainersByFilter(encoder, params.AppFilter, params.MetadataFilter, dry)
 	if err != nil {
 		logProgress(encoder, "Error trying to rebalance containers: %s", err.Error())
 	} else {

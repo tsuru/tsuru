@@ -556,6 +556,60 @@ func (s *S) TestRebalanceContainersEmptyBodyHandler(c *check.C) {
 	c.Assert(result[7].Message, check.Equals, "Containers rebalanced successfully!")
 }
 
+func (s *S) TestRebalanceContainersFilters(c *check.C) {
+	p, err := s.startMultipleServersClusterSeggregated()
+	c.Assert(err, check.IsNil)
+	mainDockerProvisioner = p
+	defer s.stopMultipleServersCluster(p)
+	err = s.newFakeImage(p, "tsuru/app-myapp")
+	c.Assert(err, check.IsNil)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
+	defer p.Destroy(appInstance)
+	p.Provision(appInstance)
+	coll := p.collection()
+	defer coll.Close()
+	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, check.IsNil)
+	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:      "localhost",
+		unitsToAdd:  5,
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: p,
+	})
+	c.Assert(err, check.IsNil)
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	appStruct := &app.App{
+		Name:     appInstance.GetName(),
+		Platform: appInstance.GetPlatform(),
+	}
+	err = conn.Apps().Insert(appStruct)
+	c.Assert(err, check.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
+	err = conn.Apps().Update(
+		bson.M{"name": appStruct.Name},
+		bson.M{"$set": bson.M{"units": units}},
+	)
+	c.Assert(err, check.IsNil)
+	b := bytes.NewBufferString(`{"metadataFilter": {"pool": "pool1"}}`)
+	req, err := http.NewRequest("POST", "/containers/move", b)
+	rec := httptest.NewRecorder()
+	err = rebalanceContainersHandler(rec, req, nil)
+	c.Assert(err, check.IsNil)
+	body, err := ioutil.ReadAll(rec.Body)
+	c.Assert(err, check.IsNil)
+	validJson := fmt.Sprintf("[%s]", strings.Replace(strings.Trim(string(body), "\n "), "\n", ",", -1))
+	var result []progressLog
+	err = json.Unmarshal([]byte(validJson), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(result), check.Equals, 2)
+	c.Assert(result[0].Message, check.Equals, "No containers found to rebalance")
+	c.Assert(result[1].Message, check.Equals, "Containers rebalanced successfully!")
+}
+
 func (s *S) TestRebalanceContainersDryBodyHandler(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)

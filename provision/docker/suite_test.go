@@ -147,6 +147,25 @@ func (s *S) startMultipleServersCluster() (*dockerProvisioner, error) {
 	return &p, nil
 }
 
+func (s *S) startMultipleServersClusterSeggregated() (*dockerProvisioner, error) {
+	otherServer, err := dtesting.NewServer("localhost:0", nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	otherUrl := strings.Replace(otherServer.URL(), "127.0.0.1", "localhost", 1)
+	var p dockerProvisioner
+	p.storage = &cluster.MapStorage{}
+	sched := segregatedScheduler{provisioner: &p}
+	p.cluster, err = cluster.New(&sched, p.storage,
+		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "pool1"}},
+		cluster.Node{Address: otherUrl, Metadata: map[string]string{"pool": "pool2"}},
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
 func (s *S) addServiceInstance(c *check.C, appName string, fn http.HandlerFunc) func() {
 	ts := httptest.NewServer(fn)
 	ret := func() {

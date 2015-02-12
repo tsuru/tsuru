@@ -45,6 +45,55 @@ func (s *S) TestListContainersByApp(c *check.C) {
 	c.Assert(cond, check.Equals, true)
 }
 
+type containerByIdList []container
+
+func (l containerByIdList) Len() int           { return len(l) }
+func (l containerByIdList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
+func (l containerByIdList) Less(i, j int) bool { return l[i].ID < l[j].ID }
+
+func (s *S) TestListContainersByAppAndHost(c *check.C) {
+	var result []container
+	coll := s.p.collection()
+	defer coll.Close()
+	coll.Insert(
+		container{ID: "1", AppName: "myapp1", HostAddr: "host1"},
+		container{ID: "2", AppName: "myapp2", HostAddr: "host2"},
+		container{ID: "3", AppName: "other", HostAddr: "host3"},
+	)
+	result, err := s.p.listContainersByAppAndHost([]string{"myapp1", "myapp2"}, nil)
+	c.Assert(err, check.IsNil)
+	sort.Sort(containerByIdList(result))
+	c.Assert(result, check.DeepEquals, []container{
+		container{ID: "1", AppName: "myapp1", HostAddr: "host1"},
+		container{ID: "2", AppName: "myapp2", HostAddr: "host2"},
+	})
+	result, err = s.p.listContainersByAppAndHost(nil, nil)
+	c.Assert(err, check.IsNil)
+	sort.Sort(containerByIdList(result))
+	c.Assert(result, check.DeepEquals, []container{
+		container{ID: "1", AppName: "myapp1", HostAddr: "host1"},
+		container{ID: "2", AppName: "myapp2", HostAddr: "host2"},
+		container{ID: "3", AppName: "other", HostAddr: "host3"},
+	})
+	result, err = s.p.listContainersByAppAndHost(nil, []string{"host2", "host3"})
+	c.Assert(err, check.IsNil)
+	sort.Sort(containerByIdList(result))
+	c.Assert(result, check.DeepEquals, []container{
+		container{ID: "2", AppName: "myapp2", HostAddr: "host2"},
+		container{ID: "3", AppName: "other", HostAddr: "host3"},
+	})
+	result, err = s.p.listContainersByAppAndHost([]string{"myapp1"}, []string{"host2"})
+	c.Assert(err, check.IsNil)
+	sort.Sort(containerByIdList(result))
+	c.Assert(result, check.IsNil)
+	result, err = s.p.listContainersByAppAndHost([]string{"myapp1", "myapp2"}, []string{"host2", "host3"})
+	c.Assert(err, check.IsNil)
+	sort.Sort(containerByIdList(result))
+	c.Assert(result, check.DeepEquals, []container{
+		container{ID: "2", AppName: "myapp2", HostAddr: "host2"},
+	})
+}
+
 func (s *S) TestListContainersByHost(c *check.C) {
 	var result []container
 	coll := s.p.collection()
