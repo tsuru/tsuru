@@ -286,6 +286,18 @@ func (s *S) TestDeleteAllAppImageNamesRemovesCustomData(c *check.C) {
 	c.Assert(yamlData, check.DeepEquals, provision.TsuruYamlData{})
 }
 
+func (s *S) TestDeleteAllAppImageNamesRemovesCustomDataWithoutImages(c *check.C) {
+	imgName := "tsuru/app-myapp:v1"
+	data := map[string]interface{}{"healthcheck": map[string]interface{}{"path": "/test"}}
+	err := saveImageCustomData(imgName, data)
+	c.Assert(err, check.IsNil)
+	err = deleteAllAppImageNames("myapp")
+	c.Assert(err, check.ErrorMatches, "not found")
+	yamlData, err := getImageTsuruYamlDataWithFallback(imgName, "")
+	c.Assert(err, check.IsNil)
+	c.Assert(yamlData, check.DeepEquals, provision.TsuruYamlData{})
+}
+
 func (s *S) TestGetImageTsuruYamlDataWithFallback(c *check.C) {
 	data1 := map[string]interface{}{
 		"hooks": map[string]interface{}{

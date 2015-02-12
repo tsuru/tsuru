@@ -149,6 +149,10 @@ func getImageTsuruYamlDataWithFallback(imageName, appName string) (provision.Tsu
 	return yamlData, nil
 }
 
+func appBasicImageName(appName string) string {
+	return fmt.Sprintf("%s/app-%s", basicImageName(), appName)
+}
+
 func appNewImageName(appName string) (string, error) {
 	coll, err := appImagesColl()
 	if err != nil {
@@ -165,7 +169,7 @@ func appNewImageName(appName string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s/app-%s:v%d", basicImageName(), appName, imgs.Count), nil
+	return fmt.Sprintf("%s:v%d", appBasicImageName(appName), imgs.Count), nil
 }
 
 func appCurrentImageName(appName string) (string, error) {
@@ -178,7 +182,7 @@ func appCurrentImageName(appName string) (string, error) {
 	err = coll.FindId(appName).One(&imgs)
 	if err != nil {
 		log.Errorf("Couldn't find images for app %q, fallback to old image names. Error: %s", appName, err.Error())
-		return fmt.Sprintf("%s/app-%s", basicImageName(), appName), nil
+		return appBasicImageName(appName), nil
 	}
 	if len(imgs.Images) == 0 {
 		return "", fmt.Errorf("no images available for app %q", appName)
@@ -257,16 +261,12 @@ func imageHistorySize() int {
 }
 
 func deleteAllAppImageNames(appName string) error {
-	images, err := listAppImages(appName)
-	if err != nil {
-		return err
-	}
 	dataColl, err := imageCustomDataColl()
 	if err != nil {
 		return err
 	}
 	defer dataColl.Close()
-	_, err = dataColl.RemoveAll(bson.M{"_id": bson.M{"$in": images}})
+	_, err = dataColl.RemoveAll(bson.M{"_id": bson.RegEx{Pattern: appBasicImageName(appName)}})
 	if err != nil {
 		return err
 	}
