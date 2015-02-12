@@ -167,16 +167,29 @@ func (p *dockerProvisioner) moveOneContainer(c container, toHost string, errors 
 		}
 		return container{}
 	}
-	logProgress(encoder, "Moving unit %s for %q: %s -> %s...", c.ID, c.AppName, c.HostAddr, toHost)
-	addedContainers, err := p.runReplaceUnitsPipeline(nil, a, []container{c}, imageId, toHost)
+	var destHosts []string
+	var suffix string
+	if toHost != "" {
+		destHosts = []string{toHost}
+		suffix = " -> " + toHost
+	}
+	if !p.dryMode {
+		logProgress(encoder, "Moving unit %s for %q from %s%s...", c.ID, c.AppName, c.HostAddr, suffix)
+	}
+	var buf bytes.Buffer
+	addedContainers, err := p.runReplaceUnitsPipeline(&buf, a, []container{c}, imageId, destHosts...)
 	if err != nil {
 		errors <- &tsuruErrors.CompositeError{
 			Base:    err,
-			Message: fmt.Sprintf("Error moving unit %s.", c.ID),
+			Message: fmt.Sprintf("Error moving unit %s. Log: %s", c.ID, buf.String()),
 		}
 		return container{}
 	}
-	logProgress(encoder, "Moved unit %s -> %s for %s.", c.ID, addedContainers[0].ID, c.AppName)
+	prefix := "Moved unit"
+	if p.dryMode {
+		prefix = "Would move unit"
+	}
+	logProgress(encoder, "%s %s -> %s for %s from %s -> %s.", prefix, c.ID, addedContainers[0].ID, c.AppName, c.HostAddr, addedContainers[0].HostAddr)
 	return addedContainers[0]
 }
 
@@ -194,21 +207,11 @@ func (p *dockerProvisioner) moveContainer(contId string, toHost string, encoder 
 	return createdContainer, handleMoveErrors(moveErrors, encoder)
 }
 
-func (p *dockerProvisioner) moveContainers(fromHost, toHost string, encoder *json.Encoder) error {
-	containers, err := p.listContainersByHost(fromHost)
-	if err != nil {
-		return err
-	}
-	numberContainers := len(containers)
-	if numberContainers == 0 {
-		logProgress(encoder, "No units to move in %s.", fromHost)
-		return nil
-	}
-	logProgress(encoder, "Moving %d units...", numberContainers)
+func (p *dockerProvisioner) moveContainerList(containers []container, toHost string, encoder *json.Encoder) error {
 	locker := &appLocker{}
-	moveErrors := make(chan error, numberContainers)
+	moveErrors := make(chan error, len(containers))
 	wg := sync.WaitGroup{}
-	wg.Add(numberContainers)
+	wg.Add(len(containers))
 	for _, c := range containers {
 		go p.moveOneContainer(c, toHost, moveErrors, &wg, encoder, locker)
 	}
@@ -217,6 +220,19 @@ func (p *dockerProvisioner) moveContainers(fromHost, toHost string, encoder *jso
 		close(moveErrors)
 	}()
 	return handleMoveErrors(moveErrors, encoder)
+}
+
+func (p *dockerProvisioner) moveContainers(fromHost, toHost string, encoder *json.Encoder) error {
+	containers, err := p.listContainersByHost(fromHost)
+	if err != nil {
+		return err
+	}
+	if len(containers) == 0 {
+		logProgress(encoder, "No units to move in %s.", fromHost)
+		return nil
+	}
+	logProgress(encoder, "Moving %d units...", len(containers))
+	return p.moveContainerList(containers, toHost, encoder)
 }
 
 type hostWithContainers struct {
@@ -264,27 +280,7 @@ func (p *dockerProvisioner) rebalanceContainersByFilter(encoder *json.Encoder, a
 		defer p.StopDryMode()
 	}
 	logProgress(encoder, "Rebalancing %d units...", len(containers))
-	for _, cont := range containers {
-		contApp, err := cont.getApp()
-		if err != nil {
-			return err
-		}
-		imageId, err := appCurrentImageName(contApp.GetName())
-		if err != nil {
-			return err
-		}
-		var buf bytes.Buffer
-		newConts, err := p.runReplaceUnitsPipeline(&buf, contApp, []container{cont}, imageId)
-		if err != nil {
-			return fmt.Errorf("error trying to replace unit: %s - log: %s", err.Error(), buf.String())
-		}
-		prefix := "Moved unit"
-		if dryRun {
-			prefix = "Would move unit"
-		}
-		logProgress(encoder, "%s %s for %q: %s -> %s...", prefix, cont.ID, contApp.GetName(), cont.HostAddr, newConts[0].HostAddr)
-	}
-	return nil
+	return p.moveContainerList(containers, "", encoder)
 }
 
 func (p *dockerProvisioner) rebalanceContainers(encoder *json.Encoder, dryRun bool) error {

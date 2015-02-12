@@ -109,9 +109,9 @@ func (s *S) TestMoveContainersUnknownDest(c *check.C) {
 	json.Unmarshal([]byte(parts[0]), &logEntry)
 	c.Assert(logEntry.Message, check.Matches, ".*Moving 2 units.*")
 	json.Unmarshal([]byte(parts[3]), &logEntry)
-	c.Assert(logEntry.Message, check.Matches, ".*Error moving unit.*Caused by:.*unknown.*not found")
+	c.Assert(logEntry.Message, check.Matches, "(?s).*Error moving unit.*Log:.*Caused by:.*unknown.*not found")
 	json.Unmarshal([]byte(parts[4]), &logEntry)
-	c.Assert(logEntry.Message, check.Matches, ".*Error moving unit.*Caused by:.*unknown.*not found")
+	c.Assert(logEntry.Message, check.Matches, "(?s).*Error moving unit.*Log:.*Caused by:.*unknown.*not found")
 }
 
 func (s *S) TestMoveContainer(c *check.C) {
