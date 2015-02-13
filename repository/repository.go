@@ -34,15 +34,19 @@ type RepositoryManager interface {
 	GrantAccess(repository, user string) error
 	RevokeAccess(repository, user string) error
 
-	AddKey(username string, key Key) error
-	RemoveKey(username string, key Key) error
-	ListKeys(username string) ([]Key, error)
-
 	CreateRepository(name string) error
 	RemoveRepository(name string) error
 	GetRepository(name string) (Repository, error)
 
 	Diff(repositoryName, fromVersion, toVersion string) (string, error)
+}
+
+// KeyRepositoryManager is a RepositoryManager that is able to manager public
+// SSH keys.
+type KeyRepositoryManager interface {
+	AddKey(username string, key Key) error
+	RemoveKey(username string, key Key) error
+	ListKeys(username string) ([]Key, error)
 }
 
 // Manager returns the current configured manager, as defined in the
