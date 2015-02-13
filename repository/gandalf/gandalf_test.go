@@ -88,6 +88,12 @@ func (s *GandalfSuite) TestRemoveUser(c *check.C) {
 	c.Assert(s.server.Users(), check.DeepEquals, []string{"theirself@tsuru.io"})
 }
 
+func (s *GandalfSuite) TestRemoveUserNotFound(c *check.C) {
+	var manager gandalfManager
+	err := manager.RemoveUser("myself@tsuru.io")
+	c.Assert(err, check.Equals, repository.ErrUserNotFound)
+}
+
 func (s *GandalfSuite) TestCreateRepository(c *check.C) {
 	var manager gandalfManager
 	err := manager.CreateRepository("myrepo")
@@ -112,6 +118,12 @@ func (s *GandalfSuite) TestRemoveRepository(c *check.C) {
 	c.Assert(repos[0].Name, check.Equals, "myrepo")
 }
 
+func (s *GandalfSuite) TestRemoveRepositoryNotFound(c *check.C) {
+	var manager gandalfManager
+	err := manager.RemoveRepository("myrepo")
+	c.Assert(err, check.Equals, repository.ErrRepositoryNotFound)
+}
+
 func (s *GandalfSuite) TestGetRepository(c *check.C) {
 	var manager gandalfManager
 	err := manager.CreateRepository("myrepo")
@@ -121,6 +133,12 @@ func (s *GandalfSuite) TestGetRepository(c *check.C) {
 	c.Assert(repo.Name, check.Equals, "myrepo")
 	c.Assert(repo.ReadOnlyURL, check.Equals, "git://localhost/myrepo.git")
 	c.Assert(repo.ReadWriteURL, check.Equals, "git@localhost:myrepo.git")
+}
+
+func (s *GandalfSuite) TestGetRepositoryNotFound(c *check.C) {
+	var manager gandalfManager
+	_, err := manager.GetRepository("myrepo")
+	c.Assert(err, check.Equals, repository.ErrRepositoryNotFound)
 }
 
 func (s *GandalfSuite) TestGrantAccess(c *check.C) {

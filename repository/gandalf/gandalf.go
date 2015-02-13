@@ -12,6 +12,7 @@ package gandalf
 
 import (
 	"errors"
+	"net/http"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
@@ -68,7 +69,11 @@ func (m gandalfManager) RemoveUser(username string) error {
 	if err != nil {
 		return err
 	}
-	return client.RemoveUser(username)
+	err = client.RemoveUser(username)
+	if e, ok := err.(*gandalf.HTTPError); ok && e.Code == http.StatusNotFound {
+		return repository.ErrUserNotFound
+	}
+	return err
 }
 
 func (m gandalfManager) CreateRepository(name string) error {
@@ -85,7 +90,11 @@ func (m gandalfManager) RemoveRepository(name string) error {
 	if err != nil {
 		return err
 	}
-	return client.RemoveRepository(name)
+	err = client.RemoveRepository(name)
+	if e, ok := err.(*gandalf.HTTPError); ok && e.Code == http.StatusNotFound {
+		return repository.ErrRepositoryNotFound
+	}
+	return err
 }
 
 func (m gandalfManager) GetRepository(name string) (repository.Repository, error) {
@@ -94,6 +103,9 @@ func (m gandalfManager) GetRepository(name string) (repository.Repository, error
 		return repository.Repository{}, err
 	}
 	repo, err := client.GetRepository(name)
+	if e, ok := err.(*gandalf.HTTPError); ok && e.Code == http.StatusNotFound {
+		return repository.Repository{}, repository.ErrRepositoryNotFound
+	}
 	if err != nil {
 		return repository.Repository{}, err
 	}
