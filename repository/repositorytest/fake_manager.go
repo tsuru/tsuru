@@ -14,7 +14,6 @@ package repositorytest
 
 import (
 	"crypto/rand"
-	"errors"
 	"fmt"
 	"sync"
 
@@ -42,7 +41,7 @@ func (m *fakeManager) CreateUser(username string) error {
 	m.keysLock.Lock()
 	defer m.keysLock.Unlock()
 	if _, ok := m.keys[username]; ok {
-		return errors.New("user already exists")
+		return repository.ErrUserAlreadyExists
 	}
 	m.keys[username] = make(map[string]string)
 	return nil
@@ -62,7 +61,7 @@ func (m *fakeManager) CreateRepository(name string) error {
 	m.grantsLock.Lock()
 	defer m.grantsLock.Unlock()
 	if _, ok := m.grants[name]; ok {
-		return errors.New("repository already exists")
+		return repository.ErrRepositoryAlreadExists
 	}
 	m.grants[name] = nil
 	return nil
@@ -159,7 +158,7 @@ func (m *fakeManager) AddKey(username string, key repository.Key) error {
 		key.Name = string(p[:])
 	}
 	if _, ok := keys[key.Name]; ok {
-		return errors.New("user already have a key with this name")
+		return repository.ErrKeyAlreadyExists
 	}
 	keys[key.Name] = key.Body
 	m.keys[username] = keys
