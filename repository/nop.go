@@ -26,18 +26,6 @@ func (nopManager) RevokeAccess(repository, user string) error {
 	return nil
 }
 
-func (nopManager) AddKey(username string, key Key) error {
-	return nil
-}
-
-func (nopManager) RemoveKey(username string, key Key) error {
-	return nil
-}
-
-func (nopManager) ListKeys(username string) ([]Key, error) {
-	return nil, nil
-}
-
 func (nopManager) CreateRepository(name string) error {
 	return nil
 }
