@@ -268,7 +268,7 @@ func (s *AuthSuite) TestCreateUserCreatesUserInRepository(c *check.C) {
 	defer conn.Users().Remove(bson.M{"email": "nobody@me.myself"})
 	err = createUser(recorder, request)
 	c.Assert(err, check.IsNil)
-	_, err = repository.Manager().ListKeys("nobody@me.myself")
+	_, err = repository.Manager().(repository.KeyRepositoryManager).ListKeys("nobody@me.myself")
 	c.Assert(err, check.IsNil)
 }
 
@@ -1209,7 +1209,7 @@ func (s *AuthSuite) TestAddKeyAddKeyToUserInRepository(c *check.C) {
 		conn.Users().RemoveAll(bson.M{"email": u.Email})
 	}()
 	c.Assert(u.Keys[0].Name, check.Not(check.Matches), "\\.pub$")
-	keys, err := repository.Manager().ListKeys(u.Email)
+	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(u.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(keys, check.HasLen, 1)
 	c.Assert(keys[0].Name, check.Equals, "francisco@franciscosouza.net-1")
@@ -1299,7 +1299,7 @@ func (s *AuthSuite) TestRemoveKeyHandlerRepositoryManager(c *check.C) {
 	err = removeKeyFromUser(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
 	s.user, _ = auth.GetUserByEmail(s.user.Email)
-	keys, err := repository.Manager().ListKeys(s.user.Email)
+	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(s.user.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(keys, check.HasLen, 0)
 }
@@ -1370,8 +1370,8 @@ func (s *AuthSuite) TestListKeysHandler(c *check.C) {
 		{Name: "homekey", Body: "lol somekey somecomment"},
 		{Name: "workkey", Body: "lol someotherkey someothercomment"},
 	}
-	repository.Manager().AddKey(s.user.Email, keys[0])
-	repository.Manager().AddKey(s.user.Email, keys[1])
+	repository.Manager().(repository.KeyRepositoryManager).AddKey(s.user.Email, keys[0])
+	repository.Manager().(repository.KeyRepositoryManager).AddKey(s.user.Email, keys[1])
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/users/keys", nil)
 	c.Assert(err, check.IsNil)
