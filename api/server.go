@@ -236,9 +236,15 @@ func RunServer(dry bool) http.Handler {
 				fmt.Print(startupMessage)
 			}
 		}
+		repoManager, err := config.GetString("repo-manager")
+		if err != nil {
+			repoManager = "gandalf"
+			fmt.Println("Warning: configuration didn't declare a repository manager, using default manager.")
+		}
+		fmt.Printf("Using %q repository manager.\n", repoManager)
 		provisioner, err := getProvisioner()
 		if err != nil {
-			fmt.Printf("Warning: configuration didn't declare a provisioner, using default provisioner.\n")
+			fmt.Println("Warning: configuration didn't declare a provisioner, using default provisioner.")
 		}
 		app.Provisioner, err = provision.Get(provisioner)
 		if err != nil {
