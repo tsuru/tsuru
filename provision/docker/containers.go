@@ -112,6 +112,7 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 	} else {
 		pipeline = action.NewPipeline(
 			&provisionAddUnitsToHost,
+			&bindAndHealthcheck,
 			&addNewRoutes,
 			&removeOldRoutes,
 			&updateAppImage,
@@ -139,6 +140,7 @@ func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App,
 	}
 	pipeline := action.NewPipeline(
 		&provisionAddUnitsToHost,
+		&bindAndHealthcheck,
 		&addNewRoutes,
 		&updateAppImage,
 	)

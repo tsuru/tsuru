@@ -6,11 +6,17 @@ package docker
 
 import (
 	"bytes"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"reflect"
 	"sort"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/action"
+	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
@@ -600,4 +606,164 @@ func (s *S) TestFollowLogsAndCommitForwardWaitFailure(c *check.C) {
 	imageId, err := followLogsAndCommit.Forward(context)
 	c.Assert(err, check.ErrorMatches, `.*failed to wait for the container\n$`)
 	c.Assert(imageId, check.IsNil)
+}
+
+func (s *S) TestBindAndHealthcheckName(c *check.C) {
+	c.Assert(bindAndHealthcheck.Name, check.Equals, "bind-and-healthcheck")
+}
+
+func (s *S) TestBindAndHealthcheckForward(c *check.C) {
+	appName := "my-fake-app"
+	err := s.newFakeImage(s.p, "tsuru/app-"+appName)
+	c.Assert(err, check.IsNil)
+	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
+	s.p.Provision(fakeApp)
+	defer s.p.Destroy(fakeApp)
+	var buf bytes.Buffer
+	args := changeUnitsPipelineArgs{
+		app:         fakeApp,
+		provisioner: s.p,
+		writer:      &buf,
+		unitsToAdd:  2,
+		imageId:     "tsuru/app-" + appName,
+	}
+	containers, err := addContainersWithHost(&args)
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 2)
+	context := action.FWContext{Params: []interface{}{args}, Previous: containers}
+	result, err := bindAndHealthcheck.Forward(context)
+	c.Assert(err, check.IsNil)
+	resultContainers := result.([]container)
+	c.Assert(resultContainers, check.DeepEquals, containers)
+	u1 := containers[0].asUnit(fakeApp)
+	u2 := containers[1].asUnit(fakeApp)
+	c.Assert(fakeApp.HasBind(&u1), check.Equals, true)
+	c.Assert(fakeApp.HasBind(&u2), check.Equals, true)
+}
+
+func (s *S) TestBindAndHealthcheckForwardHealthcheckError(c *check.C) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	dbApp := &app.App{
+		Name: "myapp",
+		CustomData: map[string]interface{}{
+			"healthcheck": map[string]interface{}{
+				"path":   "/x/y",
+				"status": http.StatusOK,
+			},
+		},
+	}
+	err = conn.Apps().Insert(dbApp)
+	c.Assert(err, check.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": dbApp.Name})
+	err = s.newFakeImage(s.p, "tsuru/app-"+dbApp.Name)
+	c.Assert(err, check.IsNil)
+	fakeApp := provisiontest.NewFakeApp(dbApp.Name, "python", 0)
+	s.p.Provision(fakeApp)
+	defer s.p.Destroy(fakeApp)
+	var buf bytes.Buffer
+	args := changeUnitsPipelineArgs{
+		app:         fakeApp,
+		provisioner: s.p,
+		writer:      &buf,
+		unitsToAdd:  2,
+		imageId:     "tsuru/app-" + dbApp.Name,
+	}
+	containers, err := addContainersWithHost(&args)
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 2)
+	url, _ := url.Parse(server.URL)
+	host, port, _ := net.SplitHostPort(url.Host)
+	containers[0].HostAddr = host
+	containers[0].HostPort = port
+	containers[1].HostAddr = host
+	containers[1].HostPort = port
+	context := action.FWContext{Params: []interface{}{args}, Previous: containers}
+	_, err = bindAndHealthcheck.Forward(context)
+	c.Assert(err, check.ErrorMatches, `healthcheck fail\(.*?\): wrong status code, expected 200, got: 404`)
+	u1 := containers[0].asUnit(fakeApp)
+	u2 := containers[1].asUnit(fakeApp)
+	c.Assert(fakeApp.HasBind(&u1), check.Equals, false)
+	c.Assert(fakeApp.HasBind(&u2), check.Equals, false)
+}
+
+func (s *S) TestBindAndHealthcheckForwardRestartError(c *check.C) {
+	s.server.CustomHandler("/exec/id-exec-created-by-test/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"ID": "id-exec-created-by-test", "ExitCode": 9}`))
+	}))
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	dbApp := &app.App{
+		Name: "myapp",
+		CustomData: map[string]interface{}{
+			"hooks": map[string]interface{}{
+				"restart": map[string]interface{}{
+					"after": []string{"will fail"},
+				},
+			},
+		},
+	}
+	err = conn.Apps().Insert(dbApp)
+	c.Assert(err, check.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": dbApp.Name})
+	err = s.newFakeImage(s.p, "tsuru/app-"+dbApp.Name)
+	c.Assert(err, check.IsNil)
+	fakeApp := provisiontest.NewFakeApp(dbApp.Name, "python", 0)
+	s.p.Provision(fakeApp)
+	defer s.p.Destroy(fakeApp)
+	var buf bytes.Buffer
+	args := changeUnitsPipelineArgs{
+		app:         fakeApp,
+		provisioner: s.p,
+		writer:      &buf,
+		unitsToAdd:  2,
+		imageId:     "tsuru/app-" + dbApp.Name,
+	}
+	containers, err := addContainersWithHost(&args)
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 2)
+	context := action.FWContext{Params: []interface{}{args}, Previous: containers}
+	_, err = bindAndHealthcheck.Forward(context)
+	c.Assert(err, check.ErrorMatches, `couldn't execute restart:after hook "will fail"\(.+?\): unexpected exit code: 9`)
+	u1 := containers[0].asUnit(fakeApp)
+	u2 := containers[1].asUnit(fakeApp)
+	c.Assert(fakeApp.HasBind(&u1), check.Equals, false)
+	c.Assert(fakeApp.HasBind(&u2), check.Equals, false)
+}
+
+func (s *S) TestBindAndHealthcheckBackward(c *check.C) {
+	appName := "my-fake-app"
+	err := s.newFakeImage(s.p, "tsuru/app-"+appName)
+	c.Assert(err, check.IsNil)
+	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
+	s.p.Provision(fakeApp)
+	defer s.p.Destroy(fakeApp)
+	var buf bytes.Buffer
+	args := changeUnitsPipelineArgs{
+		app:         fakeApp,
+		provisioner: s.p,
+		writer:      &buf,
+		unitsToAdd:  2,
+		imageId:     "tsuru/app-" + appName,
+	}
+	containers, err := addContainersWithHost(&args)
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 2)
+	context := action.BWContext{Params: []interface{}{args}, FWResult: containers}
+	for _, c := range containers {
+		u := c.asUnit(fakeApp)
+		fakeApp.BindUnit(&u)
+	}
+	bindAndHealthcheck.Backward(context)
+	c.Assert(err, check.IsNil)
+	u1 := containers[0].asUnit(fakeApp)
+	u2 := containers[1].asUnit(fakeApp)
+	c.Assert(fakeApp.HasBind(&u1), check.Equals, false)
+	c.Assert(fakeApp.HasBind(&u2), check.Equals, false)
 }

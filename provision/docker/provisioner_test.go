@@ -1344,43 +1344,6 @@ func (s *S) TestRunRestartAfterHooks(c *check.C) {
 	})
 }
 
-func (s *S) TestAddContainersWithHostFailsUnlessRestartAfter(c *check.C) {
-	s.server.CustomHandler("/exec/id-exec-created-by-test/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"ID": "id-exec-created-by-test", "ExitCode": 9}`))
-	}))
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	a := &app.App{
-		Name: "myapp",
-		CustomData: map[string]interface{}{
-			"hooks": map[string]interface{}{
-				"restart": map[string]interface{}{
-					"after": []string{"will fail"},
-				},
-			},
-		},
-	}
-	err = conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": a.Name})
-	err = s.newFakeImage(s.p, "tsuru/app-"+a.Name)
-	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp(a.Name, "python", 0)
-	s.p.Provision(app)
-	defer s.p.Destroy(app)
-	var buf bytes.Buffer
-	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		unitsToAdd:  1,
-		app:         app,
-		writer:      &buf,
-		imageId:     "tsuru/app-" + a.Name,
-		provisioner: s.p,
-	})
-	c.Assert(err, check.ErrorMatches, `couldn't execute restart:after hook "will fail"\(.+?\): unexpected exit code: 9`)
-}
-
 func (s *S) TestShellToAnAppByContainerID(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/app-almah")
 	c.Assert(err, check.IsNil)

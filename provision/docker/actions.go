@@ -40,6 +40,45 @@ type changeUnitsPipelineArgs struct {
 	provisioner *dockerProvisioner
 }
 
+func runInContainers(containers []container, callback func(*container, chan *container) error, rollback func(*container), parallel bool) error {
+	toRollback := make(chan *container, len(containers))
+	errors := make(chan error, len(containers))
+	wg := sync.WaitGroup{}
+	for i := range containers {
+		wg.Add(1)
+		runFunc := func(cont *container) error {
+			defer wg.Done()
+			err := callback(cont, toRollback)
+			if err != nil {
+				errors <- err
+			}
+			return err
+		}
+		if parallel {
+			go runFunc(&containers[i])
+		} else {
+			err := runFunc(&containers[i])
+			if err != nil {
+				break
+			}
+		}
+	}
+	if parallel {
+		wg.Wait()
+	}
+	close(errors)
+	close(toRollback)
+	if err := <-errors; err != nil {
+		if rollback != nil {
+			for c := range toRollback {
+				rollback(c)
+			}
+		}
+		return err
+	}
+	return nil
+}
+
 var insertEmptyContainerInDB = action.Action{
 	Name: "insert-empty-container",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
@@ -172,6 +211,54 @@ var provisionAddUnitsToHost = action.Action{
 	MinParams: 1,
 }
 
+var bindAndHealthcheck = action.Action{
+	Name: "bind-and-healthcheck",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		newContainers := ctx.Previous.([]container)
+		writer := args.writer
+		if writer == nil {
+			writer = ioutil.Discard
+		}
+		fmt.Fprintf(writer, "\n---- Binding and checking %d new units ----\n", len(newContainers))
+		return newContainers, runInContainers(newContainers, func(c *container, toRollback chan *container) error {
+			unit := c.asUnit(args.app)
+			err := args.app.BindUnit(&unit)
+			if err != nil {
+				return err
+			}
+			toRollback <- c
+			err = runHealthcheck(c, writer)
+			if err != nil {
+				return err
+			}
+			err = args.provisioner.runRestartAfterHooks(c, writer)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(writer, " ---> Binded and checked unit %s\n", c.shortID())
+			return nil
+		}, func(c *container) {
+			unit := c.asUnit(args.app)
+			err := args.app.UnbindUnit(&unit)
+			if err != nil {
+				log.Errorf("Unable to unbind unit %q: %s", c.ID, err)
+			}
+		}, true)
+	},
+	Backward: func(ctx action.BWContext) {
+		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		newContainers := ctx.FWResult.([]container)
+		for _, c := range newContainers {
+			unit := c.asUnit(args.app)
+			err := args.app.UnbindUnit(&unit)
+			if err != nil {
+				log.Errorf("Unable to unbind unit %q: %s", c.ID, err)
+			}
+		}
+	},
+}
+
 var addNewRoutes = action.Action{
 	Name: "add-new-routes",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
@@ -186,19 +273,17 @@ var addNewRoutes = action.Action{
 			writer = ioutil.Discard
 		}
 		fmt.Fprintf(writer, "\n---- Adding routes to %d new units ----\n", len(newContainers))
-		addedContainers := make([]container, 0, len(newContainers))
-		for _, cont := range newContainers {
-			err = r.AddRoute(cont.AppName, cont.getAddress())
+		return newContainers, runInContainers(newContainers, func(c *container, toRollback chan *container) error {
+			err = r.AddRoute(c.AppName, c.getAddress())
 			if err != nil {
-				for _, toRemoveCont := range addedContainers {
-					r.RemoveRoute(toRemoveCont.AppName, toRemoveCont.getAddress())
-				}
-				return nil, err
+				return err
 			}
-			addedContainers = append(addedContainers, cont)
-			fmt.Fprintf(writer, " ---> Added route to unit %s\n", cont.shortID())
-		}
-		return newContainers, nil
+			toRollback <- c
+			fmt.Fprintf(writer, " ---> Added route to unit %s\n", c.shortID())
+			return nil
+		}, func(c *container) {
+			r.RemoveRoute(c.AppName, c.getAddress())
+		}, false)
 	},
 	Backward: func(ctx action.BWContext) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
@@ -229,19 +314,17 @@ var removeOldRoutes = action.Action{
 			writer = ioutil.Discard
 		}
 		fmt.Fprintf(writer, "\n---- Removing routes from %d old units ----\n", len(args.toRemove))
-		removedConts := make([]container, 0, len(args.toRemove))
-		for _, cont := range args.toRemove {
-			err = r.RemoveRoute(cont.AppName, cont.getAddress())
+		return ctx.Previous, runInContainers(args.toRemove, func(c *container, toRollback chan *container) error {
+			err = r.RemoveRoute(c.AppName, c.getAddress())
 			if err != router.ErrRouteNotFound && err != nil {
-				for _, toAddCont := range removedConts {
-					r.AddRoute(toAddCont.AppName, toAddCont.getAddress())
-				}
-				return nil, err
+				return err
 			}
-			removedConts = append(removedConts, cont)
-			fmt.Fprintf(writer, " ---> Removed route from unit %s\n", cont.shortID())
-		}
-		return ctx.Previous, nil
+			toRollback <- c
+			fmt.Fprintf(writer, " ---> Removed route from unit %s\n", c.shortID())
+			return nil
+		}, func(c *container) {
+			r.AddRoute(c.AppName, c.getAddress())
+		}, false)
 	},
 	Backward: func(ctx action.BWContext) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
@@ -262,9 +345,7 @@ var removeOldRoutes = action.Action{
 var provisionRemoveOldUnits = action.Action{
 	Name: "provision-remove-old-units",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var wg sync.WaitGroup
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
-		removedContainers := make(chan *container, len(args.toRemove))
 		writer := args.writer
 		if writer == nil {
 			writer = ioutil.Discard
@@ -275,26 +356,14 @@ var provisionRemoveOldUnits = action.Action{
 			plural = "s"
 		}
 		fmt.Fprintf(writer, "\n---- Removing %d old unit%s ----\n", total, plural)
-		for _, cont := range args.toRemove {
-			wg.Add(1)
-			go func(cont container) {
-				defer wg.Done()
-				err := args.provisioner.removeContainer(&cont)
-				if err != nil {
-					log.Errorf("Ignored error trying to remove old container %q: %s", cont.ID, err)
-				}
-				removedContainers <- &cont
-			}(cont)
-		}
-		go func() {
-			wg.Wait()
-			close(removedContainers)
-		}()
-		counter := 0
-		for range removedContainers {
-			counter++
-			fmt.Fprintf(writer, " ---> Removed old unit %d/%d\n", counter, total)
-		}
+		runInContainers(args.toRemove, func(c *container, toRollback chan *container) error {
+			err := args.provisioner.removeContainer(c)
+			if err != nil {
+				log.Errorf("Ignored error trying to remove old container %q: %s", c.ID, err)
+			}
+			fmt.Fprintf(writer, " ---> Removed old unit %s...\n", c.shortID())
+			return nil
+		}, nil, true)
 		return ctx.Previous, nil
 	},
 	Backward: func(ctx action.BWContext) {
@@ -305,9 +374,7 @@ var provisionRemoveOldUnits = action.Action{
 var provisionUnbindOldUnits = action.Action{
 	Name: "provision-unbind-old-units",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var wg sync.WaitGroup
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
-		unbindedConts := make(chan *container, len(args.toRemove))
 		writer := args.writer
 		if writer == nil {
 			writer = ioutil.Discard
@@ -318,27 +385,15 @@ var provisionUnbindOldUnits = action.Action{
 			plural = "s"
 		}
 		fmt.Fprintf(writer, "\n---- Unbinding %d old unit%s ----\n", total, plural)
-		for _, cont := range args.toRemove {
-			wg.Add(1)
-			go func(cont container) {
-				defer wg.Done()
-				unit := cont.asUnit(args.app)
-				err := args.app.UnbindUnit(&unit)
-				if err != nil {
-					log.Errorf("Ignorer error trying to unbind old container %q: %s", cont.ID, err)
-				}
-				unbindedConts <- &cont
-			}(cont)
-		}
-		go func() {
-			wg.Wait()
-			close(unbindedConts)
-		}()
-		counter := 0
-		for range unbindedConts {
-			counter++
-			fmt.Fprintf(writer, " ---> Unbinded old unit %d/%d\n", counter, total)
-		}
+		runInContainers(args.toRemove, func(c *container, toRollback chan *container) error {
+			unit := c.asUnit(args.app)
+			err := args.app.UnbindUnit(&unit)
+			if err != nil {
+				log.Errorf("Ignorer error trying to unbind old container %q: %s", c.ID, err)
+			}
+			fmt.Fprintf(writer, " ---> Unbinded old unit %s...\n", c.shortID())
+			return nil
+		}, nil, true)
 		return ctx.Previous, nil
 	}, Backward: func(ctx action.BWContext) {
 	},
