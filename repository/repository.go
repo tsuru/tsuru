@@ -6,11 +6,21 @@
 // interaction.
 package repository
 
-import "github.com/tsuru/config"
+import (
+	"errors"
+
+	"github.com/tsuru/config"
+)
 
 const defaultManager = "gandalf"
 
 var managers map[string]RepositoryManager
+
+var (
+	ErrKeyNotFound        = errors.New("key not found")
+	ErrRepositoryNotFound = errors.New("repository not found")
+	ErrUserNotFound       = errors.New("user not found")
+)
 
 // Key represents a public key, that is added to a repository to allow access
 // to it.
