@@ -41,6 +41,9 @@ type changeUnitsPipelineArgs struct {
 }
 
 func runInContainers(containers []container, callback func(*container, chan *container) error, rollback func(*container), parallel bool) error {
+	if len(containers) == 0 {
+		return nil
+	}
 	toRollback := make(chan *container, len(containers))
 	errors := make(chan error, len(containers))
 	wg := sync.WaitGroup{}

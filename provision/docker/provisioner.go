@@ -217,26 +217,17 @@ func (p *dockerProvisioner) Start(app provision.App) error {
 	if err != nil {
 		return errors.New(fmt.Sprintf("Got error while getting app containers: %s", err))
 	}
-	var wg sync.WaitGroup
-	errCh := make(chan error, len(containers)+1)
-	for _, c := range containers {
-		wg.Add(1)
-		go func(c container) {
-			defer wg.Done()
-			err := c.start(p, false)
-			if err != nil {
-				errCh <- err
-				return
-			}
-			c.setStatus(p, provision.StatusStarting.String())
-			if info, err := c.networkInfo(p); err == nil {
-				p.fixContainer(&c, info)
-			}
-		}(c)
-	}
-	wg.Wait()
-	close(errCh)
-	return <-errCh
+	return runInContainers(containers, func(c *container, _ chan *container) error {
+		err := c.start(p, false)
+		if err != nil {
+			return err
+		}
+		c.setStatus(p, provision.StatusStarting.String())
+		if info, err := c.networkInfo(p); err == nil {
+			p.fixContainer(c, info)
+		}
+		return nil
+	}, nil, true)
 }
 
 func (p *dockerProvisioner) Stop(app provision.App) error {
@@ -245,22 +236,13 @@ func (p *dockerProvisioner) Stop(app provision.App) error {
 		log.Errorf("Got error while getting app containers: %s", err)
 		return nil
 	}
-	var wg sync.WaitGroup
-	errCh := make(chan error, len(containers)+1)
-	for _, c := range containers {
-		wg.Add(1)
-		go func(c container) {
-			defer wg.Done()
-			err := c.stop(p)
-			if err != nil {
-				log.Errorf("Failed to stop %q: %s", app.GetName(), err)
-				errCh <- err
-			}
-		}(c)
-	}
-	wg.Wait()
-	close(errCh)
-	return <-errCh
+	return runInContainers(containers, func(c *container, _ chan *container) error {
+		err := c.stop(p)
+		if err != nil {
+			log.Errorf("Failed to stop %q: %s", app.GetName(), err)
+		}
+		return err
+	}, nil, true)
 }
 
 func (p *dockerProvisioner) Swap(app1, app2 provision.App) error {
@@ -384,23 +366,18 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 		log.Errorf("Failed to list app containers: %s", err.Error())
 		return err
 	}
-	var containersGroup sync.WaitGroup
-	containersGroup.Add(len(containers))
-	for _, c := range containers {
-		go func(c container) {
-			defer containersGroup.Done()
-			unit := c.asUnit(app)
-			err := app.UnbindUnit(&unit)
-			if err != nil {
-				log.Errorf("Unable to unbind unit %q: %s", c.ID, err)
-			}
-			err = p.removeContainer(&c)
-			if err != nil {
-				log.Errorf("Unable to destroy container %s: %s", c.ID, err.Error())
-			}
-		}(c)
-	}
-	containersGroup.Wait()
+	runInContainers(containers, func(c *container, _ chan *container) error {
+		unit := c.asUnit(app)
+		err := app.UnbindUnit(&unit)
+		if err != nil {
+			log.Errorf("Unable to unbind unit %q: %s", c.ID, err)
+		}
+		err = p.removeContainer(c)
+		if err != nil {
+			log.Errorf("Unable to destroy container %s: %s", c.ID, err.Error())
+		}
+		return nil
+	}, nil, true)
 	images, err := listAppImages(app.GetName())
 	if err != nil {
 		log.Errorf("Failed to get image ids for app %s: %s", app.GetName(), err.Error())
@@ -561,23 +538,18 @@ func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint) error {
 	if units >= uint(len(containers)) {
 		return errors.New("remove units: cannot remove all units from app")
 	}
-	var wg sync.WaitGroup
-	for i := 0; i < int(units); i++ {
-		wg.Add(1)
-		go func(c container) {
-			unit := c.asUnit(a)
-			err := a.UnbindUnit(&unit)
-			if err != nil {
-				log.Errorf("Failed to unbind unit %q: %s", c.ID, err)
-			}
-			err = p.removeContainer(&c)
-			if err != nil {
-				log.Errorf("Failed to remove container %q: %s", c.ID, err)
-			}
-			wg.Done()
-		}(containers[i])
-	}
-	wg.Wait()
+	runInContainers(containers[:units], func(c *container, _ chan *container) error {
+		unit := c.asUnit(a)
+		err := a.UnbindUnit(&unit)
+		if err != nil {
+			log.Errorf("Failed to unbind unit %q: %s", c.ID, err)
+		}
+		err = p.removeContainer(c)
+		if err != nil {
+			log.Errorf("Failed to remove container %q: %s", c.ID, err)
+		}
+		return nil
+	}, nil, true)
 	return nil
 }
 
@@ -764,7 +736,7 @@ func (p *dockerProvisioner) RegisterUnit(unit provision.Unit, customData map[str
 	if err != nil {
 		return err
 	}
-	return p.checkContainer(*container, nil)
+	return p.checkContainer(container)
 }
 
 func (p *dockerProvisioner) Shell(app provision.App, conn net.Conn, width, height int, args ...string) error {

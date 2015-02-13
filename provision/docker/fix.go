@@ -5,8 +5,6 @@
 package docker
 
 import (
-	"sync"
-
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/log"
 	_ "github.com/tsuru/tsuru/router/hipache"
@@ -15,33 +13,27 @@ import (
 )
 
 func (p *dockerProvisioner) fixContainers() error {
-	var containersGroup sync.WaitGroup
 	containers, err := p.listAllContainers()
 	if err != nil {
 		return err
 	}
-	if len(containers) == 0 {
-		return nil
+	err = runInContainers(containers, func(c *container, _ chan *container) error {
+		return p.checkContainer(c)
+	}, nil, true)
+	if err != nil {
+		log.Errorf("error checking containers for fixing: %s", err.Error())
 	}
-	for _, container := range containers {
-		containersGroup.Add(1)
-		go p.checkContainer(container, &containersGroup)
-	}
-	containersGroup.Wait()
-	return nil
+	return err
 }
 
-func (p *dockerProvisioner) checkContainer(container container, wg *sync.WaitGroup) error {
-	if wg != nil {
-		defer wg.Done()
-	}
+func (p *dockerProvisioner) checkContainer(container *container) error {
 	if container.available() {
 		info, err := container.networkInfo(p)
 		if err != nil {
 			return err
 		}
 		if info.HTTPHostPort != container.HostPort || info.IP != container.IP {
-			err = p.fixContainer(&container, info)
+			err = p.fixContainer(container, info)
 			if err != nil {
 				log.Errorf("error on fix container hostport for [container %s]", container.ID)
 				return err
