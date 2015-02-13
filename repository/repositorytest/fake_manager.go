@@ -52,7 +52,7 @@ func (m *fakeManager) RemoveUser(username string) error {
 	m.keysLock.Lock()
 	defer m.keysLock.Unlock()
 	if _, ok := m.keys[username]; !ok {
-		return errors.New("user not found")
+		return repository.ErrUserNotFound
 	}
 	delete(m.keys, username)
 	return nil
@@ -72,7 +72,7 @@ func (m *fakeManager) RemoveRepository(name string) error {
 	m.grantsLock.Lock()
 	defer m.grantsLock.Unlock()
 	if _, ok := m.grants[name]; !ok {
-		return errors.New("repository not found")
+		return repository.ErrRepositoryNotFound
 	}
 	delete(m.grants, name)
 	return nil
@@ -82,7 +82,7 @@ func (m *fakeManager) GetRepository(name string) (repository.Repository, error) 
 	m.grantsLock.Lock()
 	defer m.grantsLock.Unlock()
 	if _, ok := m.grants[name]; !ok {
-		return repository.Repository{}, errors.New("repository not found")
+		return repository.Repository{}, repository.ErrRepositoryNotFound
 	}
 	return repository.Repository{
 		Name:         name,
@@ -91,18 +91,18 @@ func (m *fakeManager) GetRepository(name string) (repository.Repository, error) 
 	}, nil
 }
 
-func (m *fakeManager) GrantAccess(repository, user string) error {
+func (m *fakeManager) GrantAccess(repo, user string) error {
 	m.keysLock.Lock()
 	_, ok := m.keys[user]
 	m.keysLock.Unlock()
 	if !ok {
-		return errors.New("user not found")
+		return repository.ErrUserNotFound
 	}
 	m.grantsLock.Lock()
 	defer m.grantsLock.Unlock()
-	grants, ok := m.grants[repository]
+	grants, ok := m.grants[repo]
 	if !ok {
-		return errors.New("repository not found")
+		return repository.ErrRepositoryNotFound
 	}
 	var found bool
 	for _, granted := range grants {
@@ -113,23 +113,23 @@ func (m *fakeManager) GrantAccess(repository, user string) error {
 	}
 	if !found {
 		grants = append(grants, user)
-		m.grants[repository] = grants
+		m.grants[repo] = grants
 	}
 	return nil
 }
 
-func (m *fakeManager) RevokeAccess(repository, user string) error {
+func (m *fakeManager) RevokeAccess(repo, user string) error {
 	m.keysLock.Lock()
 	_, ok := m.keys[user]
 	m.keysLock.Unlock()
 	if !ok {
-		return errors.New("user not found")
+		return repository.ErrUserNotFound
 	}
 	m.grantsLock.Lock()
 	defer m.grantsLock.Unlock()
-	grants, ok := m.grants[repository]
+	grants, ok := m.grants[repo]
 	if !ok {
-		return errors.New("repository not found")
+		return repository.ErrRepositoryNotFound
 	}
 	index := -1
 	for i, granted := range grants {
@@ -141,7 +141,7 @@ func (m *fakeManager) RevokeAccess(repository, user string) error {
 	if index > -1 {
 		last := len(grants) - 1
 		grants[index] = grants[last]
-		m.grants[repository] = grants[:last]
+		m.grants[repo] = grants[:last]
 	}
 	return nil
 }
@@ -151,7 +151,7 @@ func (m *fakeManager) AddKey(username string, key repository.Key) error {
 	defer m.keysLock.Unlock()
 	keys, ok := m.keys[username]
 	if !ok {
-		return errors.New("user not found")
+		return repository.ErrUserNotFound
 	}
 	if key.Name == "" {
 		var p [32]byte
@@ -171,10 +171,10 @@ func (m *fakeManager) RemoveKey(username string, key repository.Key) error {
 	defer m.keysLock.Unlock()
 	keys, ok := m.keys[username]
 	if !ok {
-		return errors.New("user not found")
+		return repository.ErrUserNotFound
 	}
 	if _, ok := keys[key.Name]; !ok {
-		return errors.New("key not found")
+		return repository.ErrKeyNotFound
 	}
 	delete(keys, key.Name)
 	m.keys[username] = keys
@@ -186,7 +186,7 @@ func (m *fakeManager) ListKeys(username string) ([]repository.Key, error) {
 	defer m.keysLock.Unlock()
 	keys, ok := m.keys[username]
 	if !ok {
-		return nil, errors.New("user not found")
+		return nil, repository.ErrUserNotFound
 	}
 	result := make([]repository.Key, 0, len(keys))
 	for name, body := range keys {
@@ -199,7 +199,7 @@ func (m *fakeManager) Diff(repositoryName, from, to string) (string, error) {
 	m.grantsLock.Lock()
 	defer m.grantsLock.Unlock()
 	if _, ok := m.grants[repositoryName]; !ok {
-		return "", errors.New("repository not found")
+		return "", repository.ErrRepositoryNotFound
 	}
 	return "", nil
 }
@@ -227,11 +227,11 @@ func Users() []string {
 
 // Granted returns the list of users with access granted to the given
 // repository name, failing if the given repository isn't registered.
-func Granted(repository string) ([]string, error) {
+func Granted(repo string) ([]string, error) {
 	manager.grantsLock.Lock()
 	defer manager.grantsLock.Unlock()
-	if grants, ok := manager.grants[repository]; ok {
+	if grants, ok := manager.grants[repo]; ok {
 		return grants, nil
 	}
-	return nil, errors.New("repository not found")
+	return nil, repository.ErrRepositoryNotFound
 }

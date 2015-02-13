@@ -31,7 +31,7 @@ func (Suite) TestRegistration(c *check.C) {
 		defer config.Unset("repo-manager")
 	}
 	config.Set("repo-manager", "fake")
-	c.Assert(repository.Manager().(*fakeManager), check.Equals, &manager)
+	c.Check(repository.Manager().(*fakeManager), check.Equals, &manager)
 }
 
 func (Suite) TestManagerUser(c *check.C) {
@@ -44,7 +44,7 @@ func (Suite) TestManagerUser(c *check.C) {
 	c.Check(err, check.IsNil)
 	c.Check(Users(), check.HasLen, 0)
 	err = manager.RemoveUser("gopher")
-	c.Check(err.Error(), check.Equals, "user not found")
+	c.Check(err, check.Equals, repository.ErrUserNotFound)
 }
 
 func (Suite) TestManagerRepository(c *check.C) {
@@ -60,7 +60,7 @@ func (Suite) TestManagerRepository(c *check.C) {
 	err = manager.RemoveRepository("myrepo")
 	c.Check(err, check.IsNil)
 	_, err = manager.GetRepository("myrepo")
-	c.Check(err.Error(), check.Equals, "repository not found")
+	c.Check(err, check.Equals, repository.ErrRepositoryNotFound)
 }
 
 func (Suite) TestManagerGrants(c *check.C) {
@@ -84,7 +84,7 @@ func (Suite) TestManagerGrants(c *check.C) {
 	c.Check(grants, check.HasLen, 0)
 	grants, err = Granted("kernell")
 	c.Check(grants, check.IsNil)
-	c.Check(err.Error(), check.Equals, "repository not found")
+	c.Check(err, check.Equals, repository.ErrRepositoryNotFound)
 	err = manager.RevokeAccess("myrepo", "gopher")
 	c.Check(err, check.IsNil)
 	grants, err = Granted("myrepo")
@@ -93,13 +93,13 @@ func (Suite) TestManagerGrants(c *check.C) {
 	err = manager.RevokeAccess("myrepo", "gopher")
 	c.Check(err, check.IsNil)
 	err = manager.GrantAccess("watrepo", "gopher")
-	c.Check(err.Error(), check.Equals, "repository not found")
+	c.Check(err, check.Equals, repository.ErrRepositoryNotFound)
 	err = manager.RevokeAccess("watrepo", "gopher")
-	c.Check(err.Error(), check.Equals, "repository not found")
+	c.Check(err, check.Equals, repository.ErrRepositoryNotFound)
 	err = manager.GrantAccess("myrepo", "watuser")
-	c.Check(err.Error(), check.Equals, "user not found")
+	c.Check(err, check.Equals, repository.ErrUserNotFound)
 	err = manager.RevokeAccess("myrepo", "watuser")
-	c.Check(err.Error(), check.Equals, "user not found")
+	c.Check(err, check.Equals, repository.ErrUserNotFound)
 }
 
 func (Suite) TestManagerKeys(c *check.C) {
@@ -112,7 +112,7 @@ func (Suite) TestManagerKeys(c *check.C) {
 	err = manager.AddKey("gopher", repository.Key{Name: "name", Body: "other"})
 	c.Check(err.Error(), check.Equals, "user already have a key with this name")
 	err = manager.AddKey("wateee", repository.Key{Name: "name", Body: "body"})
-	c.Check(err.Error(), check.Equals, "user not found")
+	c.Check(err, check.Equals, repository.ErrUserNotFound)
 	keys, err := manager.ListKeys("gopher")
 	c.Check(err, check.IsNil)
 	c.Check(keys, check.DeepEquals, []repository.Key{{Name: "name", Body: "body"}})
@@ -121,24 +121,24 @@ func (Suite) TestManagerKeys(c *check.C) {
 	c.Check(keys, check.HasLen, 0)
 	keys, err = manager.ListKeys("watuser")
 	c.Check(keys, check.IsNil)
-	c.Check(err.Error(), check.Equals, "user not found")
+	c.Check(err, check.Equals, repository.ErrUserNotFound)
 	err = manager.RemoveKey("gopher", repository.Key{Name: "name"})
 	c.Check(err, check.IsNil)
 	keys, err = manager.ListKeys("gopher")
 	c.Check(err, check.IsNil)
 	c.Check(keys, check.HasLen, 0)
 	err = manager.RemoveKey("gophera", repository.Key{Name: "name"})
-	c.Check(err.Error(), check.Equals, "key not found")
+	c.Check(err, check.Equals, repository.ErrKeyNotFound)
 	err = manager.RemoveKey("gopheraa", repository.Key{Name: "name"})
-	c.Check(err.Error(), check.Equals, "user not found")
+	c.Check(err, check.Equals, repository.ErrUserNotFound)
 }
 
 func (Suite) TestManagerDiff(c *check.C) {
 	err := manager.CreateRepository("mycode")
-	c.Assert(err, check.IsNil)
+	c.Check(err, check.IsNil)
 	diff, err := manager.Diff("mycode", "1.0", "2.0")
-	c.Assert(err, check.IsNil)
-	c.Assert(diff, check.Equals, "")
+	c.Check(err, check.IsNil)
+	c.Check(diff, check.Equals, "")
 	_, err = manager.Diff("yourcode", "1.0", "2.0")
-	c.Assert(err.Error(), check.Equals, "repository not found")
+	c.Check(err, check.Equals, repository.ErrRepositoryNotFound)
 }
