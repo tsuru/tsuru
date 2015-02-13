@@ -17,9 +17,12 @@ const defaultManager = "gandalf"
 var managers map[string]RepositoryManager
 
 var (
-	ErrKeyNotFound        = errors.New("key not found")
-	ErrRepositoryNotFound = errors.New("repository not found")
-	ErrUserNotFound       = errors.New("user not found")
+	ErrKeyNotFound            = errors.New("key not found")
+	ErrRepositoryNotFound     = errors.New("repository not found")
+	ErrUserNotFound           = errors.New("user not found")
+	ErrKeyAlreadyExists       = errors.New("user already have this key")
+	ErrRepositoryAlreadExists = errors.New("repository already exists")
+	ErrUserAlreadyExists      = errors.New("user already exists")
 )
 
 // Key represents a public key, that is added to a repository to allow access
