@@ -95,7 +95,7 @@ func (s *S) TestAddKeyAddsAKeyToTheUser(c *check.C) {
 	err = u.AddKey(key)
 	c.Assert(err, check.IsNil)
 	c.Assert(u, HasKey, "my-key")
-	keys, err := repository.Manager().ListKeys(u.Email)
+	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(u.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(keys, check.DeepEquals, []repository.Key{key.RepoKey()})
 }
@@ -111,7 +111,7 @@ func (s *S) TestAddKeyGeneratesNameWhenEmpty(c *check.C) {
 	c.Assert(u, HasKey, "my-key")
 	repoKey := key.RepoKey()
 	repoKey.Name = u.Email + "-1"
-	keys, err := repository.Manager().ListKeys(u.Email)
+	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(u.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(keys, check.DeepEquals, []repository.Key{repoKey})
 }
@@ -137,7 +137,7 @@ func (s *S) TestRemoveKeyRemovesAKeyFromTheUser(c *check.C) {
 	err = u.RemoveKey(Key{Content: "my-key"})
 	c.Assert(err, check.IsNil)
 	c.Assert(u, check.Not(HasKey), "my-key")
-	keys, err := repository.Manager().ListKeys(u.Email)
+	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(u.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(keys, check.HasLen, 0)
 }
@@ -246,8 +246,8 @@ func (s *S) TestListKeysShouldGetKeysFromTheRepositoryManager(c *check.C) {
 	err := u.Create()
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
-	repository.Manager().AddKey(u.Email, newKeys[0].RepoKey())
-	repository.Manager().AddKey(u.Email, newKeys[1].RepoKey())
+	repository.Manager().(repository.KeyRepositoryManager).AddKey(u.Email, newKeys[0].RepoKey())
+	repository.Manager().(repository.KeyRepositoryManager).AddKey(u.Email, newKeys[1].RepoKey())
 	keys, err := u.ListKeys()
 	c.Assert(err, check.IsNil)
 	expected := map[string]string{"key1": "superkey", "key2": "hiperkey"}

@@ -172,7 +172,7 @@ func (u *User) AddKey(key Key) error {
 }
 
 func (u *User) addKeyRepository(key *Key) error {
-	err := repository.Manager().AddKey(u.Email, key.RepoKey())
+	err := repository.Manager().(repository.KeyRepositoryManager).AddKey(u.Email, key.RepoKey())
 	if err != nil {
 		return fmt.Errorf("failed to add key to git server: %s", err)
 	}
@@ -199,7 +199,7 @@ func (u *User) RemoveKey(key Key) error {
 }
 
 func (u *User) removeKeyRepository(key *Key) error {
-	err := repository.Manager().RemoveKey(u.Email, key.RepoKey())
+	err := repository.Manager().(repository.KeyRepositoryManager).RemoveKey(u.Email, key.RepoKey())
 	if err != nil {
 		return fmt.Errorf("failed to remove the key from git server: %s", err)
 	}
@@ -247,7 +247,7 @@ func (u *User) AllowedApps() ([]string, error) {
 }
 
 func (u *User) ListKeys() (map[string]string, error) {
-	keys, err := repository.Manager().ListKeys(u.Email)
+	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(u.Email)
 	if err != nil {
 		return nil, err
 	}

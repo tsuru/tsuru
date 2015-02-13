@@ -58,7 +58,7 @@ func (s *ActionsSuite) TestAddKeyInRepositoryActionForward(c *check.C) {
 	result, err := addKeyInRepositoryAction.Forward(ctx)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.IsNil)
-	keys, err := repository.Manager().ListKeys("me@gmail.com")
+	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys("me@gmail.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(keys, check.DeepEquals, []repository.Key{key.RepoKey()})
 }
@@ -67,14 +67,14 @@ func (s *ActionsSuite) TestAddKeyInRepositoryActionBackward(c *check.C) {
 	err := repository.Manager().CreateUser("me@gmail.com")
 	c.Assert(err, check.IsNil)
 	key := &Key{Name: "mysshkey", Content: "my-ssh-key"}
-	err = repository.Manager().AddKey("me@gmail.com", key.RepoKey())
+	err = repository.Manager().(repository.KeyRepositoryManager).AddKey("me@gmail.com", key.RepoKey())
 	c.Assert(err, check.IsNil)
 	u := &User{Email: "me@gmail.com", Password: "123456"}
 	ctx := action.BWContext{
 		Params: []interface{}{key, u},
 	}
 	addKeyInRepositoryAction.Backward(ctx)
-	keys, err := repository.Manager().ListKeys("me@gmail.com")
+	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys("me@gmail.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(keys, check.HasLen, 0)
 }
