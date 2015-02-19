@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/app/bind"
 	"gopkg.in/check.v1"
 )
 
@@ -25,12 +25,13 @@ func (h *metricHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *S) TestMetric(c *check.C) {
 	h := metricHandler{cpuMax: "8.2"}
 	ts := httptest.NewServer(&h)
-	config.Set("metrics:db", "graphite")
-	config.Set("graphite:host", ts.URL)
 	defer ts.Close()
 	newApp := App{
 		Name:     "myApp",
 		Platform: "Django",
+		Env: map[string]bind.EnvVar{
+			"GRAPHITE_HOST": {Name: "GRAPHITE_HOST", Value: ts.URL},
+		},
 	}
 	cpu, err := newApp.Metric("cpu")
 	c.Assert(err, check.IsNil)
@@ -40,8 +41,6 @@ func (s *S) TestMetric(c *check.C) {
 func (s *S) TestMetricServerDown(c *check.C) {
 	h := metricHandler{cpuMax: "8.2"}
 	ts := httptest.NewServer(&h)
-	config.Set("metrics:db", "graphite")
-	config.Set("graphite:host", ts.URL)
 	newApp := App{
 		Name:     "myApp",
 		Platform: "Django",

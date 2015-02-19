@@ -15,7 +15,7 @@ import (
 )
 
 func init() {
-	metrics.Register("graphite", graphite{})
+	metrics.Register("graphite", &graphite{})
 }
 
 type graphiteData struct {
@@ -27,21 +27,21 @@ type graphite struct {
 	host string
 }
 
-func (g graphite) getHost() string {
+func (g *graphite) getHost() string {
 	if !strings.Contains(g.host, "http") {
 		g.host = fmt.Sprintf("http://%s", g.host)
 	}
 	return g.host
 }
 
-func (g graphite) Detect(config map[string]string) bool {
+func (g *graphite) Detect(config map[string]string) bool {
 	var ok bool
 	g.host, ok = config["GRAPHITE_HOST"]
 	return ok
 }
 
 // Summarize summarizes the data into interval buckets of a certain size.
-func (g graphite) Summarize(key, interval, function string) (metrics.Series, error) {
+func (g *graphite) Summarize(key, interval, function string) (metrics.Series, error) {
 	url := fmt.Sprintf("%s/render/?target=keepLastValue(maxSeries(%s))&from=%s&format=json", g.getHost(), key, interval)
 	resp, err := http.Get(url)
 	if err != nil {

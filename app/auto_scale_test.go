@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/quota"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2"
@@ -22,8 +22,6 @@ import (
 func (s *S) TestAutoScale(c *check.C) {
 	h := metricHandler{cpuMax: "50.2"}
 	ts := httptest.NewServer(&h)
-	config.Set("metrics:db", "graphite")
-	config.Set("graphite:host", ts.URL)
 	defer ts.Close()
 	newApp := App{
 		Name:     "myApp",
@@ -32,6 +30,9 @@ func (s *S) TestAutoScale(c *check.C) {
 			Increase: Action{Units: 1, Expression: "{cpu} > 80"},
 			Decrease: Action{Units: 1, Expression: "{cpu} < 20"},
 			Enabled:  true,
+		},
+		Env: map[string]bind.EnvVar{
+			"GRAPHITE_HOST": {Name: "GRAPHITE_HOST", Value: ts.URL},
 		},
 	}
 	err := scaleApplicationIfNeeded(&newApp)
@@ -45,8 +46,6 @@ func (s *S) TestAutoScale(c *check.C) {
 func (s *S) TestAutoScaleUp(c *check.C) {
 	h := metricHandler{cpuMax: "90.2"}
 	ts := httptest.NewServer(&h)
-	config.Set("metrics:db", "graphite")
-	config.Set("graphite:host", ts.URL)
 	defer ts.Close()
 	newApp := App{
 		Name:     "myApp",
@@ -56,6 +55,9 @@ func (s *S) TestAutoScaleUp(c *check.C) {
 			Increase: Action{Units: 1, Expression: "{cpu_max} > 80"},
 			Enabled:  true,
 			MaxUnits: uint(10),
+		},
+		Env: map[string]bind.EnvVar{
+			"GRAPHITE_HOST": {Name: "GRAPHITE_HOST", Value: ts.URL},
 		},
 	}
 	err := s.conn.Apps().Insert(newApp)
@@ -82,8 +84,6 @@ func (s *S) TestAutoScaleUp(c *check.C) {
 func (s *S) TestAutoScaleDown(c *check.C) {
 	h := metricHandler{cpuMax: "10.2"}
 	ts := httptest.NewServer(&h)
-	config.Set("metrics:db", "graphite")
-	config.Set("graphite:host", ts.URL)
 	defer ts.Close()
 	newApp := App{
 		Name:     "myApp",
@@ -93,6 +93,9 @@ func (s *S) TestAutoScaleDown(c *check.C) {
 			Increase: Action{Units: 1, Expression: "{cpu_max} > 80"},
 			Decrease: Action{Units: 1, Expression: "{cpu_max} < 20"},
 			Enabled:  true,
+		},
+		Env: map[string]bind.EnvVar{
+			"GRAPHITE_HOST": {Name: "GRAPHITE_HOST", Value: ts.URL},
 		},
 	}
 	err := s.conn.Apps().Insert(newApp)
@@ -140,8 +143,6 @@ func (s *S) TestRunAutoScaleOnce(c *check.C) {
 		},
 	}
 	ts := httptest.NewServer(&h)
-	config.Set("metrics:db", "graphite")
-	config.Set("graphite:host", ts.URL)
 	defer ts.Close()
 	up := App{
 		Name:     "myApp",
@@ -151,6 +152,9 @@ func (s *S) TestRunAutoScaleOnce(c *check.C) {
 			Increase: Action{Units: 1, Expression: "{cpu_max} > 80"},
 			Enabled:  true,
 			MaxUnits: uint(10),
+		},
+		Env: map[string]bind.EnvVar{
+			"GRAPHITE_HOST": {Name: "GRAPHITE_HOST", Value: ts.URL},
 		},
 	}
 	err := s.conn.Apps().Insert(up)
@@ -169,6 +173,9 @@ func (s *S) TestRunAutoScaleOnce(c *check.C) {
 			Increase: Action{Units: 1, Expression: "{cpu_max} > 80"},
 			Decrease: Action{Units: 1, Expression: "{cpu_max} < 20"},
 			Enabled:  true,
+		},
+		Env: map[string]bind.EnvVar{
+			"GRAPHITE_HOST": {Name: "GRAPHITE_HOST", Value: ts.URL},
 		},
 	}
 	err = s.conn.Apps().Insert(down)
@@ -363,8 +370,6 @@ func (s *S) TestAutoScaleConfig(c *check.C) {
 func (s *S) TestAutoScaleUpWaitEventStillRunning(c *check.C) {
 	h := metricHandler{cpuMax: "90.2"}
 	ts := httptest.NewServer(&h)
-	config.Set("metrics:db", "graphite")
-	config.Set("graphite:host", ts.URL)
 	defer ts.Close()
 	app := App{
 		Name:     "rush",
@@ -374,6 +379,9 @@ func (s *S) TestAutoScaleUpWaitEventStillRunning(c *check.C) {
 			Increase: Action{Units: 5, Expression: "{cpu_max} > 80", Wait: 30e9},
 			Enabled:  true,
 			MaxUnits: 4,
+		},
+		Env: map[string]bind.EnvVar{
+			"GRAPHITE_HOST": {Name: "GRAPHITE_HOST", Value: ts.URL},
 		},
 	}
 	err := s.conn.Apps().Insert(app)
@@ -395,8 +403,6 @@ func (s *S) TestAutoScaleUpWaitEventStillRunning(c *check.C) {
 func (s *S) TestAutoScaleUpWaitTime(c *check.C) {
 	h := metricHandler{cpuMax: "90.2"}
 	ts := httptest.NewServer(&h)
-	config.Set("metrics:db", "graphite")
-	config.Set("graphite:host", ts.URL)
 	defer ts.Close()
 	app := App{
 		Name:     "rush",
@@ -407,6 +413,9 @@ func (s *S) TestAutoScaleUpWaitTime(c *check.C) {
 			Increase: Action{Units: 5, Expression: "{cpu_max} > 80", Wait: 1 * time.Hour},
 			Enabled:  true,
 			MaxUnits: 4,
+		},
+		Env: map[string]bind.EnvVar{
+			"GRAPHITE_HOST": {Name: "GRAPHITE_HOST", Value: ts.URL},
 		},
 	}
 	err := s.conn.Apps().Insert(app)
@@ -430,8 +439,6 @@ func (s *S) TestAutoScaleUpWaitTime(c *check.C) {
 func (s *S) TestAutoScaleMaxUnits(c *check.C) {
 	h := metricHandler{cpuMax: "90.2"}
 	ts := httptest.NewServer(&h)
-	config.Set("metrics:db", "graphite")
-	config.Set("graphite:host", ts.URL)
 	defer ts.Close()
 	newApp := App{
 		Name:     "myApp",
@@ -441,6 +448,9 @@ func (s *S) TestAutoScaleMaxUnits(c *check.C) {
 			Increase: Action{Units: 5, Expression: "{cpu_max} > 80"},
 			Enabled:  true,
 			MaxUnits: 4,
+		},
+		Env: map[string]bind.EnvVar{
+			"GRAPHITE_HOST": {Name: "GRAPHITE_HOST", Value: ts.URL},
 		},
 	}
 	err := s.conn.Apps().Insert(newApp)
@@ -467,8 +477,6 @@ func (s *S) TestAutoScaleMaxUnits(c *check.C) {
 func (s *S) TestAutoScaleDownWaitEventStillRunning(c *check.C) {
 	h := metricHandler{cpuMax: "10.2"}
 	ts := httptest.NewServer(&h)
-	config.Set("metrics:db", "graphite")
-	config.Set("graphite:host", ts.URL)
 	defer ts.Close()
 	app := App{
 		Name:     "rush",
@@ -479,6 +487,9 @@ func (s *S) TestAutoScaleDownWaitEventStillRunning(c *check.C) {
 			Decrease: Action{Units: 3, Expression: "{cpu_max} < 20", Wait: 30e9},
 			Enabled:  true,
 			MaxUnits: 4,
+		},
+		Env: map[string]bind.EnvVar{
+			"GRAPHITE_HOST": {Name: "GRAPHITE_HOST", Value: ts.URL},
 		},
 	}
 	err := s.conn.Apps().Insert(app)
@@ -500,8 +511,6 @@ func (s *S) TestAutoScaleDownWaitEventStillRunning(c *check.C) {
 func (s *S) TestAutoScaleDownWaitTime(c *check.C) {
 	h := metricHandler{cpuMax: "10.2"}
 	ts := httptest.NewServer(&h)
-	config.Set("metrics:db", "graphite")
-	config.Set("graphite:host", ts.URL)
 	defer ts.Close()
 	app := App{
 		Name:     "rush",
@@ -512,6 +521,9 @@ func (s *S) TestAutoScaleDownWaitTime(c *check.C) {
 			Decrease: Action{Units: 3, Expression: "{cpu_max} < 20", Wait: 3 * time.Hour},
 			Enabled:  true,
 			MaxUnits: 4,
+		},
+		Env: map[string]bind.EnvVar{
+			"GRAPHITE_HOST": {Name: "GRAPHITE_HOST", Value: ts.URL},
 		},
 	}
 	err := s.conn.Apps().Insert(app)
@@ -535,8 +547,6 @@ func (s *S) TestAutoScaleDownWaitTime(c *check.C) {
 func (s *S) TestAutoScaleMinUnits(c *check.C) {
 	h := metricHandler{cpuMax: "10.2"}
 	ts := httptest.NewServer(&h)
-	config.Set("metrics:db", "graphite")
-	config.Set("graphite:host", ts.URL)
 	defer ts.Close()
 	newApp := App{
 		Name:     "myApp",
@@ -547,6 +557,9 @@ func (s *S) TestAutoScaleMinUnits(c *check.C) {
 			Decrease: Action{Units: 3, Expression: "{cpu_max} < 20"},
 			Enabled:  true,
 			MinUnits: uint(3),
+		},
+		Env: map[string]bind.EnvVar{
+			"GRAPHITE_HOST": {Name: "GRAPHITE_HOST", Value: ts.URL},
 		},
 	}
 	err := s.conn.Apps().Insert(newApp)
@@ -605,8 +618,6 @@ func (s *S) TestAutoScaleConfigMarshalJSON(c *check.C) {
 func (s *S) TestAutoScaleDownMin(c *check.C) {
 	h := metricHandler{cpuMax: "10.2"}
 	ts := httptest.NewServer(&h)
-	config.Set("metrics:db", "graphite")
-	config.Set("graphite:host", ts.URL)
 	defer ts.Close()
 	newApp := App{
 		Name:     "myApp",
@@ -617,6 +628,9 @@ func (s *S) TestAutoScaleDownMin(c *check.C) {
 			Decrease: Action{Units: 1, Expression: "{cpu_max} < 20"},
 			Enabled:  true,
 			MinUnits: 1,
+		},
+		Env: map[string]bind.EnvVar{
+			"GRAPHITE_HOST": {Name: "GRAPHITE_HOST", Value: ts.URL},
 		},
 	}
 	err := s.conn.Apps().Insert(newApp)
@@ -637,8 +651,6 @@ func (s *S) TestAutoScaleDownMin(c *check.C) {
 func (s *S) TestAutoScaleUpMax(c *check.C) {
 	h := metricHandler{cpuMax: "90.2"}
 	ts := httptest.NewServer(&h)
-	config.Set("metrics:db", "graphite")
-	config.Set("graphite:host", ts.URL)
 	defer ts.Close()
 	newApp := App{
 		Name:     "myApp",
@@ -648,6 +660,9 @@ func (s *S) TestAutoScaleUpMax(c *check.C) {
 			Increase: Action{Units: 1, Expression: "{cpu_max} > 80"},
 			Enabled:  true,
 			MaxUnits: uint(2),
+		},
+		Env: map[string]bind.EnvVar{
+			"GRAPHITE_HOST": {Name: "GRAPHITE_HOST", Value: ts.URL},
 		},
 	}
 	err := s.conn.Apps().Insert(newApp)

@@ -13,7 +13,11 @@ import (
 )
 
 func (app *App) Metric(kind string) (float64, error) {
-	db, err := metrics.Get()
+	conf := map[string]string{}
+	for _, env := range app.Env {
+		conf[env.Name] = env.Value
+	}
+	db, err := metrics.Get(conf)
 	if err != nil {
 		return 0, errors.New("metrics disabled")
 	}
