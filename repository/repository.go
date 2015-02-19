@@ -47,7 +47,7 @@ type RepositoryManager interface {
 	GrantAccess(repository, user string) error
 	RevokeAccess(repository, user string) error
 
-	CreateRepository(name string) error
+	CreateRepository(name string, users []string) error
 	RemoveRepository(name string) error
 	GetRepository(name string) (Repository, error)
 

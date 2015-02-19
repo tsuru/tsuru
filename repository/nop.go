@@ -26,7 +26,7 @@ func (nopManager) RevokeAccess(repository, user string) error {
 	return nil
 }
 
-func (nopManager) CreateRepository(name string) error {
+func (nopManager) CreateRepository(name string, users []string) error {
 	return nil
 }
 
