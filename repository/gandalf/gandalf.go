@@ -16,6 +16,8 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/go-gandalfclient"
+	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/repository"
 )
@@ -53,6 +55,37 @@ func (gandalfManager) client() (*gandalf.Client, error) {
 	}
 	client := gandalf.Client{Endpoint: url}
 	return &client, nil
+}
+
+func (m gandalfManager) Initialize() error {
+	users, err := auth.ListUsers()
+	if err != nil {
+		return err
+	}
+	for _, user := range users {
+		err = m.CreateUser(user.Email)
+		if err != nil && err != repository.ErrUserAlreadyExists {
+			return err
+		}
+	}
+	apps, err := app.List(nil)
+	if err != nil {
+		return err
+	}
+	for _, app := range apps {
+		var users []string
+		for _, team := range app.GetTeams() {
+			users = append(users, team.Users...)
+		}
+		err = m.CreateRepository(app.Name, users)
+		if err != nil && err != repository.ErrRepositoryAlreadExists {
+			return err
+		}
+		for _, user := range users {
+			m.GrantAccess(app.Name, user)
+		}
+	}
+	return nil
 }
 
 func (m gandalfManager) CreateUser(username string) error {

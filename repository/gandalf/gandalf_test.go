@@ -10,6 +10,10 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/gandalf/gandalftest"
+	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/repository"
 	"gopkg.in/check.v1"
@@ -31,6 +35,7 @@ func (s *GandalfSuite) SetUpSuite(c *check.C) {
 	s.server.Host = "localhost"
 	c.Assert(err, check.IsNil)
 	config.Set("git:api-server", s.server.URL())
+	config.Set("database:name", "repository_gandalf_test")
 }
 
 func (s *GandalfSuite) TearDownSuite(c *check.C) {
@@ -67,6 +72,62 @@ func (s *GandalfSuite) TestHealthCheckDisabled(c *check.C) {
 	config.Unset("git:api-server")
 	err = healthCheck()
 	c.Assert(err, check.Equals, hc.ErrDisabledComponent)
+}
+
+func (s *GandalfSuite) TestInitialize(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	defer dbtest.ClearAllCollections(conn.Apps().Database)
+	var manager gandalfManager
+	user1 := auth.User{Email: "user1@company.com"}
+	user2 := auth.User{Email: "user2@company.com"}
+	err = conn.Users().Insert(user1, user2)
+	c.Assert(err, check.IsNil)
+	err = manager.CreateUser(user1.Email)
+	c.Assert(err, check.IsNil)
+	team := auth.Team{Name: "superteam", Users: []string{user1.Email, user2.Email}}
+	err = conn.Teams().Insert(team)
+	c.Assert(err, check.IsNil)
+	app1 := app.App{Name: "myapp", Teams: []string{team.Name}}
+	app2 := app.App{Name: "yourapp", Teams: []string{team.Name}}
+	app3 := app.App{Name: "hisapp", Teams: []string{team.Name}}
+	err = conn.Apps().Insert(app1, app2, app3)
+	c.Assert(err, check.IsNil)
+	err = manager.CreateRepository(app2.Name, []string{user1.Email})
+	c.Assert(err, check.IsNil)
+	err = manager.Initialize()
+	c.Assert(err, check.IsNil)
+	c.Assert(s.server.Users(), check.DeepEquals, []string{user1.Email, user2.Email})
+	expectedRepos := []gandalftest.Repository{
+		{
+			Name:         "yourapp",
+			Users:        []string{user1.Email, user2.Email},
+			ReadOnlyURL:  "git://localhost/yourapp.git",
+			ReadWriteURL: "git@localhost:yourapp.git",
+			IsPublic:     true,
+		},
+		{
+			Name:         "myapp",
+			Users:        []string{user1.Email, user2.Email},
+			ReadOnlyURL:  "git://localhost/myapp.git",
+			ReadWriteURL: "git@localhost:myapp.git",
+			IsPublic:     true,
+		},
+		{
+			Name:         "hisapp",
+			Users:        []string{user1.Email, user2.Email},
+			ReadOnlyURL:  "git://localhost/hisapp.git",
+			ReadWriteURL: "git@localhost:hisapp.git",
+			IsPublic:     true,
+		},
+	}
+	repositories := s.server.Repositories()
+	for i, repo := range repositories {
+		repo.Diffs = nil
+		repositories[i] = repo
+	}
+	c.Assert(repositories, check.DeepEquals, expectedRepos)
 }
 
 func (s *GandalfSuite) TestCreateUser(c *check.C) {
