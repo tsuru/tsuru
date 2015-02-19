@@ -61,6 +61,11 @@ func (m gandalfManager) CreateUser(username string) error {
 		return err
 	}
 	_, err = client.NewUser(username, nil)
+	if e, ok := err.(*gandalf.HTTPError); ok {
+		if e.Code == http.StatusConflict {
+			return repository.ErrUserAlreadyExists
+		}
+	}
 	return err
 }
 

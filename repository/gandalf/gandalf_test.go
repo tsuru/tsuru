@@ -77,6 +77,14 @@ func (s *GandalfSuite) TestCreateUser(c *check.C) {
 	c.Assert(users, check.DeepEquals, []string{"myself@tsuru.io"})
 }
 
+func (s *GandalfSuite) TestCreateUserAlreadyExists(c *check.C) {
+	var manager gandalfManager
+	err := manager.CreateUser("myself@tsuru.io")
+	c.Assert(err, check.IsNil)
+	err = manager.CreateUser("myself@tsuru.io")
+	c.Assert(err, check.Equals, repository.ErrUserAlreadyExists)
+}
+
 func (s *GandalfSuite) TestRemoveUser(c *check.C) {
 	var manager gandalfManager
 	err := manager.CreateUser("myself@tsuru.io")
