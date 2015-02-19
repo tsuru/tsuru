@@ -57,13 +57,20 @@ func (m *fakeManager) RemoveUser(username string) error {
 	return nil
 }
 
-func (m *fakeManager) CreateRepository(name string) error {
+func (m *fakeManager) CreateRepository(name string, users []string) error {
+	m.keysLock.Lock()
+	defer m.keysLock.Unlock()
+	for _, user := range users {
+		if _, ok := m.keys[user]; !ok {
+			return repository.ErrUserNotFound
+		}
+	}
 	m.grantsLock.Lock()
 	defer m.grantsLock.Unlock()
 	if _, ok := m.grants[name]; ok {
 		return repository.ErrRepositoryAlreadExists
 	}
-	m.grants[name] = nil
+	m.grants[name] = users
 	return nil
 }
 

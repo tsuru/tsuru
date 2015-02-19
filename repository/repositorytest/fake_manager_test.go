@@ -48,9 +48,9 @@ func (Suite) TestManagerUser(c *check.C) {
 }
 
 func (Suite) TestManagerRepository(c *check.C) {
-	err := manager.CreateRepository("myrepo")
+	err := manager.CreateRepository("myrepo", nil)
 	c.Check(err, check.IsNil)
-	err = manager.CreateRepository("myrepo")
+	err = manager.CreateRepository("myrepo", nil)
 	c.Check(err, check.Equals, repository.ErrRepositoryAlreadExists)
 	repo, err := manager.GetRepository("myrepo")
 	c.Check(err, check.IsNil)
@@ -64,13 +64,15 @@ func (Suite) TestManagerRepository(c *check.C) {
 }
 
 func (Suite) TestManagerGrants(c *check.C) {
-	err := manager.CreateRepository("myrepo")
-	c.Check(err, check.IsNil)
-	err = manager.CreateRepository("kernel")
-	c.Check(err, check.IsNil)
-	err = manager.CreateUser("gopher")
+	err := manager.CreateUser("gopher")
 	c.Check(err, check.IsNil)
 	err = manager.CreateUser("gophera")
+	c.Check(err, check.IsNil)
+	err = manager.CreateUser("woot")
+	c.Check(err, check.IsNil)
+	err = manager.CreateRepository("myrepo", nil)
+	c.Check(err, check.IsNil)
+	err = manager.CreateRepository("kernel", []string{"woot"})
 	c.Check(err, check.IsNil)
 	err = manager.GrantAccess("myrepo", "gopher")
 	c.Check(err, check.IsNil)
@@ -81,7 +83,7 @@ func (Suite) TestManagerGrants(c *check.C) {
 	c.Check(grants, check.DeepEquals, []string{"gopher", "gophera"})
 	grants, err = Granted("kernel")
 	c.Check(err, check.IsNil)
-	c.Check(grants, check.HasLen, 0)
+	c.Check(grants, check.DeepEquals, []string{"woot"})
 	grants, err = Granted("kernell")
 	c.Check(grants, check.IsNil)
 	c.Check(err, check.Equals, repository.ErrRepositoryNotFound)
@@ -99,6 +101,8 @@ func (Suite) TestManagerGrants(c *check.C) {
 	err = manager.GrantAccess("myrepo", "watuser")
 	c.Check(err, check.Equals, repository.ErrUserNotFound)
 	err = manager.RevokeAccess("myrepo", "watuser")
+	c.Check(err, check.Equals, repository.ErrUserNotFound)
+	err = manager.CreateRepository("somerepo", []string{"watuser"})
 	c.Check(err, check.Equals, repository.ErrUserNotFound)
 }
 
@@ -134,7 +138,7 @@ func (Suite) TestManagerKeys(c *check.C) {
 }
 
 func (Suite) TestManagerDiff(c *check.C) {
-	err := manager.CreateRepository("mycode")
+	err := manager.CreateRepository("mycode", nil)
 	c.Check(err, check.IsNil)
 	diff, err := manager.Diff("mycode", "1.0", "2.0")
 	c.Check(err, check.IsNil)
