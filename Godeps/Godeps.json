@@ -106,8 +106,8 @@
 		},
 		{
 			"ImportPath": "github.com/tsuru/gandalf/gandalftest",
-			"Comment": "0.5.2-43-g3e6abf7",
-			"Rev": "3e6abf78b7af8c3bd61f9d512374768d3128e6cb"
+			"Comment": "0.5.2-61-ge41a6bc",
+			"Rev": "e41a6bcaa2135aa1756f1ad1bb55fe7f0dfa4ec0"
 		},
 		{
 			"ImportPath": "github.com/tsuru/go-gandalfclient",
