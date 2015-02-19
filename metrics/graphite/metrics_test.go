@@ -10,7 +10,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/metrics"
 	"gopkg.in/check.v1"
 )
@@ -33,9 +32,8 @@ var _ = check.Suite(&S{})
 func (s *S) TestMetric(c *check.C) {
 	h := metricHandler{cpuMax: "8.2"}
 	ts := httptest.NewServer(&h)
-	config.Set("graphite:host", ts.URL)
 	defer ts.Close()
-	g := graphite{}
+	g := graphite{host: ts.URL}
 	series, err := g.Summarize("cpu", "1h", "max")
 	c.Assert(err, check.IsNil)
 	expected := metrics.Series([]metrics.Data{
@@ -51,9 +49,8 @@ func (s *S) TestMetric(c *check.C) {
 func (s *S) TestMetricServerDown(c *check.C) {
 	h := metricHandler{cpuMax: "8.2"}
 	ts := httptest.NewServer(&h)
-	config.Set("graphite:host", ts.URL)
 	ts.Close()
-	g := graphite{}
+	g := graphite{host: ts.URL}
 	_, err := g.Summarize("cpu", "1h", "max")
 	c.Assert(err, check.Not(check.IsNil))
 }
@@ -61,9 +58,8 @@ func (s *S) TestMetricServerDown(c *check.C) {
 func (s *S) TestMetricEnvWithoutSchema(c *check.C) {
 	h := metricHandler{cpuMax: "8.2"}
 	ts := httptest.NewServer(&h)
-	config.Set("graphite:host", ts.URL)
 	defer ts.Close()
-	g := graphite{}
+	g := graphite{host: ts.URL}
 	series, err := g.Summarize("cpu", "1h", "max")
 	c.Assert(err, check.IsNil)
 	expected := metrics.Series([]metrics.Data{
@@ -74,4 +70,13 @@ func (s *S) TestMetricEnvWithoutSchema(c *check.C) {
 		{Timestamp: 1.41512908e+09, Value: 8.2},
 	})
 	c.Assert(series, check.DeepEquals, expected)
+}
+
+func (s *S) TestDetect(c *check.C) {
+	g := graphite{}
+	c.Assert(g.Detect(nil), check.Equals, false)
+	conf := map[string]string{
+		"GRAPHITE_HOST": "http://ble",
+	}
+	c.Assert(g.Detect(conf), check.Equals, true)
 }

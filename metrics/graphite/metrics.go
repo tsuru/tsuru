@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/metrics"
 )
 
@@ -24,22 +23,26 @@ type graphiteData struct {
 }
 
 // graphite represents the Graphite time series database.
-type graphite struct{}
+type graphite struct {
+	host string
+}
 
-func getHost() string {
-	host, err := config.GetString("graphite:host")
-	if err != nil {
-		return ""
+func (g graphite) getHost() string {
+	if !strings.Contains(g.host, "http") {
+		g.host = fmt.Sprintf("http://%s", g.host)
 	}
-	if !strings.Contains(host, "http") {
-		host = fmt.Sprintf("http://%s", host)
-	}
-	return host
+	return g.host
+}
+
+func (g graphite) Detect(config map[string]string) bool {
+	var ok bool
+	g.host, ok = config["GRAPHITE_HOST"]
+	return ok
 }
 
 // Summarize summarizes the data into interval buckets of a certain size.
 func (g graphite) Summarize(key, interval, function string) (metrics.Series, error) {
-	url := fmt.Sprintf("%s/render/?target=keepLastValue(maxSeries(%s))&from=%s&format=json", getHost(), key, interval)
+	url := fmt.Sprintf("%s/render/?target=keepLastValue(maxSeries(%s))&from=%s&format=json", g.getHost(), key, interval)
 	resp, err := http.Get(url)
 	if err != nil {
 		return nil, err
