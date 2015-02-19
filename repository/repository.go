@@ -39,6 +39,15 @@ type Repository struct {
 	ReadWriteURL string
 }
 
+// Initializer is a RepositoryManager that can be initialized. tsuru will call
+// the Initialize method on startup, whenever the "repo-manager" points to a
+// Initializer.
+//
+// tsuru will abort startup in case of a failure in the Initialize method.
+type Initializer interface {
+	Initialize() error
+}
+
 // RepositoryManager represents a manager of application repositories.
 type RepositoryManager interface {
 	CreateUser(username string) error
