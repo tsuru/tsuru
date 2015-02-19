@@ -6,5 +6,5 @@ done
 APP_DIR=${PWD##*/}
 APP_NAME=${APP_DIR/.git/}
 url="${TSURU_HOST}/apps/${APP_NAME}/repository/clone"
-curl -H "Authorization: bearer ${TSURU_TOKEN}" -d "version=origin/master&commit=${COMMIT}" -s -N $url | tee /tmp/deploy-${APP_NAME}.log
+curl -H "Authorization: bearer ${TSURU_TOKEN}" -d "version=origin/master&commit=${COMMIT}&user=${TSURU_USER}" -s -N $url | tee /tmp/deploy-${APP_NAME}.log
 tail -1 /tmp/deploy-${APP_NAME}.log | grep -q "^OK$"

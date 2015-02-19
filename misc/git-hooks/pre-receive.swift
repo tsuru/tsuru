@@ -51,6 +51,6 @@ else
 	ARCHIVE_URL=${CDN_URL}/${ARCHIVE_FILE_NAME}
 fi
 URL="${TSURU_HOST}/apps/${APP_NAME}/repository/clone"
-curl -H "Authorization: bearer ${TSURU_TOKEN}" -d "archive-url=${ARCHIVE_URL}&commit=${COMMIT}" -s -N $URL | tee /tmp/deploy-${APP_NAME}.log
+curl -H "Authorization: bearer ${TSURU_TOKEN}" -d "archive-url=${ARCHIVE_URL}&commit=${COMMIT}&user=${TSURU_USER}" -s -N $URL | tee /tmp/deploy-${APP_NAME}.log
 swift -q $AUTH_PARAMS delete $CONTAINER_NAME $ARCHIVE_FILE_NAME
 tail -1 /tmp/deploy-${APP_NAME}.log | grep -q "^OK$"
