@@ -61,10 +61,8 @@ func (m gandalfManager) CreateUser(username string) error {
 		return err
 	}
 	_, err = client.NewUser(username, nil)
-	if e, ok := err.(*gandalf.HTTPError); ok {
-		if e.Code == http.StatusConflict {
-			return repository.ErrUserAlreadyExists
-		}
+	if e, ok := err.(*gandalf.HTTPError); ok && e.Code == http.StatusConflict {
+		return repository.ErrUserAlreadyExists
 	}
 	return err
 }
@@ -87,6 +85,9 @@ func (m gandalfManager) CreateRepository(name string, users []string) error {
 		return err
 	}
 	_, err = client.NewRepository(name, users, true)
+	if e, ok := err.(*gandalf.HTTPError); ok && e.Code == http.StatusConflict {
+		return repository.ErrRepositoryAlreadExists
+	}
 	return err
 }
 

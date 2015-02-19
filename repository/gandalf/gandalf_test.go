@@ -117,6 +117,16 @@ func (s *GandalfSuite) TestCreateRepository(c *check.C) {
 	c.Assert(repos[0].IsPublic, check.Equals, true)
 }
 
+func (s *GandalfSuite) TestCreateRepositoryDuplicate(c *check.C) {
+	var manager gandalfManager
+	err := manager.CreateUser("user1")
+	c.Assert(err, check.IsNil)
+	err = manager.CreateRepository("myrepo", []string{"user1"})
+	c.Assert(err, check.IsNil)
+	err = manager.CreateRepository("myrepo", []string{"user1"})
+	c.Assert(err, check.Equals, repository.ErrRepositoryAlreadExists)
+}
+
 func (s *GandalfSuite) TestRemoveRepository(c *check.C) {
 	var manager gandalfManager
 	err := manager.CreateRepository("myrepo", nil)
