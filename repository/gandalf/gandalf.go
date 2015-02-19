@@ -76,12 +76,12 @@ func (m gandalfManager) RemoveUser(username string) error {
 	return err
 }
 
-func (m gandalfManager) CreateRepository(name string) error {
+func (m gandalfManager) CreateRepository(name string, users []string) error {
 	client, err := m.client()
 	if err != nil {
 		return err
 	}
-	_, err = client.NewRepository(name, nil, true)
+	_, err = client.NewRepository(name, users, true)
 	return err
 }
 

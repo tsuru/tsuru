@@ -96,20 +96,24 @@ func (s *GandalfSuite) TestRemoveUserNotFound(c *check.C) {
 
 func (s *GandalfSuite) TestCreateRepository(c *check.C) {
 	var manager gandalfManager
-	err := manager.CreateRepository("myrepo")
+	err := manager.CreateUser("user1")
+	c.Assert(err, check.IsNil)
+	err = manager.CreateUser("user2")
+	c.Assert(err, check.IsNil)
+	err = manager.CreateRepository("myrepo", []string{"user1", "user2"})
 	c.Assert(err, check.IsNil)
 	repos := s.server.Repositories()
 	c.Assert(repos, check.HasLen, 1)
 	c.Assert(repos[0].Name, check.Equals, "myrepo")
-	c.Assert(repos[0].Users, check.HasLen, 0)
+	c.Assert(repos[0].Users, check.DeepEquals, []string{"user1", "user2"})
 	c.Assert(repos[0].IsPublic, check.Equals, true)
 }
 
 func (s *GandalfSuite) TestRemoveRepository(c *check.C) {
 	var manager gandalfManager
-	err := manager.CreateRepository("myrepo")
+	err := manager.CreateRepository("myrepo", nil)
 	c.Assert(err, check.IsNil)
-	err = manager.CreateRepository("yourrepo")
+	err = manager.CreateRepository("yourrepo", nil)
 	c.Assert(err, check.IsNil)
 	err = manager.RemoveRepository("yourrepo")
 	c.Assert(err, check.IsNil)
@@ -126,7 +130,7 @@ func (s *GandalfSuite) TestRemoveRepositoryNotFound(c *check.C) {
 
 func (s *GandalfSuite) TestGetRepository(c *check.C) {
 	var manager gandalfManager
-	err := manager.CreateRepository("myrepo")
+	err := manager.CreateRepository("myrepo", nil)
 	c.Assert(err, check.IsNil)
 	repo, err := manager.GetRepository("myrepo")
 	c.Assert(err, check.IsNil)
@@ -143,7 +147,7 @@ func (s *GandalfSuite) TestGetRepositoryNotFound(c *check.C) {
 
 func (s *GandalfSuite) TestGrantAccess(c *check.C) {
 	var manager gandalfManager
-	err := manager.CreateRepository("myrepo")
+	err := manager.CreateRepository("myrepo", nil)
 	c.Assert(err, check.IsNil)
 	err = manager.CreateUser("myuser")
 	c.Assert(err, check.IsNil)
@@ -156,7 +160,7 @@ func (s *GandalfSuite) TestGrantAccess(c *check.C) {
 
 func (s *GandalfSuite) TestRevokeAccess(c *check.C) {
 	var manager gandalfManager
-	err := manager.CreateRepository("myrepo")
+	err := manager.CreateRepository("myrepo", nil)
 	c.Assert(err, check.IsNil)
 	err = manager.CreateUser("myuser")
 	c.Assert(err, check.IsNil)
@@ -210,7 +214,7 @@ func (s *GandalfSuite) TestListKeys(c *check.C) {
 
 func (s *GandalfSuite) TestDiff(c *check.C) {
 	var manager gandalfManager
-	err := manager.CreateRepository("myrepo")
+	err := manager.CreateRepository("myrepo", nil)
 	c.Assert(err, check.IsNil)
 	s.server.PrepareDiff("myrepo", "some diff")
 	diff, err := manager.Diff("myrepo", "10", "11")
