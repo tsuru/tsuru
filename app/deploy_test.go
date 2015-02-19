@@ -397,7 +397,7 @@ func (s *S) TestGetDiffInDeploys(c *check.C) {
 	defer s.conn.Deploys().RemoveAll(nil)
 	err := s.conn.Deploys().Find(bson.M{"commit": myDeploy.Commit}).One(&myDeploy)
 	c.Assert(err, check.IsNil)
-	repository.Manager().CreateRepository("g1")
+	repository.Manager().CreateRepository("g1", nil)
 	diffOutput, err := GetDiffInDeploys(&myDeploy)
 	c.Assert(err, check.IsNil)
 	c.Assert(diffOutput, check.Equals, "")

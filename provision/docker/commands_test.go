@@ -29,7 +29,7 @@ func (s *S) TestGitDeployCmds(c *check.C) {
 	}
 	app.SetEnv(host_env)
 	app.SetEnv(token_env)
-	repository.Manager().CreateRepository("app-name")
+	repository.Manager().CreateRepository("app-name", nil)
 	deployCmd, err := config.GetString("docker:deploy-cmd")
 	c.Assert(err, check.IsNil)
 	expectedPart1 := fmt.Sprintf("%s git git://"+repositorytest.ServerHost+"/app-name.git version", deployCmd)

@@ -159,21 +159,14 @@ var createRepository = action.Action{
 		default:
 			return nil, errors.New("First parameter must be *App.")
 		}
-		manager := repository.Manager()
-		err := manager.CreateRepository(app.Name)
-		if err != nil {
-			return nil, err
-		}
 		var users []string
 		for _, t := range app.GetTeams() {
 			users = append(users, t.Users...)
 		}
-		for _, user := range users {
-			err = manager.GrantAccess(app.Name, user)
-			if err != nil {
-				manager.RemoveRepository(app.Name)
-				return nil, err
-			}
+		manager := repository.Manager()
+		err := manager.CreateRepository(app.Name, users)
+		if err != nil {
+			return nil, err
 		}
 		return app, err
 	},

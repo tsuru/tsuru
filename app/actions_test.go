@@ -241,7 +241,7 @@ func (s *S) TestCreateRepositoryForwardInvalidType(c *check.C) {
 
 func (s *S) TestCreateRepositoryBackward(c *check.C) {
 	app := App{Name: "someapp"}
-	err := repository.Manager().CreateRepository(app.Name)
+	err := repository.Manager().CreateRepository(app.Name, nil)
 	c.Assert(err, check.IsNil)
 	ctx := action.BWContext{FWResult: &app, Params: []interface{}{app}}
 	createRepository.Backward(ctx)

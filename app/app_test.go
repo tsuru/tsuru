@@ -64,7 +64,7 @@ func (s *S) TestDelete(c *check.C) {
 		Platform: "ruby",
 		Owner:    s.user.Email,
 	}
-	err := repository.Manager().CreateRepository(a.Name)
+	err := repository.Manager().CreateRepository(a.Name, nil)
 	c.Assert(err, check.IsNil)
 	err = s.conn.Apps().Insert(&a)
 	c.Assert(err, check.IsNil)
@@ -358,7 +358,7 @@ func (s *S) TestCreateAppProvisionerFailures(c *check.C) {
 }
 
 func (s *S) TestCreateAppRepositoryManagerFailure(c *check.C) {
-	repository.Manager().CreateRepository("otherapp")
+	repository.Manager().CreateRepository("otherapp", nil)
 	a := App{Name: "otherapp", Platform: "python"}
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.NotNil)
@@ -1875,7 +1875,7 @@ func (s *S) TestGetUnits(c *check.C) {
 }
 
 func (s *S) TestAppMarshalJSON(c *check.C) {
-	repository.Manager().CreateRepository("name")
+	repository.Manager().CreateRepository("name", nil)
 	app := App{
 		Name:      "name",
 		Platform:  "Framework",
@@ -1945,7 +1945,7 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 }
 
 func (s *S) TestAppMarshalJSONReady(c *check.C) {
-	repository.Manager().CreateRepository("name")
+	repository.Manager().CreateRepository("name", nil)
 	app := App{
 		Name:      "name",
 		Platform:  "Framework",

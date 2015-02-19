@@ -557,7 +557,7 @@ func (s *S) TestGitDeploy(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/python")
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	repository.Manager().CreateRepository("myapp")
+	repository.Manager().CreateRepository("myapp", nil)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
@@ -585,7 +585,7 @@ func (s *S) TestGitDeployRollsbackAfterErrorOnAttach(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/python")
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	repository.Manager().CreateRepository("myapp")
+	repository.Manager().CreateRepository("myapp", nil)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	var buf errBuffer
