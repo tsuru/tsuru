@@ -120,6 +120,18 @@ func (s *S) TestAddDuplicatedKey(c *check.C) {
 	c.Assert(err, check.Equals, repository.ErrKeyAlreadyExists)
 }
 
+func (s *S) TestAddKeyDisabled(c *check.C) {
+	config.Set("repo-manager", "none")
+	defer config.Set("repo-manager", "fake")
+	u := &User{Email: "sacefulofsecrets@pinkfloyd.com"}
+	err := u.Create()
+	c.Assert(err, check.IsNil)
+	defer u.Delete()
+	key := repository.Key{Name: "my-key", Body: "other-key"}
+	err = u.AddKey(key)
+	c.Assert(err, check.Equals, ErrKeyDisabled)
+}
+
 func (s *S) TestRemoveKeyRemovesAKeyFromTheUser(c *check.C) {
 	key := repository.Key{Body: "my-key", Name: "the-key"}
 	u := &User{Email: "shineon@pinkfloyd.com"}
@@ -142,6 +154,18 @@ func (s *S) TestRemoveUnknownKey(c *check.C) {
 	defer u.Delete()
 	err = u.RemoveKey(repository.Key{Body: "my-key"})
 	c.Assert(err, check.Equals, repository.ErrKeyNotFound)
+}
+
+func (s *S) TestRemoveKeyDisabled(c *check.C) {
+	config.Set("repo-manager", "none")
+	defer config.Set("repo-manager", "fake")
+	u := &User{Email: "sacefulofsecrets@pinkfloyd.com"}
+	err := u.Create()
+	c.Assert(err, check.IsNil)
+	defer u.Delete()
+	key := repository.Key{Name: "my-key", Body: "other-key"}
+	err = u.RemoveKey(key)
+	c.Assert(err, check.Equals, ErrKeyDisabled)
 }
 
 func (s *S) TestTeams(c *check.C) {
@@ -231,6 +255,18 @@ func (s *S) TestListKeysRepositoryManagerFailure(c *check.C) {
 	keys, err := u.ListKeys()
 	c.Assert(keys, check.HasLen, 0)
 	c.Assert(err.Error(), check.Equals, "user not found")
+}
+
+func (s *S) TestListKeysDisabled(c *check.C) {
+	config.Set("repo-manager", "none")
+	defer config.Set("repo-manager", "fake")
+	u := &User{Email: "sacefulofsecrets@pinkfloyd.com"}
+	err := u.Create()
+	c.Assert(err, check.IsNil)
+	defer u.Delete()
+	keys, err := u.ListKeys()
+	c.Assert(err, check.Equals, ErrKeyDisabled)
+	c.Assert(keys, check.IsNil)
 }
 
 func (s *S) TestShowAPIKeyWhenAPITokenAlreadyExists(c *check.C) {

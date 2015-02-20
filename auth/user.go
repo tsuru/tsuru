@@ -25,6 +25,7 @@ import (
 var (
 	ErrUserNotFound = stderrors.New("user not found")
 	ErrInvalidKey   = stderrors.New("invalid key")
+	ErrKeyDisabled  = stderrors.New("key management is disabled")
 )
 
 type User struct {
@@ -131,18 +132,20 @@ func (u *User) Teams() ([]Team, error) {
 }
 
 func (u *User) AddKey(key repository.Key) error {
-	if key.Name == "" {
-		return ErrInvalidKey
+	if mngr, ok := repository.Manager().(repository.KeyRepositoryManager); ok {
+		if key.Name == "" {
+			return ErrInvalidKey
+		}
+		return mngr.AddKey(u.Email, key)
 	}
-	return repository.Manager().(repository.KeyRepositoryManager).AddKey(u.Email, key)
+	return ErrKeyDisabled
 }
 
 func (u *User) RemoveKey(key repository.Key) error {
-	err := repository.Manager().(repository.KeyRepositoryManager).RemoveKey(u.Email, key)
-	if err != nil {
-		return err
+	if mngr, ok := repository.Manager().(repository.KeyRepositoryManager); ok {
+		return mngr.RemoveKey(u.Email, key)
 	}
-	return nil
+	return ErrKeyDisabled
 }
 
 func (u *User) IsAdmin() bool {
@@ -186,15 +189,18 @@ func (u *User) AllowedApps() ([]string, error) {
 }
 
 func (u *User) ListKeys() (map[string]string, error) {
-	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(u.Email)
-	if err != nil {
-		return nil, err
+	if mngr, ok := repository.Manager().(repository.KeyRepositoryManager); ok {
+		keys, err := mngr.ListKeys(u.Email)
+		if err != nil {
+			return nil, err
+		}
+		keysMap := make(map[string]string, len(keys))
+		for _, key := range keys {
+			keysMap[key.Name] = key.Body
+		}
+		return keysMap, nil
 	}
-	keysMap := make(map[string]string, len(keys))
-	for _, key := range keys {
-		keysMap[key.Name] = key.Body
-	}
-	return keysMap, nil
+	return nil, ErrKeyDisabled
 }
 
 func (u *User) createOnRepositoryManager() error {
