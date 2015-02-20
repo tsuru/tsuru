@@ -50,7 +50,6 @@ func (s *S) TestPasswordTokenUser(c *check.C) {
 	t, err := createPasswordToken(&u)
 	c.Assert(err, check.IsNil)
 	u2, err := t.user()
-	u2.Keys = u.Keys
 	c.Assert(err, check.IsNil)
 	c.Assert(*u2, check.DeepEquals, u)
 }
