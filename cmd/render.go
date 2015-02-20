@@ -199,9 +199,12 @@ func (t *Table) String() string {
 		return ""
 	}
 	var ttyWidth int
-	stdinFd := int(os.Stdin.Fd())
-	if terminal.IsTerminal(stdinFd) {
-		ttyWidth, _, _ = terminal.GetSize(stdinFd)
+	terminalFd := int(os.Stdout.Fd())
+	if os.Getenv("TSURU_FORCE_WRAP") != "" {
+		terminalFd = int(os.Stdin.Fd())
+	}
+	if terminal.IsTerminal(terminalFd) {
+		ttyWidth, _, _ = terminal.GetSize(terminalFd)
 	}
 	sizes := t.resizeLastColumn(ttyWidth)
 	result := t.separator()
