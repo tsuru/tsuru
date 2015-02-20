@@ -417,6 +417,9 @@ func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	rec.Log(u.Email, "add-key", key.Name, key.Body)
 	err = u.AddKey(key)
+	if err == auth.ErrKeyDisabled {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
 	if err == repository.ErrKeyAlreadyExists {
 		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 	}
@@ -442,6 +445,9 @@ func removeKeyFromUser(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	}
 	rec.Log(u.Email, "remove-key", key.Name, key.Body)
 	err = u.RemoveKey(key)
+	if err == auth.ErrKeyDisabled {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
 	if err == repository.ErrKeyNotFound {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "User does not have this key"}
 	}
@@ -455,6 +461,9 @@ func listKeys(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	keys, err := u.ListKeys()
+	if err == auth.ErrKeyDisabled {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
 	if err != nil {
 		return err
 	}

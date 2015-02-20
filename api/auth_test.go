@@ -1138,6 +1138,23 @@ func (s *AuthSuite) TestAddKeyToUserReturnsBadRequestIfTheKeyIsEmpty(c *check.C)
 	c.Assert(e, check.ErrorMatches, "^Missing key content$")
 }
 
+func (s *AuthSuite) TestAddKeyToUserKeyManagerDisabled(c *check.C) {
+	config.Set("repo-manager", "none")
+	defer config.Set("repo-manager", "fake")
+	conn, _ := db.Conn()
+	defer conn.Close()
+	b := bytes.NewBufferString(`{"name":"the-key","key":"my-key"}`)
+	request, err := http.NewRequest("POST", "/users/keys", b)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = addKeyToUser(recorder, request, s.token)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(e.Message, check.Equals, "key management is disabled")
+}
+
 func (s *AuthSuite) TestAddKeyToUserReturnsConflictIfTheKeyIsAlreadyPresent(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
@@ -1262,6 +1279,23 @@ func (s *AuthSuite) TestRemoveKeyHandlerReturnsNotFoundIfTheUserDoesNotHaveTheKe
 	c.Assert(e.Code, check.Equals, http.StatusNotFound)
 }
 
+func (s *AuthSuite) TestRemoveKeyFromUserKeyManagerDisabled(c *check.C) {
+	config.Set("repo-manager", "none")
+	defer config.Set("repo-manager", "fake")
+	conn, _ := db.Conn()
+	defer conn.Close()
+	b := bytes.NewBufferString(`{"name":"the-key","key":"my-key"}`)
+	request, err := http.NewRequest("DELETE", "/users/keys", b)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = removeKeyFromUser(recorder, request, s.token)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(e.Message, check.Equals, "key management is disabled")
+}
+
 func (s *AuthSuite) TestListKeysHandler(c *check.C) {
 	keys := []repository.Key{
 		{Name: "homekey", Body: "lol somekey somecomment"},
@@ -1284,6 +1318,22 @@ func (s *AuthSuite) TestListKeysHandler(c *check.C) {
 		"workkey": "lol someotherkey someothercomment",
 	}
 	c.Assert(expected, check.DeepEquals, got)
+}
+
+func (s *AuthSuite) TestListKeysKeyManagerDisabled(c *check.C) {
+	config.Set("repo-manager", "none")
+	defer config.Set("repo-manager", "fake")
+	conn, _ := db.Conn()
+	defer conn.Close()
+	request, err := http.NewRequest("GET", "/users/keys", nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = listKeys(recorder, request, s.token)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(e.Message, check.Equals, "key management is disabled")
 }
 
 func (s *AuthSuite) TestRemoveUser(c *check.C) {
