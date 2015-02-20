@@ -5,6 +5,7 @@
 package cmd
 
 import (
+	"os"
 	"sort"
 
 	"gopkg.in/check.v1"
@@ -359,4 +360,27 @@ func (s *S) TestColoredString(c *check.C) {
 +-------------------+---+
 `
 	c.Assert(table.String(), check.Equals, expected)
+}
+
+func (s *S) TestResizeLastColumnOnWhitespace(c *check.C) {
+	err := os.Setenv("TSURU_BREAK_WHITESPACE", "1")
+	c.Assert(err, check.IsNil)
+	defer os.Unsetenv("TSURU_BREAK_WHITESPACE")
+	t := NewTable()
+	t.AddRow(Row{"1", "abc def ghi jk"})
+	t.AddRow(Row{"2", "12 3 456 7890"})
+	t.AddRow(Row{"3", "1 2 3 4"})
+	sizes := t.resizeLastColumn(12)
+	c.Assert(sizes, check.DeepEquals, []int{1, 4})
+	c.Assert(t.rows[0], check.DeepEquals, Row{"1", `abc↵
+def↵
+ghi↵
+jk`})
+	c.Assert(t.rows[1], check.DeepEquals, Row{"2", `12 ↵
+3  ↵
+456↵
+789↵
+0`})
+	c.Assert(t.rows[2], check.DeepEquals, Row{"3", `1 2↵
+3 4`})
 }
