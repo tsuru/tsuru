@@ -386,14 +386,14 @@ func getTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(team)
 }
 
-func getKeyFromBody(b io.Reader) (auth.Key, error) {
-	var key auth.Key
+func getKeyFromBody(b io.Reader) (repository.Key, error) {
+	var key repository.Key
 	var body map[string]string
 	err := json.NewDecoder(b).Decode(&body)
 	if err != nil {
 		return key, &errors.HTTP{Code: http.StatusBadRequest, Message: "Invalid JSON"}
 	}
-	key.Content = body["key"]
+	key.Body = body["key"]
 	key.Name = body["name"]
 	return key, nil
 }
@@ -408,16 +408,16 @@ func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	if key.Content == "" {
+	if key.Body == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Missing key content"}
 	}
 	u, err := t.User()
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "add-key", key.Name, key.Content)
+	rec.Log(u.Email, "add-key", key.Name, key.Body)
 	err = u.AddKey(key)
-	if err == auth.ErrUserAlreadyHasKey {
+	if err == repository.ErrKeyAlreadyExists {
 		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 	}
 	return err
@@ -433,16 +433,16 @@ func removeKeyFromUser(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if err != nil {
 		return err
 	}
-	if key.Content == "" && key.Name == "" {
+	if key.Body == "" && key.Name == "" {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "Either the content or the name of the key must be provided"}
 	}
 	u, err := t.User()
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "remove-key", key.Name, key.Content)
+	rec.Log(u.Email, "remove-key", key.Name, key.Body)
 	err = u.RemoveKey(key)
-	if err == auth.ErrKeyNotFound {
+	if err == repository.ErrKeyNotFound {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "User does not have this key"}
 	}
 	return err

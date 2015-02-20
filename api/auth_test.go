@@ -803,7 +803,7 @@ func (s *AuthSuite) TestAddUserToTeamShoulGrantAccessInRepository(c *check.C) {
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a)
-	b := bytes.NewBufferString(`{"key":"my-key"}`)
+	b := bytes.NewBufferString(`{"name":"the-key","key":"my-key"}`)
 	request, err := http.NewRequest("POST", "/users/keys", b)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -966,7 +966,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamRevokesAccessInRepository(c *check.C) 
 	c.Assert(err, check.IsNil)
 	defer nativeScheme.Logout(t.GetValue())
 	defer conn.Users().Remove(bson.M{"email": u.Email})
-	b := bytes.NewBufferString(`{"key":"my-key"}`)
+	b := bytes.NewBufferString(`{"name":"the-key","key":"my-key"}`)
 	request, err := http.NewRequest("POST", "/users/keys", b)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1063,14 +1063,14 @@ func (s *AuthSuite) TestGetTeamForbidden(c *check.C) {
 	c.Assert(e.Message, check.Equals, "User is not member of this team")
 }
 
-func (s *AuthSuite) TestAddKeyToUserAddsAKeyToTheUser(c *check.C) {
+func (s *AuthSuite) TestAddKeyToUser(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
 	defer func() {
-		s.user.RemoveKey(auth.Key{Content: "my-key"})
+		s.user.RemoveKey(repository.Key{Name: "the-key"})
 		conn.Users().Update(bson.M{"email": s.user.Email}, s.user)
 	}()
-	b := bytes.NewBufferString(`{"key":"my-key"}`)
+	b := bytes.NewBufferString(`{"name":"the-key","key":"my-key"}`)
 	request, err := http.NewRequest("POST", "/users/keys", b)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1078,43 +1078,15 @@ func (s *AuthSuite) TestAddKeyToUserAddsAKeyToTheUser(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.user, err = auth.GetUserByEmail(s.user.Email)
 	c.Assert(err, check.IsNil)
-	key := auth.Key{Name: s.user.Email + "-1"}
-	gotKey, _ := s.user.FindKey(key)
-	key.Content = "my-key"
-	c.Assert(gotKey, check.DeepEquals, key)
 	action := rectest.Action{
 		Action: "add-key",
 		User:   s.user.Email,
-		Extra:  []interface{}{"", "my-key"},
+		Extra:  []interface{}{"the-key", "my-key"},
 	}
 	c.Assert(action, rectest.IsRecorded)
-}
-
-func (s *AuthSuite) TestAddKeyToUserAcceptsTheNameOfTheKey(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
-	defer func() {
-		s.user.RemoveKey(auth.Key{Content: "my-key"})
-		conn.Users().Update(bson.M{"email": s.user.Email}, s.user)
-	}()
-	b := bytes.NewBufferString(`{"key":"my-key","name":"super-key"}`)
-	request, err := http.NewRequest("POST", "/users/keys", b)
+	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(s.user.Email)
 	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = addKeyToUser(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
-	s.user, err = auth.GetUserByEmail(s.user.Email)
-	c.Assert(err, check.IsNil)
-	key := auth.Key{Name: "super-key"}
-	gotKey, _ := s.user.FindKey(key)
-	key.Content = "my-key"
-	c.Assert(gotKey, check.DeepEquals, key)
-	action := rectest.Action{
-		Action: "add-key",
-		User:   s.user.Email,
-		Extra:  []interface{}{"super-key", "my-key"},
-	}
-	c.Assert(action, rectest.IsRecorded)
+	c.Assert(keys, check.DeepEquals, []repository.Key{{Name: "the-key", Body: "my-key"}})
 }
 
 func (s *AuthSuite) TestAddKeyToUserReturnsErrorIfTheReadingOfTheBodyFails(c *check.C) {
@@ -1169,13 +1141,13 @@ func (s *AuthSuite) TestAddKeyToUserReturnsBadRequestIfTheKeyIsEmpty(c *check.C)
 func (s *AuthSuite) TestAddKeyToUserReturnsConflictIfTheKeyIsAlreadyPresent(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
-	s.user.AddKey(auth.Key{Content: "my-key"})
+	s.user.AddKey(repository.Key{Name: "the-key", Body: "my-key"})
 	conn.Users().Update(bson.M{"email": s.user.Email}, s.user)
 	defer func() {
-		s.user.RemoveKey(auth.Key{Content: "my-key"})
+		s.user.RemoveKey(repository.Key{Name: "the-key", Body: "my-key"})
 		conn.Users().Update(bson.M{"email": s.user.Email}, s.user)
 	}()
-	b := bytes.NewBufferString(`{"key":"my-key"}`)
+	b := bytes.NewBufferString(`{"name":"the-key","key":"your-key"}`)
 	request, err := http.NewRequest("POST", "/users/key", b)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1184,39 +1156,10 @@ func (s *AuthSuite) TestAddKeyToUserReturnsConflictIfTheKeyIsAlreadyPresent(c *c
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Code, check.Equals, http.StatusConflict)
-	c.Assert(e.Message, check.Equals, "user already has this key")
+	c.Assert(e.Message, check.Equals, "user already have this key")
 }
 
-func (s *AuthSuite) TestAddKeyAddKeyToUserInRepository(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
-	u := &auth.User{Email: "francisco@franciscosouza.net", Password: "123456"}
-	_, err := nativeScheme.Create(u)
-	c.Assert(err, check.IsNil)
-	t, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
-	c.Assert(err, check.IsNil)
-	defer nativeScheme.Logout(t.GetValue())
-	b := bytes.NewBufferString(`{"key":"my-key"}`)
-	request, err := http.NewRequest("POST", "/users/keys", b)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = addKeyToUser(recorder, request, t)
-	c.Assert(err, check.IsNil)
-	u, err = auth.GetUserByEmail(u.Email)
-	c.Assert(err, check.IsNil)
-	defer func() {
-		u.RemoveKey(u.Keys[0])
-		conn.Users().RemoveAll(bson.M{"email": u.Email})
-	}()
-	c.Assert(u.Keys[0].Name, check.Not(check.Matches), "\\.pub$")
-	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(u.Email)
-	c.Assert(err, check.IsNil)
-	c.Assert(keys, check.HasLen, 1)
-	c.Assert(keys[0].Name, check.Equals, "francisco@franciscosouza.net-1")
-	c.Assert(keys[0].Body, check.Equals, "my-key")
-}
-
-func (s *AuthSuite) TestAddKeyToUserShouldNotInsertKeyInDatabaseWhenRepositoryAdditionFails(c *check.C) {
+func (s *AuthSuite) TestAddKeyToUserFailure(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
 	u := &auth.User{Email: "me@gmail.com", Password: "123456"}
@@ -1225,80 +1168,34 @@ func (s *AuthSuite) TestAddKeyToUserShouldNotInsertKeyInDatabaseWhenRepositoryAd
 	t, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	defer nativeScheme.Logout(t.GetValue())
-	b := bytes.NewBufferString(`{"key":"my-key"}`)
+	b := bytes.NewBufferString(`{"name":"the-key","key":"my-key"}`)
 	request, err := http.NewRequest("POST", "/users/keys", b)
 	c.Assert(err, check.IsNil)
 	repository.Manager().RemoveUser(u.Email)
 	recorder := httptest.NewRecorder()
 	err = addKeyToUser(recorder, request, t)
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "failed to add key to git server: user not found")
-	defer conn.Users().RemoveAll(bson.M{"email": u.Email})
-	u2, err := auth.GetUserByEmail(u.Email)
-	c.Assert(err, check.IsNil)
-	c.Assert(u2.Keys, check.DeepEquals, []auth.Key{})
+	c.Assert(err.Error(), check.Equals, "user not found")
 }
 
-func (s *AuthSuite) TestRemoveKeyHandlerRemovesTheKeyFromTheUser(c *check.C) {
-	b := bytes.NewBufferString(`{"key":"my-key"}`)
+func (s *AuthSuite) TestRemoveKeyHandler(c *check.C) {
+	b := bytes.NewBufferString(`{"name":"the-key","key":"my-key"}`)
 	request, err := http.NewRequest("POST", "/users/keys", b)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	addKeyToUser(recorder, request, s.token)
-	b = bytes.NewBufferString(`{"key":"my-key"}`)
+	b = bytes.NewBufferString(`{"name":"the-key","key":"my-key"}`)
 	request, err = http.NewRequest("DELETE", "/users/key", b)
 	c.Assert(err, check.IsNil)
 	recorder = httptest.NewRecorder()
 	err = removeKeyFromUser(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	u2, err := auth.GetUserByEmail(s.user.Email)
-	c.Assert(err, check.IsNil)
-	c.Assert(u2.HasKey(auth.Key{Content: "my-key"}), check.Equals, false)
 	action := rectest.Action{
 		Action: "remove-key",
 		User:   s.user.Email,
-		Extra:  []interface{}{"", "my-key"},
+		Extra:  []interface{}{"the-key", "my-key"},
 	}
 	c.Assert(action, rectest.IsRecorded)
-}
-
-func (s *AuthSuite) TestRemoveKeyHandlerCanRemoveByName(c *check.C) {
-	b := bytes.NewBufferString(`{"key":"my-key","name":"key-name"}`)
-	request, err := http.NewRequest("POST", "/users/keys", b)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	addKeyToUser(recorder, request, s.token)
-	b = bytes.NewBufferString(`{"name":"key-name"}`)
-	request, err = http.NewRequest("DELETE", "/users/key", b)
-	c.Assert(err, check.IsNil)
-	recorder = httptest.NewRecorder()
-	err = removeKeyFromUser(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
-	u2, err := auth.GetUserByEmail(s.user.Email)
-	c.Assert(err, check.IsNil)
-	c.Assert(u2.HasKey(auth.Key{Content: "my-key"}), check.Equals, false)
-	action := rectest.Action{
-		Action: "remove-key",
-		User:   s.user.Email,
-		Extra:  []interface{}{"key-name", ""},
-	}
-	c.Assert(action, rectest.IsRecorded)
-}
-
-func (s *AuthSuite) TestRemoveKeyHandlerRepositoryManager(c *check.C) {
-	b := bytes.NewBufferString(`{"key":"my-key"}`)
-	request, err := http.NewRequest("POST", "/users/keys", b)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = addKeyToUser(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
-	b = bytes.NewBufferString(`{"key":"my-key"}`)
-	request, err = http.NewRequest("DELETE", "/users/key", b)
-	c.Assert(err, check.IsNil)
-	recorder = httptest.NewRecorder()
-	err = removeKeyFromUser(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
-	s.user, _ = auth.GetUserByEmail(s.user.Email)
 	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(s.user.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(keys, check.HasLen, 0)
@@ -1341,7 +1238,7 @@ func (s *AuthSuite) TestRemoveKeyHandlerReturnsBadRequestIfTheKeyIsNotPresent(c 
 }
 
 func (s *AuthSuite) TestRemoveKeyHandlerReturnsBadRequestIfTheKeyIsEmpty(c *check.C) {
-	b := bytes.NewBufferString(`{"key":""}`)
+	b := bytes.NewBufferString(`{"name":""}`)
 	request, err := http.NewRequest("DELETE", "/users/key", b)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -1354,7 +1251,7 @@ func (s *AuthSuite) TestRemoveKeyHandlerReturnsBadRequestIfTheKeyIsEmpty(c *chec
 }
 
 func (s *AuthSuite) TestRemoveKeyHandlerReturnsNotFoundIfTheUserDoesNotHaveTheKey(c *check.C) {
-	b := bytes.NewBufferString(`{"key":"my-key"}`)
+	b := bytes.NewBufferString(`{"name":"the-key"}`)
 	request, err := http.NewRequest("DELETE", "/users/key", b)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
