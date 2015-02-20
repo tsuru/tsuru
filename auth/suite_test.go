@@ -19,30 +19,6 @@ import (
 	"gopkg.in/check.v1"
 )
 
-type hasKeyChecker struct{}
-
-func (c *hasKeyChecker) Info() *check.CheckerInfo {
-	return &check.CheckerInfo{Name: "HasKey", Params: []string{"user", "key"}}
-}
-
-func (c *hasKeyChecker) Check(params []interface{}, names []string) (bool, string) {
-	if len(params) != 2 {
-		return false, "you should provide two parameters"
-	}
-	user, ok := params[0].(*User)
-	if !ok {
-		return false, "first parameter should be a user pointer"
-	}
-	content, ok := params[1].(string)
-	if !ok {
-		return false, "second parameter should be a string"
-	}
-	key := Key{Content: content}
-	return user.HasKey(key), ""
-}
-
-var HasKey check.Checker = &hasKeyChecker{}
-
 func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
@@ -81,6 +57,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("smtp:server", s.server.Addr())
 	config.Set("smtp:user", "root")
 	config.Set("smtp:password", "123456")
+	config.Set("repo-manager", "fake")
 }
 
 func (s *S) TearDownSuite(c *check.C) {

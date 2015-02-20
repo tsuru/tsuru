@@ -91,62 +91,57 @@ func (s *S) TestAddKeyAddsAKeyToTheUser(c *check.C) {
 	err := u.Create()
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
-	key := Key{Name: "some-key", Content: "my-key"}
+	key := repository.Key{Name: "some-key", Body: "my-key"}
 	err = u.AddKey(key)
 	c.Assert(err, check.IsNil)
-	c.Assert(u, HasKey, "my-key")
 	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(u.Email)
 	c.Assert(err, check.IsNil)
-	c.Assert(keys, check.DeepEquals, []repository.Key{key.RepoKey()})
+	c.Assert(keys, check.DeepEquals, []repository.Key{key})
 }
 
-func (s *S) TestAddKeyGeneratesNameWhenEmpty(c *check.C) {
+func (s *S) TestAddKeyEmptyName(c *check.C) {
 	u := &User{Email: "sacefulofsecrets@pinkfloyd.com"}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
-	key := Key{Content: "my-key"}
+	key := repository.Key{Body: "my-key"}
 	err = u.AddKey(key)
-	c.Assert(err, check.IsNil)
-	c.Assert(u, HasKey, "my-key")
-	repoKey := key.RepoKey()
-	repoKey.Name = u.Email + "-1"
-	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(u.Email)
-	c.Assert(err, check.IsNil)
-	c.Assert(keys, check.DeepEquals, []repository.Key{repoKey})
+	c.Assert(err, check.Equals, ErrInvalidKey)
 }
 
 func (s *S) TestAddDuplicatedKey(c *check.C) {
-	u := &User{
-		Email: "sacefulofsecrets@pinkfloyd.com",
-		Keys:  []Key{{Name: "my-key", Content: "some-key"}},
-	}
+	u := &User{Email: "sacefulofsecrets@pinkfloyd.com"}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
-	key := Key{Name: "my-key", Content: "other-key"}
+	key := repository.Key{Name: "my-key", Body: "other-key"}
+	repository.Manager().(repository.KeyRepositoryManager).AddKey(u.Email, key)
 	err = u.AddKey(key)
-	c.Assert(err, check.Equals, ErrUserAlreadyHasKey)
+	c.Assert(err, check.Equals, repository.ErrKeyAlreadyExists)
 }
 
 func (s *S) TestRemoveKeyRemovesAKeyFromTheUser(c *check.C) {
-	key := Key{Content: "my-key", Name: "the-key"}
-	u := &User{Email: "shineon@pinkfloyd.com", Keys: []Key{key}}
+	key := repository.Key{Body: "my-key", Name: "the-key"}
+	u := &User{Email: "shineon@pinkfloyd.com"}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
-	err = u.RemoveKey(Key{Content: "my-key"})
+	defer u.Delete()
+	err = repository.Manager().(repository.KeyRepositoryManager).AddKey(u.Email, key)
 	c.Assert(err, check.IsNil)
-	c.Assert(u, check.Not(HasKey), "my-key")
+	err = u.RemoveKey(repository.Key{Name: "the-key"})
+	c.Assert(err, check.IsNil)
 	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(u.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(keys, check.HasLen, 0)
 }
 
 func (s *S) TestRemoveUnknownKey(c *check.C) {
-	u := &User{Email: "shine@pinkfloyd.com", Keys: nil}
-	err := u.RemoveKey(Key{Content: "my-key"})
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "key not found")
+	u := &User{Email: "shine@pinkfloyd.com"}
+	err := u.Create()
+	c.Assert(err, check.IsNil)
+	defer u.Delete()
+	err = u.RemoveKey(repository.Key{Body: "my-key"})
+	c.Assert(err, check.Equals, repository.ErrKeyNotFound)
 }
 
 func (s *S) TestTeams(c *check.C) {
@@ -170,34 +165,6 @@ func (s *S) TestTeams(c *check.C) {
 	c.Assert(teams, check.HasLen, 2)
 	c.Assert(teams[0].Name, check.Equals, s.team.Name)
 	c.Assert(teams[1].Name, check.Equals, t.Name)
-}
-
-func (s *S) TestFindKeyByName(c *check.C) {
-	u := User{
-		Email:    "me@tsuru.com",
-		Password: "123",
-		Keys:     []Key{{Name: "me@tsuru.com-1", Content: "ssh-rsa somekey me@tsuru.com"}},
-	}
-	err := u.Create()
-	c.Assert(err, check.IsNil)
-	defer u.Delete()
-	k, index := u.FindKey(Key{Name: u.Keys[0].Name})
-	c.Assert(index, check.Equals, 0)
-	c.Assert(k.Name, check.Equals, u.Keys[0].Name)
-}
-
-func (s *S) TestFindKeyByBody(c *check.C) {
-	u := User{
-		Email:    "me@tsuru.com",
-		Password: "123",
-		Keys:     []Key{{Name: "me@tsuru.com-1", Content: "ssh-rsa somekey me@tsuru.com"}},
-	}
-	err := u.Create()
-	c.Assert(err, check.IsNil)
-	defer u.Delete()
-	k, index := u.FindKey(Key{Content: u.Keys[0].Content})
-	c.Assert(index, check.Equals, 0)
-	c.Assert(k.Name, check.Equals, u.Keys[0].Name)
 }
 
 func (s *S) TestIsAdminReturnsTrueWhenUserHasATeamNamedWithAdminTeamConf(c *check.C) {
@@ -242,12 +209,12 @@ func (s *S) TestListKeysShouldGetKeysFromTheRepositoryManager(c *check.C) {
 		Email:    "wolverine@xmen.com",
 		Password: "123456",
 	}
-	newKeys := []Key{{Name: "key1", Content: "superkey"}, {Name: "key2", Content: "hiperkey"}}
+	newKeys := []repository.Key{{Name: "key1", Body: "superkey"}, {Name: "key2", Body: "hiperkey"}}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
-	repository.Manager().(repository.KeyRepositoryManager).AddKey(u.Email, newKeys[0].RepoKey())
-	repository.Manager().(repository.KeyRepositoryManager).AddKey(u.Email, newKeys[1].RepoKey())
+	repository.Manager().(repository.KeyRepositoryManager).AddKey(u.Email, newKeys[0])
+	repository.Manager().(repository.KeyRepositoryManager).AddKey(u.Email, newKeys[1])
 	keys, err := u.ListKeys()
 	c.Assert(err, check.IsNil)
 	expected := map[string]string{"key1": "superkey", "key2": "hiperkey"}
@@ -270,7 +237,6 @@ func (s *S) TestShowAPIKeyWhenAPITokenAlreadyExists(c *check.C) {
 	u := User{
 		Email:    "me@tsuru.com",
 		Password: "123",
-		Keys:     []Key{{Name: "me@tsuru.com-1", Content: "ssh-rsa somekey me@tsuru.com"}},
 		APIKey:   "1ioudh8ydb2idn1ehnpoqwjmhdjqwz12po1",
 	}
 	err := u.Create()
@@ -282,12 +248,7 @@ func (s *S) TestShowAPIKeyWhenAPITokenAlreadyExists(c *check.C) {
 }
 
 func (s *S) TestShowAPIKeyWhenAPITokenNotExists(c *check.C) {
-	u := User{
-		Email:    "me@tsuru.com",
-		Password: "123",
-		Keys:     []Key{{Name: "me@tsuru.com-1", Content: "ssh-rsa somekey me@tsuru.com"}},
-		APIKey:   "",
-	}
+	u := User{Email: "me@tsuru.com", Password: "123"}
 	err := u.Create()
 	c.Assert(err, check.IsNil)
 	defer u.Delete()

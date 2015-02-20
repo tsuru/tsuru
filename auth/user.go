@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
@@ -24,24 +23,13 @@ import (
 )
 
 var (
-	ErrUserNotFound      = stderrors.New("user not found")
-	ErrUserAlreadyHasKey = stderrors.New("user already has this key")
-	ErrKeyNotFound       = stderrors.New("key not found")
+	ErrUserNotFound = stderrors.New("user not found")
+	ErrInvalidKey   = stderrors.New("invalid key")
 )
-
-type Key struct {
-	Name    string
-	Content string
-}
-
-func (k *Key) RepoKey() repository.Key {
-	return repository.Key{Name: k.Name, Body: k.Content}
-}
 
 type User struct {
 	Email    string
 	Password string
-	Keys     []Key
 	quota.Quota
 	APIKey string
 }
@@ -142,66 +130,17 @@ func (u *User) Teams() ([]Team, error) {
 	return teams, nil
 }
 
-func (u *User) FindKey(key Key) (Key, int) {
-	for i, k := range u.Keys {
-		if k.Name == key.Name || k.Content == key.Content {
-			return k, i
-		}
-	}
-	return Key{}, -1
-}
-
-func (u *User) HasKey(key Key) bool {
-	_, index := u.FindKey(key)
-	return index > -1
-}
-
-func (u *User) AddKey(key Key) error {
+func (u *User) AddKey(key repository.Key) error {
 	if key.Name == "" {
-		key.Name = fmt.Sprintf("%s-%d", u.Email, len(u.Keys)+1)
+		return ErrInvalidKey
 	}
-	if u.HasKey(key) {
-		return ErrUserAlreadyHasKey
-	}
-	actions := []*action.Action{
-		&addKeyInRepositoryAction,
-		&addKeyInDatabaseAction,
-	}
-	pipeline := action.NewPipeline(actions...)
-	return pipeline.Execute(&key, u)
+	return repository.Manager().(repository.KeyRepositoryManager).AddKey(u.Email, key)
 }
 
-func (u *User) addKeyRepository(key *Key) error {
-	err := repository.Manager().(repository.KeyRepositoryManager).AddKey(u.Email, key.RepoKey())
-	if err != nil {
-		return fmt.Errorf("failed to add key to git server: %s", err)
-	}
-	return nil
-}
-
-func (u *User) addKeyDB(key *Key) error {
-	u.Keys = append(u.Keys, *key)
-	return u.Update()
-}
-
-func (u *User) RemoveKey(key Key) error {
-	actualKey, index := u.FindKey(key)
-	if index < 0 {
-		return ErrKeyNotFound
-	}
-	err := u.removeKeyRepository(&actualKey)
+func (u *User) RemoveKey(key repository.Key) error {
+	err := repository.Manager().(repository.KeyRepositoryManager).RemoveKey(u.Email, key)
 	if err != nil {
 		return err
-	}
-	copy(u.Keys[index:], u.Keys[index+1:])
-	u.Keys = u.Keys[:len(u.Keys)-1]
-	return u.Update()
-}
-
-func (u *User) removeKeyRepository(key *Key) error {
-	err := repository.Manager().(repository.KeyRepositoryManager).RemoveKey(u.Email, key.RepoKey())
-	if err != nil {
-		return fmt.Errorf("failed to remove the key from git server: %s", err)
 	}
 	return nil
 }
@@ -262,13 +201,6 @@ func (u *User) createOnRepositoryManager() error {
 	err := repository.Manager().CreateUser(u.Email)
 	if err != nil {
 		return err
-	}
-	for _, key := range u.Keys {
-		copy := key
-		err = u.addKeyRepository(&copy)
-		if err != nil {
-			return err
-		}
 	}
 	return nil
 }
