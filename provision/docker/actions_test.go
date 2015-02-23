@@ -5,7 +5,6 @@
 package docker
 
 import (
-	"bytes"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -19,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -542,8 +542,8 @@ func (s *S) TestFollowLogsAndCommitForward(c *check.C) {
 		provisioner: s.p,
 	})
 	c.Assert(err, check.IsNil)
-	var buf bytes.Buffer
-	args := runContainerActionsArgs{writer: &buf, provisioner: s.p}
+	buf := safe.NewBuffer(nil)
+	args := runContainerActionsArgs{writer: buf, provisioner: s.p}
 	context := action.FWContext{Params: []interface{}{args}, Previous: cont}
 	imageId, err := followLogsAndCommit.Forward(context)
 	c.Assert(err, check.IsNil)
@@ -577,8 +577,8 @@ func (s *S) TestFollowLogsAndCommitForwardNonZeroStatus(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.server.MutateContainer(cont.ID, docker.State{ExitCode: 1})
 	c.Assert(err, check.IsNil)
-	var buf bytes.Buffer
-	args := runContainerActionsArgs{writer: &buf, provisioner: s.p}
+	buf := safe.NewBuffer(nil)
+	args := runContainerActionsArgs{writer: buf, provisioner: s.p}
 	context := action.FWContext{Params: []interface{}{args}, Previous: cont}
 	imageId, err := followLogsAndCommit.Forward(context)
 	c.Assert(err, check.NotNil)
@@ -600,8 +600,8 @@ func (s *S) TestFollowLogsAndCommitForwardWaitFailure(c *check.C) {
 		provisioner: s.p,
 	})
 	c.Assert(err, check.IsNil)
-	var buf bytes.Buffer
-	args := runContainerActionsArgs{writer: &buf, provisioner: s.p}
+	buf := safe.NewBuffer(nil)
+	args := runContainerActionsArgs{writer: buf, provisioner: s.p}
 	context := action.FWContext{Params: []interface{}{args}, Previous: cont}
 	imageId, err := followLogsAndCommit.Forward(context)
 	c.Assert(err, check.ErrorMatches, `.*failed to wait for the container\n$`)
@@ -619,11 +619,11 @@ func (s *S) TestBindAndHealthcheckForward(c *check.C) {
 	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
 	s.p.Provision(fakeApp)
 	defer s.p.Destroy(fakeApp)
-	var buf bytes.Buffer
+	buf := safe.NewBuffer(nil)
 	args := changeUnitsPipelineArgs{
 		app:         fakeApp,
 		provisioner: s.p,
-		writer:      &buf,
+		writer:      buf,
 		unitsToAdd:  2,
 		imageId:     "tsuru/app-" + appName,
 	}
@@ -665,11 +665,11 @@ func (s *S) TestBindAndHealthcheckForwardHealthcheckError(c *check.C) {
 	fakeApp := provisiontest.NewFakeApp(dbApp.Name, "python", 0)
 	s.p.Provision(fakeApp)
 	defer s.p.Destroy(fakeApp)
-	var buf bytes.Buffer
+	buf := safe.NewBuffer(nil)
 	args := changeUnitsPipelineArgs{
 		app:         fakeApp,
 		provisioner: s.p,
-		writer:      &buf,
+		writer:      buf,
 		unitsToAdd:  2,
 		imageId:     "tsuru/app-" + dbApp.Name,
 	}
@@ -717,11 +717,11 @@ func (s *S) TestBindAndHealthcheckForwardRestartError(c *check.C) {
 	fakeApp := provisiontest.NewFakeApp(dbApp.Name, "python", 0)
 	s.p.Provision(fakeApp)
 	defer s.p.Destroy(fakeApp)
-	var buf bytes.Buffer
+	buf := safe.NewBuffer(nil)
 	args := changeUnitsPipelineArgs{
 		app:         fakeApp,
 		provisioner: s.p,
-		writer:      &buf,
+		writer:      buf,
 		unitsToAdd:  2,
 		imageId:     "tsuru/app-" + dbApp.Name,
 	}
@@ -744,11 +744,11 @@ func (s *S) TestBindAndHealthcheckBackward(c *check.C) {
 	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
 	s.p.Provision(fakeApp)
 	defer s.p.Destroy(fakeApp)
-	var buf bytes.Buffer
+	buf := safe.NewBuffer(nil)
 	args := changeUnitsPipelineArgs{
 		app:         fakeApp,
 		provisioner: s.p,
-		writer:      &buf,
+		writer:      buf,
 		unitsToAdd:  2,
 		imageId:     "tsuru/app-" + appName,
 	}

@@ -656,6 +656,8 @@ func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 }
 
 func (p *dockerProvisioner) collection() *storage.Collection {
+	p.cmutex.Lock()
+	defer p.cmutex.Unlock()
 	if p.collectionName == "" {
 		name, err := config.GetString("docker:collection")
 		if err != nil {

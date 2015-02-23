@@ -5,7 +5,6 @@
 package docker
 
 import (
-	"bytes"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -13,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -49,8 +49,8 @@ func (s *S) TestMoveContainers(c *check.C) {
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
-	var buf bytes.Buffer
-	err = p.moveContainers("localhost", "127.0.0.1", &buf)
+	buf := safe.NewBuffer(nil)
+	err = p.moveContainers("localhost", "127.0.0.1", buf)
 	c.Assert(err, check.IsNil)
 	containers, err := p.listContainersByHost("localhost")
 	c.Assert(len(containers), check.Equals, 0)
@@ -94,8 +94,8 @@ func (s *S) TestMoveContainersUnknownDest(c *check.C) {
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
-	var buf bytes.Buffer
-	err = p.moveContainers("localhost", "unknown", &buf)
+	buf := safe.NewBuffer(nil)
+	err = p.moveContainers("localhost", "unknown", buf)
 	c.Assert(err, check.Equals, containerMovementErr)
 	parts := strings.Split(buf.String(), "\n")
 	c.Assert(parts[0], check.Matches, ".*Moving 2 units.*")
@@ -135,7 +135,7 @@ func (s *S) TestMoveContainer(c *check.C) {
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
-	var buf bytes.Buffer
+	buf := safe.NewBuffer(nil)
 	var serviceBodies []string
 	var serviceMethods []string
 	rollback := s.addServiceInstance(c, appInstance.GetName(), func(w http.ResponseWriter, r *http.Request) {
@@ -145,7 +145,7 @@ func (s *S) TestMoveContainer(c *check.C) {
 		w.WriteHeader(http.StatusOK)
 	})
 	defer rollback()
-	_, err = p.moveContainer(addedConts[0].ID[0:6], "127.0.0.1", &buf)
+	_, err = p.moveContainer(addedConts[0].ID[0:6], "127.0.0.1", buf)
 	c.Assert(err, check.IsNil)
 	containers, err := p.listContainersByHost("localhost")
 	c.Assert(len(containers), check.Equals, 1)
@@ -187,8 +187,8 @@ func (s *S) TestRebalanceContainers(c *check.C) {
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
-	var buf bytes.Buffer
-	err = p.rebalanceContainers(&buf, false)
+	buf := safe.NewBuffer(nil)
+	err = p.rebalanceContainers(buf, false)
 	c.Assert(err, check.IsNil)
 	c1, err := p.listContainersByHost("localhost")
 	c.Assert(err, check.IsNil)
@@ -300,10 +300,10 @@ func (s *S) TestRebalanceContainersManyApps(c *check.C) {
 	err = conn.Apps().Insert(appStruct2)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct2.Name})
-	var buf bytes.Buffer
+	buf := safe.NewBuffer(nil)
 	c1, err := p.listContainersByHost("localhost")
 	c.Assert(len(c1), check.Equals, 2)
-	err = p.rebalanceContainers(&buf, false)
+	err = p.rebalanceContainers(buf, false)
 	c.Assert(err, check.IsNil)
 	c1, err = p.listContainersByHost("localhost")
 	c.Assert(len(c1), check.Equals, 1)
@@ -339,8 +339,8 @@ func (s *S) TestRebalanceContainersDry(c *check.C) {
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
-	var buf bytes.Buffer
-	err = p.rebalanceContainers(&buf, true)
+	buf := safe.NewBuffer(nil)
+	err = p.rebalanceContainers(buf, true)
 	c.Assert(err, check.IsNil)
 	c1, err := p.listContainersByHost("localhost")
 	c.Assert(err, check.IsNil)
