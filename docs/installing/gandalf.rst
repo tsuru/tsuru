@@ -1,4 +1,4 @@
-.. Copyright 2014 tsuru authors. All rights reserved.
+.. Copyright 2015 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -6,14 +6,13 @@
 Gandalf
 +++++++
 
-tsuru uses gandalf to manage git repositories used to push applications to. It's
-also responsible for setting hooks in these repositories which will notify the
-tsuru API when a new deploy is made. For more details check `Gandalf Documentation
-<http://gandalf.readthedocs.org/>`_
+tsuru optionally uses gandalf to manage Git repositories used to push
+applications to. It's also responsible for setting hooks in these repositories
+which will notify the tsuru API when a new deploy is made. For more details
+check `Gandalf Documentation <http://gandalf.readthedocs.org/>`_
 
 This document will focus on how to setup a Gandalf installation with the necessary
 hooks to notify the tsuru API.
-
 
 Adding repositories
 ===================
@@ -28,7 +27,6 @@ Let's start adding the repositories for tsuru which contain the Gandalf package.
     sudo apt-get install curl python-software-properties
     sudo apt-add-repository ppa:tsuru/ppa -y
     sudo apt-get update
-
 
 Installing
 ==========
@@ -99,6 +97,20 @@ Then start gandalf and archive-server:
     sudo start gandalf-server
     sudo start archive-server
 
+Configuring tsuru to use Gandalf
+================================
+
+In order to use Gandalf, you need to change tsuru.conf accordingly, it's a
+two steps setup:
+
+#. Define "repo-manager" to use "gandalf";
+#. Define "git:api-server" to point to the API of the Gandalf server
+   (example: "http://localhost:8000");
+#. Define "git:unit-repo" to point to the directory where code will live in the
+   application unit (example: "/home/application/current").
+
+For more details, please refer to the :doc:`configuration page
+</reference/config>`.
 
 Token for authentication with tsuru API
 =======================================
