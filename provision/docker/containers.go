@@ -5,7 +5,6 @@
 package docker
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -22,12 +21,7 @@ import (
 
 var (
 	appDBMutex sync.Mutex
-	logMutex   sync.Mutex
 )
-
-type progressLog struct {
-	Message string
-}
 
 type appLocker struct {
 	refCount map[string]int
@@ -66,18 +60,12 @@ func (l *appLocker) unlock(appName string) {
 
 var containerMovementErr = errors.New("Error moving some containers.")
 
-func logProgress(encoder *json.Encoder, format string, params ...interface{}) {
-	logMutex.Lock()
-	defer logMutex.Unlock()
-	encoder.Encode(progressLog{Message: fmt.Sprintf(format, params...)})
-}
-
-func handleMoveErrors(moveErrors chan error, encoder *json.Encoder) error {
+func handleMoveErrors(moveErrors chan error, writer io.Writer) error {
 	hasError := false
 	for err := range moveErrors {
 		errMsg := fmt.Sprintf("Error moving container: %s", err.Error())
 		log.Error(errMsg)
-		logProgress(encoder, "%s", errMsg)
+		fmt.Fprintf(writer, "%s\n", errMsg)
 		hasError = true
 	}
 	if hasError {
@@ -151,7 +139,7 @@ func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App,
 	return pipeline.Result().([]container), nil
 }
 
-func (p *dockerProvisioner) moveOneContainer(c container, toHost string, errors chan error, wg *sync.WaitGroup, encoder *json.Encoder, locker *appLocker) container {
+func (p *dockerProvisioner) moveOneContainer(c container, toHost string, errors chan error, wg *sync.WaitGroup, writer io.Writer, locker *appLocker) container {
 	if wg != nil {
 		defer wg.Done()
 	}
@@ -184,7 +172,7 @@ func (p *dockerProvisioner) moveOneContainer(c container, toHost string, errors 
 		suffix = " -> " + toHost
 	}
 	if !p.dryMode {
-		logProgress(encoder, "Moving unit %s for %q from %s%s...", c.ID, c.AppName, c.HostAddr, suffix)
+		fmt.Fprintf(writer, "Moving unit %s for %q from %s%s...\n", c.ID, c.AppName, c.HostAddr, suffix)
 	}
 	addedContainers, err := p.runReplaceUnitsPipeline(nil, a, []container{c}, imageId, destHosts...)
 	if err != nil {
@@ -198,11 +186,11 @@ func (p *dockerProvisioner) moveOneContainer(c container, toHost string, errors 
 	if p.dryMode {
 		prefix = "Would move unit"
 	}
-	logProgress(encoder, "%s %s -> %s for %q from %s -> %s", prefix, c.ID, addedContainers[0].ID, c.AppName, c.HostAddr, addedContainers[0].HostAddr)
+	fmt.Fprintf(writer, "%s %s -> %s for %q from %s -> %s\n", prefix, c.ID, addedContainers[0].ID, c.AppName, c.HostAddr, addedContainers[0].HostAddr)
 	return addedContainers[0]
 }
 
-func (p *dockerProvisioner) moveContainer(contId string, toHost string, encoder *json.Encoder) (container, error) {
+func (p *dockerProvisioner) moveContainer(contId string, toHost string, writer io.Writer) (container, error) {
 	cont, err := p.getContainer(contId)
 	if err != nil {
 		return container{}, err
@@ -211,37 +199,37 @@ func (p *dockerProvisioner) moveContainer(contId string, toHost string, encoder 
 	wg.Add(1)
 	moveErrors := make(chan error, 1)
 	locker := &appLocker{}
-	createdContainer := p.moveOneContainer(*cont, toHost, moveErrors, &wg, encoder, locker)
+	createdContainer := p.moveOneContainer(*cont, toHost, moveErrors, &wg, writer, locker)
 	close(moveErrors)
-	return createdContainer, handleMoveErrors(moveErrors, encoder)
+	return createdContainer, handleMoveErrors(moveErrors, writer)
 }
 
-func (p *dockerProvisioner) moveContainerList(containers []container, toHost string, encoder *json.Encoder) error {
+func (p *dockerProvisioner) moveContainerList(containers []container, toHost string, writer io.Writer) error {
 	locker := &appLocker{}
 	moveErrors := make(chan error, len(containers))
 	wg := sync.WaitGroup{}
 	wg.Add(len(containers))
 	for _, c := range containers {
-		go p.moveOneContainer(c, toHost, moveErrors, &wg, encoder, locker)
+		go p.moveOneContainer(c, toHost, moveErrors, &wg, writer, locker)
 	}
 	go func() {
 		wg.Wait()
 		close(moveErrors)
 	}()
-	return handleMoveErrors(moveErrors, encoder)
+	return handleMoveErrors(moveErrors, writer)
 }
 
-func (p *dockerProvisioner) moveContainers(fromHost, toHost string, encoder *json.Encoder) error {
+func (p *dockerProvisioner) moveContainers(fromHost, toHost string, writer io.Writer) error {
 	containers, err := p.listContainersByHost(fromHost)
 	if err != nil {
 		return err
 	}
 	if len(containers) == 0 {
-		logProgress(encoder, "No units to move in %s", fromHost)
+		fmt.Fprintf(writer, "No units to move in %s\n", fromHost)
 		return nil
 	}
-	logProgress(encoder, "Moving %d units...", len(containers))
-	return p.moveContainerList(containers, toHost, encoder)
+	fmt.Fprintf(writer, "Moving %d units...\n", len(containers))
+	return p.moveContainerList(containers, toHost, writer)
 }
 
 type hostWithContainers struct {
@@ -262,7 +250,7 @@ func minCountHost(hosts []hostWithContainers) *hostWithContainers {
 	return minCountHost
 }
 
-func (p *dockerProvisioner) rebalanceContainersByFilter(encoder *json.Encoder, appFilter []string, metadataFilter map[string]string, dryRun bool) error {
+func (p *dockerProvisioner) rebalanceContainersByFilter(writer io.Writer, appFilter []string, metadataFilter map[string]string, dryRun bool) error {
 	var hostsFilter []string
 	if metadataFilter != nil {
 		nodes, err := p.cluster.NodesForMetadata(metadataFilter)
@@ -278,7 +266,7 @@ func (p *dockerProvisioner) rebalanceContainersByFilter(encoder *json.Encoder, a
 		return err
 	}
 	if len(containers) == 0 {
-		logProgress(encoder, "No containers found to rebalance")
+		fmt.Fprintf(writer, "No containers found to rebalance\n")
 		return nil
 	}
 	if dryRun {
@@ -288,10 +276,10 @@ func (p *dockerProvisioner) rebalanceContainersByFilter(encoder *json.Encoder, a
 		}
 		defer p.StopDryMode()
 	}
-	logProgress(encoder, "Rebalancing %d units...", len(containers))
-	return p.moveContainerList(containers, "", encoder)
+	fmt.Fprintf(writer, "Rebalancing %d units...\n", len(containers))
+	return p.moveContainerList(containers, "", writer)
 }
 
-func (p *dockerProvisioner) rebalanceContainers(encoder *json.Encoder, dryRun bool) error {
-	return p.rebalanceContainersByFilter(encoder, nil, nil, dryRun)
+func (p *dockerProvisioner) rebalanceContainers(writer io.Writer, dryRun bool) error {
+	return p.rebalanceContainersByFilter(writer, nil, nil, dryRun)
 }

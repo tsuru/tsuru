@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/iaas"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
@@ -471,12 +472,12 @@ func (s *HandlersSuite) TestMoveContainersHandler(c *check.C) {
 	body, err := ioutil.ReadAll(rec.Body)
 	c.Assert(err, check.IsNil)
 	validJson := fmt.Sprintf("[%s]", strings.Replace(strings.Trim(string(body), "\n "), "\n", ",", -1))
-	var result []progressLog
+	var result []tsuruIo.SimpleJsonMessage
 	err = json.Unmarshal([]byte(validJson), &result)
 	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, []progressLog{
-		{Message: "No units to move in localhost"},
-		{Message: "Containers moved successfully!"},
+	c.Assert(result, check.DeepEquals, []tsuruIo.SimpleJsonMessage{
+		{Message: "No units to move in localhost\n"},
+		{Message: "Containers moved successfully!\n"},
 	})
 }
 
@@ -488,10 +489,10 @@ func (s *HandlersSuite) TestMoveContainerHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	body, err := ioutil.ReadAll(rec.Body)
 	c.Assert(err, check.IsNil)
-	var result progressLog
+	var result tsuruIo.SimpleJsonMessage
 	err = json.Unmarshal(body, &result)
 	c.Assert(err, check.IsNil)
-	expected := progressLog{Message: "Error trying to move container: not found"}
+	expected := tsuruIo.SimpleJsonMessage{Message: "Error trying to move container: not found\n"}
 	c.Assert(result, check.DeepEquals, expected)
 }
 
@@ -542,13 +543,13 @@ func (s *S) TestRebalanceContainersEmptyBodyHandler(c *check.C) {
 	body, err := ioutil.ReadAll(rec.Body)
 	c.Assert(err, check.IsNil)
 	validJson := fmt.Sprintf("[%s]", strings.Replace(strings.Trim(string(body), "\n "), "\n", ",", -1))
-	var result []progressLog
+	var result []tsuruIo.SimpleJsonMessage
 	err = json.Unmarshal([]byte(validJson), &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(result), check.Equals, 14)
-	c.Assert(result[0].Message, check.Equals, "Rebalancing 6 units...")
-	c.Assert(result[1].Message, check.Matches, "Moving unit .*")
-	c.Assert(result[13].Message, check.Equals, "Containers rebalanced successfully!")
+	c.Assert(result[0].Message, check.Equals, "Rebalancing 6 units...\n")
+	c.Assert(result[1].Message, check.Matches, "(?s)Moving unit .*")
+	c.Assert(result[13].Message, check.Equals, "Containers rebalanced successfully!\n")
 }
 
 func (s *S) TestRebalanceContainersFilters(c *check.C) {
@@ -597,12 +598,12 @@ func (s *S) TestRebalanceContainersFilters(c *check.C) {
 	body, err := ioutil.ReadAll(rec.Body)
 	c.Assert(err, check.IsNil)
 	validJson := fmt.Sprintf("[%s]", strings.Replace(strings.Trim(string(body), "\n "), "\n", ",", -1))
-	var result []progressLog
+	var result []tsuruIo.SimpleJsonMessage
 	err = json.Unmarshal([]byte(validJson), &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(result), check.Equals, 2)
-	c.Assert(result[0].Message, check.Equals, "No containers found to rebalance")
-	c.Assert(result[1].Message, check.Equals, "Containers rebalanced successfully!")
+	c.Assert(result[0].Message, check.Equals, "No containers found to rebalance\n")
+	c.Assert(result[1].Message, check.Equals, "Containers rebalanced successfully!\n")
 }
 
 func (s *S) TestRebalanceContainersDryBodyHandler(c *check.C) {
@@ -652,13 +653,13 @@ func (s *S) TestRebalanceContainersDryBodyHandler(c *check.C) {
 	body, err := ioutil.ReadAll(rec.Body)
 	c.Assert(err, check.IsNil)
 	validJson := fmt.Sprintf("[%s]", strings.Replace(strings.Trim(string(body), "\n "), "\n", ",", -1))
-	var result []progressLog
+	var result []tsuruIo.SimpleJsonMessage
 	err = json.Unmarshal([]byte(validJson), &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(result), check.Equals, 8)
-	c.Assert(result[0].Message, check.Equals, "Rebalancing 6 units...")
-	c.Assert(result[1].Message, check.Matches, "Would move unit .*")
-	c.Assert(result[7].Message, check.Equals, "Containers rebalanced successfully!")
+	c.Assert(result[0].Message, check.Equals, "Rebalancing 6 units...\n")
+	c.Assert(result[1].Message, check.Matches, "(?s)Would move unit .*")
+	c.Assert(result[7].Message, check.Equals, "Containers rebalanced successfully!\n")
 }
 
 func (s *HandlersSuite) TestAddPoolHandler(c *check.C) {

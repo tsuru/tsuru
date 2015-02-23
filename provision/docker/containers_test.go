@@ -6,7 +6,6 @@ package docker
 
 import (
 	"bytes"
-	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"strings"
@@ -51,21 +50,16 @@ func (s *S) TestMoveContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	var buf bytes.Buffer
-	encoder := json.NewEncoder(&buf)
-	err = p.moveContainers("localhost", "127.0.0.1", encoder)
+	err = p.moveContainers("localhost", "127.0.0.1", &buf)
 	c.Assert(err, check.IsNil)
 	containers, err := p.listContainersByHost("localhost")
 	c.Assert(len(containers), check.Equals, 0)
 	containers, err = p.listContainersByHost("127.0.0.1")
 	c.Assert(len(containers), check.Equals, 2)
 	parts := strings.Split(buf.String(), "\n")
-	var logEntry progressLog
-	json.Unmarshal([]byte(parts[0]), &logEntry)
-	c.Assert(logEntry.Message, check.Matches, ".*Moving 2 units.*")
-	json.Unmarshal([]byte(parts[1]), &logEntry)
-	c.Assert(logEntry.Message, check.Matches, ".*Moving unit.*for.*myapp.*localhost.*127.0.0.1.*")
-	json.Unmarshal([]byte(parts[2]), &logEntry)
-	c.Assert(logEntry.Message, check.Matches, ".*Moving unit.*for.*myapp.*localhost.*127.0.0.1.*")
+	c.Assert(parts[0], check.Matches, ".*Moving 2 units.*")
+	c.Assert(parts[1], check.Matches, ".*Moving unit.*for.*myapp.*localhost.*127.0.0.1.*")
+	c.Assert(parts[2], check.Matches, ".*Moving unit.*for.*myapp.*localhost.*127.0.0.1.*")
 }
 
 func (s *S) TestMoveContainersUnknownDest(c *check.C) {
@@ -101,17 +95,12 @@ func (s *S) TestMoveContainersUnknownDest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	var buf bytes.Buffer
-	encoder := json.NewEncoder(&buf)
-	err = p.moveContainers("localhost", "unknown", encoder)
+	err = p.moveContainers("localhost", "unknown", &buf)
 	c.Assert(err, check.Equals, containerMovementErr)
 	parts := strings.Split(buf.String(), "\n")
-	var logEntry progressLog
-	json.Unmarshal([]byte(parts[0]), &logEntry)
-	c.Assert(logEntry.Message, check.Matches, ".*Moving 2 units.*")
-	json.Unmarshal([]byte(parts[3]), &logEntry)
-	c.Assert(logEntry.Message, check.Matches, "(?s).*Error moving unit.*Caused by:.*unknown.*not found")
-	json.Unmarshal([]byte(parts[4]), &logEntry)
-	c.Assert(logEntry.Message, check.Matches, "(?s).*Error moving unit.*Caused by:.*unknown.*not found")
+	c.Assert(parts[0], check.Matches, ".*Moving 2 units.*")
+	c.Assert(parts[3], check.Matches, "(?s).*Error moving unit.*Caused by:.*unknown.*not found")
+	c.Assert(parts[4], check.Matches, "(?s).*Error moving unit.*Caused by:.*unknown.*not found")
 }
 
 func (s *S) TestMoveContainer(c *check.C) {
@@ -147,7 +136,6 @@ func (s *S) TestMoveContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	var buf bytes.Buffer
-	encoder := json.NewEncoder(&buf)
 	var serviceBodies []string
 	var serviceMethods []string
 	rollback := s.addServiceInstance(c, appInstance.GetName(), func(w http.ResponseWriter, r *http.Request) {
@@ -157,7 +145,7 @@ func (s *S) TestMoveContainer(c *check.C) {
 		w.WriteHeader(http.StatusOK)
 	})
 	defer rollback()
-	_, err = p.moveContainer(addedConts[0].ID[0:6], "127.0.0.1", encoder)
+	_, err = p.moveContainer(addedConts[0].ID[0:6], "127.0.0.1", &buf)
 	c.Assert(err, check.IsNil)
 	containers, err := p.listContainersByHost("localhost")
 	c.Assert(len(containers), check.Equals, 1)
@@ -200,8 +188,7 @@ func (s *S) TestRebalanceContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	var buf bytes.Buffer
-	encoder := json.NewEncoder(&buf)
-	err = p.rebalanceContainers(encoder, false)
+	err = p.rebalanceContainers(&buf, false)
 	c.Assert(err, check.IsNil)
 	c1, err := p.listContainersByHost("localhost")
 	c.Assert(err, check.IsNil)
@@ -314,10 +301,9 @@ func (s *S) TestRebalanceContainersManyApps(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct2.Name})
 	var buf bytes.Buffer
-	encoder := json.NewEncoder(&buf)
 	c1, err := p.listContainersByHost("localhost")
 	c.Assert(len(c1), check.Equals, 2)
-	err = p.rebalanceContainers(encoder, false)
+	err = p.rebalanceContainers(&buf, false)
 	c.Assert(err, check.IsNil)
 	c1, err = p.listContainersByHost("localhost")
 	c.Assert(len(c1), check.Equals, 1)
@@ -354,8 +340,7 @@ func (s *S) TestRebalanceContainersDry(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	var buf bytes.Buffer
-	encoder := json.NewEncoder(&buf)
-	err = p.rebalanceContainers(encoder, true)
+	err = p.rebalanceContainers(&buf, true)
 	c.Assert(err, check.IsNil)
 	c1, err := p.listContainersByHost("localhost")
 	c.Assert(err, check.IsNil)

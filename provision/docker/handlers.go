@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/iaas"
 	_ "github.com/tsuru/tsuru/iaas/cloudstack"
 	_ "github.com/tsuru/tsuru/iaas/ec2"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"gopkg.in/mgo.v2"
 )
 
@@ -164,12 +165,12 @@ func moveContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	if to == "" {
 		return fmt.Errorf("Invalid params: id: %s - to: %s", contId, to)
 	}
-	encoder := json.NewEncoder(w)
-	_, err = mainDockerProvisioner.moveContainer(contId, to, encoder)
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
+	_, err = mainDockerProvisioner.moveContainer(contId, to, writer)
 	if err != nil {
-		logProgress(encoder, "Error trying to move container: %s", err.Error())
+		fmt.Fprintf(writer, "Error trying to move container: %s\n", err.Error())
 	} else {
-		logProgress(encoder, "Containers moved successfully!")
+		fmt.Fprintf(writer, "Containers moved successfully!\n")
 	}
 	return nil
 }
@@ -184,12 +185,12 @@ func moveContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if from == "" || to == "" {
 		return fmt.Errorf("Invalid params: from: %s - to: %s", from, to)
 	}
-	encoder := json.NewEncoder(w)
-	err = mainDockerProvisioner.moveContainers(from, to, encoder)
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
+	err = mainDockerProvisioner.moveContainers(from, to, writer)
 	if err != nil {
-		logProgress(encoder, "Error: %s", err.Error())
+		fmt.Fprintf(writer, "Error trying to move containers: %s\n", err.Error())
 	} else {
-		logProgress(encoder, "Containers moved successfully!")
+		fmt.Fprintf(writer, "Containers moved successfully!\n")
 	}
 	return nil
 }
@@ -205,12 +206,12 @@ func rebalanceContainersHandler(w http.ResponseWriter, r *http.Request, t auth.T
 	if err == nil {
 		dry, _ = strconv.ParseBool(params.Dry)
 	}
-	encoder := json.NewEncoder(w)
-	err = mainDockerProvisioner.rebalanceContainersByFilter(encoder, params.AppFilter, params.MetadataFilter, dry)
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
+	err = mainDockerProvisioner.rebalanceContainersByFilter(writer, params.AppFilter, params.MetadataFilter, dry)
 	if err != nil {
-		logProgress(encoder, "Error trying to rebalance containers: %s", err.Error())
+		fmt.Fprintf(writer, "Error trying to rebalance containers: %s\n", err.Error())
 	} else {
-		logProgress(encoder, "Containers rebalanced successfully!")
+		fmt.Fprintf(writer, "Containers rebalanced successfully!\n")
 	}
 	return nil
 }

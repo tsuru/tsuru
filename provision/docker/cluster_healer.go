@@ -6,7 +6,6 @@ package docker
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -128,8 +127,7 @@ func (h *Healer) healNode(node *cluster.Node) (cluster.Node, error) {
 		return emptyNode, fmt.Errorf("Can't auto-heal after %d failures for node %s: error registering new node: %s", failures, failingHost, err.Error())
 	}
 	var buf bytes.Buffer
-	encoder := json.NewEncoder(&buf)
-	err = h.provisioner.moveContainers(failingHost, "", encoder)
+	err = h.provisioner.moveContainers(failingHost, "", &buf)
 	if err != nil {
 		log.Errorf("Unable to move containers, skipping containers healing %q -> %q: %s: %s", failingHost, machine.Address, err.Error(), buf.String())
 	}
@@ -192,11 +190,10 @@ func (h *Healer) HandleError(node *cluster.Node) time.Duration {
 
 func (p *dockerProvisioner) healContainer(cont container, locker *appLocker) (container, error) {
 	var buf bytes.Buffer
-	encoder := json.NewEncoder(&buf)
 	moveErrors := make(chan error, 1)
-	createdContainer := p.moveOneContainer(cont, "", moveErrors, nil, encoder, locker)
+	createdContainer := p.moveOneContainer(cont, "", moveErrors, nil, &buf, locker)
 	close(moveErrors)
-	err := handleMoveErrors(moveErrors, encoder)
+	err := handleMoveErrors(moveErrors, &buf)
 	if err != nil {
 		err = fmt.Errorf("Error trying to heal containers %s: couldn't move container: %s - %s", cont.ID, err.Error(), buf.String())
 	}

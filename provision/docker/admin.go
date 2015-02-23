@@ -18,18 +18,6 @@ import (
 
 type moveContainersCmd struct{}
 
-type progressFormatter struct{}
-
-func (progressFormatter) Format(out io.Writer, data []byte) error {
-	var logEntry progressLog
-	err := json.Unmarshal(data, &logEntry)
-	if err != nil {
-		return err
-	}
-	fmt.Fprintf(out, "%s\n", logEntry.Message)
-	return nil
-}
-
 func (c *moveContainersCmd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "containers-move",
@@ -63,8 +51,15 @@ func (c *moveContainersCmd) Run(context *cmd.Context, client *cmd.Client) error 
 		return err
 	}
 	defer response.Body.Close()
-	w := tsuruIo.NewStreamWriter(context.Stdout, progressFormatter{})
+	w := tsuruIo.NewStreamWriter(context.Stdout, nil)
 	for n := int64(1); n > 0 && err == nil; n, err = io.Copy(w, response.Body) {
+	}
+	if err != nil {
+		return err
+	}
+	unparsed := w.Remaining()
+	if len(unparsed) > 0 {
+		return fmt.Errorf("unparsed message error: %s", string(unparsed))
 	}
 	return nil
 }
@@ -125,9 +120,15 @@ func (c *moveContainerCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	defer response.Body.Close()
-	w := tsuruIo.NewStreamWriter(context.Stdout, progressFormatter{})
+	w := tsuruIo.NewStreamWriter(context.Stdout, nil)
 	for n := int64(1); n > 0 && err == nil; n, err = io.Copy(w, response.Body) {
+	}
+	if err != nil {
+		return err
+	}
+	unparsed := w.Remaining()
+	if len(unparsed) > 0 {
+		return fmt.Errorf("unparsed message error: %s", string(unparsed))
 	}
 	return nil
 }
@@ -180,9 +181,15 @@ func (c *rebalanceContainersCmd) Run(context *cmd.Context, client *cmd.Client) e
 	if err != nil {
 		return err
 	}
-	defer response.Body.Close()
-	w := tsuruIo.NewStreamWriter(context.Stdout, progressFormatter{})
+	w := tsuruIo.NewStreamWriter(context.Stdout, nil)
 	for n := int64(1); n > 0 && err == nil; n, err = io.Copy(w, response.Body) {
+	}
+	if err != nil {
+		return err
+	}
+	unparsed := w.Remaining()
+	if len(unparsed) > 0 {
+		return fmt.Errorf("unparsed message error: %s", string(unparsed))
 	}
 	return nil
 }
