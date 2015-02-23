@@ -43,6 +43,14 @@ What's new in tsr 0.10.0
   documentation page <yaml_healthcheck>` for more details (thanks Samuel
   ROZE).
 
+* It's now possible to rollback your application to a previously deployed version.
+  To support this feature the commands ``app-deploy-list`` and ``app-deploy-
+  rollback`` were added. Also, all newly created application images in docker are
+  versioned with ``:vN``. You can change how many images will be available for
+  rollback in ``tsuru.conf``. See :ref:`config reference
+  <config_image_history_size>` and `tsuru-client reference <http://tsuru-
+  client.readthedocs.org>`_ for more details.
+
 Bug fixes
 =========
 

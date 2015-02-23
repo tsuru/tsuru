@@ -653,6 +653,15 @@ docker:healthcheck:max-time
 Maximum time in seconds to wait for deployment time health check to be successful.
 Defaults to 120 seconds.
 
+.. _config_image_history_size:
+
+docker:image-history-size
++++++++++++++++++++++++++
+
+Number of images available for rollback using ``tsuru app-deploy-rollback``. tsuru
+will try to delete older images, but it may not be able to due to it being used as
+a layer to a newer image. tsuru will keep trying to remove these old images until
+they are not used as layers anymore. Defaults to 10 images.
 
 .. _iaas_configuration:
 
