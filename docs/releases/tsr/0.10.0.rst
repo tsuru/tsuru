@@ -1,3 +1,7 @@
+.. Copyright 2015 tsuru authors. All rights reserved.
+   Use of this source code is governed by a BSD-style
+   license that can be found in the LICENSE file.
+
 ========================
 tsr 0.10.0 release notes
 ========================
@@ -5,8 +9,9 @@ tsr 0.10.0 release notes
 Welcome to tsr 0.10.0!
 
 These release notes cover the `new features`_, `bug fixes`_, `backward
-incompatible changes`_, `general improvements`_ and `changes in the API`_
-you'll want to be aware of when upgrading from tsr 0.9.0 or older versions.
+incompatible changes`_ (specially the requirement on Gandalf and Docker
+versions), `general improvements`_ and `changes in the API`_ you'll want to be
+aware of when upgrading from tsr 0.9.0 or older versions.
 
 .. _`new features`: `What's new in tsr 0.10.0`_
 .. _`general improvements`: `Other improvements in tsr 0.10.0`_
@@ -51,6 +56,13 @@ What's new in tsr 0.10.0
   <config_image_history_size>` and `tsuru-client reference <http://tsuru-
   client.readthedocs.org>`_ for more details.
 
+* `Gandalf <https://github.com/tsuru/gandalf>`_ is now optional. There's a new
+  configuration entry for choosing the "repo-manager". For backwards
+  compatibility purposes, when this entry is undefined, tsuru will use Gandalf.
+  In order to disable Gandalf, users can set repo-manager to "none". When
+  Gandalf is disabled, tsuru will not manage keys as well. For more details,
+  see :doc:`repository management page </managing/repositories>`.
+
 Bug fixes
 =========
 
@@ -71,7 +83,7 @@ Other improvements in tsr 0.10.0
 ================================
 
 * tsuru doesn't store SSH public keys anymore, this handling is forwarded to
-  the repository manager, and it's possible to run tsuru with no key handling
+  the repository manager, and it's possible to run tsuru with no key management
   at all, by setting ``repo-manager`` to "none". Then the client will fail on
   ``key-add``, ``key-remove`` and ``key-list`` with the message "key management
   is disabled" (issue `#402 <https://github.com/tsuru/tsuru/issues/402>`_).
@@ -83,6 +95,9 @@ Other improvements in tsr 0.10.0
 
 * Support EBS optimized instances in the EC2 IaaS provider (issue `#1058
   <https://github.com/tsuru/tsuru/issues/1058>`_).
+
+* Record the user that made the deploy when running ``git push`` (depends on
+  upgrading the platforms and Gandalf).
 
 * Improve user feedback (thanks Marc Abramowitz)
 
@@ -110,30 +125,38 @@ Other improvements in tsr 0.10.0
       <https://github.com/tsuru/tsuru/issues/796>`_). See the :doc:`logging
       documentation </using/logging>` for more details;
     - Improvements in the :doc:`recovery docs </using/recovery>` (thanks Mateus
-      Del Bianco)
+      Del Bianco);
     - General grammar and RST syntax fixes in the documentation (thanks
-      Alessandro Corbelli, Lucas Weiblen, Marc Abramowitz and Rogério Yokomizo)
-    - Improve the :doc:`contributing page </contributing/index>`
+      Alessandro Corbelli, Lucas Weiblen, Marc Abramowitz and Rogério Yokomizo);
+    - Improve the :doc:`contributing page </contributing/index>`;
     - Properly document the :doc:`states of appplication units
-      </using/unit-states>`
+      </using/unit-states>`;
     - Split client documentation pages from the tsuru-server docs, there are
       now dedicated documentation sites for `crane
       <http://tsuru-crane.readthedocs.org>`_, `tsuru-admin
       <http://tsuru-admin.readthedocs.org>`_ and `tsuru-client
-      <http://tsuru-client.readthedocs.org>`_.
-    - Fix broken links in the documentation pages.
-    - Improve Hipache installation docs.
+      <http://tsuru-client.readthedocs.org>`_;
+    - Fix broken links in the documentation pages;
+    - Improve Hipache installation docs;
+    - Add documentation for the :doc:`application metrics system
+      </advanced_topics/metrics>` (issue `#990
+      <https://github.com/tsuru/tsuru/issues/990>`_).
 
 * Add instructions for :doc:`upgrading Docker </managing/upgrading-docker>` in the management documentation.
 
 Backward incompatible changes
 =============================
 
-* This version of tsuru makes uses of some features available only in the
+* This version of tsuru makes use of some features available only in the
   latest version of `Gandalf <https://github.com/tsuru/gandalf>`_, so if you
   plan to continue using Gandalf after this upgrade, you need to upgrade
   Gandalf to the `version 0.6.0 (or bigger)
   <https://github.com/tsuru/gandalf/releases/tag/0.6.0>`_.
+
+* This version of tsuru makes use of features available only from the 1.4
+  version of `Docker <https://docker.com>`_, so before upgrading to
+  tsuru-server 0.10.0, users must ensure that all Docker nodes are running
+  Docker 1.4 or greater.
 
 * tsuru changed the name of Docker images used. During start-up, the server
   daemon will migrate images automatically. This may slow down the first
