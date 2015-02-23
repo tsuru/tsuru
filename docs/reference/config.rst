@@ -111,16 +111,25 @@ smtp:password
 
 The password for authentication within the SMTP server.
 
-Git configuration
------------------
+Repository configuration
+------------------------
 
-tsuru uses `Gandalf <https://github.com/tsuru/gandalf>`_ to manage git
-repositories. Gandalf exposes a REST API for repositories management, and tsuru
-uses it. So tsuru requires information about the Gandalf HTTP server, and also
-its git-daemon and SSH service.
+tsuru optionally uses `Gandalf <https://github.com/tsuru/gandalf>`_ to manage
+git repositories. Gandalf exposes a REST API for repositories management, and
+tsuru uses it. So tsuru requires information about the Gandalf HTTP server, and
+also its git-daemon and SSH service.
 
 tsuru also needs to know where the git repository will be cloned and stored in
 units storage. Here are all options related to git repositories:
+
+repo-manager
+++++++++++++
+
+``repo-manager`` represents the repository manager that tsuru-server should
+use. For backward compatibility reasons, the default value is "gandalf". Users
+can disable repository and SSH key management by setting "repo-manager" to
+"none". For more details, please refer to the :doc:`repository management page
+</managing/repositories>` in the documentation.
 
 git:unit-repo
 +++++++++++++
@@ -130,28 +139,12 @@ repository in all units of an application. This is where the code of the
 applications will be stored in their units. Example of value:
 ``/home/application/current``.
 
-
 git:api-server
 ++++++++++++++
 
 ``git:api-server`` is the address of the Gandalf API. It should define the
 entire address, including protocol and port. Examples of value:
 ``http://localhost:9090`` and ``https://gandalf.tsuru.io:9595``.
-
-git:rw-host
-+++++++++++
-
-``git:rw-host`` is the host that will be used to build the push URL. For
-example, when the value is "tsuruhost.com", the push URL will be something like
-git@tsuruhost.com:<app-name>.git.
-
-git:ro-host
-+++++++++++
-
-``git:ro-host`` is the host that units will use to clone code from users
-applications. It's used to build the read only URL of the repository. For
-example, when the value is "tsuruhost.com", the read-only URL will be something
-like git://tsuruhost.com/<app-name>.git.
 
 Authentication configuration
 ----------------------------
