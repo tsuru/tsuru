@@ -89,7 +89,15 @@ func (c *ShellToContainerCmd) Run(context *Context, client *Client) error {
 		request.Header.Set("Authorization", "bearer "+token)
 	}
 	parsedURL, _ := url.Parse(serverURL)
-	conn, err := net.Dial("tcp", parsedURL.Host)
+	host := parsedURL.Host
+	if _, _, err := net.SplitHostPort(host); err != nil {
+		port := "80"
+		if parsedURL.Scheme == "https" {
+			port = "443"
+		}
+		host += ":" + port
+	}
+	conn, err := net.Dial("tcp", host)
 	if err != nil {
 		return err
 	}
