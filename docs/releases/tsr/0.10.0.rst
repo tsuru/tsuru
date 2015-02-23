@@ -156,7 +156,9 @@ Backward incompatible changes
 * This version of tsuru makes use of features available only from the 1.4
   version of `Docker <https://docker.com>`_, so before upgrading to
   tsuru-server 0.10.0, users must ensure that all Docker nodes are running
-  Docker 1.4 or greater.
+  Docker 1.4 or greater. Please refer to the :doc:`upgrade Docker page
+  </managing/upgrading-docker>` for instructions on upgrading Docker with
+  lesser downtime.
 
 * tsuru changed the name of Docker images used. During start-up, the server
   daemon will migrate images automatically. This may slow down the first
