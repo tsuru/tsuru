@@ -4,10 +4,11 @@ Concepts
 Docker
 ------
 
-`Docker <https://www.docker.com/>`_ is an open source project to pack, ship, and
-run any application as a lightweight, portable, self-sufficient container.
-When you deploy an app with ``git push``, tsuru builds a Docker image and
-then distributes it as `units` (Docker containers) across your cluster.
+`Docker <https://www.docker.com/>`_ is an open source project to pack, ship,
+and run any application as a lightweight, portable, self-sufficient container.
+When you deploy an app with ``git push`` or ``tsuru app-deploy``, tsuru builds
+a Docker image and then distributes it as `units` (Docker containers) across
+your cluster.
 
 Clusters
 --------
