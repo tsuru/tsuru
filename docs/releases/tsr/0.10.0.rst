@@ -68,6 +68,11 @@ What's new in tsr 0.10.0
   Ruby version, now users can just change the Ruby version they use by
   specifying it in the ``Gemfile`` or in the ``.ruby-version`` file.
 
+* New `PHP platform <https://github.com/tsuru/basebuilder/tree/master/php>`_,
+  with support to multiple PHP interpretors (FPM, mod_php) and frontends
+  (Apache or nginx), including the support for configuring the virtual host
+  (thanks Samuel ROZE).
+
 Bug fixes
 =========
 
