@@ -1,4 +1,4 @@
-.. Copyright 2014 tsuru authors. All rights reserved.
+.. Copyright 2015 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -223,7 +223,7 @@ And here is ``requirements.txt``:
 
 Please notice that we've included ``South`` too, for database migrations, and ``Django``, off-course.
 
-You can see the complete output of installing these dependencies bellow:
+You can see the complete output of installing these dependencies below:
 
 .. highlight:: bash
 

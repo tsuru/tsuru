@@ -1,3 +1,7 @@
+.. Copyright 2015 tsuru authors. All rights reserved.
+   Use of this source code is governed by a BSD-style
+   license that can be found in the LICENSE file.
+
 =======================
 tsr 0.5.0 release notes
 =======================
@@ -84,7 +88,7 @@ Backwards incompatible changes
 * The field ``units`` was removed from the collection ``apps``. Information
   about units are now available in the provisioner.
   Now the unit state is controlled by provisioner. If you are upgrading tsuru
-  from 0.4.0 or an older version you should run the MongoDB script bellow,
+  from 0.4.0 or an older version you should run the MongoDB script below,
   where the `docker` collection name is the name configured by
   `docker:collection` in `tsuru.conf`:
 
@@ -101,7 +105,7 @@ Backwards incompatible changes
     db.apps.find().forEach(migration);
 
 * The scheduler collection has changed to group nodes by pool. If you are using
-  this scheduler you shoul run the MongoDB script bellow:
+  this scheduler you shoul run the MongoDB script below:
 
 .. highlight:: javascript
 

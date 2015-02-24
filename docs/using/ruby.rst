@@ -1,4 +1,4 @@
-.. Copyright 2014 tsuru authors. All rights reserved.
+.. Copyright 2015 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -218,7 +218,7 @@ And here is ``Gemfile``:
     gem 'uglifier', '>= 1.0.3'
     gem 'jquery-rails'
 
-You can see the complete output of installing these dependencies bellow:
+You can see the complete output of installing these dependencies below:
 
 .. highlight:: bash
 

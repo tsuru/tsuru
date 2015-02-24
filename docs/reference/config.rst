@@ -761,7 +761,7 @@ iaas:custom:<name>:<any_other_option>
 +++++++++++++++++++++++++++++++++++++
 
 This will overwrite the value of ``iaas:<provider>:<any_other_option>`` for this
-IaaS. As an example, having the configuration bellow would allow you to call
+IaaS. As an example, having the configuration below would allow you to call
 ``tsuru-admin docker-node-add iaas=region1_cloudstack ...``:
 
 .. highlight:: yaml

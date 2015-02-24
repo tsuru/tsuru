@@ -1,4 +1,4 @@
-.. Copyright 2014 tsuru authors. All rights reserved.
+.. Copyright 2015 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -226,7 +226,7 @@ looks like:
     php5-mysql
 
 
-You can see the complete output of installing these dependencies bellow:
+You can see the complete output of installing these dependencies below:
 
 .. highlight:: bash
 
@@ -413,7 +413,7 @@ connect in the database:
     define('DB_HOST', getenv('MYSQL_HOST'));
 
 
-You can extend your wordpress installing plugins into your repository. In the example bellow, we
+You can extend your wordpress installing plugins into your repository. In the example below, we
 are adding the Amazon S3 capability to wordpress, just installing 2 more plugins: `Amazon S3 and Cloudfront <http://wordpress.org/plugins/amazon-s3-and-cloudfront>`_ +
 `Amazon Web Services <http://wordpress.org/plugins/amazon-web-services>`_. It's the right way to store content files into tsuru.
 
@@ -430,7 +430,7 @@ are adding the Amazon S3 capability to wordpress, just installing 2 more plugins
     $ git add amazon-web-services/ amazon-s3-and-cloudfront/
 
 Now you need to add the amazon AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY environments
-support into wp-config.php. You could add these environments right after the WP_DEBUG as bellow:
+support into wp-config.php. You could add these environments right after the WP_DEBUG as below:
 
 .. highlight:: bash
 
@@ -444,7 +444,7 @@ support into wp-config.php. You could add these environments right after the WP_
     $ git commit -m 'adding plugins for S3'
     $ git push tsuru master
 
-Now, just inject the right values for these environments with tsuru env-set as bellow:
+Now, just inject the right values for these environments with tsuru env-set as below:
 
 .. highlight:: bash
 
