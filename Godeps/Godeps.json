@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/tsuru/tsuru",
-	"GoVersion": "devel +c768a84 Wed Feb 4 10:16:38 2015 +0000",
+	"GoVersion": "devel +d9859ad Tue Feb 24 17:35:25 2015 +0000",
 	"Packages": [
 		"./..."
 	],
@@ -76,6 +76,10 @@
 			"Rev": "b08c5fcf14d01cb0c20ddf70157f54d4a2c3a38a"
 		},
 		{
+			"ImportPath": "github.com/gorilla/pat",
+			"Rev": "ae2e162c4b2ae96aa66b596b2c18f17834299ed0"
+		},
+		{
 			"ImportPath": "github.com/howeyc/fsnotify",
 			"Comment": "v0.8.13",
 			"Rev": "5102fde921d31f59c6e45d835aa01f0213aade0f"
@@ -122,7 +126,7 @@
 			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
 		},
 		{
-			"ImportPath": "golang.org/x/crypto/ssh/terminal",
+			"ImportPath": "golang.org/x/crypto/ssh",
 			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
 		},
 		{
@@ -132,6 +136,10 @@
 		{
 			"ImportPath": "gopkg.in/amz.v2/ec2",
 			"Rev": "e902e769a04d5c84fb6b61d2cd362bc8f973b787"
+		},
+		{
+			"ImportPath": "gopkg.in/check.v1",
+			"Rev": "64131543e7896d5bcc6bd5a76287eb75ea96c673"
 		},
 		{
 			"ImportPath": "gopkg.in/mgo.v2",
@@ -145,10 +153,6 @@
 			"ImportPath": "launchpad.net/gnuflag",
 			"Comment": "12",
 			"Rev": "roger.peppe@canonical.com-20121003093437-zcyyw0lpvj2nifpk"
-		},
-		{
-			"ImportPath": "gopkg.in/check.v1",
-			"Rev": "64131543e7896d5bcc6bd5a76287eb75ea96c673"
 		}
 	]
 }
