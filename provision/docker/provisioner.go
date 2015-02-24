@@ -71,9 +71,9 @@ func initDockerCluster(p *dockerProvisioner) {
 	}
 	var nodes []cluster.Node
 	var scheduler cluster.Scheduler
+	totalMemoryMetadata, _ := config.GetString("docker:scheduler:total-memory-metadata")
+	maxUsedMemory, _ := config.GetFloat("docker:scheduler:max-used-memory")
 	if isSegregateScheduler() {
-		totalMemoryMetadata, _ := config.GetString("docker:scheduler:total-memory-metadata")
-		maxUsedMemory, _ := config.GetFloat("docker:scheduler:max-used-memory")
 		p.scheduler = &segregatedScheduler{
 			maxMemoryRatio:      float32(maxUsedMemory),
 			totalMemoryMetadata: totalMemoryMetadata,
@@ -116,6 +116,22 @@ func initDockerCluster(p *dockerProvisioner) {
 	activeMonitoring, _ := config.GetDuration("docker:healing:active-monitoring-interval")
 	if activeMonitoring > 0 {
 		p.cluster.StartActiveMonitoring(activeMonitoring * time.Second)
+	}
+	autoScaleEnabled, _ := config.GetBool("docker:auto_scale:enabled")
+	if autoScaleEnabled {
+		waitSecondsNewMachine, _ := config.GetDuration("docker:auto_scale:wait-new-time")
+		if waitSecondsNewMachine <= 0 {
+			waitSecondsNewMachine = 5 * 60
+		}
+		go (&autoScaleConfig{
+			provisioner:         p,
+			groupByMetadata:     "pool",
+			totalMemoryMetadata: totalMemoryMetadata,
+			maxMemoryRatio:      float32(maxUsedMemory),
+			maxContainerCount:   8,
+			runInterval:         1 * time.Minute,
+			waitTimeNewMachine:  waitSecondsNewMachine * time.Second,
+		}).run()
 	}
 }
 

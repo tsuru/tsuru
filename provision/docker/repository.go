@@ -40,6 +40,13 @@ func (p *dockerProvisioner) listContainersByHost(address string) ([]container, e
 	return p.listContainersBy(bson.M{"hostaddr": address})
 }
 
+func (p *dockerProvisioner) countContainersByHost(address string) (int, error) {
+	coll := p.collection()
+	defer coll.Close()
+	n, err := coll.Find(bson.M{"hostaddr": address}).Count()
+	return n, err
+}
+
 func (p *dockerProvisioner) listContainersByApp(appName string) ([]container, error) {
 	return p.listContainersBy(bson.M{"appname": appName})
 }
