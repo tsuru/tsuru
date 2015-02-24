@@ -170,9 +170,9 @@ Backward incompatible changes
   </managing/upgrading-docker>` for instructions on upgrading Docker with
   lesser downtime.
 
-* tsuru changed the name of Docker images used. During start-up, the server
-  daemon will migrate images automatically. This may slow down the first
-  start-up after the upgrade (issue `#712
+* tsuru changed the name of Docker images used for applications. During
+  start-up, the server daemon will migrate images automatically. This may slow
+  down the first start-up after the upgrade (issue `#712
   <https://github.com/tsuru/tsuru/issues/712>`_).
 
 * Drop support for Docker images that do not run `tsuru-unit-agent
