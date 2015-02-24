@@ -234,7 +234,7 @@ func (s *S) TestSplitMetadata(c *check.C) {
 
 func (s *S) TestChooseMetadataFromNodes(c *check.C) {
 	nodes := []*cluster.Node{
-		&cluster.Node{Address: "", Metadata: map[string]string{
+		{Address: "", Metadata: map[string]string{
 			"pool": "pool1",
 			"zone": "zone1",
 		}},
@@ -246,15 +246,15 @@ func (s *S) TestChooseMetadataFromNodes(c *check.C) {
 		"zone": "zone1",
 	})
 	nodes = []*cluster.Node{
-		&cluster.Node{Address: "", Metadata: map[string]string{
+		{Address: "", Metadata: map[string]string{
 			"pool": "pool1",
 			"zone": "zone1",
 		}},
-		&cluster.Node{Address: "", Metadata: map[string]string{
+		{Address: "", Metadata: map[string]string{
 			"pool": "pool1",
 			"zone": "zone1",
 		}},
-		&cluster.Node{Address: "", Metadata: map[string]string{
+		{Address: "", Metadata: map[string]string{
 			"pool": "pool1",
 			"zone": "zone2",
 		}},
@@ -266,15 +266,15 @@ func (s *S) TestChooseMetadataFromNodes(c *check.C) {
 		"zone": "zone2",
 	})
 	nodes = []*cluster.Node{
-		&cluster.Node{Address: "", Metadata: map[string]string{
+		{Address: "", Metadata: map[string]string{
 			"pool": "pool1",
 			"zone": "zone1",
 		}},
-		&cluster.Node{Address: "", Metadata: map[string]string{
+		{Address: "", Metadata: map[string]string{
 			"pool": "pool2",
 			"zone": "zone2",
 		}},
-		&cluster.Node{Address: "", Metadata: map[string]string{
+		{Address: "", Metadata: map[string]string{
 			"pool": "pool2",
 			"zone": "zone2",
 		}},
@@ -286,15 +286,15 @@ func (s *S) TestChooseMetadataFromNodes(c *check.C) {
 		"zone": "zone1",
 	})
 	nodes = []*cluster.Node{
-		&cluster.Node{Address: "", Metadata: map[string]string{
+		{Address: "", Metadata: map[string]string{
 			"pool": "pool1",
 			"zone": "zone1",
 		}},
-		&cluster.Node{Address: "", Metadata: map[string]string{
+		{Address: "", Metadata: map[string]string{
 			"pool": "pool2",
 			"zone": "zone2",
 		}},
-		&cluster.Node{Address: "", Metadata: map[string]string{
+		{Address: "", Metadata: map[string]string{
 			"pool": "pool2",
 			"zone": "zone3",
 		}},
