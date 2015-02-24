@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -22,9 +22,9 @@ import (
 )
 
 const (
-	tsuruMin      = "0.14.0"
-	craneMin      = "0.6.0"
-	tsuruAdminMin = "0.8.1"
+	tsuruMin      = "0.15.0"
+	craneMin      = "0.7.0"
+	tsuruAdminMin = "0.9.0"
 )
 
 func validate(token string, r *http.Request) (auth.Token, error) {
