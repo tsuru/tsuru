@@ -63,6 +63,11 @@ What's new in tsr 0.10.0
   Gandalf is disabled, tsuru will not manage keys as well. For more details,
   see :doc:`repository management page </managing/repositories>`.
 
+* New `Ruby platform <https://github.com/tsuru/basebuilder/tree/master/ruby>`_
+  with support to multiple Ruby versions. Instead of having one platform per
+  Ruby version, now users can just change the Ruby version they use by
+  specifying it in the ``Gemfile`` or in the ``.ruby-version`` file.
+
 Bug fixes
 =========
 
