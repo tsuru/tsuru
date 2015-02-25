@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -18,11 +18,11 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-// createServiceInstance in an action that calls the service endpoint
-// to creates the service instance.
+// createServiceInstance is an action that calls the service endpoint
+// to create a service instance.
 //
-// The first argument in the context must be an Service.
-// The second argument in the context must be an ServiceInstance.
+// The first argument in the context must be a Service.
+// The second argument in the context must be a ServiceInstance.
 var createServiceInstance = action.Action{
 	Name: "create-service-instance",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
