@@ -17,13 +17,14 @@ import (
 
 type autoScaleConfig struct {
 	provisioner         *dockerProvisioner
-	autoScaleFilter     map[string]string
+	matadataFilter      string
 	groupByMetadata     string
 	totalMemoryMetadata string
 	maxMemoryRatio      float32
 	maxContainerCount   int
 	waitTimeNewMachine  time.Duration
 	runInterval         time.Duration
+	done                chan bool
 }
 
 type metaWithFrequency struct {
@@ -37,19 +38,37 @@ func (l metaWithFrequencyList) Len() int           { return len(l) }
 func (l metaWithFrequencyList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 func (l metaWithFrequencyList) Less(i, j int) bool { return l[i].freq < l[j].freq }
 
-func (a *autoScaleConfig) run() {
+func (a *autoScaleConfig) run() error {
 	isMemoryBased := a.totalMemoryMetadata != "" && a.maxMemoryRatio != 0
 	if !isMemoryBased && a.maxContainerCount == 0 {
-		log.Error("[node autoscale] aborting node auto scale, either memory information or max container count must be informed in config")
-		return
+		err := fmt.Errorf("[node autoscale] aborting node auto scale, either memory information or max container count must be informed in config")
+		log.Error(err.Error())
+		return err
+	}
+	oneMinute := 1 * time.Minute
+	if a.runInterval < oneMinute {
+		a.runInterval = oneMinute
+	}
+	if a.waitTimeNewMachine < oneMinute {
+		a.waitTimeNewMachine = oneMinute
 	}
 	for {
 		err := a.runOnce(isMemoryBased)
 		if err != nil {
-			log.Errorf("[node autoscale] %s", err.Error())
+			err = fmt.Errorf("[node autoscale] %s", err.Error())
+			log.Error(err.Error())
 		}
-		time.Sleep(a.runInterval)
+		select {
+		case <-a.done:
+			return err
+		case <-time.After(a.runInterval):
+		}
 	}
+	return nil
+}
+
+func (a *autoScaleConfig) stop() {
+	a.done <- true
 }
 
 func (a *autoScaleConfig) runOnce(isMemoryBased bool) (retErr error) {
@@ -73,6 +92,9 @@ func (a *autoScaleConfig) runOnce(isMemoryBased bool) (retErr error) {
 		groupMetadata := node.Metadata[a.groupByMetadata]
 		if groupMetadata == "" {
 			log.Debugf("[node autoscale] skipped node %s, no metadata value for %s.", node.Address, a.groupByMetadata)
+			continue
+		}
+		if a.matadataFilter != "" && a.matadataFilter != groupMetadata {
 			continue
 		}
 		clusterMap[groupMetadata] = append(clusterMap[groupMetadata], node)

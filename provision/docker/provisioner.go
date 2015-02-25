@@ -117,20 +117,24 @@ func initDockerCluster(p *dockerProvisioner) {
 	if activeMonitoring > 0 {
 		p.cluster.StartActiveMonitoring(activeMonitoring * time.Second)
 	}
-	autoScaleEnabled, _ := config.GetBool("docker:auto_scale:enabled")
+	autoScaleEnabled, _ := config.GetBool("docker:auto-scale:enabled")
 	if autoScaleEnabled {
-		waitSecondsNewMachine, _ := config.GetDuration("docker:auto_scale:wait-new-time")
-		if waitSecondsNewMachine <= 0 {
-			waitSecondsNewMachine = 5 * 60
-		}
+		waitSecondsNewMachine, _ := config.GetDuration("docker:auto-scale:wait-new-time")
+		waitSecondsNewMachine *= time.Second
+		groupByMetadata, _ := config.GetString("docker:auto-scale:group-by-metadata")
+		matadataFilter, _ := config.GetString("docker:auto-scale:metadata-filter")
+		maxContainerCount, _ := config.GetInt("docker:auto-scale:max-container-count")
+		runInterval, _ := config.GetDuration("docker:auto-scale:run-interval")
+		runInterval *= time.Second
 		go (&autoScaleConfig{
 			provisioner:         p,
-			groupByMetadata:     "pool",
+			groupByMetadata:     groupByMetadata,
 			totalMemoryMetadata: totalMemoryMetadata,
 			maxMemoryRatio:      float32(maxUsedMemory),
-			maxContainerCount:   8,
-			runInterval:         1 * time.Minute,
-			waitTimeNewMachine:  waitSecondsNewMachine * time.Second,
+			maxContainerCount:   maxContainerCount,
+			runInterval:         runInterval,
+			waitTimeNewMachine:  waitSecondsNewMachine,
+			matadataFilter:      matadataFilter,
 		}).run()
 	}
 }
