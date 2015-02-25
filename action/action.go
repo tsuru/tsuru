@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -84,7 +84,7 @@ type Pipeline struct {
 // NewPipeline creates a new pipeline instance with the given list of actions.
 func NewPipeline(actions ...*Action) *Pipeline {
 	// Actions are usually global functions, copying them
-	// guarantees each copy have an isolated Result.
+	// guarantees each copy has an isolated Result.
 	newActions := make([]*Action, len(actions))
 	for i, action := range actions {
 		newAction := new(Action)
@@ -109,7 +109,7 @@ func (p *Pipeline) Result() Result {
 // all actions. If none of the Forward calls return error, the pipeline
 // execution ends in the forward phase and is "committed".
 //
-// If any of the Forward call fail, the executor switches to the backward phase
+// If any of the Forward calls fails, the executor switches to the backward phase
 // (roll back) and call the Backward function for each action completed. It
 // does not call the Backward function of the action that has failed.
 //
