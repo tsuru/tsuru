@@ -133,7 +133,7 @@ func (s *S) TestCreateContainerBackward(c *check.C) {
 	err = s.newFakeImage(s.p, "tsuru/python")
 	c.Assert(err, check.IsNil)
 	defer dcli.RemoveImage("tsuru/python")
-	conta, err := s.newContainer(nil)
+	conta, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(conta)
 	cont := *conta
@@ -305,7 +305,7 @@ func (s *S) TestSetNetworkInfoName(c *check.C) {
 }
 
 func (s *S) TestSetNetworkInfoForward(c *check.C) {
-	conta, err := s.newContainer(nil)
+	conta, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(conta)
 	cont := *conta
@@ -321,7 +321,7 @@ func (s *S) TestSetNetworkInfoForward(c *check.C) {
 }
 
 func (s *S) TestSetImage(c *check.C) {
-	conta, err := s.newContainer(nil)
+	conta, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(conta)
 	cont := *conta
@@ -336,7 +336,7 @@ func (s *S) TestSetImage(c *check.C) {
 }
 
 func (s *S) TestStartContainerForward(c *check.C) {
-	conta, err := s.newContainer(nil)
+	conta, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(conta)
 	cont := *conta
@@ -355,7 +355,7 @@ func (s *S) TestStartContainerBackward(c *check.C) {
 	err = s.newFakeImage(s.p, "tsuru/python")
 	c.Assert(err, check.IsNil)
 	defer dcli.RemoveImage("tsuru/python")
-	conta, err := s.newContainer(nil)
+	conta, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(conta)
 	cont := *conta
@@ -471,7 +471,7 @@ func (s *S) TestProvisionRemoveOldUnitsName(c *check.C) {
 }
 
 func (s *S) TestProvisionRemoveOldUnitsForward(c *check.C) {
-	cont, err := s.newContainer(nil)
+	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	defer routertest.FakeRouter.RemoveBackend(cont.AppName)
 	client, err := docker.NewClient(s.server.URL())
@@ -500,7 +500,7 @@ func (s *S) TestProvisionUnbindOldUnitsName(c *check.C) {
 }
 
 func (s *S) TestProvisionUnbindOldUnitsForward(c *check.C) {
-	cont, err := s.newContainer(nil)
+	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	defer routertest.FakeRouter.RemoveBackend(cont.AppName)
 	client, err := docker.NewClient(s.server.URL())
