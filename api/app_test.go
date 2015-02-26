@@ -1915,7 +1915,7 @@ func (s *S) TestAppLogFollowWithPubSub(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.deleteApp(&a)
-	url := "/apps/something/log/?:app=lost&lines=10&follow=1"
+	url := "/apps/something/log/?:app=" + a.Name + "&lines=10&follow=1"
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	wg := sync.WaitGroup{}
@@ -1955,7 +1955,7 @@ func (s *S) TestAppLogFollowWithFilter(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.deleteApp(&a)
-	url := "/apps/something/log/?:app=lost&lines=10&follow=1&source=web"
+	url := "/apps/something/log/?:app=" + a.Name + "&lines=10&follow=1&source=web"
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	wg := sync.WaitGroup{}
