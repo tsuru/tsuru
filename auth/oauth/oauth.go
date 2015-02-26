@@ -222,6 +222,7 @@ func (s *OAuthScheme) Parse(infoResponse *http.Response) (string, error) {
 }
 
 func (s *OAuthScheme) Create(user *auth.User) (*auth.User, error) {
+	user.Password = ""
 	err := user.Create()
 	if err != nil {
 		return nil, err

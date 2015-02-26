@@ -202,12 +202,13 @@ func (s *S) TestOAuthAuthWithAppToken(c *check.C) {
 
 func (s *S) TestOAuthCreate(c *check.C) {
 	scheme := OAuthScheme{}
-	user := auth.User{Email: "x@x.com"}
+	user := auth.User{Email: "x@x.com", Password: "something"}
 	_, err := scheme.Create(&user)
 	c.Assert(err, check.IsNil)
 	dbUser, err := auth.GetUserByEmail(user.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbUser.Email, check.Equals, user.Email)
+	c.Assert(dbUser.Password, check.Equals, "")
 	c.Assert(repositorytest.Users(), check.DeepEquals, []string{user.Email})
 }
 
