@@ -64,7 +64,6 @@ func (a *autoScaleConfig) run() error {
 		case <-time.After(a.runInterval):
 		}
 	}
-	return nil
 }
 
 func (a *autoScaleConfig) stop() {
