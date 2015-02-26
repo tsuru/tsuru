@@ -44,6 +44,10 @@ func (p *dockerProvisioner) migrateImages() error {
 	for _, app := range apps {
 		oldImage := registry + repoNamespace + "/" + app.Name
 		newImage := registry + repoNamespace + "/app-" + app.Name
+		containers, _ := p.listContainersBy(bson.M{"image": newImage, "appname": app.Name})
+		if len(containers) > 0 {
+			continue
+		}
 		opts := docker.TagImageOptions{Repo: newImage, Force: true}
 		err = dcluster.TagImage(oldImage, opts)
 		var baseErr error

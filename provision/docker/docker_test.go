@@ -34,26 +34,34 @@ import (
 type newContainerOpts struct {
 	AppName     string
 	Status      string
+	Image       string
 	Provisioner *dockerProvisioner
 }
 
-func (s *S) newContainer(opts *newContainerOpts) (*container, error) {
+func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*container, error) {
 	container := container{
 		ID:       "id",
 		IP:       "10.10.10.10",
 		HostPort: "3333",
 		HostAddr: "127.0.0.1",
 	}
-	p := s.p
+	if p == nil {
+		p = s.p
+	}
+	image := "tsuru/python"
 	if opts != nil {
+		if opts.Image != "" {
+			image = opts.Image
+		}
 		container.Status = opts.Status
 		container.AppName = opts.AppName
 		if opts.Provisioner != nil {
 			p = opts.Provisioner
 		}
 	}
-	err := s.newFakeImage(p, "tsuru/python")
+	err := s.newFakeImage(p, image)
 	if err != nil {
+		println("error new fake: " + err.Error())
 		return nil, err
 	}
 	if container.AppName == "" {
@@ -69,16 +77,17 @@ func (s *S) newContainer(opts *newContainerOpts) (*container, error) {
 		docker.Port(port + "/tcp"): {},
 	}
 	config := docker.Config{
-		Image:        "tsuru/python",
+		Image:        image,
 		Cmd:          []string{"ps"},
 		ExposedPorts: ports,
 	}
-	_, c, err := s.p.getCluster().CreateContainer(docker.CreateContainerOptions{Config: &config})
+	_, c, err := p.getCluster().CreateContainer(docker.CreateContainerOptions{Config: &config})
 	if err != nil {
+		println("error create container: " + err.Error())
 		return nil, err
 	}
 	container.ID = c.ID
-	container.Image = "tsuru/python"
+	container.Image = image
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -107,7 +116,8 @@ func (s *S) removeTestContainer(c *container) error {
 func (s *S) newFakeImage(p *dockerProvisioner, repo string) error {
 	var buf safe.Buffer
 	opts := docker.PullImageOptions{Repository: repo, OutputStream: &buf}
-	return p.getCluster().PullImage(opts, docker.AuthConfiguration{})
+	err := p.getCluster().PullImage(opts, docker.AuthConfiguration{})
+	return err
 }
 
 func (s *S) TestContainerGetAddress(c *check.C) {
@@ -308,7 +318,7 @@ func (s *S) TestContainerRemove(c *check.C) {
 	err = conn.Apps().Insert(app.App{Name: "test-app"})
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": "test-app"})
-	container, err := s.newContainer(&newContainerOpts{AppName: "test-app"})
+	container, err := s.newContainer(&newContainerOpts{AppName: "test-app"}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container)
 	err = container.remove(s.p)
@@ -332,7 +342,7 @@ func (s *S) TestRemoveContainerIgnoreErrors(c *check.C) {
 	err = conn.Apps().Insert(app.App{Name: "test-app"})
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": "test-app"})
-	container, err := s.newContainer(&newContainerOpts{AppName: "test-app"})
+	container, err := s.newContainer(&newContainerOpts{AppName: "test-app"}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container)
 	client, _ := docker.NewClient(s.server.URL())
@@ -349,7 +359,7 @@ func (s *S) TestRemoveContainerIgnoreErrors(c *check.C) {
 }
 
 func (s *S) TestContainerNetworkInfo(c *check.C) {
-	cont, err := s.newContainer(nil)
+	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
 	info, err := cont.networkInfo(s.p)
@@ -389,7 +399,7 @@ func (s *S) TestContainerNetworkInfoNotFound(c *check.C) {
 }
 
 func (s *S) TestContainerShell(c *check.C) {
-	container, err := s.newContainer(nil)
+	container, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	var stdout, stderr bytes.Buffer
 	stdin := bytes.NewBufferString("")
@@ -491,7 +501,7 @@ func (s *S) TestGetImageWithRegistry(c *check.C) {
 }
 
 func (s *S) TestContainerCommit(c *check.C) {
-	cont, err := s.newContainer(nil)
+	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
 	buf := bytes.Buffer{}
@@ -508,7 +518,7 @@ func (s *S) TestContainerCommit(c *check.C) {
 func (s *S) TestContainerCommitWithRegistry(c *check.C) {
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
-	cont, err := s.newContainer(nil)
+	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
 	buf := bytes.Buffer{}
@@ -525,7 +535,7 @@ func (s *S) TestContainerCommitWithRegistry(c *check.C) {
 func (s *S) TestContainerCommitErrorInCommit(c *check.C) {
 	s.server.PrepareFailure("commit-failure", "/commit")
 	defer s.server.ResetFailure("commit-failure")
-	cont, err := s.newContainer(nil)
+	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
 	buf := bytes.Buffer{}
@@ -541,7 +551,7 @@ func (s *S) TestContainerCommitErrorInPush(c *check.C) {
 	defer s.server.ResetFailure("push-failure")
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
-	cont, err := s.newContainer(nil)
+	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
 	buf := bytes.Buffer{}
@@ -632,7 +642,7 @@ func (s *S) TestStart(c *check.C) {
 }
 
 func (s *S) TestContainerStop(c *check.C) {
-	cont, err := s.newContainer(nil)
+	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
 	client, err := docker.NewClient(s.server.URL())
@@ -648,7 +658,7 @@ func (s *S) TestContainerStop(c *check.C) {
 }
 
 func (s *S) TestContainerStopReturnsNilWhenContainerAlreadyMarkedAsStopped(c *check.C) {
-	cont, err := s.newContainer(nil)
+	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
 	cont.setStatus(s.p, provision.StatusStopped.String())
@@ -657,7 +667,7 @@ func (s *S) TestContainerStopReturnsNilWhenContainerAlreadyMarkedAsStopped(c *ch
 }
 
 func (s *S) TestContainerLogs(c *check.C) {
-	cont, err := s.newContainer(nil)
+	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
 	var buff bytes.Buffer
@@ -775,7 +785,7 @@ func (s *S) TestPushImageNoRegistry(c *check.C) {
 }
 
 func (s *S) TestContainerStart(c *check.C) {
-	cont, err := s.newContainer(nil)
+	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
 	client, err := docker.NewClient(s.server.URL())
@@ -804,7 +814,7 @@ func (s *S) TestContainerStart(c *check.C) {
 }
 
 func (s *S) TestContainerStartDeployContainer(c *check.C) {
-	cont, err := s.newContainer(nil)
+	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
 	contPath := fmt.Sprintf("/containers/%s/start", cont.ID)
@@ -825,7 +835,7 @@ func (s *S) TestContainerStartDeployContainer(c *check.C) {
 }
 
 func (s *S) TestContainerStartWithoutPort(c *check.C) {
-	cont, err := s.newContainer(nil)
+	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
 	oldUser, _ := config.Get("docker:run-cmd:port")
@@ -836,7 +846,7 @@ func (s *S) TestContainerStartWithoutPort(c *check.C) {
 }
 
 func (s *S) TestContainerStartStartedUnits(c *check.C) {
-	cont, err := s.newContainer(nil)
+	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
 	err = cont.start(s.p, false)
@@ -892,7 +902,7 @@ func (s *S) TestBuildClusterStorage(c *check.C) {
 }
 
 func (s *S) TestContainerExec(c *check.C) {
-	container, err := s.newContainer(nil)
+	container, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	var stdout, stderr bytes.Buffer
 	err = container.exec(s.p, &stdout, &stderr, "ls", "-lh")
@@ -904,7 +914,7 @@ func (s *S) TestContainerExecErrorCode(c *check.C) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"ID": "id-exec-created-by-test", "ExitCode": 9}`))
 	}))
-	container, err := s.newContainer(nil)
+	container, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	var stdout, stderr bytes.Buffer
 	err = container.exec(s.p, &stdout, &stderr, "ls", "-lh")
