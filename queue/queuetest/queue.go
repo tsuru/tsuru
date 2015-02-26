@@ -11,9 +11,7 @@ import (
 	"github.com/tsuru/tsuru/queue"
 )
 
-var (
-	factory = NewFakePubSubQFactory()
-)
+var factory = NewFakePubSubQFactory()
 
 func init() {
 	queue.Register("fake", factory)
