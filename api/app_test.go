@@ -1911,7 +1911,7 @@ func (s *S) TestAppLogReturnsBadRequestIfNumberOfLinesIsNotAnInteger(c *check.C)
 }
 
 func (s *S) TestAppLogFollowWithPubSub(c *check.C) {
-	a := app.App{Name: "lost", Platform: "zend", Teams: []string{s.team.Name}}
+	a := app.App{Name: "lost1", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.deleteApp(&a)
@@ -1951,7 +1951,7 @@ func (s *S) TestAppLogFollowWithPubSub(c *check.C) {
 }
 
 func (s *S) TestAppLogFollowWithFilter(c *check.C) {
-	a := app.App{Name: "lost", Platform: "zend", Teams: []string{s.team.Name}}
+	a := app.App{Name: "lost2", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.deleteApp(&a)
