@@ -1936,7 +1936,6 @@ func (s *S) TestAppLogFollowWithPubSub(c *check.C) {
 		c.Assert(logs, check.HasLen, 1)
 		c.Assert(logs[0].Message, check.Equals, "x")
 	}()
-	time.Sleep(1e8)
 	factory, err := queue.Factory()
 	c.Assert(err, check.IsNil)
 	q, err := factory.Get("pubsub:" + a.Name)
@@ -1945,7 +1944,7 @@ func (s *S) TestAppLogFollowWithPubSub(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	err = pubSubQ.Pub([]byte(`{"message": "x"}`))
 	c.Assert(err, check.IsNil)
-	time.Sleep(1e8)
+	time.Sleep(2e8)
 	pubSubQ.UnSub()
 	wg.Wait()
 }
@@ -1976,7 +1975,6 @@ func (s *S) TestAppLogFollowWithFilter(c *check.C) {
 		c.Assert(logs, check.HasLen, 1)
 		c.Assert(logs[0].Message, check.Equals, "y")
 	}()
-	time.Sleep(1e8)
 	factory, err := queue.Factory()
 	c.Assert(err, check.IsNil)
 	q, err := factory.Get("pubsub:" + a.Name)
@@ -1987,7 +1985,7 @@ func (s *S) TestAppLogFollowWithFilter(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = pubSubQ.Pub([]byte(`{"message": "y", "source": "web"}`))
 	c.Assert(err, check.IsNil)
-	time.Sleep(1e8)
+	time.Sleep(2e8)
 	pubSubQ.UnSub()
 	wg.Wait()
 }
