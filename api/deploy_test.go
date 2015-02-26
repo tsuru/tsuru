@@ -215,6 +215,77 @@ func (s *DeploySuite) TestDeployShouldReturnNotFoundWhenAppDoesNotExist(c *check
 	c.Assert(message, check.Equals, "App not found.\n")
 }
 
+func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenUserDoesNotHaveAccessToApp(c *check.C) {
+	user := &auth.User{Email: "someone@tsuru.io", Password: "123456"}
+	_, err := nativeScheme.Create(user)
+	c.Assert(err, check.IsNil)
+	defer nativeScheme.Remove(user)
+	token, err := nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
+	c.Assert(err, check.IsNil)
+	adminUser, _ := s.token.User()
+	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	err = app.CreateApp(&a, adminUser)
+	c.Assert(err, check.IsNil)
+	defer app.Delete(&a)
+	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano"))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+	c.Assert(recorder.Body.String(), check.Equals, "user does not have access to this app\n")
+}
+
+func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenTokenIsntFromTheApp(c *check.C) {
+	user, _ := s.token.User()
+	app1 := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
+	err := app.CreateApp(&app1, user)
+	c.Assert(err, check.IsNil)
+	defer app.Delete(&app1)
+	app2 := app.App{Name: "superapp", Platform: "python", TeamOwner: s.team.Name}
+	err = app.CreateApp(&app2, user)
+	c.Assert(err, check.IsNil)
+	defer app.Delete(&app2)
+	token, err := nativeScheme.AppLogin(app2.Name)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", app1.Name, app2.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano"))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusUnauthorized)
+	c.Assert(recorder.Body.String(), check.Equals, "invalid app token\n")
+}
+
+func (s *DeploySuite) TestDeployWithTokenForInternalAppName(c *check.C) {
+	token, err := nativeScheme.AppLogin(app.InternalAppName)
+	c.Assert(err, check.IsNil)
+	a := app.App{Name: "otherapp", Platform: "python", Teams: []string{s.team.Name}}
+	user, _ := s.token.User()
+	err = app.CreateApp(&a, user)
+	c.Assert(err, check.IsNil)
+	defer app.Delete(&a)
+	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("version=a345f3e&user=fulano"))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), check.Equals, "Git deploy called\nOK\n")
+	c.Assert(s.provisioner.Version(&a), check.Equals, "a345f3e")
+}
+
 func (s *DeploySuite) TestDeployWithoutVersionAndArchiveURL(c *check.C) {
 	user, _ := s.token.User()
 	a := app.App{Name: "abc", Platform: "python", Teams: []string{s.team.Name}}

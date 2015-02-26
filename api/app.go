@@ -39,7 +39,7 @@ func getApp(name string, u *auth.User) (app.App, error) {
 		return *a, nil
 	}
 	if !auth.CheckUserAccess(a.Teams, u) {
-		return *a, &errors.HTTP{Code: http.StatusForbidden, Message: "User does not have access to this app"}
+		return *a, &errors.HTTP{Code: http.StatusForbidden, Message: "user does not have access to this app"}
 	}
 	return *a, nil
 }

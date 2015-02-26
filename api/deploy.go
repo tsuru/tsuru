@@ -22,8 +22,8 @@ import (
 
 func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	var file multipart.File
+	var err error
 	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/") {
-		var err error
 		file, _, err = r.FormFile("file")
 		if err != nil {
 			return &errors.HTTP{
@@ -49,17 +49,30 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	commit := r.PostFormValue("commit")
 	w.Header().Set("Content-Type", "text")
 	appName := r.URL.Query().Get(":appname")
-	instance, err := app.GetByName(appName)
-	if err != nil {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf("App %s not found.", appName)}
+	var userName string
+	var instance *app.App
+	if t.IsAppToken() {
+		if t.GetAppName() != appName && t.GetAppName() != app.InternalAppName {
+			return &errors.HTTP{Code: http.StatusUnauthorized, Message: "invalid app token"}
+		}
+		instance, err = app.GetByName(appName)
+		if err != nil {
+			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		}
+		userName = r.PostFormValue("user")
+	} else {
+		user, err := t.User()
+		if err != nil {
+			return err
+		}
+		app, err := getApp(appName, user)
+		if err != nil {
+			return err
+		}
+		instance = &app
+		userName = t.GetUserName()
 	}
 	writer := io.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
-	var user string
-	if t.IsAppToken() {
-		user = r.PostFormValue("user")
-	} else {
-		user = t.GetUserName()
-	}
 	err = app.Deploy(app.DeployOptions{
 		App:          instance,
 		Version:      version,
@@ -67,7 +80,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		File:         file,
 		ArchiveURL:   archiveURL,
 		OutputStream: writer,
-		User:         user,
+		User:         userName,
 	})
 	if err == nil {
 		fmt.Fprintln(w, "\nOK")
