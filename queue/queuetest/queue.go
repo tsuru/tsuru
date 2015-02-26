@@ -118,6 +118,12 @@ func (f *FakePubSubQFactory) Get(name string) (queue.PubSubQ, error) {
 	return &q, nil
 }
 
+func (f *FakePubSubQFactory) Reset() {
+	f.Lock()
+	defer f.Unlock()
+	f.queues = make(map[string]*FakePubSubQ)
+}
+
 type messageNode struct {
 	m    *Message
 	next *messageNode

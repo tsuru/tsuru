@@ -18,7 +18,8 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision/provisiontest"
-	_ "github.com/tsuru/tsuru/queue/queuetest"
+	"github.com/tsuru/tsuru/queue"
+	"github.com/tsuru/tsuru/queue/queuetest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
@@ -105,6 +106,10 @@ func (s *S) TearDownSuite(c *check.C) {
 func (s *S) SetUpTest(c *check.C) {
 	repositorytest.Reset()
 	repository.Manager().CreateUser(s.user.Email)
+	factory, err := queue.Factory()
+	c.Assert(err, check.IsNil)
+	fakeFactory := factory.(*queuetest.FakePubSubQFactory)
+	fakeFactory.Reset()
 }
 
 func (s *S) TearDownTest(c *check.C) {
