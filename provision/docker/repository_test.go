@@ -45,6 +45,23 @@ func (s *S) TestListContainersByApp(c *check.C) {
 	c.Assert(cond, check.Equals, true)
 }
 
+func (s *S) TestListContainersByImage(c *check.C) {
+	var result []container
+	coll := s.p.collection()
+	defer coll.Close()
+	coll.Insert(
+		container{ID: "Hey", Type: "python", Image: "myapp", HostAddr: "http://cittavld1180.globoi.com"},
+		container{ID: "Ho", Type: "python", Image: "myapp", HostAddr: "http://cittavld1182.globoi.com"},
+		container{ID: "Let's Go", Type: "java", Image: "other", HostAddr: "http://cittavld597.globoi.com"},
+	)
+	defer coll.RemoveAll(bson.M{"image": "myapp"})
+	result, err := s.p.listContainersByImage("myapp")
+	c.Assert(err, check.IsNil)
+	c.Assert(len(result), check.Equals, 2)
+	cond := (result[0].ID == "Hey" && result[1].ID == "Ho") || (result[0].ID == "Ho" && result[1].ID == "Hey")
+	c.Assert(cond, check.Equals, true)
+}
+
 type containerByIdList []container
 
 func (l containerByIdList) Len() int           { return len(l) }

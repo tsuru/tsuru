@@ -51,6 +51,10 @@ func (p *dockerProvisioner) listContainersByApp(appName string) ([]container, er
 	return p.listContainersBy(bson.M{"appname": appName})
 }
 
+func (p *dockerProvisioner) listContainersByImage(imageName string) ([]container, error) {
+	return p.listContainersBy(bson.M{"image": imageName})
+}
+
 func (p *dockerProvisioner) listContainersByAppAndHost(appNames, addresses []string) ([]container, error) {
 	query := bson.M{}
 	if len(appNames) > 0 {
