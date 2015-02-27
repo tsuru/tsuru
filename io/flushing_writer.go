@@ -15,13 +15,12 @@ import (
 	"github.com/tsuru/tsuru/log"
 )
 
-var writeMutex sync.Mutex
-
 // FlushingWriter is a custom writer that flushes after writing, if the
 // underlying ResponseWriter is also an http.Flusher.
 type FlushingWriter struct {
 	http.ResponseWriter
-	wrote bool
+	wrote      bool
+	writeMutex sync.Mutex
 }
 
 func (w *FlushingWriter) WriteHeader(code int) {
@@ -31,8 +30,8 @@ func (w *FlushingWriter) WriteHeader(code int) {
 
 // Write writes and flushes the data.
 func (w *FlushingWriter) Write(data []byte) (written int, err error) {
-	writeMutex.Lock()
-	defer writeMutex.Unlock()
+	w.writeMutex.Lock()
+	defer w.writeMutex.Unlock()
 	w.wrote = true
 	written, err = w.ResponseWriter.Write(data)
 	if err != nil {
