@@ -166,7 +166,7 @@ func moveContainerHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 		return fmt.Errorf("Invalid params: id: %s - to: %s", contId, to)
 	}
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{
-		Encoder: json.NewEncoder(&tsuruIo.FlushingWriter{ResponseWriter: w}),
+		Encoder: json.NewEncoder(w),
 	}
 	_, err = mainDockerProvisioner.moveContainer(contId, to, writer)
 	if err != nil {
@@ -188,7 +188,7 @@ func moveContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return fmt.Errorf("Invalid params: from: %s - to: %s", from, to)
 	}
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{
-		Encoder: json.NewEncoder(&tsuruIo.FlushingWriter{ResponseWriter: w}),
+		Encoder: json.NewEncoder(w),
 	}
 	err = mainDockerProvisioner.moveContainers(from, to, writer)
 	if err != nil {
@@ -211,7 +211,7 @@ func rebalanceContainersHandler(w http.ResponseWriter, r *http.Request, t auth.T
 		dry, _ = strconv.ParseBool(params.Dry)
 	}
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{
-		Encoder: json.NewEncoder(&tsuruIo.FlushingWriter{ResponseWriter: w}),
+		Encoder: json.NewEncoder(w),
 	}
 	err = mainDockerProvisioner.rebalanceContainersByFilter(writer, params.AppFilter, params.MetadataFilter, dry)
 	if err != nil {
