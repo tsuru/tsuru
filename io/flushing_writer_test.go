@@ -19,7 +19,7 @@ import (
 
 func (s *S) TestFlushingWriter(c *check.C) {
 	recorder := httptest.NewRecorder()
-	writer := FlushingWriter{recorder, false}
+	writer := FlushingWriter{ResponseWriter: recorder, wrote: false}
 	data := []byte("ble")
 	_, err := writer.Write(data)
 	c.Assert(err, check.IsNil)
@@ -29,7 +29,7 @@ func (s *S) TestFlushingWriter(c *check.C) {
 
 func (s *S) TestFlushingWriterShouldReturnTheDataSize(c *check.C) {
 	recorder := httptest.NewRecorder()
-	writer := FlushingWriter{recorder, false}
+	writer := FlushingWriter{ResponseWriter: recorder, wrote: false}
 	data := []byte("ble")
 	n, err := writer.Write(data)
 	c.Assert(err, check.IsNil)
@@ -38,14 +38,14 @@ func (s *S) TestFlushingWriterShouldReturnTheDataSize(c *check.C) {
 
 func (s *S) TestFlushingWriterHeader(c *check.C) {
 	recorder := httptest.NewRecorder()
-	writer := FlushingWriter{recorder, false}
+	writer := FlushingWriter{ResponseWriter: recorder, wrote: false}
 	writer.Header().Set("Content-Type", "application/xml")
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/xml")
 }
 
 func (s *S) TestFlushingWriterWriteHeader(c *check.C) {
 	recorder := httptest.NewRecorder()
-	writer := FlushingWriter{recorder, false}
+	writer := FlushingWriter{ResponseWriter: recorder, wrote: false}
 	expectedCode := 333
 	writer.WriteHeader(expectedCode)
 	c.Assert(recorder.Code, check.Equals, expectedCode)
@@ -53,7 +53,7 @@ func (s *S) TestFlushingWriterWriteHeader(c *check.C) {
 }
 
 func (s *S) TestFlushingWriterWrote(c *check.C) {
-	writer := FlushingWriter{nil, false}
+	writer := FlushingWriter{ResponseWriter: nil, wrote: false}
 	c.Assert(writer.Wrote(), check.Equals, false)
 	writer.wrote = true
 	c.Assert(writer.Wrote(), check.Equals, true)
@@ -71,7 +71,7 @@ func (s *S) TestFlushingWriterHijack(c *check.C) {
 		input:          &buf,
 		conn:           expectedConn,
 	}
-	writer := FlushingWriter{&recorder, false}
+	writer := FlushingWriter{ResponseWriter: &recorder, wrote: false}
 	conn, rw, err := writer.Hijack()
 	c.Assert(err, check.IsNil)
 	c.Assert(conn, check.Equals, expectedConn)
@@ -87,7 +87,7 @@ func (s *S) TestFlushingWriterHijack(c *check.C) {
 func (s *S) TestFlushingWriterFailureToHijack(c *check.C) {
 	expectedErr := errors.New("failed to hijack, man")
 	recorder := hijacker{err: expectedErr}
-	writer := FlushingWriter{&recorder, false}
+	writer := FlushingWriter{ResponseWriter: &recorder, wrote: false}
 	conn, rw, err := writer.Hijack()
 	c.Assert(conn, check.IsNil)
 	c.Assert(rw, check.IsNil)
@@ -96,12 +96,24 @@ func (s *S) TestFlushingWriterFailureToHijack(c *check.C) {
 
 func (s *S) TestFlushingWriterHijackUnhijackable(c *check.C) {
 	recorder := httptest.NewRecorder()
-	writer := FlushingWriter{recorder, false}
+	writer := FlushingWriter{ResponseWriter: recorder, wrote: false}
 	conn, rw, err := writer.Hijack()
 	c.Assert(conn, check.IsNil)
 	c.Assert(rw, check.IsNil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "cannot hijack connection")
+}
+
+func (s *S) TestFlushingWriterOfFlushingWriter(c *check.C) {
+	recorder := httptest.NewRecorder()
+	writer := FlushingWriter{ResponseWriter: recorder}
+	writer2 := FlushingWriter{ResponseWriter: &writer}
+	data := []byte("ble")
+	_, err := writer2.Write(data)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Body.Bytes(), check.DeepEquals, data)
+	c.Assert(writer.wrote, check.Equals, true)
+	c.Assert(writer2.wrote, check.Equals, true)
 }
 
 type hijacker struct {
