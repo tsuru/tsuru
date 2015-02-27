@@ -5,7 +5,6 @@
 package docker
 
 import (
-	"bytes"
 	"fmt"
 	"sort"
 	"time"
@@ -13,6 +12,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/safe"
 )
 
 type autoScaleConfig struct {
@@ -136,12 +136,12 @@ func (a *autoScaleConfig) scaleGroupByCount(groupMetadata string, nodes []*clust
 	}
 	gap := maxCount - minCount
 	if gap >= 2 {
-		var buf bytes.Buffer
+		buf := safe.NewBuffer(nil)
 		var rebalanceFilter map[string]string
 		if a.groupByMetadata != "" {
 			rebalanceFilter = map[string]string{a.groupByMetadata: groupMetadata}
 		}
-		err := a.provisioner.rebalanceContainersByFilter(&buf, nil, rebalanceFilter, false)
+		err := a.provisioner.rebalanceContainersByFilter(buf, nil, rebalanceFilter, false)
 		if err != nil {
 			log.Errorf("Unable to rebalance containers: %s - log: %s", err.Error(), buf.String())
 		}
