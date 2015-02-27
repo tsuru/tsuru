@@ -260,6 +260,10 @@ func (p *dockerProvisioner) rebalanceContainersByFilter(writer io.Writer, appFil
 		for _, n := range nodes {
 			hostsFilter = append(hostsFilter, urlToHost(n.Address))
 		}
+		if len(hostsFilter) == 0 {
+			fmt.Fprintf(writer, "No hosts matching metadata filters\n")
+			return nil
+		}
 	}
 	containers, err := p.listContainersByAppAndHost(appFilter, hostsFilter)
 	if err != nil {
@@ -270,7 +274,11 @@ func (p *dockerProvisioner) rebalanceContainersByFilter(writer io.Writer, appFil
 		return nil
 	}
 	if dryRun {
-		p, err = p.DryMode(containers)
+		allContainers, err := p.listAllContainers()
+		if err != nil {
+			return err
+		}
+		p, err = p.DryMode(allContainers)
 		if err != nil {
 			return err
 		}

@@ -147,7 +147,11 @@ func (p *dockerProvisioner) DryMode(containersToCopy []container) (*dockerProvis
 	overridenProvisioner.cluster.DryMode()
 	coll := overridenProvisioner.collection()
 	defer coll.Close()
-	err = coll.Insert(containersToCopy)
+	toInsert := make([]interface{}, len(containersToCopy))
+	for i := range containersToCopy {
+		toInsert[i] = containersToCopy[i]
+	}
+	err = coll.Insert(toInsert...)
 	if err != nil {
 		return nil, err
 	}
