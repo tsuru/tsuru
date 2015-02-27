@@ -1369,3 +1369,26 @@ func (s *S) TestShellToAnAppByAppName(c *check.C) {
 	err = s.p.Shell(app, conn, 10, 10, "")
 	c.Assert(err, check.IsNil)
 }
+
+func (s *S) TestDryMode(c *check.C) {
+	err := s.newFakeImage(s.p, "tsuru/app-myapp")
+	c.Assert(err, check.IsNil)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
+	defer s.p.Destroy(appInstance)
+	s.p.Provision(appInstance)
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, check.IsNil)
+	containers, err := addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:      "127.0.0.1",
+		unitsToAdd:  5,
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: s.p,
+	})
+	c.Assert(err, check.IsNil)
+	newProv, err := s.p.DryMode(containers)
+	c.Assert(err, check.IsNil)
+	contsNew, err := newProv.listAllContainers()
+	c.Assert(err, check.IsNil)
+	c.Assert(contsNew, check.HasLen, 5)
+}

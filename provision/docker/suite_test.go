@@ -73,7 +73,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	s.targetRecover = cmdtest.SetTargetFile(c, []byte("http://localhost"))
 	s.storage, err = db.Conn()
 	c.Assert(err, check.IsNil)
-	s.p = &dockerProvisioner{}
+	s.p = &dockerProvisioner{storage: &cluster.MapStorage{}}
 	s.oldProvisioner = app.Provisioner
 	app.Provisioner = s.p
 }
