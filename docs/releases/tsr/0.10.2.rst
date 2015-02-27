@@ -1,0 +1,17 @@
+.. Copyright 2015 tsuru authors. All rights reserved.
+   Use of this source code is governed by a BSD-style
+   license that can be found in the LICENSE file.
+
+========================
+tsr 0.10.2 release notes
+========================
+
+Welcome to tsr 0.10.2!
+
+tsr 0.10.2 includes one bug fixes to administration commands:
+
+*  tsuru-admin commands ``container-move``, ``containers-move`` and ``containers-
+   rebalance`` caused tsuru server to freeze. This issue was caused by a global
+   mutex for all connections being permanently locked. This fix eliminates the
+   global mutex and instead creates an independent lock per request. A performance
+   improvement in api calls is also expected with this fix.
