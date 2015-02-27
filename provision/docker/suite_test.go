@@ -15,10 +15,13 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/cmd/cmdtest"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
@@ -43,6 +46,9 @@ type S struct {
 	storage        *db.Storage
 	oldProvisioner provision.Provisioner
 	p              *dockerProvisioner
+	user           *auth.User
+	token          auth.Token
+	team           *auth.Team
 }
 
 var _ = check.Suite(&S{})
@@ -65,6 +71,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("docker:cluster:mongo-database", "docker_provision_tests_cluster_stor")
 	config.Set("queue", "fake")
 	config.Set("repo-manager", "fake")
+	config.Set("admin-team", "admin")
 	s.deployCmd = "/var/lib/tsuru/deploy"
 	s.runBin = "/usr/local/bin/circusd"
 	s.runArgs = "/etc/circus/circus.ini"
@@ -102,6 +109,17 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer healingColl.Close()
 	healingColl.RemoveAll(nil)
+	s.user = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: quota.Unlimited}
+	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
+	app.AuthScheme = nativeScheme
+	_, err = nativeScheme.Create(s.user)
+	c.Assert(err, check.IsNil)
+	s.team = &auth.Team{Name: "admin", Users: []string{s.user.Email}}
+	c.Assert(err, check.IsNil)
+	err = s.storage.Teams().Insert(s.team)
+	c.Assert(err, check.IsNil)
+	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
+	c.Assert(err, check.IsNil)
 }
 
 func clearClusterStorage() error {
