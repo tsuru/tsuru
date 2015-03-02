@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 
+	dtesting "github.com/fsouza/go-dockerclient/testing"
+	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -195,6 +197,60 @@ func (s *S) TestRebalanceContainers(c *check.C) {
 	c2, err := p.listContainersByHost("127.0.0.1")
 	c.Assert(err, check.IsNil)
 	c.Assert((len(c1) == 3 && len(c2) == 2) || (len(c1) == 2 && len(c2) == 3), check.Equals, true)
+}
+
+func (s *S) TestRebalanceContainersSegScheduler(c *check.C) {
+	otherServer, err := dtesting.NewServer("localhost:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	otherUrl := strings.Replace(otherServer.URL(), "127.0.0.1", "localhost", 1)
+	p := &dockerProvisioner{}
+	p.storage = &cluster.MapStorage{}
+	p.scheduler = &segregatedScheduler{provisioner: p}
+	p.cluster, err = cluster.New(p.scheduler, p.storage,
+		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "pool1"}},
+		cluster.Node{Address: otherUrl, Metadata: map[string]string{"pool": "pool1"}},
+	)
+	c.Assert(err, check.IsNil)
+	err = p.scheduler.addPool("pool1")
+	c.Assert(err, check.IsNil)
+	err = p.scheduler.addTeamsToPool("pool1", []string{"team1"})
+	c.Assert(err, check.IsNil)
+	err = s.newFakeImage(p, "tsuru/app-myapp")
+	c.Assert(err, check.IsNil)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
+	defer p.Destroy(appInstance)
+	p.Provision(appInstance)
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, check.IsNil)
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:      "localhost",
+		unitsToAdd:  5,
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: p,
+	})
+	c.Assert(err, check.IsNil)
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	appStruct := &app.App{
+		Name:      appInstance.GetName(),
+		TeamOwner: "team1",
+	}
+	err = conn.Apps().Insert(appStruct)
+	c.Assert(err, check.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
+	c1, err := p.listContainersByHost("localhost")
+	c.Assert(err, check.IsNil)
+	c.Assert(c1, check.HasLen, 5)
+	buf := safe.NewBuffer(nil)
+	err = p.rebalanceContainers(buf, false)
+	c.Assert(err, check.IsNil)
+	c1, err = p.listContainersByHost("localhost")
+	c.Assert(err, check.IsNil)
+	c2, err := p.listContainersByHost("127.0.0.1")
+	c.Assert(err, check.IsNil)
+	c.Assert((len(c1) == 2 && len(c2) == 3) || (len(c1) == 3 && len(c2) == 2), check.Equals, true)
 }
 
 func (s *S) TestAppLocker(c *check.C) {
