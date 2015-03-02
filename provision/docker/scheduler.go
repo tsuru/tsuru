@@ -40,6 +40,7 @@ type segregatedScheduler struct {
 	maxMemoryRatio      float32
 	totalMemoryMetadata string
 	provisioner         *dockerProvisioner
+	ignoredContainers   []string
 }
 
 func (s segregatedScheduler) Schedule(c *cluster.Cluster, opts docker.CreateContainerOptions, schedulerOpts cluster.SchedulerOptions) (cluster.Node, error) {
@@ -139,11 +140,11 @@ func (s segregatedScheduler) aggregateContainersBy(matcher bson.M) (map[string]i
 }
 
 func (s segregatedScheduler) aggregateContainersByHost(hosts []string) (map[string]int, error) {
-	return s.aggregateContainersBy(bson.M{"$match": bson.M{"hostaddr": bson.M{"$in": hosts}}})
+	return s.aggregateContainersBy(bson.M{"$match": bson.M{"hostaddr": bson.M{"$in": hosts}, "id": bson.M{"$nin": s.ignoredContainers}}})
 }
 
 func (s segregatedScheduler) aggregateContainersByHostApp(hosts []string, appName string) (map[string]int, error) {
-	return s.aggregateContainersBy(bson.M{"$match": bson.M{"appname": appName, "hostaddr": bson.M{"$in": hosts}}})
+	return s.aggregateContainersBy(bson.M{"$match": bson.M{"appname": appName, "hostaddr": bson.M{"$in": hosts}, "id": bson.M{"$nin": s.ignoredContainers}}})
 }
 
 // chooseNode finds which is the node with the minimum number

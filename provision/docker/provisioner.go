@@ -154,11 +154,12 @@ func (p *dockerProvisioner) DryMode(containersToCopy []container) (*dockerProvis
 		dryMode:        true,
 	}
 	if p.scheduler != nil {
-		scheduler = &segregatedScheduler{
+		overridenProvisioner.scheduler = &segregatedScheduler{
 			maxMemoryRatio:      p.scheduler.maxMemoryRatio,
 			totalMemoryMetadata: p.scheduler.totalMemoryMetadata,
 			provisioner:         overridenProvisioner,
 		}
+		scheduler = overridenProvisioner.scheduler
 	}
 	overridenProvisioner.cluster, err = cluster.New(scheduler, p.storage)
 	if err != nil {
@@ -171,9 +172,11 @@ func (p *dockerProvisioner) DryMode(containersToCopy []container) (*dockerProvis
 	for i := range containersToCopy {
 		toInsert[i] = containersToCopy[i]
 	}
-	err = coll.Insert(toInsert...)
-	if err != nil {
-		return nil, err
+	if len(toInsert) > 0 {
+		err = coll.Insert(toInsert...)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return overridenProvisioner, nil
 }
