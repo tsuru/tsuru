@@ -5,6 +5,7 @@
 package cmd
 
 import (
+	"bytes"
 	gerrors "errors"
 	"fmt"
 	"io"
@@ -307,10 +308,7 @@ type help struct {
 }
 
 func (c *help) Info() *Info {
-	return &Info{
-		Name:  "help",
-		Usage: "command [args]",
-	}
+	return &Info{Name: "help", Usage: "command [args]"}
 }
 
 func (c *help) Run(context *Context, client *Client) error {
@@ -327,6 +325,10 @@ func (c *help) Run(context *Context, client *Client) error {
 			info := cmd.Info()
 			output += fmt.Sprintf("Usage: %s %s\n", c.manager.name, info.Usage)
 			output += fmt.Sprintf("\n%s\n", info.Desc)
+			flags := c.parseFlags(cmd)
+			if flags != "" {
+				output += fmt.Sprintf("\n%s", flags)
+			}
 			if info.MinArgs > 0 {
 				output += fmt.Sprintf("\nMinimum # of arguments: %d", info.MinArgs)
 			}
@@ -368,6 +370,20 @@ func (c *help) Run(context *Context, client *Client) error {
 	}
 	io.WriteString(context.Stdout, output)
 	return nil
+}
+
+func (c *help) parseFlags(command Command) string {
+	var output string
+	if cmd, ok := command.(FlaggedCommand); ok {
+		var buf bytes.Buffer
+		flagset := cmd.Flags()
+		flagset.SetOutput(&buf)
+		flagset.PrintDefaults()
+		if buf.String() != "" {
+			output = fmt.Sprintf("Flags:\n\n%s", buf.String())
+		}
+	}
+	return strings.Replace(output, "\n", "\n  ", -1)
 }
 
 type version struct {

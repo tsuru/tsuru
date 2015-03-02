@@ -93,7 +93,12 @@ type CommandWithFlags struct {
 }
 
 func (c *CommandWithFlags) Info() *Info {
-	return &Info{Name: "with-flags", MinArgs: c.minArgs}
+	return &Info{
+		Name:    "with-flags",
+		Desc:    "with-flags doesn't do anything, really.",
+		Usage:   "with-flags",
+		MinArgs: c.minArgs,
+	}
 }
 
 func (c *CommandWithFlags) Run(context *Context, client *Client) error {
@@ -105,6 +110,7 @@ func (c *CommandWithFlags) Flags() *gnuflag.FlagSet {
 	if c.fs == nil {
 		c.fs = gnuflag.NewFlagSet("with-flags", gnuflag.ContinueOnError)
 		c.fs.IntVar(&c.age, "age", 0, "your age")
+		c.fs.IntVar(&c.age, "a", 0, "your age")
 	}
 	return c.fs
 }
@@ -454,6 +460,24 @@ Foo do anything or nothing.
 `
 	manager.Register(&TestCommand{})
 	manager.Run([]string{"--help", "foo"})
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+}
+
+func (s *S) TestHelpFlaggedCommand(c *check.C) {
+	expected := `glb version 1.0.
+
+Usage: glb with-flags
+
+with-flags doesn't do anything, really.
+
+Flags:
+  
+  -a, --age  (= 0)
+      your age
+  
+`
+	manager.Register(&CommandWithFlags{})
+	manager.Run([]string{"help", "with-flags"})
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
 
