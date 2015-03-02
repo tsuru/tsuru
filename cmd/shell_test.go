@@ -59,6 +59,46 @@ func (s *S) TestShellToContainerCmdRunWithApp(c *check.C) {
 	c.Assert(stdout.String(), check.Equals, "hello my friend\nglad to see you here\n")
 }
 
+func (s *S) TestShellToContainerWithUnit(c *check.C) {
+	var closeClientConn func()
+	guesser := cmdtest.FakeGuesser{Name: "myapp"}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/apps/myapp/shell" && r.Method == "GET" && r.Header.Get("Authorization") == "bearer abc123" {
+			c.Assert(r.URL.Query().Get("container_id"), check.Equals, "containerid")
+			conn, _, err := w.(http.Hijacker).Hijack()
+			c.Assert(err, check.IsNil)
+			conn.Write([]byte("hello my friend\n"))
+			conn.Write([]byte("glad to see you here\n"))
+			closeClientConn()
+		} else {
+			http.Error(w, "not found", http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+	closeClientConn = server.CloseClientConnections
+	target := "http://" + server.Listener.Addr().String()
+	targetRecover := cmdtest.SetTargetFile(c, []byte(target))
+	defer cmdtest.RollbackFile(targetRecover)
+	tokenRecover := cmdtest.SetTokenFile(c, []byte("abc123"))
+	defer cmdtest.RollbackFile(tokenRecover)
+	var stdout, stderr, stdin bytes.Buffer
+	context := Context{
+		Args:   []string{"containerid"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Stdin:  &stdin,
+	}
+	var command ShellToContainerCmd
+	command.GuessingCommand = GuessingCommand{G: &guesser}
+	err := command.Flags().Parse(true, []string{"-a", "myapp"})
+	c.Assert(err, check.IsNil)
+	manager := NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
+	client := NewClient(http.DefaultClient, &context, manager)
+	err = command.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	c.Assert(stdout.String(), check.Equals, "hello my friend\nglad to see you here\n")
+}
+
 func (s *S) TestShellToContainerCmdNoToken(c *check.C) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "You must provide a valid Authorization header", http.StatusUnauthorized)

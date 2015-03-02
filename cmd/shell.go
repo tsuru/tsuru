@@ -30,16 +30,10 @@ type ShellToContainerCmd struct {
 func (c *ShellToContainerCmd) Info() *Info {
 	return &Info{
 		Name:  "app-shell",
-		Usage: "app-shell [container-id] -a/--app <appname>",
-		Desc: `Opens a remote shell inside container, using the API server as a proxy. You
-can access an app container just giving app name.
-
-Also, you can access a specific container from this app. In this case, you
-have to specify part of the container's ID. You can list current container's
-IDs using [[tsuru app-info]].
-
-
-Open a remote shell to the given container, or to one of the containers of the given app.`,
+		Usage: "app-shell [unit-id] -a/--app <appname>",
+		Desc: `Opens a remote shell inside unit, using the API server as a proxy. You
+can access an app unit just giving app name, or specifying the id of the unit.
+You can get the ID of the unit using the app-info command.`,
 		MinArgs: 0,
 	}
 }
@@ -69,7 +63,7 @@ func (c *ShellToContainerCmd) Run(context *Context, client *Client) error {
 	queryString.Set("width", strconv.Itoa(width))
 	queryString.Set("height", strconv.Itoa(height))
 	if len(context.Args) > 0 {
-		queryString.Set("container", context.Args[0])
+		queryString.Set("container_id", context.Args[0])
 	}
 	appName, err := c.Guess()
 	if err != nil {
