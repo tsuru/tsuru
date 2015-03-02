@@ -11,6 +11,7 @@ import (
 
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/docker-cluster/cluster"
+	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -379,13 +380,20 @@ func (s *S) TestRebalanceContainersDry(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
-	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		toHost:      "localhost",
-		unitsToAdd:  5,
+	args := changeUnitsPipelineArgs{
 		app:         appInstance,
+		unitsToAdd:  5,
 		imageId:     imageId,
 		provisioner: p,
-	})
+		toHost:      "localhost",
+	}
+	pipeline := action.NewPipeline(
+		&provisionAddUnitsToHost,
+		&bindAndHealthcheck,
+		&addNewRoutes,
+		&updateAppImage,
+	)
+	err = pipeline.Execute(args)
 	c.Assert(err, check.IsNil)
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
@@ -396,6 +404,11 @@ func (s *S) TestRebalanceContainersDry(c *check.C) {
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
+	router, err := getRouterForApp(appInstance)
+	c.Assert(err, check.IsNil)
+	beforeRoutes, err := router.Routes(appStruct.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(beforeRoutes, check.HasLen, 5)
 	buf := safe.NewBuffer(nil)
 	err = p.rebalanceContainers(buf, true)
 	c.Assert(err, check.IsNil)
@@ -405,4 +418,7 @@ func (s *S) TestRebalanceContainersDry(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(len(c1), check.Equals, 5)
 	c.Assert(len(c2), check.Equals, 0)
+	routes, err := router.Routes(appStruct.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, check.DeepEquals, beforeRoutes)
 }
