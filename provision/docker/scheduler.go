@@ -40,7 +40,10 @@ type segregatedScheduler struct {
 	maxMemoryRatio      float32
 	totalMemoryMetadata string
 	provisioner         *dockerProvisioner
-	ignoredContainers   []string
+	// ignored containers is only set in provisioner returned by
+	// cloneProvisioner which will set this field to exclude some container
+	// ids from balancing (containers being removed by rebalance usually).
+	ignoredContainers []string
 }
 
 func (s segregatedScheduler) Schedule(c *cluster.Cluster, opts docker.CreateContainerOptions, schedulerOpts cluster.SchedulerOptions) (cluster.Node, error) {

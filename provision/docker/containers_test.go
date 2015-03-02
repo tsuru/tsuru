@@ -246,6 +246,7 @@ func (s *S) TestRebalanceContainersSegScheduler(c *check.C) {
 	buf := safe.NewBuffer(nil)
 	err = p.rebalanceContainers(buf, false)
 	c.Assert(err, check.IsNil)
+	c.Assert(p.scheduler.ignoredContainers, check.IsNil)
 	c1, err = p.listContainersByHost("localhost")
 	c.Assert(err, check.IsNil)
 	c2, err := p.listContainersByHost("127.0.0.1")

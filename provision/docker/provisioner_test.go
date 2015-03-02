@@ -1378,7 +1378,7 @@ func (s *S) TestDryMode(c *check.C) {
 	s.p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
-	containers, err := addContainersWithHost(&changeUnitsPipelineArgs{
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
 		unitsToAdd:  5,
 		app:         appInstance,
@@ -1386,7 +1386,7 @@ func (s *S) TestDryMode(c *check.C) {
 		provisioner: s.p,
 	})
 	c.Assert(err, check.IsNil)
-	newProv, err := s.p.DryMode(containers)
+	newProv, err := s.p.dryMode(nil)
 	c.Assert(err, check.IsNil)
 	contsNew, err := newProv.listAllContainers()
 	c.Assert(err, check.IsNil)
