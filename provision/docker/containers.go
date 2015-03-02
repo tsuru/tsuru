@@ -92,7 +92,7 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 		provisioner: p,
 	}
 	var pipeline *action.Pipeline
-	if p.dryMode {
+	if p.isDryMode {
 		pipeline = action.NewPipeline(
 			&provisionAddUnitsToHost,
 			&provisionRemoveOldUnits,
@@ -171,7 +171,7 @@ func (p *dockerProvisioner) moveOneContainer(c container, toHost string, errors 
 		destHosts = []string{toHost}
 		suffix = " -> " + toHost
 	}
-	if !p.dryMode {
+	if !p.isDryMode {
 		fmt.Fprintf(writer, "Moving unit %s for %q from %s%s...\n", c.ID, c.AppName, c.HostAddr, suffix)
 	}
 	addedContainers, err := p.runReplaceUnitsPipeline(nil, a, []container{c}, imageId, destHosts...)
@@ -183,7 +183,7 @@ func (p *dockerProvisioner) moveOneContainer(c container, toHost string, errors 
 		return container{}
 	}
 	prefix := "Moved unit"
-	if p.dryMode {
+	if p.isDryMode {
 		prefix = "Would move unit"
 	}
 	fmt.Fprintf(writer, "%s %s -> %s for %q from %s -> %s\n", prefix, c.ID, addedContainers[0].ID, c.AppName, c.HostAddr, addedContainers[0].HostAddr)
@@ -274,22 +274,18 @@ func (p *dockerProvisioner) rebalanceContainersByFilter(writer io.Writer, appFil
 		return nil
 	}
 	if dryRun {
-		allContainers, err := p.listAllContainers()
+		p, err = p.dryMode(containers)
 		if err != nil {
 			return err
 		}
-		p, err = p.DryMode(allContainers)
+		defer p.stopDryMode()
+	} else {
+		// Create isolated provisioner, this allow us to use modify the
+		// scheduler to exclude old containers.
+		p, err = p.cloneProvisioner(containers)
 		if err != nil {
 			return err
 		}
-		defer p.StopDryMode()
-	}
-	if p.scheduler != nil {
-		containerIds := make([]string, len(containers))
-		for i := range containers {
-			containerIds[i] = containers[i].ID
-		}
-		p.scheduler.ignoredContainers = containerIds
 	}
 	fmt.Fprintf(writer, "Rebalancing %d units...\n", len(containers))
 	return p.moveContainerList(containers, "", writer)

@@ -57,7 +57,7 @@ type dockerProvisioner struct {
 	collectionName string
 	storage        cluster.Storage
 	scheduler      *segregatedScheduler
-	dryMode        bool
+	isDryMode      bool
 }
 
 func initDockerCluster(p *dockerProvisioner) {
@@ -119,25 +119,55 @@ func initDockerCluster(p *dockerProvisioner) {
 	}
 }
 
-func (p *dockerProvisioner) StopDryMode() {
-	if p.dryMode {
+func (p *dockerProvisioner) cloneProvisioner(ignoredContainers []container) (*dockerProvisioner, error) {
+	var scheduler cluster.Scheduler
+	var err error
+	var overridenProvisioner dockerProvisioner
+	overridenProvisioner = *p
+	if p.scheduler != nil {
+		containerIds := make([]string, len(ignoredContainers))
+		for i := range ignoredContainers {
+			containerIds[i] = ignoredContainers[i].ID
+		}
+		overridenProvisioner.scheduler = &segregatedScheduler{
+			maxMemoryRatio:      p.scheduler.maxMemoryRatio,
+			totalMemoryMetadata: p.scheduler.totalMemoryMetadata,
+			provisioner:         &overridenProvisioner,
+			ignoredContainers:   containerIds,
+		}
+		scheduler = overridenProvisioner.scheduler
+	}
+	overridenProvisioner.cluster, err = cluster.New(scheduler, p.storage)
+	if err != nil {
+		return nil, err
+	}
+	return &overridenProvisioner, nil
+}
+
+func (p *dockerProvisioner) stopDryMode() {
+	if p.isDryMode {
 		p.cluster.StopDryMode()
 		p.collection().DropCollection()
 	}
 }
 
-func (p *dockerProvisioner) DryMode(containersToCopy []container) (*dockerProvisioner, error) {
+func (p *dockerProvisioner) dryMode(ignoredContainers []container) (*dockerProvisioner, error) {
 	var scheduler cluster.Scheduler
 	var err error
 	overridenProvisioner := &dockerProvisioner{
 		collectionName: "containers_dry_" + randomString(),
-		dryMode:        true,
+		isDryMode:      true,
 	}
 	if p.scheduler != nil {
+		containerIds := make([]string, len(ignoredContainers))
+		for i := range ignoredContainers {
+			containerIds[i] = ignoredContainers[i].ID
+		}
 		overridenProvisioner.scheduler = &segregatedScheduler{
 			maxMemoryRatio:      p.scheduler.maxMemoryRatio,
 			totalMemoryMetadata: p.scheduler.totalMemoryMetadata,
 			provisioner:         overridenProvisioner,
+			ignoredContainers:   containerIds,
 		}
 		scheduler = overridenProvisioner.scheduler
 	}
@@ -146,6 +176,10 @@ func (p *dockerProvisioner) DryMode(containersToCopy []container) (*dockerProvis
 		return nil, err
 	}
 	overridenProvisioner.cluster.DryMode()
+	containersToCopy, err := p.listAllContainers()
+	if err != nil {
+		return nil, err
+	}
 	coll := overridenProvisioner.collection()
 	defer coll.Close()
 	toInsert := make([]interface{}, len(containersToCopy))
