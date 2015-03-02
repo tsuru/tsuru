@@ -22,7 +22,7 @@ import (
 	"github.com/tsuru/tsuru/router"
 )
 
-const Version = "0.10.1"
+const Version = "0.10.2"
 
 func getProvisioner() (string, error) {
 	provisioner, err := config.GetString("provisioner")
