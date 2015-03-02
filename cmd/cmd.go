@@ -116,6 +116,7 @@ func (m *Manager) Run(args []string) {
 		args = append(args, "help")
 	}
 	flagset := gnuflag.NewFlagSet("tsuru flags", gnuflag.ContinueOnError)
+	flagset.SetOutput(m.stderr)
 	flagset.IntVar(&verbosity, "verbosity", 0, "Verbosity level: 1 => print HTTP requests; 2 => print HTTP requests/responses")
 	flagset.IntVar(&verbosity, "v", 0, "Verbosity level: 1 => print HTTP requests; 2 => print HTTP requests/responses")
 	flagset.BoolVar(&displayHelp, "help", false, "Display help and exit")
@@ -212,6 +213,7 @@ func (m *Manager) handleFlags(command Command, name string, args []string) (Comm
 		flagset = gnuflag.NewFlagSet(name, gnuflag.ExitOnError)
 	}
 	var helpRequested bool
+	flagset.SetOutput(m.stderr)
 	flagset.BoolVar(&helpRequested, "help", false, "Display help and exit")
 	flagset.BoolVar(&helpRequested, "h", false, "Display help and exit")
 	err := flagset.Parse(true, args)
