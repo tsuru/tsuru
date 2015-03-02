@@ -83,6 +83,17 @@ func (s *S) SetUpSuite(c *check.C) {
 	s.p = &dockerProvisioner{storage: &cluster.MapStorage{}}
 	s.oldProvisioner = app.Provisioner
 	app.Provisioner = s.p
+	s.user = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: quota.Unlimited}
+	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
+	app.AuthScheme = nativeScheme
+	_, err = nativeScheme.Create(s.user)
+	c.Assert(err, check.IsNil)
+	s.team = &auth.Team{Name: "admin", Users: []string{s.user.Email}}
+	c.Assert(err, check.IsNil)
+	err = s.storage.Teams().Insert(s.team)
+	c.Assert(err, check.IsNil)
+	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) SetUpTest(c *check.C) {
@@ -100,26 +111,11 @@ func (s *S) SetUpTest(c *check.C) {
 	mainDockerProvisioner = s.p
 	coll := s.p.collection()
 	defer coll.Close()
-	err = dbtest.ClearAllCollections(coll.Database)
+	err = dbtest.ClearAllCollectionsExcept(coll.Database, []string{"users", "tokens", "teams"})
 	c.Assert(err, check.IsNil)
 	err = clearClusterStorage()
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.Reset()
-	healingColl, err := healingCollection()
-	c.Assert(err, check.IsNil)
-	defer healingColl.Close()
-	healingColl.RemoveAll(nil)
-	s.user = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: quota.Unlimited}
-	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
-	app.AuthScheme = nativeScheme
-	_, err = nativeScheme.Create(s.user)
-	c.Assert(err, check.IsNil)
-	s.team = &auth.Team{Name: "admin", Users: []string{s.user.Email}}
-	c.Assert(err, check.IsNil)
-	err = s.storage.Teams().Insert(s.team)
-	c.Assert(err, check.IsNil)
-	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
-	c.Assert(err, check.IsNil)
 }
 
 func clearClusterStorage() error {
