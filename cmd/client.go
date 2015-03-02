@@ -15,7 +15,7 @@ import (
 	"github.com/tsuru/tsuru/errors"
 )
 
-var errUnauthorized = &errors.HTTP{Code: http.StatusUnauthorized}
+var errUnauthorized = &errors.HTTP{Code: http.StatusUnauthorized, Message: "unauthorized"}
 
 type Client struct {
 	HTTPClient     *http.Client
