@@ -20,7 +20,7 @@ func init() {
 type FakePubSubQ struct {
 	messages       messageQueue
 	name           string
-	pubSubStop     chan int
+	pubSubStop     chan bool
 	pubSubStopLock sync.Mutex
 }
 
@@ -54,19 +54,23 @@ func (s *SyncSet) delete(val string) {
 }
 
 func (q *FakePubSubQ) Pub(msg []byte) error {
-	if !subscribersSet.get(q.name) {
-		return nil
+	q.pubSubStopLock.Lock()
+	if q.pubSubStop == nil {
+		q.pubSubStop = make(chan bool)
 	}
+	q.pubSubStopLock.Unlock()
 	m := Message{Action: string(msg)}
 	q.messages.enqueue(&m)
 	return nil
 }
 
 func (q *FakePubSubQ) Sub() (chan []byte, error) {
-	subChan := make(chan []byte)
 	q.pubSubStopLock.Lock()
-	q.pubSubStop = make(chan int)
+	if q.pubSubStop == nil {
+		q.pubSubStop = make(chan bool)
+	}
 	q.pubSubStopLock.Unlock()
+	subChan := make(chan []byte)
 	go func() {
 		defer close(subChan)
 		for {
@@ -90,7 +94,9 @@ func (q *FakePubSubQ) Sub() (chan []byte, error) {
 
 func (q *FakePubSubQ) UnSub() error {
 	subscribersSet.delete(q.name)
+	q.pubSubStopLock.Lock()
 	close(q.pubSubStop)
+	q.pubSubStopLock.Unlock()
 	return nil
 }
 
