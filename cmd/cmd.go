@@ -188,6 +188,18 @@ func (m *Manager) Run(args []string) {
 	client := NewClient(&http.Client{}, &context, m)
 	client.Verbosity = verbosity
 	err = command.Run(&context, client)
+	if err == errUnauthorized && name != "login" {
+		loginCmdName := "login"
+		if cmd, ok := m.Commands[loginCmdName]; ok {
+			fmt.Fprintln(m.stderr, "Error: you're not authenticated or your session has expired.")
+			fmt.Fprintf(m.stderr, "Calling the %q command...\n", loginCmdName)
+			loginContext := Context{nil, m.stdout, m.stderr, m.stdin}
+			if err = cmd.Run(&loginContext, client); err == nil {
+				fmt.Fprintln(m.stderr)
+				err = command.Run(&context, client)
+			}
+		}
+	}
 	if err != nil {
 		errorMsg := err.Error()
 		httpErr, ok := err.(*errors.HTTP)

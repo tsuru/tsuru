@@ -8,104 +8,14 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"strings"
 
-	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/fs"
 	"github.com/tsuru/tsuru/fs/fstest"
 	"gopkg.in/check.v1"
 	"launchpad.net/gnuflag"
 )
-
-type recordingExiter int
-
-func (e *recordingExiter) Exit(code int) {
-	*e = recordingExiter(code)
-}
-
-func (e recordingExiter) value() int {
-	return int(e)
-}
-
-type TestCommand struct{}
-
-func (c *TestCommand) Info() *Info {
-	return &Info{
-		Name:  "foo",
-		Desc:  "Foo do anything or nothing.",
-		Usage: "foo",
-	}
-}
-
-func (c *TestCommand) Run(context *Context, client *Client) error {
-	io.WriteString(context.Stdout, "Running TestCommand")
-	return nil
-}
-
-type ErrorCommand struct {
-	msg string
-}
-
-func (c *ErrorCommand) Info() *Info {
-	return &Info{Name: "error"}
-}
-
-func (c *ErrorCommand) Run(context *Context, client *Client) error {
-	if c.msg == "abort" {
-		return ErrAbortCommand
-	}
-	return fmt.Errorf(c.msg)
-}
-
-type UnauthorizedErrorCommand struct{}
-
-func (c *UnauthorizedErrorCommand) Info() *Info {
-	return &Info{Name: "unauthorized-error"}
-}
-
-func (c *UnauthorizedErrorCommand) Run(context *Context, client *Client) error {
-	return &errors.HTTP{Code: http.StatusUnauthorized, Message: "my error"}
-}
-
-type UnauthorizedLoginErrorCommand struct {
-	UnauthorizedErrorCommand
-}
-
-func (c *UnauthorizedLoginErrorCommand) Info() *Info {
-	return &Info{Name: "login"}
-}
-
-type CommandWithFlags struct {
-	fs      *gnuflag.FlagSet
-	age     int
-	minArgs int
-	args    []string
-}
-
-func (c *CommandWithFlags) Info() *Info {
-	return &Info{
-		Name:    "with-flags",
-		Desc:    "with-flags doesn't do anything, really.",
-		Usage:   "with-flags",
-		MinArgs: c.minArgs,
-	}
-}
-
-func (c *CommandWithFlags) Run(context *Context, client *Client) error {
-	c.args = context.Args
-	return nil
-}
-
-func (c *CommandWithFlags) Flags() *gnuflag.FlagSet {
-	if c.fs == nil {
-		c.fs = gnuflag.NewFlagSet("with-flags", gnuflag.ContinueOnError)
-		c.fs.IntVar(&c.age, "age", 0, "your age")
-		c.fs.IntVar(&c.age, "a", 0, "your age")
-	}
-	return c.fs
-}
 
 func (s *S) TestDeprecatedCommand(c *check.C) {
 	var stdout, stderr bytes.Buffer
@@ -235,10 +145,36 @@ func (s *S) TestManagerRunWithHTTPUnauthorizedError(c *check.C) {
 	c.Assert(manager.stderr.(*bytes.Buffer).String(), check.Equals, `Error: You're not authenticated or your session has expired. Please use "login" command for authentication.`+"\n")
 }
 
+func (s *S) TestManagerRunWithHTTPUnauthorizedErrorAndLoginRegistered(c *check.C) {
+	expectedStderr := `Error: you're not authenticated or your session has expired.
+Calling the "login" command...
+
+`
+	expectedStdout := `logged in!
+worked nicely!
+`
+	manager.Register(&FailAndWorkCommand{})
+	manager.Register(&SuccessLoginCommand{})
+	manager.Run([]string{"fail-and-work"})
+	c.Assert(manager.stderr.(*bytes.Buffer).String(), check.Equals, expectedStderr)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expectedStdout)
+}
+
+func (s *S) TestManagerRunWithHTTPUnauthorizedErrorAndLoginFailure(c *check.C) {
+	expected := `Error: you're not authenticated or your session has expired.
+Calling the "login" command...
+Error: You're not authenticated or your session has expired. Please use "login" command for authentication.
+`
+	manager.Register(&FailAndWorkCommand{})
+	manager.Register(&UnauthorizedLoginErrorCommand{})
+	manager.Run([]string{"fail-and-work"})
+	c.Assert(manager.stderr.(*bytes.Buffer).String(), check.Equals, expected)
+}
+
 func (s *S) TestManagerRunLoginWithHTTPUnauthorizedError(c *check.C) {
 	manager.Register(&UnauthorizedLoginErrorCommand{})
 	manager.Run([]string{"login"})
-	c.Assert(manager.stderr.(*bytes.Buffer).String(), check.Equals, "Error: my error\n")
+	c.Assert(manager.stderr.(*bytes.Buffer).String(), check.Equals, "Error: unauthorized\n")
 }
 
 func (s *S) TestManagerRunWithFlags(c *check.C) {
@@ -763,4 +699,120 @@ func (s *S) TestValidateVersion(c *check.C) {
 	for _, cs := range cases {
 		c.Check(validateVersion(cs.support, cs.current), check.Equals, cs.expected)
 	}
+}
+
+type recordingExiter int
+
+func (e *recordingExiter) Exit(code int) {
+	*e = recordingExiter(code)
+}
+
+func (e recordingExiter) value() int {
+	return int(e)
+}
+
+type TestCommand struct{}
+
+func (c *TestCommand) Info() *Info {
+	return &Info{
+		Name:  "foo",
+		Desc:  "Foo do anything or nothing.",
+		Usage: "foo",
+	}
+}
+
+func (c *TestCommand) Run(context *Context, client *Client) error {
+	io.WriteString(context.Stdout, "Running TestCommand")
+	return nil
+}
+
+type ErrorCommand struct {
+	msg string
+}
+
+func (c *ErrorCommand) Info() *Info {
+	return &Info{Name: "error"}
+}
+
+func (c *ErrorCommand) Run(context *Context, client *Client) error {
+	if c.msg == "abort" {
+		return ErrAbortCommand
+	}
+	return fmt.Errorf(c.msg)
+}
+
+type FailAndWorkCommand struct {
+	calls int
+}
+
+func (c *FailAndWorkCommand) Info() *Info {
+	return &Info{Name: "fail-and-work"}
+}
+
+func (c *FailAndWorkCommand) Run(context *Context, client *Client) error {
+	c.calls++
+	if c.calls == 1 {
+		return errUnauthorized
+	}
+	fmt.Fprintln(context.Stdout, "worked nicely!")
+	return nil
+}
+
+type SuccessLoginCommand struct{}
+
+func (c *SuccessLoginCommand) Info() *Info {
+	return &Info{Name: "login"}
+}
+
+func (c *SuccessLoginCommand) Run(context *Context, client *Client) error {
+	fmt.Fprintln(context.Stdout, "logged in!")
+	return nil
+}
+
+type UnauthorizedErrorCommand struct{}
+
+func (c *UnauthorizedErrorCommand) Info() *Info {
+	return &Info{Name: "unauthorized-error"}
+}
+
+func (c *UnauthorizedErrorCommand) Run(context *Context, client *Client) error {
+	return errUnauthorized
+}
+
+type UnauthorizedLoginErrorCommand struct {
+	UnauthorizedErrorCommand
+}
+
+func (c *UnauthorizedLoginErrorCommand) Info() *Info {
+	return &Info{Name: "login"}
+}
+
+type CommandWithFlags struct {
+	fs      *gnuflag.FlagSet
+	age     int
+	minArgs int
+	args    []string
+}
+
+func (c *CommandWithFlags) Info() *Info {
+	return &Info{
+		Name:    "with-flags",
+		Desc:    "with-flags doesn't do anything, really.",
+		Usage:   "with-flags",
+		MinArgs: c.minArgs,
+	}
+}
+
+func (c *CommandWithFlags) Run(context *Context, client *Client) error {
+	c.args = context.Args
+	return nil
+}
+
+func (c *CommandWithFlags) Flags() *gnuflag.FlagSet {
+	if c.fs == nil {
+		c.fs = gnuflag.NewFlagSet("with-flags", gnuflag.ContinueOnError)
+		c.fs.IntVar(&c.age, "age", 0, "your age")
+		c.fs.IntVar(&c.age, "a", 0, "your age")
+	}
+	return c.fs
 }
