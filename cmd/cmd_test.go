@@ -405,6 +405,32 @@ Use glb help <commandname> to get more information about a command.
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
 
+func (s *S) TestRunCommandWithDashHelp(c *check.C) {
+	expected := `glb version 1.0.
+
+Usage: glb foo
+
+Foo do anything or nothing.
+
+`
+	manager.Register(&TestCommand{})
+	manager.Run([]string{"foo", "--help"})
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+}
+
+func (s *S) TestRunCommandWithDashH(c *check.C) {
+	expected := `glb version 1.0.
+
+Usage: glb foo
+
+Foo do anything or nothing.
+
+`
+	manager.Register(&TestCommand{})
+	manager.Run([]string{"foo", "-h"})
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+}
+
 func (s *S) TestHelpShouldReturnHelpForACmd(c *check.C) {
 	expected := `glb version 1.0.
 

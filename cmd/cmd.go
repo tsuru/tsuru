@@ -115,28 +115,32 @@ func (m *Manager) RegisterTopic(name, content string) {
 }
 
 func (m *Manager) Run(args []string) {
-	var status int
+	var (
+		status         int
+		verbosity      int
+		displayHelp    bool
+		displayVersion bool
+	)
 	if len(args) == 0 {
 		args = append(args, "help")
 	}
-	for i, j := range args {
-		if j == "--help" {
-			args = append(args[0:i], args[i+1:]...)
-			args = append([]string{"help"}, args...)
-		}
-	}
-	if args[0] == "--version" {
-		args[0] = "version"
-	}
-	flagset := gnuflag.NewFlagSet("tsuru flags", gnuflag.ExitOnError)
-	verbosity := flagset.Int("verbosity", 0, "Verbosity: 1 => print HTTP requests; 2 => print HTTP requests/responses")
-	flagset.IntVar(verbosity, "v", 0, "Verbosity: 1 => print HTTP requests; 2 => print HTTP requests/responses")
+	flagset := gnuflag.NewFlagSet("tsuru flags", gnuflag.ContinueOnError)
+	flagset.IntVar(&verbosity, "verbosity", 0, "Verbosity level: 1 => print HTTP requests; 2 => print HTTP requests/responses")
+	flagset.IntVar(&verbosity, "v", 0, "Verbosity level: 1 => print HTTP requests; 2 => print HTTP requests/responses")
+	flagset.BoolVar(&displayHelp, "help", false, "Display help and exit")
+	flagset.BoolVar(&displayHelp, "h", false, "Display help and exit")
+	flagset.BoolVar(&displayVersion, "version", false, "Print version and exit")
 	parseErr := flagset.Parse(false, args)
-	args = flagset.Args()
 	if parseErr != nil {
 		fmt.Fprint(m.stderr, parseErr)
-		m.finisher().Exit(1)
+		m.finisher().Exit(2)
 		return
+	}
+	args = flagset.Args()
+	if displayHelp {
+		args = append([]string{"help"}, args...)
+	} else if displayVersion {
+		args = []string{"version"}
 	}
 	name := args[0]
 	command, ok := m.Commands[name]
@@ -174,15 +178,11 @@ func (m *Manager) Run(args []string) {
 	}
 	args = args[1:]
 	info := command.Info()
-	if flagged, ok := command.(FlaggedCommand); ok {
-		flagset := flagged.Flags()
-		err := flagset.Parse(true, args)
-		if err != nil {
-			fmt.Fprint(m.stderr, err)
-			m.finisher().Exit(1)
-			return
-		}
-		args = flagset.Args()
+	command, args, err := m.handleFlags(command, name, args)
+	if err != nil {
+		fmt.Fprint(m.stderr, err)
+		m.finisher().Exit(1)
+		return
 	}
 	if length := len(args); (length < info.MinArgs || (info.MaxArgs > 0 && length > info.MaxArgs)) &&
 		name != "help" {
@@ -194,8 +194,8 @@ func (m *Manager) Run(args []string) {
 	}
 	context := Context{args, m.stdout, m.stderr, m.stdin}
 	client := NewClient(&http.Client{}, &context, m)
-	client.Verbosity = *verbosity
-	err := command.Run(&context, client)
+	client.Verbosity = verbosity
+	err = command.Run(&context, client)
 	if err != nil {
 		errorMsg := err.Error()
 		httpErr, ok := err.(*errors.HTTP)
@@ -211,6 +211,29 @@ func (m *Manager) Run(args []string) {
 		status = 1
 	}
 	m.finisher().Exit(status)
+}
+
+func (m *Manager) handleFlags(command Command, name string, args []string) (Command, []string, error) {
+	var flagset *gnuflag.FlagSet
+	if flagged, ok := command.(FlaggedCommand); ok {
+		flagset = flagged.Flags()
+	} else {
+		flagset = gnuflag.NewFlagSet(name, gnuflag.ExitOnError)
+	}
+	var helpRequested bool
+	flagset.BoolVar(&helpRequested, "help", false, "Display help and exit")
+	flagset.BoolVar(&helpRequested, "h", false, "Display help and exit")
+	err := flagset.Parse(true, args)
+	if err != nil {
+		return nil, nil, err
+	}
+	if helpRequested {
+		command = m.Commands["help"]
+		args = []string{name}
+	} else {
+		args = flagset.Args()
+	}
+	return command, args, nil
 }
 
 func (m *Manager) finisher() exiter {
@@ -330,7 +353,7 @@ func (c *help) Run(context *Context, client *Client) error {
 			description = strings.Split(description, "\n")[0]
 			description = strings.Split(description, ".")[0]
 			if len(description) > 2 {
-				description = strings.ToUpper(description[0:1]) + description[1:]
+				description = strings.ToUpper(description[:1]) + description[1:]
 			}
 			output += fmt.Sprintf("  %-20s %s\n", command, description)
 		}
