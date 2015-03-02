@@ -4,9 +4,6 @@ go:
   - tip
 env:
   - GOARCH=amd64
-matrix:
-  allow_failures:
-    - go: tip
 before_install:
   - sed -E -i 's|git://github.com/([A-Za-z0-9_]+)/tsuru.git|https://github.com/\1/tsuru|g' .git/config
   - cat .git/config
