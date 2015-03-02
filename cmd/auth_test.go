@@ -16,26 +16,12 @@ import (
 	"gopkg.in/check.v1"
 )
 
-func navitveScheme() {
+func nativeScheme() {
 	os.Setenv("TSURU_AUTH_SCHEME", "")
 }
 
-func (s *S) TestLoginInfo(c *check.C) {
-	c.Assert((&login{}).Info().Usage, check.Equals, "login <email>")
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(`{"name": "oauth", "data": {}}`))
-	}))
-	defer ts.Close()
-	writeTarget(ts.URL)
-	c.Assert((&login{}).Info().Usage, check.Equals, "login")
-}
-
-func (s *S) TestLoginName(c *check.C) {
-	c.Assert((&login{}).Name(), check.Equals, "login")
-}
-
 func (s *S) TestNativeLogin(c *check.C) {
-	navitveScheme()
+	nativeScheme()
 	fsystem = &fstest.RecordingFs{FileContent: "old-token"}
 	defer func() {
 		fsystem = nil
@@ -53,8 +39,36 @@ func (s *S) TestNativeLogin(c *check.C) {
 	c.Assert(token, check.Equals, "sometoken")
 }
 
+func (s *S) TestNativeLoginWithoutEmailFromArg(c *check.C) {
+	nativeScheme()
+	fsystem = &fstest.RecordingFs{FileContent: "old-token"}
+	defer func() {
+		fsystem = nil
+	}()
+	expected := "Email: Password: \nSuccessfully logged in!\n"
+	reader := strings.NewReader("chico@tsuru.io\nchico\n")
+	context := Context{[]string{}, manager.stdout, manager.stderr, reader}
+	transport := cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{
+			Message: `{"token": "sometoken", "is_admin": true}`,
+			Status:  http.StatusOK,
+		},
+		CondFunc: func(r *http.Request) bool {
+			return r.URL.Path == "/users/chico@tsuru.io/tokens"
+		},
+	}
+	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
+	command := login{}
+	err := command.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	token, err := ReadToken()
+	c.Assert(err, check.IsNil)
+	c.Assert(token, check.Equals, "sometoken")
+}
+
 func (s *S) TestNativeLoginShouldNotDependOnTsuruTokenFile(c *check.C) {
-	navitveScheme()
+	nativeScheme()
 	rfs := &fstest.RecordingFs{}
 	f, _ := rfs.Create(JoinWithUserDir(".tsuru_target"))
 	f.Write([]byte("http://localhost"))
@@ -74,7 +88,7 @@ func (s *S) TestNativeLoginShouldNotDependOnTsuruTokenFile(c *check.C) {
 }
 
 func (s *S) TestNativeLoginShouldReturnErrorIfThePasswordIsNotGiven(c *check.C) {
-	navitveScheme()
+	nativeScheme()
 	context := Context{[]string{"foo@foo.com"}, manager.stdout, manager.stderr, strings.NewReader("\n")}
 	command := login{}
 	err := command.Run(&context, nil)
