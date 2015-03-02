@@ -286,6 +286,13 @@ func (p *dockerProvisioner) rebalanceContainersByFilter(writer io.Writer, appFil
 			return err
 		}
 	}
+	if p.scheduler != nil {
+		containerIds := make([]string, len(containers))
+		for i := range containers {
+			containerIds[i] = containers[i].ID
+		}
+		p.scheduler.ignoredContainers = containerIds
+	}
 	fmt.Fprintf(writer, "Rebalancing %d units...\n", len(containers))
 	return p.moveContainerList(containers, "", writer)
 }
