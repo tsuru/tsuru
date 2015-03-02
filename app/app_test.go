@@ -2485,7 +2485,7 @@ func (s *S) TestShellToAnApp(c *check.C) {
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 1, nil)
 	buf := safe.NewBuffer([]byte("echo teste"))
-	conn := &provisiontest.FakeConn{buf}
+	conn := &provisiontest.FakeConn{Buf: buf}
 	err = a.Shell(conn, 10, 10)
 	c.Assert(err, check.IsNil)
 }
