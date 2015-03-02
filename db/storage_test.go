@@ -79,7 +79,7 @@ var _ = check.Suite(&S{})
 
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017")
-	config.Set("database:name", "tsuru_storage_test")
+	config.Set("database:name", "tsuru_db_storage_test")
 }
 
 func (s *S) TearDownSuite(c *check.C) {
