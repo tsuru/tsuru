@@ -15,6 +15,8 @@ import (
 	"github.com/tsuru/tsuru/errors"
 )
 
+var errUnauthorized = &errors.HTTP{Code: http.StatusUnauthorized}
+
 type Client struct {
 	HTTPClient     *http.Client
 	context        *Context
@@ -98,6 +100,9 @@ and download the last version.
 `
 	if !validateVersion(supported, c.currentVersion) {
 		fmt.Fprintf(c.context.Stderr, format, c.progname, supported, c.currentVersion)
+	}
+	if response.StatusCode == http.StatusUnauthorized {
+		return response, errUnauthorized
 	}
 	if response.StatusCode > 399 {
 		defer response.Body.Close()

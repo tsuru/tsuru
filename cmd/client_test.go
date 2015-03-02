@@ -48,18 +48,18 @@ func (s *S) TestShouldReturnBodyMessageOnError(c *check.C) {
 		Stdout: &buf,
 	}
 	client := NewClient(
-		&http.Client{Transport: &cmdtest.Transport{Message: "You must be authenticated to execute this command.", Status: http.StatusUnauthorized}},
+		&http.Client{Transport: &cmdtest.Transport{Message: "You can't do this", Status: http.StatusForbidden}},
 		&context,
 		manager)
 	client.Verbosity = 2
 	response, err := client.Do(request)
 	c.Assert(response, check.NotNil)
 	c.Assert(err, check.NotNil)
-	expectedMsg := "You must be authenticated to execute this command."
+	expectedMsg := "You can't do this"
 	c.Assert(err.Error(), check.Equals, expectedMsg)
 	httpErr, ok := err.(*errors.HTTP)
 	c.Assert(ok, check.Equals, true)
-	c.Assert(httpErr.Code, check.Equals, http.StatusUnauthorized)
+	c.Assert(httpErr.Code, check.Equals, http.StatusForbidden)
 	c.Assert(httpErr.Message, check.Equals, expectedMsg)
 	c.Assert(buf.String(), check.Matches,
 		`(?s)`+
@@ -68,8 +68,24 @@ func (s *S) TestShouldReturnBodyMessageOnError(c *check.C) {
 			`Connection: close.*`+
 			`Authorization: bearer.*`+
 			`<Response uri="/">.*`+
-			`HTTP/0.0 401 Unauthorized.*`+
-			`You must be authenticated to execute this command\..*`)
+			`HTTP/0.0 403 Forbidden.*`+
+			`You can't do this.*`)
+}
+
+func (s *S) TestShouldHandleUnauthorizedErrorSpecially(c *check.C) {
+	request, err := http.NewRequest("GET", "/", nil)
+	c.Assert(err, check.IsNil)
+	var buf bytes.Buffer
+	context := Context{
+		Stdout: &buf,
+	}
+	client := NewClient(
+		&http.Client{Transport: &cmdtest.Transport{Message: "You can't do this", Status: http.StatusUnauthorized}},
+		&context,
+		manager)
+	response, err := client.Do(request)
+	c.Assert(response, check.NotNil)
+	c.Assert(err, check.Equals, errUnauthorized)
 }
 
 func (s *S) TestShouldReturnErrorWhenServerIsDown(c *check.C) {
