@@ -32,14 +32,15 @@ func (s *S) TestAutoScaleConfigRun(c *check.C) {
 	config.Set("iaas:node-port", urlPort(node2.URL()))
 	defer config.Unset("iaas:node-port")
 
-	clusterInstance, err := cluster.New(nil, &cluster.MapStorage{},
+	var p dockerProvisioner
+	p.storage = &cluster.MapStorage{}
+	clusterInstance, err := cluster.New(nil, p.storage,
 		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
 			"pool": "pool1",
 			"iaas": "my-scale-iaas",
 		}},
 	)
 	c.Assert(err, check.IsNil)
-	var p dockerProvisioner
 	p.cluster = clusterInstance
 	iaasInstance := &TestHealerIaaS{addr: "localhost"}
 	iaas.RegisterIaasProvider("my-scale-iaas", iaasInstance)
@@ -120,13 +121,14 @@ func (s *S) TestAutoScaleConfigRunNoGroup(c *check.C) {
 	config.Set("iaas:node-port", urlPort(node2.URL()))
 	defer config.Unset("iaas:node-port")
 
-	clusterInstance, err := cluster.New(nil, &cluster.MapStorage{},
+	var p dockerProvisioner
+	p.storage = &cluster.MapStorage{}
+	clusterInstance, err := cluster.New(nil, p.storage,
 		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
 			"iaas": "my-scale-iaas",
 		}},
 	)
 	c.Assert(err, check.IsNil)
-	var p dockerProvisioner
 	p.cluster = clusterInstance
 	iaasInstance := &TestHealerIaaS{addr: "localhost"}
 	iaas.RegisterIaasProvider("my-scale-iaas", iaasInstance)
