@@ -94,7 +94,7 @@
 		},
 		{
 			"ImportPath": "github.com/tsuru/config",
-			"Rev": "a2b4aec819a60c646dad55cba9c76ddfed4b6ed1"
+			"Rev": "c29cc8289f98e36725c0bce707f50ad69cbf17cb"
 		},
 		{
 			"ImportPath": "github.com/tsuru/docker-cluster/cluster",
