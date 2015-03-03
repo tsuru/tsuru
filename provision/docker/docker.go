@@ -358,10 +358,11 @@ func (c *container) remove(p *dockerProvisioner) error {
 type pty struct {
 	width  int
 	height int
+	term   string
 }
 
 func (c *container) shell(p *dockerProvisioner, stdin io.Reader, stdout, stderr io.Writer, pty pty) error {
-	cmds := []string{"/bin/bash"}
+	cmds := []string{"/usr/bin/env", "TERM=" + pty.term, "bash", "-l"}
 	execCreateOpts := docker.CreateExecOptions{
 		AttachStdin:  true,
 		AttachStdout: true,

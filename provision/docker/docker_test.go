@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -30,6 +31,8 @@ import (
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
+
+var execStartRegexp = regexp.MustCompile(`^.*/exec/(.*)/resize$`)
 
 type newContainerOpts struct {
 	AppName     string
@@ -412,13 +415,19 @@ func (s *S) TestContainerShell(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var stdout, stderr bytes.Buffer
 	stdin := bytes.NewBufferString("")
-	err = container.shell(s.p, stdin, &stdout, &stderr, pty{width: 140, height: 38})
+	err = container.shell(s.p, stdin, &stdout, &stderr, pty{width: 140, height: 38, term: "xterm"})
 	c.Assert(err, check.IsNil)
 	c.Assert(strings.Contains(stdout.String(), ""), check.Equals, true)
 	resizeURL := urls[len(urls)-2]
-	c.Assert(resizeURL.Path, check.Matches, `^.*/exec/.*/resize$`)
+	matches := execStartRegexp.FindStringSubmatch(resizeURL.Path)
+	c.Assert(matches, check.HasLen, 2)
 	c.Assert(resizeURL.Query().Get("w"), check.Equals, "140")
 	c.Assert(resizeURL.Query().Get("h"), check.Equals, "38")
+	client, _ := docker.NewClient(s.server.URL())
+	exec, err := client.InspectExec(matches[1])
+	c.Assert(err, check.IsNil)
+	cmd := append([]string{exec.ProcessConfig.EntryPoint}, exec.ProcessConfig.Arguments...)
+	c.Assert(cmd, check.DeepEquals, []string{"/usr/bin/env", "TERM=xterm", "bash", "-l"})
 }
 
 func (s *S) TestGetContainer(c *check.C) {
