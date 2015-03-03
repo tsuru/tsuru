@@ -48,7 +48,6 @@ func (i *DigitalOceanIaas) CreateMachine(params map[string]string) (*iaas.Machin
 		return nil, err
 	}
 	droplet := newDroplet.Droplet
-
 	m := &iaas.Machine{
 		Address: droplet.Networks.V4[0].IPAddress,
 		Id:      strconv.Itoa(droplet.ID),
@@ -58,11 +57,11 @@ func (i *DigitalOceanIaas) CreateMachine(params map[string]string) (*iaas.Machin
 }
 
 func (i *DigitalOceanIaas) DeleteMachine(m *iaas.Machine) error {
-    i.Auth()
-    machine_id, _ := strconv.Atoi(m.Id)
-    _, err := i.client.Droplets.Delete(machine_id)
-    if err != nil{
-        return err
-    }
+	i.Auth()
+	machine_id, _ := strconv.Atoi(m.Id)
+	_, err := i.client.Droplets.Delete(machine_id)
+	if err != nil {
+		return err
+	}
 	return nil
 }
