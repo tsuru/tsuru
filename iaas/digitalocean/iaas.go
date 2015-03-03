@@ -9,13 +9,13 @@ import (
 	"github.com/tsuru/tsuru/iaas"
 )
 
+func init() {
+	iaas.RegisterIaasProvider("digitalocean", NewDigitalOceanIaaS())
+}
+
 type DigitalOceanIaas struct {
 	base   iaas.UserDataIaaS
 	client *godo.Client
-}
-
-func init() {
-	iaas.RegisterIaasProvider("digitalocean", NewDigitalOceanIaaS())
 }
 
 func NewDigitalOceanIaas() *DigitalOceanIaas {
@@ -57,6 +57,6 @@ func (i *DigitalOceanIaas) CreateMachine(params map[string]string) (*iaas.Machin
 	return m, nil
 }
 
-func (i *DigitalOceanIaas) DeleteMachine(m *Machine) error {
+func (i *DigitalOceanIaas) DeleteMachine(m *iaas.Machine) error {
 	return nil
 }
