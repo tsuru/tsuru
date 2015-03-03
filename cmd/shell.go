@@ -63,7 +63,7 @@ func (c *ShellToContainerCmd) Run(context *Context, client *Client) error {
 	queryString.Set("width", strconv.Itoa(width))
 	queryString.Set("height", strconv.Itoa(height))
 	if len(context.Args) > 0 {
-		queryString.Set("container_id", context.Args[0])
+		queryString.Set("unit-id", context.Args[0])
 	}
 	appName, err := c.Guess()
 	if err != nil {
