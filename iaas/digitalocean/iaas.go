@@ -88,3 +88,14 @@ func (i *DigitalOceanIaas) DeleteMachine(m *iaas.Machine) error {
 	}
 	return nil
 }
+
+func (i *DigitalOceanIaas) Describe() string {
+	return `DigitalOcean IaaS required params:
+  name=<name>                Your machine name
+  region=<region>            Chosen region from DigitalOcean
+  size=<size>                Your machine size
+  image=<image>              The image ID of a public or private image
+
+Further params will also be sent to digitalocean's deployVirtualMachine command.
+`
+}
