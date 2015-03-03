@@ -399,13 +399,25 @@ func (s *S) TestContainerNetworkInfoNotFound(c *check.C) {
 }
 
 func (s *S) TestContainerShell(c *check.C) {
+	var urls []url.URL
+	s.server.SetHook(func(r *http.Request) {
+		urls = append(urls, *r.URL)
+	})
+	defer s.server.SetHook(nil)
+	s.server.PrepareExec("*", func() {
+		time.Sleep(1e9)
+	})
 	container, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	var stdout, stderr bytes.Buffer
 	stdin := bytes.NewBufferString("")
-	err = container.shell(s.p, stdin, &stdout, &stderr, pty{})
+	err = container.shell(s.p, stdin, &stdout, &stderr, pty{width: 140, height: 38})
 	c.Assert(err, check.IsNil)
 	c.Assert(strings.Contains(stdout.String(), ""), check.Equals, true)
+	resizeURL := urls[len(urls)-2]
+	c.Assert(resizeURL.Path, check.Matches, `^.*/exec/.*/resize$`)
+	c.Assert(resizeURL.Query().Get("w"), check.Equals, "140")
+	c.Assert(resizeURL.Query().Get("h"), check.Equals, "38")
 }
 
 func (s *S) TestGetContainer(c *check.C) {
@@ -910,9 +922,9 @@ func (s *S) TestContainerExec(c *check.C) {
 }
 
 func (s *S) TestContainerExecErrorCode(c *check.C) {
-	s.server.CustomHandler("/exec/id-exec-created-by-test/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server.CustomHandler("/exec/.*/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"ID": "id-exec-created-by-test", "ExitCode": 9}`))
+		w.Write([]byte(`{"ID":"id","ExitCode":9}`))
 	}))
 	container, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)

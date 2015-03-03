@@ -692,9 +692,9 @@ func (s *S) TestBindAndHealthcheckForwardHealthcheckError(c *check.C) {
 }
 
 func (s *S) TestBindAndHealthcheckForwardRestartError(c *check.C) {
-	s.server.CustomHandler("/exec/id-exec-created-by-test/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	s.server.CustomHandler("/exec/.*/json", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"ID": "id-exec-created-by-test", "ExitCode": 9}`))
+		w.Write([]byte(`{"ID":"id","ExitCode":9}`))
 	}))
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)

@@ -381,11 +381,24 @@ func (c *container) shell(p *dockerProvisioner, stdin io.Reader, stdout, stderr 
 		Tty:          true,
 		RawTerminal:  true,
 	}
-	err = p.getCluster().StartExec(exec.ID, c.ID, startExecOptions)
+	errs := make(chan error, 1)
+	go func() {
+		errs <- p.getCluster().StartExec(exec.ID, c.ID, startExecOptions)
+	}()
+	execInfo, err := p.getCluster().InspectExec(exec.ID, c.ID)
+	for !execInfo.Running && err == nil {
+		select {
+		case startErr := <-errs:
+			return startErr
+		default:
+			execInfo, err = p.getCluster().InspectExec(exec.ID, c.ID)
+		}
+	}
 	if err != nil {
 		return err
 	}
-	return p.getCluster().ResizeExecTTY(exec.ID, c.ID, pty.height, pty.width)
+	p.getCluster().ResizeExecTTY(exec.ID, c.ID, pty.height, pty.width)
+	return <-errs
 }
 
 type execErr struct {
