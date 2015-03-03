@@ -10,7 +10,7 @@ import (
 )
 
 func init() {
-	iaas.RegisterIaasProvider("digitalocean", NewDigitalOceanIaaS())
+	iaas.RegisterIaasProvider("digitalocean", NewDigitalOceanIaas())
 }
 
 type DigitalOceanIaas struct {
