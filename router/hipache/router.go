@@ -44,7 +44,18 @@ func (r *hipacheRouter) connect() redis.Conn {
 		srv := r.redisServer()
 		r.pool = &redis.Pool{
 			Dial: func() (redis.Conn, error) {
-				return redis.Dial("tcp", srv)
+				conn, err := redis.Dial("tcp", srv)
+				if err != nil {
+					return nil, err
+				}
+				password, _ := config.GetString(r.prefix + ":redis-password")
+				if password != "" {
+					_, err = conn.Do("AUTH", password)
+					if err != nil {
+						return nil, err
+					}
+				}
+				return conn, nil
 			},
 			MaxIdle:     10,
 			IdleTimeout: 180e9,

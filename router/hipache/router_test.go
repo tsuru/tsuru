@@ -79,6 +79,17 @@ func (s *S) TestConnect(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
+func (s *S) TestConnectWithPassword(c *check.C) {
+	config.Set("hipache:redis-password", "123456")
+	defer config.Unset("hipache:redis-password")
+	rtest := hipacheRouter{prefix: "hipache"}
+	got := rtest.connect()
+	defer got.Close()
+	c.Assert(got, check.NotNil)
+	_, err := got.Do("PING")
+	c.Assert(err, check.ErrorMatches, "ERR Client sent AUTH, but no password is set")
+}
+
 func (s *S) TestConnectWhenPoolIsNil(c *check.C) {
 	rtest := hipacheRouter{prefix: "hipache"}
 	got := rtest.connect()
