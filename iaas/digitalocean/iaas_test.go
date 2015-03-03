@@ -56,3 +56,16 @@ func (s *digitaloceanSuite) TestDeleteMachine(c *check.C) {
 	err := do.DeleteMachine(&machine)
 	c.Assert(err, check.IsNil)
 }
+
+func (s *digitaloceanSuite) TestDeleteMachineFailure(c *check.C) {
+	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		w.Header().Set("Content-type", "application/json")
+	}))
+	config.Set("iaas:digitalocean:url", fakeServer.URL)
+	do := NewDigitalOceanIaas()
+	machine := iaas.Machine{Id: "myMachineId", CreationParams: map[string]string{"projectid": "projid"}}
+	err := do.DeleteMachine(&machine)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "Failed to delete machine")
+}

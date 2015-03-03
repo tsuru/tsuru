@@ -79,9 +79,12 @@ func (i *DigitalOceanIaas) CreateMachine(params map[string]string) (*iaas.Machin
 func (i *DigitalOceanIaas) DeleteMachine(m *iaas.Machine) error {
 	i.Auth()
 	machine_id, _ := strconv.Atoi(m.Id)
-	_, err := i.client.Droplets.Delete(machine_id)
+	resp, err := i.client.Droplets.Delete(machine_id)
 	if err != nil {
 		return err
+	}
+	if resp.StatusCode != 204 {
+		return fmt.Errorf("Failed to delete machine")
 	}
 	return nil
 }
