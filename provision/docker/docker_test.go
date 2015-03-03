@@ -32,7 +32,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-var execStartRegexp = regexp.MustCompile(`^.*/exec/(.*)/resize$`)
+var execResizeRegexp = regexp.MustCompile(`^.*/exec/(.*)/resize$`)
 
 type newContainerOpts struct {
 	AppName     string
@@ -419,7 +419,7 @@ func (s *S) TestContainerShell(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(strings.Contains(stdout.String(), ""), check.Equals, true)
 	resizeURL := urls[len(urls)-2]
-	matches := execStartRegexp.FindStringSubmatch(resizeURL.Path)
+	matches := execResizeRegexp.FindStringSubmatch(resizeURL.Path)
 	c.Assert(matches, check.HasLen, 2)
 	c.Assert(resizeURL.Query().Get("w"), check.Equals, "140")
 	c.Assert(resizeURL.Query().Get("h"), check.Equals, "38")
