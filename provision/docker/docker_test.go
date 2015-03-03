@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"regexp"
 	"sort"
+	"sync"
 	"strings"
 	"time"
 
@@ -403,9 +404,14 @@ func (s *S) TestContainerNetworkInfoNotFound(c *check.C) {
 }
 
 func (s *S) TestContainerShell(c *check.C) {
-	var urls []url.URL
+	var urls struct {
+		items []url.URL
+		sync.Mutex
+	}
 	s.server.SetHook(func(r *http.Request) {
-		urls = append(urls, *r.URL)
+		urls.Lock()
+		urls.items = append(urls.items, *r.URL)
+		urls.Unlock()
 	})
 	defer s.server.SetHook(nil)
 	s.server.PrepareExec("*", func() {
@@ -418,7 +424,9 @@ func (s *S) TestContainerShell(c *check.C) {
 	err = container.shell(s.p, stdin, &stdout, &stderr, pty{width: 140, height: 38, term: "xterm"})
 	c.Assert(err, check.IsNil)
 	c.Assert(strings.Contains(stdout.String(), ""), check.Equals, true)
-	resizeURL := urls[len(urls)-2]
+	urls.Lock()
+	resizeURL := urls.items[len(urls.items)-2]
+	urls.Unlock()
 	matches := execResizeRegexp.FindStringSubmatch(resizeURL.Path)
 	c.Assert(matches, check.HasLen, 2)
 	c.Assert(resizeURL.Query().Get("w"), check.Equals, "140")
