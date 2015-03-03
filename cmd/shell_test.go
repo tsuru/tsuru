@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 
 	"github.com/tsuru/tsuru/cmd/cmdtest"
+	"github.com/tsuru/tsuru/errors"
 	"gopkg.in/check.v1"
 )
 
@@ -117,7 +118,34 @@ func (s *S) TestShellToContainerCmdNoToken(c *check.C) {
 	var command ShellToContainerCmd
 	err := command.Run(&context, nil)
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "HTTP/1.1 401")
+	c.Assert(err.Error(), check.Equals, "Unauthorized")
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Code, check.Equals, http.StatusUnauthorized)
+}
+
+func (s *S) TestShellToContainerCmdAppNotFound(c *check.C) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "Not found", http.StatusNotFound)
+	}))
+	defer server.Close()
+	target := "http://" + server.Listener.Addr().String()
+	targetRecover := cmdtest.SetTargetFile(c, []byte(target))
+	defer cmdtest.RollbackFile(targetRecover)
+	var stdin, stdout, stderr bytes.Buffer
+	context := Context{
+		Args:   []string{"af3332d"},
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Stdin:  &stdin,
+	}
+	var command ShellToContainerCmd
+	err := command.Run(&context, nil)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "App cmd not found")
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Code, check.Equals, http.StatusNotFound)
 }
 
 func (s *S) TestShellToContainerCmdSmallData(c *check.C) {
