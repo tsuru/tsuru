@@ -7,7 +7,6 @@
 package safe
 
 import (
-	"bytes"
 	"sync"
 
 	"gopkg.in/check.v1"
@@ -27,38 +26,5 @@ func (s *S) TestSafeBufferIsThreadSafe(c *check.C) {
 		wg.Done()
 	}()
 	buf.Reset()
-	wg.Wait()
-}
-
-func (s *S) TestSafeWriterIsThreadSafe(c *check.C) {
-	var buf bytes.Buffer
-	writer := NewWriter(&buf)
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		writer.Write([]byte("something"))
-		wg.Done()
-	}()
-	go func() {
-		writer.Write([]byte("otherthing"))
-		wg.Done()
-	}()
-	wg.Wait()
-}
-
-func (s *S) TestSafeReaderIsThreadSafe(c *check.C) {
-	var buf [8]byte
-	buffer := bytes.NewBufferString("hello world something")
-	reader := NewReader(buffer)
-	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		reader.Read(buf[:])
-		wg.Done()
-	}()
-	go func() {
-		reader.Read(buf[:])
-		wg.Done()
-	}()
 	wg.Wait()
 }
