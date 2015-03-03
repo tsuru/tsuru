@@ -112,7 +112,7 @@ func (s *HandlersSuite) TearDownSuite(c *check.C) {
 }
 
 func (s *HandlersSuite) TestAddNodeHandler(c *check.C) {
-	mainDockerProvisioner.cluster, _ = cluster.New(segregatedScheduler{}, &cluster.MapStorage{})
+	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
 	p := Pool{Name: "pool1"}
 	s.conn.Collection(schedulerCollection).Insert(p)
 	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
@@ -134,7 +134,7 @@ func (s *HandlersSuite) TestAddNodeHandler(c *check.C) {
 
 func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 	iaas.RegisterIaasProvider("test-iaas", TestIaaS{})
-	mainDockerProvisioner.cluster, _ = cluster.New(segregatedScheduler{}, &cluster.MapStorage{})
+	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
 	p := Pool{Name: "pool1"}
 	s.conn.Collection(schedulerCollection).Insert(p)
 	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
@@ -162,7 +162,7 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachineExplicit(c *check.C) {
 	iaas.RegisterIaasProvider("test-iaas", TestIaaS{})
 	iaas.RegisterIaasProvider("another-test-iaas", TestIaaS{})
-	mainDockerProvisioner.cluster, _ = cluster.New(segregatedScheduler{}, &cluster.MapStorage{})
+	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
 	p := Pool{Name: "pool1"}
 	s.conn.Collection(schedulerCollection).Insert(p)
 	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
@@ -384,7 +384,7 @@ func (s *HandlersSuite) TestFixContainerHandler(c *check.C) {
 func (s *HandlersSuite) TestListContainersByHostHandler(c *check.C) {
 	var result []container
 	var err error
-	mainDockerProvisioner.cluster, err = cluster.New(segregatedScheduler{}, &cluster.MapStorage{})
+	mainDockerProvisioner.cluster, err = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
 	coll := mainDockerProvisioner.collection()
 	c.Assert(err, check.IsNil)
 	err = coll.Insert(container{ID: "blabla", Type: "python", HostAddr: "http://cittavld1182.globoi.com"})
@@ -412,7 +412,7 @@ func (s *HandlersSuite) TestListContainersByHostHandler(c *check.C) {
 func (s *HandlersSuite) TestListContainersByAppHandler(c *check.C) {
 	var result []container
 	var err error
-	mainDockerProvisioner.cluster, err = cluster.New(segregatedScheduler{}, &cluster.MapStorage{})
+	mainDockerProvisioner.cluster, err = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
 	coll := mainDockerProvisioner.collection()
 	err = coll.Insert(container{ID: "blabla", AppName: "appbla", HostAddr: "http://cittavld1182.globoi.com"})
 	c.Assert(err, check.IsNil)

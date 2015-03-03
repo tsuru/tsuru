@@ -37,6 +37,7 @@ type Pool struct {
 }
 
 type segregatedScheduler struct {
+	hostMutex           sync.Mutex
 	maxMemoryRatio      float32
 	totalMemoryMetadata string
 	provisioner         *dockerProvisioner
@@ -46,7 +47,7 @@ type segregatedScheduler struct {
 	ignoredContainers []string
 }
 
-func (s segregatedScheduler) Schedule(c *cluster.Cluster, opts docker.CreateContainerOptions, schedulerOpts cluster.SchedulerOptions) (cluster.Node, error) {
+func (s *segregatedScheduler) Schedule(c *cluster.Cluster, opts docker.CreateContainerOptions, schedulerOpts cluster.SchedulerOptions) (cluster.Node, error) {
 	appName, _ := schedulerOpts.(string)
 	a, _ := app.GetByName(appName)
 	nodes, err := nodesForApp(c, a)
@@ -64,7 +65,7 @@ func (s segregatedScheduler) Schedule(c *cluster.Cluster, opts docker.CreateCont
 	return cluster.Node{Address: node}, nil
 }
 
-func (s segregatedScheduler) filterByMemoryUsage(a *app.App, nodes []cluster.Node, maxMemoryRatio float32, totalMemoryMetadata string) ([]cluster.Node, error) {
+func (s *segregatedScheduler) filterByMemoryUsage(a *app.App, nodes []cluster.Node, maxMemoryRatio float32, totalMemoryMetadata string) ([]cluster.Node, error) {
 	if maxMemoryRatio == 0 || totalMemoryMetadata == "" {
 		return nodes, nil
 	}
@@ -119,11 +120,9 @@ type nodeAggregate struct {
 	Count    int
 }
 
-var hostMutex sync.Mutex
-
 // aggregateContainersBy aggregates and counts how many containers
 // exist each node that matches received filters
-func (s segregatedScheduler) aggregateContainersBy(matcher bson.M) (map[string]int, error) {
+func (s *segregatedScheduler) aggregateContainersBy(matcher bson.M) (map[string]int, error) {
 	coll := s.provisioner.collection()
 	defer coll.Close()
 	pipe := coll.Pipe([]bson.M{
@@ -142,17 +141,17 @@ func (s segregatedScheduler) aggregateContainersBy(matcher bson.M) (map[string]i
 	return countMap, nil
 }
 
-func (s segregatedScheduler) aggregateContainersByHost(hosts []string) (map[string]int, error) {
+func (s *segregatedScheduler) aggregateContainersByHost(hosts []string) (map[string]int, error) {
 	return s.aggregateContainersBy(bson.M{"$match": bson.M{"hostaddr": bson.M{"$in": hosts}, "id": bson.M{"$nin": s.ignoredContainers}}})
 }
 
-func (s segregatedScheduler) aggregateContainersByHostApp(hosts []string, appName string) (map[string]int, error) {
+func (s *segregatedScheduler) aggregateContainersByHostApp(hosts []string, appName string) (map[string]int, error) {
 	return s.aggregateContainersBy(bson.M{"$match": bson.M{"appname": appName, "hostaddr": bson.M{"$in": hosts}, "id": bson.M{"$nin": s.ignoredContainers}}})
 }
 
 // chooseNode finds which is the node with the minimum number
 // of containers and returns it
-func (s segregatedScheduler) chooseNode(nodes []cluster.Node, contName string, appName string) (string, error) {
+func (s *segregatedScheduler) chooseNode(nodes []cluster.Node, contName string, appName string) (string, error) {
 	var chosenNode string
 	hosts := make([]string, len(nodes))
 	hostsMap := make(map[string]string)
@@ -164,8 +163,8 @@ func (s segregatedScheduler) chooseNode(nodes []cluster.Node, contName string, a
 		hostsMap[host] = node.Address
 	}
 	log.Debugf("[scheduler] Possible nodes for container %s: %#v", contName, hosts)
-	hostMutex.Lock()
-	defer hostMutex.Unlock()
+	s.hostMutex.Lock()
+	defer s.hostMutex.Unlock()
 	hostCountMap, err := s.aggregateContainersByHost(hosts)
 	if err != nil {
 		return chosenNode, err
