@@ -14,8 +14,8 @@ import (
 	"net/url"
 	"regexp"
 	"sort"
-	"sync"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
