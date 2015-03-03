@@ -1,7 +1,9 @@
 package digitalocean
 
 import (
+	"fmt"
 	"strconv"
+	"time"
 
 	"code.google.com/p/goauth2/oauth"
 	"github.com/tarsisazevedo/godo"
@@ -48,6 +50,24 @@ func (i *DigitalOceanIaas) CreateMachine(params map[string]string) (*iaas.Machin
 		return nil, err
 	}
 	droplet := newDroplet.Droplet
+	completed := false
+	maxTry := 10
+	for !completed && maxTry != 0 {
+		d, _, err := i.client.Droplets.Get(droplet.ID)
+		if err != nil {
+			return nil, err
+		}
+		if len(d.Droplet.Networks.V4) == 0 {
+			maxTry -= 1
+			time.Sleep(5 * time.Second)
+			continue
+		}
+		completed = true
+		droplet = d.Droplet
+	}
+	if !completed {
+		return nil, fmt.Errorf("Machine created but without network")
+	}
 	m := &iaas.Machine{
 		Address: droplet.Networks.V4[0].IPAddress,
 		Id:      strconv.Itoa(droplet.ID),
