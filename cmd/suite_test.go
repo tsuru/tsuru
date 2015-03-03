@@ -27,6 +27,9 @@ var manager *Manager
 func (s *S) SetUpSuite(c *check.C) {
 	s.recover = cmdtest.SetTargetFile(c, []byte("http://localhost"))
 	s.recoverToken = cmdtest.SetTokenFile(c, []byte("abc123"))
+	if env := os.Getenv("TERM"); env == "" {
+		os.Setenv("TERM", "tsuruterm")
+	}
 }
 
 func (s *S) TearDownSuite(c *check.C) {

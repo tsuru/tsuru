@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
 
 	"github.com/tsuru/tsuru/cmd/cmdtest"
 	"github.com/tsuru/tsuru/errors"
@@ -27,6 +28,7 @@ func (s *S) TestShellToContainerCmdRunWithApp(c *check.C) {
 	guesser := cmdtest.FakeGuesser{Name: "myapp"}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/apps/myapp/shell" && r.Method == "GET" && r.Header.Get("Authorization") == "bearer abc123" {
+			c.Assert(r.URL.Query().Get("term"), check.Equals, os.Getenv("TERM"))
 			conn, _, err := w.(http.Hijacker).Hijack()
 			c.Assert(err, check.IsNil)
 			conn.Write([]byte("hello my friend\n"))
@@ -65,7 +67,7 @@ func (s *S) TestShellToContainerWithUnit(c *check.C) {
 	guesser := cmdtest.FakeGuesser{Name: "myapp"}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/apps/myapp/shell" && r.Method == "GET" && r.Header.Get("Authorization") == "bearer abc123" {
-			c.Assert(r.URL.Query().Get("unit-id"), check.Equals, "containerid")
+			c.Assert(r.URL.Query().Get("unit"), check.Equals, "containerid")
 			conn, _, err := w.(http.Hijacker).Hijack()
 			c.Assert(err, check.IsNil)
 			conn.Write([]byte("hello my friend\n"))
