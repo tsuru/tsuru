@@ -13,7 +13,10 @@ import (
 )
 
 func remoteShellHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	containerID := r.URL.Query().Get("container_id")
+	unitID := r.URL.Query().Get("unit-id")
+	if unitID == "" {
+		unitID = r.URL.Query().Get("container_id")
+	}
 	width, _ := strconv.Atoi(r.URL.Query().Get("width"))
 	height, _ := strconv.Atoi(r.URL.Query().Get("height"))
 	u, err := t.User()
@@ -40,5 +43,5 @@ func remoteShellHandler(w http.ResponseWriter, r *http.Request, t auth.Token) er
 		}
 	}
 	defer conn.Close()
-	return app.Shell(conn, width, height, containerID)
+	return app.Shell(conn, width, height, unitID)
 }
