@@ -81,6 +81,8 @@ func (s *S) SetUpSuite(c *check.C) {
 	s.storage, err = db.Conn()
 	c.Assert(err, check.IsNil)
 	s.p = &dockerProvisioner{storage: &cluster.MapStorage{}}
+	err = s.p.Initialize()
+	c.Assert(err, check.IsNil)
 	s.oldProvisioner = app.Provisioner
 	app.Provisioner = s.p
 	s.user = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: quota.Unlimited}
@@ -150,6 +152,10 @@ func (s *S) startMultipleServersCluster() (*dockerProvisioner, error) {
 	}
 	otherUrl := strings.Replace(otherServer.URL(), "127.0.0.1", "localhost", 1)
 	var p dockerProvisioner
+	err = p.Initialize()
+	if err != nil {
+		return nil, err
+	}
 	p.storage = &cluster.MapStorage{}
 	p.cluster, err = cluster.New(nil, p.storage,
 		cluster.Node{Address: s.server.URL()},
@@ -168,6 +174,10 @@ func (s *S) startMultipleServersClusterSeggregated() (*dockerProvisioner, error)
 	}
 	otherUrl := strings.Replace(otherServer.URL(), "127.0.0.1", "localhost", 1)
 	var p dockerProvisioner
+	err = p.Initialize()
+	if err != nil {
+		return nil, err
+	}
 	p.storage = &cluster.MapStorage{}
 	sched := segregatedScheduler{provisioner: &p}
 	p.cluster, err = cluster.New(&sched, p.storage,

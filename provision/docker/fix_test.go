@@ -50,6 +50,10 @@ func startDocker(hostPort string) (func(), *httptest.Server, *dockerProvisioner)
 	}))
 	var err error
 	var p dockerProvisioner
+	err = p.Initialize()
+	if err != nil {
+		panic(err)
+	}
 	p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: server.URL},
 	)

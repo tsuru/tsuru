@@ -90,6 +90,8 @@ func (s *S) TestHealerHealNode(c *check.C) {
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
 	p.cluster = cluster
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
@@ -177,6 +179,8 @@ func (s *S) TestHealerHealNodeWithoutIaaS(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
 	p.cluster = cluster
 	healer := Healer{
 		provisioner:           &p,
@@ -221,6 +225,8 @@ func (s *S) TestHealerHealNodeCreateMachineError(c *check.C) {
 	time.Sleep(300 * time.Millisecond)
 	cluster.StopActiveMonitoring()
 	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
 	p.cluster = cluster
 	healer := Healer{
 		provisioner:           &p,
@@ -277,6 +283,8 @@ func (s *S) TestHealerHealNodeWaitAndRegisterError(c *check.C) {
 	time.Sleep(300 * time.Millisecond)
 	cluster.StopActiveMonitoring()
 	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
 	p.cluster = cluster
 	healer := Healer{
 		provisioner:           &p,
@@ -333,6 +341,8 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
 	p.cluster = cluster
 
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
@@ -429,6 +439,8 @@ func (s *S) TestHealContainer(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
 	p.cluster = cluster
 
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
@@ -488,6 +500,8 @@ func (s *S) TestRunContainerHealer(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
 	p.cluster = cluster
 
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
@@ -565,6 +579,8 @@ func (s *S) TestRunContainerHealerConcurrency(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
 	p.cluster = cluster
 
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
@@ -647,6 +663,8 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
 	p.cluster = cluster
 
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
@@ -720,6 +738,8 @@ func (s *S) TestRunContainerHealerDoesntHealWithProcfileInTop(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
 	p.cluster = cluster
 
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
@@ -769,6 +789,8 @@ func (s *S) TestRunContainerHealerWithError(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
 	p.cluster = cluster
 
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
@@ -886,6 +908,8 @@ func (s *S) TestHealerHandleError(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
 	p.cluster = cluster
 
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)

@@ -30,6 +30,8 @@ func (s *S) TestRebalanceContainersManyAppsSegStress(c *check.C) {
 	}
 	var err error
 	p := &dockerProvisioner{}
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
 	p.storage, err = buildClusterStorage()
 	c.Assert(err, check.IsNil)
 	p.scheduler = &segregatedScheduler{provisioner: p}

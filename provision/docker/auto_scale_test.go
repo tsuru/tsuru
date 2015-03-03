@@ -33,6 +33,8 @@ func (s *S) TestAutoScaleConfigRun(c *check.C) {
 	defer config.Unset("iaas:node-port")
 
 	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
 	p.storage = &cluster.MapStorage{}
 	clusterInstance, err := cluster.New(nil, p.storage,
 		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
@@ -122,6 +124,8 @@ func (s *S) TestAutoScaleConfigRunNoGroup(c *check.C) {
 	defer config.Unset("iaas:node-port")
 
 	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
 	p.storage = &cluster.MapStorage{}
 	clusterInstance, err := cluster.New(nil, p.storage,
 		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
@@ -192,6 +196,8 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	defer config.Unset("iaas:node-port")
 
 	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
 	p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
 			"iaas": "my-scale-iaas",

@@ -19,17 +19,14 @@ import (
 	"github.com/tsuru/tsuru/provision"
 )
 
-var (
-	appDBMutex sync.Mutex
-)
-
 type appLocker struct {
+	sync.Mutex
 	refCount map[string]int
 }
 
 func (l *appLocker) lock(appName string) bool {
-	appDBMutex.Lock()
-	defer appDBMutex.Unlock()
+	l.Lock()
+	defer l.Unlock()
 	if l.refCount == nil {
 		l.refCount = make(map[string]int)
 	}
@@ -46,8 +43,8 @@ func (l *appLocker) lock(appName string) bool {
 }
 
 func (l *appLocker) unlock(appName string) {
-	appDBMutex.Lock()
-	defer appDBMutex.Unlock()
+	l.Lock()
+	defer l.Unlock()
 	if l.refCount == nil {
 		return
 	}

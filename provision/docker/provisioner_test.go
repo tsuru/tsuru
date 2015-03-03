@@ -1046,6 +1046,8 @@ func (s *S) TestProvisionerPlatformAdd(c *check.C) {
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
 	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
 	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: server.URL()})
 	args := make(map[string]string)
@@ -1085,6 +1087,8 @@ func (s *S) TestProvisionerPlatformAddWithoutNode(c *check.C) {
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
 	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
 	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{})
 	args := make(map[string]string)
 	args["dockerfile"] = "http://localhost/Dockerfile"
@@ -1104,6 +1108,8 @@ func (s *S) TestProvisionerPlatformRemove(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer server.Stop()
 	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
 	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: server.URL()})
 	var buf bytes.Buffer
@@ -1129,6 +1135,8 @@ func (s *S) TestProvisionerPlatformRemoveReturnsStorageError(c *check.C) {
 	defer server.Stop()
 	var strg cluster.MapStorage
 	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
 	p.cluster, _ = cluster.New(nil, &strg,
 		cluster.Node{Address: server.URL()})
 	err = p.PlatformRemove("test")

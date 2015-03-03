@@ -386,7 +386,8 @@ func (s *S) TestContainerNetworkInfoNotFound(c *check.C) {
 	var storage cluster.MapStorage
 	storage.StoreContainer("c-01", server.URL)
 	var p dockerProvisioner
-	var err error
+	err := p.Initialize()
+	c.Assert(err, check.IsNil)
 	p.cluster, err = cluster.New(nil, &storage,
 		cluster.Node{Address: server.URL},
 	)
@@ -715,6 +716,8 @@ func (s *S) TestProvisionerGetCluster(c *check.C) {
 	config.Set("docker:cluster:redis-server", "127.0.0.1:6379")
 	defer config.Unset("docker:cluster:redis-server")
 	var p dockerProvisioner
+	err := p.Initialize()
+	c.Assert(err, check.IsNil)
 	clus := p.getCluster()
 	c.Assert(clus, check.NotNil)
 	currentNodes, err := clus.Nodes()
@@ -733,6 +736,8 @@ func (s *S) TestProvisionerGetClusterSegregated(c *check.C) {
 	config.Set("docker:cluster:redis-server", "127.0.0.1:6379")
 	defer config.Unset("docker:cluster:redis-server")
 	var p dockerProvisioner
+	err := p.Initialize()
+	c.Assert(err, check.IsNil)
 	clus := p.getCluster()
 	c.Assert(clus, check.NotNil)
 	currentNodes, err := clus.Nodes()
@@ -761,6 +766,8 @@ func (s *S) TestPushImage(c *check.C) {
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
 	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
 	p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: server.URL()})
 	c.Assert(err, check.IsNil)

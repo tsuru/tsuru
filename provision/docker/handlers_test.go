@@ -69,6 +69,7 @@ func (s *HandlersSuite) SetUpSuite(c *check.C) {
 	config.Set("docker:router", "fake")
 	config.Set("docker:cluster:mongo-url", "127.0.0.1:27017")
 	config.Set("docker:cluster:mongo-database", "docker_provision_handlers_tests_cluster_stor")
+	config.Set("docker:repository-namespace", "tsuru")
 	config.Set("iaas:default", "test-iaas")
 	config.Set("iaas:node-protocol", "http")
 	config.Set("iaas:node-port", 1234)
@@ -93,13 +94,13 @@ func (s *HandlersSuite) SetUpSuite(c *check.C) {
 func (s *HandlersSuite) SetUpTest(c *check.C) {
 	err := clearClusterStorage()
 	c.Assert(err, check.IsNil)
+	mainDockerProvisioner = &dockerProvisioner{}
+	err = mainDockerProvisioner.Initialize()
+	c.Assert(err, check.IsNil)
 	coll := mainDockerProvisioner.collection()
 	defer coll.Close()
-	coll.RemoveAll(nil)
-	healingColl, err := healingCollection()
+	err = dbtest.ClearAllCollectionsExcept(coll.Database, []string{"users", "tokens", "teams"})
 	c.Assert(err, check.IsNil)
-	defer healingColl.Close()
-	healingColl.RemoveAll(nil)
 }
 
 func (s *HandlersSuite) TearDownSuite(c *check.C) {
@@ -111,7 +112,6 @@ func (s *HandlersSuite) TearDownSuite(c *check.C) {
 }
 
 func (s *HandlersSuite) TestAddNodeHandler(c *check.C) {
-	mainDockerProvisioner = &dockerProvisioner{}
 	mainDockerProvisioner.cluster, _ = cluster.New(segregatedScheduler{}, &cluster.MapStorage{})
 	p := Pool{Name: "pool1"}
 	s.conn.Collection(schedulerCollection).Insert(p)
@@ -134,7 +134,6 @@ func (s *HandlersSuite) TestAddNodeHandler(c *check.C) {
 
 func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 	iaas.RegisterIaasProvider("test-iaas", TestIaaS{})
-	mainDockerProvisioner = &dockerProvisioner{}
 	mainDockerProvisioner.cluster, _ = cluster.New(segregatedScheduler{}, &cluster.MapStorage{})
 	p := Pool{Name: "pool1"}
 	s.conn.Collection(schedulerCollection).Insert(p)
@@ -163,7 +162,6 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachineExplicit(c *check.C) {
 	iaas.RegisterIaasProvider("test-iaas", TestIaaS{})
 	iaas.RegisterIaasProvider("another-test-iaas", TestIaaS{})
-	mainDockerProvisioner = &dockerProvisioner{}
 	mainDockerProvisioner.cluster, _ = cluster.New(segregatedScheduler{}, &cluster.MapStorage{})
 	p := Pool{Name: "pool1"}
 	s.conn.Collection(schedulerCollection).Insert(p)
@@ -193,7 +191,6 @@ func (s *HandlersSuite) TestAddNodeHandlerWithoutdCluster(c *check.C) {
 	defer config.Unset("docker:segregate")
 	config.Set("docker:cluster:redis-server", "127.0.0.1:6379")
 	defer config.Unset("docker:cluster:redis-server")
-	mainDockerProvisioner = &dockerProvisioner{}
 	b := bytes.NewBufferString(fmt.Sprintf(`{"address": "%s", "pool": "pool1"}`, s.server.URL))
 	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
 	c.Assert(err, check.IsNil)
@@ -261,7 +258,6 @@ func (s *HandlersSuite) TestValidateNodeAddress(c *check.C) {
 
 func (s *HandlersSuite) TestRemoveNodeHandler(c *check.C) {
 	var err error
-	mainDockerProvisioner = &dockerProvisioner{}
 	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
 	_, err = mainDockerProvisioner.getCluster().Register("host.com:2375", nil)
@@ -280,7 +276,6 @@ func (s *HandlersSuite) TestRemoveNodeHandlerWithoutRemoveIaaS(c *check.C) {
 	iaas.RegisterIaasProvider("some-iaas", TestIaaS{})
 	machine, err := iaas.CreateMachineForIaaS("some-iaas", map[string]string{})
 	c.Assert(err, check.IsNil)
-	mainDockerProvisioner = &dockerProvisioner{}
 	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
 	_, err = mainDockerProvisioner.getCluster().Register(fmt.Sprintf("http://%s:2375", machine.Address), nil)
@@ -302,7 +297,6 @@ func (s *HandlersSuite) TestRemoveNodeHandlerRemoveIaaS(c *check.C) {
 	iaas.RegisterIaasProvider("my-xxx-iaas", TestIaaS{})
 	machine, err := iaas.CreateMachineForIaaS("my-xxx-iaas", map[string]string{})
 	c.Assert(err, check.IsNil)
-	mainDockerProvisioner = &dockerProvisioner{}
 	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
 	_, err = mainDockerProvisioner.getCluster().Register(fmt.Sprintf("http://%s:2375", machine.Address), nil)
@@ -325,7 +319,6 @@ func (s *HandlersSuite) TestListNodeHandler(c *check.C) {
 		Machines []iaas.Machine `json:"machines"`
 	}
 	var err error
-	mainDockerProvisioner = &dockerProvisioner{}
 	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
 	_, err = mainDockerProvisioner.getCluster().Register("host1.com:2375", map[string]string{"pool": "pool1"})
@@ -391,7 +384,6 @@ func (s *HandlersSuite) TestFixContainerHandler(c *check.C) {
 func (s *HandlersSuite) TestListContainersByHostHandler(c *check.C) {
 	var result []container
 	var err error
-	mainDockerProvisioner = &dockerProvisioner{}
 	mainDockerProvisioner.cluster, err = cluster.New(segregatedScheduler{}, &cluster.MapStorage{})
 	coll := mainDockerProvisioner.collection()
 	c.Assert(err, check.IsNil)
@@ -420,7 +412,6 @@ func (s *HandlersSuite) TestListContainersByHostHandler(c *check.C) {
 func (s *HandlersSuite) TestListContainersByAppHandler(c *check.C) {
 	var result []container
 	var err error
-	mainDockerProvisioner = &dockerProvisioner{}
 	mainDockerProvisioner.cluster, err = cluster.New(segregatedScheduler{}, &cluster.MapStorage{})
 	coll := mainDockerProvisioner.collection()
 	err = coll.Insert(container{ID: "blabla", AppName: "appbla", HostAddr: "http://cittavld1182.globoi.com"})

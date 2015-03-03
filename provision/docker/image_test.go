@@ -27,6 +27,8 @@ func (s *S) TestMigrateImages(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer server.Stop()
 	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
 	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: server.URL()})
 	app1 := app.App{Name: "app1"}
@@ -73,6 +75,8 @@ func (s *S) TestMigrateImagesWithoutImageInStorage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer server.Stop()
 	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
 	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: server.URL()})
 	app1 := app.App{Name: "app1"}
@@ -100,6 +104,8 @@ func (s *S) TestMigrateImagesWithRegistry(c *check.C) {
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
 	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
 	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: server.URL()})
 	app1 := app.App{Name: "app1"}

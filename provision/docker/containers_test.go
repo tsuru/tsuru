@@ -205,6 +205,8 @@ func (s *S) TestRebalanceContainersSegScheduler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	otherUrl := strings.Replace(otherServer.URL(), "127.0.0.1", "localhost", 1)
 	p := &dockerProvisioner{}
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
 	p.storage = &cluster.MapStorage{}
 	p.scheduler = &segregatedScheduler{provisioner: p}
 	p.cluster, err = cluster.New(p.scheduler, p.storage,

@@ -31,15 +31,10 @@ import (
 	_ "github.com/tsuru/tsuru/router/routertest"
 )
 
-var (
-	mainDockerProvisioner *dockerProvisioner
-	initDockerClusterFunc func(*dockerProvisioner)
-)
+var mainDockerProvisioner *dockerProvisioner
 
 func init() {
 	mainDockerProvisioner = &dockerProvisioner{}
-	// Small hack to avoid initializtion loop error
-	initDockerClusterFunc = initDockerCluster
 	provision.Register("docker", mainDockerProvisioner)
 }
 
@@ -53,21 +48,27 @@ func getRouterForApp(app provision.App) (router.Router, error) {
 
 type dockerProvisioner struct {
 	cluster        *cluster.Cluster
-	cmutex         sync.Mutex
 	collectionName string
 	storage        cluster.Storage
 	scheduler      *segregatedScheduler
 	isDryMode      bool
 }
 
-func initDockerCluster(p *dockerProvisioner) {
+func (p *dockerProvisioner) initDockerCluster() error {
 	debug, _ := config.GetBool("debug")
 	clusterLog.SetDebug(debug)
 	clusterLog.SetLogger(log.GetStdLogger())
 	var err error
 	p.storage, err = buildClusterStorage()
 	if err != nil {
-		panic(err)
+		return err
+	}
+	if p.collectionName == "" {
+		name, err := config.GetString("docker:collection")
+		if err != nil {
+			return err
+		}
+		p.collectionName = name
 	}
 	var nodes []cluster.Node
 	var scheduler cluster.Scheduler
@@ -85,7 +86,7 @@ func initDockerCluster(p *dockerProvisioner) {
 	}
 	p.cluster, err = cluster.New(scheduler, p.storage, nodes...)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	autoHealingNodes, _ := config.GetBool("docker:healing:heal-nodes")
 	if autoHealingNodes {
@@ -137,6 +138,7 @@ func initDockerCluster(p *dockerProvisioner) {
 			matadataFilter:      matadataFilter,
 		}).run()
 	}
+	return nil
 }
 
 func (p *dockerProvisioner) cloneProvisioner(ignoredContainers []container) (*dockerProvisioner, error) {
@@ -216,12 +218,9 @@ func (p *dockerProvisioner) dryMode(ignoredContainers []container) (*dockerProvi
 }
 
 func (p *dockerProvisioner) getCluster() *cluster.Cluster {
-	p.cmutex.Lock()
-	defer p.cmutex.Unlock()
-	if p.cluster != nil {
-		return p.cluster
+	if p.cluster == nil {
+		panic("nil cluster")
 	}
-	initDockerClusterFunc(p)
 	return p.cluster
 }
 
@@ -238,7 +237,10 @@ func (p *dockerProvisioner) StartupMessage() (string, error) {
 }
 
 func (p *dockerProvisioner) Initialize() error {
-	p.getCluster()
+	err := p.initDockerCluster()
+	if err != nil {
+		return err
+	}
 	return p.migrateImages()
 }
 
@@ -717,15 +719,6 @@ func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 }
 
 func (p *dockerProvisioner) collection() *storage.Collection {
-	p.cmutex.Lock()
-	defer p.cmutex.Unlock()
-	if p.collectionName == "" {
-		name, err := config.GetString("docker:collection")
-		if err != nil {
-			log.Fatal(err.Error())
-		}
-		p.collectionName = name
-	}
 	conn, err := db.Conn()
 	if err != nil {
 		log.Errorf("Failed to connect to the database: %s", err)
