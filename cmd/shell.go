@@ -5,7 +5,6 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -15,10 +14,10 @@ import (
 	"os/signal"
 	"regexp"
 	"strconv"
-	"strings"
 	"syscall"
 
 	"golang.org/x/crypto/ssh/terminal"
+	"github.com/tsuru/tsuru/errors"
 )
 
 var httpHeaderRegexp = regexp.MustCompile(`HTTP/.*? (\d+)`)
@@ -109,7 +108,14 @@ func (c *ShellToContainerCmd) Run(context *Context, client *Client) error {
 	}
 	matches := httpHeaderRegexp.FindAllStringSubmatch(readStr, -1)
 	if len(matches) > 0 && len(matches[0]) > 1 {
-		return errors.New(strings.TrimSpace(readStr))
+		httpError, _ := strconv.Atoi(matches[0][1])
+		var message string
+		if (httpError == http.StatusNotFound) {
+			message = "App "+appName+" not found"
+		} else {
+			message = http.StatusText(httpError)
+		}
+		return &errors.HTTP{Code: httpError, Message: message};
 	} else {
 		context.Stdout.Write([]byte(readStr))
 	}
