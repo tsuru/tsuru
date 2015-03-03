@@ -386,7 +386,6 @@ func (c *container) shell(p *dockerProvisioner, stdin io.Reader, stdout, stderr 
 		return err
 	}
 	return p.getCluster().ResizeExecTTY(exec.ID, c.ID, pty.height, pty.width)
-
 }
 
 type execErr struct {
