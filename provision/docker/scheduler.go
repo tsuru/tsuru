@@ -245,7 +245,7 @@ func nodesForApp(c *cluster.Cluster, app *app.App) ([]cluster.Node, error) {
 	return nil, fmt.Errorf("No nodes found with one of the following metadata: pool=%s", poolsStr)
 }
 
-func (segregatedScheduler) addPool(poolName string) error {
+func (*segregatedScheduler) addPool(poolName string) error {
 	if poolName == "" {
 		return errors.New("Pool name is required.")
 	}
@@ -258,7 +258,7 @@ func (segregatedScheduler) addPool(poolName string) error {
 	return conn.Collection(schedulerCollection).Insert(pool)
 }
 
-func (segregatedScheduler) removePool(poolName string) error {
+func (*segregatedScheduler) removePool(poolName string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -267,7 +267,7 @@ func (segregatedScheduler) removePool(poolName string) error {
 	return conn.Collection(schedulerCollection).Remove(bson.M{"_id": poolName})
 }
 
-func (segregatedScheduler) addTeamsToPool(poolName string, teams []string) error {
+func (*segregatedScheduler) addTeamsToPool(poolName string, teams []string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
@@ -288,7 +288,7 @@ func (segregatedScheduler) addTeamsToPool(poolName string, teams []string) error
 	return conn.Collection(schedulerCollection).UpdateId(poolName, bson.M{"$push": bson.M{"teams": bson.M{"$each": teams}}})
 }
 
-func (segregatedScheduler) removeTeamsFromPool(poolName string, teams []string) error {
+func (*segregatedScheduler) removeTeamsFromPool(poolName string, teams []string) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
