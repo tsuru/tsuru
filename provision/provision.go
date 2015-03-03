@@ -166,6 +166,17 @@ type CNameManager interface {
 	UnsetCName(app App, cname string) error
 }
 
+// ShellOptions is the set of options that can be used when calling the method
+// Shell in the provisioner.
+type ShellOptions struct {
+	App    App
+	Conn   net.Conn
+	Width  int
+	Height int
+	Unit   string
+	Term   string
+}
+
 // ArchiveDeployer is a provisioner that can deploy archives.
 type ArchiveDeployer interface {
 	ArchiveDeploy(app App, archiveURL string, w io.Writer) (string, error)
@@ -245,8 +256,8 @@ type Provisioner interface {
 	// Register a unit after the container has been created or restarted.
 	RegisterUnit(Unit, map[string]interface{}) error
 
-	// Open a remote shel in container.
-	Shell(app App, conn net.Conn, width, height int, args ...string) error
+	// Open a remote shel in one of the units in the application.
+	Shell(ShellOptions) error
 
 	// Returns list of valid image names for app, these can be used for
 	// rollback.

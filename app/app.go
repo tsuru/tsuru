@@ -9,7 +9,6 @@ import (
 	stderr "errors"
 	"fmt"
 	"io"
-	"net"
 	"regexp"
 	"sort"
 	"strings"
@@ -1182,6 +1181,7 @@ func (app *App) GetRouter() (string, error) {
 	return app.Plan.getRouter()
 }
 
-func (app *App) Shell(conn net.Conn, width, height int, args ...string) error {
-	return Provisioner.Shell(app, conn, width, height, args...)
+func (app *App) Shell(opts provision.ShellOptions) error {
+	opts.App = app
+	return Provisioner.Shell(opts)
 }

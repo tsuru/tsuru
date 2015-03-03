@@ -2484,8 +2484,18 @@ func (s *S) TestShellToAnApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 1, nil)
+	unit := s.provisioner.Units(&a)[0]
 	buf := safe.NewBuffer([]byte("echo teste"))
-	conn := &provisiontest.FakeConn{Buf: buf}
-	err = a.Shell(conn, 10, 10)
+	opts := provision.ShellOptions{
+		Conn:   &provisiontest.FakeConn{Buf: buf},
+		Width:  200,
+		Height: 40,
+		Unit:   unit.Name,
+		Term:   "xterm",
+	}
+	err = a.Shell(opts)
 	c.Assert(err, check.IsNil)
+	expected := []provision.ShellOptions{opts}
+	expected[0].App = &a
+	c.Assert(s.provisioner.Shells(unit.Name), check.DeepEquals, expected)
 }

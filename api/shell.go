@@ -10,15 +10,18 @@ import (
 
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/provision"
 )
 
 func remoteShellHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	unitID := r.URL.Query().Get("unit-id")
+	unitID := r.URL.Query().Get("unit")
+	// TODO(fss): drop this in tsr >= 0.12.0
 	if unitID == "" {
 		unitID = r.URL.Query().Get("container_id")
 	}
 	width, _ := strconv.Atoi(r.URL.Query().Get("width"))
 	height, _ := strconv.Atoi(r.URL.Query().Get("height"))
+	term := r.URL.Query().Get("term")
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -43,5 +46,12 @@ func remoteShellHandler(w http.ResponseWriter, r *http.Request, t auth.Token) er
 		}
 	}
 	defer conn.Close()
-	return app.Shell(conn, width, height, unitID)
+	opts := provision.ShellOptions{
+		Conn:   conn,
+		Width:  width,
+		Height: height,
+		Unit:   unitID,
+		Term:   term,
+	}
+	return app.Shell(opts)
 }

@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 	"sync"
 	"time"
 
@@ -301,6 +300,8 @@ type FakeProvisioner struct {
 	failures chan failure
 	apps     map[string]provisionedApp
 	mut      sync.RWMutex
+	shells   map[string][]provision.ShellOptions
+	shellMut sync.Mutex
 }
 
 func NewFakeProvisioner() *FakeProvisioner {
@@ -308,6 +309,7 @@ func NewFakeProvisioner() *FakeProvisioner {
 	p.outputs = make(chan []byte, 8)
 	p.failures = make(chan failure, 8)
 	p.apps = make(map[string]provisionedApp)
+	p.shells = make(map[string][]provision.ShellOptions)
 	return &p
 }
 
@@ -348,6 +350,13 @@ func (p *FakeProvisioner) CustomData(app provision.App) map[string]interface{} {
 	p.mut.RLock()
 	defer p.mut.RUnlock()
 	return p.apps[app.GetName()].lastData
+}
+
+// Shells return all shell calls to the given unit.
+func (p *FakeProvisioner) Shells(unit string) []provision.ShellOptions {
+	p.shellMut.Lock()
+	defer p.shellMut.Unlock()
+	return p.shells[unit]
 }
 
 // Returns the number of calls to restart.
@@ -419,6 +428,10 @@ func (p *FakeProvisioner) Reset() {
 	p.mut.Lock()
 	p.apps = make(map[string]provisionedApp)
 	p.mut.Unlock()
+
+	p.shellMut.Lock()
+	p.shells = make(map[string][]provision.ShellOptions)
+	p.shellMut.Unlock()
 
 	for {
 		select {
@@ -857,19 +870,27 @@ func (p *FakeProvisioner) RegisterUnit(unit provision.Unit, customData map[strin
 	return errors.New("unit not found")
 }
 
-func (p *FakeProvisioner) Shell(app provision.App, conn net.Conn, width, height int, args ...string) error {
-	if len(args) > 0 && args[0] != "" {
-		for _, u := range p.Units(app) {
-			if u.Name == args[0] {
-				return nil
+func (p *FakeProvisioner) Shell(opts provision.ShellOptions) error {
+	var unit provision.Unit
+	units := p.Units(opts.App)
+	if len(units) == 0 {
+		return errors.New("app has no units")
+	} else if opts.Unit != "" {
+		for _, u := range units {
+			if u.Name == opts.Unit {
+				unit = u
+				break
 			}
 		}
-		return errors.New("container not found")
+	} else {
+		unit = units[0]
 	}
-	units := p.Units(app)
-	if len(units) == 0 {
-		return errors.New("app has no container")
+	if unit.Name == "" {
+		return errors.New("unit not found")
 	}
+	p.shellMut.Lock()
+	defer p.shellMut.Unlock()
+	p.shells[unit.Name] = append(p.shells[unit.Name], opts)
 	return nil
 }
 

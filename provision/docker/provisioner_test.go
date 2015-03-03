@@ -1361,7 +1361,8 @@ func (s *S) TestShellToAnAppByContainerID(c *check.C) {
 	defer s.removeTestContainer(cont)
 	buf := safe.NewBuffer([]byte("echo test"))
 	conn := &provisiontest.FakeConn{Buf: buf}
-	err = s.p.Shell(app, conn, 10, 10, cont.ID)
+	opts := provision.ShellOptions{App: app, Conn: conn, Width: 10, Height: 10, Unit: cont.ID}
+	err = s.p.Shell(opts)
 	c.Assert(err, check.IsNil)
 }
 
@@ -1374,7 +1375,8 @@ func (s *S) TestShellToAnAppByAppName(c *check.C) {
 	defer s.removeTestContainer(cont)
 	buf := safe.NewBuffer([]byte("echo test"))
 	conn := &provisiontest.FakeConn{Buf: buf}
-	err = s.p.Shell(app, conn, 10, 10, "")
+	opts := provision.ShellOptions{App: app, Conn: conn, Width: 10, Height: 10}
+	err = s.p.Shell(opts)
 	c.Assert(err, check.IsNil)
 }
 

@@ -940,3 +940,63 @@ func (s *S) TestFakeProvisionerRegisterUnitSavesData(c *check.C) {
 	c.Assert(units[0].Ip, check.Equals, ip+"-updated")
 	c.Assert(p.CustomData(app), check.DeepEquals, data)
 }
+
+func (s *S) TestFakeProvisionerShellNoSpecification(c *check.C) {
+	app := NewFakeApp("shine-on", "diamond", 1)
+	p := NewFakeProvisioner()
+	err := p.Provision(app)
+	c.Assert(err, check.IsNil)
+	unit := provision.Unit{AppName: "shine-on", Name: "unit/1"}
+	p.AddUnit(app, unit)
+	unit = provision.Unit{AppName: "shine-on", Name: "unit/2"}
+	p.AddUnit(app, unit)
+	unit = provision.Unit{AppName: "shine-on", Name: "unit/3"}
+	p.AddUnit(app, unit)
+	opts := provision.ShellOptions{App: app}
+	err = p.Shell(opts)
+	c.Assert(err, check.IsNil)
+	c.Assert(p.Shells("unit/1"), check.DeepEquals, []provision.ShellOptions{opts})
+	c.Assert(p.Shells("unit/2"), check.HasLen, 0)
+	c.Assert(p.Shells("unit/3"), check.HasLen, 0)
+}
+
+func (s *S) TestFakeProvisionerShellSpecifying(c *check.C) {
+	app := NewFakeApp("shine-on", "diamond", 1)
+	p := NewFakeProvisioner()
+	err := p.Provision(app)
+	c.Assert(err, check.IsNil)
+	unit := provision.Unit{AppName: "shine-on", Name: "unit/1"}
+	p.AddUnit(app, unit)
+	unit = provision.Unit{AppName: "shine-on", Name: "unit/2"}
+	p.AddUnit(app, unit)
+	unit = provision.Unit{AppName: "shine-on", Name: "unit/3"}
+	p.AddUnit(app, unit)
+	opts := provision.ShellOptions{App: app, Unit: "unit/3"}
+	err = p.Shell(opts)
+	c.Assert(err, check.IsNil)
+	c.Assert(p.Shells("unit/3"), check.DeepEquals, []provision.ShellOptions{opts})
+	c.Assert(p.Shells("unit/1"), check.HasLen, 0)
+	c.Assert(p.Shells("unit/2"), check.HasLen, 0)
+}
+
+func (s *S) TestFakeProvisionerShellUnitNotFound(c *check.C) {
+	app := NewFakeApp("shine-on", "diamond", 1)
+	p := NewFakeProvisioner()
+	err := p.Provision(app)
+	c.Assert(err, check.IsNil)
+	unit := provision.Unit{AppName: "shine-on", Name: "unit/1"}
+	p.AddUnit(app, unit)
+	opts := provision.ShellOptions{App: app, Unit: "unit/12"}
+	err = p.Shell(opts)
+	c.Assert(err.Error(), check.Equals, "unit not found")
+}
+
+func (s *S) TestFakeProvisionerShellNoUnits(c *check.C) {
+	app := NewFakeApp("shine-on", "diamond", 1)
+	p := NewFakeProvisioner()
+	err := p.Provision(app)
+	c.Assert(err, check.IsNil)
+	opts := provision.ShellOptions{App: app}
+	err = p.Shell(opts)
+	c.Assert(err.Error(), check.Equals, "app has no units")
+}

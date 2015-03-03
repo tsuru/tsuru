@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net"
 	"net/url"
 	"sync"
 	"time"
@@ -795,20 +794,20 @@ func (p *dockerProvisioner) RegisterUnit(unit provision.Unit, customData map[str
 	return p.checkContainer(container)
 }
 
-func (p *dockerProvisioner) Shell(app provision.App, conn net.Conn, width, height int, args ...string) error {
+func (p *dockerProvisioner) Shell(opts provision.ShellOptions) error {
 	var (
 		c   *container
 		err error
 	)
-	if len(args) > 0 && args[0] != "" {
-		c, err = p.getContainer(args[0])
+	if opts.Unit != "" {
+		c, err = p.getContainer(opts.Unit)
 	} else {
-		c, err = p.getOneContainerByAppName(app.GetName())
+		c, err = p.getOneContainerByAppName(opts.App.GetName())
 	}
 	if err != nil {
 		return err
 	}
-	return c.shell(p, conn, conn, conn, pty{width: width, height: height})
+	return c.shell(p, opts.Conn, opts.Conn, opts.Conn, pty{width: opts.Width, height: opts.Height, term: opts.Term})
 }
 
 func (p *dockerProvisioner) ValidAppImages(appName string) ([]string, error) {
