@@ -56,3 +56,7 @@ func (i *DigitalOceanIaas) CreateMachine(params map[string]string) (*iaas.Machin
 	}
 	return m, nil
 }
+
+func (i *DigitalOceanIaas) DeleteMachine(m *Machine) error {
+	return nil
+}
