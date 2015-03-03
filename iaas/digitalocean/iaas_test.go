@@ -13,6 +13,7 @@ import (
     "gopkg.in/check.v1"
 
     "github.com/tsuru/config"
+    "github.com/tsuru/tsuru/iaas"
 )
 
 func Test(t *testing.T) { check.TestingT(t) }
@@ -42,4 +43,16 @@ func (s *digitaloceanSuite) TestCreateMachine(c *check.C) {
     c.Assert(m.Address, check.Equals, "104.131.186.241")
     c.Assert(m.Id, check.Equals, "1")
     c.Assert(m.Status, check.Equals, "active")
+}
+
+func (s *digitaloceanSuite) TestDeleteMachine(c *check.C) {
+    fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+         w.WriteHeader(204)
+         w.Header().Set("Content-type", "application/json")
+    }))
+    config.Set("iaas:digitalocean:url", fakeServer.URL)
+    do := NewDigitalOceanIaas()
+    machine := iaas.Machine{Id: "myMachineId", CreationParams: map[string]string{"projectid": "projid"}}
+    err := do.DeleteMachine(&machine)
+    c.Assert(err, check.IsNil)
 }
