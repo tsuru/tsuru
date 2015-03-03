@@ -16,8 +16,8 @@ import (
 	"strconv"
 	"syscall"
 
-	"golang.org/x/crypto/ssh/terminal"
 	"github.com/tsuru/tsuru/errors"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 var httpHeaderRegexp = regexp.MustCompile(`HTTP/.*? (\d+)`)
@@ -110,12 +110,12 @@ func (c *ShellToContainerCmd) Run(context *Context, client *Client) error {
 	if len(matches) > 0 && len(matches[0]) > 1 {
 		httpError, _ := strconv.Atoi(matches[0][1])
 		var message string
-		if (httpError == http.StatusNotFound) {
+		if httpError == http.StatusNotFound {
 			message = fmt.Sprintf("App %s not found", appName)
 		} else {
 			message = http.StatusText(httpError)
 		}
-		return &errors.HTTP{Code: httpError, Message: message};
+		return &errors.HTTP{Code: httpError, Message: message}
 	} else {
 		context.Stdout.Write([]byte(readStr))
 	}
