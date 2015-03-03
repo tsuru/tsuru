@@ -111,7 +111,7 @@ func (c *ShellToContainerCmd) Run(context *Context, client *Client) error {
 		httpError, _ := strconv.Atoi(matches[0][1])
 		var message string
 		if (httpError == http.StatusNotFound) {
-			message = "App "+appName+" not found"
+			message = fmt.Sprintf("App %s not found", appName)
 		} else {
 			message = http.StatusText(httpError)
 		}
