@@ -15,7 +15,7 @@ type DigitalOceanIaas struct {
 }
 
 func init() {
-	iaas.RegisterIaasProvider("digitalocean", NewEC2IaaS())
+	iaas.RegisterIaasProvider("digitalocean", NewDigitalOceanIaaS())
 }
 
 func NewDigitalOceanIaas() *DigitalOceanIaas {
