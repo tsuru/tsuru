@@ -45,6 +45,22 @@ func (s *digitaloceanSuite) TestCreateMachine(c *check.C) {
 	c.Assert(m.Status, check.Equals, "active")
 }
 
+func (s *digitaloceanSuite) TestCreateMachineFailure(c *check.C) {
+	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprintln(w, `{"droplet": {"id": 1, "status": "active", "networks": {"v4": [], "v6": []}}}`)
+	}))
+	config.Set("iaas:digitalocean:url", fakeServer.URL)
+	do := NewDigitalOceanIaas()
+	params := map[string]string{"name": "example.com",
+		"region": "nyc3",
+		"size":   "512mb",
+		"image":  "ubuntu-14-04-x64"}
+
+	_, err := do.CreateMachine(params)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "Machine created but without network")
+}
+
 func (s *digitaloceanSuite) TestDeleteMachine(c *check.C) {
 	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(204)

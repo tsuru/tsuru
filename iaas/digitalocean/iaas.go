@@ -50,12 +50,25 @@ func (i *DigitalOceanIaas) CreateMachine(params map[string]string) (*iaas.Machin
 		return nil, err
 	}
 	droplet := newDroplet.Droplet
+	err = i.waitNetworkCreated(droplet)
+	if err != nil {
+		return nil, err
+	}
+	m := &iaas.Machine{
+		Address: droplet.Networks.V4[0].IPAddress,
+		Id:      strconv.Itoa(droplet.ID),
+		Status:  droplet.Status,
+	}
+	return m, nil
+}
+
+func (i *DigitalOceanIaas) waitNetworkCreated(droplet *godo.Droplet) error {
 	completed := false
 	maxTry := 10
 	for !completed && maxTry != 0 {
 		d, _, err := i.client.Droplets.Get(droplet.ID)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		if len(d.Droplet.Networks.V4) == 0 {
 			maxTry -= 1
@@ -66,14 +79,9 @@ func (i *DigitalOceanIaas) CreateMachine(params map[string]string) (*iaas.Machin
 		droplet = d.Droplet
 	}
 	if !completed {
-		return nil, fmt.Errorf("Machine created but without network")
+		return fmt.Errorf("Machine created but without network")
 	}
-	m := &iaas.Machine{
-		Address: droplet.Networks.V4[0].IPAddress,
-		Id:      strconv.Itoa(droplet.ID),
-		Status:  droplet.Status,
-	}
-	return m, nil
+	return nil
 }
 
 func (i *DigitalOceanIaas) DeleteMachine(m *iaas.Machine) error {
