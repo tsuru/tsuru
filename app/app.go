@@ -398,10 +398,7 @@ func (app *App) RemoveUnits(n uint) error {
 	if n == 0 {
 		ReleaseApplicationLock(app.Name)
 		return stderr.New("Cannot remove zero units.")
-	} else if l := uint(len(app.Units())); l == n {
-		ReleaseApplicationLock(app.Name)
-		return stderr.New("Cannot remove all units from an app.")
-	} else if n > l {
+	} else if l := uint(len(app.Units())); n > l {
 		ReleaseApplicationLock(app.Name)
 		return fmt.Errorf("Cannot remove %d units from this app, it has only %d units.", n, l)
 	}
