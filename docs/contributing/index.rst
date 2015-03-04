@@ -30,7 +30,7 @@ You can use `make` to install all tsuru dependencies and run tests. It will also
 
     $ make
 
-Please ensure yourself that MongoDB and Redis are started before running the tests (if you are seeing some failing tests this is the most likely reason).
+Please ensure yourself that MongoDB and Redis are started before running the tests (if you are seeing some failing tests the most likely reason is that these services are not started).
 
 If you just want to run the tests you can use `make test`. 
 
