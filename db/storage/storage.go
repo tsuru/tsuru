@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -95,10 +95,6 @@ func (s *Storage) Close() {
 // If the collection does not exist, MongoDB will create it.
 func (s *Storage) Collection(name string) *Collection {
 	return &Collection{s.session.DB(s.dbname).C(name)}
-}
-
-func (s *Storage) DB() *mgo.Database {
-	return s.session.DB(s.dbname)
 }
 
 func init() {
