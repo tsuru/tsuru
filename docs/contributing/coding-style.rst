@@ -1,4 +1,4 @@
-.. Copyright 2014 tsuru authors. All rights reserved.
+.. Copyright 2015 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -46,8 +46,8 @@ is a collection `method` that adds one or more elements:
 Create<Something>
 -----------------
 
-it's a `function` that's save an instance of <Something>
-in the database. Should receives an instance of <Something>.
+it's a `function` that saves an instance of <Something>
+in the database. Should receive an instance of <Something>.
 
 ::
 
@@ -56,7 +56,7 @@ in the database. Should receives an instance of <Something>.
 Delete<Something>
 -----------------
 
-it's a `function` that's delete an instance of <Something> from database.
+it's a `function` that deletes an instance of <Something> from database.
 
 Remove<Something>
 -----------------
