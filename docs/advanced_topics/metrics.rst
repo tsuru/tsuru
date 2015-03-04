@@ -3,14 +3,14 @@ Metrics
 
 .. note::
 
-    Currently tsuru support statsd and graphite.
+    Currently tsuru supports statsd and graphite.
 
-**tsuru** sends metrics data using statsd protocol and **tsuru-dashboard** (web interface) show these data using graphite protocol.
+**tsuru** sends metrics data using statsd protocol and **tsuru-dashboard** (web interface) shows these data using graphite protocol.
 
 Sending metrics
 ---------------
 
-By default **tsuru** sends the metrics to `localhost:8125` on each unit. You can configure the statsd host and port defining the `STATSD_PORT` and `STATSD_HOST` enviroment variables.
+By default **tsuru** sends the metrics to `localhost:8125` on each unit. You can configure the statsd host and port defining the `STATSD_PORT` and `STATSD_HOST` environment variables.
 
 .. note::
 
@@ -19,12 +19,12 @@ By default **tsuru** sends the metrics to `localhost:8125` on each unit. You can
 Metrics graph on tsuru-dashboard
 --------------------------------
 
-**tsuru-dashboard** display a graphic for each metric. To know where to get the metric data, the dashboards get the
+**tsuru-dashboard** displays a graphic for each metric. To know where to get the metric data, the dashboards get the
 `GRAPHITE_HOST` environment variable from the application.
 
 Kind of metrics
 ---------------
 
-* net.connections - the number of connection established
+* net.connections - the number of connections established
 * cpu_max - cpu utilization
 * mem_max - memory utilization
