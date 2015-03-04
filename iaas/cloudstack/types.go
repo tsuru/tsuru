@@ -5,13 +5,11 @@
 package cloudstack
 
 const (
-	JOB_STATUS_IN_PROGRESS = 0
-	JOB_STATUS_SUCCESSFUL  = 1
-	JOB_STATUS_FAILED      = 2
-
-	DISK_TYPE_ROOT     = "ROOT"
-	DISK_TYPE_DATADISK = "DATADISK"
+	jobInProgress = iota * 2
+	jobFailed
 )
+
+const diskDataDisk = "DATADISK"
 
 type ApiParams map[string]string
 

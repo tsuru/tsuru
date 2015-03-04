@@ -126,7 +126,7 @@ func (i *CloudstackIaaS) DeleteMachine(machine *iaas.Machine) error {
 		return err
 	}
 	for _, vol := range volumesRsp.ListVolumesResponse.Volume {
-		if vol.Type != DISK_TYPE_DATADISK {
+		if vol.Type != diskDataDisk {
 			continue
 		}
 		var detachRsp DetachVolumeResponse
@@ -219,8 +219,8 @@ func (i *CloudstackIaaS) waitForAsyncJob(jobId string) (QueryAsyncJobResultRespo
 		if err != nil {
 			return jobResponse, err
 		}
-		if jobResponse.QueryAsyncJobResultResponse.JobStatus != JOB_STATUS_IN_PROGRESS {
-			if jobResponse.QueryAsyncJobResultResponse.JobStatus == JOB_STATUS_FAILED {
+		if jobResponse.QueryAsyncJobResultResponse.JobStatus != jobInProgress {
+			if jobResponse.QueryAsyncJobResultResponse.JobStatus == jobFailed {
 				return jobResponse, fmt.Errorf("Job failed to complete: %#v", jobResponse.QueryAsyncJobResultResponse.JobResult)
 			}
 			return jobResponse, nil
