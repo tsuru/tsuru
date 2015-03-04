@@ -6,7 +6,7 @@
 Adding Nodes
 ++++++++++++
 
-Nodes are a physical or virtual machines with a Docker installation.
+Nodes are physical or virtual machines with a Docker installation.
 
 Nodes can be either created manually, by provisioning a machine and installing
 Docker on it, in which case they have to be registered in tsuru. Or they can be
@@ -40,7 +40,7 @@ Assuming you're using EC2, this will be something like:
       key-id: xxxxxxxxxxx
       secret-key: yyyyyyyyyyyyy
 
-After you have everything configured, adding a new docker done is done by
+After you have everything configured, adding a new docker node is done by
 calling `docker-node-add <http://tsuru-admin.readthedocs.org/en/latest/#docker-node-add>`_ in
 :doc:`tsuru-admin </reference/tsuru-admin>` command. This command will receive
 a map of key=value params which are IaaS dependent. A list of possible key
@@ -62,7 +62,7 @@ params can be seen calling:
       keyName=<key name>       Key name for machine
 
 
-Every key=value pair will be added as a metatada to the Node and you can send
+Every key=value pair will be added as a metadata to the Node and you can send
 After registering your node, you can list it calling `tsuru-admin docker-node-list <http://tsuru-admin.readthedocs.org/en/latest/#docker-node-list>`_
 
 .. highlight:: bash
@@ -86,7 +86,7 @@ After registering your node, you can list it calling `tsuru-admin docker-node-li
 Manually created nodes
 ======================
 
-To add a previously provisioned nodes you call the
+To add a previously provisioned node you call the
 `tsuru-admin docker-node-add <http://tsuru-admin.readthedocs.org/en/latest/#docker-node-add>`_ with the ``--register`` flag and setting
 the address key with the URL of the Docker API in the remote node.
 
