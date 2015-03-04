@@ -209,10 +209,6 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 	c.Assert(buf.String(), check.Equals, "remove instance")
 }
 
-func (s *InstanceSuite) TestServiceInstanceIsABinder(c *check.C) {
-	var _ bind.Binder = &ServiceInstance{}
-}
-
 func (s *InstanceSuite) TestGetServiceInstancesByServices(c *check.C) {
 	srvc := Service{Name: "mysql"}
 	err := s.conn.Services().Insert(&srvc)

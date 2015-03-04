@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -45,20 +45,6 @@ type App interface {
 
 	// RemoveInstance removes an instance from the application.
 	RemoveInstance(serviceName string, instance ServiceInstance, writer io.Writer) error
-}
-
-type Binder interface {
-	// BindApp makes the bind between the binder and an app.
-	BindApp(App, io.Writer) error
-
-	// BindUnit makes the bind between the binder and an unit.
-	BindUnit(App, Unit) error
-
-	// UnbindApp makes the unbind between the binder and an app.
-	UnbindApp(App, io.Writer) error
-
-	// UnbindUnit makes the unbind between the binder and an unit.
-	UnbindUnit(App, Unit) error
 }
 
 type ServiceInstance struct {
