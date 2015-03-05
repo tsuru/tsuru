@@ -1894,54 +1894,46 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 			MinUnits: 2,
 		},
 	}
-	expected := make(map[string]interface{})
-	expected["name"] = "name"
-	expected["platform"] = "Framework"
-	expected["repository"] = "git@" + repositorytest.ServerHost + ":name.git"
-	expected["teams"] = []interface{}{"team1"}
-	expected["units"] = nil
-	expected["ip"] = "10.10.10.1"
-	expected["cname"] = []interface{}{"name.mycompany.com"}
-	expected["owner"] = "appOwner"
-	expected["deploys"] = float64(7)
-	expected["plan"] = map[string]interface{}{"name": "myplan", "memory": float64(64), "swap": float64(128), "cpushare": float64(100)}
-	expected["teamowner"] = "myteam"
-	expected["ready"] = false
-	expected["autoScaleConfig"] = map[string]interface{}{
-		"increase": map[string]interface{}{
-			"wait":       float64(0),
-			"expression": "{cpu} > 80",
-			"units":      float64(1),
+	expected := map[string]interface{}{
+		"name":       "name",
+		"platform":   "Framework",
+		"repository": "git@" + repositorytest.ServerHost + ":name.git",
+		"teams":      []interface{}{"team1"},
+		"units":      nil,
+		"ip":         "10.10.10.1",
+		"cname":      []interface{}{"name.mycompany.com"},
+		"owner":      "appOwner",
+		"deploys":    float64(7),
+		"teamowner":  "myteam",
+		"ready":      false,
+		"plan": map[string]interface{}{
+			"name":     "myplan",
+			"memory":   float64(64),
+			"swap":     float64(128),
+			"cpushare": float64(100),
 		},
-		"decrease": map[string]interface{}{
-			"wait":       float64(0),
-			"expression": "{cpu} < 20",
-			"units":      float64(1),
+		"autoScaleConfig": map[string]interface{}{
+			"increase": map[string]interface{}{
+				"wait":       float64(0),
+				"expression": "{cpu} > 80",
+				"units":      float64(1),
+			},
+			"decrease": map[string]interface{}{
+				"wait":       float64(0),
+				"expression": "{cpu} < 20",
+				"units":      float64(1),
+			},
+			"minUnits": float64(2),
+			"maxUnits": float64(10),
+			"enabled":  true,
 		},
-		"minUnits": float64(2),
-		"maxUnits": float64(10),
-		"enabled":  true,
 	}
 	data, err := app.MarshalJSON()
 	c.Assert(err, check.IsNil)
 	result := make(map[string]interface{})
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, check.IsNil)
-	autoScaleConfig := result["autoScaleConfig"].(map[string]interface{})
-	autoScaleConfigExpected := expected["autoScaleConfig"].(map[string]interface{})
-	c.Assert(autoScaleConfig["enabled"], check.Equals, autoScaleConfigExpected["enabled"])
-	c.Assert(autoScaleConfig["minUnits"], check.Equals, autoScaleConfigExpected["minUnits"])
-	c.Assert(autoScaleConfig["maxUnits"], check.Equals, autoScaleConfigExpected["maxUnits"])
-	increase := autoScaleConfig["increase"].(map[string]interface{})
-	increaseExpected := autoScaleConfigExpected["increase"].(map[string]interface{})
-	c.Assert(increase["expression"], check.Equals, increaseExpected["expression"])
-	c.Assert(increase["units"], check.Equals, increaseExpected["units"])
-	c.Assert(increase["wait"], check.Equals, increaseExpected["wait"])
-	decrease := autoScaleConfig["decrease"].(map[string]interface{})
-	decreaseExpected := autoScaleConfigExpected["decrease"].(map[string]interface{})
-	c.Assert(decrease["expression"], check.Equals, decreaseExpected["expression"])
-	c.Assert(decrease["units"], check.Equals, decreaseExpected["units"])
-	c.Assert(decrease["wait"], check.Equals, decreaseExpected["wait"])
+	c.Assert(result, check.DeepEquals, expected)
 }
 
 func (s *S) TestAppMarshalJSONReady(c *check.C) {
@@ -1958,20 +1950,26 @@ func (s *S) TestAppMarshalJSONReady(c *check.C) {
 		TeamOwner: "myteam",
 		Plan:      Plan{Name: "myplan", Memory: 64, Swap: 128, CpuShare: 100},
 	}
-	expected := make(map[string]interface{})
-	expected["name"] = "name"
-	expected["platform"] = "Framework"
-	expected["repository"] = "git@" + repositorytest.ServerHost + ":name.git"
-	expected["teams"] = []interface{}{"team1"}
-	expected["units"] = nil
-	expected["ip"] = "10.10.10.1"
-	expected["cname"] = []interface{}{"name.mycompany.com"}
-	expected["owner"] = "appOwner"
-	expected["deploys"] = float64(7)
-	expected["teamowner"] = "myteam"
-	expected["autoScaleConfig"] = nil
-	expected["plan"] = map[string]interface{}{"name": "myplan", "memory": float64(64), "swap": float64(128), "cpushare": float64(100)}
-	expected["ready"] = true
+	expected := map[string]interface{}{
+		"name":            "name",
+		"platform":        "Framework",
+		"repository":      "git@" + repositorytest.ServerHost + ":name.git",
+		"teams":           []interface{}{"team1"},
+		"units":           nil,
+		"ip":              "10.10.10.1",
+		"cname":           []interface{}{"name.mycompany.com"},
+		"owner":           "appOwner",
+		"deploys":         float64(7),
+		"teamowner":       "myteam",
+		"autoScaleConfig": nil,
+		"ready":           true,
+		"plan": map[string]interface{}{
+			"name":     "myplan",
+			"memory":   float64(64),
+			"swap":     float64(128),
+			"cpushare": float64(100),
+		},
+	}
 	data, err := app.MarshalJSON()
 	c.Assert(err, check.IsNil)
 	result := make(map[string]interface{})
