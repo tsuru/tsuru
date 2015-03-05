@@ -132,17 +132,17 @@ For a description
 
 ::
 
-    $ sudo apt-get install tsuru-admin
+    $ sudo apt-get install tsuru-client
 
-    $ tsuru-admin target-add default http://<your-tsuru-api-addr>:8080
-    $ tsuru-admin target-set default
-    $ tsuru-admin user-create myemail@somewhere.com
+    $ tsuru target-add default http://<your-tsuru-api-addr>:8080
+    $ tsuru target-set default
+    $ tsuru user-create myemail@somewhere.com
     # type a password and confirmation
 
-    $ tsuru-admin login myemail@somewhere.com
+    $ tsuru login myemail@somewhere.com
     # type the chosen password
 
-    $ tsuru-admin team-create admin
+    $ tsuru team-create admin
 
 And that's it, you now have registered a user in your tsuru API server ready to
 run admin commands.
