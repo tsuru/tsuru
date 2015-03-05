@@ -90,10 +90,7 @@ func (app *App) Units() []provision.Unit {
 
 // MarshalJSON marshals the app in json format.
 func (app *App) MarshalJSON() ([]byte, error) {
-	repo, err := repository.Manager().GetRepository(app.Name)
-	if err != nil {
-		return nil, err
-	}
+	repo, _ := repository.Manager().GetRepository(app.Name)
 	result := make(map[string]interface{})
 	result["name"] = app.Name
 	result["platform"] = app.Platform
