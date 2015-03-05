@@ -8,13 +8,12 @@ import (
 	"bytes"
 	"io/ioutil"
 	"net/http"
-	"time"
 
-	"code.google.com/p/goauth2/oauth"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	"golang.org/x/oauth2"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -52,15 +51,13 @@ func (s *S) TestOAuthLogin(c *check.C) {
 	c.Assert(u.Email, check.Equals, "rand@althor.com")
 	c.Assert(len(s.reqs), check.Equals, 2)
 	c.Assert(s.reqs[0].URL.Path, check.Equals, "/token")
-	c.Assert(s.bodies[0], check.Equals, "client_id=clientid&client_secret=clientsecret&code=abcdefg&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost&scope=myscope")
+	c.Assert(s.bodies[0], check.Equals, "client_id=clientid&code=abcdefg&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost&scope=myscope")
 	c.Assert(s.reqs[1].URL.Path, check.Equals, "/user")
 	c.Assert(s.reqs[1].Header.Get("Authorization"), check.Equals, "Bearer my_token")
 	dbToken, err := getToken("my_token")
 	c.Assert(err, check.IsNil)
 	c.Assert(dbToken.AccessToken, check.Equals, "my_token")
 	c.Assert(dbToken.UserEmail, check.Equals, "rand@althor.com")
-	c.Assert(dbToken.Extra["email"], check.Equals, "rand@althor.com")
-	c.Assert(repositorytest.Users(), check.DeepEquals, []string{"rand@althor.com"})
 }
 
 func (s *S) TestOAuthLoginRegistrationDisabled(c *check.C) {
@@ -145,7 +142,7 @@ func (s *S) TestOAuthParseInvalid(c *check.C) {
 }
 
 func (s *S) TestOAuthAuth(c *check.C) {
-	existing := Token{Token: oauth.Token{AccessToken: "myvalidtoken"}, UserEmail: "x@x.com"}
+	existing := Token{Token: oauth2.Token{AccessToken: "myvalidtoken"}, UserEmail: "x@x.com"}
 	err := existing.save()
 	c.Assert(err, check.IsNil)
 	scheme := OAuthScheme{}
@@ -154,30 +151,6 @@ func (s *S) TestOAuthAuth(c *check.C) {
 	c.Assert(len(s.reqs), check.Equals, 1)
 	c.Assert(s.reqs[0].URL.Path, check.Equals, "/user")
 	c.Assert(token.GetValue(), check.Equals, "myvalidtoken")
-}
-
-func (s *S) TestOAuthAuthWithExchange(c *check.C) {
-	existing := Token{Token: oauth.Token{
-		AccessToken:  "my_expired_token",
-		RefreshToken: "my_refresh_token",
-		Expiry:       time.Now().Add(-time.Hour),
-		Extra:        map[string]string{"email": "x@x.com"},
-	}, UserEmail: "x@x.com"}
-	err := existing.save()
-	c.Assert(err, check.IsNil)
-	s.rsps["/token"] = `access_token=new_token`
-	scheme := OAuthScheme{}
-	token, err := scheme.Auth("bearer my_expired_token")
-	c.Assert(err, check.IsNil)
-	c.Assert(len(s.reqs), check.Equals, 2)
-	c.Assert(s.reqs[0].URL.Path, check.Equals, "/token")
-	c.Assert(s.reqs[1].URL.Path, check.Equals, "/user")
-	c.Assert(token.GetValue(), check.Equals, "new_token")
-	dbToken, err := getToken("new_token")
-	c.Assert(err, check.IsNil)
-	c.Assert(dbToken.AccessToken, check.Equals, "new_token")
-	c.Assert(dbToken.UserEmail, check.Equals, "x@x.com")
-	c.Assert(dbToken.Extra["email"], check.Equals, "x@x.com")
 }
 
 func (s *S) TestOAuthAppLogin(c *check.C) {

@@ -9,12 +9,13 @@ import (
 	"net/http"
 	"strconv"
 
-	"code.google.com/p/goauth2/oauth"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
+	"golang.org/x/net/context"
+	"golang.org/x/oauth2"
 )
 
 var (
@@ -29,61 +30,10 @@ type OAuthParser interface {
 }
 
 type OAuthScheme struct {
-	BaseConfig   oauth.Config
+	BaseConfig   oauth2.Config
 	InfoUrl      string
 	CallbackPort int
 	Parser       OAuthParser
-}
-
-type DBTokenCache struct {
-	scheme *OAuthScheme
-}
-
-func (c *DBTokenCache) Token() (*oauth.Token, error) {
-	return nil, nil
-}
-
-func (c *DBTokenCache) PutToken(t *oauth.Token) error {
-	if t.AccessToken == "" {
-		return ErrEmptyAccessToken
-	}
-	var email string
-	if t.Extra == nil || t.Extra["email"] == "" {
-		conf, err := c.scheme.loadConfig()
-		if err != nil {
-			return err
-		}
-		transport := &oauth.Transport{Config: &conf}
-		transport.Token = t
-		client := transport.Client()
-		response, err := client.Get(c.scheme.InfoUrl)
-		if err != nil {
-			return err
-		}
-		defer response.Body.Close()
-		email, err = c.scheme.Parser.Parse(response)
-		if email == "" {
-			return ErrEmptyUserEmail
-		}
-		user, err := auth.GetUserByEmail(email)
-		if err != nil {
-			if err != auth.ErrUserNotFound {
-				return err
-			}
-			registrationEnabled, _ := config.GetBool("auth:user-registration")
-			if !registrationEnabled {
-				return err
-			}
-			user = &auth.User{Email: email}
-			err := user.Create()
-			if err != nil {
-				return err
-			}
-		}
-		t.Extra = make(map[string]string)
-		t.Extra["email"] = email
-	}
-	return makeToken(t).save()
 }
 
 func init() {
@@ -92,14 +42,14 @@ func init() {
 
 // This method loads basic config and returns a copy of the
 // config object.
-func (s *OAuthScheme) loadConfig() (oauth.Config, error) {
-	if s.BaseConfig.ClientId != "" {
+func (s *OAuthScheme) loadConfig() (oauth2.Config, error) {
+	if s.BaseConfig.ClientID != "" {
 		return s.BaseConfig, nil
 	}
 	if s.Parser == nil {
 		s.Parser = s
 	}
-	var emptyConfig oauth.Config
+	var emptyConfig oauth2.Config
 	clientId, err := config.GetString("auth:oauth:client-id")
 	if err != nil {
 		return emptyConfig, err
@@ -130,13 +80,14 @@ func (s *OAuthScheme) loadConfig() (oauth.Config, error) {
 	}
 	s.InfoUrl = infoURL
 	s.CallbackPort = callbackPort
-	s.BaseConfig = oauth.Config{
-		ClientId:     clientId,
+	s.BaseConfig = oauth2.Config{
+		ClientID:     clientId,
 		ClientSecret: clientSecret,
-		Scope:        scope,
-		AuthURL:      authURL,
-		TokenURL:     tokenURL,
-		TokenCache:   &DBTokenCache{s},
+		Scopes:       []string{scope},
+		Endpoint: oauth2.Endpoint{
+			AuthURL:  authURL,
+			TokenURL: tokenURL,
+		},
 	}
 	return s.BaseConfig, nil
 }
@@ -155,12 +106,52 @@ func (s *OAuthScheme) Login(params map[string]string) (auth.Token, error) {
 		return nil, ErrMissingCodeRedirectUrl
 	}
 	config.RedirectURL = redirectUrl
-	transport := &oauth.Transport{Config: &config}
-	oauthToken, err := transport.Exchange(code)
+	oauthToken, err := config.Exchange(context.Background(), code)
 	if err != nil {
 		return nil, err
 	}
-	return makeToken(oauthToken), nil
+	return s.handleToken(oauthToken)
+}
+
+func (s *OAuthScheme) handleToken(t *oauth2.Token) (*Token, error) {
+	if t.AccessToken == "" {
+		return nil, ErrEmptyAccessToken
+	}
+	conf, err := s.loadConfig()
+	if err != nil {
+		return nil, err
+	}
+	client := conf.Client(context.Background(), t)
+	response, err := client.Get(s.InfoUrl)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+	email, err := s.Parser.Parse(response)
+	if email == "" {
+		return nil, ErrEmptyUserEmail
+	}
+	user, err := auth.GetUserByEmail(email)
+	if err != nil {
+		if err != auth.ErrUserNotFound {
+			return nil, err
+		}
+		registrationEnabled, _ := config.GetBool("auth:user-registration")
+		if !registrationEnabled {
+			return nil, err
+		}
+		user = &auth.User{Email: email}
+		err := user.Create()
+		if err != nil {
+			return nil, err
+		}
+	}
+	token := Token{*t, email}
+	err = token.save()
+	if err != nil {
+		return nil, err
+	}
+	return &token, nil
 }
 
 func (s *OAuthScheme) AppLogin(appName string) (auth.Token, error) {
@@ -186,15 +177,13 @@ func (s *OAuthScheme) Auth(header string) (auth.Token, error) {
 	if err != nil {
 		return nil, err
 	}
-	transport := oauth.Transport{Config: &config}
-	transport.Token = &token.Token
-	client := transport.Client()
+	client := config.Client(context.Background(), &token.Token)
 	rsp, err := client.Get(s.InfoUrl)
 	if err != nil {
 		return nil, err
 	}
 	defer rsp.Body.Close()
-	return makeToken(transport.Token), nil
+	return token, nil
 }
 
 func (s *OAuthScheme) Name() string {

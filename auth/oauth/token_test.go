@@ -5,13 +5,13 @@
 package oauth
 
 import (
-	"code.google.com/p/goauth2/oauth"
 	"github.com/tsuru/tsuru/auth"
+	"golang.org/x/oauth2"
 	"gopkg.in/check.v1"
 )
 
 func (s *S) TestGetToken(c *check.C) {
-	existing := Token{Token: oauth.Token{AccessToken: "myvalidtoken"}, UserEmail: "x@x.com"}
+	existing := Token{Token: oauth2.Token{AccessToken: "myvalidtoken"}, UserEmail: "x@x.com"}
 	err := existing.save()
 	c.Assert(err, check.IsNil)
 	var result []Token
@@ -41,7 +41,7 @@ func (s *S) TestGetTokenInvalid(c *check.C) {
 }
 
 func (s *S) TestSave(c *check.C) {
-	existing := Token{Token: oauth.Token{AccessToken: "myvalidtoken"}, UserEmail: "x@x.com"}
+	existing := Token{Token: oauth2.Token{AccessToken: "myvalidtoken"}, UserEmail: "x@x.com"}
 	err := existing.save()
 	c.Assert(err, check.IsNil)
 	coll := collection()
@@ -54,7 +54,7 @@ func (s *S) TestSave(c *check.C) {
 }
 
 func (s *S) TestDelete(c *check.C) {
-	existing := Token{Token: oauth.Token{AccessToken: "myvalidtoken"}, UserEmail: "x@x.com"}
+	existing := Token{Token: oauth2.Token{AccessToken: "myvalidtoken"}, UserEmail: "x@x.com"}
 	err := existing.save()
 	c.Assert(err, check.IsNil)
 	err = deleteToken("myvalidtoken")

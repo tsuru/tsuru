@@ -1,15 +1,10 @@
 {
 	"ImportPath": "github.com/tsuru/tsuru",
-	"GoVersion": "devel +d9859ad Tue Feb 24 17:35:25 2015 +0000",
+	"GoVersion": "devel +6c58d28 Thu Mar 5 07:45:17 2015 +0000",
 	"Packages": [
 		"./..."
 	],
 	"Deps": [
-		{
-			"ImportPath": "code.google.com/p/goauth2/oauth",
-			"Comment": "weekly-44",
-			"Rev": "696c088491246273e92442aa66b5281e5bb34faa"
-		},
 		{
 			"ImportPath": "github.com/Sirupsen/logrus",
 			"Comment": "v0.5.1-37-g6ebb4e7",
@@ -128,6 +123,14 @@
 		{
 			"ImportPath": "golang.org/x/crypto/ssh",
 			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
+		},
+		{
+			"ImportPath": "golang.org/x/net/context",
+			"Rev": "6dc0abcce25682504770fa9a7a6705bbfdebfa48"
+		},
+		{
+			"ImportPath": "golang.org/x/oauth2",
+			"Rev": "96e89befdc0f88d5868b297eb0e0727ce6978884"
 		},
 		{
 			"ImportPath": "gopkg.in/amz.v2/aws",

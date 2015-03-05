@@ -5,17 +5,17 @@
 package oauth
 
 import (
-	"code.google.com/p/goauth2/oauth"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
+	"golang.org/x/oauth2"
 	"gopkg.in/mgo.v2/bson"
 )
 
 type Token struct {
-	oauth.Token
+	oauth2.Token
 	UserEmail string `json:"email"`
 }
 
@@ -37,10 +37,6 @@ func (t *Token) GetUserName() string {
 
 func (t *Token) GetAppName() string {
 	return ""
-}
-
-func makeToken(t *oauth.Token) *Token {
-	return &Token{*t, t.Extra["email"]}
 }
 
 func getToken(header string) (*Token, error) {
