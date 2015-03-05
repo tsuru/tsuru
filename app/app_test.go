@@ -1978,6 +1978,67 @@ func (s *S) TestAppMarshalJSONReady(c *check.C) {
 	c.Assert(result, check.DeepEquals, expected)
 }
 
+func (s *S) TestAppMarshalJSONWithoutRepository(c *check.C) {
+	app := App{
+		Name:      "name",
+		Platform:  "Framework",
+		Teams:     []string{"team1"},
+		Ip:        "10.10.10.1",
+		CName:     []string{"name.mycompany.com"},
+		Owner:     "appOwner",
+		Deploys:   7,
+		Plan:      Plan{Name: "myplan", Memory: 64, Swap: 128, CpuShare: 100},
+		TeamOwner: "myteam",
+		AutoScaleConfig: &AutoScaleConfig{
+			Increase: Action{Units: 1, Expression: "{cpu} > 80"},
+			Decrease: Action{Units: 1, Expression: "{cpu} < 20"},
+			Enabled:  true,
+			MaxUnits: 10,
+			MinUnits: 2,
+		},
+	}
+	expected := map[string]interface{}{
+		"name":       "name",
+		"platform":   "Framework",
+		"repository": "",
+		"teams":      []interface{}{"team1"},
+		"units":      nil,
+		"ip":         "10.10.10.1",
+		"cname":      []interface{}{"name.mycompany.com"},
+		"owner":      "appOwner",
+		"deploys":    float64(7),
+		"teamowner":  "myteam",
+		"ready":      false,
+		"plan": map[string]interface{}{
+			"name":     "myplan",
+			"memory":   float64(64),
+			"swap":     float64(128),
+			"cpushare": float64(100),
+		},
+		"autoScaleConfig": map[string]interface{}{
+			"increase": map[string]interface{}{
+				"wait":       float64(0),
+				"expression": "{cpu} > 80",
+				"units":      float64(1),
+			},
+			"decrease": map[string]interface{}{
+				"wait":       float64(0),
+				"expression": "{cpu} < 20",
+				"units":      float64(1),
+			},
+			"minUnits": float64(2),
+			"maxUnits": float64(10),
+			"enabled":  true,
+		},
+	}
+	data, err := app.MarshalJSON()
+	c.Assert(err, check.IsNil)
+	result := make(map[string]interface{})
+	err = json.Unmarshal(data, &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.DeepEquals, expected)
+}
+
 func (s *S) TestRun(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("a lot of files"))
 	app := App{
