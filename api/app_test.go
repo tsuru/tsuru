@@ -1944,7 +1944,7 @@ func (s *S) TestAppLogFollowWithPubSub(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	err = pubSubQ.Pub([]byte(`{"message": "x"}`))
 	c.Assert(err, check.IsNil)
-	time.Sleep(2e8)
+	time.Sleep(1e9)
 	pubSubQ.UnSub()
 	wg.Wait()
 }
