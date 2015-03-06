@@ -172,6 +172,33 @@ func (s *S) TestContainerCreate(c *check.C) {
 	c.Assert(container.Config.CPUShares, check.Equals, int64(app.CpuShare))
 }
 
+func (s *S) TestContainerCreateSecurityOptions(c *check.C) {
+	config.Set("docker:securityopts", []string{"label:type:svirt_apache", "ptrace peer=@unsecure"})
+	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
+	app.Memory = 15
+	app.Swap = 15
+	app.CpuShare = 50
+	routertest.FakeRouter.AddBackend(app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(app.GetName())
+	s.p.getCluster().PullImage(
+		docker.PullImageOptions{Repository: "tsuru/brainfuck"},
+		docker.AuthConfiguration{},
+	)
+	cont := container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
+	err := cont.create(runContainerActionsArgs{
+		app:         app,
+		imageID:     s.p.getBuildImage(app),
+		commands:    []string{"docker", "run"},
+		provisioner: s.p,
+	})
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(&cont)
+	dcli, _ := docker.NewClient(s.server.URL())
+	container, err := dcli.InspectContainer(cont.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(container.Config.SecurityOpts, check.DeepEquals, []string{"label:type:svirt_apache", "ptrace peer=@unsecure"})
+}
+
 func (s *S) TestContainerCreateAlocatesPort(c *check.C) {
 	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
 	app.Memory = 15
