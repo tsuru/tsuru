@@ -246,33 +246,33 @@ func minCountHost(hosts []hostWithContainers) *hostWithContainers {
 	return minCountHost
 }
 
-func (p *dockerProvisioner) rebalanceContainersByFilter(writer io.Writer, appFilter []string, metadataFilter map[string]string, dryRun bool) error {
+func (p *dockerProvisioner) rebalanceContainersByFilter(writer io.Writer, appFilter []string, metadataFilter map[string]string, dryRun bool) (*dockerProvisioner, error) {
 	var hostsFilter []string
 	if metadataFilter != nil {
 		nodes, err := p.cluster.NodesForMetadata(metadataFilter)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		for _, n := range nodes {
 			hostsFilter = append(hostsFilter, urlToHost(n.Address))
 		}
 		if len(hostsFilter) == 0 {
 			fmt.Fprintf(writer, "No hosts matching metadata filters\n")
-			return nil
+			return nil, nil
 		}
 	}
 	containers, err := p.listContainersByAppAndHost(appFilter, hostsFilter)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if len(containers) == 0 {
 		fmt.Fprintf(writer, "No containers found to rebalance\n")
-		return nil
+		return nil, nil
 	}
 	if dryRun {
 		p, err = p.dryMode(containers)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		defer p.stopDryMode()
 	} else {
@@ -280,13 +280,14 @@ func (p *dockerProvisioner) rebalanceContainersByFilter(writer io.Writer, appFil
 		// scheduler to exclude old containers.
 		p, err = p.cloneProvisioner(containers)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 	fmt.Fprintf(writer, "Rebalancing %d units...\n", len(containers))
-	return p.moveContainerList(containers, "", writer)
+	return p, p.moveContainerList(containers, "", writer)
 }
 
 func (p *dockerProvisioner) rebalanceContainers(writer io.Writer, dryRun bool) error {
-	return p.rebalanceContainersByFilter(writer, nil, nil, dryRun)
+	_, err := p.rebalanceContainersByFilter(writer, nil, nil, dryRun)
+	return err
 }

@@ -6,6 +6,7 @@ package docker
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"time"
 
@@ -110,14 +111,14 @@ func (a *autoScaleConfig) runOnce(isMemoryBased bool) (retErr error) {
 	return
 }
 
-func (a *autoScaleConfig) scaleGroupByCount(groupMetadata string, nodes []*cluster.Node) error {
-	freeSlots := 0
+func (p *dockerProvisioner) containerGapInNodes(nodes []*cluster.Node) (int, int, int, error) {
 	maxCount := 0
 	minCount := 0
+	totalCount := 0
 	for _, n := range nodes {
-		contCount, err := a.provisioner.countContainersByHost(urlToHost(n.Address))
+		contCount, err := p.countContainersByHost(urlToHost(n.Address))
 		if err != nil {
-			return err
+			return 0, 0, 0, err
 		}
 		if contCount > maxCount {
 			maxCount = contCount
@@ -125,8 +126,17 @@ func (a *autoScaleConfig) scaleGroupByCount(groupMetadata string, nodes []*clust
 		if minCount == 0 || contCount < minCount {
 			minCount = contCount
 		}
-		freeSlots += a.maxContainerCount - contCount
+		totalCount += contCount
 	}
+	return totalCount, maxCount, minCount, nil
+}
+
+func (a *autoScaleConfig) scaleGroupByCount(groupMetadata string, nodes []*cluster.Node) error {
+	totalCount, maxCount, minCount, err := a.provisioner.containerGapInNodes(nodes)
+	if err != nil {
+		return fmt.Errorf("couldn't find containers from nodes: %s", err)
+	}
+	freeSlots := (len(nodes) * a.maxContainerCount) - totalCount
 	if freeSlots < 0 {
 		minCount = 0
 		err := a.addNode(nodes)
@@ -134,14 +144,25 @@ func (a *autoScaleConfig) scaleGroupByCount(groupMetadata string, nodes []*clust
 			return err
 		}
 	}
-	gap := maxCount - minCount
-	if gap >= 2 {
+	var rebalanceFilter map[string]string
+	if a.groupByMetadata != "" {
+		rebalanceFilter = map[string]string{a.groupByMetadata: groupMetadata}
+	}
+	buf := safe.NewBuffer(nil)
+	rebalanceProvisioner, err := a.provisioner.rebalanceContainersByFilter(buf, nil, rebalanceFilter, true)
+	if err != nil {
+		log.Errorf("Unable to run dry rebalance to check if rebalance is needed: %s - log: %s", err, buf.String())
+		return nil
+	}
+	_, maxCountAfter, minCountAfter, err := rebalanceProvisioner.containerGapInNodes(nodes)
+	if err != nil {
+		return fmt.Errorf("couldn't find containers from rebalanced nodes: %s", err)
+	}
+	gapBefore := maxCount - minCount
+	gapAfter := maxCountAfter - minCountAfter
+	if math.Abs((float64)(gapBefore-gapAfter)) > 2.0 {
 		buf := safe.NewBuffer(nil)
-		var rebalanceFilter map[string]string
-		if a.groupByMetadata != "" {
-			rebalanceFilter = map[string]string{a.groupByMetadata: groupMetadata}
-		}
-		err := a.provisioner.rebalanceContainersByFilter(buf, nil, rebalanceFilter, false)
+		_, err := a.provisioner.rebalanceContainersByFilter(buf, nil, rebalanceFilter, false)
 		if err != nil {
 			log.Errorf("Unable to rebalance containers: %s - log: %s", err.Error(), buf.String())
 		}

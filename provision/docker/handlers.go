@@ -213,7 +213,7 @@ func rebalanceContainersHandler(w http.ResponseWriter, r *http.Request, t auth.T
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{
 		Encoder: json.NewEncoder(w),
 	}
-	err = mainDockerProvisioner.rebalanceContainersByFilter(writer, params.AppFilter, params.MetadataFilter, dry)
+	_, err = mainDockerProvisioner.rebalanceContainersByFilter(writer, params.AppFilter, params.MetadataFilter, dry)
 	if err != nil {
 		fmt.Fprintf(writer, "Error trying to rebalance containers: %s\n", err.Error())
 	} else {
