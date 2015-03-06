@@ -530,6 +530,25 @@ The command that will be called in your platform when a new deploy happens.
 The default value for platforms supported in tsuru's basebuilder repository is
 ``/var/lib/tsuru/deploy``.
 
+docker:security-opts
+++++++++++++++++++++
+
+This setting describes a list of security options that will be passed to
+containers. This setting must be a list, and has no default value. If one wants
+to specify just one value, it's still needed to use the list notation:
+
+.. highlight: yaml
+
+::
+
+    docker:
+      ...
+      security-opts:
+        - apparmor:PROFILE
+
+For more details on the available options, please refer to the Docker
+documentation: <https://docs.docker.com/reference/run/#security-configuration>.
+
 docker:segregate
 ++++++++++++++++
 
