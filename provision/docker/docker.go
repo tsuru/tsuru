@@ -138,7 +138,7 @@ func (c *container) create(args runContainerActionsArgs) error {
 	user, _ := config.GetString("docker:ssh:user")
 	sharedMount, _ := config.GetString("docker:sharedfs:mountpoint")
 	sharedBasedir, _ := config.GetString("docker:sharedfs:hostdir")
-	securityOpts, _ := config.GetList("docker:securityopts")
+	securityOpts, _ := config.GetList("docker:security-opts")
 	var exposedPorts map[docker.Port]struct{}
 	if !args.isDeploy {
 		exposedPorts = map[docker.Port]struct{}{

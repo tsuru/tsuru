@@ -173,7 +173,8 @@ func (s *S) TestContainerCreate(c *check.C) {
 }
 
 func (s *S) TestContainerCreateSecurityOptions(c *check.C) {
-	config.Set("docker:securityopts", []string{"label:type:svirt_apache", "ptrace peer=@unsecure"})
+	config.Set("docker:security-opts", []string{"label:type:svirt_apache", "ptrace peer=@unsecure"})
+	defer config.Unset("docker:security-opts")
 	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
 	app.Memory = 15
 	app.Swap = 15
