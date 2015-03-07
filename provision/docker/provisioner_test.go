@@ -575,6 +575,7 @@ func (s *S) TestProvisionerAddUnits(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/app-myapp")
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 0)
+	app.Deploys = 1
 	s.p.Provision(app)
 	defer s.p.Destroy(app)
 	_, err = s.newContainer(&newContainerOpts{AppName: app.GetName()}, nil)
@@ -621,6 +622,7 @@ func (s *S) TestProvisionerAddZeroUnits(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/python")
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 0)
+	app.Deploys = 1
 	s.p.Provision(app)
 	defer s.p.Destroy(app)
 	coll := s.p.collection()
@@ -717,6 +719,7 @@ func (s *S) TestProvisionerRemoveUnitsPriorityOrder(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer routertest.FakeRouter.RemoveBackend(container.AppName)
 	app := provisiontest.NewFakeApp(container.AppName, "python", 0)
+	app.Deploys = 1
 	_, err = s.p.AddUnits(app, 3, nil)
 	c.Assert(err, check.IsNil)
 	err = s.p.RemoveUnits(app, 1)
@@ -745,6 +748,7 @@ func (s *S) TestProvisionerRemoveUnitsTooManyUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer routertest.FakeRouter.RemoveBackend(container.AppName)
 	app := provisiontest.NewFakeApp(container.AppName, "python", 0)
+	app.Deploys = 1
 	_, err = s.p.AddUnits(app, 2, nil)
 	c.Assert(err, check.IsNil)
 	err = s.p.RemoveUnits(app, 3)

@@ -557,11 +557,7 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 }
 
 func (p *dockerProvisioner) AddUnits(a provision.App, units uint, w io.Writer) ([]provision.Unit, error) {
-	length, err := p.getContainerCountForAppName(a.GetName())
-	if err != nil {
-		return nil, err
-	}
-	if length < 1 {
+	if a.GetDeploys() == 0 {
 		return nil, errors.New("New units can only be added after the first deployment")
 	}
 	if units == 0 {
