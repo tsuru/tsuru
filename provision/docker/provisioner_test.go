@@ -635,7 +635,7 @@ func (s *S) TestProvisionerAddZeroUnits(c *check.C) {
 	c.Assert(err.Error(), check.Equals, "Cannot add 0 units")
 }
 
-func (s *S) TestProvisionerAddUnitsWithoutContainers(c *check.C) {
+func (s *S) TestProvisionerAddUnitsWithNoDeploys(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	s.p.Provision(app)
 	defer s.p.Destroy(app)
