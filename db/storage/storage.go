@@ -7,6 +7,7 @@ package storage
 import (
 	"sync"
 	"time"
+	"errors"
 
 	"gopkg.in/mgo.v2"
 )
@@ -45,7 +46,7 @@ func (c *Collection) Close() {
 func open(addr, dbname string) (*Storage, error) {
 	sess, err := mgo.Dial(addr)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("mongodb: no reachable servers")
 	}
 	copy := sess.Clone()
 	storage := &Storage{session: copy, dbname: dbname}
