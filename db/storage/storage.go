@@ -5,9 +5,9 @@
 package storage
 
 import (
+	"fmt"
 	"sync"
 	"time"
-	"fmt"
 
 	"gopkg.in/mgo.v2"
 )
