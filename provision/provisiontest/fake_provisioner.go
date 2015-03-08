@@ -36,7 +36,7 @@ type FakeApp struct {
 	CpuShare       int
 	commMut        sync.Mutex
 	ready          bool
-	deploys        uint
+	Deploys        uint
 	env            map[string]bind.EnvVar
 	bindCalls      []*provision.Unit
 	bindLock       sync.Mutex
@@ -198,7 +198,7 @@ func (a *FakeApp) GetPlatform() string {
 }
 
 func (a *FakeApp) GetDeploys() uint {
-	return a.deploys
+	return a.Deploys
 }
 
 func (a *FakeApp) Units() []provision.Unit {

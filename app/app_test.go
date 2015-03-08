@@ -635,7 +635,6 @@ func (s *S) TestRemoveUnitsInvalidValues(c *check.C) {
 		expected string
 	}{
 		{0, "Cannot remove zero units."},
-		{3, "Cannot remove all units from an app."},
 		{4, "Cannot remove 4 units from this app, it has only 3 units."},
 	}
 	app := App{
