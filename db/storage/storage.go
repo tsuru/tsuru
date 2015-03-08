@@ -46,7 +46,7 @@ func (c *Collection) Close() {
 func open(addr, dbname string) (*Storage, error) {
 	sess, err := mgo.Dial(addr)
 	if err != nil {
-		return nil, errors.New("mongodb: no reachable servers")
+		return nil, fmt.Errorf("mongodb: %s", err)
 	}
 	copy := sess.Clone()
 	storage := &Storage{session: copy, dbname: dbname}
