@@ -7,7 +7,6 @@ package storage
 import (
 	"sync"
 	"time"
-	"errors"
 
 	"gopkg.in/mgo.v2"
 )
