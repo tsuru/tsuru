@@ -410,3 +410,70 @@ func (s *S) TestListHealingHistoryCmdRunFilterContainer(c *check.C) {
 `, startTStr, endTStr, startTStr, endTStr)
 	c.Assert(buf.String(), check.Equals, expected)
 }
+
+func (s *S) TestListAutoScaleHistoryCmdRunEmpty(c *check.C) {
+	var buf bytes.Buffer
+	context := cmd.Context{Stdout: &buf}
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: `[]`, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Path == "/docker/autoscale" && req.URL.Query().Get("skip") == "0" && req.URL.Query().Get("limit") == "20"
+		},
+	}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
+	autoscale := &listAutoScaleHistoryCmd{}
+	err := autoscale.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	expected := `+-------+--------+---------+----------+--------+-------+
+| Start | Finish | Success | Metadata | Action | Error |
++-------+--------+---------+----------+--------+-------+
+`
+	c.Assert(buf.String(), check.Equals, expected)
+}
+
+func (s *S) TestListAutoScaleHistoryCmdRun(c *check.C) {
+	var buf bytes.Buffer
+	context := cmd.Context{Stdout: &buf}
+	msg := `[{
+	"StartTime": "2014-10-23T08:00:00.000Z",
+	"EndTime": "2014-10-23T08:30:00.000Z",
+	"Successful": true,
+	"Action": "add",
+	"MetadataValue": "poolx",
+	"Error": ""
+},
+{
+	"StartTime": "2014-10-23T08:00:00.000Z",
+	"EndTime": "2014-10-23T08:30:00.000Z",
+	"Successful": false,
+	"Action": "rebalance",
+	"MetadataValue": "poolx",
+	"Error": "some error"
+}]`
+	startT, _ := time.Parse(time.RFC3339, "2014-10-23T08:00:00.000Z")
+	endT, _ := time.Parse(time.RFC3339, "2014-10-23T08:30:00.000Z")
+	startTStr := startT.Local().Format(time.Stamp)
+	endTStr := endT.Local().Format(time.Stamp)
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: msg, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Path == "/docker/autoscale"
+		},
+	}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
+	autoscale := &listAutoScaleHistoryCmd{}
+	err := autoscale.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	expected := `+-----------------+-----------------+---------+----------+-----------+------------+
+| Start           | Finish          | Success | Metadata | Action    | Error      |
++-----------------+-----------------+---------+----------+-----------+------------+
+| %s | %s | true    | poolx    | add       |            |
++-----------------+-----------------+---------+----------+-----------+------------+
+| %s | %s | false   | poolx    | rebalance | some error |
++-----------------+-----------------+---------+----------+-----------+------------+
+`
+	expected = fmt.Sprintf(expected, startTStr, endTStr, startTStr, endTStr)
+	c.Assert(buf.String(), check.Equals, expected)
+}

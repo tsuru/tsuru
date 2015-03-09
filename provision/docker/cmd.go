@@ -327,3 +327,66 @@ func (c *listHealingHistoryCmd) Flags() *gnuflag.FlagSet {
 	}
 	return c.fs
 }
+
+type listAutoScaleHistoryCmd struct {
+	fs   *gnuflag.FlagSet
+	page int
+}
+
+func (c *listAutoScaleHistoryCmd) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:  "docker-autoscale-list",
+		Usage: "docker-autoscale-list [--page/-p 1]",
+		Desc:  "List node auto scale history.",
+	}
+}
+
+func (c *listAutoScaleHistoryCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
+	if c.page < 1 {
+		c.page = 1
+	}
+	limit := 20
+	skip := (c.page - 1) * limit
+	url, err := cmd.GetURL(fmt.Sprintf("/docker/autoscale?skip=%d&limit=%d", skip, limit))
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	var history []autoScaleEvent
+	err = json.NewDecoder(resp.Body).Decode(&history)
+	if err != nil {
+		return err
+	}
+	headers := cmd.Row([]string{"Start", "Finish", "Success", "Metadata", "Action", "Error"})
+	t := cmd.Table{Headers: headers}
+	for _, event := range history {
+		t.AddRow(cmd.Row([]string{
+			event.StartTime.Local().Format(time.Stamp),
+			event.EndTime.Local().Format(time.Stamp),
+			fmt.Sprintf("%t", event.Successful),
+			event.MetadataValue,
+			event.Action,
+			event.Error,
+		}))
+	}
+	t.LineSeparator = true
+	ctx.Stdout.Write(t.Bytes())
+	return nil
+}
+
+func (c *listAutoScaleHistoryCmd) Flags() *gnuflag.FlagSet {
+	if c.fs == nil {
+		c.fs = gnuflag.NewFlagSet("with-flags", gnuflag.ContinueOnError)
+		c.fs.IntVar(&c.page, "page", 1, "Current page")
+		c.fs.IntVar(&c.page, "p", 1, "Current page")
+	}
+	return c.fs
+}

@@ -710,6 +710,7 @@ func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 		removeTeamsFromPoolCmd{},
 		fixContainersCmd{},
 		&listHealingHistoryCmd{},
+		&listAutoScaleHistoryCmd{},
 	}
 }
 

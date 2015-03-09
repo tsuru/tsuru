@@ -938,6 +938,7 @@ func (s *S) TestAdminCommands(c *check.C) {
 		removeTeamsFromPoolCmd{},
 		fixContainersCmd{},
 		&listHealingHistoryCmd{},
+		&listAutoScaleHistoryCmd{},
 	}
 	c.Assert(s.p.AdminCommands(), check.DeepEquals, expected)
 }
