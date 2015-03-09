@@ -848,3 +848,32 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterNode(c *check.C) {
 	c.Assert(healings[1].Action, check.Equals, "node-healing")
 	c.Assert(healings[1].ID, check.Equals, evt1.ID)
 }
+
+func (s *HandlersSuite) TestAutoScaleHistoryHandler(c *check.C) {
+	evt1, err := newAutoScaleEvent("poolx", "add")
+	c.Assert(err, check.IsNil)
+	err = evt1.update(nil)
+	c.Assert(err, check.IsNil)
+	evt2, err := newAutoScaleEvent("pooly", "rebalance")
+	c.Assert(err, check.IsNil)
+	err = evt2.update(errors.New("my error"))
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/docker/autoscale", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	body := recorder.Body.Bytes()
+	history := []autoScaleEvent{}
+	err = json.Unmarshal(body, &history)
+	c.Assert(err, check.IsNil)
+	c.Assert(history, check.HasLen, 2)
+	evt1.StartTime = history[1].StartTime
+	evt1.EndTime = history[1].EndTime
+	evt2.StartTime = history[0].StartTime
+	evt2.EndTime = history[0].EndTime
+	c.Assert(*evt1, check.DeepEquals, history[1])
+	c.Assert(*evt2, check.DeepEquals, history[0])
+}

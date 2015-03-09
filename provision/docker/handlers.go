@@ -41,6 +41,7 @@ func init() {
 	api.RegisterHandler("/docker/pool/team", "DELETE", api.AdminRequiredHandler(removeTeamToPoolHandler))
 	api.RegisterHandler("/docker/fix-containers", "POST", api.AdminRequiredHandler(fixContainersHandler))
 	api.RegisterHandler("/docker/healing", "GET", api.AdminRequiredHandler(healingHistoryHandler))
+	api.RegisterHandler("/docker/autoscale", "GET", api.AdminRequiredHandler(autoScaleHistoryHandler))
 }
 
 func validateNodeAddress(address string) error {
@@ -331,4 +332,14 @@ func healingHistoryHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return err
 	}
 	return json.NewEncoder(w).Encode(history)
+}
+
+func autoScaleHistoryHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	skip, _ := strconv.Atoi(r.URL.Query().Get("skip"))
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	history, err := listAutoScaleEvents(skip, limit)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(&history)
 }
