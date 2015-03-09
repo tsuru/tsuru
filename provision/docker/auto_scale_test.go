@@ -84,6 +84,15 @@ func (s *S) TestAutoScaleConfigRun(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
+	evts, err := listAutoScaleEvents(0, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].MetadataValue, check.Equals, "pool1")
+	c.Assert(evts[0].Action, check.Equals, "add")
+	c.Assert(evts[0].Successful, check.Equals, true)
+	c.Assert(evts[0].Error, check.Equals, "")
 
 	// Also should have rebalanced
 	containers1, err := p.listContainersByHost(urlToHost(nodes[0].Address))
@@ -100,6 +109,9 @@ func (s *S) TestAutoScaleConfigRun(c *check.C) {
 	nodes, err = p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
+	evts, err = listAutoScaleEvents(0, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
 
 	containers1Again, err := p.listContainersByHost(urlToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
@@ -177,6 +189,15 @@ func (s *S) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
 	go a.stop()
 	err = a.run()
 	c.Assert(err, check.IsNil)
+	evts, err := listAutoScaleEvents(0, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].MetadataValue, check.Equals, "pool1")
+	c.Assert(evts[0].Action, check.Equals, "rebalance")
+	c.Assert(evts[0].Successful, check.Equals, true)
+	c.Assert(evts[0].Error, check.Equals, "")
 	nodes, err := p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
@@ -248,6 +269,15 @@ func (s *S) TestAutoScaleConfigRunNoGroup(c *check.C) {
 	go a.stop()
 	err = a.run()
 	c.Assert(err, check.IsNil)
+	evts, err := listAutoScaleEvents(0, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].MetadataValue, check.Equals, "")
+	c.Assert(evts[0].Action, check.Equals, "add")
+	c.Assert(evts[0].Successful, check.Equals, true)
+	c.Assert(evts[0].Error, check.Equals, "")
 	nodes, err := p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
@@ -323,6 +353,9 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address, check.Equals, node1.URL())
+	evts, err := listAutoScaleEvents(0, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 0)
 
 	p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
@@ -338,6 +371,9 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	nodes, err = p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
+	evts, err = listAutoScaleEvents(0, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 0)
 
 	a.matadataFilter = "pool1"
 	go a.stop()
@@ -346,6 +382,9 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	nodes, err = p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
+	evts, err = listAutoScaleEvents(0, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
 }
 
 func (s *S) TestAutoScaleConfigRunParamsError(c *check.C) {

@@ -10,11 +10,86 @@ import (
 	"sort"
 	"time"
 
+	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
+	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/safe"
+	"gopkg.in/mgo.v2/bson"
 )
+
+type autoScaleEvent struct {
+	ID            bson.ObjectId `bson:"_id"`
+	MetadataValue string
+	Action        string // "rebalance" or "add"
+	StartTime     time.Time
+	EndTime       time.Time `bson:",omitempty"`
+	Successful    bool
+	Error         string `bson:",omitempty"`
+}
+
+func autoScaleCollection() (*storage.Collection, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	name, err := config.GetString("docker:collection")
+	if err != nil {
+		return nil, err
+	}
+	return conn.Collection(fmt.Sprintf("%s_auto_scale", name)), nil
+}
+
+func newAutoScaleEvent(metadataValue, action string) (*autoScaleEvent, error) {
+	evt := autoScaleEvent{
+		ID:            bson.NewObjectId(),
+		StartTime:     time.Now().UTC(),
+		MetadataValue: metadataValue,
+		Action:        action,
+	}
+	coll, err := autoScaleCollection()
+	if err != nil {
+		return nil, err
+	}
+	defer coll.Close()
+	return &evt, coll.Insert(evt)
+}
+
+func (evt *autoScaleEvent) update(err error) error {
+	if err != nil {
+		evt.Error = err.Error()
+	}
+	evt.Successful = err == nil
+	evt.EndTime = time.Now().UTC()
+	coll, err := autoScaleCollection()
+	if err != nil {
+		return err
+	}
+	defer coll.Close()
+	return coll.UpdateId(evt.ID, evt)
+}
+
+func listAutoScaleEvents(skip, limit int) ([]autoScaleEvent, error) {
+	coll, err := autoScaleCollection()
+	if err != nil {
+		return nil, err
+	}
+	query := coll.Find(nil).Sort("-_id")
+	if skip != 0 {
+		query = query.Skip(skip)
+	}
+	if limit != 0 {
+		query = query.Limit(limit)
+	}
+	var list []autoScaleEvent
+	err = query.All(&list)
+	if err != nil {
+		return nil, err
+	}
+	return list, nil
+}
 
 type autoScaleConfig struct {
 	provisioner         *dockerProvisioner
@@ -111,62 +186,81 @@ func (a *autoScaleConfig) runOnce(isMemoryBased bool) (retErr error) {
 	return
 }
 
-func (p *dockerProvisioner) containerGapInNodes(nodes []*cluster.Node) (int, int, int, error) {
-	maxCount := 0
-	minCount := 0
-	totalCount := 0
-	for _, n := range nodes {
-		contCount, err := p.countContainersByHost(urlToHost(n.Address))
-		if err != nil {
-			return 0, 0, 0, err
-		}
-		if contCount > maxCount {
-			maxCount = contCount
-		}
-		if minCount == 0 || contCount < minCount {
-			minCount = contCount
-		}
-		totalCount += contCount
-	}
-	return totalCount, maxCount, minCount, nil
-}
-
 func (a *autoScaleConfig) scaleGroupByCount(groupMetadata string, nodes []*cluster.Node) error {
-	totalCount, maxCount, minCount, err := a.provisioner.containerGapInNodes(nodes)
+	totalCount, gap, err := a.provisioner.containerGapInNodes(nodes)
 	if err != nil {
 		return fmt.Errorf("couldn't find containers from nodes: %s", err)
 	}
 	freeSlots := (len(nodes) * a.maxContainerCount) - totalCount
-	if freeSlots < 0 {
-		minCount = 0
-		err := a.addNode(nodes)
-		if err != nil {
-			return err
-		}
-	}
+	shouldRebalance := false
 	var rebalanceFilter map[string]string
 	if a.groupByMetadata != "" {
 		rebalanceFilter = map[string]string{a.groupByMetadata: groupMetadata}
 	}
-	buf := safe.NewBuffer(nil)
-	rebalanceProvisioner, err := a.provisioner.rebalanceContainersByFilter(buf, nil, rebalanceFilter, true)
-	if err != nil {
-		log.Errorf("Unable to run dry rebalance to check if rebalance is needed: %s - log: %s", err, buf.String())
-		return nil
+
+	var event *autoScaleEvent
+	if freeSlots < 0 {
+		shouldRebalance = true
+		event, err = newAutoScaleEvent(groupMetadata, "add")
+		if err != nil {
+			return fmt.Errorf("unable to create auto scale event: %s", err)
+		}
+		err := a.addNode(nodes)
+		if err != nil {
+			event.update(err)
+			return err
+		}
+	} else {
+		buf := safe.NewBuffer(nil)
+		rebalanceProvisioner, err := a.provisioner.rebalanceContainersByFilter(buf, nil, rebalanceFilter, true)
+		if err != nil {
+			log.Errorf("Unable to run dry rebalance to check if rebalance is needed: %s - log: %s", err, buf.String())
+			return nil
+		}
+		_, gapAfter, err := rebalanceProvisioner.containerGapInNodes(nodes)
+		if err != nil {
+			return fmt.Errorf("couldn't find containers from rebalanced nodes: %s", err)
+		}
+		shouldRebalance = math.Abs((float64)(gap-gapAfter)) > 2.0
 	}
-	_, maxCountAfter, minCountAfter, err := rebalanceProvisioner.containerGapInNodes(nodes)
-	if err != nil {
-		return fmt.Errorf("couldn't find containers from rebalanced nodes: %s", err)
-	}
-	gapBefore := maxCount - minCount
-	gapAfter := maxCountAfter - minCountAfter
-	if math.Abs((float64)(gapBefore-gapAfter)) > 2.0 {
+	if shouldRebalance {
+		if event == nil {
+			event, err = newAutoScaleEvent(groupMetadata, "rebalance")
+			if err != nil {
+				return fmt.Errorf("unable to create auto scale event: %s", err)
+			}
+		}
 		buf := safe.NewBuffer(nil)
 		_, err := a.provisioner.rebalanceContainersByFilter(buf, nil, rebalanceFilter, false)
 		if err != nil {
 			log.Errorf("Unable to rebalance containers: %s - log: %s", err.Error(), buf.String())
 		}
+		event.update(err)
 	}
+	return nil
+}
+
+func (a *autoScaleConfig) addNode(modelNodes []*cluster.Node) error {
+	metadata, err := chooseMetadataFromNodes(modelNodes)
+	if err != nil {
+		return err
+	}
+	_, hasIaas := metadata["iaas"]
+	if !hasIaas {
+		return fmt.Errorf("no IaaS information in nodes metadata: %#v", metadata)
+	}
+	machine, err := iaas.CreateMachineForIaaS(metadata["iaas"], metadata)
+	if err != nil {
+		return fmt.Errorf("unable to create machine: %s", err.Error())
+	}
+	newAddr := machine.FormatNodeAddress()
+	log.Debugf("New machine created during auto scaling: %s - Waiting for docker to start...", newAddr)
+	_, err = a.provisioner.getCluster().WaitAndRegister(newAddr, metadata, a.waitTimeNewMachine)
+	if err != nil {
+		machine.Destroy()
+		return fmt.Errorf("error registering new node %s: %s", newAddr, err.Error())
+	}
+	log.Debugf("New machine created during auto scaling: %s - started!", newAddr)
 	return nil
 }
 
@@ -246,26 +340,22 @@ func chooseMetadataFromNodes(modelNodes []*cluster.Node) (map[string]string, err
 	return baseMetadata, nil
 }
 
-func (a *autoScaleConfig) addNode(modelNodes []*cluster.Node) error {
-	metadata, err := chooseMetadataFromNodes(modelNodes)
-	if err != nil {
-		return err
+func (p *dockerProvisioner) containerGapInNodes(nodes []*cluster.Node) (int, int, error) {
+	maxCount := 0
+	minCount := 0
+	totalCount := 0
+	for _, n := range nodes {
+		contCount, err := p.countContainersByHost(urlToHost(n.Address))
+		if err != nil {
+			return 0, 0, err
+		}
+		if contCount > maxCount {
+			maxCount = contCount
+		}
+		if minCount == 0 || contCount < minCount {
+			minCount = contCount
+		}
+		totalCount += contCount
 	}
-	_, hasIaas := metadata["iaas"]
-	if !hasIaas {
-		return fmt.Errorf("no IaaS information in nodes metadata: %#v", metadata)
-	}
-	machine, err := iaas.CreateMachineForIaaS(metadata["iaas"], metadata)
-	if err != nil {
-		return fmt.Errorf("unable to create machine: %s", err.Error())
-	}
-	newAddr := machine.FormatNodeAddress()
-	log.Debugf("New machine created during auto scaling: %s - Waiting for docker to start...", newAddr)
-	_, err = a.provisioner.getCluster().WaitAndRegister(newAddr, metadata, a.waitTimeNewMachine)
-	if err != nil {
-		machine.Destroy()
-		return fmt.Errorf("error registering new node %s: %s", newAddr, err.Error())
-	}
-	log.Debugf("New machine created during auto scaling: %s - started!", newAddr)
-	return nil
+	return totalCount, maxCount - minCount, nil
 }
