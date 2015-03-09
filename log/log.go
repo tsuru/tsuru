@@ -12,6 +12,7 @@ package log
 import (
 	"io"
 	"log"
+	"os"
 	"sync"
 
 	"github.com/tsuru/config"
@@ -39,10 +40,9 @@ func Init() {
 	} else {
 		logger = NewFileLogger(logFileName, debug)
 	}
-	stderrLogger := NewFileLogger("/dev/stderr", debug)
+	stderrLogger := newWriterLogger(os.Stderr, debug)
 	if logger != nil && stderrLogger != nil {
-		logger2 := NewMultiLogger(&logger, &stderrLogger)
-		SetLogger(logger2)
+		SetLogger(NewMultiLogger(logger, stderrLogger))
 	}
 }
 
