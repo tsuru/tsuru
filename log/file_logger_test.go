@@ -7,7 +7,6 @@ package log
 import (
 	"bytes"
 	"log"
-	"strings"
 
 	"gopkg.in/check.v1"
 )
@@ -39,8 +38,7 @@ func (s *FileLoggerSuite) TestNewWriterLogger(c *check.C) {
 	var buf bytes.Buffer
 	logger := newWriterLogger(&buf, true)
 	logger.Errorf("something went wrong: %s", "this")
-	result := strings.SplitN(buf.String(), "\n", 2)[0]
-	c.Assert(result, check.Matches, `^.*ERROR: something went wrong: this$`)
+	c.Assert(buf.String(), check.Matches, `(?m)^.*ERROR: something went wrong: this$`)
 }
 
 func (s *FileLoggerSuite) TestNewFileLoggerInitializesWriter(c *check.C) {
