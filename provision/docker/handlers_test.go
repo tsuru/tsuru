@@ -870,10 +870,10 @@ func (s *HandlersSuite) TestAutoScaleHistoryHandler(c *check.C) {
 	err = json.Unmarshal(body, &history)
 	c.Assert(err, check.IsNil)
 	c.Assert(history, check.HasLen, 2)
-	evt1.StartTime = history[1].StartTime
-	evt1.EndTime = history[1].EndTime
-	evt2.StartTime = history[0].StartTime
-	evt2.EndTime = history[0].EndTime
-	c.Assert(*evt1, check.DeepEquals, history[1])
-	c.Assert(*evt2, check.DeepEquals, history[0])
+	c.Assert(evt1.StartTime.Sub(history[1].StartTime) < time.Second, check.Equals, true)
+	c.Assert(evt2.StartTime.Sub(history[0].StartTime) < time.Second, check.Equals, true)
+	c.Assert(evt1.MetadataValue, check.Equals, history[1].MetadataValue)
+	c.Assert(evt2.MetadataValue, check.Equals, history[0].MetadataValue)
+	c.Assert(evt1.Action, check.Equals, history[1].Action)
+	c.Assert(evt2.Action, check.Equals, history[0].Action)
 }

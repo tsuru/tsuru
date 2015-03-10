@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"sort"
@@ -17,11 +18,12 @@ import (
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/safe"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
 type autoScaleEvent struct {
-	ID            bson.ObjectId `bson:"_id"`
+	ID            interface{} `bson:"_id"`
 	MetadataValue string
 	Action        string // "rebalance" or "add"
 	StartTime     time.Time
@@ -42,9 +44,14 @@ func autoScaleCollection() (*storage.Collection, error) {
 	return conn.Collection(fmt.Sprintf("%s_auto_scale", name)), nil
 }
 
+var errAutoScaleRunning = errors.New("autoscale already running")
+
 func newAutoScaleEvent(metadataValue, action string) (*autoScaleEvent, error) {
+	// Use metadataValue as ID to ensure only one auto scale process runs for
+	// each metadataValue. (*autoScaleEvent).update() will generate a new
+	// unique ID and remove this initial record.
 	evt := autoScaleEvent{
-		ID:            bson.NewObjectId(),
+		ID:            metadataValue,
 		StartTime:     time.Now().UTC(),
 		MetadataValue: metadataValue,
 		Action:        action,
@@ -54,7 +61,11 @@ func newAutoScaleEvent(metadataValue, action string) (*autoScaleEvent, error) {
 		return nil, err
 	}
 	defer coll.Close()
-	return &evt, coll.Insert(evt)
+	err = coll.Insert(evt)
+	if mgo.IsDup(err) {
+		return nil, errAutoScaleRunning
+	}
+	return &evt, err
 }
 
 func (evt *autoScaleEvent) update(err error) error {
@@ -68,7 +79,9 @@ func (evt *autoScaleEvent) update(err error) error {
 		return err
 	}
 	defer coll.Close()
-	return coll.UpdateId(evt.ID, evt)
+	defer coll.RemoveId(evt.ID)
+	evt.ID = bson.NewObjectId()
+	return coll.Insert(evt)
 }
 
 func listAutoScaleEvents(skip, limit int) ([]autoScaleEvent, error) {
@@ -203,6 +216,10 @@ func (a *autoScaleConfig) scaleGroupByCount(groupMetadata string, nodes []*clust
 		shouldRebalance = true
 		event, err = newAutoScaleEvent(groupMetadata, "add")
 		if err != nil {
+			if err == errAutoScaleRunning {
+				log.Debugf("[node autoscale] skipping already running for: %s", groupMetadata)
+				return nil
+			}
 			return fmt.Errorf("unable to create auto scale event: %s", err)
 		}
 		log.Debugf("[node autoscale] adding a new machine, metadata value: %s, free slots: %d", groupMetadata, freeSlots)
@@ -229,6 +246,10 @@ func (a *autoScaleConfig) scaleGroupByCount(groupMetadata string, nodes []*clust
 		if event == nil {
 			event, err = newAutoScaleEvent(groupMetadata, "rebalance")
 			if err != nil {
+				if err == errAutoScaleRunning {
+					log.Debugf("[node autoscale] skipping already running for: %s", groupMetadata)
+					return nil
+				}
 				return fmt.Errorf("unable to create auto scale event: %s", err)
 			}
 		}

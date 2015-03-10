@@ -6,6 +6,7 @@ package docker
 
 import (
 	"strings"
+	"sync"
 
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
@@ -385,6 +386,98 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	evts, err = listAutoScaleEvents(0, 0)
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
+}
+
+func (s *S) TestAutoScaleConfigRunStress(c *check.C) {
+	rollback := startTestRepositoryServer()
+	defer rollback()
+	defer func() {
+		machines, _ := iaas.ListMachines()
+		for _, m := range machines {
+			m.Destroy()
+		}
+	}()
+	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	config.Set("iaas:node-port", urlPort(node2.URL()))
+	defer config.Unset("iaas:node-port")
+
+	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
+	p.storage = &cluster.MapStorage{}
+	clusterInstance, err := cluster.New(nil, p.storage,
+		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
+			"pool": "pool1",
+			"iaas": "my-scale-iaas",
+		}},
+	)
+	c.Assert(err, check.IsNil)
+	p.cluster = clusterInstance
+	iaasInstance := &TestHealerIaaS{addr: "localhost"}
+	iaas.RegisterIaasProvider("my-scale-iaas", iaasInstance)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
+	defer p.Destroy(appInstance)
+	p.Provision(appInstance)
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, check.IsNil)
+
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	appStruct := &app.App{
+		Name: appInstance.GetName(),
+	}
+	err = conn.Apps().Insert(appStruct)
+	c.Assert(err, check.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
+
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		unitsToAdd:  4,
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: &p,
+	})
+	c.Assert(err, check.IsNil)
+	a := autoScaleConfig{
+		done:              make(chan bool),
+		provisioner:       &p,
+		groupByMetadata:   "pool",
+		maxContainerCount: 2,
+	}
+	wg := sync.WaitGroup{}
+	for i := 0; i < 50; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			go a.stop()
+			err = a.run()
+			c.Assert(err, check.IsNil)
+		}()
+	}
+	wg.Wait()
+	nodes, err := p.cluster.Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 2)
+	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
+	evts, err := listAutoScaleEvents(0, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].MetadataValue, check.Equals, "pool1")
+	c.Assert(evts[0].Action, check.Equals, "add")
+	c.Assert(evts[0].Successful, check.Equals, true)
+	c.Assert(evts[0].Error, check.Equals, "")
+
+	containers1, err := p.listContainersByHost(urlToHost(nodes[0].Address))
+	c.Assert(err, check.IsNil)
+	containers2, err := p.listContainersByHost(urlToHost(nodes[1].Address))
+	c.Assert(err, check.IsNil)
+	c.Assert(containers1, check.HasLen, 2)
+	c.Assert(containers2, check.HasLen, 2)
 }
 
 func (s *S) TestAutoScaleConfigRunParamsError(c *check.C) {
