@@ -28,6 +28,9 @@ func init() {
 // repositories managed by the fake manager.
 const ServerHost = "git.tsuru.io"
 
+// Diff is the diff returned by the Diff method.
+const Diff = "fake-diff"
+
 var manager = fakeManager{grants: make(map[string][]string), keys: make(map[string]map[string]string)}
 
 type fakeManager struct {
@@ -207,7 +210,7 @@ func (m *fakeManager) Diff(repositoryName, from, to string) (string, error) {
 	if _, ok := m.grants[repositoryName]; !ok {
 		return "", repository.ErrRepositoryNotFound
 	}
-	return "", nil
+	return Diff, nil
 }
 
 // Reset resets the internal state of the fake manager.

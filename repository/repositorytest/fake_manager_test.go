@@ -142,7 +142,7 @@ func (Suite) TestManagerDiff(c *check.C) {
 	c.Check(err, check.IsNil)
 	diff, err := manager.Diff("mycode", "1.0", "2.0")
 	c.Check(err, check.IsNil)
-	c.Check(diff, check.Equals, "")
+	c.Check(diff, check.Equals, Diff)
 	_, err = manager.Diff("yourcode", "1.0", "2.0")
 	c.Check(err, check.Equals, repository.ErrRepositoryNotFound)
 }
