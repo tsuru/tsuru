@@ -40,10 +40,19 @@ func (p *dockerProvisioner) listContainersByHost(address string) ([]container, e
 	return p.listContainersBy(bson.M{"hostaddr": address})
 }
 
-func (p *dockerProvisioner) countContainersByHost(address string) (int, error) {
+func (p *dockerProvisioner) countRunningContainersByHost(address string) (int, error) {
 	coll := p.collection()
 	defer coll.Close()
-	n, err := coll.Find(bson.M{"hostaddr": address}).Count()
+	n, err := coll.Find(bson.M{
+		"hostaddr": address,
+		"status": bson.M{
+			"$nin": []string{
+				provision.StatusCreated.String(),
+				provision.StatusBuilding.String(),
+				provision.StatusStopped.String(),
+			},
+		},
+	}).Count()
 	return n, err
 }
 

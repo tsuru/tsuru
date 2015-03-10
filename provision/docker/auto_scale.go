@@ -368,7 +368,7 @@ func (p *dockerProvisioner) containerGapInNodes(nodes []*cluster.Node) (int, int
 	minCount := 0
 	totalCount := 0
 	for _, n := range nodes {
-		contCount, err := p.countContainersByHost(urlToHost(n.Address))
+		contCount, err := p.countRunningContainersByHost(urlToHost(n.Address))
 		if err != nil {
 			return 0, 0, err
 		}
