@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"os"
 
 	"github.com/codegangsta/negroni"
 	"github.com/tsuru/config"
@@ -16,6 +17,7 @@ import (
 	_ "github.com/tsuru/tsuru/auth/native"
 	_ "github.com/tsuru/tsuru/auth/oauth"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/repository"
@@ -273,13 +275,25 @@ func RunServer(dry bool) http.Handler {
 		}
 		scheme, err := getAuthScheme()
 		if err != nil {
-			fmt.Printf("Warning: configuration didn't declare a auth:scheme, using default scheme.\n")
+			fmt.Printf("Warning: configuration didn't declare auth:scheme, using default scheme.\n")
 		}
 		app.AuthScheme, err = auth.GetScheme(scheme)
 		if err != nil {
 			fatal(err)
 		}
 		fmt.Printf("Using %q auth scheme.\n", scheme)
+		fmt.Println("Checking components status:")
+		results := hc.Check()
+		var hcFail bool
+		for _, result := range results {
+			if result.Status != hc.HealthCheckOK {
+				hcFail = true
+			}
+			fmt.Printf("%s: %s\n", result.Name, result.Status)
+		}
+		if hcFail {
+			os.Exit(2)
+		}
 		listen, err := config.GetString("listen")
 		if err != nil {
 			fatal(err)
