@@ -30,6 +30,7 @@ func init() {
 	api.RegisterHandler("/docker/node/apps/{appname}/containers", "GET", api.AdminRequiredHandler(listContainersHandler))
 	api.RegisterHandler("/docker/node/{address}/containers", "GET", api.AdminRequiredHandler(listContainersHandler))
 	api.RegisterHandler("/docker/node", "POST", api.AdminRequiredHandler(addNodeHandler))
+	api.RegisterHandler("/docker/node", "PUT", api.AdminRequiredHandler(updateNodeHandler))
 	api.RegisterHandler("/docker/node", "DELETE", api.AdminRequiredHandler(removeNodeHandler))
 	api.RegisterHandler("/docker/container/{id}/move", "POST", api.AdminRequiredHandler(moveContainerHandler))
 	api.RegisterHandler("/docker/containers/move", "POST", api.AdminRequiredHandler(moveContainersHandler))
@@ -145,6 +146,20 @@ func listNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 		"machines": machines,
 	}
 	return json.NewEncoder(w).Encode(result)
+}
+
+func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	params, err := unmarshal(r.Body)
+	if err != nil {
+		return err
+	}
+	address, _ := params["address"]
+	if address == "" {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "address is required"}
+	}
+	delete(params, "address")
+	_, err = mainDockerProvisioner.getCluster().UpdateNode(address, params)
+	return err
 }
 
 func fixContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {

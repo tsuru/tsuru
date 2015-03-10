@@ -877,3 +877,52 @@ func (s *HandlersSuite) TestAutoScaleHistoryHandler(c *check.C) {
 	c.Assert(evt1.Action, check.Equals, history[1].Action)
 	c.Assert(evt2.Action, check.Equals, history[0].Action)
 }
+
+func (s *HandlersSuite) TestUpdateNodeHandler(c *check.C) {
+	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{},
+		cluster.Node{Address: "localhost:1999", Metadata: map[string]string{
+			"m1": "v1",
+			"m2": "v2",
+		}},
+	)
+	p := Pool{Name: "pool1"}
+	s.conn.Collection(schedulerCollection).Insert(p)
+	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
+	json := `{"address": "localhost:1999", "m1": "", "m2": "v9", "m3": "v8"}`
+	b := bytes.NewBufferString(json)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("PUT", "/docker/node", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	nodes, err := mainDockerProvisioner.getCluster().Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Metadata, check.DeepEquals, map[string]string{
+		"m2": "v9",
+		"m3": "v8",
+	})
+}
+
+func (s *HandlersSuite) TestUpdateNodeHandlerNoAddress(c *check.C) {
+	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{},
+		cluster.Node{Address: "localhost:1999", Metadata: map[string]string{
+			"m1": "v1",
+			"m2": "v2",
+		}},
+	)
+	p := Pool{Name: "pool1"}
+	s.conn.Collection(schedulerCollection).Insert(p)
+	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
+	json := `{"m1": "", "m2": "v9", "m3": "v8"}`
+	b := bytes.NewBufferString(json)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("PUT", "/docker/node", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+}
