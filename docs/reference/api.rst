@@ -961,7 +961,8 @@ Example:
 ::
 
     GET /deploys/12345
-    {"App":"myapp","Commit":"e82nn93nd93mm12o2ueh83dhbd3iu112","Diff":"test_diff","Duration":10000000000,"Error":"","Id":"543c201d9e7aea6015618e9d","Timestamp":"2014-10-13T15:55:25-03:00"}
+    {"ID":"54ff355c283dbed9868f01fb","App":"tsuru-dashboard","Timestamp":"2015-03-10T15:18:04.301-03:00","Duration":20413970850,"Commit":"","Error":"","Image":"192.168.50.4:3030/tsuru/app-tsuru-dashboard:v2","Log":"[deploy log]","Origin":"app-deploy","CanRollback":false,"RemoveDate":"0001-01-01T00:00:00Z"}
+
 
 1.10 Metadata
 -------------
