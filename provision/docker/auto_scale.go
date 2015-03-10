@@ -116,6 +116,18 @@ type autoScaleConfig struct {
 	done                chan bool
 }
 
+type autoScaler interface {
+	scale(groupMetadata string, nodes []*cluster.Node) error
+}
+
+type memoryScaler struct {
+	*autoScaleConfig
+}
+
+type countScaler struct {
+	*autoScaleConfig
+}
+
 type metaWithFrequency struct {
 	metadata map[string]string
 	freq     int
@@ -128,11 +140,15 @@ func (l metaWithFrequencyList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 func (l metaWithFrequencyList) Less(i, j int) bool { return l[i].freq < l[j].freq }
 
 func (a *autoScaleConfig) run() error {
+	var scaler autoScaler
 	isMemoryBased := a.totalMemoryMetadata != "" && a.maxMemoryRatio != 0
 	if !isMemoryBased && a.maxContainerCount == 0 {
+		scaler = &memoryScaler{a}
 		err := fmt.Errorf("[node autoscale] aborting node auto scale, either memory information or max container count must be informed in config")
 		log.Error(err.Error())
 		return err
+	} else {
+		scaler = &countScaler{a}
 	}
 	oneMinute := 1 * time.Minute
 	if a.runInterval < oneMinute {
@@ -142,7 +158,7 @@ func (a *autoScaleConfig) run() error {
 		a.waitTimeNewMachine = oneMinute
 	}
 	for {
-		err := a.runOnce(isMemoryBased)
+		err := a.runOnce(scaler)
 		if err != nil {
 			err = fmt.Errorf("[node autoscale] %s", err.Error())
 			log.Error(err.Error())
@@ -159,7 +175,7 @@ func (a *autoScaleConfig) stop() {
 	a.done <- true
 }
 
-func (a *autoScaleConfig) runOnce(isMemoryBased bool) (retErr error) {
+func (a *autoScaleConfig) runOnce(scaler autoScaler) (retErr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			retErr = fmt.Errorf("recovered panic, we can never stop! panic: %v", r)
@@ -188,18 +204,20 @@ func (a *autoScaleConfig) runOnce(isMemoryBased bool) (retErr error) {
 		clusterMap[groupMetadata] = append(clusterMap[groupMetadata], node)
 	}
 	for groupMetadata, nodes := range clusterMap {
-		if !isMemoryBased {
-			err = a.scaleGroupByCount(groupMetadata, nodes)
-			if err != nil {
-				retErr = fmt.Errorf("error scaling group %s: %s", groupMetadata, err.Error())
-				return
-			}
+		err = scaler.scale(groupMetadata, nodes)
+		if err != nil {
+			retErr = fmt.Errorf("error scaling group %s: %s", groupMetadata, err.Error())
+			return
 		}
 	}
 	return
 }
 
-func (a *autoScaleConfig) scaleGroupByCount(groupMetadata string, nodes []*cluster.Node) error {
+func (a *memoryScaler) scale(groupMetadata string, nodes []*cluster.Node) error {
+	return nil
+}
+
+func (a *countScaler) scale(groupMetadata string, nodes []*cluster.Node) error {
 	totalCount, gap, err := a.provisioner.containerGapInNodes(nodes)
 	if err != nil {
 		return fmt.Errorf("couldn't find containers from nodes: %s", err)
