@@ -160,7 +160,7 @@ func deployInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	var data interface{}
 	if deploy.Origin == "git" {
-		data = app.DiffDeployData{DeployData: *deploy}
+		data = &app.DiffDeployData{DeployData: *deploy}
 	} else {
 		data = deploy
 	}

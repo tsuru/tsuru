@@ -576,7 +576,7 @@ func (s *DeploySuite) TestDeployInfoDiff(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	lastDeploy.ID = d["_id"].(bson.ObjectId)
-	expected := app.DiffDeployData{DeployData: lastDeploy}
+	expected := app.DiffDeployData{DeployData: lastDeploy, Diff: repositorytest.Diff}
 	var result app.DiffDeployData
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
