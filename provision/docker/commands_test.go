@@ -17,18 +17,18 @@ import (
 
 func (s *S) TestGitDeployCmds(c *check.C) {
 	app := provisiontest.NewFakeApp("app-name", "python", 1)
-	host_env := bind.EnvVar{
+	hostEnv := bind.EnvVar{
 		Name:   "TSURU_HOST",
 		Value:  "tsuru_host",
 		Public: true,
 	}
-	token_env := bind.EnvVar{
+	tokenEnv := bind.EnvVar{
 		Name:   "TSURU_APP_TOKEN",
 		Value:  "app_token",
 		Public: true,
 	}
-	app.SetEnv(host_env)
-	app.SetEnv(token_env)
+	app.SetEnv(hostEnv)
+	app.SetEnv(tokenEnv)
 	repository.Manager().CreateRepository("app-name", nil)
 	deployCmd, err := config.GetString("docker:deploy-cmd")
 	c.Assert(err, check.IsNil)
@@ -41,18 +41,18 @@ func (s *S) TestGitDeployCmds(c *check.C) {
 
 func (s *S) TestArchiveDeployCmds(c *check.C) {
 	app := provisiontest.NewFakeApp("app-name", "python", 1)
-	host_env := bind.EnvVar{
+	hostEnv := bind.EnvVar{
 		Name:   "TSURU_HOST",
 		Value:  "tsuru_host",
 		Public: true,
 	}
-	token_env := bind.EnvVar{
+	tokenEnv := bind.EnvVar{
 		Name:   "TSURU_APP_TOKEN",
 		Value:  "app_token",
 		Public: true,
 	}
-	app.SetEnv(host_env)
-	app.SetEnv(token_env)
+	app.SetEnv(hostEnv)
+	app.SetEnv(tokenEnv)
 	deployCmd, err := config.GetString("docker:deploy-cmd")
 	c.Assert(err, check.IsNil)
 	archiveURL := "https://s3.amazonaws.com/wat/archive.tar.gz"
@@ -65,18 +65,18 @@ func (s *S) TestArchiveDeployCmds(c *check.C) {
 
 func (s *S) TestRunWithAgentCmds(c *check.C) {
 	app := provisiontest.NewFakeApp("app-name", "python", 1)
-	host_env := bind.EnvVar{
+	hostEnv := bind.EnvVar{
 		Name:   "TSURU_HOST",
 		Value:  "tsuru_host",
 		Public: true,
 	}
-	token_env := bind.EnvVar{
+	tokenEnv := bind.EnvVar{
 		Name:   "TSURU_APP_TOKEN",
 		Value:  "app_token",
 		Public: true,
 	}
-	app.SetEnv(host_env)
-	app.SetEnv(token_env)
+	app.SetEnv(hostEnv)
+	app.SetEnv(tokenEnv)
 	runCmd, err := config.GetString("docker:run-cmd:bin")
 	c.Assert(err, check.IsNil)
 	unitAgentCmd := fmt.Sprintf("tsuru_unit_agent tsuru_host app_token app-name %s", runCmd)
