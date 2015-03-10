@@ -339,7 +339,7 @@ type TsuruYamlHealthcheck struct {
 	Method          string
 	Status          int
 	Match           string
-	AllowedFailures int `json:"allowed_failures"`
+	AllowedFailures int `json:"allowed_failures" bson:"allowed_failures"`
 }
 
 type TsuruYamlData struct {

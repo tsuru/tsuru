@@ -171,7 +171,9 @@ func (s *S) TestHealthcheckKeepsTryingWithServerDown(c *check.C) {
 			conn, _, _ := hj.Hijack()
 			conn.Close()
 		}
+		shouldRun = !shouldRun
 	}))
+	defer server.Close()
 	a := app.App{Name: "myapp1", CustomData: map[string]interface{}{
 		"healthcheck": map[string]interface{}{
 			"path": "/x/y",
@@ -184,12 +186,6 @@ func (s *S) TestHealthcheckKeepsTryingWithServerDown(c *check.C) {
 	host, port, _ := net.SplitHostPort(url.Host)
 	cont := container{AppName: a.Name, HostAddr: host, HostPort: port}
 	buf := bytes.Buffer{}
-	go func() {
-		time.Sleep(1 * time.Second)
-		lock.Lock()
-		defer lock.Unlock()
-		shouldRun = true
-	}()
 	err = runHealthcheck(&cont, &buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, `(?s).*---> healthcheck fail.*?Trying again in 3s.*---> healthcheck successful.*`)
@@ -228,7 +224,7 @@ func (s *S) TestHealthcheckErrorsAfterMaxTime(c *check.C) {
 	c.Assert(err, check.ErrorMatches, "healthcheck fail.*lookup some-invalid-server-name.some-invalid-server-name.com: no such host")
 }
 
-func (s *S) TestSuccessfulHealthcheckWithAllowedFailures(c *check.C) {
+func (s *S) TestHealthcheckSuccessfulWithAllowedFailures(c *check.C) {
 	var requests []*http.Request
 	lock := sync.Mutex{}
 	step := 0
@@ -245,7 +241,9 @@ func (s *S) TestSuccessfulHealthcheckWithAllowedFailures(c *check.C) {
 			conn, _, _ := hj.Hijack()
 			conn.Close()
 		}
+		step++
 	}))
+	defer server.Close()
 	a := app.App{Name: "myapp1", CustomData: map[string]interface{}{
 		"healthcheck": map[string]interface{}{
 			"path":             "/x/y",
@@ -259,16 +257,6 @@ func (s *S) TestSuccessfulHealthcheckWithAllowedFailures(c *check.C) {
 	host, port, _ := net.SplitHostPort(url.Host)
 	cont := container{AppName: a.Name, HostAddr: host, HostPort: port}
 	buf := bytes.Buffer{}
-	go func() {
-		time.Sleep(1 * time.Second)
-		lock.Lock()
-		step = 1
-		lock.Unlock()
-		time.Sleep(3 * time.Second)
-		lock.Lock()
-		defer lock.Unlock()
-		step = 2
-	}()
 	err = runHealthcheck(&cont, &buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, `(?s).*---> healthcheck fail.*?Trying again in 3s.*---> healthcheck fail.*?Trying again in 3s.*---> healthcheck successful.*`)
@@ -278,5 +266,59 @@ func (s *S) TestSuccessfulHealthcheckWithAllowedFailures(c *check.C) {
 	c.Assert(requests[1].Method, check.Equals, "GET")
 	c.Assert(requests[1].URL.Path, check.Equals, "/x/y")
 	c.Assert(requests[2].Method, check.Equals, "GET")
+	c.Assert(requests[2].URL.Path, check.Equals, "/x/y")
+}
+
+func (s *S) TestHealthcheckSuccessfulFromImageWithAllowedFailures(c *check.C) {
+	var requests []*http.Request
+	lock := sync.Mutex{}
+	step := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		lock.Lock()
+		defer lock.Unlock()
+		requests = append(requests, r)
+		if step == 2 {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("okay!"))
+		} else if step == 1 {
+			w.WriteHeader(http.StatusBadGateway)
+			w.Write([]byte("invalid"))
+		} else {
+			hj := w.(http.Hijacker)
+			conn, _, _ := hj.Hijack()
+			conn.Close()
+		}
+		step++
+	}))
+	defer server.Close()
+	a := app.App{Name: "myapp1"}
+	imgId, err := appCurrentImageName(a.Name)
+	c.Assert(err, check.IsNil)
+	err = saveImageCustomData(imgId, map[string]interface{}{
+		"healthcheck": map[string]interface{}{
+			"path":             "/x/y",
+			"method":           "PUT",
+			"status":           200,
+			"match":            "okay!",
+			"allowed_failures": 1,
+		},
+	})
+	c.Assert(err, check.IsNil)
+	err = s.storage.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
+	url, _ := url.Parse(server.URL)
+	host, port, _ := net.SplitHostPort(url.Host)
+	cont := container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imgId}
+	buf := bytes.Buffer{}
+	err = runHealthcheck(&cont, &buf)
+	c.Assert(err, check.IsNil)
+	c.Assert(buf.String(), check.Matches, `(?s).*---> healthcheck fail.*?Trying again in 3s.*---> healthcheck fail.*?Trying again in 3s.*---> healthcheck successful.*`)
+	c.Assert(requests, check.HasLen, 3)
+	c.Assert(requests[0].Method, check.Equals, "PUT")
+	c.Assert(requests[0].URL.Path, check.Equals, "/x/y")
+	c.Assert(requests[1].Method, check.Equals, "PUT")
+	c.Assert(requests[1].URL.Path, check.Equals, "/x/y")
+	c.Assert(requests[2].Method, check.Equals, "PUT")
 	c.Assert(requests[2].URL.Path, check.Equals, "/x/y")
 }
