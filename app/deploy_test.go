@@ -384,12 +384,17 @@ func (s *S) TestGetDeployNotFound(c *check.C) {
 
 func (s *S) TestGetDiffInDeploys(c *check.C) {
 	s.conn.Deploys().RemoveAll(nil)
-	myDeploy := DeployData{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second), Commit: "545b1904af34458704e2aa06ff1aaffad5289f8g"}
+	myDeploy := DeployData{
+		App:       "g1",
+		Timestamp: time.Now().Add(-3600 * time.Second),
+		Commit:    "545b1904af34458704e2aa06ff1aaffad5289f8g",
+		Origin:    "git",
+	}
 	deploys := []DeployData{
-		{App: "ge", Timestamp: time.Now(), Commit: "hwed834hf8y34h8fhn8rnr823nr238runh23x"},
-		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second * 2), Commit: "545b1904af34458704e2aa06ff1aaffad5289f8f"},
+		{App: "ge", Timestamp: time.Now(), Commit: "hwed834hf8y34h8fhn8rnr823nr238runh23x", Origin: "git"},
+		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second * 2), Commit: "545b1904af34458704e2aa06ff1aaffad5289f8f", Origin: "git"},
 		myDeploy,
-		{App: "g1", Timestamp: time.Now(), Commit: "1b970b076bbb30d708e262b402d4e31910e1dc10"},
+		{App: "g1", Timestamp: time.Now(), Commit: "1b970b076bbb30d708e262b402d4e31910e1dc10", Origin: "git"},
 	}
 	for _, d := range deploys {
 		s.conn.Deploys().Insert(d)
@@ -413,6 +418,32 @@ func (s *S) TestGetDiffInDeploysWithOneCommit(c *check.C) {
 	diffOutput, err := GetDiffInDeploys(&lastDeploy)
 	c.Assert(err, check.IsNil)
 	c.Assert(diffOutput, check.Equals, "The deployment must have at least two commits for the diff.")
+}
+
+func (s *S) TestGetDiffInDeploysNoGit(c *check.C) {
+	s.conn.Deploys().RemoveAll(nil)
+	myDeploy := DeployData{
+		App:       "g1",
+		Timestamp: time.Now().Add(-3600 * time.Second),
+		Commit:    "545b1904af34458704e2aa06ff1aaffad5289f8g",
+		Origin:    "app-deploy",
+	}
+	deploys := []DeployData{
+		{App: "ge", Timestamp: time.Now(), Commit: "hwed834hf8y34h8fhn8rnr823nr238runh23x", Origin: "git"},
+		{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second * 2), Commit: "545b1904af34458704e2aa06ff1aaffad5289f8f", Origin: "git"},
+		myDeploy,
+		{App: "g1", Timestamp: time.Now(), Commit: "1b970b076bbb30d708e262b402d4e31910e1dc10", Origin: "git"},
+	}
+	for _, d := range deploys {
+		s.conn.Deploys().Insert(d)
+	}
+	defer s.conn.Deploys().RemoveAll(nil)
+	err := s.conn.Deploys().Find(bson.M{"commit": myDeploy.Commit}).One(&myDeploy)
+	c.Assert(err, check.IsNil)
+	repository.Manager().CreateRepository("g1", nil)
+	diffOutput, err := GetDiffInDeploys(&myDeploy)
+	c.Assert(err, check.IsNil)
+	c.Assert(diffOutput, check.Equals, "Cannot have diffs between git based and app-deploy based deployments")
 }
 
 func (s *S) TestDeployApp(c *check.C) {

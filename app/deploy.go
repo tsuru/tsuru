@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"time"
 
@@ -202,6 +203,9 @@ func GetDiffInDeploys(d *DeployData) (string, error) {
 	}
 	if len(list) < 2 {
 		return "The deployment must have at least two commits for the diff.", nil
+	}
+	if list[0].Origin != "git" || list[1].Origin != "git" {
+		return fmt.Sprintf("Cannot have diffs between %s based and %s based deployments", list[1].Origin, list[0].Origin), nil
 	}
 	return repository.Manager().Diff(d.App, list[1].Commit, list[0].Commit)
 }
