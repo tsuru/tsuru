@@ -197,14 +197,15 @@ func (a *autoScaleConfig) scaleGroupByCount(groupMetadata string, nodes []*clust
 	if a.groupByMetadata != "" {
 		rebalanceFilter = map[string]string{a.groupByMetadata: groupMetadata}
 	}
-
 	var event *autoScaleEvent
+	var gapAfter int
 	if freeSlots < 0 {
 		shouldRebalance = true
 		event, err = newAutoScaleEvent(groupMetadata, "add")
 		if err != nil {
 			return fmt.Errorf("unable to create auto scale event: %s", err)
 		}
+		log.Debugf("[node autoscale] adding a new machine, metadata value: %s, free slots: %d", groupMetadata, freeSlots)
 		err := a.addNode(nodes)
 		if err != nil {
 			event.update(err)
@@ -214,16 +215,17 @@ func (a *autoScaleConfig) scaleGroupByCount(groupMetadata string, nodes []*clust
 		buf := safe.NewBuffer(nil)
 		rebalanceProvisioner, err := a.provisioner.rebalanceContainersByFilter(buf, nil, rebalanceFilter, true)
 		if err != nil {
-			log.Errorf("Unable to run dry rebalance to check if rebalance is needed: %s - log: %s", err, buf.String())
+			log.Errorf("unable to run dry rebalance to check if rebalance is needed: %s - log: %s", err, buf.String())
 			return nil
 		}
-		_, gapAfter, err := rebalanceProvisioner.containerGapInNodes(nodes)
+		_, gapAfter, err = rebalanceProvisioner.containerGapInNodes(nodes)
 		if err != nil {
 			return fmt.Errorf("couldn't find containers from rebalanced nodes: %s", err)
 		}
 		shouldRebalance = math.Abs((float64)(gap-gapAfter)) > 2.0
 	}
 	if shouldRebalance {
+		log.Debugf("[node autoscale] running rebalance, metadata value: %s, gap before: %d, gap after: %d", groupMetadata, gap, gapAfter)
 		if event == nil {
 			event, err = newAutoScaleEvent(groupMetadata, "rebalance")
 			if err != nil {
@@ -254,13 +256,13 @@ func (a *autoScaleConfig) addNode(modelNodes []*cluster.Node) error {
 		return fmt.Errorf("unable to create machine: %s", err.Error())
 	}
 	newAddr := machine.FormatNodeAddress()
-	log.Debugf("New machine created during auto scaling: %s - Waiting for docker to start...", newAddr)
+	log.Debugf("[node autoscale] new machine created: %s - Waiting for docker to start...", newAddr)
 	_, err = a.provisioner.getCluster().WaitAndRegister(newAddr, metadata, a.waitTimeNewMachine)
 	if err != nil {
 		machine.Destroy()
 		return fmt.Errorf("error registering new node %s: %s", newAddr, err.Error())
 	}
-	log.Debugf("New machine created during auto scaling: %s - started!", newAddr)
+	log.Debugf("[node autoscale] new machine created: %s - started!", newAddr)
 	return nil
 }
 
