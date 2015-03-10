@@ -102,7 +102,7 @@ func (m *Machine) Destroy() error {
 	}
 	err = iaas.DeleteMachine(m)
 	if err != nil {
-		return err
+		log.Errorf("failed to destroy machine in the IaaS: %s", err)
 	}
 	return m.removeFromDB()
 }
