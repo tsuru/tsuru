@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository"
+	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -405,7 +406,7 @@ func (s *S) TestGetDiffInDeploys(c *check.C) {
 	repository.Manager().CreateRepository("g1", nil)
 	diffOutput, err := GetDiffInDeploys(&myDeploy)
 	c.Assert(err, check.IsNil)
-	c.Assert(diffOutput, check.Equals, "")
+	c.Assert(diffOutput, check.Equals, repositorytest.Diff)
 }
 
 func (s *S) TestGetDiffInDeploysWithOneCommit(c *check.C) {
