@@ -288,8 +288,8 @@ func RunServer(dry bool) http.Handler {
 		for _, result := range results {
 			if result.Status != hc.HealthCheckOK {
 				hcFail = true
+				fmt.Printf("ERROR: %q is not working: %s\n", result.Name, result.Status)
 			}
-			fmt.Printf("%s: %s\n", result.Name, result.Status)
 		}
 		if hcFail {
 			os.Exit(2)
