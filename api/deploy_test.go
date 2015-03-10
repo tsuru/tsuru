@@ -527,14 +527,13 @@ func (s *DeploySuite) TestDeployInfoByAdminUser(c *check.C) {
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a)
-	var result map[string]interface{}
 	recorder := httptest.NewRecorder()
 	timestamp := time.Now()
 	duration := time.Duration(10e9)
-	previousDeploy := Deploy{App: "g1", Timestamp: timestamp.Add(-3600 * time.Second), Duration: duration, Commit: "e293e3e3me03ejm3puejmp3ej3iejop32", Error: ""}
+	previousDeploy := app.DeployData{App: "g1", Timestamp: timestamp.Add(-3600 * time.Second), Duration: duration, Commit: "e293e3e3me03ejm3puejmp3ej3iejop32", Error: ""}
 	err = s.conn.Deploys().Insert(previousDeploy)
 	c.Assert(err, check.IsNil)
-	lastDeploy := Deploy{App: "g1", Timestamp: timestamp, Duration: duration, Commit: "e82nn93nd93mm12o2ueh83dhbd3iu112", Error: ""}
+	lastDeploy := app.DeployData{App: "g1", Timestamp: timestamp, Duration: duration, Commit: "e82nn93nd93mm12o2ueh83dhbd3iu112", Error: ""}
 	err = s.conn.Deploys().Insert(lastDeploy)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Deploys().RemoveAll(nil)
@@ -549,18 +548,50 @@ func (s *DeploySuite) TestDeployInfoByAdminUser(c *check.C) {
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var result app.DeployData
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
-	expected_deploy := map[string]interface{}{
-		"Id":        lastDeployId,
-		"App":       "g1",
-		"Timestamp": timestamp.Format(time.RFC3339),
-		"Duration":  10e9,
-		"Commit":    "e82nn93nd93mm12o2ueh83dhbd3iu112",
-		"Error":     "",
-		"Diff":      "",
-	}
-	c.Assert(result, check.DeepEquals, expected_deploy)
+	lastDeploy.ID = d["_id"].(bson.ObjectId)
+	result.Timestamp = lastDeploy.Timestamp
+	result.RemoveDate = lastDeploy.RemoveDate
+	c.Assert(result, check.DeepEquals, lastDeploy)
+}
+
+func (s *DeploySuite) TestDeployInfoDiff(c *check.C) {
+	a := app.App{Name: "g1", Platform: "python", Teams: []string{s.team.Name}}
+	user, _ := s.token.User()
+	err := app.CreateApp(&a, user)
+	c.Assert(err, check.IsNil)
+	defer app.Delete(&a)
+	recorder := httptest.NewRecorder()
+	timestamp := time.Now()
+	duration := time.Duration(10e9)
+	previousDeploy := app.DeployData{App: "g1", Timestamp: timestamp.Add(-3600 * time.Second), Duration: duration, Commit: "e293e3e3me03ejm3puejmp3ej3iejop32", Error: "", Origin: "git"}
+	err = s.conn.Deploys().Insert(previousDeploy)
+	c.Assert(err, check.IsNil)
+	lastDeploy := app.DeployData{App: "g1", Timestamp: timestamp, Duration: duration, Commit: "e82nn93nd93mm12o2ueh83dhbd3iu112", Error: "", Origin: "git"}
+	err = s.conn.Deploys().Insert(lastDeploy)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Deploys().RemoveAll(nil)
+	var d map[string]interface{}
+	err = s.conn.Deploys().Find(bson.M{"commit": lastDeploy.Commit}).One(&d)
+	c.Assert(err, check.IsNil)
+	lastDeployId := d["_id"].(bson.ObjectId).Hex()
+	url := fmt.Sprintf("/deploys/%s", lastDeployId)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	lastDeploy.ID = d["_id"].(bson.ObjectId)
+	expected := app.DiffDeployData{DeployData: lastDeploy}
+	var result app.DiffDeployData
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	result.Timestamp = lastDeploy.Timestamp
+	result.RemoveDate = lastDeploy.RemoveDate
+	c.Assert(result, check.DeepEquals, expected)
 }
 
 func (s *DeploySuite) TestDeployInfoByNonAdminUser(c *check.C) {

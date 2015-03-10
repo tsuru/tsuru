@@ -158,18 +158,11 @@ func deployInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
-	diff, err := app.GetDiffInDeploys(deploy)
-	if err != nil {
-		return err
-	}
-	data := map[string]interface{}{
-		"Id":        deploy.ID.Hex(),
-		"App":       deploy.App,
-		"Timestamp": deploy.Timestamp.Format(time.RFC3339),
-		"Duration":  deploy.Duration.Nanoseconds(),
-		"Commit":    deploy.Commit,
-		"Error":     deploy.Error,
-		"Diff":      diff,
+	var data interface{}
+	if deploy.Origin == "git" {
+		data = app.DiffDeployData{DeployData: *deploy}
+	} else {
+		data = deploy
 	}
 	return json.NewEncoder(w).Encode(data)
 }

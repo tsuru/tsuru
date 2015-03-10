@@ -6,6 +6,7 @@ package app
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"time"
@@ -32,6 +33,22 @@ type DeployData struct {
 	Origin      string
 	CanRollback bool
 	RemoveDate  time.Time `bson:",omitempty"`
+}
+
+type DiffDeployData struct {
+	DeployData
+	Diff string
+}
+
+func (d *DiffDeployData) MarshalJSON() ([]byte, error) {
+	var err error
+	if d.Diff == "" {
+		d.Diff, err = GetDiffInDeploys(&d.DeployData)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return json.Marshal(*d)
 }
 
 type DeployOptions struct {
