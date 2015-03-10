@@ -393,7 +393,7 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 
 	nodes[0].Metadata["iaas"] = "my-healer-iaas"
 	created, err := healer.healNode(&nodes[0])
-	c.Assert(err, check.ErrorMatches, "(?s)Unable to destroy machine.*my destroy error")
+	c.Assert(err, check.IsNil)
 	c.Assert(created.Address, check.Equals, fmt.Sprintf("http://localhost:%d", urlPort(node2.URL())))
 
 	nodes, err = p.getCluster().UnfilteredNodes()
@@ -404,9 +404,8 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 
 	machines, err = iaas.ListMachines()
 	c.Assert(err, check.IsNil)
-	c.Assert(machines, check.HasLen, 2)
-	c.Assert(machines[0].Address, check.Equals, "127.0.0.1")
-	c.Assert(machines[1].Address, check.Equals, "localhost")
+	c.Assert(machines, check.HasLen, 1)
+	c.Assert(machines[0].Address, check.Equals, "localhost")
 
 	done := make(chan bool)
 	go func() {
