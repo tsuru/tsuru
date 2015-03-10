@@ -140,15 +140,11 @@ func (l metaWithFrequencyList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 func (l metaWithFrequencyList) Less(i, j int) bool { return l[i].freq < l[j].freq }
 
 func (a *autoScaleConfig) run() error {
-	var scaler autoScaler
 	isMemoryBased := a.totalMemoryMetadata != "" && a.maxMemoryRatio != 0
 	if !isMemoryBased && a.maxContainerCount == 0 {
-		scaler = &memoryScaler{a}
 		err := fmt.Errorf("[node autoscale] aborting node auto scale, either memory information or max container count must be informed in config")
 		log.Error(err.Error())
 		return err
-	} else {
-		scaler = &countScaler{a}
 	}
 	oneMinute := 1 * time.Minute
 	if a.runInterval < oneMinute {
@@ -156,6 +152,12 @@ func (a *autoScaleConfig) run() error {
 	}
 	if a.waitTimeNewMachine < oneMinute {
 		a.waitTimeNewMachine = oneMinute
+	}
+	var scaler autoScaler
+	if isMemoryBased {
+		scaler = &memoryScaler{a}
+	} else {
+		scaler = &countScaler{a}
 	}
 	for {
 		err := a.runOnce(scaler)
