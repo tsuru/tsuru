@@ -711,6 +711,7 @@ func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 		fixContainersCmd{},
 		&listHealingHistoryCmd{},
 		&listAutoScaleHistoryCmd{},
+		&updateNodeToSchedulerCmd{},
 	}
 }
 

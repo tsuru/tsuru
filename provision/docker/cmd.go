@@ -83,6 +83,46 @@ func (a *addNodeToSchedulerCmd) Flags() *gnuflag.FlagSet {
 	return a.fs
 }
 
+type updateNodeToSchedulerCmd struct{}
+
+func (updateNodeToSchedulerCmd) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "docker-node-update",
+		Usage:   "docker-node-update <address> [param_name=param_value...]",
+		Desc:    `Modifies metadata associated to a docker node.`,
+		MinArgs: 2,
+	}
+}
+
+func (a *updateNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
+	jsonParams := map[string]string{}
+	for _, param := range ctx.Args[1:] {
+		if strings.Contains(param, "=") {
+			keyValue := strings.SplitN(param, "=", 2)
+			jsonParams[keyValue[0]] = keyValue[1]
+		}
+	}
+	jsonParams["address"] = ctx.Args[0]
+	b, err := json.Marshal(jsonParams)
+	if err != nil {
+		return err
+	}
+	url, err := cmd.GetURL(fmt.Sprintf("/docker/node"))
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest("PUT", url, bytes.NewBuffer(b))
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(req)
+	if err != nil {
+		return err
+	}
+	ctx.Stdout.Write([]byte("Node successfully updated.\n"))
+	return nil
+}
+
 type removeNodeFromSchedulerCmd struct {
 	cmd.ConfirmationCommand
 	fs      *gnuflag.FlagSet

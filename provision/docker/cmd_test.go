@@ -477,3 +477,30 @@ func (s *S) TestListAutoScaleHistoryCmdRun(c *check.C) {
 	expected = fmt.Sprintf(expected, startTStr, endTStr, startTStr, endTStr)
 	c.Assert(buf.String(), check.Equals, expected)
 }
+
+func (s *S) TestUpdateNodeToTheSchedulerCmdRun(c *check.C) {
+	var buf bytes.Buffer
+	context := cmd.Context{Args: []string{"http://localhost:1111", "x=y", "y=z"}, Stdout: &buf}
+	expectedBody := map[string]string{
+		"address": "http://localhost:1111",
+		"x":       "y",
+		"y":       "z",
+	}
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			body, _ := ioutil.ReadAll(req.Body)
+			var parsed map[string]string
+			err := json.Unmarshal(body, &parsed)
+			c.Assert(err, check.IsNil)
+			c.Assert(parsed, check.DeepEquals, expectedBody)
+			return req.URL.Path == "/docker/node" && req.Method == "PUT"
+		},
+	}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
+	cmd := updateNodeToSchedulerCmd{}
+	err := cmd.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	c.Assert(buf.String(), check.Equals, "Node successfully updated.\n")
+}

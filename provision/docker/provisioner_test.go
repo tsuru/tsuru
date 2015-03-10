@@ -939,6 +939,7 @@ func (s *S) TestAdminCommands(c *check.C) {
 		fixContainersCmd{},
 		&listHealingHistoryCmd{},
 		&listAutoScaleHistoryCmd{},
+		&updateNodeToSchedulerCmd{},
 	}
 	c.Assert(s.p.AdminCommands(), check.DeepEquals, expected)
 }
