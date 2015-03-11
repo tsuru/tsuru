@@ -89,7 +89,8 @@ func (t *Table) addRows(rows rowSlice, sizes []int, result string) string {
 }
 
 func splitJoinEvery(str string, n int) string {
-	breakOnSpace := os.Getenv("TSURU_BREAK_WHITESPACE") != ""
+	breakOnAny := os.Getenv("TSURU_BREAK_ANY") != ""
+	breakChars := []rune{' ', '.', ':', '='}
 	n -= 1
 	str = strings.TrimSpace(str)
 	lines := strings.Split(str, "\n")
@@ -112,25 +113,38 @@ func splitJoinEvery(str string, n int) string {
 			}
 			oldEnd := end
 			skipSpace := false
-			if breakOnSpace && end < strLen {
+			breakableChar := false
+			if !breakOnAny && end < strLen {
 				for ; end > start; end-- {
-					if lineRunes[end] == rune(' ') {
-						skipSpace = true
+					for _, chr := range breakChars {
+						if chr == lineRunes[end] {
+							breakableChar = true
+							if chr == ' ' {
+								skipSpace = true
+							} else if end < oldEnd {
+								end++
+							}
+							break
+						}
+					}
+					if breakableChar {
 						break
 					}
 				}
-				if !skipSpace {
+				if !breakableChar {
 					end = oldEnd
 				}
 			}
 			part := make([]rune, end-start)
 			copy(part, lineRunes[start:end])
-			if skipSpace {
+			if breakableChar {
 				padding := n - (end - start)
 				if padding > 0 {
 					part = append(part, []rune(strings.Repeat(" ", padding))...)
 				}
-				end++
+				if skipSpace {
+					end++
+				}
 			}
 			if end < strLen {
 				part = append(part, rune('↵'))

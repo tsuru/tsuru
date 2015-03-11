@@ -363,9 +363,6 @@ func (s *S) TestColoredString(c *check.C) {
 }
 
 func (s *S) TestResizeLastColumnOnWhitespace(c *check.C) {
-	err := os.Setenv("TSURU_BREAK_WHITESPACE", "1")
-	c.Assert(err, check.IsNil)
-	defer os.Unsetenv("TSURU_BREAK_WHITESPACE")
 	t := NewTable()
 	t.AddRow(Row{"1", "abc def ghi jk"})
 	t.AddRow(Row{"2", "12 3 456 7890"})
@@ -383,4 +380,51 @@ jk`})
 0`})
 	c.Assert(t.rows[2], check.DeepEquals, Row{"3", `1 2↵
 3 4`})
+}
+
+func (s *S) TestResizeLastColumnOnAnyWithBreakAny(c *check.C) {
+	err := os.Setenv("TSURU_BREAK_ANY", "1")
+	c.Assert(err, check.IsNil)
+	defer os.Unsetenv("TSURU_BREAK_ANY")
+	t := NewTable()
+	t.AddRow(Row{"1", "abc def ghi jk"})
+	t.AddRow(Row{"2", "12 3 456 7890"})
+	t.AddRow(Row{"3", "1 2 3 4"})
+	sizes := t.resizeLastColumn(12)
+	c.Assert(sizes, check.DeepEquals, []int{1, 4})
+	c.Assert(t.rows[0], check.DeepEquals, Row{"1", `abc↵
+ de↵
+f g↵
+hi ↵
+jk`})
+	c.Assert(t.rows[1], check.DeepEquals, Row{"2", `12 ↵
+3 4↵
+56 ↵
+789↵
+0`})
+	c.Assert(t.rows[2], check.DeepEquals, Row{"3", `1 2↵
+ 3 ↵
+4`})
+}
+
+func (s *S) TestResizeLastColumnOnBreakableChars(c *check.C) {
+	t := NewTable()
+	t.AddRow(Row{"1", "abc:def ghi jk"})
+	t.AddRow(Row{"2", "12:3 456 7890"})
+	t.AddRow(Row{"3", "1 2 3: 4"})
+	sizes := t.resizeLastColumn(12)
+	c.Assert(sizes, check.DeepEquals, []int{1, 4})
+	c.Assert(t.rows[0], check.DeepEquals, Row{"1", `abc↵
+:de↵
+f  ↵
+ghi↵
+jk`})
+	c.Assert(t.rows[1], check.DeepEquals, Row{"2", `12:↵
+3  ↵
+456↵
+789↵
+0`})
+	c.Assert(t.rows[2], check.DeepEquals, Row{"3", `1 2↵
+3: ↵
+4`})
 }
