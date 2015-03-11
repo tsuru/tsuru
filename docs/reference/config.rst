@@ -104,7 +104,7 @@ It will also include a function used for querying configuration values, named
 
 This setting is optional. When ``index-page-template`` is not defined, tsuru
 will use the `default template
-<https://github.com/tsuru/tsuru/blob/master/api/index_template.go>`_.
+<https://github.com/tsuru/tsuru/blob/master/api/index_templates.go>`_.
 
 Database access
 ---------------
