@@ -103,7 +103,7 @@ func findPlanByName(name string) (*Plan, error) {
 	return &plan, nil
 }
 
-func defaultPlan() (*Plan, error) {
+func DefaultPlan() (*Plan, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err

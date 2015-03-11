@@ -191,7 +191,7 @@ func CreateApp(app *App, user *auth.User) error {
 	}
 	var plan *Plan
 	if app.Plan.Name == "" {
-		plan, err = defaultPlan()
+		plan, err = DefaultPlan()
 	} else {
 		plan, err = findPlanByName(app.Plan.Name)
 	}
