@@ -850,11 +850,11 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterNode(c *check.C) {
 }
 
 func (s *HandlersSuite) TestAutoScaleHistoryHandler(c *check.C) {
-	evt1, err := newAutoScaleEvent("poolx", "add")
+	evt1, err := newAutoScaleEvent("poolx", "add", "reason 1")
 	c.Assert(err, check.IsNil)
 	err = evt1.update(nil)
 	c.Assert(err, check.IsNil)
-	evt2, err := newAutoScaleEvent("pooly", "rebalance")
+	evt2, err := newAutoScaleEvent("pooly", "rebalance", "reason 2")
 	c.Assert(err, check.IsNil)
 	err = evt2.update(errors.New("my error"))
 	c.Assert(err, check.IsNil)
@@ -876,6 +876,8 @@ func (s *HandlersSuite) TestAutoScaleHistoryHandler(c *check.C) {
 	c.Assert(evt2.MetadataValue, check.Equals, history[0].MetadataValue)
 	c.Assert(evt1.Action, check.Equals, history[1].Action)
 	c.Assert(evt2.Action, check.Equals, history[0].Action)
+	c.Assert(evt1.Reason, check.Equals, history[1].Reason)
+	c.Assert(evt2.Reason, check.Equals, history[0].Reason)
 }
 
 func (s *HandlersSuite) TestUpdateNodeHandler(c *check.C) {

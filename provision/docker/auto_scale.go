@@ -9,10 +9,12 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strconv"
 	"time"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/iaas"
@@ -26,6 +28,7 @@ type autoScaleEvent struct {
 	ID            interface{} `bson:"_id"`
 	MetadataValue string
 	Action        string // "rebalance" or "add"
+	Reason        string // dependend on scaler
 	StartTime     time.Time
 	EndTime       time.Time `bson:",omitempty"`
 	Successful    bool
@@ -46,7 +49,7 @@ func autoScaleCollection() (*storage.Collection, error) {
 
 var errAutoScaleRunning = errors.New("autoscale already running")
 
-func newAutoScaleEvent(metadataValue, action string) (*autoScaleEvent, error) {
+func newAutoScaleEvent(metadataValue, action, reason string) (*autoScaleEvent, error) {
 	// Use metadataValue as ID to ensure only one auto scale process runs for
 	// each metadataValue. (*autoScaleEvent).update() will generate a new
 	// unique ID and remove this initial record.
@@ -55,6 +58,7 @@ func newAutoScaleEvent(metadataValue, action string) (*autoScaleEvent, error) {
 		StartTime:     time.Now().UTC(),
 		MetadataValue: metadataValue,
 		Action:        action,
+		Reason:        reason,
 	}
 	coll, err := autoScaleCollection()
 	if err != nil {
@@ -238,7 +242,57 @@ func (a *autoScaleConfig) runOnce(scaler autoScaler) (retErr error) {
 }
 
 func (a *memoryScaler) scale(groupMetadata string, nodes []*cluster.Node) (*autoScaleEvent, error) {
-	return nil, nil
+	plans, err := app.PlansList()
+	if err != nil {
+		return nil, fmt.Errorf("couldn't list plans: %s", err)
+	}
+	var maxPlanMemory int64
+	for _, plan := range plans {
+		if plan.Memory > maxPlanMemory {
+			maxPlanMemory = plan.Memory
+		}
+	}
+	hostReserved := make(map[string]int64)
+	for _, node := range nodes {
+		containers, err := a.provisioner.listRunningContainersByHost(urlToHost(node.Address))
+		if err != nil {
+			return nil, fmt.Errorf("couldn't find containers: %s", err)
+		}
+		for _, cont := range containers {
+			a, err := app.GetByName(cont.AppName)
+			if err != nil {
+				return nil, err
+			}
+			hostReserved[node.Address] += a.Plan.Memory
+		}
+	}
+	canFitMax := false
+	for _, node := range nodes {
+		totalMemory, _ := strconv.ParseFloat(node.Metadata[a.totalMemoryMetadata], 64)
+		nodeMaxMem := int64(float64(a.maxMemoryRatio) * totalMemory)
+		if maxPlanMemory > nodeMaxMem {
+			return nil, fmt.Errorf("aborting, impossible to fit max plan memory of %d bytes, node max available memory is %d", maxPlanMemory, nodeMaxMem)
+		}
+		nodePredictedMem := hostReserved[node.Address] + maxPlanMemory
+		if nodePredictedMem <= nodeMaxMem {
+			canFitMax = true
+			break
+		}
+	}
+	if canFitMax {
+		return nil, nil
+	}
+	event, err := newAutoScaleEvent(groupMetadata, "add", fmt.Sprintf("can't add %d bytes to an existing node", maxPlanMemory))
+	if err != nil {
+		return nil, err
+	}
+	log.Debugf("[node autoscale] adding a new machine, metadata value: %s, didn't have %d bytes available", groupMetadata, maxPlanMemory)
+	err = a.addNode(nodes)
+	if err != nil {
+		event.update(err)
+		return nil, err
+	}
+	return event, nil
 }
 
 func (a *countScaler) scale(groupMetadata string, nodes []*cluster.Node) (*autoScaleEvent, error) {
@@ -250,7 +304,7 @@ func (a *countScaler) scale(groupMetadata string, nodes []*cluster.Node) (*autoS
 	if freeSlots >= 0 {
 		return nil, nil
 	}
-	event, err := newAutoScaleEvent(groupMetadata, "add")
+	event, err := newAutoScaleEvent(groupMetadata, "add", fmt.Sprintf("number of free slots is %d", freeSlots))
 	if err != nil {
 		return nil, err
 	}
@@ -278,7 +332,7 @@ func (a *autoScaleConfig) createRebalanceEvent(groupMetadata string, nodes []*cl
 		return nil, nil
 	}
 	log.Debugf("[node autoscale] running rebalance, metadata value: %s, gap before: %d, gap after: %d", groupMetadata, gap, gapAfter)
-	event, err := newAutoScaleEvent(groupMetadata, "rebalance")
+	event, err := newAutoScaleEvent(groupMetadata, "rebalance", fmt.Sprintf("gap is %d, after rebalance gap will be %d", gap, gapAfter))
 	if err != nil {
 		if err == errAutoScaleRunning {
 			log.Debugf("[node autoscale] skipping already running for: %s", groupMetadata)

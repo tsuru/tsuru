@@ -56,6 +56,19 @@ func (p *dockerProvisioner) countRunningContainersByHost(address string) (int, e
 	return n, err
 }
 
+func (p *dockerProvisioner) listRunningContainersByHost(address string) ([]container, error) {
+	return p.listContainersBy(bson.M{
+		"hostaddr": address,
+		"status": bson.M{
+			"$nin": []string{
+				provision.StatusCreated.String(),
+				provision.StatusBuilding.String(),
+				provision.StatusStopped.String(),
+			},
+		},
+	})
+}
+
 func (p *dockerProvisioner) listContainersByApp(appName string) ([]container, error) {
 	return p.listContainersBy(bson.M{"appname": appName})
 }
