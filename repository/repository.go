@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package repository contains types and function for git repository
+// Package repository contains types and functions for git repository
 // interaction.
 package repository
 
@@ -63,7 +63,7 @@ type RepositoryManager interface {
 	Diff(repositoryName, fromVersion, toVersion string) (string, error)
 }
 
-// KeyRepositoryManager is a RepositoryManager that is able to manager public
+// KeyRepositoryManager is a RepositoryManager that is able to manage public
 // SSH keys.
 type KeyRepositoryManager interface {
 	AddKey(username string, key Key) error

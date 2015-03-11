@@ -87,7 +87,7 @@ func checkCluster() error {
 }
 
 // Check Schedulers
-// It's verify your scheduler configuration and validate related confs.
+// It verifies your scheduler configuration and validates related confs.
 func CheckScheduler() error {
 	if scheduler, err := config.Get("docker:segregate"); err == nil && scheduler == true {
 		if servers, err := config.Get("docker:servers"); err == nil && servers != nil {
@@ -99,7 +99,7 @@ func CheckScheduler() error {
 }
 
 // Check Router
-// It's verify your router configuration and validate related confs.
+// It verifies your router configuration and validates related confs.
 func CheckRouter() error {
 	if router, err := config.Get("docker:router"); err == nil && router == "hipache" {
 		if hipache, err := config.Get("hipache"); err != nil || hipache == nil {
