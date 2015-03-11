@@ -425,9 +425,9 @@ func (s *S) TestListAutoScaleHistoryCmdRunEmpty(c *check.C) {
 	autoscale := &listAutoScaleHistoryCmd{}
 	err := autoscale.Run(&context, client)
 	c.Assert(err, check.IsNil)
-	expected := `+-------+--------+---------+----------+--------+-------+
-| Start | Finish | Success | Metadata | Action | Error |
-+-------+--------+---------+----------+--------+-------+
+	expected := `+-------+--------+---------+----------+--------+--------+-------+
+| Start | Finish | Success | Metadata | Action | Reason | Error |
++-------+--------+---------+----------+--------+--------+-------+
 `
 	c.Assert(buf.String(), check.Equals, expected)
 }
@@ -440,6 +440,7 @@ func (s *S) TestListAutoScaleHistoryCmdRun(c *check.C) {
 	"EndTime": "2014-10-23T08:30:00.000Z",
 	"Successful": true,
 	"Action": "add",
+	"Reason": "r1",
 	"MetadataValue": "poolx",
 	"Error": ""
 },
@@ -448,6 +449,7 @@ func (s *S) TestListAutoScaleHistoryCmdRun(c *check.C) {
 	"EndTime": "2014-10-23T08:30:00.000Z",
 	"Successful": false,
 	"Action": "rebalance",
+	"Reason": "r2",
 	"MetadataValue": "poolx",
 	"Error": "some error"
 }]`
@@ -466,13 +468,13 @@ func (s *S) TestListAutoScaleHistoryCmdRun(c *check.C) {
 	autoscale := &listAutoScaleHistoryCmd{}
 	err := autoscale.Run(&context, client)
 	c.Assert(err, check.IsNil)
-	expected := `+-----------------+-----------------+---------+----------+-----------+------------+
-| Start           | Finish          | Success | Metadata | Action    | Error      |
-+-----------------+-----------------+---------+----------+-----------+------------+
-| %s | %s | true    | poolx    | add       |            |
-+-----------------+-----------------+---------+----------+-----------+------------+
-| %s | %s | false   | poolx    | rebalance | some error |
-+-----------------+-----------------+---------+----------+-----------+------------+
+	expected := `+-----------------+-----------------+---------+----------+-----------+--------+------------+
+| Start           | Finish          | Success | Metadata | Action    | Reason | Error      |
++-----------------+-----------------+---------+----------+-----------+--------+------------+
+| %s | %s | true    | poolx    | add       | r1     |            |
++-----------------+-----------------+---------+----------+-----------+--------+------------+
+| %s | %s | false   | poolx    | rebalance | r2     | some error |
++-----------------+-----------------+---------+----------+-----------+--------+------------+
 `
 	expected = fmt.Sprintf(expected, startTStr, endTStr, startTStr, endTStr)
 	c.Assert(buf.String(), check.Equals, expected)

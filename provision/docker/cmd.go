@@ -405,7 +405,7 @@ func (c *listAutoScaleHistoryCmd) Run(ctx *cmd.Context, client *cmd.Client) erro
 	if err != nil {
 		return err
 	}
-	headers := cmd.Row([]string{"Start", "Finish", "Success", "Metadata", "Action", "Error"})
+	headers := cmd.Row([]string{"Start", "Finish", "Success", "Metadata", "Action", "Reason", "Error"})
 	t := cmd.Table{Headers: headers}
 	for _, event := range history {
 		t.AddRow(cmd.Row([]string{
@@ -414,6 +414,7 @@ func (c *listAutoScaleHistoryCmd) Run(ctx *cmd.Context, client *cmd.Client) erro
 			fmt.Sprintf("%t", event.Successful),
 			event.MetadataValue,
 			event.Action,
+			event.Reason,
 			event.Error,
 		}))
 	}
