@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package testing provide test helpers for various actions.
+// Package testing provides test helpers for various actions.
 package apitest
 
 import (
