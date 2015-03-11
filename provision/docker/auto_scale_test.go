@@ -589,6 +589,79 @@ func (s *S) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 	c.Assert(containers2, check.DeepEquals, containers2Again)
 }
 
+func (s *S) TestAutoScaleConfigRunMemoryBasedPlanTooBig(c *check.C) {
+	rollback := startTestRepositoryServer()
+	defer rollback()
+	defer func() {
+		machines, _ := iaas.ListMachines()
+		for _, m := range machines {
+			m.Destroy()
+		}
+	}()
+	plan := app.Plan{Memory: 126000, Name: "default", CpuShare: 10}
+	err := plan.Save()
+	c.Assert(err, check.IsNil)
+	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+
+	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
+	p.storage = &cluster.MapStorage{}
+	clusterInstance, err := cluster.New(nil, p.storage,
+		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
+			"pool":     "pool1",
+			"iaas":     "my-scale-iaas",
+			"totalMem": "125000",
+		}},
+	)
+	c.Assert(err, check.IsNil)
+	p.cluster = clusterInstance
+	iaasInstance := &TestHealerIaaS{addr: "localhost"}
+	iaas.RegisterIaasProvider("my-scale-iaas", iaasInstance)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
+	defer p.Destroy(appInstance)
+	p.Provision(appInstance)
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, check.IsNil)
+
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	appStruct := &app.App{
+		Name: appInstance.GetName(),
+		Plan: app.Plan{Memory: 21000},
+	}
+	err = conn.Apps().Insert(appStruct)
+	c.Assert(err, check.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
+
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		unitsToAdd:  1,
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: &p,
+	})
+	c.Assert(err, check.IsNil)
+	a := autoScaleConfig{
+		done:                make(chan bool),
+		provisioner:         &p,
+		groupByMetadata:     "pool",
+		totalMemoryMetadata: "totalMem",
+		maxMemoryRatio:      0.8,
+	}
+	go a.stop()
+	err = a.run()
+	c.Assert(err, check.ErrorMatches, `\[node autoscale\] error scaling group pool1: aborting, impossible to fit max plan memory of 126000 bytes, node max available memory is 100000`)
+	nodes, err := p.cluster.Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address, check.Equals, node1.URL())
+	evts, err := listAutoScaleEvents(0, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 0)
+}
+
 func (s *S) TestAutoScaleConfigRunParamsError(c *check.C) {
 	a := autoScaleConfig{
 		done:              make(chan bool),
