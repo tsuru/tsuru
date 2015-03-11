@@ -252,6 +252,13 @@ func (a *memoryScaler) scale(groupMetadata string, nodes []*cluster.Node) (*auto
 			maxPlanMemory = plan.Memory
 		}
 	}
+	if maxPlanMemory == 0 {
+		defaultPlan, err := app.DefaultPlan()
+		if err != nil {
+			return nil, fmt.Errorf("couldn't get default plan: %s", err)
+		}
+		maxPlanMemory = defaultPlan.Memory
+	}
 	hostReserved := make(map[string]int64)
 	for _, node := range nodes {
 		containers, err := a.provisioner.listRunningContainersByHost(urlToHost(node.Address))
