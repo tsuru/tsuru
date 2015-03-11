@@ -61,6 +61,51 @@ tls:key-file
 ``tls:key-file`` is the path to private key file configured to serve the
 domain. This setting is optional, unless ``use-tls`` is true.
 
+disable-index-page
+++++++++++++++++++
+
+tsuru API serves an index page with some basic instructions on how to use the
+current target. It's possible to disable this page by setting the
+``disable-index-page`` flag to true. It's also possible to customize which
+template will be used in the index page, see the next configuration entry for
+more details.
+
+This setting is optional, and defaults to ``false``.
+
+index-page-template
++++++++++++++++++++
+
+``index-page-template`` is the template that will be used for the index page.
+It must use the `Go template syntax <http://golang.org/pkg/text/template/>`_,
+and tsuru will provide the following variables in the context of the template:
+
+    - ``tsuruTarget``: the target URL of the tsuru API serving the index page
+    - ``userCreate``: a boolean indicating whether user registration is enabled
+      or disabled
+    - ``nativeLogin``: a boolean indicating whether the API is configured to
+      use the native authentication scheme
+    - ``keysEnabled``: a boolean indicating whether the API is configured to
+      manage SSH keys
+
+It will also include a function used for querying configuration values, named
+``getConfig``. Here is an example of the function usage:
+
+.. highlight:: html
+
+::
+
+    <body>
+        {{if getConfig "use-tls"}}
+        <p>we're safe</p>
+        {{else}}
+        <p>we're unsafe</p>
+        {{end}}
+    </body>
+
+This setting is optional. When ``index-page-template`` is not defined, tsuru
+will use the `default template
+<https://github.com/tsuru/tsuru/blob/master/api/index_template.go>`_.
+
 Database access
 ---------------
 
