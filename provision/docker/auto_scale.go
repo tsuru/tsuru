@@ -117,7 +117,7 @@ type autoScaleConfig struct {
 }
 
 type autoScaler interface {
-	scale(groupMetadata string, nodes []*cluster.Node) error
+	scale(groupMetadata string, nodes []*cluster.Node) (*autoScaleEvent, error)
 }
 
 type memoryScaler struct {
@@ -206,81 +206,87 @@ func (a *autoScaleConfig) runOnce(scaler autoScaler) (retErr error) {
 		clusterMap[groupMetadata] = append(clusterMap[groupMetadata], node)
 	}
 	for groupMetadata, nodes := range clusterMap {
-		err = scaler.scale(groupMetadata, nodes)
+		var rebalanceFilter map[string]string
+		if a.groupByMetadata != "" {
+			rebalanceFilter = map[string]string{a.groupByMetadata: groupMetadata}
+		}
+		event, err := scaler.scale(groupMetadata, nodes)
 		if err != nil {
+			if err == errAutoScaleRunning {
+				log.Debugf("[node autoscale] skipping already running for: %s", groupMetadata)
+				continue
+			}
 			retErr = fmt.Errorf("error scaling group %s: %s", groupMetadata, err.Error())
 			return
+		}
+		if event == nil {
+			event, err = a.createRebalanceEvent(groupMetadata, nodes, rebalanceFilter)
+			if err != nil {
+				log.Errorf("[node autoscale] unable to create rebalance event: %s", err.Error())
+			}
+		}
+		if event != nil {
+			buf := safe.NewBuffer(nil)
+			_, err := a.provisioner.rebalanceContainersByFilter(buf, nil, rebalanceFilter, false)
+			if err != nil {
+				log.Errorf("[node autoscale] unable to rebalance containers: %s - log: %s", err.Error(), buf.String())
+			}
+			event.update(err)
 		}
 	}
 	return
 }
 
-func (a *memoryScaler) scale(groupMetadata string, nodes []*cluster.Node) error {
-	return nil
+func (a *memoryScaler) scale(groupMetadata string, nodes []*cluster.Node) (*autoScaleEvent, error) {
+	return nil, nil
 }
 
-func (a *countScaler) scale(groupMetadata string, nodes []*cluster.Node) error {
-	totalCount, gap, err := a.provisioner.containerGapInNodes(nodes)
+func (a *countScaler) scale(groupMetadata string, nodes []*cluster.Node) (*autoScaleEvent, error) {
+	totalCount, _, err := a.provisioner.containerGapInNodes(nodes)
 	if err != nil {
-		return fmt.Errorf("couldn't find containers from nodes: %s", err)
+		return nil, fmt.Errorf("couldn't find containers from nodes: %s", err)
 	}
 	freeSlots := (len(nodes) * a.maxContainerCount) - totalCount
-	shouldRebalance := false
-	var rebalanceFilter map[string]string
-	if a.groupByMetadata != "" {
-		rebalanceFilter = map[string]string{a.groupByMetadata: groupMetadata}
+	if freeSlots >= 0 {
+		return nil, nil
 	}
-	var event *autoScaleEvent
-	var gapAfter int
-	if freeSlots < 0 {
-		shouldRebalance = true
-		event, err = newAutoScaleEvent(groupMetadata, "add")
-		if err != nil {
-			if err == errAutoScaleRunning {
-				log.Debugf("[node autoscale] skipping already running for: %s", groupMetadata)
-				return nil
-			}
-			return fmt.Errorf("unable to create auto scale event: %s", err)
-		}
-		log.Debugf("[node autoscale] adding a new machine, metadata value: %s, free slots: %d", groupMetadata, freeSlots)
-		err := a.addNode(nodes)
-		if err != nil {
-			event.update(err)
-			return err
-		}
-	} else {
-		buf := safe.NewBuffer(nil)
-		rebalanceProvisioner, err := a.provisioner.rebalanceContainersByFilter(buf, nil, rebalanceFilter, true)
-		if err != nil {
-			log.Errorf("unable to run dry rebalance to check if rebalance is needed: %s - log: %s", err, buf.String())
-			return nil
-		}
-		_, gapAfter, err = rebalanceProvisioner.containerGapInNodes(nodes)
-		if err != nil {
-			return fmt.Errorf("couldn't find containers from rebalanced nodes: %s", err)
-		}
-		shouldRebalance = math.Abs((float64)(gap-gapAfter)) > 2.0
+	event, err := newAutoScaleEvent(groupMetadata, "add")
+	if err != nil {
+		return nil, err
 	}
-	if shouldRebalance {
-		log.Debugf("[node autoscale] running rebalance, metadata value: %s, gap before: %d, gap after: %d", groupMetadata, gap, gapAfter)
-		if event == nil {
-			event, err = newAutoScaleEvent(groupMetadata, "rebalance")
-			if err != nil {
-				if err == errAutoScaleRunning {
-					log.Debugf("[node autoscale] skipping already running for: %s", groupMetadata)
-					return nil
-				}
-				return fmt.Errorf("unable to create auto scale event: %s", err)
-			}
-		}
-		buf := safe.NewBuffer(nil)
-		_, err := a.provisioner.rebalanceContainersByFilter(buf, nil, rebalanceFilter, false)
-		if err != nil {
-			log.Errorf("Unable to rebalance containers: %s - log: %s", err.Error(), buf.String())
-		}
+	log.Debugf("[node autoscale] adding a new machine, metadata value: %s, free slots: %d", groupMetadata, freeSlots)
+	err = a.addNode(nodes)
+	if err != nil {
 		event.update(err)
+		return nil, err
 	}
-	return nil
+	return event, nil
+}
+
+func (a *autoScaleConfig) createRebalanceEvent(groupMetadata string, nodes []*cluster.Node, rebalanceFilter map[string]string) (*autoScaleEvent, error) {
+	_, gap, err := a.provisioner.containerGapInNodes(nodes)
+	buf := safe.NewBuffer(nil)
+	dryProvisioner, err := a.provisioner.rebalanceContainersByFilter(buf, nil, rebalanceFilter, true)
+	if err != nil {
+		return nil, fmt.Errorf("unable to run dry rebalance to check if rebalance is needed: %s - log: %s", err, buf.String())
+	}
+	_, gapAfter, err := dryProvisioner.containerGapInNodes(nodes)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't find containers from rebalanced nodes: %s", err)
+	}
+	if math.Abs((float64)(gap-gapAfter)) <= 2.0 {
+		return nil, nil
+	}
+	log.Debugf("[node autoscale] running rebalance, metadata value: %s, gap before: %d, gap after: %d", groupMetadata, gap, gapAfter)
+	event, err := newAutoScaleEvent(groupMetadata, "rebalance")
+	if err != nil {
+		if err == errAutoScaleRunning {
+			log.Debugf("[node autoscale] skipping already running for: %s", groupMetadata)
+			return nil, nil
+		}
+		return nil, fmt.Errorf("unable to create auto scale event: %s", err)
+	}
+	return event, nil
 }
 
 func (a *autoScaleConfig) addNode(modelNodes []*cluster.Node) error {
