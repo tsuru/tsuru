@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+// +build darwin
+
 package cmd
 
 import (
@@ -21,9 +23,7 @@ func (s *S) TestNewPagerWriter(c *check.C) {
 	p, ok := pager.(*pagerWriter)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(p.baseWriter, check.Equals, os.Stdout)
-	c.Assert(p.buf.String(), check.Equals, "")
-	c.Assert(p.height > 0, check.Equals, true)
-	c.Assert(p.pager, check.Equals, "less -R")
+	c.Assert(p.pager, check.Equals, "less -RFX")
 }
 
 func (s *S) TestNewPagerWriterWithTSURU_PAGER(c *check.C) {
@@ -31,7 +31,6 @@ func (s *S) TestNewPagerWriterWithTSURU_PAGER(c *check.C) {
 	os.Setenv("TSURU_PAGER", "")
 	w := newPagerWriter(os.Stdout)
 	c.Assert(w, check.Equals, os.Stdout)
-
 	os.Setenv("TSURU_PAGER", "lolcat")
 	pager, ok := newPagerWriter(os.Stdout).(*pagerWriter)
 	c.Assert(ok, check.Equals, true)
