@@ -44,7 +44,6 @@ func (s *S) TestProvisionerProvision(c *check.C) {
 	err := s.p.Provision(app)
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.FakeRouter.HasBackend("myapp"), check.Equals, true)
-	c.Assert(app.IsReady(), check.Equals, true)
 }
 
 func (s *S) TestProvisionerRestart(c *check.C) {

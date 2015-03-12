@@ -49,11 +49,11 @@ command:
 ::
 
     $ tsuru app-list
-    +-------------+-------------------------+---------+--------+
-    | Application | Units State Summary     | Address | Ready? |
-    +-------------+-------------------------+---------+--------+
-    | blog        | 0 of 0 units in-service |         | No     |
-    +-------------+-------------------------+---------+--------+
+    +-------------+-------------------------+---------+
+    | Application | Units State Summary     | Address |
+    +-------------+-------------------------+---------+
+    | blog        | 0 of 0 units in-service |         |
+    +-------------+-------------------------+---------+
 
 Once your app is ready, you will be able to deploy your code, e.g.:
 
@@ -62,11 +62,11 @@ Once your app is ready, you will be able to deploy your code, e.g.:
 ::
 
     $ tsuru app-list
-    +-------------+-------------------------+-------------+--------+
-    | Application | Units State Summary     | Address     | Ready? |
-    +-------------+-------------------------+-------------+--------+
-    | blog        | 0 of 1 units in-service |             | Yes    |
-    +-------------+-------------------------+-------------+--------+
+    +-------------+-------------------------+-------------+
+    | Application | Units State Summary     | Address     |
+    +-------------+-------------------------+-------------+
+    | blog        | 0 of 1 units in-service |             |
+    +-------------+-------------------------+-------------+
 
 Application code
 ================
@@ -406,11 +406,11 @@ in the list below:
 ::
 
     $ tsuru app-list
-    +-------------+-------------------------+---------------------+--------+
-    | Application | Units State Summary     | Address             | Ready? |
-    +-------------+-------------------------+---------------------+--------+
-    | blog        | 1 of 1 units in-service | blog.cloud.tsuru.io | Yes    |
-    +-------------+-------------------------+---------------------+--------+
+    +-------------+-------------------------+---------------------+
+    | Application | Units State Summary     | Address             |
+    +-------------+-------------------------+---------------------+
+    | blog        | 1 of 1 units in-service | blog.cloud.tsuru.io |
+    +-------------+-------------------------+---------------------+
 
 
 We can access the admin of the app in the URL http://blog.cloud.tsuru.io/admin/.

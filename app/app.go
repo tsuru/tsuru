@@ -72,7 +72,6 @@ type App struct {
 	Teams           []string
 	TeamOwner       string
 	Owner           string
-	State           string
 	Deploys         uint
 	UpdatePlatform  bool
 	Lock            AppLock
@@ -99,7 +98,6 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["repository"] = repo.ReadWriteURL
 	result["ip"] = app.Ip
 	result["cname"] = app.CName
-	result["ready"] = app.State == "ready"
 	result["owner"] = app.Owner
 	result["deploys"] = app.Deploys
 	result["teamowner"] = app.TeamOwner
@@ -653,16 +651,6 @@ func (app *App) Stop(w io.Writer) error {
 		return err
 	}
 	return nil
-}
-
-func (app *App) Ready() error {
-	app.State = "ready"
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	return conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"state": "ready"}})
 }
 
 // GetUnits returns the internal list of units converted to bind.Unit.

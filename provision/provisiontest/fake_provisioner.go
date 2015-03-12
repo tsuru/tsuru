@@ -35,7 +35,6 @@ type FakeApp struct {
 	Swap           int64
 	CpuShare       int
 	commMut        sync.Mutex
-	ready          bool
 	Deploys        uint
 	env            map[string]bind.EnvVar
 	bindCalls      []*provision.Unit
@@ -171,15 +170,6 @@ func (a *FakeApp) GetCommands() []string {
 	a.commMut.Lock()
 	defer a.commMut.Unlock()
 	return a.Commands
-}
-
-func (a *FakeApp) IsReady() bool {
-	return a.ready
-}
-
-func (a *FakeApp) Ready() error {
-	a.ready = true
-	return nil
 }
 
 func (a *FakeApp) Log(message, source, unit string) error {

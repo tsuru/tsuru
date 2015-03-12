@@ -29,14 +29,6 @@ func (s *S) TestFakeAppAddUnit(c *check.C) {
 	c.Assert(app.units, check.HasLen, 1)
 }
 
-func (s *S) TestFakeAppReady(c *check.C) {
-	app := NewFakeApp("sou", "otm", 0)
-	c.Assert(app.IsReady(), check.Equals, false)
-	err := app.Ready()
-	c.Assert(err, check.IsNil)
-	c.Assert(app.IsReady(), check.Equals, true)
-}
-
 func (s *S) TestFakeAppRestart(c *check.C) {
 	var buf bytes.Buffer
 	app := NewFakeApp("sou", "otm", 0)

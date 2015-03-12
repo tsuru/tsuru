@@ -148,9 +148,6 @@ type App interface {
 
 	Envs() map[string]bind.EnvVar
 
-	// Ready marks the app as ready for deployment.
-	Ready() error
-
 	GetMemory() int64
 	GetSwap() int64
 	GetCpuShare() int

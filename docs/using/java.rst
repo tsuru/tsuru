@@ -57,24 +57,11 @@ command:
 ::
 
     $ tsuru app-list
-    +-------------+-------------------------+-------------------------------------+--------+
-    | Application | Units State Summary     | Address                             | Ready? |
-    +-------------+-------------------------+-------------------------------------+--------+
-    | helloweb    | 0 of 0 units in-service | http://helloweb.tsuru.mycompany.com | No     |
-    +-------------+-------------------------+-------------------------------------+--------+
-
-Once your app is ready, you will be able to deploy your code, e.g.:
-
-.. highlight:: bash
-
-::
-
-    $ tsuru app-list
-    +-------------+-------------------------+-------------------------------------+--------+
-    | Application | Units State Summary     | Address                             | Ready? |
-    +-------------+-------------------------+-------------------------------------+--------+
-    | helloweb    | 0 of 0 units in-service | http://helloweb.tsuru.mycompany.com | Yes    |
-    +-------------+-------------------------+-------------------------------------+--------+
+    +-------------+-------------------------+-------------------------------------+
+    | Application | Units State Summary     | Address                             |
+    +-------------+-------------------------+-------------------------------------+
+    | helloweb    | 0 of 0 units in-service | http://helloweb.tsuru.mycompany.com |
+    +-------------+-------------------------+-------------------------------------+
 
 Deploying the code
 ==================

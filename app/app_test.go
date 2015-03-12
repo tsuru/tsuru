@@ -1641,18 +1641,6 @@ func (s *S) TestIsValid(c *check.C) {
 	}
 }
 
-func (s *S) TestReady(c *check.C) {
-	a := App{Name: "twisted"}
-	s.conn.Apps().Insert(a)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	err := a.Ready()
-	c.Assert(err, check.IsNil)
-	c.Assert(a.State, check.Equals, "ready")
-	other, err := GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(other.State, check.Equals, "ready")
-}
-
 func (s *S) TestRestart(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("not yaml")) // loadConf
 	a := App{
@@ -1904,7 +1892,6 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 		"owner":      "appOwner",
 		"deploys":    float64(7),
 		"teamowner":  "myteam",
-		"ready":      false,
 		"plan": map[string]interface{}{
 			"name":     "myplan",
 			"memory":   float64(64),
@@ -1925,48 +1912,6 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 			"minUnits": float64(2),
 			"maxUnits": float64(10),
 			"enabled":  true,
-		},
-	}
-	data, err := app.MarshalJSON()
-	c.Assert(err, check.IsNil)
-	result := make(map[string]interface{})
-	err = json.Unmarshal(data, &result)
-	c.Assert(err, check.IsNil)
-	c.Assert(result, check.DeepEquals, expected)
-}
-
-func (s *S) TestAppMarshalJSONReady(c *check.C) {
-	repository.Manager().CreateRepository("name", nil)
-	app := App{
-		Name:      "name",
-		Platform:  "Framework",
-		Teams:     []string{"team1"},
-		Ip:        "10.10.10.1",
-		CName:     []string{"name.mycompany.com"},
-		State:     "ready",
-		Owner:     "appOwner",
-		Deploys:   7,
-		TeamOwner: "myteam",
-		Plan:      Plan{Name: "myplan", Memory: 64, Swap: 128, CpuShare: 100},
-	}
-	expected := map[string]interface{}{
-		"name":            "name",
-		"platform":        "Framework",
-		"repository":      "git@" + repositorytest.ServerHost + ":name.git",
-		"teams":           []interface{}{"team1"},
-		"units":           nil,
-		"ip":              "10.10.10.1",
-		"cname":           []interface{}{"name.mycompany.com"},
-		"owner":           "appOwner",
-		"deploys":         float64(7),
-		"teamowner":       "myteam",
-		"autoScaleConfig": nil,
-		"ready":           true,
-		"plan": map[string]interface{}{
-			"name":     "myplan",
-			"memory":   float64(64),
-			"swap":     float64(128),
-			"cpushare": float64(100),
 		},
 	}
 	data, err := app.MarshalJSON()
@@ -2007,7 +1952,6 @@ func (s *S) TestAppMarshalJSONWithoutRepository(c *check.C) {
 		"owner":      "appOwner",
 		"deploys":    float64(7),
 		"teamowner":  "myteam",
-		"ready":      false,
 		"plan": map[string]interface{}{
 			"name":     "myplan",
 			"memory":   float64(64),

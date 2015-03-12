@@ -47,24 +47,11 @@ command:
 ::
 
     $ tsuru app-list
-    +-------------+-------------------------+---------+--------+
-    | Application | Units State Summary     | Address | Ready? |
-    +-------------+-------------------------+---------+--------+
-    | helloworld  | 0 of 0 units in-service |         | No     |
-    +-------------+-------------------------+---------+--------+
-
-Once your app is ready, you will be able to deploy your code, e.g.:
-
-.. highlight:: bash
-
-::
-
-    $ tsuru app-list
-    +-------------+-------------------------+-------------+--------+
-    | Application | Units State Summary     | Address     | Ready? |
-    +-------------+-------------------------+-------------+--------+
-    | helloworld  | 0 of 0 units in-service |             | Yes    |
-    +-------------+-------------------------+-------------+--------+
+    +-------------+-------------------------+-------------+
+    | Application | Units State Summary     | Address     |
+    +-------------+-------------------------+-------------+
+    | helloworld  | 0 of 0 units in-service |             |
+    +-------------+-------------------------+-------------+
 
 Application code
 ================
@@ -232,11 +219,11 @@ in the list below:
 ::
 
     $ tsuru app-list
-    +-------------+-------------------------+---------------------+--------+
-    | Application | Units State Summary     | Address             | Ready? |
-    +-------------+-------------------------+---------------------+--------+
-    | helloworld  | 1 of 1 units in-service | blog.cloud.tsuru.io | Yes    |
-    +-------------+-------------------------+---------------------+--------+
+    +-------------+-------------------------+---------------------+
+    | Application | Units State Summary     | Address             |
+    +-------------+-------------------------+---------------------+
+    | helloworld  | 1 of 1 units in-service | blog.cloud.tsuru.io |
+    +-------------+-------------------------+---------------------+
 
 It's done! Now we have a simple go project deployed on tsuru.
 
