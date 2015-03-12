@@ -226,8 +226,12 @@ func (m *Manager) handleFlags(command Command, name string, args []string) (Comm
 	}
 	var helpRequested bool
 	flagset.SetOutput(m.stderr)
-	flagset.BoolVar(&helpRequested, "help", false, "Display help and exit")
-	flagset.BoolVar(&helpRequested, "h", false, "Display help and exit")
+	if flagset.Lookup("help") == nil {
+		flagset.BoolVar(&helpRequested, "help", false, "Display help and exit")
+	}
+	if flagset.Lookup("h") == nil {
+		flagset.BoolVar(&helpRequested, "h", false, "Display help and exit")
+	}
 	err := flagset.Parse(true, args)
 	if err != nil {
 		return nil, nil, err

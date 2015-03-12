@@ -375,6 +375,20 @@ Foo do anything or nothing.
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 }
 
+func (s *S) TestDuplicateHelpFlag(c *check.C) {
+	expected := "help called? true"
+	manager.Register(&HelpCommandWithFlags{})
+	manager.Run([]string{"hflags", "--help"})
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+}
+
+func (s *S) TestDuplicateHFlag(c *check.C) {
+	expected := "help called? true"
+	manager.Register(&HelpCommandWithFlags{})
+	manager.Run([]string{"hflags", "-h"})
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+}
+
 func (s *S) TestHelpFlaggedCommand(c *check.C) {
 	expected := `glb version 1.0.
 
@@ -813,6 +827,33 @@ func (c *CommandWithFlags) Flags() *gnuflag.FlagSet {
 		c.fs = gnuflag.NewFlagSet("with-flags", gnuflag.ContinueOnError)
 		c.fs.IntVar(&c.age, "age", 0, "your age")
 		c.fs.IntVar(&c.age, "a", 0, "your age")
+	}
+	return c.fs
+}
+
+type HelpCommandWithFlags struct {
+	fs *gnuflag.FlagSet
+	h  bool
+}
+
+func (c *HelpCommandWithFlags) Info() *Info {
+	return &Info{
+		Name:  "hflags",
+		Desc:  "hflags doesn't do anything, really.",
+		Usage: "hflags",
+	}
+}
+
+func (c *HelpCommandWithFlags) Run(context *Context, client *Client) error {
+	fmt.Fprintf(context.Stdout, "help called? %v", c.h)
+	return nil
+}
+
+func (c *HelpCommandWithFlags) Flags() *gnuflag.FlagSet {
+	if c.fs == nil {
+		c.fs = gnuflag.NewFlagSet("with-flags", gnuflag.ContinueOnError)
+		c.fs.BoolVar(&c.h, "help", false, "help?")
+		c.fs.BoolVar(&c.h, "h", false, "help?")
 	}
 	return c.fs
 }
