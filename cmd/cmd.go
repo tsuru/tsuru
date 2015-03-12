@@ -48,6 +48,7 @@ type Manager struct {
 	original      string
 	wrong         bool
 	lookup        Lookup
+	contexts      []*Context
 }
 
 func NewManager(name, ver, verHeader string, stdout, stderr io.Writer, stdin io.Reader, lookup Lookup) *Manager {
@@ -138,8 +139,8 @@ func (m *Manager) Run(args []string) {
 	command, ok := m.Commands[name]
 	if !ok {
 		if m.lookup != nil {
-			context := Context{args, m.stdout, m.stderr, m.stdin}
-			err := m.lookup(&context)
+			context := m.newContext(args, m.stdout, m.stderr, m.stdin)
+			err := m.lookup(context)
 			if err != nil {
 				msg := ""
 				if os.IsNotExist(err) {
@@ -184,19 +185,19 @@ func (m *Manager) Run(args []string) {
 		args = []string{name}
 		status = 1
 	}
-	context := Context{args, m.stdout, m.stderr, m.stdin}
-	client := NewClient(&http.Client{}, &context, m)
+	context := m.newContext(args, m.stdout, m.stderr, m.stdin)
+	client := NewClient(&http.Client{}, context, m)
 	client.Verbosity = verbosity
-	err = command.Run(&context, client)
+	err = command.Run(context, client)
 	if err == errUnauthorized && name != "login" {
 		loginCmdName := "login"
 		if cmd, ok := m.Commands[loginCmdName]; ok {
 			fmt.Fprintln(m.stderr, "Error: you're not authenticated or your session has expired.")
 			fmt.Fprintf(m.stderr, "Calling the %q command...\n", loginCmdName)
-			loginContext := Context{nil, m.stdout, m.stderr, m.stdin}
-			if err = cmd.Run(&loginContext, client); err == nil {
+			loginContext := m.newContext(nil, m.stdout, m.stderr, m.stdin)
+			if err = cmd.Run(loginContext, client); err == nil {
 				fmt.Fprintln(m.stderr)
-				err = command.Run(&context, client)
+				err = command.Run(context, client)
 			}
 		}
 	}
@@ -215,6 +216,13 @@ func (m *Manager) Run(args []string) {
 		status = 1
 	}
 	m.finisher().Exit(status)
+}
+
+func (m *Manager) newContext(args []string, stdout io.Writer, stderr io.Writer, stdin io.Reader) *Context {
+	stdout = newPagerWriter(stdout)
+	ctx := &Context{args, stdout, stderr, stdin}
+	m.contexts = append(m.contexts, ctx)
+	return ctx
 }
 
 func (m *Manager) handleFlags(command Command, name string, args []string) (Command, []string, error) {
@@ -246,6 +254,14 @@ func (m *Manager) handleFlags(command Command, name string, args []string) (Comm
 }
 
 func (m *Manager) finisher() exiter {
+	if pagerWriter, ok := m.stdout.(*pagerWriter); ok {
+		pagerWriter.close()
+	}
+	for _, ctx := range m.contexts {
+		if pagerWriter, ok := ctx.Stdout.(*pagerWriter); ok {
+			pagerWriter.close()
+		}
+	}
 	if m.e == nil {
 		m.e = osExiter{}
 	}
@@ -284,6 +300,12 @@ type Context struct {
 	Stdout io.Writer
 	Stderr io.Writer
 	Stdin  io.Reader
+}
+
+func (c *Context) RawOutput() {
+	if pager, ok := c.Stdout.(*pagerWriter); ok {
+		c.Stdout = pager.baseWriter
+	}
 }
 
 type Info struct {
