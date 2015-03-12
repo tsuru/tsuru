@@ -2,12 +2,17 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// +build !windows,!linux,!darwin
+// +build !windows,!darwin
 
 package cmd
 
-import "fmt"
+import "github.com/tsuru/tsuru/exec"
 
 func open(url string) error {
-	return fmt.Errorf("cannot open %s", url)
+	var opts exec.ExecuteOptions
+	opts = exec.ExecuteOptions{
+		Cmd:  "xdg-open",
+		Args: []string{url},
+	}
+	return executor().Execute(opts)
 }
