@@ -611,3 +611,105 @@ func (s *S) TestRemoveTeamsFromPoolCmdRun(c *check.C) {
 	err := removeTeamsFromPoolCmd{}.Run(&ctx, client)
 	c.Assert(err, check.IsNil)
 }
+
+func (s *S) TestChooseContainerToBeRemoved(c *check.C) {
+	nodes := []cluster.Node{
+		{Address: "http://server1:1234"},
+		{Address: "http://server2:1234"},
+	}
+	contColl := s.p.collection()
+	defer contColl.RemoveAll(bson.M{"appname": "coolapp9"})
+	cont1 := container{
+		ID:       "pre1",
+		Name:     "existingUnit1",
+		AppName:  "coolapp9",
+		HostAddr: "server1"}
+	err := contColl.Insert(cont1)
+	c.Assert(err, check.Equals, nil)
+	cont2 := container{
+		ID:       "pre2",
+		Name:     "existingUnit2",
+		AppName:  "coolapp9",
+		HostAddr: "server2"}
+	err = contColl.Insert(cont2)
+	c.Assert(err, check.Equals, nil)
+	cont3 := container{
+		ID:       "pre3",
+		Name:     "existingUnit1",
+		AppName:  "coolapp9",
+		HostAddr: "server1"}
+	err = contColl.Insert(cont3)
+	c.Assert(err, check.Equals, nil)
+	scheduler := segregatedScheduler{provisioner: s.p}
+	containerID, err := scheduler.chooseContainerFromMaxContainersCountInNode(nodes, "coolapp9")
+	c.Assert(err, check.IsNil)
+	c.Assert(containerID, check.Equals, "pre1")
+}
+
+func (s *S) TestGetContainerFromHost(c *check.C) {
+	contColl := s.p.collection()
+	defer contColl.RemoveAll(bson.M{"appname": "coolapp9"})
+	cont1 := container{
+		ID:       "pre1",
+		Name:     "existingUnit1",
+		AppName:  "coolapp9",
+		HostAddr: "server1"}
+	err := contColl.Insert(cont1)
+	c.Assert(err, check.Equals, nil)
+	scheduler := segregatedScheduler{provisioner: s.p}
+	id, err := scheduler.getContainerFromHost("server1")
+	c.Assert(err, check.IsNil)
+	c.Assert(id, check.Equals, "pre1")
+	_, err = scheduler.getContainerFromHost("server2")
+	c.Assert(err, check.NotNil)
+}
+
+func (s *S) TestGetRemovableContainer(c *check.C) {
+	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}}
+	cont1 := container{ID: "1", Name: "impius1", AppName: a1.Name}
+	cont2 := container{ID: "2", Name: "mirror1", AppName: a1.Name}
+	cont3 := container{ID: "3", Name: "dedication1", AppName: a1.Name}
+	err := s.storage.Apps().Insert(a1)
+	c.Assert(err, check.IsNil)
+	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
+	coll := s.storage.Collection(schedulerCollection)
+	p := Pool{Name: "pool1", Teams: []string{
+		"tsuruteam",
+		"nodockerforme",
+	}}
+	err = coll.Insert(p)
+	c.Assert(err, check.IsNil)
+	defer coll.RemoveAll(bson.M{"_id": p.Name})
+	contColl := s.p.collection()
+	err = contColl.Insert(
+		cont1, cont2, cont3,
+	)
+	c.Assert(err, check.IsNil)
+	defer contColl.RemoveAll(bson.M{"name": bson.M{"$in": []string{cont1.Name, cont2.Name, cont3.Name}}})
+	scheduler := segregatedScheduler{provisioner: s.p}
+	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
+	c.Assert(err, check.IsNil)
+	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
+	c.Assert(err, check.IsNil)
+	_, err = clusterInstance.Register("http://url1:1234", map[string]string{"pool": "pool1"})
+	c.Assert(err, check.IsNil)
+	opts := docker.CreateContainerOptions{Name: cont1.Name}
+	_, err = scheduler.Schedule(clusterInstance, opts, a1.Name)
+	c.Assert(err, check.IsNil)
+	opts = docker.CreateContainerOptions{Name: cont2.Name}
+	_, err = scheduler.Schedule(clusterInstance, opts, a1.Name)
+	c.Assert(err, check.IsNil)
+	opts = docker.CreateContainerOptions{Name: cont3.Name}
+	_, err = scheduler.Schedule(clusterInstance, opts, a1.Name)
+	c.Assert(err, check.IsNil)
+	n, err := scheduler.aggregateContainersByHost([]string{"url0"})
+	c.Assert(err, check.IsNil)
+	c.Assert(n["url0"], check.Equals, 2)
+	n, err = scheduler.aggregateContainersByHost([]string{"url1"})
+	c.Assert(err, check.IsNil)
+	c.Assert(n["url1"], check.Equals, 1)
+	containers, err := scheduler.GetRemovableContainers(a1.Name, 1, clusterInstance)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(containers), check.Equals, 1)
+	c.Assert(containers[0], check.Equals, "1")
+}

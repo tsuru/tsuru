@@ -149,6 +149,75 @@ func (s *segregatedScheduler) aggregateContainersByHostApp(hosts []string, appNa
 	return s.aggregateContainersBy(bson.M{"$match": bson.M{"appname": appName, "hostaddr": bson.M{"$in": hosts}, "id": bson.M{"$nin": s.ignoredContainers}}})
 }
 
+func (s *segregatedScheduler) GetRemovableContainers(appName string, n int, c *cluster.Cluster) ([]string, error) {
+	var containers []string
+	a, _ := app.GetByName(appName)
+	nodes, err := nodesForApp(c, a)
+	if err != nil {
+		return containers, err
+	}
+	for i := 0; i < n; i++ {
+		container, err := s.chooseContainerFromMaxContainersCountInNode(nodes, appName)
+		if err != nil {
+			return []string{}, err
+		}
+		containers = append(containers, container)
+	}
+	return containers, nil
+}
+
+// chooseNodeWithMaxContainersCount finds which is the node with maximum number
+// of containers and returns it
+func (s *segregatedScheduler) chooseContainerFromMaxContainersCountInNode(nodes []cluster.Node, appName string) (string, error) {
+	var chosenNode string
+	hosts := make([]string, len(nodes))
+	hostsMap := make(map[string]string)
+	// Only hostname is saved in the docker containers collection
+	// so we need to extract and map then to the original node.
+	for i, node := range nodes {
+		host := urlToHost(node.Address)
+		hosts[i] = host
+		hostsMap[host] = node.Address
+	}
+	log.Debugf("[scheduler] Possible nodes for remove a container: %#v", hosts)
+	s.hostMutex.Lock()
+	defer s.hostMutex.Unlock()
+	hostCountMap, err := s.aggregateContainersByHost(hosts)
+	if err != nil {
+		return chosenNode, err
+	}
+	appCountMap, err := s.aggregateContainersByHostApp(hosts, appName)
+	if err != nil {
+		return chosenNode, err
+	}
+	// Finally finding the host with the maximum value for
+	// the pair [appCount, hostCount]
+	var maxHost string
+	maxCount := 0
+	for _, host := range hosts {
+		adjCount := appCountMap[host] + hostCountMap[host]
+		if adjCount > maxCount {
+			maxCount = adjCount
+			maxHost = host
+		}
+	}
+	chosenNode = hostsMap[maxHost]
+	log.Debugf("[scheduler] Chosen node for remove a container: %#v Count: %d", chosenNode, maxCount)
+	containerID, err := s.getContainerFromHost(maxHost)
+	if err != nil {
+		return "", err
+	}
+	return containerID, err
+}
+
+func (s *segregatedScheduler) getContainerFromHost(host string) (string, error) {
+	coll := s.provisioner.collection()
+	defer coll.Close()
+	var c container
+	err := coll.Find(bson.M{"hostaddr": host}).Select(bson.M{"id": 1}).One(&c)
+	return c.ID, err
+}
+
 // chooseNode finds which is the node with the minimum number
 // of containers and returns it
 func (s *segregatedScheduler) chooseNode(nodes []cluster.Node, contName string, appName string) (string, error) {
