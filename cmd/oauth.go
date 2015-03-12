@@ -11,7 +11,6 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"runtime"
 	"strings"
 
 	"github.com/tsuru/tsuru/exec"
@@ -58,21 +57,6 @@ func port(schemeData map[string]string) string {
 		return fmt.Sprintf(":%s", p)
 	}
 	return ":0"
-}
-
-func open(url string) error {
-	var opts exec.ExecuteOptions
-	opts = exec.ExecuteOptions{
-		Cmd:  "open",
-		Args: []string{url},
-	}
-	if runtime.GOOS == "linux" {
-		opts = exec.ExecuteOptions{
-			Cmd:  "xdg-open",
-			Args: []string{url},
-		}
-	}
-	return executor().Execute(opts)
 }
 
 func convertToken(code, redirectUrl string) (string, error) {
@@ -139,7 +123,11 @@ func (c *login) oauthLogin(context *Context, client *Client) error {
 	http.HandleFunc("/", callback(redirectUrl, finish))
 	server := &http.Server{}
 	go server.Serve(l)
-	open(authUrl)
+	err = open(authUrl)
+	if err != nil {
+		fmt.Fprintln(context.Stdout, "Failed to start your browser.")
+		fmt.Fprintf(context.Stdout, "Please open the following URL in your browser: %s\n", authUrl)
+	}
 	<-finish
 	fmt.Fprintln(context.Stdout, "Successfully logged in!")
 	return nil
