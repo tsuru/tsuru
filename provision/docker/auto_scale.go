@@ -115,6 +115,7 @@ type autoScaleConfig struct {
 	totalMemoryMetadata string
 	maxMemoryRatio      float32
 	maxContainerCount   int
+	scaleDownCountRatio float32
 	waitTimeNewMachine  time.Duration
 	runInterval         time.Duration
 	done                chan bool
@@ -154,12 +155,18 @@ func (a *autoScaleConfig) run() error {
 		log.Error(err.Error())
 		return err
 	}
-	oneMinute := 1 * time.Minute
-	if a.runInterval < oneMinute {
-		a.runInterval = oneMinute
+	if a.scaleDownCountRatio == 0.0 {
+		a.scaleDownCountRatio = 1.333
+	} else if a.scaleDownCountRatio < 1.0 {
+		err := fmt.Errorf("[node autoscale] scale down ratio needs to be greater than 1.0, got %f", a.scaleDownCountRatio)
+		log.Error(err.Error())
+		return err
 	}
-	if a.waitTimeNewMachine < oneMinute {
-		a.waitTimeNewMachine = oneMinute
+	if a.runInterval < time.Minute {
+		a.runInterval = time.Minute
+	}
+	if a.waitTimeNewMachine < time.Minute {
+		a.waitTimeNewMachine = time.Minute
 	}
 	for {
 		err := a.runOnce(scaler)
@@ -309,7 +316,7 @@ func (a *countScaler) scale(groupMetadata string, nodes []*cluster.Node) (*autoS
 	}
 	freeSlots := (len(nodes) * a.maxContainerCount) - totalCount
 	baseReasonMsg := "number of free slots is %d"
-	if freeSlots > a.maxContainerCount+a.maxContainerCount/3 {
+	if freeSlots > int(float32(a.maxContainerCount)*a.scaleDownCountRatio) {
 		event, err := newAutoScaleEvent(groupMetadata, "remove", fmt.Sprintf(baseReasonMsg, freeSlots))
 		if err != nil {
 			return nil, err
