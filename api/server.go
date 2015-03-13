@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"os"
 
 	"github.com/codegangsta/negroni"
 	"github.com/tsuru/config"
@@ -287,15 +286,10 @@ func RunServer(dry bool) http.Handler {
 		fmt.Printf("Using %q auth scheme.\n", scheme)
 		fmt.Println("Checking components status:")
 		results := hc.Check()
-		var hcFail bool
 		for _, result := range results {
 			if result.Status != hc.HealthCheckOK {
-				hcFail = true
-				fmt.Printf("ERROR: %q is not working: %s\n", result.Name, result.Status)
+				fmt.Printf("WARNING: %q is not working: %s\n", result.Name, result.Status)
 			}
-		}
-		if hcFail {
-			os.Exit(2)
 		}
 		listen, err := config.GetString("listen")
 		if err != nil {
