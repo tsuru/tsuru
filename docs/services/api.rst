@@ -164,10 +164,10 @@ address of the unit. Example of request:
 
     app-host=myapp.cloud.tsuru.io&unit-host=10.4.3.2
 
-The second endpoint ``/resources/<service-instance-name>/bind-app`` will be called once
-when an app is binded with a service.
-This endpoint is a POST with app-host, where app-host
-represents the host to which the app is accessible. Example of request:
+The second endpoint ``/resources/<service-instance-name>/bind-app`` will be
+called once when an app is bound to a service.  This endpoint is a POST with
+app-host, where app-host represents the host to which the app is accessible.
+Example of request:
 
 .. highlight:: text
 
@@ -242,8 +242,8 @@ This endpoint is a DELETE with app-host and unit-host. Example of request:
 
     app-host=myapp.cloud.tsuru.io&unit-host=10.4.3.2
 
-The second endpoint ``/resources/<service-instance-name>/bind-app`` will be called once
-when an app is unbinded with a service.
+The second endpoint ``/resources/<service-instance-name>/bind-app`` will be
+called once when the binding between a service and an application is removed.
 This endpoint is a DELETE with app-host. Example of request:
 
 .. highlight:: text

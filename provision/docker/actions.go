@@ -239,7 +239,7 @@ var bindAndHealthcheck = action.Action{
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(writer, " ---> Binded and checked unit %s\n", c.shortID())
+			fmt.Fprintf(writer, " ---> Bound and checked unit %s\n", c.shortID())
 			return nil
 		}, func(c *container) {
 			unit := c.asUnit(args.app)
@@ -256,7 +256,7 @@ var bindAndHealthcheck = action.Action{
 			unit := c.asUnit(args.app)
 			err := args.app.UnbindUnit(&unit)
 			if err != nil {
-				log.Errorf("Unable to unbind unit %q: %s", c.ID, err)
+				log.Errorf("Unbound unit %q: %s", c.ID, err)
 			}
 		}
 	},
@@ -394,7 +394,7 @@ var provisionUnbindOldUnits = action.Action{
 			if err != nil {
 				log.Errorf("Ignorer error trying to unbind old container %q: %s", c.ID, err)
 			}
-			fmt.Fprintf(writer, " ---> Unbinded old unit %s...\n", c.shortID())
+			fmt.Fprintf(writer, " ---> Removed bind for old unit %s...\n", c.shortID())
 			return nil
 		}, nil, true)
 		return ctx.Previous, nil

@@ -491,7 +491,7 @@ Returns 200 in case of success and a json with the service list.
 Where:
 
 * `app` is the name an app you want to use as filter. If defined only instances
-  binded to this app will be returned. This parameter is optional.
+  bound to this app will be returned. This parameter is optional.
 
 Example:
 
