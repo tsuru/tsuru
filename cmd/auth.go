@@ -80,6 +80,7 @@ func (c *login) getScheme() *loginScheme {
 }
 
 func (c *login) Run(context *Context, client *Client) error {
+	context.RawOutput()
 	if c.getScheme().Name == "oauth" {
 		return c.oauthLogin(context, client)
 	}
