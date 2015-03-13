@@ -27,7 +27,7 @@ import (
 type autoScaleEvent struct {
 	ID            interface{} `bson:"_id"`
 	MetadataValue string
-	Action        string // "rebalance" or "add"
+	Action        string // "rebalance", "add" or "remove"
 	Reason        string // dependend on scaler
 	StartTime     time.Time
 	EndTime       time.Time `bson:",omitempty"`
@@ -229,12 +229,14 @@ func (a *autoScaleConfig) runOnce(scaler autoScaler) (retErr error) {
 				log.Errorf("[node autoscale] unable to create rebalance event: %s", err.Error())
 			}
 		}
-		if event != nil {
+		if event != nil && event.Action != "remove" {
 			buf := safe.NewBuffer(nil)
 			_, err := a.provisioner.rebalanceContainersByFilter(buf, nil, rebalanceFilter, false)
 			if err != nil {
 				log.Errorf("[node autoscale] unable to rebalance containers: %s - log: %s", err.Error(), buf.String())
 			}
+		}
+		if event != nil {
 			event.update(err)
 		}
 	}
@@ -308,10 +310,19 @@ func (a *countScaler) scale(groupMetadata string, nodes []*cluster.Node) (*autoS
 		return nil, fmt.Errorf("couldn't find containers from nodes: %s", err)
 	}
 	freeSlots := (len(nodes) * a.maxContainerCount) - totalCount
+	baseReasonMsg := "number of free slots is %d"
+	if freeSlots > a.maxContainerCount+a.maxContainerCount/3 {
+		event, err := newAutoScaleEvent(groupMetadata, "remove", fmt.Sprintf(baseReasonMsg, freeSlots))
+		if err != nil {
+			return nil, err
+		}
+		err = a.removeNode(nodes)
+		return event, err
+	}
 	if freeSlots >= 0 {
 		return nil, nil
 	}
-	event, err := newAutoScaleEvent(groupMetadata, "add", fmt.Sprintf("number of free slots is %d", freeSlots))
+	event, err := newAutoScaleEvent(groupMetadata, "add", fmt.Sprintf(baseReasonMsg, freeSlots))
 	if err != nil {
 		return nil, err
 	}
@@ -371,6 +382,45 @@ func (a *autoScaleConfig) addNode(modelNodes []*cluster.Node) error {
 		return fmt.Errorf("error registering new node %s: %s", newAddr, err.Error())
 	}
 	log.Debugf("[node autoscale] new machine created: %s - started!", newAddr)
+	return nil
+}
+
+func (a *autoScaleConfig) removeNode(nodes []*cluster.Node) error {
+	minCount := math.MaxInt32
+	var chosenNode *cluster.Node
+	for _, node := range nodes {
+		contCount, err := a.provisioner.countRunningContainersByHost(urlToHost(node.Address))
+		if err != nil {
+			return fmt.Errorf("unable to count running containers: %s", err)
+		}
+		if contCount < minCount {
+			minCount = contCount
+			chosenNode = node
+		}
+	}
+	_, hasIaas := chosenNode.Metadata["iaas"]
+	if !hasIaas {
+		return fmt.Errorf("no IaaS information in node (%s) metadata: %#v", chosenNode.Address, chosenNode.Metadata)
+	}
+	err := a.provisioner.getCluster().Unregister(chosenNode.Address)
+	if err != nil {
+		return fmt.Errorf("unable to unregister node (%s) for removal: %s", chosenNode.Address, err)
+	}
+	buf := safe.NewBuffer(nil)
+	err = a.provisioner.moveContainers(urlToHost(chosenNode.Address), "", buf)
+	if err != nil {
+		a.provisioner.getCluster().Register(chosenNode.Address, chosenNode.Metadata)
+		return fmt.Errorf("unable to move containers from node (%s): %s - log: %s", chosenNode.Address, err, buf.String())
+	}
+	m, err := iaas.FindMachineByAddress(urlToHost(chosenNode.Address))
+	if err != nil {
+		log.Errorf("unable to find machine for removal in iaas: %s", err)
+		return nil
+	}
+	err = m.Destroy()
+	if err != nil {
+		log.Errorf("unable to destroy machine in IaaS: %s", err)
+	}
 	return nil
 }
 
