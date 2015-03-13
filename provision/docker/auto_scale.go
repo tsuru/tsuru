@@ -248,6 +248,38 @@ func (a *autoScaleConfig) runOnce(scaler autoScaler) (retErr error) {
 	return
 }
 
+type nodeMemoryData struct {
+	maxMemory        int64
+	reserved         int64
+	containersMemory map[string]int64
+}
+
+func (a *memoryScaler) nodesMemoryData(nodes []*cluster.Node) (map[string]*nodeMemoryData, error) {
+	nodesMemoryData := make(map[string]*nodeMemoryData)
+	for _, node := range nodes {
+		totalMemory, _ := strconv.ParseFloat(node.Metadata[a.totalMemoryMetadata], 64)
+		nodeMaxMem := int64(float64(a.maxMemoryRatio) * totalMemory)
+		data := &nodeMemoryData{
+			maxMemory:        nodeMaxMem,
+			containersMemory: make(map[string]int64),
+		}
+		nodesMemoryData[node.Address] = data
+		containers, err := a.provisioner.listRunningContainersByHost(urlToHost(node.Address))
+		if err != nil {
+			return nil, fmt.Errorf("couldn't find containers: %s", err)
+		}
+		for _, cont := range containers {
+			a, err := app.GetByName(cont.AppName)
+			if err != nil {
+				return nil, fmt.Errorf("couldn't find container app (%s): %s", cont.AppName, err)
+			}
+			data.containersMemory[cont.ID] = a.Plan.Memory
+			data.reserved += a.Plan.Memory
+		}
+	}
+	return nodesMemoryData, nil
+}
+
 func (a *memoryScaler) scale(groupMetadata string, nodes []*cluster.Node) (*autoScaleEvent, error) {
 	plans, err := app.PlansList()
 	if err != nil {
@@ -266,31 +298,47 @@ func (a *memoryScaler) scale(groupMetadata string, nodes []*cluster.Node) (*auto
 		}
 		maxPlanMemory = defaultPlan.Memory
 	}
-	hostReserved := make(map[string]int64)
-	for _, node := range nodes {
-		containers, err := a.provisioner.listRunningContainersByHost(urlToHost(node.Address))
-		if err != nil {
-			return nil, fmt.Errorf("couldn't find containers: %s", err)
+	memoryData, err := a.nodesMemoryData(nodes)
+	if err != nil {
+		return nil, err
+	}
+	canFitMax := false
+	for i, node := range nodes {
+		data := memoryData[node.Address]
+		if maxPlanMemory > data.maxMemory {
+			return nil, fmt.Errorf("aborting, impossible to fit max plan memory of %d bytes, node max available memory is %d", maxPlanMemory, data.maxMemory)
 		}
-		for _, cont := range containers {
-			a, err := app.GetByName(cont.AppName)
+		nodePredictedMem := data.reserved + maxPlanMemory
+		if nodePredictedMem <= data.maxMemory {
+			canFitMax = true
+		}
+		accumulator := map[string]int64{}
+		var canMove bool
+		for _, contMem := range data.containersMemory {
+			canMove = false
+			for j, otherNode := range nodes {
+				if i == j {
+					continue
+				}
+				otherData := memoryData[otherNode.Address]
+				used := otherData.reserved + contMem + accumulator[otherNode.Address]
+				if used+maxPlanMemory < otherData.maxMemory {
+					accumulator[otherNode.Address] += contMem
+					canMove = true
+					break
+				}
+			}
+			if !canMove {
+				break
+			}
+		}
+		if canMove {
+			event, err := newAutoScaleEvent(groupMetadata, "remove", fmt.Sprintf("containers from %s can be distributed in cluster", node.Address))
 			if err != nil {
 				return nil, err
 			}
-			hostReserved[node.Address] += a.Plan.Memory
-		}
-	}
-	canFitMax := false
-	for _, node := range nodes {
-		totalMemory, _ := strconv.ParseFloat(node.Metadata[a.totalMemoryMetadata], 64)
-		nodeMaxMem := int64(float64(a.maxMemoryRatio) * totalMemory)
-		if maxPlanMemory > nodeMaxMem {
-			return nil, fmt.Errorf("aborting, impossible to fit max plan memory of %d bytes, node max available memory is %d", maxPlanMemory, nodeMaxMem)
-		}
-		nodePredictedMem := hostReserved[node.Address] + maxPlanMemory
-		if nodePredictedMem <= nodeMaxMem {
-			canFitMax = true
-			break
+			err = a.removeNode(node)
+			return event, err
 		}
 	}
 	if canFitMax {
@@ -321,7 +369,19 @@ func (a *countScaler) scale(groupMetadata string, nodes []*cluster.Node) (*autoS
 		if err != nil {
 			return nil, err
 		}
-		err = a.removeNode(nodes)
+		minCount := math.MaxInt32
+		var chosenNode *cluster.Node
+		for _, node := range nodes {
+			contCount, err := a.provisioner.countRunningContainersByHost(urlToHost(node.Address))
+			if err != nil {
+				return nil, fmt.Errorf("unable to count running containers: %s", err)
+			}
+			if contCount < minCount {
+				minCount = contCount
+				chosenNode = node
+			}
+		}
+		err = a.removeNode(chosenNode)
 		return event, err
 	}
 	if freeSlots >= 0 {
@@ -390,19 +450,7 @@ func (a *autoScaleConfig) addNode(modelNodes []*cluster.Node) error {
 	return nil
 }
 
-func (a *autoScaleConfig) removeNode(nodes []*cluster.Node) error {
-	minCount := math.MaxInt32
-	var chosenNode *cluster.Node
-	for _, node := range nodes {
-		contCount, err := a.provisioner.countRunningContainersByHost(urlToHost(node.Address))
-		if err != nil {
-			return fmt.Errorf("unable to count running containers: %s", err)
-		}
-		if contCount < minCount {
-			minCount = contCount
-			chosenNode = node
-		}
-	}
+func (a *autoScaleConfig) removeNode(chosenNode *cluster.Node) error {
 	_, hasIaas := chosenNode.Metadata["iaas"]
 	if !hasIaas {
 		return fmt.Errorf("no IaaS information in node (%s) metadata: %#v", chosenNode.Address, chosenNode.Metadata)
