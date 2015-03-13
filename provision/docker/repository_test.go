@@ -200,29 +200,6 @@ func (s *S) TestGetContainerPartialId(c *check.C) {
 	c.Assert(cont.ID, check.Equals, "container-a1")
 }
 
-func (s *S) TestListContainersByAppOrderedByStatus(c *check.C) {
-	coll := s.p.collection()
-	defer coll.Close()
-	coll.Insert(
-		container{AppName: "myapp", ID: "0", Status: provision.StatusStarted.String()},
-		container{AppName: "myapp", ID: "1", Status: provision.StatusBuilding.String()},
-		container{AppName: "myapp", ID: "2", Status: provision.StatusError.String()},
-		container{AppName: "myapp", ID: "3", Status: provision.StatusCreated.String()},
-		container{AppName: "myapp", ID: "4", Status: provision.StatusStopped.String()},
-		container{AppName: "myapp", ID: "5", Status: provision.StatusStarting.String()},
-	)
-	defer coll.RemoveAll(bson.M{"appname": "myapp"})
-	containers, err := s.p.listContainersByAppOrderedByStatus("myapp")
-	c.Assert(err, check.IsNil)
-	c.Assert(len(containers), check.Equals, 6)
-	c.Assert(containers[0].Status, check.Equals, provision.StatusCreated.String())
-	c.Assert(containers[1].Status, check.Equals, provision.StatusBuilding.String())
-	c.Assert(containers[2].Status, check.Equals, provision.StatusError.String())
-	c.Assert(containers[3].Status, check.Equals, provision.StatusStopped.String())
-	c.Assert(containers[4].Status, check.Equals, provision.StatusStarting.String())
-	c.Assert(containers[5].Status, check.Equals, provision.StatusStarted.String())
-}
-
 func (s *S) TestcontainerSliceLen(c *check.C) {
 	containers := containerSlice{container{}, container{}}
 	c.Assert(containers.Len(), check.Equals, 2)

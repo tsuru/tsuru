@@ -7,7 +7,6 @@ package docker
 import (
 	"errors"
 	"fmt"
-	"sort"
 	"time"
 
 	"github.com/tsuru/tsuru/provision"
@@ -118,15 +117,6 @@ func (c containerSlice) Less(i, j int) bool {
 
 func (c containerSlice) Swap(i, j int) {
 	c[i], c[j] = c[j], c[i]
-}
-
-func (p *dockerProvisioner) listContainersByAppOrderedByStatus(appName string) ([]container, error) {
-	containers, err := p.listContainersBy(bson.M{"appname": appName})
-	if err != nil {
-		return nil, err
-	}
-	sort.Sort(containerSlice(containers))
-	return containers, nil
 }
 
 func (p *dockerProvisioner) listAllContainers() ([]container, error) {
