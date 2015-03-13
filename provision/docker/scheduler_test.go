@@ -708,8 +708,7 @@ func (s *S) TestGetRemovableContainer(c *check.C) {
 	n, err = scheduler.aggregateContainersByHost([]string{"url1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(n["url1"], check.Equals, 1)
-	containers, err := scheduler.GetRemovableContainers(a1.Name, 1, clusterInstance)
+	container, err := scheduler.GetRemovableContainer(a1.Name, clusterInstance)
 	c.Assert(err, check.IsNil)
-	c.Assert(len(containers), check.Equals, 1)
-	c.Assert(containers[0], check.Equals, "1")
+	c.Assert(container, check.Equals, "1")
 }

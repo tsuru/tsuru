@@ -149,21 +149,13 @@ func (s *segregatedScheduler) aggregateContainersByHostApp(hosts []string, appNa
 	return s.aggregateContainersBy(bson.M{"$match": bson.M{"appname": appName, "hostaddr": bson.M{"$in": hosts}, "id": bson.M{"$nin": s.ignoredContainers}}})
 }
 
-func (s *segregatedScheduler) GetRemovableContainers(appName string, n int, c *cluster.Cluster) ([]string, error) {
-	var containers []string
+func (s *segregatedScheduler) GetRemovableContainer(appName string, c *cluster.Cluster) (string, error) {
 	a, _ := app.GetByName(appName)
 	nodes, err := nodesForApp(c, a)
 	if err != nil {
-		return containers, err
+		return "", err
 	}
-	for i := 0; i < n; i++ {
-		container, err := s.chooseContainerFromMaxContainersCountInNode(nodes, appName)
-		if err != nil {
-			return []string{}, err
-		}
-		containers = append(containers, container)
-	}
-	return containers, nil
+	return s.chooseContainerFromMaxContainersCountInNode(nodes, appName)
 }
 
 // chooseNodeWithMaxContainersCount finds which is the node with maximum number
