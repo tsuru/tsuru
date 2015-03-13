@@ -256,7 +256,7 @@ var bindAndHealthcheck = action.Action{
 			unit := c.asUnit(args.app)
 			err := args.app.UnbindUnit(&unit)
 			if err != nil {
-				log.Errorf("Unbound unit %q: %s", c.ID, err)
+				log.Errorf("Removed binding for unit %q: %s", c.ID, err)
 			}
 		}
 	},
