@@ -9,6 +9,7 @@ package router
 import (
 	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
@@ -192,4 +193,29 @@ func Swap(r Router, backend1, backend2 string) error {
 		}
 	}
 	return swapBackendName(backend1, backend2)
+}
+
+type PlanRouter struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+}
+
+func GetList() ([]PlanRouter, error) {
+	routerConfig, err := config.Get("routers")
+	if err != nil {
+		return nil, err
+	}
+	routers, _ := routerConfig.(map[interface{}]interface{})
+	routersList := make([]PlanRouter, 0, len(routers))
+	var keys []string
+	for key, _ := range routers {
+		keys = append(keys, key.(string))
+	}
+	sort.Strings(keys)
+	for _, value := range keys {
+		routerProperties := routers[value].(map[interface{}]interface{})
+		routerType := routerProperties["type"].(string)
+		routersList = append(routersList, PlanRouter{Name: value, Type: routerType})
+	}
+	return routersList, nil
 }
