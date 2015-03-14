@@ -12,6 +12,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/router"
 	_ "github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
 )
@@ -179,7 +180,7 @@ func (s *S) TestRoutersList(c *check.C) {
 	defer config.Unset("routers:router1:type")
 	defer config.Unset("routers:router2:type")
 	recorder := httptest.NewRecorder()
-	expected := []app.Router{
+	expected := []router.PlanRouter{
 		{Name: "router1", Type: "foo"},
 		{Name: "router2", Type: "bar"},
 	}
@@ -190,8 +191,22 @@ func (s *S) TestRoutersList(c *check.C) {
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	var routers []app.Router
+	var routers []router.PlanRouter
 	err = json.Unmarshal(recorder.Body.Bytes(), &routers)
 	c.Assert(err, check.IsNil)
 	c.Assert(routers, check.DeepEquals, expected)
+}
+
+func (s *S) TestRoutersListNonAdmin(c *check.C) {
+	config.Set("routers:router1:type", "foo")
+	config.Set("routers:router2:type", "bar")
+	defer config.Unset("routers:router1:type")
+	defer config.Unset("routers:router2:type")
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/plans/routers", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
