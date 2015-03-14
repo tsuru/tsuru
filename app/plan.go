@@ -7,6 +7,7 @@ package app
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/tsuru/config"
@@ -143,4 +144,29 @@ func PlanRemove(planName string) error {
 		return ErrPlanNotFound
 	}
 	return err
+}
+
+type Router struct {
+	Name string `json:"name"`
+	Type string `json:"type"`
+}
+
+func RoutersList() ([]Router, error) {
+	routerConfig, err := config.Get("routers")
+	if err != nil {
+		return nil, err
+	}
+	routers, _ := routerConfig.(map[interface{}]interface{})
+	var routersList []Router
+	var keys []string
+	for key, _ := range routers {
+		keys = append(keys, key.(string))
+	}
+	sort.Strings(keys)
+	for _, value := range keys {
+		routerProperties := routers[value].(map[interface{}]interface{})
+		routerType := routerProperties["type"].(string)
+		routersList = append(routersList, Router{Name: value, Type: routerType})
+	}
+	return routersList, nil
 }

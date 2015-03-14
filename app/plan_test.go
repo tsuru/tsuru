@@ -223,3 +223,17 @@ func (s *S) TestPlanGetRouter(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(r2, check.Equals, "defaultrouter")
 }
+
+func (s *S) TestRoutersList(c *check.C) {
+	config.Set("routers:router1:type", "foo")
+	config.Set("routers:router2:type", "bar")
+	defer config.Unset("routers:router1:type")
+	defer config.Unset("routers:router2:type")
+	expected := []Router{
+		Router{Name: "router1", Type: "foo"},
+		Router{Name: "router2", Type: "bar"},
+	}
+	routers, err := RoutersList()
+	c.Assert(err, check.IsNil)
+	c.Assert(routers, check.DeepEquals, expected)
+}
