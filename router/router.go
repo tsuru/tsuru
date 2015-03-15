@@ -200,7 +200,7 @@ type PlanRouter struct {
 	Type string `json:"type"`
 }
 
-func GetList() ([]PlanRouter, error) {
+func List() ([]PlanRouter, error) {
 	routerConfig, err := config.Get("routers")
 	if err != nil {
 		return nil, err

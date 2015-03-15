@@ -91,7 +91,7 @@ func (s *S) TestSwapBackendName(c *check.C) {
 	c.Assert(name, check.Equals, "routername")
 }
 
-func (s *S) TestGetList(c *check.C) {
+func (s *S) TestList(c *check.C) {
 	config.Set("routers:router1:type", "foo")
 	config.Set("routers:router2:type", "bar")
 	defer config.Unset("routers:router1:type")
@@ -100,7 +100,7 @@ func (s *S) TestGetList(c *check.C) {
 		PlanRouter{Name: "router1", Type: "foo"},
 		PlanRouter{Name: "router2", Type: "bar"},
 	}
-	routers, err := GetList()
+	routers, err := List()
 	c.Assert(err, check.IsNil)
 	c.Assert(routers, check.DeepEquals, expected)
 }
