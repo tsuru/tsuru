@@ -64,7 +64,7 @@ func removePlan(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func listRouters(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	routers, err := router.GetList()
+	routers, err := router.List()
 	if err != nil {
 		return err
 	}
