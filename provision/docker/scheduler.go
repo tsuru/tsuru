@@ -162,15 +162,7 @@ func (s *segregatedScheduler) GetRemovableContainer(appName string, c *cluster.C
 // of containers and returns it
 func (s *segregatedScheduler) chooseContainerFromMaxContainersCountInNode(nodes []cluster.Node, appName string) (string, error) {
 	var chosenNode string
-	hosts := make([]string, len(nodes))
-	hostsMap := make(map[string]string)
-	// Only hostname is saved in the docker containers collection
-	// so we need to extract and map then to the original node.
-	for i, node := range nodes {
-		host := urlToHost(node.Address)
-		hosts[i] = host
-		hostsMap[host] = node.Address
-	}
+	hosts, hostsMap := s.nodesToHosts(nodes)
 	log.Debugf("[scheduler] Possible nodes for remove a container: %#v", hosts)
 	s.hostMutex.Lock()
 	defer s.hostMutex.Unlock()
@@ -210,10 +202,7 @@ func (s *segregatedScheduler) getContainerFromHost(host string) (string, error) 
 	return c.ID, err
 }
 
-// chooseNode finds which is the node with the minimum number
-// of containers and returns it
-func (s *segregatedScheduler) chooseNode(nodes []cluster.Node, contName string, appName string) (string, error) {
-	var chosenNode string
+func (s *segregatedScheduler) nodesToHosts(nodes []cluster.Node) ([]string, map[string]string) {
 	hosts := make([]string, len(nodes))
 	hostsMap := make(map[string]string)
 	// Only hostname is saved in the docker containers collection
@@ -223,6 +212,14 @@ func (s *segregatedScheduler) chooseNode(nodes []cluster.Node, contName string, 
 		hosts[i] = host
 		hostsMap[host] = node.Address
 	}
+	return hosts, hostsMap
+}
+
+// chooseNode finds which is the node with the minimum number
+// of containers and returns it
+func (s *segregatedScheduler) chooseNode(nodes []cluster.Node, contName string, appName string) (string, error) {
+	var chosenNode string
+	hosts, hostsMap := s.nodesToHosts(nodes)
 	log.Debugf("[scheduler] Possible nodes for container %s: %#v", contName, hosts)
 	s.hostMutex.Lock()
 	defer s.hostMutex.Unlock()

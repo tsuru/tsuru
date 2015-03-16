@@ -712,3 +712,16 @@ func (s *S) TestGetRemovableContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(container, check.Equals, "1")
 }
+
+func (s *S) TestNodesToHosts(c *check.C) {
+	nodes := []cluster.Node{
+		{Address: "http://server1:1234"},
+		{Address: "http://server2:1234"},
+	}
+	scheduler := segregatedScheduler{provisioner: s.p}
+	hosts, hostsMap := scheduler.nodesToHosts(nodes)
+	c.Assert(hosts, check.NotNil)
+	c.Assert(hostsMap, check.NotNil)
+	c.Assert(len(hosts), check.Equals, 2)
+	c.Assert(hostsMap[hosts[0]], check.Equals, nodes[0].Address)
+}
