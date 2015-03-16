@@ -25,6 +25,7 @@ func buildManager() *cmd.Manager {
 	m := cmd.NewManager("tsr", api.Version, "", os.Stdout, os.Stderr, os.Stdin, nil)
 	m.Register(&tsrCommand{Command: &apiCmd{}})
 	m.Register(&tsrCommand{Command: tokenCmd{}})
+	m.Register(&tsrCommand{Command: &migrateCmd{}})
 	registerProvisionersCommands(m)
 	return m
 }
