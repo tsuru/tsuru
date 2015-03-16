@@ -66,6 +66,11 @@ irc channel
 
 #tsuru channel on irc.freenode.net - chat with other tsuru users and developers.
 
+Gitter
+------
+
+We're also on Gitter, check it out: https://gitter.im/tsuru/tsuru.
+
 Release Process
 ===============
 
