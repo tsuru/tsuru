@@ -115,7 +115,7 @@ type autoScaleConfig struct {
 	totalMemoryMetadata string
 	maxMemoryRatio      float32
 	maxContainerCount   int
-	scaleDownCountRatio float32
+	scaleDownRatio      float32
 	waitTimeNewMachine  time.Duration
 	runInterval         time.Duration
 	done                chan bool
@@ -155,10 +155,10 @@ func (a *autoScaleConfig) run() error {
 		log.Error(err.Error())
 		return err
 	}
-	if a.scaleDownCountRatio == 0.0 {
-		a.scaleDownCountRatio = 1.333
-	} else if a.scaleDownCountRatio < 1.0 {
-		err := fmt.Errorf("[node autoscale] scale down ratio needs to be greater than 1.0, got %f", a.scaleDownCountRatio)
+	if a.scaleDownRatio == 0.0 {
+		a.scaleDownRatio = 1.333
+	} else if a.scaleDownRatio < 1.0 {
+		err := fmt.Errorf("[node autoscale] scale down ratio needs to be greater than 1.0, got %f", a.scaleDownRatio)
 		log.Error(err.Error())
 		return err
 	}
@@ -249,26 +249,31 @@ func (a *autoScaleConfig) runOnce(scaler autoScaler) (retErr error) {
 }
 
 type nodeMemoryData struct {
+	node             *cluster.Node
 	maxMemory        int64
 	reserved         int64
+	available        int64
 	containersMemory map[string]int64
 }
 
-func (a *memoryScaler) nodesMemoryData(nodes []*cluster.Node) (map[string]*nodeMemoryData, error) {
+func (a *memoryScaler) nodesMemoryData(prov *dockerProvisioner, nodes []*cluster.Node) (map[string]*nodeMemoryData, error) {
 	nodesMemoryData := make(map[string]*nodeMemoryData)
 	for _, node := range nodes {
 		totalMemory, _ := strconv.ParseFloat(node.Metadata[a.totalMemoryMetadata], 64)
-		nodeMaxMem := int64(float64(a.maxMemoryRatio) * totalMemory)
+		maxMemory := int64(float64(a.maxMemoryRatio) * totalMemory)
 		data := &nodeMemoryData{
-			maxMemory:        nodeMaxMem,
 			containersMemory: make(map[string]int64),
+			node:             node,
+			maxMemory:        maxMemory,
 		}
 		nodesMemoryData[node.Address] = data
-		containers, err := a.provisioner.listRunningContainersByHost(urlToHost(node.Address))
+		containers, err := prov.listRunningContainersByHost(urlToHost(node.Address))
 		if err != nil {
 			return nil, fmt.Errorf("couldn't find containers: %s", err)
 		}
+		fmt.Println("conts", node.Address, len(containers))
 		for _, cont := range containers {
+			fmt.Println(cont.ID)
 			a, err := app.GetByName(cont.AppName)
 			if err != nil {
 				return nil, fmt.Errorf("couldn't find container app (%s): %s", cont.AppName, err)
@@ -276,6 +281,7 @@ func (a *memoryScaler) nodesMemoryData(nodes []*cluster.Node) (map[string]*nodeM
 			data.containersMemory[cont.ID] = a.Plan.Memory
 			data.reserved += a.Plan.Memory
 		}
+		data.available = data.maxMemory - data.reserved
 	}
 	return nodesMemoryData, nil
 }
@@ -298,47 +304,83 @@ func (a *memoryScaler) scale(groupMetadata string, nodes []*cluster.Node) (*auto
 		}
 		maxPlanMemory = defaultPlan.Memory
 	}
-	memoryData, err := a.nodesMemoryData(nodes)
+	var containers []container
+	for _, node := range nodes {
+		conts, err := a.provisioner.listRunningContainersByHost(urlToHost(node.Address))
+		if err != nil {
+			return nil, err
+		}
+		containers = append(containers, conts...)
+	}
+	var maxAvailable int64
+	var chosenNode *cluster.Node
+	fmt.Println("going...")
+	for _, node := range nodes {
+		dryProv, err := a.provisioner.dryMode(nil)
+		if err != nil {
+			return nil, err
+		}
+		defer dryProv.stopDryMode()
+		err = dryProv.getCluster().Unregister(node.Address)
+		if err != nil {
+			return nil, err
+		}
+		buf := safe.NewBuffer(nil)
+		fmt.Println("moving", len(containers))
+		for _, c := range containers {
+			fmt.Println(c.ID)
+		}
+		err = dryProv.moveContainerList(containers, "", buf)
+		if err != nil {
+			log.Errorf("[node autoscale] unable to rebalance containers without %s: %s - log: %s", node.Address, err, buf.String())
+			continue
+		}
+		otherNodes, err := dryProv.getCluster().NodesForMetadata(map[string]string{a.groupByMetadata: groupMetadata})
+		if err != nil {
+			return nil, err
+		}
+		fmt.Println("otherNodes", otherNodes)
+		otherNodesPtr := make([]*cluster.Node, len(otherNodes))
+		for i := range otherNodes {
+			otherNodesPtr[i] = &otherNodes[i]
+		}
+		data, err := a.nodesMemoryData(dryProv, otherNodesPtr)
+		if err != nil {
+			return nil, err
+		}
+		var maxLocalAvailable int64
+		for _, v := range data {
+			if v.available > maxLocalAvailable {
+				maxLocalAvailable = v.available
+			}
+		}
+		if maxLocalAvailable > maxAvailable {
+			maxAvailable = maxLocalAvailable
+			chosenNode = node
+		}
+	}
+	if chosenNode != nil && maxAvailable > int64(float32(maxPlanMemory)*a.scaleDownRatio) {
+		fmt.Println("going down", maxAvailable, int64(float32(maxPlanMemory)*a.scaleDownRatio))
+		event, err := newAutoScaleEvent(groupMetadata, "remove", fmt.Sprintf("containers from %s can be distributed in cluster", chosenNode.Address))
+		if err != nil {
+			return nil, err
+		}
+		err = a.removeNode(chosenNode)
+		return event, err
+	}
+	memoryData, err := a.nodesMemoryData(a.provisioner, nodes)
 	if err != nil {
 		return nil, err
 	}
 	canFitMax := false
-	for i, node := range nodes {
+	for _, node := range nodes {
 		data := memoryData[node.Address]
 		if maxPlanMemory > data.maxMemory {
 			return nil, fmt.Errorf("aborting, impossible to fit max plan memory of %d bytes, node max available memory is %d", maxPlanMemory, data.maxMemory)
 		}
-		nodePredictedMem := data.reserved + maxPlanMemory
-		if nodePredictedMem <= data.maxMemory {
+		if data.available >= maxPlanMemory {
 			canFitMax = true
-		}
-		accumulator := map[string]int64{}
-		var canMove bool
-		for _, contMem := range data.containersMemory {
-			canMove = false
-			for j, otherNode := range nodes {
-				if i == j {
-					continue
-				}
-				otherData := memoryData[otherNode.Address]
-				used := otherData.reserved + contMem + accumulator[otherNode.Address]
-				if used+maxPlanMemory < otherData.maxMemory {
-					accumulator[otherNode.Address] += contMem
-					canMove = true
-					break
-				}
-			}
-			if !canMove {
-				break
-			}
-		}
-		if canMove {
-			event, err := newAutoScaleEvent(groupMetadata, "remove", fmt.Sprintf("containers from %s can be distributed in cluster", node.Address))
-			if err != nil {
-				return nil, err
-			}
-			err = a.removeNode(node)
-			return event, err
+			break
 		}
 	}
 	if canFitMax {
@@ -364,7 +406,7 @@ func (a *countScaler) scale(groupMetadata string, nodes []*cluster.Node) (*autoS
 	}
 	freeSlots := (len(nodes) * a.maxContainerCount) - totalCount
 	baseReasonMsg := "number of free slots is %d"
-	if freeSlots > int(float32(a.maxContainerCount)*a.scaleDownCountRatio) {
+	if freeSlots > int(float32(a.maxContainerCount)*a.scaleDownRatio) {
 		event, err := newAutoScaleEvent(groupMetadata, "remove", fmt.Sprintf(baseReasonMsg, freeSlots))
 		if err != nil {
 			return nil, err
