@@ -676,56 +676,53 @@ func (s *S) TestProvisionerAddUnitsWithHost(c *check.C) {
 }
 
 func (s *S) TestProvisionerRemoveUnits(c *check.C) {
-	err := s.newFakeImage(s.p, "tsuru/python")
+	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}}
+	cont1 := container{ID: "1", Name: "impius1", AppName: a1.Name}
+	cont2 := container{ID: "2", Name: "mirror1", AppName: a1.Name}
+	cont3 := container{ID: "3", Name: "dedication1", AppName: a1.Name}
+	err := s.storage.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
-	container1, err := s.newContainer(&newContainerOpts{Status: "building"}, nil)
+	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
+	coll := s.storage.Collection(schedulerCollection)
+	p := Pool{Name: "pool1", Teams: []string{
+		"tsuruteam",
+		"nodockerforme",
+	}}
+	err = coll.Insert(p)
 	c.Assert(err, check.IsNil)
-	defer routertest.FakeRouter.RemoveBackend(container1.AppName)
-	container2, err := s.newContainer(&newContainerOpts{Status: "building"}, nil)
+	defer coll.RemoveAll(bson.M{"_id": p.Name})
+	contColl := s.p.collection()
+	err = contColl.Insert(
+		cont1, cont2, cont3,
+	)
 	c.Assert(err, check.IsNil)
-	defer routertest.FakeRouter.RemoveBackend(container2.AppName)
-	container3, err := s.newContainer(&newContainerOpts{Status: "started"}, nil)
+	defer contColl.RemoveAll(bson.M{"name": bson.M{"$in": []string{cont1.Name, cont2.Name, cont3.Name}}})
+	scheduler := segregatedScheduler{provisioner: s.p}
+	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
+	s.p.scheduler = &scheduler
+	s.p.cluster = clusterInstance
 	c.Assert(err, check.IsNil)
-	defer s.removeTestContainer(container3)
-	client, err := docker.NewClient(s.server.URL())
+	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
 	c.Assert(err, check.IsNil)
-	err = client.StartContainer(container1.ID, nil)
+	opts := docker.CreateContainerOptions{Name: cont1.Name}
+	_, err = scheduler.Schedule(clusterInstance, opts, a1.Name)
 	c.Assert(err, check.IsNil)
-	err = client.StartContainer(container2.ID, nil)
+	opts = docker.CreateContainerOptions{Name: cont2.Name}
+	_, err = scheduler.Schedule(clusterInstance, opts, a1.Name)
 	c.Assert(err, check.IsNil)
-	app := provisiontest.NewFakeApp(container1.AppName, "python", 0)
-	unit1 := container1.asUnit(app)
-	unit2 := container2.asUnit(app)
-	unit3 := container3.asUnit(app)
-	app.BindUnit(&unit1)
-	app.BindUnit(&unit2)
-	app.BindUnit(&unit3)
-	err = s.p.RemoveUnits(app, 2)
+	opts = docker.CreateContainerOptions{Name: cont3.Name}
+	_, err = scheduler.Schedule(clusterInstance, opts, a1.Name)
 	c.Assert(err, check.IsNil)
-	_, err = s.p.getContainer(container1.ID)
+	papp := provisiontest.NewFakeApp(a1.Name, "python", 0)
+	s.p.Provision(papp)
+	err = s.p.RemoveUnits(papp, 2)
+	c.Assert(err, check.IsNil)
+	_, err = s.p.getContainer(cont1.ID)
 	c.Assert(err, check.NotNil)
-	_, err = s.p.getContainer(container2.ID)
+	_, err = s.p.getContainer(cont2.ID)
 	c.Assert(err, check.NotNil)
-	c.Check(app.HasBind(&unit1), check.Equals, false)
-	c.Check(app.HasBind(&unit2), check.Equals, false)
-	c.Check(app.HasBind(&unit3), check.Equals, true)
-}
-
-func (s *S) TestProvisionerRemoveUnitsPriorityOrder(c *check.C) {
-	container, err := s.newContainer(nil, nil)
+	_, err = s.p.getContainer(cont3.ID)
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(s.p, "tsuru/app-"+container.AppName)
-	c.Assert(err, check.IsNil)
-	defer routertest.FakeRouter.RemoveBackend(container.AppName)
-	app := provisiontest.NewFakeApp(container.AppName, "python", 0)
-	app.Deploys = 1
-	_, err = s.p.AddUnits(app, 3, nil)
-	c.Assert(err, check.IsNil)
-	err = s.p.RemoveUnits(app, 1)
-	c.Assert(err, check.IsNil)
-	_, err = s.p.getContainer(container.ID)
-	c.Assert(err, check.NotNil)
-	c.Assert(s.p.Units(app), check.HasLen, 3)
 }
 
 func (s *S) TestProvisionerRemoveUnitsNotFound(c *check.C) {
@@ -741,18 +738,48 @@ func (s *S) TestProvisionerRemoveUnitsZeroUnits(c *check.C) {
 }
 
 func (s *S) TestProvisionerRemoveUnitsTooManyUnits(c *check.C) {
-	container, err := s.newContainer(nil, nil)
+	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}}
+	cont1 := container{ID: "1", Name: "impius1", AppName: a1.Name}
+	cont2 := container{ID: "2", Name: "mirror1", AppName: a1.Name}
+	cont3 := container{ID: "3", Name: "dedication1", AppName: a1.Name}
+	err := s.storage.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(s.p, "tsuru/app-"+container.AppName)
+	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
+	coll := s.storage.Collection(schedulerCollection)
+	p := Pool{Name: "pool1", Teams: []string{
+		"tsuruteam",
+		"nodockerforme",
+	}}
+	err = coll.Insert(p)
 	c.Assert(err, check.IsNil)
-	defer routertest.FakeRouter.RemoveBackend(container.AppName)
-	app := provisiontest.NewFakeApp(container.AppName, "python", 0)
-	app.Deploys = 1
-	_, err = s.p.AddUnits(app, 2, nil)
+	defer coll.RemoveAll(bson.M{"_id": p.Name})
+	contColl := s.p.collection()
+	err = contColl.Insert(
+		cont1, cont2, cont3,
+	)
 	c.Assert(err, check.IsNil)
-	err = s.p.RemoveUnits(app, 3)
+	defer contColl.RemoveAll(bson.M{"name": bson.M{"$in": []string{cont1.Name, cont2.Name, cont3.Name}}})
+	scheduler := segregatedScheduler{provisioner: s.p}
+	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
+	s.p.scheduler = &scheduler
+	s.p.cluster = clusterInstance
+	c.Assert(err, check.IsNil)
+	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
+	c.Assert(err, check.IsNil)
+	opts := docker.CreateContainerOptions{Name: cont1.Name}
+	_, err = scheduler.Schedule(clusterInstance, opts, a1.Name)
+	c.Assert(err, check.IsNil)
+	opts = docker.CreateContainerOptions{Name: cont2.Name}
+	_, err = scheduler.Schedule(clusterInstance, opts, a1.Name)
+	c.Assert(err, check.IsNil)
+	opts = docker.CreateContainerOptions{Name: cont3.Name}
+	_, err = scheduler.Schedule(clusterInstance, opts, a1.Name)
+	c.Assert(err, check.IsNil)
+	papp := provisiontest.NewFakeApp(a1.Name, "python", 0)
+	s.p.Provision(papp)
+	err = s.p.RemoveUnits(papp, 4)
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "remove units: cannot remove all units from app")
+	c.Assert(err.Error(), check.Equals, "remove units: cannot remove 4 units. App impius has just 3 units.")
 }
 
 func (s *S) TestProvisionerRemoveUnit(c *check.C) {

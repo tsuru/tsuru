@@ -585,16 +585,24 @@ func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint) error {
 	if units < 1 {
 		return errors.New("remove units: units must be at least 1")
 	}
-	containers, err := p.listContainersByAppOrderedByStatus(a.GetName())
+	countUnits, err := p.getContainerCountForAppName(a.GetName())
 	if err != nil {
 		return err
 	}
-	if units >= uint(len(containers)) {
-		return errors.New("remove units: cannot remove all units from app")
+	if int(units) > countUnits {
+		return errors.New(fmt.Sprintf("remove units: cannot remove %d units. App %s has just %d units.", units, a.GetName(), countUnits))
 	}
-	runInContainers(containers[:units], func(c *container, _ chan *container) error {
+	for i := 0; i < int(units); i++ {
+		containerID, err := p.scheduler.GetRemovableContainer(a.GetName(), p.cluster)
+		if err != nil {
+			return err
+		}
+		c, err := p.getContainer(containerID)
+		if err != nil {
+			return err
+		}
 		unit := c.asUnit(a)
-		err := a.UnbindUnit(&unit)
+		err = a.UnbindUnit(&unit)
 		if err != nil {
 			log.Errorf("Failed to unbind unit %q: %s", c.ID, err)
 		}
@@ -602,8 +610,7 @@ func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint) error {
 		if err != nil {
 			log.Errorf("Failed to remove container %q: %s", c.ID, err)
 		}
-		return nil
-	}, nil, true)
+	}
 	return nil
 }
 
