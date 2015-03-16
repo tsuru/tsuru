@@ -800,6 +800,7 @@ func (s *S) TestProvisionerRemoveUnit(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.p.getContainer(container.ID)
 	c.Assert(err, check.NotNil)
+	c.Assert(routertest.FakeRouter.HasRoute(container.AppName, container.getAddress()), check.Equals, false)
 }
 
 func (s *S) TestProvisionerRemoveUnitNotFound(c *check.C) {

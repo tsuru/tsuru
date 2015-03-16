@@ -205,7 +205,7 @@ var provisionAddUnitsToHost = action.Action{
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
 		containers := ctx.FWResult.([]container)
 		for _, cont := range containers {
-			err := args.provisioner.removeContainer(&cont)
+			err := cont.remove(args.provisioner)
 			if err != nil {
 				log.Errorf("Error removing added container %s: %s", cont.ID, err.Error())
 			}
@@ -360,7 +360,7 @@ var provisionRemoveOldUnits = action.Action{
 		}
 		fmt.Fprintf(writer, "\n---- Removing %d old unit%s ----\n", total, plural)
 		runInContainers(args.toRemove, func(c *container, toRollback chan *container) error {
-			err := args.provisioner.removeContainer(c)
+			err := c.remove(args.provisioner)
 			if err != nil {
 				log.Errorf("Ignored error trying to remove old container %q: %s", c.ID, err)
 			}

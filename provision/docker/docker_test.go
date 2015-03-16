@@ -360,7 +360,6 @@ func (s *S) TestContainerRemove(c *check.C) {
 	err = coll.Find(bson.M{"id": container.ID}).One(&container)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "not found")
-	c.Assert(routertest.FakeRouter.HasRoute(container.AppName, container.getAddress()), check.Equals, false)
 	client, _ := docker.NewClient(s.server.URL())
 	_, err = client.InspectContainer(container.ID)
 	c.Assert(err, check.NotNil)
@@ -368,7 +367,7 @@ func (s *S) TestContainerRemove(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 }
 
-func (s *S) TestRemoveContainerIgnoreErrors(c *check.C) {
+func (s *S) TestContainerRemoveIgnoreErrors(c *check.C) {
 	conn, err := db.Conn()
 	defer conn.Close()
 	err = conn.Apps().Insert(app.App{Name: "test-app"})
@@ -387,7 +386,31 @@ func (s *S) TestRemoveContainerIgnoreErrors(c *check.C) {
 	err = coll.Find(bson.M{"id": container.ID}).One(&container)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "not found")
-	c.Assert(routertest.FakeRouter.HasRoute(container.AppName, container.getAddress()), check.Equals, false)
+}
+
+func (s *S) TestContainerRemoveStopsContainer(c *check.C) {
+	conn, err := db.Conn()
+	defer conn.Close()
+	err = conn.Apps().Insert(app.App{Name: "test-app"})
+	c.Assert(err, check.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": "test-app"})
+	container, err := s.newContainer(&newContainerOpts{AppName: "test-app"}, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(container)
+	err = container.start(s.p, false)
+	c.Assert(err, check.IsNil)
+	err = container.remove(s.p)
+	c.Assert(err, check.IsNil)
+	coll := s.p.collection()
+	defer coll.Close()
+	err = coll.Find(bson.M{"id": container.ID}).One(&container)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "not found")
+	client, _ := docker.NewClient(s.server.URL())
+	_, err = client.InspectContainer(container.ID)
+	c.Assert(err, check.NotNil)
+	_, ok := err.(*docker.NoSuchContainer)
+	c.Assert(ok, check.Equals, true)
 }
 
 func (s *S) TestContainerNetworkInfo(c *check.C) {

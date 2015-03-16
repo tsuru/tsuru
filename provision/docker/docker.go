@@ -329,9 +329,12 @@ func (c *container) getApp() (provision.App, error) {
 
 // remove removes a docker container.
 func (c *container) remove(p *dockerProvisioner) error {
-	address := c.getAddress()
 	log.Debugf("Removing container %s from docker", c.ID)
-	err := p.getCluster().RemoveContainer(docker.RemoveContainerOptions{ID: c.ID})
+	err := c.stop(p)
+	if err != nil {
+		log.Errorf("error on stop unit %s - %s", c.ID, err)
+	}
+	err = p.getCluster().RemoveContainer(docker.RemoveContainerOptions{ID: c.ID})
 	if err != nil {
 		log.Errorf("Failed to remove container from docker: %s", err)
 	}
@@ -340,19 +343,6 @@ func (c *container) remove(p *dockerProvisioner) error {
 	defer coll.Close()
 	if err := coll.Remove(bson.M{"id": c.ID}); err != nil {
 		log.Errorf("Failed to remove container from database: %s", err)
-	}
-	a, err := c.getApp()
-	if err != nil {
-		log.Errorf("Failed to obtain app: %s", err)
-		return nil
-	}
-	r, err := getRouterForApp(a)
-	if err != nil {
-		log.Errorf("Failed to obtain router: %s", err)
-		return nil
-	}
-	if err := r.RemoveRoute(c.AppName, address); err != nil {
-		log.Errorf("Failed to remove route: %s", err)
 	}
 	return nil
 }

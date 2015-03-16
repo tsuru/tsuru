@@ -92,6 +92,7 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 	if p.isDryMode {
 		pipeline = action.NewPipeline(
 			&provisionAddUnitsToHost,
+			&provisionRemoveOldUnits,
 		)
 	} else {
 		pipeline = action.NewPipeline(

@@ -411,6 +411,12 @@ func (s *S) TestRebalanceContainersDry(c *check.C) {
 	beforeRoutes, err := router.Routes(appStruct.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(beforeRoutes, check.HasLen, 5)
+	var serviceCalled bool
+	rollback := s.addServiceInstance(c, appInstance.GetName(), func(w http.ResponseWriter, r *http.Request) {
+		serviceCalled = true
+		w.WriteHeader(http.StatusOK)
+	})
+	defer rollback()
 	buf := safe.NewBuffer(nil)
 	err = p.rebalanceContainers(buf, true)
 	c.Assert(err, check.IsNil)
@@ -423,4 +429,5 @@ func (s *S) TestRebalanceContainersDry(c *check.C) {
 	routes, err := router.Routes(appStruct.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(routes, check.DeepEquals, beforeRoutes)
+	c.Assert(serviceCalled, check.Equals, false)
 }

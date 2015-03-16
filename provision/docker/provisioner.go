@@ -430,7 +430,7 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 		if err != nil {
 			log.Errorf("Unable to unbind unit %q: %s", c.ID, err)
 		}
-		err = p.removeContainer(c)
+		err = p.removeContainer(c, app)
 		if err != nil {
 			log.Errorf("Unable to destroy container %s: %s", c.ID, err.Error())
 		}
@@ -536,7 +536,7 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 	if err := <-errors; err != nil {
 		for c := range createdContainers {
 			log.Errorf("Removing container %q due failed add units: %s", c.ID, err)
-			errRem := args.provisioner.removeContainer(c)
+			errRem := args.provisioner.removeContainer(c, a)
 			if errRem != nil {
 				log.Errorf("Unable to destroy container %q: %s - %s", c.ID, err, errRem)
 			}
@@ -606,7 +606,7 @@ func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint) error {
 		if err != nil {
 			log.Errorf("Failed to unbind unit %q: %s", c.ID, err)
 		}
-		err = p.removeContainer(c)
+		err = p.removeContainer(c, a)
 		if err != nil {
 			log.Errorf("Failed to remove container %q: %s", c.ID, err)
 		}
@@ -627,15 +627,18 @@ func (p *dockerProvisioner) RemoveUnit(unit provision.Unit) error {
 	if err != nil {
 		log.Errorf("Failed to unbind unit %q: %s", container.ID, err)
 	}
-	return p.removeContainer(container)
+	return p.removeContainer(container, a)
 }
 
-func (p *dockerProvisioner) removeContainer(c *container) error {
-	err := c.stop(p)
-	if err != nil {
-		log.Errorf("error on stop unit %s - %s", c.ID, err)
+func (p *dockerProvisioner) removeContainer(c *container, a provision.App) error {
+	if r, err := getRouterForApp(a); err == nil {
+		if err := r.RemoveRoute(c.AppName, c.getAddress()); err != nil {
+			log.Errorf("Failed to remove route: %s", err)
+		}
+	} else {
+		log.Errorf("Failed to obtain router: %s", err)
 	}
-	err = c.remove(p)
+	err := c.remove(p)
 	if err != nil {
 		log.Errorf("error on remove container %s - %s", c.ID, err)
 	}
