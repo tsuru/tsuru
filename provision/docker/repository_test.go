@@ -200,53 +200,6 @@ func (s *S) TestGetContainerPartialId(c *check.C) {
 	c.Assert(cont.ID, check.Equals, "container-a1")
 }
 
-func (s *S) TestcontainerSliceLen(c *check.C) {
-	containers := containerSlice{container{}, container{}}
-	c.Assert(containers.Len(), check.Equals, 2)
-}
-
-func (s *S) TestcontainerSliceLess(c *check.C) {
-	containers := containerSlice{
-		container{Name: "b", Status: provision.StatusError.String()},
-		container{Name: "d", Status: provision.StatusBuilding.String()},
-		container{Name: "e", Status: provision.StatusStarted.String()},
-		container{Name: "s", Status: provision.StatusStarting.String()},
-		container{Name: "z", Status: provision.StatusStopped.String()},
-		container{Name: "p", Status: provision.StatusCreated.String()},
-	}
-	c.Assert(containers.Less(0, 1), check.Equals, false)
-	c.Assert(containers.Less(1, 2), check.Equals, true)
-	c.Assert(containers.Less(2, 0), check.Equals, false)
-	c.Assert(containers.Less(3, 2), check.Equals, true)
-	c.Assert(containers.Less(3, 1), check.Equals, false)
-	c.Assert(containers.Less(4, 3), check.Equals, true)
-	c.Assert(containers.Less(4, 1), check.Equals, false)
-	c.Assert(containers.Less(5, 1), check.Equals, true)
-	c.Assert(containers.Less(5, 0), check.Equals, true)
-}
-
-func (s *S) TestcontainerSliceSwap(c *check.C) {
-	containers := containerSlice{
-		container{Name: "b", Status: provision.StatusError.String()},
-		container{Name: "f", Status: provision.StatusBuilding.String()},
-		container{Name: "g", Status: provision.StatusStarted.String()},
-	}
-	containers.Swap(0, 1)
-	c.Assert(containers[0].Status, check.Equals, provision.StatusBuilding.String())
-	c.Assert(containers[1].Status, check.Equals, provision.StatusError.String())
-}
-
-func (s *S) TestcontainerSliceSort(c *check.C) {
-	containers := containerSlice{
-		container{Name: "f", Status: provision.StatusBuilding.String()},
-		container{Name: "g", Status: provision.StatusStarted.String()},
-		container{Name: "b", Status: provision.StatusError.String()},
-	}
-	c.Assert(sort.IsSorted(containers), check.Equals, false)
-	sort.Sort(containers)
-	c.Assert(sort.IsSorted(containers), check.Equals, true)
-}
-
 func (s *S) TestListUnresponsiveContainers(c *check.C) {
 	var result []container
 	coll := s.p.collection()
