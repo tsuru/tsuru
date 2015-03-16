@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -11,6 +11,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/router"
 )
 
 func addPlan(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -60,4 +61,13 @@ func removePlan(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 	}
 	return err
+}
+
+func listRouters(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	routers, err := router.List()
+	if err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(routers)
 }

@@ -204,6 +204,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Get", "/plans", authorizationRequiredHandler(listPlans))
 	m.Add("Post", "/plans", AdminRequiredHandler(addPlan))
 	m.Add("Delete", "/plans/{planname}", AdminRequiredHandler(removePlan))
+	m.Add("Get", "/plans/routers", AdminRequiredHandler(listRouters))
 
 	m.Add("Get", "/debug/goroutines", AdminRequiredHandler(dumpGoroutines))
 
