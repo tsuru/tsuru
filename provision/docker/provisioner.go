@@ -236,11 +236,7 @@ func (p *dockerProvisioner) StartupMessage() (string, error) {
 }
 
 func (p *dockerProvisioner) Initialize() error {
-	err := p.initDockerCluster()
-	if err != nil {
-		return err
-	}
-	return p.migrateImages()
+	return p.initDockerCluster()
 }
 
 // Provision creates a route for the container

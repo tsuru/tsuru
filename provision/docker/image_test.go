@@ -54,7 +54,8 @@ func (s *S) TestMigrateImages(c *check.C) {
 	defer conn.Close()
 	conn.Apps().Insert(app1, app2, app3)
 	defer conn.Apps().RemoveAll(bson.M{"name": bson.M{"$in": []string{app1.Name, app2.Name, app3.Name}}})
-	err = p.migrateImages()
+	mainDockerProvisioner = &p
+	err = MigrateImages()
 	c.Assert(err, check.IsNil)
 	contApp1, err := p.listContainersBy(bson.M{"appname": app1.Name, "image": "tsuru/app-app1"})
 	c.Assert(err, check.IsNil)
@@ -85,7 +86,8 @@ func (s *S) TestMigrateImagesWithoutImageInStorage(c *check.C) {
 	defer conn.Close()
 	conn.Apps().Insert(app1)
 	defer conn.Apps().RemoveAll(bson.M{"name": bson.M{"$in": []string{app1.Name}}})
-	err = p.migrateImages()
+	mainDockerProvisioner = &p
+	err = MigrateImages()
 	c.Assert(err, check.IsNil)
 	client, err := docker.NewClient(server.URL())
 	c.Assert(err, check.IsNil)
@@ -119,7 +121,8 @@ func (s *S) TestMigrateImagesWithRegistry(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.newFakeImage(&p, "localhost:3030/tsuru/app2")
 	c.Assert(err, check.IsNil)
-	err = p.migrateImages()
+	mainDockerProvisioner = &p
+	err = MigrateImages()
 	c.Assert(err, check.IsNil)
 	client, err := docker.NewClient(server.URL())
 	c.Assert(err, check.IsNil)
