@@ -97,8 +97,8 @@ func (s *S) TestList(c *check.C) {
 	defer config.Unset("routers:router1:type")
 	defer config.Unset("routers:router2:type")
 	expected := []PlanRouter{
-		PlanRouter{Name: "router1", Type: "foo"},
-		PlanRouter{Name: "router2", Type: "bar"},
+		{Name: "router1", Type: "foo"},
+		{Name: "router2", Type: "bar"},
 	}
 	routers, err := List()
 	c.Assert(err, check.IsNil)

@@ -208,7 +208,7 @@ func List() ([]PlanRouter, error) {
 	routers, _ := routerConfig.(map[interface{}]interface{})
 	routersList := make([]PlanRouter, 0, len(routers))
 	var keys []string
-	for key, _ := range routers {
+	for key := range routers {
 		keys = append(keys, key.(string))
 	}
 	sort.Strings(keys)
