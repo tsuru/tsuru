@@ -96,29 +96,6 @@ func (p *dockerProvisioner) listRunnableContainersByApp(appName string) ([]conta
 	})
 }
 
-// ContainerSlice attaches the methods of sort.Interface to []container, sorting in increasing order.
-type containerSlice []container
-
-func (c containerSlice) Len() int {
-	return len(c)
-}
-
-func (c containerSlice) Less(i, j int) bool {
-	weight := map[string]int{
-		provision.StatusCreated.String():  0,
-		provision.StatusBuilding.String(): 1,
-		provision.StatusError.String():    2,
-		provision.StatusStopped.String():  3,
-		provision.StatusStarting.String(): 4,
-		provision.StatusStarted.String():  5,
-	}
-	return weight[c[i].Status] < weight[c[j].Status]
-}
-
-func (c containerSlice) Swap(i, j int) {
-	c[i], c[j] = c[j], c[i]
-}
-
 func (p *dockerProvisioner) listAllContainers() ([]container, error) {
 	return p.listContainersBy(nil)
 }
