@@ -50,6 +50,15 @@ func (s *S) TestTokenCmdIsRegistered(c *check.C) {
 	c.Assert(tsrToken.Command, check.FitsTypeOf, tokenCmd{})
 }
 
+func (s *S) TestMigrateCmdIsRegistered(c *check.C) {
+	manager := buildManager()
+	cmd, ok := manager.Commands["migrate"]
+	c.Assert(ok, check.Equals, true)
+	migrate, ok := cmd.(*tsrCommand)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(migrate.Command, check.FitsTypeOf, &migrateCmd{})
+}
+
 func (s *S) TestShouldRegisterAllCommandsFromProvisioners(c *check.C) {
 	fp := provisiontest.NewFakeProvisioner()
 	p := CommandableProvisioner{FakeProvisioner: *fp}
