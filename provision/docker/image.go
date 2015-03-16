@@ -27,7 +27,7 @@ type appImages struct {
 	Count   int
 }
 
-func (p *dockerProvisioner) migrateImages() error {
+func MigrateImages() error {
 	registry, _ := config.GetString("docker:registry")
 	if registry != "" {
 		registry += "/"
@@ -40,11 +40,11 @@ func (p *dockerProvisioner) migrateImages() error {
 	if err != nil {
 		return err
 	}
-	dcluster := p.getCluster()
+	dcluster := mainDockerProvisioner.getCluster()
 	for _, app := range apps {
 		oldImage := registry + repoNamespace + "/" + app.Name
 		newImage := registry + repoNamespace + "/app-" + app.Name
-		containers, _ := p.listContainersBy(bson.M{"image": newImage, "appname": app.Name})
+		containers, _ := mainDockerProvisioner.listContainersBy(bson.M{"image": newImage, "appname": app.Name})
 		if len(containers) > 0 {
 			continue
 		}
@@ -67,7 +67,7 @@ func (p *dockerProvisioner) migrateImages() error {
 				return err
 			}
 		}
-		err = p.updateContainers(bson.M{"appname": app.Name}, bson.M{"$set": bson.M{"image": newImage}})
+		err = mainDockerProvisioner.updateContainers(bson.M{"appname": app.Name}, bson.M{"$set": bson.M{"image": newImage}})
 		if err != nil {
 			return err
 		}
