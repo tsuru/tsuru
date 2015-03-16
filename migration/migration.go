@@ -9,6 +9,8 @@ package migration
 
 import (
 	"errors"
+	"fmt"
+	"io"
 
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
@@ -46,7 +48,7 @@ func Register(name string, fn MigrateFunc) error {
 
 // Run runs all registered migrations. Migrations are executed in the order
 // that they were registered.
-func Run() error {
+func Run(w io.Writer, dry bool) error {
 	migrations, err := getMigrations()
 	if err != nil {
 		return err
@@ -57,15 +59,19 @@ func Run() error {
 	}
 	defer coll.Close()
 	for _, m := range migrations {
-		err := m.fn()
-		if err != nil {
-			return err
+		fmt.Fprintf(w, "Running %q... ", m.Name)
+		if !dry {
+			err := m.fn()
+			if err != nil {
+				return err
+			}
+			m.Ran = true
+			err = coll.Insert(m)
+			if err != nil {
+				return err
+			}
 		}
-		m.Ran = true
-		err = coll.Insert(m)
-		if err != nil {
-			return err
-		}
+		fmt.Fprintln(w, "OK")
 	}
 	return nil
 }
