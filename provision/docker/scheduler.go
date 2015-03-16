@@ -194,7 +194,7 @@ func (s *segregatedScheduler) chooseContainerFromMaxContainersCountInNode(nodes 
 		}
 	}
 	chosenNode = hostsMap[maxHost]
-	log.Debugf("[scheduler] Chosen node for remove a container: %#v Count: %d", chosenNode, maxCount)
+	log.Debugf("[scheduler] Chosen node for remove a container: %#v Count: %d", chosenNode, hostCountMap[maxHost])
 	containerID, err := s.getContainerFromHost(maxHost)
 	if err != nil {
 		return "", err
