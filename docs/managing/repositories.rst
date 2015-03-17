@@ -73,7 +73,7 @@ gandalf-sync`` command.
 
 .. warning::
 
-    In previous version of tsr, the daemon handled the migration automatically
-    during start-up, but it made the start-up process slower, and it didn't get
-    any better after running for the first time, so now there's the ``tsr
-    gandalf-sync`` command.
+    In the previous version of tsr, the daemon handled the migration
+    automatically during start-up, but it made the start-up process slower, and
+    it didn't get any better after running for the first time, so now there's
+    the ``tsr gandalf-sync`` command.
