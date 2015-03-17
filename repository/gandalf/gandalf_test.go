@@ -5,6 +5,7 @@
 package gandalf
 
 import (
+	"bytes"
 	"net/http"
 	"testing"
 
@@ -75,6 +76,7 @@ func (s *GandalfSuite) TestHealthCheckDisabled(c *check.C) {
 }
 
 func (s *GandalfSuite) TestSync(c *check.C) {
+	var buf bytes.Buffer
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
@@ -96,7 +98,7 @@ func (s *GandalfSuite) TestSync(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = manager.CreateRepository(app2.Name, []string{user1.Email})
 	c.Assert(err, check.IsNil)
-	err = Sync()
+	err = Sync(&buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.server.Users(), check.DeepEquals, []string{user1.Email, user2.Email})
 	expectedRepos := []gandalftest.Repository{
@@ -128,6 +130,13 @@ func (s *GandalfSuite) TestSync(c *check.C) {
 		repositories[i] = repo
 	}
 	c.Assert(repositories, check.DeepEquals, expectedRepos)
+	expected := `Syncing user "user1@company.com"... already present in Gandalf
+Syncing user "user2@company.com"... OK
+Syncing app "myapp"... OK
+Syncing app "yourapp"... already present in Gandalf
+Syncing app "hisapp"... OK
+`
+	c.Assert(buf.String(), check.Equals, expected)
 }
 
 func (s *GandalfSuite) TestCreateUser(c *check.C) {
