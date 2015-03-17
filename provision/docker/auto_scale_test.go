@@ -1029,13 +1029,20 @@ func (s *S) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *check.C) {
 
 func (s *S) TestAutoScaleConfigRunParamsError(c *check.C) {
 	a := autoScaleConfig{
-		done:              make(chan bool),
 		provisioner:       s.p,
 		groupByMetadata:   "pool",
 		maxContainerCount: 0,
 	}
 	err := a.run()
 	c.Assert(err, check.ErrorMatches, `\[node autoscale\] aborting node auto scale, either memory information or max container count must be informed in config`)
+	a = autoScaleConfig{
+		provisioner:       s.p,
+		groupByMetadata:   "pool",
+		maxContainerCount: 10,
+		scaleDownRatio:    0.9,
+	}
+	err = a.run()
+	c.Assert(err, check.ErrorMatches, `\[node autoscale\] scale down ratio needs to be greater than 1.0, got .+`)
 }
 
 func (s *S) TestAutoScaleConfigRunDefaultValues(c *check.C) {
