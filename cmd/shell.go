@@ -40,8 +40,8 @@ You can get the ID of the unit using the app-info command.`,
 func (c *ShellToContainerCmd) Run(context *Context, client *Client) error {
 	context.RawOutput()
 	var width, height int
-	if stdin, ok := context.Stdin.(*os.File); ok {
-		fd := int(stdin.Fd())
+	if desc, ok := context.Stdin.(descriptable); ok {
+		fd := int(desc.Fd())
 		if terminal.IsTerminal(fd) {
 			width, height, _ = terminal.GetSize(fd)
 			oldState, err := terminal.MakeRaw(fd)

@@ -80,7 +80,6 @@ func (c *login) getScheme() *loginScheme {
 }
 
 func (c *login) Run(context *Context, client *Client) error {
-	context.RawOutput()
 	if c.getScheme().Name == "oauth" {
 		return c.oauthLogin(context, client)
 	}
@@ -135,8 +134,8 @@ func passwordFromReader(reader io.Reader) (string, error) {
 		password []byte
 		err      error
 	)
-	if file, ok := reader.(*os.File); ok && terminal.IsTerminal(int(file.Fd())) {
-		password, err = terminal.ReadPassword(int(file.Fd()))
+	if desc, ok := reader.(descriptable); ok && terminal.IsTerminal(int(desc.Fd())) {
+		password, err = terminal.ReadPassword(int(desc.Fd()))
 		if err != nil {
 			return "", err
 		}
