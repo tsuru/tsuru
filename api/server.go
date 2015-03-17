@@ -19,7 +19,6 @@ import (
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router"
 )
 
@@ -248,13 +247,6 @@ func RunServer(dry bool) http.Handler {
 			fmt.Println("Warning: configuration didn't declare a repository manager, using default manager.")
 		}
 		fmt.Printf("Using %q repository manager.\n", repoManager)
-		if initializer, ok := repository.Manager().(repository.Initializer); ok {
-			fmt.Printf("Initializing %q repository manager.\n", repoManager)
-			err = initializer.Initialize()
-			if err != nil {
-				fatal(err)
-			}
-		}
 		provisioner, err := getProvisioner()
 		if err != nil {
 			fmt.Println("Warning: configuration didn't declare a provisioner, using default provisioner.")
