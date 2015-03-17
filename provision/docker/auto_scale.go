@@ -24,10 +24,18 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+var errAutoScaleRunning = errors.New("autoscale already running")
+
+const (
+	scaleActionAdd       = "add"
+	scaleActionRemove    = "remove"
+	scaleActionRebalance = "rebalance"
+)
+
 type autoScaleEvent struct {
 	ID            interface{} `bson:"_id"`
 	MetadataValue string
-	Action        string // "rebalance", "add" or "remove"
+	Action        string // scaleActionAdd, scaleActionRemove, scaleActionRebalance
 	Reason        string // dependend on scaler
 	StartTime     time.Time
 	EndTime       time.Time `bson:",omitempty"`
@@ -47,9 +55,7 @@ func autoScaleCollection() (*storage.Collection, error) {
 	return conn.Collection(fmt.Sprintf("%s_auto_scale", name)), nil
 }
 
-var errAutoScaleRunning = errors.New("autoscale already running")
-
-func newAutoScaleEvent(metadataValue, action, reason string) (*autoScaleEvent, error) {
+func newAutoScaleEvent(metadataValue string) (*autoScaleEvent, error) {
 	// Use metadataValue as ID to ensure only one auto scale process runs for
 	// each metadataValue. (*autoScaleEvent).update() will generate a new
 	// unique ID and remove this initial record.
@@ -57,8 +63,6 @@ func newAutoScaleEvent(metadataValue, action, reason string) (*autoScaleEvent, e
 		ID:            metadataValue,
 		StartTime:     time.Now().UTC(),
 		MetadataValue: metadataValue,
-		Action:        action,
-		Reason:        reason,
 	}
 	coll, err := autoScaleCollection()
 	if err != nil {
@@ -72,17 +76,30 @@ func newAutoScaleEvent(metadataValue, action, reason string) (*autoScaleEvent, e
 	return &evt, err
 }
 
-func (evt *autoScaleEvent) update(err error) error {
+func (evt *autoScaleEvent) update(action, reason string) error {
+	evt.Action = action
+	evt.Reason = reason
+	coll, err := autoScaleCollection()
 	if err != nil {
-		evt.Error = err.Error()
+		return err
 	}
-	evt.Successful = err == nil
-	evt.EndTime = time.Now().UTC()
+	return coll.UpdateId(evt.ID, evt)
+}
+
+func (evt *autoScaleEvent) finish(errParam error) error {
 	coll, err := autoScaleCollection()
 	if err != nil {
 		return err
 	}
 	defer coll.Close()
+	if evt.Action == "" {
+		return coll.RemoveId(evt.ID)
+	}
+	if errParam != nil {
+		evt.Error = errParam.Error()
+	}
+	evt.Successful = errParam == nil
+	evt.EndTime = time.Now().UTC()
 	defer coll.RemoveId(evt.ID)
 	evt.ID = bson.NewObjectId()
 	return coll.Insert(evt)
@@ -122,7 +139,7 @@ type autoScaleConfig struct {
 }
 
 type autoScaler interface {
-	scale(groupMetadata string, nodes []*cluster.Node) (*autoScaleEvent, error)
+	scale(event *autoScaleEvent, groupMetadata string, nodes []*cluster.Node) error
 }
 
 type memoryScaler struct {
@@ -215,35 +232,26 @@ func (a *autoScaleConfig) runOnce(scaler autoScaler) (retErr error) {
 		clusterMap[groupMetadata] = append(clusterMap[groupMetadata], node)
 	}
 	for groupMetadata, nodes := range clusterMap {
-		var rebalanceFilter map[string]string
-		if a.groupByMetadata != "" {
-			rebalanceFilter = map[string]string{a.groupByMetadata: groupMetadata}
-		}
-		event, err := scaler.scale(groupMetadata, nodes)
+		event, err := newAutoScaleEvent(groupMetadata)
 		if err != nil {
 			if err == errAutoScaleRunning {
 				log.Debugf("[node autoscale] skipping already running for: %s", groupMetadata)
 				continue
 			}
+			retErr = fmt.Errorf("error creating scale event %s: %s", groupMetadata, err.Error())
+			return
+		}
+		err = scaler.scale(event, groupMetadata, nodes)
+		if err != nil {
+			event.finish(err)
 			retErr = fmt.Errorf("error scaling group %s: %s", groupMetadata, err.Error())
 			return
 		}
-		if event == nil {
-			event, err = a.createRebalanceEvent(groupMetadata, nodes, rebalanceFilter)
-			if err != nil {
-				log.Errorf("[node autoscale] unable to create rebalance event: %s", err.Error())
-			}
+		err = a.rebalanceIfNeeded(event, groupMetadata, nodes)
+		if err != nil {
+			log.Errorf("[node autoscale] unable to rebalance: %s", err.Error())
 		}
-		if event != nil && event.Action != "remove" {
-			buf := safe.NewBuffer(nil)
-			_, err := a.provisioner.rebalanceContainersByFilter(buf, nil, rebalanceFilter, false)
-			if err != nil {
-				log.Errorf("[node autoscale] unable to rebalance containers: %s - log: %s", err.Error(), buf.String())
-			}
-		}
-		if event != nil {
-			event.update(err)
-		}
+		event.finish(nil)
 	}
 	return
 }
@@ -284,24 +292,12 @@ func (a *memoryScaler) nodesMemoryData(prov *dockerProvisioner, nodes []*cluster
 	return nodesMemoryData, nil
 }
 
-func (a *memoryScaler) scale(groupMetadata string, nodes []*cluster.Node) (*autoScaleEvent, error) {
-	plans, err := app.PlansList()
-	if err != nil {
-		return nil, fmt.Errorf("couldn't list plans: %s", err)
-	}
-	var maxPlanMemory int64
-	for _, plan := range plans {
-		if plan.Memory > maxPlanMemory {
-			maxPlanMemory = plan.Memory
-		}
-	}
-	if maxPlanMemory == 0 {
-		defaultPlan, err := app.DefaultPlan()
-		if err != nil {
-			return nil, fmt.Errorf("couldn't get default plan: %s", err)
-		}
-		maxPlanMemory = defaultPlan.Memory
-	}
+// Creates a dry provisioner and try provisioning existing containers without
+// each one of existing nodes.
+//
+// If it's possible to distribute containers and we still have spare memory
+// such node can be removed.
+func (a *memoryScaler) choseNodeForRemoval(maxPlanMemory int64, groupMetadata string, nodes []*cluster.Node) (*cluster.Node, error) {
 	var containers []container
 	for _, node := range nodes {
 		conts, err := a.provisioner.listRunningContainersByHost(urlToHost(node.Address))
@@ -352,22 +348,49 @@ func (a *memoryScaler) scale(groupMetadata string, nodes []*cluster.Node) (*auto
 		}
 	}
 	if chosenNode != nil && maxAvailable > int64(float32(maxPlanMemory)*a.scaleDownRatio) {
-		event, err := newAutoScaleEvent(groupMetadata, "remove", fmt.Sprintf("containers from %s can be distributed in cluster", chosenNode.Address))
-		if err != nil {
-			return nil, err
+		return chosenNode, nil
+	}
+	return nil, nil
+}
+
+func (a *memoryScaler) scale(event *autoScaleEvent, groupMetadata string, nodes []*cluster.Node) error {
+	plans, err := app.PlansList()
+	if err != nil {
+		return fmt.Errorf("couldn't list plans: %s", err)
+	}
+	var maxPlanMemory int64
+	for _, plan := range plans {
+		if plan.Memory > maxPlanMemory {
+			maxPlanMemory = plan.Memory
 		}
-		err = a.removeNode(chosenNode)
-		return event, err
+	}
+	if maxPlanMemory == 0 {
+		defaultPlan, err := app.DefaultPlan()
+		if err != nil {
+			return fmt.Errorf("couldn't get default plan: %s", err)
+		}
+		maxPlanMemory = defaultPlan.Memory
+	}
+	chosenNode, err := a.choseNodeForRemoval(maxPlanMemory, groupMetadata, nodes)
+	if err != nil {
+		return fmt.Errorf("unable to choose node for removal: %s", err)
+	}
+	if chosenNode != nil {
+		err = event.update(scaleActionRemove, fmt.Sprintf("containers from %s can be distributed in cluster", chosenNode.Address))
+		if err != nil {
+			return err
+		}
+		return a.removeNode(chosenNode)
 	}
 	memoryData, err := a.nodesMemoryData(a.provisioner, nodes)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	canFitMax := false
 	for _, node := range nodes {
 		data := memoryData[node.Address]
 		if maxPlanMemory > data.maxMemory {
-			return nil, fmt.Errorf("aborting, impossible to fit max plan memory of %d bytes, node max available memory is %d", maxPlanMemory, data.maxMemory)
+			return fmt.Errorf("aborting, impossible to fit max plan memory of %d bytes, node max available memory is %d", maxPlanMemory, data.maxMemory)
 		}
 		if data.available >= maxPlanMemory {
 			canFitMax = true
@@ -375,39 +398,34 @@ func (a *memoryScaler) scale(groupMetadata string, nodes []*cluster.Node) (*auto
 		}
 	}
 	if canFitMax {
-		return nil, nil
+		return nil
 	}
-	event, err := newAutoScaleEvent(groupMetadata, "add", fmt.Sprintf("can't add %d bytes to an existing node", maxPlanMemory))
+	err = event.update(scaleActionAdd, fmt.Sprintf("can't add %d bytes to an existing node", maxPlanMemory))
 	if err != nil {
-		return nil, err
+		return err
 	}
 	log.Debugf("[node autoscale] adding a new machine, metadata value: %s, didn't have %d bytes available", groupMetadata, maxPlanMemory)
-	err = a.addNode(nodes)
-	if err != nil {
-		event.update(err)
-		return nil, err
-	}
-	return event, nil
+	return a.addNode(nodes)
 }
 
-func (a *countScaler) scale(groupMetadata string, nodes []*cluster.Node) (*autoScaleEvent, error) {
+func (a *countScaler) scale(event *autoScaleEvent, groupMetadata string, nodes []*cluster.Node) error {
 	totalCount, _, err := a.provisioner.containerGapInNodes(nodes)
 	if err != nil {
-		return nil, fmt.Errorf("couldn't find containers from nodes: %s", err)
+		return fmt.Errorf("couldn't find containers from nodes: %s", err)
 	}
 	freeSlots := (len(nodes) * a.maxContainerCount) - totalCount
 	baseReasonMsg := "number of free slots is %d"
 	if freeSlots > int(float32(a.maxContainerCount)*a.scaleDownRatio) {
-		event, err := newAutoScaleEvent(groupMetadata, "remove", fmt.Sprintf(baseReasonMsg, freeSlots))
+		err := event.update(scaleActionRemove, fmt.Sprintf(baseReasonMsg, freeSlots))
 		if err != nil {
-			return nil, err
+			return fmt.Errorf("error updating event: %s", err)
 		}
 		minCount := math.MaxInt32
 		var chosenNode *cluster.Node
 		for _, node := range nodes {
 			contCount, err := a.provisioner.countRunningContainersByHost(urlToHost(node.Address))
 			if err != nil {
-				return nil, fmt.Errorf("unable to count running containers: %s", err)
+				return fmt.Errorf("unable to count running containers: %s", err)
 			}
 			if contCount < minCount {
 				minCount = contCount
@@ -415,48 +433,53 @@ func (a *countScaler) scale(groupMetadata string, nodes []*cluster.Node) (*autoS
 			}
 		}
 		err = a.removeNode(chosenNode)
-		return event, err
+		return err
 	}
 	if freeSlots >= 0 {
-		return nil, nil
+		return nil
 	}
-	event, err := newAutoScaleEvent(groupMetadata, "add", fmt.Sprintf(baseReasonMsg, freeSlots))
+	err = event.update(scaleActionAdd, fmt.Sprintf(baseReasonMsg, freeSlots))
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("error updating event: %s", err)
 	}
 	log.Debugf("[node autoscale] adding a new machine, metadata value: %s, free slots: %d", groupMetadata, freeSlots)
-	err = a.addNode(nodes)
-	if err != nil {
-		event.update(err)
-		return nil, err
-	}
-	return event, nil
+	return a.addNode(nodes)
 }
 
-func (a *autoScaleConfig) createRebalanceEvent(groupMetadata string, nodes []*cluster.Node, rebalanceFilter map[string]string) (*autoScaleEvent, error) {
-	_, gap, err := a.provisioner.containerGapInNodes(nodes)
-	buf := safe.NewBuffer(nil)
-	dryProvisioner, err := a.provisioner.rebalanceContainersByFilter(buf, nil, rebalanceFilter, true)
-	if err != nil {
-		return nil, fmt.Errorf("unable to run dry rebalance to check if rebalance is needed: %s - log: %s", err, buf.String())
+func (a *autoScaleConfig) rebalanceIfNeeded(event *autoScaleEvent, groupMetadata string, nodes []*cluster.Node) error {
+	var rebalanceFilter map[string]string
+	if a.groupByMetadata != "" {
+		rebalanceFilter = map[string]string{a.groupByMetadata: groupMetadata}
 	}
-	_, gapAfter, err := dryProvisioner.containerGapInNodes(nodes)
-	if err != nil {
-		return nil, fmt.Errorf("couldn't find containers from rebalanced nodes: %s", err)
-	}
-	if math.Abs((float64)(gap-gapAfter)) <= 2.0 {
-		return nil, nil
-	}
-	log.Debugf("[node autoscale] running rebalance, metadata value: %s, gap before: %d, gap after: %d", groupMetadata, gap, gapAfter)
-	event, err := newAutoScaleEvent(groupMetadata, "rebalance", fmt.Sprintf("gap is %d, after rebalance gap will be %d", gap, gapAfter))
-	if err != nil {
-		if err == errAutoScaleRunning {
-			log.Debugf("[node autoscale] skipping already running for: %s", groupMetadata)
-			return nil, nil
+	if event.Action == "" {
+		// No action yet, check if we need rebalance
+		_, gap, err := a.provisioner.containerGapInNodes(nodes)
+		buf := safe.NewBuffer(nil)
+		dryProvisioner, err := a.provisioner.rebalanceContainersByFilter(buf, nil, rebalanceFilter, true)
+		if err != nil {
+			return fmt.Errorf("unable to run dry rebalance to check if rebalance is needed: %s - log: %s", err, buf.String())
 		}
-		return nil, fmt.Errorf("unable to create auto scale event: %s", err)
+		_, gapAfter, err := dryProvisioner.containerGapInNodes(nodes)
+		if err != nil {
+			return fmt.Errorf("couldn't find containers from rebalanced nodes: %s", err)
+		}
+		if math.Abs((float64)(gap-gapAfter)) > 2.0 {
+			err = event.update(scaleActionRebalance, fmt.Sprintf("gap is %d, after rebalance gap will be %d", gap, gapAfter))
+			if err != nil {
+				return fmt.Errorf("unable to update event: %s", err)
+			}
+		}
 	}
-	return event, nil
+	if event.Action != "" && event.Action != scaleActionRemove {
+		log.Debugf("[node autoscale] running rebalance, due to %s - %s", event.Action, event.Reason)
+		buf := safe.NewBuffer(nil)
+		_, err := a.provisioner.rebalanceContainersByFilter(buf, nil, rebalanceFilter, false)
+		if err != nil {
+			return fmt.Errorf("unable to rebalance containers: %s - log: %s", err.Error(), buf.String())
+		}
+		return nil
+	}
+	return nil
 }
 
 func (a *autoScaleConfig) addNode(modelNodes []*cluster.Node) error {

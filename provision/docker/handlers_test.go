@@ -850,13 +850,17 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterNode(c *check.C) {
 }
 
 func (s *HandlersSuite) TestAutoScaleHistoryHandler(c *check.C) {
-	evt1, err := newAutoScaleEvent("poolx", "add", "reason 1")
+	evt1, err := newAutoScaleEvent("poolx")
 	c.Assert(err, check.IsNil)
-	err = evt1.update(nil)
+	err = evt1.update("add", "reason 1")
 	c.Assert(err, check.IsNil)
-	evt2, err := newAutoScaleEvent("pooly", "rebalance", "reason 2")
+	err = evt1.finish(nil)
 	c.Assert(err, check.IsNil)
-	err = evt2.update(errors.New("my error"))
+	evt2, err := newAutoScaleEvent("pooly")
+	c.Assert(err, check.IsNil)
+	err = evt2.update("rebalance", "reason 2")
+	c.Assert(err, check.IsNil)
+	err = evt2.finish(errors.New("my error"))
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/docker/autoscale", nil)
