@@ -68,8 +68,12 @@ In the case of an old tsuru cluster running without Gandalf, users and
 applications registered in tsuru won't be available in the newly created
 Gandalf server, or both servers may be out-of-sync.
 
-When Gandalf is enabled, The tsuru-server daemon (tsr) will synchronize
-automatically all users and applications on start-up. While this slows down the
-first start-up after enabling Gandalf, it means that the administrator of tsuru
-do not need to run any synchronization or migration script: just plug Gandalf
-to tsuru and tsuru will handle all the data.
+When Gandalf is enabled, administrators of the cloud can run the ``tsr
+gandalf-sync`` command.
+
+.. warning::
+
+    In previous version of tsr, the daemon handled the migration automatically
+    during start-up, but it made the start-up process slower, and it didn't get
+    any better after running for the first time, so now there's the ``tsr
+    gandalf-sync`` command.
