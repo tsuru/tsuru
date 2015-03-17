@@ -132,10 +132,10 @@ type autoScaleConfig struct {
 	totalMemoryMetadata string
 	maxMemoryRatio      float32
 	maxContainerCount   int
+	done                chan bool
 	scaleDownRatio      float32
 	waitTimeNewMachine  time.Duration
 	runInterval         time.Duration
-	done                chan bool
 }
 
 type autoScaler interface {
@@ -174,16 +174,16 @@ func (a *autoScaleConfig) run() error {
 	}
 	if a.scaleDownRatio == 0.0 {
 		a.scaleDownRatio = 1.333
-	} else if a.scaleDownRatio < 1.0 {
+	} else if a.scaleDownRatio <= 1.0 {
 		err := fmt.Errorf("[node autoscale] scale down ratio needs to be greater than 1.0, got %f", a.scaleDownRatio)
 		log.Error(err.Error())
 		return err
 	}
-	if a.runInterval < time.Minute {
-		a.runInterval = time.Minute
+	if a.runInterval == 0 {
+		a.runInterval = time.Hour
 	}
-	if a.waitTimeNewMachine < time.Minute {
-		a.waitTimeNewMachine = time.Minute
+	if a.waitTimeNewMachine == 0 {
+		a.waitTimeNewMachine = 5 * time.Minute
 	}
 	for {
 		err := a.runOnce(scaler)
@@ -462,6 +462,9 @@ func (a *autoScaleConfig) rebalanceIfNeeded(event *autoScaleEvent, groupMetadata
 		dryProvisioner, err := a.provisioner.rebalanceContainersByFilter(buf, nil, rebalanceFilter, true)
 		if err != nil {
 			return fmt.Errorf("unable to run dry rebalance to check if rebalance is needed: %s - log: %s", err, buf.String())
+		}
+		if dryProvisioner == nil {
+			return nil
 		}
 		_, gapAfter, err := dryProvisioner.containerGapInNodes(nodes)
 		if err != nil {

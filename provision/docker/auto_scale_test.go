@@ -7,6 +7,7 @@ package docker
 import (
 	"strings"
 	"sync"
+	"time"
 
 	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
@@ -1035,6 +1036,37 @@ func (s *S) TestAutoScaleConfigRunParamsError(c *check.C) {
 	}
 	err := a.run()
 	c.Assert(err, check.ErrorMatches, `\[node autoscale\] aborting node auto scale, either memory information or max container count must be informed in config`)
+}
+
+func (s *S) TestAutoScaleConfigRunDefaultValues(c *check.C) {
+	a := autoScaleConfig{
+		done:              make(chan bool),
+		provisioner:       s.p,
+		maxContainerCount: 10,
+	}
+	go a.stop()
+	err := a.run()
+	c.Assert(err, check.IsNil)
+	c.Assert(a.runInterval, check.Equals, 1*time.Hour)
+	c.Assert(a.waitTimeNewMachine, check.Equals, 5*time.Minute)
+	c.Assert(a.scaleDownRatio > 1.332 && a.scaleDownRatio < 1.334, check.Equals, true)
+}
+
+func (s *S) TestAutoScaleConfigRunConfigValues(c *check.C) {
+	a := autoScaleConfig{
+		done:               make(chan bool),
+		provisioner:        s.p,
+		maxContainerCount:  10,
+		runInterval:        10 * time.Minute,
+		waitTimeNewMachine: 7 * time.Minute,
+		scaleDownRatio:     1.5,
+	}
+	go a.stop()
+	err := a.run()
+	c.Assert(err, check.IsNil)
+	c.Assert(a.runInterval, check.Equals, 10*time.Minute)
+	c.Assert(a.waitTimeNewMachine, check.Equals, 7*time.Minute)
+	c.Assert(a.scaleDownRatio > 1.49 && a.scaleDownRatio < 1.51, check.Equals, true)
 }
 
 func (s *S) TestAutoScaleCanRemoveNode(c *check.C) {
