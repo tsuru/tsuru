@@ -12,6 +12,8 @@ package gandalf
 
 import (
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/tsuru/config"
@@ -57,15 +59,21 @@ func (gandalfManager) client() (*gandalf.Client, error) {
 	return &client, nil
 }
 
-func Sync() error {
+func Sync(w io.Writer) error {
 	var m gandalfManager
 	users, err := auth.ListUsers()
 	if err != nil {
 		return err
 	}
 	for _, user := range users {
+		fmt.Fprintf(w, "Syncing user %q... ", user.Email)
 		err = m.CreateUser(user.Email)
-		if err != nil && err != repository.ErrUserAlreadyExists {
+		switch err {
+		case repository.ErrUserAlreadyExists:
+			fmt.Fprintln(w, "already present in Gandalf")
+		case nil:
+			fmt.Fprintln(w, "OK")
+		default:
 			return err
 		}
 	}
@@ -78,8 +86,14 @@ func Sync() error {
 		for _, team := range app.GetTeams() {
 			users = append(users, team.Users...)
 		}
+		fmt.Fprintf(w, "Syncing app %q... ", app.Name)
 		err = m.CreateRepository(app.Name, users)
-		if err != nil && err != repository.ErrRepositoryAlreadExists {
+		switch err {
+		case repository.ErrRepositoryAlreadExists:
+			fmt.Fprintln(w, "already present in Gandalf")
+		case nil:
+			fmt.Fprintln(w, "OK")
+		default:
 			return err
 		}
 		for _, user := range users {

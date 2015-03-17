@@ -20,5 +20,5 @@ func (gandalfSyncCmd) Info() *cmd.Info {
 }
 
 func (gandalfSyncCmd) Run(context *cmd.Context, client *cmd.Client) error {
-	return gandalf.Sync()
+	return gandalf.Sync(context.Stdout)
 }
