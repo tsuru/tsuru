@@ -26,6 +26,7 @@ func buildManager() *cmd.Manager {
 	m.Register(&tsrCommand{Command: &apiCmd{}})
 	m.Register(&tsrCommand{Command: tokenCmd{}})
 	m.Register(&tsrCommand{Command: &migrateCmd{}})
+	m.Register(&tsrCommand{Command: gandalfSyncCmd{}})
 	registerProvisionersCommands(m)
 	return m
 }
