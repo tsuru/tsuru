@@ -74,7 +74,7 @@ func (s *GandalfSuite) TestHealthCheckDisabled(c *check.C) {
 	c.Assert(err, check.Equals, hc.ErrDisabledComponent)
 }
 
-func (s *GandalfSuite) TestInitialize(c *check.C) {
+func (s *GandalfSuite) TestSync(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
@@ -96,7 +96,7 @@ func (s *GandalfSuite) TestInitialize(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = manager.CreateRepository(app2.Name, []string{user1.Email})
 	c.Assert(err, check.IsNil)
-	err = manager.Initialize()
+	err = Sync()
 	c.Assert(err, check.IsNil)
 	c.Assert(s.server.Users(), check.DeepEquals, []string{user1.Email, user2.Email})
 	expectedRepos := []gandalftest.Repository{
