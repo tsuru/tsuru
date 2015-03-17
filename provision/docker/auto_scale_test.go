@@ -940,6 +940,92 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C) {
 	c.Assert(containers, check.HasLen, 2)
 }
 
+func (s *S) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *check.C) {
+	rollback := startTestRepositoryServer()
+	defer rollback()
+	defer func() {
+		machines, _ := iaas.ListMachines()
+		for _, m := range machines {
+			m.Destroy()
+		}
+	}()
+	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	config.Set("iaas:node-port", urlPort(node2.URL()))
+	defer config.Unset("iaas:node-port")
+
+	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
+	p.storage = &cluster.MapStorage{}
+	otherUrl := strings.Replace(node2.URL(), "127.0.0.1", "localhost", 1)
+	clusterInstance, err := cluster.New(nil, p.storage,
+		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
+			"pool":    "pool1",
+			"iaas":    "my-scale-iaas",
+			"network": "net1",
+		}},
+		cluster.Node{Address: otherUrl, Metadata: map[string]string{
+			"pool":    "pool1",
+			"iaas":    "my-scale-iaas",
+			"network": "net2",
+		}},
+	)
+	c.Assert(err, check.IsNil)
+	p.cluster = clusterInstance
+	iaasInstance := &TestHealerIaaS{addr: "localhost"}
+	iaas.RegisterIaasProvider("my-scale-iaas", iaasInstance)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
+	defer p.Destroy(appInstance)
+	p.Provision(appInstance)
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, check.IsNil)
+
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	appStruct := &app.App{
+		Name: appInstance.GetName(),
+	}
+	err = conn.Apps().Insert(appStruct)
+	c.Assert(err, check.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
+
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		unitsToAdd:  1,
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: &p,
+		toHost:      "127.0.0.1",
+	})
+	c.Assert(err, check.IsNil)
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		unitsToAdd:  1,
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: &p,
+		toHost:      "localhost",
+	})
+	c.Assert(err, check.IsNil)
+	a := autoScaleConfig{
+		done:              make(chan bool),
+		provisioner:       &p,
+		groupByMetadata:   "pool",
+		maxContainerCount: 4,
+	}
+	go a.stop()
+	err = a.run()
+	c.Assert(err, check.IsNil)
+	evts, err := listAutoScaleEvents(0, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 0)
+	nodes, err := p.cluster.Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 2)
+}
+
 func (s *S) TestAutoScaleConfigRunParamsError(c *check.C) {
 	a := autoScaleConfig{
 		done:              make(chan bool),
@@ -949,6 +1035,48 @@ func (s *S) TestAutoScaleConfigRunParamsError(c *check.C) {
 	}
 	err := a.run()
 	c.Assert(err, check.ErrorMatches, `\[node autoscale\] aborting node auto scale, either memory information or max container count must be informed in config`)
+}
+
+func (s *S) TestAutoScaleCanRemoveNode(c *check.C) {
+	nodes := []*cluster.Node{
+		{Address: "", Metadata: map[string]string{
+			"pool": "pool1",
+			"zone": "zone1",
+		}},
+		{Address: "", Metadata: map[string]string{
+			"pool": "pool1",
+			"zone": "zone1",
+		}},
+		{Address: "", Metadata: map[string]string{
+			"pool": "pool2",
+			"zone": "zone2",
+		}},
+	}
+	ok, err := canRemoveNode(nodes[0], nodes)
+	c.Assert(err, check.IsNil)
+	c.Assert(ok, check.Equals, true)
+	ok, err = canRemoveNode(nodes[1], nodes)
+	c.Assert(err, check.IsNil)
+	c.Assert(ok, check.Equals, true)
+	ok, err = canRemoveNode(nodes[2], nodes)
+	c.Assert(err, check.IsNil)
+	c.Assert(ok, check.Equals, false)
+	nodes = []*cluster.Node{
+		{Address: "", Metadata: map[string]string{
+			"pool": "pool1",
+			"zone": "zone1",
+		}},
+		{Address: "", Metadata: map[string]string{
+			"pool": "pool1",
+			"zone": "zone1",
+		}},
+	}
+	ok, err = canRemoveNode(nodes[0], nodes)
+	c.Assert(err, check.IsNil)
+	c.Assert(ok, check.Equals, true)
+	ok, err = canRemoveNode(nodes[1], nodes)
+	c.Assert(err, check.IsNil)
+	c.Assert(ok, check.Equals, true)
 }
 
 func (s *S) TestSplitMetadata(c *check.C) {

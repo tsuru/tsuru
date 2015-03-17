@@ -348,6 +348,11 @@ func (a *memoryScaler) choseNodeForRemoval(maxPlanMemory int64, groupMetadata st
 		}
 	}
 	if chosenNode != nil && maxAvailable > int64(float32(maxPlanMemory)*a.scaleDownRatio) {
+		canRemove, _ := canRemoveNode(chosenNode, nodes)
+		if !canRemove {
+			log.Debugf("[node autoscale] would remove node %s but can't due to metadata restrictions", chosenNode.Address)
+			return nil, nil
+		}
 		return chosenNode, nil
 	}
 	return nil, nil
@@ -414,31 +419,30 @@ func (a *countScaler) scale(event *autoScaleEvent, groupMetadata string, nodes [
 		return fmt.Errorf("couldn't find containers from nodes: %s", err)
 	}
 	freeSlots := (len(nodes) * a.maxContainerCount) - totalCount
-	baseReasonMsg := "number of free slots is %d"
+	reasonMsg := fmt.Sprintf("number of free slots is %d", freeSlots)
 	if freeSlots > int(float32(a.maxContainerCount)*a.scaleDownRatio) {
-		err := event.update(scaleActionRemove, fmt.Sprintf(baseReasonMsg, freeSlots))
+		var chosenNode *cluster.Node
+		for _, node := range nodes {
+			canRemove, _ := canRemoveNode(node, nodes)
+			if canRemove {
+				chosenNode = node
+				break
+			}
+		}
+		if chosenNode == nil {
+			log.Debug("[node autoscale] would remove any node but can't due to metadata restrictions")
+			return nil
+		}
+		err := event.update(scaleActionRemove, reasonMsg)
 		if err != nil {
 			return fmt.Errorf("error updating event: %s", err)
 		}
-		minCount := math.MaxInt32
-		var chosenNode *cluster.Node
-		for _, node := range nodes {
-			contCount, err := a.provisioner.countRunningContainersByHost(urlToHost(node.Address))
-			if err != nil {
-				return fmt.Errorf("unable to count running containers: %s", err)
-			}
-			if contCount < minCount {
-				minCount = contCount
-				chosenNode = node
-			}
-		}
-		err = a.removeNode(chosenNode)
-		return err
+		return a.removeNode(chosenNode)
 	}
 	if freeSlots >= 0 {
 		return nil
 	}
-	err = event.update(scaleActionAdd, fmt.Sprintf(baseReasonMsg, freeSlots))
+	err = event.update(scaleActionAdd, reasonMsg)
 	if err != nil {
 		return fmt.Errorf("error updating event: %s", err)
 	}
@@ -531,6 +535,37 @@ func (a *autoScaleConfig) removeNode(chosenNode *cluster.Node) error {
 		log.Errorf("unable to destroy machine in IaaS: %s", err)
 	}
 	return nil
+}
+
+func canRemoveNode(chosenNode *cluster.Node, nodes []*cluster.Node) (bool, error) {
+	metadataList := make([]map[string]string, len(nodes))
+	for i, n := range nodes {
+		metadataList[i] = n.CleanMetadata()
+	}
+	exclusiveList, _, err := splitMetadata(metadataList)
+	if err != nil {
+		return false, err
+	}
+	if len(exclusiveList) == 0 {
+		return true, nil
+	}
+	hasMetadata := func(n *cluster.Node, meta map[string]string) bool {
+		for k, v := range meta {
+			if n.Metadata[k] != v {
+				return false
+			}
+		}
+		return true
+	}
+	for _, item := range exclusiveList {
+		if hasMetadata(chosenNode, item.metadata) {
+			if item.freq > 1 {
+				return true, nil
+			}
+			return false, nil
+		}
+	}
+	return false, nil
 }
 
 func splitMetadata(nodesMetadata []map[string]string) (metaWithFrequencyList, map[string]string, error) {
