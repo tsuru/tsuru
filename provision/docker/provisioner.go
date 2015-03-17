@@ -120,21 +120,21 @@ func (p *dockerProvisioner) initDockerCluster() error {
 	autoScaleEnabled, _ := config.GetBool("docker:auto-scale:enabled")
 	if autoScaleEnabled {
 		waitSecondsNewMachine, _ := config.GetDuration("docker:auto-scale:wait-new-time")
-		waitSecondsNewMachine *= time.Second
 		groupByMetadata, _ := config.GetString("docker:auto-scale:group-by-metadata")
 		matadataFilter, _ := config.GetString("docker:auto-scale:metadata-filter")
 		maxContainerCount, _ := config.GetInt("docker:auto-scale:max-container-count")
 		runInterval, _ := config.GetDuration("docker:auto-scale:run-interval")
-		runInterval *= time.Second
+		scaleDownRatio, _ := config.GetFloat("docker:auto-scale:scale-down-ratio")
 		go (&autoScaleConfig{
 			provisioner:         p,
 			groupByMetadata:     groupByMetadata,
 			totalMemoryMetadata: totalMemoryMetadata,
 			maxMemoryRatio:      float32(maxUsedMemory),
 			maxContainerCount:   maxContainerCount,
-			runInterval:         runInterval,
-			waitTimeNewMachine:  waitSecondsNewMachine,
 			matadataFilter:      matadataFilter,
+			scaleDownRatio:      float32(scaleDownRatio),
+			waitTimeNewMachine:  waitSecondsNewMachine * time.Second,
+			runInterval:         runInterval * time.Second,
 		}).run()
 	}
 	return nil
