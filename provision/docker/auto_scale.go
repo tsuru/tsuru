@@ -271,9 +271,7 @@ func (a *memoryScaler) nodesMemoryData(prov *dockerProvisioner, nodes []*cluster
 		if err != nil {
 			return nil, fmt.Errorf("couldn't find containers: %s", err)
 		}
-		fmt.Println("conts", node.Address, len(containers))
 		for _, cont := range containers {
-			fmt.Println(cont.ID)
 			a, err := app.GetByName(cont.AppName)
 			if err != nil {
 				return nil, fmt.Errorf("couldn't find container app (%s): %s", cont.AppName, err)
@@ -314,7 +312,6 @@ func (a *memoryScaler) scale(groupMetadata string, nodes []*cluster.Node) (*auto
 	}
 	var maxAvailable int64
 	var chosenNode *cluster.Node
-	fmt.Println("going...")
 	for _, node := range nodes {
 		dryProv, err := a.provisioner.dryMode(nil)
 		if err != nil {
@@ -326,10 +323,6 @@ func (a *memoryScaler) scale(groupMetadata string, nodes []*cluster.Node) (*auto
 			return nil, err
 		}
 		buf := safe.NewBuffer(nil)
-		fmt.Println("moving", len(containers))
-		for _, c := range containers {
-			fmt.Println(c.ID)
-		}
 		err = dryProv.moveContainerList(containers, "", buf)
 		if err != nil {
 			log.Errorf("[node autoscale] unable to rebalance containers without %s: %s - log: %s", node.Address, err, buf.String())
@@ -339,7 +332,6 @@ func (a *memoryScaler) scale(groupMetadata string, nodes []*cluster.Node) (*auto
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println("otherNodes", otherNodes)
 		otherNodesPtr := make([]*cluster.Node, len(otherNodes))
 		for i := range otherNodes {
 			otherNodesPtr[i] = &otherNodes[i]
@@ -360,7 +352,6 @@ func (a *memoryScaler) scale(groupMetadata string, nodes []*cluster.Node) (*auto
 		}
 	}
 	if chosenNode != nil && maxAvailable > int64(float32(maxPlanMemory)*a.scaleDownRatio) {
-		fmt.Println("going down", maxAvailable, int64(float32(maxPlanMemory)*a.scaleDownRatio))
 		event, err := newAutoScaleEvent(groupMetadata, "remove", fmt.Sprintf("containers from %s can be distributed in cluster", chosenNode.Address))
 		if err != nil {
 			return nil, err
