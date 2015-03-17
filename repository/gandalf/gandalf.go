@@ -57,7 +57,8 @@ func (gandalfManager) client() (*gandalf.Client, error) {
 	return &client, nil
 }
 
-func (m gandalfManager) Initialize() error {
+func Sync() error {
+	var m gandalfManager
 	users, err := auth.ListUsers()
 	if err != nil {
 		return err
