@@ -17,8 +17,17 @@ func CheckBasicConfig() error {
 		"host",
 		"database:url",
 		"database:name",
-		"git:api-server",
 	}, "Config Error: you should have %q key set in your config file")
+}
+
+func CheckGandalf() error {
+	if value, err := config.GetString("repo-manager"); value == "gandalf" || value == "" {
+		_, err = config.Get("git:api-server")
+		if err != nil {
+			return fmt.Errorf("config error: you must define the %q config key", "git:api-server")
+		}
+	}
+	return nil
 }
 
 // Check provisioner configs
