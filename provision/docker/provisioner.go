@@ -125,6 +125,7 @@ func (p *dockerProvisioner) initDockerCluster() error {
 		maxContainerCount, _ := config.GetInt("docker:auto-scale:max-container-count")
 		runInterval, _ := config.GetDuration("docker:auto-scale:run-interval")
 		scaleDownRatio, _ := config.GetFloat("docker:auto-scale:scale-down-ratio")
+		shouldRebalance, _ := config.GetBool("docker:auto-scale:rebalance-if-needed")
 		go (&autoScaleConfig{
 			provisioner:         p,
 			groupByMetadata:     groupByMetadata,
@@ -135,6 +136,7 @@ func (p *dockerProvisioner) initDockerCluster() error {
 			scaleDownRatio:      float32(scaleDownRatio),
 			waitTimeNewMachine:  waitSecondsNewMachine * time.Second,
 			runInterval:         runInterval * time.Second,
+			shouldRebalance:     shouldRebalance,
 		}).run()
 	}
 	return nil
