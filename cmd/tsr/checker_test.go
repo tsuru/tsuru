@@ -84,6 +84,33 @@ func (s *CheckerSuite) TestCheckDockerBasicConfigError(c *check.C) {
 	c.Assert(err, check.NotNil)
 }
 
+func (s *CheckerSuite) TestCheckGandalfErrorRepoManagerDefined(c *check.C) {
+	config.Set("repo-manager", "gandalf")
+	config.Unset("git:api-server")
+	err := CheckGandalf()
+	c.Assert(err, check.NotNil)
+}
+
+func (s *CheckerSuite) TestCheckGandalfErrorRepoManagerUndefined(c *check.C) {
+	config.Unset("repo-manager")
+	config.Unset("git:api-server")
+	err := CheckGandalf()
+	c.Assert(err, check.NotNil)
+}
+
+func (s *CheckerSuite) TestCheckGandalfSuccessRepoManagerUndefined(c *check.C) {
+	config.Unset("repo-manager")
+	config.Set("git:api-server", "http://gandalf.com")
+	err := CheckGandalf()
+	c.Assert(err, check.IsNil)
+}
+
+func (s *CheckerSuite) TestCheckGandalfSuccessRepoManagerDefined(c *check.C) {
+	config.Set("repo-manager", "gandalf")
+	config.Set("git:api-server", "http://gandalf.com")
+	err := CheckGandalf()
+	c.Assert(err, check.IsNil)
+}
 func (s *CheckerSuite) TestCheckSchedulerConfig(c *check.C) {
 	err := CheckScheduler()
 	c.Assert(err, check.IsNil)
