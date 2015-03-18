@@ -577,3 +577,20 @@ func listUsers(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	return json.NewEncoder(w).Encode(apiUsers)
 }
+
+func userInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	user, err := t.User()
+	if err != nil {
+		return err
+	}
+	var teamNames []string
+	if teams, err := user.Teams(); err == nil {
+		teamNames = make([]string, len(teams))
+		for i, team := range teams {
+			println(team.Name)
+			teamNames[i] = team.Name
+		}
+	}
+	w.Header().Add("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(apiUser{Email: user.Email, Teams: teamNames})
+}

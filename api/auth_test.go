@@ -1712,3 +1712,24 @@ func (s *AuthSuite) TestListUsers(c *check.C) {
 	c.Assert(users[0].Email, check.Equals, s.user.Email)
 	c.Assert(users[0].Teams, check.DeepEquals, []string{s.team.Name})
 }
+
+func (s *AuthSuite) TestUserInfo(c *check.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	token, err := nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
+	c.Assert(err, check.IsNil)
+	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
+	request, err := http.NewRequest("GET", "/users/info", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Add("Authorization", "bearer "+token.GetValue())
+	recorder := httptest.NewRecorder()
+	handler := RunServer(true)
+	handler.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	expected := apiUser{Email: s.user.Email, Teams: []string{s.team.Name}}
+	var got apiUser
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, check.IsNil)
+	c.Assert(got, check.DeepEquals, expected)
+}
