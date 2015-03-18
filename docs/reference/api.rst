@@ -705,6 +705,23 @@ Example:
 
     DELETE /users/tokens HTTP/1.1
 
+Info about the current user
+***************************
+
+    * Method: GET
+    * URI: /users/info
+
+Returns 200 in case of success, and a JSON with information about the current user.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    GET /users/info HTTP/1.1
+    {"Email":"myuser@company.com","Teams":["frontend","backend","sysadmin","full stack"]}
+
 Change password
 ***************
 
