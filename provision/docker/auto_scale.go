@@ -136,7 +136,7 @@ type autoScaleConfig struct {
 	scaleDownRatio      float32
 	waitTimeNewMachine  time.Duration
 	runInterval         time.Duration
-	shouldRebalance     bool
+	preventRebalance    bool
 }
 
 type autoScaler interface {
@@ -468,7 +468,7 @@ func (a *countScaler) scale(event *autoScaleEvent, groupMetadata string, nodes [
 }
 
 func (a *autoScaleConfig) rebalanceIfNeeded(event *autoScaleEvent, groupMetadata string, nodes []*cluster.Node) error {
-	if !a.shouldRebalance {
+	if a.preventRebalance {
 		return nil
 	}
 	var rebalanceFilter map[string]string

@@ -74,7 +74,6 @@ func (s *S) TestAutoScaleConfigRun(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
-		shouldRebalance:   true,
 		done:              make(chan bool),
 		provisioner:       &p,
 		groupByMetadata:   "pool",
@@ -177,7 +176,7 @@ func (s *S) TestAutoScaleConfigRunNoRebalance(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
-		shouldRebalance:   false,
+		preventRebalance:  true,
 		done:              make(chan bool),
 		provisioner:       &p,
 		groupByMetadata:   "pool",
@@ -278,7 +277,6 @@ func (s *S) TestAutoScaleConfigRunOnce(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
-		shouldRebalance:   true,
 		done:              make(chan bool),
 		provisioner:       &p,
 		groupByMetadata:   "pool",
@@ -368,7 +366,6 @@ func (s *S) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
-		shouldRebalance:   true,
 		done:              make(chan bool),
 		provisioner:       &p,
 		groupByMetadata:   "pool",
@@ -450,7 +447,6 @@ func (s *S) TestAutoScaleConfigRunNoGroup(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
-		shouldRebalance:   true,
 		done:              make(chan bool),
 		provisioner:       &p,
 		maxContainerCount: 2,
@@ -530,7 +526,6 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
-		shouldRebalance:   true,
 		done:              make(chan bool),
 		provisioner:       &p,
 		maxContainerCount: 2,
@@ -631,7 +626,6 @@ func (s *S) TestAutoScaleConfigRunStress(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
-		shouldRebalance:   true,
 		done:              make(chan bool),
 		provisioner:       &p,
 		groupByMetadata:   "pool",
@@ -729,7 +723,6 @@ func (s *S) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
-		shouldRebalance:     true,
 		done:                make(chan bool),
 		provisioner:         &p,
 		groupByMetadata:     "pool",
@@ -834,7 +827,6 @@ func (s *S) TestAutoScaleConfigRunPriorityToCountBased(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
-		shouldRebalance:     true,
 		done:                make(chan bool),
 		provisioner:         &p,
 		groupByMetadata:     "pool",
@@ -922,7 +914,6 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedPlanTooBig(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
-		shouldRebalance:     true,
 		done:                make(chan bool),
 		provisioner:         &p,
 		groupByMetadata:     "pool",
@@ -1009,7 +1000,6 @@ func (s *S) TestAutoScaleConfigRunScaleDown(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
-		shouldRebalance:   true,
 		done:              make(chan bool),
 		provisioner:       &p,
 		groupByMetadata:   "pool",
@@ -1108,7 +1098,6 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
-		shouldRebalance:     true,
 		done:                make(chan bool),
 		provisioner:         &p,
 		groupByMetadata:     "pool",
@@ -1205,7 +1194,6 @@ func (s *S) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
-		shouldRebalance:   true,
 		done:              make(chan bool),
 		provisioner:       &p,
 		groupByMetadata:   "pool",
