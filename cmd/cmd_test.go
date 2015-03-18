@@ -605,6 +605,13 @@ func (s *S) TestVersionIsRegisteredByNewManager(c *check.C) {
 	c.Assert(ver, check.FitsTypeOf, &version{})
 }
 
+func (s *S) TestUserInfoIsRegisteredByBaseManager(c *check.C) {
+	manager := BuildBaseManager("tsuru", "1.0", "", nil)
+	info, ok := manager.Commands["user-info"]
+	c.Assert(ok, check.Equals, true)
+	c.Assert(info, check.FitsTypeOf, userInfo{})
+}
+
 func (s *S) TestInvalidCommandFuzzyMatch01(c *check.C) {
 	lookup := func(ctx *Context) error {
 		return os.ErrNotExist

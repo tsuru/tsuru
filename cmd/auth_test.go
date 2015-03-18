@@ -253,3 +253,27 @@ func (s *S) TestReadTokenEnvironmentVariable(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(token, check.Equals, "ABCDEFGH")
 }
+
+func (s *S) TestUserInfoRun(c *check.C) {
+	var called bool
+	expected := `Email: myuser@company.com
+Teams: frontend, backend, sysadmin, full stack
+`
+	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
+	command := userInfo{}
+	transport := cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{
+			Message: `{"Email":"myuser@company.com","Teams":["frontend","backend","sysadmin","full stack"]}`,
+			Status:  http.StatusOK,
+		},
+		CondFunc: func(req *http.Request) bool {
+			called = true
+			return req.Method == "GET" && req.URL.Path == "/users/info"
+		},
+	}
+	client := NewClient(&http.Client{Transport: &transport}, nil, manager)
+	err := command.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
+	c.Assert(called, check.Equals, true)
+}

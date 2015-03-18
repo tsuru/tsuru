@@ -13,6 +13,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 
 	"golang.org/x/crypto/ssh/terminal"
 )
@@ -111,8 +112,7 @@ func (c *logout) Info() *Info {
 	return &Info{
 		Name:  "logout",
 		Usage: "logout",
-		Desc: `Logout will delete the token file and terminate the session within tsuru
-server.`,
+		Desc:  "Logout will terminate the session with the tsuru server.",
 	}
 }
 
@@ -126,6 +126,42 @@ func (c *logout) Run(context *Context, client *Client) error {
 		return errors.New("You're not logged in!")
 	}
 	fmt.Fprintln(context.Stdout, "Successfully logged out!")
+	return nil
+}
+
+type user struct {
+	Email string
+	Teams []string
+}
+
+type userInfo struct{}
+
+func (userInfo) Info() *Info {
+	return &Info{
+		Name:  "user-info",
+		Usage: "user-info",
+		Desc:  "Displays information about the current user.",
+	}
+}
+
+func (userInfo) Run(context *Context, client *Client) error {
+	url, err := GetURL("/users/info")
+	if err != nil {
+		return err
+	}
+	request, _ := http.NewRequest("GET", url, nil)
+	resp, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	var u user
+	err = json.NewDecoder(resp.Body).Decode(&u)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(context.Stdout, "Email: %s\n", u.Email)
+	fmt.Fprintf(context.Stdout, "Teams: %s\n", strings.Join(u.Teams, ", "))
 	return nil
 }
 
