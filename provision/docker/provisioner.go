@@ -119,27 +119,33 @@ func (p *dockerProvisioner) initDockerCluster() error {
 	}
 	autoScaleEnabled, _ := config.GetBool("docker:auto-scale:enabled")
 	if autoScaleEnabled {
-		waitSecondsNewMachine, _ := config.GetDuration("docker:auto-scale:wait-new-time")
-		groupByMetadata, _ := config.GetString("docker:auto-scale:group-by-metadata")
-		matadataFilter, _ := config.GetString("docker:auto-scale:metadata-filter")
-		maxContainerCount, _ := config.GetInt("docker:auto-scale:max-container-count")
-		runInterval, _ := config.GetDuration("docker:auto-scale:run-interval")
-		scaleDownRatio, _ := config.GetFloat("docker:auto-scale:scale-down-ratio")
-		preventRebalance, _ := config.GetBool("docker:auto-scale:prevent-rebalance")
-		go (&autoScaleConfig{
-			provisioner:         p,
-			groupByMetadata:     groupByMetadata,
-			totalMemoryMetadata: totalMemoryMetadata,
-			maxMemoryRatio:      float32(maxUsedMemory),
-			maxContainerCount:   maxContainerCount,
-			matadataFilter:      matadataFilter,
-			scaleDownRatio:      float32(scaleDownRatio),
-			waitTimeNewMachine:  waitSecondsNewMachine * time.Second,
-			runInterval:         runInterval * time.Second,
-			preventRebalance:    preventRebalance,
-		}).run()
+		go p.initAutoScaleConfig().run()
 	}
 	return nil
+}
+
+func (p *dockerProvisioner) initAutoScaleConfig() *autoScaleConfig {
+	waitSecondsNewMachine, _ := config.GetDuration("docker:auto-scale:wait-new-time")
+	groupByMetadata, _ := config.GetString("docker:auto-scale:group-by-metadata")
+	matadataFilter, _ := config.GetString("docker:auto-scale:metadata-filter")
+	maxContainerCount, _ := config.GetInt("docker:auto-scale:max-container-count")
+	runInterval, _ := config.GetDuration("docker:auto-scale:run-interval")
+	scaleDownRatio, _ := config.GetFloat("docker:auto-scale:scale-down-ratio")
+	preventRebalance, _ := config.GetBool("docker:auto-scale:prevent-rebalance")
+	totalMemoryMetadata, _ := config.GetString("docker:scheduler:total-memory-metadata")
+	maxUsedMemory, _ := config.GetFloat("docker:scheduler:max-used-memory")
+	return &autoScaleConfig{
+		provisioner:         p,
+		groupByMetadata:     groupByMetadata,
+		totalMemoryMetadata: totalMemoryMetadata,
+		maxMemoryRatio:      float32(maxUsedMemory),
+		maxContainerCount:   maxContainerCount,
+		matadataFilter:      matadataFilter,
+		scaleDownRatio:      float32(scaleDownRatio),
+		waitTimeNewMachine:  waitSecondsNewMachine * time.Second,
+		runInterval:         runInterval * time.Second,
+		preventRebalance:    preventRebalance,
+	}
 }
 
 func (p *dockerProvisioner) cloneProvisioner(ignoredContainers []container) (*dockerProvisioner, error) {
@@ -716,6 +722,7 @@ func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 		&listHealingHistoryCmd{},
 		&listAutoScaleHistoryCmd{},
 		&updateNodeToSchedulerCmd{},
+		&listAutoScaleRunCmd{},
 	}
 }
 

@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/tsuru/tsuru/cmd"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"launchpad.net/gnuflag"
 )
 
@@ -430,4 +432,49 @@ func (c *listAutoScaleHistoryCmd) Flags() *gnuflag.FlagSet {
 		c.fs.IntVar(&c.page, "p", 1, "Current page")
 	}
 	return c.fs
+}
+
+type listAutoScaleRunCmd struct {
+	cmd.ConfirmationCommand
+}
+
+func (c *listAutoScaleRunCmd) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:  "docker-autoscale-run",
+		Usage: "docker-autoscale-run [-y/--assume-yes]",
+		Desc: `Run node auto scale checks once. This command will work even if [[docker:auto-
+scale:enabled]] config entry is set to false. Auto scaling checks may trigger
+the addition, removal or rebalancing of docker nodes, as long as these nodes
+were created using an IaaS provider registered in tsuru.`,
+	}
+}
+
+func (c *listAutoScaleRunCmd) Run(context *cmd.Context, client *cmd.Client) error {
+	context.RawOutput()
+	if !c.Confirm(context, "Are you sure you want to run auto scaling checks?") {
+		return nil
+	}
+	url, err := cmd.GetURL("/docker/autoscale/run")
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		return err
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	w := tsuruIo.NewStreamWriter(context.Stdout, nil)
+	for n := int64(1); n > 0 && err == nil; n, err = io.Copy(w, response.Body) {
+	}
+	if err != nil {
+		return err
+	}
+	unparsed := w.Remaining()
+	if len(unparsed) > 0 {
+		return fmt.Errorf("unparsed message error: %s", string(unparsed))
+	}
+	return nil
 }

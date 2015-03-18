@@ -932,3 +932,29 @@ func (s *HandlersSuite) TestUpdateNodeHandlerNoAddress(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 }
+
+func (s *HandlersSuite) TestAutoScaleRunHandler(c *check.C) {
+	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{},
+		cluster.Node{Address: "localhost:1999", Metadata: map[string]string{
+			"pool": "pool1",
+		}},
+	)
+	config.Set("docker:auto-scale:group-by-metadata", "pool")
+	config.Set("docker:auto-scale:max-container-count", 2)
+	defer config.Unset("docker:auto-scale:max-container-count")
+	defer config.Unset("docker:auto-scale:group-by-metadata")
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("POST", "/docker/autoscale/run", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	body := recorder.Body.String()
+	parts := strings.Split(body, "\n")
+	c.Assert(parts, check.DeepEquals, []string{
+		`{"Message":"[node autoscale] running scaler *docker.countScaler for \"pool\": \"pool1\"\n"}`,
+		`{"Message":"[node autoscale] nothing to do for \"pool\": \"pool1\"\n"}`,
+		``,
+	})
+}

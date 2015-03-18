@@ -15,6 +15,7 @@ import (
 
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/cmd/cmdtest"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"gopkg.in/check.v1"
 )
 
@@ -505,4 +506,27 @@ func (s *S) TestUpdateNodeToTheSchedulerCmdRun(c *check.C) {
 	err := cmd.Run(&context, client)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Equals, "Node successfully updated.\n")
+}
+
+func (s *S) TestListAutoScaleRunCmdRun(c *check.C) {
+	var stdout, stderr bytes.Buffer
+	msg, _ := json.Marshal(tsuruIo.SimpleJsonMessage{Message: "progress msg"})
+	result := string(msg)
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+	}
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: result, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Path == "/docker/autoscale/run" && req.Method == "POST"
+		},
+	}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
+	cm := listAutoScaleRunCmd{}
+	cm.Flags().Parse(true, []string{"-y"})
+	err := cm.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	c.Assert(stdout.String(), check.Equals, "progress msg")
 }

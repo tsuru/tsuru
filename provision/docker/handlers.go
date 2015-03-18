@@ -43,6 +43,7 @@ func init() {
 	api.RegisterHandler("/docker/fix-containers", "POST", api.AdminRequiredHandler(fixContainersHandler))
 	api.RegisterHandler("/docker/healing", "GET", api.AdminRequiredHandler(healingHistoryHandler))
 	api.RegisterHandler("/docker/autoscale", "GET", api.AdminRequiredHandler(autoScaleHistoryHandler))
+	api.RegisterHandler("/docker/autoscale/run", "POST", api.AdminRequiredHandler(autoScaleRunHandler))
 }
 
 func validateNodeAddress(address string) error {
@@ -357,4 +358,19 @@ func autoScaleHistoryHandler(w http.ResponseWriter, r *http.Request, t auth.Toke
 		return err
 	}
 	return json.NewEncoder(w).Encode(&history)
+}
+
+func autoScaleRunHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{
+		Encoder: json.NewEncoder(w),
+	}
+	autoScaleConfig := mainDockerProvisioner.initAutoScaleConfig()
+	autoScaleConfig.writer = writer
+	err := autoScaleConfig.runOnce()
+	if err != nil {
+		writer.Encoder.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
+	}
+	return nil
 }
