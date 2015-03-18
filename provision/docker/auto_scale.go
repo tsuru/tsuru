@@ -162,7 +162,7 @@ func (l metaWithFrequencyList) Len() int           { return len(l) }
 func (l metaWithFrequencyList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 func (l metaWithFrequencyList) Less(i, j int) bool { return l[i].freq < l[j].freq }
 
-func (a *autoScaleConfig) run() error {
+func (a *autoScaleConfig) setUpScaler() (autoScaler, error) {
 	var scaler autoScaler
 	if a.maxContainerCount > 0 {
 		scaler = &countScaler{a}
@@ -171,14 +171,14 @@ func (a *autoScaleConfig) run() error {
 	} else {
 		err := fmt.Errorf("[node autoscale] aborting node auto scale, either memory information or max container count must be informed in config")
 		log.Error(err.Error())
-		return err
+		return nil, err
 	}
 	if a.scaleDownRatio == 0.0 {
 		a.scaleDownRatio = 1.333
 	} else if a.scaleDownRatio <= 1.0 {
 		err := fmt.Errorf("[node autoscale] scale down ratio needs to be greater than 1.0, got %f", a.scaleDownRatio)
 		log.Error(err.Error())
-		return err
+		return nil, err
 	}
 	if a.runInterval == 0 {
 		a.runInterval = time.Hour
@@ -186,8 +186,16 @@ func (a *autoScaleConfig) run() error {
 	if a.waitTimeNewMachine == 0 {
 		a.waitTimeNewMachine = 5 * time.Minute
 	}
+	return scaler, nil
+}
+
+func (a *autoScaleConfig) run() error {
+	scaler, err := a.setUpScaler()
+	if err != nil {
+		return err
+	}
 	for {
-		err := a.runOnce(scaler)
+		err := a.runScaler(scaler)
 		if err != nil {
 			err = fmt.Errorf("[node autoscale] %s", err.Error())
 			log.Error(err.Error())
@@ -200,11 +208,19 @@ func (a *autoScaleConfig) run() error {
 	}
 }
 
+func (a *autoScaleConfig) runOnce() error {
+	scaler, err := a.setUpScaler()
+	if err != nil {
+		return err
+	}
+	return a.runScaler(scaler)
+}
+
 func (a *autoScaleConfig) stop() {
 	a.done <- true
 }
 
-func (a *autoScaleConfig) runOnce(scaler autoScaler) (retErr error) {
+func (a *autoScaleConfig) runScaler(scaler autoScaler) (retErr error) {
 	defer func() {
 		if r := recover(); r != nil {
 			retErr = fmt.Errorf("recovered panic, we can never stop! panic: %v", r)
