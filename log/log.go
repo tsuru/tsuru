@@ -10,6 +10,7 @@
 package log
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"os"
@@ -36,7 +37,11 @@ func Init() {
 	logFileName, err := config.GetString("log:file")
 	var logger Logger
 	if err != nil {
-		logger = NewSyslogLogger("tsr", debug)
+		if err == config.ErrMismatchConf {
+			panic(fmt.Sprintf("%s please see http://docs.tsuru.io/en/latest/reference/config.html#log-file", err.Error()))
+		} else {
+			logger = NewSyslogLogger("tsr", debug)
+		}
 	} else {
 		logger = NewFileLogger(logFileName, debug)
 	}

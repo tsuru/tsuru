@@ -9,6 +9,7 @@ import (
 	"log"
 	"testing"
 
+	"github.com/tsuru/config"
 	"gopkg.in/check.v1"
 )
 
@@ -76,4 +77,11 @@ func (s *S) TestWrite(c *check.C) {
 	err := Write(w, []byte("teeest"))
 	c.Assert(err, check.IsNil)
 	c.Assert(w.String(), check.Equals, "teeest")
+}
+
+func (s *S) TestInitWithWrongConf(c *check.C) {
+	configFile := "testdata/wrongconfig.yml"
+	err := config.ReadConfigFile(configFile)
+	c.Assert(err, check.IsNil)
+	c.Assert(Init, check.PanicMatches, "Your conf is wrong: please see http://docs.tsuru.io/en/latest/reference/config.html#log-file")
 }
