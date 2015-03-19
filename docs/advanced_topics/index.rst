@@ -6,3 +6,4 @@ Advanced topics
 .. toctree::
 
     metrics
+    node_scaling

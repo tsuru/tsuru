@@ -720,6 +720,57 @@ will try to delete older images, but it may not be able to due to it being used 
 a layer to a newer image. tsuru will keep trying to remove these old images until
 they are not used as layers anymore. Defaults to 10 images.
 
+docker:auto-scale:enabled
++++++++++++++++++++++++++
+
+Enable node auto scaling. See :doc:`node auto scaling
+</advanced_topics/node_scaling>` for more details. Defaults to false.
+
+docker:auto-scale:wait-new-time
++++++++++++++++++++++++++++++++
+
+Number of seconds tsuru should wait for the creation of a new node during the
+scaling up process. Defaults to 300 seconds (5 minutes).
+
+docker:auto-scale:group-by-metadata
++++++++++++++++++++++++++++++++++++
+
+Name of the metadata present in nodes that will be used for grouping nodes into
+clusters. See :doc:`node auto scaling </advanced_topics/node_scaling>` for more
+details. Defaults to empty (all nodes belong the the same cluster).
+
+docker:auto-scale:metadata-filter
++++++++++++++++++++++++++++++++++
+
+Value of the metadata specified by `docker:auto-scale:group-by-metadata`. If this
+is set, tsuru will only run auto scale algorithms for nodes in the cluster defined
+by this value.
+
+docker:auto-scale:max-container-count
++++++++++++++++++++++++++++++++++++++
+
+Maximum number of containers per node, for count based scaling. See :doc:`node
+auto scaling </advanced_topics/node_scaling>` for more details.
+
+docker:auto-scale:prevent-rebalance
++++++++++++++++++++++++++++++++++++
+
+Prevent rebalancing from happening when adding new nodes, or if a rebalance is
+needed. See :doc:`node auto scaling </advanced_topics/node_scaling>` for more
+details.
+
+docker:auto-scale:run-interval
+++++++++++++++++++++++++++++++
+
+Number of seconds between two periodic runs of the auto scaling algorithm.
+Defaults to 3600 seconds (1 hour).
+
+docker:auto-scale:scale-down-ratio
+++++++++++++++++++++++++++++++++++
+
+Ratio used when scaling down. Must be greater than 1.0. See :doc:`node auto
+scaling </advanced_topics/node_scaling>` for more details. Defaults to 1.33.
+
 .. _iaas_configuration:
 
 IaaS configuration
