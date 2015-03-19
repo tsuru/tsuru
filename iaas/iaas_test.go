@@ -78,6 +78,15 @@ func (s *S) TestReadUserData(c *check.C) {
 	c.Assert(userData, check.Equals, base64.StdEncoding.EncodeToString([]byte("abc def ghi")))
 }
 
+func (s *S) TestReadUserDataEmpty(c *check.C) {
+	iaasInst := UserDataIaaS{NamedIaaS: NamedIaaS{BaseIaaSName: "x"}}
+	config.Set("iaas:x:user-data", "")
+	defer config.Unset("iaas:x:user-data")
+	userData, err := iaasInst.ReadUserData()
+	c.Assert(err, check.IsNil)
+	c.Assert(userData, check.Equals, "")
+}
+
 func (s *S) TestReadUserDataError(c *check.C) {
 	iaasInst := UserDataIaaS{NamedIaaS: NamedIaaS{BaseIaaSName: "x"}}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

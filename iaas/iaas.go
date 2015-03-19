@@ -54,11 +54,11 @@ type UserDataIaaS struct {
 }
 
 func (i *UserDataIaaS) ReadUserData() (string, error) {
-	userDataUrl, _ := i.NamedIaaS.GetConfigString("user-data")
+	userDataUrl, err := i.NamedIaaS.GetConfigString("user-data")
 	var userData string
-	if userDataUrl == "" {
+	if err != nil {
 		userData = defaultUserData
-	} else {
+	} else if userDataUrl != "" {
 		resp, err := http.Get(userDataUrl)
 		if err != nil {
 			return "", err
