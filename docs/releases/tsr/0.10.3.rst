@@ -1,0 +1,28 @@
+.. Copyright 2015 tsuru authors. All rights reserved.
+   Use of this source code is governed by a BSD-style
+   license that can be found in the LICENSE file.
+
+========================
+tsr 0.10.3 release notes
+========================
+
+Welcome to tsr 0.10.3!
+
+tsr 0.10.3 includes some bug fixes and improvements to the server:
+
+* fix the distribution of containers across nodes when running ``tsuru-admin
+  containers-rebalance``.
+* fix a data race in connection management in the Hipache router.
+* fix the behavior of ``tsuru-admin containers-rebalance --dry``. Now it
+  really supports running in dry-mode.
+* fix leak of connections between tsr API and docker-registry.
+* removed the check for Gandalf API in configuration, making tsr really
+  independent of Gandalf.
+* simplify the start-up process, adding two new commands to tsr:
+
+    - ``migrate``, that will run migrations when upgrading tsr (issue `#1137
+      <https://github.com/tsuru/tsuru/issues/1137>`_)
+    - ``gandalf-sync``, that
+      will synchronize tsuru users and applications with Gandalf users and
+      repositories (issue `#1138
+      <https://github.com/tsuru/tsuru/issues/1138>`_)

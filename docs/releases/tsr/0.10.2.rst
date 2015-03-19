@@ -8,7 +8,7 @@ tsr 0.10.2 release notes
 
 Welcome to tsr 0.10.2!
 
-tsr 0.10.2 includes one bug fixes to administration commands:
+tsr 0.10.2 includes one bug fix to administrative commands:
 
 *  tsuru-admin commands ``container-move``, ``containers-move`` and ``containers-
    rebalance`` caused tsuru server to freeze. This issue was caused by a global
