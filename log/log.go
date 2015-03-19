@@ -30,25 +30,24 @@ type Logger interface {
 }
 
 func Init() {
-	debug, err := config.GetBool("debug")
-	if err != nil {
-		debug = false
+	var loggers []Logger
+	debug, _ := config.GetBool("debug")
+	if logFileName, err := config.GetString("log:file"); err == nil {
+		loggers = append(loggers, NewFileLogger(logFileName, debug))
+	} else if err == config.ErrMismatchConf {
+		panic(fmt.Sprintf("%s please see http://docs.tsuru.io/en/latest/reference/config.html#log-file", err))
 	}
-	logFileName, err := config.GetString("log:file")
-	var logger Logger
-	if err != nil {
-		if err == config.ErrMismatchConf {
-			panic(fmt.Sprintf("%s please see http://docs.tsuru.io/en/latest/reference/config.html#log-file", err.Error()))
-		} else {
-			logger = NewSyslogLogger("tsr", debug)
+	if disableSyslog, _ := config.GetBool("log:disable-syslog"); !disableSyslog {
+		tag, _ := config.GetString("log:syslog-tag")
+		if tag == "" {
+			tag = "tsr"
 		}
-	} else {
-		logger = NewFileLogger(logFileName, debug)
+		loggers = append(loggers, NewSyslogLogger(tag, debug))
 	}
-	stderrLogger := newWriterLogger(os.Stderr, debug)
-	if logger != nil && stderrLogger != nil {
-		SetLogger(NewMultiLogger(logger, stderrLogger))
+	if useStderr, _ := config.GetBool("log:use-stderr"); useStderr {
+		loggers = append(loggers, newWriterLogger(os.Stderr, debug))
 	}
+	SetLogger(NewMultiLogger(loggers...))
 }
 
 // Target is the current target for the log package.
