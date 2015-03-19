@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/tsuru/tsuru/cmd/cmdtest"
@@ -276,4 +278,25 @@ Teams: frontend, backend, sysadmin, full stack
 	c.Assert(err, check.IsNil)
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
 	c.Assert(called, check.Equals, true)
+}
+
+func (s *S) TestPasswordFromReaderUsingFile(c *check.C) {
+	tmpdir, err := filepath.EvalSymlinks(os.TempDir())
+	filename := path.Join(tmpdir, "password-reader.txt")
+	c.Assert(err, check.IsNil)
+	file, err := os.Create(filename)
+	c.Assert(err, check.IsNil)
+	defer os.Remove(filename)
+	file.WriteString("hello")
+	file.Seek(0, 0)
+	password, err := PasswordFromReader(file)
+	c.Assert(err, check.IsNil)
+	c.Assert(password, check.Equals, "hello")
+}
+
+func (s *S) TestPasswordFromReaderUsingStringsReader(c *check.C) {
+	reader := strings.NewReader("abcd\n")
+	password, err := PasswordFromReader(reader)
+	c.Assert(err, check.IsNil)
+	c.Assert(password, check.Equals, "abcd")
 }

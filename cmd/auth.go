@@ -36,7 +36,7 @@ func nativeLogin(context *Context, client *Client) error {
 		fmt.Fscanf(context.Stdin, "%s\n", &email)
 	}
 	fmt.Fprint(context.Stdout, "Password: ")
-	password, err := passwordFromReader(context.Stdin)
+	password, err := PasswordFromReader(context.Stdin)
 	if err != nil {
 		return err
 	}
@@ -165,7 +165,7 @@ func (userInfo) Run(context *Context, client *Client) error {
 	return nil
 }
 
-func passwordFromReader(reader io.Reader) (string, error) {
+func PasswordFromReader(reader io.Reader) (string, error) {
 	var (
 		password []byte
 		err      error
