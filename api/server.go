@@ -288,9 +288,10 @@ func RunServer(dry bool) http.Handler {
 		results := hc.Check()
 		for _, result := range results {
 			if result.Status != hc.HealthCheckOK {
-				fmt.Printf("WARNING: %q is not working: %s\n", result.Name, result.Status)
+				fmt.Printf("    WARNING: %q is not working: %s\n", result.Name, result.Status)
 			}
 		}
+		fmt.Println("    Components checked.")
 		listen, err := config.GetString("listen")
 		if err != nil {
 			fatal(err)
