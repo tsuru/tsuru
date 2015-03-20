@@ -110,12 +110,20 @@ func CheckScheduler() error {
 // Check Router
 // It verifies your router configuration and validates related confs.
 func CheckRouter() error {
-	if router, err := config.Get("docker:router"); err == nil && router == "hipache" {
-		if hipache, err := config.Get("hipache"); err != nil || hipache == nil {
-			return fmt.Errorf("You should configure hipache router")
-		}
+	defaultRouter, _ := config.GetString("docker:router")
+	if defaultRouter == "" {
+		return fmt.Errorf(`You must configure a default router in "docker:router".`)
 	}
-	return nil
+	isHipacheOld := false
+	if defaultRouter == "hipache" {
+		hipacheOld, _ := config.Get("hipache")
+		isHipacheOld = hipacheOld != nil
+	}
+	routerConf, _ := config.Get("routers:" + defaultRouter)
+	if routerConf != nil || isHipacheOld {
+		return nil
+	}
+	return fmt.Errorf(`You must configure your default router %q in "routers:%s".`, defaultRouter, defaultRouter)
 }
 
 func checkConfigPresent(keys []string, fmtMsg string) error {

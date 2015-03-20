@@ -150,8 +150,37 @@ func (s *CheckerSuite) TestCheckRouter(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
-func (s *CheckerSuite) TestCheckRouterHipacheShouldHaveHipachConf(c *check.C) {
+func (s *CheckerSuite) TestCheckRouterHipacheShouldHaveHipacheConf(c *check.C) {
 	config.Unset("hipache")
+	err := CheckRouter()
+	c.Assert(err, check.NotNil)
+}
+
+func (s *CheckerSuite) TestCheckRouterHipacheCanHaveHipacheInRoutersConf(c *check.C) {
+	config.Unset("hipache")
+	config.Set("routers:hipache:domain", "something")
+	err := CheckRouter()
+	c.Assert(err, check.IsNil)
+}
+
+func (s *CheckerSuite) TestCheckRouterValidatesDefaultRouterNotExisting(c *check.C) {
+	config.Unset("hipache")
+	config.Set("docker:router", "myrouter")
+	err := CheckRouter()
+	c.Assert(err, check.NotNil)
+}
+
+func (s *CheckerSuite) TestCheckRouterValidatesDefaultRouter(c *check.C) {
+	config.Unset("hipache")
+	config.Set("docker:router", "myrouter")
+	config.Set("routers:myrouter:planet", "giediprime")
+	err := CheckRouter()
+	c.Assert(err, check.IsNil)
+}
+
+func (s *CheckerSuite) TestCheckRouterValidatesDefaultRouterPresence(c *check.C) {
+	config.Unset("hipache")
+	config.Unset("docker:router")
 	err := CheckRouter()
 	c.Assert(err, check.NotNil)
 }
