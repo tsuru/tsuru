@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -211,24 +212,27 @@ func (i *CloudstackIaaS) buildUrl(command string, params map[string]string) (str
 }
 
 func (i *CloudstackIaaS) waitForAsyncJob(jobId string) (QueryAsyncJobResultResponse, error) {
-	count := 0
-	maxTry := 300
+	rawWait, _ := i.base.GetConfigString("wait-timeout")
+	maxWaitTime, _ := strconv.Atoi(rawWait)
+	if maxWaitTime == 0 {
+		maxWaitTime = 300
+	}
 	var jobResponse QueryAsyncJobResultResponse
-	for count < maxTry {
+	t0 := time.Now()
+	for time.Now().Sub(t0) < time.Duration(maxWaitTime)*time.Second {
 		err := i.do("queryAsyncJobResult", ApiParams{"jobid": jobId}, &jobResponse)
 		if err != nil {
 			return jobResponse, err
 		}
 		if jobResponse.QueryAsyncJobResultResponse.JobStatus != jobInProgress {
 			if jobResponse.QueryAsyncJobResultResponse.JobStatus == jobFailed {
-				return jobResponse, fmt.Errorf("Job failed to complete: %#v", jobResponse.QueryAsyncJobResultResponse.JobResult)
+				return jobResponse, fmt.Errorf("job failed to complete: %#v", jobResponse.QueryAsyncJobResultResponse.JobResult)
 			}
 			return jobResponse, nil
 		}
-		count = count + 1
-		time.Sleep(time.Second)
+		time.Sleep(500 * time.Millisecond)
 	}
-	return jobResponse, fmt.Errorf("Maximum number of retries waiting for job %q", jobId)
+	return jobResponse, fmt.Errorf("cloudstack: time out after %v waiting for job %q", time.Now().Sub(t0), jobId)
 }
 
 func (i *CloudstackIaaS) waitVMIsCreated(jobId, machineId, projectId string) (string, error) {

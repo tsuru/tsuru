@@ -247,3 +247,35 @@ func (s *cloudstackSuite) TestHealthCheckFailure(c *check.C) {
 	c.Assert(err.Error(), check.Equals, `"cloudstack" - not enough zones available, want at least 1, got 0`)
 	c.Assert(command, check.Equals, "listZones")
 }
+
+func (s *cloudstackSuite) TestCreateMachineTimeout(c *check.C) {
+	var calls []string
+	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cmd := r.URL.Query().Get("command")
+		calls = append(calls, cmd)
+		w.Header().Set("Content-type", "application/json")
+		if cmd == "queryAsyncJobResult" {
+			fmt.Fprintf(w, `{"queryasyncjobresultresponse": {"jobstatus": %d}}`, jobInProgress)
+		}
+		if cmd == "deployVirtualMachine" {
+			fmt.Fprintln(w, `{"deployvirtualmachineresponse": {"id": "0366ae09-0a77-4e2b-8595-3b749764a107", "jobid": "test"}}`)
+		}
+	}))
+	defer fakeServer.Close()
+	config.Set("iaas:cloudstack:url", fakeServer.URL)
+	config.Set("iaas:cloudstack:wait-timeout", "1")
+	defer config.Unset("iaas:cloudstack:wait-timeout")
+	cs := NewCloudstackIaaS()
+	params := map[string]string{
+		"projectid":         "val",
+		"networkids":        "val",
+		"templateid":        "val",
+		"serviceofferingid": "val",
+		"zoneid":            "val",
+	}
+	_, err := cs.CreateMachine(params)
+	c.Assert(err, check.ErrorMatches, `cloudstack: time out after .+? waiting for job "test"`)
+	c.Assert(len(calls) >= 2, check.Equals, true)
+	c.Assert(calls[0], check.Equals, "deployVirtualMachine")
+	c.Assert(calls[1], check.Equals, "queryAsyncJobResult")
+}

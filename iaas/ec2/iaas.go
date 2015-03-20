@@ -43,16 +43,16 @@ func (i *EC2IaaS) createEC2Handler(region aws.Region) (*ec2.EC2, error) {
 }
 
 func (i *EC2IaaS) waitForDnsName(ec2Inst *ec2.EC2, instance *ec2.Instance) (*ec2.Instance, error) {
+	rawWait, _ := i.base.GetConfigString("wait-timeout")
+	maxWaitTime, _ := strconv.Atoi(rawWait)
+	if maxWaitTime == 0 {
+		maxWaitTime = 300
+	}
 	t0 := time.Now()
 	for instance.DNSName == "" {
-		rawWait, _ := i.base.GetConfigString("wait-timeout")
-		maxWaitTime, _ := strconv.Atoi(rawWait)
-		if maxWaitTime == 0 {
-			maxWaitTime = 300
-		}
 		instId := instance.InstanceId
 		if time.Now().Sub(t0) > time.Duration(maxWaitTime)*time.Second {
-			return nil, fmt.Errorf("ec2: time out waiting for instance %s to start", instId)
+			return nil, fmt.Errorf("ec2: time out after %v waiting for instance %s to start", time.Now().Sub(t0), instId)
 		}
 		log.Debugf("ec2: waiting for dnsname for instance %s", instId)
 		time.Sleep(500 * time.Millisecond)

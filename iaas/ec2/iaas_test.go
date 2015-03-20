@@ -121,7 +121,7 @@ func (s *S) TestCreateMachineTimeoutError(c *check.C) {
 	}
 	ec2iaas := NewEC2IaaS()
 	_, err := ec2iaas.CreateMachine(params)
-	c.Assert(err, check.ErrorMatches, `ec2: time out waiting for instance.*`)
+	c.Assert(err, check.ErrorMatches, `ec2: time out after .+? waiting for instance .+? to start`)
 	c.Assert(calledActions[len(calledActions)-1], check.Equals, "TerminateInstances")
 }
 
