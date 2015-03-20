@@ -211,10 +211,20 @@ func List() ([]PlanRouter, error) {
 	for key := range routers {
 		keys = append(keys, key.(string))
 	}
+	topLevelHipacheConfig, _ := config.Get("hipache")
+	if topLevelHipacheConfig != nil {
+		keys = append(keys, "hipache")
+	}
 	sort.Strings(keys)
 	for _, value := range keys {
-		routerProperties := routers[value].(map[interface{}]interface{})
-		routerType := routerProperties["type"].(string)
+		var routerType string
+		routerProperties, _ := routers[value].(map[interface{}]interface{})
+		if routerProperties != nil {
+			routerType, _ = routerProperties["type"].(string)
+		}
+		if routerType == "" {
+			routerType = value
+		}
 		routersList = append(routersList, PlanRouter{Name: value, Type: routerType})
 	}
 	return routersList, nil
