@@ -34,13 +34,17 @@ func Get(name string) (Router, error) {
 	prefix := "routers:" + name
 	routerType, err := config.GetString(prefix + ":type")
 	if err != nil {
-		log.Errorf("WARNING: config key '%s:type' not found, fallback to top level '%s:*' router config", prefix, name)
+		msg := fmt.Sprintf("config key '%s:type' not found", prefix)
+		if name != "hipache" {
+			return nil, errors.New(msg)
+		}
+		log.Errorf("WARNING: %s, fallback to top level '%s:*' router config", msg, name)
 		routerType = name
 		prefix = name
 	}
 	factory, ok := routers[routerType]
 	if !ok {
-		return nil, fmt.Errorf("Unknown router: %q.", routerType)
+		return nil, fmt.Errorf("unknown router: %q.", routerType)
 	}
 	r, err := factory(prefix)
 	if err != nil {

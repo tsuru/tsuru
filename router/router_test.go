@@ -17,14 +17,20 @@ func (s *S) TestRegisterAndGet(c *check.C) {
 		return r, nil
 	}
 	Register("router", routerCreator)
-	got, err := Get("router")
+	config.Set("routers:mine:type", "router")
+	defer config.Unset("routers:mine:type")
+	got, err := Get("mine")
 	c.Assert(err, check.IsNil)
 	c.Assert(r, check.DeepEquals, got)
-	c.Assert(prefixes, check.DeepEquals, []string{"router"})
+	c.Assert(prefixes, check.DeepEquals, []string{"routers:mine"})
 	_, err = Get("unknown-router")
 	c.Assert(err, check.Not(check.IsNil))
-	expectedMessage := `Unknown router: "unknown-router".`
-	c.Assert(expectedMessage, check.Equals, err.Error())
+	c.Assert("config key 'routers:unknown-router:type' not found", check.Equals, err.Error())
+	config.Set("routers:mine-unknown:type", "unknown")
+	defer config.Unset("routers:mine-unknown:type")
+	_, err = Get("mine-unknown")
+	c.Assert(err, check.Not(check.IsNil))
+	c.Assert(`unknown router: "unknown".`, check.Equals, err.Error())
 }
 
 func (s *S) TestRegisterAndGetCustomNamedRouter(c *check.C) {

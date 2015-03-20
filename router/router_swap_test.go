@@ -24,6 +24,7 @@ func (s *ExternalSuite) SetUpSuite(c *check.C) {
 	config.Set("hipache:domain", "swaptest.org")
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "router_swap_tests")
+	config.Set("routers:fake:type", "fake")
 }
 
 func (s *ExternalSuite) SetUpTest(c *check.C) {
