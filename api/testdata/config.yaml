@@ -8,3 +8,6 @@ auth:
 queue: fake
 admin-team: admin
 repo-manager: fake
+routers:
+  fake:
+    type: fake
