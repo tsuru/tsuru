@@ -206,10 +206,10 @@ type PlanRouter struct {
 
 func List() ([]PlanRouter, error) {
 	routerConfig, err := config.Get("routers")
-	if err != nil {
-		return nil, err
+	var routers map[interface{}]interface{}
+	if err == nil {
+		routers, _ = routerConfig.(map[interface{}]interface{})
 	}
-	routers, _ := routerConfig.(map[interface{}]interface{})
 	routersList := make([]PlanRouter, 0, len(routers))
 	var keys []string
 	for key := range routers {

@@ -100,8 +100,8 @@ func (s *S) TestSwapBackendName(c *check.C) {
 func (s *S) TestList(c *check.C) {
 	config.Set("routers:router1:type", "foo")
 	config.Set("routers:router2:type", "bar")
-	defer config.Unset("routers:router1:type")
-	defer config.Unset("routers:router2:type")
+	defer config.Unset("routers:router1")
+	defer config.Unset("routers:router2")
 	expected := []PlanRouter{
 		{Name: "router1", Type: "foo"},
 		{Name: "router2", Type: "bar"},
@@ -115,13 +115,24 @@ func (s *S) TestListIncludesLegacyHipacheRouter(c *check.C) {
 	config.Set("hipache:something", "somewhere")
 	config.Set("routers:router1:type", "foo")
 	config.Set("routers:router2:type", "bar")
-	defer config.Unset("hipache:something")
-	defer config.Unset("routers:router1:type")
-	defer config.Unset("routers:router2:type")
+	defer config.Unset("hipache")
+	defer config.Unset("routers:router1")
+	defer config.Unset("routers:router2")
 	expected := []PlanRouter{
 		{Name: "hipache", Type: "hipache"},
 		{Name: "router1", Type: "foo"},
 		{Name: "router2", Type: "bar"},
+	}
+	routers, err := List()
+	c.Assert(err, check.IsNil)
+	c.Assert(routers, check.DeepEquals, expected)
+}
+
+func (s *S) TestListIncludesOnlyLegacyHipacheRouter(c *check.C) {
+	config.Set("hipache:something", "somewhere")
+	defer config.Unset("hipache")
+	expected := []PlanRouter{
+		{Name: "hipache", Type: "hipache"},
 	}
 	routers, err := List()
 	c.Assert(err, check.IsNil)
