@@ -41,7 +41,9 @@ type autoScaleEvent struct {
 	StartTime     time.Time
 	EndTime       time.Time `bson:",omitempty"`
 	Successful    bool
-	Error         string `bson:",omitempty"`
+	Error         string       `bson:",omitempty"`
+	Node          cluster.Node `bson:",omitempty"`
+	Log           string       `bson:",omitempty"`
 }
 
 func autoScaleCollection() (*storage.Collection, error) {
@@ -58,7 +60,7 @@ func autoScaleCollection() (*storage.Collection, error) {
 
 func newAutoScaleEvent(metadataValue string) (*autoScaleEvent, error) {
 	// Use metadataValue as ID to ensure only one auto scale process runs for
-	// each metadataValue. (*autoScaleEvent).update() will generate a new
+	// each metadataValue. (*autoScaleEvent).finish() will generate a new
 	// unique ID and remove this initial record.
 	evt := autoScaleEvent{
 		ID:            metadataValue,
@@ -77,6 +79,10 @@ func newAutoScaleEvent(metadataValue string) (*autoScaleEvent, error) {
 	return &evt, err
 }
 
+func (evt *autoScaleEvent) updateNode(node *cluster.Node) {
+	evt.Node = *node
+}
+
 func (evt *autoScaleEvent) update(action, reason string) error {
 	evt.Action = action
 	evt.Reason = reason
@@ -87,7 +93,7 @@ func (evt *autoScaleEvent) update(action, reason string) error {
 	return coll.UpdateId(evt.ID, evt)
 }
 
-func (evt *autoScaleEvent) finish(errParam error) error {
+func (evt *autoScaleEvent) finish(errParam error, log string) error {
 	coll, err := autoScaleCollection()
 	if err != nil {
 		return err
@@ -99,6 +105,7 @@ func (evt *autoScaleEvent) finish(errParam error) error {
 	if errParam != nil {
 		evt.Error = errParam.Error()
 	}
+	evt.Log = log
 	evt.Successful = errParam == nil
 	evt.EndTime = time.Now().UTC()
 	defer coll.RemoveId(evt.ID)
@@ -139,6 +146,7 @@ type autoScaleConfig struct {
 	runInterval         time.Duration
 	preventRebalance    bool
 	writer              io.Writer
+	logBuffer           safe.Buffer
 }
 
 type autoScaler interface {
@@ -188,6 +196,11 @@ func (a *autoScaleConfig) setUpScaler() (autoScaler, error) {
 	if a.waitTimeNewMachine == 0 {
 		a.waitTimeNewMachine = 5 * time.Minute
 	}
+	writers := []io.Writer{&a.logBuffer}
+	if a.writer != nil {
+		writers = append(writers, a.writer)
+	}
+	a.writer = io.MultiWriter(writers...)
 	return scaler, nil
 }
 
@@ -212,7 +225,7 @@ func (a *autoScaleConfig) run() error {
 
 func (a *autoScaleConfig) logError(msg string, params ...interface{}) {
 	if a.writer != nil {
-		fmt.Fprintf(a.writer, msg+"\n", params...)
+		fmt.Fprintf(a.writer, fmt.Sprintf("ERROR:%s\n", msg), params...)
 	}
 	log.Errorf(msg, params...)
 }
@@ -269,6 +282,7 @@ func (a *autoScaleConfig) runScaler(scaler autoScaler) (retErr error) {
 		clusterMap[groupMetadata] = append(clusterMap[groupMetadata], node)
 	}
 	for groupMetadata, nodes := range clusterMap {
+		a.logBuffer.Reset()
 		event, err := newAutoScaleEvent(groupMetadata)
 		if err != nil {
 			if err == errAutoScaleRunning {
@@ -281,7 +295,7 @@ func (a *autoScaleConfig) runScaler(scaler autoScaler) (retErr error) {
 		a.logDebug("[node autoscale] running scaler %T for %q: %q", scaler, a.groupByMetadata, groupMetadata)
 		err = scaler.scale(event, groupMetadata, nodes)
 		if err != nil {
-			event.finish(err)
+			event.finish(err, a.logBuffer.String())
 			retErr = fmt.Errorf("error scaling group %s: %s", groupMetadata, err.Error())
 			return
 		}
@@ -292,7 +306,7 @@ func (a *autoScaleConfig) runScaler(scaler autoScaler) (retErr error) {
 		if event.Action == "" {
 			a.logDebug("[node autoscale] nothing to do for %q: %q", a.groupByMetadata, groupMetadata)
 		}
-		event.finish(nil)
+		event.finish(nil, a.logBuffer.String())
 	}
 	return
 }
@@ -422,6 +436,7 @@ func (a *memoryScaler) scale(event *autoScaleEvent, groupMetadata string, nodes 
 		return fmt.Errorf("unable to choose node for removal: %s", err)
 	}
 	if chosenNode != nil {
+		event.updateNode(chosenNode)
 		err = event.update(scaleActionRemove, fmt.Sprintf("containers from %s can be distributed in cluster", chosenNode.Address))
 		if err != nil {
 			return err
@@ -452,7 +467,12 @@ func (a *memoryScaler) scale(event *autoScaleEvent, groupMetadata string, nodes 
 		return err
 	}
 	a.logDebug("[node autoscale] running event %q for %q: %s", event.Action, event.MetadataValue, event.Reason)
-	return a.addNode(nodes)
+	newNode, err := a.addNode(nodes)
+	if err != nil {
+		return err
+	}
+	event.updateNode(newNode)
+	return nil
 }
 
 func (a *countScaler) scale(event *autoScaleEvent, groupMetadata string, nodes []*cluster.Node) error {
@@ -475,6 +495,7 @@ func (a *countScaler) scale(event *autoScaleEvent, groupMetadata string, nodes [
 			a.logDebug("[node autoscale] would remove any node but can't due to metadata restrictions")
 			return nil
 		}
+		event.updateNode(chosenNode)
 		err := event.update(scaleActionRemove, reasonMsg)
 		if err != nil {
 			return fmt.Errorf("error updating event: %s", err)
@@ -490,7 +511,12 @@ func (a *countScaler) scale(event *autoScaleEvent, groupMetadata string, nodes [
 		return fmt.Errorf("error updating event: %s", err)
 	}
 	a.logDebug("[node autoscale] running event %q for %q: %s", event.Action, event.MetadataValue, event.Reason)
-	return a.addNode(nodes)
+	newNode, err := a.addNode(nodes)
+	if err != nil {
+		return err
+	}
+	event.updateNode(newNode)
+	return nil
 }
 
 func (a *autoScaleConfig) rebalanceIfNeeded(event *autoScaleEvent, groupMetadata string, nodes []*cluster.Node) error {
@@ -539,28 +565,28 @@ func (a *autoScaleConfig) rebalanceIfNeeded(event *autoScaleEvent, groupMetadata
 	return nil
 }
 
-func (a *autoScaleConfig) addNode(modelNodes []*cluster.Node) error {
+func (a *autoScaleConfig) addNode(modelNodes []*cluster.Node) (*cluster.Node, error) {
 	metadata, err := chooseMetadataFromNodes(modelNodes)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	_, hasIaas := metadata["iaas"]
 	if !hasIaas {
-		return fmt.Errorf("no IaaS information in nodes metadata: %#v", metadata)
+		return nil, fmt.Errorf("no IaaS information in nodes metadata: %#v", metadata)
 	}
 	machine, err := iaas.CreateMachineForIaaS(metadata["iaas"], metadata)
 	if err != nil {
-		return fmt.Errorf("unable to create machine: %s", err.Error())
+		return nil, fmt.Errorf("unable to create machine: %s", err.Error())
 	}
 	newAddr := machine.FormatNodeAddress()
 	a.logDebug("[node autoscale] new machine created: %s - Waiting for docker to start...", newAddr)
-	_, err = a.provisioner.getCluster().WaitAndRegister(newAddr, metadata, a.waitTimeNewMachine)
+	createdNode, err := a.provisioner.getCluster().WaitAndRegister(newAddr, metadata, a.waitTimeNewMachine)
 	if err != nil {
 		machine.Destroy()
-		return fmt.Errorf("error registering new node %s: %s", newAddr, err.Error())
+		return nil, fmt.Errorf("error registering new node %s: %s", newAddr, err.Error())
 	}
 	a.logDebug("[node autoscale] new machine created: %s - started!", newAddr)
-	return nil
+	return &createdNode, nil
 }
 
 func (a *autoScaleConfig) removeNode(chosenNode *cluster.Node) error {

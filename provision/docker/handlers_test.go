@@ -855,13 +855,13 @@ func (s *HandlersSuite) TestAutoScaleHistoryHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = evt1.update("add", "reason 1")
 	c.Assert(err, check.IsNil)
-	err = evt1.finish(nil)
+	err = evt1.finish(nil, "my log")
 	c.Assert(err, check.IsNil)
 	evt2, err := newAutoScaleEvent("pooly")
 	c.Assert(err, check.IsNil)
 	err = evt2.update("rebalance", "reason 2")
 	c.Assert(err, check.IsNil)
-	err = evt2.finish(errors.New("my error"))
+	err = evt2.finish(errors.New("my error"), "my log 2")
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/docker/autoscale", nil)
@@ -883,6 +883,8 @@ func (s *HandlersSuite) TestAutoScaleHistoryHandler(c *check.C) {
 	c.Assert(evt2.Action, check.Equals, history[0].Action)
 	c.Assert(evt1.Reason, check.Equals, history[1].Reason)
 	c.Assert(evt2.Reason, check.Equals, history[0].Reason)
+	c.Assert(evt1.Log, check.Equals, history[1].Log)
+	c.Assert(evt2.Log, check.Equals, history[0].Log)
 }
 
 func (s *HandlersSuite) TestUpdateNodeHandler(c *check.C) {

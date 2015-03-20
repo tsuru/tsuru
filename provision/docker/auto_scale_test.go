@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -95,6 +96,16 @@ func (s *S) TestAutoScaleConfigRun(c *check.C) {
 	c.Assert(evts[0].Action, check.Equals, "add")
 	c.Assert(evts[0].Successful, check.Equals, true)
 	c.Assert(evts[0].Error, check.Equals, "")
+	c.Assert(evts[0].Node.Address, check.Equals, fmt.Sprintf("http://localhost:%d", urlPort(node2.URL())))
+	c.Assert(evts[0].Node.Metadata, check.DeepEquals, map[string]string{
+		"pool": "pool1",
+		"iaas": "my-scale-iaas",
+	})
+	logParts := strings.Split(evts[0].Log, "\n")
+	c.Assert(logParts, check.HasLen, 15)
+	c.Assert(logParts[0], check.Matches, `\[node autoscale\].*running scaler.*pool1.*`)
+	c.Assert(logParts[2], check.Matches, `\[node autoscale\].*new machine created.*`)
+	c.Assert(logParts[5], check.Matches, `.*Rebalancing 4 units.*`)
 
 	// Also should have rebalanced
 	containers1, err := p.listContainersByHost(urlToHost(nodes[0].Address))
