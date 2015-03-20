@@ -26,6 +26,8 @@ func (s *S) SetUpSuite(c *check.C) {
 	var err error
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "router_fake_tests")
+	config.Set("routers:fake:type", "fake")
+	config.Set("routers:fake-hc:type", "fake-hc")
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
 }
@@ -38,6 +40,9 @@ func (s *S) TestShouldBeRegistered(c *check.C) {
 	r, err := router.Get("fake")
 	c.Assert(err, check.IsNil)
 	c.Assert(r, check.FitsTypeOf, &fakeRouter{})
+	r, err = router.Get("fake-hc")
+	c.Assert(err, check.IsNil)
+	c.Assert(r, check.FitsTypeOf, &hcRouter{})
 }
 
 func (s *S) TestAddBackend(c *check.C) {

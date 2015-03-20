@@ -31,9 +31,10 @@ type S struct {
 var _ = check.Suite(&S{})
 
 func (s *S) SetUpSuite(c *check.C) {
-	config.Set("galeb:username", "myusername")
-	config.Set("galeb:password", "mypassword")
-	config.Set("galeb:domain", "galeb.com")
+	config.Set("routers:galeb:username", "myusername")
+	config.Set("routers:galeb:password", "mypassword")
+	config.Set("routers:galeb:domain", "galeb.com")
+	config.Set("routers:galeb:type", "galeb")
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "router_galeb_tests_s")
 	var err error
@@ -44,7 +45,7 @@ func (s *S) SetUpSuite(c *check.C) {
 func (s *S) SetUpTest(c *check.C) {
 	s.handler = apitest.MultiTestHandler{}
 	s.server = httptest.NewServer(&s.handler)
-	config.Set("galeb:api-url", s.server.URL+"/api")
+	config.Set("routers:galeb:api-url", s.server.URL+"/api")
 	dbtest.ClearAllCollections(s.conn.Collection("router_galeb_tests").Database)
 }
 
@@ -59,7 +60,7 @@ func (s *S) TestAddBackend(c *check.C) {
 		"/api/virtualhost/": `{"_links":{"self":"vh1"}}`,
 	}
 	s.handler.RspCode = http.StatusCreated
-	gRouter, err := createRouter("galeb")
+	gRouter, err := createRouter("routers:galeb")
 	c.Assert(err, check.IsNil)
 	err = gRouter.AddBackend("myapp")
 	c.Assert(err, check.IsNil)
@@ -113,7 +114,7 @@ func (s *S) TestRemoveBackend(c *check.C) {
 	}
 	err = data.save()
 	c.Assert(err, check.IsNil)
-	gRouter, err := createRouter("galeb")
+	gRouter, err := createRouter("routers:galeb")
 	c.Assert(err, check.IsNil)
 	err = gRouter.RemoveBackend("myapp")
 	c.Assert(err, check.IsNil)
@@ -139,7 +140,7 @@ func (s *S) TestAddRoute(c *check.C) {
 		"/api/backend/": `{"_links":{"self":"backend1"}}`,
 	}
 	s.handler.RspCode = http.StatusCreated
-	gRouter, err := createRouter("galeb")
+	gRouter, err := createRouter("routers:galeb")
 	c.Assert(err, check.IsNil)
 	err = gRouter.AddRoute("myapp", "10.9.2.1:44001")
 	c.Assert(err, check.IsNil)
@@ -170,7 +171,7 @@ func (s *S) TestAddRouteParsesURL(c *check.C) {
 		"/api/backend/": `{"_links":{"self":"backend1"}}`,
 	}
 	s.handler.RspCode = http.StatusCreated
-	gRouter, err := createRouter("galeb")
+	gRouter, err := createRouter("routers:galeb")
 	c.Assert(err, check.IsNil)
 	err = gRouter.AddRoute("myapp", "http://10.9.9.9:11001/")
 	c.Assert(err, check.IsNil)
@@ -200,7 +201,7 @@ func (s *S) TestRemoveRoute(c *check.C) {
 	err = data.save()
 	c.Assert(err, check.IsNil)
 	s.handler.RspCode = http.StatusNoContent
-	gRouter, err := createRouter("galeb")
+	gRouter, err := createRouter("routers:galeb")
 	c.Assert(err, check.IsNil)
 	err = gRouter.RemoveRoute("myapp", "10.1.1.10")
 	c.Assert(err, check.IsNil)
@@ -222,7 +223,7 @@ func (s *S) TestRemoveRouteParsesURL(c *check.C) {
 	err = data.save()
 	c.Assert(err, check.IsNil)
 	s.handler.RspCode = http.StatusNoContent
-	gRouter, err := createRouter("galeb")
+	gRouter, err := createRouter("routers:galeb")
 	c.Assert(err, check.IsNil)
 	err = gRouter.RemoveRoute("myapp", "https://10.1.1.10:1010/")
 	c.Assert(err, check.IsNil)
@@ -245,7 +246,7 @@ func (s *S) TestSetCName(c *check.C) {
 		"/api/virtualhost/": `{"_links":{"self":"vhX"}}`,
 	}
 	s.handler.RspCode = http.StatusCreated
-	gRouter, err := createRouter("galeb")
+	gRouter, err := createRouter("routers:galeb")
 	c.Assert(err, check.IsNil)
 	err = gRouter.SetCName("my.new.cname", "myapp")
 	c.Assert(err, check.IsNil)
@@ -275,7 +276,7 @@ func (s *S) TestUnsetCName(c *check.C) {
 	err = data.save()
 	c.Assert(err, check.IsNil)
 	s.handler.RspCode = http.StatusNoContent
-	gRouter, err := createRouter("galeb")
+	gRouter, err := createRouter("routers:galeb")
 	c.Assert(err, check.IsNil)
 	err = gRouter.UnsetCName("my.new.cname", "myapp")
 	c.Assert(err, check.IsNil)
@@ -297,7 +298,7 @@ func (s *S) TestRoutes(c *check.C) {
 	}
 	err = data.save()
 	c.Assert(err, check.IsNil)
-	gRouter, err := createRouter("galeb")
+	gRouter, err := createRouter("routers:galeb")
 	c.Assert(err, check.IsNil)
 	routes, err := gRouter.Routes("myapp")
 	c.Assert(err, check.IsNil)
@@ -314,7 +315,7 @@ func (s *S) TestSwap(c *check.C) {
 	}
 	backend1 := "b1"
 	backend2 := "b2"
-	gRouter, err := createRouter("galeb")
+	gRouter, err := createRouter("routers:galeb")
 	c.Assert(err, check.IsNil)
 	err = gRouter.AddBackend(backend1)
 	c.Assert(err, check.IsNil)
@@ -342,7 +343,7 @@ func (s *S) TestAddr(c *check.C) {
 	}
 	err = data.save()
 	c.Assert(err, check.IsNil)
-	gRouter, err := createRouter("galeb")
+	gRouter, err := createRouter("routers:galeb")
 	c.Assert(err, check.IsNil)
 	addr, err := gRouter.Addr("myapp")
 	c.Assert(addr, check.Equals, "myapp.galeb.com")
