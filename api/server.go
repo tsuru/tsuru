@@ -228,20 +228,26 @@ func RunServer(dry bool) http.Handler {
 	n.UseHandler(http.HandlerFunc(runDelayedHandler))
 
 	if !dry {
-		routerType, err := config.GetString("docker:router")
+		routers, err := router.List()
 		if err != nil {
 			fatal(err)
 		}
-		routerObj, err := router.Get(routerType)
-		if err != nil {
-			fatal(err)
-		}
-		if messageRouter, ok := routerObj.(router.MessageRouter); ok {
-			startupMessage, err := messageRouter.StartupMessage()
-			if err == nil && startupMessage != "" {
-				fmt.Print(startupMessage)
+		for _, routerDesc := range routers {
+			r, err := router.Get(routerDesc.Name)
+			if err != nil {
+				fatal(err)
 			}
+			fmt.Printf("Registered router %q", routerDesc.Name)
+			if messageRouter, ok := r.(router.MessageRouter); ok {
+				startupMessage, err := messageRouter.StartupMessage()
+				if err == nil && startupMessage != "" {
+					fmt.Printf(": %s", startupMessage)
+				}
+			}
+			fmt.Println()
 		}
+		defaultRouter, _ := config.GetString("docker:router")
+		fmt.Printf("Default router is %q.\n", defaultRouter)
 		repoManager, err := config.GetString("repo-manager")
 		if err != nil {
 			repoManager = "gandalf"
