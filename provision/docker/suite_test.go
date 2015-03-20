@@ -69,6 +69,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("docker:ssh:user", s.sshUser)
 	config.Set("docker:cluster:mongo-url", "127.0.0.1:27017")
 	config.Set("docker:cluster:mongo-database", "docker_provision_tests_cluster_stor")
+	config.Set("routers:fake:type", "fake")
 	config.Set("queue", "fake")
 	config.Set("repo-manager", "fake")
 	config.Set("admin-team", "admin")
