@@ -475,9 +475,6 @@ func (c *container) commit(p *dockerProvisioner, writer io.Writer) (string, erro
 					}
 				}
 			}
-			if err != nil {
-				return "", log.WrapError(fmt.Errorf("error in push image %s: %s", c.BuildingImage, err.Error()))
-			}
 		} else {
 			return "", log.WrapError(fmt.Errorf("error in push image %s: %s", c.BuildingImage, err.Error()))
 		}
