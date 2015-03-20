@@ -351,7 +351,7 @@ func (r *hipacheRouter) StartupMessage() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("Using hipache router %q with redis at %q.\n", domain, r.redisServer()), nil
+	return fmt.Sprintf("hipache router %q with redis at %q.", domain, r.redisServer()), nil
 }
 
 type routeError struct {

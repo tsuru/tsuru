@@ -320,5 +320,5 @@ func (r galebRouter) StartupMessage() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("Using galeb router %q with API URL %q.\n", domain, apiUrl), nil
+	return fmt.Sprintf("galeb router %q with API URL %q.", domain, apiUrl), nil
 }
