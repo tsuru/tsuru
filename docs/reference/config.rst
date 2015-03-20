@@ -858,6 +858,12 @@ A url for which the response body will be sent to cloudstack as user-data.
 Defaults to a script which will run `tsuru now installation
 <https://github.com/tsuru/now>`_.
 
+iaas:cloudstack:wait-timeout
+++++++++++++++++++++++++++++
+
+Number of seconds to wait for the machine to be created. Defaults to 300 (5
+minutes).
+
 .. _config_custom_iaas:
 
 Custom IaaS
