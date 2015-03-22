@@ -77,8 +77,30 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	rec.Log(u.Email, "app-list")
-	apps, err := app.List(u)
+	name := r.URL.Query().Get("name")
+	platform := r.URL.Query().Get("platform")
+	teamOwner := r.URL.Query().Get("teamowner")
+	owner := r.URL.Query().Get("owner")
+	extra := make([]interface{}, 0, 1)
+	filterApp := &app.App{}
+	if name != "" {
+		extra = append(extra, fmt.Sprintf("name=%s", name))
+		filterApp.Name = name
+	}
+	if platform != "" {
+		extra = append(extra, fmt.Sprintf("platform=%s", platform))
+		filterApp.Platform = platform
+	}
+	if teamOwner != "" {
+		extra = append(extra, fmt.Sprintf("teamOwner=%s", teamOwner))
+		filterApp.TeamOwner = teamOwner
+	}
+	if owner != "" {
+		extra = append(extra, fmt.Sprintf("owner=%s", owner))
+		filterApp.Owner = owner
+	}
+	rec.Log(u.Email, "app-list", extra...)
+	apps, err := app.List(u, filterApp)
 	if err != nil {
 		return err
 	}
