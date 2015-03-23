@@ -541,6 +541,11 @@ docker:registry
 For tsuru to work with multiple docker nodes, you will need a docker-registry.
 This should be in the form of ``hostname:port``.
 
+docker:registry-max-try
++++++++++++++++++++++++
+
+Number of times tsuru will try to send a image to registry.
+
 docker:repository-namespace
 +++++++++++++++++++++++++++
 
