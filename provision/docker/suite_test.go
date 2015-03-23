@@ -100,6 +100,7 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	config.Set("docker:registry-max-try", 1)
 	repositorytest.Reset()
 	var err error
 	if s.server != nil {

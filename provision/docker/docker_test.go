@@ -613,20 +613,6 @@ func (s *S) TestContainerCommitWithRegistry(c *check.C) {
 	c.Assert(imageId, check.Equals, repository)
 }
 
-func (s *S) TestContainerCommitErrorInCommit(c *check.C) {
-	s.server.PrepareFailure("commit-failure", "/commit")
-	defer s.server.ResetFailure("commit-failure")
-	cont, err := s.newContainer(nil, nil)
-	c.Assert(err, check.IsNil)
-	defer s.removeTestContainer(cont)
-	buf := bytes.Buffer{}
-	nextImgName, err := appNewImageName(cont.AppName)
-	c.Assert(err, check.IsNil)
-	cont.BuildingImage = nextImgName
-	_, err = cont.commit(s.p, &buf)
-	c.Assert(err, check.ErrorMatches, ".*commit-failure\n")
-}
-
 func (s *S) TestContainerCommitErrorInPush(c *check.C) {
 	s.server.PrepareFailure("push-failure", "/images/.*?/push")
 	defer s.server.ResetFailure("push-failure")
@@ -643,11 +629,12 @@ func (s *S) TestContainerCommitErrorInPush(c *check.C) {
 	c.Assert(err, check.ErrorMatches, ".*push-failure\n")
 }
 
-func (s *S) TestContainerCommitRetryOnTimeoutErrorInPush(c *check.C) {
+func (s *S) TestContainerCommitRetryOnErrorInPush(c *check.C) {
 	s.server.PrepareMultiFailures("i/o timeout", "/images/.*?/push")
 	s.server.PrepareMultiFailures("i/o timeout", "/images/.*?/push")
 	s.server.PrepareMultiFailures("i/o timeout", "/images/.*?/push")
-	defer s.server.ResetFailure("push-failure")
+	defer s.server.ResetMultiFailures()
+	config.Set("docker:registry-max-try", 3)
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
 	cont, err := s.newContainer(nil, nil)
@@ -659,43 +646,6 @@ func (s *S) TestContainerCommitRetryOnTimeoutErrorInPush(c *check.C) {
 	cont.BuildingImage = nextImgName
 	_, err = cont.commit(s.p, &buf)
 	c.Assert(err, check.IsNil)
-}
-
-func (s *S) TestContainerCommitRetryOnTimeoutErrorAndFailWithOtherErrorInPush(c *check.C) {
-	s.server.PrepareMultiFailures("i/o timeout", "/images/.*?/push")
-	s.server.PrepareMultiFailures("i/o timeout", "/images/.*?/push")
-	s.server.PrepareMultiFailures("i/o timeout", "/images/.*?/push")
-	s.server.PrepareMultiFailures("random error", "/images/.*?/push")
-	defer s.server.ResetFailure("push-failure")
-	config.Set("docker:registry", "localhost:3030")
-	defer config.Unset("docker:registry")
-	cont, err := s.newContainer(nil, nil)
-	c.Assert(err, check.IsNil)
-	defer s.removeTestContainer(cont)
-	buf := bytes.Buffer{}
-	nextImgName, err := appNewImageName(cont.AppName)
-	c.Assert(err, check.IsNil)
-	cont.BuildingImage = nextImgName
-	_, err = cont.commit(s.p, &buf)
-	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, ".*random error\n")
-}
-
-func (s *S) TestContainerCommitNotRetryOnTimeoutWhenRegistryAddressIsInvalidInPush(c *check.C) {
-	s.server.PrepareMultiFailures("Invalid Registry endpoint i/o timeout", "/images/.*?/push")
-	defer s.server.ResetFailure("push-failure")
-	config.Set("docker:registry", "localhost:3030")
-	defer config.Unset("docker:registry")
-	cont, err := s.newContainer(nil, nil)
-	c.Assert(err, check.IsNil)
-	defer s.removeTestContainer(cont)
-	buf := bytes.Buffer{}
-	nextImgName, err := appNewImageName(cont.AppName)
-	c.Assert(err, check.IsNil)
-	cont.BuildingImage = nextImgName
-	_, err = cont.commit(s.p, &buf)
-	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, ".*Invalid Registry endpoint i/o timeout\n")
 }
 
 func (s *S) TestGitDeploy(c *check.C) {

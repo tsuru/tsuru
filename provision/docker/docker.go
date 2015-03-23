@@ -11,7 +11,6 @@ import (
 	"io"
 	"net"
 	"net/url"
-	"regexp"
 	"strings"
 	"time"
 
@@ -459,25 +458,19 @@ func (c *container) commit(p *dockerProvisioner, writer io.Writer) (string, erro
 	}
 	fmt.Fprintf(writer, " ---> Sending image to repository %s\n", imgSize)
 	log.Debugf("image %s generated from container %s", image.ID, c.ID)
-	err = p.pushImage(repository, tag)
+	maxTry, err := config.GetInt("docker:registry-max-try")
 	if err != nil {
-		timeoutMatch := "i/o timeout"
-		timeoutErr, _ := regexp.MatchString(timeoutMatch, err.Error())
-		invalidEndpointErr, _ := regexp.MatchString("Invalid Registry endpoint", err.Error())
-		if timeoutErr && !invalidEndpointErr {
-			maxTry := 3
-			for i := 0; i < maxTry; i++ {
-				fmt.Fprintf(writer, " ---> Timeout Error: trying to send image to repository again %s\n", imgSize)
-				err = p.pushImage(repository, tag)
-				if err != nil {
-					if ok, _ := regexp.MatchString(timeoutMatch, err.Error()); !ok {
-						return "", log.WrapError(fmt.Errorf("error in push image %s: %s", c.BuildingImage, err.Error()))
-					}
-				}
-			}
-		} else {
-			return "", log.WrapError(fmt.Errorf("error in push image %s: %s", c.BuildingImage, err.Error()))
+		return "", log.WrapError(fmt.Errorf("error getting max try config"))
+	}
+	for i := 0; i <= maxTry; i++ {
+		err = p.pushImage(repository, tag)
+		if err != nil {
+			fmt.Fprintf(writer, "Error founded, trying to send image again.\n")
 		}
+		time.Sleep(time.Second)
+	}
+	if err != nil {
+		return "", log.WrapError(fmt.Errorf("error in push image %s: %s", c.BuildingImage, err.Error()))
 	}
 	return c.BuildingImage, nil
 }
