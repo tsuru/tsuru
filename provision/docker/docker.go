@@ -460,7 +460,7 @@ func (c *container) commit(p *dockerProvisioner, writer io.Writer) (string, erro
 	log.Debugf("image %s generated from container %s", image.ID, c.ID)
 	maxTry, err := config.GetInt("docker:registry-max-try")
 	if err != nil {
-		return "", log.WrapError(fmt.Errorf("error getting max try config"))
+		maxTry = 3
 	}
 	for i := 0; i <= maxTry; i++ {
 		err = p.pushImage(repository, tag)

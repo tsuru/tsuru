@@ -634,7 +634,7 @@ func (s *S) TestContainerCommitRetryOnErrorInPush(c *check.C) {
 	s.server.PrepareMultiFailures("i/o timeout", "/images/.*?/push")
 	s.server.PrepareMultiFailures("i/o timeout", "/images/.*?/push")
 	defer s.server.ResetMultiFailures()
-	config.Set("docker:registry-max-try", 3)
+	config.Unset("docker:registry-max-try")
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
 	cont, err := s.newContainer(nil, nil)
