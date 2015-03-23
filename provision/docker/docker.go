@@ -458,17 +458,19 @@ func (c *container) commit(p *dockerProvisioner, writer io.Writer) (string, erro
 	}
 	fmt.Fprintf(writer, " ---> Sending image to repository %s\n", imgSize)
 	log.Debugf("image %s generated from container %s", image.ID, c.ID)
-	maxTry, err := config.GetInt("docker:registry-max-try")
-	if err != nil {
+	maxTry, _ := config.GetInt("docker:registry-max-try")
+	if maxTry <= 0 {
 		maxTry = 3
 	}
-	for i := 0; i <= maxTry; i++ {
+	for i := 0; i < maxTry; i++ {
 		err = p.pushImage(repository, tag)
 		if err != nil {
 			fmt.Fprintf(writer, "Error founded, trying to send image again.\nError: %s", err.Error())
-			log.WrapError(fmt.Errorf("%s", err.Error()))
+			log.WrapError(fmt.Errorf("error in push image %s: %s", c.BuildingImage, err.Error()))
 			time.Sleep(time.Second)
+			continue
 		}
+		break
 	}
 	if err != nil {
 		return "", log.WrapError(fmt.Errorf("error in push image %s: %s", c.BuildingImage, err.Error()))

@@ -597,6 +597,7 @@ func (s *S) TestContainerCommit(c *check.C) {
 }
 
 func (s *S) TestContainerCommitWithRegistry(c *check.C) {
+	config.Set("docker:registry-max-try", 1)
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
 	cont, err := s.newContainer(nil, nil)
@@ -606,11 +607,19 @@ func (s *S) TestContainerCommitWithRegistry(c *check.C) {
 	nextImgName, err := appNewImageName(cont.AppName)
 	c.Assert(err, check.IsNil)
 	cont.BuildingImage = nextImgName
+	calls := 0
+	s.server.SetHook(func(r *http.Request) {
+		if ok, _ := regexp.MatchString("/images/.*?/push", r.URL.Path); ok {
+			calls++
+		}
+	})
+	defer s.server.SetHook(nil)
 	imageId, err := cont.commit(s.p, &buf)
 	c.Assert(err, check.IsNil)
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
 	repository := "localhost:3030/" + repoNamespace + "/app-" + cont.AppName + ":v1"
 	c.Assert(imageId, check.Equals, repository)
+	c.Assert(calls, check.Equals, 1)
 }
 
 func (s *S) TestContainerCommitErrorInPush(c *check.C) {
@@ -632,7 +641,6 @@ func (s *S) TestContainerCommitErrorInPush(c *check.C) {
 func (s *S) TestContainerCommitRetryOnErrorInPush(c *check.C) {
 	s.server.PrepareMultiFailures("i/o timeout", "/images/.*?/push")
 	s.server.PrepareMultiFailures("i/o timeout", "/images/.*?/push")
-	s.server.PrepareMultiFailures("i/o timeout", "/images/.*?/push")
 	defer s.server.ResetMultiFailures()
 	config.Unset("docker:registry-max-try")
 	config.Set("docker:registry", "localhost:3030")
@@ -646,6 +654,32 @@ func (s *S) TestContainerCommitRetryOnErrorInPush(c *check.C) {
 	cont.BuildingImage = nextImgName
 	_, err = cont.commit(s.p, &buf)
 	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestContainerCommitRetryShouldNotBeLessThanOne(c *check.C) {
+	s.server.PrepareMultiFailures("i/o timeout", "/images/.*?/push")
+	s.server.PrepareMultiFailures("i/o timeout", "/images/.*?/push")
+	defer s.server.ResetMultiFailures()
+	config.Set("docker:registry-max-try", -1)
+	config.Set("docker:registry", "localhost:3030")
+	defer config.Unset("docker:registry")
+	cont, err := s.newContainer(nil, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(cont)
+	buf := bytes.Buffer{}
+	nextImgName, err := appNewImageName(cont.AppName)
+	c.Assert(err, check.IsNil)
+	cont.BuildingImage = nextImgName
+	calls := 0
+	s.server.SetHook(func(r *http.Request) {
+		if ok, _ := regexp.MatchString("/images/.*?/push", r.URL.Path); ok {
+			calls++
+		}
+	})
+	defer s.server.SetHook(nil)
+	_, err = cont.commit(s.p, &buf)
+	c.Assert(err, check.IsNil)
+	c.Assert(calls, check.Equals, 3)
 }
 
 func (s *S) TestGitDeploy(c *check.C) {
