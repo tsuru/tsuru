@@ -52,6 +52,10 @@ func (TestIaaS) Describe() string {
 	return "my iaas description"
 }
 
+func newTestIaaS(string) iaas.IaaS {
+	return TestIaaS{}
+}
+
 type HandlersSuite struct {
 	conn   *db.Storage
 	server *httptest.Server
@@ -134,7 +138,7 @@ func (s *HandlersSuite) TestAddNodeHandler(c *check.C) {
 }
 
 func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
-	iaas.RegisterIaasProvider("test-iaas", TestIaaS{})
+	iaas.RegisterIaasProvider("test-iaas", newTestIaaS)
 	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
 	p := Pool{Name: "pool1"}
 	s.conn.Collection(schedulerCollection).Insert(p)
@@ -161,8 +165,8 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 }
 
 func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachineExplicit(c *check.C) {
-	iaas.RegisterIaasProvider("test-iaas", TestIaaS{})
-	iaas.RegisterIaasProvider("another-test-iaas", TestIaaS{})
+	iaas.RegisterIaasProvider("test-iaas", newTestIaaS)
+	iaas.RegisterIaasProvider("another-test-iaas", newTestIaaS)
 	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
 	p := Pool{Name: "pool1"}
 	s.conn.Collection(schedulerCollection).Insert(p)
@@ -274,7 +278,7 @@ func (s *HandlersSuite) TestRemoveNodeHandler(c *check.C) {
 }
 
 func (s *HandlersSuite) TestRemoveNodeHandlerWithoutRemoveIaaS(c *check.C) {
-	iaas.RegisterIaasProvider("some-iaas", TestIaaS{})
+	iaas.RegisterIaasProvider("some-iaas", newTestIaaS)
 	machine, err := iaas.CreateMachineForIaaS("some-iaas", map[string]string{})
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{})
@@ -295,7 +299,7 @@ func (s *HandlersSuite) TestRemoveNodeHandlerWithoutRemoveIaaS(c *check.C) {
 }
 
 func (s *HandlersSuite) TestRemoveNodeHandlerRemoveIaaS(c *check.C) {
-	iaas.RegisterIaasProvider("my-xxx-iaas", TestIaaS{})
+	iaas.RegisterIaasProvider("my-xxx-iaas", newTestIaaS)
 	machine, err := iaas.CreateMachineForIaaS("my-xxx-iaas", map[string]string{})
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{})

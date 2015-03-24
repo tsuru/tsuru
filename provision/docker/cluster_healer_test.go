@@ -70,12 +70,11 @@ func (s *S) TestHealerHealNode(c *check.C) {
 			m.Destroy()
 		}
 	}()
-	iaasInstance := &TestHealerIaaS{}
-	iaas.RegisterIaasProvider("my-healer-iaas", iaasInstance)
-	iaasInstance.addr = "127.0.0.1"
+	factory, iaasInst := newHealerIaaSConstructorWithInst("127.0.0.1")
+	iaas.RegisterIaasProvider("my-healer-iaas", factory)
 	_, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
 	c.Assert(err, check.IsNil)
-	iaasInstance.addr = "localhost"
+	iaasInst.addr = "localhost"
 	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	node2, err := testing.NewServer("127.0.0.1:0", nil, nil)
@@ -208,12 +207,12 @@ func (s *S) TestHealerHealNodeCreateMachineError(c *check.C) {
 			m.Destroy()
 		}
 	}()
-	iaasInstance := &TestHealerIaaS{}
-	iaas.RegisterIaasProvider("my-healer-iaas", iaasInstance)
-	iaasInstance.addr = "127.0.0.1"
+	factory, iaasInst := newHealerIaaSConstructorWithInst("127.0.0.1")
+	iaas.RegisterIaasProvider("my-healer-iaas", factory)
 	_, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
 	c.Assert(err, check.IsNil)
-	iaasInstance.err = fmt.Errorf("my create machine error")
+	iaasInst.addr = "localhost"
+	iaasInst.err = fmt.Errorf("my create machine error")
 	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	cluster, err := cluster.New(nil, &cluster.MapStorage{},
@@ -259,12 +258,10 @@ func (s *S) TestHealerHealNodeWaitAndRegisterError(c *check.C) {
 			m.Destroy()
 		}
 	}()
-	iaasInstance := &TestHealerIaaS{}
-	iaas.RegisterIaasProvider("my-healer-iaas", iaasInstance)
-	iaasInstance.addr = "127.0.0.1"
+	iaas.RegisterIaasProvider("my-healer-iaas", newHealerIaaSConstructor("127.0.0.1", nil))
 	_, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
 	c.Assert(err, check.IsNil)
-	iaasInstance.addr = "localhost"
+	iaas.RegisterIaasProvider("my-healer-iaas", newHealerIaaSConstructor("localhost", nil))
 	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	node2, err := testing.NewServer("127.0.0.1:0", nil, nil)
@@ -313,21 +310,19 @@ func (s *S) TestHealerHealNodeWaitAndRegisterError(c *check.C) {
 func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 	rollback := startTestRepositoryServer()
 	defer rollback()
-	iaasInstance := &TestHealerIaaS{}
 	defer func() {
-		iaasInstance.delErr = nil
 		machines, _ := iaas.ListMachines()
 		for _, m := range machines {
 			m.Destroy()
 		}
 		machines, _ = iaas.ListMachines()
 	}()
-	iaasInstance.delErr = fmt.Errorf("my destroy error")
-	iaas.RegisterIaasProvider("my-healer-iaas", iaasInstance)
-	iaasInstance.addr = "127.0.0.1"
+	factory, iaasInst := newHealerIaaSConstructorWithInst("127.0.0.1")
+	iaasInst.delErr = fmt.Errorf("my destroy error")
+	iaas.RegisterIaasProvider("my-healer-iaas", factory)
 	_, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
 	c.Assert(err, check.IsNil)
-	iaasInstance.addr = "localhost"
+	iaasInst.addr = "localhost"
 	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	node2, err := testing.NewServer("127.0.0.1:0", nil, nil)
@@ -888,12 +883,11 @@ func (s *S) TestHealerHandleError(c *check.C) {
 			m.Destroy()
 		}
 	}()
-	iaasInstance := &TestHealerIaaS{}
-	iaas.RegisterIaasProvider("my-healer-iaas", iaasInstance)
-	iaasInstance.addr = "127.0.0.1"
+	factory, iaasInst := newHealerIaaSConstructorWithInst("127.0.0.1")
+	iaas.RegisterIaasProvider("my-healer-iaas", factory)
 	_, err := iaas.CreateMachineForIaaS("my-healer-iaas", map[string]string{})
 	c.Assert(err, check.IsNil)
-	iaasInstance.addr = "localhost"
+	iaasInst.addr = "localhost"
 	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	node2, err := testing.NewServer("127.0.0.1:0", nil, nil)
@@ -1035,8 +1029,7 @@ func (s *S) TestHealerHandleErrorDoesntTriggerEventIfHealingCountTooLarge(c *che
 		err = evt.update(nodes[i+1], nil)
 		c.Assert(err, check.IsNil)
 	}
-	iaasInstance := &TestHealerIaaS{}
-	iaas.RegisterIaasProvider("my-healer-iaas", iaasInstance)
+	iaas.RegisterIaasProvider("my-healer-iaas", newHealerIaaSConstructor("127.0.0.1", nil))
 	healer := Healer{
 		provisioner:           nil,
 		disabledTime:          20,

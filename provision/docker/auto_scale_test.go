@@ -21,6 +21,19 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+func newHealerIaaSConstructor(addr string, err error) func(string) iaas.IaaS {
+	return func(name string) iaas.IaaS {
+		return &TestHealerIaaS{addr: addr, err: err}
+	}
+}
+
+func newHealerIaaSConstructorWithInst(addr string) (func(string) iaas.IaaS, *TestHealerIaaS) {
+	inst := &TestHealerIaaS{addr: addr}
+	return func(name string) iaas.IaaS {
+		return inst
+	}, inst
+}
+
 func (s *S) TestAutoScaleConfigRun(c *check.C) {
 	rollback := startTestRepositoryServer()
 	defer rollback()
@@ -49,8 +62,7 @@ func (s *S) TestAutoScaleConfigRun(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	p.cluster = clusterInstance
-	iaasInstance := &TestHealerIaaS{addr: "localhost"}
-	iaas.RegisterIaasProvider("my-scale-iaas", iaasInstance)
+	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
@@ -161,8 +173,7 @@ func (s *S) TestAutoScaleConfigRunNoRebalance(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	p.cluster = clusterInstance
-	iaasInstance := &TestHealerIaaS{addr: "localhost"}
-	iaas.RegisterIaasProvider("my-scale-iaas", iaasInstance)
+	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
@@ -262,8 +273,7 @@ func (s *S) TestAutoScaleConfigRunOnce(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	p.cluster = clusterInstance
-	iaasInstance := &TestHealerIaaS{addr: "localhost"}
-	iaas.RegisterIaasProvider("my-scale-iaas", iaasInstance)
+	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
@@ -350,8 +360,7 @@ func (s *S) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	p.cluster = clusterInstance
-	iaasInstance := &TestHealerIaaS{addr: "localhost"}
-	iaas.RegisterIaasProvider("my-scale-iaas", iaasInstance)
+	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
@@ -432,8 +441,7 @@ func (s *S) TestAutoScaleConfigRunNoGroup(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	p.cluster = clusterInstance
-	iaasInstance := &TestHealerIaaS{addr: "localhost"}
-	iaas.RegisterIaasProvider("my-scale-iaas", iaasInstance)
+	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
@@ -511,8 +519,7 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 		}},
 	)
 	c.Assert(err, check.IsNil)
-	iaasInstance := &TestHealerIaaS{addr: "localhost"}
-	iaas.RegisterIaasProvider("my-scale-iaas", iaasInstance)
+	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
@@ -611,8 +618,7 @@ func (s *S) TestAutoScaleConfigRunStress(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	p.cluster = clusterInstance
-	iaasInstance := &TestHealerIaaS{addr: "localhost"}
-	iaas.RegisterIaasProvider("my-scale-iaas", iaasInstance)
+	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
@@ -707,8 +713,7 @@ func (s *S) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	p.cluster = clusterInstance
-	iaasInstance := &TestHealerIaaS{addr: "localhost"}
-	iaas.RegisterIaasProvider("my-scale-iaas", iaasInstance)
+	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
@@ -812,8 +817,7 @@ func (s *S) TestAutoScaleConfigRunPriorityToCountBased(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	p.cluster = clusterInstance
-	iaasInstance := &TestHealerIaaS{addr: "localhost"}
-	iaas.RegisterIaasProvider("my-scale-iaas", iaasInstance)
+	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
@@ -898,8 +902,7 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedPlanTooBig(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	p.cluster = clusterInstance
-	iaasInstance := &TestHealerIaaS{addr: "localhost"}
-	iaas.RegisterIaasProvider("my-scale-iaas", iaasInstance)
+	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
@@ -976,8 +979,7 @@ func (s *S) TestAutoScaleConfigRunScaleDown(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	p.cluster = clusterInstance
-	iaasInstance := &TestHealerIaaS{addr: "localhost"}
-	iaas.RegisterIaasProvider("my-scale-iaas", iaasInstance)
+	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
@@ -1074,8 +1076,7 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	p.cluster = clusterInstance
-	iaasInstance := &TestHealerIaaS{addr: "localhost"}
-	iaas.RegisterIaasProvider("my-scale-iaas", iaasInstance)
+	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
@@ -1170,8 +1171,7 @@ func (s *S) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	p.cluster = clusterInstance
-	iaasInstance := &TestHealerIaaS{addr: "localhost"}
-	iaas.RegisterIaasProvider("my-scale-iaas", iaasInstance)
+	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
