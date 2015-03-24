@@ -30,8 +30,12 @@ func (TestIaaS) CreateMachine(params map[string]string) (*iaas.Machine, error) {
 	return &m, nil
 }
 
+func newTestIaaS(string) iaas.IaaS {
+	return TestIaaS{}
+}
+
 func (s *S) TestMachinesList(c *check.C) {
-	iaas.RegisterIaasProvider("test-iaas", TestIaaS{})
+	iaas.RegisterIaasProvider("test-iaas", newTestIaaS)
 	_, err := iaas.CreateMachineForIaaS("test-iaas", map[string]string{"id": "myid1"})
 	defer (&iaas.Machine{Id: "myid1"}).Destroy()
 	c.Assert(err, check.IsNil)
@@ -61,7 +65,7 @@ func (s *S) TestMachinesList(c *check.C) {
 }
 
 func (s *S) TestMachinesDestroy(c *check.C) {
-	iaas.RegisterIaasProvider("test-iaas", TestIaaS{})
+	iaas.RegisterIaasProvider("test-iaas", newTestIaaS)
 	_, err := iaas.CreateMachineForIaaS("test-iaas", map[string]string{"id": "myid1"})
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -85,8 +89,8 @@ func (s *S) TestMachinesDestroyError(c *check.C) {
 }
 
 func (s *S) TestTemplateList(c *check.C) {
-	iaas.RegisterIaasProvider("ec2", TestIaaS{})
-	iaas.RegisterIaasProvider("other", TestIaaS{})
+	iaas.RegisterIaasProvider("ec2", newTestIaaS)
+	iaas.RegisterIaasProvider("other", newTestIaaS)
 	tpl1 := iaas.Template{
 		Name:     "tpl1",
 		IaaSName: "ec2",
@@ -135,7 +139,7 @@ func (s *S) TestTemplateList(c *check.C) {
 }
 
 func (s *S) TestTemplateCreate(c *check.C) {
-	iaas.RegisterIaasProvider("my-iaas", TestIaaS{})
+	iaas.RegisterIaasProvider("my-iaas", newTestIaaS)
 	data := iaas.Template{
 		Name:     "my-tpl",
 		IaaSName: "my-iaas",
@@ -167,7 +171,7 @@ func (s *S) TestTemplateCreate(c *check.C) {
 }
 
 func (s *S) TestTemplateDestroy(c *check.C) {
-	iaas.RegisterIaasProvider("ec2", TestIaaS{})
+	iaas.RegisterIaasProvider("ec2", newTestIaaS)
 	tpl1 := iaas.Template{
 		Name:     "tpl1",
 		IaaSName: "ec2",
