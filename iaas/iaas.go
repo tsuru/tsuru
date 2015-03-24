@@ -127,3 +127,10 @@ func Describe(iaasName ...string) (string, error) {
 	}
 	return desc.Describe(), nil
 }
+
+func ResetAll() {
+	iaasLock.Lock()
+	defer iaasLock.Unlock()
+	iaasProviders = make(map[string]iaasFactory)
+	iaasInstances = make(map[string]IaaS)
+}
