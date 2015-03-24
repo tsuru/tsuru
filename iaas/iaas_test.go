@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"runtime"
+	"sync"
 
 	"github.com/tsuru/config"
 	"gopkg.in/check.v1"
@@ -113,4 +115,31 @@ func (s *S) TestGetConfigString(c *check.C) {
 	val, err = iaasInst.GetConfigString("url")
 	c.Assert(err, check.IsNil)
 	c.Assert(val, check.Equals, "custom_url")
+}
+
+func (s *S) TestStressConcurrentGet(c *check.C) {
+	c.ExpectFailure("Concurrency bug under stress")
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(1000))
+	providerInstance := TestCustomizableIaaS{}
+	RegisterIaasProvider("customable-iaas", providerInstance)
+	config.Set("iaas:custom:abc:provider", "customable-iaas")
+	defer config.Unset("iaas:custom:abc:provider")
+	wg := sync.WaitGroup{}
+	var firstVal IaaS
+	var m sync.Mutex
+	for i := 0; i < 1000; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			provider, _ := getIaasProvider("abc")
+			m.Lock()
+			defer m.Unlock()
+			if firstVal == nil {
+				firstVal = provider
+			} else {
+				c.Assert(reflect.ValueOf(firstVal), check.Equals, reflect.ValueOf(provider))
+			}
+		}()
+	}
+	wg.Wait()
 }
