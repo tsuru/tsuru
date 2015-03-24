@@ -19,45 +19,56 @@ import (
 
 func (s *S) TestRegisterIaasProvider(c *check.C) {
 	provider, err := getIaasProvider("abc")
-	c.Assert(err, check.ErrorMatches, "IaaS provider \"abc\" not registered")
+	c.Assert(err, check.ErrorMatches, "IaaS provider \"abc\" based on \"abc\" not registered")
 	c.Assert(provider, check.IsNil)
-	providerInstance := TestIaaS{}
-	RegisterIaasProvider("abc", providerInstance)
+	RegisterIaasProvider("abc", newTestIaaS)
 	provider, err = getIaasProvider("abc")
 	c.Assert(err, check.IsNil)
-	c.Assert(provider, check.Equals, providerInstance)
+	c.Assert(provider, check.FitsTypeOf, &TestIaaS{})
+}
+
+func (s *S) TestGetIaasProviderSameInstance(c *check.C) {
+	RegisterIaasProvider("abc", newTestIaaS)
+	provider, err := getIaasProvider("abc")
+	c.Assert(err, check.IsNil)
+	c.Assert(provider, check.FitsTypeOf, &TestIaaS{})
+	provider2, err := getIaasProvider("abc")
+	c.Assert(err, check.IsNil)
+	value1 := reflect.ValueOf(provider)
+	value2 := reflect.ValueOf(provider2)
+	c.Assert(value1, check.Equals, value2)
 }
 
 func (s *S) TestDescribeNoDescriptiption(c *check.C) {
-	providerInstance := TestIaaS{}
-	RegisterIaasProvider("nodesc-iaas", providerInstance)
+	RegisterIaasProvider("nodesc-iaas", newTestIaaS)
 	desc, err := Describe("nodesc-iaas")
 	c.Assert(err, check.IsNil)
 	c.Assert(desc, check.Equals, "")
 }
 
 func (s *S) TestDescribe(c *check.C) {
-	providerInstance := TestDescriberIaaS{}
-	RegisterIaasProvider("withdesc-iaas", providerInstance)
+	RegisterIaasProvider("withdesc-iaas", newTestDescriberIaaS)
 	desc, err := Describe("withdesc-iaas")
 	c.Assert(err, check.IsNil)
 	c.Assert(desc, check.Equals, "ahoy desc!")
 }
 
 func (s *S) TestCustomizableIaaSProvider(c *check.C) {
-	providerInstance := TestCustomizableIaaS{}
-	RegisterIaasProvider("customable-iaas", providerInstance)
+	RegisterIaasProvider("customable-iaas", newTestCustomizableIaaS)
 	config.Set("iaas:custom:abc:provider", "customable-iaas")
 	defer config.Unset("iaas:custom:abc:provider")
+	providerRoot, err := getIaasProvider("customable-iaas")
+	c.Assert(err, check.IsNil)
 	provider, err := getIaasProvider("abc")
 	c.Assert(err, check.IsNil)
-	c.Assert(provider, check.Not(check.DeepEquals), providerInstance)
-	c.Assert(provider, check.FitsTypeOf, providerInstance)
+	c.Assert(provider, check.FitsTypeOf, TestCustomizableIaaS{})
 	provider2, err := getIaasProvider("abc")
 	c.Assert(err, check.IsNil)
 	value1 := reflect.ValueOf(provider2)
 	value2 := reflect.ValueOf(provider)
+	value3 := reflect.ValueOf(providerRoot)
 	c.Assert(value1, check.Equals, value2)
+	c.Assert(value1, check.Not(check.Equals), value3)
 }
 
 func (s *S) TestReadUserDataDefault(c *check.C) {
@@ -118,10 +129,8 @@ func (s *S) TestGetConfigString(c *check.C) {
 }
 
 func (s *S) TestStressConcurrentGet(c *check.C) {
-	c.ExpectFailure("Concurrency bug under stress")
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(1000))
-	providerInstance := TestCustomizableIaaS{}
-	RegisterIaasProvider("customable-iaas", providerInstance)
+	RegisterIaasProvider("customable-iaas", newTestCustomizableIaaS)
 	config.Set("iaas:custom:abc:provider", "customable-iaas")
 	defer config.Unset("iaas:custom:abc:provider")
 	wg := sync.WaitGroup{}

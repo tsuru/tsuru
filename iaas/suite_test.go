@@ -17,8 +17,9 @@ type S struct{}
 var _ = check.Suite(&S{})
 
 func (s *S) SetUpTest(c *check.C) {
-	iaasProviders = make(map[string]IaaS)
-	RegisterIaasProvider("test-iaas", TestIaaS{})
+	iaasProviders = make(map[string]iaasFactory)
+	iaasInstances = make(map[string]IaaS)
+	RegisterIaasProvider("test-iaas", newTestIaaS)
 	coll := collection()
 	defer coll.Close()
 	coll.RemoveAll(nil)
@@ -27,14 +28,16 @@ func (s *S) SetUpTest(c *check.C) {
 	tplColl.RemoveAll(nil)
 }
 
-type TestIaaS struct{}
+type TestIaaS struct {
+	someField string
+}
 
-func (TestIaaS) DeleteMachine(m *Machine) error {
+func (*TestIaaS) DeleteMachine(m *Machine) error {
 	m.Status = "destroyed"
 	return nil
 }
 
-func (TestIaaS) CreateMachine(params map[string]string) (*Machine, error) {
+func (*TestIaaS) CreateMachine(params map[string]string) (*Machine, error) {
 	params["should"] = "be in"
 	m := Machine{
 		Id:      params["id"],
@@ -61,7 +64,7 @@ func (i TestDescriberIaaS) Describe() string {
 }
 
 type TestCustomizableIaaS struct {
-	name string
+	NamedIaaS
 	TestIaaS
 }
 
@@ -73,16 +76,27 @@ func (i TestCustomizableIaaS) CreateMachine(params map[string]string) (*Machine,
 	return i.TestIaaS.CreateMachine(params)
 }
 
-func (i TestCustomizableIaaS) Clone(name string) IaaS {
-	i.name = name
-	return i
-}
-
 type TestHealthCheckerIaaS struct {
 	TestIaaS
 	err error
 }
 
-func (i TestHealthCheckerIaaS) HealthCheck() error {
+func (i *TestHealthCheckerIaaS) HealthCheck() error {
 	return i.err
+}
+
+func newTestHealthcheckIaaS(name string) IaaS {
+	return &TestHealthCheckerIaaS{}
+}
+
+func newTestCustomizableIaaS(name string) IaaS {
+	return TestCustomizableIaaS{NamedIaaS: NamedIaaS{IaaSName: name}}
+}
+
+func newTestDescriberIaaS(name string) IaaS {
+	return TestDescriberIaaS{}
+}
+
+func newTestIaaS(name string) IaaS {
+	return &TestIaaS{}
 }

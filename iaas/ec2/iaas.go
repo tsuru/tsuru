@@ -18,15 +18,15 @@ import (
 const defaultRegion = "us-east-1"
 
 func init() {
-	iaas.RegisterIaasProvider("ec2", NewEC2IaaS())
+	iaas.RegisterIaasProvider("ec2", newEC2IaaS)
 }
 
 type EC2IaaS struct {
 	base iaas.UserDataIaaS
 }
 
-func NewEC2IaaS() *EC2IaaS {
-	return &EC2IaaS{base: iaas.UserDataIaaS{NamedIaaS: iaas.NamedIaaS{BaseIaaSName: "ec2"}}}
+func newEC2IaaS(name string) iaas.IaaS {
+	return &EC2IaaS{base: iaas.UserDataIaaS{NamedIaaS: iaas.NamedIaaS{BaseIaaSName: "ec2", IaaSName: name}}}
 }
 
 func (i *EC2IaaS) createEC2Handler(region aws.Region) (*ec2.EC2, error) {
@@ -78,12 +78,6 @@ Optional params:
   securityGroup=<group>    Chosen security group
   keyName=<key name>       Key name for machine
 `
-}
-
-func (i *EC2IaaS) Clone(name string) iaas.IaaS {
-	clone := *i
-	clone.base.IaaSName = name
-	return &clone
 }
 
 func (i *EC2IaaS) DeleteMachine(m *iaas.Machine) error {

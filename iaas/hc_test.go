@@ -13,7 +13,7 @@ import (
 )
 
 func (s *S) TestBuildHealthCheck(c *check.C) {
-	RegisterIaasProvider("hc", TestHealthCheckerIaaS{err: nil})
+	RegisterIaasProvider("hc", newTestHealthcheckIaaS)
 	config.Set("iaas:hc", "something")
 	fn := BuildHealthCheck("hc")
 	err := fn()
@@ -22,7 +22,11 @@ func (s *S) TestBuildHealthCheck(c *check.C) {
 
 func (s *S) TestBuildHealthCheckFailure(c *check.C) {
 	err := errors.New("fatal failure")
-	RegisterIaasProvider("hc", TestHealthCheckerIaaS{err: err})
+	RegisterIaasProvider("hc", newTestHealthcheckIaaS)
+	iaas, getErr := getIaasProvider("hc")
+	c.Assert(getErr, check.IsNil)
+	hcIaas := iaas.(*TestHealthCheckerIaaS)
+	hcIaas.err = err
 	config.Set("iaas:hc", "something")
 	fn := BuildHealthCheck("hc")
 	hcErr := fn()
@@ -40,7 +44,6 @@ func (s *S) TestBuildHealthCheckUnconfigured(c *check.C) {
 }
 
 func (s *S) TestBuildHealthCheckNotChecker(c *check.C) {
-	RegisterIaasProvider("test-iaas", TestIaaS{})
 	config.Set("iaas:test-iaas", "something")
 	fn := BuildHealthCheck("test-iaas")
 	err := fn()

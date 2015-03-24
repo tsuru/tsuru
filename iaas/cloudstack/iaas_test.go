@@ -47,7 +47,7 @@ func (s *cloudstackSuite) TestCreateMachine(c *check.C) {
 	}))
 	defer fakeServer.Close()
 	config.Set("iaas:cloudstack:url", fakeServer.URL)
-	cs := NewCloudstackIaaS()
+	cs := newCloudstackIaaS("cloudstack")
 	params := map[string]string{
 		"projectid":         "val",
 		"networkids":        "val",
@@ -78,7 +78,7 @@ func (s *cloudstackSuite) TestCreateMachineAsyncFailure(c *check.C) {
 	}))
 	defer fakeServer.Close()
 	config.Set("iaas:cloudstack:url", fakeServer.URL)
-	cs := NewCloudstackIaaS()
+	cs := newCloudstackIaaS("cloudstack")
 	params := map[string]string{
 		"projectid":         "val",
 		"networkids":        "val",
@@ -92,7 +92,7 @@ func (s *cloudstackSuite) TestCreateMachineAsyncFailure(c *check.C) {
 }
 
 func (s *cloudstackSuite) TestCreateMachineValidateParams(c *check.C) {
-	cs := NewCloudstackIaaS()
+	cs := newCloudstackIaaS("cloudstack")
 	params := map[string]string{
 		"name": "something",
 	}
@@ -101,9 +101,11 @@ func (s *cloudstackSuite) TestCreateMachineValidateParams(c *check.C) {
 }
 
 func (s *cloudstackSuite) TestBuildUrlToCloudstack(c *check.C) {
-	cs := NewCloudstackIaaS()
+	cs := newCloudstackIaaS("cloudstack")
 	params := map[string]string{"atest": "2"}
-	urlBuilded, err := cs.buildUrl("commandTest", params)
+	csIaaS, ok := cs.(*CloudstackIaaS)
+	c.Assert(ok, check.Equals, true)
+	urlBuilded, err := csIaaS.buildUrl("commandTest", params)
 	c.Assert(err, check.IsNil)
 	u, err := url.Parse(urlBuilded)
 	c.Assert(err, check.IsNil)
@@ -144,7 +146,7 @@ func (s *cloudstackSuite) TestDeleteMachine(c *check.C) {
 	}))
 	defer fakeServer.Close()
 	config.Set("iaas:cloudstack:url", fakeServer.URL)
-	cs := NewCloudstackIaaS()
+	cs := newCloudstackIaaS("cloudstack")
 	machine := iaas.Machine{Id: "myMachineId", CreationParams: map[string]string{"projectid": "projid"}}
 	err := cs.DeleteMachine(&machine)
 	c.Assert(err, check.IsNil)
@@ -179,7 +181,7 @@ func (s *cloudstackSuite) TestDeleteMachineAsyncFail(c *check.C) {
 	}))
 	defer fakeServer.Close()
 	config.Set("iaas:cloudstack:url", fakeServer.URL)
-	cs := NewCloudstackIaaS()
+	cs := newCloudstackIaaS("cloudstack")
 	machine := iaas.Machine{Id: "myMachineId", CreationParams: map[string]string{"projectid": "projid"}}
 	err := cs.DeleteMachine(&machine)
 	c.Assert(err, check.ErrorMatches, ".*my awesome err.*")
@@ -196,7 +198,7 @@ func (s *cloudstackSuite) TestDeleteMachineError(c *check.C) {
 	}))
 	config.Set("iaas:cloudstack:url", server.URL)
 	defer server.Close()
-	cs := NewCloudstackIaaS()
+	cs := newCloudstackIaaS("cloudstack")
 	machine := iaas.Machine{Id: "myMachineId"}
 	err := cs.DeleteMachine(&machine)
 	c.Assert(err, check.ErrorMatches, ".*Unexpected response code.*")
@@ -204,19 +206,10 @@ func (s *cloudstackSuite) TestDeleteMachineError(c *check.C) {
 
 func (s *cloudstackSuite) TestDeleteMachineErrorNoServer(c *check.C) {
 	config.Set("iaas:cloudstack:url", "http://invalidurl.invalid.invalid")
-	cs := NewCloudstackIaaS()
+	cs := newCloudstackIaaS("cloudstack")
 	machine := iaas.Machine{Id: "myMachineId"}
 	err := cs.DeleteMachine(&machine)
 	c.Assert(err, check.ErrorMatches, ".*no such host.*")
-}
-
-func (s *cloudstackSuite) TestClone(c *check.C) {
-	cs := NewCloudstackIaaS()
-	clonned := cs.Clone("something")
-	c.Assert(clonned, check.FitsTypeOf, cs)
-	clonnedCS, _ := clonned.(*CloudstackIaaS)
-	c.Assert(cs.base.IaaSName, check.Equals, "")
-	c.Assert(clonnedCS.base.IaaSName, check.Equals, "something")
 }
 
 func (s *cloudstackSuite) TestHealthCheck(c *check.C) {
@@ -227,8 +220,9 @@ func (s *cloudstackSuite) TestHealthCheck(c *check.C) {
 	}))
 	defer fakeServer.Close()
 	config.Set("iaas:cloudstack:url", fakeServer.URL)
-	cs := NewCloudstackIaaS()
-	err := cs.HealthCheck()
+	cs := newCloudstackIaaS("cloudstack")
+	healthchecker := cs.(iaas.HealthChecker)
+	err := healthchecker.HealthCheck()
 	c.Assert(err, check.IsNil)
 	c.Assert(command, check.Equals, "listZones")
 }
@@ -241,8 +235,9 @@ func (s *cloudstackSuite) TestHealthCheckFailure(c *check.C) {
 	}))
 	defer fakeServer.Close()
 	config.Set("iaas:cloudstack:url", fakeServer.URL)
-	cs := NewCloudstackIaaS()
-	err := cs.HealthCheck()
+	cs := newCloudstackIaaS("cloudstack")
+	healthchecker := cs.(iaas.HealthChecker)
+	err := healthchecker.HealthCheck()
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, `"cloudstack" - not enough zones available, want at least 1, got 0`)
 	c.Assert(command, check.Equals, "listZones")
@@ -265,7 +260,7 @@ func (s *cloudstackSuite) TestCreateMachineTimeout(c *check.C) {
 	config.Set("iaas:cloudstack:url", fakeServer.URL)
 	config.Set("iaas:cloudstack:wait-timeout", "1")
 	defer config.Unset("iaas:cloudstack:wait-timeout")
-	cs := NewCloudstackIaaS()
+	cs := newCloudstackIaaS("cloudstack")
 	params := map[string]string{
 		"projectid":         "val",
 		"networkids":        "val",

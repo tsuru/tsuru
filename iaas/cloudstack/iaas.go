@@ -23,7 +23,7 @@ import (
 )
 
 func init() {
-	iaas.RegisterIaasProvider("cloudstack", NewCloudstackIaaS())
+	iaas.RegisterIaasProvider("cloudstack", newCloudstackIaaS)
 	hc.AddChecker("CloudStack", iaas.BuildHealthCheck("cloudstack"))
 }
 
@@ -31,14 +31,8 @@ type CloudstackIaaS struct {
 	base iaas.UserDataIaaS
 }
 
-func NewCloudstackIaaS() *CloudstackIaaS {
-	return &CloudstackIaaS{base: iaas.UserDataIaaS{NamedIaaS: iaas.NamedIaaS{BaseIaaSName: "cloudstack"}}}
-}
-
-func (i *CloudstackIaaS) Clone(name string) iaas.IaaS {
-	clone := *i
-	clone.base.IaaSName = name
-	return &clone
+func newCloudstackIaaS(name string) iaas.IaaS {
+	return &CloudstackIaaS{base: iaas.UserDataIaaS{NamedIaaS: iaas.NamedIaaS{BaseIaaSName: "cloudstack", IaaSName: name}}}
 }
 
 func (i *CloudstackIaaS) Describe() string {

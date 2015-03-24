@@ -47,7 +47,8 @@ func (s *S) TearDownTest(c *check.C) {
 }
 
 func (s *S) TestCreateEC2Handler(c *check.C) {
-	ec2iaas := NewEC2IaaS()
+	myiaas := newEC2IaaS("ec2")
+	ec2iaas := myiaas.(*EC2IaaS)
 	handler, err := ec2iaas.createEC2Handler(aws.APNortheast)
 	c.Assert(err, check.IsNil)
 	c.Assert(handler.Region.EC2Endpoint, check.DeepEquals, aws.APNortheast.EC2Endpoint)
@@ -61,7 +62,7 @@ func (s *S) TestCreateMachine(c *check.C) {
 		"image":  "ami-xxxxxx",
 		"type":   "m1.micro",
 	}
-	ec2iaas := NewEC2IaaS()
+	ec2iaas := newEC2IaaS("ec2")
 	m, err := ec2iaas.CreateMachine(params)
 	m.CreationParams = map[string]string{"region": "myregion"}
 	defer ec2iaas.DeleteMachine(m)
@@ -119,7 +120,7 @@ func (s *S) TestCreateMachineTimeoutError(c *check.C) {
 		"image":  "ami-xxxxxx",
 		"type":   "m1.micro",
 	}
-	ec2iaas := NewEC2IaaS()
+	ec2iaas := newEC2IaaS("ec2")
 	_, err := ec2iaas.CreateMachine(params)
 	c.Assert(err, check.ErrorMatches, `ec2: time out after .+? waiting for instance .+? to start`)
 	c.Assert(calledActions[len(calledActions)-1], check.Equals, "TerminateInstances")
@@ -143,7 +144,7 @@ func (s *S) TestCreateMachineDefaultRegion(c *check.C) {
 		"type":   "m1.micro",
 		"region": defaultRegion,
 	}
-	ec2iaas := NewEC2IaaS()
+	ec2iaas := newEC2IaaS("ec2")
 	m, err := ec2iaas.CreateMachine(params)
 	c.Assert(err, check.IsNil)
 	c.Assert(params, check.DeepEquals, expectedParams)
@@ -155,7 +156,8 @@ func (s *S) TestCreateMachineDefaultRegion(c *check.C) {
 }
 
 func (s *S) TestWaitForDnsName(c *check.C) {
-	ec2iaas := NewEC2IaaS()
+	myiaas := newEC2IaaS("ec2")
+	ec2iaas := myiaas.(*EC2IaaS)
 	handler, err := ec2iaas.createEC2Handler(s.region)
 	c.Assert(err, check.IsNil)
 	options := ec2.RunInstances{
@@ -174,7 +176,7 @@ func (s *S) TestWaitForDnsName(c *check.C) {
 }
 
 func (s *S) TestCreateMachineValidations(c *check.C) {
-	ec2iaas := NewEC2IaaS()
+	ec2iaas := newEC2IaaS("ec2")
 	_, err := ec2iaas.CreateMachine(map[string]string{
 		"region": "invalid-region",
 	})
@@ -196,14 +198,14 @@ func (s *S) TestDeleteMachine(c *check.C) {
 		Id:             insts[0],
 		CreationParams: map[string]string{"region": "myregion"},
 	}
-	ec2iaas := NewEC2IaaS()
+	ec2iaas := newEC2IaaS("ec2")
 	err := ec2iaas.DeleteMachine(&m)
 	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestDeleteMachineValidations(c *check.C) {
 	insts := s.srv.NewInstances(1, "m1.small", "ami-x", ec2.InstanceState{}, nil)
-	ec2iaas := NewEC2IaaS()
+	ec2iaas := newEC2IaaS("ec2")
 	m := &iaas.Machine{
 		Id:             insts[0],
 		CreationParams: map[string]string{"region": "invalid"},
@@ -216,13 +218,4 @@ func (s *S) TestDeleteMachineValidations(c *check.C) {
 	}
 	err = ec2iaas.DeleteMachine(m)
 	c.Assert(err, check.ErrorMatches, `region creation param required`)
-}
-
-func (s *S) TestClone(c *check.C) {
-	iaas := NewEC2IaaS()
-	clonned := iaas.Clone("something")
-	c.Assert(clonned, check.FitsTypeOf, iaas)
-	clonnedIaas, _ := clonned.(*EC2IaaS)
-	c.Assert(iaas.base.IaaSName, check.Equals, "")
-	c.Assert(clonnedIaas.base.IaaSName, check.Equals, "something")
 }
