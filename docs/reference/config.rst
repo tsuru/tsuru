@@ -396,6 +396,16 @@ setting is optional, and defaults to "unlimited".
 Log
 ---
 
+Tsuru supports three logging flavors, that can be enabled or disabled
+altogether. The default behavior of tsuru is to send all logs to syslog, but it
+can also send logs to the standard error stream or a file. It's is possible to
+use any combination of the three flavors at any time in tsuru configuration
+(e.g.: write logs both to stderr and syslog, or a file and stderr, or to all of
+the flavors simultaneously).
+
+There's also the possibility to enable or disable debugging log, via the debug
+flag.
+
 debug
 +++++
 
@@ -405,8 +415,27 @@ noises on logs, to turn it on set it to true, e.g.: ``debug: true``
 log:file
 ++++++++
 
-Use this to specify a path to a log file.  By default tsuru logs to syslog.
-If this is set, make sure tsuru has permissions to write to this file
+Use this to specify a path to a log file. If no file is specified, tsuru-server
+won't write logs to any file.
+
+log:disable-syslog
+++++++++++++++++++
+
+``log:disable-syslog`` indicates whether tsuru-server should disable the use of
+syslog. ``false`` is the default value. If it's ``true``, tsuru-server won't
+send any logs to syslog.
+
+log:syslog-tag
+++++++++++++++
+
+``log:syslog-tag`` is the tag that will be attached to every log line. The
+default value is "tsr".
+
+log:use-stderr
+++++++++++++++
+
+``log:use-stderr`` indicates whether tsuru-server should write logs to standard
+error stream. The default value is ``false``.
 
 .. _config_routers:
 
