@@ -97,6 +97,8 @@ func (s *S) SetUpSuite(c *check.C) {
 	app.AuthScheme = nativeScheme
 	p := app.Platform{Name: "zend"}
 	s.conn.Platforms().Insert(p)
+	p2 := app.Platform{Name: "python"}
+	s.conn.Platforms().Insert(p2)
 }
 
 func (s *S) TearDownSuite(c *check.C) {
@@ -106,6 +108,7 @@ func (s *S) TearDownSuite(c *check.C) {
 func (s *S) SetUpTest(c *check.C) {
 	repositorytest.Reset()
 	repository.Manager().CreateUser(s.user.Email)
+	repository.Manager().CreateUser(s.adminuser.Email)
 	factory, err := queue.Factory()
 	c.Assert(err, check.IsNil)
 	fakeFactory := factory.(*queuetest.FakePubSubQFactory)

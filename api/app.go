@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -82,25 +83,26 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	teamOwner := r.URL.Query().Get("teamowner")
 	owner := r.URL.Query().Get("owner")
 	extra := make([]interface{}, 0, 1)
-	filterApp := &app.App{}
+	filter := &app.Filter{}
 	if name != "" {
 		extra = append(extra, fmt.Sprintf("name=%s", name))
-		filterApp.Name = name
+		regex := regexp.MustCompile(name)
+		filter.Name = regex
 	}
 	if platform != "" {
 		extra = append(extra, fmt.Sprintf("platform=%s", platform))
-		filterApp.Platform = platform
+		filter.Platform = platform
 	}
 	if teamOwner != "" {
-		extra = append(extra, fmt.Sprintf("teamOwner=%s", teamOwner))
-		filterApp.TeamOwner = teamOwner
+		extra = append(extra, fmt.Sprintf("teamowner=%s", teamOwner))
+		filter.TeamOwner = teamOwner
 	}
 	if owner != "" {
 		extra = append(extra, fmt.Sprintf("owner=%s", owner))
-		filterApp.Owner = owner
+		filter.UserOwner = owner
 	}
 	rec.Log(u.Email, "app-list", extra...)
-	apps, err := app.List(u, filterApp)
+	apps, err := app.List(u, filter)
 	if err != nil {
 		return err
 	}
