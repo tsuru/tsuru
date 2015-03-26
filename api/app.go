@@ -11,7 +11,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -86,8 +85,7 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	filter := &app.Filter{}
 	if name != "" {
 		extra = append(extra, fmt.Sprintf("name=%s", name))
-		regex := regexp.MustCompile(name)
-		filter.Name = regex
+		filter.Name = name
 	}
 	if platform != "" {
 		extra = append(extra, fmt.Sprintf("platform=%s", platform))
