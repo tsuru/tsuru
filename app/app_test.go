@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"regexp"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -2098,9 +2097,7 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByName(c *check.C) {
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 		s.conn.Apps().Remove(bson.M{"name": a3.Name})
 	}()
-	regex, err := regexp.Compile("app\\d{1}")
-	c.Assert(err, check.IsNil)
-	apps, err := List(s.user, &Filter{Name: regex})
+	apps, err := List(s.user, &Filter{Name: "app\\d{1}"})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 2)
 }
@@ -2223,9 +2220,7 @@ func (s *S) TestListFilteringByName(c *check.C) {
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 		s.conn.Apps().Remove(bson.M{"name": a3.Name})
 	}()
-	regex, err := regexp.Compile("app\\d{1}")
-	c.Assert(err, check.IsNil)
-	apps, err := List(nil, &Filter{Name: regex})
+	apps, err := List(nil, &Filter{Name: "app\\d{1}"})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 2)
 }

@@ -1039,7 +1039,7 @@ func (app *App) LastLogs(lines int, filterLog Applog) ([]Applog, error) {
 }
 
 type Filter struct {
-	Name      *regexp.Regexp
+	Name      string
 	Platform  string
 	TeamOwner string
 	UserOwner string
@@ -1047,8 +1047,8 @@ type Filter struct {
 
 func (f *Filter) Query() bson.M {
 	query := bson.M{}
-	if f.Name != nil {
-		query["name"] = bson.M{"$regex": f.Name.String()}
+	if f.Name != "" {
+		query["name"] = bson.M{"$regex": f.Name}
 	}
 	if f.TeamOwner != "" {
 		query["teamowner"] = f.TeamOwner
