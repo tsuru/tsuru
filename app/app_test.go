@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -2080,8 +2081,7 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByName(c *check.C) {
 	}
 	a2 := App{
 		Name:  "app2",
-		Teams: []string{"commonteam", s.team.Name},
-		Owner: "bar",
+		Teams: []string{s.team.Name},
 	}
 	a3 := App{
 		Name:  "foo",
@@ -2098,7 +2098,9 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByName(c *check.C) {
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 		s.conn.Apps().Remove(bson.M{"name": a3.Name})
 	}()
-	apps, err := List(s.user, &App{Name: "app\\d{1}"})
+	regex, err := regexp.Compile("app\\d{1}")
+	c.Assert(err, check.IsNil)
+	apps, err := List(s.user, &Filter{Name: regex})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 2)
 }
@@ -2122,7 +2124,7 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByPlatform(c *check.C) {
 		s.conn.Apps().Remove(bson.M{"name": a.Name})
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 	}()
-	apps, err := List(s.user, &App{Platform: "ruby"})
+	apps, err := List(s.user, &Filter{Platform: "ruby"})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 1)
 }
@@ -2146,7 +2148,7 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByTeamOwner(c *check.C) {
 		s.conn.Apps().Remove(bson.M{"name": a.Name})
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 	}()
-	apps, err := List(s.user, &App{TeamOwner: "foo"})
+	apps, err := List(s.user, &Filter{TeamOwner: "foo"})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 1)
 }
@@ -2170,7 +2172,7 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByOwner(c *check.C) {
 		s.conn.Apps().Remove(bson.M{"name": a.Name})
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 	}()
-	apps, err := List(s.user, &App{Owner: "foo"})
+	apps, err := List(s.user, &Filter{UserOwner: "foo"})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 1)
 }
@@ -2221,7 +2223,9 @@ func (s *S) TestListFilteringByName(c *check.C) {
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 		s.conn.Apps().Remove(bson.M{"name": a3.Name})
 	}()
-	apps, err := List(nil, &App{Name: "app\\d{1}"})
+	regex, err := regexp.Compile("app\\d{1}")
+	c.Assert(err, check.IsNil)
+	apps, err := List(nil, &Filter{Name: regex})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 2)
 }
@@ -2245,7 +2249,7 @@ func (s *S) TestListFilteringByPlatform(c *check.C) {
 		s.conn.Apps().Remove(bson.M{"name": a.Name})
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 	}()
-	apps, err := List(nil, &App{Platform: "ruby"})
+	apps, err := List(nil, &Filter{Platform: "ruby"})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 1)
 }
@@ -2269,7 +2273,7 @@ func (s *S) TestListFilteringByOwner(c *check.C) {
 		s.conn.Apps().Remove(bson.M{"name": a.Name})
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 	}()
-	apps, err := List(nil, &App{Owner: "foo"})
+	apps, err := List(nil, &Filter{UserOwner: "foo"})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 1)
 }
@@ -2293,7 +2297,7 @@ func (s *S) TestListFilteringByTeamOwner(c *check.C) {
 		s.conn.Apps().Remove(bson.M{"name": a.Name})
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 	}()
-	apps, err := List(nil, &App{TeamOwner: "foo"})
+	apps, err := List(nil, &Filter{TeamOwner: "foo"})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 1)
 }

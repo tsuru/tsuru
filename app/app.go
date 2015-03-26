@@ -1038,19 +1038,26 @@ func (app *App) LastLogs(lines int, filterLog Applog) ([]Applog, error) {
 	return logs, nil
 }
 
-func buildAppListFilterQuery(filterApp *App) bson.M {
+type Filter struct {
+	Name      *regexp.Regexp
+	Platform  string
+	TeamOwner string
+	UserOwner string
+}
+
+func (f *Filter) Query() bson.M {
 	query := bson.M{}
-	if filterApp.Name != "" {
-		query["name"] = bson.M{"$regex": filterApp.Name}
+	if f.Name != nil {
+		query["name"] = bson.M{"$regex": f.Name.String()}
 	}
-	if filterApp.Owner != "" {
-		query["owner"] = filterApp.Owner
+	if f.TeamOwner != "" {
+		query["teamowner"] = f.TeamOwner
 	}
-	if filterApp.TeamOwner != "" {
-		query["teamowner"] = filterApp.TeamOwner
+	if f.Platform != "" {
+		query["framework"] = f.Platform
 	}
-	if filterApp.Platform != "" {
-		query["framework"] = filterApp.Platform
+	if f.UserOwner != "" {
+		query["owner"] = f.UserOwner
 	}
 	return query
 }
@@ -1060,8 +1067,8 @@ func buildAppListFilterQuery(filterApp *App) bson.M {
 // If the user does not have access to any app, this function returns an empty
 // list and a nil error.
 //
-// The list is filtered through the filterApp argument.
-func List(u *auth.User, filterApp *App) ([]App, error) {
+// The list can be filtered through the filter parameter.
+func List(u *auth.User, filter *Filter) ([]App, error) {
 	var apps []App
 	var query bson.M
 	conn, err := db.Conn()
@@ -1069,8 +1076,8 @@ func List(u *auth.User, filterApp *App) ([]App, error) {
 		return nil, err
 	}
 	defer conn.Close()
-	if filterApp != nil {
-		query = buildAppListFilterQuery(filterApp)
+	if filter != nil {
+		query = filter.Query()
 	} else {
 		query = bson.M{}
 	}
