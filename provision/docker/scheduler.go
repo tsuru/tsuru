@@ -187,18 +187,18 @@ func (s *segregatedScheduler) chooseContainerFromMaxContainersCountInNode(nodes 
 	}
 	chosenNode = hostsMap[maxHost]
 	log.Debugf("[scheduler] Chosen node for remove a container: %#v Count: %d", chosenNode, hostCountMap[maxHost])
-	containerID, err := s.getContainerFromHost(maxHost)
+	containerID, err := s.getContainerFromHost(maxHost, appName)
 	if err != nil {
 		return "", err
 	}
 	return containerID, err
 }
 
-func (s *segregatedScheduler) getContainerFromHost(host string) (string, error) {
+func (s *segregatedScheduler) getContainerFromHost(host string, appName string) (string, error) {
 	coll := s.provisioner.collection()
 	defer coll.Close()
 	var c container
-	err := coll.Find(bson.M{"hostaddr": host}).Select(bson.M{"id": 1}).One(&c)
+	err := coll.Find(bson.M{"hostaddr": host, "appname": appName}).Select(bson.M{"id": 1}).One(&c)
 	return c.ID, err
 }
 

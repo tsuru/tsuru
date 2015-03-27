@@ -7,6 +7,7 @@ package docker
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -20,6 +21,15 @@ import (
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
+
+func checkContainerInContainerSlices(c container, cList []container) error {
+	for _, cont := range cList {
+		if cont.ID == c.ID {
+			return nil
+		}
+	}
+	return errors.New("container is not in list")
+}
 
 func (s *S) TestSchedulerSchedule(c *check.C) {
 	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}}
@@ -657,10 +667,10 @@ func (s *S) TestGetContainerFromHost(c *check.C) {
 	err := contColl.Insert(cont1)
 	c.Assert(err, check.Equals, nil)
 	scheduler := segregatedScheduler{provisioner: s.p}
-	id, err := scheduler.getContainerFromHost("server1")
+	id, err := scheduler.getContainerFromHost("server1", "coolapp9")
 	c.Assert(err, check.IsNil)
 	c.Assert(id, check.Equals, "pre1")
-	_, err = scheduler.getContainerFromHost("server2")
+	_, err = scheduler.getContainerFromHost("server2", "coolapp9")
 	c.Assert(err, check.NotNil)
 }
 
@@ -668,10 +678,15 @@ func (s *S) TestGetRemovableContainer(c *check.C) {
 	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}}
 	cont1 := container{ID: "1", Name: "impius1", AppName: a1.Name}
 	cont2 := container{ID: "2", Name: "mirror1", AppName: a1.Name}
-	cont3 := container{ID: "3", Name: "dedication1", AppName: a1.Name}
+	a2 := app.App{Name: "notimpius", Teams: []string{"tsuruteam", "nodockerforme"}}
+	cont3 := container{ID: "3", Name: "dedication1", AppName: a2.Name}
+	cont4 := container{ID: "4", Name: "dedication2", AppName: a2.Name}
 	err := s.storage.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
+	err = s.storage.Apps().Insert(a2)
+	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
+	defer s.storage.Apps().RemoveAll(bson.M{"name": a2.Name})
 	coll := s.storage.Collection(schedulerCollection)
 	p := Pool{Name: "pool1", Teams: []string{
 		"tsuruteam",
@@ -682,10 +697,10 @@ func (s *S) TestGetRemovableContainer(c *check.C) {
 	defer coll.RemoveAll(bson.M{"_id": p.Name})
 	contColl := s.p.collection()
 	err = contColl.Insert(
-		cont1, cont2, cont3,
+		cont1, cont2, cont3, cont4,
 	)
 	c.Assert(err, check.IsNil)
-	defer contColl.RemoveAll(bson.M{"name": bson.M{"$in": []string{cont1.Name, cont2.Name, cont3.Name}}})
+	defer contColl.RemoveAll(bson.M{"name": bson.M{"$in": []string{cont1.Name, cont2.Name, cont3.Name, cont4.Name}}})
 	scheduler := segregatedScheduler{provisioner: s.p}
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
@@ -700,17 +715,19 @@ func (s *S) TestGetRemovableContainer(c *check.C) {
 	_, err = scheduler.Schedule(clusterInstance, opts, a1.Name)
 	c.Assert(err, check.IsNil)
 	opts = docker.CreateContainerOptions{Name: cont3.Name}
-	_, err = scheduler.Schedule(clusterInstance, opts, a1.Name)
+	_, err = scheduler.Schedule(clusterInstance, opts, a2.Name)
 	c.Assert(err, check.IsNil)
-	n, err := scheduler.aggregateContainersByHost([]string{"url0"})
+	opts = docker.CreateContainerOptions{Name: cont4.Name}
+	_, err = scheduler.Schedule(clusterInstance, opts, a2.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(n["url0"], check.Equals, 2)
-	n, err = scheduler.aggregateContainersByHost([]string{"url1"})
+	cont, err := scheduler.GetRemovableContainer(a1.Name, clusterInstance)
 	c.Assert(err, check.IsNil)
-	c.Assert(n["url1"], check.Equals, 1)
-	container, err := scheduler.GetRemovableContainer(a1.Name, clusterInstance)
+	cs := container{ID: cont}
+	var contList []container
+	err = contColl.Find(bson.M{"appname": a1.Name}).Select(bson.M{"id": 1}).All(&contList)
 	c.Assert(err, check.IsNil)
-	c.Assert(container, check.Equals, "1")
+	err = checkContainerInContainerSlices(cs, contList)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestNodesToHosts(c *check.C) {
