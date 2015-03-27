@@ -733,7 +733,7 @@ func (app *App) setEnvsToApp(envs []bind.EnvVar, publicOnly, shouldRestart bool,
 		set := true
 		if publicOnly {
 			e, err := app.getEnv(env.Name)
-			if err == nil && !e.Public {
+			if err == nil && !e.Public && e.InstanceName != "" {
 				set = false
 			}
 		}

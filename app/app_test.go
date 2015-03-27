@@ -753,7 +753,7 @@ func (s *S) TestSetEnvironmentVariableToApp(c *check.C) {
 	c.Assert(env.Public, check.Equals, true)
 }
 
-func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c *check.C) {
+func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenServiceSets(c *check.C) {
 	a := App{
 		Name: "myapp",
 		Env: map[string]bind.EnvVar{
@@ -761,6 +761,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 				Name:   "DATABASE_HOST",
 				Value:  "localhost",
 				Public: false,
+				InstanceName: "some service",
 			},
 		},
 	}
@@ -792,6 +793,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c
 			Name:   "DATABASE_HOST",
 			Value:  "localhost",
 			Public: false,
+			InstanceName: "some service",
 		},
 		"DATABASE_PASSWORD": {
 			Name:   "DATABASE_PASSWORD",
