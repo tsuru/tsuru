@@ -97,8 +97,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	app.AuthScheme = nativeScheme
 	p := app.Platform{Name: "zend"}
 	s.conn.Platforms().Insert(p)
-	p2 := app.Platform{Name: "python"}
-	s.conn.Platforms().Insert(p2)
 }
 
 func (s *S) TearDownSuite(c *check.C) {

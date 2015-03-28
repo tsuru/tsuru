@@ -74,6 +74,9 @@ func (s *S) TestAppListFilteringByPlatform(c *check.C) {
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.deleteApp(&app1)
+	platform := app.Platform{Name: "python"}
+	s.conn.Platforms().Insert(platform)
+	defer s.conn.Platforms().Remove(bson.M{"name": "python"})
 	app2 := app.App{Name: "app2", Platform: "python", Teams: []string{s.team.Name}}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
@@ -139,6 +142,9 @@ func (s *S) TestAppListFilteringByOwner(c *check.C) {
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.deleteApp(&app1)
+	platform := app.Platform{Name: "python"}
+	s.conn.Platforms().Insert(platform)
+	defer s.conn.Platforms().Remove(bson.M{"name": "python"})
 	app2 := app.App{Name: "app2", Platform: "python", Teams: []string{s.team.Name}}
 	err = app.CreateApp(&app2, s.adminuser)
 	c.Assert(err, check.IsNil)
