@@ -437,6 +437,13 @@ func (s *S) TestAddTeamToPollWithTeams(c *check.C) {
 	c.Assert(p.Teams, check.DeepEquals, []string{"test", "ateam", "pteam"})
 }
 
+func (s *S) TestAddTeamToNonExistentPool(c *check.C) {
+	var seg segregatedScheduler
+	err := seg.addTeamsToPool("pool1", []string{"ateam"})
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "pool not found")
+}
+
 func (s *S) TestAddTeamToPollShouldNotAcceptDuplicatedTeam(c *check.C) {
 	var seg segregatedScheduler
 	coll := s.storage.Collection(schedulerCollection)
