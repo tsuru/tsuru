@@ -334,7 +334,7 @@ func (*segregatedScheduler) addTeamsToPool(poolName string, teams []string) erro
 	var pool Pool
 	err = conn.Collection(schedulerCollection).Find(bson.M{"_id": poolName}).One(&pool)
 	if err != nil {
-		return err
+		return errors.New("pool not found")
 	}
 	for _, newTeam := range teams {
 		for _, team := range pool.Teams {
