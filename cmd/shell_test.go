@@ -68,6 +68,7 @@ func (s *S) TestShellToContainerWithUnit(c *check.C) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/apps/myapp/shell" && r.Method == "GET" && r.Header.Get("Authorization") == "bearer abc123" {
 			c.Assert(r.URL.Query().Get("unit"), check.Equals, "containerid")
+			c.Assert(r.URL.Query().Get("container_id"), check.Equals, "containerid")
 			conn, _, err := w.(http.Hijacker).Hijack()
 			c.Assert(err, check.IsNil)
 			conn.Write([]byte("hello my friend\n"))
