@@ -308,6 +308,9 @@ func (c *Context) RawOutput() {
 	if pager, ok := c.Stdout.(*pagerWriter); ok {
 		c.Stdout = pager.baseWriter
 	}
+	if sync, ok := c.Stdin.(*syncReader); ok {
+		c.Stdin = sync.baseReader
+	}
 }
 
 type Info struct {
