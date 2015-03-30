@@ -27,7 +27,7 @@ func NewLogListener(a *App, filterLog Applog) (*LogListener, error) {
 	if err != nil {
 		return nil, err
 	}
-	pubSubQ, err := factory.Get(logQueueName(a.Name))
+	pubSubQ, err := factory.PubSub(logQueueName(a.Name))
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func notify(appName string, messages []interface{}) {
 		log.Errorf("Error on logs notify: %s", err.Error())
 		return
 	}
-	pubSubQ, err := factory.Get(logQueueName(appName))
+	pubSubQ, err := factory.PubSub(logQueueName(appName))
 	if err != nil {
 		log.Errorf("Error on logs notify: %s", err.Error())
 		return

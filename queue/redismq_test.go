@@ -39,7 +39,7 @@ func (s *RedismqSuite) TestFactoryGetPool(c *check.C) {
 
 func (s *RedismqSuite) TestFactoryGet(c *check.C) {
 	var factory redismqQFactory
-	q, err := factory.Get("ancient")
+	q, err := factory.PubSub("ancient")
 	c.Assert(err, check.IsNil)
 	rq, ok := q.(*redismqQ)
 	c.Assert(ok, check.Equals, true)
@@ -55,7 +55,7 @@ func (s *RedismqSuite) TestRedisMqFactoryIsInFactoriesMap(c *check.C) {
 
 func (s *RedismqSuite) TestRedisPubSub(c *check.C) {
 	var factory redismqQFactory
-	q, err := factory.Get("mypubsub")
+	q, err := factory.PubSub("mypubsub")
 	c.Assert(err, check.IsNil)
 	pubSubQ, ok := q.(PubSubQ)
 	c.Assert(ok, check.Equals, true)
@@ -68,7 +68,7 @@ func (s *RedismqSuite) TestRedisPubSub(c *check.C) {
 
 func (s *RedismqSuite) TestRedisPubSubUnsub(c *check.C) {
 	var factory redismqQFactory
-	q, err := factory.Get("mypubsub")
+	q, err := factory.PubSub("mypubsub")
 	c.Assert(err, check.IsNil)
 	pubSubQ, ok := q.(PubSubQ)
 	c.Assert(ok, check.Equals, true)

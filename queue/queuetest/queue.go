@@ -5,9 +5,11 @@
 package queuetest
 
 import (
+	"errors"
 	"sync"
 	"time"
 
+	"github.com/tsuru/redisqueue"
 	"github.com/tsuru/tsuru/queue"
 )
 
@@ -111,7 +113,7 @@ func NewFakePubSubQFactory() *FakePubSubQFactory {
 	}
 }
 
-func (f *FakePubSubQFactory) Get(name string) (queue.PubSubQ, error) {
+func (f *FakePubSubQFactory) PubSub(name string) (queue.PubSubQ, error) {
 	f.Lock()
 	defer f.Unlock()
 	if q, ok := f.queues[name]; ok {
@@ -120,6 +122,10 @@ func (f *FakePubSubQFactory) Get(name string) (queue.PubSubQ, error) {
 	q := FakePubSubQ{name: name}
 	f.queues[name] = &q
 	return &q, nil
+}
+
+func (f *FakePubSubQFactory) Queue() (*redisqueue.Queue, error) {
+	return nil, errors.New("not implemented")
 }
 
 func (f *FakePubSubQFactory) Reset() {

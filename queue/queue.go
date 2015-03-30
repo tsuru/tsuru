@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/redisqueue"
 )
 
 // PubSubQ represents an implementation that allows Publishing and
@@ -31,8 +32,11 @@ type PubSubQ interface {
 // QFactory manages queues. It's able to create new queue and handler
 // instances.
 type QFactory interface {
-	// Get returns a queue instance, identified by the given name.
-	Get(name string) (PubSubQ, error)
+	// PubSub returns a PubSubQ instance, identified by the given name.
+	PubSub(name string) (PubSubQ, error)
+	// Queue returns a unique redisQueue instance, which will be initialized
+	// the first time it's called.
+	Queue() (*redisqueue.Queue, error)
 }
 
 var factories = map[string]QFactory{

@@ -56,14 +56,14 @@ func (s *S) TestFakeQPubSubUnSub(c *check.C) {
 
 func (s *S) TestFakeQFactoryGet(c *check.C) {
 	f := NewFakePubSubQFactory()
-	q, err := f.Get("default")
+	q, err := f.PubSub("default")
 	c.Assert(err, check.IsNil)
 	_, ok := q.(*FakePubSubQ)
 	c.Assert(ok, check.Equals, true)
-	q2, err := f.Get("default")
+	q2, err := f.PubSub("default")
 	c.Assert(err, check.IsNil)
 	c.Assert(q, check.Equals, q2)
-	q3, err := f.Get("non-default")
+	q3, err := f.PubSub("non-default")
 	c.Assert(err, check.IsNil)
 	c.Assert(q, check.Not(check.Equals), q3)
 }
