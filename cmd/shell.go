@@ -5,6 +5,7 @@
 package cmd
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net"
@@ -94,7 +95,14 @@ func (c *ShellToContainerCmd) Run(context *Context, client *Client) error {
 		}
 		host += ":" + port
 	}
-	conn, err := net.Dial("tcp", host)
+	var conn net.Conn
+	if parsedURL.Scheme == "https" {
+		serverName, _, _ := net.SplitHostPort(host)
+		config := tls.Config{ServerName: serverName}
+		conn, err = tls.Dial("tcp", host, &config)
+	} else {
+		conn, err = net.Dial("tcp", host)
+	}
 	if err != nil {
 		return err
 	}
@@ -120,9 +128,8 @@ func (c *ShellToContainerCmd) Run(context *Context, client *Client) error {
 			message = http.StatusText(httpError)
 		}
 		return &errors.HTTP{Code: httpError, Message: message}
-	} else {
-		context.Stdout.Write([]byte(readStr))
 	}
+	context.Stdout.Write([]byte(readStr))
 	errs := make(chan error, 2)
 	quit := make(chan bool)
 	go io.Copy(conn, context.Stdin)
