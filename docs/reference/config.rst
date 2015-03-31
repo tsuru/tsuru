@@ -582,6 +582,13 @@ Docker repository namespace to be used for application and platform images. Imag
 will be tagged in docker as <docker:repository-namespace>/<platform-name> and
 <docker:repository-namespace>/<app-name>
 
+docker:max-workers
+++++++++++++++++++
+
+Maximum amount of threads to be created when starting new containers, so tsuru
+doesn't start too much threads in the process of starting 1000 units, for
+instance.
+
 .. _config_docker_router:
 
 docker:router
