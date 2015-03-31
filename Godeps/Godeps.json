@@ -113,6 +113,10 @@
 			"Rev": "9b0fbf563d852fb9356b38fe972b893be4674a24"
 		},
 		{
+			"ImportPath": "github.com/tsuru/redisqueue",
+			"Rev": "06877b5d1359d68e06a7e2e9e0790f3a0dc05802"
+		},
+		{
 			"ImportPath": "golang.org/x/crypto/bcrypt",
 			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
 		},
