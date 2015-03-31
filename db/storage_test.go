@@ -160,6 +160,7 @@ func (s *S) TestDeploys(c *check.C) {
 	deploys := strg.Deploys()
 	deploysc := strg.Collection("deploys")
 	c.Assert(deploys, check.DeepEquals, deploysc)
+	c.Assert(deploys, HasIndex, []string{"-timestamp"})
 }
 
 func (s *S) TestPlatforms(c *check.C) {

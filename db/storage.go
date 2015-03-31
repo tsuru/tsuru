@@ -80,7 +80,10 @@ func (s *Storage) AutoScale() *storage.Collection {
 }
 
 func (s *Storage) Deploys() *storage.Collection {
-	return s.Collection("deploys")
+	timestampIndex := mgo.Index{Key: []string{"-timestamp"}}
+	c := s.Collection("deploys")
+	c.EnsureIndex(timestampIndex)
+	return c
 }
 
 // Platforms returns the platforms collection from MongoDB.
