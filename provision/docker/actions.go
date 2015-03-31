@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
@@ -44,31 +45,41 @@ func runInContainers(containers []container, callback func(*container, chan *con
 	if len(containers) == 0 {
 		return nil
 	}
+	workers, _ := config.GetInt("docker:max-workers")
+	if workers == 0 {
+		workers = len(containers)
+	}
+	step := len(containers)/workers + 1
 	toRollback := make(chan *container, len(containers))
 	errors := make(chan error, len(containers))
-	wg := sync.WaitGroup{}
-	for i := range containers {
-		wg.Add(1)
-		runFunc := func(cont *container) error {
-			defer wg.Done()
-			err := callback(cont, toRollback)
+	var wg sync.WaitGroup
+	runFunc := func(start, end int) error {
+		defer wg.Done()
+		for i := start; i < end; i++ {
+			err := callback(&containers[i], toRollback)
 			if err != nil {
 				errors <- err
+				return err
 			}
-			return err
 		}
+		return nil
+	}
+	for i := 0; i < len(containers); i += step {
+		end := i + step
+		if end > len(containers) {
+			end = len(containers)
+		}
+		wg.Add(1)
 		if parallel {
-			go runFunc(&containers[i])
+			go runFunc(i, end)
 		} else {
-			err := runFunc(&containers[i])
+			err := runFunc(i, end)
 			if err != nil {
 				break
 			}
 		}
 	}
-	if parallel {
-		wg.Wait()
-	}
+	wg.Wait()
 	close(errors)
 	close(toRollback)
 	if err := <-errors; err != nil {
