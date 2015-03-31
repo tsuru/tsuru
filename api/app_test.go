@@ -69,6 +69,110 @@ func (s *S) TestAppIsAvailableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 }
 
+func (s *S) TestAppListFilteringByPlatform(c *check.C) {
+	app1 := app.App{Name: "app1", Platform: "zend", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&app1, s.user)
+	c.Assert(err, check.IsNil)
+	defer s.deleteApp(&app1)
+	platform := app.Platform{Name: "python"}
+	s.conn.Platforms().Insert(platform)
+	defer s.conn.Platforms().Remove(bson.M{"name": "python"})
+	app2 := app.App{Name: "app2", Platform: "python", Teams: []string{s.team.Name}}
+	err = app.CreateApp(&app2, s.user)
+	c.Assert(err, check.IsNil)
+	defer s.deleteApp(&app2)
+	request, err := http.NewRequest("GET", "/apps?platform=zend", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = appList(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, check.IsNil)
+	apps := []app.App{}
+	err = json.Unmarshal(body, &apps)
+	c.Assert(err, check.IsNil)
+	expected := []app.App{app1}
+	c.Assert(len(apps), check.Equals, len(expected))
+	for i, app := range apps {
+		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
+		c.Assert(app.Units(), check.DeepEquals, expected[i].Units())
+	}
+	action := rectest.Action{Action: "app-list", User: s.user.Email, Extra: []interface{}{"platform=zend"}}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *S) TestAppListFilteringByTeamOwner(c *check.C) {
+	app1 := app.App{Name: "app1", Platform: "zend", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&app1, s.user)
+	c.Assert(err, check.IsNil)
+	defer s.deleteApp(&app1)
+	app2 := app.App{Name: "app2", Platform: "zend", Teams: []string{s.adminteam.Name}}
+	err = app.CreateApp(&app2, s.adminuser)
+	c.Assert(err, check.IsNil)
+	defer s.deleteApp(&app2)
+	request, err := http.NewRequest("GET", fmt.Sprintf("/apps?teamowner=%s", s.team.Name), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = appList(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, check.IsNil)
+	apps := []app.App{}
+	err = json.Unmarshal(body, &apps)
+	c.Assert(err, check.IsNil)
+	expected := []app.App{app1}
+	c.Assert(len(apps), check.Equals, len(expected))
+	for i, app := range apps {
+		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
+		c.Assert(app.Units(), check.DeepEquals, expected[i].Units())
+	}
+	queryString := fmt.Sprintf("teamowner=%s", s.team.Name)
+	action := rectest.Action{Action: "app-list", User: s.user.Email, Extra: []interface{}{queryString}}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *S) TestAppListFilteringByOwner(c *check.C) {
+	app1 := app.App{Name: "app1", Platform: "zend", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&app1, s.user)
+	c.Assert(err, check.IsNil)
+	defer s.deleteApp(&app1)
+	platform := app.Platform{Name: "python"}
+	s.conn.Platforms().Insert(platform)
+	defer s.conn.Platforms().Remove(bson.M{"name": "python"})
+	app2 := app.App{Name: "app2", Platform: "python", Teams: []string{s.team.Name}}
+	err = app.CreateApp(&app2, s.adminuser)
+	c.Assert(err, check.IsNil)
+	defer s.deleteApp(&app2)
+	request, err := http.NewRequest("GET", fmt.Sprintf("/apps?owner=%s", s.user.Email), nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = appList(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, check.IsNil)
+	apps := []app.App{}
+	err = json.Unmarshal(body, &apps)
+	c.Assert(err, check.IsNil)
+	expected := []app.App{app1}
+	c.Assert(len(apps), check.Equals, len(expected))
+	for i, app := range apps {
+		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
+		c.Assert(app.Units(), check.DeepEquals, expected[i].Units())
+	}
+	queryString := fmt.Sprintf("owner=%s", s.user.Email)
+	action := rectest.Action{Action: "app-list", User: s.user.Email, Extra: []interface{}{queryString}}
+	c.Assert(action, rectest.IsRecorded)
+}
+
 func (s *S) TestAppList(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&app1, s.user)

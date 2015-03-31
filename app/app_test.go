@@ -2068,9 +2068,110 @@ func (s *S) TestListReturnsAppsForAGivenUser(c *check.C) {
 		s.conn.Apps().Remove(bson.M{"name": a.Name})
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 	}()
-	apps, err := List(s.user)
+	apps, err := List(s.user, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 2)
+}
+
+func (s *S) TestListReturnsAppsForAGivenUserFilteringByName(c *check.C) {
+	a := App{
+		Name:  "app1",
+		Teams: []string{s.team.Name},
+	}
+	a2 := App{
+		Name:  "app2",
+		Teams: []string{s.team.Name},
+	}
+	a3 := App{
+		Name:  "foo",
+		Teams: []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(&a)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Insert(&a2)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Insert(&a3)
+	c.Assert(err, check.IsNil)
+	defer func() {
+		s.conn.Apps().Remove(bson.M{"name": a.Name})
+		s.conn.Apps().Remove(bson.M{"name": a2.Name})
+		s.conn.Apps().Remove(bson.M{"name": a3.Name})
+	}()
+	apps, err := List(s.user, &Filter{Name: "app\\d{1}"})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(apps), check.Equals, 2)
+}
+
+func (s *S) TestListReturnsAppsForAGivenUserFilteringByPlatform(c *check.C) {
+	a := App{
+		Name:     "testapp",
+		Teams:    []string{s.team.Name},
+		Platform: "ruby",
+	}
+	a2 := App{
+		Name:     "othertestapp",
+		Teams:    []string{"commonteam", s.team.Name},
+		Platform: "python",
+	}
+	err := s.conn.Apps().Insert(&a)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Insert(&a2)
+	c.Assert(err, check.IsNil)
+	defer func() {
+		s.conn.Apps().Remove(bson.M{"name": a.Name})
+		s.conn.Apps().Remove(bson.M{"name": a2.Name})
+	}()
+	apps, err := List(s.user, &Filter{Platform: "ruby"})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(apps), check.Equals, 1)
+}
+
+func (s *S) TestListReturnsAppsForAGivenUserFilteringByTeamOwner(c *check.C) {
+	a := App{
+		Name:      "testapp",
+		Teams:     []string{s.team.Name},
+		TeamOwner: "foo",
+	}
+	a2 := App{
+		Name:      "othertestapp",
+		Teams:     []string{"commonteam", s.team.Name},
+		TeamOwner: "bar",
+	}
+	err := s.conn.Apps().Insert(&a)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Insert(&a2)
+	c.Assert(err, check.IsNil)
+	defer func() {
+		s.conn.Apps().Remove(bson.M{"name": a.Name})
+		s.conn.Apps().Remove(bson.M{"name": a2.Name})
+	}()
+	apps, err := List(s.user, &Filter{TeamOwner: "foo"})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(apps), check.Equals, 1)
+}
+
+func (s *S) TestListReturnsAppsForAGivenUserFilteringByOwner(c *check.C) {
+	a := App{
+		Name:  "testapp",
+		Teams: []string{s.team.Name},
+		Owner: "foo",
+	}
+	a2 := App{
+		Name:  "othertestapp",
+		Teams: []string{"commonteam", s.team.Name},
+		Owner: "bar",
+	}
+	err := s.conn.Apps().Insert(&a)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Insert(&a2)
+	c.Assert(err, check.IsNil)
+	defer func() {
+		s.conn.Apps().Remove(bson.M{"name": a.Name})
+		s.conn.Apps().Remove(bson.M{"name": a2.Name})
+	}()
+	apps, err := List(s.user, &Filter{UserOwner: "foo"})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(apps), check.Equals, 1)
 }
 
 func (s *S) TestListAll(c *check.C) {
@@ -2090,13 +2191,114 @@ func (s *S) TestListAll(c *check.C) {
 		s.conn.Apps().Remove(bson.M{"name": a.Name})
 		s.conn.Apps().Remove(bson.M{"name": a2.Name})
 	}()
-	apps, err := List(nil)
+	apps, err := List(nil, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(len(apps), check.Equals, 2)
 }
 
+func (s *S) TestListFilteringByName(c *check.C) {
+	a := App{
+		Name:  "app1",
+		Teams: []string{s.team.Name},
+	}
+	a2 := App{
+		Name:  "app2",
+		Teams: []string{s.team.Name},
+	}
+	a3 := App{
+		Name:  "foo",
+		Teams: []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(&a)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Insert(&a2)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Insert(&a3)
+	c.Assert(err, check.IsNil)
+	defer func() {
+		s.conn.Apps().Remove(bson.M{"name": a.Name})
+		s.conn.Apps().Remove(bson.M{"name": a2.Name})
+		s.conn.Apps().Remove(bson.M{"name": a3.Name})
+	}()
+	apps, err := List(nil, &Filter{Name: "app\\d{1}"})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(apps), check.Equals, 2)
+}
+
+func (s *S) TestListFilteringByPlatform(c *check.C) {
+	a := App{
+		Name:     "testapp",
+		Teams:    []string{s.team.Name},
+		Platform: "ruby",
+	}
+	a2 := App{
+		Name:     "othertestapp",
+		Teams:    []string{s.team.Name},
+		Platform: "python",
+	}
+	err := s.conn.Apps().Insert(&a)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Insert(&a2)
+	c.Assert(err, check.IsNil)
+	defer func() {
+		s.conn.Apps().Remove(bson.M{"name": a.Name})
+		s.conn.Apps().Remove(bson.M{"name": a2.Name})
+	}()
+	apps, err := List(nil, &Filter{Platform: "ruby"})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(apps), check.Equals, 1)
+}
+
+func (s *S) TestListFilteringByOwner(c *check.C) {
+	a := App{
+		Name:  "testapp",
+		Teams: []string{s.team.Name},
+		Owner: "foo",
+	}
+	a2 := App{
+		Name:  "othertestapp",
+		Teams: []string{s.team.Name},
+		Owner: "bar",
+	}
+	err := s.conn.Apps().Insert(&a)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Insert(&a2)
+	c.Assert(err, check.IsNil)
+	defer func() {
+		s.conn.Apps().Remove(bson.M{"name": a.Name})
+		s.conn.Apps().Remove(bson.M{"name": a2.Name})
+	}()
+	apps, err := List(nil, &Filter{UserOwner: "foo"})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(apps), check.Equals, 1)
+}
+
+func (s *S) TestListFilteringByTeamOwner(c *check.C) {
+	a := App{
+		Name:      "testapp",
+		Teams:     []string{s.team.Name},
+		TeamOwner: "foo",
+	}
+	a2 := App{
+		Name:      "othertestapp",
+		Teams:     []string{s.team.Name},
+		TeamOwner: "bar",
+	}
+	err := s.conn.Apps().Insert(&a)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Insert(&a2)
+	c.Assert(err, check.IsNil)
+	defer func() {
+		s.conn.Apps().Remove(bson.M{"name": a.Name})
+		s.conn.Apps().Remove(bson.M{"name": a2.Name})
+	}()
+	apps, err := List(nil, &Filter{TeamOwner: "foo"})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(apps), check.Equals, 1)
+}
+
 func (s *S) TestListReturnsEmptyAppArrayWhenUserHasNoAccessToAnyApp(c *check.C) {
-	apps, err := List(s.user)
+	apps, err := List(s.user, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.DeepEquals, []App(nil))
 }
@@ -2108,7 +2310,7 @@ func (s *S) TestListReturnsAllAppsWhenUserIsInAdminTeam(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.createAdminUserAndTeam(c)
 	defer s.removeAdminUserAndTeam(c)
-	apps, err := List(s.admin)
+	apps, err := List(s.admin, nil)
 	c.Assert(len(apps), Greater, 0)
 	c.Assert(apps[0].Name, check.Equals, "testApp")
 	c.Assert(apps[0].Teams, check.DeepEquals, []string{"notAdmin", "noSuperUser"})

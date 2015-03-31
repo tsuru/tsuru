@@ -78,7 +78,7 @@ func ListDeploys(app *App, s *service.Service, u *auth.User, skip, limit int) ([
 }
 
 func userHasPermission(u *auth.User, appName string) bool {
-	appsByUser, err := List(u)
+	appsByUser, err := List(u, nil)
 	if err != nil {
 		return false
 	}
@@ -102,7 +102,7 @@ func listDeploys(app *App, s *service.Service, u *auth.User, skip, limit int) ([
 	}
 	appsByUser := set{}
 	if u != nil {
-		appsList, _ := List(u)
+		appsList, _ := List(u, nil)
 		for _, a := range appsList {
 			appsByUser.Add(a.Name)
 		}

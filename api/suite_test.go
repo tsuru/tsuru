@@ -106,6 +106,7 @@ func (s *S) TearDownSuite(c *check.C) {
 func (s *S) SetUpTest(c *check.C) {
 	repositorytest.Reset()
 	repository.Manager().CreateUser(s.user.Email)
+	repository.Manager().CreateUser(s.adminuser.Email)
 	factory, err := queue.Factory()
 	c.Assert(err, check.IsNil)
 	fakeFactory := factory.(*queuetest.FakePubSubQFactory)
