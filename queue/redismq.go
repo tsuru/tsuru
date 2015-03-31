@@ -87,6 +87,16 @@ type redismqQFactory struct {
 	pool  *redis.Pool
 }
 
+func (factory *redismqQFactory) Reset() {
+	factory.Lock()
+	defer factory.Unlock()
+	if factory.queue != nil {
+		factory.queue.Stop()
+		factory.queue.ResetKeys()
+		factory.queue = nil
+	}
+}
+
 func (factory *redismqQFactory) PubSub(name string) (PubSubQ, error) {
 	return &redismqQ{name: name, factory: factory}, nil
 }
@@ -101,8 +111,20 @@ func (factory *redismqQFactory) Queue() (*redisqueue.Queue, error) {
 	port, _ := config.GetInt("redis-queue:port")
 	password, _ := config.GetString("redis-queue:password")
 	db, _ := config.GetInt("redis-queue:db")
+	blockTime, _ := config.GetDuration("redis-queue:block-time")
 	maxIdle, _ := config.GetInt("redis-queue:pool-max-idle-conn")
 	idleTimeout, _ := config.GetDuration("redis-queue:pool-idle-timeout")
+	if blockTime == 0 {
+		blockTime = 10
+	}
+	blockTime = blockTime * time.Second
+	if maxIdle == 0 {
+		maxIdle = 20
+	}
+	if idleTimeout == 0 {
+		idleTimeout = 300
+	}
+	idleTimeout = idleTimeout * time.Second
 	conf := redisqueue.QueueConfig{
 		Host:            host,
 		Port:            port,
@@ -110,7 +132,7 @@ func (factory *redismqQFactory) Queue() (*redisqueue.Queue, error) {
 		Db:              db,
 		PoolMaxIdle:     maxIdle,
 		PoolIdleTimeout: idleTimeout,
-		MaxBlockTime:    10 * time.Second,
+		MaxBlockTime:    blockTime,
 	}
 	var err error
 	factory.queue, err = redisqueue.NewQueue(conf)
@@ -173,8 +195,9 @@ func (factory *redismqQFactory) getPool() *redis.Pool {
 	}
 	idleTimeout, err := config.GetDuration("redis-queue:pool-idle-timeout")
 	if err != nil {
-		idleTimeout = 5 * time.Minute
+		idleTimeout = 300
 	}
+	idleTimeout = idleTimeout * time.Second
 	factory.pool = &redis.Pool{
 		MaxIdle:     maxIdle,
 		IdleTimeout: idleTimeout,

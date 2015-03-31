@@ -114,8 +114,7 @@ func (s *S) SetUpTest(c *check.C) {
 	repository.Manager().CreateUser(s.user.Email)
 	factory, err := queue.Factory()
 	c.Assert(err, check.IsNil)
-	fakeFactory := factory.(*queuetest.FakePubSubQFactory)
-	fakeFactory.Reset()
+	factory.Reset()
 }
 
 func (s *S) TearDownTest(c *check.C) {

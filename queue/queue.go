@@ -34,9 +34,13 @@ type PubSubQ interface {
 type QFactory interface {
 	// PubSub returns a PubSubQ instance, identified by the given name.
 	PubSub(name string) (PubSubQ, error)
+
 	// Queue returns a unique redisQueue instance, which will be initialized
 	// the first time it's called.
 	Queue() (*redisqueue.Queue, error)
+
+	// Resets the queue to a state before initialization
+	Reset()
 }
 
 var factories = map[string]QFactory{
