@@ -40,6 +40,10 @@ type HealthChecker interface {
 	HealthCheck() error
 }
 
+type InitializableIaaS interface {
+	Initialize() error
+}
+
 type NamedIaaS struct {
 	BaseIaaSName string
 	IaaSName     string
@@ -104,6 +108,12 @@ func getIaasProvider(name string) (IaaS, error) {
 			return nil, fmt.Errorf("IaaS provider %q based on %q not registered", name, providerName)
 		}
 		instance = providerFactory(name)
+		if init, ok := instance.(InitializableIaaS); ok {
+			err := init.Initialize()
+			if err != nil {
+				return nil, err
+			}
+		}
 		iaasInstances[name] = instance
 	}
 	return instance, nil
