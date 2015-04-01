@@ -521,18 +521,29 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 		plural = "s"
 	}
 	fmt.Fprintf(w, "\n---- Starting %d new unit%s ----\n", units, plural)
-	for i := 0; i < units; i++ {
+	workers, _ := config.GetInt("docker:max-workers")
+	if workers == 0 {
+		workers = units
+	}
+	step := units/workers + 1
+	for i := 0; i < units; i += step {
 		wg.Add(1)
-		go func() {
+		last := i + step
+		if last > units {
+			last = units
+		}
+		go func(amount int) {
 			defer wg.Done()
-			c, err := args.provisioner.start(a, imageId, w, destinationHost...)
-			if err != nil {
-				errors <- err
-				return
+			for i := 0; i < amount; i++ {
+				c, err := args.provisioner.start(a, imageId, w, destinationHost...)
+				if err != nil {
+					errors <- err
+					return
+				}
+				createdContainers <- c
+				fmt.Fprintf(w, " ---> Started unit %s...\n", c.shortID())
 			}
-			createdContainers <- c
-			fmt.Fprintf(w, " ---> Started unit %s...\n", c.shortID())
-		}()
+		}(last - i)
 	}
 	wg.Wait()
 	close(errors)
