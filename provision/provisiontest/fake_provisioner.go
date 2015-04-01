@@ -40,6 +40,7 @@ type FakeApp struct {
 	bindCalls      []*provision.Unit
 	bindLock       sync.Mutex
 	instances      map[string][]bind.ServiceInstance
+	Pool           string
 	UpdatePlatform bool
 }
 
@@ -181,6 +182,10 @@ func (a *FakeApp) Log(message, source, unit string) error {
 
 func (a *FakeApp) GetName() string {
 	return a.name
+}
+
+func (a *FakeApp) GetPool() string {
+	return a.Pool
 }
 
 func (a *FakeApp) GetPlatform() string {

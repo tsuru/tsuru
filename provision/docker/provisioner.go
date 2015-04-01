@@ -8,9 +8,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"gopkg.in/mgo.v2/bson"
 	"io"
 	"io/ioutil"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -832,4 +834,37 @@ func (p *dockerProvisioner) Shell(opts provision.ShellOptions) error {
 
 func (p *dockerProvisioner) ValidAppImages(appName string) ([]string, error) {
 	return listValidAppImages(appName)
+}
+
+func (p *dockerProvisioner) Nodes(app provision.App) ([]cluster.Node, error) {
+	pool := app.GetPool()
+	pools, err := provision.ListPools(bson.M{"_id": pool})
+	if err != nil {
+		return nil, err
+	}
+	if len(pools) == 0 {
+		query := bson.M{"$or": []bson.M{{"teams": bson.M{"$exists": false}}, {"teams": bson.M{"$size": 0}}}}
+		pools, err = provision.ListPools(query)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if len(pools) == 0 {
+		return nil, errNoFallback
+	}
+	for _, pool := range pools {
+		nodes, err := p.getCluster().NodesForMetadata(map[string]string{"pool": pool.Name})
+		if err != nil {
+			return nil, errNoFallback
+		}
+		if len(nodes) > 0 {
+			return nodes, nil
+		}
+	}
+	var nameList []string
+	for _, pool := range pools {
+		nameList = append(nameList, pool.Name)
+	}
+	poolsStr := strings.Join(nameList, ", pool=")
+	return nil, fmt.Errorf("No nodes found with one of the following metadata: pool=%s", poolsStr)
 }

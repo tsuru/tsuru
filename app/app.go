@@ -77,6 +77,7 @@ type App struct {
 	Lock            AppLock
 	CustomData      map[string]interface{}
 	Plan            Plan
+	Pool            string
 	AutoScaleConfig *AutoScaleConfig
 
 	quota.Quota
@@ -665,6 +666,11 @@ func (app *App) GetUnits() []bind.Unit {
 // GetName returns the name of the app.
 func (app *App) GetName() string {
 	return app.Name
+}
+
+// GetPool returns the pool of the app.
+func (app *App) GetPool() string {
+	return app.Pool
 }
 
 // GetMemory returns the memory limit (in bytes) for the app.

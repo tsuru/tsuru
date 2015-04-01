@@ -155,6 +155,8 @@ type App interface {
 	GetUpdatePlatform() bool
 
 	GetRouter() (string, error)
+
+	GetPool() string
 }
 
 // CNameManager represents a provisioner that supports cname on applications.
