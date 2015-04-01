@@ -5,14 +5,12 @@
 package ec2
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/tsuru/redisqueue"
 	"github.com/tsuru/tsuru/iaas"
-	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/queue"
 	"gopkg.in/amz.v2/aws"
 	"gopkg.in/amz.v2/ec2"
@@ -78,59 +76,6 @@ func (i *EC2IaaS) waitForDnsName(ec2Inst *ec2.EC2, instance *ec2.Instance) (*ec2
 	}
 	instance.DNSName = result.(string)
 	return instance, nil
-}
-
-type ec2WaitTask struct {
-	iaas *EC2IaaS
-}
-
-func (t *ec2WaitTask) Name() string {
-	return fmt.Sprintf("ec2-wait-machine-%s", t.iaas.base.IaaSName)
-}
-
-func (t *ec2WaitTask) Run(job *redisqueue.Job) {
-	regionName := job.Params["region"].(string)
-	machineId := job.Params["machineId"].(string)
-	timeout := job.Params["timeout"].(float64)
-	region, ok := aws.Regions[regionName]
-	if !ok {
-		job.Error(fmt.Errorf("region %q not found", regionName))
-		return
-	}
-	ec2Inst, err := t.iaas.createEC2Handler(region)
-	if err != nil {
-		job.Error(err)
-		return
-	}
-	var dnsName string
-	var notifiedSuccess bool
-	t0 := time.Now()
-	for {
-		log.Debugf("ec2: waiting for dnsname for instance %s", machineId)
-		resp, err := ec2Inst.Instances([]string{machineId}, ec2.NewFilter())
-		if err != nil {
-			job.Error(err)
-			break
-		}
-		if len(resp.Reservations) == 0 || len(resp.Reservations[0].Instances) == 0 {
-			job.Error(err)
-			break
-		}
-		instance := &resp.Reservations[0].Instances[0]
-		dnsName = instance.DNSName
-		if dnsName != "" {
-			notifiedSuccess, _ = job.Success(dnsName)
-			break
-		}
-		if time.Now().Sub(t0) > time.Duration(2*timeout)*time.Second {
-			job.Error(errors.New("hard timeout"))
-			break
-		}
-		time.Sleep(500 * time.Millisecond)
-	}
-	if !notifiedSuccess {
-		ec2Inst.TerminateInstances([]string{machineId})
-	}
 }
 
 func (i *EC2IaaS) Initialize() error {
