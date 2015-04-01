@@ -744,13 +744,50 @@ func (s *S) TestSetEnvNewAppsTheMapIfItIsNil(c *check.C) {
 	c.Assert(a.Env, check.NotNil)
 }
 
-func (s *S) TestSetEnvironmentVariableToApp(c *check.C) {
+func (s *S) TestSetPublicEnvironmentVariableToApp(c *check.C) {
 	a := App{Name: "appName", Platform: "django"}
 	a.setEnv(bind.EnvVar{Name: "PATH", Value: "/", Public: true})
 	env := a.Env["PATH"]
 	c.Assert(env.Name, check.Equals, "PATH")
 	c.Assert(env.Value, check.Equals, "/")
 	c.Assert(env.Public, check.Equals, true)
+}
+
+func (s *S) TestSetPrivateEnvironmentVariableToApp(c *check.C) {
+	a := App{Name: "appName", Platform: "django"}
+	a.setEnv(bind.EnvVar{Name: "PATH", Value: "/", Public: false})
+	env := a.Env["PATH"]
+	c.Assert(env.Name, check.Equals, "PATH")
+	c.Assert(env.Value, check.Equals, "/")
+	c.Assert(env.Public, check.Equals, false)
+}
+
+func (s *S) TestSetMultiplePublicEnvironmentVariableToApp(c *check.C) {
+	a := App{Name: "appName", Platform: "django"}
+	a.setEnv(bind.EnvVar{Name: "PATH", Value: "/", Public: true})
+	a.setEnv(bind.EnvVar{Name: "DATABASE", Value: "mongodb", Public: true})
+	env := a.Env["PATH"]
+	c.Assert(env.Name, check.Equals, "PATH")
+	c.Assert(env.Value, check.Equals, "/")
+	c.Assert(env.Public, check.Equals, true)
+	env = a.Env["DATABASE"]
+	c.Assert(env.Name, check.Equals, "DATABASE")
+	c.Assert(env.Value, check.Equals, "mongodb")
+	c.Assert(env.Public, check.Equals, true)
+}
+
+func (s *S) TestSetMultiplePrivateEnvironmentVariableToApp(c *check.C) {
+	a := App{Name: "appName", Platform: "django"}
+	a.setEnv(bind.EnvVar{Name: "PATH", Value: "/", Public: false})
+	a.setEnv(bind.EnvVar{Name: "DATABASE", Value: "mongodb", Public: false})
+	env := a.Env["PATH"]
+	c.Assert(env.Name, check.Equals, "PATH")
+	c.Assert(env.Value, check.Equals, "/")
+	c.Assert(env.Public, check.Equals, false)
+	env = a.Env["DATABASE"]
+	c.Assert(env.Name, check.Equals, "DATABASE")
+	c.Assert(env.Value, check.Equals, "mongodb")
+	c.Assert(env.Public, check.Equals, false)
 }
 
 func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenServiceSets(c *check.C) {
