@@ -676,21 +676,21 @@ func (s *S) TestProvisionerAddUnitsWithHost(c *check.C) {
 }
 
 func (s *S) TestProvisionerRemoveUnits(c *check.C) {
-	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}}
+	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}, Pool: "pool1"}
 	cont1 := container{ID: "1", Name: "impius1", AppName: a1.Name}
 	cont2 := container{ID: "2", Name: "mirror1", AppName: a1.Name}
 	cont3 := container{ID: "3", Name: "dedication1", AppName: a1.Name}
 	err := s.storage.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
-	coll := s.storage.Collection(schedulerCollection)
-	p := Pool{Name: "pool1", Teams: []string{
+	p := provision.Pool{Name: "pool1", Teams: []string{
 		"tsuruteam",
 		"nodockerforme",
 	}}
-	err = coll.Insert(p)
+	err = provision.AddPool(p.Name)
 	c.Assert(err, check.IsNil)
-	defer coll.RemoveAll(bson.M{"_id": p.Name})
+	err = provision.AddTeamsToPool(p.Name, p.Teams)
+	defer provision.RemovePool(p.Name)
 	contColl := s.p.collection()
 	err = contColl.Insert(
 		cont1, cont2, cont3,
@@ -699,6 +699,7 @@ func (s *S) TestProvisionerRemoveUnits(c *check.C) {
 	defer contColl.RemoveAll(bson.M{"name": bson.M{"$in": []string{cont1.Name, cont2.Name, cont3.Name}}})
 	scheduler := segregatedScheduler{provisioner: s.p}
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
+	s.p.cluster = clusterInstance
 	s.p.scheduler = &scheduler
 	s.p.cluster = clusterInstance
 	c.Assert(err, check.IsNil)
@@ -738,21 +739,21 @@ func (s *S) TestProvisionerRemoveUnitsZeroUnits(c *check.C) {
 }
 
 func (s *S) TestProvisionerRemoveUnitsTooManyUnits(c *check.C) {
-	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}}
+	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}, Pool: "pool1"}
 	cont1 := container{ID: "1", Name: "impius1", AppName: a1.Name}
 	cont2 := container{ID: "2", Name: "mirror1", AppName: a1.Name}
 	cont3 := container{ID: "3", Name: "dedication1", AppName: a1.Name}
 	err := s.storage.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
-	coll := s.storage.Collection(schedulerCollection)
-	p := Pool{Name: "pool1", Teams: []string{
+	p := provision.Pool{Name: "pool1", Teams: []string{
 		"tsuruteam",
 		"nodockerforme",
 	}}
-	err = coll.Insert(p)
+	err = provision.AddPool(p.Name)
 	c.Assert(err, check.IsNil)
-	defer coll.RemoveAll(bson.M{"_id": p.Name})
+	err = provision.AddTeamsToPool(p.Name, p.Teams)
+	defer provision.RemovePool(p.Name)
 	contColl := s.p.collection()
 	err = contColl.Insert(
 		cont1, cont2, cont3,
