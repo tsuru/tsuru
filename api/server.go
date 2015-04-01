@@ -208,6 +208,13 @@ func RunServer(dry bool) http.Handler {
 
 	m.Add("Get", "/debug/goroutines", AdminRequiredHandler(dumpGoroutines))
 
+	m.Add("Get", "/pools", authorizationRequiredHandler(listPoolsToUser))
+	m.Add("Get", "/pool", AdminRequiredHandler(listPoolHandler))
+	m.Add("Post", "/pool", AdminRequiredHandler(addPoolHandler))
+	m.Add("Delete", "/pool", AdminRequiredHandler(removePoolHandler))
+	m.Add("Post", "/pool/team", AdminRequiredHandler(addTeamToPoolHandler))
+	m.Add("Delete", "/pool/team", AdminRequiredHandler(removeTeamToPoolHandler))
+
 	n := negroni.New()
 	n.Use(negroni.NewRecovery())
 	n.Use(newLoggerMiddleware())

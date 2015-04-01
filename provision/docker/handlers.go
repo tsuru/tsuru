@@ -16,7 +16,6 @@ import (
 
 	"github.com/tsuru/tsuru/api"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/iaas"
 	_ "github.com/tsuru/tsuru/iaas/cloudstack"
@@ -35,11 +34,6 @@ func init() {
 	api.RegisterHandler("/docker/container/{id}/move", "POST", api.AdminRequiredHandler(moveContainerHandler))
 	api.RegisterHandler("/docker/containers/move", "POST", api.AdminRequiredHandler(moveContainersHandler))
 	api.RegisterHandler("/docker/containers/rebalance", "POST", api.AdminRequiredHandler(rebalanceContainersHandler))
-	api.RegisterHandler("/docker/pool", "GET", api.AdminRequiredHandler(listPoolHandler))
-	api.RegisterHandler("/docker/pool", "POST", api.AdminRequiredHandler(addPoolHandler))
-	api.RegisterHandler("/docker/pool", "DELETE", api.AdminRequiredHandler(removePoolHandler))
-	api.RegisterHandler("/docker/pool/team", "POST", api.AdminRequiredHandler(addTeamToPoolHandler))
-	api.RegisterHandler("/docker/pool/team", "DELETE", api.AdminRequiredHandler(removeTeamToPoolHandler))
 	api.RegisterHandler("/docker/fix-containers", "POST", api.AdminRequiredHandler(fixContainersHandler))
 	api.RegisterHandler("/docker/healing", "GET", api.AdminRequiredHandler(healingHistoryHandler))
 	api.RegisterHandler("/docker/autoscale", "GET", api.AdminRequiredHandler(autoScaleHistoryHandler))
@@ -255,71 +249,6 @@ func listContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 		return err
 	}
 	return json.NewEncoder(w).Encode(containerList)
-}
-
-func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	params, err := unmarshal(r.Body)
-	if err != nil {
-		return err
-	}
-	var segScheduler segregatedScheduler
-	return segScheduler.addPool(params["pool"])
-}
-
-func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	params, err := unmarshal(r.Body)
-	if err != nil {
-		return err
-	}
-	var segScheduler segregatedScheduler
-	return segScheduler.removePool(params["pool"])
-}
-
-func listPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	var pools []Pool
-	err = conn.Collection(schedulerCollection).Find(nil).All(&pools)
-	if err != nil {
-		return err
-	}
-	return json.NewEncoder(w).Encode(pools)
-}
-
-type teamsToPoolParams struct {
-	Pool  string   `json:"pool"`
-	Teams []string `json:"teams"`
-}
-
-func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-	var params teamsToPoolParams
-	err = json.Unmarshal(b, &params)
-	if err != nil {
-		return err
-	}
-	var segScheduler segregatedScheduler
-	return segScheduler.addTeamsToPool(params.Pool, params.Teams)
-}
-
-func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return err
-	}
-	var params teamsToPoolParams
-	err = json.Unmarshal(b, &params)
-	if err != nil {
-		return err
-	}
-	var segScheduler segregatedScheduler
-	return segScheduler.removeTeamsFromPool(params.Pool, params.Teams)
 }
 
 func unmarshal(body io.ReadCloser) (map[string]string, error) {

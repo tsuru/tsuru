@@ -82,7 +82,12 @@ func (s *HandlersSuite) SetUpSuite(c *check.C) {
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
-	s.conn.Collection(schedulerCollection).RemoveAll(nil)
+	pools, err := provision.ListPools(nil)
+	c.Assert(err, check.IsNil)
+	for _, pool := range pools {
+		err = provision.RemovePool(pool.Name)
+		c.Assert(err, check.IsNil)
+	}
 	s.server = httptest.NewServer(nil)
 	s.user = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: quota.Unlimited}
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
@@ -118,9 +123,8 @@ func (s *HandlersSuite) TearDownSuite(c *check.C) {
 
 func (s *HandlersSuite) TestAddNodeHandler(c *check.C) {
 	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
-	p := Pool{Name: "pool1"}
-	s.conn.Collection(schedulerCollection).Insert(p)
-	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
+	err := provision.AddPool("pool1")
+	defer provision.RemovePool("pool1")
 	json := fmt.Sprintf(`{"address": "%s", "pool": "pool1"}`, s.server.URL)
 	b := bytes.NewBufferString(json)
 	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
@@ -140,9 +144,8 @@ func (s *HandlersSuite) TestAddNodeHandler(c *check.C) {
 func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 	iaas.RegisterIaasProvider("test-iaas", newTestIaaS)
 	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
-	p := Pool{Name: "pool1"}
-	s.conn.Collection(schedulerCollection).Insert(p)
-	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
+	err := provision.AddPool("pool1")
+	defer provision.RemovePool("pool1")
 	b := bytes.NewBufferString(`{"pool": "pool1", "id": "test1"}`)
 	req, err := http.NewRequest("POST", "/docker/node?register=false", b)
 	c.Assert(err, check.IsNil)
@@ -168,9 +171,8 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachineExplicit(c *check
 	iaas.RegisterIaasProvider("test-iaas", newTestIaaS)
 	iaas.RegisterIaasProvider("another-test-iaas", newTestIaaS)
 	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
-	p := Pool{Name: "pool1"}
-	s.conn.Collection(schedulerCollection).Insert(p)
-	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
+	err := provision.AddPool("pool1")
+	defer provision.RemovePool("pool1")
 	b := bytes.NewBufferString(`{"pool": "pool1", "id": "test1", "iaas": "another-test-iaas"}`)
 	req, err := http.NewRequest("POST", "/docker/node?register=false", b)
 	c.Assert(err, check.IsNil)
@@ -189,9 +191,8 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachineExplicit(c *check
 }
 
 func (s *HandlersSuite) TestAddNodeHandlerWithoutdCluster(c *check.C) {
-	p := Pool{Name: "pool1"}
-	s.conn.Collection(schedulerCollection).Insert(p)
-	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
+	err := provision.AddPool("pool1")
+	defer provision.RemovePool("pool1")
 	config.Set("docker:segregate", true)
 	defer config.Unset("docker:segregate")
 	config.Set("docker:cluster:redis-server", "127.0.0.1:6379")
@@ -683,85 +684,6 @@ func (s *S) TestRebalanceContainersDryBodyHandler(c *check.C) {
 	c.Assert(result[7].Message, check.Equals, "Containers rebalanced successfully!\n")
 }
 
-func (s *HandlersSuite) TestAddPoolHandler(c *check.C) {
-	b := bytes.NewBufferString(`{"pool": "pool1"}`)
-	req, err := http.NewRequest("POST", "/pool", b)
-	c.Assert(err, check.IsNil)
-	rec := httptest.NewRecorder()
-	err = addPoolHandler(rec, req, nil)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
-	n, err := s.conn.Collection(schedulerCollection).FindId("pool1").Count()
-	c.Assert(err, check.IsNil)
-	c.Assert(n, check.Equals, 1)
-}
-
-func (s *HandlersSuite) TestRemovePoolHandler(c *check.C) {
-	pool := Pool{Name: "pool1"}
-	err := s.conn.Collection(schedulerCollection).Insert(pool)
-	c.Assert(err, check.IsNil)
-	b := bytes.NewBufferString(`{"pool": "pool1"}`)
-	req, err := http.NewRequest("DELETE", "/pool", b)
-	c.Assert(err, check.IsNil)
-	rec := httptest.NewRecorder()
-	err = removePoolHandler(rec, req, nil)
-	c.Assert(err, check.IsNil)
-	p, err := s.conn.Collection(schedulerCollection).FindId("pool1").Count()
-	c.Assert(err, check.IsNil)
-	c.Assert(p, check.Equals, 0)
-}
-
-func (s *HandlersSuite) TestListPoolsHandler(c *check.C) {
-	pool := Pool{Name: "pool1", Teams: []string{"tsuruteam", "ateam"}}
-	err := s.conn.Collection(schedulerCollection).Insert(pool)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Collection(schedulerCollection).RemoveId(pool.Name)
-	poolsExpected := []Pool{pool}
-	req, err := http.NewRequest("GET", "/pool", nil)
-	c.Assert(err, check.IsNil)
-	rec := httptest.NewRecorder()
-	err = listPoolHandler(rec, req, nil)
-	c.Assert(err, check.IsNil)
-	var pools []Pool
-	err = json.NewDecoder(rec.Body).Decode(&pools)
-	c.Assert(err, check.IsNil)
-	c.Assert(pools, check.DeepEquals, poolsExpected)
-}
-
-func (s *HandlersSuite) TestAddTeamsToPoolHandler(c *check.C) {
-	pool := Pool{Name: "pool1"}
-	err := s.conn.Collection(schedulerCollection).Insert(pool)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Collection(schedulerCollection).RemoveId(pool.Name)
-	b := bytes.NewBufferString(`{"pool": "pool1", "teams": ["test"]}`)
-	req, err := http.NewRequest("POST", "/pool/team", b)
-	c.Assert(err, check.IsNil)
-	rec := httptest.NewRecorder()
-	err = addTeamToPoolHandler(rec, req, nil)
-	c.Assert(err, check.IsNil)
-	var p Pool
-	err = s.conn.Collection(schedulerCollection).FindId("pool1").One(&p)
-	c.Assert(err, check.IsNil)
-	c.Assert(p.Teams, check.DeepEquals, []string{"test"})
-}
-
-func (s *HandlersSuite) TestRemoveTeamsToPoolHandler(c *check.C) {
-	pool := Pool{Name: "pool1", Teams: []string{"test"}}
-	err := s.conn.Collection(schedulerCollection).Insert(pool)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Collection(schedulerCollection).RemoveId(pool.Name)
-	b := bytes.NewBufferString(`{"pool": "pool1", "teams": ["test"]}`)
-	req, err := http.NewRequest("DELETE", "/pool/team", b)
-	c.Assert(err, check.IsNil)
-	rec := httptest.NewRecorder()
-	err = removeTeamToPoolHandler(rec, req, nil)
-	c.Assert(err, check.IsNil)
-	var p Pool
-	err = s.conn.Collection(schedulerCollection).FindId("pool1").One(&p)
-	c.Assert(err, check.IsNil)
-	c.Assert(p.Teams, check.DeepEquals, []string{})
-}
-
 func (s *HandlersSuite) TestHealingHistoryHandler(c *check.C) {
 	evt1, err := newHealingEvent(cluster.Node{Address: "addr1"})
 	c.Assert(err, check.IsNil)
@@ -898,9 +820,8 @@ func (s *HandlersSuite) TestUpdateNodeHandler(c *check.C) {
 			"m2": "v2",
 		}},
 	)
-	p := Pool{Name: "pool1"}
-	s.conn.Collection(schedulerCollection).Insert(p)
-	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
+	err := provision.AddPool("pool1")
+	defer provision.RemovePool("pool1")
 	json := `{"address": "localhost:1999", "m1": "", "m2": "v9", "m3": "v8"}`
 	b := bytes.NewBufferString(json)
 	recorder := httptest.NewRecorder()
@@ -926,9 +847,8 @@ func (s *HandlersSuite) TestUpdateNodeHandlerNoAddress(c *check.C) {
 			"m2": "v2",
 		}},
 	)
-	p := Pool{Name: "pool1"}
-	s.conn.Collection(schedulerCollection).Insert(p)
-	defer s.conn.Collection(schedulerCollection).RemoveId("pool1")
+	err := provision.AddPool("pool1")
+	defer provision.RemovePool("pool1")
 	json := `{"m1": "", "m2": "v9", "m3": "v8"}`
 	b := bytes.NewBufferString(json)
 	recorder := httptest.NewRecorder()
