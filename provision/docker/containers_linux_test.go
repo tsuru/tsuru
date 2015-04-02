@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
@@ -37,9 +38,9 @@ func (s *S) TestRebalanceContainersManyAppsSegStress(c *check.C) {
 	p.scheduler = &segregatedScheduler{provisioner: p}
 	p.cluster, err = cluster.New(p.scheduler, p.storage, nodes...)
 	c.Assert(err, check.IsNil)
-	err = p.scheduler.addPool("pool1")
+	err = provision.AddPool("pool1")
 	c.Assert(err, check.IsNil)
-	err = p.scheduler.addTeamsToPool("pool1", []string{"team1"})
+	err = provision.AddTeamsToPool("pool1", []string{"team1"})
 	c.Assert(err, check.IsNil)
 	variation := []int{10, 20, 30, 40, 50, 100}
 	maxContainers := 40
@@ -77,6 +78,7 @@ func (s *S) TestRebalanceContainersManyAppsSegStress(c *check.C) {
 		appStruct := &app.App{
 			Name:      appInstance.GetName(),
 			TeamOwner: "team1",
+			Pool:      "pool1",
 		}
 		conn, err := db.Conn()
 		c.Assert(err, check.IsNil)
