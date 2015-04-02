@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tsuru/redisqueue"
+	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/log"
 	"gopkg.in/amz.v2/aws"
 	"gopkg.in/amz.v2/ec2"
@@ -23,10 +23,17 @@ func (t *ec2WaitTask) Name() string {
 	return fmt.Sprintf("ec2-wait-machine-%s", t.iaas.base.IaaSName)
 }
 
-func (t *ec2WaitTask) Run(job *redisqueue.Job) {
-	regionName := job.Params["region"].(string)
-	machineId := job.Params["machineId"].(string)
-	timeout := job.Params["timeout"].(float64)
+func (t *ec2WaitTask) Run(job monsterqueue.Job) {
+	params := job.Parameters()
+	regionName := params["region"].(string)
+	machineId := params["machineId"].(string)
+	var timeout int
+	switch val := params["timeout"].(type) {
+	case int:
+		timeout = val
+	case float64:
+		timeout = int(val)
+	}
 	region, ok := aws.Regions[regionName]
 	if !ok {
 		job.Error(fmt.Errorf("region %q not found", regionName))

@@ -42,9 +42,7 @@ func (s *S) SetUpTest(c *check.C) {
 	aws.Regions["myregion"] = s.region
 	config.Set("iaas:ec2:key-id", "mykey")
 	config.Set("iaas:ec2:secret-key", "mysecret")
-	factory, err := queue.Factory()
-	c.Assert(err, check.IsNil)
-	factory.Reset()
+	queue.ResetQueue()
 }
 
 func (s *S) TearDownTest(c *check.C) {
@@ -133,9 +131,7 @@ func (s *S) TestCreateMachineTimeoutError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = ec2iaas.CreateMachine(params)
 	c.Assert(err, check.ErrorMatches, `ec2: time out after .+? waiting for instance .+? to start`)
-	factory, err := queue.Factory()
-	c.Assert(err, check.IsNil)
-	factory.Reset()
+	queue.ResetQueue()
 	c.Assert(calledActions[len(calledActions)-1], check.Equals, "TerminateInstances")
 }
 

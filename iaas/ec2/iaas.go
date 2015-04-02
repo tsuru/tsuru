@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/tsuru/redisqueue"
+	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/queue"
 	"gopkg.in/amz.v2/aws"
@@ -49,23 +49,19 @@ func (i *EC2IaaS) waitForDnsName(ec2Inst *ec2.EC2, instance *ec2.Instance) (*ec2
 	if maxWaitTime == 0 {
 		maxWaitTime = 300
 	}
-	factory, err := queue.Factory()
-	if err != nil {
-		return nil, err
-	}
-	queue, err := factory.Queue()
+	q, err := queue.Queue()
 	if err != nil {
 		return nil, err
 	}
 	taskName := fmt.Sprintf("ec2-wait-machine-%s", i.base.IaaSName)
 	waitDuration := time.Duration(maxWaitTime) * time.Second
-	job, err := queue.EnqueueWait(taskName, redisqueue.JobParams{
+	job, err := q.EnqueueWait(taskName, monsterqueue.JobParams{
 		"region":    ec2Inst.Region.Name,
 		"machineId": instance.InstanceId,
 		"timeout":   maxWaitTime,
 	}, waitDuration)
 	if err != nil {
-		if err == redisqueue.ErrQueueWaitTimeout {
+		if err == monsterqueue.ErrQueueWaitTimeout {
 			return nil, fmt.Errorf("ec2: time out after %v waiting for instance %s to start", waitDuration, instance.InstanceId)
 		}
 		return nil, err
@@ -79,15 +75,11 @@ func (i *EC2IaaS) waitForDnsName(ec2Inst *ec2.EC2, instance *ec2.Instance) (*ec2
 }
 
 func (i *EC2IaaS) Initialize() error {
-	factory, err := queue.Factory()
+	q, err := queue.Queue()
 	if err != nil {
 		return err
 	}
-	queue, err := factory.Queue()
-	if err != nil {
-		return err
-	}
-	return queue.RegisterTask(&ec2WaitTask{iaas: i})
+	return q.RegisterTask(&ec2WaitTask{iaas: i})
 }
 
 func (i *EC2IaaS) Describe() string {
