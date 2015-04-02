@@ -8,13 +8,14 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"gopkg.in/mgo.v2/bson"
 	"io"
 	"io/ioutil"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
+
+	"gopkg.in/mgo.v2/bson"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
@@ -838,7 +839,15 @@ func (p *dockerProvisioner) ValidAppImages(appName string) ([]string, error) {
 
 func (p *dockerProvisioner) Nodes(app provision.App) ([]cluster.Node, error) {
 	pool := app.GetPool()
-	pools, err := provision.ListPools(bson.M{"_id": pool})
+	var (
+		pools []provision.Pool
+		err   error
+	)
+	//if pool == "" {
+	//pools, err = provision.ListPools(bson.M{"$or": []bson.M{{"teams": app.TeamOwner}, {"teams": bson.M{"$in": app.Teams}}}})
+	//} else {
+	pools, err = provision.ListPools(bson.M{"_id": pool})
+	//}
 	if err != nil {
 		return nil, err
 	}

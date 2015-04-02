@@ -6,11 +6,12 @@ package api
 
 import (
 	"encoding/json"
+	"io/ioutil"
+	"net/http"
+
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/rec"
-	"io/ioutil"
-	"net/http"
 )
 
 func listPoolsToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {

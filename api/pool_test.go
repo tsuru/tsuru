@@ -7,10 +7,11 @@ package api
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/tsuru/tsuru/provision"
-	"gopkg.in/check.v1"
 	"net/http"
 	"net/http/httptest"
+
+	"github.com/tsuru/tsuru/provision"
+	"gopkg.in/check.v1"
 )
 
 func (s *S) TestAddPoolHandler(c *check.C) {
