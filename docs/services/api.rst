@@ -115,13 +115,13 @@ plan and the team that owns the instance. Example of request:
 
     POST /resources HTTP/1.1
     Host: myserviceapi.com
-    Content-Length: 19
+    Content-Length: 56
     User-Agent: Go 1.1 package http
     Accept: application/json
     Authorization: Basic dXNlcjpwYXNzd29yZA==
     Content-Type: application/x-www-form-urlencoded
 
-    name=mysql_instance&plan=small&team=myteam
+    name=mysql_instance&plan=small&team=myteam&user=username
 
 The API should return the following HTTP response codes with the respective
 response body:
