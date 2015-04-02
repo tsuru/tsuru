@@ -268,7 +268,7 @@ The final code for our "fake API" developed in Flask is:
         return "", 201
 
 
-    @app.route("/resources/<name>", methods=["POST"])
+    @app.route("/resources/<name>/bind", methods=["POST"])
     def bind(name):
         app_host = request.form.get("app-host")
         unit_host = request.form.get("unit-host")
@@ -278,7 +278,7 @@ The final code for our "fake API" developed in Flask is:
         return json.dumps(envs), 201
 
 
-    @app.route("/resources/<name>/hostname/<host>", methods=["DELETE"])
+    @app.route("/resources/<name>/bind", methods=["DELETE"])
     def unbind(name, host):
         # use name and host to remove the bind
         return "", 200
