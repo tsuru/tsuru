@@ -32,7 +32,6 @@ func (s *S) TestGetServiceReturnsErrorIfTheServiceIsDeleted(c *check.C) {
 func (s *S) TestCreateService(c *check.C) {
 	endpt := map[string]string{
 		"production": "somehost.com",
-		"test":       "test.somehost.com",
 	}
 	service := &Service{
 		Name:       "my_service",
@@ -47,7 +46,6 @@ func (s *S) TestCreateService(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(se.Name, check.Equals, service.Name)
 	c.Assert(se.Endpoint["production"], check.Equals, endpt["production"])
-	c.Assert(se.Endpoint["test"], check.Equals, endpt["test"])
 	c.Assert(se.OwnerTeams, check.DeepEquals, []string{s.team.Name})
 	c.Assert(se.IsRestricted, check.Equals, false)
 	c.Assert(se.Username, check.Equals, "test")
@@ -66,7 +64,6 @@ func (s *S) TestDeleteService(c *check.C) {
 func (s *S) TestGetClient(c *check.C) {
 	endpoints := map[string]string{
 		"production": "http://mysql.api.com",
-		"test":       "http://localhost:9090",
 	}
 	service := Service{Name: "redis", Password: "abcde", Endpoint: endpoints}
 	cli, err := service.getClient("production")
@@ -82,7 +79,6 @@ func (s *S) TestGetClient(c *check.C) {
 func (s *S) TestGetClientWithServiceUsername(c *check.C) {
 	endpoints := map[string]string{
 		"production": "http://mysql.api.com",
-		"test":       "http://localhost:9090",
 	}
 	service := Service{Name: "redis", Username: "redis_test", Password: "abcde", Endpoint: endpoints}
 	cli, err := service.getClient("production")
@@ -98,7 +94,6 @@ func (s *S) TestGetClientWithServiceUsername(c *check.C) {
 func (s *S) TestGetClientWithouHTTP(c *check.C) {
 	endpoints := map[string]string{
 		"production": "mysql.api.com",
-		"test":       "localhost:9090",
 	}
 	service := Service{Name: "redis", Endpoint: endpoints}
 	cli, err := service.getClient("production")
@@ -109,7 +104,6 @@ func (s *S) TestGetClientWithouHTTP(c *check.C) {
 func (s *S) TestGetClientWithHTTPS(c *check.C) {
 	endpoints := map[string]string{
 		"production": "https://mysql.api.com",
-		"test":       "https://localhost:9090",
 	}
 	service := Service{Name: "redis", Endpoint: endpoints}
 	cli, err := service.getClient("production")
@@ -120,7 +114,6 @@ func (s *S) TestGetClientWithHTTPS(c *check.C) {
 func (s *S) TestGetClientWithUnknownEndpoint(c *check.C) {
 	endpoints := map[string]string{
 		"production": "http://mysql.api.com",
-		"test":       "http://localhost:9090",
 	}
 	service := Service{Name: "redis", Endpoint: endpoints}
 	cli, err := service.getClient("staging")

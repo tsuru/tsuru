@@ -32,17 +32,14 @@ username: test
 password: xxxx
 endpoint:
     production: someservice.com
-    test: test.someservice.com
 `
 	manifestWithoutPassword = `id: some_service
 endpoint:
     production: someservice.com
-    test: test.someservice.com
 `
 	manifestWithoutId = `password: 000000
 endpoint:
     production: someservice.com
-    test: test.someservice.com
 `
 )
 
@@ -141,7 +138,6 @@ func (s *ProvisionSuite) TestCreateHandlerSavesNameFromManifestID(c *check.C) {
 	c.Assert(rService.Name, check.Equals, "some_service")
 	endpoints := map[string]string{
 		"production": "someservice.com",
-		"test":       "test.someservice.com",
 	}
 	action := rectest.Action{
 		Action: "create-service",
@@ -160,7 +156,6 @@ func (s *ProvisionSuite) TestCreateHandlerSavesServiceMetadata(c *check.C) {
 	err = s.conn.Services().Find(query).One(&rService)
 	c.Assert(err, check.IsNil)
 	c.Assert(rService.Endpoint["production"], check.Equals, "someservice.com")
-	c.Assert(rService.Endpoint["test"], check.Equals, "test.someservice.com")
 	c.Assert(rService.Password, check.Equals, "xxxx")
 	c.Assert(rService.Username, check.Equals, "test")
 }
@@ -176,7 +171,6 @@ func (s *ProvisionSuite) TestCreateHandlerWithContentOfRealYaml(c *check.C) {
 	err = s.conn.Services().Find(query).One(&rService)
 	c.Assert(err, check.IsNil)
 	c.Assert(rService.Endpoint["production"], check.Equals, "mysqlapi.com")
-	c.Assert(rService.Endpoint["test"], check.Equals, "localhost:8000")
 }
 
 func (s *ProvisionSuite) TestCreateHandlerShouldReturnErrorWhenNameExists(c *check.C) {
@@ -276,7 +270,7 @@ func (s *ProvisionSuite) TestUpdateHandlerShouldUpdateTheServiceWithDataFromMani
 	c.Assert(service.Endpoint["production"], check.Equals, "mysqlapi.com")
 	c.Assert(service.Password, check.Equals, "yyyy")
 	c.Assert(service.Username, check.Equals, "mysqltest")
-	endpoints := map[string]string{"production": "mysqlapi.com", "test": "localhost:8000"}
+	endpoints := map[string]string{"production": "mysqlapi.com"}
 	action := rectest.Action{
 		Action: "update-service",
 		User:   s.user.Email,
