@@ -11,7 +11,6 @@ import (
 
 	"github.com/garyburd/redigo/redis"
 	"github.com/tsuru/config"
-	"github.com/tsuru/redisqueue"
 	"github.com/tsuru/tsuru/log"
 )
 
@@ -83,64 +82,14 @@ func (r *redismqQ) key() string {
 
 type redismqQFactory struct {
 	sync.Mutex
-	queue *redisqueue.Queue
-	pool  *redis.Pool
+	pool *redis.Pool
 }
 
 func (factory *redismqQFactory) Reset() {
-	factory.Lock()
-	defer factory.Unlock()
-	if factory.queue != nil {
-		factory.queue.Stop()
-		factory.queue.ResetKeys()
-		factory.queue = nil
-	}
 }
 
 func (factory *redismqQFactory) PubSub(name string) (PubSubQ, error) {
 	return &redismqQ{name: name, factory: factory}, nil
-}
-
-func (factory *redismqQFactory) Queue() (*redisqueue.Queue, error) {
-	factory.Lock()
-	defer factory.Unlock()
-	if factory.queue != nil {
-		return factory.queue, nil
-	}
-	host, _ := config.GetString("redis-queue:host")
-	port, _ := config.GetInt("redis-queue:port")
-	password, _ := config.GetString("redis-queue:password")
-	db, _ := config.GetInt("redis-queue:db")
-	blockTime, _ := config.GetDuration("redis-queue:block-time")
-	maxIdle, _ := config.GetInt("redis-queue:pool-max-idle-conn")
-	idleTimeout, _ := config.GetDuration("redis-queue:pool-idle-timeout")
-	if blockTime == 0 {
-		blockTime = 10
-	}
-	blockTime = blockTime * time.Second
-	if maxIdle == 0 {
-		maxIdle = 20
-	}
-	if idleTimeout == 0 {
-		idleTimeout = 300
-	}
-	idleTimeout = idleTimeout * time.Second
-	conf := redisqueue.QueueConfig{
-		Host:            host,
-		Port:            port,
-		Password:        password,
-		Db:              db,
-		PoolMaxIdle:     maxIdle,
-		PoolIdleTimeout: idleTimeout,
-		MaxBlockTime:    blockTime,
-	}
-	var err error
-	factory.queue, err = redisqueue.NewQueue(conf)
-	if err != nil {
-		return nil, err
-	}
-	go factory.queue.ProcessLoop()
-	return factory.queue, nil
 }
 
 func (factory *redismqQFactory) getConn(standAlone ...bool) (redis.Conn, error) {

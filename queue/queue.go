@@ -9,9 +9,11 @@ package queue
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/redisqueue"
+	"github.com/tsuru/monsterqueue"
+	"github.com/tsuru/monsterqueue/mongodb"
 )
 
 // PubSubQ represents an implementation that allows Publishing and
@@ -35,11 +37,6 @@ type QFactory interface {
 	// PubSub returns a PubSubQ instance, identified by the given name.
 	PubSub(name string) (PubSubQ, error)
 
-	// Queue returns a unique redisQueue instance, which will be initialized
-	// the first time it's called.
-	Queue() (*redisqueue.Queue, error)
-
-	// Resets the queue to a state before initialization
 	Reset()
 }
 
@@ -66,4 +63,40 @@ func Factory() (QFactory, error) {
 		return f, nil
 	}
 	return nil, fmt.Errorf("Queue %q is not known.", name)
+}
+
+var queueInstance monsterqueue.Queue
+var queueMutex sync.Mutex
+
+func ResetQueue() {
+	queueMutex.Lock()
+	defer queueMutex.Unlock()
+	if queueInstance != nil {
+		queueInstance.Stop()
+		queueInstance.ResetStorage()
+		queueInstance = nil
+	}
+}
+
+func Queue() (monsterqueue.Queue, error) {
+	queueMutex.Lock()
+	defer queueMutex.Unlock()
+	if queueInstance != nil {
+		return queueInstance, nil
+	}
+	queueStorageUrl, _ := config.GetString("queue:storage")
+	if queueStorageUrl == "" {
+		queueStorageUrl = "localhost:27017/tsuruqueue"
+	}
+	conf := mongodb.QueueConfig{
+		CollectionPrefix: "tsuru",
+		Url:              queueStorageUrl,
+	}
+	var err error
+	queueInstance, err = mongodb.NewQueue(conf)
+	if err != nil {
+		return nil, err
+	}
+	go queueInstance.ProcessLoop()
+	return queueInstance, nil
 }
