@@ -795,9 +795,9 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenServiceSe
 		Name: "myapp",
 		Env: map[string]bind.EnvVar{
 			"DATABASE_HOST": {
-				Name:   "DATABASE_HOST",
-				Value:  "localhost",
-				Public: false,
+				Name:         "DATABASE_HOST",
+				Value:        "localhost",
+				Public:       false,
 				InstanceName: "some service",
 			},
 		},
@@ -827,9 +827,9 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenServiceSe
 	c.Assert(err, check.IsNil)
 	expected := map[string]bind.EnvVar{
 		"DATABASE_HOST": {
-			Name:   "DATABASE_HOST",
-			Value:  "localhost",
-			Public: false,
+			Name:         "DATABASE_HOST",
+			Value:        "localhost",
+			Public:       false,
 			InstanceName: "some service",
 		},
 		"DATABASE_PASSWORD": {
