@@ -1530,7 +1530,6 @@ func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(
 `)
 }
 
-
 func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *check.C) {
 	a := app.App{Name: "vigil", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
@@ -1562,12 +1561,13 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *ch
 	c.Assert(action, rectest.IsRecorded)
 }
 
-func (s *S) TestSetEnvHandlerShouldNotChangeValueOfPrivateVariables(c *check.C) {
+func (s *S) TestSetEnvHandlerShouldNotChangeValueOfSerivceVariables(c *check.C) {
 	original := map[string]bind.EnvVar{
 		"DATABASE_HOST": {
-			Name:   "DATABASE_HOST",
-			Value:  "privatehost.com",
-			Public: false,
+			Name:         "DATABASE_HOST",
+			Value:        "privatehost.com",
+			Public:       false,
+			InstanceName: "some service",
 		},
 	}
 	a := app.App{Name: "losers", Platform: "zend", Teams: []string{s.team.Name}, Env: original}
