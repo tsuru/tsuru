@@ -513,15 +513,21 @@ func setEnv(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+	private := r.URL.Query().Get("private")
+	isPublicEnv := true
+	if private == "1" {
+		isPublicEnv = false
+	}
+	extra := fmt.Sprintf("private=%t", !isPublicEnv)
 	appName := r.URL.Query().Get(":app")
-	rec.Log(u.Email, "set-env", "app="+appName, variables)
+	rec.Log(u.Email, "set-env", "app="+appName, variables, extra)
 	app, err := getApp(appName, u)
 	if err != nil {
 		return err
 	}
 	envs := make([]bind.EnvVar, 0, len(variables))
 	for k, v := range variables {
-		envs = append(envs, bind.EnvVar{Name: k, Value: v, Public: true})
+		envs = append(envs, bind.EnvVar{Name: k, Value: v, Public: isPublicEnv})
 	}
 	w.Header().Set("Content-Type", "application/json")
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}

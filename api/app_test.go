@@ -1453,13 +1453,83 @@ func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *chec
 	action := rectest.Action{
 		Action: "set-env",
 		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + a.Name, envs},
+		Extra:  []interface{}{"app=" + a.Name, envs, "private=false"},
 	}
 	c.Assert(action, rectest.IsRecorded)
 	c.Assert(recorder.Body.String(), check.Equals,
 		`{"Message":"---- Setting 1 new environment variables ----\n"}
 `)
 }
+
+func (s *S) TestSetEnvHandlerShouldSetAPrivateEnvironmentVariableInTheApp(c *check.C) {
+	a := app.App{Name: "black-dog", Platform: "zend", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	defer s.deleteApp(&a)
+	url := fmt.Sprintf("/apps/%s/env?:app=%s&private=1", a.Name, a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"localhost"}`))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = setEnv(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	app, err := app.GetByName("black-dog")
+	c.Assert(err, check.IsNil)
+	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "localhost", Public: false}
+	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expected)
+	envs := map[string]string{
+		"DATABASE_HOST": "localhost",
+	}
+	action := rectest.Action{
+		Action: "set-env",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=" + a.Name, envs, "private=true"},
+	}
+	c.Assert(action, rectest.IsRecorded)
+	c.Assert(recorder.Body.String(), check.Equals,
+		`{"Message":"---- Setting 1 new environment variables ----\n"}
+`)
+}
+
+func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(c *check.C) {
+	a := app.App{Name: "black-dog", Platform: "zend", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	defer s.deleteApp(&a)
+	url := fmt.Sprintf("/apps/%s/env?:app=%s&private=1", a.Name, a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"localhost"}`))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = setEnv(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	request, err = http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"127.0.0.1"}`))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder = httptest.NewRecorder()
+	err = setEnv(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	app, err := app.GetByName("black-dog")
+	c.Assert(err, check.IsNil)
+	expected := bind.EnvVar{Name: "DATABASE_HOST", Value: "127.0.0.1", Public: false}
+	c.Assert(app.Env["DATABASE_HOST"], check.DeepEquals, expected)
+	envs := map[string]string{
+		"DATABASE_HOST": "127.0.0.1",
+	}
+	action := rectest.Action{
+		Action: "set-env",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=" + a.Name, envs, "private=true"},
+	}
+	c.Assert(action, rectest.IsRecorded)
+	c.Assert(recorder.Body.String(), check.Equals,
+		`{"Message":"---- Setting 1 new environment variables ----\n"}
+`)
+}
+
 
 func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *check.C) {
 	a := app.App{Name: "vigil", Platform: "zend", Teams: []string{s.team.Name}}
@@ -1487,7 +1557,7 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *ch
 	action := rectest.Action{
 		Action: "set-env",
 		User:   s.user.Email,
-		Extra:  []interface{}{"app=" + a.Name, envs},
+		Extra:  []interface{}{"app=" + a.Name, envs, "private=false"},
 	}
 	c.Assert(action, rectest.IsRecorded)
 }
