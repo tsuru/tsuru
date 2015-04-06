@@ -80,6 +80,62 @@ func (s *S) TestSchedulerSchedule(c *check.C) {
 	c.Check(node.Address, check.Equals, "http://url2:1234")
 }
 
+func (s *S) TestSchedulerScheduleByTeamOwner(c *check.C) {
+	a1 := app.App{Name: "impius", Teams: []string{}, TeamOwner: "tsuruteam"}
+	cont1 := container{ID: "1", Name: "impius1", AppName: a1.Name}
+	err := s.storage.Apps().Insert(a1)
+	c.Assert(err, check.IsNil)
+	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
+	p := provision.Pool{Name: "pool1", Teams: []string{"tsuruteam"}}
+	err = provision.AddPool(p.Name)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool(p.Name)
+	err = provision.AddTeamsToPool(p.Name, p.Teams)
+	c.Assert(err, check.IsNil)
+	contColl := s.p.collection()
+	err = contColl.Insert(cont1)
+	c.Assert(err, check.IsNil)
+	defer contColl.RemoveAll(bson.M{"name": cont1.Name})
+	scheduler := segregatedScheduler{provisioner: s.p}
+	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
+	s.p.cluster = clusterInstance
+	c.Assert(err, check.IsNil)
+	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
+	c.Assert(err, check.IsNil)
+	opts := docker.CreateContainerOptions{Name: cont1.Name}
+	node, err := scheduler.Schedule(clusterInstance, opts, a1.Name)
+	c.Assert(err, check.IsNil)
+	c.Check(node.Address, check.Equals, "http://url0:1234")
+}
+
+func (s *S) TestSchedulerScheduleByTeams(c *check.C) {
+	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nopool"}}
+	cont1 := container{ID: "1", Name: "impius1", AppName: a1.Name}
+	err := s.storage.Apps().Insert(a1)
+	c.Assert(err, check.IsNil)
+	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
+	p := provision.Pool{Name: "pool1", Teams: []string{"tsuruteam"}}
+	err = provision.AddPool(p.Name)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool(p.Name)
+	err = provision.AddTeamsToPool(p.Name, p.Teams)
+	c.Assert(err, check.IsNil)
+	contColl := s.p.collection()
+	err = contColl.Insert(cont1)
+	c.Assert(err, check.IsNil)
+	defer contColl.RemoveAll(bson.M{"name": cont1.Name})
+	scheduler := segregatedScheduler{provisioner: s.p}
+	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
+	s.p.cluster = clusterInstance
+	c.Assert(err, check.IsNil)
+	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
+	c.Assert(err, check.IsNil)
+	opts := docker.CreateContainerOptions{Name: cont1.Name}
+	node, err := scheduler.Schedule(clusterInstance, opts, a1.Name)
+	c.Assert(err, check.IsNil)
+	c.Check(node.Address, check.Equals, "http://url0:1234")
+}
+
 func (s *S) TestSchedulerScheduleNoName(c *check.C) {
 	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}, Pool: "pool1"}
 	a2 := app.App{Name: "mirror", Teams: []string{"tsuruteam"}, Pool: "pool1"}

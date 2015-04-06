@@ -157,6 +157,10 @@ type App interface {
 	GetRouter() (string, error)
 
 	GetPool() string
+
+	GetTeamOwner() string
+
+	GetTeamsName() []string
 }
 
 // CNameManager represents a provisioner that supports cname on applications.
