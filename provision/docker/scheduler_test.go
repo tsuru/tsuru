@@ -5,19 +5,13 @@
 package docker
 
 import (
-	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
-	"strings"
 	"sync"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/cmd"
-	"github.com/tsuru/tsuru/cmd/cmdtest"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -417,161 +411,6 @@ func (s *S) TestChooseNodeDistributesNodesEquallyDifferentApps(c *check.C) {
 	n, err = contColl.Find(bson.M{"hostaddr": "server2", "appname": "oblivion"}).Count()
 	c.Assert(err, check.Equals, nil)
 	c.Check(n, check.Equals, 1)
-}
-
-func (s *S) TestAddPoolToSchedulerCmdInfo(c *check.C) {
-	expected := cmd.Info{
-		Name:    "docker-pool-add",
-		Usage:   "docker-pool-add <pool>",
-		Desc:    "Add a pool to cluster",
-		MinArgs: 1,
-	}
-	cmd := addPoolToSchedulerCmd{}
-	c.Assert(cmd.Info(), check.DeepEquals, &expected)
-}
-
-func (s *S) TestAddPoolToTheSchedulerCmd(c *check.C) {
-	var buf bytes.Buffer
-	context := cmd.Context{Args: []string{"poolTest"}, Stdout: &buf}
-	trans := &cmdtest.ConditionalTransport{
-		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
-		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/docker/pool"
-		},
-	}
-	manager := cmd.Manager{}
-	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
-	cmd := addPoolToSchedulerCmd{}
-	err := cmd.Run(&context, client)
-	c.Assert(err, check.IsNil)
-}
-
-func (s *S) TestRemovePoolFromSchedulerCmdInfo(c *check.C) {
-	expected := cmd.Info{
-		Name:    "docker-pool-remove",
-		Usage:   "docker-pool-remove <pool> [-y]",
-		Desc:    "Remove a pool to cluster",
-		MinArgs: 1,
-	}
-	cmd := removePoolFromSchedulerCmd{}
-	c.Assert(cmd.Info(), check.DeepEquals, &expected)
-}
-
-func (s *S) TestRemovePoolFromTheSchedulerCmd(c *check.C) {
-	var buf bytes.Buffer
-	context := cmd.Context{Args: []string{"poolTest"}, Stdout: &buf}
-	trans := &cmdtest.ConditionalTransport{
-		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
-		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/docker/pool"
-		},
-	}
-	manager := cmd.Manager{}
-	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
-	cmd := removePoolFromSchedulerCmd{}
-	cmd.Flags().Parse(true, []string{"-y"})
-	err := cmd.Run(&context, client)
-	c.Assert(err, check.IsNil)
-}
-
-func (s *S) TestRemovePoolFromTheSchedulerCmdConfirmation(c *check.C) {
-	var stdout bytes.Buffer
-	context := cmd.Context{
-		Args:   []string{"poolX"},
-		Stdout: &stdout,
-		Stdin:  strings.NewReader("n\n"),
-	}
-	command := removePoolFromSchedulerCmd{}
-	err := command.Run(&context, nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(stdout.String(), check.Equals, "Are you sure you want to remove \"poolX\" pool? (y/n) Abort.\n")
-}
-
-func (s *S) TestListPoolsInTheSchedulerCmdInfo(c *check.C) {
-	expected := cmd.Info{
-		Name:  "docker-pool-list",
-		Usage: "docker-pool-list",
-		Desc:  "List available pools in the cluster",
-	}
-	cmd := listPoolsInTheSchedulerCmd{}
-	c.Assert(cmd.Info(), check.DeepEquals, &expected)
-}
-
-func (s *S) TestListPoolsInTheSchedulerCmdRun(c *check.C) {
-	var buf bytes.Buffer
-	pool := provision.Pool{Name: "pool1", Teams: []string{"tsuruteam", "ateam"}}
-	pools := []provision.Pool{pool}
-	poolsJson, _ := json.Marshal(pools)
-	ctx := cmd.Context{Stdout: &buf}
-	trans := &cmdtest.ConditionalTransport{
-		Transport: cmdtest.Transport{Message: string(poolsJson), Status: http.StatusOK},
-		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/docker/pool"
-		},
-	}
-	manager := cmd.Manager{}
-	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
-	err := listPoolsInTheSchedulerCmd{}.Run(&ctx, client)
-	c.Assert(err, check.IsNil)
-	expected := `+-------+------------------+
-| Pools | Teams            |
-+-------+------------------+
-| pool1 | tsuruteam, ateam |
-+-------+------------------+
-`
-	c.Assert(buf.String(), check.Equals, expected)
-}
-
-func (s *S) TestAddTeamsToPoolCmdInfo(c *check.C) {
-	expected := cmd.Info{
-		Name:    "docker-pool-teams-add",
-		Usage:   "docker-pool-teams-add <pool> <teams>",
-		Desc:    "Add team to a pool",
-		MinArgs: 2,
-	}
-	cmd := addTeamsToPoolCmd{}
-	c.Assert(cmd.Info(), check.DeepEquals, &expected)
-}
-
-func (s *S) TestAddTeamsToPoolCmdRun(c *check.C) {
-	var buf bytes.Buffer
-	ctx := cmd.Context{Stdout: &buf, Args: []string{"pool1", "team1", "team2"}}
-	trans := &cmdtest.ConditionalTransport{
-		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
-		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/docker/pool/team"
-		},
-	}
-	manager := cmd.Manager{}
-	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
-	err := addTeamsToPoolCmd{}.Run(&ctx, client)
-	c.Assert(err, check.IsNil)
-}
-
-func (s *S) TestRemoveTeamsFromPoolCmdInfo(c *check.C) {
-	expected := cmd.Info{
-		Name:    "docker-pool-teams-remove",
-		Usage:   "docker-pool-teams-remove <pool> <teams>",
-		Desc:    "Remove team from pool",
-		MinArgs: 2,
-	}
-	cmd := removeTeamsFromPoolCmd{}
-	c.Assert(cmd.Info(), check.DeepEquals, &expected)
-}
-
-func (s *S) TestRemoveTeamsFromPoolCmdRun(c *check.C) {
-	var buf bytes.Buffer
-	ctx := cmd.Context{Stdout: &buf, Args: []string{"pool1", "team1"}}
-	trans := &cmdtest.ConditionalTransport{
-		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
-		CondFunc: func(req *http.Request) bool {
-			return req.URL.Path == "/docker/pool/team"
-		},
-	}
-	manager := cmd.Manager{}
-	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
-	err := removeTeamsFromPoolCmd{}.Run(&ctx, client)
-	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestChooseContainerToBeRemoved(c *check.C) {

@@ -8,13 +8,14 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"gopkg.in/mgo.v2/bson"
 	"io"
 	"io/ioutil"
 	"net/url"
 	"strings"
 	"sync"
 	"time"
+
+	"gopkg.in/mgo.v2/bson"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
@@ -726,11 +727,6 @@ func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 		&addNodeToSchedulerCmd{},
 		&removeNodeFromSchedulerCmd{},
 		&listNodesInTheSchedulerCmd{},
-		addPoolToSchedulerCmd{},
-		&removePoolFromSchedulerCmd{},
-		listPoolsInTheSchedulerCmd{},
-		addTeamsToPoolCmd{},
-		removeTeamsFromPoolCmd{},
 		fixContainersCmd{},
 		&listHealingHistoryCmd{},
 		&listAutoScaleHistoryCmd{},
