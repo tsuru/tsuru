@@ -1359,6 +1359,61 @@ func (s *AuthSuite) TestRemoveUser(c *check.C) {
 	c.Assert(repositorytest.Users(), check.DeepEquals, []string{"whydidifall@thewho.com"})
 }
 
+func (s *AuthSuite) TestRemoveAnotherUser(c *check.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	u := auth.User{Email: "her-voices@painofsalvation.com", Password: "123456"}
+	_, err := nativeScheme.Create(&u)
+	c.Assert(err, check.IsNil)
+	defer conn.Users().Remove(bson.M{"email": u.Email})
+	request, err := http.NewRequest("DELETE", "/users?user="+u.Email, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = removeUser(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	n, err := conn.Users().Find(bson.M{"email": u.Email}).Count()
+	c.Assert(err, check.IsNil)
+	c.Assert(n, check.Equals, 0)
+	action := rectest.Action{Action: "remove-user", User: u.Email}
+	c.Assert(action, rectest.IsRecorded)
+	c.Assert(repositorytest.Users(), check.DeepEquals, []string{"whydidifall@thewho.com"})
+}
+
+func (s *AuthSuite) TestRemoveAnotherUserNonAdmin(c *check.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	u := auth.User{Email: "her-voices@painofsalvation.com", Password: "123456"}
+	_, err := nativeScheme.Create(&u)
+	c.Assert(err, check.IsNil)
+	defer conn.Users().Remove(bson.M{"email": u.Email})
+	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
+	c.Assert(err, check.IsNil)
+	defer conn.Tokens().Remove(bson.M{"token": token.GetValue()})
+	request, err := http.NewRequest("DELETE", "/users?user="+s.user.Email, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = removeUser(recorder, request, token)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Code, check.Equals, http.StatusForbidden)
+	c.Assert(e.Message, check.Equals, "you're not allowed to remove this user")
+}
+
+func (s *AuthSuite) TestRemoveUserNonSpecifiedUserAdmin(c *check.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	request, err := http.NewRequest("DELETE", "/users", nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = removeUser(recorder, request, s.token)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(e.Message, check.Equals, "please specify the user you want to remove")
+}
+
 func (s *AuthSuite) TestRemoveUserWithTheUserBeingLastMemberOfATeam(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()

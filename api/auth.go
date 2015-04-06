@@ -478,6 +478,17 @@ func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+	email := r.URL.Query().Get("user")
+	if email != "" && u.IsAdmin() {
+		u, err = auth.GetUserByEmail(email)
+		if err != nil {
+			return err
+		}
+	} else if u.IsAdmin() {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: "please specify the user you want to remove"}
+	} else if email != "" {
+		return &errors.HTTP{Code: http.StatusForbidden, Message: "you're not allowed to remove this user"}
+	}
 	alwdApps, err := u.AllowedApps()
 	if err != nil {
 		return err
