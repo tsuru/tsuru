@@ -142,7 +142,7 @@ command:
 
 ::
 
-    $ tsuru key-add ~/.ssh/id_rsa.pub
+    $ tsuru key-add mykey ~/.ssh/id_rsa.pub
 
 You can use ``git remote add`` to avoid typing the entire remote url every time
 you want to push:
