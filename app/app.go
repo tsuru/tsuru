@@ -673,6 +673,16 @@ func (app *App) GetPool() string {
 	return app.Pool
 }
 
+// GetTeamOwner returns the team owner of the app.
+func (app *App) GetTeamOwner() string {
+	return app.TeamOwner
+}
+
+// GetTeamsNames returns the names of teams app.
+func (app *App) GetTeamsName() []string {
+	return app.Teams
+}
+
 // GetMemory returns the memory limit (in bytes) for the app.
 func (app *App) GetMemory() int64 {
 	return app.Plan.Memory

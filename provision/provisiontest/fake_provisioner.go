@@ -42,6 +42,8 @@ type FakeApp struct {
 	instances      map[string][]bind.ServiceInstance
 	Pool           string
 	UpdatePlatform bool
+	TeamOwner      string
+	Teams          []string
 }
 
 func NewFakeApp(name, platform string, units int) *FakeApp {
@@ -274,6 +276,14 @@ func (app *FakeApp) GetUpdatePlatform() bool {
 
 func (app *FakeApp) GetRouter() (string, error) {
 	return config.GetString("docker:router")
+}
+
+func (app *FakeApp) GetTeamsName() []string {
+	return app.Teams
+}
+
+func (app *FakeApp) GetTeamOwner() string {
+	return app.TeamOwner
 }
 
 type Cmd struct {
