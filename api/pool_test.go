@@ -10,8 +10,10 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func (s *S) TestAddPoolHandler(c *check.C) {
@@ -92,4 +94,37 @@ func (s *S) TestRemoveTeamsToPoolHandler(c *check.C) {
 	p, err := provision.ListPools(nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(p[0].Teams, check.DeepEquals, []string{})
+}
+
+func (s *S) TestListPoolsToUserHandler(c *check.C) {
+	u := auth.User{Email: "passing-by@angra.com", Password: "123456"}
+	_, err := nativeScheme.Create(&u)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
+	c.Assert(err, check.IsNil)
+	defer s.conn.Tokens().Remove(bson.M{"token": token.GetValue()})
+	team := auth.Team{Name: "angra", Users: []string{s.user.Email, u.Email}}
+	err = s.conn.Teams().Insert(team)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
+	pool := provision.Pool{Name: "pool1", Teams: []string{"angra"}}
+	err = provision.AddPool(pool.Name)
+	c.Assert(err, check.IsNil)
+	err = provision.AddTeamsToPool(pool.Name, pool.Teams)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool(pool.Name)
+	err = provision.AddPool("nopool")
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("nopool")
+	poolsExpected := []provision.Pool{pool}
+	req, err := http.NewRequest("GET", "/pool", nil)
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	err = listPoolsToUser(rec, req, token)
+	c.Assert(err, check.IsNil)
+	var pools []provision.Pool
+	err = json.NewDecoder(rec.Body).Decode(&pools)
+	c.Assert(err, check.IsNil)
+	c.Assert(pools, check.DeepEquals, poolsExpected)
 }

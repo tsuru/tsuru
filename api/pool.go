@@ -9,6 +9,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"gopkg.in/mgo.v2/bson"
+
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/rec"
@@ -20,7 +22,11 @@ func listPoolsToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error
 		return err
 	}
 	rec.Log(u.Email, "pool-list")
-	pools, err := []string{}, nil //app.Provisioner.ListPoolToUser(u)
+	teams, err := u.Teams()
+	if err != nil {
+		return err
+	}
+	pools, err := provision.ListPools(bson.M{"teams": bson.M{"$in": auth.GetTeamsNames(teams)}})
 	if err != nil {
 		return err
 	}
