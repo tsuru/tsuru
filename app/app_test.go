@@ -2658,6 +2658,83 @@ func (s *S) TestAppValidateTeamOwnerAdminCanSetAppToAnyTeam(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
+func (s *S) TestAppSetPoolByTeamOwner(c *check.C) {
+	err := provision.AddPool("test")
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("test")
+	err = provision.AddTeamsToPool("test", []string{"test"})
+	c.Assert(err, check.IsNil)
+	app := App{
+		Name:      "test",
+		TeamOwner: "test",
+	}
+	err = app.SetPool()
+	c.Assert(err, check.IsNil)
+	c.Assert(app.Pool, check.Equals, "test")
+}
+
+func (s *S) TestAppSetPoolFallback(c *check.C) {
+	app := App{
+		Name: "test",
+	}
+	err := app.SetPool()
+	c.Assert(err, check.IsNil)
+	c.Assert(app.Pool, check.Equals, "pool1")
+}
+
+func (s *S) TestAppSetPoolByPool(c *check.C) {
+	err := provision.AddPool("test")
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("test")
+	err = provision.AddTeamsToPool("test", []string{"test"})
+	c.Assert(err, check.IsNil)
+	err = provision.AddPool("pool2")
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("pool2")
+	err = provision.AddTeamsToPool("pool2", []string{"test"})
+	c.Assert(err, check.IsNil)
+	app := App{
+		Name:      "test",
+		Pool:      "pool2",
+		TeamOwner: "test",
+	}
+	err = app.SetPool()
+	c.Assert(err, check.IsNil)
+	c.Assert(app.Pool, check.Equals, "pool2")
+}
+
+func (s *S) TestAppSetPoolManyPools(c *check.C) {
+	err := provision.AddPool("test")
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("test")
+	err = provision.AddTeamsToPool("test", []string{"test"})
+	c.Assert(err, check.IsNil)
+	err = provision.AddPool("pool2")
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("pool2")
+	err = provision.AddTeamsToPool("pool2", []string{"test"})
+	c.Assert(err, check.IsNil)
+	app := App{
+		Name:      "test",
+		TeamOwner: "test",
+	}
+	err = app.SetPool()
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.Equals, ManyPoolsError)
+}
+
+func (s *S) TestAppSetPoolNoFallback(c *check.C) {
+	err := provision.RemovePool("pool1")
+	c.Assert(err, check.IsNil)
+	defer provision.AddPool("pool1")
+	app := App{
+		Name: "test",
+	}
+	err = app.SetPool()
+	c.Assert(err, check.NotNil)
+	c.Assert(app.Pool, check.Equals, "")
+}
+
 func (s *S) TestUpdateCustomData(c *check.C) {
 	a := App{Name: "my-test-app"}
 	err := s.conn.Apps().Insert(a)

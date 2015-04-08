@@ -544,7 +544,7 @@ func (app *App) ValidateTeamOwner(user *auth.User) error {
 func (app *App) SetPool() error {
 	var query bson.M
 	if app.Pool != "" {
-		query = bson.M{"_id": app.Pool}
+		query = bson.M{"$and": []bson.M{{"_id": app.Pool}, {"teams": app.TeamOwner}}}
 	} else {
 		query = bson.M{"teams": app.TeamOwner}
 	}
@@ -560,6 +560,9 @@ func (app *App) SetPool() error {
 		pools, err = provision.ListPools(query)
 		if err != nil {
 			return err
+		}
+		if len(pools) == 0 {
+			return stderr.New("No fallback pool.")
 		}
 	}
 	app.Pool = pools[0].Name
