@@ -42,6 +42,7 @@ func (s *S) SetUpTest(c *check.C) {
 	aws.Regions["myregion"] = s.region
 	config.Set("iaas:ec2:key-id", "mykey")
 	config.Set("iaas:ec2:secret-key", "mysecret")
+	config.Set("queue:mongo-database", "queue_ec2_iaas")
 	queue.ResetQueue()
 }
 
