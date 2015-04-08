@@ -18,8 +18,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/iaas"
+	"github.com/tsuru/tsuru/queue"
 )
 
 func init() {
@@ -62,6 +64,18 @@ func (i *CloudstackIaaS) HealthCheck() error {
 	return nil
 }
 
+func (i *CloudstackIaaS) Initialize() error {
+	q, err := queue.Queue()
+	if err != nil {
+		return err
+	}
+	err = q.RegisterTask(&machineCreate{iaas: i})
+	if err != nil {
+		return err
+	}
+	return q.RegisterTask(&machineDelete{iaas: i})
+}
+
 func validateParams(params map[string]string) error {
 	mandatory := []string{"networkids", "templateid", "serviceofferingid", "zoneid"}
 	for _, p := range mandatory {
@@ -71,6 +85,10 @@ func validateParams(params map[string]string) error {
 		}
 	}
 	return nil
+}
+
+func (i *CloudstackIaaS) taskName(name string) string {
+	return fmt.Sprintf("%s-%s", name, i.base.IaaSName)
 }
 
 func (i *CloudstackIaaS) do(cmd string, params map[string]string, result interface{}) error {
@@ -101,44 +119,28 @@ func (i *CloudstackIaaS) do(cmd string, params map[string]string, result interfa
 }
 
 func (i *CloudstackIaaS) DeleteMachine(machine *iaas.Machine) error {
-	var volumesRsp ListVolumesResponse
-	err := i.do("listVolumes", ApiParams{
-		"virtualmachineid": machine.Id,
-		"projectid":        machine.CreationParams["projectid"],
-	}, &volumesRsp)
+	q, err := queue.Queue()
 	if err != nil {
 		return err
 	}
-	var destroyData DestroyVirtualMachineResponse
-	err = i.do("destroyVirtualMachine", ApiParams{
-		"id": machine.Id,
-	}, &destroyData)
+	rawWait, _ := i.base.GetConfigString("wait-timeout")
+	maxWaitTime, _ := strconv.Atoi(rawWait)
+	if maxWaitTime == 0 {
+		maxWaitTime = 300
+	}
+	waitDuration := time.Duration(maxWaitTime) * time.Second
+	job, err := q.EnqueueWait(i.taskName(machineDeleteTaskName), monsterqueue.JobParams{
+		"vmId":      machine.Id,
+		"projectId": machine.CreationParams["projectid"],
+	}, waitDuration)
 	if err != nil {
+		if err == monsterqueue.ErrQueueWaitTimeout {
+			return fmt.Errorf("cloudstack: time out after %v waiting for instance %s to be destroyed", waitDuration, machine.Id)
+		}
 		return err
 	}
-	_, err = i.waitForAsyncJob(destroyData.DestroyVirtualMachineResponse.JobID)
-	if err != nil {
-		return err
-	}
-	for _, vol := range volumesRsp.ListVolumesResponse.Volume {
-		if vol.Type != diskDataDisk {
-			continue
-		}
-		var detachRsp DetachVolumeResponse
-		err = i.do("detachVolume", ApiParams{"id": vol.ID}, &detachRsp)
-		if err != nil {
-			return err
-		}
-		_, err = i.waitForAsyncJob(detachRsp.DetachVolumeResponse.JobID)
-		if err != nil {
-			return err
-		}
-		err = i.do("deleteVolume", ApiParams{"id": vol.ID}, nil)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+	_, err = job.Result()
+	return err
 }
 
 func (i *CloudstackIaaS) CreateMachine(params map[string]string) (*iaas.Machine, error) {
@@ -147,6 +149,10 @@ func (i *CloudstackIaaS) CreateMachine(params map[string]string) (*iaas.Machine,
 		return nil, err
 	}
 	userData, err := i.base.ReadUserData()
+	if err != nil {
+		return nil, err
+	}
+	q, err := queue.Queue()
 	if err != nil {
 		return nil, err
 	}
@@ -160,13 +166,31 @@ func (i *CloudstackIaaS) CreateMachine(params map[string]string) (*iaas.Machine,
 	if err != nil {
 		return nil, err
 	}
-	IpAddress, err := i.waitVMIsCreated(vmStatus.DeployVirtualMachineResponse.JobID, vmStatus.DeployVirtualMachineResponse.ID, params["projectid"])
+	rawWait, _ := i.base.GetConfigString("wait-timeout")
+	maxWaitTime, _ := strconv.Atoi(rawWait)
+	if maxWaitTime == 0 {
+		maxWaitTime = 300
+	}
+	waitDuration := time.Duration(maxWaitTime) * time.Second
+	job, err := q.EnqueueWait(i.taskName(machineCreateTaskName), monsterqueue.JobParams{
+		"jobId":     vmStatus.DeployVirtualMachineResponse.JobID,
+		"vmId":      vmStatus.DeployVirtualMachineResponse.ID,
+		"projectId": params["projectid"],
+	}, waitDuration)
+	if err != nil {
+		if err == monsterqueue.ErrQueueWaitTimeout {
+			return nil, fmt.Errorf("cloudstack: time out after %v waiting for instance %s to start", waitDuration, vmStatus.DeployVirtualMachineResponse.ID)
+		}
+		return nil, err
+	}
+	result, err := job.Result()
 	if err != nil {
 		return nil, err
 	}
+	ipAddress := result.(string)
 	m := &iaas.Machine{
 		Id:      vmStatus.DeployVirtualMachineResponse.ID,
-		Address: IpAddress,
+		Address: ipAddress,
 		Status:  "running",
 	}
 	return m, nil
@@ -206,14 +230,8 @@ func (i *CloudstackIaaS) buildUrl(command string, params map[string]string) (str
 }
 
 func (i *CloudstackIaaS) waitForAsyncJob(jobId string) (QueryAsyncJobResultResponse, error) {
-	rawWait, _ := i.base.GetConfigString("wait-timeout")
-	maxWaitTime, _ := strconv.Atoi(rawWait)
-	if maxWaitTime == 0 {
-		maxWaitTime = 300
-	}
 	var jobResponse QueryAsyncJobResultResponse
-	t0 := time.Now()
-	for time.Now().Sub(t0) < time.Duration(maxWaitTime)*time.Second {
+	for {
 		err := i.do("queryAsyncJobResult", ApiParams{"jobid": jobId}, &jobResponse)
 		if err != nil {
 			return jobResponse, err
@@ -226,7 +244,6 @@ func (i *CloudstackIaaS) waitForAsyncJob(jobId string) (QueryAsyncJobResultRespo
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
-	return jobResponse, fmt.Errorf("cloudstack: time out after %v waiting for job %q", time.Now().Sub(t0), jobId)
 }
 
 func (i *CloudstackIaaS) waitVMIsCreated(jobId, machineId, projectId string) (string, error) {

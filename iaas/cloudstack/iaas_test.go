@@ -10,9 +10,11 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/iaas"
+	"github.com/tsuru/tsuru/queue"
 	"gopkg.in/check.v1"
 )
 
@@ -26,6 +28,11 @@ func (s *cloudstackSuite) SetUpSuite(c *check.C) {
 	config.Set("iaas:cloudstack:api-key", "test")
 	config.Set("iaas:cloudstack:secret-key", "test")
 	config.Set("iaas:cloudstack:url", "test")
+}
+
+func (s *cloudstackSuite) SetUpTest(c *check.C) {
+	config.Set("queue:mongo-database", "queue_cloudstack_iaas")
+	queue.ResetQueue()
 }
 
 func (s *cloudstackSuite) TestCreateMachine(c *check.C) {
@@ -48,6 +55,8 @@ func (s *cloudstackSuite) TestCreateMachine(c *check.C) {
 	defer fakeServer.Close()
 	config.Set("iaas:cloudstack:url", fakeServer.URL)
 	cs := newCloudstackIaaS("cloudstack")
+	err := (cs.(*CloudstackIaaS)).Initialize()
+	c.Assert(err, check.IsNil)
 	params := map[string]string{
 		"projectid":         "val",
 		"networkids":        "val",
@@ -79,6 +88,8 @@ func (s *cloudstackSuite) TestCreateMachineAsyncFailure(c *check.C) {
 	defer fakeServer.Close()
 	config.Set("iaas:cloudstack:url", fakeServer.URL)
 	cs := newCloudstackIaaS("cloudstack")
+	err := (cs.(*CloudstackIaaS)).Initialize()
+	c.Assert(err, check.IsNil)
 	params := map[string]string{
 		"projectid":         "val",
 		"networkids":        "val",
@@ -86,22 +97,26 @@ func (s *cloudstackSuite) TestCreateMachineAsyncFailure(c *check.C) {
 		"serviceofferingid": "val",
 		"zoneid":            "val",
 	}
-	_, err := cs.CreateMachine(params)
+	_, err = cs.CreateMachine(params)
 	c.Assert(err, check.ErrorMatches, ".*my weird error.*")
 	c.Assert(calls, check.DeepEquals, []string{"deployVirtualMachine", "queryAsyncJobResult"})
 }
 
 func (s *cloudstackSuite) TestCreateMachineValidateParams(c *check.C) {
 	cs := newCloudstackIaaS("cloudstack")
+	err := (cs.(*CloudstackIaaS)).Initialize()
+	c.Assert(err, check.IsNil)
 	params := map[string]string{
 		"name": "something",
 	}
-	_, err := cs.CreateMachine(params)
+	_, err = cs.CreateMachine(params)
 	c.Assert(err, check.ErrorMatches, "param \"networkids\" is mandatory")
 }
 
 func (s *cloudstackSuite) TestBuildUrlToCloudstack(c *check.C) {
 	cs := newCloudstackIaaS("cloudstack")
+	err := (cs.(*CloudstackIaaS)).Initialize()
+	c.Assert(err, check.IsNil)
 	params := map[string]string{"atest": "2"}
 	csIaaS, ok := cs.(*CloudstackIaaS)
 	c.Assert(ok, check.Equals, true)
@@ -147,8 +162,10 @@ func (s *cloudstackSuite) TestDeleteMachine(c *check.C) {
 	defer fakeServer.Close()
 	config.Set("iaas:cloudstack:url", fakeServer.URL)
 	cs := newCloudstackIaaS("cloudstack")
+	err := (cs.(*CloudstackIaaS)).Initialize()
+	c.Assert(err, check.IsNil)
 	machine := iaas.Machine{Id: "myMachineId", CreationParams: map[string]string{"projectid": "projid"}}
-	err := cs.DeleteMachine(&machine)
+	err = cs.DeleteMachine(&machine)
 	c.Assert(err, check.IsNil)
 	c.Assert(calls, check.DeepEquals, []string{
 		"listVolumes",
@@ -182,8 +199,10 @@ func (s *cloudstackSuite) TestDeleteMachineAsyncFail(c *check.C) {
 	defer fakeServer.Close()
 	config.Set("iaas:cloudstack:url", fakeServer.URL)
 	cs := newCloudstackIaaS("cloudstack")
+	err := (cs.(*CloudstackIaaS)).Initialize()
+	c.Assert(err, check.IsNil)
 	machine := iaas.Machine{Id: "myMachineId", CreationParams: map[string]string{"projectid": "projid"}}
-	err := cs.DeleteMachine(&machine)
+	err = cs.DeleteMachine(&machine)
 	c.Assert(err, check.ErrorMatches, ".*my awesome err.*")
 	c.Assert(calls, check.DeepEquals, []string{
 		"listVolumes",
@@ -199,16 +218,20 @@ func (s *cloudstackSuite) TestDeleteMachineError(c *check.C) {
 	config.Set("iaas:cloudstack:url", server.URL)
 	defer server.Close()
 	cs := newCloudstackIaaS("cloudstack")
+	err := (cs.(*CloudstackIaaS)).Initialize()
+	c.Assert(err, check.IsNil)
 	machine := iaas.Machine{Id: "myMachineId"}
-	err := cs.DeleteMachine(&machine)
+	err = cs.DeleteMachine(&machine)
 	c.Assert(err, check.ErrorMatches, ".*Unexpected response code.*")
 }
 
 func (s *cloudstackSuite) TestDeleteMachineErrorNoServer(c *check.C) {
 	config.Set("iaas:cloudstack:url", "http://invalidurl.invalid.invalid")
 	cs := newCloudstackIaaS("cloudstack")
+	err := (cs.(*CloudstackIaaS)).Initialize()
+	c.Assert(err, check.IsNil)
 	machine := iaas.Machine{Id: "myMachineId"}
-	err := cs.DeleteMachine(&machine)
+	err = cs.DeleteMachine(&machine)
 	c.Assert(err, check.ErrorMatches, ".*no such host.*")
 }
 
@@ -221,8 +244,10 @@ func (s *cloudstackSuite) TestHealthCheck(c *check.C) {
 	defer fakeServer.Close()
 	config.Set("iaas:cloudstack:url", fakeServer.URL)
 	cs := newCloudstackIaaS("cloudstack")
+	err := (cs.(*CloudstackIaaS)).Initialize()
+	c.Assert(err, check.IsNil)
 	healthchecker := cs.(iaas.HealthChecker)
-	err := healthchecker.HealthCheck()
+	err = healthchecker.HealthCheck()
 	c.Assert(err, check.IsNil)
 	c.Assert(command, check.Equals, "listZones")
 }
@@ -236,8 +261,10 @@ func (s *cloudstackSuite) TestHealthCheckFailure(c *check.C) {
 	defer fakeServer.Close()
 	config.Set("iaas:cloudstack:url", fakeServer.URL)
 	cs := newCloudstackIaaS("cloudstack")
+	err := (cs.(*CloudstackIaaS)).Initialize()
+	c.Assert(err, check.IsNil)
 	healthchecker := cs.(iaas.HealthChecker)
-	err := healthchecker.HealthCheck()
+	err = healthchecker.HealthCheck()
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, `"cloudstack" - not enough zones available, want at least 1, got 0`)
 	c.Assert(command, check.Equals, "listZones")
@@ -250,10 +277,27 @@ func (s *cloudstackSuite) TestCreateMachineTimeout(c *check.C) {
 		calls = append(calls, cmd)
 		w.Header().Set("Content-type", "application/json")
 		if cmd == "queryAsyncJobResult" {
-			fmt.Fprintf(w, `{"queryasyncjobresultresponse": {"jobstatus": %d}}`, jobInProgress)
+			status := jobInProgress
+			if len(calls) > 2 {
+				status = 1
+			}
+			fmt.Fprintf(w, `{"queryasyncjobresultresponse": {"jobstatus": %d}}`, status)
 		}
 		if cmd == "deployVirtualMachine" {
 			fmt.Fprintln(w, `{"deployvirtualmachineresponse": {"id": "0366ae09-0a77-4e2b-8595-3b749764a107", "jobid": "test"}}`)
+		}
+		if cmd == "listVirtualMachines" {
+			json := `{"listvirtualmachinesresponse":{"count":1,"virtualmachine":[{"id":"0366ae09-0a77-4e2b-8595-3b749764a107","name":"vm-0366ae09-0a77-4e2b-8595-3b749764a107","projectid":"a98738c9-5acd-43e3-b1a1-972a3db5b196","nic":[{"id":"40cd6225-9475-44a3-8288-d7a9a485d8ac","networkid":"18c20437-df18-4757-8435-1230248f955b","ipaddress":"10.24.16.241"}],"jobid":"82a574cc-43f2-440d-8774-e638065c37af"}]}}`
+			fmt.Fprintln(w, json)
+		}
+		if cmd == "listVolumes" {
+			fmt.Fprintln(w, `{"listvolumesresponse": {"volume": [ {"id": "v1", "type": "ROOT"}, {"id": "v2", "type": "DATADISK"} ]}}`)
+		}
+		if cmd == "destroyVirtualMachine" {
+			fmt.Fprintln(w, `{"destroyvirtualmachineresponse": {"jobid": "job1"}}`)
+		}
+		if cmd == "detachVolume" {
+			fmt.Fprintln(w, `{"detachvolumeresponse": {"jobid": "job1"}}`)
 		}
 	}))
 	defer fakeServer.Close()
@@ -261,6 +305,8 @@ func (s *cloudstackSuite) TestCreateMachineTimeout(c *check.C) {
 	config.Set("iaas:cloudstack:wait-timeout", "1")
 	defer config.Unset("iaas:cloudstack:wait-timeout")
 	cs := newCloudstackIaaS("cloudstack")
+	err := (cs.(*CloudstackIaaS)).Initialize()
+	c.Assert(err, check.IsNil)
 	params := map[string]string{
 		"projectid":         "val",
 		"networkids":        "val",
@@ -268,9 +314,20 @@ func (s *cloudstackSuite) TestCreateMachineTimeout(c *check.C) {
 		"serviceofferingid": "val",
 		"zoneid":            "val",
 	}
-	_, err := cs.CreateMachine(params)
-	c.Assert(err, check.ErrorMatches, `cloudstack: time out after .+? waiting for job "test"`)
-	c.Assert(len(calls) >= 2, check.Equals, true)
-	c.Assert(calls[0], check.Equals, "deployVirtualMachine")
-	c.Assert(calls[1], check.Equals, "queryAsyncJobResult")
+	_, err = cs.CreateMachine(params)
+	c.Assert(err, check.ErrorMatches, `cloudstack: time out after .+? waiting for instance .+ to start`)
+	time.Sleep(2 * time.Second)
+	queue.ResetQueue()
+	c.Assert(calls, check.DeepEquals, []string{
+		"deployVirtualMachine",
+		"queryAsyncJobResult",
+		"queryAsyncJobResult",
+		"listVirtualMachines",
+		"listVolumes",
+		"destroyVirtualMachine",
+		"queryAsyncJobResult",
+		"detachVolume",
+		"queryAsyncJobResult",
+		"deleteVolume",
+	})
 }
