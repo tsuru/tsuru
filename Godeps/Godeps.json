@@ -114,7 +114,11 @@
 		},
 		{
 			"ImportPath": "github.com/tsuru/monsterqueue",
-			"Rev": "c7ef54ba9edab3e1a07841455909b23dc2b1cb7f"
+			"Rev": "188deb27b8723f75d25076fe84e1fd4cee0cfeae"
+		},
+		{
+			"ImportPath": "github.com/tsuru/monsterqueue/mongodb",
+			"Rev": "188deb27b8723f75d25076fe84e1fd4cee0cfeae"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/bcrypt",
