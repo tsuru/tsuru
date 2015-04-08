@@ -84,13 +84,15 @@ func Queue() (monsterqueue.Queue, error) {
 	if queueInstance != nil {
 		return queueInstance, nil
 	}
-	queueStorageUrl, _ := config.GetString("queue:storage")
-	if queueStorageUrl == "" {
-		queueStorageUrl = "localhost:27017/tsuruqueue"
+	queueMongoUrl, _ := config.GetString("queue:mongo-url")
+	if queueMongoUrl == "" {
+		queueMongoUrl = "localhost:27017"
 	}
+	queueMongoDB, _ := config.GetString("queue:mongo-database")
 	conf := mongodb.QueueConfig{
 		CollectionPrefix: "tsuru",
-		Url:              queueStorageUrl,
+		Url:              queueMongoUrl,
+		Database:         queueMongoDB,
 	}
 	var err error
 	queueInstance, err = mongodb.NewQueue(conf)
