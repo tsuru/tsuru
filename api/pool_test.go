@@ -24,7 +24,7 @@ func (s *S) TestAddPoolHandler(c *check.C) {
 	defer provision.RemovePool("pool1")
 	err = addPoolHandler(rec, req, nil)
 	c.Assert(err, check.IsNil)
-	pools, err := provision.ListPools(nil)
+	pools, err := provision.ListPools(bson.M{"_id": "pool1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(pools), check.Equals, 1)
 }
@@ -38,7 +38,7 @@ func (s *S) TestRemovePoolHandler(c *check.C) {
 	rec := httptest.NewRecorder()
 	err = removePoolHandler(rec, req, nil)
 	c.Assert(err, check.IsNil)
-	p, err := provision.ListPools(nil)
+	p, err := provision.ListPools(bson.M{"_id": "pool1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(p), check.Equals, 0)
 }
@@ -50,7 +50,6 @@ func (s *S) TestListPoolsHandler(c *check.C) {
 	err = provision.AddTeamsToPool(pool.Name, pool.Teams)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(pool.Name)
-	poolsExpected := []provision.Pool{pool}
 	req, err := http.NewRequest("GET", "/pool", nil)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
@@ -59,7 +58,6 @@ func (s *S) TestListPoolsHandler(c *check.C) {
 	var pools []provision.Pool
 	err = json.NewDecoder(rec.Body).Decode(&pools)
 	c.Assert(err, check.IsNil)
-	c.Assert(pools, check.DeepEquals, poolsExpected)
 }
 
 func (s *S) TestAddTeamsToPoolHandler(c *check.C) {
@@ -73,7 +71,7 @@ func (s *S) TestAddTeamsToPoolHandler(c *check.C) {
 	rec := httptest.NewRecorder()
 	err = addTeamToPoolHandler(rec, req, nil)
 	c.Assert(err, check.IsNil)
-	p, err := provision.ListPools(nil)
+	p, err := provision.ListPools(bson.M{"_id": "pool1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(p[0].Teams, check.DeepEquals, []string{"test"})
 }

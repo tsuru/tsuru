@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
@@ -64,9 +65,12 @@ func (s *DeploySuite) SetUpSuite(c *check.C) {
 	s.provisioner = provisiontest.NewFakeProvisioner()
 	app.Provisioner = s.provisioner
 	s.conn.Platforms().Insert(app.Platform{Name: "python"})
+	err = provision.AddPool("pool1")
+	c.Assert(err, check.IsNil)
 }
 
 func (s *DeploySuite) TearDownSuite(c *check.C) {
+	provision.RemovePool("pool1")
 	defer s.conn.Close()
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 }

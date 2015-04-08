@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
 	_ "github.com/tsuru/tsuru/queue/queuetest"
@@ -38,6 +39,7 @@ type S struct {
 	adminuser   *auth.User
 	admintoken  auth.Token
 	provisioner *provisiontest.FakeProvisioner
+	Pool        string
 }
 
 var _ = check.Suite(&S{})
@@ -97,9 +99,13 @@ func (s *S) SetUpSuite(c *check.C) {
 	app.AuthScheme = nativeScheme
 	p := app.Platform{Name: "zend"}
 	s.conn.Platforms().Insert(p)
+	s.Pool = "test1"
+	err = provision.AddPool("test1")
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TearDownSuite(c *check.C) {
+	provision.RemovePool("test1")
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 }
 

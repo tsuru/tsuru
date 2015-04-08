@@ -18,6 +18,7 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
 	_ "github.com/tsuru/tsuru/queue/queuetest"
@@ -39,6 +40,7 @@ type S struct {
 	admin       *auth.User
 	provisioner *provisiontest.FakeProvisioner
 	defaultPlan Plan
+	Pool        string
 }
 
 var _ = check.Suite(&S{})
@@ -104,9 +106,13 @@ func (s *S) SetUpSuite(c *check.C) {
 	}
 	err = s.conn.Plans().Insert(s.defaultPlan)
 	c.Assert(err, check.IsNil)
+	s.Pool = "pool1"
+	err = provision.AddPool(s.Pool)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TearDownSuite(c *check.C) {
+	provision.RemovePool(s.Pool)
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 }
 

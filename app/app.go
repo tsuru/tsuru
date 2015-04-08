@@ -36,6 +36,8 @@ var (
 	nameRegexp      = regexp.MustCompile(`^[a-z][a-z0-9-]{0,62}$`)
 	cnameRegexp     = regexp.MustCompile(`^(\*\.)?[a-zA-Z0-9][\w-.]+$`)
 	ErrUnitNotFound = stderr.New("unit not found")
+	NoPoolError     = stderr.New("pool not found.")
+	ManyPoolsError  = stderr.New("you have access to more than one pool. please choose one in app creation.")
 )
 
 const InternalAppName = "tsr"
@@ -197,7 +199,6 @@ func CreateApp(app *App, user *auth.User) error {
 	if err != nil {
 		return err
 	}
-	app.Plan = *plan
 	if app.TeamOwner == "" {
 		if len(teams) > 1 {
 			return ManyTeamsError{}
@@ -205,6 +206,11 @@ func CreateApp(app *App, user *auth.User) error {
 		app.TeamOwner = teams[0].Name
 	}
 	err = app.ValidateTeamOwner(user)
+	if err != nil {
+		return err
+	}
+	app.Plan = *plan
+	err = app.SetPool()
 	if err != nil {
 		return err
 	}
@@ -533,6 +539,31 @@ func (app *App) ValidateTeamOwner(user *auth.User) error {
 	}
 	errorMsg := fmt.Sprintf("You can not set %s team as app's owner. Please set one of your teams as app's owner.", app.TeamOwner)
 	return stderr.New(errorMsg)
+}
+
+func (app *App) SetPool() error {
+	var query bson.M
+	if app.Pool != "" {
+		query = bson.M{"_id": app.Pool}
+	} else {
+		query = bson.M{"teams": app.TeamOwner}
+	}
+	pools, err := provision.ListPools(query)
+	if err != nil {
+		return err
+	}
+	if len(pools) > 1 {
+		return ManyPoolsError
+	}
+	if len(pools) == 0 {
+		query := bson.M{"$or": []bson.M{{"teams": bson.M{"$exists": false}}, {"teams": bson.M{"$size": 0}}}}
+		pools, err = provision.ListPools(query)
+		if err != nil {
+			return err
+		}
+	}
+	app.Pool = pools[0].Name
+	return nil
 }
 
 // setEnv sets the given environment variable in the app.

@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/rec/rectest"
@@ -64,9 +65,12 @@ func (s *AuthSuite) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	conn.Platforms().Insert(app.Platform{Name: "python"})
+	err = provision.AddPool("test1")
+	c.Assert(err, check.IsNil)
 }
 
 func (s *AuthSuite) TearDownSuite(c *check.C) {
+	provision.RemovePool("test1")
 	conn, _ := db.Conn()
 	defer conn.Close()
 	dbtest.ClearAllCollections(conn.Apps().Database)
