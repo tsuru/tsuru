@@ -15,8 +15,6 @@ import (
 	"sync"
 	"time"
 
-	"gopkg.in/mgo.v2/bson"
-
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
@@ -31,6 +29,7 @@ import (
 	_ "github.com/tsuru/tsuru/router/galeb"
 	_ "github.com/tsuru/tsuru/router/hipache"
 	_ "github.com/tsuru/tsuru/router/routertest"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var mainDockerProvisioner *dockerProvisioner
