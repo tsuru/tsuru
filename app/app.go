@@ -102,6 +102,7 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["ip"] = app.Ip
 	result["cname"] = app.CName
 	result["owner"] = app.Owner
+	result["pool"] = app.Pool
 	result["deploys"] = app.Deploys
 	result["teamowner"] = app.TeamOwner
 	result["plan"] = app.Plan
