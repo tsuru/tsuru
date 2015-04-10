@@ -1910,6 +1910,7 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 		CName:     []string{"name.mycompany.com"},
 		Owner:     "appOwner",
 		Deploys:   7,
+		Pool:      "test",
 		Plan:      Plan{Name: "myplan", Memory: 64, Swap: 128, CpuShare: 100},
 		TeamOwner: "myteam",
 		AutoScaleConfig: &AutoScaleConfig{
@@ -1930,6 +1931,7 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 		"cname":      []interface{}{"name.mycompany.com"},
 		"owner":      "appOwner",
 		"deploys":    float64(7),
+		"pool":       "test",
 		"teamowner":  "myteam",
 		"plan": map[string]interface{}{
 			"name":     "myplan",
@@ -1970,6 +1972,7 @@ func (s *S) TestAppMarshalJSONWithoutRepository(c *check.C) {
 		CName:     []string{"name.mycompany.com"},
 		Owner:     "appOwner",
 		Deploys:   7,
+		Pool:      "pool1",
 		Plan:      Plan{Name: "myplan", Memory: 64, Swap: 128, CpuShare: 100},
 		TeamOwner: "myteam",
 		AutoScaleConfig: &AutoScaleConfig{
@@ -1990,6 +1993,7 @@ func (s *S) TestAppMarshalJSONWithoutRepository(c *check.C) {
 		"cname":      []interface{}{"name.mycompany.com"},
 		"owner":      "appOwner",
 		"deploys":    float64(7),
+		"pool":       "pool1",
 		"teamowner":  "myteam",
 		"plan": map[string]interface{}{
 			"name":     "myplan",
