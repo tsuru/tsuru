@@ -543,6 +543,21 @@ func (app *App) ValidateTeamOwner(user *auth.User) error {
 }
 
 func (app *App) SetPool() error {
+	pool, err := app.GetPoolForApp()
+	if err != nil {
+		return err
+	}
+	if pool == "" {
+		pool, err = app.GetFallbackPool()
+		if err != nil {
+			return err
+		}
+	}
+	app.Pool = pool
+	return nil
+}
+
+func (app *App) GetPoolForApp() (string, error) {
 	var query bson.M
 	if app.Pool != "" {
 		query = bson.M{"$and": []bson.M{{"_id": app.Pool}, {"teams": app.TeamOwner}}}
@@ -551,23 +566,30 @@ func (app *App) SetPool() error {
 	}
 	pools, err := provision.ListPools(query)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if len(pools) > 1 {
-		return ManyPoolsError
+		return "", ManyPoolsError
+	}
+	if len(pools) == 0 && app.Pool != "" {
+		return "", stderr.New(fmt.Sprintf("You don't have access to pool %s", app.Pool))
 	}
 	if len(pools) == 0 {
-		query := bson.M{"$or": []bson.M{{"teams": bson.M{"$exists": false}}, {"teams": bson.M{"$size": 0}}}}
-		pools, err = provision.ListPools(query)
-		if err != nil {
-			return err
-		}
-		if len(pools) == 0 {
-			return stderr.New("No fallback pool.")
-		}
+		return "", nil
 	}
-	app.Pool = pools[0].Name
-	return nil
+	return pools[0].Name, nil
+}
+
+func (app *App) GetFallbackPool() (string, error) {
+	query := bson.M{"$or": []bson.M{{"teams": bson.M{"$exists": false}}, {"teams": bson.M{"$size": 0}}}}
+	pools, err := provision.ListPools(query)
+	if err != nil {
+		return "", err
+	}
+	if len(pools) == 0 {
+		return "", stderr.New("No fallback pool.")
+	}
+	return pools[0].Name, nil
 }
 
 // setEnv sets the given environment variable in the app.

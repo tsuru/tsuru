@@ -2739,6 +2739,22 @@ func (s *S) TestAppSetPoolNoFallback(c *check.C) {
 	c.Assert(app.Pool, check.Equals, "")
 }
 
+func (s *S) TestAppSetPoolUserDontHaveAccessToPool(c *check.C) {
+	err := provision.AddPool("test")
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("test")
+	err = provision.AddTeamsToPool("test", []string{"nopool"})
+	c.Assert(err, check.IsNil)
+	app := App{
+		Name:      "test",
+		TeamOwner: "test",
+		Pool:      "test",
+	}
+	err = app.SetPool()
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "You don't have access to pool test")
+}
+
 func (s *S) TestUpdateCustomData(c *check.C) {
 	a := App{Name: "my-test-app"}
 	err := s.conn.Apps().Insert(a)
