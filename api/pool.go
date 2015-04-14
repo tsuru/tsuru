@@ -16,6 +16,11 @@ import (
 	"github.com/tsuru/tsuru/rec"
 )
 
+type PoolsByTeam struct {
+	Team  string
+	Pools []string
+}
+
 func listPoolsToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
@@ -26,16 +31,17 @@ func listPoolsToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	if err != nil {
 		return err
 	}
-	pools, err := provision.ListPools(bson.M{"teams": bson.M{"$in": auth.GetTeamsNames(teams)}})
-	if err != nil {
-		return err
-	}
-	if len(pools) == 0 {
-		w.WriteHeader(http.StatusNoContent)
-		return nil
+	var poolsByTeam []PoolsByTeam
+	for _, t := range teams {
+		pools, err := provision.ListPools(bson.M{"teams": t.Name})
+		if err != nil {
+			return err
+		}
+		pbt := PoolsByTeam{Team: t.Name, Pools: provision.GetPoolsNames(pools)}
+		poolsByTeam = append(poolsByTeam, pbt)
 	}
 	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(pools)
+	return json.NewEncoder(w).Encode(poolsByTeam)
 }
 
 func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {

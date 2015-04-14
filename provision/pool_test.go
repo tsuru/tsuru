@@ -101,3 +101,9 @@ func (s *S) TestRemoveTeamsFromPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(p.Teams, check.DeepEquals, []string{"ateam"})
 }
+
+func (s *S) TestGetPoolsNames(c *check.C) {
+	pool := Pool{Name: "pool1", Teams: []string{"test", "ateam"}}
+	pools := GetPoolsNames([]Pool{pool})
+	c.Assert(pools[0], check.Equals, "pool1")
+}
