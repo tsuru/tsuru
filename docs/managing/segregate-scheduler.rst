@@ -43,47 +43,6 @@ To use the `segregate scheduler` you need to enable the segregate mode in
       segregate: true
 
 
-Adding a pool
--------------
-
-Using `tsuru-admin` you create a pool:
-
-.. highlight:: bash
-
-::
-
-    $ tsuru-admin docker-pool-add pool1
-
-Adding teams to a pool
------------------------
-
-You can add one or more teams at once.
-
-.. highlight:: bash
-
-::
-
-    $ tsuru-admin docker-pool-teams-add pool1 team1 team2
-
-    $ tsuru-admin docker-pool-teams-add pool2 team3
-
-Listing a pool
---------------
-
-To list pools you do:
-
-.. highlight:: bash
-
-::
-
-    $ tsuru-admin docker-pool-list
-    +-------+-------------+
-    | Pools | Teams       |
-    +-------+-------------+
-    | pool1 | team1 team2 |
-    | pool2 | team3       |
-    +-------+-------------+
-
 Registering a node with pool metadata
 -------------------------------------
 
@@ -95,30 +54,3 @@ nodes with the pool metadata:
 ::
 
     $ tsuru-admin docker-node-add --register address=http://localhost:2375 pool=pool1
-
-
-Removing a pool
----------------
-
-To remove a pool you do:
-
-.. highlight:: bash
-
-::
-
-    $ tsuru-admin docker-pool-remove pool1
-
-
-Removing teams from a pool
---------------------------
-
-You can remove one or more teams at once.
-
-.. highlight:: bash
-
-::
-
-    $ tsuru-admin docker-pool-teams-remove pool1 team1
-
-    $ tsuru-admin docker-pool-teams-remove pool1 team1 team2 team3
-
