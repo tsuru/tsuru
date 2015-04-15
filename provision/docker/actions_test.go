@@ -43,7 +43,7 @@ func (s *S) TestInsertEmptyContainerInDBForward(c *check.C) {
 	c.Assert(cont.AppName, check.Equals, app.GetName())
 	c.Assert(cont.Type, check.Equals, app.GetPlatform())
 	c.Assert(cont.Name, check.Not(check.Equals), "")
-	c.Assert(cont.Name, check.HasLen, 20)
+	c.Assert(cont.Name, check.HasLen, 26)
 	c.Assert(cont.Status, check.Equals, "created")
 	c.Assert(cont.Image, check.Equals, "image-id")
 	c.Assert(cont.BuildingImage, check.Equals, "next-image")
