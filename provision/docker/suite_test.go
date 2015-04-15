@@ -124,6 +124,10 @@ func (s *S) SetUpTest(c *check.C) {
 	routertest.FakeRouter.Reset()
 }
 
+func (s *S) TearDownTest(c *check.C) {
+	s.server.Stop()
+}
+
 func clearClusterStorage() error {
 	clusterDbUrl, _ := config.GetString("docker:cluster:mongo-url")
 	clusterDbName, _ := config.GetString("docker:cluster:mongo-database")
