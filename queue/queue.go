@@ -97,7 +97,7 @@ func Queue() (monsterqueue.Queue, error) {
 	var err error
 	queueInstance, err = mongodb.NewQueue(conf)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("could not create queue instance, please check queue:mongo-url and queue:mongo-database config entries. error: %s", err)
 	}
 	go queueInstance.ProcessLoop()
 	return queueInstance, nil
