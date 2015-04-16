@@ -6,8 +6,8 @@ package api
 
 import (
 	"fmt"
-	"net"
 	"net/http"
+	"time"
 
 	"github.com/codegangsta/negroni"
 	"github.com/tsuru/config"
@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/router"
+	"gopkg.in/tylerb/graceful.v1"
 )
 
 const Version = "0.10.3"
@@ -304,6 +305,25 @@ func RunServer(dry bool) http.Handler {
 			fatal(err)
 		}
 		app.StartAutoScale()
+		shutdownChan := make(chan bool)
+		shutdownTimeout, _ := config.GetDuration("shutdown-timeout")
+		if shutdownTimeout == 0 {
+			shutdownTimeout = 10 * 60
+		}
+		shutdownTimeout = shutdownTimeout * time.Second
+		srv := &graceful.Server{
+			Timeout: shutdownTimeout,
+			Server: &http.Server{
+				Addr:    listen,
+				Handler: n,
+			},
+			ShutdownInitiated: func() {
+				fmt.Println("tsuru is shutting down, waiting for pending connections to finish.")
+				// TODO(cezarsa): Implement shutdown handlers to stop stranded
+				// goroutines.
+				close(shutdownChan)
+			},
+		}
 		tls, _ := config.GetBool("use-tls")
 		if tls {
 			certFile, err := config.GetString("tls:cert-file")
@@ -315,16 +335,15 @@ func RunServer(dry bool) http.Handler {
 				fatal(err)
 			}
 			fmt.Printf("tsuru HTTP/TLS server listening at %s...\n", listen)
-			fatal(http.ListenAndServeTLS(listen, certFile, keyFile, n))
+			err = srv.ListenAndServeTLS(certFile, keyFile)
 		} else {
-			listener, err := net.Listen("tcp", listen)
-			if err != nil {
-				fatal(err)
-			}
 			fmt.Printf("tsuru HTTP server listening at %s...\n", listen)
-			http.Handle("/", n)
-			fatal(http.Serve(listener, nil))
+			err = srv.ListenAndServe()
 		}
+		if err != nil {
+			fmt.Printf("Listening stopped: %s\n", err)
+		}
+		<-shutdownChan
 	}
 	return n
 }
