@@ -160,7 +160,9 @@ func (i *CloudstackIaaS) CreateMachine(params map[string]string) (*iaas.Machine,
 	for k, v := range params {
 		paramsCopy[k] = v
 	}
-	paramsCopy["userdata"] = userData
+	if userData != "" {
+		paramsCopy["userdata"] = userData
+	}
 	var vmStatus DeployVirtualMachineResponse
 	err = i.do("deployVirtualMachine", paramsCopy, &vmStatus)
 	if err != nil {

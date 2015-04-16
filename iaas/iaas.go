@@ -77,11 +77,14 @@ func (i *UserDataIaaS) ReadUserData() (string, error) {
 }
 
 func (i *NamedIaaS) GetConfigString(name string) (string, error) {
-	val, err := config.GetString(fmt.Sprintf("iaas:custom:%s:%s", i.IaaSName, name))
+	val, err := config.Get(fmt.Sprintf("iaas:custom:%s:%s", i.IaaSName, name))
 	if err != nil {
-		val, err = config.GetString(fmt.Sprintf("iaas:%s:%s", i.BaseIaaSName, name))
+		val, err = config.Get(fmt.Sprintf("iaas:%s:%s", i.BaseIaaSName, name))
 	}
-	return val, err
+	if err != nil || val == nil {
+		return "", err
+	}
+	return fmt.Sprintf("%v", val), nil
 }
 
 type iaasFactory func(string) IaaS

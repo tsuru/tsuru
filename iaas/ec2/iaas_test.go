@@ -30,7 +30,6 @@ type S struct {
 var _ = check.Suite(&S{})
 
 func (s *S) SetUpTest(c *check.C) {
-	config.Set("redis-queue:block-time", 1)
 	var err error
 	s.srv, err = ec2test.NewServer()
 	c.Assert(err, check.IsNil)
