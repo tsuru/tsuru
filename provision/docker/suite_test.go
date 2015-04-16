@@ -67,7 +67,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("docker:deploy-cmd", "/var/lib/tsuru/deploy")
 	config.Set("docker:run-cmd:bin", "/usr/local/bin/circusd /etc/circus/circus.ini")
 	config.Set("docker:run-cmd:port", "8888")
-	config.Set("docker:ssh:user", s.sshUser)
+	config.Set("docker:user", s.sshUser)
 	config.Set("docker:cluster:mongo-url", "127.0.0.1:27017")
 	config.Set("docker:cluster:mongo-database", "docker_provision_tests_cluster_stor")
 	config.Set("routers:fake:type", "fake")

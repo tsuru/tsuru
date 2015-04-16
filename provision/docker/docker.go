@@ -135,7 +135,10 @@ func (c *container) create(args runContainerActionsArgs) error {
 		log.Errorf("error on getting port for container %s - %s", c.AppName, port)
 		return err
 	}
-	user, _ := config.GetString("docker:ssh:user")
+	user, err := config.GetString("docker:user")
+	if err != nil {
+		user, _ = config.GetString("docker:ssh:user")
+	}
 	sharedMount, _ := config.GetString("docker:sharedfs:mountpoint")
 	sharedBasedir, _ := config.GetString("docker:sharedfs:hostdir")
 	securityOpts, _ := config.GetList("docker:security-opts")

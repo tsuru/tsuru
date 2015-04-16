@@ -158,7 +158,7 @@ func (s *S) TestContainerCreate(c *check.C) {
 	u, _ := url.Parse(s.server.URL())
 	host, _, _ := net.SplitHostPort(u.Host)
 	c.Assert(cont.HostAddr, check.Equals, host)
-	user, err := config.GetString("docker:ssh:user")
+	user, err := config.GetString("docker:user")
 	c.Assert(err, check.IsNil)
 	c.Assert(cont.User, check.Equals, user)
 	dcli, _ := docker.NewClient(s.server.URL())
@@ -248,9 +248,9 @@ func (s *S) TestContainerCreateDoesNotAlocatesPortForDeploy(c *check.C) {
 }
 
 func (s *S) TestContainerCreateUndefinedUser(c *check.C) {
-	oldUser, _ := config.Get("docker:ssh:user")
-	defer config.Set("docker:ssh:user", oldUser)
-	config.Unset("docker:ssh:user")
+	oldUser, _ := config.Get("docker:user")
+	defer config.Set("docker:user", oldUser)
+	config.Unset("docker:user")
 	err := s.newFakeImage(s.p, "tsuru/python")
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("app-name", "python", 1)

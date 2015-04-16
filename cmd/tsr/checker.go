@@ -74,8 +74,6 @@ func CheckDockerBasicConfig() error {
 		"docker:repository-namespace",
 		"docker:collection",
 		"docker:deploy-cmd",
-		"docker:ssh",
-		"docker:ssh:user",
 		"docker:run-cmd:bin",
 		"docker:run-cmd:port",
 	}, "Config Error: you should configure %q")

@@ -347,7 +347,10 @@ func (p *dockerProvisioner) ArchiveDeploy(app provision.App, archiveURL string, 
 func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadCloser, w io.Writer) (string, error) {
 	defer archiveFile.Close()
 	filePath := "/home/application/archive.tar.gz"
-	user, _ := config.GetString("docker:ssh:user")
+	user, err := config.GetString("docker:user")
+	if err != nil {
+		user, _ = config.GetString("docker:ssh:user")
+	}
 	options := docker.CreateContainerOptions{
 		Config: &docker.Config{
 			AttachStdout: true,
