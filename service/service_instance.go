@@ -39,6 +39,7 @@ type ServiceInstance struct {
 	ServiceName string `bson:"service_name"`
 	PlanName    string `bson:"plan_name"`
 	Apps        []string
+	Units       []string
 	Teams       []string
 	TeamOwner   string
 }

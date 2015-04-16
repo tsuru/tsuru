@@ -304,6 +304,7 @@ func (s *InstanceSuite) TestGetServiceInstancesByServicesAndTeams(c *check.C) {
 		ServiceName: srvc.Name,
 		Teams:       []string{s.team.Name},
 		Apps:        []string{},
+		Units:       []string{},
 	}
 	err = s.conn.ServiceInstances().Insert(&sInstance)
 	c.Assert(err, check.IsNil)
@@ -313,6 +314,7 @@ func (s *InstanceSuite) TestGetServiceInstancesByServicesAndTeams(c *check.C) {
 		ServiceName: srvc2.Name,
 		Teams:       []string{s.team.Name},
 		Apps:        []string{},
+		Units:       []string{},
 	}
 	err = s.conn.ServiceInstances().Insert(&sInstance2)
 	c.Assert(err, check.IsNil)
@@ -320,6 +322,7 @@ func (s *InstanceSuite) TestGetServiceInstancesByServicesAndTeams(c *check.C) {
 	sInstance3 := ServiceInstance{
 		Name:        "f9nosql",
 		ServiceName: srvc2.Name,
+		Units:       []string{},
 	}
 	err = s.conn.ServiceInstances().Insert(&sInstance3)
 	c.Assert(err, check.IsNil)
@@ -344,6 +347,7 @@ func (s *InstanceSuite) TestGetServiceInstancesByServicesAndTeamsAppFilter(c *ch
 		ServiceName: srvc.Name,
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"app1"},
+		Units:       []string{},
 	}
 	err = s.conn.ServiceInstances().Insert(&sInstance)
 	c.Assert(err, check.IsNil)
@@ -353,6 +357,7 @@ func (s *InstanceSuite) TestGetServiceInstancesByServicesAndTeamsAppFilter(c *ch
 		ServiceName: srvc2.Name,
 		Teams:       []string{s.team.Name},
 		Apps:        []string{},
+		Units:       []string{},
 	}
 	err = s.conn.ServiceInstances().Insert(&sInstance2)
 	c.Assert(err, check.IsNil)
@@ -403,6 +408,7 @@ func (s *InstanceSuite) TestGetServiceinstancesByServicesAndTeamsUserAdmin(c *ch
 		ServiceName: srvc.Name,
 		Teams:       []string{s.team.Name},
 		Apps:        []string{},
+		Units:       []string{},
 	}
 	err = s.conn.ServiceInstances().Insert(&instance)
 	c.Assert(err, check.IsNil)
