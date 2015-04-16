@@ -2865,6 +2865,10 @@ func (s *S) TestSwapApp1Locked(c *check.C) {
 	app2 := app.App{Name: "app2", Teams: []string{s.team.Name}}
 	err = s.conn.Apps().Insert(&app2)
 	c.Assert(err, check.IsNil)
+	app.Provisioner.Provision(&app1)
+	defer app.Provisioner.Destroy(&app1)
+	app.Provisioner.Provision(&app2)
+	defer app.Provisioner.Destroy(&app2)
 	defer s.conn.Apps().Remove(bson.M{"name": app2.Name})
 	request, _ := http.NewRequest("PUT", "/swap?app1=app1&app2=app2", nil)
 	recorder := httptest.NewRecorder()
