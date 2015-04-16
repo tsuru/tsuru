@@ -97,7 +97,7 @@ var insertEmptyContainerInDB = action.Action{
 	Name: "insert-empty-container",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args := ctx.Params[0].(runContainerActionsArgs)
-		contName := args.app.GetName() + "/" + randomString()
+		contName := args.app.GetName() + "-" + randomString()
 		cont := container{
 			AppName:       args.app.GetName(),
 			Type:          args.app.GetPlatform(),
