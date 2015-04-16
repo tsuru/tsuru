@@ -124,7 +124,7 @@ var addAppToServiceInstance = action.Action{
 		if err := si.AddApp(a.GetName()); err != nil {
 			return nil, &errors.HTTP{Code: http.StatusConflict, Message: "This app is already bound to this service instance."}
 		}
-		if err := si.update(); err != nil {
+		if err := si.update(nil); err != nil {
 			return nil, err
 		}
 		return nil, nil
@@ -139,7 +139,7 @@ var addAppToServiceInstance = action.Action{
 			log.Error("First parameter must be a bind.App.")
 		}
 		si.RemoveApp(a.GetName())
-		if err := si.update(); err != nil {
+		if err := si.update(nil); err != nil {
 			log.Errorf("Could not remove app from service instance: %s", err.Error())
 		}
 	},

@@ -230,7 +230,7 @@ func (s *S) TestAddAppToServiceInstanceBackwardRemovesAppFromServiceInstance(c *
 	defer s.conn.Apps().Remove(bson.M{"name": a.GetName()})
 	err = si.AddApp(a.GetName())
 	c.Assert(err, check.IsNil)
-	err = si.update()
+	err = si.update(nil)
 	c.Assert(err, check.IsNil)
 	ctx := action.BWContext{
 		Params: []interface{}{a, si},

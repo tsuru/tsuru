@@ -29,6 +29,8 @@ var (
 	ErrInstanceNameAlreadyExists = stderrors.New("instance name already exists.")
 	ErrAccessNotAllowed          = stderrors.New("user does not have access to this service instance")
 	ErrMultipleTeams             = stderrors.New("user is member of multiple teams, please specify the team that owns the service instance")
+	ErrUnitAlreadyBound          = stderrors.New("unit is already bound to this service instance")
+	ErrUnitNotBound              = stderrors.New("unit is not bound to this service instance")
 
 	instanceNameRegexp = regexp.MustCompile(`^[A-Za-z][-a-zA-Z0-9_]+$`)
 )
@@ -153,13 +155,19 @@ func (si *ServiceInstance) RemoveApp(appName string) error {
 	return nil
 }
 
-func (si *ServiceInstance) update() error {
+func (si *ServiceInstance) update(update bson.M) error {
+	var doc interface{}
+	if update == nil {
+		doc = si
+	} else {
+		doc = update
+	}
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	return conn.ServiceInstances().Update(bson.M{"name": si.Name}, si)
+	return conn.ServiceInstances().Update(bson.M{"name": si.Name}, doc)
 }
 
 // BindApp makes the bind between the service instance and an app.
@@ -180,7 +188,16 @@ func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
 	if err != nil {
 		return err
 	}
-	return endpoint.BindUnit(si, app, unit)
+	for _, unitName := range si.Units {
+		if unitName == unit.GetName() {
+			return ErrUnitAlreadyBound
+		}
+	}
+	err = endpoint.BindUnit(si, app, unit)
+	if err != nil {
+		return err
+	}
+	return si.update(bson.M{"$addToSet": bson.M{"units": unit.GetName()}})
 }
 
 // UnbindApp makes the unbind between the service instance and an app.
@@ -189,7 +206,7 @@ func (si *ServiceInstance) UnbindApp(app bind.App, writer io.Writer) error {
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusPreconditionFailed, Message: "This app is not bound to this service instance."}
 	}
-	err = si.update()
+	err = si.update(nil)
 	if err != nil {
 		return err
 	}
@@ -218,7 +235,21 @@ func (si *ServiceInstance) UnbindUnit(app bind.App, unit bind.Unit) error {
 	if err != nil {
 		return err
 	}
-	return endpoint.UnbindUnit(si, app, unit)
+	var found bool
+	for _, unitName := range si.Units {
+		if unitName == unit.GetName() {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return ErrUnitNotBound
+	}
+	err = endpoint.UnbindUnit(si, app, unit)
+	if err != nil {
+		return err
+	}
+	return si.update(bson.M{"$pull": bson.M{"units": unit.GetName()}})
 }
 
 // Status returns the service instance status.

@@ -322,23 +322,27 @@ func (s *BindSuite) TestUnbindUnit(c *check.C) {
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
-	instance := service.ServiceInstance{
-		Name:        "my-mysql",
-		ServiceName: "mysql",
-		Teams:       []string{s.team.Name},
-		Apps:        []string{"painkiller"},
-	}
-	instance.Create()
-	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	app.Provisioner.Provision(&a)
 	defer app.Provisioner.Destroy(&a)
 	app.Provisioner.AddUnits(&a, 1, nil)
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{"painkiller"},
+		Units:       []string{a.GetUnits()[0].GetName()},
+	}
+	instance.Create()
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	err = instance.UnbindUnit(&a, a.GetUnits()[0])
 	c.Assert(err, check.IsNil)
 	c.Assert(called, check.Equals, true)
+	err = s.conn.ServiceInstances().Find(bson.M{"name": "my-mysql"}).One(&instance)
+	c.Assert(err, check.IsNil)
+	c.Assert(instance.Units, check.HasLen, 0)
 }
 
 func (s *BindSuite) TestUnbindMultiUnits(c *check.C) {
@@ -354,20 +358,21 @@ func (s *BindSuite) TestUnbindMultiUnits(c *check.C) {
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
-	instance := service.ServiceInstance{
-		Name:        "my-mysql",
-		ServiceName: "mysql",
-		Teams:       []string{s.team.Name},
-		Apps:        []string{"painkiller"},
-	}
-	instance.Create()
-	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	app.Provisioner.Provision(&a)
 	defer app.Provisioner.Destroy(&a)
-	app.Provisioner.AddUnits(&a, 2, nil)
+	units, _ := app.Provisioner.AddUnits(&a, 2, nil)
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{"painkiller"},
+		Units:       []string{units[0].Name, units[1].Name},
+	}
+	instance.Create()
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	err = instance.UnbindApp(&a, nil)
 	c.Assert(err, check.IsNil)
 	ok := make(chan bool, 1)
@@ -499,21 +504,22 @@ func (s *BindSuite) TestUnbindCallsTheUnbindMethodFromAPI(c *check.C) {
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
-	instance := service.ServiceInstance{
-		Name:        "my-mysql",
-		ServiceName: "mysql",
-		Teams:       []string{s.team.Name},
-		Apps:        []string{"painkiller"},
-	}
-	err = instance.Create()
-	c.Assert(err, check.IsNil)
-	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	a, err := createTestApp(s.conn, "painkiller", "", []string{s.team.Name})
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	app.Provisioner.Provision(&a)
 	defer app.Provisioner.Destroy(&a)
-	app.Provisioner.AddUnits(&a, 1, nil)
+	units, _ := app.Provisioner.AddUnits(&a, 1, nil)
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{"painkiller"},
+		Units:       []string{units[0].Name},
+	}
+	err = instance.Create()
+	c.Assert(err, check.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	err = instance.UnbindApp(&a, nil)
 	c.Assert(err, check.IsNil)
 	ch := make(chan bool)
