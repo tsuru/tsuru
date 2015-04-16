@@ -367,7 +367,7 @@ func (s *S) TestCreateAppRepositoryManagerFailure(c *check.C) {
 	c.Assert(count, check.Equals, 0)
 }
 
-func (s *S) TestBindUnit(c *check.C) {
+func (s *S) TestBindAndUnbindUnit(c *check.C) {
 	var requests []*http.Request
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requests = append(requests, r)
@@ -389,62 +389,36 @@ func (s *S) TestBindUnit(c *check.C) {
 	err = srvc.Create()
 	c.Assert(err, check.IsNil)
 	defer srvc.Delete()
-	si1 := service.ServiceInstance{Name: "mydb", ServiceName: "mysql", Apps: []string{app.Name}}
+	si1 := service.ServiceInstance{
+		Name:        "mydb",
+		ServiceName: "mysql",
+		Apps:        []string{app.Name},
+	}
 	err = si1.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": si1.Name})
-	si2 := service.ServiceInstance{Name: "yourdb", ServiceName: "mysql", Apps: []string{app.Name}}
+	si2 := service.ServiceInstance{
+		Name:        "yourdb",
+		ServiceName: "mysql",
+		Apps:        []string{app.Name},
+	}
 	err = si2.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": si2.Name})
 	unit := provision.Unit{Name: "some-unit", Ip: "127.0.2.1"}
 	err = app.BindUnit(&unit)
 	c.Assert(err, check.IsNil)
-	c.Assert(requests, check.HasLen, 2)
+	err = app.UnbindUnit(&unit)
+	c.Assert(err, check.IsNil)
+	c.Assert(requests, check.HasLen, 4)
 	c.Assert(requests[0].Method, check.Equals, "POST")
 	c.Assert(requests[0].URL.Path, check.Equals, "/resources/mydb/bind")
 	c.Assert(requests[1].Method, check.Equals, "POST")
 	c.Assert(requests[1].URL.Path, check.Equals, "/resources/yourdb/bind")
-}
-
-func (s *S) TestUnbindUnit(c *check.C) {
-	var requests []*http.Request
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests = append(requests, r)
-	}))
-	defer server.Close()
-	app := App{
-		Name: "warpaint", Platform: "python",
-		Quota: quota.Unlimited,
-	}
-	err := s.conn.Apps().Insert(app)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	s.provisioner.Provision(&app)
-	defer s.provisioner.Destroy(&app)
-	srvc := service.Service{
-		Name:     "mysql",
-		Endpoint: map[string]string{"production": server.URL},
-	}
-	err = srvc.Create()
-	c.Assert(err, check.IsNil)
-	defer srvc.Delete()
-	si1 := service.ServiceInstance{Name: "mydb", ServiceName: "mysql", Apps: []string{app.Name}}
-	err = si1.Create()
-	c.Assert(err, check.IsNil)
-	defer s.conn.ServiceInstances().Remove(bson.M{"name": si1.Name})
-	si2 := service.ServiceInstance{Name: "yourdb", ServiceName: "mysql", Apps: []string{app.Name}}
-	err = si2.Create()
-	c.Assert(err, check.IsNil)
-	defer s.conn.ServiceInstances().Remove(bson.M{"name": si2.Name})
-	unit := provision.Unit{Name: "some-unit", Ip: "127.0.2.1"}
-	err = app.UnbindUnit(&unit)
-	c.Assert(err, check.IsNil)
-	c.Assert(requests, check.HasLen, 2)
-	c.Assert(requests[0].Method, check.Equals, "DELETE")
-	c.Assert(requests[0].URL.Path, check.Equals, "/resources/mydb/bind")
-	c.Assert(requests[1].Method, check.Equals, "DELETE")
-	c.Assert(requests[1].URL.Path, check.Equals, "/resources/yourdb/bind")
+	c.Assert(requests[2].Method, check.Equals, "DELETE")
+	c.Assert(requests[2].URL.Path, check.Equals, "/resources/mydb/bind")
+	c.Assert(requests[3].Method, check.Equals, "DELETE")
+	c.Assert(requests[3].URL.Path, check.Equals, "/resources/yourdb/bind")
 }
 
 func (s *S) TestAddUnits(c *check.C) {
