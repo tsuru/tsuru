@@ -642,19 +642,19 @@ func (s *S) TestAutoScaleConfigRunStress(c *check.C) {
 		provisioner: &p,
 	})
 	c.Assert(err, check.IsNil)
-	a := autoScaleConfig{
-		done:              make(chan bool),
-		provisioner:       &p,
-		groupByMetadata:   "pool",
-		maxContainerCount: 2,
-	}
 	wg := sync.WaitGroup{}
 	for i := 0; i < 50; i++ {
 		wg.Add(1)
 		go func() {
+			a := autoScaleConfig{
+				done:              make(chan bool),
+				provisioner:       &p,
+				groupByMetadata:   "pool",
+				maxContainerCount: 2,
+			}
 			defer wg.Done()
 			go a.stop()
-			err = a.run()
+			err := a.run()
 			c.Assert(err, check.IsNil)
 		}()
 	}
