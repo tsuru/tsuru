@@ -99,6 +99,11 @@ type Unit struct {
 	Status  Status
 }
 
+// GetName returns the name of the unit.
+func (u *Unit) GetName() string {
+	return u.Name
+}
+
 // GetIp returns the Unit.IP.
 func (u *Unit) GetIp() string {
 	return u.Ip

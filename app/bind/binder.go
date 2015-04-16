@@ -16,8 +16,9 @@ type EnvVar struct {
 	InstanceName string
 }
 
+// Unit represents an application unit to be used in binds.
 type Unit interface {
-	// GetIp returns the unit ip.
+	GetName() string
 	GetIp() string
 }
 
