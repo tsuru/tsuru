@@ -696,7 +696,7 @@ The tcp port that will be exported by the container to the node network. The
 default value expected by platforms defined in tsuru's basebuilder repository is
 ``8888``.
 
-docker:ssh:user
+docker:user
 +++++++++++++++
 
 The user tsuru will use to start the container. The value expected for basebuilder
