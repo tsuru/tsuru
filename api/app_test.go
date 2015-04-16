@@ -2537,15 +2537,6 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
-	instance := service.ServiceInstance{
-		Name:        "my-mysql",
-		ServiceName: "mysql",
-		Teams:       []string{s.team.Name},
-		Apps:        []string{"painkiller"},
-	}
-	err = instance.Create()
-	c.Assert(err, check.IsNil)
-	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	a := app.App{
 		Name:     "painkiller",
 		Platform: "zend",
@@ -2554,7 +2545,17 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.deleteApp(&a)
-	s.provisioner.AddUnits(&a, 1, nil)
+	units, _ := s.provisioner.AddUnits(&a, 1, nil)
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{"painkiller"},
+		Units:       []string{units[0].Name},
+	}
+	err = instance.Create()
+	c.Assert(err, check.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
 	otherApp, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
 	otherApp.Env["DATABASE_HOST"] = bind.EnvVar{
