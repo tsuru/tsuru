@@ -198,7 +198,7 @@ func (s *S) startMultipleServersClusterSeggregated() (*dockerProvisioner, error)
 	return &p, nil
 }
 
-func (s *S) addServiceInstance(c *check.C, appName string, fn http.HandlerFunc) func() {
+func (s *S) addServiceInstance(c *check.C, appName string, units []string, fn http.HandlerFunc) func() {
 	ts := httptest.NewServer(fn)
 	ret := func() {
 		ts.Close()
@@ -208,7 +208,7 @@ func (s *S) addServiceInstance(c *check.C, appName string, fn http.HandlerFunc) 
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
-	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{}}
+	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{}, Units: units}
 	err = instance.Create()
 	c.Assert(err, check.IsNil)
 	err = instance.AddApp(appName)

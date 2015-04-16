@@ -114,7 +114,7 @@ func (s *S) TestDeploy(c *check.C) {
 	defer s.p.Destroy(&a)
 	w := safe.NewBuffer(make([]byte, 2048))
 	var serviceBodies []string
-	rollback := s.addServiceInstance(c, a.Name, func(w http.ResponseWriter, r *http.Request) {
+	rollback := s.addServiceInstance(c, a.Name, nil, func(w http.ResponseWriter, r *http.Request) {
 		data, _ := ioutil.ReadAll(r.Body)
 		serviceBodies = append(serviceBodies, string(data))
 		w.WriteHeader(http.StatusOK)
@@ -322,7 +322,7 @@ func (s *S) TestProvisionerUploadDeploy(c *check.C) {
 	defer s.p.Destroy(&a)
 	w := safe.NewBuffer(make([]byte, 2048))
 	var serviceBodies []string
-	rollback := s.addServiceInstance(c, a.Name, func(w http.ResponseWriter, r *http.Request) {
+	rollback := s.addServiceInstance(c, a.Name, nil, func(w http.ResponseWriter, r *http.Request) {
 		data, _ := ioutil.ReadAll(r.Body)
 		serviceBodies = append(serviceBodies, string(data))
 		w.WriteHeader(http.StatusOK)

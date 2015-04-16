@@ -142,14 +142,14 @@ func (s *S) TestMoveContainer(c *check.C) {
 	buf := safe.NewBuffer(nil)
 	var serviceBodies []string
 	var serviceMethods []string
-	rollback := s.addServiceInstance(c, appInstance.GetName(), func(w http.ResponseWriter, r *http.Request) {
+	rollback := s.addServiceInstance(c, appInstance.GetName(), []string{addedConts[0].ID}, func(w http.ResponseWriter, r *http.Request) {
 		data, _ := ioutil.ReadAll(r.Body)
 		serviceBodies = append(serviceBodies, string(data))
 		serviceMethods = append(serviceMethods, r.Method)
 		w.WriteHeader(http.StatusOK)
 	})
 	defer rollback()
-	_, err = p.moveContainer(addedConts[0].ID[0:6], "127.0.0.1", buf)
+	_, err = p.moveContainer(addedConts[0].ID[:6], "127.0.0.1", buf)
 	c.Assert(err, check.IsNil)
 	containers, err := p.listContainersByHost("localhost")
 	c.Assert(len(containers), check.Equals, 1)
@@ -250,7 +250,6 @@ func (s *S) TestRebalanceContainersSegScheduler(c *check.C) {
 	c.Assert(c1, check.HasLen, 5)
 	buf := safe.NewBuffer(nil)
 	err = p.rebalanceContainers(buf, false)
-	println(buf.String())
 	c.Assert(err, check.IsNil)
 	c.Assert(p.scheduler.ignoredContainers, check.IsNil)
 	c1, err = p.listContainersByHost("localhost")
@@ -415,7 +414,7 @@ func (s *S) TestRebalanceContainersDry(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(beforeRoutes, check.HasLen, 5)
 	var serviceCalled bool
-	rollback := s.addServiceInstance(c, appInstance.GetName(), func(w http.ResponseWriter, r *http.Request) {
+	rollback := s.addServiceInstance(c, appInstance.GetName(), nil, func(w http.ResponseWriter, r *http.Request) {
 		serviceCalled = true
 		w.WriteHeader(http.StatusOK)
 	})
