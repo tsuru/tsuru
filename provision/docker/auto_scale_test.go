@@ -110,8 +110,9 @@ func (s *S) TestAutoScaleConfigRun(c *check.C) {
 	c.Assert(evts[0].Error, check.Equals, "")
 	c.Assert(evts[0].Node.Address, check.Equals, fmt.Sprintf("http://localhost:%d", urlPort(node2.URL())))
 	c.Assert(evts[0].Node.Metadata, check.DeepEquals, map[string]string{
-		"pool": "pool1",
-		"iaas": "my-scale-iaas",
+		"pool":    "pool1",
+		"iaas":    "my-scale-iaas",
+		"iaas-id": "m-localhost",
 	})
 	logParts := strings.Split(evts[0].Log, "\n")
 	c.Assert(logParts, check.HasLen, 15)

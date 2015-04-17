@@ -55,12 +55,16 @@ func (s *S) TestMachinesList(c *check.C) {
 	c.Assert(machines[0].Id, check.Equals, "myid1")
 	c.Assert(machines[0].Address, check.Equals, "myid1.somewhere.com")
 	c.Assert(machines[0].CreationParams, check.DeepEquals, map[string]string{
-		"id": "myid1",
+		"id":      "myid1",
+		"iaas":    "test-iaas",
+		"iaas-id": "myid1",
 	})
 	c.Assert(machines[1].Id, check.Equals, "myid2")
 	c.Assert(machines[1].Address, check.Equals, "myid2.somewhere.com")
 	c.Assert(machines[1].CreationParams, check.DeepEquals, map[string]string{
-		"id": "myid2",
+		"id":      "myid2",
+		"iaas":    "test-iaas",
+		"iaas-id": "myid2",
 	})
 }
 

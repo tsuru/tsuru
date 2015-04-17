@@ -161,9 +161,10 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address, check.Equals, "http://test1.fake.host:1234")
 	c.Assert(nodes[0].Metadata, check.DeepEquals, map[string]string{
-		"id":   "test1",
-		"pool": "pool1",
-		"iaas": "test-iaas",
+		"id":      "test1",
+		"pool":    "pool1",
+		"iaas":    "test-iaas",
+		"iaas-id": "test1",
 	})
 }
 
@@ -184,9 +185,10 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachineExplicit(c *check
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address, check.Equals, "http://test1.fake.host:1234")
 	c.Assert(nodes[0].Metadata, check.DeepEquals, map[string]string{
-		"id":   "test1",
-		"pool": "pool1",
-		"iaas": "another-test-iaas",
+		"id":      "test1",
+		"pool":    "pool1",
+		"iaas":    "another-test-iaas",
+		"iaas-id": "test1",
 	})
 }
 

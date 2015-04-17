@@ -70,7 +70,6 @@ func (p *dockerProvisioner) addNodeForParams(params map[string]string, isRegiste
 		if err != nil {
 			return response, err
 		}
-		params["iaas"] = m.Iaas
 		address = m.FormatNodeAddress()
 	}
 	err := validateNodeAddress(address)
