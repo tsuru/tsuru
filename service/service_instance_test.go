@@ -127,6 +127,19 @@ func (s *InstanceSuite) TestRemoveAppReturnsErrorWhenTheAppIsNotBoundToTheInstan
 	c.Assert(err, check.ErrorMatches, "^This app is not bound to this service instance.$")
 }
 
+func (s *InstanceSuite) TestReload(c *check.C) {
+	instance := ServiceInstance{Name: "myinstance", Apps: []string{"app1", "app2", "app3"}}
+	err := instance.Create()
+	c.Assert(err, check.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": instance.Name})
+	instance.Apps = nil
+	err = s.conn.ServiceInstances().Update(bson.M{"name": instance.Name}, bson.M{"$addToSet": bson.M{"apps": "app4"}})
+	c.Assert(err, check.IsNil)
+	err = instance.reload()
+	c.Assert(err, check.IsNil)
+	c.Assert(instance.Apps, check.DeepEquals, []string{"app1", "app2", "app3", "app4"})
+}
+
 func (s *InstanceSuite) TestBindApp(c *check.C) {
 	oldAddAppToServiceInstance := addAppToServiceInstance
 	oldSetBindAppAction := setBindAppAction

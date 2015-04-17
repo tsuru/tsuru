@@ -170,6 +170,15 @@ func (si *ServiceInstance) update(update bson.M) error {
 	return conn.ServiceInstances().Update(bson.M{"name": si.Name}, doc)
 }
 
+func (si *ServiceInstance) reload() error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.ServiceInstances().Find(bson.M{"name": si.Name}).One(si)
+}
+
 // BindApp makes the bind between the service instance and an app.
 func (si *ServiceInstance) BindApp(app bind.App, writer io.Writer) error {
 	actions := []*action.Action{
@@ -185,6 +194,10 @@ func (si *ServiceInstance) BindApp(app bind.App, writer io.Writer) error {
 // BindUnit makes the bind between the binder and an unit.
 func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
 	endpoint, err := si.Service().getClient("production")
+	if err != nil {
+		return err
+	}
+	err = si.reload()
 	if err != nil {
 		return err
 	}
@@ -232,6 +245,10 @@ func (si *ServiceInstance) UnbindApp(app bind.App, writer io.Writer) error {
 // UnbindUnit makes the unbind between the service instance and an unit.
 func (si *ServiceInstance) UnbindUnit(app bind.App, unit bind.Unit) error {
 	endpoint, err := si.Service().getClient("production")
+	if err != nil {
+		return err
+	}
+	err = si.reload()
 	if err != nil {
 		return err
 	}
