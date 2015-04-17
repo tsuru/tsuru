@@ -82,6 +82,22 @@ func ListMachines() ([]Machine, error) {
 	return result, err
 }
 
+// Uses id or address, this is only used because previously we didn't have
+// iaas-id in node metadata.
+func FindMachineByIdOrAddress(id string, address string) (Machine, error) {
+	coll := collection()
+	defer coll.Close()
+	var result Machine
+	query := bson.M{}
+	if id != "" {
+		query["_id"] = id
+	} else {
+		query["address"] = address
+	}
+	err := coll.Find(query).One(&result)
+	return result, err
+}
+
 func FindMachineByAddress(address string) (Machine, error) {
 	coll := collection()
 	defer coll.Close()
