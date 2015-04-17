@@ -6,6 +6,7 @@ package iaas
 
 import (
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/db"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -39,6 +40,32 @@ func (s *S) TestCreateMachine(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(m.Id, check.Equals, "myid")
 	c.Assert(m.Iaas, check.Equals, "test-iaas")
+}
+
+func (s *S) TestCreateMachineDupAddr(c *check.C) {
+	config.Set("iaas:default", "test-iaas")
+	m, err := CreateMachine(map[string]string{"id": "myid", "address": "addr1"})
+	c.Assert(err, check.IsNil)
+	c.Assert(m.Id, check.Equals, "myid")
+	c.Assert(m.Iaas, check.Equals, "test-iaas")
+	c.Assert(m.Address, check.Equals, "addr1.somewhere.com")
+	_, err = CreateMachine(map[string]string{"id": "myid2", "address": "addr1"})
+	c.Assert(err, check.ErrorMatches, ".*duplicate key error.*")
+}
+
+func (s *S) TestCollectionDupEntries(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	coll := conn.Collection("iaas_machines")
+	c.Assert(err, check.IsNil)
+	coll.DropIndex("address")
+	err = coll.Insert(Machine{Id: "id1", Address: "addr1"}, Machine{Id: "id2", Address: "addr1"})
+	c.Assert(err, check.IsNil)
+	_, err = collection()
+	c.Assert(err, check.ErrorMatches, `could not create index on address for collection "iaas_machines".*`)
+	coll.RemoveAll(nil)
+	_, err = collection()
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestCreateMachineIaaSInParams(c *check.C) {

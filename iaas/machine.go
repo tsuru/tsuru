@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -179,5 +180,16 @@ func collection() (*storage.Collection, error) {
 		log.Errorf("Failed to connect to the database: %s", err)
 		return nil, err
 	}
-	return conn.Collection(name), nil
+	coll := conn.Collection(name)
+	index := mgo.Index{
+		Key:    []string{"address"},
+		Unique: true,
+	}
+	err = coll.EnsureIndex(index)
+	if err != nil {
+		return nil, fmt.Errorf(`could not create index on address for collection %q. `+
+			`this can be caused by multiple entries with the same address, please run "tsuru machine-list" and check for duplicated entries. `+
+			`original error: %s`, name, err)
+	}
+	return coll, nil
 }

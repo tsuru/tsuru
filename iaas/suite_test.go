@@ -7,6 +7,7 @@ package iaas
 import (
 	"testing"
 
+	"github.com/tsuru/config"
 	"gopkg.in/check.v1"
 )
 
@@ -17,6 +18,7 @@ type S struct{}
 var _ = check.Suite(&S{})
 
 func (s *S) SetUpTest(c *check.C) {
+	config.Set("database:name", "iaas_tests_s")
 	iaasProviders = make(map[string]iaasFactory)
 	iaasInstances = make(map[string]IaaS)
 	RegisterIaasProvider("test-iaas", newTestIaaS)
@@ -40,10 +42,14 @@ func (*TestIaaS) DeleteMachine(m *Machine) error {
 
 func (*TestIaaS) CreateMachine(params map[string]string) (*Machine, error) {
 	params["should"] = "be in"
+	addr := params["address"]
+	if addr == "" {
+		addr = params["id"]
+	}
 	m := Machine{
 		Id:      params["id"],
 		Status:  "running",
-		Address: params["id"] + ".somewhere.com",
+		Address: addr + ".somewhere.com",
 	}
 	return &m, nil
 }
