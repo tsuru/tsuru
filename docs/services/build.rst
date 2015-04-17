@@ -152,8 +152,8 @@ Binding instances to apps
 -------------------------
 
 In the bind action, tsuru calls your service via POST on
-``/resources/<service-instance-name>/bind`` with the parameters needed for binding an app
-into a service instance.
+``/resources/<service-instance-name>/bind-app`` with the parameters needed for
+binding an app into a service instance.
 
 If the bind operation succeeds, the API should return 201 as status code with
 the variables to be exported in the app environment on body in JSON format.
@@ -170,12 +170,11 @@ called "SOMEVAR" to be injected in the app environment:
     from flask import request
 
 
-    @app.route("/resources/<name>/bind", methods=["POST"])
-    def bind(name):
+    @app.route("/resources/<name>/bind-app", methods=["POST"])
+    def bind_app(name):
         app_host = request.form.get("app-host")
-        unit_host = request.form.get("unit-host")
-        # use name, app_host and unit_host to bind the service instance and the
-        # application
+        # use name and app_host to bind the service instance and the #
+        application
         envs = {"SOMEVAR": "somevalue"}
         return json.dumps(envs), 201
 
@@ -183,7 +182,7 @@ Unbinding instances from apps
 -----------------------------
 
 In the unbind action, tsuru issues a ``DELETE`` request to the URL
-``/resources/<service-instance-name>/bind``.
+``/resources/<service-instance-name>/bind-app``.
 
 If the unbind operation succeeds, the API should return 200 as status code.
 Let's create the view for this action:
@@ -192,12 +191,35 @@ Let's create the view for this action:
 
 ::
 
-    @app.route("/resources/<name>/bind", methods=["DELETE"])
-    def unbind(name, host):
+    @app.route("/resources/<name>/bind-app", methods=["DELETE"])
+    def unbind_app(name):
+        app_host = request.form.get("app-host")
+        # use name and app-host to remove the bind
+        return "", 200
+
+Whitelisting units
+------------------
+
+When binding and unbindin application and service instances, tsuru will also
+provide information about units that will have access to the service instance,
+so the service API can handle any required whitelisting (writing ACL rules to a
+network switch or authorizing access in a firewall, for example).
+
+tsuru will send POST and DELETE requests to the route
+``/resources/<name>/bind``, with the host of the app and the unit, so any
+access control can be handled by the API:
+
+.. highlight:: python
+
+::
+
+    @app.route("/resources/<name>/bind", methods=["POST", "DELETE"])
+    def access_control(name):
         app_host = request.form.get("app-host")
         unit_host = request.form.get("unit-host")
-        # use name, app-host and unit-host to remove the bind
-        return "", 200
+        # use unit-host and app-host, according to the access control tool, and
+        # the request method.
+        return "", 201
 
 Removing instances
 ------------------
@@ -268,19 +290,19 @@ The final code for our "fake API" developed in Flask is:
         return "", 201
 
 
-    @app.route("/resources/<name>/bind", methods=["POST"])
-    def bind(name):
+    @app.route("/resources/<name>/bind-app", methods=["POST"])
+    def bind_app(name):
         app_host = request.form.get("app-host")
-        unit_host = request.form.get("unit-host")
-        # use name, app_host and unit_host to bind the service instance and the
-        # application
+        # use name and app_host to bind the service instance and the #
+        application
         envs = {"SOMEVAR": "somevalue"}
         return json.dumps(envs), 201
 
 
-    @app.route("/resources/<name>/bind", methods=["DELETE"])
-    def unbind(name, host):
-        # use name and host to remove the bind
+    @app.route("/resources/<name>/bind-app", methods=["DELETE"])
+    def unbind_app(name):
+        app_host = request.form.get("app-host")
+        # use name and app-host to remove the bind
         return "", 200
 
 
@@ -288,6 +310,15 @@ The final code for our "fake API" developed in Flask is:
     def remove_instance(name):
         # remove the instance named "name"
         return "", 200
+
+
+    @app.route("/resources/<name>/bind", methods=["POST", "DELETE"])
+    def access_control(name):
+        app_host = request.form.get("app-host")
+        unit_host = request.form.get("unit-host")
+        # use unit-host and app-host, according to the access control tool, and
+        # the request method.
+        return "", 201
 
 
     @app.route("/resources/<name>/status", methods=["GET"])
@@ -332,10 +363,12 @@ service`_:
 
 ::
 
-    id: fakeserviceid1
-    password: secret123
+    id: servicename
+    username: username_to_auth
+    password: 1CWpoX2Zr46Jhc7u
     endpoint:
-        production: fakeserviceid1.com
+      production: production-endpoint.com
+        test: test-endpoint.com:8080
 
 _`submit your service`: `Submiting your service API`_
 
