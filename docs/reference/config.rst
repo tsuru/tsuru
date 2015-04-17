@@ -697,7 +697,7 @@ default value expected by platforms defined in tsuru's basebuilder repository is
 ``8888``.
 
 docker:user
-+++++++++++++++
++++++++++++
 
 The user tsuru will use to start the container. The value expected for basebuilder
 platforms is ``ubuntu``.
