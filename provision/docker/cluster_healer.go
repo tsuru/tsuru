@@ -131,7 +131,7 @@ func (h *Healer) healNode(node *cluster.Node) (cluster.Node, error) {
 	if err != nil {
 		log.Errorf("Unable to move containers, skipping containers healing %q -> %q: %s: %s", failingHost, machine.Address, err.Error(), buf.String())
 	}
-	failingMachine, err := iaas.FindMachineByAddress(failingHost)
+	failingMachine, err := iaas.FindMachineByIdOrAddress(node.Metadata["iaas-id"], failingHost)
 	if err != nil {
 		return createdNode, fmt.Errorf("Unable to find failing machine %s in IaaS: %s", failingHost, err.Error())
 	}

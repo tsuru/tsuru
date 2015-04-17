@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/api"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
@@ -110,13 +111,27 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if address == "" {
 		return fmt.Errorf("Node address is required.")
 	}
+	nodes, err := mainDockerProvisioner.getCluster().UnfilteredNodes()
+	if err != nil {
+		return err
+	}
+	var node *cluster.Node
+	for i := range nodes {
+		if nodes[i].Address == address {
+			node = &nodes[i]
+			break
+		}
+	}
+	if node == nil {
+		return fmt.Errorf("node with address %q not found in cluster", address)
+	}
 	err = mainDockerProvisioner.getCluster().Unregister(address)
 	if err != nil {
 		return err
 	}
 	removeIaaS, _ := strconv.ParseBool(params["remove_iaas"])
 	if removeIaaS {
-		m, err := iaas.FindMachineByAddress(urlToHost(address))
+		m, err := iaas.FindMachineByIdOrAddress(node.Metadata["iaas-id"], urlToHost(address))
 		if err != nil && err != mgo.ErrNotFound {
 			return err
 		}

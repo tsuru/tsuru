@@ -604,7 +604,7 @@ func (a *autoScaleConfig) removeNode(chosenNode *cluster.Node) error {
 		a.provisioner.getCluster().Register(chosenNode.Address, chosenNode.Metadata)
 		return fmt.Errorf("unable to move containers from node (%s): %s - log: %s", chosenNode.Address, err, buf.String())
 	}
-	m, err := iaas.FindMachineByAddress(urlToHost(chosenNode.Address))
+	m, err := iaas.FindMachineByIdOrAddress(chosenNode.Metadata["iaas-id"], urlToHost(chosenNode.Address))
 	if err != nil {
 		a.logError("unable to find machine for removal in iaas: %s", err)
 		return nil
