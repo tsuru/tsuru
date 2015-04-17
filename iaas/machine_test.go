@@ -27,6 +27,8 @@ func (s *S) TestCreateMachineForIaaS(c *check.C) {
 		"id":        "myid",
 		"something": "x",
 		"should":    "be in",
+		"iaas-id":   "myid",
+		"iaas":      "test-iaas",
 	})
 }
 
@@ -68,11 +70,13 @@ func (s *S) TestCreateMachineWithTemplate(c *check.C) {
 	c.Assert(m.Id, check.Equals, "myid")
 	c.Assert(m.Iaas, check.Equals, "test-iaas")
 	expected := map[string]string{
-		"id":     "myid",
-		"key1":   "val1",
-		"key2":   "val2",
-		"key3":   "override3",
-		"should": "be in",
+		"id":      "myid",
+		"key1":    "val1",
+		"key2":    "val2",
+		"key3":    "override3",
+		"should":  "be in",
+		"iaas-id": "myid",
+		"iaas":    "test-iaas",
 	}
 	c.Assert(m.CreationParams, check.DeepEquals, expected)
 	c.Assert(params, check.DeepEquals, expected)

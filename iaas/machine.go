@@ -25,6 +25,10 @@ type Machine struct {
 }
 
 func CreateMachine(params map[string]string) (*Machine, error) {
+	return CreateMachineForIaaS("", params)
+}
+
+func CreateMachineForIaaS(iaasName string, params map[string]string) (*Machine, error) {
 	templateName := params["template"]
 	if templateName != "" {
 		template, err := FindTemplate(templateName)
@@ -41,7 +45,9 @@ func CreateMachine(params map[string]string) (*Machine, error) {
 			}
 		}
 	}
-	iaasName, _ := params["iaas"]
+	if iaasName == "" {
+		iaasName, _ = params["iaas"]
+	}
 	if iaasName == "" {
 		defaultIaaS, err := config.GetString("iaas:default")
 		if err != nil {
@@ -49,11 +55,7 @@ func CreateMachine(params map[string]string) (*Machine, error) {
 		}
 		iaasName = defaultIaaS
 	}
-	delete(params, "iaas")
-	return CreateMachineForIaaS(iaasName, params)
-}
-
-func CreateMachineForIaaS(iaasName string, params map[string]string) (*Machine, error) {
+	params["iaas"] = iaasName
 	iaas, err := getIaasProvider(iaasName)
 	if err != nil {
 		return nil, err
@@ -62,6 +64,7 @@ func CreateMachineForIaaS(iaasName string, params map[string]string) (*Machine, 
 	if err != nil {
 		return nil, err
 	}
+	params["iaas-id"] = m.Id
 	m.Iaas = iaasName
 	m.CreationParams = params
 	err = m.saveToDB()
