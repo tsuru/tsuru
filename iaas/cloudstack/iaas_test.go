@@ -271,6 +271,7 @@ func (s *cloudstackSuite) TestHealthCheckFailure(c *check.C) {
 }
 
 func (s *cloudstackSuite) TestCreateMachineTimeout(c *check.C) {
+	done := make(chan bool)
 	var calls []string
 	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cmd := r.URL.Query().Get("command")
@@ -299,6 +300,9 @@ func (s *cloudstackSuite) TestCreateMachineTimeout(c *check.C) {
 		if cmd == "detachVolume" {
 			fmt.Fprintln(w, `{"detachvolumeresponse": {"jobid": "job1"}}`)
 		}
+		if cmd == "deleteVolume" {
+			done <- true
+		}
 	}))
 	defer fakeServer.Close()
 	config.Set("iaas:cloudstack:url", fakeServer.URL)
@@ -316,7 +320,11 @@ func (s *cloudstackSuite) TestCreateMachineTimeout(c *check.C) {
 	}
 	_, err = cs.CreateMachine(params)
 	c.Assert(err, check.ErrorMatches, `cloudstack: time out after .+? waiting for instance .+ to start`)
-	time.Sleep(2 * time.Second)
+	select {
+	case <-done:
+	case <-time.After(time.Minute):
+		c.Fatal("timeout waiting for api calls")
+	}
 	queue.ResetQueue()
 	c.Assert(calls, check.DeepEquals, []string{
 		"deployVirtualMachine",
