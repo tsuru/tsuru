@@ -16,7 +16,8 @@ func (s *S) TestCreateMachineForIaaS(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(m.Id, check.Equals, "myid")
 	c.Assert(m.Iaas, check.Equals, "test-iaas")
-	coll := collection()
+	coll, err := collection()
+	c.Assert(err, check.IsNil)
 	defer coll.Close()
 	var dbMachine Machine
 	err = coll.Find(bson.M{"_id": "myid"}).One(&dbMachine)

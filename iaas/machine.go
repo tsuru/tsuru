@@ -75,17 +75,23 @@ func CreateMachineForIaaS(iaasName string, params map[string]string) (*Machine, 
 }
 
 func ListMachines() ([]Machine, error) {
-	coll := collection()
+	coll, err := collection()
+	if err != nil {
+		return nil, err
+	}
 	defer coll.Close()
 	var result []Machine
-	err := coll.Find(nil).All(&result)
+	err = coll.Find(nil).All(&result)
 	return result, err
 }
 
 // Uses id or address, this is only used because previously we didn't have
 // iaas-id in node metadata.
 func FindMachineByIdOrAddress(id string, address string) (Machine, error) {
-	coll := collection()
+	coll, err := collection()
+	if err != nil {
+		return Machine{}, err
+	}
 	defer coll.Close()
 	var result Machine
 	query := bson.M{}
@@ -94,23 +100,29 @@ func FindMachineByIdOrAddress(id string, address string) (Machine, error) {
 	} else {
 		query["address"] = address
 	}
-	err := coll.Find(query).One(&result)
+	err = coll.Find(query).One(&result)
 	return result, err
 }
 
 func FindMachineByAddress(address string) (Machine, error) {
-	coll := collection()
+	coll, err := collection()
+	if err != nil {
+		return Machine{}, err
+	}
 	defer coll.Close()
 	var result Machine
-	err := coll.Find(bson.M{"address": address}).One(&result)
+	err = coll.Find(bson.M{"address": address}).One(&result)
 	return result, err
 }
 
 func FindMachineById(id string) (Machine, error) {
-	coll := collection()
+	coll, err := collection()
+	if err != nil {
+		return Machine{}, err
+	}
 	defer coll.Close()
 	var result Machine
-	err := coll.FindId(id).One(&result)
+	err = coll.FindId(id).One(&result)
 	return result, err
 }
 
@@ -139,19 +151,25 @@ func (m *Machine) FormatNodeAddress() string {
 }
 
 func (m *Machine) saveToDB() error {
-	coll := collection()
+	coll, err := collection()
+	if err != nil {
+		return err
+	}
 	defer coll.Close()
-	_, err := coll.UpsertId(m.Id, m)
+	_, err = coll.UpsertId(m.Id, m)
 	return err
 }
 
 func (m *Machine) removeFromDB() error {
-	coll := collection()
+	coll, err := collection()
+	if err != nil {
+		return err
+	}
 	defer coll.Close()
 	return coll.Remove(bson.M{"_id": m.Id})
 }
 
-func collection() *storage.Collection {
+func collection() (*storage.Collection, error) {
 	name, err := config.GetString("iaas:collection")
 	if err != nil {
 		name = "iaas_machines"
@@ -159,6 +177,7 @@ func collection() *storage.Collection {
 	conn, err := db.Conn()
 	if err != nil {
 		log.Errorf("Failed to connect to the database: %s", err)
+		return nil, err
 	}
-	return conn.Collection(name)
+	return conn.Collection(name), nil
 }
