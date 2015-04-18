@@ -529,7 +529,12 @@ func (s *ConsumptionSuite) TestServiceInstanceStatusHandlerShouldReturnForbidden
 }
 
 func (s *ConsumptionSuite) TestServiceInfoHandler(c *check.C) {
-	srv := service.Service{Name: "mongodb", Teams: []string{s.team.Name}}
+	srv := service.Service{
+		Name:       "mongodb",
+		Teams:      []string{s.team.Name},
+		OwnerTeams: []string{s.user.Email},
+		Endpoint:   map[string]string{"production": "foohost.com"},
+	}
 	err := srv.Create()
 	c.Assert(err, check.IsNil)
 	defer srv.Delete()
@@ -551,6 +556,7 @@ func (s *ConsumptionSuite) TestServiceInfoHandler(c *check.C) {
 	err = si2.Create()
 	c.Assert(err, check.IsNil)
 	defer service.DeleteInstance(&si2)
+	srv.Instances = []service.ServiceInstance{si1, si2}
 	request, err := http.NewRequest("GET", "/services/mongodb?:name=mongodb", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -558,11 +564,63 @@ func (s *ConsumptionSuite) TestServiceInfoHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, check.IsNil)
-	var instances []service.ServiceInstance
-	err = json.Unmarshal(body, &instances)
+	var service service.Service
+	err = json.Unmarshal(body, &service)
 	c.Assert(err, check.IsNil)
-	expected := []service.ServiceInstance{si1, si2}
-	c.Assert(instances, check.DeepEquals, expected)
+	c.Assert(service, check.DeepEquals, srv)
+	c.Assert(service.Doc, check.Equals, "")
+	action := rectest.Action{
+		Action: "service-info",
+		User:   s.user.Email,
+		Extra:  []interface{}{"mongodb"},
+	}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *ConsumptionSuite) TestServiceInfoHandlerReturnsDoc(c *check.C) {
+	doc := `Doc for mongodb
+Collnosql is a really really cool nosql`
+	srv := service.Service{
+		Name:       "mongodb",
+		Doc:        doc,
+		Teams:      []string{s.team.Name},
+		OwnerTeams: []string{s.user.Email},
+		Endpoint:   map[string]string{"production": "foohost.com"},
+	}
+	err := srv.Create()
+	c.Assert(err, check.IsNil)
+	defer srv.Delete()
+	si1 := service.ServiceInstance{
+		Name:        "my_nosql",
+		ServiceName: srv.Name,
+		Apps:        []string{},
+		Teams:       []string{s.team.Name},
+	}
+	err = si1.Create()
+	c.Assert(err, check.IsNil)
+	defer service.DeleteInstance(&si1)
+	si2 := service.ServiceInstance{
+		Name:        "your_nosql",
+		ServiceName: srv.Name,
+		Apps:        []string{"wordpress"},
+		Teams:       []string{s.team.Name},
+	}
+	err = si2.Create()
+	c.Assert(err, check.IsNil)
+	defer service.DeleteInstance(&si2)
+	srv.Instances = []service.ServiceInstance{si1, si2}
+	request, err := http.NewRequest("GET", "/services/mongodb?:name=mongodb", nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = serviceInfo(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, check.IsNil)
+	var service service.Service
+	err = json.Unmarshal(body, &service)
+	c.Assert(err, check.IsNil)
+	c.Assert(service, check.DeepEquals, srv)
+	c.Assert(service.Doc, check.Equals, doc)
 	action := rectest.Action{
 		Action: "service-info",
 		User:   s.user.Email,
@@ -572,7 +630,12 @@ func (s *ConsumptionSuite) TestServiceInfoHandler(c *check.C) {
 }
 
 func (s *ConsumptionSuite) TestServiceInfoHandlerShouldReturnOnlyInstancesOfTheSameTeamOfTheUser(c *check.C) {
-	srv := service.Service{Name: "mongodb", Teams: []string{s.team.Name}}
+	srv := service.Service{
+		Name:       "mongodb",
+		Teams:      []string{s.team.Name},
+		OwnerTeams: []string{s.user.Email},
+		Endpoint:   map[string]string{"production": "foohost.com"},
+	}
 	err := srv.Create()
 	c.Assert(err, check.IsNil)
 	defer srv.Delete()
@@ -594,6 +657,7 @@ func (s *ConsumptionSuite) TestServiceInfoHandlerShouldReturnOnlyInstancesOfTheS
 	err = si2.Create()
 	c.Assert(err, check.IsNil)
 	defer service.DeleteInstance(&si2)
+	srv.Instances = []service.ServiceInstance{si1, si2}
 	request, err := http.NewRequest("GET", fmt.Sprintf("/services/%s?:name=%s", "mongodb", "mongodb"), nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -601,11 +665,13 @@ func (s *ConsumptionSuite) TestServiceInfoHandlerShouldReturnOnlyInstancesOfTheS
 	c.Assert(err, check.IsNil)
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, check.IsNil)
-	var instances []service.ServiceInstance
-	err = json.Unmarshal(body, &instances)
+	srv.Instances = []service.ServiceInstance{si1}
+	var service service.Service
+	err = json.Unmarshal(body, &service)
 	c.Assert(err, check.IsNil)
-	expected := []service.ServiceInstance{si1}
-	c.Assert(instances, check.DeepEquals, expected)
+	c.Assert(service, check.DeepEquals, srv)
+	c.Assert(len(service.Instances), check.Equals, 1)
+	c.Assert(service.Instances[0], check.DeepEquals, si1)
 }
 
 func (s *ConsumptionSuite) TestServiceInfoHandlerReturns404WhenTheServiceDoesNotExist(c *check.C) {
@@ -681,58 +747,6 @@ func (s *ConsumptionSuite) TestGetServiceInstanceForbidden(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Code, check.Equals, http.StatusForbidden)
 	c.Assert(e.Message, check.Equals, service.ErrAccessNotAllowed.Error())
-}
-
-func (s *ConsumptionSuite) makeRequestToGetDocHandler(name string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
-	url := fmt.Sprintf("/services/%s/doc/?:name=%s", name, name)
-	request, err := http.NewRequest("GET", url, nil)
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Content-Type", "application/json")
-	recorder := httptest.NewRecorder()
-	return recorder, request
-}
-
-func (s *ConsumptionSuite) TestDocHandler(c *check.C) {
-	doc := `Doc for coolnosql
-Collnosql is a really really cool nosql`
-	srv := service.Service{
-		Name:  "coolnosql",
-		Doc:   doc,
-		Teams: []string{s.team.Name},
-	}
-	err := srv.Create()
-	c.Assert(err, check.IsNil)
-	recorder, request := s.makeRequestToGetDocHandler("coolnosql", c)
-	err = serviceDoc(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
-	b, err := ioutil.ReadAll(recorder.Body)
-	c.Assert(err, check.IsNil)
-	c.Assert(string(b), check.Equals, doc)
-	action := rectest.Action{
-		Action: "service-doc",
-		User:   s.user.Email,
-		Extra:  []interface{}{"coolnosql"},
-	}
-	c.Assert(action, rectest.IsRecorded)
-}
-
-func (s *ConsumptionSuite) TestDocHandlerReturns401WhenUserHasNoAccessToService(c *check.C) {
-	srv := service.Service{
-		Name:         "coolnosql",
-		Doc:          "some doc...",
-		IsRestricted: true,
-	}
-	err := srv.Create()
-	c.Assert(err, check.IsNil)
-	recorder, request := s.makeRequestToGetDocHandler("coolnosql", c)
-	err = serviceDoc(recorder, request, s.token)
-	c.Assert(err, check.ErrorMatches, "^This user does not have access to this service$")
-}
-
-func (s *ConsumptionSuite) TestDocHandlerReturns404WhenServiceDoesNotExists(c *check.C) {
-	recorder, request := s.makeRequestToGetDocHandler("inexistentsql", c)
-	err := serviceDoc(recorder, request, s.token)
-	c.Assert(err, check.ErrorMatches, "^Service not found$")
 }
 
 func (s *ConsumptionSuite) TestGetServiceOrError(c *check.C) {

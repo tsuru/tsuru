@@ -138,7 +138,7 @@ func serviceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	serviceName := r.URL.Query().Get(":name")
 	rec.Log(u.Email, "service-info", serviceName)
-	_, err = getServiceOrError(serviceName, u)
+	s, err := getServiceOrError(serviceName, u)
 	if err != nil {
 		return err
 	}
@@ -158,26 +158,12 @@ func serviceInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	b, err := json.Marshal(instances)
+	s.Instances = instances
+	b, err := json.Marshal(s)
 	if err != nil {
-		return nil
+		return err
 	}
 	w.Write(b)
-	return nil
-}
-
-func serviceDoc(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
-	sName := r.URL.Query().Get(":name")
-	rec.Log(u.Email, "service-doc", sName)
-	s, err := getServiceOrError(sName, u)
-	if err != nil {
-		return err
-	}
-	w.Write([]byte(s.Doc))
 	return nil
 }
 
