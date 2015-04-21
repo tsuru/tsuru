@@ -41,7 +41,7 @@ A deploy is executed in the ``git push``. In order to get it working, you will
 need to add a pre-receive hook. tsuru comes with three pre-receive hooks, all
 of them need further configuration:
 
-    * s3cmd: uses `Amazon S3 <https://s3.amazonaws.com>`_ to store and server
+    * s3cmd: uses `Amazon S3 <https://s3.amazonaws.com>`_ to store and serve
       archives
     * archive-server: uses tsuru's `archive-server
       <https://github.com/tsuru/archive-server>`_ to store and serve archives
