@@ -5,10 +5,11 @@
 package api
 
 import (
-	"gopkg.in/check.v1"
 	"net"
 	"net/http"
 	"time"
+
+	"gopkg.in/check.v1"
 )
 
 type fakeConn struct {
