@@ -693,7 +693,11 @@ func appLog(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		if err != nil {
 			return err
 		}
-		defer l.Close()
+		logTracker.add(l)
+		defer func() {
+			logTracker.remove(l)
+			l.Close()
+		}()
 		for log := range l.C {
 			err := encoder.Encode([]app.Applog{log})
 			if err != nil {

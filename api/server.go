@@ -315,6 +315,7 @@ func RunServer(dry bool) http.Handler {
 		shutdownTimeout = shutdownTimeout * time.Second
 		idleTracker := newIdleTracker()
 		shutdown.Register(idleTracker)
+		shutdown.Register(&logTracker)
 		srv := &graceful.Server{
 			Timeout: shutdownTimeout,
 			Server: &http.Server{
