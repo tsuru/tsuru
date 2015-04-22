@@ -12,6 +12,12 @@ type shutdownable interface {
 	Shutdown()
 }
 
+type ShutdownFunc func()
+
+func (fn ShutdownFunc) Shutdown() {
+	fn()
+}
+
 var (
 	registered []shutdownable
 	lock       sync.Mutex
