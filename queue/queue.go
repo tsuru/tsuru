@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/monsterqueue/mongodb"
+	"github.com/tsuru/tsuru/api/shutdown"
 )
 
 // PubSubQ represents an implementation that allows Publishing and
@@ -65,24 +66,37 @@ func Factory() (QFactory, error) {
 	return nil, fmt.Errorf("Queue %q is not known.", name)
 }
 
-var queueInstance monsterqueue.Queue
-var queueMutex sync.Mutex
+type queueInstanceData struct {
+	sync.Mutex
+	instance monsterqueue.Queue
+}
+
+func (q *queueInstanceData) Shutdown() {
+	q.Lock()
+	defer q.Unlock()
+	if q.instance != nil {
+		q.instance.Stop()
+		q.instance = nil
+	}
+}
+
+var queueData queueInstanceData
 
 func ResetQueue() {
-	queueMutex.Lock()
-	defer queueMutex.Unlock()
-	if queueInstance != nil {
-		queueInstance.Stop()
-		queueInstance.ResetStorage()
-		queueInstance = nil
+	queueData.Lock()
+	defer queueData.Unlock()
+	if queueData.instance != nil {
+		queueData.instance.Stop()
+		queueData.instance.ResetStorage()
+		queueData.instance = nil
 	}
 }
 
 func Queue() (monsterqueue.Queue, error) {
-	queueMutex.Lock()
-	defer queueMutex.Unlock()
-	if queueInstance != nil {
-		return queueInstance, nil
+	queueData.Lock()
+	defer queueData.Unlock()
+	if queueData.instance != nil {
+		return queueData.instance, nil
 	}
 	queueMongoUrl, _ := config.GetString("queue:mongo-url")
 	if queueMongoUrl == "" {
@@ -95,10 +109,11 @@ func Queue() (monsterqueue.Queue, error) {
 		Database:         queueMongoDB,
 	}
 	var err error
-	queueInstance, err = mongodb.NewQueue(conf)
+	queueData.instance, err = mongodb.NewQueue(conf)
 	if err != nil {
 		return nil, fmt.Errorf("could not create queue instance, please check queue:mongo-url and queue:mongo-database config entries. error: %s", err)
 	}
-	go queueInstance.ProcessLoop()
-	return queueInstance, nil
+	shutdown.Register(&queueData)
+	go queueData.instance.ProcessLoop()
+	return queueData.instance, nil
 }

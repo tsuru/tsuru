@@ -6,8 +6,11 @@ package queue
 
 import (
 	"testing"
+	"time"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/monsterqueue"
+	"github.com/tsuru/tsuru/api/shutdown"
 	"gopkg.in/check.v1"
 )
 
@@ -50,4 +53,37 @@ func (s *S) TestRegister(c *check.C) {
 	Register("unregistered", &redismqQFactory{})
 	_, err := Factory()
 	c.Assert(err, check.IsNil)
+}
+
+func (s *S) SetUpTest(c *check.C) {
+	config.Set("queue:mongo-database", "test-queue")
+	ResetQueue()
+}
+
+type testTask struct {
+	callCount int
+}
+
+func (t *testTask) Run(j monsterqueue.Job) {
+	t.callCount++
+	j.Success("result")
+}
+
+func (t *testTask) Name() string {
+	return "test-task"
+}
+
+func (s *S) TestQueue(c *check.C) {
+	c.Assert(shutdown.All(), check.HasLen, 0)
+	q, err := Queue()
+	c.Assert(err, check.IsNil)
+	task := &testTask{}
+	err = q.RegisterTask(task)
+	c.Assert(err, check.IsNil)
+	j, err := q.EnqueueWait(task.Name(), nil, time.Minute)
+	c.Assert(err, check.IsNil)
+	result, err := j.Result()
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.Equals, "result")
+	c.Assert(shutdown.All(), check.HasLen, 1)
 }
