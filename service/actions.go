@@ -269,9 +269,8 @@ var bindUnitsToServiceInstance = action.Action{
 			go func(unit bind.Unit) {
 				defer wg.Done()
 				err := si.BindUnit(app, unit)
-				if err != nil {
+				if err != nil && err != ErrUnitAlreadyBound {
 					errChan <- err
-					return
 				}
 			}(unit)
 		}
