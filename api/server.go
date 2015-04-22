@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/codegangsta/negroni"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	_ "github.com/tsuru/tsuru/auth/native"
@@ -313,8 +313,8 @@ func RunServer(dry bool) http.Handler {
 			shutdownTimeout = 10 * 60
 		}
 		shutdownTimeout = shutdownTimeout * time.Second
-		idleConns := make(map[net.Conn]struct{})
-		var idleConnsLock sync.Mutex
+		idleTracker := newIdleTracker()
+		shutdown.Register(idleTracker)
 		srv := &graceful.Server{
 			Timeout: shutdownTimeout,
 			Server: &http.Server{
@@ -322,22 +322,14 @@ func RunServer(dry bool) http.Handler {
 				Handler: n,
 			},
 			ConnState: func(conn net.Conn, state http.ConnState) {
-				if state == http.StateIdle || state == http.StateClosed || state == http.StateHijacked {
-					idleConnsLock.Lock()
-					defer idleConnsLock.Unlock()
-					if state == http.StateIdle {
-						idleConns[conn] = struct{}{}
-					} else {
-						delete(idleConns, conn)
-					}
-				}
+				idleTracker.trackConn(conn, state)
 			},
 			ShutdownInitiated: func() {
 				fmt.Println("tsuru is shutting down, waiting for pending connections to finish.")
-				idleConnsLock.Lock()
-				defer idleConnsLock.Unlock()
-				for conn := range idleConns {
-					conn.Close()
+				handlers := shutdown.All()
+				for _, h := range handlers {
+					fmt.Printf("running shutdown handler for %T\n", h)
+					h.Shutdown()
 				}
 				// TODO(cezarsa): Implement shutdown handlers to stop stranded
 				// goroutines.
