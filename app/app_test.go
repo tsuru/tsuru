@@ -1907,6 +1907,7 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 		"deploys":    float64(7),
 		"pool":       "test",
 		"teamowner":  "myteam",
+		"lock":       "Not locked",
 		"plan": map[string]interface{}{
 			"name":     "myplan",
 			"memory":   float64(64),
@@ -1969,6 +1970,7 @@ func (s *S) TestAppMarshalJSONWithoutRepository(c *check.C) {
 		"deploys":    float64(7),
 		"pool":       "pool1",
 		"teamowner":  "myteam",
+		"lock":       "Not locked",
 		"plan": map[string]interface{}{
 			"name":     "myplan",
 			"memory":   float64(64),
