@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/codegangsta/negroni"
@@ -328,12 +329,17 @@ func RunServer(dry bool) http.Handler {
 			ShutdownInitiated: func() {
 				fmt.Println("tsuru is shutting down, waiting for pending connections to finish.")
 				handlers := shutdown.All()
+				wg := sync.WaitGroup{}
 				for _, h := range handlers {
-					fmt.Printf("running shutdown handler for %T\n", h)
-					h.Shutdown()
+					wg.Add(1)
+					go func(h shutdown.Shutdownable) {
+						defer wg.Done()
+						fmt.Printf("running shutdown handler for %v...\n", h)
+						h.Shutdown()
+						fmt.Printf("running shutdown handler for %v. DONE.\n", h)
+					}(h)
 				}
-				// TODO(cezarsa): Implement shutdown handlers to stop stranded
-				// goroutines.
+				wg.Wait()
 				close(shutdownChan)
 			},
 		}

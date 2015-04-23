@@ -33,6 +33,10 @@ func (t *logStreamTracker) remove(l *app.LogListener) {
 	delete(t.conn, l)
 }
 
+func (t *logStreamTracker) String() string {
+	return "log pub/sub connections"
+}
+
 func (t *logStreamTracker) Shutdown() {
 	t.Lock()
 	defer t.Unlock()

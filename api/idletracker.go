@@ -27,6 +27,10 @@ func (i *idleTracker) trackConn(conn net.Conn, state http.ConnState) {
 	}
 }
 
+func (i *idleTracker) String() string {
+	return "idle connections"
+}
+
 func (i *idleTracker) Shutdown() {
 	i.Lock()
 	defer i.Unlock()
