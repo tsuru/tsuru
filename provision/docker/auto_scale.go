@@ -253,6 +253,14 @@ func (a *autoScaleConfig) stop() {
 	a.done <- true
 }
 
+func (a *autoScaleConfig) Shutdown() {
+	a.stop()
+}
+
+func (a *autoScaleConfig) String() string {
+	return "node auto scale"
+}
+
 func (a *autoScaleConfig) runScaler(scaler autoScaler) (retErr error) {
 	defer func() {
 		if r := recover(); r != nil {

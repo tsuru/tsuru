@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	clusterLog "github.com/tsuru/docker-cluster/log"
+	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
@@ -136,7 +137,7 @@ func (p *dockerProvisioner) initAutoScaleConfig() *autoScaleConfig {
 	preventRebalance, _ := config.GetBool("docker:auto-scale:prevent-rebalance")
 	totalMemoryMetadata, _ := config.GetString("docker:scheduler:total-memory-metadata")
 	maxUsedMemory, _ := config.GetFloat("docker:scheduler:max-used-memory")
-	return &autoScaleConfig{
+	asConf := &autoScaleConfig{
 		provisioner:         p,
 		groupByMetadata:     groupByMetadata,
 		totalMemoryMetadata: totalMemoryMetadata,
@@ -147,7 +148,10 @@ func (p *dockerProvisioner) initAutoScaleConfig() *autoScaleConfig {
 		waitTimeNewMachine:  waitSecondsNewMachine * time.Second,
 		runInterval:         runInterval * time.Second,
 		preventRebalance:    preventRebalance,
+		done:                make(chan bool),
 	}
+	shutdown.Register(asConf)
+	return asConf
 }
 
 func (p *dockerProvisioner) cloneProvisioner(ignoredContainers []container) (*dockerProvisioner, error) {
