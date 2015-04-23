@@ -101,24 +101,33 @@ func (factory *redismqQFactory) getConn(standAlone ...bool) (redis.Conn, error) 
 }
 
 func (factory *redismqQFactory) dial() (redis.Conn, error) {
-	host, err := config.GetString("redis-queue:host")
+	host, err := config.GetString("pubsub:redis-host")
 	if err != nil {
-		host = "localhost"
-	}
-	port, err := config.GetString("redis-queue:port")
-	if err != nil {
-		if nport, err := config.GetInt("redis-queue:port"); err != nil {
-			port = "6379"
-		} else {
-			port = fmt.Sprintf("%d", nport)
+		host, err = config.GetString("redis-queue:host")
+		if err != nil {
+			host = "localhost"
 		}
 	}
-	password, _ := config.GetString("redis-queue:password")
-	db, err := config.GetInt("redis-queue:db")
+	port, err := config.Get("pubsub:redis-port")
 	if err != nil {
-		db = 3
+		port, err = config.Get("redis-queue:port")
+		if err != nil {
+			port = "6379"
+		}
 	}
-	conn, err := redis.Dial("tcp", host+":"+port)
+	port = fmt.Sprintf("%v", port)
+	password, err := config.GetString("pubsub:redis-password")
+	if err != nil {
+		password, _ = config.GetString("redis-queue:password")
+	}
+	db, err := config.GetInt("pubsub:redis-db")
+	if err != nil {
+		db, err = config.GetInt("redis-queue:db")
+		if err != nil {
+			db = 3
+		}
+	}
+	conn, err := redis.Dial("tcp", fmt.Sprintf("%s:%v", host, port))
 	if err != nil {
 		return nil, err
 	}
@@ -138,13 +147,19 @@ func (factory *redismqQFactory) getPool() *redis.Pool {
 	if factory.pool != nil {
 		return factory.pool
 	}
-	maxIdle, err := config.GetInt("redis-queue:pool-max-idle-conn")
+	maxIdle, err := config.GetInt("pubsub:pool-max-idle-conn")
 	if err != nil {
-		maxIdle = 20
+		maxIdle, err = config.GetInt("redis-queue:pool-max-idle-conn")
+		if err != nil {
+			maxIdle = 20
+		}
 	}
-	idleTimeout, err := config.GetDuration("redis-queue:pool-idle-timeout")
+	idleTimeout, err := config.GetDuration("pubsub:pool-idle-timeout")
 	if err != nil {
-		idleTimeout = 300
+		idleTimeout, err = config.GetDuration("redis-queue:pool-idle-timeout")
+		if err != nil {
+			idleTimeout = 300
+		}
 	}
 	idleTimeout = idleTimeout * time.Second
 	factory.pool = &redis.Pool{
