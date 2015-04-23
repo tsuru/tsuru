@@ -322,33 +322,90 @@ provider is as easy as implementing `an interface
 queue
 +++++
 
-``queue`` is the name of the queue implementation that tsuru will use. This
-setting defaults to ``redis``.
+``queue`` groups configuration settings for a MongoDB server that will be used as
+storage for delayed execution of queued jobs.
+
+These queue is used to manage creation and destruction of IaaS machines, but tsuru
+may start using it in more places in the future.
+
+queue:mongo-url
++++++++++++++++
+
+Connection url for MongoDB server used to store task information.
+
+queue:mongo-database
+++++++++++++++++++++
+
+Database name used in MongoDB. This value will take precedence over any database
+name already specified in the connection url.
+
+pubsub
+++++++
+
+``pubsub`` configuration is optional and depends on a redis server instance. It's
+used only for following application logs (running ``tsuru app-log -f``). If this
+is not configured tsuru will fail when running ``tsuru app-log -f``.
+
+Previously the configuration for this redis server was inside ``redis-queue:*``
+keys shown below. Using these keys is deprecated and tsuru will start ignoring it
+before 1.0 release.
+
+pubsub:redis-host
++++++++++++++++++
+
+``pubsub:redis-host`` is the host of the Redis server to be used for pub/sub. This
+settings is optional and defaults to "localhost".
+
+pubsub:redis-port
++++++++++++++++++
+
+``pubsub:redis-port`` is the port of the Redis server to be used for pub/sub. This
+settings is optional and defaults to 6379.
+
+pubsub:redis-password
++++++++++++++++++++++
+
+``pubsub:redis-password`` is the password of the Redis server to be used for
+pub/sub. This settings is optional and defaults to "", indicating that the Redis
+server is not authenticated.
+
+pubsub:redis-db
++++++++++++++++
+
+``pubsub:redis-db`` is the database number of the Redis server to be used for
+pub/sub. This settings is optional and defaults to 3.
+
+pubsub:pool-max-idle-conn
++++++++++++++++++++++++++
+
+``pubsub:pool-max-idle-conn`` is the maximum number of idle connections to redis.
+Defaults to 20.
+
+pubsub:pool-idle-timeout
+++++++++++++++++++++++++
+
+``pubsub:pool-idle-timeout`` is the number of seconds idle connections will remain
+in connection pool to redis. Defaults to 300.
 
 redis-queue:host
 ++++++++++++++++
 
-``redis-queue:host`` is the host of the Redis server to be used for the working
-queue. This settings is optional and defaults to "localhost".
+Deprecated. See ``pubsub:redis-host``.
 
 redis-queue:port
 ++++++++++++++++
 
-``redis-queue:port`` is the port of the Redis server to be used for the working
-queue. This settings is optional and defaults to 6379.
+Deprecated. See ``pubsub:redis-port``.
 
 redis-queue:password
 ++++++++++++++++++++
 
-``redis-queue:password`` is the password of the Redis server to be used for the
-working queue. This settings is optional and defaults to "", indicating that
-the Redis server is not authenticated.
+Deprecated. See ``pubsub:redis-password``.
 
 redis-queue:db
 ++++++++++++++
 
-``redis-queue:db`` is the database number of the Redis server to be used
-for the working queue. This settings is optional and defaults to 3.
+Deprecated. See ``pubsub:redis-db``.
 
 .. _config_admin_user:
 
