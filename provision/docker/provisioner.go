@@ -105,11 +105,13 @@ func (p *dockerProvisioner) initDockerCluster() error {
 			waitSecondsNewMachine = 5 * 60
 		}
 		healer := nodeHealer{
+			locks:                 make(map[string]*sync.Mutex),
 			provisioner:           p,
 			disabledTime:          disabledSeconds * time.Second,
 			waitTimeNewMachine:    waitSecondsNewMachine * time.Second,
 			failuresBeforeHealing: maxFailures,
 		}
+		shutdown.Register(&healer)
 		p.cluster.SetHealer(&healer)
 	}
 	healContainersSeconds, _ := config.GetDuration("docker:healing:heal-containers-timeout")

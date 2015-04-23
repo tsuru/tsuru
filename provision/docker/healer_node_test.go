@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/url"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/fsouza/go-dockerclient/testing"
@@ -113,6 +114,7 @@ func (s *S) TestHealerHealNode(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	healer := nodeHealer{
+		locks:                 make(map[string]*sync.Mutex),
 		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
@@ -179,6 +181,7 @@ func (s *S) TestHealerHealNodeWithoutIaaS(c *check.C) {
 	c.Assert(err, check.IsNil)
 	p.cluster = cluster
 	healer := nodeHealer{
+		locks:                 make(map[string]*sync.Mutex),
 		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
@@ -225,6 +228,7 @@ func (s *S) TestHealerHealNodeCreateMachineError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	p.cluster = cluster
 	healer := nodeHealer{
+		locks:                 make(map[string]*sync.Mutex),
 		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
@@ -281,6 +285,7 @@ func (s *S) TestHealerHealNodeWaitAndRegisterError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	p.cluster = cluster
 	healer := nodeHealer{
+		locks:                 make(map[string]*sync.Mutex),
 		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
@@ -362,6 +367,7 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	healer := nodeHealer{
+		locks:                 make(map[string]*sync.Mutex),
 		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
@@ -473,6 +479,7 @@ func (s *S) TestHealerHandleError(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	healer := nodeHealer{
+		locks:                 make(map[string]*sync.Mutex),
 		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
@@ -522,6 +529,7 @@ func (s *S) TestHealerHandleError(c *check.C) {
 
 func (s *S) TestHealerHandleErrorDoesntTriggerEventIfNotNeeded(c *check.C) {
 	healer := nodeHealer{
+		locks:                 make(map[string]*sync.Mutex),
 		provisioner:           nil,
 		disabledTime:          20,
 		failuresBeforeHealing: 1,
@@ -574,6 +582,7 @@ func (s *S) TestHealerHandleErrorDoesntTriggerEventIfHealingCountTooLarge(c *che
 	}
 	iaas.RegisterIaasProvider("my-healer-iaas", newHealerIaaSConstructor("127.0.0.1", nil))
 	healer := nodeHealer{
+		locks:                 make(map[string]*sync.Mutex),
 		provisioner:           nil,
 		disabledTime:          20,
 		failuresBeforeHealing: 1,
