@@ -5,9 +5,10 @@
 package api
 
 import (
+	"time"
+
 	"github.com/tsuru/tsuru/app"
 	"gopkg.in/check.v1"
-	"time"
 )
 
 func (s *S) TestLogStreamTrackerAddRemove(c *check.C) {
