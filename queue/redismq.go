@@ -14,14 +14,14 @@ import (
 	"github.com/tsuru/tsuru/log"
 )
 
-type redismqQ struct {
+type redisPubSub struct {
 	name    string
 	prefix  string
-	factory *redismqQFactory
+	factory *redisPubSubFactory
 	psc     *redis.PubSubConn
 }
 
-func (r *redismqQ) Pub(msg []byte) error {
+func (r *redisPubSub) Pub(msg []byte) error {
 	conn, err := r.factory.getConn()
 	if err != nil {
 		return err
@@ -31,7 +31,7 @@ func (r *redismqQ) Pub(msg []byte) error {
 	return err
 }
 
-func (r *redismqQ) UnSub() error {
+func (r *redisPubSub) UnSub() error {
 	if r.psc == nil {
 		return nil
 	}
@@ -46,7 +46,7 @@ func (r *redismqQ) UnSub() error {
 	return nil
 }
 
-func (r *redismqQ) Sub() (chan []byte, error) {
+func (r *redisPubSub) Sub() (chan []byte, error) {
 	conn, err := r.factory.getConn(true)
 	if err != nil {
 		return nil, err
@@ -76,23 +76,23 @@ func (r *redismqQ) Sub() (chan []byte, error) {
 	return msgChan, nil
 }
 
-func (r *redismqQ) key() string {
+func (r *redisPubSub) key() string {
 	return r.prefix + ":" + r.name
 }
 
-type redismqQFactory struct {
+type redisPubSubFactory struct {
 	sync.Mutex
 	pool *redis.Pool
 }
 
-func (factory *redismqQFactory) Reset() {
+func (factory *redisPubSubFactory) Reset() {
 }
 
-func (factory *redismqQFactory) PubSub(name string) (PubSubQ, error) {
-	return &redismqQ{name: name, factory: factory}, nil
+func (factory *redisPubSubFactory) PubSub(name string) (PubSubQ, error) {
+	return &redisPubSub{name: name, factory: factory}, nil
 }
 
-func (factory *redismqQFactory) getConn(standAlone ...bool) (redis.Conn, error) {
+func (factory *redisPubSubFactory) getConn(standAlone ...bool) (redis.Conn, error) {
 	isStandAlone := len(standAlone) > 0 && standAlone[0]
 	if isStandAlone {
 		return factory.dial()
@@ -100,7 +100,7 @@ func (factory *redismqQFactory) getConn(standAlone ...bool) (redis.Conn, error) 
 	return factory.getPool().Get(), nil
 }
 
-func (factory *redismqQFactory) dial() (redis.Conn, error) {
+func (factory *redisPubSubFactory) dial() (redis.Conn, error) {
 	host, err := config.GetString("pubsub:redis-host")
 	if err != nil {
 		host, err = config.GetString("redis-queue:host")
@@ -141,7 +141,7 @@ func (factory *redismqQFactory) dial() (redis.Conn, error) {
 	return conn, err
 }
 
-func (factory *redismqQFactory) getPool() *redis.Pool {
+func (factory *redisPubSubFactory) getPool() *redis.Pool {
 	factory.Lock()
 	defer factory.Unlock()
 	if factory.pool != nil {

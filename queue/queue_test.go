@@ -27,14 +27,14 @@ func (s *S) TestFactory(c *check.C) {
 	defer config.Unset("queue")
 	f, err := Factory()
 	c.Assert(err, check.IsNil)
-	_, ok := f.(*redismqQFactory)
+	_, ok := f.(*redisPubSubFactory)
 	c.Assert(ok, check.Equals, true)
 }
 
 func (s *S) TestFactoryConfigUndefined(c *check.C) {
 	f, err := Factory()
 	c.Assert(err, check.IsNil)
-	_, ok := f.(*redismqQFactory)
+	_, ok := f.(*redisPubSubFactory)
 	c.Assert(ok, check.Equals, true)
 }
 
@@ -50,7 +50,7 @@ func (s *S) TestFactoryConfigUnknown(c *check.C) {
 func (s *S) TestRegister(c *check.C) {
 	config.Set("queue", "unregistered")
 	defer config.Unset("queue")
-	Register("unregistered", &redismqQFactory{})
+	Register("unregistered", &redisPubSubFactory{})
 	_, err := Factory()
 	c.Assert(err, check.IsNil)
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/tsuru/tsuru/queue"
 )
 
-var factory = NewFakePubSubQFactory()
+var factory = NewFakePubSubFactory()
 
 func init() {
 	queue.Register("fake", factory)
@@ -100,18 +100,18 @@ func (q *FakePubSubQ) UnSub() error {
 	return nil
 }
 
-type FakePubSubQFactory struct {
+type FakePubSubFactory struct {
 	queues map[string]*FakePubSubQ
 	sync.Mutex
 }
 
-func NewFakePubSubQFactory() *FakePubSubQFactory {
-	return &FakePubSubQFactory{
+func NewFakePubSubFactory() *FakePubSubFactory {
+	return &FakePubSubFactory{
 		queues: make(map[string]*FakePubSubQ),
 	}
 }
 
-func (f *FakePubSubQFactory) PubSub(name string) (queue.PubSubQ, error) {
+func (f *FakePubSubFactory) PubSub(name string) (queue.PubSubQ, error) {
 	f.Lock()
 	defer f.Unlock()
 	if q, ok := f.queues[name]; ok {
@@ -122,7 +122,7 @@ func (f *FakePubSubQFactory) PubSub(name string) (queue.PubSubQ, error) {
 	return &q, nil
 }
 
-func (f *FakePubSubQFactory) Reset() {
+func (f *FakePubSubFactory) Reset() {
 	f.Lock()
 	defer f.Unlock()
 	f.queues = make(map[string]*FakePubSubQ)

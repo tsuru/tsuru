@@ -12,15 +12,15 @@ import (
 )
 
 type RedismqSuite struct {
-	factory *redismqQFactory
+	factory *redisPubSubFactory
 }
 
 var _ = check.Suite(&RedismqSuite{})
 
 func (s *RedismqSuite) SetUpSuite(c *check.C) {
-	s.factory = &redismqQFactory{}
+	s.factory = &redisPubSubFactory{}
 	config.Set("queue", "redis")
-	q := redismqQ{name: "default", factory: s.factory, prefix: "test"}
+	q := redisPubSub{name: "default", factory: s.factory, prefix: "test"}
 	conn, err := s.factory.getConn()
 	c.Assert(err, check.IsNil)
 	conn.Do("DEL", q.key())
@@ -31,30 +31,30 @@ func (s *RedismqSuite) TearDownSuite(c *check.C) {
 }
 
 func (s *RedismqSuite) TestFactoryGetPool(c *check.C) {
-	var factory redismqQFactory
+	var factory redisPubSubFactory
 	pool := factory.getPool()
 	c.Assert(pool.IdleTimeout, check.Equals, 5*time.Minute)
 	c.Assert(pool.MaxIdle, check.Equals, 20)
 }
 
 func (s *RedismqSuite) TestFactoryGet(c *check.C) {
-	var factory redismqQFactory
+	var factory redisPubSubFactory
 	q, err := factory.PubSub("ancient")
 	c.Assert(err, check.IsNil)
-	rq, ok := q.(*redismqQ)
+	rq, ok := q.(*redisPubSub)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(rq.name, check.Equals, "ancient")
 }
 
-func (s *RedismqSuite) TestRedisMqFactoryIsInFactoriesMap(c *check.C) {
+func (s *RedismqSuite) TestRedisMPubSubFactoryIsInFactoriesMap(c *check.C) {
 	f, ok := factories["redis"]
 	c.Assert(ok, check.Equals, true)
-	_, ok = f.(*redismqQFactory)
+	_, ok = f.(*redisPubSubFactory)
 	c.Assert(ok, check.Equals, true)
 }
 
 func (s *RedismqSuite) TestRedisPubSub(c *check.C) {
-	var factory redismqQFactory
+	var factory redisPubSubFactory
 	q, err := factory.PubSub("mypubsub")
 	c.Assert(err, check.IsNil)
 	pubSubQ, ok := q.(PubSubQ)
@@ -67,7 +67,7 @@ func (s *RedismqSuite) TestRedisPubSub(c *check.C) {
 }
 
 func (s *RedismqSuite) TestRedisPubSubUnsub(c *check.C) {
-	var factory redismqQFactory
+	var factory redisPubSubFactory
 	q, err := factory.PubSub("mypubsub")
 	c.Assert(err, check.IsNil)
 	pubSubQ, ok := q.(PubSubQ)

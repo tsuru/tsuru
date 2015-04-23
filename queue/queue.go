@@ -32,30 +32,30 @@ type PubSubQ interface {
 	UnSub() error
 }
 
-// QFactory manages queues. It's able to create new queue and handler
+// PubSubFactory manages queues. It's able to create new queue and handler
 // instances.
-type QFactory interface {
+type PubSubFactory interface {
 	// PubSub returns a PubSubQ instance, identified by the given name.
 	PubSub(name string) (PubSubQ, error)
 
 	Reset()
 }
 
-var factories = map[string]QFactory{
-	"redis": &redismqQFactory{},
+var factories = map[string]PubSubFactory{
+	"redis": &redisPubSubFactory{},
 }
 
 // Register registers a new queue factory. This is how one would add a new
 // queue to tsuru.
-func Register(name string, factory QFactory) {
+func Register(name string, factory PubSubFactory) {
 	factories[name] = factory
 }
 
-// Factory returns an instance of the QFactory used in tsuru. It reads tsuru
+// Factory returns an instance of the PubSubFactory used in tsuru. It reads tsuru
 // configuration to find the currently used queue system and returns an
 // instance of the configured system, if it's registered. Otherwise it
 // will return an error.
-func Factory() (QFactory, error) {
+func Factory() (PubSubFactory, error) {
 	name, err := config.GetString("queue")
 	if err != nil {
 		name = "redis"
