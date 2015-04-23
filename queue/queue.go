@@ -80,6 +80,10 @@ func (q *queueInstanceData) Shutdown() {
 	}
 }
 
+func (q *queueInstanceData) String() string {
+	return "queued tasks"
+}
+
 var queueData queueInstanceData
 
 func ResetQueue() {
