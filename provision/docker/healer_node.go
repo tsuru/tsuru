@@ -14,14 +14,14 @@ import (
 	"github.com/tsuru/tsuru/log"
 )
 
-type NodeHealer struct {
+type nodeHealer struct {
 	provisioner           *dockerProvisioner
 	disabledTime          time.Duration
 	waitTimeNewMachine    time.Duration
 	failuresBeforeHealing int
 }
 
-func (h *NodeHealer) healNode(node *cluster.Node) (cluster.Node, error) {
+func (h *nodeHealer) healNode(node *cluster.Node) (cluster.Node, error) {
 	emptyNode := cluster.Node{}
 	failingAddr := node.Address
 	nodeMetadata := node.CleanMetadata()
@@ -63,7 +63,7 @@ func (h *NodeHealer) healNode(node *cluster.Node) (cluster.Node, error) {
 	return createdNode, nil
 }
 
-func (h *NodeHealer) HandleError(node *cluster.Node) time.Duration {
+func (h *nodeHealer) HandleError(node *cluster.Node) time.Duration {
 	failures := node.FailureCount()
 	if failures < h.failuresBeforeHealing {
 		log.Debugf("%d failures detected in node %q, waiting for more failures before healing.", failures, node.Address)

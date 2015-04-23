@@ -112,7 +112,7 @@ func (s *S) TestHealerHealNode(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
-	healer := NodeHealer{
+	healer := nodeHealer{
 		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
@@ -178,7 +178,7 @@ func (s *S) TestHealerHealNodeWithoutIaaS(c *check.C) {
 	err = p.Initialize()
 	c.Assert(err, check.IsNil)
 	p.cluster = cluster
-	healer := NodeHealer{
+	healer := nodeHealer{
 		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
@@ -224,7 +224,7 @@ func (s *S) TestHealerHealNodeCreateMachineError(c *check.C) {
 	err = p.Initialize()
 	c.Assert(err, check.IsNil)
 	p.cluster = cluster
-	healer := NodeHealer{
+	healer := nodeHealer{
 		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
@@ -280,7 +280,7 @@ func (s *S) TestHealerHealNodeWaitAndRegisterError(c *check.C) {
 	err = p.Initialize()
 	c.Assert(err, check.IsNil)
 	p.cluster = cluster
-	healer := NodeHealer{
+	healer := nodeHealer{
 		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
@@ -361,7 +361,7 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
-	healer := NodeHealer{
+	healer := nodeHealer{
 		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
@@ -472,7 +472,7 @@ func (s *S) TestHealerHandleError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
-	healer := NodeHealer{
+	healer := nodeHealer{
 		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
@@ -521,7 +521,7 @@ func (s *S) TestHealerHandleError(c *check.C) {
 }
 
 func (s *S) TestHealerHandleErrorDoesntTriggerEventIfNotNeeded(c *check.C) {
-	healer := NodeHealer{
+	healer := nodeHealer{
 		provisioner:           nil,
 		disabledTime:          20,
 		failuresBeforeHealing: 1,
@@ -573,7 +573,7 @@ func (s *S) TestHealerHandleErrorDoesntTriggerEventIfHealingCountTooLarge(c *che
 		c.Assert(err, check.IsNil)
 	}
 	iaas.RegisterIaasProvider("my-healer-iaas", newHealerIaaSConstructor("127.0.0.1", nil))
-	healer := NodeHealer{
+	healer := nodeHealer{
 		provisioner:           nil,
 		disabledTime:          20,
 		failuresBeforeHealing: 1,
