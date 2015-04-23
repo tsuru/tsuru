@@ -5,6 +5,7 @@
 package app
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -41,6 +42,7 @@ type S struct {
 	provisioner *provisiontest.FakeProvisioner
 	defaultPlan Plan
 	Pool        string
+	zeroLock map[string]interface{}
 }
 
 var _ = check.Suite(&S{})
@@ -108,6 +110,10 @@ func (s *S) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.Pool = "pool1"
 	err = provision.AddPool(s.Pool)
+	c.Assert(err, check.IsNil)
+	data, err := json.Marshal(AppLock{})
+	c.Assert(err, check.IsNil)
+	err = json.Unmarshal(data, &s.zeroLock)
 	c.Assert(err, check.IsNil)
 }
 
