@@ -8,28 +8,22 @@ import (
 	"sync"
 )
 
-type shutdownable interface {
+type Shutdownable interface {
 	Shutdown()
 }
 
-type ShutdownFunc func()
-
-func (fn ShutdownFunc) Shutdown() {
-	fn()
-}
-
 var (
-	registered []shutdownable
+	registered []Shutdownable
 	lock       sync.Mutex
 )
 
-func Register(s shutdownable) {
+func Register(s Shutdownable) {
 	lock.Lock()
 	defer lock.Unlock()
 	registered = append(registered, s)
 }
 
-func All() []shutdownable {
+func All() []Shutdownable {
 	lock.Lock()
 	defer lock.Unlock()
 	return registered
