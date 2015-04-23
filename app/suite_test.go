@@ -42,7 +42,7 @@ type S struct {
 	provisioner *provisiontest.FakeProvisioner
 	defaultPlan Plan
 	Pool        string
-	zeroLock map[string]interface{}
+	zeroLock    map[string]interface{}
 }
 
 var _ = check.Suite(&S{})
