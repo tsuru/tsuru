@@ -112,9 +112,15 @@ func (p *dockerProvisioner) initDockerCluster() error {
 		}
 		p.cluster.SetHealer(&healer)
 	}
-	healNodesSeconds, _ := config.GetDuration("docker:healing:heal-containers-timeout")
-	if healNodesSeconds > 0 {
-		go p.runContainerHealer(healNodesSeconds * time.Second)
+	healContainersSeconds, _ := config.GetDuration("docker:healing:heal-containers-timeout")
+	if healContainersSeconds > 0 {
+		contHealerInst := containerHealer{
+			provisioner:         p,
+			maxUnresponsiveTime: healContainersSeconds * time.Second,
+			done:                make(chan bool),
+		}
+		shutdown.Register(&contHealerInst)
+		go contHealerInst.runContainerHealer()
 	}
 	activeMonitoring, _ := config.GetDuration("docker:healing:active-monitoring-interval")
 	if activeMonitoring > 0 {

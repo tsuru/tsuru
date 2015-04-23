@@ -15,10 +15,35 @@ import (
 	"gopkg.in/mgo.v2"
 )
 
-func (p *dockerProvisioner) healContainer(cont container, locker *appLocker) (container, error) {
+type containerHealer struct {
+	provisioner         *dockerProvisioner
+	maxUnresponsiveTime time.Duration
+	done                chan bool
+}
+
+func (h *containerHealer) runContainerHealer() {
+	for {
+		h.runContainerHealerOnce()
+		select {
+		case <-h.done:
+			return
+		case <-time.After(30 * time.Second):
+		}
+	}
+}
+
+func (h *containerHealer) Shutdown() {
+	h.done <- true
+}
+
+func (h *containerHealer) String() string {
+	return "container healer"
+}
+
+func (h *containerHealer) healContainer(cont container, locker *appLocker) (container, error) {
 	var buf bytes.Buffer
 	moveErrors := make(chan error, 1)
-	createdContainer := p.moveOneContainer(cont, "", moveErrors, nil, &buf, locker)
+	createdContainer := h.provisioner.moveOneContainer(cont, "", moveErrors, nil, &buf, locker)
 	close(moveErrors)
 	err := handleMoveErrors(moveErrors, &buf)
 	if err != nil {
@@ -27,8 +52,8 @@ func (p *dockerProvisioner) healContainer(cont container, locker *appLocker) (co
 	return createdContainer, err
 }
 
-func (p *dockerProvisioner) hasProcfileWatcher(cont container) (bool, error) {
-	topResult, err := p.getCluster().TopContainer(cont.ID, "")
+func (h *containerHealer) hasProcfileWatcher(cont container) (bool, error) {
+	topResult, err := h.provisioner.getCluster().TopContainer(cont.ID, "")
 	if err != nil {
 		return false, err
 	}
@@ -41,23 +66,16 @@ func (p *dockerProvisioner) hasProcfileWatcher(cont container) (bool, error) {
 	return false, nil
 }
 
-func (p *dockerProvisioner) runContainerHealer(maxUnresponsiveTime time.Duration) {
-	for {
-		p.runContainerHealerOnce(maxUnresponsiveTime)
-		time.Sleep(30 * time.Second)
-	}
-}
-
-func (p *dockerProvisioner) healContainerIfNeeded(cont container) error {
+func (h *containerHealer) healContainerIfNeeded(cont container) error {
 	if cont.LastSuccessStatusUpdate.IsZero() {
 		return nil
 	}
-	hasProcfile, err := p.hasProcfileWatcher(cont)
+	hasProcfile, err := h.hasProcfileWatcher(cont)
 	if err != nil {
 		log.Errorf("Containers healing: couldn't verify running processes in container %s: %s", cont.ID, err.Error())
 	}
 	if hasProcfile {
-		cont.setStatus(p, provision.StatusStarted.String())
+		cont.setStatus(h.provisioner, provision.StatusStarted.String())
 		return nil
 	}
 	healingCounter, err := healingCountFor("container", cont.ID, consecutiveHealingsTimeframe)
@@ -75,7 +93,7 @@ func (p *dockerProvisioner) healContainerIfNeeded(cont container) error {
 	}
 	defer locker.unlock(cont.AppName)
 	// Sanity check, now we have a lock, let's find out if the container still exists
-	_, err = p.getContainer(cont.ID)
+	_, err = h.provisioner.getContainer(cont.ID)
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			return nil
@@ -87,7 +105,7 @@ func (p *dockerProvisioner) healContainerIfNeeded(cont container) error {
 	if err != nil {
 		return fmt.Errorf("Error trying to insert container healing event, healing aborted: %s", err.Error())
 	}
-	newCont, healErr := p.healContainer(cont, locker)
+	newCont, healErr := h.healContainer(cont, locker)
 	if healErr != nil {
 		healErr = fmt.Errorf("Error healing container %s: %s", cont.ID, healErr.Error())
 	}
@@ -98,13 +116,13 @@ func (p *dockerProvisioner) healContainerIfNeeded(cont container) error {
 	return healErr
 }
 
-func (p *dockerProvisioner) runContainerHealerOnce(maxUnresponsiveTime time.Duration) {
-	containers, err := p.listUnresponsiveContainers(maxUnresponsiveTime)
+func (h *containerHealer) runContainerHealerOnce() {
+	containers, err := h.provisioner.listUnresponsiveContainers(h.maxUnresponsiveTime)
 	if err != nil {
 		log.Errorf("Containers Healing: couldn't list unresponsive containers: %s", err.Error())
 	}
 	for _, cont := range containers {
-		err := p.healContainerIfNeeded(cont)
+		err := h.healContainerIfNeeded(cont)
 		if err != nil {
 			log.Errorf(err.Error())
 		}

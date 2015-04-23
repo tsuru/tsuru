@@ -72,7 +72,8 @@ func (s *S) TestHealContainer(c *check.C) {
 	locked := locker.lock(containers[0].AppName)
 	c.Assert(locked, check.Equals, true)
 	defer locker.unlock(containers[0].AppName)
-	_, err = p.healContainer(containers[0], locker)
+	healer := containerHealer{provisioner: &p}
+	_, err = healer.healContainer(containers[0], locker)
 	c.Assert(err, check.IsNil)
 
 	containers, err = p.listAllContainers()
@@ -136,7 +137,8 @@ func (s *S) TestRunContainerHealer(c *check.C) {
 
 	node1.PrepareFailure("createError", "/containers/create")
 
-	p.runContainerHealerOnce(1 * time.Minute)
+	healer := containerHealer{provisioner: &p, maxUnresponsiveTime: 1 * time.Minute}
+	healer.runContainerHealerOnce()
 
 	containers, err = p.listAllContainers()
 	c.Assert(err, check.IsNil)
@@ -158,6 +160,74 @@ func (s *S) TestRunContainerHealer(c *check.C) {
 	c.Assert(events[0].Successful, check.Equals, true)
 	c.Assert(events[0].FailingContainer.HostAddr, check.Equals, "127.0.0.1")
 	c.Assert(events[0].CreatedContainer.HostAddr, check.Equals, "localhost")
+}
+
+func (s *S) TestRunContainerHealerShutdown(c *check.C) {
+	rollback := startTestRepositoryServer()
+	defer rollback()
+	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	node2, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	cluster, err := cluster.New(nil, &cluster.MapStorage{},
+		cluster.Node{Address: node1.URL()},
+		cluster.Node{Address: fmt.Sprintf("http://localhost:%d", urlPort(node2.URL()))},
+	)
+	c.Assert(err, check.IsNil)
+	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
+	p.cluster = cluster
+
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
+	defer p.Destroy(appInstance)
+	p.Provision(appInstance)
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, check.IsNil)
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:      "127.0.0.1",
+		unitsToAdd:  2,
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: &p,
+	})
+	c.Assert(err, check.IsNil)
+
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	appStruct := &app.App{
+		Name: appInstance.GetName(),
+	}
+	err = conn.Apps().Insert(appStruct)
+	c.Assert(err, check.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
+
+	containers, err := p.listAllContainers()
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 2)
+	c.Assert(containers[0].HostAddr, check.Equals, "127.0.0.1")
+	c.Assert(containers[1].HostAddr, check.Equals, "127.0.0.1")
+
+	toMoveCont := containers[1]
+	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-2 * time.Minute)
+	coll := p.collection()
+	err = coll.Update(bson.M{"id": toMoveCont.ID}, toMoveCont)
+	c.Assert(err, check.IsNil)
+
+	node1.PrepareFailure("createError", "/containers/create")
+
+	healer := containerHealer{provisioner: &p, maxUnresponsiveTime: 1 * time.Minute, done: make(chan bool)}
+	go healer.runContainerHealer()
+	healer.Shutdown()
+
+	containers, err = p.listAllContainers()
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 2)
+	hosts := []string{containers[0].HostAddr, containers[1].HostAddr}
+	sort.Strings(hosts)
+	c.Assert(hosts[0], check.Equals, "127.0.0.1")
+	c.Assert(hosts[1], check.Equals, "localhost")
 }
 
 func (s *S) TestRunContainerHealerConcurrency(c *check.C) {
@@ -210,14 +280,15 @@ func (s *S) TestRunContainerHealerConcurrency(c *check.C) {
 
 	node1.PrepareFailure("createError", "/containers/create")
 
+	healer := containerHealer{provisioner: &p}
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	go func() {
-		p.healContainerIfNeeded(toMoveCont)
+		healer.healContainerIfNeeded(toMoveCont)
 		wg.Done()
 	}()
 	go func() {
-		p.healContainerIfNeeded(toMoveCont)
+		healer.healContainerIfNeeded(toMoveCont)
 		wg.Done()
 	}()
 	wg.Wait()
@@ -294,8 +365,9 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *check.C) {
 
 	node1.PrepareFailure("createError", "/containers/create")
 
-	p.healContainerIfNeeded(toMoveCont)
-	p.healContainerIfNeeded(toMoveCont)
+	healer := containerHealer{provisioner: &p}
+	healer.healContainerIfNeeded(toMoveCont)
+	healer.healContainerIfNeeded(toMoveCont)
 
 	containers, err = p.listAllContainers()
 	c.Assert(err, check.IsNil)
@@ -361,7 +433,8 @@ func (s *S) TestRunContainerHealerDoesntHealWithProcfileInTop(c *check.C) {
 	err = coll.Update(bson.M{"id": toMoveCont.ID}, toMoveCont)
 	c.Assert(err, check.IsNil)
 
-	p.runContainerHealerOnce(1 * time.Minute)
+	healer := containerHealer{provisioner: &p, maxUnresponsiveTime: 1 * time.Minute}
+	healer.runContainerHealerOnce()
 
 	healingColl, err := healingCollection()
 	var events []healingEvent
@@ -426,7 +499,8 @@ func (s *S) TestRunContainerHealerWithError(c *check.C) {
 	node1.PrepareFailure("createError", "/containers/create")
 	node2.PrepareFailure("createError", "/containers/create")
 
-	p.runContainerHealerOnce(1 * time.Minute)
+	healer := containerHealer{provisioner: &p, maxUnresponsiveTime: 1 * time.Minute}
+	healer.runContainerHealerOnce()
 
 	containers, err = p.listAllContainers()
 	c.Assert(err, check.IsNil)
@@ -465,7 +539,8 @@ func (s *S) TestRunContainerHealerMaxCounterExceeded(c *check.C) {
 	coll := s.p.collection()
 	err := coll.Insert(toMoveCont)
 	c.Assert(err, check.IsNil)
-	err = s.p.healContainerIfNeeded(toMoveCont)
+	healer := containerHealer{provisioner: s.p}
+	err = healer.healContainerIfNeeded(toMoveCont)
 	c.Assert(err, check.ErrorMatches, "Containers healing: number of healings for container cont8 in the last 30 minutes exceeds limit of 3: 7")
 	healingColl, err := healingCollection()
 	var events []healingEvent
