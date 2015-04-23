@@ -104,7 +104,7 @@ func (p *dockerProvisioner) initDockerCluster() error {
 		if waitSecondsNewMachine <= 0 {
 			waitSecondsNewMachine = 5 * 60
 		}
-		healer := Healer{
+		healer := NodeHealer{
 			provisioner:           p,
 			disabledTime:          disabledSeconds * time.Second,
 			waitTimeNewMachine:    waitSecondsNewMachine * time.Second,

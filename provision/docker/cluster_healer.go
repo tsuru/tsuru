@@ -21,7 +21,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-type Healer struct {
+type NodeHealer struct {
 	provisioner           *dockerProvisioner
 	disabledTime          time.Duration
 	waitTimeNewMachine    time.Duration
@@ -101,7 +101,7 @@ func (evt *healingEvent) update(created interface{}, err error) error {
 	return coll.UpdateId(evt.ID, evt)
 }
 
-func (h *Healer) healNode(node *cluster.Node) (cluster.Node, error) {
+func (h *NodeHealer) healNode(node *cluster.Node) (cluster.Node, error) {
 	emptyNode := cluster.Node{}
 	failingAddr := node.Address
 	nodeMetadata := node.CleanMetadata()
@@ -143,7 +143,7 @@ func (h *Healer) healNode(node *cluster.Node) (cluster.Node, error) {
 	return createdNode, nil
 }
 
-func (h *Healer) HandleError(node *cluster.Node) time.Duration {
+func (h *NodeHealer) HandleError(node *cluster.Node) time.Duration {
 	failures := node.FailureCount()
 	if failures < h.failuresBeforeHealing {
 		log.Debugf("%d failures detected in node %q, waiting for more failures before healing.", failures, node.Address)
