@@ -1,4 +1,4 @@
-// Copyright 2013 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -12,7 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 )
 
@@ -24,13 +24,13 @@ func DiscoverRepositoryPath(dir string) (string, error) {
 	if os.IsNotExist(err) {
 		return "", errors.New("Repository not found.")
 	}
-	dir = path.Join(dir, ".git")
+	dir = filepath.Join(dir, ".git")
 	for dir != "/.git" {
 		fi, err := os.Stat(dir)
 		if err == nil && fi.IsDir() {
 			return dir, nil
 		}
-		dir = path.Join(dir, "..", "..", ".git")
+		dir = filepath.Join(dir, "..", "..", ".git")
 	}
 	return "", errors.New("Repository not found.")
 }
@@ -40,7 +40,7 @@ type Repository struct {
 	path string
 }
 
-// OpenRepository opens a repository by its path. You can use
+// OpenRepository opens a repository by its filepath. You can use
 // DiscoverRepositoryPath to discover the repository from any directory, and
 // use the result of this call as parameter for OpenRepository.
 //
@@ -48,10 +48,10 @@ type Repository struct {
 // a git repository.
 func OpenRepository(p string) (*Repository, error) {
 	if !strings.HasSuffix(p, ".git") && !strings.HasSuffix(p, ".git/") {
-		p = path.Join(p, ".git")
+		p = filepath.Join(p, ".git")
 	}
 	p = strings.TrimRight(p, "/")
-	fi, err := os.Stat(path.Join(p, "config"))
+	fi, err := os.Stat(filepath.Join(p, "config"))
 	if err == nil && !fi.IsDir() {
 		return &Repository{path: p}, nil
 	}
@@ -61,7 +61,7 @@ func OpenRepository(p string) (*Repository, error) {
 // RemoteURL returns the URL of a remote by its name. Or an error, if the
 // remote is not declared.
 func (r *Repository) RemoteURL(name string) (string, error) {
-	config, err := os.Open(path.Join(r.path, "config"))
+	config, err := os.Open(filepath.Join(r.path, "config"))
 	if err != nil {
 		return "", err
 	}
