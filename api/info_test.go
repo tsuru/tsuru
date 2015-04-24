@@ -9,13 +9,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/tsuru/config"
 	_ "github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
 )
 
 func (s *S) TestInfo(c *check.C) {
-	config.Set("autoscale", true)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/info", nil)
 	c.Assert(err, check.IsNil)
@@ -24,7 +22,6 @@ func (s *S) TestInfo(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	expected := map[string]interface{}{
-		"autoscale": true,
 		"version":   Version,
 	}
 	var info map[string]interface{}
