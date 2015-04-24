@@ -137,7 +137,6 @@ func (s *S) TearDownTest(c *check.C) {
 		bson.M{"email": s.user.Email},
 		bson.M{"$set": bson.M{"quota": quota.Unlimited}},
 	)
-	s.conn.AutoScale().RemoveAll(nil)
 	s.conn.Deploys().RemoveAll(nil)
 }
 
