@@ -631,11 +631,7 @@ func (a *autoScaleConfig) removeNode(chosenNode *cluster.Node) error {
 }
 
 func canRemoveNode(chosenNode *cluster.Node, nodes []*cluster.Node) (bool, error) {
-	metadataList := make([]map[string]string, len(nodes))
-	for i, n := range nodes {
-		metadataList[i] = n.CleanMetadata()
-	}
-	exclusiveList, _, err := splitMetadata(metadataList)
+	exclusiveList, _, err := splitMetadata(createMetadataList(nodes))
 	if err != nil {
 		return false, err
 	}
@@ -718,11 +714,7 @@ func splitMetadata(nodesMetadata []map[string]string) (metaWithFrequencyList, ma
 }
 
 func chooseMetadataFromNodes(modelNodes []*cluster.Node) (map[string]string, error) {
-	metadataList := make([]map[string]string, len(modelNodes))
-	for i, n := range modelNodes {
-		metadataList[i] = n.CleanMetadata()
-	}
-	exclusiveList, baseMetadata, err := splitMetadata(metadataList)
+	exclusiveList, baseMetadata, err := splitMetadata(createMetadataList(modelNodes))
 	if err != nil {
 		return nil, err
 	}
@@ -755,4 +747,20 @@ func (p *dockerProvisioner) containerGapInNodes(nodes []*cluster.Node) (int, int
 		totalCount += contCount
 	}
 	return totalCount, maxCount - minCount, nil
+}
+
+func createMetadataList(nodes []*cluster.Node) []map[string]string {
+	// iaas-id is ignored because it wasn't created in previous tsuru versions
+	// and having nodes with and without it would cause unbalanced metadata
+	// errors.
+	ignoredMetadata := []string{"iaas-id"}
+	metadataList := make([]map[string]string, len(nodes))
+	for i, n := range nodes {
+		metadata := n.CleanMetadata()
+		for _, val := range ignoredMetadata {
+			delete(metadata, val)
+		}
+		metadataList[i] = metadata
+	}
+	return metadataList
 }
