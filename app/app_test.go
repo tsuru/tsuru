@@ -1887,13 +1887,6 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 		Pool:      "test",
 		Plan:      Plan{Name: "myplan", Memory: 64, Swap: 128, CpuShare: 100},
 		TeamOwner: "myteam",
-		AutoScaleConfig: &AutoScaleConfig{
-			Increase: Action{Units: 1, Expression: "{cpu} > 80"},
-			Decrease: Action{Units: 1, Expression: "{cpu} < 20"},
-			Enabled:  true,
-			MaxUnits: 10,
-			MinUnits: 2,
-		},
 	}
 	expected := map[string]interface{}{
 		"name":       "name",
@@ -1913,21 +1906,6 @@ func (s *S) TestAppMarshalJSON(c *check.C) {
 			"memory":   float64(64),
 			"swap":     float64(128),
 			"cpushare": float64(100),
-		},
-		"autoScaleConfig": map[string]interface{}{
-			"increase": map[string]interface{}{
-				"wait":       float64(0),
-				"expression": "{cpu} > 80",
-				"units":      float64(1),
-			},
-			"decrease": map[string]interface{}{
-				"wait":       float64(0),
-				"expression": "{cpu} < 20",
-				"units":      float64(1),
-			},
-			"minUnits": float64(2),
-			"maxUnits": float64(10),
-			"enabled":  true,
 		},
 	}
 	data, err := app.MarshalJSON()
@@ -1950,13 +1928,6 @@ func (s *S) TestAppMarshalJSONWithoutRepository(c *check.C) {
 		Pool:      "pool1",
 		Plan:      Plan{Name: "myplan", Memory: 64, Swap: 128, CpuShare: 100},
 		TeamOwner: "myteam",
-		AutoScaleConfig: &AutoScaleConfig{
-			Increase: Action{Units: 1, Expression: "{cpu} > 80"},
-			Decrease: Action{Units: 1, Expression: "{cpu} < 20"},
-			Enabled:  true,
-			MaxUnits: 10,
-			MinUnits: 2,
-		},
 	}
 	expected := map[string]interface{}{
 		"name":       "name",
@@ -1976,21 +1947,6 @@ func (s *S) TestAppMarshalJSONWithoutRepository(c *check.C) {
 			"memory":   float64(64),
 			"swap":     float64(128),
 			"cpushare": float64(100),
-		},
-		"autoScaleConfig": map[string]interface{}{
-			"increase": map[string]interface{}{
-				"wait":       float64(0),
-				"expression": "{cpu} > 80",
-				"units":      float64(1),
-			},
-			"decrease": map[string]interface{}{
-				"wait":       float64(0),
-				"expression": "{cpu} < 20",
-				"units":      float64(1),
-			},
-			"minUnits": float64(2),
-			"maxUnits": float64(10),
-			"enabled":  true,
 		},
 	}
 	data, err := app.MarshalJSON()

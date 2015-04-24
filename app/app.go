@@ -66,21 +66,20 @@ func (l *AppLock) String() string {
 // This struct holds information about the app: its name, address, list of
 // teams that have access to it, used platform, etc.
 type App struct {
-	Env             map[string]bind.EnvVar
-	Platform        string `bson:"framework"`
-	Name            string
-	Ip              string
-	CName           []string
-	Teams           []string
-	TeamOwner       string
-	Owner           string
-	Deploys         uint
-	UpdatePlatform  bool
-	Lock            AppLock
-	CustomData      map[string]interface{}
-	Plan            Plan
-	Pool            string
-	AutoScaleConfig *AutoScaleConfig
+	Env            map[string]bind.EnvVar
+	Platform       string `bson:"framework"`
+	Name           string
+	Ip             string
+	CName          []string
+	Teams          []string
+	TeamOwner      string
+	Owner          string
+	Deploys        uint
+	UpdatePlatform bool
+	Lock           AppLock
+	CustomData     map[string]interface{}
+	Plan           Plan
+	Pool           string
 
 	quota.Quota
 }
@@ -106,7 +105,6 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["deploys"] = app.Deploys
 	result["teamowner"] = app.TeamOwner
 	result["plan"] = app.Plan
-	result["autoScaleConfig"] = app.AutoScaleConfig
 	result["lock"] = app.Lock
 	return json.Marshal(&result)
 }

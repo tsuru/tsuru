@@ -148,11 +148,6 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Post", "/apps/{appname}/deploy/rollback", authorizationRequiredHandler(deployRollback))
 	m.Add("Get", "/apps/{app}/shell", authorizationRequiredHandler(remoteShellHandler))
 
-	m.Add("Get", "/autoscale", authorizationRequiredHandler(autoScaleHistoryHandler))
-	m.Add("Put", "/autoscale/{app}", authorizationRequiredHandler(autoScaleConfig))
-	m.Add("Put", "/autoscale/{app}/enable", authorizationRequiredHandler(autoScaleEnable))
-	m.Add("Put", "/autoscale/{app}/disable", authorizationRequiredHandler(autoScaleDisable))
-
 	m.Add("Get", "/deploys", authorizationRequiredHandler(deploysList))
 	m.Add("Get", "/deploys/{deploy}", authorizationRequiredHandler(deployInfo))
 
@@ -307,7 +302,6 @@ func RunServer(dry bool) http.Handler {
 		if err != nil {
 			fatal(err)
 		}
-		app.StartAutoScale()
 		shutdownChan := make(chan bool)
 		shutdownTimeout, _ := config.GetDuration("shutdown-timeout")
 		if shutdownTimeout == 0 {
