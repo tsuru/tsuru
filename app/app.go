@@ -542,7 +542,7 @@ func (app *App) ValidateTeamOwner(user *auth.User) error {
 }
 
 func (app *App) SetPool() error {
-	pool, err := app.GetPoolForApp()
+	pool, err := app.GetPoolForApp(app.Pool)
 	if err != nil {
 		return err
 	}
@@ -556,10 +556,10 @@ func (app *App) SetPool() error {
 	return nil
 }
 
-func (app *App) GetPoolForApp() (string, error) {
+func (app *App) GetPoolForApp(poolName string) (string, error) {
 	var query bson.M
-	if app.Pool != "" {
-		query = bson.M{"$and": []bson.M{{"_id": app.Pool}, {"teams": app.TeamOwner}}}
+	if poolName != "" {
+		query = bson.M{"$and": []bson.M{{"_id": poolName}, {"teams": app.TeamOwner}}}
 	} else {
 		query = bson.M{"teams": app.TeamOwner}
 	}
@@ -570,8 +570,8 @@ func (app *App) GetPoolForApp() (string, error) {
 	if len(pools) > 1 {
 		return "", ManyPoolsError
 	}
-	if len(pools) == 0 && app.Pool != "" {
-		return "", stderr.New(fmt.Sprintf("You don't have access to pool %s", app.Pool))
+	if len(pools) == 0 && poolName != "" {
+		return "", stderr.New(fmt.Sprintf("You don't have access to pool %s", poolName))
 	}
 	if len(pools) == 0 {
 		return "", nil
@@ -589,6 +589,29 @@ func (app *App) GetFallbackPool() (string, error) {
 		return "", stderr.New("No fallback pool.")
 	}
 	return pools[0].Name, nil
+}
+
+func (app *App) ChangePool(newPoolName string) error {
+	poolName, err := app.GetPoolForApp(newPoolName)
+	if err != nil {
+		return err
+	}
+	if poolName == "" {
+		return stderr.New("This pool doesn't exists.")
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	err = conn.Apps().Update(
+		bson.M{"name": app.Name},
+		bson.M{"$set": bson.M{"pool": poolName}},
+	)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // setEnv sets the given environment variable in the app.

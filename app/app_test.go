@@ -2690,6 +2690,49 @@ func (s *S) TestAppSetPoolUserDontHaveAccessToPool(c *check.C) {
 	c.Assert(err.Error(), check.Equals, "You don't have access to pool test")
 }
 
+func (s *S) TestAppChangePool(c *check.C) {
+	err := provision.AddPool("test")
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("test")
+	err = provision.AddTeamsToPool("test", []string{"nopool"})
+	c.Assert(err, check.IsNil)
+	err = provision.AddPool("test2")
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("test2")
+	err = provision.AddTeamsToPool("test2", []string{"nopool"})
+	c.Assert(err, check.IsNil)
+	a := App{
+		Name:      "test",
+		TeamOwner: "nopool",
+		Pool:      "test",
+	}
+	err = s.conn.Apps().Insert(a)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	c.Assert(err, check.IsNil)
+	err = a.ChangePool("test2")
+	c.Assert(err, check.IsNil)
+	app, _ := GetByName(a.Name)
+	c.Assert(app.Pool, check.Equals, "test2")
+}
+
+func (s *S) TestAppChangePoolNotExists(c *check.C) {
+	err := provision.AddPool("test")
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("test")
+	err = provision.AddTeamsToPool("test", []string{"nopool"})
+	c.Assert(err, check.IsNil)
+	app := App{
+		Name:      "test",
+		TeamOwner: "nopool",
+		Pool:      "test",
+	}
+	err = s.conn.Apps().Insert(app)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	c.Assert(err, check.IsNil)
+	err = app.ChangePool("test2")
+	c.Assert(err, check.NotNil)
+	c.Assert(app.Pool, check.Equals, "test")
+}
 func (s *S) TestUpdateCustomData(c *check.C) {
 	a := App{Name: "my-test-app"}
 	err := s.conn.Apps().Insert(a)
