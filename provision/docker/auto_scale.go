@@ -224,6 +224,7 @@ func (a *autoScaleConfig) run() error {
 }
 
 func (a *autoScaleConfig) logError(msg string, params ...interface{}) {
+	msg = fmt.Sprintf("[node autoscale] %s", msg)
 	if a.writer != nil {
 		fmt.Fprintf(a.writer, fmt.Sprintf("ERROR:%s\n", msg), params...)
 	}
@@ -231,6 +232,7 @@ func (a *autoScaleConfig) logError(msg string, params ...interface{}) {
 }
 
 func (a *autoScaleConfig) logDebug(msg string, params ...interface{}) {
+	msg = fmt.Sprintf("[node autoscale] %s", msg)
 	if a.writer != nil {
 		fmt.Fprintf(a.writer, msg+"\n", params...)
 	}
@@ -281,7 +283,7 @@ func (a *autoScaleConfig) runScaler(scaler autoScaler) (retErr error) {
 		}
 		groupMetadata := node.Metadata[a.groupByMetadata]
 		if groupMetadata == "" {
-			a.logDebug("[node autoscale] skipped node %s, no metadata value for %s.", node.Address, a.groupByMetadata)
+			a.logDebug("skipped node %s, no metadata value for %s.", node.Address, a.groupByMetadata)
 			continue
 		}
 		if a.matadataFilter != "" && a.matadataFilter != groupMetadata {
@@ -294,13 +296,13 @@ func (a *autoScaleConfig) runScaler(scaler autoScaler) (retErr error) {
 		event, err := newAutoScaleEvent(groupMetadata)
 		if err != nil {
 			if err == errAutoScaleRunning {
-				a.logDebug("[node autoscale] skipping already running for: %s", groupMetadata)
+				a.logDebug("skipping already running for: %s", groupMetadata)
 				continue
 			}
 			retErr = fmt.Errorf("error creating scale event %s: %s", groupMetadata, err.Error())
 			return
 		}
-		a.logDebug("[node autoscale] running scaler %T for %q: %q", scaler, a.groupByMetadata, groupMetadata)
+		a.logDebug("running scaler %T for %q: %q", scaler, a.groupByMetadata, groupMetadata)
 		err = scaler.scale(event, groupMetadata, nodes)
 		if err != nil {
 			event.finish(err, a.logBuffer.String())
@@ -309,10 +311,10 @@ func (a *autoScaleConfig) runScaler(scaler autoScaler) (retErr error) {
 		}
 		err = a.rebalanceIfNeeded(event, groupMetadata, nodes)
 		if err != nil {
-			a.logError("[node autoscale] unable to rebalance: %s", err.Error())
+			a.logError("unable to rebalance: %s", err.Error())
 		}
 		if event.Action == "" {
-			a.logDebug("[node autoscale] nothing to do for %q: %q", a.groupByMetadata, groupMetadata)
+			a.logDebug("nothing to do for %q: %q", a.groupByMetadata, groupMetadata)
 		}
 		event.finish(nil, a.logBuffer.String())
 	}
@@ -331,6 +333,9 @@ func (a *memoryScaler) nodesMemoryData(prov *dockerProvisioner, nodes []*cluster
 	nodesMemoryData := make(map[string]*nodeMemoryData)
 	for _, node := range nodes {
 		totalMemory, _ := strconv.ParseFloat(node.Metadata[a.totalMemoryMetadata], 64)
+		if totalMemory == 0.0 {
+			return nil, fmt.Errorf("no value found for memory metadata (%s) in node %s", a.totalMemoryMetadata, node.Address)
+		}
 		maxMemory := int64(float64(a.maxMemoryRatio) * totalMemory)
 		data := &nodeMemoryData{
 			containersMemory: make(map[string]int64),
@@ -384,7 +389,7 @@ func (a *memoryScaler) choseNodeForRemoval(maxPlanMemory int64, groupMetadata st
 		buf := safe.NewBuffer(nil)
 		err = dryProv.moveContainerList(containers, "", buf)
 		if err != nil {
-			a.logError("[node autoscale] unable to rebalance containers without %s: %s - log: %s", node.Address, err, buf.String())
+			a.logError("unable to dry rebalance containers without %s: %s - log: %s", node.Address, err, buf.String())
 			continue
 		}
 		otherNodes, err := dryProv.getCluster().NodesForMetadata(map[string]string{a.groupByMetadata: groupMetadata})
@@ -413,7 +418,7 @@ func (a *memoryScaler) choseNodeForRemoval(maxPlanMemory int64, groupMetadata st
 	if chosenNode != nil && maxAvailable > int64(float32(maxPlanMemory)*a.scaleDownRatio) {
 		canRemove, _ := canRemoveNode(chosenNode, nodes)
 		if !canRemove {
-			a.logDebug("[node autoscale] would remove node %s but can't due to metadata restrictions", chosenNode.Address)
+			a.logDebug("would remove node %s but can't due to metadata restrictions", chosenNode.Address)
 			return nil, nil
 		}
 		return chosenNode, nil
@@ -449,7 +454,7 @@ func (a *memoryScaler) scale(event *autoScaleEvent, groupMetadata string, nodes 
 		if err != nil {
 			return err
 		}
-		a.logDebug("[node autoscale] running event %q for %q: %s", event.Action, event.MetadataValue, event.Reason)
+		a.logDebug("running event %q for %q: %s", event.Action, event.MetadataValue, event.Reason)
 		return a.removeNode(chosenNode)
 	}
 	memoryData, err := a.nodesMemoryData(a.provisioner, nodes)
@@ -459,6 +464,7 @@ func (a *memoryScaler) scale(event *autoScaleEvent, groupMetadata string, nodes 
 	canFitMax := false
 	for _, node := range nodes {
 		data := memoryData[node.Address]
+		a.logDebug("node %s, memory data: %#v", node.Address, data)
 		if maxPlanMemory > data.maxMemory {
 			return fmt.Errorf("aborting, impossible to fit max plan memory of %d bytes, node max available memory is %d", maxPlanMemory, data.maxMemory)
 		}
@@ -474,7 +480,7 @@ func (a *memoryScaler) scale(event *autoScaleEvent, groupMetadata string, nodes 
 	if err != nil {
 		return err
 	}
-	a.logDebug("[node autoscale] running event %q for %q: %s", event.Action, event.MetadataValue, event.Reason)
+	a.logDebug("running event %q for %q: %s", event.Action, event.MetadataValue, event.Reason)
 	newNode, err := a.addNode(nodes)
 	if err != nil {
 		return err
@@ -500,7 +506,7 @@ func (a *countScaler) scale(event *autoScaleEvent, groupMetadata string, nodes [
 			}
 		}
 		if chosenNode == nil {
-			a.logDebug("[node autoscale] would remove any node but can't due to metadata restrictions")
+			a.logDebug("would remove any node but can't due to metadata restrictions")
 			return nil
 		}
 		event.updateNode(chosenNode)
@@ -508,7 +514,7 @@ func (a *countScaler) scale(event *autoScaleEvent, groupMetadata string, nodes [
 		if err != nil {
 			return fmt.Errorf("error updating event: %s", err)
 		}
-		a.logDebug("[node autoscale] running event %q for %q: %s", event.Action, event.MetadataValue, event.Reason)
+		a.logDebug("running event %q for %q: %s", event.Action, event.MetadataValue, event.Reason)
 		return a.removeNode(chosenNode)
 	}
 	if freeSlots >= 0 {
@@ -518,7 +524,7 @@ func (a *countScaler) scale(event *autoScaleEvent, groupMetadata string, nodes [
 	if err != nil {
 		return fmt.Errorf("error updating event: %s", err)
 	}
-	a.logDebug("[node autoscale] running event %q for %q: %s", event.Action, event.MetadataValue, event.Reason)
+	a.logDebug("running event %q for %q: %s", event.Action, event.MetadataValue, event.Reason)
 	newNode, err := a.addNode(nodes)
 	if err != nil {
 		return err
@@ -558,7 +564,7 @@ func (a *autoScaleConfig) rebalanceIfNeeded(event *autoScaleEvent, groupMetadata
 		}
 	}
 	if event.Action != "" && event.Action != scaleActionRemove {
-		a.logDebug("[node autoscale] running rebalance, due to %q for %q: %s", event.Action, event.MetadataValue, event.Reason)
+		a.logDebug("running rebalance, due to %q for %q: %s", event.Action, event.MetadataValue, event.Reason)
 		buf := safe.NewBuffer(nil)
 		var writer io.Writer = buf
 		if a.writer != nil {
@@ -587,13 +593,13 @@ func (a *autoScaleConfig) addNode(modelNodes []*cluster.Node) (*cluster.Node, er
 		return nil, fmt.Errorf("unable to create machine: %s", err.Error())
 	}
 	newAddr := machine.FormatNodeAddress()
-	a.logDebug("[node autoscale] new machine created: %s - Waiting for docker to start...", newAddr)
+	a.logDebug("new machine created: %s - Waiting for docker to start...", newAddr)
 	createdNode, err := a.provisioner.getCluster().WaitAndRegister(newAddr, metadata, a.waitTimeNewMachine)
 	if err != nil {
 		machine.Destroy()
 		return nil, fmt.Errorf("error registering new node %s: %s", newAddr, err.Error())
 	}
-	a.logDebug("[node autoscale] new machine created: %s - started!", newAddr)
+	a.logDebug("new machine created: %s - started!", newAddr)
 	return &createdNode, nil
 }
 
