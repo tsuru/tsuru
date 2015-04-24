@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"sync"
@@ -12,6 +13,7 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -256,6 +258,9 @@ func (s *S) TestSchedulerNoNodesWithFallbackPool(c *check.C) {
 }
 
 func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
+	logBuf := bytes.NewBuffer(nil)
+	log.SetLogger(log.NewWriterLogger(logBuf, false))
+	defer log.SetLogger(nil)
 	app1 := app.App{Name: "skyrim", Plan: app.Plan{Memory: 60000}, Pool: "mypool"}
 	err := s.storage.Apps().Insert(app1)
 	c.Assert(err, check.IsNil)
@@ -319,8 +324,10 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 	opts := docker.CreateContainerOptions{
 		Name: cont.Name,
 	}
-	_, err = segSched.Schedule(clusterInstance, opts, cont.AppName)
-	c.Assert(err, check.ErrorMatches, "No nodes found with enough memory for container of \"oblivion\": 0.0191MB.")
+	node, err := segSched.Schedule(clusterInstance, opts, cont.AppName)
+	c.Assert(err, check.IsNil)
+	c.Assert(node, check.NotNil)
+	c.Assert(logBuf.String(), check.Matches, `(?s).*WARNING: no nodes found with enough memory for container of "oblivion": 0.0191MB.*`)
 }
 
 func (s *S) TestChooseNodeDistributesNodesEqually(c *check.C) {

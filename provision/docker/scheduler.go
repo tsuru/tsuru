@@ -6,7 +6,6 @@ package docker
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"strconv"
 	"sync"
@@ -59,7 +58,7 @@ func (s *segregatedScheduler) filterByMemoryUsage(a *app.App, nodes []cluster.No
 	for i := range nodes {
 		hosts[i] = urlToHost(nodes[i].Address)
 	}
-	containers, err := s.provisioner.listContainersBy(bson.M{"hostaddr": bson.M{"$in": hosts}})
+	containers, err := s.provisioner.listContainersBy(bson.M{"hostaddr": bson.M{"$in": hosts}, "id": bson.M{"$nin": s.ignoredContainers}})
 	if err != nil {
 		return nil, err
 	}
@@ -95,8 +94,9 @@ func (s *segregatedScheduler) filterByMemoryUsage(a *app.App, nodes []cluster.No
 		}
 	}
 	if len(nodeList) == 0 {
-		return nil, fmt.Errorf("No nodes found with enough memory for container of %q: %0.4fMB.",
+		log.Errorf("WARNING: no nodes found with enough memory for container of %q: %0.4fMB. Will ignore memory restrictions.",
 			a.Name, float64(a.Plan.Memory)/megabyte)
+		return nodes, nil
 	}
 	return nodeList, nil
 }
