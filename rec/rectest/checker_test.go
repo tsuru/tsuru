@@ -24,7 +24,7 @@ var _ = check.Suite(CheckerSuite{})
 
 func (CheckerSuite) SetUpSuite(c *check.C) {
 	config.Set("database:url", "localhost:27017")
-	config.Set("database:name", "tsuru_testing_test")
+	config.Set("database:name", "tsuru_rectest_test")
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
