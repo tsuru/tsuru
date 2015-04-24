@@ -9,16 +9,25 @@ import (
 	"errors"
 	"io/ioutil"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 
 	"launchpad.net/gnuflag"
 )
 
+func getHome() string {
+	envs := []string{"HOME", "HOMEPATH"}
+	var home string
+	for i := 0; i < len(envs) && home == ""; i++ {
+		home = os.Getenv(envs[i])
+	}
+	return home
+}
+
 func JoinWithUserDir(p ...string) string {
-	paths := []string{os.ExpandEnv("$HOME")}
+	paths := []string{getHome()}
 	paths = append(paths, p...)
-	return path.Join(paths...)
+	return filepath.Join(paths...)
 }
 
 func writeToken(token string) error {

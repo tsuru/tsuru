@@ -6,11 +6,27 @@ package cmd
 
 import (
 	"io/ioutil"
+	"os"
+	"path"
 
 	"github.com/tsuru/tsuru/fs/fstest"
 	"gopkg.in/check.v1"
 	"launchpad.net/gnuflag"
 )
+
+func (s *S) TestJoinWithUserDir(c *check.C) {
+	expected := path.Join(os.Getenv("HOME"), "a", "b")
+	path := JoinWithUserDir("a", "b")
+	c.Assert(path, check.Equals, expected)
+}
+
+func (s *S) TestJoinWithUserDirHomePath(c *check.C) {
+	defer os.Setenv("HOME", os.Getenv("HOME"))
+	os.Setenv("HOME", "")
+	os.Setenv("HOMEPATH", "/wat")
+	path := JoinWithUserDir("a", "b")
+	c.Assert(path, check.Equals, "/wat/a/b")
+}
 
 func (s *S) TestWriteToken(c *check.C) {
 	rfs := &fstest.RecordingFs{}
