@@ -5,7 +5,6 @@
 package rectest
 
 import (
-	"runtime"
 	"time"
 
 	"github.com/tsuru/tsuru/db"
@@ -58,14 +57,13 @@ func (isRecordedChecker) Check(params []interface{}, names []string) (bool, stri
 		for {
 			select {
 			case <-quit:
-				runtime.Goexit()
+				return
 			default:
 				var a userAction
 				if err := conn.UserActions().Find(query).One(&a); err == nil {
 					done <- a
 					return
 				}
-				runtime.Gosched()
 			}
 		}
 	}()
