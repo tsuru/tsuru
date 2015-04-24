@@ -71,13 +71,9 @@ func (h *nodeHealer) HandleError(node *cluster.Node) time.Duration {
 	if h.locks[node.Address] == nil {
 		h.locks[node.Address] = &sync.Mutex{}
 	}
-	h.locks[node.Address].Lock()
 	h.Unlock()
-	defer func() {
-		h.Lock()
-		defer h.Unlock()
-		h.locks[node.Address].Unlock()
-	}()
+	h.locks[node.Address].Lock()
+	defer h.locks[node.Address].Unlock()
 	failures := node.FailureCount()
 	if failures < h.failuresBeforeHealing {
 		log.Debugf("%d failures detected in node %q, waiting for more failures before healing.", failures, node.Address)
