@@ -68,6 +68,9 @@ func getPort() (string, error) {
 func urlToHost(urlStr string) string {
 	url, _ := url.Parse(urlStr)
 	host, _, _ := net.SplitHostPort(url.Host)
+	if host == "" {
+		return url.Host
+	}
 	return host
 }
 

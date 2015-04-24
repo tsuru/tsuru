@@ -331,6 +331,10 @@ type nodeMemoryData struct {
 
 func (a *memoryScaler) nodesMemoryData(prov *dockerProvisioner, nodes []*cluster.Node) (map[string]*nodeMemoryData, error) {
 	nodesMemoryData := make(map[string]*nodeMemoryData)
+	containersMap, err := prov.runningContainersByNode(nodes)
+	if err != nil {
+		return nil, err
+	}
 	for _, node := range nodes {
 		totalMemory, _ := strconv.ParseFloat(node.Metadata[a.totalMemoryMetadata], 64)
 		if totalMemory == 0.0 {
@@ -343,11 +347,7 @@ func (a *memoryScaler) nodesMemoryData(prov *dockerProvisioner, nodes []*cluster
 			maxMemory:        maxMemory,
 		}
 		nodesMemoryData[node.Address] = data
-		containers, err := prov.listRunningContainersByHost(urlToHost(node.Address))
-		if err != nil {
-			return nil, fmt.Errorf("couldn't find containers: %s", err)
-		}
-		for _, cont := range containers {
+		for _, cont := range containersMap[node.Address] {
 			a, err := app.GetByName(cont.AppName)
 			if err != nil {
 				return nil, fmt.Errorf("couldn't find container app (%s): %s", cont.AppName, err)
@@ -366,13 +366,13 @@ func (a *memoryScaler) nodesMemoryData(prov *dockerProvisioner, nodes []*cluster
 // If it's possible to distribute containers and we still have spare memory
 // such node can be removed.
 func (a *memoryScaler) choseNodeForRemoval(maxPlanMemory int64, groupMetadata string, nodes []*cluster.Node) (*cluster.Node, error) {
+	containersMap, err := a.provisioner.runningContainersByNode(nodes)
+	if err != nil {
+		return nil, err
+	}
 	var containers []container
 	for _, node := range nodes {
-		conts, err := a.provisioner.listRunningContainersByHost(urlToHost(node.Address))
-		if err != nil {
-			return nil, err
-		}
-		containers = append(containers, conts...)
+		containers = append(containers, containersMap[node.Address]...)
 	}
 	var maxAvailable int64
 	var chosenNode *cluster.Node
@@ -729,15 +729,42 @@ func chooseMetadataFromNodes(modelNodes []*cluster.Node) (map[string]string, err
 	return baseMetadata, nil
 }
 
+func (p *dockerProvisioner) runningContainersByNode(nodes []*cluster.Node) (map[string][]container, error) {
+	appNames, err := p.listAppsForNodes(nodes)
+	if err != nil {
+		return nil, err
+	}
+	for _, appName := range appNames {
+		locked, err := app.AcquireApplicationLock(appName, app.InternalAppName, "node auto scale")
+		if err != nil {
+			return nil, err
+		}
+		if !locked {
+			return nil, fmt.Errorf("unable to lock app %s, aborting", appName)
+		}
+		defer app.ReleaseApplicationLock(appName)
+	}
+	result := map[string][]container{}
+	for _, n := range nodes {
+		nodeConts, err := p.listRunningContainersByHost(urlToHost(n.Address))
+		if err != nil {
+			return nil, err
+		}
+		result[n.Address] = nodeConts
+	}
+	return result, nil
+}
+
 func (p *dockerProvisioner) containerGapInNodes(nodes []*cluster.Node) (int, int, error) {
 	maxCount := 0
 	minCount := 0
 	totalCount := 0
-	for _, n := range nodes {
-		contCount, err := p.countRunningContainersByHost(urlToHost(n.Address))
-		if err != nil {
-			return 0, 0, err
-		}
+	containersMap, err := p.runningContainersByNode(nodes)
+	if err != nil {
+		return 0, 0, err
+	}
+	for _, containers := range containersMap {
+		contCount := len(containers)
 		if contCount > maxCount {
 			maxCount = contCount
 		}

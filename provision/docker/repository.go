@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -37,22 +38,6 @@ func (p *dockerProvisioner) getContainer(id string) (*container, error) {
 
 func (p *dockerProvisioner) listContainersByHost(address string) ([]container, error) {
 	return p.listContainersBy(bson.M{"hostaddr": address})
-}
-
-func (p *dockerProvisioner) countRunningContainersByHost(address string) (int, error) {
-	coll := p.collection()
-	defer coll.Close()
-	n, err := coll.Find(bson.M{
-		"hostaddr": address,
-		"status": bson.M{
-			"$nin": []string{
-				provision.StatusCreated.String(),
-				provision.StatusBuilding.String(),
-				provision.StatusStopped.String(),
-			},
-		},
-	}).Count()
-	return n, err
 }
 
 func (p *dockerProvisioner) listRunningContainersByHost(address string) ([]container, error) {
@@ -98,6 +83,18 @@ func (p *dockerProvisioner) listRunnableContainersByApp(appName string) ([]conta
 
 func (p *dockerProvisioner) listAllContainers() ([]container, error) {
 	return p.listContainersBy(nil)
+}
+
+func (p *dockerProvisioner) listAppsForNodes(nodes []*cluster.Node) ([]string, error) {
+	coll := p.collection()
+	defer coll.Close()
+	nodeNames := make([]string, len(nodes))
+	for i, n := range nodes {
+		nodeNames[i] = urlToHost(n.Address)
+	}
+	var appNames []string
+	err := coll.Find(bson.M{"hostaddr": bson.M{"$in": nodeNames}}).Distinct("appname", &appNames)
+	return appNames, err
 }
 
 func (p *dockerProvisioner) listContainersBy(query bson.M) ([]container, error) {

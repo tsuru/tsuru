@@ -8,6 +8,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2"
@@ -271,4 +272,22 @@ func (s *S) TestListRunnableContainersByApp(c *check.C) {
 	}
 	sort.Strings(names)
 	c.Assert(names, check.DeepEquals, []string{"c", "d", "e"})
+}
+
+func (s *S) TestListAppsForNodes(c *check.C) {
+	coll := s.p.collection()
+	defer coll.Close()
+	coll.Insert(
+		container{Name: "a", AppName: "app1", HostAddr: "host1.com"},
+		container{Name: "b", AppName: "app2", HostAddr: "host1.com"},
+		container{Name: "c", AppName: "app2", HostAddr: "host1.com"},
+		container{Name: "d", AppName: "app3", HostAddr: "host2.com"},
+		container{Name: "e", AppName: "app4", HostAddr: "host2.com"},
+		container{Name: "f", AppName: "app5", HostAddr: "host3.com"},
+	)
+	nodes := []*cluster.Node{{Address: "http://host1.com"}, {Address: "http://host3.com"}}
+	apps, err := s.p.listAppsForNodes(nodes)
+	c.Assert(err, check.IsNil)
+	sort.Strings(apps)
+	c.Assert(apps, check.DeepEquals, []string{"app1", "app2", "app5"})
 }
