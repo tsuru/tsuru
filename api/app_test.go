@@ -3305,3 +3305,23 @@ func (s *S) deleteApp(a *app.App) {
 		time.Sleep(1e6)
 	}
 }
+
+func (s *S) TestAppChangePool(c *check.C) {
+	a := app.App{Name: "myappx", Platform: "zend", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	defer s.deleteApp(&a)
+	err = provision.AddPool("test")
+	c.Assert(err, check.IsNil)
+	err = provision.AddTeamsToPool("test", []string{s.team.Name})
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("test")
+	body := strings.NewReader("test")
+	request, err := http.NewRequest("POST", "/apps/myappx/pool", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}

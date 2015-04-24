@@ -989,3 +989,19 @@ func saveAppCustomData(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	}
 	return a.UpdateCustomData(customData)
 }
+
+func appChangePool(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	appName := r.URL.Query().Get(":app")
+	poolName, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: fmt.Sprintf("Unable to decode body: %s", err.Error()),
+		}
+	}
+	a, err := app.GetByName(appName)
+	if err != nil {
+		return err
+	}
+	return a.ChangePool(string(poolName))
+}

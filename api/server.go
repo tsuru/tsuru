@@ -147,6 +147,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Post", "/apps/{app}/customdata", saveCustomDataHandler)
 	m.Add("Post", "/apps/{appname}/deploy/rollback", authorizationRequiredHandler(deployRollback))
 	m.Add("Get", "/apps/{app}/shell", authorizationRequiredHandler(remoteShellHandler))
+	m.Add("Post", "/apps/{app}/pool", authorizationRequiredHandler(appChangePool))
 
 	m.Add("Get", "/deploys", authorizationRequiredHandler(deploysList))
 	m.Add("Get", "/deploys/{deploy}", authorizationRequiredHandler(deployInfo))
