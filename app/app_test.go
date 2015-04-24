@@ -2503,6 +2503,56 @@ func (s *S) TestAppAcquireApplicationLockAlreadyLocked(c *check.C) {
 	c.Assert(app.Lock.AcquireDate, check.NotNil)
 }
 
+func (s *S) TestAppAcquireApplicationLockWait(c *check.C) {
+	a := App{
+		Name: "someApp",
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	locked, err := AcquireApplicationLock(a.Name, "foo", "/something")
+	c.Assert(err, check.IsNil)
+	c.Assert(locked, check.Equals, true)
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	defer wg.Wait()
+	go func() {
+		defer wg.Done()
+		time.Sleep(time.Second)
+		ReleaseApplicationLock(a.Name)
+	}()
+	locked, err = AcquireApplicationLockWait(a.Name, "zzz", "/other", 10*time.Second)
+	c.Assert(err, check.IsNil)
+	c.Assert(locked, check.Equals, true)
+	app, err := GetByName("someApp")
+	c.Assert(err, check.IsNil)
+	c.Assert(app.Lock.Locked, check.Equals, true)
+	c.Assert(app.Lock.Owner, check.Equals, "zzz")
+	c.Assert(app.Lock.Reason, check.Equals, "/other")
+	c.Assert(app.Lock.AcquireDate, check.NotNil)
+}
+
+func (s *S) TestAppAcquireApplicationLockWaitWithoutRelease(c *check.C) {
+	a := App{
+		Name: "someApp",
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	locked, err := AcquireApplicationLock(a.Name, "foo", "/something")
+	c.Assert(err, check.IsNil)
+	c.Assert(locked, check.Equals, true)
+	locked, err = AcquireApplicationLockWait(a.Name, "zzz", "/other", time.Second)
+	c.Assert(err, check.IsNil)
+	c.Assert(locked, check.Equals, false)
+	app, err := GetByName("someApp")
+	c.Assert(err, check.IsNil)
+	c.Assert(app.Lock.Locked, check.Equals, true)
+	c.Assert(app.Lock.Owner, check.Equals, "foo")
+	c.Assert(app.Lock.Reason, check.Equals, "/something")
+	c.Assert(app.Lock.AcquireDate, check.NotNil)
+}
+
 func (s *S) TestAppLockStringUnlocked(c *check.C) {
 	lock := AppLock{Locked: false}
 	c.Assert(lock.String(), check.Equals, "Not locked")

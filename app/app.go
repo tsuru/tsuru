@@ -122,23 +122,38 @@ type Applog struct {
 // field in the database.  This method is already called by a connection
 // middleware on requests with :app or :appname params that have side-effects.
 func AcquireApplicationLock(appName string, owner string, reason string) (bool, error) {
-	conn, err := db.Conn()
-	if err != nil {
-		return false, err
+	return AcquireApplicationLockWait(appName, owner, reason, 0)
+}
+
+// Same as AcquireApplicationLock but it keeps trying to acquire the lock
+// until timeout is reached.
+func AcquireApplicationLockWait(appName string, owner string, reason string, timeout time.Duration) (bool, error) {
+	timeoutChan := time.After(timeout)
+	for {
+		conn, err := db.Conn()
+		if err != nil {
+			return false, err
+		}
+		defer conn.Close()
+		appLock := AppLock{
+			Locked:      true,
+			Reason:      reason,
+			Owner:       owner,
+			AcquireDate: time.Now().In(time.UTC),
+		}
+		err = conn.Apps().Update(bson.M{"name": appName, "lock.locked": bson.M{"$in": []interface{}{false, nil}}}, bson.M{"$set": bson.M{"lock": appLock}})
+		if err == nil {
+			return true, nil
+		}
+		if err != mgo.ErrNotFound {
+			return false, err
+		}
+		select {
+		case <-timeoutChan:
+			return false, nil
+		case <-time.After(300 * time.Millisecond):
+		}
 	}
-	defer conn.Close()
-	appLock := AppLock{
-		Locked:      true,
-		Reason:      reason,
-		Owner:       owner,
-		AcquireDate: time.Now().In(time.UTC),
-	}
-	err = conn.Apps().Update(bson.M{"name": appName, "lock.locked": bson.M{"$in": []interface{}{false, nil}}}, bson.M{"$set": bson.M{"lock": appLock}})
-	if err == mgo.ErrNotFound {
-		// TODO(cezarsa): Maybe handle lock expiring by checking timestamp
-		return false, nil
-	}
-	return err == nil, err
 }
 
 // ReleaseApplicationLock releases a lock hold on an app, currently it's called
