@@ -2003,9 +2003,7 @@ func (s *S) TestAppMarshalJSONWithoutRepository(c *check.C) {
 
 func (s *S) TestRun(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("a lot of files"))
-	app := App{
-		Name: "myapp",
-	}
+	app := App{Name: "myapp"}
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
 	s.provisioner.AddUnits(&app, 1, nil)
@@ -2018,6 +2016,11 @@ func (s *S) TestRun(c *check.C) {
 	expected += " ls -lh"
 	cmds := s.provisioner.GetCmds(expected, &app)
 	c.Assert(cmds, check.HasLen, 1)
+	logs, err := app.LastLogs(1, Applog{})
+	c.Assert(err, check.IsNil)
+	c.Assert(logs, check.HasLen, 1)
+	c.Assert(logs[0].Message, check.Equals, "a lot of files")
+	c.Assert(logs[0].Source, check.Equals, "app-run")
 }
 
 func (s *S) TestRunOnce(c *check.C) {

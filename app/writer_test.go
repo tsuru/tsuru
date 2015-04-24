@@ -38,7 +38,7 @@ func (s *WriterSuite) TestLogWriter(c *check.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	writer := LogWriter{&a, &b}
+	writer := LogWriter{App: &a, Writer: &b}
 	data := []byte("ble")
 	_, err = writer.Write(data)
 	c.Assert(err, check.IsNil)
@@ -48,6 +48,26 @@ func (s *WriterSuite) TestLogWriter(c *check.C) {
 	logs, err := instance.LastLogs(1, Applog{})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs[0].Message, check.Equals, string(data))
+	c.Assert(logs[0].Source, check.Equals, "tsuru")
+}
+
+func (s *WriterSuite) TestLogWriterCustomSource(c *check.C) {
+	var b bytes.Buffer
+	a := App{Name: "down"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	writer := LogWriter{App: &a, Writer: &b, Source: "cool-test"}
+	data := []byte("ble")
+	_, err = writer.Write(data)
+	c.Assert(err, check.IsNil)
+	c.Assert(b.Bytes(), check.DeepEquals, data)
+	instance := App{}
+	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
+	logs, err := instance.LastLogs(1, Applog{})
+	c.Assert(err, check.IsNil)
+	c.Assert(logs[0].Message, check.Equals, string(data))
+	c.Assert(logs[0].Source, check.Equals, "cool-test")
 }
 
 func (s *WriterSuite) TestLogWriterShouldReturnTheDataSize(c *check.C) {
@@ -58,7 +78,7 @@ func (s *WriterSuite) TestLogWriterShouldReturnTheDataSize(c *check.C) {
 	var apps []App
 	s.conn.Apps().Find(bson.M{"name": "down"}).All(&apps)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	writer := LogWriter{&a, &b}
+	writer := LogWriter{App: &a, Writer: &b}
 	data := []byte("ble")
 	n, err := writer.Write(data)
 	c.Assert(err, check.IsNil)

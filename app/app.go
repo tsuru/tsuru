@@ -670,7 +670,8 @@ func (app *App) Run(cmd string, w io.Writer, once bool) error {
 		return stderr.New("App must be available to run commands")
 	}
 	app.Log(fmt.Sprintf("running '%s'", cmd), "tsuru", "api")
-	return app.sourced(cmd, w, once)
+	logWriter := LogWriter{App: app, Writer: w, Source: "app-run"}
+	return app.sourced(cmd, &logWriter, once)
 }
 
 func (app *App) sourced(cmd string, w io.Writer, once bool) error {

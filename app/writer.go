@@ -13,11 +13,16 @@ type Logger interface {
 type LogWriter struct {
 	App    Logger
 	Writer io.Writer
+	Source string
 }
 
 // Write writes and logs the data.
 func (w *LogWriter) Write(data []byte) (int, error) {
-	err := w.App.Log(string(data), "tsuru", "api")
+	source := w.Source
+	if source == "" {
+		source = "tsuru"
+	}
+	err := w.App.Log(string(data), source, "api")
 	if err != nil {
 		return 0, err
 	}
