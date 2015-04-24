@@ -36,7 +36,7 @@ func (s *FileLoggerSuite) TestNewFileLoggerReturnsALogger(c *check.C) {
 
 func (s *FileLoggerSuite) TestNewWriterLogger(c *check.C) {
 	var buf bytes.Buffer
-	logger := newWriterLogger(&buf, true)
+	logger := NewWriterLogger(&buf, true)
 	logger.Errorf("something went wrong: %s", "this")
 	c.Assert(buf.String(), check.Matches, `(?m)^.*ERROR: something went wrong: this$`)
 }

@@ -19,8 +19,8 @@ var _ = check.Suite(&MultiLoggerSuite{})
 
 func (s *MultiLoggerSuite) SetUpTest(c *check.C) {
 	s.logger = NewMultiLogger(
-		newWriterLogger(&s.buf1, true),
-		newWriterLogger(&s.buf2, true),
+		NewWriterLogger(&s.buf1, true),
+		NewWriterLogger(&s.buf2, true),
 	)
 }
 

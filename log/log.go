@@ -45,7 +45,7 @@ func Init() {
 		loggers = append(loggers, NewSyslogLogger(tag, debug))
 	}
 	if useStderr, _ := config.GetBool("log:use-stderr"); useStderr {
-		loggers = append(loggers, newWriterLogger(os.Stderr, debug))
+		loggers = append(loggers, NewWriterLogger(os.Stderr, debug))
 	}
 	SetLogger(NewMultiLogger(loggers...))
 }

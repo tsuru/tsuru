@@ -22,10 +22,10 @@ func NewFileLogger(fileName string, debug bool) Logger {
 	if err != nil {
 		panic(err)
 	}
-	return newWriterLogger(file, debug)
+	return NewWriterLogger(file, debug)
 }
 
-func newWriterLogger(writer io.Writer, debug bool) Logger {
+func NewWriterLogger(writer io.Writer, debug bool) Logger {
 	logger := log.New(writer, "", log.LstdFlags)
 	return &fileLogger{logger: logger, debug: debug}
 }
