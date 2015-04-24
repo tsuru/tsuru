@@ -857,12 +857,12 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if forceSwap == "" {
 		forceSwap = "false"
 	}
-	locked1, err := app.AcquireApplicationLock(app1Name, t.GetUserName(), "/swap")
+	locked1, err := app.AcquireApplicationLockWait(app1Name, t.GetUserName(), "/swap", lockWaitDuration)
 	if err != nil {
 		return err
 	}
 	defer app.ReleaseApplicationLock(app1Name)
-	locked2, err := app.AcquireApplicationLock(app2Name, t.GetUserName(), "/swap")
+	locked2, err := app.AcquireApplicationLockWait(app2Name, t.GetUserName(), "/swap", lockWaitDuration)
 	if err != nil {
 		return err
 	}

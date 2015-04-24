@@ -111,6 +111,8 @@ type appLockMiddleware struct {
 	excludedHandlers []http.Handler
 }
 
+var lockWaitDuration time.Duration = 10 * time.Second
+
 func (m *appLockMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.HandlerFunc) {
 	if r.Method == "GET" {
 		next(w, r)
@@ -143,7 +145,12 @@ func (m *appLockMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, ne
 			owner = t.GetUserName()
 		}
 	}
-	ok, err := app.AcquireApplicationLock(appName, owner, fmt.Sprintf("%s %s", r.Method, r.URL.Path))
+	_, err := app.GetByName(appName)
+	if err == app.ErrAppNotFound {
+		context.AddRequestError(r, &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()})
+		return
+	}
+	ok, err := app.AcquireApplicationLockWait(appName, owner, fmt.Sprintf("%s %s", r.Method, r.URL.Path), lockWaitDuration)
 	if err != nil {
 		context.AddRequestError(r, fmt.Errorf("Error trying to acquire application lock: %s", err))
 		return

@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"time"
 
 	"github.com/codegangsta/negroni"
@@ -322,6 +323,9 @@ func (s *S) TestAppLockMiddlewareReturns404IfNotApp(c *check.C) {
 }
 
 func (s *S) TestAppLockMiddlewareOnLockedApp(c *check.C) {
+	oldDuration := lockWaitDuration
+	lockWaitDuration = 1 * time.Second
+	defer func() { lockWaitDuration = oldDuration }()
 	myApp := app.App{
 		Name: "my-app",
 		Lock: app.AppLock{
@@ -407,6 +411,44 @@ func (s *S) TestAppLockMiddlewareDoesNothingForExcludedHandlers(c *check.C) {
 	}
 	m.ServeHTTP(recorder, request, h)
 	c.Assert(log.called, check.Equals, true)
+}
+
+func (s *S) TestAppLockMiddlewareWaitForLock(c *check.C) {
+	myApp := app.App{
+		Name: "my-app",
+		Lock: app.AppLock{
+			Locked:      true,
+			Reason:      "/app/my-app/deploy",
+			Owner:       "someone",
+			AcquireDate: time.Date(2048, time.November, 10, 10, 0, 0, 0, time.UTC),
+		},
+	}
+	err := s.conn.Apps().Insert(myApp)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": myApp.Name})
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("POST", "/?:app=my-app", nil)
+	c.Assert(err, check.IsNil)
+	called := false
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	defer wg.Wait()
+	go func() {
+		defer wg.Done()
+		time.Sleep(1 * time.Second)
+		app.ReleaseApplicationLock(myApp.Name)
+	}()
+	m := &appLockMiddleware{}
+	m.ServeHTTP(recorder, request, func(w http.ResponseWriter, r *http.Request) {
+		a, err := app.GetByName(request.URL.Query().Get(":app"))
+		c.Assert(err, check.IsNil)
+		c.Assert(a.Lock.Locked, check.Equals, true)
+		called = true
+	})
+	c.Assert(called, check.Equals, true)
+	a, err := app.GetByName(request.URL.Query().Get(":app"))
+	c.Assert(err, check.IsNil)
+	c.Assert(a.Lock.Locked, check.Equals, false)
 }
 
 func (s *S) TestLoggerMiddleware(c *check.C) {
