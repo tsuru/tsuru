@@ -22,7 +22,7 @@ func (s *S) TestInfo(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	expected := map[string]interface{}{
-		"version":   Version,
+		"version": Version,
 	}
 	var info map[string]interface{}
 	err = json.Unmarshal(recorder.Body.Bytes(), &info)
