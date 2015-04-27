@@ -210,10 +210,10 @@ func (a *autoScaleConfig) run() error {
 		return err
 	}
 	for {
-		err := a.runScaler(scaler)
-		if err != nil {
-			err = fmt.Errorf("[node autoscale] %s", err.Error())
-			a.logError(err.Error())
+		sErr := a.runScaler(scaler)
+		if sErr != nil {
+			err = fmt.Errorf("[node autoscale] %s", sErr.Error())
+			a.logError(sErr.Error())
 		}
 		select {
 		case <-a.done:
@@ -415,7 +415,9 @@ func (a *memoryScaler) choseNodeForRemoval(maxPlanMemory int64, groupMetadata st
 			chosenNode = node
 		}
 	}
-	if chosenNode != nil && maxAvailable > int64(float32(maxPlanMemory)*a.scaleDownRatio) {
+	scaledMaxPlan := int64(float32(maxPlanMemory) * a.scaleDownRatio)
+	if chosenNode != nil && maxAvailable > scaledMaxPlan {
+		a.logDebug("checking scale down, node %s, maxAvailable: %d, scaledMaxPlan: %d", chosenNode.Address, maxAvailable, scaledMaxPlan)
 		canRemove, _ := canRemoveNode(chosenNode, nodes)
 		if !canRemove {
 			a.logDebug("would remove node %s but can't due to metadata restrictions", chosenNode.Address)
@@ -464,7 +466,7 @@ func (a *memoryScaler) scale(event *autoScaleEvent, groupMetadata string, nodes 
 	canFitMax := false
 	for _, node := range nodes {
 		data := memoryData[node.Address]
-		a.logDebug("node %s, memory data: %#v", node.Address, data)
+		a.logDebug("checking scale up, node %s, memory data: %#v", node.Address, data)
 		if maxPlanMemory > data.maxMemory {
 			return fmt.Errorf("aborting, impossible to fit max plan memory of %d bytes, node max available memory is %d", maxPlanMemory, data.maxMemory)
 		}
