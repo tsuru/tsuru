@@ -54,15 +54,15 @@ type UserDataIaaS struct {
 }
 
 func (i *UserDataIaaS) ReadUserData() (string, error) {
-	userDataURL, _ := i.NamedIaaS.GetConfigString("user-data")
-	userDataString, err := i.ReadUserDataAsString(userDataURL)
+	userDataString, err := i.ReadUserDataAsString()
 	if err != nil {
 		return "", err
 	}
 	return base64.StdEncoding.EncodeToString([]byte(userDataString)), nil
 }
 
-func (i *UserDataIaaS) ReadUserDataAsString(userDataURL string) (string, error) {
+func (i *UserDataIaaS) ReadUserDataAsString() (string, error) {
+	userDataURL, _ := i.NamedIaaS.GetConfigString("user-data")
 	var userData string
 	if userDataURL == "" {
 		userData = defaultUserData
