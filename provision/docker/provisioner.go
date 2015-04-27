@@ -130,7 +130,9 @@ func (p *dockerProvisioner) initDockerCluster() error {
 	}
 	autoScaleEnabled, _ := config.GetBool("docker:auto-scale:enabled")
 	if autoScaleEnabled {
-		go p.initAutoScaleConfig().run()
+		autoScale := p.initAutoScaleConfig()
+		shutdown.Register(autoScale)
+		go autoScale.run()
 	}
 	return nil
 }
@@ -145,7 +147,7 @@ func (p *dockerProvisioner) initAutoScaleConfig() *autoScaleConfig {
 	preventRebalance, _ := config.GetBool("docker:auto-scale:prevent-rebalance")
 	totalMemoryMetadata, _ := config.GetString("docker:scheduler:total-memory-metadata")
 	maxUsedMemory, _ := config.GetFloat("docker:scheduler:max-used-memory")
-	asConf := &autoScaleConfig{
+	return &autoScaleConfig{
 		provisioner:         p,
 		groupByMetadata:     groupByMetadata,
 		totalMemoryMetadata: totalMemoryMetadata,
@@ -158,8 +160,6 @@ func (p *dockerProvisioner) initAutoScaleConfig() *autoScaleConfig {
 		preventRebalance:    preventRebalance,
 		done:                make(chan bool),
 	}
-	shutdown.Register(asConf)
-	return asConf
 }
 
 func (p *dockerProvisioner) cloneProvisioner(ignoredContainers []container) (*dockerProvisioner, error) {
