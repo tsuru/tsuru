@@ -44,7 +44,7 @@ Example:
 
     GET /apps/myapp HTTP/1.1
     Content-Length: 284
-    {"Name":"app1","Framework":"php","Repository":"git@git.com:php.git","State":"dead", "Units":[{"Ip":"10.10.10    .10","Name":"app1/0","State":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","State":"started"}, {"Ip":"","Name":"app1/2","Stat    e":"pending"}],"Teams":["tsuruteam","crane"]}
+    {"Name":"app1","Framework":"php","Repository":"git@git.com:php.git","State":"dead","Units":[{"Ip":"10.10.10.10","Name":"app1/0","State":"started"}, {"Ip":"9.9.9.9","Name":"app1/1","State":"started"},{"Ip":"","Name":"app1/2","State":"pending"}],"Teams":["tsuruteam","crane"],"Pool": "mypool"}
 
 Remove an app
 *************
@@ -214,6 +214,40 @@ Example:
     GET /apps/myapp/log?lines=20&source=web&unit=83535b503c96
     Content-Length: 142
     [{"Date":"2014-09-26T00:26:30.036Z","Message":"Booting worker with pid: 53","Source":"web","AppName":"tsuru-dashboard","Unit":"83535b503c96"}]
+
+List available pools
+********************
+
+    * Method: GET
+    * URI: /pools
+
+Returns 200 in case of success.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    GET /pools
+    [{"Team":"team1","Pools":["pool1","pool2"]},{"Team":"team2","Pools":["pool3"]}]
+
+Change an app's pool
+********************
+
+    * Method: POST
+    * URI: /apps/<appname>/pool
+
+Returns 200 in case of success. Returns 404 if app is not found.
+
+Example:
+
+.. highlight:: bash
+
+::
+
+    POST /apps/myapp/pool
+
 
 1.2 Services
 ------------
