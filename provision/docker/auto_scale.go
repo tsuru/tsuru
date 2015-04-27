@@ -377,7 +377,7 @@ func (a *memoryScaler) choseNodeForRemoval(maxPlanMemory int64, groupMetadata st
 	var maxAvailable int64
 	var chosenNode *cluster.Node
 	for _, node := range nodes {
-		dryProv, err := a.provisioner.dryMode(nil)
+		dryProv, err := a.provisioner.dryMode(containers)
 		if err != nil {
 			return nil, err
 		}
