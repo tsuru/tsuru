@@ -100,8 +100,7 @@ Then start gandalf and archive-server:
 Configuring tsuru to use Gandalf
 ================================
 
-In order to use Gandalf, you need to change tsuru.conf accordingly, it's a
-two steps setup:
+In order to use Gandalf, you need to change tsuru.conf accordingly:
 
 #. Define "repo-manager" to use "gandalf";
 #. Define "git:api-server" to point to the API of the Gandalf server
