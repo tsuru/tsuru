@@ -9,11 +9,11 @@ import (
 	"os/signal"
 	"syscall"
 
-	_ "github.com/hugoantunes/tsuru/provision/docker"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/api"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/provision"
+	_ "github.com/tsuru/tsuru/provision/docker"
 	_ "github.com/tsuru/tsuru/repository/gandalf"
 )
 
