@@ -154,7 +154,7 @@ func (m *Manager) Run(args []string) {
 					sort.Strings(keys)
 					for _, key := range keys {
 						levenshtein := fuzzy.Levenshtein(&key, &args[0])
-						if levenshtein < 3 || strings.HasPrefix(key, args[0]) {
+						if levenshtein < 3 || strings.Contains(key, args[0]) {
 							msg += fmt.Sprintf("\t%s\n", key)
 						}
 					}
