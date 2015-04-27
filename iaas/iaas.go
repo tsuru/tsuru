@@ -54,12 +54,20 @@ type UserDataIaaS struct {
 }
 
 func (i *UserDataIaaS) ReadUserData() (string, error) {
-	userDataUrl, _ := i.NamedIaaS.GetConfigString("user-data")
+	userDataURL, _ := i.NamedIaaS.GetConfigString("user-data")
+	userDataString, err := i.ReadUserDataAsString(userDataURL)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString([]byte(userDataString)), nil
+}
+
+func (i *UserDataIaaS) ReadUserDataAsString(userDataURL string) (string, error) {
 	var userData string
-	if userDataUrl == "" {
+	if userDataURL == "" {
 		userData = defaultUserData
 	} else {
-		resp, err := http.Get(userDataUrl)
+		resp, err := http.Get(userDataURL)
 		if err != nil {
 			return "", err
 		}
@@ -73,7 +81,7 @@ func (i *UserDataIaaS) ReadUserData() (string, error) {
 		}
 		userData = string(body)
 	}
-	return base64.StdEncoding.EncodeToString([]byte(userData)), nil
+	return userData, nil
 }
 
 func (i *NamedIaaS) GetConfigString(name string) (string, error) {
