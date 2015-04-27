@@ -38,7 +38,6 @@ func (c *Client) buildErrorMessage(err error, resp *http.Response) string {
 }
 
 func (c *Client) issueRequest(path, method string, params map[string][]string) (*http.Response, error) {
-	log.Debug("Issuing request...")
 	v := url.Values(params)
 	var suffix string
 	var body io.Reader
@@ -61,11 +60,10 @@ func (c *Client) issueRequest(path, method string, params map[string][]string) (
 }
 
 func (c *Client) jsonFromResponse(resp *http.Response, v interface{}) error {
-	log.Debug("Parsing response json...")
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Errorf("Got error while parsing json: %s", err)
+		log.Errorf("Got error while parsing service json: %s", err)
 		return err
 	}
 	return json.Unmarshal(body, &v)
@@ -73,7 +71,6 @@ func (c *Client) jsonFromResponse(resp *http.Response, v interface{}) error {
 
 func (c *Client) Create(instance *ServiceInstance, user string) error {
 	var err error
-	log.Debug("Attempting to call creation of service instance " + instance.Name + " at " + instance.ServiceName + " api")
 	var resp *http.Response
 	params := map[string][]string{
 		"name": {instance.Name},
@@ -83,6 +80,7 @@ func (c *Client) Create(instance *ServiceInstance, user string) error {
 	if instance.PlanName != "" {
 		params["plan"] = []string{instance.PlanName}
 	}
+	log.Debugf("Attempting to call creation of service instance for %q, params: %#v", instance.ServiceName, params)
 	if resp, err = c.issueRequest("/resources", "POST", params); err == nil && resp.StatusCode < 300 {
 		return nil
 	}
@@ -92,7 +90,7 @@ func (c *Client) Create(instance *ServiceInstance, user string) error {
 }
 
 func (c *Client) Destroy(instance *ServiceInstance) error {
-	log.Debug("Attempting to call destroy of service instance " + instance.Name + " at " + instance.ServiceName + " api")
+	log.Debugf("Attempting to call destroy of service instance %q at %q api", instance.Name, instance.ServiceName)
 	resp, err := c.issueRequest("/resources/"+instance.GetIdentifier(), "DELETE", nil)
 	if err == nil && resp.StatusCode > 299 {
 		msg := "Failed to destroy the instance " + instance.Name + ": " + c.buildErrorMessage(err, resp)
@@ -201,7 +199,7 @@ func (c *Client) UnbindUnit(instance *ServiceInstance, app bind.App, unit bind.U
 // The service host here is the private ip of the service instance
 // 204 means the service is up, 500 means the service is down
 func (c *Client) Status(instance *ServiceInstance) (string, error) {
-	log.Debug("Attempting to call status of service instance " + instance.Name + " at " + instance.ServiceName + " api")
+	log.Debugf("Attempting to call status of service instance %q at %q api", instance.Name, instance.ServiceName)
 	var (
 		resp *http.Response
 		err  error
@@ -228,7 +226,7 @@ func (c *Client) Status(instance *ServiceInstance) (string, error) {
 // like below:
 // GET /resources/<name>
 func (c *Client) Info(instance *ServiceInstance) ([]map[string]string, error) {
-	log.Debug("Attempting to call info of service instance " + instance.Name + " at " + instance.ServiceName + " api")
+	log.Debugf("Attempting to call info of service instance %q at %q api", instance.Name, instance.ServiceName)
 	url := "/resources/" + instance.GetIdentifier()
 	resp, err := c.issueRequest(url, "GET", nil)
 	if err != nil || resp.StatusCode != 200 {
