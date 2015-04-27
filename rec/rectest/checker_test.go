@@ -22,7 +22,7 @@ type CheckerSuite struct{}
 
 var _ = check.Suite(CheckerSuite{})
 
-func (CheckerSuite) SetUpSuite(c *check.C) {
+func (CheckerSuite) SetUpTest(c *check.C) {
 	config.Set("database:url", "localhost:27017")
 	config.Set("database:name", "tsuru_rectest_test")
 	conn, err := db.Conn()
@@ -46,7 +46,7 @@ func (CheckerSuite) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
-func (CheckerSuite) TearDownSuite(c *check.C) {
+func (CheckerSuite) TearDownTest(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
