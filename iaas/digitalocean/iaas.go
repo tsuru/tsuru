@@ -45,11 +45,16 @@ func (i *DigitalOceanIaas) Auth() error {
 func (i *DigitalOceanIaas) CreateMachine(params map[string]string) (*iaas.Machine, error) {
 	i.Auth()
 	image := godo.DropletCreateImage{Slug: params["image"]}
+	userData, err := i.base.ReadUserDataAsString()
+	if err != nil {
+		return nil, err
+	}
 	createRequest := &godo.DropletCreateRequest{
-		Name:   params["name"],
-		Region: params["region"],
-		Size:   params["size"],
-		Image:  image,
+		Name:     params["name"],
+		Region:   params["region"],
+		Size:     params["size"],
+		Image:    image,
+		UserData: userData,
 	}
 	newDroplet, _, err := i.client.Droplets.Create(createRequest)
 	if err != nil {
