@@ -5,12 +5,16 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
+	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/migration"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker"
+	"gopkg.in/mgo.v2/bson"
 	"launchpad.net/gnuflag"
 )
 
