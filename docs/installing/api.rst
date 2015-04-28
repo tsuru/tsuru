@@ -63,10 +63,12 @@ configuration is described below, please note that you should replace the values
     database:
         url: <your-mongodb-server>:27017
         name: tsurudb
-    queue: redis
-    redis-queue:
-        host: <your-redis-server>
-        port: 6379
+    pubsub:
+        redis-host: <your-redis-server>
+        redis-port: 6379
+    queue:
+        mongo-url: <your-mongodb-server>:27017
+        mongo-database: queuedb
     git:
         unit-repo: /home/application/current
         api-server: http://<your-gandalf-server>:8000
@@ -89,9 +91,11 @@ configuration is described below, please note that you should replace the values
             user: ubuntu
         servers:
             - http://<your-docker-server>:2375
-    hipache:
-        domain: <your-hipache-server-ip>.xip.io
-        redis-server: <your-redis-server-with-port>
+    routers:
+        hipache:
+            type: hipache
+            domain: <your-hipache-server-ip>.xip.io
+            redis-server: <your-redis-server-with-port>
 
 
 In particular, take note that you must set ``auth.user-registration`` to ``true``:

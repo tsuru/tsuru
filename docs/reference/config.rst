@@ -1022,10 +1022,12 @@ Here is a complete example:
     database:
         url: <your-mongodb-server>:27017
         name: tsurudb
-    queue: redis
-    redis-queue:
-        host: <your-redis-server>
-        port: 6379
+    pubsub:
+        redis-host: <your-redis-server>
+        redis-port: 6379
+    queue:
+        mongo-url: <your-mongodb-server>:27017
+        mongo-database: queuedb
     git:
         unit-repo: /home/application/current
         api-server: http://<your-gandalf-server>:8000
@@ -1043,6 +1045,8 @@ Here is a complete example:
         run-cmd:
             bin: /var/lib/tsuru/start
             port: "8888"
-    hipache:
-        domain: <your-hipache-server-ip>.xip.io
-        redis-server: <your-redis-server-with-port>
+    routers:
+        hipache:
+            type: hipache
+            domain: <your-hipache-server-ip>.xip.io
+            redis-server: <your-redis-server-with-port>
