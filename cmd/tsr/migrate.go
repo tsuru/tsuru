@@ -44,7 +44,7 @@ func (c *migrateCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	err := migration.Register("migrate-pool", c.migratePool)
+	err = migration.Register("migrate-pool", c.migratePool)
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func (c *migrateCmd) migratePool() error {
 		return err
 	}
 	var apps []app.App
-	err = db.Apps().Find().All(&apps)
+	err = db.Apps().Find(nil).All(&apps)
 	if err != nil {
 		return err
 	}
