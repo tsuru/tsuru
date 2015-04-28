@@ -45,7 +45,7 @@ of them need further configuration:
       archives
     * archive-server: uses tsuru's `archive-server
       <https://github.com/tsuru/archive-server>`_ to store and serve archives
-    * swift: uses `Swift <http://swift.openstack.org>`_ to store and server
+    * swift: uses `Swift <http://swift.openstack.org>`_ to store and serve
       archives (compatible with `Rackspace Cloud Files
       <http://www.rackspace.com/cloud/files/>`_)
 
