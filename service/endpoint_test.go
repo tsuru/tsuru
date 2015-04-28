@@ -28,10 +28,6 @@ func (a *FakeUnit) GetIp() string {
 	return a.ip
 }
 
-func noContentHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNoContent)
-}
-
 func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotFound)
 }
@@ -427,37 +423,31 @@ func (s *S) TestBuildErrorMessageWithNonNilResponseAndNonNilError(c *check.C) {
 	c.Assert(cli.buildErrorMessage(err, resp), check.Equals, "epic fail")
 }
 
-func (s *S) TestStatusShouldSendTheNameAndHostOfTheService(c *check.C) {
-	ts := httptest.NewServer(http.HandlerFunc(noContentHandler))
-	defer ts.Close()
-	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
-	state, err := client.Status(&instance)
-	c.Assert(err, check.IsNil)
-	c.Assert(state, check.Equals, "up")
-}
-
-func (s *S) TestStatusShouldReturnDownWhenAPIReturns500(c *check.C) {
-	ts := httptest.NewServer(http.HandlerFunc(failHandler))
-	defer ts.Close()
-	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
-	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
-	state, err := client.Status(&instance)
-	c.Assert(err, check.IsNil)
-	c.Assert(state, check.Equals, "down")
-}
-
-func (s *S) TestStatusShouldReturnPendingWhenAPIReturns202(c *check.C) {
+func (s *S) TestStatus(c *check.C) {
+	tests := []struct {
+		Input    int
+		Expected string
+	}{
+		{http.StatusOK, "up"},
+		{http.StatusNoContent, "up"},
+		{http.StatusAccepted, "pending"},
+		{http.StatusNotFound, "not implemented for this service"},
+		{http.StatusInternalServerError, "down"},
+	}
+	var request int
 	h := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusAccepted)
+		w.WriteHeader(tests[request].Input)
+		request++
 	})
 	ts := httptest.NewServer(h)
 	defer ts.Close()
-	instance := ServiceInstance{Name: "hi_there", ServiceName: "redis"}
-	client := Client{endpoint: ts.URL}
-	state, err := client.Status(&instance)
-	c.Assert(err, check.IsNil)
-	c.Assert(state, check.Equals, "pending")
+	instance := ServiceInstance{Name: "my-redis", ServiceName: "redis"}
+	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
+	for _, t := range tests {
+		state, err := client.Status(&instance)
+		c.Check(err, check.IsNil)
+		c.Check(state, check.Equals, t.Expected)
+	}
 }
 
 func (s *S) TestInfo(c *check.C) {

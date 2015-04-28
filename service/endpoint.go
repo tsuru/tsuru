@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -192,12 +192,6 @@ func (c *Client) UnbindUnit(instance *ServiceInstance, app bind.App, unit bind.U
 	return err
 }
 
-// Connects into service's api
-// The api should be prepared to receive the request,
-// like below:
-// GET /resources/<name>/status/
-// The service host here is the private ip of the service instance
-// 204 means the service is up, 500 means the service is down
 func (c *Client) Status(instance *ServiceInstance) (string, error) {
 	log.Debugf("Attempting to call status of service instance %q at %q api", instance.Name, instance.ServiceName)
 	var (
@@ -207,11 +201,13 @@ func (c *Client) Status(instance *ServiceInstance) (string, error) {
 	url := "/resources/" + instance.GetIdentifier() + "/status"
 	if resp, err = c.issueRequest(url, "GET", nil); err == nil {
 		switch resp.StatusCode {
-		case 202:
+		case http.StatusAccepted:
 			return "pending", nil
-		case 204:
+		case http.StatusNoContent, http.StatusOK:
 			return "up", nil
-		case 500:
+		case http.StatusNotFound:
+			return "not implemented for this service", nil
+		case http.StatusInternalServerError:
 			return "down", nil
 		}
 	}
