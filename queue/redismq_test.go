@@ -7,7 +7,6 @@ package queue
 import (
 	"time"
 
-	"github.com/tsuru/config"
 	"gopkg.in/check.v1"
 )
 
