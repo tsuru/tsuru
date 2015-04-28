@@ -9,8 +9,8 @@
 // import this package and get the router instance using the function
 // router.Get.
 //
-// In order to use this router, you need to define the "hipache:domain"
-// setting.
+// In order to use this router, you need to define the "routers:<name>:type =
+// hipache" in your config.
 package hipache
 
 import (
