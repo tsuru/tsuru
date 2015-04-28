@@ -2129,6 +2129,7 @@ func (s *S) TestAppLogFollowWithPubSub(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = q.Pub([]byte(`{"message": "x"}`))
 	c.Assert(err, check.IsNil)
+	time.Sleep(500 * time.Millisecond)
 	listener.Close()
 	wg.Wait()
 }
@@ -2180,6 +2181,7 @@ func (s *S) TestAppLogFollowWithFilter(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = q.Pub([]byte(`{"message": "y", "source": "web"}`))
 	c.Assert(err, check.IsNil)
+	time.Sleep(500 * time.Millisecond)
 	listener.Close()
 	wg.Wait()
 }
