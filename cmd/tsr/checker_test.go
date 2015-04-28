@@ -26,8 +26,6 @@ database:
 git:
   unit-repo: /home/application/current
   api-server: http://127.0.0.1:8000
-  rw-host: 127.0.0.1
-  ro-host: 127.0.0.1
 
 auth:
   user-registration: true
@@ -179,6 +177,7 @@ func (s *CheckerSuite) TestCheckRouterValidatesDefaultRouter(c *check.C) {
 	config.Unset("routers:hipache")
 	config.Set("docker:router", "myrouter")
 	config.Set("routers:myrouter:planet", "giediprime")
+	config.Set("routers:myrouter:type", "something")
 	err := checkRouter()
 	c.Assert(err, check.IsNil)
 }
@@ -188,6 +187,12 @@ func (s *CheckerSuite) TestCheckRouterValidatesDefaultRouterPresence(c *check.C)
 	config.Unset("docker:router")
 	err := checkRouter()
 	c.Assert(err, check.ErrorMatches, ".*You must configure a default router in \"docker:router\".*")
+}
+
+func (s *CheckerSuite) TestCheckRouterValidatesDefaultRouterType(c *check.C) {
+	config.Unset("routers:hipache:type")
+	err := checkRouter()
+	c.Assert(err, check.ErrorMatches, ".*You must configure your default router type in \"routers:hipache:type\".*")
 }
 
 func (s *CheckerSuite) TestCheckBeanstalkdRedisQueue(c *check.C) {

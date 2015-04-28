@@ -141,10 +141,14 @@ func checkRouter() error {
 	if isHipacheOld {
 		return config.NewWarning(`Setting "hipache:*" config entries is deprecated. You should configure your router with "routers:*". See http://docs.tsuru.io/en/latest/reference/config.html#routers for more details.`)
 	}
-	if routerConf != nil {
-		return nil
+	if routerConf == nil {
+		return fmt.Errorf(`You must configure your default router %q in "routers:%s".`, defaultRouter, defaultRouter)
 	}
-	return fmt.Errorf(`You must configure your default router %q in "routers:%s".`, defaultRouter, defaultRouter)
+	routerType, _ := config.Get("routers:" + defaultRouter + ":type")
+	if routerType == nil {
+		return fmt.Errorf(`You must configure your default router type in "routers:%s:type".`, defaultRouter)
+	}
+	return nil
 }
 
 func checkConfigPresent(keys []string, fmtMsg string) error {
