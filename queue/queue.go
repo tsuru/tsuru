@@ -41,29 +41,10 @@ type PubSubFactory interface {
 	Reset()
 }
 
-var factories = map[string]PubSubFactory{
-	"redis": &redisPubSubFactory{},
-}
-
-// Register registers a new queue factory. This is how one would add a new
-// queue to tsuru.
-func Register(name string, factory PubSubFactory) {
-	factories[name] = factory
-}
-
-// Factory returns an instance of the PubSubFactory used in tsuru. It reads tsuru
-// configuration to find the currently used queue system and returns an
-// instance of the configured system, if it's registered. Otherwise it
-// will return an error.
+// Factory returns an instance of the PubSubFactory used in tsuru. Only redis
+// pubsub is available.
 func Factory() (PubSubFactory, error) {
-	name, err := config.GetString("queue")
-	if err != nil {
-		name = "redis"
-	}
-	if f, ok := factories[name]; ok {
-		return f, nil
-	}
-	return nil, fmt.Errorf("Queue %q is not known.", name)
+	return &redisPubSubFactory{}, nil
 }
 
 type queueInstanceData struct {

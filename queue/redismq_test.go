@@ -19,15 +19,10 @@ var _ = check.Suite(&RedismqSuite{})
 
 func (s *RedismqSuite) SetUpSuite(c *check.C) {
 	s.factory = &redisPubSubFactory{}
-	config.Set("queue", "redis")
 	q := redisPubSub{name: "default", factory: s.factory, prefix: "test"}
 	conn, err := s.factory.getConn()
 	c.Assert(err, check.IsNil)
 	conn.Do("DEL", q.key())
-}
-
-func (s *RedismqSuite) TearDownSuite(c *check.C) {
-	config.Unset("queue")
 }
 
 func (s *RedismqSuite) TestFactoryGetPool(c *check.C) {
@@ -44,13 +39,6 @@ func (s *RedismqSuite) TestFactoryGet(c *check.C) {
 	rq, ok := q.(*redisPubSub)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(rq.name, check.Equals, "ancient")
-}
-
-func (s *RedismqSuite) TestRedisMPubSubFactoryIsInFactoriesMap(c *check.C) {
-	f, ok := factories["redis"]
-	c.Assert(ok, check.Equals, true)
-	_, ok = f.(*redisPubSubFactory)
-	c.Assert(ok, check.Equals, true)
 }
 
 func (s *RedismqSuite) TestRedisPubSub(c *check.C) {
@@ -77,13 +65,17 @@ func (s *RedismqSuite) TestRedisPubSubUnsub(c *check.C) {
 	err = pubSubQ.Pub([]byte("anla'shok"))
 	c.Assert(err, check.IsNil)
 	done := make(chan bool)
+	doneUnsub := make(chan bool)
+	shouldUnsub := make(chan bool)
 	go func() {
-		time.Sleep(5e8)
+		<-shouldUnsub
 		pubSubQ.UnSub()
+		doneUnsub <- true
 	}()
 	go func() {
 		msgs := make([][]byte, 0)
 		for msg := range msgChan {
+			close(shouldUnsub)
 			msgs = append(msgs, msg)
 		}
 		c.Assert(msgs, check.DeepEquals, [][]byte{[]byte("anla'shok")})
@@ -93,5 +85,10 @@ func (s *RedismqSuite) TestRedisPubSubUnsub(c *check.C) {
 	case <-done:
 	case <-time.After(1e9):
 		c.Error("Timeout waiting for message.")
+	}
+	select {
+	case <-doneUnsub:
+	case <-time.After(1e9):
+		c.Error("Timeout waiting for unsub.")
 	}
 }

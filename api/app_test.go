@@ -2110,16 +2110,26 @@ func (s *S) TestAppLogFollowWithPubSub(c *check.C) {
 		c.Assert(logs, check.HasLen, 1)
 		c.Assert(logs[0].Message, check.Equals, "x")
 	}()
+	var listener *app.LogListener
+	timeout := time.After(5 * time.Second)
+	for listener == nil {
+		select {
+		case <-timeout:
+			c.Fatal("timeout after 5 seconds")
+		case <-time.After(50 * time.Millisecond):
+		}
+		logTracker.Lock()
+		for listener = range logTracker.conn {
+		}
+		logTracker.Unlock()
+	}
 	factory, err := queue.Factory()
 	c.Assert(err, check.IsNil)
 	q, err := factory.PubSub("pubsub:" + a.Name)
 	c.Assert(err, check.IsNil)
-	pubSubQ, ok := q.(queue.PubSubQ)
-	c.Assert(ok, check.Equals, true)
-	err = pubSubQ.Pub([]byte(`{"message": "x"}`))
+	err = q.Pub([]byte(`{"message": "x"}`))
 	c.Assert(err, check.IsNil)
-	time.Sleep(1e9)
-	pubSubQ.UnSub()
+	listener.Close()
 	wg.Wait()
 }
 
@@ -2149,18 +2159,28 @@ func (s *S) TestAppLogFollowWithFilter(c *check.C) {
 		c.Assert(logs, check.HasLen, 1)
 		c.Assert(logs[0].Message, check.Equals, "y")
 	}()
+	var listener *app.LogListener
+	timeout := time.After(5 * time.Second)
+	for listener == nil {
+		select {
+		case <-timeout:
+			c.Fatal("timeout after 5 seconds")
+		case <-time.After(50 * time.Millisecond):
+		}
+		logTracker.Lock()
+		for listener = range logTracker.conn {
+		}
+		logTracker.Unlock()
+	}
 	factory, err := queue.Factory()
 	c.Assert(err, check.IsNil)
 	q, err := factory.PubSub("pubsub:" + a.Name)
 	c.Assert(err, check.IsNil)
-	pubSubQ, ok := q.(queue.PubSubQ)
-	c.Assert(ok, check.Equals, true)
-	err = pubSubQ.Pub([]byte(`{"message": "x", "source": "app"}`))
+	err = q.Pub([]byte(`{"message": "x", "source": "app"}`))
 	c.Assert(err, check.IsNil)
-	err = pubSubQ.Pub([]byte(`{"message": "y", "source": "web"}`))
+	err = q.Pub([]byte(`{"message": "y", "source": "web"}`))
 	c.Assert(err, check.IsNil)
-	time.Sleep(2e8)
-	pubSubQ.UnSub()
+	listener.Close()
 	wg.Wait()
 }
 

@@ -23,8 +23,6 @@ type S struct{}
 var _ = check.Suite(&S{})
 
 func (s *S) TestFactory(c *check.C) {
-	config.Set("queue", "redis")
-	defer config.Unset("queue")
 	f, err := Factory()
 	c.Assert(err, check.IsNil)
 	_, ok := f.(*redisPubSubFactory)
@@ -36,23 +34,6 @@ func (s *S) TestFactoryConfigUndefined(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, ok := f.(*redisPubSubFactory)
 	c.Assert(ok, check.Equals, true)
-}
-
-func (s *S) TestFactoryConfigUnknown(c *check.C) {
-	config.Set("queue", "unknown")
-	defer config.Unset("queue")
-	f, err := Factory()
-	c.Assert(f, check.IsNil)
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, `Queue "unknown" is not known.`)
-}
-
-func (s *S) TestRegister(c *check.C) {
-	config.Set("queue", "unregistered")
-	defer config.Unset("queue")
-	Register("unregistered", &redisPubSubFactory{})
-	_, err := Factory()
-	c.Assert(err, check.IsNil)
 }
 
 func (s *S) SetUpTest(c *check.C) {

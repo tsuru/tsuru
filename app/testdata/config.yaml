@@ -4,7 +4,6 @@ database:
 auth:
   salt: tsuru-salt
   token-expire-days: 2
-queue: fake
 admin-team: admin
 repo-manager: fake
 routers:
