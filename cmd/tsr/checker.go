@@ -11,7 +11,7 @@ import (
 	"github.com/tsuru/config"
 )
 
-func CheckBasicConfig() error {
+func checkBasicConfig() error {
 	return checkConfigPresent([]string{
 		"listen",
 		"host",
@@ -20,7 +20,7 @@ func CheckBasicConfig() error {
 	}, "Config Error: you should have %q key set in your config file")
 }
 
-func CheckGandalf() error {
+func checkGandalf() error {
 	if value, err := config.GetString("repo-manager"); value == "gandalf" || value == "" {
 		_, err = config.Get("git:api-server")
 		if err != nil {
@@ -31,14 +31,14 @@ func CheckGandalf() error {
 }
 
 // Check provisioner configs
-func CheckProvisioner() error {
+func checkProvisioner() error {
 	if value, _ := config.Get("provisioner"); value == "docker" || value == "" {
-		return CheckDocker()
+		return checkDocker()
 	}
 	return nil
 }
 
-func CheckBeanstalkd() error {
+func checkBeanstalkd() error {
 	if value, _ := config.Get("queue"); value == "beanstalkd" {
 		return errors.New("beanstalkd is no longer supported, please use redis instead")
 	}
@@ -48,20 +48,40 @@ func CheckBeanstalkd() error {
 	return nil
 }
 
+func checkPubSub() error {
+	oldConfig, _ := config.GetString("redis-queue:host")
+	if oldConfig != "" {
+		return config.NewWarning(`Using "redis-queue:*" is deprecated. Please change your tsuru.conf to use "pubsub:*" options. See http://docs.tsuru.io/en/latest/reference/config.html#pubsub for more details.`)
+	}
+	redisHost, _ := config.GetString("pubsub:redis-host")
+	if redisHost == "" {
+		return config.NewWarning(`Config entry "pubsub:redis-host" is not set, default "localhost" will be used. Running "tsuru app-log -f" might not work.`)
+	}
+	return nil
+}
+
+func checkQueue() error {
+	queueConfig, _ := config.GetString("queue:mongo-url")
+	if queueConfig == "" {
+		return config.NewWarning(`Config entry "queue:mongo-url" is not set, default "localhost" will be used. Running "tsuru-admin docker-node-{add,remove}" commands might not work.`)
+	}
+	return nil
+}
+
 // Check Docker configs
-func CheckDocker() error {
+func checkDocker() error {
 	if _, err := config.Get("docker"); err != nil {
 		return errors.New("Config Error: you should configure docker.")
 	}
-	err := CheckDockerBasicConfig()
+	err := checkDockerBasicConfig()
 	if err != nil {
 		return err
 	}
-	err = CheckScheduler()
+	err = checkScheduler()
 	if err != nil {
 		return err
 	}
-	err = CheckRouter()
+	err = checkRouter()
 	if err != nil {
 		return err
 	}
@@ -69,7 +89,7 @@ func CheckDocker() error {
 }
 
 // Check default configs to Docker.
-func CheckDockerBasicConfig() error {
+func checkDockerBasicConfig() error {
 	return checkConfigPresent([]string{
 		"docker:repository-namespace",
 		"docker:collection",
@@ -95,7 +115,7 @@ func checkCluster() error {
 
 // Check Schedulers
 // It verifies your scheduler configuration and validates related confs.
-func CheckScheduler() error {
+func checkScheduler() error {
 	if scheduler, err := config.Get("docker:segregate"); err == nil && scheduler == true {
 		if servers, err := config.Get("docker:servers"); err == nil && servers != nil {
 			return fmt.Errorf("Your scheduler is the segregate. Please remove the servers conf in docker.")
@@ -107,7 +127,7 @@ func CheckScheduler() error {
 
 // Check Router
 // It verifies your router configuration and validates related confs.
-func CheckRouter() error {
+func checkRouter() error {
 	defaultRouter, _ := config.GetString("docker:router")
 	if defaultRouter == "" {
 		return fmt.Errorf(`You must configure a default router in "docker:router".`)
@@ -118,7 +138,10 @@ func CheckRouter() error {
 		isHipacheOld = hipacheOld != nil
 	}
 	routerConf, _ := config.Get("routers:" + defaultRouter)
-	if routerConf != nil || isHipacheOld {
+	if isHipacheOld {
+		return config.NewWarning(`Setting "hipache:*" config entries is deprecated. You should configure your router with "routers:*". See http://docs.tsuru.io/en/latest/reference/config.html#routers for more details.`)
+	}
+	if routerConf != nil {
 		return nil
 	}
 	return fmt.Errorf(`You must configure your default router %q in "routers:%s".`, defaultRouter, defaultRouter)

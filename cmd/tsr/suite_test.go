@@ -22,7 +22,7 @@ var _ = check.Suite(&S{})
 
 func Test(t *testing.T) { check.TestingT(t) }
 
-func (s *S) SetUpSuite(c *check.C) {
+func (s *S) SetUpTest(c *check.C) {
 	config.ReadConfigFile("testdata/tsuru.conf")
 }
 

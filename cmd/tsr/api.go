@@ -18,7 +18,14 @@ type apiCmd struct {
 }
 
 func (c *apiCmd) Run(context *cmd.Context, client *cmd.Client) error {
-	err := config.Check([]config.Checker{CheckProvisioner, CheckBeanstalkd, CheckBasicConfig, CheckGandalf})
+	err := config.CheckWithWarnings([]config.Checker{
+		checkProvisioner,
+		checkBeanstalkd,
+		checkBasicConfig,
+		checkGandalf,
+		checkPubSub,
+		checkQueue,
+	}, context.Stderr)
 	if err != nil {
 		return err
 	}
