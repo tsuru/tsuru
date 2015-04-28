@@ -50,8 +50,7 @@ of them need further configuration:
       <http://www.rackspace.com/cloud/files/>`_)
 
 In this documentation, we will use archive-server, but you can use anything that
-can store a git archive and serve it via HTTP or FTP. You can install archive-
-server via apt-get too:
+can store a git archive and serve it via HTTP or FTP. You can install archive-server via apt-get too:
 
 .. highlight:: bash
 
