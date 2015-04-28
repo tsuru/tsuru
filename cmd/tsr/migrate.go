@@ -6,6 +6,7 @@ package main
 
 import (
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/migration"
 	"github.com/tsuru/tsuru/provision"
@@ -39,6 +40,10 @@ func (c *migrateCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
+	err := migration.Register("migrate-pool", c.migratePool)
+	if err != nil {
+		return err
+	}
 	return migration.Run(context.Stdout, c.dry)
 }
 
@@ -54,6 +59,35 @@ func (c *migrateCmd) migrateImages() error {
 			return err
 		}
 		return docker.MigrateImages()
+	}
+	return nil
+}
+
+func (c *migrateCmd) migratePool() error {
+	db, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	dbName, _ := config.GetString("database:name")
+	fromColl := fmt.Sprintf("%s.docker_scheduler", dbName)
+	toColl := fmt.Sprintf("%s.pool", dbName)
+	session := db.Collection("docker_scheduler").Database.Session
+	err = session.Run(bson.D{{"renameCollection", fromColl}, {"to", toColl}}, &bson.M{})
+	if err != nil {
+		return err
+	}
+	var apps []app.App
+	err = db.Apps().Find().All(&apps)
+	if err != nil {
+		return err
+	}
+	for _, a := range apps {
+		a.SetPool()
+		err = db.Apps().Update(bson.M{"name": a.Name}, bson.M{"$set": bson.M{"pool": a.Pool}})
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
