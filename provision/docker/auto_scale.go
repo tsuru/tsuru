@@ -210,10 +210,10 @@ func (a *autoScaleConfig) run() error {
 		return err
 	}
 	for {
-		sErr := a.runScaler(scaler)
-		if sErr != nil {
-			err = fmt.Errorf("[node autoscale] %s", sErr.Error())
-			a.logError(sErr.Error())
+		err = a.runScaler(scaler)
+		if err != nil {
+			a.logError(err.Error())
+			err = fmt.Errorf("[node autoscale] %s", err.Error())
 		}
 		select {
 		case <-a.done:
