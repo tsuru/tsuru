@@ -9,6 +9,7 @@ import (
 
 	"github.com/tsuru/tsuru/db"
 	"gopkg.in/check.v1"
+	"gopkg.in/mgo.v2"
 )
 
 type Action struct {
@@ -51,6 +52,7 @@ func (isRecordedChecker) Check(params []interface{}, names []string) (bool, stri
 		query["extra"] = a.Extra
 	}
 	done := make(chan userAction, 1)
+	errs := make(chan error, 1)
 	quit := make(chan int8)
 	defer close(quit)
 	go func() {
@@ -63,6 +65,9 @@ func (isRecordedChecker) Check(params []interface{}, names []string) (bool, stri
 				if err := conn.UserActions().Find(query).One(&a); err == nil {
 					done <- a
 					return
+				} else if err != mgo.ErrNotFound {
+					errs <- err
+					return
 				}
 			}
 		}
@@ -70,11 +75,12 @@ func (isRecordedChecker) Check(params []interface{}, names []string) (bool, stri
 	var got userAction
 	select {
 	case got = <-done:
+	case err := <-errs:
+		return false, err.Error()
 	case <-time.After(2e9):
 		return false, "Action not in the database"
 	}
-	var empty time.Time
-	if got.Date.Sub(empty.In(time.UTC)) == 0 {
+	if got.Date.IsZero() {
 		return false, "Action was not recorded using rec.Log"
 	}
 	return true, ""
