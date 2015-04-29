@@ -7,12 +7,12 @@ tsuru.conf reference
 ++++++++++++++++++++
 
 tsuru uses a configuration file in `YAML <http://www.yaml.org/>`_ format. This
-document describes what each option means, and how it should look like.
+document describes what each option means, and how it should look.
 
 Notation
 ========
 
-tsuru uses a colon to represent nesting in YAML. So, whenever this document say
+tsuru uses a colon to represent nesting in YAML. So, whenever this document says
 something like ``key1:key2``, it refers to the value of the ``key2`` that is
 nested in the block that is the value of ``key1``. For example,
 ``database:url`` means:
