@@ -1,0 +1,49 @@
+.. Copyright 2015 tsuru authors. All rights reserved.
+   Use of this source code is governed by a BSD-style
+   license that can be found in the LICENSE file.
+
+========================
+tsr 0.11.0 release notes
+========================
+
+Welcome to tsr 0.11.0!
+
+These release notes cover the `new features`_, `bug fixes`_, `backward
+incompatible changes`_ (specially the requirement on Gandalf and Docker
+versions), `general improvements`_ and `changes in the API`_ you'll want to be
+aware of when upgrading from tsr 0.10.2 or older versions.
+
+.. _`new features`: `What's new in tsr 0.11.0`_
+.. _`general improvements`: `Other improvements in tsr 0.11.0`_
+.. _`changes in the API`: `API changes`_
+
+What's new in tsr 0.11.0
+========================
+
+* Now you can choose what pool to deploy your app. We add a ``-o [pool_name]``
+  flag in ``tsuru app-create`` and it's required if you have more than one pool
+  associated with your team.
+
+  We add a new command ``tsuur pool-list``. Running it you will see all pools
+  you have access and the teams associated with it.
+
+
+Bug fixes
+=========
+
+
+Other improvements in tsr 0.11.0
+================================
+
+
+Backward incompatible changes
+=============================
+
+* We change the way tsuru uses scheduler's pool. So in this version you need to
+  migrate your database to the new schema. To do that just run ``tsr migrate``
+  and see if everything returns OK.
+
+
+API changes
+===========
+
