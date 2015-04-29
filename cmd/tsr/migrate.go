@@ -81,16 +81,38 @@ func (c *migrateCmd) migratePool() error {
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (c *migrateCmd) setPoolToApps() error {
+	db, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer db.Close()
 	var apps []app.App
+	var tooManyPoolsApps []app.App
 	err = db.Apps().Find(nil).All(&apps)
 	if err != nil {
 		return err
 	}
 	for _, a := range apps {
-		a.SetPool()
+		err = a.SetPool()
+		if err != nil {
+			tooManyPoolsApps = append(tooManyPoolsApps, a)
+			continue
+		}
 		err = db.Apps().Update(bson.M{"name": a.Name}, bson.M{"$set": bson.M{"pool": a.Pool}})
 		if err != nil {
 			return err
+		}
+	}
+	if len(tooManyPoolsApps) > 0 {
+		fmt.Println("Apps bellow couldn't be migrated because they are in more than one pool.")
+		fmr.Println("To fix this, please run `tsuru app-change-pool <pool_name> -a app` for each app.")
+		fmt.Println("*****************************************")
+		for _, a := range tooManyPoolsApps {
+			fmt.Println(a.Name)
 		}
 	}
 	return nil
