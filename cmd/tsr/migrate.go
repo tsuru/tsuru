@@ -48,6 +48,10 @@ func (c *migrateCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
+	err = migration.Register("migrate-set-pool-to-app", c.setPoolToApps)
+	if err != nil {
+		return err
+	}
 	return migration.Run(context.Stdout, c.dry)
 }
 
@@ -109,7 +113,7 @@ func (c *migrateCmd) setPoolToApps() error {
 	}
 	if len(tooManyPoolsApps) > 0 {
 		fmt.Println("Apps bellow couldn't be migrated because they are in more than one pool.")
-		fmr.Println("To fix this, please run `tsuru app-change-pool <pool_name> -a app` for each app.")
+		fmt.Println("To fix this, please run `tsuru app-change-pool <pool_name> -a app` for each app.")
 		fmt.Println("*****************************************")
 		for _, a := range tooManyPoolsApps {
 			fmt.Println(a.Name)
