@@ -52,7 +52,7 @@ func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*contain
 	if p == nil {
 		p = s.p
 	}
-	image := "tsuru/python"
+	image := "tsuru/python:latest"
 	if opts != nil {
 		if opts.Image != "" {
 			image = opts.Image
@@ -139,7 +139,7 @@ func (s *S) TestContainerCreate(c *check.C) {
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	s.p.getCluster().PullImage(
-		docker.PullImageOptions{Repository: "tsuru/brainfuck"},
+		docker.PullImageOptions{Repository: "tsuru/brainfuck:latest"},
 		docker.AuthConfiguration{},
 	)
 	cont := container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
@@ -182,7 +182,7 @@ func (s *S) TestContainerCreateSecurityOptions(c *check.C) {
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	s.p.getCluster().PullImage(
-		docker.PullImageOptions{Repository: "tsuru/brainfuck"},
+		docker.PullImageOptions{Repository: "tsuru/brainfuck:latest"},
 		docker.AuthConfiguration{},
 	)
 	cont := container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
@@ -206,7 +206,7 @@ func (s *S) TestContainerCreateAlocatesPort(c *check.C) {
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	s.p.getCluster().PullImage(
-		docker.PullImageOptions{Repository: "tsuru/brainfuck"},
+		docker.PullImageOptions{Repository: "tsuru/brainfuck:latest"},
 		docker.AuthConfiguration{},
 	)
 	cont := container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
@@ -229,7 +229,7 @@ func (s *S) TestContainerCreateDoesNotAlocatesPortForDeploy(c *check.C) {
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	s.p.getCluster().PullImage(
-		docker.PullImageOptions{Repository: "tsuru/brainfuck"},
+		docker.PullImageOptions{Repository: "tsuru/brainfuck:latest"},
 		docker.AuthConfiguration{},
 	)
 	cont := container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
@@ -251,7 +251,7 @@ func (s *S) TestContainerCreateUndefinedUser(c *check.C) {
 	oldUser, _ := config.Get("docker:user")
 	defer config.Set("docker:user", oldUser)
 	config.Unset("docker:user")
-	err := s.newFakeImage(s.p, "tsuru/python")
+	err := s.newFakeImage(s.p, "tsuru/python:latest")
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("app-name", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
@@ -535,7 +535,7 @@ func (s *S) TestGetImageFromAppPlatform(c *check.C) {
 	img := s.p.getBuildImage(app)
 	repoNamespace, err := config.GetString("docker:repository-namespace")
 	c.Assert(err, check.IsNil)
-	c.Assert(img, check.Equals, fmt.Sprintf("%s/python", repoNamespace))
+	c.Assert(img, check.Equals, fmt.Sprintf("%s/python:latest", repoNamespace))
 }
 
 func (s *S) TestGetImageAppWhenDeployIsMultipleOf10(c *check.C) {
@@ -556,7 +556,7 @@ func (s *S) TestGetImageAppWhenDeployIsMultipleOf10(c *check.C) {
 	img := s.p.getBuildImage(app)
 	repoNamespace, err := config.GetString("docker:repository-namespace")
 	c.Assert(err, check.IsNil)
-	c.Assert(img, check.Equals, fmt.Sprintf("%s/%s", repoNamespace, app.Platform))
+	c.Assert(img, check.Equals, fmt.Sprintf("%s/%s:latest", repoNamespace, app.Platform))
 }
 
 func (s *S) TestGetImageUseAppImageIfContainersExist(c *check.C) {
@@ -577,7 +577,7 @@ func (s *S) TestGetImageWithRegistry(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	img := s.p.getBuildImage(app)
 	repoNamespace, _ := config.GetString("docker:repository-namespace")
-	expected := fmt.Sprintf("localhost:3030/%s/python", repoNamespace)
+	expected := fmt.Sprintf("localhost:3030/%s/python:latest", repoNamespace)
 	c.Assert(img, check.Equals, expected)
 }
 
@@ -684,7 +684,7 @@ func (s *S) TestContainerCommitRetryShouldNotBeLessThanOne(c *check.C) {
 
 func (s *S) TestGitDeploy(c *check.C) {
 	go s.stopContainers(1)
-	err := s.newFakeImage(s.p, "tsuru/python")
+	err := s.newFakeImage(s.p, "tsuru/python:latest")
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	repository.Manager().CreateRepository("myapp", nil)
@@ -712,7 +712,7 @@ func (errBuffer) Write(data []byte) (int, error) {
 
 func (s *S) TestGitDeployRollsbackAfterErrorOnAttach(c *check.C) {
 	go s.stopContainers(1)
-	err := s.newFakeImage(s.p, "tsuru/python")
+	err := s.newFakeImage(s.p, "tsuru/python:latest")
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	repository.Manager().CreateRepository("myapp", nil)
@@ -733,7 +733,7 @@ func (s *S) TestGitDeployRollsbackAfterErrorOnAttach(c *check.C) {
 
 func (s *S) TestArchiveDeploy(c *check.C) {
 	go s.stopContainers(1)
-	err := s.newFakeImage(s.p, "tsuru/python")
+	err := s.newFakeImage(s.p, "tsuru/python:latest")
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
@@ -744,7 +744,7 @@ func (s *S) TestArchiveDeploy(c *check.C) {
 }
 
 func (s *S) TestStart(c *check.C) {
-	err := s.newFakeImage(s.p, "tsuru/python")
+	err := s.newFakeImage(s.p, "tsuru/python:latest")
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	imageId := s.p.getBuildImage(app)

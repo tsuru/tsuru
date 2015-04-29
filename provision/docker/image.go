@@ -301,7 +301,7 @@ func pullAppImageNames(appName string, images []string) error {
 }
 
 func platformImageName(platformName string) string {
-	return fmt.Sprintf("%s/%s", basicImageName(), platformName)
+	return fmt.Sprintf("%s/%s:latest", basicImageName(), platformName)
 }
 
 func basicImageName() string {

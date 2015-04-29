@@ -779,7 +779,19 @@ func (p *dockerProvisioner) PlatformAdd(name string, args map[string]string, w i
 	if err != nil {
 		return err
 	}
-	return p.pushImage(imageName, "")
+	parts := strings.Split(imageName, ":")
+	var tag string
+	if len(parts) > 2 {
+		imageName = strings.Join(parts[:len(parts)-1], ":")
+		tag = parts[len(parts)-1]
+	} else if len(parts) > 1 {
+		imageName = parts[0]
+		tag = parts[1]
+	} else {
+		imageName = parts[0]
+		tag = "latest"
+	}
+	return p.pushImage(imageName, tag)
 }
 
 func (p *dockerProvisioner) PlatformUpdate(name string, args map[string]string, w io.Writer) error {

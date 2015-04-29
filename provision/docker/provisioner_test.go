@@ -98,7 +98,7 @@ func (s *S) stopContainers(n uint) {
 
 func (s *S) TestDeploy(c *check.C) {
 	go s.stopContainers(1)
-	err := s.newFakeImage(s.p, "tsuru/python")
+	err := s.newFakeImage(s.p, "tsuru/python:latest")
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:     "otherapp",
@@ -137,7 +137,7 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 	config.Set("docker:image-history-size", 1)
 	defer config.Unset("docker:image-history-size")
 	go s.stopContainers(3)
-	err := s.newFakeImage(s.p, "tsuru/python")
+	err := s.newFakeImage(s.p, "tsuru/python:latest")
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:     "appdeployimagetest",
@@ -165,7 +165,7 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 	c.Assert(imgs, check.HasLen, 2)
 	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
 	c.Assert(imgs[1].RepoTags, check.HasLen, 1)
-	expected := []string{"tsuru/app-appdeployimagetest:v1", "tsuru/python"}
+	expected := []string{"tsuru/app-appdeployimagetest:v1", "tsuru/python:latest"}
 	got := []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0]}
 	sort.Strings(got)
 	c.Assert(got, check.DeepEquals, expected)
@@ -183,7 +183,7 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 	c.Assert(imgs[1].RepoTags, check.HasLen, 1)
 	got = []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0]}
 	sort.Strings(got)
-	expected = []string{"tsuru/app-appdeployimagetest:v2", "tsuru/python"}
+	expected = []string{"tsuru/app-appdeployimagetest:v2", "tsuru/python:latest"}
 	c.Assert(got, check.DeepEquals, expected)
 }
 
@@ -191,7 +191,7 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 	config.Set("docker:image-history-size", 1)
 	defer config.Unset("docker:image-history-size")
 	go s.stopContainers(1)
-	err := s.newFakeImage(s.p, "tsuru/python")
+	err := s.newFakeImage(s.p, "tsuru/python:latest")
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:     "appdeployimagetest",
@@ -230,14 +230,14 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(imgs, check.HasLen, 1)
 	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
-	c.Assert("tsuru/python", check.Equals, imgs[0].RepoTags[0])
+	c.Assert("tsuru/python:latest", check.Equals, imgs[0].RepoTags[0])
 }
 
 func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	config.Set("docker:image-history-size", 2)
 	defer config.Unset("docker:image-history-size")
 	go s.stopContainers(5)
-	err := s.newFakeImage(s.p, "tsuru/python")
+	err := s.newFakeImage(s.p, "tsuru/python:latest")
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:     "appdeployimagetest",
@@ -265,7 +265,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	c.Assert(imgs, check.HasLen, 2)
 	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
 	c.Assert(imgs[1].RepoTags, check.HasLen, 1)
-	expected := []string{"tsuru/app-appdeployimagetest:v1", "tsuru/python"}
+	expected := []string{"tsuru/app-appdeployimagetest:v1", "tsuru/python:latest"}
 	got := []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0]}
 	sort.Strings(got)
 	c.Assert(got, check.DeepEquals, expected)
@@ -284,7 +284,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	c.Assert(imgs[2].RepoTags, check.HasLen, 1)
 	got = []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0], imgs[2].RepoTags[0]}
 	sort.Strings(got)
-	expected = []string{"tsuru/app-appdeployimagetest:v1", "tsuru/app-appdeployimagetest:v2", "tsuru/python"}
+	expected = []string{"tsuru/app-appdeployimagetest:v1", "tsuru/app-appdeployimagetest:v2", "tsuru/python:latest"}
 	c.Assert(got, check.DeepEquals, expected)
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
@@ -301,13 +301,13 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	c.Assert(imgs[2].RepoTags, check.HasLen, 1)
 	got = []string{imgs[0].RepoTags[0], imgs[1].RepoTags[0], imgs[2].RepoTags[0]}
 	sort.Strings(got)
-	expected = []string{"tsuru/app-appdeployimagetest:v2", "tsuru/app-appdeployimagetest:v3", "tsuru/python"}
+	expected = []string{"tsuru/app-appdeployimagetest:v2", "tsuru/app-appdeployimagetest:v3", "tsuru/python:latest"}
 	c.Assert(got, check.DeepEquals, expected)
 }
 
 func (s *S) TestProvisionerUploadDeploy(c *check.C) {
 	go s.stopContainers(3)
-	err := s.newFakeImage(s.p, "tsuru/python")
+	err := s.newFakeImage(s.p, "tsuru/python:latest")
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:     "otherapp",
@@ -537,7 +537,7 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(imgs, check.HasLen, 1)
 	c.Assert(imgs[0].RepoTags, check.HasLen, 1)
-	c.Assert(imgs[0].RepoTags[0], check.Equals, registryURL+"/tsuru/python")
+	c.Assert(imgs[0].RepoTags[0], check.Equals, registryURL+"/tsuru/python:latest")
 }
 
 func (s *S) TestProvisionerDestroyEmptyUnit(c *check.C) {
@@ -601,14 +601,14 @@ func (s *S) TestProvisionerAddUnitsWithErrorDoesntLeaveLostUnits(c *check.C) {
 		s.server.DefaultHandler().ServeHTTP(w, r)
 	}))
 	defer s.server.CustomHandler("/containers/create", s.server.DefaultHandler())
-	err := s.newFakeImage(s.p, "tsuru/python")
+	err := s.newFakeImage(s.p, "tsuru/python:latest")
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 0)
 	s.p.Provision(app)
 	defer s.p.Destroy(app)
 	coll := s.p.collection()
 	defer coll.Close()
-	coll.Insert(container{ID: "c-89320", AppName: app.GetName(), Version: "a345fe", Image: "tsuru/python"})
+	coll.Insert(container{ID: "c-89320", AppName: app.GetName(), Version: "a345fe", Image: "tsuru/python:latest"})
 	defer coll.RemoveId(bson.M{"id": "c-89320"})
 	_, err = s.p.AddUnits(app, 3, nil)
 	c.Assert(err, check.NotNil)
@@ -618,7 +618,7 @@ func (s *S) TestProvisionerAddUnitsWithErrorDoesntLeaveLostUnits(c *check.C) {
 }
 
 func (s *S) TestProvisionerAddZeroUnits(c *check.C) {
-	err := s.newFakeImage(s.p, "tsuru/python")
+	err := s.newFakeImage(s.p, "tsuru/python:latest")
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 0)
 	app.Deploys = 1
@@ -626,7 +626,7 @@ func (s *S) TestProvisionerAddZeroUnits(c *check.C) {
 	defer s.p.Destroy(app)
 	coll := s.p.collection()
 	defer coll.Close()
-	coll.Insert(container{ID: "c-89320", AppName: app.GetName(), Version: "a345fe", Image: "tsuru/python"})
+	coll.Insert(container{ID: "c-89320", AppName: app.GetName(), Version: "a345fe", Image: "tsuru/python:latest"})
 	defer coll.RemoveId(bson.M{"id": "c-89320"})
 	units, err := s.p.AddUnits(app, 0, nil)
 	c.Assert(units, check.IsNil)
@@ -655,7 +655,7 @@ func (s *S) TestProvisionerAddUnitsWithHost(c *check.C) {
 	defer p.Destroy(app)
 	coll := p.collection()
 	defer coll.Close()
-	coll.Insert(container{ID: "xxxfoo", AppName: app.GetName(), Version: "123987", Image: "tsuru/python"})
+	coll.Insert(container{ID: "xxxfoo", AppName: app.GetName(), Version: "123987", Image: "tsuru/python:latest"})
 	defer coll.RemoveId(bson.M{"id": "xxxfoo"})
 	imageId, err := appCurrentImageName(app.GetName())
 	c.Assert(err, check.IsNil)
@@ -810,7 +810,7 @@ func (s *S) TestProvisionerRemoveUnitNotFound(c *check.C) {
 }
 
 func (s *S) TestProvisionerSetUnitStatus(c *check.C) {
-	err := s.newFakeImage(s.p, "tsuru/python")
+	err := s.newFakeImage(s.p, "tsuru/python:latest")
 	c.Assert(err, check.IsNil)
 	opts := newContainerOpts{Status: provision.StatusStarted.String(), AppName: "someapp"}
 	container, err := s.newContainer(&opts, nil)
@@ -824,7 +824,7 @@ func (s *S) TestProvisionerSetUnitStatus(c *check.C) {
 }
 
 func (s *S) TestProvisionerSetUnitStatusWrongApp(c *check.C) {
-	err := s.newFakeImage(s.p, "tsuru/python")
+	err := s.newFakeImage(s.p, "tsuru/python:latest")
 	c.Assert(err, check.IsNil)
 	opts := newContainerOpts{Status: provision.StatusStarted.String(), AppName: "someapp"}
 	container, err := s.newContainer(&opts, nil)
@@ -1089,7 +1089,7 @@ func (s *S) TestProvisionerPlatformAdd(c *check.C) {
 	queryString := requests[0].URL.Query()
 	c.Assert(queryString.Get("t"), check.Equals, platformImageName("test"))
 	c.Assert(queryString.Get("remote"), check.Equals, "http://localhost/Dockerfile")
-	c.Assert(requests[1].URL.Path, check.Equals, "/images/localhost:3030/tsuru/test/json")
+	c.Assert(requests[1].URL.Path, check.Equals, "/images/localhost:3030/tsuru/test:latest/json")
 	c.Assert(requests[2].URL.Path, check.Equals, "/images/localhost:3030/tsuru/test/push")
 }
 
@@ -1266,7 +1266,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	defer conn.Close()
 	err = conn.Apps().Insert(&app.App{Name: "myawesomeapp"})
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(s.p, "tsuru/python")
+	err = s.newFakeImage(s.p, "tsuru/python:latest")
 	c.Assert(err, check.IsNil)
 	opts := newContainerOpts{Status: provision.StatusStarting.String(), AppName: "myawesomeapp"}
 	container, err := s.newContainer(&opts, nil)
@@ -1286,7 +1286,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 }
 
 func (s *S) TestRegisterUnitBuildingContainer(c *check.C) {
-	err := s.newFakeImage(s.p, "tsuru/python")
+	err := s.newFakeImage(s.p, "tsuru/python:latest")
 	c.Assert(err, check.IsNil)
 	opts := newContainerOpts{Status: provision.StatusBuilding.String(), AppName: "myawesomeapp"}
 	container, err := s.newContainer(&opts, nil)
@@ -1306,7 +1306,7 @@ func (s *S) TestRegisterUnitBuildingContainer(c *check.C) {
 }
 
 func (s *S) TestRegisterUnitSavesCustomData(c *check.C) {
-	err := s.newFakeImage(s.p, "tsuru/python")
+	err := s.newFakeImage(s.p, "tsuru/python:latest")
 	c.Assert(err, check.IsNil)
 	opts := newContainerOpts{Status: provision.StatusBuilding.String(), AppName: "myawesomeapp"}
 	container, err := s.newContainer(&opts, nil)

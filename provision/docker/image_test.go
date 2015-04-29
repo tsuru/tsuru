@@ -271,11 +271,11 @@ func (s *S) TestValidListAppImages(c *check.C) {
 
 func (s *S) TestPlatformImageName(c *check.C) {
 	platName := platformImageName("python")
-	c.Assert(platName, check.Equals, "tsuru/python")
+	c.Assert(platName, check.Equals, "tsuru/python:latest")
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
 	platName = platformImageName("ruby")
-	c.Assert(platName, check.Equals, "localhost:3030/tsuru/ruby")
+	c.Assert(platName, check.Equals, "localhost:3030/tsuru/ruby:latest")
 }
 
 func (s *S) TestDeleteAllAppImageNames(c *check.C) {
