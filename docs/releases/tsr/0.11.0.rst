@@ -8,6 +8,8 @@ tsr 0.11.0 release notes
 
 Welcome to tsr 0.11.0!
 
+TODO: reference external contributors in issues.
+
 These release notes cover the `new features`_, `bug fixes`_, `general
 improvements`_ and `backward incompatible changes`_ you'll want to be aware of
 when upgrading from tsr 0.10.0 or older versions.
@@ -35,6 +37,7 @@ Main new features
   nodes, this will add or remove nodes according to rules specified in your
   tsuru.conf file. See :doc:`node auto scaling </advanced_topics/node_scaling>`
   topic and :ref:`config reference <config_docker_auto_scale>` for more details.
+  `#1110 <https://github.com/tsuru/tsuru/issues/1110>`_
 
 Bug fixes
 =========
@@ -57,6 +60,18 @@ Bug fixes
 
 * Cleaner syslog output without lots of apparmor entries. `#997
   <https://github.com/tsuru/tsuru/issues/997>`_
+
+* Running ``tsuru app-deploy`` on Windows now correctly handle directories and
+  home path. `#1168 <https://github.com/tsuru/tsuru/issues/1168>`_ `#1169
+  <https://github.com/tsuru/tsuru/issues/1169>`_
+
+* Application listing could temporarily fail after removing an application, this
+  was fixed. `#1176 <https://github.com/tsuru/tsuru/issues/1176>`_
+
+* Running ``tsuru app-shell`` now correctly sets terminal size and TERM
+  environment value, also container id is no longer ignored. `#1112
+  <https://github.com/tsuru/tsuru/issues/1112>`_ `#1114
+  <https://github.com/tsuru/tsuru/issues/1114>`_
 
 Other improvements
 ==================
@@ -90,6 +105,39 @@ Other improvements
 * It's possible to use a docker registry with authentication support. See
   :ref:`config reference <config_registry_auth>` for more details. `#1182
   <https://github.com/tsuru/tsuru/issues/1182>`_
+
+* Partial support for docker distribution (registry 2.0). Image removal is not yet
+  supported. `#1175 <https://github.com/tsuru/tsuru/issues/1175>`_
+
+* Running commands with ``tsuru app-run`` now log command's output to tsuru logs.
+  `#986 <https://github.com/tsuru/tsuru/issues/986>`_
+
+* Graceful shutdown of API when SIGTERM or SIGINT is received. The shutdown
+  process now is:
+
+  * Stop listening for new connections;
+  * Wait for all ongoing connections to end;
+  * Forcibly close ``tsuru app-log -f`` connections;
+  * Wait for ongoing healing processes to end;
+  * Wait for queue tasks to finish running;
+  * Wait for ongoing auto scaling processes to end.
+
+  `#776 <https://github.com/tsuru/tsuru/issues/776>`_
+
+* Included lock information in API call returning application information. `#1171
+  <https://github.com/tsuru/tsuru/issues/1171>`_
+
+* Unit names now are prefixed with application's name. `#1160
+  <https://github.com/tsuru/tsuru/issues/1160>`_
+
+* Admin users can now specify which user they want removed. `#1014
+  <https://github.com/tsuru/tsuru/issues/1014>`_
+
+* It's now possible to change metadata associated with a node. `#1016
+  <https://github.com/tsuru/tsuru/issues/1016>`_
+
+* Better error messages on server startup when MongoDB isn't available. `#1125
+  <https://github.com/tsuru/tsuru/issues/1125>`_
 
 Backward incompatible changes (action needed)
 =============================================
