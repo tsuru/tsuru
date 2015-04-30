@@ -634,6 +634,8 @@ docker:registry-max-try
 
 Number of times tsuru will try to send a image to registry.
 
+.. _config_registry_auth:
+
 docker:registry-auth:username
 +++++++++++++++++++++++++++++
 

@@ -21,9 +21,9 @@ your tsuru configuration.
 Adding nodes
 ++++++++++++
 
-Having `max-container-count` value :math:`max`, the number of nodes in cluster
-:math:`nodes`, and the total number of containers in all cluster's nodes
-:math:`total` we get the number of free slots :math:`free` with:
+Having `max-container-count` value as :math:`max`, the number of nodes in cluster
+as :math:`nodes`, and the total number of containers in all cluster's nodes as
+:math:`total`, we get the number of free slots :math:`free` with:
 
 .. math::
 
@@ -58,19 +58,35 @@ scheduler is configured to use node's memory information, by setting
 Adding nodes
 ++++++++++++
 
-TODO
+Having the amount of memory necessary by the plan with the largest memory
+requirement as :math:`maxPlanMemory`. A new node will be added if for all nodes
+the amount of unreserved memory (:math:`unreserved`) satisfies:
+
+.. math::
+
+    unreserved < maxPlanMemory
+
 
 Removing nodes
 ++++++++++++++
 
-TODO
+Considering the amount of memory necessary by the plan with the largest memory
+requirement as :math:`maxPlanMemory` and `docker:auto-scale:scale-down-ratio`
+value as :math:`ratio`. A node will be removed if its current containers can be
+distributed across other nodes in the same pool and at least one node still has
+unreserved memory (:math:`unreserved`) satisfying:
+
+.. math::
+
+    unreserved > maxPlanMemory * ratio
+
 
 Rebalancing nodes
 -----------------
 
 Rebalancing containers will be triggered when a new node is added or if
 rebalancing would decrease the difference of containers in nodes by a number
-greater than 2, independent on the scaling algorithm.
+greater than 2, regardless the scaling algorithm.
 
 Also, rebalancing will not run if `docker:auto-scale:prevent-rebalance` is set to
 true.
@@ -90,6 +106,3 @@ Running auto scale once
 Even if you have `docker:auto-scale:enabled` set to false, you can make tsuru
 trigger the execution of the auto scale algorithm by running `tsuru-admin docker-
 autoscale-run`.
-
-
-

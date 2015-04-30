@@ -89,7 +89,7 @@ Other improvements
 
 * It's possible to use a docker registry with authentication support. See
   :ref:`config reference <config_registry_auth>` for more details. `#1182
-      <https://github.com/tsuru/tsuru/issues/1182>`_
+  <https://github.com/tsuru/tsuru/issues/1182>`_
 
 Backward incompatible changes (action needed)
 =============================================
