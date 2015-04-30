@@ -574,13 +574,22 @@ func (p *dockerProvisioner) pushImage(name, tag string) error {
 	if _, err := config.GetString("docker:registry"); err == nil {
 		var buf safe.Buffer
 		pushOpts := docker.PushImageOptions{Name: name, Tag: tag, OutputStream: &buf}
-		err = p.getCluster().PushImage(pushOpts, docker.AuthConfiguration{})
+		err = p.getCluster().PushImage(pushOpts, getRegistryAuthConfig())
 		if err != nil {
 			log.Errorf("[docker] Failed to push image %q (%s): %s", name, err, buf.String())
 			return err
 		}
 	}
 	return nil
+}
+
+func getRegistryAuthConfig() docker.AuthConfiguration {
+	var authConfig docker.AuthConfiguration
+	authConfig.Email, _ = config.GetString("docker:registry-auth:email")
+	authConfig.Username, _ = config.GetString("docker:registry-auth:username")
+	authConfig.Password, _ = config.GetString("docker:registry-auth:password")
+	authConfig.ServerAddress, _ = config.GetString("docker:registry")
+	return authConfig
 }
 
 // unitFromContainer returns a unit that represents a container.

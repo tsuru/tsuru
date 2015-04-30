@@ -6,6 +6,7 @@ package docker
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -896,6 +897,45 @@ func (s *S) TestPushImage(c *check.C) {
 	c.Assert(requests[4].URL.Path, check.Equals, "/images/localhost:3030/base/img:v2/json")
 	c.Assert(requests[5].URL.Path, check.Equals, "/images/localhost:3030/base/img/push")
 	c.Assert(requests[5].URL.RawQuery, check.Equals, "tag=v2")
+}
+
+func (s *S) TestPushImageAuth(c *check.C) {
+	var requests []*http.Request
+	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+		requests = append(requests, r)
+	})
+	c.Assert(err, check.IsNil)
+	defer server.Stop()
+	config.Set("docker:registry", "localhost:3030")
+	config.Set("docker:registry-auth:email", "me@company.com")
+	config.Set("docker:registry-auth:username", "myuser")
+	config.Set("docker:registry-auth:password", "mypassword")
+	defer config.Unset("docker:registry")
+	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
+	p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
+		cluster.Node{Address: server.URL()})
+	c.Assert(err, check.IsNil)
+	err = s.newFakeImage(&p, "localhost:3030/base/img")
+	c.Assert(err, check.IsNil)
+	err = p.pushImage("localhost:3030/base/img", "")
+	c.Assert(err, check.IsNil)
+	c.Assert(requests, check.HasLen, 3)
+	c.Assert(requests[0].URL.Path, check.Equals, "/images/create")
+	c.Assert(requests[1].URL.Path, check.Equals, "/images/localhost:3030/base/img/json")
+	c.Assert(requests[2].URL.Path, check.Equals, "/images/localhost:3030/base/img/push")
+	c.Assert(requests[2].URL.RawQuery, check.Equals, "")
+	auth := requests[2].Header.Get("X-Registry-Auth")
+	var providedAuth docker.AuthConfiguration
+	data, err := base64.StdEncoding.DecodeString(auth)
+	c.Assert(err, check.IsNil)
+	err = json.Unmarshal(data, &providedAuth)
+	c.Assert(err, check.IsNil)
+	c.Assert(providedAuth.ServerAddress, check.Equals, "localhost:3030")
+	c.Assert(providedAuth.Email, check.Equals, "me@company.com")
+	c.Assert(providedAuth.Username, check.Equals, "myuser")
+	c.Assert(providedAuth.Password, check.Equals, "mypassword")
 }
 
 func (s *S) TestPushImageNoRegistry(c *check.C) {
