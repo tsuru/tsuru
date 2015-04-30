@@ -77,13 +77,20 @@ func (c *migrateCmd) migratePool() error {
 		return err
 	}
 	defer db.Close()
-	dbName, _ := config.GetString("database:name")
-	fromColl := fmt.Sprintf("%s.docker_scheduler", dbName)
-	toColl := fmt.Sprintf("%s.pool", dbName)
-	session := db.Collection("docker_scheduler").Database.Session
-	err = session.Run(bson.D{{"renameCollection", fromColl}, {"to", toColl}}, &bson.M{})
+	poolColl := db.Collection("pool")
 	if err != nil {
 		return err
+	}
+	var pools []provision.Pool
+	err = db.Collection("docker_scheduler").Find(nil).All(&pools)
+	if err != nil {
+		return err
+	}
+	for _, p := range pools {
+		err = poolColl.Insert(p)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
