@@ -5,7 +5,6 @@
 package docker
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/tsuru/config"
@@ -51,9 +50,5 @@ func runWithAgentCmds(app provision.App) ([]string, error) {
 	}
 	host := app.Envs()["TSURU_HOST"].Value
 	token := app.Envs()["TSURU_APP_TOKEN"].Value
-	unitAgentCmds := []string{"tsuru_unit_agent", host, token, app.GetName(), runCmd}
-	unitAgentCmd := strings.Join(unitAgentCmds, " ")
-	cmd := fmt.Sprintf("%s && tail -f /dev/null", unitAgentCmd)
-	cmds := []string{"/bin/bash", "-lc", cmd}
-	return cmds, nil
+	return []string{"tsuru_unit_agent", host, token, app.GetName(), runCmd}, nil
 }

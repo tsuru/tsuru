@@ -79,10 +79,7 @@ func (s *S) TestRunWithAgentCmds(c *check.C) {
 	app.SetEnv(tokenEnv)
 	runCmd, err := config.GetString("docker:run-cmd:bin")
 	c.Assert(err, check.IsNil)
-	unitAgentCmd := fmt.Sprintf("tsuru_unit_agent tsuru_host app_token app-name %s", runCmd)
-	cmd := fmt.Sprintf("%s && tail -f /dev/null", unitAgentCmd)
-	expected := []string{"/bin/bash", "-lc", cmd}
 	cmds, err := runWithAgentCmds(app)
 	c.Assert(err, check.IsNil)
-	c.Assert(cmds, check.DeepEquals, expected)
+	c.Assert(cmds, check.DeepEquals, []string{"tsuru_unit_agent", "tsuru_host", "app_token", "app-name", runCmd})
 }
