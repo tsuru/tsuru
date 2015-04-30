@@ -625,12 +625,30 @@ docker:registry
 +++++++++++++++
 
 For tsuru to work with multiple docker nodes, you will need a docker-registry.
-This should be in the form of ``hostname:port``.
+This should be in the form of ``hostname:port``, the scheme cannot be present.
 
 docker:registry-max-try
 +++++++++++++++++++++++
 
 Number of times tsuru will try to send a image to registry.
+
+docker:registry-auth:username
++++++++++++++++++++++++++++++
+
+The username used for registry authentication. This setting is optional, for
+registries with authentication disabled, it can be omitted.
+
+docker:registry-auth:password
++++++++++++++++++++++++++++++
+
+The password used for registry authentication. This setting is optional, for
+registries with authentication disabled, it can be omitted.
+
+docker:registry-auth:email
+++++++++++++++++++++++++++
+
+The email used for registry authentication. This setting is optional, for
+registries with authentication disabled, it can be omitted.
 
 docker:repository-namespace
 +++++++++++++++++++++++++++
