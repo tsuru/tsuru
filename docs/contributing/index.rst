@@ -32,7 +32,7 @@ You can use `make` to install all tsuru dependencies and run tests. It will also
 
 Please ensure that MongoDB and Redis are started before running the test suite. If you see some tests failures with messages like "dial tcp 127.0.0.1:6379: connection refused" and "no reachable server", the most likely reason is that these services are not running.
 
-If you just want to run the tests you can use `make test`. 
+If you just want to run the tests you can use `make test`.
 
 .. highlight:: bash
 
