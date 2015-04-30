@@ -8,42 +8,100 @@ tsr 0.11.0 release notes
 
 Welcome to tsr 0.11.0!
 
-These release notes cover the `new features`_, `bug fixes`_, `backward
-incompatible changes`_ (specially the requirement on Gandalf and Docker
-versions), `general improvements`_ and `changes in the API`_ you'll want to be
-aware of when upgrading from tsr 0.10.2 or older versions.
+These release notes cover the `new features`_, `bug fixes`_, `general
+improvements`_ and `backward incompatible changes`_ you'll want to be aware of
+when upgrading from tsr 0.10.0 or older versions.
 
-.. _`new features`: `What's new in tsr 0.11.0`_
-.. _`general improvements`: `Other improvements in tsr 0.11.0`_
-.. _`changes in the API`: `API changes`_
+.. _`new features`: `Main new features`_
+.. _`general improvements`: `Other improvements`_
+.. _`backward incompatible changes`: `Backward incompatible changes (action needed)`_
 
-What's new in tsr 0.11.0
-========================
+Main new features
+=================
 
-* Now you can choose what pool to deploy your app. We add a ``-o [pool_name]``
-  flag in ``tsuru app-create`` and it's required if you have more than one pool
-  associated with your team.
+* Pool management overhaul. Now pools are a concept independent on the docker
+  provisioner. You can have multiple pools associated with each team. If that's
+  the case, when creating a new application, users will be able to choose which
+  pool they want to use to deploy it.
+  
+  To support these features some client commands have changed, mainly ``tsuru app-create``
+  support a ``--pool <poolname>`` parameter.
 
-  We add a new command ``tsuur pool-list``. Running it you will see all pools
-  you have access and the teams associated with it.
+  Some action is needed to migrate old pool configuration to this new format. See
+  `backward incompatible changes`_ section for more details. `#1110
+  <https://github.com/tsuru/tsuru/issues/1110>`_
 
+* Node auto scaling. It's now possible to enable automatic scaling of docker
+  nodes, this will add or remove nodes according to rules specified in your
+  tsuru.conf file. See :doc:`node auto scaling </advanced_topics/node_scaling>`
+  topic and :ref:`config reference <config_docker_auto_scale>` for more details.
 
 Bug fixes
 =========
 
+* Better handling erroneous tsuru.yaml files with tabs instead of spaces. `#1165
+  <https://github.com/tsuru/tsuru/issues/1165>`_
+  
+* Restart after hooks now correctly run with environment variables associated to
+  applications. `#1159 <https://github.com/tsuru/tsuru/issues/1159>`_
 
-Other improvements in tsr 0.11.0
-================================
+* ``tsuru app-shell`` command now works with tsuru api under TLS. `#1148
+  <https://github.com/tsuru/tsuru/issues/1148>`_
 
+* Removing machines from IaaS succeed if referenced machine was already manually
+  removed from IaaS. `#1103 <https://github.com/tsuru/tsuru/issues/1103>`_
 
-Backward incompatible changes
-=============================
+* Deploy details API call (/deploy/<id>) no longer fail with deploys originated by
+  running ``tsuru app-deploy``. `#1098
+  <https://github.com/tsuru/tsuru/issues/1098>`_
 
-* We change the way tsuru uses scheduler's pool. So in this version you need to
-  migrate your database to the new schema. To do that just run ``tsr migrate``
-  and see if everything returns OK.
+* Cleaner syslog output without lots of apparmor entries. `#997
+  <https://github.com/tsuru/tsuru/issues/997>`_
 
+Other improvements
+==================
 
-API changes
-===========
+* Limited number of goroutines started when initiating new units, avoiding
+  starving docker with too many simultaneous connections. `#1149
+  <https://github.com/tsuru/tsuru/issues/1149>`_
 
+* There is now a tsr command to run necessary migrations when updating from older
+  versions. You can run it with ``tsr migrate`` and it should not have side-
+  effects on already up-to-date installations. `#1137
+  <https://github.com/tsuru/tsuru/issues/1137>`_
+
+* Added command ``tsr gandalf-sync``, it should be called if Gandalf is activated
+  on an existing tsuru api instance. It's responsible for copying existing users
+  and teams credentials to Gandalf. Users added after Gandalf activation in
+  tsuru.conf will already be created on Gandalf and this command doesn't needed to
+  be called further. `#1138 <https://github.com/tsuru/tsuru/issues/1138>`_
+
+* It's now possible to remove all units from an application. `#1111
+  <https://github.com/tsuru/tsuru/issues/1111>`_
+
+* Removing units now uses the scheduler to correctly maintain units balanced
+  across nodes when removing a number of units. `#1109
+  <https://github.com/tsuru/tsuru/issues/1109>`_
+
+* tsuru will keep trying to send image to registry during deploy for some time if
+  the registry fails on the first request. `#1099
+  <https://github.com/tsuru/tsuru/issues/1099>`_
+
+* It's possible to use a docker registry with authentication support. See
+  :ref:`config reference <config_registry_auth>` for more details. `#1182
+      <https://github.com/tsuru/tsuru/issues/1182>`_
+
+Backward incompatible changes (action needed)
+=============================================
+
+* There are two migrations that must run before deploying applications with tsr
+  0.11.0, they concert pools and can be run with ``tsr migrate``. The way pools
+  are handled has changed. Now it's possible for a team to have access to more
+  than one pool, if that's the case the pool name will have to be specified during
+  application creation. `#1110 <https://github.com/tsuru/tsuru/issues/1110>`_
+
+* Queue configuration is necessary for creating and removing machines using a IaaS
+  provider. This can be simply done by indicating a MongoDB database configuration
+  that will be used by tsuru for managing the queue. No external process is
+  necessary. See :ref:`configuration reference <config_queue>` for more
+  details. `#1147 <https://github.com/tsuru/tsuru/issues/1147>`_
