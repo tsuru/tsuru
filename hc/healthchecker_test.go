@@ -28,7 +28,11 @@ func (HCSuite) TestCheck(c *check.C) {
 		{Name: "failing", Status: "fail - something went wrong"},
 	}
 	result := Check()
+	expected[0].Duration = result[0].Duration
+	expected[1].Duration = result[1].Duration
 	c.Assert(result, check.DeepEquals, expected)
+	c.Assert(result[0].Duration, check.Not(check.Equals,), 0)
+	c.Assert(result[1].Duration, check.Not(check.Equals,), 0)
 }
 
 func successChecker() error {

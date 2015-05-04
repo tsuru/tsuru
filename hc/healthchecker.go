@@ -7,7 +7,10 @@
 // use.
 package hc
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
 // HealthCheckOK is the status returned when the healthcheck works.
 const HealthCheckOK = "WORKING"
@@ -25,8 +28,9 @@ type healthChecker struct {
 // the name of the healthchecker and the status returned in the checker
 // call.
 type Result struct {
-	Name   string
-	Status string
+	Name     string
+	Status   string
+	Duration time.Duration
 }
 
 // AddChecker adds a new checker to the internal list of checkers. Checkers
@@ -41,10 +45,19 @@ func AddChecker(name string, check func() error) {
 func Check() []Result {
 	results := make([]Result, 0, len(checkers))
 	for _, checker := range checkers {
+		startTime := time.Now()
 		if err := checker.check(); err != nil && err != ErrDisabledComponent {
-			results = append(results, Result{Name: checker.name, Status: "fail - " + err.Error()})
+			results = append(results, Result{
+				Name:     checker.name,
+				Status:   "fail - " + err.Error(),
+				Duration: time.Now().Sub(startTime),
+			})
 		} else if err == nil {
-			results = append(results, Result{Name: checker.name, Status: HealthCheckOK})
+			results = append(results, Result{
+				Name: checker.name,
+				Status: HealthCheckOK,
+				Duration: time.Now().Sub(startTime),
+			})
 		}
 	}
 	return results
