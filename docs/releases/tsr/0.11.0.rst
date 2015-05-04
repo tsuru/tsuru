@@ -8,8 +8,6 @@ tsr 0.11.0 release notes
 
 Welcome to tsr 0.11.0!
 
-TODO: reference external contributors in issues.
-
 These release notes cover the `new features`_, `bug fixes`_, `general
 improvements`_ and `backward incompatible changes`_ you'll want to be aware of
 when upgrading from tsr 0.10.0 or older versions.
@@ -92,7 +90,7 @@ Other improvements
   be called further. `#1138 <https://github.com/tsuru/tsuru/issues/1138>`_
 
 * It's now possible to remove all units from an application. `#1111
-  <https://github.com/tsuru/tsuru/issues/1111>`_
+  <https://github.com/tsuru/tsuru/issues/1111>`_. Thanks `@lucasweiblen <https://github.com/lucasweiblen>`_
 
 * Removing units now uses the scheduler to correctly maintain units balanced
   across nodes when removing a number of units. `#1109
@@ -128,7 +126,8 @@ Other improvements
   <https://github.com/tsuru/tsuru/issues/1171>`_
 
 * Unit names now are prefixed with application's name. `#1160
-  <https://github.com/tsuru/tsuru/issues/1160>`_
+  <https://github.com/tsuru/tsuru/issues/1160>`_. Thanks `@lucasweiblen
+  <https://github.com/lucasweiblen>`_.
 
 * Admin users can now specify which user they want removed. `#1014
   <https://github.com/tsuru/tsuru/issues/1014>`_
@@ -137,10 +136,15 @@ Other improvements
   <https://github.com/tsuru/tsuru/issues/1016>`_
 
 * Better error messages on server startup when MongoDB isn't available. `#1125
-  <https://github.com/tsuru/tsuru/issues/1125>`_
+  <https://github.com/tsuru/tsuru/issues/1125>`_. Thanks `@lucasweiblen
+  <https://github.com/lucasweiblen>`_.
 
 * Add timing information to the healthcheck endpoint, so tsuru admins can
   detect components that are slow, besides detecting which are down.
+
+* Now `tsuru app-remove` not guess app name. `#1106
+  <https://github.com/tsuru/tsuru/issues/1106>`_. Thanks `@lucasweiblen
+  <https://github.com/lucasweiblen>`_.
 
 Backward incompatible changes (action needed)
 =============================================
