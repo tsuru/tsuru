@@ -25,7 +25,7 @@ func fullHealthcheck(w http.ResponseWriter, r *http.Request) {
 	results := hc.Check()
 	status := http.StatusOK
 	for _, result := range results {
-		fmt.Fprintf(&buf, "%s: %s\n", result.Name, result.Status)
+		fmt.Fprintf(&buf, "%s: %s (%s)\n", result.Name, result.Status, result.Duration)
 		if result.Status != hc.HealthCheckOK {
 			status = http.StatusInternalServerError
 		}
