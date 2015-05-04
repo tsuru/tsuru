@@ -54,8 +54,8 @@ func Check() []Result {
 			})
 		} else if err == nil {
 			results = append(results, Result{
-				Name: checker.name,
-				Status: HealthCheckOK,
+				Name:     checker.name,
+				Status:   HealthCheckOK,
 				Duration: time.Now().Sub(startTime),
 			})
 		}
