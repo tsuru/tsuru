@@ -25,7 +25,7 @@ Main new features
   provisioner. You can have multiple pools associated with each team. If that's
   the case, when creating a new application, users will be able to choose which
   pool they want to use to deploy it.
-  
+
   To support these features some client commands have changed, mainly ``tsuru app-create``
   support a ``--pool <poolname>`` parameter.
 
@@ -44,7 +44,7 @@ Bug fixes
 
 * Better handling erroneous tsuru.yaml files with tabs instead of spaces. `#1165
   <https://github.com/tsuru/tsuru/issues/1165>`_
-  
+
 * Restart after hooks now correctly run with environment variables associated to
   applications. `#1159 <https://github.com/tsuru/tsuru/issues/1159>`_
 
@@ -138,6 +138,9 @@ Other improvements
 
 * Better error messages on server startup when MongoDB isn't available. `#1125
   <https://github.com/tsuru/tsuru/issues/1125>`_
+
+* Add timing information to the healthcheck endpoint, so tsuru admins can
+  detect components that are slow, besides detecting which are down.
 
 Backward incompatible changes (action needed)
 =============================================
