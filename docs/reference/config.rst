@@ -452,8 +452,10 @@ quota:apps-per-user
 users will have at most the number of apps specified by this setting. This
 setting is optional, and defaults to "unlimited".
 
-Log
----
+.. _config_logging:
+
+Logging
+-------
 
 Tsuru supports three logging flavors, that can be enabled or disabled
 altogether. The default behavior of tsuru is to send all logs to syslog, but it
