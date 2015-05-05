@@ -174,11 +174,11 @@ func (s *S) TestAppListFilteringByOwner(c *check.C) {
 }
 
 func (s *S) TestAppList(c *check.C) {
-	app1 := app.App{Name: "app1", Platform: "zend", Teams: []string{s.team.Name}}
+	app1 := app.App{Name: "app1", Platform: "zend", Teams: []string{s.team.Name}, CName: []string{"cname.app1"}}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.deleteApp(&app1)
-	app2 := app.App{Name: "app2", Platform: "zend", Teams: []string{s.team.Name}}
+	app2 := app.App{Name: "app2", Platform: "zend", Teams: []string{s.team.Name}, CName: []string{"cname.app2"}}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.deleteApp(&app2)
@@ -192,15 +192,12 @@ func (s *S) TestAppList(c *check.C) {
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, check.IsNil)
-	apps := []app.App{}
+	var apps []miniApp
 	err = json.Unmarshal(body, &apps)
 	c.Assert(err, check.IsNil)
-	expected := []app.App{app1, app2}
+	expected := []miniApp{minifyApp(app1), minifyApp(app2)}
 	c.Assert(len(apps), check.Equals, len(expected))
-	for i, app := range apps {
-		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
-		c.Assert(app.Units(), check.DeepEquals, expected[i].Units())
-	}
+	c.Assert(apps, check.DeepEquals, expected)
 	action := rectest.Action{Action: "app-list", User: s.user.Email}
 	c.Assert(action, rectest.IsRecorded)
 }
@@ -231,7 +228,7 @@ func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserIsAMember(c *check.
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	body, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, check.IsNil)
-	var apps []app.App
+	var apps []miniApp
 	err = json.Unmarshal(body, &apps)
 	c.Assert(err, check.IsNil)
 	c.Assert(apps[0].Name, check.Equals, app1.Name)

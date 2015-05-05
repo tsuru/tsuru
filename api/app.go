@@ -72,6 +72,24 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
+// miniApp is a minimal representation of the app, created to make appList
+// faster and transmit less data.
+type miniApp struct {
+	Name  string
+	Units []provision.Unit
+	CName []string
+	Ip    string
+}
+
+func minifyApp(app app.App) miniApp {
+	return miniApp{
+		Name:  app.Name,
+		Units: app.Units(),
+		CName: app.CName,
+		Ip:    app.Ip,
+	}
+}
+
 func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
@@ -109,7 +127,11 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return nil
 	}
 	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(apps)
+	miniApps := make([]miniApp, len(apps))
+	for i, app := range apps {
+		miniApps[i] = minifyApp(app)
+	}
+	return json.NewEncoder(w).Encode(miniApps)
 }
 
 func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
