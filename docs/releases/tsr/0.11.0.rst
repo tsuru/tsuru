@@ -181,3 +181,13 @@ Backward incompatible changes (action needed)
   that will be used by tsuru for managing the queue. No external process is
   necessary. See :ref:`configuration reference <config_queue>` for more
   details. `#1147 <https://github.com/tsuru/tsuru/issues/1147>`_
+
+* Previously it was possible for more than one machine have the same address this
+  could cause a number of inconsistencies when trying to remove said machine using
+  ``tsuru docker-node-remove --destroy``. To solve this problem tsuru will now
+  raise an error if the IaaS provider return the same address of an already
+  registered machine.
+
+  If you already have multiple machines with the same address registered in tsuru,
+  trying to add new machines will raise an error until the machines with
+  duplicated address are removed.
