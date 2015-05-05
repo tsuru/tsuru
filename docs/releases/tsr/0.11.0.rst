@@ -71,6 +71,10 @@ Bug fixes
   <https://github.com/tsuru/tsuru/issues/1112>`_ `#1114
   <https://github.com/tsuru/tsuru/issues/1114>`_
 
+* Fix bug in the flow of binding and unbinding applications to service
+  instances. With this old bug, units could end-up being bound twice with a
+  service instance.
+
 Other improvements
 ==================
 
@@ -107,6 +111,10 @@ Other improvements
 * Partial support for docker distribution (registry 2.0). Image removal is not yet
   supported. `#1175 <https://github.com/tsuru/tsuru/issues/1175>`_
 
+* Improved :ref:`logging <config_logging>` support, allowing cloud admins to
+  configure any of the three tsuru logging options: syslog, stderr or log file.
+  At any time, it's possible to enable any of the three options.
+
 * Running commands with ``tsuru app-run`` now log command's output to tsuru logs.
   `#986 <https://github.com/tsuru/tsuru/issues/986>`_
 
@@ -134,21 +142,30 @@ Other improvements
 * It's now possible to change metadata associated with a node. `#1016
   <https://github.com/tsuru/tsuru/issues/1016>`_
 
+* Users can now define a private environment variable with `tsuru env-set`
+  (thanks Diogo Munaro).
+
 * Better error messages on server startup when MongoDB isn't available (thanks
   Lucas Weiblen). `#1125 <https://github.com/tsuru/tsuru/issues/1125>`_.
 
 * Add timing information to the healthcheck endpoint, so tsuru admins can
   detect components that are slow, besides detecting which are down.
 
-* Now `tsuru app-remove` not guess app name (thanks Lucas Weiblen). `#1106
+* Now `tsuru app-remove` does not guess app name (thanks Lucas Weiblen). `#1106
   <https://github.com/tsuru/tsuru/issues/1106>`_.
 
 * General improvements in the documentation:
 
     - typo fixes and wording improvements to :doc:`install </installing/index>`
-      and :doc:`configuration </reference/config>` pages (thanks Anna Shipman)
+      and :doc:`configuration </reference/config>` pages (thanks Anna Shipman).
     - fix instructions for key management in the :doc:`quickstart
-      </using/quickstart>` page
+      </using/quickstart>` page (thanks Felippe Raposo).
+    - improve documentation for the :doc:`contributing </contributing/index>`
+      page (thanks Lucas Weiblen).
+    - fix user creation instruction in the :doc:`installing
+      </installing/api>` page (thanks Samuel Roze).
+    - fix wording and spelling in the :doc:`Gandalf install </installing/gandalf>` page
+      (thanks Martin Jackson).
 
 Backward incompatible changes (action needed)
 =============================================
