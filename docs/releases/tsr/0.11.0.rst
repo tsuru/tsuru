@@ -89,8 +89,8 @@ Other improvements
   tsuru.conf will already be created on Gandalf and this command doesn't needed to
   be called further. `#1138 <https://github.com/tsuru/tsuru/issues/1138>`_
 
-* It's now possible to remove all units from an application. `#1111
-  <https://github.com/tsuru/tsuru/issues/1111>`_. Thanks `@lucasweiblen <https://github.com/lucasweiblen>`_
+* It's now possible to remove all units from an application (thanks Lucas Weiblen). `#1111
+  <https://github.com/tsuru/tsuru/issues/1111>`_.
 
 * Removing units now uses the scheduler to correctly maintain units balanced
   across nodes when removing a number of units. `#1109
@@ -125,9 +125,8 @@ Other improvements
 * Included lock information in API call returning application information. `#1171
   <https://github.com/tsuru/tsuru/issues/1171>`_
 
-* Unit names now are prefixed with application's name. `#1160
-  <https://github.com/tsuru/tsuru/issues/1160>`_. Thanks `@lucasweiblen
-  <https://github.com/lucasweiblen>`_.
+* Unit names now are prefixed with application's name (thanks Lucas Weiblen). `#1160
+  <https://github.com/tsuru/tsuru/issues/1160>`_.
 
 * Admin users can now specify which user they want removed. `#1014
   <https://github.com/tsuru/tsuru/issues/1014>`_
@@ -135,16 +134,21 @@ Other improvements
 * It's now possible to change metadata associated with a node. `#1016
   <https://github.com/tsuru/tsuru/issues/1016>`_
 
-* Better error messages on server startup when MongoDB isn't available. `#1125
-  <https://github.com/tsuru/tsuru/issues/1125>`_. Thanks `@lucasweiblen
-  <https://github.com/lucasweiblen>`_.
+* Better error messages on server startup when MongoDB isn't available (thanks
+  Lucas Weiblen). `#1125 <https://github.com/tsuru/tsuru/issues/1125>`_.
 
 * Add timing information to the healthcheck endpoint, so tsuru admins can
   detect components that are slow, besides detecting which are down.
 
-* Now `tsuru app-remove` not guess app name. `#1106
-  <https://github.com/tsuru/tsuru/issues/1106>`_. Thanks `@lucasweiblen
-  <https://github.com/lucasweiblen>`_.
+* Now `tsuru app-remove` not guess app name (thanks Lucas Weiblen). `#1106
+  <https://github.com/tsuru/tsuru/issues/1106>`_.
+
+* General improvements in the documentation:
+
+    - typo fixes and wording improvements to :doc:`install </installing/index>`
+      and :doc:`configuration </reference/config>` pages (thanks Anna Shipman)
+    - fix instructions for key management in the :doc:`quickstart
+      </using/quickstart>` page
 
 Backward incompatible changes (action needed)
 =============================================
