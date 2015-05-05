@@ -40,6 +40,10 @@ func (s *S) TestCreateMachine(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(m.Id, check.Equals, "myid")
 	c.Assert(m.Iaas, check.Equals, "test-iaas")
+	iaas, err := getIaasProvider("test-iaas")
+	c.Assert(err, check.IsNil)
+	testIaas := iaas.(*TestIaaS)
+	c.Assert(testIaas.cmds, check.DeepEquals, []string{"create"})
 }
 
 func (s *S) TestCreateMachineDupAddr(c *check.C) {
@@ -53,7 +57,7 @@ func (s *S) TestCreateMachineDupAddr(c *check.C) {
 	c.Assert(err, check.ErrorMatches, ".*duplicate key error.*")
 }
 
-func (s *S) TestCollectionDupEntries(c *check.C) {
+func (s *S) TestCreateMachineEnsureIdx(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	coll := conn.Collection("iaas_machines")
@@ -61,10 +65,27 @@ func (s *S) TestCollectionDupEntries(c *check.C) {
 	coll.DropIndex("address")
 	err = coll.Insert(Machine{Id: "id1", Address: "addr1"}, Machine{Id: "id2", Address: "addr1"})
 	c.Assert(err, check.IsNil)
-	_, err = collection()
-	c.Assert(err, check.ErrorMatches, `could not create index on address for collection "iaas_machines".*`)
+	config.Set("iaas:default", "test-iaas")
+	_, err = CreateMachine(map[string]string{"id": "myid", "address": "addr1"})
+	c.Assert(err, check.ErrorMatches, "(?s)Could not create index on address for machines collection.*")
+	iaas, err := getIaasProvider("test-iaas")
+	c.Assert(err, check.IsNil)
+	testIaas := iaas.(*TestIaaS)
+	c.Assert(testIaas.cmds, check.DeepEquals, []string{"create", "delete"})
+}
+
+func (s *S) TestCollectionEnsureIdxDupEntries(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	coll := conn.Collection("iaas_machines")
+	c.Assert(err, check.IsNil)
+	coll.DropIndex("address")
+	err = coll.Insert(Machine{Id: "id1", Address: "addr1"}, Machine{Id: "id2", Address: "addr1"})
+	c.Assert(err, check.IsNil)
+	_, err = collectionEnsureIdx()
+	c.Assert(err, check.ErrorMatches, `(?s)Could not create index on address for machines collection.*`)
 	coll.RemoveAll(nil)
-	_, err = collection()
+	_, err = collectionEnsureIdx()
 	c.Assert(err, check.IsNil)
 }
 

@@ -70,6 +70,7 @@ func CreateMachineForIaaS(iaasName string, params map[string]string) (*Machine, 
 	m.CreationParams = params
 	err = m.saveToDB()
 	if err != nil {
+		m.Destroy()
 		return nil, err
 	}
 	return m, nil
@@ -152,7 +153,7 @@ func (m *Machine) FormatNodeAddress() string {
 }
 
 func (m *Machine) saveToDB() error {
-	coll, err := collection()
+	coll, err := collectionEnsureIdx()
 	if err != nil {
 		return err
 	}
@@ -180,16 +181,22 @@ func collection() (*storage.Collection, error) {
 		log.Errorf("Failed to connect to the database: %s", err)
 		return nil, err
 	}
-	coll := conn.Collection(name)
+	return conn.Collection(name), nil
+}
+
+func collectionEnsureIdx() (*storage.Collection, error) {
+	coll, err := collection()
 	index := mgo.Index{
 		Key:    []string{"address"},
 		Unique: true,
 	}
 	err = coll.EnsureIndex(index)
 	if err != nil {
-		return nil, fmt.Errorf(`could not create index on address for collection %q. `+
-			`this can be caused by multiple entries with the same address, please run "tsuru machine-list" and check for duplicated entries. `+
-			`original error: %s`, name, err)
+		return nil, fmt.Errorf(`Could not create index on address for machines collection.
+This can be caused by multiple machines with the same address, please run
+"tsuru-admin machine-list" to check for duplicated entries and "tsuru-admin
+machine-destroy" to remove them.
+original error: %s`, err)
 	}
 	return coll, nil
 }

@@ -33,14 +33,17 @@ func (s *S) SetUpTest(c *check.C) {
 
 type TestIaaS struct {
 	someField string
+	cmds      []string
 }
 
-func (*TestIaaS) DeleteMachine(m *Machine) error {
+func (i *TestIaaS) DeleteMachine(m *Machine) error {
+	i.cmds = append(i.cmds, "delete")
 	m.Status = "destroyed"
 	return nil
 }
 
-func (*TestIaaS) CreateMachine(params map[string]string) (*Machine, error) {
+func (i *TestIaaS) CreateMachine(params map[string]string) (*Machine, error) {
+	i.cmds = append(i.cmds, "create")
 	params["should"] = "be in"
 	addr := params["address"]
 	if addr == "" {
