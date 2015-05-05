@@ -87,8 +87,9 @@ func (s *S) TestRebalanceContainersManyAppsSegStress(c *check.C) {
 		defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	}
 	buf := safe.NewBuffer(nil)
-	_, err = p.rebalanceContainersByFilter(buf, []string{}, map[string]string{"pool": "pool1"}, false)
+	cloneProv, err := p.rebalanceContainersByFilter(buf, []string{}, map[string]string{"pool": "pool1"}, false)
 	c.Assert(err, check.IsNil)
+	c.Assert(cloneProv.cluster.Healer, check.Equals, p.cluster.Healer)
 	for i := range nodeHosts {
 		conts, err := p.listContainersByHost(nodeHosts[i])
 		c.Assert(err, check.IsNil)

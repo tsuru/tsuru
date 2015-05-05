@@ -112,7 +112,7 @@ func (p *dockerProvisioner) initDockerCluster() error {
 			failuresBeforeHealing: maxFailures,
 		}
 		shutdown.Register(&healer)
-		p.cluster.SetHealer(&healer)
+		p.cluster.Healer = &healer
 	}
 	healContainersSeconds, _ := config.GetDuration("docker:healing:heal-containers-timeout")
 	if healContainersSeconds > 0 {
@@ -184,6 +184,7 @@ func (p *dockerProvisioner) cloneProvisioner(ignoredContainers []container) (*do
 	if err != nil {
 		return nil, err
 	}
+	overridenProvisioner.cluster.Healer = p.cluster.Healer
 	return &overridenProvisioner, nil
 }
 
