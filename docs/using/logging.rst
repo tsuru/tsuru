@@ -6,9 +6,9 @@
 Logging
 +++++++
 
-tsuru aggregates stdout and stderr from every application process making
-easier to troubleshoot problems. To use the log make sure that your application
-is sending the log to stdout and stderr.
+tsuru aggregates stdout and stderr from every application process making easier
+to troubleshoot problems. To use the log make sure that your application is
+sending the log to stdout and stderr.
 
 Watch your logs
 ===============
@@ -99,9 +99,11 @@ If you want to store and see all log entries you should use an external log aggr
 Using an external log aggregator
 ================================
 
-You can also send the log to an external log aggregator. To do this, tsuru uses the `syslog <https://tools.ietf.org/html/rfc5424>`_ protocol.
+You can also send the log to an external log aggregator. To do this, tsuru uses
+the `Syslog <https://tools.ietf.org/html/rfc5424>`_ protocol.
 
-To use syslog you should set these variables in your application:
+To use Syslog you should set the following environment variables in your
+application:
 
 .. highlight:: bash
 
@@ -112,7 +114,8 @@ To use syslog you should set these variables in your application:
     TSURU_SYSLOG_FACILITY (something like local0)
     TSURU_SYSLOG_SOCKET (tcp or udp)
 
-You can use the `tsuru env-set` to set these enviroment variables in your application:
+You can use the command `tsuru env-set` to set these enviroment variables in
+your application:
 
 .. highlight:: bash
 

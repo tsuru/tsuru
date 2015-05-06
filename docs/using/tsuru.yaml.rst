@@ -8,9 +8,7 @@ tsuru.yaml
 ++++++++++
 
 tsuru.yaml is a special file located in the root of the application. The name of
-the file may be ``tsuru.yaml`` or ``tsuru.yml``. (``app.yaml`` or ``app.yml`` are
-also supported for backward compatibility reasons, however this will be dropped
-soon.)
+the file may be ``tsuru.yaml`` or ``tsuru.yml``.
 
 This file is used to describe certain aspects of your app. Currently it describes
 information about deployment hooks and deployment time health checks. How to use
@@ -91,8 +89,8 @@ Here is how you can configure a health check in your yaml file:
   200.
 * ``healthcheck:match``: A regular expression to be matched against the request
   body. If it's not set the body won't be read and only the status code will be
-  checked. This regular expression uses `go syntax
+  checked. This regular expression uses `Go syntax
   <https://code.google.com/p/re2/wiki/Syntax>`_ and runs with ``.`` matching
   ``\n`` (``s`` flag).
-* ``healthcheck:allowed_failures``: The number of allowed failures before that the 
+* ``healthcheck:allowed_failures``: The number of allowed failures before that the
   health check consider the application as unhealthy. Defaults to 0.

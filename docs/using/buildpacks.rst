@@ -1,3 +1,7 @@
+.. Copyright 2015 tsuru authors. All rights reserved.
+   Use of this source code is governed by a BSD-style
+   license that can be found in the LICENSE file.
+
 Using Buildpacks
 ++++++++++++++++
 
@@ -22,7 +26,7 @@ What do you need is create an application using `buildpack` platform:
 Deploying your Application
 ==========================
 
-Use git push master to deploy your application.
+Use `git push` to deploy your application.
 
 .. highlight:: bash
 
@@ -68,7 +72,7 @@ To use a custom buildpack, set the BUILDPACK_URL environment variable.
 
     $ tsuru env-set BUILDPACK_URL=https://github.com/dpiddy/heroku-buildpack-ruby-minimal
 
-On your next git push, the custom buildpack will be used.
+On your next `git push`, the custom buildpack will be used.
 
 Creating your own Buildpack
 ===========================

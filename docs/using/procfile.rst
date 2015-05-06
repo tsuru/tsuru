@@ -54,4 +54,4 @@ You can reference yours environment variables in the command:
     web: ./manage.py runserver 0.0.0.0:$PORT
 
 For more information about `Procfile` you can see the honcho documentation
-about `Procfile`: http://honcho.rtfd.org/en/latest/using_procfiles.html.
+about `Procfiles`: http://honcho.rtfd.org/en/latest/using_procfiles.html.
