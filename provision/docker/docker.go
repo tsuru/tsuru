@@ -506,13 +506,14 @@ func (c *container) start(p *dockerProvisioner, isDeploy bool) error {
 	sharedMount, _ := config.GetString("docker:sharedfs:mountpoint")
 	sharedIsolation, _ := config.GetBool("docker:sharedfs:app-isolation")
 	sharedSalt, _ := config.GetString("docker:sharedfs:salt")
-	config := docker.HostConfig{}
+	hostConfig := docker.HostConfig{}
 	if !isDeploy {
-		config.RestartPolicy = docker.AlwaysRestart()
-		config.PortBindings = map[docker.Port][]docker.PortBinding{
+		hostConfig.RestartPolicy = docker.AlwaysRestart()
+		hostConfig.PortBindings = map[docker.Port][]docker.PortBinding{
 			docker.Port(port + "/tcp"): {{HostIP: "", HostPort: ""}},
 		}
 	}
+	hostConfig.SecurityOpt, _ = config.GetList("docker:security-opts")
 	if sharedBasedir != "" && sharedMount != "" {
 		if sharedIsolation {
 			var appHostDir string
@@ -523,12 +524,12 @@ func (c *container) start(p *dockerProvisioner, isDeploy bool) error {
 			} else {
 				appHostDir = c.AppName
 			}
-			config.Binds = append(config.Binds, fmt.Sprintf("%s/%s:%s:rw", sharedBasedir, appHostDir, sharedMount))
+			hostConfig.Binds = append(hostConfig.Binds, fmt.Sprintf("%s/%s:%s:rw", sharedBasedir, appHostDir, sharedMount))
 		} else {
-			config.Binds = append(config.Binds, fmt.Sprintf("%s:%s:rw", sharedBasedir, sharedMount))
+			hostConfig.Binds = append(hostConfig.Binds, fmt.Sprintf("%s:%s:rw", sharedBasedir, sharedMount))
 		}
 	}
-	err = p.getCluster().StartContainer(c.ID, &config)
+	err = p.getCluster().StartContainer(c.ID, &hostConfig)
 	if err != nil {
 		return err
 	}
