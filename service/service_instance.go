@@ -278,6 +278,22 @@ func (si *ServiceInstance) Status() (string, error) {
 	return endpoint.Status(si)
 }
 
+func (si *ServiceInstance) Grant(teamName string) error {
+	team, err := auth.GetTeam(teamName)
+	if err != nil {
+		return err
+	}
+	return si.update(bson.M{"$push": bson.M{"teams": team.Name}})
+}
+
+func (si *ServiceInstance) Revoke(teamName string) error {
+	team, err := auth.GetTeam(teamName)
+	if err != nil {
+		return err
+	}
+	return si.update(bson.M{"$pull": bson.M{"teams": team.Name}})
+}
+
 func genericServiceInstancesFilter(services interface{}, teams []string) bson.M {
 	query := bson.M{}
 	if len(teams) != 0 {

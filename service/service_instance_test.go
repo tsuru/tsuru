@@ -795,3 +795,58 @@ func (s *InstanceSuite) TestGetIdentfier(c *check.C) {
 	identifier = srv.GetIdentifier()
 	c.Assert(identifier, check.Equals, strconv.Itoa(srv.Id))
 }
+
+func (s *InstanceSuite) TestGrantTeamToInstance(c *check.C) {
+	user := &auth.User{Email: "test@raul.com", Password: "123"}
+	team := &auth.Team{Name: "test2", Users: []string{user.Email}}
+	s.conn.Users().Insert(user)
+	s.conn.Teams().Insert(team)
+	defer s.conn.Teams().Remove(team)
+	defer s.conn.Users().Remove(user)
+	srvc := Service{Name: "mysql", Teams: []string{team.Name}, IsRestricted: false}
+	err := s.conn.Services().Insert(&srvc)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Services().RemoveId(srvc.Name)
+	sInstance := ServiceInstance{
+		Name:        "j4sql",
+		ServiceName: srvc.Name,
+	}
+	err = s.conn.ServiceInstances().Insert(&sInstance)
+	c.Assert(err, check.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": sInstance.Name})
+	_, err = GetServiceInstance("j4sql", user)
+	c.Assert(err, check.NotNil)
+	c.Assert(ErrAccessNotAllowed, check.Equals, err)
+	sInstance.Grant(team.Name)
+	si, err := GetServiceInstance("j4sql", user)
+	c.Assert(err, check.IsNil)
+	c.Assert(si.Teams, check.DeepEquals, []string{"test2"})
+}
+
+func (s *InstanceSuite) TestRevokeTeamToInstance(c *check.C) {
+	user := &auth.User{Email: "test@raul.com", Password: "123"}
+	team := &auth.Team{Name: "test2", Users: []string{user.Email}}
+	s.conn.Users().Insert(user)
+	s.conn.Teams().Insert(team)
+	defer s.conn.Teams().Remove(team)
+	defer s.conn.Users().Remove(user)
+	srvc := Service{Name: "mysql", Teams: []string{team.Name}, IsRestricted: false}
+	err := s.conn.Services().Insert(&srvc)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Services().RemoveId(srvc.Name)
+	sInstance := ServiceInstance{
+		Name:        "j4sql",
+		ServiceName: srvc.Name,
+		Teams:       []string{team.Name},
+	}
+	err = s.conn.ServiceInstances().Insert(&sInstance)
+	c.Assert(err, check.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": sInstance.Name})
+	si, err := GetServiceInstance("j4sql", user)
+	c.Assert(err, check.IsNil)
+	c.Assert(si.Teams, check.DeepEquals, []string{"test2"})
+	sInstance.Revoke(team.Name)
+	_, err = GetServiceInstance("j4sql", user)
+	c.Assert(err, check.NotNil)
+	c.Assert(ErrAccessNotAllowed, check.Equals, err)
+}
