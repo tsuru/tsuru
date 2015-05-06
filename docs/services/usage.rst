@@ -8,4 +8,4 @@ crane usage
 
 crane is a command line for service providers/administrators on tsuru.
 
-See the crane documentation for a full reference: http://tsuru-crane.readthedocs.org.
+See the crane documentation for a full reference: https://tsuru-crane.readthedocs.org.
