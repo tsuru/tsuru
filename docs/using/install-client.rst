@@ -1,4 +1,4 @@
-.. Copyright 2014 tsuru authors. All rights reserved.
+.. Copyright 2015 tsuru authors. All rights reserved.
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
@@ -22,14 +22,13 @@ tsuru contains three clients: ``tsuru``, ``tsuru-admin`` and ``crane``.
 This document describes how you can install those clients, using pre-compiled
 binaries, packages or building them from source.
 
-- `Downloading binaries (Mac OS X and Linux)`_
+- `Downloading binaries (Mac OS X, Linux and Windows)`_
 - `Using homebrew (Mac OS X only)`_
 - `Using the PPA (Ubuntu only)`_
-- `Using AUR (ArchLinux only)`_
-- `Build from source (Linux and Mac OS X)`_
+- `Build from source (Linux, Mac OS X and Windows)`_
 
-Downloading binaries (Mac OS X and Linux)
-=========================================
+Downloading binaries (Mac OS X, Linux and Windows)
+==================================================
 
 We provide pre-built binaries for OS X and Linux, only for the amd64
 architecture. You can download these binaries directly from the releases page
@@ -74,7 +73,7 @@ Whenever a new version of any of tsuru's clients is out, you can just run:
 For more details on taps, check `homebrew documentation
 <https://github.com/Homebrew/homebrew/wiki/brew-tap>`_.
 
-**NOTE:** tsuru requires Go 1.2 or higher. Make sure you have the last version
+**NOTE:** tsuru clients require Go 1.4 or higher. Make sure you have the last version
 of Go installed in your system.
 
 Using the PPA (Ubuntu only)
@@ -101,27 +100,13 @@ Now you can install tsuru's clients:
     $ sudo apt-get install crane
     $ sudo apt-get install tsuru-admin
 
-Using AUR (ArchLinux only)
-==========================
-
-Archlinux users can build and install tsuru client from AUR repository,
-Is needed to have installed `yaourt <http://archlinux.fr/yaourt-en>`_ program.
-
-You can run:
-
-.. highlight:: bash
-
-::
-
-    $ yaourt -S tsuru
-
-Build from source (Linux and Mac OS X)
-======================================
+Build from source (Linux, Mac OS X and Windows)
+===============================================
 
 .. note::
 
-    If you're feeling adventurous, you can try it on other systems, like
-    FreeBSD, OpenBSD or even Windows. Please let us know about your progress!
+    If you're feeling adventurous, you can try it on other platforms, like
+    FreeBSD and OpenBSD. Please let us know about your progress!
 
 `tsuru's source <https://github.com/tsuru/tsuru>`_ is written in `Go
 <http://golang.org>`_, so before installing tsuru from source, please make sure

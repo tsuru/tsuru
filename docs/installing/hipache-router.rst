@@ -44,7 +44,7 @@ Configuring
 ===========
 
 In your ``/etc/hipache.conf`` file you must set the ``redisHost`` and
-``redisPort`` configuration values. After this, you only need to start hipache
+``redisPort`` configuration values. After this, you only need to start Hipache
 with:
 
 .. highlight:: bash

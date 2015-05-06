@@ -14,10 +14,10 @@ use the latest Docker version.
 The simple way to do it is just upgrade Docker. You can do it following the
 `official guide <https://docs.docker.com/installation/binaries/#upgrades>`_.
 
-This operation can raise a downtime in the units deployed in the nodes.
+This operation can cause some period of downtime in an application.
 
-How to upgrade with no downtime
--------------------------------
+How to upgrade Docker with no application downtime
+--------------------------------------------------
 
 .. note::
 
@@ -28,7 +28,8 @@ A way to upgrade with no downtime is to move all containers from the node that
 you want to upgrade to another node, upgrade the node and then move the
 containers back.
 
-You can do it using the `tsuru-admin containers-move <http://tsuru-admin.readthedocs.org/en/latest/#containers-move>`_ command:
+You can do it using the command `tsuru-admin containers-move
+<http://tsuru-admin.readthedocs.org/en/latest/#containers-move>`_:
 
 .. highlight:: bash
 

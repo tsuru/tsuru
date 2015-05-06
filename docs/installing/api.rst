@@ -9,12 +9,12 @@ API Server
 Dependencies
 ============
 
-tsuru API depends on a Mongodb server, Redis server, Hipache router, and Gandalf
-server. Instructions for installing `Mongodb <http://docs.mongodb.org/>`_ and
-`Redis <http://redis.io/>`_ are outside the scope of this documentation, but it's
-pretty straight-forward following their docs. :doc:`Installing Gandalf
-</installing/gandalf>` and :doc:`installing Hipache </installing/hipache-router>`
-were described in other sessions.
+tsuru API depends on a MongoDB server, Redis server, Hipache router, and
+Gandalf server. Instructions for installing `MongoDB
+<http://docs.mongodb.org/>`_ and `Redis <http://redis.io/>`_ are outside the
+scope of this documentation, but it's pretty straight-forward following their
+docs. :doc:`Installing Gandalf </installing/gandalf>` and :doc:`installing
+Hipache </installing/hipache-router>` are described in other sessions.
 
 
 Adding repositories
@@ -40,7 +40,6 @@ Installing
 ::
 
     sudo apt-get install tsuru-server -qqy
-
 
 Now you need to customize the configuration in the ``/etc/tsuru/tsuru.conf``. A
 description of possible configuration values can be found in the
@@ -98,7 +97,7 @@ configuration is described below, please note that you should replace the values
             redis-server: <your-redis-server-with-port>
 
 
-In particular, take note that you must set ``auth.user-registration`` to ``true``:
+In particular, take note that you must set ``auth:user-registration`` to ``true``:
 
 .. highlight:: yaml
 
@@ -125,10 +124,11 @@ Now you only need to start your tsuru API server:
 Creating admin user
 ===================
 
-The creation of an admin user is necessary for the next steps, so we're going to
-describe how to install the ``tsuru-admin`` and create a new user belonging to the
+The creation of an admin user is necessary for the next steps, so we're going
+to describe how to install the ``tsuru`` and create a new user belonging to the
 admin team configured in your ``tsuru.conf`` file. For a description of each
-command shown below please refer to the :doc:`client documentation </reference/tsuru-client>`.
+command shown below please refer to the :doc:`client documentation
+</reference/tsuru-client>`.
 
 For a description
 
@@ -158,9 +158,9 @@ Generating token for Gandalf authentication
 ===========================================
 
 Assuming you have already configured your Gandalf server in the :doc:`previous
-installation step </installing/gandalf>`, we need to export two extra environment
-variables to the git user, which will run our deploy hooks, the URL to our API
-server and a generated token.
+installation step </installing/gandalf>`, now we need to export two extra
+environment variables to the git user, which will run our deploy hooks, the URL
+to our API server and a generated token.
 
 First step is to generate a token in the machine we've just installed the API
 server:

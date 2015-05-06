@@ -6,13 +6,13 @@
 Gandalf
 +++++++
 
-tsuru optionally uses gandalf to manage Git repositories used to push
+tsuru optionally uses Gandalf to manage Git repositories used to push
 applications to. It's also responsible for setting hooks in these repositories
 which will notify the tsuru API when a new deploy is made. For more details
 check `Gandalf Documentation <http://gandalf.readthedocs.org/>`_
 
-This document will focus on how to setup a Gandalf installation with the necessary
-hooks to notify the tsuru API.
+This document will focus on how to setup a Gandalf installation with the
+necessary hooks to notify the tsuru API.
 
 Adding repositories
 ===================

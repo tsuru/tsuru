@@ -18,16 +18,14 @@ scheduler` does and how to enable it.
 How it works
 ============
 
-Segregate scheduler is a scheduler that segregates the units between nodes by
-team.
+Segregate scheduler is a scheduler that segregates the units among pools.
 
 First, what you need to do is to define a relation between a pool and teams. After
 that you need to register nodes with the ``pool`` metadata information, indicating
 to which pool the node belongs.
 
-When deploying an application, the scheduler will choose among the nodes with the
-pool metadata information associated to the team owning the application being
-deployed.
+When deploying an application, the scheduler will choose among the nodes within the
+application pool.
 
 Configuration and setup
 -----------------------

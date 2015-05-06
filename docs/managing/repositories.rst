@@ -70,10 +70,3 @@ Gandalf server, or both servers may be out-of-sync.
 
 When Gandalf is enabled, administrators of the cloud can run the ``tsr
 gandalf-sync`` command.
-
-.. warning::
-
-    In the previous version of tsr, the daemon handled the migration
-    automatically during start-up, but it made the start-up process slower, and
-    it didn't get any better after running for the first time, so now there's
-    the ``tsr gandalf-sync`` command.

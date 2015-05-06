@@ -9,16 +9,14 @@ Using Pools
 Overview
 ========
 
-Pool is used by provisioners to group nodes and know if an app can be deployed in these nodes.
-Users can choose what pool to deploy in `tsuru app-create`.
-
-Configuration and setup
------------------------
+Pool is used by provisioners to group nodes and know if an application can be
+deployed in these nodes. Users can choose which pool to deploy in `tsuru
+app-create`.
 
 Adding a pool
 -------------
 
-Using `tsuru-admin` you create a pool:
+In order to create a pool, you should invoke `tsuru-admin pool-add`:
 
 .. highlight:: bash
 
@@ -27,9 +25,10 @@ Using `tsuru-admin` you create a pool:
     $ tsuru-admin pool-add pool1
 
 Adding teams to a pool
------------------------
+----------------------
 
-You can add one or more teams at once.
+Then you can youse `tsuru-admin pool-teams-add` to add teams to the pool that
+you've just created:
 
 .. highlight:: bash
 
@@ -39,8 +38,8 @@ You can add one or more teams at once.
 
     $ tsuru-admin pool-teams-add pool2 team3
 
-Listing a pool
---------------
+Listing pools
+-------------
 
 To list pools you do:
 
@@ -59,7 +58,7 @@ To list pools you do:
 Removing a pool
 ---------------
 
-To remove a pool you do:
+If you wanna remove a pool, use `tsuru-admin pool-remove`:
 
 .. highlight:: bash
 
@@ -71,7 +70,8 @@ To remove a pool you do:
 Removing teams from a pool
 --------------------------
 
-You can remove one or more teams at once.
+You can remove one or more teams from a pool using the command `tsuru-admin
+pool-teams-remove`:
 
 .. highlight:: bash
 

@@ -9,8 +9,9 @@ Architecture
 API
 ---
 
-The API component (also called `tsr`) is a RESTful API server written with ``Go``. The API is
-responsible for the deploy workflow and the lifecycle of applications.
+The API component (also called `tsr`) is a RESTful API server written with
+``Go``. The API is responsible for the deploy workflow and the lifecycle of
+applications.
 
 Command-line clients interact with this component.
 
@@ -27,8 +28,8 @@ The queue and cache component uses `Redis`.
 Gandalf
 -------
 
-`Gandalf` is a REST API to manage git repositories and users and provides access to
-them over SSH.
+`Gandalf` is a REST API to manage Git repositories and users and provides
+access to them over SSH.
 
 Registry
 --------

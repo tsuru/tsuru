@@ -23,6 +23,20 @@ Nodes
 
 A node is a physical or virtual machine with Docker installed.
 
+Managed node
+++++++++++++
+
+A managed node is a node created and managed by tsuru, using :ref:`IaaS
+integration <iaas_configuration>`. tsuru manages this node, i.e. tsuru can heal
+and scale it.
+
+Unmanaged node
+++++++++++++++
+
+An unmanaged node is a node created manually, and just registered with tsuru.
+tsuru is not able to manage these nodes, and it should be handled by whoever
+created it manually.
+
 Applications
 ------------
 
