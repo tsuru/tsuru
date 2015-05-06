@@ -316,8 +316,7 @@ queue configuration
 tsuru uses a work queue for asynchronous tasks.
 
 Currently, tsuru supports only ``redis`` as queue backend. Creating a new queue
-provider is as easy as implementing `an interface
-<http://godoc.org/github.com/tsuru/tsuru/queue#Q>`_.
+provider is as easy as implementing a Go interface.
 
 .. _config_queue:
 
