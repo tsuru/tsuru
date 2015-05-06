@@ -49,9 +49,9 @@ Platforms
 
 A platform is a well-defined pack with installed dependencies for a language or
 framework that a group of applications will need. A platform might be a
-container template (docker image).
+container template (Docker image).
 
-For instance, tsuru has a container image for python applications, with
+For instance, tsuru has a container image for Python applications, with
 virtualenv installed and other required things needed for tsuru to deploy
 applications on top of that platform. Platforms are easily extendable and
 managed by tsuru. Every application runs on top of a platform.
