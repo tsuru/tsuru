@@ -202,16 +202,12 @@ package using ``pip``, and this package depends on two ``apt-get`` packages:
 ``python-dev`` and ``libmysqlclient-dev``, so here is how ``requirements.apt``
 looks like:
 
-.. highlight:: text
-
 ::
 
     libmysqlclient-dev
     python-dev
 
 And here is ``requirements.txt``:
-
-.. highlight:: text
 
 ::
 
@@ -316,8 +312,6 @@ uses a Procfile (a concept stolen from Foreman). In this Procfile, you describe
 how your application should be started. We can use `gunicorn
 <http://gunicorn.org/>`_, for example, to start our Django application. Here is
 how the Procfile should look like:
-
-.. highlight:: text
 
 ::
 

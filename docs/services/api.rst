@@ -61,8 +61,6 @@ It will display all instances of the service that the user has access to, and
 also the list of plans, that tsuru gets from the service API by issuing a GET
 on ``/resources/plans``. Example of request:
 
-.. highlight:: text
-
 ::
 
     GET /resources/plans HTTP/1.1
@@ -78,8 +76,6 @@ response body:
     * 200: if the operation has succeeded. The response body should include the
       list of the plans, in JSON format. Each plan contains a "name" and a
       "description". Example of response:
-
-.. highlight:: text
 
 ::
 
@@ -108,8 +104,6 @@ via command line tool:
 tsuru calls the service API to create a new instance via POST on ``/resources``
 (please notice that tsuru does not include a trailing slash) with the name,
 plan and the team that owns the instance. Example of request:
-
-.. highlight:: text
 
 ::
 
@@ -150,8 +144,6 @@ This endpoint is a POST with app-host and unit-host, where app-host
 represents the host to which the app is accessible, and unit-host is the
 address of the unit. Example of request:
 
-.. highlight:: text
-
 ::
 
     POST /resources/myinstance/bind HTTP/1.1
@@ -168,8 +160,6 @@ The second endpoint ``/resources/<service-instance-name>/bind-app`` will be
 called once when an app is bound to a service.  This endpoint is a POST with
 app-host, where app-host represents the host to which the app is accessible.
 Example of request:
-
-.. highlight:: text
 
 ::
 
@@ -191,8 +181,6 @@ respective response body:
       instance that should be exported in the app in order to connect to the
       instance. If the service does not export any environment variable, it can
       return ``null`` or ``{}`` in the response body. Example of response:
-
-.. highlight:: text
 
 ::
 
@@ -229,8 +217,6 @@ Now, tsuru services has two unbind endpoints: ``/resources/<service-instance-nam
 The first endpoint will be called every time an app removes an unit.
 This endpoint is a DELETE with app-host and unit-host. Example of request:
 
-.. highlight:: text
-
 ::
 
     DELETE /resources/myinstance/bind HTTP/1.1
@@ -245,8 +231,6 @@ This endpoint is a DELETE with app-host and unit-host. Example of request:
 The second endpoint ``/resources/<service-instance-name>/bind-app`` will be
 called once when the binding between a service and an application is removed.
 This endpoint is a DELETE with app-host. Example of request:
-
-.. highlight:: text
 
 ::
 
@@ -286,8 +270,6 @@ tsuru calls the service API to remove the instancevia DELETE on
 ``/resources/<service-name>`` (please notice that tsuru does not include a
 trailing slash). Example of request:
 
-.. highlight:: text
-
 ::
 
     DELETE /resources/myinstance HTTP/1.1
@@ -323,8 +305,6 @@ tsuru calls the service API to check the status of the instance via GET on
 ``/resources/mysql_instance/status`` (please notice that tsuru does not include
 a trailing slash). Example of request:
 
-.. highlight:: text
-
 ::
 
     GET /resources/myinstance/status HTTP/1.1
@@ -351,8 +331,6 @@ from all instances. This is an optional endpoint in the service API. Some
 services does not provide any extra information for instances. Example of
 request:
 
-.. highlight:: text
-
 ::
 
     GET /resources/myinstance HTTP/1.1
@@ -369,8 +347,6 @@ The API should return the following HTTP response codes:
     * 200: when there's extra information of the service instance. The response
       body must be a JSON containing a list of items. Each item is a JSON
       object combosed by a label and a value. Example response:
-
-.. highlight:: text
 
 ::
 

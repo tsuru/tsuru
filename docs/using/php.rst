@@ -222,8 +222,6 @@ one ``apt-get`` package:
 ``php5-mysql``, so here is how ``requirements.apt``
 looks like:
 
-.. highlight:: text
-
 ::
 
     php5-mysql

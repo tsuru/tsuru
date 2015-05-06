@@ -190,8 +190,6 @@ will use MySQL with Rails, we need to install ``mysql`` package using ``gem``,
 and this package depends on an ``apt-get`` package: ``libmysqlclient-dev``, so
 here is how ``requirements.apt`` looks like:
 
-.. highlight:: text
-
 ::
 
     libmysqlclient-dev
@@ -311,8 +309,6 @@ your app". In this step, tsuru will restart your app if it's running, or start
 it if it's not. But how does tsuru start an application? That's very simple, it
 uses a Procfile (a concept stolen from Foreman). In this Procfile, you describe
 how your application should be started. Here is how the Procfile should look like:
-
-.. highlight:: text
 
 ::
 
