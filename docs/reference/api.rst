@@ -512,6 +512,35 @@ Example:
 
     GET /services/instances/mymysql/status HTTP/1.1
 
+Grant access to a service instance
+**********************************
+
+    * Method: PUT
+    * Endpoint: /services/instances/permission/<servicename>/<teamname>
+
+Returns 200 in case of success.
+Returns 404 if the service does not exists.
+
+Example:
+
+::
+
+    PUT /services/instances/permission/mongodb-instance/cobrateam HTTP/1.1
+
+Revoke access from a service instance
+*************************************
+
+    * Method: DELETE
+    * Endpoint: /services/instances/permission/<servicename>/<teamname>
+
+Returns 200 in case of success.
+Returns 404 if the service does not exists.
+
+Example:
+
+::
+
+    DELETE /services/instances/permission/mongodb-instance/cobrateam HTTP/1.1
 
 1.4 Quotas
 ----------
