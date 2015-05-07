@@ -69,7 +69,6 @@ configuration is described below, please note that you should replace the values
         mongo-url: <your-mongodb-server>:27017
         mongo-database: queuedb
     git:
-        unit-repo: /home/application/current
         api-server: http://<your-gandalf-server>:8000
     provisioner: docker
     docker:

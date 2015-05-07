@@ -109,21 +109,21 @@ will use the `default template
 Database access
 ---------------
 
-tsuru uses MongoDB as database manager, to store information about users, VM's,
-and its components. Regarding database control, you're able to define to which
-database server tsuru will connect (providing a `MongoDB connection string
-<http://docs.mongodb.org/manual/reference/connection-string/>`_). The database
-related options are listed below:
+tsuru uses MongoDB as a database manager to store information like users,
+machines, containers, etc. You need to describe how tsuru will connect to your
+database server. Therefore, it's necessary to provide a `MongoDB connection
+string <https://docs.mongodb.org/manual/reference/connection-string/>`_.
+Database related options are listed below:
 
 database:url
 ++++++++++++
 
 ``database:url`` is the database connection string. It is a mandatory setting
-and has no default value. Examples of strings include the basic "127.0.0.1" and
-the more advanced "mongodb://user@password:127.0.0.1:27017/database". Please
-refer to `MongoDB documentation
-<http://docs.mongodb.org/manual/reference/connection-string/>`_ for more
-details and examples of connection strings.
+and it has no default value. Examples of strings include basic ``127.0.0.1`` and
+more advanced ``mongodb://user:password@127.0.0.1:27017/database``. Please refer
+to `MongoDB documentation
+<http://docs.mongodb.org/manual/reference/connection-string/>`_ for more details
+and examples of connection strings.
 
 database:name
 +++++++++++++
@@ -134,10 +134,10 @@ mandatory setting and has no default value. An example of value is "tsuru".
 Email configuration
 -------------------
 
-tsuru sends email to users when they request password recovery. In order to
-send those emails, tsuru needs to be configured with some SMTP settings.
-Omitting these settings won't break tsuru, but users would not be able to reset
-their password automatically.
+tsuru sends email to users when they request password recovery. In order to send
+those emails, tsuru needs to be configured with some SMTP settings. Omitting
+these settings won't break tsuru, but users will not be able to reset their
+password.
 
 smtp:server
 +++++++++++
@@ -160,29 +160,17 @@ Repository configuration
 ------------------------
 
 tsuru optionally uses `Gandalf <https://github.com/tsuru/gandalf>`_ to manage
-git repositories. Gandalf exposes a REST API for repositories management, and
-tsuru uses it. So tsuru requires information about the Gandalf HTTP server, and
-also its git-daemon and SSH service.
-
-tsuru also needs to know where the git repository will be cloned and stored in
-units storage. Here are all options related to git repositories:
+git repositories. Gandalf exposes a REST API for repositories management and
+tsuru needs information about the Gandalf HTTP server endpoint.
 
 repo-manager
 ++++++++++++
 
-``repo-manager`` represents the repository manager that tsuru-server should
-use. For backward compatibility reasons, the default value is "gandalf". Users
-can disable repository and SSH key management by setting "repo-manager" to
-"none". For more details, please refer to the :doc:`repository management page
+``repo-manager`` represents the repository manager that tsuru-server should use.
+For backward compatibility reasons, the default value is "gandalf". Users can
+disable repository and SSH key management by setting "repo-manager" to "none".
+For more details, please refer to the :doc:`repository management page
 </managing/repositories>` in the documentation.
-
-git:unit-repo
-+++++++++++++
-
-``git:unit-repo`` is the path where tsuru will clone and manage the git
-repository in all units of an application. This is where the code of the
-applications will be stored in their units. Example of value:
-``/home/application/current``.
 
 git:api-server
 ++++++++++++++
@@ -197,12 +185,11 @@ Authentication configuration
 tsuru has support for ``native`` and ``oauth`` authentication schemes.
 
 The default scheme is ``native`` and it supports the creation of users in
-tsuru's internal database. It hashes passwords brcypt and tokens are generated
-during authentication, and are hashed using SHA512.
+tsuru's internal database. It hashes passwords brcypt. Tokens are generated
+during authentication and are hashed using SHA512.
 
 The ``auth`` section also controls whether user registration is on or off. When
-user registration is off, the user creation URL is not registered in the
-server.
+user registration is off, only admin users are able to create new users.
 
 auth:scheme
 +++++++++++
@@ -243,9 +230,9 @@ optional, and defaults to "unlimited".
 auth:oauth
 ++++++++++
 
-Every config entry inside ``auth:oauth`` are used when the ``auth:scheme`` is set
-to "oauth". Please check `rfc6749 <http://tools.ietf.org/html/rfc6749>`_ for more
-details.
+Every config entry inside ``auth:oauth`` are used when the ``auth:scheme`` is
+set to "oauth". Please check `rfc6749 <http://tools.ietf.org/html/rfc6749>`_ for
+more details.
 
 auth:oauth:client-id
 ++++++++++++++++++++
@@ -265,20 +252,20 @@ The scope for your authentication request.
 auth:oauth:auth-url
 +++++++++++++++++++
 
-The URL used in the authorization step of the OAuth flow. tsuru CLI will
-receive this URL and trigger the opening a browser on this URL with the necessary
+The URL used in the authorization step of the OAuth flow. tsuru CLI will receive
+this URL and trigger the opening a browser on this URL with the necessary
 parameters.
 
 During the authorization step, tsuru CLI will start a server locally and set the
-callback to http://localhost:<port>, if ``auth:oauth:callback-port`` is set tsuru
-CLI will use its value as <port>. If ``auth:oauth:callback-port`` isn't present
-tsuru CLI will automatically choose an open port.
+callback to http://localhost:<port>, if ``auth:oauth:callback-port`` is set
+tsuru CLI will use its value as <port>. If ``auth:oauth:callback-port`` isn't
+present tsuru CLI will automatically choose an open port.
 
 The callback URL should be registered on your OAuth server.
 
-If the chosen server requires the callback URL to match the same host and port as
-the registered one you should register "http://localhost:<chosen port>" and set
-the ``auth:oauth:callback-port`` accordingly.
+If the chosen server requires the callback URL to match the same host and port
+as the registered one you should register "http://localhost:<chosen port>" and
+set the ``auth:oauth:callback-port`` accordingly.
 
 If the chosen server is more lenient and allows a different port to be used you
 should register simply "http://localhost" and leave ``auth:oauth:callback-port``
@@ -310,24 +297,21 @@ auth:oauth:callback-port
 The port used in the callback URL during the authorization step. Check docs for
 ``auth:oauth:auth-url`` for more details.
 
+.. _config_queue:
+
 queue configuration
 -------------------
 
 tsuru uses a work queue for asynchronous tasks.
 
-Currently, tsuru supports only ``redis`` as queue backend. Creating a new queue
-provider is as easy as implementing a Go interface.
+``queue:*`` groups configuration settings for a MongoDB server that will be used
+as storage for delayed execution of queued jobs.
 
-.. _config_queue:
+This queue is used to manage creation and destruction of IaaS machines, but
+tsuru may start using it in more places in the future.
 
-queue
-+++++
-
-``queue`` groups configuration settings for a MongoDB server that will be used as
-storage for delayed execution of queued jobs.
-
-These queue is used to manage creation and destruction of IaaS machines, but tsuru
-may start using it in more places in the future.
+It's not mandatory to configure the queue, however creating and removing
+machines using a IaaS provider will not be possible.
 
 queue:mongo-url
 +++++++++++++++
@@ -343,25 +327,25 @@ name already specified in the connection url.
 pubsub
 ++++++
 
-``pubsub`` configuration is optional and depends on a redis server instance. It's
-used only for following application logs (running ``tsuru app-log -f``). If this
-is not configured tsuru will fail when running ``tsuru app-log -f``.
+``pubsub`` configuration is optional and depends on a redis server instance.
+It's used only for following application logs (running ``tsuru app-log -f``). If
+this is not configured tsuru will fail when running ``tsuru app-log -f``.
 
 Previously the configuration for this redis server was inside ``redis-queue:*``
-keys shown below. Using these keys is deprecated and tsuru will start ignoring it
-before 1.0 release.
+keys shown below. Using these keys is deprecated and tsuru will start ignoring
+them before 1.0 release.
 
 pubsub:redis-host
 +++++++++++++++++
 
-``pubsub:redis-host`` is the host of the Redis server to be used for pub/sub. This
-settings is optional and defaults to "localhost".
+``pubsub:redis-host`` is the host of the Redis server to be used for pub/sub.
+This settings is optional and defaults to "localhost".
 
 pubsub:redis-port
 +++++++++++++++++
 
-``pubsub:redis-port`` is the port of the Redis server to be used for pub/sub. This
-settings is optional and defaults to 6379.
+``pubsub:redis-port`` is the port of the Redis server to be used for pub/sub.
+This settings is optional and defaults to 6379.
 
 pubsub:redis-password
 +++++++++++++++++++++
@@ -379,14 +363,14 @@ pub/sub. This settings is optional and defaults to 3.
 pubsub:pool-max-idle-conn
 +++++++++++++++++++++++++
 
-``pubsub:pool-max-idle-conn`` is the maximum number of idle connections to redis.
-Defaults to 20.
+``pubsub:pool-max-idle-conn`` is the maximum number of idle connections to
+redis. Defaults to 20.
 
 pubsub:pool-idle-timeout
 ++++++++++++++++++++++++
 
-``pubsub:pool-idle-timeout`` is the number of seconds idle connections will remain
-in connection pool to redis. Defaults to 300.
+``pubsub:pool-idle-timeout`` is the number of seconds idle connections will
+remain in connection pool to redis. Defaults to 300.
 
 redis-queue:host
 ++++++++++++++++
@@ -588,8 +572,8 @@ hipache:redis-server
 Redis server used by Hipache router. This same server (or a redis slave of it),
 must be configured in your hipache.conf file.
 
-This setting is deprecated in favor
-of ``routers:<router name>:type = hipache`` and ``routers:<router name>:redis-server``.
+This setting is deprecated in favor of ``routers:<router name>:type = hipache``
+and ``routers:<router name>:redis-server``.
 
 hipache:domain
 ++++++++++++++
@@ -597,8 +581,8 @@ hipache:domain
 The domain of the server running your hipache server. Applications created with
 tsuru will have a address of ``http://<app-name>.<hipache:domain>``.
 
-This setting is deprecated in favor
-of ``routers:<router name>:type = hipache`` and ``routers:<router name>:domain``
+This setting is deprecated in favor of ``routers:<router name>:type = hipache``
+and ``routers:<router name>:domain``
 
 
 Defining the provisioner
@@ -606,9 +590,9 @@ Defining the provisioner
 
 tsuru has extensible support for provisioners. A provisioner is a Go type that
 satisfies the `provision.Provisioner` interface. By default, tsuru will use
-``DockerProvisioner`` (identified by the string "docker"), and now that's the only
-supported provisioner (Ubuntu Juju was supported in the past but its support has
-been removed from tsuru).
+``DockerProvisioner`` (identified by the string "docker"), and now that's the
+only supported provisioner (Ubuntu Juju was supported in the past but its
+support has been removed from tsuru).
 
 provisioner
 +++++++++++
@@ -667,15 +651,15 @@ docker:max-workers
 
 Maximum amount of threads to be created when starting new containers, so tsuru
 doesn't start too much threads in the process of starting 1000 units, for
-instance.
+instance. Defaults to 0 which means unlimited.
 
 .. _config_docker_router:
 
 docker:router
 +++++++++++++
 
-Default router to be used to distribute requests to units. This should be the name
-of a router configured under the ``routers:<name>`` key, see :ref:`routers
+Default router to be used to distribute requests to units. This should be the
+name of a router configured under the ``routers:<name>`` key, see :ref:`routers
 <config_routers>`.
 
 For backward compatibility reasons, the value ``hipache`` is also supported, and
@@ -692,8 +676,8 @@ doesn't specify one.
 docker:deploy-cmd
 +++++++++++++++++
 
-The command that will be called in your platform when a new deploy happens.
-The default value for platforms supported in tsuru's basebuilder repository is
+The command that will be called in your platform when a new deploy happens. The
+default value for platforms supported in tsuru's basebuilder repository is
 ``/var/lib/tsuru/deploy``.
 
 docker:security-opts
@@ -718,7 +702,8 @@ documentation: <https://docs.docker.com/reference/run/#security-configuration>.
 docker:segregate
 ++++++++++++++++
 
-Enable segregate scheduler. See :doc:`/managing/segregate-scheduler` for details.
+Enable segregate scheduler. See :doc:`/managing/segregate-scheduler` for
+details.
 
 .. _config_scheduler_memory:
 
@@ -732,16 +717,22 @@ node.
 docker:scheduler:max-used-memory
 ++++++++++++++++++++++++++++++++
 
-Only valid if ``docker:segregate`` is true. This should be a value between 0.0 and
-1.0 which describes which fraction of the total amount of memory available to a
-server should be reserved for app units.
+Only valid if ``docker:segregate`` is true. This should be a value between 0.0
+and 1.0 which describes which fraction of the total amount of memory available
+to a server should be reserved for app units.
 
 The amount of memory available is found based on the node metadata described by
 ``docker:scheduler:total-memory-metadata`` config setting.
 
-If this value is set, tsuru will only allow the creation of new units if there is
-at least one server with enough unreserved memory to fit the amount of memory
-needed by the unit, based on which plan was used to create the application.
+If this value is set, tsuru will try to find a node with enough unreserved
+memory to fit the creation of new units, based on how much memory is required by
+the plan used to create the application. If no node with enough unreserved
+memory is found, tsuru will ignore memory restrictions and let the scheduler
+choose any node.
+
+This setting, along with ``docker:scheduler:total-memory-metadata``, are also
+used by node auto scaling. See :doc:`node auto scaling
+</advanced_topics/node_scaling>` for more details.
 
 .. _config_cluster_storage:
 
@@ -765,9 +756,9 @@ Database name to be used to store information about the docker cluster.
 docker:run-cmd:bin
 ++++++++++++++++++
 
-The command that will be called on the application image to start the application.
-The default value for platforms supported in tsuru's basebuilder repository is
-``/var/lib/tsuru/start``.
+The command that will be called on the application image to start the
+application. The default value for platforms supported in tsuru's basebuilder
+repository is ``/var/lib/tsuru/start``.
 
 docker:run-cmd:port
 +++++++++++++++++++
@@ -779,8 +770,13 @@ default value expected by platforms defined in tsuru's basebuilder repository is
 docker:user
 +++++++++++
 
-The user tsuru will use to start the container. The value expected for basebuilder
-platforms is ``ubuntu``.
+The user tsuru will use to start the container. The value expected for
+basebuilder platforms is ``ubuntu``.
+
+docker:ssh:user
++++++++++++++++
+
+Deprecated. You should set ``docker:user`` instead.
 
 .. _config_healing:
 
@@ -794,8 +790,9 @@ was created by tsuru itself using the IaaS configuration. Defaults to ``false``.
 docker:healing:active-monitoring-interval
 +++++++++++++++++++++++++++++++++++++++++
 
-Number of seconds between calls to <server>/_ping in each one of the docker nodes.
-If this value is 0 or unset tsuru will never call the ping URL. Defaults to 0.
+Number of seconds between calls to <server>/_ping in each one of the docker
+nodes. If this value is 0 or unset tsuru will never call the ping URL. Defaults
+to 0.
 
 docker:healing:disabled-time
 ++++++++++++++++++++++++++++
@@ -813,17 +810,17 @@ docker:healing:wait-new-time
 ++++++++++++++++++++++++++++
 
 Number of seconds tsuru should wait for the creation of a new node during the
-healing process. Only valid if ``heal-nodes`` is set to ``true``. Defaults to 300
-seconds (5 minutes).
+healing process. Only valid if ``heal-nodes`` is set to ``true``. Defaults to
+300 seconds (5 minutes).
 
 docker:healing:heal-containers-timeout
 ++++++++++++++++++++++++++++++++++++++
 
 Number of seconds a container should be unresponsive before triggering the
-recreation of the container. A container is deemed unresponsive if it doesn't call
-the set unit status URL (/apps/{app}/units/{unit}) with a ``started`` status. If
-this value is 0 or unset tsuru will never try to heal unresponsive containers.
-Defaults to 0.
+recreation of the container. A container is deemed unresponsive if it doesn't
+call the set unit status URL (/apps/{app}/units/{unit}) with a ``started``
+status. If this value is 0 or unset tsuru will never try to heal unresponsive
+containers. Defaults to 0.
 
 docker:healing:events_collection
 ++++++++++++++++++++++++++++++++
@@ -834,18 +831,18 @@ events. Defaults to ``healing_events``.
 docker:healthcheck:max-time
 +++++++++++++++++++++++++++
 
-Maximum time in seconds to wait for deployment time health check to be successful.
-Defaults to 120 seconds.
+Maximum time in seconds to wait for deployment time health check to be
+successful. Defaults to 120 seconds.
 
 .. _config_image_history_size:
 
 docker:image-history-size
 +++++++++++++++++++++++++
 
-Number of images available for rollback using ``tsuru app-deploy-rollback``. tsuru
-will try to delete older images, but it may not be able to due to it being used as
-a layer to a newer image. tsuru will keep trying to remove these old images until
-they are not used as layers anymore. Defaults to 10 images.
+Number of images available for rollback using ``tsuru app-deploy-rollback``.
+tsuru will try to delete older images, but it may not be able to due to it being
+used as a layer to a newer image. tsuru will keep trying to remove these old
+images until they are not used as layers anymore. Defaults to 10 images.
 
 .. _config_docker_auto_scale:
 
@@ -871,9 +868,9 @@ details. Defaults to empty (all nodes belong the the same cluster).
 docker:auto-scale:metadata-filter
 +++++++++++++++++++++++++++++++++
 
-Value of the metadata specified by `docker:auto-scale:group-by-metadata`. If this
-is set, tsuru will only run auto scale algorithms for nodes in the cluster defined
-by this value.
+Value of the metadata specified by `docker:auto-scale:group-by-metadata`. If
+this is set, tsuru will only run auto scale algorithms for nodes in the cluster
+defined by this value.
 
 docker:auto-scale:max-container-count
 +++++++++++++++++++++++++++++++++++++
@@ -905,9 +902,10 @@ scaling </advanced_topics/node_scaling>` for more details. Defaults to 1.33.
 IaaS configuration
 ==================
 
-tsuru uses IaaS configuration to automatically create new docker nodes and adding
-them to your cluster when using ``docker-node-add`` command. See :doc:`adding
-nodes</installing/adding-nodes>` for more details about how to use this command.
+tsuru uses IaaS configuration to automatically create new docker nodes and
+adding them to your cluster when using ``docker-node-add`` command. See
+:doc:`adding nodes</installing/adding-nodes>` for more details about how to use
+this command.
 
 General settings
 ----------------
@@ -921,8 +919,8 @@ specifying ``iaas=<iaas_name>`` as a metadata. Defaults to ``ec2``.
 iaas:node-protocol
 ++++++++++++++++++
 
-Which protocol to use when accessing the docker api in the created node. Defaults
-to ``http``.
+Which protocol to use when accessing the docker api in the created node.
+Defaults to ``http``.
 
 iaas:node-port
 ++++++++++++++
@@ -950,14 +948,14 @@ iaas:ec2:secret-key
 Your AWS secret key.
 
 iaas:ec2:user-data
-+++++++++++++++++++++++++
+++++++++++++++++++
 
 A url for which the response body will be sent to ec2 as user-data.
 Defaults to a script which will run `tsuru now installation
 <https://github.com/tsuru/now>`_.
 
 iaas:ec2:wait-timeout
-+++++++++++++++++++++++++
++++++++++++++++++++++
 
 Number of seconds to wait for the machine to be created. Defaults to 300 (5
 minutes).
@@ -999,7 +997,8 @@ Custom IaaS
 -----------
 
 You can define a custom IaaS based on an existing provider. Any configuration
-keys with the format ``iaas:custom:<name>`` will create a new IaaS with ``name``.
+keys with the format ``iaas:custom:<name>`` will create a new IaaS with
+``name``.
 
 iaas:custom:<name>:provider
 +++++++++++++++++++++++++++
@@ -1054,7 +1053,6 @@ Here is a complete example:
         mongo-url: <your-mongodb-server>:27017
         mongo-database: queuedb
     git:
-        unit-repo: /home/application/current
         api-server: http://<your-gandalf-server>:8000
     provisioner: docker
     docker:

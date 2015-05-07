@@ -104,8 +104,6 @@ In order to use Gandalf, you need to change tsuru.conf accordingly:
 #. Define "repo-manager" to use "gandalf";
 #. Define "git:api-server" to point to the API of the Gandalf server
    (example: "http://localhost:8000");
-#. Define "git:unit-repo" to point to the directory where code will live in the
-   application unit (example: "/home/application/current").
 
 For more details, please refer to the :doc:`configuration page
 </reference/config>`.
