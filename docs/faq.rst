@@ -9,7 +9,6 @@ Frequently Asked Questions
 * `How does the quota system work?`_
 * `How does routing work?`_
 * `How are Git repositories managed?`_
-* `Client installation fails with "undefined: bufio.Scanner". What does it mean?`_
 
 This document is an attempt to explain concepts you'll face when deploying and
 managing applications using tsuru.  To request additional explanations you can
@@ -20,10 +19,10 @@ How do environment variables work?
 ==================================
 
 All configurations in tsuru are handled by the use of environment variables. If
-you need to connect with a third party service, e.g. twitter's API,
-you are probably going to need some extra configurations, like client_id. In
-tsuru, you can export those as environment variables, visible only
-by your application's processes.
+you need to connect with a third party service, e.g. twitter's API, you are
+probably going to need some extra configurations, like client_id. In tsuru, you
+can export those as environment variables, visible only by your application's
+processes.
 
 When you bind your application into a service, most likely you'll need to
 communicate with that service in some way. Services can export environment
@@ -45,12 +44,14 @@ How does routing work?
 
 tsuru has a router interface, which makes it extremely easy to change the way
 routing works with any provisioner. There are two ready-to-go routers: one
-using `hipache <https://github.com/dotcloud/hipache>`_ and another with `galeb
+using `hipache <https://github.com/hipache/hipache>`_ and another with `galeb
 <http://galeb.io/>`_.
 
 .. note::
 
-    as of 0.10.0 version **tsuru** will support more than one router. You can have a default router, configured by "docker:router" and you can define a custom router by plan
+    as of 0.10.0 version **tsuru** supports more than one router. You can have
+    a default router, configured by "docker:router" and you can define a custom
+    router by plan
 
 How are Git repositories managed?
 =================================
@@ -63,19 +64,3 @@ This is the remote tsuru gives you when you create a new app. Everytime you
 perform a git push, Gandalf intercepts it, check if you have the required
 authorization to write into the application's repository, and then lets the
 push proceeds or returns an error message.
-
-Client installation fails with "undefined: bufio.Scanner". What does it mean?
-=============================================================================
-
-tsuru clients require Go 1.1 or later. The message ``undefined: bufio.Scanner``
-means that you're using an old version of Go. You'll have to `install
-<http://golang.org/doc/install>`_ the last version.
-
-If you're using Homebrew on Mac OS, just run:
-
-.. highlight:: bash
-
-::
-
-    $ brew update
-    $ brew upgrade go
