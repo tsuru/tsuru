@@ -32,7 +32,7 @@ func clientWithTimeout(timeout time.Duration) *http.Client {
 var timeoutHttpClient = clientWithTimeout(5 * time.Second)
 
 func runHealthcheck(cont *container, w io.Writer) error {
-	yamlData, err := getImageTsuruYamlDataWithFallback(cont.Image, cont.AppName)
+	yamlData, err := getImageTsuruYamlData(cont.Image)
 	if err != nil {
 		return err
 	}

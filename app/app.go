@@ -80,7 +80,6 @@ type App struct {
 	Deploys        uint
 	UpdatePlatform bool
 	Lock           AppLock
-	CustomData     map[string]interface{}
 	Plan           Plan
 	Pool           string
 
@@ -1276,34 +1275,6 @@ func (app *App) RegisterUnit(unitId string, customData map[string]interface{}) e
 		}
 	}
 	return ErrUnitNotFound
-}
-
-// TODO(cezarsa): This method only exist to keep tsuru compatible with older
-// platforms. It should be removed in the next major after 0.10.0. Provisioner
-// is now responsible for saving custom data associated to image.
-func (app *App) UpdateCustomData(customData map[string]interface{}) error {
-	app.CustomData = customData
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	return conn.Apps().Update(
-		bson.M{"name": app.Name},
-		bson.M{"$set": bson.M{"customdata": app.CustomData}},
-	)
-}
-
-// TODO(cezarsa): This method only exist to keep tsuru compatible with older
-// platforms. It should be removed in the next major after 0.10.0. Provisioner
-// is now responsible for saving custom data associated to image.
-func (app *App) GetTsuruYamlData() (provision.TsuruYamlData, error) {
-	rawData, err := json.Marshal(app.CustomData)
-	var data provision.TsuruYamlData
-	err = json.Unmarshal(rawData, &data)
-	if err != nil {
-		return data, err
-	}
-	return data, nil
 }
 
 func (app *App) GetRouter() (string, error) {

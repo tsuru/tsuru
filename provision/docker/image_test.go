@@ -300,7 +300,7 @@ func (s *S) TestDeleteAllAppImageNamesRemovesCustomData(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = listAppImages("myapp")
 	c.Assert(err, check.ErrorMatches, "not found")
-	yamlData, err := getImageTsuruYamlDataWithFallback(imgName, "")
+	yamlData, err := getImageTsuruYamlData(imgName)
 	c.Assert(err, check.IsNil)
 	c.Assert(yamlData, check.DeepEquals, provision.TsuruYamlData{})
 }
@@ -312,53 +312,9 @@ func (s *S) TestDeleteAllAppImageNamesRemovesCustomDataWithoutImages(c *check.C)
 	c.Assert(err, check.IsNil)
 	err = deleteAllAppImageNames("myapp")
 	c.Assert(err, check.ErrorMatches, "not found")
-	yamlData, err := getImageTsuruYamlDataWithFallback(imgName, "")
+	yamlData, err := getImageTsuruYamlData(imgName)
 	c.Assert(err, check.IsNil)
 	c.Assert(yamlData, check.DeepEquals, provision.TsuruYamlData{})
-}
-
-func (s *S) TestGetImageTsuruYamlDataWithFallback(c *check.C) {
-	data1 := map[string]interface{}{
-		"hooks": map[string]interface{}{
-			"restart": map[string]interface{}{
-				"after": []string{"cmd1", "cmd2"},
-			},
-		},
-	}
-	data2 := map[string]interface{}{
-		"hooks": map[string]interface{}{
-			"restart": map[string]interface{}{
-				"after": []string{"cmd3"},
-			},
-		},
-	}
-	a := &app.App{
-		Name:       "mytestapp",
-		CustomData: data1,
-	}
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	err = conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": a.Name})
-	yamlData, err := getImageTsuruYamlDataWithFallback("tsuru/some-image", a.Name)
-	c.Assert(err, check.IsNil)
-	expected := provision.TsuruYamlData{
-		Hooks: provision.TsuruYamlHooks{
-			Restart: provision.TsuruYamlRestartHooks{
-				After: []string{"cmd1", "cmd2"},
-			},
-		},
-	}
-	c.Assert(yamlData, check.DeepEquals, expected)
-	// Overriden by image specific custom data
-	err = saveImageCustomData("tsuru/some-image", data2)
-	c.Assert(err, check.IsNil)
-	yamlData, err = getImageTsuruYamlDataWithFallback("tsuru/some-image", a.Name)
-	c.Assert(err, check.IsNil)
-	expected.Hooks.Restart.After = []string{"cmd3"}
-	c.Assert(yamlData, check.DeepEquals, expected)
 }
 
 func (s *S) TestPullAppImageNames(c *check.C) {
@@ -391,7 +347,7 @@ func (s *S) TestPullAppImageNamesRemovesCustomData(c *check.C) {
 	images, err := listAppImages("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(images, check.DeepEquals, []string{"tsuru/app-myapp:v2", "tsuru/app-myapp:v3"})
-	yamlData, err := getImageTsuruYamlDataWithFallback(img1Name, "")
+	yamlData, err := getImageTsuruYamlData(img1Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(yamlData, check.DeepEquals, provision.TsuruYamlData{})
 }

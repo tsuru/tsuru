@@ -3293,29 +3293,6 @@ func (s *S) TestSetTeamOwnerSetNewTeamToAppAddThatTeamToAppTeamList(c *check.C) 
 	c.Assert([]string{team.Name, s.team.Name}, check.DeepEquals, a.Teams)
 }
 
-func (s *S) TestSaveAppCustomData(c *check.C) {
-	a := app.App{Name: "mycustomdataapp", Platform: "zend", Teams: []string{s.team.Name}}
-	err := app.CreateApp(&a, s.user)
-	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
-	body := strings.NewReader(`{"a": "b", "c": {"d": [1, 2]}, "f": [{"a": "b"}]}`)
-	req, err := http.NewRequest("POST", "/apps/mycustomdataapp/customdata", body)
-	c.Assert(err, check.IsNil)
-	req.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	rec := httptest.NewRecorder()
-	m := RunServer(true)
-	m.ServeHTTP(rec, req)
-	c.Assert(rec.Code, check.Equals, http.StatusOK)
-	dbApp, err := app.GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	expected := map[string]interface{}{
-		"a": "b",
-		"c": map[string]interface{}{"d": []interface{}{float64(1), float64(2)}},
-		"f": []interface{}{map[string]interface{}{"a": "b"}},
-	}
-	c.Assert(dbApp.CustomData, check.DeepEquals, expected)
-}
-
 func (s *S) deleteApp(a *app.App) {
 	app.Delete(a)
 	count, err := s.conn.Apps().Find(bson.M{"name": a.Name}).Count()

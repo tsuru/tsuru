@@ -2783,65 +2783,6 @@ func (s *S) TestAppChangePoolNotExists(c *check.C) {
 	c.Assert(err, check.NotNil)
 	c.Assert(app.Pool, check.Equals, "test")
 }
-func (s *S) TestUpdateCustomData(c *check.C) {
-	a := App{Name: "my-test-app"}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	customData := map[string]interface{}{
-		"hooks": map[string]interface{}{
-			"build": []interface{}{"a", "b"},
-		},
-	}
-	err = a.UpdateCustomData(customData)
-	c.Assert(err, check.IsNil)
-	dbApp, err := GetByName(a.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(dbApp.CustomData, check.DeepEquals, customData)
-}
-
-func (s *S) TestGetTsuruYamlData(c *check.C) {
-	a := App{Name: "my-test-app"}
-	err := s.conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	customData := map[string]interface{}{
-		"hooks": map[string]interface{}{
-			"restart": map[string]interface{}{
-				"before": []interface{}{"rb1", "rb2"},
-				"after":  []interface{}{"ra1", "ra2"},
-			},
-			"build": []interface{}{"ba1", "ba2"},
-		},
-		"healthcheck": map[string]interface{}{
-			"path":             "/test",
-			"method":           "PUT",
-			"status":           200,
-			"match":            ".*a.*",
-			"allowed_failures": 10,
-		},
-	}
-	err = a.UpdateCustomData(customData)
-	c.Assert(err, check.IsNil)
-	yamlData, err := a.GetTsuruYamlData()
-	c.Assert(err, check.IsNil)
-	c.Assert(yamlData, check.DeepEquals, provision.TsuruYamlData{
-		Hooks: provision.TsuruYamlHooks{
-			Restart: provision.TsuruYamlRestartHooks{
-				Before: []string{"rb1", "rb2"},
-				After:  []string{"ra1", "ra2"},
-			},
-			Build: []string{"ba1", "ba2"},
-		},
-		Healthcheck: provision.TsuruYamlHealthcheck{
-			Path:            "/test",
-			Method:          "PUT",
-			Status:          200,
-			Match:           ".*a.*",
-			AllowedFailures: 10,
-		},
-	})
-}
 
 func (s *S) TestShellToAnApp(c *check.C) {
 	a := App{Name: "my-test-app"}

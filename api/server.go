@@ -145,8 +145,6 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Get", "/apps/{app}/log", authorizationRequiredHandler(appLog))
 	logPostHandler := authorizationRequiredHandler(addLog)
 	m.Add("Post", "/apps/{app}/log", logPostHandler)
-	saveCustomDataHandler := authorizationRequiredHandler(saveAppCustomData)
-	m.Add("Post", "/apps/{app}/customdata", saveCustomDataHandler)
 	m.Add("Post", "/apps/{appname}/deploy/rollback", authorizationRequiredHandler(deployRollback))
 	m.Add("Get", "/apps/{app}/shell", authorizationRequiredHandler(remoteShellHandler))
 	m.Add("Post", "/apps/{app}/pool", authorizationRequiredHandler(appChangePool))
@@ -231,7 +229,6 @@ func RunServer(dry bool) http.Handler {
 		runHandler,
 		forceDeleteLockHandler,
 		registerUnitHandler,
-		saveCustomDataHandler,
 		setUnitStatusHandler,
 	}})
 	n.UseHandler(http.HandlerFunc(runDelayedHandler))

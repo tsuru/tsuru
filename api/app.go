@@ -992,26 +992,6 @@ func registerUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return writeEnvVars(w, a)
 }
 
-// TODO(cezarsa): This method only exist to keep tsuru compatible with older
-// platforms. It should be removed in the next major after 0.10.0. Custom data
-// is now handled in unit registration.
-func saveAppCustomData(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	appName := r.URL.Query().Get(":app")
-	var customData map[string]interface{}
-	err := json.NewDecoder(r.Body).Decode(&customData)
-	if err != nil {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: fmt.Sprintf("Unable to decode body: %s", err.Error()),
-		}
-	}
-	a, err := app.GetByName(appName)
-	if err != nil {
-		return err
-	}
-	return a.UpdateCustomData(customData)
-}
-
 func appChangePool(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	appName := r.URL.Query().Get(":app")
 	poolName, err := ioutil.ReadAll(r.Body)

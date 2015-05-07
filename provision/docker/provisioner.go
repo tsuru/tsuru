@@ -505,7 +505,7 @@ func (*dockerProvisioner) Addr(app provision.App) (string, error) {
 }
 
 func (p *dockerProvisioner) runRestartAfterHooks(cont *container, w io.Writer) error {
-	yamlData, err := getImageTsuruYamlDataWithFallback(cont.Image, cont.AppName)
+	yamlData, err := getImageTsuruYamlData(cont.Image)
 	if err != nil {
 		return err
 	}

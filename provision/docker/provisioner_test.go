@@ -1333,16 +1333,16 @@ func (s *S) TestRunRestartAfterHooks(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	a := &app.App{
-		Name: "myrestartafterapp",
-		CustomData: map[string]interface{}{
-			"hooks": map[string]interface{}{
-				"restart": map[string]interface{}{
-					"after": []string{"cmd1", "cmd2"},
-				},
+	a := &app.App{Name: "myrestartafterapp"}
+	customData := map[string]interface{}{
+		"hooks": map[string]interface{}{
+			"restart": map[string]interface{}{
+				"after": []string{"cmd1", "cmd2"},
 			},
 		},
 	}
+	err = saveImageCustomData("tsuru/python:latest", customData)
+	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": a.Name})

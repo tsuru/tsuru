@@ -26,19 +26,23 @@ func (s *S) TestHealthcheck(c *check.C) {
 		w.WriteHeader(http.StatusCreated)
 	}))
 	defer server.Close()
-	a := app.App{Name: "myapp1", CustomData: map[string]interface{}{
+	a := app.App{Name: "myapp1"}
+	imageName := "tsuru/app"
+	customData := map[string]interface{}{
 		"healthcheck": map[string]interface{}{
 			"path":   "/x/y",
 			"method": "Post",
 			"status": http.StatusCreated,
 		},
-	}}
-	err := s.storage.Apps().Insert(a)
+	}
+	err := saveImageCustomData(imageName, customData)
+	c.Assert(err, check.IsNil)
+	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container{AppName: a.Name, HostAddr: host, HostPort: port}
+	cont := container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}
 	buf := bytes.Buffer{}
 	err = runHealthcheck(&cont, &buf)
 	c.Assert(err, check.IsNil)
@@ -59,20 +63,24 @@ func (s *S) TestHealthcheckWithMatch(c *check.C) {
 		}
 	}))
 	defer server.Close()
-	a := app.App{Name: "myapp1", CustomData: map[string]interface{}{
+	a := app.App{Name: "myapp1"}
+	customData := map[string]interface{}{
 		"healthcheck": map[string]interface{}{
 			"path":   "/x/y",
 			"method": "Get",
 			"status": 200,
 			"match":  ".*some.*",
 		},
-	}}
-	err := s.storage.Apps().Insert(a)
+	}
+	imageName := "tsuru/app"
+	err := saveImageCustomData(imageName, customData)
+	c.Assert(err, check.IsNil)
+	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container{AppName: a.Name, HostAddr: host, HostPort: port}
+	cont := container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}
 	buf := bytes.Buffer{}
 	err = runHealthcheck(&cont, &buf)
 	c.Assert(err, check.ErrorMatches, ".*unexpected result, expected \"(?s).*some.*\", got: invalid")
@@ -92,17 +100,21 @@ func (s *S) TestHealthcheckDefaultCheck(c *check.C) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
-	a := app.App{Name: "myapp1", CustomData: map[string]interface{}{
+	a := app.App{Name: "myapp1"}
+	imageName := "tsuru/app"
+	customData := map[string]interface{}{
 		"healthcheck": map[string]interface{}{
 			"path": "/x/y",
 		},
-	}}
-	err := s.storage.Apps().Insert(a)
+	}
+	err := saveImageCustomData(imageName, customData)
+	c.Assert(err, check.IsNil)
+	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container{AppName: a.Name, HostAddr: host, HostPort: port}
+	cont := container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}
 	buf := bytes.Buffer{}
 	err = runHealthcheck(&cont, &buf)
 	c.Assert(err, check.IsNil)
@@ -138,18 +150,22 @@ func (s *S) TestHealthcheckNoPath(c *check.C) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
-	a := app.App{Name: "myapp1", CustomData: map[string]interface{}{
+	a := app.App{Name: "myapp1"}
+	imageName := "tsuru/app"
+	customData := map[string]interface{}{
 		"healthcheck": map[string]interface{}{
 			"method": "GET",
 			"status": 200,
 		},
-	}}
-	err := s.storage.Apps().Insert(a)
+	}
+	err := saveImageCustomData(imageName, customData)
+	c.Assert(err, check.IsNil)
+	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container{AppName: a.Name, HostAddr: host, HostPort: port}
+	cont := container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}
 	buf := bytes.Buffer{}
 	err = runHealthcheck(&cont, &buf)
 	c.Assert(err, check.IsNil)
@@ -174,17 +190,21 @@ func (s *S) TestHealthcheckKeepsTryingWithServerDown(c *check.C) {
 		shouldRun = !shouldRun
 	}))
 	defer server.Close()
-	a := app.App{Name: "myapp1", CustomData: map[string]interface{}{
+	a := app.App{Name: "myapp1"}
+	customData := map[string]interface{}{
 		"healthcheck": map[string]interface{}{
 			"path": "/x/y",
 		},
-	}}
-	err := s.storage.Apps().Insert(a)
+	}
+	imageName := "tsuru/app"
+	err := saveImageCustomData(imageName, customData)
+	c.Assert(err, check.IsNil)
+	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container{AppName: a.Name, HostAddr: host, HostPort: port}
+	cont := container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}
 	buf := bytes.Buffer{}
 	err = runHealthcheck(&cont, &buf)
 	c.Assert(err, check.IsNil)
@@ -197,17 +217,21 @@ func (s *S) TestHealthcheckKeepsTryingWithServerDown(c *check.C) {
 }
 
 func (s *S) TestHealthcheckErrorsAfterMaxTime(c *check.C) {
-	a := app.App{Name: "myapp1", CustomData: map[string]interface{}{
+	a := app.App{Name: "myapp1"}
+	imageName := "tsuru/app"
+	customData := map[string]interface{}{
 		"healthcheck": map[string]interface{}{
 			"path": "/x/y",
 		},
-	}}
-	err := s.storage.Apps().Insert(a)
+	}
+	err := saveImageCustomData(imageName, customData)
+	c.Assert(err, check.IsNil)
+	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse("http://some-invalid-server-name.some-invalid-server-name.com:9123")
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container{AppName: a.Name, HostAddr: host, HostPort: port}
+	cont := container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}
 	buf := bytes.Buffer{}
 	config.Set("docker:healthcheck:max-time", 1)
 	defer config.Unset("docker:healthcheck:max-time")
@@ -244,18 +268,22 @@ func (s *S) TestHealthcheckSuccessfulWithAllowedFailures(c *check.C) {
 		step++
 	}))
 	defer server.Close()
-	a := app.App{Name: "myapp1", CustomData: map[string]interface{}{
+	a := app.App{Name: "myapp1"}
+	customData := map[string]interface{}{
 		"healthcheck": map[string]interface{}{
 			"path":             "/x/y",
 			"allowed_failures": 1,
 		},
-	}}
-	err := s.storage.Apps().Insert(a)
+	}
+	imageName := "tsuru/app"
+	err := saveImageCustomData(imageName, customData)
+	c.Assert(err, check.IsNil)
+	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container{AppName: a.Name, HostAddr: host, HostPort: port}
+	cont := container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}
 	buf := bytes.Buffer{}
 	err = runHealthcheck(&cont, &buf)
 	c.Assert(err, check.IsNil)

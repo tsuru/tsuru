@@ -135,22 +135,10 @@ func getImageTsuruYamlData(imageName string) (provision.TsuruYamlData, error) {
 	}
 	defer coll.Close()
 	err = coll.FindId(imageName).One(&customData)
-	return customData.Customdata, err
-}
-
-// TODO(cezarsa): This method only exist to keep tsuru compatible with older
-// platforms. It should be deprecated in the next major after 0.10.0.
-func getImageTsuruYamlDataWithFallback(imageName, appName string) (provision.TsuruYamlData, error) {
-	yamlData, err := getImageTsuruYamlData(imageName)
-	if err != nil {
-		a, err := app.GetByName(appName)
-		if err != nil {
-			// Ignored error if app not found
-			return yamlData, nil
-		}
-		return a.GetTsuruYamlData()
+	if err == mgo.ErrNotFound {
+		return customData.Customdata, nil
 	}
-	return yamlData, nil
+	return customData.Customdata, err
 }
 
 func appBasicImageName(appName string) string {

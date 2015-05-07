@@ -650,19 +650,20 @@ func (s *S) TestBindAndHealthcheckForwardHealthcheckError(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	dbApp := &app.App{
-		Name: "myapp",
-		CustomData: map[string]interface{}{
-			"healthcheck": map[string]interface{}{
-				"path":   "/x/y",
-				"status": http.StatusOK,
-			},
-		},
-	}
+	dbApp := &app.App{Name: "myapp"}
 	err = conn.Apps().Insert(dbApp)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": dbApp.Name})
-	err = s.newFakeImage(s.p, "tsuru/app-"+dbApp.Name)
+	imageName := "tsuru/app-" + dbApp.Name
+	err = s.newFakeImage(s.p, imageName)
+	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"healthcheck": map[string]interface{}{
+			"path":   "/x/y",
+			"status": http.StatusOK,
+		},
+	}
+	err = saveImageCustomData(imageName, customData)
 	c.Assert(err, check.IsNil)
 	fakeApp := provisiontest.NewFakeApp(dbApp.Name, "python", 0)
 	s.p.Provision(fakeApp)
@@ -701,20 +702,21 @@ func (s *S) TestBindAndHealthcheckForwardRestartError(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	dbApp := &app.App{
-		Name: "myapp",
-		CustomData: map[string]interface{}{
-			"hooks": map[string]interface{}{
-				"restart": map[string]interface{}{
-					"after": []string{"will fail"},
-				},
-			},
-		},
-	}
+	dbApp := &app.App{Name: "myapp"}
 	err = conn.Apps().Insert(dbApp)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": dbApp.Name})
-	err = s.newFakeImage(s.p, "tsuru/app-"+dbApp.Name)
+	imageName := "tsuru/app-" + dbApp.Name
+	err = s.newFakeImage(s.p, imageName)
+	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"hooks": map[string]interface{}{
+			"restart": map[string]interface{}{
+				"after": []string{"will fail"},
+			},
+		},
+	}
+	err = saveImageCustomData(imageName, customData)
 	c.Assert(err, check.IsNil)
 	fakeApp := provisiontest.NewFakeApp(dbApp.Name, "python", 0)
 	s.p.Provision(fakeApp)
