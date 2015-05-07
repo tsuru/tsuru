@@ -40,8 +40,11 @@ var (
 	ManyPoolsError  = stderr.New("you have access to more than one pool. please choose one in app creation.")
 )
 
-const InternalAppName = "tsr"
-const TsuruServicesEnvVar = "TSURU_SERVICES"
+const (
+	InternalAppName     = "tsr"
+	TsuruServicesEnvVar = "TSURU_SERVICES"
+	defaultAppDir       = "/home/application/current"
+)
 
 // AppLock stores information about a lock hold on the app
 type AppLock struct {
@@ -712,7 +715,7 @@ func (app *App) Run(cmd string, w io.Writer, once bool) error {
 
 func (app *App) sourced(cmd string, w io.Writer, once bool) error {
 	source := "[ -f /home/application/apprc ] && source /home/application/apprc"
-	cd := "[ -d /home/application/current ] && cd /home/application/current"
+	cd := fmt.Sprintf("[ -d %s ] && cd %s", defaultAppDir, defaultAppDir)
 	cmd = fmt.Sprintf("%s; %s; %s", source, cd, cmd)
 	return app.run(cmd, w, once)
 }
