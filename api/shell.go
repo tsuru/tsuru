@@ -15,10 +15,6 @@ import (
 
 func remoteShellHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	unitID := r.URL.Query().Get("unit")
-	// TODO(fss): drop this in tsr >= 0.12.0
-	if unitID == "" {
-		unitID = r.URL.Query().Get("container_id")
-	}
 	width, _ := strconv.Atoi(r.URL.Query().Get("width"))
 	height, _ := strconv.Atoi(r.URL.Query().Get("height"))
 	term := r.URL.Query().Get("term")
