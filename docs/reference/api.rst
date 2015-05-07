@@ -16,10 +16,10 @@ List apps
 *********
 
     * Method: GET
-    * URI: /apps
-    * Format: json
+    * Endpoint: /apps
+    * Format: JSON
 
-Returns 200 in case of success, and json in the body of the response containing the app list.
+Returns 200 in case of success, and JSON in the body of the response containing the app list.
 
 Example:
 
@@ -35,10 +35,10 @@ Info about an app
 *****************
 
     * Method: GET
-    * URI: /apps/<appname>
-    * Format: json
+    * Endpoint: /apps/<appname>
+    * Format: JSON
 
-Returns 200 in case of success, and a json in the body of the response containing the app content.
+Returns 200 in case of success, and a JSON in the body of the response containing the app content.
 
 Example:
 
@@ -54,7 +54,7 @@ Remove an app
 *************
 
     * Method: DELETE
-    * URI: /apps/<appname>
+    * Endpoint: /apps/<appname>
 
 Returns 200 in case of success.
 
@@ -70,10 +70,10 @@ Create an app
 *************
 
     * Method: POST
-    * URI: /apps
-    * Format: json
+    * Endpoint: /apps
+    * Format: JSON
 
-Returns 200 in case of success, and json in the body of the response containing the status and the url for git repository.
+Returns 200 in case of success, and JSON in the body of the response containing the status and the URL for Git repository.
 
 Example:
 
@@ -82,13 +82,13 @@ Example:
 ::
 
     POST /apps HTTP/1.1
-    {"status":"success", "repository_url":"git@tsuru.plataformas.glb.com:ble.git"}
+    {"status":"success", "repository_url":"git@tsuru.mycompany.com:ble.git"}
 
 Restart an app
 **************
 
     * Method: GET
-    * URI: /apps/<appname>/restart
+    * Endpoint: /apps/<appname>/restart
 
 Returns 200 in case of success.
 
@@ -104,9 +104,9 @@ Get app environment variables
 *****************************
 
     * Method: GET
-    * URI: /apps/<appname>/env
+    * Endpoint: /apps/<appname>/env
 
-Returns 200 in case of success, and json in the body returning a dictionary with environment names and values.
+Returns 200 in case of success, and JSON in the body returning a dictionary with environment names and values.
 
 Example:
 
@@ -121,7 +121,7 @@ Set an app environment
 **********************
 
     * Method: POST
-    * URI: /apps/<appname>/env
+    * Endpoint: /apps/<appname>/env
 
 Returns 200 in case of success.
 
@@ -137,69 +137,56 @@ Execute a command
 **********************
 
     * Method: POST
-    * URI: /apps/<appname>/run?once=true
+    * Endpoint: /apps/<appname>/run?once=true
 
 Returns 200 in case of success.
 
 Where:
 
-* `once` is a boolean and indicates if the command will run just in an unit(once=true) or all of them(once=false). This parameter is not required, and the default is false.
+* `once` is a boolean and indicates if the command will run just in an
+  unit(once=true) or all of them(once=false). This parameter is not required,
+  and the default is false.
 
 Example:
-
-.. highlight:: bash
 
 ::
 
     POST /apps/myapp/run HTTP/1.1
     ls -la
 
-CLI Example:
-
-.. highlight:: bash
-
-::
-
-    curl -H "Authorization: bearer $(<~/.tsuru_token)" $(<~/.tsuru_target)/apps/<appname>/run?once=true -d 'ls -la'
-
-
-Delete an app environment
-*************************
+Remove one or more environment variables from an app
+****************************************************
 
     * Method: DELETE
-    * URI: /apps/<appname>/env
+    * Endpoint: /apps/<appname>/env
 
 Returns 200 in case of success.
 
 Example:
-
-.. highlight:: bash
 
 ::
 
     DELETE /apps/myapp/env HTTP/1.1
 
-Swapping two apps
-*****************
+Swap the address of two apps
+****************************
 
     * Method: PUT
-    * URI: /swap?app1=appname&app2=anotherapp
+    * Endpoint: /swap?app1=appname&app2=anotherapp
 
 Returns 200 in case of success.
 
 Example:
 
-.. highlight:: bash
-
 ::
 
     PUT /swap?app1=myapp&app2=anotherapp
 
-Get app log
-***********
+Get the logs of an app
+**********************
 
     * Method: GET
-    * URI: /apps/appname/log?lines=10&source=web&unit=abc123
+    * Endpoint: /apps/appname/log?lines=10&source=web&unit=abc123
 
 Returns 200 in case of success. Returns 404 if app is not found.
 
@@ -211,8 +198,6 @@ Where:
 
 Example:
 
-.. highlight: bash
-
 ::
 
     GET /apps/myapp/log?lines=20&source=web&unit=83535b503c96
@@ -223,30 +208,26 @@ List available pools
 ********************
 
     * Method: GET
-    * URI: /pools
+    * Endpoint: /pools
 
 Returns 200 in case of success.
 
 Example:
-
-.. highlight:: bash
 
 ::
 
     GET /pools
     [{"Team":"team1","Pools":["pool1","pool2"]},{"Team":"team2","Pools":["pool3"]}]
 
-Change an app's pool
-********************
+Change the pool of an app
+*************************
 
     * Method: POST
-    * URI: /apps/<appname>/pool
+    * Endpoint: /apps/<appname>/pool
 
 Returns 200 in case of success. Returns 404 if app is not found.
 
 Example:
-
-.. highlight:: bash
 
 ::
 
@@ -260,14 +241,12 @@ List services
 *************
 
     * Method: GET
-    * URI: /services
-    * Format: json
+    * Endpoint: /services
+    * Format: JSON
 
 Returns 200 in case of success.
 
 Example:
-
-.. highlight:: bash
 
 ::
 
@@ -279,7 +258,7 @@ Create a new service
 ********************
 
     * Method: POST
-    * URI: /services
+    * Endpoint: /services
     * Format: yaml
     * Body: a yaml with the service metadata.
 
@@ -304,7 +283,7 @@ Remove a service
 ****************
 
     * Method: DELETE
-    * URI: /services/<servicename>
+    * Endpoint: /services/<servicename>
 
 Returns 204 in case of success.
 Returns 403 if user has not access to the server.
@@ -323,7 +302,7 @@ Update a service
 ********************
 
     * Method: PUT
-    * URI: /services
+    * Endpoint: /services
     * Format: yaml
     * Body: a yaml with the service metadata.
 
@@ -348,8 +327,8 @@ Get info about a service
 ************************
 
     * Method: GET
-    * URI: /services/<servicename>
-    * Format: json
+    * Endpoint: /services/<servicename>
+    * Format: JSON
 
 Returns 200 in case of success.
 Returns 404 if the service does not exists.
@@ -367,7 +346,7 @@ Get service documentation
 *************************
 
     * Method: GET
-    * URI: /services/<servicename>/doc
+    * Endpoint: /services/<servicename>/doc
     * Format: text
 
 Returns 200 in case of success.
@@ -386,7 +365,7 @@ Update service documentation
 ****************************
 
     * Method: PUT
-    * URI: /services/<servicename>/doc
+    * Endpoint: /services/<servicename>/doc
     * Format: text
     * Body: text with the documentation
 
@@ -406,7 +385,7 @@ Grant access to a service
 *************************
 
     * Method: PUT
-    * URI: /services/<servicename>/<teamname>
+    * Endpoint: /services/<servicename>/<teamname>
 
 Returns 200 in case of success.
 Returns 404 if the service does not exists.
@@ -423,7 +402,7 @@ Revoke access from a service
 ****************************
 
     * Method: DELETE
-    * URI: /services/<servicename>/<teamname>
+    * Endpoint: /services/<servicename>/<teamname>
 
 Returns 200 in case of success.
 Returns 404 if the service does not exists.
@@ -443,7 +422,7 @@ Add a new service instance
 **************************
 
     * Method: POST
-    * URI: /services/instances
+    * Endpoint: /services/instances
     * Body: `{"name": "mymysql": "service_name": "mysql"}`
 
 Returns 200 in case of success.
@@ -462,7 +441,7 @@ Remove a service instance
 *************************
 
     * Method: DELETE
-    * URI: /services/instances/<serviceinstancename>
+    * Endpoint: /services/instances/<serviceinstancename>
 
 Returns 200 in case of success.
 Returns 404 if the service does not exists.
@@ -479,10 +458,10 @@ Bind a service instance with an app
 ***********************************
 
     * Method: PUT
-    * URI: /services/instances/<serviceinstancename>/<appname>
-    * Format: json
+    * Endpoint: /services/instances/<serviceinstancename>/<appname>
+    * Format: JSON
 
-Returns 200 in case of success, and json with the environment variables to be exported
+Returns 200 in case of success, and JSON with the environment variables to be exported
 in the app environ.
 Returns 403 if the user has not access to the app.
 Returns 404 if the application does not exists.
@@ -502,7 +481,7 @@ Unbind a service instance with an app
 *************************************
 
     * Method: DELETE
-    * URI: /services/instances/<serviceinstancename>/<appname>
+    * Endpoint: /services/instances/<serviceinstancename>/<appname>
 
 Returns 200 in case of success.
 Returns 403 if the user has not access to the app.
@@ -521,10 +500,10 @@ List all services and your instances
 ************************************
 
     * Method: GET
-    * URI: /services/instances?app=appname
-    * Format: json
+    * Endpoint: /services/instances?app=appname
+    * Format: JSON
 
-Returns 200 in case of success and a json with the service list.
+Returns 200 in case of success and a JSON with the service list.
 
 Where:
 
@@ -545,10 +524,10 @@ Get an info about a service instance
 ************************************
 
     * Method: GET
-    * URI: /services/instances/<serviceinstancename>
-    * Format: json
+    * Endpoint: /services/instances/<serviceinstancename>
+    * Format: JSON
 
-Returns 200 in case of success and a json with the service instance data.
+Returns 200 in case of success and a JSON with the service instance data.
 Returns 404 if the service instance does not exists.
 
 
@@ -566,7 +545,7 @@ service instance status
 ***********************
 
     * Method: GET
-    * URI: /services/instances/<serviceinstancename>/status
+    * Endpoint: /services/instances/<serviceinstancename>/status
 
 Returns 200 in case of success.
 
@@ -587,10 +566,10 @@ Get quota info of a user
 ************************
 
     * Method: GET
-    * URI: /quota/<user>
-    * Format: json
+    * Endpoint: /quota/<user>
+    * Format: JSON
 
-Returns 200 in case of success, and json with the quota info.
+Returns 200 in case of success, and JSON with the quota info.
 
 Example:
 
@@ -609,10 +588,10 @@ List healers
 ************
 
     * Method: GET
-    * URI: /healers
-    * Format: json
+    * Endpoint: /healers
+    * Format: JSON
 
-Returns 200 in case of success, and json in the body with a list of healers.
+Returns 200 in case of success, and JSON in the body with a list of healers.
 
 Example:
 
@@ -628,7 +607,7 @@ Execute healer
 **************
 
     * Method: GET
-    * URI: /healers/<healer>
+    * Endpoint: /healers/<healer>
 
 Returns 200 in case of success.
 
@@ -647,10 +626,10 @@ List platforms
 **************
 
     * Method: GET
-    * URI: /platforms
-    * Format: json
+    * Endpoint: /platforms
+    * Format: JSON
 
-Returns 200 in case of success, and json in the body with a list of platforms.
+Returns 200 in case of success, and JSON in the body with a list of platforms.
 
 Example:
 
@@ -669,11 +648,11 @@ Create a user
 *************
 
     * Method: POST
-    * URI: /users
+    * Endpoint: /users
     * Body: `{"email":"nobody@globo.com","password":"123456"}`
 
 Returns 200 in case of success.
-Returns 400 if the json is invalid.
+Returns 400 if the JSON is invalid.
 Returns 400 if the email is invalid.
 Returns 400 if the password characters length is less than 6 and greater than 50.
 Returns 409 if the email already exists.
@@ -691,7 +670,7 @@ Reset password
 **************
 
     * Method: POST
-    * URI: /users/<email>/password?token=token
+    * Endpoint: /users/<email>/password?token=token
 
 Returns 200 in case of success.
 Returns 404 if the user is not found.
@@ -710,11 +689,11 @@ Login
 ******
 
     * Method: POST
-    * URI: /users/<email>/tokens
+    * Endpoint: /users/<email>/tokens
     * Body: `{"password":"123456"}`
 
 Returns 200 in case of success.
-Returns 400 if the json is invalid.
+Returns 400 if the JSON is invalid.
 Returns 400 if the password is empty or nil.
 Returns 404 if the user is not found.
 
@@ -731,7 +710,7 @@ Logout
 ******
 
     * Method: DELETE
-    * URI: /users/tokens
+    * Endpoint: /users/tokens
 
 Returns 200 in case of success.
 
@@ -747,7 +726,7 @@ Info about the current user
 ***************************
 
     * Method: GET
-    * URI: /users/info
+    * Endpoint: /users/info
 
 Returns 200 in case of success, and a JSON with information about the current user.
 
@@ -764,11 +743,11 @@ Change password
 ***************
 
     * Method: PUT
-    * URI: /users/password
+    * Endpoint: /users/password
     * Body: `{"old":"123456","new":"654321"}`
 
 Returns 200 in case of success.
-Returns 400 if the json is invalid.
+Returns 400 if the JSON is invalid.
 Returns 400 if the old or new password is empty or nil.
 Returns 400 if the new password characters length is less than 6 and greater than 50.
 Returns 403 if the old password does not match with the current password.
@@ -786,7 +765,7 @@ Remove a user
 *************
 
     * Method: DELETE
-    * URI: /users
+    * Endpoint: /users
 
 Returns 200 in case of success.
 
@@ -802,7 +781,7 @@ Add public key to user
 **********************
 
     * Method: POST
-    * URI: /users/keys
+    * Endpoint: /users/keys
     * Body: `{"key":"my-key"}`
 
 Returns 200 in case of success.
@@ -820,7 +799,7 @@ Remove public key from user
 ***************************
 
     * Method: DELETE
-    * URI: /users/keys
+    * Endpoint: /users/keys
     * Body: `{"key":"my-key"}`
 
 Returns 200 in case of success.
@@ -837,10 +816,10 @@ Example:
 Show API key
 ************
     * Method: GET
-    * URI: /users/api-key
-    * Format: json
+    * Endpoint: /users/api-key
+    * Format: JSON
 
-Returns 200 in case of success, and json in the body with the API key.
+Returns 200 in case of success, and JSON in the body with the API key.
 
 Example:
 
@@ -855,7 +834,7 @@ Regenerate API key
 ******************
 
     * Method: POST
-    * URI: /users/api-key
+    * Endpoint: /users/api-key
 
 Returns 200 in case of success.
 
@@ -874,10 +853,10 @@ List teams
 **********
 
     * Method: GET
-    * URI: /teams
-    * Format: json
+    * Endpoint: /teams
+    * Format: JSON
 
-Returns 200 in case of success, and json in the body with a list of teams.
+Returns 200 in case of success, and JSON in the body with a list of teams.
 
 Example:
 
@@ -893,10 +872,10 @@ Info about a team
 *****************
 
     * Method: GET
-    * URI: /teams/<teamname>
-    * Format: json
+    * Endpoint: /teams/<teamname>
+    * Format: JSON
 
-Returns 200 in case of success, and json in the body with the info about a team.
+Returns 200 in case of success, and JSON in the body with the info about a team.
 
 Example:
 
@@ -911,7 +890,7 @@ Add a team
 **********
 
     * Method: POST
-    * URI: /teams
+    * Endpoint: /teams
 
 Returns 200 in case of success.
 
@@ -928,7 +907,7 @@ Remove a team
 *************
 
     * Method: DELETE
-    * URI: /teams/<teamname>
+    * Endpoint: /teams/<teamname>
 
 Returns 200 in case of success.
 
@@ -944,7 +923,7 @@ Add user to team
 ****************
 
     * Method: PUT
-    * URI: /teams/<teanmaname>/<username>
+    * Endpoint: /teams/<teanmaname>/<username>
 
 Returns 200 in case of success.
 
@@ -960,7 +939,7 @@ Remove user from team
 *********************
 
     * Method: DELETE
-    * URI: /teams/<teanmaname>/<username>
+    * Endpoint: /teams/<teanmaname>/<username>
 
 Returns 200 in case of success.
 
@@ -979,10 +958,10 @@ Deploy list
 ***********
 
     * Method: GET
-    * URI: /deploys?app=appname&service=servicename
-    * Format: json
+    * Endpoint: /deploys?app=appname&service=servicename
+    * Format: JSON
 
-Returns 200 in case of success, and json in the body of the response containing the deploy list.
+Returns 200 in case of success, and JSON in the body of the response containing the deploy list.
 
 Where:
 
@@ -1003,8 +982,8 @@ Get info about a deploy
 ***********************
 
     * Method: GET
-    * Format: json
-    * URI: /deploys/:deployid
+    * Format: JSON
+    * Endpoint: /deploys/:deployid
 
 Returns 200 in case of success. Returns 404 if deploy is not found.
 
@@ -1025,10 +1004,10 @@ Example:
 There is an endpoint to get metadata about tsuru api:
 
     * Method: GET
-    * URI: /info
-    * Format: json
+    * Endpoint: /info
+    * Format: JSON
 
-Returns 200 in case of success, and json in the body of the response containing the metadata.
+Returns 200 in case of success, and JSON in the body of the response containing the metadata.
 
 Example:
 
