@@ -898,7 +898,7 @@ func (s *ConsumptionSuite) TestGrantRevokeServiceToTeam(c *check.C) {
 	team := auth.Team{Name: "test", Users: []string{s.user.Email}}
 	s.conn.Teams().Insert(team)
 	defer s.conn.Teams().Remove(bson.M{"name": team.Name})
-	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:team=%s", si.Name, team.Name, si.Name, team.Name)
+	url := fmt.Sprintf("/services/instances/permission/%s/%s?:instance=%s&:team=%s", si.Name, team.Name, si.Name, team.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
