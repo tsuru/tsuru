@@ -23,8 +23,6 @@ Returns 200 in case of success, and JSON in the body of the response containing 
 
 Example:
 
-.. highlight:: bash
-
 ::
 
     GET /apps HTTP/1.1
@@ -42,8 +40,6 @@ Returns 200 in case of success, and a JSON in the body of the response containin
 
 Example:
 
-.. highlight:: bash
-
 ::
 
     GET /apps/myapp HTTP/1.1
@@ -60,8 +56,6 @@ Returns 200 in case of success.
 
 Example:
 
-.. highlight:: bash
-
 ::
 
     DELETE /apps/myapp HTTP/1.1
@@ -76,8 +70,6 @@ Create an app
 Returns 200 in case of success, and JSON in the body of the response containing the status and the URL for Git repository.
 
 Example:
-
-.. highlight:: bash
 
 ::
 
@@ -94,8 +86,6 @@ Returns 200 in case of success.
 
 Example:
 
-.. highlight:: bash
-
 ::
 
     GET /apps/myapp/restart HTTP/1.1
@@ -109,8 +99,6 @@ Get app environment variables
 Returns 200 in case of success, and JSON in the body returning a dictionary with environment names and values.
 
 Example:
-
-.. highlight:: bash
 
 ::
 
@@ -126,8 +114,6 @@ Set an app environment
 Returns 200 in case of success.
 
 Example:
-
-.. highlight:: bash
 
 ::
 
@@ -193,7 +179,7 @@ Returns 200 in case of success. Returns 404 if app is not found.
 Where:
 
 * `lines` is the number of the log lines. This parameter is required.
-* `source` is the source of the log, like `tsuru` (tsuru api) or a process.
+* `source` is the source of the log, like `tsuru` (tsuru API) or a process.
 * `unit` is the `id` of an unit.
 
 Example:
@@ -269,15 +255,12 @@ Returns 500 if the service name already exists.
 
 Example:
 
-.. highlight:: bash
-
 ::
 
     POST /services HTTP/1.1
-    Body:
-	`id: some_service
+    id: some_service
     endpoint:
-        production: someservice.com`
+      production: someservice.com
 
 Remove a service
 ****************
@@ -291,8 +274,6 @@ Returns 403 if service has instances.
 Returns 404 if service is not found.
 
 Example:
-
-.. highlight:: bash
 
 ::
 
@@ -313,15 +294,12 @@ Returns 500 if the service name already exists.
 
 Example:
 
-.. highlight:: bash
-
 ::
 
     PUT /services HTTP/1.1
-    Body:
-	`id: some_service
+    id: some_service
     endpoint:
-        production: someservice.com`
+      production: someservice.com
 
 Get info about a service
 ************************
@@ -334,8 +312,6 @@ Returns 200 in case of success.
 Returns 404 if the service does not exists.
 
 Example:
-
-.. highlight:: bash
 
 ::
 
@@ -353,8 +329,6 @@ Returns 200 in case of success.
 Returns 404 if the service does not exists.
 
 Example:
-
-.. highlight:: bash
 
 ::
 
@@ -374,8 +348,6 @@ Returns 404 if the service does not exists.
 
 Example:
 
-.. highlight:: bash
-
 ::
 
     PUT /services/mongodb/doc HTTP/1.1
@@ -392,8 +364,6 @@ Returns 404 if the service does not exists.
 
 Example:
 
-.. highlight:: bash
-
 ::
 
     PUT /services/mongodb/cobrateam HTTP/1.1
@@ -408,8 +378,6 @@ Returns 200 in case of success.
 Returns 404 if the service does not exists.
 
 Example:
-
-.. highlight:: bash
 
 ::
 
@@ -430,8 +398,6 @@ Returns 404 if the service does not exists.
 
 Example:
 
-.. highlight:: bash
-
 ::
 
     POST /services/instances HTTP/1.1
@@ -448,14 +414,12 @@ Returns 404 if the service does not exists.
 
 Example:
 
-.. highlight:: bash
-
 ::
 
     DELETE /services/instances/mymysql HTTP/1.1
 
-Bind a service instance with an app
-***********************************
+Bind a service instance to an app
+*********************************
 
     * Method: PUT
     * Endpoint: /services/instances/<serviceinstancename>/<appname>
@@ -469,15 +433,13 @@ Returns 404 if the service instance does not exists.
 
 Example:
 
-.. highlight:: bash
-
 ::
 
     PUT /services/instances/mymysql/myapp HTTP/1.1
     Content-Length: 29
     {"DATABASE_HOST":"localhost"}
 
-Unbind a service instance with an app
+Unbind a service instance from an app
 *************************************
 
     * Method: DELETE
@@ -489,8 +451,6 @@ Returns 404 if the application does not exists.
 Returns 404 if the service instance does not exists.
 
 Example:
-
-.. highlight:: bash
 
 ::
 
@@ -512,8 +472,6 @@ Where:
 
 Example:
 
-.. highlight:: bash
-
 ::
 
     GET /services/instances HTTP/1.1
@@ -533,8 +491,6 @@ Returns 404 if the service instance does not exists.
 
 Example:
 
-.. highlight:: bash
-
 ::
 
     GET /services/instances/mymysql HTTP/1.1
@@ -551,8 +507,6 @@ Returns 200 in case of success.
 
 
 Example:
-
-.. highlight:: bash
 
 ::
 
@@ -572,8 +526,6 @@ Get quota info of a user
 Returns 200 in case of success, and JSON with the quota info.
 
 Example:
-
-.. highlight:: bash
 
 ::
 
@@ -595,8 +547,6 @@ Returns 200 in case of success, and JSON in the body with a list of healers.
 
 Example:
 
-.. highlight:: bash
-
 ::
 
     GET /healers HTTP/1.1
@@ -612,8 +562,6 @@ Execute healer
 Returns 200 in case of success.
 
 Example:
-
-.. highlight:: bash
 
 ::
 
@@ -632,8 +580,6 @@ List platforms
 Returns 200 in case of success, and JSON in the body with a list of platforms.
 
 Example:
-
-.. highlight:: bash
 
 ::
 
@@ -659,8 +605,6 @@ Returns 409 if the email already exists.
 
 Example:
 
-.. highlight:: bash
-
 ::
 
     POST /users HTTP/1.1
@@ -678,8 +622,6 @@ Returns 404 if the user is not found.
 The token parameter is optional.
 
 Example:
-
-.. highlight:: bash
 
 ::
 
@@ -699,8 +641,6 @@ Returns 404 if the user is not found.
 
 Example:
 
-.. highlight:: bash
-
 ::
 
     POST /users/user@email.com/tokens HTTP/1.1
@@ -716,8 +656,6 @@ Returns 200 in case of success.
 
 Example:
 
-.. highlight:: bash
-
 ::
 
     DELETE /users/tokens HTTP/1.1
@@ -731,8 +669,6 @@ Info about the current user
 Returns 200 in case of success, and a JSON with information about the current user.
 
 Example:
-
-.. highlight:: bash
 
 ::
 
@@ -754,8 +690,6 @@ Returns 403 if the old password does not match with the current password.
 
 Example:
 
-.. highlight:: bash
-
 ::
 
     PUT /users/password HTTP/1.1
@@ -771,8 +705,6 @@ Returns 200 in case of success.
 
 Example:
 
-.. highlight:: bash
-
 ::
 
     DELETE /users HTTP/1.1
@@ -787,8 +719,6 @@ Add public key to user
 Returns 200 in case of success.
 
 Example:
-
-.. highlight:: bash
 
 ::
 
@@ -806,8 +736,6 @@ Returns 200 in case of success.
 
 Example:
 
-.. highlight:: bash
-
 ::
 
     DELETE /users/keys HTTP/1.1
@@ -823,8 +751,6 @@ Returns 200 in case of success, and JSON in the body with the API key.
 
 Example:
 
-.. highlight:: bash
-
 ::
 
     GET /users/api-key HTTP/1.1
@@ -839,8 +765,6 @@ Regenerate API key
 Returns 200 in case of success.
 
 Example:
-
-.. highlight:: bash
 
 ::
 
@@ -860,8 +784,6 @@ Returns 200 in case of success, and JSON in the body with a list of teams.
 
 Example:
 
-.. highlight:: bash
-
 ::
 
     GET /teams HTTP/1.1
@@ -879,8 +801,6 @@ Returns 200 in case of success, and JSON in the body with the info about a team.
 
 Example:
 
-.. highlight:: bash
-
 ::
 
     GET /teams/teamname HTTP/1.1
@@ -895,8 +815,6 @@ Add a team
 Returns 200 in case of success.
 
 Example:
-
-.. highlight:: bash
 
 ::
 
@@ -913,8 +831,6 @@ Returns 200 in case of success.
 
 Example:
 
-.. highlight:: bash
-
 ::
 
     DELELE /teams/myteam HTTP/1.1
@@ -929,8 +845,6 @@ Returns 200 in case of success.
 
 Example:
 
-.. highlight:: bash
-
 ::
 
     PUT /teams/myteam/myuser HTTP/1.1
@@ -944,8 +858,6 @@ Remove user from team
 Returns 200 in case of success.
 
 Example:
-
-.. highlight:: bash
 
 ::
 
@@ -969,8 +881,6 @@ Where:
 * `service` is a `service` name.
 
 Example:
-
-.. highlight:: bash
 
 ::
 
@@ -1001,7 +911,7 @@ Example:
 1.10 Metadata
 -------------
 
-There is an endpoint to get metadata about tsuru api:
+There is an endpoint to get metadata about tsuru API:
 
     * Method: GET
     * Endpoint: /info
@@ -1010,8 +920,6 @@ There is an endpoint to get metadata about tsuru api:
 Returns 200 in case of success, and JSON in the body of the response containing the metadata.
 
 Example:
-
-.. highlight:: bash
 
 ::
 
