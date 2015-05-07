@@ -171,7 +171,7 @@ Backward incompatible changes (action needed)
 =============================================
 
 * There are two migrations that must run before deploying applications with tsr
-  0.11.0, they concert pools and can be run with ``tsr migrate``. The way pools
+  0.11.0, they concern pools and can be run with ``tsr migrate``. The way pools
   are handled has changed. Now it's possible for a team to have access to more
   than one pool, if that's the case the pool name will have to be specified during
   application creation. `#1110 <https://github.com/tsuru/tsuru/issues/1110>`_
