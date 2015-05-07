@@ -99,6 +99,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Put", "/services/instances/{instance}/{app}", authorizationRequiredHandler(bindServiceInstance))
 	m.Add("Delete", "/services/instances/{instance}/{app}", authorizationRequiredHandler(unbindServiceInstance))
 	m.Add("Get", "/services/instances/{instance}/status", authorizationRequiredHandler(serviceInstanceStatus))
+	m.Add("Put", "/services/instances/{instance}/{team}", authorizationRequiredHandler(serviceInstanceGrantTeam))
+	m.Add("Delete", "/services/instances/{instance}/{team}", authorizationRequiredHandler(serviceInstanceRevokeTeam))
 
 	m.AddAll("/services/proxy/{instance}", authorizationRequiredHandler(serviceProxy))
 

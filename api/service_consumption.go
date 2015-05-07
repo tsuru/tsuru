@@ -251,3 +251,33 @@ func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	rec.Log(u.Email, "service-proxy-status", siName, path)
 	return service.Proxy(si, path, w, r)
 }
+
+func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
+	siName := r.URL.Query().Get(":instance")
+	si, err := getServiceInstanceOrError(siName, u)
+	if err != nil {
+		return err
+	}
+	teamName := r.URL.Query().Get(":team")
+	rec.Log(u.Email, "service-grant-team", siName, teamName)
+	return si.Grant(teamName)
+}
+
+func serviceInstanceRevokeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
+	siName := r.URL.Query().Get(":instance")
+	si, err := getServiceInstanceOrError(siName, u)
+	if err != nil {
+		return err
+	}
+	teamName := r.URL.Query().Get(":team")
+	rec.Log(u.Email, "service-revoke-team", siName, teamName)
+	return si.Revoke(teamName)
+}

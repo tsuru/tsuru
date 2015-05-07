@@ -881,3 +881,37 @@ func (s *ConsumptionSuite) TestServiceProxyError(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusBadGateway)
 	c.Assert(recorder.Body.Bytes(), check.DeepEquals, []byte("some error"))
 }
+
+func (s *ConsumptionSuite) TestGrantRevokeServiceToTeam(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("{'AA': 2}"))
+	}))
+	defer ts.Close()
+	se := service.Service{Name: "go", Endpoint: map[string]string{"production": ts.URL}}
+	err := se.Create()
+	c.Assert(err, check.IsNil)
+	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
+	si := service.ServiceInstance{Name: "si-test", ServiceName: "go", Teams: []string{s.team.Name}}
+	err = si.Create()
+	c.Assert(err, check.IsNil)
+	defer service.DeleteInstance(&si)
+	team := auth.Team{Name: "test", Users: []string{s.user.Email}}
+	s.conn.Teams().Insert(team)
+	defer s.conn.Teams().Remove(bson.M{"name": team.Name})
+	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:team=%s", si.Name, team.Name, si.Name, team.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = serviceInstanceGrantTeam(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	sinst, err := service.GetServiceInstance(si.Name, s.user)
+	c.Assert(err, check.IsNil)
+	c.Assert(sinst.Teams, check.DeepEquals, []string{s.team.Name, team.Name})
+	request, err = http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+	err = serviceInstanceRevokeTeam(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	sinst, err = service.GetServiceInstance(si.Name, s.user)
+	c.Assert(err, check.IsNil)
+	c.Assert(sinst.Teams, check.DeepEquals, []string{s.team.Name})
+}
