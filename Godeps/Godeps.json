@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/tsuru/tsuru",
-	"GoVersion": "devel +1b4025f Fri Apr 24 20:10:14 2015 +0000",
+	"GoVersion": "devel +fd392ee Fri May 8 00:34:27 2015 +0000",
 	"Packages": [
 		"./..."
 	],
@@ -9,6 +9,34 @@
 			"ImportPath": "github.com/Sirupsen/logrus",
 			"Comment": "v0.5.1-37-g6ebb4e7",
 			"Rev": "6ebb4e7b3c24b9fef150d7693e728cb1ebadf1f5"
+		},
+		{
+			"ImportPath": "github.com/awslabs/aws-sdk-go/aws",
+			"Rev": "bba8ba311b61785d4a866fe5c110737d9bf8b764"
+		},
+		{
+			"ImportPath": "github.com/awslabs/aws-sdk-go/internal/endpoints",
+			"Rev": "bba8ba311b61785d4a866fe5c110737d9bf8b764"
+		},
+		{
+			"ImportPath": "github.com/awslabs/aws-sdk-go/internal/protocol/ec2query",
+			"Rev": "bba8ba311b61785d4a866fe5c110737d9bf8b764"
+		},
+		{
+			"ImportPath": "github.com/awslabs/aws-sdk-go/internal/protocol/query/queryutil",
+			"Rev": "bba8ba311b61785d4a866fe5c110737d9bf8b764"
+		},
+		{
+			"ImportPath": "github.com/awslabs/aws-sdk-go/internal/protocol/xml/xmlutil",
+			"Rev": "bba8ba311b61785d4a866fe5c110737d9bf8b764"
+		},
+		{
+			"ImportPath": "github.com/awslabs/aws-sdk-go/internal/signer/v4",
+			"Rev": "bba8ba311b61785d4a866fe5c110737d9bf8b764"
+		},
+		{
+			"ImportPath": "github.com/awslabs/aws-sdk-go/service/ec2",
+			"Rev": "bba8ba311b61785d4a866fe5c110737d9bf8b764"
 		},
 		{
 			"ImportPath": "github.com/bradfitz/go-smtpd/smtpd",
@@ -115,6 +143,10 @@
 		{
 			"ImportPath": "github.com/tsuru/monsterqueue",
 			"Rev": "c5a9483b7caddae75bfa6cce8f1eaebe88e5b7d6"
+		},
+		{
+			"ImportPath": "github.com/vaughan0/go-ini",
+			"Rev": "a98ad7ee00ec53921f08832bc06ecf7fd600e6a1"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/bcrypt",
