@@ -689,8 +689,6 @@ func (app *App) equalToSomePlatformName() bool {
 
 // InstanceEnv returns a map of environment variables that belongs to the given
 // service instance (identified by the name only).
-//
-// TODO(fss): this method should not be exported.
 func (app *App) InstanceEnv(name string) map[string]bind.EnvVar {
 	envs := make(map[string]bind.EnvVar)
 	for k, env := range app.Env {
