@@ -7,13 +7,15 @@ package ec2
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/awslabs/aws-sdk-go/aws"
+	"github.com/awslabs/aws-sdk-go/aws/credentials"
+	"github.com/awslabs/aws-sdk-go/service/ec2"
 	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/queue"
-	"gopkg.in/amz.v2/aws"
-	"gopkg.in/amz.v2/ec2"
 )
 
 const defaultRegion = "us-east-1"
@@ -30,7 +32,7 @@ func newEC2IaaS(name string) iaas.IaaS {
 	return &EC2IaaS{base: iaas.UserDataIaaS{NamedIaaS: iaas.NamedIaaS{BaseIaaSName: "ec2", IaaSName: name}}}
 }
 
-func (i *EC2IaaS) createEC2Handler(region aws.Region) (*ec2.EC2, error) {
+func (i *EC2IaaS) createEC2Handler(regionOrEndpoint string) (*ec2.EC2, error) {
 	keyId, err := i.base.GetConfigString("key-id")
 	if err != nil {
 		return nil, err
@@ -39,8 +41,19 @@ func (i *EC2IaaS) createEC2Handler(region aws.Region) (*ec2.EC2, error) {
 	if err != nil {
 		return nil, err
 	}
-	auth := aws.Auth{AccessKey: keyId, SecretKey: secretKey}
-	return ec2.New(auth, region), nil
+	var region, endpoint string
+	if strings.HasPrefix(regionOrEndpoint, "http") {
+		endpoint = regionOrEndpoint
+		region = defaultRegion
+	} else {
+		region = regionOrEndpoint
+	}
+	config := aws.Config{
+		Credentials: credentials.NewStaticCredentials(keyId, secretKey, ""),
+		Region:      region,
+		Endpoint:    endpoint,
+	}
+	return ec2.New(&config), nil
 }
 
 func (i *EC2IaaS) waitForDnsName(ec2Inst *ec2.EC2, instance *ec2.Instance) (*ec2.Instance, error) {
@@ -56,13 +69,14 @@ func (i *EC2IaaS) waitForDnsName(ec2Inst *ec2.EC2, instance *ec2.Instance) (*ec2
 	taskName := fmt.Sprintf("ec2-wait-machine-%s", i.base.IaaSName)
 	waitDuration := time.Duration(maxWaitTime) * time.Second
 	job, err := q.EnqueueWait(taskName, monsterqueue.JobParams{
-		"region":    ec2Inst.Region.Name,
-		"machineId": instance.InstanceId,
+		"region":    ec2Inst.Config.Region,
+		"endpoint":  ec2Inst.Config.Endpoint,
+		"machineId": *instance.InstanceID,
 		"timeout":   maxWaitTime,
 	}, waitDuration)
 	if err != nil {
 		if err == monsterqueue.ErrQueueWaitTimeout {
-			return nil, fmt.Errorf("ec2: time out after %v waiting for instance %s to start", waitDuration, instance.InstanceId)
+			return nil, fmt.Errorf("ec2: time out after %v waiting for instance %s to start", waitDuration, *instance.InstanceID)
 		}
 		return nil, err
 	}
@@ -70,7 +84,7 @@ func (i *EC2IaaS) waitForDnsName(ec2Inst *ec2.EC2, instance *ec2.Instance) (*ec2
 	if err != nil {
 		return nil, err
 	}
-	instance.DNSName = result.(string)
+	instance.PublicDNSName = aws.String(result.(string))
 	return instance, nil
 }
 
@@ -95,31 +109,21 @@ Optional params:
 }
 
 func (i *EC2IaaS) DeleteMachine(m *iaas.Machine) error {
-	regionName, ok := m.CreationParams["region"]
-	if !ok {
-		return fmt.Errorf("region creation param required")
+	regionOrEndpoint := getRegionOrEndpoint(m.CreationParams, false)
+	if regionOrEndpoint == "" {
+		return fmt.Errorf("region or endpoint creation param required")
 	}
-	region, ok := aws.Regions[regionName]
-	if !ok {
-		return fmt.Errorf("region %q not found", regionName)
-	}
-	ec2Inst, err := i.createEC2Handler(region)
+	ec2Inst, err := i.createEC2Handler(regionOrEndpoint)
 	if err != nil {
 		return err
 	}
-	_, err = ec2Inst.TerminateInstances([]string{m.Id})
+	input := ec2.TerminateInstancesInput{InstanceIDs: []*string{&m.Id}}
+	_, err = ec2Inst.TerminateInstances(&input)
 	return err
 }
 
 func (i *EC2IaaS) CreateMachine(params map[string]string) (*iaas.Machine, error) {
-	if _, ok := params["region"]; !ok {
-		params["region"] = defaultRegion
-	}
-	regionName := params["region"]
-	region, ok := aws.Regions[regionName]
-	if !ok {
-		return nil, fmt.Errorf("region %q not found", regionName)
-	}
+	regionOrEndpoint := getRegionOrEndpoint(params, true)
 	imageId, ok := params["image"]
 	if !ok {
 		return nil, fmt.Errorf("image param required")
@@ -135,22 +139,20 @@ func (i *EC2IaaS) CreateMachine(params map[string]string) (*iaas.Machine, error)
 		return nil, err
 	}
 	keyName, _ := params["keyName"]
-	options := ec2.RunInstances{
-		ImageId:      imageId,
-		InstanceType: instanceType,
-		UserData:     []byte(userData),
-		MinCount:     1,
-		MaxCount:     1,
-		KeyName:      keyName,
-		EBSOptimized: ebsOptimized,
+	options := ec2.RunInstancesInput{
+		EBSOptimized: aws.Boolean(ebsOptimized),
+		ImageID:      aws.String(imageId),
+		InstanceType: aws.String(instanceType),
+		KeyName:      aws.String(keyName),
+		MinCount:     aws.Long(1),
+		MaxCount:     aws.Long(1),
+		UserData:     aws.String(userData),
 	}
 	securityGroup, ok := params["securityGroup"]
 	if ok {
-		options.SecurityGroups = []ec2.SecurityGroup{
-			{Name: securityGroup},
-		}
+		options.SecurityGroups = []*string{aws.String(securityGroup)}
 	}
-	ec2Inst, err := i.createEC2Handler(region)
+	ec2Inst, err := i.createEC2Handler(regionOrEndpoint)
 	if err != nil {
 		return nil, err
 	}
@@ -161,15 +163,26 @@ func (i *EC2IaaS) CreateMachine(params map[string]string) (*iaas.Machine, error)
 	if len(resp.Instances) == 0 {
 		return nil, fmt.Errorf("no instance created")
 	}
-	runInst := &resp.Instances[0]
+	runInst := resp.Instances[0]
 	instance, err := i.waitForDnsName(ec2Inst, runInst)
 	if err != nil {
 		return nil, err
 	}
 	machine := iaas.Machine{
-		Id:      instance.InstanceId,
-		Status:  instance.State.Name,
-		Address: instance.DNSName,
+		Id:      *instance.InstanceID,
+		Status:  *instance.State.Name,
+		Address: *instance.PublicDNSName,
 	}
 	return &machine, nil
+}
+
+func getRegionOrEndpoint(params map[string]string, useDefault bool) string {
+	regionOrEndpoint := params["endpoint"]
+	if regionOrEndpoint == "" {
+		regionOrEndpoint = params["region"]
+		if regionOrEndpoint == "" && useDefault {
+			regionOrEndpoint = defaultRegion
+		}
+	}
+	return regionOrEndpoint
 }

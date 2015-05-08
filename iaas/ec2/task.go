@@ -9,10 +9,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/awslabs/aws-sdk-go/aws"
+	"github.com/awslabs/aws-sdk-go/service/ec2"
 	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/log"
-	"gopkg.in/amz.v2/aws"
-	"gopkg.in/amz.v2/ec2"
 )
 
 type ec2WaitTask struct {
@@ -25,7 +25,10 @@ func (t *ec2WaitTask) Name() string {
 
 func (t *ec2WaitTask) Run(job monsterqueue.Job) {
 	params := job.Parameters()
-	regionName := params["region"].(string)
+	regionOrEndpoint := getRegionOrEndpoint(map[string]string{
+		"region":   params["region"].(string),
+		"endpoint": params["endpoint"].(string),
+	}, true)
 	machineId := params["machineId"].(string)
 	var timeout int
 	switch val := params["timeout"].(type) {
@@ -34,12 +37,7 @@ func (t *ec2WaitTask) Run(job monsterqueue.Job) {
 	case float64:
 		timeout = int(val)
 	}
-	region, ok := aws.Regions[regionName]
-	if !ok {
-		job.Error(fmt.Errorf("region %q not found", regionName))
-		return
-	}
-	ec2Inst, err := t.iaas.createEC2Handler(region)
+	ec2Inst, err := t.iaas.createEC2Handler(regionOrEndpoint)
 	if err != nil {
 		job.Error(err)
 		return
@@ -49,7 +47,10 @@ func (t *ec2WaitTask) Run(job monsterqueue.Job) {
 	t0 := time.Now()
 	for {
 		log.Debugf("ec2: waiting for dnsname for instance %s", machineId)
-		resp, err := ec2Inst.Instances([]string{machineId}, ec2.NewFilter())
+		input := ec2.DescribeInstancesInput{
+			InstanceIDs: []*string{aws.String(machineId)},
+		}
+		resp, err := ec2Inst.DescribeInstances(&input)
 		if err != nil {
 			job.Error(err)
 			break
@@ -58,8 +59,10 @@ func (t *ec2WaitTask) Run(job monsterqueue.Job) {
 			job.Error(err)
 			break
 		}
-		instance := &resp.Reservations[0].Instances[0]
-		dnsName = instance.DNSName
+		instance := resp.Reservations[0].Instances[0]
+		if instance.PublicDNSName != nil {
+			dnsName = *instance.PublicDNSName
+		}
 		if dnsName != "" {
 			notifiedSuccess, _ = job.Success(dnsName)
 			break
@@ -71,6 +74,9 @@ func (t *ec2WaitTask) Run(job monsterqueue.Job) {
 		time.Sleep(500 * time.Millisecond)
 	}
 	if !notifiedSuccess {
-		ec2Inst.TerminateInstances([]string{machineId})
+		input := ec2.TerminateInstancesInput{
+			InstanceIDs: []*string{aws.String(machineId)},
+		}
+		ec2Inst.TerminateInstances(&input)
 	}
 }
