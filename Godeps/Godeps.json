@@ -1,15 +1,10 @@
 {
 	"ImportPath": "github.com/tsuru/tsuru",
-	"GoVersion": "devel +fd392ee Fri May 8 00:34:27 2015 +0000",
+	"GoVersion": "devel +2d9a50b Fri May 8 19:10:10 2015 +0000",
 	"Packages": [
 		"./..."
 	],
 	"Deps": [
-		{
-			"ImportPath": "github.com/Sirupsen/logrus",
-			"Comment": "v0.5.1-37-g6ebb4e7",
-			"Rev": "6ebb4e7b3c24b9fef150d7693e728cb1ebadf1f5"
-		},
 		{
 			"ImportPath": "github.com/awslabs/aws-sdk-go/aws",
 			"Rev": "bba8ba311b61785d4a866fe5c110737d9bf8b764"
@@ -48,43 +43,8 @@
 			"Rev": "a13766a8c2572caeb14341b7de158aff2fd00fa9"
 		},
 		{
-			"ImportPath": "github.com/docker/docker/pkg/archive",
-			"Comment": "v1.3.0-221-g29ebb53",
-			"Rev": "3c77e7d63446f0e0b133010fb3731af5556628bb"
-		},
-		{
-			"ImportPath": "github.com/docker/docker/pkg/fileutils",
-			"Comment": "v1.3.0-221-g29ebb53",
-			"Rev": "3c77e7d63446f0e0b133010fb3731af5556628bb"
-		},
-		{
-			"ImportPath": "github.com/docker/docker/pkg/ioutils",
-			"Comment": "v1.3.0-221-g29ebb53",
-			"Rev": "3c77e7d63446f0e0b133010fb3731af5556628bb"
-		},
-		{
-			"ImportPath": "github.com/docker/docker/pkg/pools",
-			"Comment": "v1.3.0-221-g29ebb53",
-			"Rev": "3c77e7d63446f0e0b133010fb3731af5556628bb"
-		},
-		{
-			"ImportPath": "github.com/docker/docker/pkg/promise",
-			"Comment": "v1.3.0-221-g29ebb53",
-			"Rev": "3c77e7d63446f0e0b133010fb3731af5556628bb"
-		},
-		{
-			"ImportPath": "github.com/docker/docker/pkg/system",
-			"Comment": "v1.3.0-221-g29ebb53",
-			"Rev": "3c77e7d63446f0e0b133010fb3731af5556628bb"
-		},
-		{
-			"ImportPath": "github.com/docker/docker/vendor/src/code.google.com/p/go/src/pkg/archive/tar",
-			"Comment": "v1.3.0-221-g29ebb53",
-			"Rev": "3c77e7d63446f0e0b133010fb3731af5556628bb"
-		},
-		{
 			"ImportPath": "github.com/fsouza/go-dockerclient",
-			"Rev": "1e60afa8d58b91a0eca0a732927c8ecba696493f"
+			"Rev": "5a69d99dc63c471fb6f2a7598b8bed8154f5c214"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
