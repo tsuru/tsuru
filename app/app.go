@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	"gopkg.in/yaml.v1"
 )
 
 var Provisioner provision.Provisioner
@@ -82,6 +83,7 @@ type App struct {
 	Lock           AppLock
 	Plan           Plan
 	Pool           string
+	Processes      map[string]string
 
 	quota.Quota
 }
@@ -109,6 +111,24 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["plan"] = app.Plan
 	result["lock"] = app.Lock
 	return json.Marshal(&result)
+}
+
+// UpdateProcesses update the application set of processes from the content of
+// a Procfile.
+func (app *App) UpdateProcesses(procfile []byte) error {
+	err := yaml.Unmarshal(procfile, &app.Processes)
+	if err != nil {
+		return &ProcfileError{yamlErr: err}
+	}
+	if len(app.Processes) < 1 {
+		return &ProcfileError{yamlErr: stderr.New("no processes detected in the file")}
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"processes": app.Processes}})
 }
 
 // Applog represents a log entry.
@@ -1282,4 +1302,12 @@ func (app *App) GetRouter() (string, error) {
 func (app *App) Shell(opts provision.ShellOptions) error {
 	opts.App = app
 	return Provisioner.Shell(opts)
+}
+
+type ProcfileError struct {
+	yamlErr error
+}
+
+func (e *ProcfileError) Error() string {
+	return fmt.Sprintf("error parsing Procfile: %s", e.yamlErr)
 }
