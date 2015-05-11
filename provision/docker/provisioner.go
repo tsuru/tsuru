@@ -524,6 +524,7 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 	w := args.writer
 	units := args.unitsToAdd
 	imageId := args.imageId
+	oldContainers := args.toRemove
 	var destinationHost []string
 	if args.toHost != "" {
 		destinationHost = []string{args.toHost}
@@ -531,54 +532,36 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 	if w == nil {
 		w = ioutil.Discard
 	}
-	wg := sync.WaitGroup{}
-	createdContainers := make(chan *container, units)
-	errors := make(chan error, units)
 	var plural string
 	if units > 1 {
 		plural = "s"
 	}
 	fmt.Fprintf(w, "\n---- Starting %d new unit%s ----\n", units, plural)
-	workers, _ := config.GetInt("docker:max-workers")
-	if workers == 0 {
-		workers = units
+	if len(oldContainers) == 0 {
+		oldContainers = make([]container, units)
 	}
-	step := units/workers + 1
-	for i := 0; i < units; i += step {
-		wg.Add(1)
-		last := i + step
-		if last > units {
-			last = units
+	rollbackCallback := func(c *container) {
+		log.Errorf("Removing container %q due failed add units.", c.ID)
+		errRem := args.provisioner.removeContainer(c, a)
+		if errRem != nil {
+			log.Errorf("Unable to destroy container %q: %s", c.ID, errRem)
 		}
-		go func(amount int) {
-			defer wg.Done()
-			for i := 0; i < amount; i++ {
-				c, err := args.provisioner.start(a, imageId, w, destinationHost...)
-				if err != nil {
-					errors <- err
-					return
-				}
-				createdContainers <- c
-				fmt.Fprintf(w, " ---> Started unit %s...\n", c.shortID())
-			}
-		}(last - i)
 	}
-	wg.Wait()
-	close(errors)
-	close(createdContainers)
-	if err := <-errors; err != nil {
-		for c := range createdContainers {
-			log.Errorf("Removing container %q due failed add units: %s", c.ID, err)
-			errRem := args.provisioner.removeContainer(c, a)
-			if errRem != nil {
-				log.Errorf("Unable to destroy container %q: %s - %s", c.ID, err, errRem)
-			}
+	var createdContainers []*container
+	err := runInContainers(oldContainers, func(c *container, _ chan *container) error {
+		c, err := args.provisioner.start(c, a, imageId, w, destinationHost...)
+		if err != nil {
+			return err
 		}
+		createdContainers = append(createdContainers, c)
+		return nil
+	}, rollbackCallback, true)
+	if err != nil {
 		return nil, err
 	}
 	result := make([]container, units)
 	i := 0
-	for c := range createdContainers {
+	for _, c := range createdContainers {
 		result[i] = *c
 		i++
 	}

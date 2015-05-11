@@ -293,17 +293,27 @@ func (p *dockerProvisioner) deployPipeline(app provision.App, imageId string, co
 	return buildingImage, nil
 }
 
-func (p *dockerProvisioner) start(app provision.App, imageId string, w io.Writer, destinationHosts ...string) (*container, error) {
+func (p *dockerProvisioner) start(oldContainer *container, app provision.App, imageId string, w io.Writer, destinationHosts ...string) (*container, error) {
 	commands, err := runWithAgentCmds(app)
 	if err != nil {
 		return nil, err
 	}
-	actions := []*action.Action{
-		&insertEmptyContainerInDB,
-		&createContainer,
-		&startContainer,
-		&updateContainerInDB,
-		&setNetworkInfo,
+	var actions []*action.Action
+	if oldContainer != nil && oldContainer.Status == provision.StatusStopped.String() {
+		actions = []*action.Action{
+			&insertEmptyContainerInDB,
+			&createContainer,
+			&updateContainerInDB,
+			&setNetworkInfo,
+		}
+	} else {
+		actions = []*action.Action{
+			&insertEmptyContainerInDB,
+			&createContainer,
+			&startContainer,
+			&updateContainerInDB,
+			&setNetworkInfo,
+		}
 	}
 	pipeline := action.NewPipeline(actions...)
 	args := runContainerActionsArgs{

@@ -752,7 +752,7 @@ func (s *S) TestStart(c *check.C) {
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
-	cont, err := s.p.start(app, imageId, &buf)
+	cont, err := s.p.start(nil, app, imageId, &buf)
 	c.Assert(err, check.IsNil)
 	defer cont.remove(s.p)
 	c.Assert(cont.ID, check.Not(check.Equals), "")
