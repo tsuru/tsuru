@@ -202,6 +202,30 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
+func updateProcesses(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	defer r.Body.Close()
+	procfile, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	appName := r.URL.Query().Get(":app")
+	a, err := app.GetByName(appName)
+	if err != nil {
+		return err
+	}
+	err = a.UpdateProcesses(procfile)
+	if err != nil {
+		if e, ok := err.(*app.ProcfileError); ok {
+			return &errors.HTTP{
+				Code:    http.StatusBadRequest,
+				Message: e.Error(),
+			}
+		}
+		return err
+	}
+	return nil
+}
+
 func setTeamOwner(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if r.Body == nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "You must provide a team name."}

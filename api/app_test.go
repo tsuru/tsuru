@@ -3173,6 +3173,67 @@ func (s *S) TestRegisterUnitWithCustomData(c *check.C) {
 	})
 }
 
+func (s *S) TestUpdateProcesses(c *check.C) {
+	a := app.App{Name: "remember", Platform: "zend", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	defer s.deleteApp(&a)
+	locked, err := app.AcquireApplicationLock(a.Name, "test", "test")
+	c.Assert(err, check.IsNil)
+	c.Assert(locked, check.Equals, true)
+	body := strings.NewReader(`web: gunicorn 0.0.0.0:$PORT
+worker1: python run_my_worker.py -n 100
+worker2: 20`)
+	request, err := http.NewRequest("PUT", "/apps/remember/procfile", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "plain/text")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	app, err := app.GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	expected := map[string]string{
+		"web":     "gunicorn 0.0.0.0:$PORT",
+		"worker1": "python run_my_worker.py -n 100",
+		"worker2": "20",
+	}
+	c.Assert(app.Processes, check.DeepEquals, expected)
+}
+
+func (s *S) TestUpdateProcessesAppNotFound(c *check.C) {
+	body := strings.NewReader("")
+	request, err := http.NewRequest("PUT", "/apps/remember/procfile", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "plain/text")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+}
+
+func (s *S) TestUpdateProcessesInvalidProcfile(c *check.C) {
+	a := app.App{Name: "remember", Platform: "zend", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	defer s.deleteApp(&a)
+	locked, err := app.AcquireApplicationLock(a.Name, "test", "test")
+	c.Assert(err, check.IsNil)
+	c.Assert(locked, check.Equals, true)
+	body := strings.NewReader("")
+	request, err := http.NewRequest("PUT", "/apps/remember/procfile", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "plain/text")
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "error parsing Procfile: no processes detected in the file\n")
+}
+
 func (s *S) TestSetTeamOwnerWithoutTeam(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
