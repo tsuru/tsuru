@@ -92,11 +92,12 @@ const (
 // Unit represents a provision unit. Can be a machine, container or anything
 // IP-addressable.
 type Unit struct {
-	Name    string
-	AppName string
-	Type    string
-	Ip      string
-	Status  Status
+	Name        string
+	AppName     string
+	ProcessName string
+	Type        string
+	Ip          string
+	Status      Status
 }
 
 // GetName returns the name of the unit.
