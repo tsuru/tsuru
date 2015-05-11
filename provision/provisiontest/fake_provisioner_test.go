@@ -284,8 +284,8 @@ func (s *S) TestGetCmds(c *check.C) {
 
 func (s *S) TestGetUnits(c *check.C) {
 	list := []provision.Unit{
-		{"chain-lighting-0", "chain-lighting", "django", "10.10.10.10", provision.StatusStarted},
-		{"chain-lighting-1", "chain-lighting", "django", "10.10.10.15", provision.StatusStarted},
+		{"chain-lighting-0", "chain-lighting", "web", "django", "10.10.10.10", provision.StatusStarted},
+		{"chain-lighting-1", "chain-lighting", "web", "django", "10.10.10.15", provision.StatusStarted},
 	}
 	app := NewFakeApp("chain-lighting", "rush", 1)
 	p := NewFakeProvisioner()

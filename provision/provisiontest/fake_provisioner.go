@@ -40,6 +40,7 @@ type FakeApp struct {
 	bindCalls      []*provision.Unit
 	bindLock       sync.Mutex
 	instances      map[string][]bind.ServiceInstance
+	Processes      map[string]string
 	Pool           string
 	UpdatePlatform bool
 	TeamOwner      string
@@ -62,6 +63,10 @@ func NewFakeApp(name, platform string, units int) *FakeApp {
 		}
 	}
 	return &app
+}
+
+func (a *FakeApp) GetProcesses() map[string]string {
+	return a.Processes
 }
 
 func (a *FakeApp) GetMemory() int64 {

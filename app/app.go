@@ -113,6 +113,10 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&result)
 }
 
+func (app *App) GetProcesses() map[string]string {
+	return app.Processes
+}
+
 // UpdateProcesses update the application set of processes from the content of
 // a Procfile.
 func (app *App) UpdateProcesses(procfile []byte) error {

@@ -167,6 +167,8 @@ type App interface {
 	GetTeamOwner() string
 
 	GetTeamsName() []string
+
+	GetProcesses() map[string]string
 }
 
 // CNameManager represents a provisioner that supports cname on applications.

@@ -1957,6 +1957,17 @@ func (s *S) TestAppMarshalJSONWithoutRepository(c *check.C) {
 	c.Assert(result, check.DeepEquals, expected)
 }
 
+func (s *S) TestGetProcesses(c *check.C) {
+	app := App{
+		Name: "myapp",
+		Processes: map[string]string{
+			"web":     "./start-server",
+			"worker1": "python do.py",
+		},
+	}
+	c.Assert(app.GetProcesses(), check.DeepEquals, app.Processes)
+}
+
 func (s *S) TestUpdateProcesses(c *check.C) {
 	input := []byte(`web: gunicorn -b 0.0.0.0:$PORT
 worker1: python run_celery.py
