@@ -354,9 +354,7 @@ func RunServer(dry bool) http.Handler {
 			err = srv.ListenAndServe()
 		}
 		if err != nil {
-			if opError, ok := err.(*net.OpError); !ok || opError.Op != "accept" {
-				fmt.Printf("Listening stopped: %s\n", err)
-			}
+			fmt.Printf("Listening stopped: %s\n", err)
 		}
 		<-shutdownChan
 	}
