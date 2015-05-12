@@ -12,7 +12,7 @@ discover why and guide you to fix the problem.
 Check your application logs
 ===========================
 
-tsuru aggregates stdout and stderr from every application process making easier
+tsuru aggregates stdout and stderr from every application process making it easier
 to troubleshoot problems.
 
 To know more how the tsuru log works see the :doc:`log documentation

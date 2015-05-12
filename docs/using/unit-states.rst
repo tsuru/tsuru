@@ -5,7 +5,7 @@
 Unit states
 ===========
 
-Unit status a the way to know what is happening with an unit. You can use the
+The unit status is the way to know what is happening with a unit. You can use the
 `tsuru app-info -a <appname>` to see the unit status:
 
 .. highlight:: bash
@@ -51,7 +51,7 @@ The unit state flow is:
                                +-------+ <---------------------+
 
 * `created`: is the initial status of an unit.
-* `building`: is the status for units being provisioned by the provisioner, like in the deployment.
+* `building`: is the status for units being provisioned by the provisioner, like during deployment.
 * `error`: is the status for units that failed to start, because of an application error.
 * `starting`: is set when the container is started in docker.
 * `started`: is for cases where the unit is up and running.

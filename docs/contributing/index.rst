@@ -36,7 +36,7 @@ You can use `make` to install all tsuru dependencies and run tests. It will also
 
     $ make
 
-Please ensure that MongoDB and Redis are started before running the test suite. If you see some tests failures with messages like "dial tcp 127.0.0.1:6379: connection refused" and "no reachable server", the most likely reason is that these services are not running.
+Please ensure that MongoDB and Redis are started before running the test suite. If you see some test failures with messages like "dial tcp 127.0.0.1:6379: connection refused" and "no reachable server", the most likely reason is that these services are not running.
 
 If you just want to run the tests you can use `make test`.
 
@@ -51,12 +51,12 @@ Writing docs
 
 tsuru documentation is written using `Sphinx <http://sphinx.pocoo.org/>`_,
 which uses `RST <http://docutils.sourceforge.net/rst.html>`_.
-Check these tools docs to learn how to write docs for tsuru.
+Check out these tools documentation to learn how to write and update the documentation for tsuru.
 
 Building docs
 =============
 
-In order to build the HTML docs, just run on terminal:
+In order to build the HTML docs, just run in a terminal window:
 
 .. highlight:: bash
 

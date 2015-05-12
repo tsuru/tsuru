@@ -27,7 +27,7 @@ In order to create a pool, you should invoke `tsuru-admin pool-add`:
 Adding teams to a pool
 ----------------------
 
-Then you can youse `tsuru-admin pool-teams-add` to add teams to the pool that
+Then you can use `tsuru-admin pool-teams-add` to add teams to the pool that
 you've just created:
 
 .. highlight:: bash
@@ -58,7 +58,7 @@ To list pools you do:
 Removing a pool
 ---------------
 
-If you wanna remove a pool, use `tsuru-admin pool-remove`:
+If you want to remove a pool, use `tsuru-admin pool-remove`:
 
 .. highlight:: bash
 
