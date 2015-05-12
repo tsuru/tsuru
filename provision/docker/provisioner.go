@@ -547,13 +547,18 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 			log.Errorf("Unable to destroy container %q: %s", c.ID, errRem)
 		}
 	}
-	var createdContainers []*container
+	var (
+		createdContainers []*container
+		m                 sync.Mutex
+	)
 	err := runInContainers(oldContainers, func(c *container, _ chan *container) error {
 		c, err := args.provisioner.start(c, a, imageId, w, destinationHost...)
 		if err != nil {
 			return err
 		}
+		m.Lock()
 		createdContainers = append(createdContainers, c)
+		m.Unlock()
 		return nil
 	}, rollbackCallback, true)
 	if err != nil {
