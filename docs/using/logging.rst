@@ -6,7 +6,7 @@
 Logging
 +++++++
 
-tsuru aggregates stdout and stderr from every application process making easier
+tsuru aggregates stdout and stderr from every application process making it easier
 to troubleshoot problems. To use the log make sure that your application is
 sending the log to stdout and stderr.
 

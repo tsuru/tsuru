@@ -199,7 +199,7 @@ Running the application
 =======================
 
 tsuru will compile and run the application automatically, but it's possible to
-customize how tsuru compiles and run the application. For more details, check
+customize how tsuru compiles and runs the application. For more details, check
 the README of the Go platform:
 https://github.com/tsuru/basebuilder/blob/master/go/README.md.
 

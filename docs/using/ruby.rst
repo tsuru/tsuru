@@ -553,6 +553,6 @@ Now we can access your `blog app` in the URL returned in `app-info`.
 Going further
 =============
 
-For more information, you can dig into `tsuru docs <http://docs.tsuru.io>`_, or
-read `complete instructions of use for the tsuru command
+For more information, you can dig into the `tsuru docs <http://docs.tsuru.io>`_, or
+read the `complete instructions on how to use the tsuru command
 <https://tsuru-client.readthedocs.org>`_.
