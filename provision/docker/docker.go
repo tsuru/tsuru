@@ -90,6 +90,7 @@ func (p *dockerProvisioner) hostToNodeAddress(host string) (string, error) {
 type container struct {
 	ID                      string
 	AppName                 string
+	ProcessName             string
 	Type                    string
 	IP                      string
 	HostAddr                string
