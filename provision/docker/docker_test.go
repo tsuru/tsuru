@@ -762,6 +762,28 @@ func (s *S) TestStart(c *check.C) {
 	c.Assert(cont2.Status, check.Equals, provision.StatusStarting.String())
 }
 
+func (s *S) TestStartStoppedContainer(c *check.C) {
+	cont, err := s.newContainer(nil, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(cont)
+	cont.Status = provision.StatusStopped.String()
+	err = s.newFakeImage(s.p, "tsuru/python:latest")
+	c.Assert(err, check.IsNil)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	imageId := s.p.getBuildImage(app)
+	routertest.FakeRouter.AddBackend(app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(app.GetName())
+	var buf bytes.Buffer
+	cont, err = s.p.start(cont, app, imageId, &buf)
+	c.Assert(err, check.IsNil)
+	defer cont.remove(s.p)
+	c.Assert(cont.ID, check.Not(check.Equals), "")
+	cont2, err := s.p.getContainer(cont.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(cont2.Image, check.Equals, imageId)
+	c.Assert(cont2.Status, check.Equals, provision.StatusStopped.String())
+}
+
 func (s *S) TestContainerStop(c *check.C) {
 	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)

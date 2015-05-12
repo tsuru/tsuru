@@ -303,6 +303,7 @@ func (p *dockerProvisioner) start(oldContainer *container, app provision.App, im
 		actions = []*action.Action{
 			&insertEmptyContainerInDB,
 			&createContainer,
+			&stopContainer,
 			&updateContainerInDB,
 			&setNetworkInfo,
 		}

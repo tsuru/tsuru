@@ -164,6 +164,19 @@ var createContainer = action.Action{
 	},
 }
 
+var stopContainer = action.Action{
+	Name: "stop-container",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		cont := ctx.Previous.(container)
+		cont.Status = provision.StatusStopped.String()
+		return cont, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		c := ctx.FWResult.(container)
+		c.Status = provision.StatusCreated.String()
+	},
+}
+
 var setNetworkInfo = action.Action{
 	Name: "set-network-info",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
@@ -242,9 +255,11 @@ var bindAndHealthcheck = action.Action{
 				return err
 			}
 			toRollback <- c
-			err = runHealthcheck(c, writer)
-			if err != nil {
-				return err
+			if c.Status != provision.StatusStopped.String() && c.Status != provision.StatusError.String() {
+				err = runHealthcheck(c, writer)
+				if err != nil {
+					return err
+				}
 			}
 			err = args.provisioner.runRestartAfterHooks(c, writer)
 			if err != nil {
