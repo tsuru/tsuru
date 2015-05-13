@@ -53,6 +53,7 @@ func NewFakeApp(name, platform string, units int) *FakeApp {
 		platform:  platform,
 		units:     make([]provision.Unit, units),
 		instances: make(map[string][]bind.ServiceInstance),
+		Processes: map[string]string{"web": fmt.Sprintf("%s %s.sh", platform, name)},
 	}
 	namefmt := "%s-%d"
 	for i := 0; i < units; i++ {
