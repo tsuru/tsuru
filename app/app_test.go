@@ -1957,58 +1957,6 @@ func (s *S) TestAppMarshalJSONWithoutRepository(c *check.C) {
 	c.Assert(result, check.DeepEquals, expected)
 }
 
-func (s *S) TestGetProcesses(c *check.C) {
-	app := App{
-		Name: "myapp",
-		Processes: map[string]string{
-			"web":     "./start-server",
-			"worker1": "python do.py",
-		},
-	}
-	c.Assert(app.GetProcesses(), check.DeepEquals, app.Processes)
-}
-
-func (s *S) TestUpdateProcesses(c *check.C) {
-	input := []byte(`web: gunicorn -b 0.0.0.0:$PORT
-worker1: python run_celery.py
-worker2: ./collect_data
-number: 10`)
-	expected := map[string]string{
-		"web":     "gunicorn -b 0.0.0.0:$PORT",
-		"worker1": "python run_celery.py",
-		"worker2": "./collect_data",
-		"number":  "10",
-	}
-	app := App{Name: "myapp"}
-	err := s.conn.Apps().Insert(app)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	err = app.UpdateProcesses(input)
-	c.Assert(err, check.IsNil)
-	a, err := GetByName(app.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(a.Processes, check.DeepEquals, expected)
-}
-
-func (s *S) TestUpdateProcessesInvalidProcfile(c *check.C) {
-	input := []byte(`wat: woot: wow:`)
-	app := App{Name: "myapp"}
-	err := app.UpdateProcesses(input)
-	c.Assert(err, check.NotNil)
-	_, ok := err.(*ProcfileError)
-	c.Assert(ok, check.Equals, true)
-}
-
-func (s *S) TestUpdateProcessesEmptyProcfile(c *check.C) {
-	input := []byte(``)
-	app := App{Name: "myapp"}
-	err := app.UpdateProcesses(input)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*ProcfileError)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.yamlErr.Error(), check.Equals, "no processes detected in the file")
-}
-
 func (s *S) TestRun(c *check.C) {
 	s.provisioner.PrepareOutput([]byte("a lot of files"))
 	app := App{Name: "myapp"}
