@@ -40,7 +40,6 @@ type FakeApp struct {
 	bindCalls      []*provision.Unit
 	bindLock       sync.Mutex
 	instances      map[string][]bind.ServiceInstance
-	Processes      map[string]string
 	Pool           string
 	UpdatePlatform bool
 	TeamOwner      string
@@ -53,7 +52,6 @@ func NewFakeApp(name, platform string, units int) *FakeApp {
 		platform:  platform,
 		units:     make([]provision.Unit, units),
 		instances: make(map[string][]bind.ServiceInstance),
-		Processes: map[string]string{"web": fmt.Sprintf("%s %s.sh", platform, name)},
 	}
 	namefmt := "%s-%d"
 	for i := 0; i < units; i++ {
@@ -64,10 +62,6 @@ func NewFakeApp(name, platform string, units int) *FakeApp {
 		}
 	}
 	return &app
-}
-
-func (a *FakeApp) GetProcesses() map[string]string {
-	return a.Processes
 }
 
 func (a *FakeApp) GetMemory() int64 {
