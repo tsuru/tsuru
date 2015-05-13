@@ -247,6 +247,13 @@ var bindAndHealthcheck = action.Action{
 		if writer == nil {
 			writer = ioutil.Discard
 		}
+		doHealthcheck := true
+		for _, c := range args.toRemove {
+			if c.Status == provision.StatusError.String() || c.Status != provision.StatusStopped.String() {
+				doHealthcheck = false
+				break
+			}
+		}
 		fmt.Fprintf(writer, "\n---- Binding and checking %d new units ----\n", len(newContainers))
 		return newContainers, runInContainers(newContainers, func(c *container, toRollback chan *container) error {
 			unit := c.asUnit(args.app)
@@ -255,7 +262,7 @@ var bindAndHealthcheck = action.Action{
 				return err
 			}
 			toRollback <- c
-			if c.Status != provision.StatusStopped.String() && c.Status != provision.StatusError.String() {
+			if doHealthcheck {
 				err = runHealthcheck(c, writer)
 				if err != nil {
 					return err
