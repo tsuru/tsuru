@@ -643,6 +643,124 @@ func (s *S) TestBindAndHealthcheckForward(c *check.C) {
 	c.Assert(fakeApp.HasBind(&u2), check.Equals, true)
 }
 
+func (s *S) TestBindAndHealthcheckDontHealtcheckForErroredApps(c *check.C) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	dbApp := &app.App{Name: "myapp"}
+	err = conn.Apps().Insert(dbApp)
+	c.Assert(err, check.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": dbApp.Name})
+	imageName := "tsuru/app-" + dbApp.Name
+	err = s.newFakeImage(s.p, imageName)
+	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"healthcheck": map[string]interface{}{
+			"path":   "/x/y",
+			"status": http.StatusOK,
+		},
+	}
+	err = saveImageCustomData(imageName, customData)
+	c.Assert(err, check.IsNil)
+	fakeApp := provisiontest.NewFakeApp(dbApp.Name, "python", 0)
+	s.p.Provision(fakeApp)
+	defer s.p.Destroy(fakeApp)
+	buf := safe.NewBuffer(nil)
+	contOpts := newContainerOpts{
+		Status: "error",
+	}
+	oldContainer, err := s.newContainer(&contOpts, nil)
+	c.Assert(err, check.IsNil)
+	args := changeUnitsPipelineArgs{
+		app:         fakeApp,
+		provisioner: s.p,
+		writer:      buf,
+		unitsToAdd:  2,
+		imageId:     "tsuru/app-" + dbApp.Name,
+		toRemove:    []container{*oldContainer},
+	}
+	containers, err := addContainersWithHost(&args)
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 2)
+	url, _ := url.Parse(server.URL)
+	host, port, _ := net.SplitHostPort(url.Host)
+	containers[0].HostAddr = host
+	containers[0].HostPort = port
+	containers[1].HostAddr = host
+	containers[1].HostPort = port
+	context := action.FWContext{Params: []interface{}{args}, Previous: containers}
+	result, err := bindAndHealthcheck.Forward(context)
+	c.Assert(err, check.IsNil)
+	resultContainers := result.([]container)
+	c.Assert(resultContainers, check.DeepEquals, containers)
+	u1 := containers[0].asUnit(fakeApp)
+	u2 := containers[1].asUnit(fakeApp)
+	c.Assert(fakeApp.HasBind(&u1), check.Equals, true)
+	c.Assert(fakeApp.HasBind(&u2), check.Equals, true)
+}
+
+func (s *S) TestBindAndHealthcheckDontHealtcheckForStoppedApps(c *check.C) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	dbApp := &app.App{Name: "myapp"}
+	err = conn.Apps().Insert(dbApp)
+	c.Assert(err, check.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": dbApp.Name})
+	imageName := "tsuru/app-" + dbApp.Name
+	err = s.newFakeImage(s.p, imageName)
+	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"healthcheck": map[string]interface{}{
+			"path":   "/x/y",
+			"status": http.StatusOK,
+		},
+	}
+	err = saveImageCustomData(imageName, customData)
+	c.Assert(err, check.IsNil)
+	fakeApp := provisiontest.NewFakeApp(dbApp.Name, "python", 0)
+	s.p.Provision(fakeApp)
+	defer s.p.Destroy(fakeApp)
+	buf := safe.NewBuffer(nil)
+	contOpts := newContainerOpts{
+		Status: "stopped",
+	}
+	oldContainer, err := s.newContainer(&contOpts, nil)
+	c.Assert(err, check.IsNil)
+	args := changeUnitsPipelineArgs{
+		app:         fakeApp,
+		provisioner: s.p,
+		writer:      buf,
+		unitsToAdd:  2,
+		imageId:     "tsuru/app-" + dbApp.Name,
+		toRemove:    []container{*oldContainer},
+	}
+	containers, err := addContainersWithHost(&args)
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 2)
+	url, _ := url.Parse(server.URL)
+	host, port, _ := net.SplitHostPort(url.Host)
+	containers[0].HostAddr = host
+	containers[0].HostPort = port
+	containers[1].HostAddr = host
+	containers[1].HostPort = port
+	context := action.FWContext{Params: []interface{}{args}, Previous: containers}
+	result, err := bindAndHealthcheck.Forward(context)
+	c.Assert(err, check.IsNil)
+	resultContainers := result.([]container)
+	c.Assert(resultContainers, check.DeepEquals, containers)
+	u1 := containers[0].asUnit(fakeApp)
+	u2 := containers[1].asUnit(fakeApp)
+	c.Assert(fakeApp.HasBind(&u1), check.Equals, true)
+	c.Assert(fakeApp.HasBind(&u2), check.Equals, true)
+}
+
 func (s *S) TestBindAndHealthcheckForwardHealthcheckError(c *check.C) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)

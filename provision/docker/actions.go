@@ -249,7 +249,7 @@ var bindAndHealthcheck = action.Action{
 		}
 		doHealthcheck := true
 		for _, c := range args.toRemove {
-			if c.Status == provision.StatusError.String() || c.Status != provision.StatusStopped.String() {
+			if c.Status == provision.StatusError.String() || c.Status == provision.StatusStopped.String() {
 				doHealthcheck = false
 				break
 			}
