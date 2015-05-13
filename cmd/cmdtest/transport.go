@@ -7,6 +7,7 @@ package cmdtest
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 )
@@ -18,8 +19,15 @@ type Transport struct {
 }
 
 func (t *Transport) RoundTrip(req *http.Request) (resp *http.Response, err error) {
+	var statusText string
+	if text := http.StatusText(t.Status); text != "" {
+		statusText = fmt.Sprintf("%d %s", t.Status, text)
+	} else {
+		statusText = fmt.Sprintf("%d status code %d", t.Status, t.Status)
+	}
 	resp = &http.Response{
 		Body:       ioutil.NopCloser(bytes.NewBufferString(t.Message)),
+		Status:     statusText,
 		StatusCode: t.Status,
 		Header:     http.Header(t.Headers),
 	}

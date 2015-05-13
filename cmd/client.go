@@ -105,12 +105,17 @@ and download the last version.
 		return response, errUnauthorized
 	}
 	if response.StatusCode > 399 {
-		defer response.Body.Close()
-		result, _ := ioutil.ReadAll(response.Body)
 		err := &errors.HTTP{
 			Code:    response.StatusCode,
-			Message: string(result),
+			Message: response.Status,
 		}
+
+		defer response.Body.Close()
+		body, _ := ioutil.ReadAll(response.Body)
+		if len(body) > 0 {
+			err.Message = string(body)
+		}
+
 		return response, err
 	}
 	return response, nil
