@@ -549,7 +549,10 @@ func (p *dockerProvisioner) runRestartAfterHooks(cont *container, w io.Writer) e
 func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 	a := args.app
 	w := args.writer
-	units := len(args.toAdd)
+	var units int
+	for _, v := range args.toAdd {
+		units += v
+	}
 	imageId := args.imageId
 	var destinationHost []string
 	if args.toHost != "" {
