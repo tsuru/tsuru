@@ -294,10 +294,12 @@ func (p *dockerProvisioner) deployPipeline(app provision.App, imageId string, co
 }
 
 func (p *dockerProvisioner) start(oldContainer *container, app provision.App, imageId string, w io.Writer, destinationHosts ...string) (*container, error) {
-	commands, err := runWithAgentCmds(app)
+	processName := oldContainer.ProcessName
+	data, err := getImageCustomData(imageId)
 	if err != nil {
 		return nil, err
 	}
+	commands := []string{"/bin/bash", "-lc", "[ -d /home/application/current ] && cd /home/application/current; exec " + data.Processes[processName]}
 	var actions []*action.Action
 	if oldContainer != nil && oldContainer.Status == provision.StatusStopped.String() {
 		actions = []*action.Action{
@@ -319,6 +321,7 @@ func (p *dockerProvisioner) start(oldContainer *container, app provision.App, im
 	pipeline := action.NewPipeline(actions...)
 	args := runContainerActionsArgs{
 		app:              app,
+		processName:      processName,
 		imageID:          imageId,
 		commands:         commands,
 		destinationHosts: destinationHosts,

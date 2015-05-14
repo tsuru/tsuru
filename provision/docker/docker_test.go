@@ -31,6 +31,7 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -64,9 +65,8 @@ func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*contain
 			p = opts.Provisioner
 		}
 	}
-	err := s.newFakeImage(p, image)
+	err := s.newFakeImage(p, image, nil)
 	if err != nil {
-		println("error new fake: " + err.Error())
 		return nil, err
 	}
 	if container.AppName == "" {
@@ -88,7 +88,6 @@ func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*contain
 	}
 	_, c, err := p.getCluster().CreateContainer(docker.CreateContainerOptions{Config: &config})
 	if err != nil {
-		println("error create container: " + err.Error())
 		return nil, err
 	}
 	container.ID = c.ID
@@ -106,7 +105,7 @@ func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*contain
 	if err != nil {
 		return nil, err
 	}
-	err = s.newFakeImage(p, imageId)
+	err = s.newFakeImage(p, imageId, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -118,11 +117,19 @@ func (s *S) removeTestContainer(c *container) error {
 	return c.remove(s.p)
 }
 
-func (s *S) newFakeImage(p *dockerProvisioner, repo string) error {
+func (s *S) newFakeImage(p *dockerProvisioner, repo string, customData map[string]interface{}) error {
+	if customData == nil {
+		customData = map[string]interface{}{
+			"procfile": "web: python myapp.py",
+		}
+	}
 	var buf safe.Buffer
 	opts := docker.PullImageOptions{Repository: repo, OutputStream: &buf}
-	err := p.getCluster().PullImage(opts, docker.AuthConfiguration{})
-	return err
+	err := saveImageCustomData(repo, customData)
+	if err != nil && !mgo.IsDup(err) {
+		return err
+	}
+	return p.getCluster().PullImage(opts, docker.AuthConfiguration{})
 }
 
 func (s *S) TestContainerGetAddress(c *check.C) {
@@ -252,7 +259,7 @@ func (s *S) TestContainerCreateUndefinedUser(c *check.C) {
 	oldUser, _ := config.Get("docker:user")
 	defer config.Set("docker:user", oldUser)
 	config.Unset("docker:user")
-	err := s.newFakeImage(s.p, "tsuru/python:latest")
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("app-name", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
@@ -685,7 +692,7 @@ func (s *S) TestContainerCommitRetryShouldNotBeLessThanOne(c *check.C) {
 
 func (s *S) TestGitDeploy(c *check.C) {
 	go s.stopContainers(1)
-	err := s.newFakeImage(s.p, "tsuru/python:latest")
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	repository.Manager().CreateRepository("myapp", nil)
@@ -713,7 +720,7 @@ func (errBuffer) Write(data []byte) (int, error) {
 
 func (s *S) TestGitDeployRollsbackAfterErrorOnAttach(c *check.C) {
 	go s.stopContainers(1)
-	err := s.newFakeImage(s.p, "tsuru/python:latest")
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	repository.Manager().CreateRepository("myapp", nil)
@@ -734,7 +741,7 @@ func (s *S) TestGitDeployRollsbackAfterErrorOnAttach(c *check.C) {
 
 func (s *S) TestArchiveDeploy(c *check.C) {
 	go s.stopContainers(1)
-	err := s.newFakeImage(s.p, "tsuru/python:latest")
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
@@ -745,14 +752,14 @@ func (s *S) TestArchiveDeploy(c *check.C) {
 }
 
 func (s *S) TestStart(c *check.C) {
-	err := s.newFakeImage(s.p, "tsuru/python:latest")
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	imageId := s.p.getBuildImage(app)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	var buf bytes.Buffer
-	cont, err := s.p.start(nil, app, imageId, &buf)
+	cont, err := s.p.start(&container{ProcessName: "web"}, app, imageId, &buf)
 	c.Assert(err, check.IsNil)
 	defer cont.remove(s.p)
 	c.Assert(cont.ID, check.Not(check.Equals), "")
@@ -767,7 +774,7 @@ func (s *S) TestStartStoppedContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
 	cont.Status = provision.StatusStopped.String()
-	err = s.newFakeImage(s.p, "tsuru/python:latest")
+	err = s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	imageId := s.p.getBuildImage(app)
@@ -901,7 +908,7 @@ func (s *S) TestPushImage(c *check.C) {
 	p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: server.URL()})
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(&p, "localhost:3030/base/img")
+	err = s.newFakeImage(&p, "localhost:3030/base/img", nil)
 	c.Assert(err, check.IsNil)
 	err = p.pushImage("localhost:3030/base/img", "")
 	c.Assert(err, check.IsNil)
@@ -910,7 +917,7 @@ func (s *S) TestPushImage(c *check.C) {
 	c.Assert(requests[1].URL.Path, check.Equals, "/images/localhost:3030/base/img/json")
 	c.Assert(requests[2].URL.Path, check.Equals, "/images/localhost:3030/base/img/push")
 	c.Assert(requests[2].URL.RawQuery, check.Equals, "")
-	err = s.newFakeImage(&p, "localhost:3030/base/img:v2")
+	err = s.newFakeImage(&p, "localhost:3030/base/img:v2", nil)
 	c.Assert(err, check.IsNil)
 	err = p.pushImage("localhost:3030/base/img", "v2")
 	c.Assert(err, check.IsNil)
@@ -939,7 +946,7 @@ func (s *S) TestPushImageAuth(c *check.C) {
 	p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: server.URL()})
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(&p, "localhost:3030/base/img")
+	err = s.newFakeImage(&p, "localhost:3030/base/img", nil)
 	c.Assert(err, check.IsNil)
 	err = p.pushImage("localhost:3030/base/img", "")
 	c.Assert(err, check.IsNil)

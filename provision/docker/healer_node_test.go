@@ -94,9 +94,14 @@ func (s *S) TestHealerHealNode(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
-		unitsToAdd:  1,
+		toAdd:       map[string]int{"web": 1},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -347,9 +352,14 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
-		unitsToAdd:  1,
+		toAdd:       map[string]int{"web": 1},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -459,9 +469,14 @@ func (s *S) TestHealerHandleError(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
-		unitsToAdd:  1,
+		toAdd:       map[string]int{"web": 1},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,

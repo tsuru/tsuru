@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+	"gopkg.in/yaml.v1"
 )
 
 type appImages struct {
@@ -116,13 +117,44 @@ func imageCustomDataColl() (*dbStorage.Collection, error) {
 	return conn.Collection(fmt.Sprintf("%s_image_custom_data", name)), nil
 }
 
+type ImageMetadata struct {
+	Name       string `bson:"_id"`
+	CustomData map[string]interface{}
+	Processes  map[string]string
+}
+
 func saveImageCustomData(imageName string, customData map[string]interface{}) error {
 	coll, err := imageCustomDataColl()
 	if err != nil {
 		return err
 	}
 	defer coll.Close()
-	return coll.Insert(bson.M{"_id": imageName, "customdata": customData})
+	var processes map[string]string
+	if data, ok := customData["procfile"]; ok {
+		procfile := data.(string)
+		err := yaml.Unmarshal([]byte(procfile), &processes)
+		if err != nil {
+			return err
+		}
+		delete(customData, "procfile")
+	}
+	data := ImageMetadata{
+		Name:       imageName,
+		CustomData: customData,
+		Processes:  processes,
+	}
+	return coll.Insert(data)
+}
+
+func getImageCustomData(imageName string) (ImageMetadata, error) {
+	coll, err := imageCustomDataColl()
+	if err != nil {
+		return ImageMetadata{}, err
+	}
+	defer coll.Close()
+	var data ImageMetadata
+	err = coll.FindId(imageName).One(&data)
+	return data, err
 }
 
 func getImageTsuruYamlData(imageName string) (provision.TsuruYamlData, error) {

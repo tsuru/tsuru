@@ -42,9 +42,14 @@ func (s *S) TestHealContainer(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
-		unitsToAdd:  1,
+		toAdd:       map[string]int{"web": 1},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -104,9 +109,14 @@ func (s *S) TestRunContainerHealer(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
-		unitsToAdd:  2,
+		toAdd:       map[string]int{"web": 2},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -184,9 +194,14 @@ func (s *S) TestRunContainerHealerShutdown(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
-		unitsToAdd:  2,
+		toAdd:       map[string]int{"web": 2},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -252,9 +267,14 @@ func (s *S) TestRunContainerHealerConcurrency(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
-		unitsToAdd:  2,
+		toAdd:       map[string]int{"web": 2},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -337,9 +357,14 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
-		unitsToAdd:  2,
+		toAdd:       map[string]int{"web": 2},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -413,9 +438,14 @@ func (s *S) TestRunContainerHealerDoesntHealWithProcfileInTop(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
 	cont, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
-		unitsToAdd:  1,
+		toAdd:       map[string]int{"web": 1},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -465,9 +495,14 @@ func (s *S) TestRunContainerHealerWithError(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
-		unitsToAdd:  2,
+		toAdd:       map[string]int{"web": 2},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -477,9 +512,7 @@ func (s *S) TestRunContainerHealerWithError(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	appStruct := &app.App{
-		Name: appInstance.GetName(),
-	}
+	appStruct := &app.App{Name: appInstance.GetName()}
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})

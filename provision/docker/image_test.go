@@ -117,9 +117,9 @@ func (s *S) TestMigrateImagesWithRegistry(c *check.C) {
 	defer conn.Close()
 	conn.Apps().Insert(app1, app2)
 	defer conn.Apps().RemoveAll(bson.M{"name": bson.M{"$in": []string{app1.Name, app2.Name}}})
-	err = s.newFakeImage(&p, "localhost:3030/tsuru/app1")
+	err = s.newFakeImage(&p, "localhost:3030/tsuru/app1", nil)
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(&p, "localhost:3030/tsuru/app2")
+	err = s.newFakeImage(&p, "localhost:3030/tsuru/app2", nil)
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner = &p
 	err = MigrateImages()

@@ -516,7 +516,7 @@ func (s *S) TestRebalanceContainersEmptyBodyHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner = p
 	defer s.stopMultipleServersCluster(p)
-	err = s.newFakeImage(p, "tsuru/app-myapp")
+	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
@@ -529,7 +529,7 @@ func (s *S) TestRebalanceContainersEmptyBodyHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
-		unitsToAdd:  5,
+		toAdd:       map[string]int{"web": 5},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: p,
@@ -575,7 +575,7 @@ func (s *S) TestRebalanceContainersFilters(c *check.C) {
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner = p
 	defer s.stopMultipleServersCluster(p)
-	err = s.newFakeImage(p, "tsuru/app-myapp")
+	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
@@ -587,7 +587,7 @@ func (s *S) TestRebalanceContainersFilters(c *check.C) {
 	c.Assert(err, check.IsNil)
 	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
-		unitsToAdd:  5,
+		toAdd:       map[string]int{"web": 5},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: p,
@@ -632,7 +632,7 @@ func (s *S) TestRebalanceContainersDryBodyHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner = p
 	defer s.stopMultipleServersCluster(p)
-	err = s.newFakeImage(p, "tsuru/app-myapp")
+	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
@@ -645,7 +645,7 @@ func (s *S) TestRebalanceContainersDryBodyHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
-		unitsToAdd:  5,
+		toAdd:       map[string]int{"web": 5},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: p,

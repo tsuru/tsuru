@@ -46,7 +46,7 @@ func (s *S) TestRebalanceContainersManyAppsSegStress(c *check.C) {
 	maxContainers := 40
 	for i := 0; i < maxContainers; i++ {
 		appName := fmt.Sprintf("myapp-%d", i)
-		err := s.newFakeImage(p, "tsuru/app-"+appName)
+		err := s.newFakeImage(p, "tsuru/app-"+appName, nil)
 		c.Assert(err, check.IsNil)
 		appInstance := provisiontest.NewFakeApp(appName, "python", 0)
 		defer p.Destroy(appInstance)

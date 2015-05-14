@@ -68,6 +68,11 @@ func (s *S) TestAutoScaleConfigRun(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
 
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
@@ -80,7 +85,7 @@ func (s *S) TestAutoScaleConfigRun(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		unitsToAdd:  4,
+		toAdd:       map[string]int{"web": 4},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -183,6 +188,11 @@ func (s *S) TestAutoScaleConfigRunNoRebalance(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
 
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
@@ -195,7 +205,7 @@ func (s *S) TestAutoScaleConfigRunNoRebalance(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		unitsToAdd:  4,
+		toAdd:       map[string]int{"web": 4},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -283,6 +293,11 @@ func (s *S) TestAutoScaleConfigRunOnce(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
 
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
@@ -295,7 +310,7 @@ func (s *S) TestAutoScaleConfigRunOnce(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		unitsToAdd:  4,
+		toAdd:       map[string]int{"web": 4},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -370,6 +385,11 @@ func (s *S) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
 
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
@@ -382,7 +402,7 @@ func (s *S) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		unitsToAdd:  4,
+		toAdd:       map[string]int{"web": 4},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -451,6 +471,11 @@ func (s *S) TestAutoScaleConfigRunNoGroup(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
 
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
@@ -463,7 +488,7 @@ func (s *S) TestAutoScaleConfigRunNoGroup(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		unitsToAdd:  4,
+		toAdd:       map[string]int{"web": 4},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -529,6 +554,11 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
 
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
@@ -541,7 +571,7 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		unitsToAdd:  4,
+		toAdd:       map[string]int{"web": 4},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -628,6 +658,11 @@ func (s *S) TestAutoScaleConfigRunStress(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
 
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
@@ -640,7 +675,7 @@ func (s *S) TestAutoScaleConfigRunStress(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		unitsToAdd:  4,
+		toAdd:       map[string]int{"web": 4},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -723,6 +758,11 @@ func (s *S) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
 
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
@@ -736,7 +776,7 @@ func (s *S) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		unitsToAdd:  4,
+		toAdd:       map[string]int{"web": 4},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -830,6 +870,11 @@ func (s *S) TestAutoScaleConfigRunPriorityToCountBased(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
 
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
@@ -842,7 +887,7 @@ func (s *S) TestAutoScaleConfigRunPriorityToCountBased(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		unitsToAdd:  4,
+		toAdd:       map[string]int{"web": 4},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -915,6 +960,11 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedPlanTooBig(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
 
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
@@ -928,7 +978,7 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedPlanTooBig(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		unitsToAdd:  1,
+		toAdd:       map[string]int{"web": 1},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -992,6 +1042,11 @@ func (s *S) TestAutoScaleConfigRunScaleDown(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
 
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
@@ -1004,7 +1059,7 @@ func (s *S) TestAutoScaleConfigRunScaleDown(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		unitsToAdd:  1,
+		toAdd:       map[string]int{"web": 1},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -1012,7 +1067,7 @@ func (s *S) TestAutoScaleConfigRunScaleDown(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		unitsToAdd:  1,
+		toAdd:       map[string]int{"web": 1},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -1089,6 +1144,11 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
 
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
@@ -1101,7 +1161,7 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		unitsToAdd:  1,
+		toAdd:       map[string]int{"web": 1},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -1109,7 +1169,7 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		unitsToAdd:  1,
+		toAdd:       map[string]int{"web": 1},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -1184,6 +1244,11 @@ func (s *S) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
 
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
@@ -1196,7 +1261,7 @@ func (s *S) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		unitsToAdd:  1,
+		toAdd:       map[string]int{"web": 1},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -1204,7 +1269,7 @@ func (s *S) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		unitsToAdd:  1,
+		toAdd:       map[string]int{"web": 1},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -1261,6 +1326,11 @@ func (s *S) TestAutoScaleConfigRunLockedApp(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
@@ -1271,7 +1341,7 @@ func (s *S) TestAutoScaleConfigRunLockedApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		unitsToAdd:  4,
+		toAdd:       map[string]int{"web": 4},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -1334,6 +1404,11 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedLockedApp(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
@@ -1346,7 +1421,7 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedLockedApp(c *check.C) {
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
-		unitsToAdd:  4,
+		toAdd:       map[string]int{"web": 4},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,

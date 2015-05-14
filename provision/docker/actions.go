@@ -22,6 +22,7 @@ import (
 
 type runContainerActionsArgs struct {
 	app              provision.App
+	processName      string
 	imageID          string
 	commands         []string
 	destinationHosts []string
@@ -34,8 +35,8 @@ type runContainerActionsArgs struct {
 type changeUnitsPipelineArgs struct {
 	app         provision.App
 	writer      io.Writer
+	toAdd       map[string]int
 	toRemove    []container
-	unitsToAdd  int
 	toHost      string
 	imageId     string
 	provisioner *dockerProvisioner
@@ -100,6 +101,7 @@ var insertEmptyContainerInDB = action.Action{
 		contName := args.app.GetName() + "-" + randomString()
 		cont := container{
 			AppName:       args.app.GetName(),
+			ProcessName:   args.processName,
 			Type:          args.app.GetPlatform(),
 			Name:          contName,
 			Status:        provision.StatusCreated.String(),

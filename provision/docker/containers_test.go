@@ -25,7 +25,7 @@ func (s *S) TestMoveContainers(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
 	defer s.stopMultipleServersCluster(p)
-	err = s.newFakeImage(p, "tsuru/app-myapp")
+	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
@@ -38,7 +38,7 @@ func (s *S) TestMoveContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
-		unitsToAdd:  2,
+		toAdd:       map[string]int{"web": 2},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: p,
@@ -70,7 +70,7 @@ func (s *S) TestMoveContainersUnknownDest(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
 	defer s.stopMultipleServersCluster(p)
-	err = s.newFakeImage(p, "tsuru/app-myapp")
+	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
@@ -83,7 +83,7 @@ func (s *S) TestMoveContainersUnknownDest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
-		unitsToAdd:  2,
+		toAdd:       map[string]int{"web": 2},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: p,
@@ -111,7 +111,7 @@ func (s *S) TestMoveContainer(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
 	defer s.stopMultipleServersCluster(p)
-	err = s.newFakeImage(p, "tsuru/app-myapp")
+	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
@@ -124,7 +124,7 @@ func (s *S) TestMoveContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	addedConts, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
-		unitsToAdd:  2,
+		toAdd:       map[string]int{"web": 2},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: p,
@@ -167,7 +167,7 @@ func (s *S) TestRebalanceContainers(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
 	defer s.stopMultipleServersCluster(p)
-	err = s.newFakeImage(p, "tsuru/app-myapp")
+	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
@@ -176,7 +176,7 @@ func (s *S) TestRebalanceContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
-		unitsToAdd:  5,
+		toAdd:       map[string]int{"web": 5},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: p,
@@ -219,7 +219,7 @@ func (s *S) TestRebalanceContainersSegScheduler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = provision.AddTeamsToPool("pool1", []string{"team1"})
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(p, "tsuru/app-myapp")
+	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
@@ -228,7 +228,7 @@ func (s *S) TestRebalanceContainersSegScheduler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
-		unitsToAdd:  5,
+		toAdd:       map[string]int{"web": 5},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: p,
@@ -317,9 +317,9 @@ func (s *S) TestRebalanceContainersManyApps(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
 	defer s.stopMultipleServersCluster(p)
-	err = s.newFakeImage(p, "tsuru/app-myapp")
+	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(p, "tsuru/app-otherapp")
+	err = s.newFakeImage(p, "tsuru/app-otherapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
@@ -331,7 +331,7 @@ func (s *S) TestRebalanceContainersManyApps(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
-		unitsToAdd:  1,
+		toAdd:       map[string]int{"web": 1},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: p,
@@ -341,7 +341,7 @@ func (s *S) TestRebalanceContainersManyApps(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
-		unitsToAdd:  1,
+		toAdd:       map[string]int{"web": 1},
 		app:         appInstance2,
 		imageId:     imageId2,
 		provisioner: p,
@@ -377,7 +377,7 @@ func (s *S) TestRebalanceContainersDry(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
 	defer s.stopMultipleServersCluster(p)
-	err = s.newFakeImage(p, "tsuru/app-myapp")
+	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
@@ -386,7 +386,7 @@ func (s *S) TestRebalanceContainersDry(c *check.C) {
 	c.Assert(err, check.IsNil)
 	args := changeUnitsPipelineArgs{
 		app:         appInstance,
-		unitsToAdd:  5,
+		toAdd:       map[string]int{"web": 5},
 		imageId:     imageId,
 		provisioner: p,
 		toHost:      "localhost",

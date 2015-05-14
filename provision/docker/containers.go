@@ -71,7 +71,7 @@ func handleMoveErrors(moveErrors chan error, writer io.Writer) error {
 	return nil
 }
 
-func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App, toRemoveContainers []container, imageId string, toHosts ...string) ([]container, error) {
+func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App, toAdd map[string]int, toRemoveContainers []container, imageId string, toHosts ...string) ([]container, error) {
 	var toHost string
 	if len(toHosts) > 0 {
 		toHost = toHosts[0]
@@ -81,8 +81,8 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 	}
 	args := changeUnitsPipelineArgs{
 		app:         a,
+		toAdd:       toAdd,
 		toRemove:    toRemoveContainers,
-		unitsToAdd:  len(toRemoveContainers),
 		toHost:      toHost,
 		writer:      w,
 		imageId:     imageId,
@@ -116,9 +116,17 @@ func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App,
 	if w == nil {
 		w = ioutil.Discard
 	}
+	imageData, err := getImageCustomData(imageId)
+	if err != nil {
+		return nil, err
+	}
+	processMap := make(map[string]int, len(imageData.Processes))
+	for processName := range imageData.Processes {
+		processMap[processName] = toAddCount
+	}
 	args := changeUnitsPipelineArgs{
 		app:         a,
-		unitsToAdd:  toAddCount,
+		toAdd:       processMap,
 		writer:      w,
 		imageId:     imageId,
 		provisioner: p,
@@ -129,7 +137,7 @@ func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App,
 		&addNewRoutes,
 		&updateAppImage,
 	)
-	err := pipeline.Execute(args)
+	err = pipeline.Execute(args)
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +179,8 @@ func (p *dockerProvisioner) moveOneContainer(c container, toHost string, errors 
 	if !p.isDryMode {
 		fmt.Fprintf(writer, "Moving unit %s for %q from %s%s...\n", c.ID, c.AppName, c.HostAddr, suffix)
 	}
-	addedContainers, err := p.runReplaceUnitsPipeline(nil, a, []container{c}, imageId, destHosts...)
+	toAdd := map[string]int{c.ProcessName: 1}
+	addedContainers, err := p.runReplaceUnitsPipeline(nil, a, toAdd, []container{c}, imageId, destHosts...)
 	if err != nil {
 		errors <- &tsuruErrors.CompositeError{
 			Base:    err,

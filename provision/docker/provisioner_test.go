@@ -98,7 +98,7 @@ func (s *S) stopContainers(n uint) {
 
 func (s *S) TestDeploy(c *check.C) {
 	go s.stopContainers(1)
-	err := s.newFakeImage(s.p, "tsuru/python:latest")
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:     "otherapp",
@@ -120,6 +120,11 @@ func (s *S) TestDeploy(c *check.C) {
 		w.WriteHeader(http.StatusOK)
 	})
 	defer rollback()
+	customData := map[string]interface{}{
+		"procfile": "web: python myapp.py",
+	}
+	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
+	c.Assert(err, check.IsNil)
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		Version:      "master",
@@ -137,7 +142,7 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 	config.Set("docker:image-history-size", 1)
 	defer config.Unset("docker:image-history-size")
 	go s.stopContainers(3)
-	err := s.newFakeImage(s.p, "tsuru/python:latest")
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:     "appdeployimagetest",
@@ -153,6 +158,13 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.p.Destroy(&a)
 	w := safe.NewBuffer(make([]byte, 2048))
+	customData := map[string]interface{}{
+		"procfile": "web: python myapp.py",
+	}
+	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
+	c.Assert(err, check.IsNil)
+	err = saveImageCustomData("tsuru/app-"+a.Name+":v2", customData)
+	c.Assert(err, check.IsNil)
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		Version:      "master",
@@ -191,7 +203,7 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 	config.Set("docker:image-history-size", 1)
 	defer config.Unset("docker:image-history-size")
 	go s.stopContainers(1)
-	err := s.newFakeImage(s.p, "tsuru/python:latest")
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:     "appdeployimagetest",
@@ -237,7 +249,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	config.Set("docker:image-history-size", 2)
 	defer config.Unset("docker:image-history-size")
 	go s.stopContainers(5)
-	err := s.newFakeImage(s.p, "tsuru/python:latest")
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:     "appdeployimagetest",
@@ -253,6 +265,15 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.p.Destroy(&a)
 	w := safe.NewBuffer(make([]byte, 2048))
+	customData := map[string]interface{}{
+		"procfile": "web: python myapp.py",
+	}
+	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
+	c.Assert(err, check.IsNil)
+	err = saveImageCustomData("tsuru/app-"+a.Name+":v2", customData)
+	c.Assert(err, check.IsNil)
+	err = saveImageCustomData("tsuru/app-"+a.Name+":v3", customData)
+	c.Assert(err, check.IsNil)
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		Version:      "master",
@@ -307,7 +328,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 
 func (s *S) TestProvisionerUploadDeploy(c *check.C) {
 	go s.stopContainers(3)
-	err := s.newFakeImage(s.p, "tsuru/python:latest")
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	a := app.App{
 		Name:     "otherapp",
@@ -329,6 +350,11 @@ func (s *S) TestProvisionerUploadDeploy(c *check.C) {
 	})
 	defer rollback()
 	buf := bytes.NewBufferString("something wrong is not right")
+	customData := map[string]interface{}{
+		"procfile": "web: python myapp.py",
+	}
+	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
+	c.Assert(err, check.IsNil)
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		File:         ioutil.NopCloser(buf),
@@ -341,46 +367,9 @@ func (s *S) TestProvisionerUploadDeploy(c *check.C) {
 	c.Assert(serviceBodies[0], check.Matches, ".*unit-host="+units[0].Ip)
 }
 
-func (s *S) TestDeployRemoveContainersEvenWhenTheyreNotInTheAppsCollection(c *check.C) {
-	go s.stopContainers(3)
-	cont1, err := s.newContainer(nil, nil)
-	defer s.removeTestContainer(cont1)
-	c.Assert(err, check.IsNil)
-	cont2, err := s.newContainer(nil, nil)
-	defer s.removeTestContainer(cont2)
-	c.Assert(err, check.IsNil)
-	defer routertest.FakeRouter.RemoveBackend(cont1.AppName)
-	a := app.App{
-		Name:     "otherapp",
-		Platform: "python",
-	}
-	conn, err := db.Conn()
-	defer conn.Close()
-	err = conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": a.Name})
-	repository.Manager().CreateRepository(a.Name, nil)
-	s.p.Provision(&a)
-	defer s.p.Destroy(&a)
-	var w bytes.Buffer
-	err = app.Deploy(app.DeployOptions{
-		App:          &a,
-		Version:      "master",
-		Commit:       "123",
-		OutputStream: &w,
-	})
-	c.Assert(err, check.IsNil)
-	defer s.p.Destroy(&a)
-	coll := s.p.collection()
-	defer coll.Close()
-	n, err := coll.Find(bson.M{"appname": cont1.AppName}).Count()
-	c.Assert(err, check.IsNil)
-	c.Assert(n, check.Equals, 2)
-}
-
 func (s *S) TestImageDeploy(c *check.C) {
 	go s.stopContainers(1)
-	err := s.newFakeImage(s.p, "tsuru/app-otherapp:v1")
+	err := s.newFakeImage(s.p, "tsuru/app-otherapp:v1", nil)
 	c.Assert(err, check.IsNil)
 	err = appendAppImageName("otherapp", "tsuru/app-otherapp:v1")
 	c.Assert(err, check.IsNil)
@@ -431,7 +420,7 @@ func (s *S) TestImageDeployInvalidImage(c *check.C) {
 }
 
 func (s *S) TestImageDeployFailureDoesntEraseImage(c *check.C) {
-	err := s.newFakeImage(s.p, "tsuru/app-otherapp:v1")
+	err := s.newFakeImage(s.p, "tsuru/app-otherapp:v1", nil)
 	c.Assert(err, check.IsNil)
 	err = appendAppImageName("otherapp", "tsuru/app-otherapp:v1")
 	c.Assert(err, check.IsNil)
@@ -516,6 +505,11 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 	s.p.Provision(&a)
 	defer s.p.Destroy(&a)
 	w := safe.NewBuffer(make([]byte, 2048))
+	customData := map[string]interface{}{
+		"procfile": "web: python myapp.py",
+	}
+	err = saveImageCustomData(registryURL+"/tsuru/app-"+a.Name+":v1", customData)
+	c.Assert(err, check.IsNil)
 	err = app.Deploy(app.DeployOptions{
 		App:          &a,
 		Version:      "master",
@@ -571,7 +565,7 @@ func (s *S) TestProvisionerAddr(c *check.C) {
 }
 
 func (s *S) TestProvisionerAddUnits(c *check.C) {
-	err := s.newFakeImage(s.p, "tsuru/app-myapp")
+	err := s.newFakeImage(s.p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 0)
 	app.Deploys = 1
@@ -601,7 +595,7 @@ func (s *S) TestProvisionerAddUnitsWithErrorDoesntLeaveLostUnits(c *check.C) {
 		s.server.DefaultHandler().ServeHTTP(w, r)
 	}))
 	defer s.server.CustomHandler("/containers/create", s.server.DefaultHandler())
-	err := s.newFakeImage(s.p, "tsuru/python:latest")
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 0)
 	s.p.Provision(app)
@@ -618,7 +612,7 @@ func (s *S) TestProvisionerAddUnitsWithErrorDoesntLeaveLostUnits(c *check.C) {
 }
 
 func (s *S) TestProvisionerAddZeroUnits(c *check.C) {
-	err := s.newFakeImage(s.p, "tsuru/python:latest")
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 0)
 	app.Deploys = 1
@@ -648,7 +642,7 @@ func (s *S) TestProvisionerAddUnitsWithHost(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
 	defer s.stopMultipleServersCluster(p)
-	err = s.newFakeImage(p, "tsuru/app-myapp")
+	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 0)
 	p.Provision(app)
@@ -661,7 +655,7 @@ func (s *S) TestProvisionerAddUnitsWithHost(c *check.C) {
 	c.Assert(err, check.IsNil)
 	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
-		unitsToAdd:  1,
+		toAdd:       map[string]int{"web": 1},
 		app:         app,
 		imageId:     imageId,
 		provisioner: p,
@@ -810,7 +804,7 @@ func (s *S) TestProvisionerRemoveUnitNotFound(c *check.C) {
 }
 
 func (s *S) TestProvisionerSetUnitStatus(c *check.C) {
-	err := s.newFakeImage(s.p, "tsuru/python:latest")
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	opts := newContainerOpts{Status: provision.StatusStarted.String(), AppName: "someapp"}
 	container, err := s.newContainer(&opts, nil)
@@ -824,7 +818,7 @@ func (s *S) TestProvisionerSetUnitStatus(c *check.C) {
 }
 
 func (s *S) TestProvisionerSetUnitStatusWrongApp(c *check.C) {
-	err := s.newFakeImage(s.p, "tsuru/python:latest")
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	opts := newContainerOpts{Status: provision.StatusStarted.String(), AppName: "someapp"}
 	container, err := s.newContainer(&opts, nil)
@@ -1266,7 +1260,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	defer conn.Close()
 	err = conn.Apps().Insert(&app.App{Name: "myawesomeapp"})
 	c.Assert(err, check.IsNil)
-	err = s.newFakeImage(s.p, "tsuru/python:latest")
+	err = s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	opts := newContainerOpts{Status: provision.StatusStarting.String(), AppName: "myawesomeapp"}
 	container, err := s.newContainer(&opts, nil)
@@ -1286,7 +1280,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 }
 
 func (s *S) TestRegisterUnitBuildingContainer(c *check.C) {
-	err := s.newFakeImage(s.p, "tsuru/python:latest")
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	opts := newContainerOpts{Status: provision.StatusBuilding.String(), AppName: "myawesomeapp"}
 	container, err := s.newContainer(&opts, nil)
@@ -1306,7 +1300,7 @@ func (s *S) TestRegisterUnitBuildingContainer(c *check.C) {
 }
 
 func (s *S) TestRegisterUnitSavesCustomData(c *check.C) {
-	err := s.newFakeImage(s.p, "tsuru/python:latest")
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	opts := newContainerOpts{Status: provision.StatusBuilding.String(), AppName: "myawesomeapp"}
 	container, err := s.newContainer(&opts, nil)
@@ -1383,7 +1377,7 @@ func (s *S) TestRunRestartAfterHooks(c *check.C) {
 }
 
 func (s *S) TestShellToAnAppByContainerID(c *check.C) {
-	err := s.newFakeImage(s.p, "tsuru/app-almah")
+	err := s.newFakeImage(s.p, "tsuru/app-almah", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("almah", "static", 1)
 	cont, err := s.newContainer(&newContainerOpts{AppName: app.GetName()}, nil)
@@ -1397,7 +1391,7 @@ func (s *S) TestShellToAnAppByContainerID(c *check.C) {
 }
 
 func (s *S) TestShellToAnAppByAppName(c *check.C) {
-	err := s.newFakeImage(s.p, "tsuru/app-almah")
+	err := s.newFakeImage(s.p, "tsuru/app-almah", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("almah", "static", 1)
 	cont, err := s.newContainer(&newContainerOpts{AppName: app.GetName()}, nil)
@@ -1411,7 +1405,7 @@ func (s *S) TestShellToAnAppByAppName(c *check.C) {
 }
 
 func (s *S) TestDryMode(c *check.C) {
-	err := s.newFakeImage(s.p, "tsuru/app-myapp")
+	err := s.newFakeImage(s.p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer s.p.Destroy(appInstance)
@@ -1420,7 +1414,7 @@ func (s *S) TestDryMode(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
-		unitsToAdd:  5,
+		toAdd:       map[string]int{"web": 5},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: s.p,

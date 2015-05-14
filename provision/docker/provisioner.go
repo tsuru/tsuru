@@ -285,7 +285,11 @@ func (p *dockerProvisioner) Restart(a provision.App, w io.Writer) error {
 		w = ioutil.Discard
 	}
 	writer := &app.LogWriter{App: a, Writer: w}
-	_, err = p.runReplaceUnitsPipeline(writer, a, containers, imageId)
+	toAdd := make(map[string]int, len(containers))
+	for _, c := range containers {
+		toAdd[c.ProcessName]++
+	}
+	_, err = p.runReplaceUnitsPipeline(writer, a, toAdd, containers, imageId)
 	return err
 }
 
@@ -435,9 +439,32 @@ func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer)
 	if len(containers) == 0 {
 		_, err = p.runCreateUnitsPipeline(w, a, 1, imageId)
 	} else {
-		_, err = p.runReplaceUnitsPipeline(w, a, containers, imageId)
+		imageData, err := getImageCustomData(imageId)
+		if err != nil {
+			return err
+		}
+		toAdd := getContainersToAdd(imageData, containers)
+		_, err = p.runReplaceUnitsPipeline(w, a, toAdd, containers, imageId)
 	}
 	return err
+}
+
+func getContainersToAdd(data ImageMetadata, oldContainers []container) map[string]int {
+	processMap := make(map[string]int, len(data.Processes))
+	for name := range data.Processes {
+		processMap[name] = 0
+	}
+	for _, container := range oldContainers {
+		if _, ok := processMap[container.ProcessName]; ok {
+			processMap[container.ProcessName]++
+		}
+	}
+	for name, amount := range processMap {
+		if amount == 0 {
+			processMap[name] = 1
+		}
+	}
+	return processMap
 }
 
 func (p *dockerProvisioner) Destroy(app provision.App) error {
@@ -522,9 +549,8 @@ func (p *dockerProvisioner) runRestartAfterHooks(cont *container, w io.Writer) e
 func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 	a := args.app
 	w := args.writer
-	units := args.unitsToAdd
+	units := len(args.toAdd)
 	imageId := args.imageId
-	oldContainers := args.toRemove
 	var destinationHost []string
 	if args.toHost != "" {
 		destinationHost = []string{args.toHost}
@@ -537,8 +563,11 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 		plural = "s"
 	}
 	fmt.Fprintf(w, "\n---- Starting %d new unit%s ----\n", units, plural)
-	if len(oldContainers) == 0 {
-		oldContainers = make([]container, units)
+	oldContainers := make([]container, 0, units)
+	for processName, count := range args.toAdd {
+		for i := 0; i < count; i++ {
+			oldContainers = append(oldContainers, container{ProcessName: processName})
+		}
 	}
 	rollbackCallback := func(c *container) {
 		log.Errorf("Removing container %q due failed add units.", c.ID)
@@ -564,7 +593,7 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 	if err != nil {
 		return nil, err
 	}
-	result := make([]container, units)
+	result := make([]container, len(createdContainers))
 	i := 0
 	for _, c := range createdContainers {
 		result[i] = *c
