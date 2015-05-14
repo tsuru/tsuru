@@ -52,8 +52,6 @@ after_success:
   - mongostat -n 1
 notifications:
   email:
-    recipients:
-      - tsuru@corp.globo.com
     on_success: change
     on_failure: always
   slack:
