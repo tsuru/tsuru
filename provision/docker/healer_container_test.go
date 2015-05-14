@@ -6,11 +6,11 @@ package docker
 
 import (
 	"fmt"
-	"net/http"
 	"sort"
 	"sync"
 	"time"
 
+	"github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
@@ -138,6 +138,8 @@ func (s *S) TestRunContainerHealer(c *check.C) {
 	c.Assert(containers, check.HasLen, 2)
 	c.Assert(containers[0].HostAddr, check.Equals, "127.0.0.1")
 	c.Assert(containers[1].HostAddr, check.Equals, "127.0.0.1")
+	node1.MutateContainer(containers[0].ID, docker.State{Running: false, Restarting: false})
+	node1.MutateContainer(containers[1].ID, docker.State{Running: false, Restarting: false})
 
 	toMoveCont := containers[1]
 	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-2 * time.Minute)
@@ -223,6 +225,8 @@ func (s *S) TestRunContainerHealerShutdown(c *check.C) {
 	c.Assert(containers, check.HasLen, 2)
 	c.Assert(containers[0].HostAddr, check.Equals, "127.0.0.1")
 	c.Assert(containers[1].HostAddr, check.Equals, "127.0.0.1")
+	node1.MutateContainer(containers[0].ID, docker.State{Running: false, Restarting: false})
+	node1.MutateContainer(containers[1].ID, docker.State{Running: false, Restarting: false})
 
 	toMoveCont := containers[1]
 	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-2 * time.Minute)
@@ -296,6 +300,8 @@ func (s *S) TestRunContainerHealerConcurrency(c *check.C) {
 	c.Assert(containers, check.HasLen, 2)
 	c.Assert(containers[0].HostAddr, check.Equals, "127.0.0.1")
 	c.Assert(containers[1].HostAddr, check.Equals, "127.0.0.1")
+	node1.MutateContainer(containers[0].ID, docker.State{Running: false, Restarting: false})
+	node1.MutateContainer(containers[1].ID, docker.State{Running: false, Restarting: false})
 	toMoveCont := containers[1]
 
 	node1.PrepareFailure("createError", "/containers/create")
@@ -386,6 +392,8 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *check.C) {
 	c.Assert(containers, check.HasLen, 2)
 	c.Assert(containers[0].HostAddr, check.Equals, "127.0.0.1")
 	c.Assert(containers[1].HostAddr, check.Equals, "127.0.0.1")
+	node1.MutateContainer(containers[0].ID, docker.State{Running: false, Restarting: false})
+	node1.MutateContainer(containers[1].ID, docker.State{Running: false, Restarting: false})
 	toMoveCont := containers[1]
 
 	node1.PrepareFailure("createError", "/containers/create")
@@ -416,7 +424,7 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *check.C) {
 	c.Assert(events[0].CreatedContainer.HostAddr, check.Equals, "localhost")
 }
 
-func (s *S) TestRunContainerHealerDoesntHealWithProcessRunning(c *check.C) {
+func (s *S) TestRunContainerHealerDoesntHealWhenContainerIsRunning(c *check.C) {
 	rollback := startTestRepositoryServer()
 	defer rollback()
 	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
@@ -457,11 +465,66 @@ func (s *S) TestRunContainerHealerDoesntHealWithProcessRunning(c *check.C) {
 		provisioner: &p,
 	})
 	c.Assert(err, check.IsNil)
+	node1.MutateContainer(cont[0].ID, docker.State{Running: true, Restarting: false})
 
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, `{"Titles": [], "Processes": [["y", "Procfile"], ["x", "python ./myapp"]]}`)
+	toMoveCont := cont[0]
+	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-2 * time.Minute)
+	coll := p.collection()
+	err = coll.Update(bson.M{"id": toMoveCont.ID}, toMoveCont)
+	c.Assert(err, check.IsNil)
+
+	healer := containerHealer{provisioner: &p, maxUnresponsiveTime: 1 * time.Minute}
+	healer.runContainerHealerOnce()
+
+	healingColl, err := healingCollection()
+	var events []healingEvent
+	err = healingColl.Find(nil).All(&events)
+	c.Assert(err, check.IsNil)
+	c.Assert(events, check.HasLen, 0)
+}
+
+func (s *S) TestRunContainerHealerDoesntHealWhenContainerIsRestarting(c *check.C) {
+	rollback := startTestRepositoryServer()
+	defer rollback()
+	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	node2, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	cluster, err := cluster.New(nil, &cluster.MapStorage{},
+		cluster.Node{Address: node1.URL()},
+		cluster.Node{Address: fmt.Sprintf("http://localhost:%d", urlPort(node2.URL()))},
+	)
+	c.Assert(err, check.IsNil)
+	var p dockerProvisioner
+	err = p.Initialize()
+	c.Assert(err, check.IsNil)
+	p.cluster = cluster
+
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	appInstance := &app.App{Name: "myapp", Platform: "python"}
+	err = conn.Apps().Insert(appInstance)
+	c.Assert(err, check.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": appInstance.Name})
+	p.Provision(appInstance)
+	defer p.Destroy(appInstance)
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
+	cont, err := addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:      "127.0.0.1",
+		toAdd:       map[string]int{"web": 1},
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: &p,
 	})
-	node1.CustomHandler("/containers/"+cont[0].ID+"/top", handler)
+	c.Assert(err, check.IsNil)
+	node1.MutateContainer(cont[0].ID, docker.State{Running: false, Restarting: true})
 
 	toMoveCont := cont[0]
 	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-2 * time.Minute)
@@ -528,6 +591,8 @@ func (s *S) TestRunContainerHealerWithError(c *check.C) {
 	c.Assert(containers, check.HasLen, 2)
 	c.Assert(containers[0].HostAddr, check.Equals, "127.0.0.1")
 	c.Assert(containers[1].HostAddr, check.Equals, "127.0.0.1")
+	node1.MutateContainer(containers[0].ID, docker.State{Running: false, Restarting: false})
+	node1.MutateContainer(containers[1].ID, docker.State{Running: false, Restarting: false})
 
 	toMoveCont := containers[1]
 	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-2 * time.Minute)

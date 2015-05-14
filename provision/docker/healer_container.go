@@ -51,40 +51,19 @@ func (h *containerHealer) healContainer(cont container, locker *appLocker) (cont
 	return createdContainer, err
 }
 
-func (h *containerHealer) getCommand(cont container) (string, error) {
-	data, err := getImageCustomData(cont.Image)
-	if err != nil {
-		return "", err
-	}
-	if command, ok := data.Processes[cont.ProcessName]; ok {
-		return command, nil
-	}
-	return "", fmt.Errorf("command %q not found in the image metadata", cont.ProcessName)
-}
-
-func (h *containerHealer) isProcessRunning(cont container) (bool, error) {
-	command, err := h.getCommand(cont)
+func (h *containerHealer) isRunning(cont container) (bool, error) {
+	container, err := h.provisioner.getCluster().InspectContainer(cont.ID)
 	if err != nil {
 		return false, err
 	}
-	topResult, err := h.provisioner.getCluster().TopContainer(cont.ID, "")
-	if err != nil {
-		return false, err
-	}
-	for _, psLine := range topResult.Processes {
-		process := psLine[len(psLine)-1]
-		if process == command {
-			return true, nil
-		}
-	}
-	return false, nil
+	return container.State.Running || container.State.Restarting, nil
 }
 
 func (h *containerHealer) healContainerIfNeeded(cont container) error {
 	if cont.LastSuccessStatusUpdate.IsZero() {
 		return nil
 	}
-	isRunning, err := h.isProcessRunning(cont)
+	isRunning, err := h.isRunning(cont)
 	if err != nil {
 		log.Errorf("Containers healing: couldn't verify running processes in container %s: %s", cont.ID, err.Error())
 	}
