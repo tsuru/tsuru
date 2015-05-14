@@ -40,15 +40,3 @@ func deployCmds(app provision.App, params ...string) ([]string, error) {
 	finalCmd := strings.Join(unitAgentCmds, " ")
 	return []string{"/bin/bash", "-lc", finalCmd}, nil
 }
-
-// runWithAgentCmds returns the list of commands that should be passed when the
-// provisioner will run a unit using tsuru_unit_agent to start.
-func runWithAgentCmds(app provision.App) ([]string, error) {
-	runCmd, err := config.GetString("docker:run-cmd:bin")
-	if err != nil {
-		return nil, err
-	}
-	host := app.Envs()["TSURU_HOST"].Value
-	token := app.Envs()["TSURU_APP_TOKEN"].Value
-	return []string{"tsuru_unit_agent", host, token, app.GetName(), runCmd}, nil
-}
