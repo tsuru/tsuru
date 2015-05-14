@@ -2875,20 +2875,16 @@ func (s *S) TestSwap(c *check.C) {
 }
 
 func (s *S) TestSwapApp1Locked(c *check.C) {
-	app1 := app.App{Name: "app1", Teams: []string{s.team.Name}, Lock: app.AppLock{
+	app1 := app.App{Name: "app1", Platform: "zend", Teams: []string{s.team.Name}, Lock: app.AppLock{
 		Locked: true, Reason: "/test", Owner: "x",
 	}}
-	err := s.conn.Apps().Insert(&app1)
+	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": app1.Name})
-	app2 := app.App{Name: "app2", Teams: []string{s.team.Name}}
-	err = s.conn.Apps().Insert(&app2)
+	defer s.deleteApp(&app1)
+	app2 := app.App{Name: "app2", Platform: "zend", Teams: []string{s.team.Name}}
+	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
-	app.Provisioner.Provision(&app1)
-	defer app.Provisioner.Destroy(&app1)
-	app.Provisioner.Provision(&app2)
-	defer app.Provisioner.Destroy(&app2)
-	defer s.conn.Apps().Remove(bson.M{"name": app2.Name})
+	defer s.deleteApp(&app2)
 	request, _ := http.NewRequest("PUT", "/swap?app1=app1&app2=app2", nil)
 	recorder := httptest.NewRecorder()
 	err = swap(recorder, request, s.token)
@@ -2896,16 +2892,16 @@ func (s *S) TestSwapApp1Locked(c *check.C) {
 }
 
 func (s *S) TestSwapApp2Locked(c *check.C) {
-	app1 := app.App{Name: "app1", Teams: []string{s.team.Name}}
-	err := s.conn.Apps().Insert(&app1)
+	app1 := app.App{Name: "app1", Platform: "zend", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": app1.Name})
-	app2 := app.App{Name: "app2", Teams: []string{s.team.Name}, Lock: app.AppLock{
+	defer s.deleteApp(&app1)
+	app2 := app.App{Name: "app2", Platform: "zend", Teams: []string{s.team.Name}, Lock: app.AppLock{
 		Locked: true, Reason: "/test", Owner: "x",
 	}}
-	err = s.conn.Apps().Insert(&app2)
+	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.conn.Apps().Remove(bson.M{"name": app2.Name})
+	defer s.deleteApp(&app2)
 	request, _ := http.NewRequest("PUT", "/swap?app1=app1&app2=app2", nil)
 	recorder := httptest.NewRecorder()
 	err = swap(recorder, request, s.token)
