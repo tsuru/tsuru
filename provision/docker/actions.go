@@ -382,9 +382,9 @@ var removeOldRoutes = action.Action{
 			plural = "s"
 		}
 		if len(webContainers) > 0 {
-			fmt.Fprintf(writer, "\n---- Removing routes from %d old %q unit%s ----\n", len(args.toRemove), webProcessName, plural)
+			fmt.Fprintf(writer, "\n---- Removing routes from %d old %q unit%s ----\n", len(webContainers), webProcessName, plural)
 		}
-		return ctx.Previous, runInContainers(args.toRemove, func(c *container, toRollback chan *container) error {
+		return ctx.Previous, runInContainers(webContainers, func(c *container, toRollback chan *container) error {
 			err = r.RemoveRoute(c.AppName, c.getAddress())
 			if err != router.ErrRouteNotFound && err != nil {
 				return err
