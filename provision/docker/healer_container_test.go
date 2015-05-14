@@ -416,7 +416,7 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *check.C) {
 	c.Assert(events[0].CreatedContainer.HostAddr, check.Equals, "localhost")
 }
 
-func (s *S) TestRunContainerHealerDoesntHealWithProcfileInTop(c *check.C) {
+func (s *S) TestRunContainerHealerDoesntHealWithProcessRunning(c *check.C) {
 	rollback := startTestRepositoryServer()
 	defer rollback()
 	node1, err := testing.NewServer("127.0.0.1:0", nil, nil)
@@ -433,9 +433,15 @@ func (s *S) TestRunContainerHealerDoesntHealWithProcfileInTop(c *check.C) {
 	c.Assert(err, check.IsNil)
 	p.cluster = cluster
 
-	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	defer p.Destroy(appInstance)
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	appInstance := &app.App{Name: "myapp", Platform: "python"}
+	err = conn.Apps().Insert(appInstance)
+	c.Assert(err, check.IsNil)
+	defer conn.Apps().Remove(bson.M{"name": appInstance.Name})
 	p.Provision(appInstance)
+	defer p.Destroy(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	customData := map[string]interface{}{
@@ -453,7 +459,7 @@ func (s *S) TestRunContainerHealerDoesntHealWithProcfileInTop(c *check.C) {
 	c.Assert(err, check.IsNil)
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, `{"Titles": [], "Processes": [["x", "ProcfileWatcher"]]}`)
+		fmt.Fprintf(w, `{"Titles": [], "Processes": [["y", "Procfile"], ["x", "python ./myapp"]]}`)
 	})
 	node1.CustomHandler("/containers/"+cont[0].ID+"/top", handler)
 
