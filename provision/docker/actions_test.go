@@ -677,7 +677,7 @@ func (s *S) TestBindAndHealthcheckDontHealtcheckForErroredApps(c *check.C) {
 		app:         fakeApp,
 		provisioner: s.p,
 		writer:      buf,
-		unitsToAdd:  2,
+		toAdd:       map[string]int{"web": 2},
 		imageId:     "tsuru/app-" + dbApp.Name,
 		toRemove:    []container{*oldContainer},
 	}
@@ -713,15 +713,14 @@ func (s *S) TestBindAndHealthcheckDontHealtcheckForStoppedApps(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": dbApp.Name})
 	imageName := "tsuru/app-" + dbApp.Name
-	err = s.newFakeImage(s.p, imageName)
-	c.Assert(err, check.IsNil)
 	customData := map[string]interface{}{
 		"healthcheck": map[string]interface{}{
 			"path":   "/x/y",
 			"status": http.StatusOK,
 		},
+		"procfile": "web: python myapp.py",
 	}
-	err = saveImageCustomData(imageName, customData)
+	err = s.newFakeImage(s.p, imageName, customData)
 	c.Assert(err, check.IsNil)
 	fakeApp := provisiontest.NewFakeApp(dbApp.Name, "python", 0)
 	s.p.Provision(fakeApp)
@@ -736,7 +735,7 @@ func (s *S) TestBindAndHealthcheckDontHealtcheckForStoppedApps(c *check.C) {
 		app:         fakeApp,
 		provisioner: s.p,
 		writer:      buf,
-		unitsToAdd:  2,
+		toAdd:       map[string]int{"web": 2},
 		imageId:     "tsuru/app-" + dbApp.Name,
 		toRemove:    []container{*oldContainer},
 	}
@@ -772,15 +771,14 @@ func (s *S) TestBindAndHealthcheckForwardHealthcheckError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": dbApp.Name})
 	imageName := "tsuru/app-" + dbApp.Name
-	err = s.newFakeImage(s.p, imageName)
-	c.Assert(err, check.IsNil)
 	customData := map[string]interface{}{
 		"healthcheck": map[string]interface{}{
 			"path":   "/x/y",
 			"status": http.StatusOK,
 		},
+		"procfile": "web: python start_app.py",
 	}
-	err = saveImageCustomData(imageName, customData)
+	err = s.newFakeImage(s.p, imageName, customData)
 	c.Assert(err, check.IsNil)
 	fakeApp := provisiontest.NewFakeApp(dbApp.Name, "python", 0)
 	s.p.Provision(fakeApp)

@@ -42,6 +42,11 @@ func (s *S) TestRebalanceContainersManyAppsSegStress(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = provision.AddTeamsToPool("pool1", []string{"team1"})
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python start_app.py",
+	}
+	err = saveImageCustomData(imageId, customData)
+	c.Assert(err, check.IsNil)
 	variation := []int{10, 20, 30, 40, 50, 100}
 	maxContainers := 40
 	for i := 0; i < maxContainers; i++ {
@@ -62,7 +67,7 @@ func (s *S) TestRebalanceContainersManyAppsSegStress(c *check.C) {
 		}
 		args := changeUnitsPipelineArgs{
 			app:         appInstance,
-			unitsToAdd:  6,
+			toAdd:       map[string]int{"web": 6},
 			imageId:     imageId,
 			provisioner: p,
 			toHost:      chosenNode,
