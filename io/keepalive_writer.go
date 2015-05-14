@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -43,14 +43,14 @@ func (w *keepAliveWriter) writeInterval() {
 	numBytes, err := w.w.Write(msg)
 	if err != nil {
 		log.Debugf("Error writing keepalive, exiting loop: %s", err.Error())
-		w.stop()
+		w.Stop()
 	} else if numBytes != len(msg) {
 		log.Debugf("Short write on keepalive, exiting loop.")
-		w.stop()
+		w.Stop()
 	}
 }
 
-func (w *keepAliveWriter) stop() {
+func (w *keepAliveWriter) Stop() {
 	if !w.running {
 		return
 	}
@@ -83,7 +83,7 @@ func (w *keepAliveWriter) Write(b []byte) (int, error) {
 	w.lastByte = b[len(b)-1]
 	written, err := w.w.Write(b)
 	if err != nil {
-		w.stop()
+		w.Stop()
 	}
 	return written, err
 }

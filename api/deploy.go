@@ -73,6 +73,7 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		userName = t.GetUserName()
 	}
 	writer := io.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
+	defer writer.Stop()
 	err = app.Deploy(app.DeployOptions{
 		App:          instance,
 		Version:      version,
