@@ -20,6 +20,8 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+const webProcessName = "web"
+
 type runContainerActionsArgs struct {
 	app              provision.App
 	processName      string
@@ -312,7 +314,7 @@ var addNewRoutes = action.Action{
 		}
 		webContainers := make([]container, 0, len(newContainers))
 		for _, container := range newContainers {
-			if container.ProcessName == "web" {
+			if container.ProcessName == webProcessName {
 				webContainers = append(webContainers, container)
 			}
 		}
@@ -321,7 +323,7 @@ var addNewRoutes = action.Action{
 			plural = "s"
 		}
 		if len(webContainers) > 0 {
-			fmt.Fprintf(writer, "\n---- Adding routes to %d new %q unit%s ----\n", len(webContainers), "web", plural)
+			fmt.Fprintf(writer, "\n---- Adding routes to %d new %q unit%s ----\n", len(webContainers), webProcessName, plural)
 		}
 		return newContainers, runInContainers(webContainers, func(c *container, toRollback chan *container) error {
 			err = r.AddRoute(c.AppName, c.getAddress())
@@ -344,7 +346,7 @@ var addNewRoutes = action.Action{
 		}
 		webContainers := make([]container, 0, len(newContainers))
 		for _, container := range newContainers {
-			if container.ProcessName == "web" {
+			if container.ProcessName == webProcessName {
 				webContainers = append(webContainers, container)
 			}
 		}
@@ -369,7 +371,19 @@ var removeOldRoutes = action.Action{
 		if writer == nil {
 			writer = ioutil.Discard
 		}
-		fmt.Fprintf(writer, "\n---- Removing routes from %d old units ----\n", len(args.toRemove))
+		webContainers := make([]container, 0, len(args.toRemove))
+		for _, container := range args.toRemove {
+			if container.ProcessName == webProcessName {
+				webContainers = append(webContainers, container)
+			}
+		}
+		var plural string
+		if len(webContainers) > 1 {
+			plural = "s"
+		}
+		if len(webContainers) > 0 {
+			fmt.Fprintf(writer, "\n---- Removing routes from %d old %q unit%s ----\n", len(args.toRemove), webProcessName, plural)
+		}
 		return ctx.Previous, runInContainers(args.toRemove, func(c *container, toRollback chan *container) error {
 			err = r.RemoveRoute(c.AppName, c.getAddress())
 			if err != router.ErrRouteNotFound && err != nil {
@@ -389,9 +403,11 @@ var removeOldRoutes = action.Action{
 			log.Errorf("[remove-old-routes:Backward] Error geting router: %s", err.Error())
 		}
 		for _, cont := range args.toRemove {
-			err = r.AddRoute(cont.AppName, cont.getAddress())
-			if err != nil {
-				log.Errorf("[remove-old-routes:Backward] Error adding back route for %s: %s", cont.ID, err.Error())
+			if cont.ProcessName == webProcessName {
+				err = r.AddRoute(cont.AppName, cont.getAddress())
+				if err != nil {
+					log.Errorf("[remove-old-routes:Backward] Error adding back route for %s: %s", cont.ID, err.Error())
+				}
 			}
 		}
 	},
