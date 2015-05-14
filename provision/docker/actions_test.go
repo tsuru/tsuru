@@ -623,8 +623,21 @@ func (s *S) TestBindAndHealthcheckName(c *check.C) {
 }
 
 func (s *S) TestBindAndHealthcheckForward(c *check.C) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/x/y" {
+			w.WriteHeader(http.StatusOK)
+		}
+	}))
+	defer server.Close()
 	appName := "my-fake-app"
-	err := s.newFakeImage(s.p, "tsuru/app-"+appName, nil)
+	customData := map[string]interface{}{
+		"healthcheck": map[string]interface{}{
+			"path":   "/x/y",
+			"status": http.StatusOK,
+		},
+		"procfile": "web: python myapp.py\nworker: python myworker.py\n",
+	}
+	err := s.newFakeImage(s.p, "tsuru/app-"+appName, customData)
 	c.Assert(err, check.IsNil)
 	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
 	s.p.Provision(fakeApp)
@@ -634,12 +647,20 @@ func (s *S) TestBindAndHealthcheckForward(c *check.C) {
 		app:         fakeApp,
 		provisioner: s.p,
 		writer:      buf,
-		toAdd:       map[string]int{"web": 2},
+		toAdd:       map[string]int{"web": 2, "worker": 1},
 		imageId:     "tsuru/app-" + appName,
 	}
 	containers, err := addContainersWithHost(&args)
 	c.Assert(err, check.IsNil)
-	c.Assert(containers, check.HasLen, 2)
+	c.Assert(containers, check.HasLen, 3)
+	url, _ := url.Parse(server.URL)
+	host, port, _ := net.SplitHostPort(url.Host)
+	for i := range containers {
+		if containers[i].ProcessName == "web" {
+			containers[i].HostAddr = host
+			containers[i].HostPort = port
+		}
+	}
 	context := action.FWContext{Params: []interface{}{args}, Previous: containers}
 	result, err := bindAndHealthcheck.Forward(context)
 	c.Assert(err, check.IsNil)
@@ -655,6 +676,7 @@ func (s *S) TestBindAndHealthcheckDontHealtcheckForErroredApps(c *check.C) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
+	defer server.Close()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()

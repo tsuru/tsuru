@@ -266,7 +266,7 @@ var bindAndHealthcheck = action.Action{
 				return err
 			}
 			toRollback <- c
-			if doHealthcheck {
+			if doHealthcheck && c.ProcessName == webProcessName {
 				err = runHealthcheck(c, writer)
 				if err != nil {
 					return err
