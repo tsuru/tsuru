@@ -337,14 +337,7 @@ func basicImageName() string {
 
 func (p *dockerProvisioner) usePlatformImage(app provision.App) bool {
 	deploys := app.GetDeploys()
-	if (deploys != 0 && deploys%10 == 0) || app.GetUpdatePlatform() {
-		return true
-	}
-	c, err := p.getOneContainerByAppName(app.GetName())
-	if err != nil || c.Image == "" {
-		return true
-	}
-	return false
+	return deploys%10 == 0 || app.GetUpdatePlatform()
 }
 
 func (p *dockerProvisioner) cleanImage(appName, imgName string) {

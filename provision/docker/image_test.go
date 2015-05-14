@@ -163,7 +163,7 @@ func (s *S) TestUsePlatformImage(c *check.C) {
 	err = conn.Apps().Insert(app4)
 	c.Assert(err, check.IsNil)
 	ok = s.p.usePlatformImage(app4)
-	c.Assert(ok, check.Equals, true)
+	c.Assert(ok, check.Equals, false)
 	defer conn.Apps().Remove(bson.M{"name": "app4"})
 	app5 := &app.App{
 		Name:           "app5",

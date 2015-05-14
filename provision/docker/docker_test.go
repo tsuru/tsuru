@@ -567,18 +567,6 @@ func (s *S) TestGetImageAppWhenDeployIsMultipleOf10(c *check.C) {
 	c.Assert(img, check.Equals, fmt.Sprintf("%s/%s:latest", repoNamespace, app.Platform))
 }
 
-func (s *S) TestGetImageUseAppImageIfContainersExist(c *check.C) {
-	cont := container{ID: "bleble", Type: "python", AppName: "myapp", Image: "ignored"}
-	coll := s.p.collection()
-	err := coll.Insert(cont)
-	defer coll.Close()
-	c.Assert(err, check.IsNil)
-	defer coll.RemoveAll(bson.M{"id": "bleble"})
-	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	img := s.p.getBuildImage(app)
-	c.Assert(img, check.Equals, "tsuru/app-myapp")
-}
-
 func (s *S) TestGetImageWithRegistry(c *check.C) {
 	config.Set("docker:registry", "localhost:3030")
 	defer config.Unset("docker:registry")
