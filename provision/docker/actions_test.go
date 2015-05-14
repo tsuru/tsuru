@@ -157,31 +157,35 @@ func (s *S) TestAddNewRouteForward(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
-	cont := container{ID: "ble-1", AppName: app.GetName()}
-	cont2 := container{ID: "ble-2", AppName: app.GetName()}
-	defer cont.remove(s.p)
+	cont1 := container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.1", HostPort: "1234"}
+	cont2 := container{ID: "ble-2", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.2", HostPort: "4321"}
+	cont3 := container{ID: "ble-3", AppName: app.GetName(), ProcessName: "worker", HostAddr: "127.0.0.3", HostPort: "8080"}
+	defer cont1.remove(s.p)
 	defer cont2.remove(s.p)
+	defer cont3.remove(s.p)
 	args := changeUnitsPipelineArgs{
 		app:         app,
 		provisioner: s.p,
 	}
-	context := action.FWContext{Previous: []container{cont, cont2}, Params: []interface{}{args}}
+	context := action.FWContext{Previous: []container{cont1, cont2, cont3}, Params: []interface{}{args}}
 	r, err := addNewRoutes.Forward(context)
 	c.Assert(err, check.IsNil)
 	containers := r.([]container)
-	hasRoute := routertest.FakeRouter.HasRoute(app.GetName(), cont.getAddress())
+	hasRoute := routertest.FakeRouter.HasRoute(app.GetName(), cont1.getAddress())
 	c.Assert(hasRoute, check.Equals, true)
 	hasRoute = routertest.FakeRouter.HasRoute(app.GetName(), cont2.getAddress())
 	c.Assert(hasRoute, check.Equals, true)
-	c.Assert(containers, check.DeepEquals, []container{cont, cont2})
+	hasRoute = routertest.FakeRouter.HasRoute(app.GetName(), cont3.getAddress())
+	c.Assert(hasRoute, check.Equals, false)
+	c.Assert(containers, check.DeepEquals, []container{cont1, cont2, cont3})
 }
 
 func (s *S) TestAddNewRouteForwardFailInMiddle(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
-	cont := container{ID: "ble-1", AppName: app.GetName()}
-	cont2 := container{ID: "ble-2", AppName: app.GetName()}
+	cont := container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web"}
+	cont2 := container{ID: "ble-2", AppName: app.GetName(), ProcessName: "web"}
 	defer cont.remove(s.p)
 	defer cont2.remove(s.p)
 	routertest.FakeRouter.FailForIp(cont2.getAddress())
@@ -202,11 +206,13 @@ func (s *S) TestAddNewRouteBackward(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
-	cont := container{ID: "ble-1", AppName: app.GetName()}
-	cont2 := container{ID: "ble-2", AppName: app.GetName()}
-	defer cont.remove(s.p)
+	cont1 := container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.1", HostPort: "1234"}
+	cont2 := container{ID: "ble-2", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.2", HostPort: "4321"}
+	cont3 := container{ID: "ble-3", AppName: app.GetName(), ProcessName: "worker", HostAddr: "127.0.0.3", HostPort: "8080"}
+	defer cont1.remove(s.p)
 	defer cont2.remove(s.p)
-	err := routertest.FakeRouter.AddRoute(app.GetName(), cont.getAddress())
+	defer cont3.remove(s.p)
+	err := routertest.FakeRouter.AddRoute(app.GetName(), cont1.getAddress())
 	c.Assert(err, check.IsNil)
 	err = routertest.FakeRouter.AddRoute(app.GetName(), cont2.getAddress())
 	c.Assert(err, check.IsNil)
@@ -214,9 +220,9 @@ func (s *S) TestAddNewRouteBackward(c *check.C) {
 		app:         app,
 		provisioner: s.p,
 	}
-	context := action.BWContext{FWResult: []container{cont, cont2}, Params: []interface{}{args}}
+	context := action.BWContext{FWResult: []container{cont1, cont2}, Params: []interface{}{args}}
 	addNewRoutes.Backward(context)
-	hasRoute := routertest.FakeRouter.HasRoute(app.GetName(), cont.getAddress())
+	hasRoute := routertest.FakeRouter.HasRoute(app.GetName(), cont1.getAddress())
 	c.Assert(hasRoute, check.Equals, false)
 	hasRoute = routertest.FakeRouter.HasRoute(app.GetName(), cont2.getAddress())
 	c.Assert(hasRoute, check.Equals, false)

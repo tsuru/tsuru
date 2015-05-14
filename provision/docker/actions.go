@@ -310,8 +310,20 @@ var addNewRoutes = action.Action{
 		if writer == nil {
 			writer = ioutil.Discard
 		}
-		fmt.Fprintf(writer, "\n---- Adding routes to %d new units ----\n", len(newContainers))
-		return newContainers, runInContainers(newContainers, func(c *container, toRollback chan *container) error {
+		webContainers := make([]container, 0, len(newContainers))
+		for _, container := range newContainers {
+			if container.ProcessName == "web" {
+				webContainers = append(webContainers, container)
+			}
+		}
+		var plural string
+		if len(webContainers) > 1 {
+			plural = "s"
+		}
+		if len(webContainers) > 0 {
+			fmt.Fprintf(writer, "\n---- Adding routes to %d new %q unit%s ----\n", len(webContainers), "web", plural)
+		}
+		return newContainers, runInContainers(webContainers, func(c *container, toRollback chan *container) error {
 			err = r.AddRoute(c.AppName, c.getAddress())
 			if err != nil {
 				return err
@@ -330,7 +342,13 @@ var addNewRoutes = action.Action{
 		if err != nil {
 			log.Errorf("[add-new-routes:Backward] Error geting router: %s", err.Error())
 		}
-		for _, cont := range newContainers {
+		webContainers := make([]container, 0, len(newContainers))
+		for _, container := range newContainers {
+			if container.ProcessName == "web" {
+				webContainers = append(webContainers, container)
+			}
+		}
+		for _, cont := range webContainers {
 			err = r.RemoveRoute(cont.AppName, cont.getAddress())
 			if err != nil {
 				log.Errorf("[add-new-routes:Backward] Error removing route for %s: %s", cont.ID, err.Error())
