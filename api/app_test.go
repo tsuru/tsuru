@@ -658,18 +658,29 @@ func (s *S) TestAddUnitsReturns400IfNumberOfUnitsIsOmited(c *check.C) {
 	}
 }
 
-func (s *S) TestAddUnitsReturns400IfProcessIsOmited(c *check.C) {
-	body := strings.NewReader("units=1")
+func (s *S) TestAddUnitsWorksIfProcessIsOmited(c *check.C) {
+	a := app.App{Name: "armorandsword", Platform: "zend", Teams: []string{s.team.Name}, Quota: quota.Unlimited}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	defer s.deleteApp(&a)
+	body := strings.NewReader("units=3&process=")
 	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:app=armorandsword", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	err = addUnits(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(e.Message, check.Equals, "You must provide a process name.")
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	app, err := app.GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(app.Units(), check.HasLen, 3)
+	action := rectest.Action{
+		Action: "add-units",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=armorandsword", "units=3"},
+	}
+	c.Assert(action, rectest.IsRecorded)
+	c.Assert(recorder.Body.String(), check.Equals, `{"Message":"added 3 units"}`+"\n")
 }
 
 func (s *S) TestAddUnitsReturns400IfNumberIsInvalid(c *check.C) {
@@ -768,16 +779,28 @@ func (s *S) TestRemoveUnitsReturns400IfNumberOfUnitsIsOmited(c *check.C) {
 	c.Assert(e.Message, check.Equals, "You must provide the number of units.")
 }
 
-func (s *S) TestRemoveUnitsReturns400IfProcessIsOmited(c *check.C) {
-	request, err := http.NewRequest("DELETE", "/apps/fetisha/units?:app=fetisha&units=1", nil)
+func (s *S) TestRemoveUnitsWorksIfProcessIsOmited(c *check.C) {
+	a := app.App{Name: "velha", Platform: "zend", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	defer s.deleteApp(&a)
+	s.provisioner.AddUnits(&a, 3, "", nil)
+	request, err := http.NewRequest("DELETE", "/apps/velha/units?:app=velha&units=2&process=", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	err = removeUnits(recorder, request, s.token)
-	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
-	c.Assert(e.Message, check.Equals, "You must provide a process name.")
+	c.Assert(err, check.IsNil)
+	app, err := app.GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(context.IsPreventUnlock(request), check.Equals, true)
+	c.Assert(app.Units(), check.HasLen, 1)
+	c.Assert(s.provisioner.GetUnits(app), check.HasLen, 1)
+	action := rectest.Action{
+		Action: "remove-units",
+		User:   s.user.Email,
+		Extra:  []interface{}{"app=velha", "units=2"},
+	}
+	c.Assert(action, rectest.IsRecorded)
 }
 
 func (s *S) TestRemoveUnitsReturns400IfNumberIsInvalid(c *check.C) {

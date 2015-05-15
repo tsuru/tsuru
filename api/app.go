@@ -255,12 +255,6 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	processName := r.FormValue("process")
-	if processName == "" {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: "You must provide a process name.",
-		}
-	}
 	appName := r.URL.Query().Get(":app")
 	u, err := t.User()
 	if err != nil {
@@ -291,12 +285,6 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	processName := r.FormValue("process")
-	if processName == "" {
-		return &errors.HTTP{
-			Code:    http.StatusBadRequest,
-			Message: "You must provide a process name.",
-		}
-	}
 	appName := r.URL.Query().Get(":app")
 	rec.Log(u.Email, "remove-units", "app="+appName, fmt.Sprintf("units=%d", n))
 	app, err := getApp(appName, u)
