@@ -99,7 +99,7 @@ func (s *cloudstackSuite) TestCreateMachineAsyncFailure(c *check.C) {
 	}
 	_, err = cs.CreateMachine(params)
 	c.Assert(err, check.ErrorMatches, ".*my weird error.*")
-	c.Assert(calls, check.DeepEquals, []string{"deployVirtualMachine", "queryAsyncJobResult"})
+	c.Assert(calls[:2], check.DeepEquals, []string{"deployVirtualMachine", "queryAsyncJobResult"})
 }
 
 func (s *cloudstackSuite) TestCreateMachineValidateParams(c *check.C) {
