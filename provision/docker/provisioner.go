@@ -92,7 +92,7 @@ func (p *dockerProvisioner) initDockerCluster() error {
 	}
 	autoHealingNodes, _ := config.GetBool("docker:healing:heal-nodes")
 	if autoHealingNodes {
-		disabledSeconds, _ := config.GetDuration("docker:healing:disabled-time")
+		disabledSeconds, _ := config.GetInt("docker:healing:disabled-time")
 		if disabledSeconds <= 0 {
 			disabledSeconds = 30
 		}
@@ -100,33 +100,33 @@ func (p *dockerProvisioner) initDockerCluster() error {
 		if maxFailures <= 0 {
 			maxFailures = 5
 		}
-		waitSecondsNewMachine, _ := config.GetDuration("docker:healing:wait-new-time")
+		waitSecondsNewMachine, _ := config.GetInt("docker:healing:wait-new-time")
 		if waitSecondsNewMachine <= 0 {
 			waitSecondsNewMachine = 5 * 60
 		}
 		healer := nodeHealer{
 			locks:                 make(map[string]*sync.Mutex),
 			provisioner:           p,
-			disabledTime:          disabledSeconds * time.Second,
-			waitTimeNewMachine:    waitSecondsNewMachine * time.Second,
+			disabledTime:          time.Duration(disabledSeconds) * time.Second,
+			waitTimeNewMachine:    time.Duration(waitSecondsNewMachine) * time.Second,
 			failuresBeforeHealing: maxFailures,
 		}
 		shutdown.Register(&healer)
 		p.cluster.Healer = &healer
 	}
-	healContainersSeconds, _ := config.GetDuration("docker:healing:heal-containers-timeout")
+	healContainersSeconds, _ := config.GetInt("docker:healing:heal-containers-timeout")
 	if healContainersSeconds > 0 {
 		contHealerInst := containerHealer{
 			provisioner:         p,
-			maxUnresponsiveTime: healContainersSeconds * time.Second,
+			maxUnresponsiveTime: time.Duration(healContainersSeconds) * time.Second,
 			done:                make(chan bool),
 		}
 		shutdown.Register(&contHealerInst)
 		go contHealerInst.runContainerHealer()
 	}
-	activeMonitoring, _ := config.GetDuration("docker:healing:active-monitoring-interval")
+	activeMonitoring, _ := config.GetInt("docker:healing:active-monitoring-interval")
 	if activeMonitoring > 0 {
-		p.cluster.StartActiveMonitoring(activeMonitoring * time.Second)
+		p.cluster.StartActiveMonitoring(time.Duration(activeMonitoring) * time.Second)
 	}
 	autoScaleEnabled, _ := config.GetBool("docker:auto-scale:enabled")
 	if autoScaleEnabled {
@@ -138,11 +138,11 @@ func (p *dockerProvisioner) initDockerCluster() error {
 }
 
 func (p *dockerProvisioner) initAutoScaleConfig() *autoScaleConfig {
-	waitSecondsNewMachine, _ := config.GetDuration("docker:auto-scale:wait-new-time")
+	waitSecondsNewMachine, _ := config.GetInt("docker:auto-scale:wait-new-time")
 	groupByMetadata, _ := config.GetString("docker:auto-scale:group-by-metadata")
 	matadataFilter, _ := config.GetString("docker:auto-scale:metadata-filter")
 	maxContainerCount, _ := config.GetInt("docker:auto-scale:max-container-count")
-	runInterval, _ := config.GetDuration("docker:auto-scale:run-interval")
+	runInterval, _ := config.GetInt("docker:auto-scale:run-interval")
 	scaleDownRatio, _ := config.GetFloat("docker:auto-scale:scale-down-ratio")
 	preventRebalance, _ := config.GetBool("docker:auto-scale:prevent-rebalance")
 	totalMemoryMetadata, _ := config.GetString("docker:scheduler:total-memory-metadata")
@@ -155,8 +155,8 @@ func (p *dockerProvisioner) initAutoScaleConfig() *autoScaleConfig {
 		maxContainerCount:   maxContainerCount,
 		matadataFilter:      matadataFilter,
 		scaleDownRatio:      float32(scaleDownRatio),
-		waitTimeNewMachine:  waitSecondsNewMachine * time.Second,
-		runInterval:         runInterval * time.Second,
+		waitTimeNewMachine:  time.Duration(waitSecondsNewMachine) * time.Second,
+		runInterval:         time.Duration(runInterval) * time.Second,
 		preventRebalance:    preventRebalance,
 		done:                make(chan bool),
 	}

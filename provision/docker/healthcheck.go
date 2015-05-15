@@ -60,11 +60,11 @@ func runHealthcheck(cont *container, w io.Writer) error {
 			return err
 		}
 	}
-	maxWaitTime, _ := config.GetDuration("docker:healthcheck:max-time")
+	maxWaitTime, _ := config.GetInt("docker:healthcheck:max-time")
 	if maxWaitTime == 0 {
 		maxWaitTime = 120
 	}
-	maxWaitTime = maxWaitTime * time.Second
+	maxWaitTime = maxWaitTime * int(time.Second)
 	sleepTime := 3 * time.Second
 	startedTime := time.Now()
 	url := fmt.Sprintf("http://%s:%s/%s", cont.HostAddr, cont.HostPort, path)
@@ -102,7 +102,7 @@ func runHealthcheck(cont *container, w io.Writer) error {
 			fmt.Fprintf(w, " ---> healthcheck successful(%s)\n", cont.shortID())
 			return nil
 		}
-		if time.Now().Sub(startedTime) > maxWaitTime {
+		if time.Now().Sub(startedTime) > time.Duration(maxWaitTime) {
 			return lastError
 		}
 		fmt.Fprintf(w, " ---> %s. Trying again in %ds\n", lastError.Error(), sleepTime/time.Second)

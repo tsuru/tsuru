@@ -303,21 +303,20 @@ func RunServer(dry bool) http.Handler {
 			fatal(err)
 		}
 		shutdownChan := make(chan bool)
-		shutdownTimeout, _ := config.GetDuration("shutdown-timeout")
+		shutdownTimeout, _ := config.GetInt("shutdown-timeout")
 		if shutdownTimeout == 0 {
 			shutdownTimeout = 10 * 60
 		}
-		shutdownTimeout = shutdownTimeout * time.Second
 		idleTracker := newIdleTracker()
 		shutdown.Register(idleTracker)
 		shutdown.Register(&logTracker)
 		readTimeout, _ := config.GetInt("server:read-timeout")
 		writeTimeout, _ := config.GetInt("server:write-timeout")
 		srv := &graceful.Server{
-			Timeout: shutdownTimeout,
+			Timeout: time.Duration(shutdownTimeout) * time.Second,
 			Server: &http.Server{
-				ReadTimeout:  readTimeout * time.Second,
-				WriteTimeout: writeTimeout * time.Second,
+				ReadTimeout:  time.Duration(readTimeout) * time.Second,
+				WriteTimeout: time.Duration(writeTimeout) * time.Second,
 				Addr:         listen,
 				Handler:      n,
 			},

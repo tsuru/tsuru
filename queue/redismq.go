@@ -154,17 +154,16 @@ func (factory *redisPubSubFactory) getPool() *redis.Pool {
 			maxIdle = 20
 		}
 	}
-	idleTimeout, err := config.GetDuration("pubsub:pool-idle-timeout")
+	idleTimeout, err := config.GetInt("pubsub:pool-idle-timeout")
 	if err != nil {
-		idleTimeout, err = config.GetDuration("redis-queue:pool-idle-timeout")
+		idleTimeout, err = config.GetInt("redis-queue:pool-idle-timeout")
 		if err != nil {
 			idleTimeout = 300
 		}
 	}
-	idleTimeout = idleTimeout * time.Second
 	factory.pool = &redis.Pool{
 		MaxIdle:     maxIdle,
-		IdleTimeout: idleTimeout,
+		IdleTimeout: time.Duration(idleTimeout) * time.Second,
 		Dial:        factory.dial,
 	}
 	return factory.pool
