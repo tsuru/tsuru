@@ -59,7 +59,7 @@ func (s *S) TestAppIsAvailableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c
 	defer s.conn.Logs(a.Name).DropCollection()
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 1, nil)
+	s.provisioner.AddUnits(&a, 1, "web", nil)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
@@ -590,9 +590,10 @@ func (s *S) TestAddUnits(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.deleteApp(&a)
-	body := strings.NewReader("3")
+	body := strings.NewReader("units=3&process=web")
 	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:app=armorandsword", body)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	err = addUnits(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
@@ -610,9 +611,10 @@ func (s *S) TestAddUnits(c *check.C) {
 }
 
 func (s *S) TestAddUnitsReturns404IfAppDoesNotExist(c *check.C) {
-	body := strings.NewReader("1")
+	body := strings.NewReader("units=1&process=web")
 	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:app=armorandsword", body)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	err = addUnits(recorder, request, s.token)
 	c.Assert(err, check.NotNil)
@@ -627,9 +629,10 @@ func (s *S) TestAddUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check.C)
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	body := strings.NewReader("1")
+	body := strings.NewReader("units=1&process=web")
 	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:app=armorandsword", body)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	err = addUnits(recorder, request, s.token)
 	c.Assert(err, check.NotNil)
@@ -644,6 +647,7 @@ func (s *S) TestAddUnitsReturns400IfNumberOfUnitsIsOmited(c *check.C) {
 	for _, body := range bodies {
 		request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:app=armorandsword", body)
 		c.Assert(err, check.IsNil)
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		recorder := httptest.NewRecorder()
 		err = addUnits(recorder, request, s.token)
 		c.Assert(err, check.NotNil)
@@ -654,12 +658,27 @@ func (s *S) TestAddUnitsReturns400IfNumberOfUnitsIsOmited(c *check.C) {
 	}
 }
 
+func (s *S) TestAddUnitsReturns400IfProcessIsOmited(c *check.C) {
+	body := strings.NewReader("units=1")
+	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:app=armorandsword", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	err = addUnits(recorder, request, s.token)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(e.Message, check.Equals, "You must provide a process name.")
+}
+
 func (s *S) TestAddUnitsReturns400IfNumberIsInvalid(c *check.C) {
 	values := []string{"-1", "0", "far cry", "12345678909876543"}
 	for _, value := range values {
-		body := strings.NewReader(value)
+		body := strings.NewReader("units=" + value + "&process=web")
 		request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:app=armorandsword", body)
 		c.Assert(err, check.IsNil)
+		request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		recorder := httptest.NewRecorder()
 		err = addUnits(recorder, request, s.token)
 		c.Assert(err, check.NotNil)
@@ -675,9 +694,10 @@ func (s *S) TestAddUnitsQuotaExceeded(c *check.C) {
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	body := strings.NewReader("3")
+	body := strings.NewReader("units=3&process=web")
 	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:app=armorandsword", body)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	err = addUnits(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
@@ -689,9 +709,8 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.deleteApp(&a)
-	s.provisioner.AddUnits(&a, 3, nil)
-	body := strings.NewReader("2")
-	request, err := http.NewRequest("DELETE", "/apps/velha/units?:app=velha", body)
+	s.provisioner.AddUnits(&a, 3, "web", nil)
+	request, err := http.NewRequest("DELETE", "/apps/velha/units?:app=velha&units=2&process=web", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	err = removeUnits(recorder, request, s.token)
@@ -710,8 +729,7 @@ func (s *S) TestRemoveUnits(c *check.C) {
 }
 
 func (s *S) TestRemoveUnitsReturns404IfAppDoesNotExist(c *check.C) {
-	body := strings.NewReader("1")
-	request, err := http.NewRequest("DELETE", "/apps/fetisha/units?:app=fetisha", body)
+	request, err := http.NewRequest("DELETE", "/apps/fetisha/units?:app=fetisha&units=1&process=web", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	err = removeUnits(recorder, request, s.token)
@@ -727,8 +745,7 @@ func (s *S) TestRemoveUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check
 	err := s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
-	body := strings.NewReader("1")
-	request, err := http.NewRequest("DELETE", "/apps/fetisha/units?:app=fetisha", body)
+	request, err := http.NewRequest("DELETE", "/apps/fetisha/units?:app=fetisha&units=1&process=web", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	err = removeUnits(recorder, request, s.token)
@@ -740,25 +757,38 @@ func (s *S) TestRemoveUnitsReturns403IfTheUserDoesNotHaveAccessToTheApp(c *check
 }
 
 func (s *S) TestRemoveUnitsReturns400IfNumberOfUnitsIsOmited(c *check.C) {
-	bodies := []io.Reader{nil, strings.NewReader("")}
-	for _, body := range bodies {
-		request, err := http.NewRequest("DELETE", "/apps/fetisha/units?:app=fetisha", body)
-		c.Assert(err, check.IsNil)
-		recorder := httptest.NewRecorder()
-		err = removeUnits(recorder, request, s.token)
-		c.Assert(err, check.NotNil)
-		e, ok := err.(*errors.HTTP)
-		c.Assert(ok, check.Equals, true)
-		c.Assert(e.Code, check.Equals, http.StatusBadRequest)
-		c.Assert(e.Message, check.Equals, "You must provide the number of units.")
-	}
+	request, err := http.NewRequest("DELETE", "/apps/fetisha/units?:app=fetisha", nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = removeUnits(recorder, request, s.token)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(e.Message, check.Equals, "You must provide the number of units.")
+}
+
+func (s *S) TestRemoveUnitsReturns400IfProcessIsOmited(c *check.C) {
+	request, err := http.NewRequest("DELETE", "/apps/fetisha/units?:app=fetisha&units=1", nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = removeUnits(recorder, request, s.token)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(e.Message, check.Equals, "You must provide a process name.")
 }
 
 func (s *S) TestRemoveUnitsReturns400IfNumberIsInvalid(c *check.C) {
 	values := []string{"-1", "0", "far cry", "12345678909876543"}
 	for _, value := range values {
-		body := strings.NewReader(value)
-		request, err := http.NewRequest("DELETE", "/apps/fiend/units?:app=fiend", body)
+		v := url.Values{
+			":app":    []string{"fiend"},
+			"units":   []string{value},
+			"process": []string{"web"},
+		}
+		request, err := http.NewRequest("DELETE", "/apps/fiend/units?"+v.Encode(), nil)
 		c.Assert(err, check.IsNil)
 		recorder := httptest.NewRecorder()
 		err = removeUnits(recorder, request, s.token)
@@ -775,7 +805,7 @@ func (s *S) TestSetUnitStatus(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.deleteApp(&a)
-	s.provisioner.AddUnits(&a, 3, nil)
+	s.provisioner.AddUnits(&a, 3, "web", nil)
 	body := strings.NewReader("status=error")
 	unit := a.Units()[0]
 	request, err := http.NewRequest("POST", "/apps/telegram/units/<unit-name>?:app=telegram&:unit="+unit.Name, body)
@@ -840,7 +870,7 @@ func (s *S) TestSetUnitStatusDoesntRequireLock(c *check.C) {
 	locked, err := app.AcquireApplicationLock(a.Name, "test", "test")
 	c.Assert(err, check.IsNil)
 	c.Assert(locked, check.Equals, true)
-	s.provisioner.AddUnits(&a, 1, nil)
+	s.provisioner.AddUnits(&a, 1, "web", nil)
 	unit := a.Units()[0]
 	body := strings.NewReader("status=error")
 	request, err := http.NewRequest("POST", "/apps/telegram/units/"+unit.Name, body)
@@ -1154,7 +1184,7 @@ func (s *S) TestRunOnceHandler(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.deleteApp(&a)
-	s.provisioner.AddUnits(&a, 1, nil)
+	s.provisioner.AddUnits(&a, 1, "web", nil)
 	url := fmt.Sprintf("/apps/%s/run/?:app=%s&once=true", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
 	c.Assert(err, check.IsNil)
@@ -1182,7 +1212,7 @@ func (s *S) TestRunHandler(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.deleteApp(&a)
-	s.provisioner.AddUnits(&a, 1, nil)
+	s.provisioner.AddUnits(&a, 1, "web", nil)
 	url := fmt.Sprintf("/apps/%s/run/?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
 	c.Assert(err, check.IsNil)
@@ -1211,7 +1241,7 @@ func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *check.C) 
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.deleteApp(&a)
-	s.provisioner.AddUnits(&a, 1, nil)
+	s.provisioner.AddUnits(&a, 1, "web", nil)
 	url := fmt.Sprintf("/apps/%s/run/?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
 	c.Assert(err, check.IsNil)
@@ -2392,7 +2422,7 @@ func (s *S) TestBindHandlerEndpointIsDown(c *check.C) {
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.deleteApp(&a)
-	s.provisioner.AddUnits(&a, 1, nil)
+	s.provisioner.AddUnits(&a, 1, "web", nil)
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
@@ -2429,7 +2459,7 @@ func (s *S) TestBindHandler(c *check.C) {
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.deleteApp(&a)
-	s.provisioner.AddUnits(&a, 1, nil)
+	s.provisioner.AddUnits(&a, 1, "web", nil)
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
@@ -2564,7 +2594,7 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.deleteApp(&a)
-	units, _ := s.provisioner.AddUnits(&a, 1, nil)
+	units, _ := s.provisioner.AddUnits(&a, 1, "web", nil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
@@ -3070,7 +3100,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	err = s.provisioner.Provision(&a)
 	c.Assert(err, check.IsNil)
 	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 1, nil)
+	s.provisioner.AddUnits(&a, 1, "web", nil)
 	units := a.Units()
 	oldIp := units[0].Ip
 	body := strings.NewReader("hostname=" + units[0].Name)
@@ -3138,7 +3168,7 @@ func (s *S) TestRegisterUnitWithCustomData(c *check.C) {
 	err = s.provisioner.Provision(&a)
 	c.Assert(err, check.IsNil)
 	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 1, nil)
+	s.provisioner.AddUnits(&a, 1, "web", nil)
 	units := a.Units()
 	oldIp := units[0].Ip
 	v := url.Values{}

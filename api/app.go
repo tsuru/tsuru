@@ -232,20 +232,14 @@ func setTeamOwner(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func numberOfUnits(r *http.Request) (uint, error) {
-	missingMsg := "You must provide the number of units."
-	if r.Body == nil {
-		return 0, &errors.HTTP{Code: http.StatusBadRequest, Message: missingMsg}
+	unitsStr := r.FormValue("units")
+	if unitsStr == "" {
+		return 0, &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "You must provide the number of units.",
+		}
 	}
-	defer r.Body.Close()
-	b, err := ioutil.ReadAll(r.Body)
-	if err != nil {
-		return 0, err
-	}
-	value := string(b)
-	if value == "" {
-		return 0, &errors.HTTP{Code: http.StatusBadRequest, Message: missingMsg}
-	}
-	n, err := strconv.ParseUint(value, 10, 32)
+	n, err := strconv.ParseUint(unitsStr, 10, 32)
 	if err != nil || n == 0 {
 		return 0, &errors.HTTP{
 			Code:    http.StatusBadRequest,
@@ -260,6 +254,13 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+	processName := r.FormValue("process")
+	if processName == "" {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "You must provide a process name.",
+		}
+	}
 	appName := r.URL.Query().Get(":app")
 	u, err := t.User()
 	if err != nil {
@@ -272,7 +273,7 @@ func addUnits(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
-	err = app.AddUnits(n, writer)
+	err = app.AddUnits(n, processName, writer)
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 		return nil
@@ -289,6 +290,13 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+	processName := r.FormValue("process")
+	if processName == "" {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: "You must provide a process name.",
+		}
+	}
 	appName := r.URL.Query().Get(":app")
 	rec.Log(u.Email, "remove-units", "app="+appName, fmt.Sprintf("units=%d", n))
 	app, err := getApp(appName, u)
@@ -296,7 +304,7 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	context.SetPreventUnlock(r)
-	return app.RemoveUnits(uint(n))
+	return app.RemoveUnits(uint(n), processName)
 }
 
 func setUnitStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
