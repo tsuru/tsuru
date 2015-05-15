@@ -396,14 +396,14 @@ func (app *App) serviceInstances() ([]service.ServiceInstance, error) {
 
 // AddUnits creates n new units within the provisioner, saves new units in the
 // database and enqueues the apprc serialization.
-func (app *App) AddUnits(n uint, writer io.Writer) error {
+func (app *App) AddUnits(n uint, process string, writer io.Writer) error {
 	if n == 0 {
 		return stderr.New("Cannot add zero units.")
 	}
 	err := action.NewPipeline(
 		&reserveUnitsToAdd,
 		&provisionAddUnits,
-	).Execute(app, n, writer)
+	).Execute(app, n, writer, process)
 	return err
 }
 
@@ -413,7 +413,7 @@ func (app *App) AddUnits(n uint, writer io.Writer) error {
 //     1. Remove units from the provisioner
 //     2. Remove units from the app list
 //     3. Update quota
-func (app *App) RemoveUnits(n uint) error {
+func (app *App) RemoveUnits(n uint, process string) error {
 	if n == 0 {
 		ReleaseApplicationLock(app.Name)
 		return stderr.New("Cannot remove zero units.")
@@ -423,7 +423,7 @@ func (app *App) RemoveUnits(n uint) error {
 	}
 	go func() {
 		defer ReleaseApplicationLock(app.Name)
-		Provisioner.RemoveUnits(app, n)
+		Provisioner.RemoveUnits(app, n, process)
 		conn, err := db.Conn()
 		if err != nil {
 			log.Errorf("Error: %s", err)

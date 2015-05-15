@@ -551,7 +551,7 @@ func (s *S) TestProvisionAddUnits(c *check.C) {
 	}
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
-	ctx := action.FWContext{Previous: 3, Params: []interface{}{&app}}
+	ctx := action.FWContext{Previous: 3, Params: []interface{}{&app, 3, nil, "web"}}
 	fwresult, err := provisionAddUnits.Forward(ctx)
 	c.Assert(err, check.IsNil)
 	units, ok := fwresult.([]provision.Unit)
@@ -566,7 +566,7 @@ func (s *S) TestProvisionAddUnitsProvisionFailure(c *check.C) {
 		Name:     "visions",
 		Platform: "django",
 	}
-	ctx := action.FWContext{Previous: 3, Params: []interface{}{&app}}
+	ctx := action.FWContext{Previous: 3, Params: []interface{}{&app, 3, nil, "web"}}
 	result, err := provisionAddUnits.Forward(ctx)
 	c.Assert(result, check.IsNil)
 	c.Assert(err, check.NotNil)
@@ -587,7 +587,7 @@ func (s *S) TestProvisionAddUnitsBackward(c *check.C) {
 	}
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
-	units, err := s.provisioner.AddUnits(&app, 3, nil)
+	units, err := s.provisioner.AddUnits(&app, 3, "web", nil)
 	c.Assert(err, check.IsNil)
 	ctx := action.BWContext{Params: []interface{}{&app}, FWResult: units}
 	provisionAddUnits.Backward(ctx)

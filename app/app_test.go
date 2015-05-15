@@ -431,14 +431,19 @@ func (s *S) TestAddUnits(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
-	err = app.AddUnits(5, nil)
+	err = app.AddUnits(5, "web", nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.Units(), check.HasLen, 5)
-	err = app.AddUnits(2, nil)
+	err = app.AddUnits(2, "worker", nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.Units(), check.HasLen, 7)
-	for _, unit := range app.Units() {
+	for i, unit := range app.Units() {
 		c.Assert(unit.AppName, check.Equals, app.Name)
+		if i < 5 {
+			c.Assert(unit.ProcessName, check.Equals, "web")
+		} else {
+			c.Assert(unit.ProcessName, check.Equals, "worker")
+		}
 	}
 }
 
@@ -453,7 +458,7 @@ func (s *S) TestAddUnitsWithWriter(c *check.C) {
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
 	var buf bytes.Buffer
-	err = app.AddUnits(2, &buf)
+	err = app.AddUnits(2, "web", &buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.Units(), check.HasLen, 2)
 	for _, unit := range app.Units() {
@@ -473,11 +478,11 @@ func (s *S) TestAddUnitsQuota(c *check.C) {
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
 	otherApp := App{Name: "warpaint"}
-	err = otherApp.AddUnits(5, nil)
+	err = otherApp.AddUnits(5, "web", nil)
 	c.Assert(err, check.IsNil)
 	units := s.provisioner.GetUnits(&app)
 	c.Assert(units, check.HasLen, 5)
-	err = otherApp.AddUnits(2, nil)
+	err = otherApp.AddUnits(2, "web", nil)
 	c.Assert(err, check.IsNil)
 	units = s.provisioner.GetUnits(&app)
 	c.Assert(units, check.HasLen, 7)
@@ -490,7 +495,7 @@ func (s *S) TestAddUnitsQuotaExceeded(c *check.C) {
 	app := App{Name: "warpaint", Platform: "ruby"}
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	err := app.AddUnits(1, nil)
+	err := app.AddUnits(1, "web", nil)
 	e, ok := err.(*quota.QuotaExceededError)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Available, check.Equals, uint(0))
@@ -506,7 +511,7 @@ func (s *S) TestAddUnitsMultiple(c *check.C) {
 	}
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	err := app.AddUnits(11, nil)
+	err := app.AddUnits(11, "web", nil)
 	e, ok := err.(*quota.QuotaExceededError)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Available, check.Equals, uint(10))
@@ -515,7 +520,7 @@ func (s *S) TestAddUnitsMultiple(c *check.C) {
 
 func (s *S) TestAddZeroUnits(c *check.C) {
 	app := App{Name: "warpaint", Platform: "ruby"}
-	err := app.AddUnits(0, nil)
+	err := app.AddUnits(0, "web", nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Cannot add zero units.")
 }
@@ -524,7 +529,7 @@ func (s *S) TestAddUnitsFailureInProvisioner(c *check.C) {
 	app := App{Name: "scars", Platform: "golang", Quota: quota.Unlimited}
 	s.conn.Apps().Insert(app)
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
-	err := app.AddUnits(2, nil)
+	err := app.AddUnits(2, "web", nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "App is not provisioned.")
 }
@@ -534,7 +539,7 @@ func (s *S) TestAddUnitsIsAtomic(c *check.C) {
 		Name: "warpaint", Platform: "golang",
 		Quota: quota.Unlimited,
 	}
-	err := app.AddUnits(2, nil)
+	err := app.AddUnits(2, "web", nil)
 	c.Assert(err, check.NotNil)
 	_, err = GetByName(app.Name)
 	c.Assert(err, check.Equals, ErrAppNotFound)
@@ -550,9 +555,9 @@ func (s *S) TestRemoveUnitsWithQuota(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 5, nil)
+	s.provisioner.AddUnits(&a, 5, "web", nil)
 	defer s.provisioner.Destroy(&a)
-	err = a.RemoveUnits(4)
+	err = a.RemoveUnits(4, "web")
 	c.Assert(err, check.IsNil)
 	time.Sleep(1e9)
 	app, err := GetByName(a.Name)
@@ -589,18 +594,26 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
-	app.AddUnits(4, nil)
-	err = app.RemoveUnits(2)
+	err = app.AddUnits(2, "web", nil)
+	c.Assert(err, check.IsNil)
+	err = app.AddUnits(2, "worker", nil)
+	c.Assert(err, check.IsNil)
+	err = app.AddUnits(2, "web", nil)
+	c.Assert(err, check.IsNil)
+	err = app.RemoveUnits(2, "worker")
 	c.Assert(err, check.IsNil)
 	time.Sleep(1e9)
 	ts.Close()
 	units := app.Units()
-	c.Assert(units, check.HasLen, 2)
+	c.Assert(units, check.HasLen, 4)
 	gotApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
 	gotApp, err = GetByName(app.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.Quota.InUse, check.Equals, 2)
+	c.Assert(gotApp.Quota.InUse, check.Equals, 4)
+	for _, u := range units {
+		c.Assert(u.ProcessName, check.Equals, "web")
+	}
 }
 
 func (s *S) TestRemoveUnitsInvalidValues(c *check.C) {
@@ -620,9 +633,9 @@ func (s *S) TestRemoveUnitsInvalidValues(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
-	s.provisioner.AddUnits(&app, 3, nil)
+	s.provisioner.AddUnits(&app, 3, "web", nil)
 	for _, test := range tests {
-		err := app.RemoveUnits(test.n)
+		err := app.RemoveUnits(test.n, "web")
 		c.Check(err, check.NotNil)
 		c.Check(err.Error(), check.Equals, test.expected)
 	}
@@ -632,7 +645,7 @@ func (s *S) TestSetUnitStatus(c *check.C) {
 	a := App{Name: "appName", Platform: "python"}
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 3, nil)
+	s.provisioner.AddUnits(&a, 3, "web", nil)
 	units := a.Units()
 	err := a.SetUnitStatus(units[0].Name, provision.StatusError)
 	c.Assert(err, check.IsNil)
@@ -644,7 +657,7 @@ func (s *S) TestSetUnitStatusPartialID(c *check.C) {
 	a := App{Name: "appName", Platform: "python"}
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 3, nil)
+	s.provisioner.AddUnits(&a, 3, "web", nil)
 	units := a.Units()
 	name := units[0].Name
 	err := a.SetUnitStatus(name[0:len(name)-2], provision.StatusError)
@@ -940,7 +953,7 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = s.provisioner.Provision(&a)
 	c.Assert(err, check.IsNil)
-	err = a.AddUnits(1, nil)
+	err = a.AddUnits(1, "web", nil)
 	c.Assert(err, check.IsNil)
 	err = a.UnsetEnvs([]string{"DATABASE_HOST", "DATABASE_PASSWORD"}, true, nil)
 	c.Assert(err, check.IsNil)
@@ -982,7 +995,7 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFal
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	err = s.provisioner.Provision(&a)
 	c.Assert(err, check.IsNil)
-	err = a.AddUnits(1, nil)
+	err = a.AddUnits(1, "web", nil)
 	c.Assert(err, check.IsNil)
 	err = a.UnsetEnvs([]string{"DATABASE_HOST", "DATABASE_PASSWORD"}, false, nil)
 	c.Assert(err, check.IsNil)
@@ -1320,7 +1333,7 @@ func (s *S) TestAddInstanceWithUnits(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(a)
 	defer s.provisioner.Destroy(a)
-	err = a.AddUnits(1, nil)
+	err = a.AddUnits(1, "web", nil)
 	c.Assert(err, check.IsNil)
 	instance := bind.ServiceInstance{
 		Name: "myinstance",
@@ -1609,7 +1622,7 @@ func (s *S) TestRemoveInstanceWithUnits(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	s.provisioner.Provision(a)
 	defer s.provisioner.Destroy(a)
-	err = a.AddUnits(1, nil)
+	err = a.AddUnits(1, "web", nil)
 	c.Assert(err, check.IsNil)
 	instance := bind.ServiceInstance{Name: "mydb", Envs: map[string]string{"DATABASE_NAME": "mydb"}}
 	err = a.RemoveInstance("mysql", instance, nil)
@@ -1869,7 +1882,7 @@ func (s *S) TestGetUnits(c *check.C) {
 	app := App{Name: "app"}
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
-	s.provisioner.AddUnits(&app, 1, nil)
+	s.provisioner.AddUnits(&app, 1, "web", nil)
 	c.Assert(app.GetUnits(), check.HasLen, 1)
 	c.Assert(app.Units()[0].Ip, check.Equals, app.GetUnits()[0].GetIp())
 }
@@ -1962,7 +1975,7 @@ func (s *S) TestRun(c *check.C) {
 	app := App{Name: "myapp"}
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
-	s.provisioner.AddUnits(&app, 1, nil)
+	s.provisioner.AddUnits(&app, 1, "web", nil)
 	var buf bytes.Buffer
 	err := app.Run("ls -lh", &buf, false)
 	c.Assert(err, check.IsNil)
@@ -1986,7 +1999,7 @@ func (s *S) TestRunOnce(c *check.C) {
 	}
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
-	s.provisioner.AddUnits(&app, 1, nil)
+	s.provisioner.AddUnits(&app, 1, "web", nil)
 	var buf bytes.Buffer
 	err := app.Run("ls -lh", &buf, true)
 	c.Assert(err, check.IsNil)
@@ -2005,7 +2018,7 @@ func (s *S) TestRunWithoutEnv(c *check.C) {
 	}
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
-	s.provisioner.AddUnits(&app, 1, nil)
+	s.provisioner.AddUnits(&app, 1, "web", nil)
 	var buf bytes.Buffer
 	err := app.run("ls -lh", &buf, false)
 	c.Assert(err, check.IsNil)
@@ -2375,7 +2388,7 @@ func (s *S) TestAppUnits(c *check.C) {
 	a := App{Name: "anycolor"}
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 1, nil)
+	s.provisioner.AddUnits(&a, 1, "web", nil)
 	c.Assert(a.Units(), check.HasLen, 1)
 }
 
@@ -2385,7 +2398,7 @@ func (s *S) TestAppAvailable(c *check.C) {
 	}
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 1, nil)
+	s.provisioner.AddUnits(&a, 1, "web", nil)
 	c.Assert(a.Available(), check.Equals, true)
 	s.provisioner.Stop(&a)
 	c.Assert(a.Available(), check.Equals, false)
@@ -2572,7 +2585,7 @@ func (s *S) TestAppRegisterUnit(c *check.C) {
 	a := App{Name: "appName", Platform: "python"}
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 3, nil)
+	s.provisioner.AddUnits(&a, 3, "web", nil)
 	units := a.Units()
 	var ips []string
 	for _, u := range units {
@@ -2792,7 +2805,7 @@ func (s *S) TestShellToAnApp(c *check.C) {
 	err = s.provisioner.Provision(&a)
 	c.Assert(err, check.IsNil)
 	defer s.provisioner.Destroy(&a)
-	s.provisioner.AddUnits(&a, 1, nil)
+	s.provisioner.AddUnits(&a, 1, "web", nil)
 	unit := s.provisioner.Units(&a)[0]
 	buf := safe.NewBuffer([]byte("echo teste"))
 	opts := provision.ShellOptions{
