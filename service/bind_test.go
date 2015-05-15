@@ -83,7 +83,7 @@ func (s *BindSuite) TestBindUnit(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	app.Provisioner.Provision(&a)
 	defer app.Provisioner.Destroy(&a)
-	app.Provisioner.AddUnits(&a, 1, nil)
+	app.Provisioner.AddUnits(&a, 1, "web", nil)
 	err = instance.BindUnit(&a, a.GetUnits()[0])
 	c.Assert(err, check.IsNil)
 	c.Assert(called, check.Equals, true)
@@ -102,7 +102,7 @@ func (s *BindSuite) TestBindAppFailsWhenEndpointIsDown(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	app.Provisioner.Provision(&a)
 	defer app.Provisioner.Destroy(&a)
-	app.Provisioner.AddUnits(&a, 1, nil)
+	app.Provisioner.AddUnits(&a, 1, "web", nil)
 	err = instance.BindApp(&a, nil)
 	c.Assert(err, check.NotNil)
 }
@@ -154,7 +154,7 @@ func (s *BindSuite) TestBindCallTheServiceAPIAndSetsEnvironmentVariableReturnedF
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	app.Provisioner.Provision(&a)
 	defer app.Provisioner.Destroy(&a)
-	app.Provisioner.AddUnits(&a, 1, nil)
+	app.Provisioner.AddUnits(&a, 1, "web", nil)
 	err = instance.BindApp(&a, nil)
 	c.Assert(err, check.IsNil)
 	newApp, err := app.GetByName(a.Name)
@@ -216,7 +216,7 @@ func (s *BindSuite) TestBindAppMultiUnits(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	app.Provisioner.Provision(&a)
 	defer app.Provisioner.Destroy(&a)
-	app.Provisioner.AddUnits(&a, 1, nil)
+	app.Provisioner.AddUnits(&a, 1, "web", nil)
 	err = instance.BindApp(&a, nil)
 	c.Assert(err, check.IsNil)
 	ok := make(chan bool)
@@ -327,7 +327,7 @@ func (s *BindSuite) TestUnbindUnit(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	app.Provisioner.Provision(&a)
 	defer app.Provisioner.Destroy(&a)
-	app.Provisioner.AddUnits(&a, 1, nil)
+	app.Provisioner.AddUnits(&a, 1, "web", nil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
@@ -363,7 +363,7 @@ func (s *BindSuite) TestUnbindMultiUnits(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	app.Provisioner.Provision(&a)
 	defer app.Provisioner.Destroy(&a)
-	units, _ := app.Provisioner.AddUnits(&a, 2, nil)
+	units, _ := app.Provisioner.AddUnits(&a, 2, "web", nil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
@@ -509,7 +509,7 @@ func (s *BindSuite) TestUnbindCallsTheUnbindMethodFromAPI(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	app.Provisioner.Provision(&a)
 	defer app.Provisioner.Destroy(&a)
-	units, _ := app.Provisioner.AddUnits(&a, 1, nil)
+	units, _ := app.Provisioner.AddUnits(&a, 1, "web", nil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
