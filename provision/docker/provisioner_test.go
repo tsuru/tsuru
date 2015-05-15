@@ -573,7 +573,7 @@ func (s *S) TestProvisionerAddUnits(c *check.C) {
 	defer s.p.Destroy(app)
 	_, err = s.newContainer(&newContainerOpts{AppName: app.GetName()}, nil)
 	c.Assert(err, check.IsNil)
-	units, err := s.p.AddUnits(app, 3, nil)
+	units, err := s.p.AddUnits(app, 3, "web", nil)
 	c.Assert(err, check.IsNil)
 	coll := s.p.collection()
 	defer coll.Close()
@@ -582,6 +582,20 @@ func (s *S) TestProvisionerAddUnits(c *check.C) {
 	count, err := coll.Find(bson.M{"appname": app.GetName()}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 4)
+}
+
+func (s *S) TestProvisionerAddUnitsInvalidProcess(c *check.C) {
+	err := s.newFakeImage(s.p, "tsuru/app-myapp", nil)
+	c.Assert(err, check.IsNil)
+	app := provisiontest.NewFakeApp("myapp", "python", 0)
+	app.Deploys = 1
+	s.p.Provision(app)
+	defer s.p.Destroy(app)
+	_, err = s.newContainer(&newContainerOpts{AppName: app.GetName()}, nil)
+	c.Assert(err, check.IsNil)
+	_, err = s.p.AddUnits(app, 3, "bogus", nil)
+	c.Assert(err, check.FitsTypeOf, provision.ErrInvalidProcess{})
+	c.Assert(err, check.ErrorMatches, `process "bogus" is not defined`)
 }
 
 func (s *S) TestProvisionerAddUnitsWithErrorDoesntLeaveLostUnits(c *check.C) {
@@ -604,7 +618,7 @@ func (s *S) TestProvisionerAddUnitsWithErrorDoesntLeaveLostUnits(c *check.C) {
 	defer coll.Close()
 	coll.Insert(container{ID: "c-89320", AppName: app.GetName(), Version: "a345fe", Image: "tsuru/python:latest"})
 	defer coll.RemoveId(bson.M{"id": "c-89320"})
-	_, err = s.p.AddUnits(app, 3, nil)
+	_, err = s.p.AddUnits(app, 3, "web", nil)
 	c.Assert(err, check.NotNil)
 	count, err := coll.Find(bson.M{"appname": app.GetName()}).Count()
 	c.Assert(err, check.IsNil)
@@ -622,7 +636,7 @@ func (s *S) TestProvisionerAddZeroUnits(c *check.C) {
 	defer coll.Close()
 	coll.Insert(container{ID: "c-89320", AppName: app.GetName(), Version: "a345fe", Image: "tsuru/python:latest"})
 	defer coll.RemoveId(bson.M{"id": "c-89320"})
-	units, err := s.p.AddUnits(app, 0, nil)
+	units, err := s.p.AddUnits(app, 0, "web", nil)
 	c.Assert(units, check.IsNil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Cannot add 0 units")
@@ -632,7 +646,7 @@ func (s *S) TestProvisionerAddUnitsWithNoDeploys(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	s.p.Provision(app)
 	defer s.p.Destroy(app)
-	units, err := s.p.AddUnits(app, 1, nil)
+	units, err := s.p.AddUnits(app, 1, "web", nil)
 	c.Assert(units, check.IsNil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "New units can only be added after the first deployment")
@@ -671,9 +685,9 @@ func (s *S) TestProvisionerAddUnitsWithHost(c *check.C) {
 
 func (s *S) TestProvisionerRemoveUnits(c *check.C) {
 	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}, Pool: "pool1"}
-	cont1 := container{ID: "1", Name: "impius1", AppName: a1.Name}
-	cont2 := container{ID: "2", Name: "mirror1", AppName: a1.Name}
-	cont3 := container{ID: "3", Name: "dedication1", AppName: a1.Name}
+	cont1 := container{ID: "1", Name: "impius1", AppName: a1.Name, ProcessName: "web"}
+	cont2 := container{ID: "2", Name: "mirror1", AppName: a1.Name, ProcessName: "worker"}
+	cont3 := container{ID: "3", Name: "dedication1", AppName: a1.Name, ProcessName: "web"}
 	err := s.storage.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
@@ -690,7 +704,7 @@ func (s *S) TestProvisionerRemoveUnits(c *check.C) {
 		cont1, cont2, cont3,
 	)
 	c.Assert(err, check.IsNil)
-	defer contColl.RemoveAll(bson.M{"name": bson.M{"$in": []string{cont1.Name, cont2.Name, cont3.Name}}})
+	defer contColl.RemoveAll(bson.M{"appname": a1.Name})
 	scheduler := segregatedScheduler{provisioner: s.p}
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	s.p.cluster = clusterInstance
@@ -700,34 +714,34 @@ func (s *S) TestProvisionerRemoveUnits(c *check.C) {
 	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
-	_, err = scheduler.Schedule(clusterInstance, opts, a1.Name)
+	_, err = scheduler.Schedule(clusterInstance, opts, []string{a1.Name, cont1.ProcessName})
 	c.Assert(err, check.IsNil)
 	opts = docker.CreateContainerOptions{Name: cont2.Name}
-	_, err = scheduler.Schedule(clusterInstance, opts, a1.Name)
+	_, err = scheduler.Schedule(clusterInstance, opts, []string{a1.Name, cont2.ProcessName})
 	c.Assert(err, check.IsNil)
 	opts = docker.CreateContainerOptions{Name: cont3.Name}
-	_, err = scheduler.Schedule(clusterInstance, opts, a1.Name)
+	_, err = scheduler.Schedule(clusterInstance, opts, []string{a1.Name, cont3.ProcessName})
 	c.Assert(err, check.IsNil)
 	papp := provisiontest.NewFakeApp(a1.Name, "python", 0)
 	s.p.Provision(papp)
-	err = s.p.RemoveUnits(papp, 2)
+	err = s.p.RemoveUnits(papp, 2, "web")
 	c.Assert(err, check.IsNil)
 	_, err = s.p.getContainer(cont1.ID)
 	c.Assert(err, check.NotNil)
 	_, err = s.p.getContainer(cont2.ID)
-	c.Assert(err, check.NotNil)
-	_, err = s.p.getContainer(cont3.ID)
 	c.Assert(err, check.IsNil)
+	_, err = s.p.getContainer(cont3.ID)
+	c.Assert(err, check.NotNil)
 }
 
 func (s *S) TestProvisionerRemoveUnitsNotFound(c *check.C) {
-	err := s.p.RemoveUnits(nil, 1)
+	err := s.p.RemoveUnits(nil, 1, "web")
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "remove units: app should not be nil")
 }
 
 func (s *S) TestProvisionerRemoveUnitsZeroUnits(c *check.C) {
-	err := s.p.RemoveUnits(provisiontest.NewFakeApp("something", "python", 0), 0)
+	err := s.p.RemoveUnits(provisiontest.NewFakeApp("something", "python", 0), 0, "web")
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "remove units: units must be at least 1")
 }
@@ -762,17 +776,17 @@ func (s *S) TestProvisionerRemoveUnitsTooManyUnits(c *check.C) {
 	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
-	_, err = scheduler.Schedule(clusterInstance, opts, a1.Name)
+	_, err = scheduler.Schedule(clusterInstance, opts, []string{a1.Name, "web"})
 	c.Assert(err, check.IsNil)
 	opts = docker.CreateContainerOptions{Name: cont2.Name}
-	_, err = scheduler.Schedule(clusterInstance, opts, a1.Name)
+	_, err = scheduler.Schedule(clusterInstance, opts, []string{a1.Name, "web"})
 	c.Assert(err, check.IsNil)
 	opts = docker.CreateContainerOptions{Name: cont3.Name}
-	_, err = scheduler.Schedule(clusterInstance, opts, a1.Name)
+	_, err = scheduler.Schedule(clusterInstance, opts, []string{a1.Name, "web"})
 	c.Assert(err, check.IsNil)
 	papp := provisiontest.NewFakeApp(a1.Name, "python", 0)
 	s.p.Provision(papp)
-	err = s.p.RemoveUnits(papp, 4)
+	err = s.p.RemoveUnits(papp, 4, "web")
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "remove units: cannot remove 4 units. App impius has just 3 units.")
 }

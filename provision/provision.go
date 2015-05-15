@@ -19,6 +19,14 @@ var ErrInvalidStatus = errors.New("invalid status")
 
 var ErrEmptyApp = errors.New("no units for this app")
 
+type ErrInvalidProcess struct {
+	ProcessName string
+}
+
+func (e ErrInvalidProcess) Error() string {
+	return fmt.Sprintf("process %q is not defined", e.ProcessName)
+}
+
 // Status represents the status of a unit in tsuru.
 type Status string
 
@@ -224,11 +232,11 @@ type Provisioner interface {
 	// second is the number of units to be added.
 	//
 	// It returns a slice containing all added units
-	AddUnits(App, uint, io.Writer) ([]Unit, error)
+	AddUnits(App, uint, string, io.Writer) ([]Unit, error)
 
 	// RemoveUnits "undoes" AddUnits, removing the given number of units
 	// from the app.
-	RemoveUnits(App, uint) error
+	RemoveUnits(App, uint, string) error
 
 	// RemoveUnit removes a unit from the app. It receives the unit to be
 	// removed.

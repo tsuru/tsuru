@@ -46,10 +46,11 @@ type newContainerOpts struct {
 
 func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*container, error) {
 	container := container{
-		ID:       "id",
-		IP:       "10.10.10.10",
-		HostPort: "3333",
-		HostAddr: "127.0.0.1",
+		ID:          "id",
+		IP:          "10.10.10.10",
+		HostPort:    "3333",
+		HostAddr:    "127.0.0.1",
+		ProcessName: "web",
 	}
 	if p == nil {
 		p = s.p

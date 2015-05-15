@@ -112,21 +112,13 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 	return pipeline.Result().([]container), nil
 }
 
-func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App, toAddCount int, imageId string) ([]container, error) {
+func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App, toAdd map[string]int, imageId string) ([]container, error) {
 	if w == nil {
 		w = ioutil.Discard
 	}
-	imageData, err := getImageCustomData(imageId)
-	if err != nil {
-		return nil, err
-	}
-	processMap := make(map[string]int, len(imageData.Processes))
-	for processName := range imageData.Processes {
-		processMap[processName] = toAddCount
-	}
 	args := changeUnitsPipelineArgs{
 		app:         a,
-		toAdd:       processMap,
+		toAdd:       toAdd,
 		writer:      w,
 		imageId:     imageId,
 		provisioner: p,
@@ -137,7 +129,7 @@ func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App,
 		&addNewRoutes,
 		&updateAppImage,
 	)
-	err = pipeline.Execute(args)
+	err := pipeline.Execute(args)
 	if err != nil {
 		return nil, err
 	}

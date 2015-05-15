@@ -381,7 +381,7 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 		},
 	}
 	cluster := p.getCluster()
-	_, container, err := cluster.CreateContainerSchedulerOpts(options, app.GetName())
+	_, container, err := cluster.CreateContainerSchedulerOpts(options, []string{app.GetName(), ""})
 	if err != nil {
 		return "", err
 	}
@@ -436,13 +436,17 @@ func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer)
 	if err != nil {
 		return err
 	}
+	imageData, err := getImageCustomData(imageId)
+	if err != nil {
+		return err
+	}
 	if len(containers) == 0 {
-		_, err = p.runCreateUnitsPipeline(w, a, 1, imageId)
-	} else {
-		imageData, err := getImageCustomData(imageId)
-		if err != nil {
-			return err
+		toAdd := make(map[string]int, len(imageData.Processes))
+		for processName := range imageData.Processes {
+			toAdd[processName] = 1
 		}
+		_, err = p.runCreateUnitsPipeline(w, a, toAdd, imageId)
+	} else {
 		toAdd := getContainersToAdd(imageData, containers)
 		_, err = p.runReplaceUnitsPipeline(w, a, toAdd, containers, imageId)
 	}
@@ -605,7 +609,7 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 	return result, nil
 }
 
-func (p *dockerProvisioner) AddUnits(a provision.App, units uint, w io.Writer) ([]provision.Unit, error) {
+func (p *dockerProvisioner) AddUnits(a provision.App, units uint, process string, w io.Writer) ([]provision.Unit, error) {
 	if a.GetDeploys() == 0 {
 		return nil, errors.New("New units can only be added after the first deployment")
 	}
@@ -620,7 +624,7 @@ func (p *dockerProvisioner) AddUnits(a provision.App, units uint, w io.Writer) (
 	if err != nil {
 		return nil, err
 	}
-	conts, err := p.runCreateUnitsPipeline(writer, a, int(units), imageId)
+	conts, err := p.runCreateUnitsPipeline(writer, a, map[string]int{process: int(units)}, imageId)
 	if err != nil {
 		return nil, err
 	}
@@ -631,7 +635,7 @@ func (p *dockerProvisioner) AddUnits(a provision.App, units uint, w io.Writer) (
 	return result, nil
 }
 
-func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint) error {
+func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint, process string) error {
 	if a == nil {
 		return errors.New("remove units: app should not be nil")
 	}
@@ -646,7 +650,7 @@ func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint) error {
 		return errors.New(fmt.Sprintf("remove units: cannot remove %d units. App %s has just %d units.", units, a.GetName(), countUnits))
 	}
 	for i := 0; i < int(units); i++ {
-		containerID, err := p.scheduler.GetRemovableContainer(a.GetName(), p.cluster)
+		containerID, err := p.scheduler.GetRemovableContainer(a.GetName(), process)
 		if err != nil {
 			return err
 		}

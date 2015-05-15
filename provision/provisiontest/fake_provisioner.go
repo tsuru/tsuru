@@ -585,7 +585,7 @@ func (p *FakeProvisioner) Destroy(app provision.App) error {
 	return nil
 }
 
-func (p *FakeProvisioner) AddUnits(app provision.App, n uint, w io.Writer) ([]provision.Unit, error) {
+func (p *FakeProvisioner) AddUnits(app provision.App, n uint, process string, w io.Writer) ([]provision.Unit, error) {
 	if err := p.getError("AddUnits"); err != nil {
 		return nil, err
 	}
@@ -603,11 +603,12 @@ func (p *FakeProvisioner) AddUnits(app provision.App, n uint, w io.Writer) ([]pr
 	length := uint(len(pApp.units))
 	for i := uint(0); i < n; i++ {
 		unit := provision.Unit{
-			Name:    fmt.Sprintf("%s-%d", name, pApp.unitLen),
-			AppName: name,
-			Type:    platform,
-			Status:  provision.StatusStarted,
-			Ip:      fmt.Sprintf("10.10.10.%d", length+i+1),
+			Name:        fmt.Sprintf("%s-%d", name, pApp.unitLen),
+			AppName:     name,
+			Type:        platform,
+			Status:      provision.StatusStarted,
+			Ip:          fmt.Sprintf("10.10.10.%d", length+i+1),
+			ProcessName: process,
 		}
 		pApp.units = append(pApp.units, unit)
 		pApp.unitLen++
@@ -621,7 +622,7 @@ func (p *FakeProvisioner) AddUnits(app provision.App, n uint, w io.Writer) ([]pr
 	return result, nil
 }
 
-func (p *FakeProvisioner) RemoveUnits(app provision.App, n uint) error {
+func (p *FakeProvisioner) RemoveUnits(app provision.App, n uint, process string) error {
 	if err := p.getError("RemoveUnits"); err != nil {
 		return err
 	}
@@ -631,11 +632,19 @@ func (p *FakeProvisioner) RemoveUnits(app provision.App, n uint) error {
 	if !ok {
 		return errNotProvisioned
 	}
-	if n >= uint(len(pApp.units)) {
+	var newUnits []provision.Unit
+	for _, u := range pApp.units {
+		if n > 0 && u.ProcessName == process {
+			n--
+			continue
+		}
+		newUnits = append(newUnits, u)
+	}
+	if n > 0 {
 		return errors.New("too many units to remove")
 	}
-	pApp.units = pApp.units[int(n):]
-	pApp.unitLen -= int(n)
+	pApp.units = newUnits
+	pApp.unitLen = len(newUnits)
 	p.apps[app.GetName()] = pApp
 	return nil
 }

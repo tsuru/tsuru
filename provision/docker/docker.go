@@ -180,7 +180,8 @@ func (c *container) create(args runContainerActionsArgs) error {
 		}
 		nodeList = []string{nodeName}
 	}
-	addr, cont, err := args.provisioner.getCluster().CreateContainerSchedulerOpts(opts, args.app.GetName(), nodeList...)
+	schedulerOpts := []string{args.app.GetName(), args.processName}
+	addr, cont, err := args.provisioner.getCluster().CreateContainerSchedulerOpts(opts, schedulerOpts, nodeList...)
 	if err != nil {
 		log.Errorf("error on creating container in docker %s - %s", c.AppName, err)
 		return err
@@ -299,7 +300,11 @@ func (p *dockerProvisioner) start(oldContainer *container, app provision.App, im
 	if err != nil {
 		return nil, err
 	}
-	commands := []string{"/bin/bash", "-lc", "[ -d /home/application/current ] && cd /home/application/current; exec " + data.Processes[processName]}
+	processCmd := data.Processes[processName]
+	if processCmd == "" {
+		return nil, provision.ErrInvalidProcess{ProcessName: processName}
+	}
+	commands := []string{"/bin/bash", "-lc", "[ -d /home/application/current ] && cd /home/application/current; exec " + processCmd}
 	var actions []*action.Action
 	if oldContainer != nil && oldContainer.Status == provision.StatusStopped.String() {
 		actions = []*action.Action{

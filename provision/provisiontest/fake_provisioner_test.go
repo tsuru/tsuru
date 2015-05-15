@@ -518,10 +518,16 @@ func (s *S) TestAddUnits(c *check.C) {
 	app := NewFakeApp("mystic-rhythms", "rush", 0)
 	p := NewFakeProvisioner()
 	p.Provision(app)
-	units, err := p.AddUnits(app, 2, nil)
+	_, err := p.AddUnits(app, 2, "web", nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(p.GetUnits(app), check.HasLen, 2)
-	c.Assert(units, check.HasLen, 2)
+	_, err = p.AddUnits(app, 2, "worker", nil)
+	c.Assert(err, check.IsNil)
+	allUnits := p.GetUnits(app)
+	c.Assert(allUnits, check.HasLen, 4)
+	c.Assert(allUnits[0].ProcessName, check.Equals, "web")
+	c.Assert(allUnits[1].ProcessName, check.Equals, "web")
+	c.Assert(allUnits[2].ProcessName, check.Equals, "worker")
+	c.Assert(allUnits[3].ProcessName, check.Equals, "worker")
 }
 
 func (s *S) TestAddUnitsCopiesTheUnitsSlice(c *check.C) {
@@ -529,7 +535,7 @@ func (s *S) TestAddUnitsCopiesTheUnitsSlice(c *check.C) {
 	p := NewFakeProvisioner()
 	p.Provision(app)
 	defer p.Destroy(app)
-	units, err := p.AddUnits(app, 3, nil)
+	units, err := p.AddUnits(app, 3, "web", nil)
 	c.Assert(err, check.IsNil)
 	units[0].Name = "something-else"
 	c.Assert(units[0].Name, check.Not(check.Equals), p.GetUnits(app)[1].Name)
@@ -537,7 +543,7 @@ func (s *S) TestAddUnitsCopiesTheUnitsSlice(c *check.C) {
 
 func (s *S) TestAddZeroUnits(c *check.C) {
 	p := NewFakeProvisioner()
-	units, err := p.AddUnits(nil, 0, nil)
+	units, err := p.AddUnits(nil, 0, "web", nil)
 	c.Assert(units, check.IsNil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Cannot add 0 units.")
@@ -546,7 +552,7 @@ func (s *S) TestAddZeroUnits(c *check.C) {
 func (s *S) TestAddUnitsUnprovisionedApp(c *check.C) {
 	app := NewFakeApp("mystic-rhythms", "rush", 0)
 	p := NewFakeProvisioner()
-	units, err := p.AddUnits(app, 1, nil)
+	units, err := p.AddUnits(app, 1, "web", nil)
 	c.Assert(units, check.IsNil)
 	c.Assert(err, check.Equals, errNotProvisioned)
 }
@@ -554,7 +560,7 @@ func (s *S) TestAddUnitsUnprovisionedApp(c *check.C) {
 func (s *S) TestAddUnitsFailure(c *check.C) {
 	p := NewFakeProvisioner()
 	p.PrepareFailure("AddUnits", errors.New("Cannot add more units."))
-	units, err := p.AddUnits(nil, 10, nil)
+	units, err := p.AddUnits(nil, 10, "web", nil)
 	c.Assert(units, check.IsNil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Cannot add more units.")
@@ -564,21 +570,56 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	app := NewFakeApp("hemispheres", "rush", 0)
 	p := NewFakeProvisioner()
 	p.Provision(app)
-	_, err := p.AddUnits(app, 5, nil)
+	_, err := p.AddUnits(app, 5, "web", nil)
 	c.Assert(err, check.IsNil)
-	err = p.RemoveUnits(app, 3)
+	err = p.RemoveUnits(app, 3, "web")
 	c.Assert(err, check.IsNil)
 	c.Assert(p.GetUnits(app), check.HasLen, 2)
 	c.Assert(p.GetUnits(app)[0].Name, check.Equals, "hemispheres-3")
+}
+
+func (s *S) TestRemoveUnitsDifferentProcesses(c *check.C) {
+	app := NewFakeApp("hemispheres", "rush", 0)
+	p := NewFakeProvisioner()
+	p.Provision(app)
+	_, err := p.AddUnits(app, 5, "p1", nil)
+	c.Assert(err, check.IsNil)
+	_, err = p.AddUnits(app, 2, "p2", nil)
+	c.Assert(err, check.IsNil)
+	_, err = p.AddUnits(app, 2, "p3", nil)
+	c.Assert(err, check.IsNil)
+	err = p.RemoveUnits(app, 2, "p2")
+	c.Assert(err, check.IsNil)
+	c.Assert(p.GetUnits(app), check.HasLen, 7)
+	for i, u := range p.GetUnits(app) {
+		if i < 5 {
+			c.Assert(u.ProcessName, check.Equals, "p1")
+		} else {
+			c.Assert(u.ProcessName, check.Equals, "p3")
+		}
+	}
 }
 
 func (s *S) TestRemoveUnitsTooManyUnits(c *check.C) {
 	app := NewFakeApp("hemispheres", "rush", 0)
 	p := NewFakeProvisioner()
 	p.Provision(app)
-	_, err := p.AddUnits(app, 1, nil)
+	_, err := p.AddUnits(app, 1, "web", nil)
 	c.Assert(err, check.IsNil)
-	err = p.RemoveUnits(app, 3)
+	err = p.RemoveUnits(app, 3, "web")
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "too many units to remove")
+}
+
+func (s *S) TestRemoveUnitsTooManyUnitsOfProcess(c *check.C) {
+	app := NewFakeApp("hemispheres", "rush", 0)
+	p := NewFakeProvisioner()
+	p.Provision(app)
+	_, err := p.AddUnits(app, 1, "web", nil)
+	c.Assert(err, check.IsNil)
+	_, err = p.AddUnits(app, 4, "worker", nil)
+	c.Assert(err, check.IsNil)
+	err = p.RemoveUnits(app, 3, "web")
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "too many units to remove")
 }
@@ -586,14 +627,14 @@ func (s *S) TestRemoveUnitsTooManyUnits(c *check.C) {
 func (s *S) TestRemoveUnitsUnprovisionedApp(c *check.C) {
 	app := NewFakeApp("tears", "bruce", 0)
 	p := NewFakeProvisioner()
-	err := p.RemoveUnits(app, 1)
+	err := p.RemoveUnits(app, 1, "web")
 	c.Assert(err, check.Equals, errNotProvisioned)
 }
 
 func (s *S) TestRemoveUnitsFailure(c *check.C) {
 	p := NewFakeProvisioner()
 	p.PrepareFailure("RemoveUnits", errors.New("This program has performed an illegal operation."))
-	err := p.RemoveUnits(nil, 0)
+	err := p.RemoveUnits(nil, 0, "web")
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "This program has performed an illegal operation.")
 }
@@ -602,7 +643,7 @@ func (s *S) TestRemoveUnit(c *check.C) {
 	app := NewFakeApp("hemispheres", "rush", 0)
 	p := NewFakeProvisioner()
 	p.Provision(app)
-	units, err := p.AddUnits(app, 2, nil)
+	units, err := p.AddUnits(app, 2, "web", nil)
 	c.Assert(err, check.IsNil)
 	err = p.RemoveUnit(units[0])
 	c.Assert(err, check.IsNil)
@@ -614,7 +655,7 @@ func (s *S) TestRemoveUnitNotFound(c *check.C) {
 	app := NewFakeApp("hemispheres", "rush", 0)
 	p := NewFakeProvisioner()
 	p.Provision(app)
-	units, err := p.AddUnits(app, 2, nil)
+	units, err := p.AddUnits(app, 2, "web", nil)
 	c.Assert(err, check.IsNil)
 	err = p.RemoveUnit(provision.Unit{Name: units[0].Name + "wat", AppName: "hemispheres"})
 	c.Assert(err, check.NotNil)

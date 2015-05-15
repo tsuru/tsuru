@@ -6,6 +6,7 @@ package docker
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"strconv"
 	"sync"
@@ -33,7 +34,12 @@ type segregatedScheduler struct {
 }
 
 func (s *segregatedScheduler) Schedule(c *cluster.Cluster, opts docker.CreateContainerOptions, schedulerOpts cluster.SchedulerOptions) (cluster.Node, error) {
-	appName, _ := schedulerOpts.(string)
+	schedOpts, _ := schedulerOpts.([]string)
+	if len(schedOpts) != 2 {
+		return cluster.Node{}, fmt.Errorf("invalid scheduler opts: %#v", schedulerOpts)
+	}
+	appName := schedOpts[0]
+	processName := schedOpts[1]
 	a, _ := app.GetByName(appName)
 	nodes, err := s.provisioner.Nodes(a)
 	if err != nil {
@@ -43,7 +49,7 @@ func (s *segregatedScheduler) Schedule(c *cluster.Cluster, opts docker.CreateCon
 	if err != nil {
 		return cluster.Node{}, err
 	}
-	node, err := s.chooseNode(nodes, opts.Name, appName)
+	node, err := s.chooseNode(nodes, opts.Name, appName, processName)
 	if err != nil {
 		return cluster.Node{}, err
 	}
@@ -131,34 +137,33 @@ func (s *segregatedScheduler) aggregateContainersByHost(hosts []string) (map[str
 	return s.aggregateContainersBy(bson.M{"$match": bson.M{"hostaddr": bson.M{"$in": hosts}, "id": bson.M{"$nin": s.ignoredContainers}}})
 }
 
-func (s *segregatedScheduler) aggregateContainersByHostApp(hosts []string, appName string) (map[string]int, error) {
-	return s.aggregateContainersBy(bson.M{"$match": bson.M{"appname": appName, "hostaddr": bson.M{"$in": hosts}, "id": bson.M{"$nin": s.ignoredContainers}}})
+func (s *segregatedScheduler) aggregateContainersByHostAppProcess(hosts []string, appName, process string) (map[string]int, error) {
+	return s.aggregateContainersBy(bson.M{"$match": bson.M{"appname": appName, "processname": process, "hostaddr": bson.M{"$in": hosts}, "id": bson.M{"$nin": s.ignoredContainers}}})
 }
 
-func (s *segregatedScheduler) GetRemovableContainer(appName string, c *cluster.Cluster) (string, error) {
+func (s *segregatedScheduler) GetRemovableContainer(appName string, process string) (string, error) {
 	a, _ := app.GetByName(appName)
 	nodes, err := s.provisioner.Nodes(a)
 	if err != nil {
 		return "", err
 	}
-	return s.chooseContainerFromMaxContainersCountInNode(nodes, appName)
+	return s.chooseContainerFromMaxContainersCountInNode(nodes, appName, process)
 }
 
 // chooseNodeWithMaxContainersCount finds which is the node with maximum number
 // of containers and returns it
-func (s *segregatedScheduler) chooseContainerFromMaxContainersCountInNode(nodes []cluster.Node, appName string) (string, error) {
-	var chosenNode string
+func (s *segregatedScheduler) chooseContainerFromMaxContainersCountInNode(nodes []cluster.Node, appName, process string) (string, error) {
 	hosts, hostsMap := s.nodesToHosts(nodes)
 	log.Debugf("[scheduler] Possible nodes for remove a container: %#v", hosts)
 	s.hostMutex.Lock()
 	defer s.hostMutex.Unlock()
 	hostCountMap, err := s.aggregateContainersByHost(hosts)
 	if err != nil {
-		return chosenNode, err
+		return "", err
 	}
-	appCountMap, err := s.aggregateContainersByHostApp(hosts, appName)
+	appCountMap, err := s.aggregateContainersByHostAppProcess(hosts, appName, process)
 	if err != nil {
-		return chosenNode, err
+		return "", err
 	}
 	// Finally finding the host with the maximum value for
 	// the pair [appCount, hostCount]
@@ -171,20 +176,24 @@ func (s *segregatedScheduler) chooseContainerFromMaxContainersCountInNode(nodes 
 			maxHost = host
 		}
 	}
-	chosenNode = hostsMap[maxHost]
+	chosenNode := hostsMap[maxHost]
 	log.Debugf("[scheduler] Chosen node for remove a container: %#v Count: %d", chosenNode, hostCountMap[maxHost])
-	containerID, err := s.getContainerFromHost(maxHost, appName)
+	containerID, err := s.getContainerFromHost(maxHost, appName, process)
 	if err != nil {
 		return "", err
 	}
 	return containerID, err
 }
 
-func (s *segregatedScheduler) getContainerFromHost(host string, appName string) (string, error) {
+func (s *segregatedScheduler) getContainerFromHost(host string, appName, process string) (string, error) {
 	coll := s.provisioner.collection()
 	defer coll.Close()
 	var c container
-	err := coll.Find(bson.M{"hostaddr": host, "appname": appName}).Select(bson.M{"id": 1}).One(&c)
+	err := coll.Find(bson.M{
+		"hostaddr":    host,
+		"appname":     appName,
+		"processname": process,
+	}).Select(bson.M{"id": 1}).One(&c)
 	return c.ID, err
 }
 
@@ -203,7 +212,7 @@ func (s *segregatedScheduler) nodesToHosts(nodes []cluster.Node) ([]string, map[
 
 // chooseNode finds which is the node with the minimum number
 // of containers and returns it
-func (s *segregatedScheduler) chooseNode(nodes []cluster.Node, contName string, appName string) (string, error) {
+func (s *segregatedScheduler) chooseNode(nodes []cluster.Node, contName string, appName, process string) (string, error) {
 	var chosenNode string
 	hosts, hostsMap := s.nodesToHosts(nodes)
 	log.Debugf("[scheduler] Possible nodes for container %s: %#v", contName, hosts)
@@ -213,7 +222,7 @@ func (s *segregatedScheduler) chooseNode(nodes []cluster.Node, contName string, 
 	if err != nil {
 		return chosenNode, err
 	}
-	appCountMap, err := s.aggregateContainersByHostApp(hosts, appName)
+	appCountMap, err := s.aggregateContainersByHostAppProcess(hosts, appName, process)
 	if err != nil {
 		return chosenNode, err
 	}
