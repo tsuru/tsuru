@@ -180,6 +180,36 @@ func (s *S) TestAddNewRouteForward(c *check.C) {
 	c.Assert(containers, check.DeepEquals, []container{cont1, cont2, cont3})
 }
 
+func (s *S) TestAddNewRouteForwardNoWeb(c *check.C) {
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	routertest.FakeRouter.AddBackend(app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(app.GetName())
+	imageName := "tsuru/app-" + app.GetName()
+	customData := map[string]interface{}{
+		"procfile": "api: python myapi.py",
+	}
+	err := saveImageCustomData(imageName, customData)
+	c.Assert(err, check.IsNil)
+	cont1 := container{ID: "ble-1", AppName: app.GetName(), ProcessName: "api", HostAddr: "127.0.0.1", HostPort: "1234"}
+	cont2 := container{ID: "ble-2", AppName: app.GetName(), ProcessName: "api", HostAddr: "127.0.0.2", HostPort: "4321"}
+	defer cont1.remove(s.p)
+	defer cont2.remove(s.p)
+	args := changeUnitsPipelineArgs{
+		app:         app,
+		provisioner: s.p,
+		imageId:     imageName,
+	}
+	context := action.FWContext{Previous: []container{cont1, cont2}, Params: []interface{}{args}}
+	r, err := addNewRoutes.Forward(context)
+	c.Assert(err, check.IsNil)
+	containers := r.([]container)
+	hasRoute := routertest.FakeRouter.HasRoute(app.GetName(), cont1.getAddress())
+	c.Assert(hasRoute, check.Equals, true)
+	hasRoute = routertest.FakeRouter.HasRoute(app.GetName(), cont2.getAddress())
+	c.Assert(hasRoute, check.Equals, true)
+	c.Assert(containers, check.DeepEquals, []container{cont1, cont2})
+}
+
 func (s *S) TestAddNewRouteForwardFailInMiddle(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())

@@ -20,8 +20,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-const webProcessName = "web"
-
 type runContainerActionsArgs struct {
 	app              provision.App
 	processName      string
@@ -246,6 +244,10 @@ var bindAndHealthcheck = action.Action{
 	Name: "bind-and-healthcheck",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		webProcessName, err := getImageWebProcessName(args.imageId)
+		if err != nil {
+			log.Errorf("[WARNING] cannot get the name of the web process: %s", err)
+		}
 		newContainers := ctx.Previous.([]container)
 		writer := args.writer
 		if writer == nil {
@@ -303,6 +305,10 @@ var addNewRoutes = action.Action{
 	Name: "add-new-routes",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		webProcessName, err := getImageWebProcessName(args.imageId)
+		if err != nil {
+			log.Errorf("[WARNING] cannot get the name of the web process: %s", err)
+		}
 		newContainers := ctx.Previous.([]container)
 		r, err := getRouterForApp(args.app)
 		if err != nil {
@@ -339,6 +345,10 @@ var addNewRoutes = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		webProcessName, err := getImageWebProcessName(args.imageId)
+		if err != nil {
+			log.Errorf("[WARNING] cannot get the name of the web process: %s", err)
+		}
 		newContainers := ctx.FWResult.([]container)
 		r, err := getRouterForApp(args.app)
 		if err != nil {
@@ -363,6 +373,10 @@ var removeOldRoutes = action.Action{
 	Name: "remove-old-routes",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		webProcessName, err := getImageWebProcessName(args.imageId)
+		if err != nil {
+			log.Errorf("[WARNING] cannot get the name of the web process: %s", err)
+		}
 		r, err := getRouterForApp(args.app)
 		if err != nil {
 			return nil, err
@@ -398,6 +412,10 @@ var removeOldRoutes = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
+		webProcessName, err := getImageWebProcessName(args.imageId)
+		if err != nil {
+			log.Errorf("[WARNING] cannot get the name of the web process: %s", err)
+		}
 		r, err := getRouterForApp(args.app)
 		if err != nil {
 			log.Errorf("[remove-old-routes:Backward] Error geting router: %s", err.Error())

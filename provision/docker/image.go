@@ -157,6 +157,20 @@ func getImageCustomData(imageName string) (ImageMetadata, error) {
 	return data, err
 }
 
+func getImageWebProcessName(imageName string) (string, error) {
+	processName := "web"
+	data, err := getImageCustomData(imageName)
+	if err != nil {
+		return processName, err
+	}
+	if len(data.Processes) == 1 {
+		for name := range data.Processes {
+			processName = name
+		}
+	}
+	return processName, nil
+}
+
 func getImageTsuruYamlData(imageName string) (provision.TsuruYamlData, error) {
 	var customData struct {
 		Customdata provision.TsuruYamlData

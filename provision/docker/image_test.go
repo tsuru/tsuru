@@ -351,3 +351,33 @@ func (s *S) TestPullAppImageNamesRemovesCustomData(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(yamlData, check.DeepEquals, provision.TsuruYamlData{})
 }
+
+func (s *S) TestGetImageWebProcessName(c *check.C) {
+	img1 := "tsuru/app-myapp:v1"
+	customData1 := map[string]interface{}{
+		"procfile": "web: python myapp.py\nworker: someworker\n",
+	}
+	err := saveImageCustomData(img1, customData1)
+	c.Assert(err, check.IsNil)
+	img2 := "tsuru/app-myapp:v2"
+	customData2 := map[string]interface{}{
+		"procfile": "worker1: python myapp.py\nworker2: someworker\n",
+	}
+	err = saveImageCustomData(img2, customData2)
+	c.Assert(err, check.IsNil)
+	img3 := "tsuru/app-myapp:v3"
+	customData3 := map[string]interface{}{
+		"procfile": "api: python myapi.py",
+	}
+	err = saveImageCustomData(img3, customData3)
+	c.Assert(err, check.IsNil)
+	web1, err := getImageWebProcessName(img1)
+	c.Check(err, check.IsNil)
+	c.Check(web1, check.Equals, "web")
+	web2, err := getImageWebProcessName(img2)
+	c.Check(err, check.IsNil)
+	c.Check(web2, check.Equals, "web")
+	web3, err := getImageWebProcessName(img3)
+	c.Check(err, check.IsNil)
+	c.Check(web3, check.Equals, "api")
+}
