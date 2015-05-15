@@ -311,11 +311,15 @@ func RunServer(dry bool) http.Handler {
 		idleTracker := newIdleTracker()
 		shutdown.Register(idleTracker)
 		shutdown.Register(&logTracker)
+		readTimeout, _ := config.GetInt("server:read-timeout")
+		writeTimeout, _ := config.GetInt("server:write-timeout")
 		srv := &graceful.Server{
 			Timeout: shutdownTimeout,
 			Server: &http.Server{
-				Addr:    listen,
-				Handler: n,
+				ReadTimeout:  readTimeout * time.Second,
+				WriteTimeout: writeTimeout * time.Second,
+				Addr:         listen,
+				Handler:      n,
 			},
 			ConnState: func(conn net.Conn, state http.ConnState) {
 				idleTracker.trackConn(conn, state)

@@ -61,6 +61,25 @@ tls:key-file
 ``tls:key-file`` is the path to private key file configured to serve the
 domain. This setting is optional, unless ``use-tls`` is true.
 
+server:read-timeout
++++++++++++++++++++
+
+``server:read-timeout`` is the timeout of reading requests in the server. This
+is the maximum duration of any request to the tsuru server.
+
+This is useful to avoid leaking connections, in case clients drop the
+connection before end sending the request. The default value is 0, meaning no
+timeout.
+
+server:write-timeout
+++++++++++++++++++++
+
+``server:write-timeout`` is the timeout of writing responses in the server.
+
+This is useful to avoid leaking connections, in case clients drop the
+connection before reading the response from tsuru. The default value is 0,
+meaning no timeout.
+
 disable-index-page
 ++++++++++++++++++
 
