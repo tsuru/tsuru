@@ -580,12 +580,21 @@ func (c *container) logs(p *dockerProvisioner, w io.Writer) error {
 }
 
 func (c *container) asUnit(a provision.App) provision.Unit {
+	status := provision.Status(c.Status)
+	if c.Status == "" {
+		status = provision.StatusBuilding
+	}
+	cType := c.Type
+	if cType == "" {
+		cType = a.GetPlatform()
+	}
 	return provision.Unit{
-		Name:    c.ID,
-		AppName: a.GetName(),
-		Type:    a.GetPlatform(),
-		Ip:      c.HostAddr,
-		Status:  provision.StatusBuilding,
+		Name:        c.ID,
+		AppName:     a.GetName(),
+		Type:        cType,
+		Ip:          c.HostAddr,
+		Status:      status,
+		ProcessName: c.ProcessName,
 	}
 }
 
@@ -611,15 +620,4 @@ func getRegistryAuthConfig() docker.AuthConfiguration {
 	authConfig.Password, _ = config.GetString("docker:registry-auth:password")
 	authConfig.ServerAddress, _ = config.GetString("docker:registry")
 	return authConfig
-}
-
-// unitFromContainer returns a unit that represents a container.
-func unitFromContainer(c container) provision.Unit {
-	return provision.Unit{
-		Name:    c.ID,
-		AppName: c.AppName,
-		Type:    c.Type,
-		Status:  provision.Status(c.Status),
-		Ip:      c.HostAddr,
-	}
 }

@@ -1054,24 +1054,6 @@ func (s *S) TestContainerAvailable(c *check.C) {
 	}
 }
 
-func (s *S) TestUnitFromContainer(c *check.C) {
-	cont := container{
-		ID:       "someid",
-		AppName:  "someapp",
-		Type:     "django",
-		Status:   provision.StatusStarted.String(),
-		HostAddr: "10.9.8.7",
-	}
-	expected := provision.Unit{
-		Name:    cont.ID,
-		AppName: cont.AppName,
-		Type:    cont.Type,
-		Status:  provision.Status(cont.Status),
-		Ip:      cont.HostAddr,
-	}
-	c.Assert(unitFromContainer(cont), check.Equals, expected)
-}
-
 func (s *S) TestBuildClusterStorage(c *check.C) {
 	defer config.Set("docker:cluster:mongo-url", "127.0.0.1:27017")
 	defer config.Set("docker:cluster:mongo-database", "docker_provision_tests_cluster_stor")
