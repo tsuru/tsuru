@@ -380,7 +380,7 @@ func (s *S) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
 	c.Assert(err, check.IsNil)
 	p.cluster = clusterInstance
 	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
-	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
+	appInstance := provisiontest.NewFakeApp("superapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
