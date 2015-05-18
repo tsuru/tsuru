@@ -158,8 +158,6 @@ type App interface {
 	// app.
 	Run(cmd string, w io.Writer, once bool) error
 
-	Restart(io.Writer) error
-
 	Envs() map[string]bind.EnvVar
 
 	GetMemory() int64

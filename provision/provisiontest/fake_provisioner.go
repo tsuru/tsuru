@@ -255,14 +255,6 @@ func (a *FakeApp) SerializeEnvVars() error {
 	return nil
 }
 
-func (a *FakeApp) Restart(w io.Writer) error {
-	a.commMut.Lock()
-	a.Commands = append(a.Commands, "restart")
-	a.commMut.Unlock()
-	w.Write([]byte("Restarting app..."))
-	return nil
-}
-
 func (a *FakeApp) Run(cmd string, w io.Writer, once bool) error {
 	a.commMut.Lock()
 	a.Commands = append(a.Commands, fmt.Sprintf("ran %s", cmd))
