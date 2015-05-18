@@ -458,14 +458,21 @@ func getContainersToAdd(data ImageMetadata, oldContainers []container) map[strin
 	for name := range data.Processes {
 		processMap[name] = 0
 	}
+	minCount := 0
 	for _, container := range oldContainers {
+		if container.ProcessName == "" {
+			minCount++
+		}
 		if _, ok := processMap[container.ProcessName]; ok {
 			processMap[container.ProcessName]++
 		}
 	}
+	if minCount == 0 {
+		minCount = 1
+	}
 	for name, amount := range processMap {
 		if amount == 0 {
-			processMap[name] = 1
+			processMap[name] = minCount
 		}
 	}
 	return processMap
