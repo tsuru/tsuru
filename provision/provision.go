@@ -249,7 +249,7 @@ type Provisioner interface {
 	// ExecuteCommandOnce runs a command in one unit of the app.
 	ExecuteCommandOnce(stdout, stderr io.Writer, app App, cmd string, args ...string) error
 
-	Restart(App, io.Writer) error
+	Restart(App, string, io.Writer) error
 	Stop(App) error
 
 	// Start start the app units.

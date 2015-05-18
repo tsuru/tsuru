@@ -725,13 +725,17 @@ func (app *App) run(cmd string, w io.Writer, once bool) error {
 }
 
 // Restart runs the restart hook for the app, writing its output to w.
-func (app *App) Restart(w io.Writer) error {
-	err := log.Write(w, []byte("---- Restarting your app ----\n"))
+func (app *App) Restart(process string, w io.Writer) error {
+	msg := fmt.Sprintf("---- Restarting process %q ----\n", process)
+	if process == "" {
+		msg = fmt.Sprintf("---- Restarting the app %q ----\n", app.Name)
+	}
+	err := log.Write(w, []byte(msg))
 	if err != nil {
 		log.Errorf("[restart] error on write app log for the app %s - %s", app.Name, err)
 		return err
 	}
-	err = Provisioner.Restart(app, w)
+	err = Provisioner.Restart(app, process, w)
 	if err != nil {
 		log.Errorf("[restart] error on restart the app %s - %s", app.Name, err)
 		return err
@@ -864,7 +868,7 @@ func (app *App) setEnvsToApp(envs []bind.EnvVar, publicOnly, shouldRestart bool,
 	if !shouldRestart {
 		return nil
 	}
-	return Provisioner.Restart(app, w)
+	return Provisioner.Restart(app, "", w)
 }
 
 // UnsetEnvs removes environment variables from an app, serializing the
@@ -910,7 +914,7 @@ func (app *App) unsetEnvsToApp(variableNames []string, publicOnly, shouldRestart
 	if !shouldRestart {
 		return nil
 	}
-	return Provisioner.Restart(app, w)
+	return Provisioner.Restart(app, "", w)
 }
 
 // AddCName adds a CName to app. It updates the attribute,

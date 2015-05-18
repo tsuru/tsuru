@@ -272,7 +272,7 @@ func (p *dockerProvisioner) Provision(app provision.App) error {
 	return r.AddBackend(app.GetName())
 }
 
-func (p *dockerProvisioner) Restart(a provision.App, w io.Writer) error {
+func (p *dockerProvisioner) Restart(a provision.App, process string, w io.Writer) error {
 	containers, err := p.listContainersByApp(a.GetName())
 	if err != nil {
 		return err
@@ -286,10 +286,14 @@ func (p *dockerProvisioner) Restart(a provision.App, w io.Writer) error {
 	}
 	writer := &app.LogWriter{App: a, Writer: w}
 	toAdd := make(map[string]int, len(containers))
+	currentContainers := make([]container, 0, len(containers))
 	for _, c := range containers {
-		toAdd[c.ProcessName]++
+		if process == "" || c.ProcessName == process {
+			toAdd[c.ProcessName]++
+			currentContainers = append(currentContainers, c)
+		}
 	}
-	_, err = p.runReplaceUnitsPipeline(writer, a, toAdd, containers, imageId)
+	_, err = p.runReplaceUnitsPipeline(writer, a, toAdd, currentContainers, imageId)
 	return err
 }
 

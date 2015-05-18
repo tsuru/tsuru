@@ -802,6 +802,7 @@ func unbindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 }
 
 func restart(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	process := r.URL.Query().Get("process")
 	w.Header().Set("Content-Type", "text")
 	u, err := t.User()
 	if err != nil {
@@ -814,7 +815,7 @@ func restart(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
-	err = instance.Restart(writer)
+	err = instance.Restart(process, writer)
 	if err != nil {
 		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 		return err

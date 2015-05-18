@@ -2774,7 +2774,6 @@ func (s *S) TestRestartHandler(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err = restart(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	c.Assert(recorder.Body.String(), check.Matches, "(?s).*---- Restarting your app ----.*")
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "text")
 	action := rectest.Action{
 		Action: "restart",

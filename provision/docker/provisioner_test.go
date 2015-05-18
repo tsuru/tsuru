@@ -48,22 +48,44 @@ func (s *S) TestProvisionerProvision(c *check.C) {
 
 func (s *S) TestProvisionerRestart(c *check.C) {
 	app := provisiontest.NewFakeApp("almah", "static", 1)
-	cont, err := s.newContainer(&newContainerOpts{AppName: app.GetName()}, nil)
+	customData := map[string]interface{}{
+		"procfile": "web: python web.py\nworker: python worker.py\n",
+	}
+	cont1, err := s.newContainer(&newContainerOpts{
+		AppName:         app.GetName(),
+		ProcessName:     "web",
+		ImageCustomData: customData,
+		Image:           "tsuru/app-" + app.GetName(),
+	}, nil)
 	c.Assert(err, check.IsNil)
-	defer s.removeTestContainer(cont)
+	defer s.removeTestContainer(cont1)
+	cont2, err := s.newContainer(&newContainerOpts{
+		AppName:         app.GetName(),
+		ProcessName:     "worker",
+		ImageCustomData: customData,
+		Image:           "tsuru/app-" + app.GetName(),
+	}, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(cont2)
 	err = s.p.Start(app)
 	c.Assert(err, check.IsNil)
-	dockerContainer, err := s.p.getCluster().InspectContainer(cont.ID)
+	dockerContainer, err := s.p.getCluster().InspectContainer(cont1.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, true)
-	err = s.p.Restart(app, nil)
+	dockerContainer, err = s.p.getCluster().InspectContainer(cont2.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, true)
+	err = s.p.Restart(app, "", nil)
 	c.Assert(err, check.IsNil)
 	dbConts, err := s.p.listAllContainers()
 	c.Assert(err, check.IsNil)
-	c.Assert(dbConts, check.HasLen, 1)
-	c.Assert(dbConts[0].ID, check.Not(check.Equals), cont.ID)
+	c.Assert(dbConts, check.HasLen, 2)
+	c.Assert(dbConts[0].ID, check.Not(check.Equals), cont1.ID)
 	c.Assert(dbConts[0].AppName, check.Equals, app.GetName())
 	c.Assert(dbConts[0].Status, check.Equals, provision.StatusStarting.String())
+	c.Assert(dbConts[1].ID, check.Not(check.Equals), cont2.ID)
+	c.Assert(dbConts[1].AppName, check.Equals, app.GetName())
+	c.Assert(dbConts[1].Status, check.Equals, provision.StatusStarting.String())
 	dockerContainer, err = s.p.getCluster().InspectContainer(dbConts[0].ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, true)
@@ -71,6 +93,53 @@ func (s *S) TestProvisionerRestart(c *check.C) {
 	expectedPort := dockerContainer.NetworkSettings.Ports["8888/tcp"][0].HostPort
 	c.Assert(dbConts[0].IP, check.Equals, expectedIP)
 	c.Assert(dbConts[0].HostPort, check.Equals, expectedPort)
+}
+
+func (s *S) TestProvisionerRestartProcess(c *check.C) {
+	app := provisiontest.NewFakeApp("almah", "static", 1)
+	customData := map[string]interface{}{
+		"procfile": "web: python web.py\nworker: python worker.py\n",
+	}
+	cont1, err := s.newContainer(&newContainerOpts{
+		AppName:         app.GetName(),
+		ProcessName:     "web",
+		ImageCustomData: customData,
+		Image:           "tsuru/app-" + app.GetName(),
+	}, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(cont1)
+	cont2, err := s.newContainer(&newContainerOpts{
+		AppName:         app.GetName(),
+		ProcessName:     "worker",
+		ImageCustomData: customData,
+		Image:           "tsuru/app-" + app.GetName(),
+	}, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(cont2)
+	err = s.p.Start(app)
+	c.Assert(err, check.IsNil)
+	dockerContainer, err := s.p.getCluster().InspectContainer(cont1.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, true)
+	dockerContainer, err = s.p.getCluster().InspectContainer(cont2.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, true)
+	err = s.p.Restart(app, "web", nil)
+	c.Assert(err, check.IsNil)
+	dbConts, err := s.p.listAllContainers()
+	c.Assert(err, check.IsNil)
+	c.Assert(dbConts, check.HasLen, 2)
+	c.Assert(dbConts[0].ID, check.Equals, cont2.ID)
+	c.Assert(dbConts[1].ID, check.Not(check.Equals), cont1.ID)
+	c.Assert(dbConts[1].AppName, check.Equals, app.GetName())
+	c.Assert(dbConts[1].Status, check.Equals, provision.StatusStarting.String())
+	dockerContainer, err = s.p.getCluster().InspectContainer(dbConts[1].ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, true)
+	expectedIP := dockerContainer.NetworkSettings.IPAddress
+	expectedPort := dockerContainer.NetworkSettings.Ports["8888/tcp"][0].HostPort
+	c.Assert(dbConts[1].IP, check.Equals, expectedIP)
+	c.Assert(dbConts[1].HostPort, check.Equals, expectedPort)
 }
 
 func (s *S) stopContainers(n uint) {

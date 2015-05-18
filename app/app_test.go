@@ -826,7 +826,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenServiceSe
 		},
 	}
 	c.Assert(newApp.Env, check.DeepEquals, expected)
-	c.Assert(s.provisioner.Restarts(&a), check.Equals, 1)
+	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 1)
 	c.Assert(buf.String(), check.Equals, "---- Setting 2 new environment variables ----\nrestarting app")
 }
 
@@ -876,7 +876,7 @@ func (s *S) TestSetEnvRespectsThePublicOnlyFlagOverwrittenAllVariablesWhenItsFal
 		},
 	}
 	c.Assert(newApp.Env, check.DeepEquals, expected)
-	c.Assert(s.provisioner.Restarts(&a), check.Equals, 1)
+	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 1)
 }
 
 func (s *S) TestSetEnvsWhenAppHaveNoUnits(c *check.C) {
@@ -925,7 +925,7 @@ func (s *S) TestSetEnvsWhenAppHaveNoUnits(c *check.C) {
 		},
 	}
 	c.Assert(newApp.Env, check.DeepEquals, expected)
-	c.Assert(s.provisioner.Restarts(&a), check.Equals, 0)
+	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 0)
 }
 
 func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue(c *check.C) {
@@ -967,7 +967,7 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagKeepPrivateVariablesWhenItsTrue
 		},
 	}
 	c.Assert(newApp.Env, check.DeepEquals, expected)
-	c.Assert(s.provisioner.Restarts(&a), check.Equals, 1)
+	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 1)
 }
 
 func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFalse(c *check.C) {
@@ -1002,7 +1002,7 @@ func (s *S) TestUnsetEnvRespectsThePublicOnlyFlagUnsettingAllVariablesWhenItsFal
 	newApp, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(newApp.Env, check.DeepEquals, map[string]bind.EnvVar{})
-	c.Assert(s.provisioner.Restarts(&a), check.Equals, 1)
+	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 1)
 }
 
 func (s *S) TestUnsetEnvNoUnits(c *check.C) {
@@ -1032,7 +1032,7 @@ func (s *S) TestUnsetEnvNoUnits(c *check.C) {
 	newApp, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(newApp.Env, check.DeepEquals, map[string]bind.EnvVar{})
-	c.Assert(s.provisioner.Restarts(&a), check.Equals, 0)
+	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 0)
 }
 
 func (s *S) TestGetEnvironmentVariableFromApp(c *check.C) {
@@ -1323,7 +1323,7 @@ func (s *S) TestAddInstanceFirst(c *check.C) {
 			InstanceName: "myinstance",
 		},
 	})
-	c.Assert(s.provisioner.Restarts(a), check.Equals, 0)
+	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 0)
 }
 
 func (s *S) TestAddInstanceWithUnits(c *check.C) {
@@ -1363,7 +1363,7 @@ func (s *S) TestAddInstanceWithUnits(c *check.C) {
 			InstanceName: "myinstance",
 		},
 	})
-	c.Assert(s.provisioner.Restarts(a), check.Equals, 1)
+	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 1)
 }
 
 func (s *S) TestAddInstanceMultipleServices(c *check.C) {
@@ -1487,7 +1487,7 @@ func (s *S) TestRemoveInstance(c *check.C) {
 	c.Assert(env.Name, check.Equals, TsuruServicesEnvVar)
 	delete(a.Env, TsuruServicesEnvVar)
 	c.Assert(a.Env, check.DeepEquals, map[string]bind.EnvVar{})
-	c.Assert(s.provisioner.Restarts(a), check.Equals, 0)
+	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 0)
 }
 
 func (s *S) TestRemoveInstanceShifts(c *check.C) {
@@ -1636,7 +1636,7 @@ func (s *S) TestRemoveInstanceWithUnits(c *check.C) {
 	c.Assert(env.Name, check.Equals, TsuruServicesEnvVar)
 	delete(a.Env, TsuruServicesEnvVar)
 	c.Assert(a.Env, check.DeepEquals, map[string]bind.EnvVar{})
-	c.Assert(s.provisioner.Restarts(a), check.Equals, 1)
+	c.Assert(s.provisioner.Restarts(a, ""), check.Equals, 1)
 }
 
 func (s *S) TestIsValid(c *check.C) {
@@ -1677,10 +1677,10 @@ func (s *S) TestRestart(c *check.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	var b bytes.Buffer
-	err := a.Restart(&b)
+	err := a.Restart("", &b)
 	c.Assert(err, check.IsNil)
-	c.Assert(b.String(), check.Matches, "(?s).*---- Restarting your app ----.*")
-	restarts := s.provisioner.Restarts(&a)
+	c.Assert(b.String(), check.Matches, `(?s).*---- Restarting the app "someApp" ----.*`)
+	restarts := s.provisioner.Restarts(&a, "")
 	c.Assert(restarts, check.Equals, 1)
 }
 

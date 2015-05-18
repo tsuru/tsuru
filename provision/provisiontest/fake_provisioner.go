@@ -323,10 +323,10 @@ func (p *FakeProvisioner) getError(method string) error {
 }
 
 // Restarts returns the number of restarts for a given app.
-func (p *FakeProvisioner) Restarts(app provision.App) int {
+func (p *FakeProvisioner) Restarts(app provision.App, process string) int {
 	p.mut.RLock()
 	defer p.mut.RUnlock()
-	return p.apps[app.GetName()].restarts
+	return p.apps[app.GetName()].restarts[process]
 }
 
 // Starts returns the number of starts for a given app.
@@ -528,13 +528,14 @@ func (p *FakeProvisioner) Provision(app provision.App) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	p.apps[app.GetName()] = provisionedApp{
-		app:  app,
-		addr: fmt.Sprintf("%s.fake-lb.tsuru.io", app.GetName()),
+		app:      app,
+		addr:     fmt.Sprintf("%s.fake-lb.tsuru.io", app.GetName()),
+		restarts: make(map[string]int),
 	}
 	return nil
 }
 
-func (p *FakeProvisioner) Restart(app provision.App, w io.Writer) error {
+func (p *FakeProvisioner) Restart(app provision.App, process string, w io.Writer) error {
 	if err := p.getError("Restart"); err != nil {
 		return err
 	}
@@ -544,7 +545,7 @@ func (p *FakeProvisioner) Restart(app provision.App, w io.Writer) error {
 	if !ok {
 		return errNotProvisioned
 	}
-	pApp.restarts++
+	pApp.restarts[process]++
 	p.apps[app.GetName()] = pApp
 	if w != nil {
 		fmt.Fprintf(w, "restarting app")
@@ -1003,7 +1004,7 @@ func (p *ExtensibleFakeProvisioner) PlatformRemove(name string) error {
 type provisionedApp struct {
 	units       []provision.Unit
 	app         provision.App
-	restarts    int
+	restarts    map[string]int
 	starts      int
 	stops       int
 	version     string

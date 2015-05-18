@@ -224,12 +224,13 @@ func (s *S) TestRestarts(c *check.C) {
 	app2 := NewFakeApp("unfairy-tale", "shaman", 1)
 	p := NewFakeProvisioner()
 	p.apps = map[string]provisionedApp{
-		app1.GetName(): {app: app1, restarts: 10},
-		app2.GetName(): {app: app1, restarts: 0},
+		app1.GetName(): {app: app1, restarts: map[string]int{"": 10, "web": 2}},
+		app2.GetName(): {app: app1, restarts: map[string]int{"": 0}},
 	}
-	c.Assert(p.Restarts(app1), check.Equals, 10)
-	c.Assert(p.Restarts(app2), check.Equals, 0)
-	c.Assert(p.Restarts(NewFakeApp("pride", "shaman", 1)), check.Equals, 0)
+	c.Assert(p.Restarts(app1, ""), check.Equals, 10)
+	c.Assert(p.Restarts(app1, "web"), check.Equals, 2)
+	c.Assert(p.Restarts(app2, ""), check.Equals, 0)
+	c.Assert(p.Restarts(NewFakeApp("pride", "shaman", 1), ""), check.Equals, 0)
 }
 
 func (s *S) TestStarts(c *check.C) {
@@ -442,9 +443,9 @@ func (s *S) TestRestart(c *check.C) {
 	app := NewFakeApp("kid-gloves", "rush", 1)
 	p := NewFakeProvisioner()
 	p.Provision(app)
-	err := p.Restart(app, nil)
+	err := p.Restart(app, "web", nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(p.Restarts(app), check.Equals, 1)
+	c.Assert(p.Restarts(app, "web"), check.Equals, 1)
 }
 
 func (s *S) TestStart(c *check.C) {
@@ -468,7 +469,7 @@ func (s *S) TestStop(c *check.C) {
 func (s *S) TestRestartNotProvisioned(c *check.C) {
 	app := NewFakeApp("kid-gloves", "rush", 1)
 	p := NewFakeProvisioner()
-	err := p.Restart(app, nil)
+	err := p.Restart(app, "web", nil)
 	c.Assert(err, check.Equals, errNotProvisioned)
 }
 
@@ -476,7 +477,7 @@ func (s *S) TestRestartWithPreparedFailure(c *check.C) {
 	app := NewFakeApp("fairy-tale", "shaman", 1)
 	p := NewFakeProvisioner()
 	p.PrepareFailure("Restart", errors.New("Failed to restart."))
-	err := p.Restart(app, nil)
+	err := p.Restart(app, "web", nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Failed to restart.")
 }

@@ -38,10 +38,12 @@ import (
 var execResizeRegexp = regexp.MustCompile(`^.*/exec/(.*)/resize$`)
 
 type newContainerOpts struct {
-	AppName     string
-	Status      string
-	Image       string
-	Provisioner *dockerProvisioner
+	AppName         string
+	Status          string
+	Image           string
+	ProcessName     string
+	ImageCustomData map[string]interface{}
+	Provisioner     *dockerProvisioner
 }
 
 func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*container, error) {
@@ -56,17 +58,20 @@ func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*contain
 		p = s.p
 	}
 	image := "tsuru/python:latest"
+	var customData map[string]interface{}
 	if opts != nil {
 		if opts.Image != "" {
 			image = opts.Image
 		}
 		container.Status = opts.Status
 		container.AppName = opts.AppName
+		container.ProcessName = opts.ProcessName
+		customData = opts.ImageCustomData
 		if opts.Provisioner != nil {
 			p = opts.Provisioner
 		}
 	}
-	err := s.newFakeImage(p, image, nil)
+	err := s.newFakeImage(p, image, customData)
 	if err != nil {
 		return nil, err
 	}
