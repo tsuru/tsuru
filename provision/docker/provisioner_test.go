@@ -664,7 +664,7 @@ func (s *S) TestProvisionerAddUnitsInvalidProcess(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.p.AddUnits(app, 3, "bogus", nil)
 	c.Assert(err, check.FitsTypeOf, provision.ErrInvalidProcess{})
-	c.Assert(err, check.ErrorMatches, `process "bogus" is not defined`)
+	c.Assert(err, check.ErrorMatches, `process error: no command declared in Procfile for process "bogus"`)
 }
 
 func (s *S) TestProvisionerAddUnitsWithErrorDoesntLeaveLostUnits(c *check.C) {

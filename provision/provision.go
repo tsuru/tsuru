@@ -20,11 +20,11 @@ var ErrInvalidStatus = errors.New("invalid status")
 var ErrEmptyApp = errors.New("no units for this app")
 
 type ErrInvalidProcess struct {
-	ProcessName string
+	Msg string
 }
 
 func (e ErrInvalidProcess) Error() string {
-	return fmt.Sprintf("process %q is not defined", e.ProcessName)
+	return fmt.Sprintf("process error: %s", e.Msg)
 }
 
 // Status represents the status of a unit in tsuru.

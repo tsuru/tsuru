@@ -295,16 +295,10 @@ func (p *dockerProvisioner) deployPipeline(app provision.App, imageId string, co
 }
 
 func (p *dockerProvisioner) start(oldContainer *container, app provision.App, imageId string, w io.Writer, destinationHosts ...string) (*container, error) {
-	processName := oldContainer.ProcessName
-	data, err := getImageCustomData(imageId)
+	commands, processName, err := runLeanContainerCmds(oldContainer.ProcessName, imageId, app)
 	if err != nil {
 		return nil, err
 	}
-	processCmd := data.Processes[processName]
-	if processCmd == "" {
-		return nil, provision.ErrInvalidProcess{ProcessName: processName}
-	}
-	commands := []string{"/bin/bash", "-lc", "[ -d /home/application/current ] && cd /home/application/current; exec " + processCmd}
 	var actions []*action.Action
 	if oldContainer != nil && oldContainer.Status == provision.StatusStopped.String() {
 		actions = []*action.Action{

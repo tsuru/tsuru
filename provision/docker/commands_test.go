@@ -62,3 +62,24 @@ func (s *S) TestArchiveDeployCmds(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(cmds, check.DeepEquals, []string{"/bin/bash", "-lc", expectedAgent})
 }
+
+func (s *S) TestRunWithAgentCmds(c *check.C) {
+	app := provisiontest.NewFakeApp("app-name", "python", 1)
+	hostEnv := bind.EnvVar{
+		Name:   "TSURU_HOST",
+		Value:  "tsuru_host",
+		Public: true,
+	}
+	tokenEnv := bind.EnvVar{
+		Name:   "TSURU_APP_TOKEN",
+		Value:  "app_token",
+		Public: true,
+	}
+	app.SetEnv(hostEnv)
+	app.SetEnv(tokenEnv)
+	runCmd, err := config.GetString("docker:run-cmd:bin")
+	c.Assert(err, check.IsNil)
+	cmds, err := runWithAgentCmds(app)
+	c.Assert(err, check.IsNil)
+	c.Assert(cmds, check.DeepEquals, []string{"tsuru_unit_agent", "tsuru_host", "app_token", "app-name", runCmd})
+}
