@@ -318,24 +318,18 @@ var addNewRoutes = action.Action{
 		if writer == nil {
 			writer = ioutil.Discard
 		}
-		webContainers := make([]container, 0, len(newContainers))
-		for _, container := range newContainers {
-			if container.ProcessName == webProcessName {
-				webContainers = append(webContainers, container)
+		if len(newContainers) > 0 {
+			fmt.Fprintf(writer, "\n---- Adding routes to new units ----\n")
+		}
+		return newContainers, runInContainers(newContainers, func(c *container, toRollback chan *container) error {
+			if c.ProcessName != webProcessName {
+				return nil
 			}
-		}
-		var plural string
-		if len(webContainers) > 1 {
-			plural = "s"
-		}
-		if len(webContainers) > 0 {
-			fmt.Fprintf(writer, "\n---- Adding routes to %d new %q unit%s ----\n", len(webContainers), webProcessName, plural)
-		}
-		return newContainers, runInContainers(webContainers, func(c *container, toRollback chan *container) error {
 			err = r.AddRoute(c.AppName, c.getAddress())
 			if err != nil {
 				return err
 			}
+			c.routable = true
 			toRollback <- c
 			fmt.Fprintf(writer, " ---> Added route to unit %s\n", c.shortID())
 			return nil
@@ -345,22 +339,15 @@ var addNewRoutes = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
-		webProcessName, err := getImageWebProcessName(args.imageId)
-		if err != nil {
-			log.Errorf("[WARNING] cannot get the name of the web process: %s", err)
-		}
 		newContainers := ctx.FWResult.([]container)
 		r, err := getRouterForApp(args.app)
 		if err != nil {
 			log.Errorf("[add-new-routes:Backward] Error geting router: %s", err.Error())
 		}
-		webContainers := make([]container, 0, len(newContainers))
-		for _, container := range newContainers {
-			if container.ProcessName == webProcessName {
-				webContainers = append(webContainers, container)
+		for _, cont := range newContainers {
+			if !cont.routable {
+				continue
 			}
-		}
-		for _, cont := range webContainers {
 			err = r.RemoveRoute(cont.AppName, cont.getAddress())
 			if err != nil {
 				log.Errorf("[add-new-routes:Backward] Error removing route for %s: %s", cont.ID, err.Error())
@@ -373,10 +360,6 @@ var removeOldRoutes = action.Action{
 	Name: "remove-old-routes",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
-		webProcessName, err := getImageWebProcessName(args.imageId)
-		if err != nil {
-			log.Errorf("[WARNING] cannot get the name of the web process: %s", err)
-		}
 		r, err := getRouterForApp(args.app)
 		if err != nil {
 			return nil, err
@@ -385,24 +368,18 @@ var removeOldRoutes = action.Action{
 		if writer == nil {
 			writer = ioutil.Discard
 		}
-		webContainers := make([]container, 0, len(args.toRemove))
-		for _, container := range args.toRemove {
-			if container.ProcessName == webProcessName {
-				webContainers = append(webContainers, container)
-			}
+		if len(args.toRemove) > 0 {
+			fmt.Fprintf(writer, "\n---- Removing routes from old units ----\n")
 		}
-		var plural string
-		if len(webContainers) > 1 {
-			plural = "s"
-		}
-		if len(webContainers) > 0 {
-			fmt.Fprintf(writer, "\n---- Removing routes from %d old %q unit%s ----\n", len(webContainers), webProcessName, plural)
-		}
-		return ctx.Previous, runInContainers(webContainers, func(c *container, toRollback chan *container) error {
+		return ctx.Previous, runInContainers(args.toRemove, func(c *container, toRollback chan *container) error {
 			err = r.RemoveRoute(c.AppName, c.getAddress())
-			if err != router.ErrRouteNotFound && err != nil {
+			if err == router.ErrRouteNotFound {
+				return nil
+			}
+			if err != nil {
 				return err
 			}
+			c.routable = true
 			toRollback <- c
 			fmt.Fprintf(writer, " ---> Removed route from unit %s\n", c.shortID())
 			return nil
@@ -412,20 +389,17 @@ var removeOldRoutes = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
-		webProcessName, err := getImageWebProcessName(args.imageId)
-		if err != nil {
-			log.Errorf("[WARNING] cannot get the name of the web process: %s", err)
-		}
 		r, err := getRouterForApp(args.app)
 		if err != nil {
 			log.Errorf("[remove-old-routes:Backward] Error geting router: %s", err.Error())
 		}
 		for _, cont := range args.toRemove {
-			if cont.ProcessName == webProcessName {
-				err = r.AddRoute(cont.AppName, cont.getAddress())
-				if err != nil {
-					log.Errorf("[remove-old-routes:Backward] Error adding back route for %s: %s", cont.ID, err.Error())
-				}
+			if !cont.routable {
+				continue
+			}
+			err = r.AddRoute(cont.AppName, cont.getAddress())
+			if err != nil {
+				log.Errorf("[remove-old-routes:Backward] Error adding back route for %s: %s", cont.ID, err.Error())
 			}
 		}
 	},

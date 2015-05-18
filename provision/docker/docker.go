@@ -106,6 +106,7 @@ type container struct {
 	LastSuccessStatusUpdate time.Time
 	LockedUntil             time.Time
 	appCache                provision.App
+	routable                bool
 }
 
 func (c *container) shortID() string {

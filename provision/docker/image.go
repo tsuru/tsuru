@@ -163,6 +163,9 @@ func getImageWebProcessName(imageName string) (string, error) {
 	if err != nil {
 		return processName, err
 	}
+	if len(data.Processes) == 0 {
+		return "", nil
+	}
 	if len(data.Processes) == 1 {
 		for name := range data.Processes {
 			processName = name
