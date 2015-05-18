@@ -1692,7 +1692,7 @@ func (s *S) TestStop(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	var buf bytes.Buffer
-	err = a.Stop(&buf)
+	err = a.Stop(&buf, "")
 	c.Assert(err, check.IsNil)
 	err = s.conn.Apps().Find(bson.M{"name": a.GetName()}).One(&a)
 	c.Assert(err, check.IsNil)
@@ -2400,7 +2400,7 @@ func (s *S) TestAppAvailable(c *check.C) {
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
 	c.Assert(a.Available(), check.Equals, true)
-	s.provisioner.Stop(&a)
+	s.provisioner.Stop(&a, "")
 	c.Assert(a.Available(), check.Equals, false)
 }
 
@@ -2447,9 +2447,9 @@ func (s *S) TestStart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	var b bytes.Buffer
-	err = a.Start(&b)
+	err = a.Start(&b, "")
 	c.Assert(err, check.IsNil)
-	starts := s.provisioner.Starts(&a)
+	starts := s.provisioner.Starts(&a, "")
 	c.Assert(starts, check.Equals, 1)
 }
 

@@ -238,12 +238,13 @@ func (s *S) TestStarts(c *check.C) {
 	app2 := NewFakeApp("unfairy-tale", "shaman", 1)
 	p := NewFakeProvisioner()
 	p.apps = map[string]provisionedApp{
-		app1.GetName(): {app: app1, starts: 10},
-		app2.GetName(): {app: app1, starts: 0},
+		app1.GetName(): {app: app1, starts: map[string]int{"web": 10, "worker": 1}},
+		app2.GetName(): {app: app1, starts: map[string]int{"": 0}},
 	}
-	c.Assert(p.Starts(app1), check.Equals, 10)
-	c.Assert(p.Starts(app2), check.Equals, 0)
-	c.Assert(p.Starts(NewFakeApp("pride", "shaman", 1)), check.Equals, 0)
+	c.Assert(p.Starts(app1, "web"), check.Equals, 10)
+	c.Assert(p.Starts(app1, "worker"), check.Equals, 1)
+	c.Assert(p.Starts(app2, ""), check.Equals, 0)
+	c.Assert(p.Starts(NewFakeApp("pride", "shaman", 1), ""), check.Equals, 0)
 }
 
 func (s *S) TestStops(c *check.C) {
@@ -251,12 +252,13 @@ func (s *S) TestStops(c *check.C) {
 	app2 := NewFakeApp("unfairy-tale", "shaman", 1)
 	p := NewFakeProvisioner()
 	p.apps = map[string]provisionedApp{
-		app1.GetName(): {app: app1, stops: 10},
-		app2.GetName(): {app: app1, stops: 0},
+		app1.GetName(): {app: app1, stops: map[string]int{"web": 10, "worker": 1}},
+		app2.GetName(): {app: app1, stops: map[string]int{"": 0}},
 	}
-	c.Assert(p.Stops(app1), check.Equals, 10)
-	c.Assert(p.Stops(app2), check.Equals, 0)
-	c.Assert(p.Stops(NewFakeApp("pride", "shaman", 1)), check.Equals, 0)
+	c.Assert(p.Stops(app1, "web"), check.Equals, 10)
+	c.Assert(p.Stops(app1, "worker"), check.Equals, 1)
+	c.Assert(p.Stops(app2, ""), check.Equals, 0)
+	c.Assert(p.Stops(NewFakeApp("pride", "shaman", 1), ""), check.Equals, 0)
 }
 
 func (s *S) TestGetCmds(c *check.C) {
@@ -452,18 +454,21 @@ func (s *S) TestStart(c *check.C) {
 	app := NewFakeApp("kid-gloves", "rush", 1)
 	p := NewFakeProvisioner()
 	p.Provision(app)
-	err := p.Start(app)
+	err := p.Start(app, "")
 	c.Assert(err, check.IsNil)
-	c.Assert(p.Starts(app), check.Equals, 1)
+	err = p.Start(app, "web")
+	c.Assert(err, check.IsNil)
+	c.Assert(p.Starts(app, ""), check.Equals, 1)
+	c.Assert(p.Starts(app, "web"), check.Equals, 1)
 }
 
 func (s *S) TestStop(c *check.C) {
 	app := NewFakeApp("kid-gloves", "rush", 1)
 	p := NewFakeProvisioner()
 	p.Provision(app)
-	err := p.Stop(app)
+	err := p.Stop(app, "")
 	c.Assert(err, check.IsNil)
-	c.Assert(p.Stops(app), check.Equals, 1)
+	c.Assert(p.Stops(app, ""), check.Equals, 1)
 }
 
 func (s *S) TestRestartNotProvisioned(c *check.C) {

@@ -921,6 +921,7 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 
 func start(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	w.Header().Set("Content-Type", "text")
+	process := r.URL.Query().Get("process")
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -931,11 +932,12 @@ func start(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	return app.Start(w)
+	return app.Start(w, process)
 }
 
 func stop(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	w.Header().Set("Content-Type", "text")
+	process := r.URL.Query().Get("process")
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -946,7 +948,7 @@ func stop(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	return app.Stop(w)
+	return app.Stop(w, process)
 }
 
 func forceDeleteLock(w http.ResponseWriter, r *http.Request, t auth.Token) error {

@@ -3031,14 +3031,16 @@ func (s *S) TestStartHandler(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.deleteApp(&a)
-	url := fmt.Sprintf("/apps/%s/start?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/start?:app=%s&process=web", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	err = start(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	starts := s.provisioner.Starts(&a)
+	starts := s.provisioner.Starts(&a, "web")
 	c.Assert(starts, check.Equals, 1)
+	starts = s.provisioner.Starts(&a, "worker")
+	c.Assert(starts, check.Equals, 0)
 	action := rectest.Action{
 		Action: "start",
 		User:   s.user.Email,
@@ -3052,14 +3054,16 @@ func (s *S) TestStopHandler(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.deleteApp(&a)
-	url := fmt.Sprintf("/apps/%s/stop?:app=%s", a.Name, a.Name)
+	url := fmt.Sprintf("/apps/%s/stop?:app=%s&process=web", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	err = stop(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	stops := s.provisioner.Stops(&a)
+	stops := s.provisioner.Stops(&a, "web")
 	c.Assert(stops, check.Equals, 1)
+	stops = s.provisioner.Stops(&a, "worker")
+	c.Assert(stops, check.Equals, 0)
 	action := rectest.Action{
 		Action: "stop",
 		User:   s.user.Email,

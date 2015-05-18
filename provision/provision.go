@@ -249,11 +249,21 @@ type Provisioner interface {
 	// ExecuteCommandOnce runs a command in one unit of the app.
 	ExecuteCommandOnce(stdout, stderr io.Writer, app App, cmd string, args ...string) error
 
+	// Restart restarts the units of the application, with an optional
+	// string parameter represeting the name of the process to start. When
+	// the process is empty, Restart will restart all units of the
+	// application.
 	Restart(App, string, io.Writer) error
-	Stop(App) error
 
-	// Start start the app units.
-	Start(App) error
+	// Start starts the units of the application, with an optional string
+	// parameter represeting the name of the process to start. When the
+	// process is empty, Start will start all units of the application.
+	Start(App, string) error
+
+	// Stop stops the units of the application, with an optional string
+	// parameter represeting the name of the process to start. When the
+	// process is empty, Stop will stop all units of the application.
+	Stop(App, string) error
 
 	// Addr returns the address for an app.
 	//

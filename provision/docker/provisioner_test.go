@@ -67,7 +67,7 @@ func (s *S) TestProvisionerRestart(c *check.C) {
 	}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont2)
-	err = s.p.Start(app)
+	err = s.p.Start(app, "")
 	c.Assert(err, check.IsNil)
 	dockerContainer, err := s.p.getCluster().InspectContainer(cont1.ID)
 	c.Assert(err, check.IsNil)
@@ -116,7 +116,7 @@ func (s *S) TestProvisionerRestartProcess(c *check.C) {
 	}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont2)
-	err = s.p.Start(app)
+	err = s.p.Start(app, "")
 	c.Assert(err, check.IsNil)
 	dockerContainer, err := s.p.getCluster().InspectContainer(cont1.ID)
 	c.Assert(err, check.IsNil)
@@ -1072,42 +1072,189 @@ func (s *S) TestProvisionerStart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().RemoveAll(bson.M{"name": "almah"})
 	app := provisiontest.NewFakeApp("almah", "static", 1)
-	container, err := s.newContainer(&newContainerOpts{AppName: app.GetName()}, nil)
+	customData := map[string]interface{}{
+		"procfile": "web: python web.py\nworker: python worker.py\n",
+	}
+	cont1, err := s.newContainer(&newContainerOpts{
+		AppName:         app.GetName(),
+		Image:           "tsuru/app-" + app.GetName(),
+		ImageCustomData: customData,
+		ProcessName:     "web",
+	}, nil)
 	c.Assert(err, check.IsNil)
-	defer s.removeTestContainer(container)
+	defer s.removeTestContainer(cont1)
+	cont2, err := s.newContainer(&newContainerOpts{
+		AppName:         app.GetName(),
+		Image:           "tsuru/app-" + app.GetName(),
+		ImageCustomData: customData,
+		ProcessName:     "worker",
+	}, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(cont2)
 	dcli, err := docker.NewClient(s.server.URL())
 	c.Assert(err, check.IsNil)
-	dockerContainer, err := dcli.InspectContainer(container.ID)
+	dockerContainer, err := dcli.InspectContainer(cont1.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, false)
-	err = s.p.Start(app)
+	dockerContainer, err = dcli.InspectContainer(cont2.ID)
 	c.Assert(err, check.IsNil)
-	dockerContainer, err = dcli.InspectContainer(container.ID)
+	c.Assert(dockerContainer.State.Running, check.Equals, false)
+	err = s.p.Start(app, "")
+	c.Assert(err, check.IsNil)
+	dockerContainer, err = dcli.InspectContainer(cont1.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, true)
-	container, err = s.p.getContainer(container.ID)
+	cont1, err = s.p.getContainer(cont1.ID)
 	c.Assert(err, check.IsNil)
 	expectedIP := dockerContainer.NetworkSettings.IPAddress
 	expectedPort := dockerContainer.NetworkSettings.Ports["8888/tcp"][0].HostPort
-	c.Assert(container.IP, check.Equals, expectedIP)
-	c.Assert(container.HostPort, check.Equals, expectedPort)
-	c.Assert(container.Status, check.Equals, provision.StatusStarting.String())
+	c.Assert(cont1.IP, check.Equals, expectedIP)
+	c.Assert(cont1.HostPort, check.Equals, expectedPort)
+	c.Assert(cont1.Status, check.Equals, provision.StatusStarting.String())
+	dockerContainer, err = dcli.InspectContainer(cont2.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, true)
+	cont2, err = s.p.getContainer(cont2.ID)
+	c.Assert(err, check.IsNil)
+	expectedIP = dockerContainer.NetworkSettings.IPAddress
+	expectedPort = dockerContainer.NetworkSettings.Ports["8888/tcp"][0].HostPort
+	c.Assert(cont2.IP, check.Equals, expectedIP)
+	c.Assert(cont2.HostPort, check.Equals, expectedPort)
+	c.Assert(cont2.Status, check.Equals, provision.StatusStarting.String())
+}
+
+func (s *S) TestProvisionerStartProcess(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	err = conn.Apps().Insert(&app.App{Name: "almah"})
+	c.Assert(err, check.IsNil)
+	defer conn.Apps().RemoveAll(bson.M{"name": "almah"})
+	app := provisiontest.NewFakeApp("almah", "static", 1)
+	customData := map[string]interface{}{
+		"procfile": "web: python web.py\nworker: python worker.py\n",
+	}
+	cont1, err := s.newContainer(&newContainerOpts{
+		AppName:         app.GetName(),
+		Image:           "tsuru/app-" + app.GetName(),
+		ImageCustomData: customData,
+		ProcessName:     "web",
+	}, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(cont1)
+	cont2, err := s.newContainer(&newContainerOpts{
+		AppName:         app.GetName(),
+		Image:           "tsuru/app-" + app.GetName(),
+		ImageCustomData: customData,
+		ProcessName:     "worker",
+	}, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(cont2)
+	dcli, err := docker.NewClient(s.server.URL())
+	c.Assert(err, check.IsNil)
+	dockerContainer, err := dcli.InspectContainer(cont1.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, false)
+	dockerContainer, err = dcli.InspectContainer(cont2.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, false)
+	err = s.p.Start(app, "web")
+	c.Assert(err, check.IsNil)
+	dockerContainer, err = dcli.InspectContainer(cont2.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, false)
+	dockerContainer, err = dcli.InspectContainer(cont1.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, true)
+	cont1, err = s.p.getContainer(cont1.ID)
+	c.Assert(err, check.IsNil)
+	expectedIP := dockerContainer.NetworkSettings.IPAddress
+	expectedPort := dockerContainer.NetworkSettings.Ports["8888/tcp"][0].HostPort
+	c.Assert(cont1.IP, check.Equals, expectedIP)
+	c.Assert(cont1.HostPort, check.Equals, expectedPort)
+	c.Assert(cont1.Status, check.Equals, provision.StatusStarting.String())
 }
 
 func (s *S) TestProvisionerStop(c *check.C) {
 	dcli, _ := docker.NewClient(s.server.URL())
 	app := provisiontest.NewFakeApp("almah", "static", 2)
-	container, err := s.newContainer(&newContainerOpts{AppName: app.GetName()}, nil)
+	customData := map[string]interface{}{
+		"procfile": "web: python web.py\nworker: python worker.py\n",
+	}
+	cont1, err := s.newContainer(&newContainerOpts{
+		AppName:         app.GetName(),
+		Image:           "tsuru/app-" + app.GetName(),
+		ImageCustomData: customData,
+		ProcessName:     "web",
+	}, nil)
 	c.Assert(err, check.IsNil)
-	defer s.removeTestContainer(container)
-	err = dcli.StartContainer(container.ID, nil)
+	defer s.removeTestContainer(cont1)
+	cont2, err := s.newContainer(&newContainerOpts{
+		AppName:         app.GetName(),
+		Image:           "tsuru/app-" + app.GetName(),
+		ImageCustomData: customData,
+		ProcessName:     "worker",
+	}, nil)
 	c.Assert(err, check.IsNil)
-	dockerContainer, err := dcli.InspectContainer(container.ID)
+	defer s.removeTestContainer(cont2)
+	err = dcli.StartContainer(cont1.ID, nil)
+	c.Assert(err, check.IsNil)
+	dockerContainer, err := dcli.InspectContainer(cont1.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, true)
-	err = s.p.Stop(app)
+	err = dcli.StartContainer(cont2.ID, nil)
 	c.Assert(err, check.IsNil)
-	dockerContainer, err = dcli.InspectContainer(container.ID)
+	dockerContainer, err = dcli.InspectContainer(cont2.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, true)
+	err = s.p.Stop(app, "")
+	c.Assert(err, check.IsNil)
+	dockerContainer, err = dcli.InspectContainer(cont1.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, false)
+	dockerContainer, err = dcli.InspectContainer(cont2.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, false)
+}
+
+func (s *S) TestProvisionerStopProcess(c *check.C) {
+	dcli, _ := docker.NewClient(s.server.URL())
+	app := provisiontest.NewFakeApp("almah", "static", 2)
+	customData := map[string]interface{}{
+		"procfile": "web: python web.py\nworker: python worker.py\n",
+	}
+	cont1, err := s.newContainer(&newContainerOpts{
+		AppName:         app.GetName(),
+		Image:           "tsuru/app-" + app.GetName(),
+		ImageCustomData: customData,
+		ProcessName:     "web",
+	}, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(cont1)
+	cont2, err := s.newContainer(&newContainerOpts{
+		AppName:         app.GetName(),
+		Image:           "tsuru/app-" + app.GetName(),
+		ImageCustomData: customData,
+		ProcessName:     "worker",
+	}, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(cont2)
+	err = dcli.StartContainer(cont1.ID, nil)
+	c.Assert(err, check.IsNil)
+	dockerContainer, err := dcli.InspectContainer(cont1.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, true)
+	err = dcli.StartContainer(cont2.ID, nil)
+	c.Assert(err, check.IsNil)
+	dockerContainer, err = dcli.InspectContainer(cont2.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, true)
+	err = s.p.Stop(app, "worker")
+	c.Assert(err, check.IsNil)
+	dockerContainer, err = dcli.InspectContainer(cont1.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, true)
+	dockerContainer, err = dcli.InspectContainer(cont2.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, false)
 }
@@ -1133,7 +1280,7 @@ func (s *S) TestProvisionerStopSkipAlreadyStoppedContainers(c *check.C) {
 	dockerContainer2, err := dcli.InspectContainer(container2.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer2.State.Running, check.Equals, false)
-	err = s.p.Stop(app)
+	err = s.p.Stop(app, "")
 	c.Assert(err, check.IsNil)
 	dockerContainer, err = dcli.InspectContainer(container.ID)
 	c.Assert(err, check.IsNil)

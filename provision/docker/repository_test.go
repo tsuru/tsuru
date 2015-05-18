@@ -46,6 +46,39 @@ func (s *S) TestListContainersByApp(c *check.C) {
 	c.Assert(cond, check.Equals, true)
 }
 
+func (s *S) TestListContainersByProcess(c *check.C) {
+	var result []container
+	coll := s.p.collection()
+	defer coll.Close()
+	coll.Insert(
+		container{ID: "Hey", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1180.globoi.com", ProcessName: "web"},
+		container{ID: "Ho", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1182.globoi.com", ProcessName: "worker"},
+		container{ID: "Let's Go", Type: "java", AppName: "other", HostAddr: "http://cittavld597.globoi.com"},
+	)
+	defer coll.RemoveAll(bson.M{"appname": "myapp"})
+	result, err := s.p.listContainersByProcess("myapp", "web")
+	c.Assert(err, check.IsNil)
+	c.Assert(len(result), check.Equals, 1)
+	c.Assert(result[0].ID, check.Equals, "Hey")
+}
+
+func (s *S) TestListContainersByEmptyProcess(c *check.C) {
+	var result []container
+	coll := s.p.collection()
+	defer coll.Close()
+	coll.Insert(
+		container{ID: "Hey", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1180.globoi.com", ProcessName: "web"},
+		container{ID: "Ho", Type: "python", AppName: "myapp", HostAddr: "http://cittavld1182.globoi.com", ProcessName: "worker"},
+		container{ID: "Let's Go", Type: "java", AppName: "other", HostAddr: "http://cittavld597.globoi.com"},
+	)
+	defer coll.RemoveAll(bson.M{"appname": "myapp"})
+	result, err := s.p.listContainersByProcess("myapp", "")
+	c.Assert(err, check.IsNil)
+	c.Assert(len(result), check.Equals, 2)
+	cond := (result[0].ID == "Hey" && result[1].ID == "Ho") || (result[0].ID == "Ho" && result[1].ID == "Hey")
+	c.Assert(cond, check.Equals, true)
+}
+
 type containerByIdList []container
 
 func (l containerByIdList) Len() int           { return len(l) }

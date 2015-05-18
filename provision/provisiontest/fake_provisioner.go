@@ -330,17 +330,17 @@ func (p *FakeProvisioner) Restarts(app provision.App, process string) int {
 }
 
 // Starts returns the number of starts for a given app.
-func (p *FakeProvisioner) Starts(app provision.App) int {
+func (p *FakeProvisioner) Starts(app provision.App, process string) int {
 	p.mut.RLock()
 	defer p.mut.RUnlock()
-	return p.apps[app.GetName()].starts
+	return p.apps[app.GetName()].starts[process]
 }
 
 // Stops returns the number of stops for a given app.
-func (p *FakeProvisioner) Stops(app provision.App) int {
+func (p *FakeProvisioner) Stops(app provision.App, process string) int {
 	p.mut.RLock()
 	defer p.mut.RUnlock()
-	return p.apps[app.GetName()].stops
+	return p.apps[app.GetName()].stops[process]
 }
 
 func (p *FakeProvisioner) CustomData(app provision.App) map[string]interface{} {
@@ -531,6 +531,8 @@ func (p *FakeProvisioner) Provision(app provision.App) error {
 		app:      app,
 		addr:     fmt.Sprintf("%s.fake-lb.tsuru.io", app.GetName()),
 		restarts: make(map[string]int),
+		starts:   make(map[string]int),
+		stops:    make(map[string]int),
 	}
 	return nil
 }
@@ -553,14 +555,14 @@ func (p *FakeProvisioner) Restart(app provision.App, process string, w io.Writer
 	return nil
 }
 
-func (p *FakeProvisioner) Start(app provision.App) error {
+func (p *FakeProvisioner) Start(app provision.App, process string) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	pApp, ok := p.apps[app.GetName()]
 	if !ok {
 		return errNotProvisioned
 	}
-	pApp.starts++
+	pApp.starts[process]++
 	p.apps[app.GetName()] = pApp
 	return nil
 }
@@ -842,14 +844,14 @@ func (p *FakeProvisioner) HasCName(app provision.App, cname string) bool {
 	return false
 }
 
-func (p *FakeProvisioner) Stop(app provision.App) error {
+func (p *FakeProvisioner) Stop(app provision.App, process string) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	pApp, ok := p.apps[app.GetName()]
 	if !ok {
 		return errNotProvisioned
 	}
-	pApp.stops++
+	pApp.stops[process]++
 	for i, u := range pApp.units {
 		u.Status = provision.StatusStopped
 		pApp.units[i] = u
@@ -1005,8 +1007,8 @@ type provisionedApp struct {
 	units       []provision.Unit
 	app         provision.App
 	restarts    map[string]int
-	starts      int
-	stops       int
+	starts      map[string]int
+	stops       map[string]int
 	version     string
 	lastArchive string
 	lastFile    io.ReadCloser

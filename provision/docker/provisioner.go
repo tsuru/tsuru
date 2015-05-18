@@ -273,7 +273,7 @@ func (p *dockerProvisioner) Provision(app provision.App) error {
 }
 
 func (p *dockerProvisioner) Restart(a provision.App, process string, w io.Writer) error {
-	containers, err := p.listContainersByApp(a.GetName())
+	containers, err := p.listContainersByProcess(a.GetName(), process)
 	if err != nil {
 		return err
 	}
@@ -286,19 +286,15 @@ func (p *dockerProvisioner) Restart(a provision.App, process string, w io.Writer
 	}
 	writer := &app.LogWriter{App: a, Writer: w}
 	toAdd := make(map[string]int, len(containers))
-	currentContainers := make([]container, 0, len(containers))
 	for _, c := range containers {
-		if process == "" || c.ProcessName == process {
-			toAdd[c.ProcessName]++
-			currentContainers = append(currentContainers, c)
-		}
+		toAdd[c.ProcessName]++
 	}
-	_, err = p.runReplaceUnitsPipeline(writer, a, toAdd, currentContainers, imageId)
+	_, err = p.runReplaceUnitsPipeline(writer, a, toAdd, containers, imageId)
 	return err
 }
 
-func (p *dockerProvisioner) Start(app provision.App) error {
-	containers, err := p.listContainersByApp(app.GetName())
+func (p *dockerProvisioner) Start(app provision.App, process string) error {
+	containers, err := p.listContainersByProcess(app.GetName(), process)
 	if err != nil {
 		return errors.New(fmt.Sprintf("Got error while getting app containers: %s", err))
 	}
@@ -315,8 +311,8 @@ func (p *dockerProvisioner) Start(app provision.App) error {
 	}, nil, true)
 }
 
-func (p *dockerProvisioner) Stop(app provision.App) error {
-	containers, err := p.listContainersByApp(app.GetName())
+func (p *dockerProvisioner) Stop(app provision.App, process string) error {
+	containers, err := p.listContainersByProcess(app.GetName(), process)
 	if err != nil {
 		log.Errorf("Got error while getting app containers: %s", err)
 		return nil

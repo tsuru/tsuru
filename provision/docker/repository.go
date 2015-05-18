@@ -53,6 +53,14 @@ func (p *dockerProvisioner) listRunningContainersByHost(address string) ([]conta
 	})
 }
 
+func (p *dockerProvisioner) listContainersByProcess(appName, processName string) ([]container, error) {
+	query := bson.M{"appname": appName}
+	if processName != "" {
+		query["processname"] = processName
+	}
+	return p.listContainersBy(query)
+}
+
 func (p *dockerProvisioner) listContainersByApp(appName string) ([]container, error) {
 	return p.listContainersBy(bson.M{"appname": appName})
 }

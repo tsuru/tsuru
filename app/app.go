@@ -743,9 +743,13 @@ func (app *App) Restart(process string, w io.Writer) error {
 	return nil
 }
 
-func (app *App) Stop(w io.Writer) error {
-	log.Write(w, []byte("\n ---> Stopping your app\n"))
-	err := Provisioner.Stop(app)
+func (app *App) Stop(w io.Writer, process string) error {
+	msg := fmt.Sprintf("\n ---> Stopping the process %q\n", process)
+	if process == "" {
+		msg = fmt.Sprintf("\n ---> Stopping the app %q\n", app.Name)
+	}
+	log.Write(w, []byte(msg))
+	err := Provisioner.Stop(app, process)
 	if err != nil {
 		log.Errorf("[stop] error on stop the app %s - %s", app.Name, err)
 		return err
@@ -1246,8 +1250,13 @@ func Swap(app1, app2 *App) error {
 
 // Start starts the app calling the provisioner.Start method and
 // changing the units state to StatusStarted.
-func (app *App) Start(w io.Writer) error {
-	err := Provisioner.Start(app)
+func (app *App) Start(w io.Writer, process string) error {
+	msg := fmt.Sprintf("\n ---> Starting the process %q\n", process)
+	if process == "" {
+		msg = fmt.Sprintf("\n ---> Starting the app %q\n", app.Name)
+	}
+	log.Write(w, []byte(msg))
+	err := Provisioner.Start(app, process)
 	if err != nil {
 		log.Errorf("[start] error on start the app %s - %s", app.Name, err)
 		return err
