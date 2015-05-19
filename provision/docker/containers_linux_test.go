@@ -62,7 +62,7 @@ func (s *S) TestRebalanceContainersManyAppsSegStress(c *check.C) {
 		}
 		args := changeUnitsPipelineArgs{
 			app:         appInstance,
-			toAdd:       map[string]int{"web": 6},
+			toAdd:       map[string]*containersToAdd{"web": {Quantity: 6}},
 			imageId:     imageId,
 			provisioner: p,
 			toHost:      chosenNode,
