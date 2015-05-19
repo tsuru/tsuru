@@ -28,8 +28,8 @@ Main new features
   support a ``--pool <poolname>`` parameter.
 
   Some action is needed to migrate old pool configuration to this new format. See
-  `backward incompatible changes`_ section for more details. `#1110
-  <https://github.com/tsuru/tsuru/issues/1110>`_
+  `backward incompatible changes`_ section for more details. `#1013
+  <https://github.com/tsuru/tsuru/issues/1013>`_
 
 * Node auto scaling. It's now possible to enable automatic scaling of docker
   nodes, this will add or remove nodes according to rules specified in your
