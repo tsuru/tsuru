@@ -663,7 +663,7 @@ func (s *S) TestProvisionerAddUnitsInvalidProcess(c *check.C) {
 	_, err = s.newContainer(&newContainerOpts{AppName: app.GetName()}, nil)
 	c.Assert(err, check.IsNil)
 	_, err = s.p.AddUnits(app, 3, "bogus", nil)
-	c.Assert(err, check.FitsTypeOf, provision.ErrInvalidProcess{})
+	c.Assert(err, check.FitsTypeOf, provision.InvalidProcessError{})
 	c.Assert(err, check.ErrorMatches, `process error: no command declared in Procfile for process "bogus"`)
 }
 

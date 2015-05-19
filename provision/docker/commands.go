@@ -71,7 +71,7 @@ func runLeanContainerCmds(processName string, imageId string, app provision.App)
 	}
 	if processName == "" {
 		if len(data.Processes) > 1 {
-			return nil, "", provision.ErrInvalidProcess{Msg: "no process name specified and more than one declared in Procfile"}
+			return nil, "", provision.InvalidProcessError{Msg: "no process name specified and more than one declared in Procfile"}
 		}
 		for name := range data.Processes {
 			processName = name
@@ -79,7 +79,7 @@ func runLeanContainerCmds(processName string, imageId string, app provision.App)
 	}
 	processCmd := data.Processes[processName]
 	if processCmd == "" {
-		return nil, "", provision.ErrInvalidProcess{Msg: fmt.Sprintf("no command declared in Procfile for process %q", processName)}
+		return nil, "", provision.InvalidProcessError{Msg: fmt.Sprintf("no command declared in Procfile for process %q", processName)}
 	}
 	yamlData, err := getImageTsuruYamlData(imageId)
 	if err != nil {
