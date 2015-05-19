@@ -81,9 +81,17 @@ func runLeanContainerCmds(processName string, imageId string, app provision.App)
 	if processCmd == "" {
 		return nil, "", provision.ErrInvalidProcess{Msg: fmt.Sprintf("no command declared in Procfile for process %q", processName)}
 	}
+	yamlData, err := getImageTsuruYamlData(imageId)
+	if err != nil {
+		return nil, "", err
+	}
+	before := strings.Join(yamlData.Hooks.Restart.Before, " && ")
+	if before != "" {
+		before += " && "
+	}
 	return []string{
 		"/bin/bash",
 		"-lc",
-		"[ -d /home/application/current ] && cd /home/application/current; exec " + processCmd,
+		"[ -d /home/application/current ] && cd /home/application/current; " + before + "exec " + processCmd,
 	}, processName, nil
 }
