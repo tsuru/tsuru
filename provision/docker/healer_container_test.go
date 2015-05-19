@@ -49,7 +49,7 @@ func (s *S) TestHealContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
-		toAdd:       map[string]int{"web": 1},
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -116,7 +116,7 @@ func (s *S) TestRunContainerHealer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
-		toAdd:       map[string]int{"web": 2},
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -203,7 +203,7 @@ func (s *S) TestRunContainerHealerShutdown(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
-		toAdd:       map[string]int{"web": 2},
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -278,7 +278,7 @@ func (s *S) TestRunContainerHealerConcurrency(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
-		toAdd:       map[string]int{"web": 2},
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -370,7 +370,7 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
-		toAdd:       map[string]int{"web": 2},
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -459,7 +459,7 @@ func (s *S) TestRunContainerHealerDoesntHealWhenContainerIsRunning(c *check.C) {
 	c.Assert(err, check.IsNil)
 	cont, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
-		toAdd:       map[string]int{"web": 1},
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -518,7 +518,7 @@ func (s *S) TestRunContainerHealerDoesntHealWhenContainerIsRestarting(c *check.C
 	c.Assert(err, check.IsNil)
 	cont, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
-		toAdd:       map[string]int{"web": 1},
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,
@@ -571,7 +571,7 @@ func (s *S) TestRunContainerHealerWithError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
-		toAdd:       map[string]int{"web": 2},
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: &p,

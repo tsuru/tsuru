@@ -71,7 +71,7 @@ func handleMoveErrors(moveErrors chan error, writer io.Writer) error {
 	return nil
 }
 
-func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App, toAdd map[string]int, toRemoveContainers []container, imageId string, toHosts ...string) ([]container, error) {
+func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App, toAdd map[string]*containersToAdd, toRemoveContainers []container, imageId string, toHosts ...string) ([]container, error) {
 	var toHost string
 	if len(toHosts) > 0 {
 		toHost = toHosts[0]
@@ -112,7 +112,7 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 	return pipeline.Result().([]container), nil
 }
 
-func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App, toAdd map[string]int, imageId string) ([]container, error) {
+func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App, toAdd map[string]*containersToAdd, imageId string) ([]container, error) {
 	if w == nil {
 		w = ioutil.Discard
 	}
@@ -171,7 +171,7 @@ func (p *dockerProvisioner) moveOneContainer(c container, toHost string, errors 
 	if !p.isDryMode {
 		fmt.Fprintf(writer, "Moving unit %s for %q from %s%s...\n", c.ID, c.AppName, c.HostAddr, suffix)
 	}
-	toAdd := map[string]int{c.ProcessName: 1}
+	toAdd := map[string]*containersToAdd{c.ProcessName: {Quantity: 1, Status: provision.Status(c.Status)}}
 	addedContainers, err := p.runReplaceUnitsPipeline(nil, a, toAdd, []container{c}, imageId, destHosts...)
 	if err != nil {
 		errors <- &tsuruErrors.CompositeError{

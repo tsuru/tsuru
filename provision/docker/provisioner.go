@@ -285,9 +285,13 @@ func (p *dockerProvisioner) Restart(a provision.App, process string, w io.Writer
 		w = ioutil.Discard
 	}
 	writer := &app.LogWriter{App: a, Writer: w}
-	toAdd := make(map[string]int, len(containers))
+	toAdd := make(map[string]*containersToAdd, len(containers))
 	for _, c := range containers {
-		toAdd[c.ProcessName]++
+		if _, ok := toAdd[c.ProcessName]; !ok {
+			toAdd[c.ProcessName] = &containersToAdd{Quantity: 0}
+		}
+		toAdd[c.ProcessName].Quantity++
+		toAdd[c.ProcessName].Status = provision.Status(c.Status)
 	}
 	_, err = p.runReplaceUnitsPipeline(writer, a, toAdd, containers, imageId)
 	return err
@@ -441,9 +445,14 @@ func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer)
 		return err
 	}
 	if len(containers) == 0 {
-		toAdd := make(map[string]int, len(imageData.Processes))
+		toAdd := make(map[string]*containersToAdd, len(imageData.Processes))
 		for processName := range imageData.Processes {
-			toAdd[processName] = 1
+			_, ok := toAdd[processName]
+			if !ok {
+				ct := containersToAdd{Quantity: 0}
+				toAdd[processName] = &ct
+			}
+			toAdd[processName].Quantity++
 		}
 		_, err = p.runCreateUnitsPipeline(w, a, toAdd, imageId)
 	} else {
@@ -453,10 +462,10 @@ func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer)
 	return err
 }
 
-func getContainersToAdd(data ImageMetadata, oldContainers []container) map[string]int {
-	processMap := make(map[string]int, len(data.Processes))
+func getContainersToAdd(data ImageMetadata, oldContainers []container) map[string]*containersToAdd {
+	processMap := make(map[string]*containersToAdd, len(data.Processes))
 	for name := range data.Processes {
-		processMap[name] = 0
+		processMap[name].Quantity = 0
 	}
 	minCount := 0
 	for _, container := range oldContainers {
@@ -464,15 +473,15 @@ func getContainersToAdd(data ImageMetadata, oldContainers []container) map[strin
 			minCount++
 		}
 		if _, ok := processMap[container.ProcessName]; ok {
-			processMap[container.ProcessName]++
+			processMap[container.ProcessName].Quantity++
 		}
 	}
 	if minCount == 0 {
 		minCount = 1
 	}
-	for name, amount := range processMap {
-		if amount == 0 {
-			processMap[name] = minCount
+	for name, cont := range processMap {
+		if cont.Quantity == 0 {
+			processMap[name].Quantity = minCount
 		}
 	}
 	return processMap
@@ -562,7 +571,7 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 	w := args.writer
 	var units int
 	for _, v := range args.toAdd {
-		units += v
+		units += v.Quantity
 	}
 	imageId := args.imageId
 	var destinationHost []string
@@ -578,9 +587,9 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 	}
 	fmt.Fprintf(w, "\n---- Starting %d new unit%s ----\n", units, plural)
 	oldContainers := make([]container, 0, units)
-	for processName, count := range args.toAdd {
-		for i := 0; i < count; i++ {
-			oldContainers = append(oldContainers, container{ProcessName: processName})
+	for processName, cont := range args.toAdd {
+		for i := 0; i < cont.Quantity; i++ {
+			oldContainers = append(oldContainers, container{ProcessName: processName, Status: cont.Status.String()})
 		}
 	}
 	rollbackCallback := func(c *container) {
@@ -631,7 +640,7 @@ func (p *dockerProvisioner) AddUnits(a provision.App, units uint, process string
 	if err != nil {
 		return nil, err
 	}
-	conts, err := p.runCreateUnitsPipeline(writer, a, map[string]int{process: int(units)}, imageId)
+	conts, err := p.runCreateUnitsPipeline(writer, a, map[string]*containersToAdd{process: {Quantity: int(units)}}, imageId)
 	if err != nil {
 		return nil, err
 	}

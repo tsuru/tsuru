@@ -38,7 +38,7 @@ func (s *S) TestMoveContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
-		toAdd:       map[string]int{"web": 2},
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: p,
@@ -83,7 +83,7 @@ func (s *S) TestMoveContainersUnknownDest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
-		toAdd:       map[string]int{"web": 2},
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: p,
@@ -124,7 +124,7 @@ func (s *S) TestMoveContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	addedConts, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
-		toAdd:       map[string]int{"web": 2},
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: p,
@@ -176,7 +176,7 @@ func (s *S) TestRebalanceContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
-		toAdd:       map[string]int{"web": 5},
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 5}},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: p,
@@ -228,7 +228,7 @@ func (s *S) TestRebalanceContainersSegScheduler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
-		toAdd:       map[string]int{"web": 5},
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 5}},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: p,
@@ -331,7 +331,7 @@ func (s *S) TestRebalanceContainersManyApps(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
-		toAdd:       map[string]int{"web": 1},
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: p,
@@ -341,7 +341,7 @@ func (s *S) TestRebalanceContainersManyApps(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
-		toAdd:       map[string]int{"web": 1},
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
 		app:         appInstance2,
 		imageId:     imageId2,
 		provisioner: p,
@@ -386,7 +386,7 @@ func (s *S) TestRebalanceContainersDry(c *check.C) {
 	c.Assert(err, check.IsNil)
 	args := changeUnitsPipelineArgs{
 		app:         appInstance,
-		toAdd:       map[string]int{"web": 5},
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 5}},
 		imageId:     imageId,
 		provisioner: p,
 		toHost:      "localhost",

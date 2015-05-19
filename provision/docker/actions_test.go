@@ -458,7 +458,7 @@ func (s *S) TestProvisionAddUnitsToHostForward(c *check.C) {
 	args := changeUnitsPipelineArgs{
 		app:         app,
 		toHost:      "localhost",
-		toAdd:       map[string]int{"web": 2},
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		imageId:     imageId,
 		provisioner: p,
 	}
@@ -489,7 +489,7 @@ func (s *S) TestProvisionAddUnitsToHostForwardWithoutHost(c *check.C) {
 	c.Assert(err, check.IsNil)
 	args := changeUnitsPipelineArgs{
 		app:         app,
-		toAdd:       map[string]int{"web": 3},
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 3}},
 		imageId:     imageId,
 		provisioner: p,
 	}
@@ -703,7 +703,7 @@ func (s *S) TestBindAndHealthcheckForward(c *check.C) {
 		app:         fakeApp,
 		provisioner: s.p,
 		writer:      buf,
-		toAdd:       map[string]int{"web": 2, "worker": 1},
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}, "worker": {Quantity: 1}},
 		imageId:     "tsuru/app-" + appName,
 	}
 	containers, err := addContainersWithHost(&args)
@@ -763,7 +763,7 @@ func (s *S) TestBindAndHealthcheckDontHealtcheckForErroredApps(c *check.C) {
 		app:         fakeApp,
 		provisioner: s.p,
 		writer:      buf,
-		toAdd:       map[string]int{"web": 2},
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		imageId:     "tsuru/app-" + dbApp.Name,
 		toRemove:    []container{*oldContainer},
 	}
@@ -821,7 +821,7 @@ func (s *S) TestBindAndHealthcheckDontHealtcheckForStoppedApps(c *check.C) {
 		app:         fakeApp,
 		provisioner: s.p,
 		writer:      buf,
-		toAdd:       map[string]int{"web": 2},
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		imageId:     "tsuru/app-" + dbApp.Name,
 		toRemove:    []container{*oldContainer},
 	}
@@ -874,7 +874,7 @@ func (s *S) TestBindAndHealthcheckForwardHealthcheckError(c *check.C) {
 		app:         fakeApp,
 		provisioner: s.p,
 		writer:      buf,
-		toAdd:       map[string]int{"web": 2},
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		imageId:     "tsuru/app-" + dbApp.Name,
 	}
 	containers, err := addContainersWithHost(&args)
@@ -926,7 +926,7 @@ func (s *S) TestBindAndHealthcheckForwardRestartError(c *check.C) {
 		app:         fakeApp,
 		provisioner: s.p,
 		writer:      buf,
-		toAdd:       map[string]int{"web": 2},
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		imageId:     "tsuru/app-" + dbApp.Name,
 	}
 	containers, err := addContainersWithHost(&args)
@@ -953,7 +953,7 @@ func (s *S) TestBindAndHealthcheckBackward(c *check.C) {
 		app:         fakeApp,
 		provisioner: s.p,
 		writer:      buf,
-		toAdd:       map[string]int{"web": 2},
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
 		imageId:     "tsuru/app-" + appName,
 	}
 	containers, err := addContainersWithHost(&args)

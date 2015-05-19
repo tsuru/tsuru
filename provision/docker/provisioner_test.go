@@ -738,7 +738,7 @@ func (s *S) TestProvisionerAddUnitsWithHost(c *check.C) {
 	c.Assert(err, check.IsNil)
 	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "localhost",
-		toAdd:       map[string]int{"web": 1},
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
 		app:         app,
 		imageId:     imageId,
 		provisioner: p,
@@ -1644,7 +1644,7 @@ func (s *S) TestDryMode(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toHost:      "127.0.0.1",
-		toAdd:       map[string]int{"web": 5},
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 5}},
 		app:         appInstance,
 		imageId:     imageId,
 		provisioner: s.p,

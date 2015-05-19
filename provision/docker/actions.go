@@ -32,10 +32,15 @@ type runContainerActionsArgs struct {
 	provisioner      *dockerProvisioner
 }
 
+type containersToAdd struct {
+	Quantity int
+	Status   provision.Status
+}
+
 type changeUnitsPipelineArgs struct {
 	app         provision.App
 	writer      io.Writer
-	toAdd       map[string]int
+	toAdd       map[string]*containersToAdd
 	toRemove    []container
 	toHost      string
 	imageId     string
