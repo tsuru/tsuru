@@ -318,7 +318,7 @@ The port used in the callback URL during the authorization step. Check docs for
 
 .. _config_queue:
 
-queue configuration
+Queue configuration
 -------------------
 
 tsuru uses a work queue for asynchronous tasks.
@@ -925,6 +925,11 @@ tsuru uses IaaS configuration to automatically create new docker nodes and
 adding them to your cluster when using ``docker-node-add`` command. See
 :doc:`adding nodes</installing/adding-nodes>` for more details about how to use
 this command.
+
+.. attention::
+
+    You should configure :ref:`queue <config_queue>` to be able to use IaaS.
+
 
 General settings
 ----------------
