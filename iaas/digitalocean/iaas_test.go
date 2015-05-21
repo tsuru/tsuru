@@ -28,8 +28,15 @@ var _ = check.Suite(&digitaloceanSuite{})
 
 func (s *digitaloceanSuite) TestCreateMachine(c *check.C) {
 	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintln(w, `{"droplet": {"id": 1, "status": "active", "networks": {"v4": [{"ip_address": "104.131.186.241", "netmask": "255.255.240.0", "gateway": "104.131.176.1", "type": "public"}], "v6": [{"ip_address": "2604:A880:0800:0010:0000:0000:031D:2001", "netmask": 64, "gateway": "2604:A880:0800:0010:0000:0000:0000:0001", "type": "public"}]}}}`)
+		println(r.URL.Path)
+		if r.URL.Path == "/v2/droplets" {
+			fmt.Fprintln(w, `{"droplet": {"id": 1, "status": "new", "networks": {"v4": [], "v6": []}}}`)
+		}
+		if r.URL.Path == "/v2/droplets/1" {
+			fmt.Fprintln(w, `{"droplet": {"id": 1, "status": "active", "networks": {"v4": [{"ip_address": "104.131.186.241", "netmask": "255.255.240.0", "gateway": "104.131.176.1", "type": "public"}], "v6": [{"ip_address": "2604:A880:0800:0010:0000:0000:031D:2001", "netmask": 64, "gateway": "2604:A880:0800:0010:0000:0000:0000:0001", "type": "public"}]}}}`)
+		}
 	}))
+	defer fakeServer.Close()
 	config.Set("iaas:digitalocean:url", fakeServer.URL)
 	do := NewDigitalOceanIaas()
 	params := map[string]string{"name": "example.com",
@@ -49,6 +56,7 @@ func (s *digitaloceanSuite) TestCreateMachineFailure(c *check.C) {
 	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `{"droplet": {"id": 1, "status": "active", "networks": {"v4": [], "v6": []}}}`)
 	}))
+	defer fakeServer.Close()
 	config.Set("iaas:digitalocean:url", fakeServer.URL)
 	do := NewDigitalOceanIaas()
 	params := map[string]string{"name": "example.com",
@@ -66,6 +74,7 @@ func (s *digitaloceanSuite) TestDeleteMachine(c *check.C) {
 		w.WriteHeader(204)
 		w.Header().Set("Content-type", "application/json")
 	}))
+	defer fakeServer.Close()
 	config.Set("iaas:digitalocean:url", fakeServer.URL)
 	do := NewDigitalOceanIaas()
 	machine := iaas.Machine{Id: "myMachineId", CreationParams: map[string]string{"projectid": "projid"}}
@@ -78,6 +87,7 @@ func (s *digitaloceanSuite) TestDeleteMachineFailure(c *check.C) {
 		w.WriteHeader(200)
 		w.Header().Set("Content-type", "application/json")
 	}))
+	defer fakeServer.Close()
 	config.Set("iaas:digitalocean:url", fakeServer.URL)
 	do := NewDigitalOceanIaas()
 	machine := iaas.Machine{Id: "myMachineId", CreationParams: map[string]string{"projectid": "projid"}}
