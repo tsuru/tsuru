@@ -166,6 +166,9 @@ func (c *container) create(args runContainerActionsArgs) error {
 		CPUShares:    int64(args.app.GetCpuShare()),
 		SecurityOpts: securityOpts,
 	}
+	for _, envData := range args.app.Envs() {
+		config.Env = append(config.Env, fmt.Sprintf("%s=%s", envData.Name, envData.Value))
+	}
 	if sharedMount != "" && sharedBasedir != "" {
 		config.Volumes = map[string]struct{}{
 			sharedMount: {},

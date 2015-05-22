@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -150,6 +151,8 @@ func (s *S) TestContainerCreate(c *check.C) {
 	app.Memory = 15
 	app.Swap = 15
 	app.CpuShare = 50
+	app.SetEnv(bind.EnvVar{Name: "A", Value: "myenva"})
+	app.SetEnv(bind.EnvVar{Name: "ABCD", Value: "other env"})
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	s.p.getCluster().PullImage(
@@ -184,6 +187,8 @@ func (s *S) TestContainerCreate(c *check.C) {
 	c.Assert(container.Config.Memory, check.Equals, app.Memory)
 	c.Assert(container.Config.MemorySwap, check.Equals, app.Memory+app.Swap)
 	c.Assert(container.Config.CPUShares, check.Equals, int64(app.CpuShare))
+	sort.Strings(container.Config.Env)
+	c.Assert(container.Config.Env, check.DeepEquals, []string{"A=myenva", "ABCD=other env"})
 }
 
 func (s *S) TestContainerCreateSecurityOptions(c *check.C) {
