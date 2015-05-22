@@ -155,6 +155,12 @@ func (s *S) TestAddNewRouteName(c *check.C) {
 
 func (s *S) TestAddNewRouteForward(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	imageName := "tsuru/app-" + app.GetName()
+	customData := map[string]interface{}{
+		"procfile": "web: python myapi.py\nworker: tail -f /dev/null",
+	}
+	err := saveImageCustomData(imageName, customData)
+	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	cont1 := container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "127.0.0.1", HostPort: "1234"}
@@ -166,6 +172,7 @@ func (s *S) TestAddNewRouteForward(c *check.C) {
 	args := changeUnitsPipelineArgs{
 		app:         app,
 		provisioner: s.p,
+		imageId:     imageName,
 	}
 	context := action.FWContext{Previous: []container{cont1, cont2, cont3}, Params: []interface{}{args}}
 	r, err := addNewRoutes.Forward(context)
@@ -224,8 +231,8 @@ func (s *S) TestAddNewRouteForwardFailInMiddle(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend(app.GetName())
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
-	cont := container{ID: "ble-1", AppName: app.GetName(), ProcessName: "web", HostAddr: "addr1"}
-	cont2 := container{ID: "ble-2", AppName: app.GetName(), ProcessName: "web", HostAddr: "addr2"}
+	cont := container{ID: "ble-1", AppName: app.GetName(), ProcessName: "", HostAddr: "addr1"}
+	cont2 := container{ID: "ble-2", AppName: app.GetName(), ProcessName: "", HostAddr: "addr2"}
 	defer cont.remove(s.p)
 	defer cont2.remove(s.p)
 	routertest.FakeRouter.FailForIp(cont2.getAddress())

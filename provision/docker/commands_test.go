@@ -14,7 +14,6 @@ import (
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2"
 )
 
 func (s *S) TestGitDeployCmds(c *check.C) {
@@ -137,7 +136,7 @@ func (s *S) TestRunLeanContainersCmdNoProcesses(c *check.C) {
 	}
 	app.SetEnv(hostEnv)
 	app.SetEnv(tokenEnv)
-	cmds, process, err := runLeanContainerCmds("web", imageId, app)
+	cmds, process, err := runLeanContainerCmds("", imageId, app)
 	c.Assert(err, check.IsNil)
 	c.Assert(process, check.Equals, "")
 	runCmd, err := config.GetString("docker:run-cmd:bin")
@@ -194,7 +193,8 @@ func (s *S) TestRunLeanContainersCmdInvalidProcess(c *check.C) {
 
 func (s *S) TestRunLeanContainersCmdNoImageMetadata(c *check.C) {
 	cmds, process, err := runLeanContainerCmds("web", "tsuru/app-myapp", nil)
-	c.Assert(err, check.Equals, mgo.ErrNotFound)
+	c.Assert(err, check.FitsTypeOf, provision.InvalidProcessError{})
+	c.Assert(err, check.ErrorMatches, `.*no command declared in Procfile for process "web"`)
 	c.Assert(process, check.Equals, "")
 	c.Assert(cmds, check.IsNil)
 }

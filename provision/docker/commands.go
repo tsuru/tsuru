@@ -58,20 +58,17 @@ func runWithAgentCmds(app provision.App) ([]string, error) {
 	return []string{"tsuru_unit_agent", host, token, app.GetName(), runCmd}, nil
 }
 
-func runLeanContainerCmds(processName string, imageId string, app provision.App) ([]string, string, error) {
+func processCmdForImage(processName, imageId string) (string, string, error) {
 	data, err := getImageCustomData(imageId)
 	if err != nil {
-		return nil, "", err
-	}
-	if len(data.Processes) == 0 {
-		// Legacy support, no processes are yet registered for this app's
-		// containers.
-		cmds, err := runWithAgentCmds(app)
-		return cmds, "", err
+		return "", "", err
 	}
 	if processName == "" {
+		if len(data.Processes) == 0 {
+			return "", "", nil
+		}
 		if len(data.Processes) > 1 {
-			return nil, "", provision.InvalidProcessError{Msg: "no process name specified and more than one declared in Procfile"}
+			return "", "", provision.InvalidProcessError{Msg: "no process name specified and more than one declared in Procfile"}
 		}
 		for name := range data.Processes {
 			processName = name
@@ -79,7 +76,21 @@ func runLeanContainerCmds(processName string, imageId string, app provision.App)
 	}
 	processCmd := data.Processes[processName]
 	if processCmd == "" {
-		return nil, "", provision.InvalidProcessError{Msg: fmt.Sprintf("no command declared in Procfile for process %q", processName)}
+		return "", "", provision.InvalidProcessError{Msg: fmt.Sprintf("no command declared in Procfile for process %q", processName)}
+	}
+	return processCmd, processName, nil
+}
+
+func runLeanContainerCmds(processName, imageId string, app provision.App) ([]string, string, error) {
+	processCmd, processName, err := processCmdForImage(processName, imageId)
+	if err != nil {
+		return nil, "", err
+	}
+	if processCmd == "" {
+		// Legacy support, no processes are yet registered for this app's
+		// containers.
+		cmds, err := runWithAgentCmds(app)
+		return cmds, "", err
 	}
 	yamlData, err := getImageTsuruYamlData(imageId)
 	if err != nil {
