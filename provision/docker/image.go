@@ -154,6 +154,10 @@ func getImageCustomData(imageName string) (ImageMetadata, error) {
 	defer coll.Close()
 	var data ImageMetadata
 	err = coll.FindId(imageName).One(&data)
+	if err == mgo.ErrNotFound {
+		// Return empty data for compatibillity with really old apps.
+		return data, nil
+	}
 	return data, err
 }
 

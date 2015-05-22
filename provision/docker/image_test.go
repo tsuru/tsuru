@@ -371,6 +371,10 @@ func (s *S) TestGetImageWebProcessName(c *check.C) {
 	}
 	err = saveImageCustomData(img3, customData3)
 	c.Assert(err, check.IsNil)
+	img4 := "tsuru/app-myapp:v4"
+	customData4 := map[string]interface{}{}
+	err = saveImageCustomData(img4, customData4)
+	c.Assert(err, check.IsNil)
 	web1, err := getImageWebProcessName(img1)
 	c.Check(err, check.IsNil)
 	c.Check(web1, check.Equals, "web")
@@ -380,4 +384,11 @@ func (s *S) TestGetImageWebProcessName(c *check.C) {
 	web3, err := getImageWebProcessName(img3)
 	c.Check(err, check.IsNil)
 	c.Check(web3, check.Equals, "api")
+	web4, err := getImageWebProcessName(img4)
+	c.Check(err, check.IsNil)
+	c.Check(web4, check.Equals, "")
+	img5 := "tsuru/app-myapp:v5"
+	web5, err := getImageWebProcessName(img5)
+	c.Check(err, check.IsNil)
+	c.Check(web5, check.Equals, "")
 }
