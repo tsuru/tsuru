@@ -411,37 +411,25 @@ func (app *App) AddUnits(n uint, process string, writer io.Writer) error {
 // multiple steps:
 //
 //     1. Remove units from the provisioner
-//     2. Remove units from the app list
-//     3. Update quota
-func (app *App) RemoveUnits(n uint, process string) error {
-	if n == 0 {
-		ReleaseApplicationLock(app.Name)
-		return stderr.New("Cannot remove zero units.")
-	} else if length := uint(len(app.Units())); n > length {
-		ReleaseApplicationLock(app.Name)
-		return fmt.Errorf("Cannot remove %d units from this app, it has only %d units.", n, length)
+//     2. Update quota
+func (app *App) RemoveUnits(n uint, process string, writer io.Writer) error {
+	err := Provisioner.RemoveUnits(app, n, process, writer)
+	if err != nil {
+		return err
 	}
-	go func() {
-		defer ReleaseApplicationLock(app.Name)
-		Provisioner.RemoveUnits(app, n, process)
-		conn, err := db.Conn()
-		if err != nil {
-			log.Errorf("Error: %s", err)
-		}
-		defer conn.Close()
-		dbErr := conn.Apps().Update(
-			bson.M{"name": app.Name},
-			bson.M{
-				"$set": bson.M{
-					"quota.inuse": len(app.Units()),
-				},
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.Apps().Update(
+		bson.M{"name": app.Name},
+		bson.M{
+			"$set": bson.M{
+				"quota.inuse": len(app.Units()),
 			},
-		)
-		if dbErr != nil {
-			log.Errorf("Error: %s", dbErr)
-		}
-	}()
-	return nil
+		},
+	)
 }
 
 // SetUnitStatus changes the status of the given unit.

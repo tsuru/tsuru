@@ -291,8 +291,14 @@ func removeUnits(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	context.SetPreventUnlock(r)
-	return app.RemoveUnits(uint(n), processName)
+	w.Header().Set("Content-Type", "application/json")
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
+	err = app.RemoveUnits(uint(n), processName, writer)
+	if err != nil {
+		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
+		return nil
+	}
+	return nil
 }
 
 func setUnitStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {

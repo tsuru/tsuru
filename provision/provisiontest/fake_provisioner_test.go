@@ -570,10 +570,12 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	p.Provision(app)
 	_, err := p.AddUnits(app, 5, "web", nil)
 	c.Assert(err, check.IsNil)
-	err = p.RemoveUnits(app, 3, "web")
+	buf := bytes.NewBuffer(nil)
+	err = p.RemoveUnits(app, 3, "web", buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(p.GetUnits(app), check.HasLen, 2)
 	c.Assert(p.GetUnits(app)[0].Name, check.Equals, "hemispheres-3")
+	c.Assert(buf.String(), check.Equals, "removing 3 units")
 }
 
 func (s *S) TestRemoveUnitsDifferentProcesses(c *check.C) {
@@ -586,7 +588,7 @@ func (s *S) TestRemoveUnitsDifferentProcesses(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = p.AddUnits(app, 2, "p3", nil)
 	c.Assert(err, check.IsNil)
-	err = p.RemoveUnits(app, 2, "p2")
+	err = p.RemoveUnits(app, 2, "p2", nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(p.GetUnits(app), check.HasLen, 7)
 	for i, u := range p.GetUnits(app) {
@@ -604,7 +606,7 @@ func (s *S) TestRemoveUnitsTooManyUnits(c *check.C) {
 	p.Provision(app)
 	_, err := p.AddUnits(app, 1, "web", nil)
 	c.Assert(err, check.IsNil)
-	err = p.RemoveUnits(app, 3, "web")
+	err = p.RemoveUnits(app, 3, "web", nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "too many units to remove")
 }
@@ -617,7 +619,7 @@ func (s *S) TestRemoveUnitsTooManyUnitsOfProcess(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = p.AddUnits(app, 4, "worker", nil)
 	c.Assert(err, check.IsNil)
-	err = p.RemoveUnits(app, 3, "web")
+	err = p.RemoveUnits(app, 3, "web", nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "too many units to remove")
 }
@@ -625,14 +627,14 @@ func (s *S) TestRemoveUnitsTooManyUnitsOfProcess(c *check.C) {
 func (s *S) TestRemoveUnitsUnprovisionedApp(c *check.C) {
 	app := NewFakeApp("tears", "bruce", 0)
 	p := NewFakeProvisioner()
-	err := p.RemoveUnits(app, 1, "web")
+	err := p.RemoveUnits(app, 1, "web", nil)
 	c.Assert(err, check.Equals, errNotProvisioned)
 }
 
 func (s *S) TestRemoveUnitsFailure(c *check.C) {
 	p := NewFakeProvisioner()
 	p.PrepareFailure("RemoveUnits", errors.New("This program has performed an illegal operation."))
-	err := p.RemoveUnits(nil, 0, "web")
+	err := p.RemoveUnits(nil, 0, "web", nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "This program has performed an illegal operation.")
 }

@@ -791,9 +791,14 @@ func (s *S) TestProvisionerRemoveUnits(c *check.C) {
 	opts = docker.CreateContainerOptions{Name: cont3.Name}
 	_, err = scheduler.Schedule(clusterInstance, opts, []string{a1.Name, cont3.ProcessName})
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python myapp.py",
+	}
+	err = saveImageCustomData("tsuru/app-"+a1.Name, customData)
+	c.Assert(err, check.IsNil)
 	papp := provisiontest.NewFakeApp(a1.Name, "python", 0)
 	s.p.Provision(papp)
-	err = s.p.RemoveUnits(papp, 2, "web")
+	err = s.p.RemoveUnits(papp, 2, "web", nil)
 	c.Assert(err, check.IsNil)
 	_, err = s.p.getContainer(cont1.ID)
 	c.Assert(err, check.NotNil)
@@ -803,23 +808,58 @@ func (s *S) TestProvisionerRemoveUnits(c *check.C) {
 	c.Assert(err, check.NotNil)
 }
 
+func (s *S) TestProvisionerRemoveUnitsEmptyProcess(c *check.C) {
+	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam"}, Pool: "pool1"}
+	cont1 := container{ID: "1", Name: "impius1", AppName: a1.Name}
+	err := s.storage.Apps().Insert(a1)
+	c.Assert(err, check.IsNil)
+	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
+	p := provision.Pool{Name: "pool1", Teams: []string{
+		"tsuruteam",
+	}}
+	err = provision.AddPool(p.Name)
+	c.Assert(err, check.IsNil)
+	err = provision.AddTeamsToPool(p.Name, p.Teams)
+	c.Assert(err, check.IsNil)
+	contColl := s.p.collection()
+	err = contColl.Insert(cont1)
+	c.Assert(err, check.IsNil)
+	scheduler := segregatedScheduler{provisioner: s.p}
+	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
+	s.p.scheduler = &scheduler
+	s.p.cluster = clusterInstance
+	c.Assert(err, check.IsNil)
+	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
+	c.Assert(err, check.IsNil)
+	opts := docker.CreateContainerOptions{Name: cont1.Name}
+	_, err = scheduler.Schedule(clusterInstance, opts, []string{a1.Name, "web"})
+	c.Assert(err, check.IsNil)
+	papp := provisiontest.NewFakeApp(a1.Name, "python", 0)
+	s.p.Provision(papp)
+	c.Assert(err, check.IsNil)
+	err = s.p.RemoveUnits(papp, 1, "", nil)
+	c.Assert(err, check.IsNil)
+	_, err = s.p.getContainer(cont1.ID)
+	c.Assert(err, check.NotNil)
+}
+
 func (s *S) TestProvisionerRemoveUnitsNotFound(c *check.C) {
-	err := s.p.RemoveUnits(nil, 1, "web")
+	err := s.p.RemoveUnits(nil, 1, "web", nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "remove units: app should not be nil")
 }
 
 func (s *S) TestProvisionerRemoveUnitsZeroUnits(c *check.C) {
-	err := s.p.RemoveUnits(provisiontest.NewFakeApp("something", "python", 0), 0, "web")
+	err := s.p.RemoveUnits(provisiontest.NewFakeApp("something", "python", 0), 0, "web", nil)
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "remove units: units must be at least 1")
+	c.Assert(err.Error(), check.Equals, "cannot remove zero units")
 }
 
 func (s *S) TestProvisionerRemoveUnitsTooManyUnits(c *check.C) {
 	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}, Pool: "pool1"}
-	cont1 := container{ID: "1", Name: "impius1", AppName: a1.Name}
-	cont2 := container{ID: "2", Name: "mirror1", AppName: a1.Name}
-	cont3 := container{ID: "3", Name: "dedication1", AppName: a1.Name}
+	cont1 := container{ID: "1", Name: "impius1", AppName: a1.Name, ProcessName: "web"}
+	cont2 := container{ID: "2", Name: "mirror1", AppName: a1.Name, ProcessName: "web"}
+	cont3 := container{ID: "3", Name: "dedication1", AppName: a1.Name, ProcessName: "web"}
 	err := s.storage.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
@@ -853,11 +893,54 @@ func (s *S) TestProvisionerRemoveUnitsTooManyUnits(c *check.C) {
 	opts = docker.CreateContainerOptions{Name: cont3.Name}
 	_, err = scheduler.Schedule(clusterInstance, opts, []string{a1.Name, "web"})
 	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python myapp.py",
+	}
+	err = saveImageCustomData("tsuru/app-"+a1.Name, customData)
 	papp := provisiontest.NewFakeApp(a1.Name, "python", 0)
 	s.p.Provision(papp)
-	err = s.p.RemoveUnits(papp, 4, "web")
+	c.Assert(err, check.IsNil)
+	err = s.p.RemoveUnits(papp, 4, "web", nil)
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "remove units: cannot remove 4 units. App impius has just 3 units.")
+	c.Assert(err.Error(), check.Equals, "cannot remove 4 units from process \"web\", only 3 available")
+}
+
+func (s *S) TestProvisionerRemoveUnitsInvalidProcess(c *check.C) {
+	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam"}, Pool: "pool1"}
+	cont1 := container{ID: "1", Name: "impius1", AppName: a1.Name}
+	err := s.storage.Apps().Insert(a1)
+	c.Assert(err, check.IsNil)
+	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
+	p := provision.Pool{Name: "pool1", Teams: []string{
+		"tsuruteam",
+	}}
+	err = provision.AddPool(p.Name)
+	c.Assert(err, check.IsNil)
+	err = provision.AddTeamsToPool(p.Name, p.Teams)
+	c.Assert(err, check.IsNil)
+	contColl := s.p.collection()
+	err = contColl.Insert(cont1)
+	c.Assert(err, check.IsNil)
+	scheduler := segregatedScheduler{provisioner: s.p}
+	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
+	s.p.scheduler = &scheduler
+	s.p.cluster = clusterInstance
+	c.Assert(err, check.IsNil)
+	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
+	c.Assert(err, check.IsNil)
+	opts := docker.CreateContainerOptions{Name: cont1.Name}
+	_, err = scheduler.Schedule(clusterInstance, opts, []string{a1.Name, "web"})
+	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python myapp.py",
+	}
+	err = saveImageCustomData("tsuru/app-"+a1.Name, customData)
+	papp := provisiontest.NewFakeApp(a1.Name, "python", 0)
+	s.p.Provision(papp)
+	c.Assert(err, check.IsNil)
+	err = s.p.RemoveUnits(papp, 1, "worker", nil)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, `process error: no command declared in Procfile for process "worker"`)
 }
 
 func (s *S) TestProvisionerRemoveUnit(c *check.C) {

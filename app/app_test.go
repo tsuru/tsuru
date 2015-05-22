@@ -557,7 +557,7 @@ func (s *S) TestRemoveUnitsWithQuota(c *check.C) {
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 5, "web", nil)
 	defer s.provisioner.Destroy(&a)
-	err = a.RemoveUnits(4, "web")
+	err = a.RemoveUnits(4, "web", nil)
 	c.Assert(err, check.IsNil)
 	time.Sleep(1e9)
 	app, err := GetByName(a.Name)
@@ -600,8 +600,10 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = app.AddUnits(2, "web", nil)
 	c.Assert(err, check.IsNil)
-	err = app.RemoveUnits(2, "worker")
+	buf := bytes.NewBuffer(nil)
+	err = app.RemoveUnits(2, "worker", buf)
 	c.Assert(err, check.IsNil)
+	c.Assert(buf.String(), check.Equals, "removing 2 units")
 	time.Sleep(1e9)
 	ts.Close()
 	units := app.Units()
@@ -621,8 +623,8 @@ func (s *S) TestRemoveUnitsInvalidValues(c *check.C) {
 		n        uint
 		expected string
 	}{
-		{0, "Cannot remove zero units."},
-		{4, "Cannot remove 4 units from this app, it has only 3 units."},
+		{0, "cannot remove 0 units"},
+		{4, "too many units to remove"},
 	}
 	app := App{
 		Name:     "chemistryii",
@@ -635,9 +637,8 @@ func (s *S) TestRemoveUnitsInvalidValues(c *check.C) {
 	defer s.provisioner.Destroy(&app)
 	s.provisioner.AddUnits(&app, 3, "web", nil)
 	for _, test := range tests {
-		err := app.RemoveUnits(test.n, "web")
-		c.Check(err, check.NotNil)
-		c.Check(err.Error(), check.Equals, test.expected)
+		err := app.RemoveUnits(test.n, "web", nil)
+		c.Check(err, check.ErrorMatches, test.expected)
 	}
 }
 

@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
@@ -728,7 +727,6 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(context.IsPreventUnlock(request), check.Equals, true)
 	c.Assert(app.Units(), check.HasLen, 1)
 	c.Assert(s.provisioner.GetUnits(app), check.HasLen, 1)
 	action := rectest.Action{
@@ -737,6 +735,7 @@ func (s *S) TestRemoveUnits(c *check.C) {
 		Extra:  []interface{}{"app=velha", "units=2"},
 	}
 	c.Assert(action, rectest.IsRecorded)
+	c.Assert(recorder.Body.String(), check.Equals, `{"Message":"removing 2 units"}`+"\n")
 }
 
 func (s *S) TestRemoveUnitsReturns404IfAppDoesNotExist(c *check.C) {
@@ -792,7 +791,6 @@ func (s *S) TestRemoveUnitsWorksIfProcessIsOmited(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(context.IsPreventUnlock(request), check.Equals, true)
 	c.Assert(app.Units(), check.HasLen, 1)
 	c.Assert(s.provisioner.GetUnits(app), check.HasLen, 1)
 	action := rectest.Action{

@@ -234,7 +234,7 @@ type Provisioner interface {
 
 	// RemoveUnits "undoes" AddUnits, removing the given number of units
 	// from the app.
-	RemoveUnits(App, uint, string) error
+	RemoveUnits(App, uint, string, io.Writer) error
 
 	// RemoveUnit removes a unit from the app. It receives the unit to be
 	// removed.

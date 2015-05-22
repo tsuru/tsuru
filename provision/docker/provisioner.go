@@ -465,7 +465,7 @@ func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer)
 func getContainersToAdd(data ImageMetadata, oldContainers []container) map[string]*containersToAdd {
 	processMap := make(map[string]*containersToAdd, len(data.Processes))
 	for name := range data.Processes {
-		processMap[name].Quantity = 0
+		processMap[name] = &containersToAdd{}
 	}
 	minCount := 0
 	for _, container := range oldContainers {
@@ -651,39 +651,79 @@ func (p *dockerProvisioner) AddUnits(a provision.App, units uint, process string
 	return result, nil
 }
 
-func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint, process string) error {
+func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint, processName string, w io.Writer) error {
 	if a == nil {
 		return errors.New("remove units: app should not be nil")
 	}
-	if units < 1 {
-		return errors.New("remove units: units must be at least 1")
+	if units == 0 {
+		return errors.New("cannot remove zero units")
 	}
-	countUnits, err := p.getContainerCountForAppName(a.GetName())
+	var err error
+	if w == nil {
+		w = ioutil.Discard
+	}
+	imgId, err := appCurrentImageName(a.GetName())
 	if err != nil {
 		return err
 	}
-	if int(units) > countUnits {
-		return errors.New(fmt.Sprintf("remove units: cannot remove %d units. App %s has just %d units.", units, a.GetName(), countUnits))
+	_, processName, err = processCmdForImage(processName, imgId)
+	if err != nil {
+		return err
 	}
+	containers, err := p.listContainersByProcess(a.GetName(), processName)
+	if err != nil {
+		return err
+	}
+	if len(containers) < int(units) {
+		return fmt.Errorf("cannot remove %d units from process %q, only %d available", units, processName, len(containers))
+	}
+	var plural string
+	if units > 1 {
+		plural = "s"
+	}
+	fmt.Fprintf(w, "\n---- Removing %d unit%s ----\n", units, plural)
+	coll := p.collection()
+	defer coll.Close()
+	toRemove := make([]container, 0, units)
 	for i := 0; i < int(units); i++ {
-		containerID, err := p.scheduler.GetRemovableContainer(a.GetName(), process)
+		var containerID string
+		var c *container
+		containerID, err = p.scheduler.GetRemovableContainer(a.GetName(), processName)
 		if err != nil {
-			return err
+			fmt.Println("GetRemovableContainer")
+			break
 		}
-		c, err := p.getContainer(containerID)
+		c, err = p.getContainer(containerID)
 		if err != nil {
-			return err
+			fmt.Println("getContainer")
+			break
 		}
+		err = coll.Remove(bson.M{"id": c.ID})
+		if err != nil {
+			fmt.Println("remove")
+			break
+		}
+		toRemove = append(toRemove, *c)
+	}
+	if err != nil {
+		for _, c := range toRemove {
+			coll.Insert(c)
+		}
+		return err
+	}
+	runInContainers(toRemove, func(c *container, toRollback chan *container) error {
 		unit := c.asUnit(a)
 		err = a.UnbindUnit(&unit)
 		if err != nil {
-			log.Errorf("Failed to unbind unit %q: %s", c.ID, err)
+			log.Errorf("Ignored error trying to unbind unit %q: %s", c.ID, err)
 		}
 		err = p.removeContainer(c, a)
 		if err != nil {
-			log.Errorf("Failed to remove container %q: %s", c.ID, err)
+			log.Errorf("Ignored error trying to remove unit %q: %s", c.ID, err)
 		}
-	}
+		fmt.Fprintf(w, " ---> Removed unit %s...\n", c.shortID())
+		return nil
+	}, nil, true)
 	return nil
 }
 

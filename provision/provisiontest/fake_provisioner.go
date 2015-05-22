@@ -617,9 +617,12 @@ func (p *FakeProvisioner) AddUnits(app provision.App, n uint, process string, w 
 	return result, nil
 }
 
-func (p *FakeProvisioner) RemoveUnits(app provision.App, n uint, process string) error {
+func (p *FakeProvisioner) RemoveUnits(app provision.App, n uint, process string, w io.Writer) error {
 	if err := p.getError("RemoveUnits"); err != nil {
 		return err
+	}
+	if n == 0 {
+		return errors.New("cannot remove 0 units")
 	}
 	p.mut.Lock()
 	defer p.mut.Unlock()
@@ -628,15 +631,19 @@ func (p *FakeProvisioner) RemoveUnits(app provision.App, n uint, process string)
 		return errNotProvisioned
 	}
 	var newUnits []provision.Unit
+	removedCount := n
 	for _, u := range pApp.units {
-		if n > 0 && u.ProcessName == process {
-			n--
+		if removedCount > 0 && u.ProcessName == process {
+			removedCount--
 			continue
 		}
 		newUnits = append(newUnits, u)
 	}
-	if n > 0 {
+	if removedCount > 0 {
 		return errors.New("too many units to remove")
+	}
+	if w != nil {
+		fmt.Fprintf(w, "removing %d units", n)
 	}
 	pApp.units = newUnits
 	pApp.unitLen = len(newUnits)
