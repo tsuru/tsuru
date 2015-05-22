@@ -570,8 +570,10 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 	a := args.app
 	w := args.writer
 	var units int
-	for _, v := range args.toAdd {
+	processMsg := make([]string, 0, len(args.toAdd))
+	for processName, v := range args.toAdd {
 		units += v.Quantity
+		processMsg = append(processMsg, fmt.Sprintf("[%s: %d]", processName, v.Quantity))
 	}
 	imageId := args.imageId
 	var destinationHost []string
@@ -585,7 +587,7 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 	if units > 1 {
 		plural = "s"
 	}
-	fmt.Fprintf(w, "\n---- Starting %d new unit%s ----\n", units, plural)
+	fmt.Fprintf(w, "\n---- Starting new unit%s %s ----\n", plural, strings.Join(processMsg, " "))
 	oldContainers := make([]container, 0, units)
 	for processName, cont := range args.toAdd {
 		for i := 0; i < cont.Quantity; i++ {

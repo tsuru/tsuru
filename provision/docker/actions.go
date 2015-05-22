@@ -283,7 +283,7 @@ var bindAndHealthcheck = action.Action{
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(writer, " ---> Bound and checked unit %s\n", c.shortID())
+			fmt.Fprintf(writer, " ---> Bound and checked unit %s [%s]\n", c.shortID(), c.ProcessName)
 			return nil
 		}, func(c *container) {
 			unit := c.asUnit(args.app)
@@ -336,7 +336,7 @@ var addNewRoutes = action.Action{
 			}
 			c.routable = true
 			toRollback <- c
-			fmt.Fprintf(writer, " ---> Added route to unit %s\n", c.shortID())
+			fmt.Fprintf(writer, " ---> Added route to unit %s [%s]\n", c.shortID(), c.ProcessName)
 			return nil
 		}, func(c *container) {
 			r.RemoveRoute(c.AppName, c.getAddress())
@@ -386,7 +386,7 @@ var removeOldRoutes = action.Action{
 			}
 			c.routable = true
 			toRollback <- c
-			fmt.Fprintf(writer, " ---> Removed route from unit %s\n", c.shortID())
+			fmt.Fprintf(writer, " ---> Removed route from unit %s [%s]\n", c.shortID(), c.ProcessName)
 			return nil
 		}, func(c *container) {
 			r.AddRoute(c.AppName, c.getAddress())
@@ -430,7 +430,7 @@ var provisionRemoveOldUnits = action.Action{
 			if err != nil {
 				log.Errorf("Ignored error trying to remove old container %q: %s", c.ID, err)
 			}
-			fmt.Fprintf(writer, " ---> Removed old unit %s...\n", c.shortID())
+			fmt.Fprintf(writer, " ---> Removed old unit %s [%s]\n", c.shortID(), c.ProcessName)
 			return nil
 		}, nil, true)
 		return ctx.Previous, nil
@@ -460,7 +460,7 @@ var provisionUnbindOldUnits = action.Action{
 			if err != nil {
 				log.Errorf("Ignorer error trying to unbind old container %q: %s", c.ID, err)
 			}
-			fmt.Fprintf(writer, " ---> Removed bind for old unit %s...\n", c.shortID())
+			fmt.Fprintf(writer, " ---> Removed bind for old unit %s [%s]\n", c.shortID(), c.ProcessName)
 			return nil
 		}, nil, true)
 		return ctx.Previous, nil
