@@ -138,7 +138,17 @@ func (s *segregatedScheduler) aggregateContainersByHost(hosts []string) (map[str
 }
 
 func (s *segregatedScheduler) aggregateContainersByHostAppProcess(hosts []string, appName, process string) (map[string]int, error) {
-	return s.aggregateContainersBy(bson.M{"$match": bson.M{"appname": appName, "processname": process, "hostaddr": bson.M{"$in": hosts}, "id": bson.M{"$nin": s.ignoredContainers}}})
+	matcher := bson.M{
+		"appname":  appName,
+		"hostaddr": bson.M{"$in": hosts},
+		"id":       bson.M{"$nin": s.ignoredContainers},
+	}
+	if process == "" {
+		matcher["$or"] = []bson.M{{"processname": bson.M{"$exists": false}}, {"processname": ""}}
+	} else {
+		matcher["processname"] = process
+	}
+	return s.aggregateContainersBy(bson.M{"$match": matcher})
 }
 
 func (s *segregatedScheduler) GetRemovableContainer(appName string, process string) (string, error) {
@@ -170,7 +180,7 @@ func (s *segregatedScheduler) chooseContainerFromMaxContainersCountInNode(nodes 
 	var maxHost string
 	maxCount := 0
 	for _, host := range hosts {
-		adjCount := appCountMap[host] + hostCountMap[host]
+		adjCount := appCountMap[host]*10000 + hostCountMap[host]
 		if adjCount > maxCount {
 			maxCount = adjCount
 			maxHost = host
@@ -189,11 +199,16 @@ func (s *segregatedScheduler) getContainerFromHost(host string, appName, process
 	coll := s.provisioner.collection()
 	defer coll.Close()
 	var c container
-	err := coll.Find(bson.M{
-		"hostaddr":    host,
-		"appname":     appName,
-		"processname": process,
-	}).Select(bson.M{"id": 1}).One(&c)
+	query := bson.M{
+		"hostaddr": host,
+		"appname":  appName,
+	}
+	if process == "" {
+		query["$or"] = []bson.M{{"processname": bson.M{"$exists": false}}, {"processname": ""}}
+	} else {
+		query["processname"] = process
+	}
+	err := coll.Find(query).Select(bson.M{"id": 1}).One(&c)
 	return c.ID, err
 }
 

@@ -389,10 +389,13 @@ func (s *S) TestChooseNodeDistributesNodesEquallyDifferentApps(c *check.C) {
 	defer contColl.RemoveAll(bson.M{"appname": "oblivion"})
 	cont1 := container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "server1", ProcessName: "web"}
 	err := contColl.Insert(cont1)
-	c.Assert(err, check.Equals, nil)
+	c.Assert(err, check.IsNil)
 	cont2 := container{ID: "pre2", Name: "existingUnit2", AppName: "skyrim", HostAddr: "server1", ProcessName: "web"}
 	err = contColl.Insert(cont2)
-	c.Assert(err, check.Equals, nil)
+	c.Assert(err, check.IsNil)
+	cont3 := container{ID: "pre3", Name: "existingUnit3", AppName: "skyrim", HostAddr: "server1", ProcessName: "web"}
+	err = contColl.Insert(cont3)
+	c.Assert(err, check.IsNil)
 	numberOfUnits := 2
 	wg := sync.WaitGroup{}
 	wg.Add(numberOfUnits)
@@ -411,7 +414,7 @@ func (s *S) TestChooseNodeDistributesNodesEquallyDifferentApps(c *check.C) {
 	wg.Wait()
 	n, err := contColl.Find(bson.M{"hostaddr": "server1"}).Count()
 	c.Assert(err, check.Equals, nil)
-	c.Check(n, check.Equals, 3)
+	c.Check(n, check.Equals, 4)
 	n, err = contColl.Find(bson.M{"hostaddr": "server2"}).Count()
 	c.Assert(err, check.Equals, nil)
 	c.Check(n, check.Equals, 1)
@@ -506,6 +509,57 @@ func (s *S) TestChooseContainerToBeRemoved(c *check.C) {
 	c.Assert(containerID, check.Equals, "pre1")
 }
 
+func (s *S) TestAggregateContainersByHostAppProcess(c *check.C) {
+	contColl := s.p.collection()
+	cont := container{ID: "pre1", AppName: "app1", HostAddr: "server1", ProcessName: "web"}
+	err := contColl.Insert(cont)
+	c.Assert(err, check.IsNil)
+	cont = container{ID: "pre2", AppName: "app1", HostAddr: "server1", ProcessName: ""}
+	err = contColl.Insert(cont)
+	c.Assert(err, check.IsNil)
+	cont = container{ID: "pre3", AppName: "app2", HostAddr: "server1", ProcessName: ""}
+	err = contColl.Insert(cont)
+	c.Assert(err, check.IsNil)
+	cont = container{ID: "pre4", AppName: "app1", HostAddr: "server2", ProcessName: ""}
+	err = contColl.Insert(cont)
+	c.Assert(err, check.IsNil)
+	err = contColl.Insert(map[string]string{"id": "pre5", "appname": "app1", "hostaddr": "server2"})
+	c.Assert(err, check.IsNil)
+	scheduler := segregatedScheduler{provisioner: s.p}
+	result, err := scheduler.aggregateContainersByHostAppProcess([]string{"server1", "server2"}, "app1", "")
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.DeepEquals, map[string]int{"server1": 1, "server2": 2})
+}
+
+func (s *S) TestChooseContainerToBeRemovedMultipleProcesses(c *check.C) {
+	nodes := []cluster.Node{
+		{Address: "http://server1:1234"},
+		{Address: "http://server2:1234"},
+	}
+	contColl := s.p.collection()
+	cont1 := container{ID: "pre1", AppName: "coolapp9", HostAddr: "server1", ProcessName: "web"}
+	err := contColl.Insert(cont1)
+	c.Assert(err, check.IsNil)
+	cont2 := container{ID: "pre2", AppName: "coolapp9", HostAddr: "server1", ProcessName: "web"}
+	err = contColl.Insert(cont2)
+	c.Assert(err, check.IsNil)
+	cont3 := container{ID: "pre3", AppName: "coolapp9", HostAddr: "server1", ProcessName: "web"}
+	err = contColl.Insert(cont3)
+	c.Assert(err, check.IsNil)
+	cont4 := container{ID: "pre4", AppName: "coolapp9", HostAddr: "server1", ProcessName: ""}
+	err = contColl.Insert(cont4)
+	c.Assert(err, check.IsNil)
+	cont5 := container{ID: "pre5", AppName: "coolapp9", HostAddr: "server2", ProcessName: ""}
+	err = contColl.Insert(cont5)
+	c.Assert(err, check.IsNil)
+	err = contColl.Insert(map[string]string{"id": "pre6", "appname": "coolapp9", "hostaddr": "server2"})
+	c.Assert(err, check.IsNil)
+	scheduler := segregatedScheduler{provisioner: s.p}
+	containerID, err := scheduler.chooseContainerFromMaxContainersCountInNode(nodes, "coolapp9", "")
+	c.Assert(err, check.IsNil)
+	c.Assert(containerID == "pre5" || containerID == "pre6", check.Equals, true)
+}
+
 func (s *S) TestGetContainerFromHost(c *check.C) {
 	contColl := s.p.collection()
 	defer contColl.RemoveAll(bson.M{"appname": "coolapp9"})
@@ -527,6 +581,23 @@ func (s *S) TestGetContainerFromHost(c *check.C) {
 	_, err = scheduler.getContainerFromHost("server1", "coolapp9", "other")
 	c.Assert(err, check.NotNil)
 	_, err = scheduler.getContainerFromHost("server1", "coolapp8", "some")
+	c.Assert(err, check.NotNil)
+}
+
+func (s *S) TestGetContainerFromHostEmptyProcess(c *check.C) {
+	contColl := s.p.collection()
+	err := contColl.Insert(map[string]string{"id": "pre1", "name": "unit1", "appname": "coolappX", "hostaddr": "server1"})
+	c.Assert(err, check.Equals, nil)
+	err = contColl.Insert(map[string]string{"id": "pre2", "name": "unit1", "appname": "coolappX", "hostaddr": "server2", "processname": ""})
+	c.Assert(err, check.Equals, nil)
+	scheduler := segregatedScheduler{provisioner: s.p}
+	id, err := scheduler.getContainerFromHost("server1", "coolappX", "")
+	c.Assert(err, check.IsNil)
+	c.Assert(id, check.Equals, "pre1")
+	id, err = scheduler.getContainerFromHost("server2", "coolappX", "")
+	c.Assert(err, check.IsNil)
+	c.Assert(id, check.Equals, "pre2")
+	_, err = scheduler.getContainerFromHost("server1", "coolappX", "other")
 	c.Assert(err, check.NotNil)
 }
 
