@@ -146,6 +146,10 @@ func deploysList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+	if len(deploys) == 0 {
+		w.WriteHeader(http.StatusNoContent)
+		return nil
+	}
 	return json.NewEncoder(w).Encode(deploys)
 }
 

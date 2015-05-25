@@ -471,6 +471,21 @@ func (s *DeploySuite) TestDeployListByApp(c *check.C) {
 	c.Assert(result[0].Duration, check.DeepEquals, duration)
 }
 
+func (s *DeploySuite) TestDeployListAppWithNoDeploys(c *check.C) {
+	user, _ := s.token.User()
+	a := app.App{Name: "myblog", Platform: "python", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&a, user)
+	c.Assert(err, check.IsNil)
+	defer app.Delete(&a)
+	defer s.conn.Logs(a.Name).DropCollection()
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/deploys?app=myblog", nil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+}
+
 func (s *DeploySuite) TestDeployListByAppAndService(c *check.C) {
 	srv := service.Service{Name: "redis", Teams: []string{s.team.Name}}
 	err := srv.Create()
@@ -509,11 +524,7 @@ func (s *DeploySuite) TestDeployListByAppAndService(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := RunServer(true)
 	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var result []app.DeployData
-	err = json.Unmarshal(recorder.Body.Bytes(), &result)
-	c.Assert(err, check.IsNil)
-	c.Assert(result, check.HasLen, 0)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }
 
 func (s *DeploySuite) TestDeployInfoByAdminUser(c *check.C) {
