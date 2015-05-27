@@ -507,7 +507,7 @@ func (s *HandlersSuite) TestMoveContainerHandler(c *check.C) {
 	var result tsuruIo.SimpleJsonMessage
 	err = json.Unmarshal(body, &result)
 	c.Assert(err, check.IsNil)
-	expected := tsuruIo.SimpleJsonMessage{Message: "Error trying to move container: not found\n"}
+	expected := tsuruIo.SimpleJsonMessage{Message: "Error trying to move container: unit not found\n"}
 	c.Assert(result, check.DeepEquals, expected)
 }
 

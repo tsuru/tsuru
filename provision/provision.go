@@ -15,9 +15,11 @@ import (
 	"github.com/tsuru/tsuru/app/bind"
 )
 
-var ErrInvalidStatus = errors.New("invalid status")
-
-var ErrEmptyApp = errors.New("no units for this app")
+var (
+	ErrInvalidStatus = errors.New("invalid status")
+	ErrEmptyApp      = errors.New("no units for this app")
+	ErrUnitNotFound  = errors.New("unit not found")
+)
 
 type InvalidProcessError struct {
 	Msg string

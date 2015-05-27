@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
@@ -535,8 +536,7 @@ func (s *S) TestProvisionAddUnitsToHostBackward(c *check.C) {
 	context := action.BWContext{FWResult: []container{cont}, Params: []interface{}{args}}
 	provisionAddUnitsToHost.Backward(context)
 	_, err = s.p.getContainer(cont.ID)
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "not found")
+	c.Assert(err, check.Equals, provision.ErrUnitNotFound)
 }
 
 func (s *S) TestProvisionRemoveOldUnitsName(c *check.C) {

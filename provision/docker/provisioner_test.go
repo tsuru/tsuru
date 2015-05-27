@@ -29,7 +29,6 @@ import (
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -966,7 +965,7 @@ func (s *S) TestProvisionerRemoveUnit(c *check.C) {
 
 func (s *S) TestProvisionerRemoveUnitNotFound(c *check.C) {
 	err := s.p.RemoveUnit(provision.Unit{Name: "wat de reu"})
-	c.Assert(err, check.Equals, mgo.ErrNotFound)
+	c.Assert(err, check.Equals, provision.ErrUnitNotFound)
 }
 
 func (s *S) TestProvisionerSetUnitStatus(c *check.C) {
@@ -1000,7 +999,7 @@ func (s *S) TestProvisionerSetUnitStatusWrongApp(c *check.C) {
 
 func (s *S) TestProvisionerSetUnitStatusUnitNotFound(c *check.C) {
 	err := s.p.SetUnitStatus(provision.Unit{Name: "mycontainer", AppName: "myapp"}, provision.StatusError)
-	c.Assert(err, check.Equals, mgo.ErrNotFound)
+	c.Assert(err, check.Equals, provision.ErrUnitNotFound)
 }
 
 func (s *S) TestProvisionerExecuteCommand(c *check.C) {

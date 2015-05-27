@@ -523,7 +523,7 @@ func (s *S) TestGetContainer(c *check.C) {
 	c.Assert(container.Type, check.Equals, "python")
 	container, err = s.p.getContainer("wut")
 	c.Assert(container, check.IsNil)
-	c.Assert(err.Error(), check.Equals, "not found")
+	c.Assert(err, check.Equals, provision.ErrUnitNotFound)
 }
 
 func (s *S) TestGetContainers(c *check.C) {

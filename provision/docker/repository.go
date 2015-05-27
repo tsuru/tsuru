@@ -11,7 +11,6 @@ import (
 
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/provision"
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -28,7 +27,7 @@ func (p *dockerProvisioner) getContainer(id string) (*container, error) {
 	}
 	lenContainers := len(containers)
 	if lenContainers == 0 {
-		return nil, mgo.ErrNotFound
+		return nil, provision.ErrUnitNotFound
 	}
 	if lenContainers > 1 {
 		return nil, errAmbiguousContainer
