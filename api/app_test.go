@@ -938,17 +938,34 @@ func (s *S) TestSetUnitsStatus(c *check.C) {
 	for i, unit := range a.Units() {
 		c.Check(unit.Status, check.Equals, provision.Status(status[i]))
 	}
-	var got []updateUnitsResponse
-	expected := []updateUnitsResponse{
+	var got updateList
+	expected := updateList([]updateUnitsResponse{
 		{ID: units[0].Name, Found: true},
 		{ID: units[1].Name, Found: true},
 		{ID: units[2].Name, Found: true},
 		{ID: "not-found1", Found: false},
 		{ID: "not-found2", Found: false},
-	}
+	})
 	err = json.NewDecoder(recorder.Body).Decode(&got)
 	c.Assert(err, check.IsNil)
+	sort.Sort(&got)
+	sort.Sort(&expected)
 	c.Assert(got, check.DeepEquals, expected)
+}
+
+type updateList []updateUnitsResponse
+
+func (list *updateList) Len() int {
+	return len(*list)
+}
+
+func (list *updateList) Less(i, j int) bool {
+	l := *list
+	return l[i].ID < l[j].ID
+}
+
+func (list *updateList) Swap(i, j int) {
+	(*list)[i], (*list)[j] = (*list)[j], (*list)[i]
 }
 
 func (s *S) TestSetUnitsStatusInvalidBody(c *check.C) {
