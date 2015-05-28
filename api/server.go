@@ -149,6 +149,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Get", "/apps/{app}/shell", authorizationRequiredHandler(remoteShellHandler))
 	m.Add("Post", "/apps/{app}/pool", authorizationRequiredHandler(appChangePool))
 
+	m.Add("Post", "/units/status", authorizationRequiredHandler(setUnitsStatus))
+
 	m.Add("Get", "/deploys", authorizationRequiredHandler(deploysList))
 	m.Add("Get", "/deploys/{deploy}", authorizationRequiredHandler(deployInfo))
 
