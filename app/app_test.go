@@ -674,6 +674,29 @@ func (s *S) TestSetUnitStatusNotFound(c *check.C) {
 	c.Assert(err.Error(), check.Equals, "unit not found")
 }
 
+func (s *S) TestUpdateUnitsStatus(c *check.C) {
+	a := App{Name: "lapname", Platform: "python"}
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 3, "web", nil)
+	units := a.Units()
+	unitStates := map[string]provision.Status{
+		units[0].Name:                provision.Status("started"),
+		units[1].Name:                provision.Status("stopped"),
+		units[2].Name:                provision.Status("error"),
+		units[2].Name + "-not-found": provision.Status("error"),
+	}
+	result, err := a.UpdateUnitsStatus(unitStates)
+	c.Assert(err, check.IsNil)
+	expected := map[string]bool{
+		units[0].Name:                true,
+		units[1].Name:                true,
+		units[2].Name:                true,
+		units[2].Name + "-not-found": false,
+	}
+	c.Assert(result, check.DeepEquals, expected)
+}
+
 func (s *S) TestGrantAccess(c *check.C) {
 	a := App{Name: "appName", Platform: "django", Teams: []string{}}
 	err := a.Grant(&s.team)
@@ -2607,7 +2630,7 @@ func (s *S) TestAppRegisterUnitInvalidUnit(c *check.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	err := a.RegisterUnit("oddity", nil)
-	c.Assert(err, check.Equals, ErrUnitNotFound)
+	c.Assert(err, check.Equals, provision.ErrUnitNotFound)
 }
 
 func (s *S) TestAppValidateTeamOwner(c *check.C) {

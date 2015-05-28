@@ -33,11 +33,10 @@ var Provisioner provision.Provisioner
 var AuthScheme auth.Scheme
 
 var (
-	nameRegexp      = regexp.MustCompile(`^[a-z][a-z0-9-]{0,62}$`)
-	cnameRegexp     = regexp.MustCompile(`^(\*\.)?[a-zA-Z0-9][\w-.]+$`)
-	ErrUnitNotFound = stderr.New("unit not found")
-	NoPoolError     = stderr.New("pool not found.")
-	ManyPoolsError  = stderr.New("you have access to more than one pool. please choose one in app creation.")
+	nameRegexp     = regexp.MustCompile(`^[a-z][a-z0-9-]{0,62}$`)
+	cnameRegexp    = regexp.MustCompile(`^(\*\.)?[a-zA-Z0-9][\w-.]+$`)
+	NoPoolError    = stderr.New("pool not found.")
+	ManyPoolsError = stderr.New("you have access to more than one pool. please choose one in app creation.")
 )
 
 const (
@@ -439,7 +438,21 @@ func (app *App) SetUnitStatus(unitName string, status provision.Status) error {
 			return Provisioner.SetUnitStatus(unit, status)
 		}
 	}
-	return ErrUnitNotFound
+	return provision.ErrUnitNotFound
+}
+
+// UpdateUnitsStatus updates the status of the given units, returning a map
+// which units were found during the update.
+func (app *App) UpdateUnitsStatus(units map[string]provision.Status) (map[string]bool, error) {
+	result := make(map[string]bool, len(units))
+	for id, status := range units {
+		err := app.SetUnitStatus(id, status)
+		result[id] = err != provision.ErrUnitNotFound
+		if err != nil && err != provision.ErrUnitNotFound {
+			return nil, err
+		}
+	}
+	return result, nil
 }
 
 // Available returns true if at least one of N units is started or unreachable.
@@ -1273,7 +1286,7 @@ func (app *App) RegisterUnit(unitId string, customData map[string]interface{}) e
 			return Provisioner.RegisterUnit(unit, customData)
 		}
 	}
-	return ErrUnitNotFound
+	return provision.ErrUnitNotFound
 }
 
 func (app *App) GetRouter() (string, error) {
