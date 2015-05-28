@@ -779,23 +779,39 @@ func (p *FakeProvisioner) Units(app provision.App) []provision.Unit {
 func (p *FakeProvisioner) SetUnitStatus(unit provision.Unit, status provision.Status) error {
 	p.mut.Lock()
 	defer p.mut.Unlock()
-	app, ok := p.apps[unit.AppName]
-	if !ok {
-		return errNotProvisioned
+	var units []provision.Unit
+	if unit.AppName == "" {
+		units = p.getAllUnits()
+	} else {
+		app, ok := p.apps[unit.AppName]
+		if !ok {
+			return errNotProvisioned
+		}
+		units = app.units
 	}
 	index := -1
-	for i, unt := range app.units {
+	for i, unt := range units {
 		if unt.Name == unit.Name {
 			index = i
+			unit.AppName = unt.AppName
 			break
 		}
 	}
 	if index < 0 {
-		return errors.New("unit not found")
+		return provision.ErrUnitNotFound
 	}
+	app := p.apps[unit.AppName]
 	app.units[index].Status = status
 	p.apps[unit.AppName] = app
 	return nil
+}
+
+func (p *FakeProvisioner) getAllUnits() []provision.Unit {
+	var units []provision.Unit
+	for _, app := range p.apps {
+		units = append(units, app.units...)
+	}
+	return units
 }
 
 func (p *FakeProvisioner) Addr(app provision.App) (string, error) {

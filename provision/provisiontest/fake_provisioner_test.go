@@ -915,6 +915,20 @@ func (s *S) TestFakeProvisionerSetUnitStatus(c *check.C) {
 	c.Assert(unit.Status, check.Equals, provision.StatusError)
 }
 
+func (s *S) TestFakeProvisionerSetUnitStatusNoApp(c *check.C) {
+	app := NewFakeApp("red-sector", "rush", 1)
+	p := NewFakeProvisioner()
+	err := p.Provision(app)
+	c.Assert(err, check.IsNil)
+	unit := provision.Unit{AppName: "red-sector", Name: "red-sector/1", Status: provision.StatusStarted}
+	p.AddUnit(app, unit)
+	unit = provision.Unit{Name: "red-sector/1"}
+	err = p.SetUnitStatus(unit, provision.StatusError)
+	c.Assert(err, check.IsNil)
+	unit = p.Units(app)[0]
+	c.Assert(unit.Status, check.Equals, provision.StatusError)
+}
+
 func (s *S) TestFakeProvisionerSetUnitStatusAppNotFound(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.SetUnitStatus(provision.Unit{AppName: "something"}, provision.StatusError)
@@ -928,8 +942,7 @@ func (s *S) TestFakeProvisionerSetUnitStatusUnitNotFound(c *check.C) {
 	c.Assert(err, check.IsNil)
 	unit := provision.Unit{AppName: "red-sector", Name: "red-sector/1", Status: provision.StatusStarted}
 	err = p.SetUnitStatus(unit, provision.StatusError)
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "unit not found")
+	c.Assert(err, check.Equals, provision.ErrUnitNotFound)
 }
 
 func (s *S) TestFakeProvisionerRegisterUnit(c *check.C) {
