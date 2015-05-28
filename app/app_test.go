@@ -686,7 +686,7 @@ func (s *S) TestUpdateUnitsStatus(c *check.C) {
 		units[2].Name:                provision.Status("error"),
 		units[2].Name + "-not-found": provision.Status("error"),
 	}
-	result, err := a.UpdateUnitsStatus(unitStates)
+	result, err := UpdateUnitsStatus(unitStates)
 	c.Assert(err, check.IsNil)
 	expected := map[string]bool{
 		units[0].Name:                true,

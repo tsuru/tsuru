@@ -443,10 +443,11 @@ func (app *App) SetUnitStatus(unitName string, status provision.Status) error {
 
 // UpdateUnitsStatus updates the status of the given units, returning a map
 // which units were found during the update.
-func (app *App) UpdateUnitsStatus(units map[string]provision.Status) (map[string]bool, error) {
+func UpdateUnitsStatus(units map[string]provision.Status) (map[string]bool, error) {
 	result := make(map[string]bool, len(units))
 	for id, status := range units {
-		err := app.SetUnitStatus(id, status)
+		unit := provision.Unit{Name: id}
+		err := Provisioner.SetUnitStatus(unit, status)
 		result[id] = err != provision.ErrUnitNotFound
 		if err != nil && err != provision.ErrUnitNotFound {
 			return nil, err
