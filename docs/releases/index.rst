@@ -25,6 +25,8 @@ tsr (tsuru server daemon)
 
    tsr/0.12.0
 
+   tsr/0.11.1
+
    tsr/0.11.0
 
    tsr/0.10.2
