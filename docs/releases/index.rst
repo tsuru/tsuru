@@ -23,6 +23,8 @@ tsr (tsuru server daemon)
 .. toctree::
    :maxdepth: 1
 
+   tsr/0.11.1
+
    tsr/0.11.0
 
    tsr/0.10.2
