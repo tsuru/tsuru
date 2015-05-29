@@ -202,6 +202,7 @@ func (s *S) TestSchedulerScheduleFallback(c *check.C) {
 }
 
 func (s *S) TestSchedulerNoFallback(c *check.C) {
+	provision.RemovePool("test-fallback")
 	a := app.App{Name: "bill", Teams: []string{"jean"}}
 	err := s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -222,6 +223,7 @@ func (s *S) TestSchedulerNoFallback(c *check.C) {
 }
 
 func (s *S) TestSchedulerNoNodesNoPool(c *check.C) {
+	provision.RemovePool("test-fallback")
 	app := app.App{Name: "bill", Teams: []string{"jean"}}
 	err := s.storage.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
@@ -237,6 +239,7 @@ func (s *S) TestSchedulerNoNodesNoPool(c *check.C) {
 }
 
 func (s *S) TestSchedulerNoNodesWithFallbackPool(c *check.C) {
+	provision.RemovePool("test-fallback")
 	app := app.App{Name: "bill", Teams: []string{"jean"}}
 	err := s.storage.Apps().Insert(app)
 	c.Assert(err, check.IsNil)

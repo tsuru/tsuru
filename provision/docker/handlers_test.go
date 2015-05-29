@@ -195,8 +195,6 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachineExplicit(c *check
 func (s *HandlersSuite) TestAddNodeHandlerWithoutdCluster(c *check.C) {
 	err := provision.AddPool("pool1")
 	defer provision.RemovePool("pool1")
-	config.Set("docker:segregate", true)
-	defer config.Unset("docker:segregate")
 	config.Set("docker:cluster:redis-server", "127.0.0.1:6379")
 	defer config.Unset("docker:cluster:redis-server")
 	b := bytes.NewBufferString(fmt.Sprintf(`{"address": "%s", "pool": "pool1"}`, s.server.URL))

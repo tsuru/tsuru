@@ -26,23 +26,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-func getDockerServers() []cluster.Node {
-	servers, _ := config.GetList("docker:servers")
-	nodes := []cluster.Node{}
-	for _, server := range servers {
-		node := cluster.Node{
-			Address: server,
-		}
-		nodes = append(nodes, node)
-	}
-	return nodes
-}
-
-func isSegregateScheduler() bool {
-	segregate, _ := config.GetBool("docker:segregate")
-	return segregate
-}
-
 func buildClusterStorage() (cluster.Storage, error) {
 	mongoUrl, _ := config.GetString("docker:cluster:mongo-url")
 	mongoDatabase, _ := config.GetString("docker:cluster:mongo-database")

@@ -819,28 +819,6 @@ func (a NodeList) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a NodeList) Less(i, j int) bool { return a[i].Address < a[j].Address }
 
 func (s *S) TestProvisionerGetCluster(c *check.C) {
-	config.Set("docker:servers", []string{"http://localhost:2375", "http://10.10.10.10:2375"})
-	defer config.Unset("docker:servers")
-	config.Set("docker:cluster:redis-server", "127.0.0.1:6379")
-	defer config.Unset("docker:cluster:redis-server")
-	var p dockerProvisioner
-	err := p.Initialize()
-	c.Assert(err, check.IsNil)
-	clus := p.getCluster()
-	c.Assert(clus, check.NotNil)
-	currentNodes, err := clus.Nodes()
-	c.Assert(err, check.IsNil)
-	sortedNodes := NodeList(currentNodes)
-	sort.Sort(sortedNodes)
-	c.Assert(sortedNodes, check.DeepEquals, NodeList([]cluster.Node{
-		{Address: "http://10.10.10.10:2375", Metadata: map[string]string{}},
-		{Address: "http://localhost:2375", Metadata: map[string]string{}},
-	}))
-}
-
-func (s *S) TestProvisionerGetClusterSegregated(c *check.C) {
-	config.Set("docker:segregate", true)
-	defer config.Unset("docker:segregate")
 	config.Set("docker:cluster:redis-server", "127.0.0.1:6379")
 	defer config.Unset("docker:cluster:redis-server")
 	var p dockerProvisioner
@@ -851,17 +829,7 @@ func (s *S) TestProvisionerGetClusterSegregated(c *check.C) {
 	currentNodes, err := clus.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(currentNodes, check.HasLen, 0)
-}
-
-func (s *S) TestGetDockerServersShouldSearchFromConfig(c *check.C) {
-	config.Set("docker:servers", []string{"http://server01.com:2375", "http://server02.com:2375"})
-	defer config.Unset("docker:servers")
-	servers := getDockerServers()
-	expected := []cluster.Node{
-		{Address: "http://server01.com:2375"},
-		{Address: "http://server02.com:2375"},
-	}
-	c.Assert(servers, check.DeepEquals, expected)
+	c.Assert(p.scheduler, check.NotNil)
 }
 
 func (s *S) TestPushImage(c *check.C) {

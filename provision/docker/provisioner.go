@@ -73,20 +73,14 @@ func (p *dockerProvisioner) initDockerCluster() error {
 		p.collectionName = name
 	}
 	var nodes []cluster.Node
-	var scheduler cluster.Scheduler
 	totalMemoryMetadata, _ := config.GetString("docker:scheduler:total-memory-metadata")
 	maxUsedMemory, _ := config.GetFloat("docker:scheduler:max-used-memory")
-	if isSegregateScheduler() {
-		p.scheduler = &segregatedScheduler{
-			maxMemoryRatio:      float32(maxUsedMemory),
-			totalMemoryMetadata: totalMemoryMetadata,
-			provisioner:         p,
-		}
-		scheduler = p.scheduler
-	} else {
-		nodes = getDockerServers()
+	p.scheduler = &segregatedScheduler{
+		maxMemoryRatio:      float32(maxUsedMemory),
+		totalMemoryMetadata: totalMemoryMetadata,
+		provisioner:         p,
 	}
-	p.cluster, err = cluster.New(scheduler, p.storage, nodes...)
+	p.cluster, err = cluster.New(p.scheduler, p.storage, nodes...)
 	if err != nil {
 		return err
 	}
@@ -163,24 +157,19 @@ func (p *dockerProvisioner) initAutoScaleConfig() *autoScaleConfig {
 }
 
 func (p *dockerProvisioner) cloneProvisioner(ignoredContainers []container) (*dockerProvisioner, error) {
-	var scheduler cluster.Scheduler
 	var err error
-	var overridenProvisioner dockerProvisioner
-	overridenProvisioner = *p
-	if p.scheduler != nil {
-		containerIds := make([]string, len(ignoredContainers))
-		for i := range ignoredContainers {
-			containerIds[i] = ignoredContainers[i].ID
-		}
-		overridenProvisioner.scheduler = &segregatedScheduler{
-			maxMemoryRatio:      p.scheduler.maxMemoryRatio,
-			totalMemoryMetadata: p.scheduler.totalMemoryMetadata,
-			provisioner:         &overridenProvisioner,
-			ignoredContainers:   containerIds,
-		}
-		scheduler = overridenProvisioner.scheduler
+	overridenProvisioner := *p
+	containerIds := make([]string, len(ignoredContainers))
+	for i := range ignoredContainers {
+		containerIds[i] = ignoredContainers[i].ID
 	}
-	overridenProvisioner.cluster, err = cluster.New(scheduler, p.storage)
+	overridenProvisioner.scheduler = &segregatedScheduler{
+		maxMemoryRatio:      p.scheduler.maxMemoryRatio,
+		totalMemoryMetadata: p.scheduler.totalMemoryMetadata,
+		provisioner:         &overridenProvisioner,
+		ignoredContainers:   containerIds,
+	}
+	overridenProvisioner.cluster, err = cluster.New(overridenProvisioner.scheduler, p.storage)
 	if err != nil {
 		return nil, err
 	}
@@ -196,26 +185,22 @@ func (p *dockerProvisioner) stopDryMode() {
 }
 
 func (p *dockerProvisioner) dryMode(ignoredContainers []container) (*dockerProvisioner, error) {
-	var scheduler cluster.Scheduler
 	var err error
 	overridenProvisioner := &dockerProvisioner{
 		collectionName: "containers_dry_" + randomString(),
 		isDryMode:      true,
 	}
-	if p.scheduler != nil {
-		containerIds := make([]string, len(ignoredContainers))
-		for i := range ignoredContainers {
-			containerIds[i] = ignoredContainers[i].ID
-		}
-		overridenProvisioner.scheduler = &segregatedScheduler{
-			maxMemoryRatio:      p.scheduler.maxMemoryRatio,
-			totalMemoryMetadata: p.scheduler.totalMemoryMetadata,
-			provisioner:         overridenProvisioner,
-			ignoredContainers:   containerIds,
-		}
-		scheduler = overridenProvisioner.scheduler
+	containerIds := make([]string, len(ignoredContainers))
+	for i := range ignoredContainers {
+		containerIds[i] = ignoredContainers[i].ID
 	}
-	overridenProvisioner.cluster, err = cluster.New(scheduler, p.storage)
+	overridenProvisioner.scheduler = &segregatedScheduler{
+		maxMemoryRatio:      p.scheduler.maxMemoryRatio,
+		totalMemoryMetadata: p.scheduler.totalMemoryMetadata,
+		provisioner:         overridenProvisioner,
+		ignoredContainers:   containerIds,
+	}
+	overridenProvisioner.cluster, err = cluster.New(overridenProvisioner.scheduler, p.storage)
 	if err != nil {
 		return nil, err
 	}
