@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/iaas"
+	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -79,7 +80,10 @@ func (s *S) TestAutoScaleConfigRun(c *check.C) {
 	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
+		Pool: "pool1",
 	}
+	err = provision.AddPool("pool1")
+	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
@@ -199,7 +203,10 @@ func (s *S) TestAutoScaleConfigRunNoRebalance(c *check.C) {
 	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
+		Pool: "pool1",
 	}
+	err = provision.AddPool("pool1")
+	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
@@ -304,7 +311,10 @@ func (s *S) TestAutoScaleConfigRunOnce(c *check.C) {
 	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
+		Pool: "pool1",
 	}
+	err = provision.AddPool("pool1")
+	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
@@ -396,7 +406,10 @@ func (s *S) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
 	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
+		Pool: "pool1",
 	}
+	err = provision.AddPool("pool1")
+	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
@@ -461,6 +474,7 @@ func (s *S) TestAutoScaleConfigRunNoGroup(c *check.C) {
 	clusterInstance, err := cluster.New(nil, p.storage,
 		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
 			"iaas": "my-scale-iaas",
+			"pool": "test-fallback",
 		}},
 	)
 	c.Assert(err, check.IsNil)
@@ -565,7 +579,10 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
+		Pool: "pool1",
 	}
+	err = provision.AddPool("pool1")
+	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
@@ -669,7 +686,10 @@ func (s *S) TestAutoScaleConfigRunStress(c *check.C) {
 	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
+		Pool: "pool1",
 	}
+	err = provision.AddPool("pool1")
+	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
@@ -770,7 +790,10 @@ func (s *S) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
 		Plan: app.Plan{Memory: 21000},
+		Pool: "pool1",
 	}
+	err = provision.AddPool("pool1")
+	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
@@ -881,7 +904,10 @@ func (s *S) TestAutoScaleConfigRunPriorityToCountBased(c *check.C) {
 	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
+		Pool: "pool1",
 	}
+	err = provision.AddPool("pool1")
+	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
@@ -972,7 +998,10 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedPlanTooBig(c *check.C) {
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
 		Plan: app.Plan{Memory: 21000},
+		Pool: "pool1",
 	}
+	err = provision.AddPool("pool1")
+	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
@@ -1155,7 +1184,10 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C) {
 	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
+		Pool: "pool1",
 	}
+	err = provision.AddPool("pool1")
+	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
@@ -1255,7 +1287,10 @@ func (s *S) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *check.C) {
 	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
+		Pool: "pool1",
 	}
+	err = provision.AddPool("pool1")
+	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
@@ -1336,7 +1371,10 @@ func (s *S) TestAutoScaleConfigRunLockedApp(c *check.C) {
 	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
+		Pool: "pool1",
 	}
+	err = provision.AddPool("pool1")
+	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
@@ -1415,7 +1453,10 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedLockedApp(c *check.C) {
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
 		Plan: app.Plan{Memory: 21000},
+		Pool: "pool1",
 	}
+	err = provision.AddPool("pool1")
+	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})

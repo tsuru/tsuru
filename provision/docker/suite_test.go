@@ -110,7 +110,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.server, err = dtesting.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	s.p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
-		cluster.Node{Address: s.server.URL()},
+		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "test-fallback"}},
 	)
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner = s.p
@@ -121,6 +121,8 @@ func (s *S) SetUpTest(c *check.C) {
 	err = clearClusterStorage()
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.Reset()
+	err = provision.AddPool("test-fallback")
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TearDownTest(c *check.C) {
@@ -165,8 +167,8 @@ func (s *S) startMultipleServersCluster() (*dockerProvisioner, error) {
 	}
 	p.storage = &cluster.MapStorage{}
 	p.cluster, err = cluster.New(nil, p.storage,
-		cluster.Node{Address: s.server.URL()},
-		cluster.Node{Address: otherUrl},
+		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "test-fallback"}},
+		cluster.Node{Address: otherUrl, Metadata: map[string]string{"pool": "test-fallback"}},
 	)
 	if err != nil {
 		return nil, err
