@@ -47,7 +47,6 @@ docker:
   repository-namespace: tsuru
   router: hipache
   deploy-cmd: /var/lib/tsuru/deploy
-  segregate: true
   cluster:
     mongo-url: mongodb://localhost:27017
     mongo-database: docker-cluster
@@ -113,15 +112,28 @@ func (s *CheckerSuite) TestCheckGandalfSuccessRepoManagerDefined(c *check.C) {
 	err := checkGandalf()
 	c.Assert(err, check.IsNil)
 }
+
 func (s *CheckerSuite) TestCheckSchedulerConfig(c *check.C) {
 	err := checkScheduler()
 	c.Assert(err, check.IsNil)
 }
 
-func (s *CheckerSuite) TestCheckSchedulerRoundRobinWithoutServersConfig(c *check.C) {
-	config.Set("docker:segregate", false)
+func (s *CheckerSuite) TestCheckDockerServersError(c *check.C) {
+	config.Set("docker:servers", []string{"srv1", "srv2"})
 	err := checkScheduler()
-	c.Assert(err, check.IsNil)
+	c.Assert(err, check.ErrorMatches, `Using docker:servers is deprecated, please remove it your config and use "tsuru-admin docker-node-add" do add docker nodes.`)
+}
+
+func (s *CheckerSuite) TestCheckSchedulerConfigSegregate(c *check.C) {
+	config.Set("docker:segregate", true)
+	err := checkScheduler()
+	baseWarn := config.NewWarning("")
+	c.Assert(err, check.FitsTypeOf, baseWarn)
+	c.Assert(err, check.ErrorMatches, `Setting "docker:segregate" is not necessary anymore, this is the default behavior from now on.`)
+	config.Set("docker:segregate", false)
+	err = checkScheduler()
+	c.Assert(err, check.Not(check.FitsTypeOf), baseWarn)
+	c.Assert(err, check.ErrorMatches, `You must remove "docker:segregate" from your config.`)
 }
 
 func (s *CheckerSuite) TestCheckClusterWithMongo(c *check.C) {
