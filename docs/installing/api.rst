@@ -86,8 +86,6 @@ configuration is described below, please note that you should replace the values
         ssh:
             add-key-cmd: /var/lib/tsuru/add-key
             user: ubuntu
-        servers:
-            - http://<your-docker-server>:2375
     routers:
         hipache:
             type: hipache
