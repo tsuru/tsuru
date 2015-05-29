@@ -552,10 +552,10 @@ routers:<router name>:redis-server (type: hipache)
 Redis server used by Hipache router. This same server (or a redis slave of it),
 must be configured in your hipache.conf file.
 
-routers:<router name>:api-url (type: galeb)
+routers:<router name>:api-url (type: galeb, vulcand)
 +++++++++++++++++++++++++++++++++++++++++++
 
-The url for the Galeb manager api.
+The URL for the Galeb or vulcand manager API.
 
 routers:<router name>:username (type: galeb)
 ++++++++++++++++++++++++++++++++++++++++++++

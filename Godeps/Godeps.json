@@ -122,11 +122,19 @@
 			"Rev": "563343dd5c1f1997846c85e353fbf81708982ab5"
 		},
 		{
+			"ImportPath": "github.com/mailgun/oxy/forward",
+			"Rev": "563343dd5c1f1997846c85e353fbf81708982ab5"
+		},
+		{
 			"ImportPath": "github.com/mailgun/oxy/memmetrics",
 			"Rev": "563343dd5c1f1997846c85e353fbf81708982ab5"
 		},
 		{
 			"ImportPath": "github.com/mailgun/oxy/ratelimit",
+			"Rev": "563343dd5c1f1997846c85e353fbf81708982ab5"
+		},
+		{
+			"ImportPath": "github.com/mailgun/oxy/roundrobin",
 			"Rev": "563343dd5c1f1997846c85e353fbf81708982ab5"
 		},
 		{
@@ -182,6 +190,21 @@
 			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
 		},
 		{
+			"ImportPath": "github.com/mailgun/vulcand/proxy",
+			"Comment": "v0.8.0-beta.3",
+			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
+		},
+		{
+			"ImportPath": "github.com/mailgun/vulcand/stapler",
+			"Comment": "v0.8.0-beta.3",
+			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
+		},
+		{
+			"ImportPath": "github.com/mailgun/vulcand/supervisor",
+			"Comment": "v0.8.0-beta.3",
+			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
+		},
+		{
 			"ImportPath": "github.com/sajari/fuzzy",
 			"Rev": "bbbcac964e38148a7b43491a83d83b6b584600dc"
 		},
@@ -232,6 +255,10 @@
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/blowfish",
+			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/ocsp",
 			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
 		},
 		{

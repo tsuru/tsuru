@@ -5,6 +5,7 @@
 package vulcand
 
 import (
+	"net/http/httptest"
 	"testing"
 
 	"github.com/tsuru/config"
@@ -12,6 +13,12 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/router"
 
+	"github.com/mailgun/scroll"
+	vulcandAPI "github.com/mailgun/vulcand/api"
+	"github.com/mailgun/vulcand/engine"
+	"github.com/mailgun/vulcand/engine/memng"
+	"github.com/mailgun/vulcand/plugin/registry"
+	"github.com/mailgun/vulcand/supervisor"
 	"gopkg.in/check.v1"
 )
 
@@ -20,7 +27,9 @@ func Test(t *testing.T) {
 }
 
 type S struct {
-	conn *db.Storage
+	conn          *db.Storage
+	engine        engine.Engine
+	vulcandServer *httptest.Server
 }
 
 var _ = check.Suite(&S{})
@@ -39,6 +48,16 @@ func (s *S) SetUpSuite(c *check.C) {
 
 func (s *S) SetUpTest(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Collection("router_vulcand_tests").Database)
+
+	s.engine = memng.New(registry.GetRegistry())
+	scrollApp := scroll.NewApp()
+	vulcandAPI.InitProxyController(s.engine, &supervisor.Supervisor{}, scrollApp)
+	s.vulcandServer = httptest.NewServer(scrollApp.GetHandler())
+	config.Set("routers:vulcand:api-url", s.vulcandServer.URL)
+}
+
+func (s *S) TearDownTest(c *check.C) {
+	s.vulcandServer.Close()
 }
 
 func (s *S) TestShouldBeRegistered(c *check.C) {
@@ -46,7 +65,7 @@ func (s *S) TestShouldBeRegistered(c *check.C) {
 	c.Assert(err, check.IsNil)
 	r, ok := got.(*vulcandRouter)
 	c.Assert(ok, check.Equals, true)
-	c.Assert(r.client.Addr, check.Equals, "127.0.0.1:8181")
+	c.Assert(r.client.Addr, check.Equals, s.vulcandServer.URL)
 }
 
 func (s *S) TestShouldBeRegisteredAllowingPrefixes(c *check.C) {
