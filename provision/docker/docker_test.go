@@ -14,7 +14,6 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"regexp"
-	"sort"
 	"strings"
 	"sync"
 	"time"
