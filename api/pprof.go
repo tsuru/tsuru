@@ -6,4 +6,20 @@
 
 package api
 
-import _ "net/http/pprof"
+import (
+	"github.com/tsuru/tsuru/api"
+
+	"net/http"
+	"net/http/pprof"
+)
+
+func init() {
+	RegisterHandler("Get", "/debug/pprof/", http.HandlerFunc(pprof.Index))
+	RegisterHandler("Get", "/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
+	RegisterHandler("Get", "/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
+	RegisterHandler("Get", "/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
+	RegisterHandler("Get", "/debug/pprof/heap", http.HandlerFunc(pprof.Index))
+	RegisterHandler("Get", "/debug/pprof/goroutine", http.HandlerFunc(pprof.Index))
+	RegisterHandler("Get", "/debug/pprof/threadcreate", http.HandlerFunc(pprof.Index))
+	RegisterHandler("Get", "/debug/pprof/block", http.HandlerFunc(pprof.Index))
+}
