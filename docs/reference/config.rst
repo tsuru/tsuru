@@ -702,24 +702,22 @@ documentation: <https://docs.docker.com/reference/run/#security-configuration>.
 docker:segregate
 ++++++++++++++++
 
-Enable segregate scheduler. See :doc:`/managing/segregate-scheduler` for
-details.
+Deprecated. As of tsuru 0.11.1, using segregate scheduler is the default
+setting. See :doc:`/managing/segregate-scheduler` for details.
 
 .. _config_scheduler_memory:
 
 docker:scheduler:total-memory-metadata
 ++++++++++++++++++++++++++++++++++++++
 
-Only valid if ``docker:segregate`` is true. This value describes which metadata
-key will describe the total amount of memory, in bytes, available to a docker
-node.
+This value describes which metadata key will describe the total amount of
+memory, in bytes, available to a docker node.
 
 docker:scheduler:max-used-memory
 ++++++++++++++++++++++++++++++++
 
-Only valid if ``docker:segregate`` is true. This should be a value between 0.0
-and 1.0 which describes which fraction of the total amount of memory available
-to a server should be reserved for app units.
+This should be a value between 0.0 and 1.0 which describes which fraction of the
+total amount of memory available to a server should be reserved for app units.
 
 The amount of memory available is found based on the node metadata described by
 ``docker:scheduler:total-memory-metadata`` config setting.
@@ -1056,7 +1054,6 @@ Here is a complete example:
         api-server: http://<your-gandalf-server>:8000
     provisioner: docker
     docker:
-        segregate: false
         router: hipache
         collection: docker_containers
         repository-namespace: tsuru
