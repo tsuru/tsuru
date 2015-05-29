@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/pprof"
 	"sync"
 	"time"
 
@@ -216,6 +217,15 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Delete", "/pool", AdminRequiredHandler(removePoolHandler))
 	m.Add("Post", "/pool/team", AdminRequiredHandler(addTeamToPoolHandler))
 	m.Add("Delete", "/pool/team", AdminRequiredHandler(removeTeamToPoolHandler))
+
+	m.Add("Get", "/debug/pprof/", http.HandlerFunc(pprof.Index))
+	m.Add("Get", "/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
+	m.Add("Get", "/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
+	m.Add("Get", "/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
+	m.Add("Get", "/debug/pprof/heap", http.HandlerFunc(pprof.Index))
+	m.Add("Get", "/debug/pprof/goroutine", http.HandlerFunc(pprof.Index))
+	m.Add("Get", "/debug/pprof/threadcreate", http.HandlerFunc(pprof.Index))
+	m.Add("Get", "/debug/pprof/block", http.HandlerFunc(pprof.Index))
 
 	n := negroni.New()
 	n.Use(negroni.NewRecovery())
