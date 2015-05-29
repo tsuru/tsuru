@@ -116,11 +116,16 @@ func checkCluster() error {
 // Check Schedulers
 // It verifies your scheduler configuration and validates related confs.
 func checkScheduler() error {
-	if scheduler, err := config.Get("docker:segregate"); err == nil && scheduler == true {
-		if servers, err := config.Get("docker:servers"); err == nil && servers != nil {
-			return fmt.Errorf("Your scheduler is the segregate. Please remove the servers conf in docker.")
+	if servers, err := config.Get("docker:servers"); err == nil && servers != nil {
+		return fmt.Errorf(`Using docker:servers is deprecated, please remove it your config and use "tsuru-admin docker-node-add" do add docker nodes.`)
+	}
+	isSegregate, err := config.GetBool("docker:segregate")
+	if err == nil {
+		if isSegregate {
+			return config.NewWarning(`Setting "docker:segregate" is not necessary anymore, this is the default behavior from now on.`)
+		} else {
+			return fmt.Errorf(`You must remove "docker:segregate" from your config.`)
 		}
-		return nil
 	}
 	return nil
 }
