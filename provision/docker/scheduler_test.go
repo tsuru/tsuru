@@ -544,3 +544,33 @@ func (s *S) TestNodesToHosts(c *check.C) {
 	c.Assert(len(hosts), check.Equals, 2)
 	c.Assert(hostsMap[hosts[0]], check.Equals, nodes[0].Address)
 }
+
+func (s *S) TestChooseContainerToBeRemovedMultipleApps(c *check.C) {
+	nodes := []cluster.Node{
+		{Address: "http://server1:1234"},
+		{Address: "http://server2:1234"},
+	}
+	contColl := s.p.collection()
+	cont1 := container{ID: "pre1", AppName: "coolapp1", HostAddr: "server1"}
+	err := contColl.Insert(cont1)
+	c.Assert(err, check.IsNil)
+	cont2 := container{ID: "pre2", AppName: "coolapp1", HostAddr: "server1"}
+	err = contColl.Insert(cont2)
+	c.Assert(err, check.IsNil)
+	cont3 := container{ID: "pre3", AppName: "coolapp1", HostAddr: "server1"}
+	err = contColl.Insert(cont3)
+	c.Assert(err, check.IsNil)
+	cont4 := container{ID: "pre4", AppName: "coolapp2", HostAddr: "server1"}
+	err = contColl.Insert(cont4)
+	c.Assert(err, check.IsNil)
+	cont5 := container{ID: "pre5", AppName: "coolapp2", HostAddr: "server2"}
+	err = contColl.Insert(cont5)
+	c.Assert(err, check.IsNil)
+	cont6 := container{ID: "pre6", AppName: "coolapp2", HostAddr: "server2"}
+	err = contColl.Insert(cont6)
+	c.Assert(err, check.IsNil)
+	scheduler := segregatedScheduler{provisioner: s.p}
+	containerID, err := scheduler.chooseContainerFromMaxContainersCountInNode(nodes, "coolapp2")
+	c.Assert(err, check.IsNil)
+	c.Assert(containerID == "pre5" || containerID == "pre6", check.Equals, true)
+}

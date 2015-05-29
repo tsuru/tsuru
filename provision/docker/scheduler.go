@@ -165,7 +165,7 @@ func (s *segregatedScheduler) chooseContainerFromMaxContainersCountInNode(nodes 
 	var maxHost string
 	maxCount := 0
 	for _, host := range hosts {
-		adjCount := appCountMap[host] + hostCountMap[host]
+		adjCount := appCountMap[host]*10000 + hostCountMap[host]
 		if adjCount > maxCount {
 			maxCount = adjCount
 			maxHost = host
