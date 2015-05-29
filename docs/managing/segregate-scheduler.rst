@@ -9,37 +9,23 @@ Segregate Scheduler
 Overview
 ========
 
-tsuru uses schedulers to chooses which node an unit should be deployed. There are
-two schedulers: `round robin` and `segregate scheduler`.
-
-The default one is `round robin`, this page describes what the `segregate
-scheduler` does and how to enable it.
+tsuru uses schedulers to chooses which node an unit should be deployed.
+Previously there was a choice between `round robin` and `segregate scheduler`.
+As of 0.11.1, only `segregate scheduler` is available and it's the default
+choice. This change was made because `round robin` scheduler was broken,
+unmaintained and was a worse scheduling mechanism than `segregate scheduler`.
 
 How it works
 ============
 
 Segregate scheduler is a scheduler that segregates the units among pools.
 
-First, what you need to do is to define a relation between a pool and teams. After
-that you need to register nodes with the ``pool`` metadata information, indicating
-to which pool the node belongs.
+First, what you need to do is to define a relation between a pool and teams.
+After that you need to register nodes with the ``pool`` metadata information,
+indicating to which pool the node belongs.
 
-When deploying an application, the scheduler will choose among the nodes within the
-application pool.
-
-Configuration and setup
------------------------
-
-To use the `segregate scheduler` you need to enable the segregate mode in
-``tsuru.conf``:
-
-.. highlight:: yaml
-
-::
-
-    docker:
-      segregate: true
-
+When deploying an application, the scheduler will choose among the nodes within
+the application pool.
 
 Registering a node with pool metadata
 -------------------------------------
