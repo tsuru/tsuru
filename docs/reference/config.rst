@@ -531,13 +531,12 @@ Routers
 As of 0.10.0, all your router configuration should live under entries with the
 format ``routers:<router name>``.
 
-routers:<router name>:type (type: hipache, galeb)
+routers:<router name>:type (type: hipache, galeb, vulcand)
 +++++++++++++++++++++++++++++++++++++++++++++++++
 
-Indicates the type of this router configuration. Currently only the value
-``hipache`` is supported. tsuru also has an experimental router implementation
-using `Galeb router <http://galeb.io/>`_ which is available using ``galeb`` type
-value.
+Indicates the type of this router configuration. The standard router
+supported by tsuru is ``hipache``. There is also experimental support for
+```galeb`` <http://galeb.io/>`_ and ```vulcand`` <https://docs.vulcand.io/>`_
 
 Depending on the type, there are some specific configuration options available.
 

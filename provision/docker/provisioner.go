@@ -31,6 +31,7 @@ import (
 	_ "github.com/tsuru/tsuru/router/galeb"
 	_ "github.com/tsuru/tsuru/router/hipache"
 	_ "github.com/tsuru/tsuru/router/routertest"
+	_ "github.com/tsuru/tsuru/router/vulcand"
 	"gopkg.in/mgo.v2/bson"
 )
 
