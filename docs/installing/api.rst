@@ -72,7 +72,6 @@ configuration is described below, please note that you should replace the values
         api-server: http://<your-gandalf-server>:8000
     provisioner: docker
     docker:
-        segregate: false
         router: hipache
         collection: docker_containers
         repository-namespace: tsuru
