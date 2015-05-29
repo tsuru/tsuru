@@ -7,8 +7,6 @@
 package api
 
 import (
-	"github.com/tsuru/tsuru/api"
-
 	"net/http"
 	"net/http/pprof"
 )
