@@ -22,5 +22,8 @@ performance improvements to tsuru server:
   unit from the same application). Related to `#1204
   <https://github.com/tsuru/tsuru/issues/1204>`_
 
+* Updated monsterqueue version to avoid errors regarding unregistered tasks
+  trying to be executed.
+
 * Added HTTP routes to enable profiling tsuru server during its execution. This
   is intended to analyze and improve tsuru server performance under heavy loads.
