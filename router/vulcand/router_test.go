@@ -69,6 +69,28 @@ func (s *S) TestShouldBeRegistered(c *check.C) {
 }
 
 func (s *S) TestShouldBeRegisteredAllowingPrefixes(c *check.C) {
+	config.Set("routers:inst1:type", "vulcand")
+	config.Set("routers:inst1:api-url", "http://localhost:1")
+	config.Set("routers:inst2:type", "vulcand")
+	config.Set("routers:inst2:api-url", "http://localhost:2")
+	defer config.Unset("routers:inst1:type")
+	defer config.Unset("routers:inst1:api-url")
+	defer config.Unset("routers:inst2:type")
+	defer config.Unset("routers:inst2:api-url")
+
+	got1, err := router.Get("inst1")
+	c.Assert(err, check.IsNil)
+	got2, err := router.Get("inst2")
+	c.Assert(err, check.IsNil)
+
+	r1, ok := got1.(*vulcandRouter)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(r1.client.Addr, check.Equals, "http://localhost:1")
+	c.Assert(r1.prefix, check.Equals, "routers:inst1")
+	r2, ok := got2.(*vulcandRouter)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(r2.client.Addr, check.Equals, "http://localhost:2")
+	c.Assert(r2.prefix, check.Equals, "routers:inst2")
 }
 
 func (s *S) TestAddBackend(c *check.C) {

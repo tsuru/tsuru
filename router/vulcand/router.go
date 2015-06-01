@@ -20,10 +20,11 @@ func init() {
 
 type vulcandRouter struct {
 	client *vulcandAPI.Client
+	prefix string
 }
 
 func createRouter(prefix string) (router.Router, error) {
-	vURL, err := config.GetString("routers:vulcand:api-url")
+	vURL, err := config.GetString(prefix + ":api-url")
 	if err != nil {
 		return nil, err
 	}
@@ -31,6 +32,7 @@ func createRouter(prefix string) (router.Router, error) {
 	client := vulcandAPI.NewClient(vURL, vulcandReg.GetRegistry())
 	vRouter := &vulcandRouter{
 		client: client,
+		prefix: prefix,
 	}
 
 	return vRouter, nil
