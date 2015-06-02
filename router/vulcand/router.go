@@ -5,7 +5,11 @@
 package vulcand
 
 import (
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/router"
+
+	vulcandAPI "github.com/mailgun/vulcand/api"
+	vulcandReg "github.com/mailgun/vulcand/plugin/registry"
 )
 
 const routerName = "vulcand"
@@ -14,10 +18,22 @@ func init() {
 	router.Register(routerName, createRouter)
 }
 
-type vulcandRouter struct{}
+type vulcandRouter struct {
+	client *vulcandAPI.Client
+}
 
 func createRouter(prefix string) (router.Router, error) {
-	return &vulcandRouter{}, nil
+	vURL, err := config.GetString("routers:vulcand:api-url")
+	if err != nil {
+		return nil, err
+	}
+
+	client := vulcandAPI.NewClient(vURL, vulcandReg.GetRegistry())
+	vRouter := &vulcandRouter{
+		client: client,
+	}
+
+	return vRouter, nil
 }
 
 func (r *vulcandRouter) AddBackend(name string) error {

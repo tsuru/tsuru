@@ -28,6 +28,7 @@ var _ = check.Suite(&S{})
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("routers:vulcand:domain", "vulcand.example.com")
 	config.Set("routers:vulcand:type", "vulcand")
+	config.Set("routers:vulcand:api-url", "127.0.0.1:8181")
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "router_vulcand_tests")
 
@@ -43,8 +44,9 @@ func (s *S) SetUpTest(c *check.C) {
 func (s *S) TestShouldBeRegistered(c *check.C) {
 	got, err := router.Get("vulcand")
 	c.Assert(err, check.IsNil)
-	_, ok := got.(*vulcandRouter)
+	r, ok := got.(*vulcandRouter)
 	c.Assert(ok, check.Equals, true)
+	c.Assert(r.client.Addr, check.Equals, "127.0.0.1:8181")
 }
 
 func (s *S) TestShouldBeRegisteredAllowingPrefixes(c *check.C) {

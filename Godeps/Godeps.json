@@ -45,6 +45,15 @@
 			"Rev": "5b56f4f917c7f54e3822b9c64df54da596b63c1d"
 		},
 		{
+			"ImportPath": "github.com/codahale/hdrhistogram",
+			"Rev": "9208b142303c12d8899bae836fd524ac9338b4fd"
+		},
+		{
+			"ImportPath": "github.com/codegangsta/cli",
+			"Comment": "1.2.0-62-gbf4a526",
+			"Rev": "bf4a526f48af7badd25d2cb02d587e1b01be3b50"
+		},
+		{
 			"ImportPath": "github.com/codegangsta/negroni",
 			"Comment": "v0.1-4-ga13766a",
 			"Rev": "a13766a8c2572caeb14341b7de158aff2fd00fa9"
@@ -73,6 +82,104 @@
 			"ImportPath": "github.com/howeyc/fsnotify",
 			"Comment": "v0.8.13",
 			"Rev": "5102fde921d31f59c6e45d835aa01f0213aade0f"
+		},
+		{
+			"ImportPath": "github.com/mailgun/go-etcd/etcd",
+			"Comment": "v0.2.0-rc1-124-g248e96a",
+			"Rev": "248e96a4ad7adfa23b531eb2d8e80d9050c33d24"
+		},
+		{
+			"ImportPath": "github.com/mailgun/iptools",
+			"Rev": "fac48f4f8a866e6fd74ecd4cc74f01fe36e6ef9c"
+		},
+		{
+			"ImportPath": "github.com/mailgun/log",
+			"Rev": "b65e83b83bfde331a05016a6bb8055cc96695c30"
+		},
+		{
+			"ImportPath": "github.com/mailgun/manners",
+			"Comment": "0.3.1-19-g12f1b91",
+			"Rev": "12f1b911a179b472980f386c2e1e786d19f42da4"
+		},
+		{
+			"ImportPath": "github.com/mailgun/metrics",
+			"Rev": "f8741d1789ec85faeede37702eadbf5acb945e85"
+		},
+		{
+			"ImportPath": "github.com/mailgun/minheap",
+			"Rev": "7c28d80e2ada649fc8ab1a37b86d30a2633bd47c"
+		},
+		{
+			"ImportPath": "github.com/mailgun/multibuf",
+			"Rev": "22cedde644395b0b798017493b9b950485619b87"
+		},
+		{
+			"ImportPath": "github.com/mailgun/oxy/cbreaker",
+			"Rev": "563343dd5c1f1997846c85e353fbf81708982ab5"
+		},
+		{
+			"ImportPath": "github.com/mailgun/oxy/connlimit",
+			"Rev": "563343dd5c1f1997846c85e353fbf81708982ab5"
+		},
+		{
+			"ImportPath": "github.com/mailgun/oxy/memmetrics",
+			"Rev": "563343dd5c1f1997846c85e353fbf81708982ab5"
+		},
+		{
+			"ImportPath": "github.com/mailgun/oxy/ratelimit",
+			"Rev": "563343dd5c1f1997846c85e353fbf81708982ab5"
+		},
+		{
+			"ImportPath": "github.com/mailgun/oxy/stream",
+			"Rev": "563343dd5c1f1997846c85e353fbf81708982ab5"
+		},
+		{
+			"ImportPath": "github.com/mailgun/oxy/trace",
+			"Rev": "563343dd5c1f1997846c85e353fbf81708982ab5"
+		},
+		{
+			"ImportPath": "github.com/mailgun/oxy/utils",
+			"Rev": "563343dd5c1f1997846c85e353fbf81708982ab5"
+		},
+		{
+			"ImportPath": "github.com/mailgun/predicate",
+			"Rev": "cb0bff91a7ab7cf7571e661ff883fc997bc554a3"
+		},
+		{
+			"ImportPath": "github.com/mailgun/route",
+			"Rev": "85cf368efd247dabbcc2e53272ef4276f94a87c4"
+		},
+		{
+			"ImportPath": "github.com/mailgun/scroll",
+			"Rev": "c33949cbf905969d74b2fbb22a1490319cea2d14"
+		},
+		{
+			"ImportPath": "github.com/mailgun/timetools",
+			"Rev": "7e6055773c5137efbeb3bd2410d705fe10ab6bfd"
+		},
+		{
+			"ImportPath": "github.com/mailgun/ttlmap",
+			"Rev": "51994f8e1aad271eb214e725379dde8bd4c90acf"
+		},
+		{
+			"ImportPath": "github.com/mailgun/vulcand/anomaly",
+			"Comment": "v0.8.0-beta.3",
+			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
+		},
+		{
+			"ImportPath": "github.com/mailgun/vulcand/api",
+			"Comment": "v0.8.0-beta.3",
+			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
+		},
+		{
+			"ImportPath": "github.com/mailgun/vulcand/engine",
+			"Comment": "v0.8.0-beta.3",
+			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
+		},
+		{
+			"ImportPath": "github.com/mailgun/vulcand/plugin",
+			"Comment": "v0.8.0-beta.3",
+			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
 		},
 		{
 			"ImportPath": "github.com/sajari/fuzzy",
