@@ -96,14 +96,6 @@ func (s *S) TestHealthCheck(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TestHealthCheckFailure(c *check.C) {
-	config.Set("database:url", "localhost:34456")
-	defer config.Unset("database:url")
-	err := healthCheck()
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "mongodb: no reachable servers")
-}
-
 func (s *S) TestUsers(c *check.C) {
 	strg, err := Conn()
 	c.Assert(err, check.IsNil)
