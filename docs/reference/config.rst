@@ -540,7 +540,7 @@ supported by tsuru is ``hipache``. There is also experimental support for
 
 Depending on the type, there are some specific configuration options available.
 
-routers:<router name>:domain (type: hipache, galeb)
+routers:<router name>:domain (type: hipache, galeb, vulcand)
 ++++++++++++++++++++++++++++++++++++++++++++
 
 The domain of the server running your router. Applications created with

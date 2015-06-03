@@ -21,6 +21,7 @@ func init() {
 type vulcandRouter struct {
 	client *vulcandAPI.Client
 	prefix string
+	domain string
 }
 
 func createRouter(prefix string) (router.Router, error) {
@@ -29,10 +30,16 @@ func createRouter(prefix string) (router.Router, error) {
 		return nil, err
 	}
 
+	domain, err := config.GetString(prefix + ":domain")
+	if err != nil {
+		return nil, err
+	}
+
 	client := vulcandAPI.NewClient(vURL, vulcandReg.GetRegistry())
 	vRouter := &vulcandRouter{
 		client: client,
 		prefix: prefix,
+		domain: domain,
 	}
 
 	return vRouter, nil

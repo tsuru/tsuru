@@ -66,17 +66,22 @@ func (s *S) TestShouldBeRegistered(c *check.C) {
 	r, ok := got.(*vulcandRouter)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(r.client.Addr, check.Equals, s.vulcandServer.URL)
+	c.Assert(r.domain, check.Equals, "vulcand.example.com")
 }
 
 func (s *S) TestShouldBeRegisteredAllowingPrefixes(c *check.C) {
 	config.Set("routers:inst1:type", "vulcand")
 	config.Set("routers:inst1:api-url", "http://localhost:1")
+	config.Set("routers:inst1:domain", "inst1.example.com")
 	config.Set("routers:inst2:type", "vulcand")
 	config.Set("routers:inst2:api-url", "http://localhost:2")
+	config.Set("routers:inst2:domain", "inst2.example.com")
 	defer config.Unset("routers:inst1:type")
 	defer config.Unset("routers:inst1:api-url")
+	defer config.Unset("routers:inst1:domain")
 	defer config.Unset("routers:inst2:type")
 	defer config.Unset("routers:inst2:api-url")
+	defer config.Unset("routers:inst2:domain")
 
 	got1, err := router.Get("inst1")
 	c.Assert(err, check.IsNil)
@@ -86,10 +91,12 @@ func (s *S) TestShouldBeRegisteredAllowingPrefixes(c *check.C) {
 	r1, ok := got1.(*vulcandRouter)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(r1.client.Addr, check.Equals, "http://localhost:1")
+	c.Assert(r1.domain, check.Equals, "inst1.example.com")
 	c.Assert(r1.prefix, check.Equals, "routers:inst1")
 	r2, ok := got2.(*vulcandRouter)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(r2.client.Addr, check.Equals, "http://localhost:2")
+	c.Assert(r2.domain, check.Equals, "inst2.example.com")
 	c.Assert(r2.prefix, check.Equals, "routers:inst2")
 }
 
