@@ -7,23 +7,14 @@ package storage
 import (
 	"fmt"
 	"sync"
-	"time"
 
 	"gopkg.in/mgo.v2"
 )
 
 var (
-	conn   = make(map[string]*session) // pool of connections
-	mut    sync.RWMutex                // for pool thread safety
-	ticker *time.Ticker                // for garbage collection
+	session *mgo.Session
+	mut     sync.RWMutex
 )
-
-type session struct {
-	s    *mgo.Session
-	used time.Time
-}
-
-const period time.Duration = 7 * 24 * time.Hour
 
 // Storage holds the connection with the database.
 type Storage struct {
@@ -44,15 +35,17 @@ func (c *Collection) Close() {
 }
 
 func open(addr, dbname string) (*Storage, error) {
-	sess, err := mgo.Dial(addr)
-	if err != nil {
-		return nil, fmt.Errorf("mongodb: %s", err)
+	if session == nil {
+		var err error
+		mut.Lock()
+		session, err = mgo.Dial(addr)
+		mut.Unlock()
+		if err != nil {
+			return nil, fmt.Errorf("mongodb: %s", err)
+		}
 	}
-	copy := sess.Clone()
+	copy := session.Clone()
 	storage := &Storage{session: copy, dbname: dbname}
-	mut.Lock()
-	conn[addr] = &session{s: sess, used: time.Now()}
-	mut.Unlock()
 	return storage, nil
 }
 
@@ -69,20 +62,11 @@ func Open(addr, dbname string) (storage *Storage, err error) {
 			storage, err = open(addr, dbname)
 		}
 	}()
-	mut.RLock()
-	if session, ok := conn[addr]; ok {
-		mut.RUnlock()
-		if err = session.s.Ping(); err == nil {
-			mut.Lock()
-			session.used = time.Now()
-			conn[addr] = session
-			mut.Unlock()
-			copy := session.s.Clone()
-			return &Storage{copy, dbname}, nil
-		}
-		return open(addr, dbname)
+	if err = session.Ping(); err != nil {
+		mut.Lock()
+		session = nil
+		mut.Unlock()
 	}
-	mut.RUnlock()
 	return open(addr, dbname)
 }
 
@@ -96,30 +80,4 @@ func (s *Storage) Close() {
 // If the collection does not exist, MongoDB will create it.
 func (s *Storage) Collection(name string) *Collection {
 	return &Collection{s.session.DB(s.dbname).C(name)}
-}
-
-func init() {
-	ticker = time.NewTicker(time.Hour)
-	go retire(ticker)
-}
-
-// retire retires old connections
-func retire(t *time.Ticker) {
-	for range t.C {
-		now := time.Now()
-		var old []string
-		mut.RLock()
-		for k, v := range conn {
-			if now.Sub(v.used) >= period {
-				old = append(old, k)
-			}
-		}
-		mut.RUnlock()
-		mut.Lock()
-		for _, c := range old {
-			conn[c].s.Close()
-			delete(conn, c)
-		}
-		mut.Unlock()
-	}
 }

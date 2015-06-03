@@ -16,10 +16,6 @@ type S struct{}
 
 var _ = check.Suite(&S{})
 
-func (s *S) SetUpSuite(c *check.C) {
-	ticker.Stop()
-}
-
 func (s *S) TearDownSuite(c *check.C) {
 	storage, err := Open("127.0.0.1:27017", "tsuru_storage_test")
 	c.Assert(err, check.IsNil)
@@ -28,7 +24,7 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 func (s *S) TearDownTest(c *check.C) {
-	conn = make(map[string]*session)
+	session = nil
 }
 
 func (s *S) TestOpenConnectsToTheDatabase(c *check.C) {
