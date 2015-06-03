@@ -27,9 +27,11 @@ func (RecSuite) SetUpSuite(c *check.C) {
 }
 
 func (RecSuite) TearDownSuite(c *check.C) {
-	conn, _ := db.Conn()
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	dbtest.ClearAllCollections(conn.Apps().Database)
+	err = dbtest.ClearAllCollections(conn.Apps().Database)
+	c.Assert(err, check.IsNil)
 }
 
 func (RecSuite) TestLog(c *check.C) {
@@ -48,29 +50,6 @@ func (RecSuite) TestLog(c *check.C) {
 	count, err := conn.UserActions().Find(query).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 1)
-}
-
-func (RecSuite) TestLogConnError(c *check.C) {
-	old, _ := config.Get("database:url")
-	defer config.Set("database:url", old)
-	config.Set("database:url", "127.0.0.1:29999")
-	ch := Log("user@tsuru.io", "run-command", "ls", "-ltr")
-	err, ok := <-ch
-	c.Assert(ok, check.Equals, true)
-	c.Assert(err, check.NotNil)
-	config.Set("database:url", old)
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	query := map[string]interface{}{
-		"user":   "user@tsuru.io",
-		"action": "run-command",
-		"extra":  []interface{}{"ls", "-ltr"},
-	}
-	defer conn.UserActions().RemoveAll(query)
-	count, err := conn.UserActions().Find(query).Count()
-	c.Assert(err, check.IsNil)
-	c.Assert(count, check.Equals, 0)
 }
 
 func (RecSuite) TestLogInvalidData(c *check.C) {
