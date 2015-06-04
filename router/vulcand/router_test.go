@@ -189,9 +189,54 @@ func (s *S) TestRemoveRoute(c *check.C) {
 }
 
 func (s *S) TestSetCName(c *check.C) {
+	vRouter, err := router.Get("vulcand")
+	c.Assert(err, check.IsNil)
+
+	err = vRouter.AddBackend("myapp")
+	c.Assert(err, check.IsNil)
+	err = vRouter.AddRoute("myapp", "http://1.1.1.1:111")
+	c.Assert(err, check.IsNil)
+	err = vRouter.AddRoute("myapp", "http://2.2.2.2:222")
+	c.Assert(err, check.IsNil)
+	err = vRouter.SetCName("myapp.cname.example.com", "myapp")
+	c.Assert(err, check.IsNil)
+
+	appFrontend, err := s.engine.GetFrontend(engine.FrontendKey{
+		Id: "tsuru_myapp.vulcand.example.com",
+	})
+	c.Assert(err, check.IsNil)
+	cnameFrontend, err := s.engine.GetFrontend(engine.FrontendKey{
+		Id: "tsuru_myapp.cname.example.com",
+	})
+	c.Assert(err, check.IsNil)
+
+	c.Assert(cnameFrontend.BackendId, check.DeepEquals, appFrontend.BackendId)
+	c.Assert(cnameFrontend.Route, check.Equals, `Host("myapp.cname.example.com") && PathRegexp("/")`)
+	c.Assert(cnameFrontend.Type, check.Equals, "http")
 }
 
 func (s *S) TestUnsetCName(c *check.C) {
+	vRouter, err := router.Get("vulcand")
+	c.Assert(err, check.IsNil)
+
+	err = vRouter.AddBackend("myapp")
+	c.Assert(err, check.IsNil)
+	err = vRouter.AddRoute("myapp", "http://1.1.1.1:111")
+	c.Assert(err, check.IsNil)
+	err = vRouter.AddRoute("myapp", "http://2.2.2.2:222")
+	c.Assert(err, check.IsNil)
+	err = vRouter.SetCName("myapp.cname.example.com", "myapp")
+	c.Assert(err, check.IsNil)
+
+	frontends, err := s.engine.GetFrontends()
+	c.Assert(err, check.IsNil)
+	c.Assert(frontends, check.HasLen, 2)
+
+	vRouter.UnsetCName("myapp.cname.example.com", "myapp")
+	frontends, err = s.engine.GetFrontends()
+	c.Assert(err, check.IsNil)
+	c.Assert(frontends, check.HasLen, 1)
+	c.Assert(frontends[0].Id, check.Equals, "tsuru_myapp.vulcand.example.com")
 }
 
 func (s *S) TestAddr(c *check.C) {

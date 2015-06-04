@@ -53,8 +53,8 @@ func (r *vulcandRouter) frontendHostname(app string) string {
 	return fmt.Sprintf("%s.%s", app, r.domain)
 }
 
-func (r *vulcandRouter) frontendName(app string) string {
-	return fmt.Sprintf("tsuru_%s", r.frontendHostname(app))
+func (r *vulcandRouter) frontendName(hostname string) string {
+	return fmt.Sprintf("tsuru_%s", hostname)
 }
 
 func (r *vulcandRouter) backendName(app string) string {
@@ -80,7 +80,7 @@ func (r *vulcandRouter) AddBackend(name string) error {
 
 	hostname := r.frontendHostname(name)
 	frontend, err := vulcandEng.NewHTTPFrontend(
-		r.frontendName(name),
+		r.frontendName(hostname),
 		backend.Id,
 		fmt.Sprintf(`Host(%q) && PathRegexp("/")`, hostname),
 		vulcandEng.HTTPFrontendSettings{},
@@ -98,7 +98,7 @@ func (r *vulcandRouter) AddBackend(name string) error {
 }
 
 func (r *vulcandRouter) RemoveBackend(name string) error {
-	frontendKey := vulcandEng.FrontendKey{Id: r.frontendName(name)}
+	frontendKey := vulcandEng.FrontendKey{Id: r.frontendName(r.frontendHostname(name))}
 	err := r.client.DeleteFrontend(frontendKey)
 	if err != nil {
 		return err
@@ -132,11 +132,21 @@ func (r *vulcandRouter) RemoveRoute(name, address string) error {
 }
 
 func (r *vulcandRouter) SetCName(cname, name string) error {
-	return nil
+	frontend, err := vulcandEng.NewHTTPFrontend(
+		r.frontendName(cname),
+		r.backendName(name),
+		fmt.Sprintf(`Host(%q) && PathRegexp("/")`, cname),
+		vulcandEng.HTTPFrontendSettings{},
+	)
+	if err != nil {
+		return err
+	}
+	return r.client.UpsertFrontend(*frontend, vulcandEng.NoTTL)
 }
 
 func (r *vulcandRouter) UnsetCName(cname, name string) error {
-	return nil
+	frontendKey := vulcandEng.FrontendKey{Id: r.frontendName(cname)}
+	return r.client.DeleteFrontend(frontendKey)
 }
 
 func (r *vulcandRouter) Addr(name string) (string, error) {
