@@ -268,6 +268,30 @@ func (s *S) TestAddrNotExist(c *check.C) {
 }
 
 func (s *S) TestSwap(c *check.C) {
+	vRouter, err := router.Get("vulcand")
+	c.Assert(err, check.IsNil)
+
+	err = vRouter.AddBackend("myapp1")
+	c.Assert(err, check.IsNil)
+	err = vRouter.AddRoute("myapp1", "http://1.1.1.1:111")
+	c.Assert(err, check.IsNil)
+	err = vRouter.AddBackend("myapp2")
+	c.Assert(err, check.IsNil)
+	err = vRouter.AddRoute("myapp2", "http://2.2.2.2:222")
+	c.Assert(err, check.IsNil)
+
+	err = vRouter.Swap("myapp1", "myapp2")
+	c.Assert(err, check.IsNil)
+
+	servers1, err := s.engine.GetServers(engine.BackendKey{Id: "tsuru_myapp1"})
+	c.Assert(err, check.IsNil)
+	c.Assert(servers1, check.HasLen, 1)
+	c.Assert(servers1[0].URL, check.Equals, "http://2.2.2.2:222")
+
+	servers2, err := s.engine.GetServers(engine.BackendKey{Id: "tsuru_myapp2"})
+	c.Assert(err, check.IsNil)
+	c.Assert(servers2, check.HasLen, 1)
+	c.Assert(servers2[0].URL, check.Equals, "http://1.1.1.1:111")
 }
 
 func (s *S) TestRoutes(c *check.C) {

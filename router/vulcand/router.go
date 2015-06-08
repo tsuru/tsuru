@@ -160,8 +160,8 @@ func (r *vulcandRouter) Addr(name string) (string, error) {
 	return frontendHostname, nil
 }
 
-func (r *vulcandRouter) Swap(string, string) error {
-	return nil
+func (r *vulcandRouter) Swap(backend1, backend2 string) error {
+	return router.Swap(r, backend1, backend2)
 }
 
 func (r *vulcandRouter) Routes(name string) ([]string, error) {
