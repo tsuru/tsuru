@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/router"
 	_ "github.com/tsuru/tsuru/router/galeb"
 	_ "github.com/tsuru/tsuru/router/hipache"
@@ -244,6 +245,14 @@ func (p *dockerProvisioner) StartupMessage() (string, error) {
 }
 
 func (p *dockerProvisioner) Initialize() error {
+	q, err := queue.Queue()
+	if err != nil {
+		return err
+	}
+	err = q.RegisterTask(runBs{})
+	if err != nil {
+		return err
+	}
 	return p.initDockerCluster()
 }
 

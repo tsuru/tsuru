@@ -22,6 +22,7 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -55,6 +56,7 @@ type S struct {
 var _ = check.Suite(&S{})
 
 func (s *S) SetUpSuite(c *check.C) {
+	queue.ResetQueue()
 	s.collName = "docker_unit"
 	s.imageCollName = "docker_image"
 	s.repoNamespace = "tsuru"
@@ -70,6 +72,8 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("docker:user", s.sshUser)
 	config.Set("docker:cluster:mongo-url", "127.0.0.1:27017")
 	config.Set("docker:cluster:mongo-database", "docker_provision_tests_cluster_stor")
+	config.Set("queue:mongo-url", "127.0.0.1:27017")
+	config.Set("queue:mongo-database", "queue_provision_docker_tests")
 	config.Set("routers:fake:type", "fake")
 	config.Set("repo-manager", "fake")
 	config.Set("admin-team", "admin")
@@ -101,6 +105,7 @@ func (s *S) SetUpSuite(c *check.C) {
 
 func (s *S) SetUpTest(c *check.C) {
 	iaas.ResetAll()
+	queue.ResetQueue()
 	config.Set("docker:registry-max-try", 1)
 	repositorytest.Reset()
 	var err error

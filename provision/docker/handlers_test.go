@@ -27,6 +27,7 @@ import (
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2"
@@ -74,6 +75,8 @@ func (s *HandlersSuite) SetUpSuite(c *check.C) {
 	config.Set("docker:cluster:mongo-url", "127.0.0.1:27017")
 	config.Set("docker:cluster:mongo-database", "docker_provision_handlers_tests_cluster_stor")
 	config.Set("docker:repository-namespace", "tsuru")
+	config.Set("queue:mongo-url", "127.0.0.1:27017")
+	config.Set("queue:mongo-database", "queue_provision_docker_tests")
 	config.Set("iaas:default", "test-iaas")
 	config.Set("iaas:node-protocol", "http")
 	config.Set("iaas:node-port", 1234)
@@ -102,6 +105,7 @@ func (s *HandlersSuite) SetUpSuite(c *check.C) {
 }
 
 func (s *HandlersSuite) SetUpTest(c *check.C) {
+	queue.ResetQueue()
 	err := clearClusterStorage()
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner = &dockerProvisioner{}
@@ -346,6 +350,7 @@ func (s *HandlersSuite) TestListNodeHandler(c *check.C) {
 }
 
 func (s *HandlersSuite) TestFixContainerHandler(c *check.C) {
+	queue.ResetQueue()
 	cleanup, server, p := startDocker("9999")
 	defer cleanup()
 	coll := p.collection()
