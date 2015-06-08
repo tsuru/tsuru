@@ -240,6 +240,31 @@ func (s *S) TestUnsetCName(c *check.C) {
 }
 
 func (s *S) TestAddr(c *check.C) {
+	vRouter, err := router.Get("vulcand")
+	c.Assert(err, check.IsNil)
+
+	err = vRouter.AddBackend("myapp")
+	c.Assert(err, check.IsNil)
+
+	addr, err := vRouter.Addr("myapp")
+	c.Assert(err, check.IsNil)
+	c.Assert(addr, check.Equals, "myapp.vulcand.example.com")
+}
+
+func (s *S) TestAddrNotExist(c *check.C) {
+	vRouter, err := router.Get("vulcand")
+	c.Assert(err, check.IsNil)
+
+	frontends, err := s.engine.GetFrontends()
+	c.Assert(err, check.IsNil)
+	c.Assert(frontends, check.HasLen, 0)
+	backends, err := s.engine.GetBackends()
+	c.Assert(err, check.IsNil)
+	c.Assert(backends, check.HasLen, 0)
+
+	addr, err := vRouter.Addr("myapp")
+	c.Assert(err, check.ErrorMatches, "Object not found")
+	c.Assert(addr, check.Equals, "")
 }
 
 func (s *S) TestSwap(c *check.C) {

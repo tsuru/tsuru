@@ -150,7 +150,14 @@ func (r *vulcandRouter) UnsetCName(cname, name string) error {
 }
 
 func (r *vulcandRouter) Addr(name string) (string, error) {
-	return "", nil
+	frontendHostname := r.frontendHostname(name)
+	_, err := r.client.GetFrontend(vulcandEng.FrontendKey{
+		Id: r.frontendName(frontendHostname),
+	})
+	if err != nil {
+		return "", err
+	}
+	return frontendHostname, nil
 }
 
 func (r *vulcandRouter) Swap(string, string) error {
