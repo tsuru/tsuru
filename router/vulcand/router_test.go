@@ -271,6 +271,19 @@ func (s *S) TestSwap(c *check.C) {
 }
 
 func (s *S) TestRoutes(c *check.C) {
+	vRouter, err := router.Get("vulcand")
+	c.Assert(err, check.IsNil)
+
+	err = vRouter.AddBackend("myapp")
+	c.Assert(err, check.IsNil)
+	err = vRouter.AddRoute("myapp", "http://1.1.1.1:111")
+	c.Assert(err, check.IsNil)
+	err = vRouter.AddRoute("myapp", "http://2.2.2.2:222")
+	c.Assert(err, check.IsNil)
+
+	routes, err := vRouter.Routes("myapp")
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, check.DeepEquals, []string{"http://1.1.1.1:111", "http://2.2.2.2:222"})
 }
 
 func (s *S) TestStartupMessage(c *check.C) {

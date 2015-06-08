@@ -165,7 +165,18 @@ func (r *vulcandRouter) Swap(string, string) error {
 }
 
 func (r *vulcandRouter) Routes(name string) ([]string, error) {
-	return []string{}, nil
+	servers, err := r.client.GetServers(vulcandEng.BackendKey{
+		Id: r.backendName(name),
+	})
+	if err != nil {
+		return []string{}, err
+	}
+
+	routes := make([]string, len(servers))
+	for i, server := range servers {
+		routes[i] = server.URL
+	}
+	return routes, nil
 }
 
 func (r *vulcandRouter) StartupMessage() (string, error) {
