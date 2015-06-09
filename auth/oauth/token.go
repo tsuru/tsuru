@@ -11,6 +11,7 @@ import (
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
 	"golang.org/x/oauth2"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -54,7 +55,10 @@ func getToken(header string) (*Token, error) {
 	defer coll.Close()
 	err = coll.Find(bson.M{"token.accesstoken": token}).One(&t)
 	if err != nil {
-		return nil, auth.ErrInvalidToken
+		if err == mgo.ErrNotFound {
+			return nil, auth.ErrInvalidToken
+		}
+		return nil, err
 	}
 	return &t, nil
 }
