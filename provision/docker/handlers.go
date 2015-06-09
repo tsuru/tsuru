@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/tsuru/docker-cluster/cluster"
+	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/api"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
@@ -22,6 +23,7 @@ import (
 	_ "github.com/tsuru/tsuru/iaas/cloudstack"
 	_ "github.com/tsuru/tsuru/iaas/ec2"
 	tsuruIo "github.com/tsuru/tsuru/io"
+	"github.com/tsuru/tsuru/queue"
 	"gopkg.in/mgo.v2"
 )
 
@@ -60,6 +62,7 @@ func validateNodeAddress(address string) error {
 
 func (p *dockerProvisioner) addNodeForParams(params map[string]string, isRegister bool) (map[string]string, error) {
 	response := make(map[string]string)
+	var machineID string
 	var address string
 	if isRegister {
 		address, _ = params["address"]
@@ -72,15 +75,22 @@ func (p *dockerProvisioner) addNodeForParams(params map[string]string, isRegiste
 			return response, err
 		}
 		address = m.FormatNodeAddress()
+		machineID = m.Id
 	}
 	err := validateNodeAddress(address)
 	if err != nil {
 		return response, err
 	}
-	_, err = p.getCluster().Register(address, params)
+	q, err := queue.Queue()
 	if err != nil {
 		return response, err
 	}
+	jobParams := monsterqueue.JobParams{
+		"endpoint": address,
+		"machine":  machineID,
+		"metadata": params,
+	}
+	_, err = q.Enqueue(runBsTaskName, jobParams)
 	return response, err
 }
 

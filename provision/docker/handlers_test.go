@@ -10,11 +10,15 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/api"
@@ -44,7 +48,7 @@ func (TestIaaS) CreateMachine(params map[string]string) (*iaas.Machine, error) {
 	m := iaas.Machine{
 		Id:      params["id"],
 		Status:  "running",
-		Address: params["id"] + ".fake.host",
+		Address: "127.0.0.1",
 	}
 	return &m, nil
 }
@@ -58,11 +62,10 @@ func newTestIaaS(string) iaas.IaaS {
 }
 
 type HandlersSuite struct {
-	conn   *db.Storage
-	server *httptest.Server
-	user   *auth.User
-	token  auth.Token
-	team   *auth.Team
+	conn  *db.Storage
+	user  *auth.User
+	token auth.Token
+	team  *auth.Team
 }
 
 var _ = check.Suite(&HandlersSuite{})
@@ -76,7 +79,7 @@ func (s *HandlersSuite) SetUpSuite(c *check.C) {
 	config.Set("docker:cluster:mongo-database", "docker_provision_handlers_tests_cluster_stor")
 	config.Set("docker:repository-namespace", "tsuru")
 	config.Set("queue:mongo-url", "127.0.0.1:27017")
-	config.Set("queue:mongo-database", "queue_provision_docker_tests")
+	config.Set("queue:mongo-database", "queue_provision_docker_tests_handlers")
 	config.Set("iaas:default", "test-iaas")
 	config.Set("iaas:node-protocol", "http")
 	config.Set("iaas:node-port", 1234)
@@ -91,7 +94,6 @@ func (s *HandlersSuite) SetUpSuite(c *check.C) {
 		err = provision.RemovePool(pool.Name)
 		c.Assert(err, check.IsNil)
 	}
-	s.server = httptest.NewServer(nil)
 	s.user = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: quota.Unlimited}
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
@@ -125,27 +127,51 @@ func (s *HandlersSuite) TearDownSuite(c *check.C) {
 	s.conn.Close()
 }
 
+func (s *HandlersSuite) startFakeDockerNode(c *check.C) (*testing.DockerServer, func()) {
+	pong := make(chan struct{})
+	server, err := testing.NewServer("127.0.0.1:0", nil, func(r *http.Request) {
+		if strings.Contains(r.URL.Path, "ping") {
+			close(pong)
+		}
+	})
+	c.Assert(err, check.IsNil)
+	url, err := url.Parse(server.URL())
+	c.Assert(err, check.IsNil)
+	_, portString, _ := net.SplitHostPort(url.Host)
+	port, _ := strconv.Atoi(portString)
+	config.Set("iaas:node-port", port)
+	return server, func() {
+		<-pong
+		queue.ResetQueue()
+	}
+}
+
 func (s *HandlersSuite) TestAddNodeHandler(c *check.C) {
+	server, waitQueue := s.startFakeDockerNode(c)
+	defer server.Stop()
 	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
 	err := provision.AddPool("pool1")
 	defer provision.RemovePool("pool1")
-	json := fmt.Sprintf(`{"address": "%s", "pool": "pool1"}`, s.server.URL)
+	json := fmt.Sprintf(`{"address": "%s", "pool": "pool1"}`, server.URL())
 	b := bytes.NewBufferString(json)
 	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
 	c.Assert(err, check.IsNil)
+	waitQueue()
 	nodes, err := mainDockerProvisioner.getCluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
-	c.Assert(nodes[0].Address, check.Equals, s.server.URL)
+	c.Assert(nodes[0].Address, check.Equals, server.URL())
 	c.Assert(nodes[0].Metadata, check.DeepEquals, map[string]string{
 		"pool": "pool1",
 	})
 }
 
 func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
+	server, waitQueue := s.startFakeDockerNode(c)
+	defer server.Stop()
 	iaas.RegisterIaasProvider("test-iaas", newTestIaaS)
 	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
 	err := provision.AddPool("pool1")
@@ -160,10 +186,11 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 	err = json.NewDecoder(rec.Body).Decode(&result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.DeepEquals, map[string]string{"description": "my iaas description"})
+	waitQueue()
 	nodes, err := mainDockerProvisioner.getCluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
-	c.Assert(nodes[0].Address, check.Equals, "http://test1.fake.host:1234")
+	c.Assert(nodes[0].Address, check.Equals, strings.TrimRight(server.URL(), "/"))
 	c.Assert(nodes[0].Metadata, check.DeepEquals, map[string]string{
 		"id":      "test1",
 		"pool":    "pool1",
@@ -173,6 +200,8 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 }
 
 func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachineExplicit(c *check.C) {
+	server, waitQueue := s.startFakeDockerNode(c)
+	defer server.Stop()
 	iaas.RegisterIaasProvider("test-iaas", newTestIaaS)
 	iaas.RegisterIaasProvider("another-test-iaas", newTestIaaS)
 	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
@@ -184,10 +213,11 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachineExplicit(c *check
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
 	c.Assert(err, check.IsNil)
+	waitQueue()
 	nodes, err := mainDockerProvisioner.getCluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
-	c.Assert(nodes[0].Address, check.Equals, "http://test1.fake.host:1234")
+	c.Assert(nodes[0].Address, check.Equals, strings.TrimRight(server.URL(), "/"))
 	c.Assert(nodes[0].Metadata, check.DeepEquals, map[string]string{
 		"id":      "test1",
 		"pool":    "pool1",
@@ -196,27 +226,30 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachineExplicit(c *check
 	})
 }
 
-func (s *HandlersSuite) TestAddNodeHandlerWithoutdCluster(c *check.C) {
+func (s *HandlersSuite) TestAddNodeHandlerWithoutCluster(c *check.C) {
+	server, waitQueue := s.startFakeDockerNode(c)
+	defer server.Stop()
 	err := provision.AddPool("pool1")
 	defer provision.RemovePool("pool1")
 	config.Set("docker:cluster:redis-server", "127.0.0.1:6379")
 	defer config.Unset("docker:cluster:redis-server")
-	b := bytes.NewBufferString(fmt.Sprintf(`{"address": "%s", "pool": "pool1"}`, s.server.URL))
+	b := bytes.NewBufferString(fmt.Sprintf(`{"address": "%s", "pool": "pool1"}`, server.URL()))
 	req, err := http.NewRequest("POST", "/docker/node?register=true", b)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = addNodeHandler(rec, req, nil)
 	c.Assert(err, check.IsNil)
+	waitQueue()
 	nodes, err := mainDockerProvisioner.getCluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
-	c.Assert(nodes[0].Address, check.Equals, s.server.URL)
+	c.Assert(nodes[0].Address, check.Equals, server.URL())
 	c.Assert(nodes[0].Metadata, check.DeepEquals, map[string]string{
 		"pool": "pool1",
 	})
 }
 
-func (s *HandlersSuite) TestAddNodeHandlerWithoutdAddress(c *check.C) {
+func (s *HandlersSuite) TestAddNodeHandlerWithoutAddress(c *check.C) {
 	config.Set("docker:cluster:redis-server", "127.0.0.1:6379")
 	defer config.Unset("docker:cluster:redis-server")
 	b := bytes.NewBufferString(`{"pool": "pool1"}`)

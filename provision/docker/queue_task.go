@@ -13,6 +13,8 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/iaas"
+	"github.com/tsuru/tsuru/log"
 )
 
 const runBsTaskName = "run-bs"
@@ -26,6 +28,7 @@ func (runBs) Name() string {
 func (t runBs) Run(job monsterqueue.Job) {
 	params := job.Parameters()
 	dockerEndpoint := params["endpoint"].(string)
+	machineID := params["machine"].(string)
 	err := t.waitDocker(dockerEndpoint)
 	if err != nil {
 		job.Error(err)
@@ -34,6 +37,19 @@ func (t runBs) Run(job monsterqueue.Job) {
 	err = t.createBsContainer(dockerEndpoint)
 	if err != nil {
 		job.Error(err)
+		t.destroyMachine(machineID)
+		return
+	}
+	rawMetadata := params["metadata"].(monsterqueue.JobParams)
+	metadata := make(map[string]string, len(rawMetadata))
+	for key, value := range rawMetadata {
+		metadata[key] = value.(string)
+	}
+	_, err = mainDockerProvisioner.getCluster().Register(dockerEndpoint, metadata)
+	if err != nil {
+		job.Error(err)
+		t.destroyMachine(machineID)
+		return
 	}
 }
 
@@ -111,4 +127,19 @@ func (runBs) createBsContainer(dockerEndpoint string) error {
 		_, err = client.CreateContainer(opts)
 	}
 	return err
+}
+
+func (runBs) destroyMachine(id string) {
+	if id != "" {
+		machine, err := iaas.FindMachineById(id)
+		if err != nil {
+			log.Errorf("failed to remove machine %q: %s", id, err)
+			return
+		}
+		err = machine.Destroy()
+		if err != nil {
+			log.Errorf("failed to remove machine %q: %s", id, err)
+			return
+		}
+	}
 }
