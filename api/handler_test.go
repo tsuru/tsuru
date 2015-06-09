@@ -438,7 +438,7 @@ func (s *HandlerSuite) TestAuthorizationRequiredHandlerWrongApp(c *check.C) {
 	defer resetHandlers()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusUnauthorized)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
 }
 
 func (s *HandlerSuite) TestAuthorizationRequiredHandlerAppMissng(c *check.C) {
