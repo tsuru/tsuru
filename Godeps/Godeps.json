@@ -158,7 +158,7 @@
 		},
 		{
 			"ImportPath": "gopkg.in/mgo.v2",
-			"Rev": "dc255bb679efa273b6544a03261c4053505498a4"
+			"Rev": "3569c88678d88179dcbd68d02ab081cbca3cd4d0"
 		},
 		{
 			"ImportPath": "gopkg.in/tylerb/graceful.v1",
