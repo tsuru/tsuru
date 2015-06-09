@@ -23,7 +23,7 @@ func remoteShellHandler(w http.ResponseWriter, r *http.Request, t auth.Token) er
 		return err
 	}
 	appName := r.URL.Query().Get(":app")
-	app, err := getApp(appName, u)
+	app, err := getApp(appName, u, r)
 	if err != nil {
 		return err
 	}

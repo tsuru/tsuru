@@ -2983,7 +2983,7 @@ func (s *S) TestGetApp(c *check.C) {
 	defer s.deleteApp(&a)
 	expected, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	app, err := getApp(a.Name, s.adminuser)
+	app, err := getApp(a.Name, s.adminuser, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(app, check.DeepEquals, *expected)
 }
