@@ -102,6 +102,7 @@ func (r *vulcandRouter) AddBackend(name string) error {
 
 	err = r.client.UpsertFrontend(*frontend, vulcandEng.NoTTL)
 	if err != nil {
+		r.client.DeleteBackend(backendKey)
 		return err
 	}
 

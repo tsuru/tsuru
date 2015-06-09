@@ -6,6 +6,7 @@ package vulcand
 
 import (
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -133,6 +134,42 @@ func (s *S) TestAddBackendDuplicate(c *check.C) {
 
 	err = vRouter.AddBackend("myapp")
 	c.Assert(err, check.ErrorMatches, router.ErrBackendExists.Error())
+}
+
+func (s *S) TestAddBackendRollbackOnError(c *check.C) {
+	s.vulcandServer.Close()
+	scrollApp := scroll.NewApp()
+	var postRequestCount int
+
+	conditionalHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "POST" {
+			postRequestCount++
+
+			if postRequestCount > 1 {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}
+
+		scrollApp.GetHandler().ServeHTTP(w, r)
+	})
+
+	vulcandAPI.InitProxyController(s.engine, &supervisor.Supervisor{}, scrollApp)
+	s.vulcandServer = httptest.NewServer(conditionalHandler)
+	config.Set("routers:vulcand:api-url", s.vulcandServer.URL)
+
+	vRouter, err := router.Get("vulcand")
+	c.Assert(err, check.IsNil)
+
+	err = vRouter.AddBackend("myapp")
+	c.Assert(err, check.NotNil)
+
+	backends, err := s.engine.GetBackends()
+	c.Assert(err, check.IsNil)
+	c.Assert(backends, check.HasLen, 0)
+	frontends, err := s.engine.GetFrontends()
+	c.Assert(err, check.IsNil)
+	c.Assert(frontends, check.HasLen, 0)
 }
 
 func (s *S) TestRemoveBackend(c *check.C) {
