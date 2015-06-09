@@ -5,6 +5,7 @@
 package vulcand
 
 import (
+	"fmt"
 	"net/http/httptest"
 	"testing"
 
@@ -311,4 +312,14 @@ func (s *S) TestRoutes(c *check.C) {
 }
 
 func (s *S) TestStartupMessage(c *check.C) {
+	got, err := router.Get("vulcand")
+	c.Assert(err, check.IsNil)
+	mRouter, ok := got.(router.MessageRouter)
+	c.Assert(ok, check.Equals, true)
+
+	message, err := mRouter.StartupMessage()
+	c.Assert(err, check.IsNil)
+	c.Assert(message, check.Equals,
+		fmt.Sprintf(`vulcand router "vulcand.example.com" with API at "%s"`, s.vulcandServer.URL),
+	)
 }

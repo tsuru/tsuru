@@ -180,5 +180,6 @@ func (r *vulcandRouter) Routes(name string) ([]string, error) {
 }
 
 func (r *vulcandRouter) StartupMessage() (string, error) {
-	return "", nil
+	message := fmt.Sprintf("vulcand router %q with API at %q", r.domain, r.client.Addr)
+	return message, nil
 }
