@@ -46,7 +46,6 @@ func open(addr, dbname string) (*mgo.Session, error) {
 	}
 	session.SetSyncTimeout(10 * time.Second)
 	session.SetSocketTimeout(1 * time.Minute)
-	session.SetMode(mgo.Monotonic, true)
 	return session, nil
 }
 
