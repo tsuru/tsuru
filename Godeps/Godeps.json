@@ -93,15 +93,15 @@
 		},
 		{
 			"ImportPath": "github.com/tsuru/docker-cluster/cluster",
-			"Rev": "83774a96ec16b2d15d107ef7effb9fb117f2d5b0"
+			"Rev": "7df15c83c49b5f9bf4ee15eefd56d6108ee29ea7"
 		},
 		{
 			"ImportPath": "github.com/tsuru/docker-cluster/log",
-			"Rev": "83774a96ec16b2d15d107ef7effb9fb117f2d5b0"
+			"Rev": "7df15c83c49b5f9bf4ee15eefd56d6108ee29ea7"
 		},
 		{
 			"ImportPath": "github.com/tsuru/docker-cluster/storage",
-			"Rev": "83774a96ec16b2d15d107ef7effb9fb117f2d5b0"
+			"Rev": "7df15c83c49b5f9bf4ee15eefd56d6108ee29ea7"
 		},
 		{
 			"ImportPath": "github.com/tsuru/gandalf/gandalftest",
@@ -114,11 +114,11 @@
 		},
 		{
 			"ImportPath": "github.com/tsuru/monsterqueue",
-			"Rev": "e91bcf01317efa4ed4da41781148fd76cabf6f56"
+			"Rev": "f741e61a6c0c428ebf36ccad904c21bfdebd299c"
 		},
 		{
 			"ImportPath": "github.com/tsuru/monsterqueue/mongodb",
-			"Rev": "e91bcf01317efa4ed4da41781148fd76cabf6f56"
+			"Rev": "f741e61a6c0c428ebf36ccad904c21bfdebd299c"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/bcrypt",
