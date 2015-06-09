@@ -12,6 +12,7 @@ import (
 
 	"github.com/gorilla/context"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
@@ -22,6 +23,7 @@ import (
 
 type S struct {
 	token auth.Token
+	app   *app.App
 }
 
 var _ = check.Suite(&S{})
@@ -38,6 +40,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
+	s.app = &app.App{Name: "app"}
 	c.Assert(err, check.IsNil)
 }
 
@@ -104,4 +107,14 @@ func (s *S) TestSetPreventUnlock(c *check.C) {
 	c.Assert(IsPreventUnlock(r), check.Equals, false)
 	SetPreventUnlock(r)
 	c.Assert(IsPreventUnlock(r), check.Equals, true)
+}
+
+func (s *S) TestGetApp(c *check.C) {
+	r, err := http.NewRequest("GET", "/", nil)
+	c.Assert(err, check.IsNil)
+	a := GetApp(r)
+	c.Assert(a, check.IsNil)
+	SetApp(r, s.app)
+	a = GetApp(r)
+	c.Assert(a, check.DeepEquals, s.app)
 }

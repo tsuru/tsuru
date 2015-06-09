@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/context"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
 )
@@ -17,10 +18,22 @@ const (
 	errorContextKey
 	delayedHandlerKey
 	preventUnlockKey
+	appContextKey
 )
 
 func Clear(r *http.Request) {
 	context.Clear(r)
+}
+
+func GetApp(r *http.Request) *app.App {
+	if v := context.Get(r, appContextKey); v != nil {
+		return v.(*app.App)
+	}
+	return nil
+}
+
+func SetApp(r *http.Request, a *app.App) {
+	context.Set(r, appContextKey, a)
 }
 
 func GetAuthToken(r *http.Request) auth.Token {
