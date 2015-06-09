@@ -101,9 +101,49 @@ func (s *S) TestShouldBeRegisteredAllowingPrefixes(c *check.C) {
 }
 
 func (s *S) TestAddBackend(c *check.C) {
+	vRouter, err := router.Get("vulcand")
+	c.Assert(err, check.IsNil)
+
+	err = vRouter.AddBackend("myapp")
+	c.Assert(err, check.IsNil)
+
+	backendKey := engine.BackendKey{Id: "tsuru_myapp"}
+	frontendKey := engine.FrontendKey{Id: "tsuru_myapp.vulcand.example.com"}
+
+	backend, err := s.engine.GetBackend(backendKey)
+	c.Assert(err, check.IsNil)
+	c.Assert(backend.Id, check.Equals, backendKey.String())
+	c.Assert(backend.Type, check.Equals, "http")
+
+	frontend, err := s.engine.GetFrontend(frontendKey)
+	c.Assert(err, check.IsNil)
+	c.Assert(frontend.Id, check.Equals, frontendKey.String())
+	c.Assert(frontend.Route, check.Equals, `Host("myapp.vulcand.example.com") && PathRegexp("/")`)
+	c.Assert(frontend.Type, check.Equals, "http")
+	c.Assert(frontend.BackendId, check.Equals, backendKey.String())
 }
 
 func (s *S) TestRemoveBackend(c *check.C) {
+	vRouter, err := router.Get("vulcand")
+	c.Assert(err, check.IsNil)
+
+	err = vRouter.AddBackend("myapp")
+	c.Assert(err, check.IsNil)
+	backends, err := s.engine.GetBackends()
+	c.Assert(err, check.IsNil)
+	c.Assert(backends, check.HasLen, 1)
+	frontends, err := s.engine.GetFrontends()
+	c.Assert(err, check.IsNil)
+	c.Assert(frontends, check.HasLen, 1)
+
+	err = vRouter.RemoveBackend("myapp")
+	c.Assert(err, check.IsNil)
+	backends, err = s.engine.GetBackends()
+	c.Assert(err, check.IsNil)
+	c.Assert(backends, check.HasLen, 0)
+	frontends, err = s.engine.GetFrontends()
+	c.Assert(err, check.IsNil)
+	c.Assert(frontends, check.HasLen, 0)
 }
 
 func (s *S) TestAddRoute(c *check.C) {

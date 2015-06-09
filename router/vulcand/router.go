@@ -5,10 +5,13 @@
 package vulcand
 
 import (
+	"fmt"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/router"
 
 	vulcandAPI "github.com/mailgun/vulcand/api"
+	vulcandEng "github.com/mailgun/vulcand/engine"
 	vulcandReg "github.com/mailgun/vulcand/plugin/registry"
 )
 
@@ -45,12 +48,64 @@ func createRouter(prefix string) (router.Router, error) {
 	return vRouter, nil
 }
 
+func (r *vulcandRouter) frontendHostname(app string) string {
+	return fmt.Sprintf("%s.%s", app, r.domain)
+}
+
+func (r *vulcandRouter) frontendName(app string) string {
+	return fmt.Sprintf("tsuru_%s", r.frontendHostname(app))
+}
+
+func (r *vulcandRouter) backendName(app string) string {
+	return fmt.Sprintf("tsuru_%s", app)
+}
+
 func (r *vulcandRouter) AddBackend(name string) error {
-	return nil
+	backend, err := vulcandEng.NewHTTPBackend(
+		r.backendName(name),
+		vulcandEng.HTTPBackendSettings{},
+	)
+	if err != nil {
+		return err
+	}
+	err = r.client.UpsertBackend(*backend)
+	if err != nil {
+		return err
+	}
+
+	hostname := r.frontendHostname(name)
+	frontend, err := vulcandEng.NewHTTPFrontend(
+		r.frontendName(name),
+		backend.Id,
+		fmt.Sprintf(`Host(%q) && PathRegexp("/")`, hostname),
+		vulcandEng.HTTPFrontendSettings{},
+	)
+	if err != nil {
+		return err
+	}
+
+	err = r.client.UpsertFrontend(*frontend, vulcandEng.NoTTL)
+	if err != nil {
+		return err
+	}
+
+	return router.Store(name, name, routerName)
 }
 
 func (r *vulcandRouter) RemoveBackend(name string) error {
-	return nil
+	frontendKey := vulcandEng.FrontendKey{Id: r.frontendName(name)}
+	err := r.client.DeleteFrontend(frontendKey)
+	if err != nil {
+		return err
+	}
+
+	backendKey := vulcandEng.BackendKey{Id: r.backendName(name)}
+	err = r.client.DeleteBackend(backendKey)
+	if err != nil {
+		return err
+	}
+
+	return router.Remove(name)
 }
 
 func (r *vulcandRouter) AddRoute(name, address string) error {
