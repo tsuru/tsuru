@@ -5,6 +5,7 @@
 package vulcand
 
 import (
+	"crypto/md5"
 	"fmt"
 
 	"github.com/tsuru/config"
@@ -60,6 +61,10 @@ func (r *vulcandRouter) backendName(app string) string {
 	return fmt.Sprintf("tsuru_%s", app)
 }
 
+func (r *vulcandRouter) serverName(address string) string {
+	return fmt.Sprintf("tsuru_%x", md5.Sum([]byte(address)))
+}
+
 func (r *vulcandRouter) AddBackend(name string) error {
 	backend, err := vulcandEng.NewHTTPBackend(
 		r.backendName(name),
@@ -109,11 +114,21 @@ func (r *vulcandRouter) RemoveBackend(name string) error {
 }
 
 func (r *vulcandRouter) AddRoute(name, address string) error {
-	return nil
+	server, err := vulcandEng.NewServer(r.serverName(address), address)
+	if err != nil {
+		return err
+	}
+
+	backendKey := vulcandEng.BackendKey{Id: r.backendName(name)}
+	return r.client.UpsertServer(backendKey, *server, vulcandEng.NoTTL)
 }
 
 func (r *vulcandRouter) RemoveRoute(name, address string) error {
-	return nil
+	serverKey := vulcandEng.ServerKey{
+		Id:         r.serverName(address),
+		BackendKey: vulcandEng.BackendKey{Id: r.backendName(name)},
+	}
+	return r.client.DeleteServer(serverKey)
 }
 
 func (r *vulcandRouter) SetCName(cname, name string) error {

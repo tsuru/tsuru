@@ -147,9 +147,45 @@ func (s *S) TestRemoveBackend(c *check.C) {
 }
 
 func (s *S) TestAddRoute(c *check.C) {
+	vRouter, err := router.Get("vulcand")
+	c.Assert(err, check.IsNil)
+
+	err = vRouter.AddBackend("myapp")
+	c.Assert(err, check.IsNil)
+	err = vRouter.AddRoute("myapp", "http://1.1.1.1:111")
+	c.Assert(err, check.IsNil)
+	err = vRouter.AddRoute("myapp", "http://2.2.2.2:222")
+	c.Assert(err, check.IsNil)
+
+	servers, err := s.engine.GetServers(engine.BackendKey{Id: "tsuru_myapp"})
+	c.Assert(err, check.IsNil)
+	c.Assert(servers, check.HasLen, 2)
+	c.Assert(servers[0].URL, check.Equals, "http://1.1.1.1:111")
+	c.Assert(servers[1].URL, check.Equals, "http://2.2.2.2:222")
 }
 
 func (s *S) TestRemoveRoute(c *check.C) {
+	vRouter, err := router.Get("vulcand")
+	c.Assert(err, check.IsNil)
+
+	err = vRouter.AddBackend("myapp")
+	c.Assert(err, check.IsNil)
+	err = vRouter.AddRoute("myapp", "http://1.1.1.1:111")
+	c.Assert(err, check.IsNil)
+	err = vRouter.AddRoute("myapp", "http://2.2.2.2:222")
+	c.Assert(err, check.IsNil)
+
+	servers, err := s.engine.GetServers(engine.BackendKey{Id: "tsuru_myapp"})
+	c.Assert(err, check.IsNil)
+	c.Assert(servers, check.HasLen, 2)
+
+	err = vRouter.RemoveRoute("myapp", "http://1.1.1.1:111")
+	c.Assert(err, check.IsNil)
+
+	servers, err = s.engine.GetServers(engine.BackendKey{Id: "tsuru_myapp"})
+	c.Assert(err, check.IsNil)
+	c.Assert(servers, check.HasLen, 1)
+	c.Assert(servers[0].URL, check.Equals, "http://2.2.2.2:222")
 }
 
 func (s *S) TestSetCName(c *check.C) {
