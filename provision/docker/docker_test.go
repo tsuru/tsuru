@@ -351,6 +351,20 @@ func (s *S) TestContainerSetStatusStarted(c *check.C) {
 	c.Assert(c3.LastSuccessStatusUpdate.IsZero(), check.Equals, false)
 }
 
+func (s *S) TestContainerSetStatusBuilding(c *check.C) {
+	c1 := container{ID: "something-300", Status: provision.StatusBuilding.String()}
+	coll := s.p.collection()
+	defer coll.Close()
+	coll.Insert(c1)
+	defer coll.Remove(bson.M{"id": c1.ID})
+	c1.setStatus(s.p, provision.StatusStarted.String())
+	c2, err := s.p.getContainer(c1.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(c2.Status, check.Equals, provision.StatusBuilding.String())
+	c.Assert(c2.LastStatusUpdate.IsZero(), check.Equals, true)
+	c.Assert(c2.LastSuccessStatusUpdate.IsZero(), check.Equals, true)
+}
+
 func (s *S) TestContainerSetImage(c *check.C) {
 	container := container{ID: "something-300"}
 	coll := s.p.collection()
