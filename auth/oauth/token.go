@@ -92,5 +92,7 @@ func collection() *storage.Collection {
 	if err != nil {
 		log.Errorf("Failed to connect to the database: %s", err)
 	}
-	return conn.Collection(name)
+	coll := conn.Collection(name)
+	coll.EnsureIndex(mgo.Index{Key: []string{"token.accesstoken"}})
+	return coll
 }
