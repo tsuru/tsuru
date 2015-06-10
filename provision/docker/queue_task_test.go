@@ -51,7 +51,7 @@ func (s *S) TestCreateBsContainer(c *check.C) {
 		"DOCKER_ENDPOINT":        server.URL(),
 		"TSURU_ENDPOINT":         "http://127.0.0.1:8080/",
 		"TSURU_TOKEN":            "abc123",
-		"TSURU_SENTINEL_ENV_VAR": "TSURU_APP_NAME",
+		"TSURU_SENTINEL_ENV_VAR": "TSURU_APPNAME",
 	}
 	gotEnv := parseEnvs(container.Config.Env)
 	_, ok := gotEnv["TSURU_TOKEN"]

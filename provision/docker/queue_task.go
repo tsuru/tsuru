@@ -103,7 +103,7 @@ func (runBs) createBsContainer(dockerEndpoint string) error {
 	if err != nil {
 		return err
 	}
-	sentinelEnvVar := "TSURU_APP_NAME"
+	sentinelEnvVar := "TSURU_APPNAME"
 	env := []string{
 		"DOCKER_ENDPOINT=" + dockerEndpoint,
 		"TSURU_ENDPOINT=" + tsuruEndpoint,
