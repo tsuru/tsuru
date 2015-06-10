@@ -142,6 +142,7 @@ func getPlatform(name string) (*Platform, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Close()
 	err = conn.Platforms().Find(bson.M{"_id": name}).One(&p)
 	if err != nil {
 		return nil, InvalidPlatformError{}

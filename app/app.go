@@ -1287,6 +1287,7 @@ func (app *App) UpdateCustomData(customData map[string]interface{}) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	return conn.Apps().Update(
 		bson.M{"name": app.Name},
 		bson.M{"$set": bson.M{"customdata": app.CustomData}},
