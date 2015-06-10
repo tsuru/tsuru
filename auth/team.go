@@ -125,6 +125,7 @@ func GetTeam(name string) (*Team, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Close()
 	err = conn.Teams().FindId(name).One(&t)
 	if err != nil {
 		if err == mgo.ErrNotFound {
