@@ -117,16 +117,19 @@ func (runBs) createBsContainer(dockerEndpoint string) error {
 			Env:   env,
 		},
 	}
-	_, err = client.CreateContainer(opts)
+	container, err := client.CreateContainer(opts)
 	if err == docker.ErrNoSuchImage {
 		pullOpts := docker.PullImageOptions{Repository: bsImage}
 		err = client.PullImage(pullOpts, getRegistryAuthConfig())
 		if err != nil {
 			return err
 		}
-		_, err = client.CreateContainer(opts)
+		container, err = client.CreateContainer(opts)
 	}
-	return err
+	if err != nil {
+		return err
+	}
+	return client.StartContainer(container.ID, nil)
 }
 
 func (runBs) destroyMachine(id string) {

@@ -46,6 +46,7 @@ func (s *S) TestCreateBsContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(container.Name, check.Equals, "big-sibling")
 	c.Assert(container.Config.Image, check.Equals, "myregistry/tsuru/bs")
+	c.Assert(container.State.Running, check.Equals, true)
 	expectedEnv := map[string]string{
 		"DOCKER_ENDPOINT":        server.URL(),
 		"TSURU_ENDPOINT":         "http://127.0.0.1:8080/",
