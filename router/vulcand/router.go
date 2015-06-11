@@ -66,8 +66,20 @@ func (r *vulcandRouter) serverName(address string) string {
 }
 
 func (r *vulcandRouter) AddBackend(name string) error {
+	backendName := r.backendName(name)
+	frontendName := r.frontendName(r.frontendHostname(name))
+	backendKey := vulcandEng.BackendKey{Id: backendName}
+	frontendKey := vulcandEng.FrontendKey{Id: frontendName}
+
+	if found, _ := r.client.GetBackend(backendKey); found != nil {
+		return router.ErrBackendExists
+	}
+	if found, _ := r.client.GetFrontend(frontendKey); found != nil {
+		return router.ErrBackendExists
+	}
+
 	backend, err := vulcandEng.NewHTTPBackend(
-		r.backendName(name),
+		backendName,
 		vulcandEng.HTTPBackendSettings{},
 	)
 	if err != nil {
@@ -78,11 +90,10 @@ func (r *vulcandRouter) AddBackend(name string) error {
 		return err
 	}
 
-	hostname := r.frontendHostname(name)
 	frontend, err := vulcandEng.NewHTTPFrontend(
-		r.frontendName(hostname),
+		frontendName,
 		backend.Id,
-		fmt.Sprintf(`Host(%q) && PathRegexp("/")`, hostname),
+		fmt.Sprintf(`Host(%q) && PathRegexp("/")`, r.frontendHostname(name)),
 		vulcandEng.HTTPFrontendSettings{},
 	)
 	if err != nil {
@@ -117,13 +128,21 @@ func (r *vulcandRouter) RemoveBackend(name string) error {
 }
 
 func (r *vulcandRouter) AddRoute(name, address string) error {
-	server, err := vulcandEng.NewServer(r.serverName(address), address)
+	serverKey := vulcandEng.ServerKey{
+		Id:         r.serverName(address),
+		BackendKey: vulcandEng.BackendKey{Id: r.backendName(name)},
+	}
+
+	if found, _ := r.client.GetServer(serverKey); found != nil {
+		return router.ErrRouteExists
+	}
+
+	server, err := vulcandEng.NewServer(serverKey.Id, address)
 	if err != nil {
 		return err
 	}
 
-	backendKey := vulcandEng.BackendKey{Id: r.backendName(name)}
-	return r.client.UpsertServer(backendKey, *server, vulcandEng.NoTTL)
+	return r.client.UpsertServer(serverKey.BackendKey, *server, vulcandEng.NoTTL)
 }
 
 func (r *vulcandRouter) RemoveRoute(name, address string) error {
@@ -141,8 +160,13 @@ func (r *vulcandRouter) RemoveRoute(name, address string) error {
 }
 
 func (r *vulcandRouter) SetCName(cname, name string) error {
+	frontendName := r.frontendName(cname)
+	if found, _ := r.client.GetFrontend(vulcandEng.FrontendKey{Id: frontendName}); found != nil {
+		return router.ErrRouteExists
+	}
+
 	frontend, err := vulcandEng.NewHTTPFrontend(
-		r.frontendName(cname),
+		frontendName,
 		r.backendName(name),
 		fmt.Sprintf(`Host(%q) && PathRegexp("/")`, cname),
 		vulcandEng.HTTPFrontendSettings{},

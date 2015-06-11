@@ -22,7 +22,9 @@ import (
 type routerFactory func(string) (Router, error)
 
 var (
+	ErrBackendExists   = errors.New("Backend already exists")
 	ErrBackendNotFound = errors.New("Backend not found")
+	ErrRouteExists     = errors.New("Route already exists")
 	ErrRouteNotFound   = errors.New("Route not found")
 )
 

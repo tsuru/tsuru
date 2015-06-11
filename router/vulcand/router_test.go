@@ -124,6 +124,17 @@ func (s *S) TestAddBackend(c *check.C) {
 	c.Assert(frontend.BackendId, check.Equals, backendKey.String())
 }
 
+func (s *S) TestAddBackendDuplicate(c *check.C) {
+	vRouter, err := router.Get("vulcand")
+	c.Assert(err, check.IsNil)
+
+	err = vRouter.AddBackend("myapp")
+	c.Assert(err, check.IsNil)
+
+	err = vRouter.AddBackend("myapp")
+	c.Assert(err, check.ErrorMatches, router.ErrBackendExists.Error())
+}
+
 func (s *S) TestRemoveBackend(c *check.C) {
 	vRouter, err := router.Get("vulcand")
 	c.Assert(err, check.IsNil)
@@ -178,6 +189,19 @@ func (s *S) TestAddRoute(c *check.C) {
 	c.Assert(servers, check.HasLen, 2)
 	c.Assert(servers[0].URL, check.Equals, "http://1.1.1.1:111")
 	c.Assert(servers[1].URL, check.Equals, "http://2.2.2.2:222")
+}
+
+func (s *S) TestAddRouteDuplicate(c *check.C) {
+	vRouter, err := router.Get("vulcand")
+	c.Assert(err, check.IsNil)
+
+	err = vRouter.AddBackend("myapp")
+	c.Assert(err, check.IsNil)
+	err = vRouter.AddRoute("myapp", "http://1.1.1.1:111")
+	c.Assert(err, check.IsNil)
+
+	err = vRouter.AddRoute("myapp", "http://1.1.1.1:111")
+	c.Assert(err, check.ErrorMatches, router.ErrRouteExists.Error())
 }
 
 func (s *S) TestRemoveRoute(c *check.C) {
@@ -244,6 +268,23 @@ func (s *S) TestSetCName(c *check.C) {
 	c.Assert(cnameFrontend.BackendId, check.DeepEquals, appFrontend.BackendId)
 	c.Assert(cnameFrontend.Route, check.Equals, `Host("myapp.cname.example.com") && PathRegexp("/")`)
 	c.Assert(cnameFrontend.Type, check.Equals, "http")
+}
+
+func (s *S) TestSetCNameDuplicate(c *check.C) {
+	vRouter, err := router.Get("vulcand")
+	c.Assert(err, check.IsNil)
+
+	err = vRouter.AddBackend("myapp")
+	c.Assert(err, check.IsNil)
+	err = vRouter.AddRoute("myapp", "http://1.1.1.1:111")
+	c.Assert(err, check.IsNil)
+	err = vRouter.AddRoute("myapp", "http://2.2.2.2:222")
+	c.Assert(err, check.IsNil)
+	err = vRouter.SetCName("myapp.cname.example.com", "myapp")
+	c.Assert(err, check.IsNil)
+
+	err = vRouter.SetCName("myapp.cname.example.com", "myapp")
+	c.Assert(err, check.ErrorMatches, router.ErrRouteExists.Error())
 }
 
 func (s *S) TestUnsetCName(c *check.C) {
