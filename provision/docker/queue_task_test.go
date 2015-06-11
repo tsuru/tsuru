@@ -33,7 +33,8 @@ func (s *S) TestCreateBsContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer server.Stop()
 	config.Set("host", "127.0.0.1:8080")
-	config.Set("docker:bs-image", "myregistry/tsuru/bs")
+	config.Set("docker:bs:image", "myregistry/tsuru/bs")
+	config.Set("docker:bs:reporter-interval", 60)
 	var task runBs
 	err = task.createBsContainer(server.URL())
 	c.Assert(err, check.IsNil)
@@ -52,6 +53,43 @@ func (s *S) TestCreateBsContainer(c *check.C) {
 		"TSURU_ENDPOINT":         "http://127.0.0.1:8080/",
 		"TSURU_TOKEN":            "abc123",
 		"TSURU_SENTINEL_ENV_VAR": "TSURU_APPNAME",
+		"STATUS_INTERVAL":        "60",
+	}
+	gotEnv := parseEnvs(container.Config.Env)
+	_, ok := gotEnv["TSURU_TOKEN"]
+	c.Assert(ok, check.Equals, true)
+	gotEnv["TSURU_TOKEN"] = expectedEnv["TSURU_TOKEN"]
+	c.Assert(gotEnv, check.DeepEquals, expectedEnv)
+}
+
+func (s *S) TestCreateBsContainerUsingSocket(c *check.C) {
+	server, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer server.Stop()
+	config.Set("host", "127.0.0.1:8080")
+	config.Set("docker:bs:image", "myregistry/tsuru/bs")
+	config.Set("docker:bs:reporter-interval", 60)
+	config.Set("docker:bs:socket", "/tmp/docker.sock")
+	var task runBs
+	err = task.createBsContainer(server.URL())
+	c.Assert(err, check.IsNil)
+	client, err := docker.NewClient(server.URL())
+	c.Assert(err, check.IsNil)
+	containers, err := client.ListContainers(docker.ListContainersOptions{All: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 1)
+	container, err := client.InspectContainer(containers[0].ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(container.Name, check.Equals, "big-sibling")
+	c.Assert(container.HostConfig.Binds, check.DeepEquals, []string{"/tmp/docker.sock:/var/run/docker.sock:rw"})
+	c.Assert(container.Config.Image, check.Equals, "myregistry/tsuru/bs")
+	c.Assert(container.State.Running, check.Equals, true)
+	expectedEnv := map[string]string{
+		"DOCKER_ENDPOINT":        "unix:///var/run/docker.sock",
+		"TSURU_ENDPOINT":         "http://127.0.0.1:8080/",
+		"TSURU_TOKEN":            "abc123",
+		"TSURU_SENTINEL_ENV_VAR": "TSURU_APPNAME",
+		"STATUS_INTERVAL":        "60",
 	}
 	gotEnv := parseEnvs(container.Config.Env)
 	_, ok := gotEnv["TSURU_TOKEN"]

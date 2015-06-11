@@ -6,6 +6,7 @@ package docker
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -90,7 +91,7 @@ func (runBs) createBsContainer(dockerEndpoint string) error {
 	if err != nil {
 		return err
 	}
-	bsImage, _ := config.GetString("docker:bs-image")
+	bsImage, _ := config.GetString("docker:bs:image")
 	if bsImage == "" {
 		bsImage = "tsuru/bs"
 	}
@@ -98,24 +99,33 @@ func (runBs) createBsContainer(dockerEndpoint string) error {
 	if !strings.HasPrefix(tsuruEndpoint, "http://") && !strings.HasPrefix(tsuruEndpoint, "https://") {
 		tsuruEndpoint = "http://" + tsuruEndpoint
 	}
+	interval, _ := config.GetInt("docker:bs:reporter-interval")
 	tsuruEndpoint = strings.TrimRight(tsuruEndpoint, "/") + "/"
 	token, err := app.AuthScheme.AppLogin(app.InternalAppName)
 	if err != nil {
 		return err
 	}
 	sentinelEnvVar := "TSURU_APPNAME"
+	var hostConfig *docker.HostConfig
+	endpoint := dockerEndpoint
+	socket, _ := config.GetString("docker:bs:socket")
+	if socket != "" {
+		hostConfig = &docker.HostConfig{
+			Binds: []string{fmt.Sprintf("%s:/var/run/docker.sock:rw", socket)},
+		}
+		endpoint = "unix:///var/run/docker.sock"
+	}
 	env := []string{
-		"DOCKER_ENDPOINT=" + dockerEndpoint,
+		"DOCKER_ENDPOINT=" + endpoint,
 		"TSURU_ENDPOINT=" + tsuruEndpoint,
 		"TSURU_TOKEN=" + token.GetValue(),
 		"TSURU_SENTINEL_ENV_VAR=" + sentinelEnvVar,
+		"STATUS_INTERVAL=" + strconv.Itoa(interval),
 	}
 	opts := docker.CreateContainerOptions{
-		Name: "big-sibling",
-		Config: &docker.Config{
-			Image: bsImage,
-			Env:   env,
-		},
+		Name:       "big-sibling",
+		HostConfig: hostConfig,
+		Config:     &docker.Config{Image: bsImage, Env: env},
 	}
 	container, err := client.CreateContainer(opts)
 	if err == docker.ErrNoSuchImage {
@@ -129,7 +139,7 @@ func (runBs) createBsContainer(dockerEndpoint string) error {
 	if err != nil {
 		return err
 	}
-	return client.StartContainer(container.ID, nil)
+	return client.StartContainer(container.ID, hostConfig)
 }
 
 func (runBs) destroyMachine(id string) {
