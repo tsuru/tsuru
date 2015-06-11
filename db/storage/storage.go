@@ -5,6 +5,7 @@
 package storage
 
 import (
+	"runtime"
 	"sync"
 	"time"
 
@@ -12,7 +13,7 @@ import (
 )
 
 var (
-	session     *mgo.Session
+	sessions    = map[string]*mgo.Session{}
 	sessionLock sync.RWMutex
 )
 
@@ -34,7 +35,7 @@ func (c *Collection) Close() {
 	c.Collection.Database.Session.Close()
 }
 
-func open(addr, dbname string) (*mgo.Session, error) {
+func open(addr string) (*mgo.Session, error) {
 	dialInfo, err := mgo.ParseURL(addr)
 	if err != nil {
 		return nil, err
@@ -58,24 +59,30 @@ func open(addr, dbname string) (*mgo.Session, error) {
 // any failure.
 func Open(addr, dbname string) (storage *Storage, err error) {
 	sessionLock.RLock()
-	if session == nil {
+	if sessions[addr] == nil {
 		sessionLock.RUnlock()
 		sessionLock.Lock()
-		if session == nil {
-			session, err = open(addr, dbname)
+		if sessions[addr] == nil {
+			sessions[addr], err = open(addr)
 		}
 		sessionLock.Unlock()
+		if err != nil {
+			return
+		}
 	} else {
 		sessionLock.RUnlock()
 	}
-	if err != nil {
-		return
-	}
+	cloned := sessions[addr].Clone()
+	runtime.SetFinalizer(cloned, sessionFinalizer)
 	storage = &Storage{
-		session: session.Copy(),
+		session: cloned,
 		dbname:  dbname,
 	}
 	return
+}
+
+func sessionFinalizer(session *mgo.Session) {
+	session.Close()
 }
 
 // Close closes the storage, releasing the connection.
