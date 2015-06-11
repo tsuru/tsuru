@@ -209,17 +209,3 @@ func (s *S) TestLogs(c *check.C) {
 	logsc := strg.Collection("logs_myapp")
 	c.Assert(logs, check.DeepEquals, logsc)
 }
-
-func (s *S) TestLogsSourceIndex(c *check.C) {
-	strg, err := LogConn()
-	c.Assert(err, check.IsNil)
-	logs := strg.Logs("app1")
-	c.Assert(logs, HasIndex, []string{"source"})
-}
-
-func (s *S) TestLogsUnitIndex(c *check.C) {
-	strg, err := LogConn()
-	c.Assert(err, check.IsNil)
-	logs := strg.Logs("app1")
-	c.Assert(logs, HasIndex, []string{"unit"})
-}
