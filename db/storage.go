@@ -12,6 +12,8 @@
 package db
 
 import (
+	"fmt"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/hc"
@@ -24,6 +26,10 @@ const (
 )
 
 type Storage struct {
+	*storage.Storage
+}
+
+type LogStorage struct {
 	*storage.Storage
 }
 
@@ -40,28 +46,45 @@ func healthCheck() error {
 	return conn.Apps().Database.Session.Ping()
 }
 
-// conn reads the tsuru config and calls storage.Open to get a database connection.
+func dbConfig(prefix string) (string, string) {
+	url, _ := config.GetString(fmt.Sprintf("database:%surl", prefix))
+	if url == "" {
+		url, _ = config.GetString("database:url")
+		if url == "" {
+			url = DefaultDatabaseURL
+		}
+	}
+	dbname, _ := config.GetString(fmt.Sprintf("database:%sname", prefix))
+	if dbname == "" {
+		dbname, _ = config.GetString("database:name")
+		if dbname == "" {
+			dbname = DefaultDatabaseName
+		}
+	}
+	return url, dbname
+}
+
+// Conn reads the tsuru config and calls storage.Open to get a database connection.
 //
 // Most tsuru packages should probably use this function. storage.Open is intended for
 // use when supporting more than one database.
-func conn() (*storage.Storage, error) {
-	url, _ := config.GetString("database:url")
-	if url == "" {
-		url = DefaultDatabaseURL
-	}
-	dbname, _ := config.GetString("database:name")
-	if dbname == "" {
-		dbname = DefaultDatabaseName
-	}
-	return storage.Open(url, dbname)
-}
-
 func Conn() (*Storage, error) {
 	var (
 		strg Storage
 		err  error
 	)
-	strg.Storage, err = conn()
+	url, dbname := dbConfig("")
+	strg.Storage, err = storage.Open(url, dbname)
+	return &strg, err
+}
+
+func LogConn() (*LogStorage, error) {
+	var (
+		strg LogStorage
+		err  error
+	)
+	url, dbname := dbConfig("logdb-")
+	strg.Storage, err = storage.Open(url, dbname)
 	return &strg, err
 }
 
@@ -83,38 +106,6 @@ func (s *Storage) Deploys() *storage.Collection {
 // Platforms returns the platforms collection from MongoDB.
 func (s *Storage) Platforms() *storage.Collection {
 	return s.Collection("platforms")
-}
-
-// Logs returns the logs collection from MongoDB.
-func (s *Storage) Logs(appName string) *storage.Collection {
-	if appName == "" {
-		return nil
-	}
-	sourceIndex := mgo.Index{Key: []string{"source"}}
-	unitIndex := mgo.Index{Key: []string{"unit"}}
-	c := s.Collection("logs_" + appName)
-	meanSize := 200
-	maxLines := 5000
-	info := mgo.CollectionInfo{Capped: true, MaxBytes: meanSize * maxLines, MaxDocs: maxLines}
-	c.Create(&info)
-	c.EnsureIndex(sourceIndex)
-	c.EnsureIndex(unitIndex)
-	return c
-}
-
-func (s *Storage) LogsCollections() ([]*storage.Collection, error) {
-	var names []struct {
-		Name string
-	}
-	err := s.Apps().Find(nil).All(&names)
-	if err != nil {
-		return nil, err
-	}
-	var colls []*storage.Collection
-	for _, name := range names {
-		colls = append(colls, s.Collection("logs_"+name.Name))
-	}
-	return colls, nil
 }
 
 // Services returns the services collection from MongoDB.
@@ -165,4 +156,42 @@ func (s *Storage) Quota() *storage.Collection {
 	c := s.Collection("quota")
 	c.EnsureIndex(userIndex)
 	return c
+}
+
+var logCappedInfo = mgo.CollectionInfo{
+	Capped:         true,
+	MaxBytes:       200 * 5000,
+	MaxDocs:        5000,
+	DisableIdIndex: true,
+}
+
+// Logs returns the logs collection for one app from MongoDB.
+func (s *LogStorage) Logs(appName string) *storage.Collection {
+	if appName == "" {
+		return nil
+	}
+	c := s.Collection("logs_" + appName)
+	c.Create(&logCappedInfo)
+	return c
+}
+
+// LogsCollections returns logs collections for all apps from MongoDB.
+func (s *LogStorage) LogsCollections() ([]*storage.Collection, error) {
+	var names []struct {
+		Name string
+	}
+	conn, err := Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	err = conn.Apps().Find(nil).All(&names)
+	if err != nil {
+		return nil, err
+	}
+	var colls []*storage.Collection
+	for _, name := range names {
+		colls = append(colls, s.Collection("logs_"+name.Name))
+	}
+	return colls, nil
 }

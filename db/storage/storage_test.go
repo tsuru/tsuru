@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"gopkg.in/check.v1"
+	"gopkg.in/mgo.v2"
 )
 
 func Test(t *testing.T) { check.TestingT(t) }
@@ -24,7 +25,7 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 func (s *S) TearDownTest(c *check.C) {
-	session = nil
+	sessions = map[string]*mgo.Session{}
 }
 
 func (s *S) TestOpenConnectsToTheDatabase(c *check.C) {

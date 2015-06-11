@@ -80,7 +80,7 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(s.provisioner.Provisioned(&a), check.Equals, false)
 	err = auth.ReserveApp(s.user)
 	c.Assert(err, check.IsNil)
-	count, err := s.conn.Logs(app.Name).Count()
+	count, err := s.logConn.Logs(app.Name).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 0)
 	_, err = repository.Manager().GetRepository(a.Name)
@@ -1694,12 +1694,12 @@ func (s *S) TestLog(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer func() {
 		s.conn.Apps().Remove(bson.M{"name": a.Name})
-		s.conn.Logs(a.Name).DropCollection()
+		s.logConn.Logs(a.Name).DropCollection()
 	}()
 	err = a.Log("last log msg", "tsuru", "outermachine")
 	c.Assert(err, check.IsNil)
 	var logs []Applog
-	err = s.conn.Logs(a.Name).Find(nil).All(&logs)
+	err = s.logConn.Logs(a.Name).Find(nil).All(&logs)
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 1)
 	c.Assert(logs[0].Message, check.Equals, "last log msg")
@@ -1714,12 +1714,12 @@ func (s *S) TestLogShouldAddOneRecordByLine(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer func() {
 		s.conn.Apps().Remove(bson.M{"name": a.Name})
-		s.conn.Logs(a.Name).DropCollection()
+		s.logConn.Logs(a.Name).DropCollection()
 	}()
 	err = a.Log("last log msg\nfirst log", "source", "machine")
 	c.Assert(err, check.IsNil)
 	var logs []Applog
-	err = s.conn.Logs(a.Name).Find(nil).Sort("$natural").All(&logs)
+	err = s.logConn.Logs(a.Name).Find(nil).Sort("$natural").All(&logs)
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.HasLen, 2)
 	c.Assert(logs[0].Message, check.Equals, "last log msg")
@@ -1735,7 +1735,7 @@ func (s *S) TestLogShouldNotLogBlankLines(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = a.Log("", "", "")
 	c.Assert(err, check.IsNil)
-	count, err := s.conn.Logs(a.Name).Find(nil).Count()
+	count, err := s.logConn.Logs(a.Name).Find(nil).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 1)
 }
@@ -1763,7 +1763,7 @@ func (s *S) TestLogWithListeners(c *check.C) {
 	}()
 	err = a.Log("last log msg", "tsuru", "machine")
 	c.Assert(err, check.IsNil)
-	defer s.conn.Logs(a.Name).DropCollection()
+	defer s.logConn.Logs(a.Name).DropCollection()
 	done := make(chan bool, 1)
 	q := make(chan bool)
 	go func(quit chan bool) {

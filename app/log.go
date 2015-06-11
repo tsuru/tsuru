@@ -91,7 +91,7 @@ func notify(appName string, messages []interface{}) {
 
 // LogRemove removes the app log.
 func LogRemove(a *App) error {
-	conn, err := db.Conn()
+	conn, err := db.LogConn()
 	if err != nil {
 		return err
 	}

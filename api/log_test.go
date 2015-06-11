@@ -20,9 +20,10 @@ import (
 )
 
 type LogSuite struct {
-	conn  *db.Storage
-	token auth.Token
-	team  *auth.Team
+	conn    *db.Storage
+	logConn *db.LogStorage
+	token   auth.Token
+	team    *auth.Team
 }
 
 var _ = check.Suite(&LogSuite{})
@@ -47,11 +48,15 @@ func (s *LogSuite) SetUpSuite(c *check.C) {
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
+	s.logConn, err = db.LogConn()
+	c.Assert(err, check.IsNil)
 	s.createUserAndTeam(c)
 }
 
 func (s *LogSuite) TearDownSuite(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	s.conn.Close()
+	s.logConn.Close()
 }
 
 func (s *LogSuite) SetUpTest(c *check.C) {
@@ -70,7 +75,7 @@ func (s *LogSuite) TestLogRemoveAll(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = logRemove(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	count, err := s.conn.Logs(a.Name).Find(nil).Count()
+	count, err := s.logConn.Logs(a.Name).Find(nil).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 0)
 }
@@ -97,7 +102,7 @@ func (s *LogSuite) TestLogRemoveByApp(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err = logRemove(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	count, err := s.conn.Logs(a2.Name).Find(nil).Count()
+	count, err := s.logConn.Logs(a2.Name).Find(nil).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 1)
 }

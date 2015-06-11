@@ -31,6 +31,7 @@ func Test(t *testing.T) { check.TestingT(t) }
 
 type S struct {
 	conn        *db.Storage
+	logConn     *db.LogStorage
 	team        *auth.Team
 	user        *auth.User
 	token       auth.Token
@@ -92,6 +93,8 @@ func (s *S) SetUpSuite(c *check.C) {
 	err := config.ReadConfigFile("testdata/config.yaml")
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
+	s.logConn, err = db.LogConn()
+	c.Assert(err, check.IsNil)
 	s.createUserAndTeam(c)
 	s.provisioner = provisiontest.NewFakeProvisioner()
 	app.Provisioner = s.provisioner
@@ -106,6 +109,8 @@ func (s *S) SetUpSuite(c *check.C) {
 func (s *S) TearDownSuite(c *check.C) {
 	provision.RemovePool("test1")
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	s.conn.Close()
+	s.logConn.Close()
 }
 
 func (s *S) SetUpTest(c *check.C) {

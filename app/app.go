@@ -313,12 +313,17 @@ func Delete(app *App) error {
 	go func() {
 		defer ReleaseApplicationLock(appName)
 		wg.Wait()
+		logConn, err := db.LogConn()
+		if err != nil {
+			log.Errorf("Unable to delete app %s from db: %s", appName, err.Error())
+		}
+		defer logConn.Close()
 		conn, err := db.Conn()
 		if err != nil {
 			log.Errorf("Unable to delete app %s from db: %s", appName, err.Error())
 		}
 		defer conn.Close()
-		err = conn.Logs(appName).DropCollection()
+		err = logConn.Logs(appName).DropCollection()
 		if err != nil {
 			log.Errorf("Ignored error dropping logs collection for app %s: %s", appName, err.Error())
 		}
@@ -1115,7 +1120,7 @@ func (app *App) Log(message, source, unit string) error {
 	}
 	if len(logs) > 0 {
 		notify(app.Name, logs)
-		conn, err := db.Conn()
+		conn, err := db.LogConn()
 		if err != nil {
 			return err
 		}
@@ -1128,7 +1133,7 @@ func (app *App) Log(message, source, unit string) error {
 // LastLogs returns a list of the last `lines` log of the app, matching the
 // fields in the log instance received as an example.
 func (app *App) LastLogs(lines int, filterLog Applog) ([]Applog, error) {
-	conn, err := db.Conn()
+	conn, err := db.LogConn()
 	if err != nil {
 		return nil, err
 	}

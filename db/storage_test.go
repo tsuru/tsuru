@@ -155,28 +155,6 @@ func (s *S) TestPlatforms(c *check.C) {
 	c.Assert(plats, check.DeepEquals, platsc)
 }
 
-func (s *S) TestLogs(c *check.C) {
-	strg, err := Conn()
-	c.Assert(err, check.IsNil)
-	logs := strg.Logs("myapp")
-	logsc := strg.Collection("logs_myapp")
-	c.Assert(logs, check.DeepEquals, logsc)
-}
-
-func (s *S) TestLogsSourceIndex(c *check.C) {
-	strg, err := Conn()
-	c.Assert(err, check.IsNil)
-	logs := strg.Logs("app1")
-	c.Assert(logs, HasIndex, []string{"source"})
-}
-
-func (s *S) TestLogsUnitIndex(c *check.C) {
-	strg, err := Conn()
-	c.Assert(err, check.IsNil)
-	logs := strg.Logs("app1")
-	c.Assert(logs, HasIndex, []string{"unit"})
-}
-
 func (s *S) TestServices(c *check.C) {
 	strg, err := Conn()
 	c.Assert(err, check.IsNil)
@@ -222,4 +200,26 @@ func (s *S) TestQuotaOwnerIsUnique(c *check.C) {
 	c.Assert(err, check.IsNil)
 	quota := strg.Quota()
 	c.Assert(quota, HasUniqueIndex, []string{"owner"})
+}
+
+func (s *S) TestLogs(c *check.C) {
+	strg, err := LogConn()
+	c.Assert(err, check.IsNil)
+	logs := strg.Logs("myapp")
+	logsc := strg.Collection("logs_myapp")
+	c.Assert(logs, check.DeepEquals, logsc)
+}
+
+func (s *S) TestLogsSourceIndex(c *check.C) {
+	strg, err := LogConn()
+	c.Assert(err, check.IsNil)
+	logs := strg.Logs("app1")
+	c.Assert(logs, HasIndex, []string{"source"})
+}
+
+func (s *S) TestLogsUnitIndex(c *check.C) {
+	strg, err := LogConn()
+	c.Assert(err, check.IsNil)
+	logs := strg.Logs("app1")
+	c.Assert(logs, HasIndex, []string{"unit"})
 }
