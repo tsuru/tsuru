@@ -21,7 +21,10 @@ import (
 
 type routerFactory func(string) (Router, error)
 
-var ErrRouteNotFound = errors.New("Route not found")
+var (
+	ErrBackendNotFound = errors.New("Backend not found")
+	ErrRouteNotFound   = errors.New("Route not found")
+)
 
 var routers = make(map[string]routerFactory)
 

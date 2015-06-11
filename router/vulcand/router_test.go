@@ -147,6 +147,21 @@ func (s *S) TestRemoveBackend(c *check.C) {
 	c.Assert(frontends, check.HasLen, 0)
 }
 
+func (s *S) TestRemoveBackendNotExist(c *check.C) {
+	vRouter, err := router.Get("vulcand")
+	c.Assert(err, check.IsNil)
+
+	frontends, err := s.engine.GetFrontends()
+	c.Assert(err, check.IsNil)
+	c.Assert(frontends, check.HasLen, 0)
+	backends, err := s.engine.GetBackends()
+	c.Assert(err, check.IsNil)
+	c.Assert(backends, check.HasLen, 0)
+
+	err = vRouter.RemoveBackend("myapp")
+	c.Assert(err, check.ErrorMatches, router.ErrBackendNotFound.Error())
+}
+
 func (s *S) TestAddRoute(c *check.C) {
 	vRouter, err := router.Get("vulcand")
 	c.Assert(err, check.IsNil)
@@ -187,6 +202,21 @@ func (s *S) TestRemoveRoute(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(servers, check.HasLen, 1)
 	c.Assert(servers[0].URL, check.Equals, "http://2.2.2.2:222")
+}
+
+func (s *S) TestRemoveRouteNotExist(c *check.C) {
+	vRouter, err := router.Get("vulcand")
+	c.Assert(err, check.IsNil)
+
+	err = vRouter.AddBackend("myapp")
+	c.Assert(err, check.IsNil)
+
+	servers, err := s.engine.GetServers(engine.BackendKey{Id: "tsuru_myapp"})
+	c.Assert(err, check.IsNil)
+	c.Assert(servers, check.HasLen, 0)
+
+	err = vRouter.RemoveRoute("myapp", "http://1.1.1.1:111")
+	c.Assert(err, check.ErrorMatches, router.ErrRouteNotFound.Error())
 }
 
 func (s *S) TestSetCName(c *check.C) {
@@ -240,6 +270,18 @@ func (s *S) TestUnsetCName(c *check.C) {
 	c.Assert(frontends[0].Id, check.Equals, "tsuru_myapp.vulcand.example.com")
 }
 
+func (s *S) TestUnsetCNameNotExist(c *check.C) {
+	vRouter, err := router.Get("vulcand")
+	c.Assert(err, check.IsNil)
+
+	frontends, err := s.engine.GetFrontends()
+	c.Assert(err, check.IsNil)
+	c.Assert(frontends, check.HasLen, 0)
+
+	err = vRouter.UnsetCName("myapp.cname.example.com", "myapp")
+	c.Assert(err, check.ErrorMatches, router.ErrRouteNotFound.Error())
+}
+
 func (s *S) TestAddr(c *check.C) {
 	vRouter, err := router.Get("vulcand")
 	c.Assert(err, check.IsNil)
@@ -264,7 +306,7 @@ func (s *S) TestAddrNotExist(c *check.C) {
 	c.Assert(backends, check.HasLen, 0)
 
 	addr, err := vRouter.Addr("myapp")
-	c.Assert(err, check.ErrorMatches, "Object not found")
+	c.Assert(err, check.ErrorMatches, router.ErrRouteNotFound.Error())
 	c.Assert(addr, check.Equals, "")
 }
 
