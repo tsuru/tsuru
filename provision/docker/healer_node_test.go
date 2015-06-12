@@ -514,6 +514,8 @@ func (s *S) TestHealerHandleError(c *check.C) {
 	c.Assert(machines[0].Address, check.Equals, "localhost")
 
 	healingColl, err := healingCollection()
+	c.Assert(err, check.IsNil)
+	defer healingColl.Close()
 	var events []healingEvent
 	err = healingColl.Find(nil).All(&events)
 	c.Assert(err, check.IsNil)
@@ -542,6 +544,8 @@ func (s *S) TestHealerHandleErrorDoesntTriggerEventIfNotNeeded(c *check.C) {
 	waitTime := healer.HandleError(&node)
 	c.Assert(waitTime, check.Equals, time.Duration(20))
 	healingColl, err := healingCollection()
+	c.Assert(err, check.IsNil)
+	defer healingColl.Close()
 	var events []healingEvent
 	err = healingColl.Find(nil).All(&events)
 	c.Assert(err, check.IsNil)
@@ -554,6 +558,8 @@ func (s *S) TestHealerHandleErrorDoesntTriggerEventIfNotNeeded(c *check.C) {
 	waitTime = healer.HandleError(&node)
 	c.Assert(waitTime, check.Equals, time.Duration(20))
 	healingColl, err = healingCollection()
+	c.Assert(err, check.IsNil)
+	defer healingColl.Close()
 	err = healingColl.Find(nil).All(&events)
 	c.Assert(err, check.IsNil)
 	c.Assert(events, check.HasLen, 0)
@@ -564,6 +570,8 @@ func (s *S) TestHealerHandleErrorDoesntTriggerEventIfNotNeeded(c *check.C) {
 	waitTime = healer.HandleError(&node)
 	c.Assert(waitTime, check.Equals, time.Duration(20))
 	healingColl, err = healingCollection()
+	c.Assert(err, check.IsNil)
+	defer healingColl.Close()
 	err = healingColl.Find(nil).All(&events)
 	c.Assert(err, check.IsNil)
 	c.Assert(events, check.HasLen, 0)
@@ -596,6 +604,8 @@ func (s *S) TestHealerHandleErrorDoesntTriggerEventIfHealingCountTooLarge(c *che
 	waitTime := healer.HandleError(&nodes[7])
 	c.Assert(waitTime, check.Equals, time.Duration(20))
 	healingColl, err := healingCollection()
+	c.Assert(err, check.IsNil)
+	defer healingColl.Close()
 	var events []healingEvent
 	err = healingColl.Find(nil).All(&events)
 	c.Assert(err, check.IsNil)

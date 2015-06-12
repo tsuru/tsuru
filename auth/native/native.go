@@ -113,6 +113,7 @@ func (s NativeScheme) ResetPassword(user *auth.User, resetToken string) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	passToken, err := getPasswordToken(resetToken)
 	if err != nil {
 		return err

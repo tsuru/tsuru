@@ -27,6 +27,7 @@ func Platforms() ([]Platform, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer conn.Close()
 	err = conn.Platforms().Find(nil).All(&platforms)
 	return platforms, err
 }
@@ -48,6 +49,7 @@ func PlatformAdd(name string, args map[string]string, w io.Writer) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	err = conn.Platforms().Insert(p)
 	if err != nil {
 		if mgo.IsDup(err) {
@@ -88,6 +90,7 @@ func PlatformUpdate(name string, args map[string]string, w io.Writer) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	err = conn.Platforms().Find(bson.M{"_id": name}).One(&platform)
 	if err != nil {
 		if err == mgo.ErrNotFound {
@@ -125,6 +128,7 @@ func PlatformRemove(name string) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	apps, _ := conn.Apps().Find(bson.M{"framework": name}).Count()
 	if apps > 0 {
 		return errors.New("Platform has apps. You should remove them before remove the platform.")

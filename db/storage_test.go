@@ -99,6 +99,7 @@ func (s *S) TestHealthCheck(c *check.C) {
 func (s *S) TestUsers(c *check.C) {
 	strg, err := Conn()
 	c.Assert(err, check.IsNil)
+	defer strg.Close()
 	users := strg.Users()
 	usersc := strg.Collection("users")
 	c.Assert(users, check.DeepEquals, usersc)
@@ -108,6 +109,7 @@ func (s *S) TestUsers(c *check.C) {
 func (s *S) TestTokens(c *check.C) {
 	strg, err := Conn()
 	c.Assert(err, check.IsNil)
+	defer strg.Close()
 	tokens := strg.Tokens()
 	tokensc := strg.Collection("tokens")
 	c.Assert(tokens, check.DeepEquals, tokensc)
@@ -116,6 +118,7 @@ func (s *S) TestTokens(c *check.C) {
 func (s *S) TestPasswordTokens(c *check.C) {
 	strg, err := Conn()
 	c.Assert(err, check.IsNil)
+	defer strg.Close()
 	tokens := strg.PasswordTokens()
 	tokensc := strg.Collection("password_tokens")
 	c.Assert(tokens, check.DeepEquals, tokensc)
@@ -124,6 +127,7 @@ func (s *S) TestPasswordTokens(c *check.C) {
 func (s *S) TestUserActions(c *check.C) {
 	strg, err := Conn()
 	c.Assert(err, check.IsNil)
+	defer strg.Close()
 	actions := strg.UserActions()
 	actionsc := strg.Collection("user_actions")
 	c.Assert(actions, check.DeepEquals, actionsc)
@@ -132,6 +136,7 @@ func (s *S) TestUserActions(c *check.C) {
 func (s *S) TestApps(c *check.C) {
 	strg, err := Conn()
 	c.Assert(err, check.IsNil)
+	defer strg.Close()
 	apps := strg.Apps()
 	appsc := strg.Collection("apps")
 	c.Assert(apps, check.DeepEquals, appsc)
@@ -141,6 +146,7 @@ func (s *S) TestApps(c *check.C) {
 func (s *S) TestDeploys(c *check.C) {
 	strg, err := Conn()
 	c.Assert(err, check.IsNil)
+	defer strg.Close()
 	deploys := strg.Deploys()
 	deploysc := strg.Collection("deploys")
 	c.Assert(deploys, check.DeepEquals, deploysc)
@@ -150,6 +156,7 @@ func (s *S) TestDeploys(c *check.C) {
 func (s *S) TestPlatforms(c *check.C) {
 	strg, err := Conn()
 	c.Assert(err, check.IsNil)
+	defer strg.Close()
 	plats := strg.Platforms()
 	platsc := strg.Collection("platforms")
 	c.Assert(plats, check.DeepEquals, platsc)
@@ -158,6 +165,7 @@ func (s *S) TestPlatforms(c *check.C) {
 func (s *S) TestServices(c *check.C) {
 	strg, err := Conn()
 	c.Assert(err, check.IsNil)
+	defer strg.Close()
 	services := strg.Services()
 	servicesc := strg.Collection("services")
 	c.Assert(services, check.DeepEquals, servicesc)
@@ -166,6 +174,7 @@ func (s *S) TestServices(c *check.C) {
 func (s *S) TestPlans(c *check.C) {
 	storage, err := Conn()
 	c.Assert(err, check.IsNil)
+	defer storage.Close()
 	plans := storage.Plans()
 	plansc := storage.Collection("plans")
 	c.Assert(plans, check.DeepEquals, plansc)
@@ -174,6 +183,7 @@ func (s *S) TestPlans(c *check.C) {
 func (s *S) TestServiceInstances(c *check.C) {
 	strg, err := Conn()
 	c.Assert(err, check.IsNil)
+	defer strg.Close()
 	serviceInstances := strg.ServiceInstances()
 	serviceInstancesc := strg.Collection("service_instances")
 	c.Assert(serviceInstances, check.DeepEquals, serviceInstancesc)
@@ -182,6 +192,7 @@ func (s *S) TestServiceInstances(c *check.C) {
 func (s *S) TestMethodTeamsShouldReturnTeamsCollection(c *check.C) {
 	strg, err := Conn()
 	c.Assert(err, check.IsNil)
+	defer strg.Close()
 	teams := strg.Teams()
 	teamsc := strg.Collection("teams")
 	c.Assert(teams, check.DeepEquals, teamsc)
@@ -190,6 +201,7 @@ func (s *S) TestMethodTeamsShouldReturnTeamsCollection(c *check.C) {
 func (s *S) TestQuota(c *check.C) {
 	strg, err := Conn()
 	c.Assert(err, check.IsNil)
+	defer strg.Close()
 	quota := strg.Quota()
 	quotac := strg.Collection("quota")
 	c.Assert(quota, check.DeepEquals, quotac)
@@ -198,6 +210,7 @@ func (s *S) TestQuota(c *check.C) {
 func (s *S) TestQuotaOwnerIsUnique(c *check.C) {
 	strg, err := Conn()
 	c.Assert(err, check.IsNil)
+	defer strg.Close()
 	quota := strg.Quota()
 	c.Assert(quota, HasUniqueIndex, []string{"owner"})
 }
@@ -205,6 +218,7 @@ func (s *S) TestQuotaOwnerIsUnique(c *check.C) {
 func (s *S) TestLogs(c *check.C) {
 	strg, err := LogConn()
 	c.Assert(err, check.IsNil)
+	defer strg.Close()
 	logs := strg.Logs("myapp")
 	logsc := strg.Collection("logs_myapp")
 	c.Assert(logs, check.DeepEquals, logsc)

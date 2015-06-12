@@ -1264,6 +1264,7 @@ func (app *App) SetUpdatePlatform(check bool) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	return conn.Apps().Update(
 		bson.M{"name": app.Name},
 		bson.M{"$set": bson.M{"updateplatform": check}},

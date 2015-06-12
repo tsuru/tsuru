@@ -186,12 +186,16 @@ func collection() (*storage.Collection, error) {
 
 func collectionEnsureIdx() (*storage.Collection, error) {
 	coll, err := collection()
+	if err != nil {
+		return nil, err
+	}
 	index := mgo.Index{
 		Key:    []string{"address"},
 		Unique: true,
 	}
 	err = coll.EnsureIndex(index)
 	if err != nil {
+		coll.Close()
 		return nil, fmt.Errorf(`Could not create index on address for machines collection.
 This can be caused by multiple machines with the same address, please run
 "tsuru-admin machine-list" to check for duplicated entries and "tsuru-admin

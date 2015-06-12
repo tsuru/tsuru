@@ -60,6 +60,7 @@ func (s *S) TestCreateMachineDupAddr(c *check.C) {
 func (s *S) TestCreateMachineEnsureIdx(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
+	defer conn.Close()
 	coll := conn.Collection("iaas_machines")
 	c.Assert(err, check.IsNil)
 	coll.DropIndex("address")
@@ -77,16 +78,18 @@ func (s *S) TestCreateMachineEnsureIdx(c *check.C) {
 func (s *S) TestCollectionEnsureIdxDupEntries(c *check.C) {
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
+	defer conn.Close()
 	coll := conn.Collection("iaas_machines")
 	c.Assert(err, check.IsNil)
 	coll.DropIndex("address")
 	err = coll.Insert(Machine{Id: "id1", Address: "addr1"}, Machine{Id: "id2", Address: "addr1"})
 	c.Assert(err, check.IsNil)
-	_, err = collectionEnsureIdx()
+	collEnsure, err := collectionEnsureIdx()
 	c.Assert(err, check.ErrorMatches, `(?s)Could not create index on address for machines collection.*`)
 	coll.RemoveAll(nil)
-	_, err = collectionEnsureIdx()
+	collEnsure, err = collectionEnsureIdx()
 	c.Assert(err, check.IsNil)
+	defer collEnsure.Close()
 }
 
 func (s *S) TestCreateMachineIaaSInParams(c *check.C) {

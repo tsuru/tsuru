@@ -34,6 +34,10 @@ func (s *ExternalSuite) SetUpTest(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Collection("router").Database)
 }
 
+func (s *ExternalSuite) TearDownTest(c *check.C) {
+	s.conn.Close()
+}
+
 func (s *ExternalSuite) TestSwap(c *check.C) {
 	backend1 := "b1"
 	backend2 := "b2"

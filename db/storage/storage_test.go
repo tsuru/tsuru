@@ -41,6 +41,7 @@ func (s *S) TestOpenCopiesConnection(c *check.C) {
 	defer storage.session.Close()
 	storage2, err := Open("127.0.0.1:27017", "tsuru_storage_test")
 	c.Assert(err, check.IsNil)
+	defer storage2.session.Close()
 	c.Assert(storage.session, check.Not(check.Equals), storage2.session)
 }
 

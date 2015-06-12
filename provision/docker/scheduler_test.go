@@ -47,6 +47,7 @@ func (s *S) TestSchedulerSchedule(c *check.C) {
 	err = provision.AddTeamsToPool(p.Name, p.Teams)
 	defer provision.RemovePool(p.Name)
 	contColl := s.p.collection()
+	defer contColl.Close()
 	err = contColl.Insert(
 		cont1, cont2, cont3,
 	)
@@ -89,6 +90,7 @@ func (s *S) TestSchedulerScheduleByTeamOwner(c *check.C) {
 	err = provision.AddTeamsToPool(p.Name, p.Teams)
 	c.Assert(err, check.IsNil)
 	contColl := s.p.collection()
+	defer contColl.Close()
 	err = contColl.Insert(cont1)
 	c.Assert(err, check.IsNil)
 	defer contColl.RemoveAll(bson.M{"name": cont1.Name})
@@ -117,6 +119,7 @@ func (s *S) TestSchedulerScheduleByTeams(c *check.C) {
 	err = provision.AddTeamsToPool(p.Name, p.Teams)
 	c.Assert(err, check.IsNil)
 	contColl := s.p.collection()
+	defer contColl.Close()
 	err = contColl.Insert(cont1)
 	c.Assert(err, check.IsNil)
 	defer contColl.RemoveAll(bson.M{"name": cont1.Name})
@@ -151,6 +154,7 @@ func (s *S) TestSchedulerScheduleNoName(c *check.C) {
 	err = provision.AddTeamsToPool(p.Name, p.Teams)
 	defer provision.RemovePool(p.Name)
 	contColl := s.p.collection()
+	defer contColl.Close()
 	err = contColl.Insert(
 		cont1, cont2, cont3,
 	)
@@ -186,6 +190,7 @@ func (s *S) TestSchedulerScheduleFallback(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(p.Name)
 	contColl := s.p.collection()
+	defer contColl.Close()
 	err = contColl.Insert(cont1)
 	c.Assert(err, check.IsNil)
 	defer contColl.RemoveAll(bson.M{"name": cont1.Name})
@@ -209,6 +214,7 @@ func (s *S) TestSchedulerNoFallback(c *check.C) {
 	defer s.storage.Apps().Remove(bson.M{"name": a.Name})
 	cont1 := container{ID: "1", Name: "bill", AppName: a.Name}
 	contColl := s.p.collection()
+	defer contColl.Close()
 	err = contColl.Insert(cont1)
 	c.Assert(err, check.IsNil)
 	defer contColl.Remove(bson.M{"name": cont1.Name})
@@ -294,6 +300,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 	s.p.cluster = clusterInstance
 	cont1 := container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "server1"}
 	contColl := s.p.collection()
+	defer contColl.Close()
 	defer contColl.RemoveAll(bson.M{"appname": "skyrim"})
 	defer contColl.RemoveAll(bson.M{"appname": "oblivion"})
 	err = contColl.Insert(cont1)
@@ -341,6 +348,7 @@ func (s *S) TestChooseNodeDistributesNodesEqually(c *check.C) {
 		{Address: "http://server4:1234"},
 	}
 	contColl := s.p.collection()
+	defer contColl.Close()
 	defer contColl.RemoveAll(bson.M{"appname": "coolapp9"})
 	cont1 := container{ID: "pre1", Name: "existingUnit1", AppName: "coolapp9", HostAddr: "server1"}
 	err := contColl.Insert(cont1)
@@ -385,6 +393,7 @@ func (s *S) TestChooseNodeDistributesNodesEquallyDifferentApps(c *check.C) {
 		{Address: "http://server2:1234"},
 	}
 	contColl := s.p.collection()
+	defer contColl.Close()
 	defer contColl.RemoveAll(bson.M{"appname": "skyrim"})
 	defer contColl.RemoveAll(bson.M{"appname": "oblivion"})
 	cont1 := container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "server1"}
@@ -429,6 +438,7 @@ func (s *S) TestChooseContainerToBeRemoved(c *check.C) {
 		{Address: "http://server2:1234"},
 	}
 	contColl := s.p.collection()
+	defer contColl.Close()
 	defer contColl.RemoveAll(bson.M{"appname": "coolapp9"})
 	cont1 := container{
 		ID:       "pre1",
@@ -459,6 +469,7 @@ func (s *S) TestChooseContainerToBeRemoved(c *check.C) {
 
 func (s *S) TestGetContainerFromHost(c *check.C) {
 	contColl := s.p.collection()
+	defer contColl.Close()
 	defer contColl.RemoveAll(bson.M{"appname": "coolapp9"})
 	cont1 := container{
 		ID:       "pre1",
@@ -497,6 +508,7 @@ func (s *S) TestGetRemovableContainer(c *check.C) {
 	err = provision.AddTeamsToPool(p.Name, p.Teams)
 	defer provision.RemovePool(p.Name)
 	contColl := s.p.collection()
+	defer contColl.Close()
 	err = contColl.Insert(
 		cont1, cont2, cont3, cont4,
 	)
@@ -551,6 +563,7 @@ func (s *S) TestChooseContainerToBeRemovedMultipleApps(c *check.C) {
 		{Address: "http://server2:1234"},
 	}
 	contColl := s.p.collection()
+	defer contColl.Close()
 	cont1 := container{ID: "pre1", AppName: "coolapp1", HostAddr: "server1"}
 	err := contColl.Insert(cont1)
 	c.Assert(err, check.IsNil)
