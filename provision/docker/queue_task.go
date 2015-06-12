@@ -106,14 +106,25 @@ func (runBs) createBsContainer(dockerEndpoint string) error {
 		return err
 	}
 	sentinelEnvVar := "TSURU_APPNAME"
-	var hostConfig *docker.HostConfig
+	var hostConfig docker.HostConfig
 	endpoint := dockerEndpoint
 	socket, _ := config.GetString("docker:bs:socket")
 	if socket != "" {
-		hostConfig = &docker.HostConfig{
-			Binds: []string{fmt.Sprintf("%s:/var/run/docker.sock:rw", socket)},
-		}
+		hostConfig.Binds = []string{fmt.Sprintf("%s:/var/run/docker.sock:rw", socket)}
 		endpoint = "unix:///var/run/docker.sock"
+	}
+	sysLogInternalPort, _ := config.GetInt("docker:bs:syslog-internal-port")
+	if sysLogInternalPort == 0 {
+		sysLogInternalPort = 514
+	}
+	sysLogExternalPort := getBsSysLogPort()
+	hostConfig.PortBindings = map[docker.Port][]docker.PortBinding{
+		docker.Port(strconv.Itoa(sysLogInternalPort) + "/udp"): {
+			docker.PortBinding{
+				HostIP:   "0.0.0.0",
+				HostPort: strconv.Itoa(sysLogExternalPort),
+			},
+		},
 	}
 	env := []string{
 		"DOCKER_ENDPOINT=" + endpoint,
@@ -121,11 +132,18 @@ func (runBs) createBsContainer(dockerEndpoint string) error {
 		"TSURU_TOKEN=" + token.GetValue(),
 		"TSURU_SENTINEL_ENV_VAR=" + sentinelEnvVar,
 		"STATUS_INTERVAL=" + strconv.Itoa(interval),
+		"SYSLOG_LISTEN_ADDRESS=" + "udp://0.0.0.0:" + strconv.Itoa(sysLogInternalPort),
 	}
 	opts := docker.CreateContainerOptions{
 		Name:       "big-sibling",
-		HostConfig: hostConfig,
-		Config:     &docker.Config{Image: bsImage, Env: env},
+		HostConfig: &hostConfig,
+		Config: &docker.Config{
+			Image: bsImage,
+			Env:   env,
+			ExposedPorts: map[docker.Port]struct{}{
+				docker.Port(strconv.Itoa(sysLogExternalPort) + "/udp"): {},
+			},
+		},
 	}
 	container, err := client.CreateContainer(opts)
 	if err == docker.ErrNoSuchImage {
@@ -139,7 +157,15 @@ func (runBs) createBsContainer(dockerEndpoint string) error {
 	if err != nil {
 		return err
 	}
-	return client.StartContainer(container.ID, hostConfig)
+	return client.StartContainer(container.ID, &hostConfig)
+}
+
+func getBsSysLogPort() int {
+	bsPort, _ := config.GetInt("docker:bs:syslog-external-port")
+	if bsPort == 0 {
+		bsPort = 1514
+	}
+	return bsPort
 }
 
 func (runBs) destroyMachine(id string) {
