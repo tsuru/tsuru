@@ -444,6 +444,7 @@ func (s *S) TestChooseNodeDistributesNodesEquallyDifferentProcesses(c *check.C) 
 		{Address: "http://server2:1234"},
 	}
 	contColl := s.p.collection()
+	defer contColl.Close()
 	defer contColl.RemoveAll(bson.M{"appname": "skyrim"})
 	cont1 := container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "server1", ProcessName: "web"}
 	err := contColl.Insert(cont1)
@@ -524,6 +525,7 @@ func (s *S) TestChooseContainerToBeRemoved(c *check.C) {
 
 func (s *S) TestAggregateContainersByHostAppProcess(c *check.C) {
 	contColl := s.p.collection()
+	defer contColl.Close()
 	cont := container{ID: "pre1", AppName: "app1", HostAddr: "server1", ProcessName: "web"}
 	err := contColl.Insert(cont)
 	c.Assert(err, check.IsNil)
@@ -550,6 +552,7 @@ func (s *S) TestChooseContainerToBeRemovedMultipleProcesses(c *check.C) {
 		{Address: "http://server2:1234"},
 	}
 	contColl := s.p.collection()
+	defer contColl.Close()
 	cont1 := container{ID: "pre1", AppName: "coolapp9", HostAddr: "server1", ProcessName: "web"}
 	err := contColl.Insert(cont1)
 	c.Assert(err, check.IsNil)
@@ -600,6 +603,7 @@ func (s *S) TestGetContainerFromHost(c *check.C) {
 
 func (s *S) TestGetContainerFromHostEmptyProcess(c *check.C) {
 	contColl := s.p.collection()
+	defer contColl.Close()
 	err := contColl.Insert(map[string]string{"id": "pre1", "name": "unit1", "appname": "coolappX", "hostaddr": "server1"})
 	c.Assert(err, check.Equals, nil)
 	err = contColl.Insert(map[string]string{"id": "pre2", "name": "unit1", "appname": "coolappX", "hostaddr": "server2", "processname": ""})

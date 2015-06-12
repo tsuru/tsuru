@@ -478,6 +478,7 @@ func (s *S) TestRunContainerHealerDoesntHealWhenContainerIsRunning(c *check.C) {
 	toMoveCont := cont[0]
 	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-2 * time.Minute)
 	coll := p.collection()
+	defer coll.Close()
 	err = coll.Update(bson.M{"id": toMoveCont.ID}, toMoveCont)
 	c.Assert(err, check.IsNil)
 
@@ -485,6 +486,8 @@ func (s *S) TestRunContainerHealerDoesntHealWhenContainerIsRunning(c *check.C) {
 	healer.runContainerHealerOnce()
 
 	healingColl, err := healingCollection()
+	c.Assert(err, check.IsNil)
+	defer healingColl.Close()
 	var events []healingEvent
 	err = healingColl.Find(nil).All(&events)
 	c.Assert(err, check.IsNil)

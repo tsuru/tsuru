@@ -824,6 +824,7 @@ func (s *S) TestProvisionerRemoveUnitsEmptyProcess(c *check.C) {
 	err = provision.AddTeamsToPool(p.Name, p.Teams)
 	c.Assert(err, check.IsNil)
 	contColl := s.p.collection()
+	defer contColl.Close()
 	err = contColl.Insert(cont1)
 	c.Assert(err, check.IsNil)
 	scheduler := segregatedScheduler{provisioner: s.p}
@@ -922,6 +923,7 @@ func (s *S) TestProvisionerRemoveUnitsInvalidProcess(c *check.C) {
 	err = provision.AddTeamsToPool(p.Name, p.Teams)
 	c.Assert(err, check.IsNil)
 	contColl := s.p.collection()
+	defer contColl.Close()
 	err = contColl.Insert(cont1)
 	c.Assert(err, check.IsNil)
 	scheduler := segregatedScheduler{provisioner: s.p}

@@ -82,6 +82,7 @@ func (s *S) TestRebalanceContainersManyAppsSegStress(c *check.C) {
 		}
 		conn, err := db.Conn()
 		c.Assert(err, check.IsNil)
+		defer conn.Close()
 		err = conn.Apps().Insert(appStruct)
 		c.Assert(err, check.IsNil)
 		defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
