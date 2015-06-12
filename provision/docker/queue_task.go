@@ -106,7 +106,7 @@ func (runBs) createBsContainer(dockerEndpoint string) error {
 		return err
 	}
 	sentinelEnvVar := "TSURU_APPNAME"
-	var hostConfig docker.HostConfig
+	hostConfig := docker.HostConfig{RestartPolicy: docker.AlwaysRestart()}
 	endpoint := dockerEndpoint
 	socket, _ := config.GetString("docker:bs:socket")
 	if socket != "" {
