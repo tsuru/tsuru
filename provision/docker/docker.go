@@ -498,7 +498,7 @@ func (c *container) stop(p *dockerProvisioner) error {
 	return nil
 }
 
-func (c *container) start(p *dockerProvisioner, isDeploy bool) error {
+func (c *container) start(p *dockerProvisioner, app provision.App, isDeploy bool) error {
 	port, err := getPort()
 	if err != nil {
 		return err
@@ -507,7 +507,11 @@ func (c *container) start(p *dockerProvisioner, isDeploy bool) error {
 	sharedMount, _ := config.GetString("docker:sharedfs:mountpoint")
 	sharedIsolation, _ := config.GetBool("docker:sharedfs:app-isolation")
 	sharedSalt, _ := config.GetString("docker:sharedfs:salt")
-	hostConfig := docker.HostConfig{}
+	hostConfig := docker.HostConfig{
+		Memory:     app.GetMemory(),
+		MemorySwap: app.GetMemory() + app.GetSwap(),
+		CPUShares:  int64(app.GetCpuShare()),
+	}
 	if !isDeploy {
 		hostConfig.RestartPolicy = docker.AlwaysRestart()
 		hostConfig.PortBindings = map[docker.Port][]docker.PortBinding{

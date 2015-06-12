@@ -299,7 +299,7 @@ func (p *dockerProvisioner) Start(app provision.App, process string) error {
 		return errors.New(fmt.Sprintf("Got error while getting app containers: %s", err))
 	}
 	return runInContainers(containers, func(c *container, _ chan *container) error {
-		err := c.start(p, false)
+		err := c.start(p, app, false)
 		if err != nil {
 			return err
 		}

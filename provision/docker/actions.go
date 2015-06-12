@@ -205,7 +205,7 @@ var startContainer = action.Action{
 		c := ctx.Previous.(container)
 		log.Debugf("starting container %s", c.ID)
 		args := ctx.Params[0].(runContainerActionsArgs)
-		err := c.start(args.provisioner, args.isDeploy)
+		err := c.start(args.provisioner, args.app, args.isDeploy)
 		if err != nil {
 			log.Errorf("error on start container %s - %s", c.ID, err)
 			return nil, err

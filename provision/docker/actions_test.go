@@ -416,6 +416,7 @@ func (s *S) TestStartContainerForward(c *check.C) {
 	cont := *conta
 	context := action.FWContext{Previous: cont, Params: []interface{}{runContainerActionsArgs{
 		provisioner: s.p,
+		app:         provisiontest.NewFakeApp("myapp", "python", 1),
 	}}}
 	r, err := startContainer.Forward(context)
 	c.Assert(err, check.IsNil)
