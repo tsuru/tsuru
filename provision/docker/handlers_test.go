@@ -429,8 +429,9 @@ func (s *HandlersSuite) TestListContainersByHostHandler(c *check.C) {
 	var result []container
 	var err error
 	mainDockerProvisioner.cluster, err = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
-	coll := mainDockerProvisioner.collection()
 	c.Assert(err, check.IsNil)
+	coll := mainDockerProvisioner.collection()
+	defer coll.Close()
 	err = coll.Insert(container{ID: "blabla", Type: "python", HostAddr: "http://cittavld1182.globoi.com"})
 	c.Assert(err, check.IsNil)
 	defer coll.Remove(bson.M{"id": "blabla"})
@@ -458,6 +459,7 @@ func (s *HandlersSuite) TestListContainersByAppHandler(c *check.C) {
 	var err error
 	mainDockerProvisioner.cluster, err = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
 	coll := mainDockerProvisioner.collection()
+	defer coll.Close()
 	err = coll.Insert(container{ID: "blabla", AppName: "appbla", HostAddr: "http://cittavld1182.globoi.com"})
 	c.Assert(err, check.IsNil)
 	defer coll.Remove(bson.M{"id": "blabla"})

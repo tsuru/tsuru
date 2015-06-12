@@ -158,6 +158,7 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	n, err := conn.ServiceInstances().Find(bson.M{"service_name": s.Name}).Count()
 	if err != nil {
 		return err
@@ -189,6 +190,7 @@ func getServiceAndTeam(serviceName string, teamName string, u *auth.User) (*serv
 	if err != nil {
 		return nil, nil, err
 	}
+	defer conn.Close()
 	err = conn.Teams().Find(bson.M{"_id": teamName}).One(t)
 	if err != nil {
 		return nil, nil, &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
@@ -216,6 +218,7 @@ func grantServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) er
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	return conn.Services().Update(bson.M{"_id": service.Name}, service)
 }
 
@@ -243,6 +246,7 @@ func revokeServiceAccess(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 	return conn.Services().Update(bson.M{"_id": service.Name}, service)
 }
 

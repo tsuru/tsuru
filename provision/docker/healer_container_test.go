@@ -144,6 +144,7 @@ func (s *S) TestRunContainerHealer(c *check.C) {
 	toMoveCont := containers[1]
 	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-2 * time.Minute)
 	coll := p.collection()
+	defer coll.Close()
 	err = coll.Update(bson.M{"id": toMoveCont.ID}, toMoveCont)
 	c.Assert(err, check.IsNil)
 
@@ -161,6 +162,8 @@ func (s *S) TestRunContainerHealer(c *check.C) {
 	c.Assert(hosts[1], check.Equals, "localhost")
 
 	healingColl, err := healingCollection()
+	c.Assert(err, check.IsNil)
+	defer healingColl.Close()
 	var events []healingEvent
 	err = healingColl.Find(nil).All(&events)
 	c.Assert(err, check.IsNil)
@@ -231,6 +234,7 @@ func (s *S) TestRunContainerHealerShutdown(c *check.C) {
 	toMoveCont := containers[1]
 	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-2 * time.Minute)
 	coll := p.collection()
+	defer coll.Close()
 	err = coll.Update(bson.M{"id": toMoveCont.ID}, toMoveCont)
 	c.Assert(err, check.IsNil)
 
@@ -328,6 +332,8 @@ func (s *S) TestRunContainerHealerConcurrency(c *check.C) {
 	c.Assert(hosts[1], check.Equals, "localhost")
 
 	healingColl, err := healingCollection()
+	c.Assert(err, check.IsNil)
+	defer healingColl.Close()
 	var events []healingEvent
 	err = healingColl.Find(nil).All(&events)
 	c.Assert(err, check.IsNil)
@@ -411,6 +417,8 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *check.C) {
 	c.Assert(hosts[1], check.Equals, "localhost")
 
 	healingColl, err := healingCollection()
+	c.Assert(err, check.IsNil)
+	defer healingColl.Close()
 	var events []healingEvent
 	err = healingColl.Find(nil).All(&events)
 	c.Assert(err, check.IsNil)
@@ -529,6 +537,7 @@ func (s *S) TestRunContainerHealerDoesntHealWhenContainerIsRestarting(c *check.C
 	toMoveCont := cont[0]
 	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-2 * time.Minute)
 	coll := p.collection()
+	defer coll.Close()
 	err = coll.Update(bson.M{"id": toMoveCont.ID}, toMoveCont)
 	c.Assert(err, check.IsNil)
 
@@ -536,6 +545,8 @@ func (s *S) TestRunContainerHealerDoesntHealWhenContainerIsRestarting(c *check.C
 	healer.runContainerHealerOnce()
 
 	healingColl, err := healingCollection()
+	c.Assert(err, check.IsNil)
+	defer healingColl.Close()
 	var events []healingEvent
 	err = healingColl.Find(nil).All(&events)
 	c.Assert(err, check.IsNil)
@@ -597,6 +608,7 @@ func (s *S) TestRunContainerHealerWithError(c *check.C) {
 	toMoveCont := containers[1]
 	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-2 * time.Minute)
 	coll := p.collection()
+	defer coll.Close()
 	err = coll.Update(bson.M{"id": toMoveCont.ID}, toMoveCont)
 	c.Assert(err, check.IsNil)
 
@@ -614,6 +626,8 @@ func (s *S) TestRunContainerHealerWithError(c *check.C) {
 	c.Assert(hosts[1], check.Equals, "127.0.0.1")
 
 	healingColl, err := healingCollection()
+	c.Assert(err, check.IsNil)
+	defer healingColl.Close()
 	var events []healingEvent
 	err = healingColl.Find(nil).All(&events)
 	c.Assert(err, check.IsNil)
@@ -641,12 +655,15 @@ func (s *S) TestRunContainerHealerMaxCounterExceeded(c *check.C) {
 	toMoveCont := conts[7]
 	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-2 * time.Minute)
 	coll := s.p.collection()
+	defer coll.Close()
 	err := coll.Insert(toMoveCont)
 	c.Assert(err, check.IsNil)
 	healer := containerHealer{provisioner: s.p}
 	err = healer.healContainerIfNeeded(toMoveCont)
 	c.Assert(err, check.ErrorMatches, "Containers healing: number of healings for container cont8 in the last 30 minutes exceeds limit of 3: 7")
 	healingColl, err := healingCollection()
+	c.Assert(err, check.IsNil)
+	defer healingColl.Close()
 	var events []healingEvent
 	err = healingColl.Find(nil).All(&events)
 	c.Assert(err, check.IsNil)

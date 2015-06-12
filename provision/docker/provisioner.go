@@ -181,7 +181,9 @@ func (p *dockerProvisioner) cloneProvisioner(ignoredContainers []container) (*do
 func (p *dockerProvisioner) stopDryMode() {
 	if p.isDryMode {
 		p.cluster.StopDryMode()
-		p.collection().DropCollection()
+		coll := p.collection()
+		defer coll.Close()
+		coll.DropCollection()
 	}
 }
 

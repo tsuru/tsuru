@@ -542,6 +542,7 @@ func (s *S) TestProvisionerDestroy(c *check.C) {
 	err = s.p.Destroy(app)
 	c.Assert(err, check.IsNil)
 	coll := s.p.collection()
+	defer coll.Close()
 	count, err := coll.Find(bson.M{"appname": cont.AppName}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 0)
@@ -588,6 +589,7 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 	err = s.p.Destroy(&a)
 	c.Assert(err, check.IsNil)
 	coll := s.p.collection()
+	defer coll.Close()
 	count, err := coll.Find(bson.M{"appname": a.Name}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 0)
@@ -768,6 +770,7 @@ func (s *S) TestProvisionerRemoveUnits(c *check.C) {
 	err = provision.AddTeamsToPool(p.Name, p.Teams)
 	defer provision.RemovePool(p.Name)
 	contColl := s.p.collection()
+	defer contColl.Close()
 	err = contColl.Insert(
 		cont1, cont2, cont3,
 	)
@@ -871,6 +874,7 @@ func (s *S) TestProvisionerRemoveUnitsTooManyUnits(c *check.C) {
 	err = provision.AddTeamsToPool(p.Name, p.Teams)
 	defer provision.RemovePool(p.Name)
 	contColl := s.p.collection()
+	defer contColl.Close()
 	err = contColl.Insert(
 		cont1, cont2, cont3,
 	)
@@ -1643,6 +1647,7 @@ func (s *S) TestRegisterUnitSavesCustomData(c *check.C) {
 	c.Assert(err, check.IsNil)
 	dataColl, err := imageCustomDataColl()
 	c.Assert(err, check.IsNil)
+	defer dataColl.Close()
 	var customData map[string]interface{}
 	err = dataColl.FindId(container.BuildingImage).One(&customData)
 	c.Assert(err, check.IsNil)

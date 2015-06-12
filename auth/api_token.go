@@ -6,6 +6,7 @@ package auth
 
 import (
 	"github.com/tsuru/tsuru/db"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -47,7 +48,10 @@ func getAPIToken(header string) (*APIToken, error) {
 	}
 	err = conn.Users().Find(bson.M{"apikey": token}).One(&t)
 	if err != nil {
-		return nil, ErrInvalidToken
+		if err == mgo.ErrNotFound {
+			return nil, ErrInvalidToken
+		}
+		return nil, err
 	}
 	return &t, nil
 }

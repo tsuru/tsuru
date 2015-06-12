@@ -90,6 +90,7 @@ func (evt *autoScaleEvent) update(action, reason string) error {
 	if err != nil {
 		return err
 	}
+	defer coll.Close()
 	return coll.UpdateId(evt.ID, evt)
 }
 
@@ -118,6 +119,7 @@ func listAutoScaleEvents(skip, limit int) ([]autoScaleEvent, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer coll.Close()
 	query := coll.Find(nil).Sort("-_id")
 	if skip != 0 {
 		query = query.Skip(skip)

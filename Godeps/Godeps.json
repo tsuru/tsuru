@@ -88,15 +88,15 @@
 		},
 		{
 			"ImportPath": "github.com/tsuru/docker-cluster/cluster",
-			"Rev": "6e9d5514297396b71457c29b9ac6dbc3745b4aeb"
+			"Rev": "7df15c83c49b5f9bf4ee15eefd56d6108ee29ea7"
 		},
 		{
 			"ImportPath": "github.com/tsuru/docker-cluster/log",
-			"Rev": "6e9d5514297396b71457c29b9ac6dbc3745b4aeb"
+			"Rev": "7df15c83c49b5f9bf4ee15eefd56d6108ee29ea7"
 		},
 		{
 			"ImportPath": "github.com/tsuru/docker-cluster/storage",
-			"Rev": "6e9d5514297396b71457c29b9ac6dbc3745b4aeb"
+			"Rev": "7df15c83c49b5f9bf4ee15eefd56d6108ee29ea7"
 		},
 		{
 			"ImportPath": "github.com/tsuru/gandalf/gandalftest",
@@ -109,11 +109,11 @@
 		},
 		{
 			"ImportPath": "github.com/tsuru/monsterqueue",
-			"Rev": "edc057449486201294c732266d7da21dabdef056"
+			"Rev": "f741e61a6c0c428ebf36ccad904c21bfdebd299c"
 		},
 		{
 			"ImportPath": "github.com/tsuru/monsterqueue/mongodb",
-			"Rev": "edc057449486201294c732266d7da21dabdef056"
+			"Rev": "f741e61a6c0c428ebf36ccad904c21bfdebd299c"
 		},
 		{
 			"ImportPath": "github.com/vaughan0/go-ini",
@@ -157,7 +157,7 @@
 		},
 		{
 			"ImportPath": "gopkg.in/mgo.v2",
-			"Rev": "dc255bb679efa273b6544a03261c4053505498a4"
+			"Rev": "3569c88678d88179dcbd68d02ab081cbca3cd4d0"
 		},
 		{
 			"ImportPath": "gopkg.in/tylerb/graceful.v1",

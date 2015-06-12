@@ -94,6 +94,7 @@ func Store(appName, routerName, kind string) error {
 	if err != nil {
 		return err
 	}
+	defer coll.Close()
 	data := map[string]string{
 		"app":    appName,
 		"router": routerName,
@@ -108,6 +109,7 @@ func retrieveRouterData(appName string) (map[string]string, error) {
 	if err != nil {
 		return data, err
 	}
+	defer coll.Close()
 	err = coll.Find(bson.M{"app": appName}).One(&data)
 	// Avoid need for data migrations, before kind existed we only supported
 	// hipache as a router so we set is as default here.
@@ -130,6 +132,7 @@ func Remove(appName string) error {
 	if err != nil {
 		return err
 	}
+	defer coll.Close()
 	return coll.Remove(bson.M{"app": appName})
 }
 
@@ -138,6 +141,7 @@ func swapBackendName(backend1, backend2 string) error {
 	if err != nil {
 		return err
 	}
+	defer coll.Close()
 	router1, err := Retrieve(backend1)
 	if err != nil {
 		return err

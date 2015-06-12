@@ -94,6 +94,7 @@ func listHealingHistory(filter string) ([]healingEvent, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer coll.Close()
 	query := bson.M{}
 	if filter != "" {
 		query["action"] = filter + "-healing"
@@ -111,6 +112,7 @@ func healingCountFor(action string, failingId string, duration time.Duration) (i
 	if err != nil {
 		return 0, err
 	}
+	defer coll.Close()
 	minStartTime := time.Now().UTC().Add(-duration)
 	query := bson.M{"action": action + "-healing", "starttime": bson.M{"$gte": minStartTime}}
 	maxCount := 10

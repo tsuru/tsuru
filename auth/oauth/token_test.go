@@ -15,7 +15,9 @@ func (s *S) TestGetToken(c *check.C) {
 	err := existing.save()
 	c.Assert(err, check.IsNil)
 	var result []Token
-	collection().Find(nil).All(&result)
+	coll := collection()
+	defer coll.Close()
+	coll.Find(nil).All(&result)
 	t, err := getToken("bearer myvalidtoken")
 	c.Assert(err, check.IsNil)
 	c.Assert(t.AccessToken, check.Equals, "myvalidtoken")

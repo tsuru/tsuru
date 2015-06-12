@@ -32,12 +32,15 @@ func validate(token string, r *http.Request) (auth.Token, error) {
 	if err != nil {
 		t, err = auth.APIAuth(token)
 		if err != nil {
-			return nil, fmt.Errorf("Invalid token")
+			return nil, err
 		}
 	}
 	if t.IsAppToken() {
 		if q := r.URL.Query().Get(":app"); q != "" && t.GetAppName() != q {
-			return nil, fmt.Errorf("App token mismatch, token for %q, request for %q", t.GetAppName(), q)
+			return nil, &errors.HTTP{
+				Code:    http.StatusForbidden,
+				Message: fmt.Sprintf("app token mismatch, token for %q, request for %q", t.GetAppName(), q),
+			}
 		}
 	} else if user, err := t.User(); err == nil {
 		if q := r.URL.Query().Get(":app"); q != "" {
@@ -95,7 +98,7 @@ func authTokenMiddleware(w http.ResponseWriter, r *http.Request, next http.Handl
 	if token != "" {
 		t, err := validate(token, r)
 		if err != nil {
-			if _, ok := err.(*errors.HTTP); ok {
+			if err != auth.ErrInvalidToken {
 				context.AddRequestError(r, err)
 				return
 			}

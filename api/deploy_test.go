@@ -31,6 +31,7 @@ import (
 
 type DeploySuite struct {
 	conn        *db.Storage
+	logConn     *db.LogStorage
 	token       auth.Token
 	team        *auth.Team
 	provisioner *provisiontest.FakeProvisioner
@@ -61,6 +62,8 @@ func (s *DeploySuite) SetUpSuite(c *check.C) {
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
+	s.logConn, err = db.LogConn()
+	c.Assert(err, check.IsNil)
 	s.createUserAndTeam(c)
 	s.provisioner = provisiontest.NewFakeProvisioner()
 	app.Provisioner = s.provisioner
@@ -71,8 +74,9 @@ func (s *DeploySuite) SetUpSuite(c *check.C) {
 
 func (s *DeploySuite) TearDownSuite(c *check.C) {
 	provision.RemovePool("pool1")
-	defer s.conn.Close()
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	s.conn.Close()
+	s.logConn.Close()
 }
 
 func (s *DeploySuite) SetUpTest(c *check.C) {
@@ -287,7 +291,7 @@ func (s *DeploySuite) TestDeployWithoutVersionAndArchiveURL(c *check.C) {
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a)
-	defer s.conn.Logs(a.Name).DropCollection()
+	defer s.logConn.Logs(a.Name).DropCollection()
 	request, err := http.NewRequest("POST", "/apps/abc/repository/clone", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -306,7 +310,7 @@ func (s *DeploySuite) TestDeployWithVersionAndArchiveURL(c *check.C) {
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a)
-	defer s.conn.Logs(a.Name).DropCollection()
+	defer s.logConn.Logs(a.Name).DropCollection()
 	body := strings.NewReader("version=abcdef&archive-url=http://google.com")
 	request, err := http.NewRequest("POST", "/apps/abc/repository/clone", body)
 	c.Assert(err, check.IsNil)
@@ -444,7 +448,7 @@ func (s *DeploySuite) TestDeployListByApp(c *check.C) {
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a)
-	defer s.conn.Logs(a.Name).DropCollection()
+	defer s.logConn.Logs(a.Name).DropCollection()
 	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
 	duration := time.Since(timestamp)
 	deploys := []app.DeployData{
@@ -477,7 +481,7 @@ func (s *DeploySuite) TestDeployListAppWithNoDeploys(c *check.C) {
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a)
-	defer s.conn.Logs(a.Name).DropCollection()
+	defer s.logConn.Logs(a.Name).DropCollection()
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/deploys?app=myblog", nil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -507,7 +511,7 @@ func (s *DeploySuite) TestDeployListByAppAndService(c *check.C) {
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a)
-	defer s.conn.Logs(a.Name).DropCollection()
+	defer s.logConn.Logs(a.Name).DropCollection()
 	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
 	duration := time.Since(timestamp)
 	deploys := []app.DeployData{

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"gopkg.in/check.v1"
+	"gopkg.in/mgo.v2"
 )
 
 func Test(t *testing.T) { check.TestingT(t) }
@@ -24,7 +25,7 @@ func (s *S) TearDownSuite(c *check.C) {
 }
 
 func (s *S) TearDownTest(c *check.C) {
-	session = nil
+	sessions = map[string]*mgo.Session{}
 }
 
 func (s *S) TestOpenConnectsToTheDatabase(c *check.C) {
@@ -40,6 +41,7 @@ func (s *S) TestOpenCopiesConnection(c *check.C) {
 	defer storage.session.Close()
 	storage2, err := Open("127.0.0.1:27017", "tsuru_storage_test")
 	c.Assert(err, check.IsNil)
+	defer storage2.session.Close()
 	c.Assert(storage.session, check.Not(check.Equals), storage2.session)
 }
 

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"net/http/pprof"
 	"sync"
 	"time"
 
@@ -27,7 +26,7 @@ import (
 	"gopkg.in/tylerb/graceful.v1"
 )
 
-const Version = "0.11.0"
+const Version = "0.11.1"
 
 func getProvisioner() (string, error) {
 	provisioner, err := config.GetString("provisioner")
@@ -218,14 +217,14 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Post", "/pool/team", AdminRequiredHandler(addTeamToPoolHandler))
 	m.Add("Delete", "/pool/team", AdminRequiredHandler(removeTeamToPoolHandler))
 
-	m.Add("Get", "/debug/pprof/", http.HandlerFunc(pprof.Index))
-	m.Add("Get", "/debug/pprof/cmdline", http.HandlerFunc(pprof.Cmdline))
-	m.Add("Get", "/debug/pprof/profile", http.HandlerFunc(pprof.Profile))
-	m.Add("Get", "/debug/pprof/symbol", http.HandlerFunc(pprof.Symbol))
-	m.Add("Get", "/debug/pprof/heap", http.HandlerFunc(pprof.Index))
-	m.Add("Get", "/debug/pprof/goroutine", http.HandlerFunc(pprof.Index))
-	m.Add("Get", "/debug/pprof/threadcreate", http.HandlerFunc(pprof.Index))
-	m.Add("Get", "/debug/pprof/block", http.HandlerFunc(pprof.Index))
+	m.Add("Get", "/debug/pprof/", AdminRequiredHandler(indexHandler))
+	m.Add("Get", "/debug/pprof/cmdline", AdminRequiredHandler(cmdlineHandler))
+	m.Add("Get", "/debug/pprof/profile", AdminRequiredHandler(profileHandler))
+	m.Add("Get", "/debug/pprof/symbol", AdminRequiredHandler(symbolHandler))
+	m.Add("Get", "/debug/pprof/heap", AdminRequiredHandler(indexHandler))
+	m.Add("Get", "/debug/pprof/goroutine", AdminRequiredHandler(indexHandler))
+	m.Add("Get", "/debug/pprof/threadcreate", AdminRequiredHandler(indexHandler))
+	m.Add("Get", "/debug/pprof/block", AdminRequiredHandler(indexHandler))
 
 	n := negroni.New()
 	n.Use(negroni.NewRecovery())

@@ -182,7 +182,12 @@ func (s *S) TestAuthTokenMiddlewareWithIncorrectAppToken(c *check.C) {
 	authTokenMiddleware(recorder, request, h)
 	t := context.GetAuthToken(request)
 	c.Assert(t, check.IsNil)
-	c.Assert(log.called, check.Equals, true)
+	c.Assert(log.called, check.Equals, false)
+	err = context.GetRequestError(request)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Code, check.Equals, http.StatusForbidden)
 }
 
 func (s *S) TestAuthTokenMiddlewareWithInvalidToken(c *check.C) {

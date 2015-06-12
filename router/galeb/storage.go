@@ -30,6 +30,7 @@ func (g *galebData) save() error {
 	if err != nil {
 		return err
 	}
+	defer coll.Close()
 	return coll.Insert(g)
 }
 
@@ -38,6 +39,7 @@ func (g *galebData) addReal(address, backendId string) error {
 	if err != nil {
 		return err
 	}
+	defer coll.Close()
 	return coll.UpdateId(g.Name, bson.M{"$push": bson.M{
 		"reals": bson.M{"real": address, "backendid": backendId},
 	}})
@@ -48,6 +50,7 @@ func (g *galebData) removeReal(address string) error {
 	if err != nil {
 		return err
 	}
+	defer coll.Close()
 	return coll.UpdateId(g.Name, bson.M{"$pull": bson.M{
 		"reals": bson.M{"real": address},
 	}})
@@ -58,6 +61,7 @@ func (g *galebData) addCName(cname, virtualHostId string) error {
 	if err != nil {
 		return err
 	}
+	defer coll.Close()
 	return coll.UpdateId(g.Name, bson.M{"$push": bson.M{
 		"cnames": bson.M{"cname": cname, "virtualhostid": virtualHostId},
 	}})
@@ -68,6 +72,7 @@ func (g *galebData) removeCName(cname string) error {
 	if err != nil {
 		return err
 	}
+	defer coll.Close()
 	return coll.UpdateId(g.Name, bson.M{"$pull": bson.M{
 		"cnames": bson.M{"cname": cname},
 	}})
@@ -78,6 +83,7 @@ func (g *galebData) remove() error {
 	if err != nil {
 		return err
 	}
+	defer coll.Close()
 	return coll.RemoveId(g.Name)
 }
 
@@ -86,6 +92,7 @@ func getGalebData(name string) (*galebData, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer coll.Close()
 	var result galebData
 	err = coll.Find(bson.M{"_id": name}).One(&result)
 	return &result, err

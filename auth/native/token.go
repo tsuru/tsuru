@@ -17,6 +17,7 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/validation"
 	"golang.org/x/crypto/bcrypt"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -196,7 +197,10 @@ func getToken(header string) (*Token, error) {
 	}
 	err = conn.Tokens().Find(bson.M{"token": token}).One(&t)
 	if err != nil {
-		return nil, auth.ErrInvalidToken
+		if err == mgo.ErrNotFound {
+			return nil, auth.ErrInvalidToken
+		}
+		return nil, err
 	}
 	if t.Creation.Add(t.Expires).Sub(time.Now()) < 1 {
 		return nil, auth.ErrInvalidToken

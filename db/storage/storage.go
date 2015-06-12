@@ -5,15 +5,15 @@
 package storage
 
 import (
-	"fmt"
 	"sync"
+	"time"
 
 	"gopkg.in/mgo.v2"
 )
 
 var (
-	session *mgo.Session
-	mut     sync.RWMutex
+	sessions    = map[string]*mgo.Session{}
+	sessionLock sync.RWMutex
 )
 
 // Storage holds the connection with the database.
@@ -34,40 +34,19 @@ func (c *Collection) Close() {
 	c.Collection.Database.Session.Close()
 }
 
-func open(addr, dbname string) (*Storage, error) {
-	if session == nil {
-		var err error
-		mut.Lock()
-		session, err = mgo.Dial(addr)
-		mut.Unlock()
-		if err != nil {
-			return nil, fmt.Errorf("mongodb: %s", err)
-		}
+func open(addr string) (*mgo.Session, error) {
+	dialInfo, err := mgo.ParseURL(addr)
+	if err != nil {
+		return nil, err
 	}
-	copy := session.Clone()
-	storage := &Storage{session: copy, dbname: dbname}
-	return storage, nil
-}
-
-// Open dials to the MongoDB database, and return the connection (represented
-// by the type Storage).
-//
-// addr is a MongoDB connection URI, and dbname is the name of the database.
-//
-// This function returns a pointer to a Storage, or a non-nil error in case of
-// any failure.
-func Open(addr, dbname string) (storage *Storage, err error) {
-	defer func() {
-		if r := recover(); r != nil {
-			storage, err = open(addr, dbname)
-		}
-	}()
-	if err = session.Ping(); err != nil {
-		mut.Lock()
-		session = nil
-		mut.Unlock()
+	dialInfo.FailFast = true
+	session, err := mgo.DialWithInfo(dialInfo)
+	if err != nil {
+		return nil, err
 	}
-	return open(addr, dbname)
+	session.SetSyncTimeout(10 * time.Second)
+	session.SetSocketTimeout(1 * time.Minute)
+	return session, nil
 }
 
 // Close closes the storage, releasing the connection.
