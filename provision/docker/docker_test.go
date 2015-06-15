@@ -147,6 +147,8 @@ func (s *S) TestContainerGetAddress(c *check.C) {
 }
 
 func (s *S) TestContainerCreate(c *check.C) {
+	config.Set("host", "my.cool.tsuru.addr:8080")
+	defer config.Unset("host")
 	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
 	app.Memory = 15
 	app.Swap = 15
@@ -159,7 +161,7 @@ func (s *S) TestContainerCreate(c *check.C) {
 		docker.PullImageOptions{Repository: "tsuru/brainfuck:latest"},
 		docker.AuthConfiguration{},
 	)
-	cont := container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created"}
+	cont := container{Name: "myName", AppName: app.GetName(), Type: app.GetPlatform(), Status: "created", ProcessName: "myprocess1"}
 	err := cont.create(runContainerActionsArgs{
 		app:         app,
 		imageID:     s.p.getBuildImage(app),
@@ -188,7 +190,12 @@ func (s *S) TestContainerCreate(c *check.C) {
 	c.Assert(container.Config.MemorySwap, check.Equals, app.Memory+app.Swap)
 	c.Assert(container.Config.CPUShares, check.Equals, int64(app.CpuShare))
 	sort.Strings(container.Config.Env)
-	c.Assert(container.Config.Env, check.DeepEquals, []string{"A=myenva", "ABCD=other env"})
+	c.Assert(container.Config.Env, check.DeepEquals, []string{
+		"A=myenva",
+		"ABCD=other env",
+		"TSURU_HOST=my.cool.tsuru.addr:8080",
+		"TSURU_PROCESSNAME=myprocess1",
+	})
 }
 
 func (s *S) TestContainerCreateSecurityOptions(c *check.C) {

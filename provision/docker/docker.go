@@ -116,6 +116,25 @@ func randomString() string {
 	return fmt.Sprintf("%x", h.Sum(nil))[:20]
 }
 
+func (c *container) addEnvsToConfig(app provision.App, cfg *docker.Config) {
+	sharedMount, _ := config.GetString("docker:sharedfs:mountpoint")
+	sharedBasedir, _ := config.GetString("docker:sharedfs:hostdir")
+	host, _ := config.GetString("host")
+	for _, envData := range app.Envs() {
+		cfg.Env = append(cfg.Env, fmt.Sprintf("%s=%s", envData.Name, envData.Value))
+	}
+	cfg.Env = append(cfg.Env, []string{
+		fmt.Sprintf("%s=%s", "TSURU_HOST", host),
+		fmt.Sprintf("%s=%s", "TSURU_PROCESSNAME", c.ProcessName),
+	}...)
+	if sharedMount != "" && sharedBasedir != "" {
+		cfg.Volumes = map[string]struct{}{
+			sharedMount: {},
+		}
+		cfg.Env = append(cfg.Env, fmt.Sprintf("TSURU_SHAREDFS_MOUNTPOINT=%s", sharedMount))
+	}
+}
+
 // creates a new container in Docker.
 func (c *container) create(args runContainerActionsArgs) error {
 	port, err := getPort()
@@ -127,8 +146,6 @@ func (c *container) create(args runContainerActionsArgs) error {
 	if err != nil {
 		user, _ = config.GetString("docker:ssh:user")
 	}
-	sharedMount, _ := config.GetString("docker:sharedfs:mountpoint")
-	sharedBasedir, _ := config.GetString("docker:sharedfs:hostdir")
 	securityOpts, _ := config.GetList("docker:security-opts")
 	var exposedPorts map[docker.Port]struct{}
 	if !args.isDeploy {
@@ -149,15 +166,7 @@ func (c *container) create(args runContainerActionsArgs) error {
 		CPUShares:    int64(args.app.GetCpuShare()),
 		SecurityOpts: securityOpts,
 	}
-	for _, envData := range args.app.Envs() {
-		config.Env = append(config.Env, fmt.Sprintf("%s=%s", envData.Name, envData.Value))
-	}
-	if sharedMount != "" && sharedBasedir != "" {
-		config.Volumes = map[string]struct{}{
-			sharedMount: {},
-		}
-		config.Env = append(config.Env, fmt.Sprintf("TSURU_SHAREDFS_MOUNTPOINT=%s", sharedMount))
-	}
+	c.addEnvsToConfig(args.app, &config)
 	opts := docker.CreateContainerOptions{Name: c.Name, Config: &config}
 	var nodeList []string
 	if len(args.destinationHosts) > 0 {
