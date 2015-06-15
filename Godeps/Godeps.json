@@ -171,38 +171,38 @@
 		},
 		{
 			"ImportPath": "github.com/mailgun/vulcand/anomaly",
-			"Comment": "v0.8.0-beta.3",
-			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
+			"Comment": "v0.8.0-beta.3-1-gfc3e7e1",
+			"Rev": "fc3e7e17f306683a65c05e92175e7caf6c714d06"
 		},
 		{
 			"ImportPath": "github.com/mailgun/vulcand/api",
-			"Comment": "v0.8.0-beta.3",
-			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
+			"Comment": "v0.8.0-beta.3-1-gfc3e7e1",
+			"Rev": "fc3e7e17f306683a65c05e92175e7caf6c714d06"
 		},
 		{
 			"ImportPath": "github.com/mailgun/vulcand/engine",
-			"Comment": "v0.8.0-beta.3",
-			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
+			"Comment": "v0.8.0-beta.3-1-gfc3e7e1",
+			"Rev": "fc3e7e17f306683a65c05e92175e7caf6c714d06"
 		},
 		{
 			"ImportPath": "github.com/mailgun/vulcand/plugin",
-			"Comment": "v0.8.0-beta.3",
-			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
+			"Comment": "v0.8.0-beta.3-1-gfc3e7e1",
+			"Rev": "fc3e7e17f306683a65c05e92175e7caf6c714d06"
 		},
 		{
 			"ImportPath": "github.com/mailgun/vulcand/proxy",
-			"Comment": "v0.8.0-beta.3",
-			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
+			"Comment": "v0.8.0-beta.3-1-gfc3e7e1",
+			"Rev": "fc3e7e17f306683a65c05e92175e7caf6c714d06"
 		},
 		{
 			"ImportPath": "github.com/mailgun/vulcand/stapler",
-			"Comment": "v0.8.0-beta.3",
-			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
+			"Comment": "v0.8.0-beta.3-1-gfc3e7e1",
+			"Rev": "fc3e7e17f306683a65c05e92175e7caf6c714d06"
 		},
 		{
 			"ImportPath": "github.com/mailgun/vulcand/supervisor",
-			"Comment": "v0.8.0-beta.3",
-			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
+			"Comment": "v0.8.0-beta.3-1-gfc3e7e1",
+			"Rev": "fc3e7e17f306683a65c05e92175e7caf6c714d06"
 		},
 		{
 			"ImportPath": "github.com/sajari/fuzzy",
