@@ -531,8 +531,8 @@ Routers
 As of 0.10.0, all your router configuration should live under entries with the
 format ``routers:<router name>``.
 
-routers:<router name>:type
-++++++++++++++++++++++++++
+routers:<router name>:type (type: hipache, galeb)
++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Indicates the type of this router configuration. Currently only the value
 ``hipache`` is supported. tsuru also has an experimental router implementation
@@ -541,18 +541,17 @@ value.
 
 Depending on the type, there are some specific configuration options available.
 
+routers:<router name>:domain (type: hipache, galeb)
+++++++++++++++++++++++++++++++++++++++++++++
+
+The domain of the server running your router. Applications created with
+tsuru will have a address of ``http://<app-name>.<domain>``
+
 routers:<router name>:redis-server (type: hipache)
 ++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Redis server used by Hipache router. This same server (or a redis slave of it),
 must be configured in your hipache.conf file.
-
-routers:<router name>:domain (type: hipache)
-++++++++++++++++++++++++++++++++++++++++++++
-
-The domain of the server running your hipache server. Applications created with
-tsuru will have a address of ``http://<app-name>.<domain>``
-
 
 routers:<router name>:api-url (type: galeb)
 +++++++++++++++++++++++++++++++++++++++++++
@@ -568,12 +567,6 @@ routers:<router name>:password (type: galeb)
 ++++++++++++++++++++++++++++++++++++++++++++
 
 Galeb manager password.
-
-routers:<router name>:domain (type: galeb)
-++++++++++++++++++++++++++++++++++++++++++
-
-The domain of the server running your Galeb server. Applications created with
-tsuru will have a address of ``http://<app-name>.<domain>``
 
 routers:<router name>:environment (type: galeb)
 +++++++++++++++++++++++++++++++++++++++++++++++
