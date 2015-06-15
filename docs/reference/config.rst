@@ -661,6 +661,30 @@ docker:registry-max-try
 
 Number of times tsuru will try to send a image to registry.
 
+.. _config_bs:
+
+docker:bs:image
++++++++++++++++
+
+``docker:bs:image`` is the name of the Docker image to be used to create `bs
+<https://github.com/tsuru/bs>`_ containers. The default value is "tsuru/bs",
+which represents `the official image hosted at Docker Hub
+<https://registry.hub.docker.com/u/tsuru/bs/>`_, maintained by the tsuru team.
+
+docker:bs:reporter-interval
++++++++++++++++++++++++++++
+
+``docker:bs:reporter-interval`` is the interval between status reporting from
+bs to the tsuru API. The default value is 60 seconds.
+
+docker:bs:socket
+++++++++++++++++
+
+``docker:bs:socket`` is the path to the Unix socket in the Docker host. This
+should be configured so bs can connect to Docker via socket instead of TCP.
+This is an optional setting, when omitted, bs will talk to the Dcoker API using
+the TCP endpoint.
+
 .. _config_registry_auth:
 
 docker:registry-auth:username
