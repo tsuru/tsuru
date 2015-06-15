@@ -118,16 +118,9 @@ var exportEnvironmentsAction = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		t, err := AuthScheme.AppLogin(app.Name)
-		if err != nil {
-			return nil, err
-		}
-		host, _ := config.GetString("host")
 		envVars := []bind.EnvVar{
 			{Name: "TSURU_APPNAME", Value: app.Name},
 			{Name: "TSURU_APPDIR", Value: defaultAppDir},
-			{Name: "TSURU_HOST", Value: host},
-			{Name: "TSURU_APP_TOKEN", Value: t.GetValue()},
 		}
 		err = app.setEnvsToApp(envVars, false, false, nil)
 		if err != nil {
@@ -137,10 +130,9 @@ var exportEnvironmentsAction = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		app := ctx.Params[0].(*App)
-		AuthScheme.Logout(app.Env["TSURU_APP_TOKEN"].Value)
 		app, err := GetByName(app.Name)
 		if err == nil {
-			vars := []string{"TSURU_HOST", "TSURU_APPNAME", "TSURU_APP_TOKEN"}
+			vars := []string{"TSURU_APPNAME", "TSURU_APPDIR"}
 			app.UnsetEnvs(vars, false, nil)
 		}
 	},

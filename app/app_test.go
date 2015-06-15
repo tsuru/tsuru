@@ -150,8 +150,6 @@ func (s *S) TestCreateApp(c *check.C) {
 	env := retrievedApp.InstanceEnv("")
 	c.Assert(env["TSURU_APPNAME"].Value, check.Equals, a.Name)
 	c.Assert(env["TSURU_APPNAME"].Public, check.Equals, false)
-	c.Assert(env["TSURU_HOST"].Value, check.Equals, expectedHost)
-	c.Assert(env["TSURU_HOST"].Public, check.Equals, false)
 	err = auth.ReserveApp(s.user)
 	_, ok := err.(*quota.QuotaExceededError)
 	c.Assert(ok, check.Equals, true)
