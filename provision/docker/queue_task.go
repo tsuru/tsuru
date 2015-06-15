@@ -52,6 +52,7 @@ func (t runBs) Run(job monsterqueue.Job) {
 		t.destroyMachine(machineID)
 		return
 	}
+	job.Success(nil)
 }
 
 func (runBs) waitDocker(endpoint string) error {
