@@ -235,7 +235,7 @@ func (r *hipacheRouter) validCName(cname string) bool {
 	if err != nil {
 		return false
 	}
-	return !strings.Contains(cname, domain)
+	return !strings.HasSuffix(cname, domain)
 }
 
 func (r *hipacheRouter) SetCName(cname, name string) error {

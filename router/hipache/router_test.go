@@ -391,6 +391,14 @@ func (s *S) TestSetCNameValidatesCNameAccordingToDomainConfig(c *check.C) {
 	c.Assert(err.Error(), check.Equals, expected)
 }
 
+func (s *S) TestSetCNameDoesNotBlockSuffixDomain(c *check.C) {
+	reply := map[string]interface{}{"GET": "", "SET": "", "LRANGE": []interface{}{[]byte{}}, "RPUSH": []interface{}{[]byte{}}}
+	conn = &ResultCommandRedisConn{Reply: reply, FakeRedisConn: s.fake}
+	router := hipacheRouter{prefix: "hipache"}
+	err := router.SetCName("mycname.golang.org.br", "myapp")
+	c.Assert(err, check.IsNil)
+}
+
 func (s *S) TestUnsetCName(c *check.C) {
 	router := hipacheRouter{prefix: "hipache"}
 	err := router.SetCName("myapp.com", "myapp")
