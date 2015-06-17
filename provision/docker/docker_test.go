@@ -975,49 +975,57 @@ func (s *S) TestContainerStart(c *check.C) {
 	client, err := docker.NewClient(s.server.URL())
 	c.Assert(err, check.IsNil)
 	contPath := fmt.Sprintf("/containers/%s/start", cont.ID)
-	var restartPolicy string
-	s.server.CustomHandler(contPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		result := docker.HostConfig{}
-		err := json.NewDecoder(r.Body).Decode(&result)
-		if err == nil {
-			restartPolicy = result.RestartPolicy.Name
-		}
-		s.server.DefaultHandler().ServeHTTP(w, r)
-	}))
 	defer s.server.CustomHandler(contPath, s.server.DefaultHandler())
 	dockerContainer, err := client.InspectContainer(cont.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, false)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	app.Memory = 15
+	app.Swap = 15
+	app.CpuShare = 10
 	err = cont.start(s.p, app, false)
 	c.Assert(err, check.IsNil)
 	dockerContainer, err = client.InspectContainer(cont.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, true)
+	expectedLogOptions := map[string]string{
+		"syslog-address": "udp://localhost:1514",
+	}
+	expectedPortBindings := map[docker.Port][]docker.PortBinding{
+		"8888/tcp": {{HostIP: "", HostPort: ""}},
+	}
+	c.Assert(dockerContainer.HostConfig.RestartPolicy.Name, check.Equals, "always")
+	c.Assert(dockerContainer.HostConfig.LogConfig.Type, check.Equals, "syslog")
+	c.Assert(dockerContainer.HostConfig.LogConfig.Config, check.DeepEquals, expectedLogOptions)
+	c.Assert(dockerContainer.HostConfig.PortBindings, check.DeepEquals, expectedPortBindings)
+	c.Assert(dockerContainer.HostConfig.Memory, check.Equals, int64(15))
+	c.Assert(dockerContainer.HostConfig.MemorySwap, check.Equals, int64(30))
+	c.Assert(dockerContainer.HostConfig.CPUShares, check.Equals, int64(10))
 	c.Assert(cont.Status, check.Equals, "starting")
-	c.Assert(restartPolicy, check.Equals, "always")
 }
 
 func (s *S) TestContainerStartDeployContainer(c *check.C) {
 	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
+	client, err := docker.NewClient(s.server.URL())
+	c.Assert(err, check.IsNil)
 	contPath := fmt.Sprintf("/containers/%s/start", cont.ID)
-	var restartPolicy string
-	s.server.CustomHandler(contPath, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		result := docker.HostConfig{}
-		err := json.NewDecoder(r.Body).Decode(&result)
-		if err == nil {
-			restartPolicy = result.RestartPolicy.Name
-		}
-		s.server.DefaultHandler().ServeHTTP(w, r)
-	}))
 	defer s.server.CustomHandler(contPath, s.server.DefaultHandler())
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	app.Memory = 15
+	app.Swap = 15
+	app.CpuShare = 50
 	err = cont.start(s.p, app, true)
 	c.Assert(err, check.IsNil)
 	c.Assert(cont.Status, check.Equals, "building")
-	c.Assert(restartPolicy, check.Equals, "")
+	dockerContainer, err := client.InspectContainer(cont.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.HostConfig.RestartPolicy.Name, check.Equals, "")
+	c.Assert(dockerContainer.HostConfig.LogConfig.Type, check.Equals, "")
+	c.Assert(dockerContainer.HostConfig.Memory, check.Equals, int64(15))
+	c.Assert(dockerContainer.HostConfig.MemorySwap, check.Equals, int64(30))
+	c.Assert(dockerContainer.HostConfig.CPUShares, check.Equals, int64(50))
 }
 
 func (s *S) TestContainerStartWithoutPort(c *check.C) {
