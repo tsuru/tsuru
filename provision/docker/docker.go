@@ -516,10 +516,17 @@ func (c *container) start(p *dockerProvisioner, app provision.App, isDeploy bool
 	sharedMount, _ := config.GetString("docker:sharedfs:mountpoint")
 	sharedIsolation, _ := config.GetBool("docker:sharedfs:app-isolation")
 	sharedSalt, _ := config.GetString("docker:sharedfs:salt")
+	logConfig := docker.LogConfig{
+		Type: "syslog",
+		Config: map[string]string{
+			"syslog-address": fmt.Sprintf("udp://localhost:%d", getBsSysLogPort()),
+		},
+	}
 	hostConfig := docker.HostConfig{
 		Memory:     app.GetMemory(),
 		MemorySwap: app.GetMemory() + app.GetSwap(),
 		CPUShares:  int64(app.GetCpuShare()),
+		LogConfig:  logConfig,
 	}
 	if !isDeploy {
 		hostConfig.RestartPolicy = docker.AlwaysRestart()
