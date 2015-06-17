@@ -32,13 +32,22 @@ func (s *S) TestCreateBsContainer(c *check.C) {
 	server, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer server.Stop()
+	client, err := docker.NewClient(server.URL())
+	c.Assert(err, check.IsNil)
+	err = client.PullImage(docker.PullImageOptions{
+		Repository: "base",
+	}, docker.AuthConfiguration{})
+	_, err = client.CreateContainer(docker.CreateContainerOptions{
+		Name:       "big-sibling",
+		Config:     &docker.Config{Image: "base"},
+		HostConfig: &docker.HostConfig{},
+	})
+	c.Assert(err, check.IsNil)
 	config.Set("host", "127.0.0.1:8080")
 	config.Set("docker:bs:image", "myregistry/tsuru/bs")
 	config.Set("docker:bs:reporter-interval", 60)
 	var task runBs
 	err = task.createBsContainer(server.URL())
-	c.Assert(err, check.IsNil)
-	client, err := docker.NewClient(server.URL())
 	c.Assert(err, check.IsNil)
 	containers, err := client.ListContainers(docker.ListContainersOptions{All: true})
 	c.Assert(err, check.IsNil)

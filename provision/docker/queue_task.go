@@ -147,9 +147,23 @@ func (runBs) createBsContainer(dockerEndpoint string) error {
 		},
 	}
 	container, err := client.CreateContainer(opts)
+	if err == docker.ErrContainerAlreadyExists {
+		err = client.RemoveContainer(docker.RemoveContainerOptions{ID: opts.Name, Force: true})
+		if err != nil {
+			return err
+		}
+		container, err = client.CreateContainer(opts)
+	}
 	if err == docker.ErrNoSuchImage {
 		pullOpts := docker.PullImageOptions{Repository: bsImage}
 		err = client.PullImage(pullOpts, getRegistryAuthConfig())
+		if err != nil {
+			return err
+		}
+		container, err = client.CreateContainer(opts)
+	}
+	if err == docker.ErrContainerAlreadyExists {
+		err = client.RemoveContainer(docker.RemoveContainerOptions{ID: opts.Name, Force: true})
 		if err != nil {
 			return err
 		}
