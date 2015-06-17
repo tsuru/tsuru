@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/queue"
 )
@@ -110,4 +111,37 @@ func LogRemove(a *App) error {
 		}
 	}
 	return nil
+}
+
+func LogReceiver() (chan<- *Applog, <-chan error) {
+	ch := make(chan *Applog)
+	errCh := make(chan error)
+	go func() {
+		collMap := map[string]*storage.Collection{}
+		messages := make([]interface{}, 1)
+		for msg := range ch {
+			messages[0] = msg
+			notify(msg.AppName, messages)
+			coll := collMap[msg.AppName]
+			if coll == nil {
+				conn, err := db.LogConn()
+				if err != nil {
+					errCh <- err
+					break
+				}
+				coll = conn.Logs(msg.AppName)
+				collMap[msg.AppName] = coll
+			}
+			err := coll.Insert(msg)
+			if err != nil {
+				errCh <- err
+				break
+			}
+		}
+		for _, coll := range collMap {
+			coll.Close()
+		}
+		close(errCh)
+	}()
+	return ch, errCh
 }

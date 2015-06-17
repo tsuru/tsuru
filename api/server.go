@@ -185,6 +185,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Post", "/users/api-key", authorizationRequiredHandler(regenerateAPIToken))
 
 	m.Add("Delete", "/logs", AdminRequiredHandler(logRemove))
+	m.Add("Post", "/logs", authorizationRequiredHandler(addLogs))
 
 	m.Add("Get", "/teams", authorizationRequiredHandler(teamList))
 	m.Add("Post", "/teams", authorizationRequiredHandler(createTeam))
