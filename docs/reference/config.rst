@@ -117,7 +117,7 @@ It will also include a function used for querying configuration values, named
         {{if getConfig "use-tls"}}
         <p>we're safe</p>
         {{else}}
-        <p>we're unsafe</p>
+        <p>we're not safe</p>
         {{end}}
     </body>
 
