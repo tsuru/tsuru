@@ -685,6 +685,18 @@ should be configured so bs can connect to Docker via socket instead of TCP.
 This is an optional setting, when omitted, bs will talk to the Dcoker API using
 the TCP endpoint.
 
+docker:bs:syslog-external-port
+++++++++++++++++++++++++++++++
+
+``docker:bs:syslog-external-port`` is the port in the Docker node that will be
+used by the bs container for collecting logs. The default value is 1514.
+
+docker:bs:syslog-internal-port
+++++++++++++++++++++++++++++++
+
+``docker:bs:syslog-internal-port`` is the port that will be used inside the
+Docker container for the rsyslog protocol. The default value is 514.
+
 .. _config_registry_auth:
 
 docker:registry-auth:username
