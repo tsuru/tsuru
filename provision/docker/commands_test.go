@@ -18,17 +18,13 @@ import (
 
 func (s *S) TestGitDeployCmds(c *check.C) {
 	app := provisiontest.NewFakeApp("app-name", "python", 1)
-	hostEnv := bind.EnvVar{
-		Name:   "TSURU_HOST",
-		Value:  "tsuru_host",
-		Public: true,
-	}
+	config.Set("host", "tsuru_host")
+	defer config.Unset("host")
 	tokenEnv := bind.EnvVar{
 		Name:   "TSURU_APP_TOKEN",
 		Value:  "app_token",
 		Public: true,
 	}
-	app.SetEnv(hostEnv)
 	app.SetEnv(tokenEnv)
 	repository.Manager().CreateRepository("app-name", nil)
 	deployCmd, err := config.GetString("docker:deploy-cmd")
@@ -42,17 +38,13 @@ func (s *S) TestGitDeployCmds(c *check.C) {
 
 func (s *S) TestArchiveDeployCmds(c *check.C) {
 	app := provisiontest.NewFakeApp("app-name", "python", 1)
-	hostEnv := bind.EnvVar{
-		Name:   "TSURU_HOST",
-		Value:  "tsuru_host",
-		Public: true,
-	}
+	config.Set("host", "tsuru_host")
+	defer config.Unset("host")
 	tokenEnv := bind.EnvVar{
 		Name:   "TSURU_APP_TOKEN",
 		Value:  "app_token",
 		Public: true,
 	}
-	app.SetEnv(hostEnv)
 	app.SetEnv(tokenEnv)
 	deployCmd, err := config.GetString("docker:deploy-cmd")
 	c.Assert(err, check.IsNil)
@@ -66,17 +58,13 @@ func (s *S) TestArchiveDeployCmds(c *check.C) {
 
 func (s *S) TestRunWithAgentCmds(c *check.C) {
 	app := provisiontest.NewFakeApp("app-name", "python", 1)
-	hostEnv := bind.EnvVar{
-		Name:   "TSURU_HOST",
-		Value:  "tsuru_host",
-		Public: true,
-	}
+	config.Set("host", "tsuru_host")
+	defer config.Unset("host")
 	tokenEnv := bind.EnvVar{
 		Name:   "TSURU_APP_TOKEN",
 		Value:  "app_token",
 		Public: true,
 	}
-	app.SetEnv(hostEnv)
 	app.SetEnv(tokenEnv)
 	runCmd, err := config.GetString("docker:run-cmd:bin")
 	c.Assert(err, check.IsNil)
@@ -124,17 +112,13 @@ func (s *S) TestRunLeanContainersCmdNoProcesses(c *check.C) {
 	err := saveImageCustomData(imageId, customData)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("app-name", "python", 1)
-	hostEnv := bind.EnvVar{
-		Name:   "TSURU_HOST",
-		Value:  "tsuru_host",
-		Public: true,
-	}
+	config.Set("host", "tsuru_host")
+	defer config.Unset("host")
 	tokenEnv := bind.EnvVar{
 		Name:   "TSURU_APP_TOKEN",
 		Value:  "app_token",
 		Public: true,
 	}
-	app.SetEnv(hostEnv)
 	app.SetEnv(tokenEnv)
 	cmds, process, err := runLeanContainerCmds("", imageId, app)
 	c.Assert(err, check.IsNil)

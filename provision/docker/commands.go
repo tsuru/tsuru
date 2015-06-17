@@ -35,7 +35,7 @@ func deployCmds(app provision.App, params ...string) ([]string, error) {
 		return nil, err
 	}
 	cmds := append([]string{deployCmd}, params...)
-	host := app.Envs()["TSURU_HOST"].Value
+	host, _ := config.GetString("host")
 	token := app.Envs()["TSURU_APP_TOKEN"].Value
 	unitAgentCmds := []string{"tsuru_unit_agent", host, token, app.GetName(), `"` + strings.Join(cmds, " ") + `"`, "deploy"}
 	finalCmd := strings.Join(unitAgentCmds, " ")
@@ -53,7 +53,7 @@ func runWithAgentCmds(app provision.App) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	host := app.Envs()["TSURU_HOST"].Value
+	host, _ := config.GetString("host")
 	token := app.Envs()["TSURU_APP_TOKEN"].Value
 	return []string{"tsuru_unit_agent", host, token, app.GetName(), runCmd}, nil
 }
