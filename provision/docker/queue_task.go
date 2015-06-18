@@ -114,13 +114,9 @@ func (runBs) createBsContainer(dockerEndpoint string) error {
 		hostConfig.Binds = []string{fmt.Sprintf("%s:/var/run/docker.sock:rw", socket)}
 		endpoint = "unix:///var/run/docker.sock"
 	}
-	sysLogInternalPort, _ := config.GetInt("docker:bs:syslog-internal-port")
-	if sysLogInternalPort == 0 {
-		sysLogInternalPort = 514
-	}
 	sysLogExternalPort := getBsSysLogPort()
 	hostConfig.PortBindings = map[docker.Port][]docker.PortBinding{
-		docker.Port(strconv.Itoa(sysLogInternalPort) + "/udp"): {
+		docker.Port("514/udp"): {
 			docker.PortBinding{
 				HostIP:   "0.0.0.0",
 				HostPort: strconv.Itoa(sysLogExternalPort),
@@ -133,7 +129,7 @@ func (runBs) createBsContainer(dockerEndpoint string) error {
 		"TSURU_TOKEN=" + token.GetValue(),
 		"TSURU_SENTINEL_ENV_VAR=" + sentinelEnvVar,
 		"STATUS_INTERVAL=" + strconv.Itoa(interval),
-		"SYSLOG_LISTEN_ADDRESS=" + "udp://0.0.0.0:" + strconv.Itoa(sysLogInternalPort),
+		"SYSLOG_LISTEN_ADDRESS=" + "udp://0.0.0.0:514",
 	}
 	opts := docker.CreateContainerOptions{
 		Name:       "big-sibling",
@@ -176,7 +172,7 @@ func (runBs) createBsContainer(dockerEndpoint string) error {
 }
 
 func getBsSysLogPort() int {
-	bsPort, _ := config.GetInt("docker:bs:syslog-external-port")
+	bsPort, _ := config.GetInt("docker:bs:syslog-port")
 	if bsPort == 0 {
 		bsPort = 1514
 	}

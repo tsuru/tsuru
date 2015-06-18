@@ -85,8 +85,7 @@ func (s *S) TestCreateBsContainerSocketAndCustomSysLogPort(c *check.C) {
 	config.Set("docker:bs:image", "myregistry/tsuru/bs")
 	config.Set("docker:bs:reporter-interval", 60)
 	config.Set("docker:bs:socket", "/tmp/docker.sock")
-	config.Set("docker:bs:syslog-internal-port", 1518)
-	config.Set("docker:bs:syslog-external-port", 1519)
+	config.Set("docker:bs:syslog-port", 1519)
 	var task runBs
 	err = task.createBsContainer(server.URL())
 	c.Assert(err, check.IsNil)
@@ -100,7 +99,7 @@ func (s *S) TestCreateBsContainerSocketAndCustomSysLogPort(c *check.C) {
 	c.Assert(container.Name, check.Equals, "big-sibling")
 	c.Assert(container.HostConfig.Binds, check.DeepEquals, []string{"/tmp/docker.sock:/var/run/docker.sock:rw"})
 	expectedBinding := []docker.PortBinding{{HostIP: "0.0.0.0", HostPort: "1519"}}
-	c.Assert(container.HostConfig.PortBindings[docker.Port("1518/udp")], check.DeepEquals, expectedBinding)
+	c.Assert(container.HostConfig.PortBindings[docker.Port("514/udp")], check.DeepEquals, expectedBinding)
 	_, ok := container.Config.ExposedPorts[docker.Port("1519/udp")]
 	c.Assert(ok, check.Equals, true)
 	c.Assert(container.Config.Image, check.Equals, "myregistry/tsuru/bs")
@@ -111,7 +110,7 @@ func (s *S) TestCreateBsContainerSocketAndCustomSysLogPort(c *check.C) {
 		"TSURU_TOKEN":            "abc123",
 		"TSURU_SENTINEL_ENV_VAR": "TSURU_APPNAME",
 		"STATUS_INTERVAL":        "60",
-		"SYSLOG_LISTEN_ADDRESS":  "udp://0.0.0.0:1518",
+		"SYSLOG_LISTEN_ADDRESS":  "udp://0.0.0.0:514",
 	}
 	gotEnv := parseEnvs(container.Config.Env)
 	_, ok = gotEnv["TSURU_TOKEN"]
