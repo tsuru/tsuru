@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strings"
+	"net/url"
 	"time"
 
 	"github.com/tsuru/config"
@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	"golang.org/x/net/websocket"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -128,15 +129,38 @@ func (s *S) TestAddLogsHandler(c *check.C) {
 	{"date": "2015-06-16T15:00:03.000Z", "message": "msg4", "source": "web", "appname": "myapp2", "unit": "unit4"}
 	{"date": "2015-06-16T15:00:04.000Z", "message": "msg5", "source": "worker", "appname": "myapp1", "unit": "unit3"}
 	`
-	request, err := http.NewRequest("POST", "/logs", strings.NewReader(bodyStr))
-	c.Assert(err, check.IsNil)
 	token, err := nativeScheme.AppLogin(app.InternalAppName)
 	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+token.GetValue())
-	recorder := httptest.NewRecorder()
 	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	srv := httptest.NewServer(m)
+	defer srv.Close()
+	testServerUrl, err := url.Parse(srv.URL)
+	c.Assert(err, check.IsNil)
+	wsUrl := fmt.Sprintf("ws://%s/logs", testServerUrl.Host)
+	config, err := websocket.NewConfig(wsUrl, "ws://localhost/")
+	c.Assert(err, check.IsNil)
+	config.Header.Set("Authorization", "bearer "+token.GetValue())
+	wsConn, err := websocket.DialConfig(config)
+	c.Assert(err, check.IsNil)
+	defer wsConn.Close()
+	_, err = wsConn.Write([]byte(bodyStr))
+	c.Assert(err, check.IsNil)
+	timeout := time.After(5 * time.Second)
+	for {
+		logs1, err := a1.LastLogs(3, app.Applog{})
+		c.Assert(err, check.IsNil)
+		logs2, err := a2.LastLogs(2, app.Applog{})
+		c.Assert(err, check.IsNil)
+		if len(logs1) == 3 && len(logs2) == 2 {
+			break
+		}
+		select {
+		case <-timeout:
+			c.Fatal("timeout waiting for logs")
+			break
+		default:
+		}
+	}
 	logs, err := a1.LastLogs(3, app.Applog{})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.DeepEquals, []app.Applog{
@@ -153,11 +177,21 @@ func (s *S) TestAddLogsHandler(c *check.C) {
 }
 
 func (s *S) TestAddLogsHandlerInvalidToken(c *check.C) {
-	request, err := http.NewRequest("POST", "/logs", strings.NewReader(""))
-	c.Assert(err, check.IsNil)
-	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
-	recorder := httptest.NewRecorder()
 	m := RunServer(true)
-	m.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+	srv := httptest.NewServer(m)
+	defer srv.Close()
+	testServerUrl, err := url.Parse(srv.URL)
+	c.Assert(err, check.IsNil)
+	wsUrl := fmt.Sprintf("ws://%s/logs", testServerUrl.Host)
+	config, err := websocket.NewConfig(wsUrl, "ws://localhost/")
+	c.Assert(err, check.IsNil)
+	config.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	wsConn, err := websocket.DialConfig(config)
+	c.Assert(err, check.IsNil)
+	defer wsConn.Close()
+	_, err = wsConn.Write([]byte("a"))
+	buffer := make([]byte, 1024)
+	n, err := wsConn.Read(buffer)
+	c.Assert(err, check.IsNil)
+	c.Assert(string(buffer[:n]), check.Equals, `{"error":"wslogs: invalid token app name: \"\""}`)
 }

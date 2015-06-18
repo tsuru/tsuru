@@ -11,9 +11,11 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/log"
+	"golang.org/x/net/websocket"
 )
 
 func logRemove(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -32,16 +34,32 @@ func logRemove(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return app.LogRemove(nil)
 }
 
-func addLogs(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func addLogs(ws *websocket.Conn) {
+	var err error
+	defer func() {
+		data := map[string]interface{}{}
+		if err != nil {
+			data["error"] = err.Error()
+			log.Error(err.Error())
+		} else {
+			data["error"] = nil
+		}
+		msg, _ := json.Marshal(data)
+		ws.Write(msg)
+		ws.Close()
+	}()
+	req := ws.Request()
+	t := context.GetAuthToken(req)
+	if t == nil {
+		err = fmt.Errorf("wslogs: no token")
+		return
+	}
 	if t.GetAppName() != app.InternalAppName {
-		return &errors.HTTP{Code: http.StatusForbidden, Message: "this token is not allowed to execute this action"}
+		err = fmt.Errorf("wslogs: invalid token app name: %q", t.GetAppName())
+		return
 	}
-	if r.Body == nil {
-		return &errors.HTTP{Code: http.StatusBadRequest, Message: "body is required"}
-	}
-	defer r.Body.Close()
 	logCh, errCh := app.LogReceiver()
-	scanner := bufio.NewScanner(r.Body)
+	scanner := bufio.NewScanner(ws)
 	for scanner.Scan() {
 		var entry app.Applog
 		data := bytes.TrimSpace(scanner.Bytes())
@@ -51,24 +69,25 @@ func addLogs(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		err := json.Unmarshal(data, &entry)
 		if err != nil {
 			close(logCh)
-			return fmt.Errorf("error parsing log line %q: %s", string(data), err)
+			err = fmt.Errorf("wslogs: parsing log line %q: %s", string(data), err)
+			return
 		}
 		select {
 		case logCh <- &entry:
 		case err := <-errCh:
 			close(logCh)
-			return fmt.Errorf("error storing log: %s", err)
+			err = fmt.Errorf("wslogs: storing log: %s", err)
+			return
 		}
 	}
 	close(logCh)
-	err := scanner.Err()
+	err = scanner.Err()
 	if err != nil {
-		return fmt.Errorf("error waiting for log data: %s", err)
+		err = fmt.Errorf("wslogs: waiting for log data: %s", err)
+		return
 	}
 	err = <-errCh
 	if err != nil {
-		return fmt.Errorf("error storing log: %s", err)
+		err = fmt.Errorf("wslogs: storing log: %s", err)
 	}
-	w.WriteHeader(http.StatusOK)
-	return nil
 }
