@@ -8,6 +8,7 @@ package routertest
 
 import (
 	"fmt"
+	"net/url"
 	"runtime"
 	"sync"
 
@@ -21,27 +22,27 @@ func (s *S) TestAddRouteAndRemoteRouteAreSafe(c *check.C) {
 	for i := 1; i < 256; i++ {
 		wg.Add(5)
 		name := fmt.Sprintf("route-%d", i)
-		ip := fmt.Sprintf("10.10.10.%d", i)
-		go func(i int) {
+		addr, _ := url.Parse(fmt.Sprintf("http://10.10.10.%d", i))
+		go func() {
 			fake.AddBackend(name)
 			wg.Done()
-		}(i)
-		go func(i int) {
-			fake.AddRoute(name, ip)
-			wg.Done()
-		}(i)
+		}()
 		go func() {
-			fake.RemoveRoute(name, ip)
+			fake.AddRoute(name, addr)
 			wg.Done()
 		}()
 		go func() {
-			fake.HasRoute(name, ip)
+			fake.RemoveRoute(name, addr)
 			wg.Done()
 		}()
-		go func(i int) {
+		go func() {
+			fake.HasRoute(name, addr.String())
+			wg.Done()
+		}()
+		go func() {
 			fake.RemoveBackend(name)
 			wg.Done()
-		}(i)
+		}()
 	}
 	wg.Wait()
 }
