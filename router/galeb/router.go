@@ -170,7 +170,7 @@ func (r *galebRouter) RemoveBackend(name string) error {
 	return router.Remove(backendName)
 }
 
-func (r *galebRouter) AddRoute(name, address string) error {
+func (r *galebRouter) AddRoute(name string, address *url.URL) error {
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -183,11 +183,7 @@ func (r *galebRouter) AddRoute(name, address string) error {
 	if err != nil {
 		return err
 	}
-	parsed, _ := url.Parse(address)
-	if parsed != nil && parsed.Host != "" {
-		address = parsed.Host
-	}
-	host, portStr, _ := net.SplitHostPort(address)
+	host, portStr, _ := net.SplitHostPort(address.Host)
 	port, _ := strconv.Atoi(portStr)
 	params := galebClient.BackendParams{
 		Ip:          host,
@@ -198,10 +194,10 @@ func (r *galebRouter) AddRoute(name, address string) error {
 	if err != nil {
 		return err
 	}
-	return data.addReal(address, backendId)
+	return data.addReal(address.Host, backendId)
 }
 
-func (r *galebRouter) RemoveRoute(name, address string) error {
+func (r *galebRouter) RemoveRoute(name string, address *url.URL) error {
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -214,12 +210,8 @@ func (r *galebRouter) RemoveRoute(name, address string) error {
 	if err != nil {
 		return err
 	}
-	parsed, _ := url.Parse(address)
-	if parsed != nil && parsed.Host != "" {
-		address = parsed.Host
-	}
 	for _, real := range data.Reals {
-		if real.Real == address {
+		if real.Real == address.Host {
 			err = client.RemoveResource(real.BackendId)
 			if err != nil {
 				return err
@@ -227,7 +219,7 @@ func (r *galebRouter) RemoveRoute(name, address string) error {
 			break
 		}
 	}
-	return data.removeReal(address)
+	return data.removeReal(address.Host)
 }
 
 func (r *galebRouter) SetCName(cname, name string) error {
@@ -295,7 +287,7 @@ func (r *galebRouter) Swap(backend1, backend2 string) error {
 	return router.Swap(r, backend1, backend2)
 }
 
-func (r *galebRouter) Routes(name string) ([]string, error) {
+func (r *galebRouter) Routes(name string) ([]*url.URL, error) {
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return nil, err
@@ -304,11 +296,14 @@ func (r *galebRouter) Routes(name string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	var hosts []string
+	var result []*url.URL
 	for _, real := range data.Reals {
-		hosts = append(hosts, real.Real)
+		var url url.URL
+		url.Scheme = "http"
+		url.Host = real.Real
+		result = append(result, &url)
 	}
-	return hosts, nil
+	return result, nil
 }
 
 func (r galebRouter) StartupMessage() (string, error) {

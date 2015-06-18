@@ -16,6 +16,7 @@ package hipache
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"strings"
 	"sync"
 
@@ -133,7 +134,7 @@ func (r *hipacheRouter) RemoveBackend(name string) error {
 	return nil
 }
 
-func (r *hipacheRouter) AddRoute(name, address string) error {
+func (r *hipacheRouter) AddRoute(name string, address *url.URL) error {
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -144,7 +145,7 @@ func (r *hipacheRouter) AddRoute(name, address string) error {
 		return &routeError{"add", err}
 	}
 	frontend := "frontend:" + backendName + "." + domain
-	if err := r.addRoute(frontend, address); err != nil {
+	if err := r.addRoute(frontend, address.String()); err != nil {
 		log.Errorf("error on add route for %s - %s", backendName, address)
 		return &routeError{"add", err}
 	}
@@ -157,7 +158,7 @@ func (r *hipacheRouter) AddRoute(name, address string) error {
 		return nil
 	}
 	for _, cname := range cnames {
-		err = r.addRoute("frontend:"+cname, address)
+		err = r.addRoute("frontend:"+cname, address.String())
 		if err != nil {
 			return err
 		}
@@ -176,7 +177,7 @@ func (r *hipacheRouter) addRoute(name, address string) error {
 	return nil
 }
 
-func (r *hipacheRouter) RemoveRoute(name, address string) error {
+func (r *hipacheRouter) RemoveRoute(name string, address *url.URL) error {
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -186,7 +187,7 @@ func (r *hipacheRouter) RemoveRoute(name, address string) error {
 		return &routeError{"remove", err}
 	}
 	frontend := "frontend:" + backendName + "." + domain
-	if err := r.removeElement(frontend, address); err != nil {
+	if err := r.removeElement(frontend, address.String()); err != nil {
 		return err
 	}
 	cnames, err := r.getCNames(backendName)
@@ -197,7 +198,7 @@ func (r *hipacheRouter) RemoveRoute(name, address string) error {
 		return nil
 	}
 	for _, cname := range cnames {
-		err = r.removeElement("frontend:"+cname, address)
+		err = r.removeElement("frontend:"+cname, address.String())
 		if err != nil {
 			return err
 		}
@@ -313,7 +314,7 @@ func (r *hipacheRouter) Addr(name string) (string, error) {
 	return fmt.Sprintf("%s.%s", backendName, domain), nil
 }
 
-func (r *hipacheRouter) Routes(name string) ([]string, error) {
+func (r *hipacheRouter) Routes(name string) ([]*url.URL, error) {
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return nil, err
@@ -329,7 +330,14 @@ func (r *hipacheRouter) Routes(name string) ([]string, error) {
 	if err != nil {
 		return nil, &routeError{"routes", err}
 	}
-	return routes, nil
+	result := make([]*url.URL, len(routes))
+	for i, route := range routes {
+		result[i], err = url.Parse(route)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
 }
 
 func (r *hipacheRouter) removeElement(name, address string) error {

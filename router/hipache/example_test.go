@@ -6,6 +6,7 @@ package hipache_test
 
 import (
 	"fmt"
+	"net/url"
 
 	"github.com/tsuru/tsuru/router"
 	_ "github.com/tsuru/tsuru/router/hipache"
@@ -20,13 +21,17 @@ func Example() {
 	if err != nil {
 		panic(err)
 	}
-	err = router.AddRoute("myapp", "http://10.10.10.10:8080")
+	url, err := url.Parse("http://10.10.10.10:8080")
+	if err != nil {
+		panic(err)
+	}
+	err = router.AddRoute("myapp", url)
 	if err != nil {
 		panic(err)
 	}
 	addr, _ := router.Addr("myapp")
 	fmt.Println("Please access:", addr)
-	err = router.RemoveRoute("myapp", "http://10.10.10.10:8080")
+	err = router.RemoveRoute("myapp", url)
 	if err != nil {
 		panic(err)
 	}

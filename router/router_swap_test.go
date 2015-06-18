@@ -5,6 +5,8 @@
 package router_test
 
 import (
+	"net/url"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
@@ -44,17 +46,19 @@ func (s *ExternalSuite) TestSwap(c *check.C) {
 	r, err := router.Get("fake")
 	c.Assert(err, check.IsNil)
 	r.AddBackend(backend1)
-	r.AddRoute(backend1, "http://127.0.0.1")
+	addr1, _ := url.Parse("http://127.0.0.1")
+	r.AddRoute(backend1, addr1)
 	r.AddBackend(backend2)
-	r.AddRoute(backend2, "http://10.10.10.10")
+	addr2, _ := url.Parse("http://10.10.10.10")
+	r.AddRoute(backend2, addr2)
 	err = router.Swap(r, backend1, backend2)
 	c.Assert(err, check.IsNil)
 	routes1, err := r.Routes(backend1)
 	c.Assert(err, check.IsNil)
-	c.Assert(routes1, check.DeepEquals, []string{"http://127.0.0.1"})
+	c.Assert(routes1, check.DeepEquals, []*url.URL{addr1})
 	routes2, err := r.Routes(backend2)
 	c.Assert(err, check.IsNil)
-	c.Assert(routes2, check.DeepEquals, []string{"http://10.10.10.10"})
+	c.Assert(routes2, check.DeepEquals, []*url.URL{addr2})
 	name1, err := router.Retrieve(backend1)
 	c.Assert(err, check.IsNil)
 	c.Assert(name1, check.Equals, backend2)
@@ -72,11 +76,13 @@ func (s *ExternalSuite) TestSwapWithDifferentRouterKinds(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = r1.AddBackend(backend1)
 	c.Assert(err, check.IsNil)
-	err = r1.AddRoute(backend1, "http://127.0.0.1")
+	addr1, _ := url.Parse("http://127.0.0.1")
+	err = r1.AddRoute(backend1, addr1)
 	c.Assert(err, check.IsNil)
 	err = r2.AddBackend(backend2)
 	c.Assert(err, check.IsNil)
-	err = r2.AddRoute(backend2, "http://10.10.10.10")
+	addr2, _ := url.Parse("http://10.10.10.10")
+	err = r2.AddRoute(backend2, addr2)
 	c.Assert(err, check.IsNil)
 	err = router.Swap(r1, backend1, backend2)
 	c.Assert(err, check.ErrorMatches, `swap is only allowed between routers of the same kind. "bb1" uses "fake", "bb2" uses "hipache"`)

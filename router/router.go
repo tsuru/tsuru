@@ -9,6 +9,7 @@ package router
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"sort"
 
 	"github.com/tsuru/config"
@@ -58,8 +59,8 @@ func Get(name string) (Router, error) {
 type Router interface {
 	AddBackend(name string) error
 	RemoveBackend(name string) error
-	AddRoute(name, address string) error
-	RemoveRoute(name, address string) error
+	AddRoute(name string, address *url.URL) error
+	RemoveRoute(name string, address *url.URL) error
 	SetCName(cname, name string) error
 	UnsetCName(cname, name string) error
 	Addr(name string) (string, error)
@@ -68,7 +69,7 @@ type Router interface {
 	Swap(string, string) error
 
 	// Routes returns a list of routes of a backend.
-	Routes(name string) ([]string, error)
+	Routes(name string) ([]*url.URL, error)
 }
 
 type MessageRouter interface {

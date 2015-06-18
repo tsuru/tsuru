@@ -966,7 +966,7 @@ func (s *S) TestProvisionerRemoveUnit(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, err = s.p.getContainer(container.ID)
 	c.Assert(err, check.NotNil)
-	c.Assert(routertest.FakeRouter.HasRoute(container.AppName, container.getAddress()), check.Equals, false)
+	c.Assert(routertest.FakeRouter.HasRoute(container.AppName, container.getAddress().String()), check.Equals, false)
 }
 
 func (s *S) TestProvisionerRemoveUnitNotFound(c *check.C) {
@@ -1104,26 +1104,28 @@ func (s *S) TestProvisionCollection(c *check.C) {
 func (s *S) TestProvisionSetCName(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend("myapp")
-	routertest.FakeRouter.AddRoute("myapp", "127.0.0.1")
+	addr, _ := url.Parse("http://127.0.0.1")
+	routertest.FakeRouter.AddRoute("myapp", addr)
 	cname := "mycname.com"
 	err := s.p.SetCName(app, cname)
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.FakeRouter.HasBackend(cname), check.Equals, true)
-	c.Assert(routertest.FakeRouter.HasRoute(cname, "127.0.0.1"), check.Equals, true)
+	c.Assert(routertest.FakeRouter.HasRoute(cname, addr.String()), check.Equals, true)
 }
 
 func (s *S) TestProvisionUnsetCName(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	routertest.FakeRouter.AddBackend("myapp")
-	routertest.FakeRouter.AddRoute("myapp", "127.0.0.1")
+	addr, _ := url.Parse("http://127.0.0.1")
+	routertest.FakeRouter.AddRoute("myapp", addr)
 	cname := "mycname.com"
 	err := s.p.SetCName(app, cname)
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.FakeRouter.HasBackend(cname), check.Equals, true)
-	c.Assert(routertest.FakeRouter.HasRoute(cname, "127.0.0.1"), check.Equals, true)
+	c.Assert(routertest.FakeRouter.HasRoute(cname, addr.String()), check.Equals, true)
 	err = s.p.UnsetCName(app, cname)
 	c.Assert(routertest.FakeRouter.HasBackend(cname), check.Equals, false)
-	c.Assert(routertest.FakeRouter.HasRoute(cname, "127.0.0.1"), check.Equals, false)
+	c.Assert(routertest.FakeRouter.HasRoute(cname, addr.String()), check.Equals, false)
 }
 
 func (s *S) TestProvisionerIsCNameManager(c *check.C) {
@@ -1155,15 +1157,17 @@ func (s *S) TestSwap(c *check.C) {
 	app1 := provisiontest.NewFakeApp("app1", "python", 1)
 	app2 := provisiontest.NewFakeApp("app2", "python", 1)
 	routertest.FakeRouter.AddBackend(app1.GetName())
-	routertest.FakeRouter.AddRoute(app1.GetName(), "127.0.0.1")
+	addr1, _ := url.Parse("http://127.0.0.1")
+	addr2, _ := url.Parse("http://127.0.0.2")
+	routertest.FakeRouter.AddRoute(app1.GetName(), addr1)
 	routertest.FakeRouter.AddBackend(app2.GetName())
-	routertest.FakeRouter.AddRoute(app2.GetName(), "127.0.0.2")
+	routertest.FakeRouter.AddRoute(app2.GetName(), addr2)
 	err := s.p.Swap(app1, app2)
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.FakeRouter.HasBackend(app1.GetName()), check.Equals, true)
 	c.Assert(routertest.FakeRouter.HasBackend(app2.GetName()), check.Equals, true)
-	c.Assert(routertest.FakeRouter.HasRoute(app2.GetName(), "127.0.0.1"), check.Equals, true)
-	c.Assert(routertest.FakeRouter.HasRoute(app1.GetName(), "127.0.0.2"), check.Equals, true)
+	c.Assert(routertest.FakeRouter.HasRoute(app2.GetName(), addr1.String()), check.Equals, true)
+	c.Assert(routertest.FakeRouter.HasRoute(app1.GetName(), addr2.String()), check.Equals, true)
 }
 
 func (s *S) TestProvisionerStart(c *check.C) {

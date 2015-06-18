@@ -6,6 +6,7 @@ package routertest
 
 import (
 	"errors"
+	"net/url"
 	"sync"
 
 	"github.com/tsuru/tsuru/router"
@@ -90,7 +91,7 @@ func (r *fakeRouter) RemoveBackend(name string) error {
 	return nil
 }
 
-func (r *fakeRouter) AddRoute(name, ip string) error {
+func (r *fakeRouter) AddRoute(name string, address *url.URL) error {
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -100,16 +101,16 @@ func (r *fakeRouter) AddRoute(name, ip string) error {
 	}
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	if r.failuresByIp[ip] {
+	if r.failuresByIp[address.String()] {
 		return ErrForcedFailure
 	}
 	routes := r.backends[backendName]
-	routes = append(routes, ip)
+	routes = append(routes, address.String())
 	r.backends[backendName] = routes
 	return nil
 }
 
-func (r *fakeRouter) RemoveRoute(name, ip string) error {
+func (r *fakeRouter) RemoveRoute(name string, address *url.URL) error {
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return err
@@ -119,13 +120,13 @@ func (r *fakeRouter) RemoveRoute(name, ip string) error {
 	}
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	if r.failuresByIp[ip] {
+	if r.failuresByIp[address.String()] {
 		return ErrForcedFailure
 	}
 	index := -1
 	routes := r.backends[backendName]
 	for i := range routes {
-		if routes[i] == ip {
+		if routes[i] == address.String() {
 			index = i
 			break
 		}
@@ -173,7 +174,7 @@ func (r *fakeRouter) Reset() {
 	r.failuresByIp = make(map[string]bool)
 }
 
-func (r *fakeRouter) Routes(name string) ([]string, error) {
+func (r *fakeRouter) Routes(name string) ([]*url.URL, error) {
 	backendName, err := router.Retrieve(name)
 	if err != nil {
 		return nil, err
@@ -181,7 +182,14 @@ func (r *fakeRouter) Routes(name string) ([]string, error) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	routes := r.backends[backendName]
-	return routes, nil
+	result := make([]*url.URL, len(routes))
+	for i, route := range routes {
+		result[i], err = url.Parse(route)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return result, nil
 }
 
 func (r *fakeRouter) Swap(backend1, backend2 string) error {

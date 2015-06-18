@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/tsuru/config"
@@ -142,7 +143,8 @@ func (s *S) TestAddRoute(c *check.C) {
 	s.handler.RspCode = http.StatusCreated
 	gRouter, err := createRouter("routers:galeb")
 	c.Assert(err, check.IsNil)
-	err = gRouter.AddRoute("myapp", "10.9.2.1:44001")
+	addr, _ := url.Parse("http://10.9.2.1:44001")
+	err = gRouter.AddRoute("myapp", addr)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/backend/"})
 	dbData, err := getGalebData("myapp")
@@ -173,7 +175,8 @@ func (s *S) TestAddRouteParsesURL(c *check.C) {
 	s.handler.RspCode = http.StatusCreated
 	gRouter, err := createRouter("routers:galeb")
 	c.Assert(err, check.IsNil)
-	err = gRouter.AddRoute("myapp", "http://10.9.9.9:11001/")
+	addr, _ := url.Parse("http://10.9.9.9:11001/")
+	err = gRouter.AddRoute("myapp", addr)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/backend/"})
 	dbData, err := getGalebData("myapp")
@@ -203,7 +206,8 @@ func (s *S) TestRemoveRoute(c *check.C) {
 	s.handler.RspCode = http.StatusNoContent
 	gRouter, err := createRouter("routers:galeb")
 	c.Assert(err, check.IsNil)
-	err = gRouter.RemoveRoute("myapp", "10.1.1.10")
+	addr, _ := url.Parse("http://10.1.1.10")
+	err = gRouter.RemoveRoute("myapp", addr)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/backend1"})
 	dbData, err := getGalebData("myapp")
@@ -225,7 +229,8 @@ func (s *S) TestRemoveRouteParsesURL(c *check.C) {
 	s.handler.RspCode = http.StatusNoContent
 	gRouter, err := createRouter("routers:galeb")
 	c.Assert(err, check.IsNil)
-	err = gRouter.RemoveRoute("myapp", "https://10.1.1.10:1010/")
+	addr, _ := url.Parse("https://10.1.1.10:1010/")
+	err = gRouter.RemoveRoute("myapp", addr)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/backend1"})
 	dbData, err := getGalebData("myapp")
@@ -302,7 +307,9 @@ func (s *S) TestRoutes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	routes, err := gRouter.Routes("myapp")
 	c.Assert(err, check.IsNil)
-	c.Assert(routes, check.DeepEquals, []string{"10.1.1.10", "10.1.1.11"})
+	route1, _ := url.Parse("http://10.1.1.10")
+	route2, _ := url.Parse("http://10.1.1.11")
+	c.Assert(routes, check.DeepEquals, []*url.URL{route1, route2})
 }
 
 func (s *S) TestSwap(c *check.C) {
@@ -319,11 +326,13 @@ func (s *S) TestSwap(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = gRouter.AddBackend(backend1)
 	c.Assert(err, check.IsNil)
-	err = gRouter.AddRoute(backend1, "http://127.0.0.1")
+	addr1, _ := url.Parse("http://127.0.0.1")
+	err = gRouter.AddRoute(backend1, addr1)
 	c.Assert(err, check.IsNil)
 	err = gRouter.AddBackend(backend2)
 	c.Assert(err, check.IsNil)
-	err = gRouter.AddRoute(backend2, "http://10.10.10.10")
+	addr2, _ := url.Parse("http://10.10.10.10")
+	err = gRouter.AddRoute(backend2, addr2)
 	c.Assert(err, check.IsNil)
 	err = gRouter.Swap(backend1, backend2)
 	c.Assert(err, check.IsNil)

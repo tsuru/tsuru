@@ -143,7 +143,7 @@ func (s *S) TestContainerGetAddress(c *check.C) {
 	container := container{ID: "id123", HostAddr: "10.10.10.10", HostPort: "49153"}
 	address := container.getAddress()
 	expected := "http://10.10.10.10:49153"
-	c.Assert(address, check.Equals, expected)
+	c.Assert(address.String(), check.Equals, expected)
 }
 
 func (s *S) TestContainerCreate(c *check.C) {

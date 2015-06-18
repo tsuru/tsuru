@@ -105,8 +105,11 @@ func (c *container) available() bool {
 		c.Status == provision.StatusStarting.String()
 }
 
-func (c *container) getAddress() string {
-	return fmt.Sprintf("http://%s:%s", c.HostAddr, c.HostPort)
+func (c *container) getAddress() *url.URL {
+	return &url.URL{
+		Scheme: "http",
+		Host:   fmt.Sprintf("%s:%s", c.HostAddr, c.HostPort),
+	}
 }
 
 func randomString() string {
