@@ -59,7 +59,7 @@ bzr:
 	$(if $(shell bzr), , $(error $(BZR_ERROR)))
 
 get-code:
-	go get $(GO_EXTRAFLAGS) -u -d -t -f ./...
+	go get $(GO_EXTRAFLAGS) -u -d -t -f ./... || true
 
 godep:
 	go get $(GO_EXTRAFLAGS) github.com/tools/godep
