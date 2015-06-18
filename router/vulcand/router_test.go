@@ -6,22 +6,21 @@ package vulcand
 
 import (
 	"fmt"
+	"gopkg.in/check.v1"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
+	"github.com/mailgun/vulcand/Godeps/_workspace/src/github.com/mailgun/scroll"
+	"github.com/mailgun/vulcand/api"
+	"github.com/mailgun/vulcand/engine"
+	"github.com/mailgun/vulcand/engine/etcdng"
+	"github.com/mailgun/vulcand/supervisor"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/router"
-
-	"github.com/mailgun/scroll"
-	vulcandAPI "github.com/mailgun/vulcand/api"
-	"github.com/mailgun/vulcand/engine"
-	"github.com/mailgun/vulcand/engine/memng"
-	"github.com/mailgun/vulcand/plugin/registry"
-	"github.com/mailgun/vulcand/supervisor"
-	"gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) {
@@ -42,18 +41,23 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("routers:vulcand:api-url", "127.0.0.1:8181")
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "router_vulcand_tests")
-
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	req1, err := http.NewRequest("DELETE", "http://127.0.0.1:4001/v2/keys/backends?recursive=true", nil)
+	c.Assert(err, check.IsNil)
+	req2, err := http.NewRequest("DELETE", "http://127.0.0.1:4001/v2/keys/frontends?recursive=true", nil)
+	c.Assert(err, check.IsNil)
+	http.DefaultClient.Do(req1)
+	http.DefaultClient.Do(req2)
 	dbtest.ClearAllCollections(s.conn.Collection("router_vulcand_tests").Database)
-
-	s.engine = memng.New(registry.GetRegistry())
+	s.engine, err = etcdng.New([]string{"http://127.0.0.1:4001"}, "", nil, etcdng.Options{})
+	c.Assert(err, check.IsNil)
 	scrollApp := scroll.NewApp()
-	vulcandAPI.InitProxyController(s.engine, &supervisor.Supervisor{}, scrollApp)
+	api.InitProxyController(s.engine, &supervisor.Supervisor{}, scrollApp)
 	s.vulcandServer = httptest.NewServer(scrollApp.GetHandler())
 	config.Set("routers:vulcand:api-url", s.vulcandServer.URL)
 }
@@ -84,12 +88,10 @@ func (s *S) TestShouldBeRegisteredAllowingPrefixes(c *check.C) {
 	defer config.Unset("routers:inst2:type")
 	defer config.Unset("routers:inst2:api-url")
 	defer config.Unset("routers:inst2:domain")
-
 	got1, err := router.Get("inst1")
 	c.Assert(err, check.IsNil)
 	got2, err := router.Get("inst2")
 	c.Assert(err, check.IsNil)
-
 	r1, ok := got1.(*vulcandRouter)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(r1.client.Addr, check.Equals, "http://localhost:1")
@@ -105,18 +107,14 @@ func (s *S) TestShouldBeRegisteredAllowingPrefixes(c *check.C) {
 func (s *S) TestAddBackend(c *check.C) {
 	vRouter, err := router.Get("vulcand")
 	c.Assert(err, check.IsNil)
-
 	err = vRouter.AddBackend("myapp")
 	c.Assert(err, check.IsNil)
-
 	backendKey := engine.BackendKey{Id: "tsuru_myapp"}
 	frontendKey := engine.FrontendKey{Id: "tsuru_myapp.vulcand.example.com"}
-
 	backend, err := s.engine.GetBackend(backendKey)
 	c.Assert(err, check.IsNil)
 	c.Assert(backend.Id, check.Equals, backendKey.String())
 	c.Assert(backend.Type, check.Equals, "http")
-
 	frontend, err := s.engine.GetFrontend(frontendKey)
 	c.Assert(err, check.IsNil)
 	c.Assert(frontend.Id, check.Equals, frontendKey.String())
@@ -128,10 +126,8 @@ func (s *S) TestAddBackend(c *check.C) {
 func (s *S) TestAddBackendDuplicate(c *check.C) {
 	vRouter, err := router.Get("vulcand")
 	c.Assert(err, check.IsNil)
-
 	err = vRouter.AddBackend("myapp")
 	c.Assert(err, check.IsNil)
-
 	err = vRouter.AddBackend("myapp")
 	c.Assert(err, check.ErrorMatches, router.ErrBackendExists.Error())
 }
@@ -140,30 +136,23 @@ func (s *S) TestAddBackendRollbackOnError(c *check.C) {
 	s.vulcandServer.Close()
 	scrollApp := scroll.NewApp()
 	var postRequestCount int
-
 	conditionalHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "POST" {
 			postRequestCount++
-
 			if postRequestCount > 1 {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 		}
-
 		scrollApp.GetHandler().ServeHTTP(w, r)
 	})
-
-	vulcandAPI.InitProxyController(s.engine, &supervisor.Supervisor{}, scrollApp)
+	api.InitProxyController(s.engine, &supervisor.Supervisor{}, scrollApp)
 	s.vulcandServer = httptest.NewServer(conditionalHandler)
 	config.Set("routers:vulcand:api-url", s.vulcandServer.URL)
-
 	vRouter, err := router.Get("vulcand")
 	c.Assert(err, check.IsNil)
-
 	err = vRouter.AddBackend("myapp")
 	c.Assert(err, check.NotNil)
-
 	backends, err := s.engine.GetBackends()
 	c.Assert(err, check.IsNil)
 	c.Assert(backends, check.HasLen, 0)
@@ -175,7 +164,6 @@ func (s *S) TestAddBackendRollbackOnError(c *check.C) {
 func (s *S) TestRemoveBackend(c *check.C) {
 	vRouter, err := router.Get("vulcand")
 	c.Assert(err, check.IsNil)
-
 	err = vRouter.AddBackend("myapp")
 	c.Assert(err, check.IsNil)
 	backends, err := s.engine.GetBackends()
@@ -184,7 +172,6 @@ func (s *S) TestRemoveBackend(c *check.C) {
 	frontends, err := s.engine.GetFrontends()
 	c.Assert(err, check.IsNil)
 	c.Assert(frontends, check.HasLen, 1)
-
 	err = vRouter.RemoveBackend("myapp")
 	c.Assert(err, check.IsNil)
 	backends, err = s.engine.GetBackends()
@@ -198,14 +185,12 @@ func (s *S) TestRemoveBackend(c *check.C) {
 func (s *S) TestRemoveBackendNotExist(c *check.C) {
 	vRouter, err := router.Get("vulcand")
 	c.Assert(err, check.IsNil)
-
 	frontends, err := s.engine.GetFrontends()
 	c.Assert(err, check.IsNil)
 	c.Assert(frontends, check.HasLen, 0)
 	backends, err := s.engine.GetBackends()
 	c.Assert(err, check.IsNil)
 	c.Assert(backends, check.HasLen, 0)
-
 	err = vRouter.RemoveBackend("myapp")
 	c.Assert(err, check.ErrorMatches, router.ErrBackendNotFound.Error())
 }
@@ -213,86 +198,81 @@ func (s *S) TestRemoveBackendNotExist(c *check.C) {
 func (s *S) TestAddRoute(c *check.C) {
 	vRouter, err := router.Get("vulcand")
 	c.Assert(err, check.IsNil)
-
 	err = vRouter.AddBackend("myapp")
 	c.Assert(err, check.IsNil)
-	err = vRouter.AddRoute("myapp", "http://1.1.1.1:111")
+	u1, _ := url.Parse("http://1.1.1.1:111")
+	u2, _ := url.Parse("http://2.2.2.2:222")
+	err = vRouter.AddRoute("myapp", u1)
 	c.Assert(err, check.IsNil)
-	err = vRouter.AddRoute("myapp", "http://2.2.2.2:222")
+	err = vRouter.AddRoute("myapp", u2)
 	c.Assert(err, check.IsNil)
-
 	servers, err := s.engine.GetServers(engine.BackendKey{Id: "tsuru_myapp"})
 	c.Assert(err, check.IsNil)
 	c.Assert(servers, check.HasLen, 2)
-	c.Assert(servers[0].URL, check.Equals, "http://1.1.1.1:111")
-	c.Assert(servers[1].URL, check.Equals, "http://2.2.2.2:222")
+	c.Assert(servers[0].URL, check.Equals, u1.String())
+	c.Assert(servers[1].URL, check.Equals, u2.String())
 }
 
 func (s *S) TestAddRouteDuplicate(c *check.C) {
 	vRouter, err := router.Get("vulcand")
 	c.Assert(err, check.IsNil)
-
 	err = vRouter.AddBackend("myapp")
 	c.Assert(err, check.IsNil)
-	err = vRouter.AddRoute("myapp", "http://1.1.1.1:111")
+	u1, _ := url.Parse("http://1.1.1.1:111")
+	err = vRouter.AddRoute("myapp", u1)
 	c.Assert(err, check.IsNil)
-
-	err = vRouter.AddRoute("myapp", "http://1.1.1.1:111")
+	err = vRouter.AddRoute("myapp", u1)
 	c.Assert(err, check.ErrorMatches, router.ErrRouteExists.Error())
 }
 
 func (s *S) TestRemoveRoute(c *check.C) {
 	vRouter, err := router.Get("vulcand")
 	c.Assert(err, check.IsNil)
-
 	err = vRouter.AddBackend("myapp")
 	c.Assert(err, check.IsNil)
-	err = vRouter.AddRoute("myapp", "http://1.1.1.1:111")
+	u1, _ := url.Parse("http://1.1.1.1:111")
+	u2, _ := url.Parse("http://2.2.2.2:222")
+	err = vRouter.AddRoute("myapp", u1)
 	c.Assert(err, check.IsNil)
-	err = vRouter.AddRoute("myapp", "http://2.2.2.2:222")
+	err = vRouter.AddRoute("myapp", u2)
 	c.Assert(err, check.IsNil)
-
 	servers, err := s.engine.GetServers(engine.BackendKey{Id: "tsuru_myapp"})
 	c.Assert(err, check.IsNil)
 	c.Assert(servers, check.HasLen, 2)
-
-	err = vRouter.RemoveRoute("myapp", "http://1.1.1.1:111")
+	err = vRouter.RemoveRoute("myapp", u1)
 	c.Assert(err, check.IsNil)
-
 	servers, err = s.engine.GetServers(engine.BackendKey{Id: "tsuru_myapp"})
 	c.Assert(err, check.IsNil)
 	c.Assert(servers, check.HasLen, 1)
-	c.Assert(servers[0].URL, check.Equals, "http://2.2.2.2:222")
+	c.Assert(servers[0].URL, check.Equals, u2.String())
 }
 
 func (s *S) TestRemoveRouteNotExist(c *check.C) {
 	vRouter, err := router.Get("vulcand")
 	c.Assert(err, check.IsNil)
-
 	err = vRouter.AddBackend("myapp")
 	c.Assert(err, check.IsNil)
-
 	servers, err := s.engine.GetServers(engine.BackendKey{Id: "tsuru_myapp"})
 	c.Assert(err, check.IsNil)
 	c.Assert(servers, check.HasLen, 0)
-
-	err = vRouter.RemoveRoute("myapp", "http://1.1.1.1:111")
+	u1, _ := url.Parse("http://1.1.1.1:111")
+	err = vRouter.RemoveRoute("myapp", u1)
 	c.Assert(err, check.ErrorMatches, router.ErrRouteNotFound.Error())
 }
 
 func (s *S) TestSetCName(c *check.C) {
 	vRouter, err := router.Get("vulcand")
 	c.Assert(err, check.IsNil)
-
 	err = vRouter.AddBackend("myapp")
 	c.Assert(err, check.IsNil)
-	err = vRouter.AddRoute("myapp", "http://1.1.1.1:111")
+	u1, _ := url.Parse("http://1.1.1.1:111")
+	u2, _ := url.Parse("http://2.2.2.2:222")
+	err = vRouter.AddRoute("myapp", u1)
 	c.Assert(err, check.IsNil)
-	err = vRouter.AddRoute("myapp", "http://2.2.2.2:222")
+	err = vRouter.AddRoute("myapp", u2)
 	c.Assert(err, check.IsNil)
 	err = vRouter.SetCName("myapp.cname.example.com", "myapp")
 	c.Assert(err, check.IsNil)
-
 	appFrontend, err := s.engine.GetFrontend(engine.FrontendKey{
 		Id: "tsuru_myapp.vulcand.example.com",
 	})
@@ -301,7 +281,6 @@ func (s *S) TestSetCName(c *check.C) {
 		Id: "tsuru_myapp.cname.example.com",
 	})
 	c.Assert(err, check.IsNil)
-
 	c.Assert(cnameFrontend.BackendId, check.DeepEquals, appFrontend.BackendId)
 	c.Assert(cnameFrontend.Route, check.Equals, `Host("myapp.cname.example.com") && PathRegexp("/")`)
 	c.Assert(cnameFrontend.Type, check.Equals, "http")
@@ -310,16 +289,16 @@ func (s *S) TestSetCName(c *check.C) {
 func (s *S) TestSetCNameDuplicate(c *check.C) {
 	vRouter, err := router.Get("vulcand")
 	c.Assert(err, check.IsNil)
-
 	err = vRouter.AddBackend("myapp")
 	c.Assert(err, check.IsNil)
-	err = vRouter.AddRoute("myapp", "http://1.1.1.1:111")
+	u1, _ := url.Parse("http://1.1.1.1:111")
+	u2, _ := url.Parse("http://2.2.2.2:222")
+	err = vRouter.AddRoute("myapp", u1)
 	c.Assert(err, check.IsNil)
-	err = vRouter.AddRoute("myapp", "http://2.2.2.2:222")
+	err = vRouter.AddRoute("myapp", u2)
 	c.Assert(err, check.IsNil)
 	err = vRouter.SetCName("myapp.cname.example.com", "myapp")
 	c.Assert(err, check.IsNil)
-
 	err = vRouter.SetCName("myapp.cname.example.com", "myapp")
 	c.Assert(err, check.ErrorMatches, router.ErrRouteExists.Error())
 }
@@ -327,20 +306,19 @@ func (s *S) TestSetCNameDuplicate(c *check.C) {
 func (s *S) TestUnsetCName(c *check.C) {
 	vRouter, err := router.Get("vulcand")
 	c.Assert(err, check.IsNil)
-
 	err = vRouter.AddBackend("myapp")
 	c.Assert(err, check.IsNil)
-	err = vRouter.AddRoute("myapp", "http://1.1.1.1:111")
+	u1, _ := url.Parse("http://1.1.1.1:111")
+	u2, _ := url.Parse("http://2.2.2.2:222")
+	err = vRouter.AddRoute("myapp", u1)
 	c.Assert(err, check.IsNil)
-	err = vRouter.AddRoute("myapp", "http://2.2.2.2:222")
+	err = vRouter.AddRoute("myapp", u2)
 	c.Assert(err, check.IsNil)
 	err = vRouter.SetCName("myapp.cname.example.com", "myapp")
 	c.Assert(err, check.IsNil)
-
 	frontends, err := s.engine.GetFrontends()
 	c.Assert(err, check.IsNil)
 	c.Assert(frontends, check.HasLen, 2)
-
 	vRouter.UnsetCName("myapp.cname.example.com", "myapp")
 	frontends, err = s.engine.GetFrontends()
 	c.Assert(err, check.IsNil)
@@ -351,11 +329,9 @@ func (s *S) TestUnsetCName(c *check.C) {
 func (s *S) TestUnsetCNameNotExist(c *check.C) {
 	vRouter, err := router.Get("vulcand")
 	c.Assert(err, check.IsNil)
-
 	frontends, err := s.engine.GetFrontends()
 	c.Assert(err, check.IsNil)
 	c.Assert(frontends, check.HasLen, 0)
-
 	err = vRouter.UnsetCName("myapp.cname.example.com", "myapp")
 	c.Assert(err, check.ErrorMatches, router.ErrRouteNotFound.Error())
 }
@@ -363,10 +339,8 @@ func (s *S) TestUnsetCNameNotExist(c *check.C) {
 func (s *S) TestAddr(c *check.C) {
 	vRouter, err := router.Get("vulcand")
 	c.Assert(err, check.IsNil)
-
 	err = vRouter.AddBackend("myapp")
 	c.Assert(err, check.IsNil)
-
 	addr, err := vRouter.Addr("myapp")
 	c.Assert(err, check.IsNil)
 	c.Assert(addr, check.Equals, "myapp.vulcand.example.com")
@@ -375,14 +349,12 @@ func (s *S) TestAddr(c *check.C) {
 func (s *S) TestAddrNotExist(c *check.C) {
 	vRouter, err := router.Get("vulcand")
 	c.Assert(err, check.IsNil)
-
 	frontends, err := s.engine.GetFrontends()
 	c.Assert(err, check.IsNil)
 	c.Assert(frontends, check.HasLen, 0)
 	backends, err := s.engine.GetBackends()
 	c.Assert(err, check.IsNil)
 	c.Assert(backends, check.HasLen, 0)
-
 	addr, err := vRouter.Addr("myapp")
 	c.Assert(err, check.ErrorMatches, router.ErrRouteNotFound.Error())
 	c.Assert(addr, check.Equals, "")
@@ -391,44 +363,42 @@ func (s *S) TestAddrNotExist(c *check.C) {
 func (s *S) TestSwap(c *check.C) {
 	vRouter, err := router.Get("vulcand")
 	c.Assert(err, check.IsNil)
-
 	err = vRouter.AddBackend("myapp1")
 	c.Assert(err, check.IsNil)
-	err = vRouter.AddRoute("myapp1", "http://1.1.1.1:111")
+	u1, _ := url.Parse("http://1.1.1.1:111")
+	u2, _ := url.Parse("http://2.2.2.2:222")
+	err = vRouter.AddRoute("myapp1", u1)
 	c.Assert(err, check.IsNil)
 	err = vRouter.AddBackend("myapp2")
 	c.Assert(err, check.IsNil)
-	err = vRouter.AddRoute("myapp2", "http://2.2.2.2:222")
+	err = vRouter.AddRoute("myapp2", u2)
 	c.Assert(err, check.IsNil)
-
 	err = vRouter.Swap("myapp1", "myapp2")
 	c.Assert(err, check.IsNil)
-
 	servers1, err := s.engine.GetServers(engine.BackendKey{Id: "tsuru_myapp1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(servers1, check.HasLen, 1)
-	c.Assert(servers1[0].URL, check.Equals, "http://2.2.2.2:222")
-
+	c.Assert(servers1[0].URL, check.Equals, u2.String())
 	servers2, err := s.engine.GetServers(engine.BackendKey{Id: "tsuru_myapp2"})
 	c.Assert(err, check.IsNil)
 	c.Assert(servers2, check.HasLen, 1)
-	c.Assert(servers2[0].URL, check.Equals, "http://1.1.1.1:111")
+	c.Assert(servers2[0].URL, check.Equals, u1.String())
 }
 
 func (s *S) TestRoutes(c *check.C) {
 	vRouter, err := router.Get("vulcand")
 	c.Assert(err, check.IsNil)
-
 	err = vRouter.AddBackend("myapp")
 	c.Assert(err, check.IsNil)
-	err = vRouter.AddRoute("myapp", "http://1.1.1.1:111")
+	u1, _ := url.Parse("http://1.1.1.1:111")
+	u2, _ := url.Parse("http://2.2.2.2:222")
+	err = vRouter.AddRoute("myapp", u1)
 	c.Assert(err, check.IsNil)
-	err = vRouter.AddRoute("myapp", "http://2.2.2.2:222")
+	err = vRouter.AddRoute("myapp", u2)
 	c.Assert(err, check.IsNil)
-
 	routes, err := vRouter.Routes("myapp")
 	c.Assert(err, check.IsNil)
-	c.Assert(routes, check.DeepEquals, []string{"http://1.1.1.1:111", "http://2.2.2.2:222"})
+	c.Assert(routes, check.DeepEquals, []*url.URL{u1, u2})
 }
 
 func (s *S) TestStartupMessage(c *check.C) {
@@ -436,7 +406,6 @@ func (s *S) TestStartupMessage(c *check.C) {
 	c.Assert(err, check.IsNil)
 	mRouter, ok := got.(router.MessageRouter)
 	c.Assert(ok, check.Equals, true)
-
 	message, err := mRouter.StartupMessage()
 	c.Assert(err, check.IsNil)
 	c.Assert(message, check.Equals,
