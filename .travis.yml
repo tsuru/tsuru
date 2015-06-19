@@ -18,6 +18,9 @@ before_install:
   - echo "smallfiles = true" | sudo tee -a /etc/mongodb.conf
   - cat /etc/mongodb.conf
   - sudo /etc/init.d/mongodb start
+  - curl -L https://github.com/coreos/etcd/releases/download/v2.0.12/etcd-v2.0.12-linux-amd64.tar.gz -o /tmp/etcd.tar.gz
+  - tar xzvf etcd.tar.gz -C /tmp
+  - /tmp/etcd-v2.0.12-linux-amd64/etcd &
 install:
   - export PATH="$HOME/gopath/bin:$PATH"
   - echo http://localhost > $HOME/.tsuru_target
