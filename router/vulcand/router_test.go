@@ -6,7 +6,6 @@ package vulcand
 
 import (
 	"fmt"
-	"gopkg.in/check.v1"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -21,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/router"
+	"gopkg.in/check.v1"
 )
 
 func Test(t *testing.T) {
