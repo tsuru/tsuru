@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/router"
+	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
 )
 
@@ -28,6 +29,19 @@ type S struct {
 }
 
 var _ = check.Suite(&S{})
+
+func init() {
+	base := &S{}
+	suite := &routertest.RouterSuite{
+		SetUpSuiteFunc:    base.SetUpSuite,
+		TearDownSuiteFunc: base.TearDownSuite,
+	}
+	suite.SetUpTestFunc = func(c *check.C) {
+		base.SetUpTest(c)
+		suite.Router = &hipacheRouter{prefix: "hipache"}
+	}
+	check.Suite(suite)
+}
 
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("hipache:domain", "golang.org")

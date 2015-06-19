@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/router"
+	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
 )
 
@@ -34,6 +35,21 @@ type S struct {
 }
 
 var _ = check.Suite(&S{})
+
+func init() {
+	base := &S{}
+	suite := &routertest.RouterSuite{
+		SetUpSuiteFunc:   base.SetUpSuite,
+		TearDownTestFunc: base.TearDownTest,
+	}
+	suite.SetUpTestFunc = func(c *check.C) {
+		base.SetUpTest(c)
+		r, err := router.Get("vulcand")
+		c.Assert(err, check.IsNil)
+		suite.Router = r
+	}
+	check.Suite(suite)
+}
 
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("routers:vulcand:domain", "vulcand.example.com")

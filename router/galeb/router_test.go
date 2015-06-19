@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/router"
+	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
 )
 
@@ -30,6 +31,28 @@ type S struct {
 }
 
 var _ = check.Suite(&S{})
+
+func init() {
+	base := &S{}
+	suite := &routertest.RouterSuite{
+		SetUpSuiteFunc:   base.SetUpSuite,
+		TearDownTestFunc: base.TearDownTest,
+	}
+	suite.SetUpTestFunc = func(c *check.C) {
+		base.SetUpTest(c)
+		base.handler.ConditionalContent = map[string]interface{}{
+			"/api/backendpool/": `{"_links":{"self":"pool1"}}`,
+			"/api/rule/":        `{"_links":{"self":"rule1"}}`,
+			"/api/virtualhost/": `{"_links":{"self":"vh1"}}`,
+			"/api/backend/":     `{"_links":{"self":"backend1"}}`,
+		}
+		base.handler.RspCode = http.StatusCreated
+		gRouter, err := createRouter("routers:galeb")
+		c.Assert(err, check.IsNil)
+		suite.Router = gRouter
+	}
+	check.Suite(suite)
+}
 
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("routers:galeb:username", "myusername")
