@@ -87,7 +87,7 @@ func (r *vulcandRouter) AddBackend(name string) error {
 	frontend, err := engine.NewHTTPFrontend(
 		frontendName,
 		backend.Id,
-		fmt.Sprintf(`Host(%q) && Path("/")`, r.frontendHostname(name)),
+		fmt.Sprintf(`Host(%q)`, r.frontendHostname(name)),
 		engine.HTTPFrontendSettings{},
 	)
 	if err != nil {
@@ -155,7 +155,7 @@ func (r *vulcandRouter) SetCName(cname, name string) error {
 	frontend, err := engine.NewHTTPFrontend(
 		frontendName,
 		r.backendName(name),
-		fmt.Sprintf(`Host(%q) && Path("/")`, cname),
+		fmt.Sprintf(`Host(%q)`, cname),
 		engine.HTTPFrontendSettings{},
 	)
 	if err != nil {

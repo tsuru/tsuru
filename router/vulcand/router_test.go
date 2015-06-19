@@ -118,7 +118,7 @@ func (s *S) TestAddBackend(c *check.C) {
 	frontend, err := s.engine.GetFrontend(frontendKey)
 	c.Assert(err, check.IsNil)
 	c.Assert(frontend.Id, check.Equals, frontendKey.String())
-	c.Assert(frontend.Route, check.Equals, `Host("myapp.vulcand.example.com") && Path("/")`)
+	c.Assert(frontend.Route, check.Equals, `Host("myapp.vulcand.example.com")`)
 	c.Assert(frontend.Type, check.Equals, "http")
 	c.Assert(frontend.BackendId, check.Equals, backendKey.String())
 }
@@ -282,7 +282,7 @@ func (s *S) TestSetCName(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	c.Assert(cnameFrontend.BackendId, check.DeepEquals, appFrontend.BackendId)
-	c.Assert(cnameFrontend.Route, check.Equals, `Host("myapp.cname.example.com") && Path("/")`)
+	c.Assert(cnameFrontend.Route, check.Equals, `Host("myapp.cname.example.com")`)
 	c.Assert(cnameFrontend.Type, check.Equals, "http")
 }
 
