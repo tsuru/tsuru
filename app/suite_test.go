@@ -95,10 +95,25 @@ func (s *S) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.logConn, err = db.LogConn()
 	c.Assert(err, check.IsNil)
-	s.createUserAndTeam(c)
 	s.provisioner = provisiontest.NewFakeProvisioner()
 	Provisioner = s.provisioner
 	AuthScheme = nativeScheme
+	data, err := json.Marshal(AppLock{})
+	c.Assert(err, check.IsNil)
+	err = json.Unmarshal(data, &s.zeroLock)
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TearDownSuite(c *check.C) {
+	s.conn.Close()
+	s.logConn.Close()
+}
+
+func (s *S) SetUpTest(c *check.C) {
+	s.provisioner.Reset()
+	repositorytest.Reset()
+	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	s.createUserAndTeam(c)
 	platform := Platform{Name: "python"}
 	s.conn.Platforms().Insert(platform)
 	s.defaultPlan = Plan{
@@ -108,40 +123,15 @@ func (s *S) SetUpSuite(c *check.C) {
 		CpuShare: 100,
 		Default:  true,
 	}
-	err = s.conn.Plans().Insert(s.defaultPlan)
+	err := s.conn.Plans().Insert(s.defaultPlan)
 	c.Assert(err, check.IsNil)
 	s.Pool = "pool1"
 	err = provision.AddPool(s.Pool)
 	c.Assert(err, check.IsNil)
-	data, err := json.Marshal(AppLock{})
-	c.Assert(err, check.IsNil)
-	err = json.Unmarshal(data, &s.zeroLock)
-	c.Assert(err, check.IsNil)
-}
-
-func (s *S) TearDownSuite(c *check.C) {
-	provision.RemovePool(s.Pool)
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
-	s.conn.Close()
-	s.logConn.Close()
-}
-
-func (s *S) SetUpTest(c *check.C) {
 	repository.Manager().CreateUser(s.user.Email)
 	factory, err := queue.Factory()
 	c.Assert(err, check.IsNil)
 	factory.Reset()
-}
-
-func (s *S) TearDownTest(c *check.C) {
-	repositorytest.Reset()
-	s.provisioner.Reset()
-	LogRemove(nil)
-	s.conn.Users().Update(
-		bson.M{"email": s.user.Email},
-		bson.M{"$set": bson.M{"quota": quota.Unlimited}},
-	)
-	s.conn.Deploys().RemoveAll(nil)
 }
 
 func (s *S) getTestData(p ...string) io.ReadCloser {
