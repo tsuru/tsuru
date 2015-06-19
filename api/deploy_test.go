@@ -53,7 +53,6 @@ func (s *DeploySuite) createUserAndTeam(c *check.C) {
 }
 
 func (s *DeploySuite) SetUpSuite(c *check.C) {
-	repositorytest.Reset()
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_deploy_api_tests")
 	config.Set("aut:hash-cost", 4)
@@ -64,24 +63,26 @@ func (s *DeploySuite) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.logConn, err = db.LogConn()
 	c.Assert(err, check.IsNil)
-	s.createUserAndTeam(c)
 	s.provisioner = provisiontest.NewFakeProvisioner()
 	app.Provisioner = s.provisioner
-	s.conn.Platforms().Insert(app.Platform{Name: "python"})
-	err = provision.AddPool("pool1")
-	c.Assert(err, check.IsNil)
 }
 
 func (s *DeploySuite) TearDownSuite(c *check.C) {
 	provision.RemovePool("pool1")
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.conn.Close()
 	s.logConn.Close()
 }
 
 func (s *DeploySuite) SetUpTest(c *check.C) {
 	repositorytest.Reset()
-	user, _ := s.token.User()
+	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
+	c.Assert(err, check.IsNil)
+	s.createUserAndTeam(c)
+	s.conn.Platforms().Insert(app.Platform{Name: "python"})
+	err = provision.AddPool("pool1")
+	c.Assert(err, check.IsNil)
+	user, err := s.token.User()
+	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(user.Email)
 }
 
