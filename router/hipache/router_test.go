@@ -523,11 +523,11 @@ func (s *S) TestRemoveElement(c *check.C) {
 }
 
 func (s *S) TestRoutes(c *check.C) {
-	reply := map[string]interface{}{"GET": "tip", "SET": "", "LRANGE": []interface{}{[]byte("http://10.10.10.10:8080")}}
-	conn = &ResultCommandRedisConn{Reply: reply, FakeRedisConn: s.fake}
 	router := hipacheRouter{prefix: "hipache"}
+	err := router.AddBackend("tip")
+	c.Assert(err, check.IsNil)
 	addr, _ := url.Parse("http://10.10.10.10:8080")
-	err := router.AddRoute("tip", addr)
+	err = router.AddRoute("tip", addr)
 	c.Assert(err, check.IsNil)
 	routes, err := router.Routes("tip")
 	c.Assert(err, check.IsNil)
@@ -548,8 +548,8 @@ func (s *S) TestSwap(c *check.C) {
 	c.Assert(err, check.IsNil)
 	backend1Routes, err := redis.Strings(conn.Do("LRANGE", "frontend:b2.golang.org", 0, -1))
 	c.Assert(err, check.IsNil)
-	c.Assert([]string{"b1", addr1.String()}, check.DeepEquals, backend1Routes)
+	c.Assert([]string{"b2", addr1.String()}, check.DeepEquals, backend1Routes)
 	backend2Routes, err := redis.Strings(conn.Do("LRANGE", "frontend:b1.golang.org", 0, -1))
 	c.Assert(err, check.IsNil)
-	c.Assert([]string{"b2", addr2.String()}, check.DeepEquals, backend2Routes)
+	c.Assert([]string{"b1", addr2.String()}, check.DeepEquals, backend2Routes)
 }

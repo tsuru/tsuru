@@ -326,7 +326,7 @@ func (r *hipacheRouter) Routes(name string) ([]*url.URL, error) {
 	frontend := "frontend:" + backendName + "." + domain
 	conn := r.connect()
 	defer conn.Close()
-	routes, err := redis.Strings(conn.Do("LRANGE", frontend, 0, -1))
+	routes, err := redis.Strings(conn.Do("LRANGE", frontend, 1, -1))
 	if err != nil {
 		return nil, &routeError{"routes", err}
 	}
