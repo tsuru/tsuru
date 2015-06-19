@@ -560,8 +560,10 @@ func (s *S) TestGetContainers(c *check.C) {
 	containers, err := s.p.listContainersByApp("something")
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
-	c.Assert(containers[0].ID, check.Equals, "abcdef")
-	c.Assert(containers[1].ID, check.Equals, "fedajs")
+	ids := []string{containers[0].ID, containers[1].ID}
+	sort.Strings(ids)
+	c.Assert(ids[0], check.Equals, "abcdef")
+	c.Assert(ids[1], check.Equals, "fedajs")
 	containers, err = s.p.listContainersByApp("otherthing")
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 1)
