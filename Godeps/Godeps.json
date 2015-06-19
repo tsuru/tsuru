@@ -1,12 +1,17 @@
 {
 	"ImportPath": "github.com/tsuru/tsuru",
-	"GoVersion": "devel +2d9a50b Fri May 8 19:10:10 2015 +0000",
+	"GoVersion": "go1.4.2",
 	"Packages": [
 		"./..."
 	],
 	"Deps": [
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/aws",
+			"Comment": "v0.6.1-14-g7e9078c",
+			"Rev": "7e9078c250876f26da48aaf36b8dce6a462ecd8a"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/internal/apierr",
 			"Comment": "v0.6.1-14-g7e9078c",
 			"Rev": "7e9078c250876f26da48aaf36b8dce6a462ecd8a"
 		},
@@ -22,6 +27,11 @@
 		},
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/internal/protocol/query/queryutil",
+			"Comment": "v0.6.1-14-g7e9078c",
+			"Rev": "7e9078c250876f26da48aaf36b8dce6a462ecd8a"
+		},
+		{
+			"ImportPath": "github.com/aws/aws-sdk-go/internal/protocol/rest",
 			"Comment": "v0.6.1-14-g7e9078c",
 			"Rev": "7e9078c250876f26da48aaf36b8dce6a462ecd8a"
 		},
@@ -46,7 +56,7 @@
 		},
 		{
 			"ImportPath": "github.com/codahale/hdrhistogram",
-			"Rev": "9208b142303c12d8899bae836fd524ac9338b4fd"
+			"Rev": "5fd85ec0b4e2dd5d4158d257d943f2e586d86b62"
 		},
 		{
 			"ImportPath": "github.com/codegangsta/cli",
@@ -90,20 +100,20 @@
 		},
 		{
 			"ImportPath": "github.com/mailgun/iptools",
-			"Rev": "fac48f4f8a866e6fd74ecd4cc74f01fe36e6ef9c"
+			"Rev": "5349e5b95891ef5cb63ed867c31c5204cae280b2"
 		},
 		{
 			"ImportPath": "github.com/mailgun/log",
-			"Rev": "b65e83b83bfde331a05016a6bb8055cc96695c30"
+			"Rev": "5aaa76573581bbbc327dbf69c11527aef7f085c2"
 		},
 		{
 			"ImportPath": "github.com/mailgun/manners",
-			"Comment": "0.3.1-19-g12f1b91",
-			"Rev": "12f1b911a179b472980f386c2e1e786d19f42da4"
+			"Comment": "0.3.1-24-g8518c51",
+			"Rev": "8518c51825e4aec9d3de17203b2b409dd0c5e5c5"
 		},
 		{
 			"ImportPath": "github.com/mailgun/metrics",
-			"Rev": "f8741d1789ec85faeede37702eadbf5acb945e85"
+			"Rev": "2b3c4565aafdcd40c8069e50de08ac5379787943"
 		},
 		{
 			"ImportPath": "github.com/mailgun/minheap",
@@ -111,43 +121,43 @@
 		},
 		{
 			"ImportPath": "github.com/mailgun/multibuf",
-			"Rev": "22cedde644395b0b798017493b9b950485619b87"
+			"Rev": "b9c925d6897fbd77f37297856349caa254ca3cc7"
 		},
 		{
 			"ImportPath": "github.com/mailgun/oxy/cbreaker",
-			"Rev": "563343dd5c1f1997846c85e353fbf81708982ab5"
+			"Rev": "16f684286b383da3704425dacf83ecaeb6f1d7be"
 		},
 		{
 			"ImportPath": "github.com/mailgun/oxy/connlimit",
-			"Rev": "563343dd5c1f1997846c85e353fbf81708982ab5"
+			"Rev": "16f684286b383da3704425dacf83ecaeb6f1d7be"
 		},
 		{
 			"ImportPath": "github.com/mailgun/oxy/forward",
-			"Rev": "563343dd5c1f1997846c85e353fbf81708982ab5"
+			"Rev": "16f684286b383da3704425dacf83ecaeb6f1d7be"
 		},
 		{
 			"ImportPath": "github.com/mailgun/oxy/memmetrics",
-			"Rev": "563343dd5c1f1997846c85e353fbf81708982ab5"
+			"Rev": "16f684286b383da3704425dacf83ecaeb6f1d7be"
 		},
 		{
 			"ImportPath": "github.com/mailgun/oxy/ratelimit",
-			"Rev": "563343dd5c1f1997846c85e353fbf81708982ab5"
+			"Rev": "16f684286b383da3704425dacf83ecaeb6f1d7be"
 		},
 		{
 			"ImportPath": "github.com/mailgun/oxy/roundrobin",
-			"Rev": "563343dd5c1f1997846c85e353fbf81708982ab5"
+			"Rev": "16f684286b383da3704425dacf83ecaeb6f1d7be"
 		},
 		{
 			"ImportPath": "github.com/mailgun/oxy/stream",
-			"Rev": "563343dd5c1f1997846c85e353fbf81708982ab5"
+			"Rev": "16f684286b383da3704425dacf83ecaeb6f1d7be"
 		},
 		{
 			"ImportPath": "github.com/mailgun/oxy/trace",
-			"Rev": "563343dd5c1f1997846c85e353fbf81708982ab5"
+			"Rev": "16f684286b383da3704425dacf83ecaeb6f1d7be"
 		},
 		{
 			"ImportPath": "github.com/mailgun/oxy/utils",
-			"Rev": "563343dd5c1f1997846c85e353fbf81708982ab5"
+			"Rev": "16f684286b383da3704425dacf83ecaeb6f1d7be"
 		},
 		{
 			"ImportPath": "github.com/mailgun/predicate",
@@ -155,15 +165,15 @@
 		},
 		{
 			"ImportPath": "github.com/mailgun/route",
-			"Rev": "85cf368efd247dabbcc2e53272ef4276f94a87c4"
+			"Rev": "87a5c4a010f9f56d91579c86fc74351c8af92b2d"
 		},
 		{
 			"ImportPath": "github.com/mailgun/scroll",
-			"Rev": "c33949cbf905969d74b2fbb22a1490319cea2d14"
+			"Rev": "bbfcfdfe60d60fcc4b8fcbf6974226672cc8638f"
 		},
 		{
 			"ImportPath": "github.com/mailgun/timetools",
-			"Rev": "7e6055773c5137efbeb3bd2410d705fe10ab6bfd"
+			"Rev": "fd192d755b00c968d312d23f521eb0cdc6f66bd0"
 		},
 		{
 			"ImportPath": "github.com/mailgun/ttlmap",
@@ -171,38 +181,36 @@
 		},
 		{
 			"ImportPath": "github.com/mailgun/vulcand/anomaly",
-			"Comment": "v0.8.0-beta.3-1-gfc3e7e1",
-			"Rev": "fc3e7e17f306683a65c05e92175e7caf6c714d06"
+			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
 		},
 		{
 			"ImportPath": "github.com/mailgun/vulcand/api",
-			"Comment": "v0.8.0-beta.3-1-gfc3e7e1",
-			"Rev": "fc3e7e17f306683a65c05e92175e7caf6c714d06"
+			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
 		},
 		{
 			"ImportPath": "github.com/mailgun/vulcand/engine",
-			"Comment": "v0.8.0-beta.3-1-gfc3e7e1",
-			"Rev": "fc3e7e17f306683a65c05e92175e7caf6c714d06"
+			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
 		},
 		{
 			"ImportPath": "github.com/mailgun/vulcand/plugin",
-			"Comment": "v0.8.0-beta.3-1-gfc3e7e1",
-			"Rev": "fc3e7e17f306683a65c05e92175e7caf6c714d06"
+			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
 		},
 		{
 			"ImportPath": "github.com/mailgun/vulcand/proxy",
-			"Comment": "v0.8.0-beta.3-1-gfc3e7e1",
-			"Rev": "fc3e7e17f306683a65c05e92175e7caf6c714d06"
+			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
+		},
+		{
+			"ImportPath": "github.com/mailgun/vulcand/secret",
+			"Comment": "v0.8.0-beta.3",
+			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
 		},
 		{
 			"ImportPath": "github.com/mailgun/vulcand/stapler",
-			"Comment": "v0.8.0-beta.3-1-gfc3e7e1",
-			"Rev": "fc3e7e17f306683a65c05e92175e7caf6c714d06"
+			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
 		},
 		{
 			"ImportPath": "github.com/mailgun/vulcand/supervisor",
-			"Comment": "v0.8.0-beta.3-1-gfc3e7e1",
-			"Rev": "fc3e7e17f306683a65c05e92175e7caf6c714d06"
+			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
 		},
 		{
 			"ImportPath": "github.com/sajari/fuzzy",
@@ -242,10 +250,6 @@
 			"Rev": "f741e61a6c0c428ebf36ccad904c21bfdebd299c"
 		},
 		{
-			"ImportPath": "github.com/tsuru/monsterqueue/mongodb",
-			"Rev": "f741e61a6c0c428ebf36ccad904c21bfdebd299c"
-		},
-		{
 			"ImportPath": "github.com/vaughan0/go-ini",
 			"Rev": "a98ad7ee00ec53921f08832bc06ecf7fd600e6a1"
 		},
@@ -258,7 +262,19 @@
 			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
 		},
 		{
+			"ImportPath": "golang.org/x/crypto/nacl/secretbox",
+			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
+		},
+		{
 			"ImportPath": "golang.org/x/crypto/ocsp",
+			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/poly1305",
+			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/salsa20/salsa",
 			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
 		},
 		{
@@ -271,6 +287,10 @@
 		},
 		{
 			"ImportPath": "golang.org/x/net/netutil",
+			"Rev": "6dc0abcce25682504770fa9a7a6705bbfdebfa48"
+		},
+		{
+			"ImportPath": "golang.org/x/net/websocket",
 			"Rev": "6dc0abcce25682504770fa9a7a6705bbfdebfa48"
 		},
 		{
