@@ -267,7 +267,7 @@ The final code for our "fake API" developed in Flask is:
 
     import json
 
-    from flask import Flask
+    from flask import Flask, request
 
     app = Flask(__name__)
 
