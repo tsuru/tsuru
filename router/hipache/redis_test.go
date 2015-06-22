@@ -22,16 +22,13 @@ const (
 	CmdDo
 )
 
-func ClearRedisKeys(keysPattern string, c *check.C) {
-	redisConn, err := redis.Dial("tcp", "127.0.0.1:6379")
-	c.Assert(err, check.IsNil)
-	defer redisConn.Close()
-	result, err := redisConn.Do("KEYS", keysPattern)
+func ClearRedisKeys(keysPattern string, conn redis.Conn, c *check.C) {
+	result, err := conn.Do("KEYS", keysPattern)
 	c.Assert(err, check.IsNil)
 	keys := result.([]interface{})
 	for _, key := range keys {
 		keyName := string(key.([]byte))
-		redisConn.Do("DEL", keyName)
+		conn.Do("DEL", keyName)
 	}
 }
 

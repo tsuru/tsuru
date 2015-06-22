@@ -24,8 +24,9 @@ func Test(t *testing.T) {
 }
 
 type S struct {
-	fake *FakeRedisConn
-	conn *db.Storage
+	fake   *FakeRedisConn
+	conn   *db.Storage
+	prefix string
 }
 
 var _ = check.Suite(&S{})
@@ -38,8 +39,11 @@ func init() {
 	}
 	suite.SetUpTestFunc = func(c *check.C) {
 		config.Set("database:name", "router_generic_hipache_tests")
+		config.Set("routers:generic_hipache:redis-db", 3)
+		config.Set("routers:generic_hipache:domain", "hipache.router")
+		base.prefix = "routers:generic_hipache"
 		base.SetUpTest(c)
-		suite.Router = &hipacheRouter{prefix: "hipache"}
+		suite.Router = &hipacheRouter{prefix: base.prefix}
 	}
 	check.Suite(suite)
 }
@@ -54,18 +58,15 @@ func (s *S) SetUpTest(c *check.C) {
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
-	dbtest.ClearAllCollections(s.conn.Collection("router_hipache_tests").Database)
-	srv, err := config.GetString("hipache:redis-server")
-	if err != nil {
-		srv = "localhost:6379"
+	if s.prefix == "" {
+		s.prefix = "hipache"
 	}
-	rtest := hipacheRouter{prefix: "hipache", pool: redis.NewPool(func() (redis.Conn, error) {
-		return redis.Dial("tcp", srv)
-	}, 10)}
+	dbtest.ClearAllCollections(s.conn.Collection("router_hipache_tests").Database)
+	rtest := hipacheRouter{prefix: s.prefix}
 	conn = rtest.connect()
-	ClearRedisKeys("frontend*", c)
-	ClearRedisKeys("cname*", c)
-	ClearRedisKeys("*.com", c)
+	ClearRedisKeys("frontend*", conn, c)
+	ClearRedisKeys("cname*", conn, c)
+	ClearRedisKeys("*.com", conn, c)
 }
 
 func (s *S) TearDownTest(c *check.C) {

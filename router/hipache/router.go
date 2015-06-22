@@ -56,6 +56,13 @@ func (r *hipacheRouter) connect() redis.Conn {
 						return nil, err
 					}
 				}
+				db, err := config.GetInt(r.prefix + ":redis-db")
+				if err == nil {
+					_, err = conn.Do("SELECT", db)
+					if err != nil {
+						return nil, err
+					}
+				}
 				return conn, nil
 			},
 			MaxIdle:     10,
