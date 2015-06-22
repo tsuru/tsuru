@@ -2775,6 +2775,41 @@ func (s *S) TestAppSetPoolUserDontHaveAccessToPool(c *check.C) {
 	c.Assert(err.Error(), check.Equals, "You don't have access to pool test")
 }
 
+func (s *S) TestAppSetPoolToPublicPool(c *check.C) {
+	err := provision.AddPool("test", true)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("test")
+	app := App{
+		Name:      "testapp",
+		TeamOwner: "testapp",
+		Pool:      "test",
+	}
+	err = app.SetPool()
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestAppSetPoolPriorityTeamOwnerOverPublicPools(c *check.C) {
+	err := provision.AddPool("public", true)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("public")
+	err = provision.AddPool("nonpublic", false)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("nonpublic")
+	err = provision.AddTeamsToPool("nonpublic", []string{"team1"})
+	c.Assert(err, check.IsNil)
+	a := App{
+		Name:      "testapp",
+		TeamOwner: "team1",
+	}
+	err = a.SetPool()
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Insert(a)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	c.Assert(err, check.IsNil)
+	app, _ := GetByName(a.Name)
+	c.Assert("nonpublic", check.Equals, app.Pool)
+}
+
 func (s *S) TestAppChangePool(c *check.C) {
 	err := provision.AddPool("test", false)
 	c.Assert(err, check.IsNil)

@@ -583,7 +583,9 @@ func (app *App) SetPool() error {
 func (app *App) GetPoolForApp(poolName string) (string, error) {
 	var query bson.M
 	if poolName != "" {
-		query = bson.M{"$and": []bson.M{{"_id": poolName}, {"teams": app.TeamOwner}}}
+		byTeamOwner := bson.M{"$and": []bson.M{{"_id": poolName}, {"teams": app.TeamOwner}}}
+		publicPool := bson.M{"$and": []bson.M{{"_id": poolName}, {"public": true}}}
+		query = bson.M{"$or": []bson.M{byTeamOwner, publicPool}}
 	} else {
 		query = bson.M{"teams": app.TeamOwner}
 	}
