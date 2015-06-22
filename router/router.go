@@ -9,7 +9,6 @@ package router
 import (
 	"errors"
 	"fmt"
-	"gopkg.in/mgo.v2"
 	"net/url"
 	"sort"
 
@@ -17,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 

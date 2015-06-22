@@ -43,6 +43,7 @@ func init() {
 		TearDownTestFunc: base.TearDownTest,
 	}
 	suite.SetUpTestFunc = func(c *check.C) {
+		config.Set("database:name", "router_generic_vulcand_tests")
 		base.SetUpTest(c)
 		r, err := router.Get("vulcand")
 		c.Assert(err, check.IsNil)
@@ -57,12 +58,12 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("routers:vulcand:api-url", "127.0.0.1:8181")
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "router_vulcand_tests")
-	var err error
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	var err error
+	s.conn, err = db.Conn()
+	c.Assert(err, check.IsNil)
 	req1, err := http.NewRequest("DELETE", "http://127.0.0.1:4001/v2/keys/backends?recursive=true", nil)
 	c.Assert(err, check.IsNil)
 	req2, err := http.NewRequest("DELETE", "http://127.0.0.1:4001/v2/keys/frontends?recursive=true", nil)
@@ -80,6 +81,7 @@ func (s *S) SetUpTest(c *check.C) {
 
 func (s *S) TearDownTest(c *check.C) {
 	s.vulcandServer.Close()
+	s.conn.Close()
 }
 
 func (s *S) TestShouldBeRegistered(c *check.C) {
