@@ -532,7 +532,7 @@ As of 0.10.0, all your router configuration should live under entries with the
 format ``routers:<router name>``.
 
 routers:<router name>:type (type: hipache, galeb, vulcand)
-+++++++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Indicates the type of this router configuration. The standard router
 supported by tsuru is ``hipache`` (`ref
@@ -543,7 +543,7 @@ for ``galeb`` (`ref <http://galeb.io/>`_) and ``vulcand`` (`ref
 Depending on the type, there are some specific configuration options available.
 
 routers:<router name>:domain (type: hipache, galeb, vulcand)
-++++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 The domain of the server running your router. Applications created with
 tsuru will have a address of ``http://<app-name>.<domain>``
@@ -555,7 +555,7 @@ Redis server used by Hipache router. This same server (or a redis slave of it),
 must be configured in your hipache.conf file.
 
 routers:<router name>:api-url (type: galeb, vulcand)
-+++++++++++++++++++++++++++++++++++++++++++
+++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 The URL for the Galeb or vulcand manager API.
 
