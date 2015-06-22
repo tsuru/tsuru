@@ -247,7 +247,7 @@
 		},
 		{
 			"ImportPath": "github.com/tsuru/monsterqueue",
-			"Rev": "f741e61a6c0c428ebf36ccad904c21bfdebd299c"
+			"Rev": "c28c3de7be60ffe0ca3a768c0dbeaee0f7cacc0c"
 		},
 		{
 			"ImportPath": "github.com/vaughan0/go-ini",
