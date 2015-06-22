@@ -111,6 +111,17 @@ func (s *S) TestAddTeamToPollShouldNotAcceptDuplicatedTeam(c *check.C) {
 	c.Assert(p.Teams, check.DeepEquals, []string{"test", "ateam"})
 }
 
+func (s *S) TestAddTeamsToAPublicPool(c *check.C) {
+	coll := s.storage.Collection(poolCollection)
+	pool := Pool{Name: "nonteams", Public: true}
+	err := coll.Insert(pool)
+	c.Assert(err, check.IsNil)
+	defer coll.RemoveId(pool.Name)
+	err = AddTeamsToPool(pool.Name, []string{"ateam"})
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.Equals, ErrPublicPollCantHaveTeams)
+}
+
 func (s *S) TestRemoveTeamsFromPool(c *check.C) {
 	coll := s.storage.Collection(poolCollection)
 	pool := Pool{Name: "pool1", Teams: []string{"test", "ateam"}}

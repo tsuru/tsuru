@@ -17,6 +17,8 @@ type Pool struct {
 	Public bool
 }
 
+var ErrPublicPollCantHaveTeams = errors.New("Public pool can't have teams.")
+
 const poolCollection = "pool"
 
 func AddPool(poolName string, public bool) error {
@@ -51,6 +53,9 @@ func AddTeamsToPool(poolName string, teams []string) error {
 	err = conn.Collection(poolCollection).Find(bson.M{"_id": poolName}).One(&pool)
 	if err != nil {
 		return err
+	}
+	if pool.Public {
+		return ErrPublicPollCantHaveTeams
 	}
 	for _, newTeam := range teams {
 		for _, team := range pool.Teams {
