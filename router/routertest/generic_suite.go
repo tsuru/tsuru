@@ -6,6 +6,7 @@ package routertest
 
 import (
 	"net/url"
+	"sort"
 
 	"github.com/tsuru/tsuru/router"
 	"gopkg.in/check.v1"
@@ -55,3 +56,53 @@ func (s *RouterSuite) TestRouteAddBackend(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(routes, check.DeepEquals, []*url.URL{addr})
 }
+
+func (s *RouterSuite) TestSwap(c *check.C) {
+	backend1 := "mybackend1"
+	backend2 := "mybackend2"
+	addr1, _ := url.Parse("http://127.0.0.1")
+	addr2, _ := url.Parse("http://10.10.10.10")
+	err := s.Router.AddBackend(backend1)
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddRoute(backend1, addr1)
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddBackend(backend2)
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddRoute(backend2, addr2)
+	c.Assert(err, check.IsNil)
+	err = s.Router.Swap(backend1, backend2)
+	c.Assert(err, check.IsNil)
+	backAddr1, err := s.Router.Addr(backend1)
+	c.Assert(err, check.IsNil)
+	c.Assert(backAddr1[:len(backend2)], check.Equals, backend2)
+	backAddr2, err := s.Router.Addr(backend2)
+	c.Assert(err, check.IsNil)
+	c.Assert(backAddr2[:len(backend1)], check.Equals, backend1)
+	routes, err := s.Router.Routes(backend1)
+	c.Assert(err, check.IsNil)
+	c.Check(routes, check.DeepEquals, []*url.URL{addr1})
+	routes, err = s.Router.Routes(backend2)
+	c.Assert(err, check.IsNil)
+	c.Check(routes, check.DeepEquals, []*url.URL{addr2})
+	addr3, _ := url.Parse("http://127.0.0.2")
+	addr4, _ := url.Parse("http://10.10.10.11")
+	err = s.Router.AddRoute(backend1, addr3)
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddRoute(backend2, addr4)
+	c.Assert(err, check.IsNil)
+	routes, err = s.Router.Routes(backend1)
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, check.HasLen, 2)
+	routesStrs := []string{routes[0].String(), routes[1].String()}
+	sort.Strings(routesStrs)
+	c.Check(routesStrs, check.DeepEquals, []string{addr1.String(), addr3.String()})
+	routes, err = s.Router.Routes(backend2)
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, check.HasLen, 2)
+	routesStrs = []string{routes[0].String(), routes[1].String()}
+	sort.Strings(routesStrs)
+	c.Check(routesStrs, check.DeepEquals, []string{addr2.String(), addr4.String()})
+}
+
+// TODO(cezarsa): Add tests for Set/UnsetCName. We'll probably need something
+// like ListCNames added to the Router interface.

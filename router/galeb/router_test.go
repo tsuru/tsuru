@@ -25,9 +25,10 @@ func Test(t *testing.T) {
 }
 
 type S struct {
-	conn    *db.Storage
-	server  *httptest.Server
-	handler apitest.MultiTestHandler
+	conn       *db.Storage
+	server     *httptest.Server
+	rawHandler http.Handler
+	handler    apitest.MultiTestHandler
 }
 
 var _ = check.Suite(&S{})
@@ -39,14 +40,27 @@ func init() {
 		TearDownTestFunc: base.TearDownTest,
 	}
 	suite.SetUpTestFunc = func(c *check.C) {
+		base.rawHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			switch r.Method {
+			case "DELETE":
+				w.WriteHeader(http.StatusNoContent)
+			case "POST":
+				w.WriteHeader(http.StatusCreated)
+			}
+			var val string
+			switch r.URL.Path {
+			case "/api/backendpool/":
+				val = `{"_links":{"self":"pool1"}}`
+			case "/api/rule/":
+				val = `{"_links":{"self":"rule1"}}`
+			case "/api/virtualhost/":
+				val = `{"_links":{"self":"vh1"}}`
+			case "/api/backend/":
+				val = `{"_links":{"self":"backend1"}}`
+			}
+			w.Write([]byte(val))
+		})
 		base.SetUpTest(c)
-		base.handler.ConditionalContent = map[string]interface{}{
-			"/api/backendpool/": `{"_links":{"self":"pool1"}}`,
-			"/api/rule/":        `{"_links":{"self":"rule1"}}`,
-			"/api/virtualhost/": `{"_links":{"self":"vh1"}}`,
-			"/api/backend/":     `{"_links":{"self":"backend1"}}`,
-		}
-		base.handler.RspCode = http.StatusCreated
 		gRouter, err := createRouter("routers:galeb")
 		c.Assert(err, check.IsNil)
 		suite.Router = gRouter
@@ -68,7 +82,13 @@ func (s *S) SetUpSuite(c *check.C) {
 
 func (s *S) SetUpTest(c *check.C) {
 	s.handler = apitest.MultiTestHandler{}
-	s.server = httptest.NewServer(&s.handler)
+	var handler http.Handler
+	if s.rawHandler != nil {
+		handler = s.rawHandler
+	} else {
+		handler = &s.handler
+	}
+	s.server = httptest.NewServer(handler)
 	config.Set("routers:galeb:api-url", s.server.URL+"/api")
 	dbtest.ClearAllCollections(s.conn.Collection("router_galeb_tests").Database)
 }
@@ -146,7 +166,7 @@ func (s *S) TestRemoveBackend(c *check.C) {
 		"/api/vh1", "/api/vh2", "/api/vh3", "/api/rule1", "/api/backend1",
 	})
 	_, err = router.Retrieve("myapp")
-	c.Assert(err, check.ErrorMatches, "not found")
+	c.Assert(err, check.Equals, router.ErrRouteNotFound)
 	_, err = getGalebData("myapp")
 	c.Assert(err, check.ErrorMatches, "not found")
 }

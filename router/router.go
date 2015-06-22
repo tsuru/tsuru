@@ -9,6 +9,7 @@ package router
 import (
 	"errors"
 	"fmt"
+	"gopkg.in/mgo.v2"
 	"net/url"
 	"sort"
 
@@ -128,6 +129,9 @@ func retrieveRouterData(appName string) (map[string]string, error) {
 func Retrieve(appName string) (string, error) {
 	data, err := retrieveRouterData(appName)
 	if err != nil {
+		if err == mgo.ErrNotFound {
+			return "", ErrRouteNotFound
+		}
 		return "", err
 	}
 	return data["router"], nil
