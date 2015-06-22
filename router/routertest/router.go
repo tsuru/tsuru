@@ -6,6 +6,7 @@ package routertest
 
 import (
 	"errors"
+	"fmt"
 	"net/url"
 	"sync"
 
@@ -15,8 +16,6 @@ import (
 var FakeRouter = fakeRouter{backends: make(map[string][]string), failuresByIp: make(map[string]bool)}
 
 var HCRouter = hcRouter{fakeRouter: fakeRouter{backends: make(map[string][]string), failuresByIp: make(map[string]bool)}}
-
-var ErrBackendNotFound = errors.New("Backend not found")
 
 var ErrForcedFailure = errors.New("Forced failure")
 
@@ -83,12 +82,12 @@ func (r *fakeRouter) RemoveBackend(name string) error {
 		return err
 	}
 	if !r.HasBackend(backendName) {
-		return ErrBackendNotFound
+		return router.ErrBackendNotFound
 	}
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	delete(r.backends, backendName)
-	return nil
+	return router.Remove(backendName)
 }
 
 func (r *fakeRouter) AddRoute(name string, address *url.URL) error {
@@ -97,7 +96,7 @@ func (r *fakeRouter) AddRoute(name string, address *url.URL) error {
 		return err
 	}
 	if !r.HasBackend(backendName) {
-		return ErrBackendNotFound
+		return router.ErrBackendNotFound
 	}
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
@@ -116,7 +115,7 @@ func (r *fakeRouter) RemoveRoute(name string, address *url.URL) error {
 		return err
 	}
 	if !r.HasBackend(backendName) {
-		return ErrBackendNotFound
+		return router.ErrBackendNotFound
 	}
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
@@ -159,12 +158,16 @@ func (r *fakeRouter) UnsetCName(cname, name string) error {
 }
 
 func (r *fakeRouter) Addr(name string) (string, error) {
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return "", err
+	}
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	if v, ok := r.backends[name]; ok {
-		return v[0], nil
+	if _, ok := r.backends[backendName]; ok {
+		return fmt.Sprintf("%s.fakerouter.com", backendName), nil
 	}
-	return "", ErrBackendNotFound
+	return "", router.ErrBackendNotFound
 }
 
 func (r *fakeRouter) Reset() {

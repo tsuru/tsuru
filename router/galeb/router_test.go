@@ -168,7 +168,7 @@ func (s *S) TestRemoveBackend(c *check.C) {
 		"/api/vh1", "/api/vh2", "/api/vh3", "/api/rule1", "/api/backend1",
 	})
 	_, err = router.Retrieve("myapp")
-	c.Assert(err, check.Equals, router.ErrRouteNotFound)
+	c.Assert(err, check.Equals, router.ErrBackendNotFound)
 	_, err = getGalebData("myapp")
 	c.Assert(err, check.ErrorMatches, "not found")
 }

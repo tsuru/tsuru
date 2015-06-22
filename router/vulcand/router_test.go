@@ -374,7 +374,7 @@ func (s *S) TestAddrNotExist(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(backends, check.HasLen, 0)
 	addr, err := vRouter.Addr("myapp")
-	c.Assert(err, check.ErrorMatches, router.ErrRouteNotFound.Error())
+	c.Assert(err, check.Equals, router.ErrBackendNotFound)
 	c.Assert(addr, check.Equals, "")
 }
 

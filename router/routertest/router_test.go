@@ -24,19 +24,37 @@ type S struct {
 
 var _ = check.Suite(&S{})
 
+func init() {
+	base := &S{}
+	suite := &RouterSuite{
+		SetUpSuiteFunc:   base.SetUpSuite,
+		TearDownTestFunc: base.TearDownTest,
+	}
+	suite.SetUpTestFunc = func(c *check.C) {
+		config.Set("database:name", "router_generic_fake_tests")
+		base.SetUpTest(c)
+		suite.Router = &fakeRouter{backends: make(map[string][]string)}
+	}
+	check.Suite(suite)
+}
+
 func (s *S) SetUpSuite(c *check.C) {
-	var err error
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "router_fake_tests")
 	config.Set("routers:fake:type", "fake")
 	config.Set("routers:fake-hc:type", "fake-hc")
 	s.localhost, _ = url.Parse("http://127.0.0.1")
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
 }
 
-func (s *S) TearDownSuite(c *check.C) {
+func (s *S) SetUpTest(c *check.C) {
+	var err error
+	s.conn, err = db.Conn()
+	c.Assert(err, check.IsNil)
 	dbtest.ClearAllCollections(s.conn.Collection("router_fake_tests").Database)
+}
+
+func (s *S) TearDownTest(c *check.C) {
+	s.conn.Close()
 }
 
 func (s *S) TestShouldBeRegistered(c *check.C) {
@@ -77,7 +95,7 @@ func (s *S) TestRemoveBackend(c *check.C) {
 func (s *S) TestRemoveUnknownBackend(c *check.C) {
 	r := fakeRouter{backends: make(map[string][]string)}
 	err := r.RemoveBackend("bar")
-	c.Assert(err, check.Equals, ErrBackendNotFound)
+	c.Assert(err, check.Equals, router.ErrBackendNotFound)
 }
 
 func (s *S) TestAddRoute(c *check.C) {
@@ -92,7 +110,7 @@ func (s *S) TestAddRoute(c *check.C) {
 func (s *S) TestAddRouteBackendNotFound(c *check.C) {
 	r := fakeRouter{backends: make(map[string][]string)}
 	err := r.AddRoute("name", s.localhost)
-	c.Assert(err, check.Equals, ErrBackendNotFound)
+	c.Assert(err, check.Equals, router.ErrBackendNotFound)
 }
 
 func (s *S) TestRemoveRoute(c *check.C) {
@@ -109,7 +127,7 @@ func (s *S) TestRemoveRoute(c *check.C) {
 func (s *S) TestRemoveRouteBackendNotFound(c *check.C) {
 	r := fakeRouter{backends: make(map[string][]string)}
 	err := r.RemoveRoute("name", s.localhost)
-	c.Assert(err, check.Equals, ErrBackendNotFound)
+	c.Assert(err, check.Equals, router.ErrBackendNotFound)
 }
 
 func (s *S) TestRemoveUnknownRoute(c *check.C) {
@@ -152,10 +170,10 @@ func (s *S) TestAddr(c *check.C) {
 	c.Assert(err, check.IsNil)
 	addr, err := r.Addr("name")
 	c.Assert(err, check.IsNil)
-	c.Assert(addr, check.Equals, s.localhost.String())
+	c.Assert(addr, check.Equals, "name.fakerouter.com")
 	addr, err = r.Addr("unknown")
 	c.Assert(addr, check.Equals, "")
-	c.Assert(err, check.Equals, ErrBackendNotFound)
+	c.Assert(err, check.Equals, router.ErrBackendNotFound)
 }
 
 func (s *S) TestReset(c *check.C) {
@@ -215,8 +233,8 @@ func (s *S) TestSwap(c *check.C) {
 	c.Assert(retrieved2, check.Equals, backend1)
 	addr, err := r.Addr(backend1)
 	c.Assert(err, check.IsNil)
-	c.Assert(addr, check.Equals, instance2.String())
+	c.Assert(addr, check.Equals, "b2.fakerouter.com")
 	addr, err = r.Addr(backend2)
 	c.Assert(err, check.IsNil)
-	c.Assert(addr, check.Equals, instance1.String())
+	c.Assert(addr, check.Equals, "b1.fakerouter.com")
 }

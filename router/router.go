@@ -130,7 +130,7 @@ func Retrieve(appName string) (string, error) {
 	data, err := retrieveRouterData(appName)
 	if err != nil {
 		if err == mgo.ErrNotFound {
-			return "", ErrRouteNotFound
+			return "", ErrBackendNotFound
 		}
 		return "", err
 	}

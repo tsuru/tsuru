@@ -81,7 +81,7 @@ func (s *RouterSuite) TestRouteRemoveRouteAndBackend(c *check.C) {
 	err = s.Router.RemoveBackend(name)
 	c.Assert(err, check.IsNil)
 	_, err = s.Router.Routes(name)
-	c.Assert(err, check.Equals, router.ErrRouteNotFound)
+	c.Assert(err, check.Equals, router.ErrBackendNotFound)
 }
 
 func (s *RouterSuite) TestSwap(c *check.C) {
