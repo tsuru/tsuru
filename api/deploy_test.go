@@ -65,9 +65,6 @@ func (s *DeploySuite) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.provisioner = provisiontest.NewFakeProvisioner()
 	app.Provisioner = s.provisioner
-	s.conn.Platforms().Insert(app.Platform{Name: "python"})
-	err = provision.AddPool("pool1", false)
-	c.Assert(err, check.IsNil)
 }
 
 func (s *DeploySuite) TearDownSuite(c *check.C) {

@@ -33,25 +33,22 @@ var nativeScheme = auth.ManagedScheme(native.NativeScheme{})
 func Test(t *testing.T) { check.TestingT(t) }
 
 func (s *S) SetUpSuite(c *check.C) {
-	repositorytest.Reset()
 	config.Set("database:name", "api_context_tests_s")
 	config.Set("repo-manager", "fake")
+}
+
+func (s *S) SetUpTest(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	dbtest.ClearAllCollections(conn.Apps().Database)
+	repositorytest.Reset()
 	user := &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
 	_, err := nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
+	c.Assert(err, check.IsNil)
 	s.app = &app.App{Name: "app"}
-	c.Assert(err, check.IsNil)
-}
-
-func (s *S) TearDownSuite(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	dbtest.ClearAllCollections(conn.Apps().Database)
-}
-
-func (s *S) SetUpTest(c *check.C) {
-	repositorytest.Reset()
 }
 
 func (s *S) TestClear(c *check.C) {

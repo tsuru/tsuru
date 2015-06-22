@@ -28,34 +28,32 @@ type HandlerSuite struct {
 var _ = check.Suite(&HandlerSuite{})
 
 func (s *HandlerSuite) SetUpSuite(c *check.C) {
-	repositorytest.Reset()
-	var err error
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_handler_test")
 	config.Set("auth:hash-cost", 4)
 	config.Set("repo-manager", "fake")
+}
+
+func (s *HandlerSuite) SetUpTest(c *check.C) {
+	repositorytest.Reset()
+	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
+	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	user := &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	team := auth.Team{Name: "tsuruteam", Users: []string{user.Email}}
-	conn, _ := db.Conn()
-	defer conn.Close()
-	err = conn.Teams().Insert(team)
+	err = s.conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
 	config.Set("admin-team", team.Name)
 	app.AuthScheme = nativeScheme
 }
 
-func (s *HandlerSuite) TearDownSuite(c *check.C) {
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
-}
-
-func (s *HandlerSuite) SetUpTest(c *check.C) {
-	repositorytest.Reset()
+func (s *HandlerSuite) TearDownTest(c *check.C) {
+	s.conn.Close()
 }
 
 func errorHandler(w http.ResponseWriter, r *http.Request) error {

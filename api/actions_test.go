@@ -22,23 +22,21 @@ type ActionsSuite struct {
 var _ = check.Suite(&ActionsSuite{})
 
 func (s *ActionsSuite) SetUpSuite(c *check.C) {
-	repositorytest.Reset()
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_actions_test")
-	var err error
-	s.conn, err = db.Conn()
-	c.Assert(err, check.IsNil)
 	config.Set("repo-manager", "fake")
 }
 
-func (s *ActionsSuite) TearDownSuite(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
-	dbtest.ClearAllCollections(conn.Apps().Database)
+func (s *ActionsSuite) SetUpTest(c *check.C) {
+	var err error
+	s.conn, err = db.Conn()
+	c.Assert(err, check.IsNil)
+	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	repositorytest.Reset()
 }
 
-func (s *ActionsSuite) SetUpTest(c *check.C) {
-	repositorytest.Reset()
+func (s *ActionsSuite) TearDownTest(c *check.C) {
+	s.conn.Close()
 }
 
 func (s *ActionsSuite) TestAddUserToTeamInRepository(c *check.C) {

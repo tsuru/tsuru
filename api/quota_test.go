@@ -30,34 +30,28 @@ type QuotaSuite struct {
 var _ = check.Suite(&QuotaSuite{})
 
 func (s *QuotaSuite) SetUpSuite(c *check.C) {
-	repositorytest.Reset()
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_auth_test")
 	config.Set("admin-team", "superteam")
 	config.Set("auth:hash-cost", 4)
 	config.Set("repo-manager", "fake")
+}
+
+func (s *QuotaSuite) SetUpTest(c *check.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	dbtest.ClearAllCollections(conn.Apps().Database)
+	repositorytest.Reset()
 	s.user = &auth.User{Email: "unspoken@gotthard.com", Password: "123456"}
 	_, err := nativeScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
 	s.team = &auth.Team{Name: "superteam", Users: []string{s.user.Email}}
-	conn, _ := db.Conn()
-	defer conn.Close()
 	err = conn.Teams().Insert(s.team)
 	c.Assert(err, check.IsNil)
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	config.Set("admin-team", s.team.Name)
 	app.AuthScheme = nativeScheme
-}
-
-func (s *QuotaSuite) TearDownSuite(c *check.C) {
-	conn, _ := db.Conn()
-	defer conn.Close()
-	dbtest.ClearAllCollections(conn.Apps().Database)
-}
-
-func (s *QuotaSuite) SetUpTest(c *check.C) {
-	repositorytest.Reset()
 }
 
 func (s *QuotaSuite) TestGetUserQuota(c *check.C) {

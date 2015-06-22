@@ -43,27 +43,26 @@ func (s *LogSuite) createUserAndTeam(c *check.C) {
 }
 
 func (s *LogSuite) SetUpSuite(c *check.C) {
-	repositorytest.Reset()
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_log_api_tests")
 	config.Set("auth:hash-cost", 4)
 	config.Set("repo-manager", "fake")
+}
+
+func (s *LogSuite) SetUpTest(c *check.C) {
+	repositorytest.Reset()
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
+	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.logConn, err = db.LogConn()
 	c.Assert(err, check.IsNil)
 	s.createUserAndTeam(c)
 }
 
-func (s *LogSuite) TearDownSuite(c *check.C) {
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+func (s *LogSuite) TearDownTest(c *check.C) {
 	s.conn.Close()
 	s.logConn.Close()
-}
-
-func (s *LogSuite) SetUpTest(c *check.C) {
-	repositorytest.Reset()
 }
 
 func (s *LogSuite) TestLogRemoveAll(c *check.C) {

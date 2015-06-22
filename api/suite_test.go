@@ -89,10 +89,16 @@ func (s *S) createUserAndTeam(c *check.C) {
 var nativeScheme = auth.ManagedScheme(native.NativeScheme{})
 
 func (s *S) SetUpSuite(c *check.C) {
-	repositorytest.Reset()
 	err := config.ReadConfigFile("testdata/config.yaml")
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) SetUpTest(c *check.C) {
+	repositorytest.Reset()
+	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
+	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.logConn, err = db.LogConn()
 	c.Assert(err, check.IsNil)
 	s.createUserAndTeam(c)
@@ -104,17 +110,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	s.Pool = "test1"
 	err = provision.AddPool("test1", false)
 	c.Assert(err, check.IsNil)
-}
-
-func (s *S) TearDownSuite(c *check.C) {
-	provision.RemovePool("test1")
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
-	s.conn.Close()
-	s.logConn.Close()
-}
-
-func (s *S) SetUpTest(c *check.C) {
-	repositorytest.Reset()
 	repository.Manager().CreateUser(s.user.Email)
 	repository.Manager().CreateUser(s.adminuser.Email)
 	factory, err := queue.Factory()
@@ -124,6 +119,8 @@ func (s *S) SetUpTest(c *check.C) {
 
 func (s *S) TearDownTest(c *check.C) {
 	s.provisioner.Reset()
+	s.conn.Close()
+	s.logConn.Close()
 	context.Purge(-1)
 }
 

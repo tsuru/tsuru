@@ -45,15 +45,12 @@ type AuthSuite struct {
 var _ = check.Suite(&AuthSuite{})
 
 func (s *AuthSuite) SetUpSuite(c *check.C) {
-	repositorytest.Reset()
 	var err error
 	config.Set("auth:user-registration", true)
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_auth_test")
 	config.Set("auth:hash-cost", 4)
 	config.Set("repo-manager", "fake")
-	s.createUserAndTeam(c)
-	config.Set("admin-team", s.team.Name)
 	s.server, err = authtest.NewSMTPServer()
 	c.Assert(err, check.IsNil)
 	config.Set("smtp:server", s.server.Addr())
@@ -61,31 +58,23 @@ func (s *AuthSuite) SetUpSuite(c *check.C) {
 	config.Set("smtp:password", "123456")
 	app.Provisioner = provisiontest.NewFakeProvisioner()
 	app.AuthScheme = nativeScheme
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	conn.Platforms().Insert(app.Platform{Name: "python"})
-	err = provision.AddPool("test1", false)
-	c.Assert(err, check.IsNil)
 }
 
 func (s *AuthSuite) TearDownSuite(c *check.C) {
-	provision.RemovePool("test1")
-	conn, _ := db.Conn()
-	defer conn.Close()
-	dbtest.ClearAllCollections(conn.Apps().Database)
 	s.server.Stop()
 }
 
-func (s *AuthSuite) TearDownTest(c *check.C) {
+func (s *AuthSuite) SetUpTest(c *check.C) {
 	repositorytest.Reset()
-	conn, _ := db.Conn()
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
 	defer conn.Close()
-	_, err := conn.Users().RemoveAll(nil)
-	c.Assert(err, check.IsNil)
-	_, err = conn.Teams().RemoveAll(nil)
-	c.Assert(err, check.IsNil)
+	dbtest.ClearAllCollections(conn.Apps().Database)
 	s.createUserAndTeam(c)
+	conn.Platforms().Insert(app.Platform{Name: "python"})
+	err = provision.AddPool("test1", false)
+	c.Assert(err, check.IsNil)
+	config.Set("admin-team", s.team.Name)
 }
 
 func (s *AuthSuite) createUserAndTeam(c *check.C) {
