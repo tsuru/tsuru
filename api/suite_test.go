@@ -102,7 +102,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	p := app.Platform{Name: "zend"}
 	s.conn.Platforms().Insert(p)
 	s.Pool = "test1"
-	err = provision.AddPool("test1")
+	err = provision.AddPool("test1", false)
 	c.Assert(err, check.IsNil)
 }
 

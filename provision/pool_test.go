@@ -7,6 +7,7 @@ package provision
 import (
 	"github.com/tsuru/tsuru/db"
 	"gopkg.in/check.v1"
+	"gopkg.in/mgo.v2/bson"
 )
 
 type S struct {
@@ -24,12 +25,34 @@ func (s *S) SetUpSuite(c *check.C) {
 func (s *S) TestAddPool(c *check.C) {
 	coll := s.storage.Collection(poolCollection)
 	defer coll.RemoveId("pool1")
-	err := AddPool("pool1")
+	err := AddPool("pool1", false)
 	c.Assert(err, check.IsNil)
 }
 
+func (s *S) TestAddNonPublicPool(c *check.C) {
+	coll := s.storage.Collection(poolCollection)
+	defer coll.RemoveId("pool1")
+	err := AddPool("pool1", false)
+	c.Assert(err, check.IsNil)
+	var p Pool
+	err = coll.Find(bson.M{"_id": "pool1"}).One(&p)
+	c.Assert(err, check.IsNil)
+	c.Assert(p.Public, check.Equals, false)
+}
+
+func (s *S) TestAddPublicPool(c *check.C) {
+	coll := s.storage.Collection(poolCollection)
+	defer coll.RemoveId("pool1")
+	err := AddPool("pool1", true)
+	c.Assert(err, check.IsNil)
+	var p Pool
+	err = coll.Find(bson.M{"_id": "pool1"}).One(&p)
+	c.Assert(err, check.IsNil)
+	c.Assert(p.Public, check.Equals, true)
+}
+
 func (s *S) TestAddPoolWithoutNameShouldBreak(c *check.C) {
-	err := AddPool("")
+	err := AddPool("", false)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Pool name is required.")
 }

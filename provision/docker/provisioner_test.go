@@ -765,7 +765,7 @@ func (s *S) TestProvisionerRemoveUnits(c *check.C) {
 		"tsuruteam",
 		"nodockerforme",
 	}}
-	err = provision.AddPool(p.Name)
+	err = provision.AddPool(p.Name, false)
 	c.Assert(err, check.IsNil)
 	err = provision.AddTeamsToPool(p.Name, p.Teams)
 	defer provision.RemovePool(p.Name)
@@ -819,7 +819,7 @@ func (s *S) TestProvisionerRemoveUnitsEmptyProcess(c *check.C) {
 	p := provision.Pool{Name: "pool1", Teams: []string{
 		"tsuruteam",
 	}}
-	err = provision.AddPool(p.Name)
+	err = provision.AddPool(p.Name, false)
 	c.Assert(err, check.IsNil)
 	err = provision.AddTeamsToPool(p.Name, p.Teams)
 	c.Assert(err, check.IsNil)
@@ -870,7 +870,7 @@ func (s *S) TestProvisionerRemoveUnitsTooManyUnits(c *check.C) {
 		"tsuruteam",
 		"nodockerforme",
 	}}
-	err = provision.AddPool(p.Name)
+	err = provision.AddPool(p.Name, false)
 	c.Assert(err, check.IsNil)
 	err = provision.AddTeamsToPool(p.Name, p.Teams)
 	defer provision.RemovePool(p.Name)
@@ -918,7 +918,7 @@ func (s *S) TestProvisionerRemoveUnitsInvalidProcess(c *check.C) {
 	p := provision.Pool{Name: "pool1", Teams: []string{
 		"tsuruteam",
 	}}
-	err = provision.AddPool(p.Name)
+	err = provision.AddPool(p.Name, false)
 	c.Assert(err, check.IsNil)
 	err = provision.AddTeamsToPool(p.Name, p.Teams)
 	c.Assert(err, check.IsNil)

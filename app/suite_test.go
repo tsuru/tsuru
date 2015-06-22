@@ -126,7 +126,7 @@ func (s *S) SetUpTest(c *check.C) {
 	err := s.conn.Plans().Insert(s.defaultPlan)
 	c.Assert(err, check.IsNil)
 	s.Pool = "pool1"
-	err = provision.AddPool(s.Pool)
+	err = provision.AddPool(s.Pool, false)
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(s.user.Email)
 	factory, err := queue.Factory()

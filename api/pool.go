@@ -44,17 +44,22 @@ func listPoolsToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	return json.NewEncoder(w).Encode(poolsByTeam)
 }
 
+type addPoolOptions struct {
+	Name   string
+	Public bool
+}
+
 func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
 	}
-	var params map[string]string
-	err = json.Unmarshal(b, &params)
+	var p addPoolOptions
+	err = json.Unmarshal(b, &p)
 	if err != nil {
 		return err
 	}
-	return provision.AddPool(params["pool"])
+	return provision.AddPool(p.Name, p.Public)
 }
 
 func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {

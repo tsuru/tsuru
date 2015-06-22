@@ -2683,7 +2683,7 @@ func (s *S) TestAppValidateTeamOwnerAdminCanSetAppToAnyTeam(c *check.C) {
 }
 
 func (s *S) TestAppSetPoolByTeamOwner(c *check.C) {
-	err := provision.AddPool("test")
+	err := provision.AddPool("test", false)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("test")
 	err = provision.AddTeamsToPool("test", []string{"test"})
@@ -2707,12 +2707,12 @@ func (s *S) TestAppSetPoolFallback(c *check.C) {
 }
 
 func (s *S) TestAppSetPoolByPool(c *check.C) {
-	err := provision.AddPool("test")
+	err := provision.AddPool("test", false)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("test")
 	err = provision.AddTeamsToPool("test", []string{"test"})
 	c.Assert(err, check.IsNil)
-	err = provision.AddPool("pool2")
+	err = provision.AddPool("pool2", false)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("pool2")
 	err = provision.AddTeamsToPool("pool2", []string{"test"})
@@ -2728,12 +2728,12 @@ func (s *S) TestAppSetPoolByPool(c *check.C) {
 }
 
 func (s *S) TestAppSetPoolManyPools(c *check.C) {
-	err := provision.AddPool("test")
+	err := provision.AddPool("test", false)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("test")
 	err = provision.AddTeamsToPool("test", []string{"test"})
 	c.Assert(err, check.IsNil)
-	err = provision.AddPool("pool2")
+	err = provision.AddPool("pool2", false)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("pool2")
 	err = provision.AddTeamsToPool("pool2", []string{"test"})
@@ -2750,7 +2750,7 @@ func (s *S) TestAppSetPoolManyPools(c *check.C) {
 func (s *S) TestAppSetPoolNoFallback(c *check.C) {
 	err := provision.RemovePool("pool1")
 	c.Assert(err, check.IsNil)
-	defer provision.AddPool("pool1")
+	defer provision.AddPool("pool1", false)
 	app := App{
 		Name: "test",
 	}
@@ -2760,7 +2760,7 @@ func (s *S) TestAppSetPoolNoFallback(c *check.C) {
 }
 
 func (s *S) TestAppSetPoolUserDontHaveAccessToPool(c *check.C) {
-	err := provision.AddPool("test")
+	err := provision.AddPool("test", false)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("test")
 	err = provision.AddTeamsToPool("test", []string{"nopool"})
@@ -2776,12 +2776,12 @@ func (s *S) TestAppSetPoolUserDontHaveAccessToPool(c *check.C) {
 }
 
 func (s *S) TestAppChangePool(c *check.C) {
-	err := provision.AddPool("test")
+	err := provision.AddPool("test", false)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("test")
 	err = provision.AddTeamsToPool("test", []string{"nopool"})
 	c.Assert(err, check.IsNil)
-	err = provision.AddPool("test2")
+	err = provision.AddPool("test2", false)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("test2")
 	err = provision.AddTeamsToPool("test2", []string{"nopool"})
@@ -2801,7 +2801,7 @@ func (s *S) TestAppChangePool(c *check.C) {
 }
 
 func (s *S) TestAppChangePoolNotExists(c *check.C) {
-	err := provision.AddPool("test")
+	err := provision.AddPool("test", false)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("test")
 	err = provision.AddTeamsToPool("test", []string{"nopool"})

@@ -65,7 +65,7 @@ func (s *AuthSuite) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	conn.Platforms().Insert(app.Platform{Name: "python"})
-	err = provision.AddPool("test1")
+	err = provision.AddPool("test1", false)
 	c.Assert(err, check.IsNil)
 }
 

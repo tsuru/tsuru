@@ -150,7 +150,7 @@ func (s *HandlersSuite) TestAddNodeHandler(c *check.C) {
 	server, waitQueue := s.startFakeDockerNode(c)
 	defer server.Stop()
 	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
-	err := provision.AddPool("pool1")
+	err := provision.AddPool("pool1", false)
 	defer provision.RemovePool("pool1")
 	json := fmt.Sprintf(`{"address": "%s", "pool": "pool1"}`, server.URL())
 	b := bytes.NewBufferString(json)
@@ -174,7 +174,7 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 	defer server.Stop()
 	iaas.RegisterIaasProvider("test-iaas", newTestIaaS)
 	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
-	err := provision.AddPool("pool1")
+	err := provision.AddPool("pool1", false)
 	defer provision.RemovePool("pool1")
 	b := bytes.NewBufferString(`{"pool": "pool1", "id": "test1"}`)
 	req, err := http.NewRequest("POST", "/docker/node?register=false", b)
@@ -205,7 +205,7 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachineExplicit(c *check
 	iaas.RegisterIaasProvider("test-iaas", newTestIaaS)
 	iaas.RegisterIaasProvider("another-test-iaas", newTestIaaS)
 	mainDockerProvisioner.cluster, _ = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
-	err := provision.AddPool("pool1")
+	err := provision.AddPool("pool1", false)
 	defer provision.RemovePool("pool1")
 	b := bytes.NewBufferString(`{"pool": "pool1", "id": "test1", "iaas": "another-test-iaas"}`)
 	req, err := http.NewRequest("POST", "/docker/node?register=false", b)
@@ -229,7 +229,7 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachineExplicit(c *check
 func (s *HandlersSuite) TestAddNodeHandlerWithoutCluster(c *check.C) {
 	server, waitQueue := s.startFakeDockerNode(c)
 	defer server.Stop()
-	err := provision.AddPool("pool1")
+	err := provision.AddPool("pool1", false)
 	defer provision.RemovePool("pool1")
 	config.Set("docker:cluster:redis-server", "127.0.0.1:6379")
 	defer config.Unset("docker:cluster:redis-server")
@@ -860,7 +860,7 @@ func (s *HandlersSuite) TestUpdateNodeHandler(c *check.C) {
 			"m2": "v2",
 		}},
 	)
-	err := provision.AddPool("pool1")
+	err := provision.AddPool("pool1", false)
 	defer provision.RemovePool("pool1")
 	json := `{"address": "localhost:1999", "m1": "", "m2": "v9", "m3": "v8"}`
 	b := bytes.NewBufferString(json)
@@ -887,7 +887,7 @@ func (s *HandlersSuite) TestUpdateNodeHandlerNoAddress(c *check.C) {
 			"m2": "v2",
 		}},
 	)
-	err := provision.AddPool("pool1")
+	err := provision.AddPool("pool1", false)
 	defer provision.RemovePool("pool1")
 	json := `{"m1": "", "m2": "v9", "m3": "v8"}`
 	b := bytes.NewBufferString(json)

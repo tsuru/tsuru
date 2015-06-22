@@ -12,13 +12,14 @@ import (
 )
 
 type Pool struct {
-	Name  string `bson:"_id"`
-	Teams []string
+	Name   string `bson:"_id"`
+	Teams  []string
+	Public bool
 }
 
 const poolCollection = "pool"
 
-func AddPool(poolName string) error {
+func AddPool(poolName string, public bool) error {
 	if poolName == "" {
 		return errors.New("Pool name is required.")
 	}
@@ -27,7 +28,7 @@ func AddPool(poolName string) error {
 		return err
 	}
 	defer conn.Close()
-	pool := Pool{Name: poolName}
+	pool := Pool{Name: poolName, Public: public}
 	return conn.Collection(poolCollection).Insert(pool)
 }
 
