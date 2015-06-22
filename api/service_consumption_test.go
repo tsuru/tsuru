@@ -34,15 +34,16 @@ type ConsumptionSuite struct {
 
 var _ = check.Suite(&ConsumptionSuite{})
 
-func (s *ConsumptionSuite) SetUpSuite(c *check.C) {
+func (s *ConsumptionSuite) SetUpTest(c *check.C) {
 	repositorytest.Reset()
-	var err error
 	config.Set("database:url", "127.0.0.1:27017")
 	config.Set("database:name", "tsuru_api_consumption_test")
 	config.Set("auth:hash-cost", 4)
 	config.Set("repo-manager", "fake")
+	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
+	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
 	_, err = nativeScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
@@ -54,16 +55,8 @@ func (s *ConsumptionSuite) SetUpSuite(c *check.C) {
 	app.AuthScheme = nativeScheme
 }
 
-func (s *ConsumptionSuite) TearDownSuite(c *check.C) {
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
-}
-
 func (s *ConsumptionSuite) TearDownTest(c *check.C) {
-	repositorytest.Reset()
-	_, err := s.conn.Services().RemoveAll(nil)
-	c.Assert(err, check.IsNil)
-	_, err = s.conn.ServiceInstances().RemoveAll(nil)
-	c.Assert(err, check.IsNil)
+	s.conn.Close()
 }
 
 func makeRequestToCreateInstanceHandler(params map[string]string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {

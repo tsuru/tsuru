@@ -56,7 +56,7 @@ func (s *ProvisionSuite) SetUpTest(c *check.C) {
 	repositorytest.Reset()
 	var err error
 	config.Set("database:url", "127.0.0.1:27017")
-	config.Set("database:name", "tsuru_api_provision_test")
+	config.Set("database:name", "tsuru_api_service_provision_test")
 	config.Set("auth:hash-cost", bcrypt.MinCost)
 	config.Set("repo-manager", "fake")
 	s.conn, err = db.Conn()

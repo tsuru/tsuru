@@ -10,7 +10,10 @@ import (
 	"net/http/httptest"
 	"strings"
 
+	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 )
@@ -18,6 +21,15 @@ import (
 type PlatformSuite struct{}
 
 var _ = check.Suite(&PlatformSuite{})
+
+func (s *PlatformSuite) SetUpTest(c *check.C) {
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "tsuru_api_platform_test")
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	dbtest.ClearAllCollections(conn.Apps().Database)
+}
 
 func (p *PlatformSuite) TestPlatformAdd(c *check.C) {
 	provisioner := provisiontest.ExtensibleFakeProvisioner{

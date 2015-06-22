@@ -91,6 +91,8 @@ var nativeScheme = auth.ManagedScheme(native.NativeScheme{})
 func (s *S) SetUpSuite(c *check.C) {
 	err := config.ReadConfigFile("testdata/config.yaml")
 	c.Assert(err, check.IsNil)
+	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:name", "tsuru_api_base_test")
 }
 
 func (s *S) SetUpTest(c *check.C) {
