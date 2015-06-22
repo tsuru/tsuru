@@ -296,12 +296,12 @@ func (r *galebRouter) Routes(name string) ([]*url.URL, error) {
 	if err != nil {
 		return nil, err
 	}
-	var result []*url.URL
-	for _, real := range data.Reals {
+	result := make([]*url.URL, len(data.Reals))
+	for i, real := range data.Reals {
 		var url url.URL
 		url.Scheme = "http"
 		url.Host = real.Real
-		result = append(result, &url)
+		result[i] = &url
 	}
 	return result, nil
 }

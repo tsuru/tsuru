@@ -44,7 +44,7 @@ func (s *RouterSuite) TearDownTest(c *check.C) {
 	}
 }
 
-func (s *RouterSuite) TestRouteAddBackend(c *check.C) {
+func (s *RouterSuite) TestRouteAddBackendAndRoute(c *check.C) {
 	name := "backend1"
 	err := s.Router.AddBackend(name)
 	c.Assert(err, check.IsNil)
@@ -55,6 +55,33 @@ func (s *RouterSuite) TestRouteAddBackend(c *check.C) {
 	routes, err := s.Router.Routes(name)
 	c.Assert(err, check.IsNil)
 	c.Assert(routes, check.DeepEquals, []*url.URL{addr})
+}
+
+func (s *RouterSuite) TestRouteRemoveRouteAndBackend(c *check.C) {
+	name := "backend1"
+	err := s.Router.AddBackend(name)
+	c.Assert(err, check.IsNil)
+	addr1, err := url.Parse("http://10.10.10.10:8080")
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddRoute(name, addr1)
+	addr2, err := url.Parse("http://10.10.10.11:8080")
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddRoute(name, addr2)
+	c.Assert(err, check.IsNil)
+	err = s.Router.RemoveRoute(name, addr1)
+	c.Assert(err, check.IsNil)
+	routes, err := s.Router.Routes(name)
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, check.DeepEquals, []*url.URL{addr2})
+	err = s.Router.RemoveRoute(name, addr2)
+	c.Assert(err, check.IsNil)
+	routes, err = s.Router.Routes(name)
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, check.DeepEquals, []*url.URL{})
+	err = s.Router.RemoveBackend(name)
+	c.Assert(err, check.IsNil)
+	_, err = s.Router.Routes(name)
+	c.Assert(err, check.Equals, router.ErrRouteNotFound)
 }
 
 func (s *RouterSuite) TestSwap(c *check.C) {
