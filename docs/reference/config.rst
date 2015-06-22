@@ -534,10 +534,9 @@ format ``routers:<router name>``.
 routers:<router name>:type (type: hipache, galeb, vulcand)
 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
-Indicates the type of this router configuration. The standard router
-supported by tsuru is ``hipache`` (`ref
-<https://github.com/hipache/hipache>`_). There is also experimental support
-for ``galeb`` (`ref <http://galeb.io/>`_) and ``vulcand`` (`ref
+Indicates the type of this router configuration. The standard router supported
+by tsuru is `hipache <https://github.com/hipache/hipache>`_. There is also
+experimental support for `galeb <http://galeb.io/>`_ and `vulcand
 <https://docs.vulcand.io/>`_).
 
 Depending on the type, there are some specific configuration options available.
