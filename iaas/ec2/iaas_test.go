@@ -72,6 +72,78 @@ func (s *S) TestCreateEC2HandlerWithEndpoint(c *check.C) {
 	c.Assert(cred.SessionToken, check.Equals, "")
 }
 
+func (s *S) TestBuildRunInstancesOptions(c *check.C) {
+	params := map[string]string{
+		"endpoint":            s.srv.URL(),
+		"tags":                "machine1,machine2",
+		"imageid":             "ami-xxxxxx",
+		"instancetype":        "m1.micro",
+		"securitygroups":      "group1,group2,group3",
+		"mincount":            "10",
+		"maxcount":            "15",
+		"dryrun":              "true",
+		"ebsoptimized":        "true",
+		"blockdevicemappings": "",
+		"iaminstanceprofile":  "",
+		"monitoring":          "",
+		"networkinterfaces":   "",
+		"placement":           "",
+	}
+	ec2iaas := newEC2IaaS("ec2").(*EC2IaaS)
+	opts, err := ec2iaas.buildRunInstancesOptions(params)
+	c.Assert(err, check.IsNil)
+	c.Check(*opts.ImageID, check.Equals, "ami-xxxxxx")
+	c.Check(*opts.InstanceType, check.Equals, "m1.micro")
+	expectedGroups := []*string{
+		aws.String("group1"), aws.String("group2"), aws.String("group3"),
+	}
+	c.Check(opts.SecurityGroups, check.DeepEquals, expectedGroups)
+	c.Check(*opts.MinCount, check.Equals, int64(1))
+	c.Check(*opts.MaxCount, check.Equals, int64(1))
+	c.Check(*opts.EBSOptimized, check.Equals, true)
+	c.Check(opts.DryRun, check.IsNil)
+	c.Check(opts.BlockDeviceMappings, check.IsNil)
+	c.Check(opts.Monitoring, check.IsNil)
+	c.Check(opts.NetworkInterfaces, check.IsNil)
+	c.Check(opts.Placement, check.IsNil)
+}
+
+func (s *S) TestBuildRunInstancesOptionsAliases(c *check.C) {
+	params := map[string]string{
+		"endpoint":            s.srv.URL(),
+		"tags":                "machine1,machine2",
+		"image":               "ami-xxxxxx",
+		"type":                "m1.micro",
+		"securitygroup":       "group1,group2,group3",
+		"mincount":            "10",
+		"maxcount":            "15",
+		"dryrun":              "true",
+		"ebs-optimized":       "true",
+		"blockdevicemappings": "",
+		"iaminstanceprofile":  "",
+		"monitoring":          "",
+		"networkinterfaces":   "",
+		"placement":           "",
+	}
+	ec2iaas := newEC2IaaS("ec2").(*EC2IaaS)
+	opts, err := ec2iaas.buildRunInstancesOptions(params)
+	c.Assert(err, check.IsNil)
+	c.Check(*opts.ImageID, check.Equals, "ami-xxxxxx")
+	c.Check(*opts.InstanceType, check.Equals, "m1.micro")
+	expectedGroups := []*string{
+		aws.String("group1"), aws.String("group2"), aws.String("group3"),
+	}
+	c.Check(opts.SecurityGroups, check.DeepEquals, expectedGroups)
+	c.Check(*opts.MinCount, check.Equals, int64(1))
+	c.Check(*opts.MaxCount, check.Equals, int64(1))
+	c.Check(*opts.EBSOptimized, check.Equals, true)
+	c.Check(opts.DryRun, check.IsNil)
+	c.Check(opts.BlockDeviceMappings, check.IsNil)
+	c.Check(opts.Monitoring, check.IsNil)
+	c.Check(opts.NetworkInterfaces, check.IsNil)
+	c.Check(opts.Placement, check.IsNil)
+}
+
 func (s *S) TestCreateMachine(c *check.C) {
 	params := map[string]string{
 		"endpoint": s.srv.URL(),
@@ -177,12 +249,12 @@ func (s *S) TestCreateMachineValidations(c *check.C) {
 	_, err = ec2iaas.CreateMachine(map[string]string{
 		"region": "myregion",
 	})
-	c.Assert(err, check.ErrorMatches, "image param required")
+	c.Check(err, check.ErrorMatches, `the parameter "imageid" is required`)
 	_, err = ec2iaas.CreateMachine(map[string]string{
 		"region": "myregion",
 		"image":  "ami-xxxxx",
 	})
-	c.Assert(err, check.ErrorMatches, "type param required")
+	c.Check(err, check.ErrorMatches, `the parameter "instancetype" is required`)
 }
 
 func (s *S) TestDeleteMachine(c *check.C) {

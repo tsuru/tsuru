@@ -6,6 +6,7 @@ package ec2
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 	"strings"
 	"time"
@@ -122,35 +123,108 @@ func (i *EC2IaaS) DeleteMachine(m *iaas.Machine) error {
 	return err
 }
 
+type invalidFieldError struct {
+	fieldName    string
+	convertError error
+}
+
+func (err *invalidFieldError) Error() string {
+	return fmt.Sprintf("invalid value for the field %q: %s", err.fieldName, err.convertError)
+}
+
+func (i *EC2IaaS) buildRunInstancesOptions(params map[string]string) (ec2.RunInstancesInput, error) {
+	result := ec2.RunInstancesInput{
+		MaxCount: aws.Long(1),
+		MinCount: aws.Long(1),
+	}
+	forbiddenFields := []string{
+		"maxcount", "mincount", "dryrun", "blockdevicemappings",
+		"iaminstanceprofile", "monitoring", "networkinterfaces",
+		"placement",
+	}
+	aliases := map[string]string{
+		"image":         "imageid",
+		"type":          "instancetype",
+		"securitygroup": "securitygroups",
+		"ebs-optimized": "ebsoptimized",
+	}
+	refType := reflect.TypeOf(result)
+	refValue := reflect.ValueOf(&result)
+	for key, value := range params {
+		field, ok := refType.FieldByNameFunc(func(name string) bool {
+			lowerName := strings.ToLower(name)
+			for _, field := range forbiddenFields {
+				if lowerName == field {
+					return false
+				}
+			}
+			lowerKey := strings.ToLower(key)
+			if aliased, ok := aliases[lowerKey]; ok {
+				lowerKey = aliased
+			}
+			return lowerName == lowerKey
+		})
+		if !ok {
+			continue
+		}
+		fieldType := field.Type
+		fieldValue := refValue.Elem().FieldByIndex(field.Index)
+		if !fieldValue.IsValid() || !fieldValue.CanSet() {
+			continue
+		}
+		switch fieldType.Kind() {
+		case reflect.Ptr:
+			switch fieldType.Elem().Kind() {
+			case reflect.String:
+				copy := value
+				fieldValue.Set(reflect.ValueOf(&copy))
+			case reflect.Int64:
+				intValue, err := strconv.ParseInt(value, 10, 64)
+				if err != nil {
+					return result, &invalidFieldError{
+						fieldName:    key,
+						convertError: err,
+					}
+				}
+				fieldValue.Set(reflect.ValueOf(&intValue))
+			case reflect.Bool:
+				boolValue, err := strconv.ParseBool(value)
+				if err != nil {
+					return result, &invalidFieldError{
+						fieldName:    key,
+						convertError: err,
+					}
+				}
+				fieldValue.Set(reflect.ValueOf(&boolValue))
+			}
+		case reflect.Slice:
+			parts := strings.Split(value, ",")
+			values := make([]*string, len(parts))
+			for i, part := range parts {
+				values[i] = aws.String(part)
+			}
+			fieldValue.Set(reflect.ValueOf(values))
+		}
+	}
+	return result, nil
+}
+
 func (i *EC2IaaS) CreateMachine(params map[string]string) (*iaas.Machine, error) {
 	regionOrEndpoint := getRegionOrEndpoint(params, true)
-	imageId, ok := params["image"]
-	if !ok {
-		return nil, fmt.Errorf("image param required")
-	}
-	instanceType, ok := params["type"]
-	if !ok {
-		return nil, fmt.Errorf("type param required")
-	}
-	optimized, _ := params["ebs-optimized"]
-	ebsOptimized, _ := strconv.ParseBool(optimized)
 	userData, err := i.base.ReadUserData()
 	if err != nil {
 		return nil, err
 	}
-	keyName, _ := params["keyName"]
-	options := ec2.RunInstancesInput{
-		EBSOptimized: aws.Boolean(ebsOptimized),
-		ImageID:      aws.String(imageId),
-		InstanceType: aws.String(instanceType),
-		KeyName:      aws.String(keyName),
-		MinCount:     aws.Long(1),
-		MaxCount:     aws.Long(1),
-		UserData:     aws.String(userData),
+	options, err := i.buildRunInstancesOptions(params)
+	if err != nil {
+		return nil, err
 	}
-	securityGroup, ok := params["securityGroup"]
-	if ok {
-		options.SecurityGroups = []*string{aws.String(securityGroup)}
+	options.UserData = aws.String(userData)
+	if options.ImageID == nil || *options.ImageID == "" {
+		return nil, fmt.Errorf("the parameter %q is required", "imageid")
+	}
+	if options.InstanceType == nil || *options.InstanceType == "" {
+		return nil, fmt.Errorf("the parameter %q is required", "instancetype")
 	}
 	ec2Inst, err := i.createEC2Handler(regionOrEndpoint)
 	if err != nil {
