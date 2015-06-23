@@ -48,7 +48,7 @@ func Factory() (PubSubFactory, error) {
 }
 
 type queueInstanceData struct {
-	sync.Mutex
+	sync.RWMutex
 	instance monsterqueue.Queue
 }
 
@@ -78,6 +78,12 @@ func ResetQueue() {
 }
 
 func Queue() (monsterqueue.Queue, error) {
+	queueData.RLock()
+	if queueData.instance != nil {
+		defer queueData.RUnlock()
+		return queueData.instance, nil
+	}
+	queueData.RUnlock()
 	queueData.Lock()
 	defer queueData.Unlock()
 	if queueData.instance != nil {
