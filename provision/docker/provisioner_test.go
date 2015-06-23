@@ -141,31 +141,37 @@ func (s *S) TestProvisionerRestartProcess(c *check.C) {
 	c.Assert(dbConts[1].HostPort, check.Equals, expectedPort)
 }
 
-func (s *S) stopContainers(n uint) {
-	client, err := docker.NewClient(s.server.URL())
-	if err != nil {
-		return
-	}
-	for n > 0 {
-		opts := docker.ListContainersOptions{All: false}
-		containers, err := client.ListContainers(opts)
+func (s *S) stopContainers(n uint) <-chan bool {
+	ch := make(chan bool)
+	go func() {
+		defer close(ch)
+		client, err := docker.NewClient(s.server.URL())
 		if err != nil {
 			return
 		}
-		if len(containers) > 0 {
-			for _, cont := range containers {
-				if cont.ID != "" {
-					client.StopContainer(cont.ID, 1)
-					n--
+		for n > 0 {
+			opts := docker.ListContainersOptions{All: false}
+			containers, err := client.ListContainers(opts)
+			if err != nil {
+				return
+			}
+			if len(containers) > 0 {
+				for _, cont := range containers {
+					if cont.ID != "" {
+						client.StopContainer(cont.ID, 1)
+						n--
+					}
 				}
 			}
+			time.Sleep(500 * time.Millisecond)
 		}
-		time.Sleep(500 * time.Millisecond)
-	}
+	}()
+	return ch
 }
 
 func (s *S) TestDeploy(c *check.C) {
-	go s.stopContainers(1)
+	stopCh := s.stopContainers(1)
+	defer func() { <-stopCh }()
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	a := app.App{
@@ -209,7 +215,8 @@ func (s *S) TestDeploy(c *check.C) {
 func (s *S) TestDeployErasesOldImages(c *check.C) {
 	config.Set("docker:image-history-size", 1)
 	defer config.Unset("docker:image-history-size")
-	go s.stopContainers(3)
+	stopCh := s.stopContainers(3)
+	defer func() { <-stopCh }()
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	a := app.App{
@@ -270,7 +277,6 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 	config.Set("docker:image-history-size", 1)
 	defer config.Unset("docker:image-history-size")
-	go s.stopContainers(1)
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	a := app.App{
@@ -316,7 +322,8 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	config.Set("docker:image-history-size", 2)
 	defer config.Unset("docker:image-history-size")
-	go s.stopContainers(5)
+	stopCh := s.stopContainers(4)
+	defer func() { <-stopCh }()
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	a := app.App{
@@ -395,7 +402,8 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 }
 
 func (s *S) TestProvisionerUploadDeploy(c *check.C) {
-	go s.stopContainers(3)
+	stopCh := s.stopContainers(2)
+	defer func() { <-stopCh }()
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	a := app.App{
@@ -436,7 +444,6 @@ func (s *S) TestProvisionerUploadDeploy(c *check.C) {
 }
 
 func (s *S) TestImageDeploy(c *check.C) {
-	go s.stopContainers(1)
 	err := s.newFakeImage(s.p, "tsuru/app-otherapp:v1", nil)
 	c.Assert(err, check.IsNil)
 	err = appendAppImageName("otherapp", "tsuru/app-otherapp:v1")
@@ -464,7 +471,6 @@ func (s *S) TestImageDeploy(c *check.C) {
 }
 
 func (s *S) TestImageDeployInvalidImage(c *check.C) {
-	go s.stopContainers(1)
 	a := app.App{
 		Name:     "otherapp",
 		Platform: "python",
@@ -560,7 +566,8 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 	registryURL := strings.Replace(registryServer.URL, "http://", "", 1)
 	config.Set("docker:registry", registryURL)
 	defer config.Unset("docker:registry")
-	go s.stopContainers(1)
+	stopCh := s.stopContainers(1)
+	defer func() { <-stopCh }()
 	a := app.App{
 		Name:     "mydoomedapp",
 		Platform: "python",

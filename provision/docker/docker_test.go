@@ -714,7 +714,8 @@ func (s *S) TestContainerCommitRetryShouldNotBeLessThanOne(c *check.C) {
 }
 
 func (s *S) TestGitDeploy(c *check.C) {
-	go s.stopContainers(1)
+	stopCh := s.stopContainers(1)
+	defer func() { <-stopCh }()
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
@@ -742,7 +743,6 @@ func (errBuffer) Write(data []byte) (int, error) {
 }
 
 func (s *S) TestGitDeployRollsbackAfterErrorOnAttach(c *check.C) {
-	go s.stopContainers(1)
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
@@ -763,7 +763,8 @@ func (s *S) TestGitDeployRollsbackAfterErrorOnAttach(c *check.C) {
 }
 
 func (s *S) TestArchiveDeploy(c *check.C) {
-	go s.stopContainers(1)
+	stopCh := s.stopContainers(1)
+	defer func() { <-stopCh }()
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)

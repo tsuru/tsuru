@@ -602,7 +602,6 @@ func (s *S) TestFollowLogsAndCommitName(c *check.C) {
 }
 
 func (s *S) TestFollowLogsAndCommitForward(c *check.C) {
-	go s.stopContainers(1)
 	err := s.newFakeImage(s.p, "tsuru/python", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("mightyapp", "python", 1)
@@ -637,7 +636,6 @@ func (s *S) TestFollowLogsAndCommitForward(c *check.C) {
 }
 
 func (s *S) TestFollowLogsAndCommitForwardNonZeroStatus(c *check.C) {
-	go s.stopContainers(1)
 	err := s.newFakeImage(s.p, "tsuru/python", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
