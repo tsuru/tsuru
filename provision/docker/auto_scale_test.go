@@ -101,9 +101,15 @@ func (s *S) TestAutoScaleConfigRun(c *check.C) {
 		groupByMetadata:   "pool",
 		maxContainerCount: 2,
 	}
-	go a.stop()
+	wg1 := sync.WaitGroup{}
+	wg1.Add(1)
+	go func() {
+		defer wg1.Done()
+		a.stop()
+	}()
 	err = a.run()
 	c.Assert(err, check.IsNil)
+	wg1.Wait()
 	nodes, err := p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
@@ -138,9 +144,15 @@ func (s *S) TestAutoScaleConfigRun(c *check.C) {
 	c.Assert(containers2, check.HasLen, 2)
 
 	// Should do nothing if calling on already scaled
-	go a.stop()
+	wg2 := sync.WaitGroup{}
+	wg2.Add(1)
+	go func() {
+		defer wg2.Done()
+		a.stop()
+	}()
 	err = a.run()
 	c.Assert(err, check.IsNil)
+	wg2.Wait()
 	nodes, err = p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
@@ -225,9 +237,15 @@ func (s *S) TestAutoScaleConfigRunNoRebalance(c *check.C) {
 		groupByMetadata:   "pool",
 		maxContainerCount: 2,
 	}
-	go a.stop()
+	wg1 := sync.WaitGroup{}
+	wg1.Add(1)
+	go func() {
+		defer wg1.Done()
+		a.stop()
+	}()
 	err = a.run()
 	c.Assert(err, check.IsNil)
+	wg1.Wait()
 	nodes, err := p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
@@ -249,9 +267,15 @@ func (s *S) TestAutoScaleConfigRunNoRebalance(c *check.C) {
 	c.Assert(containers1, check.HasLen, 4)
 	c.Assert(containers2, check.HasLen, 0)
 
-	go a.stop()
+	wg2 := sync.WaitGroup{}
+	wg2.Add(1)
+	go func() {
+		defer wg2.Done()
+		a.stop()
+	}()
 	err = a.run()
 	c.Assert(err, check.IsNil)
+	wg2.Wait()
 	nodes, err = p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
@@ -428,9 +452,15 @@ func (s *S) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
 		groupByMetadata:   "pool",
 		maxContainerCount: 2,
 	}
-	go a.stop()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		a.stop()
+	}()
 	err = a.run()
 	c.Assert(err, check.IsNil)
+	wg.Wait()
 	evts, err := listAutoScaleEvents(0, 0)
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
@@ -513,9 +543,15 @@ func (s *S) TestAutoScaleConfigRunNoGroup(c *check.C) {
 		provisioner:       &p,
 		maxContainerCount: 2,
 	}
-	go a.stop()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		a.stop()
+	}()
 	err = a.run()
 	c.Assert(err, check.IsNil)
+	wg.Wait()
 	evts, err := listAutoScaleEvents(0, 0)
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
@@ -600,9 +636,15 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 		maxContainerCount: 2,
 		groupByMetadata:   "pool",
 	}
-	go a.stop()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		a.stop()
+	}()
 	err = a.run()
 	c.Assert(err, check.IsNil)
+	wg.Wait()
 	nodes, err := p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -619,9 +661,15 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	a.matadataFilter = "pool2"
-	go a.stop()
+	wg1 := sync.WaitGroup{}
+	wg1.Add(1)
+	go func() {
+		defer wg1.Done()
+		a.stop()
+	}()
 	err = a.run()
 	c.Assert(err, check.IsNil)
+	wg1.Wait()
 	nodes, err = p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -630,9 +678,15 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	c.Assert(evts, check.HasLen, 0)
 
 	a.matadataFilter = "pool1"
-	go a.stop()
+	wg2 := sync.WaitGroup{}
+	wg2.Add(1)
+	go func() {
+		defer wg2.Done()
+		a.stop()
+	}()
 	err = a.run()
 	c.Assert(err, check.IsNil)
+	wg2.Wait()
 	nodes, err = p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
@@ -712,9 +766,15 @@ func (s *S) TestAutoScaleConfigRunStress(c *check.C) {
 				maxContainerCount: 2,
 			}
 			defer wg.Done()
-			go a.stop()
+			wgIn := sync.WaitGroup{}
+			wgIn.Add(1)
+			go func() {
+				defer wgIn.Done()
+				a.stop()
+			}()
 			err := a.run()
 			c.Assert(err, check.IsNil)
+			wgIn.Wait()
 		}()
 	}
 	wg.Wait()
@@ -812,9 +872,15 @@ func (s *S) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 		totalMemoryMetadata: "totalMem",
 		maxMemoryRatio:      0.8,
 	}
-	go a.stop()
+	wg1 := sync.WaitGroup{}
+	wg1.Add(1)
+	go func() {
+		defer wg1.Done()
+		a.stop()
+	}()
 	err = a.run()
 	c.Assert(err, check.IsNil)
+	wg1.Wait()
 	nodes, err := p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
@@ -838,9 +904,15 @@ func (s *S) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 	c.Assert(containers2, check.HasLen, 2)
 
 	// Should do nothing if calling on already scaled
-	go a.stop()
+	wg2 := sync.WaitGroup{}
+	wg2.Add(1)
+	go func() {
+		defer wg2.Done()
+		a.stop()
+	}()
 	err = a.run()
 	c.Assert(err, check.IsNil)
+	wg2.Wait()
 	nodes, err = p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
@@ -927,9 +999,15 @@ func (s *S) TestAutoScaleConfigRunPriorityToCountBased(c *check.C) {
 		totalMemoryMetadata: "totalMem",
 		maxMemoryRatio:      0.8,
 	}
-	go a.stop()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		a.stop()
+	}()
 	err = a.run()
 	c.Assert(err, check.IsNil)
+	wg.Wait()
 	nodes, err := p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
@@ -1020,9 +1098,15 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedPlanTooBig(c *check.C) {
 		totalMemoryMetadata: "totalMem",
 		maxMemoryRatio:      0.8,
 	}
-	go a.stop()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		a.stop()
+	}()
 	err = a.run()
 	c.Assert(err, check.ErrorMatches, `\[node autoscale\] error scaling group pool1: aborting, impossible to fit max plan memory of 126000 bytes, node max available memory is 100000`)
+	wg.Wait()
 	nodes, err := p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -1109,9 +1193,15 @@ func (s *S) TestAutoScaleConfigRunScaleDown(c *check.C) {
 		groupByMetadata:   "pool",
 		maxContainerCount: 4,
 	}
-	go a.stop()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		a.stop()
+	}()
 	err = a.run()
 	c.Assert(err, check.IsNil)
+	wg.Wait()
 	evts, err := listAutoScaleEvents(0, 0)
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
@@ -1215,9 +1305,15 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C) {
 		totalMemoryMetadata: "totalMem",
 		maxMemoryRatio:      0.8,
 	}
-	go a.stop()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		a.stop()
+	}()
 	err = a.run()
 	c.Assert(err, check.IsNil)
+	wg.Wait()
 	evts, err := listAutoScaleEvents(0, 0)
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
@@ -1317,9 +1413,15 @@ func (s *S) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *check.C) {
 		groupByMetadata:   "pool",
 		maxContainerCount: 4,
 	}
-	go a.stop()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		a.stop()
+	}()
 	err = a.run()
 	c.Assert(err, check.IsNil)
+	wg.Wait()
 	evts, err := listAutoScaleEvents(0, 0)
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 0)
@@ -1394,9 +1496,15 @@ func (s *S) TestAutoScaleConfigRunLockedApp(c *check.C) {
 		groupByMetadata:   "pool",
 		maxContainerCount: 2,
 	}
-	go a.stop()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		a.stop()
+	}()
 	err = a.run()
 	c.Assert(err, check.ErrorMatches, `.*unable to lock app myapp, aborting.*`)
+	wg.Wait()
 	nodes, err := p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -1478,9 +1586,15 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedLockedApp(c *check.C) {
 		totalMemoryMetadata: "totalMem",
 		maxMemoryRatio:      0.8,
 	}
-	go a.stop()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		a.stop()
+	}()
 	err = a.run()
 	c.Assert(err, check.ErrorMatches, `.*unable to lock app myapp, aborting.*`)
+	wg.Wait()
 	nodes, err := p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -1513,9 +1627,15 @@ func (s *S) TestAutoScaleConfigRunDefaultValues(c *check.C) {
 		provisioner:       s.p,
 		maxContainerCount: 10,
 	}
-	go a.stop()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		a.stop()
+	}()
 	err := a.run()
 	c.Assert(err, check.IsNil)
+	wg.Wait()
 	c.Assert(a.runInterval, check.Equals, 1*time.Hour)
 	c.Assert(a.waitTimeNewMachine, check.Equals, 5*time.Minute)
 	c.Assert(a.scaleDownRatio > 1.332 && a.scaleDownRatio < 1.334, check.Equals, true)
@@ -1530,9 +1650,15 @@ func (s *S) TestAutoScaleConfigRunConfigValues(c *check.C) {
 		waitTimeNewMachine: 7 * time.Minute,
 		scaleDownRatio:     1.5,
 	}
-	go a.stop()
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		a.stop()
+	}()
 	err := a.run()
 	c.Assert(err, check.IsNil)
+	wg.Wait()
 	c.Assert(a.runInterval, check.Equals, 10*time.Minute)
 	c.Assert(a.waitTimeNewMachine, check.Equals, 7*time.Minute)
 	c.Assert(a.scaleDownRatio > 1.49 && a.scaleDownRatio < 1.51, check.Equals, true)
