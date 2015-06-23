@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
+	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -78,44 +79,20 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("repo-manager", "fake")
 	config.Set("admin-team", "admin")
 	config.Set("docker:registry-max-try", 1)
+	config.Set("auth:hash-cost", bcrypt.MinCost)
 	s.deployCmd = "/var/lib/tsuru/deploy"
 	s.runBin = "/usr/local/bin/circusd"
 	s.runArgs = "/etc/circus/circus.ini"
 	s.port = "8888"
 	s.targetRecover = cmdtest.SetTargetFile(c, []byte("http://localhost"))
 	s.oldProvisioner = app.Provisioner
-}
-
-func (s *S) SetUpTest(c *check.C) {
-	iaas.ResetAll()
-	queue.ResetQueue()
-	repositorytest.Reset()
 	var err error
 	s.storage, err = db.Conn()
 	c.Assert(err, check.IsNil)
 	clusterDbUrl, _ := config.GetString("docker:cluster:mongo-url")
 	s.clusterSess, err = mgo.Dial(clusterDbUrl)
 	c.Assert(err, check.IsNil)
-	s.p = &dockerProvisioner{storage: &cluster.MapStorage{}}
-	err = s.p.Initialize()
-	c.Assert(err, check.IsNil)
-	queue.ResetQueue()
-	app.Provisioner = s.p
-	s.server, err = dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	s.p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
-		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "test-fallback"}},
-	)
-	c.Assert(err, check.IsNil)
-	mainDockerProvisioner = s.p
-	coll := s.p.collection()
-	defer coll.Close()
-	err = dbtest.ClearAllCollections(coll.Database)
-	c.Assert(err, check.IsNil)
-	err = clearClusterStorage(s.clusterSess)
-	c.Assert(err, check.IsNil)
-	routertest.FakeRouter.Reset()
-	err = provision.AddPool("test-fallback", false)
+	err = dbtest.ClearAllCollections(s.storage.Apps().Database)
 	c.Assert(err, check.IsNil)
 	s.user = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: quota.Unlimited}
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
@@ -130,13 +107,40 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
+func (s *S) SetUpTest(c *check.C) {
+	iaas.ResetAll()
+	repositorytest.Reset()
+	queue.ResetQueue()
+	s.p = &dockerProvisioner{storage: &cluster.MapStorage{}}
+	err := s.p.Initialize()
+	c.Assert(err, check.IsNil)
+	queue.ResetQueue()
+	app.Provisioner = s.p
+	s.server, err = dtesting.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	s.p.cluster, err = cluster.New(nil, s.p.storage,
+		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "test-fallback"}},
+	)
+	c.Assert(err, check.IsNil)
+	mainDockerProvisioner = s.p
+	coll := s.p.collection()
+	defer coll.Close()
+	err = dbtest.ClearAllCollectionsExcept(coll.Database, []string{"users", "tokens", "teams"})
+	c.Assert(err, check.IsNil)
+	err = clearClusterStorage(s.clusterSess)
+	c.Assert(err, check.IsNil)
+	routertest.FakeRouter.Reset()
+	err = provision.AddPool("test-fallback", false)
+	c.Assert(err, check.IsNil)
+}
+
 func (s *S) TearDownTest(c *check.C) {
 	s.server.Stop()
-	s.clusterSess.Close()
-	s.storage.Close()
 }
 
 func (s *S) TearDownSuite(c *check.C) {
+	s.clusterSess.Close()
+	s.storage.Close()
 	cmdtest.RollbackFile(s.targetRecover)
 	app.Provisioner = s.oldProvisioner
 }
