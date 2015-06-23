@@ -63,9 +63,11 @@ func (p *dockerProvisioner) initDockerCluster() error {
 	clusterLog.SetDebug(debug)
 	clusterLog.SetLogger(log.GetStdLogger())
 	var err error
-	p.storage, err = buildClusterStorage()
-	if err != nil {
-		return err
+	if p.storage == nil {
+		p.storage, err = buildClusterStorage()
+		if err != nil {
+			return err
+		}
 	}
 	if p.collectionName == "" {
 		name, err := config.GetString("docker:collection")

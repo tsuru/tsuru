@@ -62,10 +62,11 @@ func newTestIaaS(string) iaas.IaaS {
 }
 
 type HandlersSuite struct {
-	conn  *db.Storage
-	user  *auth.User
-	token auth.Token
-	team  *auth.Team
+	conn        *db.Storage
+	user        *auth.User
+	token       auth.Token
+	team        *auth.Team
+	clusterSess *mgo.Session
 }
 
 var _ = check.Suite(&HandlersSuite{})
@@ -88,6 +89,9 @@ func (s *HandlersSuite) SetUpSuite(c *check.C) {
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
+	clusterDbUrl, _ := config.GetString("docker:cluster:mongo-url")
+	s.clusterSess, err = mgo.Dial(clusterDbUrl)
+	c.Assert(err, check.IsNil)
 	pools, err := provision.ListPools(nil)
 	c.Assert(err, check.IsNil)
 	for _, pool := range pools {
@@ -108,7 +112,7 @@ func (s *HandlersSuite) SetUpSuite(c *check.C) {
 
 func (s *HandlersSuite) SetUpTest(c *check.C) {
 	queue.ResetQueue()
-	err := clearClusterStorage()
+	err := clearClusterStorage(s.clusterSess)
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner = &dockerProvisioner{}
 	err = mainDockerProvisioner.Initialize()
@@ -120,6 +124,7 @@ func (s *HandlersSuite) SetUpTest(c *check.C) {
 }
 
 func (s *HandlersSuite) TearDownSuite(c *check.C) {
+	s.clusterSess.Close()
 	coll := mainDockerProvisioner.collection()
 	defer coll.Close()
 	err := dbtest.ClearAllCollections(coll.Database)

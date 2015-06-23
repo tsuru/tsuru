@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/cmd/cmdtest"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/queue"
@@ -51,12 +52,12 @@ type S struct {
 	user           *auth.User
 	token          auth.Token
 	team           *auth.Team
+	clusterSess    *mgo.Session
 }
 
 var _ = check.Suite(&S{})
 
 func (s *S) SetUpSuite(c *check.C) {
-	queue.ResetQueue()
 	s.collName = "docker_unit"
 	s.imageCollName = "docker_image"
 	s.repoNamespace = "tsuru"
@@ -77,19 +78,46 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("routers:fake:type", "fake")
 	config.Set("repo-manager", "fake")
 	config.Set("admin-team", "admin")
+	config.Set("docker:registry-max-try", 1)
 	s.deployCmd = "/var/lib/tsuru/deploy"
 	s.runBin = "/usr/local/bin/circusd"
 	s.runArgs = "/etc/circus/circus.ini"
 	s.port = "8888"
-	var err error
 	s.targetRecover = cmdtest.SetTargetFile(c, []byte("http://localhost"))
+	s.oldProvisioner = app.Provisioner
+}
+
+func (s *S) SetUpTest(c *check.C) {
+	iaas.ResetAll()
+	queue.ResetQueue()
+	repositorytest.Reset()
+	var err error
 	s.storage, err = db.Conn()
+	c.Assert(err, check.IsNil)
+	clusterDbUrl, _ := config.GetString("docker:cluster:mongo-url")
+	s.clusterSess, err = mgo.Dial(clusterDbUrl)
 	c.Assert(err, check.IsNil)
 	s.p = &dockerProvisioner{storage: &cluster.MapStorage{}}
 	err = s.p.Initialize()
 	c.Assert(err, check.IsNil)
-	s.oldProvisioner = app.Provisioner
+	queue.ResetQueue()
 	app.Provisioner = s.p
+	s.server, err = dtesting.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	s.p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
+		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "test-fallback"}},
+	)
+	c.Assert(err, check.IsNil)
+	mainDockerProvisioner = s.p
+	coll := s.p.collection()
+	defer coll.Close()
+	err = dbtest.ClearAllCollections(coll.Database)
+	c.Assert(err, check.IsNil)
+	err = clearClusterStorage(s.clusterSess)
+	c.Assert(err, check.IsNil)
+	routertest.FakeRouter.Reset()
+	err = provision.AddPool("test-fallback", false)
+	c.Assert(err, check.IsNil)
 	s.user = &auth.User{Email: "myadmin@arrakis.com", Password: "123456", Quota: quota.Unlimited}
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
@@ -103,57 +131,20 @@ func (s *S) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
-func (s *S) SetUpTest(c *check.C) {
-	iaas.ResetAll()
-	queue.ResetQueue()
-	config.Set("docker:registry-max-try", 1)
-	repositorytest.Reset()
-	var err error
-	if s.server != nil {
-		s.server.Stop()
-	}
-	s.server, err = dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	s.p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
-		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "test-fallback"}},
-	)
-	c.Assert(err, check.IsNil)
-	mainDockerProvisioner = s.p
-	coll := s.p.collection()
-	defer coll.Close()
-	err = dbtest.ClearAllCollectionsExcept(coll.Database, []string{"users", "tokens", "teams"})
-	c.Assert(err, check.IsNil)
-	err = clearClusterStorage()
-	c.Assert(err, check.IsNil)
-	routertest.FakeRouter.Reset()
-	err = provision.AddPool("test-fallback", false)
-	c.Assert(err, check.IsNil)
-}
-
 func (s *S) TearDownTest(c *check.C) {
 	s.server.Stop()
-}
-
-func clearClusterStorage() error {
-	clusterDbUrl, _ := config.GetString("docker:cluster:mongo-url")
-	clusterDbName, _ := config.GetString("docker:cluster:mongo-database")
-	session, err := mgo.Dial(clusterDbUrl)
-	if err != nil {
-		return err
-	}
-	defer session.Close()
-	return dbtest.ClearAllCollections(session.DB(clusterDbName))
+	s.clusterSess.Close()
+	s.storage.Close()
 }
 
 func (s *S) TearDownSuite(c *check.C) {
-	coll := s.p.collection()
-	defer coll.Close()
-	err := dbtest.ClearAllCollections(coll.Database)
-	c.Assert(err, check.IsNil)
 	cmdtest.RollbackFile(s.targetRecover)
-	dbtest.ClearAllCollections(s.storage.Apps().Database)
-	s.storage.Close()
 	app.Provisioner = s.oldProvisioner
+}
+
+func clearClusterStorage(sess *mgo.Session) error {
+	clusterDbName, _ := config.GetString("docker:cluster:mongo-database")
+	return dbtest.ClearAllCollections(sess.DB(clusterDbName))
 }
 
 func (s *S) stopMultipleServersCluster(p *dockerProvisioner) {
