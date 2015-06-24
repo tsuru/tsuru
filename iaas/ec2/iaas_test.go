@@ -162,8 +162,6 @@ func (s *S) TestCreateMachine(c *check.C) {
 	c.Assert(m.Id, check.Matches, `i-\d`)
 	c.Assert(m.Address, check.Matches, `i-\d.testing.invalid`)
 	c.Assert(m.Status, check.Equals, "pending")
-	handler, err := (ec2iaas.(*EC2IaaS)).createEC2Handler(s.srv.URL())
-	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestCreateMachineTimeoutError(c *check.C) {
