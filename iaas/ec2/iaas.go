@@ -16,6 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ec2"
 	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/iaas"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/queue"
 )
 
@@ -238,6 +239,30 @@ func (i *EC2IaaS) CreateMachine(params map[string]string) (*iaas.Machine, error)
 		return nil, fmt.Errorf("no instance created")
 	}
 	runInst := resp.Instances[0]
+	if tags, ok := params["tags"]; ok {
+		var ec2Tags []*ec2.Tag
+		tagList := strings.Split(tags, ",")
+		ec2Tags = make([]*ec2.Tag, 0, len(tagList))
+		for _, tag := range tagList {
+			if strings.Contains(tag, ":") {
+				parts := strings.SplitN(tag, ":", 2)
+				ec2Tags = append(ec2Tags, &ec2.Tag{
+					Key:   aws.String(parts[0]),
+					Value: aws.String(parts[1]),
+				})
+			}
+		}
+		if len(ec2Tags) > 0 {
+			input := ec2.CreateTagsInput{
+				Resources: []*string{runInst.InstanceID},
+				Tags:      ec2Tags,
+			}
+			_, err = ec2Inst.CreateTags(&input)
+			if err != nil {
+				log.Errorf("failed to tag EC2 instance: %s", err)
+			}
+		}
+	}
 	instance, err := i.waitForDnsName(ec2Inst, runInst)
 	if err != nil {
 		return nil, err

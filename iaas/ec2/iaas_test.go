@@ -75,7 +75,7 @@ func (s *S) TestCreateEC2HandlerWithEndpoint(c *check.C) {
 func (s *S) TestBuildRunInstancesOptions(c *check.C) {
 	params := map[string]string{
 		"endpoint":            s.srv.URL(),
-		"tags":                "machine1,machine2",
+		"tags":                "name1:value1,name2:value2",
 		"imageid":             "ami-xxxxxx",
 		"instancetype":        "m1.micro",
 		"securitygroups":      "group1,group2,group3",
@@ -147,6 +147,7 @@ func (s *S) TestBuildRunInstancesOptionsAliases(c *check.C) {
 func (s *S) TestCreateMachine(c *check.C) {
 	params := map[string]string{
 		"endpoint": s.srv.URL(),
+		"tags":     "name1:value1,name2:value2",
 		"image":    "ami-xxxxxx",
 		"type":     "m1.micro",
 	}
@@ -161,6 +162,8 @@ func (s *S) TestCreateMachine(c *check.C) {
 	c.Assert(m.Id, check.Matches, `i-\d`)
 	c.Assert(m.Address, check.Matches, `i-\d.testing.invalid`)
 	c.Assert(m.Status, check.Equals, "pending")
+	handler, err := (ec2iaas.(*EC2IaaS)).createEC2Handler(s.srv.URL())
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestCreateMachineTimeoutError(c *check.C) {
