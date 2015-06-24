@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
@@ -83,7 +84,7 @@ func (s *OAuthScheme) loadConfig() (oauth2.Config, error) {
 	s.BaseConfig = oauth2.Config{
 		ClientID:     clientId,
 		ClientSecret: clientSecret,
-		Scopes:       []string{scope},
+		Scopes:       strings.Split(scope, " "),
 		Endpoint: oauth2.Endpoint{
 			AuthURL:  authURL,
 			TokenURL: tokenURL,
@@ -106,14 +107,18 @@ func (s *OAuthScheme) Login(params map[string]string) (auth.Token, error) {
 		return nil, ErrMissingCodeRedirectUrl
 	}
 	config.RedirectURL = redirectUrl
+	scope, ok := params["scope"]
+	if ok {
+		config.Scopes = strings.Split(scope, " ")
+	}
 	oauthToken, err := config.Exchange(context.Background(), code)
 	if err != nil {
 		return nil, err
 	}
-	return s.handleToken(oauthToken)
+	return s.handleToken(oauthToken, config.Scopes)
 }
 
-func (s *OAuthScheme) handleToken(t *oauth2.Token) (*Token, error) {
+func (s *OAuthScheme) handleToken(t *oauth2.Token, scopes []string) (*Token, error) {
 	if t.AccessToken == "" {
 		return nil, ErrEmptyAccessToken
 	}
@@ -146,7 +151,7 @@ func (s *OAuthScheme) handleToken(t *oauth2.Token) (*Token, error) {
 			return nil, err
 		}
 	}
-	token := Token{*t, email}
+	token := Token{*t, email, strings.Join(scopes, " ")}
 	err = token.save()
 	if err != nil {
 		return nil, err

@@ -18,6 +18,7 @@ import (
 type Token struct {
 	oauth2.Token
 	UserEmail string `json:"email"`
+	Scope     string `json:"scope"`
 }
 
 func (t *Token) GetValue() string {

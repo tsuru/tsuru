@@ -58,6 +58,35 @@ func (s *S) TestOAuthLogin(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(dbToken.AccessToken, check.Equals, "my_token")
 	c.Assert(dbToken.UserEmail, check.Equals, "rand@althor.com")
+	c.Assert(dbToken.Scope, check.Equals, "myscope")
+}
+
+func (s *S) TestOAuthLoginScope(c *check.C) {
+	scheme := OAuthScheme{}
+	s.rsps["/token"] = `access_token=my_token`
+	s.rsps["/user"] = `{"email":"rand@althor.com"}`
+	params := make(map[string]string)
+	params["code"] = "abcdefg"
+	params["redirectUrl"] = "http://localhost"
+	params["scope"] = "user-create team-user-create"
+	token, err := scheme.Login(params)
+	c.Assert(err, check.IsNil)
+	c.Assert(token.GetValue(), check.Equals, "my_token")
+	c.Assert(token.GetUserName(), check.Equals, "rand@althor.com")
+	c.Assert(token.IsAppToken(), check.Equals, false)
+	u, err := token.User()
+	c.Assert(err, check.IsNil)
+	c.Assert(u.Email, check.Equals, "rand@althor.com")
+	c.Assert(len(s.reqs), check.Equals, 2)
+	c.Assert(s.reqs[0].URL.Path, check.Equals, "/token")
+	c.Assert(s.bodies[0], check.Equals, "client_id=clientid&code=abcdefg&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost&scope=user-create+team-user-create")
+	c.Assert(s.reqs[1].URL.Path, check.Equals, "/user")
+	c.Assert(s.reqs[1].Header.Get("Authorization"), check.Equals, "Bearer my_token")
+	dbToken, err := getToken("my_token")
+	c.Assert(err, check.IsNil)
+	c.Assert(dbToken.AccessToken, check.Equals, "my_token")
+	c.Assert(dbToken.UserEmail, check.Equals, "rand@althor.com")
+	c.Assert(dbToken.Scope, check.Equals, "user-create team-user-create")
 }
 
 func (s *S) TestOAuthLoginRegistrationDisabled(c *check.C) {
