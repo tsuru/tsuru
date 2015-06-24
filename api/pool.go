@@ -40,8 +40,16 @@ func listPoolsToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error
 		pbt := PoolsByTeam{Team: t.Name, Pools: provision.GetPoolsNames(pools)}
 		poolsByTeam = append(poolsByTeam, pbt)
 	}
+	publicPools, err := provision.ListPools(bson.M{"public": true})
+	if err != nil {
+		return err
+	}
+	p := map[string]interface{}{
+		"pools_by_team": poolsByTeam,
+		"public_pools":  publicPools,
+	}
 	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(poolsByTeam)
+	return json.NewEncoder(w).Encode(p)
 }
 
 type addPoolOptions struct {

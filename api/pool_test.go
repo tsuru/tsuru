@@ -115,13 +115,16 @@ func (s *S) TestListPoolsToUserHandler(c *check.C) {
 	err = provision.AddPool("nopool", false)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("nopool")
-	poolsExpected := []PoolsByTeam{{Team: "angra", Pools: []string{"pool1"}}}
+	poolsExpected := map[string]interface{}{
+		"pools_by_team": []interface{}{map[string]interface{}{"Team": "angra", "Pools": []interface{}{"pool1"}}},
+		"public_pools":  interface{}(nil),
+	}
 	req, err := http.NewRequest("GET", "/pool", nil)
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()
 	err = listPoolsToUser(rec, req, token)
 	c.Assert(err, check.IsNil)
-	var pools []PoolsByTeam
+	var pools map[string]interface{}
 	err = json.NewDecoder(rec.Body).Decode(&pools)
 	c.Assert(err, check.IsNil)
 	c.Assert(pools, check.DeepEquals, poolsExpected)
