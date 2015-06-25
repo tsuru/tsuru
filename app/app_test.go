@@ -73,10 +73,12 @@ func (s *S) TestDelete(c *check.C) {
 	err = app.Log("msg", "src", "unit")
 	c.Assert(err, check.IsNil)
 	err = Delete(app)
-	time.Sleep(200 * time.Millisecond)
 	c.Assert(err, check.IsNil)
-	_, err = GetByName(app.Name)
-	c.Assert(err, check.NotNil)
+	err = s.waitCondition(time.Second, func() bool {
+		_, err := GetByName(app.Name)
+		return err != nil
+	})
+	c.Assert(err, check.IsNil)
 	c.Assert(s.provisioner.Provisioned(&a), check.Equals, false)
 	err = auth.ReserveApp(s.user)
 	c.Assert(err, check.IsNil)
@@ -102,12 +104,16 @@ func (s *S) TestDeleteWithDeploys(c *check.C) {
 	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
 	err = Delete(app)
 	c.Assert(err, check.IsNil)
-	time.Sleep(200 * time.Millisecond)
-	var allDeploys []DeployData
-	err = s.conn.Deploys().Find(nil).All(&allDeploys)
+	err = s.waitCondition(1e9, func() bool {
+		var deploys []DeployData
+		err := s.conn.Deploys().Find(bson.M{"app": app.Name}).All(&deploys)
+		if err != nil {
+			c.Log(err)
+			return false
+		}
+		return len(deploys) == 1 && !deploys[0].RemoveDate.IsZero()
+	})
 	c.Assert(err, check.IsNil)
-	c.Assert(allDeploys, check.HasLen, 1)
-	c.Assert(allDeploys[0].RemoveDate.IsZero(), check.Equals, false)
 	_, err = repository.Manager().GetRepository(a.Name)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "repository not found")
@@ -557,10 +563,15 @@ func (s *S) TestRemoveUnitsWithQuota(c *check.C) {
 	defer s.provisioner.Destroy(&a)
 	err = a.RemoveUnits(4, "web", nil)
 	c.Assert(err, check.IsNil)
-	time.Sleep(1e9)
-	app, err := GetByName(a.Name)
+	err = s.waitCondition(2e9, func() bool {
+		app, err := GetByName(a.Name)
+		if err != nil {
+			c.Log(err)
+			return false
+		}
+		return app.Quota.InUse == 1
+	})
 	c.Assert(err, check.IsNil)
-	c.Assert(app.Quota.InUse, check.Equals, 1)
 }
 
 func (s *S) TestRemoveUnits(c *check.C) {
@@ -602,17 +613,19 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	err = app.RemoveUnits(2, "worker", buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Equals, "removing 2 units")
-	time.Sleep(1e9)
+	err = s.waitCondition(2e9, func() bool {
+		gotApp, err := GetByName(app.Name)
+		if err != nil {
+			c.Log(err)
+			return false
+		}
+		units := app.Units()
+		return len(units) == 4 && gotApp.Quota.InUse == 4
+	})
+	c.Assert(err, check.IsNil)
 	ts.Close()
-	units := app.Units()
-	c.Assert(units, check.HasLen, 4)
-	gotApp, err := GetByName(app.Name)
-	c.Assert(err, check.IsNil)
-	gotApp, err = GetByName(app.Name)
-	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.Quota.InUse, check.Equals, 4)
-	for _, u := range units {
-		c.Assert(u.ProcessName, check.Equals, "web")
+	for _, unit := range app.Units() {
+		c.Assert(unit.ProcessName, check.Equals, "web")
 	}
 }
 
