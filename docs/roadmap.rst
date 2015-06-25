@@ -32,13 +32,13 @@ Next Release 0.12.0
 Long term Goals
 ===============
 
-These goals are our goals to 1.0 version.
+These are our goals to 1.0 version.
 
     - review platform management.
 
-      We are thinking to change our way to manage platform. Today tsuru has your own platform. But we have a lot of problem to mantain it.
-      In other way, we have buildpacks and we can use it to provide any platform we want, but there's no free lunch.
-      Buildpack can be build by any one and are updated automagicly, so your application can stop work and you'll can do anything to fix it.
+      We are thinking to change our way to manage platform. Today tsuru has its own platform. But we have a lot of problems to mantain it.
+      In other way, we have buildpacks and we can use it to provide any platform we want, but there's no free lunch.`
+      Buildpack can be built by anyone and are updated "automagically", so your application may stop to deploy properly, totally out of the blue.
 
     - docker images with envs.
 
