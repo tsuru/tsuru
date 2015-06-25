@@ -129,3 +129,18 @@ func (s *S) TestListPoolsToUserHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(pools, check.DeepEquals, poolsExpected)
 }
+
+func (s *S) TestPoolUpdateToPublicHandler(c *check.C) {
+	err := provision.AddPool("pool1", false)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("pool1")
+	b := bytes.NewBufferString(`{"public": true}`)
+	req, err := http.NewRequest("POST", "/pool/pool1?:name=pool1", b)
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	err = poolUpdateHandler(rec, req, nil)
+	c.Assert(err, check.IsNil)
+	p, err := provision.ListPools(bson.M{"_id": "pool1"})
+	c.Assert(err, check.IsNil)
+	c.Assert(p[0].Public, check.Equals, true)
+}

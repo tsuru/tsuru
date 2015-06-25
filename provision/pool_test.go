@@ -141,3 +141,21 @@ func (s *S) TestGetPoolsNames(c *check.C) {
 	pools := GetPoolsNames([]Pool{pool})
 	c.Assert(pools[0], check.Equals, "pool1")
 }
+
+func (s *S) TestPoolUpdate(c *check.C) {
+	coll := s.storage.Collection(poolCollection)
+	pool := Pool{Name: "pool1", Public: false}
+	err := coll.Insert(pool)
+	c.Assert(err, check.IsNil)
+	defer coll.RemoveId(pool.Name)
+	poolUpdateOption := PoolUpdateOptions{
+		Name:   "pool1",
+		Public: true,
+	}
+	err = PoolUpdate(poolUpdateOption)
+	c.Assert(err, check.IsNil)
+	var p Pool
+	err = coll.Find(bson.M{"_id": pool.Name}).One(&p)
+	c.Assert(err, check.IsNil)
+	c.Assert(p.Public, check.Equals, true)
+}

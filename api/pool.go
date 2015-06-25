@@ -121,3 +121,17 @@ func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Toke
 	}
 	return provision.RemoveTeamsFromPool(params.Pool, params.Teams)
 }
+
+func poolUpdateHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	var params provision.PoolUpdateOptions
+	err = json.Unmarshal(b, &params)
+	if err != nil {
+		return err
+	}
+	params.Name = r.URL.Query().Get(":name")
+	return provision.PoolUpdate(params)
+}

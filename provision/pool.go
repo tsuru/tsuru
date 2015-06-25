@@ -90,6 +90,26 @@ func ListPools(query bson.M) ([]Pool, error) {
 	return pools, nil
 }
 
+type PoolUpdateOptions struct {
+	Name    string
+	NewName string
+	Public  bool
+}
+
+func PoolUpdate(params PoolUpdateOptions) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	var p Pool
+	err = conn.Collection(poolCollection).Find(bson.M{"_id": params.Name}).One(&p)
+	if err != nil {
+		return err
+	}
+	return conn.Collection(poolCollection).UpdateId(params.Name, bson.M{"public": params.Public})
+}
+
 // GetPoolsNames find teams by a list of team names.
 func GetPoolsNames(pools []Pool) []string {
 	pn := make([]string, len(pools))
