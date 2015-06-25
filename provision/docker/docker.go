@@ -145,10 +145,7 @@ func (c *container) create(args runContainerActionsArgs) error {
 		log.Errorf("error on getting port for container %s - %s", c.AppName, port)
 		return err
 	}
-	user, err := config.GetString("docker:user")
-	if err != nil {
-		user, _ = config.GetString("docker:ssh:user")
-	}
+	user := c.getUser()
 	securityOpts, _ := config.GetList("docker:security-opts")
 	var exposedPorts map[docker.Port]struct{}
 	if !args.isDeploy {
@@ -189,6 +186,14 @@ func (c *container) create(args runContainerActionsArgs) error {
 	c.HostAddr = urlToHost(addr)
 	c.User = user
 	return nil
+}
+
+func (c *container) getUser() string {
+	user, err := config.GetString("docker:user")
+	if err != nil {
+		user, _ = config.GetString("docker:ssh:user")
+	}
+	return user
 }
 
 type containerNetworkInfo struct {
@@ -381,6 +386,7 @@ func (c *container) shell(p *dockerProvisioner, stdin io.Reader, stdout, stderr 
 		Cmd:          cmds,
 		Container:    c.ID,
 		Tty:          true,
+		User:         c.getUser(),
 	}
 	exec, err := p.getCluster().CreateExec(execCreateOpts)
 	if err != nil {
@@ -431,6 +437,7 @@ func (c *container) exec(p *dockerProvisioner, stdout, stderr io.Writer, cmd str
 		Tty:          false,
 		Cmd:          cmds,
 		Container:    c.ID,
+		User:         c.getUser(),
 	}
 	exec, err := p.getCluster().CreateExec(execCreateOpts)
 	if err != nil {
