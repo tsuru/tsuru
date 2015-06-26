@@ -28,7 +28,29 @@ func (c *userPresenceChecker) Check(params []interface{}, names []string) (bool,
 	return team.ContainsUser(user), ""
 }
 
-var ContainsUser check.Checker = &userPresenceChecker{}
+type teamLeadPresenceChecker struct{}
+
+func (c *teamLeadPresenceChecker) Info() *check.CheckerInfo {
+	return &check.CheckerInfo{Name: "ContainsTeamLead", Params: []string{"team", "user"}}
+}
+
+func (c *teamLeadPresenceChecker) Check(params []interface{}, names []string) (bool, string) {
+	team, ok := params[0].(*Team)
+	if !ok {
+		return false, "first parameter should be a pointer to a team instance"
+	}
+
+	user, ok := params[1].(*User)
+	if !ok {
+		return false, "second parameter should be a pointer to a user instance"
+	}
+	return team.ContainsTeamLead(user), ""
+}
+
+var (
+	ContainsUser     check.Checker = &userPresenceChecker{}
+	ContainsTeamLead check.Checker = &teamLeadPresenceChecker{}
+)
 
 func (s *S) TestGetTeamsNames(c *check.C) {
 	team := Team{Name: "cheese"}
@@ -43,6 +65,33 @@ func (s *S) TestShouldBeAbleToAddAUserToATeamReturningNoErrors(c *check.C) {
 	err := t.AddUser(u)
 	c.Assert(err, check.IsNil)
 	c.Assert(t, ContainsUser, u)
+}
+
+func (s *S) TestShouldReturnErrorWhenAddingTeamLeadWhoIsNotMemberOfTeam(c *check.C) {
+	u := &User{Email: "nobody@globo.com"}
+	t := new(Team)
+	err := t.AddTeamLead(u)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "^User nobody@globo.com must be member of the team  before he/she can become team lead.$")
+}
+
+func (s *S) TestShouldBeAbleToAddTeamLeadToTeam(c *check.C) {
+	u := &User{Email: "nobody@globo.com"}
+	t := new(Team)
+	t.AddUser(u)
+	err := t.AddTeamLead(u)
+	c.Assert(err, check.IsNil)
+	c.Assert(t, ContainsTeamLead, u)
+}
+
+func (s *S) TestShouldReturnErrorWhenTryingToAddTeamLeadSecondTime(c *check.C) {
+	u := &User{Email: "nobody@globo.com"}
+	t := &Team{Name: "timeredbull"}
+	t.AddUser(u)
+	t.AddTeamLead(u)
+	err := t.AddTeamLead(u)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "^User nobody@globo.com is already lead of the team timeredbull.$")
 }
 
 func (s *S) TestShouldReturnErrorWhenTryingToAddAUserThatIsAlreadyInTheList(c *check.C) {

@@ -27,13 +27,24 @@ var (
 // Team represents a real world team, a team has team members (users) and
 // a name.
 type Team struct {
-	Name  string   `bson:"_id" json:"name"`
-	Users []string `json:"users"`
+	Name      string   `bson:"_id" json:"name"`
+	Users     []string `json:"users"`
+	TeamLeads []string `json:"team_leads"`
 }
 
 // ContainsUser checks if the team contains the user.
 func (t *Team) ContainsUser(u *User) bool {
 	for _, user := range t.Users {
+		if u.Email == user {
+			return true
+		}
+	}
+	return false
+}
+
+// ContainsTeamLead checks if the team contains the team lead.
+func (t *Team) ContainsTeamLead(u *User) bool {
+	for _, user := range t.TeamLeads {
 		if u.Email == user {
 			return true
 		}
@@ -47,6 +58,18 @@ func (t *Team) AddUser(u *User) error {
 		return fmt.Errorf("User %s is already in the team %s.", u.Email, t.Name)
 	}
 	t.Users = append(t.Users, u.Email)
+	return nil
+}
+
+// AddTeamLead adds a team lead to the team.
+func (t *Team) AddTeamLead(u *User) error {
+	if !t.ContainsUser(u) {
+		return fmt.Errorf("User %s must be member of the team %s before he/she can become team lead.", u.Email, t.Name)
+	}
+	if t.ContainsTeamLead(u) {
+		return fmt.Errorf("User %s is already lead of the team %s.", u.Email, t.Name)
+	}
+	t.TeamLeads = append(t.TeamLeads, u.Email)
 	return nil
 }
 
