@@ -85,11 +85,49 @@ func (t *Team) RemoveUser(u *User) error {
 	if index < 0 {
 		return fmt.Errorf("User %s is not in the team %s.", u.Email, t.Name)
 	}
+
+	// If the user is a team lead,
+	// let's try removing him from TeamLeads slice first
+	if t.ContainsTeamLead(u) {
+		if err := t.RemoveTeamLead(u); err != nil {
+			return err
+		}
+	}
+
 	last := len(t.Users) - 1
 	if index < last {
 		t.Users[index] = t.Users[last]
 	}
 	t.Users = t.Users[:last]
+	return nil
+}
+
+// RemoveTeamLead removes user from team leads.
+func (t *Team) RemoveTeamLead(u *User) error {
+	index := -1
+	for i, user := range t.TeamLeads {
+		if u.Email == user {
+			index = i
+			break
+		}
+	}
+	if index < 0 {
+		return fmt.Errorf("User %s is not lead of the team %s.", u.Email, t.Name)
+	}
+
+	if len(t.TeamLeads) < 2 {
+		return fmt.Errorf(
+			"Cannot remove lead %s as he/she is the only lead of the team %s.",
+			u.Email,
+			t.Name,
+		)
+	}
+
+	last := len(t.TeamLeads) - 1
+	if index < last {
+		t.TeamLeads[index] = t.TeamLeads[last]
+	}
+	t.TeamLeads = t.TeamLeads[:last]
 	return nil
 }
 

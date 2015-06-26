@@ -75,7 +75,7 @@ func (s *S) TestShouldReturnErrorWhenAddingTeamLeadWhoIsNotMemberOfTeam(c *check
 	c.Assert(err, check.ErrorMatches, "^User nobody@globo.com must be member of the team  before he/she can become team lead.$")
 }
 
-func (s *S) TestShouldBeAbleToAddTeamLeadToTeam(c *check.C) {
+func (s *S) TestShouldBeAbleToAddLeadToTeam(c *check.C) {
 	u := &User{Email: "nobody@globo.com"}
 	t := new(Team)
 	t.AddUser(u)
@@ -124,6 +124,37 @@ func (s *S) TestShouldReturnErrorWhenTryingToRemoveAUserThatIsNotInTheTeam(c *ch
 	err := t.RemoveUser(u)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.ErrorMatches, "^User nobody@globo.com is not in the team timeredbull.$")
+}
+
+func (s *S) TestShouldReturnErrorWhenTryingToRemoveTeamLeadThatIsNotInTheTeam(c *check.C) {
+	u := &User{Email: "nobody@globo.com"}
+	t := &Team{Name: "timeredbull"}
+	err := t.RemoveTeamLead(u)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "^User nobody@globo.com is not lead of the team timeredbull.$")
+}
+
+func (s *S) TestShouldReturnErrorWhenTryingToRemoveLastTeamLead(c *check.C) {
+	u := &User{Email: "nobody@globo.com"}
+	t := &Team{Name: "timeredbull"}
+	t.AddUser(u)
+	t.AddTeamLead(u)
+	err := t.RemoveTeamLead(u)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, "^Cannot remove lead nobody@globo.com as he/she is the only lead of the team timeredbull.$")
+}
+
+func (s *S) TestLeadFromTeam(c *check.C) {
+	u := &User{Email: "nobody@globo.com"}
+	u2 := &User{Email: "nobody2@globo.com"}
+	t := &Team{Name: "timeredbull"}
+	t.AddUser(u)
+	t.AddUser(u2)
+	t.AddTeamLead(u)
+	t.AddTeamLead(u2)
+	err := t.RemoveTeamLead(u)
+	c.Assert(err, check.IsNil)
+	c.Assert(t.TeamLeads, check.DeepEquals, []string{"nobody2@globo.com"})
 }
 
 func (s *S) TestTeamAllowedApps(c *check.C) {
