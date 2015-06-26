@@ -852,9 +852,38 @@ func (s *AuthSuite) TestAddUserToTeamInDatabase(c *check.C) {
 	c.Assert(team.Users, check.DeepEquals, []string{user.Email})
 }
 
-func (s *AuthSuite) TestAddLeadToTeam(c *check.C) {
+func (s *AuthSuite) TestAddLeadToTeamAsAdmin(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
+	u := &auth.User{Email: "wolverine@xmen.com", Password: "123456"}
+	s.team.AddUser(u)
+	err := conn.Teams().UpdateId(s.team.Name, s.team)
+	c.Assert(err, check.IsNil)
+	_, err = nativeScheme.Create(u)
+	c.Assert(err, check.IsNil)
+	url := "/teams/tsuruteam/leads/wolverine@xmen.com?:team=tsuruteam&:user=wolverine@xmen.com"
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = addLeadToTeam(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	t := new(auth.Team)
+	err = conn.Teams().Find(bson.M{"_id": "tsuruteam"}).One(t)
+	c.Assert(err, check.IsNil)
+	c.Assert(t, check.Not(ContainsTeamLead), s.user)
+	c.Assert(t, ContainsTeamLead, u)
+	action := rectest.Action{
+		Action: "add-lead-to-team",
+		User:   s.user.Email,
+		Extra:  []interface{}{"team=tsuruteam", "user=" + u.Email},
+	}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *AuthSuite) TestAddLeadToTeamAsTeamLead(c *check.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	config.Set("admin-team", "admin-team")
 	s.team.AddTeamLead(s.user)
 	err := conn.Teams().UpdateId(s.team.Name, s.team)
 	c.Assert(err, check.IsNil)
@@ -875,6 +904,35 @@ func (s *AuthSuite) TestAddLeadToTeam(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(t, ContainsTeamLead, s.user)
 	c.Assert(t, ContainsTeamLead, u)
+	action := rectest.Action{
+		Action: "add-lead-to-team",
+		User:   s.user.Email,
+		Extra:  []interface{}{"team=tsuruteam", "user=" + u.Email},
+	}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *AuthSuite) TestAddLeadToTeamShouldReturnErrorWhenNotAdminAndNotTeamLead(c *check.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	config.Set("admin-team", "admin-team")
+	u := &auth.User{Email: "wolverine@xmen.com", Password: "123456"}
+	s.team.AddUser(u)
+	err := conn.Teams().UpdateId(s.team.Name, s.team)
+	c.Assert(err, check.IsNil)
+	_, err = nativeScheme.Create(u)
+	c.Assert(err, check.IsNil)
+	url := "/teams/tsuruteam/leads/wolverine@xmen.com?:team=tsuruteam&:user=wolverine@xmen.com"
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = addLeadToTeam(recorder, request, s.token)
+	c.Assert(err, check.ErrorMatches, "^You are not authorized to add new leads to the team tsuruteam$")
+	t := new(auth.Team)
+	err = conn.Teams().Find(bson.M{"_id": "tsuruteam"}).One(t)
+	c.Assert(err, check.IsNil)
+	c.Assert(t, check.Not(ContainsTeamLead), s.user)
+	c.Assert(t, check.Not(ContainsTeamLead), u)
 	action := rectest.Action{
 		Action: "add-lead-to-team",
 		User:   s.user.Email,
@@ -1078,7 +1136,7 @@ func (s *AuthSuite) TestRemoveUserFromTeamInDatabase(c *check.C) {
 	c.Assert(s.team, check.Not(ContainsUser), u)
 }
 
-func (s *AuthSuite) TestRemoveLeadFromTeam(c *check.C) {
+func (s *AuthSuite) TestRemoveLeadFromTeamAsAdmin(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
 	s.team.AddTeamLead(s.user)
@@ -1106,6 +1164,86 @@ func (s *AuthSuite) TestRemoveLeadFromTeam(c *check.C) {
 		Action: "remove-lead-from-team",
 		User:   s.user.Email,
 		Extra:  []interface{}{"team=tsuruteam", "user=" + u.Email},
+	}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *AuthSuite) TestRemoveLeadFromTeamAsTeamLead(c *check.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	config.Set("admin-team", "admin-team")
+	s.team.AddTeamLead(s.user)
+	err := conn.Teams().UpdateId(s.team.Name, s.team)
+	c.Assert(err, check.IsNil)
+	u := &auth.User{Email: "wolverine@xmen.com", Password: "123456"}
+	s.team.AddUser(u)
+	s.team.AddTeamLead(u)
+	err = conn.Teams().UpdateId(s.team.Name, s.team)
+	c.Assert(err, check.IsNil)
+	_, err = nativeScheme.Create(u)
+	c.Assert(err, check.IsNil)
+	url := "/teams/tsuruteam/leads/wolverine@xmen.com?:team=tsuruteam&:user=wolverine@xmen.com"
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = removeLeadFromTeam(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	t := new(auth.Team)
+	err = conn.Teams().Find(bson.M{"_id": "tsuruteam"}).One(t)
+	c.Assert(err, check.IsNil)
+	c.Assert(t, ContainsTeamLead, s.user)
+	c.Assert(t, check.Not(ContainsTeamLead), u)
+	action := rectest.Action{
+		Action: "remove-lead-from-team",
+		User:   s.user.Email,
+		Extra:  []interface{}{"team=tsuruteam", "user=" + u.Email},
+	}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *AuthSuite) TestRemoveLeadFromTeamShouldReturnErrorWhenNotAdminAndNotTeamLead(c *check.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	config.Set("admin-team", "admin-team")
+	err := conn.Teams().UpdateId(s.team.Name, s.team)
+	c.Assert(err, check.IsNil)
+	url := "/teams/tsuruteam/leads/whydidifall@thewho.com?:team=tsuruteam&:user=whydidifall@thewho.com"
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = removeLeadFromTeam(recorder, request, s.token)
+	c.Assert(err, check.ErrorMatches, "^You are not authorized to remove a lead from the team tsuruteam")
+	t := new(auth.Team)
+	err = conn.Teams().Find(bson.M{"_id": "tsuruteam"}).One(t)
+	c.Assert(err, check.IsNil)
+	action := rectest.Action{
+		Action: "remove-lead-from-team",
+		User:   s.user.Email,
+		Extra:  []interface{}{"team=tsuruteam", "user=whydidifall@thewho.com"},
+	}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *AuthSuite) TestRemoveLeadFromTeamShouldReturnErrorWhenItIsLastTeamLead(c *check.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	s.team.AddTeamLead(s.user)
+	err := conn.Teams().UpdateId(s.team.Name, s.team)
+	c.Assert(err, check.IsNil)
+	url := "/teams/tsuruteam/leads/whydidifall@thewho.com?:team=tsuruteam&:user=whydidifall@thewho.com"
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = removeLeadFromTeam(recorder, request, s.token)
+	c.Assert(err, check.ErrorMatches, "^You can not remove this lead from this team, because it is the last team lead")
+	t := new(auth.Team)
+	err = conn.Teams().Find(bson.M{"_id": "tsuruteam"}).One(t)
+	c.Assert(err, check.IsNil)
+	c.Assert(t, ContainsTeamLead, s.user)
+	action := rectest.Action{
+		Action: "remove-lead-from-team",
+		User:   s.user.Email,
+		Extra:  []interface{}{"team=tsuruteam", "user=whydidifall@thewho.com"},
 	}
 	c.Assert(action, rectest.IsRecorded)
 }
