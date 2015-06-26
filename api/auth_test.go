@@ -82,9 +82,8 @@ func (s *AuthSuite) createUserAndTeam(c *check.C) {
 	_, err := nativeScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
 	s.team = &auth.Team{
-		Name:      "tsuruteam",
-		Users:     []string{s.user.Email},
-		TeamLeads: []string{s.user.Email},
+		Name:  "tsuruteam",
+		Users: []string{s.user.Email},
 	}
 	conn, _ := db.Conn()
 	defer conn.Close()
@@ -120,7 +119,29 @@ func (c *userPresenceChecker) Check(params []interface{}, names []string) (bool,
 	return team.ContainsUser(user), ""
 }
 
-var ContainsUser check.Checker = &userPresenceChecker{}
+type teamLeadPresenceChecker struct{}
+
+func (c *teamLeadPresenceChecker) Info() *check.CheckerInfo {
+	return &check.CheckerInfo{Name: "ContainsTeamLead", Params: []string{"team", "user"}}
+}
+
+func (c *teamLeadPresenceChecker) Check(params []interface{}, names []string) (bool, string) {
+	team, ok := params[0].(*auth.Team)
+	if !ok {
+		return false, "first parameter should be a pointer to a team instance"
+	}
+
+	user, ok := params[1].(*auth.User)
+	if !ok {
+		return false, "second parameter should be a pointer to a user instance"
+	}
+	return team.ContainsTeamLead(user), ""
+}
+
+var (
+	ContainsUser     check.Checker = &userPresenceChecker{}
+	ContainsTeamLead check.Checker = &teamLeadPresenceChecker{}
+)
 
 func (s *AuthSuite) TestCreateUserHandlerSavesTheUserInTheDatabase(c *check.C) {
 	b := bytes.NewBufferString(`{"email":"nobody@globo.com","password":"123456"}`)
@@ -831,6 +852,57 @@ func (s *AuthSuite) TestAddUserToTeamInDatabase(c *check.C) {
 	c.Assert(team.Users, check.DeepEquals, []string{user.Email})
 }
 
+func (s *AuthSuite) TestAddLeadToTeam(c *check.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	s.team.AddTeamLead(s.user)
+	err := conn.Teams().UpdateId(s.team.Name, s.team)
+	c.Assert(err, check.IsNil)
+	u := &auth.User{Email: "wolverine@xmen.com", Password: "123456"}
+	s.team.AddUser(u)
+	err = conn.Teams().UpdateId(s.team.Name, s.team)
+	c.Assert(err, check.IsNil)
+	_, err = nativeScheme.Create(u)
+	c.Assert(err, check.IsNil)
+	url := "/teams/tsuruteam/leads/wolverine@xmen.com?:team=tsuruteam&:user=wolverine@xmen.com"
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = addLeadToTeam(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	t := new(auth.Team)
+	err = conn.Teams().Find(bson.M{"_id": "tsuruteam"}).One(t)
+	c.Assert(err, check.IsNil)
+	c.Assert(t, ContainsTeamLead, s.user)
+	c.Assert(t, ContainsTeamLead, u)
+	action := rectest.Action{
+		Action: "add-lead-to-team",
+		User:   s.user.Email,
+		Extra:  []interface{}{"team=tsuruteam", "user=" + u.Email},
+	}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *AuthSuite) TestAddLeadToTeamInDatabase(c *check.C) {
+	user := &auth.User{Email: "nobody@gmail.com", Password: "123456"}
+	team := &auth.Team{Name: "myteam"}
+	conn, _ := db.Conn()
+	defer conn.Close()
+	err := conn.Teams().Insert(team)
+	c.Assert(err, check.IsNil)
+	team.AddUser(user)
+	err = conn.Teams().UpdateId(team.Name, team)
+	c.Assert(err, check.IsNil)
+	defer conn.Teams().RemoveId(team.Name)
+	team.AddUser(user)
+	err = conn.Teams().UpdateId(team.Name, team)
+	c.Assert(err, check.IsNil)
+	err = addLeadToTeamInDatabase(user, team)
+	c.Assert(err, check.IsNil)
+	conn.Teams().FindId(team.Name).One(team)
+	c.Assert(team.TeamLeads, check.DeepEquals, []string{user.Email})
+}
+
 func (s *AuthSuite) TestRemoveUserFromTeamShouldRemoveAUserFromATeamIfTheTeamExistAndTheUserIsMemberOfTheTeam(c *check.C) {
 	u := auth.User{Email: "nonee@me.me"}
 	err := u.Create()
@@ -1004,6 +1076,55 @@ func (s *AuthSuite) TestRemoveUserFromTeamInDatabase(c *check.C) {
 	err = conn.Teams().FindId(s.team.Name).One(s.team)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.team, check.Not(ContainsUser), u)
+}
+
+func (s *AuthSuite) TestRemoveLeadFromTeam(c *check.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	s.team.AddTeamLead(s.user)
+	err := conn.Teams().UpdateId(s.team.Name, s.team)
+	c.Assert(err, check.IsNil)
+	u := &auth.User{Email: "wolverine@xmen.com", Password: "123456"}
+	s.team.AddUser(u)
+	s.team.AddTeamLead(u)
+	err = conn.Teams().UpdateId(s.team.Name, s.team)
+	c.Assert(err, check.IsNil)
+	_, err = nativeScheme.Create(u)
+	c.Assert(err, check.IsNil)
+	url := "/teams/tsuruteam/leads/wolverine@xmen.com?:team=tsuruteam&:user=wolverine@xmen.com"
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = removeLeadFromTeam(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	t := new(auth.Team)
+	err = conn.Teams().Find(bson.M{"_id": "tsuruteam"}).One(t)
+	c.Assert(err, check.IsNil)
+	c.Assert(t, ContainsTeamLead, s.user)
+	c.Assert(t, check.Not(ContainsTeamLead), u)
+	action := rectest.Action{
+		Action: "remove-lead-from-team",
+		User:   s.user.Email,
+		Extra:  []interface{}{"team=tsuruteam", "user=" + u.Email},
+	}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *AuthSuite) TestRemoveLeadFromTeamInDatabase(c *check.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	u := &auth.User{Email: "nobody@gmail.com"}
+	err := u.Create()
+	c.Assert(err, check.IsNil)
+	s.team.AddUser(u)
+	s.team.AddTeamLead(u)
+	err = conn.Teams().UpdateId(s.team.Name, s.team)
+	c.Assert(err, check.IsNil)
+	err = removeLeadFromTeamInDatabase(u, s.team)
+	c.Assert(err, check.IsNil)
+	err = conn.Teams().FindId(s.team.Name).One(s.team)
+	c.Assert(err, check.IsNil)
+	c.Assert(s.team, check.Not(ContainsTeamLead), u)
 }
 
 func (s *AuthSuite) TestGetTeam(c *check.C) {

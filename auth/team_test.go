@@ -134,16 +134,6 @@ func (s *S) TestShouldReturnErrorWhenTryingToRemoveTeamLeadThatIsNotInTheTeam(c 
 	c.Assert(err, check.ErrorMatches, "^User nobody@globo.com is not lead of the team timeredbull.$")
 }
 
-func (s *S) TestShouldReturnErrorWhenTryingToRemoveLastTeamLead(c *check.C) {
-	u := &User{Email: "nobody@globo.com"}
-	t := &Team{Name: "timeredbull"}
-	t.AddUser(u)
-	t.AddTeamLead(u)
-	err := t.RemoveTeamLead(u)
-	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, "^Cannot remove lead nobody@globo.com as he/she is the only lead of the team timeredbull.$")
-}
-
 func (s *S) TestLeadFromTeam(c *check.C) {
 	u := &User{Email: "nobody@globo.com"}
 	u2 := &User{Email: "nobody2@globo.com"}

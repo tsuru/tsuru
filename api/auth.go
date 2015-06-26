@@ -258,6 +258,18 @@ func addUserToTeamInRepository(user *auth.User, t *auth.Team) error {
 	return nil
 }
 
+func addLeadToTeamInDatabase(user *auth.User, team *auth.Team) error {
+	if err := team.AddTeamLead(user); err != nil {
+		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.Teams().UpdateId(team.Name, team)
+}
+
 func addUserToTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	teamName := r.URL.Query().Get(":team")
 	email := r.URL.Query().Get(":user")
@@ -289,6 +301,41 @@ func addUserToTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(user, team)
+}
+
+func addLeadToTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	teamName := r.URL.Query().Get(":team")
+	email := r.URL.Query().Get(":user")
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
+	rec.Log(u.Email, "add-lead-to-team", "team="+teamName, "user="+email)
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	team, err := auth.GetTeam(teamName)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
+	}
+	if !u.IsAdmin() {
+		if !team.ContainsUser(u) || !team.ContainsTeamLead(u) {
+			msg := fmt.Sprintf("You are not authorized to add new leads to the team %s", team.Name)
+			return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
+		}
+	}
+	user, err := auth.GetUserByEmail(email)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: "User not found"}
+	}
+	err = addLeadToTeamInDatabase(user, team)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(team)
 }
 
 func removeUserFromTeamInDatabase(u *auth.User, team *auth.Team) error {
@@ -332,6 +379,18 @@ func removeUserFromTeamInRepository(u *auth.User, team *auth.Team) error {
 	return nil
 }
 
+func removeLeadFromTeamInDatabase(u *auth.User, team *auth.Team) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	if err = team.RemoveTeamLead(u); err != nil {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	return conn.Teams().UpdateId(team.Name, team)
+}
+
 func removeUserFromTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	email := r.URL.Query().Get(":user")
 	teamName := r.URL.Query().Get(":team")
@@ -366,6 +425,45 @@ func removeUserFromTeam(w http.ResponseWriter, r *http.Request, t auth.Token) er
 		return err
 	}
 	return removeUserFromTeamInRepository(user, team)
+}
+
+func removeLeadFromTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	email := r.URL.Query().Get(":user")
+	teamName := r.URL.Query().Get(":team")
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
+	rec.Log(u.Email, "remove-lead-from-team", "team="+teamName, "user="+email)
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	team, err := auth.GetTeam(teamName)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
+	}
+	if !u.IsAdmin() {
+		if !team.ContainsUser(u) || !team.ContainsTeamLead(u) {
+			msg := fmt.Sprintf("You are not authorized to remove a lead from the team %s", team.Name)
+			return &errors.HTTP{Code: http.StatusUnauthorized, Message: msg}
+		}
+	}
+	if len(team.TeamLeads) == 1 {
+		msg := "You can not remove this lead from this team, because it is the last team lead"
+		return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
+	}
+	user, err := auth.GetUserByEmail(email)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+	}
+	err = removeLeadFromTeamInDatabase(user, team)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(team)
 }
 
 func getTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {

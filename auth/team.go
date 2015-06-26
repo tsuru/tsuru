@@ -114,15 +114,6 @@ func (t *Team) RemoveTeamLead(u *User) error {
 	if index < 0 {
 		return fmt.Errorf("User %s is not lead of the team %s.", u.Email, t.Name)
 	}
-
-	if len(t.TeamLeads) < 2 {
-		return fmt.Errorf(
-			"Cannot remove lead %s as he/she is the only lead of the team %s.",
-			u.Email,
-			t.Name,
-		)
-	}
-
 	last := len(t.TeamLeads) - 1
 	if index < last {
 		t.TeamLeads[index] = t.TeamLeads[last]
