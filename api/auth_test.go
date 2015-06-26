@@ -81,7 +81,11 @@ func (s *AuthSuite) createUserAndTeam(c *check.C) {
 	s.user = &auth.User{Email: "whydidifall@thewho.com", Password: "123456"}
 	_, err := nativeScheme.Create(s.user)
 	c.Assert(err, check.IsNil)
-	s.team = &auth.Team{Name: "tsuruteam", Users: []string{s.user.Email}}
+	s.team = &auth.Team{
+		Name:      "tsuruteam",
+		Users:     []string{s.user.Email},
+		TeamLeads: []string{s.user.Email},
+	}
 	conn, _ := db.Conn()
 	defer conn.Close()
 	err = conn.Teams().Insert(s.team)
