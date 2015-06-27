@@ -241,8 +241,13 @@ func (s *S) TestRunContainerHealerShutdown(c *check.C) {
 	node1.PrepareFailure("createError", "/containers/create")
 
 	healer := containerHealer{provisioner: &p, maxUnresponsiveTime: 1 * time.Minute, done: make(chan bool)}
-	go healer.runContainerHealer()
+	ch := make(chan bool)
+	go func() {
+		defer close(ch)
+		healer.runContainerHealer()
+	}()
 	healer.Shutdown()
+	<-ch
 
 	containers, err = p.listAllContainers()
 	c.Assert(err, check.IsNil)
