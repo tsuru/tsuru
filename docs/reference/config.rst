@@ -654,6 +654,33 @@ docker:registry-max-try
 
 Number of times tsuru will try to send a image to registry.
 
+.. _config_registry_auth:
+
+docker:registry-auth:username
++++++++++++++++++++++++++++++
+
+The username used for registry authentication. This setting is optional, for
+registries with authentication disabled, it can be omitted.
+
+docker:registry-auth:password
++++++++++++++++++++++++++++++
+
+The password used for registry authentication. This setting is optional, for
+registries with authentication disabled, it can be omitted.
+
+docker:registry-auth:email
+++++++++++++++++++++++++++
+
+The email used for registry authentication. This setting is optional, for
+registries with authentication disabled, it can be omitted.
+
+docker:repository-namespace
++++++++++++++++++++++++++++
+
+Docker repository namespace to be used for application and platform images. Images
+will be tagged in docker as <docker:repository-namespace>/<platform-name> and
+<docker:repository-namespace>/<app-name>
+
 .. _config_bs:
 
 docker:bs:image
@@ -683,33 +710,6 @@ docker:bs:syslog-port
 
 ``docker:bs:syslog-port`` is the port in the Docker node that will be used by
 the bs container for collecting logs. The default value is 1514.
-
-.. _config_registry_auth:
-
-docker:registry-auth:username
-+++++++++++++++++++++++++++++
-
-The username used for registry authentication. This setting is optional, for
-registries with authentication disabled, it can be omitted.
-
-docker:registry-auth:password
-+++++++++++++++++++++++++++++
-
-The password used for registry authentication. This setting is optional, for
-registries with authentication disabled, it can be omitted.
-
-docker:registry-auth:email
-++++++++++++++++++++++++++
-
-The email used for registry authentication. This setting is optional, for
-registries with authentication disabled, it can be omitted.
-
-docker:repository-namespace
-+++++++++++++++++++++++++++
-
-Docker repository namespace to be used for application and platform images. Images
-will be tagged in docker as <docker:repository-namespace>/<platform-name> and
-<docker:repository-namespace>/<app-name>
 
 docker:max-workers
 ++++++++++++++++++
