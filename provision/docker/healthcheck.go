@@ -17,15 +17,17 @@ import (
 	"github.com/tsuru/config"
 )
 
-func clientWithTimeout(timeout time.Duration) *http.Client {
-	dialTimeout := func(network, addr string) (net.Conn, error) {
-		return net.DialTimeout(network, addr, timeout)
-	}
+func clientWithTimeout(dialTimeout time.Duration) *http.Client {
 	transport := http.Transport{
-		Dial: dialTimeout,
+		Dial: (&net.Dialer{
+			Timeout:   dialTimeout,
+			KeepAlive: 30 * time.Second,
+		}).Dial,
+		TLSHandshakeTimeout: dialTimeout,
 	}
 	return &http.Client{
 		Transport: &transport,
+		Timeout:   1 * time.Minute,
 	}
 }
 
