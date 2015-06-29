@@ -129,6 +129,10 @@ func (runBs) createBsContainer(dockerEndpoint string) error {
 		"STATUS_INTERVAL=" + strconv.Itoa(interval),
 		"SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:514",
 	}
+	addresses, _ := config.GetList("docker:bs:syslog-forward-addresses")
+	if len(addresses) > 0 {
+		env = append(env, "SYSLOG_FORWARD_ADDRESSES="+strings.Join(addresses, ","))
+	}
 	opts := docker.CreateContainerOptions{
 		Name:       "big-sibling",
 		HostConfig: &hostConfig,
