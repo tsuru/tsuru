@@ -63,12 +63,11 @@ func (s *S) TestCreateBsContainer(c *check.C) {
 	c.Assert(container.HostConfig.RestartPolicy, check.Equals, docker.AlwaysRestart())
 	c.Assert(container.State.Running, check.Equals, true)
 	expectedEnv := map[string]string{
-		"DOCKER_ENDPOINT":        server.URL(),
-		"TSURU_ENDPOINT":         "http://127.0.0.1:8080/",
-		"TSURU_TOKEN":            "abc123",
-		"TSURU_SENTINEL_ENV_VAR": "TSURU_APPNAME",
-		"STATUS_INTERVAL":        "60",
-		"SYSLOG_LISTEN_ADDRESS":  "udp://0.0.0.0:514",
+		"DOCKER_ENDPOINT":       server.URL(),
+		"TSURU_ENDPOINT":        "http://127.0.0.1:8080/",
+		"TSURU_TOKEN":           "abc123",
+		"STATUS_INTERVAL":       "60",
+		"SYSLOG_LISTEN_ADDRESS": "udp://0.0.0.0:514",
 	}
 	gotEnv := parseEnvs(container.Config.Env)
 	_, ok = gotEnv["TSURU_TOKEN"]
@@ -105,12 +104,11 @@ func (s *S) TestCreateBsContainerSocketAndCustomSysLogPort(c *check.C) {
 	c.Assert(container.Config.Image, check.Equals, "myregistry/tsuru/bs")
 	c.Assert(container.State.Running, check.Equals, true)
 	expectedEnv := map[string]string{
-		"DOCKER_ENDPOINT":        "unix:///var/run/docker.sock",
-		"TSURU_ENDPOINT":         "http://127.0.0.1:8080/",
-		"TSURU_TOKEN":            "abc123",
-		"TSURU_SENTINEL_ENV_VAR": "TSURU_APPNAME",
-		"STATUS_INTERVAL":        "60",
-		"SYSLOG_LISTEN_ADDRESS":  "udp://0.0.0.0:514",
+		"DOCKER_ENDPOINT":       "unix:///var/run/docker.sock",
+		"TSURU_ENDPOINT":        "http://127.0.0.1:8080/",
+		"TSURU_TOKEN":           "abc123",
+		"STATUS_INTERVAL":       "60",
+		"SYSLOG_LISTEN_ADDRESS": "udp://0.0.0.0:514",
 	}
 	gotEnv := parseEnvs(container.Config.Env)
 	_, ok = gotEnv["TSURU_TOKEN"]

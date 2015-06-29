@@ -106,7 +106,6 @@ func (runBs) createBsContainer(dockerEndpoint string) error {
 	if err != nil {
 		return err
 	}
-	sentinelEnvVar := "TSURU_APPNAME"
 	hostConfig := docker.HostConfig{RestartPolicy: docker.AlwaysRestart()}
 	endpoint := dockerEndpoint
 	socket, _ := config.GetString("docker:bs:socket")
@@ -127,7 +126,6 @@ func (runBs) createBsContainer(dockerEndpoint string) error {
 		"DOCKER_ENDPOINT=" + endpoint,
 		"TSURU_ENDPOINT=" + tsuruEndpoint,
 		"TSURU_TOKEN=" + token.GetValue(),
-		"TSURU_SENTINEL_ENV_VAR=" + sentinelEnvVar,
 		"STATUS_INTERVAL=" + strconv.Itoa(interval),
 		"SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:514",
 	}
