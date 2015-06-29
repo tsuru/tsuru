@@ -761,7 +761,7 @@ func (p *dockerProvisioner) runningContainersByNode(nodes []*cluster.Node) (map[
 
 func (p *dockerProvisioner) containerGapInNodes(nodes []*cluster.Node) (int, int, error) {
 	maxCount := 0
-	minCount := 0
+	minCount := -1
 	totalCount := 0
 	containersMap, err := p.runningContainersByNode(nodes)
 	if err != nil {
@@ -772,7 +772,7 @@ func (p *dockerProvisioner) containerGapInNodes(nodes []*cluster.Node) (int, int
 		if contCount > maxCount {
 			maxCount = contCount
 		}
-		if minCount == 0 || contCount < minCount {
+		if minCount == -1 || contCount < minCount {
 			minCount = contCount
 		}
 		totalCount += contCount
