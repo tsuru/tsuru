@@ -694,8 +694,8 @@ which represents `the official image hosted at Docker Hub
 docker:bs:reporter-interval
 +++++++++++++++++++++++++++
 
-``docker:bs:reporter-interval`` is the interval between status reporting from
-bs to the tsuru API. The default value is 60 seconds.
+``docker:bs:reporter-interval`` is the interval between status collecting and
+reporting from bs to the tsuru API. The default value is 60 seconds.
 
 docker:bs:socket
 ++++++++++++++++
@@ -710,6 +710,14 @@ docker:bs:syslog-port
 
 ``docker:bs:syslog-port`` is the port in the Docker node that will be used by
 the bs container for collecting logs. The default value is 1514.
+
+docker:bs:syslog-forward-addresses
+++++++++++++++++++++++++++++++++++
+
+``docker:bs:syslog-forward-addresses`` is a list of SysLog endpoints to which
+bs will forward the logs of Docker containers, properly identifying the
+applications. The default value is an empty list, which means that bs will not
+foward logs to any rsyslog server, just the tsuru API.
 
 docker:max-workers
 ++++++++++++++++++
