@@ -27,13 +27,24 @@ var (
 // Team represents a real world team, a team has team members (users) and
 // a name.
 type Team struct {
-	Name  string   `bson:"_id" json:"name"`
-	Users []string `json:"users"`
+	Name      string   `bson:"_id" json:"name"`
+	Users     []string `json:"users"`
+	TeamLeads []string `json:"team_leads"`
 }
 
 // ContainsUser checks if the team contains the user.
 func (t *Team) ContainsUser(u *User) bool {
 	for _, user := range t.Users {
+		if u.Email == user {
+			return true
+		}
+	}
+	return false
+}
+
+// ContainsTeamLead checks if the team contains the team lead.
+func (t *Team) ContainsTeamLead(u *User) bool {
+	for _, user := range t.TeamLeads {
 		if u.Email == user {
 			return true
 		}
@@ -50,6 +61,18 @@ func (t *Team) AddUser(u *User) error {
 	return nil
 }
 
+// AddTeamLead adds a team lead to the team.
+func (t *Team) AddTeamLead(u *User) error {
+	if !t.ContainsUser(u) {
+		return fmt.Errorf("User %s must be member of the team %s before he/she can become team lead.", u.Email, t.Name)
+	}
+	if t.ContainsTeamLead(u) {
+		return fmt.Errorf("User %s is already lead of the team %s.", u.Email, t.Name)
+	}
+	t.TeamLeads = append(t.TeamLeads, u.Email)
+	return nil
+}
+
 // RemoveUser removes a user from the team.
 func (t *Team) RemoveUser(u *User) error {
 	index := -1
@@ -62,11 +85,40 @@ func (t *Team) RemoveUser(u *User) error {
 	if index < 0 {
 		return fmt.Errorf("User %s is not in the team %s.", u.Email, t.Name)
 	}
+
+	// If the user is a team lead,
+	// let's try removing him from TeamLeads slice first
+	if t.ContainsTeamLead(u) {
+		if err := t.RemoveTeamLead(u); err != nil {
+			return err
+		}
+	}
+
 	last := len(t.Users) - 1
 	if index < last {
 		t.Users[index] = t.Users[last]
 	}
 	t.Users = t.Users[:last]
+	return nil
+}
+
+// RemoveTeamLead removes user from team leads.
+func (t *Team) RemoveTeamLead(u *User) error {
+	index := -1
+	for i, user := range t.TeamLeads {
+		if u.Email == user {
+			index = i
+			break
+		}
+	}
+	if index < 0 {
+		return fmt.Errorf("User %s is not lead of the team %s.", u.Email, t.Name)
+	}
+	last := len(t.TeamLeads) - 1
+	if index < last {
+		t.TeamLeads[index] = t.TeamLeads[last]
+	}
+	t.TeamLeads = t.TeamLeads[:last]
 	return nil
 }
 
