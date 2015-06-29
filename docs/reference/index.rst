@@ -15,5 +15,6 @@ Reference
     tsuru-client
     tsuru-admin
     crane
+    bs
     config
     api
