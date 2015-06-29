@@ -129,7 +129,7 @@ func (runBs) createBsContainer(dockerEndpoint string) error {
 		"TSURU_TOKEN=" + token.GetValue(),
 		"TSURU_SENTINEL_ENV_VAR=" + sentinelEnvVar,
 		"STATUS_INTERVAL=" + strconv.Itoa(interval),
-		"SYSLOG_LISTEN_ADDRESS=" + "udp://0.0.0.0:514",
+		"SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:514",
 	}
 	opts := docker.CreateContainerOptions{
 		Name:       "big-sibling",
