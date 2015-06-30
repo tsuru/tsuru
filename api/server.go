@@ -147,7 +147,6 @@ func RunServer(dry bool) http.Handler {
 	logPostHandler := authorizationRequiredHandler(addLog)
 	m.Add("Post", "/apps/{app}/log", logPostHandler)
 	m.Add("Post", "/apps/{appname}/deploy/rollback", authorizationRequiredHandler(deployRollback))
-	m.Add("Get", "/apps/{app}/shell", websocket.Handler(remoteShellHandler))
 	m.Add("Post", "/apps/{app}/pool", authorizationRequiredHandler(appChangePool))
 
 	m.Add("Post", "/units/status", authorizationRequiredHandler(setUnitsStatus))
@@ -160,12 +159,16 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Put", "/platforms/{name}", AdminRequiredHandler(platformUpdate))
 	m.Add("Delete", "/platforms/{name}", AdminRequiredHandler(platformRemove))
 
-	// These handlers don't use :app on purpose. Using :app means that only
+	// These handlers don't use {app} on purpose. Using :app means that only
 	// the token generate for the given app is valid, but these handlers
 	// use a token generated for Gandalf.
 	m.Add("Get", "/apps/{appname}/available", authorizationRequiredHandler(appIsAvailable))
 	m.Add("Post", "/apps/{appname}/repository/clone", authorizationRequiredHandler(deploy))
 	m.Add("Post", "/apps/{appname}/deploy", authorizationRequiredHandler(deploy))
+
+	// Shell also doesn't use {app} on purpose. Middlewares don't play well
+	// with websocket.
+	m.Add("Get", "/apps/{appname}/shell", websocket.Handler(remoteShellHandler))
 
 	m.Add("Get", "/users", AdminRequiredHandler(listUsers))
 	m.Add("Post", "/users", Handler(createUser))

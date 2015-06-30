@@ -6,6 +6,7 @@ package api
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http/httptest"
 	"net/url"
 	"time"
@@ -106,4 +107,80 @@ func (s *S) TestAppShellSpecifyUnit(c *check.C) {
 			c.Check(s.provisioner.Shells(u.Name), check.HasLen, 0)
 		}
 	}
+}
+
+func (s *S) TestAppShellUnauthorizedError(c *check.C) {
+	a := app.App{
+		Name:     "someapp",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	defer s.logConn.Logs(a.Name).DropCollection()
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, check.IsNil)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 1, "web", nil)
+	m := RunServer(true)
+	server := httptest.NewServer(m)
+	defer server.Close()
+	testServerURL, err := url.Parse(server.URL)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("ws://%s/apps/%s/shell?width=140&height=38&term=xterm", testServerURL.Host, a.Name)
+	config, err := websocket.NewConfig(url, "ws://localhost/")
+	c.Assert(err, check.IsNil)
+	wsConn, err := websocket.DialConfig(config)
+	c.Assert(err, check.IsNil)
+	defer wsConn.Close()
+	_, err = wsConn.Write([]byte("echo test"))
+	c.Assert(err, check.IsNil)
+	var result string
+	err = tsurutest.WaitCondition(5*time.Second, func() bool {
+		part, err := ioutil.ReadAll(wsConn)
+		if err != nil {
+			return false
+		}
+		result += string(part)
+		return result == "Error: no token provided or session expired, please login again"
+	})
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestAppShellGenericError(c *check.C) {
+	a := app.App{
+		Name:     "someapp",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.provisioner.Provision(&a)
+	c.Assert(err, check.IsNil)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 1, "web", nil)
+	m := RunServer(true)
+	server := httptest.NewServer(m)
+	defer server.Close()
+	testServerURL, err := url.Parse(server.URL)
+	c.Assert(err, check.IsNil)
+	url := fmt.Sprintf("ws://%s/apps/%s/shell?width=140&height=38&term=xterm", testServerURL.Host, a.Name)
+	config, err := websocket.NewConfig(url, "ws://localhost/")
+	c.Assert(err, check.IsNil)
+	config.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	wsConn, err := websocket.DialConfig(config)
+	c.Assert(err, check.IsNil)
+	defer wsConn.Close()
+	_, err = wsConn.Write([]byte("echo test"))
+	c.Assert(err, check.IsNil)
+	var result string
+	err = tsurutest.WaitCondition(5*time.Second, func() bool {
+		part, err := ioutil.ReadAll(wsConn)
+		if err != nil {
+			c.Log(err)
+			return false
+		}
+		result += string(part)
+		return result == "Error: App someapp not found."
+	})
+	c.Assert(err, check.IsNil)
 }

@@ -5,7 +5,6 @@
 package api
 
 import (
-	"encoding/json"
 	"net/http"
 	"strconv"
 
@@ -18,10 +17,17 @@ import (
 func remoteShellHandler(ws *websocket.Conn) {
 	var httpErr *errors.HTTP
 	defer func() {
-		rawData := map[string]interface{}{"error": httpErr}
-		msg, _ := json.Marshal(rawData)
-		ws.Write(msg)
-		ws.Close()
+		defer ws.Close()
+		if httpErr != nil {
+			var msg string
+			switch httpErr.Code {
+			case http.StatusUnauthorized:
+				msg = "no token provided or session expired, please login again"
+			default:
+				msg = httpErr.Message
+			}
+			ws.Write([]byte("Error: " + msg))
+		}
 	}()
 	r := ws.Request()
 	token := context.GetAuthToken(r)
@@ -40,7 +46,7 @@ func remoteShellHandler(ws *websocket.Conn) {
 		}
 		return
 	}
-	appName := r.URL.Query().Get(":app")
+	appName := r.URL.Query().Get(":appname")
 	app, err := getApp(appName, user, r)
 	if err != nil {
 		if herr, ok := err.(*errors.HTTP); ok {
