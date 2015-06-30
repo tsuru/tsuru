@@ -52,6 +52,7 @@ func (s *S) TestAppShellWithAppName(c *check.C) {
 		shells = s.provisioner.Shells(unit.Name)
 		return len(shells) == 1
 	})
+	c.Assert(err, check.IsNil)
 	c.Assert(shells[0].App.GetName(), check.Equals, a.Name)
 	c.Assert(shells[0].Width, check.Equals, 140)
 	c.Assert(shells[0].Height, check.Equals, 38)
@@ -93,6 +94,7 @@ func (s *S) TestAppShellSpecifyUnit(c *check.C) {
 		shells = s.provisioner.Shells(unit.Name)
 		return len(shells) == 1
 	})
+	c.Assert(err, check.IsNil)
 	c.Assert(shells, check.HasLen, 1)
 	c.Assert(shells[0].App.GetName(), check.Equals, a.Name)
 	c.Assert(shells[0].Width, check.Equals, 140)
