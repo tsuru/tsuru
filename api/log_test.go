@@ -170,7 +170,7 @@ func (s *S) TestAddLogsHandler(c *check.C) {
 	logs, err = a2.LastLogs(2, app.Applog{})
 	c.Assert(err, check.IsNil)
 	c.Assert(logs, check.DeepEquals, []app.Applog{
-		{Date: baseTime.Add(1 * time.Second), Message: "msg2", Source: "web", AppName: "myapp2", Unit: "unit2"},
+		{Date: baseTime.Add(time.Second), Message: "msg2", Source: "web", AppName: "myapp2", Unit: "unit2"},
 		{Date: baseTime.Add(3 * time.Second), Message: "msg4", Source: "web", AppName: "myapp2", Unit: "unit4"},
 	})
 }

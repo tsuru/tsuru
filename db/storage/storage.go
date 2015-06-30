@@ -45,7 +45,7 @@ func open(addr string) (*mgo.Session, error) {
 		return nil, err
 	}
 	session.SetSyncTimeout(10 * time.Second)
-	session.SetSocketTimeout(1 * time.Minute)
+	session.SetSocketTimeout(time.Minute)
 	return session, nil
 }
 

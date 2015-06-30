@@ -385,7 +385,7 @@ func (s *BindSuite) TestUnbindMultiUnits(c *check.C) {
 	select {
 	case <-ok:
 		c.SucceedNow()
-	case <-time.After(1 * time.Second):
+	case <-time.After(time.Second):
 		c.Error("endpoint not called")
 	}
 }

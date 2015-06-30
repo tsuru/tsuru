@@ -123,7 +123,7 @@ func (s *S) TestHealerHealNode(c *check.C) {
 		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
-		waitTimeNewMachine:    1 * time.Second,
+		waitTimeNewMachine:    time.Second,
 	}
 	nodes, err := p.getCluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
@@ -190,7 +190,7 @@ func (s *S) TestHealerHealNodeWithoutIaaS(c *check.C) {
 		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
-		waitTimeNewMachine:    1 * time.Second,
+		waitTimeNewMachine:    time.Second,
 	}
 	nodes, err := p.getCluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
@@ -237,7 +237,7 @@ func (s *S) TestHealerHealNodeCreateMachineError(c *check.C) {
 		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
-		waitTimeNewMachine:    1 * time.Second,
+		waitTimeNewMachine:    time.Second,
 	}
 	nodes, err := p.getCluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
@@ -294,7 +294,7 @@ func (s *S) TestHealerHealNodeWaitAndRegisterError(c *check.C) {
 		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
-		waitTimeNewMachine:    1 * time.Second,
+		waitTimeNewMachine:    time.Second,
 	}
 	nodes, err := p.getCluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
@@ -381,7 +381,7 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
-		waitTimeNewMachine:    1 * time.Second,
+		waitTimeNewMachine:    time.Second,
 	}
 	nodes, err := p.getCluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
@@ -498,7 +498,7 @@ func (s *S) TestHealerHandleError(c *check.C) {
 		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
-		waitTimeNewMachine:    1 * time.Second,
+		waitTimeNewMachine:    time.Second,
 	}
 	nodes, err := cluster.UnfilteredNodes()
 	c.Assert(err, check.IsNil)
@@ -550,7 +550,7 @@ func (s *S) TestHealerHandleErrorDoesntTriggerEventIfNotNeeded(c *check.C) {
 		provisioner:           nil,
 		disabledTime:          20,
 		failuresBeforeHealing: 1,
-		waitTimeNewMachine:    1 * time.Second,
+		waitTimeNewMachine:    time.Second,
 	}
 	node := cluster.Node{Address: "addr", Metadata: map[string]string{
 		"Failures":    "2",
@@ -609,7 +609,7 @@ func (s *S) TestHealerHandleErrorDoesntTriggerEventIfHealingCountTooLarge(c *che
 		provisioner:           nil,
 		disabledTime:          20,
 		failuresBeforeHealing: 1,
-		waitTimeNewMachine:    1 * time.Second,
+		waitTimeNewMachine:    time.Second,
 	}
 	nodes[7].Metadata = map[string]string{
 		"Failures":    "2",

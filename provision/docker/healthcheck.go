@@ -27,7 +27,7 @@ func clientWithTimeout(dialTimeout time.Duration) *http.Client {
 	}
 	return &http.Client{
 		Transport: &transport,
-		Timeout:   1 * time.Minute,
+		Timeout:   time.Minute,
 	}
 }
 

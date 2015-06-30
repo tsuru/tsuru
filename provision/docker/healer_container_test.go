@@ -150,7 +150,7 @@ func (s *S) TestRunContainerHealer(c *check.C) {
 
 	node1.PrepareFailure("createError", "/containers/create")
 
-	healer := containerHealer{provisioner: &p, maxUnresponsiveTime: 1 * time.Minute}
+	healer := containerHealer{provisioner: &p, maxUnresponsiveTime: time.Minute}
 	healer.runContainerHealerOnce()
 
 	containers, err = p.listAllContainers()
@@ -240,7 +240,7 @@ func (s *S) TestRunContainerHealerShutdown(c *check.C) {
 
 	node1.PrepareFailure("createError", "/containers/create")
 
-	healer := containerHealer{provisioner: &p, maxUnresponsiveTime: 1 * time.Minute, done: make(chan bool)}
+	healer := containerHealer{provisioner: &p, maxUnresponsiveTime: time.Minute, done: make(chan bool)}
 	ch := make(chan bool)
 	go func() {
 		defer close(ch)
@@ -487,7 +487,7 @@ func (s *S) TestRunContainerHealerDoesntHealWhenContainerIsRunning(c *check.C) {
 	err = coll.Update(bson.M{"id": toMoveCont.ID}, toMoveCont)
 	c.Assert(err, check.IsNil)
 
-	healer := containerHealer{provisioner: &p, maxUnresponsiveTime: 1 * time.Minute}
+	healer := containerHealer{provisioner: &p, maxUnresponsiveTime: time.Minute}
 	healer.runContainerHealerOnce()
 
 	healingColl, err := healingCollection()
@@ -549,7 +549,7 @@ func (s *S) TestRunContainerHealerDoesntHealWhenContainerIsRestarting(c *check.C
 	err = coll.Update(bson.M{"id": toMoveCont.ID}, toMoveCont)
 	c.Assert(err, check.IsNil)
 
-	healer := containerHealer{provisioner: &p, maxUnresponsiveTime: 1 * time.Minute}
+	healer := containerHealer{provisioner: &p, maxUnresponsiveTime: time.Minute}
 	healer.runContainerHealerOnce()
 
 	healingColl, err := healingCollection()
@@ -623,7 +623,7 @@ func (s *S) TestRunContainerHealerWithError(c *check.C) {
 	node1.PrepareFailure("createError", "/containers/create")
 	node2.PrepareFailure("createError", "/containers/create")
 
-	healer := containerHealer{provisioner: &p, maxUnresponsiveTime: 1 * time.Minute}
+	healer := containerHealer{provisioner: &p, maxUnresponsiveTime: time.Minute}
 	healer.runContainerHealerOnce()
 
 	containers, err = p.listAllContainers()

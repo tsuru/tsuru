@@ -329,7 +329,7 @@ func (s *S) TestAppLockMiddlewareReturns404IfNotApp(c *check.C) {
 
 func (s *S) TestAppLockMiddlewareOnLockedApp(c *check.C) {
 	oldDuration := lockWaitDuration
-	lockWaitDuration = 1 * time.Second
+	lockWaitDuration = time.Second
 	defer func() { lockWaitDuration = oldDuration }()
 	myApp := app.App{
 		Name: "my-app",
