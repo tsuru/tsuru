@@ -440,7 +440,7 @@ func (s *S) TestAppLockMiddlewareWaitForLock(c *check.C) {
 	defer wg.Wait()
 	go func() {
 		defer wg.Done()
-		time.Sleep(1 * time.Second)
+		time.Sleep(time.Second)
 		app.ReleaseApplicationLock(myApp.Name)
 	}()
 	m := &appLockMiddleware{}
