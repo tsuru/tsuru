@@ -147,7 +147,7 @@ func RunServer(dry bool) http.Handler {
 	logPostHandler := authorizationRequiredHandler(addLog)
 	m.Add("Post", "/apps/{app}/log", logPostHandler)
 	m.Add("Post", "/apps/{appname}/deploy/rollback", authorizationRequiredHandler(deployRollback))
-	m.Add("Get", "/apps/{app}/shell", authorizationRequiredHandler(remoteShellHandler))
+	m.Add("Get", "/apps/{app}/shell", websocket.Handler(remoteShellHandler))
 	m.Add("Post", "/apps/{app}/pool", authorizationRequiredHandler(appChangePool))
 
 	m.Add("Post", "/units/status", authorizationRequiredHandler(setUnitsStatus))

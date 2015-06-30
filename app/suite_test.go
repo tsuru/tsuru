@@ -13,7 +13,6 @@ import (
 	"os"
 	"path"
 	"testing"
-	"time"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/auth"
@@ -178,23 +177,4 @@ func (s *S) addServiceInstance(c *check.C, appName string, fn http.HandlerFunc) 
 	err = s.conn.ServiceInstances().Update(bson.M{"name": instance.Name}, instance)
 	c.Assert(err, check.IsNil)
 	return ret
-}
-
-func (s *S) waitCondition(timeout time.Duration, condFn func() bool) error {
-	ok := make(chan struct{})
-	go func() {
-		for {
-			if condFn() {
-				close(ok)
-				return
-			}
-			time.Sleep(10 * time.Millisecond)
-		}
-	}()
-	select {
-	case <-ok:
-		return nil
-	case <-time.After(timeout):
-		return fmt.Errorf("timed out waiting for condition after %s", timeout)
-	}
 }

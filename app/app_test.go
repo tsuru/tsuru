@@ -27,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/service"
+	"github.com/tsuru/tsuru/tsurutest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -74,7 +75,7 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = Delete(app)
 	c.Assert(err, check.IsNil)
-	err = s.waitCondition(time.Second, func() bool {
+	err = tsurutest.WaitCondition(time.Second, func() bool {
 		_, err := GetByName(app.Name)
 		return err != nil
 	})
@@ -104,7 +105,7 @@ func (s *S) TestDeleteWithDeploys(c *check.C) {
 	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
 	err = Delete(app)
 	c.Assert(err, check.IsNil)
-	err = s.waitCondition(1e9, func() bool {
+	err = tsurutest.WaitCondition(1e9, func() bool {
 		var deploys []DeployData
 		err := s.conn.Deploys().Find(bson.M{"app": app.Name}).All(&deploys)
 		if err != nil {
@@ -563,7 +564,7 @@ func (s *S) TestRemoveUnitsWithQuota(c *check.C) {
 	defer s.provisioner.Destroy(&a)
 	err = a.RemoveUnits(4, "web", nil)
 	c.Assert(err, check.IsNil)
-	err = s.waitCondition(2e9, func() bool {
+	err = tsurutest.WaitCondition(2e9, func() bool {
 		app, err := GetByName(a.Name)
 		if err != nil {
 			c.Log(err)
@@ -613,7 +614,7 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	err = app.RemoveUnits(2, "worker", buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Equals, "removing 2 units")
-	err = s.waitCondition(2e9, func() bool {
+	err = tsurutest.WaitCondition(2e9, func() bool {
 		gotApp, err := GetByName(app.Name)
 		if err != nil {
 			c.Log(err)

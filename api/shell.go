@@ -5,49 +5,70 @@
 package api
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 
-	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
+	"golang.org/x/net/websocket"
 )
 
-func remoteShellHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func remoteShellHandler(ws *websocket.Conn) {
+	var httpErr *errors.HTTP
+	defer func() {
+		rawData := map[string]interface{}{"error": httpErr}
+		msg, _ := json.Marshal(rawData)
+		ws.Write(msg)
+		ws.Close()
+	}()
+	r := ws.Request()
+	token := context.GetAuthToken(r)
+	if token == nil {
+		httpErr = &errors.HTTP{
+			Code:    http.StatusUnauthorized,
+			Message: "no token provided",
+		}
+		return
+	}
+	user, err := token.User()
+	if err != nil {
+		httpErr = &errors.HTTP{
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		}
+		return
+	}
+	appName := r.URL.Query().Get(":app")
+	app, err := getApp(appName, user, r)
+	if err != nil {
+		if herr, ok := err.(*errors.HTTP); ok {
+			httpErr = herr
+		} else {
+			httpErr = &errors.HTTP{
+				Code:    http.StatusInternalServerError,
+				Message: err.Error(),
+			}
+		}
+		return
+	}
 	unitID := r.URL.Query().Get("unit")
 	width, _ := strconv.Atoi(r.URL.Query().Get("width"))
 	height, _ := strconv.Atoi(r.URL.Query().Get("height"))
 	term := r.URL.Query().Get("term")
-	u, err := t.User()
-	if err != nil {
-		return err
-	}
-	appName := r.URL.Query().Get(":app")
-	app, err := getApp(appName, u, r)
-	if err != nil {
-		return err
-	}
-	hj, ok := w.(http.Hijacker)
-	if !ok {
-		return &errors.HTTP{
-			Code:    http.StatusInternalServerError,
-			Message: "cannot hijack connection",
-		}
-	}
-	conn, _, err := hj.Hijack()
-	if err != nil {
-		return &errors.HTTP{
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		}
-	}
-	defer conn.Close()
 	opts := provision.ShellOptions{
-		Conn:   conn,
+		Conn:   ws,
 		Width:  width,
 		Height: height,
 		Unit:   unitID,
 		Term:   term,
 	}
-	return app.Shell(opts)
+	err = app.Shell(opts)
+	if err != nil {
+		httpErr = &errors.HTTP{
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		}
+	}
 }
