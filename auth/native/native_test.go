@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/auth/authtest"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/tsurutest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -144,11 +146,17 @@ func (s *S) TestStartPasswordReset(c *check.C) {
 	var token passwordToken
 	err = conn.PasswordTokens().Find(bson.M{"useremail": u.Email}).One(&token)
 	c.Assert(err, check.IsNil)
-	time.Sleep(1e9) // Let the email flow.
-	s.server.Lock()
-	defer s.server.Unlock()
-	c.Assert(s.server.MailBox, check.HasLen, 1)
-	m := s.server.MailBox[0]
+	var m authtest.Mail
+	err = tsurutest.WaitCondition(time.Second, func() bool {
+		s.server.Lock()
+		defer s.server.Unlock()
+		if len(s.server.MailBox) != 1 {
+			return false
+		}
+		m = s.server.MailBox[0]
+		return true
+	})
+	c.Assert(err, check.IsNil)
 	c.Assert(m.From, check.Equals, "root")
 	c.Assert(m.To, check.DeepEquals, []string{u.Email})
 	var buf bytes.Buffer
@@ -168,7 +176,11 @@ func (s *S) TestResetPassword(c *check.C) {
 	p := u.Password
 	err = scheme.StartPasswordReset(&u)
 	c.Assert(err, check.IsNil)
-	time.Sleep(1e6) // Let the email flow
+	err = tsurutest.WaitCondition(time.Second, func() bool {
+		s.server.RLock()
+		defer s.server.RUnlock()
+		return len(s.server.MailBox) == 1
+	})
 	var token passwordToken
 	err = s.conn.PasswordTokens().Find(bson.M{"useremail": u.Email}).One(&token)
 	c.Assert(err, check.IsNil)
@@ -176,11 +188,17 @@ func (s *S) TestResetPassword(c *check.C) {
 	c.Assert(err, check.IsNil)
 	u2, _ := auth.GetUserByEmail(u.Email)
 	c.Assert(u2.Password, check.Not(check.Equals), p)
-	time.Sleep(1e9) // Let the email flow
-	s.server.Lock()
-	defer s.server.Unlock()
-	c.Assert(s.server.MailBox, check.HasLen, 2)
-	m := s.server.MailBox[1]
+	var m authtest.Mail
+	err = tsurutest.WaitCondition(time.Second, func() bool {
+		s.server.RLock()
+		defer s.server.RUnlock()
+		if len(s.server.MailBox) != 2 {
+			return false
+		}
+		m = s.server.MailBox[1]
+		return true
+	})
+	c.Assert(err, check.IsNil)
 	c.Assert(m.From, check.Equals, "root")
 	c.Assert(m.To, check.DeepEquals, []string{u.Email})
 	var buf bytes.Buffer
