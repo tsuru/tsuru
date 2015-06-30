@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net"
 
 	"github.com/tsuru/tsuru/app/bind"
 )
@@ -187,7 +186,7 @@ type CNameManager interface {
 // Shell in the provisioner.
 type ShellOptions struct {
 	App    App
-	Conn   net.Conn
+	Conn   io.ReadWriteCloser
 	Width  int
 	Height int
 	Unit   string
