@@ -82,7 +82,8 @@ func (s *S) TestAutoScaleConfigRun(c *check.C) {
 		Name: appInstance.GetName(),
 		Pool: "pool1",
 	}
-	err = provision.AddPool("pool1", false)
+	opts := provision.AddPoolOptions{Name: "pool1"}
+	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
@@ -217,7 +218,8 @@ func (s *S) TestAutoScaleConfigRunNoRebalance(c *check.C) {
 		Name: appInstance.GetName(),
 		Pool: "pool1",
 	}
-	err = provision.AddPool("pool1", false)
+	opts := provision.AddPoolOptions{Name: "pool1"}
+	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
@@ -337,7 +339,8 @@ func (s *S) TestAutoScaleConfigRunOnce(c *check.C) {
 		Name: appInstance.GetName(),
 		Pool: "pool1",
 	}
-	err = provision.AddPool("pool1", false)
+	opts := provision.AddPoolOptions{Name: "pool1"}
+	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
@@ -432,7 +435,8 @@ func (s *S) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
 		Name: appInstance.GetName(),
 		Pool: "pool1",
 	}
-	err = provision.AddPool("pool1", false)
+	opts := provision.AddPoolOptions{Name: "pool1"}
+	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
@@ -617,7 +621,8 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 		Name: appInstance.GetName(),
 		Pool: "pool1",
 	}
-	err = provision.AddPool("pool1", false)
+	opts := provision.AddPoolOptions{Name: "pool1"}
+	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
@@ -742,7 +747,8 @@ func (s *S) TestAutoScaleConfigRunStress(c *check.C) {
 		Name: appInstance.GetName(),
 		Pool: "pool1",
 	}
-	err = provision.AddPool("pool1", false)
+	opts := provision.AddPoolOptions{Name: "pool1"}
+	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
@@ -852,7 +858,8 @@ func (s *S) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 		Plan: app.Plan{Memory: 21000},
 		Pool: "pool1",
 	}
-	err = provision.AddPool("pool1", false)
+	opts := provision.AddPoolOptions{Name: "pool1"}
+	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
@@ -978,7 +985,8 @@ func (s *S) TestAutoScaleConfigRunPriorityToCountBased(c *check.C) {
 		Name: appInstance.GetName(),
 		Pool: "pool1",
 	}
-	err = provision.AddPool("pool1", false)
+	opts := provision.AddPoolOptions{Name: "pool1"}
+	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
@@ -1078,7 +1086,8 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedPlanTooBig(c *check.C) {
 		Plan: app.Plan{Memory: 21000},
 		Pool: "pool1",
 	}
-	err = provision.AddPool("pool1", false)
+	opts := provision.AddPoolOptions{Name: "pool1"}
+	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
@@ -1276,7 +1285,8 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C) {
 		Name: appInstance.GetName(),
 		Pool: "pool1",
 	}
-	err = provision.AddPool("pool1", false)
+	opts := provision.AddPoolOptions{Name: "pool1"}
+	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
@@ -1385,7 +1395,8 @@ func (s *S) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *check.C) {
 		Name: appInstance.GetName(),
 		Pool: "pool1",
 	}
-	err = provision.AddPool("pool1", false)
+	opts := provision.AddPoolOptions{Name: "pool1"}
+	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
@@ -1475,7 +1486,8 @@ func (s *S) TestAutoScaleConfigRunLockedApp(c *check.C) {
 		Name: appInstance.GetName(),
 		Pool: "pool1",
 	}
-	err = provision.AddPool("pool1", false)
+	opts := provision.AddPoolOptions{Name: "pool1"}
+	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
@@ -1563,7 +1575,8 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedLockedApp(c *check.C) {
 		Plan: app.Plan{Memory: 21000},
 		Pool: "pool1",
 	}
-	err = provision.AddPool("pool1", false)
+	opts := provision.AddPoolOptions{Name: "pool1"}
+	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	err = conn.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)

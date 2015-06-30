@@ -72,7 +72,8 @@ func (s *AuthSuite) SetUpTest(c *check.C) {
 	dbtest.ClearAllCollections(conn.Apps().Database)
 	s.createUserAndTeam(c)
 	conn.Platforms().Insert(app.Platform{Name: "python"})
-	err = provision.AddPool("test1", false)
+	opts := provision.AddPoolOptions{Name: "test1"}
+	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	config.Set("admin-team", s.team.Name)
 }

@@ -3445,7 +3445,8 @@ func (s *S) TestAppChangePool(c *check.C) {
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.deleteApp(&a)
-	err = provision.AddPool("test", false)
+	opts := provision.AddPoolOptions{Name: "test"}
+	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	err = provision.AddTeamsToPool("test", []string{s.team.Name})
 	c.Assert(err, check.IsNil)

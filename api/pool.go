@@ -52,22 +52,17 @@ func listPoolsToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	return json.NewEncoder(w).Encode(p)
 }
 
-type addPoolOptions struct {
-	Name   string
-	Public bool
-}
-
 func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return err
 	}
-	var p addPoolOptions
+	var p provision.AddPoolOptions
 	err = json.Unmarshal(b, &p)
 	if err != nil {
 		return err
 	}
-	return provision.AddPool(p.Name, p.Public)
+	return provision.AddPool(p)
 }
 
 func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {

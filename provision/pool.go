@@ -12,17 +12,24 @@ import (
 )
 
 type Pool struct {
-	Name   string `bson:"_id"`
-	Teams  []string
-	Public bool
+	Name    string `bson:"_id"`
+	Teams   []string
+	Public  bool
+	Default bool
 }
 
-var ErrPublicPollCantHaveTeams = errors.New("Public pool can't have teams.")
+var ErrPublicDefaultPollCantHaveTeams = errors.New("Public/Default pool can't have teams.")
 
 const poolCollection = "pool"
 
-func AddPool(poolName string, public bool) error {
-	if poolName == "" {
+type AddPoolOptions struct {
+	Name    string
+	Public  bool
+	Default bool
+}
+
+func AddPool(opts AddPoolOptions) error {
+	if opts.Name == "" {
 		return errors.New("Pool name is required.")
 	}
 	conn, err := db.Conn()
@@ -30,7 +37,16 @@ func AddPool(poolName string, public bool) error {
 		return err
 	}
 	defer conn.Close()
-	pool := Pool{Name: poolName, Public: public}
+	if opts.Default {
+		p, err := ListPools(bson.M{"default": true})
+		if err != nil {
+			return err
+		}
+		if len(p) > 0 {
+			return errors.New("Default pool already exists.")
+		}
+	}
+	pool := Pool{Name: opts.Name, Public: opts.Public, Default: opts.Default}
 	return conn.Collection(poolCollection).Insert(pool)
 }
 
@@ -54,8 +70,8 @@ func AddTeamsToPool(poolName string, teams []string) error {
 	if err != nil {
 		return err
 	}
-	if pool.Public {
-		return ErrPublicPollCantHaveTeams
+	if pool.Public || pool.Default {
+		return ErrPublicDefaultPollCantHaveTeams
 	}
 	for _, newTeam := range teams {
 		for _, team := range pool.Teams {

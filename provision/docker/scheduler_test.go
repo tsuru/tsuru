@@ -42,7 +42,8 @@ func (s *S) TestSchedulerSchedule(c *check.C) {
 		"tsuruteam",
 		"nodockerforme",
 	}}
-	err = provision.AddPool(p.Name, false)
+	o := provision.AddPoolOptions{Name: p.Name}
+	err = provision.AddPool(o)
 	c.Assert(err, check.IsNil)
 	err = provision.AddTeamsToPool(p.Name, p.Teams)
 	defer provision.RemovePool(p.Name)
@@ -84,7 +85,8 @@ func (s *S) TestSchedulerScheduleByTeamOwner(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
 	p := provision.Pool{Name: "pool1", Teams: []string{"tsuruteam"}}
-	err = provision.AddPool(p.Name, false)
+	o := provision.AddPoolOptions{Name: p.Name}
+	err = provision.AddPool(o)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(p.Name)
 	err = provision.AddTeamsToPool(p.Name, p.Teams)
@@ -113,7 +115,8 @@ func (s *S) TestSchedulerScheduleByTeams(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
 	p := provision.Pool{Name: "pool1", Teams: []string{"tsuruteam"}}
-	err = provision.AddPool(p.Name, false)
+	o := provision.AddPoolOptions{Name: p.Name}
+	err = provision.AddPool(o)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(p.Name)
 	err = provision.AddTeamsToPool(p.Name, p.Teams)
@@ -149,7 +152,8 @@ func (s *S) TestSchedulerScheduleNoName(c *check.C) {
 		"tsuruteam",
 		"nodockerforme",
 	}}
-	err = provision.AddPool(p.Name, false)
+	o := provision.AddPoolOptions{Name: p.Name}
+	err = provision.AddPool(o)
 	c.Assert(err, check.IsNil)
 	err = provision.AddTeamsToPool(p.Name, p.Teams)
 	defer provision.RemovePool(p.Name)
@@ -186,7 +190,8 @@ func (s *S) TestSchedulerScheduleFallback(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
 	p := provision.Pool{Name: "pool1", Teams: []string{}}
-	err = provision.AddPool(p.Name, false)
+	o := provision.AddPoolOptions{Name: p.Name}
+	err = provision.AddPool(o)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(p.Name)
 	contColl := s.p.collection()
@@ -255,9 +260,11 @@ func (s *S) TestSchedulerNoNodesWithFallbackPool(c *check.C) {
 	scheduler := segregatedScheduler{provisioner: s.p}
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
-	err = provision.AddPool("mypool", false)
+	o := provision.AddPoolOptions{Name: "mypool"}
+	err = provision.AddPool(o)
 	c.Assert(err, check.IsNil)
-	err = provision.AddPool("mypool2", false)
+	o = provision.AddPoolOptions{Name: "mypool2"}
+	err = provision.AddPool(o)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("mypool")
 	defer provision.RemovePool("mypool2")
@@ -286,7 +293,8 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 		totalMemoryMetadata: "totalMemory",
 		provisioner:         s.p,
 	}
-	err = provision.AddPool("mypool", false)
+	o := provision.AddPoolOptions{Name: "mypool"}
+	err = provision.AddPool(o)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("mypool")
 	clusterInstance, err := cluster.New(&segSched, &cluster.MapStorage{},
@@ -636,7 +644,8 @@ func (s *S) TestGetRemovableContainer(c *check.C) {
 		"tsuruteam",
 		"nodockerforme",
 	}}
-	err = provision.AddPool(p.Name, false)
+	o := provision.AddPoolOptions{Name: p.Name}
+	err = provision.AddPool(o)
 	c.Assert(err, check.IsNil)
 	err = provision.AddTeamsToPool(p.Name, p.Teams)
 	defer provision.RemovePool(p.Name)

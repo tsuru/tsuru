@@ -2697,7 +2697,8 @@ func (s *S) TestAppValidateTeamOwnerAdminCanSetAppToAnyTeam(c *check.C) {
 }
 
 func (s *S) TestAppSetPoolByTeamOwner(c *check.C) {
-	err := provision.AddPool("test", false)
+	opts := provision.AddPoolOptions{Name: "test"}
+	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("test")
 	err = provision.AddTeamsToPool("test", []string{"test"})
@@ -2721,12 +2722,14 @@ func (s *S) TestAppSetPoolFallback(c *check.C) {
 }
 
 func (s *S) TestAppSetPoolByPool(c *check.C) {
-	err := provision.AddPool("test", false)
+	opts := provision.AddPoolOptions{Name: "test"}
+	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("test")
 	err = provision.AddTeamsToPool("test", []string{"test"})
 	c.Assert(err, check.IsNil)
-	err = provision.AddPool("pool2", false)
+	opts = provision.AddPoolOptions{Name: "pool2"}
+	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("pool2")
 	err = provision.AddTeamsToPool("pool2", []string{"test"})
@@ -2742,12 +2745,14 @@ func (s *S) TestAppSetPoolByPool(c *check.C) {
 }
 
 func (s *S) TestAppSetPoolManyPools(c *check.C) {
-	err := provision.AddPool("test", false)
+	opts := provision.AddPoolOptions{Name: "test"}
+	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("test")
 	err = provision.AddTeamsToPool("test", []string{"test"})
 	c.Assert(err, check.IsNil)
-	err = provision.AddPool("pool2", false)
+	opts = provision.AddPoolOptions{Name: "pool2"}
+	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("pool2")
 	err = provision.AddTeamsToPool("pool2", []string{"test"})
@@ -2764,7 +2769,8 @@ func (s *S) TestAppSetPoolManyPools(c *check.C) {
 func (s *S) TestAppSetPoolNoFallback(c *check.C) {
 	err := provision.RemovePool("pool1")
 	c.Assert(err, check.IsNil)
-	defer provision.AddPool("pool1", false)
+	opts := provision.AddPoolOptions{Name: "pool1"}
+	defer provision.AddPool(opts)
 	app := App{
 		Name: "test",
 	}
@@ -2774,7 +2780,8 @@ func (s *S) TestAppSetPoolNoFallback(c *check.C) {
 }
 
 func (s *S) TestAppSetPoolUserDontHaveAccessToPool(c *check.C) {
-	err := provision.AddPool("test", false)
+	opts := provision.AddPoolOptions{Name: "test"}
+	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("test")
 	err = provision.AddTeamsToPool("test", []string{"nopool"})
@@ -2790,7 +2797,8 @@ func (s *S) TestAppSetPoolUserDontHaveAccessToPool(c *check.C) {
 }
 
 func (s *S) TestAppSetPoolToPublicPool(c *check.C) {
-	err := provision.AddPool("test", true)
+	opts := provision.AddPoolOptions{Name: "test", Public: true}
+	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("test")
 	app := App{
@@ -2803,10 +2811,12 @@ func (s *S) TestAppSetPoolToPublicPool(c *check.C) {
 }
 
 func (s *S) TestAppSetPoolPriorityTeamOwnerOverPublicPools(c *check.C) {
-	err := provision.AddPool("public", true)
+	opts := provision.AddPoolOptions{Name: "test", Public: true}
+	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("public")
-	err = provision.AddPool("nonpublic", false)
+	opts = provision.AddPoolOptions{Name: "nonpublic"}
+	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("nonpublic")
 	err = provision.AddTeamsToPool("nonpublic", []string{"team1"})
@@ -2825,12 +2835,14 @@ func (s *S) TestAppSetPoolPriorityTeamOwnerOverPublicPools(c *check.C) {
 }
 
 func (s *S) TestAppChangePool(c *check.C) {
-	err := provision.AddPool("test", false)
+	opts := provision.AddPoolOptions{Name: "test"}
+	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("test")
 	err = provision.AddTeamsToPool("test", []string{"nopool"})
 	c.Assert(err, check.IsNil)
-	err = provision.AddPool("test2", false)
+	opts = provision.AddPoolOptions{Name: "test2"}
+	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("test2")
 	err = provision.AddTeamsToPool("test2", []string{"nopool"})
@@ -2850,7 +2862,8 @@ func (s *S) TestAppChangePool(c *check.C) {
 }
 
 func (s *S) TestAppChangePoolNotExists(c *check.C) {
-	err := provision.AddPool("test", false)
+	opts := provision.AddPoolOptions{Name: "test"}
+	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("test")
 	err = provision.AddTeamsToPool("test", []string{"nopool"})

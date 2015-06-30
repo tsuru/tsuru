@@ -30,7 +30,10 @@ func (s *S) TestAddPoolHandler(c *check.C) {
 }
 
 func (s *S) TestRemovePoolHandler(c *check.C) {
-	err := provision.AddPool("pool1", false)
+	opts := provision.AddPoolOptions{
+		Name: "pool1",
+	}
+	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	b := bytes.NewBufferString(`{"pool": "pool1"}`)
 	req, err := http.NewRequest("DELETE", "/pool", b)
@@ -45,7 +48,8 @@ func (s *S) TestRemovePoolHandler(c *check.C) {
 
 func (s *S) TestListPoolsHandler(c *check.C) {
 	pool := provision.Pool{Name: "pool1", Teams: []string{"tsuruteam", "ateam"}}
-	err := provision.AddPool(pool.Name, false)
+	opts := provision.AddPoolOptions{Name: pool.Name}
+	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	err = provision.AddTeamsToPool(pool.Name, pool.Teams)
 	c.Assert(err, check.IsNil)
@@ -62,7 +66,8 @@ func (s *S) TestListPoolsHandler(c *check.C) {
 
 func (s *S) TestAddTeamsToPoolHandler(c *check.C) {
 	pool := provision.Pool{Name: "pool1"}
-	err := provision.AddPool(pool.Name, false)
+	opts := provision.AddPoolOptions{Name: pool.Name}
+	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(pool.Name)
 	b := bytes.NewBufferString(`{"pool": "pool1", "teams": ["test"]}`)
@@ -78,7 +83,8 @@ func (s *S) TestAddTeamsToPoolHandler(c *check.C) {
 
 func (s *S) TestRemoveTeamsToPoolHandler(c *check.C) {
 	pool := provision.Pool{Name: "pool1", Teams: []string{"test"}}
-	err := provision.AddPool(pool.Name, false)
+	opts := provision.AddPoolOptions{Name: pool.Name}
+	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	err = provision.AddTeamsToPool(pool.Name, pool.Teams)
 	c.Assert(err, check.IsNil)
@@ -107,12 +113,14 @@ func (s *S) TestListPoolsToUserHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
 	pool := provision.Pool{Name: "pool1", Teams: []string{"angra"}}
-	err = provision.AddPool(pool.Name, false)
+	opts := provision.AddPoolOptions{Name: pool.Name}
+	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	err = provision.AddTeamsToPool(pool.Name, pool.Teams)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool(pool.Name)
-	err = provision.AddPool("nopool", false)
+	opts = provision.AddPoolOptions{Name: "nopool"}
+	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("nopool")
 	poolsExpected := map[string]interface{}{
@@ -131,7 +139,8 @@ func (s *S) TestListPoolsToUserHandler(c *check.C) {
 }
 
 func (s *S) TestPoolUpdateToPublicHandler(c *check.C) {
-	err := provision.AddPool("pool1", false)
+	opts := provision.AddPoolOptions{Name: "pool1"}
+	err := provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("pool1")
 	b := bytes.NewBufferString(`{"public": true}`)

@@ -130,7 +130,8 @@ func (s *S) SetUpTest(c *check.C) {
 	err = clearClusterStorage(s.clusterSess)
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.Reset()
-	err = provision.AddPool("test-fallback", false)
+	opts := provision.AddPoolOptions{Name: "test-fallback"}
+	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 }
 

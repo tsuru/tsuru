@@ -110,7 +110,8 @@ func (s *S) SetUpTest(c *check.C) {
 	p := app.Platform{Name: "zend"}
 	s.conn.Platforms().Insert(p)
 	s.Pool = "test1"
-	err = provision.AddPool("test1", false)
+	opts := provision.AddPoolOptions{Name: "test1"}
+	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(s.user.Email)
 	repository.Manager().CreateUser(s.adminuser.Email)

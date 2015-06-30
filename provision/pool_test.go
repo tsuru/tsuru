@@ -25,14 +25,24 @@ func (s *S) SetUpSuite(c *check.C) {
 func (s *S) TestAddPool(c *check.C) {
 	coll := s.storage.Collection(poolCollection)
 	defer coll.RemoveId("pool1")
-	err := AddPool("pool1", false)
+	opts := AddPoolOptions{
+		Name:    "pool1",
+		Public:  false,
+		Default: false,
+	}
+	err := AddPool(opts)
 	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestAddNonPublicPool(c *check.C) {
 	coll := s.storage.Collection(poolCollection)
 	defer coll.RemoveId("pool1")
-	err := AddPool("pool1", false)
+	opts := AddPoolOptions{
+		Name:    "pool1",
+		Public:  false,
+		Default: false,
+	}
+	err := AddPool(opts)
 	c.Assert(err, check.IsNil)
 	var p Pool
 	err = coll.Find(bson.M{"_id": "pool1"}).One(&p)
@@ -43,7 +53,12 @@ func (s *S) TestAddNonPublicPool(c *check.C) {
 func (s *S) TestAddPublicPool(c *check.C) {
 	coll := s.storage.Collection(poolCollection)
 	defer coll.RemoveId("pool1")
-	err := AddPool("pool1", true)
+	opts := AddPoolOptions{
+		Name:    "pool1",
+		Public:  true,
+		Default: false,
+	}
+	err := AddPool(opts)
 	c.Assert(err, check.IsNil)
 	var p Pool
 	err = coll.Find(bson.M{"_id": "pool1"}).One(&p)
@@ -52,9 +67,36 @@ func (s *S) TestAddPublicPool(c *check.C) {
 }
 
 func (s *S) TestAddPoolWithoutNameShouldBreak(c *check.C) {
-	err := AddPool("", false)
+	opts := AddPoolOptions{
+		Name:    "",
+		Public:  false,
+		Default: false,
+	}
+	err := AddPool(opts)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Pool name is required.")
+}
+
+func (s *S) TestAddDefaultPool(c *check.C) {
+	opts := AddPoolOptions{
+		Name:    "pool1",
+		Public:  false,
+		Default: true,
+	}
+	err := AddPool(opts)
+	defer RemovePool("pool1")
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestDefaultPoolCantHaveTeam(c *check.C) {
+	coll := s.storage.Collection(poolCollection)
+	pool := Pool{Name: "nonteams", Public: false, Default: true}
+	err := coll.Insert(pool)
+	c.Assert(err, check.IsNil)
+	defer coll.RemoveId(pool.Name)
+	err = AddTeamsToPool(pool.Name, []string{"ateam"})
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.Equals, ErrPublicDefaultPollCantHaveTeams)
 }
 
 func (s *S) TestRemovePool(c *check.C) {
@@ -119,7 +161,7 @@ func (s *S) TestAddTeamsToAPublicPool(c *check.C) {
 	defer coll.RemoveId(pool.Name)
 	err = AddTeamsToPool(pool.Name, []string{"ateam"})
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.Equals, ErrPublicPollCantHaveTeams)
+	c.Assert(err, check.Equals, ErrPublicDefaultPollCantHaveTeams)
 }
 
 func (s *S) TestRemoveTeamsFromPool(c *check.C) {
