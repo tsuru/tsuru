@@ -31,6 +31,7 @@ import (
 	"github.com/tsuru/tsuru/rec/rectest"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	"github.com/tsuru/tsuru/tsurutest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -1567,10 +1568,12 @@ func (s *AuthSuite) TestResetPasswordStep1(c *check.C) {
 	err = conn.PasswordTokens().Find(bson.M{"useremail": s.user.Email}).One(&m)
 	c.Assert(err, check.IsNil)
 	defer conn.PasswordTokens().RemoveId(m["_id"])
-	time.Sleep(1e9)
-	s.server.RLock()
-	defer s.server.RUnlock()
-	c.Assert(s.server.MailBox, check.HasLen, 1)
+	err = tsurutest.WaitCondition(time.Second, func() bool {
+		s.server.RLock()
+		defer s.server.RUnlock()
+		return len(s.server.MailBox) == 1
+	})
+	c.Assert(err, check.IsNil)
 	u, err := auth.GetUserByEmail(s.user.Email)
 	c.Assert(err, check.IsNil)
 	c.Assert(u.Password, check.Equals, oldPassword)
