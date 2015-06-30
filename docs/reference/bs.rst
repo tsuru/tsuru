@@ -41,3 +41,17 @@ known by tsuru. It doesn't mess with any container not managed by tsuru.
 
 Logging
 +++++++
+
+bs is also a rsyslog server, that listens to logs from containers and
+multiplexes them among other rsyslog servers and the tsuru API.
+
+Whenever starting an application container, tsuru will configure Docker to send
+the logs of the containers to bs using the `syslog logging driver
+<https://docs.docker.com/reference/run/#logging-driver-syslog>`_, having bs as
+the destination daemon.
+
+When receiving the logs, bs will forward them to the tsuru API, so users can
+check their logs using the command ``tsuru app-log``. It can also forward the
+logs to other syslog servers, using the ``docker:bs:syslog-forward-addresses``
+config entry. For more detail, check the :ref:`bs configuration reference
+<config_bs>`.
