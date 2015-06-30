@@ -30,7 +30,7 @@ func (CheckerSuite) SetUpTest(c *check.C) {
 	defer conn.Close()
 	action := map[string]interface{}{
 		"user":   "glenda@tsuru.io",
-		"action": "run-command",
+		"action": "test-run-command",
 		"extra":  []interface{}{"rm", "-rf", "/"},
 		"date":   time.Now(),
 	}
@@ -38,7 +38,7 @@ func (CheckerSuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	actionNoDate := map[string]interface{}{
 		"user":   "glenda@tsuru.io",
-		"action": "list-apps",
+		"action": "test-list-apps",
 		"extra":  nil,
 		"date":   nil,
 	}
@@ -70,7 +70,7 @@ func (CheckerSuite) TestIsRecordedCheckInvalidParameter(c *check.C) {
 func (CheckerSuite) TestIsRecordedCheckWithValue(c *check.C) {
 	action := Action{
 		User:   "glenda@tsuru.io",
-		Action: "run-command",
+		Action: "test-run-command",
 		Extra:  []interface{}{"rm", "-rf", "/"},
 	}
 	result, error := isRecordedChecker{}.Check([]interface{}{action}, []string{})
@@ -81,7 +81,7 @@ func (CheckerSuite) TestIsRecordedCheckWithValue(c *check.C) {
 func (CheckerSuite) TestIsRecordedCheckWithReference(c *check.C) {
 	action := Action{
 		User:   "glenda@tsuru.io",
-		Action: "run-command",
+		Action: "test-run-command",
 		Extra:  []interface{}{"rm", "-rf", "/"},
 	}
 	result, error := isRecordedChecker{}.Check([]interface{}{&action}, []string{})
@@ -92,7 +92,7 @@ func (CheckerSuite) TestIsRecordedCheckWithReference(c *check.C) {
 func (CheckerSuite) TestIsRecordedNotInDatabase(c *check.C) {
 	action := Action{
 		User:   "glenda@tsuru.io",
-		Action: "run-command",
+		Action: "test-run-command",
 		Extra:  []interface{}{"rm", "-rf", "/home"},
 	}
 	result, error := isRecordedChecker{}.Check([]interface{}{action}, []string{})
@@ -103,7 +103,7 @@ func (CheckerSuite) TestIsRecordedNotInDatabase(c *check.C) {
 func (CheckerSuite) TestIsRecordedWithoutDate(c *check.C) {
 	action := Action{
 		User:   "glenda@tsuru.io",
-		Action: "list-apps",
+		Action: "test-list-apps",
 	}
 	result, error := isRecordedChecker{}.Check([]interface{}{action}, []string{})
 	c.Assert(result, check.Equals, false)
