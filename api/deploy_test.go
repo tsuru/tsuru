@@ -79,7 +79,7 @@ func (s *DeploySuite) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.createUserAndTeam(c)
 	s.conn.Platforms().Insert(app.Platform{Name: "python"})
-	opts := provision.AddPoolOptions{Name: "pool1"}
+	opts := provision.AddPoolOptions{Name: "pool1", Default: true}
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	user, err := s.token.User()

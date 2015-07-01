@@ -571,7 +571,7 @@ func (app *App) SetPool() error {
 		return err
 	}
 	if pool == "" {
-		pool, err = app.GetFallbackPool()
+		pool, err = app.GetDefaultPool()
 		if err != nil {
 			return err
 		}
@@ -605,14 +605,13 @@ func (app *App) GetPoolForApp(poolName string) (string, error) {
 	return pools[0].Name, nil
 }
 
-func (app *App) GetFallbackPool() (string, error) {
-	query := bson.M{"$or": []bson.M{{"teams": bson.M{"$exists": false}}, {"teams": bson.M{"$size": 0}}}}
-	pools, err := provision.ListPools(query)
+func (app *App) GetDefaultPool() (string, error) {
+	pools, err := provision.ListPools(bson.M{"default": true})
 	if err != nil {
 		return "", err
 	}
 	if len(pools) == 0 {
-		return "", stderr.New("No fallback pool.")
+		return "", stderr.New("No default pool.")
 	}
 	return pools[0].Name, nil
 }

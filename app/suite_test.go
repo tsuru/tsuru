@@ -126,7 +126,7 @@ func (s *S) SetUpTest(c *check.C) {
 	err := s.conn.Plans().Insert(s.defaultPlan)
 	c.Assert(err, check.IsNil)
 	s.Pool = "pool1"
-	opts := provision.AddPoolOptions{Name: s.Pool}
+	opts := provision.AddPoolOptions{Name: s.Pool, Default: true}
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	repository.Manager().CreateUser(s.user.Email)
