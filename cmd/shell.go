@@ -18,8 +18,6 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-var httpHeaderRegexp = regexp.MustCompile(`HTTP/.*? (\d+)`)
-
 var httpRegexp = regexp.MustCompile(`^http`)
 
 type ShellToContainerCmd struct {
