@@ -2712,11 +2712,15 @@ func (s *S) TestAppSetPoolByTeamOwner(c *check.C) {
 	c.Assert(app.Pool, check.Equals, "test")
 }
 
-func (s *S) TestAppSetPoolFallback(c *check.C) {
+func (s *S) TestAppSetPoolDefault(c *check.C) {
+	opts := provision.AddPoolOptions{Name: "test", Public: true}
+	err := provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("test")
 	app := App{
 		Name: "test",
 	}
-	err := app.SetPool()
+	err = app.SetPool()
 	c.Assert(err, check.IsNil)
 	c.Assert(app.Pool, check.Equals, "pool1")
 }
@@ -2766,7 +2770,7 @@ func (s *S) TestAppSetPoolManyPools(c *check.C) {
 	c.Assert(err, check.Equals, ManyPoolsError)
 }
 
-func (s *S) TestAppSetPoolNoFallback(c *check.C) {
+func (s *S) TestAppSetPoolNoDefault(c *check.C) {
 	err := provision.RemovePool("pool1")
 	c.Assert(err, check.IsNil)
 	opts := provision.AddPoolOptions{Name: "pool1"}
