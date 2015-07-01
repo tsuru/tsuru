@@ -5,11 +5,8 @@
 package cmd
 
 import (
-	"crypto/tls"
 	"fmt"
 	"io"
-	"net"
-	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
@@ -17,11 +14,13 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/tsuru/tsuru/errors"
 	"golang.org/x/crypto/ssh/terminal"
+	"golang.org/x/net/websocket"
 )
 
 var httpHeaderRegexp = regexp.MustCompile(`HTTP/.*? (\d+)`)
+
+var httpRegexp = regexp.MustCompile(`^http`)
 
 type ShellToContainerCmd struct {
 	GuessingCommand
@@ -78,59 +77,19 @@ func (c *ShellToContainerCmd) Run(context *Context, client *Client) error {
 	if err != nil {
 		return err
 	}
-	request, err := http.NewRequest("GET", serverURL, nil)
+	serverURL = httpRegexp.ReplaceAllString(serverURL, "ws")
+	config, err := websocket.NewConfig(serverURL, "ws://localhost")
 	if err != nil {
 		return err
 	}
-	request.Close = true
-	token, err := ReadToken()
-	if err == nil {
-		request.Header.Set("Authorization", "bearer "+token)
+	if token, err := ReadToken(); err == nil {
+		config.Header.Set("Authorization", "bearer "+token)
 	}
-	parsedURL, _ := url.Parse(serverURL)
-	host := parsedURL.Host
-	if _, _, err := net.SplitHostPort(host); err != nil {
-		port := "80"
-		if parsedURL.Scheme == "https" {
-			port = "443"
-		}
-		host += ":" + port
-	}
-	var conn net.Conn
-	if parsedURL.Scheme == "https" {
-		serverName, _, _ := net.SplitHostPort(host)
-		config := tls.Config{ServerName: serverName}
-		conn, err = tls.Dial("tcp", host, &config)
-	} else {
-		conn, err = net.Dial("tcp", host)
-	}
+	conn, err := websocket.DialConfig(config)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	request.Write(conn)
-	bytesLimit := 12
-	var readStr string
-	byteBuffer := make([]byte, 1)
-	for i := 0; i < bytesLimit && byteBuffer[0] != '\n'; i++ {
-		_, err := conn.Read(byteBuffer)
-		if err != nil {
-			break
-		}
-		readStr += string(byteBuffer)
-	}
-	matches := httpHeaderRegexp.FindAllStringSubmatch(readStr, -1)
-	if len(matches) > 0 && len(matches[0]) > 1 {
-		httpError, _ := strconv.Atoi(matches[0][1])
-		var message string
-		if httpError == http.StatusNotFound {
-			message = fmt.Sprintf("App %s not found", appName)
-		} else {
-			message = http.StatusText(httpError)
-		}
-		return &errors.HTTP{Code: httpError, Message: message}
-	}
-	context.Stdout.Write([]byte(readStr))
 	errs := make(chan error, 2)
 	quit := make(chan bool)
 	go io.Copy(conn, context.Stdin)

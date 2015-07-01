@@ -6,16 +6,20 @@ package cmd
 
 import (
 	"bytes"
-	"fmt"
-	"net"
 	"net/http"
 	"net/http/httptest"
-	"os"
 
 	"github.com/tsuru/tsuru/cmd/cmdtest"
-	"github.com/tsuru/tsuru/errors"
+	"golang.org/x/net/websocket"
 	"gopkg.in/check.v1"
 )
+
+func buildHandler(content []byte) websocket.Handler {
+	return websocket.Handler(func(conn *websocket.Conn) {
+		conn.Write(content)
+		conn.Close()
+	})
+}
 
 func (s *S) TestShellToContainerCmdInfo(c *check.C) {
 	var command ShellToContainerCmd
@@ -24,22 +28,9 @@ func (s *S) TestShellToContainerCmdInfo(c *check.C) {
 }
 
 func (s *S) TestShellToContainerCmdRunWithApp(c *check.C) {
-	var closeClientConn func()
 	guesser := cmdtest.FakeGuesser{Name: "myapp"}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/apps/myapp/shell" && r.Method == "GET" && r.Header.Get("Authorization") == "bearer abc123" {
-			c.Assert(r.URL.Query().Get("term"), check.Equals, os.Getenv("TERM"))
-			conn, _, err := w.(http.Hijacker).Hijack()
-			c.Assert(err, check.IsNil)
-			conn.Write([]byte("hello my friend\n"))
-			conn.Write([]byte("glad to see you here\n"))
-			closeClientConn()
-		} else {
-			http.Error(w, "not found", http.StatusNotFound)
-		}
-	}))
+	server := httptest.NewServer(buildHandler([]byte("hello my friend\nglad to see you here\n")))
 	defer server.Close()
-	closeClientConn = server.CloseClientConnections
 	target := "http://" + server.Listener.Addr().String()
 	targetRecover := cmdtest.SetTargetFile(c, []byte(target))
 	defer cmdtest.RollbackFile(targetRecover)
@@ -63,23 +54,9 @@ func (s *S) TestShellToContainerCmdRunWithApp(c *check.C) {
 }
 
 func (s *S) TestShellToContainerWithUnit(c *check.C) {
-	var closeClientConn func()
 	guesser := cmdtest.FakeGuesser{Name: "myapp"}
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/apps/myapp/shell" && r.Method == "GET" && r.Header.Get("Authorization") == "bearer abc123" {
-			c.Assert(r.URL.Query().Get("unit"), check.Equals, "containerid")
-			c.Assert(r.URL.Query().Get("container_id"), check.Equals, "containerid")
-			conn, _, err := w.(http.Hijacker).Hijack()
-			c.Assert(err, check.IsNil)
-			conn.Write([]byte("hello my friend\n"))
-			conn.Write([]byte("glad to see you here\n"))
-			closeClientConn()
-		} else {
-			http.Error(w, "not found", http.StatusNotFound)
-		}
-	}))
+	server := httptest.NewServer(buildHandler([]byte("hello my friend\nglad to see you here\n")))
 	defer server.Close()
-	closeClientConn = server.CloseClientConnections
 	target := "http://" + server.Listener.Addr().String()
 	targetRecover := cmdtest.SetTargetFile(c, []byte(target))
 	defer cmdtest.RollbackFile(targetRecover)
@@ -103,107 +80,6 @@ func (s *S) TestShellToContainerWithUnit(c *check.C) {
 	c.Assert(stdout.String(), check.Equals, "hello my friend\nglad to see you here\n")
 }
 
-func (s *S) TestShellToContainerCmdNoToken(c *check.C) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "You must provide a valid Authorization header", http.StatusUnauthorized)
-	}))
-	defer server.Close()
-	target := "http://" + server.Listener.Addr().String()
-	targetRecover := cmdtest.SetTargetFile(c, []byte(target))
-	defer cmdtest.RollbackFile(targetRecover)
-	var stdin, stdout, stderr bytes.Buffer
-	context := Context{
-		Args:   []string{"af3332d"},
-		Stdout: &stdout,
-		Stderr: &stderr,
-		Stdin:  &stdin,
-	}
-	var command ShellToContainerCmd
-	err := command.Run(&context, nil)
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Unauthorized")
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusUnauthorized)
-}
-
-func (s *S) TestShellToContainerCmdAppNotFound(c *check.C) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.Error(w, "Not found", http.StatusNotFound)
-	}))
-	defer server.Close()
-	target := "http://" + server.Listener.Addr().String()
-	targetRecover := cmdtest.SetTargetFile(c, []byte(target))
-	defer cmdtest.RollbackFile(targetRecover)
-	var stdin, stdout, stderr bytes.Buffer
-	context := Context{
-		Args:   []string{"af3332d"},
-		Stdout: &stdout,
-		Stderr: &stderr,
-		Stdin:  &stdin,
-	}
-	var command ShellToContainerCmd
-	err := command.Run(&context, nil)
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "App cmd not found")
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusNotFound)
-}
-
-func (s *S) TestShellToContainerCmdSmallData(c *check.C) {
-	var closeClientConn func()
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, _, err := w.(http.Hijacker).Hijack()
-		c.Assert(err, check.IsNil)
-		conn.Write([]byte("hello"))
-		closeClientConn()
-	}))
-	defer server.Close()
-	closeClientConn = server.CloseClientConnections
-	target := "http://" + server.Listener.Addr().String()
-	targetRecover := cmdtest.SetTargetFile(c, []byte(target))
-	defer cmdtest.RollbackFile(targetRecover)
-	var stdout, stderr, stdin bytes.Buffer
-	context := Context{
-		Args:   []string{"af3332d"},
-		Stdout: &stdout,
-		Stderr: &stderr,
-		Stdin:  &stdin,
-	}
-	var command ShellToContainerCmd
-	err := command.Run(&context, nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(stdout.String(), check.Equals, "hello")
-}
-
-func (s *S) TestShellToContainerCmdLongNoNewLine(c *check.C) {
-	var closeClientConn func()
-	expected := fmt.Sprintf("%0200s", "x")
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		conn, _, err := w.(http.Hijacker).Hijack()
-		c.Assert(err, check.IsNil)
-		conn.Write([]byte(expected))
-		closeClientConn()
-	}))
-	defer server.Close()
-	closeClientConn = server.CloseClientConnections
-	target := "http://" + server.Listener.Addr().String()
-	targetRecover := cmdtest.SetTargetFile(c, []byte(target))
-	defer cmdtest.RollbackFile(targetRecover)
-	var stdout, stderr, stdin bytes.Buffer
-	context := Context{
-		Args:   []string{"af3332d"},
-		Stdout: &stdout,
-		Stderr: &stderr,
-		Stdin:  &stdin,
-	}
-	var command ShellToContainerCmd
-	err := command.Run(&context, nil)
-	c.Assert(err, check.IsNil)
-	c.Assert(stdout.String(), check.Equals, expected)
-}
-
 func (s *S) TestShellToContainerCmdConnectionRefused(c *check.C) {
 	server := httptest.NewServer(nil)
 	addr := server.Listener.Addr().String()
@@ -222,9 +98,4 @@ func (s *S) TestShellToContainerCmdConnectionRefused(c *check.C) {
 	var command ShellToContainerCmd
 	err := command.Run(&context, nil)
 	c.Assert(err, check.NotNil)
-	opErr, ok := err.(*net.OpError)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(opErr.Net, check.Equals, "tcp")
-	c.Assert(opErr.Op, check.Equals, "dial")
-	c.Assert(opErr.Addr.String(), check.Equals, addr)
 }
