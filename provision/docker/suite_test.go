@@ -119,7 +119,7 @@ func (s *S) SetUpTest(c *check.C) {
 	s.server, err = dtesting.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	s.p.cluster, err = cluster.New(nil, s.p.storage,
-		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "test-fallback"}},
+		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "test-default"}},
 	)
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner = s.p
@@ -130,7 +130,7 @@ func (s *S) SetUpTest(c *check.C) {
 	err = clearClusterStorage(s.clusterSess)
 	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.Reset()
-	opts := provision.AddPoolOptions{Name: "test-fallback"}
+	opts := provision.AddPoolOptions{Name: "test-default", Default: true}
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 }
@@ -167,8 +167,8 @@ func (s *S) startMultipleServersCluster() (*dockerProvisioner, error) {
 	}
 	p.storage = &cluster.MapStorage{}
 	p.cluster, err = cluster.New(nil, p.storage,
-		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "test-fallback"}},
-		cluster.Node{Address: otherUrl, Metadata: map[string]string{"pool": "test-fallback"}},
+		cluster.Node{Address: s.server.URL(), Metadata: map[string]string{"pool": "test-default"}},
+		cluster.Node{Address: otherUrl, Metadata: map[string]string{"pool": "test-default"}},
 	)
 	if err != nil {
 		return nil, err

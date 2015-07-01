@@ -183,17 +183,12 @@ func (s *S) TestSchedulerScheduleNoName(c *check.C) {
 	c.Assert(container.HostAddr, check.Equals, "")
 }
 
-func (s *S) TestSchedulerScheduleFallback(c *check.C) {
+func (s *S) TestSchedulerScheduleDefaultPool(c *check.C) {
 	a1 := app.App{Name: "impius", Teams: []string{"tsuruteam", "nodockerforme"}}
 	cont1 := container{ID: "1", Name: "impius1", AppName: a1.Name}
 	err := s.storage.Apps().Insert(a1)
 	c.Assert(err, check.IsNil)
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a1.Name})
-	p := provision.Pool{Name: "pool1", Teams: []string{}}
-	o := provision.AddPoolOptions{Name: p.Name}
-	err = provision.AddPool(o)
-	c.Assert(err, check.IsNil)
-	defer provision.RemovePool(p.Name)
 	contColl := s.p.collection()
 	defer contColl.Close()
 	err = contColl.Insert(cont1)
@@ -203,7 +198,7 @@ func (s *S) TestSchedulerScheduleFallback(c *check.C) {
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	s.p.cluster = clusterInstance
 	c.Assert(err, check.IsNil)
-	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
+	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "test-default"})
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
 	node, err := scheduler.Schedule(clusterInstance, opts, []string{a1.Name, "web"})
@@ -211,8 +206,8 @@ func (s *S) TestSchedulerScheduleFallback(c *check.C) {
 	c.Check(node.Address, check.Equals, "http://url0:1234")
 }
 
-func (s *S) TestSchedulerNoFallback(c *check.C) {
-	provision.RemovePool("test-fallback")
+func (s *S) TestSchedulerNoDefaultPool(c *check.C) {
+	provision.RemovePool("test-default")
 	a := app.App{Name: "bill", Teams: []string{"jean"}}
 	err := s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -231,11 +226,11 @@ func (s *S) TestSchedulerNoFallback(c *check.C) {
 	node, err := scheduler.Schedule(clusterInstance, opts, schedOpts)
 	c.Assert(node.Address, check.Equals, "")
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.Equals, errNoFallback)
+	c.Assert(err, check.Equals, errNoDefaultPool)
 }
 
 func (s *S) TestSchedulerNoNodesNoPool(c *check.C) {
-	provision.RemovePool("test-fallback")
+	provision.RemovePool("test-default")
 	app := app.App{Name: "bill", Teams: []string{"jean"}}
 	err := s.storage.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
@@ -248,11 +243,11 @@ func (s *S) TestSchedulerNoNodesNoPool(c *check.C) {
 	node, err := scheduler.Schedule(clusterInstance, opts, schedOpts)
 	c.Assert(node.Address, check.Equals, "")
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.Equals, errNoFallback)
+	c.Assert(err, check.Equals, errNoDefaultPool)
 }
 
-func (s *S) TestSchedulerNoNodesWithFallbackPool(c *check.C) {
-	provision.RemovePool("test-fallback")
+func (s *S) TestSchedulerNoNodesWithDefaultPool(c *check.C) {
+	provision.RemovePool("test-default")
 	app := app.App{Name: "bill", Teams: []string{"jean"}}
 	err := s.storage.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
@@ -268,6 +263,8 @@ func (s *S) TestSchedulerNoNodesWithFallbackPool(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("mypool")
 	defer provision.RemovePool("mypool2")
+	provision.AddTeamsToPool("mypool", []string{"jean"})
+	provision.AddTeamsToPool("mypool2", []string{"jean"})
 	opts := docker.CreateContainerOptions{}
 	schedOpts := []string{app.Name, "web"}
 	node, err := scheduler.Schedule(clusterInstance, opts, schedOpts)

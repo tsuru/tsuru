@@ -18,9 +18,9 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-// errNoFallback is the error returned when no fallback hosts are configured in
+// errNoDefaultPool is the error returned when no default hosts are configured in
 // the segregated scheduler.
-var errNoFallback = errors.New("No fallback configured in the scheduler: you should have a pool without any teams")
+var errNoDefaultPool = errors.New("No default pool configured in the scheduler: you should create a default pool.")
 
 type segregatedScheduler struct {
 	hostMutex           sync.Mutex

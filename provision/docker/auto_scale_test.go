@@ -508,7 +508,7 @@ func (s *S) TestAutoScaleConfigRunNoGroup(c *check.C) {
 	clusterInstance, err := cluster.New(nil, p.storage,
 		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
 			"iaas": "my-scale-iaas",
-			"pool": "test-fallback",
+			"pool": "test-default",
 		}},
 	)
 	c.Assert(err, check.IsNil)

@@ -954,19 +954,19 @@ func (p *dockerProvisioner) Nodes(app provision.App) ([]cluster.Node, error) {
 		return nil, err
 	}
 	if len(pools) == 0 {
-		query := bson.M{"$or": []bson.M{{"teams": bson.M{"$exists": false}}, {"teams": bson.M{"$size": 0}}}}
+		query := bson.M{"default": true}
 		pools, err = provision.ListPools(query)
 		if err != nil {
 			return nil, err
 		}
 	}
 	if len(pools) == 0 {
-		return nil, errNoFallback
+		return nil, errNoDefaultPool
 	}
 	for _, pool := range pools {
 		nodes, err := p.getCluster().NodesForMetadata(map[string]string{"pool": pool.Name})
 		if err != nil {
-			return nil, errNoFallback
+			return nil, errNoDefaultPool
 		}
 		if len(nodes) > 0 {
 			return nodes, nil
