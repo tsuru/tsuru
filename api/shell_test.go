@@ -143,7 +143,7 @@ func (s *S) TestAppShellUnauthorizedError(c *check.C) {
 			return false
 		}
 		result += string(part)
-		return result == "Error: no token provided or session expired, please login again"
+		return result == "Error: no token provided or session expired, please login again\n"
 	})
 	c.Assert(err, check.IsNil)
 }
@@ -180,7 +180,7 @@ func (s *S) TestAppShellGenericError(c *check.C) {
 			return false
 		}
 		result += string(part)
-		return result == "Error: App someapp not found."
+		return result == "Error: App someapp not found.\n"
 	})
 	c.Assert(err, check.IsNil)
 }

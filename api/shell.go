@@ -22,9 +22,9 @@ func remoteShellHandler(ws *websocket.Conn) {
 			var msg string
 			switch httpErr.Code {
 			case http.StatusUnauthorized:
-				msg = "no token provided or session expired, please login again"
+				msg = "no token provided or session expired, please login again\n"
 			default:
-				msg = httpErr.Message
+				msg = httpErr.Message + "\n"
 			}
 			ws.Write([]byte("Error: " + msg))
 		}
