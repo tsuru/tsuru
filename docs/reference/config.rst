@@ -150,6 +150,8 @@ database:name
 ``database:name`` is the name of the database that tsuru uses. It is a
 mandatory setting and has no default value. An example of value is "tsuru".
 
+.. _config_logdb:
+
 database:logdb-url
 ++++++++++++++++++
 
