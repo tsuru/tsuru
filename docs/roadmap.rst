@@ -27,7 +27,7 @@ Next Release 0.12.0
 
     - Lean containers (issue `#1136 <https://github.com/tsuru/tsuru/issues/1136>`_)
 
-    - Dockerize tsuru installation (issue `#1091 <https://github.com/tsuru/tsuru/issues/1136>`_)
+    - Dockerize tsuru installation (issue `#1091 <https://github.com/tsuru/tsuru/issues/1091>`_)
 
 Long term Goals
 ===============
