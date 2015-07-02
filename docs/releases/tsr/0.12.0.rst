@@ -10,7 +10,7 @@ Welcome to tsr 0.12.0!
 
 These release notes cover the `new features`_, `bug fixes`_, `general
 improvements`_ and `backward incompatible changes`_ you'll want to be aware of
-when upgrading from tsr 0.11.0 or older versions.
+when upgrading from tsr 0.11.2 or older versions.
 
 .. _`new features`: `Main new features`_
 .. _`general improvements`: `Other improvements`_
@@ -18,6 +18,19 @@ when upgrading from tsr 0.11.0 or older versions.
 
 Main new features
 =================
+
+    * Now tsuru has just three types of pool: by teams, public and default.
+      Team's pool are segregated by teams, and cloud administrator should set
+      teams in this pool manually. This pool are just accessible by team's
+      members.
+
+      Public pools are accessible by anyone. It can be used to segregate
+      machines that have specific hardware, like SSD hard drives or high end
+      CPUs.
+ 
+      Default pool are for experimentation and low profile apps,
+      like service dashboard and "in development" apps.
+      This is the old fallback pool, but with a explict flag.
 
 
 Bug fixes
@@ -32,3 +45,6 @@ Other improvements
 
 Backward incompatible changes (action needed)
 =============================================
+    * You should change your fallback pool to default pool and to do that you
+      can run a `tsuru pool-update pool_name --default=true`
+
