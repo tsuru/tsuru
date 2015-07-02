@@ -19,12 +19,12 @@ when upgrading from tsr 0.11.2 or older versions.
 Main new features
 =================
 
-    * Now tsuru has just three types of pool: by teams, public and default.
+    * Now tsuru has three types of pool: by team, public and default.
       Team's pool are segregated by teams, and cloud administrator should set
       teams in this pool manually. This pool are just accessible by team's
       members.
 
-      Public pools are accessible by anyone. It can be used to segregate
+      Public pools are accessible by any user. It can be used to segregate
       machines that have specific hardware, like SSD hard drives or high end
       CPUs.
  

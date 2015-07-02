@@ -24,6 +24,23 @@ In order to create a pool, you should invoke `tsuru-admin pool-add`:
 
     $ tsuru-admin pool-add pool1
 
+If you want to create a public pool you can do:
+
+.. highlight:: bash
+
+::
+
+    $ tsuru-admin pool-add pool1 -p
+
+If you want a default pool, you can create it with:
+
+.. highlight:: bash
+
+::
+
+    $ tsuru-admin pool-add pool1 -d
+
+
 Adding teams to a pool
 ----------------------
 
