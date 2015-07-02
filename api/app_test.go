@@ -250,7 +250,9 @@ func (s *S) TestAppList(c *check.C) {
 	c.Assert(apps, check.HasLen, 2)
 	miniApp1 := minifyApp(app1)
 	miniApp1.Lock.AcquireDate = apps[0].Lock.AcquireDate
-	expected := []miniApp{miniApp1, minifyApp(app2)}
+	miniApp2 := minifyApp(app2)
+	miniApp2.Lock.AcquireDate = apps[1].Lock.AcquireDate
+	expected := []miniApp{miniApp1, miniApp2}
 	c.Assert(apps, check.DeepEquals, expected)
 	action := rectest.Action{Action: "app-list", User: s.user.Email}
 	c.Assert(action, rectest.IsRecorded)
