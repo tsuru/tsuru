@@ -106,6 +106,7 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	platform := r.URL.Query().Get("platform")
 	teamOwner := r.URL.Query().Get("teamowner")
 	owner := r.URL.Query().Get("owner")
+	locked, _ := strconv.ParseBool(r.URL.Query().Get("locked"))
 	extra := make([]interface{}, 0, 1)
 	filter := &app.Filter{}
 	if name != "" {
@@ -123,6 +124,10 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if owner != "" {
 		extra = append(extra, fmt.Sprintf("owner=%s", owner))
 		filter.UserOwner = owner
+	}
+	if locked {
+		extra = append(extra, fmt.Sprintf("locked=%v", locked))
+		filter.Locked = true
 	}
 	rec.Log(u.Email, "app-list", extra...)
 	apps, err := app.List(u, filter)
