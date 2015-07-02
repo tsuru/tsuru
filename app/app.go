@@ -1170,10 +1170,14 @@ type Filter struct {
 	Platform  string
 	TeamOwner string
 	UserOwner string
+	Locked    bool
 }
 
 func (f *Filter) Query() bson.M {
 	query := bson.M{}
+	if f == nil {
+		return query
+	}
 	if f.Name != "" {
 		query["name"] = bson.M{"$regex": f.Name}
 	}
@@ -1186,6 +1190,9 @@ func (f *Filter) Query() bson.M {
 	if f.UserOwner != "" {
 		query["owner"] = f.UserOwner
 	}
+	if f.Locked {
+		query["lock.locked"] = true
+	}
 	return query
 }
 
@@ -1197,17 +1204,12 @@ func (f *Filter) Query() bson.M {
 // The list can be filtered through the filter parameter.
 func List(u *auth.User, filter *Filter) ([]App, error) {
 	var apps []App
-	var query bson.M
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	if filter != nil {
-		query = filter.Query()
-	} else {
-		query = bson.M{}
-	}
+	query := filter.Query()
 	if u == nil || u.IsAdmin() {
 		if err := conn.Apps().Find(query).All(&apps); err != nil {
 			return []App{}, err

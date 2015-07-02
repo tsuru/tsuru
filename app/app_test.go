@@ -2201,6 +2201,37 @@ func (s *S) TestListReturnsAppsForAGivenUserFilteringByOwner(c *check.C) {
 	c.Assert(len(apps), check.Equals, 1)
 }
 
+func (s *S) TestListReturnsAppsForAGivenUserFilteringByLockState(c *check.C) {
+	a := App{
+		Name:  "testapp",
+		Teams: []string{s.team.Name},
+		Owner: "foo",
+	}
+	a2 := App{
+		Name:  "othertestapp",
+		Teams: []string{"commonteam", s.team.Name},
+		Owner: "bar",
+		Lock: AppLock{
+			Locked:      true,
+			Reason:      "something",
+			Owner:       s.user.Email,
+			AcquireDate: time.Now(),
+		},
+	}
+	err := s.conn.Apps().Insert(&a)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Insert(&a2)
+	c.Assert(err, check.IsNil)
+	defer func() {
+		s.conn.Apps().Remove(bson.M{"name": a.Name})
+		s.conn.Apps().Remove(bson.M{"name": a2.Name})
+	}()
+	apps, err := List(s.user, &Filter{Locked: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(apps), check.Equals, 1)
+	c.Assert(apps[0].Name, check.Equals, "othertestapp")
+}
+
 func (s *S) TestListAll(c *check.C) {
 	a := App{
 		Name:  "testapp",
