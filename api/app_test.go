@@ -178,7 +178,19 @@ func (s *S) TestAppList(c *check.C) {
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.deleteApp(&app1)
-	app2 := app.App{Name: "app2", Platform: "zend", Teams: []string{s.team.Name}, CName: []string{"cname.app2"}}
+	acquireDate := time.Date(2015, time.February, 12, 12, 3, 0, 0, time.Local)
+	app2 := app.App{
+		Name:     "app2",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+		CName:    []string{"cname.app2"},
+		Lock: app.AppLock{
+			Locked:      true,
+			Reason:      "wanted",
+			Owner:       s.user.Email,
+			AcquireDate: acquireDate,
+		},
+	}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.deleteApp(&app2)
@@ -195,8 +207,10 @@ func (s *S) TestAppList(c *check.C) {
 	var apps []miniApp
 	err = json.Unmarshal(body, &apps)
 	c.Assert(err, check.IsNil)
-	expected := []miniApp{minifyApp(app1), minifyApp(app2)}
-	c.Assert(len(apps), check.Equals, len(expected))
+	c.Assert(apps, check.HasLen, 2)
+	miniApp1 := minifyApp(app1)
+	miniApp1.Lock.AcquireDate = apps[0].Lock.AcquireDate
+	expected := []miniApp{miniApp1, minifyApp(app2)}
 	c.Assert(apps, check.DeepEquals, expected)
 	action := rectest.Action{Action: "app-list", User: s.user.Email}
 	c.Assert(action, rectest.IsRecorded)

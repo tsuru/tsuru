@@ -84,6 +84,7 @@ type miniApp struct {
 	Units []provision.Unit `json:"units"`
 	CName []string         `json:"cname"`
 	Ip    string           `json:"ip"`
+	Lock  app.AppLock      `json:"lock"`
 }
 
 func minifyApp(app app.App) miniApp {
@@ -92,6 +93,7 @@ func minifyApp(app app.App) miniApp {
 		Units: app.Units(),
 		CName: app.CName,
 		Ip:    app.Ip,
+		Lock:  app.Lock,
 	}
 }
 
