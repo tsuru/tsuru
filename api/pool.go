@@ -87,7 +87,6 @@ func listPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 }
 
 type teamsToPoolParams struct {
-	Pool  string   `json:"pool"`
 	Teams []string `json:"teams"`
 }
 
@@ -101,7 +100,8 @@ func addTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	if err != nil {
 		return err
 	}
-	return provision.AddTeamsToPool(params.Pool, params.Teams)
+	pool := r.URL.Query().Get(":name")
+	return provision.AddTeamsToPool(pool, params.Teams)
 }
 
 func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -114,7 +114,8 @@ func removeTeamToPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Toke
 	if err != nil {
 		return err
 	}
-	return provision.RemoveTeamsFromPool(params.Pool, params.Teams)
+	pool := r.URL.Query().Get(":name")
+	return provision.RemoveTeamsFromPool(pool, params.Teams)
 }
 
 func poolUpdateHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
