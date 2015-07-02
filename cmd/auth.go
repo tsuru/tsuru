@@ -129,9 +129,29 @@ func (c *logout) Run(context *Context, client *Client) error {
 	return nil
 }
 
-type user struct {
+// APIUser is a user in the tsuru API.
+type APIUser struct {
 	Email string
 	Teams []string
+}
+
+func GetUser(client *Client) (*APIUser, error) {
+	url, err := GetURL("/users/info")
+	if err != nil {
+		return nil, err
+	}
+	request, _ := http.NewRequest("GET", url, nil)
+	resp, err := client.Do(request)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	var u APIUser
+	err = json.NewDecoder(resp.Body).Decode(&u)
+	if err != nil {
+		return nil, err
+	}
+	return &u, nil
 }
 
 type userInfo struct{}
@@ -145,18 +165,7 @@ func (userInfo) Info() *Info {
 }
 
 func (userInfo) Run(context *Context, client *Client) error {
-	url, err := GetURL("/users/info")
-	if err != nil {
-		return err
-	}
-	request, _ := http.NewRequest("GET", url, nil)
-	resp, err := client.Do(request)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	var u user
-	err = json.NewDecoder(resp.Body).Decode(&u)
+	u, err := GetUser(client)
 	if err != nil {
 		return err
 	}
