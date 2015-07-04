@@ -10,21 +10,27 @@ import (
 	"time"
 )
 
-func WaitCondition(timeout time.Duration, condFn func() bool) error {
+func WaitCondition(timeout time.Duration, cond func() bool) error {
 	ok := make(chan struct{})
+	exit := make(chan struct{})
 	go func() {
 		for {
-			if condFn() {
-				close(ok)
-				return
+			select {
+			case <-exit:
+			default:
+				if cond() {
+					close(ok)
+					return
+				}
+				time.Sleep(10 * time.Millisecond)
 			}
-			time.Sleep(10 * time.Millisecond)
 		}
 	}()
 	select {
 	case <-ok:
 		return nil
 	case <-time.After(timeout):
+		close(exit)
 		return fmt.Errorf("timed out waiting for condition after %s", timeout)
 	}
 }
