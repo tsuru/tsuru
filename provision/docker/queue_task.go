@@ -5,7 +5,9 @@
 package docker
 
 import (
+	"bytes"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -19,6 +21,8 @@ import (
 )
 
 const runBsTaskName = "run-bs"
+
+var digestRegexp = regexp.MustCompile(`(?m)^Digest: (.*)$`)
 
 type runBs struct{}
 
@@ -92,9 +96,9 @@ func (runBs) createBsContainer(dockerEndpoint string) error {
 	if err != nil {
 		return err
 	}
-	bsImage, _ := config.GetString("docker:bs:image")
-	if bsImage == "" {
-		bsImage = "tsuru/bs"
+	bsImage, err := getBsImage()
+	if err != nil {
+		return err
 	}
 	tsuruEndpoint, _ := config.GetString("host")
 	if !strings.HasPrefix(tsuruEndpoint, "http://") && !strings.HasPrefix(tsuruEndpoint, "https://") {
@@ -153,10 +157,23 @@ func (runBs) createBsContainer(dockerEndpoint string) error {
 		container, err = client.CreateContainer(opts)
 	}
 	if err == docker.ErrNoSuchImage {
-		pullOpts := docker.PullImageOptions{Repository: bsImage}
+		var buf bytes.Buffer
+		pullOpts := docker.PullImageOptions{
+			Repository:   bsImage,
+			OutputStream: &buf,
+		}
 		err = client.PullImage(pullOpts, getRegistryAuthConfig())
 		if err != nil {
 			return err
+		}
+		match := digestRegexp.FindAllStringSubmatch(buf.String(), 1)
+		if len(match) > 0 {
+			bsImage += "@" + match[0][1]
+			err = saveBsImage(bsImage)
+			if err != nil {
+				return err
+			}
+			opts.Config.Image = bsImage
 		}
 		container, err = client.CreateContainer(opts)
 	}
@@ -171,14 +188,6 @@ func (runBs) createBsContainer(dockerEndpoint string) error {
 		return err
 	}
 	return client.StartContainer(container.ID, &hostConfig)
-}
-
-func getBsSysLogPort() int {
-	bsPort, _ := config.GetInt("docker:bs:syslog-port")
-	if bsPort == 0 {
-		bsPort = 1514
-	}
-	return bsPort
 }
 
 func (runBs) destroyMachine(id string) {

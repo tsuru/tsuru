@@ -5,12 +5,23 @@
 package docker
 
 import (
+	"net/http"
 	"strings"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"gopkg.in/check.v1"
+)
+
+const (
+	pullOutputDigest = `{"status":"Pulling from tsuru/bs","id":"latest"}
+{"status":"Already exists","progressDetail":{},"id":"428b411c28f0"}{"status":"Already exists","progressDetail":{},"id":"435050075b3f"}{"status":"Already exists","progressDetail":{},"id":"9fd3c8c9af32"}{"status":"Already exists","progressDetail":{},"id":"6d4946999d4f"}{"status":"Already exists","progressDetail":{},"id":"ad1fc4a2d1ca"}{"status":"Already exists","progressDetail":{},"id":"c5f8e17b5f1c"}{"status":"Already exists","progressDetail":{},"id":"c5f8e17b5f1c"}{"status":"Digest: sha256:7f75ad504148650f26429543007607dd84886b54ffc9cdf8879ea8ba4c5edb7d"}
+{"status":"Status: Image is up to date for tsuru/bs"}`
+	pullOutputNoDigest = `{"status":"Pulling from tsuru/bs","id":"latest"}
+{"status":"Already exists","progressDetail":{},"id":"428b411c28f0"}{"status":"Already exists","progressDetail":{},"id":"435050075b3f"}{"status":"Already exists","progressDetail":{},"id":"9fd3c8c9af32"}{"status":"Already exists","progressDetail":{},"id":"6d4946999d4f"}{"status":"Already exists","progressDetail":{},"id":"ad1fc4a2d1ca"}{"status":"Already exists","progressDetail":{},"id":"c5f8e17b5f1c"}{"status":"Already exists","progressDetail":{},"id":"c5f8e17b5f1c"}
+{"status":"Status: Image is up to date for tsuru/bs"}`
+	digest = "sha256:7f75ad504148650f26429543007607dd84886b54ffc9cdf8879ea8ba4c5edb7d"
 )
 
 func (s *S) TestWaitDocker(c *check.C) {
@@ -32,6 +43,12 @@ func (s *S) TestCreateBsContainer(c *check.C) {
 	server, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer server.Stop()
+	server.CustomHandler("/images/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		server.DefaultHandler().ServeHTTP(w, r)
+		w.Write([]byte(pullOutputDigest))
+	}))
 	client, err := docker.NewClient(server.URL())
 	c.Assert(err, check.IsNil)
 	err = client.PullImage(docker.PullImageOptions{
@@ -59,7 +76,7 @@ func (s *S) TestCreateBsContainer(c *check.C) {
 	c.Assert(container.HostConfig.PortBindings[docker.Port("514/udp")], check.DeepEquals, expectedBinding)
 	_, ok := container.Config.ExposedPorts[docker.Port("1514/udp")]
 	c.Assert(ok, check.Equals, true)
-	c.Assert(container.Config.Image, check.Equals, "myregistry/tsuru/bs")
+	c.Assert(container.Config.Image, check.Equals, "myregistry/tsuru/bs@"+digest)
 	c.Assert(container.HostConfig.RestartPolicy, check.Equals, docker.AlwaysRestart())
 	c.Assert(container.State.Running, check.Equals, true)
 	expectedEnv := map[string]string{
@@ -74,12 +91,21 @@ func (s *S) TestCreateBsContainer(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	gotEnv["TSURU_TOKEN"] = expectedEnv["TSURU_TOKEN"]
 	c.Assert(gotEnv, check.DeepEquals, expectedEnv)
+	conf, err := loadBsConfig()
+	c.Assert(err, check.IsNil)
+	c.Assert(conf.Image, check.Equals, "myregistry/tsuru/bs@"+digest)
 }
 
 func (s *S) TestCreateBsContainerSocketAndCustomSysLogPort(c *check.C) {
 	server, err := testing.NewServer("127.0.0.1:0", nil, nil)
 	c.Assert(err, check.IsNil)
 	defer server.Stop()
+	server.CustomHandler("/images/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		server.DefaultHandler().ServeHTTP(w, r)
+		w.Write([]byte(pullOutputNoDigest))
+	}))
 	config.Set("host", "127.0.0.1:8080")
 	config.Set("docker:bs:image", "myregistry/tsuru/bs")
 	config.Set("docker:bs:reporter-interval", 60)
