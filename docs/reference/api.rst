@@ -940,7 +940,8 @@ Example:
 1.10 Metadata
 -------------
 
-There is an endpoint to get metadata about tsuru API:
+Info about Tsuru API
+********************
 
     * Method: GET
     * Endpoint: /info
@@ -954,3 +955,40 @@ Example:
 
     GET /info HTTP/1.1
     {"version": "1.0"}
+
+Basic healthcheck of Tsuru API server
+*************************************
+
+    * Method: GET
+    * Endpoint: /healthcheck/
+    * Format: text
+
+Always returns 200 and text body of ``WORKING``.
+
+Example:
+
+::
+
+    GET /healthcheck/ HTTP/1.1
+    WORKING
+
+Full healthcheck of all Tsuru components
+****************************************
+
+    * Method: GET
+    * Endpoint: /healthcheck/?check=all
+    * Format: text
+
+Returns 200 when all components have a status of ``WORKING``.
+Returns 500 if any component does not have a status of ``WORKING``.
+Body always contains text with status and time to complete check for each component.
+
+Example:
+
+::
+
+    GET /healthcheck/?check=all HTTP/1.1
+    MongoDB: WORKING (643.81µs)
+    Router Hipache: WORKING (845.457µs)
+    docker-registry: WORKING (1.954069ms)
+    Gandalf: WORKING (1.787768ms)
