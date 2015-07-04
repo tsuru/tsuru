@@ -91,7 +91,7 @@ func (runBs) waitDocker(endpoint string) error {
 	}
 }
 
-func (runBs) createBsContainer(dockerEndpoint string) error {
+func (t runBs) createBsContainer(dockerEndpoint string) error {
 	client, err := docker.NewClient(dockerEndpoint)
 	if err != nil {
 		return err
@@ -166,14 +166,16 @@ func (runBs) createBsContainer(dockerEndpoint string) error {
 		if err != nil {
 			return err
 		}
-		match := digestRegexp.FindAllStringSubmatch(buf.String(), 1)
-		if len(match) > 0 {
-			bsImage += "@" + match[0][1]
-			err = saveBsImage(bsImage)
-			if err != nil {
-				return err
+		if t.shouldPin(bsImage) {
+			match := digestRegexp.FindAllStringSubmatch(buf.String(), 1)
+			if len(match) > 0 {
+				bsImage += "@" + match[0][1]
+				opts.Config.Image = bsImage
 			}
-			opts.Config.Image = bsImage
+		}
+		err = saveBsImage(bsImage)
+		if err != nil {
+			return err
 		}
 		container, err = client.CreateContainer(opts)
 	}
@@ -188,6 +190,12 @@ func (runBs) createBsContainer(dockerEndpoint string) error {
 		return err
 	}
 	return client.StartContainer(container.ID, &hostConfig)
+}
+
+func (runBs) shouldPin(image string) bool {
+	parts := strings.SplitN(image, "/", 3)
+	lastPart := parts[len(parts)-1]
+	return len(strings.SplitN(lastPart, ":", 2)) < 2
 }
 
 func (runBs) destroyMachine(id string) {
