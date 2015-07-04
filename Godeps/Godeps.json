@@ -181,36 +181,38 @@
 		},
 		{
 			"ImportPath": "github.com/mailgun/vulcand/anomaly",
-			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
+			"Comment": "v0.8.0-beta.3-15-g22a71f6",
+			"Rev": "22a71f6b1f6eb0b2be35aaaeadabf2a8ed8c4bc2"
 		},
 		{
 			"ImportPath": "github.com/mailgun/vulcand/api",
-			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
+			"Comment": "v0.8.0-beta.3-15-g22a71f6",
+			"Rev": "22a71f6b1f6eb0b2be35aaaeadabf2a8ed8c4bc2"
 		},
 		{
 			"ImportPath": "github.com/mailgun/vulcand/engine",
-			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
+			"Comment": "v0.8.0-beta.3-15-g22a71f6",
+			"Rev": "22a71f6b1f6eb0b2be35aaaeadabf2a8ed8c4bc2"
 		},
 		{
 			"ImportPath": "github.com/mailgun/vulcand/plugin",
-			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
+			"Comment": "v0.8.0-beta.3-15-g22a71f6",
+			"Rev": "22a71f6b1f6eb0b2be35aaaeadabf2a8ed8c4bc2"
 		},
 		{
 			"ImportPath": "github.com/mailgun/vulcand/proxy",
-			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
-		},
-		{
-			"ImportPath": "github.com/mailgun/vulcand/secret",
-			"Comment": "v0.8.0-beta.3",
-			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
+			"Comment": "v0.8.0-beta.3-15-g22a71f6",
+			"Rev": "22a71f6b1f6eb0b2be35aaaeadabf2a8ed8c4bc2"
 		},
 		{
 			"ImportPath": "github.com/mailgun/vulcand/stapler",
-			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
+			"Comment": "v0.8.0-beta.3-15-g22a71f6",
+			"Rev": "22a71f6b1f6eb0b2be35aaaeadabf2a8ed8c4bc2"
 		},
 		{
 			"ImportPath": "github.com/mailgun/vulcand/supervisor",
-			"Rev": "f0d929bd61791580828a957389d998fc6f22db58"
+			"Comment": "v0.8.0-beta.3-15-g22a71f6",
+			"Rev": "22a71f6b1f6eb0b2be35aaaeadabf2a8ed8c4bc2"
 		},
 		{
 			"ImportPath": "github.com/sajari/fuzzy",
@@ -262,19 +264,7 @@
 			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
 		},
 		{
-			"ImportPath": "golang.org/x/crypto/nacl/secretbox",
-			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
-		},
-		{
 			"ImportPath": "golang.org/x/crypto/ocsp",
-			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
-		},
-		{
-			"ImportPath": "golang.org/x/crypto/poly1305",
-			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
-		},
-		{
-			"ImportPath": "golang.org/x/crypto/salsa20/salsa",
 			"Rev": "1fbbd62cfec66bd39d91e97749579579d4d3037e"
 		},
 		{

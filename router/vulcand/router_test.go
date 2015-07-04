@@ -14,7 +14,8 @@ import (
 	"github.com/mailgun/vulcand/Godeps/_workspace/src/github.com/mailgun/scroll"
 	"github.com/mailgun/vulcand/api"
 	"github.com/mailgun/vulcand/engine"
-	"github.com/mailgun/vulcand/engine/etcdng"
+	"github.com/mailgun/vulcand/engine/memng"
+	"github.com/mailgun/vulcand/plugin/registry"
 	"github.com/mailgun/vulcand/supervisor"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
@@ -32,7 +33,6 @@ type S struct {
 	conn          *db.Storage
 	engine        engine.Engine
 	vulcandServer *httptest.Server
-	etcdKey       string
 }
 
 var _ = check.Suite(&S{})
@@ -45,7 +45,6 @@ func init() {
 	}
 	suite.SetUpTestFunc = func(c *check.C) {
 		config.Set("database:name", "router_generic_vulcand_tests")
-		base.etcdKey = "generic_tests"
 		base.SetUpTest(c)
 		r, err := router.Get("vulcand")
 		c.Assert(err, check.IsNil)
@@ -66,21 +65,8 @@ func (s *S) SetUpTest(c *check.C) {
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
-	pathPart := s.etcdKey
-	if pathPart != "" {
-		pathPart += "/"
-	}
-	fronts := fmt.Sprintf("http://127.0.0.1:4001/v2/keys/%sbackends?recursive=true", pathPart)
-	backs := fmt.Sprintf("http://127.0.0.1:4001/v2/keys/%sfrontends?recursive=true", pathPart)
-	req1, err := http.NewRequest("DELETE", fronts, nil)
-	c.Assert(err, check.IsNil)
-	req2, err := http.NewRequest("DELETE", backs, nil)
-	c.Assert(err, check.IsNil)
-	http.DefaultClient.Do(req1)
-	http.DefaultClient.Do(req2)
 	dbtest.ClearAllCollections(s.conn.Collection("router_vulcand_tests").Database)
-	s.engine, err = etcdng.New([]string{"http://127.0.0.1:4001"}, s.etcdKey, nil, etcdng.Options{})
-	c.Assert(err, check.IsNil)
+	s.engine = memng.New(registry.GetRegistry())
 	scrollApp := scroll.NewApp()
 	api.InitProxyController(s.engine, &supervisor.Supervisor{}, scrollApp)
 	s.vulcandServer = httptest.NewServer(scrollApp.GetHandler())
