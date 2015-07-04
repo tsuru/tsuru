@@ -170,7 +170,6 @@ func (t runBs) createBsContainer(dockerEndpoint string) error {
 			match := digestRegexp.FindAllStringSubmatch(buf.String(), 1)
 			if len(match) > 0 {
 				bsImage += "@" + match[0][1]
-				opts.Config.Image = bsImage
 			}
 		}
 		err = saveBsImage(bsImage)

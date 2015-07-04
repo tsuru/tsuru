@@ -76,7 +76,7 @@ func (s *S) TestCreateBsContainer(c *check.C) {
 	c.Assert(container.HostConfig.PortBindings[docker.Port("514/udp")], check.DeepEquals, expectedBinding)
 	_, ok := container.Config.ExposedPorts[docker.Port("1514/udp")]
 	c.Assert(ok, check.Equals, true)
-	c.Assert(container.Config.Image, check.Equals, "myregistry/tsuru/bs@"+digest)
+	c.Assert(container.Config.Image, check.Equals, "myregistry/tsuru/bs")
 	c.Assert(container.HostConfig.RestartPolicy, check.Equals, docker.AlwaysRestart())
 	c.Assert(container.State.Running, check.Equals, true)
 	expectedEnv := map[string]string{
