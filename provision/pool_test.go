@@ -5,11 +5,12 @@
 package provision
 
 import (
+	"net/http"
+
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
-	"net/http"
 )
 
 type S struct {
