@@ -6,8 +6,10 @@ package provision
 
 import (
 	"errors"
+	"net/http"
 
 	"github.com/tsuru/tsuru/db"
+	terrors "github.com/tsuru/tsuru/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -43,7 +45,10 @@ func AddPool(opts AddPoolOptions) error {
 			return err
 		}
 		if len(p) > 0 {
-			return errors.New("Default pool already exists.")
+			return &terrors.HTTP{
+				Code:    http.StatusPreconditionFailed,
+				Message: "Default pool already exists.",
+			}
 		}
 	}
 	pool := Pool{Name: opts.Name, Public: opts.Public, Default: opts.Default}

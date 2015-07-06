@@ -6,8 +6,10 @@ package provision
 
 import (
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/errors"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
+	"net/http"
 )
 
 type S struct {
@@ -97,6 +99,25 @@ func (s *S) TestDefaultPoolCantHaveTeam(c *check.C) {
 	err = AddTeamsToPool(pool.Name, []string{"ateam"})
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, ErrPublicDefaultPollCantHaveTeams)
+}
+
+func (s *S) TestDefaultPoolShouldBeUnique(c *check.C) {
+	coll := s.storage.Collection(poolCollection)
+	pool := Pool{Name: "nonteams", Public: false, Default: true}
+	err := coll.Insert(pool)
+	c.Assert(err, check.IsNil)
+	defer coll.RemoveId(pool.Name)
+	opts := AddPoolOptions{
+		Name:    "pool1",
+		Public:  false,
+		Default: true,
+	}
+	err = AddPool(opts)
+	defer RemovePool("pool1")
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Code, check.Equals, http.StatusPreconditionFailed)
 }
 
 func (s *S) TestRemovePool(c *check.C) {
