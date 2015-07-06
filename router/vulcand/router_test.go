@@ -424,3 +424,20 @@ func (s *S) TestStartupMessage(c *check.C) {
 		fmt.Sprintf(`vulcand router "vulcand.example.com" with API at "%s"`, s.vulcandServer.URL),
 	)
 }
+
+func (s *S) TestHealthCheck(c *check.C) {
+	got, err := router.Get("vulcand")
+	c.Assert(err, check.IsNil)
+	hcRouter, ok := got.(router.HealthChecker)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(hcRouter.HealthCheck(), check.IsNil)
+}
+
+func (s *S) TestHealthCheckFailure(c *check.C) {
+	s.vulcandServer.Close()
+	got, err := router.Get("vulcand")
+	c.Assert(err, check.IsNil)
+	hcRouter, ok := got.(router.HealthChecker)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(hcRouter.HealthCheck(), check.ErrorMatches, ".* connection refused")
+}

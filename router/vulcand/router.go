@@ -13,6 +13,7 @@ import (
 	"github.com/mailgun/vulcand/engine"
 	"github.com/mailgun/vulcand/plugin/registry"
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/router"
 )
 
@@ -20,6 +21,7 @@ const routerName = "vulcand"
 
 func init() {
 	router.Register(routerName, createRouter)
+	hc.AddChecker("Router vulcand", router.BuildHealthCheck("vulcand"))
 }
 
 type vulcandRouter struct {
@@ -226,4 +228,8 @@ func (r *vulcandRouter) Routes(name string) ([]*url.URL, error) {
 func (r *vulcandRouter) StartupMessage() (string, error) {
 	message := fmt.Sprintf("vulcand router %q with API at %q", r.domain, r.client.Addr)
 	return message, nil
+}
+
+func (r *vulcandRouter) HealthCheck() error {
+	return r.client.GetStatus()
 }
