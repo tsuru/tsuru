@@ -1059,7 +1059,6 @@ func (s *HandlersSuite) TestBsEnvSetHandlerUpdateExisting(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
-	fmt.Println(recorder.Body.String())
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 	conf, err := loadBsConfig()
 	c.Assert(err, check.IsNil)
@@ -1069,4 +1068,41 @@ func (s *HandlersSuite) TestBsEnvSetHandlerUpdateExisting(c *check.C) {
 	c.Assert(conf.Pools, check.DeepEquals, []bsPoolEnvs{
 		{Name: "POOL1", Envs: []bsEnv{{Name: "VAR4", Value: "VAL4"}}},
 	})
+}
+
+func (s *HandlersSuite) TestBsConfigGetHandler(c *check.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/docker/bs", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+	coll, err := bsCollection()
+	c.Assert(err, check.IsNil)
+	defer coll.Close()
+	expected := bsConfig{Image: "myimg",
+		Envs: []bsEnv{
+			{Name: "VAR1", Value: "VAL1"},
+			{Name: "VAR2", Value: "VAL2"},
+		},
+		Pools: []bsPoolEnvs{
+			{
+				Name: "POOL1",
+				Envs: []bsEnv{
+					{Name: "VAR3", Value: "VAL3"},
+					{Name: "VAR4", Value: "VAL4"},
+				},
+			},
+		},
+	}
+	err = coll.Insert(expected)
+	c.Assert(err, check.IsNil)
+	recorder = httptest.NewRecorder()
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var conf bsConfig
+	err = json.Unmarshal(recorder.Body.Bytes(), &conf)
+	c.Assert(err, check.IsNil)
+	c.Assert(conf, check.DeepEquals, expected)
 }

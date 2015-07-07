@@ -42,6 +42,7 @@ func init() {
 	api.RegisterHandler("/docker/autoscale", "GET", api.AdminRequiredHandler(autoScaleHistoryHandler))
 	api.RegisterHandler("/docker/autoscale/run", "POST", api.AdminRequiredHandler(autoScaleRunHandler))
 	api.RegisterHandler("/docker/bs/env", "POST", api.AdminRequiredHandler(bsEnvSetHandler))
+	api.RegisterHandler("/docker/bs", "GET", api.AdminRequiredHandler(bsConfigGetHandler))
 }
 
 func validateNodeAddress(address string) error {
@@ -367,4 +368,16 @@ func bsEnvSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil
+}
+
+func bsConfigGetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	currentConfig, err := loadBsConfig()
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			w.WriteHeader(http.StatusNoContent)
+			return nil
+		}
+		return err
+	}
+	return json.NewEncoder(w).Encode(currentConfig)
 }
