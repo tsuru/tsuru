@@ -6,6 +6,7 @@ package docker
 
 import (
 	"fmt"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
