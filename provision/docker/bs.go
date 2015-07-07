@@ -41,7 +41,11 @@ func (conf *bsConfig) updateEnvMaps(envMap map[string]string, poolEnvMap map[str
 		if forbiddenList[env.Name] {
 			return fmt.Errorf("cannot set %s variable", env.Name)
 		}
-		envMap[env.Name] = env.Value
+		if env.Value == "" {
+			delete(envMap, env.Name)
+		} else {
+			envMap[env.Name] = env.Value
+		}
 	}
 	for _, p := range conf.Pools {
 		if poolEnvMap[p.Name] == nil {
@@ -51,7 +55,11 @@ func (conf *bsConfig) updateEnvMaps(envMap map[string]string, poolEnvMap map[str
 			if forbiddenList[env.Name] {
 				return fmt.Errorf("cannot set %s variable", env.Name)
 			}
-			poolEnvMap[p.Name][env.Name] = env.Value
+			if env.Value == "" {
+				delete(poolEnvMap[p.Name], env.Name)
+			} else {
+				poolEnvMap[p.Name][env.Name] = env.Value
+			}
 		}
 	}
 	return nil

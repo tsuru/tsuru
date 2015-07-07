@@ -1016,3 +1016,57 @@ func (s *HandlersSuite) TestBsEnvSetHandlerForbiddenVar(c *check.C) {
 	_, err = loadBsConfig()
 	c.Assert(err, check.ErrorMatches, "not found")
 }
+
+func (s *HandlersSuite) TestBsEnvSetHandlerUpdateExisting(c *check.C) {
+	coll, err := bsCollection()
+	c.Assert(err, check.IsNil)
+	defer coll.Close()
+	err = coll.Insert(bsConfig{Image: "myimg",
+		Envs: []bsEnv{
+			{Name: "VAR1", Value: "VAL1"},
+			{Name: "VAR2", Value: "VAL2"},
+		},
+		Pools: []bsPoolEnvs{
+			{
+				Name: "POOL1",
+				Envs: []bsEnv{
+					{Name: "VAR3", Value: "VAL3"},
+					{Name: "VAR4", Value: "VAL4"},
+				},
+			},
+		},
+	})
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	json := `{
+		"image": "ignored",
+		"envs": [
+			{"name": "VAR1", "value": ""},
+			{"name": "VAR3", "value": "VAL3"}
+		],
+		"pools": [
+			{
+				"name": "POOL1",
+				"envs": [
+					{"name": "VAR3", "value": ""}
+				]
+			}
+		]
+	}`
+	body := bytes.NewBufferString(json)
+	request, err := http.NewRequest("POST", "/docker/bs/env", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	fmt.Println(recorder.Body.String())
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+	conf, err := loadBsConfig()
+	c.Assert(err, check.IsNil)
+	c.Assert(conf.Image, check.Equals, "myimg")
+	sort.Sort(bsEnvList(conf.Envs))
+	c.Assert(conf.Envs, check.DeepEquals, []bsEnv{{Name: "VAR2", Value: "VAL2"}, {Name: "VAR3", Value: "VAL3"}})
+	c.Assert(conf.Pools, check.DeepEquals, []bsPoolEnvs{
+		{Name: "POOL1", Envs: []bsEnv{{Name: "VAR4", Value: "VAL4"}}},
+	})
+}

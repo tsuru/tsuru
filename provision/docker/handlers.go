@@ -333,7 +333,10 @@ func bsEnvSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	var requestConfig bsConfig
 	err := json.NewDecoder(r.Body).Decode(&requestConfig)
 	if err != nil {
-		return err
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: fmt.Sprintf("unable to parse body as json: %s", err),
+		}
 	}
 	currentConfig, err := loadBsConfig()
 	if err != nil {
