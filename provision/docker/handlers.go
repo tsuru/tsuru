@@ -41,6 +41,7 @@ func init() {
 	api.RegisterHandler("/docker/healing", "GET", api.AdminRequiredHandler(healingHistoryHandler))
 	api.RegisterHandler("/docker/autoscale", "GET", api.AdminRequiredHandler(autoScaleHistoryHandler))
 	api.RegisterHandler("/docker/autoscale/run", "POST", api.AdminRequiredHandler(autoScaleRunHandler))
+	api.RegisterHandler("/docker/bs/env", "POST", api.AdminRequiredHandler(bsEnvSetHandler))
 }
 
 func validateNodeAddress(address string) error {
@@ -325,5 +326,42 @@ func autoScaleRunHandler(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	if err != nil {
 		writer.Encoder.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
 	}
+	return nil
+}
+
+func bsEnvSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	var requestConfig bsConfig
+	err := json.NewDecoder(r.Body).Decode(&requestConfig)
+	if err != nil {
+		return err
+	}
+	currentConfig, err := loadBsConfig()
+	if err != nil {
+		if err != mgo.ErrNotFound {
+			return err
+		}
+		currentConfig = &bsConfig{}
+	}
+	envMap := make(map[string]string)
+	poolEnvMap := make(map[string]map[string]string)
+	err = currentConfig.updateEnvMaps(envMap, poolEnvMap)
+	if err != nil {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: err.Error(),
+		}
+	}
+	err = requestConfig.updateEnvMaps(envMap, poolEnvMap)
+	if err != nil {
+		return &errors.HTTP{
+			Code:    http.StatusBadRequest,
+			Message: err.Error(),
+		}
+	}
+	err = saveBsEnvs(envMap, poolEnvMap)
+	if err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

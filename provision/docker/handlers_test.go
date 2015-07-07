@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -935,4 +936,83 @@ func (s *HandlersSuite) TestAutoScaleRunHandler(c *check.C) {
 		`{"Message":"[node autoscale] nothing to do for \"pool\": \"pool1\"\n"}`,
 		``,
 	})
+}
+
+type bsEnvList []bsEnv
+
+func (l bsEnvList) Len() int           { return len(l) }
+func (l bsEnvList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
+func (l bsEnvList) Less(i, j int) bool { return l[i].Name < l[j].Name }
+
+type bsPoolEnvsList []bsPoolEnvs
+
+func (l bsPoolEnvsList) Len() int           { return len(l) }
+func (l bsPoolEnvsList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
+func (l bsPoolEnvsList) Less(i, j int) bool { return l[i].Name < l[j].Name }
+
+func (s *HandlersSuite) TestBsEnvSetHandler(c *check.C) {
+	recorder := httptest.NewRecorder()
+	json := `{
+		"image": "ignored",
+		"envs": [
+			{"name": "VAR1", "value": "VALUE1"},
+			{"name": "VAR2", "value": "VALUE2"}
+		],
+		"pools": [
+			{
+				"name": "POOL1",
+				"envs": [
+					{"name": "VAR3", "value": "VALUE3"},
+					{"name": "VAR4", "value": "VALUE4"}
+				]
+			},
+			{
+				"name": "POOL2",
+				"envs": [
+					{"name": "VAR5", "value": "VALUE5"},
+					{"name": "VAR6", "value": "VALUE6"}
+				]
+			}
+		]
+	}`
+	body := bytes.NewBufferString(json)
+	request, err := http.NewRequest("POST", "/docker/bs/env", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+	conf, err := loadBsConfig()
+	c.Assert(err, check.IsNil)
+	c.Assert(conf.Image, check.Equals, "")
+	sort.Sort(bsEnvList(conf.Envs))
+	c.Assert(conf.Envs, check.DeepEquals, []bsEnv{{Name: "VAR1", Value: "VALUE1"}, {Name: "VAR2", Value: "VALUE2"}})
+	c.Assert(conf.Pools, check.HasLen, 2)
+	sort.Sort(bsPoolEnvsList(conf.Pools))
+	sort.Sort(bsEnvList(conf.Pools[0].Envs))
+	sort.Sort(bsEnvList(conf.Pools[1].Envs))
+	c.Assert(conf.Pools, check.DeepEquals, []bsPoolEnvs{
+		{Name: "POOL1", Envs: []bsEnv{{Name: "VAR3", Value: "VALUE3"}, {Name: "VAR4", Value: "VALUE4"}}},
+		{Name: "POOL2", Envs: []bsEnv{{Name: "VAR5", Value: "VALUE5"}, {Name: "VAR6", Value: "VALUE6"}}},
+	})
+}
+
+func (s *HandlersSuite) TestBsEnvSetHandlerForbiddenVar(c *check.C) {
+	recorder := httptest.NewRecorder()
+	json := `{
+		"image": "ignored",
+		"envs": [
+			{"name": "TSURU_ENDPOINT", "value": "VAL"}
+		]
+	}`
+	body := bytes.NewBufferString(json)
+	request, err := http.NewRequest("POST", "/docker/bs/env", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
+	c.Assert(recorder.Body.String(), check.Equals, "cannot set TSURU_ENDPOINT variable\n")
+	_, err = loadBsConfig()
+	c.Assert(err, check.ErrorMatches, "not found")
 }

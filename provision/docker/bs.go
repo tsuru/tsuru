@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"fmt"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
@@ -17,7 +18,7 @@ type bsEnv struct {
 	Value string
 }
 
-type poolEnvs struct {
+type bsPoolEnvs struct {
 	Name string
 	Envs []bsEnv
 }
@@ -25,7 +26,49 @@ type poolEnvs struct {
 type bsConfig struct {
 	Image string
 	Envs  []bsEnv
-	Pools []poolEnvs
+	Pools []bsPoolEnvs
+}
+
+func (conf *bsConfig) updateEnvMaps(envMap map[string]string, poolEnvMap map[string]map[string]string) error {
+	forbiddenList := map[string]bool{
+		"DOCKER_ENDPOINT":       true,
+		"TSURU_ENDPOINT":        true,
+		"TSURU_TOKEN":           true,
+		"SYSLOG_LISTEN_ADDRESS": true,
+	}
+	for _, env := range conf.Envs {
+		if forbiddenList[env.Name] {
+			return fmt.Errorf("cannot set %s variable", env.Name)
+		}
+		envMap[env.Name] = env.Value
+	}
+	for _, p := range conf.Pools {
+		if poolEnvMap[p.Name] == nil {
+			poolEnvMap[p.Name] = make(map[string]string)
+		}
+		for _, env := range p.Envs {
+			if forbiddenList[env.Name] {
+				return fmt.Errorf("cannot set %s variable", env.Name)
+			}
+			poolEnvMap[p.Name][env.Name] = env.Value
+		}
+	}
+	return nil
+}
+
+func bsConfigFromEnvMaps(envMap map[string]string, poolEnvMap map[string]map[string]string) *bsConfig {
+	var finalConf bsConfig
+	for name, value := range envMap {
+		finalConf.Envs = append(finalConf.Envs, bsEnv{Name: name, Value: value})
+	}
+	for poolName, envMap := range poolEnvMap {
+		poolEnv := bsPoolEnvs{Name: poolName}
+		for name, value := range envMap {
+			poolEnv.Envs = append(poolEnv.Envs, bsEnv{Name: name, Value: value})
+		}
+		finalConf.Pools = append(finalConf.Pools, poolEnv)
+	}
+	return &finalConf
 }
 
 func getBsSysLogPort() int {
@@ -58,6 +101,17 @@ func saveBsImage(digest string) error {
 	}
 	defer coll.Close()
 	_, err = coll.Upsert(nil, bson.M{"$set": bson.M{"image": digest}})
+	return err
+}
+
+func saveBsEnvs(envMap map[string]string, poolEnvMap map[string]map[string]string) error {
+	finalConf := bsConfigFromEnvMaps(envMap, poolEnvMap)
+	coll, err := bsCollection()
+	if err != nil {
+		return err
+	}
+	defer coll.Close()
+	_, err = coll.Upsert(nil, bson.M{"$set": bson.M{"envs": finalConf.Envs, "pools": finalConf.Pools}})
 	return err
 }
 
