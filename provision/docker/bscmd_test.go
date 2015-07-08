@@ -87,6 +87,7 @@ func (s *S) TestBsInfoRun(c *check.C) {
 		Stderr: &stderr,
 	}
 	conf := bsConfig{
+		Image: "tsuru/bs",
 		Envs: []bsEnv{
 			{Name: "A", Value: "1"},
 			{Name: "B", Value: "2"},
@@ -114,7 +115,9 @@ func (s *S) TestBsInfoRun(c *check.C) {
 	cmd := bsInfoCmd{}
 	err = cmd.Run(&context, client)
 	c.Assert(err, check.IsNil)
-	c.Assert(stdout.String(), check.Equals, `Environment Variables [Default]:
+	c.Assert(stdout.String(), check.Equals, `Image: tsuru/bs
+
+Environment Variables [Default]:
 +------+-------+
 | Name | Value |
 +------+-------+

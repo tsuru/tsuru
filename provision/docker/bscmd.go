@@ -107,7 +107,7 @@ func (c *bsInfoCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	fmt.Fprintln(context.Stdout, "Environment Variables [Default]:")
+	fmt.Fprintf(context.Stdout, "Image: %s\n\nEnvironment Variables [Default]:\n", conf.Image)
 	t := cmd.Table{Headers: cmd.Row([]string{"Name", "Value"})}
 	for _, envVar := range conf.Envs {
 		t.AddRow(cmd.Row([]string{envVar.Name, envVar.Value}))
