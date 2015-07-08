@@ -1078,11 +1078,16 @@ func (s *HandlersSuite) TestBsConfigGetHandler(c *check.C) {
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
-	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	expected := bsConfig{}
+	var conf bsConfig
+	err = json.Unmarshal(recorder.Body.Bytes(), &conf)
+	c.Assert(err, check.IsNil)
+	c.Assert(conf, check.DeepEquals, expected)
 	coll, err := bsCollection()
 	c.Assert(err, check.IsNil)
 	defer coll.Close()
-	expected := bsConfig{ID: bsUniqueID,
+	expected = bsConfig{ID: bsUniqueID,
 		Image: "myimg",
 		Envs: []bsEnv{
 			{Name: "VAR1", Value: "VAL1"},
@@ -1103,7 +1108,6 @@ func (s *HandlersSuite) TestBsConfigGetHandler(c *check.C) {
 	recorder = httptest.NewRecorder()
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	var conf bsConfig
 	err = json.Unmarshal(recorder.Body.Bytes(), &conf)
 	c.Assert(err, check.IsNil)
 	c.Assert(conf, check.DeepEquals, expected)

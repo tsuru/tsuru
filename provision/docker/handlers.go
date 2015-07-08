@@ -373,11 +373,10 @@ func bsEnvSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 func bsConfigGetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	currentConfig, err := loadBsConfig()
 	if err != nil {
-		if err == mgo.ErrNotFound {
-			w.WriteHeader(http.StatusNoContent)
-			return nil
+		if err != mgo.ErrNotFound {
+			return err
 		}
-		return err
+		currentConfig = &bsConfig{}
 	}
 	return json.NewEncoder(w).Encode(currentConfig)
 }

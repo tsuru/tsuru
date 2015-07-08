@@ -109,7 +109,10 @@ func (conf *bsConfig) envListForEndpoint(dockerEndpoint, poolName string) ([]str
 	}
 	envMap := bsEnvMap{}
 	poolEnvMap := bsPoolEnvMap{}
-	conf.updateEnvMaps(envMap, poolEnvMap)
+	err = conf.updateEnvMaps(envMap, poolEnvMap)
+	if err != nil {
+		return nil, err
+	}
 	for envName, envValue := range envMap {
 		envList = append(envList, fmt.Sprintf("%s=%s", envName, envValue))
 	}
