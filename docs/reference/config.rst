@@ -688,23 +688,17 @@ will be tagged in docker as <docker:repository-namespace>/<platform-name> and
 docker:bs:image
 +++++++++++++++
 
-``docker:bs:image`` is the name of the Docker image to be used to create `bs
-<https://github.com/tsuru/bs>`_ containers. The default value is "tsuru/bs",
-which represents `the official image hosted at Docker Hub
+``docker:bs:image`` is the name of the Docker image to be used to create `big
+sibling <https://github.com/tsuru/bs>`_ containers. The default value is
+"tsuru/bs", which represents `the official image hosted at Docker Hub
 <https://registry.hub.docker.com/u/tsuru/bs/>`_, maintained by the tsuru team.
-
-docker:bs:reporter-interval
-+++++++++++++++++++++++++++
-
-``docker:bs:reporter-interval`` is the interval between status collecting and
-reporting from bs to the tsuru API. The default value is 60 seconds.
 
 docker:bs:socket
 ++++++++++++++++
 
 ``docker:bs:socket`` is the path to the Unix socket in the Docker host. This
 should be configured so bs can connect to Docker via socket instead of TCP.
-This is an optional setting, when omitted, bs will talk to the Dcoker API using
+This is an optional setting, when omitted, bs will talk to the Docker API using
 the TCP endpoint.
 
 docker:bs:syslog-port
@@ -712,14 +706,6 @@ docker:bs:syslog-port
 
 ``docker:bs:syslog-port`` is the port in the Docker node that will be used by
 the bs container for collecting logs. The default value is 1514.
-
-docker:bs:syslog-forward-addresses
-++++++++++++++++++++++++++++++++++
-
-``docker:bs:syslog-forward-addresses`` is a list of SysLog endpoints to which
-bs will forward the logs of Docker containers, properly identifying the
-applications. The default value is an empty list, which means that bs will not
-foward logs to any rsyslog server, just the tsuru API.
 
 docker:max-workers
 ++++++++++++++++++

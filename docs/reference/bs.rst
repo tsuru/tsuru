@@ -5,17 +5,16 @@
 bs
 ==
 
-bs (or big-sibling) is a component tsuru component, responsible for reporting
-information on application containers, these information include application
-logs and unit status.
+bs (or big sibling) is a component tsuru component, responsible for reporting
+information on application containers, this information include application
+logs, metrics and unit status.
 
-bs runs inside a dedicated container on every Docker node, and collects
-information about all other containers running in the node, reporting their
-status to tsuru.
+bs runs inside a dedicated container on each Docker node and collects
+information about all its sibling containers running on the same Docker node.
 
-It also binds to the rsyslog protocol, so Docker can send the logs of the
-containers to the syslog server created in the bs container, and then bs can
-multiplex container logs to other rsyslog endpoints and also to the tsuru API.
+It also creates a syslog server, which is responsible for receiving all logs
+from sibling containers. bs will then send these log entries to tsuru API and is
+also capable of forwarding log entries to multiple remote syslog endpoints.
 
 The sections below describe in details all the features of bs. The
 :ref:`configuration <config_bs>` reference contains more information on
@@ -42,8 +41,8 @@ known by tsuru. It doesn't mess with any container not managed by tsuru.
 Logging
 +++++++
 
-bs is also a rsyslog server, that listens to logs from containers and
-multiplexes them among other rsyslog servers and the tsuru API.
+bs is also a syslog server, that listens to logs from containers and multiplexes
+them among other syslog servers and the tsuru API.
 
 Whenever starting an application container, tsuru will configure Docker to send
 the logs of the containers to bs using the `syslog logging driver
@@ -55,3 +54,28 @@ check their logs using the command ``tsuru app-log``. It can also forward the
 logs to other syslog servers, using the ``docker:bs:syslog-forward-addresses``
 config entry. For more detail, check the :ref:`bs configuration reference
 <config_bs>`.
+
+Environment Variables
++++++++++++++++++++++
+
+It's possible to set environment variables in started bs containers. This can be
+done using the ``tsuru-admin bs-env-set`` command.
+
+Some variables can be used to configure how the default bs application will
+behave. A custom bs image can also make use of set variables to change their
+behavior.
+
+STATUS_INTERVAL
+---------------
+
+``STATUS_INTERVAL`` is the interval in seconds between status collecting and
+reporting from bs to the tsuru API. The default value is 60 seconds.
+
+SYSLOG_FORWARD_ADDRESSES
+------------------------
+
+``SYSLOG_FORWARD_ADDRESSES`` is a comma separated list of SysLog endpoints to
+which bs will forward the logs from Docker containers. Log entries will be
+rewritten to properly identify the application and process responsible for the
+entry. The default value is an empty string, which means that bs will not
+forward logs to any syslog server, only to tsuru API.
