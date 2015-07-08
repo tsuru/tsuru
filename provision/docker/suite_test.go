@@ -133,6 +133,10 @@ func (s *S) SetUpTest(c *check.C) {
 	opts := provision.AddPoolOptions{Name: "test-default", Default: true}
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	conn.Tokens().Remove(bson.M{"appname": bson.M{"$ne": ""}})
 }
 
 func (s *S) TearDownTest(c *check.C) {

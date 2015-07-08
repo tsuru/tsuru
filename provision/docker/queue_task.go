@@ -15,9 +15,9 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
 	"github.com/tsuru/monsterqueue"
-	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
+	"gopkg.in/mgo.v2"
 )
 
 const runBsTaskName = "run-bs"
@@ -39,16 +39,16 @@ func (t runBs) Run(job monsterqueue.Job) {
 		job.Error(err)
 		return
 	}
-	err = t.createBsContainer(dockerEndpoint)
-	if err != nil {
-		job.Error(err)
-		t.destroyMachine(machineID)
-		return
-	}
 	rawMetadata := params["metadata"].(monsterqueue.JobParams)
 	metadata := make(map[string]string, len(rawMetadata))
 	for key, value := range rawMetadata {
 		metadata[key] = value.(string)
+	}
+	err = t.createBsContainer(dockerEndpoint, metadata["pool"])
+	if err != nil {
+		job.Error(err)
+		t.destroyMachine(machineID)
+		return
 	}
 	_, err = mainDockerProvisioner.getCluster().Register(dockerEndpoint, metadata)
 	if err != nil {
@@ -91,33 +91,25 @@ func (runBs) waitDocker(endpoint string) error {
 	}
 }
 
-func (t runBs) createBsContainer(dockerEndpoint string) error {
+func (t runBs) createBsContainer(dockerEndpoint, poolName string) error {
 	client, err := docker.NewClient(dockerEndpoint)
 	if err != nil {
 		return err
 	}
-	bsImage, err := getBsImage()
+	bsConf, err := loadBsConfig()
 	if err != nil {
-		return err
+		if err != mgo.ErrNotFound {
+			return err
+		}
+		bsConf = &bsConfig{}
 	}
-	tsuruEndpoint, _ := config.GetString("host")
-	if !strings.HasPrefix(tsuruEndpoint, "http://") && !strings.HasPrefix(tsuruEndpoint, "https://") {
-		tsuruEndpoint = "http://" + tsuruEndpoint
-	}
-	interval, _ := config.GetInt("docker:bs:reporter-interval")
-	tsuruEndpoint = strings.TrimRight(tsuruEndpoint, "/") + "/"
-	token, err := app.AuthScheme.AppLogin(app.InternalAppName)
-	if err != nil {
-		return err
-	}
+	bsImage := bsConf.getImage()
 	hostConfig := docker.HostConfig{RestartPolicy: docker.AlwaysRestart()}
-	endpoint := dockerEndpoint
+	sysLogExternalPort := getBsSysLogPort()
 	socket, _ := config.GetString("docker:bs:socket")
 	if socket != "" {
 		hostConfig.Binds = []string{fmt.Sprintf("%s:/var/run/docker.sock:rw", socket)}
-		endpoint = "unix:///var/run/docker.sock"
 	}
-	sysLogExternalPort := getBsSysLogPort()
 	hostConfig.PortBindings = map[docker.Port][]docker.PortBinding{
 		docker.Port("514/udp"): {
 			docker.PortBinding{
@@ -126,16 +118,9 @@ func (t runBs) createBsContainer(dockerEndpoint string) error {
 			},
 		},
 	}
-	env := []string{
-		"DOCKER_ENDPOINT=" + endpoint,
-		"TSURU_ENDPOINT=" + tsuruEndpoint,
-		"TSURU_TOKEN=" + token.GetValue(),
-		"STATUS_INTERVAL=" + strconv.Itoa(interval),
-		"SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:514",
-	}
-	addresses, _ := config.GetList("docker:bs:syslog-forward-addresses")
-	if len(addresses) > 0 {
-		env = append(env, "SYSLOG_FORWARD_ADDRESSES="+strings.Join(addresses, ","))
+	env, err := bsConf.envListForEndpoint(dockerEndpoint, poolName)
+	if err != nil {
+		return err
 	}
 	opts := docker.CreateContainerOptions{
 		Name:       "big-sibling",

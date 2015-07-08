@@ -6,13 +6,17 @@ package docker
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
+
+const bsUniqueID = "bs"
 
 type bsEnv struct {
 	Name  string
@@ -25,7 +29,9 @@ type bsPoolEnvs struct {
 }
 
 type bsConfig struct {
+	ID    string `bson:"_id"`
 	Image string
+	Token string
 	Envs  []bsEnv
 	Pools []bsPoolEnvs
 }
@@ -34,8 +40,8 @@ func (conf *bsConfig) updateEnvMaps(envMap map[string]string, poolEnvMap map[str
 	forbiddenList := map[string]bool{
 		"DOCKER_ENDPOINT":       true,
 		"TSURU_ENDPOINT":        true,
-		"TSURU_TOKEN":           true,
 		"SYSLOG_LISTEN_ADDRESS": true,
+		"TSURU_TOKEN":           true,
 	}
 	for _, env := range conf.Envs {
 		if forbiddenList[env.Name] {
@@ -63,6 +69,83 @@ func (conf *bsConfig) updateEnvMaps(envMap map[string]string, poolEnvMap map[str
 		}
 	}
 	return nil
+}
+
+func (conf *bsConfig) getImage() string {
+	if conf != nil && conf.Image != "" {
+		return conf.Image
+	}
+	bsImage, _ := config.GetString("docker:bs:image")
+	if bsImage == "" {
+		bsImage = "tsuru/bs"
+	}
+	return bsImage
+}
+
+func (conf *bsConfig) envListForEndpoint(dockerEndpoint, poolName string) ([]string, error) {
+	tsuruEndpoint, _ := config.GetString("host")
+	if !strings.HasPrefix(tsuruEndpoint, "http://") && !strings.HasPrefix(tsuruEndpoint, "https://") {
+		tsuruEndpoint = "http://" + tsuruEndpoint
+	}
+	tsuruEndpoint = strings.TrimRight(tsuruEndpoint, "/") + "/"
+	endpoint := dockerEndpoint
+	socket, _ := config.GetString("docker:bs:socket")
+	if socket != "" {
+		endpoint = "unix:///var/run/docker.sock"
+	}
+	token, err := conf.getToken()
+	if err != nil {
+		return nil, err
+	}
+	envList := []string{
+		"DOCKER_ENDPOINT=" + endpoint,
+		"TSURU_ENDPOINT=" + tsuruEndpoint,
+		"TSURU_TOKEN=" + token,
+		"SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:514",
+	}
+	envMap := make(map[string]string)
+	poolEnvMap := make(map[string]map[string]string)
+	conf.updateEnvMaps(envMap, poolEnvMap)
+	for envName, envValue := range envMap {
+		envList = append(envList, fmt.Sprintf("%s=%s", envName, envValue))
+	}
+	for envName, envValue := range poolEnvMap[poolName] {
+		envList = append(envList, fmt.Sprintf("%s=%s", envName, envValue))
+	}
+	return envList, nil
+}
+
+func (conf *bsConfig) getToken() (string, error) {
+	if conf.Token != "" {
+		return conf.Token, nil
+	}
+	coll, err := bsCollection()
+	if err != nil {
+		return "", err
+	}
+	defer coll.Close()
+	tokenData, err := app.AuthScheme.AppLogin(app.InternalAppName)
+	if err != nil {
+		return "", err
+	}
+	token := tokenData.GetValue()
+	_, err = coll.Upsert(bson.M{
+		"_id": bsUniqueID,
+		"$or": []bson.M{{"token": ""}, {"token": bson.M{"$exists": false}}},
+	}, bson.M{"$set": bson.M{"token": token}})
+	if err == nil {
+		conf.Token = token
+		return token, nil
+	}
+	app.AuthScheme.Logout(token)
+	if !mgo.IsDup(err) {
+		return "", err
+	}
+	err = coll.FindId(bsUniqueID).One(conf)
+	if err != nil {
+		return "", err
+	}
+	return conf.Token, nil
 }
 
 func bsConfigFromEnvMaps(envMap map[string]string, poolEnvMap map[string]map[string]string) *bsConfig {
@@ -93,14 +176,7 @@ func getBsImage() (string, error) {
 	if err != nil && err != mgo.ErrNotFound {
 		return "", err
 	}
-	if bsConfig != nil {
-		return bsConfig.Image, nil
-	}
-	bsImage, _ := config.GetString("docker:bs:image")
-	if bsImage == "" {
-		bsImage = "tsuru/bs"
-	}
-	return bsImage, nil
+	return bsConfig.getImage(), nil
 }
 
 func saveBsImage(digest string) error {
@@ -109,7 +185,7 @@ func saveBsImage(digest string) error {
 		return err
 	}
 	defer coll.Close()
-	_, err = coll.Upsert(nil, bson.M{"$set": bson.M{"image": digest}})
+	_, err = coll.UpsertId(bsUniqueID, bson.M{"$set": bson.M{"image": digest}})
 	return err
 }
 
@@ -120,7 +196,7 @@ func saveBsEnvs(envMap map[string]string, poolEnvMap map[string]map[string]strin
 		return err
 	}
 	defer coll.Close()
-	_, err = coll.Upsert(nil, bson.M{"$set": bson.M{"envs": finalConf.Envs, "pools": finalConf.Pools}})
+	_, err = coll.UpsertId(bsUniqueID, bson.M{"$set": bson.M{"envs": finalConf.Envs, "pools": finalConf.Pools}})
 	return err
 }
 
@@ -131,7 +207,7 @@ func loadBsConfig() (*bsConfig, error) {
 		return nil, err
 	}
 	defer coll.Close()
-	err = coll.Find(nil).One(&config)
+	err = coll.FindId(bsUniqueID).One(&config)
 	if err != nil {
 		return nil, err
 	}

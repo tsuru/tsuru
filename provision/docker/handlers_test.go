@@ -1021,7 +1021,8 @@ func (s *HandlersSuite) TestBsEnvSetHandlerUpdateExisting(c *check.C) {
 	coll, err := bsCollection()
 	c.Assert(err, check.IsNil)
 	defer coll.Close()
-	err = coll.Insert(bsConfig{Image: "myimg",
+	err = coll.Insert(bsConfig{ID: bsUniqueID,
+		Image: "myimg",
 		Envs: []bsEnv{
 			{Name: "VAR1", Value: "VAL1"},
 			{Name: "VAR2", Value: "VAL2"},
@@ -1081,7 +1082,8 @@ func (s *HandlersSuite) TestBsConfigGetHandler(c *check.C) {
 	coll, err := bsCollection()
 	c.Assert(err, check.IsNil)
 	defer coll.Close()
-	expected := bsConfig{Image: "myimg",
+	expected := bsConfig{ID: bsUniqueID,
+		Image: "myimg",
 		Envs: []bsEnv{
 			{Name: "VAR1", Value: "VAL1"},
 			{Name: "VAR2", Value: "VAL2"},

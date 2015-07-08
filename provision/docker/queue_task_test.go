@@ -62,9 +62,8 @@ func (s *S) TestCreateBsContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	config.Set("host", "127.0.0.1:8080")
 	config.Set("docker:bs:image", "myregistry/tsuru/bs")
-	config.Set("docker:bs:reporter-interval", 60)
 	var task runBs
-	err = task.createBsContainer(server.URL())
+	err = task.createBsContainer(server.URL(), "pool1")
 	c.Assert(err, check.IsNil)
 	containers, err := client.ListContainers(docker.ListContainersOptions{All: true})
 	c.Assert(err, check.IsNil)
@@ -83,7 +82,6 @@ func (s *S) TestCreateBsContainer(c *check.C) {
 		"DOCKER_ENDPOINT":       server.URL(),
 		"TSURU_ENDPOINT":        "http://127.0.0.1:8080/",
 		"TSURU_TOKEN":           "abc123",
-		"STATUS_INTERVAL":       "60",
 		"SYSLOG_LISTEN_ADDRESS": "udp://0.0.0.0:514",
 	}
 	gotEnv := parseEnvs(container.Config.Env)
@@ -119,9 +117,8 @@ func (s *S) TestCreateBsContainerTaggedBs(c *check.C) {
 	c.Assert(err, check.IsNil)
 	config.Set("host", "127.0.0.1:8080")
 	config.Set("docker:bs:image", "localhost:5000/myregistry/tsuru/bs:v1")
-	config.Set("docker:bs:reporter-interval", 60)
 	var task runBs
-	err = task.createBsContainer(server.URL())
+	err = task.createBsContainer(server.URL(), "pool1")
 	c.Assert(err, check.IsNil)
 	containers, err := client.ListContainers(docker.ListContainersOptions{All: true})
 	c.Assert(err, check.IsNil)
@@ -140,7 +137,6 @@ func (s *S) TestCreateBsContainerTaggedBs(c *check.C) {
 		"DOCKER_ENDPOINT":       server.URL(),
 		"TSURU_ENDPOINT":        "http://127.0.0.1:8080/",
 		"TSURU_TOKEN":           "abc123",
-		"STATUS_INTERVAL":       "60",
 		"SYSLOG_LISTEN_ADDRESS": "udp://0.0.0.0:514",
 	}
 	gotEnv := parseEnvs(container.Config.Env)
@@ -165,16 +161,12 @@ func (s *S) TestCreateBsContainerSocketAndCustomSysLogPort(c *check.C) {
 	}))
 	config.Set("host", "127.0.0.1:8080")
 	config.Set("docker:bs:image", "myregistry/tsuru/bs")
-	config.Set("docker:bs:reporter-interval", 60)
-	defer config.Unset("docker:bs:reporter-interval")
 	config.Set("docker:bs:socket", "/tmp/docker.sock")
 	defer config.Unset("docker:bs:socket")
 	config.Set("docker:bs:syslog-port", 1519)
 	defer config.Unset("docker:bs:syslog-port")
-	config.Set("docker:bs:syslog-forward-addresses", []interface{}{"udp://host1:518", "udp://host2:518", "tcp://host3:518"})
-	defer config.Unset("docker:bs:syslog-forward-addresses")
 	var task runBs
-	err = task.createBsContainer(server.URL())
+	err = task.createBsContainer(server.URL(), "pool1")
 	c.Assert(err, check.IsNil)
 	client, err := docker.NewClient(server.URL())
 	c.Assert(err, check.IsNil)
@@ -192,12 +184,10 @@ func (s *S) TestCreateBsContainerSocketAndCustomSysLogPort(c *check.C) {
 	c.Assert(container.Config.Image, check.Equals, "myregistry/tsuru/bs")
 	c.Assert(container.State.Running, check.Equals, true)
 	expectedEnv := map[string]string{
-		"DOCKER_ENDPOINT":          "unix:///var/run/docker.sock",
-		"TSURU_ENDPOINT":           "http://127.0.0.1:8080/",
-		"TSURU_TOKEN":              "abc123",
-		"STATUS_INTERVAL":          "60",
-		"SYSLOG_LISTEN_ADDRESS":    "udp://0.0.0.0:514",
-		"SYSLOG_FORWARD_ADDRESSES": "udp://host1:518,udp://host2:518,tcp://host3:518",
+		"DOCKER_ENDPOINT":       "unix:///var/run/docker.sock",
+		"TSURU_ENDPOINT":        "http://127.0.0.1:8080/",
+		"TSURU_TOKEN":           "abc123",
+		"SYSLOG_LISTEN_ADDRESS": "udp://0.0.0.0:514",
 	}
 	gotEnv := parseEnvs(container.Config.Env)
 	_, ok = gotEnv["TSURU_TOKEN"]
