@@ -165,6 +165,18 @@ func (s *S) TestCreateBsContainerSocketAndCustomSysLogPort(c *check.C) {
 	defer config.Unset("docker:bs:socket")
 	config.Set("docker:bs:syslog-port", 1519)
 	defer config.Unset("docker:bs:syslog-port")
+	err = saveBsEnvs(bsEnvMap{
+		"VAR1": "VALUE1",
+		"VAR2": "VALUE2",
+	}, bsPoolEnvMap{
+		"pool1": bsEnvMap{
+			"VAR2": "VALUE_FOR_POOL1",
+		},
+		"pool2": bsEnvMap{
+			"VAR2": "VALUE_FOR_POOL2",
+		},
+	})
+	c.Assert(err, check.IsNil)
 	var task runBs
 	err = task.createBsContainer(server.URL(), "pool1")
 	c.Assert(err, check.IsNil)
@@ -188,6 +200,8 @@ func (s *S) TestCreateBsContainerSocketAndCustomSysLogPort(c *check.C) {
 		"TSURU_ENDPOINT":        "http://127.0.0.1:8080/",
 		"TSURU_TOKEN":           "abc123",
 		"SYSLOG_LISTEN_ADDRESS": "udp://0.0.0.0:514",
+		"VAR1":                  "VALUE1",
+		"VAR2":                  "VALUE_FOR_POOL1",
 	}
 	gotEnv := parseEnvs(container.Config.Env)
 	_, ok = gotEnv["TSURU_TOKEN"]
