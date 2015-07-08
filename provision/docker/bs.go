@@ -171,14 +171,6 @@ func getBsSysLogPort() int {
 	return bsPort
 }
 
-func getBsImage() (string, error) {
-	bsConfig, err := loadBsConfig()
-	if err != nil && err != mgo.ErrNotFound {
-		return "", err
-	}
-	return bsConfig.getImage(), nil
-}
-
 func saveBsImage(digest string) error {
 	coll, err := bsCollection()
 	if err != nil {

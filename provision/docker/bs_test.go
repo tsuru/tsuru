@@ -23,23 +23,24 @@ func (s *S) TestGetImageFromDatabase(c *check.C) {
 	err = coll.Insert(bsConfig{ID: bsUniqueID, Image: imageName})
 	c.Assert(err, check.IsNil)
 	defer coll.Remove(bson.M{"image": imageName})
-	image, err := getBsImage()
+	conf, err := loadBsConfig()
 	c.Assert(err, check.IsNil)
+	image := conf.getImage()
 	c.Assert(image, check.Equals, imageName)
 }
 
 func (s *S) TestGetImageFromConfig(c *check.C) {
 	imageName := "tsuru/bs:v10"
 	config.Set("docker:bs:image", imageName)
-	image, err := getBsImage()
-	c.Assert(err, check.IsNil)
+	conf := bsConfig{}
+	image := conf.getImage()
 	c.Assert(image, check.Equals, imageName)
 }
 
 func (s *S) TestGetImageDefaultValue(c *check.C) {
 	config.Unset("docker:bs:image")
-	image, err := getBsImage()
-	c.Assert(err, check.IsNil)
+	conf := bsConfig{}
+	image := conf.getImage()
 	c.Assert(image, check.Equals, "tsuru/bs")
 }
 
