@@ -828,6 +828,8 @@ func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 		&listAutoScaleHistoryCmd{},
 		&updateNodeToSchedulerCmd{},
 		&listAutoScaleRunCmd{},
+		&bsEnvSetCmd{},
+		&bsInfoCmd{},
 	}
 }
 

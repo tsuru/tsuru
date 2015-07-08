@@ -1156,6 +1156,8 @@ func (s *S) TestAdminCommands(c *check.C) {
 		&listAutoScaleHistoryCmd{},
 		&updateNodeToSchedulerCmd{},
 		&listAutoScaleRunCmd{},
+		&bsEnvSetCmd{},
+		&bsInfoCmd{},
 	}
 	c.Assert(s.p.AdminCommands(), check.DeepEquals, expected)
 }

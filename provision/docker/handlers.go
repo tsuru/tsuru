@@ -366,6 +366,7 @@ func bsEnvSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	if err != nil {
 		return err
 	}
+	// TODO(cezarsa): restart bs containers with new envs, stream output?
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }
