@@ -346,8 +346,8 @@ func bsEnvSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 		}
 		currentConfig = &bsConfig{}
 	}
-	envMap := make(map[string]string)
-	poolEnvMap := make(map[string]map[string]string)
+	envMap := bsEnvMap{}
+	poolEnvMap := bsPoolEnvMap{}
 	err = currentConfig.updateEnvMaps(envMap, poolEnvMap)
 	if err != nil {
 		return &errors.HTTP{

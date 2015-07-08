@@ -36,7 +36,11 @@ type bsConfig struct {
 	Pools []bsPoolEnvs
 }
 
-func (conf *bsConfig) updateEnvMaps(envMap map[string]string, poolEnvMap map[string]map[string]string) error {
+type bsEnvMap map[string]string
+
+type bsPoolEnvMap map[string]bsEnvMap
+
+func (conf *bsConfig) updateEnvMaps(envMap bsEnvMap, poolEnvMap bsPoolEnvMap) error {
 	forbiddenList := map[string]bool{
 		"DOCKER_ENDPOINT":       true,
 		"TSURU_ENDPOINT":        true,
@@ -55,7 +59,7 @@ func (conf *bsConfig) updateEnvMaps(envMap map[string]string, poolEnvMap map[str
 	}
 	for _, p := range conf.Pools {
 		if poolEnvMap[p.Name] == nil {
-			poolEnvMap[p.Name] = make(map[string]string)
+			poolEnvMap[p.Name] = make(bsEnvMap)
 		}
 		for _, env := range p.Envs {
 			if forbiddenList[env.Name] {
@@ -103,8 +107,8 @@ func (conf *bsConfig) envListForEndpoint(dockerEndpoint, poolName string) ([]str
 		"TSURU_TOKEN=" + token,
 		"SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:514",
 	}
-	envMap := make(map[string]string)
-	poolEnvMap := make(map[string]map[string]string)
+	envMap := bsEnvMap{}
+	poolEnvMap := bsPoolEnvMap{}
 	conf.updateEnvMaps(envMap, poolEnvMap)
 	for envName, envValue := range envMap {
 		envList = append(envList, fmt.Sprintf("%s=%s", envName, envValue))
@@ -148,7 +152,7 @@ func (conf *bsConfig) getToken() (string, error) {
 	return conf.Token, nil
 }
 
-func bsConfigFromEnvMaps(envMap map[string]string, poolEnvMap map[string]map[string]string) *bsConfig {
+func bsConfigFromEnvMaps(envMap bsEnvMap, poolEnvMap bsPoolEnvMap) *bsConfig {
 	var finalConf bsConfig
 	for name, value := range envMap {
 		finalConf.Envs = append(finalConf.Envs, bsEnv{Name: name, Value: value})
@@ -181,7 +185,7 @@ func saveBsImage(digest string) error {
 	return err
 }
 
-func saveBsEnvs(envMap map[string]string, poolEnvMap map[string]map[string]string) error {
+func saveBsEnvs(envMap bsEnvMap, poolEnvMap bsPoolEnvMap) error {
 	finalConf := bsConfigFromEnvMaps(envMap, poolEnvMap)
 	coll, err := bsCollection()
 	if err != nil {
