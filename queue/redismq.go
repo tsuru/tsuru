@@ -127,7 +127,10 @@ func (factory *redisPubSubFactory) dial() (redis.Conn, error) {
 			db = 3
 		}
 	}
-	conn, err := redis.Dial("tcp", fmt.Sprintf("%s:%v", host, port))
+	connectTimeout := 100 * time.Millisecond
+	readTimeout := 30 * time.Minute
+	writeTimeout := 500 * time.Millisecond
+	conn, err := redis.DialTimeout("tcp", fmt.Sprintf("%s:%v", host, port), connectTimeout, readTimeout, writeTimeout)
 	if err != nil {
 		return nil, err
 	}
