@@ -1,23 +1,19 @@
 language: go
+sudo: false
 go:
   - 1.4
   - tip
 env:
   - GOARCH=amd64
+addons:
+  apt:
+    packages:
+      - bzr
+      - git
+      - rsyslog
 before_install:
   - sed -E -i 's|git://github.com/([A-Za-z0-9_]+)/tsuru.git|https://github.com/\1/tsuru|g' .git/config
   - cat .git/config
-  - sudo apt-get update -qq > apt-get.out 2>&1  || (cat apt-get.out && exit 1)
-  - sudo apt-get install bzr git -qq > apt-get.out 2>&1 || (cat apt-get.out && exit 1)
-  - sudo /etc/init.d/postgresql stop
-  - sudo /etc/init.d/mysql stop
-  - mongod --version
-  - sudo /etc/init.d/mongodb stop
-  - sudo sed -i 's/^journal=true//' /etc/mongodb.conf
-  - echo "nojournal = true" | sudo tee -a /etc/mongodb.conf
-  - echo "smallfiles = true" | sudo tee -a /etc/mongodb.conf
-  - cat /etc/mongodb.conf
-  - sudo /etc/init.d/mongodb start
 install:
   - export PATH="$HOME/gopath/bin:$PATH"
   - echo http://localhost > $HOME/.tsuru_target
@@ -31,21 +27,22 @@ before_script:
   # Make sure MongoDB and Redis are available
   - nc -zvv localhost 27017; out=$?; while [[ $out -ne 0 ]]; do echo "Retry hit port 27017..."; nc -zvv localhost 27017; out=$?; sleep 1; done
   - nc -zvv localhost 6379; out=$?; while [[ $out -ne 0 ]]; do echo "Retry hit port 6379..."; nc -zvv localhost 6379; out=$?; sleep 1; done
+  - rsyslogd &
+  - sleep 1
+  - ls -l /dev/log || true
+  - ls -l /var/run/syslog || true
+  - ls -l /var/run/log || true
 script:
   - make test GOMAXPROCS=1
   - ./check-fmt.sh
   - make deadcode
 after_failure:
   # check for OOM; see https://github.com/travis-ci/travis-ci/issues/3075#issuecomment-68629130
-  - sudo dmesg
   - free
   - vmstat
   - ps aux --sort -rss | head -n 10
-  # mongostat might not work though if mongod was the process that was OOM-killed
   - mongostat -n 1
 after_success:
-  # So we can see how much memory is used on success, it is probably borderline
-  # Here we can get useful output from mongostat since mongod wasn't OOM-killed
   - free
   - vmstat
   - ps aux --sort -rss | head -n 10
