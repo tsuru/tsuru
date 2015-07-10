@@ -308,6 +308,17 @@ func (s *S) TestGetExpiredToken(c *check.C) {
 	c.Assert(err, check.Equals, auth.ErrInvalidToken)
 }
 
+func (s *S) TestGetTokenNoExpiration(c *check.C) {
+	t, err := createApplicationToken("tsuru-healer")
+	c.Assert(err, check.IsNil)
+	defer s.conn.Tokens().Remove(bson.M{"token": t.Token})
+	t.Creation = time.Now().Add(-24 * time.Hour)
+	s.conn.Tokens().Update(bson.M{"token": t.Token}, t)
+	t2, err := getToken(t.Token)
+	c.Assert(err, check.IsNil)
+	c.Assert(t2.GetValue(), check.DeepEquals, t.GetValue())
+}
+
 func (s *S) TestDeleteToken(c *check.C) {
 	t, err := createApplicationToken("tsuru-healer")
 	c.Assert(err, check.IsNil)
