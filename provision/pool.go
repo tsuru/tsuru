@@ -6,10 +6,8 @@ package provision
 
 import (
 	"errors"
-	"net/http"
 
 	"github.com/tsuru/tsuru/db"
-	terrors "github.com/tsuru/tsuru/errors"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -21,6 +19,7 @@ type Pool struct {
 }
 
 var ErrPublicDefaultPollCantHaveTeams = errors.New("Public/Default pool can't have teams.")
+var ErrDefaultPoolAlreadyExists = errors.New("Default pool already exists.")
 
 const poolCollection = "pool"
 
@@ -28,6 +27,7 @@ type AddPoolOptions struct {
 	Name    string
 	Public  bool
 	Default bool
+	Force   bool
 }
 
 func AddPool(opts AddPoolOptions) error {
@@ -45,9 +45,18 @@ func AddPool(opts AddPoolOptions) error {
 			return err
 		}
 		if len(p) > 0 {
-			return &terrors.HTTP{
-				Code:    http.StatusPreconditionFailed,
-				Message: "Default pool already exists.",
+			if !opts.Force {
+				return ErrDefaultPoolAlreadyExists
+			} else {
+				pOpts := PoolUpdateOptions{
+					Name:    p[0].Name,
+					Public:  p[0].Public,
+					Default: false,
+				}
+				err = PoolUpdate(pOpts)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -115,6 +124,7 @@ type PoolUpdateOptions struct {
 	Name    string
 	NewName string
 	Public  bool
+	Default bool
 }
 
 func PoolUpdate(params PoolUpdateOptions) error {

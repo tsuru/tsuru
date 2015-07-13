@@ -5,10 +5,7 @@
 package provision
 
 import (
-	"net/http"
-
 	"github.com/tsuru/tsuru/db"
-	"github.com/tsuru/tsuru/errors"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -116,9 +113,34 @@ func (s *S) TestDefaultPoolShouldBeUnique(c *check.C) {
 	err = AddPool(opts)
 	defer RemovePool("pool1")
 	c.Assert(err, check.NotNil)
-	e, ok := err.(*errors.HTTP)
-	c.Assert(ok, check.Equals, true)
-	c.Assert(e.Code, check.Equals, http.StatusPreconditionFailed)
+}
+
+func (s *S) TestForceAddDefaultPool(c *check.C) {
+	coll := s.storage.Collection(poolCollection)
+	opts := AddPoolOptions{
+		Name:    "pool1",
+		Public:  false,
+		Default: true,
+	}
+	err := AddPool(opts)
+	defer RemovePool("pool1")
+	c.Assert(err, check.IsNil)
+	opts = AddPoolOptions{
+		Name:    "pool2",
+		Public:  false,
+		Default: true,
+		Force:   true,
+	}
+	err = AddPool(opts)
+	defer RemovePool("pool2")
+	c.Assert(err, check.IsNil)
+	var p Pool
+	err = coll.Find(bson.M{"_id": "pool1"}).One(&p)
+	c.Assert(err, check.IsNil)
+	c.Assert(p.Default, check.Equals, false)
+	err = coll.Find(bson.M{"_id": "pool2"}).One(&p)
+	c.Assert(err, check.IsNil)
+	c.Assert(p.Default, check.Equals, true)
 }
 
 func (s *S) TestRemovePool(c *check.C) {
