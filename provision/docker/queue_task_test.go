@@ -62,8 +62,7 @@ func (s *S) TestCreateBsContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	config.Set("host", "127.0.0.1:8080")
 	config.Set("docker:bs:image", "myregistry/tsuru/bs")
-	var task runBs
-	err = task.createBsContainer(server.URL(), "pool1")
+	err = createBsContainer(server.URL(), "pool1")
 	c.Assert(err, check.IsNil)
 	containers, err := client.ListContainers(docker.ListContainersOptions{All: true})
 	c.Assert(err, check.IsNil)
@@ -117,8 +116,7 @@ func (s *S) TestCreateBsContainerTaggedBs(c *check.C) {
 	c.Assert(err, check.IsNil)
 	config.Set("host", "127.0.0.1:8080")
 	config.Set("docker:bs:image", "localhost:5000/myregistry/tsuru/bs:v1")
-	var task runBs
-	err = task.createBsContainer(server.URL(), "pool1")
+	err = createBsContainer(server.URL(), "pool1")
 	c.Assert(err, check.IsNil)
 	containers, err := client.ListContainers(docker.ListContainersOptions{All: true})
 	c.Assert(err, check.IsNil)
@@ -177,8 +175,7 @@ func (s *S) TestCreateBsContainerSocketAndCustomSysLogPort(c *check.C) {
 		},
 	})
 	c.Assert(err, check.IsNil)
-	var task runBs
-	err = task.createBsContainer(server.URL(), "pool1")
+	err = createBsContainer(server.URL(), "pool1")
 	c.Assert(err, check.IsNil)
 	client, err := docker.NewClient(server.URL())
 	c.Assert(err, check.IsNil)

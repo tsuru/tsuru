@@ -366,7 +366,10 @@ func bsEnvSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	if err != nil {
 		return err
 	}
-	// TODO(cezarsa): restart bs containers with new envs, stream output?
+	err = mainDockerProvisioner.recreateBsContainers()
+	if err != nil {
+		return err
+	}
 	w.WriteHeader(http.StatusNoContent)
 	return nil
 }

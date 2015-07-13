@@ -6,9 +6,12 @@ package docker
 
 import (
 	"runtime"
+	"sort"
 	"sync"
 
+	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
+	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"gopkg.in/check.v1"
@@ -107,4 +110,56 @@ func (s *S) TestBsGetTokenStress(c *check.C) {
 	n, err = coll.Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 1)
+}
+
+func (s *S) TestRecreateBsContainers(c *check.C) {
+	p, err := s.startMultipleServersClusterSeggregated()
+	c.Assert(err, check.IsNil)
+	err = p.recreateBsContainers()
+	c.Assert(err, check.IsNil)
+	nodes, err := p.getCluster().Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 2)
+	client, err := nodes[0].Client()
+	c.Assert(err, check.IsNil)
+	containers, err := client.ListContainers(docker.ListContainersOptions{All: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 1)
+	container, err := client.InspectContainer(containers[0].ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(container.Name, check.Equals, "big-sibling")
+	client, err = nodes[1].Client()
+	c.Assert(err, check.IsNil)
+	containers, err = client.ListContainers(docker.ListContainersOptions{All: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 1)
+	container, err = client.InspectContainer(containers[0].ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(container.Name, check.Equals, "big-sibling")
+}
+
+func (s *S) TestRecreateBsContainersErrorInSomeContainers(c *check.C) {
+	p, err := s.startMultipleServersClusterSeggregated()
+	c.Assert(err, check.IsNil)
+	nodes, err := p.getCluster().Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 2)
+	s.server.PrepareFailure("failure-create", "/containers/create")
+	defer s.server.ResetFailure("failure-create")
+	err = p.recreateBsContainers()
+	c.Assert(err, check.ErrorMatches, `(?s).*failed to create container in .* \[pool1\]: API error \(400\): failure-create.*`)
+	sort.Sort(cluster.NodeList(nodes))
+	client, err := nodes[0].Client()
+	c.Assert(err, check.IsNil)
+	containers, err := client.ListContainers(docker.ListContainersOptions{All: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 0)
+	client, err = nodes[1].Client()
+	c.Assert(err, check.IsNil)
+	containers, err = client.ListContainers(docker.ListContainersOptions{All: true})
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 1)
+	container, err := client.InspectContainer(containers[0].ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(container.Name, check.Equals, "big-sibling")
 }

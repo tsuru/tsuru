@@ -44,7 +44,7 @@ func (t runBs) Run(job monsterqueue.Job) {
 	for key, value := range rawMetadata {
 		metadata[key] = value.(string)
 	}
-	err = t.createBsContainer(dockerEndpoint, metadata["pool"])
+	err = createBsContainer(dockerEndpoint, metadata["pool"])
 	if err != nil {
 		job.Error(err)
 		t.destroyMachine(machineID)
@@ -91,7 +91,7 @@ func (runBs) waitDocker(endpoint string) error {
 	}
 }
 
-func (t runBs) createBsContainer(dockerEndpoint, poolName string) error {
+func createBsContainer(dockerEndpoint, poolName string) error {
 	client, err := docker.NewClient(dockerEndpoint)
 	if err != nil {
 		return err
@@ -151,7 +151,7 @@ func (t runBs) createBsContainer(dockerEndpoint, poolName string) error {
 		if err != nil {
 			return err
 		}
-		if t.shouldPin(bsImage) {
+		if shouldPinBsImage(bsImage) {
 			match := digestRegexp.FindAllStringSubmatch(buf.String(), 1)
 			if len(match) > 0 {
 				bsImage += "@" + match[0][1]
@@ -176,7 +176,7 @@ func (t runBs) createBsContainer(dockerEndpoint, poolName string) error {
 	return client.StartContainer(container.ID, &hostConfig)
 }
 
-func (runBs) shouldPin(image string) bool {
+func shouldPinBsImage(image string) bool {
 	parts := strings.SplitN(image, "/", 3)
 	lastPart := parts[len(parts)-1]
 	return len(strings.SplitN(lastPart, ":", 2)) < 2

@@ -5,13 +5,16 @@
 package docker
 
 import (
+	"errors"
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/log"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -219,4 +222,34 @@ func bsCollection() (*storage.Collection, error) {
 		return nil, err
 	}
 	return conn.Collection("bsconfig"), nil
+}
+
+func (p *dockerProvisioner) recreateBsContainers() error {
+	cluster := p.getCluster()
+	nodes, err := cluster.UnfilteredNodes()
+	if err != nil {
+		return err
+	}
+	errChan := make(chan error, len(nodes))
+	wg := sync.WaitGroup{}
+	log.Debugf("[bs containers] recreating %d containers", len(nodes))
+	for i := range nodes {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			node := &nodes[i]
+			pool := node.Metadata["pool"]
+			log.Debugf("[bs containers] recreating container in %s [%s]", node.Address, pool)
+			err := createBsContainer(node.Address, pool)
+			if err != nil {
+				msg := fmt.Sprintf("[bs containers] failed to create container in %s [%s]: %s", node.Address, pool, err)
+				log.Error(msg)
+				err = errors.New(msg)
+			}
+			errChan <- err
+		}(i)
+	}
+	wg.Wait()
+	close(errChan)
+	return <-errChan
 }
