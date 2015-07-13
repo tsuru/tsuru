@@ -391,6 +391,7 @@ func (s *DeploySuite) TestDeployList(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
+	c.Assert(result, check.HasLen, 2)
 	c.Assert(result[0].ID, check.NotNil)
 	c.Assert(result[0].App, check.Equals, "g1")
 	c.Assert(result[0].Timestamp.In(time.UTC), check.DeepEquals, timestamp.Add(time.Minute).In(time.UTC))
