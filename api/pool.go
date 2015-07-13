@@ -8,10 +8,12 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"strconv"
 
 	"gopkg.in/mgo.v2/bson"
 
 	"github.com/tsuru/tsuru/auth"
+	terrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/rec"
 )
@@ -62,7 +64,19 @@ func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if err != nil {
 		return err
 	}
-	return provision.AddPool(p)
+	forceAdd, _ := strconv.ParseBool(r.URL.Query().Get("force"))
+	p.Force = forceAdd
+	err = provision.AddPool(p)
+	if err != nil {
+		if err == provision.ErrDefaultPoolAlreadyExists {
+			return &terrors.HTTP{
+				Code:    http.StatusPreconditionFailed,
+				Message: "Default pool already exists.",
+			}
+		}
+		return err
+	}
+	return nil
 }
 
 func removePoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {

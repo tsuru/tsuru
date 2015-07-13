@@ -27,6 +27,16 @@ func (s *S) TestAddPoolHandler(c *check.C) {
 	pools, err := provision.ListPools(bson.M{"_id": "pool1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(len(pools), check.Equals, 1)
+	b = bytes.NewBufferString(`{"name": "pool2", "public": true}`)
+	req, err = http.NewRequest("POST", "/pool", b)
+	c.Assert(err, check.IsNil)
+	rec = httptest.NewRecorder()
+	defer provision.RemovePool("pool2")
+	err = addPoolHandler(rec, req, nil)
+	c.Assert(err, check.IsNil)
+	pools, err = provision.ListPools(bson.M{"_id": "pool2"})
+	c.Assert(err, check.IsNil)
+	c.Assert(pools[0].Public, check.Equals, true)
 }
 
 func (s *S) TestRemovePoolHandler(c *check.C) {
