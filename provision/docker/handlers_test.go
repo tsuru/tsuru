@@ -1112,3 +1112,18 @@ func (s *HandlersSuite) TestBsConfigGetHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(conf, check.DeepEquals, expected)
 }
+
+func (s *HandlersSuite) TestBsUpgradeHandler(c *check.C) {
+	err := saveBsImage("tsuru/bs@sha256:abcef384829283eff")
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("POST", "/docker/bs/upgrade", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+	conf, err := loadBsConfig()
+	c.Assert(err, check.IsNil)
+	c.Assert(conf.Image, check.Equals, "")
+}

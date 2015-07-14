@@ -41,6 +41,7 @@ func init() {
 	api.RegisterHandler("/docker/healing", "GET", api.AdminRequiredHandler(healingHistoryHandler))
 	api.RegisterHandler("/docker/autoscale", "GET", api.AdminRequiredHandler(autoScaleHistoryHandler))
 	api.RegisterHandler("/docker/autoscale/run", "POST", api.AdminRequiredHandler(autoScaleRunHandler))
+	api.RegisterHandler("/docker/bs/upgrade", "POST", api.AdminRequiredHandler(bsUpgradeHandler))
 	api.RegisterHandler("/docker/bs/env", "POST", api.AdminRequiredHandler(bsEnvSetHandler))
 	api.RegisterHandler("/docker/bs", "GET", api.AdminRequiredHandler(bsConfigGetHandler))
 }
@@ -383,4 +384,17 @@ func bsConfigGetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) er
 		currentConfig = &bsConfig{}
 	}
 	return json.NewEncoder(w).Encode(currentConfig)
+}
+
+func bsUpgradeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	err := saveBsImage("")
+	if err != nil {
+		return err
+	}
+	err = mainDockerProvisioner.recreateBsContainers()
+	if err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusNoContent)
+	return nil
 }
