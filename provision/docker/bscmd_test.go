@@ -141,3 +141,27 @@ Environment Variables [pool2]:
 +------+-------+
 `)
 }
+
+func (s *S) TestBsUpgradeRun(c *check.C) {
+	var called bool
+	var stdout, stderr bytes.Buffer
+	context := cmd.Context{
+		Stdout: &stdout,
+		Stderr: &stderr,
+		Args:   []string{"A=1", "B=2"},
+	}
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: "", Status: http.StatusNoContent},
+		CondFunc: func(req *http.Request) bool {
+			called = true
+			return req.URL.Path == "/docker/bs/upgrade" && req.Method == "POST"
+		},
+	}
+	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
+	cmd := bsUpgradeCmd{}
+	err := cmd.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	c.Assert(stdout.String(), check.Equals, "bs successfully upgraded.\n")
+	c.Assert(called, check.Equals, true)
+}

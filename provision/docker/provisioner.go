@@ -830,6 +830,7 @@ func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 		&listAutoScaleRunCmd{},
 		&bsEnvSetCmd{},
 		&bsInfoCmd{},
+		&bsUpgradeCmd{},
 	}
 }
 

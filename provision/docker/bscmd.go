@@ -123,3 +123,32 @@ func (c *bsInfoCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	}
 	return nil
 }
+
+type bsUpgradeCmd struct{}
+
+func (c *bsUpgradeCmd) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:    "bs-upgrade",
+		Usage:   "bs-upgrade",
+		Desc:    "Upgrade the version of bs containers.",
+		MinArgs: 0,
+	}
+}
+
+func (c *bsUpgradeCmd) Run(context *cmd.Context, client *cmd.Client) error {
+	url, err := cmd.GetURL("/docker/bs/upgrade")
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		return err
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	fmt.Fprintln(context.Stdout, "bs successfully upgraded.")
+	return nil
+}
