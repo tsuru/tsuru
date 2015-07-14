@@ -13,6 +13,20 @@ Pool is used by provisioners to group nodes and know if an application can be
 deployed in these nodes. Users can choose which pool to deploy in `tsuru
 app-create`.
 
+Tsuru has three types of pool: team, public and default.
+
+Team's pool are segregated by teams, and cloud administrator should set
+teams in this pool manually. This pool are just accessible by team's
+members.
+
+Public pools are accessible by any user. It can be used to segregate
+machines that have specific hardware, like SSD hard drives or high end
+CPUs or homologation machines.
+
+Default pool are for experimentation and low profile apps, like service
+dashboard and "in development" apps. You can just have one default pool.  This
+is the old fallback pool, but with a explict flag.
+
 Adding a pool
 -------------
 
@@ -40,6 +54,13 @@ If you want a default pool, you can create it with:
 
     $ tsuru-admin pool-add pool1 -d
 
+You can overwrite default pool by setting the flag `-f`:
+
+.. highlight:: bash
+
+::
+
+    $ tsuru-admin pool-add new-default-pool -d -f
 
 Adding teams to a pool
 ----------------------
