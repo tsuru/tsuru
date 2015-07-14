@@ -129,7 +129,7 @@ func createBsContainer(dockerEndpoint, poolName string) error {
 			Image: bsImage,
 			Env:   env,
 			ExposedPorts: map[docker.Port]struct{}{
-				docker.Port(strconv.Itoa(sysLogExternalPort) + "/udp"): {},
+				docker.Port("514/udp"): {},
 			},
 		},
 	}

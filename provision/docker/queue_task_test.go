@@ -72,7 +72,7 @@ func (s *S) TestCreateBsContainer(c *check.C) {
 	c.Assert(container.Name, check.Equals, "big-sibling")
 	expectedBinding := []docker.PortBinding{{HostIP: "0.0.0.0", HostPort: "1514"}}
 	c.Assert(container.HostConfig.PortBindings[docker.Port("514/udp")], check.DeepEquals, expectedBinding)
-	_, ok := container.Config.ExposedPorts[docker.Port("1514/udp")]
+	_, ok := container.Config.ExposedPorts[docker.Port("514/udp")]
 	c.Assert(ok, check.Equals, true)
 	c.Assert(container.Config.Image, check.Equals, "myregistry/tsuru/bs")
 	c.Assert(container.HostConfig.RestartPolicy, check.Equals, docker.AlwaysRestart())
@@ -126,7 +126,7 @@ func (s *S) TestCreateBsContainerTaggedBs(c *check.C) {
 	c.Assert(container.Name, check.Equals, "big-sibling")
 	expectedBinding := []docker.PortBinding{{HostIP: "0.0.0.0", HostPort: "1514"}}
 	c.Assert(container.HostConfig.PortBindings[docker.Port("514/udp")], check.DeepEquals, expectedBinding)
-	_, ok := container.Config.ExposedPorts[docker.Port("1514/udp")]
+	_, ok := container.Config.ExposedPorts[docker.Port("514/udp")]
 	c.Assert(ok, check.Equals, true)
 	c.Assert(container.Config.Image, check.Equals, "localhost:5000/myregistry/tsuru/bs:v1")
 	c.Assert(container.HostConfig.RestartPolicy, check.Equals, docker.AlwaysRestart())
@@ -188,7 +188,7 @@ func (s *S) TestCreateBsContainerSocketAndCustomSysLogPort(c *check.C) {
 	c.Assert(container.HostConfig.Binds, check.DeepEquals, []string{"/tmp/docker.sock:/var/run/docker.sock:rw"})
 	expectedBinding := []docker.PortBinding{{HostIP: "0.0.0.0", HostPort: "1519"}}
 	c.Assert(container.HostConfig.PortBindings[docker.Port("514/udp")], check.DeepEquals, expectedBinding)
-	_, ok := container.Config.ExposedPorts[docker.Port("1519/udp")]
+	_, ok := container.Config.ExposedPorts[docker.Port("514/udp")]
 	c.Assert(ok, check.Equals, true)
 	c.Assert(container.Config.Image, check.Equals, "myregistry/tsuru/bs")
 	c.Assert(container.State.Running, check.Equals, true)
