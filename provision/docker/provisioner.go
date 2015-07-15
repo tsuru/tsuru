@@ -271,7 +271,7 @@ func (p *dockerProvisioner) Restart(a provision.App, w io.Writer) error {
 	if w == nil {
 		w = ioutil.Discard
 	}
-	writer := &app.LogWriter{App: a, Writer: w}
+	writer := io.MultiWriter(w, &app.LogWriter{App: a})
 	_, err = p.runReplaceUnitsPipeline(writer, a, containers, imageId)
 	return err
 }
@@ -582,7 +582,7 @@ func (p *dockerProvisioner) AddUnits(a provision.App, units uint, w io.Writer) (
 	if w == nil {
 		w = ioutil.Discard
 	}
-	writer := &app.LogWriter{App: a, Writer: w}
+	writer := io.MultiWriter(w, &app.LogWriter{App: a})
 	imageId, err := appCurrentImageName(a.GetName())
 	if err != nil {
 		return nil, err

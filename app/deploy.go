@@ -216,8 +216,10 @@ func GetDiffInDeploys(d *DeployData) (string, error) {
 func Deploy(opts DeployOptions) error {
 	var outBuffer bytes.Buffer
 	start := time.Now()
-	logWriter := LogWriter{App: opts.App, Writer: opts.OutputStream}
-	writer := io.MultiWriter(&outBuffer, &logWriter)
+	logWriter := LogWriter{App: opts.App}
+	logWriter.Async()
+	defer logWriter.Close()
+	writer := io.MultiWriter(opts.OutputStream, &outBuffer, &logWriter)
 	imageId, err := deployToProvisioner(&opts, writer)
 	elapsed := time.Since(start)
 	saveErr := saveDeployData(&opts, imageId, outBuffer.String(), elapsed, err)

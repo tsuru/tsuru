@@ -1972,11 +1972,25 @@ func (s *S) TestRun(c *check.C) {
 	expected += " ls -lh"
 	cmds := s.provisioner.GetCmds(expected, &app)
 	c.Assert(cmds, check.HasLen, 1)
-	logs, err := app.LastLogs(1, Applog{})
+	var logs []Applog
+	timeout := time.After(5 * time.Second)
+	for {
+		logs, err = app.LastLogs(10, Applog{})
+		c.Assert(err, check.IsNil)
+		if len(logs) > 1 {
+			break
+		}
+		select {
+		case <-timeout:
+			c.Fatal("timeout waiting for logs")
+		default:
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
 	c.Assert(err, check.IsNil)
-	c.Assert(logs, check.HasLen, 1)
-	c.Assert(logs[0].Message, check.Equals, "a lot of files")
-	c.Assert(logs[0].Source, check.Equals, "app-run")
+	c.Assert(logs, check.HasLen, 2)
+	c.Assert(logs[1].Message, check.Equals, "a lot of files")
+	c.Assert(logs[1].Source, check.Equals, "app-run")
 }
 
 func (s *S) TestRunOnce(c *check.C) {
