@@ -40,28 +40,32 @@ func AddPool(opts AddPoolOptions) error {
 	}
 	defer conn.Close()
 	if opts.Default {
-		p, err := ListPools(bson.M{"default": true})
+		err = changeDefaultPool(opts.Force)
 		if err != nil {
 			return err
-		}
-		if len(p) > 0 {
-			if !opts.Force {
-				return ErrDefaultPoolAlreadyExists
-			} else {
-				pOpts := PoolUpdateOptions{
-					Name:    p[0].Name,
-					Public:  p[0].Public,
-					Default: false,
-				}
-				err = PoolUpdate(pOpts)
-				if err != nil {
-					return err
-				}
-			}
 		}
 	}
 	pool := Pool{Name: opts.Name, Public: opts.Public, Default: opts.Default}
 	return conn.Collection(poolCollection).Insert(pool)
+}
+
+func changeDefaultPool(force bool) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	p, err := ListPools(bson.M{"default": true})
+	if err != nil {
+		return err
+	}
+	if len(p) > 0 {
+		if !force {
+			return ErrDefaultPoolAlreadyExists
+		}
+		return conn.Collection(poolCollection).UpdateId(p[0].Name, bson.M{"default": false})
+	}
+	return nil
 }
 
 func RemovePool(poolName string) error {
@@ -125,6 +129,7 @@ type PoolUpdateOptions struct {
 	NewName string
 	Public  bool
 	Default bool
+	Force   bool
 }
 
 func PoolUpdate(params PoolUpdateOptions) error {
@@ -133,12 +138,18 @@ func PoolUpdate(params PoolUpdateOptions) error {
 		return err
 	}
 	defer conn.Close()
+	if params.Default {
+		err = changeDefaultPool(params.Force)
+		if err != nil {
+			return err
+		}
+	}
 	var p Pool
 	err = conn.Collection(poolCollection).Find(bson.M{"_id": params.Name}).One(&p)
 	if err != nil {
 		return err
 	}
-	return conn.Collection(poolCollection).UpdateId(params.Name, bson.M{"public": params.Public})
+	return conn.Collection(poolCollection).UpdateId(params.Name, bson.M{"public": params.Public, "default": params.Default})
 }
 
 // GetPoolsNames find teams by a list of team names.

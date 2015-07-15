@@ -245,3 +245,67 @@ func (s *S) TestPoolUpdate(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(p.Public, check.Equals, true)
 }
+
+func (s *S) TestPoolUpdateToDefault(c *check.C) {
+	coll := s.storage.Collection(poolCollection)
+	pool := Pool{Name: "pool1", Public: false, Default: false}
+	err := coll.Insert(pool)
+	c.Assert(err, check.IsNil)
+	defer coll.RemoveId(pool.Name)
+	poolUpdateOption := PoolUpdateOptions{
+		Name:    "pool1",
+		Public:  true,
+		Default: true,
+	}
+	err = PoolUpdate(poolUpdateOption)
+	c.Assert(err, check.IsNil)
+	var p Pool
+	err = coll.Find(bson.M{"_id": pool.Name}).One(&p)
+	c.Assert(err, check.IsNil)
+	c.Assert(p.Default, check.Equals, true)
+}
+
+func (s *S) TestPoolUpdateForceToDefault(c *check.C) {
+	coll := s.storage.Collection(poolCollection)
+	pool := Pool{Name: "pool1", Public: false, Default: true}
+	err := coll.Insert(pool)
+	c.Assert(err, check.IsNil)
+	defer coll.RemoveId(pool.Name)
+	pool = Pool{Name: "pool2", Public: false, Default: false}
+	err = coll.Insert(pool)
+	c.Assert(err, check.IsNil)
+	defer coll.RemoveId(pool.Name)
+	poolUpdateOption := PoolUpdateOptions{
+		Name:    "pool2",
+		Public:  true,
+		Default: true,
+		Force:   true,
+	}
+	err = PoolUpdate(poolUpdateOption)
+	c.Assert(err, check.IsNil)
+	var p Pool
+	err = coll.Find(bson.M{"_id": "pool2"}).One(&p)
+	c.Assert(err, check.IsNil)
+	c.Assert(p.Default, check.Equals, true)
+}
+
+func (s *S) TestPoolUpdateDefaultAttrFailIfDefaultPoolAlreadyExists(c *check.C) {
+	coll := s.storage.Collection(poolCollection)
+	pool := Pool{Name: "pool1", Public: false, Default: true}
+	err := coll.Insert(pool)
+	c.Assert(err, check.IsNil)
+	defer coll.RemoveId(pool.Name)
+	pool = Pool{Name: "pool2", Public: false, Default: false}
+	err = coll.Insert(pool)
+	c.Assert(err, check.IsNil)
+	defer coll.RemoveId(pool.Name)
+	poolUpdateOption := PoolUpdateOptions{
+		Name:    "pool2",
+		Public:  true,
+		Default: true,
+		Force:   false,
+	}
+	err = PoolUpdate(poolUpdateOption)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.Equals, ErrDefaultPoolAlreadyExists)
+}
