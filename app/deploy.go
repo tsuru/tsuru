@@ -14,6 +14,7 @@ import (
 
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/repository"
@@ -219,7 +220,7 @@ func Deploy(opts DeployOptions) error {
 	logWriter := LogWriter{App: opts.App}
 	logWriter.Async()
 	defer logWriter.Close()
-	writer := io.MultiWriter(opts.OutputStream, &outBuffer, &logWriter)
+	writer := io.MultiWriter(&tsuruIo.NoErrorWriter{Writer: opts.OutputStream}, &outBuffer, &logWriter)
 	imageId, err := deployToProvisioner(&opts, writer)
 	elapsed := time.Since(start)
 	saveErr := saveDeployData(&opts, imageId, outBuffer.String(), elapsed, err)
