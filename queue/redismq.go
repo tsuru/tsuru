@@ -127,10 +127,23 @@ func (factory *redisPubSubFactory) dial() (redis.Conn, error) {
 			db = 3
 		}
 	}
-	connectTimeout := 100 * time.Millisecond
-	readTimeout := 30 * time.Minute
-	writeTimeout := 500 * time.Millisecond
-	conn, err := redis.DialTimeout("tcp", fmt.Sprintf("%s:%v", host, port), connectTimeout, readTimeout, writeTimeout)
+	secondFloat := float64(time.Second)
+	dialTimeout, err := config.GetFloat("pubsub:redis-dial-timeout")
+	if err != nil {
+		dialTimeout = 0.1
+	}
+	dialTimeout = dialTimeout * secondFloat
+	readTimeout, err := config.GetFloat("pubsub:redis-read-timeout")
+	if err != nil {
+		readTimeout = 30 * 60
+	}
+	readTimeout = readTimeout * secondFloat
+	writeTimeout, err := config.GetFloat("pubsub:redis-write-timeout")
+	if err != nil {
+		writeTimeout = 0.5
+	}
+	writeTimeout = writeTimeout * secondFloat
+	conn, err := redis.DialTimeout("tcp", fmt.Sprintf("%s:%v", host, port), time.Duration(dialTimeout), time.Duration(readTimeout), time.Duration(writeTimeout))
 	if err != nil {
 		return nil, err
 	}

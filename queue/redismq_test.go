@@ -7,6 +7,7 @@ package queue
 import (
 	"time"
 
+	"github.com/tsuru/config"
 	"gopkg.in/check.v1"
 )
 
@@ -90,4 +91,21 @@ func (s *RedismqSuite) TestRedisPubSubUnsub(c *check.C) {
 	case <-time.After(1e9):
 		c.Error("Timeout waiting for unsub.")
 	}
+}
+
+func (s *RedismqSuite) TestRedisPubSubTimeout(c *check.C) {
+	config.Set("pubsub:redis-read-timeout", 0.1)
+	defer config.Unset("pubsub:redis-read-timeout")
+	var factory redisPubSubFactory
+	q, err := factory.PubSub("mypubsub")
+	c.Assert(err, check.IsNil)
+	pubSubQ, ok := q.(PubSubQ)
+	c.Assert(ok, check.Equals, true)
+	msgChan, err := pubSubQ.Sub()
+	c.Assert(err, check.IsNil)
+	time.Sleep(200 * time.Millisecond)
+	err = pubSubQ.Pub([]byte("entil'zha"))
+	c.Assert(err, check.IsNil)
+	val := <-msgChan
+	c.Assert(val, check.IsNil)
 }
