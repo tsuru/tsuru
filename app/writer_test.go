@@ -6,6 +6,7 @@ package app
 
 import (
 	"bytes"
+	"time"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
@@ -83,4 +84,50 @@ func (s *WriterSuite) TestLogWriterShouldReturnTheDataSize(c *check.C) {
 	n, err := writer.Write(data)
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, len(data))
+}
+
+func (s *WriterSuite) TestLogWriterAsync(c *check.C) {
+	var b bytes.Buffer
+	a := App{Name: "down"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	writer := LogWriter{App: &a, Writer: &b}
+	writer.Async()
+	data := []byte("ble")
+	_, err = writer.Write(data)
+	c.Assert(err, check.IsNil)
+	err = writer.Wait(5 * time.Second)
+	c.Assert(err, check.IsNil)
+	c.Assert(b.Bytes(), check.DeepEquals, data)
+	instance := App{}
+	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
+	logs, err := instance.LastLogs(1, Applog{})
+	c.Assert(err, check.IsNil)
+	c.Assert(logs[0].Message, check.Equals, string(data))
+	c.Assert(logs[0].Source, check.Equals, "tsuru")
+}
+
+type sleepWriter struct {
+	bytes.Buffer
+}
+
+func (w *sleepWriter) Write(data []byte) (int, error) {
+	time.Sleep(time.Second)
+	return w.Buffer.Write(data)
+}
+
+func (s *WriterSuite) TestLogWriterAsyncTimeout(c *check.C) {
+	var b sleepWriter
+	a := App{Name: "down"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	writer := LogWriter{App: &a, Writer: &b}
+	writer.Async()
+	data := []byte("ble")
+	_, err = writer.Write(data)
+	c.Assert(err, check.IsNil)
+	err = writer.Wait(0)
+	c.Assert(err, check.ErrorMatches, "timeout waiting for writer to finish")
 }
