@@ -6,7 +6,6 @@ package app
 
 import (
 	"errors"
-	"io"
 	"time"
 
 	"github.com/tsuru/tsuru/log"
@@ -18,7 +17,6 @@ type Logger interface {
 
 type LogWriter struct {
 	App    Logger
-	Writer io.Writer
 	Source string
 	msgCh  chan []byte
 	doneCh chan bool
@@ -39,11 +37,16 @@ func (w *LogWriter) Async() {
 	}()
 }
 
+func (w *LogWriter) Close() {
+	if w.msgCh != nil {
+		close(w.msgCh)
+	}
+}
+
 func (w *LogWriter) Wait(timeout time.Duration) error {
 	if w.msgCh == nil {
 		return nil
 	}
-	close(w.msgCh)
 	select {
 	case <-w.doneCh:
 	case <-time.After(timeout):
@@ -70,5 +73,5 @@ func (w *LogWriter) write(data []byte) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	return w.Writer.Write(data)
+	return len(data), nil
 }

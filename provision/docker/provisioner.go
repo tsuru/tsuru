@@ -283,7 +283,7 @@ func (p *dockerProvisioner) Restart(a provision.App, process string, w io.Writer
 	if w == nil {
 		w = ioutil.Discard
 	}
-	writer := &app.LogWriter{App: a, Writer: w}
+	writer := io.MultiWriter(w, &app.LogWriter{App: a})
 	toAdd := make(map[string]*containersToAdd, len(containers))
 	for _, c := range containers {
 		if _, ok := toAdd[c.ProcessName]; !ok {
@@ -636,7 +636,7 @@ func (p *dockerProvisioner) AddUnits(a provision.App, units uint, process string
 	if w == nil {
 		w = ioutil.Discard
 	}
-	writer := &app.LogWriter{App: a, Writer: w}
+	writer := io.MultiWriter(w, &app.LogWriter{App: a})
 	imageId, err := appCurrentImageName(a.GetName())
 	if err != nil {
 		return nil, err
