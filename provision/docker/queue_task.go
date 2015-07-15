@@ -104,6 +104,10 @@ func createBsContainer(dockerEndpoint, poolName string) error {
 		bsConf = &bsConfig{}
 	}
 	bsImage := bsConf.getImage()
+	err = pullBsImage(bsImage, dockerEndpoint)
+	if err != nil {
+		return err
+	}
 	hostConfig := docker.HostConfig{RestartPolicy: docker.AlwaysRestart()}
 	sysLogExternalPort := getBsSysLogPort()
 	socket, _ := config.GetString("docker:bs:socket")
@@ -141,39 +145,30 @@ func createBsContainer(dockerEndpoint, poolName string) error {
 		}
 		container, err = client.CreateContainer(opts)
 	}
-	if err == docker.ErrNoSuchImage {
-		var buf bytes.Buffer
-		pullOpts := docker.PullImageOptions{
-			Repository:   bsImage,
-			OutputStream: &buf,
-		}
-		err = client.PullImage(pullOpts, getRegistryAuthConfig())
-		if err != nil {
-			return err
-		}
-		if shouldPinBsImage(bsImage) {
-			match := digestRegexp.FindAllStringSubmatch(buf.String(), 1)
-			if len(match) > 0 {
-				bsImage += "@" + match[0][1]
-			}
-		}
-		err = saveBsImage(bsImage)
-		if err != nil {
-			return err
-		}
-		container, err = client.CreateContainer(opts)
-	}
-	if err == docker.ErrContainerAlreadyExists {
-		err = client.RemoveContainer(docker.RemoveContainerOptions{ID: opts.Name, Force: true})
-		if err != nil {
-			return err
-		}
-		container, err = client.CreateContainer(opts)
-	}
 	if err != nil {
 		return err
 	}
 	return client.StartContainer(container.ID, &hostConfig)
+}
+
+func pullBsImage(image, dockerEndpoint string) error {
+	client, err := docker.NewClient(dockerEndpoint)
+	if err != nil {
+		return err
+	}
+	var buf bytes.Buffer
+	pullOpts := docker.PullImageOptions{Repository: image, OutputStream: &buf}
+	err = client.PullImage(pullOpts, getRegistryAuthConfig())
+	if err != nil {
+		return err
+	}
+	if shouldPinBsImage(image) {
+		match := digestRegexp.FindAllStringSubmatch(buf.String(), 1)
+		if len(match) > 0 {
+			image += "@" + match[0][1]
+		}
+	}
+	return saveBsImage(image)
 }
 
 func shouldPinBsImage(image string) bool {
