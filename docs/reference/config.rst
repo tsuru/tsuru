@@ -397,6 +397,24 @@ pubsub:pool-idle-timeout
 ``pubsub:pool-idle-timeout`` is the number of seconds idle connections will
 remain in connection pool to redis. Defaults to 300.
 
+pubsub:redis-dial-timeout
++++++++++++++++++++++++++
+
+``pubsub:redis-dial-timeout`` is the number of seconds used as dial timeout.
+Defaults to 0.1.
+
+pubsub:redis-read-timeout
++++++++++++++++++++++++++
+
+``pubsub:redis-read-timeout`` is the number of seconds used as read timeout.
+Defaults to 1800 (30 minutes).
+
+pubsub:redis-write-timeout
+++++++++++++++++++++++++++
+
+``pubsub:redis-write-timeout`` is the number of seconds used as write timeout.
+Defaults to 0.5.
+
 redis-queue:host
 ++++++++++++++++
 
