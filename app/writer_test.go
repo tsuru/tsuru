@@ -97,7 +97,7 @@ func (s *WriterSuite) TestLogWriterAsync(c *check.C) {
 	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
 	logs, err := instance.LastLogs(1, Applog{})
 	c.Assert(err, check.IsNil)
-	c.Assert(logs[0].Message, check.Equals, string(data))
+	c.Assert(logs[0].Message, check.Equals, "ble")
 	c.Assert(logs[0].Source, check.Equals, "tsuru")
 }
 
@@ -108,14 +108,36 @@ func (s *WriterSuite) TestLogWriterAsyncTimeout(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
 	writer := LogWriter{App: &a}
 	writer.Async()
-	for i := 0; i < 900; i++ {
+	err = writer.Wait(0)
+	c.Assert(err, check.ErrorMatches, "timeout waiting for writer to finish")
+	writer.Close()
+	err = writer.Wait(10 * time.Second)
+	c.Assert(err, check.IsNil)
+}
+
+func (s *WriterSuite) TestLogWriterAsyncCopySlice(c *check.C) {
+	a := App{Name: "down"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	writer := LogWriter{App: &a}
+	writer.Async()
+	for i := 0; i < 100; i++ {
 		data := []byte("ble")
 		_, err = writer.Write(data)
+		data[0] = 'X'
 		c.Assert(err, check.IsNil)
 	}
 	writer.Close()
-	err = writer.Wait(0)
-	c.Assert(err, check.ErrorMatches, "timeout waiting for writer to finish")
-	err = writer.Wait(10 * time.Second)
+	err = writer.Wait(5 * time.Second)
 	c.Assert(err, check.IsNil)
+	instance := App{}
+	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
+	logs, err := instance.LastLogs(100, Applog{})
+	c.Assert(err, check.IsNil)
+	c.Assert(logs, check.HasLen, 100)
+	for i := 0; i < 100; i++ {
+		c.Assert(logs[i].Message, check.Equals, "ble")
+		c.Assert(logs[i].Source, check.Equals, "tsuru")
+	}
 }
