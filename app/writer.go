@@ -28,7 +28,7 @@ func (w *LogWriter) Async() {
 	go func() {
 		defer close(w.doneCh)
 		for msg := range w.msgCh {
-			_, err := w.write(msg)
+			err := w.write(msg)
 			if err != nil {
 				log.Errorf("[LogWriter] failed to write async logs: %s", err)
 				return
@@ -58,20 +58,18 @@ func (w *LogWriter) Wait(timeout time.Duration) error {
 // Write writes and logs the data.
 func (w *LogWriter) Write(data []byte) (int, error) {
 	if w.msgCh == nil {
-		return w.write(data)
+		return len(data), w.write(data)
 	}
-	w.msgCh <- data
+	copied := make([]byte, len(data))
+	copy(copied, data)
+	w.msgCh <- copied
 	return len(data), nil
 }
 
-func (w *LogWriter) write(data []byte) (int, error) {
+func (w *LogWriter) write(data []byte) error {
 	source := w.Source
 	if source == "" {
 		source = "tsuru"
 	}
-	err := w.App.Log(string(data), source, "api")
-	if err != nil {
-		return 0, err
-	}
-	return len(data), nil
+	return w.App.Log(string(data), source, "api")
 }
