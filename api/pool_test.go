@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -162,4 +163,64 @@ func (s *S) TestPoolUpdateToPublicHandler(c *check.C) {
 	p, err := provision.ListPools(bson.M{"_id": "pool1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(p[0].Public, check.Equals, true)
+}
+
+func (s *S) TestPoolUpdateToDefaultPoolHandler(c *check.C) {
+	provision.RemovePool("test1")
+	opts := provision.AddPoolOptions{Name: "pool1"}
+	err := provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("pool1")
+	b := bytes.NewBufferString(`{"default": true}`)
+	req, err := http.NewRequest("POST", "/pool/pool1?:name=pool1", b)
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	err = poolUpdateHandler(rec, req, nil)
+	c.Assert(err, check.IsNil)
+	p, err := provision.ListPools(bson.M{"_id": "pool1"})
+	c.Assert(err, check.IsNil)
+	c.Assert(p[0].Default, check.Equals, true)
+}
+
+func (s *S) TestPoolUpdateOverwriteDefaultPoolHandler(c *check.C) {
+	provision.RemovePool("test1")
+	opts := provision.AddPoolOptions{Name: "pool1", Default: true}
+	err := provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("pool1")
+	opts = provision.AddPoolOptions{Name: "pool2"}
+	err = provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("pool2")
+	b := bytes.NewBufferString(`{"default": true}`)
+	req, err := http.NewRequest("POST", "/pool/pool1?:name=pool2&force=true", b)
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	err = poolUpdateHandler(rec, req, nil)
+	c.Assert(err, check.IsNil)
+	p, err := provision.ListPools(bson.M{"_id": "pool2"})
+	c.Assert(err, check.IsNil)
+	c.Assert(p[0].Default, check.Equals, true)
+}
+
+func (s *S) TestPoolUpdateNotOverwriteDefaultPoolHandler(c *check.C) {
+	provision.RemovePool("test1")
+	opts := provision.AddPoolOptions{Name: "pool1", Default: true}
+	err := provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("pool1")
+	opts = provision.AddPoolOptions{Name: "pool2"}
+	err = provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("pool2")
+	b := bytes.NewBufferString(`{"default": true}`)
+	req, err := http.NewRequest("POST", "/pool/pool1?:name=pool2", b)
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	err = poolUpdateHandler(rec, req, nil)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Code, check.Equals, http.StatusPreconditionFailed)
+	c.Assert(e.Message, check.Equals, "Default pool already exists.")
 }
