@@ -55,6 +55,21 @@ logs to other syslog servers, using the ``docker:bs:syslog-forward-addresses``
 config entry. For more detail, check the :ref:`bs configuration reference
 <config_bs>`.
 
+Metrics
++++++++
+
+bs also collect metrics from containers and send them to a metric database backend.
+Supported backends are `statsd` and `logstash`.
+
+The collected metrics are:
+
+* cpu_max
+* mem_max
+* mem_pct_max
+
+For more details about how to configure the metric backend check the :ref:`bs configuration reference
+<config_bs>`.
+
 Environment Variables
 +++++++++++++++++++++
 
@@ -79,3 +94,40 @@ which bs will forward the logs from Docker containers. Log entries will be
 rewritten to properly identify the application and process responsible for the
 entry. The default value is an empty string, which means that bs will not
 forward logs to any syslog server, only to tsuru API.
+
+METRICS_BACKEND
+---------------
+
+``METRICS_BACKEND`` is the metric backend. Supported backends are `logstash` and `statsd`.
+
+METRICS_LOGSTASH_CLIENT
+-----------------------
+
+``METRICS_LOGSTASH_CLIENT`` is the client name used to identify who is sending the metric.
+The default value is `tsuru`.
+
+METRICS_LOGSTASH_PORT
+---------------------
+
+``METRICS_LOGSTASH_PORT`` is the `Logstash` port. The default value is `1984`.
+
+METRICS_LOGSTASH_HOST
+---------------------
+
+``METRICS_LOGSTASH_HOST`` is the `Logstash` host. The default value is `localhost`.
+
+METRICS_STATSD_PREFIX
+---------------------
+
+``METRICS_STATSD_PREFIX`` is the prefix for the `Statsd` key. The key is composed by
+`{prefix}tsuru.{appname}.{hostname}`. The default value is an empty string `""`.
+
+METRICS_STATSD_PORT
+-------------------
+
+``METRICS_STATSD_PORT`` is the `Statsd` port. The default value is `8125`.
+
+METRICS_STATSD_HOST
+-------------------
+
+``METRICS_STATSD_HOST`` is the `Statsd` host. The default value is `localhost`.
