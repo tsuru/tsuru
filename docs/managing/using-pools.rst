@@ -19,13 +19,13 @@ Team's pool are segregated by teams, and cloud administrator should set
 teams in this pool manually. This pool are just accessible by team's
 members.
 
-Public pools are accessible by any user. It can be used to segregate
-machines that have specific hardware, like SSD hard drives or high end
-CPUs or homologation machines.
+Public pools are accessible by any user.
 
-Default pool are for experimentation and low profile apps, like service
-dashboard and "in development" apps. You can just have one default pool.  This
-is the old fallback pool, but with a explict flag.
+Default pool is where apps are deployed when app's team owner don't have a pool
+associated with it or when app's creator don't choose any public pool. Ideally
+this pool is for experimentation and low profile apps, like service dashboard
+and "in development" apps. You can just have one default pool. This is the old
+fallback pool, but with a explicit flag.
 
 Adding a pool
 -------------
