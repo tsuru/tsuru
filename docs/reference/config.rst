@@ -349,6 +349,8 @@ queue:mongo-database
 Database name used in MongoDB. This value will take precedence over any database
 name already specified in the connection url.
 
+.. _config_pubsub:
+
 pubsub
 ++++++
 
