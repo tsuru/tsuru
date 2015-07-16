@@ -130,6 +130,8 @@ func (s *S) TestCreateBsContainerTaggedBs(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	c.Assert(container.Config.Image, check.Equals, "localhost:5000/myregistry/tsuru/bs:v1")
 	c.Assert(container.HostConfig.RestartPolicy, check.Equals, docker.AlwaysRestart())
+	c.Assert(container.HostConfig.Privileged, check.Equals, true)
+	c.Assert(container.HostConfig.NetworkMode, check.Equals, "host")
 	c.Assert(container.State.Running, check.Equals, true)
 	expectedEnv := map[string]string{
 		"DOCKER_ENDPOINT":       server.URL(),
@@ -184,6 +186,8 @@ func (s *S) TestCreateBsContainerAlreadyPinned(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	c.Assert(container.Config.Image, check.Equals, "localhost:5000/myregistry/tsuru/bs@"+digest)
 	c.Assert(container.HostConfig.RestartPolicy, check.Equals, docker.AlwaysRestart())
+	c.Assert(container.HostConfig.Privileged, check.Equals, true)
+	c.Assert(container.HostConfig.NetworkMode, check.Equals, "host")
 	c.Assert(container.State.Running, check.Equals, true)
 	expectedEnv := map[string]string{
 		"DOCKER_ENDPOINT":       server.URL(),

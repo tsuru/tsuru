@@ -108,7 +108,11 @@ func createBsContainer(dockerEndpoint, poolName string) error {
 	if err != nil {
 		return err
 	}
-	hostConfig := docker.HostConfig{RestartPolicy: docker.AlwaysRestart()}
+	hostConfig := docker.HostConfig{
+		RestartPolicy: docker.AlwaysRestart(),
+		Privileged:    true,
+		NetworkMode:   "host",
+	}
 	sysLogExternalPort := getBsSysLogPort()
 	socket, _ := config.GetString("docker:bs:socket")
 	if socket != "" {
