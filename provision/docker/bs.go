@@ -245,8 +245,8 @@ func (p *dockerProvisioner) recreateBsContainers() error {
 				msg := fmt.Sprintf("[bs containers] failed to create container in %s [%s]: %s", node.Address, pool, err)
 				log.Error(msg)
 				err = errors.New(msg)
+				errChan <- err
 			}
-			errChan <- err
 		}(i)
 	}
 	wg.Wait()
