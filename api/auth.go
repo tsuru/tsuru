@@ -482,7 +482,7 @@ func removeUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if email != "" && u.IsAdmin() {
 		u, err = auth.GetUserByEmail(email)
 		if err != nil {
-			return err
+			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
 	} else if u.IsAdmin() {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "please specify the user you want to remove"}
