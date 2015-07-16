@@ -7,9 +7,11 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/io"
 )
 
 func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -19,7 +21,8 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		args[key] = values[0]
 	}
 	w.Header().Set("Content-Type", "text")
-	err := app.PlatformAdd(name, args, w)
+	writer := io.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
+	err := app.PlatformAdd(name, args, writer)
 	if err != nil {
 		return err
 	}
@@ -38,7 +41,8 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		args[key] = values[0]
 	}
 	w.Header().Set("Content-Type", "text")
-	err = app.PlatformUpdate(name, args, w)
+	writer := io.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
+	err = app.PlatformUpdate(name, args, writer)
 	if err != nil {
 		return err
 	}
