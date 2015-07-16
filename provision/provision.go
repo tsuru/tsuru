@@ -288,6 +288,9 @@ type Provisioner interface {
 	// Returns list of valid image names for app, these can be used for
 	// rollback.
 	ValidAppImages(string) ([]string, error)
+
+	// Returns the metric backend environs for the app.
+	MetricEnvs(App) map[string]string
 }
 
 type MessageProvisioner interface {

@@ -322,6 +322,11 @@ func (p *FakeProvisioner) getError(method string) error {
 	return nil
 }
 
+// MetricEnvs returns the metric envs for the app
+func (p *FakeProvisioner) MetricEnvs(app provision.App) map[string]string {
+	return map[string]string{}
+}
+
 // Restarts returns the number of restarts for a given app.
 func (p *FakeProvisioner) Restarts(app provision.App, process string) int {
 	p.mut.RLock()

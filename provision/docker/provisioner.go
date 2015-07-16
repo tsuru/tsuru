@@ -982,3 +982,22 @@ func (p *dockerProvisioner) Nodes(app provision.App) ([]cluster.Node, error) {
 	poolsStr := strings.Join(nameList, ", pool=")
 	return nil, fmt.Errorf("No nodes found with one of the following metadata: pool=%s", poolsStr)
 }
+
+func (p *dockerProvisioner) MetricEnvs(app provision.App) map[string]string {
+	envMap := map[string]string{}
+	bsConf, err := loadBsConfig()
+	if err != nil {
+		return envMap
+	}
+	envs, err := bsConf.envListForEndpoint("", app.GetPool())
+	if err != nil {
+		return envMap
+	}
+	for _, env := range envs {
+		if strings.HasPrefix(env, "METRICS_") {
+			slice := strings.SplitN(env, "=", 2)
+			envMap[slice[0]] = slice[1]
+		}
+	}
+	return envMap
+}
