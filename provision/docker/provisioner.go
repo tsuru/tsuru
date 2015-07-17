@@ -570,11 +570,14 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 	w := args.writer
 	var units int
 	processMsg := make([]string, 0, len(args.toAdd))
+	imageId := args.imageId
 	for processName, v := range args.toAdd {
 		units += v.Quantity
+		if processName == "" {
+			_, processName, _ = processCmdForImage(processName, imageId)
+		}
 		processMsg = append(processMsg, fmt.Sprintf("[%s: %d]", processName, v.Quantity))
 	}
-	imageId := args.imageId
 	var destinationHost []string
 	if args.toHost != "" {
 		destinationHost = []string{args.toHost}

@@ -1799,3 +1799,27 @@ func (s *S) TestMetricEnvs(c *check.C) {
 	}
 	c.Assert(envs, check.DeepEquals, expected)
 }
+
+func (s *S) TestAddContainerDefaultProcess(c *check.C) {
+	customData := map[string]interface{}{
+		"procfile": "web: python myapp.py\n",
+	}
+	appName := "my-fake-app"
+	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
+	err := s.newFakeImage(s.p, "tsuru/app-"+appName, customData)
+	c.Assert(err, check.IsNil)
+	s.p.Provision(fakeApp)
+	defer s.p.Destroy(fakeApp)
+	buf := safe.NewBuffer(nil)
+	args := changeUnitsPipelineArgs{
+		app:         fakeApp,
+		provisioner: s.p,
+		writer:      buf,
+		toAdd:       map[string]*containersToAdd{"": {Quantity: 2}},
+		imageId:     "tsuru/app-" + appName,
+	}
+	containers, err := addContainersWithHost(&args)
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 2)
+	c.Assert(buf.String(), check.Equals, "\n---- Starting new units [web: 2] ----\n")
+}
