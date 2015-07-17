@@ -1076,3 +1076,17 @@ func appChangePool(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	rec.Log(u.Email, "app-change-pool", "app="+r.URL.Query().Get(":app"), "pool="+pool)
 	return a.ChangePool(pool)
 }
+
+func appMetricEnvs(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
+	a, err := getApp(r.URL.Query().Get(":app"), u, r)
+	if err != nil {
+		return err
+	}
+	rec.Log(u.Email, "app-metric-envs", "app="+r.URL.Query().Get(":app"))
+	w.Header().Set("Content-Type", "application/json")
+	return json.NewEncoder(w).Encode(a.MetricEnvs())
+}

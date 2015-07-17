@@ -3548,3 +3548,44 @@ func (s *S) TestChangePoolWhenAppDoesNotExist(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Matches, "^App .* not found.\n$")
 }
+
+func (s *S) TestMetricEnvs(c *check.C) {
+	a := app.App{Name: "myappx", Platform: "zend", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	defer s.deleteApp(&a)
+	request, err := http.NewRequest("GET", "/apps/myappx/metric/envs", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), check.Equals, "{\"METRICS_BACKEND\":\"fake\"}\n")
+}
+
+func (s *S) TestMetricEnvsWhenUserDoesNotHaveAcces(c *check.C) {
+	a := app.App{Name: "myappx", Platform: "zend"}
+	err := s.conn.Apps().Insert(&a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	request, err := http.NewRequest("GET", "/apps/myappx/metric/envs", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+	c.Assert(recorder.Body.String(), check.Equals, "user does not have access to this app\n")
+}
+
+func (s *S) TestMEtricEnvsWhenAppDoesNotExist(c *check.C) {
+	request, err := http.NewRequest("GET", "/apps/myappx/metric/envs", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(recorder.Body.String(), check.Matches, "^App .* not found.\n$")
+}
