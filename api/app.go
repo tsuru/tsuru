@@ -1056,17 +1056,23 @@ func registerUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 }
 
 func appChangePool(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	appName := r.URL.Query().Get(":app")
-	poolName, err := ioutil.ReadAll(r.Body)
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
+	a, err := getApp(r.URL.Query().Get(":app"), u, r)
+	if err != nil {
+		return err
+	}
+	defer r.Body.Close()
+	data, err := ioutil.ReadAll(r.Body)
 	if err != nil {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: fmt.Sprintf("Unable to decode body: %s", err.Error()),
 		}
 	}
-	a, err := app.GetByName(appName)
-	if err != nil {
-		return err
-	}
-	return a.ChangePool(string(poolName))
+	pool := string(data)
+	rec.Log(u.Email, "app-change-pool", "app="+r.URL.Query().Get(":app"), "pool="+pool)
+	return a.ChangePool(pool)
 }

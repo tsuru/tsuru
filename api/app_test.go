@@ -3496,7 +3496,7 @@ func (s *S) deleteApp(a *app.App) {
 	}
 }
 
-func (s *S) TestAppChangePool(c *check.C) {
+func (s *S) TestChangePool(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
@@ -3515,4 +3515,36 @@ func (s *S) TestAppChangePool(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+}
+
+func (s *S) TestChangePoolForbiddenIfTheUserDoesNotHaveAcces(c *check.C) {
+	a := app.App{Name: "myappx", Platform: "zend"}
+	err := s.conn.Apps().Insert(&a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	opts := provision.AddPoolOptions{Name: "test"}
+	err = provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	defer provision.RemovePool("test")
+	body := strings.NewReader("test")
+	request, err := http.NewRequest("POST", "/apps/myappx/pool", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+	c.Assert(recorder.Body.String(), check.Equals, "user does not have access to this app\n")
+}
+
+func (s *S) TestChangePoolWhenAppDoesNotExist(c *check.C) {
+	body := strings.NewReader("test")
+	request, err := http.NewRequest("POST", "/apps/myappx/pool", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(recorder.Body.String(), check.Matches, "^App .* not found.\n$")
 }
