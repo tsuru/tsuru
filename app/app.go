@@ -1305,6 +1305,10 @@ func (app *App) GetRouter() (string, error) {
 	return app.Plan.getRouter()
 }
 
+func (app *App) MetricEnvs() map[string]string {
+    return Provisioner.MetricEnvs(app)
+}
+
 func (app *App) Shell(opts provision.ShellOptions) error {
 	opts.App = app
 	return Provisioner.Shell(opts)
