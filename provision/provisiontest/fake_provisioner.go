@@ -324,7 +324,9 @@ func (p *FakeProvisioner) getError(method string) error {
 
 // MetricEnvs returns the metric envs for the app
 func (p *FakeProvisioner) MetricEnvs(app provision.App) map[string]string {
-	return map[string]string{}
+	return map[string]string{
+		"METRICS_BACKEND": "fake",
+	}
 }
 
 // Restarts returns the number of restarts for a given app.
