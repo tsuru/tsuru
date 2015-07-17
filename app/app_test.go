@@ -2956,7 +2956,7 @@ func (s *S) TestShellToAnApp(c *check.C) {
 }
 
 func (s *S) TestAppMetricEnvs(c *check.C) {
-    a := App{Name: "appName", Platform: "python", Pool: "mypool"}
-    envs := s.provisioner.MetricEnvs(&a)
-    c.Assert(envs, check.DeepEquals, map[string]string{})
+	a := App{Name: "appName", Platform: "python", Pool: "mypool"}
+	envs := s.provisioner.MetricEnvs(&a)
+	c.Assert(envs, check.DeepEquals, map[string]string{})
 }
