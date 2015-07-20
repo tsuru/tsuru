@@ -462,7 +462,7 @@ var provisionUnbindOldUnits = action.Action{
 			unit := c.asUnit(args.app)
 			err := args.app.UnbindUnit(&unit)
 			if err != nil {
-				log.Errorf("Ignorer error trying to unbind old container %q: %s", c.ID, err)
+				log.Errorf("Ignored error trying to unbind old container %q: %s", c.ID, err)
 			}
 			fmt.Fprintf(writer, " ---> Removed bind for old unit %s [%s]\n", c.shortID(), c.ProcessName)
 			return nil
