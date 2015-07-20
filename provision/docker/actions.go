@@ -45,6 +45,7 @@ type changeUnitsPipelineArgs struct {
 	toHost      string
 	imageId     string
 	provisioner *dockerProvisioner
+	appDestroy  bool
 }
 
 func runInContainers(containers []container, callback func(*container, chan *container) error, rollback func(*container), parallel bool) error {
@@ -382,7 +383,10 @@ var removeOldRoutes = action.Action{
 				return nil
 			}
 			if err != nil {
-				return err
+				if !args.appDestroy {
+					return err
+				}
+				log.Errorf("ignored error removing route for %q during app %q destroy: %s", c.getAddress(), c.AppName, err)
 			}
 			c.routable = true
 			toRollback <- c

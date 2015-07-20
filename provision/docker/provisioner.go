@@ -493,18 +493,22 @@ func (p *dockerProvisioner) Destroy(app provision.App) error {
 		log.Errorf("Failed to list app containers: %s", err.Error())
 		return err
 	}
-	runInContainers(containers, func(c *container, _ chan *container) error {
-		unit := c.asUnit(app)
-		err := app.UnbindUnit(&unit)
-		if err != nil {
-			log.Errorf("Unable to unbind unit %q: %s", c.ID, err)
-		}
-		err = p.removeContainer(c, app)
-		if err != nil {
-			log.Errorf("Unable to destroy container %s: %s", c.ID, err.Error())
-		}
-		return nil
-	}, nil, true)
+	args := changeUnitsPipelineArgs{
+		app:         app,
+		toRemove:    containers,
+		writer:      ioutil.Discard,
+		provisioner: p,
+		appDestroy:  true,
+	}
+	pipeline := action.NewPipeline(
+		&removeOldRoutes,
+		&provisionRemoveOldUnits,
+		&provisionUnbindOldUnits,
+	)
+	err = pipeline.Execute(args)
+	if err != nil {
+		return err
+	}
 	images, err := listAppImages(app.GetName())
 	if err != nil {
 		log.Errorf("Failed to get image ids for app %s: %s", app.GetName(), err.Error())
@@ -599,7 +603,7 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 	}
 	rollbackCallback := func(c *container) {
 		log.Errorf("Removing container %q due failed add units.", c.ID)
-		errRem := args.provisioner.removeContainer(c, a)
+		errRem := c.remove(args.provisioner)
 		if errRem != nil {
 			log.Errorf("Unable to destroy container %q: %s", c.ID, errRem)
 		}
@@ -706,7 +710,6 @@ func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint, processName
 	}
 	args := changeUnitsPipelineArgs{
 		app:         a,
-		toAdd:       nil,
 		toRemove:    toRemove,
 		writer:      w,
 		provisioner: p,
@@ -721,21 +724,6 @@ func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint, processName
 		return fmt.Errorf("error removing routes, units weren't removed: %s", err)
 	}
 	return nil
-}
-
-func (p *dockerProvisioner) removeContainer(c *container, a provision.App) error {
-	if r, err := getRouterForApp(a); err == nil {
-		if err := r.RemoveRoute(c.AppName, c.getAddress()); err != nil {
-			log.Errorf("Failed to remove route: %s", err)
-		}
-	} else {
-		log.Errorf("Failed to obtain router: %s", err)
-	}
-	err := c.remove(p)
-	if err != nil {
-		log.Errorf("error on remove container %s - %s", c.ID, err)
-	}
-	return err
 }
 
 func (p *dockerProvisioner) SetUnitStatus(unit provision.Unit, status provision.Status) error {
