@@ -14,7 +14,6 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
-	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"gopkg.in/mgo.v2"
@@ -307,12 +306,6 @@ var provisionAddUnits = action.Action{
 			return nil, err
 		}
 		return units, nil
-	},
-	Backward: func(ctx action.BWContext) {
-		units := ctx.FWResult.([]provision.Unit)
-		for _, unit := range units {
-			Provisioner.RemoveUnit(unit)
-		}
 	},
 	MinParams: 1,
 }

@@ -578,20 +578,6 @@ func (s *S) TestProvisionAddUnitsInvalidApp(c *check.C) {
 	c.Assert(err.Error(), check.Equals, "First parameter must be *App.")
 }
 
-func (s *S) TestProvisionAddUnitsBackward(c *check.C) {
-	app := App{
-		Name:     "fiction",
-		Platform: "django",
-	}
-	s.provisioner.Provision(&app)
-	defer s.provisioner.Destroy(&app)
-	units, err := s.provisioner.AddUnits(&app, 3, "web", nil)
-	c.Assert(err, check.IsNil)
-	ctx := action.BWContext{Params: []interface{}{&app}, FWResult: units}
-	provisionAddUnits.Backward(ctx)
-	c.Assert(s.provisioner.GetUnits(&app), check.HasLen, 0)
-}
-
 func (s *S) TestProvisionAddUnitsMinParams(c *check.C) {
 	c.Assert(provisionAddUnits.MinParams, check.Equals, 1)
 }
