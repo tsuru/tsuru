@@ -58,11 +58,20 @@ func (s *S) TestSchedulerSchedule(c *check.C) {
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	s.p.cluster = clusterInstance
 	c.Assert(err, check.IsNil)
-	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
+	err = clusterInstance.Register(cluster.Node{
+		Address:  "http://url0:1234",
+		Metadata: map[string]string{"pool": "pool1"},
+	})
 	c.Assert(err, check.IsNil)
-	_, err = clusterInstance.Register("http://url1:1234", map[string]string{"pool": "pool1"})
+	err = clusterInstance.Register(cluster.Node{
+		Address:  "http://url1:1234",
+		Metadata: map[string]string{"pool": "pool1"},
+	})
 	c.Assert(err, check.IsNil)
-	_, err = clusterInstance.Register("http://url2:1234", map[string]string{"pool": "pool1"})
+	err = clusterInstance.Register(cluster.Node{
+		Address:  "http://url2:1234",
+		Metadata: map[string]string{"pool": "pool1"},
+	})
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
 	node, err := scheduler.Schedule(clusterInstance, opts, []string{a1.Name, "web"})
@@ -100,7 +109,10 @@ func (s *S) TestSchedulerScheduleByTeamOwner(c *check.C) {
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	s.p.cluster = clusterInstance
 	c.Assert(err, check.IsNil)
-	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
+	err = clusterInstance.Register(cluster.Node{
+		Address:  "http://url0:1234",
+		Metadata: map[string]string{"pool": "pool1"},
+	})
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
 	node, err := scheduler.Schedule(clusterInstance, opts, []string{a1.Name, "web"})
@@ -130,7 +142,10 @@ func (s *S) TestSchedulerScheduleByTeams(c *check.C) {
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	s.p.cluster = clusterInstance
 	c.Assert(err, check.IsNil)
-	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
+	err = clusterInstance.Register(cluster.Node{
+		Address:  "http://url0:1234",
+		Metadata: map[string]string{"pool": "pool1"},
+	})
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
 	node, err := scheduler.Schedule(clusterInstance, opts, []string{a1.Name, "web"})
@@ -168,11 +183,20 @@ func (s *S) TestSchedulerScheduleNoName(c *check.C) {
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	s.p.cluster = clusterInstance
 	c.Assert(err, check.IsNil)
-	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
+	err = clusterInstance.Register(cluster.Node{
+		Address:  "http://url0:1234",
+		Metadata: map[string]string{"pool": "pool1"},
+	})
 	c.Assert(err, check.IsNil)
-	_, err = clusterInstance.Register("http://url1:1234", map[string]string{"pool": "pool1"})
+	err = clusterInstance.Register(cluster.Node{
+		Address:  "http://url1:1234",
+		Metadata: map[string]string{"pool": "pool1"},
+	})
 	c.Assert(err, check.IsNil)
-	_, err = clusterInstance.Register("http://url2:1234", map[string]string{"pool": "pool1"})
+	err = clusterInstance.Register(cluster.Node{
+		Address:  "http://url2:1234",
+		Metadata: map[string]string{"pool": "pool1"},
+	})
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{}
 	node, err := scheduler.Schedule(clusterInstance, opts, []string{a1.Name, "web"})
@@ -198,7 +222,10 @@ func (s *S) TestSchedulerScheduleDefaultPool(c *check.C) {
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	s.p.cluster = clusterInstance
 	c.Assert(err, check.IsNil)
-	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "test-default"})
+	err = clusterInstance.Register(cluster.Node{
+		Address:  "http://url0:1234",
+		Metadata: map[string]string{"pool": "test-default"},
+	})
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
 	node, err := scheduler.Schedule(clusterInstance, opts, []string{a1.Name, "web"})
@@ -657,9 +684,15 @@ func (s *S) TestGetRemovableContainer(c *check.C) {
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	s.p.cluster = clusterInstance
 	c.Assert(err, check.IsNil)
-	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
+	err = clusterInstance.Register(cluster.Node{
+		Address:  "http://url0:1234",
+		Metadata: map[string]string{"pool": "pool1"},
+	})
 	c.Assert(err, check.IsNil)
-	_, err = clusterInstance.Register("http://url1:1234", map[string]string{"pool": "pool1"})
+	err = clusterInstance.Register(cluster.Node{
+		Address:  "http://url1:1234",
+		Metadata: map[string]string{"pool": "pool1"},
+	})
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
 	_, err = scheduler.Schedule(clusterInstance, opts, []string{a1.Name, cont1.ProcessName})

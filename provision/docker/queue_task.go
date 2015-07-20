@@ -14,6 +14,7 @@ import (
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
+	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
@@ -50,7 +51,7 @@ func (t runBs) Run(job monsterqueue.Job) {
 		t.destroyMachine(machineID)
 		return
 	}
-	_, err = mainDockerProvisioner.getCluster().Register(dockerEndpoint, metadata)
+	err = mainDockerProvisioner.getCluster().Register(cluster.Node{Address: dockerEndpoint, Metadata: metadata})
 	if err != nil {
 		job.Error(err)
 		t.destroyMachine(machineID)

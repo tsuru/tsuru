@@ -313,7 +313,7 @@ func (s *HandlersSuite) TestRemoveNodeHandler(c *check.C) {
 	var err error
 	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
-	_, err = mainDockerProvisioner.getCluster().Register("host.com:2375", nil)
+	err = mainDockerProvisioner.getCluster().Register(cluster.Node{Address: "host.com:2375"})
 	c.Assert(err, check.IsNil)
 	b := bytes.NewBufferString(`{"address": "host.com:2375"}`)
 	req, err := http.NewRequest("POST", "/node/remove", b)
@@ -331,7 +331,9 @@ func (s *HandlersSuite) TestRemoveNodeHandlerWithoutRemoveIaaS(c *check.C) {
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
-	_, err = mainDockerProvisioner.getCluster().Register(fmt.Sprintf("http://%s:2375", machine.Address), nil)
+	err = mainDockerProvisioner.getCluster().Register(cluster.Node{
+		Address: fmt.Sprintf("http://%s:2375", machine.Address),
+	})
 	c.Assert(err, check.IsNil)
 	b := bytes.NewBufferString(fmt.Sprintf(`{"address": "http://%s:2375", "remove_iaas": "false"}`, machine.Address))
 	req, err := http.NewRequest("POST", "/node/remove", b)
@@ -352,7 +354,9 @@ func (s *HandlersSuite) TestRemoveNodeHandlerRemoveIaaS(c *check.C) {
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
-	_, err = mainDockerProvisioner.getCluster().Register(fmt.Sprintf("http://%s:2375", machine.Address), nil)
+	err = mainDockerProvisioner.getCluster().Register(cluster.Node{
+		Address: fmt.Sprintf("http://%s:2375", machine.Address),
+	})
 	c.Assert(err, check.IsNil)
 	b := bytes.NewBufferString(fmt.Sprintf(`{"address": "http://%s:2375", "remove_iaas": "true"}`, machine.Address))
 	req, err := http.NewRequest("POST", "/node/remove", b)
@@ -374,9 +378,15 @@ func (s *HandlersSuite) TestListNodeHandler(c *check.C) {
 	var err error
 	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
-	_, err = mainDockerProvisioner.getCluster().Register("host1.com:2375", map[string]string{"pool": "pool1"})
+	err = mainDockerProvisioner.getCluster().Register(cluster.Node{
+		Address:  "host1.com:2375",
+		Metadata: map[string]string{"pool": "pool1"},
+	})
 	c.Assert(err, check.IsNil)
-	_, err = mainDockerProvisioner.getCluster().Register("host2.com:2375", map[string]string{"pool": "pool2", "foo": "bar"})
+	err = mainDockerProvisioner.getCluster().Register(cluster.Node{
+		Address:  "host2.com:2375",
+		Metadata: map[string]string{"pool": "pool2", "foo": "bar"},
+	})
 	c.Assert(err, check.IsNil)
 	req, err := http.NewRequest("GET", "/node/", nil)
 	rec := httptest.NewRecorder()

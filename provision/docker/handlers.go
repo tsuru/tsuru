@@ -180,7 +180,8 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: "address is required"}
 	}
 	delete(params, "address")
-	_, err = mainDockerProvisioner.getCluster().UpdateNode(address, params)
+	node := cluster.Node{Address: address, Metadata: params}
+	_, err = mainDockerProvisioner.getCluster().UpdateNode(node)
 	return err
 }
 

@@ -42,10 +42,11 @@ func (h *nodeHealer) healNode(node *cluster.Node) (cluster.Node, error) {
 	}
 	newAddr := machine.FormatNodeAddress()
 	log.Debugf("New machine created during healing process: %s - Waiting for docker to start...", newAddr)
-	createdNode, err := h.provisioner.getCluster().WaitAndRegister(newAddr, nodeMetadata, h.waitTimeNewMachine)
+	createdNode := cluster.Node{Address: newAddr, Metadata: nodeMetadata}
+	err = h.provisioner.getCluster().WaitAndRegister(createdNode, h.waitTimeNewMachine)
 	if err != nil {
 		node.ResetFailures()
-		h.provisioner.getCluster().Register(failingAddr, nodeMetadata)
+		h.provisioner.getCluster().Register(cluster.Node{Address: failingAddr, Metadata: nodeMetadata})
 		machine.Destroy()
 		return emptyNode, fmt.Errorf("Can't auto-heal after %d failures for node %s: error registering new node: %s", failures, failingHost, err.Error())
 	}

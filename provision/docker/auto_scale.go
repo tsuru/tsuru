@@ -598,7 +598,11 @@ func (a *autoScaleConfig) addNode(modelNodes []*cluster.Node) (*cluster.Node, er
 	}
 	newAddr := machine.FormatNodeAddress()
 	a.logDebug("new machine created: %s - Waiting for docker to start...", newAddr)
-	createdNode, err := a.provisioner.getCluster().WaitAndRegister(newAddr, metadata, a.waitTimeNewMachine)
+	createdNode := cluster.Node{
+		Address:  newAddr,
+		Metadata: metadata,
+	}
+	err = a.provisioner.getCluster().WaitAndRegister(createdNode, a.waitTimeNewMachine)
 	if err != nil {
 		machine.Destroy()
 		return nil, fmt.Errorf("error registering new node %s: %s", newAddr, err.Error())
@@ -619,7 +623,7 @@ func (a *autoScaleConfig) removeNode(chosenNode *cluster.Node) error {
 	buf := safe.NewBuffer(nil)
 	err = a.provisioner.moveContainers(urlToHost(chosenNode.Address), "", buf)
 	if err != nil {
-		a.provisioner.getCluster().Register(chosenNode.Address, chosenNode.Metadata)
+		a.provisioner.getCluster().Register(*chosenNode)
 		return fmt.Errorf("unable to move containers from node (%s): %s - log: %s", chosenNode.Address, err, buf.String())
 	}
 	m, err := iaas.FindMachineByIdOrAddress(chosenNode.Metadata["iaas-id"], urlToHost(chosenNode.Address))

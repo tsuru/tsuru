@@ -790,7 +790,10 @@ func (s *S) TestProvisionerRemoveUnits(c *check.C) {
 	s.p.scheduler = &scheduler
 	s.p.cluster = clusterInstance
 	c.Assert(err, check.IsNil)
-	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
+	err = clusterInstance.Register(cluster.Node{
+		Address:  "http://url0:1234",
+		Metadata: map[string]string{"pool": "pool1"},
+	})
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
 	_, err = scheduler.Schedule(clusterInstance, opts, []string{a1.Name, cont1.ProcessName})
@@ -841,7 +844,10 @@ func (s *S) TestProvisionerRemoveUnitsEmptyProcess(c *check.C) {
 	s.p.scheduler = &scheduler
 	s.p.cluster = clusterInstance
 	c.Assert(err, check.IsNil)
-	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
+	err = clusterInstance.Register(cluster.Node{
+		Address:  "http://url0:1234",
+		Metadata: map[string]string{"pool": "pool1"},
+	})
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
 	_, err = scheduler.Schedule(clusterInstance, opts, []string{a1.Name, "web"})
@@ -896,7 +902,10 @@ func (s *S) TestProvisionerRemoveUnitsTooManyUnits(c *check.C) {
 	s.p.scheduler = &scheduler
 	s.p.cluster = clusterInstance
 	c.Assert(err, check.IsNil)
-	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
+	err = clusterInstance.Register(cluster.Node{
+		Address:  "http://url0:1234",
+		Metadata: map[string]string{"pool": "pool1"},
+	})
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
 	_, err = scheduler.Schedule(clusterInstance, opts, []string{a1.Name, "web"})
@@ -942,7 +951,10 @@ func (s *S) TestProvisionerRemoveUnitsInvalidProcess(c *check.C) {
 	s.p.scheduler = &scheduler
 	s.p.cluster = clusterInstance
 	c.Assert(err, check.IsNil)
-	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
+	err = clusterInstance.Register(cluster.Node{
+		Address:  "http://url0:1234",
+		Metadata: map[string]string{"pool": "pool1"},
+	})
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
 	_, err = scheduler.Schedule(clusterInstance, opts, []string{a1.Name, "web"})
