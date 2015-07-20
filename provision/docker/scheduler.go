@@ -202,6 +202,7 @@ func (s *segregatedScheduler) getContainerFromHost(host string, appName, process
 	query := bson.M{
 		"hostaddr": host,
 		"appname":  appName,
+		"id":       bson.M{"$nin": s.ignoredContainers},
 	}
 	if process == "" {
 		query["$or"] = []bson.M{{"processname": bson.M{"$exists": false}}, {"processname": ""}}

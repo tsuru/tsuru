@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	clusterLog "github.com/tsuru/docker-cluster/log"
+	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/api/shutdown"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
@@ -686,48 +687,39 @@ func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint, processName
 		plural = "s"
 	}
 	fmt.Fprintf(w, "\n---- Removing %d unit%s ----\n", units, plural)
-	coll := p.collection()
-	defer coll.Close()
-	toRemove := make([]container, 0, units)
-	for i := 0; i < int(units); i++ {
-		var containerID string
-		var c *container
-		containerID, err = p.scheduler.GetRemovableContainer(a.GetName(), processName)
-		if err != nil {
-			fmt.Println("GetRemovableContainer")
-			break
-		}
-		c, err = p.getContainer(containerID)
-		if err != nil {
-			fmt.Println("getContainer")
-			break
-		}
-		err = coll.Remove(bson.M{"id": c.ID})
-		if err != nil {
-			fmt.Println("remove")
-			break
-		}
-		toRemove = append(toRemove, *c)
-	}
+	p, err = p.cloneProvisioner(nil)
 	if err != nil {
-		for _, c := range toRemove {
-			coll.Insert(c)
-		}
 		return err
 	}
-	runInContainers(toRemove, func(c *container, toRollback chan *container) error {
-		unit := c.asUnit(a)
-		err = a.UnbindUnit(&unit)
+	toRemove := make([]container, 0, units)
+	for i := 0; i < int(units); i++ {
+		containerID, err := p.scheduler.GetRemovableContainer(a.GetName(), processName)
 		if err != nil {
-			log.Errorf("Ignored error trying to unbind unit %q: %s", c.ID, err)
+			return err
 		}
-		err = p.removeContainer(c, a)
+		cont, err := p.getContainer(containerID)
 		if err != nil {
-			log.Errorf("Ignored error trying to remove unit %q: %s", c.ID, err)
+			return err
 		}
-		fmt.Fprintf(w, " ---> Removed unit %s...\n", c.shortID())
-		return nil
-	}, nil, true)
+		p.scheduler.ignoredContainers = append(p.scheduler.ignoredContainers, cont.ID)
+		toRemove = append(toRemove, *cont)
+	}
+	args := changeUnitsPipelineArgs{
+		app:         a,
+		toAdd:       nil,
+		toRemove:    toRemove,
+		writer:      w,
+		provisioner: p,
+	}
+	pipeline := action.NewPipeline(
+		&removeOldRoutes,
+		&provisionRemoveOldUnits,
+		&provisionUnbindOldUnits,
+	)
+	err = pipeline.Execute(args)
+	if err != nil {
+		return fmt.Errorf("error removing routes, units weren't removed: %s", err)
+	}
 	return nil
 }
 
