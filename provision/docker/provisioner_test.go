@@ -855,7 +855,10 @@ func (s *S) TestProvisionerRemoveUnitsFailRemoveOldRoute(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.p.cluster = clusterInstance
 	s.p.scheduler = &scheduler
-	_, err = clusterInstance.Register("http://url0:1234", map[string]string{"pool": "pool1"})
+	err = clusterInstance.Register(cluster.Node{
+		Address:  "http://url0:1234",
+		Metadata: map[string]string{"pool": "pool1"},
+	})
 	c.Assert(err, check.IsNil)
 	customData := map[string]interface{}{
 		"procfile": "web: python myapp.py",
@@ -1032,32 +1035,6 @@ func (s *S) TestProvisionerRemoveUnitsInvalidProcess(c *check.C) {
 	err = s.p.RemoveUnits(papp, 1, "worker", nil)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, `process error: no command declared in Procfile for process "worker"`)
-}
-
-func (s *S) TestProvisionerRemoveUnit(c *check.C) {
-	container, err := s.newContainer(nil, nil)
-	c.Assert(err, check.IsNil)
-	defer routertest.FakeRouter.RemoveBackend(container.AppName)
-	client, err := docker.NewClient(s.server.URL())
-	c.Assert(err, check.IsNil)
-	a := app.App{Name: container.AppName, Platform: "python"}
-	conn, err := db.Conn()
-	defer conn.Close()
-	err = conn.Apps().Insert(a)
-	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": a.Name})
-	err = client.StartContainer(container.ID, nil)
-	c.Assert(err, check.IsNil)
-	err = s.p.RemoveUnit(provision.Unit{AppName: a.Name, Name: container.ID})
-	c.Assert(err, check.IsNil)
-	_, err = s.p.getContainer(container.ID)
-	c.Assert(err, check.NotNil)
-	c.Assert(routertest.FakeRouter.HasRoute(container.AppName, container.getAddress().String()), check.Equals, false)
-}
-
-func (s *S) TestProvisionerRemoveUnitNotFound(c *check.C) {
-	err := s.p.RemoveUnit(provision.Unit{Name: "wat de reu"})
-	c.Assert(err, check.Equals, provision.ErrUnitNotFound)
 }
 
 func (s *S) TestProvisionerSetUnitStatus(c *check.C) {

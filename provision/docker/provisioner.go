@@ -723,22 +723,6 @@ func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint, processName
 	return nil
 }
 
-func (p *dockerProvisioner) RemoveUnit(unit provision.Unit) error {
-	container, err := p.getContainer(unit.Name)
-	if err != nil {
-		return err
-	}
-	a, err := container.getApp()
-	if err != nil {
-		return err
-	}
-	err = a.UnbindUnit(&unit)
-	if err != nil {
-		log.Errorf("Failed to unbind unit %q: %s", container.ID, err)
-	}
-	return p.removeContainer(container, a)
-}
-
 func (p *dockerProvisioner) removeContainer(c *container, a provision.App) error {
 	if r, err := getRouterForApp(a); err == nil {
 		if err := r.RemoveRoute(c.AppName, c.getAddress()); err != nil {

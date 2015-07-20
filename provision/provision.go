@@ -237,10 +237,6 @@ type Provisioner interface {
 	// from the app.
 	RemoveUnits(App, uint, string, io.Writer) error
 
-	// RemoveUnit removes a unit from the app. It receives the unit to be
-	// removed.
-	RemoveUnit(Unit) error
-
 	// SetUnitStatus changes the status of a unit.
 	SetUnitStatus(Unit, Status) error
 
