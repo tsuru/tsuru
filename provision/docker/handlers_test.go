@@ -174,6 +174,7 @@ func (s *HandlersSuite) TestAddNodeHandler(c *check.C) {
 	c.Assert(nodes[0].Metadata, check.DeepEquals, map[string]string{
 		"pool": "pool1",
 	})
+	c.Assert(nodes[0].CreationStatus, check.Equals, cluster.NodeCreationStatusCreated)
 }
 
 func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
@@ -194,8 +195,13 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 	err = json.NewDecoder(rec.Body).Decode(&result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.DeepEquals, map[string]string{"description": "my iaas description"})
+	nodes, err := mainDockerProvisioner.getCluster().UnfilteredNodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	c.Assert(nodes[0].Address, check.Equals, strings.TrimRight(server.URL(), "/"))
+	c.Assert(nodes[0].CreationStatus, check.Equals, cluster.NodeCreationStatusPending)
 	waitQueue()
-	nodes, err := mainDockerProvisioner.getCluster().Nodes()
+	nodes, err = mainDockerProvisioner.getCluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address, check.Equals, strings.TrimRight(server.URL(), "/"))
@@ -205,6 +211,7 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 		"iaas":    "test-iaas",
 		"iaas-id": "test1",
 	})
+	c.Assert(nodes[0].CreationStatus, check.Equals, cluster.NodeCreationStatusCreated)
 }
 
 func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachineExplicit(c *check.C) {

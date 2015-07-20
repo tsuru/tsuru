@@ -84,15 +84,16 @@ func (p *dockerProvisioner) addNodeForParams(params map[string]string, isRegiste
 	if err != nil {
 		return response, err
 	}
+	node := cluster.Node{Address: address, Metadata: params, CreationStatus: cluster.NodeCreationStatusPending}
+	err = p.getCluster().Register(node)
+	if err != nil {
+		return response, err
+	}
 	q, err := queue.Queue()
 	if err != nil {
 		return response, err
 	}
-	jobParams := monsterqueue.JobParams{
-		"endpoint": address,
-		"machine":  machineID,
-		"metadata": params,
-	}
+	jobParams := monsterqueue.JobParams{"endpoint": address, "machine": machineID, "metadata": params}
 	_, err = q.Enqueue(runBsTaskName, jobParams)
 	return response, err
 }

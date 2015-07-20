@@ -35,6 +35,7 @@ func (t runBs) Run(job monsterqueue.Job) {
 	params := job.Parameters()
 	dockerEndpoint := params["endpoint"].(string)
 	machineID := params["machine"].(string)
+	node := cluster.Node{Address: dockerEndpoint}
 	err := t.waitDocker(dockerEndpoint)
 	if err != nil {
 		job.Error(err)
@@ -47,11 +48,15 @@ func (t runBs) Run(job monsterqueue.Job) {
 	}
 	err = createBsContainer(dockerEndpoint, metadata["pool"])
 	if err != nil {
+		node.CreationStatus = cluster.NodeCreationStatusError
+		node.Metadata = map[string]string{"creationError": err.Error()}
+		mainDockerProvisioner.getCluster().UpdateNode(node)
 		job.Error(err)
 		t.destroyMachine(machineID)
 		return
 	}
-	err = mainDockerProvisioner.getCluster().Register(cluster.Node{Address: dockerEndpoint, Metadata: metadata})
+	node.CreationStatus = cluster.NodeCreationStatusCreated
+	_, err = mainDockerProvisioner.getCluster().UpdateNode(node)
 	if err != nil {
 		job.Error(err)
 		t.destroyMachine(machineID)
