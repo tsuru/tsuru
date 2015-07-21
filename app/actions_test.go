@@ -594,13 +594,13 @@ func (s *S) TestSetAppIpForward(c *check.C) {
 	}
 	r, err := setAppIp.Forward(ctx)
 	c.Assert(err, check.IsNil)
-	c.Assert(app.Ip, check.Equals, "conviction.fake-lb.tsuru.io")
+	c.Assert(app.Ip, check.Equals, "conviction.fakerouter.com")
 	a, ok := r.(*App)
 	c.Assert(ok, check.Equals, true)
-	c.Assert(a.Ip, check.Equals, "conviction.fake-lb.tsuru.io")
+	c.Assert(a.Ip, check.Equals, "conviction.fakerouter.com")
 	gotApp, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(gotApp.Ip, check.Equals, "conviction.fake-lb.tsuru.io")
+	c.Assert(gotApp.Ip, check.Equals, "conviction.fakerouter.com")
 }
 
 func (s *S) TestSetAppIpBackward(c *check.C) {

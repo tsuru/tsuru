@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"sort"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -25,6 +27,7 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/tsurutest"
@@ -2960,4 +2963,79 @@ func (s *S) TestAppMetricEnvs(c *check.C) {
 	envs := a.MetricEnvs()
 	expected := Provisioner.MetricEnvs(&a)
 	c.Assert(envs, check.DeepEquals, expected)
+}
+
+func (s *S) TestRebuildRoutes(c *check.C) {
+	a := App{Name: "my-test-app", Plan: Plan{Router: "fake"}}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, check.IsNil)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 3, "web", nil)
+	units := a.Units()
+	routertest.FakeRouter.AddRoute(a.Name, units[1].Address)
+	routertest.FakeRouter.RemoveRoute(a.Name, units[2].Address)
+	routertest.FakeRouter.AddRoute(a.Name, &url.URL{Scheme: "http", Host: "invalid:1234"})
+	err = a.RebuildRoutes()
+	c.Assert(err, check.IsNil)
+	routes, err := routertest.FakeRouter.Routes(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, check.HasLen, 3)
+	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[0].Address.String()), check.Equals, true)
+	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[1].Address.String()), check.Equals, true)
+	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[2].Address.String()), check.Equals, true)
+}
+
+type URLList []*url.URL
+
+func (l URLList) Len() int           { return len(l) }
+func (l URLList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
+func (l URLList) Less(i, j int) bool { return l[i].String() < l[j].String() }
+
+func (s *S) TestRebuildRoutesAfterSwap(c *check.C) {
+	a1 := App{Name: "my-test-app-1", Plan: Plan{Router: "fake"}}
+	a2 := App{Name: "my-test-app-2", Plan: Plan{Router: "fake"}}
+	err := s.conn.Apps().Insert(a1)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Insert(a2)
+	c.Assert(err, check.IsNil)
+	err = s.provisioner.Provision(&a1)
+	c.Assert(err, check.IsNil)
+	err = s.provisioner.Provision(&a2)
+	c.Assert(err, check.IsNil)
+	defer s.provisioner.Destroy(&a1)
+	defer s.provisioner.Destroy(&a2)
+	s.provisioner.AddUnits(&a1, 3, "web", nil)
+	s.provisioner.AddUnits(&a2, 2, "web", nil)
+	units1 := a1.Units()
+	units2 := a2.Units()
+	routertest.FakeRouter.AddRoute(a1.Name, &url.URL{Scheme: "http", Host: "invalid:1234"})
+	routertest.FakeRouter.RemoveRoute(a2.Name, units2[0].Address)
+	err = Swap(&a1, &a2)
+	c.Assert(err, check.IsNil)
+	err = a1.RebuildRoutes()
+	c.Assert(err, check.IsNil)
+	err = a2.RebuildRoutes()
+	c.Assert(err, check.IsNil)
+	routes1, err := routertest.FakeRouter.Routes(a1.Name)
+	c.Assert(err, check.IsNil)
+	routes2, err := routertest.FakeRouter.Routes(a2.Name)
+	c.Assert(err, check.IsNil)
+	sort.Sort(URLList(routes1))
+	sort.Sort(URLList(routes2))
+	c.Assert(routes1, check.DeepEquals, []*url.URL{
+		units1[0].Address,
+		units1[1].Address,
+		units1[2].Address,
+	})
+	c.Assert(routes2, check.DeepEquals, []*url.URL{
+		units2[0].Address,
+		units2[1].Address,
+	})
+	c.Assert(routertest.FakeRouter.HasRoute(a1.Name, units2[0].Address.String()), check.Equals, true)
+	c.Assert(routertest.FakeRouter.HasRoute(a1.Name, units2[1].Address.String()), check.Equals, true)
+	c.Assert(routertest.FakeRouter.HasRoute(a2.Name, units1[0].Address.String()), check.Equals, true)
+	c.Assert(routertest.FakeRouter.HasRoute(a2.Name, units1[1].Address.String()), check.Equals, true)
+	c.Assert(routertest.FakeRouter.HasRoute(a2.Name, units1[2].Address.String()), check.Equals, true)
 }

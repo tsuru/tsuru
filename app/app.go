@@ -9,6 +9,7 @@ import (
 	stderr "errors"
 	"fmt"
 	"io"
+	"net/url"
 	"regexp"
 	"sort"
 	"strings"
@@ -24,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
+	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -1320,4 +1322,44 @@ type ProcfileError struct {
 
 func (e *ProcfileError) Error() string {
 	return fmt.Sprintf("error parsing Procfile: %s", e.yamlErr)
+}
+
+func (app *App) RebuildRoutes() error {
+	routerName, err := app.GetRouter()
+	if err != nil {
+		return err
+	}
+	r, err := router.Get(routerName)
+	if err != nil {
+		return err
+	}
+	oldRoutes, err := r.Routes(app.GetName())
+	if err != nil {
+		return err
+	}
+	expectedMap := make(map[string]*url.URL)
+	for _, unit := range app.Units() {
+		expectedMap[unit.Address.String()] = unit.Address
+	}
+	var toRemove []*url.URL
+	for _, url := range oldRoutes {
+		if _, isPresent := expectedMap[url.String()]; isPresent {
+			delete(expectedMap, url.String())
+		} else {
+			toRemove = append(toRemove, url)
+		}
+	}
+	for _, toAddUrl := range expectedMap {
+		err := r.AddRoute(app.GetName(), toAddUrl)
+		if err != nil {
+			return err
+		}
+	}
+	for _, toRemoveUrl := range toRemove {
+		err := r.RemoveRoute(app.GetName(), toRemoveUrl)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
