@@ -1581,6 +1581,7 @@ func (s *S) TestProvisionerUnits(c *check.C) {
 			Type:     "python",
 			Status:   provision.StatusBuilding.String(),
 			IP:       "127.0.0.4",
+			HostAddr: "192.168.123.9",
 			HostPort: "9025",
 		},
 	)
@@ -1588,7 +1589,17 @@ func (s *S) TestProvisionerUnits(c *check.C) {
 	defer coll.RemoveAll(bson.M{"appname": app.Name})
 	units := s.p.Units(&app)
 	expected := []provision.Unit{
-		{Name: "9930c24f1c4f", AppName: "myapplication", Type: "python", Status: provision.StatusBuilding},
+		{
+			Name:    "9930c24f1c4f",
+			AppName: "myapplication",
+			Type:    "python",
+			Status:  provision.StatusBuilding,
+			Ip:      "192.168.123.9",
+			Address: &url.URL{
+				Scheme: "http",
+				Host:   "192.168.123.9:9025",
+			},
+		},
 	}
 	c.Assert(units, check.DeepEquals, expected)
 }
@@ -1611,6 +1622,7 @@ func (s *S) TestProvisionerUnitsStatus(c *check.C) {
 			Type:     "python",
 			Status:   provision.StatusBuilding.String(),
 			IP:       "127.0.0.4",
+			HostAddr: "10.0.0.7",
 			HostPort: "9025",
 		},
 		container{
@@ -1619,6 +1631,7 @@ func (s *S) TestProvisionerUnitsStatus(c *check.C) {
 			Type:     "python",
 			Status:   provision.StatusError.String(),
 			IP:       "127.0.0.4",
+			HostAddr: "10.0.0.7",
 			HostPort: "9025",
 		},
 	)
@@ -1626,8 +1639,28 @@ func (s *S) TestProvisionerUnitsStatus(c *check.C) {
 	defer coll.RemoveAll(bson.M{"appname": app.Name})
 	units := s.p.Units(&app)
 	expected := []provision.Unit{
-		{Name: "9930c24f1c4f", AppName: "myapplication", Type: "python", Status: provision.StatusBuilding},
-		{Name: "9930c24f1c4j", AppName: "myapplication", Type: "python", Status: provision.StatusError},
+		{
+			Name:    "9930c24f1c4f",
+			AppName: "myapplication",
+			Type:    "python",
+			Status:  provision.StatusBuilding,
+			Ip:      "10.0.0.7",
+			Address: &url.URL{
+				Scheme: "http",
+				Host:   "10.0.0.7:9025",
+			},
+		},
+		{
+			Name:    "9930c24f1c4j",
+			AppName: "myapplication",
+			Type:    "python",
+			Status:  provision.StatusError,
+			Ip:      "10.0.0.7",
+			Address: &url.URL{
+				Scheme: "http",
+				Host:   "10.0.0.7:9025",
+			},
+		},
 	}
 	c.Assert(units, check.DeepEquals, expected)
 }
@@ -1651,7 +1684,17 @@ func (s *S) TestProvisionerUnitsIp(c *check.C) {
 	defer coll.RemoveAll(bson.M{"appname": app.Name})
 	units := s.p.Units(&app)
 	expected := []provision.Unit{
-		{Name: "9930c24f1c4f", AppName: "myapplication", Type: "python", Ip: "127.0.0.1", Status: provision.StatusBuilding},
+		{
+			Name:    "9930c24f1c4f",
+			AppName: "myapplication",
+			Type:    "python",
+			Ip:      "127.0.0.1",
+			Status:  provision.StatusBuilding,
+			Address: &url.URL{
+				Scheme: "http",
+				Host:   "127.0.0.1:9025",
+			},
+		},
 	}
 	c.Assert(units, check.DeepEquals, expected)
 }

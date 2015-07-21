@@ -8,16 +8,20 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 	"sync"
+	"sync/atomic"
 	"time"
 
-	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/router/routertest"
 )
 
 var errNotProvisioned = &provision.Error{Reason: "App is not provisioned."}
+
+var uniqueIpCounter int32 = 0
 
 func init() {
 	provision.Register("fake", &FakeProvisioner{})
@@ -55,10 +59,15 @@ func NewFakeApp(name, platform string, units int) *FakeApp {
 	}
 	namefmt := "%s-%d"
 	for i := 0; i < units; i++ {
+		val := atomic.AddInt32(&uniqueIpCounter, 1)
 		app.units[i] = provision.Unit{
 			Name:   fmt.Sprintf(namefmt, name, i),
 			Status: provision.StatusStarted,
-			Ip:     fmt.Sprintf("10.10.10.%d", i+1),
+			Ip:     fmt.Sprintf("10.10.10.%d", val),
+			Address: &url.URL{
+				Scheme: "http",
+				Host:   fmt.Sprintf("10.10.10.%d:%d", val, val),
+			},
 		}
 	}
 	return &app
@@ -267,7 +276,7 @@ func (app *FakeApp) GetUpdatePlatform() bool {
 }
 
 func (app *FakeApp) GetRouter() (string, error) {
-	return config.GetString("docker:router")
+	return "fake", nil
 }
 
 func (app *FakeApp) GetTeamsName() []string {
@@ -448,18 +457,7 @@ func (p *FakeProvisioner) Reset() {
 }
 
 func (p *FakeProvisioner) Swap(app1, app2 provision.App) error {
-	pApp1, ok := p.apps[app1.GetName()]
-	if !ok {
-		return errNotProvisioned
-	}
-	pApp2, ok := p.apps[app2.GetName()]
-	if !ok {
-		return errNotProvisioned
-	}
-	pApp1.addr, pApp2.addr = pApp2.addr, pApp1.addr
-	p.apps[app1.GetName()] = pApp1
-	p.apps[app2.GetName()] = pApp2
-	return nil
+	return routertest.FakeRouter.Swap(app1.GetName(), app2.GetName())
 }
 
 func (p *FakeProvisioner) GitDeploy(app provision.App, version string, w io.Writer) (string, error) {
@@ -532,11 +530,14 @@ func (p *FakeProvisioner) Provision(app provision.App) error {
 	if p.Provisioned(app) {
 		return &provision.Error{Reason: "App already provisioned."}
 	}
+	err := routertest.FakeRouter.AddBackend(app.GetName())
+	if err != nil {
+		return err
+	}
 	p.mut.Lock()
 	defer p.mut.Unlock()
 	p.apps[app.GetName()] = provisionedApp{
 		app:      app,
-		addr:     fmt.Sprintf("%s.fake-lb.tsuru.io", app.GetName()),
 		restarts: make(map[string]int),
 		starts:   make(map[string]int),
 		stops:    make(map[string]int),
@@ -604,13 +605,22 @@ func (p *FakeProvisioner) AddUnits(app provision.App, n uint, process string, w 
 	platform := app.GetPlatform()
 	length := uint(len(pApp.units))
 	for i := uint(0); i < n; i++ {
+		val := atomic.AddInt32(&uniqueIpCounter, 1)
 		unit := provision.Unit{
 			Name:        fmt.Sprintf("%s-%d", name, pApp.unitLen),
 			AppName:     name,
 			Type:        platform,
 			Status:      provision.StatusStarted,
-			Ip:          fmt.Sprintf("10.10.10.%d", length+i+1),
+			Ip:          fmt.Sprintf("10.10.10.%d", val),
 			ProcessName: process,
+			Address: &url.URL{
+				Scheme: "http",
+				Host:   fmt.Sprintf("10.10.10.%d:%d", val, val),
+			},
+		}
+		err := routertest.FakeRouter.AddRoute(name, unit.Address)
+		if err != nil {
+			return nil, err
 		}
 		pApp.units = append(pApp.units, unit)
 		pApp.unitLen++
@@ -642,6 +652,10 @@ func (p *FakeProvisioner) RemoveUnits(app provision.App, n uint, process string,
 	for _, u := range pApp.units {
 		if removedCount > 0 && u.ProcessName == process {
 			removedCount--
+			err := routertest.FakeRouter.RemoveRoute(app.GetName(), u.Address)
+			if err != nil {
+				return err
+			}
 			continue
 		}
 		newUnits = append(newUnits, u)
@@ -655,32 +669,6 @@ func (p *FakeProvisioner) RemoveUnits(app provision.App, n uint, process string,
 	pApp.units = newUnits
 	pApp.unitLen = len(newUnits)
 	p.apps[app.GetName()] = pApp
-	return nil
-}
-
-func (p *FakeProvisioner) RemoveUnit(unit provision.Unit) error {
-	if err := p.getError("RemoveUnit"); err != nil {
-		return err
-	}
-	p.mut.Lock()
-	defer p.mut.Unlock()
-	app, ok := p.apps[unit.AppName]
-	if !ok {
-		return errNotProvisioned
-	}
-	index := -1
-	for i, u := range app.units {
-		if u.Name == unit.Name {
-			index = i
-		}
-	}
-	if index < 0 {
-		return errors.New("unit not found")
-	}
-	app.units[index] = app.units[len(app.units)-1]
-	app.units = app.units[:len(app.units)-1]
-	app.unitLen--
-	p.apps[unit.AppName] = app
 	return nil
 }
 
@@ -825,11 +813,7 @@ func (p *FakeProvisioner) Addr(app provision.App) (string, error) {
 	if err := p.getError("Addr"); err != nil {
 		return "", err
 	}
-	pApp, ok := p.apps[app.GetName()]
-	if !ok {
-		return "", errNotProvisioned
-	}
-	return pApp.addr, nil
+	return routertest.FakeRouter.Addr(app.GetName())
 }
 
 func (p *FakeProvisioner) SetCName(app provision.App, cname string) error {
@@ -1043,7 +1027,6 @@ type provisionedApp struct {
 	lastArchive string
 	lastFile    io.ReadCloser
 	cnames      []string
-	addr        string
 	unitLen     int
 	lastData    map[string]interface{}
 }

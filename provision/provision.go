@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/url"
 
 	"github.com/tsuru/tsuru/app/bind"
 )
@@ -107,6 +108,7 @@ type Unit struct {
 	Type        string
 	Ip          string
 	Status      Status
+	Address     *url.URL
 }
 
 // GetName returns the name of the unit.

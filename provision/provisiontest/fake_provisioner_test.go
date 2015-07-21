@@ -12,6 +12,7 @@ import (
 
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
 )
 
@@ -22,6 +23,10 @@ func Test(t *testing.T) {
 type S struct{}
 
 var _ = check.Suite(&S{})
+
+func (s *S) SetUpTest(c *check.C) {
+	routertest.FakeRouter.Reset()
+}
 
 func (s *S) TestFakeAppAddUnit(c *check.C) {
 	app := NewFakeApp("jean", "mj", 0)
@@ -279,8 +284,8 @@ func (s *S) TestGetCmds(c *check.C) {
 
 func (s *S) TestGetUnits(c *check.C) {
 	list := []provision.Unit{
-		{"chain-lighting-0", "chain-lighting", "web", "django", "10.10.10.10", provision.StatusStarted},
-		{"chain-lighting-1", "chain-lighting", "web", "django", "10.10.10.15", provision.StatusStarted},
+		{Name: "chain-lighting-0", AppName: "chain-lighting", ProcessName: "web", Type: "django", Ip: "10.10.10.10", Status: provision.StatusStarted},
+		{Name: "chain-lighting-1", AppName: "chain-lighting", ProcessName: "web", Type: "django", Ip: "10.10.10.15", Status: provision.StatusStarted},
 	}
 	app := NewFakeApp("chain-lighting", "rush", 1)
 	p := NewFakeProvisioner()
@@ -420,6 +425,7 @@ func (s *S) TestProvision(c *check.C) {
 	pApp := p.apps[app.GetName()]
 	c.Assert(pApp.app, check.DeepEquals, app)
 	c.Assert(pApp.units, check.HasLen, 0)
+	c.Assert(routertest.FakeRouter.HasBackend(app.GetName()), check.Equals, true)
 }
 
 func (s *S) TestProvisionWithPreparedFailure(c *check.C) {
@@ -515,8 +521,9 @@ func (s *S) TestDestroyNotProvisionedApp(c *check.C) {
 func (s *S) TestAddUnits(c *check.C) {
 	app := NewFakeApp("mystic-rhythms", "rush", 0)
 	p := NewFakeProvisioner()
-	p.Provision(app)
-	_, err := p.AddUnits(app, 2, "web", nil)
+	err := p.Provision(app)
+	c.Assert(err, check.IsNil)
+	_, err = p.AddUnits(app, 2, "web", nil)
 	c.Assert(err, check.IsNil)
 	_, err = p.AddUnits(app, 2, "worker", nil)
 	c.Assert(err, check.IsNil)
@@ -526,6 +533,10 @@ func (s *S) TestAddUnits(c *check.C) {
 	c.Assert(allUnits[1].ProcessName, check.Equals, "web")
 	c.Assert(allUnits[2].ProcessName, check.Equals, "worker")
 	c.Assert(allUnits[3].ProcessName, check.Equals, "worker")
+	c.Assert(routertest.FakeRouter.HasRoute(app.GetName(), allUnits[0].Address.String()), check.Equals, true)
+	c.Assert(routertest.FakeRouter.HasRoute(app.GetName(), allUnits[1].Address.String()), check.Equals, true)
+	c.Assert(routertest.FakeRouter.HasRoute(app.GetName(), allUnits[2].Address.String()), check.Equals, true)
+	c.Assert(routertest.FakeRouter.HasRoute(app.GetName(), allUnits[3].Address.String()), check.Equals, true)
 }
 
 func (s *S) TestAddUnitsCopiesTheUnitsSlice(c *check.C) {
@@ -570,12 +581,19 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	p.Provision(app)
 	_, err := p.AddUnits(app, 5, "web", nil)
 	c.Assert(err, check.IsNil)
+	oldUnits := p.GetUnits(app)
 	buf := bytes.NewBuffer(nil)
 	err = p.RemoveUnits(app, 3, "web", buf)
 	c.Assert(err, check.IsNil)
-	c.Assert(p.GetUnits(app), check.HasLen, 2)
-	c.Assert(p.GetUnits(app)[0].Name, check.Equals, "hemispheres-3")
+	units := p.GetUnits(app)
+	c.Assert(units, check.HasLen, 2)
+	c.Assert(units[0].Name, check.Equals, "hemispheres-3")
 	c.Assert(buf.String(), check.Equals, "removing 3 units")
+	c.Assert(units[0].Address.String(), check.Equals, oldUnits[3].Address.String())
+	c.Assert(routertest.FakeRouter.HasRoute(app.GetName(), oldUnits[0].Address.String()), check.Equals, false)
+	c.Assert(routertest.FakeRouter.HasRoute(app.GetName(), oldUnits[1].Address.String()), check.Equals, false)
+	c.Assert(routertest.FakeRouter.HasRoute(app.GetName(), oldUnits[2].Address.String()), check.Equals, false)
+	c.Assert(routertest.FakeRouter.HasRoute(app.GetName(), oldUnits[3].Address.String()), check.Equals, true)
 }
 
 func (s *S) TestRemoveUnitsDifferentProcesses(c *check.C) {
@@ -639,43 +657,6 @@ func (s *S) TestRemoveUnitsFailure(c *check.C) {
 	c.Assert(err.Error(), check.Equals, "This program has performed an illegal operation.")
 }
 
-func (s *S) TestRemoveUnit(c *check.C) {
-	app := NewFakeApp("hemispheres", "rush", 0)
-	p := NewFakeProvisioner()
-	p.Provision(app)
-	units, err := p.AddUnits(app, 2, "web", nil)
-	c.Assert(err, check.IsNil)
-	err = p.RemoveUnit(units[0])
-	c.Assert(err, check.IsNil)
-	c.Assert(p.GetUnits(app), check.HasLen, 1)
-	c.Assert(p.GetUnits(app)[0].Name, check.Equals, "hemispheres-1")
-}
-
-func (s *S) TestRemoveUnitNotFound(c *check.C) {
-	app := NewFakeApp("hemispheres", "rush", 0)
-	p := NewFakeProvisioner()
-	p.Provision(app)
-	units, err := p.AddUnits(app, 2, "web", nil)
-	c.Assert(err, check.IsNil)
-	err = p.RemoveUnit(provision.Unit{Name: units[0].Name + "wat", AppName: "hemispheres"})
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "unit not found")
-}
-
-func (s *S) TestRemoveUnitFromUnprivisionedApp(c *check.C) {
-	p := NewFakeProvisioner()
-	err := p.RemoveUnit(provision.Unit{AppName: "hemispheres"})
-	c.Assert(err, check.Equals, errNotProvisioned)
-}
-
-func (s *S) TestRemoveUnitFailure(c *check.C) {
-	p := NewFakeProvisioner()
-	p.PrepareFailure("RemoveUnit", errors.New("This program has performed an illegal operation."))
-	err := p.RemoveUnit(provision.Unit{AppName: "hemispheres"})
-	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "This program has performed an illegal operation.")
-}
-
 func (s *S) TestExecuteCommand(c *check.C) {
 	var buf bytes.Buffer
 	output := []byte("myoutput!")
@@ -727,7 +708,7 @@ func (s *S) TestAddr(c *check.C) {
 	c.Assert(err, check.IsNil)
 	addr, err := p.Addr(app)
 	c.Assert(err, check.IsNil)
-	c.Assert(addr, check.Equals, "quick.fake-lb.tsuru.io")
+	c.Assert(addr, check.Equals, "quick.fakerouter.com")
 }
 
 func (s *S) TestAddrFailure(c *check.C) {

@@ -864,9 +864,9 @@ func (p *dockerProvisioner) Units(app provision.App) []provision.Unit {
 	if err != nil {
 		return nil
 	}
-	units := []provision.Unit{}
-	for _, container := range containers {
-		units = append(units, container.asUnit(app))
+	units := make([]provision.Unit, len(containers))
+	for i, container := range containers {
+		units[i] = container.asUnit(app)
 	}
 	return units
 }

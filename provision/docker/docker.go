@@ -605,6 +605,7 @@ func (c *container) asUnit(a provision.App) provision.Unit {
 		Ip:          c.HostAddr,
 		Status:      status,
 		ProcessName: c.ProcessName,
+		Address:     c.getAddress(),
 	}
 }
 
