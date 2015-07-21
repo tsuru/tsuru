@@ -76,16 +76,22 @@ func (runBs) waitDocker(endpoint string) error {
 	}
 	timeoutChan := time.After(time.Duration(timeout) * time.Second)
 	pong := make(chan error, 1)
+	exit := make(chan struct{})
 	go func() {
 		for {
-			err := client.Ping()
-			if err == nil {
-				pong <- nil
+			select {
+			case <-exit:
 				return
-			}
-			if e, ok := err.(*docker.Error); ok && e.Status > 499 {
-				pong <- err
-				return
+			default:
+				err := client.Ping()
+				if err == nil {
+					pong <- nil
+					return
+				}
+				if e, ok := err.(*docker.Error); ok && e.Status > 499 {
+					pong <- err
+					return
+				}
 			}
 		}
 	}()
@@ -93,6 +99,7 @@ func (runBs) waitDocker(endpoint string) error {
 	case err := <-pong:
 		return err
 	case <-timeoutChan:
+		close(exit)
 		return fmt.Errorf("Docker API at %q didn't respond after %d seconds", endpoint, timeout)
 	}
 }
