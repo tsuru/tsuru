@@ -327,6 +327,11 @@ var addNewRoutes = action.Action{
 		if len(newContainers) > 0 {
 			fmt.Fprintf(writer, "\n---- Adding routes to new units ----\n")
 		}
+		// Beware that our routers are NOT thread safe. Hipache router
+		// implementaion in particular does not care with thread safeness.
+		// That's why we do not add routes concurrently here. If we wish to
+		// change this in the future a comprehensive concurrent test suite
+		// must be added to routers first.
 		return newContainers, runInContainers(newContainers, func(c *container, toRollback chan *container) error {
 			if c.ProcessName != webProcessName {
 				return nil
