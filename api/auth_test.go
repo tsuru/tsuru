@@ -31,6 +31,7 @@ import (
 	"github.com/tsuru/tsuru/rec/rectest"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/tsurutest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -66,6 +67,7 @@ func (s *AuthSuite) TearDownSuite(c *check.C) {
 }
 
 func (s *AuthSuite) SetUpTest(c *check.C) {
+	routertest.FakeRouter.Reset()
 	repositorytest.Reset()
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)

@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -74,6 +75,7 @@ func (s *DeploySuite) TearDownSuite(c *check.C) {
 }
 
 func (s *DeploySuite) SetUpTest(c *check.C) {
+	routertest.FakeRouter.Reset()
 	repositorytest.Reset()
 	err := dbtest.ClearAllCollections(s.conn.Apps().Database)
 	c.Assert(err, check.IsNil)

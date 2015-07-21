@@ -9,6 +9,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
 )
 
@@ -51,6 +52,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:name", "tsuru_service_test")
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
+	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.user = &auth.User{Email: "cidade@raul.com"}
 	err = s.user.Create()
 	c.Assert(err, check.IsNil)
@@ -62,11 +64,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	}
 }
 
-func (s *S) TearDownSuite(c *check.C) {
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
-}
-
-func (s *S) TearDownTest(c *check.C) {
-	_, err := s.conn.Services().RemoveAll(nil)
-	c.Assert(err, check.IsNil)
+func (s *S) SetUpTest(c *check.C) {
+	routertest.FakeRouter.Reset()
+	dbtest.ClearAllCollectionsExcept(s.conn.Apps().Database, []string{"users", "tokens", "teams"})
 }

@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
+	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/check.v1"
 )
@@ -96,6 +97,7 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	routertest.FakeRouter.Reset()
 	repositorytest.Reset()
 	var err error
 	s.conn, err = db.Conn()

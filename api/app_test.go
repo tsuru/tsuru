@@ -436,7 +436,7 @@ func (s *S) TestCreateAppHandler(c *check.C) {
 	expected := map[string]string{
 		"status":         "success",
 		"repository_url": repoURL,
-		"ip":             "someapp.fake-lb.tsuru.io",
+		"ip":             "someapp.fakerouter.com",
 	}
 	err = json.Unmarshal(body, &obtained)
 	c.Assert(obtained, check.DeepEquals, expected)
@@ -531,7 +531,7 @@ func (s *S) TestCreateAppCustomPlan(c *check.C) {
 	expected := map[string]string{
 		"status":         "success",
 		"repository_url": repoURL,
-		"ip":             "someapp.fake-lb.tsuru.io",
+		"ip":             "someapp.fakerouter.com",
 	}
 	err = json.Unmarshal(body, &obtained)
 	c.Assert(obtained, check.DeepEquals, expected)

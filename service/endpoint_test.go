@@ -313,7 +313,7 @@ func (s *S) TestBindUnitRequestFailure(c *check.C) {
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
 	err := client.BindUnit(&instance, a, a.GetUnits()[0])
 	c.Assert(err, check.NotNil)
-	expectedMsg := `^Failed to bind the instance "her-redis" to the unit "10.10.10.1": Server failed to do its job.$`
+	expectedMsg := `^Failed to bind the instance "her-redis" to the unit "10.10.10.\d+": Server failed to do its job.$`
 	c.Assert(err, check.ErrorMatches, expectedMsg)
 }
 

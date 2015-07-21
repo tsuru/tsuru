@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -49,6 +50,10 @@ func (s *BindSuite) SetUpSuite(c *check.C) {
 	s.team = auth.Team{Name: "metallica", Users: []string{s.user.Email}}
 	s.conn.Teams().Insert(s.team)
 	app.Provisioner = provisiontest.NewFakeProvisioner()
+}
+
+func (s *BindSuite) SetUpTest(c *check.C) {
+	routertest.FakeRouter.Reset()
 }
 
 func (s *BindSuite) TearDownSuite(c *check.C) {
