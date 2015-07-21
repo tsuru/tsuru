@@ -233,7 +233,7 @@ func (s *S) TestHealthcheckErrorsAfterMaxTime(c *check.C) {
 	host, port, _ := net.SplitHostPort(url.Host)
 	cont := container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}
 	buf := bytes.Buffer{}
-	config.Set("docker:healthcheck:max-time", 1)
+	config.Set("docker:healthcheck:max-time", -1)
 	defer config.Unset("docker:healthcheck:max-time")
 	done := make(chan struct{})
 	go func() {
