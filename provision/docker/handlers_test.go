@@ -112,7 +112,7 @@ func (s *HandlersSuite) SetUpSuite(c *check.C) {
 }
 
 func (s *HandlersSuite) SetUpTest(c *check.C) {
-	config.Set("docker:api-timeout", 10)
+	config.Set("docker:api-timeout", 2)
 	queue.ResetQueue()
 	err := clearClusterStorage(s.clusterSess)
 	c.Assert(err, check.IsNil)
