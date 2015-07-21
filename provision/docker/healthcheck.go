@@ -107,7 +107,7 @@ func runHealthcheck(cont *container, w io.Writer) error {
 		if time.Now().Sub(startedTime) > time.Duration(maxWaitTime) {
 			return lastError
 		}
-		fmt.Fprintf(w, " ---> %s. Trying again in %ds\n", lastError.Error(), sleepTime/time.Second)
+		fmt.Fprintf(w, " ---> %s. Trying again in %s\n", lastError.Error(), sleepTime)
 		time.Sleep(sleepTime)
 	}
 }
