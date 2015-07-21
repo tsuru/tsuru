@@ -15,11 +15,13 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
+	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -599,13 +601,27 @@ func (a *autoScaleConfig) addNode(modelNodes []*cluster.Node) (*cluster.Node, er
 	newAddr := machine.FormatNodeAddress()
 	a.logDebug("new machine created: %s - Waiting for docker to start...", newAddr)
 	createdNode := cluster.Node{
-		Address:  newAddr,
-		Metadata: metadata,
+		Address:        newAddr,
+		Metadata:       metadata,
+		CreationStatus: cluster.NodeCreationStatusPending,
 	}
-	err = a.provisioner.getCluster().WaitAndRegister(createdNode, a.waitTimeNewMachine)
+	err = a.provisioner.getCluster().Register(createdNode)
 	if err != nil {
 		machine.Destroy()
 		return nil, fmt.Errorf("error registering new node %s: %s", newAddr, err.Error())
+	}
+	q, err := queue.Queue()
+	if err != nil {
+		return nil, err
+	}
+	jobParams := monsterqueue.JobParams{
+		"endpoint": createdNode.Address,
+		"machine":  machine.Id,
+		"metadata": createdNode.Metadata,
+	}
+	_, err = q.EnqueueWait(runBsTaskName, jobParams, a.waitTimeNewMachine)
+	if err != nil {
+		return nil, err
 	}
 	a.logDebug("new machine created: %s - started!", newAddr)
 	return &createdNode, nil

@@ -53,6 +53,7 @@ func (s *S) TestAutoScaleConfigRun(c *check.C) {
 
 	var p dockerProvisioner
 	err = p.Initialize()
+	mainDockerProvisioner = &p
 	c.Assert(err, check.IsNil)
 	p.storage = &cluster.MapStorage{}
 	clusterInstance, err := cluster.New(nil, p.storage,
@@ -69,9 +70,7 @@ func (s *S) TestAutoScaleConfigRun(c *check.C) {
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"procfile": "web: python ./myapp",
-	}
+	customData := map[string]interface{}{"procfile": "web: python ./myapp"}
 	err = saveImageCustomData(imageId, customData)
 	c.Assert(err, check.IsNil)
 
@@ -190,6 +189,7 @@ func (s *S) TestAutoScaleConfigRunNoRebalance(c *check.C) {
 	var p dockerProvisioner
 	err = p.Initialize()
 	c.Assert(err, check.IsNil)
+	mainDockerProvisioner = &p
 	p.storage = &cluster.MapStorage{}
 	clusterInstance, err := cluster.New(nil, p.storage,
 		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
@@ -311,6 +311,7 @@ func (s *S) TestAutoScaleConfigRunOnce(c *check.C) {
 	var p dockerProvisioner
 	err = p.Initialize()
 	c.Assert(err, check.IsNil)
+	mainDockerProvisioner = &p
 	p.storage = &cluster.MapStorage{}
 	clusterInstance, err := cluster.New(nil, p.storage,
 		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
@@ -513,6 +514,7 @@ func (s *S) TestAutoScaleConfigRunNoGroup(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	p.cluster = clusterInstance
+	mainDockerProvisioner = &p
 	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
@@ -596,6 +598,7 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	var p dockerProvisioner
 	err = p.Initialize()
 	c.Assert(err, check.IsNil)
+	mainDockerProvisioner = &p
 	p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
 			"iaas": "my-scale-iaas",
@@ -720,6 +723,7 @@ func (s *S) TestAutoScaleConfigRunStress(c *check.C) {
 	err = p.Initialize()
 	c.Assert(err, check.IsNil)
 	p.storage = &cluster.MapStorage{}
+	mainDockerProvisioner = &p
 	clusterInstance, err := cluster.New(nil, p.storage,
 		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
 			"pool": "pool1",
@@ -827,6 +831,7 @@ func (s *S) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 
 	var p dockerProvisioner
 	err = p.Initialize()
+	mainDockerProvisioner = &p
 	c.Assert(err, check.IsNil)
 	p.storage = &cluster.MapStorage{}
 	clusterInstance, err := cluster.New(nil, p.storage,
@@ -957,6 +962,7 @@ func (s *S) TestAutoScaleConfigRunPriorityToCountBased(c *check.C) {
 	var p dockerProvisioner
 	err = p.Initialize()
 	c.Assert(err, check.IsNil)
+	mainDockerProvisioner = &p
 	p.storage = &cluster.MapStorage{}
 	clusterInstance, err := cluster.New(nil, p.storage,
 		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
