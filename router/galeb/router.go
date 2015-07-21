@@ -99,6 +99,10 @@ func (r *galebRouter) AddBackend(name string) error {
 	poolParams := galebClient.BackendPoolParams{
 		Name: poolName(name),
 	}
+	_, err := getGalebData(name)
+	if err == nil {
+		return router.ErrBackendExists
+	}
 	data := galebData{Name: name}
 	client, err := r.getClient()
 	if err != nil {
@@ -178,6 +182,11 @@ func (r *galebRouter) AddRoute(name string, address *url.URL) error {
 	data, err := getGalebData(backendName)
 	if err != nil {
 		return err
+	}
+	for _, r := range data.Reals {
+		if r.Real == address.Host {
+			return router.ErrRouteExists
+		}
 	}
 	client, err := r.getClient()
 	if err != nil {

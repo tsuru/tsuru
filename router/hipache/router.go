@@ -94,6 +94,13 @@ func (r *hipacheRouter) AddBackend(name string) error {
 	frontend := "frontend:" + name + "." + domain
 	conn := r.connect()
 	defer conn.Close()
+	exists, err := redis.Bool(conn.Do("EXISTS", frontend))
+	if err != nil {
+		return &routeError{"add", err}
+	}
+	if exists {
+		return router.ErrBackendExists
+	}
 	_, err = conn.Do("RPUSH", frontend, name)
 	if err != nil {
 		return &routeError{"add", err}
@@ -150,6 +157,15 @@ func (r *hipacheRouter) AddRoute(name string, address *url.URL) error {
 	if err != nil {
 		log.Errorf("error on getting hipache domain in add route for %s - %s", backendName, address)
 		return &routeError{"add", err}
+	}
+	routes, err := r.Routes(backendName)
+	if err != nil {
+		return err
+	}
+	for _, r := range routes {
+		if r.String() == address.String() {
+			return router.ErrRouteExists
+		}
 	}
 	frontend := "frontend:" + backendName + "." + domain
 	if err := r.addRoute(frontend, address.String()); err != nil {

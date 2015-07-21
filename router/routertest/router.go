@@ -68,7 +68,7 @@ func (r *fakeRouter) HasRoute(name, address string) bool {
 
 func (r *fakeRouter) AddBackend(name string) error {
 	if r.HasBackend(name) {
-		return errors.New("Backend already exists")
+		return router.ErrBackendExists
 	}
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
@@ -97,6 +97,9 @@ func (r *fakeRouter) AddRoute(name string, address *url.URL) error {
 	}
 	if !r.HasBackend(backendName) {
 		return router.ErrBackendNotFound
+	}
+	if r.HasRoute(backendName, address.String()) {
+		return router.ErrRouteExists
 	}
 	r.mutex.Lock()
 	defer r.mutex.Unlock()

@@ -236,7 +236,7 @@ func (s *S) TestAddRouteConnectFailure(c *check.C) {
 	c.Assert(err, check.NotNil)
 	e, ok := err.(*routeError)
 	c.Assert(ok, check.Equals, true)
-	c.Assert(e.op, check.Equals, "add")
+	c.Assert(e.op, check.Equals, "routes")
 }
 
 func (s *S) TestAddRouteCommandFailure(c *check.C) {
@@ -250,8 +250,8 @@ func (s *S) TestAddRouteCommandFailure(c *check.C) {
 	c.Assert(err, check.FitsTypeOf, &routeError{})
 	e, ok := err.(*routeError)
 	c.Assert(ok, check.Equals, true)
-	c.Assert(e.err.Error(), check.Equals, "Could not add route: I can't do that.")
-	c.Assert(e.op, check.Equals, "add")
+	c.Assert(e.err.Error(), check.Equals, "I can't do that.")
+	c.Assert(e.op, check.Equals, "routes")
 }
 
 func (s *S) TestAddRouteAlsoUpdatesCNameRecordsWhenExists(c *check.C) {

@@ -94,6 +94,33 @@ func (s *RouterSuite) TestRouteRemoveUnknownRoute(c *check.C) {
 	c.Assert(err, check.Equals, router.ErrRouteNotFound)
 }
 
+func (s *RouterSuite) TestRouteAddDupBackend(c *check.C) {
+	name := "backend1"
+	err := s.Router.AddBackend(name)
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddBackend(name)
+	c.Assert(err, check.Equals, router.ErrBackendExists)
+}
+
+func (s *RouterSuite) TestRouteAddDupRoute(c *check.C) {
+	name := "backend1"
+	err := s.Router.AddBackend(name)
+	c.Assert(err, check.IsNil)
+	addr1, err := url.Parse("http://10.10.10.10:8080")
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddRoute(name, addr1)
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddRoute(name, addr1)
+	c.Assert(err, check.Equals, router.ErrRouteExists)
+}
+
+func (s *RouterSuite) TestRouteAddRouteInvalidBackend(c *check.C) {
+	addr1, err := url.Parse("http://10.10.10.10:8080")
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddRoute("backend1", addr1)
+	c.Assert(err, check.Equals, router.ErrBackendNotFound)
+}
+
 func (s *RouterSuite) TestSwap(c *check.C) {
 	backend1 := "mybackend1"
 	backend2 := "mybackend2"
