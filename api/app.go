@@ -1090,3 +1090,21 @@ func appMetricEnvs(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(a.MetricEnvs())
 }
+
+func appRebuildRoutes(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	u, err := t.User()
+	if err != nil {
+		return err
+	}
+	rec.Log(u.Email, "app-rebuild-routes", "app="+r.URL.Query().Get(":app"))
+	app, err := getApp(r.URL.Query().Get(":app"), u, r)
+	if err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	result, err := app.RebuildRoutes()
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(&result)
+}

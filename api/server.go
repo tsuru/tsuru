@@ -149,6 +149,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Post", "/apps/{appname}/deploy/rollback", authorizationRequiredHandler(deployRollback))
 	m.Add("Post", "/apps/{app}/pool", authorizationRequiredHandler(appChangePool))
 	m.Add("Get", "/apps/{app}/metric/envs", authorizationRequiredHandler(appMetricEnvs))
+	m.Add("Post", "/apps/{app}/routes", AdminRequiredHandler(appRebuildRoutes))
 
 	m.Add("Post", "/units/status", authorizationRequiredHandler(setUnitsStatus))
 

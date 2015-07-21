@@ -1324,18 +1324,23 @@ func (e *ProcfileError) Error() string {
 	return fmt.Sprintf("error parsing Procfile: %s", e.yamlErr)
 }
 
-func (app *App) RebuildRoutes() error {
+type RebuildRoutesResult struct {
+	Added   []string
+	Removed []string
+}
+
+func (app *App) RebuildRoutes() (*RebuildRoutesResult, error) {
 	routerName, err := app.GetRouter()
 	if err != nil {
-		return err
+		return nil, err
 	}
 	r, err := router.Get(routerName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	oldRoutes, err := r.Routes(app.GetName())
 	if err != nil {
-		return err
+		return nil, err
 	}
 	expectedMap := make(map[string]*url.URL)
 	for _, unit := range app.Units() {
@@ -1349,17 +1354,20 @@ func (app *App) RebuildRoutes() error {
 			toRemove = append(toRemove, url)
 		}
 	}
+	var result RebuildRoutesResult
 	for _, toAddUrl := range expectedMap {
 		err := r.AddRoute(app.GetName(), toAddUrl)
 		if err != nil {
-			return err
+			return nil, err
 		}
+		result.Added = append(result.Added, toAddUrl.String())
 	}
 	for _, toRemoveUrl := range toRemove {
 		err := r.RemoveRoute(app.GetName(), toRemoveUrl)
 		if err != nil {
-			return err
+			return nil, err
 		}
+		result.Removed = append(result.Removed, toRemoveUrl.String())
 	}
-	return nil
+	return &result, nil
 }

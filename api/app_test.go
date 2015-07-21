@@ -3589,3 +3589,24 @@ func (s *S) TestMEtricEnvsWhenAppDoesNotExist(c *check.C) {
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
 	c.Assert(recorder.Body.String(), check.Matches, "^App .* not found.\n$")
 }
+
+func (s *S) TestRebuildRoutes(c *check.C) {
+	config.Set("docker:router", "fake")
+	defer config.Unset("docker:router")
+	a := app.App{Name: "myappx", Platform: "zend", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	defer s.deleteApp(&a)
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	request, err := http.NewRequest("POST", "/apps/myappx/routes", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.admintoken.GetValue())
+	recorder := httptest.NewRecorder()
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var parsed app.RebuildRoutesResult
+	json.Unmarshal(recorder.Body.Bytes(), &parsed)
+	c.Assert(parsed, check.DeepEquals, app.RebuildRoutesResult{})
+}
