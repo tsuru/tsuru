@@ -194,8 +194,12 @@ func (r *hipacheRouter) RemoveRoute(name string, address *url.URL) error {
 		return &routeError{"remove", err}
 	}
 	frontend := "frontend:" + backendName + "." + domain
-	if err := r.removeElement(frontend, address.String()); err != nil {
+	count, err := r.removeElement(frontend, address.String())
+	if err != nil {
 		return err
+	}
+	if count == 0 {
+		return router.ErrRouteNotFound
 	}
 	cnames, err := r.getCNames(backendName)
 	if err != nil {
@@ -205,7 +209,7 @@ func (r *hipacheRouter) RemoveRoute(name string, address *url.URL) error {
 		return nil
 	}
 	for _, cname := range cnames {
-		err = r.removeElement("frontend:"+cname, address.String())
+		_, err = r.removeElement("frontend:"+cname, address.String())
 		if err != nil {
 			return err
 		}
@@ -347,14 +351,14 @@ func (r *hipacheRouter) Routes(name string) ([]*url.URL, error) {
 	return result, nil
 }
 
-func (r *hipacheRouter) removeElement(name, address string) error {
+func (r *hipacheRouter) removeElement(name, address string) (int, error) {
 	conn := r.connect()
 	defer conn.Close()
-	_, err := conn.Do("LREM", name, 0, address)
+	count, err := redis.Int(conn.Do("LREM", name, 0, address))
 	if err != nil {
-		return &routeError{"remove", err}
+		return 0, &routeError{"remove", err}
 	}
-	return nil
+	return count, nil
 }
 
 func (r *hipacheRouter) Swap(backend1, backend2 string) error {

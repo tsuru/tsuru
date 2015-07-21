@@ -578,8 +578,9 @@ func (s *S) TestRouteError(c *check.C) {
 
 func (s *S) TestRemoveElement(c *check.C) {
 	router := hipacheRouter{prefix: "hipache"}
-	err := router.removeElement("frontend:myapp.com", "10.10.10.10")
+	count, err := router.removeElement("frontend:myapp.com", "10.10.10.10")
 	c.Assert(err, check.IsNil)
+	c.Assert(count, check.Equals, 0)
 }
 
 func (s *S) TestRoutes(c *check.C) {

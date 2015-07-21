@@ -216,10 +216,10 @@ func (r *galebRouter) RemoveRoute(name string, address *url.URL) error {
 			if err != nil {
 				return err
 			}
-			break
+			return data.removeReal(address.Host)
 		}
 	}
-	return data.removeReal(address.Host)
+	return router.ErrRouteNotFound
 }
 
 func (r *galebRouter) SetCName(cname, name string) error {
