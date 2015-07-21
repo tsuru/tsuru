@@ -90,6 +90,7 @@ func (s *S) TestHealerHealNode(c *check.C) {
 	err = p.Initialize()
 	c.Assert(err, check.IsNil)
 	p.cluster = cluster
+	mainDockerProvisioner = &p
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
@@ -123,7 +124,7 @@ func (s *S) TestHealerHealNode(c *check.C) {
 		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
-		waitTimeNewMachine:    time.Second,
+		waitTimeNewMachine:    time.Minute,
 	}
 	nodes, err := p.getCluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
@@ -185,6 +186,7 @@ func (s *S) TestHealerHealNodeWithoutIaaS(c *check.C) {
 	err = p.Initialize()
 	c.Assert(err, check.IsNil)
 	p.cluster = cluster
+	mainDockerProvisioner = &p
 	healer := nodeHealer{
 		locks:                 make(map[string]*sync.Mutex),
 		provisioner:           &p,
@@ -237,7 +239,7 @@ func (s *S) TestHealerHealNodeCreateMachineError(c *check.C) {
 		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
-		waitTimeNewMachine:    time.Second,
+		waitTimeNewMachine:    time.Minute,
 	}
 	nodes, err := p.getCluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
@@ -289,6 +291,7 @@ func (s *S) TestHealerHealNodeWaitAndRegisterError(c *check.C) {
 	err = p.Initialize()
 	c.Assert(err, check.IsNil)
 	p.cluster = cluster
+	mainDockerProvisioner = &p
 	healer := nodeHealer{
 		locks:                 make(map[string]*sync.Mutex),
 		provisioner:           &p,
@@ -296,6 +299,8 @@ func (s *S) TestHealerHealNodeWaitAndRegisterError(c *check.C) {
 		failuresBeforeHealing: 1,
 		waitTimeNewMachine:    time.Second,
 	}
+	config.Set("docker:api-timeout", 1)
+	defer config.Unset("docker:api-timeout")
 	nodes, err := p.getCluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -304,10 +309,10 @@ func (s *S) TestHealerHealNodeWaitAndRegisterError(c *check.C) {
 	c.Assert(nodes[0].FailureCount() > 0, check.Equals, true)
 	nodes[0].Metadata["iaas"] = "my-healer-iaas"
 	created, err := healer.healNode(&nodes[0])
-	c.Assert(err, check.ErrorMatches, ".*error registering new node.*")
+	c.Assert(err, check.ErrorMatches, ".*timeout waiting for result.*")
 	c.Assert(created.Address, check.Equals, "")
 	c.Assert(nodes[0].FailureCount(), check.Equals, 0)
-	nodes, err = p.getCluster().UnfilteredNodes()
+	nodes, err = p.getCluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(urlPort(nodes[0].Address), check.Equals, urlPort(node1.URL()))
@@ -346,6 +351,7 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 	err = p.Initialize()
 	c.Assert(err, check.IsNil)
 	p.cluster = cluster
+	mainDockerProvisioner = &p
 
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
@@ -381,9 +387,9 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
-		waitTimeNewMachine:    time.Second,
+		waitTimeNewMachine:    time.Minute,
 	}
-	nodes, err := p.getCluster().UnfilteredNodes()
+	nodes, err := p.getCluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(urlPort(nodes[0].Address), check.Equals, urlPort(node1.URL()))
@@ -404,7 +410,7 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(created.Address, check.Equals, fmt.Sprintf("http://localhost:%d", urlPort(node2.URL())))
 
-	nodes, err = p.getCluster().UnfilteredNodes()
+	nodes, err = p.getCluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(urlPort(nodes[0].Address), check.Equals, urlPort(node2.URL()))
@@ -462,6 +468,7 @@ func (s *S) TestHealerHandleError(c *check.C) {
 	var p dockerProvisioner
 	err = p.Initialize()
 	c.Assert(err, check.IsNil)
+	mainDockerProvisioner = &p
 	p.cluster = cluster
 
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
@@ -498,7 +505,7 @@ func (s *S) TestHealerHandleError(c *check.C) {
 		provisioner:           &p,
 		disabledTime:          0,
 		failuresBeforeHealing: 1,
-		waitTimeNewMachine:    time.Second,
+		waitTimeNewMachine:    time.Minute,
 	}
 	nodes, err := cluster.UnfilteredNodes()
 	c.Assert(err, check.IsNil)
@@ -517,7 +524,7 @@ func (s *S) TestHealerHandleError(c *check.C) {
 	waitTime := healer.HandleError(&nodes[0])
 	c.Assert(waitTime, check.Equals, time.Duration(0))
 
-	nodes, err = cluster.UnfilteredNodes()
+	nodes, err = cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(urlPort(nodes[0].Address), check.Equals, urlPort(node2.URL()))
@@ -550,7 +557,7 @@ func (s *S) TestHealerHandleErrorDoesntTriggerEventIfNotNeeded(c *check.C) {
 		provisioner:           nil,
 		disabledTime:          20,
 		failuresBeforeHealing: 1,
-		waitTimeNewMachine:    time.Second,
+		waitTimeNewMachine:    time.Minute,
 	}
 	node := cluster.Node{Address: "addr", Metadata: map[string]string{
 		"Failures":    "2",
@@ -609,7 +616,7 @@ func (s *S) TestHealerHandleErrorDoesntTriggerEventIfHealingCountTooLarge(c *che
 		provisioner:           nil,
 		disabledTime:          20,
 		failuresBeforeHealing: 1,
-		waitTimeNewMachine:    time.Second,
+		waitTimeNewMachine:    time.Minute,
 	}
 	nodes[7].Metadata = map[string]string{
 		"Failures":    "2",

@@ -11,8 +11,10 @@ import (
 	"time"
 
 	"github.com/tsuru/docker-cluster/cluster"
+	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/queue"
 )
 
 type nodeHealer struct {
@@ -42,13 +44,32 @@ func (h *nodeHealer) healNode(node *cluster.Node) (cluster.Node, error) {
 	}
 	newAddr := machine.FormatNodeAddress()
 	log.Debugf("New machine created during healing process: %s - Waiting for docker to start...", newAddr)
-	createdNode := cluster.Node{Address: newAddr, Metadata: nodeMetadata}
-	err = h.provisioner.getCluster().WaitAndRegister(createdNode, h.waitTimeNewMachine)
+	createdNode := cluster.Node{
+		Address:        newAddr,
+		Metadata:       nodeMetadata,
+		CreationStatus: cluster.NodeCreationStatusPending,
+	}
+	err = h.provisioner.getCluster().Register(createdNode)
 	if err != nil {
 		node.ResetFailures()
 		h.provisioner.getCluster().Register(cluster.Node{Address: failingAddr, Metadata: nodeMetadata})
 		machine.Destroy()
 		return emptyNode, fmt.Errorf("Can't auto-heal after %d failures for node %s: error registering new node: %s", failures, failingHost, err.Error())
+	}
+	q, err := queue.Queue()
+	if err != nil {
+		return emptyNode, err
+	}
+	jobParams := monsterqueue.JobParams{
+		"endpoint": createdNode.Address,
+		"machine":  machine.Id,
+		"metadata": createdNode.Metadata,
+	}
+	_, err = q.EnqueueWait(runBsTaskName, jobParams, h.waitTimeNewMachine)
+	if err != nil {
+		node.ResetFailures()
+		h.provisioner.getCluster().Register(cluster.Node{Address: failingAddr, Metadata: nodeMetadata})
+		return emptyNode, fmt.Errorf("Can't auto-heal after %d failures for node %s: error waiting for the bs task: %s", failures, failingHost, err.Error())
 	}
 	var buf bytes.Buffer
 	err = h.provisioner.moveContainers(failingHost, "", &buf)
