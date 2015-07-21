@@ -299,8 +299,6 @@ func (s *S) TestHealerHealNodeWaitAndRegisterError(c *check.C) {
 		failuresBeforeHealing: 1,
 		waitTimeNewMachine:    time.Second,
 	}
-	config.Set("docker:api-timeout", 1)
-	defer config.Unset("docker:api-timeout")
 	nodes, err := p.getCluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
