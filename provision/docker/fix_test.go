@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -89,6 +90,9 @@ func (s *S) TestFixContainers(c *check.C) {
 	err = conn.Apps().Insert(&app.App{Name: "makea"})
 	c.Assert(err, check.IsNil)
 	defer conn.Apps().RemoveAll(bson.M{"name": "makea"})
+	appInstance := provisiontest.NewFakeApp("makea", "python", 0)
+	defer p.Destroy(appInstance)
+	p.Provision(appInstance)
 	var storage cluster.MapStorage
 	storage.StoreContainer("9930c24f1c4x", server.URL)
 	p.cluster, err = cluster.New(nil, &storage,

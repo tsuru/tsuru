@@ -442,6 +442,9 @@ func (s *HandlersSuite) TestFixContainerHandler(c *check.C) {
 		cluster.Node{Address: server.URL},
 	)
 	c.Assert(err, check.IsNil)
+	appInstance := provisiontest.NewFakeApp("makea", "python", 0)
+	defer p.Destroy(appInstance)
+	p.Provision(appInstance)
 	request, err := http.NewRequest("POST", "/fix-containers", nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()

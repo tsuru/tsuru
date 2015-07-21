@@ -7,8 +7,7 @@ package docker
 import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/log"
-	_ "github.com/tsuru/tsuru/router/hipache"
-	_ "github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/router"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -51,14 +50,20 @@ func (p *dockerProvisioner) fixContainer(container *container, info containerNet
 	if err != nil {
 		return err
 	}
-	router, err := getRouterForApp(appInstance)
+	r, err := getRouterForApp(appInstance)
 	if err != nil {
 		return err
 	}
-	router.RemoveRoute(container.AppName, container.getAddress())
+	err = r.RemoveRoute(container.AppName, container.getAddress())
+	if err != nil && err != router.ErrRouteNotFound {
+		return err
+	}
 	container.IP = info.IP
 	container.HostPort = info.HTTPHostPort
-	router.AddRoute(container.AppName, container.getAddress())
+	err = r.AddRoute(container.AppName, container.getAddress())
+	if err != nil && err != router.ErrRouteExists {
+		return err
+	}
 	coll := p.collection()
 	defer coll.Close()
 	return coll.Update(bson.M{"id": container.ID}, container)
