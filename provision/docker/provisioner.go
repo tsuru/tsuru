@@ -734,7 +734,11 @@ func (p *dockerProvisioner) SetUnitStatus(unit provision.Unit, status provision.
 	if unit.AppName != "" && container.AppName != unit.AppName {
 		return errors.New("wrong app name")
 	}
-	return container.setStatus(p, status.String())
+	err = container.setStatus(p, status.String())
+	if err != nil {
+		return err
+	}
+	return p.checkContainer(container)
 }
 
 func (p *dockerProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {

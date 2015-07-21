@@ -1051,6 +1051,31 @@ func (s *S) TestProvisionerSetUnitStatus(c *check.C) {
 	c.Assert(container.Status, check.Equals, provision.StatusError.String())
 }
 
+func (s *S) TestProvisionerSetUnitStatusUpdatesIp(c *check.C) {
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	err = conn.Apps().Insert(&app.App{Name: "myawesomeapp"})
+	c.Assert(err, check.IsNil)
+	err = s.newFakeImage(s.p, "tsuru/python:latest", nil)
+	c.Assert(err, check.IsNil)
+	opts := newContainerOpts{Status: provision.StatusStarted.String(), AppName: "myawesomeapp"}
+	container, err := s.newContainer(&opts, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(container)
+	container.IP = "xinvalidx"
+	coll := s.p.collection()
+	defer coll.Close()
+	err = coll.Update(bson.M{"id": container.ID}, container)
+	c.Assert(err, check.IsNil)
+	err = s.p.SetUnitStatus(provision.Unit{Name: container.ID, AppName: container.AppName}, provision.StatusStarted)
+	c.Assert(err, check.IsNil)
+	container, err = s.p.getContainer(container.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(container.Status, check.Equals, provision.StatusStarted.String())
+	c.Assert(container.IP, check.Matches, `\d+.\d+.\d+.\d+`)
+}
+
 func (s *S) TestProvisionerSetUnitStatusWrongApp(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
