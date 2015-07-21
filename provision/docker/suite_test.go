@@ -108,6 +108,7 @@ func (s *S) SetUpSuite(c *check.C) {
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	config.Set("docker:api-timeout", 10)
 	iaas.ResetAll()
 	repositorytest.Reset()
 	queue.ResetQueue()
