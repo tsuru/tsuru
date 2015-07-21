@@ -507,7 +507,7 @@ func (s *S) TestContainerShell(c *check.C) {
 	})
 	defer s.server.SetHook(nil)
 	s.server.PrepareExec("*", func() {
-		time.Sleep(1e9)
+		time.Sleep(500e6)
 	})
 	container, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
