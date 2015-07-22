@@ -1338,6 +1338,10 @@ func (app *App) RebuildRoutes() (*RebuildRoutesResult, error) {
 	if err != nil {
 		return nil, err
 	}
+	err = r.AddBackend(app.Name)
+	if err != nil && err != router.ErrBackendExists {
+		return nil, err
+	}
 	oldRoutes, err := r.Routes(app.GetName())
 	if err != nil {
 		return nil, err
