@@ -7,6 +7,7 @@ package app
 import (
 	"errors"
 	"io"
+	"io/ioutil"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/action"
@@ -348,7 +349,9 @@ var moveRouterUnits = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		result := ctx.FWResult.(*changePlanPipelineResult)
-		result.app.Plan = *result.oldPlan
+		defer func() {
+			result.app.Plan = *result.oldPlan
+		}()
 		if result.changedPlan {
 			routerName, err := result.app.GetRouter()
 			if err != nil {
@@ -426,23 +429,26 @@ var removeOldBackend = action.Action{
 	},
 }
 
+// restartApp never fails because removeOldBackend is not undoable.
 var restartApp = action.Action{
 	Name: "change-plan-restart-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		w, ok := ctx.Params[2].(io.Writer)
 		if !ok {
-			return nil, errors.New("third parameter must be an io.Writer")
+			log.Error("third parameter must be an io.Writer")
+			w = ioutil.Discard
 		}
 		result, ok := ctx.Previous.(*changePlanPipelineResult)
 		if !ok {
-			return nil, errors.New("invalid previous result, should be changePlanPipelineResult")
+			log.Error("invalid previous result, should be changePlanPipelineResult")
+			return nil, nil
 		}
 		app := result.app
 		oldPlan := result.oldPlan
 		if app.GetCpuShare() != oldPlan.CpuShare || app.GetMemory() != oldPlan.Memory || app.GetSwap() != oldPlan.Swap {
 			err := app.Restart("", w)
 			if err != nil {
-				return nil, err
+				log.Errorf("failed to restart application after changing plan: %s", err)
 			}
 		}
 		return result, nil

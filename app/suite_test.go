@@ -112,6 +112,7 @@ func (s *S) TearDownSuite(c *check.C) {
 
 func (s *S) SetUpTest(c *check.C) {
 	routertest.FakeRouter.Reset()
+	routertest.HCRouter.Reset()
 	s.provisioner.Reset()
 	repositorytest.Reset()
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
