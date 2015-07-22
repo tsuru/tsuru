@@ -590,11 +590,7 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 	if w == nil {
 		w = ioutil.Discard
 	}
-	var plural string
-	if units > 1 {
-		plural = "s"
-	}
-	fmt.Fprintf(w, "\n---- Starting new unit%s %s ----\n", plural, strings.Join(processMsg, " "))
+	fmt.Fprintf(w, "\n---- Starting new %s %s ----\n", pluralize("unit", units), strings.Join(processMsg, " "))
 	oldContainers := make([]container, 0, units)
 	for processName, cont := range args.toAdd {
 		for i := 0; i < cont.Quantity; i++ {
@@ -686,11 +682,7 @@ func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint, processName
 	if len(containers) < int(units) {
 		return fmt.Errorf("cannot remove %d units from process %q, only %d available", units, processName, len(containers))
 	}
-	var plural string
-	if units > 1 {
-		plural = "s"
-	}
-	fmt.Fprintf(w, "\n---- Removing %d unit%s ----\n", units, plural)
+	fmt.Fprintf(w, "\n---- Removing %d %s ----\n", units, pluralize("unit", int(units)))
 	p, err = p.cloneProvisioner(nil)
 	if err != nil {
 		return err
@@ -971,4 +963,11 @@ func (p *dockerProvisioner) MetricEnvs(app provision.App) map[string]string {
 		}
 	}
 	return envMap
+}
+
+func pluralize(str string, sz int) string {
+	if sz == 0 || sz > 1 {
+		str = str + "s"
+	}
+	return str
 }

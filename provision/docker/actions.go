@@ -429,11 +429,7 @@ var provisionRemoveOldUnits = action.Action{
 			writer = ioutil.Discard
 		}
 		total := len(args.toRemove)
-		var plural string
-		if total > 1 {
-			plural = "s"
-		}
-		fmt.Fprintf(writer, "\n---- Removing %d old unit%s ----\n", total, plural)
+		fmt.Fprintf(writer, "\n---- Removing %d old %s ----\n", total, pluralize("unit", total))
 		runInContainers(args.toRemove, func(c *container, toRollback chan *container) error {
 			err := c.remove(args.provisioner)
 			if err != nil {
@@ -458,11 +454,7 @@ var provisionUnbindOldUnits = action.Action{
 			writer = ioutil.Discard
 		}
 		total := len(args.toRemove)
-		var plural string
-		if total > 1 {
-			plural = "s"
-		}
-		fmt.Fprintf(writer, "\n---- Unbinding %d old unit%s ----\n", total, plural)
+		fmt.Fprintf(writer, "\n---- Unbinding %d old %s ----\n", total, pluralize("unit", total))
 		runInContainers(args.toRemove, func(c *container, toRollback chan *container) error {
 			unit := c.asUnit(args.app)
 			err := args.app.UnbindUnit(&unit)
