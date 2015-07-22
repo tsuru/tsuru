@@ -13,9 +13,9 @@ import (
 	"github.com/tsuru/tsuru/router"
 )
 
-var FakeRouter = fakeRouter{backends: make(map[string][]string), failuresByIp: make(map[string]bool)}
+var FakeRouter = newFakeRouter()
 
-var HCRouter = hcRouter{fakeRouter: fakeRouter{backends: make(map[string][]string), failuresByIp: make(map[string]bool)}}
+var HCRouter = hcRouter{fakeRouter: newFakeRouter()}
 
 var ErrForcedFailure = errors.New("Forced failure")
 
@@ -32,8 +32,13 @@ func createHCRouter(prefix string) (router.Router, error) {
 	return &HCRouter, nil
 }
 
+func newFakeRouter() fakeRouter {
+	return fakeRouter{cnames: make(map[string]string), backends: make(map[string][]string), failuresByIp: make(map[string]bool)}
+}
+
 type fakeRouter struct {
 	backends     map[string][]string
+	cnames       map[string]string
 	failuresByIp map[string]bool
 	mutex        sync.Mutex
 }
@@ -51,12 +56,22 @@ func (r *fakeRouter) HasBackend(name string) bool {
 	return ok
 }
 
+func (r *fakeRouter) HasCName(name string) bool {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	_, ok := r.cnames[name]
+	return ok
+}
+
 func (r *fakeRouter) HasRoute(name, address string) bool {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	routes, ok := r.backends[name]
 	if !ok {
-		return false
+		routes, ok = r.backends[r.cnames[name]]
+		if !ok {
+			return false
+		}
 	}
 	for _, route := range routes {
 		if route == address {
@@ -149,15 +164,27 @@ func (r *fakeRouter) SetCName(cname, name string) error {
 	if !r.HasBackend(backendName) {
 		return nil
 	}
-	r.AddBackend(cname)
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	r.backends[cname] = append(r.backends[backendName])
+	if _, ok := r.cnames[cname]; ok {
+		return router.ErrCNameExists
+	}
+	r.cnames[cname] = backendName
 	return nil
 }
 
 func (r *fakeRouter) UnsetCName(cname, name string) error {
-	return r.RemoveBackend(cname)
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	if !r.HasBackend(backendName) {
+		return nil
+	}
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+	delete(r.cnames, cname)
+	return nil
 }
 
 func (r *fakeRouter) Addr(name string) (string, error) {

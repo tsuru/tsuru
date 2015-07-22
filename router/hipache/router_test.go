@@ -408,6 +408,43 @@ func (s *S) TestSetCNameWithPreviousRoutes(c *check.C) {
 	c.Assert([]string{"myapp", addr1.String(), addr2.String()}, check.DeepEquals, cnameRoutes)
 }
 
+func (s *S) TestSetCNameTwiceFixInconsistencies(c *check.C) {
+	r := hipacheRouter{prefix: "hipache"}
+	err := r.AddBackend("myapp")
+	c.Assert(err, check.IsNil)
+	addr1, _ := url.Parse("http://10.10.10.10")
+	err = r.AddRoute("myapp", addr1)
+	c.Assert(err, check.IsNil)
+	addr2, _ := url.Parse("http://10.10.10.11")
+	err = r.AddRoute("myapp", addr2)
+	c.Assert(err, check.IsNil)
+	expected := []string{"myapp", addr1.String(), addr2.String()}
+	err = r.SetCName("mycname.com", "myapp")
+	c.Assert(err, check.IsNil)
+	cnameRoutes, err := redis.Strings(conn.Do("LRANGE", "frontend:mycname.com", 0, -1))
+	c.Assert(err, check.IsNil)
+	c.Assert(cnameRoutes, check.DeepEquals, expected)
+	_, err = conn.Do("RPUSH", "frontend:mycname.com", "http://invalid.addr:1234")
+	c.Assert(err, check.IsNil)
+	err = r.SetCName("mycname.com", "myapp")
+	c.Assert(err, check.Equals, router.ErrCNameExists)
+	cnameRoutes, err = redis.Strings(conn.Do("LRANGE", "frontend:mycname.com", 0, -1))
+	c.Assert(err, check.IsNil)
+	c.Assert(cnameRoutes, check.DeepEquals, expected)
+	_, err = conn.Do("LREM", "frontend:mycname.com", "1", "http://10.10.10.10")
+	c.Assert(err, check.IsNil)
+	err = r.SetCName("mycname.com", "myapp")
+	c.Assert(err, check.Equals, router.ErrCNameExists)
+	cnameRoutes, err = redis.Strings(conn.Do("LRANGE", "frontend:mycname.com", 0, -1))
+	c.Assert(err, check.IsNil)
+	c.Assert(cnameRoutes, check.DeepEquals, expected)
+	err = r.SetCName("mycname.com", "myapp")
+	c.Assert(err, check.Equals, router.ErrCNameExists)
+	cnameRoutes, err = redis.Strings(conn.Do("LRANGE", "frontend:mycname.com", 0, -1))
+	c.Assert(err, check.IsNil)
+	c.Assert(cnameRoutes, check.DeepEquals, expected)
+}
+
 func (s *S) TestSetCNameShouldRecordAppAndCNameOnRedis(c *check.C) {
 	router := hipacheRouter{prefix: "hipache"}
 	err := router.AddBackend("myapp")

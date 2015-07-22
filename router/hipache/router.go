@@ -279,23 +279,57 @@ func (r *hipacheRouter) SetCName(cname, name string) error {
 		err := errors.New(fmt.Sprintf("Invalid CNAME %s. You can't use tsuru's application domain.", cname))
 		return &routeError{"setCName", err}
 	}
-	frontend := "frontend:" + backendName + "." + domain
 	conn := r.connect()
 	defer conn.Close()
-	routes, err := redis.Strings(conn.Do("LRANGE", frontend, 0, -1))
+	cnameExists := false
+	currentCnames, err := redis.Strings(conn.Do("LRANGE", "cname:"+name, 0, -1))
+	for _, n := range currentCnames {
+		if n == cname {
+			cnameExists = true
+			break
+		}
+	}
+	if !cnameExists {
+		_, err = conn.Do("RPUSH", "cname:"+backendName, cname)
+		if err != nil {
+			return &routeError{"set", err}
+		}
+	}
+	frontend := "frontend:" + backendName + "." + domain
+	cnameFrontend := "frontend:" + cname
+	wantedRoutes, err := redis.Strings(conn.Do("LRANGE", frontend, 1, -1))
 	if err != nil {
 		return &routeError{"get", err}
 	}
-	_, err = conn.Do("RPUSH", "cname:"+backendName, cname)
+	currentRoutes, err := redis.Strings(conn.Do("LRANGE", cnameFrontend, 0, -1))
 	if err != nil {
-		return &routeError{"set", err}
+		return &routeError{"get", err}
 	}
-	frontend = "frontend:" + cname
-	for _, r := range routes {
-		_, err := conn.Do("RPUSH", frontend, r)
+	// Routes are always added again and duplicates removed this will ensure
+	// that after a call to SetCName is made routes will be identical to the
+	// original entry.
+	if len(currentRoutes) == 0 {
+		_, err := conn.Do("RPUSH", cnameFrontend, backendName)
 		if err != nil {
 			return &routeError{"setCName", err}
 		}
+	} else {
+		currentRoutes = currentRoutes[1:]
+	}
+	for _, r := range wantedRoutes {
+		_, err := conn.Do("RPUSH", cnameFrontend, r)
+		if err != nil {
+			return &routeError{"setCName", err}
+		}
+	}
+	for _, r := range currentRoutes {
+		_, err := conn.Do("LREM", cnameFrontend, "1", r)
+		if err != nil {
+			return &routeError{"setCName", err}
+		}
+	}
+	if cnameExists {
+		return router.ErrCNameExists
 	}
 	return nil
 }

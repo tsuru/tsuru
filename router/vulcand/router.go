@@ -164,7 +164,7 @@ func (r *vulcandRouter) SetCName(cname, name string) error {
 	}
 	frontendName := r.frontendName(cname)
 	if found, _ := r.client.GetFrontend(engine.FrontendKey{Id: frontendName}); found != nil {
-		return router.ErrRouteExists
+		return router.ErrCNameExists
 	}
 	frontend, err := engine.NewHTTPFrontend(
 		frontendName,

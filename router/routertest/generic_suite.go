@@ -168,5 +168,19 @@ func (s *RouterSuite) TestSwap(c *check.C) {
 	c.Check(routesStrs, check.DeepEquals, []string{addr2.String(), addr4.String()})
 }
 
+func (s *RouterSuite) TestRouteAddDupCName(c *check.C) {
+	name := "backend1"
+	err := s.Router.AddBackend(name)
+	c.Assert(err, check.IsNil)
+	addr1, err := url.Parse("http://10.10.10.10:8080")
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddRoute(name, addr1)
+	c.Assert(err, check.IsNil)
+	err = s.Router.SetCName("my.host.com", name)
+	c.Assert(err, check.IsNil)
+	err = s.Router.SetCName("my.host.com", name)
+	c.Assert(err, check.Equals, router.ErrCNameExists)
+}
+
 // TODO(cezarsa): Add tests for Set/UnsetCName. We'll probably need something
 // like ListCNames added to the Router interface.

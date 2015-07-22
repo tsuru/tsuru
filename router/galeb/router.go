@@ -244,6 +244,11 @@ func (r *galebRouter) SetCName(cname, name string) error {
 	if err != nil {
 		return err
 	}
+	for _, val := range data.CNames {
+		if val.CName == cname {
+			return router.ErrCNameExists
+		}
+	}
 	virtualHostParams := galebClient.VirtualHostParams{
 		Name:        cname,
 		RuleDefault: data.RootRuleId,

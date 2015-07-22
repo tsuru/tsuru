@@ -312,7 +312,7 @@ func (s *S) TestSetCNameDuplicate(c *check.C) {
 	err = vRouter.SetCName("myapp.cname.example.com", "myapp")
 	c.Assert(err, check.IsNil)
 	err = vRouter.SetCName("myapp.cname.example.com", "myapp")
-	c.Assert(err, check.ErrorMatches, router.ErrRouteExists.Error())
+	c.Assert(err, check.Equals, router.ErrCNameExists)
 }
 
 func (s *S) TestUnsetCName(c *check.C) {

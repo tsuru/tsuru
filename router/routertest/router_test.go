@@ -33,7 +33,8 @@ func init() {
 	suite.SetUpTestFunc = func(c *check.C) {
 		config.Set("database:name", "router_generic_fake_tests")
 		base.SetUpTest(c)
-		suite.Router = &fakeRouter{backends: make(map[string][]string)}
+		r := newFakeRouter()
+		suite.Router = &r
 	}
 	check.Suite(suite)
 }
@@ -67,7 +68,7 @@ func (s *S) TestShouldBeRegistered(c *check.C) {
 }
 
 func (s *S) TestAddBackend(c *check.C) {
-	r := fakeRouter{backends: make(map[string][]string)}
+	r := newFakeRouter()
 	err := r.AddBackend("foo")
 	c.Assert(err, check.IsNil)
 	defer r.RemoveBackend("foo")
@@ -75,7 +76,7 @@ func (s *S) TestAddBackend(c *check.C) {
 }
 
 func (s *S) TestAddDuplicateBackend(c *check.C) {
-	r := fakeRouter{backends: make(map[string][]string)}
+	r := newFakeRouter()
 	err := r.AddBackend("foo")
 	c.Assert(err, check.IsNil)
 	err = r.AddBackend("foo")
@@ -84,7 +85,7 @@ func (s *S) TestAddDuplicateBackend(c *check.C) {
 }
 
 func (s *S) TestRemoveBackend(c *check.C) {
-	r := fakeRouter{backends: make(map[string][]string)}
+	r := newFakeRouter()
 	err := r.AddBackend("bar")
 	c.Assert(err, check.IsNil)
 	err = r.RemoveBackend("bar")
@@ -93,13 +94,13 @@ func (s *S) TestRemoveBackend(c *check.C) {
 }
 
 func (s *S) TestRemoveUnknownBackend(c *check.C) {
-	r := fakeRouter{backends: make(map[string][]string)}
+	r := newFakeRouter()
 	err := r.RemoveBackend("bar")
 	c.Assert(err, check.Equals, router.ErrBackendNotFound)
 }
 
 func (s *S) TestAddRoute(c *check.C) {
-	r := fakeRouter{backends: make(map[string][]string)}
+	r := newFakeRouter()
 	err := r.AddBackend("name")
 	c.Assert(err, check.IsNil)
 	err = r.AddRoute("name", s.localhost)
@@ -108,13 +109,13 @@ func (s *S) TestAddRoute(c *check.C) {
 }
 
 func (s *S) TestAddRouteBackendNotFound(c *check.C) {
-	r := fakeRouter{backends: make(map[string][]string)}
+	r := newFakeRouter()
 	err := r.AddRoute("name", s.localhost)
 	c.Assert(err, check.Equals, router.ErrBackendNotFound)
 }
 
 func (s *S) TestRemoveRoute(c *check.C) {
-	r := fakeRouter{backends: make(map[string][]string)}
+	r := newFakeRouter()
 	err := r.AddBackend("name")
 	c.Assert(err, check.IsNil)
 	err = r.AddRoute("name", s.localhost)
@@ -125,13 +126,13 @@ func (s *S) TestRemoveRoute(c *check.C) {
 }
 
 func (s *S) TestRemoveRouteBackendNotFound(c *check.C) {
-	r := fakeRouter{backends: make(map[string][]string)}
+	r := newFakeRouter()
 	err := r.RemoveRoute("name", s.localhost)
 	c.Assert(err, check.Equals, router.ErrBackendNotFound)
 }
 
 func (s *S) TestRemoveUnknownRoute(c *check.C) {
-	r := fakeRouter{backends: make(map[string][]string)}
+	r := newFakeRouter()
 	err := r.AddBackend("name")
 	c.Assert(err, check.IsNil)
 	err = r.RemoveRoute("name", s.localhost)
@@ -140,18 +141,18 @@ func (s *S) TestRemoveUnknownRoute(c *check.C) {
 }
 
 func (s *S) TestSetCName(c *check.C) {
-	r := fakeRouter{backends: make(map[string][]string)}
+	r := newFakeRouter()
 	err := r.AddBackend("name")
 	c.Assert(err, check.IsNil)
 	err = r.AddRoute("name", s.localhost)
 	err = r.SetCName("myapp.com", "name")
 	c.Assert(err, check.IsNil)
-	c.Assert(r.HasBackend("myapp.com"), check.Equals, true)
+	c.Assert(r.HasCName("myapp.com"), check.Equals, true)
 	c.Assert(r.HasRoute("myapp.com", s.localhost.String()), check.Equals, true)
 }
 
 func (s *S) TestUnsetCName(c *check.C) {
-	r := fakeRouter{backends: make(map[string][]string)}
+	r := newFakeRouter()
 	err := r.AddBackend("name")
 	c.Assert(err, check.IsNil)
 	err = r.AddRoute("name", s.localhost)
@@ -159,11 +160,11 @@ func (s *S) TestUnsetCName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = r.UnsetCName("myapp.com", "name")
 	c.Assert(err, check.IsNil)
-	c.Assert(r.HasBackend("myapp.com"), check.Equals, false)
+	c.Assert(r.HasCName("myapp.com"), check.Equals, false)
 }
 
 func (s *S) TestAddr(c *check.C) {
-	r := fakeRouter{backends: make(map[string][]string)}
+	r := newFakeRouter()
 	err := r.AddBackend("name")
 	c.Assert(err, check.IsNil)
 	err = r.AddRoute("name", s.localhost)
@@ -177,7 +178,7 @@ func (s *S) TestAddr(c *check.C) {
 }
 
 func (s *S) TestReset(c *check.C) {
-	r := fakeRouter{backends: make(map[string][]string)}
+	r := newFakeRouter()
 	err := r.AddBackend("name")
 	c.Assert(err, check.IsNil)
 	err = r.AddRoute("name", s.localhost)
@@ -187,7 +188,7 @@ func (s *S) TestReset(c *check.C) {
 }
 
 func (s *S) TestRoutes(c *check.C) {
-	r := fakeRouter{backends: make(map[string][]string)}
+	r := newFakeRouter()
 	err := r.AddBackend("name")
 	c.Assert(err, check.IsNil)
 	err = r.AddRoute("name", s.localhost)
@@ -202,7 +203,7 @@ func (s *S) TestSwap(c *check.C) {
 	instance2, _ := url.Parse("http://127.0.0.2")
 	backend1 := "b1"
 	backend2 := "b2"
-	r := fakeRouter{backends: make(map[string][]string)}
+	r := newFakeRouter()
 	err := r.AddBackend(backend1)
 	c.Assert(err, check.IsNil)
 	err = r.AddRoute(backend1, instance1)
