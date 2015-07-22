@@ -9,3 +9,5 @@ repo-manager: fake
 routers:
   fake:
     type: fake
+  fake-hc:
+    type: fake-hc

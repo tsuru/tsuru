@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
+	"github.com/tsuru/tsuru/router"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -308,4 +309,142 @@ var provisionAddUnits = action.Action{
 		return units, nil
 	},
 	MinParams: 1,
+}
+
+type changePlanPipelineResult struct {
+	changedPlan bool
+	oldPlan     *Plan
+	app         *App
+}
+
+var moveRouterUnits = action.Action{
+	Name: "change-plan-move-router-units",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		app, ok := ctx.Params[0].(*App)
+		if !ok {
+			return nil, errors.New("first parameter must be an *App")
+		}
+		oldPlan, ok := ctx.Params[1].(*Plan)
+		if !ok {
+			return nil, errors.New("second parameter must be a *Plan")
+		}
+		newRouter, err := app.GetRouter()
+		if err != nil {
+			return nil, err
+		}
+		oldRouter, err := oldPlan.getRouter()
+		if err != nil {
+			return nil, err
+		}
+		result := changePlanPipelineResult{oldPlan: oldPlan, app: app}
+		if newRouter != oldRouter {
+			_, err = app.RebuildRoutes()
+			if err != nil {
+				return nil, err
+			}
+			result.changedPlan = true
+		}
+		return &result, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		result := ctx.FWResult.(*changePlanPipelineResult)
+		result.app.Plan = *result.oldPlan
+		if result.changedPlan {
+			routerName, err := result.app.GetRouter()
+			if err != nil {
+				log.Errorf("BACKWARD ABORTED - failed to get app router: %s", err)
+				return
+			}
+			r, err := router.Get(routerName)
+			if err != nil {
+				log.Errorf("BACKWARD ABORTED - failed to retrieve router %q: %s", routerName, err)
+				return
+			}
+			err = r.RemoveBackend(result.app.Name)
+			if err != nil {
+				log.Error(err.Error())
+			}
+		}
+	},
+}
+
+var saveApp = action.Action{
+	Name: "change-plan-save-app",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		result, ok := ctx.Previous.(*changePlanPipelineResult)
+		if !ok {
+			return nil, errors.New("invalid previous result, should be changePlanPipelineResult")
+		}
+		conn, err := db.Conn()
+		if err != nil {
+			return nil, err
+		}
+		defer conn.Close()
+		update := bson.M{"$set": bson.M{"plan": result.app.Plan}}
+		err = conn.Apps().Update(bson.M{"name": result.app.Name}, update)
+		if err != nil {
+			return nil, err
+		}
+		return result, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		result := ctx.FWResult.(*changePlanPipelineResult)
+		conn, err := db.Conn()
+		if err != nil {
+			log.Errorf("BACKWARD ABORTED - failed to get database connection: %s", err)
+			return
+		}
+		defer conn.Close()
+		update := bson.M{"$set": bson.M{"plan": *result.oldPlan}}
+		err = conn.Apps().Update(bson.M{"name": result.app.Name}, update)
+		if err != nil {
+			log.Error(err.Error())
+		}
+	},
+}
+
+var removeOldBackend = action.Action{
+	Name: "change-plan-remove-old-backend",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		result, ok := ctx.Previous.(*changePlanPipelineResult)
+		if !ok {
+			return nil, errors.New("invalid previous result, should be changePlanPipelineResult")
+		}
+		routerName, err := result.oldPlan.getRouter()
+		if err != nil {
+			return nil, err
+		}
+		r, err := router.Get(routerName)
+		if err != nil {
+			return nil, err
+		}
+		err = r.RemoveBackend(result.app.Name)
+		if err != nil {
+			log.Errorf("[IGNORED ERROR] failed to remove old backend: %s", err)
+		}
+		return result, nil
+	},
+}
+
+var restartApp = action.Action{
+	Name: "change-plan-restart-app",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		w, ok := ctx.Params[2].(io.Writer)
+		if !ok {
+			return nil, errors.New("third parameter must be an io.Writer")
+		}
+		result, ok := ctx.Previous.(*changePlanPipelineResult)
+		if !ok {
+			return nil, errors.New("invalid previous result, should be changePlanPipelineResult")
+		}
+		app := result.app
+		oldPlan := result.oldPlan
+		if app.GetCpuShare() != oldPlan.CpuShare || app.GetMemory() != oldPlan.Memory || app.GetSwap() != oldPlan.Swap {
+			err := app.Restart("", w)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return result, nil
+	},
 }

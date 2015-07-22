@@ -254,6 +254,26 @@ func CreateApp(app *App, user *auth.User) error {
 	return nil
 }
 
+// ChangePlan changes the plan of the application.
+//
+// It may change the state of the application if the new plan includes a new
+// router or a change in the amount of available memory.
+func (app *App) ChangePlan(planName string, w io.Writer) error {
+	plan, err := findPlanByName(planName)
+	if err != nil {
+		return err
+	}
+	var oldPlan Plan
+	oldPlan, app.Plan = app.Plan, *plan
+	actions := []*action.Action{
+		&moveRouterUnits,
+		&saveApp,
+		&removeOldBackend,
+		&restartApp,
+	}
+	return action.NewPipeline(actions...).Execute(app, &oldPlan, w)
+}
+
 // unbind takes all service instances that are bound to the app, and unbind
 // them. This method is used by Destroy (before destroying the app, it unbinds
 // all service instances). Refer to Destroy docs for more details.
