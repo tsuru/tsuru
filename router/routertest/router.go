@@ -211,6 +211,7 @@ func (r *fakeRouter) Reset() {
 	defer r.mutex.Unlock()
 	r.backends = make(map[string][]string)
 	r.failuresByIp = make(map[string]bool)
+	r.cnames = make(map[string]string)
 }
 
 func (r *fakeRouter) Routes(name string) ([]*url.URL, error) {
