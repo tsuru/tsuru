@@ -63,7 +63,7 @@ func changeDefaultPool(force bool) error {
 		if !force {
 			return ErrDefaultPoolAlreadyExists
 		}
-		return conn.Collection(poolCollection).UpdateId(p[0].Name, bson.M{"default": false})
+		return conn.Collection(poolCollection).UpdateId(p[0].Name, bson.M{"$set": bson.M{"default": false}})
 	}
 	return nil
 }
@@ -136,7 +136,7 @@ func PoolUpdate(poolName string, query bson.M, forceDefault bool) error {
 			return err
 		}
 	}
-	return conn.Collection(poolCollection).UpdateId(poolName, query)
+	return conn.Collection(poolCollection).UpdateId(poolName, bson.M{"$set": query})
 }
 
 // GetPoolsNames find teams by a list of team names.

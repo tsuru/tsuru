@@ -288,3 +288,18 @@ func (s *S) TestPoolUpdateDefaultAttrFailIfDefaultPoolAlreadyExists(c *check.C) 
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, ErrDefaultPoolAlreadyExists)
 }
+
+func (s *S) TestPoolUpdateDontHaveSideEffects(c *check.C) {
+	coll := s.storage.Collection(poolCollection)
+	pool := Pool{Name: "pool1", Public: false, Default: true}
+	err := coll.Insert(pool)
+	c.Assert(err, check.IsNil)
+	defer coll.RemoveId(pool.Name)
+	err = PoolUpdate("pool1", bson.M{"public": true}, false)
+	c.Assert(err, check.IsNil)
+	var p Pool
+	err = coll.Find(bson.M{"_id": pool.Name}).One(&p)
+	c.Assert(err, check.IsNil)
+	c.Assert(p.Public, check.Equals, true)
+	c.Assert(p.Default, check.Equals, true)
+}
