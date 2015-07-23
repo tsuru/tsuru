@@ -162,6 +162,13 @@ func (r *vulcandRouter) SetCName(cname, name string) error {
 	if err != nil {
 		return err
 	}
+	domain, err := config.GetString(r.prefix + ":domain")
+	if err != nil {
+		return err
+	}
+	if !router.ValidCName(cname, domain) {
+		return router.ErrCNameNotAllowed
+	}
 	frontendName := r.frontendName(cname)
 	if found, _ := r.client.GetFrontend(engine.FrontendKey{Id: frontendName}); found != nil {
 		return router.ErrCNameExists

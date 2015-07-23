@@ -164,6 +164,9 @@ func (r *fakeRouter) SetCName(cname, name string) error {
 	if !r.HasBackend(backendName) {
 		return nil
 	}
+	if !router.ValidCName(cname, "fakerouter.com") {
+		return router.ErrCNameNotAllowed
+	}
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 	if _, ok := r.cnames[cname]; ok {

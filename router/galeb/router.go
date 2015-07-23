@@ -236,6 +236,13 @@ func (r *galebRouter) SetCName(cname, name string) error {
 	if err != nil {
 		return err
 	}
+	domain, err := config.GetString(r.prefix + ":domain")
+	if err != nil {
+		return err
+	}
+	if !router.ValidCName(cname, domain) {
+		return router.ErrCNameNotAllowed
+	}
 	data, err := getGalebData(backendName)
 	if err != nil {
 		return err

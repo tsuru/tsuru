@@ -475,16 +475,14 @@ func (s *S) TestSetCNameSetsMultipleCNames(c *check.C) {
 }
 
 func (s *S) TestSetCNameValidatesCNameAccordingToDomainConfig(c *check.C) {
-	router := hipacheRouter{prefix: "hipache"}
-	err := router.AddBackend("myapp")
+	r := hipacheRouter{prefix: "hipache"}
+	err := r.AddBackend("myapp")
 	c.Assert(err, check.IsNil)
 	reply := map[string]interface{}{"GET": "", "SET": "", "LRANGE": []interface{}{[]byte{}}, "RPUSH": []interface{}{[]byte{}}}
 	conn = &ResultCommandRedisConn{Reply: reply, FakeRedisConn: s.fake}
-	router = hipacheRouter{prefix: "hipache"}
-	err = router.SetCName("mycname.golang.org", "myapp")
-	c.Assert(err, check.NotNil)
-	expected := "Could not setCName route: Invalid CNAME mycname.golang.org. You can't use tsuru's application domain."
-	c.Assert(err.Error(), check.Equals, expected)
+	r = hipacheRouter{prefix: "hipache"}
+	err = r.SetCName("mycname.golang.org", "myapp")
+	c.Assert(err, check.Equals, router.ErrCNameNotAllowed)
 }
 
 func (s *S) TestSetCNameDoesNotBlockSuffixDomain(c *check.C) {

@@ -14,10 +14,8 @@
 package hipache
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
-	"strings"
 	"sync"
 
 	"github.com/garyburd/redigo/redis"
@@ -256,16 +254,6 @@ func (r *hipacheRouter) getCNames(name string) ([]string, error) {
 	return cnames, nil
 }
 
-// validCName returns true if the cname is not a subdomain of
-// hipache:domain conf, false otherwise
-func (r *hipacheRouter) validCName(cname string) bool {
-	domain, err := config.GetString(r.prefix + ":domain")
-	if err != nil {
-		return false
-	}
-	return !strings.HasSuffix(cname, domain)
-}
-
 func (r *hipacheRouter) SetCName(cname, name string) error {
 	backendName, err := router.Retrieve(name)
 	if err != nil {
@@ -275,9 +263,8 @@ func (r *hipacheRouter) SetCName(cname, name string) error {
 	if err != nil {
 		return &routeError{"setCName", err}
 	}
-	if !r.validCName(cname) {
-		err := errors.New(fmt.Sprintf("Invalid CNAME %s. You can't use tsuru's application domain.", cname))
-		return &routeError{"setCName", err}
+	if !router.ValidCName(cname, domain) {
+		return router.ErrCNameNotAllowed
 	}
 	conn := r.connect()
 	defer conn.Close()

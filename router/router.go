@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/url"
 	"sort"
+	"strings"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
@@ -29,6 +30,7 @@ var (
 	ErrRouteNotFound   = errors.New("Route not found")
 	ErrCNameExists     = errors.New("CName already exists")
 	ErrCNameNotFound   = errors.New("CName not found")
+	ErrCNameNotAllowed = errors.New("CName as router subdomain not allowed")
 )
 
 var routers = make(map[string]routerFactory)
@@ -248,4 +250,10 @@ func List() ([]PlanRouter, error) {
 		routersList = append(routersList, PlanRouter{Name: value, Type: routerType})
 	}
 	return routersList, nil
+}
+
+// validCName returns true if the cname is not a subdomain of
+// the router current domain, false otherwise.
+func ValidCName(cname, domain string) bool {
+	return !strings.HasSuffix(cname, domain)
 }
