@@ -33,14 +33,14 @@ func createHCRouter(prefix string) (router.Router, error) {
 }
 
 func newFakeRouter() fakeRouter {
-	return fakeRouter{cnames: make(map[string]string), backends: make(map[string][]string), failuresByIp: make(map[string]bool)}
+	return fakeRouter{cnames: make(map[string]string), backends: make(map[string][]string), failuresByIp: make(map[string]bool), mutex: &sync.Mutex{}}
 }
 
 type fakeRouter struct {
 	backends     map[string][]string
 	cnames       map[string]string
 	failuresByIp map[string]bool
-	mutex        sync.Mutex
+	mutex        *sync.Mutex
 }
 
 func (r *fakeRouter) FailForIp(ip string) {

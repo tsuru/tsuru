@@ -17,7 +17,7 @@ import (
 
 func (s *S) TestAddRouteAndRemoteRouteAreSafe(c *check.C) {
 	var wg sync.WaitGroup
-	fake := fakeRouter{backends: make(map[string][]string)}
+	fake := newFakeRouter()
 	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(4))
 	for i := 1; i < 256; i++ {
 		wg.Add(5)
