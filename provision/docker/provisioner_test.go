@@ -1197,7 +1197,7 @@ func (s *S) TestProvisionSetCName(c *check.C) {
 	cname := "mycname.com"
 	err := s.p.SetCName(app, cname)
 	c.Assert(err, check.IsNil)
-	c.Assert(routertest.FakeRouter.HasBackend(cname), check.Equals, true)
+	c.Assert(routertest.FakeRouter.HasCName(cname), check.Equals, true)
 	c.Assert(routertest.FakeRouter.HasRoute(cname, addr.String()), check.Equals, true)
 }
 
@@ -1209,10 +1209,11 @@ func (s *S) TestProvisionUnsetCName(c *check.C) {
 	cname := "mycname.com"
 	err := s.p.SetCName(app, cname)
 	c.Assert(err, check.IsNil)
-	c.Assert(routertest.FakeRouter.HasBackend(cname), check.Equals, true)
+	c.Assert(routertest.FakeRouter.HasCName(cname), check.Equals, true)
 	c.Assert(routertest.FakeRouter.HasRoute(cname, addr.String()), check.Equals, true)
 	err = s.p.UnsetCName(app, cname)
-	c.Assert(routertest.FakeRouter.HasBackend(cname), check.Equals, false)
+	c.Assert(err, check.IsNil)
+	c.Assert(routertest.FakeRouter.HasCName(cname), check.Equals, false)
 	c.Assert(routertest.FakeRouter.HasRoute(cname, addr.String()), check.Equals, false)
 }
 
