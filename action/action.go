@@ -28,6 +28,8 @@ type Forward func(context FWContext) (Result, error)
 // phase.
 type Backward func(context BWContext)
 
+type OnErrorFunc func(FWContext, error)
+
 // FWContext is the context used in calls to Forward functions (forward phase).
 type FWContext struct {
 	// Result of the previous action.
@@ -66,6 +68,10 @@ type Action struct {
 
 	// Minimum number of parameters that this action requires to run.
 	MinParams int
+
+	// Function taht will be invoked after some failure occurured in the
+	// Forward phase of this same action.
+	OnError OnErrorFunc
 
 	// Result of the action. Stored for use in the backward phase.
 	result Result
@@ -139,6 +145,9 @@ func (p *Pipeline) Execute(params ...interface{}) error {
 		}
 		if err != nil {
 			log.Debugf("[pipeline] error running the Forward for the %s action - %s", a.Name, err)
+			if a.OnError != nil {
+				a.OnError(fwCtx, err)
+			}
 			p.rollback(i-1, params)
 			return err
 		}

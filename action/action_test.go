@@ -5,6 +5,7 @@
 package action
 
 import (
+	"errors"
 	"testing"
 
 	"gopkg.in/check.v1"
@@ -154,4 +155,24 @@ func (s *S) TestDoesntOverwriteResult(c *check.C) {
 	c.Assert(r1, check.Equals, "result1")
 	r2 := pipeline2.Result()
 	c.Assert(r2, check.Equals, "result2")
+}
+
+func (s *S) TestActionOnError(c *check.C) {
+	returnedErr := errors.New("my awesome error")
+	called := false
+	expectedParam := "param"
+	myAction := Action{
+		Forward: func(ctx FWContext) (Result, error) {
+			return nil, returnedErr
+		},
+		OnError: func(ctx FWContext, err error) {
+			called = true
+			c.Assert(ctx.Params[0], check.Equals, expectedParam)
+			c.Assert(err, check.Equals, returnedErr)
+		},
+	}
+	pipeline1 := NewPipeline(&myAction)
+	err := pipeline1.Execute(expectedParam)
+	c.Assert(err, check.Equals, returnedErr)
+	c.Assert(called, check.Equals, true)
 }
