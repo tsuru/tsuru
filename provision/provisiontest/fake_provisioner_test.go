@@ -727,6 +727,7 @@ func (s *S) TestSetCName(c *check.C) {
 	err := p.SetCName(app, "cname.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(p.apps[app.GetName()].cnames, check.DeepEquals, []string{"cname.com"})
+	c.Assert(routertest.FakeRouter.HasCName("cname.com"), check.Equals, true)
 }
 
 func (s *S) TestSetCNameNotProvisioned(c *check.C) {
@@ -752,9 +753,11 @@ func (s *S) TestUnsetCName(c *check.C) {
 	err := p.SetCName(app, "cname.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(p.apps[app.GetName()].cnames, check.DeepEquals, []string{"cname.com"})
+	c.Assert(routertest.FakeRouter.HasCName("cname.com"), check.Equals, true)
 	err = p.UnsetCName(app, "cname.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(p.HasCName(app, "cname.com"), check.Equals, false)
+	c.Assert(routertest.FakeRouter.HasCName("cname.com"), check.Equals, false)
 }
 
 func (s *S) TestUnsetCNameNotProvisioned(c *check.C) {

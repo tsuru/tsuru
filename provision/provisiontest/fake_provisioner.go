@@ -828,7 +828,7 @@ func (p *FakeProvisioner) SetCName(app provision.App, cname string) error {
 	}
 	pApp.cnames = append(pApp.cnames, cname)
 	p.apps[app.GetName()] = pApp
-	return nil
+	return routertest.FakeRouter.SetCName(cname, app.GetName())
 }
 
 func (p *FakeProvisioner) UnsetCName(app provision.App, cname string) error {
@@ -843,7 +843,7 @@ func (p *FakeProvisioner) UnsetCName(app provision.App, cname string) error {
 	}
 	pApp.cnames = []string{}
 	p.apps[app.GetName()] = pApp
-	return nil
+	return routertest.FakeRouter.UnsetCName(cname, app.GetName())
 }
 
 func (p *FakeProvisioner) HasCName(app provision.App, cname string) bool {
