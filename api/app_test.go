@@ -2137,11 +2137,12 @@ func (s *S) TestRemoveCNameHandler(c *check.C) {
 		Name:     "leper",
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
-		CName:    []string{"foo.bar.com"},
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.deleteApp(&a)
+	err = a.AddCName("foo.bar.com")
+	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
 	b := strings.NewReader(`{"cname": ["foo.bar.com"]}`)
 	request, err := http.NewRequest("DELETE", url, b)
@@ -2165,11 +2166,14 @@ func (s *S) TestUnsetTwoCnames(c *check.C) {
 		Name:     "leper",
 		Platform: "zend",
 		Teams:    []string{s.team.Name},
-		CName:    []string{"foo.bar.com", "bar.com"},
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
 	defer s.deleteApp(&a)
+	err = a.AddCName("foo.bar.com")
+	c.Assert(err, check.IsNil)
+	err = a.AddCName("bar.com")
+	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
 	b := strings.NewReader(`{"cname": ["foo.bar.com", "bar.com"]}`)
 	request, err := http.NewRequest("DELETE", url, b)
