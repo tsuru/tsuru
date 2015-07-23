@@ -1362,6 +1362,12 @@ func (app *App) RebuildRoutes() (*RebuildRoutesResult, error) {
 	if err != nil && err != router.ErrBackendExists {
 		return nil, err
 	}
+	for _, cname := range app.CName {
+		err := r.SetCName(cname, app.Name)
+		if err != nil && err != router.ErrCNameExists {
+			return nil, err
+		}
+	}
 	oldRoutes, err := r.Routes(app.GetName())
 	if err != nil {
 		return nil, err
