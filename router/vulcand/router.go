@@ -183,7 +183,7 @@ func (r *vulcandRouter) UnsetCName(cname, _ string) error {
 	err := r.client.DeleteFrontend(frontendKey)
 	if err != nil {
 		if _, ok := err.(*engine.NotFoundError); ok {
-			return router.ErrRouteNotFound
+			return router.ErrCNameNotFound
 		}
 	}
 	return err

@@ -279,10 +279,10 @@ func (r *galebRouter) UnsetCName(cname, name string) error {
 			if err != nil {
 				return err
 			}
-			break
+			return data.removeCName(cname)
 		}
 	}
-	return data.removeCName(cname)
+	return router.ErrCNameNotFound
 }
 
 func (r *galebRouter) Addr(name string) (string, error) {

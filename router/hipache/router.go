@@ -282,7 +282,7 @@ func (r *hipacheRouter) SetCName(cname, name string) error {
 	conn := r.connect()
 	defer conn.Close()
 	cnameExists := false
-	currentCnames, err := redis.Strings(conn.Do("LRANGE", "cname:"+name, 0, -1))
+	currentCnames, err := redis.Strings(conn.Do("LRANGE", "cname:"+backendName, 0, -1))
 	for _, n := range currentCnames {
 		if n == cname {
 			cnameExists = true
@@ -341,7 +341,18 @@ func (r *hipacheRouter) UnsetCName(cname, name string) error {
 	}
 	conn := r.connect()
 	defer conn.Close()
-	_, err = conn.Do("LREM", "cname:"+backendName, 1, cname)
+	currentCnames, err := redis.Strings(conn.Do("LRANGE", "cname:"+backendName, 0, -1))
+	found := false
+	for _, n := range currentCnames {
+		if n == cname {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return router.ErrCNameNotFound
+	}
+	_, err = conn.Do("LREM", "cname:"+backendName, 0, cname)
 	if err != nil {
 		return &routeError{"unsetCName", err}
 	}

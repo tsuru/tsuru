@@ -183,6 +183,9 @@ func (r *fakeRouter) UnsetCName(cname, name string) error {
 	}
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
+	if _, ok := r.cnames[cname]; !ok {
+		return router.ErrCNameNotFound
+	}
 	delete(r.cnames, cname)
 	return nil
 }

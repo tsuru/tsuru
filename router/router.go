@@ -28,6 +28,7 @@ var (
 	ErrRouteExists     = errors.New("Route already exists")
 	ErrRouteNotFound   = errors.New("Route not found")
 	ErrCNameExists     = errors.New("CName already exists")
+	ErrCNameNotFound   = errors.New("CName not found")
 )
 
 var routers = make(map[string]routerFactory)

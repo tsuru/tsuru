@@ -345,7 +345,7 @@ func (s *S) TestUnsetCNameNotExist(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(frontends, check.HasLen, 0)
 	err = vRouter.UnsetCName("myapp.cname.example.com", "myapp")
-	c.Assert(err, check.ErrorMatches, router.ErrRouteNotFound.Error())
+	c.Assert(err, check.Equals, router.ErrCNameNotFound)
 }
 
 func (s *S) TestAddr(c *check.C) {

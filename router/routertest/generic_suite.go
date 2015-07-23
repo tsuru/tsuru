@@ -182,5 +182,23 @@ func (s *RouterSuite) TestRouteAddDupCName(c *check.C) {
 	c.Assert(err, check.Equals, router.ErrCNameExists)
 }
 
-// TODO(cezarsa): Add tests for Set/UnsetCName. We'll probably need something
-// like ListCNames added to the Router interface.
+func (s *RouterSuite) TestSetUnsetCName(c *check.C) {
+	name := "backend1"
+	err := s.Router.AddBackend(name)
+	c.Assert(err, check.IsNil)
+	addr1, err := url.Parse("http://10.10.10.10:8080")
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddRoute(name, addr1)
+	c.Assert(err, check.IsNil)
+	err = s.Router.SetCName("my.host.com", name)
+	c.Assert(err, check.IsNil)
+	err = s.Router.UnsetCName("my.host.com", name)
+	c.Assert(err, check.IsNil)
+	err = s.Router.UnsetCName("my.host.com", name)
+	c.Assert(err, check.Equals, router.ErrCNameNotFound)
+}
+
+func (s *RouterSuite) TestSetCNameInvalidBackend(c *check.C) {
+	err := s.Router.SetCName("my.cname", "backend1")
+	c.Assert(err, check.Equals, router.ErrBackendNotFound)
+}
