@@ -137,13 +137,20 @@ func poolUpdateHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if err != nil {
 		return err
 	}
-	var params provision.PoolUpdateOptions
+	var params map[string]*bool
 	err = json.Unmarshal(b, &params)
 	if err != nil {
 		return err
 	}
-	params.Name = r.URL.Query().Get(":name")
-	err = provision.PoolUpdate(params)
+	query := bson.M{}
+	for k, v := range params {
+		if v != nil {
+			query[k] = *v
+		}
+	}
+	poolName := r.URL.Query().Get(":name")
+	forceDefault, _ := strconv.ParseBool(r.URL.Query().Get("force"))
+	err = provision.PoolUpdate(poolName, query, forceDefault)
 	if err != nil {
 		if err == provision.ErrDefaultPoolAlreadyExists {
 			return &terrors.HTTP{

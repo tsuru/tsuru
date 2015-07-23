@@ -124,32 +124,19 @@ func ListPools(query bson.M) ([]Pool, error) {
 	return pools, nil
 }
 
-type PoolUpdateOptions struct {
-	Name    string
-	NewName string
-	Public  bool
-	Default bool
-	Force   bool
-}
-
-func PoolUpdate(params PoolUpdateOptions) error {
+func PoolUpdate(poolName string, query bson.M, forceDefault bool) error {
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	if params.Default {
-		err = changeDefaultPool(params.Force)
+	if _, ok := query["default"]; ok {
+		err = changeDefaultPool(forceDefault)
 		if err != nil {
 			return err
 		}
 	}
-	var p Pool
-	err = conn.Collection(poolCollection).Find(bson.M{"_id": params.Name}).One(&p)
-	if err != nil {
-		return err
-	}
-	return conn.Collection(poolCollection).UpdateId(params.Name, bson.M{"public": params.Public, "default": params.Default})
+	return conn.Collection(poolCollection).UpdateId(poolName, query)
 }
 
 // GetPoolsNames find teams by a list of team names.

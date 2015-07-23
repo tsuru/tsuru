@@ -234,11 +234,7 @@ func (s *S) TestPoolUpdate(c *check.C) {
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveId(pool.Name)
-	poolUpdateOption := PoolUpdateOptions{
-		Name:   "pool1",
-		Public: true,
-	}
-	err = PoolUpdate(poolUpdateOption)
+	err = PoolUpdate("pool1", bson.M{"public": true}, false)
 	c.Assert(err, check.IsNil)
 	var p Pool
 	err = coll.Find(bson.M{"_id": pool.Name}).One(&p)
@@ -252,12 +248,7 @@ func (s *S) TestPoolUpdateToDefault(c *check.C) {
 	err := coll.Insert(pool)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveId(pool.Name)
-	poolUpdateOption := PoolUpdateOptions{
-		Name:    "pool1",
-		Public:  true,
-		Default: true,
-	}
-	err = PoolUpdate(poolUpdateOption)
+	err = PoolUpdate("pool1", bson.M{"public": true, "default": true}, false)
 	c.Assert(err, check.IsNil)
 	var p Pool
 	err = coll.Find(bson.M{"_id": pool.Name}).One(&p)
@@ -275,13 +266,7 @@ func (s *S) TestPoolUpdateForceToDefault(c *check.C) {
 	err = coll.Insert(pool)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveId(pool.Name)
-	poolUpdateOption := PoolUpdateOptions{
-		Name:    "pool2",
-		Public:  true,
-		Default: true,
-		Force:   true,
-	}
-	err = PoolUpdate(poolUpdateOption)
+	err = PoolUpdate("pool2", bson.M{"public": true, "default": true}, true)
 	c.Assert(err, check.IsNil)
 	var p Pool
 	err = coll.Find(bson.M{"_id": "pool2"}).One(&p)
@@ -299,13 +284,7 @@ func (s *S) TestPoolUpdateDefaultAttrFailIfDefaultPoolAlreadyExists(c *check.C) 
 	err = coll.Insert(pool)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveId(pool.Name)
-	poolUpdateOption := PoolUpdateOptions{
-		Name:    "pool2",
-		Public:  true,
-		Default: true,
-		Force:   false,
-	}
-	err = PoolUpdate(poolUpdateOption)
+	err = PoolUpdate("pool2", bson.M{"public": true, "default": true}, false)
 	c.Assert(err, check.NotNil)
 	c.Assert(err, check.Equals, ErrDefaultPoolAlreadyExists)
 }
