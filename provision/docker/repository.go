@@ -144,3 +144,18 @@ func (p *dockerProvisioner) listUnresponsiveContainers(maxUnresponsiveTime time.
 		"status":                  bson.M{"$ne": provision.StatusStopped.String()},
 	})
 }
+
+func (p *dockerProvisioner) usedPortsForHost(hostaddr string) (map[string]struct{}, error) {
+	coll := p.collection()
+	defer coll.Close()
+	var usedPortsList []string
+	err := coll.Find(bson.M{"hostaddr": hostaddr}).Distinct("hostport", &usedPortsList)
+	if err != nil {
+		return nil, err
+	}
+	usedPorts := map[string]struct{}{}
+	for _, port := range usedPortsList {
+		usedPorts[port] = struct{}{}
+	}
+	return usedPorts, nil
+}

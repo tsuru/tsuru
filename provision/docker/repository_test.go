@@ -323,3 +323,22 @@ func (s *S) TestListAppsForNodes(c *check.C) {
 	sort.Strings(apps)
 	c.Assert(apps, check.DeepEquals, []string{"app1", "app2", "app5"})
 }
+
+func (s *S) TestUsedPortsForHost(c *check.C) {
+	coll := s.p.collection()
+	defer coll.Close()
+	coll.Insert(
+		container{Name: "a", AppName: "app1", HostAddr: "host1.com", HostPort: "1"},
+		container{Name: "b", AppName: "app2", HostAddr: "host1.com", HostPort: "2"},
+		container{Name: "c", AppName: "app2", HostAddr: "host1.com", HostPort: "3"},
+		container{Name: "d", AppName: "app3", HostAddr: "host2.com", HostPort: "4"},
+		container{Name: "e", AppName: "app4", HostAddr: "host2.com", HostPort: "5"},
+		container{Name: "f", AppName: "app5", HostAddr: "host3.com", HostPort: "6"},
+	)
+	ports, err := s.p.usedPortsForHost("host1.com")
+	c.Assert(err, check.IsNil)
+	c.Assert(ports, check.DeepEquals, map[string]struct{}{"1": struct{}{}, "2": struct{}{}, "3": struct{}{}})
+	ports, err = s.p.usedPortsForHost("host2.com")
+	c.Assert(err, check.IsNil)
+	c.Assert(ports, check.DeepEquals, map[string]struct{}{"4": struct{}{}, "5": struct{}{}})
+}

@@ -9,8 +9,10 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
+	mrand "math/rand"
 	"net"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -24,6 +26,12 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/mgo.v2/bson"
+)
+
+const (
+	portRangeStart    = 49153
+	portRangeEnd      = 65535
+	portAllocMaxTries = 15
 )
 
 func buildClusterStorage() (cluster.Storage, error) {
@@ -517,6 +525,48 @@ func (c *container) stop(p *dockerProvisioner) error {
 	return nil
 }
 
+func (c *container) startWithPortSearch(p *dockerProvisioner, hostConfig *docker.HostConfig) error {
+	intenalPort, err := getPort()
+	if err != nil {
+		return err
+	}
+	retries := 0
+	mrand.Seed(time.Now().UTC().UnixNano())
+	for port := portRangeStart; port <= portRangeEnd; {
+		if retries >= portAllocMaxTries {
+			break
+		}
+		var usedPorts map[string]struct{}
+		usedPorts, err = p.usedPortsForHost(c.HostAddr)
+		if err != nil {
+			return err
+		}
+		portStr := strconv.Itoa(port)
+		for _, used := usedPorts[portStr]; used; port++ {
+		}
+		if port > portRangeEnd {
+			break
+		}
+		hostConfig.PortBindings = map[docker.Port][]docker.PortBinding{
+			docker.Port(intenalPort + "/tcp"): {{HostIP: "", HostPort: portStr}},
+		}
+		randN := mrand.Uint32()
+		err = p.getCluster().StartContainer(c.ID, hostConfig)
+		if err != nil {
+			if strings.Index(err.Error(), "already in use") != -1 ||
+				strings.Index(err.Error(), "already allocated") != -1 {
+				retries++
+				port += int(randN%uint32(10*retries)) + 1
+				log.Debugf("[port conflict] port conflict for %s in %s with %s trying next %d - %d/%d", c.shortID(), c.HostAddr, portStr, port, retries, portAllocMaxTries)
+				continue
+			}
+			return err
+		}
+		return nil
+	}
+	return fmt.Errorf("could not start container, unable to allocate port after %d retries: %s", retries, err)
+}
+
 func (c *container) start(p *dockerProvisioner, app provision.App, isDeploy bool) error {
 	port, err := getPort()
 	if err != nil {
@@ -559,7 +609,18 @@ func (c *container) start(p *dockerProvisioner, app provision.App, isDeploy bool
 			hostConfig.Binds = append(hostConfig.Binds, fmt.Sprintf("%s:%s:rw", sharedBasedir, sharedMount))
 		}
 	}
-	err = p.getCluster().StartContainer(c.ID, &hostConfig)
+	allocator, _ := config.GetString("docker:port-allocator")
+	if allocator == "" {
+		allocator = "docker"
+	}
+	switch allocator {
+	case "tsuru":
+		err = c.startWithPortSearch(p, &hostConfig)
+	case "docker":
+		err = p.getCluster().StartContainer(c.ID, &hostConfig)
+	default:
+		return fmt.Errorf("invalid docker:port-allocator: %s", allocator)
+	}
 	if err != nil {
 		return err
 	}

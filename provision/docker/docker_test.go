@@ -9,11 +9,13 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -815,6 +817,62 @@ func (s *S) TestStartStoppedContainer(c *check.C) {
 	c.Assert(cont2.Status, check.Equals, provision.StatusStopped.String())
 }
 
+func (s *S) TestStartTsuruAllocatorStress(c *check.C) {
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(100))
+	config.Set("docker:port-allocator", "tsuru")
+	defer config.Unset("docker:port-allocator")
+	alocPorts := map[string]struct{}{}
+	var mut sync.Mutex
+	s.server.CustomHandler("/containers/.*/start", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		data, err := ioutil.ReadAll(r.Body)
+		c.Assert(err, check.IsNil)
+		var conf docker.HostConfig
+		err = json.Unmarshal(data, &conf)
+		c.Assert(err, check.IsNil)
+		port := conf.PortBindings["8888/tcp"][0].HostPort
+		mut.Lock()
+		if _, present := alocPorts[port]; present {
+			mut.Unlock()
+			http.Error(w, "port already allocated", http.StatusInternalServerError)
+			return
+		}
+		alocPorts[port] = struct{}{}
+		mut.Unlock()
+		r.Body = ioutil.NopCloser(bytes.NewBuffer(data))
+		s.server.DefaultHandler().ServeHTTP(w, r)
+	}))
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	var conts []*container
+	err := s.newFakeImage(s.p, "tsuru/app-myapp", nil)
+	c.Assert(err, check.IsNil)
+	imageId, err := appCurrentImageName(app.GetName())
+	wg := sync.WaitGroup{}
+	var contsLock sync.Mutex
+	for i := 0; i < 100; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			cont, err := s.p.start(&container{ProcessName: "web"}, app, imageId, ioutil.Discard)
+			c.Assert(err, check.IsNil)
+			contsLock.Lock()
+			conts = append(conts, cont)
+			contsLock.Unlock()
+		}()
+	}
+	wg.Wait()
+	client, err := docker.NewClient(s.server.URL())
+	c.Assert(err, check.IsNil)
+	c.Assert(conts, check.HasLen, 100)
+	c.Assert(alocPorts, check.HasLen, len(conts))
+	for _, cont := range conts {
+		dockerContainer, err := client.InspectContainer(cont.ID)
+		c.Assert(err, check.IsNil)
+		c.Assert(dockerContainer.State.Running, check.Equals, true)
+		port := dockerContainer.HostConfig.PortBindings["8888/tcp"][0].HostPort
+		c.Assert(port, check.Not(check.Equals), "")
+	}
+}
+
 func (s *S) TestContainerStop(c *check.C) {
 	cont, err := s.newContainer(nil, nil)
 	c.Assert(err, check.IsNil)
@@ -1052,6 +1110,44 @@ func (s *S) TestContainerStartStartedUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = cont.start(s.p, app, false)
 	c.Assert(err, check.NotNil)
+}
+
+func (s *S) TestContainerStartTsuruAllocator(c *check.C) {
+	config.Set("docker:port-allocator", "tsuru")
+	defer config.Unset("docker:port-allocator")
+	cont, err := s.newContainer(nil, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(cont)
+	client, err := docker.NewClient(s.server.URL())
+	c.Assert(err, check.IsNil)
+	contPath := fmt.Sprintf("/containers/%s/start", cont.ID)
+	defer s.server.CustomHandler(contPath, s.server.DefaultHandler())
+	dockerContainer, err := client.InspectContainer(cont.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, false)
+	app := provisiontest.NewFakeApp("myapp", "python", 1)
+	app.Memory = 15
+	app.Swap = 15
+	app.CpuShare = 10
+	err = cont.start(s.p, app, false)
+	c.Assert(err, check.IsNil)
+	dockerContainer, err = client.InspectContainer(cont.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, true)
+	expectedLogOptions := map[string]string{
+		"syslog-address": "udp://localhost:1514",
+	}
+	expectedPortBindings := map[docker.Port][]docker.PortBinding{
+		"8888/tcp": {{HostIP: "", HostPort: fmt.Sprintf("%d", portRangeStart)}},
+	}
+	c.Assert(dockerContainer.HostConfig.RestartPolicy.Name, check.Equals, "always")
+	c.Assert(dockerContainer.HostConfig.LogConfig.Type, check.Equals, "syslog")
+	c.Assert(dockerContainer.HostConfig.LogConfig.Config, check.DeepEquals, expectedLogOptions)
+	c.Assert(dockerContainer.HostConfig.PortBindings, check.DeepEquals, expectedPortBindings)
+	c.Assert(dockerContainer.HostConfig.Memory, check.Equals, int64(15))
+	c.Assert(dockerContainer.HostConfig.MemorySwap, check.Equals, int64(30))
+	c.Assert(dockerContainer.HostConfig.CPUShares, check.Equals, int64(10))
+	c.Assert(cont.Status, check.Equals, "starting")
 }
 
 func (s *S) TestContainerAvailable(c *check.C) {
