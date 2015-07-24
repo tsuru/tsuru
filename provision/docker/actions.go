@@ -223,6 +223,13 @@ var startContainer = action.Action{
 	},
 }
 
+var rollbackNotice = func(ctx action.FWContext, err error) {
+	args := ctx.Params[0].(changeUnitsPipelineArgs)
+	if args.writer != nil {
+		fmt.Fprintf(args.writer, "\n**** ROLLING BACK AFTER FAILURE ****\n ---> %s <---\n", err)
+	}
+}
+
 var provisionAddUnitsToHost = action.Action{
 	Name: "provision-add-units-to-host",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
@@ -236,13 +243,22 @@ var provisionAddUnitsToHost = action.Action{
 	Backward: func(ctx action.BWContext) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
 		containers := ctx.FWResult.([]container)
+		w := args.writer
+		if w == nil {
+			w = ioutil.Discard
+		}
+		units := len(containers)
+		fmt.Fprintf(w, "\n---- Destroying %d created %s ----\n", units, pluralize("unit", units))
 		for _, cont := range containers {
 			err := cont.remove(args.provisioner)
 			if err != nil {
 				log.Errorf("Error removing added container %s: %s", cont.ID, err.Error())
+				continue
 			}
+			fmt.Fprintf(w, " ---> Destroyed unit %s [%s]\n", cont.shortID(), cont.ProcessName)
 		}
 	},
+	OnError:   rollbackNotice,
 	MinParams: 1,
 }
 
@@ -266,7 +282,7 @@ var bindAndHealthcheck = action.Action{
 				break
 			}
 		}
-		fmt.Fprintf(writer, "\n---- Binding and checking %d new units ----\n", len(newContainers))
+		fmt.Fprintf(writer, "\n---- Binding and checking %d new %s ----\n", len(newContainers), pluralize("unit", len(newContainers)))
 		return newContainers, runInContainers(newContainers, func(c *container, toRollback chan *container) error {
 			unit := c.asUnit(args.app)
 			err := args.app.BindUnit(&unit)
@@ -297,14 +313,23 @@ var bindAndHealthcheck = action.Action{
 	Backward: func(ctx action.BWContext) {
 		args := ctx.Params[0].(changeUnitsPipelineArgs)
 		newContainers := ctx.FWResult.([]container)
+		w := args.writer
+		if w == nil {
+			w = ioutil.Discard
+		}
+		units := len(newContainers)
+		fmt.Fprintf(w, "\n---- Unbinding %d created %s ----\n", units, pluralize("unit", units))
 		for _, c := range newContainers {
 			unit := c.asUnit(args.app)
 			err := args.app.UnbindUnit(&unit)
 			if err != nil {
 				log.Errorf("Removed binding for unit %q: %s", c.ID, err)
+				continue
 			}
+			fmt.Fprintf(w, " ---> Unbinded unit %s [%s]\n", c.shortID(), c.ProcessName)
 		}
 	},
+	OnError: rollbackNotice,
 }
 
 var addNewRoutes = action.Action{
@@ -355,6 +380,11 @@ var addNewRoutes = action.Action{
 		if err != nil {
 			log.Errorf("[add-new-routes:Backward] Error geting router: %s", err.Error())
 		}
+		w := args.writer
+		if w == nil {
+			w = ioutil.Discard
+		}
+		fmt.Fprintf(w, "\n---- Removing routes from created units ----\n")
 		for _, cont := range newContainers {
 			if !cont.routable {
 				continue
@@ -362,9 +392,12 @@ var addNewRoutes = action.Action{
 			err = r.RemoveRoute(cont.AppName, cont.getAddress())
 			if err != nil {
 				log.Errorf("[add-new-routes:Backward] Error removing route for %s: %s", cont.ID, err.Error())
+				continue
 			}
+			fmt.Fprintf(w, " ---> Removed route from unit %s [%s]\n", cont.shortID(), cont.ProcessName)
 		}
 	},
+	OnError: rollbackNotice,
 }
 
 var removeOldRoutes = action.Action{
@@ -407,6 +440,11 @@ var removeOldRoutes = action.Action{
 		if err != nil {
 			log.Errorf("[remove-old-routes:Backward] Error geting router: %s", err.Error())
 		}
+		w := args.writer
+		if w == nil {
+			w = ioutil.Discard
+		}
+		fmt.Fprintf(w, "\n---- Adding back routes to old units ----\n")
 		for _, cont := range args.toRemove {
 			if !cont.routable {
 				continue
@@ -414,9 +452,12 @@ var removeOldRoutes = action.Action{
 			err = r.AddRoute(cont.AppName, cont.getAddress())
 			if err != nil {
 				log.Errorf("[remove-old-routes:Backward] Error adding back route for %s: %s", cont.ID, err.Error())
+				continue
 			}
+			fmt.Fprintf(w, " ---> Added route to unit %s [%s]\n", cont.shortID(), cont.ProcessName)
 		}
 	},
+	OnError:   rollbackNotice,
 	MinParams: 1,
 }
 
@@ -442,6 +483,7 @@ var provisionRemoveOldUnits = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 	},
+	OnError:   rollbackNotice,
 	MinParams: 1,
 }
 
@@ -467,6 +509,7 @@ var provisionUnbindOldUnits = action.Action{
 		return ctx.Previous, nil
 	}, Backward: func(ctx action.BWContext) {
 	},
+	OnError:   rollbackNotice,
 	MinParams: 1,
 }
 
@@ -535,4 +578,5 @@ var updateAppImage = action.Action{
 		}
 		return ctx.Previous, nil
 	},
+	OnError: rollbackNotice,
 }

@@ -590,7 +590,7 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 	if w == nil {
 		w = ioutil.Discard
 	}
-	fmt.Fprintf(w, "\n---- Starting new %s %s ----\n", pluralize("unit", units), strings.Join(processMsg, " "))
+	fmt.Fprintf(w, "\n---- Starting %d new %s %s ----\n", units, pluralize("unit", units), strings.Join(processMsg, " "))
 	oldContainers := make([]container, 0, units)
 	for processName, cont := range args.toAdd {
 		for i := 0; i < cont.Quantity; i++ {
@@ -616,6 +616,7 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 		m.Lock()
 		createdContainers = append(createdContainers, c)
 		m.Unlock()
+		fmt.Fprintf(w, " ---> Started unit %s [%s]\n", c.shortID(), c.ProcessName)
 		return nil
 	}, rollbackCallback, true)
 	if err != nil {

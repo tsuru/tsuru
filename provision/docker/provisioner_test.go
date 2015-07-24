@@ -1942,5 +1942,11 @@ func (s *S) TestAddContainerDefaultProcess(c *check.C) {
 	containers, err := addContainersWithHost(&args)
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
-	c.Assert(buf.String(), check.Equals, "\n---- Starting new units [web: 2] ----\n")
+	parts := strings.Split(buf.String(), "\n")
+	c.Assert(parts, check.HasLen, 5)
+	c.Assert(parts[0], check.Equals, "")
+	c.Assert(parts[1], check.Matches, `---- Starting 2 new units \[web: 2\] ----`)
+	c.Assert(parts[2], check.Matches, ` ---> Started unit .+ \[web\]`)
+	c.Assert(parts[3], check.Matches, ` ---> Started unit .+ \[web\]`)
+	c.Assert(parts[4], check.Equals, "")
 }
