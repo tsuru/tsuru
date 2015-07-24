@@ -337,8 +337,8 @@ func (s *S) TestUsedPortsForHost(c *check.C) {
 	)
 	ports, err := s.p.usedPortsForHost("host1.com")
 	c.Assert(err, check.IsNil)
-	c.Assert(ports, check.DeepEquals, map[string]struct{}{"1": struct{}{}, "2": struct{}{}, "3": struct{}{}})
+	c.Assert(ports, check.DeepEquals, map[string]struct{}{"1": {}, "2": {}, "3": {}})
 	ports, err = s.p.usedPortsForHost("host2.com")
 	c.Assert(err, check.IsNil)
-	c.Assert(ports, check.DeepEquals, map[string]struct{}{"4": struct{}{}, "5": struct{}{}})
+	c.Assert(ports, check.DeepEquals, map[string]struct{}{"4": {}, "5": {}})
 }
