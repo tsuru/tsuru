@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
@@ -758,6 +759,37 @@ func (s *S) TestProvisionerAddUnitsWithHost(c *check.C) {
 	count, err := coll.Find(bson.M{"appname": app.GetName()}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(count, check.Equals, 2)
+}
+
+func (s *S) TestProvisionerAddUnitsWithHostPartialRollback(c *check.C) {
+	err := s.newFakeImage(s.p, "tsuru/app-myapp", nil)
+	c.Assert(err, check.IsNil)
+	app := provisiontest.NewFakeApp("myapp", "python", 0)
+	s.p.Provision(app)
+	defer s.p.Destroy(app)
+	imageId, err := appCurrentImageName(app.GetName())
+	c.Assert(err, check.IsNil)
+	var callCount int32
+	s.server.CustomHandler("/containers/.*/start", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if atomic.AddInt32(&callCount, 1) == 2 {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		s.server.DefaultHandler().ServeHTTP(w, r)
+	}))
+	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 2}},
+		app:         app,
+		imageId:     imageId,
+		provisioner: s.p,
+	})
+	c.Assert(err, check.ErrorMatches, "error in docker node.*")
+	c.Assert(units, check.HasLen, 0)
+	coll := s.p.collection()
+	defer coll.Close()
+	count, err := coll.Find(bson.M{"appname": app.GetName()}).Count()
+	c.Assert(err, check.IsNil)
+	c.Assert(count, check.Equals, 0)
 }
 
 func (s *S) TestProvisionerRemoveUnits(c *check.C) {

@@ -608,11 +608,12 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container, error) {
 		createdContainers []*container
 		m                 sync.Mutex
 	)
-	err := runInContainers(oldContainers, func(c *container, _ chan *container) error {
+	err := runInContainers(oldContainers, func(c *container, toRollback chan *container) error {
 		c, err := args.provisioner.start(c, a, imageId, w, destinationHost...)
 		if err != nil {
 			return err
 		}
+		toRollback <- c
 		m.Lock()
 		createdContainers = append(createdContainers, c)
 		m.Unlock()
