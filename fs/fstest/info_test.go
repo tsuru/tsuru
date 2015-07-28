@@ -14,13 +14,13 @@ import (
 func (s *S) TestFileInfo(c *check.C) {
 	now := time.Now()
 	sysInfo := &now
-	var fi os.FileInfo = &FileInfo{
-		FileName:    "/home/application/apprc",
-		FileSize:    104857600,
-		FileMode:    0644,
-		FileModTime: now,
-		FileIsDir:   false,
-		FileSys:     sysInfo,
+	var fi os.FileInfo = &fileInfo{
+		name:    "/home/application/apprc",
+		size:    104857600,
+		mode:    0644,
+		modTime: now,
+		isDir:   false,
+		sys:     sysInfo,
 	}
 	c.Check(fi.Name(), check.Equals, "/home/application/apprc")
 	c.Check(fi.Size(), check.Equals, int64(104857600))

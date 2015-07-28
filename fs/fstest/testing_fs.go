@@ -90,7 +90,7 @@ func (f *FakeFile) Fd() uintptr {
 }
 
 func (f *FakeFile) Stat() (fi os.FileInfo, err error) {
-	return &FileInfo{FileName: f.Name(), FileSize: int64(len(f.content))}, nil
+	return &fileInfo{name: f.Name(), size: int64(len(f.content))}, nil
 }
 
 func (f *FakeFile) Write(p []byte) (n int, err error) {
@@ -254,7 +254,6 @@ func (r *RecordingFs) RemoveAll(path string) error {
 	return nil
 }
 
-// Rename records the action "rename <old> <new>" and returns nil.
 func (r *RecordingFs) Rename(oldname, newname string) error {
 	r.actionsMutex.Lock()
 	r.actions = append(r.actions, "rename "+oldname+" "+newname)
@@ -269,7 +268,6 @@ func (r *RecordingFs) Rename(oldname, newname string) error {
 	return nil
 }
 
-// Stat records the action "stat <name>" and returns nil, nil.
 func (r *RecordingFs) Stat(name string) (os.FileInfo, error) {
 	r.actionsMutex.Lock()
 	defer r.actionsMutex.Unlock()
@@ -278,9 +276,9 @@ func (r *RecordingFs) Stat(name string) (os.FileInfo, error) {
 	if !ok && r.FileContent == "" {
 		return nil, syscall.ENOENT
 	}
-	info := FileInfo{FileName: name, FileSize: int64(len(r.FileContent))}
+	info := fileInfo{name: name, size: int64(len(r.FileContent))}
 	if file != nil {
-		info.FileSize = int64(len(file.content))
+		info.size = int64(len(file.content))
 	}
 	return &info, nil
 }

@@ -9,37 +9,35 @@ import (
 	"time"
 )
 
-// FileInfo provides an attribute based implementation of the os.FileInfo
-// interface.
-type FileInfo struct {
-	FileName    string
-	FileSize    int64
-	FileMode    os.FileMode
-	FileModTime time.Time
-	FileIsDir   bool
-	FileSys     interface{}
+type fileInfo struct {
+	name    string
+	size    int64
+	mode    os.FileMode
+	modTime time.Time
+	isDir   bool
+	sys     interface{}
 }
 
-func (fi *FileInfo) Name() string {
-	return fi.FileName
+func (fi *fileInfo) Name() string {
+	return fi.name
 }
 
-func (fi *FileInfo) Size() int64 {
-	return fi.FileSize
+func (fi *fileInfo) Size() int64 {
+	return fi.size
 }
 
-func (fi *FileInfo) Mode() os.FileMode {
-	return fi.FileMode
+func (fi *fileInfo) Mode() os.FileMode {
+	return fi.mode
 }
 
-func (fi *FileInfo) ModTime() time.Time {
-	return fi.FileModTime
+func (fi *fileInfo) ModTime() time.Time {
+	return fi.modTime
 }
 
-func (fi *FileInfo) IsDir() bool {
-	return fi.FileIsDir
+func (fi *fileInfo) IsDir() bool {
+	return fi.isDir
 }
 
-func (fi *FileInfo) Sys() interface{} {
-	return fi.FileSys
+func (fi *fileInfo) Sys() interface{} {
+	return fi.sys
 }

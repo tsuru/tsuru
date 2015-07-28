@@ -94,7 +94,7 @@ func (s *S) TestFakeFileName(c *check.C) {
 }
 
 func (s *S) TestFakeFileStat(c *check.C) {
-	expected := &FileInfo{FileName: "something", FileSize: 14}
+	expected := &fileInfo{name: "something", size: 14}
 	f := &FakeFile{name: "something", content: "doesn't matter"}
 	fi, err := f.Stat()
 	c.Assert(err, check.IsNil)
@@ -363,7 +363,7 @@ func (s *S) TestRecordingFsCold(c *check.C) {
 }
 
 func (s *S) TestRecordingFsStat(c *check.C) {
-	info := &FileInfo{FileName: "/my/file", FileSize: 9}
+	info := &fileInfo{name: "/my/file", size: 9}
 	fs := RecordingFs{FileContent: "something"}
 	fi, err := fs.Stat("/my/file")
 	c.Assert(err, check.IsNil)
