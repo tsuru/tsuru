@@ -52,6 +52,25 @@ func DestroyTemplate(name string) error {
 	return coll.RemoveId(name)
 }
 
+func (t *Template) Update(toMerge *Template) error {
+	currentMap := t.paramsMap()
+	toMergeMap := toMerge.paramsMap()
+	delete(toMergeMap, "iaas")
+	delete(currentMap, "iaas")
+	for k, v := range toMergeMap {
+		if v == "" {
+			delete(currentMap, k)
+		} else {
+			currentMap[k] = v
+		}
+	}
+	t.Data = make(TemplateDataList, 0, len(currentMap))
+	for k, v := range currentMap {
+		t.Data = append(t.Data, TemplateData{Name: k, Value: v})
+	}
+	return t.Save()
+}
+
 func (t *Template) Save() error {
 	if t.Name == "" {
 		return errors.New("template name cannot be empty")

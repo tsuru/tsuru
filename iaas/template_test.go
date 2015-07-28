@@ -4,7 +4,11 @@
 
 package iaas
 
-import "gopkg.in/check.v1"
+import (
+	"sort"
+
+	"gopkg.in/check.v1"
+)
 
 func (s *S) TestTemplateSave(c *check.C) {
 	t := Template{
@@ -69,6 +73,41 @@ func (s *S) TestFindTemplate(c *check.C) {
 	c.Assert(t.Data, check.DeepEquals, TemplateDataList{
 		{Name: "key1", Value: "val1"},
 		{Name: "key2", Value: "val2"},
+	})
+}
+
+func (s *S) TestUpdateTemplate(c *check.C) {
+	tpl1 := Template{
+		Name:     "tpl1",
+		IaaSName: "test-iaas",
+		Data: TemplateDataList{
+			{Name: "key1", Value: "val1"},
+			{Name: "key2", Value: "val2"},
+		},
+	}
+	err := tpl1.Save()
+	c.Assert(err, check.IsNil)
+	tpl1.Update(&Template{
+		Name:     "ignored",
+		IaaSName: "ignored2",
+		Data: TemplateDataList{
+			{Name: "key3", Value: "val3"},
+			{Name: "key2", Value: ""},
+		},
+	})
+	sort.Sort(tpl1.Data)
+	c.Assert(tpl1.Data, check.DeepEquals, TemplateDataList{
+		{Name: "key1", Value: "val1"},
+		{Name: "key3", Value: "val3"},
+	})
+	dbTpl, err := FindTemplate("tpl1")
+	c.Assert(err, check.IsNil)
+	c.Assert(dbTpl.Name, check.Equals, "tpl1")
+	c.Assert(dbTpl.IaaSName, check.Equals, "test-iaas")
+	sort.Sort(dbTpl.Data)
+	c.Assert(dbTpl.Data, check.DeepEquals, TemplateDataList{
+		{Name: "key1", Value: "val1"},
+		{Name: "key3", Value: "val3"},
 	})
 }
 
