@@ -89,7 +89,7 @@ func errorHandlingMiddleware(w http.ResponseWriter, r *http.Request, next http.H
 		} else {
 			http.Error(w, err.Error(), code)
 		}
-		log.Error(err.Error())
+		log.Errorf("failure running HTTP request %s %s (%d): %s", r.Method, r.URL.Path, code, err)
 	}
 }
 
