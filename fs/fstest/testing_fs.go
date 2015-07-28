@@ -272,6 +272,9 @@ func (r *RecordingFs) Stat(name string) (os.FileInfo, error) {
 	r.actionsMutex.Lock()
 	defer r.actionsMutex.Unlock()
 	r.actions = append(r.actions, "stat "+name)
+	if _, ok := r.files[name]; !ok && r.FileContent == "" {
+		return nil, syscall.ENOENT
+	}
 	return nil, nil
 }
 

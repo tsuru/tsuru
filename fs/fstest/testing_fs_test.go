@@ -363,9 +363,17 @@ func (s *S) TestRecordingFsCold(c *check.C) {
 }
 
 func (s *S) TestRecordingFsStat(c *check.C) {
-	fs := RecordingFs{}
+	fs := RecordingFs{FileContent: "something"}
 	fi, err := fs.Stat("/my/file")
 	c.Assert(err, check.IsNil)
+	c.Assert(fi, check.IsNil)
+	c.Assert(fs.HasAction("stat /my/file"), check.Equals, true)
+}
+
+func (s *S) TestRecordingFsStatNotFound(c *check.C) {
+	fs := RecordingFs{}
+	fi, err := fs.Stat("/my/file")
+	c.Assert(os.IsNotExist(err), check.Equals, true)
 	c.Assert(fi, check.IsNil)
 	c.Assert(fs.HasAction("stat /my/file"), check.Equals, true)
 }
