@@ -205,19 +205,19 @@ func (s *S) TestTemplateUpdate(c *check.C) {
 	tpl1 := iaas.Template{
 		Name:     "my-tpl",
 		IaaSName: "my-iaas",
-		Data: iaas.TemplateDataList{
+		Data: iaas.TemplateDataList([]iaas.TemplateData{
 			{Name: "x", Value: "y"},
 			{Name: "a", Value: "b"},
-		},
+		}),
 	}
 	err := tpl1.Save()
 	c.Assert(err, check.IsNil)
 	tplParam := iaas.Template{
-		Data: iaas.TemplateDataList{
+		Data: iaas.TemplateDataList([]iaas.TemplateData{
 			{Name: "x", Value: ""},
 			{Name: "y", Value: "8"},
 			{Name: "z", Value: "9"},
-		},
+		}),
 	}
 	bodyData, err := json.Marshal(tplParam)
 	c.Assert(err, check.IsNil)
@@ -235,21 +235,21 @@ func (s *S) TestTemplateUpdate(c *check.C) {
 	c.Assert(templates[0].Name, check.Equals, "my-tpl")
 	c.Assert(templates[0].IaaSName, check.Equals, "my-iaas")
 	sort.Sort(templates[0].Data)
-	c.Assert(templates[0].Data, check.DeepEquals, iaas.TemplateDataList{
+	c.Assert(templates[0].Data, check.DeepEquals, iaas.TemplateDataList([]iaas.TemplateData{
 		{Name: "a", Value: "b"},
 		{Name: "y", Value: "8"},
 		{Name: "z", Value: "9"},
-	})
+	}))
 }
 
 func (s *S) TestTemplateUpdateNotFound(c *check.C) {
 	iaas.RegisterIaasProvider("my-iaas", newTestIaaS)
 	tplParam := iaas.Template{
-		Data: iaas.TemplateDataList{
+		Data: iaas.TemplateDataList([]iaas.TemplateData{
 			{Name: "x", Value: ""},
 			{Name: "y", Value: "8"},
 			{Name: "z", Value: "9"},
-		},
+		}),
 	}
 	bodyData, err := json.Marshal(tplParam)
 	c.Assert(err, check.IsNil)
