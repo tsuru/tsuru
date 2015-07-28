@@ -553,8 +553,8 @@ func (c *container) startWithPortSearch(p *dockerProvisioner, hostConfig *docker
 		randN := mrand.Uint32()
 		err = p.getCluster().StartContainer(c.ID, hostConfig)
 		if err != nil {
-			if strings.Index(err.Error(), "already in use") != -1 ||
-				strings.Index(err.Error(), "already allocated") != -1 {
+			if strings.Contains(err.Error(), "already in use") ||
+				strings.Contains(err.Error(), "already allocated") {
 				retries++
 				port += int(randN%uint32(10*retries)) + 1
 				log.Debugf("[port conflict] port conflict for %s in %s with %s trying next %d - %d/%d", c.shortID(), c.HostAddr, portStr, port, retries, portAllocMaxTries)
