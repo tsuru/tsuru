@@ -8,11 +8,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 
 	"github.com/tsuru/tsuru/cmd"
-	tsuruIo "github.com/tsuru/tsuru/io"
 	"launchpad.net/gnuflag"
 )
 
@@ -51,18 +49,7 @@ func (c *moveContainersCmd) Run(context *cmd.Context, client *cmd.Client) error 
 	if err != nil {
 		return err
 	}
-	defer response.Body.Close()
-	w := tsuruIo.NewStreamWriter(context.Stdout, nil)
-	for n := int64(1); n > 0 && err == nil; n, err = io.Copy(w, response.Body) {
-	}
-	if err != nil {
-		return err
-	}
-	unparsed := w.Remaining()
-	if len(unparsed) > 0 {
-		return fmt.Errorf("unparsed message error: %s", string(unparsed))
-	}
-	return nil
+	return cmd.StreamJSONResponse(context.Stdout, response)
 }
 
 type fixContainersCmd struct{}
@@ -122,17 +109,7 @@ func (c *moveContainerCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
-	w := tsuruIo.NewStreamWriter(context.Stdout, nil)
-	for n := int64(1); n > 0 && err == nil; n, err = io.Copy(w, response.Body) {
-	}
-	if err != nil {
-		return err
-	}
-	unparsed := w.Remaining()
-	if len(unparsed) > 0 {
-		return fmt.Errorf("unparsed message error: %s", string(unparsed))
-	}
-	return nil
+	return cmd.StreamJSONResponse(context.Stdout, response)
 }
 
 type rebalanceContainersCmd struct {
@@ -184,17 +161,7 @@ func (c *rebalanceContainersCmd) Run(context *cmd.Context, client *cmd.Client) e
 	if err != nil {
 		return err
 	}
-	w := tsuruIo.NewStreamWriter(context.Stdout, nil)
-	for n := int64(1); n > 0 && err == nil; n, err = io.Copy(w, response.Body) {
-	}
-	if err != nil {
-		return err
-	}
-	unparsed := w.Remaining()
-	if len(unparsed) > 0 {
-		return fmt.Errorf("unparsed message error: %s", string(unparsed))
-	}
-	return nil
+	return cmd.StreamJSONResponse(context.Stdout, response)
 }
 
 func (c *rebalanceContainersCmd) Flags() *gnuflag.FlagSet {
