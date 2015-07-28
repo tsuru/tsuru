@@ -274,10 +274,15 @@ func (r *RecordingFs) Stat(name string) (os.FileInfo, error) {
 	r.actionsMutex.Lock()
 	defer r.actionsMutex.Unlock()
 	r.actions = append(r.actions, "stat "+name)
-	if _, ok := r.files[name]; !ok && r.FileContent == "" {
+	file, ok := r.files[name]
+	if !ok && r.FileContent == "" {
 		return nil, syscall.ENOENT
 	}
-	return nil, nil
+	info := FileInfo{FileName: name, FileSize: int64(len(r.FileContent))}
+	if file != nil {
+		info.FileSize = int64(len(file.content))
+	}
+	return &info, nil
 }
 
 // FileNotFoundFs is like RecordingFs, except that it returns ENOENT on Open,
