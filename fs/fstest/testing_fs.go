@@ -29,6 +29,7 @@ import (
 type FakeFile struct {
 	content string
 	current int64
+	name    string
 	r       *safe.BytesReader
 	f       *os.File
 }
@@ -68,6 +69,10 @@ func (f *FakeFile) Seek(offset int64, whence int) (int64, error) {
 		old = atomic.LoadInt64(&f.current)
 	}
 	return ncurrent, err
+}
+
+func (f *FakeFile) Name() string {
+	return f.name
 }
 
 func (f *FakeFile) Fd() uintptr {
@@ -158,7 +163,7 @@ func (r *RecordingFs) open(name string, read bool) (fs.File, error) {
 	} else if r.FileContent == "" && read {
 		return nil, syscall.ENOENT
 	}
-	fil := &FakeFile{content: r.FileContent}
+	fil := &FakeFile{content: r.FileContent, name: name}
 	r.files[name] = fil
 	return fil, nil
 }

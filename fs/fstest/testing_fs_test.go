@@ -86,6 +86,13 @@ func (s *S) TestFakeFileFd(c *check.C) {
 	c.Assert(fd, check.Equals, f.f.Fd())
 }
 
+func (s *S) TestFakeFileName(c *check.C) {
+	var f FakeFile
+	f.name = "/home/user/.bash_profile"
+	defer f.Close()
+	c.Assert(f.Name(), check.Equals, f.name)
+}
+
 func (s *S) TestFakeFileStat(c *check.C) {
 	var empty os.FileInfo
 	f := &FakeFile{content: "doesn't matter"}
