@@ -15,6 +15,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"syscall"
+	"time"
 
 	"github.com/tsuru/tsuru/fs"
 	"github.com/tsuru/tsuru/safe"
@@ -32,6 +33,7 @@ type FakeFile struct {
 	name    string
 	r       *safe.BytesReader
 	f       *os.File
+	modTime time.Time
 }
 
 func (f *FakeFile) reader() *safe.BytesReader {
@@ -88,7 +90,7 @@ func (f *FakeFile) Fd() uintptr {
 }
 
 func (f *FakeFile) Stat() (fi os.FileInfo, err error) {
-	return
+	return &FileInfo{FileName: f.Name(), FileSize: int64(len(f.content))}, nil
 }
 
 func (f *FakeFile) Write(p []byte) (n int, err error) {

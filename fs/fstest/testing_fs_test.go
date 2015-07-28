@@ -94,11 +94,11 @@ func (s *S) TestFakeFileName(c *check.C) {
 }
 
 func (s *S) TestFakeFileStat(c *check.C) {
-	var empty os.FileInfo
-	f := &FakeFile{content: "doesn't matter"}
+	expected := &FileInfo{FileName: "something", FileSize: 14}
+	f := &FakeFile{name: "something", content: "doesn't matter"}
 	fi, err := f.Stat()
 	c.Assert(err, check.IsNil)
-	c.Assert(fi, check.DeepEquals, empty)
+	c.Assert(fi, check.DeepEquals, expected)
 }
 
 func (s *S) TestFakeFileWrite(c *check.C) {
