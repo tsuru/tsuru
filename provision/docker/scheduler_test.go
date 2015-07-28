@@ -8,10 +8,10 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/tsuru/config"
 	"sync"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/log"
