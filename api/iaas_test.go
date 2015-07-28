@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 
 	"github.com/tsuru/tsuru/iaas"
 	"gopkg.in/check.v1"
@@ -197,4 +198,68 @@ func (s *S) TestTemplateDestroy(c *check.C) {
 	templates, err := iaas.ListTemplates()
 	c.Assert(err, check.IsNil)
 	c.Assert(templates, check.HasLen, 0)
+}
+
+func (s *S) TestTemplateUpdate(c *check.C) {
+	iaas.RegisterIaasProvider("my-iaas", newTestIaaS)
+	tpl1 := iaas.Template{
+		Name:     "my-tpl",
+		IaaSName: "my-iaas",
+		Data: iaas.TemplateDataList{
+			{Name: "x", Value: "y"},
+			{Name: "a", Value: "b"},
+		},
+	}
+	err := tpl1.Save()
+	c.Assert(err, check.IsNil)
+	tplParam := iaas.Template{
+		Data: iaas.TemplateDataList{
+			{Name: "x", Value: ""},
+			{Name: "y", Value: "8"},
+			{Name: "z", Value: "9"},
+		},
+	}
+	bodyData, err := json.Marshal(tplParam)
+	c.Assert(err, check.IsNil)
+	body := bytes.NewBuffer(bodyData)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("PUT", "/iaas/templates/my-tpl", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.admintoken.GetValue())
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	templates, err := iaas.ListTemplates()
+	c.Assert(err, check.IsNil)
+	c.Assert(templates, check.HasLen, 1)
+	c.Assert(templates[0].Name, check.Equals, "my-tpl")
+	c.Assert(templates[0].IaaSName, check.Equals, "my-iaas")
+	sort.Sort(templates[0].Data)
+	c.Assert(templates[0].Data, check.DeepEquals, iaas.TemplateDataList{
+		{Name: "a", Value: "b"},
+		{Name: "y", Value: "8"},
+		{Name: "z", Value: "9"},
+	})
+}
+
+func (s *S) TestTemplateUpdateNotFound(c *check.C) {
+	iaas.RegisterIaasProvider("my-iaas", newTestIaaS)
+	tplParam := iaas.Template{
+		Data: iaas.TemplateDataList{
+			{Name: "x", Value: ""},
+			{Name: "y", Value: "8"},
+			{Name: "z", Value: "9"},
+		},
+	}
+	bodyData, err := json.Marshal(tplParam)
+	c.Assert(err, check.IsNil)
+	body := bytes.NewBuffer(bodyData)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("PUT", "/iaas/templates/my-tpl", body)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.admintoken.GetValue())
+	m := RunServer(true)
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(recorder.Body.String(), check.Equals, "template not found\n")
 }

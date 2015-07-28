@@ -71,3 +71,25 @@ func templateDestroy(w http.ResponseWriter, r *http.Request, token auth.Token) e
 	}
 	return nil
 }
+
+func templateUpdate(w http.ResponseWriter, r *http.Request, token auth.Token) error {
+	var paramTemplate iaas.Template
+	err := json.NewDecoder(r.Body).Decode(&paramTemplate)
+	if err != nil {
+		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
+	}
+	templateName := r.URL.Query().Get(":template_name")
+	dbTpl, err := iaas.FindTemplate(templateName)
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return &errors.HTTP{Code: http.StatusNotFound, Message: "template not found"}
+		}
+		return err
+	}
+	err = dbTpl.Update(&paramTemplate)
+	if err != nil {
+		return err
+	}
+	w.WriteHeader(http.StatusOK)
+	return nil
+}
