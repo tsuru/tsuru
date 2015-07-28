@@ -12,6 +12,7 @@ import (
 	"sync"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/log"
@@ -100,9 +101,16 @@ func (s *segregatedScheduler) filterByMemoryUsage(a *app.App, nodes []cluster.No
 		}
 	}
 	if len(nodeList) == 0 {
-		log.Errorf("WARNING: no nodes found with enough memory for container of %q: %0.4fMB. Will ignore memory restrictions.",
+		autoScaleEnabled, _ := config.GetBool("docker:auto-scale:enabled")
+		errMsg := fmt.Sprintf("no nodes found with enough memory for container of %q: %0.4fMB",
 			a.Name, float64(a.Plan.Memory)/megabyte)
-		return nodes, nil
+		if autoScaleEnabled {
+			// Allow going over quota temporarily because auto-scale will be
+			// able to detect this and automatically add a new nodes.
+			log.Errorf("WARNING: %s. Will ignore memory restrictions.", errMsg)
+			return nodes, nil
+		}
+		return nil, errors.New(errMsg)
 	}
 	return nodeList, nil
 }
