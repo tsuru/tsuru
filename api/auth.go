@@ -386,16 +386,22 @@ func getTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return json.NewEncoder(w).Encode(team)
 }
 
-func getKeyFromBody(b io.Reader) (repository.Key, error) {
+type keyBody struct {
+	Name  string
+	Key   string
+	Force bool
+}
+
+func getKeyFromBody(b io.Reader) (repository.Key, bool, error) {
 	var key repository.Key
-	var body map[string]string
+	var body keyBody
 	err := json.NewDecoder(b).Decode(&body)
 	if err != nil {
-		return key, &errors.HTTP{Code: http.StatusBadRequest, Message: "Invalid JSON"}
+		return key, false, &errors.HTTP{Code: http.StatusBadRequest, Message: "Invalid JSON"}
 	}
-	key.Body = body["key"]
-	key.Name = body["name"]
-	return key, nil
+	key.Body = body.Key
+	key.Name = body.Name
+	return key, body.Force, nil
 }
 
 // AddKeyToUser adds a key to a user.
@@ -404,7 +410,7 @@ func getKeyFromBody(b io.Reader) (repository.Key, error) {
 // exists to be used in other places in the package without the http stuff (request and
 // response).
 func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	key, err := getKeyFromBody(r.Body)
+	key, force, err := getKeyFromBody(r.Body)
 	if err != nil {
 		return err
 	}
@@ -416,7 +422,7 @@ func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	rec.Log(u.Email, "add-key", key.Name, key.Body)
-	err = u.AddKey(key)
+	err = u.AddKey(key, force)
 	if err == auth.ErrKeyDisabled {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
@@ -432,7 +438,7 @@ func addKeyToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 // exists to be used in other places in the package without the http stuff (request and
 // response).
 func removeKeyFromUser(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	key, err := getKeyFromBody(r.Body)
+	key, _, err := getKeyFromBody(r.Body)
 	if err != nil {
 		return err
 	}

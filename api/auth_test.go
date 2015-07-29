@@ -1181,7 +1181,7 @@ func (s *AuthSuite) TestAddKeyToUserKeyManagerDisabled(c *check.C) {
 func (s *AuthSuite) TestAddKeyToUserReturnsConflictIfTheKeyIsAlreadyPresent(c *check.C) {
 	conn, _ := db.Conn()
 	defer conn.Close()
-	s.user.AddKey(repository.Key{Name: "the-key", Body: "my-key"})
+	s.user.AddKey(repository.Key{Name: "the-key", Body: "my-key"}, false)
 	conn.Users().Update(bson.M{"email": s.user.Email}, s.user)
 	defer func() {
 		s.user.RemoveKey(repository.Key{Name: "the-key", Body: "my-key"})
@@ -1197,6 +1197,26 @@ func (s *AuthSuite) TestAddKeyToUserReturnsConflictIfTheKeyIsAlreadyPresent(c *c
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Code, check.Equals, http.StatusConflict)
 	c.Assert(e.Message, check.Equals, "user already have this key")
+}
+
+func (s *AuthSuite) TestAddKeyForcingUpdate(c *check.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	s.user.AddKey(repository.Key{Name: "the-key", Body: "my-key"}, false)
+	conn.Users().Update(bson.M{"email": s.user.Email}, s.user)
+	defer func() {
+		s.user.RemoveKey(repository.Key{Name: "the-key", Body: "my-key"})
+		conn.Users().Update(bson.M{"email": s.user.Email}, s.user)
+	}()
+	b := bytes.NewBufferString(`{"name":"the-key","key":"my-other-key","force":true}`)
+	request, err := http.NewRequest("POST", "/users/key", b)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = addKeyToUser(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(s.user.Email)
+	c.Assert(err, check.IsNil)
+	c.Assert(keys, check.DeepEquals, []repository.Key{{Name: "the-key", Body: "my-other-key"}})
 }
 
 func (s *AuthSuite) TestAddKeyToUserFailure(c *check.C) {
