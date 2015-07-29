@@ -175,6 +175,26 @@ func (m *fakeManager) AddKey(username string, key repository.Key) error {
 	return nil
 }
 
+func (m *fakeManager) UpdateKey(username string, key repository.Key) error {
+	m.keysLock.Lock()
+	defer m.keysLock.Unlock()
+	keys, ok := m.keys[username]
+	if !ok {
+		return repository.ErrUserNotFound
+	}
+	if key.Name == "" {
+		var p [32]byte
+		rand.Read(p[:])
+		key.Name = string(p[:])
+	}
+	if _, ok := keys[key.Name]; !ok {
+		return repository.ErrKeyNotFound
+	}
+	keys[key.Name] = key.Body
+	m.keys[username] = keys
+	return nil
+}
+
 func (m *fakeManager) RemoveKey(username string, key repository.Key) error {
 	m.keysLock.Lock()
 	defer m.keysLock.Unlock()

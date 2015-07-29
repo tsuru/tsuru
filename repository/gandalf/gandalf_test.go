@@ -284,6 +284,16 @@ func (s *GandalfSuite) TestAddKey(c *check.C) {
 	c.Assert(keys, check.DeepEquals, expected)
 }
 
+func (s *GandalfSuite) TestAddKeyDuplicate(c *check.C) {
+	var manager gandalfManager
+	err := manager.CreateUser("myuser")
+	c.Assert(err, check.IsNil)
+	err = manager.AddKey("myuser", repository.Key{Name: "mykey", Body: publicKey})
+	c.Assert(err, check.IsNil)
+	err = manager.AddKey("myuser", repository.Key{Name: "mykey", Body: publicKey})
+	c.Assert(err, check.Equals, repository.ErrKeyAlreadyExists)
+}
+
 func (s *GandalfSuite) TestRemoveKey(c *check.C) {
 	var manager gandalfManager
 	err := manager.CreateUser("myuser")
@@ -294,6 +304,48 @@ func (s *GandalfSuite) TestRemoveKey(c *check.C) {
 	keys, err := s.server.Keys("myuser")
 	c.Assert(err, check.IsNil)
 	c.Assert(keys, check.HasLen, 0)
+}
+
+func (s *GandalfSuite) TestRemoveKeyUserNotFound(c *check.C) {
+	var manager gandalfManager
+	err := manager.RemoveKey("myuser", repository.Key{Name: "mykey"})
+	c.Assert(err, check.Equals, repository.ErrUserNotFound)
+}
+
+func (s *GandalfSuite) TestRemoveKeyNotFound(c *check.C) {
+	var manager gandalfManager
+	err := manager.CreateUser("myuser")
+	c.Assert(err, check.IsNil)
+	err = manager.RemoveKey("myuser", repository.Key{Name: "mykey"})
+	c.Assert(err, check.Equals, repository.ErrKeyNotFound)
+}
+
+func (s *GandalfSuite) TestUpdateKey(c *check.C) {
+	var manager gandalfManager
+	err := manager.CreateUser("myuser")
+	c.Assert(err, check.IsNil)
+	err = manager.AddKey("myuser", repository.Key{Name: "mykey", Body: publicKey})
+	c.Assert(err, check.IsNil)
+	err = manager.UpdateKey("myuser", repository.Key{Name: "mykey", Body: otherPublicKey})
+	c.Assert(err, check.IsNil)
+	keys, err := s.server.Keys("myuser")
+	c.Assert(err, check.IsNil)
+	expected := map[string]string{"mykey": otherPublicKey}
+	c.Assert(keys, check.DeepEquals, expected)
+}
+
+func (s *GandalfSuite) TestUpdateKeyUserNotFound(c *check.C) {
+	var manager gandalfManager
+	err := manager.UpdateKey("myuser", repository.Key{Name: "mykey", Body: otherPublicKey})
+	c.Assert(err, check.Equals, repository.ErrUserNotFound)
+}
+
+func (s *GandalfSuite) TestUpdateKeyNotFound(c *check.C) {
+	var manager gandalfManager
+	err := manager.CreateUser("myuser")
+	c.Assert(err, check.IsNil)
+	err = manager.UpdateKey("myuser", repository.Key{Name: "mykey", Body: otherPublicKey})
+	c.Assert(err, check.Equals, repository.ErrKeyNotFound)
 }
 
 func (s *GandalfSuite) TestListKeys(c *check.C) {
@@ -320,4 +372,7 @@ func (s *GandalfSuite) TestDiff(c *check.C) {
 	c.Assert(diff, check.Equals, "some diff")
 }
 
-const publicKey = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDD91CO+YIU6nIb+l+JewPMLbUB9IZx4g6IUuqyLbmCi+8DNliEjE/KWUISPlkPWoDK4ibEY/gZPLPRMT3acA+2cAf3uApBwegvDgtDv1lgtTbkMc8QJaT044Vg+JtVDFraXU4T8fn/apVMMXro0Kr/DaLzUsxSigGrCIRyT1vkMCnya8oaQHu1Qa/wnOjd6tZzvzIsxJirAbQvzlLOb89c7LTPhUByySTQmgSnoNR6ZdPpjDwnaQgyAjbsPKjhkQ1AkcxOxBi0GwwSCO7aZ+T3F/mJ1bUhEE5BMh+vO3HQ3gGkc1xeQW4H7ZL33sJkP0Tb9zslaE1lT+fuOi7NBUK5 f@somewhere"
+const (
+	publicKey      = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDD91CO+YIU6nIb+l+JewPMLbUB9IZx4g6IUuqyLbmCi+8DNliEjE/KWUISPlkPWoDK4ibEY/gZPLPRMT3acA+2cAf3uApBwegvDgtDv1lgtTbkMc8QJaT044Vg+JtVDFraXU4T8fn/apVMMXro0Kr/DaLzUsxSigGrCIRyT1vkMCnya8oaQHu1Qa/wnOjd6tZzvzIsxJirAbQvzlLOb89c7LTPhUByySTQmgSnoNR6ZdPpjDwnaQgyAjbsPKjhkQ1AkcxOxBi0GwwSCO7aZ+T3F/mJ1bUhEE5BMh+vO3HQ3gGkc1xeQW4H7ZL33sJkP0Tb9zslaE1lT+fuOi7NBUK5 f@somewhere"
+	otherPublicKey = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCqDFrZRhQP1LujMr4DHRu754R2Brs9/a+WJeFlIA5HXQRXATohDSxI6uNzx6yAi6YL7gJYOxeVOUEBq0AWu5roCSTmh47DAS2sXpo1SMryIqRZ7DCBJ8ku8g1Xgc75Vp7jCttdJM2yaCZDELG5Sw6zMZlDmjM6HgtyGrLLG2SnUpOdfwnSUIf0cSFqLrEn/NMwdTIe7Rghw+/pYvll/VgsN9dj+mIkP9ut3eZf5OxNtpdoLmAfOUXIYSBONdTBlrXjoP6Bg5n7xb3zGMbZQIhahUww/xwCBdhje04T+bg1nTVhAq3irTb/52kXLceYDSr9LJpquO1UfaadAZH453Px user@host"
+)

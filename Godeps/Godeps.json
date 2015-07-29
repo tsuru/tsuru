@@ -240,12 +240,12 @@
 		},
 		{
 			"ImportPath": "github.com/tsuru/gandalf/gandalftest",
-			"Comment": "0.5.2-65-gd03ccdf",
-			"Rev": "d03ccdf91802f43ce19191737850e8755fed227e"
+			"Comment": "0.7.1-2-g370638b",
+			"Rev": "370638bac9491a68b8f8c11f4099b609756beb85"
 		},
 		{
 			"ImportPath": "github.com/tsuru/go-gandalfclient",
-			"Rev": "9b0fbf563d852fb9356b38fe972b893be4674a24"
+			"Rev": "6f5a04eb8172e1380ca09d426e67a07687828b7a"
 		},
 		{
 			"ImportPath": "github.com/tsuru/monsterqueue",

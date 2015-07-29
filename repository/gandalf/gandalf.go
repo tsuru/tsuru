@@ -192,7 +192,22 @@ func (m gandalfManager) AddKey(username string, key repository.Key) error {
 		return err
 	}
 	keyMap := map[string]string{key.Name: key.Body}
-	return client.AddKey(username, keyMap)
+	err = client.AddKey(username, keyMap)
+	if err != nil {
+		if e, ok := err.(*gandalf.HTTPError); ok && e.Code == http.StatusConflict {
+			return repository.ErrKeyAlreadyExists
+		}
+		return err
+	}
+	return nil
+}
+
+func (m gandalfManager) UpdateKey(username string, key repository.Key) error {
+	client, err := m.client()
+	if err != nil {
+		return err
+	}
+	return m.handleKeyOrUserError(client.UpdateKey(username, key.Name, key.Body))
 }
 
 func (m gandalfManager) RemoveKey(username string, key repository.Key) error {
@@ -200,7 +215,24 @@ func (m gandalfManager) RemoveKey(username string, key repository.Key) error {
 	if err != nil {
 		return err
 	}
-	return client.RemoveKey(username, key.Name)
+	return m.handleKeyOrUserError(client.RemoveKey(username, key.Name))
+}
+
+func (gandalfManager) handleKeyOrUserError(err error) error {
+	if err != nil {
+		if e, ok := err.(*gandalf.HTTPError); ok {
+			if e.Code == http.StatusNotFound {
+				switch e.Reason {
+				case "user not found\n":
+					return repository.ErrUserNotFound
+				case "Key not found\n":
+					return repository.ErrKeyNotFound
+				}
+			}
+		}
+		return err
+	}
+	return nil
 }
 
 func (m gandalfManager) ListKeys(username string) ([]repository.Key, error) {

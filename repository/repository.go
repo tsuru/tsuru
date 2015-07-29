@@ -58,6 +58,7 @@ type RepositoryManager interface {
 // SSH keys.
 type KeyRepositoryManager interface {
 	AddKey(username string, key Key) error
+	UpdateKey(username string, key Key) error
 	RemoveKey(username string, key Key) error
 	ListKeys(username string) ([]Key, error)
 }
