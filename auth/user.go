@@ -131,12 +131,16 @@ func (u *User) Teams() ([]Team, error) {
 	return teams, nil
 }
 
-func (u *User) AddKey(key repository.Key) error {
+func (u *User) AddKey(key repository.Key, force bool) error {
 	if mngr, ok := repository.Manager().(repository.KeyRepositoryManager); ok {
 		if key.Name == "" {
 			return ErrInvalidKey
 		}
-		return mngr.AddKey(u.Email, key)
+		err := mngr.AddKey(u.Email, key)
+		if err == repository.ErrKeyAlreadyExists && force {
+			return mngr.UpdateKey(u.Email, key)
+		}
+		return err
 	}
 	return ErrKeyDisabled
 }

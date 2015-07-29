@@ -92,7 +92,7 @@ func (s *S) TestAddKeyAddsAKeyToTheUser(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
 	key := repository.Key{Name: "some-key", Body: "my-key"}
-	err = u.AddKey(key)
+	err = u.AddKey(key, false)
 	c.Assert(err, check.IsNil)
 	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(u.Email)
 	c.Assert(err, check.IsNil)
@@ -105,7 +105,7 @@ func (s *S) TestAddKeyEmptyName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
 	key := repository.Key{Body: "my-key"}
-	err = u.AddKey(key)
+	err = u.AddKey(key, false)
 	c.Assert(err, check.Equals, ErrInvalidKey)
 }
 
@@ -115,9 +115,26 @@ func (s *S) TestAddDuplicatedKey(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
 	key := repository.Key{Name: "my-key", Body: "other-key"}
-	repository.Manager().(repository.KeyRepositoryManager).AddKey(u.Email, key)
-	err = u.AddKey(key)
+	err = u.AddKey(key, false)
+	c.Assert(err, check.IsNil)
+	err = u.AddKey(key, false)
 	c.Assert(err, check.Equals, repository.ErrKeyAlreadyExists)
+}
+
+func (s *S) TestAddKeyDuplicatedForce(c *check.C) {
+	u := &User{Email: "sacefulofsecrets@pinkfloyd.com"}
+	err := u.Create()
+	c.Assert(err, check.IsNil)
+	defer u.Delete()
+	key := repository.Key{Name: "some-key", Body: "my-key"}
+	err = u.AddKey(key, false)
+	c.Assert(err, check.IsNil)
+	newKey := repository.Key{Name: "some-key", Body: "my-new-key"}
+	err = u.AddKey(newKey, true)
+	c.Assert(err, check.IsNil)
+	keys, err := repository.Manager().(repository.KeyRepositoryManager).ListKeys(u.Email)
+	c.Assert(err, check.IsNil)
+	c.Assert(keys, check.DeepEquals, []repository.Key{newKey})
 }
 
 func (s *S) TestAddKeyDisabled(c *check.C) {
@@ -128,7 +145,7 @@ func (s *S) TestAddKeyDisabled(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer u.Delete()
 	key := repository.Key{Name: "my-key", Body: "other-key"}
-	err = u.AddKey(key)
+	err = u.AddKey(key, false)
 	c.Assert(err, check.Equals, ErrKeyDisabled)
 }
 
