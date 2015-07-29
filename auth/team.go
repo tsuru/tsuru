@@ -24,6 +24,18 @@ var (
 	teamNameRegexp = regexp.MustCompile(`^[a-zA-Z][-@_.+\w]+$`)
 )
 
+type ErrTeamStillUsed struct {
+	Apps             []string
+	ServiceInstances []string
+}
+
+func (e *ErrTeamStillUsed) Error() string {
+	if len(e.Apps) > 0 {
+		return fmt.Sprintf("Apps: %s", strings.Join(e.Apps, ", "))
+	}
+	return fmt.Sprintf("Service instances: %s", strings.Join(e.ServiceInstances, ", "))
+}
+
 // Team represents a real world team, a team has team members (users) and
 // a name.
 type Team struct {
@@ -163,4 +175,33 @@ func CheckUserAccess(teamNames []string, u *User) bool {
 		}
 	}
 	return false
+}
+
+func RemoveTeam(teamName string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	var apps []string
+	err = conn.Apps().Find(bson.M{"teams": teamName}).Distinct("name", &apps)
+	if err != nil {
+		return err
+	}
+	if len(apps) > 0 {
+		return &ErrTeamStillUsed{Apps: apps}
+	}
+	var serviceInstances []string
+	err = conn.ServiceInstances().Find(bson.M{"teams": teamName}).Distinct("name", &serviceInstances)
+	if err != nil {
+		return err
+	}
+	if len(serviceInstances) > 0 {
+		return &ErrTeamStillUsed{ServiceInstances: serviceInstances}
+	}
+	err = conn.Teams().RemoveId(teamName)
+	if err == mgo.ErrNotFound {
+		return ErrTeamNotFound
+	}
+	return nil
 }
