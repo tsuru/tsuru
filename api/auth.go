@@ -204,14 +204,22 @@ func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	rec.Log(u.Email, "list-teams")
-	teams, err := u.Teams()
+	var teams []auth.Team
+	if u.IsAdmin() {
+		teams, err = auth.ListTeams()
+	} else {
+		teams, err = u.Teams()
+	}
 	if err != nil {
 		return err
 	}
 	if len(teams) > 0 {
-		var result []map[string]string
+		var result []map[string]interface{}
 		for _, team := range teams {
-			result = append(result, map[string]string{"name": team.Name})
+			result = append(result, map[string]interface{}{
+				"name":   team.Name,
+				"member": team.ContainsUser(u),
+			})
 		}
 		w.Header().Set("Content-Type", "application/json")
 		b, err := json.Marshal(result)

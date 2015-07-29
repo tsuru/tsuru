@@ -724,19 +724,47 @@ Service instances: my_nosql, my_nosql-2`
 func (s *AuthSuite) TestListTeamsListsAllTeamsThatTheUserIsMember(c *check.C) {
 	request, err := http.NewRequest("GET", "/teams", nil)
 	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	recorder := httptest.NewRecorder()
-	err = teamList(recorder, request, s.token)
-	c.Assert(err, check.IsNil)
+	mux := RunServer(true)
+	mux.ServeHTTP(recorder, request)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	b, err := ioutil.ReadAll(recorder.Body)
 	c.Assert(err, check.IsNil)
-	var m []map[string]string
+	var m []map[string]interface{}
 	err = json.Unmarshal(b, &m)
 	c.Assert(err, check.IsNil)
-	c.Assert(m, check.DeepEquals, []map[string]string{{"name": s.team.Name}})
+	c.Assert(m, check.DeepEquals, []map[string]interface{}{
+		{"name": s.team.Name, "member": true},
+	})
 	action := rectest.Action{
 		Action: "list-teams",
 		User:   s.user.Email,
+	}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *AuthSuite) TestListTeamsWithAdminUser(c *check.C) {
+	request, err := http.NewRequest("GET", "/teams", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.admintoken.GetValue())
+	recorder := httptest.NewRecorder()
+	mux := RunServer(true)
+	mux.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	b, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, check.IsNil)
+	var m []map[string]interface{}
+	err = json.Unmarshal(b, &m)
+	c.Assert(err, check.IsNil)
+	c.Assert(m, check.DeepEquals, []map[string]interface{}{
+		{"name": s.team.Name, "member": false},
+		{"name": s.adminteam.Name, "member": true},
+	})
+	action := rectest.Action{
+		Action: "list-teams",
+		User:   s.adminuser.Email,
 	}
 	c.Assert(action, rectest.IsRecorded)
 }
