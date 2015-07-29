@@ -181,7 +181,7 @@ func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	if !auth.CheckUserAccess([]string{name}, user) {
+	if !user.IsAdmin() && !auth.CheckUserAccess([]string{name}, user) {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf(`Team "%s" not found.`, name)}
 	}
 	err = auth.RemoveTeam(name)
