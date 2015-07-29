@@ -7,6 +7,7 @@ package auth
 import (
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
+	"sort"
 )
 
 type userPresenceChecker struct{}
@@ -233,4 +234,17 @@ func (s *S) TestRemoveTeamWithServiceInstances(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = RemoveTeam(team.Name)
 	c.Assert(err, check.ErrorMatches, "Service instances: vladimir")
+}
+
+func (s *S) TestListTeams(c *check.C) {
+	err := s.conn.Teams().Insert(Team{Name: "corrino"})
+	c.Assert(err, check.IsNil)
+	err = s.conn.Teams().Insert(Team{Name: "fenring"})
+	c.Assert(err, check.IsNil)
+	teams, err := ListTeams()
+	c.Assert(err, check.IsNil)
+	c.Assert(teams, check.HasLen, 3)
+	names := []string{teams[0].Name, teams[1].Name, teams[2].Name}
+	sort.Strings(names)
+	c.Assert(names, check.DeepEquals, []string{"cobrateam", "corrino", "fenring"})
 }

@@ -205,3 +205,17 @@ func RemoveTeam(teamName string) error {
 	}
 	return nil
 }
+
+func ListTeams() ([]Team, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+	var teams []Team
+	err = conn.Teams().Find(nil).All(&teams)
+	if err != nil {
+		return nil, err
+	}
+	return teams, nil
+}
