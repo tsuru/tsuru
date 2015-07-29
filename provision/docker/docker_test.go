@@ -818,7 +818,7 @@ func (s *S) TestStartStoppedContainer(c *check.C) {
 }
 
 func (s *S) TestStartTsuruAllocatorStress(c *check.C) {
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(100))
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(4))
 	config.Set("docker:port-allocator", "tsuru")
 	defer config.Unset("docker:port-allocator")
 	alocPorts := map[string]struct{}{}
