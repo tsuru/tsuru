@@ -32,6 +32,7 @@ import (
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/service"
 	"github.com/tsuru/tsuru/tsurutest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -660,9 +661,34 @@ func (s *AuthSuite) TestRemoveTeamGives403WhenTeamHasAccessToAnyApp(c *check.C) 
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Code, check.Equals, http.StatusForbidden)
-	expected := `This team cannot be removed because it have access to apps.
+	expected := `This team cannot be removed because there are still references to it:
+Apps: i-should`
+	c.Assert(e.Message, check.Equals, expected)
+}
 
-Please remove the apps or revoke these accesses, and try again.`
+func (s *AuthSuite) TestRemoveTeamGives403WhenTeamHasAccessToAnyServiceInstance(c *check.C) {
+	conn, _ := db.Conn()
+	defer conn.Close()
+	team := auth.Team{Name: "evergrey", Users: []string{s.user.Email}}
+	err := conn.Teams().Insert(team)
+	c.Assert(err, check.IsNil)
+	defer conn.Teams().Remove(bson.M{"_id": team.Name})
+	si1 := service.ServiceInstance{Name: "my_nosql", ServiceName: "nosql-service", Teams: []string{team.Name}}
+	err = si1.Create()
+	c.Assert(err, check.IsNil)
+	si2 := service.ServiceInstance{Name: "my_nosql-2", ServiceName: "nosql-service", Teams: []string{team.Name}}
+	err = si2.Create()
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("DELETE", fmt.Sprintf("/teams/%s?:name=%s", team.Name, team.Name), nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = removeTeam(recorder, request, s.token)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*errors.HTTP)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Code, check.Equals, http.StatusForbidden)
+	expected := `This team cannot be removed because there are still references to it:
+Service instances: my_nosql, my_nosql-2`
 	c.Assert(e.Message, check.Equals, expected)
 }
 

@@ -19,7 +19,6 @@ import (
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/rec"
 	"github.com/tsuru/tsuru/repository"
-	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -175,27 +174,28 @@ func createTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
-// RemoveTeam removes a team document from the database.
 func removeTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	conn, err := db.Conn()
+	name := r.URL.Query().Get(":name")
+	rec.Log(t.GetUserName(), "remove-team", name)
+	user, err := t.User()
 	if err != nil {
 		return err
 	}
-	defer conn.Close()
-	name := r.URL.Query().Get(":name")
-	rec.Log(t.GetUserName(), "remove-team", name)
-	if n, err := conn.Apps().Find(bson.M{"teams": name}).Count(); err != nil || n > 0 {
-		msg := `This team cannot be removed because it have access to apps.
-
-Please remove the apps or revoke these accesses, and try again.`
-		return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
-	}
-	query := bson.M{"_id": name, "users": t.GetUserName()}
-	err = conn.Teams().Remove(query)
-	if err == mgo.ErrNotFound {
+	if !auth.CheckUserAccess([]string{name}, user) {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf(`Team "%s" not found.`, name)}
 	}
-	return err
+	err = auth.RemoveTeam(name)
+	if err != nil {
+		if _, ok := err.(*auth.ErrTeamStillUsed); ok {
+			msg := fmt.Sprintf("This team cannot be removed because there are still references to it:\n%s", err)
+			return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
+		}
+		if err == auth.ErrTeamNotFound {
+			return &errors.HTTP{Code: http.StatusNotFound, Message: fmt.Sprintf(`Team "%s" not found.`, name)}
+		}
+		return err
+	}
+	return nil
 }
 
 func teamList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
