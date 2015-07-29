@@ -5,9 +5,10 @@
 package auth
 
 import (
+	"sort"
+
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
-	"sort"
 )
 
 type userPresenceChecker struct{}
