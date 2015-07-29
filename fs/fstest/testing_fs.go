@@ -96,11 +96,16 @@ func (f *FakeFile) Stat() (fi os.FileInfo, err error) {
 func (f *FakeFile) Write(p []byte) (n int, err error) {
 	n = len(p)
 	cur := atomic.LoadInt64(&f.current)
-	diff := cur - int64(len(f.content))
+	currentSize := len(f.content)
+	end := int(cur) + n
+	if end > currentSize {
+		end = currentSize
+	}
+	diff := cur - int64(currentSize)
 	if diff > 0 {
 		f.content += strings.Repeat("\x00", int(diff)) + string(p)
 	} else {
-		f.content = f.content[:cur] + string(p)
+		f.content = f.content[:cur] + string(p) + f.content[end:]
 	}
 	return
 }

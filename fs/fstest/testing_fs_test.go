@@ -107,7 +107,7 @@ func (s *S) TestFakeFileWrite(c *check.C) {
 	n, err := f.Write([]byte("break"))
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, len("break"))
-	c.Assert(f.content, check.Equals, "break")
+	c.Assert(f.content, check.Equals, "breakian")
 }
 
 func (s *S) TestFakeFileWriteFromPosition(c *check.C) {
@@ -128,7 +128,7 @@ func (s *S) TestFakeFileWriteString(c *check.C) {
 	ret, err := f.WriteString("break")
 	c.Assert(err, check.IsNil)
 	c.Assert(ret, check.Equals, len("break"))
-	c.Assert(f.content, check.Equals, "break")
+	c.Assert(f.content, check.Equals, "breakian")
 	f.current = int64(ret)
 	ret, err = f.WriteString("break")
 	c.Assert(err, check.IsNil)
