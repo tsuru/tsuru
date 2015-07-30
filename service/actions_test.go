@@ -5,12 +5,16 @@
 package service
 
 import (
+	"bytes"
 	"net/http"
 	"net/http/httptest"
+	"sort"
+	"sync"
 	"sync/atomic"
 
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -352,3 +356,112 @@ func (s *S) TestSetTsuruServicesBackward(c *check.C) {
 	instances := a.GetInstances("mysql")
 	c.Assert(instances, check.HasLen, 0)
 }
+
+func (s *S) TestUnbindUnitsForward(c *check.C) {
+	var reqs []*http.Request
+	var reqLock sync.Mutex
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reqLock.Lock()
+		defer reqLock.Unlock()
+		reqs = append(reqs, r)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+	srv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, check.IsNil)
+	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
+	err = s.conn.ServiceInstances().Insert(&si)
+	c.Assert(err, check.IsNil)
+	a := provisiontest.NewFakeApp("myapp", "static", 10)
+	units := a.Units()
+	for i := range units {
+		err = si.BindUnit(a, &units[i])
+		c.Assert(err, check.IsNil)
+	}
+	buf := bytes.NewBuffer(nil)
+	args := unbindPipelineArgs{
+		app:             a,
+		serviceInstance: &si,
+		writer:          buf,
+	}
+	ctx := action.FWContext{Params: []interface{}{&args}}
+	_, err = unbindUnits.Forward(ctx)
+	c.Assert(err, check.IsNil)
+	c.Assert(reqs, check.HasLen, 20)
+	for i, req := range reqs {
+		if i < 10 {
+			c.Assert(req.Method, check.Equals, "POST")
+		} else {
+			c.Assert(req.Method, check.Equals, "DELETE")
+		}
+	}
+	siDB, err := GetServiceInstance(si.Name, s.user)
+	c.Assert(err, check.IsNil)
+	c.Assert(siDB.Units, check.DeepEquals, []string{})
+}
+
+func (s *S) TestUnbindUnitsForwardPartialFailure(c *check.C) {
+	var reqs []*http.Request
+	var reqLock sync.Mutex
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		reqLock.Lock()
+		defer reqLock.Unlock()
+		reqs = append(reqs, r)
+		if len(reqs) > 14 && len(reqs) <= 20 {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte("my error"))
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer ts.Close()
+	srv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := s.conn.Services().Insert(&srv)
+	c.Assert(err, check.IsNil)
+	si := ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
+	err = s.conn.ServiceInstances().Insert(&si)
+	c.Assert(err, check.IsNil)
+	a := provisiontest.NewFakeApp("myapp", "static", 10)
+	units := a.Units()
+	for i := range units {
+		err = si.BindUnit(a, &units[i])
+		c.Assert(err, check.IsNil)
+	}
+	buf := bytes.NewBuffer(nil)
+	args := unbindPipelineArgs{
+		app:             a,
+		serviceInstance: &si,
+		writer:          buf,
+	}
+	ctx := action.FWContext{Params: []interface{}{&args}}
+	_, err = unbindUnits.Forward(ctx)
+	c.Assert(err, check.DeepEquals, &errors.HTTP{Code: 500, Message: "Failed to unbind (\"/resources/my-mysql/bind\"): my error"})
+	c.Assert(reqs, check.HasLen, 24)
+	for i, req := range reqs {
+		if i < 10 {
+			c.Assert(req.Method, check.Equals, "POST")
+		} else if i < 20 {
+			c.Assert(req.Method, check.Equals, "DELETE")
+		} else {
+			c.Assert(req.Method, check.Equals, "POST")
+		}
+	}
+	siDB, err := GetServiceInstance(si.Name, s.user)
+	c.Assert(err, check.IsNil)
+	sort.Strings(siDB.Units)
+	c.Assert(siDB.Units, check.DeepEquals, []string{
+		"myapp-0",
+		"myapp-1",
+		"myapp-2",
+		"myapp-3",
+		"myapp-4",
+		"myapp-5",
+		"myapp-6",
+		"myapp-7",
+		"myapp-8",
+		"myapp-9",
+	})
+}
+
+// TODO(cezarsa): test for new actions

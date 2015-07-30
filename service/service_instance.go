@@ -7,11 +7,11 @@ package service
 import (
 	"encoding/json"
 	stderrors "errors"
+	"gopkg.in/mgo.v2"
 	"io"
 	"net/http"
 	"regexp"
 	"strconv"
-	"sync"
 
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
@@ -197,49 +197,48 @@ func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
 	if err != nil {
 		return err
 	}
-	err = si.reload()
+	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
-	for _, unitName := range si.Units {
-		if unitName == unit.GetName() {
+	defer conn.Close()
+	updateOp := bson.M{"$addToSet": bson.M{"units": unit.GetName()}}
+	err = conn.ServiceInstances().Update(bson.M{"name": si.Name, "units": bson.M{"$ne": unit.GetName()}}, updateOp)
+	if err != nil {
+		if err == mgo.ErrNotFound {
 			return ErrUnitAlreadyBound
 		}
+		return err
 	}
 	err = endpoint.BindUnit(si, app, unit)
 	if err != nil {
+		rollbackErr := si.update(bson.M{"$pull": bson.M{"units": unit.GetName()}})
+		if rollbackErr != nil {
+			log.Errorf("[bind unit] could remove stil unbinded unit from db after failure: %s", rollbackErr)
+		}
 		return err
 	}
-	return si.update(bson.M{"$addToSet": bson.M{"units": unit.GetName()}})
+	return nil
 }
 
 // UnbindApp makes the unbind between the service instance and an app.
 func (si *ServiceInstance) UnbindApp(app bind.App, writer io.Writer) error {
-	err := si.RemoveApp(app.GetName())
-	if err != nil {
+	if si.FindApp(app.GetName()) == -1 {
 		return &errors.HTTP{Code: http.StatusPreconditionFailed, Message: "This app is not bound to this service instance."}
 	}
-	err = si.update(nil)
-	if err != nil {
-		return err
+	args := unbindPipelineArgs{
+		serviceInstance: si,
+		app:             app,
+		writer:          writer,
 	}
-	var wg sync.WaitGroup
-	for _, unit := range app.GetUnits() {
-		wg.Add(1)
-		go func(unit bind.Unit) {
-			si.UnbindUnit(app, unit)
-			wg.Done()
-		}(unit)
+	actions := []*action.Action{
+		&unbindUnits,
+		&unbindAppDB,
+		&unbindAppEndpoint,
+		&removeBindedEnvs,
 	}
-	instance := bind.ServiceInstance{Name: si.Name, Envs: make(map[string]string)}
-	for k, envVar := range app.InstanceEnv(si.Name) {
-		instance.Envs[k] = envVar.Value
-	}
-	wg.Wait()
-	if endpoint, err := si.Service().getClient("production"); err == nil {
-		endpoint.UnbindApp(si, app)
-	}
-	return app.RemoveInstance(si.ServiceName, instance, writer)
+	pipeline := action.NewPipeline(actions...)
+	return pipeline.Execute(&args)
 }
 
 // UnbindUnit makes the unbind between the service instance and an unit.
@@ -248,25 +247,28 @@ func (si *ServiceInstance) UnbindUnit(app bind.App, unit bind.Unit) error {
 	if err != nil {
 		return err
 	}
-	err = si.reload()
+	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
-	var found bool
-	for _, unitName := range si.Units {
-		if unitName == unit.GetName() {
-			found = true
-			break
+	defer conn.Close()
+	updateOp := bson.M{"$pull": bson.M{"units": unit.GetName()}}
+	err = conn.ServiceInstances().Update(bson.M{"name": si.Name, "units": unit.GetName()}, updateOp)
+	if err != nil {
+		if err == mgo.ErrNotFound {
+			return ErrUnitNotBound
 		}
-	}
-	if !found {
-		return ErrUnitNotBound
+		return err
 	}
 	err = endpoint.UnbindUnit(si, app, unit)
 	if err != nil {
+		rollbackErr := si.update(bson.M{"$addToSet": bson.M{"units": unit.GetName()}})
+		if rollbackErr != nil {
+			log.Errorf("[unbind unit] could not add binded unit back to db after failure: %s", rollbackErr)
+		}
 		return err
 	}
-	return si.update(bson.M{"$pull": bson.M{"units": unit.GetName()}})
+	return nil
 }
 
 // Status returns the service instance status.

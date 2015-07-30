@@ -285,3 +285,128 @@ var bindUnitsToServiceInstance = action.Action{
 	Backward: func(ctx action.BWContext) {
 	},
 }
+
+type unbindPipelineArgs struct {
+	app             bind.App
+	writer          io.Writer
+	serviceInstance *ServiceInstance
+}
+
+var unbindUnits = action.Action{
+	Name: "unbind-units",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		args, _ := ctx.Params[0].(*unbindPipelineArgs)
+		if args == nil {
+			return nil, stderrors.New("invalid arguments for pipeline, expected *unbindPipelineArgs")
+		}
+		var wg sync.WaitGroup
+		si := args.serviceInstance
+		units := args.app.GetUnits()
+		errCh := make(chan error, len(units))
+		unbindedCh := make(chan bind.Unit, len(units))
+		for i := range units {
+			wg.Add(1)
+			go func(i int) {
+				defer wg.Done()
+				unit := units[i]
+				err := si.UnbindUnit(args.app, unit)
+				if err == nil || err == ErrUnitNotBound {
+					unbindedCh <- unit
+				} else {
+					errCh <- err
+				}
+			}(i)
+		}
+		wg.Wait()
+		close(errCh)
+		close(unbindedCh)
+		if err := <-errCh; err != nil {
+			for unit := range unbindedCh {
+				rebindErr := si.BindUnit(args.app, unit)
+				if rebindErr != nil {
+					log.Errorf("[unbind-units forward] failed to rebind unit after error: %s", rebindErr)
+				}
+			}
+			return nil, err
+		}
+		return nil, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		args, _ := ctx.Params[0].(*unbindPipelineArgs)
+		units := args.app.GetUnits()
+		for _, unit := range units {
+			err := args.serviceInstance.BindUnit(args.app, unit)
+			if err != nil {
+				log.Errorf("[unbind-units backward] failed to rebind unit in rollback: %s", err)
+			}
+		}
+	},
+}
+
+var unbindAppDB = action.Action{
+	Name: "unbind-app-db",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		args, _ := ctx.Params[0].(*unbindPipelineArgs)
+		if args == nil {
+			return nil, stderrors.New("invalid arguments for pipeline, expected *unbindPipelineArgs")
+		}
+		err := args.serviceInstance.update(bson.M{"$pull": bson.M{"apps": args.app.GetName()}})
+		if err != nil {
+			return nil, err
+		}
+		args.serviceInstance.RemoveApp(args.app.GetName())
+		return nil, err
+	},
+	Backward: func(ctx action.BWContext) {
+		args, _ := ctx.Params[0].(*unbindPipelineArgs)
+		args.serviceInstance.AddApp(args.app.GetName())
+		err := args.serviceInstance.update(bson.M{"$addToSet": bson.M{"apps": args.app.GetName()}})
+		if err != nil {
+			log.Errorf("[unbind-app-db backward] failed to rebind app in db: %s", err)
+		}
+	},
+}
+
+var unbindAppEndpoint = action.Action{
+	Name: "unbind-app-endpoint",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		args, _ := ctx.Params[0].(*unbindPipelineArgs)
+		if args == nil {
+			return nil, stderrors.New("invalid arguments for pipeline, expected *unbindPipelineArgs")
+		}
+		if endpoint, err := args.serviceInstance.Service().getClient("production"); err == nil {
+			err := endpoint.UnbindApp(args.serviceInstance, args.app)
+			if err != nil {
+				return nil, err
+			}
+		}
+		return nil, nil
+	},
+	Backward: func(ctx action.BWContext) {
+		args, _ := ctx.Params[0].(*unbindPipelineArgs)
+		if endpoint, err := args.serviceInstance.Service().getClient("production"); err == nil {
+			_, err := endpoint.BindApp(args.serviceInstance, args.app)
+			if err != nil {
+				log.Errorf("[unbind-app-endpoint backward] failed to rebind app in endpoint: %s", err)
+			}
+		}
+	},
+}
+
+var removeBindedEnvs = action.Action{
+	Name: "remove-binded-envs",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		args, _ := ctx.Params[0].(*unbindPipelineArgs)
+		if args == nil {
+			return nil, stderrors.New("invalid arguments for pipeline, expected *unbindPipelineArgs")
+		}
+		si := args.serviceInstance
+		instance := bind.ServiceInstance{Name: si.Name, Envs: make(map[string]string)}
+		for k, envVar := range args.app.InstanceEnv(si.Name) {
+			instance.Envs[k] = envVar.Value
+		}
+		return nil, args.app.RemoveInstance(si.ServiceName, instance, args.writer)
+	},
+	Backward: func(ctx action.BWContext) {
+	},
+}

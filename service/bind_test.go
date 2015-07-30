@@ -45,6 +45,11 @@ func (s *BindSuite) SetUpSuite(c *check.C) {
 	config.Set("database:name", "tsuru_service_bind_test")
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)
+}
+
+func (s *BindSuite) SetUpTest(c *check.C) {
+	routertest.FakeRouter.Reset()
+	dbtest.ClearAllCollections(s.conn.Apps().Database)
 	s.user = auth.User{Email: "sad-but-true@metallica.com"}
 	s.user.Create()
 	s.team = auth.Team{Name: "metallica", Users: []string{s.user.Email}}
@@ -52,12 +57,8 @@ func (s *BindSuite) SetUpSuite(c *check.C) {
 	app.Provisioner = provisiontest.NewFakeProvisioner()
 }
 
-func (s *BindSuite) SetUpTest(c *check.C) {
-	routertest.FakeRouter.Reset()
-}
-
 func (s *BindSuite) TearDownSuite(c *check.C) {
-	dbtest.ClearAllCollections(s.conn.Apps().Database)
+	s.conn.Close()
 }
 
 func createTestApp(conn *db.Storage, name, framework string, teams []string) (app.App, error) {
