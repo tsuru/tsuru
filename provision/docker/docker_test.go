@@ -842,27 +842,23 @@ func (s *S) TestStartTsuruAllocatorStress(c *check.C) {
 		s.server.DefaultHandler().ServeHTTP(w, r)
 	}))
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
-	var conts []*container
 	err := s.newFakeImage(s.p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	imageId, err := appCurrentImageName(app.GetName())
 	wg := sync.WaitGroup{}
-	var contsLock sync.Mutex
+	conts := make([]*container, 100)
 	for i := 0; i < 100; i++ {
 		wg.Add(1)
-		go func() {
+		go func(i int) {
 			defer wg.Done()
 			cont, err := s.p.start(&container{ProcessName: "web"}, app, imageId, ioutil.Discard)
 			c.Assert(err, check.IsNil)
-			contsLock.Lock()
-			conts = append(conts, cont)
-			contsLock.Unlock()
-		}()
+			conts[i] = cont
+		}(i)
 	}
 	wg.Wait()
 	client, err := docker.NewClient(s.server.URL())
 	c.Assert(err, check.IsNil)
-	c.Assert(conts, check.HasLen, 100)
 	c.Assert(alocPorts, check.HasLen, len(conts))
 	for _, cont := range conts {
 		dockerContainer, err := client.InspectContainer(cont.ID)
