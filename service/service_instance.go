@@ -7,7 +7,6 @@ package service
 import (
 	"encoding/json"
 	stderrors "errors"
-	"gopkg.in/mgo.v2"
 	"io"
 	"net/http"
 	"regexp"
@@ -20,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/rec"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
