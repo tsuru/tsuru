@@ -14,13 +14,15 @@ import (
 	"github.com/tsuru/tsuru/queue"
 )
 
+var LogPubSubQueuePrefix = "pubsub:"
+
 type LogListener struct {
 	C <-chan Applog
 	q queue.PubSubQ
 }
 
 func logQueueName(appName string) string {
-	return "pubsub:" + appName
+	return LogPubSubQueuePrefix + appName
 }
 
 func NewLogListener(a *App, filterLog Applog) (*LogListener, error) {

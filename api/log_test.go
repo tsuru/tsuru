@@ -47,6 +47,7 @@ func (s *LogSuite) SetUpSuite(c *check.C) {
 	config.Set("database:name", "tsuru_log_api_tests")
 	config.Set("auth:hash-cost", 4)
 	config.Set("repo-manager", "fake")
+	app.LogPubSubQueuePrefix = "pubsub:api-log-test:"
 }
 
 func (s *LogSuite) SetUpTest(c *check.C) {
