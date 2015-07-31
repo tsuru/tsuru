@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -102,202 +103,144 @@ var insertServiceInstance = action.Action{
 	MinParams: 2,
 }
 
-var addAppToServiceInstance = action.Action{
-	Name: "add-app-to-service-instance",
+type bindPipelineArgs struct {
+	app             bind.App
+	writer          io.Writer
+	serviceInstance *ServiceInstance
+}
+
+var bindAppDBAction = action.Action{
+	Name: "bind-app-db",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		si, ok := ctx.Params[1].(ServiceInstance)
-		if !ok {
-			return nil, stderrors.New("Second parameter must be a ServiceInstance.")
+		args, _ := ctx.Params[0].(*bindPipelineArgs)
+		if args == nil {
+			return nil, stderrors.New("invalid arguments for pipeline, expected *bindPipelineArgs")
 		}
 		conn, err := db.Conn()
 		if err != nil {
 			return nil, err
 		}
 		defer conn.Close()
-		if err := conn.ServiceInstances().Find(bson.M{"name": si.Name}).One(&si); err != nil {
-			return nil, err
-		}
-		a, ok := ctx.Params[0].(bind.App)
-		if !ok {
-			return nil, stderrors.New("First parameter must be a bind.App.")
-		}
-		if err := si.AddApp(a.GetName()); err != nil {
-			return nil, &errors.HTTP{Code: http.StatusConflict, Message: "This app is already bound to this service instance."}
-		}
-		if err := si.update(nil); err != nil {
+		si := args.serviceInstance
+		updateOp := bson.M{"$addToSet": bson.M{"apps": args.app.GetName()}}
+		err = conn.ServiceInstances().Update(bson.M{"name": si.Name, "apps": bson.M{"$ne": args.app.GetName()}}, updateOp)
+		if err != nil {
+			if err == mgo.ErrNotFound {
+				return nil, &errors.HTTP{Code: http.StatusConflict, Message: "This app is already bound to this service instance."}
+			}
 			return nil, err
 		}
 		return nil, nil
 	},
 	Backward: func(ctx action.BWContext) {
-		si, ok := ctx.Params[1].(ServiceInstance)
-		if !ok {
-			log.Error("Second parameter must be a ServiceInstance.")
-		}
-		a, ok := ctx.Params[0].(bind.App)
-		if !ok {
-			log.Error("First parameter must be a bind.App.")
-		}
-		si.RemoveApp(a.GetName())
-		if err := si.update(nil); err != nil {
-			log.Errorf("Could not remove app from service instance: %s", err.Error())
+		args, _ := ctx.Params[0].(*bindPipelineArgs)
+		if err := args.serviceInstance.update(bson.M{"$pull": bson.M{"apps": args.app.GetName()}}); err != nil {
+			log.Errorf("[bind-app-db backward] could not remove app from service instance: %s", err)
 		}
 	},
-	MinParams: 2,
+	MinParams: 1,
 }
 
-var setBindAppAction = action.Action{
-	Name: "set-environ-variables-to-app",
+var bindAppEndpointAction = action.Action{
+	Name: "bind-app-endpoint",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		si, ok := ctx.Params[1].(ServiceInstance)
-		if !ok {
-			msg := "Second parameter must be a ServiceInstance."
-			log.Error(msg)
-			return nil, stderrors.New(msg)
+		args, _ := ctx.Params[0].(*bindPipelineArgs)
+		if args == nil {
+			return nil, stderrors.New("invalid arguments for pipeline, expected *bindPipelineArgs")
 		}
-		app, ok := ctx.Params[0].(bind.App)
-		if !ok {
-			msg := "First parameter must be a bind.App."
-			log.Error(msg)
-			return nil, stderrors.New(msg)
-		}
-		endpoint, err := si.Service().getClient("production")
+		endpoint, err := args.serviceInstance.Service().getClient("production")
 		if err != nil {
 			return nil, err
 		}
-		return endpoint.BindApp(&si, app)
+		return endpoint.BindApp(args.serviceInstance, args.app)
 	},
 	Backward: func(ctx action.BWContext) {
-		app, ok := ctx.Params[0].(bind.App)
-		if !ok {
-			log.Error("First parameter must be a bind.App.")
-			return
-		}
-		si, ok := ctx.Params[1].(ServiceInstance)
-		if !ok {
-			log.Error("Second parameter must be a ServiceInstance.")
-			return
-		}
-		endpoint, err := si.Service().getClient("production")
+		args, _ := ctx.Params[0].(*bindPipelineArgs)
+		endpoint, err := args.serviceInstance.Service().getClient("production")
 		if err != nil {
-			log.Errorf("Could not get endpoint: %s.", err.Error())
+			log.Errorf("[bind-app-endpoint backward] could not get endpoint: %s", err)
 			return
 		}
-		endpoint.UnbindApp(&si, app)
+		err = endpoint.UnbindApp(args.serviceInstance, args.app)
+		if err != nil {
+			log.Errorf("[bind-app-endpoint backward] failed to unbind unit: %s", err)
+		}
 	},
+	MinParams: 1,
 }
 
-var setTsuruServices = action.Action{
-	Name: "set-TSURU_SERVICES-env-var",
+var setBindedEnvsAction = action.Action{
+	Name: "set-binded-envs",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		var writer io.Writer
-		if len(ctx.Params) > 2 && ctx.Params[2] != nil {
-			var ok bool
-			writer, ok = ctx.Params[2].(io.Writer)
-			if !ok {
-				msg := "Third parameter must be a io.Writer."
-				log.Error(msg)
-				return nil, stderrors.New(msg)
-			}
-		}
-		si, ok := ctx.Params[1].(ServiceInstance)
-		if !ok {
-			msg := "Second parameter must be a ServiceInstance."
-			log.Error(msg)
-			return nil, stderrors.New(msg)
-		}
-		app, ok := ctx.Params[0].(bind.App)
-		if !ok {
-			msg := "First parameter must be a bind.App."
-			log.Error(msg)
-			return nil, stderrors.New(msg)
+		args, _ := ctx.Params[0].(*bindPipelineArgs)
+		if args == nil {
+			return nil, stderrors.New("invalid arguments for pipeline, expected *bindPipelineArgs")
 		}
 		instance := bind.ServiceInstance{
-			Name: si.Name,
+			Name: args.serviceInstance.Name,
 			Envs: ctx.Previous.(map[string]string),
 		}
-		return instance, app.AddInstance(si.ServiceName, instance, writer)
+		return instance, args.app.AddInstance(args.serviceInstance.ServiceName, instance, args.writer)
 	},
 	Backward: func(ctx action.BWContext) {
-		var writer io.Writer
-		if len(ctx.Params) > 2 && ctx.Params[2] != nil {
-			var ok bool
-			writer, ok = ctx.Params[2].(io.Writer)
-			if !ok {
-				log.Error("Third parameter must be a io.Writer.")
-				return
-			}
-		}
-		si, ok := ctx.Params[1].(ServiceInstance)
-		if !ok {
-			log.Error("Second parameter must be a ServiceInstance.")
-			return
-		}
-		app, ok := ctx.Params[0].(bind.App)
-		if !ok {
-			log.Error("First parameter must be a bind.App.")
-			return
-		}
+		args, _ := ctx.Params[0].(*bindPipelineArgs)
 		instance := ctx.FWResult.(bind.ServiceInstance)
-		app.RemoveInstance(si.ServiceName, instance, writer)
+		err := args.app.RemoveInstance(args.serviceInstance.ServiceName, instance, args.writer)
+		if err != nil {
+			log.Errorf("[set-binded-envs backward] failed to remove instance: %s", err)
+		}
 	},
 }
 
-var bindUnitsToServiceInstance = action.Action{
-	Name: "bind-units-to-service-instance",
+var bindUnitsAction = action.Action{
+	Name: "bind-units",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		si, ok := ctx.Params[1].(ServiceInstance)
-		if !ok {
-			msg := "Second parameter must be a ServiceInstance."
-			log.Error(msg)
-			return nil, stderrors.New(msg)
+		args, _ := ctx.Params[0].(*bindPipelineArgs)
+		if args == nil {
+			return ctx.Previous, stderrors.New("invalid arguments for pipeline, expected *bindPipelineArgs")
 		}
-		app, ok := ctx.Params[0].(bind.App)
-		if !ok {
-			msg := "First parameter must be a bind.App."
-			log.Error(msg)
-			return nil, stderrors.New(msg)
-		}
-		units := app.GetUnits()
-		if len(units) == 0 {
-			return nil, nil
-		}
-		errChan := make(chan error, len(units)+1)
 		var wg sync.WaitGroup
-		wg.Add(len(units))
-		for _, unit := range units {
-			go func(unit bind.Unit) {
+		si := args.serviceInstance
+		units := args.app.GetUnits()
+		errCh := make(chan error, len(units))
+		unbindedCh := make(chan bind.Unit, len(units))
+		for i := range units {
+			wg.Add(1)
+			go func(i int) {
 				defer wg.Done()
-				err := si.BindUnit(app, unit)
-				if err != nil && err != ErrUnitAlreadyBound {
-					errChan <- err
+				unit := units[i]
+				err := si.BindUnit(args.app, unit)
+				if err == nil || err == ErrUnitAlreadyBound {
+					unbindedCh <- unit
+				} else {
+					errCh <- err
 				}
-			}(unit)
+			}(i)
 		}
 		wg.Wait()
-		close(errChan)
-		if err, ok := <-errChan; ok {
-			log.Error(err.Error())
-			return nil, err
+		close(errCh)
+		close(unbindedCh)
+		if err := <-errCh; err != nil {
+			for unit := range unbindedCh {
+				unbindErr := si.UnbindUnit(args.app, unit)
+				if unbindErr != nil {
+					log.Errorf("[bind-units forward] failed to unbind unit after error: %s", unbindErr)
+				}
+			}
+			return ctx.Previous, err
 		}
-		return nil, nil
+		return ctx.Previous, nil
 	},
 	Backward: func(ctx action.BWContext) {
 	},
-}
-
-type unbindPipelineArgs struct {
-	app             bind.App
-	writer          io.Writer
-	serviceInstance *ServiceInstance
 }
 
 var unbindUnits = action.Action{
 	Name: "unbind-units",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		args, _ := ctx.Params[0].(*unbindPipelineArgs)
+		args, _ := ctx.Params[0].(*bindPipelineArgs)
 		if args == nil {
-			return nil, stderrors.New("invalid arguments for pipeline, expected *unbindPipelineArgs")
+			return nil, stderrors.New("invalid arguments for pipeline, expected *bindPipelineArgs")
 		}
 		var wg sync.WaitGroup
 		si := args.serviceInstance
@@ -332,7 +275,7 @@ var unbindUnits = action.Action{
 		return nil, nil
 	},
 	Backward: func(ctx action.BWContext) {
-		args, _ := ctx.Params[0].(*unbindPipelineArgs)
+		args, _ := ctx.Params[0].(*bindPipelineArgs)
 		units := args.app.GetUnits()
 		for _, unit := range units {
 			err := args.serviceInstance.BindUnit(args.app, unit)
@@ -341,14 +284,15 @@ var unbindUnits = action.Action{
 			}
 		}
 	},
+	MinParams: 1,
 }
 
 var unbindAppDB = action.Action{
 	Name: "unbind-app-db",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		args, _ := ctx.Params[0].(*unbindPipelineArgs)
+		args, _ := ctx.Params[0].(*bindPipelineArgs)
 		if args == nil {
-			return nil, stderrors.New("invalid arguments for pipeline, expected *unbindPipelineArgs")
+			return nil, stderrors.New("invalid arguments for pipeline, expected *bindPipelineArgs")
 		}
 		err := args.serviceInstance.update(bson.M{"$pull": bson.M{"apps": args.app.GetName()}})
 		if err != nil {
@@ -358,21 +302,22 @@ var unbindAppDB = action.Action{
 		return nil, err
 	},
 	Backward: func(ctx action.BWContext) {
-		args, _ := ctx.Params[0].(*unbindPipelineArgs)
+		args, _ := ctx.Params[0].(*bindPipelineArgs)
 		args.serviceInstance.AddApp(args.app.GetName())
 		err := args.serviceInstance.update(bson.M{"$addToSet": bson.M{"apps": args.app.GetName()}})
 		if err != nil {
 			log.Errorf("[unbind-app-db backward] failed to rebind app in db: %s", err)
 		}
 	},
+	MinParams: 1,
 }
 
 var unbindAppEndpoint = action.Action{
 	Name: "unbind-app-endpoint",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		args, _ := ctx.Params[0].(*unbindPipelineArgs)
+		args, _ := ctx.Params[0].(*bindPipelineArgs)
 		if args == nil {
-			return nil, stderrors.New("invalid arguments for pipeline, expected *unbindPipelineArgs")
+			return nil, stderrors.New("invalid arguments for pipeline, expected *bindPipelineArgs")
 		}
 		if endpoint, err := args.serviceInstance.Service().getClient("production"); err == nil {
 			err := endpoint.UnbindApp(args.serviceInstance, args.app)
@@ -383,7 +328,7 @@ var unbindAppEndpoint = action.Action{
 		return nil, nil
 	},
 	Backward: func(ctx action.BWContext) {
-		args, _ := ctx.Params[0].(*unbindPipelineArgs)
+		args, _ := ctx.Params[0].(*bindPipelineArgs)
 		if endpoint, err := args.serviceInstance.Service().getClient("production"); err == nil {
 			_, err := endpoint.BindApp(args.serviceInstance, args.app)
 			if err != nil {
@@ -391,14 +336,15 @@ var unbindAppEndpoint = action.Action{
 			}
 		}
 	},
+	MinParams: 1,
 }
 
 var removeBindedEnvs = action.Action{
 	Name: "remove-binded-envs",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
-		args, _ := ctx.Params[0].(*unbindPipelineArgs)
+		args, _ := ctx.Params[0].(*bindPipelineArgs)
 		if args == nil {
-			return nil, stderrors.New("invalid arguments for pipeline, expected *unbindPipelineArgs")
+			return nil, stderrors.New("invalid arguments for pipeline, expected *bindPipelineArgs")
 		}
 		si := args.serviceInstance
 		instance := bind.ServiceInstance{Name: si.Name, Envs: make(map[string]string)}
@@ -409,4 +355,5 @@ var removeBindedEnvs = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 	},
+	MinParams: 1,
 }

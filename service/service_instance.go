@@ -181,14 +181,19 @@ func (si *ServiceInstance) reload() error {
 
 // BindApp makes the bind between the service instance and an app.
 func (si *ServiceInstance) BindApp(app bind.App, writer io.Writer) error {
+	args := bindPipelineArgs{
+		serviceInstance: si,
+		app:             app,
+		writer:          writer,
+	}
 	actions := []*action.Action{
-		&addAppToServiceInstance,
-		&setBindAppAction,
-		&setTsuruServices,
-		&bindUnitsToServiceInstance,
+		&bindAppDBAction,
+		&bindAppEndpointAction,
+		&setBindedEnvsAction,
+		&bindUnitsAction,
 	}
 	pipeline := action.NewPipeline(actions...)
-	return pipeline.Execute(app, *si, writer)
+	return pipeline.Execute(&args)
 }
 
 // BindUnit makes the bind between the binder and an unit.
@@ -226,7 +231,7 @@ func (si *ServiceInstance) UnbindApp(app bind.App, writer io.Writer) error {
 	if si.FindApp(app.GetName()) == -1 {
 		return &errors.HTTP{Code: http.StatusPreconditionFailed, Message: "This app is not bound to this service instance."}
 	}
-	args := unbindPipelineArgs{
+	args := bindPipelineArgs{
 		serviceInstance: si,
 		app:             app,
 		writer:          writer,
