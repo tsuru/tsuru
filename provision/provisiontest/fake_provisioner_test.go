@@ -101,9 +101,12 @@ func (s *S) TestSetEnvs(c *check.C) {
 }
 
 func (s *S) TestGetUnitsReturnUnits(c *check.C) {
-	a := NewFakeApp("foo", "static", 1)
+	a := NewFakeApp("foo", "static", 2)
 	units := a.GetUnits()
-	c.Assert(len(units), check.Equals, 1)
+	c.Assert(len(units), check.Equals, 2)
+	c.Assert(len(a.units), check.Equals, 2)
+	c.Assert(units[0].GetName(), check.Equals, a.units[0].Name)
+	c.Assert(units[1].GetName(), check.Equals, a.units[1].Name)
 }
 
 func (s *S) TestUnsetEnvs(c *check.C) {

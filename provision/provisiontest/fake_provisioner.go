@@ -242,8 +242,8 @@ func (a *FakeApp) GetIp() string {
 
 func (a *FakeApp) GetUnits() []bind.Unit {
 	units := make([]bind.Unit, len(a.units))
-	for i, unit := range a.units {
-		units[i] = &unit
+	for i := range a.units {
+		units[i] = &a.units[i]
 	}
 	return units
 }
