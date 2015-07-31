@@ -7,6 +7,7 @@ package docker
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -108,7 +109,7 @@ func (conf *bsConfig) envListForEndpoint(dockerEndpoint, poolName string) ([]str
 		"DOCKER_ENDPOINT=" + endpoint,
 		"TSURU_ENDPOINT=" + tsuruEndpoint,
 		"TSURU_TOKEN=" + token,
-		"SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:514",
+		"SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:" + strconv.Itoa(getBsSysLogPort()),
 	}
 	envMap := bsEnvMap{}
 	poolEnvMap := bsPoolEnvMap{}

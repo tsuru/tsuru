@@ -70,10 +70,6 @@ func (s *S) TestCreateBsContainer(c *check.C) {
 	container, err := client.InspectContainer(containers[0].ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(container.Name, check.Equals, "big-sibling")
-	expectedBinding := []docker.PortBinding{{HostIP: "0.0.0.0", HostPort: "1514"}}
-	c.Assert(container.HostConfig.PortBindings[docker.Port("514/udp")], check.DeepEquals, expectedBinding)
-	_, ok := container.Config.ExposedPorts[docker.Port("514/udp")]
-	c.Assert(ok, check.Equals, true)
 	c.Assert(container.Config.Image, check.Equals, "myregistry/tsuru/bs")
 	c.Assert(container.HostConfig.RestartPolicy, check.Equals, docker.AlwaysRestart())
 	c.Assert(container.State.Running, check.Equals, true)
@@ -81,10 +77,10 @@ func (s *S) TestCreateBsContainer(c *check.C) {
 		"DOCKER_ENDPOINT":       server.URL(),
 		"TSURU_ENDPOINT":        "http://127.0.0.1:8080/",
 		"TSURU_TOKEN":           "abc123",
-		"SYSLOG_LISTEN_ADDRESS": "udp://0.0.0.0:514",
+		"SYSLOG_LISTEN_ADDRESS": "udp://0.0.0.0:1514",
 	}
 	gotEnv := parseEnvs(container.Config.Env)
-	_, ok = gotEnv["TSURU_TOKEN"]
+	_, ok := gotEnv["TSURU_TOKEN"]
 	c.Assert(ok, check.Equals, true)
 	gotEnv["TSURU_TOKEN"] = expectedEnv["TSURU_TOKEN"]
 	c.Assert(gotEnv, check.DeepEquals, expectedEnv)
@@ -124,10 +120,6 @@ func (s *S) TestCreateBsContainerTaggedBs(c *check.C) {
 	container, err := client.InspectContainer(containers[0].ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(container.Name, check.Equals, "big-sibling")
-	expectedBinding := []docker.PortBinding{{HostIP: "0.0.0.0", HostPort: "1514"}}
-	c.Assert(container.HostConfig.PortBindings[docker.Port("514/udp")], check.DeepEquals, expectedBinding)
-	_, ok := container.Config.ExposedPorts[docker.Port("514/udp")]
-	c.Assert(ok, check.Equals, true)
 	c.Assert(container.Config.Image, check.Equals, "localhost:5000/myregistry/tsuru/bs:v1")
 	c.Assert(container.HostConfig.RestartPolicy, check.Equals, docker.AlwaysRestart())
 	c.Assert(container.HostConfig.Privileged, check.Equals, true)
@@ -137,10 +129,10 @@ func (s *S) TestCreateBsContainerTaggedBs(c *check.C) {
 		"DOCKER_ENDPOINT":       server.URL(),
 		"TSURU_ENDPOINT":        "http://127.0.0.1:8080/",
 		"TSURU_TOKEN":           "abc123",
-		"SYSLOG_LISTEN_ADDRESS": "udp://0.0.0.0:514",
+		"SYSLOG_LISTEN_ADDRESS": "udp://0.0.0.0:1514",
 	}
 	gotEnv := parseEnvs(container.Config.Env)
-	_, ok = gotEnv["TSURU_TOKEN"]
+	_, ok := gotEnv["TSURU_TOKEN"]
 	c.Assert(ok, check.Equals, true)
 	gotEnv["TSURU_TOKEN"] = expectedEnv["TSURU_TOKEN"]
 	c.Assert(gotEnv, check.DeepEquals, expectedEnv)
@@ -180,10 +172,6 @@ func (s *S) TestCreateBsContainerAlreadyPinned(c *check.C) {
 	container, err := client.InspectContainer(containers[0].ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(container.Name, check.Equals, "big-sibling")
-	expectedBinding := []docker.PortBinding{{HostIP: "0.0.0.0", HostPort: "1514"}}
-	c.Assert(container.HostConfig.PortBindings[docker.Port("514/udp")], check.DeepEquals, expectedBinding)
-	_, ok := container.Config.ExposedPorts[docker.Port("514/udp")]
-	c.Assert(ok, check.Equals, true)
 	c.Assert(container.Config.Image, check.Equals, "localhost:5000/myregistry/tsuru/bs@"+digest)
 	c.Assert(container.HostConfig.RestartPolicy, check.Equals, docker.AlwaysRestart())
 	c.Assert(container.HostConfig.Privileged, check.Equals, true)
@@ -193,10 +181,10 @@ func (s *S) TestCreateBsContainerAlreadyPinned(c *check.C) {
 		"DOCKER_ENDPOINT":       server.URL(),
 		"TSURU_ENDPOINT":        "http://127.0.0.1:8080/",
 		"TSURU_TOKEN":           "abc123",
-		"SYSLOG_LISTEN_ADDRESS": "udp://0.0.0.0:514",
+		"SYSLOG_LISTEN_ADDRESS": "udp://0.0.0.0:1514",
 	}
 	gotEnv := parseEnvs(container.Config.Env)
-	_, ok = gotEnv["TSURU_TOKEN"]
+	_, ok := gotEnv["TSURU_TOKEN"]
 	c.Assert(ok, check.Equals, true)
 	gotEnv["TSURU_TOKEN"] = expectedEnv["TSURU_TOKEN"]
 	c.Assert(gotEnv, check.DeepEquals, expectedEnv)
@@ -244,22 +232,18 @@ func (s *S) TestCreateBsContainerSocketAndCustomSysLogPort(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(container.Name, check.Equals, "big-sibling")
 	c.Assert(container.HostConfig.Binds, check.DeepEquals, []string{"/tmp/docker.sock:/var/run/docker.sock:rw"})
-	expectedBinding := []docker.PortBinding{{HostIP: "0.0.0.0", HostPort: "1519"}}
-	c.Assert(container.HostConfig.PortBindings[docker.Port("514/udp")], check.DeepEquals, expectedBinding)
-	_, ok := container.Config.ExposedPorts[docker.Port("514/udp")]
-	c.Assert(ok, check.Equals, true)
 	c.Assert(container.Config.Image, check.Equals, "myregistry/tsuru/bs")
 	c.Assert(container.State.Running, check.Equals, true)
 	expectedEnv := map[string]string{
 		"DOCKER_ENDPOINT":       "unix:///var/run/docker.sock",
 		"TSURU_ENDPOINT":        "http://127.0.0.1:8080/",
 		"TSURU_TOKEN":           "abc123",
-		"SYSLOG_LISTEN_ADDRESS": "udp://0.0.0.0:514",
+		"SYSLOG_LISTEN_ADDRESS": "udp://0.0.0.0:1519",
 		"VAR1":                  "VALUE1",
 		"VAR2":                  "VALUE_FOR_POOL1",
 	}
 	gotEnv := parseEnvs(container.Config.Env)
-	_, ok = gotEnv["TSURU_TOKEN"]
+	_, ok := gotEnv["TSURU_TOKEN"]
 	c.Assert(ok, check.Equals, true)
 	gotEnv["TSURU_TOKEN"] = expectedEnv["TSURU_TOKEN"]
 	c.Assert(gotEnv, check.DeepEquals, expectedEnv)

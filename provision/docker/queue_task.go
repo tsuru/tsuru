@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"fmt"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -126,18 +125,9 @@ func createBsContainer(dockerEndpoint, poolName string) error {
 		Privileged:    true,
 		NetworkMode:   "host",
 	}
-	sysLogExternalPort := getBsSysLogPort()
 	socket, _ := config.GetString("docker:bs:socket")
 	if socket != "" {
 		hostConfig.Binds = []string{fmt.Sprintf("%s:/var/run/docker.sock:rw", socket)}
-	}
-	hostConfig.PortBindings = map[docker.Port][]docker.PortBinding{
-		docker.Port("514/udp"): {
-			docker.PortBinding{
-				HostIP:   "0.0.0.0",
-				HostPort: strconv.Itoa(sysLogExternalPort),
-			},
-		},
 	}
 	env, err := bsConf.envListForEndpoint(dockerEndpoint, poolName)
 	if err != nil {
@@ -149,9 +139,6 @@ func createBsContainer(dockerEndpoint, poolName string) error {
 		Config: &docker.Config{
 			Image: bsImage,
 			Env:   env,
-			ExposedPorts: map[docker.Port]struct{}{
-				docker.Port("514/udp"): {},
-			},
 		},
 	}
 	container, err := client.CreateContainer(opts)
