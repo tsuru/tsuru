@@ -1093,3 +1093,56 @@ func (s *InstanceSuite) TestBindAppMultipleApps(c *check.C) {
 	sort.Strings(siDB.Apps)
 	c.Assert(siDB.Apps, check.DeepEquals, expectedNames)
 }
+
+func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(4))
+	var reqs []*http.Request
+	var mut sync.Mutex
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mut.Lock()
+		defer mut.Unlock()
+		reqs = append(reqs, r)
+		w.WriteHeader(http.StatusOK)
+		if r.URL.Path == "/resources/my-mysql/bind-app" && r.Method == "POST" {
+			w.Write([]byte(`{"ENV1": "VAL1", "ENV2": "VAL2"}`))
+		}
+	}))
+	defer ts.Close()
+	serv := Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := serv.Create()
+	c.Assert(err, check.IsNil)
+	si := ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+	}
+	err = si.Create()
+	c.Assert(err, check.IsNil)
+	var apps []bind.App
+	for i := 0; i < 100; i++ {
+		name := fmt.Sprintf("myapp-%02d", i)
+		app := provisiontest.NewFakeApp(name, "static", 2)
+		apps = append(apps, app)
+		var buf bytes.Buffer
+		err := si.BindApp(app, &buf)
+		c.Assert(err, check.IsNil)
+	}
+	siDB, err := GetServiceInstance(si.Name, s.user)
+	c.Assert(err, check.IsNil)
+	wg := sync.WaitGroup{}
+	for _, app := range apps {
+		wg.Add(1)
+		go func(app bind.App) {
+			defer wg.Done()
+			var buf bytes.Buffer
+			err := siDB.UnbindApp(app, &buf)
+			c.Assert(err, check.IsNil)
+		}(app)
+	}
+	wg.Wait()
+	c.Assert(reqs, check.HasLen, 600)
+	siDB, err = GetServiceInstance(si.Name, s.user)
+	c.Assert(err, check.IsNil)
+	sort.Strings(siDB.Apps)
+	c.Assert(siDB.Apps, check.DeepEquals, []string{})
+}
