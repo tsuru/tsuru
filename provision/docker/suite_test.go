@@ -214,12 +214,8 @@ func (s *S) addServiceInstance(c *check.C, appName string, units []string, fn ht
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
-	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{}, Units: units}
+	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{}, Units: units, Apps: []string{appName}}
 	err = instance.Create()
-	c.Assert(err, check.IsNil)
-	err = instance.AddApp(appName)
-	c.Assert(err, check.IsNil)
-	err = s.storage.ServiceInstances().Update(bson.M{"name": instance.Name}, instance)
 	c.Assert(err, check.IsNil)
 	return ret
 }
