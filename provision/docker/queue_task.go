@@ -45,7 +45,7 @@ func (t runBs) Run(job monsterqueue.Job) {
 	for key, value := range rawMetadata {
 		metadata[key] = value.(string)
 	}
-	err = createBsContainer(dockerEndpoint, metadata["pool"])
+	err = createBsContainer(dockerEndpoint, metadata["pool"], true)
 	if err != nil {
 		node.CreationStatus = cluster.NodeCreationStatusError
 		node.Metadata = map[string]string{"creationError": err.Error()}
@@ -103,7 +103,7 @@ func (runBs) waitDocker(endpoint string) error {
 	}
 }
 
-func createBsContainer(dockerEndpoint, poolName string) error {
+func createBsContainer(dockerEndpoint, poolName string, relaunch bool) error {
 	client, err := docker.NewClient(dockerEndpoint)
 	if err != nil {
 		return err
@@ -142,7 +142,7 @@ func createBsContainer(dockerEndpoint, poolName string) error {
 		},
 	}
 	container, err := client.CreateContainer(opts)
-	if err == docker.ErrContainerAlreadyExists {
+	if relaunch && err == docker.ErrContainerAlreadyExists {
 		err = client.RemoveContainer(docker.RemoveContainerOptions{ID: opts.Name, Force: true})
 		if err != nil {
 			return err

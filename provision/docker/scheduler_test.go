@@ -8,9 +8,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/fsouza/go-dockerclient"
+	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
@@ -59,33 +61,31 @@ func (s *S) TestSchedulerSchedule(c *check.C) {
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	s.p.cluster = clusterInstance
 	c.Assert(err, check.IsNil)
+	server1, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer server1.Stop()
+	server2, err := testing.NewServer("localhost:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer server2.Stop()
 	err = clusterInstance.Register(cluster.Node{
-		Address:  "http://url0:1234",
+		Address:  server1.URL(),
 		Metadata: map[string]string{"pool": "pool1"},
 	})
 	c.Assert(err, check.IsNil)
+	localURL := strings.Replace(server2.URL(), "127.0.0.1", "localhost", -1)
 	err = clusterInstance.Register(cluster.Node{
-		Address:  "http://url1:1234",
-		Metadata: map[string]string{"pool": "pool1"},
-	})
-	c.Assert(err, check.IsNil)
-	err = clusterInstance.Register(cluster.Node{
-		Address:  "http://url2:1234",
+		Address:  localURL,
 		Metadata: map[string]string{"pool": "pool1"},
 	})
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
 	node, err := scheduler.Schedule(clusterInstance, opts, []string{a1.Name, "web"})
 	c.Assert(err, check.IsNil)
-	c.Check(node.Address, check.Equals, "http://url0:1234")
+	c.Check(node.Address, check.Equals, server1.URL())
 	opts = docker.CreateContainerOptions{Name: cont2.Name}
 	node, err = scheduler.Schedule(clusterInstance, opts, []string{a2.Name, "web"})
 	c.Assert(err, check.IsNil)
-	c.Check(node.Address, check.Equals, "http://url1:1234")
-	opts = docker.CreateContainerOptions{Name: cont3.Name}
-	node, err = scheduler.Schedule(clusterInstance, opts, []string{a3.Name, "web"})
-	c.Assert(err, check.IsNil)
-	c.Check(node.Address, check.Equals, "http://url2:1234")
+	c.Check(node.Address, check.Equals, localURL)
 }
 
 func (s *S) TestSchedulerScheduleByTeamOwner(c *check.C) {
@@ -111,14 +111,14 @@ func (s *S) TestSchedulerScheduleByTeamOwner(c *check.C) {
 	s.p.cluster = clusterInstance
 	c.Assert(err, check.IsNil)
 	err = clusterInstance.Register(cluster.Node{
-		Address:  "http://url0:1234",
+		Address:  s.server.URL(),
 		Metadata: map[string]string{"pool": "pool1"},
 	})
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
 	node, err := scheduler.Schedule(clusterInstance, opts, []string{a1.Name, "web"})
 	c.Assert(err, check.IsNil)
-	c.Check(node.Address, check.Equals, "http://url0:1234")
+	c.Check(node.Address, check.Equals, s.server.URL())
 }
 
 func (s *S) TestSchedulerScheduleByTeams(c *check.C) {
@@ -144,14 +144,14 @@ func (s *S) TestSchedulerScheduleByTeams(c *check.C) {
 	s.p.cluster = clusterInstance
 	c.Assert(err, check.IsNil)
 	err = clusterInstance.Register(cluster.Node{
-		Address:  "http://url0:1234",
+		Address:  s.server.URL(),
 		Metadata: map[string]string{"pool": "pool1"},
 	})
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
 	node, err := scheduler.Schedule(clusterInstance, opts, []string{a1.Name, "web"})
 	c.Assert(err, check.IsNil)
-	c.Check(node.Address, check.Equals, "http://url0:1234")
+	c.Check(node.Address, check.Equals, s.server.URL())
 }
 
 func (s *S) TestSchedulerScheduleNoName(c *check.C) {
@@ -184,25 +184,27 @@ func (s *S) TestSchedulerScheduleNoName(c *check.C) {
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	s.p.cluster = clusterInstance
 	c.Assert(err, check.IsNil)
+	server1, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer server1.Stop()
+	server2, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer server2.Stop()
+	localURL := strings.Replace(server2.URL(), "127.0.0.1", "localhost", -1)
 	err = clusterInstance.Register(cluster.Node{
-		Address:  "http://url0:1234",
+		Address:  server1.URL(),
 		Metadata: map[string]string{"pool": "pool1"},
 	})
 	c.Assert(err, check.IsNil)
 	err = clusterInstance.Register(cluster.Node{
-		Address:  "http://url1:1234",
-		Metadata: map[string]string{"pool": "pool1"},
-	})
-	c.Assert(err, check.IsNil)
-	err = clusterInstance.Register(cluster.Node{
-		Address:  "http://url2:1234",
+		Address:  localURL,
 		Metadata: map[string]string{"pool": "pool1"},
 	})
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{}
 	node, err := scheduler.Schedule(clusterInstance, opts, []string{a1.Name, "web"})
 	c.Assert(err, check.IsNil)
-	c.Check(node.Address, check.Equals, "http://url0:1234")
+	c.Check(node.Address, check.Equals, server1.URL())
 	container, err := s.p.getContainer(cont1.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(container.HostAddr, check.Equals, "")
@@ -224,14 +226,14 @@ func (s *S) TestSchedulerScheduleDefaultPool(c *check.C) {
 	s.p.cluster = clusterInstance
 	c.Assert(err, check.IsNil)
 	err = clusterInstance.Register(cluster.Node{
-		Address:  "http://url0:1234",
+		Address:  s.server.URL(),
 		Metadata: map[string]string{"pool": "test-default"},
 	})
 	c.Assert(err, check.IsNil)
 	opts := docker.CreateContainerOptions{Name: cont1.Name}
 	node, err := scheduler.Schedule(clusterInstance, opts, []string{a1.Name, "web"})
 	c.Assert(err, check.IsNil)
-	c.Check(node.Address, check.Equals, "http://url0:1234")
+	c.Check(node.Address, check.Equals, s.server.URL())
 }
 
 func (s *S) TestSchedulerNoDefaultPool(c *check.C) {
@@ -322,19 +324,26 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 	err = provision.AddPool(o)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("mypool")
+	server1, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer server1.Stop()
+	server2, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer server2.Stop()
+	localURL := strings.Replace(server2.URL(), "127.0.0.1", "localhost", -1)
 	clusterInstance, err := cluster.New(&segSched, &cluster.MapStorage{},
-		cluster.Node{Address: "http://server1:1234", Metadata: map[string]string{
+		cluster.Node{Address: server1.URL(), Metadata: map[string]string{
 			"totalMemory": "100000",
 			"pool":        "mypool",
 		}},
-		cluster.Node{Address: "http://server2:1234", Metadata: map[string]string{
+		cluster.Node{Address: localURL, Metadata: map[string]string{
 			"totalMemory": "100000",
 			"pool":        "mypool",
 		}},
 	)
 	c.Assert(err, check.Equals, nil)
 	s.p.cluster = clusterInstance
-	cont1 := container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "server1"}
+	cont1 := container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "127.0.0.1"}
 	contColl := s.p.collection()
 	defer contColl.Close()
 	defer contColl.RemoveAll(bson.M{"appname": "skyrim"})
@@ -352,16 +361,16 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 		c.Assert(err, check.IsNil)
 		c.Assert(node, check.NotNil)
 	}
-	n, err := contColl.Find(bson.M{"hostaddr": "server1"}).Count()
+	n, err := contColl.Find(bson.M{"hostaddr": "127.0.0.1"}).Count()
 	c.Assert(err, check.Equals, nil)
 	c.Check(n, check.Equals, 2)
-	n, err = contColl.Find(bson.M{"hostaddr": "server2"}).Count()
+	n, err = contColl.Find(bson.M{"hostaddr": "localhost"}).Count()
 	c.Assert(err, check.Equals, nil)
 	c.Check(n, check.Equals, 4)
-	n, err = contColl.Find(bson.M{"hostaddr": "server1", "appname": "oblivion"}).Count()
+	n, err = contColl.Find(bson.M{"hostaddr": "127.0.0.1", "appname": "oblivion"}).Count()
 	c.Assert(err, check.Equals, nil)
 	c.Check(n, check.Equals, 1)
-	n, err = contColl.Find(bson.M{"hostaddr": "server2", "appname": "oblivion"}).Count()
+	n, err = contColl.Find(bson.M{"hostaddr": "localhost", "appname": "oblivion"}).Count()
 	c.Assert(err, check.Equals, nil)
 	c.Check(n, check.Equals, 4)
 	cont := container{ID: "post-error", Name: "post-error-1", AppName: "oblivion"}
@@ -398,19 +407,26 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 	err = provision.AddPool(o)
 	c.Assert(err, check.IsNil)
 	defer provision.RemovePool("mypool")
+	server1, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer server1.Stop()
+	server2, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer server2.Stop()
+	localURL := strings.Replace(server2.URL(), "127.0.0.1", "localhost", -1)
 	clusterInstance, err := cluster.New(&segSched, &cluster.MapStorage{},
-		cluster.Node{Address: "http://server1:1234", Metadata: map[string]string{
+		cluster.Node{Address: server1.URL(), Metadata: map[string]string{
 			"totalMemory": "100000",
 			"pool":        "mypool",
 		}},
-		cluster.Node{Address: "http://server2:1234", Metadata: map[string]string{
+		cluster.Node{Address: localURL, Metadata: map[string]string{
 			"totalMemory": "100000",
 			"pool":        "mypool",
 		}},
 	)
 	c.Assert(err, check.Equals, nil)
 	s.p.cluster = clusterInstance
-	cont1 := container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "server1"}
+	cont1 := container{ID: "pre1", Name: "existingUnit1", AppName: "skyrim", HostAddr: "127.0.0.1"}
 	contColl := s.p.collection()
 	defer contColl.Close()
 	defer contColl.RemoveAll(bson.M{"appname": "skyrim"})
@@ -428,16 +444,16 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 		c.Assert(err, check.IsNil)
 		c.Assert(node, check.NotNil)
 	}
-	n, err := contColl.Find(bson.M{"hostaddr": "server1"}).Count()
+	n, err := contColl.Find(bson.M{"hostaddr": "127.0.0.1"}).Count()
 	c.Assert(err, check.Equals, nil)
 	c.Check(n, check.Equals, 2)
-	n, err = contColl.Find(bson.M{"hostaddr": "server2"}).Count()
+	n, err = contColl.Find(bson.M{"hostaddr": "localhost"}).Count()
 	c.Assert(err, check.Equals, nil)
 	c.Check(n, check.Equals, 4)
-	n, err = contColl.Find(bson.M{"hostaddr": "server1", "appname": "oblivion"}).Count()
+	n, err = contColl.Find(bson.M{"hostaddr": "127.0.0.1", "appname": "oblivion"}).Count()
 	c.Assert(err, check.Equals, nil)
 	c.Check(n, check.Equals, 1)
-	n, err = contColl.Find(bson.M{"hostaddr": "server2", "appname": "oblivion"}).Count()
+	n, err = contColl.Find(bson.M{"hostaddr": "localhost", "appname": "oblivion"}).Count()
 	c.Assert(err, check.Equals, nil)
 	c.Check(n, check.Equals, 4)
 	cont := container{ID: "post-error", Name: "post-error-1", AppName: "oblivion"}
@@ -761,13 +777,20 @@ func (s *S) TestGetRemovableContainer(c *check.C) {
 	clusterInstance, err := cluster.New(&scheduler, &cluster.MapStorage{})
 	s.p.cluster = clusterInstance
 	c.Assert(err, check.IsNil)
+	server1, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer server1.Stop()
+	server2, err := testing.NewServer("127.0.0.1:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	defer server2.Stop()
+	localURL := strings.Replace(server2.URL(), "127.0.0.1", "localhost", -1)
 	err = clusterInstance.Register(cluster.Node{
-		Address:  "http://url0:1234",
+		Address:  server1.URL(),
 		Metadata: map[string]string{"pool": "pool1"},
 	})
 	c.Assert(err, check.IsNil)
 	err = clusterInstance.Register(cluster.Node{
-		Address:  "http://url1:1234",
+		Address:  localURL,
 		Metadata: map[string]string{"pool": "pool1"},
 	})
 	c.Assert(err, check.IsNil)

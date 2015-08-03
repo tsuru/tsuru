@@ -241,7 +241,7 @@ func (p *dockerProvisioner) recreateBsContainers() error {
 			node := &nodes[i]
 			pool := node.Metadata["pool"]
 			log.Debugf("[bs containers] recreating container in %s [%s]", node.Address, pool)
-			err := createBsContainer(node.Address, pool)
+			err := createBsContainer(node.Address, pool, true)
 			if err != nil {
 				msg := fmt.Sprintf("[bs containers] failed to create container in %s [%s]: %s", node.Address, pool, err)
 				log.Error(msg)

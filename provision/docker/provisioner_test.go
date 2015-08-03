@@ -950,7 +950,7 @@ func (s *S) TestProvisionerRemoveUnitsEmptyProcess(c *check.C) {
 	s.p.scheduler = &scheduler
 	s.p.cluster = clusterInstance
 	err = clusterInstance.Register(cluster.Node{
-		Address:  "http://url0:1234",
+		Address:  s.server.URL(),
 		Metadata: map[string]string{"pool": "pool1"},
 	})
 	c.Assert(err, check.IsNil)
@@ -1050,7 +1050,7 @@ func (s *S) TestProvisionerRemoveUnitsInvalidProcess(c *check.C) {
 	s.p.cluster = clusterInstance
 	c.Assert(err, check.IsNil)
 	err = clusterInstance.Register(cluster.Node{
-		Address:  "http://url0:1234",
+		Address:  s.server.URL(),
 		Metadata: map[string]string{"pool": "pool1"},
 	})
 	c.Assert(err, check.IsNil)

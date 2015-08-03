@@ -54,6 +54,14 @@ func (s *segregatedScheduler) Schedule(c *cluster.Cluster, opts docker.CreateCon
 	if err != nil {
 		return cluster.Node{}, err
 	}
+	var pool string
+	if len(nodes) > 0 {
+		pool = nodes[0].Metadata["pool"]
+	}
+	err = createBsContainer(node, pool, false)
+	if err != nil && err != docker.ErrContainerAlreadyExists {
+		return cluster.Node{Address: node}, err
+	}
 	return cluster.Node{Address: node}, nil
 }
 
