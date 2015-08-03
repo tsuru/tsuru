@@ -104,17 +104,31 @@ func (r *vulcandRouter) AddBackend(name string) error {
 }
 
 func (r *vulcandRouter) RemoveBackend(name string) error {
-	frontendKey := engine.FrontendKey{Id: r.frontendName(r.frontendHostname(name))}
-	err := r.client.DeleteFrontend(frontendKey)
+	backendKey := engine.BackendKey{Id: r.backendName(name)}
+	frontends, err := r.client.GetFrontends()
+	if err != nil {
+		return err
+	}
+	toRemove := []engine.FrontendKey{}
+	for _, f := range frontends {
+		if f.BackendId == backendKey.Id {
+			toRemove = append(toRemove, engine.FrontendKey{Id: f.GetId()})
+		}
+	}
+	for _, fk := range toRemove {
+		err := r.client.DeleteFrontend(fk)
+		if err != nil {
+			if _, ok := err.(*engine.NotFoundError); ok {
+				return router.ErrBackendNotFound
+			}
+			return err
+		}
+	}
+	err = r.client.DeleteBackend(backendKey)
 	if err != nil {
 		if _, ok := err.(*engine.NotFoundError); ok {
 			return router.ErrBackendNotFound
 		}
-		return err
-	}
-	backendKey := engine.BackendKey{Id: r.backendName(name)}
-	err = r.client.DeleteBackend(backendKey)
-	if err != nil {
 		return err
 	}
 	return router.Remove(name)

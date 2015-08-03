@@ -204,7 +204,7 @@ func (s *S) TestRemoveBackendNotExist(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(backends, check.HasLen, 0)
 	err = vRouter.RemoveBackend("myapp")
-	c.Assert(err, check.ErrorMatches, router.ErrBackendNotFound.Error())
+	c.Assert(err, check.Equals, router.ErrBackendNotFound)
 }
 
 func (s *S) TestAddRoute(c *check.C) {

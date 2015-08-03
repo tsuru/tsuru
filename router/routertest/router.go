@@ -101,6 +101,11 @@ func (r *fakeRouter) RemoveBackend(name string) error {
 	}
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
+	for cname, backend := range r.cnames {
+		if backend == backendName {
+			delete(r.cnames, cname)
+		}
+	}
 	delete(r.backends, backendName)
 	return router.Remove(backendName)
 }

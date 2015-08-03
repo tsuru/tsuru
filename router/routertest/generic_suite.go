@@ -218,3 +218,23 @@ func (s *RouterSuite) TestSetCNameSubdomainError(c *check.C) {
 	err = s.Router.SetCName("sub."+addr, name)
 	c.Assert(err, check.Equals, router.ErrCNameNotAllowed)
 }
+
+func (s *RouterSuite) TestRemoveBackendWithCName(c *check.C) {
+	name := "backend1"
+	err := s.Router.AddBackend(name)
+	c.Assert(err, check.IsNil)
+	addr1, err := url.Parse("http://10.10.10.10:8080")
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddRoute(name, addr1)
+	c.Assert(err, check.IsNil)
+	err = s.Router.SetCName("my.host.com", name)
+	c.Assert(err, check.IsNil)
+	err = s.Router.RemoveBackend(name)
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddBackend(name)
+	c.Assert(err, check.IsNil)
+	err = s.Router.SetCName("my.host.com", name)
+	c.Assert(err, check.IsNil)
+	err = s.Router.RemoveBackend(name)
+	c.Assert(err, check.IsNil)
+}
