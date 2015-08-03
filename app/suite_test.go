@@ -174,12 +174,8 @@ func (s *S) addServiceInstance(c *check.C, appName string, fn http.HandlerFunc) 
 	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
 	err := srvc.Create()
 	c.Assert(err, check.IsNil)
-	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}}
+	instance := service.ServiceInstance{Name: "my-mysql", ServiceName: "mysql", Teams: []string{s.team.Name}, Apps: []string{appName}}
 	err = instance.Create()
-	c.Assert(err, check.IsNil)
-	err = instance.AddApp(appName)
-	c.Assert(err, check.IsNil)
-	err = s.conn.ServiceInstances().Update(bson.M{"name": instance.Name}, instance)
 	c.Assert(err, check.IsNil)
 	return ret
 }
