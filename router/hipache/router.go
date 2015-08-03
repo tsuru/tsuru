@@ -111,6 +111,9 @@ func (r *hipacheRouter) RemoveBackend(name string) error {
 	if err != nil {
 		return err
 	}
+	if backendName != name {
+		return router.ErrBackendSwapped
+	}
 	domain, err := config.GetString(r.prefix + ":domain")
 	if err != nil {
 		return &routeError{"remove", err}

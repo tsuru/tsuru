@@ -104,7 +104,14 @@ func (r *vulcandRouter) AddBackend(name string) error {
 }
 
 func (r *vulcandRouter) RemoveBackend(name string) error {
-	backendKey := engine.BackendKey{Id: r.backendName(name)}
+	usedName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	if usedName != name {
+		return router.ErrBackendSwapped
+	}
+	backendKey := engine.BackendKey{Id: r.backendName(usedName)}
 	frontends, err := r.client.GetFrontends()
 	if err != nil {
 		return err

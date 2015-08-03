@@ -96,6 +96,9 @@ func (r *fakeRouter) RemoveBackend(name string) error {
 	if err != nil {
 		return err
 	}
+	if backendName != name {
+		return router.ErrBackendSwapped
+	}
 	if !r.HasBackend(backendName) {
 		return router.ErrBackendNotFound
 	}

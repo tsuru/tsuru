@@ -238,3 +238,22 @@ func (s *RouterSuite) TestRemoveBackendWithCName(c *check.C) {
 	err = s.Router.RemoveBackend(name)
 	c.Assert(err, check.IsNil)
 }
+
+func (s *RouterSuite) TestRemoveBackendAfterSwap(c *check.C) {
+	backend1 := "mybackend1"
+	backend2 := "mybackend2"
+	addr1, _ := url.Parse("http://127.0.0.1")
+	addr2, _ := url.Parse("http://10.10.10.10")
+	err := s.Router.AddBackend(backend1)
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddRoute(backend1, addr1)
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddBackend(backend2)
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddRoute(backend2, addr2)
+	c.Assert(err, check.IsNil)
+	err = s.Router.Swap(backend1, backend2)
+	c.Assert(err, check.IsNil)
+	err = s.Router.RemoveBackend(backend1)
+	c.Assert(err, check.Equals, router.ErrBackendSwapped)
+}

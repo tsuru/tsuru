@@ -26,6 +26,7 @@ type routerFactory func(string) (Router, error)
 var (
 	ErrBackendExists   = errors.New("Backend already exists")
 	ErrBackendNotFound = errors.New("Backend not found")
+	ErrBackendSwapped  = errors.New("Backend is swapped cannot remove")
 	ErrRouteExists     = errors.New("Route already exists")
 	ErrRouteNotFound   = errors.New("Route not found")
 	ErrCNameExists     = errors.New("CName already exists")

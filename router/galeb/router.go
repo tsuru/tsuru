@@ -141,6 +141,9 @@ func (r *galebRouter) RemoveBackend(name string) error {
 	if err != nil {
 		return err
 	}
+	if backendName != name {
+		return router.ErrBackendSwapped
+	}
 	data, err := getGalebData(backendName)
 	if err != nil {
 		return err
