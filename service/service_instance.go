@@ -125,15 +125,6 @@ func (si *ServiceInstance) Service() *Service {
 	return &s
 }
 
-func (si *ServiceInstance) AddApp(appName string) error {
-	index := si.FindApp(appName)
-	if index > -1 {
-		return stderrors.New("This instance already has this app.")
-	}
-	si.Apps = append(si.Apps, appName)
-	return nil
-}
-
 func (si *ServiceInstance) FindApp(appName string) int {
 	index := -1
 	for i, name := range si.Apps {
@@ -145,38 +136,13 @@ func (si *ServiceInstance) FindApp(appName string) int {
 	return index
 }
 
-func (si *ServiceInstance) RemoveApp(appName string) error {
-	index := si.FindApp(appName)
-	if index < 0 {
-		return stderrors.New("This app is not bound to this service instance.")
-	}
-	copy(si.Apps[index:], si.Apps[index+1:])
-	si.Apps = si.Apps[:len(si.Apps)-1]
-	return nil
-}
-
 func (si *ServiceInstance) update(update bson.M) error {
-	var doc interface{}
-	if update == nil {
-		doc = si
-	} else {
-		doc = update
-	}
 	conn, err := db.Conn()
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	return conn.ServiceInstances().Update(bson.M{"name": si.Name}, doc)
-}
-
-func (si *ServiceInstance) reload() error {
-	conn, err := db.Conn()
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	return conn.ServiceInstances().Find(bson.M{"name": si.Name}).One(si)
+	return conn.ServiceInstances().Update(bson.M{"name": si.Name}, update)
 }
 
 // BindApp makes the bind between the service instance and an app.

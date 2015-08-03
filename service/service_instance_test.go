@@ -81,26 +81,6 @@ func (s *InstanceSuite) TestRetrieveAssociatedService(c *check.C) {
 	c.Assert(service.Name, check.Equals, rService.Name)
 }
 
-func (s *InstanceSuite) TestAddApp(c *check.C) {
-	instance := ServiceInstance{
-		Name: "myinstance",
-		Apps: []string{},
-	}
-	err := instance.AddApp("app1")
-	c.Assert(err, check.IsNil)
-	c.Assert(instance.Apps, check.DeepEquals, []string{"app1"})
-}
-
-func (s *InstanceSuite) TestAddAppReturnErrorIfTheAppIsAlreadyPresent(c *check.C) {
-	instance := ServiceInstance{
-		Name: "myinstance",
-		Apps: []string{"app1"},
-	}
-	err := instance.AddApp("app1")
-	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, "^This instance already has this app.$")
-}
-
 func (s *InstanceSuite) TestFindApp(c *check.C) {
 	instance := ServiceInstance{
 		Name: "myinstance",
@@ -109,42 +89,6 @@ func (s *InstanceSuite) TestFindApp(c *check.C) {
 	c.Assert(instance.FindApp("app1"), check.Equals, 0)
 	c.Assert(instance.FindApp("app2"), check.Equals, 1)
 	c.Assert(instance.FindApp("what"), check.Equals, -1)
-}
-
-func (s *InstanceSuite) TestRemoveApp(c *check.C) {
-	instance := ServiceInstance{
-		Name: "myinstance",
-		Apps: []string{"app1", "app2", "app3"},
-	}
-	err := instance.RemoveApp("app2")
-	c.Assert(err, check.IsNil)
-	c.Assert(instance.Apps, check.DeepEquals, []string{"app1", "app3"})
-	err = instance.RemoveApp("app3")
-	c.Assert(err, check.IsNil)
-	c.Assert(instance.Apps, check.DeepEquals, []string{"app1"})
-}
-
-func (s *InstanceSuite) TestRemoveAppReturnsErrorWhenTheAppIsNotBoundToTheInstance(c *check.C) {
-	instance := ServiceInstance{
-		Name: "myinstance",
-		Apps: []string{"app1", "app2", "app3"},
-	}
-	err := instance.RemoveApp("app4")
-	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, "^This app is not bound to this service instance.$")
-}
-
-func (s *InstanceSuite) TestReload(c *check.C) {
-	instance := ServiceInstance{Name: "myinstance", Apps: []string{"app1", "app2", "app3"}}
-	err := instance.Create()
-	c.Assert(err, check.IsNil)
-	defer s.conn.ServiceInstances().Remove(bson.M{"name": instance.Name})
-	instance.Apps = nil
-	err = s.conn.ServiceInstances().Update(bson.M{"name": instance.Name}, bson.M{"$addToSet": bson.M{"apps": "app4"}})
-	c.Assert(err, check.IsNil)
-	err = instance.reload()
-	c.Assert(err, check.IsNil)
-	c.Assert(instance.Apps, check.DeepEquals, []string{"app1", "app2", "app3", "app4"})
 }
 
 func (s *InstanceSuite) TestBindApp(c *check.C) {
@@ -865,7 +809,6 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 	err = si.UnbindApp(a, &buf)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Matches, "remove instance")
-	c.Assert(si.Apps, check.DeepEquals, []string{})
 	c.Assert(reqs, check.HasLen, 5)
 	c.Assert(reqs[0].Method, check.Equals, "POST")
 	c.Assert(reqs[0].URL.Path, check.Equals, "/resources/my-mysql/bind")

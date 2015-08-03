@@ -298,12 +298,10 @@ var unbindAppDB = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		args.serviceInstance.RemoveApp(args.app.GetName())
 		return nil, err
 	},
 	Backward: func(ctx action.BWContext) {
 		args, _ := ctx.Params[0].(*bindPipelineArgs)
-		args.serviceInstance.AddApp(args.app.GetName())
 		err := args.serviceInstance.update(bson.M{"$addToSet": bson.M{"apps": args.app.GetName()}})
 		if err != nil {
 			log.Errorf("[unbind-app-db backward] failed to rebind app in db: %s", err)
