@@ -5,6 +5,8 @@
 package router
 
 import (
+	"errors"
+
 	"github.com/tsuru/config"
 	"gopkg.in/check.v1"
 )
@@ -137,4 +139,11 @@ func (s *S) TestListIncludesOnlyLegacyHipacheRouter(c *check.C) {
 	routers, err := List()
 	c.Assert(err, check.IsNil)
 	c.Assert(routers, check.DeepEquals, expected)
+}
+
+func (s *S) TestRouteError(c *check.C) {
+	err := &RouterError{Op: "add", Err: errors.New("Fatal error.")}
+	c.Assert(err.Error(), check.Equals, "[router add] Fatal error.")
+	err = &RouterError{Op: "del", Err: errors.New("Fatal error.")}
+	c.Assert(err.Error(), check.Equals, "[router del] Fatal error.")
 }

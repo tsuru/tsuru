@@ -30,15 +30,6 @@ type vulcandRouter struct {
 	domain string
 }
 
-type vulcandErr struct {
-	err error
-	op  string
-}
-
-func (e *vulcandErr) Error() string {
-	return fmt.Sprintf("[vulcand %s] %s", e.op, e.err)
-}
-
 func createRouter(prefix string) (router.Router, error) {
 	vURL, err := config.GetString(prefix + ":api-url")
 	if err != nil {
@@ -89,7 +80,7 @@ func (r *vulcandRouter) AddBackend(name string) error {
 		engine.HTTPBackendSettings{},
 	)
 	if err != nil {
-		return &vulcandErr{err: err, op: "add-backend"}
+		return &router.RouterError{Err: err, Op: "add-backend"}
 	}
 	err = r.client.UpsertBackend(*backend)
 	if err != nil {
@@ -102,12 +93,12 @@ func (r *vulcandRouter) AddBackend(name string) error {
 		engine.HTTPFrontendSettings{},
 	)
 	if err != nil {
-		return &vulcandErr{err: err, op: "add-backend"}
+		return &router.RouterError{Err: err, Op: "add-backend"}
 	}
 	err = r.client.UpsertFrontend(*frontend, engine.NoTTL)
 	if err != nil {
 		r.client.DeleteBackend(backendKey)
-		return &vulcandErr{err: err, op: "add-backend"}
+		return &router.RouterError{Err: err, Op: "add-backend"}
 	}
 	return router.Store(name, name, routerName)
 }
@@ -123,7 +114,7 @@ func (r *vulcandRouter) RemoveBackend(name string) error {
 	backendKey := engine.BackendKey{Id: r.backendName(usedName)}
 	frontends, err := r.client.GetFrontends()
 	if err != nil {
-		return &vulcandErr{err: err, op: "remove-backend"}
+		return &router.RouterError{Err: err, Op: "remove-backend"}
 	}
 	toRemove := []engine.FrontendKey{}
 	for _, f := range frontends {
@@ -137,7 +128,7 @@ func (r *vulcandRouter) RemoveBackend(name string) error {
 			if _, ok := err.(*engine.NotFoundError); ok {
 				return router.ErrBackendNotFound
 			}
-			return &vulcandErr{err: err, op: "remove-backend"}
+			return &router.RouterError{Err: err, Op: "remove-backend"}
 		}
 	}
 	err = r.client.DeleteBackend(backendKey)
@@ -145,7 +136,7 @@ func (r *vulcandRouter) RemoveBackend(name string) error {
 		if _, ok := err.(*engine.NotFoundError); ok {
 			return router.ErrBackendNotFound
 		}
-		return &vulcandErr{err: err, op: "remove-backend"}
+		return &router.RouterError{Err: err, Op: "remove-backend"}
 	}
 	return router.Remove(usedName)
 }
@@ -164,11 +155,11 @@ func (r *vulcandRouter) AddRoute(name string, address *url.URL) error {
 	}
 	server, err := engine.NewServer(serverKey.Id, address.String())
 	if err != nil {
-		return &vulcandErr{err: err, op: "add-route"}
+		return &router.RouterError{Err: err, Op: "add-route"}
 	}
 	err = r.client.UpsertServer(serverKey.BackendKey, *server, engine.NoTTL)
 	if err != nil {
-		return &vulcandErr{err: err, op: "add-route"}
+		return &router.RouterError{Err: err, Op: "add-route"}
 	}
 	return nil
 }
@@ -187,7 +178,7 @@ func (r *vulcandRouter) RemoveRoute(name string, address *url.URL) error {
 		if _, ok := err.(*engine.NotFoundError); ok {
 			return router.ErrRouteNotFound
 		}
-		return &vulcandErr{err: err, op: "remove-route"}
+		return &router.RouterError{Err: err, Op: "remove-route"}
 	}
 	return nil
 }
@@ -211,11 +202,11 @@ func (r *vulcandRouter) SetCName(cname, name string) error {
 		engine.HTTPFrontendSettings{},
 	)
 	if err != nil {
-		return &vulcandErr{err: err, op: "set-cname"}
+		return &router.RouterError{Err: err, Op: "set-cname"}
 	}
 	err = r.client.UpsertFrontend(*frontend, engine.NoTTL)
 	if err != nil {
-		return &vulcandErr{err: err, op: "set-cname"}
+		return &router.RouterError{Err: err, Op: "set-cname"}
 	}
 	return nil
 }
@@ -227,7 +218,7 @@ func (r *vulcandRouter) UnsetCName(cname, _ string) error {
 		if _, ok := err.(*engine.NotFoundError); ok {
 			return router.ErrCNameNotFound
 		}
-		return &vulcandErr{err: err, op: "unset-cname"}
+		return &router.RouterError{Err: err, Op: "unset-cname"}
 	}
 	return nil
 }
@@ -258,7 +249,7 @@ func (r *vulcandRouter) Routes(name string) ([]*url.URL, error) {
 		Id: r.backendName(usedName),
 	})
 	if err != nil {
-		return nil, &vulcandErr{err: err, op: "routes"}
+		return nil, &router.RouterError{Err: err, Op: "routes"}
 	}
 	routes := make([]*url.URL, len(servers))
 	for i, server := range servers {

@@ -91,6 +91,15 @@ type HealthChecker interface {
 	HealthCheck() error
 }
 
+type RouterError struct {
+	Op  string
+	Err error
+}
+
+func (e *RouterError) Error() string {
+	return fmt.Sprintf("[router %s] %s", e.Op, e.Err)
+}
+
 func collection() (*storage.Collection, error) {
 	conn, err := db.Conn()
 	if err != nil {
