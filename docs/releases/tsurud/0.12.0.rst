@@ -2,11 +2,11 @@
    Use of this source code is governed by a BSD-style
    license that can be found in the LICENSE file.
 
-========================
-tsr 0.12.0 release notes
-========================
+===========================
+tsurud 0.12.0 release notes
+===========================
 
-Welcome to tsr 0.12.0!
+Welcome to tsurud 0.12.0!
 
 These release notes cover the `new features`_, `bug fixes`_, `general
 improvements`_ and `backward incompatible changes`_ you'll want to be aware of
@@ -27,7 +27,7 @@ Main new features
       Public pools are accessible by any user. It can be used to segregate
       machines that have specific hardware, like SSD hard drives or high end
       CPUs.
- 
+
       Default pool are for experimentation and low profile apps,
       like service dashboard and "in development" apps.
       This is the old fallback pool, but with a explict flag.
@@ -45,6 +45,9 @@ Other improvements
 
 Backward incompatible changes (action needed)
 =============================================
+
     * You should change your fallback pool to default pool and to do that you
       can run a `tsuru pool-update pool_name --default=true`
 
+    * tsr has been renamed to tsurud. Please update any procedures and
+      workflows (including upstart and other init scripts).

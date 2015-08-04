@@ -26,7 +26,7 @@ type Suite struct {
 }
 
 func (s *Suite) SetUpSuite(c *check.C) {
-	config.Set("database:name", "tsr_migration_tests")
+	config.Set("database:name", "tsurud_migration_tests")
 	var err error
 	s.conn, err = db.Conn()
 	c.Assert(err, check.IsNil)

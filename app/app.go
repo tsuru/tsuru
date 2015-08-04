@@ -42,7 +42,11 @@ var (
 )
 
 const (
-	InternalAppName     = "tsr"
+	// InternalAppName is a reserved name used for token generation. For
+	// backward compatibilty and historical purpose, the value remained
+	// "tsr" when the name of the daemon changed to "tsurud".
+	InternalAppName = "tsr"
+
 	TsuruServicesEnvVar = "TSURU_SERVICES"
 	defaultAppDir       = "/home/application/current"
 )

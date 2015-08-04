@@ -12,8 +12,8 @@
 #                           archive, it's commonly a private URL (for example:
 #                           http://127.0.0.1:8181)
 #   - TSURU_HOST: URL to the Tsuru API (for example: http://yourtsuru:8080)
-#   - TSURU_TOKEN: the token to communicate with the API (generated with `tsr
-#                  token`, in the server).
+#   - TSURU_TOKEN: the token to communicate with the API (generated with
+#                  `tsurud token`, in the server).
 
 while read oldrev newrev refname
 do

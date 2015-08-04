@@ -26,18 +26,18 @@ func (v *configFile) Set(value string) error {
 	return nil
 }
 
-type tsrCommand struct {
+type tsurudCommand struct {
 	cmd.Command
 	fs   *gnuflag.FlagSet
 	file configFile
 }
 
-func (c *tsrCommand) Flags() *gnuflag.FlagSet {
+func (c *tsurudCommand) Flags() *gnuflag.FlagSet {
 	if c.fs == nil {
 		if f, ok := c.Command.(cmd.FlaggedCommand); ok {
 			c.fs = f.Flags()
 		} else {
-			c.fs = gnuflag.NewFlagSet("tsr", gnuflag.ExitOnError)
+			c.fs = gnuflag.NewFlagSet("tsurud", gnuflag.ExitOnError)
 		}
 		c.fs.Var(&c.file, "config", "Path to configuration file (default to /etc/tsuru/tsuru.conf)")
 		c.fs.Var(&c.file, "c", "Path to configuration file (default to /etc/tsuru/tsuru.conf)")
@@ -45,7 +45,7 @@ func (c *tsrCommand) Flags() *gnuflag.FlagSet {
 	return c.fs
 }
 
-func (c *tsrCommand) Run(context *cmd.Context, client *cmd.Client) error {
+func (c *tsurudCommand) Run(context *cmd.Context, client *cmd.Client) error {
 	fmt.Fprintf(context.Stderr, "Opening config file: %s\n", configPath)
 	err := config.ReadConfigFile(configPath)
 	if err != nil {

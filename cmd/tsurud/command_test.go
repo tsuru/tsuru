@@ -28,25 +28,25 @@ func (s *S) TestConfigFileValueSet(c *check.C) {
 
 func (s *S) TestTsrCommandFlagged(c *check.C) {
 	var originalCmd fakeCommand
-	cmd := tsrCommand{Command: &originalCmd}
+	cmd := tsurudCommand{Command: &originalCmd}
 	flags := cmd.Flags()
 	err := flags.Parse(true, []string{"--name", "Chico", "--config", "testdata/tsuru.conf"})
 	c.Assert(err, check.IsNil)
 	c.Assert(originalCmd.name, check.Equals, "Chico")
 	c.Assert(cmd.file.String(), check.Equals, "testdata/tsuru.conf")
-	cmd = tsrCommand{Command: &originalCmd}
+	cmd = tsurudCommand{Command: &originalCmd}
 	flags.Parse(true, []string{"--name", "Chico", "-c", "testdata/tsuru.conf"})
 	c.Assert(cmd.file.String(), check.Equals, "testdata/tsuru.conf")
 }
 
 func (s *S) TestTsrCommandNotFlagged(c *check.C) {
 	var originalCmd tokenCmd
-	cmd := tsrCommand{Command: originalCmd}
+	cmd := tsurudCommand{Command: originalCmd}
 	flags := cmd.Flags()
 	err := flags.Parse(true, []string{"--config", "testdata/tsuru.conf"})
 	c.Assert(err, check.IsNil)
 	c.Assert(cmd.file.String(), check.Equals, "testdata/tsuru.conf")
-	cmd = tsrCommand{Command: originalCmd}
+	cmd = tsurudCommand{Command: originalCmd}
 	flags.Parse(true, []string{"-c", "testdata/tsuru.conf"})
 	c.Assert(cmd.file.String(), check.Equals, "testdata/tsuru.conf")
 }
@@ -67,7 +67,7 @@ func (f *fakeCommand) Flags() *gnuflag.FlagSet {
 
 func (s *S) TestTsrCommandRunInvalidConfig(c *check.C) {
 	fakeCmd := FakeCommand{}
-	command := tsrCommand{Command: &fakeCmd}
+	command := tsurudCommand{Command: &fakeCmd}
 	command.Flags().Parse(true, []string{"-c", "/invalid/file"})
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{
@@ -87,7 +87,7 @@ Could not open tsuru config file at /invalid/file (open /invalid/file: no such f
 
 func (s *S) TestTsrCommandRun(c *check.C) {
 	fakeCmd := FakeCommand{}
-	command := tsrCommand{Command: &fakeCmd}
+	command := tsurudCommand{Command: &fakeCmd}
 	command.Flags().Parse(true, []string{"-c", "testdata/tsuru.conf"})
 	var stdout, stderr bytes.Buffer
 	context := cmd.Context{

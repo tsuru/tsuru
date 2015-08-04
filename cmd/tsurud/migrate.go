@@ -35,7 +35,7 @@ func (*migrateCmd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "migrate",
 		Usage: "migrate",
-		Desc:  "Runs migrations from previous versions of tsr",
+		Desc:  "Runs migrations from previous versions of tsurud",
 	}
 }
 

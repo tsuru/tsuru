@@ -322,7 +322,7 @@ type Info struct {
 }
 
 // Implementing the Commandable interface allows extending
-// the tsr command line interface
+// the tsurud command line interface
 type Commandable interface {
 	Commands() []Command
 }

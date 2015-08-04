@@ -19,7 +19,7 @@ type SyslogLoggerSuite struct {
 var _ = check.Suite(&SyslogLoggerSuite{})
 
 func (s *SyslogLoggerSuite) SetUpSuite(c *check.C) {
-	s.l = NewSyslogLogger("tsr", true)
+	s.l = NewSyslogLogger("tsurud", true)
 	s.sl = s.l.(*syslogLogger)
 }
 

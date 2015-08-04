@@ -3,8 +3,8 @@
 # license that can be found in the LICENSE file.
 
 BUILD_DIR = build
-TSR_BIN = $(BUILD_DIR)/tsr
-TSR_SRC = cmd/tsr/*.go
+TSR_BIN = $(BUILD_DIR)/tsurud
+TSR_SRC = cmd/tsurud/*.go
 
 define HG_ERROR
 
@@ -69,12 +69,12 @@ _go_test:
 	go clean $(GO_EXTRAFLAGS) ./...
 	go test $(GO_EXTRAFLAGS) ./...
 
-_tsr_dry:
-	go build $(GO_EXTRAFLAGS) -o tsr ./cmd/tsr
-	./tsr api --dry --config ./etc/tsuru.conf
-	rm -f tsr
+_tsurud_dry:
+	go build $(GO_EXTRAFLAGS) -o tsurud ./cmd/tsurud
+	./tsurud api --dry --config ./etc/tsuru.conf
+	rm -f tsurud
 
-test: _go_test _tsr_dry
+test: _go_test _tsurud_dry
 
 _install_deadcode: git
 	go get $(GO_EXTRAFLAGS) github.com/remyoudompheng/go-misc/deadcode
@@ -102,7 +102,7 @@ release:
 		exit 1; \
 	fi
 
-	@if [ ! -f docs/releases/tsr/$(version).rst ]; then \
+	@if [ ! -f docs/releases/tsurud/$(version).rst ]; then \
 		echo "to release the $(version) version you should create a release notes first."; \
 		exit 1; \
 	fi
@@ -114,9 +114,9 @@ release:
 	@echo "Replacing version string."
 	@sed -i "" "s/release = '.*'/release = '$(version)'/g" docs/conf.py
 	@sed -i "" "s/version = '.*'/version = '$(MAJOR)'/g" docs/conf.py
-	@sed -i "" 's/.tsr., .[^,]*,/"tsr", "$(version)",/' cmd/tsr/main.go
+	@sed -i "" 's/.tsurud., .[^,]*,/"tsurud", "$(version)",/' cmd/tsurud/main.go
 
-	@git add docs/conf.py cmd/tsr/main.go
+	@git add docs/conf.py cmd/tsurud/main.go
 	@git commit -m "bump to $(version)"
 
 	@echo "Creating $(version) tag."
@@ -130,19 +130,19 @@ release:
 install:
 	go install $(GO_EXTRAFLAGS) ./... ../tsuru-client/...
 
-serve: run-tsr-api
+serve: run-tsurud-api
 
-run: run-tsr-api
+run: run-tsurud-api
 
-binaries: tsr
+binaries: tsurud
 
-tsr: $(TSR_BIN)
+tsurud: $(TSR_BIN)
 
 $(TSR_BIN):
 	godep go build -o $(TSR_BIN) $(TSR_SRC)
 
-run-tsr-api: $(TSR_BIN)
+run-tsurud-api: $(TSR_BIN)
 	$(TSR_BIN) api
 
-run-tsr-token: $(TSR_BIN)
+run-tsurud-token: $(TSR_BIN)
 	$(TSR_BIN) token

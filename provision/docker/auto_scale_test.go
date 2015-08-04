@@ -1505,7 +1505,7 @@ func (s *S) TestAutoScaleConfigRunLockedApp(c *check.C) {
 		provisioner: &p,
 	})
 	c.Assert(err, check.IsNil)
-	locked, err := app.AcquireApplicationLock(appStruct.Name, "tsr", "something")
+	locked, err := app.AcquireApplicationLock(appStruct.Name, "tsurud", "something")
 	c.Assert(err, check.IsNil)
 	c.Assert(locked, check.Equals, true)
 	a := autoScaleConfig{
@@ -1595,7 +1595,7 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedLockedApp(c *check.C) {
 		provisioner: &p,
 	})
 	c.Assert(err, check.IsNil)
-	locked, err := app.AcquireApplicationLock(appStruct.Name, "tsr", "something")
+	locked, err := app.AcquireApplicationLock(appStruct.Name, "tsurud", "something")
 	c.Assert(err, check.IsNil)
 	c.Assert(locked, check.Equals, true)
 	a := autoScaleConfig{

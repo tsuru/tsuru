@@ -15,7 +15,7 @@ import (
 )
 
 func (s *S) TestCommandsFromBaseManagerAreRegistered(c *check.C) {
-	baseManager := cmd.NewManager("tsr", "0.3.0", "", os.Stdout, os.Stderr, os.Stdin, nil)
+	baseManager := cmd.NewManager("tsurud", "0.3.0", "", os.Stdout, os.Stderr, os.Stdin, nil)
 	manager := buildManager()
 	for name, instance := range baseManager.Commands {
 		command, ok := manager.Commands[name]
@@ -36,25 +36,25 @@ func (s *S) TestAPICmdIsRegistered(c *check.C) {
 	manager := buildManager()
 	api, ok := manager.Commands["api"]
 	c.Assert(ok, check.Equals, true)
-	tsrApi, ok := api.(*tsrCommand)
+	tsurudApi, ok := api.(*tsurudCommand)
 	c.Assert(ok, check.Equals, true)
-	c.Assert(tsrApi.Command, check.FitsTypeOf, &apiCmd{})
+	c.Assert(tsurudApi.Command, check.FitsTypeOf, &apiCmd{})
 }
 
 func (s *S) TestTokenCmdIsRegistered(c *check.C) {
 	manager := buildManager()
 	token, ok := manager.Commands["token"]
 	c.Assert(ok, check.Equals, true)
-	tsrToken, ok := token.(*tsrCommand)
+	tsurudToken, ok := token.(*tsurudCommand)
 	c.Assert(ok, check.Equals, true)
-	c.Assert(tsrToken.Command, check.FitsTypeOf, tokenCmd{})
+	c.Assert(tsurudToken.Command, check.FitsTypeOf, tokenCmd{})
 }
 
 func (s *S) TestMigrateCmdIsRegistered(c *check.C) {
 	manager := buildManager()
 	cmd, ok := manager.Commands["migrate"]
 	c.Assert(ok, check.Equals, true)
-	migrate, ok := cmd.(*tsrCommand)
+	migrate, ok := cmd.(*tsurudCommand)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(migrate.Command, check.FitsTypeOf, &migrateCmd{})
 }
@@ -63,7 +63,7 @@ func (s *S) TestGandalfSyncCmdIsRegistered(c *check.C) {
 	manager := buildManager()
 	cmd, ok := manager.Commands["gandalf-sync"]
 	c.Assert(ok, check.Equals, true)
-	sync, ok := cmd.(*tsrCommand)
+	sync, ok := cmd.(*tsurudCommand)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(sync.Command, check.FitsTypeOf, gandalfSyncCmd{})
 }
@@ -75,7 +75,7 @@ func (s *S) TestShouldRegisterAllCommandsFromProvisioners(c *check.C) {
 	manager := buildManager()
 	fake, ok := manager.Commands["fake"]
 	c.Assert(ok, check.Equals, true)
-	tsrFake, ok := fake.(*tsrCommand)
+	tsurudFake, ok := fake.(*tsurudCommand)
 	c.Assert(ok, check.Equals, true)
-	c.Assert(tsrFake.Command, check.FitsTypeOf, &FakeCommand{})
+	c.Assert(tsurudFake.Command, check.FitsTypeOf, &FakeCommand{})
 }

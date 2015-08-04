@@ -40,7 +40,7 @@ func Init() {
 	if disableSyslog, _ := config.GetBool("log:disable-syslog"); !disableSyslog {
 		tag, _ := config.GetString("log:syslog-tag")
 		if tag == "" {
-			tag = "tsr"
+			tag = "tsurud"
 		}
 		loggers = append(loggers, NewSyslogLogger(tag, debug))
 	}

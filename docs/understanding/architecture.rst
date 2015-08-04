@@ -9,9 +9,9 @@ Architecture
 API
 ---
 
-The API component (also called `tsr`) is a RESTful API server written with
-``Go``. The API is responsible for the deploy workflow and the lifecycle of
-applications.
+The API component (also referred as the tsuru daemon, or `tsurud`) is a RESTful
+API server written with ``Go``. The API is responsible for the deploy workflow
+and the lifecycle of applications.
 
 Command-line clients interact with this component.
 

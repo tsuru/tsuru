@@ -17,13 +17,18 @@ Release notes
 Release notes for the official tsuru releases. Each release note will
 tell you what's new in each version.
 
-tsr (tsuru server daemon)
-=========================
+tsurud (tsuru server daemon)
+============================
+
+.. warning::
+
+    tsurud used to be called tsr, the name changed in the :doc:`0.12.0 release
+    <tsurud/0.12.0>`.
 
 .. toctree::
    :maxdepth: 1
 
-   tsr/0.12.0
+   tsurud/0.12.0
 
    tsr/0.11.3
 

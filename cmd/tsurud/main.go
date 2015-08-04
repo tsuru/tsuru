@@ -22,11 +22,11 @@ const defaultConfigPath = "/etc/tsuru/tsuru.conf"
 var configPath = defaultConfigPath
 
 func buildManager() *cmd.Manager {
-	m := cmd.NewManager("tsr", api.Version, "", os.Stdout, os.Stderr, os.Stdin, nil)
-	m.Register(&tsrCommand{Command: &apiCmd{}})
-	m.Register(&tsrCommand{Command: tokenCmd{}})
-	m.Register(&tsrCommand{Command: &migrateCmd{}})
-	m.Register(&tsrCommand{Command: gandalfSyncCmd{}})
+	m := cmd.NewManager("tsurud", api.Version, "", os.Stdout, os.Stderr, os.Stdin, nil)
+	m.Register(&tsurudCommand{Command: &apiCmd{}})
+	m.Register(&tsurudCommand{Command: tokenCmd{}})
+	m.Register(&tsurudCommand{Command: &migrateCmd{}})
+	m.Register(&tsurudCommand{Command: gandalfSyncCmd{}})
 	registerProvisionersCommands(m)
 	return m
 }
@@ -37,7 +37,7 @@ func registerProvisionersCommands(m *cmd.Manager) {
 		if c, ok := p.(cmd.Commandable); ok {
 			commands := c.Commands()
 			for _, cmd := range commands {
-				m.Register(&tsrCommand{Command: cmd})
+				m.Register(&tsurudCommand{Command: cmd})
 			}
 		}
 	}
