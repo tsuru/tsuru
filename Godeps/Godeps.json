@@ -7,48 +7,43 @@
 	"Deps": [
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/aws",
-			"Comment": "v0.6.1-14-g7e9078c",
-			"Rev": "7e9078c250876f26da48aaf36b8dce6a462ecd8a"
-		},
-		{
-			"ImportPath": "github.com/aws/aws-sdk-go/internal/apierr",
-			"Comment": "v0.6.1-14-g7e9078c",
-			"Rev": "7e9078c250876f26da48aaf36b8dce6a462ecd8a"
+			"Comment": "v0.7.1-4-g1c75632",
+			"Rev": "1c75632eb9b77bb3d8e6416fbd8f3e98fc1367db"
 		},
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/internal/endpoints",
-			"Comment": "v0.6.1-14-g7e9078c",
-			"Rev": "7e9078c250876f26da48aaf36b8dce6a462ecd8a"
+			"Comment": "v0.7.1-4-g1c75632",
+			"Rev": "1c75632eb9b77bb3d8e6416fbd8f3e98fc1367db"
 		},
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/internal/protocol/ec2query",
-			"Comment": "v0.6.1-14-g7e9078c",
-			"Rev": "7e9078c250876f26da48aaf36b8dce6a462ecd8a"
+			"Comment": "v0.7.1-4-g1c75632",
+			"Rev": "1c75632eb9b77bb3d8e6416fbd8f3e98fc1367db"
 		},
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/internal/protocol/query/queryutil",
-			"Comment": "v0.6.1-14-g7e9078c",
-			"Rev": "7e9078c250876f26da48aaf36b8dce6a462ecd8a"
+			"Comment": "v0.7.1-4-g1c75632",
+			"Rev": "1c75632eb9b77bb3d8e6416fbd8f3e98fc1367db"
 		},
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/internal/protocol/rest",
-			"Comment": "v0.6.1-14-g7e9078c",
-			"Rev": "7e9078c250876f26da48aaf36b8dce6a462ecd8a"
+			"Comment": "v0.7.1-4-g1c75632",
+			"Rev": "1c75632eb9b77bb3d8e6416fbd8f3e98fc1367db"
 		},
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/internal/protocol/xml/xmlutil",
-			"Comment": "v0.6.1-14-g7e9078c",
-			"Rev": "7e9078c250876f26da48aaf36b8dce6a462ecd8a"
+			"Comment": "v0.7.1-4-g1c75632",
+			"Rev": "1c75632eb9b77bb3d8e6416fbd8f3e98fc1367db"
 		},
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/internal/signer/v4",
-			"Comment": "v0.6.1-14-g7e9078c",
-			"Rev": "7e9078c250876f26da48aaf36b8dce6a462ecd8a"
+			"Comment": "v0.7.1-4-g1c75632",
+			"Rev": "1c75632eb9b77bb3d8e6416fbd8f3e98fc1367db"
 		},
 		{
 			"ImportPath": "github.com/aws/aws-sdk-go/service/ec2",
-			"Comment": "v0.6.1-14-g7e9078c",
-			"Rev": "7e9078c250876f26da48aaf36b8dce6a462ecd8a"
+			"Comment": "v0.7.1-4-g1c75632",
+			"Rev": "1c75632eb9b77bb3d8e6416fbd8f3e98fc1367db"
 		},
 		{
 			"ImportPath": "github.com/bradfitz/go-smtpd/smtpd",
@@ -239,7 +234,32 @@
 			"Rev": "bc2f88ca37feaaae0e12045b4dcca40c5e957776"
 		},
 		{
+			"ImportPath": "github.com/tsuru/gandalf/db",
+			"Comment": "0.7.1-2-g370638b",
+			"Rev": "370638bac9491a68b8f8c11f4099b609756beb85"
+		},
+		{
+			"ImportPath": "github.com/tsuru/gandalf/fs",
+			"Comment": "0.7.1-2-g370638b",
+			"Rev": "370638bac9491a68b8f8c11f4099b609756beb85"
+		},
+		{
 			"ImportPath": "github.com/tsuru/gandalf/gandalftest",
+			"Comment": "0.7.1-2-g370638b",
+			"Rev": "370638bac9491a68b8f8c11f4099b609756beb85"
+		},
+		{
+			"ImportPath": "github.com/tsuru/gandalf/multipartzip",
+			"Comment": "0.7.1-2-g370638b",
+			"Rev": "370638bac9491a68b8f8c11f4099b609756beb85"
+		},
+		{
+			"ImportPath": "github.com/tsuru/gandalf/repository",
+			"Comment": "0.7.1-2-g370638b",
+			"Rev": "370638bac9491a68b8f8c11f4099b609756beb85"
+		},
+		{
+			"ImportPath": "github.com/tsuru/gandalf/user",
 			"Comment": "0.7.1-2-g370638b",
 			"Rev": "370638bac9491a68b8f8c11f4099b609756beb85"
 		},

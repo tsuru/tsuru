@@ -49,8 +49,8 @@ func (s *S) TestCreateEC2HandlerWithRegion(c *check.C) {
 	ec2iaas := myiaas.(*EC2IaaS)
 	handler, err := ec2iaas.createEC2Handler("sa-east-1")
 	c.Assert(err, check.IsNil)
-	c.Assert(handler.Config.Region, check.Equals, "sa-east-1")
-	c.Assert(handler.Config.Endpoint, check.Equals, "")
+	c.Assert(*handler.Config.Region, check.Equals, "sa-east-1")
+	c.Assert(*handler.Config.Endpoint, check.Equals, "")
 	cred, err := handler.Config.Credentials.Get()
 	c.Assert(err, check.IsNil)
 	c.Assert(cred.AccessKeyID, check.Equals, "mykey")
@@ -63,8 +63,8 @@ func (s *S) TestCreateEC2HandlerWithEndpoint(c *check.C) {
 	ec2iaas := myiaas.(*EC2IaaS)
 	handler, err := ec2iaas.createEC2Handler("http://localhost")
 	c.Assert(err, check.IsNil)
-	c.Assert(handler.Config.Region, check.Equals, defaultRegion)
-	c.Assert(handler.Config.Endpoint, check.Equals, "http://localhost")
+	c.Assert(*handler.Config.Region, check.Equals, defaultRegion)
+	c.Assert(*handler.Config.Endpoint, check.Equals, "http://localhost")
 	cred, err := handler.Config.Credentials.Get()
 	c.Assert(err, check.IsNil)
 	c.Assert(cred.AccessKeyID, check.Equals, "mykey")
@@ -231,8 +231,8 @@ func (s *S) TestWaitForDnsName(c *check.C) {
 	options := ec2.RunInstancesInput{
 		ImageID:      aws.String("ami-xxx"),
 		InstanceType: aws.String("m1.small"),
-		MinCount:     aws.Long(1),
-		MaxCount:     aws.Long(1),
+		MinCount:     aws.Int64(1),
+		MaxCount:     aws.Int64(1),
 	}
 	resp, err := handler.RunInstances(&options)
 	c.Assert(err, check.IsNil)

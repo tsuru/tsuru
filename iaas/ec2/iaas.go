@@ -52,8 +52,8 @@ func (i *EC2IaaS) createEC2Handler(regionOrEndpoint string) (*ec2.EC2, error) {
 	}
 	config := aws.Config{
 		Credentials: credentials.NewStaticCredentials(keyId, secretKey, ""),
-		Region:      region,
-		Endpoint:    endpoint,
+		Region:      aws.String(region),
+		Endpoint:    aws.String(endpoint),
 	}
 	return ec2.New(&config), nil
 }
@@ -134,9 +134,10 @@ func (err *invalidFieldError) Error() string {
 }
 
 func (i *EC2IaaS) buildRunInstancesOptions(params map[string]string) (ec2.RunInstancesInput, error) {
+
 	result := ec2.RunInstancesInput{
-		MaxCount: aws.Long(1),
-		MinCount: aws.Long(1),
+		MaxCount: aws.Int64(1),
+		MinCount: aws.Int64(1),
 	}
 	forbiddenFields := []string{
 		"maxcount", "mincount", "dryrun", "blockdevicemappings",
