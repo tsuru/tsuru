@@ -11,6 +11,7 @@ import (
 	"math"
 	"sort"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/tsuru/config"
@@ -46,6 +47,7 @@ type autoScaleEvent struct {
 	Error         string       `bson:",omitempty"`
 	Node          cluster.Node `bson:",omitempty"`
 	Log           string       `bson:",omitempty"`
+	Nodes         []cluster.Node
 }
 
 func autoScaleCollection() (*storage.Collection, error) {
@@ -83,6 +85,10 @@ func newAutoScaleEvent(metadataValue string) (*autoScaleEvent, error) {
 
 func (evt *autoScaleEvent) updateNode(node *cluster.Node) {
 	evt.Node = *node
+}
+
+func (evt *autoScaleEvent) updateNodes(nodes []cluster.Node) {
+	evt.Nodes = nodes
 }
 
 func (evt *autoScaleEvent) update(action, reason string) error {
@@ -530,12 +536,17 @@ func (a *countScaler) scale(event *autoScaleEvent, groupMetadata string, nodes [
 	if err != nil {
 		return fmt.Errorf("error updating event: %s", err)
 	}
+	nodesToAdd := -freeSlots / a.maxContainerCount
 	a.logDebug("running event %q for %q: %s", event.Action, event.MetadataValue, event.Reason)
-	newNode, err := a.addNode(nodes)
+	newNodes, err := a.addMultipleNodes(nodes, nodesToAdd)
 	if err != nil {
-		return err
+		if len(newNodes) == 0 {
+			return err
+		}
+		a.logError("not all required nodes were created: %s", err)
 	}
-	event.updateNode(newNode)
+	event.updateNode(&newNodes[0])
+	event.updateNodes(newNodes)
 	return nil
 }
 
@@ -585,6 +596,32 @@ func (a *autoScaleConfig) rebalanceIfNeeded(event *autoScaleEvent, groupMetadata
 	return nil
 }
 
+func (a *autoScaleConfig) addMultipleNodes(modelNodes []*cluster.Node, count int) ([]cluster.Node, error) {
+	wg := sync.WaitGroup{}
+	wg.Add(count)
+	nodesCh := make(chan *cluster.Node, count)
+	errCh := make(chan error, count)
+	for i := 0; i < count; i++ {
+		go func() {
+			defer wg.Done()
+			node, err := a.addNode(modelNodes)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			nodesCh <- node
+		}()
+	}
+	wg.Wait()
+	close(nodesCh)
+	close(errCh)
+	var nodes []cluster.Node
+	for n := range nodesCh {
+		nodes = append(nodes, *n)
+	}
+	return nodes, <-errCh
+}
+
 func (a *autoScaleConfig) addNode(modelNodes []*cluster.Node) (*cluster.Node, error) {
 	metadata, err := chooseMetadataFromNodes(modelNodes)
 	if err != nil {
@@ -619,7 +656,11 @@ func (a *autoScaleConfig) addNode(modelNodes []*cluster.Node) (*cluster.Node, er
 		"machine":  machine.Id,
 		"metadata": createdNode.Metadata,
 	}
-	_, err = q.EnqueueWait(runBsTaskName, jobParams, a.waitTimeNewMachine)
+	job, err := q.EnqueueWait(runBsTaskName, jobParams, a.waitTimeNewMachine)
+	if err != nil {
+		return nil, err
+	}
+	_, err = job.Result()
 	if err != nil {
 		return nil, err
 	}

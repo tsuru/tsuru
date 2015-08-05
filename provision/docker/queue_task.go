@@ -38,6 +38,7 @@ func (t runBs) Run(job monsterqueue.Job) {
 	err := t.waitDocker(dockerEndpoint)
 	if err != nil {
 		job.Error(err)
+		t.destroyMachine(machineID)
 		return
 	}
 	rawMetadata := params["metadata"].(monsterqueue.JobParams)

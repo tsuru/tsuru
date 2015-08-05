@@ -65,7 +65,10 @@ func (h *nodeHealer) healNode(node *cluster.Node) (cluster.Node, error) {
 		"machine":  machine.Id,
 		"metadata": createdNode.Metadata,
 	}
-	_, err = q.EnqueueWait(runBsTaskName, jobParams, h.waitTimeNewMachine)
+	job, err := q.EnqueueWait(runBsTaskName, jobParams, h.waitTimeNewMachine)
+	if err == nil {
+		_, err = job.Result()
+	}
 	if err != nil {
 		node.ResetFailures()
 		h.provisioner.getCluster().Register(cluster.Node{Address: failingAddr, Metadata: nodeMetadata})

@@ -6,8 +6,11 @@ package docker
 
 import (
 	"fmt"
+	"net/http"
+	"regexp"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	dtesting "github.com/fsouza/go-dockerclient/testing"
@@ -19,12 +22,96 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
+
+type AutoScaleSuite struct {
+	S                S
+	testRepoRollback func()
+	appInstance      *provisiontest.FakeApp
+	p                *dockerProvisioner
+	imageId          string
+	node1            *dtesting.DockerServer
+	node2            *dtesting.DockerServer
+}
+
+func (s *AutoScaleSuite) SetUpSuite(c *check.C) {
+	s.S.SetUpSuite(c)
+}
+
+func (s *AutoScaleSuite) SetUpTest(c *check.C) {
+	s.S.SetUpTest(c)
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	plan := app.Plan{Memory: 21000, Name: "default", CpuShare: 10}
+	err = plan.Save()
+	c.Assert(err, check.IsNil)
+	s.testRepoRollback = startTestRepositoryServer()
+	s.node1, err = dtesting.NewServer("0.0.0.0:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	s.node2, err = dtesting.NewServer("0.0.0.0:0", nil, nil)
+	c.Assert(err, check.IsNil)
+	config.Set("iaas:node-port", urlPort(s.node2.URL()))
+	s.p = &dockerProvisioner{}
+	err = s.p.Initialize()
+	c.Assert(err, check.IsNil)
+	mainDockerProvisioner = s.p
+	s.p.storage = &cluster.MapStorage{}
+	re := regexp.MustCompile(`/\[::.*?\]:|/localhost:`)
+	url := re.ReplaceAllString(s.node1.URL(), "/127.0.0.1:")
+	clusterInstance, err := cluster.New(nil, s.p.storage,
+		cluster.Node{Address: url, Metadata: map[string]string{
+			"pool":     "pool1",
+			"iaas":     "my-scale-iaas",
+			"totalMem": "125000",
+		}},
+	)
+	c.Assert(err, check.IsNil)
+	s.p.cluster = clusterInstance
+	healerConst := newMultiHealerIaaSConstructor([]string{"localhost", "[::1]"}, nil)
+	iaas.RegisterIaasProvider("my-scale-iaas", healerConst)
+	s.appInstance = provisiontest.NewFakeApp("myapp", "python", 0)
+	s.p.Provision(s.appInstance)
+	s.imageId, err = appCurrentImageName(s.appInstance.GetName())
+	c.Assert(err, check.IsNil)
+	customData := map[string]interface{}{
+		"procfile": "web: python ./myapp",
+	}
+	err = saveImageCustomData(s.imageId, customData)
+	c.Assert(err, check.IsNil)
+	appStruct := &app.App{
+		Name: s.appInstance.GetName(),
+		Pool: "pool1",
+		Plan: app.Plan{Memory: 21000},
+	}
+	opts := provision.AddPoolOptions{Name: "pool1"}
+	err = provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	err = conn.Apps().Insert(appStruct)
+	c.Assert(err, check.IsNil)
+}
+
+func (s *AutoScaleSuite) TearDownTest(c *check.C) {
+	s.S.TearDownTest(c)
+	s.testRepoRollback()
+	config.Unset("iaas:node-port")
+}
+
+func (s *AutoScaleSuite) TearDownSuite(c *check.C) {
+	s.S.TearDownSuite(c)
+}
+
+var _ = check.Suite(&AutoScaleSuite{})
 
 func newHealerIaaSConstructor(addr string, err error) func(string) iaas.IaaS {
 	return func(name string) iaas.IaaS {
 		return &TestHealerIaaS{addr: addr, err: err}
+	}
+}
+
+func newMultiHealerIaaSConstructor(addrs []string, err error) func(string) iaas.IaaS {
+	return func(name string) iaas.IaaS {
+		return &TestHealerIaaS{addrs: addrs, err: err}
 	}
 }
 
@@ -35,69 +122,17 @@ func newHealerIaaSConstructorWithInst(addr string) (func(string) iaas.IaaS, *Tes
 	}, inst
 }
 
-func (s *S) TestAutoScaleConfigRun(c *check.C) {
-	rollback := startTestRepositoryServer()
-	defer rollback()
-	defer func() {
-		machines, _ := iaas.ListMachines()
-		for _, m := range machines {
-			m.Destroy()
-		}
-	}()
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	config.Set("iaas:node-port", urlPort(node2.URL()))
-	defer config.Unset("iaas:node-port")
-
-	var p dockerProvisioner
-	err = p.Initialize()
-	mainDockerProvisioner = &p
-	c.Assert(err, check.IsNil)
-	p.storage = &cluster.MapStorage{}
-	clusterInstance, err := cluster.New(nil, p.storage,
-		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
-			"pool": "pool1",
-			"iaas": "my-scale-iaas",
-		}},
-	)
-	c.Assert(err, check.IsNil)
-	p.cluster = clusterInstance
-	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
-	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	defer p.Destroy(appInstance)
-	p.Provision(appInstance)
-	imageId, err := appCurrentImageName(appInstance.GetName())
-	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{"procfile": "web: python ./myapp"}
-	err = saveImageCustomData(imageId, customData)
-	c.Assert(err, check.IsNil)
-
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	appStruct := &app.App{
-		Name: appInstance.GetName(),
-		Pool: "pool1",
-	}
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err = provision.AddPool(opts)
-	c.Assert(err, check.IsNil)
-	err = conn.Apps().Insert(appStruct)
-	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
-
-	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+func (s *AutoScaleSuite) TestAutoScaleConfigRun(c *check.C) {
+	_, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 4}},
-		app:         appInstance,
-		imageId:     imageId,
-		provisioner: &p,
+		app:         s.appInstance,
+		imageId:     s.imageId,
+		provisioner: s.p,
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
 		done:              make(chan bool),
-		provisioner:       &p,
+		provisioner:       s.p,
 		groupByMetadata:   "pool",
 		maxContainerCount: 2,
 	}
@@ -110,7 +145,7 @@ func (s *S) TestAutoScaleConfigRun(c *check.C) {
 	err = a.run()
 	c.Assert(err, check.IsNil)
 	wg1.Wait()
-	nodes, err := p.cluster.Nodes()
+	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
@@ -123,26 +158,21 @@ func (s *S) TestAutoScaleConfigRun(c *check.C) {
 	c.Assert(evts[0].Action, check.Equals, "add")
 	c.Assert(evts[0].Successful, check.Equals, true)
 	c.Assert(evts[0].Error, check.Equals, "")
-	c.Assert(evts[0].Node.Address, check.Equals, fmt.Sprintf("http://localhost:%d", urlPort(node2.URL())))
-	c.Assert(evts[0].Node.Metadata, check.DeepEquals, map[string]string{
-		"pool":    "pool1",
-		"iaas":    "my-scale-iaas",
-		"iaas-id": "m-localhost",
-	})
+	port, _ := config.GetInt("iaas:node-port")
+	c.Assert(evts[0].Node.Address, check.Equals, fmt.Sprintf("http://localhost:%d", port))
+	c.Assert(evts[0].Node.Metadata["pool"], check.Equals, "pool1")
 	logParts := strings.Split(evts[0].Log, "\n")
 	c.Assert(logParts, check.HasLen, 15)
 	c.Assert(logParts[0], check.Matches, `\[node autoscale\].*running scaler.*pool1.*`)
 	c.Assert(logParts[2], check.Matches, `\[node autoscale\].*new machine created.*`)
 	c.Assert(logParts[5], check.Matches, `.*Rebalancing 4 units.*`)
-
 	// Also should have rebalanced
-	containers1, err := p.listContainersByHost(urlToHost(nodes[0].Address))
+	containers1, err := s.p.listContainersByHost(urlToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
-	containers2, err := p.listContainersByHost(urlToHost(nodes[1].Address))
+	containers2, err := s.p.listContainersByHost(urlToHost(nodes[1].Address))
 	c.Assert(err, check.IsNil)
 	c.Assert(containers1, check.HasLen, 2)
 	c.Assert(containers2, check.HasLen, 2)
-
 	// Should do nothing if calling on already scaled
 	wg2 := sync.WaitGroup{}
 	wg2.Add(1)
@@ -153,89 +183,35 @@ func (s *S) TestAutoScaleConfigRun(c *check.C) {
 	err = a.run()
 	c.Assert(err, check.IsNil)
 	wg2.Wait()
-	nodes, err = p.cluster.Nodes()
+	nodes, err = s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	evts, err = listAutoScaleEvents(0, 0)
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
-
-	containers1Again, err := p.listContainersByHost(urlToHost(nodes[0].Address))
+	containers1Again, err := s.p.listContainersByHost(urlToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
-	containers2Again, err := p.listContainersByHost(urlToHost(nodes[1].Address))
+	containers2Again, err := s.p.listContainersByHost(urlToHost(nodes[1].Address))
 	c.Assert(err, check.IsNil)
 	c.Assert(containers1, check.DeepEquals, containers1Again)
 	c.Assert(containers2, check.DeepEquals, containers2Again)
-	locked, err := app.AcquireApplicationLock(appStruct.Name, "x", "y")
+	locked, err := app.AcquireApplicationLock(s.appInstance.GetName(), "x", "y")
 	c.Assert(err, check.IsNil)
 	c.Assert(locked, check.Equals, true)
 }
 
-func (s *S) TestAutoScaleConfigRunNoRebalance(c *check.C) {
-	rollback := startTestRepositoryServer()
-	defer rollback()
-	defer func() {
-		machines, _ := iaas.ListMachines()
-		for _, m := range machines {
-			m.Destroy()
-		}
-	}()
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	config.Set("iaas:node-port", urlPort(node2.URL()))
-	defer config.Unset("iaas:node-port")
-	var p dockerProvisioner
-	err = p.Initialize()
-	c.Assert(err, check.IsNil)
-	mainDockerProvisioner = &p
-	p.storage = &cluster.MapStorage{}
-	clusterInstance, err := cluster.New(nil, p.storage,
-		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
-			"pool": "pool1",
-			"iaas": "my-scale-iaas",
-		}},
-	)
-	c.Assert(err, check.IsNil)
-	p.cluster = clusterInstance
-	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
-	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	defer p.Destroy(appInstance)
-	p.Provision(appInstance)
-	imageId, err := appCurrentImageName(appInstance.GetName())
-	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"procfile": "web: python ./myapp",
-	}
-	err = saveImageCustomData(imageId, customData)
-	c.Assert(err, check.IsNil)
-
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	appStruct := &app.App{
-		Name: appInstance.GetName(),
-		Pool: "pool1",
-	}
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err = provision.AddPool(opts)
-	c.Assert(err, check.IsNil)
-	err = conn.Apps().Insert(appStruct)
-	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
-
-	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+func (s *AutoScaleSuite) TestAutoScaleConfigRunNoRebalance(c *check.C) {
+	_, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 4}},
-		app:         appInstance,
-		imageId:     imageId,
-		provisioner: &p,
+		app:         s.appInstance,
+		imageId:     s.imageId,
+		provisioner: s.p,
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
 		preventRebalance:  true,
 		done:              make(chan bool),
-		provisioner:       &p,
+		provisioner:       s.p,
 		groupByMetadata:   "pool",
 		maxContainerCount: 2,
 	}
@@ -248,7 +224,7 @@ func (s *S) TestAutoScaleConfigRunNoRebalance(c *check.C) {
 	err = a.run()
 	c.Assert(err, check.IsNil)
 	wg1.Wait()
-	nodes, err := p.cluster.Nodes()
+	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
@@ -261,14 +237,12 @@ func (s *S) TestAutoScaleConfigRunNoRebalance(c *check.C) {
 	c.Assert(evts[0].Action, check.Equals, "add")
 	c.Assert(evts[0].Successful, check.Equals, true)
 	c.Assert(evts[0].Error, check.Equals, "")
-
-	containers1, err := p.listContainersByHost(urlToHost(nodes[0].Address))
+	containers1, err := s.p.listContainersByHost(urlToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
-	containers2, err := p.listContainersByHost(urlToHost(nodes[1].Address))
+	containers2, err := s.p.listContainersByHost(urlToHost(nodes[1].Address))
 	c.Assert(err, check.IsNil)
 	c.Assert(containers1, check.HasLen, 4)
 	c.Assert(containers2, check.HasLen, 0)
-
 	wg2 := sync.WaitGroup{}
 	wg2.Add(1)
 	go func() {
@@ -278,91 +252,37 @@ func (s *S) TestAutoScaleConfigRunNoRebalance(c *check.C) {
 	err = a.run()
 	c.Assert(err, check.IsNil)
 	wg2.Wait()
-	nodes, err = p.cluster.Nodes()
+	nodes, err = s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	evts, err = listAutoScaleEvents(0, 0)
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
-
-	containers1Again, err := p.listContainersByHost(urlToHost(nodes[0].Address))
+	containers1Again, err := s.p.listContainersByHost(urlToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
-	containers2Again, err := p.listContainersByHost(urlToHost(nodes[1].Address))
+	containers2Again, err := s.p.listContainersByHost(urlToHost(nodes[1].Address))
 	c.Assert(err, check.IsNil)
 	c.Assert(containers1, check.DeepEquals, containers1Again)
 	c.Assert(containers2, check.DeepEquals, containers2Again)
 }
 
-func (s *S) TestAutoScaleConfigRunOnce(c *check.C) {
-	rollback := startTestRepositoryServer()
-	defer rollback()
-	defer func() {
-		machines, _ := iaas.ListMachines()
-		for _, m := range machines {
-			m.Destroy()
-		}
-	}()
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	config.Set("iaas:node-port", urlPort(node2.URL()))
-	defer config.Unset("iaas:node-port")
-	var p dockerProvisioner
-	err = p.Initialize()
-	c.Assert(err, check.IsNil)
-	mainDockerProvisioner = &p
-	p.storage = &cluster.MapStorage{}
-	clusterInstance, err := cluster.New(nil, p.storage,
-		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
-			"pool": "pool1",
-			"iaas": "my-scale-iaas",
-		}},
-	)
-	c.Assert(err, check.IsNil)
-	p.cluster = clusterInstance
-	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
-	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	defer p.Destroy(appInstance)
-	p.Provision(appInstance)
-	imageId, err := appCurrentImageName(appInstance.GetName())
-	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"procfile": "web: python ./myapp",
-	}
-	err = saveImageCustomData(imageId, customData)
-	c.Assert(err, check.IsNil)
-
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	appStruct := &app.App{
-		Name: appInstance.GetName(),
-		Pool: "pool1",
-	}
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err = provision.AddPool(opts)
-	c.Assert(err, check.IsNil)
-	err = conn.Apps().Insert(appStruct)
-	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
-
-	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+func (s *AutoScaleSuite) TestAutoScaleConfigRunOnce(c *check.C) {
+	_, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 4}},
-		app:         appInstance,
-		imageId:     imageId,
-		provisioner: &p,
+		app:         s.appInstance,
+		imageId:     s.imageId,
+		provisioner: s.p,
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
 		done:              make(chan bool),
-		provisioner:       &p,
+		provisioner:       s.p,
 		groupByMetadata:   "pool",
 		maxContainerCount: 2,
 	}
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
-	nodes, err := p.cluster.Nodes()
+	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
@@ -375,85 +295,124 @@ func (s *S) TestAutoScaleConfigRunOnce(c *check.C) {
 	c.Assert(evts[0].Action, check.Equals, "add")
 	c.Assert(evts[0].Successful, check.Equals, true)
 	c.Assert(evts[0].Error, check.Equals, "")
-
-	containers1, err := p.listContainersByHost(urlToHost(nodes[0].Address))
+	containers1, err := s.p.listContainersByHost(urlToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
-	containers2, err := p.listContainersByHost(urlToHost(nodes[1].Address))
+	containers2, err := s.p.listContainersByHost(urlToHost(nodes[1].Address))
 	c.Assert(err, check.IsNil)
 	c.Assert(containers1, check.HasLen, 2)
 	c.Assert(containers2, check.HasLen, 2)
 }
 
-func (s *S) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
-	rollback := startTestRepositoryServer()
-	defer rollback()
-	defer func() {
-		machines, _ := iaas.ListMachines()
-		for _, m := range machines {
-			m.Destroy()
+func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMultipleNodes(c *check.C) {
+	_, err := addContainersWithHost(&changeUnitsPipelineArgs{
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 6}},
+		app:         s.appInstance,
+		imageId:     s.imageId,
+		provisioner: s.p,
+	})
+	c.Assert(err, check.IsNil)
+	a := autoScaleConfig{
+		done:              make(chan bool),
+		provisioner:       s.p,
+		groupByMetadata:   "pool",
+		maxContainerCount: 2,
+	}
+	err = a.runOnce()
+	c.Assert(err, check.IsNil)
+	nodes, err := s.p.cluster.UnfilteredNodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 3)
+	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
+	c.Assert(nodes[1].Address, check.Not(check.Equals), nodes[2].Address)
+	evts, err := listAutoScaleEvents(0, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].MetadataValue, check.Equals, "pool1")
+	c.Assert(evts[0].Action, check.Equals, "add")
+	c.Assert(evts[0].Successful, check.Equals, true)
+	c.Assert(evts[0].Error, check.Equals, "")
+	c.Assert(evts[0].Nodes, check.HasLen, 2)
+	containers1, err := s.p.listContainersByHost(urlToHost(nodes[0].Address))
+	c.Assert(err, check.IsNil)
+	containers2, err := s.p.listContainersByHost(urlToHost(nodes[1].Address))
+	c.Assert(err, check.IsNil)
+	containers3, err := s.p.listContainersByHost(urlToHost(nodes[2].Address))
+	c.Assert(err, check.IsNil)
+	c.Assert(containers1, check.HasLen, 2)
+	c.Assert(containers2, check.HasLen, 2)
+	c.Assert(containers3, check.HasLen, 2)
+}
+
+func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMultipleNodesPartialError(c *check.C) {
+	var count int32
+	s.node2.CustomHandler("/_ping", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if atomic.AddInt32(&count, 1) > 1 {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
-	}()
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+		s.node2.DefaultHandler().ServeHTTP(w, r)
+	}))
+	_, err := addContainersWithHost(&changeUnitsPipelineArgs{
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 6}},
+		app:         s.appInstance,
+		imageId:     s.imageId,
+		provisioner: s.p,
+	})
 	c.Assert(err, check.IsNil)
-	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	config.Set("iaas:node-port", urlPort(node2.URL()))
-	defer config.Unset("iaas:node-port")
-
-	var p dockerProvisioner
-	err = p.Initialize()
-	c.Assert(err, check.IsNil)
-	p.storage = &cluster.MapStorage{}
-	otherUrl := strings.Replace(node2.URL(), "127.0.0.1", "localhost", 1)
-	clusterInstance, err := cluster.New(nil, p.storage,
-		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
-			"pool": "pool1",
-			"iaas": "my-scale-iaas",
-		}},
-		cluster.Node{Address: otherUrl, Metadata: map[string]string{
-			"pool": "pool1",
-			"iaas": "my-scale-iaas",
-		}},
-	)
-	c.Assert(err, check.IsNil)
-	p.cluster = clusterInstance
-	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
-	appInstance := provisiontest.NewFakeApp("superapp", "python", 0)
-	defer p.Destroy(appInstance)
-	p.Provision(appInstance)
-	imageId, err := appCurrentImageName(appInstance.GetName())
-	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"procfile": "web: python ./myapp",
+	a := autoScaleConfig{
+		done:              make(chan bool),
+		provisioner:       s.p,
+		groupByMetadata:   "pool",
+		maxContainerCount: 2,
 	}
-	err = saveImageCustomData(imageId, customData)
+	err = a.runOnce()
 	c.Assert(err, check.IsNil)
+	nodes, err := s.p.cluster.Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 2)
+	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
+	evts, err := listAutoScaleEvents(0, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].MetadataValue, check.Equals, "pool1")
+	c.Assert(evts[0].Action, check.Equals, "add")
+	c.Assert(evts[0].Successful, check.Equals, true)
+	c.Assert(evts[0].Error, check.Equals, "")
+	c.Assert(evts[0].Nodes, check.HasLen, 1)
+	// parts := strings.Split(evts[0].Log, "\n")
+	c.Assert(evts[0].Log, check.Matches, `(?s).*\[node autoscale\] not all required nodes were created: API error.*`)
+	containers1, err := s.p.listContainersByHost(urlToHost(nodes[0].Address))
+	c.Assert(err, check.IsNil)
+	containers2, err := s.p.listContainersByHost(urlToHost(nodes[1].Address))
+	c.Assert(err, check.IsNil)
+	c.Assert(containers1, check.HasLen, 3)
+	c.Assert(containers2, check.HasLen, 3)
+}
 
-	conn, err := db.Conn()
+func (s *AutoScaleSuite) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
+	port, _ := config.GetInt("iaas:node-port")
+	otherUrl := fmt.Sprintf("http://localhost:%d", port)
+	node := cluster.Node{Address: otherUrl, Metadata: map[string]string{
+		"pool": "pool1",
+		"iaas": "my-scale-iaas",
+	}}
+	err := s.p.cluster.Register(node)
 	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	appStruct := &app.App{
-		Name: appInstance.GetName(),
-		Pool: "pool1",
-	}
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err = provision.AddPool(opts)
-	c.Assert(err, check.IsNil)
-	err = conn.Apps().Insert(appStruct)
-	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
-
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 4}},
-		app:         appInstance,
-		imageId:     imageId,
-		provisioner: &p,
+		app:         s.appInstance,
+		imageId:     s.imageId,
+		provisioner: s.p,
 		toHost:      "127.0.0.1",
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
 		done:              make(chan bool),
-		provisioner:       &p,
+		provisioner:       s.p,
 		groupByMetadata:   "pool",
 		maxContainerCount: 2,
 	}
@@ -475,78 +434,28 @@ func (s *S) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
 	c.Assert(evts[0].Action, check.Equals, "rebalance")
 	c.Assert(evts[0].Successful, check.Equals, true)
 	c.Assert(evts[0].Error, check.Equals, "")
-	nodes, err := p.cluster.Nodes()
+	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
-	containers1, err := p.listContainersByHost(urlToHost(nodes[0].Address))
+	containers1, err := s.p.listContainersByHost(urlToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
-	containers2, err := p.listContainersByHost(urlToHost(nodes[1].Address))
+	containers2, err := s.p.listContainersByHost(urlToHost(nodes[1].Address))
 	c.Assert(err, check.IsNil)
 	c.Assert(containers1, check.HasLen, 2)
 	c.Assert(containers2, check.HasLen, 2)
 }
 
-func (s *S) TestAutoScaleConfigRunNoGroup(c *check.C) {
-	rollback := startTestRepositoryServer()
-	defer rollback()
-	defer func() {
-		machines, _ := iaas.ListMachines()
-		for _, m := range machines {
-			m.Destroy()
-		}
-	}()
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	config.Set("iaas:node-port", urlPort(node2.URL()))
-	defer config.Unset("iaas:node-port")
-
-	var p dockerProvisioner
-	err = p.Initialize()
-	c.Assert(err, check.IsNil)
-	p.storage = &cluster.MapStorage{}
-	clusterInstance, err := cluster.New(nil, p.storage,
-		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
-			"iaas": "my-scale-iaas",
-			"pool": "test-default",
-		}},
-	)
-	c.Assert(err, check.IsNil)
-	p.cluster = clusterInstance
-	mainDockerProvisioner = &p
-	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
-	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	defer p.Destroy(appInstance)
-	p.Provision(appInstance)
-	imageId, err := appCurrentImageName(appInstance.GetName())
-	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"procfile": "web: python ./myapp",
-	}
-	err = saveImageCustomData(imageId, customData)
-	c.Assert(err, check.IsNil)
-
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	appStruct := &app.App{
-		Name: appInstance.GetName(),
-	}
-	err = conn.Apps().Insert(appStruct)
-	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
-
-	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+func (s *AutoScaleSuite) TestAutoScaleConfigRunNoGroup(c *check.C) {
+	_, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 4}},
-		app:         appInstance,
-		imageId:     imageId,
-		provisioner: &p,
+		app:         s.appInstance,
+		imageId:     s.imageId,
+		provisioner: s.p,
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
 		done:              make(chan bool),
-		provisioner:       &p,
+		provisioner:       s.p,
 		maxContainerCount: 2,
 	}
 	wg := sync.WaitGroup{}
@@ -567,80 +476,38 @@ func (s *S) TestAutoScaleConfigRunNoGroup(c *check.C) {
 	c.Assert(evts[0].Action, check.Equals, "add")
 	c.Assert(evts[0].Successful, check.Equals, true)
 	c.Assert(evts[0].Error, check.Equals, "")
-	nodes, err := p.cluster.Nodes()
+	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
-	containers1, err := p.listContainersByHost(urlToHost(nodes[0].Address))
+	containers1, err := s.p.listContainersByHost(urlToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
-	containers2, err := p.listContainersByHost(urlToHost(nodes[1].Address))
+	containers2, err := s.p.listContainersByHost(urlToHost(nodes[1].Address))
 	c.Assert(err, check.IsNil)
 	c.Assert(containers1, check.HasLen, 2)
 	c.Assert(containers2, check.HasLen, 2)
 }
 
-func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
-	rollback := startTestRepositoryServer()
-	defer rollback()
-	defer func() {
-		machines, _ := iaas.ListMachines()
-		for _, m := range machines {
-			m.Destroy()
-		}
-	}()
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+func (s *AutoScaleSuite) TestAutoScaleConfigRunNoMatch(c *check.C) {
+	originalNodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
-	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	config.Set("iaas:node-port", urlPort(node2.URL()))
-	defer config.Unset("iaas:node-port")
-
-	var p dockerProvisioner
-	err = p.Initialize()
-	c.Assert(err, check.IsNil)
-	mainDockerProvisioner = &p
-	p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
-		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
+	s.p.cluster, err = cluster.New(nil, &cluster.MapStorage{}, cluster.Node{
+		Address: originalNodes[0].Address,
+		Metadata: map[string]string{
 			"iaas": "my-scale-iaas",
-		}},
-	)
+		},
+	})
 	c.Assert(err, check.IsNil)
-	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
-	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	defer p.Destroy(appInstance)
-	p.Provision(appInstance)
-	imageId, err := appCurrentImageName(appInstance.GetName())
-	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"procfile": "web: python ./myapp",
-	}
-	err = saveImageCustomData(imageId, customData)
-	c.Assert(err, check.IsNil)
-
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	appStruct := &app.App{
-		Name: appInstance.GetName(),
-		Pool: "pool1",
-	}
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err = provision.AddPool(opts)
-	c.Assert(err, check.IsNil)
-	err = conn.Apps().Insert(appStruct)
-	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
-
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 4}},
-		app:         appInstance,
-		imageId:     imageId,
-		provisioner: &p,
+		app:         s.appInstance,
+		imageId:     s.imageId,
+		provisioner: s.p,
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
 		done:              make(chan bool),
-		provisioner:       &p,
+		provisioner:       s.p,
 		maxContainerCount: 2,
 		groupByMetadata:   "pool",
 	}
@@ -653,16 +520,15 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	err = a.run()
 	c.Assert(err, check.IsNil)
 	wg.Wait()
-	nodes, err := p.cluster.Nodes()
+	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
-	c.Assert(nodes[0].Address, check.Equals, node1.URL())
+	c.Assert(nodes[0].Address, check.Equals, originalNodes[0].Address)
 	evts, err := listAutoScaleEvents(0, 0)
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 0)
-
-	p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
-		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
+	s.p.cluster, err = cluster.New(nil, &cluster.MapStorage{},
+		cluster.Node{Address: nodes[0].Address, Metadata: map[string]string{
 			"iaas": "my-scale-iaas",
 			"pool": "pool1",
 		}},
@@ -678,13 +544,12 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	err = a.run()
 	c.Assert(err, check.IsNil)
 	wg1.Wait()
-	nodes, err = p.cluster.Nodes()
+	nodes, err = s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	evts, err = listAutoScaleEvents(0, 0)
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 0)
-
 	a.matadataFilter = "pool1"
 	wg2 := sync.WaitGroup{}
 	wg2.Add(1)
@@ -695,7 +560,7 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	err = a.run()
 	c.Assert(err, check.IsNil)
 	wg2.Wait()
-	nodes, err = p.cluster.Nodes()
+	nodes, err = s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	evts, err = listAutoScaleEvents(0, 0)
@@ -703,66 +568,12 @@ func (s *S) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	c.Assert(evts, check.HasLen, 1)
 }
 
-func (s *S) TestAutoScaleConfigRunStress(c *check.C) {
-	rollback := startTestRepositoryServer()
-	defer rollback()
-	defer func() {
-		machines, _ := iaas.ListMachines()
-		for _, m := range machines {
-			m.Destroy()
-		}
-	}()
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	config.Set("iaas:node-port", urlPort(node2.URL()))
-	defer config.Unset("iaas:node-port")
-
-	var p dockerProvisioner
-	err = p.Initialize()
-	c.Assert(err, check.IsNil)
-	p.storage = &cluster.MapStorage{}
-	mainDockerProvisioner = &p
-	clusterInstance, err := cluster.New(nil, p.storage,
-		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
-			"pool": "pool1",
-			"iaas": "my-scale-iaas",
-		}},
-	)
-	c.Assert(err, check.IsNil)
-	p.cluster = clusterInstance
-	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
-	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	defer p.Destroy(appInstance)
-	p.Provision(appInstance)
-	imageId, err := appCurrentImageName(appInstance.GetName())
-	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"procfile": "web: python ./myapp",
-	}
-	err = saveImageCustomData(imageId, customData)
-	c.Assert(err, check.IsNil)
-
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	appStruct := &app.App{
-		Name: appInstance.GetName(),
-		Pool: "pool1",
-	}
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err = provision.AddPool(opts)
-	c.Assert(err, check.IsNil)
-	err = conn.Apps().Insert(appStruct)
-	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
-
-	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+func (s *AutoScaleSuite) TestAutoScaleConfigRunStress(c *check.C) {
+	_, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 4}},
-		app:         appInstance,
-		imageId:     imageId,
-		provisioner: &p,
+		app:         s.appInstance,
+		imageId:     s.imageId,
+		provisioner: s.p,
 	})
 	c.Assert(err, check.IsNil)
 	wg := sync.WaitGroup{}
@@ -771,7 +582,7 @@ func (s *S) TestAutoScaleConfigRunStress(c *check.C) {
 		go func() {
 			a := autoScaleConfig{
 				done:              make(chan bool),
-				provisioner:       &p,
+				provisioner:       s.p,
 				groupByMetadata:   "pool",
 				maxContainerCount: 2,
 			}
@@ -788,7 +599,7 @@ func (s *S) TestAutoScaleConfigRunStress(c *check.C) {
 		}()
 	}
 	wg.Wait()
-	nodes, err := p.cluster.Nodes()
+	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
@@ -801,85 +612,25 @@ func (s *S) TestAutoScaleConfigRunStress(c *check.C) {
 	c.Assert(evts[0].Action, check.Equals, "add")
 	c.Assert(evts[0].Successful, check.Equals, true)
 	c.Assert(evts[0].Error, check.Equals, "")
-
-	containers1, err := p.listContainersByHost(urlToHost(nodes[0].Address))
+	containers1, err := s.p.listContainersByHost(urlToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
-	containers2, err := p.listContainersByHost(urlToHost(nodes[1].Address))
+	containers2, err := s.p.listContainersByHost(urlToHost(nodes[1].Address))
 	c.Assert(err, check.IsNil)
 	c.Assert(containers1, check.HasLen, 2)
 	c.Assert(containers2, check.HasLen, 2)
 }
 
-func (s *S) TestAutoScaleConfigRunMemoryBased(c *check.C) {
-	rollback := startTestRepositoryServer()
-	defer rollback()
-	defer func() {
-		machines, _ := iaas.ListMachines()
-		for _, m := range machines {
-			m.Destroy()
-		}
-	}()
-	plan := app.Plan{Memory: 21000, Name: "default", CpuShare: 10}
-	err := plan.Save()
-	c.Assert(err, check.IsNil)
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	config.Set("iaas:node-port", urlPort(node2.URL()))
-	defer config.Unset("iaas:node-port")
-
-	var p dockerProvisioner
-	err = p.Initialize()
-	mainDockerProvisioner = &p
-	c.Assert(err, check.IsNil)
-	p.storage = &cluster.MapStorage{}
-	clusterInstance, err := cluster.New(nil, p.storage,
-		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
-			"pool":     "pool1",
-			"iaas":     "my-scale-iaas",
-			"totalMem": "125000",
-		}},
-	)
-	c.Assert(err, check.IsNil)
-	p.cluster = clusterInstance
-	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
-	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	defer p.Destroy(appInstance)
-	p.Provision(appInstance)
-	imageId, err := appCurrentImageName(appInstance.GetName())
-	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"procfile": "web: python ./myapp",
-	}
-	err = saveImageCustomData(imageId, customData)
-	c.Assert(err, check.IsNil)
-
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	appStruct := &app.App{
-		Name: appInstance.GetName(),
-		Plan: app.Plan{Memory: 21000},
-		Pool: "pool1",
-	}
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err = provision.AddPool(opts)
-	c.Assert(err, check.IsNil)
-	err = conn.Apps().Insert(appStruct)
-	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
-
-	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBased(c *check.C) {
+	_, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 4}},
-		app:         appInstance,
-		imageId:     imageId,
-		provisioner: &p,
+		app:         s.appInstance,
+		imageId:     s.imageId,
+		provisioner: s.p,
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
 		done:                make(chan bool),
-		provisioner:         &p,
+		provisioner:         s.p,
 		groupByMetadata:     "pool",
 		totalMemoryMetadata: "totalMem",
 		maxMemoryRatio:      0.8,
@@ -893,7 +644,7 @@ func (s *S) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 	err = a.run()
 	c.Assert(err, check.IsNil)
 	wg1.Wait()
-	nodes, err := p.cluster.Nodes()
+	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
@@ -906,15 +657,13 @@ func (s *S) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 	c.Assert(evts[0].Action, check.Equals, "add")
 	c.Assert(evts[0].Successful, check.Equals, true)
 	c.Assert(evts[0].Error, check.Equals, "")
-
 	// Also should have rebalanced
-	containers1, err := p.listContainersByHost(urlToHost(nodes[0].Address))
+	containers1, err := s.p.listContainersByHost(urlToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
-	containers2, err := p.listContainersByHost(urlToHost(nodes[1].Address))
+	containers2, err := s.p.listContainersByHost(urlToHost(nodes[1].Address))
 	c.Assert(err, check.IsNil)
 	c.Assert(containers1, check.HasLen, 2)
 	c.Assert(containers2, check.HasLen, 2)
-
 	// Should do nothing if calling on already scaled
 	wg2 := sync.WaitGroup{}
 	wg2.Add(1)
@@ -925,89 +674,34 @@ func (s *S) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 	err = a.run()
 	c.Assert(err, check.IsNil)
 	wg2.Wait()
-	nodes, err = p.cluster.Nodes()
+	nodes, err = s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	evts, err = listAutoScaleEvents(0, 0)
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)
-
-	containers1Again, err := p.listContainersByHost(urlToHost(nodes[0].Address))
+	containers1Again, err := s.p.listContainersByHost(urlToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
-	containers2Again, err := p.listContainersByHost(urlToHost(nodes[1].Address))
+	containers2Again, err := s.p.listContainersByHost(urlToHost(nodes[1].Address))
 	c.Assert(err, check.IsNil)
 	c.Assert(containers1, check.DeepEquals, containers1Again)
 	c.Assert(containers2, check.DeepEquals, containers2Again)
-	locked, err := app.AcquireApplicationLock(appStruct.Name, "x", "y")
+	locked, err := app.AcquireApplicationLock(s.appInstance.GetName(), "x", "y")
 	c.Assert(err, check.IsNil)
 	c.Assert(locked, check.Equals, true)
 }
 
-func (s *S) TestAutoScaleConfigRunPriorityToCountBased(c *check.C) {
-	rollback := startTestRepositoryServer()
-	defer rollback()
-	defer func() {
-		machines, _ := iaas.ListMachines()
-		for _, m := range machines {
-			m.Destroy()
-		}
-	}()
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	config.Set("iaas:node-port", urlPort(node2.URL()))
-	defer config.Unset("iaas:node-port")
-
-	var p dockerProvisioner
-	err = p.Initialize()
-	c.Assert(err, check.IsNil)
-	mainDockerProvisioner = &p
-	p.storage = &cluster.MapStorage{}
-	clusterInstance, err := cluster.New(nil, p.storage,
-		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
-			"pool": "pool1",
-			"iaas": "my-scale-iaas",
-		}},
-	)
-	c.Assert(err, check.IsNil)
-	p.cluster = clusterInstance
-	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
-	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	defer p.Destroy(appInstance)
-	p.Provision(appInstance)
-	imageId, err := appCurrentImageName(appInstance.GetName())
-	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"procfile": "web: python ./myapp",
-	}
-	err = saveImageCustomData(imageId, customData)
-	c.Assert(err, check.IsNil)
-
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	appStruct := &app.App{
-		Name: appInstance.GetName(),
-		Pool: "pool1",
-	}
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err = provision.AddPool(opts)
-	c.Assert(err, check.IsNil)
-	err = conn.Apps().Insert(appStruct)
-	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
-
-	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+func (s *AutoScaleSuite) TestAutoScaleConfigRunPriorityToCountBased(c *check.C) {
+	_, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 4}},
-		app:         appInstance,
-		imageId:     imageId,
-		provisioner: &p,
+		app:         s.appInstance,
+		imageId:     s.imageId,
+		provisioner: s.p,
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
 		done:                make(chan bool),
-		provisioner:         &p,
+		provisioner:         s.p,
 		groupByMetadata:     "pool",
 		maxContainerCount:   2,
 		totalMemoryMetadata: "totalMem",
@@ -1022,7 +716,7 @@ func (s *S) TestAutoScaleConfigRunPriorityToCountBased(c *check.C) {
 	err = a.run()
 	c.Assert(err, check.IsNil)
 	wg.Wait()
-	nodes, err := p.cluster.Nodes()
+	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
@@ -1035,80 +729,32 @@ func (s *S) TestAutoScaleConfigRunPriorityToCountBased(c *check.C) {
 	c.Assert(evts[0].Action, check.Equals, "add")
 	c.Assert(evts[0].Successful, check.Equals, true)
 	c.Assert(evts[0].Error, check.Equals, "")
-
-	containers1, err := p.listContainersByHost(urlToHost(nodes[0].Address))
+	containers1, err := s.p.listContainersByHost(urlToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
-	containers2, err := p.listContainersByHost(urlToHost(nodes[1].Address))
+	containers2, err := s.p.listContainersByHost(urlToHost(nodes[1].Address))
 	c.Assert(err, check.IsNil)
 	c.Assert(containers1, check.HasLen, 2)
 	c.Assert(containers2, check.HasLen, 2)
 }
 
-func (s *S) TestAutoScaleConfigRunMemoryBasedPlanTooBig(c *check.C) {
-	rollback := startTestRepositoryServer()
-	defer rollback()
-	defer func() {
-		machines, _ := iaas.ListMachines()
-		for _, m := range machines {
-			m.Destroy()
-		}
-	}()
+func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedPlanTooBig(c *check.C) {
+	err := app.PlanRemove("default")
+	c.Assert(err, check.IsNil)
 	plan := app.Plan{Memory: 126000, Name: "default", CpuShare: 10}
-	err := plan.Save()
+	err = plan.Save()
 	c.Assert(err, check.IsNil)
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+	originalNodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
-
-	var p dockerProvisioner
-	err = p.Initialize()
-	c.Assert(err, check.IsNil)
-	p.storage = &cluster.MapStorage{}
-	clusterInstance, err := cluster.New(nil, p.storage,
-		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
-			"pool":     "pool1",
-			"iaas":     "my-scale-iaas",
-			"totalMem": "125000",
-		}},
-	)
-	c.Assert(err, check.IsNil)
-	p.cluster = clusterInstance
-	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
-	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	defer p.Destroy(appInstance)
-	p.Provision(appInstance)
-	imageId, err := appCurrentImageName(appInstance.GetName())
-	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"procfile": "web: python ./myapp",
-	}
-	err = saveImageCustomData(imageId, customData)
-	c.Assert(err, check.IsNil)
-
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	appStruct := &app.App{
-		Name: appInstance.GetName(),
-		Plan: app.Plan{Memory: 21000},
-		Pool: "pool1",
-	}
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err = provision.AddPool(opts)
-	c.Assert(err, check.IsNil)
-	err = conn.Apps().Insert(appStruct)
-	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
-
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 4}},
-		app:         appInstance,
-		imageId:     imageId,
-		provisioner: &p,
+		app:         s.appInstance,
+		imageId:     s.imageId,
+		provisioner: s.p,
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
 		done:                make(chan bool),
-		provisioner:         &p,
+		provisioner:         s.p,
 		groupByMetadata:     "pool",
 		totalMemoryMetadata: "totalMem",
 		maxMemoryRatio:      0.8,
@@ -1122,89 +768,44 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedPlanTooBig(c *check.C) {
 	err = a.run()
 	c.Assert(err, check.ErrorMatches, `\[node autoscale\] error scaling group pool1: aborting, impossible to fit max plan memory of 126000 bytes, node max available memory is 100000`)
 	wg.Wait()
-	nodes, err := p.cluster.Nodes()
+	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
-	c.Assert(nodes[0].Address, check.Equals, node1.URL())
+	c.Assert(nodes[0].Address, check.Equals, originalNodes[0].Address)
 	evts, err := listAutoScaleEvents(0, 0)
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 0)
 }
 
-func (s *S) TestAutoScaleConfigRunScaleDown(c *check.C) {
-	rollback := startTestRepositoryServer()
-	defer rollback()
-	defer func() {
-		machines, _ := iaas.ListMachines()
-		for _, m := range machines {
-			m.Destroy()
-		}
-	}()
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDown(c *check.C) {
+	port, _ := config.GetInt("iaas:node-port")
+	otherUrl := fmt.Sprintf("http://localhost:%d/", port)
+	node := cluster.Node{Address: otherUrl, Metadata: map[string]string{
+		"pool":     "pool1",
+		"iaas":     "my-scale-iaas",
+		"totalMem": "125000",
+	}}
+	err := s.p.cluster.Register(node)
 	c.Assert(err, check.IsNil)
-	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	config.Set("iaas:node-port", urlPort(node2.URL()))
-	defer config.Unset("iaas:node-port")
-
-	var p dockerProvisioner
-	err = p.Initialize()
-	c.Assert(err, check.IsNil)
-	p.storage = &cluster.MapStorage{}
-	otherUrl := strings.Replace(node2.URL(), "127.0.0.1", "localhost", 1)
-	clusterInstance, err := cluster.New(nil, p.storage,
-		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
-			"pool": "pool1",
-			"iaas": "my-scale-iaas",
-		}},
-		cluster.Node{Address: otherUrl, Metadata: map[string]string{
-			"pool": "pool1",
-			"iaas": "my-scale-iaas",
-		}},
-	)
-	c.Assert(err, check.IsNil)
-	p.cluster = clusterInstance
-	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
-	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	defer p.Destroy(appInstance)
-	p.Provision(appInstance)
-	imageId, err := appCurrentImageName(appInstance.GetName())
-	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"procfile": "web: python ./myapp",
-	}
-	err = saveImageCustomData(imageId, customData)
-	c.Assert(err, check.IsNil)
-
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	appStruct := &app.App{
-		Name: appInstance.GetName(),
-	}
-	err = conn.Apps().Insert(appStruct)
-	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
-
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
-		app:         appInstance,
-		imageId:     imageId,
-		provisioner: &p,
+		app:         s.appInstance,
+		imageId:     s.imageId,
+		provisioner: s.p,
 		toHost:      "127.0.0.1",
 	})
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
-		app:         appInstance,
-		imageId:     imageId,
-		provisioner: &p,
+		app:         s.appInstance,
+		imageId:     s.imageId,
+		provisioner: s.p,
 		toHost:      "localhost",
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
 		done:              make(chan bool),
-		provisioner:       &p,
+		provisioner:       s.p,
 		groupByMetadata:   "pool",
 		maxContainerCount: 4,
 	}
@@ -1226,97 +827,43 @@ func (s *S) TestAutoScaleConfigRunScaleDown(c *check.C) {
 	c.Assert(evts[0].Action, check.Equals, "remove")
 	c.Assert(evts[0].Successful, check.Equals, true)
 	c.Assert(evts[0].Error, check.Equals, "")
-	nodes, err := p.cluster.Nodes()
+	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
-	containers, err := p.listContainersByHost(urlToHost(nodes[0].Address))
+	containers, err := s.p.listContainersByHost(urlToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
 }
 
-func (s *S) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C) {
-	rollback := startTestRepositoryServer()
-	defer rollback()
-	defer func() {
-		machines, _ := iaas.ListMachines()
-		for _, m := range machines {
-			m.Destroy()
-		}
-	}()
-	plan := app.Plan{Memory: 21000, Name: "default", CpuShare: 10}
-	err := plan.Save()
+func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C) {
+	port, _ := config.GetInt("iaas:node-port")
+	otherUrl := fmt.Sprintf("http://localhost:%d/", port)
+	node := cluster.Node{Address: otherUrl, Metadata: map[string]string{
+		"pool":     "pool1",
+		"iaas":     "my-scale-iaas",
+		"totalMem": "125000",
+	}}
+	err := s.p.cluster.Register(node)
 	c.Assert(err, check.IsNil)
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	config.Set("iaas:node-port", urlPort(node2.URL()))
-	defer config.Unset("iaas:node-port")
-
-	var p dockerProvisioner
-	err = p.Initialize()
-	c.Assert(err, check.IsNil)
-	p.storage = &cluster.MapStorage{}
-	otherUrl := strings.Replace(node2.URL(), "127.0.0.1", "localhost", 1)
-	clusterInstance, err := cluster.New(nil, p.storage,
-		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
-			"pool":     "pool1",
-			"iaas":     "my-scale-iaas",
-			"totalMem": "125000",
-		}},
-		cluster.Node{Address: otherUrl, Metadata: map[string]string{
-			"pool":     "pool1",
-			"iaas":     "my-scale-iaas",
-			"totalMem": "125000",
-		}},
-	)
-	c.Assert(err, check.IsNil)
-	p.cluster = clusterInstance
-	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
-	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	defer p.Destroy(appInstance)
-	p.Provision(appInstance)
-	imageId, err := appCurrentImageName(appInstance.GetName())
-	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"procfile": "web: python ./myapp",
-	}
-	err = saveImageCustomData(imageId, customData)
-	c.Assert(err, check.IsNil)
-
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	appStruct := &app.App{
-		Name: appInstance.GetName(),
-		Pool: "pool1",
-	}
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err = provision.AddPool(opts)
-	c.Assert(err, check.IsNil)
-	err = conn.Apps().Insert(appStruct)
-	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
-
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
-		app:         appInstance,
-		imageId:     imageId,
-		provisioner: &p,
+		app:         s.appInstance,
+		imageId:     s.imageId,
+		provisioner: s.p,
 		toHost:      "127.0.0.1",
 	})
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
-		app:         appInstance,
-		imageId:     imageId,
-		provisioner: &p,
+		app:         s.appInstance,
+		imageId:     s.imageId,
+		provisioner: s.p,
 		toHost:      "localhost",
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
 		done:                make(chan bool),
-		provisioner:         &p,
+		provisioner:         s.p,
 		groupByMetadata:     "pool",
 		totalMemoryMetadata: "totalMem",
 		maxMemoryRatio:      0.8,
@@ -1339,37 +886,22 @@ func (s *S) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C) {
 	c.Assert(evts[0].Action, check.Equals, "remove")
 	c.Assert(evts[0].Successful, check.Equals, true)
 	c.Assert(evts[0].Error, check.Equals, "")
-	nodes, err := p.cluster.Nodes()
+	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
-	containers, err := p.listContainersByHost(urlToHost(nodes[0].Address))
+	containers, err := s.p.listContainersByHost(urlToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
 }
 
-func (s *S) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *check.C) {
-	rollback := startTestRepositoryServer()
-	defer rollback()
-	defer func() {
-		machines, _ := iaas.ListMachines()
-		for _, m := range machines {
-			m.Destroy()
-		}
-	}()
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
+func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *check.C) {
+	oldNodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
-	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	config.Set("iaas:node-port", urlPort(node2.URL()))
-	defer config.Unset("iaas:node-port")
-
-	var p dockerProvisioner
-	err = p.Initialize()
-	c.Assert(err, check.IsNil)
-	p.storage = &cluster.MapStorage{}
-	otherUrl := strings.Replace(node2.URL(), "127.0.0.1", "localhost", 1)
-	clusterInstance, err := cluster.New(nil, p.storage,
-		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
+	port, _ := config.GetInt("iaas:node-port")
+	otherUrl := fmt.Sprintf("http://localhost:%d/", port)
+	s.p.storage = &cluster.MapStorage{}
+	s.p.cluster, err = cluster.New(nil, s.p.storage,
+		cluster.Node{Address: oldNodes[0].Address, Metadata: map[string]string{
 			"pool":    "pool1",
 			"iaas":    "my-scale-iaas",
 			"network": "net1",
@@ -1381,52 +913,25 @@ func (s *S) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *check.C) {
 		}},
 	)
 	c.Assert(err, check.IsNil)
-	p.cluster = clusterInstance
-	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
-	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	defer p.Destroy(appInstance)
-	p.Provision(appInstance)
-	imageId, err := appCurrentImageName(appInstance.GetName())
-	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"procfile": "web: python ./myapp",
-	}
-	err = saveImageCustomData(imageId, customData)
-	c.Assert(err, check.IsNil)
-
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	appStruct := &app.App{
-		Name: appInstance.GetName(),
-		Pool: "pool1",
-	}
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err = provision.AddPool(opts)
-	c.Assert(err, check.IsNil)
-	err = conn.Apps().Insert(appStruct)
-	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
-
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
-		app:         appInstance,
-		imageId:     imageId,
-		provisioner: &p,
+		app:         s.appInstance,
+		imageId:     s.imageId,
+		provisioner: s.p,
 		toHost:      "127.0.0.1",
 	})
 	c.Assert(err, check.IsNil)
 	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
-		app:         appInstance,
-		imageId:     imageId,
-		provisioner: &p,
+		app:         s.appInstance,
+		imageId:     s.imageId,
+		provisioner: s.p,
 		toHost:      "localhost",
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
 		done:              make(chan bool),
-		provisioner:       &p,
+		provisioner:       s.p,
 		groupByMetadata:   "pool",
 		maxContainerCount: 4,
 	}
@@ -1442,75 +947,25 @@ func (s *S) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *check.C) {
 	evts, err := listAutoScaleEvents(0, 0)
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 0)
-	nodes, err := p.cluster.Nodes()
+	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 }
 
-func (s *S) TestAutoScaleConfigRunLockedApp(c *check.C) {
-	rollback := startTestRepositoryServer()
-	defer rollback()
-	defer func() {
-		machines, _ := iaas.ListMachines()
-		for _, m := range machines {
-			m.Destroy()
-		}
-	}()
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	config.Set("iaas:node-port", urlPort(node2.URL()))
-	defer config.Unset("iaas:node-port")
-	var p dockerProvisioner
-	err = p.Initialize()
-	c.Assert(err, check.IsNil)
-	p.storage = &cluster.MapStorage{}
-	clusterInstance, err := cluster.New(nil, p.storage,
-		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
-			"pool": "pool1",
-			"iaas": "my-scale-iaas",
-		}},
-	)
-	c.Assert(err, check.IsNil)
-	p.cluster = clusterInstance
-	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
-	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	defer p.Destroy(appInstance)
-	p.Provision(appInstance)
-	imageId, err := appCurrentImageName(appInstance.GetName())
-	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"procfile": "web: python ./myapp",
-	}
-	err = saveImageCustomData(imageId, customData)
-	c.Assert(err, check.IsNil)
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	appStruct := &app.App{
-		Name: appInstance.GetName(),
-		Pool: "pool1",
-	}
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err = provision.AddPool(opts)
-	c.Assert(err, check.IsNil)
-	err = conn.Apps().Insert(appStruct)
-	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
-	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+func (s *AutoScaleSuite) TestAutoScaleConfigRunLockedApp(c *check.C) {
+	_, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 4}},
-		app:         appInstance,
-		imageId:     imageId,
-		provisioner: &p,
+		app:         s.appInstance,
+		imageId:     s.imageId,
+		provisioner: s.p,
 	})
 	c.Assert(err, check.IsNil)
-	locked, err := app.AcquireApplicationLock(appStruct.Name, "tsurud", "something")
+	locked, err := app.AcquireApplicationLock(s.appInstance.GetName(), "tsurud", "something")
 	c.Assert(err, check.IsNil)
 	c.Assert(locked, check.Equals, true)
 	a := autoScaleConfig{
 		done:              make(chan bool),
-		provisioner:       &p,
+		provisioner:       s.p,
 		groupByMetadata:   "pool",
 		maxContainerCount: 2,
 	}
@@ -1523,7 +978,7 @@ func (s *S) TestAutoScaleConfigRunLockedApp(c *check.C) {
 	err = a.run()
 	c.Assert(err, check.ErrorMatches, `.*unable to lock app myapp, aborting.*`)
 	wg.Wait()
-	nodes, err := p.cluster.Nodes()
+	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	evts, err := listAutoScaleEvents(0, 0)
@@ -1531,76 +986,20 @@ func (s *S) TestAutoScaleConfigRunLockedApp(c *check.C) {
 	c.Assert(evts, check.HasLen, 0)
 }
 
-func (s *S) TestAutoScaleConfigRunMemoryBasedLockedApp(c *check.C) {
-	rollback := startTestRepositoryServer()
-	defer rollback()
-	defer func() {
-		machines, _ := iaas.ListMachines()
-		for _, m := range machines {
-			m.Destroy()
-		}
-	}()
-	plan := app.Plan{Memory: 21000, Name: "default", CpuShare: 10}
-	err := plan.Save()
-	c.Assert(err, check.IsNil)
-	node1, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	node2, err := dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	config.Set("iaas:node-port", urlPort(node2.URL()))
-	defer config.Unset("iaas:node-port")
-	var p dockerProvisioner
-	err = p.Initialize()
-	c.Assert(err, check.IsNil)
-	p.storage = &cluster.MapStorage{}
-	clusterInstance, err := cluster.New(nil, p.storage,
-		cluster.Node{Address: node1.URL(), Metadata: map[string]string{
-			"pool":     "pool1",
-			"iaas":     "my-scale-iaas",
-			"totalMem": "125000",
-		}},
-	)
-	c.Assert(err, check.IsNil)
-	p.cluster = clusterInstance
-	iaas.RegisterIaasProvider("my-scale-iaas", newHealerIaaSConstructor("localhost", nil))
-	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
-	defer p.Destroy(appInstance)
-	p.Provision(appInstance)
-	imageId, err := appCurrentImageName(appInstance.GetName())
-	c.Assert(err, check.IsNil)
-	customData := map[string]interface{}{
-		"procfile": "web: python ./myapp",
-	}
-	err = saveImageCustomData(imageId, customData)
-	c.Assert(err, check.IsNil)
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	appStruct := &app.App{
-		Name: appInstance.GetName(),
-		Plan: app.Plan{Memory: 21000},
-		Pool: "pool1",
-	}
-	opts := provision.AddPoolOptions{Name: "pool1"}
-	err = provision.AddPool(opts)
-	c.Assert(err, check.IsNil)
-	err = conn.Apps().Insert(appStruct)
-	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
-
-	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedLockedApp(c *check.C) {
+	_, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 4}},
-		app:         appInstance,
-		imageId:     imageId,
-		provisioner: &p,
+		app:         s.appInstance,
+		imageId:     s.imageId,
+		provisioner: s.p,
 	})
 	c.Assert(err, check.IsNil)
-	locked, err := app.AcquireApplicationLock(appStruct.Name, "tsurud", "something")
+	locked, err := app.AcquireApplicationLock(s.appInstance.GetName(), "tsurud", "something")
 	c.Assert(err, check.IsNil)
 	c.Assert(locked, check.Equals, true)
 	a := autoScaleConfig{
 		done:                make(chan bool),
-		provisioner:         &p,
+		provisioner:         s.p,
 		groupByMetadata:     "pool",
 		totalMemoryMetadata: "totalMem",
 		maxMemoryRatio:      0.8,
@@ -1614,7 +1013,7 @@ func (s *S) TestAutoScaleConfigRunMemoryBasedLockedApp(c *check.C) {
 	err = a.run()
 	c.Assert(err, check.ErrorMatches, `.*unable to lock app myapp, aborting.*`)
 	wg.Wait()
-	nodes, err := p.cluster.Nodes()
+	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	evts, err := listAutoScaleEvents(0, 0)
