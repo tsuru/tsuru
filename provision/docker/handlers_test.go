@@ -584,7 +584,6 @@ func (s *S) TestRebalanceContainersEmptyBodyHandler(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner = p
-	defer s.stopMultipleServersCluster(p)
 	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
@@ -643,7 +642,6 @@ func (s *S) TestRebalanceContainersFilters(c *check.C) {
 	p, err := s.startMultipleServersClusterSeggregated()
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner = p
-	defer s.stopMultipleServersCluster(p)
 	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
@@ -700,7 +698,6 @@ func (s *S) TestRebalanceContainersDryBodyHandler(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner = p
-	defer s.stopMultipleServersCluster(p)
 	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)

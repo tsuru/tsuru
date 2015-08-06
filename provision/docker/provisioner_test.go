@@ -733,7 +733,6 @@ func (s *S) TestProvisionerAddUnitsWithNoDeploys(c *check.C) {
 func (s *S) TestProvisionerAddUnitsWithHost(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	defer s.stopMultipleServersCluster(p)
 	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("myapp", "python", 0)

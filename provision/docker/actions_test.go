@@ -452,7 +452,6 @@ func (s *S) TestProvisionAddUnitsToHostName(c *check.C) {
 func (s *S) TestProvisionAddUnitsToHostForward(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	defer s.stopMultipleServersCluster(p)
 	app := provisiontest.NewFakeApp("myapp-2", "python", 0)
 	defer p.Destroy(app)
 	p.Provision(app)
@@ -486,7 +485,6 @@ func (s *S) TestProvisionAddUnitsToHostForward(c *check.C) {
 func (s *S) TestProvisionAddUnitsToHostForwardWithoutHost(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	defer s.stopMultipleServersCluster(p)
 	app := provisiontest.NewFakeApp("myapp-2", "python", 0)
 	defer p.Destroy(app)
 	p.Provision(app)

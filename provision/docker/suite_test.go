@@ -45,6 +45,7 @@ type S struct {
 	port           string
 	sshUser        string
 	server         *dtesting.DockerServer
+	extraServer    *dtesting.DockerServer
 	targetRecover  []string
 	storage        *db.Storage
 	oldProvisioner provision.Provisioner
@@ -143,6 +144,10 @@ func (s *S) SetUpTest(c *check.C) {
 
 func (s *S) TearDownTest(c *check.C) {
 	s.server.Stop()
+	if s.extraServer != nil {
+		s.extraServer.Stop()
+		s.extraServer = nil
+	}
 }
 
 func (s *S) TearDownSuite(c *check.C) {
@@ -157,15 +162,13 @@ func clearClusterStorage(sess *mgo.Session) error {
 	return dbtest.ClearAllCollections(sess.DB(clusterDbName))
 }
 
-func (s *S) stopMultipleServersCluster(p *dockerProvisioner) {
-}
-
 func (s *S) startMultipleServersCluster() (*dockerProvisioner, error) {
-	otherServer, err := dtesting.NewServer("localhost:0", nil, nil)
+	var err error
+	s.extraServer, err = dtesting.NewServer("localhost:0", nil, nil)
 	if err != nil {
 		return nil, err
 	}
-	otherUrl := strings.Replace(otherServer.URL(), "127.0.0.1", "localhost", 1)
+	otherUrl := strings.Replace(s.extraServer.URL(), "127.0.0.1", "localhost", 1)
 	var p dockerProvisioner
 	err = p.Initialize()
 	if err != nil {
@@ -183,11 +186,12 @@ func (s *S) startMultipleServersCluster() (*dockerProvisioner, error) {
 }
 
 func (s *S) startMultipleServersClusterSeggregated() (*dockerProvisioner, error) {
-	otherServer, err := dtesting.NewServer("localhost:0", nil, nil)
+	var err error
+	s.extraServer, err = dtesting.NewServer("localhost:0", nil, nil)
 	if err != nil {
 		return nil, err
 	}
-	otherUrl := strings.Replace(otherServer.URL(), "127.0.0.1", "localhost", 1)
+	otherUrl := strings.Replace(s.extraServer.URL(), "127.0.0.1", "localhost", 1)
 	var p dockerProvisioner
 	err = p.Initialize()
 	if err != nil {

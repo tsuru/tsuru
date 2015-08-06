@@ -93,6 +93,8 @@ func (s *AutoScaleSuite) SetUpTest(c *check.C) {
 
 func (s *AutoScaleSuite) TearDownTest(c *check.C) {
 	s.S.TearDownTest(c)
+	s.node1.Stop()
+	s.node2.Stop()
 	s.testRepoRollback()
 	config.Unset("iaas:node-port")
 }

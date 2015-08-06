@@ -24,7 +24,6 @@ import (
 func (s *S) TestMoveContainers(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	defer s.stopMultipleServersCluster(p)
 	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
@@ -69,7 +68,6 @@ func (s *S) TestMoveContainers(c *check.C) {
 func (s *S) TestMoveContainersUnknownDest(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	defer s.stopMultipleServersCluster(p)
 	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
@@ -110,7 +108,6 @@ func (s *S) TestMoveContainersUnknownDest(c *check.C) {
 func (s *S) TestMoveContainer(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	defer s.stopMultipleServersCluster(p)
 	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
@@ -166,7 +163,6 @@ func (s *S) TestMoveContainer(c *check.C) {
 func (s *S) TestRebalanceContainers(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	defer s.stopMultipleServersCluster(p)
 	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
@@ -204,6 +200,7 @@ func (s *S) TestRebalanceContainers(c *check.C) {
 func (s *S) TestRebalanceContainersSegScheduler(c *check.C) {
 	otherServer, err := dtesting.NewServer("localhost:0", nil, nil)
 	c.Assert(err, check.IsNil)
+	defer otherServer.Stop()
 	otherUrl := strings.Replace(otherServer.URL(), "127.0.0.1", "localhost", 1)
 	p := &dockerProvisioner{}
 	err = p.Initialize()
@@ -317,7 +314,6 @@ func (s *S) TestAppLockerBlockOtherLockers(c *check.C) {
 func (s *S) TestRebalanceContainersManyApps(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	defer s.stopMultipleServersCluster(p)
 	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	err = s.newFakeImage(p, "tsuru/app-otherapp", nil)
@@ -377,7 +373,6 @@ func (s *S) TestRebalanceContainersManyApps(c *check.C) {
 func (s *S) TestRebalanceContainersDry(c *check.C) {
 	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	defer s.stopMultipleServersCluster(p)
 	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
 	c.Assert(err, check.IsNil)
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)

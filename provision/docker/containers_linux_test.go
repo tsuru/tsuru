@@ -26,6 +26,7 @@ func (s *S) TestRebalanceContainersManyAppsSegStress(c *check.C) {
 		newIp := fmt.Sprintf("127.0.0.%d", i+1)
 		otherServer, err := dtesting.NewServer(newIp+":0", nil, nil)
 		c.Assert(err, check.IsNil)
+		defer otherServer.Stop()
 		nodes = append(nodes, cluster.Node{Address: otherServer.URL(), Metadata: map[string]string{"pool": "pool1"}})
 		nodeHosts = append(nodeHosts, urlToHost(otherServer.URL()))
 	}
