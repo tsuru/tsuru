@@ -51,34 +51,21 @@ func (isRecordedChecker) Check(params []interface{}, names []string) (bool, stri
 	if len(a.Extra) > 0 {
 		query["extra"] = a.Extra
 	}
-	done := make(chan userAction, 1)
-	errs := make(chan error, 1)
-	quit := make(chan int8)
-	defer close(quit)
-	go func() {
-		for {
-			select {
-			case <-quit:
-				return
-			default:
-				var a userAction
-				if err := conn.UserActions().Find(query).One(&a); err == nil {
-					done <- a
-					return
-				} else if err != mgo.ErrNotFound {
-					errs <- err
-					return
-				}
-			}
-		}
-	}()
+	timeout := time.After(2 * time.Second)
 	var got userAction
-	select {
-	case got = <-done:
-	case err := <-errs:
-		return false, err.Error()
-	case <-time.After(2e9):
-		return false, "Action not in the database"
+	for {
+		err := conn.UserActions().Find(query).One(&got)
+		if err == nil {
+			break
+		}
+		if err != mgo.ErrNotFound {
+			return false, err.Error()
+		}
+		select {
+		case <-timeout:
+			return false, "Action not in the database"
+		default:
+		}
 	}
 	if got.Date.IsZero() {
 		return false, "Action was not recorded using rec.Log"
