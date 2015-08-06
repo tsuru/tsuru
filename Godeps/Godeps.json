@@ -234,32 +234,7 @@
 			"Rev": "bc2f88ca37feaaae0e12045b4dcca40c5e957776"
 		},
 		{
-			"ImportPath": "github.com/tsuru/gandalf/db",
-			"Comment": "0.7.1-2-g370638b",
-			"Rev": "370638bac9491a68b8f8c11f4099b609756beb85"
-		},
-		{
-			"ImportPath": "github.com/tsuru/gandalf/fs",
-			"Comment": "0.7.1-2-g370638b",
-			"Rev": "370638bac9491a68b8f8c11f4099b609756beb85"
-		},
-		{
 			"ImportPath": "github.com/tsuru/gandalf/gandalftest",
-			"Comment": "0.7.1-2-g370638b",
-			"Rev": "370638bac9491a68b8f8c11f4099b609756beb85"
-		},
-		{
-			"ImportPath": "github.com/tsuru/gandalf/multipartzip",
-			"Comment": "0.7.1-2-g370638b",
-			"Rev": "370638bac9491a68b8f8c11f4099b609756beb85"
-		},
-		{
-			"ImportPath": "github.com/tsuru/gandalf/repository",
-			"Comment": "0.7.1-2-g370638b",
-			"Rev": "370638bac9491a68b8f8c11f4099b609756beb85"
-		},
-		{
-			"ImportPath": "github.com/tsuru/gandalf/user",
 			"Comment": "0.7.1-2-g370638b",
 			"Rev": "370638bac9491a68b8f8c11f4099b609756beb85"
 		},
