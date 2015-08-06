@@ -24,6 +24,7 @@ import (
 )
 
 type TestHealerIaaS struct {
+	sync.Mutex
 	addr   string
 	err    error
 	delErr error
@@ -39,6 +40,8 @@ func (t *TestHealerIaaS) DeleteMachine(m *iaas.Machine) error {
 }
 
 func (t *TestHealerIaaS) CreateMachine(params map[string]string) (*iaas.Machine, error) {
+	t.Lock()
+	defer t.Unlock()
 	if t.err != nil {
 		return nil, t.err
 	}
