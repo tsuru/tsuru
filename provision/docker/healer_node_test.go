@@ -58,7 +58,7 @@ func (t *TestHealerIaaS) CreateMachine(params map[string]string) (*iaas.Machine,
 	return &m, nil
 }
 
-func (TestHealerIaaS) Describe() string {
+func (t *TestHealerIaaS) Describe() string {
 	return "iaas describe"
 }
 
