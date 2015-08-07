@@ -387,11 +387,8 @@ func (s *S) TestContainerSetImage(c *check.C) {
 }
 
 func (s *S) TestContainerRemove(c *check.C) {
-	conn, err := db.Conn()
-	defer conn.Close()
-	err = conn.Apps().Insert(app.App{Name: "test-app"})
+	err := s.storage.Apps().Insert(app.App{Name: "test-app"})
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": "test-app"})
 	container, err := s.newContainer(&newContainerOpts{AppName: "test-app"}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container)
@@ -410,11 +407,8 @@ func (s *S) TestContainerRemove(c *check.C) {
 }
 
 func (s *S) TestContainerRemoveIgnoreErrors(c *check.C) {
-	conn, err := db.Conn()
-	defer conn.Close()
-	err = conn.Apps().Insert(app.App{Name: "test-app"})
+	err := s.storage.Apps().Insert(app.App{Name: "test-app"})
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": "test-app"})
 	container, err := s.newContainer(&newContainerOpts{AppName: "test-app"}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container)
@@ -431,12 +425,9 @@ func (s *S) TestContainerRemoveIgnoreErrors(c *check.C) {
 }
 
 func (s *S) TestContainerRemoveStopsContainer(c *check.C) {
-	conn, err := db.Conn()
-	defer conn.Close()
 	a := app.App{Name: "test-app"}
-	err = conn.Apps().Insert(a)
+	err := s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": a.Name})
 	container, err := s.newContainer(&newContainerOpts{AppName: a.Name}, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container)
@@ -584,13 +575,9 @@ func (s *S) TestGetImageFromAppPlatform(c *check.C) {
 }
 
 func (s *S) TestGetImageAppWhenDeployIsMultipleOf10(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	app := &app.App{Name: "app1", Platform: "python", Deploys: 20}
-	err = conn.Apps().Insert(app)
+	err := s.storage.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": app.Name})
 	cont := container{ID: "bleble", Type: app.Platform, AppName: app.Name, Image: "tsuru/app1"}
 	coll := s.p.collection()
 	err = coll.Insert(cont)

@@ -416,12 +416,8 @@ func (s *HandlersSuite) TestFixContainerHandler(c *check.C) {
 	defer cleanup()
 	coll := p.collection()
 	defer coll.Close()
-	conn, err := db.Conn()
+	err := s.conn.Apps().Insert(&app.App{Name: "makea"})
 	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	err = conn.Apps().Insert(&app.App{Name: "makea"})
-	c.Assert(err, check.IsNil)
-	defer conn.Apps().RemoveAll(bson.M{"name": "makea"})
 	err = coll.Insert(
 		container{
 			ID:       "9930c24f1c4x",
@@ -603,17 +599,14 @@ func (s *S) TestRebalanceContainersEmptyBodyHandler(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
+
 	appStruct := &app.App{
 		Name:     appInstance.GetName(),
 		Platform: appInstance.GetPlatform(),
 	}
-	err = conn.Apps().Insert(appStruct)
+	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
-	err = conn.Apps().Update(
+	err = s.storage.Apps().Update(
 		bson.M{"name": appStruct.Name},
 		bson.M{"$set": bson.M{"units": units}},
 	)
@@ -660,17 +653,13 @@ func (s *S) TestRebalanceContainersFilters(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	appStruct := &app.App{
 		Name:     appInstance.GetName(),
 		Platform: appInstance.GetPlatform(),
 	}
-	err = conn.Apps().Insert(appStruct)
+	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
-	err = conn.Apps().Update(
+	err = s.storage.Apps().Update(
 		bson.M{"name": appStruct.Name},
 		bson.M{"$set": bson.M{"units": units}},
 	)
@@ -717,17 +706,13 @@ func (s *S) TestRebalanceContainersDryBodyHandler(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	appStruct := &app.App{
 		Name:     appInstance.GetName(),
 		Platform: appInstance.GetPlatform(),
 	}
-	err = conn.Apps().Insert(appStruct)
+	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
-	err = conn.Apps().Update(
+	err = s.storage.Apps().Update(
 		bson.M{"name": appStruct.Name},
 		bson.M{"$set": bson.M{"units": units}},
 	)

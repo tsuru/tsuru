@@ -17,7 +17,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -40,11 +39,8 @@ func (s *AutoScaleSuite) SetUpSuite(c *check.C) {
 
 func (s *AutoScaleSuite) SetUpTest(c *check.C) {
 	s.S.SetUpTest(c)
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	plan := app.Plan{Memory: 21000, Name: "default", CpuShare: 10}
-	err = plan.Save()
+	err := plan.Save()
 	c.Assert(err, check.IsNil)
 	s.testRepoRollback = startTestRepositoryServer()
 	s.node1, err = dtesting.NewServer("0.0.0.0:0", nil, nil)
@@ -87,7 +83,7 @@ func (s *AutoScaleSuite) SetUpTest(c *check.C) {
 	opts := provision.AddPoolOptions{Name: "pool1"}
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	err = conn.Apps().Insert(appStruct)
+	err = s.S.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
 }
 

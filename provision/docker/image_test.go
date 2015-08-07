@@ -13,7 +13,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -49,11 +48,8 @@ func (s *S) TestMigrateImages(c *check.C) {
 	c5, err := s.newContainer(&newContainerOpts{Image: "tsuru/app-app2", AppName: "app-app2"}, &p)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(c5)
-	conn, err := db.Conn()
+	err = s.storage.Apps().Insert(app1, app2, app3)
 	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	conn.Apps().Insert(app1, app2, app3)
-	defer conn.Apps().RemoveAll(bson.M{"name": bson.M{"$in": []string{app1.Name, app2.Name, app3.Name}}})
 	mainDockerProvisioner = &p
 	err = MigrateImages()
 	c.Assert(err, check.IsNil)
@@ -81,11 +77,8 @@ func (s *S) TestMigrateImagesWithoutImageInStorage(c *check.C) {
 	p.cluster, _ = cluster.New(nil, &cluster.MapStorage{},
 		cluster.Node{Address: server.URL()})
 	app1 := app.App{Name: "app1"}
-	conn, err := db.Conn()
+	err = s.storage.Apps().Insert(app1)
 	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	conn.Apps().Insert(app1)
-	defer conn.Apps().RemoveAll(bson.M{"name": bson.M{"$in": []string{app1.Name}}})
 	mainDockerProvisioner = &p
 	err = MigrateImages()
 	c.Assert(err, check.IsNil)
@@ -112,11 +105,8 @@ func (s *S) TestMigrateImagesWithRegistry(c *check.C) {
 		cluster.Node{Address: server.URL()})
 	app1 := app.App{Name: "app1"}
 	app2 := app.App{Name: "app2"}
-	conn, err := db.Conn()
+	err = s.storage.Apps().Insert(app1, app2)
 	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	conn.Apps().Insert(app1, app2)
-	defer conn.Apps().RemoveAll(bson.M{"name": bson.M{"$in": []string{app1.Name, app2.Name}}})
 	err = s.newFakeImage(&p, "localhost:3030/tsuru/app1", nil)
 	c.Assert(err, check.IsNil)
 	err = s.newFakeImage(&p, "localhost:3030/tsuru/app2", nil)
@@ -138,48 +128,39 @@ func (s *S) TestMigrateImagesWithRegistry(c *check.C) {
 }
 
 func (s *S) TestUsePlatformImage(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	app1 := &app.App{Name: "app1", Platform: "python", Deploys: 40}
-	err = conn.Apps().Insert(app1)
+	err := s.storage.Apps().Insert(app1)
 	c.Assert(err, check.IsNil)
 	ok := s.p.usePlatformImage(app1)
 	c.Assert(ok, check.Equals, true)
-	defer conn.Apps().Remove(bson.M{"name": "app1"})
 	app2 := &app.App{Name: "app2", Platform: "python", Deploys: 20}
-	err = conn.Apps().Insert(app2)
+	err = s.storage.Apps().Insert(app2)
 	c.Assert(err, check.IsNil)
 	ok = s.p.usePlatformImage(app2)
 	c.Assert(ok, check.Equals, true)
-	defer conn.Apps().Remove(bson.M{"name": "app2"})
 	app3 := &app.App{Name: "app3", Platform: "python", Deploys: 0}
-	err = conn.Apps().Insert(app3)
+	err = s.storage.Apps().Insert(app3)
 	c.Assert(err, check.IsNil)
 	ok = s.p.usePlatformImage(app3)
 	c.Assert(ok, check.Equals, true)
-	defer conn.Apps().Remove(bson.M{"name": "app3"})
 	app4 := &app.App{Name: "app4", Platform: "python", Deploys: 19}
-	err = conn.Apps().Insert(app4)
+	err = s.storage.Apps().Insert(app4)
 	c.Assert(err, check.IsNil)
 	ok = s.p.usePlatformImage(app4)
 	c.Assert(ok, check.Equals, false)
-	defer conn.Apps().Remove(bson.M{"name": "app4"})
 	app5 := &app.App{
 		Name:           "app5",
 		Platform:       "python",
 		Deploys:        19,
 		UpdatePlatform: true,
 	}
-	err = conn.Apps().Insert(app5)
+	err = s.storage.Apps().Insert(app5)
 	c.Assert(err, check.IsNil)
 	ok = s.p.usePlatformImage(app5)
 	c.Assert(ok, check.Equals, true)
-	defer conn.Apps().Remove(bson.M{"name": "app5"})
 	app6 := &app.App{Name: "app6", Platform: "python", Deploys: 19}
-	err = conn.Apps().Insert(app6)
+	err = s.storage.Apps().Insert(app6)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": "app6"})
 	coll := s.p.collection()
 	defer coll.Close()
 	err = coll.Insert(container{AppName: app6.Name, Image: "tsuru/app-app6"})

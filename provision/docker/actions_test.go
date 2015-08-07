@@ -16,7 +16,6 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -737,13 +736,9 @@ func (s *S) TestBindAndHealthcheckDontHealtcheckForErroredApps(c *check.C) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
 	defer server.Close()
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	dbApp := &app.App{Name: "myapp"}
-	err = conn.Apps().Insert(dbApp)
+	err := s.storage.Apps().Insert(dbApp)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": dbApp.Name})
 	imageName := "tsuru/app-" + dbApp.Name
 	customData := map[string]interface{}{
 		"healthcheck": map[string]interface{}{
@@ -795,13 +790,10 @@ func (s *S) TestBindAndHealthcheckDontHealtcheckForStoppedApps(c *check.C) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
+	defer server.Close()
 	dbApp := &app.App{Name: "myapp"}
-	err = conn.Apps().Insert(dbApp)
+	err := s.storage.Apps().Insert(dbApp)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": dbApp.Name})
 	imageName := "tsuru/app-" + dbApp.Name
 	customData := map[string]interface{}{
 		"healthcheck": map[string]interface{}{
@@ -853,13 +845,10 @@ func (s *S) TestBindAndHealthcheckForwardHealthcheckError(c *check.C) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotFound)
 	}))
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
+	defer server.Close()
 	dbApp := &app.App{Name: "myapp"}
-	err = conn.Apps().Insert(dbApp)
+	err := s.storage.Apps().Insert(dbApp)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": dbApp.Name})
 	imageName := "tsuru/app-" + dbApp.Name
 	customData := map[string]interface{}{
 		"healthcheck": map[string]interface{}{
@@ -904,13 +893,9 @@ func (s *S) TestBindAndHealthcheckForwardRestartError(c *check.C) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"ID":"id","ExitCode":9}`))
 	}))
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	dbApp := &app.App{Name: "myapp"}
-	err = conn.Apps().Insert(dbApp)
+	err := s.storage.Apps().Insert(dbApp)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": dbApp.Name})
 	imageName := "tsuru/app-" + dbApp.Name
 	customData := map[string]interface{}{
 		"hooks": map[string]interface{}{

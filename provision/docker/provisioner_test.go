@@ -23,7 +23,6 @@ import (
 	"github.com/tsuru/docker-cluster/storage"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository"
@@ -179,11 +178,8 @@ func (s *S) TestDeploy(c *check.C) {
 		Name:     "otherapp",
 		Platform: "python",
 	}
-	conn, err := db.Conn()
-	defer conn.Close()
-	err = conn.Apps().Insert(a)
+	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": a.Name})
 	repository.Manager().CreateRepository(a.Name, nil)
 	s.p.Provision(&a)
 	defer s.p.Destroy(&a)
@@ -224,11 +220,8 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 		Name:     "appdeployimagetest",
 		Platform: "python",
 	}
-	conn, err := db.Conn()
-	defer conn.Close()
-	err = conn.Apps().Insert(a)
+	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": a.Name})
 	repository.Manager().CreateRepository(a.Name, nil)
 	err = s.p.Provision(&a)
 	c.Assert(err, check.IsNil)
@@ -284,11 +277,8 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 		Name:     "appdeployimagetest",
 		Platform: "python",
 	}
-	conn, err := db.Conn()
-	defer conn.Close()
-	err = conn.Apps().Insert(a)
+	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": a.Name})
 	err = s.p.Provision(&a)
 	c.Assert(err, check.IsNil)
 	defer s.p.Destroy(&a)
@@ -331,11 +321,8 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 		Name:     "appdeployimagetest",
 		Platform: "python",
 	}
-	conn, err := db.Conn()
-	defer conn.Close()
-	err = conn.Apps().Insert(a)
+	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": a.Name})
 	repository.Manager().CreateRepository(a.Name, nil)
 	err = s.p.Provision(&a)
 	c.Assert(err, check.IsNil)
@@ -411,11 +398,8 @@ func (s *S) TestProvisionerUploadDeploy(c *check.C) {
 		Name:     "otherapp",
 		Platform: "python",
 	}
-	conn, err := db.Conn()
-	defer conn.Close()
-	err = conn.Apps().Insert(a)
+	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": a.Name})
 	s.p.Provision(&a)
 	defer s.p.Destroy(&a)
 	w := safe.NewBuffer(make([]byte, 2048))
@@ -453,11 +437,8 @@ func (s *S) TestImageDeploy(c *check.C) {
 		Name:     "otherapp",
 		Platform: "python",
 	}
-	conn, err := db.Conn()
-	defer conn.Close()
-	err = conn.Apps().Insert(a)
+	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": a.Name})
 	s.p.Provision(&a)
 	defer s.p.Destroy(&a)
 	w := safe.NewBuffer(make([]byte, 2048))
@@ -476,11 +457,8 @@ func (s *S) TestImageDeployInvalidImage(c *check.C) {
 		Name:     "otherapp",
 		Platform: "python",
 	}
-	conn, err := db.Conn()
-	defer conn.Close()
-	err = conn.Apps().Insert(a)
+	err := s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": a.Name})
 	s.p.Provision(&a)
 	defer s.p.Destroy(&a)
 	w := safe.NewBuffer(make([]byte, 2048))
@@ -503,11 +481,8 @@ func (s *S) TestImageDeployFailureDoesntEraseImage(c *check.C) {
 		Name:     "otherapp",
 		Platform: "python",
 	}
-	conn, err := db.Conn()
-	defer conn.Close()
-	err = conn.Apps().Insert(a)
+	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": a.Name})
 	s.p.Provision(&a)
 	defer s.p.Destroy(&a)
 	s.server.CustomHandler("/containers/create", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -573,11 +548,8 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 		Name:     "mydoomedapp",
 		Platform: "python",
 	}
-	conn, err := db.Conn()
-	defer conn.Close()
-	err = conn.Apps().Insert(a)
+	err := s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": a.Name})
 	repository.Manager().CreateRepository(a.Name, nil)
 	s.p.Provision(&a)
 	defer s.p.Destroy(&a)
@@ -1083,10 +1055,7 @@ func (s *S) TestProvisionerSetUnitStatus(c *check.C) {
 }
 
 func (s *S) TestProvisionerSetUnitStatusUpdatesIp(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	err = conn.Apps().Insert(&app.App{Name: "myawesomeapp"})
+	err := s.storage.Apps().Insert(&app.App{Name: "myawesomeapp"})
 	c.Assert(err, check.IsNil)
 	err = s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
@@ -1294,12 +1263,8 @@ func (s *S) TestSwap(c *check.C) {
 }
 
 func (s *S) TestProvisionerStart(c *check.C) {
-	conn, err := db.Conn()
+	err := s.storage.Apps().Insert(&app.App{Name: "almah"})
 	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	err = conn.Apps().Insert(&app.App{Name: "almah"})
-	c.Assert(err, check.IsNil)
-	defer conn.Apps().RemoveAll(bson.M{"name": "almah"})
 	app := provisiontest.NewFakeApp("almah", "static", 1)
 	customData := map[string]interface{}{
 		"procfile": "web: python web.py\nworker: python worker.py\n",
@@ -1353,12 +1318,8 @@ func (s *S) TestProvisionerStart(c *check.C) {
 }
 
 func (s *S) TestProvisionerStartProcess(c *check.C) {
-	conn, err := db.Conn()
+	err := s.storage.Apps().Insert(&app.App{Name: "almah"})
 	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	err = conn.Apps().Insert(&app.App{Name: "almah"})
-	c.Assert(err, check.IsNil)
-	defer conn.Apps().RemoveAll(bson.M{"name": "almah"})
 	app := provisiontest.NewFakeApp("almah", "static", 1)
 	customData := map[string]interface{}{
 		"procfile": "web: python web.py\nworker: python worker.py\n",
@@ -1581,6 +1542,7 @@ func (s *S) TestProvisionerPlatformAddWithoutNode(c *check.C) {
 
 func (s *S) TestProvisionerPlatformRemove(c *check.C) {
 	registryServer := httptest.NewServer(nil)
+	defer registryServer.Close()
 	u, _ := url.Parse(registryServer.URL)
 	config.Set("docker:registry", u.Host)
 	defer config.Unset("docker:registry")
@@ -1607,6 +1569,7 @@ func (s *S) TestProvisionerPlatformRemove(c *check.C) {
 
 func (s *S) TestProvisionerPlatformRemoveReturnsStorageError(c *check.C) {
 	registryServer := httptest.NewServer(nil)
+	defer registryServer.Close()
 	u, _ := url.Parse(registryServer.URL)
 	config.Set("docker:registry", u.Host)
 	defer config.Unset("docker:registry")
@@ -1757,10 +1720,7 @@ func (s *S) TestProvisionerUnitsIp(c *check.C) {
 }
 
 func (s *S) TestRegisterUnit(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	err = conn.Apps().Insert(&app.App{Name: "myawesomeapp"})
+	err := s.storage.Apps().Insert(&app.App{Name: "myawesomeapp"})
 	c.Assert(err, check.IsNil)
 	err = s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
@@ -1827,9 +1787,6 @@ func (s *S) TestRegisterUnitSavesCustomData(c *check.C) {
 }
 
 func (s *S) TestRunRestartAfterHooks(c *check.C) {
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	a := &app.App{Name: "myrestartafterapp"}
 	customData := map[string]interface{}{
 		"hooks": map[string]interface{}{
@@ -1838,11 +1795,10 @@ func (s *S) TestRunRestartAfterHooks(c *check.C) {
 			},
 		},
 	}
-	err = saveImageCustomData("tsuru/python:latest", customData)
+	err := saveImageCustomData("tsuru/python:latest", customData)
 	c.Assert(err, check.IsNil)
-	err = conn.Apps().Insert(a)
+	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": a.Name})
 	opts := newContainerOpts{AppName: a.Name}
 	container, err := s.newContainer(&opts, nil)
 	c.Assert(err, check.IsNil)

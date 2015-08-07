@@ -13,7 +13,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/db"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -98,10 +97,7 @@ func (s *S) TestBsGetTokenStress(c *check.C) {
 	for i := 1; i < len(tokens); i++ {
 		c.Assert(tokens[i-1], check.Equals, tokens[i])
 	}
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	n, err := conn.Tokens().Find(bson.M{"appname": app.InternalAppName}).Count()
+	n, err := s.storage.Tokens().Find(bson.M{"appname": app.InternalAppName}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 1)
 	coll, err := bsCollection()

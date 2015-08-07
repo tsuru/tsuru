@@ -14,7 +14,6 @@ import (
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -56,15 +55,11 @@ func (s *S) TestHealContainer(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
 	}
-	err = conn.Apps().Insert(appStruct)
+	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	containers, err := p.listAllContainers()
 	c.Assert(err, check.IsNil)
@@ -123,15 +118,11 @@ func (s *S) TestRunContainerHealer(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
 	}
-	err = conn.Apps().Insert(appStruct)
+	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	containers, err := p.listAllContainers()
 	c.Assert(err, check.IsNil)
@@ -213,15 +204,11 @@ func (s *S) TestRunContainerHealerShutdown(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
 	}
-	err = conn.Apps().Insert(appStruct)
+	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	containers, err := p.listAllContainers()
 	c.Assert(err, check.IsNil)
@@ -294,15 +281,11 @@ func (s *S) TestRunContainerHealerConcurrency(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
 	}
-	err = conn.Apps().Insert(appStruct)
+	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	containers, err := p.listAllContainers()
 	c.Assert(err, check.IsNil)
@@ -388,15 +371,11 @@ func (s *S) TestRunContainerHealerAlreadyHealed(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
 	}
-	err = conn.Apps().Insert(appStruct)
+	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	containers, err := p.listAllContainers()
 	c.Assert(err, check.IsNil)
@@ -454,13 +433,9 @@ func (s *S) TestRunContainerHealerDoesntHealWhenContainerIsRunning(c *check.C) {
 	c.Assert(err, check.IsNil)
 	p.cluster = cluster
 
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	appInstance := &app.App{Name: "myapp", Platform: "python"}
-	err = conn.Apps().Insert(appInstance)
+	err = s.storage.Apps().Insert(appInstance)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appInstance.Name})
 	p.Provision(appInstance)
 	defer p.Destroy(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
@@ -516,13 +491,9 @@ func (s *S) TestRunContainerHealerDoesntHealWhenContainerIsRestarting(c *check.C
 	c.Assert(err, check.IsNil)
 	p.cluster = cluster
 
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	appInstance := &app.App{Name: "myapp", Platform: "python"}
-	err = conn.Apps().Insert(appInstance)
+	err = s.storage.Apps().Insert(appInstance)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appInstance.Name})
 	p.Provision(appInstance)
 	defer p.Destroy(appInstance)
 	imageId, err := appCurrentImageName(appInstance.GetName())
@@ -597,13 +568,9 @@ func (s *S) TestRunContainerHealerWithError(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	appStruct := &app.App{Name: appInstance.GetName()}
-	err = conn.Apps().Insert(appStruct)
+	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	containers, err := p.listAllContainers()
 	c.Assert(err, check.IsNil)

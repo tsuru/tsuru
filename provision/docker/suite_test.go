@@ -63,7 +63,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	s.imageCollName = "docker_image"
 	s.repoNamespace = "tsuru"
 	s.sshUser = "root"
-	config.Set("database:url", "127.0.0.1:27017")
+	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "docker_provision_tests_s")
 	config.Set("docker:repository-namespace", s.repoNamespace)
 	config.Set("docker:router", "fake")
@@ -126,9 +126,7 @@ func (s *S) SetUpTest(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner = s.p
-	coll := s.p.collection()
-	defer coll.Close()
-	err = dbtest.ClearAllCollectionsExcept(coll.Database, []string{"users", "tokens", "teams"})
+	err = dbtest.ClearAllCollectionsExcept(s.storage.Apps().Database, []string{"users", "tokens", "teams"})
 	c.Assert(err, check.IsNil)
 	err = clearClusterStorage(s.clusterSess)
 	c.Assert(err, check.IsNil)
@@ -136,10 +134,7 @@ func (s *S) SetUpTest(c *check.C) {
 	opts := provision.AddPoolOptions{Name: "test-default", Default: true}
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
-	conn.Tokens().Remove(bson.M{"appname": bson.M{"$ne": ""}})
+	s.storage.Tokens().Remove(bson.M{"appname": bson.M{"$ne": ""}})
 }
 
 func (s *S) TearDownTest(c *check.C) {

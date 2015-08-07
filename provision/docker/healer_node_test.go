@@ -16,11 +16,9 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type TestHealerIaaS struct {
@@ -119,15 +117,11 @@ func (s *S) TestHealerHealNode(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
 	}
-	err = conn.Apps().Insert(appStruct)
+	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	healer := nodeHealer{
 		locks:                 make(map[string]*sync.Mutex),
@@ -380,15 +374,11 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
 	}
-	err = conn.Apps().Insert(appStruct)
+	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	healer := nodeHealer{
 		locks:                 make(map[string]*sync.Mutex),
@@ -498,15 +488,11 @@ func (s *S) TestHealerHandleError(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
 	}
-	err = conn.Apps().Insert(appStruct)
+	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 
 	healer := nodeHealer{
 		locks:                 make(map[string]*sync.Mutex),

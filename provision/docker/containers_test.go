@@ -13,7 +13,6 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/safe"
@@ -43,15 +42,11 @@ func (s *S) TestMoveContainers(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
 	}
-	err = conn.Apps().Insert(appStruct)
+	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	buf := safe.NewBuffer(nil)
 	err = p.moveContainers("localhost", "127.0.0.1", buf)
 	c.Assert(err, check.IsNil)
@@ -87,15 +82,11 @@ func (s *S) TestMoveContainersUnknownDest(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
 	}
-	err = conn.Apps().Insert(appStruct)
+	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	buf := safe.NewBuffer(nil)
 	err = p.moveContainers("localhost", "unknown", buf)
 	c.Assert(err, check.Equals, containerMovementErr)
@@ -127,15 +118,11 @@ func (s *S) TestMoveContainer(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
 	}
-	err = conn.Apps().Insert(appStruct)
+	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	buf := safe.NewBuffer(nil)
 	var serviceBodies []string
 	var serviceMethods []string
@@ -178,15 +165,11 @@ func (s *S) TestRebalanceContainers(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
 	}
-	err = conn.Apps().Insert(appStruct)
+	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	buf := safe.NewBuffer(nil)
 	err = p.rebalanceContainers(buf, false)
 	c.Assert(err, check.IsNil)
@@ -232,17 +215,13 @@ func (s *S) TestRebalanceContainersSegScheduler(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	appStruct := &app.App{
 		Name:      appInstance.GetName(),
 		TeamOwner: "team1",
 		Pool:      "pool1",
 	}
-	err = conn.Apps().Insert(appStruct)
+	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	c1, err := p.listContainersByHost("localhost")
 	c.Assert(err, check.IsNil)
 	c.Assert(c1, check.HasLen, 5)
@@ -259,12 +238,8 @@ func (s *S) TestRebalanceContainersSegScheduler(c *check.C) {
 
 func (s *S) TestAppLocker(c *check.C) {
 	appName := "myapp"
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	appDB := &app.App{Name: appName}
-	defer conn.Apps().Remove(bson.M{"name": appName})
-	err = conn.Apps().Insert(appDB)
+	err := s.storage.Apps().Insert(appDB)
 	c.Assert(err, check.IsNil)
 	locker := &appLocker{}
 	hasLock := locker.lock(appName)
@@ -292,12 +267,8 @@ func (s *S) TestAppLocker(c *check.C) {
 
 func (s *S) TestAppLockerBlockOtherLockers(c *check.C) {
 	appName := "myapp"
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	appDB := &app.App{Name: appName}
-	defer conn.Apps().Remove(bson.M{"name": appName})
-	err = conn.Apps().Insert(appDB)
+	err := s.storage.Apps().Insert(appDB)
 	c.Assert(err, check.IsNil)
 	locker := &appLocker{}
 	hasLock := locker.lock(appName)
@@ -344,21 +315,16 @@ func (s *S) TestRebalanceContainersManyApps(c *check.C) {
 		provisioner: p,
 	})
 	c.Assert(err, check.IsNil)
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
 	}
-	err = conn.Apps().Insert(appStruct)
+	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	appStruct2 := &app.App{
 		Name: appInstance2.GetName(),
 	}
-	err = conn.Apps().Insert(appStruct2)
+	err = s.storage.Apps().Insert(appStruct2)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct2.Name})
 	buf := safe.NewBuffer(nil)
 	c1, err := p.listContainersByHost("localhost")
 	c.Assert(len(c1), check.Equals, 2)
@@ -395,15 +361,11 @@ func (s *S) TestRebalanceContainersDry(c *check.C) {
 	)
 	err = pipeline.Execute(args)
 	c.Assert(err, check.IsNil)
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 	appStruct := &app.App{
 		Name: appInstance.GetName(),
 	}
-	err = conn.Apps().Insert(appStruct)
+	err = s.storage.Apps().Insert(appStruct)
 	c.Assert(err, check.IsNil)
-	defer conn.Apps().Remove(bson.M{"name": appStruct.Name})
 	router, err := getRouterForApp(appInstance)
 	c.Assert(err, check.IsNil)
 	beforeRoutes, err := router.Routes(appStruct.Name)
