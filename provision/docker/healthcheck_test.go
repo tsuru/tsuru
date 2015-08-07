@@ -245,7 +245,7 @@ func (s *S) TestHealthcheckErrorsAfterMaxTime(c *check.C) {
 		c.Fatal("Timed out waiting for healthcheck to fail")
 	case <-done:
 	}
-	c.Assert(err, check.ErrorMatches, "healthcheck fail.*lookup some-invalid-server-name.some-invalid-server-name.com: no such host")
+	c.Assert(err, check.ErrorMatches, "healthcheck fail.*lookup some-invalid-server-name.some-invalid-server-name.com.*no such host")
 }
 
 func (s *S) TestHealthcheckSuccessfulWithAllowedFailures(c *check.C) {
