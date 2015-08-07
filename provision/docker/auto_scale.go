@@ -379,72 +379,38 @@ func (a *memoryScaler) nodesMemoryData(prov *dockerProvisioner, nodes []*cluster
 	return nodesMemoryData, nil
 }
 
-// Creates a dry provisioner and try provisioning existing containers without
-// each one of existing nodes.
-//
-// If it's possible to distribute containers and we still have spare memory
-// such node can be removed.
-func (a *memoryScaler) choseNodeForRemoval(maxPlanMemory int64, groupMetadata string, nodes []*cluster.Node) (*cluster.Node, error) {
-	containersMap, err := a.provisioner.runningContainersByNode(nodes)
+func (a *memoryScaler) choseNodeForRemoval(maxPlanMemory int64, groupMetadata string, nodes []*cluster.Node) ([]cluster.Node, error) {
+	memoryData, err := a.nodesMemoryData(a.provisioner, nodes)
 	if err != nil {
 		return nil, err
 	}
-	var containers []container
+	var totalReserved, totalMem int64
 	for _, node := range nodes {
-		containers = append(containers, containersMap[node.Address]...)
+		data := memoryData[node.Address]
+		totalReserved += data.reserved
+		totalMem += data.maxMemory
 	}
-	var maxAvailable int64
-	var chosenNode *cluster.Node
+	memPerNode := totalMem / int64(len(nodes))
+	scaledMaxPlan := int64(float32(maxPlanMemory) * a.scaleDownRatio)
+	toRemoveCount := len(nodes) - int(((totalReserved+scaledMaxPlan)/memPerNode)+1)
+	if toRemoveCount <= 0 {
+		return nil, nil
+	}
+	var chosenNodes []cluster.Node
 	for _, node := range nodes {
-		dryProv, err := a.provisioner.dryMode(containers)
-		if err != nil {
-			return nil, err
-		}
-		defer dryProv.stopDryMode()
-		err = dryProv.getCluster().Unregister(node.Address)
-		if err != nil {
-			return nil, err
-		}
-		buf := safe.NewBuffer(nil)
-		err = dryProv.moveContainerList(containers, "", buf)
-		if err != nil {
-			a.logError("unable to dry rebalance containers without %s: %s - log: %s", node.Address, err, buf.String())
-			continue
-		}
-		otherNodes, err := dryProv.getCluster().NodesForMetadata(map[string]string{a.groupByMetadata: groupMetadata})
-		if err != nil {
-			return nil, err
-		}
-		otherNodesPtr := make([]*cluster.Node, len(otherNodes))
-		for i := range otherNodes {
-			otherNodesPtr[i] = &otherNodes[i]
-		}
-		data, err := a.nodesMemoryData(dryProv, otherNodesPtr)
-		if err != nil {
-			return nil, err
-		}
-		var maxLocalAvailable int64
-		for _, v := range data {
-			if v.available > maxLocalAvailable {
-				maxLocalAvailable = v.available
+		canRemove, _ := canRemoveNode(node, nodes)
+		if canRemove {
+			chosenNodes = append(chosenNodes, *node)
+			if len(chosenNodes) >= toRemoveCount {
+				break
 			}
 		}
-		if maxLocalAvailable > maxAvailable {
-			maxAvailable = maxLocalAvailable
-			chosenNode = node
-		}
 	}
-	scaledMaxPlan := int64(float32(maxPlanMemory) * a.scaleDownRatio)
-	if chosenNode != nil && maxAvailable > scaledMaxPlan {
-		a.logDebug("checking scale down, node %s, maxAvailable: %d, scaledMaxPlan: %d", chosenNode.Address, maxAvailable, scaledMaxPlan)
-		canRemove, _ := canRemoveNode(chosenNode, nodes)
-		if !canRemove {
-			a.logDebug("would remove node %s but can't due to metadata restrictions", chosenNode.Address)
-			return nil, nil
-		}
-		return chosenNode, nil
+	if len(chosenNodes) == 0 {
+		a.logDebug("would remove any node but can't due to metadata restrictions")
+		return nil, nil
 	}
-	return nil, nil
+	return chosenNodes, nil
 }
 
 func (a *memoryScaler) scale(event *autoScaleEvent, groupMetadata string, nodes []*cluster.Node) error {
@@ -465,18 +431,18 @@ func (a *memoryScaler) scale(event *autoScaleEvent, groupMetadata string, nodes 
 		}
 		maxPlanMemory = defaultPlan.Memory
 	}
-	chosenNode, err := a.choseNodeForRemoval(maxPlanMemory, groupMetadata, nodes)
+	chosenNodes, err := a.choseNodeForRemoval(maxPlanMemory, groupMetadata, nodes)
 	if err != nil {
 		return fmt.Errorf("unable to choose node for removal: %s", err)
 	}
-	if chosenNode != nil {
-		event.updateNode(chosenNode)
-		err = event.update(scaleActionRemove, fmt.Sprintf("containers from %s can be distributed in cluster", chosenNode.Address))
+	if chosenNodes != nil {
+		event.updateNodes(chosenNodes)
+		err = event.update(scaleActionRemove, fmt.Sprintf("containers can be distributed in only %d nodes", len(nodes)-len(chosenNodes)))
 		if err != nil {
 			return err
 		}
 		a.logDebug("running event %q for %q: %s", event.Action, event.MetadataValue, event.Reason)
-		return a.removeNode(chosenNode)
+		return a.removeMultipleNodes(chosenNodes)
 	}
 	memoryData, err := a.nodesMemoryData(a.provisioner, nodes)
 	if err != nil {
@@ -500,13 +466,13 @@ func (a *memoryScaler) scale(event *autoScaleEvent, groupMetadata string, nodes 
 	if canFitMax {
 		return nil
 	}
+	nodesToAdd := int((totalReserved + maxPlanMemory) / totalMem)
+	if nodesToAdd == 0 {
+		return nil
+	}
 	err = event.update(scaleActionAdd, fmt.Sprintf("can't add %d bytes to an existing node", maxPlanMemory))
 	if err != nil {
 		return err
-	}
-	nodesToAdd := int((totalReserved + maxPlanMemory) / totalMem)
-	if nodesToAdd == 0 {
-		nodesToAdd = 1
 	}
 	a.logDebug("running event %q for %q: %s", event.Action, event.MetadataValue, event.Reason)
 	newNodes, err := a.addMultipleNodes(nodes, nodesToAdd)
