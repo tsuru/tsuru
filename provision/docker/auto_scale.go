@@ -11,6 +11,7 @@ import (
 	"math"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -139,6 +140,14 @@ func listAutoScaleEvents(skip, limit int) ([]autoScaleEvent, error) {
 	err = query.All(&list)
 	if err != nil {
 		return nil, err
+	}
+	for i := range list {
+		if len(list[i].Nodes) == 0 {
+			node := list[i].Node
+			if node.Address != "" {
+				list[i].Nodes = []cluster.Node{node}
+			}
+		}
 	}
 	return list, nil
 }
@@ -508,26 +517,30 @@ func (a *countScaler) scale(event *autoScaleEvent, groupMetadata string, nodes [
 	}
 	freeSlots := (len(nodes) * a.maxContainerCount) - totalCount
 	reasonMsg := fmt.Sprintf("number of free slots is %d", freeSlots)
-	if freeSlots > int(float32(a.maxContainerCount)*a.scaleDownRatio) {
-		var chosenNode *cluster.Node
+	scaledMaxCount := int(float32(a.maxContainerCount) * a.scaleDownRatio)
+	if freeSlots > scaledMaxCount {
+		toRemoveCount := freeSlots / scaledMaxCount
+		var chosenNodes []cluster.Node
 		for _, node := range nodes {
 			canRemove, _ := canRemoveNode(node, nodes)
 			if canRemove {
-				chosenNode = node
-				break
+				chosenNodes = append(chosenNodes, *node)
+				if len(chosenNodes) >= toRemoveCount {
+					break
+				}
 			}
 		}
-		if chosenNode == nil {
+		if len(chosenNodes) == 0 {
 			a.logDebug("would remove any node but can't due to metadata restrictions")
 			return nil
 		}
-		event.updateNode(chosenNode)
+		event.updateNodes(chosenNodes)
 		err := event.update(scaleActionRemove, reasonMsg)
 		if err != nil {
 			return fmt.Errorf("error updating event: %s", err)
 		}
 		a.logDebug("running event %q for %q: %s", event.Action, event.MetadataValue, event.Reason)
-		return a.removeNode(chosenNode)
+		return a.removeMultipleNodes(chosenNodes)
 	}
 	if freeSlots >= 0 {
 		return nil
@@ -545,7 +558,6 @@ func (a *countScaler) scale(event *autoScaleEvent, groupMetadata string, nodes [
 		}
 		a.logError("not all required nodes were created: %s", err)
 	}
-	event.updateNode(&newNodes[0])
 	event.updateNodes(newNodes)
 	return nil
 }
@@ -666,6 +678,50 @@ func (a *autoScaleConfig) addNode(modelNodes []*cluster.Node) (*cluster.Node, er
 	}
 	a.logDebug("new machine created: %s - started!", newAddr)
 	return &createdNode, nil
+}
+
+func (a *autoScaleConfig) removeMultipleNodes(chosenNodes []cluster.Node) error {
+	nodeAddrs := make([]string, len(chosenNodes))
+	nodeHosts := make([]string, len(chosenNodes))
+	for i, node := range chosenNodes {
+		_, hasIaas := node.Metadata["iaas"]
+		if !hasIaas {
+			return fmt.Errorf("no IaaS information in node (%s) metadata: %#v", node.Address, node.Metadata)
+		}
+		nodeAddrs[i] = node.Address
+		nodeHosts[i] = urlToHost(node.Address)
+	}
+	err := a.provisioner.getCluster().UnregisterNodes(nodeAddrs...)
+	if err != nil {
+		return fmt.Errorf("unable to unregister nodes (%s) for removal: %s", strings.Join(nodeAddrs, ", "), err)
+	}
+	buf := safe.NewBuffer(nil)
+	err = a.provisioner.moveContainersFromHosts(nodeHosts, "", buf)
+	if err != nil {
+		for _, node := range chosenNodes {
+			a.provisioner.getCluster().Register(node)
+		}
+		return fmt.Errorf("unable to move containers from nodes (%s): %s - log: %s", strings.Join(nodeAddrs, ", "), err, buf.String())
+	}
+	wg := sync.WaitGroup{}
+	for i := range chosenNodes {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			node := chosenNodes[i]
+			m, err := iaas.FindMachineByIdOrAddress(node.Metadata["iaas-id"], urlToHost(node.Address))
+			if err != nil {
+				a.logError("unable to find machine for removal in iaas: %s", err)
+				return
+			}
+			err = m.Destroy()
+			if err != nil {
+				a.logError("unable to destroy machine in IaaS: %s", err)
+			}
+		}(i)
+	}
+	wg.Wait()
+	return nil
 }
 
 func (a *autoScaleConfig) removeNode(chosenNode *cluster.Node) error {

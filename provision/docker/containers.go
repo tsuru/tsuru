@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"math"
+	"strings"
 	"sync"
 
 	"github.com/tsuru/tsuru/action"
@@ -228,6 +229,23 @@ func (p *dockerProvisioner) moveContainers(fromHost, toHost string, writer io.Wr
 	}
 	fmt.Fprintf(writer, "Moving %d units...\n", len(containers))
 	return p.moveContainerList(containers, toHost, writer)
+}
+
+func (p *dockerProvisioner) moveContainersFromHosts(fromHosts []string, toHost string, writer io.Writer) error {
+	var allContainers []container
+	for _, host := range fromHosts {
+		containers, err := p.listContainersByHost(host)
+		if err != nil {
+			return err
+		}
+		allContainers = append(allContainers, containers...)
+	}
+	if len(allContainers) == 0 {
+		fmt.Fprintf(writer, "No units to move in hosts %s\n", strings.Join(fromHosts, ", "))
+		return nil
+	}
+	fmt.Fprintf(writer, "Moving %d units...\n", len(allContainers))
+	return p.moveContainerList(allContainers, toHost, writer)
 }
 
 type hostWithContainers struct {

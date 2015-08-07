@@ -161,8 +161,9 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRun(c *check.C) {
 	c.Assert(evts[0].Successful, check.Equals, true)
 	c.Assert(evts[0].Error, check.Equals, "")
 	port, _ := config.GetInt("iaas:node-port")
-	c.Assert(evts[0].Node.Address, check.Equals, fmt.Sprintf("http://localhost:%d", port))
-	c.Assert(evts[0].Node.Metadata["pool"], check.Equals, "pool1")
+	c.Assert(evts[0].Nodes, check.HasLen, 1)
+	c.Assert(evts[0].Nodes[0].Address, check.Equals, fmt.Sprintf("http://localhost:%d", port))
+	c.Assert(evts[0].Nodes[0].Metadata["pool"], check.Equals, "pool1")
 	logParts := strings.Split(evts[0].Log, "\n")
 	c.Assert(logParts, check.HasLen, 15)
 	c.Assert(logParts[0], check.Matches, `\[node autoscale\].*running scaler.*pool1.*`)
@@ -835,6 +836,78 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDown(c *check.C) {
 	containers, err := s.p.listContainersByHost(urlToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
 	c.Assert(containers, check.HasLen, 2)
+}
+
+func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMultipleNodes(c *check.C) {
+	port, _ := config.GetInt("iaas:node-port")
+	node1 := cluster.Node{Address: fmt.Sprintf("http://localhost:%d/", port), Metadata: map[string]string{
+		"pool":     "pool1",
+		"iaas":     "my-scale-iaas",
+		"totalMem": "125000",
+	}}
+	err := s.p.cluster.Register(node1)
+	node2 := cluster.Node{Address: fmt.Sprintf("http://[::1]:%d/", port), Metadata: map[string]string{
+		"pool":     "pool1",
+		"iaas":     "my-scale-iaas",
+		"totalMem": "125000",
+	}}
+	err = s.p.cluster.Register(node2)
+	c.Assert(err, check.IsNil)
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
+		app:         s.appInstance,
+		imageId:     s.imageId,
+		provisioner: s.p,
+		toHost:      "127.0.0.1",
+	})
+	c.Assert(err, check.IsNil)
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
+		app:         s.appInstance,
+		imageId:     s.imageId,
+		provisioner: s.p,
+		toHost:      "localhost",
+	})
+	c.Assert(err, check.IsNil)
+	_, err = addContainersWithHost(&changeUnitsPipelineArgs{
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 1}},
+		app:         s.appInstance,
+		imageId:     s.imageId,
+		provisioner: s.p,
+		toHost:      "::1",
+	})
+	c.Assert(err, check.IsNil)
+	a := autoScaleConfig{
+		done:              make(chan bool),
+		provisioner:       s.p,
+		groupByMetadata:   "pool",
+		maxContainerCount: 5,
+	}
+	wg := sync.WaitGroup{}
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		a.stop()
+	}()
+	err = a.run()
+	c.Assert(err, check.IsNil)
+	wg.Wait()
+	evts, err := listAutoScaleEvents(0, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].MetadataValue, check.Equals, "pool1")
+	c.Assert(evts[0].Action, check.Equals, "remove")
+	c.Assert(evts[0].Successful, check.Equals, true)
+	c.Assert(evts[0].Error, check.Equals, "")
+	c.Assert(evts[0].Nodes, check.HasLen, 2)
+	nodes, err := s.p.cluster.Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	containers, err := s.p.listContainersByHost(urlToHost(nodes[0].Address))
+	c.Assert(err, check.IsNil)
+	c.Assert(containers, check.HasLen, 3)
 }
 
 func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C) {
