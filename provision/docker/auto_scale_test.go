@@ -694,6 +694,85 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 	c.Assert(locked, check.Equals, true)
 }
 
+func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedMultipleNodes(c *check.C) {
+	_, err := addContainersWithHost(&changeUnitsPipelineArgs{
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 9}},
+		app:         s.appInstance,
+		imageId:     s.imageId,
+		provisioner: s.p,
+	})
+	c.Assert(err, check.IsNil)
+	a := autoScaleConfig{
+		done:                make(chan bool),
+		provisioner:         s.p,
+		groupByMetadata:     "pool",
+		totalMemoryMetadata: "totalMem",
+		maxMemoryRatio:      0.8,
+	}
+	wg1 := sync.WaitGroup{}
+	wg1.Add(1)
+	go func() {
+		defer wg1.Done()
+		a.stop()
+	}()
+	err = a.run()
+	c.Assert(err, check.IsNil)
+	wg1.Wait()
+	nodes, err := s.p.cluster.Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 3)
+	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
+	c.Assert(nodes[1].Address, check.Not(check.Equals), nodes[2].Address)
+	evts, err := listAutoScaleEvents(0, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].MetadataValue, check.Equals, "pool1")
+	c.Assert(evts[0].Action, check.Equals, "add")
+	c.Assert(evts[0].Successful, check.Equals, true)
+	c.Assert(evts[0].Error, check.Equals, "")
+	c.Assert(evts[0].Nodes, check.HasLen, 2)
+	// Also should have rebalanced
+	containers1, err := s.p.listContainersByHost(urlToHost(nodes[0].Address))
+	c.Assert(err, check.IsNil)
+	containers2, err := s.p.listContainersByHost(urlToHost(nodes[1].Address))
+	c.Assert(err, check.IsNil)
+	containers3, err := s.p.listContainersByHost(urlToHost(nodes[2].Address))
+	c.Assert(err, check.IsNil)
+	c.Assert(containers1, check.HasLen, 3)
+	c.Assert(containers2, check.HasLen, 3)
+	c.Assert(containers3, check.HasLen, 3)
+	// Should do nothing if calling on already scaled
+	wg2 := sync.WaitGroup{}
+	wg2.Add(1)
+	go func() {
+		defer wg2.Done()
+		a.stop()
+	}()
+	err = a.run()
+	c.Assert(err, check.IsNil)
+	wg2.Wait()
+	nodes, err = s.p.cluster.Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 3)
+	evts, err = listAutoScaleEvents(0, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	containers1Again, err := s.p.listContainersByHost(urlToHost(nodes[0].Address))
+	c.Assert(err, check.IsNil)
+	containers2Again, err := s.p.listContainersByHost(urlToHost(nodes[1].Address))
+	c.Assert(err, check.IsNil)
+	containers3Again, err := s.p.listContainersByHost(urlToHost(nodes[2].Address))
+	c.Assert(err, check.IsNil)
+	c.Assert(containers1, check.DeepEquals, containers1Again)
+	c.Assert(containers2, check.DeepEquals, containers2Again)
+	c.Assert(containers3, check.DeepEquals, containers3Again)
+	locked, err := app.AcquireApplicationLock(s.appInstance.GetName(), "x", "y")
+	c.Assert(err, check.IsNil)
+	c.Assert(locked, check.Equals, true)
+}
+
 func (s *AutoScaleSuite) TestAutoScaleConfigRunPriorityToCountBased(c *check.C) {
 	_, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 4}},

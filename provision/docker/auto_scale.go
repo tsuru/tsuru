@@ -483,12 +483,15 @@ func (a *memoryScaler) scale(event *autoScaleEvent, groupMetadata string, nodes 
 		return err
 	}
 	canFitMax := false
+	var totalReserved, totalMem int64
 	for _, node := range nodes {
 		data := memoryData[node.Address]
 		a.logDebug("checking scale up, node %s, memory data: %#v", node.Address, data)
 		if maxPlanMemory > data.maxMemory {
 			return fmt.Errorf("aborting, impossible to fit max plan memory of %d bytes, node max available memory is %d", maxPlanMemory, data.maxMemory)
 		}
+		totalReserved += data.reserved
+		totalMem += data.maxMemory
 		if data.available >= maxPlanMemory {
 			canFitMax = true
 			break
@@ -501,12 +504,19 @@ func (a *memoryScaler) scale(event *autoScaleEvent, groupMetadata string, nodes 
 	if err != nil {
 		return err
 	}
-	a.logDebug("running event %q for %q: %s", event.Action, event.MetadataValue, event.Reason)
-	newNode, err := a.addNode(nodes)
-	if err != nil {
-		return err
+	nodesToAdd := int((totalReserved + maxPlanMemory) / totalMem)
+	if nodesToAdd == 0 {
+		nodesToAdd = 1
 	}
-	event.updateNode(newNode)
+	a.logDebug("running event %q for %q: %s", event.Action, event.MetadataValue, event.Reason)
+	newNodes, err := a.addMultipleNodes(nodes, nodesToAdd)
+	if err != nil {
+		if len(newNodes) == 0 {
+			return err
+		}
+		a.logError("not all required nodes were created: %s", err)
+	}
+	event.updateNodes(newNodes)
 	return nil
 }
 
