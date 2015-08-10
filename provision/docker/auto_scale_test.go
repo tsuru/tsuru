@@ -156,6 +156,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRun(c *check.C) {
 	c.Assert(evts[0].Action, check.Equals, "add")
 	c.Assert(evts[0].Successful, check.Equals, true)
 	c.Assert(evts[0].Error, check.Equals, "")
+	c.Assert(evts[0].Reason, check.Equals, "number of free slots is -2, adding 1 nodes")
 	port, _ := config.GetInt("iaas:node-port")
 	c.Assert(evts[0].Nodes, check.HasLen, 1)
 	c.Assert(evts[0].Nodes[0].Address, check.Equals, fmt.Sprintf("http://localhost:%d", port))
@@ -302,6 +303,50 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnce(c *check.C) {
 	c.Assert(containers2, check.HasLen, 2)
 }
 
+func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceNoContainers(c *check.C) {
+	a := autoScaleConfig{
+		done:              make(chan bool),
+		provisioner:       s.p,
+		groupByMetadata:   "pool",
+		maxContainerCount: 2,
+	}
+	err := a.runOnce()
+	c.Assert(err, check.IsNil)
+	nodes, err := s.p.cluster.Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	evts, err := listAutoScaleEvents(0, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 0)
+}
+
+func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceNoContainersMultipleNodes(c *check.C) {
+	port, _ := config.GetInt("iaas:node-port")
+	otherUrl := fmt.Sprintf("http://localhost:%d", port)
+	node := cluster.Node{Address: otherUrl, Metadata: map[string]string{
+		"pool":     "pool1",
+		"iaas":     "my-scale-iaas",
+		"totalMem": "125000",
+	}}
+	err := s.p.cluster.Register(node)
+	c.Assert(err, check.IsNil)
+	a := autoScaleConfig{
+		done:              make(chan bool),
+		provisioner:       s.p,
+		groupByMetadata:   "pool",
+		maxContainerCount: 2,
+	}
+	err = a.runOnce()
+	c.Assert(err, check.IsNil)
+	nodes, err := s.p.cluster.Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	evts, err := listAutoScaleEvents(0, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].Nodes, check.HasLen, 1)
+}
+
 func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMultipleNodes(c *check.C) {
 	_, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 6}},
@@ -332,6 +377,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMultipleNodes(c *check.C) {
 	c.Assert(evts[0].Action, check.Equals, "add")
 	c.Assert(evts[0].Successful, check.Equals, true)
 	c.Assert(evts[0].Error, check.Equals, "")
+	c.Assert(evts[0].Reason, check.Equals, "number of free slots is -4, adding 2 nodes")
 	c.Assert(evts[0].Nodes, check.HasLen, 2)
 	containers1, err := s.p.listContainersByHost(urlToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
@@ -656,6 +702,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 	c.Assert(evts[0].Action, check.Equals, "add")
 	c.Assert(evts[0].Successful, check.Equals, true)
 	c.Assert(evts[0].Error, check.Equals, "")
+	c.Assert(evts[0].Reason, check.Equals, "can't add 21000 bytes to an existing node, adding 1 nodes")
 	// Also should have rebalanced
 	containers1, err := s.p.listContainersByHost(urlToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
@@ -729,6 +776,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedMultipleNodes(c *check
 	c.Assert(evts[0].Successful, check.Equals, true)
 	c.Assert(evts[0].Error, check.Equals, "")
 	c.Assert(evts[0].Nodes, check.HasLen, 2)
+	c.Assert(evts[0].Reason, check.Equals, "can't add 21000 bytes to an existing node, adding 2 nodes")
 	// Also should have rebalanced
 	containers1, err := s.p.listContainersByHost(urlToHost(nodes[0].Address))
 	c.Assert(err, check.IsNil)
@@ -767,6 +815,34 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedMultipleNodes(c *check
 	locked, err := app.AcquireApplicationLock(s.appInstance.GetName(), "x", "y")
 	c.Assert(err, check.IsNil)
 	c.Assert(locked, check.Equals, true)
+}
+
+func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMemoryBasedNoContainersMultipleNodes(c *check.C) {
+	port, _ := config.GetInt("iaas:node-port")
+	otherUrl := fmt.Sprintf("http://localhost:%d", port)
+	node := cluster.Node{Address: otherUrl, Metadata: map[string]string{
+		"pool":     "pool1",
+		"iaas":     "my-scale-iaas",
+		"totalMem": "125000",
+	}}
+	err := s.p.cluster.Register(node)
+	c.Assert(err, check.IsNil)
+	a := autoScaleConfig{
+		done:                make(chan bool),
+		provisioner:         s.p,
+		groupByMetadata:     "pool",
+		totalMemoryMetadata: "totalMem",
+		maxMemoryRatio:      0.8,
+	}
+	err = a.runOnce()
+	c.Assert(err, check.IsNil)
+	nodes, err := s.p.cluster.Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 1)
+	evts, err := listAutoScaleEvents(0, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].Nodes, check.HasLen, 1)
 }
 
 func (s *AutoScaleSuite) TestAutoScaleConfigRunPriorityToCountBased(c *check.C) {
@@ -905,6 +981,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDown(c *check.C) {
 	c.Assert(evts[0].Action, check.Equals, "remove")
 	c.Assert(evts[0].Successful, check.Equals, true)
 	c.Assert(evts[0].Error, check.Equals, "")
+	c.Assert(evts[0].Reason, check.Equals, "number of free slots is 6, removing 1 nodes")
 	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -977,6 +1054,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMultipleNodes(c *check.C
 	c.Assert(evts[0].Successful, check.Equals, true)
 	c.Assert(evts[0].Error, check.Equals, "")
 	c.Assert(evts[0].Nodes, check.HasLen, 2)
+	c.Assert(evts[0].Reason, check.Equals, "number of free slots is 12, removing 2 nodes")
 	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -1036,6 +1114,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C)
 	c.Assert(evts[0].Action, check.Equals, "remove")
 	c.Assert(evts[0].Successful, check.Equals, true)
 	c.Assert(evts[0].Error, check.Equals, "")
+	c.Assert(evts[0].Reason, check.Equals, "containers can be distributed in only 1 nodes")
 	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
@@ -1109,6 +1188,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMemoryScalerMultipleNode
 	c.Assert(evts[0].Successful, check.Equals, true)
 	c.Assert(evts[0].Error, check.Equals, "")
 	c.Assert(evts[0].Nodes, check.HasLen, 2)
+	c.Assert(evts[0].Reason, check.Equals, "containers can be distributed in only 1 nodes")
 	nodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)

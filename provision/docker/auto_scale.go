@@ -129,7 +129,7 @@ func listAutoScaleEvents(skip, limit int) ([]autoScaleEvent, error) {
 		return nil, err
 	}
 	defer coll.Close()
-	query := coll.Find(nil).Sort("-_id")
+	query := coll.Find(nil).Sort("-starttime")
 	if skip != 0 {
 		query = query.Skip(skip)
 	}
@@ -396,16 +396,7 @@ func (a *memoryScaler) choseNodeForRemoval(maxPlanMemory int64, groupMetadata st
 	if toRemoveCount <= 0 {
 		return nil, nil
 	}
-	var chosenNodes []cluster.Node
-	for _, node := range nodes {
-		canRemove, _ := canRemoveNode(node, nodes)
-		if canRemove {
-			chosenNodes = append(chosenNodes, *node)
-			if len(chosenNodes) >= toRemoveCount {
-				break
-			}
-		}
-	}
+	chosenNodes := chooseNodeForRemoval(nodes, toRemoveCount)
 	if len(chosenNodes) == 0 {
 		a.logDebug("would remove any node but can't due to metadata restrictions")
 		return nil, nil
@@ -470,7 +461,7 @@ func (a *memoryScaler) scale(event *autoScaleEvent, groupMetadata string, nodes 
 	if nodesToAdd == 0 {
 		return nil
 	}
-	err = event.update(scaleActionAdd, fmt.Sprintf("can't add %d bytes to an existing node", maxPlanMemory))
+	err = event.update(scaleActionAdd, fmt.Sprintf("can't add %d bytes to an existing node, adding %d nodes", maxPlanMemory, nodesToAdd))
 	if err != nil {
 		return err
 	}
@@ -496,22 +487,14 @@ func (a *countScaler) scale(event *autoScaleEvent, groupMetadata string, nodes [
 	scaledMaxCount := int(float32(a.maxContainerCount) * a.scaleDownRatio)
 	if freeSlots > scaledMaxCount {
 		toRemoveCount := freeSlots / scaledMaxCount
-		var chosenNodes []cluster.Node
-		for _, node := range nodes {
-			canRemove, _ := canRemoveNode(node, nodes)
-			if canRemove {
-				chosenNodes = append(chosenNodes, *node)
-				if len(chosenNodes) >= toRemoveCount {
-					break
-				}
-			}
-		}
+		chosenNodes := chooseNodeForRemoval(nodes, toRemoveCount)
 		if len(chosenNodes) == 0 {
 			a.logDebug("would remove any node but can't due to metadata restrictions")
 			return nil
 		}
 		event.updateNodes(chosenNodes)
-		err := event.update(scaleActionRemove, reasonMsg)
+		downMsg := fmt.Sprintf("%s, removing %d nodes", reasonMsg, len(chosenNodes))
+		err := event.update(scaleActionRemove, downMsg)
 		if err != nil {
 			return fmt.Errorf("error updating event: %s", err)
 		}
@@ -521,11 +504,12 @@ func (a *countScaler) scale(event *autoScaleEvent, groupMetadata string, nodes [
 	if freeSlots >= 0 {
 		return nil
 	}
-	err = event.update(scaleActionAdd, reasonMsg)
+	nodesToAdd := -freeSlots / a.maxContainerCount
+	upMsg := fmt.Sprintf("%s, adding %d nodes", reasonMsg, nodesToAdd)
+	err = event.update(scaleActionAdd, upMsg)
 	if err != nil {
 		return fmt.Errorf("error updating event: %s", err)
 	}
-	nodesToAdd := -freeSlots / a.maxContainerCount
 	a.logDebug("running event %q for %q: %s", event.Action, event.MetadataValue, event.Reason)
 	newNodes, err := a.addMultipleNodes(nodes, nodesToAdd)
 	if err != nil {
@@ -727,7 +711,31 @@ func (a *autoScaleConfig) removeNode(chosenNode *cluster.Node) error {
 	return nil
 }
 
+func chooseNodeForRemoval(nodes []*cluster.Node, toRemoveCount int) []cluster.Node {
+	var chosenNodes []cluster.Node
+	remainingNodes := nodes[:]
+	for _, node := range nodes {
+		canRemove, _ := canRemoveNode(node, remainingNodes)
+		if canRemove {
+			for i := range remainingNodes {
+				if remainingNodes[i].Address == node.Address {
+					remainingNodes = append(remainingNodes[:i], remainingNodes[i+1:]...)
+					break
+				}
+			}
+			chosenNodes = append(chosenNodes, *node)
+			if len(chosenNodes) >= toRemoveCount {
+				break
+			}
+		}
+	}
+	return chosenNodes
+}
+
 func canRemoveNode(chosenNode *cluster.Node, nodes []*cluster.Node) (bool, error) {
+	if len(nodes) == 1 {
+		return false, nil
+	}
 	exclusiveList, _, err := splitMetadata(createMetadataList(nodes))
 	if err != nil {
 		return false, err
