@@ -390,6 +390,44 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMultipleNodes(c *check.C) {
 	c.Assert(containers3, check.HasLen, 2)
 }
 
+func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceAddsAtLeastOne(c *check.C) {
+	_, err := addContainersWithHost(&changeUnitsPipelineArgs{
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 3}},
+		app:         s.appInstance,
+		imageId:     s.imageId,
+		provisioner: s.p,
+	})
+	c.Assert(err, check.IsNil)
+	a := autoScaleConfig{
+		done:              make(chan bool),
+		provisioner:       s.p,
+		groupByMetadata:   "pool",
+		maxContainerCount: 2,
+	}
+	err = a.runOnce()
+	c.Assert(err, check.IsNil)
+	nodes, err := s.p.cluster.Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(nodes, check.HasLen, 2)
+	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
+	evts, err := listAutoScaleEvents(0, 0)
+	c.Assert(err, check.IsNil)
+	c.Assert(evts, check.HasLen, 1)
+	c.Assert(evts[0].StartTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].EndTime.IsZero(), check.Equals, false)
+	c.Assert(evts[0].MetadataValue, check.Equals, "pool1")
+	c.Assert(evts[0].Action, check.Equals, "add")
+	c.Assert(evts[0].Successful, check.Equals, true)
+	c.Assert(evts[0].Error, check.Equals, "")
+	c.Assert(evts[0].Reason, check.Equals, "number of free slots is -1, adding 1 nodes")
+	c.Assert(evts[0].Nodes, check.HasLen, 1)
+	containers1, err := s.p.listContainersByHost(urlToHost(nodes[0].Address))
+	c.Assert(err, check.IsNil)
+	containers2, err := s.p.listContainersByHost(urlToHost(nodes[1].Address))
+	c.Assert(err, check.IsNil)
+	c.Assert(len(containers1) == 2 || len(containers2) == 2, check.Equals, true)
+}
+
 func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMultipleNodesPartialError(c *check.C) {
 	var count int32
 	s.node2.CustomHandler("/_ping", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

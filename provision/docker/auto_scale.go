@@ -505,6 +505,9 @@ func (a *countScaler) scale(event *autoScaleEvent, groupMetadata string, nodes [
 		return nil
 	}
 	nodesToAdd := -freeSlots / a.maxContainerCount
+	if nodesToAdd == 0 {
+		nodesToAdd = 1
+	}
 	upMsg := fmt.Sprintf("%s, adding %d nodes", reasonMsg, nodesToAdd)
 	err = event.update(scaleActionAdd, upMsg)
 	if err != nil {
