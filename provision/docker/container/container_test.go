@@ -436,7 +436,7 @@ func (s *S) TestContainerShell(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var stdout, stderr bytes.Buffer
 	stdin := bytes.NewBufferString("")
-	err = container.Shell(s.p, stdin, &stdout, &stderr, pty{width: 140, height: 38, term: "xterm"})
+	err = container.Shell(s.p, stdin, &stdout, &stderr, Pty{Width: 140, Height: 38, Term: "xterm"})
 	c.Assert(err, check.IsNil)
 	c.Assert(strings.Contains(stdout.String(), ""), check.Equals, true)
 	urls.Lock()
