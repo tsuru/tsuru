@@ -27,6 +27,7 @@ type TestHealerIaaS struct {
 	err    error
 	delErr error
 	addrs  []string
+	ports  []int
 	addrId int
 }
 
@@ -43,15 +44,20 @@ func (t *TestHealerIaaS) CreateMachine(params map[string]string) (*iaas.Machine,
 	if t.err != nil {
 		return nil, t.err
 	}
+	var port int
 	addr := t.addr
 	if len(t.addrs) > 0 {
 		addr = t.addrs[t.addrId]
+		if len(t.ports) == len(t.addrs) {
+			port = t.ports[t.addrId]
+		}
 		t.addrId = (t.addrId + 1) % len(t.addrs)
 	}
 	m := iaas.Machine{
 		Id:      "m-" + addr,
 		Status:  "running",
 		Address: addr,
+		Port:    port,
 	}
 	return &m, nil
 }

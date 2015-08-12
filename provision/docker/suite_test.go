@@ -21,11 +21,13 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/iaas"
+	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/safe"
 	"github.com/tsuru/tsuru/service"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/check.v1"
@@ -54,6 +56,7 @@ type S struct {
 	token          auth.Token
 	team           *auth.Team
 	clusterSess    *mgo.Session
+	logBuf         *safe.Buffer
 }
 
 var _ = check.Suite(&S{})
@@ -77,6 +80,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("docker:cluster:mongo-database", "docker_provision_tests_cluster_stor")
 	config.Set("queue:mongo-url", "127.0.0.1:27017")
 	config.Set("queue:mongo-database", "queue_provision_docker_tests")
+	config.Set("queue:mongo-polling-interval", 0.01)
 	config.Set("routers:fake:type", "fake")
 	config.Set("repo-manager", "fake")
 	config.Set("admin-team", "admin")
@@ -135,9 +139,12 @@ func (s *S) SetUpTest(c *check.C) {
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
 	s.storage.Tokens().Remove(bson.M{"appname": bson.M{"$ne": ""}})
+	s.logBuf = safe.NewBuffer(nil)
+	log.SetLogger(log.NewWriterLogger(s.logBuf, true))
 }
 
 func (s *S) TearDownTest(c *check.C) {
+	log.SetLogger(nil)
 	s.server.Stop()
 	if s.extraServer != nil {
 		s.extraServer.Stop()

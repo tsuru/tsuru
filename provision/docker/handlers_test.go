@@ -831,18 +831,20 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterNode(c *check.C) {
 }
 
 func (s *HandlersSuite) TestAutoScaleHistoryHandler(c *check.C) {
-	evt1, err := newAutoScaleEvent("poolx")
+	evt1, err := newAutoScaleEvent("poolx", nil)
 	c.Assert(err, check.IsNil)
 	err = evt1.update("add", "reason 1")
 	c.Assert(err, check.IsNil)
-	err = evt1.finish(nil, "my log")
+	err = evt1.finish(nil)
 	c.Assert(err, check.IsNil)
-	evt2, err := newAutoScaleEvent("pooly")
+	evt1.log("my evt1")
+	evt2, err := newAutoScaleEvent("pooly", nil)
 	c.Assert(err, check.IsNil)
 	err = evt2.update("rebalance", "reason 2")
 	c.Assert(err, check.IsNil)
-	err = evt2.finish(errors.New("my error"), "my log 2")
+	err = evt2.finish(errors.New("my error"))
 	c.Assert(err, check.IsNil)
+	evt2.log("my evt2")
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/docker/autoscale", nil)
 	c.Assert(err, check.IsNil)
@@ -936,8 +938,8 @@ func (s *HandlersSuite) TestAutoScaleRunHandler(c *check.C) {
 	body := recorder.Body.String()
 	parts := strings.Split(body, "\n")
 	c.Assert(parts, check.DeepEquals, []string{
-		`{"Message":"[node autoscale] running scaler *docker.countScaler for \"pool\": \"pool1\"\n"}`,
-		`{"Message":"[node autoscale] nothing to do for \"pool\": \"pool1\"\n"}`,
+		`{"Message":"running scaler *docker.countScaler for \"pool\": \"pool1\"\n"}`,
+		`{"Message":"nothing to do for \"pool\": \"pool1\"\n"}`,
 		``,
 	})
 }

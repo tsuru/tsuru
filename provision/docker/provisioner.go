@@ -141,24 +141,14 @@ func (p *dockerProvisioner) initDockerCluster() error {
 func (p *dockerProvisioner) initAutoScaleConfig() *autoScaleConfig {
 	waitSecondsNewMachine, _ := config.GetInt("docker:auto-scale:wait-new-time")
 	groupByMetadata, _ := config.GetString("docker:auto-scale:group-by-metadata")
-	matadataFilter, _ := config.GetString("docker:auto-scale:metadata-filter")
-	maxContainerCount, _ := config.GetInt("docker:auto-scale:max-container-count")
 	runInterval, _ := config.GetInt("docker:auto-scale:run-interval")
-	scaleDownRatio, _ := config.GetFloat("docker:auto-scale:scale-down-ratio")
-	preventRebalance, _ := config.GetBool("docker:auto-scale:prevent-rebalance")
 	totalMemoryMetadata, _ := config.GetString("docker:scheduler:total-memory-metadata")
-	maxUsedMemory, _ := config.GetFloat("docker:scheduler:max-used-memory")
 	return &autoScaleConfig{
 		provisioner:         p,
 		groupByMetadata:     groupByMetadata,
 		totalMemoryMetadata: totalMemoryMetadata,
-		maxMemoryRatio:      float32(maxUsedMemory),
-		maxContainerCount:   maxContainerCount,
-		matadataFilter:      matadataFilter,
-		scaleDownRatio:      float32(scaleDownRatio),
 		waitTimeNewMachine:  time.Duration(waitSecondsNewMachine) * time.Second,
 		runInterval:         time.Duration(runInterval) * time.Second,
-		preventRebalance:    preventRebalance,
 		done:                make(chan bool),
 	}
 }
