@@ -15,6 +15,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/provision/docker/container"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -42,7 +43,7 @@ func (s *S) TestHealthcheck(c *check.C) {
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}
+	cont := container.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}
 	buf := bytes.Buffer{}
 	err = runHealthcheck(&cont, &buf)
 	c.Assert(err, check.IsNil)
@@ -80,7 +81,7 @@ func (s *S) TestHealthcheckWithMatch(c *check.C) {
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}
+	cont := container.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}
 	buf := bytes.Buffer{}
 	err = runHealthcheck(&cont, &buf)
 	c.Assert(err, check.ErrorMatches, ".*unexpected result, expected \"(?s).*some.*\", got: invalid")
@@ -114,7 +115,7 @@ func (s *S) TestHealthcheckDefaultCheck(c *check.C) {
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}
+	cont := container.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}
 	buf := bytes.Buffer{}
 	err = runHealthcheck(&cont, &buf)
 	c.Assert(err, check.IsNil)
@@ -136,7 +137,7 @@ func (s *S) TestHealthcheckNoHealthcheck(c *check.C) {
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container{AppName: a.Name, HostAddr: host, HostPort: port}
+	cont := container.Container{AppName: a.Name, HostAddr: host, HostPort: port}
 	buf := bytes.Buffer{}
 	err = runHealthcheck(&cont, &buf)
 	c.Assert(err, check.IsNil)
@@ -165,7 +166,7 @@ func (s *S) TestHealthcheckNoPath(c *check.C) {
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}
+	cont := container.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}
 	buf := bytes.Buffer{}
 	err = runHealthcheck(&cont, &buf)
 	c.Assert(err, check.IsNil)
@@ -204,7 +205,7 @@ func (s *S) TestHealthcheckKeepsTryingWithServerDown(c *check.C) {
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}
+	cont := container.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}
 	buf := bytes.Buffer{}
 	err = runHealthcheck(&cont, &buf)
 	c.Assert(err, check.IsNil)
@@ -231,7 +232,7 @@ func (s *S) TestHealthcheckErrorsAfterMaxTime(c *check.C) {
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse("http://some-invalid-server-name.some-invalid-server-name.com:9123")
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}
+	cont := container.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}
 	buf := bytes.Buffer{}
 	config.Set("docker:healthcheck:max-time", -1)
 	defer config.Unset("docker:healthcheck:max-time")
@@ -283,7 +284,7 @@ func (s *S) TestHealthcheckSuccessfulWithAllowedFailures(c *check.C) {
 	defer s.storage.Apps().RemoveAll(bson.M{"name": a.Name})
 	url, _ := url.Parse(server.URL)
 	host, port, _ := net.SplitHostPort(url.Host)
-	cont := container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}
+	cont := container.Container{AppName: a.Name, HostAddr: host, HostPort: port, Image: imageName}
 	buf := bytes.Buffer{}
 	err = runHealthcheck(&cont, &buf)
 	c.Assert(err, check.IsNil)

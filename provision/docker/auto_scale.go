@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/mgo.v2"
@@ -288,7 +289,7 @@ func (a *autoScaleConfig) runScaler(scaler autoScaler) (retErr error) {
 			retErr = fmt.Errorf("recovered panic, we can never stop! panic: %v", r)
 		}
 	}()
-	nodes, err := a.provisioner.getCluster().Nodes()
+	nodes, err := a.provisioner.Cluster().Nodes()
 	if err != nil {
 		retErr = fmt.Errorf("error getting nodes: %s", err.Error())
 		return
@@ -617,7 +618,7 @@ func (a *autoScaleConfig) addNode(modelNodes []*cluster.Node) (*cluster.Node, er
 		Metadata:       metadata,
 		CreationStatus: cluster.NodeCreationStatusPending,
 	}
-	err = a.provisioner.getCluster().Register(createdNode)
+	err = a.provisioner.Cluster().Register(createdNode)
 	if err != nil {
 		machine.Destroy()
 		return nil, fmt.Errorf("error registering new node %s: %s", newAddr, err.Error())
@@ -654,7 +655,7 @@ func (a *autoScaleConfig) removeMultipleNodes(chosenNodes []cluster.Node) error 
 		nodeAddrs[i] = node.Address
 		nodeHosts[i] = urlToHost(node.Address)
 	}
-	err := a.provisioner.getCluster().UnregisterNodes(nodeAddrs...)
+	err := a.provisioner.Cluster().UnregisterNodes(nodeAddrs...)
 	if err != nil {
 		return fmt.Errorf("unable to unregister nodes (%s) for removal: %s", strings.Join(nodeAddrs, ", "), err)
 	}
@@ -662,7 +663,7 @@ func (a *autoScaleConfig) removeMultipleNodes(chosenNodes []cluster.Node) error 
 	err = a.provisioner.moveContainersFromHosts(nodeHosts, "", buf)
 	if err != nil {
 		for _, node := range chosenNodes {
-			a.provisioner.getCluster().Register(node)
+			a.provisioner.Cluster().Register(node)
 		}
 		return fmt.Errorf("unable to move containers from nodes (%s): %s - log: %s", strings.Join(nodeAddrs, ", "), err, buf.String())
 	}
@@ -692,14 +693,14 @@ func (a *autoScaleConfig) removeNode(chosenNode *cluster.Node) error {
 	if !hasIaas {
 		return fmt.Errorf("no IaaS information in node (%s) metadata: %#v", chosenNode.Address, chosenNode.Metadata)
 	}
-	err := a.provisioner.getCluster().Unregister(chosenNode.Address)
+	err := a.provisioner.Cluster().Unregister(chosenNode.Address)
 	if err != nil {
 		return fmt.Errorf("unable to unregister node (%s) for removal: %s", chosenNode.Address, err)
 	}
 	buf := safe.NewBuffer(nil)
 	err = a.provisioner.moveContainers(urlToHost(chosenNode.Address), "", buf)
 	if err != nil {
-		a.provisioner.getCluster().Register(*chosenNode)
+		a.provisioner.Cluster().Register(*chosenNode)
 		return fmt.Errorf("unable to move containers from node (%s): %s - log: %s", chosenNode.Address, err, buf.String())
 	}
 	m, err := iaas.FindMachineByIdOrAddress(chosenNode.Metadata["iaas-id"], urlToHost(chosenNode.Address))
@@ -837,7 +838,7 @@ func chooseMetadataFromNodes(modelNodes []*cluster.Node) (map[string]string, err
 	return baseMetadata, nil
 }
 
-func (p *dockerProvisioner) runningContainersByNode(nodes []*cluster.Node) (map[string][]container, error) {
+func (p *dockerProvisioner) runningContainersByNode(nodes []*cluster.Node) (map[string][]container.Container, error) {
 	appNames, err := p.listAppsForNodes(nodes)
 	if err != nil {
 		return nil, err
@@ -852,7 +853,7 @@ func (p *dockerProvisioner) runningContainersByNode(nodes []*cluster.Node) (map[
 		}
 		defer app.ReleaseApplicationLock(appName)
 	}
-	result := map[string][]container{}
+	result := map[string][]container.Container{}
 	for _, n := range nodes {
 		nodeConts, err := p.listRunningContainersByHost(urlToHost(n.Address))
 		if err != nil {

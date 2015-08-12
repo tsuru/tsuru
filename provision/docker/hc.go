@@ -49,7 +49,7 @@ func healthCheckDockerRegistry() error {
 }
 
 func healthCheckDocker() error {
-	nodes, err := mainDockerProvisioner.getCluster().Nodes()
+	nodes, err := mainDockerProvisioner.Cluster().Nodes()
 	if err != nil {
 		return err
 	}

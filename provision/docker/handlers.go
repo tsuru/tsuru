@@ -85,7 +85,7 @@ func (p *dockerProvisioner) addNodeForParams(params map[string]string, isRegiste
 		return response, err
 	}
 	node := cluster.Node{Address: address, Metadata: params, CreationStatus: cluster.NodeCreationStatusPending}
-	err = p.getCluster().Register(node)
+	err = p.Cluster().Register(node)
 	if err != nil {
 		return response, err
 	}
@@ -125,7 +125,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if address == "" {
 		return fmt.Errorf("Node address is required.")
 	}
-	nodes, err := mainDockerProvisioner.getCluster().UnfilteredNodes()
+	nodes, err := mainDockerProvisioner.Cluster().UnfilteredNodes()
 	if err != nil {
 		return err
 	}
@@ -139,7 +139,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	if node == nil {
 		return fmt.Errorf("node with address %q not found in cluster", address)
 	}
-	err = mainDockerProvisioner.getCluster().Unregister(address)
+	err = mainDockerProvisioner.Cluster().Unregister(address)
 	if err != nil {
 		return err
 	}
@@ -156,7 +156,7 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 
 //listNodeHandler call scheduler.Nodes to list all nodes into it.
 func listNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	nodeList, err := mainDockerProvisioner.getCluster().UnfilteredNodes()
+	nodeList, err := mainDockerProvisioner.Cluster().UnfilteredNodes()
 	if err != nil {
 		return err
 	}
@@ -182,7 +182,7 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	}
 	delete(params, "address")
 	node := cluster.Node{Address: address, Metadata: params}
-	_, err = mainDockerProvisioner.getCluster().UpdateNode(node)
+	_, err = mainDockerProvisioner.Cluster().UpdateNode(node)
 	return err
 }
 

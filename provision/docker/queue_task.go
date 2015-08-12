@@ -50,13 +50,13 @@ func (t runBs) Run(job monsterqueue.Job) {
 	if err != nil {
 		node.CreationStatus = cluster.NodeCreationStatusError
 		node.Metadata = map[string]string{"creationError": err.Error()}
-		mainDockerProvisioner.getCluster().UpdateNode(node)
+		mainDockerProvisioner.Cluster().UpdateNode(node)
 		job.Error(err)
 		t.destroyMachine(machineID)
 		return
 	}
 	node.CreationStatus = cluster.NodeCreationStatusCreated
-	_, err = mainDockerProvisioner.getCluster().UpdateNode(node)
+	_, err = mainDockerProvisioner.Cluster().UpdateNode(node)
 	if err != nil {
 		job.Error(err)
 		t.destroyMachine(machineID)

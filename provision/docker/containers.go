@@ -18,6 +18,7 @@ import (
 	tsuruErrors "github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/docker/container"
 )
 
 type appLocker struct {
@@ -72,7 +73,7 @@ func handleMoveErrors(moveErrors chan error, writer io.Writer) error {
 	return nil
 }
 
-func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App, toAdd map[string]*containersToAdd, toRemoveContainers []container, imageId string, toHosts ...string) ([]container, error) {
+func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App, toAdd map[string]*containersToAdd, toRemoveContainers []container.Container, imageId string, toHosts ...string) ([]container.Container, error) {
 	var toHost string
 	if len(toHosts) > 0 {
 		toHost = toHosts[0]
@@ -110,10 +111,10 @@ func (p *dockerProvisioner) runReplaceUnitsPipeline(w io.Writer, a provision.App
 	if err != nil {
 		return nil, err
 	}
-	return pipeline.Result().([]container), nil
+	return pipeline.Result().([]container.Container), nil
 }
 
-func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App, toAdd map[string]*containersToAdd, imageId string) ([]container, error) {
+func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App, toAdd map[string]*containersToAdd, imageId string) ([]container.Container, error) {
 	if w == nil {
 		w = ioutil.Discard
 	}
@@ -134,17 +135,17 @@ func (p *dockerProvisioner) runCreateUnitsPipeline(w io.Writer, a provision.App,
 	if err != nil {
 		return nil, err
 	}
-	return pipeline.Result().([]container), nil
+	return pipeline.Result().([]container.Container), nil
 }
 
-func (p *dockerProvisioner) moveOneContainer(c container, toHost string, errors chan error, wg *sync.WaitGroup, writer io.Writer, locker *appLocker) container {
+func (p *dockerProvisioner) moveOneContainer(c container.Container, toHost string, errors chan error, wg *sync.WaitGroup, writer io.Writer, locker *appLocker) container.Container {
 	if wg != nil {
 		defer wg.Done()
 	}
 	locked := locker.lock(c.AppName)
 	if !locked {
 		errors <- fmt.Errorf("couldn't move %s, unable to lock %q", c.ID, c.AppName)
-		return container{}
+		return container.Container{}
 	}
 	defer locker.unlock(c.AppName)
 	a, err := app.GetByName(c.AppName)
@@ -153,7 +154,7 @@ func (p *dockerProvisioner) moveOneContainer(c container, toHost string, errors 
 			Base:    err,
 			Message: fmt.Sprintf("error getting app %q for unit %s", c.AppName, c.ID),
 		}
-		return container{}
+		return container.Container{}
 	}
 	imageId, err := appCurrentImageName(a.GetName())
 	if err != nil {
@@ -161,7 +162,7 @@ func (p *dockerProvisioner) moveOneContainer(c container, toHost string, errors 
 			Base:    err,
 			Message: fmt.Sprintf("error getting app %q image name for unit %s", c.AppName, c.ID),
 		}
-		return container{}
+		return container.Container{}
 	}
 	var destHosts []string
 	var suffix string
@@ -173,13 +174,13 @@ func (p *dockerProvisioner) moveOneContainer(c container, toHost string, errors 
 		fmt.Fprintf(writer, "Moving unit %s for %q from %s%s...\n", c.ID, c.AppName, c.HostAddr, suffix)
 	}
 	toAdd := map[string]*containersToAdd{c.ProcessName: {Quantity: 1, Status: provision.Status(c.Status)}}
-	addedContainers, err := p.runReplaceUnitsPipeline(nil, a, toAdd, []container{c}, imageId, destHosts...)
+	addedContainers, err := p.runReplaceUnitsPipeline(nil, a, toAdd, []container.Container{c}, imageId, destHosts...)
 	if err != nil {
 		errors <- &tsuruErrors.CompositeError{
 			Base:    err,
 			Message: fmt.Sprintf("Error moving unit %s", c.ID),
 		}
-		return container{}
+		return container.Container{}
 	}
 	prefix := "Moved unit"
 	if p.isDryMode {
@@ -189,10 +190,10 @@ func (p *dockerProvisioner) moveOneContainer(c container, toHost string, errors 
 	return addedContainers[0]
 }
 
-func (p *dockerProvisioner) moveContainer(contId string, toHost string, writer io.Writer) (container, error) {
+func (p *dockerProvisioner) moveContainer(contId string, toHost string, writer io.Writer) (container.Container, error) {
 	cont, err := p.getContainer(contId)
 	if err != nil {
-		return container{}, err
+		return container.Container{}, err
 	}
 	wg := sync.WaitGroup{}
 	wg.Add(1)
@@ -203,7 +204,7 @@ func (p *dockerProvisioner) moveContainer(contId string, toHost string, writer i
 	return createdContainer, handleMoveErrors(moveErrors, writer)
 }
 
-func (p *dockerProvisioner) moveContainerList(containers []container, toHost string, writer io.Writer) error {
+func (p *dockerProvisioner) moveContainerList(containers []container.Container, toHost string, writer io.Writer) error {
 	locker := &appLocker{}
 	moveErrors := make(chan error, len(containers))
 	wg := sync.WaitGroup{}
@@ -232,7 +233,7 @@ func (p *dockerProvisioner) moveContainers(fromHost, toHost string, writer io.Wr
 }
 
 func (p *dockerProvisioner) moveContainersFromHosts(fromHosts []string, toHost string, writer io.Writer) error {
-	var allContainers []container
+	var allContainers []container.Container
 	for _, host := range fromHosts {
 		containers, err := p.listContainersByHost(host)
 		if err != nil {
@@ -251,7 +252,7 @@ func (p *dockerProvisioner) moveContainersFromHosts(fromHosts []string, toHost s
 type hostWithContainers struct {
 	HostAddr   string `bson:"_id"`
 	Count      int
-	Containers []container
+	Containers []container.Container
 }
 
 func minCountHost(hosts []hostWithContainers) *hostWithContainers {

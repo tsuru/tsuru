@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/safe"
 	"gopkg.in/check.v1"
@@ -28,9 +29,14 @@ func (s *S) TestMoveContainers(c *check.C) {
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
-	coll := p.collection()
+	coll := p.Collection()
 	defer coll.Close()
-	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
+	coll.Insert(container.Container{
+		ID:      "container-id",
+		AppName: appInstance.GetName(),
+		Version: "container-version",
+		Image:   "tsuru/python",
+	})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
@@ -68,9 +74,9 @@ func (s *S) TestMoveContainersUnknownDest(c *check.C) {
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
-	coll := p.collection()
+	coll := p.Collection()
 	defer coll.Close()
-	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
+	coll.Insert(container.Container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
@@ -104,9 +110,14 @@ func (s *S) TestMoveContainer(c *check.C) {
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
-	coll := p.collection()
+	coll := p.Collection()
 	defer coll.Close()
-	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python"})
+	coll.Insert(container.Container{
+		ID:      "container-id",
+		AppName: appInstance.GetName(),
+		Version: "container-version",
+		Image:   "tsuru/python",
+	})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)

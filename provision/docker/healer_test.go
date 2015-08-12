@@ -8,11 +8,12 @@ import (
 	"time"
 
 	"github.com/tsuru/docker-cluster/cluster"
+	"github.com/tsuru/tsuru/provision/docker/container"
 	"gopkg.in/check.v1"
 )
 
 func (s *S) TestHealingCountFor(c *check.C) {
-	conts := []container{
+	conts := []container.Container{
 		{ID: "cont1"}, {ID: "cont2"}, {ID: "cont3"}, {ID: "cont4"},
 		{ID: "cont5"}, {ID: "cont6"}, {ID: "cont7"}, {ID: "cont8"},
 	}
@@ -28,7 +29,7 @@ func (s *S) TestHealingCountFor(c *check.C) {
 }
 
 func (s *S) TestHealingCountForOldEventsNotConsidered(c *check.C) {
-	conts := []container{
+	conts := []container.Container{
 		{ID: "cont1"}, {ID: "cont2"}, {ID: "cont3"}, {ID: "cont4"},
 		{ID: "cont5"}, {ID: "cont6"}, {ID: "cont7"}, {ID: "cont8"},
 	}

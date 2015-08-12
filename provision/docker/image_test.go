@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/docker/container"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -161,9 +162,9 @@ func (s *S) TestUsePlatformImage(c *check.C) {
 	app6 := &app.App{Name: "app6", Platform: "python", Deploys: 19}
 	err = s.storage.Apps().Insert(app6)
 	c.Assert(err, check.IsNil)
-	coll := s.p.collection()
+	coll := s.p.Collection()
 	defer coll.Close()
-	err = coll.Insert(container{AppName: app6.Name, Image: "tsuru/app-app6"})
+	err = coll.Insert(container.Container{AppName: app6.Name, Image: "tsuru/app-app6"})
 	c.Assert(err, check.IsNil)
 	ok = s.p.usePlatformImage(app6)
 	c.Assert(ok, check.Equals, false)

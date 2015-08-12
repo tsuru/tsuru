@@ -63,6 +63,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	s.imageCollName = "docker_image"
 	s.repoNamespace = "tsuru"
 	s.sshUser = "root"
+	s.port = "8888"
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "docker_provision_tests_s")
 	config.Set("docker:repository-namespace", s.repoNamespace)
@@ -70,7 +71,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	config.Set("docker:collection", s.collName)
 	config.Set("docker:deploy-cmd", "/var/lib/tsuru/deploy")
 	config.Set("docker:run-cmd:bin", "/usr/local/bin/circusd /etc/circus/circus.ini")
-	config.Set("docker:run-cmd:port", "8888")
+	config.Set("docker:run-cmd:port", s.port)
 	config.Set("docker:user", s.sshUser)
 	config.Set("docker:cluster:mongo-url", "127.0.0.1:27017")
 	config.Set("docker:cluster:mongo-database", "docker_provision_tests_cluster_stor")
@@ -84,7 +85,6 @@ func (s *S) SetUpSuite(c *check.C) {
 	s.deployCmd = "/var/lib/tsuru/deploy"
 	s.runBin = "/usr/local/bin/circusd"
 	s.runArgs = "/etc/circus/circus.ini"
-	s.port = "8888"
 	s.targetRecover = cmdtest.SetTargetFile(c, []byte("http://localhost"))
 	s.oldProvisioner = app.Provisioner
 	var err error

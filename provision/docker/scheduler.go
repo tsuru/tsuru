@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/provision/docker/container"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -131,7 +132,7 @@ type nodeAggregate struct {
 // aggregateContainersBy aggregates and counts how many containers
 // exist each node that matches received filters
 func (s *segregatedScheduler) aggregateContainersBy(matcher bson.M) (map[string]int, error) {
-	coll := s.provisioner.collection()
+	coll := s.provisioner.Collection()
 	defer coll.Close()
 	pipe := coll.Pipe([]bson.M{
 		matcher,
@@ -212,9 +213,9 @@ func (s *segregatedScheduler) chooseContainerFromMaxContainersCountInNode(nodes 
 }
 
 func (s *segregatedScheduler) getContainerFromHost(host string, appName, process string) (string, error) {
-	coll := s.provisioner.collection()
+	coll := s.provisioner.Collection()
 	defer coll.Close()
-	var c container
+	var c container.Container
 	query := bson.M{
 		"hostaddr": host,
 		"appname":  appName,
@@ -272,7 +273,7 @@ func (s *segregatedScheduler) chooseNode(nodes []cluster.Node, contName string, 
 	chosenNode = hostsMap[minHost]
 	log.Debugf("[scheduler] Chosen node for container %s: %#v Count: %d", contName, chosenNode, minCount)
 	if contName != "" {
-		coll := s.provisioner.collection()
+		coll := s.provisioner.Collection()
 		defer coll.Close()
 		err = coll.Update(bson.M{"name": contName}, bson.M{"$set": bson.M{"hostaddr": minHost}})
 	}

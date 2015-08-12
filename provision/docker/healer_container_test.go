@@ -14,6 +14,7 @@ import (
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -134,7 +135,7 @@ func (s *S) TestRunContainerHealer(c *check.C) {
 
 	toMoveCont := containers[1]
 	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-2 * time.Minute)
-	coll := p.collection()
+	coll := p.Collection()
 	defer coll.Close()
 	err = coll.Update(bson.M{"id": toMoveCont.ID}, toMoveCont)
 	c.Assert(err, check.IsNil)
@@ -220,7 +221,7 @@ func (s *S) TestRunContainerHealerShutdown(c *check.C) {
 
 	toMoveCont := containers[1]
 	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-2 * time.Minute)
-	coll := p.collection()
+	coll := p.Collection()
 	defer coll.Close()
 	err = coll.Update(bson.M{"id": toMoveCont.ID}, toMoveCont)
 	c.Assert(err, check.IsNil)
@@ -457,7 +458,7 @@ func (s *S) TestRunContainerHealerDoesntHealWhenContainerIsRunning(c *check.C) {
 
 	toMoveCont := cont[0]
 	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-2 * time.Minute)
-	coll := p.collection()
+	coll := p.Collection()
 	defer coll.Close()
 	err = coll.Update(bson.M{"id": toMoveCont.ID}, toMoveCont)
 	c.Assert(err, check.IsNil)
@@ -515,7 +516,7 @@ func (s *S) TestRunContainerHealerDoesntHealWhenContainerIsRestarting(c *check.C
 
 	toMoveCont := cont[0]
 	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-2 * time.Minute)
-	coll := p.collection()
+	coll := p.Collection()
 	defer coll.Close()
 	err = coll.Update(bson.M{"id": toMoveCont.ID}, toMoveCont)
 	c.Assert(err, check.IsNil)
@@ -582,7 +583,7 @@ func (s *S) TestRunContainerHealerWithError(c *check.C) {
 
 	toMoveCont := containers[1]
 	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-2 * time.Minute)
-	coll := p.collection()
+	coll := p.Collection()
 	defer coll.Close()
 	err = coll.Update(bson.M{"id": toMoveCont.ID}, toMoveCont)
 	c.Assert(err, check.IsNil)
@@ -617,7 +618,7 @@ func (s *S) TestRunContainerHealerWithError(c *check.C) {
 }
 
 func (s *S) TestRunContainerHealerMaxCounterExceeded(c *check.C) {
-	conts := []container{
+	conts := []container.Container{
 		{ID: "cont1"}, {ID: "cont2"}, {ID: "cont3"}, {ID: "cont4"},
 		{ID: "cont5"}, {ID: "cont6"}, {ID: "cont7"}, {ID: "cont8"},
 	}
@@ -629,7 +630,7 @@ func (s *S) TestRunContainerHealerMaxCounterExceeded(c *check.C) {
 	}
 	toMoveCont := conts[7]
 	toMoveCont.LastSuccessStatusUpdate = time.Now().Add(-2 * time.Minute)
-	coll := s.p.collection()
+	coll := s.p.Collection()
 	defer coll.Close()
 	err := coll.Insert(toMoveCont)
 	c.Assert(err, check.IsNil)

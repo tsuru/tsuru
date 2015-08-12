@@ -9,11 +9,8 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
-	mrand "math/rand"
 	"net"
 	"net/url"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
@@ -21,17 +18,10 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/docker-cluster/storage/mongodb"
 	"github.com/tsuru/tsuru/action"
-	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/safe"
-	"gopkg.in/mgo.v2/bson"
-)
-
-const (
-	portRangeStart    = 49153
-	portRangeEnd      = 65535
-	portAllocMaxTries = 15
 )
 
 func buildClusterStorage() (cluster.Storage, error) {
@@ -48,14 +38,6 @@ func buildClusterStorage() (cluster.Storage, error) {
 	return storage, nil
 }
 
-func getPort() (string, error) {
-	port, err := config.Get("docker:run-cmd:port")
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprint(port), nil
-}
-
 func urlToHost(urlStr string) string {
 	url, _ := url.Parse(urlStr)
 	if url == nil || url.Host == "" {
@@ -69,7 +51,7 @@ func urlToHost(urlStr string) string {
 }
 
 func (p *dockerProvisioner) hostToNodeAddress(host string) (string, error) {
-	nodes, err := p.getCluster().Nodes()
+	nodes, err := p.Cluster().Nodes()
 	if err != nil {
 		return "", err
 	}
@@ -81,186 +63,11 @@ func (p *dockerProvisioner) hostToNodeAddress(host string) (string, error) {
 	return "", fmt.Errorf("Host `%s` not found", host)
 }
 
-type container struct {
-	ID                      string
-	AppName                 string
-	ProcessName             string
-	Type                    string
-	IP                      string
-	HostAddr                string
-	HostPort                string
-	PrivateKey              string
-	Status                  string
-	Version                 string
-	Image                   string
-	Name                    string
-	User                    string
-	BuildingImage           string
-	LastStatusUpdate        time.Time
-	LastSuccessStatusUpdate time.Time
-	LockedUntil             time.Time
-	appCache                provision.App
-	routable                bool
-}
-
-func (c *container) shortID() string {
-	if len(c.ID) > 10 {
-		return c.ID[:10]
-	}
-	return c.ID
-}
-
-// available returns true if the Status is Started or Unreachable.
-func (c *container) available() bool {
-	return c.Status == provision.StatusStarted.String() ||
-		c.Status == provision.StatusStarting.String()
-}
-
-func (c *container) getAddress() *url.URL {
-	return &url.URL{
-		Scheme: "http",
-		Host:   fmt.Sprintf("%s:%s", c.HostAddr, c.HostPort),
-	}
-}
-
 func randomString() string {
 	h := crypto.MD5.New()
 	h.Write([]byte(time.Now().Format(time.RFC3339Nano)))
 	io.CopyN(h, rand.Reader, 10)
 	return fmt.Sprintf("%x", h.Sum(nil))[:20]
-}
-
-func (c *container) addEnvsToConfig(app provision.App, cfg *docker.Config) {
-	sharedMount, _ := config.GetString("docker:sharedfs:mountpoint")
-	sharedBasedir, _ := config.GetString("docker:sharedfs:hostdir")
-	host, _ := config.GetString("host")
-	for _, envData := range app.Envs() {
-		cfg.Env = append(cfg.Env, fmt.Sprintf("%s=%s", envData.Name, envData.Value))
-	}
-	cfg.Env = append(cfg.Env, []string{
-		fmt.Sprintf("%s=%s", "TSURU_HOST", host),
-		fmt.Sprintf("%s=%s", "TSURU_PROCESSNAME", c.ProcessName),
-	}...)
-	if sharedMount != "" && sharedBasedir != "" {
-		cfg.Volumes = map[string]struct{}{
-			sharedMount: {},
-		}
-		cfg.Env = append(cfg.Env, fmt.Sprintf("TSURU_SHAREDFS_MOUNTPOINT=%s", sharedMount))
-	}
-}
-
-// creates a new container in Docker.
-func (c *container) create(args runContainerActionsArgs) error {
-	port, err := getPort()
-	if err != nil {
-		log.Errorf("error on getting port for container %s - %s", c.AppName, port)
-		return err
-	}
-	user := c.getUser()
-	securityOpts, _ := config.GetList("docker:security-opts")
-	var exposedPorts map[docker.Port]struct{}
-	if !args.isDeploy {
-		exposedPorts = map[docker.Port]struct{}{
-			docker.Port(port + "/tcp"): {},
-		}
-	}
-	config := docker.Config{
-		Image:        args.imageID,
-		Cmd:          args.commands,
-		User:         user,
-		ExposedPorts: exposedPorts,
-		AttachStdin:  false,
-		AttachStdout: false,
-		AttachStderr: false,
-		Memory:       args.app.GetMemory(),
-		MemorySwap:   args.app.GetMemory() + args.app.GetSwap(),
-		CPUShares:    int64(args.app.GetCpuShare()),
-		SecurityOpts: securityOpts,
-	}
-	c.addEnvsToConfig(args.app, &config)
-	opts := docker.CreateContainerOptions{Name: c.Name, Config: &config}
-	var nodeList []string
-	if len(args.destinationHosts) > 0 {
-		nodeName, err := args.provisioner.hostToNodeAddress(args.destinationHosts[0])
-		if err != nil {
-			return err
-		}
-		nodeList = []string{nodeName}
-	}
-	schedulerOpts := []string{args.app.GetName(), args.processName}
-	addr, cont, err := args.provisioner.getCluster().CreateContainerSchedulerOpts(opts, schedulerOpts, nodeList...)
-	if err != nil {
-		log.Errorf("error on creating container in docker %s - %s", c.AppName, err)
-		return err
-	}
-	c.ID = cont.ID
-	c.HostAddr = urlToHost(addr)
-	c.User = user
-	return nil
-}
-
-func (c *container) getUser() string {
-	user, err := config.GetString("docker:user")
-	if err != nil {
-		user, _ = config.GetString("docker:ssh:user")
-	}
-	return user
-}
-
-type containerNetworkInfo struct {
-	HTTPHostPort string
-	IP           string
-}
-
-// networkInfo returns the IP and the host port for the container.
-func (c *container) networkInfo(p *dockerProvisioner) (containerNetworkInfo, error) {
-	var netInfo containerNetworkInfo
-	port, err := getPort()
-	if err != nil {
-		return netInfo, err
-	}
-	dockerContainer, err := p.getCluster().InspectContainer(c.ID)
-	if err != nil {
-		return netInfo, err
-	}
-	if dockerContainer.NetworkSettings != nil {
-		netInfo.IP = dockerContainer.NetworkSettings.IPAddress
-		httpPort := docker.Port(port + "/tcp")
-		for _, port := range dockerContainer.NetworkSettings.Ports[httpPort] {
-			if port.HostPort != "" && port.HostIP != "" {
-				netInfo.HTTPHostPort = port.HostPort
-				break
-			}
-		}
-	}
-	return netInfo, err
-}
-
-func (c *container) setStatus(p *dockerProvisioner, status string, updateDB ...bool) error {
-	c.Status = status
-	c.LastStatusUpdate = time.Now().In(time.UTC)
-	updateData := bson.M{
-		"status":           c.Status,
-		"laststatusupdate": c.LastStatusUpdate,
-	}
-	if c.Status == provision.StatusStarted.String() ||
-		c.Status == provision.StatusStarting.String() {
-		c.LastSuccessStatusUpdate = c.LastStatusUpdate
-		updateData["lastsuccessstatusupdate"] = c.LastSuccessStatusUpdate
-	}
-	if len(updateDB) > 0 && !updateDB[0] {
-		return nil
-	}
-	coll := p.collection()
-	defer coll.Close()
-	return coll.Update(bson.M{"id": c.ID, "status": bson.M{"$ne": provision.StatusBuilding.String()}}, bson.M{"$set": updateData})
-}
-
-func (c *container) setImage(p *dockerProvisioner, imageId string) error {
-	c.Image = imageId
-	coll := p.collection()
-	defer coll.Close()
-	return coll.Update(bson.M{"id": c.ID}, c)
 }
 
 func (p *dockerProvisioner) gitDeploy(app provision.App, version string, w io.Writer) (string, error) {
@@ -309,7 +116,7 @@ func (p *dockerProvisioner) deployPipeline(app provision.App, imageId string, co
 	return buildingImage, nil
 }
 
-func (p *dockerProvisioner) start(oldContainer *container, app provision.App, imageId string, w io.Writer, destinationHosts ...string) (*container, error) {
+func (p *dockerProvisioner) start(oldContainer *container.Container, app provision.App, imageId string, w io.Writer, destinationHosts ...string) (*container.Container, error) {
 	commands, processName, err := runLeanContainerCmds(oldContainer.ProcessName, imageId, app)
 	if err != nil {
 		return nil, err
@@ -345,341 +152,21 @@ func (p *dockerProvisioner) start(oldContainer *container, app provision.App, im
 	if err != nil {
 		return nil, err
 	}
-	c := pipeline.Result().(container)
-	err = c.setImage(p, imageId)
+	c := pipeline.Result().(container.Container)
+	err = c.SetImage(p, imageId)
 	if err != nil {
 		return nil, err
 	}
 	return &c, nil
 }
 
-func (c *container) getApp() (provision.App, error) {
-	if c.appCache != nil {
-		return c.appCache, nil
-	}
-	var err error
-	c.appCache, err = app.GetByName(c.AppName)
-	return c.appCache, err
-}
-
-// remove removes a docker container.
-func (c *container) remove(p *dockerProvisioner) error {
-	log.Debugf("Removing container %s from docker", c.ID)
-	err := c.stop(p)
-	if err != nil {
-		log.Errorf("error on stop unit %s - %s", c.ID, err)
-	}
-	err = p.getCluster().RemoveContainer(docker.RemoveContainerOptions{ID: c.ID})
-	if err != nil {
-		log.Errorf("Failed to remove container from docker: %s", err)
-	}
-	log.Debugf("Removing container %s from database", c.ID)
-	coll := p.collection()
-	defer coll.Close()
-	if err := coll.Remove(bson.M{"id": c.ID}); err != nil {
-		log.Errorf("Failed to remove container from database: %s", err)
-	}
-	return nil
-}
-
-type pty struct {
-	width  int
-	height int
-	term   string
-}
-
-func (c *container) shell(p *dockerProvisioner, stdin io.Reader, stdout, stderr io.Writer, pty pty) error {
-	cmds := []string{"/usr/bin/env", "TERM=" + pty.term, "bash", "-l"}
-	execCreateOpts := docker.CreateExecOptions{
-		AttachStdin:  true,
-		AttachStdout: true,
-		AttachStderr: true,
-		Cmd:          cmds,
-		Container:    c.ID,
-		Tty:          true,
-		User:         c.getUser(),
-	}
-	exec, err := p.getCluster().CreateExec(execCreateOpts)
-	if err != nil {
-		return err
-	}
-	startExecOptions := docker.StartExecOptions{
-		InputStream:  stdin,
-		OutputStream: stdout,
-		ErrorStream:  stderr,
-		Tty:          true,
-		RawTerminal:  true,
-	}
-	errs := make(chan error, 1)
-	go func() {
-		errs <- p.getCluster().StartExec(exec.ID, c.ID, startExecOptions)
-	}()
-	execInfo, err := p.getCluster().InspectExec(exec.ID, c.ID)
-	for !execInfo.Running && err == nil {
-		select {
-		case startErr := <-errs:
-			return startErr
-		default:
-			execInfo, err = p.getCluster().InspectExec(exec.ID, c.ID)
-		}
-	}
-	if err != nil {
-		return err
-	}
-	p.getCluster().ResizeExecTTY(exec.ID, c.ID, pty.height, pty.width)
-	return <-errs
-}
-
-type execErr struct {
-	code int
-}
-
-func (e *execErr) Error() string {
-	return fmt.Sprintf("unexpected exit code: %d", e.code)
-}
-
-func (c *container) exec(p *dockerProvisioner, stdout, stderr io.Writer, cmd string, args ...string) error {
-	cmds := []string{"/bin/bash", "-lc", cmd}
-	cmds = append(cmds, args...)
-	execCreateOpts := docker.CreateExecOptions{
-		AttachStdin:  false,
-		AttachStdout: true,
-		AttachStderr: true,
-		Tty:          false,
-		Cmd:          cmds,
-		Container:    c.ID,
-		User:         c.getUser(),
-	}
-	exec, err := p.getCluster().CreateExec(execCreateOpts)
-	if err != nil {
-		return err
-	}
-	startExecOptions := docker.StartExecOptions{
-		OutputStream: stdout,
-		ErrorStream:  stderr,
-	}
-	err = p.getCluster().StartExec(exec.ID, c.ID, startExecOptions)
-	if err != nil {
-		return err
-	}
-	execData, err := p.getCluster().InspectExec(exec.ID, c.ID)
-	if err != nil {
-		return err
-	}
-	if execData.ExitCode != 0 {
-		return &execErr{code: execData.ExitCode}
-	}
-	return nil
-
-}
-
-// commit commits an image in docker based in the container
-// and returns the image repository.
-func (c *container) commit(p *dockerProvisioner, writer io.Writer) (string, error) {
-	log.Debugf("commiting container %s", c.ID)
-	parts := strings.Split(c.BuildingImage, ":")
-	if len(parts) < 2 {
-		return "", log.WrapError(fmt.Errorf("error parsing image name, not enough parts: %s", c.BuildingImage))
-	}
-	repository := strings.Join(parts[:len(parts)-1], ":")
-	tag := parts[len(parts)-1]
-	opts := docker.CommitContainerOptions{Container: c.ID, Repository: repository, Tag: tag}
-	image, err := p.getCluster().CommitContainer(opts)
-	if err != nil {
-		return "", log.WrapError(fmt.Errorf("error in commit container %s: %s", c.ID, err.Error()))
-	}
-	imgData, err := p.getCluster().InspectImage(c.BuildingImage)
-	imgSize := ""
-	if err == nil {
-		imgSize = fmt.Sprintf("(%.02fMB)", float64(imgData.Size)/1024/1024)
-	}
-	fmt.Fprintf(writer, " ---> Sending image to repository %s\n", imgSize)
-	log.Debugf("image %s generated from container %s", image.ID, c.ID)
-	maxTry, _ := config.GetInt("docker:registry-max-try")
-	if maxTry <= 0 {
-		maxTry = 3
-	}
-	for i := 0; i < maxTry; i++ {
-		err = p.pushImage(repository, tag)
-		if err != nil {
-			fmt.Fprintf(writer, "Could not send image, trying again. Original error: %s\n", err.Error())
-			log.Errorf("error in push image %s: %s", c.BuildingImage, err.Error())
-			time.Sleep(time.Second)
-			continue
-		}
-		break
-	}
-	if err != nil {
-		return "", log.WrapError(fmt.Errorf("error in push image %s: %s", c.BuildingImage, err.Error()))
-	}
-	return c.BuildingImage, nil
-}
-
-// stop stops the container.
-func (c *container) stop(p *dockerProvisioner) error {
-	if c.Status == provision.StatusStopped.String() {
-		return nil
-	}
-	err := p.cluster.StopContainer(c.ID, 10)
-	if err != nil {
-		log.Errorf("error on stop container %s: %s", c.ID, err)
-	}
-	c.setStatus(p, provision.StatusStopped.String())
-	return nil
-}
-
-func (c *container) startWithPortSearch(p *dockerProvisioner, hostConfig *docker.HostConfig) error {
-	intenalPort, err := getPort()
-	if err != nil {
-		return err
-	}
-	retries := 0
-	mrand.Seed(time.Now().UTC().UnixNano())
-	for port := portRangeStart; port <= portRangeEnd; {
-		if retries >= portAllocMaxTries {
-			break
-		}
-		var usedPorts map[string]struct{}
-		usedPorts, err = p.usedPortsForHost(c.HostAddr)
-		if err != nil {
-			return err
-		}
-		portStr := strconv.Itoa(port)
-		for _, used := usedPorts[portStr]; used; port++ {
-		}
-		if port > portRangeEnd {
-			break
-		}
-		hostConfig.PortBindings = map[docker.Port][]docker.PortBinding{
-			docker.Port(intenalPort + "/tcp"): {{HostIP: "", HostPort: portStr}},
-		}
-		randN := mrand.Uint32()
-		err = p.getCluster().StartContainer(c.ID, hostConfig)
-		if err != nil {
-			if strings.Contains(err.Error(), "already in use") ||
-				strings.Contains(err.Error(), "already allocated") {
-				retries++
-				port += int(randN%uint32(10*retries)) + 1
-				log.Debugf("[port conflict] port conflict for %s in %s with %s trying next %d - %d/%d", c.shortID(), c.HostAddr, portStr, port, retries, portAllocMaxTries)
-				continue
-			}
-			return err
-		}
-		return nil
-	}
-	return fmt.Errorf("could not start container, unable to allocate port after %d retries: %s", retries, err)
-}
-
-func (c *container) start(p *dockerProvisioner, app provision.App, isDeploy bool) error {
-	port, err := getPort()
-	if err != nil {
-		return err
-	}
-	sharedBasedir, _ := config.GetString("docker:sharedfs:hostdir")
-	sharedMount, _ := config.GetString("docker:sharedfs:mountpoint")
-	sharedIsolation, _ := config.GetBool("docker:sharedfs:app-isolation")
-	sharedSalt, _ := config.GetString("docker:sharedfs:salt")
-	hostConfig := docker.HostConfig{
-		Memory:     app.GetMemory(),
-		MemorySwap: app.GetMemory() + app.GetSwap(),
-		CPUShares:  int64(app.GetCpuShare()),
-	}
-	if !isDeploy {
-		hostConfig.RestartPolicy = docker.AlwaysRestart()
-		hostConfig.PortBindings = map[docker.Port][]docker.PortBinding{
-			docker.Port(port + "/tcp"): {{HostIP: "", HostPort: ""}},
-		}
-		hostConfig.LogConfig = docker.LogConfig{
-			Type: "syslog",
-			Config: map[string]string{
-				"syslog-address": fmt.Sprintf("udp://localhost:%d", getBsSysLogPort()),
-			},
-		}
-	}
-	hostConfig.SecurityOpt, _ = config.GetList("docker:security-opts")
-	if sharedBasedir != "" && sharedMount != "" {
-		if sharedIsolation {
-			var appHostDir string
-			if sharedSalt != "" {
-				h := crypto.SHA1.New()
-				io.WriteString(h, sharedSalt+c.AppName)
-				appHostDir = fmt.Sprintf("%x", h.Sum(nil))
-			} else {
-				appHostDir = c.AppName
-			}
-			hostConfig.Binds = append(hostConfig.Binds, fmt.Sprintf("%s/%s:%s:rw", sharedBasedir, appHostDir, sharedMount))
-		} else {
-			hostConfig.Binds = append(hostConfig.Binds, fmt.Sprintf("%s:%s:rw", sharedBasedir, sharedMount))
-		}
-	}
-	allocator, _ := config.GetString("docker:port-allocator")
-	if allocator == "" {
-		allocator = "docker"
-	}
-	switch allocator {
-	case "tsuru":
-		err = c.startWithPortSearch(p, &hostConfig)
-	case "docker":
-		err = p.getCluster().StartContainer(c.ID, &hostConfig)
-	default:
-		return fmt.Errorf("invalid docker:port-allocator: %s", allocator)
-	}
-	if err != nil {
-		return err
-	}
-	initialStatus := provision.StatusStarting.String()
-	if isDeploy {
-		initialStatus = provision.StatusBuilding.String()
-	}
-	return c.setStatus(p, initialStatus, false)
-}
-
-// logs returns logs for the container.
-func (c *container) logs(p *dockerProvisioner, w io.Writer) error {
-	container, err := p.getCluster().InspectContainer(c.ID)
-	if err != nil {
-		return err
-	}
-	opts := docker.AttachToContainerOptions{
-		Container:    c.ID,
-		Logs:         true,
-		Stdout:       true,
-		Stderr:       true,
-		OutputStream: w,
-		ErrorStream:  w,
-		RawTerminal:  container.Config.Tty,
-		Stream:       true,
-	}
-	return p.getCluster().AttachToContainer(opts)
-}
-
-func (c *container) asUnit(a provision.App) provision.Unit {
-	status := provision.Status(c.Status)
-	if c.Status == "" {
-		status = provision.StatusBuilding
-	}
-	cType := c.Type
-	if cType == "" {
-		cType = a.GetPlatform()
-	}
-	return provision.Unit{
-		Name:        c.ID,
-		AppName:     a.GetName(),
-		Type:        cType,
-		Ip:          c.HostAddr,
-		Status:      status,
-		ProcessName: c.ProcessName,
-		Address:     c.getAddress(),
-	}
-}
-
-// pushImage sends the given image to the registry server defined in the
+// PushImage sends the given image to the registry server defined in the
 // configuration file.
-func (p *dockerProvisioner) pushImage(name, tag string) error {
+func (p *dockerProvisioner) PushImage(name, tag string) error {
 	if _, err := config.GetString("docker:registry"); err == nil {
 		var buf safe.Buffer
 		pushOpts := docker.PushImageOptions{Name: name, Tag: tag, OutputStream: &buf}
-		err = p.getCluster().PushImage(pushOpts, getRegistryAuthConfig())
+		err = p.Cluster().PushImage(pushOpts, getRegistryAuthConfig())
 		if err != nil {
 			log.Errorf("[docker] Failed to push image %q (%s): %s", name, err, buf.String())
 			return err

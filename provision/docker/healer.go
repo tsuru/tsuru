@@ -12,6 +12,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/provision/docker/container"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -21,10 +22,10 @@ type healingEvent struct {
 	StartTime        time.Time
 	EndTime          time.Time `bson:",omitempty"`
 	Action           string
-	FailingNode      cluster.Node `bson:",omitempty"`
-	CreatedNode      cluster.Node `bson:",omitempty"`
-	FailingContainer container    `bson:",omitempty"`
-	CreatedContainer container    `bson:",omitempty"`
+	FailingNode      cluster.Node        `bson:",omitempty"`
+	CreatedNode      cluster.Node        `bson:",omitempty"`
+	FailingContainer container.Container `bson:",omitempty"`
+	CreatedContainer container.Container `bson:",omitempty"`
 	Successful       bool
 	Error            string `bson:",omitempty"`
 }
@@ -56,7 +57,7 @@ func newHealingEvent(failing interface{}) (*healingEvent, error) {
 	case cluster.Node:
 		evt.Action = "node-healing"
 		evt.FailingNode = v
-	case container:
+	case container.Container:
 		evt.Action = "container-healing"
 		evt.FailingContainer = v
 	}
@@ -77,7 +78,7 @@ func (evt *healingEvent) update(created interface{}, err error) error {
 	case cluster.Node:
 		evt.CreatedNode = v
 		evt.Successful = v.Address != ""
-	case container:
+	case container.Container:
 		evt.CreatedContainer = v
 		evt.Successful = v.ID != ""
 	}

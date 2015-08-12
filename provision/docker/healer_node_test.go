@@ -130,7 +130,7 @@ func (s *S) TestHealerHealNode(c *check.C) {
 		failuresBeforeHealing: 1,
 		waitTimeNewMachine:    time.Minute,
 	}
-	nodes, err := p.getCluster().UnfilteredNodes()
+	nodes, err := p.Cluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(urlPort(nodes[0].Address), check.Equals, urlPort(node1.URL()))
@@ -198,13 +198,13 @@ func (s *S) TestHealerHealNodeWithoutIaaS(c *check.C) {
 		failuresBeforeHealing: 1,
 		waitTimeNewMachine:    time.Second,
 	}
-	nodes, err := p.getCluster().UnfilteredNodes()
+	nodes, err := p.Cluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	created, err := healer.healNode(&nodes[0])
 	c.Assert(err, check.ErrorMatches, ".*error creating new machine.*")
 	c.Assert(created.Address, check.Equals, "")
-	nodes, err = p.getCluster().UnfilteredNodes()
+	nodes, err = p.Cluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(urlPort(nodes[0].Address), check.Equals, urlPort(node1.URL()))
@@ -245,7 +245,7 @@ func (s *S) TestHealerHealNodeCreateMachineError(c *check.C) {
 		failuresBeforeHealing: 1,
 		waitTimeNewMachine:    time.Minute,
 	}
-	nodes, err := p.getCluster().UnfilteredNodes()
+	nodes, err := p.Cluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(urlPort(nodes[0].Address), check.Equals, urlPort(node1.URL()))
@@ -256,7 +256,7 @@ func (s *S) TestHealerHealNodeCreateMachineError(c *check.C) {
 	c.Assert(err, check.ErrorMatches, ".*my create machine error.*")
 	c.Assert(created.Address, check.Equals, "")
 	c.Assert(nodes[0].FailureCount(), check.Equals, 0)
-	nodes, err = p.getCluster().UnfilteredNodes()
+	nodes, err = p.Cluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(urlPort(nodes[0].Address), check.Equals, urlPort(node1.URL()))
@@ -303,7 +303,7 @@ func (s *S) TestHealerHealNodeWaitAndRegisterError(c *check.C) {
 		failuresBeforeHealing: 1,
 		waitTimeNewMachine:    time.Second,
 	}
-	nodes, err := p.getCluster().UnfilteredNodes()
+	nodes, err := p.Cluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(urlPort(nodes[0].Address), check.Equals, urlPort(node1.URL()))
@@ -314,7 +314,7 @@ func (s *S) TestHealerHealNodeWaitAndRegisterError(c *check.C) {
 	c.Assert(err, check.ErrorMatches, ".*timeout waiting for result.*")
 	c.Assert(created.Address, check.Equals, "")
 	c.Assert(nodes[0].FailureCount(), check.Equals, 0)
-	nodes, err = p.getCluster().Nodes()
+	nodes, err = p.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(urlPort(nodes[0].Address), check.Equals, urlPort(node1.URL()))
@@ -387,7 +387,7 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 		failuresBeforeHealing: 1,
 		waitTimeNewMachine:    time.Minute,
 	}
-	nodes, err := p.getCluster().Nodes()
+	nodes, err := p.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(urlPort(nodes[0].Address), check.Equals, urlPort(node1.URL()))
@@ -408,7 +408,7 @@ func (s *S) TestHealerHealNodeDestroyError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(created.Address, check.Equals, fmt.Sprintf("http://localhost:%d", urlPort(node2.URL())))
 
-	nodes, err = p.getCluster().Nodes()
+	nodes, err = p.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(urlPort(nodes[0].Address), check.Equals, urlPort(node2.URL()))

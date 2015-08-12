@@ -113,7 +113,7 @@ func (s *S) TestRecreateBsContainers(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = p.recreateBsContainers()
 	c.Assert(err, check.IsNil)
-	nodes, err := p.getCluster().Nodes()
+	nodes, err := p.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	client, err := nodes[0].Client()
@@ -137,7 +137,7 @@ func (s *S) TestRecreateBsContainers(c *check.C) {
 func (s *S) TestRecreateBsContainersErrorInSomeContainers(c *check.C) {
 	p, err := s.startMultipleServersClusterSeggregated()
 	c.Assert(err, check.IsNil)
-	nodes, err := p.getCluster().Nodes()
+	nodes, err := p.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	s.server.PrepareFailure("failure-create", "/containers/create")

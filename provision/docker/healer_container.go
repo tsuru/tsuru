@@ -11,6 +11,7 @@ import (
 
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/docker/container"
 	"gopkg.in/mgo.v2"
 )
 
@@ -39,7 +40,7 @@ func (h *containerHealer) String() string {
 	return "container healer"
 }
 
-func (h *containerHealer) healContainer(cont container, locker *appLocker) (container, error) {
+func (h *containerHealer) healContainer(cont container.Container, locker *appLocker) (container.Container, error) {
 	var buf bytes.Buffer
 	moveErrors := make(chan error, 1)
 	createdContainer := h.provisioner.moveOneContainer(cont, "", moveErrors, nil, &buf, locker)
@@ -51,15 +52,15 @@ func (h *containerHealer) healContainer(cont container, locker *appLocker) (cont
 	return createdContainer, err
 }
 
-func (h *containerHealer) isRunning(cont container) (bool, error) {
-	container, err := h.provisioner.getCluster().InspectContainer(cont.ID)
+func (h *containerHealer) isRunning(cont container.Container) (bool, error) {
+	container, err := h.provisioner.Cluster().InspectContainer(cont.ID)
 	if err != nil {
 		return false, err
 	}
 	return container.State.Running || container.State.Restarting, nil
 }
 
-func (h *containerHealer) healContainerIfNeeded(cont container) error {
+func (h *containerHealer) healContainerIfNeeded(cont container.Container) error {
 	if cont.LastSuccessStatusUpdate.IsZero() {
 		return nil
 	}
@@ -68,7 +69,7 @@ func (h *containerHealer) healContainerIfNeeded(cont container) error {
 		log.Errorf("Containers healing: couldn't verify running processes in container %s: %s", cont.ID, err.Error())
 	}
 	if isRunning {
-		cont.setStatus(h.provisioner, provision.StatusStarted.String())
+		cont.SetStatus(h.provisioner, provision.StatusStarted.String(), true)
 		return nil
 	}
 	healingCounter, err := healingCountFor("container", cont.ID, consecutiveHealingsTimeframe)

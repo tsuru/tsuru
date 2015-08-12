@@ -37,7 +37,7 @@ func (h *nodeHealer) healNode(node *cluster.Node) (cluster.Node, error) {
 		node.ResetFailures()
 		return emptyNode, fmt.Errorf("Can't auto-heal after %d failures for node %s: error creating new machine: %s", failures, failingHost, err.Error())
 	}
-	err = h.provisioner.getCluster().Unregister(failingAddr)
+	err = h.provisioner.Cluster().Unregister(failingAddr)
 	if err != nil {
 		machine.Destroy()
 		return emptyNode, fmt.Errorf("Can't auto-heal after %d failures for node %s: error unregistering old node: %s", failures, failingHost, err.Error())
@@ -49,10 +49,10 @@ func (h *nodeHealer) healNode(node *cluster.Node) (cluster.Node, error) {
 		Metadata:       nodeMetadata,
 		CreationStatus: cluster.NodeCreationStatusPending,
 	}
-	err = h.provisioner.getCluster().Register(createdNode)
+	err = h.provisioner.Cluster().Register(createdNode)
 	if err != nil {
 		node.ResetFailures()
-		h.provisioner.getCluster().Register(cluster.Node{Address: failingAddr, Metadata: nodeMetadata})
+		h.provisioner.Cluster().Register(cluster.Node{Address: failingAddr, Metadata: nodeMetadata})
 		machine.Destroy()
 		return emptyNode, fmt.Errorf("Can't auto-heal after %d failures for node %s: error registering new node: %s", failures, failingHost, err.Error())
 	}
@@ -71,7 +71,7 @@ func (h *nodeHealer) healNode(node *cluster.Node) (cluster.Node, error) {
 	}
 	if err != nil {
 		node.ResetFailures()
-		h.provisioner.getCluster().Register(cluster.Node{Address: failingAddr, Metadata: nodeMetadata})
+		h.provisioner.Cluster().Register(cluster.Node{Address: failingAddr, Metadata: nodeMetadata})
 		return emptyNode, fmt.Errorf("Can't auto-heal after %d failures for node %s: error waiting for the bs task: %s", failures, failingHost, err.Error())
 	}
 	var buf bytes.Buffer

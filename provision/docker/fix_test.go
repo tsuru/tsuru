@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -68,10 +69,10 @@ func startDocker(hostPort string) (func(), *httptest.Server, *dockerProvisioner)
 func (s *S) TestFixContainers(c *check.C) {
 	cleanup, server, p := startDocker("9999")
 	defer cleanup()
-	coll := p.collection()
+	coll := p.Collection()
 	defer coll.Close()
 	err := coll.Insert(
-		container{
+		container.Container{
 			ID:       "9930c24f1c4x",
 			AppName:  "makea",
 			Type:     "python",
@@ -105,10 +106,10 @@ func (s *S) TestFixContainers(c *check.C) {
 func (s *S) TestFixContainersEmptyPortDoesNothing(c *check.C) {
 	cleanup, server, p := startDocker("")
 	defer cleanup()
-	coll := p.collection()
+	coll := p.Collection()
 	defer coll.Close()
 	err := coll.Insert(
-		container{
+		container.Container{
 			ID:       "9930c24f1c4x",
 			AppName:  "makea",
 			Type:     "python",

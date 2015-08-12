@@ -226,7 +226,7 @@ func bsCollection() (*storage.Collection, error) {
 }
 
 func (p *dockerProvisioner) recreateBsContainers() error {
-	cluster := p.getCluster()
+	cluster := p.Cluster()
 	nodes, err := cluster.UnfilteredNodes()
 	if err != nil {
 		return err

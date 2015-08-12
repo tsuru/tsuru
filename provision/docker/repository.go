@@ -11,14 +11,15 @@ import (
 
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/docker/container"
 	"gopkg.in/mgo.v2/bson"
 )
 
 var errAmbiguousContainer error = errors.New("ambiguous container name")
 
-func (p *dockerProvisioner) getContainer(id string) (*container, error) {
-	var containers []container
-	coll := p.collection()
+func (p *dockerProvisioner) getContainer(id string) (*container.Container, error) {
+	var containers []container.Container
+	coll := p.Collection()
 	defer coll.Close()
 	id = fmt.Sprintf("^%s.*", id)
 	err := coll.Find(bson.M{"id": bson.RegEx{Pattern: id}}).All(&containers)
@@ -35,11 +36,11 @@ func (p *dockerProvisioner) getContainer(id string) (*container, error) {
 	return &containers[0], nil
 }
 
-func (p *dockerProvisioner) listContainersByHost(address string) ([]container, error) {
+func (p *dockerProvisioner) listContainersByHost(address string) ([]container.Container, error) {
 	return p.listContainersBy(bson.M{"hostaddr": address})
 }
 
-func (p *dockerProvisioner) listRunningContainersByHost(address string) ([]container, error) {
+func (p *dockerProvisioner) listRunningContainersByHost(address string) ([]container.Container, error) {
 	return p.listContainersBy(bson.M{
 		"hostaddr": address,
 		"status": bson.M{
@@ -52,7 +53,7 @@ func (p *dockerProvisioner) listRunningContainersByHost(address string) ([]conta
 	})
 }
 
-func (p *dockerProvisioner) listContainersByProcess(appName, processName string) ([]container, error) {
+func (p *dockerProvisioner) listContainersByProcess(appName, processName string) ([]container.Container, error) {
 	query := bson.M{"appname": appName}
 	if processName != "" {
 		query["processname"] = processName
@@ -60,11 +61,11 @@ func (p *dockerProvisioner) listContainersByProcess(appName, processName string)
 	return p.listContainersBy(query)
 }
 
-func (p *dockerProvisioner) listContainersByApp(appName string) ([]container, error) {
+func (p *dockerProvisioner) listContainersByApp(appName string) ([]container.Container, error) {
 	return p.listContainersBy(bson.M{"appname": appName})
 }
 
-func (p *dockerProvisioner) listContainersByAppAndHost(appNames, addresses []string) ([]container, error) {
+func (p *dockerProvisioner) listContainersByAppAndHost(appNames, addresses []string) ([]container.Container, error) {
 	query := bson.M{}
 	if len(appNames) > 0 {
 		query["appname"] = bson.M{"$in": appNames}
@@ -75,7 +76,7 @@ func (p *dockerProvisioner) listContainersByAppAndHost(appNames, addresses []str
 	return p.listContainersBy(query)
 }
 
-func (p *dockerProvisioner) listRunnableContainersByApp(appName string) ([]container, error) {
+func (p *dockerProvisioner) listRunnableContainersByApp(appName string) ([]container.Container, error) {
 	return p.listContainersBy(bson.M{
 		"appname": appName,
 		"status": bson.M{
@@ -88,12 +89,12 @@ func (p *dockerProvisioner) listRunnableContainersByApp(appName string) ([]conta
 	})
 }
 
-func (p *dockerProvisioner) listAllContainers() ([]container, error) {
+func (p *dockerProvisioner) listAllContainers() ([]container.Container, error) {
 	return p.listContainersBy(nil)
 }
 
 func (p *dockerProvisioner) listAppsForNodes(nodes []*cluster.Node) ([]string, error) {
-	coll := p.collection()
+	coll := p.Collection()
 	defer coll.Close()
 	nodeNames := make([]string, len(nodes))
 	for i, n := range nodes {
@@ -104,24 +105,24 @@ func (p *dockerProvisioner) listAppsForNodes(nodes []*cluster.Node) ([]string, e
 	return appNames, err
 }
 
-func (p *dockerProvisioner) listContainersBy(query bson.M) ([]container, error) {
-	var list []container
-	coll := p.collection()
+func (p *dockerProvisioner) listContainersBy(query bson.M) ([]container.Container, error) {
+	var list []container.Container
+	coll := p.Collection()
 	defer coll.Close()
 	err := coll.Find(query).All(&list)
 	return list, err
 }
 
 func (p *dockerProvisioner) updateContainers(query bson.M, update bson.M) error {
-	coll := p.collection()
+	coll := p.Collection()
 	defer coll.Close()
 	_, err := coll.UpdateAll(query, update)
 	return err
 }
 
-func (p *dockerProvisioner) getOneContainerByAppName(appName string) (*container, error) {
-	var c container
-	coll := p.collection()
+func (p *dockerProvisioner) getOneContainerByAppName(appName string) (*container.Container, error) {
+	var c container.Container
+	coll := p.Collection()
 	defer coll.Close()
 	err := coll.Find(bson.M{"appname": appName}).One(&c)
 	if err != nil {
@@ -131,31 +132,16 @@ func (p *dockerProvisioner) getOneContainerByAppName(appName string) (*container
 }
 
 func (p *dockerProvisioner) getContainerCountForAppName(appName string) (int, error) {
-	coll := p.collection()
+	coll := p.Collection()
 	defer coll.Close()
 	return coll.Find(bson.M{"appname": appName}).Count()
 }
 
-func (p *dockerProvisioner) listUnresponsiveContainers(maxUnresponsiveTime time.Duration) ([]container, error) {
+func (p *dockerProvisioner) listUnresponsiveContainers(maxUnresponsiveTime time.Duration) ([]container.Container, error) {
 	now := time.Now().UTC()
 	return p.listContainersBy(bson.M{
 		"lastsuccessstatusupdate": bson.M{"$lt": now.Add(-maxUnresponsiveTime)},
 		"hostport":                bson.M{"$ne": ""},
 		"status":                  bson.M{"$ne": provision.StatusStopped.String()},
 	})
-}
-
-func (p *dockerProvisioner) usedPortsForHost(hostaddr string) (map[string]struct{}, error) {
-	coll := p.collection()
-	defer coll.Close()
-	var usedPortsList []string
-	err := coll.Find(bson.M{"hostaddr": hostaddr}).Distinct("hostport", &usedPortsList)
-	if err != nil {
-		return nil, err
-	}
-	usedPorts := map[string]struct{}{}
-	for _, port := range usedPortsList {
-		usedPorts[port] = struct{}{}
-	}
-	return usedPorts, nil
 }

@@ -31,6 +31,7 @@ import (
 	"github.com/tsuru/tsuru/iaas"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
@@ -119,7 +120,7 @@ func (s *HandlersSuite) SetUpTest(c *check.C) {
 	mainDockerProvisioner = &dockerProvisioner{}
 	err = mainDockerProvisioner.Initialize()
 	c.Assert(err, check.IsNil)
-	coll := mainDockerProvisioner.collection()
+	coll := mainDockerProvisioner.Collection()
 	defer coll.Close()
 	err = dbtest.ClearAllCollectionsExcept(coll.Database, []string{"users", "tokens", "teams"})
 	c.Assert(err, check.IsNil)
@@ -127,7 +128,7 @@ func (s *HandlersSuite) SetUpTest(c *check.C) {
 
 func (s *HandlersSuite) TearDownSuite(c *check.C) {
 	s.clusterSess.Close()
-	coll := mainDockerProvisioner.collection()
+	coll := mainDockerProvisioner.Collection()
 	defer coll.Close()
 	err := dbtest.ClearAllCollections(coll.Database)
 	c.Assert(err, check.IsNil)
@@ -168,7 +169,7 @@ func (s *HandlersSuite) TestAddNodeHandler(c *check.C) {
 	err = addNodeHandler(rec, req, nil)
 	c.Assert(err, check.IsNil)
 	waitQueue()
-	nodes, err := mainDockerProvisioner.getCluster().Nodes()
+	nodes, err := mainDockerProvisioner.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address, check.Equals, server.URL())
@@ -196,13 +197,13 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 	err = json.NewDecoder(rec.Body).Decode(&result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.DeepEquals, map[string]string{"description": "my iaas description"})
-	nodes, err := mainDockerProvisioner.getCluster().UnfilteredNodes()
+	nodes, err := mainDockerProvisioner.Cluster().UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address, check.Equals, strings.TrimRight(server.URL(), "/"))
 	c.Assert(nodes[0].CreationStatus, check.Equals, cluster.NodeCreationStatusPending)
 	waitQueue()
-	nodes, err = mainDockerProvisioner.getCluster().Nodes()
+	nodes, err = mainDockerProvisioner.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address, check.Equals, strings.TrimRight(server.URL(), "/"))
@@ -231,7 +232,7 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachineExplicit(c *check
 	err = addNodeHandler(rec, req, nil)
 	c.Assert(err, check.IsNil)
 	waitQueue()
-	nodes, err := mainDockerProvisioner.getCluster().Nodes()
+	nodes, err := mainDockerProvisioner.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address, check.Equals, strings.TrimRight(server.URL(), "/"))
@@ -258,7 +259,7 @@ func (s *HandlersSuite) TestAddNodeHandlerWithoutCluster(c *check.C) {
 	err = addNodeHandler(rec, req, nil)
 	c.Assert(err, check.IsNil)
 	waitQueue()
-	nodes, err := mainDockerProvisioner.getCluster().Nodes()
+	nodes, err := mainDockerProvisioner.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address, check.Equals, server.URL())
@@ -321,7 +322,7 @@ func (s *HandlersSuite) TestRemoveNodeHandler(c *check.C) {
 	var err error
 	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
-	err = mainDockerProvisioner.getCluster().Register(cluster.Node{Address: "host.com:2375"})
+	err = mainDockerProvisioner.Cluster().Register(cluster.Node{Address: "host.com:2375"})
 	c.Assert(err, check.IsNil)
 	b := bytes.NewBufferString(`{"address": "host.com:2375"}`)
 	req, err := http.NewRequest("POST", "/node/remove", b)
@@ -329,7 +330,7 @@ func (s *HandlersSuite) TestRemoveNodeHandler(c *check.C) {
 	rec := httptest.NewRecorder()
 	err = removeNodeHandler(rec, req, nil)
 	c.Assert(err, check.IsNil)
-	nodes, err := mainDockerProvisioner.getCluster().Nodes()
+	nodes, err := mainDockerProvisioner.Cluster().Nodes()
 	c.Assert(len(nodes), check.Equals, 0)
 }
 
@@ -339,7 +340,7 @@ func (s *HandlersSuite) TestRemoveNodeHandlerWithoutRemoveIaaS(c *check.C) {
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
-	err = mainDockerProvisioner.getCluster().Register(cluster.Node{
+	err = mainDockerProvisioner.Cluster().Register(cluster.Node{
 		Address: fmt.Sprintf("http://%s:2375", machine.Address),
 	})
 	c.Assert(err, check.IsNil)
@@ -349,7 +350,7 @@ func (s *HandlersSuite) TestRemoveNodeHandlerWithoutRemoveIaaS(c *check.C) {
 	rec := httptest.NewRecorder()
 	err = removeNodeHandler(rec, req, nil)
 	c.Assert(err, check.IsNil)
-	nodes, err := mainDockerProvisioner.getCluster().Nodes()
+	nodes, err := mainDockerProvisioner.Cluster().Nodes()
 	c.Assert(len(nodes), check.Equals, 0)
 	dbM, err := iaas.FindMachineById(machine.Id)
 	c.Assert(err, check.IsNil)
@@ -362,7 +363,7 @@ func (s *HandlersSuite) TestRemoveNodeHandlerRemoveIaaS(c *check.C) {
 	c.Assert(err, check.IsNil)
 	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
-	err = mainDockerProvisioner.getCluster().Register(cluster.Node{
+	err = mainDockerProvisioner.Cluster().Register(cluster.Node{
 		Address: fmt.Sprintf("http://%s:2375", machine.Address),
 	})
 	c.Assert(err, check.IsNil)
@@ -372,7 +373,7 @@ func (s *HandlersSuite) TestRemoveNodeHandlerRemoveIaaS(c *check.C) {
 	rec := httptest.NewRecorder()
 	err = removeNodeHandler(rec, req, nil)
 	c.Assert(err, check.IsNil)
-	nodes, err := mainDockerProvisioner.getCluster().Nodes()
+	nodes, err := mainDockerProvisioner.Cluster().Nodes()
 	c.Assert(len(nodes), check.Equals, 0)
 	_, err = iaas.FindMachineById(machine.Id)
 	c.Assert(err, check.Equals, mgo.ErrNotFound)
@@ -386,12 +387,12 @@ func (s *HandlersSuite) TestListNodeHandler(c *check.C) {
 	var err error
 	mainDockerProvisioner.cluster, err = cluster.New(nil, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
-	err = mainDockerProvisioner.getCluster().Register(cluster.Node{
+	err = mainDockerProvisioner.Cluster().Register(cluster.Node{
 		Address:  "host1.com:2375",
 		Metadata: map[string]string{"pool": "pool1"},
 	})
 	c.Assert(err, check.IsNil)
-	err = mainDockerProvisioner.getCluster().Register(cluster.Node{
+	err = mainDockerProvisioner.Cluster().Register(cluster.Node{
 		Address:  "host2.com:2375",
 		Metadata: map[string]string{"pool": "pool2", "foo": "bar"},
 	})
@@ -414,12 +415,12 @@ func (s *HandlersSuite) TestFixContainerHandler(c *check.C) {
 	queue.ResetQueue()
 	cleanup, server, p := startDocker("9999")
 	defer cleanup()
-	coll := p.collection()
+	coll := p.Collection()
 	defer coll.Close()
 	err := s.conn.Apps().Insert(&app.App{Name: "makea"})
 	c.Assert(err, check.IsNil)
 	err = coll.Insert(
-		container{
+		container.Container{
 			ID:       "9930c24f1c4x",
 			AppName:  "makea",
 			Type:     "python",
@@ -453,16 +454,16 @@ func (s *HandlersSuite) TestFixContainerHandler(c *check.C) {
 }
 
 func (s *HandlersSuite) TestListContainersByHostHandler(c *check.C) {
-	var result []container
+	var result []container.Container
 	var err error
 	mainDockerProvisioner.cluster, err = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
 	c.Assert(err, check.IsNil)
-	coll := mainDockerProvisioner.collection()
+	coll := mainDockerProvisioner.Collection()
 	defer coll.Close()
-	err = coll.Insert(container{ID: "blabla", Type: "python", HostAddr: "http://cittavld1182.globoi.com"})
+	err = coll.Insert(container.Container{ID: "blabla", Type: "python", HostAddr: "http://cittavld1182.globoi.com"})
 	c.Assert(err, check.IsNil)
 	defer coll.Remove(bson.M{"id": "blabla"})
-	err = coll.Insert(container{ID: "bleble", Type: "java", HostAddr: "http://cittavld1182.globoi.com"})
+	err = coll.Insert(container.Container{ID: "bleble", Type: "java", HostAddr: "http://cittavld1182.globoi.com"})
 	c.Assert(err, check.IsNil)
 	defer coll.Remove(bson.M{"id": "bleble"})
 	req, err := http.NewRequest("GET", "/node/cittavld1182.globoi.com/containers?:address=http://cittavld1182.globoi.com", nil)
@@ -482,15 +483,15 @@ func (s *HandlersSuite) TestListContainersByHostHandler(c *check.C) {
 }
 
 func (s *HandlersSuite) TestListContainersByAppHandler(c *check.C) {
-	var result []container
+	var result []container.Container
 	var err error
 	mainDockerProvisioner.cluster, err = cluster.New(&segregatedScheduler{}, &cluster.MapStorage{})
-	coll := mainDockerProvisioner.collection()
+	coll := mainDockerProvisioner.Collection()
 	defer coll.Close()
-	err = coll.Insert(container{ID: "blabla", AppName: "appbla", HostAddr: "http://cittavld1182.globoi.com"})
+	err = coll.Insert(container.Container{ID: "blabla", AppName: "appbla", HostAddr: "http://cittavld1182.globoi.com"})
 	c.Assert(err, check.IsNil)
 	defer coll.Remove(bson.M{"id": "blabla"})
-	err = coll.Insert(container{ID: "bleble", AppName: "appbla", HostAddr: "http://cittavld1180.globoi.com"})
+	err = coll.Insert(container.Container{ID: "bleble", AppName: "appbla", HostAddr: "http://cittavld1180.globoi.com"})
 	c.Assert(err, check.IsNil)
 	defer coll.Remove(bson.M{"id": "bleble"})
 	req, err := http.NewRequest("GET", "/node/appbla/containers?:appname=appbla", nil)
@@ -585,9 +586,9 @@ func (s *S) TestRebalanceContainersEmptyBodyHandler(c *check.C) {
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
-	coll := p.collection()
+	coll := p.Collection()
 	defer coll.Close()
-	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python", ProcessName: "web"})
+	coll.Insert(container.Container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python", ProcessName: "web"})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
@@ -640,7 +641,7 @@ func (s *S) TestRebalanceContainersFilters(c *check.C) {
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
-	coll := p.collection()
+	coll := p.Collection()
 	defer coll.Close()
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
 	imageId, err := appCurrentImageName(appInstance.GetName())
@@ -692,9 +693,9 @@ func (s *S) TestRebalanceContainersDryBodyHandler(c *check.C) {
 	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
 	defer p.Destroy(appInstance)
 	p.Provision(appInstance)
-	coll := p.collection()
+	coll := p.Collection()
 	defer coll.Close()
-	coll.Insert(container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python", ProcessName: "web"})
+	coll.Insert(container.Container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python", ProcessName: "web"})
 	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
 	imageId, err := appCurrentImageName(appInstance.GetName())
 	c.Assert(err, check.IsNil)
@@ -743,8 +744,8 @@ func (s *HandlersSuite) TestHealingHistoryHandler(c *check.C) {
 	evt1.update(cluster.Node{Address: "addr2"}, nil)
 	evt2, err := newHealingEvent(cluster.Node{Address: "addr3"})
 	evt2.update(cluster.Node{}, errors.New("some error"))
-	evt3, err := newHealingEvent(container{ID: "1234"})
-	evt3.update(container{ID: "9876"}, nil)
+	evt3, err := newHealingEvent(container.Container{ID: "1234"})
+	evt3.update(container.Container{ID: "9876"}, nil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/docker/healing", nil)
 	c.Assert(err, check.IsNil)
@@ -782,8 +783,8 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterContainer(c *check.C) {
 	evt1.update(cluster.Node{Address: "addr2"}, nil)
 	evt2, err := newHealingEvent(cluster.Node{Address: "addr3"})
 	evt2.update(cluster.Node{}, errors.New("some error"))
-	evt3, err := newHealingEvent(container{ID: "1234"})
-	evt3.update(container{ID: "9876"}, nil)
+	evt3, err := newHealingEvent(container.Container{ID: "1234"})
+	evt3.update(container.Container{ID: "9876"}, nil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/docker/healing?filter=container", nil)
 	c.Assert(err, check.IsNil)
@@ -809,8 +810,8 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterNode(c *check.C) {
 	evt1.update(cluster.Node{Address: "addr2"}, nil)
 	evt2, err := newHealingEvent(cluster.Node{Address: "addr3"})
 	evt2.update(cluster.Node{}, errors.New("some error"))
-	evt3, err := newHealingEvent(container{ID: "1234"})
-	evt3.update(container{ID: "9876"}, nil)
+	evt3, err := newHealingEvent(container.Container{ID: "1234"})
+	evt3.update(container.Container{ID: "9876"}, nil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/docker/healing?filter=node", nil)
 	c.Assert(err, check.IsNil)
@@ -885,7 +886,7 @@ func (s *HandlersSuite) TestUpdateNodeHandler(c *check.C) {
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	nodes, err := mainDockerProvisioner.getCluster().Nodes()
+	nodes, err := mainDockerProvisioner.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Metadata, check.DeepEquals, map[string]string{
