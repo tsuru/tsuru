@@ -182,11 +182,11 @@ func (a *autoScaleConfig) runScalerInNodes(groupMetadata string, nodes []*cluste
 			retErr = fmt.Errorf("unable to fetch auto scale rules for %s: %s", groupMetadata, err)
 			return
 		}
-		event.log("no auto scale rule for %s", groupMetadata)
+		event.logMsg("no auto scale rule for %s", groupMetadata)
 		return
 	}
 	if !rule.Enabled {
-		event.log("auto scale rule disabled for %s", groupMetadata)
+		event.logMsg("auto scale rule disabled for %s", groupMetadata)
 		return
 	}
 	scaler, err := a.scalerForRule(rule)
@@ -194,7 +194,7 @@ func (a *autoScaleConfig) runScalerInNodes(groupMetadata string, nodes []*cluste
 		retErr = fmt.Errorf("error getting scaler for %s: %s", groupMetadata, err)
 		return
 	}
-	event.log("running scaler %T for %q: %q", scaler, a.groupByMetadata, groupMetadata)
+	event.logMsg("running scaler %T for %q: %q", scaler, a.groupByMetadata, groupMetadata)
 	scalerResult, err := scaler.scale(groupMetadata, nodes)
 	if err != nil {
 		retErr = fmt.Errorf("error scaling group %s: %s", groupMetadata, err.Error())
@@ -208,14 +208,14 @@ func (a *autoScaleConfig) runScalerInNodes(groupMetadata string, nodes []*cluste
 				retErr = fmt.Errorf("error updating event: %s", err)
 				return
 			}
-			event.log("running event %q for %q: %s", event.Action, event.MetadataValue, event.Reason)
+			event.logMsg("running event %q for %q: %s", event.Action, event.MetadataValue, event.Reason)
 			newNodes, err := a.addMultipleNodes(event, nodes, scalerResult.toAdd)
 			if err != nil {
 				if len(newNodes) == 0 {
 					retErr = err
 					return
 				}
-				event.log("not all required nodes were created: %s", err)
+				event.logMsg("not all required nodes were created: %s", err)
 			}
 			event.updateNodes(newNodes)
 		} else if len(scalerResult.toRemove) > 0 {
@@ -226,7 +226,7 @@ func (a *autoScaleConfig) runScalerInNodes(groupMetadata string, nodes []*cluste
 				retErr = fmt.Errorf("error updating event: %s", err)
 				return
 			}
-			event.log("running event %q for %q: %s", event.Action, event.MetadataValue, event.Reason)
+			event.logMsg("running event %q for %q: %s", event.Action, event.MetadataValue, event.Reason)
 			err = a.removeMultipleNodes(event, scalerResult.toRemove)
 			if err != nil {
 				retErr = err
@@ -237,11 +237,11 @@ func (a *autoScaleConfig) runScalerInNodes(groupMetadata string, nodes []*cluste
 	if !rule.PreventRebalance {
 		err = a.rebalanceIfNeeded(event, groupMetadata, nodes)
 		if err != nil {
-			event.log("unable to rebalance: %s", err.Error())
+			event.logMsg("unable to rebalance: %s", err.Error())
 		}
 	}
 	if event.Action == "" {
-		event.log("nothing to do for %q: %q", a.groupByMetadata, groupMetadata)
+		event.logMsg("nothing to do for %q: %q", a.groupByMetadata, groupMetadata)
 	}
 	return
 }
@@ -274,7 +274,7 @@ func (a *autoScaleConfig) rebalanceIfNeeded(event *autoScaleEvent, groupMetadata
 		}
 	}
 	if event.Action != "" && event.Action != scaleActionRemove {
-		event.log("running rebalance, due to %q for %q: %s", event.Action, event.MetadataValue, event.Reason)
+		event.logMsg("running rebalance, due to %q for %q: %s", event.Action, event.MetadataValue, event.Reason)
 		buf := safe.NewBuffer(nil)
 		writer := io.MultiWriter(buf, &event.logBuffer)
 		_, err := a.provisioner.rebalanceContainersByFilter(writer, nil, rebalanceFilter, false)
@@ -326,7 +326,7 @@ func (a *autoScaleConfig) addNode(event *autoScaleEvent, modelNodes []*cluster.N
 		return nil, fmt.Errorf("unable to create machine: %s", err.Error())
 	}
 	newAddr := machine.FormatNodeAddress()
-	event.log("new machine created: %s - Waiting for docker to start...", newAddr)
+	event.logMsg("new machine created: %s - Waiting for docker to start...", newAddr)
 	createdNode := cluster.Node{
 		Address:        newAddr,
 		Metadata:       metadata,
@@ -354,7 +354,7 @@ func (a *autoScaleConfig) addNode(event *autoScaleEvent, modelNodes []*cluster.N
 	if err != nil {
 		return nil, fmt.Errorf("error running bs task: %s", err)
 	}
-	event.log("new machine created: %s - started!", newAddr)
+	event.logMsg("new machine created: %s - started!", newAddr)
 	return &createdNode, nil
 }
 
@@ -389,12 +389,12 @@ func (a *autoScaleConfig) removeMultipleNodes(event *autoScaleEvent, chosenNodes
 			node := chosenNodes[i]
 			m, err := iaas.FindMachineByIdOrAddress(node.Metadata["iaas-id"], urlToHost(node.Address))
 			if err != nil {
-				event.log("unable to find machine for removal in iaas: %s", err)
+				event.logMsg("unable to find machine for removal in iaas: %s", err)
 				return
 			}
 			err = m.Destroy()
 			if err != nil {
-				event.log("unable to destroy machine in IaaS: %s", err)
+				event.logMsg("unable to destroy machine in IaaS: %s", err)
 			}
 		}(i)
 	}

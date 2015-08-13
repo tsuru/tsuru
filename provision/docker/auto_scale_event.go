@@ -79,7 +79,7 @@ func (evt *autoScaleEvent) updateNodes(nodes []cluster.Node) {
 	evt.Nodes = nodes
 }
 
-func (evt *autoScaleEvent) log(msg string, params ...interface{}) {
+func (evt *autoScaleEvent) logMsg(msg string, params ...interface{}) {
 	log.Debugf(fmt.Sprintf("[node autoscale] %s", msg), params...)
 	msg += "\n"
 	if evt.writer != nil {
@@ -102,7 +102,7 @@ func (evt *autoScaleEvent) update(action, reason string) error {
 func (evt *autoScaleEvent) finish(errParam error) error {
 	if errParam != nil {
 		evt.Error = errParam.Error()
-		evt.log(evt.Error)
+		evt.logMsg(evt.Error)
 	}
 	coll, err := autoScaleCollection()
 	if err != nil {
