@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"net/http"
 	"net/http/httptest"
+	"os"
 
 	"github.com/tsuru/tsuru/cmd/cmdtest"
 	"golang.org/x/net/websocket"
@@ -32,10 +33,10 @@ func (s *S) TestShellToContainerCmdRunWithApp(c *check.C) {
 	server := httptest.NewServer(buildHandler([]byte("hello my friend\nglad to see you here\n")))
 	defer server.Close()
 	target := "http://" + server.Listener.Addr().String()
-	targetRecover := cmdtest.SetTargetFile(c, []byte(target))
-	defer cmdtest.RollbackFile(targetRecover)
-	tokenRecover := cmdtest.SetTokenFile(c, []byte("abc123"))
-	defer cmdtest.RollbackFile(tokenRecover)
+	os.Setenv("TSURU_TARGET", target)
+	defer os.Unsetenv("TSURU_TARGET")
+	os.Setenv("TSURU_TOKEN", "abc123")
+	defer os.Unsetenv("TSURU_TOKEN")
 	var stdout, stderr, stdin bytes.Buffer
 	context := Context{
 		Stdout: &stdout,
@@ -58,10 +59,10 @@ func (s *S) TestShellToContainerWithUnit(c *check.C) {
 	server := httptest.NewServer(buildHandler([]byte("hello my friend\nglad to see you here\n")))
 	defer server.Close()
 	target := "http://" + server.Listener.Addr().String()
-	targetRecover := cmdtest.SetTargetFile(c, []byte(target))
-	defer cmdtest.RollbackFile(targetRecover)
-	tokenRecover := cmdtest.SetTokenFile(c, []byte("abc123"))
-	defer cmdtest.RollbackFile(tokenRecover)
+	os.Setenv("TSURU_TARGET", target)
+	defer os.Unsetenv("TSURU_TARGET")
+	os.Setenv("TSURU_TOKEN", "abc123")
+	defer os.Unsetenv("TSURU_TOKEN")
 	var stdout, stderr, stdin bytes.Buffer
 	context := Context{
 		Args:   []string{"containerid"},
@@ -84,10 +85,10 @@ func (s *S) TestShellToContainerCmdConnectionRefused(c *check.C) {
 	server := httptest.NewServer(nil)
 	addr := server.Listener.Addr().String()
 	server.Close()
-	targetRecover := cmdtest.SetTargetFile(c, []byte("http://"+addr))
-	defer cmdtest.RollbackFile(targetRecover)
-	tokenRecover := cmdtest.SetTokenFile(c, []byte("abc123"))
-	defer cmdtest.RollbackFile(tokenRecover)
+	os.Setenv("TSURU_TARGET", "http://"+addr)
+	defer os.Unsetenv("TSURU_TARGET")
+	os.Setenv("TSURU_TOKEN", "abc123")
+	defer os.Unsetenv("TSURU_TOKEN")
 	var buf bytes.Buffer
 	context := Context{
 		Args:   []string{"af3332d"},

@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"runtime"
 	"strings"
 
@@ -48,7 +49,7 @@ func (s *S) TestCallbackHandler(c *check.C) {
 	defer func() {
 		fsystem = nil
 	}()
-	writeTarget(ts.URL)
+	os.Setenv("TSURU_TARGET", ts.URL)
 	redirectUrl := "someurl"
 	finish := make(chan bool, 1)
 	handler := callback(redirectUrl, finish)

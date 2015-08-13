@@ -5,6 +5,7 @@
 package bs
 
 import (
+	"os"
 	"strings"
 	"testing"
 
@@ -50,6 +51,7 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	s.p, err = newFakeDockerProvisioner(s.server.URL())
 	c.Assert(err, check.IsNil)
+	os.Setenv("TSURU_TARGET", "http://localhost")
 }
 
 func (s *S) TearDownTest(c *check.C) {
@@ -58,6 +60,7 @@ func (s *S) TearDownTest(c *check.C) {
 		s.extraServer.Stop()
 		s.extraServer = nil
 	}
+	os.Unsetenv("TSURU_TARGET")
 }
 
 func (s *S) startMultipleServersCluster() (*fakeDockerProvisioner, error) {

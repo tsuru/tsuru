@@ -7,6 +7,7 @@ package docker
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"sort"
 	"strings"
 	"testing"
@@ -17,7 +18,6 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/auth/native"
-	"github.com/tsuru/tsuru/cmd/cmdtest"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/iaas"
@@ -89,7 +89,7 @@ func (s *S) SetUpSuite(c *check.C) {
 	s.deployCmd = "/var/lib/tsuru/deploy"
 	s.runBin = "/usr/local/bin/circusd"
 	s.runArgs = "/etc/circus/circus.ini"
-	s.targetRecover = cmdtest.SetTargetFile(c, []byte("http://localhost"))
+	os.Setenv("TSURU_TARGET", "http://localhost")
 	s.oldProvisioner = app.Provisioner
 	var err error
 	s.storage, err = db.Conn()
@@ -155,7 +155,7 @@ func (s *S) TearDownTest(c *check.C) {
 func (s *S) TearDownSuite(c *check.C) {
 	s.clusterSess.Close()
 	s.storage.Close()
-	cmdtest.RollbackFile(s.targetRecover)
+	os.Unsetenv("TSURU_TARGET")
 	app.Provisioner = s.oldProvisioner
 }
 

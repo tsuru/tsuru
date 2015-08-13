@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/tsuru/tsuru/cmd/cmdtest"
@@ -129,7 +130,8 @@ func (s *S) TestShouldHandleUnauthorizedErrorSpecially(c *check.C) {
 }
 
 func (s *S) TestShouldReturnErrorWhenServerIsDown(c *check.C) {
-	rfs := &fstest.RecordingFs{FileContent: "http://tsuru.google.com"}
+	os.Unsetenv("TSURU_TARGET")
+	rfs := &fstest.RecordingFs{FileContent: "http://tsuru.abc.xyz"}
 	fsystem = rfs
 	defer func() {
 		fsystem = nil
@@ -144,7 +146,7 @@ func (s *S) TestShouldReturnErrorWhenServerIsDown(c *check.C) {
 	client.Verbosity = 2
 	_, err = client.Do(request)
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Failed to connect to tsuru server (http://tsuru.google.com), it's probably down.")
+	c.Assert(err.Error(), check.Equals, "Failed to connect to tsuru server (http://tsuru.abc.xyz), it's probably down.")
 	c.Assert(strings.Replace(buf.String(), "\n", "\\n", -1), check.Matches,
 		``+
 			`.*<Request uri="/">.*`+
@@ -154,6 +156,7 @@ func (s *S) TestShouldReturnErrorWhenServerIsDown(c *check.C) {
 }
 
 func (s *S) TestShouldNotIncludeTheHeaderAuthorizationWhenTheTsuruTokenFileIsMissing(c *check.C) {
+	os.Unsetenv("TSURU_TOKEN")
 	fsystem = &fstest.FileNotFoundFs{}
 	defer func() {
 		fsystem = nil
@@ -180,6 +183,7 @@ func (s *S) TestShouldNotIncludeTheHeaderAuthorizationWhenTheTsuruTokenFileIsMis
 }
 
 func (s *S) TestShouldIncludeTheHeaderAuthorizationWhenTsuruTokenFileExists(c *check.C) {
+	os.Unsetenv("TSURU_TOKEN")
 	fsystem = &fstest.RecordingFs{FileContent: "mytoken"}
 	defer func() {
 		fsystem = nil

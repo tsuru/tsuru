@@ -45,6 +45,7 @@ func (s *S) TestWriteToken(c *check.C) {
 }
 
 func (s *S) TestReadToken(c *check.C) {
+	os.Unsetenv("TSURU_TOKEN")
 	rfs := &fstest.RecordingFs{FileContent: "123"}
 	fsystem = rfs
 	defer func() {

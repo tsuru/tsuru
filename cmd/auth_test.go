@@ -23,6 +23,7 @@ func nativeScheme() {
 }
 
 func (s *S) TestNativeLogin(c *check.C) {
+	os.Unsetenv("TSURU_TOKEN")
 	nativeScheme()
 	fsystem = &fstest.RecordingFs{FileContent: "old-token"}
 	defer func() {
@@ -42,6 +43,7 @@ func (s *S) TestNativeLogin(c *check.C) {
 }
 
 func (s *S) TestNativeLoginWithoutEmailFromArg(c *check.C) {
+	os.Unsetenv("TSURU_TOKEN")
 	nativeScheme()
 	fsystem = &fstest.RecordingFs{FileContent: "old-token"}
 	defer func() {
@@ -106,7 +108,7 @@ func (s *S) TestLogout(c *check.C) {
 		fsystem = nil
 	}()
 	writeToken("mytoken")
-	writeTarget("localhost:8080")
+	os.Setenv("TSURU_TARGET", "localhost:8080")
 	expected := "Successfully logged out!\n"
 	context := Context{[]string{}, manager.stdout, manager.stderr, manager.stdin}
 	command := logout{}
@@ -130,6 +132,8 @@ func (s *S) TestLogout(c *check.C) {
 }
 
 func (s *S) TestLogoutWhenNotLoggedIn(c *check.C) {
+	os.Unsetenv("TSURU_TOKEN")
+	os.Unsetenv("TSURU_TARGET")
 	fsystem = &fstest.FileNotFoundFs{}
 	defer func() {
 		fsystem = nil
@@ -166,7 +170,7 @@ func (s *S) TestLoginGetSchemeCachesResult(c *check.C) {
 		w.Write([]byte(`{"name": "oauth", "data": {}}`))
 	}))
 	defer ts.Close()
-	writeTarget(ts.URL)
+	os.Setenv("TSURU_TARGET", ts.URL)
 	loginCmd := login{}
 	scheme := loginCmd.getScheme()
 	c.Assert(scheme.Name, check.Equals, "oauth")
@@ -188,7 +192,7 @@ func (s *S) TestLoginGetScheme(c *check.C) {
 		w.Write([]byte(`{"name": "oauth", "data": {}}`))
 	}))
 	defer ts.Close()
-	writeTarget(ts.URL)
+	os.Setenv("TSURU_TARGET", ts.URL)
 	loginCmd := login{}
 	scheme := loginCmd.getScheme()
 	c.Assert(scheme.Name, check.Equals, "oauth")
@@ -196,7 +200,7 @@ func (s *S) TestLoginGetScheme(c *check.C) {
 		w.Write([]byte(`{"name": "native", "data": {}}`))
 	}))
 	defer ts.Close()
-	writeTarget(ts.URL)
+	os.Setenv("TSURU_TARGET", ts.URL)
 	loginCmd = login{}
 	scheme = loginCmd.getScheme()
 	c.Assert(scheme.Name, check.Equals, "native")
@@ -207,7 +211,7 @@ func (s *S) TestLoginGetSchemeParsesData(c *check.C) {
 		w.Write([]byte(`{"name": "oauth", "data": {"x": "y", "z": "w"}}`))
 	}))
 	defer ts.Close()
-	writeTarget(ts.URL)
+	os.Setenv("TSURU_TARGET", ts.URL)
 	loginCmd := login{}
 	scheme := loginCmd.getScheme()
 	c.Assert(scheme.Name, check.Equals, "oauth")
@@ -219,7 +223,7 @@ func (s *S) TestLoginGetSchemeInvalidData(c *check.C) {
 		w.Write([]byte(`{"name": "oauth", "data": {"x": 9, "z": "w"}}`))
 	}))
 	defer ts.Close()
-	writeTarget(ts.URL)
+	os.Setenv("TSURU_TARGET", ts.URL)
 	loginCmd := login{}
 	scheme := loginCmd.getScheme()
 	c.Assert(scheme.Name, check.Equals, "native")
@@ -231,7 +235,7 @@ func (s *S) TestSchemeInfo(c *check.C) {
 		w.Write([]byte(`{"name": "oauth", "data": {"x": "y"}}`))
 	}))
 	defer ts.Close()
-	writeTarget(ts.URL)
+	os.Setenv("TSURU_TARGET", ts.URL)
 	info, err := schemeInfo()
 	c.Assert(err, check.IsNil)
 	c.Assert(info.Name, check.Equals, "oauth")
@@ -243,7 +247,7 @@ func (s *S) TestSchemeInfoInvalidData(c *check.C) {
 		w.Write([]byte(`{"name": "oauth", "data": {"x": 9}}`))
 	}))
 	defer ts.Close()
-	writeTarget(ts.URL)
+	os.Setenv("TSURU_TARGET", ts.URL)
 	_, err := schemeInfo()
 	c.Assert(err, check.NotNil)
 }

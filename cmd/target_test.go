@@ -28,6 +28,7 @@ func (s *S) TestWriteTarget(c *check.C) {
 	defer func() {
 		fsystem = nil
 	}()
+	os.Unsetenv("TSURU_TARGET")
 	err := writeTarget("http://tsuru.globo.com")
 	c.Assert(err, check.IsNil)
 	filePath := path.Join(os.ExpandEnv("${HOME}"), ".tsuru_target")
@@ -41,12 +42,14 @@ func (s *S) TestWriteTargetKeepsLeadingSlashs(c *check.C) {
 	defer func() {
 		fsystem = nil
 	}()
+	os.Unsetenv("TSURU_TARGET")
 	err := writeTarget("http://tsuru.globo.com//")
 	c.Assert(err, check.IsNil)
 	c.Assert(readRecordedTarget(rfs), check.Equals, "http://tsuru.globo.com//")
 }
 
 func (s *S) TestReadTarget(c *check.C) {
+	os.Unsetenv("TSURU_TARGET")
 	rfs := &fstest.RecordingFs{FileContent: "http://tsuru.google.com"}
 	fsystem = rfs
 	defer func() {
@@ -71,6 +74,7 @@ func (s *S) TestReadTargetEnvironmentVariable(c *check.C) {
 }
 
 func (s *S) TestReadTargetReturnsEmptyStringIfTheFileDoesNotExist(c *check.C) {
+	os.Unsetenv("TSURU_TARGET")
 	fsystem = &fstest.FileNotFoundFs{}
 	defer func() {
 		fsystem = nil
@@ -81,6 +85,7 @@ func (s *S) TestReadTargetReturnsEmptyStringIfTheFileDoesNotExist(c *check.C) {
 }
 
 func (s *S) TestReadTargetTrimsFileContent(c *check.C) {
+	os.Unsetenv("TSURU_TARGET")
 	fsystem = &fstest.RecordingFs{FileContent: "   http://tsuru.io\n\n"}
 	defer func() {
 		fsystem = nil
@@ -113,6 +118,7 @@ func (s *S) TestGetURL(c *check.C) {
 }
 
 func (s *S) TestGetURLPutsHTTPIfItIsNotPresent(c *check.C) {
+	os.Unsetenv("TSURU_TARGET")
 	rfs := &fstest.RecordingFs{FileContent: "remotehost"}
 	fsystem = rfs
 	defer func() {
@@ -125,6 +131,7 @@ func (s *S) TestGetURLPutsHTTPIfItIsNotPresent(c *check.C) {
 }
 
 func (s *S) TestGetURLShouldNotPrependHTTPIfTheTargetIsHTTPs(c *check.C) {
+	os.Unsetenv("TSURU_TARGET")
 	rfs := &fstest.RecordingFs{FileContent: "https://localhost"}
 	fsystem = rfs
 	defer func() {
@@ -136,6 +143,7 @@ func (s *S) TestGetURLShouldNotPrependHTTPIfTheTargetIsHTTPs(c *check.C) {
 }
 
 func (s *S) TestGetURLUndefinedTarget(c *check.C) {
+	os.Unsetenv("TSURU_TARGET")
 	rfs := &fstest.FileNotFoundFs{}
 	fsystem = rfs
 	defer func() {
@@ -147,6 +155,7 @@ func (s *S) TestGetURLUndefinedTarget(c *check.C) {
 }
 
 func (s *S) TestGetURLLeadingSlashes(c *check.C) {
+	os.Unsetenv("TSURU_TARGET")
 	rfs := &fstest.RecordingFs{FileContent: "https://localhost/tsuru/"}
 	fsystem = rfs
 	defer func() {
@@ -195,6 +204,7 @@ func (s *S) TestTargetAddRunOnlyOneArg(c *check.C) {
 }
 
 func (s *S) TestTargetAddWithSet(c *check.C) {
+	os.Unsetenv("TSURU_TARGET")
 	rfs := &fstest.RecordingFs{FileContent: "old\thttp://tsuru.io"}
 	fsystem = rfs
 	defer func() {
@@ -290,6 +300,7 @@ Other commands related to target:
 }
 
 func (s *S) TestTargetRun(c *check.C) {
+	os.Unsetenv("TSURU_TARGET")
 	content := `first	http://tsuru.io
 default	http://tsuru.google.com
 other	http://other.tsuru.io`
@@ -381,6 +392,7 @@ func (s *S) TestTargetRemove(c *check.C) {
 }
 
 func (s *S) TestTargetRemoveCurrentTarget(c *check.C) {
+	os.Unsetenv("TSURU_TARGET")
 	rfs := &fstest.RecordingFs{}
 	f, _ := rfs.Create(JoinWithUserDir(".tsuru_targets"))
 	f.Write([]byte("first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"))
