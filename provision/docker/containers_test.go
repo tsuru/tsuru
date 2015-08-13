@@ -7,6 +7,7 @@ package docker
 import (
 	"io/ioutil"
 	"net/http"
+	"regexp"
 	"strings"
 
 	dtesting "github.com/fsouza/go-dockerclient/testing"
@@ -99,8 +100,14 @@ func (s *S) TestMoveContainersUnknownDest(c *check.C) {
 	parts := strings.Split(buf.String(), "\n")
 	c.Assert(parts, check.HasLen, 6)
 	c.Assert(parts[0], check.Matches, ".*Moving 2 units.*")
-	c.Assert(parts[3], check.Matches, "(?s).*Error moving unit.*Caused by:.*unknown.*not found")
-	c.Assert(parts[4], check.Matches, "(?s).*Error moving unit.*Caused by:.*unknown.*not found")
+	var matches int
+	errorRegexp := regexp.MustCompile(`(?s).*Error moving unit.*Caused by:.*unknown.*not found`)
+	for _, line := range parts[2:] {
+		if errorRegexp.MatchString(line) {
+			matches++
+		}
+	}
+	c.Assert(matches, check.Equals, 2)
 }
 
 func (s *S) TestMoveContainer(c *check.C) {
