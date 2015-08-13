@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -59,7 +60,7 @@ func (s *segregatedScheduler) Schedule(c *cluster.Cluster, opts docker.CreateCon
 	if len(nodes) > 0 {
 		pool = nodes[0].Metadata["pool"]
 	}
-	err = createBsContainer(node, pool, false)
+	err = bs.CreateContainer(node, pool, mainDockerProvisioner, false)
 	if err != nil && err != docker.ErrContainerAlreadyExists {
 		return cluster.Node{Address: node}, err
 	}

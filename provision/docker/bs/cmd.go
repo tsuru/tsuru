@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package docker
+package bs
 
 import (
 	"bytes"
@@ -15,12 +15,12 @@ import (
 	"launchpad.net/gnuflag"
 )
 
-type bsEnvSetCmd struct {
+type EnvSetCmd struct {
 	fs   *gnuflag.FlagSet
 	pool string
 }
 
-func (c *bsEnvSetCmd) Info() *cmd.Info {
+func (c *EnvSetCmd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "bs-env-set",
 		Usage:   "bs-env-set <NAME=value> [NAME=value]... [-p/--pool poolname]",
@@ -29,22 +29,22 @@ func (c *bsEnvSetCmd) Info() *cmd.Info {
 	}
 }
 
-func (c *bsEnvSetCmd) Run(context *cmd.Context, client *cmd.Client) error {
+func (c *EnvSetCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	context.RawOutput()
 	url, err := cmd.GetURL("/docker/bs/env")
 	if err != nil {
 		return err
 	}
-	var envList []bsEnv
+	var envList []Env
 	for _, arg := range context.Args {
 		parts := strings.SplitN(arg, "=", 2)
-		envList = append(envList, bsEnv{Name: parts[0], Value: parts[1]})
+		envList = append(envList, Env{Name: parts[0], Value: parts[1]})
 	}
-	conf := bsConfig{}
+	conf := Config{}
 	if c.pool == "" {
 		conf.Envs = envList
 	} else {
-		conf.Pools = []bsPoolEnvs{{
+		conf.Pools = []PoolEnvs{{
 			Name: c.pool,
 			Envs: envList,
 		}}
@@ -67,7 +67,7 @@ func (c *bsEnvSetCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	return nil
 }
 
-func (c *bsEnvSetCmd) Flags() *gnuflag.FlagSet {
+func (c *EnvSetCmd) Flags() *gnuflag.FlagSet {
 	if c.fs == nil {
 		c.fs = gnuflag.NewFlagSet("with-flags", gnuflag.ContinueOnError)
 		desc := "Pool name where set variables will apply"
@@ -77,9 +77,9 @@ func (c *bsEnvSetCmd) Flags() *gnuflag.FlagSet {
 	return c.fs
 }
 
-type bsInfoCmd struct{}
+type InfoCmd struct{}
 
-func (c *bsInfoCmd) Info() *cmd.Info {
+func (c *InfoCmd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "bs-info",
 		Usage:   "bs-info",
@@ -88,7 +88,7 @@ func (c *bsInfoCmd) Info() *cmd.Info {
 	}
 }
 
-func (c *bsInfoCmd) Run(context *cmd.Context, client *cmd.Client) error {
+func (c *InfoCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	url, err := cmd.GetURL("/docker/bs")
 	if err != nil {
 		return err
@@ -102,7 +102,7 @@ func (c *bsInfoCmd) Run(context *cmd.Context, client *cmd.Client) error {
 		return err
 	}
 	defer response.Body.Close()
-	var conf bsConfig
+	var conf Config
 	err = json.NewDecoder(response.Body).Decode(&conf)
 	if err != nil {
 		return err
@@ -124,9 +124,9 @@ func (c *bsInfoCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	return nil
 }
 
-type bsUpgradeCmd struct{}
+type UpgradeCmd struct{}
 
-func (c *bsUpgradeCmd) Info() *cmd.Info {
+func (c *UpgradeCmd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:    "bs-upgrade",
 		Usage:   "bs-upgrade",
@@ -135,7 +135,7 @@ func (c *bsUpgradeCmd) Info() *cmd.Info {
 	}
 }
 
-func (c *bsUpgradeCmd) Run(context *cmd.Context, client *cmd.Client) error {
+func (c *UpgradeCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	url, err := cmd.GetURL("/docker/bs/upgrade")
 	if err != nil {
 		return err

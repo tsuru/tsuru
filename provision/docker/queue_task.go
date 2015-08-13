@@ -5,10 +5,7 @@
 package docker
 
 import (
-	"bytes"
 	"fmt"
-	"regexp"
-	"strings"
 	"time"
 
 	"github.com/fsouza/go-dockerclient"
@@ -17,12 +14,10 @@ import (
 	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
-	"gopkg.in/mgo.v2"
+	"github.com/tsuru/tsuru/provision/docker/bs"
 )
 
 const runBsTaskName = "run-bs"
-
-var digestRegexp = regexp.MustCompile(`(?m)^Digest: (.*)$`)
 
 type runBs struct{}
 
@@ -46,7 +41,7 @@ func (t runBs) Run(job monsterqueue.Job) {
 	for key, value := range rawMetadata {
 		metadata[key] = value.(string)
 	}
-	err = createBsContainer(dockerEndpoint, metadata["pool"], true)
+	err = bs.CreateContainer(dockerEndpoint, metadata["pool"], mainDockerProvisioner, true)
 	if err != nil {
 		node.CreationStatus = cluster.NodeCreationStatusError
 		node.Metadata = map[string]string{"creationError": err.Error()}
@@ -102,84 +97,6 @@ func (runBs) waitDocker(endpoint string) error {
 		close(exit)
 		return fmt.Errorf("Docker API at %q didn't respond after %d seconds", endpoint, timeout)
 	}
-}
-
-func createBsContainer(dockerEndpoint, poolName string, relaunch bool) error {
-	client, err := docker.NewClient(dockerEndpoint)
-	if err != nil {
-		return err
-	}
-	bsConf, err := loadBsConfig()
-	if err != nil {
-		if err != mgo.ErrNotFound {
-			return err
-		}
-		bsConf = &bsConfig{}
-	}
-	bsImage := bsConf.getImage()
-	err = pullBsImage(bsImage, dockerEndpoint)
-	if err != nil {
-		return err
-	}
-	hostConfig := docker.HostConfig{
-		RestartPolicy: docker.AlwaysRestart(),
-		Privileged:    true,
-		NetworkMode:   "host",
-	}
-	socket, _ := config.GetString("docker:bs:socket")
-	if socket != "" {
-		hostConfig.Binds = []string{fmt.Sprintf("%s:/var/run/docker.sock:rw", socket)}
-	}
-	env, err := bsConf.envListForEndpoint(dockerEndpoint, poolName)
-	if err != nil {
-		return err
-	}
-	opts := docker.CreateContainerOptions{
-		Name:       "big-sibling",
-		HostConfig: &hostConfig,
-		Config: &docker.Config{
-			Image: bsImage,
-			Env:   env,
-		},
-	}
-	container, err := client.CreateContainer(opts)
-	if relaunch && err == docker.ErrContainerAlreadyExists {
-		err = client.RemoveContainer(docker.RemoveContainerOptions{ID: opts.Name, Force: true})
-		if err != nil {
-			return err
-		}
-		container, err = client.CreateContainer(opts)
-	}
-	if err != nil {
-		return err
-	}
-	return client.StartContainer(container.ID, &hostConfig)
-}
-
-func pullBsImage(image, dockerEndpoint string) error {
-	client, err := docker.NewClient(dockerEndpoint)
-	if err != nil {
-		return err
-	}
-	var buf bytes.Buffer
-	pullOpts := docker.PullImageOptions{Repository: image, OutputStream: &buf}
-	err = client.PullImage(pullOpts, getRegistryAuthConfig())
-	if err != nil {
-		return err
-	}
-	if shouldPinBsImage(image) {
-		match := digestRegexp.FindAllStringSubmatch(buf.String(), 1)
-		if len(match) > 0 {
-			image += "@" + match[0][1]
-		}
-	}
-	return saveBsImage(image)
-}
-
-func shouldPinBsImage(image string) bool {
-	parts := strings.SplitN(image, "/", 3)
-	lastPart := parts[len(parts)-1]
-	return len(strings.SplitN(lastPart, ":", 2)) < 2
 }
 
 func (runBs) destroyMachine(id string) {

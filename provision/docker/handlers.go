@@ -23,6 +23,7 @@ import (
 	_ "github.com/tsuru/tsuru/iaas/cloudstack"
 	_ "github.com/tsuru/tsuru/iaas/ec2"
 	tsuruIo "github.com/tsuru/tsuru/io"
+	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/queue"
 	"gopkg.in/mgo.v2"
 )
@@ -334,7 +335,7 @@ func autoScaleRunHandler(w http.ResponseWriter, r *http.Request, t auth.Token) e
 }
 
 func bsEnvSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	var requestConfig bsConfig
+	var requestConfig bs.Config
 	err := json.NewDecoder(r.Body).Decode(&requestConfig)
 	if err != nil {
 		return &errors.HTTP{
@@ -342,34 +343,34 @@ func bsEnvSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 			Message: fmt.Sprintf("unable to parse body as json: %s", err),
 		}
 	}
-	currentConfig, err := loadBsConfig()
+	currentConfig, err := bs.LoadConfig()
 	if err != nil {
 		if err != mgo.ErrNotFound {
 			return err
 		}
-		currentConfig = &bsConfig{}
+		currentConfig = &bs.Config{}
 	}
-	envMap := bsEnvMap{}
-	poolEnvMap := bsPoolEnvMap{}
-	err = currentConfig.updateEnvMaps(envMap, poolEnvMap)
+	envMap := bs.EnvMap{}
+	poolEnvMap := bs.PoolEnvMap{}
+	err = currentConfig.UpdateEnvMaps(envMap, poolEnvMap)
 	if err != nil {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: err.Error(),
 		}
 	}
-	err = requestConfig.updateEnvMaps(envMap, poolEnvMap)
+	err = requestConfig.UpdateEnvMaps(envMap, poolEnvMap)
 	if err != nil {
 		return &errors.HTTP{
 			Code:    http.StatusBadRequest,
 			Message: err.Error(),
 		}
 	}
-	err = saveBsEnvs(envMap, poolEnvMap)
+	err = bs.SaveEnvs(envMap, poolEnvMap)
 	if err != nil {
 		return err
 	}
-	err = mainDockerProvisioner.recreateBsContainers()
+	err = bs.RecreateContainers(mainDockerProvisioner)
 	if err != nil {
 		return err
 	}
@@ -378,22 +379,22 @@ func bsEnvSetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error
 }
 
 func bsConfigGetHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	currentConfig, err := loadBsConfig()
+	currentConfig, err := bs.LoadConfig()
 	if err != nil {
 		if err != mgo.ErrNotFound {
 			return err
 		}
-		currentConfig = &bsConfig{}
+		currentConfig = &bs.Config{}
 	}
 	return json.NewEncoder(w).Encode(currentConfig)
 }
 
 func bsUpgradeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-	err := saveBsImage("")
+	err := bs.SaveImage("")
 	if err != nil {
 		return err
 	}
-	err = mainDockerProvisioner.recreateBsContainers()
+	err = bs.RecreateContainers(mainDockerProvisioner)
 	if err != nil {
 		return err
 	}

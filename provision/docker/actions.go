@@ -17,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/router"
 	"gopkg.in/mgo.v2/bson"
@@ -224,7 +225,7 @@ var startContainer = action.Action{
 			Provisioner:    args.provisioner,
 			App:            args.app,
 			Deploy:         args.isDeploy,
-			SysLogEndpoint: "udp://localhost:" + strconv.Itoa(getBsSysLogPort()),
+			SysLogEndpoint: "udp://localhost:" + strconv.Itoa(bs.SysLogPort()),
 		})
 		if err != nil {
 			log.Errorf("error on start container %s - %s", c.ID, err)

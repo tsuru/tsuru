@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package docker
+package bs
 
 import (
 	"runtime"
@@ -13,19 +13,20 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/db"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
 
 func (s *S) TestGetImageFromDatabase(c *check.C) {
 	imageName := "tsuru/bsss"
-	coll, err := bsCollection()
+	coll, err := collection()
 	c.Assert(err, check.IsNil)
 	defer coll.Close()
-	err = coll.Insert(bsConfig{ID: bsUniqueID, Image: imageName})
+	err = coll.Insert(Config{ID: bsUniqueID, Image: imageName})
 	c.Assert(err, check.IsNil)
 	defer coll.Remove(bson.M{"image": imageName})
-	conf, err := loadBsConfig()
+	conf, err := LoadConfig()
 	c.Assert(err, check.IsNil)
 	image := conf.getImage()
 	c.Assert(image, check.Equals, imageName)
@@ -34,30 +35,30 @@ func (s *S) TestGetImageFromDatabase(c *check.C) {
 func (s *S) TestGetImageFromConfig(c *check.C) {
 	imageName := "tsuru/bs:v10"
 	config.Set("docker:bs:image", imageName)
-	conf := bsConfig{}
+	conf := Config{}
 	image := conf.getImage()
 	c.Assert(image, check.Equals, imageName)
 }
 
 func (s *S) TestGetImageDefaultValue(c *check.C) {
 	config.Unset("docker:bs:image")
-	conf := bsConfig{}
+	conf := Config{}
 	image := conf.getImage()
 	c.Assert(image, check.Equals, "tsuru/bs")
 }
 
 func (s *S) TestSaveImage(c *check.C) {
-	coll, err := bsCollection()
+	coll, err := collection()
 	c.Assert(err, check.IsNil)
 	defer coll.Close()
-	err = saveBsImage("tsuru/bs@sha1:afd533420cf")
+	err = SaveImage("tsuru/bs@sha1:afd533420cf")
 	c.Assert(err, check.IsNil)
-	var configs []bsConfig
+	var configs []Config
 	err = coll.Find(nil).All(&configs)
 	c.Assert(err, check.IsNil)
 	c.Assert(configs, check.HasLen, 1)
 	c.Assert(configs[0].Image, check.Equals, "tsuru/bs@sha1:afd533420cf")
-	err = saveBsImage("tsuru/bs@sha1:afd533420d0")
+	err = SaveImage("tsuru/bs@sha1:afd533420d0")
 	c.Assert(err, check.IsNil)
 	err = coll.Find(nil).All(&configs)
 	c.Assert(err, check.IsNil)
@@ -66,7 +67,7 @@ func (s *S) TestSaveImage(c *check.C) {
 }
 
 func (s *S) TestBsGetToken(c *check.C) {
-	conf := bsConfig{}
+	conf := Config{}
 	token, err := conf.getToken()
 	c.Assert(err, check.IsNil)
 	c.Assert(token, check.Equals, conf.Token)
@@ -82,7 +83,7 @@ func (s *S) TestBsGetTokenStress(c *check.C) {
 	var wg sync.WaitGroup
 	getToken := func(wg *sync.WaitGroup) {
 		defer wg.Done()
-		conf := bsConfig{}
+		conf := Config{}
 		t, err := conf.getToken()
 		c.Assert(err, check.IsNil)
 		mutex.Lock()
@@ -97,10 +98,13 @@ func (s *S) TestBsGetTokenStress(c *check.C) {
 	for i := 1; i < len(tokens); i++ {
 		c.Assert(tokens[i-1], check.Equals, tokens[i])
 	}
-	n, err := s.storage.Tokens().Find(bson.M{"appname": app.InternalAppName}).Count()
+	conn, err := db.Conn()
+	c.Assert(err, check.IsNil)
+	defer conn.Close()
+	n, err := conn.Tokens().Find(bson.M{"appname": app.InternalAppName}).Count()
 	c.Assert(err, check.IsNil)
 	c.Assert(n, check.Equals, 1)
-	coll, err := bsCollection()
+	coll, err := collection()
 	c.Assert(err, check.IsNil)
 	defer coll.Close()
 	n, err = coll.Count()
@@ -109,9 +113,9 @@ func (s *S) TestBsGetTokenStress(c *check.C) {
 }
 
 func (s *S) TestRecreateBsContainers(c *check.C) {
-	p, err := s.startMultipleServersClusterSeggregated()
+	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
-	err = p.recreateBsContainers()
+	err = RecreateContainers(p)
 	c.Assert(err, check.IsNil)
 	nodes, err := p.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
@@ -135,15 +139,15 @@ func (s *S) TestRecreateBsContainers(c *check.C) {
 }
 
 func (s *S) TestRecreateBsContainersErrorInSomeContainers(c *check.C) {
-	p, err := s.startMultipleServersClusterSeggregated()
+	p, err := s.startMultipleServersCluster()
 	c.Assert(err, check.IsNil)
 	nodes, err := p.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	s.server.PrepareFailure("failure-create", "/containers/create")
 	defer s.server.ResetFailure("failure-create")
-	err = p.recreateBsContainers()
-	c.Assert(err, check.ErrorMatches, `(?s).*failed to create container in .* \[pool1\]: API error \(400\): failure-create.*`)
+	err = RecreateContainers(p)
+	c.Assert(err, check.ErrorMatches, `(?s).*failed to create container in .* \[.*\]: API error \(400\): failure-create.*`)
 	sort.Sort(cluster.NodeList(nodes))
 	client, err := nodes[0].Client()
 	c.Assert(err, check.IsNil)

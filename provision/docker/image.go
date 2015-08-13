@@ -63,7 +63,7 @@ func MigrateImages() error {
 		}
 		if registry != "" {
 			pushOpts := docker.PushImageOptions{Name: newImage}
-			err = dcluster.PushImage(pushOpts, getRegistryAuthConfig())
+			err = dcluster.PushImage(pushOpts, mainDockerProvisioner.RegistryAuthConfig())
 			if err != nil {
 				return err
 			}

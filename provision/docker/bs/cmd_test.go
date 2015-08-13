@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package docker
+package bs
 
 import (
 	"bytes"
@@ -28,10 +28,10 @@ func (s *S) TestBsEnvSetRun(c *check.C) {
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
 			c.Assert(err, check.IsNil)
-			expected := bsConfig{
-				Envs: []bsEnv{{Name: "A", Value: "1"}, {Name: "B", Value: "2"}},
+			expected := Config{
+				Envs: []Env{{Name: "A", Value: "1"}, {Name: "B", Value: "2"}},
 			}
-			var conf bsConfig
+			var conf Config
 			err = json.Unmarshal(body, &conf)
 			c.Assert(conf, check.DeepEquals, expected)
 			return req.URL.Path == "/docker/bs/env" && req.Method == "POST"
@@ -39,7 +39,7 @@ func (s *S) TestBsEnvSetRun(c *check.C) {
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
-	cmd := bsEnvSetCmd{}
+	cmd := EnvSetCmd{}
 	err := cmd.Run(&context, client)
 	c.Assert(err, check.IsNil)
 	c.Assert(stdout.String(), check.Equals, "Variables successfully set.\n")
@@ -58,13 +58,13 @@ func (s *S) TestBsEnvSetRunForPool(c *check.C) {
 			defer req.Body.Close()
 			body, err := ioutil.ReadAll(req.Body)
 			c.Assert(err, check.IsNil)
-			expected := bsConfig{
-				Pools: []bsPoolEnvs{{
+			expected := Config{
+				Pools: []PoolEnvs{{
 					Name: "pool1",
-					Envs: []bsEnv{{Name: "A", Value: "1"}, {Name: "B", Value: "2"}},
+					Envs: []Env{{Name: "A", Value: "1"}, {Name: "B", Value: "2"}},
 				}},
 			}
-			var conf bsConfig
+			var conf Config
 			err = json.Unmarshal(body, &conf)
 			c.Assert(conf, check.DeepEquals, expected)
 			return req.URL.Path == "/docker/bs/env" && req.Method == "POST"
@@ -72,7 +72,7 @@ func (s *S) TestBsEnvSetRunForPool(c *check.C) {
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
-	cmd := bsEnvSetCmd{}
+	cmd := EnvSetCmd{}
 	err := cmd.Flags().Parse(true, []string{"--pool", "pool1"})
 	c.Assert(err, check.IsNil)
 	err = cmd.Run(&context, client)
@@ -86,18 +86,18 @@ func (s *S) TestBsInfoRun(c *check.C) {
 		Stdout: &stdout,
 		Stderr: &stderr,
 	}
-	conf := bsConfig{
+	conf := Config{
 		Image: "tsuru/bs",
-		Envs: []bsEnv{
+		Envs: []Env{
 			{Name: "A", Value: "1"},
 			{Name: "B", Value: "2"},
 		},
-		Pools: []bsPoolEnvs{
-			{Name: "pool1", Envs: []bsEnv{
+		Pools: []PoolEnvs{
+			{Name: "pool1", Envs: []Env{
 				{Name: "A", Value: "9"},
 				{Name: "Z", Value: "8"},
 			}},
-			{Name: "pool2", Envs: []bsEnv{
+			{Name: "pool2", Envs: []Env{
 				{Name: "Y", Value: "7"},
 			}},
 		},
@@ -112,7 +112,7 @@ func (s *S) TestBsInfoRun(c *check.C) {
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
-	cmd := bsInfoCmd{}
+	cmd := InfoCmd{}
 	err = cmd.Run(&context, client)
 	c.Assert(err, check.IsNil)
 	c.Assert(stdout.String(), check.Equals, `Image: tsuru/bs
@@ -159,7 +159,7 @@ func (s *S) TestBsUpgradeRun(c *check.C) {
 	}
 	manager := cmd.NewManager("admin", "0.1", "admin-ver", &stdout, &stderr, nil, nil)
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, manager)
-	cmd := bsUpgradeCmd{}
+	cmd := UpgradeCmd{}
 	err := cmd.Run(&context, client)
 	c.Assert(err, check.IsNil)
 	c.Assert(stdout.String(), check.Equals, "bs successfully upgraded.\n")

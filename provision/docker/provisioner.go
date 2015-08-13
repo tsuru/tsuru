@@ -28,6 +28,7 @@ import (
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/router"
@@ -298,7 +299,7 @@ func (p *dockerProvisioner) Start(app provision.App, process string) error {
 		err := c.Start(&container.StartArgs{
 			Provisioner:    p,
 			App:            app,
-			SysLogEndpoint: "udp://localhost:" + strconv.Itoa(getBsSysLogPort()),
+			SysLogEndpoint: "udp://localhost:" + strconv.Itoa(bs.SysLogPort()),
 		})
 		if err != nil {
 			return err
@@ -792,9 +793,9 @@ func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 		&listAutoScaleHistoryCmd{},
 		&updateNodeToSchedulerCmd{},
 		&listAutoScaleRunCmd{},
-		&bsEnvSetCmd{},
-		&bsInfoCmd{},
-		&bsUpgradeCmd{},
+		&bs.EnvSetCmd{},
+		&bs.InfoCmd{},
+		&bs.UpgradeCmd{},
 	}
 }
 
@@ -949,11 +950,11 @@ func (p *dockerProvisioner) Nodes(app provision.App) ([]cluster.Node, error) {
 
 func (p *dockerProvisioner) MetricEnvs(app provision.App) map[string]string {
 	envMap := map[string]string{}
-	bsConf, err := loadBsConfig()
+	bsConf, err := bs.LoadConfig()
 	if err != nil {
 		return envMap
 	}
-	envs, err := bsConf.envListForEndpoint("", app.GetPool())
+	envs, err := bsConf.EnvListForEndpoint("", app.GetPool())
 	if err != nil {
 		return envMap
 	}

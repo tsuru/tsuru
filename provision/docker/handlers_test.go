@@ -31,6 +31,7 @@ import (
 	"github.com/tsuru/tsuru/iaas"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
@@ -839,6 +840,7 @@ func (s *HandlersSuite) TestAutoScaleHistoryHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	evt1.logMsg("my evt1")
 	evt2, err := newAutoScaleEvent("pooly", nil)
+	time.Sleep(100 * time.Millisecond)
 	c.Assert(err, check.IsNil)
 	err = evt2.update("rebalance", "reason 2")
 	c.Assert(err, check.IsNil)
@@ -944,13 +946,13 @@ func (s *HandlersSuite) TestAutoScaleRunHandler(c *check.C) {
 	})
 }
 
-type bsEnvList []bsEnv
+type bsEnvList []bs.Env
 
 func (l bsEnvList) Len() int           { return len(l) }
 func (l bsEnvList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 func (l bsEnvList) Less(i, j int) bool { return l[i].Name < l[j].Name }
 
-type bsPoolEnvsList []bsPoolEnvs
+type bsPoolEnvsList []bs.PoolEnvs
 
 func (l bsPoolEnvsList) Len() int           { return len(l) }
 func (l bsPoolEnvsList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
@@ -988,18 +990,18 @@ func (s *HandlersSuite) TestBsEnvSetHandler(c *check.C) {
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
-	conf, err := loadBsConfig()
+	conf, err := bs.LoadConfig()
 	c.Assert(err, check.IsNil)
 	c.Assert(conf.Image, check.Equals, "")
 	sort.Sort(bsEnvList(conf.Envs))
-	c.Assert(conf.Envs, check.DeepEquals, []bsEnv{{Name: "VAR1", Value: "VALUE1"}, {Name: "VAR2", Value: "VALUE2"}})
+	c.Assert(conf.Envs, check.DeepEquals, []bs.Env{{Name: "VAR1", Value: "VALUE1"}, {Name: "VAR2", Value: "VALUE2"}})
 	c.Assert(conf.Pools, check.HasLen, 2)
 	sort.Sort(bsPoolEnvsList(conf.Pools))
 	sort.Sort(bsEnvList(conf.Pools[0].Envs))
 	sort.Sort(bsEnvList(conf.Pools[1].Envs))
-	c.Assert(conf.Pools, check.DeepEquals, []bsPoolEnvs{
-		{Name: "POOL1", Envs: []bsEnv{{Name: "VAR3", Value: "VALUE3"}, {Name: "VAR4", Value: "VALUE4"}}},
-		{Name: "POOL2", Envs: []bsEnv{{Name: "VAR5", Value: "VALUE5"}, {Name: "VAR6", Value: "VALUE6"}}},
+	c.Assert(conf.Pools, check.DeepEquals, []bs.PoolEnvs{
+		{Name: "POOL1", Envs: []bs.Env{{Name: "VAR3", Value: "VALUE3"}, {Name: "VAR4", Value: "VALUE4"}}},
+		{Name: "POOL2", Envs: []bs.Env{{Name: "VAR5", Value: "VALUE5"}, {Name: "VAR6", Value: "VALUE6"}}},
 	})
 }
 
@@ -1019,30 +1021,18 @@ func (s *HandlersSuite) TestBsEnvSetHandlerForbiddenVar(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadRequest)
 	c.Assert(recorder.Body.String(), check.Equals, "cannot set TSURU_ENDPOINT variable\n")
-	_, err = loadBsConfig()
+	_, err = bs.LoadConfig()
 	c.Assert(err, check.ErrorMatches, "not found")
 }
 
 func (s *HandlersSuite) TestBsEnvSetHandlerUpdateExisting(c *check.C) {
-	coll, err := bsCollection()
+	err := bs.SaveImage("myimg")
 	c.Assert(err, check.IsNil)
-	defer coll.Close()
-	err = coll.Insert(bsConfig{ID: bsUniqueID,
-		Image: "myimg",
-		Envs: []bsEnv{
-			{Name: "VAR1", Value: "VAL1"},
-			{Name: "VAR2", Value: "VAL2"},
-		},
-		Pools: []bsPoolEnvs{
-			{
-				Name: "POOL1",
-				Envs: []bsEnv{
-					{Name: "VAR3", Value: "VAL3"},
-					{Name: "VAR4", Value: "VAL4"},
-				},
-			},
-		},
-	})
+	envMap := bs.EnvMap{"VAR1": "VAL1", "VAR2": "VAL2"}
+	poolEnvMap := bs.PoolEnvMap{
+		"POOL1": bs.EnvMap{"VAR3": "VAL3", "VAR4": "VAL4"},
+	}
+	err = bs.SaveEnvs(envMap, poolEnvMap)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	json := `{
@@ -1067,13 +1057,13 @@ func (s *HandlersSuite) TestBsEnvSetHandlerUpdateExisting(c *check.C) {
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
-	conf, err := loadBsConfig()
+	conf, err := bs.LoadConfig()
 	c.Assert(err, check.IsNil)
 	c.Assert(conf.Image, check.Equals, "myimg")
 	sort.Sort(bsEnvList(conf.Envs))
-	c.Assert(conf.Envs, check.DeepEquals, []bsEnv{{Name: "VAR2", Value: "VAL2"}, {Name: "VAR3", Value: "VAL3"}})
-	c.Assert(conf.Pools, check.DeepEquals, []bsPoolEnvs{
-		{Name: "POOL1", Envs: []bsEnv{{Name: "VAR4", Value: "VAL4"}}},
+	c.Assert(conf.Envs, check.DeepEquals, []bs.Env{{Name: "VAR2", Value: "VAL2"}, {Name: "VAR3", Value: "VAL3"}})
+	c.Assert(conf.Pools, check.DeepEquals, []bs.PoolEnvs{
+		{Name: "POOL1", Envs: []bs.Env{{Name: "VAR4", Value: "VAL4"}}},
 	})
 }
 
@@ -1085,42 +1075,31 @@ func (s *HandlersSuite) TestBsConfigGetHandler(c *check.C) {
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	expected := bsConfig{}
-	var conf bsConfig
+	expected := &bs.Config{}
+	var conf bs.Config
 	err = json.Unmarshal(recorder.Body.Bytes(), &conf)
 	c.Assert(err, check.IsNil)
-	c.Assert(conf, check.DeepEquals, expected)
-	coll, err := bsCollection()
+	c.Assert(conf, check.DeepEquals, *expected)
+	err = bs.SaveImage("myimg")
 	c.Assert(err, check.IsNil)
-	defer coll.Close()
-	expected = bsConfig{ID: bsUniqueID,
-		Image: "myimg",
-		Envs: []bsEnv{
-			{Name: "VAR1", Value: "VAL1"},
-			{Name: "VAR2", Value: "VAL2"},
-		},
-		Pools: []bsPoolEnvs{
-			{
-				Name: "POOL1",
-				Envs: []bsEnv{
-					{Name: "VAR3", Value: "VAL3"},
-					{Name: "VAR4", Value: "VAL4"},
-				},
-			},
-		},
+	envMap := bs.EnvMap{"VAR1": "VAL1", "VAR2": "VAL2"}
+	poolEnvMap := bs.PoolEnvMap{
+		"POOL1": bs.EnvMap{"VAR3": "VAL3", "VAR4": "VAL4"},
 	}
-	err = coll.Insert(expected)
+	err = bs.SaveEnvs(envMap, poolEnvMap)
+	c.Assert(err, check.IsNil)
+	expected, err = bs.LoadConfig()
 	c.Assert(err, check.IsNil)
 	recorder = httptest.NewRecorder()
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	err = json.Unmarshal(recorder.Body.Bytes(), &conf)
 	c.Assert(err, check.IsNil)
-	c.Assert(conf, check.DeepEquals, expected)
+	c.Assert(conf, check.DeepEquals, *expected)
 }
 
 func (s *HandlersSuite) TestBsUpgradeHandler(c *check.C) {
-	err := saveBsImage("tsuru/bs@sha256:abcef384829283eff")
+	err := bs.SaveImage("tsuru/bs@sha256:abcef384829283eff")
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("POST", "/docker/bs/upgrade", nil)
@@ -1129,7 +1108,7 @@ func (s *HandlersSuite) TestBsUpgradeHandler(c *check.C) {
 	server := api.RunServer(true)
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
-	conf, err := loadBsConfig()
+	conf, err := bs.LoadConfig()
 	c.Assert(err, check.IsNil)
 	c.Assert(conf.Image, check.Equals, "")
 }

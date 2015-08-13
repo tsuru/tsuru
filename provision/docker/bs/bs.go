@@ -2,16 +2,20 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package docker
+package bs
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 
+	"github.com/fsouza/go-dockerclient"
 	"github.com/tsuru/config"
+	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
@@ -20,31 +24,38 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
+var digestRegexp = regexp.MustCompile(`(?m)^Digest: (.*)$`)
+
+type DockerProvisioner interface {
+	Cluster() *cluster.Cluster
+	RegistryAuthConfig() docker.AuthConfiguration
+}
+
 const bsUniqueID = "bs"
 
-type bsEnv struct {
+type Env struct {
 	Name  string
 	Value string
 }
 
-type bsPoolEnvs struct {
+type PoolEnvs struct {
 	Name string
-	Envs []bsEnv
+	Envs []Env
 }
 
-type bsConfig struct {
+type Config struct {
 	ID    string `bson:"_id"`
 	Image string
 	Token string
-	Envs  []bsEnv
-	Pools []bsPoolEnvs
+	Envs  []Env
+	Pools []PoolEnvs
 }
 
-type bsEnvMap map[string]string
+type EnvMap map[string]string
 
-type bsPoolEnvMap map[string]bsEnvMap
+type PoolEnvMap map[string]EnvMap
 
-func (conf *bsConfig) updateEnvMaps(envMap bsEnvMap, poolEnvMap bsPoolEnvMap) error {
+func (conf *Config) UpdateEnvMaps(envMap EnvMap, poolEnvMap PoolEnvMap) error {
 	forbiddenList := map[string]bool{
 		"DOCKER_ENDPOINT":       true,
 		"TSURU_ENDPOINT":        true,
@@ -63,7 +74,7 @@ func (conf *bsConfig) updateEnvMaps(envMap bsEnvMap, poolEnvMap bsPoolEnvMap) er
 	}
 	for _, p := range conf.Pools {
 		if poolEnvMap[p.Name] == nil {
-			poolEnvMap[p.Name] = make(bsEnvMap)
+			poolEnvMap[p.Name] = make(EnvMap)
 		}
 		for _, env := range p.Envs {
 			if forbiddenList[env.Name] {
@@ -79,7 +90,7 @@ func (conf *bsConfig) updateEnvMaps(envMap bsEnvMap, poolEnvMap bsPoolEnvMap) er
 	return nil
 }
 
-func (conf *bsConfig) getImage() string {
+func (conf *Config) getImage() string {
 	if conf != nil && conf.Image != "" {
 		return conf.Image
 	}
@@ -90,7 +101,7 @@ func (conf *bsConfig) getImage() string {
 	return bsImage
 }
 
-func (conf *bsConfig) envListForEndpoint(dockerEndpoint, poolName string) ([]string, error) {
+func (conf *Config) EnvListForEndpoint(dockerEndpoint, poolName string) ([]string, error) {
 	tsuruEndpoint, _ := config.GetString("host")
 	if !strings.HasPrefix(tsuruEndpoint, "http://") && !strings.HasPrefix(tsuruEndpoint, "https://") {
 		tsuruEndpoint = "http://" + tsuruEndpoint
@@ -109,11 +120,11 @@ func (conf *bsConfig) envListForEndpoint(dockerEndpoint, poolName string) ([]str
 		"DOCKER_ENDPOINT=" + endpoint,
 		"TSURU_ENDPOINT=" + tsuruEndpoint,
 		"TSURU_TOKEN=" + token,
-		"SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:" + strconv.Itoa(getBsSysLogPort()),
+		"SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:" + strconv.Itoa(SysLogPort()),
 	}
-	envMap := bsEnvMap{}
-	poolEnvMap := bsPoolEnvMap{}
-	err = conf.updateEnvMaps(envMap, poolEnvMap)
+	envMap := EnvMap{}
+	poolEnvMap := PoolEnvMap{}
+	err = conf.UpdateEnvMaps(envMap, poolEnvMap)
 	if err != nil {
 		return nil, err
 	}
@@ -126,11 +137,11 @@ func (conf *bsConfig) envListForEndpoint(dockerEndpoint, poolName string) ([]str
 	return envList, nil
 }
 
-func (conf *bsConfig) getToken() (string, error) {
+func (conf *Config) getToken() (string, error) {
 	if conf.Token != "" {
 		return conf.Token, nil
 	}
-	coll, err := bsCollection()
+	coll, err := collection()
 	if err != nil {
 		return "", err
 	}
@@ -159,22 +170,22 @@ func (conf *bsConfig) getToken() (string, error) {
 	return conf.Token, nil
 }
 
-func bsConfigFromEnvMaps(envMap bsEnvMap, poolEnvMap bsPoolEnvMap) *bsConfig {
-	var finalConf bsConfig
+func bsConfigFromEnvMaps(envMap EnvMap, poolEnvMap PoolEnvMap) *Config {
+	var finalConf Config
 	for name, value := range envMap {
-		finalConf.Envs = append(finalConf.Envs, bsEnv{Name: name, Value: value})
+		finalConf.Envs = append(finalConf.Envs, Env{Name: name, Value: value})
 	}
 	for poolName, envMap := range poolEnvMap {
-		poolEnv := bsPoolEnvs{Name: poolName}
+		poolEnv := PoolEnvs{Name: poolName}
 		for name, value := range envMap {
-			poolEnv.Envs = append(poolEnv.Envs, bsEnv{Name: name, Value: value})
+			poolEnv.Envs = append(poolEnv.Envs, Env{Name: name, Value: value})
 		}
 		finalConf.Pools = append(finalConf.Pools, poolEnv)
 	}
 	return &finalConf
 }
 
-func getBsSysLogPort() int {
+func SysLogPort() int {
 	bsPort, _ := config.GetInt("docker:bs:syslog-port")
 	if bsPort == 0 {
 		bsPort = 1514
@@ -182,8 +193,8 @@ func getBsSysLogPort() int {
 	return bsPort
 }
 
-func saveBsImage(digest string) error {
-	coll, err := bsCollection()
+func SaveImage(digest string) error {
+	coll, err := collection()
 	if err != nil {
 		return err
 	}
@@ -192,9 +203,9 @@ func saveBsImage(digest string) error {
 	return err
 }
 
-func saveBsEnvs(envMap bsEnvMap, poolEnvMap bsPoolEnvMap) error {
+func SaveEnvs(envMap EnvMap, poolEnvMap PoolEnvMap) error {
 	finalConf := bsConfigFromEnvMaps(envMap, poolEnvMap)
-	coll, err := bsCollection()
+	coll, err := collection()
 	if err != nil {
 		return err
 	}
@@ -203,9 +214,9 @@ func saveBsEnvs(envMap bsEnvMap, poolEnvMap bsPoolEnvMap) error {
 	return err
 }
 
-func loadBsConfig() (*bsConfig, error) {
-	var config bsConfig
-	coll, err := bsCollection()
+func LoadConfig() (*Config, error) {
+	var config Config
+	coll, err := collection()
 	if err != nil {
 		return nil, err
 	}
@@ -217,7 +228,7 @@ func loadBsConfig() (*bsConfig, error) {
 	return &config, nil
 }
 
-func bsCollection() (*storage.Collection, error) {
+func collection() (*storage.Collection, error) {
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
@@ -225,7 +236,93 @@ func bsCollection() (*storage.Collection, error) {
 	return conn.Collection("bsconfig"), nil
 }
 
-func (p *dockerProvisioner) recreateBsContainers() error {
+// CreateContainer creates the bs container on the given node.
+//
+// The relaunch flag defines the behavior when there's already a bs container
+// running in the target host: when relaunch is true, the function will remove
+// the running container and launch another. Otherwise, it will just return an
+// error indicating that the container is already running.
+func CreateContainer(dockerEndpoint, poolName string, p DockerProvisioner, relaunch bool) error {
+	client, err := docker.NewClient(dockerEndpoint)
+	if err != nil {
+		return err
+	}
+	bsConf, err := LoadConfig()
+	if err != nil {
+		if err != mgo.ErrNotFound {
+			return err
+		}
+		bsConf = &Config{}
+	}
+	bsImage := bsConf.getImage()
+	err = pullBsImage(bsImage, dockerEndpoint, p)
+	if err != nil {
+		return err
+	}
+	hostConfig := docker.HostConfig{
+		RestartPolicy: docker.AlwaysRestart(),
+		Privileged:    true,
+		NetworkMode:   "host",
+	}
+	socket, _ := config.GetString("docker:bs:socket")
+	if socket != "" {
+		hostConfig.Binds = []string{fmt.Sprintf("%s:/var/run/docker.sock:rw", socket)}
+	}
+	env, err := bsConf.EnvListForEndpoint(dockerEndpoint, poolName)
+	if err != nil {
+		return err
+	}
+	opts := docker.CreateContainerOptions{
+		Name:       "big-sibling",
+		HostConfig: &hostConfig,
+		Config: &docker.Config{
+			Image: bsImage,
+			Env:   env,
+		},
+	}
+	container, err := client.CreateContainer(opts)
+	if relaunch && err == docker.ErrContainerAlreadyExists {
+		err = client.RemoveContainer(docker.RemoveContainerOptions{ID: opts.Name, Force: true})
+		if err != nil {
+			return err
+		}
+		container, err = client.CreateContainer(opts)
+	}
+	if err != nil {
+		return err
+	}
+	return client.StartContainer(container.ID, &hostConfig)
+}
+
+func pullBsImage(image, dockerEndpoint string, p DockerProvisioner) error {
+	client, err := docker.NewClient(dockerEndpoint)
+	if err != nil {
+		return err
+	}
+	var buf bytes.Buffer
+	pullOpts := docker.PullImageOptions{Repository: image, OutputStream: &buf}
+	err = client.PullImage(pullOpts, p.RegistryAuthConfig())
+	if err != nil {
+		return err
+	}
+	if shouldPinBsImage(image) {
+		match := digestRegexp.FindAllStringSubmatch(buf.String(), 1)
+		if len(match) > 0 {
+			image += "@" + match[0][1]
+		}
+	}
+	return SaveImage(image)
+}
+
+func shouldPinBsImage(image string) bool {
+	parts := strings.SplitN(image, "/", 3)
+	lastPart := parts[len(parts)-1]
+	return len(strings.SplitN(lastPart, ":", 2)) < 2
+}
+
+// RecreateContainers relaunch all bs containers in the cluster for the given
+// DockerProvisioner.
+func RecreateContainers(p DockerProvisioner) error {
 	cluster := p.Cluster()
 	nodes, err := cluster.UnfilteredNodes()
 	if err != nil {
@@ -241,7 +338,7 @@ func (p *dockerProvisioner) recreateBsContainers() error {
 			node := &nodes[i]
 			pool := node.Metadata["pool"]
 			log.Debugf("[bs containers] recreating container in %s [%s]", node.Address, pool)
-			err := createBsContainer(node.Address, pool, true)
+			err := CreateContainer(node.Address, pool, p, true)
 			if err != nil {
 				msg := fmt.Sprintf("[bs containers] failed to create container in %s [%s]: %s", node.Address, pool, err)
 				log.Error(msg)

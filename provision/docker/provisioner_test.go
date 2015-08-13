@@ -24,6 +24,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository"
@@ -1235,9 +1236,9 @@ func (s *S) TestAdminCommands(c *check.C) {
 		&listAutoScaleHistoryCmd{},
 		&updateNodeToSchedulerCmd{},
 		&listAutoScaleRunCmd{},
-		&bsEnvSetCmd{},
-		&bsInfoCmd{},
-		&bsUpgradeCmd{},
+		&bs.EnvSetCmd{},
+		&bs.InfoCmd{},
+		&bs.UpgradeCmd{},
 	}
 	c.Assert(s.p.AdminCommands(), check.DeepEquals, expected)
 }
@@ -1890,8 +1891,8 @@ func (s *S) TestDryMode(c *check.C) {
 }
 
 func (s *S) TestMetricEnvs(c *check.C) {
-	err := saveBsEnvs(bsEnvMap{}, bsPoolEnvMap{
-		"mypool": bsEnvMap{
+	err := bs.SaveEnvs(bs.EnvMap{}, bs.PoolEnvMap{
+		"mypool": bs.EnvMap{
 			"METRICS_BACKEND":      "LOGSTASH",
 			"METRICS_LOGSTASH_URI": "localhost:2222",
 		},
