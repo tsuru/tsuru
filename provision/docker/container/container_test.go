@@ -578,9 +578,8 @@ func (s *S) TestContainerStart(c *check.C) {
 	app.Swap = 15
 	app.CpuShare = 10
 	err = cont.Start(&StartArgs{
-		Provisioner:    s.p,
-		App:            app,
-		SysLogEndpoint: "udp://localhost:1514",
+		Provisioner: s.p,
+		App:         app,
 	})
 	c.Assert(err, check.IsNil)
 	dockerContainer, err = client.InspectContainer(cont.ID)
@@ -668,9 +667,8 @@ func (s *S) TestContainerStartTsuruAllocator(c *check.C) {
 	app.Swap = 15
 	app.CpuShare = 10
 	err = cont.Start(&StartArgs{
-		Provisioner:    s.p,
-		App:            app,
-		SysLogEndpoint: "udp://localhost:1514",
+		Provisioner: s.p,
+		App:         app,
 	})
 	c.Assert(err, check.IsNil)
 	dockerContainer, err = client.InspectContainer(cont.ID)

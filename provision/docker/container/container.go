@@ -21,6 +21,7 @@ import (
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/docker/bs"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -395,10 +396,9 @@ func (c *Container) Stop(p DockerProvisioner) error {
 }
 
 type StartArgs struct {
-	Provisioner    DockerProvisioner
-	App            provision.App
-	SysLogEndpoint string
-	Deploy         bool
+	Provisioner DockerProvisioner
+	App         provision.App
+	Deploy      bool
 }
 
 func (c *Container) Start(args *StartArgs) error {
@@ -423,7 +423,7 @@ func (c *Container) Start(args *StartArgs) error {
 		hostConfig.LogConfig = docker.LogConfig{
 			Type: "syslog",
 			Config: map[string]string{
-				"syslog-address": args.SysLogEndpoint,
+				"syslog-address": "udp://localhost:" + strconv.Itoa(bs.SysLogPort()),
 			},
 		}
 	}

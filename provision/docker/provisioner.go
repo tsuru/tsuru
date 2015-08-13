@@ -11,7 +11,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/url"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -297,9 +296,8 @@ func (p *dockerProvisioner) Start(app provision.App, process string) error {
 	}
 	return runInContainers(containers, func(c *container.Container, _ chan *container.Container) error {
 		err := c.Start(&container.StartArgs{
-			Provisioner:    p,
-			App:            app,
-			SysLogEndpoint: "udp://localhost:" + strconv.Itoa(bs.SysLogPort()),
+			Provisioner: p,
+			App:         app,
 		})
 		if err != nil {
 			return err
