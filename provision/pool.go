@@ -116,7 +116,7 @@ func ListPools(query bson.M) ([]Pool, error) {
 		return nil, err
 	}
 	defer conn.Close()
-	var pools []Pool
+	pools := []Pool{}
 	err = conn.Collection(poolCollection).Find(query).All(&pools)
 	if err != nil {
 		return nil, err

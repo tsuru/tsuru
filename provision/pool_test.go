@@ -303,3 +303,36 @@ func (s *S) TestPoolUpdateDontHaveSideEffects(c *check.C) {
 	c.Assert(p.Public, check.Equals, true)
 	c.Assert(p.Default, check.Equals, true)
 }
+
+func (s *S) TestListPoolAll(c *check.C) {
+	coll := s.storage.Collection(poolCollection)
+	pool := Pool{Name: "pool1", Public: false, Default: true}
+	err := coll.Insert(pool)
+	c.Assert(err, check.IsNil)
+	defer coll.RemoveId(pool.Name)
+	pools, err := ListPools(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(pools), check.Equals, 1)
+}
+
+func (s *S) TestListPoolByQuery(c *check.C) {
+	coll := s.storage.Collection(poolCollection)
+	pool := Pool{Name: "pool1", Public: false, Default: true}
+	err := coll.Insert(pool)
+	c.Assert(err, check.IsNil)
+	pool2 := Pool{Name: "pool2", Public: true, Default: true}
+	err = coll.Insert(pool2)
+	c.Assert(err, check.IsNil)
+	defer coll.RemoveId(pool.Name)
+	defer coll.RemoveId(pool2.Name)
+	pools, err := ListPools(bson.M{"public": true})
+	c.Assert(err, check.IsNil)
+	c.Assert(len(pools), check.Equals, 1)
+	c.Assert(pools[0].Public, check.Equals, true)
+}
+
+func (s *S) TestListPoolEmpty(c *check.C) {
+	pools, err := ListPools(nil)
+	c.Assert(err, check.IsNil)
+	c.Assert(len(pools), check.Equals, 0)
+}
