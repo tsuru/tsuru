@@ -612,7 +612,6 @@ func userInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if teams, err := user.Teams(); err == nil {
 		teamNames = make([]string, len(teams))
 		for i, team := range teams {
-			println(team.Name)
 			teamNames[i] = team.Name
 		}
 	}
