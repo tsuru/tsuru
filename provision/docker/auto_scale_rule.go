@@ -55,6 +55,7 @@ func autoScaleRuleForMetadata(metadataFilter string) (*autoScaleRule, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer coll.Close()
 	var rule autoScaleRule
 	err = coll.FindId(metadataFilter).One(&rule)
 	if err == mgo.ErrNotFound {
