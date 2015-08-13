@@ -186,3 +186,22 @@ func (s *S) TestFindById(c *check.C) {
 	_, err = FindMachineById("myid3")
 	c.Assert(err, check.Equals, mgo.ErrNotFound)
 }
+
+func (s *S) TestFormatNodeAddress(c *check.C) {
+	config.Set("iaas:node-protocol", "https")
+	defer config.Unset("iaas:node-protocol")
+	defer config.Unset("iaas:node-port")
+	config.Unset("iaas:node-port")
+	m, err := CreateMachineForIaaS("test-iaas", map[string]string{"id": "myid"})
+	c.Assert(err, check.IsNil)
+	c.Assert(m.Port, check.Equals, 0)
+	addr := m.FormatNodeAddress()
+	c.Assert(addr, check.Equals, "https://myid.somewhere.com:2375")
+	config.Set("iaas:node-port", 1998)
+	addr = m.FormatNodeAddress()
+	c.Assert(addr, check.Equals, "https://myid.somewhere.com:1998")
+	m.Port = 9123
+	addr = m.FormatNodeAddress()
+	c.Assert(addr, check.Equals, "https://myid.somewhere.com:9123")
+
+}

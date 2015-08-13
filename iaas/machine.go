@@ -22,6 +22,7 @@ type Machine struct {
 	Iaas           string
 	Status         string
 	Address        string
+	Port           int
 	CreationParams map[string]string
 }
 
@@ -145,7 +146,10 @@ func (m *Machine) FormatNodeAddress() string {
 	if protocol == "" {
 		protocol = "http"
 	}
-	port, _ := config.GetInt("iaas:node-port")
+	port := m.Port
+	if port == 0 {
+		port, _ = config.GetInt("iaas:node-port")
+	}
 	if port == 0 {
 		port = 2375
 	}
