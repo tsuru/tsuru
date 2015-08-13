@@ -97,6 +97,7 @@ func (s *S) TestMoveContainersUnknownDest(c *check.C) {
 	err = p.moveContainers("localhost", "unknown", buf)
 	c.Assert(err, check.Equals, containerMovementErr)
 	parts := strings.Split(buf.String(), "\n")
+	c.Assert(parts, check.HasLen, 6)
 	c.Assert(parts[0], check.Matches, ".*Moving 2 units.*")
 	c.Assert(parts[3], check.Matches, "(?s).*Error moving unit.*Caused by:.*unknown.*not found")
 	c.Assert(parts[4], check.Matches, "(?s).*Error moving unit.*Caused by:.*unknown.*not found")
