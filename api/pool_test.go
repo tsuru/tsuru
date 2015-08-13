@@ -136,7 +136,30 @@ func (s *S) TestListPoolsToUserHandler(c *check.C) {
 	defer provision.RemovePool("nopool")
 	poolsExpected := map[string]interface{}{
 		"pools_by_team": []interface{}{map[string]interface{}{"Team": "angra", "Pools": []interface{}{"pool1"}}},
-		"public_pools":  interface{}(nil),
+		"public_pools":  []interface{}{},
+	}
+	req, err := http.NewRequest("GET", "/pool", nil)
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	err = listPoolsToUser(rec, req, token)
+	c.Assert(err, check.IsNil)
+	var pools map[string]interface{}
+	err = json.NewDecoder(rec.Body).Decode(&pools)
+	c.Assert(err, check.IsNil)
+	c.Assert(pools, check.DeepEquals, poolsExpected)
+}
+
+func (s *S) TestListPoolsToUserEmptyHandler(c *check.C) {
+	u := auth.User{Email: "passing-by@angra.com", Password: "123456"}
+	_, err := nativeScheme.Create(&u)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Users().Remove(bson.M{"email": u.Email})
+	token, err := nativeScheme.Login(map[string]string{"email": u.Email, "password": "123456"})
+	c.Assert(err, check.IsNil)
+	defer s.conn.Tokens().Remove(bson.M{"token": token.GetValue()})
+	poolsExpected := map[string]interface{}{
+		"pools_by_team": []interface{}{},
+		"public_pools":  []interface{}{},
 	}
 	req, err := http.NewRequest("GET", "/pool", nil)
 	c.Assert(err, check.IsNil)

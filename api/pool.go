@@ -33,7 +33,7 @@ func listPoolsToUser(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	if err != nil {
 		return err
 	}
-	var poolsByTeam []PoolsByTeam
+	poolsByTeam := []PoolsByTeam{}
 	for _, t := range teams {
 		pools, err := provision.ListPools(bson.M{"teams": t.Name})
 		if err != nil {
