@@ -17,12 +17,10 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/bs"
 )
 
-const runBsTaskName = "run-bs"
-
 type runBs struct{}
 
 func (runBs) Name() string {
-	return runBsTaskName
+	return bs.QueueTaskName
 }
 
 func (t runBs) Run(job monsterqueue.Job) {

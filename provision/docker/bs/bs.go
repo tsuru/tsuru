@@ -31,7 +31,13 @@ type DockerProvisioner interface {
 	RegistryAuthConfig() docker.AuthConfiguration
 }
 
-const bsUniqueID = "bs"
+const (
+	// QueueTaskName is the name of the task that starts bs container on a
+	// given node.
+	QueueTaskName = "run-bs"
+
+	bsUniqueID = "bs"
+)
 
 type Env struct {
 	Name  string
