@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/tsuru/tsuru/api/context"
 	"github.com/tsuru/tsuru/app"
@@ -71,9 +72,10 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	context.SetPreventUnlock(r)
-	app.Delete(&a)
-	fmt.Fprint(w, "success")
+	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	app.Delete(&a, writer)
 	return nil
 }
 

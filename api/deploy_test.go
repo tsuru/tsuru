@@ -94,7 +94,7 @@ func (s *DeploySuite) TestDeployHandler(c *check.C) {
 	user, _ := s.token.User()
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a)
+	defer app.Delete(&a, nil)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("version=a345f3e&user=fulano"))
 	c.Assert(err, check.IsNil)
@@ -115,7 +115,7 @@ func (s *DeploySuite) TestDeployArchiveURL(c *check.C) {
 	a := app.App{Name: "otherapp", Platform: "python", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a)
+	defer app.Delete(&a, nil)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano"))
 	c.Assert(err, check.IsNil)
@@ -135,7 +135,7 @@ func (s *DeploySuite) TestDeployUploadFile(c *check.C) {
 	a := app.App{Name: "otherapp", Platform: "python", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a)
+	defer app.Delete(&a, nil)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
@@ -161,7 +161,7 @@ func (s *DeploySuite) TestDeployWithCommit(c *check.C) {
 	a := app.App{Name: "otherapp", Platform: "python", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a)
+	defer app.Delete(&a, nil)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("version=a345f3e&user=fulano&commit=123"))
 	c.Assert(err, check.IsNil)
@@ -185,7 +185,7 @@ func (s *DeploySuite) TestDeployShouldIncrementDeployNumberOnApp(c *check.C) {
 	a := app.App{Name: "otherapp", Platform: "python", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a)
+	defer app.Delete(&a, nil)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("version=a345f3e"))
 	c.Assert(err, check.IsNil)
@@ -229,7 +229,7 @@ func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenUserDoesNotHaveAccessTo
 	a := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, adminUser)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a)
+	defer app.Delete(&a, nil)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("archive-url=http://something.tar.gz&user=fulano"))
 	c.Assert(err, check.IsNil)
@@ -247,11 +247,11 @@ func (s *DeploySuite) TestDeployShouldReturnForbiddenWhenTokenIsntFromTheApp(c *
 	app1 := app.App{Name: "otherapp", Platform: "python", TeamOwner: s.team.Name}
 	err := app.CreateApp(&app1, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&app1)
+	defer app.Delete(&app1, nil)
 	app2 := app.App{Name: "superapp", Platform: "python", TeamOwner: s.team.Name}
 	err = app.CreateApp(&app2, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&app2)
+	defer app.Delete(&app2, nil)
 	token, err := nativeScheme.AppLogin(app2.Name)
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", app1.Name, app2.Name)
@@ -273,7 +273,7 @@ func (s *DeploySuite) TestDeployWithTokenForInternalAppName(c *check.C) {
 	user, _ := s.token.User()
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a)
+	defer app.Delete(&a, nil)
 	url := fmt.Sprintf("/apps/%s/repository/clone?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("version=a345f3e&user=fulano"))
 	c.Assert(err, check.IsNil)
@@ -294,7 +294,7 @@ func (s *DeploySuite) TestDeployWithoutVersionAndArchiveURL(c *check.C) {
 	a := app.App{Name: "abc", Platform: "python", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a)
+	defer app.Delete(&a, nil)
 	defer s.logConn.Logs(a.Name).DropCollection()
 	request, err := http.NewRequest("POST", "/apps/abc/repository/clone", nil)
 	c.Assert(err, check.IsNil)
@@ -313,7 +313,7 @@ func (s *DeploySuite) TestDeployWithVersionAndArchiveURL(c *check.C) {
 	a := app.App{Name: "abc", Platform: "python", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a)
+	defer app.Delete(&a, nil)
 	defer s.logConn.Logs(a.Name).DropCollection()
 	body := strings.NewReader("version=abcdef&archive-url=http://google.com")
 	request, err := http.NewRequest("POST", "/apps/abc/repository/clone", body)
@@ -342,7 +342,7 @@ func (s *DeploySuite) TestDeployListNonAdmin(c *check.C) {
 	a := app.App{Name: "g1", Platform: "python", Teams: []string{team.Name}}
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a)
+	defer app.Delete(&a, nil)
 	var result []app.DeployData
 	request, err := http.NewRequest("GET", "/deploys", nil)
 	c.Assert(err, check.IsNil)
@@ -371,11 +371,11 @@ func (s *DeploySuite) TestDeployList(c *check.C) {
 	app1 := app.App{Name: "g1", Platform: "python", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&app1, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&app1)
+	defer app.Delete(&app1, nil)
 	app2 := app.App{Name: "ge", Platform: "python", Teams: []string{s.team.Name}}
 	err = app.CreateApp(&app2, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&app2)
+	defer app.Delete(&app2, nil)
 	var result []app.DeployData
 	request, err := http.NewRequest("GET", "/deploys", nil)
 	c.Assert(err, check.IsNil)
@@ -408,7 +408,7 @@ func (s *DeploySuite) TestDeployListByService(c *check.C) {
 	a := app.App{Name: "g1", Platform: "python", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a)
+	defer app.Delete(&a, nil)
 	var result []app.DeployData
 	srv := service.Service{Name: "redis", Teams: []string{s.team.Name}}
 	err = srv.Create()
@@ -452,7 +452,7 @@ func (s *DeploySuite) TestDeployListByApp(c *check.C) {
 	a := app.App{Name: "myblog", Platform: "python", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a)
+	defer app.Delete(&a, nil)
 	defer s.logConn.Logs(a.Name).DropCollection()
 	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
 	duration := time.Since(timestamp)
@@ -485,7 +485,7 @@ func (s *DeploySuite) TestDeployListAppWithNoDeploys(c *check.C) {
 	a := app.App{Name: "myblog", Platform: "python", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a)
+	defer app.Delete(&a, nil)
 	defer s.logConn.Logs(a.Name).DropCollection()
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/deploys?app=myblog", nil)
@@ -515,7 +515,7 @@ func (s *DeploySuite) TestDeployListByAppAndService(c *check.C) {
 	a := app.App{Name: "myblog", Platform: "python", Teams: []string{s.team.Name}}
 	err = app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a)
+	defer app.Delete(&a, nil)
 	defer s.logConn.Logs(a.Name).DropCollection()
 	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
 	duration := time.Since(timestamp)
@@ -541,7 +541,7 @@ func (s *DeploySuite) TestDeployInfoByAdminUser(c *check.C) {
 	user, _ := s.token.User()
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a)
+	defer app.Delete(&a, nil)
 	recorder := httptest.NewRecorder()
 	timestamp := time.Now()
 	duration := time.Duration(10e9)
@@ -577,7 +577,7 @@ func (s *DeploySuite) TestDeployInfoDiff(c *check.C) {
 	user, _ := s.token.User()
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a)
+	defer app.Delete(&a, nil)
 	recorder := httptest.NewRecorder()
 	timestamp := time.Now()
 	duration := time.Duration(10e9)
@@ -614,7 +614,7 @@ func (s *DeploySuite) TestDeployInfoByNonAdminUser(c *check.C) {
 	a := app.App{Name: "g1", Platform: "python", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a)
+	defer app.Delete(&a, nil)
 	user = &auth.User{Email: "user@user.com", Password: "123456"}
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
@@ -705,7 +705,7 @@ func (s *DeploySuite) TestDeployRollbackHandler(c *check.C) {
 	a := app.App{Name: "otherapp", Platform: "python", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, user)
 	c.Assert(err, check.IsNil)
-	defer app.Delete(&a)
+	defer app.Delete(&a, nil)
 	url := fmt.Sprintf("/apps/%s/deploy/rollback", a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("image=my-image-123"))
 	c.Assert(err, check.IsNil)

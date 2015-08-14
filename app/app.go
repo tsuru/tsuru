@@ -9,11 +9,11 @@ import (
 	stderr "errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/url"
 	"regexp"
 	"sort"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/tsuru/tsuru/action"
@@ -305,80 +305,71 @@ func (app *App) unbind() error {
 	return nil
 }
 
-func asyncDestroyAppProvisioner(app *App) *sync.WaitGroup {
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		err := Provisioner.Destroy(app)
-		if err != nil {
-			log.Errorf("Unable to destroy app in provisioner: %s", err.Error())
-		}
-		err = app.unbind()
-		if err != nil {
-			log.Errorf("Unable to unbind app in provisioner: %s", err.Error())
-		}
-	}()
-	return &wg
-}
-
 // Delete deletes an app.
-//
-// Delete an app is a process composed of three steps:
-//
-//       1. Destroy the app unit
-//       2. Unbind all service instances from the app
-//       3. Remove the app from the database
-func Delete(app *App) error {
+func Delete(app *App, w io.Writer) {
 	appName := app.Name
-	wg := asyncDestroyAppProvisioner(app)
-	wg.Add(1)
-	defer wg.Done()
-	go func() {
-		defer ReleaseApplicationLock(appName)
-		wg.Wait()
-		logConn, err := db.LogConn()
-		if err != nil {
-			log.Errorf("Unable to delete app %s from db: %s", appName, err.Error())
+	if w == nil {
+		w = ioutil.Discard
+	}
+	fmt.Fprintf(w, "---- Removing application %q...\n", appName)
+	var hasErrors bool
+	defer func() {
+		var problems string
+		if hasErrors {
+			problems = " Some errors occurred during removal."
 		}
-		defer logConn.Close()
-		conn, err := db.Conn()
-		if err != nil {
-			log.Errorf("Unable to delete app %s from db: %s", appName, err.Error())
-		}
-		defer conn.Close()
-		err = logConn.Logs(appName).DropCollection()
-		if err != nil {
-			log.Errorf("Ignored error dropping logs collection for app %s: %s", appName, err.Error())
-		}
-		err = conn.Apps().Remove(bson.M{"name": appName})
-		if err != nil {
-			log.Errorf("Error trying to destroy app %s from db: %s", appName, err.Error())
-		}
-		err = markDeploysAsRemoved(appName)
-		if err != nil {
-			log.Errorf("Error trying to mark old deploys as removed for app %s: %s", appName, err.Error())
-		}
+		fmt.Fprintf(w, "---- Done removing application.%s\n", problems)
 	}()
-	err := repository.Manager().RemoveRepository(appName)
+	logErr := func(msg string, err error) {
+		msg = fmt.Sprintf("%s: %s", msg, err)
+		fmt.Fprintf(w, "%s\n", msg)
+		log.Errorf("[delete-app: %s] %s", appName, msg)
+		hasErrors = true
+	}
+	err := Provisioner.Destroy(app)
 	if err != nil {
-		log.Errorf("failed to remove app %q from repository manager: %s", appName, err)
+		logErr("Unable to destroy app in provisioner", err)
+	}
+	err = app.unbind()
+	if err != nil {
+		logErr("Unable to unbind app", err)
+	}
+	err = repository.Manager().RemoveRepository(appName)
+	if err != nil {
+		logErr("Unable to remove app from repository manager", err)
 	}
 	token := app.Env["TSURU_APP_TOKEN"].Value
 	err = AuthScheme.Logout(token)
 	if err != nil {
-		log.Errorf("Unable to remove app token in destroy: %s", err.Error())
+		logErr("Unable to remove app token in destroy", err)
 	}
 	owner, err := auth.GetUserByEmail(app.Owner)
-	if err != nil {
-		log.Errorf("Unable to get app owner in destroy: %s", err.Error())
-	} else {
+	if err == nil {
 		err = auth.ReleaseApp(owner)
-		if err != nil {
-			log.Errorf("Unable to release app quota: %s", err.Error())
-		}
 	}
-	return nil
+	if err != nil {
+		logErr("Unable to release app quota", err)
+	}
+	logConn, err := db.LogConn()
+	if err == nil {
+		defer logConn.Close()
+		err = logConn.Logs(appName).DropCollection()
+	}
+	if err != nil {
+		logErr("Unable to remove logs collection", err)
+	}
+	conn, err := db.Conn()
+	if err == nil {
+		defer conn.Close()
+		err = conn.Apps().Remove(bson.M{"name": appName})
+	}
+	if err != nil {
+		logErr("Unable to remove app from db", err)
+	}
+	err = markDeploysAsRemoved(appName)
+	if err != nil {
+		logErr("Unable to mark old deploys as removed", err)
+	}
 }
 
 func (app *App) BindUnit(unit *provision.Unit) error {

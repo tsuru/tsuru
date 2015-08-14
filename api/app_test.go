@@ -3492,7 +3492,7 @@ func (s *S) TestSetTeamOwnerSetNewTeamToAppAddThatTeamToAppTeamList(c *check.C) 
 }
 
 func (s *S) deleteApp(a *app.App) {
-	app.Delete(a)
+	app.Delete(a, nil)
 	count, err := s.conn.Apps().Find(bson.M{"name": a.Name}).Count()
 	for count > 0 && err == nil {
 		count, err = s.conn.Apps().Find(bson.M{"name": a.Name}).Count()

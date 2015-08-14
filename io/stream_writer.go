@@ -68,6 +68,9 @@ type SimpleJsonMessage struct {
 type SimpleJsonMessageFormatter struct{}
 
 func (SimpleJsonMessageFormatter) Format(out io.Writer, data []byte) error {
+	if len(data) == 1 && data[0] == '\n' {
+		return nil
+	}
 	var msg SimpleJsonMessage
 	err := json.Unmarshal(data, &msg)
 	if err != nil {

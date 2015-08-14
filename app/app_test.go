@@ -76,8 +76,7 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = app.Log("msg", "src", "unit")
 	c.Assert(err, check.IsNil)
-	err = Delete(app)
-	c.Assert(err, check.IsNil)
+	Delete(app, nil)
 	err = tsurutest.WaitCondition(time.Second, func() bool {
 		_, err := GetByName(app.Name)
 		return err != nil
@@ -106,8 +105,7 @@ func (s *S) TestDeleteWithDeploys(c *check.C) {
 	err = s.conn.Deploys().Insert(DeployData{App: a.Name, Timestamp: time.Now()})
 	c.Assert(err, check.IsNil)
 	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
-	err = Delete(app)
-	c.Assert(err, check.IsNil)
+	Delete(app, nil)
 	err = tsurutest.WaitCondition(1e9, func() bool {
 		var deploys []DeployData
 		err := s.conn.Deploys().Find(bson.M{"app": app.Name}).All(&deploys)
@@ -130,8 +128,7 @@ func (s *S) TestDeleteWithoutUnits(c *check.C) {
 	defer s.provisioner.Destroy(&app)
 	a, err := GetByName(app.Name)
 	c.Assert(err, check.IsNil)
-	err = Delete(a)
-	c.Assert(err, check.IsNil)
+	Delete(a, nil)
 	_, err = repository.Manager().GetRepository(app.Name)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "repository not found")
@@ -150,7 +147,7 @@ func (s *S) TestCreateApp(c *check.C) {
 	defer config.Unset("quota:units-per-app")
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer Delete(&a)
+	defer Delete(&a, nil)
 	retrievedApp, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(retrievedApp.Name, check.Equals, a.Name)
@@ -180,7 +177,7 @@ func (s *S) TestCreateAppDefaultPlan(c *check.C) {
 	defer config.Unset("quota:units-per-app")
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer Delete(&a)
+	defer Delete(&a, nil)
 	retrievedApp, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(retrievedApp.Plan, check.DeepEquals, s.defaultPlan)
@@ -203,7 +200,7 @@ func (s *S) TestCreateAppWithoutDefaultPlan(c *check.C) {
 	defer config.Unset("quota:units-per-app")
 	err := CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer Delete(&a)
+	defer Delete(&a, nil)
 	retrievedApp, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(retrievedApp.Plan, check.DeepEquals, Plan{
@@ -239,7 +236,7 @@ func (s *S) TestCreateAppWithExplicitPlan(c *check.C) {
 	defer config.Unset("quota:units-per-app")
 	err = CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer Delete(&a)
+	defer Delete(&a, nil)
 	retrievedApp, err := GetByName(a.Name)
 	c.Assert(retrievedApp.Plan, check.DeepEquals, myPlan)
 	_, err = repository.Manager().GetRepository(a.Name)
@@ -267,7 +264,7 @@ func (s *S) TestCreateAppTeamOwner(c *check.C) {
 	app := App{Name: "america", Platform: "python", TeamOwner: "tsuruteam"}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
-	defer Delete(&app)
+	defer Delete(&app, nil)
 	c.Assert(app.TeamOwner, check.Equals, "tsuruteam")
 }
 
@@ -275,7 +272,7 @@ func (s *S) TestCreateAppTeamOwnerOneTeam(c *check.C) {
 	app := App{Name: "america", Platform: "python"}
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.IsNil)
-	defer Delete(&app)
+	defer Delete(&app, nil)
 	c.Assert(app.TeamOwner, check.Equals, "tsuruteam")
 }
 
@@ -326,7 +323,7 @@ func (s *S) TestCantCreateTwoAppsWithTheSameName(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": "appname"})
 	a := App{Name: "appname", Platform: "python"}
 	err = CreateApp(&a, s.user)
-	defer Delete(&a) // clean mess if test fail
+	defer Delete(&a, nil) // clean mess if test fail
 	c.Assert(err, check.NotNil)
 	e, ok := err.(*AppCreationError)
 	c.Assert(ok, check.Equals, true)
@@ -357,7 +354,7 @@ func (s *S) TestCreateAppProvisionerFailures(c *check.C) {
 		Platform: "python",
 	}
 	err := CreateApp(&a, s.user)
-	defer Delete(&a) // clean mess if test fail
+	defer Delete(&a, nil) // clean mess if test fail
 	c.Assert(err, check.NotNil)
 	expected := `tsuru failed to create the app "theirapp": exit status 1`
 	c.Assert(err.Error(), check.Equals, expected)
