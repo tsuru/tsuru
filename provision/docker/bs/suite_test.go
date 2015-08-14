@@ -6,10 +6,8 @@ package bs
 
 import (
 	"os"
-	"strings"
 	"testing"
 
-	dtesting "github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -25,11 +23,7 @@ func Test(t *testing.T) {
 
 var _ = check.Suite(&S{})
 
-type S struct {
-	p           *fakeDockerProvisioner
-	server      *dtesting.DockerServer
-	extraServer *dtesting.DockerServer
-}
+type S struct{}
 
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
@@ -47,28 +41,9 @@ func (s *S) SetUpTest(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	dbtest.ClearAllCollections(conn.Apps().Database)
-	s.server, err = dtesting.NewServer("127.0.0.1:0", nil, nil)
-	c.Assert(err, check.IsNil)
-	s.p, err = newFakeDockerProvisioner(s.server.URL())
-	c.Assert(err, check.IsNil)
 	os.Setenv("TSURU_TARGET", "http://localhost")
 }
 
 func (s *S) TearDownTest(c *check.C) {
-	s.server.Stop()
-	if s.extraServer != nil {
-		s.extraServer.Stop()
-		s.extraServer = nil
-	}
 	os.Unsetenv("TSURU_TARGET")
-}
-
-func (s *S) startMultipleServersCluster() (*fakeDockerProvisioner, error) {
-	var err error
-	s.extraServer, err = dtesting.NewServer("localhost:0", nil, nil)
-	if err != nil {
-		return nil, err
-	}
-	otherUrl := strings.Replace(s.extraServer.URL(), "127.0.0.1", "localhost", 1)
-	return newFakeDockerProvisioner(s.server.URL(), otherUrl)
 }

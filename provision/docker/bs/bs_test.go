@@ -14,6 +14,7 @@ import (
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/provision/docker/dockertest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -113,8 +114,9 @@ func (s *S) TestBsGetTokenStress(c *check.C) {
 }
 
 func (s *S) TestRecreateBsContainers(c *check.C) {
-	p, err := s.startMultipleServersCluster()
+	p, err := dockertest.StartMultipleServersCluster()
 	c.Assert(err, check.IsNil)
+	defer p.Destroy()
 	err = RecreateContainers(p)
 	c.Assert(err, check.IsNil)
 	nodes, err := p.Cluster().Nodes()
@@ -139,13 +141,15 @@ func (s *S) TestRecreateBsContainers(c *check.C) {
 }
 
 func (s *S) TestRecreateBsContainersErrorInSomeContainers(c *check.C) {
-	p, err := s.startMultipleServersCluster()
+	p, err := dockertest.StartMultipleServersCluster()
 	c.Assert(err, check.IsNil)
+	defer p.Destroy()
 	nodes, err := p.Cluster().Nodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
-	s.server.PrepareFailure("failure-create", "/containers/create")
-	defer s.server.ResetFailure("failure-create")
+	servers := p.Servers()
+	servers[0].PrepareFailure("failure-create", "/containers/create")
+	defer servers[1].ResetFailure("failure-create")
 	err = RecreateContainers(p)
 	c.Assert(err, check.ErrorMatches, `(?s).*failed to create container in .* \[.*\]: API error \(400\): failure-create.*`)
 	sort.Sort(cluster.NodeList(nodes))
