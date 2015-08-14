@@ -75,10 +75,7 @@ func (a *autoScaleConfig) scalerForRule(rule *autoScaleRule) (autoScaler, error)
 	if rule.MaxContainerCount > 0 {
 		return &countScaler{autoScaleConfig: a, rule: rule}, nil
 	}
-	if a.totalMemoryMetadata != "" && rule.MaxMemoryRatio != 0 {
-		return &memoryScaler{autoScaleConfig: a, rule: rule}, nil
-	}
-	return nil, fmt.Errorf("invalid rule, either memory information or max container count must be set")
+	return &memoryScaler{autoScaleConfig: a, rule: rule}, nil
 }
 
 func (a *autoScaleConfig) run() error {

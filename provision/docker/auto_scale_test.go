@@ -620,6 +620,8 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 	config.Set("docker:scheduler:max-used-memory", 0.8)
 	config.Unset("docker:auto-scale:max-container-count")
 	defer config.Unset("docker:scheduler:max-used-memory")
+	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
+	defer config.Unset("docker:scheduler:total-memory-metadata")
 	_, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 4}},
 		app:         s.appInstance,
@@ -628,10 +630,9 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
-		done:                make(chan bool),
-		provisioner:         s.p,
-		groupByMetadata:     "pool",
-		totalMemoryMetadata: "totalMem",
+		done:            make(chan bool),
+		provisioner:     s.p,
+		groupByMetadata: "pool",
 	}
 	a.runOnce()
 	nodes, err := s.p.cluster.Nodes()
@@ -678,6 +679,8 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedMultipleNodes(c *check
 	config.Set("docker:scheduler:max-used-memory", 0.8)
 	config.Unset("docker:auto-scale:max-container-count")
 	defer config.Unset("docker:scheduler:max-used-memory")
+	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
+	defer config.Unset("docker:scheduler:total-memory-metadata")
 	_, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 9}},
 		app:         s.appInstance,
@@ -686,10 +689,9 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedMultipleNodes(c *check
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
-		done:                make(chan bool),
-		provisioner:         s.p,
-		groupByMetadata:     "pool",
-		totalMemoryMetadata: "totalMem",
+		done:            make(chan bool),
+		provisioner:     s.p,
+		groupByMetadata: "pool",
 	}
 	a.runOnce()
 	evts, err := listAutoScaleEvents(0, 0)
@@ -744,6 +746,8 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMemoryBasedNoContainersMultip
 	config.Set("docker:scheduler:max-used-memory", 0.8)
 	config.Unset("docker:auto-scale:max-container-count")
 	defer config.Unset("docker:scheduler:max-used-memory")
+	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
+	defer config.Unset("docker:scheduler:total-memory-metadata")
 	otherUrl := fmt.Sprintf("http://localhost:%d", urlPort(s.node2.URL()))
 	node := cluster.Node{Address: otherUrl, Metadata: map[string]string{
 		"pool":     "pool1",
@@ -753,10 +757,9 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMemoryBasedNoContainersMultip
 	err := s.p.cluster.Register(node)
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
-		done:                make(chan bool),
-		provisioner:         s.p,
-		groupByMetadata:     "pool",
-		totalMemoryMetadata: "totalMem",
+		done:            make(chan bool),
+		provisioner:     s.p,
+		groupByMetadata: "pool",
 	}
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
@@ -773,6 +776,8 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunPriorityToCountBased(c *check.C) 
 	config.Set("docker:scheduler:max-used-memory", 0.8)
 	config.Unset("docker:auto-scale:max-container-count")
 	defer config.Unset("docker:scheduler:max-used-memory")
+	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
+	defer config.Unset("docker:scheduler:total-memory-metadata")
 	_, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 4}},
 		app:         s.appInstance,
@@ -781,10 +786,9 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunPriorityToCountBased(c *check.C) 
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
-		done:                make(chan bool),
-		provisioner:         s.p,
-		groupByMetadata:     "pool",
-		totalMemoryMetadata: "totalMem",
+		done:            make(chan bool),
+		provisioner:     s.p,
+		groupByMetadata: "pool",
 	}
 	a.runOnce()
 	nodes, err := s.p.cluster.Nodes()
@@ -812,6 +816,8 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedPlanTooBig(c *check.C)
 	config.Set("docker:scheduler:max-used-memory", 0.8)
 	config.Unset("docker:auto-scale:max-container-count")
 	defer config.Unset("docker:scheduler:max-used-memory")
+	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
+	defer config.Unset("docker:scheduler:total-memory-metadata")
 	err := app.PlanRemove("default")
 	c.Assert(err, check.IsNil)
 	plan := app.Plan{Memory: 126000, Name: "default", CpuShare: 10}
@@ -827,10 +833,9 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedPlanTooBig(c *check.C)
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
-		done:                make(chan bool),
-		provisioner:         s.p,
-		groupByMetadata:     "pool",
-		totalMemoryMetadata: "totalMem",
+		done:            make(chan bool),
+		provisioner:     s.p,
+		groupByMetadata: "pool",
 	}
 	a.runOnce()
 	c.Assert(s.S.logBuf, check.Matches, `(?s).*\[node autoscale\] error scaling group pool1: aborting, impossible to fit max plan memory of 126000 bytes, node max available memory is 100000.*`)
@@ -961,6 +966,8 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C)
 	config.Set("docker:scheduler:max-used-memory", 0.8)
 	config.Unset("docker:auto-scale:max-container-count")
 	defer config.Unset("docker:scheduler:max-used-memory")
+	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
+	defer config.Unset("docker:scheduler:total-memory-metadata")
 	otherUrl := fmt.Sprintf("http://localhost:%d/", urlPort(s.node2.URL()))
 	node := cluster.Node{Address: otherUrl, Metadata: map[string]string{
 		"pool":     "pool1",
@@ -986,10 +993,9 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C)
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
-		done:                make(chan bool),
-		provisioner:         s.p,
-		groupByMetadata:     "pool",
-		totalMemoryMetadata: "totalMem",
+		done:            make(chan bool),
+		provisioner:     s.p,
+		groupByMetadata: "pool",
 	}
 	a.runOnce()
 	evts, err := listAutoScaleEvents(0, 0)
@@ -1014,6 +1020,8 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMemoryScalerMultipleNode
 	config.Set("docker:scheduler:max-used-memory", 0.8)
 	config.Unset("docker:auto-scale:max-container-count")
 	defer config.Unset("docker:scheduler:max-used-memory")
+	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
+	defer config.Unset("docker:scheduler:total-memory-metadata")
 	node1 := cluster.Node{Address: fmt.Sprintf("http://localhost:%d/", urlPort(s.node2.URL())), Metadata: map[string]string{
 		"pool":     "pool1",
 		"iaas":     "my-scale-iaas",
@@ -1052,10 +1060,9 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMemoryScalerMultipleNode
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
-		done:                make(chan bool),
-		provisioner:         s.p,
-		groupByMetadata:     "pool",
-		totalMemoryMetadata: "totalMem",
+		done:            make(chan bool),
+		provisioner:     s.p,
+		groupByMetadata: "pool",
 	}
 	a.runOnce()
 	evts, err := listAutoScaleEvents(0, 0)
@@ -1156,6 +1163,8 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedLockedApp(c *check.C) 
 	config.Set("docker:scheduler:max-used-memory", 0.8)
 	config.Unset("docker:auto-scale:max-container-count")
 	defer config.Unset("docker:scheduler:max-used-memory")
+	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
+	defer config.Unset("docker:scheduler:total-memory-metadata")
 	_, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 4}},
 		app:         s.appInstance,
@@ -1167,10 +1176,9 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedLockedApp(c *check.C) 
 	c.Assert(err, check.IsNil)
 	c.Assert(locked, check.Equals, true)
 	a := autoScaleConfig{
-		done:                make(chan bool),
-		provisioner:         s.p,
-		groupByMetadata:     "pool",
-		totalMemoryMetadata: "totalMem",
+		done:            make(chan bool),
+		provisioner:     s.p,
+		groupByMetadata: "pool",
 	}
 	a.runOnce()
 	c.Assert(s.S.logBuf.String(), check.Matches, `(?s).*\[node autoscale\].*unable to lock app myapp, aborting.*`)
@@ -1183,6 +1191,8 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedLockedApp(c *check.C) 
 }
 
 func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
+	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
+	defer config.Unset("docker:scheduler:total-memory-metadata")
 	healerConst := newMultiHealerIaaSConstructor(
 		[]string{"[::]", "[::1]"},
 		[]int{urlPort(s.node2.URL()), urlPort(s.node3.URL())},
@@ -1250,10 +1260,9 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	a := autoScaleConfig{
-		done:                make(chan bool),
-		provisioner:         s.p,
-		groupByMetadata:     "pool",
-		totalMemoryMetadata: "totalMem",
+		done:            make(chan bool),
+		provisioner:     s.p,
+		groupByMetadata: "pool",
 	}
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)

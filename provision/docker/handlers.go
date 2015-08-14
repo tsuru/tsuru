@@ -42,9 +42,35 @@ func init() {
 	api.RegisterHandler("/docker/healing", "GET", api.AdminRequiredHandler(healingHistoryHandler))
 	api.RegisterHandler("/docker/autoscale", "GET", api.AdminRequiredHandler(autoScaleHistoryHandler))
 	api.RegisterHandler("/docker/autoscale/run", "POST", api.AdminRequiredHandler(autoScaleRunHandler))
+	api.RegisterHandler("/docker/autoscale/rules", "GET", api.AdminRequiredHandler(autoScaleListRules))
+	api.RegisterHandler("/docker/autoscale/rules", "POST", api.AdminRequiredHandler(autoScaleSetRule))
+	api.RegisterHandler("/docker/autoscale/rules/", "DELETE", api.AdminRequiredHandler(autoScaleDeleteRule))
+	api.RegisterHandler("/docker/autoscale/rules/{id}", "DELETE", api.AdminRequiredHandler(autoScaleDeleteRule))
 	api.RegisterHandler("/docker/bs/upgrade", "POST", api.AdminRequiredHandler(bsUpgradeHandler))
 	api.RegisterHandler("/docker/bs/env", "POST", api.AdminRequiredHandler(bsEnvSetHandler))
 	api.RegisterHandler("/docker/bs", "GET", api.AdminRequiredHandler(bsConfigGetHandler))
+}
+
+func autoScaleListRules(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	rules, err := listAutoScaleRules()
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(w).Encode(&rules)
+}
+
+func autoScaleSetRule(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	var rule autoScaleRule
+	err := json.NewDecoder(r.Body).Decode(&rule)
+	if err != nil {
+		return err
+	}
+	return rule.update()
+}
+
+func autoScaleDeleteRule(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	ruleID := r.URL.Query().Get(":id")
+	return deleteAutoScaleRule(ruleID)
 }
 
 func validateNodeAddress(address string) error {

@@ -6,6 +6,7 @@ package docker
 
 import (
 	"fmt"
+	"sort"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
@@ -20,6 +21,48 @@ type autoScaleRule struct {
 	ScaleDownRatio    float32
 	PreventRebalance  bool
 	MaxMemoryRatio    float32
+	Error             string `bson:"-"`
+}
+
+type autoScaleRuleList []autoScaleRule
+
+func (l autoScaleRuleList) Len() int           { return len(l) }
+func (l autoScaleRuleList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
+func (l autoScaleRuleList) Less(i, j int) bool { return l[i].MetadataFilter < l[j].MetadataFilter }
+
+func (r *autoScaleRule) normalize() error {
+	if r.ScaleDownRatio == 0.0 {
+		r.ScaleDownRatio = 1.333
+	} else if r.ScaleDownRatio <= 1.0 {
+		err := fmt.Errorf("invalid rule, scale down ratio needs to be greater than 1.0, got %f", r.ScaleDownRatio)
+		r.Error = err.Error()
+		return err
+	}
+	if r.MaxMemoryRatio == 0.0 {
+		maxMemoryRatio, _ := config.GetFloat("docker:scheduler:max-used-memory")
+		r.MaxMemoryRatio = float32(maxMemoryRatio)
+	}
+	totalMemoryMetadata, _ := config.GetString("docker:scheduler:total-memory-metadata")
+	if r.Enabled && r.MaxContainerCount <= 0 && (totalMemoryMetadata == "" || r.MaxMemoryRatio <= 0) {
+		err := fmt.Errorf("invalid rule, either memory information or max container count must be set")
+		r.Error = err.Error()
+		return err
+	}
+	return nil
+}
+
+func (r *autoScaleRule) update() error {
+	coll, err := autoScaleRuleCollection()
+	if err != nil {
+		return err
+	}
+	defer coll.Close()
+	err = r.normalize()
+	if err != nil {
+		return err
+	}
+	_, err = coll.UpsertId(r.MetadataFilter, r)
+	return err
 }
 
 func autoScaleRuleCollection() (*storage.Collection, error) {
@@ -34,14 +77,47 @@ func autoScaleRuleCollection() (*storage.Collection, error) {
 	return conn.Collection(fmt.Sprintf("%s_auto_scale_rule", name)), nil
 }
 
+func listAutoScaleRules() ([]autoScaleRule, error) {
+	coll, err := autoScaleRuleCollection()
+	if err != nil {
+		return nil, err
+	}
+	defer coll.Close()
+	var rules []autoScaleRule
+	err = coll.Find(nil).All(&rules)
+	if err != nil {
+		return nil, err
+	}
+	legacyRule := legacyAutoScaleRule()
+	for i := range rules {
+		if legacyRule != nil && rules[i].MetadataFilter == legacyRule.MetadataFilter {
+			legacyRule = nil
+		}
+		rules[i].normalize()
+	}
+	if legacyRule != nil {
+		legacyRule.normalize()
+		rules = append(rules, *legacyRule)
+	}
+	sort.Sort(autoScaleRuleList(rules))
+	return rules, err
+}
+
+func deleteAutoScaleRule(metadataFilter string) error {
+	coll, err := autoScaleRuleCollection()
+	if err != nil {
+		return err
+	}
+	defer coll.Close()
+	return coll.RemoveId(metadataFilter)
+}
+
 func legacyAutoScaleRule() *autoScaleRule {
 	metadataFilter, _ := config.GetString("docker:auto-scale:metadata-filter")
 	maxContainerCount, _ := config.GetInt("docker:auto-scale:max-container-count")
 	scaleDownRatio, _ := config.GetFloat("docker:auto-scale:scale-down-ratio")
 	preventRebalance, _ := config.GetBool("docker:auto-scale:prevent-rebalance")
-	maxUsedMemory, _ := config.GetFloat("docker:scheduler:max-used-memory")
 	return &autoScaleRule{
-		MaxMemoryRatio:    float32(maxUsedMemory),
 		MaxContainerCount: maxContainerCount,
 		MetadataFilter:    metadataFilter,
 		ScaleDownRatio:    float32(scaleDownRatio),
@@ -68,14 +144,9 @@ func autoScaleRuleForMetadata(metadataFilter string) (*autoScaleRule, error) {
 	if err != nil {
 		return nil, err
 	}
-	if rule.ScaleDownRatio == 0.0 {
-		rule.ScaleDownRatio = 1.333
-	} else if rule.ScaleDownRatio <= 1.0 {
-		return nil, fmt.Errorf("invalid rule, scale down ratio needs to be greater than 1.0, got %f", rule.ScaleDownRatio)
-	}
-	if rule.MaxMemoryRatio == 0.0 {
-		maxMemoryRatio, _ := config.GetFloat("docker:scheduler:max-used-memory")
-		rule.MaxMemoryRatio = float32(maxMemoryRatio)
+	err = rule.normalize()
+	if err != nil {
+		return nil, err
 	}
 	return &rule, nil
 }

@@ -1112,3 +1112,161 @@ func (s *HandlersSuite) TestBsUpgradeHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(conf.Image, check.Equals, "")
 }
+
+func (s *HandlersSuite) TestAutoScaleListRulesEmpty(c *check.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/docker/autoscale/rules", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var rules []autoScaleRule
+	err = json.Unmarshal(recorder.Body.Bytes(), &rules)
+	c.Assert(err, check.IsNil)
+	c.Assert(rules, check.DeepEquals, []autoScaleRule{
+		{Enabled: true, ScaleDownRatio: 1.333, Error: "invalid rule, either memory information or max container count must be set"},
+	})
+}
+
+func (s *HandlersSuite) TestAutoScaleListRulesWithLegacyConfig(c *check.C) {
+	config.Set("docker:auto-scale:metadata-filter", "mypool")
+	config.Set("docker:auto-scale:max-container-count", 4)
+	config.Set("docker:auto-scale:scale-down-ratio", 1.5)
+	config.Set("docker:auto-scale:prevent-rebalance", true)
+	config.Set("docker:scheduler:max-used-memory", 0.9)
+	defer config.Unset("docker:auto-scale:metadata-filter")
+	defer config.Unset("docker:auto-scale:max-container-count")
+	defer config.Unset("docker:auto-scale:scale-down-ratio")
+	defer config.Unset("docker:auto-scale:prevent-rebalance")
+	defer config.Unset("docker:scheduler:max-used-memory")
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/docker/autoscale/rules", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var rules []autoScaleRule
+	err = json.Unmarshal(recorder.Body.Bytes(), &rules)
+	c.Assert(err, check.IsNil)
+	c.Assert(rules, check.DeepEquals, []autoScaleRule{
+		{MetadataFilter: "mypool", Enabled: true, MaxContainerCount: 4, ScaleDownRatio: 1.5, PreventRebalance: true, MaxMemoryRatio: 0.9},
+	})
+}
+
+func (s *HandlersSuite) TestAutoScaleListRulesWithDBConfig(c *check.C) {
+	config.Set("docker:auto-scale:scale-down-ratio", 2.0)
+	defer config.Unset("docker:auto-scale:max-container-count")
+	config.Set("docker:scheduler:total-memory-metadata", "maxmemory")
+	defer config.Unset("docker:scheduler:total-memory-metadata")
+	rules := []autoScaleRule{
+		{MetadataFilter: "", Enabled: true, MaxContainerCount: 10, ScaleDownRatio: 1.2},
+		{MetadataFilter: "pool1", Enabled: true, ScaleDownRatio: 1.1, MaxMemoryRatio: 2.0},
+	}
+	for _, r := range rules {
+		err := r.update()
+		c.Assert(err, check.IsNil)
+	}
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/docker/autoscale/rules", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var reqRules []autoScaleRule
+	err = json.Unmarshal(recorder.Body.Bytes(), &reqRules)
+	c.Assert(err, check.IsNil)
+	c.Assert(reqRules, check.DeepEquals, rules)
+}
+
+func (s *HandlersSuite) TestAutoScaleSetRule(c *check.C) {
+	config.Set("docker:scheduler:total-memory-metadata", "maxmemory")
+	defer config.Unset("docker:scheduler:total-memory-metadata")
+	rule := autoScaleRule{MetadataFilter: "pool1", Enabled: true, ScaleDownRatio: 1.1, MaxMemoryRatio: 2.0}
+	data, err := json.Marshal(rule)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("POST", "/docker/autoscale/rules", bytes.NewBuffer(data))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	rules, err := listAutoScaleRules()
+	c.Assert(err, check.IsNil)
+	c.Assert(rules, check.DeepEquals, []autoScaleRule{
+		{Enabled: true, ScaleDownRatio: 1.333, Error: "invalid rule, either memory information or max container count must be set"},
+		rule,
+	})
+}
+
+func (s *HandlersSuite) TestAutoScaleSetRuleInvalidRule(c *check.C) {
+	rule := autoScaleRule{MetadataFilter: "pool1", Enabled: true, ScaleDownRatio: 0.9, MaxMemoryRatio: 2.0}
+	data, err := json.Marshal(rule)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("POST", "/docker/autoscale/rules", bytes.NewBuffer(data))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusInternalServerError)
+	c.Assert(recorder.Body.String(), check.Matches, "(?s).*invalid rule, scale down ratio needs to be greater than 1.0, got 0.9.*")
+}
+
+func (s *HandlersSuite) TestAutoScaleSetRuleExisting(c *check.C) {
+	rule := autoScaleRule{MetadataFilter: "", Enabled: true, ScaleDownRatio: 1.1, MaxContainerCount: 5}
+	err := rule.update()
+	c.Assert(err, check.IsNil)
+	rule.MaxContainerCount = 9
+	data, err := json.Marshal(rule)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("POST", "/docker/autoscale/rules", bytes.NewBuffer(data))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	rules, err := listAutoScaleRules()
+	c.Assert(err, check.IsNil)
+	c.Assert(rules, check.DeepEquals, []autoScaleRule{rule})
+}
+
+func (s *HandlersSuite) TestAutoScaleDeleteRule(c *check.C) {
+	rule := autoScaleRule{MetadataFilter: "", Enabled: true, ScaleDownRatio: 1.1, MaxContainerCount: 5}
+	err := rule.update()
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("DELETE", "/docker/autoscale/rules/", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	rules, err := listAutoScaleRules()
+	c.Assert(err, check.IsNil)
+	c.Assert(rules, check.DeepEquals, []autoScaleRule{
+		{Enabled: true, ScaleDownRatio: 1.333, Error: "invalid rule, either memory information or max container count must be set"},
+	})
+}
+
+func (s *HandlersSuite) TestAutoScaleDeleteRuleNonDefault(c *check.C) {
+	rule := autoScaleRule{MetadataFilter: "mypool", Enabled: true, ScaleDownRatio: 1.1, MaxContainerCount: 5}
+	err := rule.update()
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("DELETE", "/docker/autoscale/rules/mypool", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	rules, err := listAutoScaleRules()
+	c.Assert(err, check.IsNil)
+	c.Assert(rules, check.DeepEquals, []autoScaleRule{
+		{Enabled: true, ScaleDownRatio: 1.333, Error: "invalid rule, either memory information or max container count must be set"},
+	})
+}
