@@ -63,8 +63,14 @@ func (s *S) TestMoveContainers(c *check.C) {
 	c.Assert(len(containers), check.Equals, 2)
 	parts := strings.Split(buf.String(), "\n")
 	c.Assert(parts[0], check.Matches, ".*Moving 2 units.*")
-	c.Assert(parts[1], check.Matches, ".*Moving unit.*for.*myapp.*localhost.*127.0.0.1.*")
-	c.Assert(parts[2], check.Matches, ".*Moving unit.*for.*myapp.*localhost.*127.0.0.1.*")
+	var matches int
+	movingRegexp := regexp.MustCompile(`.*Moving unit.*for.*myapp.*localhost.*127.0.0.1.*`)
+	for _, line := range parts[1:] {
+		if movingRegexp.MatchString(line) {
+			matches++
+		}
+	}
+	c.Assert(matches, check.Equals, 2)
 }
 
 func (s *S) TestMoveContainersUnknownDest(c *check.C) {
