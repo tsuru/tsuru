@@ -101,6 +101,7 @@ func (s *S) TestCluster(c *check.C) {
 func (s *S) TestCollection(c *check.C) {
 	var p FakeDockerProvisioner
 	collection := p.Collection()
+	defer collection.Close()
 	c.Assert(collection.Name, check.Equals, "fake_docker_provisioner")
 }
 
