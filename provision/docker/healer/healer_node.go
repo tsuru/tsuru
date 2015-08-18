@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package docker
+package healer
 
 import (
 	"bytes"
@@ -14,19 +14,37 @@ import (
 	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/queue"
 )
 
-type nodeHealer struct {
+type NodeHealer struct {
 	sync.Mutex
 	locks                 map[string]*sync.Mutex
-	provisioner           *dockerProvisioner
+	provisioner           DockerProvisioner
 	disabledTime          time.Duration
 	waitTimeNewMachine    time.Duration
 	failuresBeforeHealing int
 }
 
-func (h *nodeHealer) healNode(node *cluster.Node) (cluster.Node, error) {
+type NodeHealerArgs struct {
+	Provisioner           DockerProvisioner
+	DisabledTime          time.Duration
+	WaitTimeNewMachine    time.Duration
+	FailuresBeforeHealing int
+}
+
+func NewNodeHealer(args NodeHealerArgs) *NodeHealer {
+	return &NodeHealer{
+		locks:                 make(map[string]*sync.Mutex),
+		provisioner:           args.Provisioner,
+		disabledTime:          args.DisabledTime,
+		waitTimeNewMachine:    args.WaitTimeNewMachine,
+		failuresBeforeHealing: args.FailuresBeforeHealing,
+	}
+}
+
+func (h *NodeHealer) healNode(node *cluster.Node) (cluster.Node, error) {
 	emptyNode := cluster.Node{}
 	failingAddr := node.Address
 	nodeMetadata := node.CleanMetadata()
@@ -65,7 +83,7 @@ func (h *nodeHealer) healNode(node *cluster.Node) (cluster.Node, error) {
 		"machine":  machine.Id,
 		"metadata": createdNode.Metadata,
 	}
-	job, err := q.EnqueueWait(runBsTaskName, jobParams, h.waitTimeNewMachine)
+	job, err := q.EnqueueWait(bs.QueueTaskName, jobParams, h.waitTimeNewMachine)
 	if err == nil {
 		_, err = job.Result()
 	}
@@ -75,7 +93,7 @@ func (h *nodeHealer) healNode(node *cluster.Node) (cluster.Node, error) {
 		return emptyNode, fmt.Errorf("Can't auto-heal after %d failures for node %s: error waiting for the bs task: %s", failures, failingHost, err.Error())
 	}
 	var buf bytes.Buffer
-	err = h.provisioner.moveContainers(failingHost, "", &buf)
+	err = h.provisioner.MoveContainers(failingHost, "", &buf)
 	if err != nil {
 		log.Errorf("Unable to move containers, skipping containers healing %q -> %q: %s: %s", failingHost, machine.Address, err.Error(), buf.String())
 	}
@@ -91,7 +109,7 @@ func (h *nodeHealer) healNode(node *cluster.Node) (cluster.Node, error) {
 	return createdNode, nil
 }
 
-func (h *nodeHealer) HandleError(node *cluster.Node) time.Duration {
+func (h *NodeHealer) HandleError(node *cluster.Node) time.Duration {
 	h.Lock()
 	if h.locks[node.Address] == nil {
 		h.locks[node.Address] = &sync.Mutex{}
@@ -124,7 +142,7 @@ func (h *nodeHealer) HandleError(node *cluster.Node) time.Duration {
 		return h.disabledTime
 	}
 	log.Errorf("Initiating healing process for node %q after %d failures.", node.Address, failures)
-	evt, err := newHealingEvent(*node)
+	evt, err := NewHealingEvent(*node)
 	if err != nil {
 		log.Errorf("Error trying to insert healing event: %s", err.Error())
 		return h.disabledTime
@@ -133,7 +151,7 @@ func (h *nodeHealer) HandleError(node *cluster.Node) time.Duration {
 	if err != nil {
 		log.Errorf("Error healing: %s", err.Error())
 	}
-	err = evt.update(createdNode, err)
+	err = evt.Update(createdNode, err)
 	if err != nil {
 		log.Errorf("Error trying to update healing event: %s", err.Error())
 	}
@@ -143,13 +161,13 @@ func (h *nodeHealer) HandleError(node *cluster.Node) time.Duration {
 	return h.disabledTime
 }
 
-func (h *nodeHealer) Shutdown() {
+func (h *NodeHealer) Shutdown() {
 	h.Lock()
 	for _, lock := range h.locks {
 		lock.Lock()
 	}
 }
 
-func (h *nodeHealer) String() string {
+func (h *NodeHealer) String() string {
 	return "node healer"
 }

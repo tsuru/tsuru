@@ -5,29 +5,54 @@
 package dockertest
 
 import (
+	"fmt"
+	"io"
+	"net"
+	"net/url"
 	"strings"
+	"sync"
 
 	"github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/docker/container"
+	"gopkg.in/mgo.v2/bson"
 )
 
+type ContainerMoving struct {
+	ContainerID string
+	HostFrom    string
+	HostTo      string
+}
+
 type FakeDockerProvisioner struct {
-	storage    *cluster.MapStorage
-	cluster    *cluster.Cluster
-	authConfig docker.AuthConfiguration
-	pushes     []Push
-	servers    []*testing.DockerServer
-	pushErrors chan error
+	containers      map[string][]container.Container
+	containersMut   sync.Mutex
+	queries         []bson.M
+	storage         *cluster.MapStorage
+	cluster         *cluster.Cluster
+	authConfig      docker.AuthConfiguration
+	pushes          []Push
+	servers         []*testing.DockerServer
+	pushErrors      chan error
+	moveErrors      chan error
+	preparedErrors  chan error
+	preparedResults chan []container.Container
+	movings         []ContainerMoving
 }
 
 func NewFakeDockerProvisioner(servers ...string) (*FakeDockerProvisioner, error) {
 	var err error
 	p := FakeDockerProvisioner{
-		storage:    &cluster.MapStorage{},
-		pushErrors: make(chan error, 10),
+		storage:         &cluster.MapStorage{},
+		pushErrors:      make(chan error, 10),
+		moveErrors:      make(chan error, 10),
+		preparedErrors:  make(chan error, 10),
+		preparedResults: make(chan []container.Container, 10),
+		containers:      make(map[string][]container.Container),
 	}
 	nodes := make([]cluster.Node, len(servers))
 	for i, server := range servers {
@@ -112,4 +137,233 @@ func (p *FakeDockerProvisioner) Pushes() []Push {
 
 func (p *FakeDockerProvisioner) RegistryAuthConfig() docker.AuthConfiguration {
 	return p.authConfig
+}
+
+func (p *FakeDockerProvisioner) SetContainers(host string, containers []container.Container) {
+	p.containersMut.Lock()
+	defer p.containersMut.Unlock()
+	dst := make([]container.Container, len(containers))
+	for i, container := range containers {
+		container.HostAddr = host
+		dst[i] = container
+	}
+	p.containers[host] = dst
+}
+
+func (p *FakeDockerProvisioner) Containers(host string) []container.Container {
+	p.containersMut.Lock()
+	defer p.containersMut.Unlock()
+	return p.containers[host]
+}
+
+func (p *FakeDockerProvisioner) AllContainers() []container.Container {
+	p.containersMut.Lock()
+	defer p.containersMut.Unlock()
+	var result []container.Container
+	for _, containers := range p.containers {
+		for _, container := range containers {
+			result = append(result, container)
+		}
+	}
+	return result
+}
+
+func (p *FakeDockerProvisioner) Movings() []ContainerMoving {
+	p.containersMut.Lock()
+	defer p.containersMut.Unlock()
+	return p.movings
+}
+
+func (p *FakeDockerProvisioner) FailMove(errs ...error) {
+	for _, err := range errs {
+		p.moveErrors <- err
+	}
+}
+
+func (p *FakeDockerProvisioner) MoveOneContainer(cont container.Container, toHost string, errors chan error, wg *sync.WaitGroup, w io.Writer, locker container.AppLocker) container.Container {
+	select {
+	case err := <-p.moveErrors:
+		errors <- err
+		return container.Container{}
+	default:
+	}
+	p.containersMut.Lock()
+	defer p.containersMut.Unlock()
+	cont, err := p.moveOneContainer(cont, toHost)
+	if err != nil {
+		errors <- err
+	}
+	return cont
+}
+
+func (p *FakeDockerProvisioner) moveOneContainer(cont container.Container, toHost string) (container.Container, error) {
+	cont, index, err := p.findContainer(cont.ID)
+	if err != nil {
+		return cont, err
+	}
+	if cont.HostAddr == toHost {
+		return cont, nil
+	}
+	if toHost == "" {
+		for host := range p.containers {
+			if host != cont.HostAddr {
+				toHost = host
+				break
+			}
+		}
+	}
+	originHost := cont.HostAddr
+	moving := ContainerMoving{
+		ContainerID: cont.ID,
+		HostFrom:    originHost,
+		HostTo:      toHost,
+	}
+	p.movings = append(p.movings, moving)
+	if toHost == "" {
+		cont.ID += "-recreated"
+		p.containers[originHost][index] = cont
+		return cont, nil
+	}
+	cont.HostAddr = toHost
+	cont.ID += "-moved"
+	last := len(p.containers[originHost]) - 1
+	p.containers[originHost][index] = p.containers[originHost][last]
+	p.containers[originHost] = p.containers[originHost][:last]
+	p.containers[cont.HostAddr] = append(p.containers[cont.HostAddr], cont)
+	return cont, nil
+}
+
+func (p *FakeDockerProvisioner) MoveContainers(fromHost, toHost string, w io.Writer) error {
+	p.containersMut.Lock()
+	defer p.containersMut.Unlock()
+	containers, ok := p.containers[fromHost]
+	if !ok {
+		return fmt.Errorf("host not found: %s", fromHost)
+	}
+	for _, container := range containers {
+		_, err := p.moveOneContainer(container, toHost)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (p *FakeDockerProvisioner) HandleMoveErrors(errors chan error, w io.Writer) error {
+	select {
+	case err := <-errors:
+		return err
+	default:
+		return nil
+	}
+}
+
+func (p *FakeDockerProvisioner) GetContainer(id string) (*container.Container, error) {
+	container, _, err := p.findContainer(id)
+	return &container, err
+}
+
+// PrepareListResult prepares a result or a failure in the next ListContainers
+// call. If err is not nil, it will prepare a failure. Otherwise it will
+// prepare a valid result with the provided list of containers.
+func (p *FakeDockerProvisioner) PrepareListResult(containers []container.Container, err error) {
+	if err != nil {
+		p.preparedErrors <- err
+	} else if len(containers) > 0 {
+		p.preparedResults <- containers
+	}
+}
+
+func (p *FakeDockerProvisioner) ListContainers(query bson.M) ([]container.Container, error) {
+	p.queries = append(p.queries, query)
+	select {
+	case containers := <-p.preparedResults:
+		return containers, nil
+	case err := <-p.preparedErrors:
+		return nil, err
+	default:
+	}
+	return nil, nil
+}
+
+func (p *FakeDockerProvisioner) Queries() []bson.M {
+	return p.queries
+}
+
+type StartContainersArgs struct {
+	Endpoint  string
+	App       provision.App
+	Amount    map[string]int
+	Image     string
+	PullImage bool
+}
+
+// StartContainers starts the provided amount of containers in the provided
+// endpoint.
+//
+// The amount is specified using a map of processes. The started containers
+// will be both returned and stored internally.
+func (p *FakeDockerProvisioner) StartContainers(args StartContainersArgs) ([]container.Container, error) {
+	if args.PullImage {
+		err := p.Cluster().PullImage(docker.PullImageOptions{Repository: args.Image}, p.RegistryAuthConfig(), args.Endpoint)
+		if err != nil {
+			return nil, err
+		}
+	}
+	opts := docker.CreateContainerOptions{
+		Config: &docker.Config{
+			Image: args.Image,
+		},
+	}
+	hostAddr := urlToHost(args.Endpoint)
+	createdContainers := make([]container.Container, 0, len(args.Amount))
+	for processName, amount := range args.Amount {
+		opts.Config.Cmd = []string{processName}
+		for i := 0; i < amount; i++ {
+			_, cont, err := p.Cluster().CreateContainer(opts, args.Endpoint)
+			if err != nil {
+				return nil, err
+			}
+			createdContainers = append(createdContainers, container.Container{
+				ID:            cont.ID,
+				AppName:       args.App.GetName(),
+				ProcessName:   processName,
+				Type:          args.App.GetPlatform(),
+				Status:        provision.StatusCreated.String(),
+				HostAddr:      hostAddr,
+				Version:       "v1",
+				Image:         args.Image,
+				User:          "root",
+				BuildingImage: args.Image,
+				Routable:      true,
+			})
+		}
+	}
+	p.containersMut.Lock()
+	defer p.containersMut.Unlock()
+	p.containers[hostAddr] = append(p.containers[hostAddr], createdContainers...)
+	return createdContainers, nil
+}
+
+func (p *FakeDockerProvisioner) findContainer(id string) (container.Container, int, error) {
+	for _, containers := range p.containers {
+		for i, container := range containers {
+			if container.ID == id {
+				return container, i, nil
+			}
+		}
+	}
+	return container.Container{}, -1, &docker.NoSuchContainer{ID: id}
+}
+
+func urlToHost(urlStr string) string {
+	url, _ := url.Parse(urlStr)
+	if url == nil || url.Host == "" {
+		return urlStr
+	}
+	host, _, _ := net.SplitHostPort(url.Host)
+	if host == "" {
+		return url.Host
+	}
+	return host
 }

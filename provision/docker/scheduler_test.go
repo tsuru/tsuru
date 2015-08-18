@@ -206,7 +206,7 @@ func (s *S) TestSchedulerScheduleNoName(c *check.C) {
 	node, err := scheduler.Schedule(clusterInstance, opts, []string{a1.Name, "web"})
 	c.Assert(err, check.IsNil)
 	c.Check(node.Address, check.Equals, server1.URL())
-	container, err := s.p.getContainer(cont1.ID)
+	container, err := s.p.GetContainer(cont1.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(container.HostAddr, check.Equals, "")
 }

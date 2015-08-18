@@ -33,6 +33,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/provision/docker/container"
+	"github.com/tsuru/tsuru/provision/docker/healer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
@@ -448,7 +449,7 @@ func (s *HandlersSuite) TestFixContainerHandler(c *check.C) {
 	recorder := httptest.NewRecorder()
 	err = fixContainersHandler(recorder, request, nil)
 	c.Assert(err, check.IsNil)
-	cont, err := p.getContainer("9930c24f1c4x")
+	cont, err := p.GetContainer("9930c24f1c4x")
 	c.Assert(err, check.IsNil)
 	c.Assert(cont.IP, check.Equals, "127.0.0.9")
 	c.Assert(cont.HostPort, check.Equals, "9999")
@@ -740,13 +741,13 @@ func (s *S) TestRebalanceContainersDryBodyHandler(c *check.C) {
 }
 
 func (s *HandlersSuite) TestHealingHistoryHandler(c *check.C) {
-	evt1, err := newHealingEvent(cluster.Node{Address: "addr1"})
+	evt1, err := healer.NewHealingEvent(cluster.Node{Address: "addr1"})
 	c.Assert(err, check.IsNil)
-	evt1.update(cluster.Node{Address: "addr2"}, nil)
-	evt2, err := newHealingEvent(cluster.Node{Address: "addr3"})
-	evt2.update(cluster.Node{}, errors.New("some error"))
-	evt3, err := newHealingEvent(container.Container{ID: "1234"})
-	evt3.update(container.Container{ID: "9876"}, nil)
+	evt1.Update(cluster.Node{Address: "addr2"}, nil)
+	evt2, err := healer.NewHealingEvent(cluster.Node{Address: "addr3"})
+	evt2.Update(cluster.Node{}, errors.New("some error"))
+	evt3, err := healer.NewHealingEvent(container.Container{ID: "1234"})
+	evt3.Update(container.Container{ID: "9876"}, nil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/docker/healing", nil)
 	c.Assert(err, check.IsNil)
@@ -755,7 +756,7 @@ func (s *HandlersSuite) TestHealingHistoryHandler(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	body := recorder.Body.Bytes()
-	healings := []healingEvent{}
+	var healings []healer.HealingEvent
 	err = json.Unmarshal(body, &healings)
 	c.Assert(err, check.IsNil)
 	c.Assert(healings, check.HasLen, 3)
@@ -779,13 +780,13 @@ func (s *HandlersSuite) TestHealingHistoryHandler(c *check.C) {
 }
 
 func (s *HandlersSuite) TestHealingHistoryHandlerFilterContainer(c *check.C) {
-	evt1, err := newHealingEvent(cluster.Node{Address: "addr1"})
+	evt1, err := healer.NewHealingEvent(cluster.Node{Address: "addr1"})
 	c.Assert(err, check.IsNil)
-	evt1.update(cluster.Node{Address: "addr2"}, nil)
-	evt2, err := newHealingEvent(cluster.Node{Address: "addr3"})
-	evt2.update(cluster.Node{}, errors.New("some error"))
-	evt3, err := newHealingEvent(container.Container{ID: "1234"})
-	evt3.update(container.Container{ID: "9876"}, nil)
+	evt1.Update(cluster.Node{Address: "addr2"}, nil)
+	evt2, err := healer.NewHealingEvent(cluster.Node{Address: "addr3"})
+	evt2.Update(cluster.Node{}, errors.New("some error"))
+	evt3, err := healer.NewHealingEvent(container.Container{ID: "1234"})
+	evt3.Update(container.Container{ID: "9876"}, nil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/docker/healing?filter=container", nil)
 	c.Assert(err, check.IsNil)
@@ -794,7 +795,7 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterContainer(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	body := recorder.Body.Bytes()
-	healings := []healingEvent{}
+	var healings []healer.HealingEvent
 	err = json.Unmarshal(body, &healings)
 	c.Assert(err, check.IsNil)
 	c.Assert(healings, check.HasLen, 1)
@@ -806,13 +807,13 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterContainer(c *check.C) {
 }
 
 func (s *HandlersSuite) TestHealingHistoryHandlerFilterNode(c *check.C) {
-	evt1, err := newHealingEvent(cluster.Node{Address: "addr1"})
+	evt1, err := healer.NewHealingEvent(cluster.Node{Address: "addr1"})
 	c.Assert(err, check.IsNil)
-	evt1.update(cluster.Node{Address: "addr2"}, nil)
-	evt2, err := newHealingEvent(cluster.Node{Address: "addr3"})
-	evt2.update(cluster.Node{}, errors.New("some error"))
-	evt3, err := newHealingEvent(container.Container{ID: "1234"})
-	evt3.update(container.Container{ID: "9876"}, nil)
+	evt1.Update(cluster.Node{Address: "addr2"}, nil)
+	evt2, err := healer.NewHealingEvent(cluster.Node{Address: "addr3"})
+	evt2.Update(cluster.Node{}, errors.New("some error"))
+	evt3, err := healer.NewHealingEvent(container.Container{ID: "1234"})
+	evt3.Update(container.Container{ID: "9876"}, nil)
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/docker/healing?filter=node", nil)
 	c.Assert(err, check.IsNil)
@@ -821,7 +822,7 @@ func (s *HandlersSuite) TestHealingHistoryHandlerFilterNode(c *check.C) {
 	server.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	body := recorder.Body.Bytes()
-	healings := []healingEvent{}
+	var healings []healer.HealingEvent
 	err = json.Unmarshal(body, &healings)
 	c.Assert(err, check.IsNil)
 	c.Assert(healings, check.HasLen, 2)
@@ -839,8 +840,8 @@ func (s *HandlersSuite) TestAutoScaleHistoryHandler(c *check.C) {
 	err = evt1.finish(nil)
 	c.Assert(err, check.IsNil)
 	evt1.logMsg("my evt1")
-	evt2, err := newAutoScaleEvent("pooly", nil)
 	time.Sleep(100 * time.Millisecond)
+	evt2, err := newAutoScaleEvent("pooly", nil)
 	c.Assert(err, check.IsNil)
 	err = evt2.update("rebalance", "reason 2")
 	c.Assert(err, check.IsNil)

@@ -213,7 +213,7 @@ func (s *S) TestGetContainerPartialIdAmbiguous(c *check.C) {
 	containerIds := []string{"container-1", "container-2"}
 	cleanupFunc := s.getContainerCollection("some-app", containerIds...)
 	defer cleanupFunc()
-	_, err := s.p.getContainer("container")
+	_, err := s.p.GetContainer("container")
 	c.Assert(err, check.Equals, errAmbiguousContainer)
 }
 
@@ -221,7 +221,7 @@ func (s *S) TestGetContainerPartialIdNotFound(c *check.C) {
 	containerIds := []string{"container-1", "container-2"}
 	cleanupFunc := s.getContainerCollection("some-app", containerIds...)
 	defer cleanupFunc()
-	_, err := s.p.getContainer("container-9")
+	_, err := s.p.GetContainer("container-9")
 	c.Assert(err, check.Equals, provision.ErrUnitNotFound)
 }
 
@@ -229,7 +229,7 @@ func (s *S) TestGetContainerPartialId(c *check.C) {
 	containerIds := []string{"container-a1", "container-b2"}
 	cleanupFunc := s.getContainerCollection("some-app", containerIds...)
 	defer cleanupFunc()
-	cont, err := s.p.getContainer("container-a")
+	cont, err := s.p.GetContainer("container-a")
 	c.Assert(err, check.IsNil)
 	c.Assert(cont.ID, check.Equals, "container-a1")
 }

@@ -90,7 +90,7 @@ func (s *S) TestUpdateContainerInDBForward(c *check.C) {
 	}}}
 	r, err := updateContainerInDB.Forward(context)
 	c.Assert(r, check.FitsTypeOf, container.Container{})
-	retrieved, err := s.p.getContainer(cont.ID)
+	retrieved, err := s.p.GetContainer(cont.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(retrieved.ID, check.Equals, cont.ID)
 }
@@ -534,7 +534,7 @@ func (s *S) TestProvisionAddUnitsToHostBackward(c *check.C) {
 	}
 	context := action.BWContext{FWResult: []container.Container{cont}, Params: []interface{}{args}}
 	provisionAddUnitsToHost.Backward(context)
-	_, err = s.p.getContainer(cont.ID)
+	_, err = s.p.GetContainer(cont.ID)
 	c.Assert(err, check.Equals, provision.ErrUnitNotFound)
 }
 
@@ -563,7 +563,7 @@ func (s *S) TestProvisionRemoveOldUnitsForward(c *check.C) {
 	c.Assert(err, check.IsNil)
 	resultContainers := result.([]container.Container)
 	c.Assert(resultContainers, check.DeepEquals, []container.Container{})
-	_, err = s.p.getContainer(cont.ID)
+	_, err = s.p.GetContainer(cont.ID)
 	c.Assert(err, check.NotNil)
 }
 

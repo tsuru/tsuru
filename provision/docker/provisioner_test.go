@@ -816,11 +816,11 @@ func (s *S) TestProvisionerRemoveUnits(c *check.C) {
 	}
 	err = s.p.RemoveUnits(papp, 2, "web", nil)
 	c.Assert(err, check.IsNil)
-	_, err = s.p.getContainer(conts[0].ID)
+	_, err = s.p.GetContainer(conts[0].ID)
 	c.Assert(err, check.NotNil)
-	_, err = s.p.getContainer(conts[1].ID)
+	_, err = s.p.GetContainer(conts[1].ID)
 	c.Assert(err, check.IsNil)
-	_, err = s.p.getContainer(conts[2].ID)
+	_, err = s.p.GetContainer(conts[2].ID)
 	c.Assert(err, check.NotNil)
 	c.Assert(s.p.scheduler.ignoredContainers, check.IsNil)
 	c.Assert(routertest.FakeRouter.HasRoute(a1.Name, conts[0].Address().String()), check.Equals, false)
@@ -883,11 +883,11 @@ func (s *S) TestProvisionerRemoveUnitsFailRemoveOldRoute(c *check.C) {
 	routertest.FakeRouter.FailForIp(conts[2].Address().String())
 	err = s.p.RemoveUnits(papp, 2, "web", nil)
 	c.Assert(err, check.ErrorMatches, "error removing routes, units weren't removed: Forced failure")
-	_, err = s.p.getContainer(conts[0].ID)
+	_, err = s.p.GetContainer(conts[0].ID)
 	c.Assert(err, check.IsNil)
-	_, err = s.p.getContainer(conts[1].ID)
+	_, err = s.p.GetContainer(conts[1].ID)
 	c.Assert(err, check.IsNil)
-	_, err = s.p.getContainer(conts[2].ID)
+	_, err = s.p.GetContainer(conts[2].ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(s.p.scheduler.ignoredContainers, check.IsNil)
 	c.Assert(routertest.FakeRouter.HasRoute(a1.Name, conts[0].Address().String()), check.Equals, true)
@@ -935,7 +935,7 @@ func (s *S) TestProvisionerRemoveUnitsEmptyProcess(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.RemoveUnits(papp, 1, "", nil)
 	c.Assert(err, check.IsNil)
-	_, err = s.p.getContainer(cont1.ID)
+	_, err = s.p.GetContainer(cont1.ID)
 	c.Assert(err, check.NotNil)
 }
 
@@ -1051,7 +1051,7 @@ func (s *S) TestProvisionerSetUnitStatus(c *check.C) {
 	defer s.removeTestContainer(container)
 	err = s.p.SetUnitStatus(provision.Unit{Name: container.ID, AppName: container.AppName}, provision.StatusError)
 	c.Assert(err, check.IsNil)
-	container, err = s.p.getContainer(container.ID)
+	container, err = s.p.GetContainer(container.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(container.Status, check.Equals, provision.StatusError.String())
 }
@@ -1072,7 +1072,7 @@ func (s *S) TestProvisionerSetUnitStatusUpdatesIp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.SetUnitStatus(provision.Unit{Name: container.ID, AppName: container.AppName}, provision.StatusStarted)
 	c.Assert(err, check.IsNil)
-	container, err = s.p.getContainer(container.ID)
+	container, err = s.p.GetContainer(container.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(container.Status, check.Equals, provision.StatusStarted.String())
 	c.Assert(container.IP, check.Matches, `\d+.\d+.\d+.\d+`)
@@ -1088,7 +1088,7 @@ func (s *S) TestProvisionerSetUnitStatusWrongApp(c *check.C) {
 	err = s.p.SetUnitStatus(provision.Unit{Name: container.ID, AppName: container.AppName + "a"}, provision.StatusError)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "wrong app name")
-	container, err = s.p.getContainer(container.ID)
+	container, err = s.p.GetContainer(container.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(container.Status, check.Equals, provision.StatusStarted.String())
 }
@@ -1102,7 +1102,7 @@ func (s *S) TestProvisionSetUnitStatusNoAppName(c *check.C) {
 	defer s.removeTestContainer(container)
 	err = s.p.SetUnitStatus(provision.Unit{Name: container.ID}, provision.StatusError)
 	c.Assert(err, check.IsNil)
-	container, err = s.p.getContainer(container.ID)
+	container, err = s.p.GetContainer(container.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(container.Status, check.Equals, provision.StatusError.String())
 }
@@ -1300,7 +1300,7 @@ func (s *S) TestProvisionerStart(c *check.C) {
 	dockerContainer, err = dcli.InspectContainer(cont1.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, true)
-	cont1, err = s.p.getContainer(cont1.ID)
+	cont1, err = s.p.GetContainer(cont1.ID)
 	c.Assert(err, check.IsNil)
 	expectedIP := dockerContainer.NetworkSettings.IPAddress
 	expectedPort := dockerContainer.NetworkSettings.Ports["8888/tcp"][0].HostPort
@@ -1310,7 +1310,7 @@ func (s *S) TestProvisionerStart(c *check.C) {
 	dockerContainer, err = dcli.InspectContainer(cont2.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, true)
-	cont2, err = s.p.getContainer(cont2.ID)
+	cont2, err = s.p.GetContainer(cont2.ID)
 	c.Assert(err, check.IsNil)
 	expectedIP = dockerContainer.NetworkSettings.IPAddress
 	expectedPort = dockerContainer.NetworkSettings.Ports["8888/tcp"][0].HostPort
@@ -1358,7 +1358,7 @@ func (s *S) TestProvisionerStartProcess(c *check.C) {
 	dockerContainer, err = dcli.InspectContainer(cont1.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, true)
-	cont1, err = s.p.getContainer(cont1.ID)
+	cont1, err = s.p.GetContainer(cont1.ID)
 	c.Assert(err, check.IsNil)
 	expectedIP := dockerContainer.NetworkSettings.IPAddress
 	expectedPort := dockerContainer.NetworkSettings.Ports["8888/tcp"][0].HostPort
@@ -1737,7 +1737,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.RegisterUnit(provision.Unit{Name: container.ID}, nil)
 	c.Assert(err, check.IsNil)
-	dbCont, err := s.p.getContainer(container.ID)
+	dbCont, err := s.p.GetContainer(container.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbCont.IP, check.Matches, `\d+\.\d+\.\d+\.\d+`)
 	c.Assert(dbCont.Status, check.Equals, provision.StatusStarted.String())
@@ -1757,7 +1757,7 @@ func (s *S) TestRegisterUnitBuildingContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.p.RegisterUnit(provision.Unit{Name: container.ID}, nil)
 	c.Assert(err, check.IsNil)
-	dbCont, err := s.p.getContainer(container.ID)
+	dbCont, err := s.p.GetContainer(container.ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dbCont.IP, check.Matches, `xinvalidx`)
 	c.Assert(dbCont.Status, check.Equals, provision.StatusBuilding.String())

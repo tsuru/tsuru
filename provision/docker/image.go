@@ -45,7 +45,7 @@ func MigrateImages() error {
 	for _, app := range apps {
 		oldImage := registry + repoNamespace + "/" + app.Name
 		newImage := registry + repoNamespace + "/app-" + app.Name
-		containers, _ := mainDockerProvisioner.listContainersBy(bson.M{"image": newImage, "appname": app.Name})
+		containers, _ := mainDockerProvisioner.ListContainers(bson.M{"image": newImage, "appname": app.Name})
 		if len(containers) > 0 {
 			continue
 		}

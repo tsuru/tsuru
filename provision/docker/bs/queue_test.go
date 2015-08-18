@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package docker
+package bs
 
 import (
 	"net/http"
@@ -11,7 +11,7 @@ import (
 	"github.com/fsouza/go-dockerclient"
 	"github.com/fsouza/go-dockerclient/testing"
 	"github.com/tsuru/config"
-	"github.com/tsuru/tsuru/provision/docker/bs"
+	"github.com/tsuru/tsuru/provision/docker/dockertest"
 	"gopkg.in/check.v1"
 )
 
@@ -63,7 +63,10 @@ func (s *S) TestCreateBsContainer(c *check.C) {
 	c.Assert(err, check.IsNil)
 	config.Set("host", "127.0.0.1:8080")
 	config.Set("docker:bs:image", "myregistry/tsuru/bs")
-	err = bs.CreateContainer(server.URL(), "pool1", mainDockerProvisioner, true)
+	p, err := dockertest.NewFakeDockerProvisioner()
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	err = CreateContainer(server.URL(), "pool1", p, true)
 	c.Assert(err, check.IsNil)
 	containers, err := client.ListContainers(docker.ListContainersOptions{All: true})
 	c.Assert(err, check.IsNil)
@@ -85,7 +88,7 @@ func (s *S) TestCreateBsContainer(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	gotEnv["TSURU_TOKEN"] = expectedEnv["TSURU_TOKEN"]
 	c.Assert(gotEnv, check.DeepEquals, expectedEnv)
-	conf, err := bs.LoadConfig()
+	conf, err := LoadConfig()
 	c.Assert(err, check.IsNil)
 	c.Assert(conf.Image, check.Equals, "myregistry/tsuru/bs@"+digest)
 }
@@ -113,7 +116,10 @@ func (s *S) TestCreateBsContainerTaggedBs(c *check.C) {
 	c.Assert(err, check.IsNil)
 	config.Set("host", "127.0.0.1:8080")
 	config.Set("docker:bs:image", "localhost:5000/myregistry/tsuru/bs:v1")
-	err = bs.CreateContainer(server.URL(), "pool1", mainDockerProvisioner, true)
+	p, err := dockertest.NewFakeDockerProvisioner()
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	err = CreateContainer(server.URL(), "pool1", p, true)
 	c.Assert(err, check.IsNil)
 	containers, err := client.ListContainers(docker.ListContainersOptions{All: true})
 	c.Assert(err, check.IsNil)
@@ -137,7 +143,7 @@ func (s *S) TestCreateBsContainerTaggedBs(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	gotEnv["TSURU_TOKEN"] = expectedEnv["TSURU_TOKEN"]
 	c.Assert(gotEnv, check.DeepEquals, expectedEnv)
-	conf, err := bs.LoadConfig()
+	conf, err := LoadConfig()
 	c.Assert(err, check.IsNil)
 	c.Assert(conf.Image, check.Equals, "localhost:5000/myregistry/tsuru/bs:v1")
 }
@@ -165,7 +171,10 @@ func (s *S) TestCreateBsContainerAlreadyPinned(c *check.C) {
 	c.Assert(err, check.IsNil)
 	config.Set("host", "127.0.0.1:8080")
 	config.Set("docker:bs:image", "localhost:5000/myregistry/tsuru/bs@"+digest)
-	err = bs.CreateContainer(server.URL(), "pool1", mainDockerProvisioner, true)
+	p, err := dockertest.NewFakeDockerProvisioner()
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	err = CreateContainer(server.URL(), "pool1", p, true)
 	c.Assert(err, check.IsNil)
 	containers, err := client.ListContainers(docker.ListContainersOptions{All: true})
 	c.Assert(err, check.IsNil)
@@ -189,7 +198,7 @@ func (s *S) TestCreateBsContainerAlreadyPinned(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	gotEnv["TSURU_TOKEN"] = expectedEnv["TSURU_TOKEN"]
 	c.Assert(gotEnv, check.DeepEquals, expectedEnv)
-	conf, err := bs.LoadConfig()
+	conf, err := LoadConfig()
 	c.Assert(err, check.IsNil)
 	c.Assert(conf.Image, check.Equals, "localhost:5000/myregistry/tsuru/bs@"+digest)
 }
@@ -210,19 +219,22 @@ func (s *S) TestCreateBsContainerSocketAndCustomSysLogPort(c *check.C) {
 	defer config.Unset("docker:bs:socket")
 	config.Set("docker:bs:syslog-port", 1519)
 	defer config.Unset("docker:bs:syslog-port")
-	err = bs.SaveEnvs(bs.EnvMap{
+	err = SaveEnvs(EnvMap{
 		"VAR1": "VALUE1",
 		"VAR2": "VALUE2",
-	}, bs.PoolEnvMap{
-		"pool1": bs.EnvMap{
+	}, PoolEnvMap{
+		"pool1": EnvMap{
 			"VAR2": "VALUE_FOR_POOL1",
 		},
-		"pool2": bs.EnvMap{
+		"pool2": EnvMap{
 			"VAR2": "VALUE_FOR_POOL2",
 		},
 	})
 	c.Assert(err, check.IsNil)
-	err = bs.CreateContainer(server.URL(), "pool1", mainDockerProvisioner, true)
+	p, err := dockertest.NewFakeDockerProvisioner()
+	c.Assert(err, check.IsNil)
+	defer p.Destroy()
+	err = CreateContainer(server.URL(), "pool1", p, true)
 	c.Assert(err, check.IsNil)
 	client, err := docker.NewClient(server.URL())
 	c.Assert(err, check.IsNil)
@@ -248,7 +260,7 @@ func (s *S) TestCreateBsContainerSocketAndCustomSysLogPort(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	gotEnv["TSURU_TOKEN"] = expectedEnv["TSURU_TOKEN"]
 	c.Assert(gotEnv, check.DeepEquals, expectedEnv)
-	conf, err := bs.LoadConfig()
+	conf, err := LoadConfig()
 	c.Assert(err, check.IsNil)
 	c.Assert(conf.Image, check.Equals, "myregistry/tsuru/bs")
 }

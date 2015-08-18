@@ -54,13 +54,13 @@ func (s *S) TestMigrateImages(c *check.C) {
 	mainDockerProvisioner = &p
 	err = MigrateImages()
 	c.Assert(err, check.IsNil)
-	contApp1, err := p.listContainersBy(bson.M{"appname": app1.Name, "image": "tsuru/app-app1"})
+	contApp1, err := p.ListContainers(bson.M{"appname": app1.Name, "image": "tsuru/app-app1"})
 	c.Assert(err, check.IsNil)
 	c.Assert(contApp1, check.HasLen, 3)
-	contApp2, err := p.listContainersBy(bson.M{"appname": app2.Name, "image": "tsuru/app-app-app2"})
+	contApp2, err := p.ListContainers(bson.M{"appname": app2.Name, "image": "tsuru/app-app-app2"})
 	c.Assert(err, check.IsNil)
 	c.Assert(contApp2, check.HasLen, 0)
-	contApp3, err := p.listContainersBy(bson.M{"appname": app3.Name, "image": "tsuru/app-app-app2"})
+	contApp3, err := p.ListContainers(bson.M{"appname": app3.Name, "image": "tsuru/app-app-app2"})
 	c.Assert(err, check.IsNil)
 	c.Assert(contApp3, check.HasLen, 1)
 }

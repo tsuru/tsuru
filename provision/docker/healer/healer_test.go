@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package docker
+package healer
 
 import (
 	"time"
@@ -18,9 +18,9 @@ func (s *S) TestHealingCountFor(c *check.C) {
 		{ID: "cont5"}, {ID: "cont6"}, {ID: "cont7"}, {ID: "cont8"},
 	}
 	for i := 0; i < len(conts)-1; i++ {
-		evt, err := newHealingEvent(conts[i])
+		evt, err := NewHealingEvent(conts[i])
 		c.Assert(err, check.IsNil)
-		err = evt.update(conts[i+1], nil)
+		err = evt.Update(conts[i+1], nil)
 		c.Assert(err, check.IsNil)
 	}
 	count, err := healingCountFor("container", "cont8", time.Minute)
@@ -34,9 +34,9 @@ func (s *S) TestHealingCountForOldEventsNotConsidered(c *check.C) {
 		{ID: "cont5"}, {ID: "cont6"}, {ID: "cont7"}, {ID: "cont8"},
 	}
 	for i := 0; i < len(conts)-1; i++ {
-		evt, err := newHealingEvent(conts[i])
+		evt, err := NewHealingEvent(conts[i])
 		c.Assert(err, check.IsNil)
-		err = evt.update(conts[i+1], nil)
+		err = evt.Update(conts[i+1], nil)
 		c.Assert(err, check.IsNil)
 		if i < 4 {
 			coll, err := healingCollection()
@@ -58,9 +58,9 @@ func (s *S) TestHealingCountForWithNode(c *check.C) {
 		{Address: "addr5"}, {Address: "addr6"}, {Address: "addr7"}, {Address: "addr8"},
 	}
 	for i := 0; i < len(nodes)-1; i++ {
-		evt, err := newHealingEvent(nodes[i])
+		evt, err := NewHealingEvent(nodes[i])
 		c.Assert(err, check.IsNil)
-		err = evt.update(nodes[i+1], nil)
+		err = evt.Update(nodes[i+1], nil)
 		c.Assert(err, check.IsNil)
 	}
 	count, err := healingCountFor("node", "addr8", time.Minute)

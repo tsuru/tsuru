@@ -2,10 +2,9 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package bs
+package healer
 
 import (
-	"os"
 	"testing"
 
 	"github.com/tsuru/config"
@@ -14,6 +13,8 @@ import (
 	"github.com/tsuru/tsuru/auth/native"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/iaas"
+	"github.com/tsuru/tsuru/queue"
 	"gopkg.in/check.v1"
 )
 
@@ -27,25 +28,27 @@ type S struct{}
 
 func (s *S) SetUpSuite(c *check.C) {
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
-	config.Set("database:name", "docker_provision_bs_tests")
+	config.Set("database:name", "docker_provision_healer_tests")
+	config.Set("docker:repository-namespace", "tsuru")
 	config.Set("docker:cluster:mongo-url", "127.0.0.1:27017")
-	config.Set("docker:cluster:mongo-database", "docker_provision_bs_tests_cluster_stor")
-	config.Set("admin-team", "admin")
+	config.Set("docker:cluster:mongo-database", "docker_provision_healer_tests_cluster_stor")
+	config.Set("queue:mongo-url", "127.0.0.1:27017")
+	config.Set("queue:mongo-database", "queue_provision_docker_tests_healer")
+	config.Set("queue:mongo-polling-interval", 0.01)
 	nativeScheme := auth.ManagedScheme(native.NativeScheme{})
 	app.AuthScheme = nativeScheme
-	conn, err := db.Conn()
-	c.Assert(err, check.IsNil)
-	defer conn.Close()
 }
 
 func (s *S) SetUpTest(c *check.C) {
+	config.Set("docker:api-timeout", 2)
 	conn, err := db.Conn()
 	c.Assert(err, check.IsNil)
 	defer conn.Close()
 	dbtest.ClearAllCollections(conn.Apps().Database)
-	os.Setenv("TSURU_TARGET", "http://localhost")
-}
-
-func (s *S) TearDownTest(c *check.C) {
-	os.Unsetenv("TSURU_TARGET")
+	queue.ResetQueue()
+	iaas.ResetAll()
+	machines, _ := iaas.ListMachines()
+	for _, m := range machines {
+		m.Destroy()
+	}
 }

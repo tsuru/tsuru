@@ -75,7 +75,7 @@ func (s *segregatedScheduler) filterByMemoryUsage(a *app.App, nodes []cluster.No
 	for i := range nodes {
 		hosts[i] = urlToHost(nodes[i].Address)
 	}
-	containers, err := s.provisioner.listContainersBy(bson.M{"hostaddr": bson.M{"$in": hosts}, "id": bson.M{"$nin": s.ignoredContainers}})
+	containers, err := s.provisioner.ListContainers(bson.M{"hostaddr": bson.M{"$in": hosts}, "id": bson.M{"$nin": s.ignoredContainers}})
 	if err != nil {
 		return nil, err
 	}

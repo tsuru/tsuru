@@ -19,6 +19,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/docker/dockertest"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 )
@@ -68,9 +69,9 @@ func (s *AutoScaleSuite) SetUpTest(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	s.p.cluster = clusterInstance
-	healerConst := newMultiHealerIaaSConstructor(
+	healerConst := dockertest.NewMultiHealerIaaSConstructor(
 		[]string{"localhost", "[::1]"},
-		[]int{urlPort(s.node2.URL()), urlPort(s.node3.URL())},
+		[]int{dockertest.URLPort(s.node2.URL()), dockertest.URLPort(s.node3.URL())},
 		nil,
 	)
 	iaas.RegisterIaasProvider("my-scale-iaas", healerConst)
@@ -111,25 +112,6 @@ func (s *AutoScaleSuite) TearDownSuite(c *check.C) {
 
 var _ = check.Suite(&AutoScaleSuite{})
 
-func newHealerIaaSConstructor(addr string, err error) func(string) iaas.IaaS {
-	return func(name string) iaas.IaaS {
-		return &TestHealerIaaS{addr: addr, err: err}
-	}
-}
-
-func newMultiHealerIaaSConstructor(addrs []string, ports []int, err error) func(string) iaas.IaaS {
-	return func(name string) iaas.IaaS {
-		return &TestHealerIaaS{addrs: addrs, ports: ports, err: err}
-	}
-}
-
-func newHealerIaaSConstructorWithInst(addr string) (func(string) iaas.IaaS, *TestHealerIaaS) {
-	inst := &TestHealerIaaS{addr: addr}
-	return func(name string) iaas.IaaS {
-		return inst
-	}, inst
-}
-
 func (s *AutoScaleSuite) TestAutoScaleConfigRun(c *check.C) {
 	_, err := addContainersWithHost(&changeUnitsPipelineArgs{
 		toAdd:       map[string]*containersToAdd{"web": {Quantity: 4}},
@@ -159,7 +141,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRun(c *check.C) {
 	c.Assert(evts[0].Error, check.Equals, "")
 	c.Assert(evts[0].Reason, check.Equals, "number of free slots is -2, adding 1 nodes")
 	c.Assert(evts[0].Nodes, check.HasLen, 1)
-	c.Assert(evts[0].Nodes[0].Address, check.Equals, fmt.Sprintf("http://localhost:%d", urlPort(s.node2.URL())))
+	c.Assert(evts[0].Nodes[0].Address, check.Equals, fmt.Sprintf("http://localhost:%d", dockertest.URLPort(s.node2.URL())))
 	c.Assert(evts[0].Nodes[0].Metadata["pool"], check.Equals, "pool1")
 	logParts := strings.Split(evts[0].Log, "\n")
 	c.Assert(logParts, check.HasLen, 15)
@@ -295,7 +277,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceNoContainers(c *check.C) {
 }
 
 func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceNoContainersMultipleNodes(c *check.C) {
-	otherUrl := fmt.Sprintf("http://localhost:%d", urlPort(s.node2.URL()))
+	otherUrl := fmt.Sprintf("http://localhost:%d", dockertest.URLPort(s.node2.URL()))
 	node := cluster.Node{Address: otherUrl, Metadata: map[string]string{
 		"pool":     "pool1",
 		"iaas":     "my-scale-iaas",
@@ -441,7 +423,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMultipleNodesPartialError(c *
 }
 
 func (s *AutoScaleSuite) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
-	otherUrl := fmt.Sprintf("http://localhost:%d", urlPort(s.node2.URL()))
+	otherUrl := fmt.Sprintf("http://localhost:%d", dockertest.URLPort(s.node2.URL()))
 	node := cluster.Node{Address: otherUrl, Metadata: map[string]string{
 		"pool": "pool1",
 		"iaas": "my-scale-iaas",
@@ -748,7 +730,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMemoryBasedNoContainersMultip
 	defer config.Unset("docker:scheduler:max-used-memory")
 	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
 	defer config.Unset("docker:scheduler:total-memory-metadata")
-	otherUrl := fmt.Sprintf("http://localhost:%d", urlPort(s.node2.URL()))
+	otherUrl := fmt.Sprintf("http://localhost:%d", dockertest.URLPort(s.node2.URL()))
 	node := cluster.Node{Address: otherUrl, Metadata: map[string]string{
 		"pool":     "pool1",
 		"iaas":     "my-scale-iaas",
@@ -850,7 +832,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedPlanTooBig(c *check.C)
 
 func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDown(c *check.C) {
 	config.Set("docker:auto-scale:max-container-count", 4)
-	otherUrl := fmt.Sprintf("http://localhost:%d/", urlPort(s.node2.URL()))
+	otherUrl := fmt.Sprintf("http://localhost:%d/", dockertest.URLPort(s.node2.URL()))
 	node := cluster.Node{Address: otherUrl, Metadata: map[string]string{
 		"pool":     "pool1",
 		"iaas":     "my-scale-iaas",
@@ -900,13 +882,13 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDown(c *check.C) {
 
 func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMultipleNodes(c *check.C) {
 	config.Set("docker:auto-scale:max-container-count", 5)
-	node1 := cluster.Node{Address: fmt.Sprintf("http://localhost:%d/", urlPort(s.node2.URL())), Metadata: map[string]string{
+	node1 := cluster.Node{Address: fmt.Sprintf("http://localhost:%d/", dockertest.URLPort(s.node2.URL())), Metadata: map[string]string{
 		"pool":     "pool1",
 		"iaas":     "my-scale-iaas",
 		"totalMem": "125000",
 	}}
 	err := s.p.cluster.Register(node1)
-	node2 := cluster.Node{Address: fmt.Sprintf("http://[::1]:%d/", urlPort(s.node3.URL())), Metadata: map[string]string{
+	node2 := cluster.Node{Address: fmt.Sprintf("http://[::1]:%d/", dockertest.URLPort(s.node3.URL())), Metadata: map[string]string{
 		"pool":     "pool1",
 		"iaas":     "my-scale-iaas",
 		"totalMem": "125000",
@@ -968,7 +950,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C)
 	defer config.Unset("docker:scheduler:max-used-memory")
 	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
 	defer config.Unset("docker:scheduler:total-memory-metadata")
-	otherUrl := fmt.Sprintf("http://localhost:%d/", urlPort(s.node2.URL()))
+	otherUrl := fmt.Sprintf("http://localhost:%d/", dockertest.URLPort(s.node2.URL()))
 	node := cluster.Node{Address: otherUrl, Metadata: map[string]string{
 		"pool":     "pool1",
 		"iaas":     "my-scale-iaas",
@@ -1022,13 +1004,13 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMemoryScalerMultipleNode
 	defer config.Unset("docker:scheduler:max-used-memory")
 	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
 	defer config.Unset("docker:scheduler:total-memory-metadata")
-	node1 := cluster.Node{Address: fmt.Sprintf("http://localhost:%d/", urlPort(s.node2.URL())), Metadata: map[string]string{
+	node1 := cluster.Node{Address: fmt.Sprintf("http://localhost:%d/", dockertest.URLPort(s.node2.URL())), Metadata: map[string]string{
 		"pool":     "pool1",
 		"iaas":     "my-scale-iaas",
 		"totalMem": "125000",
 	}}
 	err := s.p.cluster.Register(node1)
-	node2 := cluster.Node{Address: fmt.Sprintf("http://[::1]:%d/", urlPort(s.node3.URL())), Metadata: map[string]string{
+	node2 := cluster.Node{Address: fmt.Sprintf("http://[::1]:%d/", dockertest.URLPort(s.node3.URL())), Metadata: map[string]string{
 		"pool":     "pool1",
 		"iaas":     "my-scale-iaas",
 		"totalMem": "125000",
@@ -1088,7 +1070,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *chec
 	config.Set("docker:auto-scale:max-container-count", 4)
 	oldNodes, err := s.p.cluster.Nodes()
 	c.Assert(err, check.IsNil)
-	otherUrl := fmt.Sprintf("http://localhost:%d/", urlPort(s.node2.URL()))
+	otherUrl := fmt.Sprintf("http://localhost:%d/", dockertest.URLPort(s.node2.URL()))
 	s.p.storage = &cluster.MapStorage{}
 	s.p.cluster, err = cluster.New(nil, s.p.storage,
 		cluster.Node{Address: oldNodes[0].Address, Metadata: map[string]string{
@@ -1193,13 +1175,13 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedLockedApp(c *check.C) 
 func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
 	config.Set("docker:scheduler:total-memory-metadata", "totalMem")
 	defer config.Unset("docker:scheduler:total-memory-metadata")
-	healerConst := newMultiHealerIaaSConstructor(
+	healerConst := dockertest.NewMultiHealerIaaSConstructor(
 		[]string{"[::]", "[::1]"},
-		[]int{urlPort(s.node2.URL()), urlPort(s.node3.URL())},
+		[]int{dockertest.URLPort(s.node2.URL()), dockertest.URLPort(s.node3.URL())},
 		nil,
 	)
 	iaas.RegisterIaasProvider("my-scale-iaas", healerConst)
-	otherUrl := fmt.Sprintf("http://localhost:%d", urlPort(s.node2.URL()))
+	otherUrl := fmt.Sprintf("http://localhost:%d", dockertest.URLPort(s.node2.URL()))
 	node := cluster.Node{Address: otherUrl, Metadata: map[string]string{
 		"pool":     "pool2",
 		"iaas":     "my-scale-iaas",

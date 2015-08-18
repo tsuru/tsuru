@@ -32,6 +32,8 @@ func (s *S) SetUpSuite(c *check.C) {
 	s.user = "root"
 	config.Set("database:url", "127.0.0.1:27017?maxPoolSize=100")
 	config.Set("database:name", "docker_provision_container_tests")
+	config.Set("docker:cluster:mongo-url", "127.0.0.1:27017")
+	config.Set("docker:cluster:mongo-database", "docker_provision_container_tests_cluster_stor")
 	config.Set("docker:run-cmd:port", "8888")
 	config.Set("docker:user", s.user)
 	config.Set("docker:repository-namespace", "tsuru")

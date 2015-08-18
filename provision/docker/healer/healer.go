@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package docker
+package healer
 
 import (
 	"time"
@@ -17,7 +17,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-type healingEvent struct {
+type HealingEvent struct {
 	ID               bson.ObjectId `bson:"_id"`
 	StartTime        time.Time
 	EndTime          time.Time `bson:",omitempty"`
@@ -48,8 +48,8 @@ func healingCollection() (*storage.Collection, error) {
 	return conn.Collection(name), nil
 }
 
-func newHealingEvent(failing interface{}) (*healingEvent, error) {
-	evt := healingEvent{
+func NewHealingEvent(failing interface{}) (*HealingEvent, error) {
+	evt := HealingEvent{
 		ID:        bson.NewObjectId(),
 		StartTime: time.Now().UTC(),
 	}
@@ -69,7 +69,7 @@ func newHealingEvent(failing interface{}) (*healingEvent, error) {
 	return &evt, coll.Insert(evt)
 }
 
-func (evt *healingEvent) update(created interface{}, err error) error {
+func (evt *HealingEvent) Update(created interface{}, err error) error {
 	if err != nil {
 		evt.Error = err.Error()
 	}
@@ -90,7 +90,7 @@ func (evt *healingEvent) update(created interface{}, err error) error {
 	return coll.UpdateId(evt.ID, evt)
 }
 
-func listHealingHistory(filter string) ([]healingEvent, error) {
+func ListHealingHistory(filter string) ([]HealingEvent, error) {
 	coll, err := healingCollection()
 	if err != nil {
 		return nil, err
@@ -100,7 +100,7 @@ func listHealingHistory(filter string) ([]healingEvent, error) {
 	if filter != "" {
 		query["action"] = filter + "-healing"
 	}
-	var history []healingEvent
+	var history []HealingEvent
 	err = coll.Find(query).Sort("-_id").Limit(200).All(&history)
 	if err != nil {
 		return nil, err
@@ -124,7 +124,7 @@ func healingCountFor(action string, failingId string, duration time.Duration) (i
 		} else {
 			query["createdcontainer.id"] = failingId
 		}
-		var parent healingEvent
+		var parent HealingEvent
 		err = coll.Find(query).One(&parent)
 		if err != nil {
 			if err == mgo.ErrNotFound {

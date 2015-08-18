@@ -29,7 +29,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/provision/docker/container"
-	"github.com/tsuru/tsuru/queue"
+	"github.com/tsuru/tsuru/provision/docker/healer"
 	"github.com/tsuru/tsuru/router"
 	_ "github.com/tsuru/tsuru/router/galeb"
 	_ "github.com/tsuru/tsuru/router/hipache"
@@ -105,25 +105,25 @@ func (p *dockerProvisioner) initDockerCluster() error {
 		if waitSecondsNewMachine <= 0 {
 			waitSecondsNewMachine = 5 * 60
 		}
-		healer := nodeHealer{
-			locks:                 make(map[string]*sync.Mutex),
-			provisioner:           p,
-			disabledTime:          time.Duration(disabledSeconds) * time.Second,
-			waitTimeNewMachine:    time.Duration(waitSecondsNewMachine) * time.Second,
-			failuresBeforeHealing: maxFailures,
-		}
-		shutdown.Register(&healer)
-		p.cluster.Healer = &healer
+		nodeHealer := healer.NewNodeHealer(healer.NodeHealerArgs{
+			Provisioner:           p,
+			DisabledTime:          time.Duration(disabledSeconds) * time.Second,
+			WaitTimeNewMachine:    time.Duration(waitSecondsNewMachine) * time.Second,
+			FailuresBeforeHealing: maxFailures,
+		})
+		shutdown.Register(nodeHealer)
+		p.cluster.Healer = nodeHealer
 	}
 	healContainersSeconds, _ := config.GetInt("docker:healing:heal-containers-timeout")
 	if healContainersSeconds > 0 {
-		contHealerInst := containerHealer{
-			provisioner:         p,
-			maxUnresponsiveTime: time.Duration(healContainersSeconds) * time.Second,
-			done:                make(chan bool),
-		}
-		shutdown.Register(&contHealerInst)
-		go contHealerInst.runContainerHealer()
+		contHealerInst := healer.NewContainerHealer(healer.ContainerHealerArgs{
+			Provisioner:         p,
+			MaxUnresponsiveTime: time.Duration(healContainersSeconds) * time.Second,
+			Done:                make(chan bool),
+			Locker:              &appLocker{},
+		})
+		shutdown.Register(contHealerInst)
+		go contHealerInst.RunContainerHealer()
 	}
 	activeMonitoring, _ := config.GetInt("docker:healing:active-monitoring-interval")
 	if activeMonitoring > 0 {
@@ -243,11 +243,7 @@ func (p *dockerProvisioner) StartupMessage() (string, error) {
 }
 
 func (p *dockerProvisioner) Initialize() error {
-	q, err := queue.Queue()
-	if err != nil {
-		return err
-	}
-	err = q.RegisterTask(runBs{})
+	err := bs.RegisterQueueTask(p)
 	if err != nil {
 		return err
 	}
@@ -693,7 +689,7 @@ func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint, processName
 		if err != nil {
 			return err
 		}
-		cont, err := p.getContainer(containerID)
+		cont, err := p.GetContainer(containerID)
 		if err != nil {
 			return err
 		}
@@ -719,7 +715,7 @@ func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint, processName
 }
 
 func (p *dockerProvisioner) SetUnitStatus(unit provision.Unit, status provision.Status) error {
-	container, err := p.getContainer(unit.Name)
+	container, err := p.GetContainer(unit.Name)
 	if err != nil {
 		return err
 	}
@@ -868,7 +864,7 @@ func (p *dockerProvisioner) Units(app provision.App) []provision.Unit {
 }
 
 func (p *dockerProvisioner) RegisterUnit(unit provision.Unit, customData map[string]interface{}) error {
-	container, err := p.getContainer(unit.Name)
+	container, err := p.GetContainer(unit.Name)
 	if err != nil {
 		return err
 	}
@@ -891,7 +887,7 @@ func (p *dockerProvisioner) Shell(opts provision.ShellOptions) error {
 		err error
 	)
 	if opts.Unit != "" {
-		c, err = p.getContainer(opts.Unit)
+		c, err = p.GetContainer(opts.Unit)
 	} else {
 		c, err = p.getOneContainerByAppName(opts.App.GetName())
 	}

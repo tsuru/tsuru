@@ -24,6 +24,7 @@ import (
 	_ "github.com/tsuru/tsuru/iaas/ec2"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/provision/docker/bs"
+	"github.com/tsuru/tsuru/provision/docker/healer"
 	"github.com/tsuru/tsuru/queue"
 	"gopkg.in/mgo.v2"
 )
@@ -121,7 +122,7 @@ func (p *dockerProvisioner) addNodeForParams(params map[string]string, isRegiste
 		return response, err
 	}
 	jobParams := monsterqueue.JobParams{"endpoint": address, "machine": machineID, "metadata": params}
-	_, err = q.Enqueue(runBsTaskName, jobParams)
+	_, err = q.Enqueue(bs.QueueTaskName, jobParams)
 	return response, err
 }
 
@@ -257,7 +258,7 @@ func moveContainersHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{
 		Encoder: json.NewEncoder(w),
 	}
-	err = mainDockerProvisioner.moveContainers(from, to, writer)
+	err = mainDockerProvisioner.MoveContainers(from, to, writer)
 	if err != nil {
 		fmt.Fprintf(writer, "Error trying to move containers: %s\n", err.Error())
 	} else {
@@ -328,7 +329,7 @@ func healingHistoryHandler(w http.ResponseWriter, r *http.Request, t auth.Token)
 			Message: "invalid filter, possible values are 'node' or 'container'",
 		}
 	}
-	history, err := listHealingHistory(filter)
+	history, err := healer.ListHealingHistory(filter)
 	if err != nil {
 		return err
 	}

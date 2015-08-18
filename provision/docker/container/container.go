@@ -21,7 +21,6 @@ import (
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
-	"github.com/tsuru/tsuru/provision/docker/bs"
 	"gopkg.in/mgo.v2/bson"
 )
 
@@ -423,7 +422,7 @@ func (c *Container) Start(args *StartArgs) error {
 		hostConfig.LogConfig = docker.LogConfig{
 			Type: "syslog",
 			Config: map[string]string{
-				"syslog-address": "udp://localhost:" + strconv.Itoa(bs.SysLogPort()),
+				"syslog-address": "udp://localhost:" + strconv.Itoa(BsSysLogPort()),
 			},
 		}
 	}

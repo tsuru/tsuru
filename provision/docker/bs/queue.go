@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package docker
+package bs
 
 import (
 	"fmt"
@@ -14,16 +14,29 @@ import (
 	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
-	"github.com/tsuru/tsuru/provision/docker/bs"
+	"github.com/tsuru/tsuru/queue"
 )
 
-type runBs struct{}
+const QueueTaskName = "run-bs"
 
-func (runBs) Name() string {
-	return bs.QueueTaskName
+// RegisterQueueTask registers the internal bs queue task for later execution.
+func RegisterQueueTask(p DockerProvisioner) error {
+	q, err := queue.Queue()
+	if err != nil {
+		return err
+	}
+	return q.RegisterTask(&runBs{provisioner: p})
 }
 
-func (t runBs) Run(job monsterqueue.Job) {
+type runBs struct {
+	provisioner DockerProvisioner
+}
+
+func (t *runBs) Name() string {
+	return QueueTaskName
+}
+
+func (t *runBs) Run(job monsterqueue.Job) {
 	params := job.Parameters()
 	dockerEndpoint := params["endpoint"].(string)
 	machineID := params["machine"].(string)
@@ -39,17 +52,17 @@ func (t runBs) Run(job monsterqueue.Job) {
 	for key, value := range rawMetadata {
 		metadata[key] = value.(string)
 	}
-	err = bs.CreateContainer(dockerEndpoint, metadata["pool"], mainDockerProvisioner, true)
+	err = CreateContainer(dockerEndpoint, metadata["pool"], t.provisioner, true)
 	if err != nil {
 		node.CreationStatus = cluster.NodeCreationStatusError
 		node.Metadata = map[string]string{"creationError": err.Error()}
-		mainDockerProvisioner.Cluster().UpdateNode(node)
+		t.provisioner.Cluster().UpdateNode(node)
 		job.Error(err)
 		t.destroyMachine(machineID)
 		return
 	}
 	node.CreationStatus = cluster.NodeCreationStatusCreated
-	_, err = mainDockerProvisioner.Cluster().UpdateNode(node)
+	_, err = t.provisioner.Cluster().UpdateNode(node)
 	if err != nil {
 		job.Error(err)
 		t.destroyMachine(machineID)
@@ -58,7 +71,7 @@ func (t runBs) Run(job monsterqueue.Job) {
 	job.Success(nil)
 }
 
-func (runBs) waitDocker(endpoint string) error {
+func (t *runBs) waitDocker(endpoint string) error {
 	client, err := docker.NewClient(endpoint)
 	if err != nil {
 		return err
@@ -97,7 +110,7 @@ func (runBs) waitDocker(endpoint string) error {
 	}
 }
 
-func (runBs) destroyMachine(id string) {
+func (t *runBs) destroyMachine(id string) {
 	if id != "" {
 		machine, err := iaas.FindMachineById(id)
 		if err != nil {

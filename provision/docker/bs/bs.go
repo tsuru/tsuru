@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/provision/docker/container"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -31,13 +32,7 @@ type DockerProvisioner interface {
 	RegistryAuthConfig() docker.AuthConfiguration
 }
 
-const (
-	// QueueTaskName is the name of the task that starts bs container on a
-	// given node.
-	QueueTaskName = "run-bs"
-
-	bsUniqueID = "bs"
-)
+const bsUniqueID = "bs"
 
 type Env struct {
 	Name  string
@@ -126,7 +121,7 @@ func (conf *Config) EnvListForEndpoint(dockerEndpoint, poolName string) ([]strin
 		"DOCKER_ENDPOINT=" + endpoint,
 		"TSURU_ENDPOINT=" + tsuruEndpoint,
 		"TSURU_TOKEN=" + token,
-		"SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:" + strconv.Itoa(SysLogPort()),
+		"SYSLOG_LISTEN_ADDRESS=udp://0.0.0.0:" + strconv.Itoa(container.BsSysLogPort()),
 	}
 	envMap := EnvMap{}
 	poolEnvMap := PoolEnvMap{}
@@ -191,14 +186,6 @@ func bsConfigFromEnvMaps(envMap EnvMap, poolEnvMap PoolEnvMap) *Config {
 	return &finalConf
 }
 
-func SysLogPort() int {
-	bsPort, _ := config.GetInt("docker:bs:syslog-port")
-	if bsPort == 0 {
-		bsPort = 1514
-	}
-	return bsPort
-}
-
 func SaveImage(digest string) error {
 	coll, err := collection()
 	if err != nil {
@@ -242,12 +229,6 @@ func collection() (*storage.Collection, error) {
 	return conn.Collection("bsconfig"), nil
 }
 
-// CreateContainer creates the bs container on the given node.
-//
-// The relaunch flag defines the behavior when there's already a bs container
-// running in the target host: when relaunch is true, the function will remove
-// the running container and launch another. Otherwise, it will just return an
-// error indicating that the container is already running.
 func CreateContainer(dockerEndpoint, poolName string, p DockerProvisioner, relaunch bool) error {
 	client, err := docker.NewClient(dockerEndpoint)
 	if err != nil {

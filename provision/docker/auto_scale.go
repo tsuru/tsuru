@@ -20,6 +20,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/iaas"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/safe"
@@ -343,7 +344,7 @@ func (a *autoScaleConfig) addNode(event *autoScaleEvent, modelNodes []*cluster.N
 		"machine":  machine.Id,
 		"metadata": createdNode.Metadata,
 	}
-	job, err := q.EnqueueWait(runBsTaskName, jobParams, a.waitTimeNewMachine)
+	job, err := q.EnqueueWait(bs.QueueTaskName, jobParams, a.waitTimeNewMachine)
 	if err != nil {
 		return nil, fmt.Errorf("error enqueueing task: %s", err)
 	}

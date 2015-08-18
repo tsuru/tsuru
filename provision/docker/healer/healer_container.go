@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package docker
+package healer
 
 import (
 	"bytes"
@@ -13,15 +13,33 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
-type containerHealer struct {
-	provisioner         *dockerProvisioner
+type ContainerHealer struct {
+	provisioner         DockerProvisioner
 	maxUnresponsiveTime time.Duration
 	done                chan bool
+	locker              AppLocker
 }
 
-func (h *containerHealer) runContainerHealer() {
+type ContainerHealerArgs struct {
+	Provisioner         DockerProvisioner
+	MaxUnresponsiveTime time.Duration
+	Done                chan bool
+	Locker              AppLocker
+}
+
+func NewContainerHealer(args ContainerHealerArgs) *ContainerHealer {
+	return &ContainerHealer{
+		provisioner:         args.Provisioner,
+		maxUnresponsiveTime: args.MaxUnresponsiveTime,
+		done:                args.Done,
+		locker:              args.Locker,
+	}
+}
+
+func (h *ContainerHealer) RunContainerHealer() {
 	for {
 		h.runContainerHealerOnce()
 		select {
@@ -32,27 +50,27 @@ func (h *containerHealer) runContainerHealer() {
 	}
 }
 
-func (h *containerHealer) Shutdown() {
+func (h *ContainerHealer) Shutdown() {
 	h.done <- true
 }
 
-func (h *containerHealer) String() string {
+func (h *ContainerHealer) String() string {
 	return "container healer"
 }
 
-func (h *containerHealer) healContainer(cont container.Container, locker *appLocker) (container.Container, error) {
+func (h *ContainerHealer) healContainer(cont container.Container) (container.Container, error) {
 	var buf bytes.Buffer
 	moveErrors := make(chan error, 1)
-	createdContainer := h.provisioner.moveOneContainer(cont, "", moveErrors, nil, &buf, locker)
+	createdContainer := h.provisioner.MoveOneContainer(cont, "", moveErrors, nil, &buf, h.locker)
 	close(moveErrors)
-	err := handleMoveErrors(moveErrors, &buf)
+	err := h.provisioner.HandleMoveErrors(moveErrors, &buf)
 	if err != nil {
 		err = fmt.Errorf("Error trying to heal containers %s: couldn't move container: %s - %s", cont.ID, err.Error(), buf.String())
 	}
 	return createdContainer, err
 }
 
-func (h *containerHealer) isRunning(cont container.Container) (bool, error) {
+func (h *ContainerHealer) isRunning(cont container.Container) (bool, error) {
 	container, err := h.provisioner.Cluster().InspectContainer(cont.ID)
 	if err != nil {
 		return false, err
@@ -60,7 +78,7 @@ func (h *containerHealer) isRunning(cont container.Container) (bool, error) {
 	return container.State.Running || container.State.Restarting, nil
 }
 
-func (h *containerHealer) healContainerIfNeeded(cont container.Container) error {
+func (h *ContainerHealer) healContainerIfNeeded(cont container.Container) error {
 	if cont.LastSuccessStatusUpdate.IsZero() {
 		return nil
 	}
@@ -80,14 +98,13 @@ func (h *containerHealer) healContainerIfNeeded(cont container.Container) error 
 		return fmt.Errorf("Containers healing: number of healings for container %s in the last %d minutes exceeds limit of %d: %d",
 			cont.ID, consecutiveHealingsTimeframe/time.Minute, consecutiveHealingsLimitInTimeframe, healingCounter)
 	}
-	locker := &appLocker{}
-	locked := locker.lock(cont.AppName)
+	locked := h.locker.Lock(cont.AppName)
 	if !locked {
 		return fmt.Errorf("Containers healing: unable to heal %s couldn't lock app %s", cont.ID, cont.AppName)
 	}
-	defer locker.unlock(cont.AppName)
+	defer h.locker.Unlock(cont.AppName)
 	// Sanity check, now we have a lock, let's find out if the container still exists
-	_, err = h.provisioner.getContainer(cont.ID)
+	_, err = h.provisioner.GetContainer(cont.ID)
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			return nil
@@ -95,23 +112,23 @@ func (h *containerHealer) healContainerIfNeeded(cont container.Container) error 
 		return fmt.Errorf("Containers healing: unable to heal %s couldn't verify it still exists.", cont.ID)
 	}
 	log.Errorf("Initiating healing process for container %s, unresponsive since %s.", cont.ID, cont.LastSuccessStatusUpdate)
-	evt, err := newHealingEvent(cont)
+	evt, err := NewHealingEvent(cont)
 	if err != nil {
 		return fmt.Errorf("Error trying to insert container healing event, healing aborted: %s", err.Error())
 	}
-	newCont, healErr := h.healContainer(cont, locker)
+	newCont, healErr := h.healContainer(cont)
 	if healErr != nil {
 		healErr = fmt.Errorf("Error healing container %s: %s", cont.ID, healErr.Error())
 	}
-	err = evt.update(newCont, healErr)
+	err = evt.Update(newCont, healErr)
 	if err != nil {
 		log.Errorf("Error trying to update containers healing event: %s", err.Error())
 	}
 	return healErr
 }
 
-func (h *containerHealer) runContainerHealerOnce() {
-	containers, err := h.provisioner.listUnresponsiveContainers(h.maxUnresponsiveTime)
+func (h *ContainerHealer) runContainerHealerOnce() {
+	containers, err := listUnresponsiveContainers(h.provisioner, h.maxUnresponsiveTime)
 	if err != nil {
 		log.Errorf("Containers Healing: couldn't list unresponsive containers: %s", err.Error())
 	}
@@ -121,4 +138,13 @@ func (h *containerHealer) runContainerHealerOnce() {
 			log.Errorf(err.Error())
 		}
 	}
+}
+
+func listUnresponsiveContainers(p DockerProvisioner, maxUnresponsiveTime time.Duration) ([]container.Container, error) {
+	now := time.Now().UTC()
+	return p.ListContainers(bson.M{
+		"lastsuccessstatusupdate": bson.M{"$lt": now.Add(-maxUnresponsiveTime)},
+		"hostport":                bson.M{"$ne": ""},
+		"status":                  bson.M{"$ne": provision.StatusStopped.String()},
+	})
 }
