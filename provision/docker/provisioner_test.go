@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/provision/docker/container"
+	"github.com/tsuru/tsuru/provision/docker/healer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router/routertest"
@@ -1232,7 +1233,7 @@ func (s *S) TestAdminCommands(c *check.C) {
 		&removeNodeFromSchedulerCmd{},
 		&listNodesInTheSchedulerCmd{},
 		fixContainersCmd{},
-		&listHealingHistoryCmd{},
+		&healer.ListHealingHistoryCmd{},
 		&listAutoScaleHistoryCmd{},
 		&updateNodeToSchedulerCmd{},
 		&listAutoScaleRunCmd{},
