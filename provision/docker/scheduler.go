@@ -28,7 +28,7 @@ var errNoDefaultPool = errors.New("No default pool configured in the scheduler: 
 type segregatedScheduler struct {
 	hostMutex           sync.Mutex
 	maxMemoryRatio      float32
-	totalMemoryMetadata string
+	TotalMemoryMetadata string
 	provisioner         *dockerProvisioner
 	// ignored containers is only set in provisioner returned by
 	// cloneProvisioner which will set this field to exclude some container
@@ -48,7 +48,7 @@ func (s *segregatedScheduler) Schedule(c *cluster.Cluster, opts docker.CreateCon
 	if err != nil {
 		return cluster.Node{}, err
 	}
-	nodes, err = s.filterByMemoryUsage(a, nodes, s.maxMemoryRatio, s.totalMemoryMetadata)
+	nodes, err = s.filterByMemoryUsage(a, nodes, s.maxMemoryRatio, s.TotalMemoryMetadata)
 	if err != nil {
 		return cluster.Node{}, err
 	}
@@ -67,8 +67,8 @@ func (s *segregatedScheduler) Schedule(c *cluster.Cluster, opts docker.CreateCon
 	return cluster.Node{Address: node}, nil
 }
 
-func (s *segregatedScheduler) filterByMemoryUsage(a *app.App, nodes []cluster.Node, maxMemoryRatio float32, totalMemoryMetadata string) ([]cluster.Node, error) {
-	if maxMemoryRatio == 0 || totalMemoryMetadata == "" {
+func (s *segregatedScheduler) filterByMemoryUsage(a *app.App, nodes []cluster.Node, maxMemoryRatio float32, TotalMemoryMetadata string) ([]cluster.Node, error) {
+	if maxMemoryRatio == 0 || TotalMemoryMetadata == "" {
 		return nodes, nil
 	}
 	hosts := make([]string, len(nodes))
@@ -90,7 +90,7 @@ func (s *segregatedScheduler) filterByMemoryUsage(a *app.App, nodes []cluster.No
 	megabyte := float64(1024 * 1024)
 	nodeList := make([]cluster.Node, 0, len(nodes))
 	for _, node := range nodes {
-		totalMemory, _ := strconv.ParseFloat(node.Metadata[totalMemoryMetadata], 64)
+		totalMemory, _ := strconv.ParseFloat(node.Metadata[TotalMemoryMetadata], 64)
 		shouldAdd := true
 		if totalMemory != 0 {
 			maxMemory := totalMemory * float64(maxMemoryRatio)

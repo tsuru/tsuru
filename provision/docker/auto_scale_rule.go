@@ -42,8 +42,8 @@ func (r *autoScaleRule) normalize() error {
 		maxMemoryRatio, _ := config.GetFloat("docker:scheduler:max-used-memory")
 		r.MaxMemoryRatio = float32(maxMemoryRatio)
 	}
-	totalMemoryMetadata, _ := config.GetString("docker:scheduler:total-memory-metadata")
-	if r.Enabled && r.MaxContainerCount <= 0 && (totalMemoryMetadata == "" || r.MaxMemoryRatio <= 0) {
+	TotalMemoryMetadata, _ := config.GetString("docker:scheduler:total-memory-metadata")
+	if r.Enabled && r.MaxContainerCount <= 0 && (TotalMemoryMetadata == "" || r.MaxMemoryRatio <= 0) {
 		err := fmt.Errorf("invalid rule, either memory information or max container count must be set")
 		r.Error = err.Error()
 		return err

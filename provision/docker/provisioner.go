@@ -80,11 +80,11 @@ func (p *dockerProvisioner) initDockerCluster() error {
 		p.collectionName = name
 	}
 	var nodes []cluster.Node
-	totalMemoryMetadata, _ := config.GetString("docker:scheduler:total-memory-metadata")
+	TotalMemoryMetadata, _ := config.GetString("docker:scheduler:total-memory-metadata")
 	maxUsedMemory, _ := config.GetFloat("docker:scheduler:max-used-memory")
 	p.scheduler = &segregatedScheduler{
 		maxMemoryRatio:      float32(maxUsedMemory),
-		totalMemoryMetadata: totalMemoryMetadata,
+		TotalMemoryMetadata: TotalMemoryMetadata,
 		provisioner:         p,
 	}
 	p.cluster, err = cluster.New(p.scheduler, p.storage, nodes...)
@@ -140,15 +140,15 @@ func (p *dockerProvisioner) initDockerCluster() error {
 
 func (p *dockerProvisioner) initAutoScaleConfig() *autoScaleConfig {
 	waitSecondsNewMachine, _ := config.GetInt("docker:auto-scale:wait-new-time")
-	groupByMetadata, _ := config.GetString("docker:auto-scale:group-by-metadata")
+	GroupByMetadata, _ := config.GetString("docker:auto-scale:group-by-metadata")
 	runInterval, _ := config.GetInt("docker:auto-scale:run-interval")
-	totalMemoryMetadata, _ := config.GetString("docker:scheduler:total-memory-metadata")
+	TotalMemoryMetadata, _ := config.GetString("docker:scheduler:total-memory-metadata")
 	return &autoScaleConfig{
+		GroupByMetadata:     GroupByMetadata,
+		TotalMemoryMetadata: TotalMemoryMetadata,
+		WaitTimeNewMachine:  time.Duration(waitSecondsNewMachine) * time.Second,
+		RunInterval:         time.Duration(runInterval) * time.Second,
 		provisioner:         p,
-		groupByMetadata:     groupByMetadata,
-		totalMemoryMetadata: totalMemoryMetadata,
-		waitTimeNewMachine:  time.Duration(waitSecondsNewMachine) * time.Second,
-		runInterval:         time.Duration(runInterval) * time.Second,
 		done:                make(chan bool),
 	}
 }
@@ -162,7 +162,7 @@ func (p *dockerProvisioner) cloneProvisioner(ignoredContainers []container.Conta
 	}
 	overridenProvisioner.scheduler = &segregatedScheduler{
 		maxMemoryRatio:      p.scheduler.maxMemoryRatio,
-		totalMemoryMetadata: p.scheduler.totalMemoryMetadata,
+		TotalMemoryMetadata: p.scheduler.TotalMemoryMetadata,
 		provisioner:         &overridenProvisioner,
 		ignoredContainers:   containerIds,
 	}
@@ -195,7 +195,7 @@ func (p *dockerProvisioner) dryMode(ignoredContainers []container.Container) (*d
 	}
 	overridenProvisioner.scheduler = &segregatedScheduler{
 		maxMemoryRatio:      p.scheduler.maxMemoryRatio,
-		totalMemoryMetadata: p.scheduler.totalMemoryMetadata,
+		TotalMemoryMetadata: p.scheduler.TotalMemoryMetadata,
 		provisioner:         overridenProvisioner,
 		ignoredContainers:   containerIds,
 	}

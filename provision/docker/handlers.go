@@ -42,6 +42,7 @@ func init() {
 	api.RegisterHandler("/docker/fix-containers", "POST", api.AdminRequiredHandler(fixContainersHandler))
 	api.RegisterHandler("/docker/healing", "GET", api.AdminRequiredHandler(healingHistoryHandler))
 	api.RegisterHandler("/docker/autoscale", "GET", api.AdminRequiredHandler(autoScaleHistoryHandler))
+	api.RegisterHandler("/docker/autoscale/config", "GET", api.AdminRequiredHandler(autoScaleGetConfig))
 	api.RegisterHandler("/docker/autoscale/run", "POST", api.AdminRequiredHandler(autoScaleRunHandler))
 	api.RegisterHandler("/docker/autoscale/rules", "GET", api.AdminRequiredHandler(autoScaleListRules))
 	api.RegisterHandler("/docker/autoscale/rules", "POST", api.AdminRequiredHandler(autoScaleSetRule))
@@ -50,6 +51,11 @@ func init() {
 	api.RegisterHandler("/docker/bs/upgrade", "POST", api.AdminRequiredHandler(bsUpgradeHandler))
 	api.RegisterHandler("/docker/bs/env", "POST", api.AdminRequiredHandler(bsEnvSetHandler))
 	api.RegisterHandler("/docker/bs", "GET", api.AdminRequiredHandler(bsConfigGetHandler))
+}
+
+func autoScaleGetConfig(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	config := mainDockerProvisioner.initAutoScaleConfig()
+	return json.NewEncoder(w).Encode(config)
 }
 
 func autoScaleListRules(w http.ResponseWriter, r *http.Request, t auth.Token) error {

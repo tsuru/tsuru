@@ -1114,6 +1114,19 @@ func (s *HandlersSuite) TestBsUpgradeHandler(c *check.C) {
 	c.Assert(conf.Image, check.Equals, "")
 }
 
+func (s *HandlersSuite) TestAutoScaleConfigHandler(c *check.C) {
+	expected, err := json.Marshal(mainDockerProvisioner.initAutoScaleConfig())
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/docker/autoscale/config", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), check.Equals, string(expected)+"\n")
+}
+
 func (s *HandlersSuite) TestAutoScaleListRulesEmpty(c *check.C) {
 	recorder := httptest.NewRecorder()
 	request, err := http.NewRequest("GET", "/docker/autoscale/rules", nil)

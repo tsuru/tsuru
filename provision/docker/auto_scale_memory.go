@@ -32,9 +32,9 @@ func (a *memoryScaler) nodesMemoryData(nodes []*cluster.Node) (map[string]*nodeM
 		return nil, err
 	}
 	for _, node := range nodes {
-		totalMemory, _ := strconv.ParseFloat(node.Metadata[a.totalMemoryMetadata], 64)
+		totalMemory, _ := strconv.ParseFloat(node.Metadata[a.TotalMemoryMetadata], 64)
 		if totalMemory == 0.0 {
-			return nil, fmt.Errorf("no value found for memory metadata (%s) in node %s", a.totalMemoryMetadata, node.Address)
+			return nil, fmt.Errorf("no value found for memory metadata (%s) in node %s", a.TotalMemoryMetadata, node.Address)
 		}
 		maxMemory := int64(float64(a.rule.MaxMemoryRatio) * totalMemory)
 		data := &nodeMemoryData{

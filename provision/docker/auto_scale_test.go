@@ -123,7 +123,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRun(c *check.C) {
 	a := autoScaleConfig{
 		done:            make(chan bool),
 		provisioner:     s.p,
-		groupByMetadata: "pool",
+		GroupByMetadata: "pool",
 	}
 	a.runOnce()
 	nodes, err := s.p.cluster.Nodes()
@@ -187,7 +187,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunNoRebalance(c *check.C) {
 	a := autoScaleConfig{
 		done:            make(chan bool),
 		provisioner:     s.p,
-		groupByMetadata: "pool",
+		GroupByMetadata: "pool",
 	}
 	a.runOnce()
 	nodes, err := s.p.cluster.Nodes()
@@ -235,7 +235,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnce(c *check.C) {
 	a := autoScaleConfig{
 		done:            make(chan bool),
 		provisioner:     s.p,
-		groupByMetadata: "pool",
+		GroupByMetadata: "pool",
 	}
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
@@ -264,7 +264,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceNoContainers(c *check.C) {
 	a := autoScaleConfig{
 		done:            make(chan bool),
 		provisioner:     s.p,
-		groupByMetadata: "pool",
+		GroupByMetadata: "pool",
 	}
 	err := a.runOnce()
 	c.Assert(err, check.IsNil)
@@ -288,7 +288,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceNoContainersMultipleNodes(c *
 	a := autoScaleConfig{
 		done:            make(chan bool),
 		provisioner:     s.p,
-		groupByMetadata: "pool",
+		GroupByMetadata: "pool",
 	}
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
@@ -312,7 +312,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMultipleNodes(c *check.C) {
 	a := autoScaleConfig{
 		done:            make(chan bool),
 		provisioner:     s.p,
-		groupByMetadata: "pool",
+		GroupByMetadata: "pool",
 	}
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
@@ -354,7 +354,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceAddsAtLeastOne(c *check.C) {
 	a := autoScaleConfig{
 		done:            make(chan bool),
 		provisioner:     s.p,
-		groupByMetadata: "pool",
+		GroupByMetadata: "pool",
 	}
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
@@ -395,7 +395,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMultipleNodesPartialError(c *
 	a := autoScaleConfig{
 		done:            make(chan bool),
 		provisioner:     s.p,
-		groupByMetadata: "pool",
+		GroupByMetadata: "pool",
 	}
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
@@ -441,7 +441,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunRebalanceOnly(c *check.C) {
 	a := autoScaleConfig{
 		done:            make(chan bool),
 		provisioner:     s.p,
-		groupByMetadata: "pool",
+		GroupByMetadata: "pool",
 	}
 	a.runOnce()
 	evts, err := listAutoScaleEvents(0, 0)
@@ -518,7 +518,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunNoMatch(c *check.C) {
 	a := autoScaleConfig{
 		done:            make(chan bool),
 		provisioner:     s.p,
-		groupByMetadata: "pool",
+		GroupByMetadata: "pool",
 	}
 	a.runOnce()
 	nodes, err := s.p.cluster.Nodes()
@@ -569,7 +569,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunStress(c *check.C) {
 			a := autoScaleConfig{
 				done:            make(chan bool),
 				provisioner:     s.p,
-				groupByMetadata: "pool",
+				GroupByMetadata: "pool",
 			}
 			defer wg.Done()
 			err := a.runOnce()
@@ -614,7 +614,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBased(c *check.C) {
 	a := autoScaleConfig{
 		done:            make(chan bool),
 		provisioner:     s.p,
-		groupByMetadata: "pool",
+		GroupByMetadata: "pool",
 	}
 	a.runOnce()
 	nodes, err := s.p.cluster.Nodes()
@@ -673,7 +673,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedMultipleNodes(c *check
 	a := autoScaleConfig{
 		done:            make(chan bool),
 		provisioner:     s.p,
-		groupByMetadata: "pool",
+		GroupByMetadata: "pool",
 	}
 	a.runOnce()
 	evts, err := listAutoScaleEvents(0, 0)
@@ -741,7 +741,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMemoryBasedNoContainersMultip
 	a := autoScaleConfig{
 		done:            make(chan bool),
 		provisioner:     s.p,
-		groupByMetadata: "pool",
+		GroupByMetadata: "pool",
 	}
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
@@ -770,7 +770,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunPriorityToCountBased(c *check.C) 
 	a := autoScaleConfig{
 		done:            make(chan bool),
 		provisioner:     s.p,
-		groupByMetadata: "pool",
+		GroupByMetadata: "pool",
 	}
 	a.runOnce()
 	nodes, err := s.p.cluster.Nodes()
@@ -817,7 +817,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedPlanTooBig(c *check.C)
 	a := autoScaleConfig{
 		done:            make(chan bool),
 		provisioner:     s.p,
-		groupByMetadata: "pool",
+		GroupByMetadata: "pool",
 	}
 	a.runOnce()
 	c.Assert(s.S.logBuf, check.Matches, `(?s).*\[node autoscale\] error scaling group pool1: aborting, impossible to fit max plan memory of 126000 bytes, node max available memory is 100000.*`)
@@ -859,7 +859,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDown(c *check.C) {
 	a := autoScaleConfig{
 		done:            make(chan bool),
 		provisioner:     s.p,
-		groupByMetadata: "pool",
+		GroupByMetadata: "pool",
 	}
 	a.runOnce()
 	evts, err := listAutoScaleEvents(0, 0)
@@ -922,7 +922,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMultipleNodes(c *check.C
 	a := autoScaleConfig{
 		done:            make(chan bool),
 		provisioner:     s.p,
-		groupByMetadata: "pool",
+		GroupByMetadata: "pool",
 	}
 	a.runOnce()
 	evts, err := listAutoScaleEvents(0, 0)
@@ -977,7 +977,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMemoryScaler(c *check.C)
 	a := autoScaleConfig{
 		done:            make(chan bool),
 		provisioner:     s.p,
-		groupByMetadata: "pool",
+		GroupByMetadata: "pool",
 	}
 	a.runOnce()
 	evts, err := listAutoScaleEvents(0, 0)
@@ -1044,7 +1044,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownMemoryScalerMultipleNode
 	a := autoScaleConfig{
 		done:            make(chan bool),
 		provisioner:     s.p,
-		groupByMetadata: "pool",
+		GroupByMetadata: "pool",
 	}
 	a.runOnce()
 	evts, err := listAutoScaleEvents(0, 0)
@@ -1104,7 +1104,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunScaleDownRespectsMinNodes(c *chec
 	a := autoScaleConfig{
 		done:            make(chan bool),
 		provisioner:     s.p,
-		groupByMetadata: "pool",
+		GroupByMetadata: "pool",
 	}
 	a.runOnce()
 	evts, err := listAutoScaleEvents(0, 0)
@@ -1129,7 +1129,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunLockedApp(c *check.C) {
 	a := autoScaleConfig{
 		done:            make(chan bool),
 		provisioner:     s.p,
-		groupByMetadata: "pool",
+		GroupByMetadata: "pool",
 	}
 	a.runOnce()
 	c.Assert(s.S.logBuf.String(), check.Matches, `(?s).*\[node autoscale\].*unable to lock app myapp, aborting.*`)
@@ -1160,7 +1160,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunMemoryBasedLockedApp(c *check.C) 
 	a := autoScaleConfig{
 		done:            make(chan bool),
 		provisioner:     s.p,
-		groupByMetadata: "pool",
+		GroupByMetadata: "pool",
 	}
 	a.runOnce()
 	c.Assert(s.S.logBuf.String(), check.Matches, `(?s).*\[node autoscale\].*unable to lock app myapp, aborting.*`)
@@ -1244,7 +1244,7 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
 	a := autoScaleConfig{
 		done:            make(chan bool),
 		provisioner:     s.p,
-		groupByMetadata: "pool",
+		GroupByMetadata: "pool",
 	}
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
@@ -1278,7 +1278,7 @@ func (s *S) TestAutoScaleConfigRunParamsError(c *check.C) {
 	a := autoScaleConfig{
 		done:            make(chan bool),
 		provisioner:     s.p,
-		groupByMetadata: "pool",
+		GroupByMetadata: "pool",
 	}
 	a.runOnce()
 	c.Assert(s.logBuf.String(), check.Matches, `(?s).*invalid rule, either memory information or max container count must be set.*`)
@@ -1288,7 +1288,7 @@ func (s *S) TestAutoScaleConfigRunParamsError(c *check.C) {
 	a = autoScaleConfig{
 		done:            make(chan bool),
 		provisioner:     s.p,
-		groupByMetadata: "pool",
+		GroupByMetadata: "pool",
 	}
 	a.runOnce()
 	c.Assert(s.logBuf.String(), check.Matches, `(?s).*scale down ratio needs to be greater than 1.0, got .+`)
@@ -1301,8 +1301,8 @@ func (s *S) TestAutoScaleConfigRunDefaultValues(c *check.C) {
 		provisioner: s.p,
 	}
 	a.runOnce()
-	c.Assert(a.runInterval, check.Equals, 1*time.Hour)
-	c.Assert(a.waitTimeNewMachine, check.Equals, 5*time.Minute)
+	c.Assert(a.RunInterval, check.Equals, 1*time.Hour)
+	c.Assert(a.WaitTimeNewMachine, check.Equals, 5*time.Minute)
 	rule, err := autoScaleRuleForMetadata("")
 	c.Assert(err, check.IsNil)
 	c.Assert(rule.ScaleDownRatio > 1.332 && rule.ScaleDownRatio < 1.334, check.Equals, true)
@@ -1315,12 +1315,12 @@ func (s *S) TestAutoScaleConfigRunConfigValues(c *check.C) {
 	a := autoScaleConfig{
 		done:               make(chan bool),
 		provisioner:        s.p,
-		runInterval:        10 * time.Minute,
-		waitTimeNewMachine: 7 * time.Minute,
+		RunInterval:        10 * time.Minute,
+		WaitTimeNewMachine: 7 * time.Minute,
 	}
 	a.runOnce()
-	c.Assert(a.runInterval, check.Equals, 10*time.Minute)
-	c.Assert(a.waitTimeNewMachine, check.Equals, 7*time.Minute)
+	c.Assert(a.RunInterval, check.Equals, 10*time.Minute)
+	c.Assert(a.WaitTimeNewMachine, check.Equals, 7*time.Minute)
 	rule, err := autoScaleRuleForMetadata("")
 	c.Assert(err, check.IsNil)
 	c.Assert(rule.ScaleDownRatio > 1.49 && rule.ScaleDownRatio < 1.51, check.Equals, true)

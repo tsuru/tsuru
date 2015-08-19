@@ -30,12 +30,12 @@ import (
 var errAutoScaleRunning = errors.New("autoscale already running")
 
 type autoScaleConfig struct {
+	GroupByMetadata     string
+	WaitTimeNewMachine  time.Duration
+	RunInterval         time.Duration
+	TotalMemoryMetadata string
 	provisioner         *dockerProvisioner
-	groupByMetadata     string
 	done                chan bool
-	waitTimeNewMachine  time.Duration
-	runInterval         time.Duration
-	totalMemoryMetadata string
 	writer              io.Writer
 }
 
@@ -61,14 +61,14 @@ func (l metaWithFrequencyList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
 func (l metaWithFrequencyList) Less(i, j int) bool { return l[i].freq < l[j].freq }
 
 func (a *autoScaleConfig) initialize() {
-	if a.totalMemoryMetadata == "" {
-		a.totalMemoryMetadata, _ = config.GetString("docker:scheduler:total-memory-metadata")
+	if a.TotalMemoryMetadata == "" {
+		a.TotalMemoryMetadata, _ = config.GetString("docker:scheduler:total-memory-metadata")
 	}
-	if a.runInterval == 0 {
-		a.runInterval = time.Hour
+	if a.RunInterval == 0 {
+		a.RunInterval = time.Hour
 	}
-	if a.waitTimeNewMachine == 0 {
-		a.waitTimeNewMachine = 5 * time.Minute
+	if a.WaitTimeNewMachine == 0 {
+		a.WaitTimeNewMachine = 5 * time.Minute
 	}
 }
 
@@ -90,7 +90,7 @@ func (a *autoScaleConfig) run() error {
 		select {
 		case <-a.done:
 			return err
-		case <-time.After(a.runInterval):
+		case <-time.After(a.RunInterval):
 		}
 	}
 }
@@ -140,13 +140,13 @@ func (a *autoScaleConfig) runScaler() (retErr error) {
 	clusterMap := map[string][]*cluster.Node{}
 	for i := range nodes {
 		node := &nodes[i]
-		if a.groupByMetadata == "" {
+		if a.GroupByMetadata == "" {
 			clusterMap[""] = append(clusterMap[""], node)
 			continue
 		}
-		groupMetadata := node.Metadata[a.groupByMetadata]
+		groupMetadata := node.Metadata[a.GroupByMetadata]
 		if groupMetadata == "" {
-			a.logDebug("skipped node %s, no metadata value for %s.", node.Address, a.groupByMetadata)
+			a.logDebug("skipped node %s, no metadata value for %s.", node.Address, a.GroupByMetadata)
 			continue
 		}
 		clusterMap[groupMetadata] = append(clusterMap[groupMetadata], node)
@@ -192,7 +192,7 @@ func (a *autoScaleConfig) runScalerInNodes(groupMetadata string, nodes []*cluste
 		retErr = fmt.Errorf("error getting scaler for %s: %s", groupMetadata, err)
 		return
 	}
-	event.logMsg("running scaler %T for %q: %q", scaler, a.groupByMetadata, groupMetadata)
+	event.logMsg("running scaler %T for %q: %q", scaler, a.GroupByMetadata, groupMetadata)
 	scalerResult, err := scaler.scale(groupMetadata, nodes)
 	if err != nil {
 		retErr = fmt.Errorf("error scaling group %s: %s", groupMetadata, err.Error())
@@ -239,15 +239,15 @@ func (a *autoScaleConfig) runScalerInNodes(groupMetadata string, nodes []*cluste
 		}
 	}
 	if event.Action == "" {
-		event.logMsg("nothing to do for %q: %q", a.groupByMetadata, groupMetadata)
+		event.logMsg("nothing to do for %q: %q", a.GroupByMetadata, groupMetadata)
 	}
 	return
 }
 
 func (a *autoScaleConfig) rebalanceIfNeeded(event *autoScaleEvent, groupMetadata string, nodes []*cluster.Node) error {
 	var rebalanceFilter map[string]string
-	if a.groupByMetadata != "" {
-		rebalanceFilter = map[string]string{a.groupByMetadata: groupMetadata}
+	if a.GroupByMetadata != "" {
+		rebalanceFilter = map[string]string{a.GroupByMetadata: groupMetadata}
 	}
 	if event.Action == "" {
 		// No action yet, check if we need rebalance
@@ -344,7 +344,7 @@ func (a *autoScaleConfig) addNode(event *autoScaleEvent, modelNodes []*cluster.N
 		"machine":  machine.Id,
 		"metadata": createdNode.Metadata,
 	}
-	job, err := q.EnqueueWait(bs.QueueTaskName, jobParams, a.waitTimeNewMachine)
+	job, err := q.EnqueueWait(bs.QueueTaskName, jobParams, a.WaitTimeNewMachine)
 	if err != nil {
 		return nil, fmt.Errorf("error enqueueing task: %s", err)
 	}

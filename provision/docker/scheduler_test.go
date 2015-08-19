@@ -318,7 +318,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwareness(c *check.C) {
 	defer s.storage.Apps().Remove(bson.M{"name": app2.Name})
 	segSched := segregatedScheduler{
 		maxMemoryRatio:      0.8,
-		totalMemoryMetadata: "totalMemory",
+		TotalMemoryMetadata: "totalMemory",
 		provisioner:         s.p,
 	}
 	o := provision.AddPoolOptions{Name: "mypool"}
@@ -401,7 +401,7 @@ func (s *S) TestSchedulerScheduleWithMemoryAwarenessWithAutoScale(c *check.C) {
 	defer s.storage.Apps().Remove(bson.M{"name": app2.Name})
 	segSched := segregatedScheduler{
 		maxMemoryRatio:      0.8,
-		totalMemoryMetadata: "totalMemory",
+		TotalMemoryMetadata: "totalMemory",
 		provisioner:         s.p,
 	}
 	o := provision.AddPoolOptions{Name: "mypool"}
