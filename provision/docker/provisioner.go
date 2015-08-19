@@ -129,9 +129,8 @@ func (p *dockerProvisioner) initDockerCluster() error {
 	if activeMonitoring > 0 {
 		p.cluster.StartActiveMonitoring(time.Duration(activeMonitoring) * time.Second)
 	}
-	autoScaleEnabled, _ := config.GetBool("docker:auto-scale:enabled")
-	if autoScaleEnabled {
-		autoScale := p.initAutoScaleConfig()
+	autoScale := p.initAutoScaleConfig()
+	if autoScale.Enabled {
 		shutdown.Register(autoScale)
 		go autoScale.run()
 	}
@@ -139,6 +138,7 @@ func (p *dockerProvisioner) initDockerCluster() error {
 }
 
 func (p *dockerProvisioner) initAutoScaleConfig() *autoScaleConfig {
+	enabled, _ := config.GetBool("docker:auto-scale:enabled")
 	waitSecondsNewMachine, _ := config.GetInt("docker:auto-scale:wait-new-time")
 	GroupByMetadata, _ := config.GetString("docker:auto-scale:group-by-metadata")
 	runInterval, _ := config.GetInt("docker:auto-scale:run-interval")
@@ -148,6 +148,7 @@ func (p *dockerProvisioner) initAutoScaleConfig() *autoScaleConfig {
 		TotalMemoryMetadata: TotalMemoryMetadata,
 		WaitTimeNewMachine:  time.Duration(waitSecondsNewMachine) * time.Second,
 		RunInterval:         time.Duration(runInterval) * time.Second,
+		Enabled:             enabled,
 		provisioner:         p,
 		done:                make(chan bool),
 	}
@@ -784,9 +785,10 @@ func (p *dockerProvisioner) AdminCommands() []cmd.Command {
 		&listNodesInTheSchedulerCmd{},
 		fixContainersCmd{},
 		&healer.ListHealingHistoryCmd{},
-		&listAutoScaleHistoryCmd{},
-		&updateNodeToSchedulerCmd{},
 		&autoScaleRunCmd{},
+		&listAutoScaleHistoryCmd{},
+		&autoScaleInfoCmd{},
+		&updateNodeToSchedulerCmd{},
 		&bs.EnvSetCmd{},
 		&bs.InfoCmd{},
 		&bs.UpgradeCmd{},

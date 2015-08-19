@@ -34,6 +34,7 @@ type autoScaleConfig struct {
 	WaitTimeNewMachine  time.Duration
 	RunInterval         time.Duration
 	TotalMemoryMetadata string
+	Enabled             bool
 	provisioner         *dockerProvisioner
 	done                chan bool
 	writer              io.Writer

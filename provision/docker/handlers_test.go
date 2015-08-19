@@ -927,6 +927,8 @@ func (s *HandlersSuite) TestAutoScaleRunHandler(c *check.C) {
 			"pool": "pool1",
 		}},
 	)
+	config.Set("docker:auto-scale:enabled", true)
+	defer config.Unset("docker:auto-scale:enabled")
 	config.Set("docker:auto-scale:group-by-metadata", "pool")
 	config.Set("docker:auto-scale:max-container-count", 2)
 	defer config.Unset("docker:auto-scale:max-container-count")
@@ -1115,6 +1117,8 @@ func (s *HandlersSuite) TestBsUpgradeHandler(c *check.C) {
 }
 
 func (s *HandlersSuite) TestAutoScaleConfigHandler(c *check.C) {
+	config.Set("docker:auto-scale:enabled", true)
+	defer config.Unset("docker:auto-scale:enabled")
 	expected, err := json.Marshal(mainDockerProvisioner.initAutoScaleConfig())
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()

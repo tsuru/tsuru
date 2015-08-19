@@ -349,7 +349,7 @@ func (s *S) TestUpdateNodeToTheSchedulerCmdRun(c *check.C) {
 	c.Assert(buf.String(), check.Equals, "Node successfully updated.\n")
 }
 
-func (s *S) TestListAutoScaleRunCmdRun(c *check.C) {
+func (s *S) TestAutoScaleRunCmdRun(c *check.C) {
 	var stdout, stderr bytes.Buffer
 	msg, _ := json.Marshal(tsuruIo.SimpleJsonMessage{Message: "progress msg"})
 	result := string(msg)
@@ -370,4 +370,96 @@ func (s *S) TestListAutoScaleRunCmdRun(c *check.C) {
 	err := cm.Run(&context, client)
 	c.Assert(err, check.IsNil)
 	c.Assert(stdout.String(), check.Equals, "progress msg")
+}
+
+func (s *S) TestAutoScaleInfoCmdRun(c *check.C) {
+	var calls int
+	config := `{"GroupByMetadata":"pool","Enabled":true}`
+	configTransport := cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: config, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			calls++
+			return req.URL.Path == "/docker/autoscale/config" && req.Method == "GET"
+		},
+	}
+	rules := `[
+	{
+		"MetadataFilter":"pool1",
+		"Enabled":true,
+		"MaxContainerCount":6,
+		"ScaleDownRatio":1.33,
+		"PreventRebalance":false,
+		"MaxMemoryRatio":1.20,
+		"Error": ""
+	},
+	{
+		"MetadataFilter":"pool2",
+		"Enabled":true,
+		"MaxContainerCount":13,
+		"ScaleDownRatio":1.33,
+		"PreventRebalance":true,
+		"MaxMemoryRatio":0.9,
+		"Error": ""
+	},
+	{
+		"MetadataFilter":"pool3",
+		"Enabled":false,
+		"MaxContainerCount":50,
+		"ScaleDownRatio":1.33,
+		"PreventRebalance":false,
+		"MaxMemoryRatio":1.20,
+		"Error": "something went wrong"
+	}
+]`
+	rulesTransport := cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: rules, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			calls++
+			return req.URL.Path == "/docker/autoscale/rules" && req.Method == "GET"
+		},
+	}
+	var buf bytes.Buffer
+	context := cmd.Context{Stdout: &buf}
+	manager := cmd.Manager{}
+	trans := cmdtest.MultiConditionalTransport{
+		ConditionalTransports: []cmdtest.ConditionalTransport{configTransport, rulesTransport},
+	}
+	client := cmd.NewClient(&http.Client{Transport: &trans}, nil, &manager)
+	var command autoScaleInfoCmd
+	err := command.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	expected := `Metadata filter: pool
+
+Rules:
++--------------+---------------------+------------------+------------------+--------------------+---------+
+| Filter value | Max container count | Max memory ratio | Scale down ratio | Rebalance on scale | Enabled |
++--------------+---------------------+------------------+------------------+--------------------+---------+
+| pool1        | 6                   | 1.2000           | 1.3300           | true               | true    |
+| pool2        | 13                  | 0.9000           | 1.3300           | false              | true    |
+| pool3        | 50                  | 1.2000           | 1.3300           | true               | false   |
++--------------+---------------------+------------------+------------------+--------------------+---------+
+`
+	c.Assert(buf.String(), check.Equals, expected)
+	c.Assert(calls, check.Equals, 2)
+}
+
+func (s *S) TestAutoScaleInfoCmdRunDisabled(c *check.C) {
+	var calls int
+	config := `{"GroupByMetadata":"pool","Enabled":false}`
+	transport := cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: config, Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			calls++
+			return req.URL.Path == "/docker/autoscale/config" && req.Method == "GET"
+		},
+	}
+	var buf bytes.Buffer
+	context := cmd.Context{Stdout: &buf}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: &transport}, nil, &manager)
+	var command autoScaleInfoCmd
+	err := command.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	c.Assert(buf.String(), check.Equals, "auto-scale is disabled\n")
+	c.Assert(calls, check.Equals, 1)
 }

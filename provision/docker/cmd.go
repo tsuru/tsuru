@@ -11,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -387,5 +388,106 @@ func (c *autoScaleRunCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	if len(unparsed) > 0 {
 		return fmt.Errorf("unparsed message error: %s", string(unparsed))
 	}
+	return nil
+}
+
+type autoScaleInfoCmd struct{}
+
+func (c *autoScaleInfoCmd) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:  "docker-autoscale-info",
+		Usage: "docker-autoscale-info",
+		Desc: `Display the current configuration for tsuru autoscale,
+including the set of rules and the current metadata filter.
+
+The metadata filter is the value that defines which node metadata will be used
+to group autoscale rules. A common approach is to use the "pool" as the
+filter. Then autoscale can be configured for each matching rule value.`,
+	}
+}
+
+func (c *autoScaleInfoCmd) Run(context *cmd.Context, client *cmd.Client) error {
+	config, err := c.getAutoScaleConfig(client)
+	if err != nil {
+		return err
+	}
+	if !config.Enabled {
+		fmt.Fprintln(context.Stdout, "auto-scale is disabled")
+		return nil
+	}
+	rules, err := c.getAutoScaleRules(client)
+	if err != nil {
+		return err
+	}
+	return c.render(context, config, rules)
+}
+
+func (c *autoScaleInfoCmd) getAutoScaleConfig(client *cmd.Client) (*autoScaleConfig, error) {
+	url, err := cmd.GetURL("/docker/autoscale/config")
+	if err != nil {
+		return nil, err
+	}
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.Do(request)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	var config autoScaleConfig
+	err = json.NewDecoder(resp.Body).Decode(&config)
+	if err != nil {
+		return nil, err
+	}
+	return &config, nil
+}
+
+func (c *autoScaleInfoCmd) getAutoScaleRules(client *cmd.Client) ([]autoScaleRule, error) {
+	url, err := cmd.GetURL("/docker/autoscale/rules")
+	if err != nil {
+		return nil, err
+	}
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.Do(request)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	var rules []autoScaleRule
+	err = json.NewDecoder(resp.Body).Decode(&rules)
+	if err != nil {
+		return nil, err
+	}
+	return rules, nil
+}
+
+func (c *autoScaleInfoCmd) render(context *cmd.Context, config *autoScaleConfig, rules []autoScaleRule) error {
+	fmt.Fprintf(context.Stdout, "Metadata filter: %s\n\n", config.GroupByMetadata)
+	var table cmd.Table
+	tableHeader := []string{
+		"Filter value",
+		"Max container count",
+		"Max memory ratio",
+		"Scale down ratio",
+		"Rebalance on scale",
+		"Enabled",
+	}
+	table.Headers = tableHeader
+	for _, rule := range rules {
+		table.AddRow([]string{
+			rule.MetadataFilter,
+			strconv.Itoa(rule.MaxContainerCount),
+			strconv.FormatFloat(float64(rule.MaxMemoryRatio), 'f', 4, 32),
+			strconv.FormatFloat(float64(rule.ScaleDownRatio), 'f', 4, 32),
+			strconv.FormatBool(!rule.PreventRebalance),
+			strconv.FormatBool(rule.Enabled),
+		})
+	}
+	fmt.Fprintf(context.Stdout, "Rules:\n%s", table.String())
 	return nil
 }
