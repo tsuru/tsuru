@@ -365,7 +365,7 @@ func (s *S) TestListAutoScaleRunCmdRun(c *check.C) {
 	}
 	manager := cmd.Manager{}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
-	cm := listAutoScaleRunCmd{}
+	cm := autoScaleRunCmd{}
 	cm.Flags().Parse(true, []string{"-y"})
 	err := cm.Run(&context, client)
 	c.Assert(err, check.IsNil)

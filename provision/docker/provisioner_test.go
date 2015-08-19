@@ -1236,7 +1236,7 @@ func (s *S) TestAdminCommands(c *check.C) {
 		&healer.ListHealingHistoryCmd{},
 		&listAutoScaleHistoryCmd{},
 		&updateNodeToSchedulerCmd{},
-		&listAutoScaleRunCmd{},
+		&autoScaleRunCmd{},
 		&bs.EnvSetCmd{},
 		&bs.InfoCmd{},
 		&bs.UpgradeCmd{},

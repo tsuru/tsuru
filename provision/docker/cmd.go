@@ -345,11 +345,11 @@ func (c *listAutoScaleHistoryCmd) Flags() *gnuflag.FlagSet {
 	return c.fs
 }
 
-type listAutoScaleRunCmd struct {
+type autoScaleRunCmd struct {
 	cmd.ConfirmationCommand
 }
 
-func (c *listAutoScaleRunCmd) Info() *cmd.Info {
+func (c *autoScaleRunCmd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "docker-autoscale-run",
 		Usage: "docker-autoscale-run [-y/--assume-yes]",
@@ -360,7 +360,7 @@ were created using an IaaS provider registered in tsuru.`,
 	}
 }
 
-func (c *listAutoScaleRunCmd) Run(context *cmd.Context, client *cmd.Client) error {
+func (c *autoScaleRunCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	context.RawOutput()
 	if !c.Confirm(context, "Are you sure you want to run auto scaling checks?") {
 		return nil
