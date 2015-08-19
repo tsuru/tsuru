@@ -5,6 +5,7 @@
 package healer
 
 import (
+	"os"
 	"testing"
 
 	"github.com/tsuru/config"
@@ -51,4 +52,9 @@ func (s *S) SetUpTest(c *check.C) {
 	for _, m := range machines {
 		m.Destroy()
 	}
+	os.Setenv("TSURU_TARGET", "http://localhost")
+}
+
+func (s *S) TearDownTest(c *check.C) {
+	os.Unsetenv("TSURU_TARGET")
 }
