@@ -599,10 +599,9 @@ func (app *App) SetPool() error {
 
 func (app *App) GetPoolForApp(poolName string) (string, error) {
 	var query bson.M
+	var poolTeam bool
 	if poolName != "" {
-		byTeamOwner := bson.M{"$and": []bson.M{{"_id": poolName}, {"teams": app.TeamOwner}}}
-		publicPool := bson.M{"$and": []bson.M{{"_id": poolName}, {"public": true}}}
-		query = bson.M{"$or": []bson.M{byTeamOwner, publicPool}}
+		query = bson.M{"_id": poolName}
 	} else {
 		query = bson.M{"teams": app.TeamOwner}
 	}
@@ -613,11 +612,20 @@ func (app *App) GetPoolForApp(poolName string) (string, error) {
 	if len(pools) > 1 {
 		return "", ManyPoolsError
 	}
-	if len(pools) == 0 && poolName != "" {
-		return "", stderr.New(fmt.Sprintf("You don't have access to pool %s", poolName))
-	}
 	if len(pools) == 0 {
-		return "", nil
+		if poolName == "" {
+			return "", nil
+		}
+		return "", NoPoolError
+	}
+	for _, team := range pools[0].Teams {
+		if team == app.TeamOwner {
+			poolTeam = true
+			break
+		}
+	}
+	if !pools[0].Public && !poolTeam {
+		return "", stderr.New(fmt.Sprintf("You don't have access to pool %s", poolName))
 	}
 	return pools[0].Name, nil
 }

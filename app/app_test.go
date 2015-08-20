@@ -2926,7 +2926,7 @@ func (s *S) TestAppChangePoolNotExists(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	c.Assert(err, check.IsNil)
 	err = app.ChangePool("test2")
-	c.Assert(err, check.NotNil)
+	c.Assert(err, check.Equals, NoPoolError)
 	c.Assert(app.Pool, check.Equals, "test")
 }
 
