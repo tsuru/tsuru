@@ -558,3 +558,41 @@ func (c *autoScaleSetRuleCmd) Flags() *gnuflag.FlagSet {
 	}
 	return c.fs
 }
+
+type autoScaleDeleteRuleCmd struct {
+	cmd.ConfirmationCommand
+}
+
+func (c *autoScaleDeleteRuleCmd) Info() *cmd.Info {
+	return &cmd.Info{
+		Name:  "docker-autoscale-rule-remove",
+		Usage: "docker-autoscale-rule-remove [rule-name] [-y/--assume-yes]",
+		Desc:  `Removes an auto-scale rule. The name of the rule may be omited, which means "remove the default rule".`,
+	}
+}
+
+func (c *autoScaleDeleteRuleCmd) Run(context *cmd.Context, client *cmd.Client) error {
+	var rule string
+	confirmMsg := "Are you sure you want to remove the default rule?"
+	if len(context.Args) > 0 {
+		rule = context.Args[0]
+		confirmMsg = fmt.Sprintf("Are you sure you want to remove the rule %q?", rule)
+	}
+	if !c.Confirm(context, confirmMsg) {
+		return nil
+	}
+	url, err := cmd.GetURL("/docker/autoscale/rules/" + rule)
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return err
+	}
+	_, err = client.Do(req)
+	if err != nil {
+		return err
+	}
+	fmt.Fprintln(context.Stdout, "Rule successfully removed.")
+	return nil
+}

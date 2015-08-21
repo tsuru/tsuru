@@ -497,3 +497,87 @@ func (s *S) TestAutoScaleSetRuleCmdRun(c *check.C) {
 	c.Assert(called, check.Equals, true)
 	c.Assert(buf.String(), check.Equals, "Rule successfully defined.\n")
 }
+
+func (s *S) TestAutoScaleDeleteCmdRun(c *check.C) {
+	var called bool
+	transport := cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			called = true
+			return req.Method == "DELETE" && req.URL.Path == "/docker/autoscale/rules/myrule"
+		},
+	}
+	var buf bytes.Buffer
+	context := cmd.Context{Args: []string{"myrule"}, Stdout: &buf}
+	var manager cmd.Manager
+	client := cmd.NewClient(&http.Client{Transport: &transport}, nil, &manager)
+	var command autoScaleDeleteRuleCmd
+	err := command.Flags().Parse(true, []string{"-y"})
+	c.Assert(err, check.IsNil)
+	err = command.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	c.Assert(called, check.Equals, true)
+	c.Assert(buf.String(), check.Equals, "Rule successfully removed.\n")
+}
+
+func (s *S) TestAutoScaleDeleteCmdRunAskForConfirmation(c *check.C) {
+	var called bool
+	transport := cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			called = true
+			return req.Method == "DELETE" && req.URL.Path == "/docker/autoscale/rules/myrule"
+		},
+	}
+	var buf bytes.Buffer
+	context := cmd.Context{Args: []string{"myrule"}, Stdout: &buf, Stdin: strings.NewReader("y\n")}
+	var manager cmd.Manager
+	client := cmd.NewClient(&http.Client{Transport: &transport}, nil, &manager)
+	var command autoScaleDeleteRuleCmd
+	err := command.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	c.Assert(called, check.Equals, true)
+	c.Assert(buf.String(), check.Equals, "Are you sure you want to remove the rule \"myrule\"? (y/n) Rule successfully removed.\n")
+}
+
+func (s *S) TestAutoScaleDeleteCmdRunDefault(c *check.C) {
+	var called bool
+	transport := cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			called = true
+			return req.Method == "DELETE" && req.URL.Path == "/docker/autoscale/rules/"
+		},
+	}
+	var buf bytes.Buffer
+	context := cmd.Context{Stdout: &buf}
+	var manager cmd.Manager
+	client := cmd.NewClient(&http.Client{Transport: &transport}, nil, &manager)
+	var command autoScaleDeleteRuleCmd
+	err := command.Flags().Parse(true, []string{"-y"})
+	c.Assert(err, check.IsNil)
+	err = command.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	c.Assert(called, check.Equals, true)
+	c.Assert(buf.String(), check.Equals, "Rule successfully removed.\n")
+}
+
+func (s *S) TestAutoScaleDeleteCmdRunDefaultAskForConfirmation(c *check.C) {
+	var called bool
+	transport := cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			called = true
+			return req.Method == "DELETE" && req.URL.Path == "/docker/autoscale/rules/"
+		},
+	}
+	var buf bytes.Buffer
+	context := cmd.Context{Stdout: &buf, Stdin: strings.NewReader("y\n")}
+	var manager cmd.Manager
+	client := cmd.NewClient(&http.Client{Transport: &transport}, nil, &manager)
+	var command autoScaleDeleteRuleCmd
+	err := command.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	c.Assert(called, check.Equals, true)
+	c.Assert(buf.String(), check.Equals, "Are you sure you want to remove the default rule? (y/n) Rule successfully removed.\n")
+}
