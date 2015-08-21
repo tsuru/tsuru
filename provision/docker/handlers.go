@@ -77,7 +77,11 @@ func autoScaleSetRule(w http.ResponseWriter, r *http.Request, t auth.Token) erro
 
 func autoScaleDeleteRule(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	ruleID := r.URL.Query().Get(":id")
-	return deleteAutoScaleRule(ruleID)
+	err := deleteAutoScaleRule(ruleID)
+	if err == mgo.ErrNotFound {
+		return &errors.HTTP{Code: http.StatusNotFound, Message: "rule not found"}
+	}
+	return nil
 }
 
 func validateNodeAddress(address string) error {

@@ -1288,3 +1288,14 @@ func (s *HandlersSuite) TestAutoScaleDeleteRuleNonDefault(c *check.C) {
 		{Enabled: true, ScaleDownRatio: 1.333, Error: "invalid rule, either memory information or max container count must be set"},
 	})
 }
+
+func (s *HandlersSuite) TestAutoScaleDeleteRuleNotFound(c *check.C) {
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("DELETE", "/docker/autoscale/rules/mypool", nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := api.RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(recorder.Body.String(), check.Equals, "rule not found\n")
+}
