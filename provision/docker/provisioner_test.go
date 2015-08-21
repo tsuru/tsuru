@@ -144,11 +144,11 @@ func (s *S) TestProvisionerRestartProcess(c *check.C) {
 	c.Assert(dbConts[1].HostPort, check.Equals, expectedPort)
 }
 
-func (s *S) stopContainers(n uint) <-chan bool {
+func (s *S) stopContainers(endpoint string, n uint) <-chan bool {
 	ch := make(chan bool)
 	go func() {
 		defer close(ch)
-		client, err := docker.NewClient(s.server.URL())
+		client, err := docker.NewClient(endpoint)
 		if err != nil {
 			return
 		}
@@ -173,7 +173,7 @@ func (s *S) stopContainers(n uint) <-chan bool {
 }
 
 func (s *S) TestDeploy(c *check.C) {
-	stopCh := s.stopContainers(1)
+	stopCh := s.stopContainers(s.server.URL(), 1)
 	defer func() { <-stopCh }()
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
@@ -215,7 +215,7 @@ func (s *S) TestDeploy(c *check.C) {
 func (s *S) TestDeployErasesOldImages(c *check.C) {
 	config.Set("docker:image-history-size", 1)
 	defer config.Unset("docker:image-history-size")
-	stopCh := s.stopContainers(3)
+	stopCh := s.stopContainers(s.server.URL(), 3)
 	defer func() { <-stopCh }()
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
@@ -316,7 +316,7 @@ func (s *S) TestDeployErasesOldImagesIfFailed(c *check.C) {
 func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	config.Set("docker:image-history-size", 2)
 	defer config.Unset("docker:image-history-size")
-	stopCh := s.stopContainers(4)
+	stopCh := s.stopContainers(s.server.URL(), 4)
 	defer func() { <-stopCh }()
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
@@ -393,7 +393,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 }
 
 func (s *S) TestProvisionerUploadDeploy(c *check.C) {
-	stopCh := s.stopContainers(2)
+	stopCh := s.stopContainers(s.server.URL(), 2)
 	defer func() { <-stopCh }()
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
@@ -545,7 +545,7 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 	registryURL := strings.Replace(registryServer.URL, "http://", "", 1)
 	config.Set("docker:registry", registryURL)
 	defer config.Unset("docker:registry")
-	stopCh := s.stopContainers(1)
+	stopCh := s.stopContainers(s.server.URL(), 1)
 	defer func() { <-stopCh }()
 	a := app.App{
 		Name:     "mydoomedapp",

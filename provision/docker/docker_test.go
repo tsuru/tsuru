@@ -211,7 +211,7 @@ func (s *S) TestGetImageWithRegistry(c *check.C) {
 }
 
 func (s *S) TestGitDeploy(c *check.C) {
-	stopCh := s.stopContainers(1)
+	stopCh := s.stopContainers(s.server.URL(), 1)
 	defer func() { <-stopCh }()
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
@@ -260,7 +260,7 @@ func (s *S) TestGitDeployRollsbackAfterErrorOnAttach(c *check.C) {
 }
 
 func (s *S) TestArchiveDeploy(c *check.C) {
-	stopCh := s.stopContainers(1)
+	stopCh := s.stopContainers(s.server.URL(), 1)
 	defer func() { <-stopCh }()
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
