@@ -132,17 +132,19 @@ func (a *updateNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) err
 
 type removeNodeFromSchedulerCmd struct {
 	cmd.ConfirmationCommand
-	fs      *gnuflag.FlagSet
-	destroy bool
+	fs          *gnuflag.FlagSet
+	destroy     bool
+	noRebalance bool
 }
 
 func (removeNodeFromSchedulerCmd) Info() *cmd.Info {
 	return &cmd.Info{
 		Name:  "docker-node-remove",
-		Usage: "docker-node-remove <address> [--destroy] [-y]",
+		Usage: "docker-node-remove <address> [--no-rebalance] [--destroy] [-y]",
 		Desc: `Removes a node from the cluster.
 
 --destroy: Destroy the machine in the IaaS used to create it, if it exists.
+--no-rebalance: Do not rebalance containers of removed node.
 `,
 		MinArgs: 1,
 	}
@@ -164,7 +166,7 @@ func (c *removeNodeFromSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) e
 	if err != nil {
 		return err
 	}
-	url, err := cmd.GetURL("/docker/node")
+	url, err := cmd.GetURL(fmt.Sprintf("/docker/node?no-rebalance=%t", c.noRebalance))
 	if err != nil {
 		return err
 	}
@@ -184,6 +186,7 @@ func (c *removeNodeFromSchedulerCmd) Flags() *gnuflag.FlagSet {
 	if c.fs == nil {
 		c.fs = c.ConfirmationCommand.Flags()
 		c.fs.BoolVar(&c.destroy, "destroy", false, "Destroy node from IaaS")
+		c.fs.BoolVar(&c.noRebalance, "no-rebalance", false, "Do not rebalance containers of removed node.")
 	}
 	return c.fs
 }

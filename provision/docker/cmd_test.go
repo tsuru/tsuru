@@ -93,10 +93,11 @@ func (s *S) TestAddNodeWithErrorCmdRun(c *check.C) {
 func (s *S) TestRemoveNodeFromTheSchedulerCmdInfo(c *check.C) {
 	expected := cmd.Info{
 		Name:  "docker-node-remove",
-		Usage: "docker-node-remove <address> [--destroy] [-y]",
+		Usage: "docker-node-remove <address> [--no-rebalance] [--destroy] [-y]",
 		Desc: `Removes a node from the cluster.
 
 --destroy: Destroy the machine in the IaaS used to create it, if it exists.
+--no-rebalance: Do not rebalance containers of removed node.
 `,
 		MinArgs: 1,
 	}
@@ -159,6 +160,28 @@ func (s *S) TestRemoveNodeFromTheSchedulerWithDestroyCmdRunConfirmation(c *check
 	err := command.Run(&context, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(stdout.String(), check.Equals, "Are you sure you sure you want to remove \"http://localhost:8080\" from cluster? (y/n) Abort.\n")
+}
+
+func (s *S) TestRemoveNodeFromTheSchedulerWithNoRebalanceCmdRun(c *check.C) {
+	var buf bytes.Buffer
+	context := cmd.Context{Args: []string{"http://localhost:8080"}, Stdout: &buf}
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			var result map[string]string
+			json.NewDecoder(req.Body).Decode(&result)
+			return req.URL.Path == "/docker/node" &&
+				req.URL.Query().Get("no-rebalance") == "true" &&
+				result["address"] == "http://localhost:8080"
+		},
+	}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
+	cmd := removeNodeFromSchedulerCmd{}
+	cmd.Flags().Parse(true, []string{"-y", "--no-rebalance"})
+	err := cmd.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	c.Assert(buf.String(), check.Equals, "Node successfully removed.\n")
 }
 
 func (s *S) TestListNodesInTheSchedulerCmdInfo(c *check.C) {
