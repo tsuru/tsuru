@@ -1237,6 +1237,7 @@ func (s *S) TestAdminCommands(c *check.C) {
 		&autoScaleRunCmd{},
 		&listAutoScaleHistoryCmd{},
 		&autoScaleInfoCmd{},
+		&autoScaleSetRuleCmd{},
 		&updateNodeToSchedulerCmd{},
 		&bs.EnvSetCmd{},
 		&bs.InfoCmd{},

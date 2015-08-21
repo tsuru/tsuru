@@ -463,3 +463,37 @@ func (s *S) TestAutoScaleInfoCmdRunDisabled(c *check.C) {
 	c.Assert(buf.String(), check.Equals, "auto-scale is disabled\n")
 	c.Assert(calls, check.Equals, 1)
 }
+
+func (s *S) TestAutoScaleSetRuleCmdRun(c *check.C) {
+	var called bool
+	transport := cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			called = true
+			var rule autoScaleRule
+			err := json.NewDecoder(req.Body).Decode(&rule)
+			c.Assert(err, check.IsNil)
+			c.Assert(rule, check.DeepEquals, autoScaleRule{
+				MetadataFilter:    "pool1",
+				Enabled:           true,
+				MaxContainerCount: 10,
+				MaxMemoryRatio:    1.2342,
+				ScaleDownRatio:    1.33,
+				PreventRebalance:  false,
+			})
+			return req.Method == "POST" && req.URL.Path == "/docker/autoscale/rules"
+		},
+	}
+	var buf bytes.Buffer
+	context := cmd.Context{Stdout: &buf}
+	var manager cmd.Manager
+	client := cmd.NewClient(&http.Client{Transport: &transport}, nil, &manager)
+	var command autoScaleSetRuleCmd
+	flags := []string{"-f", "pool1", "-c", "10", "-m", "1.2342"}
+	err := command.Flags().Parse(true, flags)
+	c.Assert(err, check.IsNil)
+	err = command.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	c.Assert(called, check.Equals, true)
+	c.Assert(buf.String(), check.Equals, "Rule successfully defined.\n")
+}
