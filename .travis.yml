@@ -1,5 +1,5 @@
 language: go
-sudo: required
+sudo: false
 go:
   - 1.4
   - 1.5
@@ -9,19 +9,15 @@ env:
 addons:
   apt:
     packages:
-      - bzr
-      - git
+      - rsyslog
 matrix:
   allow_failures:
     - go: tip
 before_install:
   - sed -E -i 's|git://github.com/([A-Za-z0-9_]+)/tsuru.git|https://github.com/\1/tsuru|g' .git/config
 install:
-  - export PATH="$HOME/gopath/bin:$PATH"
   - make get
 before_script:
-  - sudo /etc/init.d/mysql stop
-  - sudo /etc/init.d/postgresql stop
   - rsyslogd &
   - sleep 1
 script:
