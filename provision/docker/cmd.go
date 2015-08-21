@@ -524,7 +524,11 @@ func (c *autoScaleSetRuleCmd) Run(context *cmd.Context, client *cmd.Client) erro
 		return err
 	}
 	body := bytes.NewBuffer(data)
-	req, err := http.NewRequest("POST", "/docker/autoscale/rules", body)
+	url, err := cmd.GetURL("/docker/autoscale/rules")
+	if err != nil {
+		return err
+	}
+	req, err := http.NewRequest("POST", url, body)
 	if err != nil {
 		return err
 	}
