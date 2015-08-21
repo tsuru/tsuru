@@ -21,7 +21,7 @@ before_script:
   - rsyslogd &
   - sleep 1
 script:
-  - go list ./... | xargs -I pkg go test pkg
+  - make test GOMAXPROCS=1
   - ./check-fmt.sh
   - make deadcode
 notifications:
