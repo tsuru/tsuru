@@ -189,6 +189,10 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 		}
 		return m.Destroy()
 	}
+	noRebalance, err := strconv.ParseBool(r.URL.Query().Get("no-rebalance"))
+	if !noRebalance {
+		return mainDockerProvisioner.rebalanceContainersByHost(urlToHost(address), w)
+	}
 	return nil
 }
 

@@ -381,6 +381,106 @@ func (s *HandlersSuite) TestRemoveNodeHandlerRemoveIaaS(c *check.C) {
 	c.Assert(err, check.Equals, mgo.ErrNotFound)
 }
 
+func (s *S) TestRemoveNodeHandlerRebalanceContainers(c *check.C) {
+	p, err := s.startMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	mainDockerProvisioner = p
+	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
+	c.Assert(err, check.IsNil)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
+	defer p.Destroy(appInstance)
+	p.Provision(appInstance)
+	coll := p.Collection()
+	defer coll.Close()
+	coll.Insert(container.Container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python", ProcessName: "web"})
+	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, check.IsNil)
+	nodes, err := mainDockerProvisioner.cluster.Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(len(nodes), check.Equals, 2)
+	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:      "127.0.0.1",
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 5}},
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: p,
+	})
+	c.Assert(err, check.IsNil)
+	appStruct := &app.App{
+		Name:     appInstance.GetName(),
+		Platform: appInstance.GetPlatform(),
+	}
+	err = s.storage.Apps().Insert(appStruct)
+	c.Assert(err, check.IsNil)
+	err = s.storage.Apps().Update(
+		bson.M{"name": appStruct.Name},
+		bson.M{"$set": bson.M{"units": units}},
+	)
+	c.Assert(err, check.IsNil)
+	b := bytes.NewBufferString(fmt.Sprintf(`{"address": "%s"}`, nodes[0].Address))
+	req, err := http.NewRequest("POST", "/node/remove", b)
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	err = removeNodeHandler(rec, req, nil)
+	c.Assert(err, check.IsNil)
+	nodes, err = mainDockerProvisioner.Cluster().Nodes()
+	c.Assert(len(nodes), check.Equals, 1)
+	containerList, err := mainDockerProvisioner.listContainersByHost(urlToHost(nodes[0].Address))
+	c.Assert(err, check.IsNil)
+	c.Assert(len(containerList), check.Equals, 5)
+}
+
+func (s *S) TestRemoveNodeHandlerNoRebalanceContainers(c *check.C) {
+	p, err := s.startMultipleServersCluster()
+	c.Assert(err, check.IsNil)
+	mainDockerProvisioner = p
+	err = s.newFakeImage(p, "tsuru/app-myapp", nil)
+	c.Assert(err, check.IsNil)
+	appInstance := provisiontest.NewFakeApp("myapp", "python", 0)
+	defer p.Destroy(appInstance)
+	p.Provision(appInstance)
+	coll := p.Collection()
+	defer coll.Close()
+	coll.Insert(container.Container{ID: "container-id", AppName: appInstance.GetName(), Version: "container-version", Image: "tsuru/python", ProcessName: "web"})
+	defer coll.RemoveAll(bson.M{"appname": appInstance.GetName()})
+	imageId, err := appCurrentImageName(appInstance.GetName())
+	c.Assert(err, check.IsNil)
+	nodes, err := mainDockerProvisioner.cluster.Nodes()
+	c.Assert(err, check.IsNil)
+	c.Assert(len(nodes), check.Equals, 2)
+	units, err := addContainersWithHost(&changeUnitsPipelineArgs{
+		toHost:      "127.0.0.1",
+		toAdd:       map[string]*containersToAdd{"web": {Quantity: 5}},
+		app:         appInstance,
+		imageId:     imageId,
+		provisioner: p,
+	})
+	c.Assert(err, check.IsNil)
+	appStruct := &app.App{
+		Name:     appInstance.GetName(),
+		Platform: appInstance.GetPlatform(),
+	}
+	err = s.storage.Apps().Insert(appStruct)
+	c.Assert(err, check.IsNil)
+	err = s.storage.Apps().Update(
+		bson.M{"name": appStruct.Name},
+		bson.M{"$set": bson.M{"units": units}},
+	)
+	c.Assert(err, check.IsNil)
+	b := bytes.NewBufferString(fmt.Sprintf(`{"address": "%s"}`, nodes[0].Address))
+	req, err := http.NewRequest("POST", "/node/remove?no-rebalance=true", b)
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	err = removeNodeHandler(rec, req, nil)
+	c.Assert(err, check.IsNil)
+	nodes, err = mainDockerProvisioner.Cluster().Nodes()
+	c.Assert(len(nodes), check.Equals, 1)
+	containerList, err := mainDockerProvisioner.listContainersByHost(urlToHost(nodes[0].Address))
+	c.Assert(err, check.IsNil)
+	c.Assert(len(containerList), check.Equals, 0)
+}
+
 func (s *HandlersSuite) TestListNodeHandler(c *check.C) {
 	var result struct {
 		Nodes    []cluster.Node `json:"nodes"`

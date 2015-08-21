@@ -308,6 +308,14 @@ func (p *dockerProvisioner) rebalanceContainersByFilter(writer io.Writer, appFil
 	return p, p.moveContainerList(containers, "", writer)
 }
 
+func (p *dockerProvisioner) rebalanceContainersByHost(address string, w io.Writer) error {
+	containers, err := p.listContainersByHost(address)
+	if err != nil {
+		return err
+	}
+	return p.moveContainerList(containers, "", w)
+}
+
 func (p *dockerProvisioner) rebalanceContainers(writer io.Writer, dryRun bool) error {
 	_, err := p.rebalanceContainersByFilter(writer, nil, nil, dryRun)
 	return err
