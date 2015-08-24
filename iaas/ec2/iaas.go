@@ -73,12 +73,12 @@ func (i *EC2IaaS) waitForDnsName(ec2Inst *ec2.EC2, instance *ec2.Instance) (*ec2
 	job, err := q.EnqueueWait(taskName, monsterqueue.JobParams{
 		"region":    ec2Inst.Config.Region,
 		"endpoint":  ec2Inst.Config.Endpoint,
-		"machineId": *instance.InstanceID,
+		"machineId": *instance.InstanceId,
 		"timeout":   maxWaitTime,
 	}, waitDuration)
 	if err != nil {
 		if err == monsterqueue.ErrQueueWaitTimeout {
-			return nil, fmt.Errorf("ec2: time out after %v waiting for instance %s to start", waitDuration, *instance.InstanceID)
+			return nil, fmt.Errorf("ec2: time out after %v waiting for instance %s to start", waitDuration, *instance.InstanceId)
 		}
 		return nil, err
 	}
@@ -86,7 +86,7 @@ func (i *EC2IaaS) waitForDnsName(ec2Inst *ec2.EC2, instance *ec2.Instance) (*ec2
 	if err != nil {
 		return nil, err
 	}
-	instance.PublicDNSName = aws.String(result.(string))
+	instance.PublicDnsName = aws.String(result.(string))
 	return instance, nil
 }
 
@@ -119,7 +119,7 @@ func (i *EC2IaaS) DeleteMachine(m *iaas.Machine) error {
 	if err != nil {
 		return err
 	}
-	input := ec2.TerminateInstancesInput{InstanceIDs: []*string{&m.Id}}
+	input := ec2.TerminateInstancesInput{InstanceIds: []*string{&m.Id}}
 	_, err = ec2Inst.TerminateInstances(&input)
 	return err
 }
@@ -222,7 +222,7 @@ func (i *EC2IaaS) CreateMachine(params map[string]string) (*iaas.Machine, error)
 		return nil, err
 	}
 	options.UserData = aws.String(userData)
-	if options.ImageID == nil || *options.ImageID == "" {
+	if options.ImageId == nil || *options.ImageId == "" {
 		return nil, fmt.Errorf("the parameter %q is required", "imageid")
 	}
 	if options.InstanceType == nil || *options.InstanceType == "" {
@@ -255,7 +255,7 @@ func (i *EC2IaaS) CreateMachine(params map[string]string) (*iaas.Machine, error)
 		}
 		if len(ec2Tags) > 0 {
 			input := ec2.CreateTagsInput{
-				Resources: []*string{runInst.InstanceID},
+				Resources: []*string{runInst.InstanceId},
 				Tags:      ec2Tags,
 			}
 			_, err = ec2Inst.CreateTags(&input)
@@ -269,9 +269,9 @@ func (i *EC2IaaS) CreateMachine(params map[string]string) (*iaas.Machine, error)
 		return nil, err
 	}
 	machine := iaas.Machine{
-		Id:      *instance.InstanceID,
+		Id:      *instance.InstanceId,
 		Status:  *instance.State.Name,
-		Address: *instance.PublicDNSName,
+		Address: *instance.PublicDnsName,
 	}
 	return &machine, nil
 }

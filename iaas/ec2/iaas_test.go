@@ -92,7 +92,7 @@ func (s *S) TestBuildRunInstancesOptions(c *check.C) {
 	ec2iaas := newEC2IaaS("ec2").(*EC2IaaS)
 	opts, err := ec2iaas.buildRunInstancesOptions(params)
 	c.Assert(err, check.IsNil)
-	c.Check(*opts.ImageID, check.Equals, "ami-xxxxxx")
+	c.Check(*opts.ImageId, check.Equals, "ami-xxxxxx")
 	c.Check(*opts.InstanceType, check.Equals, "m1.micro")
 	expectedGroups := []*string{
 		aws.String("group1"), aws.String("group2"), aws.String("group3"),
@@ -100,7 +100,7 @@ func (s *S) TestBuildRunInstancesOptions(c *check.C) {
 	c.Check(opts.SecurityGroups, check.DeepEquals, expectedGroups)
 	c.Check(*opts.MinCount, check.Equals, int64(1))
 	c.Check(*opts.MaxCount, check.Equals, int64(1))
-	c.Check(*opts.EBSOptimized, check.Equals, true)
+	c.Check(*opts.EbsOptimized, check.Equals, true)
 	c.Check(opts.DryRun, check.IsNil)
 	c.Check(opts.BlockDeviceMappings, check.IsNil)
 	c.Check(opts.Monitoring, check.IsNil)
@@ -128,7 +128,7 @@ func (s *S) TestBuildRunInstancesOptionsAliases(c *check.C) {
 	ec2iaas := newEC2IaaS("ec2").(*EC2IaaS)
 	opts, err := ec2iaas.buildRunInstancesOptions(params)
 	c.Assert(err, check.IsNil)
-	c.Check(*opts.ImageID, check.Equals, "ami-xxxxxx")
+	c.Check(*opts.ImageId, check.Equals, "ami-xxxxxx")
 	c.Check(*opts.InstanceType, check.Equals, "m1.micro")
 	expectedGroups := []*string{
 		aws.String("group1"), aws.String("group2"), aws.String("group3"),
@@ -136,7 +136,7 @@ func (s *S) TestBuildRunInstancesOptionsAliases(c *check.C) {
 	c.Check(opts.SecurityGroups, check.DeepEquals, expectedGroups)
 	c.Check(*opts.MinCount, check.Equals, int64(1))
 	c.Check(*opts.MaxCount, check.Equals, int64(1))
-	c.Check(*opts.EBSOptimized, check.Equals, true)
+	c.Check(*opts.EbsOptimized, check.Equals, true)
 	c.Check(opts.DryRun, check.IsNil)
 	c.Check(opts.BlockDeviceMappings, check.IsNil)
 	c.Check(opts.Monitoring, check.IsNil)
@@ -229,7 +229,7 @@ func (s *S) TestWaitForDnsName(c *check.C) {
 	handler, err := ec2iaas.createEC2Handler(s.srv.URL())
 	c.Assert(err, check.IsNil)
 	options := ec2.RunInstancesInput{
-		ImageID:      aws.String("ami-xxx"),
+		ImageId:      aws.String("ami-xxx"),
 		InstanceType: aws.String("m1.small"),
 		MinCount:     aws.Int64(1),
 		MaxCount:     aws.Int64(1),
@@ -237,10 +237,10 @@ func (s *S) TestWaitForDnsName(c *check.C) {
 	resp, err := handler.RunInstances(&options)
 	c.Assert(err, check.IsNil)
 	instance := resp.Instances[0]
-	instance.PublicDNSName = aws.String("")
+	instance.PublicDnsName = aws.String("")
 	instance, err = ec2iaas.waitForDnsName(handler, instance)
 	c.Assert(err, check.IsNil)
-	c.Assert(*instance.PublicDNSName, check.Matches, `i-\d.testing.invalid`)
+	c.Assert(*instance.PublicDnsName, check.Matches, `i-\d.testing.invalid`)
 }
 
 func (s *S) TestCreateMachineValidations(c *check.C) {

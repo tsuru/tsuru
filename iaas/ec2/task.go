@@ -48,7 +48,7 @@ func (t *ec2WaitTask) Run(job monsterqueue.Job) {
 	for {
 		log.Debugf("ec2: waiting for dnsname for instance %s", machineId)
 		input := ec2.DescribeInstancesInput{
-			InstanceIDs: []*string{aws.String(machineId)},
+			InstanceIds: []*string{aws.String(machineId)},
 		}
 		resp, err := ec2Inst.DescribeInstances(&input)
 		if err != nil {
@@ -60,8 +60,8 @@ func (t *ec2WaitTask) Run(job monsterqueue.Job) {
 			break
 		}
 		instance := resp.Reservations[0].Instances[0]
-		if instance.PublicDNSName != nil {
-			dnsName = *instance.PublicDNSName
+		if instance.PublicDnsName != nil {
+			dnsName = *instance.PublicDnsName
 		}
 		if dnsName != "" {
 			notifiedSuccess, _ = job.Success(dnsName)
@@ -75,7 +75,7 @@ func (t *ec2WaitTask) Run(job monsterqueue.Job) {
 	}
 	if !notifiedSuccess {
 		input := ec2.TerminateInstancesInput{
-			InstanceIDs: []*string{aws.String(machineId)},
+			InstanceIds: []*string{aws.String(machineId)},
 		}
 		ec2Inst.TerminateInstances(&input)
 	}
