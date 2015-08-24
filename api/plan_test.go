@@ -12,6 +12,7 @@ import (
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
+	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/router"
 	_ "github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
@@ -258,6 +259,9 @@ func (s *S) TestChangePlanNotFound(c *check.C) {
 	recorder := httptest.NewRecorder()
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
-	c.Check(recorder.Code, check.Equals, http.StatusNotFound)
-	c.Check(recorder.Body.String(), check.Equals, app.ErrPlanNotFound.Error()+"\n")
+	c.Check(recorder.Code, check.Equals, http.StatusOK)
+	var message io.SimpleJsonMessage
+	err = json.NewDecoder(recorder.Body).Decode(&message)
+	c.Assert(err, check.IsNil)
+	c.Assert(message.Error, check.DeepEquals, app.ErrPlanNotFound.Error())
 }

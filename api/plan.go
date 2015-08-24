@@ -11,6 +11,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/router"
 )
 
@@ -89,9 +90,11 @@ func changePlan(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	err = a.ChangePlan(plan.Name, w)
+	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
+	err = a.ChangePlan(plan.Name, writer)
 	if err == app.ErrPlanNotFound {
-		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
+		writer.Encode(io.SimpleJsonMessage{Error: err.Error()})
+		return err
 	}
 	return err
 }
