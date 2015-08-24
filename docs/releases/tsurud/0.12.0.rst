@@ -19,6 +19,29 @@ when upgrading from tsr 0.11.2 or older versions.
 Main new features
 =================
 
+    * Lean containers: this is definitely the big feature of this release. With
+      lean containers, we've dropped `Circus
+      <https://circus.readthedocs.org/en/latest/>`_, making application images
+      smaller, and containers faster. Improving resource usage.
+
+      Application containers won't run `tsuru-unit-agent
+      <https://github.com/tsuru/tsuru-unit-agent/>`_ anymore either. It's still
+      used during the deployment process, but it's not competing with the
+      application process anymore.
+
+      Instead of having one agent inside each unit, Docker nodes will now have
+      one agent collecting information about containers running in the node.
+      This agent is named bs. The default behavior of tsuru is to create the bs
+      container before running operation in the node. It should work
+      out-of-the-box after the update, but you can tune :ref:`bs configuration
+      <config_bs>`, customizing the Docker image for running it or configuring
+      it to use Unix socket instead of TCP for Docker API communication (which
+      is safer).
+
+      Latest tsuru-admin release includes `commands for managing bs
+      configuration
+      <https://tsuru-admin.readthedocs.org/en/latest/#bs-management>`_.
+
     * Now tsuru has three types of pool: by team, public and default.
       Team's pool are segregated by teams, and cloud administrator should set
       teams in this pool manually. This pool are just accessible by team's
