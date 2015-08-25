@@ -3000,6 +3000,42 @@ func (s *S) TestChangePlan(c *check.C) {
 	c.Assert(routesStr, check.DeepEquals, expected)
 }
 
+func (s *S) TestChangePlanNoRouteChange(c *check.C) {
+	plan := Plan{Name: "something", Router: "fake", CpuShare: 100, Memory: 268435456}
+	err := s.conn.Plans().Insert(plan)
+	c.Assert(err, check.IsNil)
+	a := App{Name: "my-test-app", Plan: Plan{Router: "fake", Memory: 536870912, CpuShare: 50}}
+	err = s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, check.IsNil)
+	defer s.provisioner.Destroy(&a)
+	s.provisioner.AddUnits(&a, 3, "web", nil)
+	c.Assert(routertest.FakeRouter.HasBackend(a.Name), check.Equals, true)
+	err = a.ChangePlan(plan.Name, new(bytes.Buffer))
+	c.Assert(err, check.IsNil)
+	app, err := GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(app.Plan, check.DeepEquals, plan)
+	c.Assert(s.provisioner.Restarts(app, ""), check.Equals, 1)
+	c.Assert(routertest.FakeRouter.HasBackend(app.Name), check.Equals, true)
+	routes, err := routertest.FakeRouter.Routes(app.Name)
+	c.Assert(err, check.IsNil)
+	routesStr := make([]string, len(routes))
+	for i, route := range routes {
+		routesStr[i] = route.String()
+	}
+	units := app.Units()
+	expected := make([]string, len(units))
+	for i, unit := range units {
+		expected[i] = unit.Address.String()
+	}
+	sort.Strings(routesStr)
+	sort.Strings(expected)
+	c.Assert(routesStr, check.DeepEquals, expected)
+}
+
 func (s *S) TestChangePlanNotFound(c *check.C) {
 	var app App
 	err := app.ChangePlan("some-unknown-plan", new(bytes.Buffer))

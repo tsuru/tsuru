@@ -313,9 +313,9 @@ var provisionAddUnits = action.Action{
 }
 
 type changePlanPipelineResult struct {
-	changedPlan bool
-	oldPlan     *Plan
-	app         *App
+	changedRouter bool
+	oldPlan       *Plan
+	app           *App
 }
 
 var moveRouterUnits = action.Action{
@@ -343,7 +343,7 @@ var moveRouterUnits = action.Action{
 			if err != nil {
 				return nil, err
 			}
-			result.changedPlan = true
+			result.changedRouter = true
 		}
 		return &result, nil
 	},
@@ -352,7 +352,7 @@ var moveRouterUnits = action.Action{
 		defer func() {
 			result.app.Plan = *result.oldPlan
 		}()
-		if result.changedPlan {
+		if result.changedRouter {
 			routerName, err := result.app.GetRouter()
 			if err != nil {
 				log.Errorf("BACKWARD ABORTED - failed to get app router: %s", err)
@@ -413,17 +413,19 @@ var removeOldBackend = action.Action{
 		if !ok {
 			return nil, errors.New("invalid previous result, should be changePlanPipelineResult")
 		}
-		routerName, err := result.oldPlan.getRouter()
-		if err != nil {
-			return nil, err
-		}
-		r, err := router.Get(routerName)
-		if err != nil {
-			return nil, err
-		}
-		err = r.RemoveBackend(result.app.Name)
-		if err != nil {
-			log.Errorf("[IGNORED ERROR] failed to remove old backend: %s", err)
+		if result.changedRouter {
+			routerName, err := result.oldPlan.getRouter()
+			if err != nil {
+				return nil, err
+			}
+			r, err := router.Get(routerName)
+			if err != nil {
+				return nil, err
+			}
+			err = r.RemoveBackend(result.app.Name)
+			if err != nil {
+				log.Errorf("[IGNORED ERROR] failed to remove old backend: %s", err)
+			}
 		}
 		return result, nil
 	},
