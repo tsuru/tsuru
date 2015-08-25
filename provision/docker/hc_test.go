@@ -15,9 +15,32 @@ import (
 	"gopkg.in/check.v1"
 )
 
-func (s *S) TestHealthCheckDockerRegistry(c *check.C) {
+func (s *S) TestHealthCheckDockerRegistryV2(c *check.C) {
 	var request *http.Request
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		request = r
+		w.Write([]byte("{}"))
+	}))
+	defer server.Close()
+	if old, err := config.Get("docker:registry"); err == nil {
+		defer config.Set("docker:registry", old)
+	} else {
+		defer config.Unset("docker:registry")
+	}
+	config.Set("docker:registry", server.URL+"/")
+	err := healthCheckDockerRegistry()
+	c.Assert(err, check.IsNil)
+	c.Assert(request.URL.Path, check.Equals, "/v2/")
+	c.Assert(request.Method, check.Equals, "GET")
+}
+
+func (s *S) TestHealthCheckDockerRegistryV1(c *check.C) {
+	var request *http.Request
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/v2/" {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			return
+		}
 		request = r
 		w.Write([]byte("pong"))
 	}))
@@ -38,7 +61,7 @@ func (s *S) TestHealthCheckDockerRegistryConfiguredWithoutScheme(c *check.C) {
 	var request *http.Request
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		request = r
-		w.Write([]byte("pong"))
+		w.Write([]byte("{}"))
 	}))
 	defer server.Close()
 	if old, err := config.Get("docker:registry"); err == nil {
@@ -50,7 +73,7 @@ func (s *S) TestHealthCheckDockerRegistryConfiguredWithoutScheme(c *check.C) {
 	config.Set("docker:registry", serverURL.Host)
 	err := healthCheckDockerRegistry()
 	c.Assert(err, check.IsNil)
-	c.Assert(request.URL.Path, check.Equals, "/v1/_ping")
+	c.Assert(request.URL.Path, check.Equals, "/v2/")
 	c.Assert(request.Method, check.Equals, "GET")
 }
 
