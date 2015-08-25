@@ -70,7 +70,7 @@ func addPoolHandler(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if err != nil {
 		if err == provision.ErrDefaultPoolAlreadyExists {
 			return &terrors.HTTP{
-				Code:    http.StatusPreconditionFailed,
+				Code:    http.StatusConflict,
 				Message: "Default pool already exists.",
 			}
 		}
