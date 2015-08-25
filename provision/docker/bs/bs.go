@@ -281,19 +281,30 @@ func CreateContainer(dockerEndpoint, poolName string, p DockerProvisioner, relau
 	return client.StartContainer(container.ID, &hostConfig)
 }
 
-func pullBsImage(image, dockerEndpoint string, p DockerProvisioner) error {
+func pullWithRetry(maxTries int, image, dockerEndpoint string, p DockerProvisioner) (string, error) {
 	client, err := docker.NewClient(dockerEndpoint)
 	if err != nil {
-		return err
+		return "", err
 	}
 	var buf bytes.Buffer
 	pullOpts := docker.PullImageOptions{Repository: image, OutputStream: &buf}
-	err = client.PullImage(pullOpts, p.RegistryAuthConfig())
+	registryAuth := p.RegistryAuthConfig()
+	for ; maxTries > 0; maxTries-- {
+		err = client.PullImage(pullOpts, registryAuth)
+		if err == nil {
+			return buf.String(), nil
+		}
+	}
+	return "", err
+}
+
+func pullBsImage(image, dockerEndpoint string, p DockerProvisioner) error {
+	output, err := pullWithRetry(3, image, dockerEndpoint, p)
 	if err != nil {
 		return err
 	}
 	if shouldPinBsImage(image) {
-		match := digestRegexp.FindAllStringSubmatch(buf.String(), 1)
+		match := digestRegexp.FindAllStringSubmatch(output, 1)
 		if len(match) > 0 {
 			image += "@" + match[0][1]
 		}
