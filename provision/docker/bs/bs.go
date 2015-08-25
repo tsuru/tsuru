@@ -349,3 +349,15 @@ func RecreateContainers(p DockerProvisioner) error {
 	close(errChan)
 	return <-errChan
 }
+
+type ClusterHook struct {
+	Provisioner DockerProvisioner
+}
+
+func (h *ClusterHook) BeforeCreateContainer(node cluster.Node) error {
+	err := CreateContainer(node.Address, node.Metadata["pool"], h.Provisioner, false)
+	if err != nil && err != docker.ErrContainerAlreadyExists {
+		return err
+	}
+	return nil
+}
