@@ -1943,3 +1943,11 @@ func (s *S) TestAddContainerDefaultProcess(c *check.C) {
 	c.Assert(parts[3], check.Matches, ` ---> Started unit .+ \[web\]`)
 	c.Assert(parts[4], check.Equals, "")
 }
+
+func (s *S) TestInitializeSetsBSHook(c *check.C) {
+	var p dockerProvisioner
+	err := p.Initialize()
+	c.Assert(err, check.IsNil)
+	c.Assert(p.cluster, check.NotNil)
+	c.Assert(p.cluster.Hook, check.DeepEquals, &bs.ClusterHook{Provisioner: &p})
+}
