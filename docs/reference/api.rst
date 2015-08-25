@@ -391,7 +391,7 @@ Add a new service instance
 
     * Method: POST
     * Endpoint: /services/instances
-    * Body: `{"name": "mymysql": "service_name": "mysql"}`
+    * Body: `{"name": "mymysql", "service_name": "mysql"}`
 
 Returns 200 in case of success.
 Returns 404 if the service does not exists.
@@ -401,7 +401,7 @@ Example:
 ::
 
     POST /services/instances HTTP/1.1
-    {"name": "mymysql": "service_name": "mysql"}
+    {"name": "mymysql", "service_name": "mysql"}
 
 Remove a service instance
 *************************
