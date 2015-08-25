@@ -38,9 +38,15 @@ Main new features
   it to use Unix socket instead of TCP for Docker API communication (which
   is safer).
 
+  tsuru will create and manage at least one container per Procfile entry. Users
+  are now able to manage the amount of units for each process.
+
   Latest tsuru-admin release includes `commands for managing bs
   configuration
   <https://tsuru-admin.readthedocs.org/en/latest/#bs-management>`_.
+
+  See issues `#647 <https://github.com/tsuru/tsuru/issues/647>`_ and `#1136
+  <https://github.com/tsuru/tsuru/issues/1136>`_ for more details.
 
 * Now tsuru has three types of pool: by team, public and default.
   Team's pool are segregated by teams, and cloud administrator should set
@@ -55,9 +61,19 @@ Main new features
   like service dashboard and "in development" apps.
   This is the old fallback pool, but with a explicit flag.
 
+* New router available: `vulcand <https://vulcand.io/>`_ (thanks Dan Carley).
+  Vulcand is a powerful reverse proxy, with SNI based TLS support. This is the
+  first step on being able to configure TLS on applications (see issue `#1206
+  <https://github.com/tsuru/tsuru/issues/1206>`_).
+
+  It's now possible to choose between Hipache, Galeb (which is still partially
+  open source) and Vulcand.
+
 Bug fixes
 =========
 
+* Properly handle suffixes when adding a CNAME to an application (thanks
+  Leandro Souza). `#1215 <https://github.com/tsuru/tsuru/pull/1215>`_
 
 Other improvements
 ==================
@@ -70,13 +86,56 @@ Other improvements
   WebSocket (e.g. nginx). For more details, see `#1162
   <https://github.com/tsuru/tsuru/issues/1162>`_.
 
+* tsuru will always use the segregate scheduler, the round robin scheduler has
+  been disabled. In order to get a similar behavior, cloud admins can create a
+  single pool and set it as the default pool, so users don't need to choose the
+  pool on ``app-create``.
+
+* tsuru is now compatible with Docker 1.8.x. There was a small change in the
+  Docker API, changing the way of handling mount points, which affected shared
+  file systems.
+
+* Support for Docker Registry API v2 (also known as Docker Distribution).
+
+* Application logs are now collected via WebSocket as well. Each Docker node
+  connects to the tsuru API once, and then streams logs from all containers in
+  the node.
+
+* Change application tokens so they never expire.
+
+* The EC2 IaaS now supports tagging. `#1094
+  <https://github.com/tsuru/tsuru/issues/1094>`_
+
+* Add configuration options for timeouts in the Redis pubsub connection (use
+  for real time logging, a.k.a. ``tsuru app-log -f``).
+
+* Add a heartbeat for keeping connections open during platform-add and
+  platform-update (thanks Richard Knop).
+
 * General improvements in the documentation:
 
-    - typo fixes and structural improvements across all the documentation
-      (thanks Dan Hilton).
+    - add documentation about the /healthcheck/ endpoint (thanks Dan Carley)
+    - improvements to router documentation pages (thanks Dan Carley)
+    - fix code snippets in the services documentation page (thanks Leandro
+      Souza)
+    - typo and broken link fixes and structural improvements across all the
+      documentation (thanks Dan Hilton).
 
 Backward incompatible changes (action needed)
 =============================================
+
+* As tsuru now creates containers per processes, whenever an application has
+  more than one process, tsuru will forward requests to the process named
+  "web". So, in a Procfile like the one below, "api" should be replaced with
+  "web":
+
+.. highlight:: yaml
+
+::
+
+    api: ./start-api
+    worker1: ./start-worker1
+    worker2: ./start-worker2
 
 * You should change your fallback pool to default pool and to do that you
   can run a ``tsuru pool-update pool_name --default=true``
