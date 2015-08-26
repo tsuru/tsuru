@@ -270,7 +270,7 @@ func minCountHost(hosts []hostWithContainers) *hostWithContainers {
 func (p *dockerProvisioner) rebalanceContainersByFilter(writer io.Writer, appFilter []string, metadataFilter map[string]string, dryRun bool) (*dockerProvisioner, error) {
 	var hostsFilter []string
 	if metadataFilter != nil {
-		nodes, err := p.cluster.NodesForMetadata(metadataFilter)
+		nodes, err := p.cluster.UnfilteredNodesForMetadata(metadataFilter)
 		if err != nil {
 			return nil, err
 		}
