@@ -392,6 +392,9 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMultipleNodesPartialError(c *
 		provisioner: s.p,
 	})
 	c.Assert(err, check.IsNil)
+	machines, err := iaas.ListMachines()
+	c.Assert(err, check.IsNil)
+	c.Assert(machines, check.HasLen, 0)
 	a := autoScaleConfig{
 		done:            make(chan bool),
 		provisioner:     s.p,
@@ -399,10 +402,13 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceMultipleNodesPartialError(c *
 	}
 	err = a.runOnce()
 	c.Assert(err, check.IsNil)
-	nodes, err := s.p.cluster.Nodes()
+	nodes, err := s.p.cluster.UnfilteredNodes()
 	c.Assert(err, check.IsNil)
 	c.Assert(nodes, check.HasLen, 2)
 	c.Assert(nodes[0].Address, check.Not(check.Equals), nodes[1].Address)
+	machines, err = iaas.ListMachines()
+	c.Assert(err, check.IsNil)
+	c.Assert(machines, check.HasLen, 1)
 	evts, err := listAutoScaleEvents(0, 0)
 	c.Assert(err, check.IsNil)
 	c.Assert(evts, check.HasLen, 1)

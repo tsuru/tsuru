@@ -337,20 +337,21 @@ func (a *autoScaleConfig) addNode(event *autoScaleEvent, modelNodes []*cluster.N
 		return nil, fmt.Errorf("error registering new node %s: %s", newAddr, err.Error())
 	}
 	q, err := queue.Queue()
-	if err != nil {
-		return nil, fmt.Errorf("error getting task queue: %s", err)
+	if err == nil {
+		jobParams := monsterqueue.JobParams{
+			"endpoint": createdNode.Address,
+			"machine":  machine.Id,
+			"metadata": createdNode.Metadata,
+		}
+		var job monsterqueue.Job
+		job, err = q.EnqueueWait(bs.QueueTaskName, jobParams, a.WaitTimeNewMachine)
+		if err == nil {
+			_, err = job.Result()
+		}
 	}
-	jobParams := monsterqueue.JobParams{
-		"endpoint": createdNode.Address,
-		"machine":  machine.Id,
-		"metadata": createdNode.Metadata,
-	}
-	job, err := q.EnqueueWait(bs.QueueTaskName, jobParams, a.WaitTimeNewMachine)
 	if err != nil {
-		return nil, fmt.Errorf("error enqueueing task: %s", err)
-	}
-	_, err = job.Result()
-	if err != nil {
+		machine.Destroy()
+		a.provisioner.Cluster().Unregister(newAddr)
 		return nil, fmt.Errorf("error running bs task: %s", err)
 	}
 	event.logMsg("new machine created: %s - started!", newAddr)
