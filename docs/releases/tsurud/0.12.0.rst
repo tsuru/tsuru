@@ -48,18 +48,17 @@ Main new features
   See issues `#647 <https://github.com/tsuru/tsuru/issues/647>`_ and `#1136
   <https://github.com/tsuru/tsuru/issues/1136>`_ for more details.
 
-* Now tsuru has three types of pool: by team, public and default.
+* There are now three kinds of pools: by team, public and default.
   Team's pool are segregated by teams, and cloud administrator should set
   teams in this pool manually. This pool are just accessible by team's
   members.
 
   Public pools are accessible by any user. It can be used to segregate
-  machines that have specific hardware, like SSD hard drives or high end
-  CPUs.
+  machines that have specific hardware.
 
-  Default pool are for experimentation and low profile apps,
-  like service dashboard and "in development" apps.
-  This is the old fallback pool, but with a explicit flag.
+  Default pool are for experimentation and low profile apps, like service
+  dashboard and "in development" apps. This is the old fallback pool, but with
+  an explicit flag.
 
 * New router available: `vulcand <https://vulcand.io/>`_ (thanks Dan Carley).
   Vulcand is a powerful reverse proxy, with SNI based TLS support. This is the
