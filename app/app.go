@@ -272,8 +272,8 @@ func (app *App) ChangePlan(planName string, w io.Writer) error {
 	actions := []*action.Action{
 		&moveRouterUnits,
 		&saveApp,
-		&removeOldBackend,
 		&restartApp,
+		&removeOldBackend,
 	}
 	return action.NewPipeline(actions...).Execute(app, &oldPlan, w)
 }

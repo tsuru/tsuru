@@ -406,32 +406,6 @@ var saveApp = action.Action{
 	},
 }
 
-var removeOldBackend = action.Action{
-	Name: "change-plan-remove-old-backend",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		result, ok := ctx.Previous.(*changePlanPipelineResult)
-		if !ok {
-			return nil, errors.New("invalid previous result, should be changePlanPipelineResult")
-		}
-		if result.changedRouter {
-			routerName, err := result.oldPlan.getRouter()
-			if err != nil {
-				return nil, err
-			}
-			r, err := router.Get(routerName)
-			if err != nil {
-				return nil, err
-			}
-			err = r.RemoveBackend(result.app.Name)
-			if err != nil {
-				log.Errorf("[IGNORED ERROR] failed to remove old backend: %s", err)
-			}
-		}
-		return result, nil
-	},
-}
-
-// restartApp never fails because removeOldBackend is not undoable.
 var restartApp = action.Action{
 	Name: "change-plan-restart-app",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
@@ -442,15 +416,42 @@ var restartApp = action.Action{
 		}
 		result, ok := ctx.Previous.(*changePlanPipelineResult)
 		if !ok {
-			log.Error("invalid previous result, should be changePlanPipelineResult")
-			return nil, nil
+			return nil, errors.New("invalid previous result, should be changePlanPipelineResult")
 		}
 		app := result.app
 		oldPlan := result.oldPlan
 		if app.GetCpuShare() != oldPlan.CpuShare || app.GetMemory() != oldPlan.Memory || app.GetSwap() != oldPlan.Swap {
 			err := app.Restart("", w)
 			if err != nil {
-				log.Errorf("failed to restart application after changing plan: %s", err)
+				return nil, err
+			}
+		}
+		return result, nil
+	},
+}
+
+// removeOldBackend never fails because restartApp is not undoable.
+var removeOldBackend = action.Action{
+	Name: "change-plan-remove-old-backend",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		result, ok := ctx.Previous.(*changePlanPipelineResult)
+		if !ok {
+			return nil, errors.New("invalid previous result, should be changePlanPipelineResult")
+		}
+		if result.changedRouter {
+			routerName, err := result.oldPlan.getRouter()
+			if err != nil {
+				log.Errorf("[IGNORED ERROR] failed to remove old backend: %s", err)
+				return nil, nil
+			}
+			r, err := router.Get(routerName)
+			if err != nil {
+				log.Errorf("[IGNORED ERROR] failed to remove old backend: %s", err)
+				return nil, nil
+			}
+			err = r.RemoveBackend(result.app.Name)
+			if err != nil {
+				log.Errorf("[IGNORED ERROR] failed to remove old backend: %s", err)
 			}
 		}
 		return result, nil
