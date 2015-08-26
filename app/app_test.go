@@ -3085,7 +3085,7 @@ func (s *S) TestChangePlanRestartFailure(c *check.C) {
 	plan := Plan{Name: "something", Router: "fake-hc", CpuShare: 100, Memory: 268435456}
 	err := s.conn.Plans().Insert(plan)
 	c.Assert(err, check.IsNil)
-	a := App{Name: "my-test-app", Plan: Plan{Name: "old", Router: "fake", Memory: 536870912, CpuShare: 50}}
+	a := App{Name: "my-test-app", Ip: "old-address", Plan: Plan{Name: "old", Router: "fake", Memory: 536870912, CpuShare: 50}}
 	err = s.conn.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
@@ -3101,6 +3101,7 @@ func (s *S) TestChangePlanRestartFailure(c *check.C) {
 	app, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
 	c.Assert(app.Plan.Name, check.Equals, "old")
+	c.Assert(app.Ip, check.Equals, "old-address")
 	c.Assert(s.provisioner.Restarts(app, ""), check.Equals, 0)
 	c.Assert(routertest.FakeRouter.HasBackend(app.Name), check.Equals, true)
 	c.Assert(routertest.HCRouter.HasBackend(app.Name), check.Equals, false)

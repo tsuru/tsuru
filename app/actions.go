@@ -315,6 +315,7 @@ var provisionAddUnits = action.Action{
 type changePlanPipelineResult struct {
 	changedRouter bool
 	oldPlan       *Plan
+	oldIp         string
 	app           *App
 }
 
@@ -337,7 +338,7 @@ var moveRouterUnits = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		result := changePlanPipelineResult{oldPlan: oldPlan, app: app}
+		result := changePlanPipelineResult{oldPlan: oldPlan, app: app, oldIp: app.Ip}
 		if newRouter != oldRouter {
 			_, err = app.RebuildRoutes()
 			if err != nil {
@@ -353,6 +354,15 @@ var moveRouterUnits = action.Action{
 			result.app.Plan = *result.oldPlan
 		}()
 		if result.changedRouter {
+			app := result.app
+			app.Ip = result.oldIp
+			conn, err := db.Conn()
+			if err != nil {
+				log.Errorf("BACKWARD ABORTED - failed to connect to the database: %s", err)
+				return
+			}
+			defer conn.Close()
+			conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"ip": app.Ip}})
 			routerName, err := result.app.GetRouter()
 			if err != nil {
 				log.Errorf("BACKWARD ABORTED - failed to get app router: %s", err)
