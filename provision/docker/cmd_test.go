@@ -361,13 +361,31 @@ func (s *S) TestUpdateNodeToTheSchedulerCmdRun(c *check.C) {
 			err := json.Unmarshal(body, &parsed)
 			c.Assert(err, check.IsNil)
 			c.Assert(parsed, check.DeepEquals, expectedBody)
-			return req.URL.Path == "/docker/node" && req.Method == "PUT"
+			return req.URL.Path == "/docker/node" && req.Method == "PUT" && req.URL.Query().Get("disabled") == "false"
 		},
 	}
 	manager := cmd.Manager{}
 	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
 	cmd := updateNodeToSchedulerCmd{}
 	err := cmd.Run(&context, client)
+	c.Assert(err, check.IsNil)
+	c.Assert(buf.String(), check.Equals, "Node successfully updated.\n")
+}
+
+func (s *S) TestUpdateNodeToDisableCmdRun(c *check.C) {
+	var buf bytes.Buffer
+	context := cmd.Context{Args: []string{"http://localhost:1111", "x=y", "y=z"}, Stdout: &buf}
+	trans := &cmdtest.ConditionalTransport{
+		Transport: cmdtest.Transport{Message: "", Status: http.StatusOK},
+		CondFunc: func(req *http.Request) bool {
+			return req.URL.Query().Get("disabled") == "true"
+		},
+	}
+	manager := cmd.Manager{}
+	client := cmd.NewClient(&http.Client{Transport: trans}, nil, &manager)
+	cm := updateNodeToSchedulerCmd{}
+	cm.Flags().Parse(true, []string{"--disable"})
+	err := cm.Run(&context, client)
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Equals, "Node successfully updated.\n")
 }

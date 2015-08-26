@@ -224,6 +224,10 @@ func updateNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	}
 	delete(params, "address")
 	node := cluster.Node{Address: address, Metadata: params}
+	disabled, _ := strconv.ParseBool(r.URL.Query().Get("disabled"))
+	if disabled {
+		node.CreationStatus = cluster.NodeCreationStatusDisabled
+	}
 	_, err = mainDockerProvisioner.Cluster().UpdateNode(node)
 	return err
 }

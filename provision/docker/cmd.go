@@ -90,15 +90,27 @@ func (a *addNodeToSchedulerCmd) Flags() *gnuflag.FlagSet {
 	return a.fs
 }
 
-type updateNodeToSchedulerCmd struct{}
+type updateNodeToSchedulerCmd struct {
+	fs       *gnuflag.FlagSet
+	disabled bool
+}
 
 func (updateNodeToSchedulerCmd) Info() *cmd.Info {
 	return &cmd.Info{
-		Name:    "docker-node-update",
-		Usage:   "docker-node-update <address> [param_name=param_value...]",
-		Desc:    `Modifies metadata associated to a docker node.`,
+		Name:  "docker-node-update",
+		Usage: "docker-node-update <address> [param_name=param_value...] --disable",
+		Desc: `Modifies metadata associated to a docker node.
+--disable: Disable node in scheduler.`,
 		MinArgs: 2,
 	}
+}
+
+func (a *updateNodeToSchedulerCmd) Flags() *gnuflag.FlagSet {
+	if a.fs == nil {
+		a.fs = gnuflag.NewFlagSet("", gnuflag.ExitOnError)
+		a.fs.BoolVar(&a.disabled, "disable", false, "Disable node in scheduler.")
+	}
+	return a.fs
 }
 
 func (a *updateNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) error {
@@ -114,7 +126,7 @@ func (a *updateNodeToSchedulerCmd) Run(ctx *cmd.Context, client *cmd.Client) err
 	if err != nil {
 		return err
 	}
-	url, err := cmd.GetURL(fmt.Sprintf("/docker/node"))
+	url, err := cmd.GetURL(fmt.Sprintf("/docker/node?disabled=%t", a.disabled))
 	if err != nil {
 		return err
 	}
