@@ -98,7 +98,11 @@ func (s *S) TestAppListFilteringByPlatform(c *check.C) {
 	c.Assert(len(apps), check.Equals, len(expected))
 	for i, app := range apps {
 		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
-		c.Assert(app.Units(), check.DeepEquals, expected[i].Units())
+		units, err := app.Units()
+		c.Assert(err, check.IsNil)
+		expectedUnits, err := expected[i].Units()
+		c.Assert(err, check.IsNil)
+		c.Assert(units, check.DeepEquals, expectedUnits)
 	}
 	action := rectest.Action{Action: "app-list", User: s.user.Email, Extra: []interface{}{"platform=zend"}}
 	c.Assert(action, rectest.IsRecorded)
@@ -130,7 +134,11 @@ func (s *S) TestAppListFilteringByTeamOwner(c *check.C) {
 	c.Assert(len(apps), check.Equals, len(expected))
 	for i, app := range apps {
 		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
-		c.Assert(app.Units(), check.DeepEquals, expected[i].Units())
+		units, err := app.Units()
+		c.Assert(err, check.IsNil)
+		expectedUnits, err := expected[i].Units()
+		c.Assert(err, check.IsNil)
+		c.Assert(units, check.DeepEquals, expectedUnits)
 	}
 	queryString := fmt.Sprintf("teamowner=%s", s.team.Name)
 	action := rectest.Action{Action: "app-list", User: s.user.Email, Extra: []interface{}{queryString}}
@@ -166,7 +174,11 @@ func (s *S) TestAppListFilteringByOwner(c *check.C) {
 	c.Assert(len(apps), check.Equals, len(expected))
 	for i, app := range apps {
 		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
-		c.Assert(app.Units(), check.DeepEquals, expected[i].Units())
+		units, err := app.Units()
+		c.Assert(err, check.IsNil)
+		expectedUnits, err := expected[i].Units()
+		c.Assert(err, check.IsNil)
+		c.Assert(units, check.DeepEquals, expectedUnits)
 	}
 	queryString := fmt.Sprintf("owner=%s", s.user.Email)
 	action := rectest.Action{Action: "app-list", User: s.user.Email, Extra: []interface{}{queryString}}
@@ -207,7 +219,11 @@ func (s *S) TestAppListFilteringByLockState(c *check.C) {
 	c.Assert(len(apps), check.Equals, len(expected))
 	for i, app := range apps {
 		c.Assert(app.Name, check.DeepEquals, expected[i].Name)
-		c.Assert(app.Units(), check.DeepEquals, expected[i].Units())
+		units, err := app.Units()
+		c.Assert(err, check.IsNil)
+		expectedUnits, err := expected[i].Units()
+		c.Assert(err, check.IsNil)
+		c.Assert(units, check.DeepEquals, expectedUnits)
 	}
 	action := rectest.Action{Action: "app-list", User: s.user.Email, Extra: []interface{}{"locked=true"}}
 	c.Assert(action, rectest.IsRecorded)
@@ -248,9 +264,11 @@ func (s *S) TestAppList(c *check.C) {
 	err = json.Unmarshal(body, &apps)
 	c.Assert(err, check.IsNil)
 	c.Assert(apps, check.HasLen, 2)
-	miniApp1 := minifyApp(app1)
+	miniApp1, err := minifyApp(app1)
+	c.Assert(err, check.IsNil)
 	miniApp1.Lock.AcquireDate = apps[0].Lock.AcquireDate
-	miniApp2 := minifyApp(app2)
+	miniApp2, err := minifyApp(app2)
+	c.Assert(err, check.IsNil)
 	miniApp2.Lock.AcquireDate = apps[1].Lock.AcquireDate
 	expected := []miniApp{miniApp1, miniApp2}
 	c.Assert(apps, check.DeepEquals, expected)
@@ -656,7 +674,9 @@ func (s *S) TestAddUnits(c *check.C) {
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(app.Units(), check.HasLen, 3)
+	units, err := app.Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 3)
 	action := rectest.Action{
 		Action: "add-units",
 		User:   s.user.Email,
@@ -729,7 +749,9 @@ func (s *S) TestAddUnitsWorksIfProcessIsOmited(c *check.C) {
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(app.Units(), check.HasLen, 3)
+	units, err := app.Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 3)
 	action := rectest.Action{
 		Action: "add-units",
 		User:   s.user.Email,
@@ -784,7 +806,9 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(app.Units(), check.HasLen, 1)
+	units, err := app.Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
 	c.Assert(s.provisioner.GetUnits(app), check.HasLen, 1)
 	action := rectest.Action{
 		Action: "remove-units",
@@ -848,7 +872,9 @@ func (s *S) TestRemoveUnitsWorksIfProcessIsOmited(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
-	c.Assert(app.Units(), check.HasLen, 1)
+	units, err := app.Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
 	c.Assert(s.provisioner.GetUnits(app), check.HasLen, 1)
 	action := rectest.Action{
 		Action: "remove-units",
@@ -885,14 +911,18 @@ func (s *S) TestSetUnitStatus(c *check.C) {
 	defer s.deleteApp(&a)
 	s.provisioner.AddUnits(&a, 3, "web", nil)
 	body := strings.NewReader("status=error")
-	unit := a.Units()[0]
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
+	unit := units[0]
 	request, err := http.NewRequest("POST", "/apps/telegram/units/<unit-name>?:app=telegram&:unit="+unit.Name, body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	err = setUnitStatus(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
-	unit = a.Units()[0]
+	units, err = a.Units()
+	c.Assert(err, check.IsNil)
+	unit = units[0]
 	c.Assert(unit.Status, check.Equals, provision.StatusError)
 }
 
@@ -949,7 +979,9 @@ func (s *S) TestSetUnitStatusDoesntRequireLock(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(locked, check.Equals, true)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
-	unit := a.Units()[0]
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
+	unit := units[0]
 	body := strings.NewReader("status=error")
 	request, err := http.NewRequest("POST", "/apps/telegram/units/"+unit.Name, body)
 	c.Assert(err, check.IsNil)
@@ -959,7 +991,9 @@ func (s *S) TestSetUnitStatusDoesntRequireLock(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
-	unit = a.Units()[0]
+	units, err = a.Units()
+	c.Assert(err, check.IsNil)
+	unit = units[0]
 	c.Assert(unit.Status, check.Equals, provision.StatusError)
 }
 
@@ -971,7 +1005,8 @@ func (s *S) TestSetUnitsStatus(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.deleteApp(&a)
 	s.provisioner.AddUnits(&a, 3, "web", nil)
-	units := a.Units()
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
 	var body bytes.Buffer
 	status := []string{"started", "error", "stopped"}
 	payload := make([]map[string]string, len(status)+2)
@@ -991,7 +1026,9 @@ func (s *S) TestSetUnitsStatus(c *check.C) {
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
 	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
-	for i, unit := range a.Units() {
+	units, err = a.Units()
+	c.Assert(err, check.IsNil)
+	for i, unit := range units {
 		c.Check(unit.Status, check.Equals, provision.Status(status[i]))
 	}
 	var got updateList
@@ -3273,7 +3310,8 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
-	units := a.Units()
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
 	oldIp := units[0].Ip
 	body := strings.NewReader("hostname=" + units[0].Name)
 	request, err := http.NewRequest("POST", "/apps/myappx/units/register", body)
@@ -3293,7 +3331,8 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.DeepEquals, expected)
-	units = a.Units()
+	units, err = a.Units()
+	c.Assert(err, check.IsNil)
 	c.Assert(units[0].Ip, check.Equals, oldIp+"-updated")
 }
 
@@ -3341,7 +3380,8 @@ func (s *S) TestRegisterUnitWithCustomData(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
-	units := a.Units()
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
 	oldIp := units[0].Ip
 	v := url.Values{}
 	v.Set("hostname", units[0].Name)
@@ -3364,7 +3404,8 @@ func (s *S) TestRegisterUnitWithCustomData(c *check.C) {
 	err = json.Unmarshal(recorder.Body.Bytes(), &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.DeepEquals, expected)
-	units = a.Units()
+	units, err = a.Units()
+	c.Assert(err, check.IsNil)
 	c.Assert(units[0].Ip, check.Equals, oldIp+"-updated")
 	c.Assert(s.provisioner.CustomData(&a), check.DeepEquals, map[string]interface{}{
 		"mydata": "something",

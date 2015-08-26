@@ -201,7 +201,10 @@ var bindUnitsAction = action.Action{
 		}
 		var wg sync.WaitGroup
 		si := args.serviceInstance
-		units := args.app.GetUnits()
+		units, err := args.app.GetUnits()
+		if err != nil {
+			return nil, err
+		}
 		errCh := make(chan error, len(units))
 		unbindedCh := make(chan bind.Unit, len(units))
 		for i := range units {
@@ -244,7 +247,10 @@ var unbindUnits = action.Action{
 		}
 		var wg sync.WaitGroup
 		si := args.serviceInstance
-		units := args.app.GetUnits()
+		units, err := args.app.GetUnits()
+		if err != nil {
+			return nil, err
+		}
 		errCh := make(chan error, len(units))
 		unbindedCh := make(chan bind.Unit, len(units))
 		for i := range units {
@@ -276,7 +282,10 @@ var unbindUnits = action.Action{
 	},
 	Backward: func(ctx action.BWContext) {
 		args, _ := ctx.Params[0].(*bindPipelineArgs)
-		units := args.app.GetUnits()
+		units, err := args.app.GetUnits()
+		if err != nil {
+			log.Errorf("[unbind-units backward] failed get units to rebind in rollback: %s", err)
+		}
 		for _, unit := range units {
 			err := args.serviceInstance.BindUnit(args.app, unit)
 			if err != nil {

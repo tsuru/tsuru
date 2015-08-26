@@ -30,7 +30,7 @@ type App interface {
 	GetName() string
 
 	// GetUnits returns the app units.
-	GetUnits() []Unit
+	GetUnits() ([]Unit, error)
 
 	// InstanceEnv returns the app enviroment variables.
 	InstanceEnv(string) map[string]EnvVar

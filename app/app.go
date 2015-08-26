@@ -92,7 +92,7 @@ type App struct {
 }
 
 // Units returns the list of units.
-func (app *App) Units() []provision.Unit {
+func (app *App) Units() ([]provision.Unit, error) {
 	return Provisioner.Units(app)
 }
 
@@ -103,7 +103,11 @@ func (app *App) MarshalJSON() ([]byte, error) {
 	result["name"] = app.Name
 	result["platform"] = app.Platform
 	result["teams"] = app.Teams
-	result["units"] = app.Units()
+	units, err := app.Units()
+	if err != nil {
+		return nil, err
+	}
+	result["units"] = units
 	result["repository"] = repo.ReadWriteURL
 	result["ip"] = app.Ip
 	result["cname"] = app.CName
@@ -443,11 +447,15 @@ func (app *App) RemoveUnits(n uint, process string, writer io.Writer) error {
 		return err
 	}
 	defer conn.Close()
+	units, err := app.Units()
+	if err != nil {
+		return err
+	}
 	return conn.Apps().Update(
 		bson.M{"name": app.Name},
 		bson.M{
 			"$set": bson.M{
-				"quota.inuse": len(app.Units()),
+				"quota.inuse": len(units),
 			},
 		},
 	)
@@ -455,7 +463,11 @@ func (app *App) RemoveUnits(n uint, process string, writer io.Writer) error {
 
 // SetUnitStatus changes the status of the given unit.
 func (app *App) SetUnitStatus(unitName string, status provision.Status) error {
-	for _, unit := range app.Units() {
+	units, err := app.Units()
+	if err != nil {
+		return err
+	}
+	for _, unit := range units {
 		if strings.HasPrefix(unit.Name, unitName) {
 			return Provisioner.SetUnitStatus(unit, status)
 		}
@@ -480,7 +492,11 @@ func UpdateUnitsStatus(units map[string]provision.Status) (map[string]bool, erro
 
 // Available returns true if at least one of N units is started or unreachable.
 func (app *App) Available() bool {
-	for _, unit := range app.Units() {
+	units, err := app.Units()
+	if err != nil {
+		return false
+	}
+	for _, unit := range units {
 		if unit.Available() {
 			return true
 		}
@@ -793,12 +809,16 @@ func (app *App) Stop(w io.Writer, process string) error {
 }
 
 // GetUnits returns the internal list of units converted to bind.Unit.
-func (app *App) GetUnits() []bind.Unit {
+func (app *App) GetUnits() ([]bind.Unit, error) {
 	var units []bind.Unit
-	for _, unit := range app.Units() {
+	provUnits, err := app.Units()
+	if err != nil {
+		return nil, err
+	}
+	for _, unit := range provUnits {
 		units = append(units, &unit)
 	}
-	return units
+	return units, nil
 }
 
 // GetName returns the name of the app.
@@ -860,7 +880,10 @@ func (app *App) Envs() map[string]bind.EnvVar {
 // parameter indicates whether only public variables can be overridden (if set
 // to false, SetEnvs may override a private variable).
 func (app *App) SetEnvs(envs []bind.EnvVar, publicOnly bool, w io.Writer) error {
-	units := app.GetUnits()
+	units, err := app.GetUnits()
+	if err != nil {
+		return err
+	}
 	if len(units) > 0 {
 		return app.setEnvsToApp(envs, publicOnly, true, w)
 	}
@@ -917,7 +940,10 @@ func (app *App) setEnvsToApp(envs []bind.EnvVar, publicOnly, shouldRestart bool,
 // parameter publicOnly, which indicates whether only public variables can be
 // overridden (if set to false, setEnvsToApp may override a private variable).
 func (app *App) UnsetEnvs(variableNames []string, publicOnly bool, w io.Writer) error {
-	units := app.GetUnits()
+	units, err := app.GetUnits()
+	if err != nil {
+		return err
+	}
 	if len(units) > 0 {
 		return app.unsetEnvsToApp(variableNames, publicOnly, true, w)
 	}
@@ -1126,7 +1152,10 @@ func (app *App) RemoveInstance(serviceName string, instance bind.ServiceInstance
 		})
 	}
 	if len(toUnsetEnvs) > 0 {
-		units := app.GetUnits()
+		units, err := app.GetUnits()
+		if err != nil {
+			return err
+		}
 		shouldRestart := len(envsToSet) == 0 && len(units) > 0
 		err = app.unsetEnvsToApp(toUnsetEnvs, false, shouldRestart, writer)
 		if err != nil {
@@ -1318,7 +1347,11 @@ func (app *App) GetUpdatePlatform() bool {
 }
 
 func (app *App) RegisterUnit(unitId string, customData map[string]interface{}) error {
-	for _, unit := range app.Units() {
+	units, err := app.Units()
+	if err != nil {
+		return err
+	}
+	for _, unit := range units {
 		if strings.HasPrefix(unit.Name, unitId) {
 			return Provisioner.RegisterUnit(unit, customData)
 		}
@@ -1387,7 +1420,11 @@ func (app *App) RebuildRoutes() (*RebuildRoutesResult, error) {
 		return nil, err
 	}
 	expectedMap := make(map[string]*url.URL)
-	for _, unit := range app.Units() {
+	units, err := Provisioner.RoutableUnits(app)
+	if err != nil {
+		return nil, err
+	}
+	for _, unit := range units {
 		expectedMap[unit.Address.String()] = unit.Address
 	}
 	var toRemove []*url.URL

@@ -207,8 +207,8 @@ func (a *FakeApp) GetDeploys() uint {
 	return a.Deploys
 }
 
-func (a *FakeApp) Units() []provision.Unit {
-	return a.units
+func (a *FakeApp) Units() ([]provision.Unit, error) {
+	return a.units, nil
 }
 
 func (a *FakeApp) AddUnit(u provision.Unit) {
@@ -240,12 +240,12 @@ func (a *FakeApp) GetIp() string {
 	return ""
 }
 
-func (a *FakeApp) GetUnits() []bind.Unit {
+func (a *FakeApp) GetUnits() ([]bind.Unit, error) {
 	units := make([]bind.Unit, len(a.units))
 	for i := range a.units {
 		units[i] = &a.units[i]
 	}
-	return units
+	return units, nil
 }
 
 func (a *FakeApp) InstanceEnv(env string) map[string]bind.EnvVar {
@@ -695,7 +695,11 @@ func (p *FakeProvisioner) ExecuteCommand(stdout, stderr io.Writer, app provision
 	p.cmdMut.Lock()
 	p.cmds = append(p.cmds, command)
 	p.cmdMut.Unlock()
-	for range app.Units() {
+	units, err := app.Units()
+	if err != nil {
+		return err
+	}
+	for range units {
 		select {
 		case output = <-p.outputs:
 			select {
@@ -765,10 +769,16 @@ func (p *FakeProvisioner) AddUnit(app provision.App, unit provision.Unit) {
 	p.apps[app.GetName()] = a
 }
 
-func (p *FakeProvisioner) Units(app provision.App) []provision.Unit {
+func (p *FakeProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 	p.mut.Lock()
 	defer p.mut.Unlock()
-	return p.apps[app.GetName()].units
+	return p.apps[app.GetName()].units, nil
+}
+
+func (p *FakeProvisioner) RoutableUnits(app provision.App) ([]provision.Unit, error) {
+	p.mut.Lock()
+	defer p.mut.Unlock()
+	return p.apps[app.GetName()].units, nil
 }
 
 func (p *FakeProvisioner) SetUnitStatus(unit provision.Unit, status provision.Status) error {
@@ -895,7 +905,10 @@ func (p *FakeProvisioner) RegisterUnit(unit provision.Unit, customData map[strin
 
 func (p *FakeProvisioner) Shell(opts provision.ShellOptions) error {
 	var unit provision.Unit
-	units := p.Units(opts.App)
+	units, err := p.Units(opts.App)
+	if err != nil {
+		return err
+	}
 	if len(units) == 0 {
 		return errors.New("app has no units")
 	} else if opts.Unit != "" {

@@ -349,7 +349,8 @@ func (s *S) TestUnbindUnitsForward(c *check.C) {
 	err = s.conn.ServiceInstances().Insert(&si)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("myapp", "static", 10)
-	units := a.Units()
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
 	for i := range units {
 		err = si.BindUnit(a, &units[i])
 		c.Assert(err, check.IsNil)
@@ -398,7 +399,8 @@ func (s *S) TestUnbindUnitsForwardPartialFailure(c *check.C) {
 	err = s.conn.ServiceInstances().Insert(&si)
 	c.Assert(err, check.IsNil)
 	a := provisiontest.NewFakeApp("myapp", "static", 10)
-	units := a.Units()
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
 	for i := range units {
 		err = si.BindUnit(a, &units[i])
 		c.Assert(err, check.IsNil)

@@ -206,7 +206,8 @@ func (s *S) TestDeploy(c *check.C) {
 		OutputStream: w,
 	})
 	c.Assert(err, check.IsNil)
-	units := a.Units()
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
 	c.Assert(serviceBodies, check.HasLen, 1)
 	c.Assert(serviceBodies[0], check.Matches, ".*unit-host="+units[0].Ip)
@@ -425,7 +426,8 @@ func (s *S) TestProvisionerUploadDeploy(c *check.C) {
 		OutputStream: w,
 	})
 	c.Assert(err, check.IsNil)
-	units := a.Units()
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
 	c.Assert(serviceBodies, check.HasLen, 1)
 	c.Assert(serviceBodies[0], check.Matches, ".*unit-host="+units[0].Ip)
@@ -451,7 +453,8 @@ func (s *S) TestImageDeploy(c *check.C) {
 		Image:        "tsuru/app-otherapp:v1",
 	})
 	c.Assert(err, check.IsNil)
-	units := a.Units()
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
 }
 
@@ -471,7 +474,8 @@ func (s *S) TestImageDeployInvalidImage(c *check.C) {
 		Image:        "tsuru/app-otherapp:v1",
 	})
 	c.Assert(err, check.ErrorMatches, "invalid image for app otherapp: tsuru/app-otherapp:v1")
-	units := a.Units()
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 0)
 }
 
@@ -508,7 +512,8 @@ func (s *S) TestImageDeployFailureDoesntEraseImage(c *check.C) {
 		Image:        "tsuru/app-otherapp:v1",
 	})
 	c.Assert(err, check.NotNil)
-	units := a.Units()
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 0)
 	imgs, err := s.p.Cluster().ListImages(docker.ListImagesOptions{All: true})
 	c.Assert(err, check.IsNil)
@@ -1613,7 +1618,8 @@ func (s *S) TestProvisionerUnits(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveAll(bson.M{"appname": app.Name})
-	units := s.p.Units(&app)
+	units, err := s.p.Units(&app)
+	c.Assert(err, check.IsNil)
 	expected := []provision.Unit{
 		{
 			Name:    "9930c24f1c4f",
@@ -1632,7 +1638,8 @@ func (s *S) TestProvisionerUnits(c *check.C) {
 
 func (s *S) TestProvisionerUnitsAppDoesNotExist(c *check.C) {
 	app := app.App{Name: "myapplication"}
-	units := s.p.Units(&app)
+	units, err := s.p.Units(&app)
+	c.Assert(err, check.IsNil)
 	expected := []provision.Unit{}
 	c.Assert(units, check.DeepEquals, expected)
 }
@@ -1663,7 +1670,8 @@ func (s *S) TestProvisionerUnitsStatus(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveAll(bson.M{"appname": app.Name})
-	units := s.p.Units(&app)
+	units, err := s.p.Units(&app)
+	c.Assert(err, check.IsNil)
 	expected := []provision.Unit{
 		{
 			Name:    "9930c24f1c4f",
@@ -1708,7 +1716,8 @@ func (s *S) TestProvisionerUnitsIp(c *check.C) {
 	)
 	c.Assert(err, check.IsNil)
 	defer coll.RemoveAll(bson.M{"appname": app.Name})
-	units := s.p.Units(&app)
+	units, err := s.p.Units(&app)
+	c.Assert(err, check.IsNil)
 	expected := []provision.Unit{
 		{
 			Name:    "9930c24f1c4f",

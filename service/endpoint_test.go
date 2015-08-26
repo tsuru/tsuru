@@ -292,7 +292,9 @@ func (s *S) TestBindUnit(c *check.C) {
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
-	err := client.BindUnit(&instance, a, a.GetUnits()[0])
+	units, err := a.GetUnits()
+	c.Assert(err, check.IsNil)
+	err = client.BindUnit(&instance, a, units[0])
 	c.Assert(err, check.IsNil)
 	h.Lock()
 	defer h.Unlock()
@@ -301,7 +303,9 @@ func (s *S) TestBindUnit(c *check.C) {
 	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, check.IsNil)
-	expected := map[string][]string{"app-host": {a.GetIp()}, "unit-host": {a.GetUnits()[0].GetIp()}}
+	units, err = a.GetUnits()
+	c.Assert(err, check.IsNil)
+	expected := map[string][]string{"app-host": {a.GetIp()}, "unit-host": {units[0].GetIp()}}
 	c.Assert(map[string][]string(v), check.DeepEquals, expected)
 }
 
@@ -311,7 +315,9 @@ func (s *S) TestBindUnitRequestFailure(c *check.C) {
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
-	err := client.BindUnit(&instance, a, a.GetUnits()[0])
+	units, err := a.GetUnits()
+	c.Assert(err, check.IsNil)
+	err = client.BindUnit(&instance, a, units[0])
 	c.Assert(err, check.NotNil)
 	expectedMsg := `^Failed to bind the instance "her-redis" to the unit "10.10.10.\d+": Server failed to do its job.$`
 	c.Assert(err, check.ErrorMatches, expectedMsg)
@@ -326,7 +332,9 @@ func (s *S) TestBindUnitPreconditionFailed(c *check.C) {
 	instance := ServiceInstance{Name: "her-redis", ServiceName: "redis"}
 	a := provisiontest.NewFakeApp("her-app", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
-	err := client.BindUnit(&instance, a, a.GetUnits()[0])
+	units, err := a.GetUnits()
+	c.Assert(err, check.IsNil)
+	err = client.BindUnit(&instance, a, units[0])
 	c.Assert(err, check.NotNil)
 	e, ok := err.(*errors.HTTP)
 	c.Assert(ok, check.Equals, true)
@@ -372,7 +380,9 @@ func (s *S) TestUnbindUnit(c *check.C) {
 	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
 	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
-	err := client.UnbindUnit(&instance, a, a.GetUnits()[0])
+	units, err := a.GetUnits()
+	c.Assert(err, check.IsNil)
+	err = client.UnbindUnit(&instance, a, units[0])
 	h.Lock()
 	defer h.Unlock()
 	c.Assert(err, check.IsNil)
@@ -381,7 +391,9 @@ func (s *S) TestUnbindUnit(c *check.C) {
 	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.request.Header.Get("Authorization"))
 	v, err := url.ParseQuery(string(h.body))
 	c.Assert(err, check.IsNil)
-	expected := map[string][]string{"app-host": {a.GetIp()}, "unit-host": {a.GetUnits()[0].GetIp()}}
+	units, err = a.GetUnits()
+	c.Assert(err, check.IsNil)
+	expected := map[string][]string{"app-host": {a.GetIp()}, "unit-host": {units[0].GetIp()}}
 	c.Assert(map[string][]string(v), check.DeepEquals, expected)
 }
 
@@ -391,7 +403,9 @@ func (s *S) TestUnbindUnitRequestFailure(c *check.C) {
 	instance := ServiceInstance{Name: "heaven-can-wait", ServiceName: "heaven"}
 	a := provisiontest.NewFakeApp("arch-enemy", "python", 1)
 	client := &Client{endpoint: ts.URL, username: "user", password: "abcde"}
-	err := client.UnbindUnit(&instance, a, a.GetUnits()[0])
+	units, err := a.GetUnits()
+	c.Assert(err, check.IsNil)
+	err = client.UnbindUnit(&instance, a, units[0])
 	c.Assert(err, check.NotNil)
 	expected := `Failed to unbind ("/resources/heaven-can-wait/bind"): Server failed to do its job.`
 	c.Assert(err.Error(), check.Equals, expected)

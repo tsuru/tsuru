@@ -154,7 +154,7 @@ type App interface {
 	// GetDeploy returns the deploys that an app has.
 	GetDeploys() uint
 
-	Units() []Unit
+	Units() ([]Unit, error)
 
 	// Run executes the command in app units. Commands executed with this
 	// method should have access to environment variables defined in the
@@ -275,7 +275,10 @@ type Provisioner interface {
 	Swap(App, App) error
 
 	// Units returns information about units by App.
-	Units(App) []Unit
+	Units(App) ([]Unit, error)
+
+	// RoutableUnits returns information about routable units by App.
+	RoutableUnits(App) ([]Unit, error)
 
 	// Register a unit after the container has been created or restarted.
 	RegisterUnit(Unit, map[string]interface{}) error

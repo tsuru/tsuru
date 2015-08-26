@@ -856,16 +856,38 @@ func (p *dockerProvisioner) PlatformRemove(name string) error {
 	return err
 }
 
-func (p *dockerProvisioner) Units(app provision.App) []provision.Unit {
+func (p *dockerProvisioner) Units(app provision.App) ([]provision.Unit, error) {
 	containers, err := p.listContainersByApp(app.GetName())
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	units := make([]provision.Unit, len(containers))
 	for i, container := range containers {
 		units[i] = container.AsUnit(app)
 	}
-	return units
+	return units, nil
+}
+
+func (p *dockerProvisioner) RoutableUnits(app provision.App) ([]provision.Unit, error) {
+	imageId, err := appCurrentImageName(app.GetName())
+	if err != nil {
+		return nil, err
+	}
+	webProcessName, err := getImageWebProcessName(imageId)
+	if err != nil {
+		return nil, err
+	}
+	containers, err := p.listContainersByApp(app.GetName())
+	if err != nil {
+		return nil, err
+	}
+	units := make([]provision.Unit, 0, len(containers))
+	for _, container := range containers {
+		if container.ProcessName == webProcessName {
+			units = append(units, container.AsUnit(app))
+		}
+	}
+	return units, nil
 }
 
 func (p *dockerProvisioner) RegisterUnit(unit provision.Unit, customData map[string]interface{}) error {

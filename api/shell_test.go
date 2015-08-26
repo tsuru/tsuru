@@ -49,7 +49,9 @@ func (s *S) TestAppShellWithAppName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var shells []provision.ShellOptions
 	err = tsurutest.WaitCondition(5*time.Second, func() bool {
-		unit := s.provisioner.Units(&a)[0]
+		units, err := s.provisioner.Units(&a)
+		c.Assert(err, check.IsNil)
+		unit := units[0]
 		shells = s.provisioner.Shells(unit.Name)
 		return len(shells) == 1
 	})
@@ -75,7 +77,9 @@ func (s *S) TestAppShellSpecifyUnit(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 5, "web", nil)
-	unit := s.provisioner.Units(&a)[3]
+	units, err := s.provisioner.Units(&a)
+	c.Assert(err, check.IsNil)
+	unit := units[3]
 	m := RunServer(true)
 	server := httptest.NewServer(m)
 	defer server.Close()
@@ -102,7 +106,9 @@ func (s *S) TestAppShellSpecifyUnit(c *check.C) {
 	c.Assert(shells[0].Height, check.Equals, 38)
 	c.Assert(shells[0].Term, check.Equals, "xterm")
 	c.Assert(shells[0].Unit, check.Equals, unit.Name)
-	for _, u := range s.provisioner.Units(&a) {
+	units, err = s.provisioner.Units(&a)
+	c.Assert(err, check.IsNil)
+	for _, u := range units {
 		if u.Name != unit.Name {
 			c.Check(s.provisioner.Shells(u.Name), check.HasLen, 0)
 		}

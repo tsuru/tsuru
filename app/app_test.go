@@ -438,11 +438,15 @@ func (s *S) TestAddUnits(c *check.C) {
 	defer s.provisioner.Destroy(&app)
 	err = app.AddUnits(5, "web", nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(app.Units(), check.HasLen, 5)
+	units, err := app.Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 5)
 	err = app.AddUnits(2, "worker", nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(app.Units(), check.HasLen, 7)
-	for i, unit := range app.Units() {
+	units, err = app.Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 7)
+	for i, unit := range units {
 		c.Assert(unit.AppName, check.Equals, app.Name)
 		if i < 5 {
 			c.Assert(unit.ProcessName, check.Equals, "web")
@@ -465,8 +469,10 @@ func (s *S) TestAddUnitsWithWriter(c *check.C) {
 	var buf bytes.Buffer
 	err = app.AddUnits(2, "web", &buf)
 	c.Assert(err, check.IsNil)
-	c.Assert(app.Units(), check.HasLen, 2)
-	for _, unit := range app.Units() {
+	units, err := app.Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 2)
+	for _, unit := range units {
 		c.Assert(unit.AppName, check.Equals, app.Name)
 	}
 	c.Assert(buf.String(), check.Equals, "added 2 units")
@@ -620,12 +626,15 @@ func (s *S) TestRemoveUnits(c *check.C) {
 			c.Log(err)
 			return false
 		}
-		units := app.Units()
+		units, err := app.Units()
+		c.Assert(err, check.IsNil)
 		return len(units) == 4 && gotApp.Quota.InUse == 4
 	})
 	c.Assert(err, check.IsNil)
 	ts.Close()
-	for _, unit := range app.Units() {
+	units, err := app.Units()
+	c.Assert(err, check.IsNil)
+	for _, unit := range units {
 		c.Assert(unit.ProcessName, check.Equals, "web")
 	}
 }
@@ -659,10 +668,12 @@ func (s *S) TestSetUnitStatus(c *check.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 3, "web", nil)
-	units := a.Units()
-	err := a.SetUnitStatus(units[0].Name, provision.StatusError)
+	units, err := a.Units()
 	c.Assert(err, check.IsNil)
-	units = a.Units()
+	err = a.SetUnitStatus(units[0].Name, provision.StatusError)
+	c.Assert(err, check.IsNil)
+	units, err = a.Units()
+	c.Assert(err, check.IsNil)
 	c.Assert(units[0].Status, check.Equals, provision.StatusError)
 }
 
@@ -671,11 +682,13 @@ func (s *S) TestSetUnitStatusPartialID(c *check.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 3, "web", nil)
-	units := a.Units()
-	name := units[0].Name
-	err := a.SetUnitStatus(name[0:len(name)-2], provision.StatusError)
+	units, err := a.Units()
 	c.Assert(err, check.IsNil)
-	units = a.Units()
+	name := units[0].Name
+	err = a.SetUnitStatus(name[0:len(name)-2], provision.StatusError)
+	c.Assert(err, check.IsNil)
+	units, err = a.Units()
+	c.Assert(err, check.IsNil)
 	c.Assert(units[0].Status, check.Equals, provision.StatusError)
 }
 
@@ -691,7 +704,8 @@ func (s *S) TestUpdateUnitsStatus(c *check.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 3, "web", nil)
-	units := a.Units()
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
 	unitStates := map[string]provision.Status{
 		units[0].Name:                provision.Status("started"),
 		units[1].Name:                provision.Status("stopped"),
@@ -1732,7 +1746,9 @@ func (s *S) TestStop(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.conn.Apps().Find(bson.M{"name": a.GetName()}).One(&a)
 	c.Assert(err, check.IsNil)
-	for _, u := range a.Units() {
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
+	for _, u := range units {
 		c.Assert(u.Status, check.Equals, provision.StatusStopped)
 	}
 }
@@ -1919,8 +1935,12 @@ func (s *S) TestGetUnits(c *check.C) {
 	s.provisioner.Provision(&app)
 	defer s.provisioner.Destroy(&app)
 	s.provisioner.AddUnits(&app, 1, "web", nil)
-	c.Assert(app.GetUnits(), check.HasLen, 1)
-	c.Assert(app.Units()[0].Ip, check.Equals, app.GetUnits()[0].GetIp())
+	bindUnits, err := app.GetUnits()
+	c.Assert(err, check.IsNil)
+	c.Assert(bindUnits, check.HasLen, 1)
+	units, err := app.Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(units[0].Ip, check.Equals, bindUnits[0].GetIp())
 }
 
 func (s *S) TestAppMarshalJSON(c *check.C) {
@@ -2470,7 +2490,9 @@ func (s *S) TestAppUnits(c *check.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
-	c.Assert(a.Units(), check.HasLen, 1)
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
+	c.Assert(units, check.HasLen, 1)
 }
 
 func (s *S) TestAppAvailable(c *check.C) {
@@ -2667,15 +2689,17 @@ func (s *S) TestAppRegisterUnit(c *check.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 3, "web", nil)
-	units := a.Units()
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
 	var ips []string
 	for _, u := range units {
 		ips = append(ips, u.Ip)
 	}
 	customData := map[string]interface{}{"x": "y"}
-	err := a.RegisterUnit(units[0].Name, customData)
+	err = a.RegisterUnit(units[0].Name, customData)
 	c.Assert(err, check.IsNil)
-	units = a.Units()
+	units, err = a.Units()
+	c.Assert(err, check.IsNil)
 	c.Assert(units[0].Ip, check.Equals, ips[0]+"-updated")
 	c.Assert(units[1].Ip, check.Equals, ips[1])
 	c.Assert(units[2].Ip, check.Equals, ips[2])
@@ -2939,7 +2963,9 @@ func (s *S) TestShellToAnApp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
-	unit := s.provisioner.Units(&a)[0]
+	units, err := s.provisioner.Units(&a)
+	c.Assert(err, check.IsNil)
+	unit := units[0]
 	buf := safe.NewBuffer([]byte("echo teste"))
 	opts := provision.ShellOptions{
 		Conn:   &provisiontest.FakeConn{Buf: buf},
@@ -2990,7 +3016,8 @@ func (s *S) TestChangePlan(c *check.C) {
 	for i, route := range routes {
 		routesStr[i] = route.String()
 	}
-	units := app.Units()
+	units, err := app.Units()
+	c.Assert(err, check.IsNil)
 	expected := make([]string, len(units))
 	for i, unit := range units {
 		expected[i] = unit.Address.String()
@@ -3026,7 +3053,8 @@ func (s *S) TestChangePlanNoRouteChange(c *check.C) {
 	for i, route := range routes {
 		routesStr[i] = route.String()
 	}
-	units := app.Units()
+	units, err := app.Units()
+	c.Assert(err, check.IsNil)
 	expected := make([]string, len(units))
 	for i, unit := range units {
 		expected[i] = unit.Address.String()
@@ -3071,7 +3099,8 @@ func (s *S) TestChangePlanBackendRemovalFailure(c *check.C) {
 	for i, route := range routes {
 		routesStr[i] = route.String()
 	}
-	units := app.Units()
+	units, err := app.Units()
+	c.Assert(err, check.IsNil)
 	expected := make([]string, len(units))
 	for i, unit := range units {
 		expected[i] = unit.Address.String()
@@ -3111,7 +3140,8 @@ func (s *S) TestChangePlanRestartFailure(c *check.C) {
 	for i, route := range routes {
 		routesStr[i] = route.String()
 	}
-	units := app.Units()
+	units, err := app.Units()
+	c.Assert(err, check.IsNil)
 	expected := make([]string, len(units))
 	for i, unit := range units {
 		expected[i] = unit.Address.String()
@@ -3153,7 +3183,8 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 3, "web", nil)
-	units := a.Units()
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.RemoveRoute(a.Name, units[2].Address)
 	routertest.FakeRouter.AddRoute(a.Name, &url.URL{Scheme: "http", Host: "invalid:1234"})
 	changes, err := a.RebuildRoutes()
@@ -3194,8 +3225,10 @@ func (s *S) TestRebuildRoutesAfterSwap(c *check.C) {
 	defer s.provisioner.Destroy(&a2)
 	s.provisioner.AddUnits(&a1, 3, "web", nil)
 	s.provisioner.AddUnits(&a2, 2, "web", nil)
-	units1 := a1.Units()
-	units2 := a2.Units()
+	units1, err := a1.Units()
+	c.Assert(err, check.IsNil)
+	units2, err := a2.Units()
+	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.AddRoute(a1.Name, &url.URL{Scheme: "http", Host: "invalid:1234"})
 	routertest.FakeRouter.RemoveRoute(a2.Name, units2[0].Address)
 	err = Swap(&a1, &a2)
@@ -3238,7 +3271,8 @@ func (s *S) TestRebuildRoutesRecreatesBackend(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 3, "web", nil)
-	units := a.Units()
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
 	routertest.FakeRouter.RemoveBackend(a.Name)
 	changes, err := a.RebuildRoutes()
 	c.Assert(err, check.IsNil)
@@ -3264,7 +3298,8 @@ func (s *S) TestRebuildRoutesRecreatesCnames(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.provisioner.Destroy(&a)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
-	units := a.Units()
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
 	err = a.AddCName("my.cname.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(routertest.FakeRouter.HasCName("my.cname.com"), check.Equals, true)

@@ -800,7 +800,8 @@ func (s *InstanceSuite) TestUnbindApp(c *check.C) {
 	instance := bind.ServiceInstance{Name: si.Name, Envs: map[string]string{"ENV1": "VAL1", "ENV2": "VAL2"}}
 	err = a.AddInstance(si.ServiceName, instance, nil)
 	c.Assert(err, check.IsNil)
-	units := a.Units()
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
 	for i := range units {
 		err = si.BindUnit(a, &units[i])
 		c.Assert(err, check.IsNil)
@@ -858,7 +859,8 @@ func (s *InstanceSuite) TestUnbindAppFailureInUnbindAppCall(c *check.C) {
 	instance := bind.ServiceInstance{Name: si.Name, Envs: map[string]string{"ENV1": "VAL1", "ENV2": "VAL2"}}
 	err = a.AddInstance(si.ServiceName, instance, nil)
 	c.Assert(err, check.IsNil)
-	units := a.Units()
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
 	for i := range units {
 		err = si.BindUnit(a, &units[i])
 		c.Assert(err, check.IsNil)
@@ -913,7 +915,8 @@ func (s *InstanceSuite) TestUnbindAppFailureInAppEnvSet(c *check.C) {
 	err = si.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().RemoveId(si.Name)
-	units := a.Units()
+	units, err := a.Units()
+	c.Assert(err, check.IsNil)
 	for i := range units {
 		err = si.BindUnit(a, &units[i])
 		c.Assert(err, check.IsNil)

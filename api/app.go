@@ -89,14 +89,18 @@ type miniApp struct {
 	Lock  app.AppLock      `json:"lock"`
 }
 
-func minifyApp(app app.App) miniApp {
+func minifyApp(app app.App) (miniApp, error) {
+	units, err := app.Units()
+	if err != nil {
+		return miniApp{}, err
+	}
 	return miniApp{
 		Name:  app.Name,
-		Units: app.Units(),
+		Units: units,
 		CName: app.CName,
 		Ip:    app.Ip,
 		Lock:  app.Lock,
-	}
+	}, nil
 }
 
 func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -143,7 +147,10 @@ func appList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	w.Header().Set("Content-Type", "application/json")
 	miniApps := make([]miniApp, len(apps))
 	for i, app := range apps {
-		miniApps[i] = minifyApp(app)
+		miniApps[i], err = minifyApp(app)
+		if err != nil {
+			return err
+		}
 	}
 	return json.NewEncoder(w).Encode(miniApps)
 }
@@ -974,7 +981,15 @@ func swap(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 				Message: "platforms don't match",
 			}
 		}
-		if len(app1.Units()) != len(app2.Units()) {
+		app1Units, err := app1.Units()
+		if err != nil {
+			return err
+		}
+		app2Units, err := app2.Units()
+		if err != nil {
+			return err
+		}
+		if len(app1Units) != len(app2Units) {
 			return &errors.HTTP{
 				Code:    http.StatusPreconditionFailed,
 				Message: "number of units doesn't match",

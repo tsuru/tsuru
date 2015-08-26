@@ -90,7 +90,9 @@ func (s *BindSuite) TestBindUnit(c *check.C) {
 	app.Provisioner.Provision(&a)
 	defer app.Provisioner.Destroy(&a)
 	app.Provisioner.AddUnits(&a, 1, "web", nil)
-	err = instance.BindUnit(&a, a.GetUnits()[0])
+	units, err := a.GetUnits()
+	c.Assert(err, check.IsNil)
+	err = instance.BindUnit(&a, units[0])
 	c.Assert(err, check.IsNil)
 	c.Assert(called, check.Equals, true)
 }
@@ -334,16 +336,20 @@ func (s *BindSuite) TestUnbindUnit(c *check.C) {
 	app.Provisioner.Provision(&a)
 	defer app.Provisioner.Destroy(&a)
 	app.Provisioner.AddUnits(&a, 1, "web", nil)
+	units, err := a.GetUnits()
+	c.Assert(err, check.IsNil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"painkiller"},
-		Units:       []string{a.GetUnits()[0].GetName()},
+		Units:       []string{units[0].GetName()},
 	}
 	instance.Create()
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
-	err = instance.UnbindUnit(&a, a.GetUnits()[0])
+	units, err = a.GetUnits()
+	c.Assert(err, check.IsNil)
+	err = instance.UnbindUnit(&a, units[0])
 	c.Assert(err, check.IsNil)
 	c.Assert(called, check.Equals, true)
 	err = s.conn.ServiceInstances().Find(bson.M{"name": "my-mysql"}).One(&instance)
