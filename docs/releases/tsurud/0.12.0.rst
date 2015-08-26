@@ -69,11 +69,54 @@ Main new features
   It's now possible to choose between Hipache, Galeb (which is still partially
   open source) and Vulcand.
 
+* Users are now able to change the plan of an application. tsuru will handle
+  changes in the router and in other plan-defined application resources (i.e.
+  memory, swap and CPU shares)  `#1181
+  <https://github.com/tsuru/tsuru/issues/1181>`_
+
+* Introduce a custom port allocator on tsuru. This allocator replaces the
+  default port allocation provided by Docker, offering a way of persisting the
+  port of a container after restarts.
+
+  The motivation behind this feature is making sure the host port mapped
+  to one container never changes, even after restarting docker daemon or
+  rebooting the host. This way, we can always be sure that routers are
+  pointing to a valid address.
+
+  The default behavior is to stick to the Docker allocator, please refer to the
+  :ref:`port-allocator configuration documentation <config_port_allocator>` for
+  instructions on how to choose the tsuru allocator.
+
+  This is related to issue `#1072 <https://github.com/tsuru/tsuru/issues/1072>`_.
+
 Bug fixes
 =========
 
 * Properly handle suffixes when adding a CNAME to an application (thanks
   Leandro Souza). `#1215 <https://github.com/tsuru/tsuru/pull/1215>`_
+
+* Improve safety in app-restart and other containers related operations. `#1188
+  <https://github.com/tsuru/tsuru/issues/1188>`_
+
+* Admin users can now delete any teams. `#1232
+  <https://github.com/tsuru/tsuru/issues/1232>`
+
+* Prevent service instances orphaning by not allowing a team that is the owner
+  of a service instance to be removed. `#1236
+  <https://github.com/tsuru/tsuru/issues/1236>`_
+
+* Properly handle key overriding on key management functions. Previously, when
+  a user added a new key reusing a name, tsuru created the new key with the
+  given name and body, letting the old body as an orphan key, making it
+  impossible to remove the old key or associate it to another user. `#1249
+  <https://github.com/tsuru/tsuru/issues/1249>`_
+
+* Unbind is now atomic, meaning that it's safer to service administrators to
+  trust on tsuru service operations being all-or-nothing. `#1253
+  <https://github.com/tsuru/tsuru/issues/1253>`_
+
+* Fix error message on app-create when pool doesn't exist. `#1257
+  <https://github.com/tsuru/tsuru/issues/1257>`_
 
 Other improvements
 ==================
@@ -95,6 +138,10 @@ Other improvements
   Docker API, changing the way of handling mount points, which affected shared
   file systems.
 
+* Node auto-scaling now support multi-step scaling, meaning that when scaling
+  up or down, it might add or remove multiple nodes at once. This reduces lock
+  content on applications and the amount of containers rebalance runnings.
+
 * Support for Docker Registry API v2 (also known as Docker Distribution).
 
 * Application logs are now collected via WebSocket as well. Each Docker node
@@ -111,6 +158,17 @@ Other improvements
 
 * Add a heartbeat for keeping connections open during platform-add and
   platform-update (thanks Richard Knop).
+
+* Improve error reporting in the user API (thanks Dan Hilton).
+
+* Change the behavior of unit-remove and app-remove handlers so they don't run
+  in background.
+
+* Enforce memory limits on Docker nodes when auto-scale is disabled. Now,
+  whenever node auto-scaling is disabled, tsuru will enforce the max memory
+  policy because this will trigger an error and someone will have to manually
+  add a new node to allow new units to be created. `#1251
+  <https://github.com/tsuru/tsuru/issues/1251>`_
 
 * General improvements in the documentation:
 
