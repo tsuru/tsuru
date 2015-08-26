@@ -852,11 +852,6 @@ docker:user
 The user tsuru will use to start the container. The value expected for
 basebuilder platforms is ``ubuntu``.
 
-docker:ssh:user
-+++++++++++++++
-
-Deprecated. You should set ``docker:user`` instead.
-
 .. _config_healing:
 
 docker:healing:heal-nodes
