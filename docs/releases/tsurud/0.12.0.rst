@@ -170,6 +170,14 @@ Other improvements
   add a new node to allow new units to be created. `#1251
   <https://github.com/tsuru/tsuru/issues/1251>`_
 
+* ``docker-node-remove`` command now rebalance all containers in removed host.
+  You also have a flag, ``--no-rebalance``, to not rebalance thes containers. `#1246
+  <https://github.com/tsuru/tsuru/issues/1246>`_
+
+* Add ``--disable`` flag in ``docker-node-update`` command. This flag tag your node
+  as disabled in cluster. `#1246
+  <https://github.com/tsuru/tsuru/issues/1246>`_
+
 * General improvements in the documentation:
 
     - add documentation about the /healthcheck/ endpoint (thanks Dan Carley)
