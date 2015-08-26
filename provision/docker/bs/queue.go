@@ -52,7 +52,7 @@ func (t *runBs) Run(job monsterqueue.Job) {
 	for key, value := range rawMetadata {
 		metadata[key] = value.(string)
 	}
-	err = CreateContainer(dockerEndpoint, metadata["pool"], t.provisioner, true)
+	err = createContainer(dockerEndpoint, metadata["pool"], t.provisioner, true)
 	if err != nil {
 		node.CreationStatus = cluster.NodeCreationStatusError
 		node.Metadata = map[string]string{"creationError": err.Error()}

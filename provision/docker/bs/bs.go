@@ -229,7 +229,7 @@ func collection() (*storage.Collection, error) {
 	return conn.Collection("bsconfig"), nil
 }
 
-func CreateContainer(dockerEndpoint, poolName string, p DockerProvisioner, relaunch bool) error {
+func createContainer(dockerEndpoint, poolName string, p DockerProvisioner, relaunch bool) error {
 	client, err := docker.NewClient(dockerEndpoint)
 	if err != nil {
 		return err
@@ -275,10 +275,20 @@ func CreateContainer(dockerEndpoint, poolName string, p DockerProvisioner, relau
 		}
 		container, err = client.CreateContainer(opts)
 	}
-	if err != nil {
+	if err != nil && err != docker.ErrContainerAlreadyExists {
 		return err
 	}
-	return client.StartContainer(container.ID, &hostConfig)
+	if container == nil {
+		container, err = client.InspectContainer("big-sibling")
+		if err != nil {
+			return err
+		}
+	}
+	err = client.StartContainer(container.ID, &hostConfig)
+	if _, ok := err.(*docker.ContainerAlreadyRunning); !ok {
+		return err
+	}
+	return nil
 }
 
 func pullWithRetry(maxTries int, image, dockerEndpoint string, p DockerProvisioner) (string, error) {
@@ -336,7 +346,7 @@ func RecreateContainers(p DockerProvisioner) error {
 			node := &nodes[i]
 			pool := node.Metadata["pool"]
 			log.Debugf("[bs containers] recreating container in %s [%s]", node.Address, pool)
-			err := CreateContainer(node.Address, pool, p, true)
+			err := createContainer(node.Address, pool, p, true)
 			if err != nil {
 				msg := fmt.Sprintf("[bs containers] failed to create container in %s [%s]: %s", node.Address, pool, err)
 				log.Error(msg)
@@ -355,8 +365,8 @@ type ClusterHook struct {
 }
 
 func (h *ClusterHook) BeforeCreateContainer(node cluster.Node) error {
-	err := CreateContainer(node.Address, node.Metadata["pool"], h.Provisioner, false)
-	if err != nil && err != docker.ErrContainerAlreadyExists {
+	err := createContainer(node.Address, node.Metadata["pool"], h.Provisioner, false)
+	if err != nil {
 		return err
 	}
 	return nil
