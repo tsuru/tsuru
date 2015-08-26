@@ -665,6 +665,20 @@ docker:collection
 
 Database collection name used to store containers information.
 
+.. _config_port_allocator:
+
+docker:port-allocator
++++++++++++++++++++++
+
+The choice of port allocator. There are two possible values:
+
+ * ``docker``: trust Docker to allocate ports. Meaning that whenever a
+   container restarts, the port might change (usually, it changes).
+ * ``tsuru``: leverage port allocation to tsuru, so ports mapped to containers
+   never change.
+
+The default value is "docker".
+
 docker:registry
 +++++++++++++++
 
