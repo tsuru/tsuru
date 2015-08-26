@@ -1365,6 +1365,17 @@ func (app *App) RebuildRoutes() (*RebuildRoutesResult, error) {
 	if err != nil && err != router.ErrBackendExists {
 		return nil, err
 	}
+	if newAddr, err := r.Addr(app.GetName()); err == nil && newAddr != app.Ip {
+		conn, err := db.Conn()
+		if err != nil {
+			return nil, err
+		}
+		defer conn.Close()
+		err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"ip": newAddr}})
+		if err != nil {
+			return nil, err
+		}
+	}
 	for _, cname := range app.CName {
 		err := r.SetCName(cname, app.Name)
 		if err != nil && err != router.ErrCNameExists {

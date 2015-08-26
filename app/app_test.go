@@ -3164,6 +3164,11 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[0].Address.String()), check.Equals, true)
 	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[1].Address.String()), check.Equals, true)
 	c.Assert(routertest.FakeRouter.HasRoute(a.Name, units[2].Address.String()), check.Equals, true)
+	app, err := GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	addr, err := routertest.FakeRouter.Addr(app.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(app.Ip, check.Equals, addr)
 }
 
 type URLList []*url.URL
