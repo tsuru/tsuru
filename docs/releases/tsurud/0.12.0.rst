@@ -98,7 +98,7 @@ Bug fixes
   <https://github.com/tsuru/tsuru/issues/1188>`_
 
 * Admin users can now delete any teams. `#1232
-  <https://github.com/tsuru/tsuru/issues/1232>`
+  <https://github.com/tsuru/tsuru/issues/1232>`_
 
 * Prevent service instances orphaning by not allowing a team that is the owner
   of a service instance to be removed. `#1236
@@ -203,7 +203,7 @@ Backward incompatible changes (action needed)
     worker2: ./start-worker2
 
 * You should change your fallback pool to default pool and to do that you
-  can run a ``tsuru pool-update pool_name --default=true``
+  can run a ``tsuru-admin pool-update pool_name --default=true``
 
 * tsr has been renamed to tsurud. Please update any procedures and
   workflows (including upstart and other init scripts).
