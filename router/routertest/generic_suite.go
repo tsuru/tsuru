@@ -195,7 +195,6 @@ func (s *RouterSuite) TestSwapTwice(c *check.C) {
 	routes, err = s.Router.Routes(backend2)
 	c.Assert(err, check.IsNil)
 	c.Check(routes, check.DeepEquals, []*url.URL{addr2})
-	println("here!!!")
 	err = s.Router.Swap(backend1, backend2)
 	c.Assert(err, check.IsNil)
 	backAddr1, err = s.Router.Addr(backend1)
