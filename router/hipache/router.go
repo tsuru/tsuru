@@ -159,7 +159,7 @@ func (r *hipacheRouter) AddRoute(name string, address *url.URL) error {
 		log.Errorf("error on getting hipache domain in add route for %s - %s", backendName, address)
 		return &router.RouterError{Op: "add", Err: err}
 	}
-	routes, err := r.Routes(backendName)
+	routes, err := r.Routes(name)
 	if err != nil {
 		return err
 	}

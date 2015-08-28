@@ -168,6 +168,50 @@ func (s *RouterSuite) TestSwap(c *check.C) {
 	c.Check(routesStrs, check.DeepEquals, []string{addr2.String(), addr4.String()})
 }
 
+func (s *RouterSuite) TestSwapTwice(c *check.C) {
+	backend1 := "mybackend1"
+	backend2 := "mybackend2"
+	addr1, _ := url.Parse("http://127.0.0.1")
+	addr2, _ := url.Parse("http://10.10.10.10")
+	err := s.Router.AddBackend(backend1)
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddRoute(backend1, addr1)
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddBackend(backend2)
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddRoute(backend2, addr2)
+	c.Assert(err, check.IsNil)
+	err = s.Router.Swap(backend1, backend2)
+	c.Assert(err, check.IsNil)
+	backAddr1, err := s.Router.Addr(backend1)
+	c.Assert(err, check.IsNil)
+	c.Assert(backAddr1[:len(backend2)], check.Equals, backend2)
+	backAddr2, err := s.Router.Addr(backend2)
+	c.Assert(err, check.IsNil)
+	c.Assert(backAddr2[:len(backend1)], check.Equals, backend1)
+	routes, err := s.Router.Routes(backend1)
+	c.Assert(err, check.IsNil)
+	c.Check(routes, check.DeepEquals, []*url.URL{addr1})
+	routes, err = s.Router.Routes(backend2)
+	c.Assert(err, check.IsNil)
+	c.Check(routes, check.DeepEquals, []*url.URL{addr2})
+	println("here!!!")
+	err = s.Router.Swap(backend1, backend2)
+	c.Assert(err, check.IsNil)
+	backAddr1, err = s.Router.Addr(backend1)
+	c.Assert(err, check.IsNil)
+	c.Assert(backAddr1[:len(backend1)], check.Equals, backend1)
+	backAddr2, err = s.Router.Addr(backend2)
+	c.Assert(err, check.IsNil)
+	c.Assert(backAddr2[:len(backend2)], check.Equals, backend2)
+	routes, err = s.Router.Routes(backend1)
+	c.Assert(err, check.IsNil)
+	c.Check(routes, check.DeepEquals, []*url.URL{addr1})
+	routes, err = s.Router.Routes(backend2)
+	c.Assert(err, check.IsNil)
+	c.Check(routes, check.DeepEquals, []*url.URL{addr2})
+}
+
 func (s *RouterSuite) TestRouteAddDupCName(c *check.C) {
 	name := "backend1"
 	err := s.Router.AddBackend(name)
