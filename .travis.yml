@@ -18,6 +18,10 @@ before_install:
 install:
   - make get
 before_script:
+  - free
+  - vmstat
+  - ps aux --sort -rss | head -n 10
+  - mongostat -n 1
   - rsyslogd &
   - sleep 1
 script:
@@ -33,3 +37,18 @@ notifications:
 services:
   - mongodb
   - redis
+after_failure:
+  # check for OOM; see https://github.com/travis-ci/travis-ci/issues/3075#issuecomment-68629130
+  - sudo dmesg
+  - free
+  - vmstat
+  - ps aux --sort -rss | head -n 10
+  # mongostat might not work though if mongod was the process that was OOM-killed
+  - mongostat -n 1
+after_success:
+  # So we can see how much memory is used on success, it is probably borderline
+  # Here we can get useful output from mongostat since mongod wasn't OOM-killed
+  - free
+  - vmstat
+  - ps aux --sort -rss | head -n 10
+  - mongostat -n 1
