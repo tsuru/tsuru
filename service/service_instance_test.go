@@ -992,7 +992,8 @@ func (s *InstanceSuite) TestBindAppFullPipeline(c *check.C) {
 }
 
 func (s *InstanceSuite) TestBindAppMultipleApps(c *check.C) {
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(4))
+	goMaxProcs := runtime.GOMAXPROCS(4)
+	defer runtime.GOMAXPROCS(goMaxProcs)
 	var reqs []*http.Request
 	var mut sync.Mutex
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1041,7 +1042,8 @@ func (s *InstanceSuite) TestBindAppMultipleApps(c *check.C) {
 }
 
 func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
-	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(4))
+	goMaxProcs := runtime.GOMAXPROCS(4)
+	defer runtime.GOMAXPROCS(goMaxProcs)
 	var reqs []*http.Request
 	var mut sync.Mutex
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
