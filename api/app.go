@@ -75,7 +75,10 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
-	app.Delete(&a, writer)
+	err = app.Delete(&a, writer)
+	if err != nil {
+		writer.Encode(tsuruIo.SimpleJsonMessage{Error: err.Error()})
+	}
 	return nil
 }
 

@@ -41,7 +41,6 @@ func (s *S) TestAppIsAvailableHandlerShouldReturnErrorWhenAppStatusIsnotStarted(
 	a := app.App{Name: "someapp", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	defer s.logConn.Logs(a.Name).DropCollection()
 	url := fmt.Sprintf("/apps/%s/available?:appname=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
@@ -55,7 +54,6 @@ func (s *S) TestAppIsAvailableHandlerShouldReturn200WhenAppUnitStatusIsStarted(c
 	a := app.App{Name: "someapp", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	defer s.logConn.Logs(a.Name).DropCollection()
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
@@ -73,14 +71,12 @@ func (s *S) TestAppListFilteringByPlatform(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&app1)
 	platform := app.Platform{Name: "python"}
 	s.conn.Platforms().Insert(platform)
 	defer s.conn.Platforms().Remove(bson.M{"name": "python"})
 	app2 := app.App{Name: "app2", Platform: "python", Teams: []string{s.team.Name}}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&app2)
 	request, err := http.NewRequest("GET", "/apps?platform=zend", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -112,11 +108,9 @@ func (s *S) TestAppListFilteringByTeamOwner(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&app1)
 	app2 := app.App{Name: "app2", Platform: "zend", Teams: []string{s.adminteam.Name}}
 	err = app.CreateApp(&app2, s.adminuser)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&app2)
 	request, err := http.NewRequest("GET", fmt.Sprintf("/apps?teamowner=%s", s.team.Name), nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -149,14 +143,12 @@ func (s *S) TestAppListFilteringByOwner(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&app1)
 	platform := app.Platform{Name: "python"}
 	s.conn.Platforms().Insert(platform)
 	defer s.conn.Platforms().Remove(bson.M{"name": "python"})
 	app2 := app.App{Name: "app2", Platform: "python", Teams: []string{s.team.Name}}
 	err = app.CreateApp(&app2, s.adminuser)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&app2)
 	request, err := http.NewRequest("GET", fmt.Sprintf("/apps?owner=%s", s.user.Email), nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -189,7 +181,6 @@ func (s *S) TestAppListFilteringByLockState(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&app1)
 	platform := app.Platform{Name: "python"}
 	s.conn.Platforms().Insert(platform)
 	defer s.conn.Platforms().Remove(bson.M{"name": "python"})
@@ -201,7 +192,6 @@ func (s *S) TestAppListFilteringByLockState(c *check.C) {
 	}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&app2)
 	request, err := http.NewRequest("GET", "/apps?locked=true", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -233,7 +223,6 @@ func (s *S) TestAppList(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", Teams: []string{s.team.Name}, CName: []string{"cname.app1"}}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&app1)
 	acquireDate := time.Date(2015, time.February, 12, 12, 3, 0, 0, time.Local)
 	app2 := app.App{
 		Name:     "app2",
@@ -249,7 +238,6 @@ func (s *S) TestAppList(c *check.C) {
 	}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&app2)
 	request, err := http.NewRequest("GET", "/apps/", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -291,7 +279,6 @@ func (s *S) TestAppListShouldListAllAppsOfAllTeamsThatTheUserIsAMember(c *check.
 	app1 := app.App{Name: "app1", Platform: "zend", TeamOwner: "angra"}
 	err = app.CreateApp(&app1, &u)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&app1)
 	request, err := http.NewRequest("GET", "/apps/", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/json")
@@ -328,7 +315,6 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(err, check.IsNil)
 	myApp, err = app.GetByName(myApp.Name)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(myApp)
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:app="+myApp.Name, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
@@ -378,7 +364,6 @@ func (s *S) TestAppInfo(c *check.C) {
 	expectedApp := app.App{Name: "new-app", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&expectedApp, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&expectedApp)
 	var myApp map[string]interface{}
 	request, err := http.NewRequest("GET", "/apps/"+expectedApp.Name+"?:app="+expectedApp.Name, nil)
 	request.Header.Set("Content-Type", "application/json")
@@ -434,11 +419,6 @@ func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *check.C) {
 
 func (s *S) TestCreateAppHandler(c *check.C) {
 	a := app.App{Name: "someapp"}
-	defer func() {
-		a, err := app.GetByName("someapp")
-		c.Assert(err, check.IsNil)
-		s.deleteApp(a)
-	}()
 	data := `{"name":"someapp","platform":"zend"}`
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
@@ -476,11 +456,6 @@ func (s *S) TestCreateAppHandler(c *check.C) {
 
 func (s *S) TestCreateAppTeamOwner(c *check.C) {
 	a := app.App{Name: "someapp"}
-	defer func() {
-		a, err := app.GetByName("someapp")
-		c.Assert(err, check.IsNil)
-		s.deleteApp(a)
-	}()
 	data := `{"name":"someapp","platform":"zend","teamOwner":"tsuruteam"}`
 	b := strings.NewReader(data)
 	request, err := http.NewRequest("POST", "/apps", b)
@@ -520,11 +495,6 @@ func (s *S) TestCreateAppTeamOwner(c *check.C) {
 
 func (s *S) TestCreateAppCustomPlan(c *check.C) {
 	a := app.App{Name: "someapp"}
-	defer func() {
-		a, err := app.GetByName("someapp")
-		c.Assert(err, check.IsNil)
-		s.deleteApp(a)
-	}()
 	expectedPlan := app.Plan{
 		Name:     "myplan",
 		Memory:   10,
@@ -645,7 +615,6 @@ func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(
 	a := app.App{Name: "plainsofdawn", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	b := strings.NewReader(`{"name":"plainsofdawn","platform":"zend"}`)
 	request, err := http.NewRequest("POST", "/apps", b)
 	c.Assert(err, check.IsNil)
@@ -663,7 +632,6 @@ func (s *S) TestAddUnits(c *check.C) {
 	a := app.App{Name: "armorandsword", Platform: "zend", Teams: []string{s.team.Name}, Quota: quota.Unlimited}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	body := strings.NewReader("units=3&process=web")
 	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:app=armorandsword", body)
 	c.Assert(err, check.IsNil)
@@ -738,7 +706,6 @@ func (s *S) TestAddUnitsWorksIfProcessIsOmited(c *check.C) {
 	a := app.App{Name: "armorandsword", Platform: "zend", Teams: []string{s.team.Name}, Quota: quota.Unlimited}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	body := strings.NewReader("units=3&process=")
 	request, err := http.NewRequest("PUT", "/apps/armorandsword/units?:app=armorandsword", body)
 	c.Assert(err, check.IsNil)
@@ -797,7 +764,6 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	a := app.App{Name: "velha", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	s.provisioner.AddUnits(&a, 3, "web", nil)
 	request, err := http.NewRequest("DELETE", "/apps/velha/units?:app=velha&units=2&process=web", nil)
 	c.Assert(err, check.IsNil)
@@ -863,7 +829,6 @@ func (s *S) TestRemoveUnitsWorksIfProcessIsOmited(c *check.C) {
 	a := app.App{Name: "velha", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	s.provisioner.AddUnits(&a, 3, "", nil)
 	request, err := http.NewRequest("DELETE", "/apps/velha/units?:app=velha&units=2&process=", nil)
 	c.Assert(err, check.IsNil)
@@ -908,7 +873,6 @@ func (s *S) TestSetUnitStatus(c *check.C) {
 	a := app.App{Name: "telegram", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	s.provisioner.AddUnits(&a, 3, "web", nil)
 	body := strings.NewReader("status=error")
 	units, err := a.Units()
@@ -974,7 +938,6 @@ func (s *S) TestSetUnitStatusDoesntRequireLock(c *check.C) {
 	a := app.App{Name: "telegram", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	locked, err := app.AcquireApplicationLock(a.Name, "test", "test")
 	c.Assert(err, check.IsNil)
 	c.Assert(locked, check.Equals, true)
@@ -1003,7 +966,6 @@ func (s *S) TestSetUnitsStatus(c *check.C) {
 	a := app.App{Name: "telegram", Platform: "zend", Teams: []string{s.team.Name}}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	s.provisioner.AddUnits(&a, 3, "web", nil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
@@ -1095,7 +1057,6 @@ func (s *S) TestAddTeamToTheApp(c *check.C) {
 	a := app.App{Name: "itshard", Platform: "zend", Teams: []string{t.Name}, TeamOwner: t.Name}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := fmt.Sprintf("/apps/%s/teams/%s", a.Name, s.team.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
@@ -1147,7 +1108,6 @@ func (s *S) TestGrantAccessToTeamReturn404IfTheTeamDoesNotExist(c *check.C) {
 	a := app.App{Name: "itshard", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := fmt.Sprintf("/apps/%s/teams/a", a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
@@ -1163,7 +1123,6 @@ func (s *S) TestGrantAccessToTeamReturn409IfTheTeamHasAlreadyAccessToTheApp(c *c
 	a := app.App{Name: "itshard", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := fmt.Sprintf("/apps/%s/teams/%s", a.Name, s.team.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
@@ -1187,7 +1146,6 @@ func (s *S) TestGrantAccessToTeamCallsRepositoryManager(c *check.C) {
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := fmt.Sprintf("/apps/%s/teams/%s", a.Name, s.team.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
@@ -1260,7 +1218,6 @@ func (s *S) TestRevokeAccessFromTeamReturn404IfTheTeamDoesNotExist(c *check.C) {
 	a := app.App{Name: "itshard", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := fmt.Sprintf("/apps/%s/teams/x", a.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
@@ -1298,7 +1255,6 @@ func (s *S) TestRevokeAccessFromTeamReturn403IfTheTeamIsTheLastWithAccessToTheAp
 	a := app.App{Name: "itshard", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := fmt.Sprintf("/apps/%s/teams/%s", a.Name, s.team.Name)
 	request, err := http.NewRequest("DELETE", url, nil)
 	c.Assert(err, check.IsNil)
@@ -1325,7 +1281,6 @@ func (s *S) TestRevokeAccessFromTeamRemovesRepositoryFromRepository(c *check.C) 
 	a := app.App{Name: "tsuru", Platform: "zend", Teams: []string{t.Name}}
 	err = app.CreateApp(&a, &u)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := fmt.Sprintf("/apps/%s/teams/%s", a.Name, s.team.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
@@ -1359,7 +1314,6 @@ func (s *S) TestRevokeAccessFromTeamDontRemoveTheUserIfItHasAccesToTheAppThrough
 	a := app.App{Name: "tsuru", Platform: "zend", TeamOwner: s.team.Name}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := fmt.Sprintf("/apps/%s/teams/%s", a.Name, t.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
@@ -1385,7 +1339,6 @@ func (s *S) TestRunOnceHandler(c *check.C) {
 	a := app.App{Name: "secrets", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
 	url := fmt.Sprintf("/apps/%s/run/?:app=%s&once=true", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
@@ -1413,7 +1366,6 @@ func (s *S) TestRunHandler(c *check.C) {
 	a := app.App{Name: "secrets", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
 	url := fmt.Sprintf("/apps/%s/run/?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
@@ -1442,7 +1394,6 @@ func (s *S) TestRunHandlerReturnsTheOutputOfTheCommandEvenIfItFails(c *check.C) 
 	a := app.App{Name: "secrets", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
 	url := fmt.Sprintf("/apps/%s/run/?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader("ls"))
@@ -1522,7 +1473,6 @@ func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromApp(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, strings.NewReader(`["DATABASE_HOST"]`))
 	request.Header.Set("Content-Type", "application/json")
@@ -1561,7 +1511,6 @@ func (s *S) TestGetEnvHandlerShouldAcceptMultipleVariables(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, strings.NewReader(`["DATABASE_HOST", "DATABASE_USER"]`))
 	c.Assert(err, check.IsNil)
@@ -1637,7 +1586,6 @@ func (s *S) TestGetEnvHandlerGetsEnvironmentVariableFromAppWithAppToken(c *check
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := fmt.Sprintf("/apps/%s/env/?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, strings.NewReader(`["DATABASE_HOST"]`))
 	request.Header.Set("Content-Type", "application/json")
@@ -1663,7 +1611,6 @@ func (s *S) TestSetEnvHandlerShouldSetAPublicEnvironmentVariableInTheApp(c *chec
 	a := app.App{Name: "black-dog", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := fmt.Sprintf("/apps/%s/env?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"localhost"}`))
 	c.Assert(err, check.IsNil)
@@ -1694,7 +1641,6 @@ func (s *S) TestSetEnvHandlerShouldSetAPrivateEnvironmentVariableInTheApp(c *che
 	a := app.App{Name: "black-dog", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := fmt.Sprintf("/apps/%s/env?:app=%s&private=1", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"localhost"}`))
 	c.Assert(err, check.IsNil)
@@ -1725,7 +1671,6 @@ func (s *S) TestSetEnvHandlerShouldSetADoublePrivateEnvironmentVariableInTheApp(
 	a := app.App{Name: "black-dog", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := fmt.Sprintf("/apps/%s/env?:app=%s&private=1", a.Name, a.Name)
 	request, err := http.NewRequest("POST", url, strings.NewReader(`{"DATABASE_HOST":"localhost"}`))
 	c.Assert(err, check.IsNil)
@@ -1763,7 +1708,6 @@ func (s *S) TestSetEnvHandlerShouldSetMultipleEnvironmentVariablesInTheApp(c *ch
 	a := app.App{Name: "vigil", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := fmt.Sprintf("/apps/%s/env?:app=%s", a.Name, a.Name)
 	b := strings.NewReader(`{"DATABASE_HOST": "localhost", "DATABASE_USER": "root"}`)
 	request, err := http.NewRequest("POST", url, b)
@@ -2041,7 +1985,6 @@ func (s *S) TestAddCNameHandler(c *check.C) {
 	a := app.App{Name: "leper", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
 	b := strings.NewReader(`{"cname":["leper.secretcompany.com"]}`)
 	request, err := http.NewRequest("POST", url, b)
@@ -2064,7 +2007,6 @@ func (s *S) TestAddCNameHandlerAcceptsWildCard(c *check.C) {
 	a := app.App{Name: "leper", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
 	b := strings.NewReader(`{"cname":["*.leper.secretcompany.com"]}`)
 	request, err := http.NewRequest("POST", url, b)
@@ -2087,7 +2029,6 @@ func (s *S) TestAddCNameHandlerErrsOnInvalidCName(c *check.C) {
 	a := app.App{Name: "leper", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
 	b := strings.NewReader(`{"cname":["_leper.secretcompany.com"]}`)
 	request, err := http.NewRequest("POST", url, b)
@@ -2177,7 +2118,6 @@ func (s *S) TestRemoveCNameHandler(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	err = a.AddCName("foo.bar.com")
 	c.Assert(err, check.IsNil)
 	url := fmt.Sprintf("/apps/%s/cname?:app=%s", a.Name, a.Name)
@@ -2206,7 +2146,6 @@ func (s *S) TestUnsetTwoCnames(c *check.C) {
 	}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	err = a.AddCName("foo.bar.com")
 	c.Assert(err, check.IsNil)
 	err = a.AddCName("bar.com")
@@ -2321,7 +2260,6 @@ func (s *S) TestAppLogFollowWithPubSub(c *check.C) {
 	a := app.App{Name: "lost1", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := "/apps/something/log/?:app=" + a.Name + "&lines=10&follow=1"
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
@@ -2371,7 +2309,6 @@ func (s *S) TestAppLogFollowWithFilter(c *check.C) {
 	a := app.App{Name: "lost2", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := "/apps/something/log/?:app=" + a.Name + "&lines=10&follow=1&source=web"
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
@@ -2423,7 +2360,6 @@ func (s *S) TestAppLogShouldHaveContentType(c *check.C) {
 	a := app.App{Name: "lost", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := fmt.Sprintf("/apps/%s/log/?:app=%s&lines=10", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
@@ -2438,7 +2374,6 @@ func (s *S) TestAppLogSelectByLines(c *check.C) {
 	a := app.App{Name: "lost", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	for i := 0; i < 15; i++ {
 		a.Log(strconv.Itoa(i), "source", "")
 	}
@@ -2468,7 +2403,6 @@ func (s *S) TestAppLogSelectBySource(c *check.C) {
 	a := app.App{Name: "lost", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	a.Log("mars log", "mars", "")
 	a.Log("earth log", "earth", "")
 	url := fmt.Sprintf("/apps/%s/log/?:app=%s&source=mars&lines=10", a.Name, a.Name)
@@ -2499,7 +2433,6 @@ func (s *S) TestAppLogSelectByUnit(c *check.C) {
 	a := app.App{Name: "lost", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	a.Log("mars log", "mars", "prospero")
 	a.Log("earth log", "earth", "caliban")
 	url := fmt.Sprintf("/apps/%s/log/?:app=%s&unit=caliban&lines=10", a.Name, a.Name)
@@ -2531,7 +2464,6 @@ func (s *S) TestAppLogSelectByLinesShouldReturnTheLastestEntries(c *check.C) {
 	a := app.App{Name: "lost", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	now := time.Now()
 	coll := s.logConn.Logs(a.Name)
 	defer coll.DropCollection()
@@ -2567,17 +2499,14 @@ func (s *S) TestAppLogShouldReturnLogByApp(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&app1)
 	app1.Log("app1 log", "source", "")
 	app2 := app.App{Name: "app2", Platform: "zend", Teams: []string{s.team.Name}}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&app2)
 	app2.Log("app2 log", "sourc ", "")
 	app3 := app.App{Name: "app3", Platform: "zend", Teams: []string{s.team.Name}}
 	err = app.CreateApp(&app3, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&app3)
 	app3.Log("app3 log", "tsuru", "")
 	url := fmt.Sprintf("/apps/%s/log/?:app=%s&lines=10", app3.Name, app3.Name)
 	request, err := http.NewRequest("GET", url, nil)
@@ -2627,7 +2556,6 @@ func (s *S) TestBindHandlerEndpointIsDown(c *check.C) {
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
@@ -2664,7 +2592,6 @@ func (s *S) TestBindHandler(c *check.C) {
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	s.provisioner.AddUnits(&a, 1, "web", nil)
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
@@ -2706,7 +2633,6 @@ func (s *S) TestBindHandlerReturns404IfTheInstanceDoesNotExist(c *check.C) {
 	a := app.App{Name: "serviceapp", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := fmt.Sprintf("/services/instances/unknown/%s?:instance=unknown&:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
@@ -2727,7 +2653,6 @@ func (s *S) TestBindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c *
 	a := app.App{Name: "serviceapp", Platform: "zend", Teams: []string{s.team.Name}}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
@@ -2799,7 +2724,6 @@ func (s *S) TestUnbindHandler(c *check.C) {
 	}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	units, _ := s.provisioner.AddUnits(&a, 1, "web", nil)
 	instance := service.ServiceInstance{
 		Name:        "my-mysql",
@@ -2873,7 +2797,6 @@ func (s *S) TestUnbindHandlerReturns404IfTheInstanceDoesNotExist(c *check.C) {
 	a := app.App{Name: "serviceapp", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := fmt.Sprintf("/services/instances/unknown/%s?:instance=unknown&:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
@@ -2894,7 +2817,6 @@ func (s *S) TestUnbindHandlerReturns403IfTheUserDoesNotHaveAccessToTheInstance(c
 	a := app.App{Name: "serviceapp", Platform: "zend", Teams: []string{s.team.Name}}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
 	request, err := http.NewRequest("PUT", url, nil)
 	c.Assert(err, check.IsNil)
@@ -2950,7 +2872,6 @@ func (s *S) TestRestartHandler(c *check.C) {
 	a := app.App{Name: "stress", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := fmt.Sprintf("/apps/%s/restart?:app=%s", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
@@ -3004,7 +2925,6 @@ func (s *S) TestAddLogHandler(c *check.C) {
 	a := app.App{Name: "myapp", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	body := strings.NewReader(`["message 1", "message 2", "message 3"]`)
 	body2 := strings.NewReader(`["message 4", "message 5"]`)
 	request, err := http.NewRequest("POST", "/apps/myapp/log/?:app=myapp", body)
@@ -3077,7 +2997,6 @@ func (s *S) TestGetApp(c *check.C) {
 	a := app.App{Name: "testapp", Platform: "zend", Teams: []string{"notAdmin", "noSuperUser"}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	expected, err := app.GetByName(a.Name)
 	c.Assert(err, check.IsNil)
 	app, err := getApp(a.Name, s.adminuser, nil)
@@ -3089,11 +3008,9 @@ func (s *S) TestSwap(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&app1)
 	app2 := app.App{Name: "app2", Platform: "zend", Teams: []string{s.team.Name}}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&app2)
 	request, _ := http.NewRequest("PUT", "/swap?app1=app1&app2=app2", nil)
 	recorder := httptest.NewRecorder()
 	err = swap(recorder, request, s.token)
@@ -3115,11 +3032,9 @@ func (s *S) TestSwapApp1Locked(c *check.C) {
 	}}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&app1)
 	app2 := app.App{Name: "app2", Platform: "zend", Teams: []string{s.team.Name}}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&app2)
 	request, _ := http.NewRequest("PUT", "/swap?app1=app1&app2=app2", nil)
 	recorder := httptest.NewRecorder()
 	err = swap(recorder, request, s.token)
@@ -3130,13 +3045,11 @@ func (s *S) TestSwapApp2Locked(c *check.C) {
 	app1 := app.App{Name: "app1", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&app1, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&app1)
 	app2 := app.App{Name: "app2", Platform: "zend", Teams: []string{s.team.Name}, Lock: app.AppLock{
 		Locked: true, Reason: "/test", Owner: "x",
 	}}
 	err = app.CreateApp(&app2, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&app2)
 	request, _ := http.NewRequest("PUT", "/swap?app1=app1&app2=app2", nil)
 	recorder := httptest.NewRecorder()
 	err = swap(recorder, request, s.token)
@@ -3213,7 +3126,6 @@ func (s *S) TestStartHandler(c *check.C) {
 	a := app.App{Name: "stress", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := fmt.Sprintf("/apps/%s/start?:app=%s&process=web", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
@@ -3236,7 +3148,6 @@ func (s *S) TestStopHandler(c *check.C) {
 	a := app.App{Name: "stress", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	url := fmt.Sprintf("/apps/%s/stop?:app=%s&process=web", a.Name, a.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
@@ -3416,7 +3327,6 @@ func (s *S) TestSetTeamOwnerWithoutTeam(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	request, err := http.NewRequest("POST", "/apps/myappx/team-owner", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -3431,7 +3341,6 @@ func (s *S) TestSetTeamOwner(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend", Teams: []string{s.team.Name}, TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	team := &auth.Team{Name: "newowner", Users: []string{s.user.Email}}
 	err = s.conn.Teams().Insert(team)
 	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
@@ -3452,7 +3361,6 @@ func (s *S) TestSetTeamOwnerToUserWhoCantBeOwner(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend", Teams: []string{s.team.Name}, TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	user := &auth.User{Email: "teste@thewho.com", Password: "123456", Quota: quota.Unlimited}
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -3478,7 +3386,6 @@ func (s *S) TestSetTeamOwnerAsAdmin(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend", Teams: []string{s.team.Name}, TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	user := &auth.User{Email: "teste@thewho2.com", Password: "123456", Quota: quota.Unlimited}
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -3512,7 +3419,6 @@ func (s *S) TestSetTeamOwnerSetNewTeamToAppAddThatTeamToAppTeamList(c *check.C) 
 	a := app.App{Name: "myappx", Platform: "zend", Teams: []string{s.team.Name}, TeamOwner: s.team.Name}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	user := &auth.User{Email: "teste@thewho3.com", Password: "123456", Quota: quota.Unlimited}
 	_, err = nativeScheme.Create(user)
 	c.Assert(err, check.IsNil)
@@ -3532,20 +3438,10 @@ func (s *S) TestSetTeamOwnerSetNewTeamToAppAddThatTeamToAppTeamList(c *check.C) 
 	c.Assert([]string{team.Name, s.team.Name}, check.DeepEquals, a.Teams)
 }
 
-func (s *S) deleteApp(a *app.App) {
-	app.Delete(a, nil)
-	count, err := s.conn.Apps().Find(bson.M{"name": a.Name}).Count()
-	for count > 0 && err == nil {
-		count, err = s.conn.Apps().Find(bson.M{"name": a.Name}).Count()
-		time.Sleep(1e6)
-	}
-}
-
 func (s *S) TestChangePool(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	opts := provision.AddPoolOptions{Name: "test"}
 	err = provision.AddPool(opts)
 	c.Assert(err, check.IsNil)
@@ -3598,7 +3494,6 @@ func (s *S) TestMetricEnvs(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	request, err := http.NewRequest("GET", "/apps/myappx/metric/envs", nil)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -3641,7 +3536,6 @@ func (s *S) TestRebuildRoutes(c *check.C) {
 	a := app.App{Name: "myappx", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	request, err := http.NewRequest("POST", "/apps/myappx/routes", nil)

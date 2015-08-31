@@ -228,7 +228,6 @@ func (s *S) TestChangePlan(c *check.C) {
 	a := app.App{Name: "someapp", Platform: "zend", Teams: []string{s.team.Name}, Plan: plans[1]}
 	err := app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	defer s.logConn.Logs(a.Name).DropCollection()
 	request, err := http.NewRequest("POST", "/apps/someapp/plan", strings.NewReader(`{"name":"hiperplan"}`))
 	c.Assert(err, check.IsNil)
@@ -251,7 +250,6 @@ func (s *S) TestChangePlanNotFound(c *check.C) {
 	a := app.App{Name: "someapp", Platform: "zend", Teams: []string{s.team.Name}, Plan: plan}
 	err = app.CreateApp(&a, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a)
 	defer s.logConn.Logs(a.Name).DropCollection()
 	request, err := http.NewRequest("POST", "/apps/someapp/plan", strings.NewReader(`{"name":"hiperplan"}`))
 	c.Assert(err, check.IsNil)

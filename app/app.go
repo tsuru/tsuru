@@ -310,7 +310,14 @@ func (app *App) unbind() error {
 }
 
 // Delete deletes an app.
-func Delete(app *App, w io.Writer) {
+func Delete(app *App, w io.Writer) error {
+	isSwapped, swappedWith, err := router.IsSwapped(app.GetName())
+	if err != nil {
+		return fmt.Errorf("unable to check if app is swapped: %s", err)
+	}
+	if isSwapped {
+		return fmt.Errorf("application is swapped with %q, cannot remove it", swappedWith)
+	}
 	appName := app.Name
 	if w == nil {
 		w = ioutil.Discard
@@ -330,7 +337,7 @@ func Delete(app *App, w io.Writer) {
 		log.Errorf("[delete-app: %s] %s", appName, msg)
 		hasErrors = true
 	}
-	err := Provisioner.Destroy(app)
+	err = Provisioner.Destroy(app)
 	if err != nil {
 		logErr("Unable to destroy app in provisioner", err)
 	}
@@ -374,6 +381,7 @@ func Delete(app *App, w io.Writer) {
 	if err != nil {
 		logErr("Unable to mark old deploys as removed", err)
 	}
+	return nil
 }
 
 func (app *App) BindUnit(unit *provision.Unit) error {

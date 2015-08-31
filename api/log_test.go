@@ -114,11 +114,9 @@ func (s *S) TestAddLogsHandler(c *check.C) {
 	a1 := app.App{Name: "myapp1", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a1, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a1)
 	a2 := app.App{Name: "myapp2", Platform: "zend", Teams: []string{s.team.Name}}
 	err = app.CreateApp(&a2, s.user)
 	c.Assert(err, check.IsNil)
-	defer s.deleteApp(&a2)
 	baseTime, err := time.Parse(time.RFC3339, "2015-06-16T15:00:00.000Z")
 	c.Assert(err, check.IsNil)
 	baseTime = baseTime.Local()

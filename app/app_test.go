@@ -74,14 +74,14 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app, err := GetByName(a.Name)
 	c.Assert(err, check.IsNil)
+	err = s.provisioner.Provision(&a)
+	c.Assert(err, check.IsNil)
 	err = app.Log("msg", "src", "unit")
 	c.Assert(err, check.IsNil)
-	Delete(app, nil)
-	err = tsurutest.WaitCondition(time.Second, func() bool {
-		_, err := GetByName(app.Name)
-		return err != nil
-	})
+	err = Delete(app, nil)
 	c.Assert(err, check.IsNil)
+	_, err = GetByName(app.Name)
+	c.Assert(err, check.Equals, ErrAppNotFound)
 	c.Assert(s.provisioner.Provisioned(&a), check.Equals, false)
 	err = auth.ReserveApp(s.user)
 	c.Assert(err, check.IsNil)
@@ -132,6 +132,36 @@ func (s *S) TestDeleteWithoutUnits(c *check.C) {
 	_, err = repository.Manager().GetRepository(app.Name)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "repository not found")
+}
+
+func (s *S) TestDeleteSwappedApp(c *check.C) {
+	s.conn.Users().Update(
+		bson.M{"email": s.user.Email},
+		bson.M{"$set": bson.M{"quota.limit": 1, "quota.inuse": 1}},
+	)
+	defer s.conn.Users().Update(
+		bson.M{"email": s.user.Email},
+		bson.M{"$set": bson.M{"quota": quota.Unlimited}},
+	)
+	a := App{
+		Name:     "ritual",
+		Platform: "ruby",
+		Owner:    s.user.Email,
+	}
+	err := s.provisioner.Provision(&a)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Insert(&a)
+	c.Assert(err, check.IsNil)
+	app2 := &App{Name: "app2"}
+	err = s.conn.Apps().Insert(app2)
+	c.Assert(err, check.IsNil)
+	err = s.provisioner.Provision(app2)
+	c.Assert(err, check.IsNil)
+	err = Swap(&a, app2)
+	c.Assert(err, check.IsNil)
+	err = Delete(&a, nil)
+	c.Assert(err, check.ErrorMatches, "application is swapped with \"app2\", cannot remove it")
+	c.Assert(s.provisioner.Provisioned(&a), check.Equals, true)
 }
 
 func (s *S) TestCreateApp(c *check.C) {
