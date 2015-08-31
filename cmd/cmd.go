@@ -146,7 +146,6 @@ func (m *Manager) Run(args []string) {
 				msg := ""
 				if os.IsNotExist(err) {
 					msg = fmt.Sprintf("%s: %q is not a tsuru command. See %q.\n", os.Args[0], args[0], "tsuru help")
-					msg += fmt.Sprintf("\nDid you mean?\n")
 					var keys []string
 					for key := range m.Commands {
 						keys = append(keys, key)
@@ -155,6 +154,9 @@ func (m *Manager) Run(args []string) {
 					for _, key := range keys {
 						levenshtein := fuzzy.Levenshtein(&key, &args[0])
 						if levenshtein < 3 || strings.Contains(key, args[0]) {
+							if !strings.Contains(msg, "Did you mean?") {
+								msg += fmt.Sprintf("\nDid you mean?\n")
+							}
 							msg += fmt.Sprintf("\t%s\n", key)
 						}
 					}
