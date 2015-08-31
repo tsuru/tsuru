@@ -267,3 +267,11 @@ func List() ([]PlanRouter, error) {
 func ValidCName(cname, domain string) bool {
 	return !strings.HasSuffix(cname, domain)
 }
+
+func IsSwapped(name string) (bool, string, error) {
+	backendName, err := Retrieve(name)
+	if err != nil {
+		return false, "", err
+	}
+	return name != backendName, backendName, nil
+}
