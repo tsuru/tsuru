@@ -10,6 +10,7 @@ type SchemeInfo map[string]interface{}
 
 type Scheme interface {
 	AppLogin(appName string) (Token, error)
+	AppLogout(token string) error
 	Login(params map[string]string) (Token, error)
 	Logout(token string) error
 	Auth(token string) (Token, error)

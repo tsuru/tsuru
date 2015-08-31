@@ -159,6 +159,11 @@ func (s *OAuthScheme) AppLogin(appName string) (auth.Token, error) {
 	return nativeScheme.AppLogin(appName)
 }
 
+func (s *OAuthScheme) AppLogout(token string) error {
+	nativeScheme := native.NativeScheme{}
+	return nativeScheme.AppLogout(token)
+}
+
 func (s *OAuthScheme) Logout(token string) error {
 	return deleteToken(token)
 }

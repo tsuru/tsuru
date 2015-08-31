@@ -343,7 +343,7 @@ func Delete(app *App, w io.Writer) {
 		logErr("Unable to remove app from repository manager", err)
 	}
 	token := app.Env["TSURU_APP_TOKEN"].Value
-	err = AuthScheme.Logout(token)
+	err = AuthScheme.AppLogout(token)
 	if err != nil {
 		logErr("Unable to remove app token in destroy", err)
 	}

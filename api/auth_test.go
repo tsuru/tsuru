@@ -1752,6 +1752,9 @@ type TestScheme native.NativeScheme
 func (t TestScheme) AppLogin(appName string) (auth.Token, error) {
 	return nil, nil
 }
+func (t TestScheme) AppLogout(token string) error {
+	return nil
+}
 func (t TestScheme) Login(params map[string]string) (auth.Token, error) {
 	return nil, nil
 }

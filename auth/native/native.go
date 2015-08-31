@@ -58,6 +58,10 @@ func (s NativeScheme) AppLogin(appName string) (auth.Token, error) {
 	return createApplicationToken(appName)
 }
 
+func (s NativeScheme) AppLogout(token string) error {
+	return s.Logout(token)
+}
+
 func (s NativeScheme) Create(user *auth.User) (*auth.User, error) {
 	if !validation.ValidateEmail(user.Email) {
 		return nil, ErrInvalidEmail

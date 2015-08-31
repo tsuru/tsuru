@@ -11,6 +11,9 @@ type TestScheme struct{}
 func (t TestScheme) AppLogin(appName string) (Token, error) {
 	return nil, nil
 }
+func (t TestScheme) AppLogout(token string) error {
+	return nil
+}
 func (t TestScheme) Login(params map[string]string) (Token, error) {
 	return nil, nil
 }
