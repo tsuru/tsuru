@@ -1042,8 +1042,7 @@ func (s *InstanceSuite) TestBindAppMultipleApps(c *check.C) {
 }
 
 func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
-	goMaxProcs := runtime.GOMAXPROCS(4)
-	defer runtime.GOMAXPROCS(goMaxProcs)
+	defer runtime.GOMAXPROCS(runtime.GOMAXPROCS(4))
 	var reqs []*http.Request
 	var mut sync.Mutex
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1067,7 +1066,7 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 	err = si.Create()
 	c.Assert(err, check.IsNil)
 	var apps []bind.App
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 20; i++ {
 		name := fmt.Sprintf("myapp-%02d", i)
 		app := provisiontest.NewFakeApp(name, "static", 2)
 		apps = append(apps, app)
@@ -1088,7 +1087,7 @@ func (s *InstanceSuite) TestUnbindAppMultipleApps(c *check.C) {
 		}(app)
 	}
 	wg.Wait()
-	c.Assert(reqs, check.HasLen, 600)
+	c.Assert(reqs, check.HasLen, 120)
 	siDB, err = GetServiceInstance(si.Name, s.user)
 	c.Assert(err, check.IsNil)
 	sort.Strings(siDB.Apps)
