@@ -549,7 +549,7 @@ func (c *Container) AsUnit(a provision.App) provision.Unit {
 		cType = a.GetPlatform()
 	}
 	return provision.Unit{
-		Name:        c.ID,
+		ID:          c.ID,
 		AppName:     a.GetName(),
 		Type:        cType,
 		Ip:          c.HostAddr,

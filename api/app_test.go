@@ -878,7 +878,7 @@ func (s *S) TestSetUnitStatus(c *check.C) {
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	unit := units[0]
-	request, err := http.NewRequest("POST", "/apps/telegram/units/<unit-name>?:app=telegram&:unit="+unit.Name, body)
+	request, err := http.NewRequest("POST", "/apps/telegram/units/<unit-name>?:app=telegram&:unit="+unit.ID, body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
@@ -946,7 +946,7 @@ func (s *S) TestSetUnitStatusDoesntRequireLock(c *check.C) {
 	c.Assert(err, check.IsNil)
 	unit := units[0]
 	body := strings.NewReader("status=error")
-	request, err := http.NewRequest("POST", "/apps/telegram/units/"+unit.Name, body)
+	request, err := http.NewRequest("POST", "/apps/telegram/units/"+unit.ID, body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -973,7 +973,7 @@ func (s *S) TestSetUnitsStatus(c *check.C) {
 	status := []string{"started", "error", "stopped"}
 	payload := make([]map[string]string, len(status)+2)
 	for i, st := range status {
-		payload[i] = map[string]string{"ID": units[i].Name, "Status": st}
+		payload[i] = map[string]string{"ID": units[i].ID, "Status": st}
 	}
 	payload[len(status)] = map[string]string{"ID": "not-found1", "Status": "error"}
 	payload[len(status)+1] = map[string]string{"ID": "not-found2", "Status": "started"}
@@ -995,9 +995,9 @@ func (s *S) TestSetUnitsStatus(c *check.C) {
 	}
 	var got updateList
 	expected := updateList([]updateUnitsResponse{
-		{ID: units[0].Name, Found: true},
-		{ID: units[1].Name, Found: true},
-		{ID: units[2].Name, Found: true},
+		{ID: units[0].ID, Found: true},
+		{ID: units[1].ID, Found: true},
+		{ID: units[2].ID, Found: true},
 		{ID: "not-found1", Found: false},
 		{ID: "not-found2", Found: false},
 	})
@@ -2730,7 +2730,7 @@ func (s *S) TestUnbindHandler(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"painkiller"},
-		Units:       []string{units[0].Name},
+		Units:       []string{units[0].ID},
 	}
 	err = instance.Create()
 	c.Assert(err, check.IsNil)
@@ -3224,7 +3224,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	oldIp := units[0].Ip
-	body := strings.NewReader("hostname=" + units[0].Name)
+	body := strings.NewReader("hostname=" + units[0].ID)
 	request, err := http.NewRequest("POST", "/apps/myappx/units/register", body)
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -3295,7 +3295,7 @@ func (s *S) TestRegisterUnitWithCustomData(c *check.C) {
 	c.Assert(err, check.IsNil)
 	oldIp := units[0].Ip
 	v := url.Values{}
-	v.Set("hostname", units[0].Name)
+	v.Set("hostname", units[0].ID)
 	v.Set("customdata", `{"mydata": "something"}`)
 	body := strings.NewReader(v.Encode())
 	request, err := http.NewRequest("POST", "/apps/myappx/units/register", body)

@@ -246,7 +246,7 @@ func (s unitSlice) Len() int {
 }
 
 func (s unitSlice) Less(i, j int) bool {
-	return s[i].Name < s[j].Name
+	return s[i].ID < s[j].ID
 }
 
 func (s unitSlice) Swap(i, j int) {

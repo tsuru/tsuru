@@ -268,9 +268,7 @@ func (s *BindSuite) TestBindReturnConflictIfTheAppIsAlreadyBound(c *check.C) {
 }
 
 func (s *BindSuite) TestBindAppWithNoUnits(c *check.C) {
-	var called bool
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		called = true
 		w.Write([]byte(`{"DATABASE_USER":"root","DATABASE_PASSWORD":"s3cr3t"}`))
 	}))
 	defer ts.Close()
@@ -381,7 +379,7 @@ func (s *BindSuite) TestUnbindMultiUnits(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"painkiller"},
-		Units:       []string{units[0].Name, units[1].Name},
+		Units:       []string{units[0].ID, units[1].ID},
 	}
 	instance.Create()
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
@@ -527,7 +525,7 @@ func (s *BindSuite) TestUnbindCallsTheUnbindMethodFromAPI(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"painkiller"},
-		Units:       []string{units[0].Name},
+		Units:       []string{units[0].ID},
 	}
 	err = instance.Create()
 	c.Assert(err, check.IsNil)

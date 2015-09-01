@@ -102,7 +102,7 @@ const (
 // Unit represents a provision unit. Can be a machine, container or anything
 // IP-addressable.
 type Unit struct {
-	Name        string
+	ID          string
 	AppName     string
 	ProcessName string
 	Type        string
@@ -113,7 +113,7 @@ type Unit struct {
 
 // GetName returns the name of the unit.
 func (u *Unit) GetName() string {
-	return u.Name
+	return u.ID
 }
 
 // GetIp returns the Unit.IP.

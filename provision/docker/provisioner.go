@@ -717,7 +717,7 @@ func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint, processName
 }
 
 func (p *dockerProvisioner) SetUnitStatus(unit provision.Unit, status provision.Status) error {
-	container, err := p.GetContainer(unit.Name)
+	container, err := p.GetContainer(unit.ID)
 	if err != nil {
 		return err
 	}
@@ -891,7 +891,7 @@ func (p *dockerProvisioner) RoutableUnits(app provision.App) ([]provision.Unit, 
 }
 
 func (p *dockerProvisioner) RegisterUnit(unit provision.Unit, customData map[string]interface{}) error {
-	container, err := p.GetContainer(unit.Name)
+	container, err := p.GetContainer(unit.ID)
 	if err != nil {
 		return err
 	}

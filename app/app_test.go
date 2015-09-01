@@ -440,7 +440,7 @@ func (s *S) TestBindAndUnbindUnit(c *check.C) {
 	err = si2.Create()
 	c.Assert(err, check.IsNil)
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": si2.Name})
-	unit := provision.Unit{Name: "some-unit", Ip: "127.0.2.1"}
+	unit := provision.Unit{ID: "some-unit", Ip: "127.0.2.1"}
 	err = app.BindUnit(&unit)
 	c.Assert(err, check.IsNil)
 	err = app.UnbindUnit(&unit)
@@ -700,7 +700,7 @@ func (s *S) TestSetUnitStatus(c *check.C) {
 	s.provisioner.AddUnits(&a, 3, "web", nil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
-	err = a.SetUnitStatus(units[0].Name, provision.StatusError)
+	err = a.SetUnitStatus(units[0].ID, provision.StatusError)
 	c.Assert(err, check.IsNil)
 	units, err = a.Units()
 	c.Assert(err, check.IsNil)
@@ -714,7 +714,7 @@ func (s *S) TestSetUnitStatusPartialID(c *check.C) {
 	s.provisioner.AddUnits(&a, 3, "web", nil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
-	name := units[0].Name
+	name := units[0].ID
 	err = a.SetUnitStatus(name[0:len(name)-2], provision.StatusError)
 	c.Assert(err, check.IsNil)
 	units, err = a.Units()
@@ -737,18 +737,18 @@ func (s *S) TestUpdateUnitsStatus(c *check.C) {
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
 	unitStates := map[string]provision.Status{
-		units[0].Name:                provision.Status("started"),
-		units[1].Name:                provision.Status("stopped"),
-		units[2].Name:                provision.Status("error"),
-		units[2].Name + "-not-found": provision.Status("error"),
+		units[0].ID:                provision.Status("started"),
+		units[1].ID:                provision.Status("stopped"),
+		units[2].ID:                provision.Status("error"),
+		units[2].ID + "-not-found": provision.Status("error"),
 	}
 	result, err := UpdateUnitsStatus(unitStates)
 	c.Assert(err, check.IsNil)
 	expected := map[string]bool{
-		units[0].Name:                true,
-		units[1].Name:                true,
-		units[2].Name:                true,
-		units[2].Name + "-not-found": false,
+		units[0].ID:                true,
+		units[1].ID:                true,
+		units[2].ID:                true,
+		units[2].ID + "-not-found": false,
 	}
 	c.Assert(result, check.DeepEquals, expected)
 }
@@ -2726,7 +2726,7 @@ func (s *S) TestAppRegisterUnit(c *check.C) {
 		ips = append(ips, u.Ip)
 	}
 	customData := map[string]interface{}{"x": "y"}
-	err = a.RegisterUnit(units[0].Name, customData)
+	err = a.RegisterUnit(units[0].ID, customData)
 	c.Assert(err, check.IsNil)
 	units, err = a.Units()
 	c.Assert(err, check.IsNil)
@@ -3001,14 +3001,14 @@ func (s *S) TestShellToAnApp(c *check.C) {
 		Conn:   &provisiontest.FakeConn{Buf: buf},
 		Width:  200,
 		Height: 40,
-		Unit:   unit.Name,
+		Unit:   unit.ID,
 		Term:   "xterm",
 	}
 	err = a.Shell(opts)
 	c.Assert(err, check.IsNil)
 	expected := []provision.ShellOptions{opts}
 	expected[0].App = &a
-	c.Assert(s.provisioner.Shells(unit.Name), check.DeepEquals, expected)
+	c.Assert(s.provisioner.Shells(unit.ID), check.DeepEquals, expected)
 }
 
 func (s *S) TestAppMetricEnvs(c *check.C) {

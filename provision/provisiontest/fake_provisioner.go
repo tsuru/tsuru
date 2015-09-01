@@ -61,7 +61,7 @@ func NewFakeApp(name, platform string, units int) *FakeApp {
 	for i := 0; i < units; i++ {
 		val := atomic.AddInt32(&uniqueIpCounter, 1)
 		app.units[i] = provision.Unit{
-			Name:   fmt.Sprintf(namefmt, name, i),
+			ID:     fmt.Sprintf(namefmt, name, i),
 			Status: provision.StatusStarted,
 			Ip:     fmt.Sprintf("10.10.10.%d", val),
 			Address: &url.URL{
@@ -89,7 +89,7 @@ func (a *FakeApp) HasBind(unit *provision.Unit) bool {
 	a.bindLock.Lock()
 	defer a.bindLock.Unlock()
 	for _, u := range a.bindCalls {
-		if u.Name == unit.Name {
+		if u.ID == unit.ID {
 			return true
 		}
 	}
@@ -108,7 +108,7 @@ func (a *FakeApp) UnbindUnit(unit *provision.Unit) error {
 	defer a.bindLock.Unlock()
 	index := -1
 	for i, u := range a.bindCalls {
-		if u.Name == unit.Name {
+		if u.ID == unit.ID {
 			index = i
 			break
 		}
@@ -607,7 +607,7 @@ func (p *FakeProvisioner) AddUnits(app provision.App, n uint, process string, w 
 	for i := uint(0); i < n; i++ {
 		val := atomic.AddInt32(&uniqueIpCounter, 1)
 		unit := provision.Unit{
-			Name:        fmt.Sprintf("%s-%d", name, pApp.unitLen),
+			ID:          fmt.Sprintf("%s-%d", name, pApp.unitLen),
 			AppName:     name,
 			Type:        platform,
 			Status:      provision.StatusStarted,
@@ -796,7 +796,7 @@ func (p *FakeProvisioner) SetUnitStatus(unit provision.Unit, status provision.St
 	}
 	index := -1
 	for i, unt := range units {
-		if unt.Name == unit.Name {
+		if unt.ID == unit.ID {
 			index = i
 			unit.AppName = unt.AppName
 			break
@@ -893,7 +893,7 @@ func (p *FakeProvisioner) RegisterUnit(unit provision.Unit, customData map[strin
 	}
 	a.lastData = customData
 	for i, u := range a.units {
-		if u.Name == unit.Name {
+		if u.ID == unit.ID {
 			u.Ip = u.Ip + "-updated"
 			a.units[i] = u
 			p.apps[unit.AppName] = a
@@ -913,7 +913,7 @@ func (p *FakeProvisioner) Shell(opts provision.ShellOptions) error {
 		return errors.New("app has no units")
 	} else if opts.Unit != "" {
 		for _, u := range units {
-			if u.Name == opts.Unit {
+			if u.ID == opts.Unit {
 				unit = u
 				break
 			}
@@ -921,12 +921,12 @@ func (p *FakeProvisioner) Shell(opts provision.ShellOptions) error {
 	} else {
 		unit = units[0]
 	}
-	if unit.Name == "" {
+	if unit.ID == "" {
 		return errors.New("unit not found")
 	}
 	p.shellMut.Lock()
 	defer p.shellMut.Unlock()
-	p.shells[unit.Name] = append(p.shells[unit.Name], opts)
+	p.shells[unit.ID] = append(p.shells[unit.ID], opts)
 	return nil
 }
 

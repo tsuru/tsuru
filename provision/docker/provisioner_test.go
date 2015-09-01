@@ -1055,7 +1055,7 @@ func (s *S) TestProvisionerSetUnitStatus(c *check.C) {
 	container, err := s.newContainer(&opts, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container)
-	err = s.p.SetUnitStatus(provision.Unit{Name: container.ID, AppName: container.AppName}, provision.StatusError)
+	err = s.p.SetUnitStatus(provision.Unit{ID: container.ID, AppName: container.AppName}, provision.StatusError)
 	c.Assert(err, check.IsNil)
 	container, err = s.p.GetContainer(container.ID)
 	c.Assert(err, check.IsNil)
@@ -1076,7 +1076,7 @@ func (s *S) TestProvisionerSetUnitStatusUpdatesIp(c *check.C) {
 	defer coll.Close()
 	err = coll.Update(bson.M{"id": container.ID}, container)
 	c.Assert(err, check.IsNil)
-	err = s.p.SetUnitStatus(provision.Unit{Name: container.ID, AppName: container.AppName}, provision.StatusStarted)
+	err = s.p.SetUnitStatus(provision.Unit{ID: container.ID, AppName: container.AppName}, provision.StatusStarted)
 	c.Assert(err, check.IsNil)
 	container, err = s.p.GetContainer(container.ID)
 	c.Assert(err, check.IsNil)
@@ -1091,7 +1091,7 @@ func (s *S) TestProvisionerSetUnitStatusWrongApp(c *check.C) {
 	container, err := s.newContainer(&opts, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container)
-	err = s.p.SetUnitStatus(provision.Unit{Name: container.ID, AppName: container.AppName + "a"}, provision.StatusError)
+	err = s.p.SetUnitStatus(provision.Unit{ID: container.ID, AppName: container.AppName + "a"}, provision.StatusError)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "wrong app name")
 	container, err = s.p.GetContainer(container.ID)
@@ -1106,7 +1106,7 @@ func (s *S) TestProvisionSetUnitStatusNoAppName(c *check.C) {
 	container, err := s.newContainer(&opts, nil)
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(container)
-	err = s.p.SetUnitStatus(provision.Unit{Name: container.ID}, provision.StatusError)
+	err = s.p.SetUnitStatus(provision.Unit{ID: container.ID}, provision.StatusError)
 	c.Assert(err, check.IsNil)
 	container, err = s.p.GetContainer(container.ID)
 	c.Assert(err, check.IsNil)
@@ -1114,7 +1114,7 @@ func (s *S) TestProvisionSetUnitStatusNoAppName(c *check.C) {
 }
 
 func (s *S) TestProvisionerSetUnitStatusUnitNotFound(c *check.C) {
-	err := s.p.SetUnitStatus(provision.Unit{Name: "mycontainer", AppName: "myapp"}, provision.StatusError)
+	err := s.p.SetUnitStatus(provision.Unit{ID: "mycontainer", AppName: "myapp"}, provision.StatusError)
 	c.Assert(err, check.Equals, provision.ErrUnitNotFound)
 }
 
@@ -1622,7 +1622,7 @@ func (s *S) TestProvisionerUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected := []provision.Unit{
 		{
-			Name:    "9930c24f1c4f",
+			ID:      "9930c24f1c4f",
 			AppName: "myapplication",
 			Type:    "python",
 			Status:  provision.StatusBuilding,
@@ -1674,7 +1674,7 @@ func (s *S) TestProvisionerUnitsStatus(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected := []provision.Unit{
 		{
-			Name:    "9930c24f1c4f",
+			ID:      "9930c24f1c4f",
 			AppName: "myapplication",
 			Type:    "python",
 			Status:  provision.StatusBuilding,
@@ -1685,7 +1685,7 @@ func (s *S) TestProvisionerUnitsStatus(c *check.C) {
 			},
 		},
 		{
-			Name:    "9930c24f1c4j",
+			ID:      "9930c24f1c4j",
 			AppName: "myapplication",
 			Type:    "python",
 			Status:  provision.StatusError,
@@ -1720,7 +1720,7 @@ func (s *S) TestProvisionerUnitsIp(c *check.C) {
 	c.Assert(err, check.IsNil)
 	expected := []provision.Unit{
 		{
-			Name:    "9930c24f1c4f",
+			ID:      "9930c24f1c4f",
 			AppName: "myapplication",
 			Type:    "python",
 			Ip:      "127.0.0.1",
@@ -1748,7 +1748,7 @@ func (s *S) TestRegisterUnit(c *check.C) {
 	defer coll.Close()
 	err = coll.Update(bson.M{"id": container.ID}, container)
 	c.Assert(err, check.IsNil)
-	err = s.p.RegisterUnit(provision.Unit{Name: container.ID}, nil)
+	err = s.p.RegisterUnit(provision.Unit{ID: container.ID}, nil)
 	c.Assert(err, check.IsNil)
 	dbCont, err := s.p.GetContainer(container.ID)
 	c.Assert(err, check.IsNil)
@@ -1768,7 +1768,7 @@ func (s *S) TestRegisterUnitBuildingContainer(c *check.C) {
 	defer coll.Close()
 	err = coll.Update(bson.M{"id": container.ID}, container)
 	c.Assert(err, check.IsNil)
-	err = s.p.RegisterUnit(provision.Unit{Name: container.ID}, nil)
+	err = s.p.RegisterUnit(provision.Unit{ID: container.ID}, nil)
 	c.Assert(err, check.IsNil)
 	dbCont, err := s.p.GetContainer(container.ID)
 	c.Assert(err, check.IsNil)
@@ -1790,7 +1790,7 @@ func (s *S) TestRegisterUnitSavesCustomData(c *check.C) {
 	err = coll.Update(bson.M{"id": container.ID}, container)
 	c.Assert(err, check.IsNil)
 	data := map[string]interface{}{"mydata": "value"}
-	err = s.p.RegisterUnit(provision.Unit{Name: container.ID}, data)
+	err = s.p.RegisterUnit(provision.Unit{ID: container.ID}, data)
 	c.Assert(err, check.IsNil)
 	dataColl, err := imageCustomDataColl()
 	c.Assert(err, check.IsNil)

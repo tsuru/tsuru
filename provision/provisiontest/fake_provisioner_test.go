@@ -30,7 +30,7 @@ func (s *S) SetUpTest(c *check.C) {
 
 func (s *S) TestFakeAppAddUnit(c *check.C) {
 	app := NewFakeApp("jean", "mj", 0)
-	app.AddUnit(provision.Unit{Name: "jean-0"})
+	app.AddUnit(provision.Unit{ID: "jean-0"})
 	c.Assert(app.units, check.HasLen, 1)
 }
 
@@ -106,8 +106,8 @@ func (s *S) TestGetUnitsReturnUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(len(units), check.Equals, 2)
 	c.Assert(len(a.units), check.Equals, 2)
-	c.Assert(units[0].GetName(), check.Equals, a.units[0].Name)
-	c.Assert(units[1].GetName(), check.Equals, a.units[1].Name)
+	c.Assert(units[0].GetName(), check.Equals, a.units[0].ID)
+	c.Assert(units[1].GetName(), check.Equals, a.units[1].ID)
 }
 
 func (s *S) TestUnsetEnvs(c *check.C) {
@@ -288,8 +288,8 @@ func (s *S) TestGetCmds(c *check.C) {
 
 func (s *S) TestGetUnits(c *check.C) {
 	list := []provision.Unit{
-		{Name: "chain-lighting-0", AppName: "chain-lighting", ProcessName: "web", Type: "django", Ip: "10.10.10.10", Status: provision.StatusStarted},
-		{Name: "chain-lighting-1", AppName: "chain-lighting", ProcessName: "web", Type: "django", Ip: "10.10.10.15", Status: provision.StatusStarted},
+		{ID: "chain-lighting-0", AppName: "chain-lighting", ProcessName: "web", Type: "django", Ip: "10.10.10.10", Status: provision.StatusStarted},
+		{ID: "chain-lighting-1", AppName: "chain-lighting", ProcessName: "web", Type: "django", Ip: "10.10.10.15", Status: provision.StatusStarted},
 	}
 	app := NewFakeApp("chain-lighting", "rush", 1)
 	p := NewFakeProvisioner()
@@ -550,8 +550,8 @@ func (s *S) TestAddUnitsCopiesTheUnitsSlice(c *check.C) {
 	defer p.Destroy(app)
 	units, err := p.AddUnits(app, 3, "web", nil)
 	c.Assert(err, check.IsNil)
-	units[0].Name = "something-else"
-	c.Assert(units[0].Name, check.Not(check.Equals), p.GetUnits(app)[1].Name)
+	units[0].ID = "something-else"
+	c.Assert(units[0].ID, check.Not(check.Equals), p.GetUnits(app)[1].ID)
 }
 
 func (s *S) TestAddZeroUnits(c *check.C) {
@@ -591,7 +591,7 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	units := p.GetUnits(app)
 	c.Assert(units, check.HasLen, 2)
-	c.Assert(units[0].Name, check.Equals, "hemispheres-3")
+	c.Assert(units[0].ID, check.Equals, "hemispheres-3")
 	c.Assert(buf.String(), check.Equals, "removing 3 units")
 	c.Assert(units[0].Address.String(), check.Equals, oldUnits[3].Address.String())
 	c.Assert(routertest.FakeRouter.HasRoute(app.GetName(), oldUnits[0].Address.String()), check.Equals, false)
@@ -870,7 +870,7 @@ func (s *S) TestFakeProvisionerAddUnit(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
-	p.AddUnit(app, provision.Unit{Name: "red-sector/1"})
+	p.AddUnit(app, provision.Unit{ID: "red-sector/1"})
 	units, err := p.Units(app)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
@@ -882,7 +882,7 @@ func (s *S) TestFakeProvisionerUnits(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
-	p.AddUnit(app, provision.Unit{Name: "red-sector/1"})
+	p.AddUnit(app, provision.Unit{ID: "red-sector/1"})
 	units, err := p.Units(app)
 	c.Assert(err, check.IsNil)
 	c.Assert(units, check.HasLen, 1)
@@ -901,7 +901,7 @@ func (s *S) TestFakeProvisionerSetUnitStatus(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
-	unit := provision.Unit{AppName: "red-sector", Name: "red-sector/1", Status: provision.StatusStarted}
+	unit := provision.Unit{AppName: "red-sector", ID: "red-sector/1", Status: provision.StatusStarted}
 	p.AddUnit(app, unit)
 	err = p.SetUnitStatus(unit, provision.StatusError)
 	c.Assert(err, check.IsNil)
@@ -916,9 +916,9 @@ func (s *S) TestFakeProvisionerSetUnitStatusNoApp(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
-	unit := provision.Unit{AppName: "red-sector", Name: "red-sector/1", Status: provision.StatusStarted}
+	unit := provision.Unit{AppName: "red-sector", ID: "red-sector/1", Status: provision.StatusStarted}
 	p.AddUnit(app, unit)
-	unit = provision.Unit{Name: "red-sector/1"}
+	unit = provision.Unit{ID: "red-sector/1"}
 	err = p.SetUnitStatus(unit, provision.StatusError)
 	c.Assert(err, check.IsNil)
 	units, err := p.Units(app)
@@ -938,7 +938,7 @@ func (s *S) TestFakeProvisionerSetUnitStatusUnitNotFound(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
-	unit := provision.Unit{AppName: "red-sector", Name: "red-sector/1", Status: provision.StatusStarted}
+	unit := provision.Unit{AppName: "red-sector", ID: "red-sector/1", Status: provision.StatusStarted}
 	err = p.SetUnitStatus(unit, provision.StatusError)
 	c.Assert(err, check.Equals, provision.ErrUnitNotFound)
 }
@@ -948,7 +948,7 @@ func (s *S) TestFakeProvisionerRegisterUnit(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
-	unit := provision.Unit{AppName: "shine-on", Name: "unit/1"}
+	unit := provision.Unit{AppName: "shine-on", ID: "unit/1"}
 	p.AddUnit(app, unit)
 	units, err := p.Units(app)
 	c.Assert(err, check.IsNil)
@@ -965,7 +965,7 @@ func (s *S) TestFakeProvisionerRegisterUnitNotFound(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
-	unit := provision.Unit{AppName: "shine-on", Name: "unit/1"}
+	unit := provision.Unit{AppName: "shine-on", ID: "unit/1"}
 	err = p.RegisterUnit(unit, nil)
 	c.Assert(err, check.ErrorMatches, "unit not found")
 }
@@ -975,7 +975,7 @@ func (s *S) TestFakeProvisionerRegisterUnitSavesData(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
-	unit := provision.Unit{AppName: "shine-on", Name: "unit/1"}
+	unit := provision.Unit{AppName: "shine-on", ID: "unit/1"}
 	p.AddUnit(app, unit)
 	units, err := p.Units(app)
 	c.Assert(err, check.IsNil)
@@ -994,11 +994,11 @@ func (s *S) TestFakeProvisionerShellNoSpecification(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
-	unit := provision.Unit{AppName: "shine-on", Name: "unit/1"}
+	unit := provision.Unit{AppName: "shine-on", ID: "unit/1"}
 	p.AddUnit(app, unit)
-	unit = provision.Unit{AppName: "shine-on", Name: "unit/2"}
+	unit = provision.Unit{AppName: "shine-on", ID: "unit/2"}
 	p.AddUnit(app, unit)
-	unit = provision.Unit{AppName: "shine-on", Name: "unit/3"}
+	unit = provision.Unit{AppName: "shine-on", ID: "unit/3"}
 	p.AddUnit(app, unit)
 	opts := provision.ShellOptions{App: app}
 	err = p.Shell(opts)
@@ -1013,11 +1013,11 @@ func (s *S) TestFakeProvisionerShellSpecifying(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
-	unit := provision.Unit{AppName: "shine-on", Name: "unit/1"}
+	unit := provision.Unit{AppName: "shine-on", ID: "unit/1"}
 	p.AddUnit(app, unit)
-	unit = provision.Unit{AppName: "shine-on", Name: "unit/2"}
+	unit = provision.Unit{AppName: "shine-on", ID: "unit/2"}
 	p.AddUnit(app, unit)
-	unit = provision.Unit{AppName: "shine-on", Name: "unit/3"}
+	unit = provision.Unit{AppName: "shine-on", ID: "unit/3"}
 	p.AddUnit(app, unit)
 	opts := provision.ShellOptions{App: app, Unit: "unit/3"}
 	err = p.Shell(opts)
@@ -1032,7 +1032,7 @@ func (s *S) TestFakeProvisionerShellUnitNotFound(c *check.C) {
 	p := NewFakeProvisioner()
 	err := p.Provision(app)
 	c.Assert(err, check.IsNil)
-	unit := provision.Unit{AppName: "shine-on", Name: "unit/1"}
+	unit := provision.Unit{AppName: "shine-on", ID: "unit/1"}
 	p.AddUnit(app, unit)
 	opts := provision.ShellOptions{App: app, Unit: "unit/12"}
 	err = p.Shell(opts)

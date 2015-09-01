@@ -392,7 +392,7 @@ func (app *App) BindUnit(unit *provision.Unit) error {
 	for _, instance := range instances {
 		err = instance.BindUnit(app, unit)
 		if err != nil {
-			log.Errorf("Error binding the unit %s with the service instance %s: %s", unit.Name, instance.Name, err)
+			log.Errorf("Error binding the unit %s with the service instance %s: %s", unit.ID, instance.Name, err)
 		}
 	}
 	return nil
@@ -406,7 +406,7 @@ func (app *App) UnbindUnit(unit *provision.Unit) error {
 	for _, instance := range instances {
 		err = instance.UnbindUnit(app, unit)
 		if err != nil {
-			log.Errorf("Error unbinding the unit %s with the service instance %s: %s", unit.Name, instance.Name, err)
+			log.Errorf("Error unbinding the unit %s with the service instance %s: %s", unit.ID, instance.Name, err)
 		}
 	}
 	return nil
@@ -476,7 +476,7 @@ func (app *App) SetUnitStatus(unitName string, status provision.Status) error {
 		return err
 	}
 	for _, unit := range units {
-		if strings.HasPrefix(unit.Name, unitName) {
+		if strings.HasPrefix(unit.ID, unitName) {
 			return Provisioner.SetUnitStatus(unit, status)
 		}
 	}
@@ -488,7 +488,7 @@ func (app *App) SetUnitStatus(unitName string, status provision.Status) error {
 func UpdateUnitsStatus(units map[string]provision.Status) (map[string]bool, error) {
 	result := make(map[string]bool, len(units))
 	for id, status := range units {
-		unit := provision.Unit{Name: id}
+		unit := provision.Unit{ID: id}
 		err := Provisioner.SetUnitStatus(unit, status)
 		result[id] = err != provision.ErrUnitNotFound
 		if err != nil && err != provision.ErrUnitNotFound {
@@ -1360,7 +1360,7 @@ func (app *App) RegisterUnit(unitId string, customData map[string]interface{}) e
 		return err
 	}
 	for _, unit := range units {
-		if strings.HasPrefix(unit.Name, unitId) {
+		if strings.HasPrefix(unit.ID, unitId) {
 			return Provisioner.RegisterUnit(unit, customData)
 		}
 	}

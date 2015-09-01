@@ -703,7 +703,7 @@ func (s *S) TestContainerLogs(c *check.C) {
 func (s *S) TestContainerAsUnit(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	expected := provision.Unit{
-		Name:        "c-id",
+		ID:          "c-id",
 		AppName:     "myapp",
 		Type:        "python",
 		Ip:          "192.168.50.4",

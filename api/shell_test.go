@@ -52,7 +52,7 @@ func (s *S) TestAppShellWithAppName(c *check.C) {
 		units, err := s.provisioner.Units(&a)
 		c.Assert(err, check.IsNil)
 		unit := units[0]
-		shells = s.provisioner.Shells(unit.Name)
+		shells = s.provisioner.Shells(unit.ID)
 		return len(shells) == 1
 	})
 	c.Assert(err, check.IsNil)
@@ -85,7 +85,7 @@ func (s *S) TestAppShellSpecifyUnit(c *check.C) {
 	defer server.Close()
 	testServerURL, err := url.Parse(server.URL)
 	c.Assert(err, check.IsNil)
-	url := fmt.Sprintf("ws://%s/apps/%s/shell?width=140&height=38&term=xterm&unit=%s", testServerURL.Host, a.Name, unit.Name)
+	url := fmt.Sprintf("ws://%s/apps/%s/shell?width=140&height=38&term=xterm&unit=%s", testServerURL.Host, a.Name, unit.ID)
 	config, err := websocket.NewConfig(url, "ws://localhost/")
 	c.Assert(err, check.IsNil)
 	config.Header.Set("Authorization", "bearer "+s.token.GetValue())
@@ -96,7 +96,7 @@ func (s *S) TestAppShellSpecifyUnit(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var shells []provision.ShellOptions
 	err = tsurutest.WaitCondition(5*time.Second, func() bool {
-		shells = s.provisioner.Shells(unit.Name)
+		shells = s.provisioner.Shells(unit.ID)
 		return len(shells) == 1
 	})
 	c.Assert(err, check.IsNil)
@@ -105,12 +105,12 @@ func (s *S) TestAppShellSpecifyUnit(c *check.C) {
 	c.Assert(shells[0].Width, check.Equals, 140)
 	c.Assert(shells[0].Height, check.Equals, 38)
 	c.Assert(shells[0].Term, check.Equals, "xterm")
-	c.Assert(shells[0].Unit, check.Equals, unit.Name)
+	c.Assert(shells[0].Unit, check.Equals, unit.ID)
 	units, err = s.provisioner.Units(&a)
 	c.Assert(err, check.IsNil)
 	for _, u := range units {
-		if u.Name != unit.Name {
-			c.Check(s.provisioner.Shells(u.Name), check.HasLen, 0)
+		if u.ID != unit.ID {
+			c.Check(s.provisioner.Shells(u.ID), check.HasLen, 0)
 		}
 	}
 }
