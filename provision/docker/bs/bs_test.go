@@ -45,7 +45,7 @@ func (s *S) TestGetImageDefaultValue(c *check.C) {
 	config.Unset("docker:bs:image")
 	conf := Config{}
 	image := conf.getImage()
-	c.Assert(image, check.Equals, "tsuru/bs")
+	c.Assert(image, check.Equals, "tsuru/bs:v1")
 }
 
 func (s *S) TestSaveImage(c *check.C) {

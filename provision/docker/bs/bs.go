@@ -32,7 +32,10 @@ type DockerProvisioner interface {
 	RegistryAuthConfig() docker.AuthConfiguration
 }
 
-const bsUniqueID = "bs"
+const (
+	bsUniqueID         = "bs"
+	bsDefaultImageName = "tsuru/bs:v1"
+)
 
 type Env struct {
 	Name  string
@@ -97,7 +100,7 @@ func (conf *Config) getImage() string {
 	}
 	bsImage, _ := config.GetString("docker:bs:image")
 	if bsImage == "" {
-		bsImage = "tsuru/bs"
+		bsImage = bsDefaultImageName
 	}
 	return bsImage
 }
