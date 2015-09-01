@@ -103,6 +103,7 @@ const (
 // IP-addressable.
 type Unit struct {
 	ID          string
+	Name        string
 	AppName     string
 	ProcessName string
 	Type        string

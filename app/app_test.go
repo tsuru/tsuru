@@ -736,19 +736,19 @@ func (s *S) TestUpdateUnitsStatus(c *check.C) {
 	s.provisioner.AddUnits(&a, 3, "web", nil)
 	units, err := a.Units()
 	c.Assert(err, check.IsNil)
-	unitStates := map[string]provision.Status{
-		units[0].ID:                provision.Status("started"),
-		units[1].ID:                provision.Status("stopped"),
-		units[2].ID:                provision.Status("error"),
-		units[2].ID + "-not-found": provision.Status("error"),
+	unitStates := []UpdateUnitsData{
+		{ID: units[0].ID, Status: provision.Status("started")},
+		{ID: units[1].ID, Status: provision.Status("stopped")},
+		{ID: units[2].ID, Status: provision.Status("error")},
+		{ID: units[2].ID + "-not-found", Status: provision.Status("error")},
 	}
 	result, err := UpdateUnitsStatus(unitStates)
 	c.Assert(err, check.IsNil)
-	expected := map[string]bool{
-		units[0].ID:                true,
-		units[1].ID:                true,
-		units[2].ID:                true,
-		units[2].ID + "-not-found": false,
+	expected := []UpdateUnitsResult{
+		{ID: units[0].ID, Found: true},
+		{ID: units[1].ID, Found: true},
+		{ID: units[2].ID, Found: true},
+		{ID: units[2].ID + "-not-found", Found: false},
 	}
 	c.Assert(result, check.DeepEquals, expected)
 }

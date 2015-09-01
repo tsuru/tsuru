@@ -994,7 +994,7 @@ func (s *S) TestSetUnitsStatus(c *check.C) {
 		c.Check(unit.Status, check.Equals, provision.Status(status[i]))
 	}
 	var got updateList
-	expected := updateList([]updateUnitsResponse{
+	expected := updateList([]app.UpdateUnitsResult{
 		{ID: units[0].ID, Found: true},
 		{ID: units[1].ID, Found: true},
 		{ID: units[2].ID, Found: true},
@@ -1008,19 +1008,18 @@ func (s *S) TestSetUnitsStatus(c *check.C) {
 	c.Assert(got, check.DeepEquals, expected)
 }
 
-type updateList []updateUnitsResponse
+type updateList []app.UpdateUnitsResult
 
-func (list *updateList) Len() int {
-	return len(*list)
+func (list updateList) Len() int {
+	return len(list)
 }
 
-func (list *updateList) Less(i, j int) bool {
-	l := *list
-	return l[i].ID < l[j].ID
+func (list updateList) Less(i, j int) bool {
+	return list[i].ID < list[j].ID
 }
 
-func (list *updateList) Swap(i, j int) {
-	(*list)[i], (*list)[j] = (*list)[j], (*list)[i]
+func (list updateList) Swap(i, j int) {
+	list[i], list[j] = list[j], list[i]
 }
 
 func (s *S) TestSetUnitsStatusInvalidBody(c *check.C) {

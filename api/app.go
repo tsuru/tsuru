@@ -356,36 +356,23 @@ func setUnitStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return err
 }
 
-type updateUnitsResponse struct {
-	ID    string
-	Found bool
-}
-
 func setUnitsStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if t.GetAppName() != app.InternalAppName {
 		return &errors.HTTP{Code: http.StatusForbidden, Message: "this token is not allowed to execute this action"}
 	}
 	defer r.Body.Close()
-	var input []map[string]string
+	var input []app.UpdateUnitsData
 	err := json.NewDecoder(r.Body).Decode(&input)
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusBadRequest, Message: err.Error()}
 	}
-	units := make(map[string]provision.Status, len(input))
-	for _, unit := range input {
-		units[unit["ID"]] = provision.Status(unit["Status"])
-	}
-	result, err := app.UpdateUnitsStatus(units)
+	result, err := app.UpdateUnitsStatus(input)
 	if err != nil {
 		return err
 	}
-	resp := make([]updateUnitsResponse, 0, len(result))
-	for unit, found := range result {
-		resp = append(resp, updateUnitsResponse{ID: unit, Found: found})
-	}
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	return json.NewEncoder(w).Encode(resp)
+	return json.NewEncoder(w).Encode(result)
 }
 
 func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error {

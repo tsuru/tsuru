@@ -483,14 +483,28 @@ func (app *App) SetUnitStatus(unitName string, status provision.Status) error {
 	return provision.ErrUnitNotFound
 }
 
+type UpdateUnitsData struct {
+	ID     string
+	Name   string
+	Status provision.Status
+}
+
+type UpdateUnitsResult struct {
+	ID    string
+	Found bool
+}
+
 // UpdateUnitsStatus updates the status of the given units, returning a map
 // which units were found during the update.
-func UpdateUnitsStatus(units map[string]provision.Status) (map[string]bool, error) {
-	result := make(map[string]bool, len(units))
-	for id, status := range units {
-		unit := provision.Unit{ID: id}
-		err := Provisioner.SetUnitStatus(unit, status)
-		result[id] = err != provision.ErrUnitNotFound
+func UpdateUnitsStatus(units []UpdateUnitsData) ([]UpdateUnitsResult, error) {
+	result := make([]UpdateUnitsResult, len(units))
+	for i, unitData := range units {
+		unit := provision.Unit{ID: unitData.ID, Name: unitData.Name}
+		err := Provisioner.SetUnitStatus(unit, unitData.Status)
+		result[i] = UpdateUnitsResult{
+			ID:    unitData.ID,
+			Found: err != provision.ErrUnitNotFound,
+		}
 		if err != nil && err != provision.ErrUnitNotFound {
 			return nil, err
 		}
