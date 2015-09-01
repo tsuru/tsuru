@@ -173,8 +173,8 @@ func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
 		return err
 	}
 	defer conn.Close()
-	updateOp := bson.M{"$addToSet": bson.M{"units": unit.GetName()}}
-	err = conn.ServiceInstances().Update(bson.M{"name": si.Name, "units": bson.M{"$ne": unit.GetName()}}, updateOp)
+	updateOp := bson.M{"$addToSet": bson.M{"units": unit.GetID()}}
+	err = conn.ServiceInstances().Update(bson.M{"name": si.Name, "units": bson.M{"$ne": unit.GetID()}}, updateOp)
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			return ErrUnitAlreadyBound
@@ -183,7 +183,7 @@ func (si *ServiceInstance) BindUnit(app bind.App, unit bind.Unit) error {
 	}
 	err = endpoint.BindUnit(si, app, unit)
 	if err != nil {
-		rollbackErr := si.update(bson.M{"$pull": bson.M{"units": unit.GetName()}})
+		rollbackErr := si.update(bson.M{"$pull": bson.M{"units": unit.GetID()}})
 		if rollbackErr != nil {
 			log.Errorf("[bind unit] could remove stil unbinded unit from db after failure: %s", rollbackErr)
 		}
@@ -223,8 +223,8 @@ func (si *ServiceInstance) UnbindUnit(app bind.App, unit bind.Unit) error {
 		return err
 	}
 	defer conn.Close()
-	updateOp := bson.M{"$pull": bson.M{"units": unit.GetName()}}
-	err = conn.ServiceInstances().Update(bson.M{"name": si.Name, "units": unit.GetName()}, updateOp)
+	updateOp := bson.M{"$pull": bson.M{"units": unit.GetID()}}
+	err = conn.ServiceInstances().Update(bson.M{"name": si.Name, "units": unit.GetID()}, updateOp)
 	if err != nil {
 		if err == mgo.ErrNotFound {
 			return ErrUnitNotBound
@@ -233,7 +233,7 @@ func (si *ServiceInstance) UnbindUnit(app bind.App, unit bind.Unit) error {
 	}
 	err = endpoint.UnbindUnit(si, app, unit)
 	if err != nil {
-		rollbackErr := si.update(bson.M{"$addToSet": bson.M{"units": unit.GetName()}})
+		rollbackErr := si.update(bson.M{"$addToSet": bson.M{"units": unit.GetID()}})
 		if rollbackErr != nil {
 			log.Errorf("[unbind unit] could not add binded unit back to db after failure: %s", rollbackErr)
 		}

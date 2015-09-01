@@ -106,8 +106,8 @@ func (s *S) TestGetUnitsReturnUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(len(units), check.Equals, 2)
 	c.Assert(len(a.units), check.Equals, 2)
-	c.Assert(units[0].GetName(), check.Equals, a.units[0].ID)
-	c.Assert(units[1].GetName(), check.Equals, a.units[1].ID)
+	c.Assert(units[0].GetID(), check.Equals, a.units[0].ID)
+	c.Assert(units[1].GetID(), check.Equals, a.units[1].ID)
 }
 
 func (s *S) TestUnsetEnvs(c *check.C) {

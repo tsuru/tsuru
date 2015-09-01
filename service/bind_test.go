@@ -341,7 +341,7 @@ func (s *BindSuite) TestUnbindUnit(c *check.C) {
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
 		Apps:        []string{"painkiller"},
-		Units:       []string{units[0].GetName()},
+		Units:       []string{units[0].GetID()},
 	}
 	instance.Create()
 	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})

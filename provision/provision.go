@@ -112,7 +112,7 @@ type Unit struct {
 }
 
 // GetName returns the name of the unit.
-func (u *Unit) GetName() string {
+func (u *Unit) GetID() string {
 	return u.ID
 }
 
