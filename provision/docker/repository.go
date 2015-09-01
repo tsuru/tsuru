@@ -36,6 +36,24 @@ func (p *dockerProvisioner) GetContainer(id string) (*container.Container, error
 	return &containers[0], nil
 }
 
+func (p *dockerProvisioner) GetContainerByName(name string) (*container.Container, error) {
+	var containers []container.Container
+	coll := p.Collection()
+	defer coll.Close()
+	err := coll.Find(bson.M{"name": name}).All(&containers)
+	if err != nil {
+		return nil, err
+	}
+	lenContainers := len(containers)
+	if lenContainers == 0 {
+		return nil, provision.ErrUnitNotFound
+	}
+	if lenContainers > 1 {
+		return nil, errAmbiguousContainer
+	}
+	return &containers[0], nil
+}
+
 func (p *dockerProvisioner) listContainersByHost(address string) ([]container.Container, error) {
 	return p.ListContainers(bson.M{"hostaddr": address})
 }

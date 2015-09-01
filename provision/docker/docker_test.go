@@ -86,12 +86,15 @@ func (s *S) newContainer(opts *newContainerOpts, p *dockerProvisioner) (*contain
 		Cmd:          []string{"ps"},
 		ExposedPorts: ports,
 	}
-	_, c, err := p.Cluster().CreateContainer(docker.CreateContainerOptions{Config: &config})
+	createOptions := docker.CreateContainerOptions{Config: &config}
+	createOptions.Name = randomString()
+	_, c, err := p.Cluster().CreateContainer(createOptions)
 	if err != nil {
 		return nil, err
 	}
 	container.ID = c.ID
 	container.Image = image
+	container.Name = createOptions.Name
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err

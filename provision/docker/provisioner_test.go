@@ -1118,6 +1118,20 @@ func (s *S) TestProvisionerSetUnitStatusUnitNotFound(c *check.C) {
 	c.Assert(err, check.Equals, provision.ErrUnitNotFound)
 }
 
+func (s *S) TestProvisionerSetUnitStatusSearchByName(c *check.C) {
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
+	c.Assert(err, check.IsNil)
+	opts := newContainerOpts{Status: provision.StatusStarted.String(), AppName: "someapp"}
+	container, err := s.newContainer(&opts, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(container)
+	err = s.p.SetUnitStatus(provision.Unit{ID: "invalid-id", Name: container.Name, AppName: container.AppName}, provision.StatusError)
+	c.Assert(err, check.IsNil)
+	container, err = s.p.GetContainer(container.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(container.Status, check.Equals, provision.StatusError.String())
+}
+
 func (s *S) TestProvisionerExecuteCommand(c *check.C) {
 	app := provisiontest.NewFakeApp("starbreaker", "python", 1)
 	container1, err := s.newContainer(&newContainerOpts{AppName: app.GetName()}, nil)

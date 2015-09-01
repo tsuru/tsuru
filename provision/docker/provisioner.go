@@ -718,6 +718,9 @@ func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint, processName
 
 func (p *dockerProvisioner) SetUnitStatus(unit provision.Unit, status provision.Status) error {
 	container, err := p.GetContainer(unit.ID)
+	if err == provision.ErrUnitNotFound && unit.Name != "" {
+		container, err = p.GetContainerByName(unit.Name)
+	}
 	if err != nil {
 		return err
 	}
