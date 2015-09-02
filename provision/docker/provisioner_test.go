@@ -97,6 +97,12 @@ func (s *S) TestProvisionerRestart(c *check.C) {
 	c.Assert(dbConts[0].HostPort, check.Equals, expectedPort)
 }
 
+type containerByProcessList []container.Container
+
+func (l containerByProcessList) Len() int           { return len(l) }
+func (l containerByProcessList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
+func (l containerByProcessList) Less(i, j int) bool { return l[i].ProcessName < l[j].ProcessName }
+
 func (s *S) TestProvisionerRestartProcess(c *check.C) {
 	app := provisiontest.NewFakeApp("almah", "static", 1)
 	customData := map[string]interface{}{
@@ -131,17 +137,18 @@ func (s *S) TestProvisionerRestartProcess(c *check.C) {
 	dbConts, err := s.p.listAllContainers()
 	c.Assert(err, check.IsNil)
 	c.Assert(dbConts, check.HasLen, 2)
-	c.Assert(dbConts[0].ID, check.Equals, cont2.ID)
-	c.Assert(dbConts[1].ID, check.Not(check.Equals), cont1.ID)
-	c.Assert(dbConts[1].AppName, check.Equals, app.GetName())
-	c.Assert(dbConts[1].Status, check.Equals, provision.StatusStarting.String())
-	dockerContainer, err = s.p.Cluster().InspectContainer(dbConts[1].ID)
+	sort.Sort(containerByProcessList(dbConts))
+	c.Assert(dbConts[1].ID, check.Equals, cont2.ID)
+	c.Assert(dbConts[0].ID, check.Not(check.Equals), cont1.ID)
+	c.Assert(dbConts[0].AppName, check.Equals, app.GetName())
+	c.Assert(dbConts[0].Status, check.Equals, provision.StatusStarting.String())
+	dockerContainer, err = s.p.Cluster().InspectContainer(dbConts[0].ID)
 	c.Assert(err, check.IsNil)
 	c.Assert(dockerContainer.State.Running, check.Equals, true)
 	expectedIP := dockerContainer.NetworkSettings.IPAddress
 	expectedPort := dockerContainer.NetworkSettings.Ports["8888/tcp"][0].HostPort
-	c.Assert(dbConts[1].IP, check.Equals, expectedIP)
-	c.Assert(dbConts[1].HostPort, check.Equals, expectedPort)
+	c.Assert(dbConts[0].IP, check.Equals, expectedIP)
+	c.Assert(dbConts[0].HostPort, check.Equals, expectedPort)
 }
 
 func (s *S) stopContainers(endpoint string, n uint) <-chan bool {
