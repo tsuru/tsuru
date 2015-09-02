@@ -55,7 +55,7 @@ func (t *runBs) Run(job monsterqueue.Job) {
 		job.Error(err)
 		return
 	}
-	node.Metadata["LastSuccess"] = time.Now().Format(time.RFC3339)
+	node.Metadata = map[string]string{"LastSuccess": time.Now().Format(time.RFC3339)}
 	_, err = t.provisioner.Cluster().UpdateNode(node)
 	if err != nil {
 		job.Error(err)
