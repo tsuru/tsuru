@@ -12,8 +12,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/docker-cluster/cluster"
 	"github.com/tsuru/monsterqueue"
-	"github.com/tsuru/tsuru/iaas"
-	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/queue"
 )
 
@@ -39,14 +37,13 @@ func (t *runBs) Name() string {
 func (t *runBs) Run(job monsterqueue.Job) {
 	params := job.Parameters()
 	dockerEndpoint := params["endpoint"].(string)
-	machineID := params["machine"].(string)
 	node := cluster.Node{Address: dockerEndpoint}
 	err := t.waitDocker(dockerEndpoint)
 	if err != nil {
 		job.Error(err)
-		t.destroyMachine(machineID)
 		return
 	}
+	node.CreationStatus = cluster.NodeCreationStatusCreated
 	rawMetadata := params["metadata"].(monsterqueue.JobParams)
 	metadata := make(map[string]string, len(rawMetadata))
 	for key, value := range rawMetadata {
@@ -54,18 +51,14 @@ func (t *runBs) Run(job monsterqueue.Job) {
 	}
 	err = createContainer(dockerEndpoint, metadata["pool"], t.provisioner, true)
 	if err != nil {
-		node.CreationStatus = cluster.NodeCreationStatusError
-		node.Metadata = map[string]string{"creationError": err.Error()}
 		t.provisioner.Cluster().UpdateNode(node)
 		job.Error(err)
-		t.destroyMachine(machineID)
 		return
 	}
-	node.CreationStatus = cluster.NodeCreationStatusCreated
+	node.Metadata["LastSuccess"] = time.Now().Format(time.RFC3339)
 	_, err = t.provisioner.Cluster().UpdateNode(node)
 	if err != nil {
 		job.Error(err)
-		t.destroyMachine(machineID)
 		return
 	}
 	job.Success(nil)
@@ -107,20 +100,5 @@ func (t *runBs) waitDocker(endpoint string) error {
 	case <-timeoutChan:
 		close(exit)
 		return fmt.Errorf("Docker API at %q didn't respond after %d seconds", endpoint, timeout)
-	}
-}
-
-func (t *runBs) destroyMachine(id string) {
-	if id != "" {
-		machine, err := iaas.FindMachineById(id)
-		if err != nil {
-			log.Errorf("failed to remove machine %q: %s", id, err)
-			return
-		}
-		err = machine.Destroy()
-		if err != nil {
-			log.Errorf("failed to remove machine %q: %s", id, err)
-			return
-		}
 	}
 }
