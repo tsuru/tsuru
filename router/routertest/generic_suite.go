@@ -55,6 +55,8 @@ func (s *RouterSuite) TestRouteAddBackendAndRoute(c *check.C) {
 	routes, err := s.Router.Routes(name)
 	c.Assert(err, check.IsNil)
 	c.Assert(routes, check.DeepEquals, []*url.URL{addr})
+	err = s.Router.RemoveBackend(name)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *RouterSuite) TestRouteRemoveRouteAndBackend(c *check.C) {
@@ -92,6 +94,8 @@ func (s *RouterSuite) TestRouteRemoveUnknownRoute(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.Router.RemoveRoute(name, addr1)
 	c.Assert(err, check.Equals, router.ErrRouteNotFound)
+	err = s.Router.RemoveBackend(name)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *RouterSuite) TestRouteAddDupBackend(c *check.C) {
@@ -100,6 +104,8 @@ func (s *RouterSuite) TestRouteAddDupBackend(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.Router.AddBackend(name)
 	c.Assert(err, check.Equals, router.ErrBackendExists)
+	err = s.Router.RemoveBackend(name)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *RouterSuite) TestRouteAddDupRoute(c *check.C) {
@@ -112,6 +118,8 @@ func (s *RouterSuite) TestRouteAddDupRoute(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.Router.AddRoute(name, addr1)
 	c.Assert(err, check.Equals, router.ErrRouteExists)
+	err = s.Router.RemoveBackend(name)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *RouterSuite) TestRouteAddRouteInvalidBackend(c *check.C) {
@@ -166,6 +174,12 @@ func (s *RouterSuite) TestSwap(c *check.C) {
 	routesStrs = []string{routes[0].String(), routes[1].String()}
 	sort.Strings(routesStrs)
 	c.Check(routesStrs, check.DeepEquals, []string{addr2.String(), addr4.String()})
+	err = s.Router.Swap(backend1, backend2)
+	c.Assert(err, check.IsNil)
+	err = s.Router.RemoveBackend(backend1)
+	c.Assert(err, check.IsNil)
+	err = s.Router.RemoveBackend(backend2)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *RouterSuite) TestSwapTwice(c *check.C) {
@@ -228,6 +242,10 @@ func (s *RouterSuite) TestSwapTwice(c *check.C) {
 	routes, err = s.Router.Routes(backend2)
 	c.Assert(err, check.IsNil)
 	c.Check(routes, check.DeepEquals, []*url.URL{addr2})
+	err = s.Router.RemoveBackend(backend1)
+	c.Assert(err, check.IsNil)
+	err = s.Router.RemoveBackend(backend2)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *RouterSuite) TestRouteAddDupCName(c *check.C) {
@@ -242,6 +260,8 @@ func (s *RouterSuite) TestRouteAddDupCName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.Router.SetCName("my.host.com", name)
 	c.Assert(err, check.Equals, router.ErrCNameExists)
+	err = s.Router.RemoveBackend(name)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *RouterSuite) TestSetUnsetCName(c *check.C) {
@@ -258,6 +278,8 @@ func (s *RouterSuite) TestSetUnsetCName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.Router.UnsetCName("my.host.com", name)
 	c.Assert(err, check.Equals, router.ErrCNameNotFound)
+	err = s.Router.RemoveBackend(name)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *RouterSuite) TestSetCNameInvalidBackend(c *check.C) {
@@ -279,6 +301,8 @@ func (s *RouterSuite) TestSetCNameSubdomainError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.Router.SetCName("sub."+addr, name)
 	c.Assert(err, check.Equals, router.ErrCNameNotAllowed)
+	err = s.Router.RemoveBackend(name)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *RouterSuite) TestRemoveBackendWithCName(c *check.C) {
@@ -318,4 +342,31 @@ func (s *RouterSuite) TestRemoveBackendAfterSwap(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = s.Router.RemoveBackend(backend1)
 	c.Assert(err, check.Equals, router.ErrBackendSwapped)
+	err = s.Router.Swap(backend1, backend2)
+	c.Assert(err, check.IsNil)
+	err = s.Router.RemoveBackend(backend1)
+	c.Assert(err, check.IsNil)
+	err = s.Router.RemoveBackend(backend2)
+	c.Assert(err, check.IsNil)
+}
+
+func (s *RouterSuite) TestRemoveBackendWithoutRemoveRoutes(c *check.C) {
+	backend1 := "mybackend1"
+	addr1, _ := url.Parse("http://127.0.0.1")
+	addr2, _ := url.Parse("http://10.10.10.10")
+	err := s.Router.AddBackend(backend1)
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddRoute(backend1, addr1)
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddRoute(backend1, addr2)
+	c.Assert(err, check.IsNil)
+	err = s.Router.RemoveBackend(backend1)
+	c.Assert(err, check.IsNil)
+	err = s.Router.AddBackend(backend1)
+	c.Assert(err, check.IsNil)
+	routes, err := s.Router.Routes(backend1)
+	c.Assert(err, check.IsNil)
+	c.Assert(routes, check.DeepEquals, []*url.URL{})
+	err = s.Router.RemoveBackend(backend1)
+	c.Assert(err, check.IsNil)
 }

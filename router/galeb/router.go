@@ -166,6 +166,12 @@ func (r *galebRouter) RemoveBackend(name string) error {
 	if err != nil {
 		return err
 	}
+	for _, route := range data.Reals {
+		err = client.RemoveResource(route.BackendId)
+		if err != nil {
+			return err
+		}
+	}
 	err = client.RemoveResource(data.BackendPoolId)
 	if err != nil {
 		return err

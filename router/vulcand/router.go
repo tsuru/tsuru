@@ -131,6 +131,16 @@ func (r *vulcandRouter) RemoveBackend(name string) error {
 			return &router.RouterError{Err: err, Op: "remove-backend"}
 		}
 	}
+	routes, err := r.Routes(name)
+	if err != nil {
+		return err
+	}
+	for _, route := range routes {
+		err = r.RemoveRoute(name, route)
+		if err != nil {
+			return err
+		}
+	}
 	err = r.client.DeleteBackend(backendKey)
 	if err != nil {
 		if _, ok := err.(*engine.NotFoundError); ok {

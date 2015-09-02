@@ -6,9 +6,11 @@ package galeb
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/tsuru/config"
@@ -39,32 +41,43 @@ func init() {
 		SetUpSuiteFunc:   base.SetUpSuite,
 		TearDownTestFunc: base.TearDownTest,
 	}
+	var (
+		idCounters map[string]int
+		createdIds map[string]bool
+	)
 	suite.SetUpTestFunc = func(c *check.C) {
 		config.Set("database:name", "router_generic_galeb_tests")
+		idCounters = map[string]int{}
+		createdIds = map[string]bool{}
 		base.rawHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch r.Method {
-			case "DELETE":
-				w.WriteHeader(http.StatusNoContent)
 			case "POST":
+				idCounters[r.URL.Path]++
+				id := idCounters[r.URL.Path]
+				idStr := fmt.Sprintf("%s%d", r.URL.Path, id)
+				createdIds[idStr] = true
 				w.WriteHeader(http.StatusCreated)
+				w.Write([]byte(fmt.Sprintf(`{"_links":{"self":"%s"}}`, idStr)))
+			case "DELETE":
+				idStr := strings.TrimPrefix(r.URL.Path, "/api")
+				if _, present := createdIds[idStr]; present {
+					delete(createdIds, idStr)
+					w.WriteHeader(http.StatusNoContent)
+				} else {
+					w.WriteHeader(http.StatusNotFound)
+				}
+			default:
+				w.WriteHeader(http.StatusInternalServerError)
 			}
-			var val string
-			switch r.URL.Path {
-			case "/api/backendpool/":
-				val = `{"_links":{"self":"pool1"}}`
-			case "/api/rule/":
-				val = `{"_links":{"self":"rule1"}}`
-			case "/api/virtualhost/":
-				val = `{"_links":{"self":"vh1"}}`
-			case "/api/backend/":
-				val = `{"_links":{"self":"backend1"}}`
-			}
-			w.Write([]byte(val))
 		})
 		base.SetUpTest(c)
 		gRouter, err := createRouter("routers:galeb")
 		c.Assert(err, check.IsNil)
 		suite.Router = gRouter
+	}
+	suite.TearDownTestFunc = func(c *check.C) {
+		base.TearDownTest(c)
+		c.Assert(createdIds, check.DeepEquals, map[string]bool{})
 	}
 	check.Suite(suite)
 }
