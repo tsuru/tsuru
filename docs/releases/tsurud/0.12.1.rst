@@ -25,8 +25,17 @@ General improvements
   during node creation/registration, tsuru will now mark the node as "ready"
   instead of "waiting".
 
+* Use "tsuru/bs:v1" as the default bs image. It's possible to use "tsuru/bs" to
+  get the old behavior back, or even "tsuru/bs:latest" to seat on the bleeding
+  edge of bs.
+
 Bug fixes
 =========
 
 * Fix race condition between bs status reporting and the deployment process,
   preventing bs from destroying containers that are still being deployed.
+
+* Fix application token leaking in the OAuth authentication scheme.
+
+* Properly prevent the removal of swapped applications to avoid router
+  inconsistencies.
