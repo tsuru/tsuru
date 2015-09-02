@@ -176,7 +176,8 @@ func (s *HandlersSuite) TestAddNodeHandler(c *check.C) {
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address, check.Equals, server.URL())
 	c.Assert(nodes[0].Metadata, check.DeepEquals, map[string]string{
-		"pool": "pool1",
+		"pool":        "pool1",
+		"LastSuccess": nodes[0].Metadata["LastSuccess"],
 	})
 	c.Assert(nodes[0].CreationStatus, check.Equals, cluster.NodeCreationStatusCreated)
 }
@@ -210,10 +211,11 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachine(c *check.C) {
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address, check.Equals, strings.TrimRight(server.URL(), "/"))
 	c.Assert(nodes[0].Metadata, check.DeepEquals, map[string]string{
-		"id":      "test1",
-		"pool":    "pool1",
-		"iaas":    "test-iaas",
-		"iaas-id": "test1",
+		"id":          "test1",
+		"pool":        "pool1",
+		"iaas":        "test-iaas",
+		"iaas-id":     "test1",
+		"LastSuccess": nodes[0].Metadata["LastSuccess"],
 	})
 	c.Assert(nodes[0].CreationStatus, check.Equals, cluster.NodeCreationStatusCreated)
 }
@@ -239,10 +241,11 @@ func (s *HandlersSuite) TestAddNodeHandlerCreatingAnIaasMachineExplicit(c *check
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address, check.Equals, strings.TrimRight(server.URL(), "/"))
 	c.Assert(nodes[0].Metadata, check.DeepEquals, map[string]string{
-		"id":      "test1",
-		"pool":    "pool1",
-		"iaas":    "another-test-iaas",
-		"iaas-id": "test1",
+		"id":          "test1",
+		"pool":        "pool1",
+		"iaas":        "another-test-iaas",
+		"iaas-id":     "test1",
+		"LastSuccess": nodes[0].Metadata["LastSuccess"],
 	})
 }
 
@@ -266,7 +269,8 @@ func (s *HandlersSuite) TestAddNodeHandlerWithoutCluster(c *check.C) {
 	c.Assert(nodes, check.HasLen, 1)
 	c.Assert(nodes[0].Address, check.Equals, server.URL())
 	c.Assert(nodes[0].Metadata, check.DeepEquals, map[string]string{
-		"pool": "pool1",
+		"pool":        "pool1",
+		"LastSuccess": nodes[0].Metadata["LastSuccess"],
 	})
 }
 
