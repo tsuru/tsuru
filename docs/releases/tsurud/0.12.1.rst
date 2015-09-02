@@ -37,7 +37,7 @@ Bug fixes
 
 * Fix application token leaking in the OAuth authentication scheme.
 
-* Properly prevent the removal of swapped applications to avoid router
+* Prevent the removal of swapped applications to avoid router
   inconsistencies.
 
 * Fix inconsistency in the Galeb router: it didn't handle removal properly,
