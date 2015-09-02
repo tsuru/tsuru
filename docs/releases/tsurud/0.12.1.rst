@@ -28,3 +28,5 @@ General improvements
 Bug fixes
 =========
 
+* Fix race condition between bs status reporting and the deployment process,
+  preventing bs from destroying containers that are still being deployed.
