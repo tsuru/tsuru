@@ -1530,7 +1530,8 @@ func (s *S) TestProvisionerPlatformAdd(c *check.C) {
 	args["dockerfile"] = "http://localhost/Dockerfile"
 	err = p.PlatformAdd("test", args, bytes.NewBuffer(nil))
 	c.Assert(err, check.IsNil)
-	c.Assert(requests, check.HasLen, 3)
+	c.Assert(len(requests) >= 3, check.Equals, true)
+	requests = requests[len(requests)-3:]
 	c.Assert(requests[0].URL.Path, check.Equals, "/build")
 	queryString := requests[0].URL.Query()
 	c.Assert(queryString.Get("t"), check.Equals, platformImageName("test"))
@@ -1594,7 +1595,8 @@ func (s *S) TestProvisionerPlatformRemove(c *check.C) {
 	c.Assert(err, check.IsNil)
 	err = p.PlatformRemove("test")
 	c.Assert(err, check.IsNil)
-	c.Assert(requests, check.HasLen, 4)
+	c.Assert(len(requests) >= 4, check.Equals, true)
+	requests = requests[len(requests)-4:]
 	c.Assert(requests[3].Method, check.Equals, "DELETE")
 	c.Assert(requests[3].URL.Path, check.Matches, "/images/[^/]+")
 }
