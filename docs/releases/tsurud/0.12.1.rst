@@ -39,3 +39,7 @@ Bug fixes
 
 * Properly prevent the removal of swapped applications to avoid router
   inconsistencies.
+
+* Fix inconsistency in the Galeb router: it didn't handle removal properly,
+  leading to inconsistencies in the router after running ``tsuru
+  app-plan-change``.
