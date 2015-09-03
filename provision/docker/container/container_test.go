@@ -115,8 +115,10 @@ func (s *S) TestContainerCreate(c *check.C) {
 	c.Assert(container.Config.Env, check.DeepEquals, []string{
 		"A=myenva",
 		"ABCD=other env",
+		"PORT=8888",
 		"TSURU_HOST=my.cool.tsuru.addr:8080",
 		"TSURU_PROCESSNAME=myprocess1",
+		"port=8888",
 	})
 }
 
@@ -202,6 +204,43 @@ func (s *S) TestContainerCreateDoesNotAlocatesPortForDeploy(c *check.C) {
 	info, err := cont.NetworkInfo(s.p)
 	c.Assert(err, check.IsNil)
 	c.Assert(info.HTTPHostPort, check.Equals, "")
+}
+
+func (s *S) TestContainerCreateDoesNotSetEnvs(c *check.C) {
+	config.Set("host", "my.cool.tsuru.addr:8080")
+	defer config.Unset("host")
+	app := provisiontest.NewFakeApp("app-name", "brainfuck", 1)
+	app.SetEnv(bind.EnvVar{Name: "A", Value: "myenva"})
+	app.SetEnv(bind.EnvVar{Name: "ABCD", Value: "other env"})
+	routertest.FakeRouter.AddBackend(app.GetName())
+	defer routertest.FakeRouter.RemoveBackend(app.GetName())
+	img := "tsuru/brainfuck:latest"
+	s.p.Cluster().PullImage(docker.PullImageOptions{Repository: img}, docker.AuthConfiguration{})
+	cont := Container{
+		Name:    "myName",
+		AppName: app.GetName(),
+		Type:    app.GetPlatform(),
+		Status:  "created",
+	}
+	err := cont.Create(&CreateArgs{
+		Deploy:      true,
+		App:         app,
+		ImageID:     img,
+		Commands:    []string{"docker", "run"},
+		Provisioner: s.p,
+	})
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(&cont)
+	dcli, err := docker.NewClient(s.server.URL())
+	c.Assert(err, check.IsNil)
+	container, err := dcli.InspectContainer(cont.ID)
+	c.Assert(err, check.IsNil)
+	sort.Strings(container.Config.Env)
+	c.Assert(container.Config.Env, check.DeepEquals, []string{
+		"PORT=8888",
+		"TSURU_HOST=my.cool.tsuru.addr:8080",
+		"port=8888",
+	})
 }
 
 func (s *S) TestContainerCreateUndefinedUser(c *check.C) {

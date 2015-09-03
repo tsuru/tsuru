@@ -113,7 +113,7 @@ func (c *Container) Create(args *CreateArgs) error {
 		CPUShares:    int64(args.App.GetCpuShare()),
 		SecurityOpts: securityOpts,
 	}
-	c.addEnvsToConfig(args.App, &config)
+	c.addEnvsToConfig(args, port, &config)
 	opts := docker.CreateContainerOptions{Name: c.Name, Config: &config}
 	var nodeList []string
 	if len(args.DestinationHosts) > 0 {
@@ -148,17 +148,21 @@ func (c *Container) hostToNodeAddress(p DockerProvisioner, host string) (string,
 	return "", fmt.Errorf("Host `%s` not found", host)
 }
 
-func (c *Container) addEnvsToConfig(app provision.App, cfg *docker.Config) {
+func (c *Container) addEnvsToConfig(args *CreateArgs, port string, cfg *docker.Config) {
+	if !args.Deploy {
+		for _, envData := range args.App.Envs() {
+			cfg.Env = append(cfg.Env, fmt.Sprintf("%s=%s", envData.Name, envData.Value))
+		}
+		cfg.Env = append(cfg.Env, fmt.Sprintf("%s=%s", "TSURU_PROCESSNAME", c.ProcessName))
+	}
+	host, _ := config.GetString("host")
+	cfg.Env = append(cfg.Env, []string{
+		fmt.Sprintf("%s=%s", "port", port),
+		fmt.Sprintf("%s=%s", "PORT", port),
+		fmt.Sprintf("%s=%s", "TSURU_HOST", host),
+	}...)
 	sharedMount, _ := config.GetString("docker:sharedfs:mountpoint")
 	sharedBasedir, _ := config.GetString("docker:sharedfs:hostdir")
-	host, _ := config.GetString("host")
-	for _, envData := range app.Envs() {
-		cfg.Env = append(cfg.Env, fmt.Sprintf("%s=%s", envData.Name, envData.Value))
-	}
-	cfg.Env = append(cfg.Env, []string{
-		fmt.Sprintf("%s=%s", "TSURU_HOST", host),
-		fmt.Sprintf("%s=%s", "TSURU_PROCESSNAME", c.ProcessName),
-	}...)
 	if sharedMount != "" && sharedBasedir != "" {
 		cfg.Volumes = map[string]struct{}{
 			sharedMount: {},
