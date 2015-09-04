@@ -724,6 +724,9 @@ func (p *dockerProvisioner) SetUnitStatus(unit provision.Unit, status provision.
 	if err != nil {
 		return err
 	}
+	if container.Status == provision.StatusBuilding.String() {
+		return nil
+	}
 	if unit.AppName != "" && container.AppName != unit.AppName {
 		return errors.New("wrong app name")
 	}

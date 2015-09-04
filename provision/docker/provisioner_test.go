@@ -1125,6 +1125,20 @@ func (s *S) TestProvisionerSetUnitStatusUnitNotFound(c *check.C) {
 	c.Assert(err, check.Equals, provision.ErrUnitNotFound)
 }
 
+func (s *S) TestProvisionerSetUnitStatusBuildingContainer(c *check.C) {
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
+	c.Assert(err, check.IsNil)
+	opts := newContainerOpts{Status: provision.StatusBuilding.String(), AppName: "someapp"}
+	container, err := s.newContainer(&opts, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(container)
+	err = s.p.SetUnitStatus(provision.Unit{ID: container.ID}, provision.StatusStarted)
+	c.Assert(err, check.IsNil)
+	container, err = s.p.GetContainer(container.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(container.Status, check.Equals, provision.StatusBuilding.String())
+}
+
 func (s *S) TestProvisionerSetUnitStatusSearchByName(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
