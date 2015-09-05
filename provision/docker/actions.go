@@ -538,14 +538,9 @@ var followLogsAndCommit = action.Action{
 			return nil, errors.New("Previous result must be a container.")
 		}
 		args := ctx.Params[0].(runContainerActionsArgs)
-		err := c.Logs(args.provisioner, args.writer)
+		status, err := c.Logs(args.provisioner, args.writer)
 		if err != nil {
 			log.Errorf("error on get logs for container %s - %s", c.ID, err)
-			return nil, err
-		}
-		status, err := args.provisioner.Cluster().WaitContainer(c.ID)
-		if err != nil {
-			log.Errorf("Process failed for container %q: %s", c.ID, err)
 			return nil, err
 		}
 		if status != 0 {

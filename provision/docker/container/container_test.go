@@ -734,8 +734,9 @@ func (s *S) TestContainerLogs(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer s.removeTestContainer(cont)
 	var buff bytes.Buffer
-	err = cont.Logs(s.p, &buff)
+	status, err := cont.Logs(s.p, &buff)
 	c.Assert(err, check.IsNil)
+	c.Assert(status, check.Equals, 0)
 	c.Assert(buff.String(), check.Not(check.Equals), "")
 }
 
@@ -764,4 +765,53 @@ func (s *S) TestContainerAsUnit(c *check.C) {
 	expected.Status = provision.StatusStarted
 	expected.Type = "ruby"
 	c.Assert(got, check.DeepEquals, expected)
+}
+
+func (s *S) TestSafeAttachWaitContainer(c *check.C) {
+	cont, err := s.newContainer(newContainerOpts{}, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(cont)
+	var buf bytes.Buffer
+	opts := docker.AttachToContainerOptions{
+		Container:    cont.ID,
+		Logs:         true,
+		Stdout:       true,
+		Stderr:       true,
+		OutputStream: &buf,
+		ErrorStream:  &buf,
+		Stream:       true,
+	}
+	status, err := SafeAttachWaitContainer(s.p, opts)
+	c.Assert(err, check.IsNil)
+	c.Assert(status, check.Equals, 0)
+	c.Assert(buf.String(), check.Not(check.Equals), "")
+}
+
+func (s *S) TestSafeAttachWaitContainerAttachBlock(c *check.C) {
+	oldWait := safeAttachInspectTimeout
+	safeAttachInspectTimeout = 500 * time.Millisecond
+	defer func() {
+		safeAttachInspectTimeout = oldWait
+	}()
+	cont, err := s.newContainer(newContainerOpts{}, nil)
+	c.Assert(err, check.IsNil)
+	block := make(chan bool)
+	s.server.CustomHandler(fmt.Sprintf("/containers/%s/attach", cont.ID), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		<-block
+	}))
+	defer s.removeTestContainer(cont)
+	var buf bytes.Buffer
+	opts := docker.AttachToContainerOptions{
+		Container:    cont.ID,
+		Logs:         true,
+		Stdout:       true,
+		Stderr:       true,
+		OutputStream: &buf,
+		ErrorStream:  &buf,
+		Stream:       true,
+	}
+	status, err := SafeAttachWaitContainer(s.p, opts)
+	c.Assert(err, check.IsNil)
+	c.Assert(status, check.Equals, 0)
+	c.Assert(buf.String(), check.Equals, "")
 }

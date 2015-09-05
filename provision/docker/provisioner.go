@@ -378,18 +378,18 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 		},
 	}
 	cluster := p.Cluster()
-	_, container, err := cluster.CreateContainerSchedulerOpts(options, []string{app.GetName(), ""})
+	_, cont, err := cluster.CreateContainerSchedulerOpts(options, []string{app.GetName(), ""})
 	if err != nil {
 		return "", err
 	}
-	defer cluster.RemoveContainer(docker.RemoveContainerOptions{ID: container.ID, Force: true})
-	err = cluster.StartContainer(container.ID, nil)
+	defer cluster.RemoveContainer(docker.RemoveContainerOptions{ID: cont.ID, Force: true})
+	err = cluster.StartContainer(cont.ID, nil)
 	if err != nil {
 		return "", err
 	}
 	var output bytes.Buffer
-	err = cluster.AttachToContainer(docker.AttachToContainerOptions{
-		Container:    container.ID,
+	opts := docker.AttachToContainerOptions{
+		Container:    cont.ID,
 		OutputStream: &output,
 		ErrorStream:  &output,
 		InputStream:  archiveFile,
@@ -397,11 +397,8 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 		Stdin:        true,
 		Stdout:       true,
 		Stderr:       true,
-	})
-	if err != nil {
-		return "", err
 	}
-	status, err := cluster.WaitContainer(container.ID)
+	status, err := container.SafeAttachWaitContainer(p, opts)
 	if err != nil {
 		return "", err
 	}
@@ -409,7 +406,7 @@ func (p *dockerProvisioner) UploadDeploy(app provision.App, archiveFile io.ReadC
 		log.Errorf("Failed to deploy container from upload: %s", &output)
 		return "", fmt.Errorf("container exited with status %d", status)
 	}
-	image, err := cluster.CommitContainer(docker.CommitContainerOptions{Container: container.ID})
+	image, err := cluster.CommitContainer(docker.CommitContainerOptions{Container: cont.ID})
 	if err != nil {
 		return "", err
 	}

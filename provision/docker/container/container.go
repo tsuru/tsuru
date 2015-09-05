@@ -525,10 +525,10 @@ func (c *Container) usedPortsForHost(p DockerProvisioner, hostaddr string) (map[
 	return usedPorts, nil
 }
 
-func (c *Container) Logs(p DockerProvisioner, w io.Writer) error {
+func (c *Container) Logs(p DockerProvisioner, w io.Writer) (int, error) {
 	container, err := p.Cluster().InspectContainer(c.ID)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	opts := docker.AttachToContainerOptions{
 		Container:    c.ID,
@@ -540,7 +540,7 @@ func (c *Container) Logs(p DockerProvisioner, w io.Writer) error {
 		RawTerminal:  container.Config.Tty,
 		Stream:       true,
 	}
-	return p.Cluster().AttachToContainer(opts)
+	return SafeAttachWaitContainer(p, opts)
 }
 
 func (c *Container) AsUnit(a provision.App) provision.Unit {
@@ -581,4 +581,39 @@ func urlToHost(urlStr string) string {
 		return url.Host
 	}
 	return host
+}
+
+type waitResult struct {
+	status int
+	err    error
+}
+
+var safeAttachInspectTimeout = 20 * time.Second
+
+func SafeAttachWaitContainer(p DockerProvisioner, opts docker.AttachToContainerOptions) (int, error) {
+	cluster := p.Cluster()
+	resultCh := make(chan waitResult, 1)
+	go func() {
+		err := cluster.AttachToContainer(opts)
+		if err != nil {
+			resultCh <- waitResult{err: err}
+			return
+		}
+		status, err := cluster.WaitContainer(opts.Container)
+		resultCh <- waitResult{status: status, err: err}
+	}()
+	for {
+		select {
+		case result := <-resultCh:
+			return result.status, result.err
+		case <-time.After(safeAttachInspectTimeout):
+		}
+		contData, err := cluster.InspectContainer(opts.Container)
+		if err != nil {
+			return 0, err
+		}
+		if !contData.State.Running {
+			return contData.State.ExitCode, nil
+		}
+	}
 }
