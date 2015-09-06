@@ -49,8 +49,8 @@ func (s *S) TestAppShellWithAppName(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var shells []provision.ShellOptions
 	err = tsurutest.WaitCondition(5*time.Second, func() bool {
-		units, err := s.provisioner.Units(&a)
-		c.Assert(err, check.IsNil)
+		units, unitsErr := s.provisioner.Units(&a)
+		c.Assert(unitsErr, check.IsNil)
 		unit := units[0]
 		shells = s.provisioner.Shells(unit.ID)
 		return len(shells) == 1
