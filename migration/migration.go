@@ -49,7 +49,7 @@ func Register(name string, fn MigrateFunc) error {
 // Run runs all registered migrations. Migrations are executed in the order
 // that they were registered.
 func Run(w io.Writer, dry bool) error {
-	migrations, err := getMigrations()
+	migrationsToRun, err := getMigrations()
 	if err != nil {
 		return err
 	}
@@ -58,7 +58,7 @@ func Run(w io.Writer, dry bool) error {
 		return err
 	}
 	defer coll.Close()
-	for _, m := range migrations {
+	for _, m := range migrationsToRun {
 		fmt.Fprintf(w, "Running %q... ", m.Name)
 		if !dry {
 			err := m.fn()

@@ -56,7 +56,7 @@ func (plan *Plan) Save() error {
 	}
 	defer conn.Close()
 	if plan.Default {
-		_, err := conn.Plans().UpdateAll(bson.M{"default": true}, bson.M{"$unset": bson.M{"default": false}})
+		_, err = conn.Plans().UpdateAll(bson.M{"default": true}, bson.M{"$unset": bson.M{"default": false}})
 		if err != nil {
 			return err
 		}

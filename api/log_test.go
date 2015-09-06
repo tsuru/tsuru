@@ -145,9 +145,13 @@ func (s *S) TestAddLogsHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	timeout := time.After(5 * time.Second)
 	for {
-		logs1, err := a1.LastLogs(3, app.Applog{})
+		var (
+			logs1 []app.Applog
+			logs2 []app.Applog
+		)
+		logs1, err = a1.LastLogs(3, app.Applog{})
 		c.Assert(err, check.IsNil)
-		logs2, err := a2.LastLogs(2, app.Applog{})
+		logs2, err = a2.LastLogs(2, app.Applog{})
 		c.Assert(err, check.IsNil)
 		if len(logs1) == 3 && len(logs2) == 2 {
 			break

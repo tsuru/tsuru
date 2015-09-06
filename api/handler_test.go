@@ -466,8 +466,8 @@ func (s *HandlerSuite) TestLocksAppDuringAppRequests(c *check.C) {
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
 	handler := func(w http.ResponseWriter, r *http.Request, t auth.Token) error {
-		a, err := app.GetByName(r.URL.Query().Get(":app"))
-		c.Assert(err, check.IsNil)
+		a, appErr := app.GetByName(r.URL.Query().Get(":app"))
+		c.Assert(appErr, check.IsNil)
 		c.Assert(a.Lock.Reason, check.Equals, "POST /apps/my-app/")
 		c.Assert(a.Lock.Owner, check.Equals, s.token.GetUserName())
 		c.Assert(a.Lock.Locked, check.Equals, true)

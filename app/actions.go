@@ -87,7 +87,8 @@ var insertApp = action.Action{
 		}
 		defer conn.Close()
 		app.Quota = quota.Unlimited
-		if limit, err := config.GetInt("quota:units-per-app"); err == nil {
+		var limit int
+		if limit, err = config.GetInt("quota:units-per-app"); err == nil {
 			app.Quota.Limit = limit
 		}
 		err = conn.Apps().Insert(app)

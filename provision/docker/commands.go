@@ -89,7 +89,8 @@ func runLeanContainerCmds(processName, imageId string, app provision.App) ([]str
 	if processCmd == "" {
 		// Legacy support, no processes are yet registered for this app's
 		// containers.
-		cmds, err := runWithAgentCmds(app)
+		var cmds []string
+		cmds, err = runWithAgentCmds(app)
 		return cmds, "", err
 	}
 	yamlData, err := getImageTsuruYamlData(imageId)

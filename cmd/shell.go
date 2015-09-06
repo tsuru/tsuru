@@ -80,7 +80,8 @@ func (c *ShellToContainerCmd) Run(context *Context, client *Client) error {
 	if err != nil {
 		return err
 	}
-	if token, err := ReadToken(); err == nil {
+	var token string
+	if token, err = ReadToken(); err == nil {
 		config.Header.Set("Authorization", "bearer "+token)
 	}
 	conn, err := websocket.DialConfig(config)

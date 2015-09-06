@@ -92,7 +92,8 @@ func (a *memoryScaler) scale(groupMetadata string, nodes []*cluster.Node) (*scal
 		}
 	}
 	if maxPlanMemory == 0 {
-		defaultPlan, err := app.DefaultPlan()
+		var defaultPlan *app.Plan
+		defaultPlan, err = app.DefaultPlan()
 		if err != nil {
 			return nil, fmt.Errorf("couldn't get default plan: %s", err)
 		}

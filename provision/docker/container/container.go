@@ -117,7 +117,8 @@ func (c *Container) Create(args *CreateArgs) error {
 	opts := docker.CreateContainerOptions{Name: c.Name, Config: &config}
 	var nodeList []string
 	if len(args.DestinationHosts) > 0 {
-		nodeName, err := c.hostToNodeAddress(args.Provisioner, args.DestinationHosts[0])
+		var nodeName string
+		nodeName, err = c.hostToNodeAddress(args.Provisioner, args.DestinationHosts[0])
 		if err != nil {
 			return err
 		}

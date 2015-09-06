@@ -61,11 +61,13 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		}
 		userName = r.PostFormValue("user")
 	} else {
-		user, err := t.User()
+		var user *auth.User
+		var app app.App
+		user, err = t.User()
 		if err != nil {
 			return err
 		}
-		app, err := getApp(appName, user, r)
+		app, err = getApp(appName, user, r)
 		if err != nil {
 			return err
 		}
@@ -132,7 +134,8 @@ func deploysList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	serviceName := r.URL.Query().Get("service")
 	if serviceName != "" {
-		srv, err := getServiceOrError(serviceName, u)
+		var srv service.Service
+		srv, err = getServiceOrError(serviceName, u)
 		s = &srv
 		if err != nil {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}

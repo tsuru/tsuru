@@ -601,9 +601,9 @@ func (s *S) TestRemoveUnitsWithQuota(c *check.C) {
 	err = a.RemoveUnits(4, "web", nil)
 	c.Assert(err, check.IsNil)
 	err = tsurutest.WaitCondition(2e9, func() bool {
-		app, err := GetByName(a.Name)
-		if err != nil {
-			c.Log(err)
+		app, appErr := GetByName(a.Name)
+		if appErr != nil {
+			c.Log(appErr)
 			return false
 		}
 		return app.Quota.InUse == 1
@@ -651,13 +651,13 @@ func (s *S) TestRemoveUnits(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(buf.String(), check.Equals, "removing 2 units")
 	err = tsurutest.WaitCondition(2e9, func() bool {
-		gotApp, err := GetByName(app.Name)
-		if err != nil {
-			c.Log(err)
+		gotApp, inErr := GetByName(app.Name)
+		if inErr != nil {
+			c.Log(inErr)
 			return false
 		}
-		units, err := app.Units()
-		c.Assert(err, check.IsNil)
+		units, inErr := app.Units()
+		c.Assert(inErr, check.IsNil)
 		return len(units) == 4 && gotApp.Quota.InUse == 4
 	})
 	c.Assert(err, check.IsNil)

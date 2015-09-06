@@ -208,7 +208,8 @@ func (a *autoScaleConfig) runScalerInNodes(groupMetadata string, nodes []*cluste
 				return
 			}
 			event.logMsg("running event %q for %q: %s", event.Action, event.MetadataValue, event.Reason)
-			newNodes, err := a.addMultipleNodes(event, nodes, scalerResult.toAdd)
+			var newNodes []cluster.Node
+			newNodes, err = a.addMultipleNodes(event, nodes, scalerResult.toAdd)
 			if err != nil {
 				if len(newNodes) == 0 {
 					retErr = err

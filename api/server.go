@@ -255,18 +255,20 @@ func RunServer(dry bool) http.Handler {
 	n.UseHandler(http.HandlerFunc(runDelayedHandler))
 
 	if !dry {
+		var startupMessage string
 		routers, err := router.List()
 		if err != nil {
 			fatal(err)
 		}
 		for _, routerDesc := range routers {
-			r, err := router.Get(routerDesc.Name)
+			var r router.Router
+			r, err = router.Get(routerDesc.Name)
 			if err != nil {
 				fatal(err)
 			}
 			fmt.Printf("Registered router %q", routerDesc.Name)
 			if messageRouter, ok := r.(router.MessageRouter); ok {
-				startupMessage, err := messageRouter.StartupMessage()
+				startupMessage, err = messageRouter.StartupMessage()
 				if err == nil && startupMessage != "" {
 					fmt.Printf(": %s", startupMessage)
 				}
@@ -297,7 +299,7 @@ func RunServer(dry bool) http.Handler {
 			}
 		}
 		if messageProvisioner, ok := app.Provisioner.(provision.MessageProvisioner); ok {
-			startupMessage, err := messageProvisioner.StartupMessage()
+			startupMessage, err = messageProvisioner.StartupMessage()
 			if err == nil && startupMessage != "" {
 				fmt.Print(startupMessage)
 			}
@@ -363,11 +365,15 @@ func RunServer(dry bool) http.Handler {
 		}
 		tls, _ := config.GetBool("use-tls")
 		if tls {
-			certFile, err := config.GetString("tls:cert-file")
+			var (
+				certFile string
+				keyFile  string
+			)
+			certFile, err = config.GetString("tls:cert-file")
 			if err != nil {
 				fatal(err)
 			}
-			keyFile, err := config.GetString("tls:key-file")
+			keyFile, err = config.GetString("tls:key-file")
 			if err != nil {
 				fatal(err)
 			}

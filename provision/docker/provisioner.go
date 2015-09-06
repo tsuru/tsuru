@@ -73,7 +73,8 @@ func (p *dockerProvisioner) initDockerCluster() error {
 		}
 	}
 	if p.collectionName == "" {
-		name, err := config.GetString("docker:collection")
+		var name string
+		name, err = config.GetString("docker:collection")
 		if err != nil {
 			return err
 		}
@@ -684,11 +685,15 @@ func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint, processName
 	}
 	toRemove := make([]container.Container, 0, units)
 	for i := 0; i < int(units); i++ {
-		containerID, err := p.scheduler.GetRemovableContainer(a.GetName(), processName)
+		var (
+			containerID string
+			cont        *container.Container
+		)
+		containerID, err = p.scheduler.GetRemovableContainer(a.GetName(), processName)
 		if err != nil {
 			return err
 		}
-		cont, err := p.GetContainer(containerID)
+		cont, err = p.GetContainer(containerID)
 		if err != nil {
 			return err
 		}
@@ -714,24 +719,24 @@ func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint, processName
 }
 
 func (p *dockerProvisioner) SetUnitStatus(unit provision.Unit, status provision.Status) error {
-	container, err := p.GetContainer(unit.ID)
+	cont, err := p.GetContainer(unit.ID)
 	if err == provision.ErrUnitNotFound && unit.Name != "" {
-		container, err = p.GetContainerByName(unit.Name)
+		cont, err = p.GetContainerByName(unit.Name)
 	}
 	if err != nil {
 		return err
 	}
-	if container.Status == provision.StatusBuilding.String() {
+	if cont.Status == provision.StatusBuilding.String() {
 		return nil
 	}
-	if unit.AppName != "" && container.AppName != unit.AppName {
+	if unit.AppName != "" && cont.AppName != unit.AppName {
 		return errors.New("wrong app name")
 	}
-	err = container.SetStatus(p, status.String(), true)
+	err = cont.SetStatus(p, status.String(), true)
 	if err != nil {
 		return err
 	}
-	return p.checkContainer(container)
+	return p.checkContainer(cont)
 }
 
 func (p *dockerProvisioner) ExecuteCommandOnce(stdout, stderr io.Writer, app provision.App, cmd string, args ...string) error {
@@ -894,21 +899,21 @@ func (p *dockerProvisioner) RoutableUnits(app provision.App) ([]provision.Unit, 
 }
 
 func (p *dockerProvisioner) RegisterUnit(unit provision.Unit, customData map[string]interface{}) error {
-	container, err := p.GetContainer(unit.ID)
+	cont, err := p.GetContainer(unit.ID)
 	if err != nil {
 		return err
 	}
-	if container.Status == provision.StatusBuilding.String() {
-		if container.BuildingImage != "" && customData != nil {
-			return saveImageCustomData(container.BuildingImage, customData)
+	if cont.Status == provision.StatusBuilding.String() {
+		if cont.BuildingImage != "" && customData != nil {
+			return saveImageCustomData(cont.BuildingImage, customData)
 		}
 		return nil
 	}
-	err = container.SetStatus(p, provision.StatusStarted.String(), true)
+	err = cont.SetStatus(p, provision.StatusStarted.String(), true)
 	if err != nil {
 		return err
 	}
-	return p.checkContainer(container)
+	return p.checkContainer(cont)
 }
 
 func (p *dockerProvisioner) Shell(opts provision.ShellOptions) error {

@@ -309,7 +309,8 @@ func (t *targetRemove) Run(ctx *Context, client *Client) error {
 		}
 	}
 	if turl != "" {
-		if current, err := ReadTarget(); err == nil && current == turl {
+		var current string
+		if current, err = ReadTarget(); err == nil && current == turl {
 			deleteTargetFile()
 		}
 	}

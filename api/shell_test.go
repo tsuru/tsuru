@@ -144,8 +144,8 @@ func (s *S) TestAppShellUnauthorizedError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var result string
 	err = tsurutest.WaitCondition(5*time.Second, func() bool {
-		part, err := ioutil.ReadAll(wsConn)
-		if err != nil {
+		part, readErr := ioutil.ReadAll(wsConn)
+		if readErr != nil {
 			return false
 		}
 		result += string(part)
@@ -180,9 +180,9 @@ func (s *S) TestAppShellGenericError(c *check.C) {
 	c.Assert(err, check.IsNil)
 	var result string
 	err = tsurutest.WaitCondition(5*time.Second, func() bool {
-		part, err := ioutil.ReadAll(wsConn)
-		if err != nil {
-			c.Log(err)
+		part, readErr := ioutil.ReadAll(wsConn)
+		if readErr != nil {
+			c.Log(readErr)
 			return false
 		}
 		result += string(part)

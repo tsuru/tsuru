@@ -33,10 +33,7 @@ then
     status=1
 fi
 
-
-go get golang.org/x/tools/cmd/vet
-`go vet ./... > .vet 2>&1`
-out=`cat .vet`
+out=`go tool vet -shadow -all . 2>&1`
 if [ "${out}" != "" ]
 then
     echo "ERROR: go vet failures:"
@@ -47,5 +44,4 @@ END
     status=1
 fi
 
-rm .vet || true
 exit $status

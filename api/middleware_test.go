@@ -368,8 +368,8 @@ func (s *S) TestAppLockMiddlewareLocksAndUnlocks(c *check.C) {
 	called := false
 	m := &appLockMiddleware{}
 	m.ServeHTTP(recorder, request, func(w http.ResponseWriter, r *http.Request) {
-		a, err := app.GetByName(request.URL.Query().Get(":app"))
-		c.Assert(err, check.IsNil)
+		a, appErr := app.GetByName(request.URL.Query().Get(":app"))
+		c.Assert(appErr, check.IsNil)
 		c.Assert(a.Lock.Locked, check.Equals, true)
 		called = true
 	})
@@ -393,8 +393,8 @@ func (s *S) TestAppLockMiddlewareWithPreventUnlock(c *check.C) {
 	context.SetPreventUnlock(request)
 	m := &appLockMiddleware{}
 	m.ServeHTTP(recorder, request, func(w http.ResponseWriter, r *http.Request) {
-		a, err := app.GetByName(request.URL.Query().Get(":app"))
-		c.Assert(err, check.IsNil)
+		a, appErr := app.GetByName(request.URL.Query().Get(":app"))
+		c.Assert(appErr, check.IsNil)
 		c.Assert(a.Lock.Locked, check.Equals, true)
 		called = true
 	})
@@ -445,8 +445,8 @@ func (s *S) TestAppLockMiddlewareWaitForLock(c *check.C) {
 	}()
 	m := &appLockMiddleware{}
 	m.ServeHTTP(recorder, request, func(w http.ResponseWriter, r *http.Request) {
-		a, err := app.GetByName(request.URL.Query().Get(":app"))
-		c.Assert(err, check.IsNil)
+		a, appErr := app.GetByName(request.URL.Query().Get(":app"))
+		c.Assert(appErr, check.IsNil)
 		c.Assert(a.Lock.Locked, check.Equals, true)
 		called = true
 	})

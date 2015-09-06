@@ -133,7 +133,8 @@ func listDeploys(app *App, s *service.Service, u *auth.User, skip, limit int) ([
 	}
 	validImages := set{}
 	for _, appName := range apps {
-		imgs, err := Provisioner.ValidAppImages(appName)
+		var imgs []string
+		imgs, err = Provisioner.ValidAppImages(appName)
 		if err != nil {
 			return nil, err
 		}

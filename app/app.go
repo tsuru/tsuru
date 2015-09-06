@@ -213,7 +213,7 @@ func CreateApp(app *App, user *auth.User) error {
 	if len(teams) == 0 {
 		return NoTeamsError{}
 	}
-	if _, err := getPlatform(app.Platform); err != nil {
+	if _, err = getPlatform(app.Platform); err != nil {
 		return err
 	}
 	var plan *Plan
@@ -1420,8 +1420,10 @@ func (app *App) RebuildRoutes() (*RebuildRoutesResult, error) {
 	if err != nil && err != router.ErrBackendExists {
 		return nil, err
 	}
-	if newAddr, err := r.Addr(app.GetName()); err == nil && newAddr != app.Ip {
-		conn, err := db.Conn()
+	var newAddr string
+	if newAddr, err = r.Addr(app.GetName()); err == nil && newAddr != app.Ip {
+		var conn *db.Storage
+		conn, err = db.Conn()
 		if err != nil {
 			return nil, err
 		}

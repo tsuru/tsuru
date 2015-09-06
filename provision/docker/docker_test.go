@@ -349,8 +349,8 @@ func (s *S) TestStartTsuruAllocatorStress(c *check.C) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			cont, err := s.p.start(&container.Container{ProcessName: "web"}, app, imageId, ioutil.Discard)
-			c.Assert(err, check.IsNil)
+			cont, startErr := s.p.start(&container.Container{ProcessName: "web"}, app, imageId, ioutil.Discard)
+			c.Assert(startErr, check.IsNil)
 			conts[i] = cont
 		}(i)
 	}

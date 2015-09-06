@@ -183,7 +183,8 @@ func removeNodeHandler(w http.ResponseWriter, r *http.Request, t auth.Token) err
 	}
 	removeIaaS, _ := strconv.ParseBool(params["remove_iaas"])
 	if removeIaaS {
-		m, err := iaas.FindMachineByIdOrAddress(node.Metadata["iaas-id"], urlToHost(address))
+		var m iaas.Machine
+		m, err = iaas.FindMachineByIdOrAddress(node.Metadata["iaas-id"], urlToHost(address))
 		if err != nil && err != mgo.ErrNotFound {
 			return err
 		}

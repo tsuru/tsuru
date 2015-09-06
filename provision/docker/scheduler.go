@@ -72,11 +72,11 @@ func (s *segregatedScheduler) filterByMemoryUsage(a *app.App, nodes []cluster.No
 	}
 	hostReserved := make(map[string]int64)
 	for _, cont := range containers {
-		a, err := app.GetByName(cont.AppName)
+		contApp, err := app.GetByName(cont.AppName)
 		if err != nil {
 			return nil, err
 		}
-		hostReserved[cont.HostAddr] += a.Plan.Memory
+		hostReserved[cont.HostAddr] += contApp.Plan.Memory
 	}
 	megabyte := float64(1024 * 1024)
 	nodeList := make([]cluster.Node, 0, len(nodes))
