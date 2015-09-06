@@ -1709,6 +1709,7 @@ func (s *S) TestProvisionerUnitsStatus(c *check.C) {
 	defer coll.RemoveAll(bson.M{"appname": app.Name})
 	units, err := s.p.Units(&app)
 	c.Assert(err, check.IsNil)
+	sortUnits(units)
 	expected := []provision.Unit{
 		{
 			ID:      "9930c24f1c4f",
