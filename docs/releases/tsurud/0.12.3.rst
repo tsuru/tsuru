@@ -1,0 +1,39 @@
+.. Copyright 2015 tsuru authors. All rights reserved.
+   Use of this source code is governed by a BSD-style
+   license that can be found in the LICENSE file.
+
+===========================
+tsurud 0.12.3 release notes
+===========================
+
+Welcome to tsurud 0.12.3!
+
+tsurud 0.12.3 includes `bug fixes`_  and some `improvements`_ on unstable
+network environments.
+
+Bug fixes
+=========
+
+* Fix bug in ``/units/status`` route that is called by bs containers. The bug
+  caused this route to return a 500 error if the request included containers
+  with the status ``building`` in tsuru's database.
+
+Improvements
+============
+
+* On some unstable network environments it was possible for a deploy to remain
+  frozen while running Attach and Wait operations on the docker node. This can
+  happen after a network partition where the connection was severed without FIN
+  or RST being sent from on end to the other.
+
+  This problem was solved in two different ways. First TCP keepalive was enabled
+  for all connections with the Docker API. This way if there are any problems
+  severing the connection, the keepalive probe will hopefully receive RST as an
+  answer when the connectivity with the remote server is re-established, closing
+  the connection on our end.
+
+  As a failsafe, while tsuru is blocked on Attach and Wait requests it will also
+  keep polling Docker for the current container state. If the container is
+  stopped it means that the Attach and Wait operations should have ended. At
+  this moment tsuru will resume the deploy process and ignore the output from
+  Attach and Wait.
