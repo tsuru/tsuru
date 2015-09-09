@@ -11,7 +11,7 @@ type linkData struct {
 }
 
 type commonPostResponse struct {
-	Links linkData `json:"_links"`
+	Links linkData `json:"_links,omitempty"`
 }
 
 func (c commonPostResponse) FullId() string {
@@ -25,6 +25,7 @@ type BackendPoolProperties struct {
 }
 
 type Target struct {
+	commonPostResponse
 	ID            int                   `json:"ID,omitempty"`
 	Name          string                `json:"name"`
 	Project       string                `json:"project"`
@@ -33,7 +34,6 @@ type Target struct {
 	TargetType    string                `json:"targetType"`
 	BackendPool   string                `json:"parent,omitempty"`
 	Properties    BackendPoolProperties `json:"properties,omitempty"`
-	Links         linkData              `json:"_links,omitempty"`
 }
 
 type RuleProperties struct {
@@ -41,21 +41,21 @@ type RuleProperties struct {
 }
 
 type Rule struct {
+	commonPostResponse
 	ID          int            `json:"ID,omitempty"`
-	Name        string         `json:"name"`
-	RuleType    string         `json:"ruleType"`
-	VirtualHost string         `json:"parent"`
-	BackendPool string         `json:"target"`
-	Default     bool           `json:"default"`
-	Order       int            `json:"order"`
-	Links       linkData       `json:"_links,omitempty"`
-	Properties  RuleProperties `json:"properties"`
+	Name        string         `json:"name,omitempty"`
+	RuleType    string         `json:"ruleType,omitempty"`
+	VirtualHost string         `json:"parent,omitempty"`
+	BackendPool string         `json:"target,omitempty"`
+	Default     bool           `json:"default,omitempty"`
+	Order       int            `json:"order,omitempty"`
+	Properties  RuleProperties `json:"properties,omitempty"`
 }
 
 type VirtualHost struct {
-	ID          int      `json:"ID,omitempty"`
-	Name        string   `json:"name"`
-	Environment string   `json:"environment"`
-	Project     string   `json:"project"`
-	Links       linkData `json:"_links,omitempty"`
+	commonPostResponse
+	ID          int    `json:"ID,omitempty"`
+	Name        string `json:"name"`
+	Environment string `json:"environment"`
+	Project     string `json:"project"`
 }

@@ -18,10 +18,8 @@ import (
 )
 
 var (
-	ErrTargetNotFound      = errors.New("target not found")
-	ErrVirtualHostNotFound = errors.New("virtualhost not found")
-	ErrRuleNotFound        = errors.New("rule not found")
-	ErrItemNotFound        = errors.New("item not found")
+	ErrItemNotFound    = errors.New("item not found")
+	ErrAmbiguousSearch = errors.New("more than one item returned in search")
 )
 
 type GalebClient struct {
@@ -141,29 +139,43 @@ func (c *GalebClient) AddBackend(backend *url.URL, poolName string) (string, err
 	return c.doCreateResource("/target", &params)
 }
 
-func (c *GalebClient) AddRule(name, poolName, virtualHostName string) (string, error) {
+func (c *GalebClient) AddRuleToID(name, poolID string) (string, error) {
 	var params Rule
 	c.fillDefaultRuleValues(&params)
 	params.Name = name
-	poolID, err := c.findItemByName("target", poolName)
-	if err != nil {
-		return "", err
-	}
-	virtualHostID, err := c.findItemByName("virtualhost", virtualHostName)
-	if err != nil {
-		return "", err
-	}
 	params.BackendPool = poolID
-	params.VirtualHost = virtualHostID
 	return c.doCreateResource("/rule", &params)
 }
 
-func (c *GalebClient) RemoveBackend(backend *url.URL) error {
-	id, err := c.findItemByName("target", backend.String())
+func (c *GalebClient) SetRuleVirtualHostIDs(ruleID, virtualHostID string) error {
+	var params Rule
+	params.VirtualHost = virtualHostID
+	path := strings.TrimPrefix(ruleID, c.ApiUrl)
+	rsp, err := c.doRequest("PATCH", path, &params)
 	if err != nil {
 		return err
 	}
-	return c.removeResource(id)
+	if rsp.StatusCode != http.StatusNoContent {
+		responseData, _ := ioutil.ReadAll(rsp.Body)
+		return fmt.Errorf("PATCH %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
+	}
+	return err
+}
+
+func (c *GalebClient) SetRuleVirtualHost(ruleName, virtualHostName string) error {
+	ruleID, err := c.findRuleByNameEmptyParent(ruleName)
+	if err != nil {
+		return err
+	}
+	virtualHostID, err := c.findItemByName("virtualhost", virtualHostName)
+	if err != nil {
+		return err
+	}
+	return c.SetRuleVirtualHostIDs(ruleID, virtualHostID)
+}
+
+func (c *GalebClient) RemoveBackendByID(backendID string) error {
+	return c.removeResource(backendID)
 }
 
 func (c *GalebClient) RemoveBackendPool(poolName string) error {
@@ -182,12 +194,12 @@ func (c *GalebClient) RemoveVirtualHost(virtualHostName string) error {
 	return c.removeResource(id)
 }
 
-func (c *GalebClient) RemoveRule(ruleName string) error {
-	id, err := c.findItemByName("rule", ruleName)
-	if err != nil {
-		return err
-	}
-	return c.removeResource(id)
+func (c *GalebClient) RemoveVirtualHostByID(virtualHostID string) error {
+	return c.removeResource(virtualHostID)
+}
+
+func (c *GalebClient) RemoveRuleByID(ruleID string) error {
+	return c.removeResource(ruleID)
 }
 
 func (c *GalebClient) FindTargetsByParent(poolName string) ([]Target, error) {
@@ -208,6 +220,24 @@ func (c *GalebClient) FindTargetsByParent(poolName string) ([]Target, error) {
 	return rspObj.Embedded.Targets, nil
 }
 
+func (c *GalebClient) FindRulesByTargetName(targetName string) ([]Rule, error) {
+	path := fmt.Sprintf("/rule/search/findByTargetName?name=%s&size=99999", targetName)
+	rsp, err := c.doRequest("GET", path, nil)
+	if err != nil {
+		return nil, err
+	}
+	var rspObj struct {
+		Embedded struct {
+			Rules []Rule `json:"rule"`
+		} `json:"_embedded"`
+	}
+	err = json.NewDecoder(rsp.Body).Decode(&rspObj)
+	if err != nil {
+		return nil, err
+	}
+	return rspObj.Embedded.Rules, nil
+}
+
 func (c *GalebClient) removeResource(resourceURI string) error {
 	path := strings.TrimPrefix(resourceURI, c.ApiUrl)
 	rsp, err := c.doRequest("DELETE", path, nil)
@@ -221,8 +251,17 @@ func (c *GalebClient) removeResource(resourceURI string) error {
 	return nil
 }
 
+func (c *GalebClient) findRuleByNameEmptyParent(name string) (string, error) {
+	path := fmt.Sprintf("/rule/search/findByNameAndParent?name=%s&parent=", name)
+	return c.findItemByPath("rule", path)
+}
+
 func (c *GalebClient) findItemByName(item, name string) (string, error) {
 	path := fmt.Sprintf("/%s/search/findByName?name=%s", item, name)
+	return c.findItemByPath(item, path)
+}
+
+func (c *GalebClient) findItemByPath(item, path string) (string, error) {
 	rsp, err := c.doRequest("GET", path, nil)
 	if err != nil {
 		return "", err
@@ -238,8 +277,12 @@ func (c *GalebClient) findItemByName(item, name string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("unable to parse find response %q: %s", string(rspData), err)
 	}
-	if len(rspObj.Embedded[item]) == 0 {
+	itemList := rspObj.Embedded[item]
+	if len(itemList) == 0 {
 		return "", ErrItemNotFound
+	}
+	if len(itemList) > 1 {
+		return "", ErrAmbiguousSearch
 	}
 	id := rspObj.Embedded[item][0].FullId()
 	if id == "" {
