@@ -12,7 +12,6 @@ import (
 	"io/ioutil"
 	"net/url"
 	"regexp"
-	"sort"
 	"strings"
 	"time"
 
@@ -39,6 +38,10 @@ var (
 	cnameRegexp    = regexp.MustCompile(`^(\*\.)?[a-zA-Z0-9][\w-.]+$`)
 	NoPoolError    = stderr.New("pool not found.")
 	ManyPoolsError = stderr.New("you have access to more than one pool. please choose one in app creation.")
+
+	ErrAlreadyHaveAccess = stderr.New("team already have access to this app")
+	ErrNoAccess          = stderr.New("team does not have access to this app")
+	ErrCannotOrphanApp   = stderr.New("cannot revoke access from this team, as it's the unique team with access to the app")
 )
 
 const (
@@ -526,45 +529,90 @@ func (app *App) Available() bool {
 	return false
 }
 
-// Find returns the position of the given team in the internal list of teams
-// that have access to the app. It returns an integer and a boolean, the
-// boolean indicates whether the teams was found, and the integer indicates
-// where it was found.
-//
-// Its's implemented after sort.Search. That's why it works this way.
-func (app *App) find(team *auth.Team) (int, bool) {
-	pos := sort.Search(len(app.Teams), func(i int) bool {
-		return app.Teams[i] >= team.Name
-	})
-	return pos, pos < len(app.Teams) && app.Teams[pos] == team.Name
+func (app *App) findTeam(team *auth.Team) (int, bool) {
+	for i, teamName := range app.Teams {
+		if teamName == team.Name {
+			return i, true
+		}
+	}
+	return -1, false
 }
 
 // Grant allows a team to have access to an app. It returns an error if the
 // team already have access to the app.
 func (app *App) Grant(team *auth.Team) error {
-	pos, found := app.find(team)
-	if found {
-		return stderr.New("This team already has access to this app")
+	if _, found := app.findTeam(team); found {
+		return ErrAlreadyHaveAccess
 	}
-	app.Teams = append(app.Teams, "")
-	tmp := app.Teams[pos]
-	for i := pos; i < len(app.Teams)-1; i++ {
-		app.Teams[i+1], tmp = tmp, app.Teams[i]
+	app.Teams = append(app.Teams, team.Name)
+	conn, err := db.Conn()
+	if err != nil {
+		return err
 	}
-	app.Teams[pos] = team.Name
+	defer conn.Close()
+	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$addToSet": bson.M{"teams": team.Name}})
+	if err != nil {
+		return err
+	}
+	for _, user := range team.Users {
+		err = repository.Manager().GrantAccess(app.Name, user)
+		if err != nil {
+			conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$pull": bson.M{"teams": team.Name}})
+			return err
+		}
+	}
 	return nil
 }
 
 // Revoke removes the access from a team. It returns an error if the team do
 // not have access to the app.
 func (app *App) Revoke(team *auth.Team) error {
-	index, found := app.find(team)
-	if !found {
-		return stderr.New("This team does not have access to this app")
+	if len(app.Teams) == 1 {
+		return ErrCannotOrphanApp
 	}
-	copy(app.Teams[index:], app.Teams[index+1:])
-	app.Teams = app.Teams[:len(app.Teams)-1]
+	index, found := app.findTeam(team)
+	if !found {
+		return ErrNoAccess
+	}
+	last := len(app.Teams) - 1
+	app.Teams[index] = app.Teams[last]
+	app.Teams = app.Teams[:last]
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$pull": bson.M{"teams": team.Name}})
+	if err != nil {
+		return err
+	}
+	for _, user := range app.usersToRevoke(team) {
+		err = repository.Manager().RevokeAccess(app.Name, user)
+		if err != nil {
+			conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$addToSet": bson.M{"teams": team.Name}})
+			return err
+		}
+	}
 	return nil
+}
+
+func (app *App) usersToRevoke(t *auth.Team) []string {
+	teams := app.GetTeams()
+	users := make([]string, 0, len(t.Users))
+	for _, email := range t.Users {
+		found := false
+		user := auth.User{Email: email}
+		for _, team := range teams {
+			if team.ContainsUser(&user) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			users = append(users, email)
+		}
+	}
+	return users
 }
 
 // GetTeams returns a slice of teams that have access to the app.
