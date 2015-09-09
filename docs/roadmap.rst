@@ -22,12 +22,13 @@ work issue and other "not so important but needed" issues.
 You can suggest any issue to any milestones at any time, and we'll
 discuss it in the issue or in `Gitter <https://gitter.im/tsuru/tsuru>`_.
 
-Next Release 0.12.0
+Next Release 0.13.0
 ===================
 
-    - Lean containers (issue `#1136 <https://github.com/tsuru/tsuru/issues/1136>`_)
+    - Improve authorization system (issue `#1220 <https://github.com/tsuru/tsuru/issues/1220>`_)
 
-    - Dockerize tsuru installation (issue `#1091 <https://github.com/tsuru/tsuru/issues/1091>`_)
+      The goal is to change the authorization system to be more flexible based on `users`, `permissions` and `roles`.
+      An user can have more than one role, and a role can have one or more permissions.
 
 Long term Goals
 ===============
