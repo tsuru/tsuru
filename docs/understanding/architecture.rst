@@ -13,28 +13,28 @@ The API component (also referred as the tsuru daemon, or `tsurud`) is a RESTful
 API server written with ``Go``. The API is responsible for the deploy workflow
 and the lifecycle of applications.
 
-Command-line clients interact with this component.
+Command-line clients and the `tsuru dashboard <https://github.com/tsuru/tsuru-dashboard>`_ interact with this component.
 
 Database
 --------
 
-The database component is a `MongoDB` server.
+The database component is a `MongoDB <https://www.mongodb.org/>`_ server.
 
 Queue/Cache
 -----------
 
-The queue and cache component uses `Redis`.
+The queue and cache component uses `Redis <http://redis.io/>`_.
 
 Gandalf
 -------
 
-`Gandalf` is a REST API to manage Git repositories and users and provides
+`Gandalf <https://github.com/tsuru/gandalf>`_ is a REST API to manage Git repositories and users and provides
 access to them over SSH.
 
 Registry
 --------
 
-The registry component hosts `Docker` images.
+The `Docker registry <https://github.com/docker/docker-registry>`_ is the component responsible for storing and distributing `Docker <https://www.docker.com/>`_ images.
 
 Router
 ------
