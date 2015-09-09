@@ -2911,7 +2911,7 @@ func (s *S) TestAppSetPoolManyPools(c *check.C) {
 	}
 	err = app.SetPool()
 	c.Assert(err, check.NotNil)
-	c.Assert(err, check.Equals, ManyPoolsError)
+	c.Assert(err.Error(), check.Equals, "you have access to more than one pool, please choose one in app creation")
 }
 
 func (s *S) TestAppSetPoolNoDefault(c *check.C) {
@@ -3025,7 +3025,8 @@ func (s *S) TestAppChangePoolNotExists(c *check.C) {
 	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
 	c.Assert(err, check.IsNil)
 	err = app.ChangePool("test2")
-	c.Assert(err, check.Equals, NoPoolError)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "pool not found")
 	c.Assert(app.Pool, check.Equals, "test")
 }
 

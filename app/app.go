@@ -34,10 +34,8 @@ var Provisioner provision.Provisioner
 var AuthScheme auth.Scheme
 
 var (
-	nameRegexp     = regexp.MustCompile(`^[a-z][a-z0-9-]{0,62}$`)
-	cnameRegexp    = regexp.MustCompile(`^(\*\.)?[a-zA-Z0-9][\w-.]+$`)
-	NoPoolError    = stderr.New("pool not found.")
-	ManyPoolsError = stderr.New("you have access to more than one pool. please choose one in app creation.")
+	nameRegexp  = regexp.MustCompile(`^[a-z][a-z0-9-]{0,62}$`)
+	cnameRegexp = regexp.MustCompile(`^(\*\.)?[a-zA-Z0-9][\w-.]+$`)
 
 	ErrAlreadyHaveAccess = stderr.New("team already have access to this app")
 	ErrNoAccess          = stderr.New("team does not have access to this app")
@@ -696,13 +694,13 @@ func (app *App) GetPoolForApp(poolName string) (string, error) {
 		return "", err
 	}
 	if len(pools) > 1 {
-		return "", ManyPoolsError
+		return "", stderr.New("you have access to more than one pool, please choose one in app creation")
 	}
 	if len(pools) == 0 {
 		if poolName == "" {
 			return "", nil
 		}
-		return "", NoPoolError
+		return "", stderr.New("pool not found")
 	}
 	for _, team := range pools[0].Teams {
 		if team == app.TeamOwner {
