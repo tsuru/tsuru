@@ -121,7 +121,6 @@ Container:
 | %s | %s | false   | 1234567890 |            | err1  |
 +-----------------+-----------------+---------+------------+------------+-------+
 `, startTStr10, endTStr10, startTStr08, endTStr08, startTStr08, endTStr08, startTStr06, endTStr06, startTStr02, endTStr02)
-	fmt.Println(buf.String())
 	c.Assert(buf.String(), check.Equals, expected)
 }
 
