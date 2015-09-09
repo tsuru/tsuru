@@ -384,7 +384,7 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	teamName := r.URL.Query().Get(":team")
 	rec.Log(u.Email, "grant-app-access", "app="+appName, "team="+teamName)
 	team := new(auth.Team)
-	app, err := getApp(appName, u, r)
+	a, err := getApp(appName, u, r)
 	if err != nil {
 		return err
 	}
@@ -397,43 +397,11 @@ func grantAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
 	}
-	err = app.Grant(team)
-	if err != nil {
+	err = a.Grant(team)
+	if err == app.ErrAlreadyHaveAccess {
 		return &errors.HTTP{Code: http.StatusConflict, Message: err.Error()}
 	}
-	err = conn.Apps().Update(bson.M{"name": app.Name}, app)
-	if err != nil {
-		return err
-	}
-	for _, user := range team.Users {
-		err = repository.Manager().GrantAccess(app.Name, user)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func getEmailsForRevoking(app *app.App, t *auth.Team) []string {
-	var i int
-	teams := app.GetTeams()
-	users := make([]string, len(t.Users))
-	for _, email := range t.Users {
-		found := false
-		for _, team := range teams {
-			for _, user := range team.Users {
-				if user == email {
-					found = true
-					break
-				}
-			}
-		}
-		if !found {
-			users[i] = email
-			i++
-		}
-	}
-	return users[:i]
+	return err
 }
 
 func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -445,7 +413,7 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	teamName := r.URL.Query().Get(":team")
 	rec.Log(u.Email, "revoke-app-access", "app="+appName, "team="+teamName)
 	team := new(auth.Team)
-	app, err := getApp(appName, u, r)
+	a, err := getApp(appName, u, r)
 	if err != nil {
 		return err
 	}
@@ -458,26 +426,19 @@ func revokeAppAccess(w http.ResponseWriter, r *http.Request, t auth.Token) error
 	if err != nil {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: "Team not found"}
 	}
-	if len(app.Teams) == 1 {
+	if len(a.Teams) == 1 {
 		msg := "You can not revoke the access from this team, because it is the unique team with access to the app, and an app can not be orphaned"
 		return &errors.HTTP{Code: http.StatusForbidden, Message: msg}
 	}
-	err = app.Revoke(team)
-	if err != nil {
+	err = a.Revoke(team)
+	switch err {
+	case app.ErrNoAccess:
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
-	}
-	err = conn.Apps().Update(bson.M{"name": app.Name}, app)
-	if err != nil {
+	case app.ErrCannotOrphanApp:
+		return &errors.HTTP{Code: http.StatusForbidden, Message: err.Error()}
+	default:
 		return err
 	}
-	users := getEmailsForRevoking(&app, team)
-	if len(users) > 0 {
-		manager := repository.Manager()
-		for _, user := range users {
-			manager.RevokeAccess(app.Name, user)
-		}
-	}
-	return nil
 }
 
 func runCommand(w http.ResponseWriter, r *http.Request, t auth.Token) error {

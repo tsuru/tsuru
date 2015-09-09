@@ -754,53 +754,98 @@ func (s *S) TestUpdateUnitsStatus(c *check.C) {
 }
 
 func (s *S) TestGrantAccess(c *check.C) {
-	a := App{Name: "appName", Platform: "django", Teams: []string{}}
-	err := a.Grant(&s.team)
+	app := App{Name: "appName", Platform: "django", Teams: []string{"acid-rain", "zito"}}
+	err := s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
-	_, found := a.find(&s.team)
-	c.Assert(found, check.Equals, true)
-}
-
-func (s *S) TestGrantAccessKeepTeamsSorted(c *check.C) {
-	a := App{Name: "appName", Platform: "django", Teams: []string{"acid-rain", "zito"}}
-	err := a.Grant(&s.team)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	err = repository.Manager().CreateRepository(app.Name, nil)
 	c.Assert(err, check.IsNil)
-	c.Assert(a.Teams, check.DeepEquals, []string{"acid-rain", s.team.Name, "zito"})
+	err = app.Grant(&s.team)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Find(bson.M{"name": app.Name}).One(&app)
+	c.Assert(err, check.IsNil)
+	c.Assert(app.Teams, check.DeepEquals, []string{"acid-rain", "zito", s.team.Name})
+	grants, err := repositorytest.Granted(app.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(grants, check.DeepEquals, []string{s.user.Email})
 }
 
 func (s *S) TestGrantAccessFailsIfTheTeamAlreadyHasAccessToTheApp(c *check.C) {
 	a := App{Name: "appName", Platform: "django", Teams: []string{s.team.Name}}
 	err := a.Grant(&s.team)
-	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, "^This team already has access to this app$")
+	c.Assert(err, check.Equals, ErrAlreadyHaveAccess)
 }
 
 func (s *S) TestRevokeAccess(c *check.C) {
-	a := App{Name: "appName", Platform: "django", Teams: []string{s.team.Name}}
-	err := a.Revoke(&s.team)
+	team := auth.Team{Name: "abcd"}
+	err := s.conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
-	_, found := a.find(&s.team)
+	app := App{Name: "appName", Platform: "django", Teams: []string{s.team.Name, team.Name}}
+	err = s.conn.Apps().Insert(app)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	err = repository.Manager().CreateRepository(app.Name, nil)
+	c.Assert(err, check.IsNil)
+	err = repository.Manager().GrantAccess(app.Name, s.user.Email)
+	c.Assert(err, check.IsNil)
+	err = app.Revoke(&s.team)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Find(bson.M{"name": app.Name}).One(&app)
+	c.Assert(err, check.IsNil)
+	_, found := app.findTeam(&s.team)
 	c.Assert(found, check.Equals, false)
+	grants, err := repositorytest.Granted(app.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(grants, check.HasLen, 0)
 }
 
-func (s *S) TestRevoke(c *check.C) {
-	a := App{Name: "test", Teams: []string{"team1", "team2", "team3", "team4"}}
-	err := a.Revoke(&auth.Team{Name: "team2"})
+func (s *S) TestRevokeAccessKeepsUsersThatBelongToTwoTeams(c *check.C) {
+	user := auth.User{Email: "me@company.com"}
+	err := user.Create()
 	c.Assert(err, check.IsNil)
-	c.Assert(a.Teams, check.DeepEquals, []string{"team1", "team3", "team4"})
-	err = a.Revoke(&auth.Team{Name: "team4"})
+	defer user.Delete()
+	team := auth.Team{Name: "abcd", Users: []string{s.user.Email, user.Email}}
+	err = s.conn.Teams().Insert(team)
 	c.Assert(err, check.IsNil)
-	c.Assert(a.Teams, check.DeepEquals, []string{"team1", "team3"})
-	err = a.Revoke(&auth.Team{Name: "team1"})
+	defer s.conn.Teams().Remove(bson.M{"_id": team.Name})
+	app := App{Name: "appName", Platform: "django", Teams: []string{s.team.Name, team.Name}}
+	err = s.conn.Apps().Insert(app)
 	c.Assert(err, check.IsNil)
-	c.Assert(a.Teams, check.DeepEquals, []string{"team3"})
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	err = repository.Manager().CreateRepository(app.Name, nil)
+	c.Assert(err, check.IsNil)
+	err = repository.Manager().GrantAccess(app.Name, s.user.Email)
+	c.Assert(err, check.IsNil)
+	err = repository.Manager().GrantAccess(app.Name, user.Email)
+	c.Assert(err, check.IsNil)
+	err = app.Revoke(&team)
+	c.Assert(err, check.IsNil)
+	err = s.conn.Apps().Find(bson.M{"name": app.Name}).One(&app)
+	c.Assert(err, check.IsNil)
+	_, found := app.findTeam(&team)
+	c.Assert(found, check.Equals, false)
+	grants, err := repositorytest.Granted(app.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(grants, check.DeepEquals, []string{s.user.Email})
+}
+
+func (s *S) TestRevokeAccessDoesntLeaveOrphanApps(c *check.C) {
+	app := App{Name: "appName", Platform: "django", Teams: []string{s.team.Name}}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	err = repository.Manager().CreateRepository(app.Name, nil)
+	c.Assert(err, check.IsNil)
+	err = repository.Manager().GrantAccess(app.Name, s.user.Email)
+	c.Assert(err, check.IsNil)
+	err = app.Revoke(&s.team)
+	c.Assert(err, check.Equals, ErrCannotOrphanApp)
 }
 
 func (s *S) TestRevokeAccessFailsIfTheTeamsDoesNotHaveAccessToTheApp(c *check.C) {
 	a := App{Name: "appName", Platform: "django", Teams: []string{}}
 	err := a.Revoke(&s.team)
-	c.Assert(err, check.NotNil)
-	c.Assert(err, check.ErrorMatches, "^This team does not have access to this app$")
+	c.Assert(err, check.Equals, ErrNoAccess)
 }
 
 func (s *S) TestSetEnvNewAppsTheMapIfItIsNil(c *check.C) {

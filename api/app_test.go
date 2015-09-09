@@ -3434,7 +3434,7 @@ func (s *S) TestSetTeamOwnerSetNewTeamToAppAddThatTeamToAppTeamList(c *check.C) 
 	m.ServeHTTP(rec, req)
 	c.Assert(rec.Code, check.Equals, http.StatusOK)
 	s.conn.Apps().Find(bson.M{"name": "myappx"}).One(&a)
-	c.Assert([]string{team.Name, s.team.Name}, check.DeepEquals, a.Teams)
+	c.Assert(a.Teams, check.DeepEquals, []string{s.team.Name, team.Name})
 }
 
 func (s *S) TestChangePool(c *check.C) {
