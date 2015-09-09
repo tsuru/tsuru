@@ -62,6 +62,7 @@ func renderHistoryTable(history []HealingEvent, filter string, ctx *cmd.Context)
 		}))
 	}
 	t.LineSeparator = true
+	t.Reverse()
 	ctx.Stdout.Write(t.Bytes())
 }
 

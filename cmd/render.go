@@ -59,6 +59,10 @@ func (t *Table) Sort() {
 	sort.Sort(t.rows)
 }
 
+func (t *Table) Reverse() {
+	sort.Sort(sort.Reverse(t.rows))
+}
+
 func (t *Table) SortByColumn(column int) {
 	sort.Sort(rowSliceByColumn{rowSlice: t.rows, column: column})
 }
