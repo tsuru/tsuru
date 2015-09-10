@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -50,13 +51,13 @@ func NewFakeGalebServer() (*fakeGalebServer, error) {
 	r.HandleFunc("/api/target", server.createTarget).Methods("POST")
 	r.HandleFunc("/api/rule", server.createRule).Methods("POST")
 	r.HandleFunc("/api/virtualhost", server.createVirtualhost).Methods("POST")
-	r.HandleFunc("/api/rule/{id}", server.addRuleVirtualhost).Methods("PATCH")
 	r.HandleFunc("/api/{item}/{id}", server.findItem).Methods("GET")
 	r.HandleFunc("/api/{item}/{id}", server.destroyItem).Methods("DELETE")
 	r.HandleFunc("/api/{item}/search/findByName", server.findItemByNameHandler).Methods("GET")
-	r.HandleFunc("/api/target/search/findByParentName", server.findTargetByParentName).Methods("GET")
 	r.HandleFunc("/api/rule/search/findByTargetName", server.findRuleByTargetName).Methods("GET")
-	r.HandleFunc("/api/rule/search/findByNameAndParent", server.findRuleByNameAndParent).Methods("GET")
+	r.HandleFunc("/api/rule/{id}/virtualhost/{vhid}", server.addRuleVirtualhost).Methods("PATCH")
+	r.HandleFunc("/api/rule/{id}/virtualhost/{vhid}", server.destroyRuleVirtualhost).Methods("DELETE")
+	r.HandleFunc("/api/target/{id}/children", server.findTargetsByParent).Methods("GET")
 	server.router = r
 	return server, nil
 }
@@ -105,18 +106,15 @@ func (s *fakeGalebServer) findItemByName(itemName string, wantedName string) []i
 	return ret
 }
 
-func (s *fakeGalebServer) findTargetByParentName(w http.ResponseWriter, r *http.Request) {
-	wantedName := r.URL.Query().Get("name")
+func (s *fakeGalebServer) findTargetsByParent(w http.ResponseWriter, r *http.Request) {
+	wantedId := mux.Vars(r)["id"]
 	var ret []interface{}
 	for i, item := range s.targets {
 		target := item.(*galebClient.Target)
-		if target.BackendPool == "" {
-			continue
-		}
-		poolId := target.BackendPool[strings.LastIndex(target.BackendPool, "/")+1:]
-		parentTarget := s.targets[poolId].(*galebClient.Target)
-		if parentTarget.Name == wantedName {
-			ret = append(ret, s.targets[i])
+		for _, parentId := range target.BackendPools {
+			if strings.HasSuffix(parentId, "/"+wantedId) {
+				ret = append(ret, s.targets[i])
+			}
 		}
 	}
 	json.NewEncoder(w).Encode(makeSearchRsp("target", ret...))
@@ -133,31 +131,6 @@ func (s *fakeGalebServer) findRuleByTargetName(w http.ResponseWriter, r *http.Re
 		poolId := rule.BackendPool[strings.LastIndex(rule.BackendPool, "/")+1:]
 		target := s.targets[poolId].(*galebClient.Target)
 		if target.Name == wantedName {
-			ret = append(ret, s.rules[i])
-		}
-	}
-	json.NewEncoder(w).Encode(makeSearchRsp("rule", ret...))
-}
-
-func (s *fakeGalebServer) findRuleByNameAndParent(w http.ResponseWriter, r *http.Request) {
-	wantedName := r.URL.Query().Get("name")
-	wantedParent := r.URL.Query().Get("parent")
-	var ret []interface{}
-	for i, item := range s.rules {
-		rule := item.(*galebClient.Rule)
-		if wantedParent == "" && rule.VirtualHost == "" && rule.Name == wantedName {
-			ret = append(ret, s.rules[i])
-			continue
-		}
-		if rule.VirtualHost == "" {
-			continue
-		}
-		vhId := rule.VirtualHost[strings.LastIndex(rule.VirtualHost, "/")+1:]
-		vh := s.virtualhosts[vhId].(*galebClient.VirtualHost)
-		if vh.Name != wantedParent {
-			continue
-		}
-		if rule.Name == wantedName {
 			ret = append(ret, s.rules[i])
 		}
 	}
@@ -182,7 +155,7 @@ func (s *fakeGalebServer) createTarget(w http.ResponseWriter, r *http.Request) {
 	targetsWithName := s.findItemByName("target", target.Name)
 	for _, item := range targetsWithName {
 		otherTarget := item.(*galebClient.Target)
-		if otherTarget.BackendPool == target.BackendPool {
+		if reflect.DeepEqual(otherTarget.BackendPools, target.BackendPools) {
 			w.WriteHeader(http.StatusConflict)
 			return
 		}
@@ -208,17 +181,38 @@ func (s *fakeGalebServer) createRule(w http.ResponseWriter, r *http.Request) {
 
 func (s *fakeGalebServer) addRuleVirtualhost(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
+	vhId := mux.Vars(r)["vhid"]
 	baseRule := s.rules[id].(*galebClient.Rule)
-	rule := *baseRule
-	var tmpRule galebClient.Rule
-	json.NewDecoder(r.Body).Decode(&tmpRule)
-	s.idCounter++
-	rule.ID = s.idCounter
-	rule.VirtualHost = tmpRule.VirtualHost
-	rule.Links.Self.Href = fmt.Sprintf("http://%s/api/rule/%d", r.Host, rule.ID)
-	s.rules[strconv.Itoa(rule.ID)] = &rule
+	baseVirtualHost := s.virtualhosts[vhId].(*galebClient.VirtualHost)
+	if baseRule == nil || baseVirtualHost == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	baseRule.VirtualHosts = append(baseRule.VirtualHosts, baseVirtualHost.FullId())
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(&rule)
+	json.NewEncoder(w).Encode(baseRule)
+}
+
+func (s *fakeGalebServer) destroyRuleVirtualhost(w http.ResponseWriter, r *http.Request) {
+	id := mux.Vars(r)["id"]
+	vhId := mux.Vars(r)["vhid"]
+	baseRule := s.rules[id].(*galebClient.Rule)
+	baseVirtualHost := s.virtualhosts[vhId].(*galebClient.VirtualHost)
+	if baseRule == nil || baseVirtualHost == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	found := -1
+	for i := range baseRule.VirtualHosts {
+		if baseRule.VirtualHosts[i] == baseVirtualHost.FullId() {
+			found = i
+			break
+		}
+	}
+	if found != -1 {
+		baseRule.VirtualHosts = append(baseRule.VirtualHosts[:found], baseRule.VirtualHosts[found+1:]...)
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *fakeGalebServer) createVirtualhost(w http.ResponseWriter, r *http.Request) {

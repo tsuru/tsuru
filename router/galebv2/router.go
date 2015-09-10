@@ -161,7 +161,7 @@ func (r *galebRouter) UnsetCName(cname, name string) error {
 		return err
 	}
 	vhName := r.virtualHostName(cname)
-	err = r.client.RemoveRuleByNameAndVirtualHost(ruleName(backendName), vhName)
+	err = r.client.RemoveRuleVirtualHostByName(ruleName(backendName), vhName)
 	if err == galebClient.ErrItemNotFound {
 		return router.ErrCNameNotFound
 	}
@@ -218,21 +218,23 @@ func (r *galebRouter) RemoveBackend(name string) error {
 	if backendName != name {
 		return router.ErrBackendSwapped
 	}
-	poolRules, err := r.client.FindRulesByTargetName(poolName(backendName))
+	rule, err := r.client.FindRuleByName(ruleName(backendName))
 	if err != nil {
 		return err
 	}
-	for _, rule := range poolRules {
-		err = r.client.RemoveRuleByID(rule.FullId())
+	for _, vhId := range rule.VirtualHosts {
+		err = r.client.RemoveRuleVirtualHostById(rule.FullId(), vhId)
 		if err != nil {
 			return err
 		}
-		if rule.VirtualHost != "" {
-			err = r.client.RemoveVirtualHostByID(rule.VirtualHost)
-			if err != nil {
-				return err
-			}
+		err = r.client.RemoveVirtualHostByID(vhId)
+		if err != nil {
+			return err
 		}
+	}
+	err = r.client.RemoveRuleByID(rule.FullId())
+	if err != nil {
+		return err
 	}
 	targets, err := r.client.FindTargetsByParent(poolName(backendName))
 	if err != nil {

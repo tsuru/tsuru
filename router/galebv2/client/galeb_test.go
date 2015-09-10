@@ -71,7 +71,6 @@ func (s *S) TestGalebAddBackendPool(c *check.C) {
 		Environment:        "env1",
 		BalancePolicy:      "balance1",
 		TargetType:         "targetpool1",
-		BackendPool:        "",
 		Properties:         BackendPoolProperties{},
 	}
 	fullId, err := s.client.AddBackendPool("myname")
@@ -132,7 +131,7 @@ func (s *S) TestGalebAddBackend(c *check.C) {
 		Environment:        "env1",
 		BalancePolicy:      "balance1",
 		TargetType:         "targetbackend1",
-		BackendPool:        "http://galeb.somewhere/api/target/9",
+		BackendPools:       []string{"http://galeb.somewhere/api/target/9"},
 		Properties:         BackendPoolProperties{},
 	}
 	url1, _ := url.Parse("http://10.0.0.1:8080")
@@ -183,7 +182,6 @@ func (s *S) TestGalebAddRuleToID(c *check.C) {
 	expected := Rule{
 		commonPostResponse: commonPostResponse{ID: 0, Name: "myrule"},
 		RuleType:           "ruletype1",
-		VirtualHost:        "",
 		BackendPool:        "http://galeb.somewhere/api/target/9",
 		Default:            true,
 		Order:              0,
@@ -271,7 +269,7 @@ func (s *S) TestGalebRemoveBackendByIDInvalidResponse(c *check.C) {
 }
 
 func (s *S) TestGalebSetRuleVirtualHost(c *check.C) {
-	s.handler.ConditionalContent["/api/rule/search/findByNameAndParent?name=myrule&parent="] = []string{
+	s.handler.ConditionalContent["/api/rule/search/findByName?name=myrule"] = []string{
 		"200", fmt.Sprintf(`{
 		"_embedded": {
 			"rule": [
@@ -304,15 +302,8 @@ func (s *S) TestGalebSetRuleVirtualHost(c *check.C) {
 	c.Assert(err, check.IsNil)
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "GET", "PATCH"})
 	c.Assert(s.handler.Url, check.DeepEquals, []string{
-		"/api/rule/search/findByNameAndParent?name=myrule&parent=",
+		"/api/rule/search/findByName?name=myrule",
 		"/api/virtualhost/search/findByName?name=myvh",
-		"/api/rule/1",
+		"/api/rule/1/virtualhost/2",
 	})
-	expected := Rule{
-		VirtualHost: fmt.Sprintf("%s/virtualhost/2", s.client.ApiUrl),
-	}
-	var parsedParams Rule
-	err = json.Unmarshal(s.handler.Body[2], &parsedParams)
-	c.Assert(err, check.IsNil)
-	c.Assert(parsedParams, check.DeepEquals, expected)
 }

@@ -36,7 +36,7 @@ type Target struct {
 	Environment   string                `json:"environment"`
 	BalancePolicy string                `json:"balancePolicy"`
 	TargetType    string                `json:"targetType"`
-	BackendPool   string                `json:"parent,omitempty"`
+	BackendPools  []string              `json:"parents,omitempty"`
 	Properties    BackendPoolProperties `json:"properties,omitempty"`
 }
 
@@ -46,16 +46,17 @@ type RuleProperties struct {
 
 type Rule struct {
 	commonPostResponse
-	RuleType    string         `json:"ruleType,omitempty"`
-	VirtualHost string         `json:"parent,omitempty"`
-	BackendPool string         `json:"target,omitempty"`
-	Default     bool           `json:"default,omitempty"`
-	Order       int            `json:"order,omitempty"`
-	Properties  RuleProperties `json:"properties,omitempty"`
+	RuleType     string         `json:"ruleType,omitempty"`
+	VirtualHosts []string       `json:"virtualhosts,omitempty"`
+	BackendPool  string         `json:"target,omitempty"`
+	Default      bool           `json:"default,omitempty"`
+	Order        int            `json:"order,omitempty"`
+	Properties   RuleProperties `json:"properties,omitempty"`
 }
 
 type VirtualHost struct {
 	commonPostResponse
-	Environment string `json:"environment"`
-	Project     string `json:"project"`
+	Environment string   `json:"environment,omitempty"`
+	Project     string   `json:"project,omitempty"`
+	Rules       []string `json:"rules,omitempty"`
 }

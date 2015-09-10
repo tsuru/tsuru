@@ -138,7 +138,7 @@ func (c *GalebClient) AddBackend(backend *url.URL, poolName string) (string, err
 	if err != nil {
 		return "", err
 	}
-	params.BackendPool = poolID
+	params.BackendPools = []string{poolID}
 	params.TargetType = c.TargetTypeBackend
 	return c.doCreateResource("/target", &params)
 }
@@ -152,10 +152,10 @@ func (c *GalebClient) AddRuleToID(name, poolID string) (string, error) {
 }
 
 func (c *GalebClient) SetRuleVirtualHostIDs(ruleID, virtualHostID string) error {
-	var params Rule
-	params.VirtualHost = virtualHostID
 	path := strings.TrimPrefix(ruleID, c.ApiUrl)
-	rsp, err := c.doRequest("PATCH", path, &params)
+	vhId := virtualHostID[strings.LastIndex(virtualHostID, "/")+1:]
+	path = fmt.Sprintf("%s/virtualhost/%s", path, vhId)
+	rsp, err := c.doRequest("PATCH", path, nil)
 	if err != nil {
 		return err
 	}
@@ -167,7 +167,7 @@ func (c *GalebClient) SetRuleVirtualHostIDs(ruleID, virtualHostID string) error 
 }
 
 func (c *GalebClient) SetRuleVirtualHost(ruleName, virtualHostName string) error {
-	ruleID, err := c.findRuleByNameAndParent(ruleName, "")
+	ruleID, err := c.findItemByName("rule", ruleName)
 	if err != nil {
 		return err
 	}
@@ -206,23 +206,37 @@ func (c *GalebClient) RemoveRuleByID(ruleID string) error {
 	return c.removeResource(ruleID)
 }
 
-func (c *GalebClient) RemoveRuleByNameAndVirtualHost(name, virtualHostName string) error {
-	ruleID, err := c.findRuleByNameAndParent(name, virtualHostName)
+func (c *GalebClient) RemoveRuleVirtualHostById(ruleID, virtualHostID string) error {
+	vhId := virtualHostID[strings.LastIndex(virtualHostID, "/")+1:]
+	path := fmt.Sprintf("%s/virtualhost/%s", ruleID, vhId)
+	return c.removeResource(path)
+}
+
+func (c *GalebClient) RemoveRuleVirtualHostByName(ruleName, virtualHostName string) error {
+	ruleID, err := c.findItemByName("rule", ruleName)
 	if err != nil {
 		return err
 	}
-	return c.removeResource(ruleID)
+	virtualHostID, err := c.findItemByName("virtualhost", virtualHostName)
+	if err != nil {
+		return err
+	}
+	return c.RemoveRuleVirtualHostById(ruleID, virtualHostID)
 }
 
 func (c *GalebClient) FindTargetsByParent(poolName string) ([]Target, error) {
-	path := fmt.Sprintf("/target/search/findByParentName?name=%s&size=99999", poolName)
+	poolId, err := c.findItemByName("target", poolName)
+	if err != nil {
+		return nil, err
+	}
+	path := fmt.Sprintf("%s/children?size=999999", strings.TrimPrefix(poolId, c.ApiUrl))
 	rsp, err := c.doRequest("GET", path, nil)
 	if err != nil {
 		return nil, err
 	}
 	responseData, _ := ioutil.ReadAll(rsp.Body)
 	if rsp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GET /target/search/findByParentName: wrong status code: %d. content: %s", rsp.StatusCode, string(responseData))
+		return nil, fmt.Errorf("GET /target/{id}/children: wrong status code: %d. content: %s", rsp.StatusCode, string(responseData))
 	}
 	var rspObj struct {
 		Embedded struct {
@@ -231,31 +245,36 @@ func (c *GalebClient) FindTargetsByParent(poolName string) ([]Target, error) {
 	}
 	err = json.Unmarshal(responseData, &rspObj)
 	if err != nil {
-		return nil, fmt.Errorf("GET /target/search/findByParentName: unable to parse: %s: %s", string(responseData), err)
+		return nil, fmt.Errorf("GET /target/{id}/children: unable to parse: %s: %s", string(responseData), err)
 	}
 	return rspObj.Embedded.Targets, nil
 }
 
-func (c *GalebClient) FindRulesByTargetName(targetName string) ([]Rule, error) {
-	path := fmt.Sprintf("/rule/search/findByTargetName?name=%s&size=99999", targetName)
+func (c *GalebClient) FindRuleByName(ruleName string) (Rule, error) {
+	path := fmt.Sprintf("/rule/search/findByName?name=%s", ruleName)
 	rsp, err := c.doRequest("GET", path, nil)
 	if err != nil {
-		return nil, err
-	}
-	responseData, _ := ioutil.ReadAll(rsp.Body)
-	if rsp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GET /rule/search/findByTargetName: wrong status code: %d. content: %s", rsp.StatusCode, string(responseData))
+		return Rule{}, err
 	}
 	var rspObj struct {
-		Embedded struct {
-			Rules []Rule `json:"rule"`
-		} `json:"_embedded"`
+		Embedded map[string][]Rule `json:"_embedded"`
 	}
-	err = json.Unmarshal(responseData, &rspObj)
+	rspData, err := ioutil.ReadAll(rsp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("GET /rule/search/findByTargetName: unable to parse: %s: %s", string(responseData), err)
+		return Rule{}, err
 	}
-	return rspObj.Embedded.Rules, nil
+	err = json.Unmarshal(rspData, &rspObj)
+	if err != nil {
+		return Rule{}, fmt.Errorf("unable to parse find response %q: %s", string(rspData), err)
+	}
+	itemList := rspObj.Embedded["rule"]
+	if len(itemList) == 0 {
+		return Rule{}, ErrItemNotFound
+	}
+	if len(itemList) > 1 {
+		return Rule{}, ErrAmbiguousSearch
+	}
+	return rspObj.Embedded["rule"][0], nil
 }
 
 func (c *GalebClient) Healthcheck() error {
@@ -285,11 +304,6 @@ func (c *GalebClient) removeResource(resourceURI string) error {
 		return fmt.Errorf("DELETE %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
 	}
 	return nil
-}
-
-func (c *GalebClient) findRuleByNameAndParent(name, parent string) (string, error) {
-	path := fmt.Sprintf("/rule/search/findByNameAndParent?name=%s&parent=%s", name, parent)
-	return c.findItemByPath("rule", path)
 }
 
 func (c *GalebClient) findItemByName(item, name string) (string, error) {
