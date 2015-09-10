@@ -66,14 +66,13 @@ func (s *S) TestGalebAddBackendPool(c *check.C) {
     }`
 	s.handler.RspCode = http.StatusCreated
 	expected := Target{
-		ID:            0,
-		Name:          "myname",
-		Project:       "proj1",
-		Environment:   "env1",
-		BalancePolicy: "balance1",
-		TargetType:    "targetpool1",
-		BackendPool:   "",
-		Properties:    BackendPoolProperties{},
+		commonPostResponse: commonPostResponse{ID: 0, Name: "myname"},
+		Project:            "proj1",
+		Environment:        "env1",
+		BalancePolicy:      "balance1",
+		TargetType:         "targetpool1",
+		BackendPool:        "",
+		Properties:         BackendPoolProperties{},
 	}
 	fullId, err := s.client.AddBackendPool("myname")
 	c.Assert(err, check.IsNil)
@@ -128,14 +127,13 @@ func (s *S) TestGalebAddBackend(c *check.C) {
     }`
 	s.handler.RspCode = http.StatusCreated
 	expected := Target{
-		ID:            0,
-		Name:          "http://10.0.0.1:8080",
-		Project:       "proj1",
-		Environment:   "env1",
-		BalancePolicy: "balance1",
-		TargetType:    "targetbackend1",
-		BackendPool:   "http://galeb.somewhere/api/target/9",
-		Properties:    BackendPoolProperties{},
+		commonPostResponse: commonPostResponse{ID: 0, Name: "http://10.0.0.1:8080"},
+		Project:            "proj1",
+		Environment:        "env1",
+		BalancePolicy:      "balance1",
+		TargetType:         "targetbackend1",
+		BackendPool:        "http://galeb.somewhere/api/target/9",
+		Properties:         BackendPoolProperties{},
 	}
 	url1, _ := url.Parse("http://10.0.0.1:8080")
 	fullId, err := s.client.AddBackend(url1, "mypool")
@@ -166,10 +164,9 @@ func (s *S) TestGalebAddVirtualHost(c *check.C) {
 	err = json.Unmarshal(s.handler.Body[0], &parsedParams)
 	c.Assert(err, check.IsNil)
 	expected := VirtualHost{
-		ID:          0,
-		Name:        "myvirtualhost.com",
-		Environment: "env1",
-		Project:     "proj1",
+		commonPostResponse: commonPostResponse{ID: 0, Name: "myvirtualhost.com"},
+		Environment:        "env1",
+		Project:            "proj1",
 	}
 	c.Assert(parsedParams, check.DeepEquals, expected)
 }
@@ -184,13 +181,12 @@ func (s *S) TestGalebAddRuleToID(c *check.C) {
     }`
 	s.handler.RspCode = http.StatusCreated
 	expected := Rule{
-		ID:          0,
-		Name:        "myrule",
-		RuleType:    "ruletype1",
-		VirtualHost: "",
-		BackendPool: "http://galeb.somewhere/api/target/9",
-		Default:     true,
-		Order:       0,
+		commonPostResponse: commonPostResponse{ID: 0, Name: "myrule"},
+		RuleType:           "ruletype1",
+		VirtualHost:        "",
+		BackendPool:        "http://galeb.somewhere/api/target/9",
+		Default:            true,
+		Order:              0,
 		Properties: RuleProperties{
 			Match: "/",
 		},
@@ -303,7 +299,7 @@ func (s *S) TestGalebSetRuleVirtualHost(c *check.C) {
 			]
 		}
 	}`, s.client.ApiUrl)}
-	s.handler.RspCode = http.StatusNoContent
+	s.handler.RspCode = http.StatusCreated
 	err := s.client.SetRuleVirtualHost("myrule", "myvh")
 	c.Assert(err, check.IsNil)
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "GET", "PATCH"})

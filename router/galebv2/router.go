@@ -9,6 +9,7 @@ import (
 	"net/url"
 
 	"github.com/tsuru/config"
+	"github.com/tsuru/tsuru/hc"
 	"github.com/tsuru/tsuru/router"
 	galebClient "github.com/tsuru/tsuru/router/galebv2/client"
 )
@@ -23,6 +24,7 @@ type galebRouter struct {
 
 func init() {
 	router.Register(routerName, createRouter)
+	hc.AddChecker("Router galebv2", router.BuildHealthCheck(routerName))
 }
 
 func createRouter(prefix string) (router.Router, error) {
@@ -81,6 +83,9 @@ func (r *galebRouter) virtualHostName(base string) string {
 
 func (r *galebRouter) AddBackend(name string) error {
 	backendPoolId, err := r.client.AddBackendPool(poolName(name))
+	if err == galebClient.ErrItemAlreadyExists {
+		return router.ErrBackendExists
+	}
 	if err != nil {
 		return err
 	}
@@ -105,6 +110,9 @@ func (r *galebRouter) AddRoute(name string, address *url.URL) error {
 		return err
 	}
 	_, err = r.client.AddBackend(address, poolName(backendName))
+	if err == galebClient.ErrItemAlreadyExists {
+		return router.ErrRouteExists
+	}
 	return err
 }
 
@@ -124,7 +132,7 @@ func (r *galebRouter) RemoveRoute(name string, address *url.URL) error {
 		}
 	}
 	if id == "" {
-		return router.ErrBackendNotFound
+		return router.ErrRouteNotFound
 	}
 	return r.client.RemoveBackendByID(id)
 }
@@ -134,7 +142,13 @@ func (r *galebRouter) SetCName(cname, name string) error {
 	if err != nil {
 		return err
 	}
+	if !router.ValidCName(cname, r.domain) {
+		return router.ErrCNameNotAllowed
+	}
 	_, err = r.client.AddVirtualHost(r.virtualHostName(cname))
+	if err == galebClient.ErrItemAlreadyExists {
+		return router.ErrCNameExists
+	}
 	if err != nil {
 		return err
 	}
@@ -142,7 +156,19 @@ func (r *galebRouter) SetCName(cname, name string) error {
 }
 
 func (r *galebRouter) UnsetCName(cname, name string) error {
-	return r.client.RemoveVirtualHost(r.virtualHostName(cname))
+	backendName, err := router.Retrieve(name)
+	if err != nil {
+		return err
+	}
+	vhName := r.virtualHostName(cname)
+	err = r.client.RemoveRuleByNameAndVirtualHost(ruleName(backendName), vhName)
+	if err == galebClient.ErrItemNotFound {
+		return router.ErrCNameNotFound
+	}
+	if err != nil {
+		return err
+	}
+	return r.client.RemoveVirtualHost(vhName)
 }
 
 func (r *galebRouter) Addr(name string) (string, error) {
@@ -181,7 +207,7 @@ func (r *galebRouter) StartupMessage() (string, error) {
 }
 
 func (r *galebRouter) HealthCheck() error {
-	return nil
+	return r.client.Healthcheck()
 }
 
 func (r *galebRouter) RemoveBackend(name string) error {
@@ -192,11 +218,11 @@ func (r *galebRouter) RemoveBackend(name string) error {
 	if backendName != name {
 		return router.ErrBackendSwapped
 	}
-	cnameRules, err := r.client.FindRulesByTargetName(poolName(backendName))
+	poolRules, err := r.client.FindRulesByTargetName(poolName(backendName))
 	if err != nil {
 		return err
 	}
-	for _, rule := range cnameRules {
+	for _, rule := range poolRules {
 		err = r.client.RemoveRuleByID(rule.FullId())
 		if err != nil {
 			return err

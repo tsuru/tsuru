@@ -18,8 +18,9 @@ import (
 )
 
 var (
-	ErrItemNotFound    = errors.New("item not found")
-	ErrAmbiguousSearch = errors.New("more than one item returned in search")
+	ErrItemNotFound      = errors.New("item not found")
+	ErrItemAlreadyExists = errors.New("item already exists")
+	ErrAmbiguousSearch   = errors.New("more than one item returned in search")
 )
 
 type GalebClient struct {
@@ -68,6 +69,9 @@ func (c *GalebClient) doCreateResource(path string, params interface{}) (string,
 	rsp, err := c.doRequest("POST", path, params)
 	if err != nil {
 		return "", err
+	}
+	if rsp.StatusCode == http.StatusConflict {
+		return "", ErrItemAlreadyExists
 	}
 	responseData, _ := ioutil.ReadAll(rsp.Body)
 	if rsp.StatusCode != http.StatusCreated {
@@ -155,7 +159,7 @@ func (c *GalebClient) SetRuleVirtualHostIDs(ruleID, virtualHostID string) error 
 	if err != nil {
 		return err
 	}
-	if rsp.StatusCode != http.StatusNoContent {
+	if rsp.StatusCode != http.StatusCreated {
 		responseData, _ := ioutil.ReadAll(rsp.Body)
 		return fmt.Errorf("PATCH %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
 	}
@@ -163,7 +167,7 @@ func (c *GalebClient) SetRuleVirtualHostIDs(ruleID, virtualHostID string) error 
 }
 
 func (c *GalebClient) SetRuleVirtualHost(ruleName, virtualHostName string) error {
-	ruleID, err := c.findRuleByNameEmptyParent(ruleName)
+	ruleID, err := c.findRuleByNameAndParent(ruleName, "")
 	if err != nil {
 		return err
 	}
@@ -202,20 +206,32 @@ func (c *GalebClient) RemoveRuleByID(ruleID string) error {
 	return c.removeResource(ruleID)
 }
 
+func (c *GalebClient) RemoveRuleByNameAndVirtualHost(name, virtualHostName string) error {
+	ruleID, err := c.findRuleByNameAndParent(name, virtualHostName)
+	if err != nil {
+		return err
+	}
+	return c.removeResource(ruleID)
+}
+
 func (c *GalebClient) FindTargetsByParent(poolName string) ([]Target, error) {
 	path := fmt.Sprintf("/target/search/findByParentName?name=%s&size=99999", poolName)
 	rsp, err := c.doRequest("GET", path, nil)
 	if err != nil {
 		return nil, err
 	}
+	responseData, _ := ioutil.ReadAll(rsp.Body)
+	if rsp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GET /target/search/findByParentName: wrong status code: %d. content: %s", rsp.StatusCode, string(responseData))
+	}
 	var rspObj struct {
 		Embedded struct {
 			Targets []Target `json:"target"`
 		} `json:"_embedded"`
 	}
-	err = json.NewDecoder(rsp.Body).Decode(&rspObj)
+	err = json.Unmarshal(responseData, &rspObj)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("GET /target/search/findByParentName: unable to parse: %s: %s", string(responseData), err)
 	}
 	return rspObj.Embedded.Targets, nil
 }
@@ -226,16 +242,36 @@ func (c *GalebClient) FindRulesByTargetName(targetName string) ([]Rule, error) {
 	if err != nil {
 		return nil, err
 	}
+	responseData, _ := ioutil.ReadAll(rsp.Body)
+	if rsp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GET /rule/search/findByTargetName: wrong status code: %d. content: %s", rsp.StatusCode, string(responseData))
+	}
 	var rspObj struct {
 		Embedded struct {
 			Rules []Rule `json:"rule"`
 		} `json:"_embedded"`
 	}
-	err = json.NewDecoder(rsp.Body).Decode(&rspObj)
+	err = json.Unmarshal(responseData, &rspObj)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("GET /rule/search/findByTargetName: unable to parse: %s: %s", string(responseData), err)
 	}
 	return rspObj.Embedded.Rules, nil
+}
+
+func (c *GalebClient) Healthcheck() error {
+	rsp, err := c.doRequest("GET", "/healthcheck", nil)
+	if err != nil {
+		return err
+	}
+	data, _ := ioutil.ReadAll(rsp.Body)
+	dataStr := string(data)
+	if rsp.StatusCode != http.StatusOK {
+		return fmt.Errorf("wrong healthcheck status code: %d. content: %s", rsp.StatusCode, dataStr)
+	}
+	if !strings.HasPrefix(dataStr, "WORKING") {
+		return fmt.Errorf("wrong healthcheck response: %s.", dataStr)
+	}
+	return nil
 }
 
 func (c *GalebClient) removeResource(resourceURI string) error {
@@ -251,8 +287,8 @@ func (c *GalebClient) removeResource(resourceURI string) error {
 	return nil
 }
 
-func (c *GalebClient) findRuleByNameEmptyParent(name string) (string, error) {
-	path := fmt.Sprintf("/rule/search/findByNameAndParent?name=%s&parent=", name)
+func (c *GalebClient) findRuleByNameAndParent(name, parent string) (string, error) {
+	path := fmt.Sprintf("/rule/search/findByNameAndParent?name=%s&parent=%s", name, parent)
 	return c.findItemByPath("rule", path)
 }
 

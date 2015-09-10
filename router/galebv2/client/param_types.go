@@ -12,10 +12,16 @@ type linkData struct {
 
 type commonPostResponse struct {
 	Links linkData `json:"_links,omitempty"`
+	ID    int      `json:"ID,omitempty"`
+	Name  string   `json:"name,omitempty"`
 }
 
 func (c commonPostResponse) FullId() string {
 	return c.Links.Self.Href
+}
+
+func (c commonPostResponse) GetName() string {
+	return c.Name
 }
 
 type BackendPoolProperties struct {
@@ -26,8 +32,6 @@ type BackendPoolProperties struct {
 
 type Target struct {
 	commonPostResponse
-	ID            int                   `json:"ID,omitempty"`
-	Name          string                `json:"name"`
 	Project       string                `json:"project"`
 	Environment   string                `json:"environment"`
 	BalancePolicy string                `json:"balancePolicy"`
@@ -42,8 +46,6 @@ type RuleProperties struct {
 
 type Rule struct {
 	commonPostResponse
-	ID          int            `json:"ID,omitempty"`
-	Name        string         `json:"name,omitempty"`
 	RuleType    string         `json:"ruleType,omitempty"`
 	VirtualHost string         `json:"parent,omitempty"`
 	BackendPool string         `json:"target,omitempty"`
@@ -54,8 +56,6 @@ type Rule struct {
 
 type VirtualHost struct {
 	commonPostResponse
-	ID          int    `json:"ID,omitempty"`
-	Name        string `json:"name"`
 	Environment string `json:"environment"`
 	Project     string `json:"project"`
 }
