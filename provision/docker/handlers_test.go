@@ -37,6 +37,7 @@ import (
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
+	"github.com/tsuru/tsuru/tsurutest"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -425,7 +426,7 @@ func (s *S) TestRemoveNodeHandlerRebalanceContainers(c *check.C) {
 	b := bytes.NewBufferString(fmt.Sprintf(`{"address": "%s"}`, nodes[0].Address))
 	req, err := http.NewRequest("POST", "/node/remove", b)
 	c.Assert(err, check.IsNil)
-	rec := httptest.NewRecorder()
+	rec := tsurutest.NewSafeResponseRecorder()
 	err = removeNodeHandler(rec, req, nil)
 	c.Assert(err, check.IsNil)
 	nodes, err = mainDockerProvisioner.Cluster().Nodes()
