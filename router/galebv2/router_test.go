@@ -258,6 +258,7 @@ func init() {
 		suite.Router = gRouter
 		conn, err := db.Conn()
 		c.Assert(err, check.IsNil)
+		defer conn.Close()
 		dbtest.ClearAllCollections(conn.Collection("router_galebv2_tests").Database)
 	}
 	suite.TearDownTestFunc = func(c *check.C) {
