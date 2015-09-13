@@ -142,7 +142,7 @@ the application:
 ::
 
     $ cat Procfile
-    helloweb: mvn jetty:run
+    web: mvn jetty:run
 
 In order to compile the application classes during deployment, we need also to
 add a deployment hook. tsuru parses a file called ``tsuru.yaml`` and runs some
