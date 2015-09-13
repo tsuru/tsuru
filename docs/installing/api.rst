@@ -165,7 +165,7 @@ server:
 
 ::
 
-    $ tsr token
+    $ tsurud token
     fed1000d6c05019f6550b20dbc3c572996e2c044
 
 
