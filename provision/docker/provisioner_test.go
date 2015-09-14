@@ -1827,16 +1827,71 @@ func (s *S) TestRegisterUnitSavesCustomData(c *check.C) {
 	defer coll.Close()
 	err = coll.Update(bson.M{"id": container.ID}, container)
 	c.Assert(err, check.IsNil)
-	data := map[string]interface{}{"mydata": "value"}
+	data := map[string]interface{}{"mydata": "value", "procfile": "web: python myapp.py"}
 	err = s.p.RegisterUnit(provision.Unit{ID: container.ID}, data)
 	c.Assert(err, check.IsNil)
 	dataColl, err := imageCustomDataColl()
 	c.Assert(err, check.IsNil)
 	defer dataColl.Close()
-	var customData map[string]interface{}
-	err = dataColl.FindId(container.BuildingImage).One(&customData)
+	var image ImageMetadata
+	err = dataColl.FindId(container.BuildingImage).One(&image)
 	c.Assert(err, check.IsNil)
-	c.Assert(customData["customdata"], check.DeepEquals, data)
+	c.Assert(image.CustomData, check.DeepEquals, data)
+	expectedProcesses := map[string]string{"web": "python myapp.py"}
+	c.Assert(image.Processes, check.DeepEquals, expectedProcesses)
+}
+
+func (s *S) TestRegisterUnitSavesCustomDataParsedProcesses(c *check.C) {
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
+	c.Assert(err, check.IsNil)
+	opts := newContainerOpts{Status: provision.StatusBuilding.String(), AppName: "myawesomeapp"}
+	container, err := s.newContainer(&opts, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(container)
+	container.IP = "xinvalidx"
+	container.BuildingImage = "my-building-image"
+	coll := s.p.Collection()
+	defer coll.Close()
+	err = coll.Update(bson.M{"id": container.ID}, container)
+	c.Assert(err, check.IsNil)
+	data := map[string]interface{}{
+		"mydata":   "value",
+		"procfile": "web: python myapp.py",
+		"processes": map[string]interface{}{
+			"web":    "python web.py",
+			"worker": "python worker.py",
+		},
+	}
+	err = s.p.RegisterUnit(provision.Unit{ID: container.ID}, data)
+	c.Assert(err, check.IsNil)
+	dataColl, err := imageCustomDataColl()
+	c.Assert(err, check.IsNil)
+	defer dataColl.Close()
+	var image ImageMetadata
+	err = dataColl.FindId(container.BuildingImage).One(&image)
+	c.Assert(err, check.IsNil)
+	c.Assert(image.CustomData, check.DeepEquals, data)
+	expectedProcesses := map[string]string{"web": "python web.py", "worker": "python worker.py"}
+	c.Assert(image.Processes, check.DeepEquals, expectedProcesses)
+}
+
+func (s *S) TestRegisterUnitInvalidProcfile(c *check.C) {
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
+	c.Assert(err, check.IsNil)
+	opts := newContainerOpts{Status: provision.StatusBuilding.String(), AppName: "myawesomeapp"}
+	container, err := s.newContainer(&opts, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(container)
+	container.IP = "xinvalidx"
+	container.BuildingImage = "my-building-image"
+	coll := s.p.Collection()
+	defer coll.Close()
+	err = coll.Update(bson.M{"id": container.ID}, container)
+	c.Assert(err, check.IsNil)
+	data := map[string]interface{}{"mydata": "value", "procfile": "web: python myapp.py\nworker:python worker.py"}
+	err = s.p.RegisterUnit(provision.Unit{ID: container.ID}, data)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "invalid Procfile")
 }
 
 func (s *S) TestRunRestartAfterHooks(c *check.C) {

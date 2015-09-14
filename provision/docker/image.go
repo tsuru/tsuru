@@ -5,6 +5,7 @@
 package docker
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -130,11 +131,20 @@ func saveImageCustomData(imageName string, customData map[string]interface{}) er
 	}
 	defer coll.Close()
 	var processes map[string]string
+	if data, ok := customData["processes"]; ok {
+		procs := data.(map[string]interface{})
+		processes = make(map[string]string, len(procs))
+		for name, command := range procs {
+			processes[name] = command.(string)
+		}
+		delete(customData, "processes")
+		delete(customData, "procfile")
+	}
 	if data, ok := customData["procfile"]; ok {
 		procfile := data.(string)
 		err := yaml.Unmarshal([]byte(procfile), &processes)
-		if err != nil {
-			return err
+		if err != nil || len(processes) == 0 {
+			return errors.New("invalid Procfile")
 		}
 		delete(customData, "procfile")
 	}
