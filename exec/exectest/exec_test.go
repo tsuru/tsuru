@@ -33,6 +33,11 @@ func (s *S) TestCommandGetEnvs(c *check.C) {
 	c.Assert(cmd.GetEnvs(), check.DeepEquals, cmd.envs)
 }
 
+func (s *S) TestCommandGetDir(c *check.C) {
+	cmd := command{name: "docker", dir: "/tmp/test"}
+	c.Assert(cmd.GetDir(), check.DeepEquals, cmd.dir)
+}
+
 func (s *S) TestFakeExecutorImplementsExecutor(c *check.C) {
 	var _ exec.Executor = &FakeExecutor{}
 }
@@ -301,6 +306,7 @@ func (s *S) TestGetCommands(c *check.C) {
 		Stdout: &b,
 		Stderr: &b,
 		Envs:   []string{"BLA=bla"},
+		Dir:    "/tmp/test",
 	}
 	err := e.Execute(opts)
 	c.Assert(err, check.IsNil)
@@ -310,6 +316,7 @@ func (s *S) TestGetCommands(c *check.C) {
 			name: "sudo",
 			args: []string{"ifconfig", "-a"},
 			envs: []string{"BLA=bla"},
+			dir:  "/tmp/test",
 		},
 	}
 	c.Assert(cmds, check.DeepEquals, expected)

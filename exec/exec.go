@@ -16,6 +16,7 @@ type ExecuteOptions struct {
 	Cmd    string
 	Args   []string
 	Envs   []string
+	Dir    string
 	Stdin  io.Reader
 	Stdout io.Writer
 	Stderr io.Writer
@@ -34,5 +35,6 @@ func (OsExecutor) Execute(opts ExecuteOptions) error {
 	c.Stdout = opts.Stdout
 	c.Stderr = opts.Stderr
 	c.Env = opts.Envs
+	c.Dir = opts.Dir
 	return c.Run()
 }

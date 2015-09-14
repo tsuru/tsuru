@@ -19,6 +19,7 @@ import (
 
 type command struct {
 	name string
+	dir  string
 	args []string
 	envs []string
 }
@@ -34,6 +35,10 @@ func (c *command) GetArgs() []string {
 // GetEnvs returns the command environment variables.
 func (c *command) GetEnvs() []string {
 	return c.envs
+}
+
+func (c *command) GetDir() string {
+	return c.dir
 }
 
 type FakeExecutor struct {
@@ -71,7 +76,7 @@ func (e *FakeExecutor) hasOutputForArgs(args []string) (bool, []byte) {
 }
 
 func (e *FakeExecutor) Execute(opts exec.ExecuteOptions) error {
-	c := command{name: opts.Cmd, args: opts.Args, envs: opts.Envs}
+	c := command{name: opts.Cmd, args: opts.Args, envs: opts.Envs, dir: opts.Dir}
 	e.mut.Lock()
 	e.cmds = append(e.cmds, c)
 	e.mut.Unlock()
