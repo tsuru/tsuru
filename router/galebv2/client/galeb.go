@@ -207,17 +207,21 @@ func (c *GalebClient) RemoveVirtualHostByID(virtualHostID string) error {
 	return c.removeResource(virtualHostID)
 }
 
-func (c *GalebClient) RemoveRuleByID(ruleID string) error {
+func (c *GalebClient) RemoveRule(ruleName string) error {
+	ruleID, err := c.findItemByName("rule", ruleName)
+	if err != nil {
+		return err
+	}
 	return c.removeResource(ruleID)
 }
 
-func (c *GalebClient) RemoveRuleVirtualHostById(ruleID, virtualHostID string) error {
+func (c *GalebClient) RemoveRuleVirtualHostByID(ruleID, virtualHostID string) error {
 	vhId := virtualHostID[strings.LastIndex(virtualHostID, "/")+1:]
 	path := fmt.Sprintf("%s/virtualhosts/%s", ruleID, vhId)
 	return c.removeResource(path)
 }
 
-func (c *GalebClient) RemoveRuleVirtualHostByName(ruleName, virtualHostName string) error {
+func (c *GalebClient) RemoveRuleVirtualHost(ruleName, virtualHostName string) error {
 	ruleID, err := c.findItemByName("rule", ruleName)
 	if err != nil {
 		return err
@@ -226,7 +230,7 @@ func (c *GalebClient) RemoveRuleVirtualHostByName(ruleName, virtualHostName stri
 	if err != nil {
 		return err
 	}
-	return c.RemoveRuleVirtualHostById(ruleID, virtualHostID)
+	return c.RemoveRuleVirtualHostByID(ruleID, virtualHostID)
 }
 
 func (c *GalebClient) FindTargetsByParent(poolName string) ([]Target, error) {
@@ -255,31 +259,30 @@ func (c *GalebClient) FindTargetsByParent(poolName string) ([]Target, error) {
 	return rspObj.Embedded.Targets, nil
 }
 
-func (c *GalebClient) FindRuleByName(ruleName string) (Rule, error) {
-	path := fmt.Sprintf("/rule/search/findByName?name=%s", ruleName)
+func (c *GalebClient) FindVirtualHostsByRule(ruleName string) ([]VirtualHost, error) {
+	ruleID, err := c.findItemByName("rule", ruleName)
+	if err != nil {
+		return nil, err
+	}
+	path := fmt.Sprintf("%s/virtualhosts?size=999999", strings.TrimPrefix(ruleID, c.ApiUrl))
 	rsp, err := c.doRequest("GET", path, nil)
 	if err != nil {
-		return Rule{}, err
+		return nil, err
+	}
+	responseData, _ := ioutil.ReadAll(rsp.Body)
+	if rsp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("GET /rule/{id}/virtualhosts: wrong status code: %d. content: %s", rsp.StatusCode, string(responseData))
 	}
 	var rspObj struct {
-		Embedded map[string][]Rule `json:"_embedded"`
+		Embedded struct {
+			VirtualHosts []VirtualHost `json:"virtualhost"`
+		} `json:"_embedded"`
 	}
-	rspData, err := ioutil.ReadAll(rsp.Body)
+	err = json.Unmarshal(responseData, &rspObj)
 	if err != nil {
-		return Rule{}, err
+		return nil, fmt.Errorf("GET /rule/{id}/virtualhosts: unable to parse: %s: %s", string(responseData), err)
 	}
-	err = json.Unmarshal(rspData, &rspObj)
-	if err != nil {
-		return Rule{}, fmt.Errorf("unable to parse find response %q: %s", string(rspData), err)
-	}
-	itemList := rspObj.Embedded["rule"]
-	if len(itemList) == 0 {
-		return Rule{}, ErrItemNotFound
-	}
-	if len(itemList) > 1 {
-		return Rule{}, ErrAmbiguousSearch
-	}
-	return rspObj.Embedded["rule"][0], nil
+	return rspObj.Embedded.VirtualHosts, nil
 }
 
 func (c *GalebClient) Healthcheck() error {

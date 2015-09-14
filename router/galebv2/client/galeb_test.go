@@ -230,12 +230,26 @@ func (s *S) TestGalebRemoveVirtualHost(c *check.C) {
 	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/virtualhost/search/findByName?name=myvh.com", "/api/virtualhost/10"})
 }
 
-func (s *S) TestGalebRemoveRuleByID(c *check.C) {
+func (s *S) TestGalebRemoveRule(c *check.C) {
+	s.handler.ConditionalContent["/api/rule/search/findByName?name=myrule"] = []string{
+		"200", fmt.Sprintf(`{
+		"_embedded": {
+			"rule": [
+				{
+					"_links": {
+						"self": {
+							"href": "%s/rule/10"
+						}
+					}
+				}
+			]
+		}
+	}`, s.client.ApiUrl)}
 	s.handler.RspCode = http.StatusNoContent
-	err := s.client.RemoveRuleByID("/rule/myrule1")
+	err := s.client.RemoveRule("myrule")
 	c.Assert(err, check.IsNil)
-	c.Assert(s.handler.Method, check.DeepEquals, []string{"DELETE"})
-	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/rule/myrule1"})
+	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "DELETE"})
+	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/rule/search/findByName?name=myrule", "/api/rule/10"})
 }
 
 func (s *S) TestGalebRemoveBackendByIDInvalidResponse(c *check.C) {
@@ -243,6 +257,46 @@ func (s *S) TestGalebRemoveBackendByIDInvalidResponse(c *check.C) {
 	s.handler.Content = "invalid content"
 	err := s.client.RemoveBackendByID("/target/11")
 	c.Assert(err, check.ErrorMatches, "DELETE /target/11: invalid response code: 200: invalid content")
+}
+
+func (s *S) TestRemoveRuleVirtualHost(c *check.C) {
+	s.handler.ConditionalContent["/api/rule/search/findByName?name=myrule"] = []string{
+		"200", fmt.Sprintf(`{
+       "_embedded": {
+           "rule": [
+               {
+                   "_links": {
+                       "self": {
+                           "href": "%s/rule/1"
+                       }
+                   }
+               }
+           ]
+       }
+   }`, s.client.ApiUrl)}
+	s.handler.ConditionalContent["/api/virtualhost/search/findByName?name=myvh"] = []string{
+		"200", fmt.Sprintf(`{
+       "_embedded": {
+           "virtualhost": [
+               {
+                   "_links": {
+                       "self": {
+                           "href": "%s/virtualhost/2"
+                       }
+                   }
+               }
+           ]
+       }
+   }`, s.client.ApiUrl)}
+	s.handler.RspCode = http.StatusNoContent
+	err := s.client.RemoveRuleVirtualHost("myrule", "myvh")
+	c.Assert(err, check.IsNil)
+	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "GET", "DELETE"})
+	c.Assert(s.handler.Url, check.DeepEquals, []string{
+		"/api/rule/search/findByName?name=myrule",
+		"/api/virtualhost/search/findByName?name=myvh",
+		"/api/rule/1/virtualhosts/2",
+	})
 }
 
 func (s *S) TestGalebSetRuleVirtualHost(c *check.C) {
@@ -285,46 +339,6 @@ func (s *S) TestGalebSetRuleVirtualHost(c *check.C) {
 	})
 	c.Assert(s.handler.Header[2].Get("Content-Type"), check.Equals, "text/uri-list")
 	c.Assert(string(s.handler.Body[2]), check.Equals, fmt.Sprintf("%s/virtualhost/2", s.client.ApiUrl))
-}
-
-func (s *S) TestRemoveRuleVirtualHostByName(c *check.C) {
-	s.handler.ConditionalContent["/api/rule/search/findByName?name=myrule"] = []string{
-		"200", fmt.Sprintf(`{
-		"_embedded": {
-			"rule": [
-				{
-					"_links": {
-						"self": {
-							"href": "%s/rule/1"
-						}
-					}
-				}
-			]
-		}
-	}`, s.client.ApiUrl)}
-	s.handler.ConditionalContent["/api/virtualhost/search/findByName?name=myvh"] = []string{
-		"200", fmt.Sprintf(`{
-		"_embedded": {
-			"virtualhost": [
-				{
-					"_links": {
-						"self": {
-							"href": "%s/virtualhost/2"
-						}
-					}
-				}
-			]
-		}
-	}`, s.client.ApiUrl)}
-	s.handler.RspCode = http.StatusNoContent
-	err := s.client.RemoveRuleVirtualHostByName("myrule", "myvh")
-	c.Assert(err, check.IsNil)
-	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "GET", "DELETE"})
-	c.Assert(s.handler.Url, check.DeepEquals, []string{
-		"/api/rule/search/findByName?name=myrule",
-		"/api/virtualhost/search/findByName?name=myvh",
-		"/api/rule/1/virtualhosts/2",
-	})
 }
 
 func (s *S) TestFindTargetsByParent(c *check.C) {
@@ -393,16 +407,30 @@ func (s *S) TestFindTargetsByParent(c *check.C) {
 	c.Assert(s.handler.Header[1].Get("Content-Type"), check.Equals, "application/json")
 }
 
-func (s *S) TestFindRuleByName(c *check.C) {
+func (s *S) TestFindVirtualHostsByRule(c *check.C) {
 	s.handler.ConditionalContent["/api/rule/search/findByName?name=myrule"] = []string{
-		"200", `{
+		"200", fmt.Sprintf(`{
 		"_embedded": {
 			"rule": [
 				{
-					"name": "myrule",
 					"_links": {
 						"self": {
-							"href": "http://galeb.somewhere/api/rule/1"
+							"href": "%s/rule/1"
+						}
+					}
+				}
+			]
+		}
+	}`, s.client.ApiUrl)}
+	s.handler.ConditionalContent["/api/rule/1/virtualhosts?size=999999"] = []string{
+		"200", `{
+		"_embedded": {
+			"virtualhost": [
+				{
+					"name": "myvirtualhost",
+					"_links": {
+						"self": {
+							"href": "http://galeb.somewhere/api/virtualhost/1"
 						}
 					}
 				}
@@ -410,21 +438,23 @@ func (s *S) TestFindRuleByName(c *check.C) {
 		}
 	}`}
 	s.handler.RspCode = http.StatusOK
-	rule, err := s.client.FindRuleByName("myrule")
+	virtualhosts, err := s.client.FindVirtualHostsByRule("myrule")
 	c.Assert(err, check.IsNil)
-	c.Assert(rule, check.DeepEquals, Rule{
-		commonPostResponse: commonPostResponse{
-			Name: "myrule",
-			Links: linkData{
-				Self: hrefData{Href: "http://galeb.somewhere/api/rule/1"},
+	c.Assert(virtualhosts, check.DeepEquals, []VirtualHost{
+		{
+			commonPostResponse: commonPostResponse{
+				Name: "myvirtualhost",
+				Links: linkData{
+					Self: hrefData{Href: "http://galeb.somewhere/api/virtualhost/1"},
+				},
 			},
 		},
 	})
-	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET"})
+	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "GET"})
 	c.Assert(s.handler.Url, check.DeepEquals, []string{
 		"/api/rule/search/findByName?name=myrule",
+		"/api/rule/1/virtualhosts?size=999999",
 	})
-	c.Assert(s.handler.Header[0].Get("Content-Type"), check.Equals, "application/json")
 }
 
 func (s *S) TestHealthcheck(c *check.C) {

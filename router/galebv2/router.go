@@ -161,7 +161,7 @@ func (r *galebRouter) UnsetCName(cname, name string) error {
 		return err
 	}
 	vhName := r.virtualHostName(cname)
-	err = r.client.RemoveRuleVirtualHostByName(ruleName(backendName), vhName)
+	err = r.client.RemoveRuleVirtualHost(ruleName(backendName), vhName)
 	if err == galebClient.ErrItemNotFound {
 		return router.ErrCNameNotFound
 	}
@@ -218,21 +218,22 @@ func (r *galebRouter) RemoveBackend(name string) error {
 	if backendName != name {
 		return router.ErrBackendSwapped
 	}
-	rule, err := r.client.FindRuleByName(ruleName(backendName))
+	rule := ruleName(backendName)
+	virtualhosts, err := r.client.FindVirtualHostsByRule(rule)
 	if err != nil {
 		return err
 	}
-	for _, vhId := range rule.VirtualHosts {
-		err = r.client.RemoveRuleVirtualHostById(rule.FullId(), vhId)
+	for _, virtualhost := range virtualhosts {
+		err = r.client.RemoveRuleVirtualHost(rule, virtualhost.Name)
 		if err != nil {
 			return err
 		}
-		err = r.client.RemoveVirtualHostByID(vhId)
+		err = r.client.RemoveVirtualHostByID(virtualhost.FullId())
 		if err != nil {
 			return err
 		}
 	}
-	err = r.client.RemoveRuleByID(rule.FullId())
+	err = r.client.RemoveRule(ruleName(backendName))
 	if err != nil {
 		return err
 	}

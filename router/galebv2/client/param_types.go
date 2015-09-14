@@ -48,17 +48,15 @@ type RuleProperties struct {
 
 type Rule struct {
 	commonPostResponse
-	RuleType     string         `json:"ruleType,omitempty"`
-	VirtualHosts []string       `json:"virtualhosts,omitempty"`
-	BackendPool  string         `json:"target,omitempty"`
-	Default      bool           `json:"default,omitempty"`
-	Order        int            `json:"order,omitempty"`
-	Properties   RuleProperties `json:"properties,omitempty"`
+	RuleType    string         `json:"ruleType,omitempty"`
+	BackendPool string         `json:"target,omitempty"`
+	Default     bool           `json:"default,omitempty"`
+	Order       int            `json:"order,omitempty"`
+	Properties  RuleProperties `json:"properties,omitempty"`
 }
 
 type VirtualHost struct {
 	commonPostResponse
-	Environment string   `json:"environment,omitempty"`
-	Project     string   `json:"project,omitempty"`
-	Rules       []string `json:"rules,omitempty"`
+	Environment string `json:"environment,omitempty"`
+	Project     string `json:"project,omitempty"`
 }
