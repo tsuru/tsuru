@@ -31,6 +31,7 @@ var _ = check.Suite(&S{})
 func (s *S) SetUpTest(c *check.C) {
 	s.handler = apitest.MultiTestHandler{
 		ConditionalContent: make(map[string]interface{}),
+		RspHeader:          make(http.Header),
 	}
 	s.server = httptest.NewServer(&s.handler)
 	s.client = &GalebClient{
@@ -57,13 +58,7 @@ func (s *S) TestNewGalebClient(c *check.C) {
 }
 
 func (s *S) TestGalebAddBackendPool(c *check.C) {
-	s.handler.Content = `{
-      "_links": {
-        "self": {
-          "href": "http://galeb.somewhere/api/target/3"
-        }
-      }
-    }`
+	s.handler.RspHeader.Set("Location", "http://galeb.somewhere/api/target/3")
 	s.handler.RspCode = http.StatusCreated
 	expected := Target{
 		commonPostResponse: commonPostResponse{ID: 0, Name: "myname"},
@@ -71,7 +66,7 @@ func (s *S) TestGalebAddBackendPool(c *check.C) {
 		Environment:        "env1",
 		BalancePolicy:      "balance1",
 		TargetType:         "targetpool1",
-		Properties:         BackendPoolProperties{},
+		Properties:         BackendPoolProperties{HcPath: "/"},
 	}
 	fullId, err := s.client.AddBackendPool("myname")
 	c.Assert(err, check.IsNil)
@@ -99,7 +94,7 @@ func (s *S) TestGalebAddBackendPoolInvalidResponse(c *check.C) {
 	s.handler.Content = "invalid content"
 	fullId, err := s.client.AddBackendPool("")
 	c.Assert(err, check.ErrorMatches,
-		"POST /target: unable to parse response: invalid content: invalid character 'i' looking for beginning of value - PARAMS: .+")
+		"POST /target: empty location header. PARAMS: .+")
 	c.Assert(fullId, check.Equals, "")
 }
 
@@ -117,13 +112,7 @@ func (s *S) TestGalebAddBackend(c *check.C) {
 			]
 		}
 	}`
-	s.handler.ConditionalContent["/api/target"] = `{
-      "_links": {
-        "self": {
-          "href": "http://galeb.somewhere/api/target/10"
-        }
-      }
-    }`
+	s.handler.RspHeader.Set("Location", "http://galeb.somewhere/api/target/10")
 	s.handler.RspCode = http.StatusCreated
 	expected := Target{
 		commonPostResponse: commonPostResponse{ID: 0, Name: "http://10.0.0.1:8080"},
@@ -132,7 +121,7 @@ func (s *S) TestGalebAddBackend(c *check.C) {
 		BalancePolicy:      "balance1",
 		TargetType:         "targetbackend1",
 		BackendPools:       []string{"http://galeb.somewhere/api/target/9"},
-		Properties:         BackendPoolProperties{},
+		Properties:         BackendPoolProperties{HcPath: "/"},
 	}
 	url1, _ := url.Parse("http://10.0.0.1:8080")
 	fullId, err := s.client.AddBackend(url1, "mypool")
@@ -148,14 +137,8 @@ func (s *S) TestGalebAddBackend(c *check.C) {
 }
 
 func (s *S) TestGalebAddVirtualHost(c *check.C) {
+	s.handler.RspHeader.Set("Location", "http://galeb.somewhere/api/virtualhost/999")
 	s.handler.RspCode = http.StatusCreated
-	s.handler.Content = `{
-      "_links": {
-        "self": {
-          "href": "http://galeb.somewhere/api/virtualhost/999"
-        }
-      }
-    }`
 	fullId, err := s.client.AddVirtualHost("myvirtualhost.com")
 	c.Assert(err, check.IsNil)
 	c.Assert(fullId, check.Equals, "http://galeb.somewhere/api/virtualhost/999")
@@ -171,13 +154,7 @@ func (s *S) TestGalebAddVirtualHost(c *check.C) {
 }
 
 func (s *S) TestGalebAddRuleToID(c *check.C) {
-	s.handler.ConditionalContent["/api/rule"] = `{
-      "_links": {
-        "self": {
-          "href": "http://galeb.somewhere/api/rule/8"
-        }
-      }
-    }`
+	s.handler.RspHeader.Set("Location", "http://galeb.somewhere/api/rule/8")
 	s.handler.RspCode = http.StatusCreated
 	expected := Rule{
 		commonPostResponse: commonPostResponse{ID: 0, Name: "myrule"},
@@ -297,13 +274,167 @@ func (s *S) TestGalebSetRuleVirtualHost(c *check.C) {
 			]
 		}
 	}`, s.client.ApiUrl)}
-	s.handler.RspCode = http.StatusCreated
+	s.handler.RspCode = http.StatusNoContent
 	err := s.client.SetRuleVirtualHost("myrule", "myvh")
 	c.Assert(err, check.IsNil)
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "GET", "PATCH"})
 	c.Assert(s.handler.Url, check.DeepEquals, []string{
 		"/api/rule/search/findByName?name=myrule",
 		"/api/virtualhost/search/findByName?name=myvh",
-		"/api/rule/1/virtualhost/2",
+		"/api/rule/1/virtualhosts",
 	})
+	c.Assert(s.handler.Header[2].Get("Content-Type"), check.Equals, "text/uri-list")
+	c.Assert(string(s.handler.Body[2]), check.Equals, fmt.Sprintf("%s/virtualhost/2", s.client.ApiUrl))
+}
+
+func (s *S) TestRemoveRuleVirtualHostByName(c *check.C) {
+	s.handler.ConditionalContent["/api/rule/search/findByName?name=myrule"] = []string{
+		"200", fmt.Sprintf(`{
+		"_embedded": {
+			"rule": [
+				{
+					"_links": {
+						"self": {
+							"href": "%s/rule/1"
+						}
+					}
+				}
+			]
+		}
+	}`, s.client.ApiUrl)}
+	s.handler.ConditionalContent["/api/virtualhost/search/findByName?name=myvh"] = []string{
+		"200", fmt.Sprintf(`{
+		"_embedded": {
+			"virtualhost": [
+				{
+					"_links": {
+						"self": {
+							"href": "%s/virtualhost/2"
+						}
+					}
+				}
+			]
+		}
+	}`, s.client.ApiUrl)}
+	s.handler.RspCode = http.StatusNoContent
+	err := s.client.RemoveRuleVirtualHostByName("myrule", "myvh")
+	c.Assert(err, check.IsNil)
+	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "GET", "DELETE"})
+	c.Assert(s.handler.Url, check.DeepEquals, []string{
+		"/api/rule/search/findByName?name=myrule",
+		"/api/virtualhost/search/findByName?name=myvh",
+		"/api/rule/1/virtualhosts/2",
+	})
+}
+
+func (s *S) TestFindTargetsByParent(c *check.C) {
+	s.handler.ConditionalContent["/api/target/search/findByName?name=mypool"] = []string{
+		"200", fmt.Sprintf(`{
+		"_embedded": {
+			"target": [
+				{
+					"_links": {
+						"self": {
+							"href": "%s/target/8"
+						}
+					}
+				}
+			]
+		}
+	}`, s.client.ApiUrl)}
+	s.handler.ConditionalContent["/api/target/8/children?size=999999"] = `{
+		"_embedded": {
+			"target": [
+				{
+					"name": "http://10.0.0.1:1234",
+					"_links": {
+						"self": {
+							"href": "http://galeb.somewhere/api/target/9"
+						}
+					}
+				},
+				{
+					"name": "http://10.0.0.2:5678",
+					"_links": {
+						"self": {
+							"href": "http://galeb.somewhere/api/target/10"
+						}
+					}
+				}
+			]
+		}
+	}`
+	s.handler.RspCode = http.StatusOK
+	targets, err := s.client.FindTargetsByParent("mypool")
+	c.Assert(err, check.IsNil)
+	c.Assert(targets, check.DeepEquals, []Target{
+		{
+			commonPostResponse: commonPostResponse{
+				Name: "http://10.0.0.1:1234",
+				Links: linkData{
+					Self: hrefData{Href: "http://galeb.somewhere/api/target/9"},
+				},
+			},
+		},
+		{
+			commonPostResponse: commonPostResponse{
+				Name: "http://10.0.0.2:5678",
+				Links: linkData{
+					Self: hrefData{Href: "http://galeb.somewhere/api/target/10"},
+				},
+			},
+		},
+	})
+	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "GET"})
+	c.Assert(s.handler.Url, check.DeepEquals, []string{
+		"/api/target/search/findByName?name=mypool",
+		"/api/target/8/children?size=999999",
+	})
+	c.Assert(s.handler.Header[1].Get("Content-Type"), check.Equals, "application/json")
+}
+
+func (s *S) TestFindRuleByName(c *check.C) {
+	s.handler.ConditionalContent["/api/rule/search/findByName?name=myrule"] = []string{
+		"200", `{
+		"_embedded": {
+			"rule": [
+				{
+					"name": "myrule",
+					"_links": {
+						"self": {
+							"href": "http://galeb.somewhere/api/rule/1"
+						}
+					}
+				}
+			]
+		}
+	}`}
+	s.handler.RspCode = http.StatusOK
+	rule, err := s.client.FindRuleByName("myrule")
+	c.Assert(err, check.IsNil)
+	c.Assert(rule, check.DeepEquals, Rule{
+		commonPostResponse: commonPostResponse{
+			Name: "myrule",
+			Links: linkData{
+				Self: hrefData{Href: "http://galeb.somewhere/api/rule/1"},
+			},
+		},
+	})
+	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET"})
+	c.Assert(s.handler.Url, check.DeepEquals, []string{
+		"/api/rule/search/findByName?name=myrule",
+	})
+	c.Assert(s.handler.Header[0].Get("Content-Type"), check.Equals, "application/json")
+}
+
+func (s *S) TestHealthcheck(c *check.C) {
+	s.handler.ConditionalContent["/api/healthcheck"] = "WORKING"
+	s.handler.RspCode = 200
+	err := s.client.Healthcheck()
+	c.Assert(err, check.IsNil)
+	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET"})
+	c.Assert(s.handler.Url, check.DeepEquals, []string{
+		"/api/healthcheck",
+	})
+	c.Assert(s.handler.Header[0].Get("Content-Type"), check.Equals, "application/json")
 }

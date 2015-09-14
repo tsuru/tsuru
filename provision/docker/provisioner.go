@@ -32,6 +32,7 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/healer"
 	"github.com/tsuru/tsuru/router"
 	_ "github.com/tsuru/tsuru/router/galeb"
+	_ "github.com/tsuru/tsuru/router/galebv2"
 	_ "github.com/tsuru/tsuru/router/hipache"
 	_ "github.com/tsuru/tsuru/router/routertest"
 	_ "github.com/tsuru/tsuru/router/vulcand"

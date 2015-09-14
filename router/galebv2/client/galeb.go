@@ -48,10 +48,17 @@ var timeoutHttpClient = &http.Client{
 
 func (c *GalebClient) doRequest(method, path string, params interface{}) (*http.Response, error) {
 	buf := bytes.Buffer{}
+	contentType := "application/json"
 	if params != nil {
-		err := json.NewEncoder(&buf).Encode(params)
-		if err != nil {
-			return nil, err
+		switch val := params.(type) {
+		case string:
+			contentType = "text/uri-list"
+			buf.WriteString(val)
+		default:
+			err := json.NewEncoder(&buf).Encode(params)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 	url := fmt.Sprintf("%s/%s", strings.TrimRight(c.ApiUrl, "/"), strings.TrimLeft(path, "/"))
@@ -60,7 +67,7 @@ func (c *GalebClient) doRequest(method, path string, params interface{}) (*http.
 		return nil, err
 	}
 	req.SetBasicAuth(c.Username, c.Password)
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", contentType)
 	rsp, err := timeoutHttpClient.Do(req)
 	return rsp, err
 }
@@ -73,16 +80,15 @@ func (c *GalebClient) doCreateResource(path string, params interface{}) (string,
 	if rsp.StatusCode == http.StatusConflict {
 		return "", ErrItemAlreadyExists
 	}
-	responseData, _ := ioutil.ReadAll(rsp.Body)
 	if rsp.StatusCode != http.StatusCreated {
+		responseData, _ := ioutil.ReadAll(rsp.Body)
 		return "", fmt.Errorf("POST %s: invalid response code: %d: %s - PARAMS: %#v", path, rsp.StatusCode, string(responseData), params)
 	}
-	var commonRsp commonPostResponse
-	err = json.Unmarshal(responseData, &commonRsp)
-	if err != nil {
-		return "", fmt.Errorf("POST %s: unable to parse response: %s: %s - PARAMS: %#v", path, string(responseData), err.Error(), params)
+	location := rsp.Header.Get("Location")
+	if location == "" {
+		return "", fmt.Errorf("POST %s: empty location header. PARAMS: %#v", path, params)
 	}
-	return commonRsp.FullId(), nil
+	return location, nil
 }
 
 func (c *GalebClient) fillDefaultTargetValues(params *Target) {
@@ -95,6 +101,7 @@ func (c *GalebClient) fillDefaultTargetValues(params *Target) {
 	if params.BalancePolicy == "" {
 		params.BalancePolicy = c.BalancePolicy
 	}
+	params.Properties.HcPath = "/"
 }
 
 func (c *GalebClient) fillDefaultRuleValues(params *Rule) {
@@ -152,14 +159,12 @@ func (c *GalebClient) AddRuleToID(name, poolID string) (string, error) {
 }
 
 func (c *GalebClient) SetRuleVirtualHostIDs(ruleID, virtualHostID string) error {
-	path := strings.TrimPrefix(ruleID, c.ApiUrl)
-	vhId := virtualHostID[strings.LastIndex(virtualHostID, "/")+1:]
-	path = fmt.Sprintf("%s/virtualhost/%s", path, vhId)
-	rsp, err := c.doRequest("PATCH", path, nil)
+	path := fmt.Sprintf("%s/virtualhosts", strings.TrimPrefix(ruleID, c.ApiUrl))
+	rsp, err := c.doRequest("PATCH", path, virtualHostID)
 	if err != nil {
 		return err
 	}
-	if rsp.StatusCode != http.StatusCreated {
+	if rsp.StatusCode != http.StatusNoContent {
 		responseData, _ := ioutil.ReadAll(rsp.Body)
 		return fmt.Errorf("PATCH %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
 	}
@@ -208,7 +213,7 @@ func (c *GalebClient) RemoveRuleByID(ruleID string) error {
 
 func (c *GalebClient) RemoveRuleVirtualHostById(ruleID, virtualHostID string) error {
 	vhId := virtualHostID[strings.LastIndex(virtualHostID, "/")+1:]
-	path := fmt.Sprintf("%s/virtualhost/%s", ruleID, vhId)
+	path := fmt.Sprintf("%s/virtualhosts/%s", ruleID, vhId)
 	return c.removeResource(path)
 }
 
@@ -308,10 +313,6 @@ func (c *GalebClient) removeResource(resourceURI string) error {
 
 func (c *GalebClient) findItemByName(item, name string) (string, error) {
 	path := fmt.Sprintf("/%s/search/findByName?name=%s", item, name)
-	return c.findItemByPath(item, path)
-}
-
-func (c *GalebClient) findItemByPath(item, path string) (string, error) {
 	rsp, err := c.doRequest("GET", path, nil)
 	if err != nil {
 		return "", err

@@ -7,6 +7,7 @@ package galebv2
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -55,8 +56,8 @@ func NewFakeGalebServer() (*fakeGalebServer, error) {
 	r.HandleFunc("/api/{item}/{id}", server.destroyItem).Methods("DELETE")
 	r.HandleFunc("/api/{item}/search/findByName", server.findItemByNameHandler).Methods("GET")
 	r.HandleFunc("/api/rule/search/findByTargetName", server.findRuleByTargetName).Methods("GET")
-	r.HandleFunc("/api/rule/{id}/virtualhost/{vhid}", server.addRuleVirtualhost).Methods("PATCH")
-	r.HandleFunc("/api/rule/{id}/virtualhost/{vhid}", server.destroyRuleVirtualhost).Methods("DELETE")
+	r.HandleFunc("/api/rule/{id}/virtualhosts", server.addRuleVirtualhost).Methods("PATCH")
+	r.HandleFunc("/api/rule/{id}/virtualhosts/{vhid}", server.destroyRuleVirtualhost).Methods("DELETE")
 	r.HandleFunc("/api/target/{id}/children", server.findTargetsByParent).Methods("GET")
 	server.router = r
 	return server, nil
@@ -164,8 +165,8 @@ func (s *fakeGalebServer) createTarget(w http.ResponseWriter, r *http.Request) {
 	target.ID = s.idCounter
 	target.Links.Self.Href = fmt.Sprintf("http://%s%s/%d", r.Host, r.URL.String(), target.ID)
 	s.targets[strconv.Itoa(target.ID)] = &target
+	w.Header().Set("Location", target.Links.Self.Href)
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(&target)
 }
 
 func (s *fakeGalebServer) createRule(w http.ResponseWriter, r *http.Request) {
@@ -175,13 +176,23 @@ func (s *fakeGalebServer) createRule(w http.ResponseWriter, r *http.Request) {
 	rule.ID = s.idCounter
 	rule.Links.Self.Href = fmt.Sprintf("http://%s%s/%d", r.Host, r.URL.String(), rule.ID)
 	s.rules[strconv.Itoa(rule.ID)] = &rule
+	w.Header().Set("Location", rule.Links.Self.Href)
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(&rule)
 }
 
 func (s *fakeGalebServer) addRuleVirtualhost(w http.ResponseWriter, r *http.Request) {
 	id := mux.Vars(r)["id"]
-	vhId := mux.Vars(r)["vhid"]
+	data, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	parts := strings.Split(string(data), "\n")
+	if len(parts) == 0 || parts[0] == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	vhId := parts[0][strings.LastIndex(parts[0], "/")+1:]
 	baseRule := s.rules[id].(*galebClient.Rule)
 	baseVirtualHost := s.virtualhosts[vhId].(*galebClient.VirtualHost)
 	if baseRule == nil || baseVirtualHost == nil {
@@ -189,8 +200,7 @@ func (s *fakeGalebServer) addRuleVirtualhost(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	baseRule.VirtualHosts = append(baseRule.VirtualHosts, baseVirtualHost.FullId())
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(baseRule)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *fakeGalebServer) destroyRuleVirtualhost(w http.ResponseWriter, r *http.Request) {
@@ -226,8 +236,8 @@ func (s *fakeGalebServer) createVirtualhost(w http.ResponseWriter, r *http.Reque
 	virtualhost.ID = s.idCounter
 	virtualhost.Links.Self.Href = fmt.Sprintf("http://%s%s/%d", r.Host, r.URL.String(), virtualhost.ID)
 	s.virtualhosts[strconv.Itoa(virtualhost.ID)] = &virtualhost
+	w.Header().Set("Location", virtualhost.Links.Self.Href)
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(&virtualhost)
 }
 
 func init() {

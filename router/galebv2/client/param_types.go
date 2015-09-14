@@ -4,10 +4,12 @@
 
 package client
 
+type hrefData struct {
+	Href string `json:"href"`
+}
+
 type linkData struct {
-	Self struct {
-		Href string `json:"href"`
-	} `json:"self"`
+	Self hrefData `json:"self"`
 }
 
 type commonPostResponse struct {
@@ -27,7 +29,7 @@ func (c commonPostResponse) GetName() string {
 type BackendPoolProperties struct {
 	HcPath       string `json:"hcPath"`
 	HcBody       string `json:"hcBody"`
-	HcStatusCode int    `json:"hcStatusCode"`
+	HcStatusCode string `json:"hcStatusCode"`
 }
 
 type Target struct {
