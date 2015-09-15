@@ -145,14 +145,14 @@ func (r *galebRouter) SetCName(cname, name string) error {
 	if !router.ValidCName(cname, r.domain) {
 		return router.ErrCNameNotAllowed
 	}
-	_, err = r.client.AddVirtualHost(r.virtualHostName(cname))
+	_, err = r.client.AddVirtualHost(cname)
 	if err == galebClient.ErrItemAlreadyExists {
 		return router.ErrCNameExists
 	}
 	if err != nil {
 		return err
 	}
-	return r.client.SetRuleVirtualHost(ruleName(backendName), r.virtualHostName(cname))
+	return r.client.SetRuleVirtualHost(ruleName(backendName), cname)
 }
 
 func (r *galebRouter) UnsetCName(cname, name string) error {
@@ -160,15 +160,14 @@ func (r *galebRouter) UnsetCName(cname, name string) error {
 	if err != nil {
 		return err
 	}
-	vhName := r.virtualHostName(cname)
-	err = r.client.RemoveRuleVirtualHost(ruleName(backendName), vhName)
+	err = r.client.RemoveRuleVirtualHost(ruleName(backendName), cname)
 	if err == galebClient.ErrItemNotFound {
 		return router.ErrCNameNotFound
 	}
 	if err != nil {
 		return err
 	}
-	return r.client.RemoveVirtualHost(vhName)
+	return r.client.RemoveVirtualHost(cname)
 }
 
 func (r *galebRouter) Addr(name string) (string, error) {
