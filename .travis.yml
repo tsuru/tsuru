@@ -18,7 +18,7 @@ before_script:
   - rsyslogd &
   - sleep 1
 script:
-  - make test GOMAXPROCS=1
+  - make test
   - ./check-fmt.sh
   - make deadcode
 notifications:
