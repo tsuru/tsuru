@@ -4,10 +4,6 @@
 # For example, Globo.com employees are listed here but not in AUTHORS,
 # because Globo.com holds the copyright.
 #
-# You can update this list using the following command:
-#
-#   % git shortlog -se | awk '{$1=""; print $0}' | sed -e 's/^ //'
-#
 # Please keep this file sorted, and group users with multiple emails.
 
 Alan Justino da Silva <alan.justino@yahoo.com.br>
@@ -53,7 +49,7 @@ Michael <hfeeki@gmail.com>
 Philip Tzou <philip.npc@gmail.com>
 Pablo Aguiar <scorphus@gmail.com>
 Paulo Sousa <psousa@morpheu.org>
-Raninho <Raninho@Raninho.com.br>
+Raniere Fernandes <Raninho@Raninho.com.br>
 Renan Oliveira <renan@corp.globo.com> <renan.gpa@gmail.com>
 Richard Knop <risoknop@gmail.com>
 Rodrigo Chacon <rochacon@gmail.com>
