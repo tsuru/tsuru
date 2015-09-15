@@ -7,6 +7,7 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"time"
 
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
@@ -90,7 +91,9 @@ func changePlan(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
+	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	err = a.ChangePlan(plan.Name, writer)
 	if err == app.ErrPlanNotFound {
 		writer.Encode(io.SimpleJsonMessage{Error: err.Error()})

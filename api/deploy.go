@@ -105,7 +105,9 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		}
 	}
 	w.Header().Set("Content-Type", "application/json")
-	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
+	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	err = app.Deploy(app.DeployOptions{
 		App:          instance,
 		OutputStream: writer,
