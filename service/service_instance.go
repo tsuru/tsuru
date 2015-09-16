@@ -31,8 +31,8 @@ var (
 	ErrMultipleTeams             = stderrors.New("user is member of multiple teams, please specify the team that owns the service instance")
 	ErrUnitAlreadyBound          = stderrors.New("unit is already bound to this service instance")
 	ErrUnitNotBound              = stderrors.New("unit is not bound to this service instance")
-
-	instanceNameRegexp = regexp.MustCompile(`^[A-Za-z][-a-zA-Z0-9_]+$`)
+	ErrServiceInstanceBound      = stderrors.New("This service instance is bound to at least one app. Unbind them before removing it")
+	instanceNameRegexp           = regexp.MustCompile(`^[A-Za-z][-a-zA-Z0-9_]+$`)
 )
 
 type ServiceInstance struct {
@@ -49,8 +49,7 @@ type ServiceInstance struct {
 // DeleteInstance deletes the service instance from the database.
 func DeleteInstance(si *ServiceInstance) error {
 	if len(si.Apps) > 0 {
-		msg := "This service instance is bound to at least one app. Unbind them before removing it"
-		return stderrors.New(msg)
+		return ErrServiceInstanceBound
 	}
 	endpoint, err := si.Service().getClient("production")
 	if err == nil {
@@ -207,6 +206,7 @@ func (si *ServiceInstance) UnbindApp(app bind.App, writer io.Writer) error {
 		&unbindAppDB,
 		&unbindAppEndpoint,
 		&removeBindedEnvs,
+		&removeListApp,
 	}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(&args)

@@ -11,6 +11,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
@@ -18,6 +19,8 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/rec/rectest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/service"
@@ -26,10 +29,12 @@ import (
 )
 
 type ConsumptionSuite struct {
-	conn  *db.Storage
-	team  *auth.Team
-	user  *auth.User
-	token auth.Token
+	conn        *db.Storage
+	team        *auth.Team
+	user        *auth.User
+	token       auth.Token
+	provisioner *provisiontest.FakeProvisioner
+	pool        string
 }
 
 var _ = check.Suite(&ConsumptionSuite{})
@@ -53,6 +58,8 @@ func (s *ConsumptionSuite) SetUpTest(c *check.C) {
 	s.token, err = nativeScheme.Login(map[string]string{"email": s.user.Email, "password": "123456"})
 	c.Assert(err, check.IsNil)
 	app.AuthScheme = nativeScheme
+	s.provisioner = provisiontest.NewFakeProvisioner()
+	app.Provisioner = s.provisioner
 }
 
 func (s *ConsumptionSuite) TearDownTest(c *check.C) {
@@ -290,6 +297,58 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsShouldFailA
 	recorder, request := makeRequestToRemoveInstanceHandler("foo-instance", c)
 	err = removeServiceInstance(recorder, request, s.token)
 	c.Assert(err, check.ErrorMatches, "^This service instance is bound to at least one app. Unbind them before removing it$")
+}
+
+//b
+func makeRequestToRemoveInstanceHandlerWithUnbind(name string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
+	url := fmt.Sprintf("/services/c/instances/%s?:name=%s&unbindall=%s", name, name, "true")
+	request, err := http.NewRequest("DELETE", url, nil)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	return recorder, request
+}
+
+//a
+func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsWithUnbindAll(c *check.C) {
+	var called int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/bind" {
+			atomic.StoreInt32(&called, 1)
+		}
+	}))
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := srvc.Create()
+	c.Assert(err, check.IsNil)
+	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
+	p := app.Platform{Name: "zend"}
+	s.conn.Platforms().Insert(p)
+	s.pool = "test1"
+	opts := provision.AddPoolOptions{Name: "test1", Default: true}
+	err = provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	a := app.App{
+		Name:     "painkiller",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+	}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	units, _ := s.provisioner.AddUnits(&a, 1, "web", nil)
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{"painkiller"},
+		Units:       []string{units[0].ID},
+	}
+	err = instance.Create()
+	c.Assert(err, check.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
+	recorder, request := makeRequestToRemoveInstanceHandlerWithUnbind("my-mysql", c)
+	err = removeServiceInstance(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *ConsumptionSuite) TestRemoveServiceShouldCallTheServiceAPI(c *check.C) {

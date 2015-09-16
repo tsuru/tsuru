@@ -13,6 +13,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
+	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/rec"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/mgo.v2/bson"
@@ -51,14 +52,37 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if err != nil {
 		return err
 	}
+	unbindAll := r.URL.Query().Get("unbindall")
 	name := r.URL.Query().Get(":name")
 	rec.Log(u.Email, "remove-service-instance", name)
 	si, err := getServiceInstanceOrError(name, u)
 	if err != nil {
 		return err
 	}
+	if unbindAll == "true" {
+		if len(si.Apps) > 0 {
+			for _, appName := range si.Apps {
+				_, app, err := getServiceInstance(si.Name, appName, u)
+				if err != nil {
+					return err
+				}
+				w.Header().Set("Content-Type", "application/json")
+				writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
+				err = si.UnbindApp(app, writer)
+				if err != nil {
+					return err
+				}
+				fmt.Fprintf(writer, "\nInstance %q is not bound to the app %q anymore.\n", si.Name, app.GetName())
+			}
+		}
+	}
 	err = service.DeleteInstance(si)
 	if err != nil {
+		var httpError int
+		if err == service.ErrServiceInstanceBound {
+			httpError = http.StatusConflict
+			return &errors.HTTP{Code: httpError, Message: err.Error()}
+		}
 		return err
 	}
 	w.Write([]byte("service instance successfuly removed"))
