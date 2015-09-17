@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"time"
 	"strings"
+	"time"
 
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"

@@ -7,25 +7,25 @@ package api
 import (
 	"bytes"
 	"encoding/json"
+	stderrors "errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"sync/atomic"
-	stderrors "errors"
-	
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"github.com/tsuru/tsuru/rec/rectest"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"github.com/tsuru/tsuru/service"
-	"github.com/tsuru/tsuru/io"
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -452,7 +452,7 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsWithNoUnbin
 		Name:        "my-mysql",
 		ServiceName: "mysql",
 		Teams:       []string{s.team.Name},
-		Apps:        []string{"app","app2"},
+		Apps:        []string{"app", "app2"},
 		Units:       []string{units[0].ID},
 	}
 	err = instance.Create()
