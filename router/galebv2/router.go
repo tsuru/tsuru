@@ -50,6 +50,7 @@ func createRouter(prefix string) (router.Router, error) {
 	ruleType, _ := config.GetString(prefix + ":rule-type")
 	targetTypeBackend, _ := config.GetString(prefix + ":target-type-backend")
 	targetTypePool, _ := config.GetString(prefix + ":target-type-backend-pool")
+	debug, _ := config.GetBool(prefix + ":debug")
 	client := galebClient.GalebClient{
 		ApiUrl:            apiUrl,
 		Username:          username,
@@ -60,6 +61,7 @@ func createRouter(prefix string) (router.Router, error) {
 		RuleType:          ruleType,
 		TargetTypeBackend: targetTypeBackend,
 		TargetTypePool:    targetTypePool,
+		Debug:             debug,
 	}
 	r := galebRouter{
 		client: &client,

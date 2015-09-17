@@ -4,6 +4,11 @@
 
 package client
 
+const (
+	STATUS_PENDING = "PENDING"
+	STATUS_OK      = "OK"
+)
+
 type hrefData struct {
 	Href string `json:"href"`
 }
@@ -13,9 +18,10 @@ type linkData struct {
 }
 
 type commonPostResponse struct {
-	Links linkData `json:"_links,omitempty"`
-	ID    int      `json:"ID,omitempty"`
-	Name  string   `json:"name,omitempty"`
+	Links  linkData `json:"_links,omitempty"`
+	ID     int      `json:"ID,omitempty"`
+	Name   string   `json:"name,omitempty"`
+	Status string   `json:"_status,omitempty"`
 }
 
 func (c commonPostResponse) FullId() string {

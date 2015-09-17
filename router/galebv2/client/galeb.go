@@ -15,6 +15,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/tsuru/tsuru/log"
 )
 
 var (
@@ -33,6 +35,7 @@ type GalebClient struct {
 	RuleType          string
 	TargetTypeBackend string
 	TargetTypePool    string
+	Debug             bool
 }
 
 var timeoutHttpClient = &http.Client{
@@ -62,6 +65,10 @@ func (c *GalebClient) doRequest(method, path string, params interface{}) (*http.
 		}
 	}
 	url := fmt.Sprintf("%s/%s", strings.TrimRight(c.ApiUrl, "/"), strings.TrimLeft(path, "/"))
+	var bodyData string
+	if c.Debug {
+		bodyData = buf.String()
+	}
 	req, err := http.NewRequest(method, url, &buf)
 	if err != nil {
 		return nil, err
@@ -69,6 +76,13 @@ func (c *GalebClient) doRequest(method, path string, params interface{}) (*http.
 	req.SetBasicAuth(c.Username, c.Password)
 	req.Header.Set("Content-Type", contentType)
 	rsp, err := timeoutHttpClient.Do(req)
+	if c.Debug {
+		var code int
+		if err == nil {
+			code = rsp.StatusCode
+		}
+		log.Debugf("galeb %s %s %s: %d", method, url, bodyData, code)
+	}
 	return rsp, err
 }
 
@@ -126,7 +140,11 @@ func (c *GalebClient) AddVirtualHost(addr string) (string, error) {
 	var params VirtualHost
 	c.fillDefaultVirtualHostValues(&params)
 	params.Name = addr
-	return c.doCreateResource("/virtualhost", &params)
+	resource, err := c.doCreateResource("/virtualhost", &params)
+	if err != nil {
+		return "", err
+	}
+	return resource, c.waitStatusOK(resource)
 }
 
 func (c *GalebClient) AddBackendPool(name string) (string, error) {
@@ -134,7 +152,11 @@ func (c *GalebClient) AddBackendPool(name string) (string, error) {
 	c.fillDefaultTargetValues(&params)
 	params.Name = name
 	params.TargetType = c.TargetTypePool
-	return c.doCreateResource("/target", &params)
+	resource, err := c.doCreateResource("/target", &params)
+	if err != nil {
+		return "", err
+	}
+	return resource, c.waitStatusOK(resource)
 }
 
 func (c *GalebClient) AddBackend(backend *url.URL, poolName string) (string, error) {
@@ -147,7 +169,11 @@ func (c *GalebClient) AddBackend(backend *url.URL, poolName string) (string, err
 	}
 	params.BackendPool = poolID
 	params.TargetType = c.TargetTypeBackend
-	return c.doCreateResource("/target", &params)
+	resource, err := c.doCreateResource("/target", &params)
+	if err != nil {
+		return "", err
+	}
+	return resource, c.waitStatusOK(resource)
 }
 
 func (c *GalebClient) AddRuleToID(name, poolID string) (string, error) {
@@ -168,7 +194,7 @@ func (c *GalebClient) SetRuleVirtualHostIDs(ruleID, virtualHostID string) error 
 		responseData, _ := ioutil.ReadAll(rsp.Body)
 		return fmt.Errorf("PATCH %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
 	}
-	return err
+	return c.waitStatusOK(ruleID)
 }
 
 func (c *GalebClient) SetRuleVirtualHost(ruleName, virtualHostName string) error {
@@ -343,4 +369,49 @@ func (c *GalebClient) findItemByName(item, name string) (string, error) {
 		return "", ErrItemNotFound
 	}
 	return id, nil
+}
+
+func (c *GalebClient) fetchPathStatus(path string) (string, error) {
+	rsp, err := c.doRequest("GET", path, nil)
+	if err != nil {
+		return "", fmt.Errorf("GET %s: unable to make request: %s", path, err)
+	}
+	responseData, _ := ioutil.ReadAll(rsp.Body)
+	if rsp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("GET %s: invalid response code: %d: %s", path, rsp.StatusCode, string(responseData))
+	}
+	var response commonPostResponse
+	err = json.Unmarshal(responseData, &response)
+	if err != nil {
+		return "", fmt.Errorf("GET %s: unable to unmarshal response: %s: %s", path, err, string(responseData))
+	}
+	return response.Status, nil
+}
+
+func (c *GalebClient) waitStatusOK(resourceURI string) error {
+	path := strings.TrimPrefix(resourceURI, c.ApiUrl)
+	maxWaitTime := 30 * time.Second
+	timeout := time.After(maxWaitTime)
+	status := STATUS_PENDING
+	var err error
+	for {
+		status, err = c.fetchPathStatus(path)
+		if err != nil || status != STATUS_PENDING {
+			break
+		}
+		select {
+		case <-timeout:
+			err = fmt.Errorf("GET %s: timeout after %v waiting for status change from PENDING", path, maxWaitTime)
+			break
+		default:
+			time.Sleep(500 * time.Millisecond)
+		}
+	}
+	if err != nil {
+		return err
+	}
+	if status != STATUS_OK {
+		return fmt.Errorf("GET %s: invalid status %s", path, status)
+	}
+	return nil
 }

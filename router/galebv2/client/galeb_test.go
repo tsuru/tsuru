@@ -58,7 +58,10 @@ func (s *S) TestNewGalebClient(c *check.C) {
 }
 
 func (s *S) TestGalebAddBackendPool(c *check.C) {
-	s.handler.RspHeader.Set("Location", "http://galeb.somewhere/api/target/3")
+	s.handler.ConditionalContent["/api/target/3"] = []string{
+		"200", `{"_status": "OK"}`,
+	}
+	s.handler.RspHeader.Set("Location", fmt.Sprintf("%s/target/3", s.client.ApiUrl))
 	s.handler.RspCode = http.StatusCreated
 	expected := Target{
 		commonPostResponse: commonPostResponse{ID: 0, Name: "myname"},
@@ -70,14 +73,14 @@ func (s *S) TestGalebAddBackendPool(c *check.C) {
 	}
 	fullId, err := s.client.AddBackendPool("myname")
 	c.Assert(err, check.IsNil)
-	c.Assert(s.handler.Method, check.DeepEquals, []string{"POST"})
-	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/target"})
+	c.Assert(s.handler.Method, check.DeepEquals, []string{"POST", "GET"})
+	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/target", "/api/target/3"})
 	var parsedParams Target
 	err = json.Unmarshal(s.handler.Body[0], &parsedParams)
 	c.Assert(err, check.IsNil)
 	c.Assert(parsedParams, check.DeepEquals, expected)
 	c.Assert(s.handler.Header[0].Get("Content-Type"), check.Equals, "application/json")
-	c.Assert(fullId, check.Equals, "http://galeb.somewhere/api/target/3")
+	c.Assert(fullId, check.Equals, fmt.Sprintf("%s/target/3", s.client.ApiUrl))
 }
 
 func (s *S) TestGalebAddBackendPoolInvalidStatusCode(c *check.C) {
@@ -99,6 +102,9 @@ func (s *S) TestGalebAddBackendPoolInvalidResponse(c *check.C) {
 }
 
 func (s *S) TestGalebAddBackend(c *check.C) {
+	s.handler.ConditionalContent["/api/target/10"] = []string{
+		"200", `{"_status": "OK"}`,
+	}
 	s.handler.ConditionalContent["/api/target/search/findByName?name=mypool"] = `{
 		"_embedded": {
 			"target": [
@@ -112,7 +118,7 @@ func (s *S) TestGalebAddBackend(c *check.C) {
 			]
 		}
 	}`
-	s.handler.RspHeader.Set("Location", "http://galeb.somewhere/api/target/10")
+	s.handler.RspHeader.Set("Location", fmt.Sprintf("%s/target/10", s.client.ApiUrl))
 	s.handler.RspCode = http.StatusCreated
 	expected := Target{
 		commonPostResponse: commonPostResponse{ID: 0, Name: "http://10.0.0.1:8080"},
@@ -126,22 +132,34 @@ func (s *S) TestGalebAddBackend(c *check.C) {
 	url1, _ := url.Parse("http://10.0.0.1:8080")
 	fullId, err := s.client.AddBackend(url1, "mypool")
 	c.Assert(err, check.IsNil)
-	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "POST"})
-	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/target/search/findByName?name=mypool", "/api/target"})
+	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "POST", "GET"})
+	c.Assert(s.handler.Url, check.DeepEquals, []string{
+		"/api/target/search/findByName?name=mypool",
+		"/api/target",
+		"/api/target/10",
+	})
 	var parsedParams Target
 	err = json.Unmarshal(s.handler.Body[1], &parsedParams)
 	c.Assert(err, check.IsNil)
 	c.Assert(parsedParams, check.DeepEquals, expected)
 	c.Assert(s.handler.Header[1].Get("Content-Type"), check.Equals, "application/json")
-	c.Assert(fullId, check.Equals, "http://galeb.somewhere/api/target/10")
+	c.Assert(fullId, check.Equals, fmt.Sprintf("%s/target/10", s.client.ApiUrl))
 }
 
 func (s *S) TestGalebAddVirtualHost(c *check.C) {
-	s.handler.RspHeader.Set("Location", "http://galeb.somewhere/api/virtualhost/999")
+	s.handler.ConditionalContent["/api/virtualhost/999"] = []string{
+		"200", `{"_status": "OK"}`,
+	}
+	s.handler.RspHeader.Set("Location", fmt.Sprintf("%s/virtualhost/999", s.client.ApiUrl))
 	s.handler.RspCode = http.StatusCreated
 	fullId, err := s.client.AddVirtualHost("myvirtualhost.com")
 	c.Assert(err, check.IsNil)
-	c.Assert(fullId, check.Equals, "http://galeb.somewhere/api/virtualhost/999")
+	c.Assert(fullId, check.Equals, fmt.Sprintf("%s/virtualhost/999", s.client.ApiUrl))
+	c.Assert(s.handler.Method, check.DeepEquals, []string{"POST", "GET"})
+	c.Assert(s.handler.Url, check.DeepEquals, []string{
+		"/api/virtualhost",
+		"/api/virtualhost/999",
+	})
 	var parsedParams VirtualHost
 	err = json.Unmarshal(s.handler.Body[0], &parsedParams)
 	c.Assert(err, check.IsNil)
@@ -300,6 +318,9 @@ func (s *S) TestRemoveRuleVirtualHost(c *check.C) {
 }
 
 func (s *S) TestGalebSetRuleVirtualHost(c *check.C) {
+	s.handler.ConditionalContent["/api/rule/1"] = []string{
+		"200", `{"_status": "OK"}`,
+	}
 	s.handler.ConditionalContent["/api/rule/search/findByName?name=myrule"] = []string{
 		"200", fmt.Sprintf(`{
 		"_embedded": {
@@ -331,11 +352,12 @@ func (s *S) TestGalebSetRuleVirtualHost(c *check.C) {
 	s.handler.RspCode = http.StatusNoContent
 	err := s.client.SetRuleVirtualHost("myrule", "myvh")
 	c.Assert(err, check.IsNil)
-	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "GET", "PATCH"})
+	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "GET", "PATCH", "GET"})
 	c.Assert(s.handler.Url, check.DeepEquals, []string{
 		"/api/rule/search/findByName?name=myrule",
 		"/api/virtualhost/search/findByName?name=myvh",
 		"/api/rule/1/parents",
+		"/api/rule/1",
 	})
 	c.Assert(s.handler.Header[2].Get("Content-Type"), check.Equals, "text/uri-list")
 	c.Assert(string(s.handler.Body[2]), check.Equals, fmt.Sprintf("%s/virtualhost/2", s.client.ApiUrl))

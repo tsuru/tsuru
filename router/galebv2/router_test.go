@@ -134,6 +134,7 @@ func (s *fakeGalebServer) destroyItem(w http.ResponseWriter, r *http.Request) {
 
 func (s *fakeGalebServer) createTarget(w http.ResponseWriter, r *http.Request) {
 	var target galebClient.Target
+	target.Status = "OK"
 	json.NewDecoder(r.Body).Decode(&target)
 	targetsWithName := s.findItemByName("target", target.Name)
 	for _, item := range targetsWithName {
@@ -153,6 +154,7 @@ func (s *fakeGalebServer) createTarget(w http.ResponseWriter, r *http.Request) {
 
 func (s *fakeGalebServer) createRule(w http.ResponseWriter, r *http.Request) {
 	var rule galebClient.Rule
+	rule.Status = "OK"
 	json.NewDecoder(r.Body).Decode(&rule)
 	s.idCounter++
 	rule.ID = s.idCounter
@@ -217,6 +219,7 @@ func (s *fakeGalebServer) findVirtualhostByRule(w http.ResponseWriter, r *http.R
 
 func (s *fakeGalebServer) createVirtualhost(w http.ResponseWriter, r *http.Request) {
 	var virtualhost galebClient.VirtualHost
+	virtualhost.Status = "OK"
 	json.NewDecoder(r.Body).Decode(&virtualhost)
 	if len(s.findItemByName("virtualhost", virtualhost.Name)) > 0 {
 		w.WriteHeader(http.StatusConflict)
