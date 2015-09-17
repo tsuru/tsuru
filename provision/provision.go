@@ -180,6 +180,7 @@ type App interface {
 	GetTeamsName() []string
 
 	GetQuota() quota.Quota
+	SetQuotaInUse(int) error
 }
 
 // CNameManager represents a provisioner that supports cname on applications.
