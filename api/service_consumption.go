@@ -9,11 +9,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"time"
 
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
-	tsuruIo "github.com/tsuru/tsuru/io"
+	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/rec"
 	"github.com/tsuru/tsuru/service"
 	"gopkg.in/mgo.v2/bson"
@@ -59,18 +60,22 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if err != nil {
 		return err
 	}
+	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	if unbindAll == "true" {
 		if len(si.Apps) > 0 {
 			for _, appName := range si.Apps {
 				_, app, err := getServiceInstance(si.Name, appName, u)
 				if err != nil {
-					return err
+					writer.Encode(io.SimpleJsonMessage{Error: err.Error()})
+					return nil
 				}
-				w.Header().Set("Content-Type", "application/json")
-				writer := &tsuruIo.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(w)}
+				fmt.Fprintf(writer, "Unbind app %q...", app.GetName())
 				err = si.UnbindApp(app, writer)
 				if err != nil {
-					return err
+					writer.Encode(io.SimpleJsonMessage{Error: err.Error()})
+					return nil
 				}
 				fmt.Fprintf(writer, "\nInstance %q is not bound to the app %q anymore.\n", si.Name, app.GetName())
 			}
@@ -78,14 +83,10 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	}
 	err = service.DeleteInstance(si)
 	if err != nil {
-		var httpError int
-		if err == service.ErrServiceInstanceBound {
-			httpError = http.StatusConflict
-			return &errors.HTTP{Code: httpError, Message: err.Error()}
-		}
-		return err
+		writer.Encode(io.SimpleJsonMessage{Error: err.Error()})
+		return nil
 	}
-	w.Write([]byte("service instance successfuly removed"))
+	writer.Write([]byte("service instance successfuly removed"))
 	return nil
 }
 
