@@ -1,4 +1,4 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -13,6 +13,11 @@ type Quota struct {
 	Limit int
 	InUse int
 }
+
+func (q *Quota) Unlimited() bool {
+	return q.Limit == -1
+}
+
 type QuotaExceededError struct {
 	Requested uint
 	Available uint
