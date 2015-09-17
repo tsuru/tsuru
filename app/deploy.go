@@ -53,17 +53,6 @@ func (d *DiffDeployData) MarshalJSON() ([]byte, error) {
 	return json.Marshal(*d)
 }
 
-type DeployOptions struct {
-	App          *App
-	Version      string
-	Commit       string
-	ArchiveURL   string
-	File         io.ReadCloser
-	OutputStream io.Writer
-	User         string
-	Image        string
-}
-
 func (app *App) ListDeploys(u *auth.User) ([]DeployData, error) {
 	return listDeploys(app, nil, u, 0, 0)
 }
@@ -210,6 +199,17 @@ func GetDiffInDeploys(d *DeployData) (string, error) {
 		return fmt.Sprintf("Cannot have diffs between %s based and %s based deployments", list[1].Origin, list[0].Origin), nil
 	}
 	return repository.Manager().Diff(d.App, list[1].Commit, list[0].Commit)
+}
+
+type DeployOptions struct {
+	App          *App
+	Version      string
+	Commit       string
+	ArchiveURL   string
+	File         io.ReadCloser
+	OutputStream io.Writer
+	User         string
+	Image        string
 }
 
 // Deploy runs a deployment of an application. It will first try to run an
