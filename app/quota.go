@@ -45,7 +45,7 @@ func checkAppLimit(name string, quantity int) (*App, error) {
 	if err != nil {
 		return nil, err
 	}
-	if app.Quota.Limit > -1 && app.Quota.InUse+quantity > app.Quota.Limit {
+	if !app.Quota.Unlimited() && app.Quota.InUse+quantity > app.Quota.Limit {
 		return nil, &quota.QuotaExceededError{
 			Available: uint(app.Quota.Limit - app.Quota.InUse),
 			Requested: uint(quantity),
