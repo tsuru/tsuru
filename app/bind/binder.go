@@ -10,10 +10,10 @@ import "io"
 
 // EnvVar represents a environment variable for an app.
 type EnvVar struct {
-	Name         string
-	Value        string
-	Public       bool
-	InstanceName string
+	Name         string `json:"name"`
+	Value        string `json:"value"`
+	Public       bool   `json:"public"`
+	InstanceName string `json:"-"`
 }
 
 // Unit represents an application unit to be used in binds.
