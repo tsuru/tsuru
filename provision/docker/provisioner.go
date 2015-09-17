@@ -6,7 +6,7 @@ package docker
 
 import (
 	"bytes"
-	"errors"
+	stderr "errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -25,6 +25,7 @@ import (
 	"github.com/tsuru/tsuru/cmd"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
+	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/bs"
@@ -291,7 +292,7 @@ func (p *dockerProvisioner) Restart(a provision.App, process string, w io.Writer
 func (p *dockerProvisioner) Start(app provision.App, process string) error {
 	containers, err := p.listContainersByProcess(app.GetName(), process)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Got error while getting app containers: %s", err))
+		return stderr.New(fmt.Sprintf("Got error while getting app containers: %s", err))
 	}
 	return runInContainers(containers, func(c *container.Container, _ chan *container.Container) error {
 		err := c.Start(&container.StartArgs{
@@ -467,7 +468,14 @@ func setQuota(app provision.App, toAdd map[string]*containersToAdd) error {
 	for _, ct := range toAdd {
 		total += ct.Quantity
 	}
-	return app.SetQuotaInUse(total)
+	err := app.SetQuotaInUse(total)
+	if err != nil {
+		return &errors.CompositeError{
+			Base:    err,
+			Message: "Cannot start application units",
+		}
+	}
+	return nil
 }
 
 func getContainersToAdd(data ImageMetadata, oldContainers []container.Container) map[string]*containersToAdd {
@@ -645,10 +653,10 @@ func addContainersWithHost(args *changeUnitsPipelineArgs) ([]container.Container
 
 func (p *dockerProvisioner) AddUnits(a provision.App, units uint, process string, w io.Writer) ([]provision.Unit, error) {
 	if a.GetDeploys() == 0 {
-		return nil, errors.New("New units can only be added after the first deployment")
+		return nil, stderr.New("New units can only be added after the first deployment")
 	}
 	if units == 0 {
-		return nil, errors.New("Cannot add 0 units")
+		return nil, stderr.New("Cannot add 0 units")
 	}
 	if w == nil {
 		w = ioutil.Discard
@@ -671,10 +679,10 @@ func (p *dockerProvisioner) AddUnits(a provision.App, units uint, process string
 
 func (p *dockerProvisioner) RemoveUnits(a provision.App, units uint, processName string, w io.Writer) error {
 	if a == nil {
-		return errors.New("remove units: app should not be nil")
+		return stderr.New("remove units: app should not be nil")
 	}
 	if units == 0 {
-		return errors.New("cannot remove zero units")
+		return stderr.New("cannot remove zero units")
 	}
 	var err error
 	if w == nil {
@@ -747,7 +755,7 @@ func (p *dockerProvisioner) SetUnitStatus(unit provision.Unit, status provision.
 		return nil
 	}
 	if unit.AppName != "" && cont.AppName != unit.AppName {
-		return errors.New("wrong app name")
+		return stderr.New("wrong app name")
 	}
 	err = cont.SetStatus(p, status.String(), true)
 	if err != nil {
@@ -834,10 +842,10 @@ func (p *dockerProvisioner) Collection() *storage.Collection {
 // PlatformAdd build and push a new docker platform to register
 func (p *dockerProvisioner) PlatformAdd(name string, args map[string]string, w io.Writer) error {
 	if args["dockerfile"] == "" {
-		return errors.New("Dockerfile is required.")
+		return stderr.New("Dockerfile is required.")
 	}
 	if _, err := url.ParseRequestURI(args["dockerfile"]); err != nil {
-		return errors.New("dockerfile parameter should be an url.")
+		return stderr.New("dockerfile parameter should be an url.")
 	}
 	imageName := platformImageName(name)
 	cluster := p.Cluster()

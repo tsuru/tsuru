@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/docker-cluster/storage"
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/cmd"
+	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/docker/bs"
 	"github.com/tsuru/tsuru/provision/docker/container"
@@ -263,7 +264,10 @@ func (s *S) TestDeployQuotaExceeded(c *check.C) {
 		OutputStream: w,
 	})
 	c.Assert(err, check.NotNil)
-	e, ok := err.(*quota.QuotaExceededError)
+	compErr, ok := err.(*errors.CompositeError)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(compErr.Message, check.Equals, "Cannot start application units")
+	e, ok := compErr.Base.(*quota.QuotaExceededError)
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Available, check.Equals, uint(1))
 	c.Assert(e.Requested, check.Equals, uint(2))
