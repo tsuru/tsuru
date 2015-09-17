@@ -445,12 +445,29 @@ func (p *dockerProvisioner) deploy(a provision.App, imageId string, w io.Writer)
 			}
 			toAdd[processName].Quantity++
 		}
+		if err := setQuota(a, toAdd); err != nil {
+			return err
+		}
 		_, err = p.runCreateUnitsPipeline(w, a, toAdd, imageId)
 	} else {
 		toAdd := getContainersToAdd(imageData, containers)
+		if err := setQuota(a, toAdd); err != nil {
+			return err
+		}
 		_, err = p.runReplaceUnitsPipeline(w, a, toAdd, containers, imageId)
 	}
 	return err
+}
+
+func setQuota(app provision.App, toAdd map[string]*containersToAdd) error {
+	if quota := app.GetQuota(); quota.Unlimited() {
+		return nil
+	}
+	var total int
+	for _, ct := range toAdd {
+		total += ct.Quantity
+	}
+	return app.SetQuotaInUse(total)
 }
 
 func getContainersToAdd(data ImageMetadata, oldContainers []container.Container) map[string]*containersToAdd {
