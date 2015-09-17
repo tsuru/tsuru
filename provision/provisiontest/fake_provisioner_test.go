@@ -150,10 +150,28 @@ func (s *S) TestFakeAppUnbindUnitNotBound(c *check.C) {
 }
 
 func (s *S) TestFakeAppGetQuota(c *check.C) {
+	app := NewFakeApp("sou", "otm", 0)
+	c.Assert(app.GetQuota(), check.DeepEquals, quota.Unlimited)
+	q := quota.Quota{Limit: 10, InUse: 3}
+	app.Quota = q
+	c.Assert(app.GetQuota(), check.DeepEquals, q)
+}
+
+func (s *S) TestFakeAppSetQuotaInUse(c *check.C) {
 	q := quota.Quota{Limit: 10, InUse: 3}
 	app := NewFakeApp("sou", "otm", 0)
 	app.Quota = q
 	c.Assert(app.GetQuota(), check.DeepEquals, q)
+	q.InUse = 8
+	err := app.SetQuotaInUse(q.InUse)
+	c.Assert(err, check.IsNil)
+	c.Assert(app.GetQuota(), check.DeepEquals, q)
+	err = app.SetQuotaInUse(q.Limit + 1)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*quota.QuotaExceededError)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Available, check.Equals, uint(q.Limit))
+	c.Assert(e.Requested, check.Equals, uint(q.Limit+1))
 }
 
 func (s *S) TestFakeAppGetInstances(c *check.C) {

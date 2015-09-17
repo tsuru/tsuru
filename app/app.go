@@ -933,6 +933,31 @@ func (app *App) GetQuota() quota.Quota {
 	return app.Quota
 }
 
+func (app *App) SetQuotaInUse(inUse int) error {
+	if app.Quota.Unlimited() {
+		return stderr.New("cannot set quota usage for unlimited quota")
+	}
+	if inUse < 0 {
+		return stderr.New("invalid value, cannot be lesser than 0")
+	}
+	if inUse > app.Quota.Limit {
+		return &quota.QuotaExceededError{
+			Requested: uint(inUse),
+			Available: uint(app.Quota.Limit),
+		}
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	err = conn.Apps().Update(bson.M{"name": app.Name}, bson.M{"$set": bson.M{"quota.inuse": inUse}})
+	if err == mgo.ErrNotFound {
+		return ErrAppNotFound
+	}
+	return err
+}
+
 // GetPlatform returns the platform of the app.
 func (app *App) GetPlatform() string {
 	return app.Platform

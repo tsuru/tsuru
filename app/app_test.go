@@ -2545,6 +2545,44 @@ func (s *S) TestGetQuota(c *check.C) {
 	c.Assert(a.GetQuota(), check.DeepEquals, quota.Unlimited)
 }
 
+func (s *S) TestSetQuotaInUse(c *check.C) {
+	app := App{Name: "someapp", Quota: quota.Quota{Limit: 5, InUse: 5}}
+	err := s.conn.Apps().Insert(app)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": app.Name})
+	err = app.SetQuotaInUse(3)
+	c.Assert(err, check.IsNil)
+	a, err := GetByName(app.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(a.Quota, check.DeepEquals, quota.Quota{Limit: 5, InUse: 3})
+}
+
+func (s *S) TestSetQuotaInUseNotFound(c *check.C) {
+	app := App{Name: "someapp", Quota: quota.Quota{Limit: 5, InUse: 5}}
+	err := app.SetQuotaInUse(3)
+	c.Assert(err, check.Equals, ErrAppNotFound)
+}
+
+func (s *S) TestSetQuotaInUseUnlimited(c *check.C) {
+	app := App{Name: "someapp", Quota: quota.Unlimited}
+	err := app.SetQuotaInUse(1)
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "cannot set quota usage for unlimited quota")
+}
+
+func (s *S) TestSetQuotaInUseInvalid(c *check.C) {
+	app := App{Name: "someapp", Quota: quota.Quota{Limit: 5, InUse: 3}}
+	err := app.SetQuotaInUse(6)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*quota.QuotaExceededError)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Available, check.Equals, uint(5))
+	c.Assert(e.Requested, check.Equals, uint(6))
+	err = app.SetQuotaInUse(-1)
+	c.Assert(err, check.NotNil)
+	c.Check(err.Error(), check.Equals, "invalid value, cannot be lesser than 0")
+}
+
 func (s *S) TestGetPlatform(c *check.C) {
 	a := App{Platform: "django"}
 	c.Assert(a.GetPlatform(), check.Equals, a.Platform)

@@ -58,6 +58,7 @@ func NewFakeApp(name, platform string, units int) *FakeApp {
 		platform:  platform,
 		units:     make([]provision.Unit, units),
 		instances: make(map[string][]bind.ServiceInstance),
+		Quota:     quota.Unlimited,
 	}
 	namefmt := "%s-%d"
 	for i := 0; i < units; i++ {
@@ -126,6 +127,17 @@ func (a *FakeApp) UnbindUnit(unit *provision.Unit) error {
 
 func (a *FakeApp) GetQuota() quota.Quota {
 	return a.Quota
+}
+
+func (a *FakeApp) SetQuotaInUse(inUse int) error {
+	if inUse > a.Quota.Limit {
+		return &quota.QuotaExceededError{
+			Requested: uint(inUse),
+			Available: uint(a.Quota.Limit),
+		}
+	}
+	a.Quota.InUse = inUse
+	return nil
 }
 
 func (a *FakeApp) GetInstances(serviceName string) []bind.ServiceInstance {
