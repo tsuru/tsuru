@@ -13,6 +13,7 @@ import (
 	"net/url"
 
 	"github.com/tsuru/tsuru/app/bind"
+	"github.com/tsuru/tsuru/quota"
 )
 
 var (
@@ -177,6 +178,8 @@ type App interface {
 	GetTeamOwner() string
 
 	GetTeamsName() []string
+
+	GetQuota() quota.Quota
 }
 
 // CNameManager represents a provisioner that supports cname on applications.

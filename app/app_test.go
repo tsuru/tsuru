@@ -2540,6 +2540,11 @@ func (s *S) TestGetIP(c *check.C) {
 	c.Assert(a.GetIp(), check.Equals, a.Ip)
 }
 
+func (s *S) TestGetQuota(c *check.C) {
+	a := App{Quota: quota.Unlimited}
+	c.Assert(a.GetQuota(), check.DeepEquals, quota.Unlimited)
+}
+
 func (s *S) TestGetPlatform(c *check.C) {
 	a := App{Platform: "django"}
 	c.Assert(a.GetPlatform(), check.Equals, a.Platform)

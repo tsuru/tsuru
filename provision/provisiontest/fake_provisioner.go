@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
 )
 
@@ -48,6 +49,7 @@ type FakeApp struct {
 	UpdatePlatform bool
 	TeamOwner      string
 	Teams          []string
+	quota.Quota
 }
 
 func NewFakeApp(name, platform string, units int) *FakeApp {
@@ -120,6 +122,10 @@ func (a *FakeApp) UnbindUnit(unit *provision.Unit) error {
 	a.bindCalls[index] = a.bindCalls[length-1]
 	a.bindCalls = a.bindCalls[:length-1]
 	return nil
+}
+
+func (a *FakeApp) GetQuota() quota.Quota {
+	return a.Quota
 }
 
 func (a *FakeApp) GetInstances(serviceName string) []bind.ServiceInstance {

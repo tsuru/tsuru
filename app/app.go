@@ -931,6 +931,10 @@ func (app *App) GetIp() string {
 	return app.Ip
 }
 
+func (app *App) GetQuota() quota.Quota {
+	return app.Quota
+}
+
 // GetPlatform returns the platform of the app.
 func (app *App) GetPlatform() string {
 	return app.Platform

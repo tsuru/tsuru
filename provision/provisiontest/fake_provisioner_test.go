@@ -12,6 +12,7 @@ import (
 
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/provision"
+	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/router/routertest"
 	"gopkg.in/check.v1"
 )
@@ -146,6 +147,13 @@ func (s *S) TestFakeAppUnbindUnitNotBound(c *check.C) {
 	err := app.UnbindUnit(&unit)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "not bound")
+}
+
+func (s *S) TestFakeAppGetQuota(c *check.C) {
+	q := quota.Quota{Limit: 10, InUse: 3}
+	app := NewFakeApp("sou", "otm", 0)
+	app.Quota = q
+	c.Assert(app.GetQuota(), check.DeepEquals, q)
 }
 
 func (s *S) TestFakeAppGetInstances(c *check.C) {
