@@ -309,7 +309,6 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsShouldFailA
 	c.Assert(stderrors.New(msg.Error), check.ErrorMatches, "^This service instance is bound to at least one app. Unbind them before removing it$")
 }
 
-//a
 func makeRequestToRemoveInstanceHandlerWithUnbind(name string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
 	url := fmt.Sprintf("/services/c/instances/%s?:name=%s&unbindall=%s", name, name, "true")
 	request, err := http.NewRequest("DELETE", url, nil)
@@ -319,7 +318,6 @@ func makeRequestToRemoveInstanceHandlerWithUnbind(name string, c *check.C) (*htt
 	return recorder, request
 }
 
-//b
 func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsWithUnbindAll(c *check.C) {
 	var called int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -361,7 +359,6 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsWithUnbindA
 	c.Assert(err, check.IsNil)
 }
 
-//c
 func makeRequestToRemoveInstanceHandlerWithNoUnbind(name string, c *check.C) (*httptest.ResponseRecorder, *http.Request) {
 	url := fmt.Sprintf("/services/c/instances/%s?:name=%s&unbindall=%s", name, name, "false")
 	request, err := http.NewRequest("DELETE", url, nil)
@@ -371,7 +368,6 @@ func makeRequestToRemoveInstanceHandlerWithNoUnbind(name string, c *check.C) (*h
 	return recorder, request
 }
 
-//d
 func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsWithNoUnbindAll(c *check.C) {
 	var called int32
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -418,6 +414,61 @@ func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsWithNoUnbin
 	c.Assert(stderrors.New(msg.Error), check.ErrorMatches, service.ErrServiceInstanceBound.Error())
 }
 
+func (s *ConsumptionSuite) TestRemoveServiceHandlerWIthAssociatedAppsWithNoUnbindAllListAllApp(c *check.C) {
+	var called int32
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "DELETE" && r.URL.Path == "/resources/my-mysql/bind" {
+			atomic.StoreInt32(&called, 1)
+		}
+	}))
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := srvc.Create()
+	c.Assert(err, check.IsNil)
+	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
+	p := app.Platform{Name: "zend"}
+	s.conn.Platforms().Insert(p)
+	s.pool = "test1"
+	opts := provision.AddPoolOptions{Name: "test1", Default: true}
+	err = provision.AddPool(opts)
+	c.Assert(err, check.IsNil)
+	a := app.App{
+		Name:     "app",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+	}
+	ab := app.App{
+		Name:     "app2",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+	}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	err = app.CreateApp(&ab, s.user)
+	c.Assert(err, check.IsNil)
+	units, _ := s.provisioner.AddUnits(&a, 1, "web", nil)
+	units, _ = s.provisioner.AddUnits(&ab, 1, "web", nil)
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+		Apps:        []string{"app","app2"},
+		Units:       []string{units[0].ID},
+	}
+	err = instance.Create()
+	c.Assert(err, check.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
+	recorder, request := makeRequestToRemoveInstanceHandlerWithNoUnbind("my-mysql", c)
+	err = removeServiceInstance(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	b, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, check.IsNil)
+	var msg io.SimpleJsonMessage
+	json.Unmarshal(b, &msg)
+	c.Assert(stderrors.New(msg.Error), check.ErrorMatches, service.ErrServiceInstanceBound.Error())
+	expectedMsg := "app,app2"
+	c.Assert(msg.Message, check.Equals, expectedMsg)
+}
 func (s *ConsumptionSuite) TestRemoveServiceShouldCallTheServiceAPI(c *check.C) {
 	var called bool
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

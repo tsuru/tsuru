@@ -9,8 +9,7 @@ import (
 	"io"
 	"net/http"
 	"sync"
-	//fmt"
-
+	
 	"github.com/tsuru/tsuru/action"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/db"
@@ -301,7 +300,6 @@ var unbindAppDB = action.Action{
 	Name: "unbind-app-db",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
 		args, _ := ctx.Params[0].(*bindPipelineArgs)
-		//si := args.serviceInstance
 		if args == nil {
 			return nil, stderrors.New("invalid arguments for pipeline, expected *bindPipelineArgs")
 		}
@@ -309,12 +307,6 @@ var unbindAppDB = action.Action{
 		if err != nil {
 			return nil, err
 		}
-		// for i, appName := range si.Apps {
-		// 	if appName == args.app.GetName() {
-		// 		si.Apps = append(si.Apps[:i], si.Apps[i+1:]...)
-		// 		break
-		// 	}
-		// }
 		return nil, err
 	},
 	Backward: func(ctx action.BWContext) {

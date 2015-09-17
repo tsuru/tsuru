@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
+	"strings"
 
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
@@ -71,7 +72,7 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 					writer.Encode(io.SimpleJsonMessage{Error: err.Error()})
 					return nil
 				}
-				fmt.Fprintf(writer, "Unbind app %q...", app.GetName())
+				fmt.Fprintf(writer, "Unbind app %q ...", app.GetName())
 				err = si.UnbindApp(app, writer)
 				if err != nil {
 					writer.Encode(io.SimpleJsonMessage{Error: err.Error()})
@@ -83,7 +84,11 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	}
 	err = service.DeleteInstance(si)
 	if err != nil {
-		writer.Encode(io.SimpleJsonMessage{Error: err.Error()})
+		var msg string
+		if err == service.ErrServiceInstanceBound {
+			msg = strings.Join(si.Apps, ",")
+		}
+		writer.Encode(io.SimpleJsonMessage{Message: msg, Error: err.Error()})
 		return nil
 	}
 	writer.Write([]byte("service instance successfuly removed"))
