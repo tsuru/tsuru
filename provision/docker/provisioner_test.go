@@ -28,6 +28,7 @@ import (
 	"github.com/tsuru/tsuru/provision/docker/container"
 	"github.com/tsuru/tsuru/provision/docker/healer"
 	"github.com/tsuru/tsuru/provision/provisiontest"
+	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/router/routertest"
 	"github.com/tsuru/tsuru/safe"
@@ -187,6 +188,7 @@ func (s *S) TestDeploy(c *check.C) {
 	a := app.App{
 		Name:     "otherapp",
 		Platform: "python",
+		Quota:    quota.Quota{Limit: 10, InUse: 10},
 	}
 	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -218,6 +220,53 @@ func (s *S) TestDeploy(c *check.C) {
 	c.Assert(units, check.HasLen, 1)
 	c.Assert(serviceBodies, check.HasLen, 1)
 	c.Assert(serviceBodies[0], check.Matches, ".*unit-host="+units[0].Ip)
+	app, err := app.GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(app.Quota, check.DeepEquals, quota.Quota{Limit: 10, InUse: 1})
+}
+
+func (s *S) TestDeployQuotaExceeded(c *check.C) {
+	stopCh := s.stopContainers(s.server.URL(), 1)
+	defer func() { <-stopCh }()
+	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
+	c.Assert(err, check.IsNil)
+	a := app.App{
+		Name:     "otherapp",
+		Platform: "python",
+		Quota:    quota.Quota{Limit: 1},
+	}
+	err = s.storage.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	repository.Manager().CreateRepository(a.Name, nil)
+	s.p.Provision(&a)
+	defer s.p.Destroy(&a)
+	w := safe.NewBuffer(make([]byte, 2048))
+	var serviceBodies []string
+	rollback := s.addServiceInstance(c, a.Name, nil, func(w http.ResponseWriter, r *http.Request) {
+		data, _ := ioutil.ReadAll(r.Body)
+		serviceBodies = append(serviceBodies, string(data))
+		w.WriteHeader(http.StatusOK)
+	})
+	defer rollback()
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":    "python myapp.py",
+			"worker": "python myworker.py",
+		},
+	}
+	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
+	c.Assert(err, check.IsNil)
+	err = app.Deploy(app.DeployOptions{
+		App:          &a,
+		Version:      "master",
+		Commit:       "123",
+		OutputStream: w,
+	})
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*quota.QuotaExceededError)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.Available, check.Equals, uint(1))
+	c.Assert(e.Requested, check.Equals, uint(2))
 }
 
 func (s *S) TestDeployErasesOldImages(c *check.C) {
@@ -230,6 +279,7 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 	a := app.App{
 		Name:     "appdeployimagetest",
 		Platform: "python",
+		Quota:    quota.Unlimited,
 	}
 	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -331,6 +381,7 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	a := app.App{
 		Name:     "appdeployimagetest",
 		Platform: "python",
+		Quota:    quota.Unlimited,
 	}
 	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -408,6 +459,7 @@ func (s *S) TestProvisionerUploadDeploy(c *check.C) {
 	a := app.App{
 		Name:     "otherapp",
 		Platform: "python",
+		Quota:    quota.Unlimited,
 	}
 	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -448,6 +500,7 @@ func (s *S) TestImageDeploy(c *check.C) {
 	a := app.App{
 		Name:     "otherapp",
 		Platform: "python",
+		Quota:    quota.Unlimited,
 	}
 	err = s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
@@ -562,6 +615,7 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 	a := app.App{
 		Name:     "mydoomedapp",
 		Platform: "python",
+		Quota:    quota.Unlimited,
 	}
 	err := s.storage.Apps().Insert(a)
 	c.Assert(err, check.IsNil)
