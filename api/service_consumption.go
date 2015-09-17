@@ -80,8 +80,13 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 				}
 				fmt.Fprintf(writer, "\nInstance %q is not bound to the app %q anymore.\n", si.Name, app.GetName())
 			}
+			si, err = getServiceInstanceOrError(name, u)
+			if err != nil {
+				return err
+			}
 		}
 	}
+
 	err = service.DeleteInstance(si)
 	if err != nil {
 		var msg string

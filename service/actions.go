@@ -364,24 +364,3 @@ var removeBindedEnvs = action.Action{
 	},
 	MinParams: 1,
 }
-
-var removeListApp = action.Action{
-	Name: "remove-list-apps",
-	Forward: func(ctx action.FWContext) (action.Result, error) {
-		args, _ := ctx.Params[0].(*bindPipelineArgs)
-		if args == nil {
-			return nil, stderrors.New("invalid arguments for pipeline, expected *bindPipelineArgs")
-		}
-		si := args.serviceInstance
-		for i, appName := range si.Apps {
-			if appName == args.app.GetName() {
-				si.Apps = append(si.Apps[:i], si.Apps[i+1:]...)
-				break
-			}
-		}
-		return nil, nil
-	},
-	Backward: func(ctx action.BWContext) {
-	},
-	MinParams: 1,
-}

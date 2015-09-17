@@ -206,7 +206,6 @@ func (si *ServiceInstance) UnbindApp(app bind.App, writer io.Writer) error {
 		&unbindAppDB,
 		&unbindAppEndpoint,
 		&removeBindedEnvs,
-		&removeListApp,
 	}
 	pipeline := action.NewPipeline(actions...)
 	return pipeline.Execute(&args)
