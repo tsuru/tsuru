@@ -43,9 +43,8 @@ In order to install Hipache, just use apt-get:
 Configuring
 ===========
 
-In your ``/etc/hipache.conf`` file you must set the ``redisHost`` and
-``redisPort`` configuration values. After this, you only need to start Hipache
-with:
+In your ``/etc/hipache.conf`` file you must set the ``driver`` configuration value
+to your redis server location. After this, you only need to start Hipache with:
 
 .. highlight:: bash
 
