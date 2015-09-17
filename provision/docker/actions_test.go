@@ -158,7 +158,10 @@ func (s *S) TestAddNewRouteForward(c *check.C) {
 	app := provisiontest.NewFakeApp("myapp", "python", 1)
 	imageName := "tsuru/app-" + app.GetName()
 	customData := map[string]interface{}{
-		"procfile": "web: python myapi.py\nworker: tail -f /dev/null",
+		"processes": map[string]interface{}{
+			"web":    "python myapi.py",
+			"worker": "tail -f /dev/null",
+		},
 	}
 	err := saveImageCustomData(imageName, customData)
 	c.Assert(err, check.IsNil)
@@ -200,7 +203,9 @@ func (s *S) TestAddNewRouteForwardNoWeb(c *check.C) {
 	defer routertest.FakeRouter.RemoveBackend(app.GetName())
 	imageName := "tsuru/app-" + app.GetName()
 	customData := map[string]interface{}{
-		"procfile": "api: python myapi.py",
+		"processes": map[string]interface{}{
+			"api": "python myapi.py",
+		},
 	}
 	err := saveImageCustomData(imageName, customData)
 	c.Assert(err, check.IsNil)
@@ -695,7 +700,10 @@ func (s *S) TestBindAndHealthcheckForward(c *check.C) {
 			"path":   "/x/y",
 			"status": http.StatusOK,
 		},
-		"procfile": "web: python myapp.py\nworker: python myworker.py\n",
+		"processes": map[string]interface{}{
+			"web":    "python myapp.py",
+			"worker": "python myworker.py",
+		},
 	}
 	err := s.newFakeImage(s.p, "tsuru/app-"+appName, customData)
 	c.Assert(err, check.IsNil)
@@ -746,7 +754,9 @@ func (s *S) TestBindAndHealthcheckDontHealtcheckForErroredApps(c *check.C) {
 			"path":   "/x/y",
 			"status": http.StatusOK,
 		},
-		"procfile": "web: python myapp.py",
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
 	}
 	err = s.newFakeImage(s.p, imageName, customData)
 	c.Assert(err, check.IsNil)
@@ -801,7 +811,9 @@ func (s *S) TestBindAndHealthcheckDontHealtcheckForStoppedApps(c *check.C) {
 			"path":   "/x/y",
 			"status": http.StatusOK,
 		},
-		"procfile": "web: python myapp.py",
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
 	}
 	err = s.newFakeImage(s.p, imageName, customData)
 	c.Assert(err, check.IsNil)
@@ -856,7 +868,9 @@ func (s *S) TestBindAndHealthcheckForwardHealthcheckError(c *check.C) {
 			"path":   "/x/y",
 			"status": http.StatusOK,
 		},
-		"procfile": "web: python start_app.py",
+		"processes": map[string]interface{}{
+			"web": "python start_app.py",
+		},
 	}
 	err = s.newFakeImage(s.p, imageName, customData)
 	c.Assert(err, check.IsNil)
@@ -904,7 +918,9 @@ func (s *S) TestBindAndHealthcheckForwardRestartError(c *check.C) {
 				"after": []string{"will fail"},
 			},
 		},
-		"procfile": "web: python myapp.py",
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
 	}
 	err = s.newFakeImage(s.p, imageName, customData)
 	c.Assert(err, check.IsNil)

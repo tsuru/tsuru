@@ -123,7 +123,9 @@ func (s *S) removeTestContainer(c *container.Container) error {
 func (s *S) newFakeImage(p *dockerProvisioner, repo string, customData map[string]interface{}) error {
 	if customData == nil {
 		customData = map[string]interface{}{
-			"procfile": "web: python myapp.py",
+			"processes": map[string]interface{}{
+				"web": "python myapp.py",
+			},
 		}
 	}
 	var buf safe.Buffer

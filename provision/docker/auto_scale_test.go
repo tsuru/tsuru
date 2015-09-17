@@ -80,7 +80,9 @@ func (s *AutoScaleSuite) SetUpTest(c *check.C) {
 	s.imageId, err = appCurrentImageName(s.appInstance.GetName())
 	c.Assert(err, check.IsNil)
 	customData := map[string]interface{}{
-		"procfile": "web: python ./myapp",
+		"processes": map[string]interface{}{
+			"web": "python ./myapp",
+		},
 	}
 	err = saveImageCustomData(s.imageId, customData)
 	c.Assert(err, check.IsNil)
@@ -1229,7 +1231,9 @@ func (s *AutoScaleSuite) TestAutoScaleConfigRunOnceRulesPerPool(c *check.C) {
 	imageId, err := appCurrentImageName(appInstance2.GetName())
 	c.Assert(err, check.IsNil)
 	customData := map[string]interface{}{
-		"procfile": "web: python ./myapp",
+		"processes": map[string]interface{}{
+			"web": "python ./myapp",
+		},
 	}
 	err = saveImageCustomData(imageId, customData)
 	c.Assert(err, check.IsNil)

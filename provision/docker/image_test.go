@@ -337,19 +337,27 @@ func (s *S) TestPullAppImageNamesRemovesCustomData(c *check.C) {
 func (s *S) TestGetImageWebProcessName(c *check.C) {
 	img1 := "tsuru/app-myapp:v1"
 	customData1 := map[string]interface{}{
-		"procfile": "web: python myapp.py\nworker: someworker\n",
+		"processes": map[string]interface{}{
+			"web":    "python myapp.py",
+			"worker": "someworker",
+		},
 	}
 	err := saveImageCustomData(img1, customData1)
 	c.Assert(err, check.IsNil)
 	img2 := "tsuru/app-myapp:v2"
 	customData2 := map[string]interface{}{
-		"procfile": "worker1: python myapp.py\nworker2: someworker\n",
+		"processes": map[string]interface{}{
+			"worker1": "python myapp.py",
+			"worker2": "someworker",
+		},
 	}
 	err = saveImageCustomData(img2, customData2)
 	c.Assert(err, check.IsNil)
 	img3 := "tsuru/app-myapp:v3"
 	customData3 := map[string]interface{}{
-		"procfile": "api: python myapi.py",
+		"processes": map[string]interface{}{
+			"api": "python myapi.py",
+		},
 	}
 	err = saveImageCustomData(img3, customData3)
 	c.Assert(err, check.IsNil)

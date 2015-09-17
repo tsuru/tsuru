@@ -76,7 +76,9 @@ func (s *S) TestRunWithAgentCmds(c *check.C) {
 func (s *S) TestRunLeanContainersCmd(c *check.C) {
 	imageId := "tsuru/app-sample"
 	customData := map[string]interface{}{
-		"procfile": "web: python web.py",
+		"processes": map[string]interface{}{
+			"web": "python web.py",
+		},
 	}
 	err := saveImageCustomData(imageId, customData)
 	c.Assert(err, check.IsNil)
@@ -95,7 +97,9 @@ func (s *S) TestRunLeanContainersCmdHooks(c *check.C) {
 				"before": []string{"cmd1", "cmd2"},
 			},
 		},
-		"procfile": "web: python web.py",
+		"processes": map[string]interface{}{
+			"web": "python web.py",
+		},
 	}
 	err := saveImageCustomData(imageId, customData)
 	c.Assert(err, check.IsNil)
@@ -132,7 +136,9 @@ func (s *S) TestRunLeanContainersCmdNoProcesses(c *check.C) {
 func (s *S) TestRunLeanContainersImplicitProcess(c *check.C) {
 	imageId := "tsuru/app-sample"
 	customData := map[string]interface{}{
-		"procfile": "web: python web.py",
+		"processes": map[string]interface{}{
+			"web": "python web.py",
+		},
 	}
 	err := saveImageCustomData(imageId, customData)
 	c.Assert(err, check.IsNil)
@@ -146,7 +152,10 @@ func (s *S) TestRunLeanContainersImplicitProcess(c *check.C) {
 func (s *S) TestRunLeanContainersCmdNoProcessSpecified(c *check.C) {
 	imageId := "tsuru/app-sample"
 	customData := map[string]interface{}{
-		"procfile": "web: python web.py\nworker: python worker.py",
+		"processes": map[string]interface{}{
+			"web":    "python web.py",
+			"worker": "python worker.py",
+		},
 	}
 	err := saveImageCustomData(imageId, customData)
 	c.Assert(err, check.IsNil)
@@ -162,7 +171,9 @@ func (s *S) TestRunLeanContainersCmdNoProcessSpecified(c *check.C) {
 func (s *S) TestRunLeanContainersCmdInvalidProcess(c *check.C) {
 	imageId := "tsuru/app-sample"
 	customData := map[string]interface{}{
-		"procfile": "web: python web.py",
+		"processes": map[string]interface{}{
+			"web": "python web.py",
+		},
 	}
 	err := saveImageCustomData(imageId, customData)
 	c.Assert(err, check.IsNil)

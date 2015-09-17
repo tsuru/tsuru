@@ -53,7 +53,10 @@ func (s *S) TestProvisionerProvision(c *check.C) {
 func (s *S) TestProvisionerRestart(c *check.C) {
 	app := provisiontest.NewFakeApp("almah", "static", 1)
 	customData := map[string]interface{}{
-		"procfile": "web: python web.py\nworker: python worker.py\n",
+		"processes": map[string]interface{}{
+			"web":    "python web.py",
+			"worker": "python worker.py",
+		},
 	}
 	cont1, err := s.newContainer(&newContainerOpts{
 		AppName:         app.GetName(),
@@ -108,7 +111,10 @@ func (l containerByProcessList) Less(i, j int) bool { return l[i].ProcessName < 
 func (s *S) TestProvisionerRestartProcess(c *check.C) {
 	app := provisiontest.NewFakeApp("almah", "static", 1)
 	customData := map[string]interface{}{
-		"procfile": "web: python web.py\nworker: python worker.py\n",
+		"processes": map[string]interface{}{
+			"web":    "python web.py",
+			"worker": "python worker.py",
+		},
 	}
 	cont1, err := s.newContainer(&newContainerOpts{
 		AppName:         app.GetName(),
@@ -205,7 +211,9 @@ func (s *S) TestDeploy(c *check.C) {
 	})
 	defer rollback()
 	customData := map[string]interface{}{
-		"procfile": "web: python myapp.py",
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
 	}
 	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
 	c.Assert(err, check.IsNil)
@@ -293,7 +301,9 @@ func (s *S) TestDeployErasesOldImages(c *check.C) {
 	defer s.p.Destroy(&a)
 	w := safe.NewBuffer(make([]byte, 2048))
 	customData := map[string]interface{}{
-		"procfile": "web: python myapp.py",
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
 	}
 	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
 	c.Assert(err, check.IsNil)
@@ -395,7 +405,9 @@ func (s *S) TestDeployErasesOldImagesWithLongHistory(c *check.C) {
 	defer s.p.Destroy(&a)
 	w := safe.NewBuffer(make([]byte, 2048))
 	customData := map[string]interface{}{
-		"procfile": "web: python myapp.py",
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
 	}
 	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
 	c.Assert(err, check.IsNil)
@@ -479,7 +491,9 @@ func (s *S) TestProvisionerUploadDeploy(c *check.C) {
 	defer rollback()
 	buf := bytes.NewBufferString("something wrong is not right")
 	customData := map[string]interface{}{
-		"procfile": "web: python myapp.py",
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
 	}
 	err = saveImageCustomData("tsuru/app-"+a.Name+":v1", customData)
 	c.Assert(err, check.IsNil)
@@ -628,7 +642,9 @@ func (s *S) TestProvisionerDestroyRemovesImage(c *check.C) {
 	defer s.p.Destroy(&a)
 	w := safe.NewBuffer(make([]byte, 2048))
 	customData := map[string]interface{}{
-		"procfile": "web: python myapp.py",
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
 	}
 	err = saveImageCustomData(registryURL+"/tsuru/app-"+a.Name+":v1", customData)
 	c.Assert(err, check.IsNil)
@@ -871,7 +887,9 @@ func (s *S) TestProvisionerRemoveUnits(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	customData := map[string]interface{}{
-		"procfile": "web: python myapp.py",
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
 	}
 	err = saveImageCustomData("tsuru/app-"+a1.Name, customData)
 	c.Assert(err, check.IsNil)
@@ -937,7 +955,9 @@ func (s *S) TestProvisionerRemoveUnitsFailRemoveOldRoute(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	customData := map[string]interface{}{
-		"procfile": "web: python myapp.py",
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
 	}
 	err = saveImageCustomData("tsuru/app-"+a1.Name, customData)
 	c.Assert(err, check.IsNil)
@@ -1058,7 +1078,9 @@ func (s *S) TestProvisionerRemoveUnitsTooManyUnits(c *check.C) {
 	})
 	c.Assert(err, check.IsNil)
 	customData := map[string]interface{}{
-		"procfile": "web: python myapp.py",
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
 	}
 	err = saveImageCustomData("tsuru/app-"+a1.Name, customData)
 	papp := provisiontest.NewFakeApp(a1.Name, "python", 0)
@@ -1102,7 +1124,9 @@ func (s *S) TestProvisionerRemoveUnitsInvalidProcess(c *check.C) {
 	_, err = scheduler.Schedule(clusterInstance, opts, []string{a1.Name, "web"})
 	c.Assert(err, check.IsNil)
 	customData := map[string]interface{}{
-		"procfile": "web: python myapp.py",
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
 	}
 	err = saveImageCustomData("tsuru/app-"+a1.Name, customData)
 	papp := provisiontest.NewFakeApp(a1.Name, "python", 0)
@@ -1371,7 +1395,10 @@ func (s *S) TestProvisionerStart(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("almah", "static", 1)
 	customData := map[string]interface{}{
-		"procfile": "web: python web.py\nworker: python worker.py\n",
+		"processes": map[string]interface{}{
+			"web":    "python web.py",
+			"worker": "python worker.py",
+		},
 	}
 	cont1, err := s.newContainer(&newContainerOpts{
 		AppName:         app.GetName(),
@@ -1426,7 +1453,10 @@ func (s *S) TestProvisionerStartProcess(c *check.C) {
 	c.Assert(err, check.IsNil)
 	app := provisiontest.NewFakeApp("almah", "static", 1)
 	customData := map[string]interface{}{
-		"procfile": "web: python web.py\nworker: python worker.py\n",
+		"processes": map[string]interface{}{
+			"web":    "python web.py",
+			"worker": "python worker.py",
+		},
 	}
 	cont1, err := s.newContainer(&newContainerOpts{
 		AppName:         app.GetName(),
@@ -1473,7 +1503,10 @@ func (s *S) TestProvisionerStop(c *check.C) {
 	dcli, _ := docker.NewClient(s.server.URL())
 	app := provisiontest.NewFakeApp("almah", "static", 2)
 	customData := map[string]interface{}{
-		"procfile": "web: python web.py\nworker: python worker.py\n",
+		"processes": map[string]interface{}{
+			"web":    "python web.py",
+			"worker": "python worker.py",
+		},
 	}
 	cont1, err := s.newContainer(&newContainerOpts{
 		AppName:         app.GetName(),
@@ -1515,7 +1548,10 @@ func (s *S) TestProvisionerStopProcess(c *check.C) {
 	dcli, _ := docker.NewClient(s.server.URL())
 	app := provisiontest.NewFakeApp("almah", "static", 2)
 	customData := map[string]interface{}{
-		"procfile": "web: python web.py\nworker: python worker.py\n",
+		"processes": map[string]interface{}{
+			"web":    "python web.py",
+			"worker": "python worker.py",
+		},
 	}
 	cont1, err := s.newContainer(&newContainerOpts{
 		AppName:         app.GetName(),
@@ -1872,7 +1908,7 @@ func (s *S) TestRegisterUnitBuildingContainer(c *check.C) {
 	c.Assert(dbCont.Status, check.Equals, provision.StatusBuilding.String())
 }
 
-func (s *S) TestRegisterUnitSavesCustomData(c *check.C) {
+func (s *S) TestRegisterUnitSavesCustomDataRawProcfile(c *check.C) {
 	err := s.newFakeImage(s.p, "tsuru/python:latest", nil)
 	c.Assert(err, check.IsNil)
 	opts := newContainerOpts{Status: provision.StatusBuilding.String(), AppName: "myawesomeapp"}
@@ -2076,7 +2112,9 @@ func (s *S) TestMetricEnvs(c *check.C) {
 
 func (s *S) TestAddContainerDefaultProcess(c *check.C) {
 	customData := map[string]interface{}{
-		"procfile": "web: python myapp.py\n",
+		"processes": map[string]interface{}{
+			"web": "python myapp.py",
+		},
 	}
 	appName := "my-fake-app"
 	fakeApp := provisiontest.NewFakeApp(appName, "python", 0)
