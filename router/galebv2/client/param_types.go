@@ -38,7 +38,7 @@ type Target struct {
 	Environment   string                `json:"environment"`
 	BalancePolicy string                `json:"balancePolicy"`
 	TargetType    string                `json:"targetType"`
-	BackendPools  []string              `json:"parents,omitempty"`
+	BackendPool   string                `json:"parent,omitempty"`
 	Properties    BackendPoolProperties `json:"properties,omitempty"`
 }
 

@@ -120,7 +120,7 @@ func (s *S) TestGalebAddBackend(c *check.C) {
 		Environment:        "env1",
 		BalancePolicy:      "balance1",
 		TargetType:         "targetbackend1",
-		BackendPools:       []string{"http://galeb.somewhere/api/target/9"},
+		BackendPool:        "http://galeb.somewhere/api/target/9",
 		Properties:         BackendPoolProperties{HcPath: "/"},
 	}
 	url1, _ := url.Parse("http://10.0.0.1:8080")
@@ -295,7 +295,7 @@ func (s *S) TestRemoveRuleVirtualHost(c *check.C) {
 	c.Assert(s.handler.Url, check.DeepEquals, []string{
 		"/api/rule/search/findByName?name=myrule",
 		"/api/virtualhost/search/findByName?name=myvh",
-		"/api/rule/1/virtualhosts/2",
+		"/api/rule/1/parents/2",
 	})
 }
 
@@ -335,7 +335,7 @@ func (s *S) TestGalebSetRuleVirtualHost(c *check.C) {
 	c.Assert(s.handler.Url, check.DeepEquals, []string{
 		"/api/rule/search/findByName?name=myrule",
 		"/api/virtualhost/search/findByName?name=myvh",
-		"/api/rule/1/virtualhosts",
+		"/api/rule/1/parents",
 	})
 	c.Assert(s.handler.Header[2].Get("Content-Type"), check.Equals, "text/uri-list")
 	c.Assert(string(s.handler.Body[2]), check.Equals, fmt.Sprintf("%s/virtualhost/2", s.client.ApiUrl))
@@ -422,7 +422,7 @@ func (s *S) TestFindVirtualHostsByRule(c *check.C) {
 			]
 		}
 	}`, s.client.ApiUrl)}
-	s.handler.ConditionalContent["/api/rule/1/virtualhosts?size=999999"] = []string{
+	s.handler.ConditionalContent["/api/rule/1/parents?size=999999"] = []string{
 		"200", `{
 		"_embedded": {
 			"virtualhost": [
@@ -453,7 +453,7 @@ func (s *S) TestFindVirtualHostsByRule(c *check.C) {
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "GET"})
 	c.Assert(s.handler.Url, check.DeepEquals, []string{
 		"/api/rule/search/findByName?name=myrule",
-		"/api/rule/1/virtualhosts?size=999999",
+		"/api/rule/1/parents?size=999999",
 	})
 }
 

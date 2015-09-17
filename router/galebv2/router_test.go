@@ -10,7 +10,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -57,9 +56,9 @@ func NewFakeGalebServer() (*fakeGalebServer, error) {
 	r.HandleFunc("/api/{item}/{id}", server.findItem).Methods("GET")
 	r.HandleFunc("/api/{item}/{id}", server.destroyItem).Methods("DELETE")
 	r.HandleFunc("/api/{item}/search/findByName", server.findItemByNameHandler).Methods("GET")
-	r.HandleFunc("/api/rule/{id}/virtualhosts", server.addRuleVirtualhost).Methods("PATCH")
-	r.HandleFunc("/api/rule/{id}/virtualhosts", server.findVirtualhostByRule).Methods("GET")
-	r.HandleFunc("/api/rule/{id}/virtualhosts/{vhid}", server.destroyRuleVirtualhost).Methods("DELETE")
+	r.HandleFunc("/api/rule/{id}/parents", server.addRuleVirtualhost).Methods("PATCH")
+	r.HandleFunc("/api/rule/{id}/parents", server.findVirtualhostByRule).Methods("GET")
+	r.HandleFunc("/api/rule/{id}/parents/{vhid}", server.destroyRuleVirtualhost).Methods("DELETE")
 	r.HandleFunc("/api/target/{id}/children", server.findTargetsByParent).Methods("GET")
 	server.router = r
 	return server, nil
@@ -114,10 +113,8 @@ func (s *fakeGalebServer) findTargetsByParent(w http.ResponseWriter, r *http.Req
 	var ret []interface{}
 	for i, item := range s.targets {
 		target := item.(*galebClient.Target)
-		for _, parentId := range target.BackendPools {
-			if strings.HasSuffix(parentId, "/"+wantedId) {
-				ret = append(ret, s.targets[i])
-			}
+		if strings.HasSuffix(target.BackendPool, "/"+wantedId) {
+			ret = append(ret, s.targets[i])
 		}
 	}
 	json.NewEncoder(w).Encode(makeSearchRsp("target", ret...))
@@ -141,7 +138,7 @@ func (s *fakeGalebServer) createTarget(w http.ResponseWriter, r *http.Request) {
 	targetsWithName := s.findItemByName("target", target.Name)
 	for _, item := range targetsWithName {
 		otherTarget := item.(*galebClient.Target)
-		if reflect.DeepEqual(otherTarget.BackendPools, target.BackendPools) {
+		if otherTarget.BackendPool == target.BackendPool {
 			w.WriteHeader(http.StatusConflict)
 			return
 		}

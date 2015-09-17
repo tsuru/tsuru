@@ -145,7 +145,7 @@ func (c *GalebClient) AddBackend(backend *url.URL, poolName string) (string, err
 	if err != nil {
 		return "", err
 	}
-	params.BackendPools = []string{poolID}
+	params.BackendPool = poolID
 	params.TargetType = c.TargetTypeBackend
 	return c.doCreateResource("/target", &params)
 }
@@ -159,7 +159,7 @@ func (c *GalebClient) AddRuleToID(name, poolID string) (string, error) {
 }
 
 func (c *GalebClient) SetRuleVirtualHostIDs(ruleID, virtualHostID string) error {
-	path := fmt.Sprintf("%s/virtualhosts", strings.TrimPrefix(ruleID, c.ApiUrl))
+	path := fmt.Sprintf("%s/parents", strings.TrimPrefix(ruleID, c.ApiUrl))
 	rsp, err := c.doRequest("PATCH", path, virtualHostID)
 	if err != nil {
 		return err
@@ -217,7 +217,7 @@ func (c *GalebClient) RemoveRule(ruleName string) error {
 
 func (c *GalebClient) RemoveRuleVirtualHostByID(ruleID, virtualHostID string) error {
 	vhId := virtualHostID[strings.LastIndex(virtualHostID, "/")+1:]
-	path := fmt.Sprintf("%s/virtualhosts/%s", ruleID, vhId)
+	path := fmt.Sprintf("%s/parents/%s", ruleID, vhId)
 	return c.removeResource(path)
 }
 
@@ -264,14 +264,14 @@ func (c *GalebClient) FindVirtualHostsByRule(ruleName string) ([]VirtualHost, er
 	if err != nil {
 		return nil, err
 	}
-	path := fmt.Sprintf("%s/virtualhosts?size=999999", strings.TrimPrefix(ruleID, c.ApiUrl))
+	path := fmt.Sprintf("%s/parents?size=999999", strings.TrimPrefix(ruleID, c.ApiUrl))
 	rsp, err := c.doRequest("GET", path, nil)
 	if err != nil {
 		return nil, err
 	}
 	responseData, _ := ioutil.ReadAll(rsp.Body)
 	if rsp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GET /rule/{id}/virtualhosts: wrong status code: %d. content: %s", rsp.StatusCode, string(responseData))
+		return nil, fmt.Errorf("GET /rule/{id}/parents: wrong status code: %d. content: %s", rsp.StatusCode, string(responseData))
 	}
 	var rspObj struct {
 		Embedded struct {
@@ -280,7 +280,7 @@ func (c *GalebClient) FindVirtualHostsByRule(ruleName string) ([]VirtualHost, er
 	}
 	err = json.Unmarshal(responseData, &rspObj)
 	if err != nil {
-		return nil, fmt.Errorf("GET /rule/{id}/virtualhosts: unable to parse: %s: %s", string(responseData), err)
+		return nil, fmt.Errorf("GET /rule/{id}/parents: unable to parse: %s: %s", string(responseData), err)
 	}
 	return rspObj.Embedded.VirtualHosts, nil
 }
