@@ -30,3 +30,6 @@ notifications:
 services:
   - mongodb
   - redis
+matrix:
+  allow_failures:
+    - go: tip
