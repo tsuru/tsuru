@@ -141,12 +141,12 @@ func AcquireApplicationLock(appName string, owner string, reason string) (bool, 
 // until timeout is reached.
 func AcquireApplicationLockWait(appName string, owner string, reason string, timeout time.Duration) (bool, error) {
 	timeoutChan := time.After(timeout)
+	conn, err := db.Conn()
+	if err != nil {
+		return false, err
+	}
+	defer conn.Close()
 	for {
-		conn, err := db.Conn()
-		if err != nil {
-			return false, err
-		}
-		defer conn.Close()
 		appLock := AppLock{
 			Locked:      true,
 			Reason:      reason,
