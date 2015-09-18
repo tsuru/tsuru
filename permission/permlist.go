@@ -6,31 +6,48 @@ package permission
 
 //go:generate go run ./generator/main.go -o permitems.go
 
-var PermissionRecord = (&recorder{}).addWithContextCB("app", []contextType{CtxApp, CtxTeam, CtxPool}, func(r *recorder) {
-	r.addWithContext("create", []contextType{CtxTeam, CtxPool})
-	r.add("read", "delete", "deploy")
-	r.addCB("update", func(r *recorder) {
-		r.addCB("env", func(r *recorder) {
-			r.add("set", "unset")
-		})
-		r.add("restart")
-	})
-}).addWithContextCB("node", []contextType{CtxPool}, func(r *recorder) {
-	r.add("create", "read", "update", "delete")
-}).addWithContextCB("iaas", []contextType{CtxIaaS}, func(r *recorder) {
-	r.add("create", "read", "update", "delete")
-}).addWithContextCB("team", []contextType{CtxTeam}, func(r *recorder) {
-	r.addWithContext("create", []contextType{})
-	r.add("delete")
-	r.addCB("update", func(r *recorder) {
-		r.add("add-member", "remove-member")
-	})
-}).addCB("user", func(r *recorder) {
-	r.add("create", "delete", "list", "update")
-}).addWithContextCB("service-instance", []contextType{CtxServiceInstance, CtxTeam}, func(r *recorder) {
-	r.addWithContext("create", []contextType{CtxTeam})
-	r.addCB("update", func(r *recorder) {
-		r.add("bind", "unbind", "grant", "revoke")
-	})
-	r.add("delete", "read")
-})
+var PermissionRegistry = (&registry{}).addWithCtx(
+	"app", []contextType{CtxApp, CtxTeam, CtxPool},
+).addWithCtx(
+	"app.create", []contextType{CtxTeam, CtxPool},
+).add(
+	"app.update.env.set",
+	"app.update.env.unset",
+	"app.update.restart",
+	"app.deploy",
+	"app.read",
+	"app.delete",
+).addWithCtx(
+	"node", []contextType{CtxPool},
+).add(
+	"node.create",
+	"node.read",
+	"node.update",
+	"node.delete",
+).addWithCtx(
+	"iaas.read", []contextType{CtxIaaS},
+).addWithCtx(
+	"team", []contextType{CtxTeam},
+).addWithCtx(
+	"team.create", []contextType{},
+).add(
+	"team.delete",
+	"team.update.add-member",
+	"team.update.remove-member",
+).add(
+	"user.create",
+	"user.delete",
+	"user.list",
+	"user.update",
+).addWithCtx(
+	"service-instance", []contextType{CtxServiceInstance, CtxTeam},
+).addWithCtx(
+	"service-instance.create", []contextType{},
+).add(
+	"service-instance.read",
+	"service-instance.delete",
+	"service-instance.update.bind",
+	"service-instance.update.unbind",
+	"service-instance.update.grant",
+	"service-instance.update.revoke",
+)

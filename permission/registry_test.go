@@ -9,20 +9,12 @@ import (
 )
 
 func (s *S) TestRecorderPermissions(c *check.C) {
-	r := &recorder{}
-	r.addWithContextCB("app", []contextType{CtxApp, CtxTeam, CtxPool}, func(r *recorder) {
-		r.addCB("update", func(r *recorder) {
-			r.addCB("env", func(r *recorder) {
-				r.add("set", "unset")
-			})
-			r.add("restart")
-		})
-		r.add("deploy")
-	})
-	r.addWithContextCB("team", []contextType{CtxTeam}, func(r *recorder) {
-		r.addWithContext("create", []contextType{})
-		r.add("update")
-	})
+	r := &registry{}
+	r.addWithCtx("app", []contextType{CtxApp, CtxTeam, CtxPool}).
+		add("app.update.env.set", "app.update.env.unset", "app.update.restart", "app.deploy").
+		addWithCtx("team", []contextType{CtxTeam}).
+		addWithCtx("team.create", []contextType{}).
+		add("team.update")
 	expected := PermissionSchemeList{
 		{},
 		{name: "app", contexts: []contextType{CtxApp, CtxTeam, CtxPool}},
@@ -66,15 +58,13 @@ func (s *S) TestRecorderPermissions(c *check.C) {
 }
 
 func (s *S) TestRecorderGet(c *check.C) {
-	r := &recorder{}
-	r.addWithContextCB("app", []contextType{CtxApp, CtxTeam, CtxPool}, func(r *recorder) {
-		r.addCB("update", func(r *recorder) {
-			r.addCB("env", func(r *recorder) {
-				r.add("set")
-			})
-		})
-	})
+	r := (&registry{}).add("app.update.env.set")
 	perm := r.get("app.update")
+	c.Assert(perm, check.NotNil)
+	c.Assert(perm.FullName(), check.Equals, "app.update")
+	r = (&registry{}).addWithCtx("app", []contextType{CtxApp, CtxTeam, CtxPool}).
+		add("app.update.env.set")
+	perm = r.get("app.update")
 	c.Assert(perm, check.NotNil)
 	c.Assert(perm.FullName(), check.Equals, "app.update")
 	c.Assert(perm.AllowedContexts(), check.DeepEquals, []contextType{CtxApp, CtxTeam, CtxPool})

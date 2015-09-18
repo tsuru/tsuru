@@ -12,8 +12,6 @@ import (
 
 func Test(t *testing.T) { check.TestingT(t) }
 
-type S struct {
-	r *recorder
-}
+type S struct{}
 
 var _ = check.Suite(&S{})

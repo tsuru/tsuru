@@ -28,7 +28,7 @@ package permission
 
 var (
 {{range .Permissions}} \
-    Perm{{.Identifier}} = PermissionRecord.get("{{.FullName}}")
+    Perm{{.Identifier}} = PermissionRegistry.get("{{.FullName}}")
 {{end}} \
 )
 `
@@ -45,7 +45,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	lst := permission.PermissionRecord.Permissions()
+	lst := permission.PermissionRegistry.Permissions()
 	sort.Sort(lst)
 	data := context{
 		Time:        time.Now(),
