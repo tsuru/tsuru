@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/mailgun/vulcand/Godeps/_workspace/src/github.com/mailgun/scroll"
 	"github.com/mailgun/vulcand/api"
@@ -22,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/db/dbtest"
 	"github.com/tsuru/tsuru/router"
 	"github.com/tsuru/tsuru/router/routertest"
+	"github.com/tsuru/tsuru/tsurutest"
 	"gopkg.in/check.v1"
 )
 
@@ -435,6 +437,11 @@ func (s *S) TestHealthCheck(c *check.C) {
 
 func (s *S) TestHealthCheckFailure(c *check.C) {
 	s.vulcandServer.Close()
+	err := tsurutest.WaitCondition(time.Second, func() bool {
+		_, err := http.Get(s.vulcandServer.URL)
+		return err != nil
+	})
+	c.Assert(err, check.IsNil)
 	got, err := router.Get("vulcand")
 	c.Assert(err, check.IsNil)
 	hcRouter, ok := got.(router.HealthChecker)
