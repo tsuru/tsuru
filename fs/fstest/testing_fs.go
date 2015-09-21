@@ -34,6 +34,7 @@ type FakeFile struct {
 	r       *safe.BytesReader
 	f       *os.File
 	modTime time.Time
+	dir     bool
 }
 
 func (f *FakeFile) reader() *safe.BytesReader {
@@ -189,6 +190,12 @@ func (r *RecordingFs) Mkdir(name string, perm os.FileMode) error {
 	r.actionsMutex.Lock()
 	defer r.actionsMutex.Unlock()
 	r.actions = append(r.actions, fmt.Sprintf("mkdir %s with mode %#o", name, perm))
+	r.filesMutex.Lock()
+	defer r.filesMutex.Unlock()
+	if r.files == nil {
+		r.files = make(map[string]*FakeFile)
+	}
+	r.files[name] = &FakeFile{name: name, dir: true}
 	return nil
 }
 
@@ -198,6 +205,12 @@ func (r *RecordingFs) MkdirAll(path string, perm os.FileMode) error {
 	r.actionsMutex.Lock()
 	defer r.actionsMutex.Unlock()
 	r.actions = append(r.actions, fmt.Sprintf("mkdirall %s with mode %#o", path, perm))
+	r.filesMutex.Lock()
+	defer r.filesMutex.Unlock()
+	if r.files == nil {
+		r.files = make(map[string]*FakeFile)
+	}
+	r.files[path] = &FakeFile{name: path, dir: true}
 	return nil
 }
 
@@ -241,12 +254,21 @@ func (r *RecordingFs) deleteFile(name string) {
 	}
 }
 
+func (r *RecordingFs) deleteDir(name string) {
+	r.filesMutex.Lock()
+	defer r.filesMutex.Unlock()
+	if r.files != nil {
+		delete(r.files, name)
+	}
+}
+
 // Remove records the action "remove <name>" and returns nil.
 func (r *RecordingFs) Remove(name string) error {
 	r.actionsMutex.Lock()
 	r.actions = append(r.actions, "remove "+name)
 	r.actionsMutex.Unlock()
 	r.deleteFile(name)
+	r.deleteDir(name)
 	return nil
 }
 
@@ -256,6 +278,7 @@ func (r *RecordingFs) RemoveAll(path string) error {
 	r.actions = append(r.actions, "removeall "+path)
 	r.actionsMutex.Unlock()
 	r.deleteFile(path)
+	r.deleteDir(path)
 	return nil
 }
 

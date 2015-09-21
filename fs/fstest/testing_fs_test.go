@@ -192,6 +192,8 @@ func (s *S) TestRecordingFsMkdir(c *check.C) {
 	err := fs.Mkdir("/my/dir", 0777)
 	c.Assert(err, check.IsNil)
 	c.Assert(fs.HasAction("mkdir /my/dir with mode 0777"), check.Equals, true)
+	_, ok := fs.files["/my/dir"]
+	c.Assert(ok, check.Equals, true)
 }
 
 func (s *S) TestRecordingFsMkdirAll(c *check.C) {
@@ -199,6 +201,8 @@ func (s *S) TestRecordingFsMkdirAll(c *check.C) {
 	err := fs.MkdirAll("/my/dir/with/subdir", 0777)
 	c.Assert(err, check.IsNil)
 	c.Assert(fs.HasAction("mkdirall /my/dir/with/subdir with mode 0777"), check.Equals, true)
+	_, ok := fs.files["/my/dir/with/subdir"]
+	c.Assert(ok, check.Equals, true)
 }
 
 func (s *S) TestRecordingFsOpen(c *check.C) {
@@ -310,6 +314,16 @@ func (s *S) TestRecordingFsRemove(c *check.C) {
 	c.Assert(fs.HasAction("remove /my/file"), check.Equals, true)
 }
 
+func (s *S) TestRecordingFsRemoveDir(c *check.C) {
+	fs := RecordingFs{}
+	err := fs.Mkdir("/my/dir/", 0100)
+	c.Assert(err, check.IsNil)
+	err = fs.Remove("/my/dir/")
+	c.Assert(err, check.IsNil)
+	_, ok := fs.files["/my/dir/"]
+	c.Assert(ok, check.Equals, false)
+}
+
 func (s *S) TestRecordingFsRemoveDeletesState(c *check.C) {
 	fs := RecordingFs{FileContent: "hi"}
 	f, _ := fs.Open("/my/file")
@@ -326,6 +340,16 @@ func (s *S) TestRecordingFsRemoveAll(c *check.C) {
 	err := fs.RemoveAll("/my/dir")
 	c.Assert(err, check.IsNil)
 	c.Assert(fs.HasAction("removeall /my/dir"), check.Equals, true)
+}
+
+func (s *S) TestRecordingFsRemoveAllDir(c *check.C) {
+	fs := RecordingFs{}
+	err := fs.Mkdir("/my/dir", 0100)
+	c.Assert(err, check.IsNil)
+	err = fs.RemoveAll("/my/dir")
+	c.Assert(err, check.IsNil)
+	_, ok := fs.files["/my/dir"]
+	c.Assert(ok, check.Equals, false)
 }
 
 func (s *S) TestRecordingFsRemoveAllDeletesState(c *check.C) {
@@ -376,6 +400,20 @@ func (s *S) TestRecordingFsStatNotFound(c *check.C) {
 	c.Assert(os.IsNotExist(err), check.Equals, true)
 	c.Assert(fi, check.IsNil)
 	c.Assert(fs.HasAction("stat /my/file"), check.Equals, true)
+}
+
+func (s *S) TestRecordingFsStatDir(c *check.C) {
+	fs := RecordingFs{}
+	fs.Mkdir("/my/dir/", 0100)
+	_, err := fs.Stat("/my/dir/")
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestRecordingFsStatDirNotFound(c *check.C) {
+	fs := RecordingFs{}
+	_, err := fs.Stat("/my/dir/")
+	c.Assert(err, check.NotNil)
+	c.Assert(os.IsNotExist(err), check.Equals, true)
 }
 
 func (s *S) TestFileNotFoundFsPointerImplementsFsInterface(c *check.C) {
