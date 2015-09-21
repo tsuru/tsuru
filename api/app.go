@@ -783,11 +783,11 @@ func bindServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token) e
 	envs := a.InstanceEnv(instanceName)
 	if len(envs) > 0 {
 		fmt.Fprintf(writer, "The following environment variables are available for use in your app:\n\n")
+		for k := range envs {
+			fmt.Fprintf(writer, "- %s\n", k)
+		}
+		fmt.Fprintf(writer, "- %s\n", app.TsuruServicesEnvVar)
 	}
-	for k := range envs {
-		fmt.Fprintf(writer, "- %s\n", k)
-	}
-	fmt.Fprintf(writer, "- %s\n", app.TsuruServicesEnvVar)
 	return nil
 }
 

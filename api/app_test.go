@@ -2628,6 +2628,59 @@ func (s *S) TestBindHandler(c *check.C) {
 	c.Assert(action, rectest.IsRecorded)
 }
 
+func (s *S) TestBindHandlerWithoutEnvsDontRestartTheApp(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte(`{}`))
+	}))
+	defer ts.Close()
+	srvc := service.Service{Name: "mysql", Endpoint: map[string]string{"production": ts.URL}}
+	err := srvc.Create()
+	c.Assert(err, check.IsNil)
+	defer s.conn.Services().Remove(bson.M{"_id": "mysql"})
+	instance := service.ServiceInstance{
+		Name:        "my-mysql",
+		ServiceName: "mysql",
+		Teams:       []string{s.team.Name},
+	}
+	err = instance.Create()
+	c.Assert(err, check.IsNil)
+	defer s.conn.ServiceInstances().Remove(bson.M{"name": "my-mysql"})
+	a := app.App{
+		Name:     "painkiller",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+		Env:      map[string]bind.EnvVar{},
+	}
+	err = app.CreateApp(&a, s.user)
+	c.Assert(err, check.IsNil)
+	s.provisioner.AddUnits(&a, 1, "web", nil)
+	url := fmt.Sprintf("/services/instances/%s/%s?:instance=%s&:app=%s", instance.Name, a.Name, instance.Name, a.Name)
+	request, err := http.NewRequest("PUT", url, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	s.provisioner.PrepareOutput([]byte("exported"))
+	err = bindServiceInstance(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	err = s.conn.ServiceInstances().Find(bson.M{"name": instance.Name}).One(&instance)
+	c.Assert(err, check.IsNil)
+	c.Assert(instance.Apps, check.DeepEquals, []string{a.Name})
+	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&a)
+	c.Assert(err, check.IsNil)
+	parts := strings.Split(recorder.Body.String(), "\n")
+	c.Assert(parts, check.HasLen, 2)
+	c.Assert(parts[0], check.Equals, `{"Message":"\nInstance \"my-mysql\" is now bound to the app \"painkiller\".\n"}`)
+	c.Assert(parts[1], check.Equals, "")
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	action := rectest.Action{
+		Action: "bind-app",
+		User:   s.user.Email,
+		Extra:  []interface{}{"instance=" + instance.Name, "app=" + a.Name},
+	}
+	c.Assert(action, rectest.IsRecorded)
+	c.Assert(s.provisioner.Restarts(&a, ""), check.Equals, 0)
+}
+
 func (s *S) TestBindHandlerReturns404IfTheInstanceDoesNotExist(c *check.C) {
 	a := app.App{Name: "serviceapp", Platform: "zend", Teams: []string{s.team.Name}}
 	err := app.CreateApp(&a, s.user)

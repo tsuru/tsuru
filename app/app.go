@@ -1174,6 +1174,9 @@ func (app *App) AddInstance(serviceName string, instance bind.ServiceInstance, w
 	if err != nil {
 		return err
 	}
+	if len(instance.Envs) == 0 {
+		return nil
+	}
 	envVars := make([]bind.EnvVar, 0, len(instance.Envs)+1)
 	for k, v := range instance.Envs {
 		envVars = append(envVars, bind.EnvVar{
