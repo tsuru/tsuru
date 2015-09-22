@@ -60,8 +60,8 @@ type userToken struct {
 	permissions []Permission
 }
 
-func (t *userToken) Pemissions() []Permission {
-	return t.permissions
+func (t *userToken) Permissions() ([]Permission, error) {
+	return t.permissions, nil
 }
 
 func (s *S) TestCheck(c *check.C) {

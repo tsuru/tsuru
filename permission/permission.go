@@ -119,11 +119,14 @@ type Permission struct {
 }
 
 type Token interface {
-	Pemissions() []Permission
+	Permissions() ([]Permission, error)
 }
 
 func Check(token Token, scheme *permissionScheme, contexts ...Context) bool {
-	perms := token.Pemissions()
+	perms, err := token.Permissions()
+	if err != nil {
+		return false
+	}
 	for _, perm := range perms {
 		if perm.Scheme.isParent(scheme) {
 			if perm.Context.CtxType == CtxGlobal {

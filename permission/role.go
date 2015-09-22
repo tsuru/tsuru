@@ -7,6 +7,7 @@ package permission
 import (
 	"errors"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/tsuru/tsuru/db"
@@ -125,6 +126,22 @@ func (r *Role) RemovePermissions(permNames ...string) error {
 	}
 	r.SchemeNames = dbRole.SchemeNames
 	return nil
+}
+
+func (r *Role) PermisionsFor(contextValue string) []Permission {
+	permissions := make([]Permission, len(r.SchemeNames))
+	sort.Strings(r.SchemeNames)
+	for i, schemeName := range r.SchemeNames {
+		scheme := PermissionRegistry.getSubRegistry(schemeName)
+		permissions[i] = Permission{
+			Scheme: &scheme.permissionScheme,
+			Context: Context{
+				CtxType: r.ContextType,
+				Value:   contextValue,
+			},
+		}
+	}
+	return permissions
 }
 
 func rolesCollection() (*storage.Collection, error) {
