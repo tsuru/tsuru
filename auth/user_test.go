@@ -5,8 +5,11 @@
 package auth
 
 import (
+	"sort"
+
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/repository/repositorytest"
 	"gopkg.in/check.v1"
@@ -314,4 +317,79 @@ func (s *S) TestListAllUsers(c *check.C) {
 	users, err := ListUsers()
 	c.Assert(err, check.IsNil)
 	c.Assert(len(users), check.Equals, 1)
+}
+
+type roleInstanceList []roleInstance
+
+func (l roleInstanceList) Len() int      { return len(l) }
+func (l roleInstanceList) Swap(i, j int) { l[i], l[j] = l[j], l[i] }
+func (l roleInstanceList) Less(i, j int) bool {
+	if l[i].Name < l[j].Name {
+		return true
+	} else if l[i].Name > l[j].Name {
+		return false
+	} else {
+		return l[i].ContextValue < l[j].ContextValue
+	}
+}
+
+func (s *S) TestUserAddRole(c *check.C) {
+	_, err := permission.NewRole("r1", "app")
+	c.Assert(err, check.IsNil)
+	_, err = permission.NewRole("r2", "app")
+	c.Assert(err, check.IsNil)
+	u := User{Email: "me@tsuru.com", Password: "123"}
+	err = u.Create()
+	c.Assert(err, check.IsNil)
+	err = u.AddRole("r1", "c1")
+	c.Assert(err, check.IsNil)
+	err = u.AddRole("r1", "c2")
+	c.Assert(err, check.IsNil)
+	err = u.AddRole("r2", "x")
+	c.Assert(err, check.IsNil)
+	err = u.AddRole("r2", "x")
+	c.Assert(err, check.IsNil)
+	err = u.AddRole("r3", "a")
+	c.Assert(err, check.Equals, permission.ErrRoleNotFound)
+	expected := []roleInstance{
+		{Name: "r1", ContextValue: "c1"},
+		{Name: "r1", ContextValue: "c2"},
+		{Name: "r2", ContextValue: "x"},
+	}
+	sort.Sort(roleInstanceList(expected))
+	sort.Sort(roleInstanceList(u.Roles))
+	c.Assert(u.Roles, check.DeepEquals, expected)
+	uDB, err := GetUserByEmail("me@tsuru.com")
+	c.Assert(err, check.IsNil)
+	sort.Sort(roleInstanceList(uDB.Roles))
+	c.Assert(uDB.Roles, check.DeepEquals, expected)
+}
+
+func (s *S) TestUserRemoveRole(c *check.C) {
+	u := User{
+		Email:    "me@tsuru.com",
+		Password: "123",
+		Roles: []roleInstance{
+			{Name: "r1", ContextValue: "c1"},
+			{Name: "r1", ContextValue: "c2"},
+			{Name: "r2", ContextValue: "x"},
+		},
+	}
+	err := u.Create()
+	c.Assert(err, check.IsNil)
+	err = u.RemoveRole("r1", "c2")
+	c.Assert(err, check.IsNil)
+	err = u.RemoveRole("r1", "c2")
+	c.Assert(err, check.IsNil)
+	expected := []roleInstance{
+		{Name: "r1", ContextValue: "c1"},
+		{Name: "r2", ContextValue: "x"},
+	}
+	sort.Sort(roleInstanceList(expected))
+	sort.Sort(roleInstanceList(u.Roles))
+	c.Assert(u.Roles, check.DeepEquals, expected)
+	uDB, err := GetUserByEmail("me@tsuru.com")
+	c.Assert(err, check.IsNil)
+	sort.Sort(roleInstanceList(uDB.Roles))
+	c.Assert(uDB.Roles, check.DeepEquals, expected)
 }

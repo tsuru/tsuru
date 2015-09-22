@@ -16,6 +16,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/repository"
 	"github.com/tsuru/tsuru/validation"
@@ -28,11 +29,17 @@ var (
 	ErrKeyDisabled  = stderrors.New("key management is disabled")
 )
 
+type roleInstance struct {
+	Name         string
+	ContextValue string
+}
+
 type User struct {
+	quota.Quota
 	Email    string
 	Password string
-	quota.Quota
-	APIKey string
+	APIKey   string
+	Roles    []roleInstance `bson:",omitempty"`
 }
 
 // ListUsers list all users registred in tsuru
@@ -235,4 +242,59 @@ func (u *User) RegenerateAPIKey() (string, error) {
 	h.Write([]byte(time.Now().Format(time.RFC3339Nano)))
 	u.APIKey = fmt.Sprintf("%x", h.Sum(nil))
 	return u.APIKey, u.Update()
+}
+
+func (u *User) reload() error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return conn.Users().Find(bson.M{"email": u.Email}).One(u)
+}
+
+func (u *User) AddRole(roleName string, contextValue string) error {
+	_, err := permission.FindRole(roleName)
+	if err != nil {
+		return err
+	}
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	err = conn.Users().Update(bson.M{"email": u.Email}, bson.M{
+		"$addToSet": bson.M{
+			// Order matters in $addToSet, that's why bson.D is used instead
+			// of bson.M.
+			"roles": bson.D{
+				{"name", roleName},
+				{"contextvalue", contextValue},
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	return u.reload()
+}
+
+func (u *User) RemoveRole(roleName string, contextValue string) error {
+	conn, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	err = conn.Users().Update(bson.M{"email": u.Email}, bson.M{
+		"$pull": bson.M{
+			"roles": bson.D{
+				{"name", roleName},
+				{"contextvalue", contextValue},
+			},
+		},
+	})
+	if err != nil {
+		return err
+	}
+	return u.reload()
 }
