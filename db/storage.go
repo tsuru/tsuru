@@ -195,3 +195,7 @@ func (s *LogStorage) LogsCollections() ([]*storage.Collection, error) {
 	}
 	return colls, nil
 }
+
+func (s *Storage) Roles() *storage.Collection {
+	return s.Collection("roles")
+}

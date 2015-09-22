@@ -41,7 +41,7 @@ func (r *registry) getSubRegistry(name string) *registry {
 	parts := strings.Split(name, ".")
 	children := r.children
 	var parent *registry
-	for len(children) > 0 && len(parts) > 0 {
+	for len(parts) > 0 {
 		var currentElement *registry
 		for _, child := range children {
 			if child.name == parts[0] {
@@ -56,7 +56,7 @@ func (r *registry) getSubRegistry(name string) *registry {
 		}
 		parent = currentElement
 		if parent == nil {
-			break
+			return nil
 		}
 	}
 	return parent

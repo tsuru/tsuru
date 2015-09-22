@@ -5,6 +5,7 @@
 package permission
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 )
@@ -31,7 +32,20 @@ var (
 	CtxPool            = contextType("pool")
 	CtxIaaS            = contextType("iaas")
 	CtxServiceInstance = contextType("service-instance")
+
+	allTypes = []contextType{
+		CtxGlobal, CtxApp, CtxTeam, CtxPool, CtxIaaS, CtxServiceInstance,
+	}
 )
+
+func parseContext(ctx string) (contextType, error) {
+	for _, t := range allTypes {
+		if string(t) == ctx {
+			return t, nil
+		}
+	}
+	return "", fmt.Errorf("invalid context type %q", ctx)
+}
 
 func (l PermissionSchemeList) Len() int           { return len(l) }
 func (l PermissionSchemeList) Swap(i, j int)      { l[i], l[j] = l[j], l[i] }
