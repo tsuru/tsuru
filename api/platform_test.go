@@ -1,4 +1,4 @@
-// Copyright 2015 tsuru authors. All rights reserved.
+//// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
@@ -64,6 +64,90 @@ func (p *PlatformSuite) TestPlatformUpdate(c *check.C) {
 	dockerfile_url := "http://localhost/Dockerfile"
 	body := fmt.Sprintf("dockerfile=%s", dockerfile_url)
 	request, _ := http.NewRequest("PUT", "/platforms/wat?:name=wat", strings.NewReader(body))
+	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	result := platformUpdate(recorder, request, nil)
+	c.Assert(result, check.IsNil)
+	c.Assert(recorder.Body.String(), check.Equals, "\nOK!\n")
+}
+
+func (p *PlatformSuite) TestPlatformUpdateOnlyDisableTrue(c *check.C) {
+	provisioner := provisiontest.ExtensibleFakeProvisioner{
+		FakeProvisioner: provisiontest.NewFakeProvisioner(),
+	}
+	oldProvisioner := app.Provisioner
+	app.Provisioner = &provisioner
+	defer func() {
+		app.Provisioner = oldProvisioner
+	}()
+	err := app.PlatformAdd("wat", nil, nil)
+	c.Assert(err, check.IsNil)
+	dockerfile_url := ""
+	body := fmt.Sprintf("dockerfile=%s", dockerfile_url)
+	request, _ := http.NewRequest("PUT", "/platforms/wat?:name=wat&disabled=true", strings.NewReader(body))
+	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	result := platformUpdate(recorder, request, nil)
+	c.Assert(result, check.IsNil)
+	c.Assert(recorder.Body.String(), check.Equals, "\nOK!\n")
+}
+
+func (p *PlatformSuite) TestPlatformUpdateDisableTrueAndDockerfile(c *check.C) {
+	provisioner := provisiontest.ExtensibleFakeProvisioner{
+		FakeProvisioner: provisiontest.NewFakeProvisioner(),
+	}
+	oldProvisioner := app.Provisioner
+	app.Provisioner = &provisioner
+	defer func() {
+		app.Provisioner = oldProvisioner
+	}()
+	err := app.PlatformAdd("wat", nil, nil)
+	c.Assert(err, check.IsNil)
+	dockerfile_url := "http://localhost/Dockerfile"
+	body := fmt.Sprintf("dockerfile=%s", dockerfile_url)
+	request, _ := http.NewRequest("PUT", "/platforms/wat?:name=wat&disabled=true", strings.NewReader(body))
+	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	result := platformUpdate(recorder, request, nil)
+	c.Assert(result, check.IsNil)
+	c.Assert(recorder.Body.String(), check.Equals, "\nOK!\n")
+}
+
+func (p *PlatformSuite) TestPlatformUpdateOnlyDisableFalse(c *check.C) {
+	provisioner := provisiontest.ExtensibleFakeProvisioner{
+		FakeProvisioner: provisiontest.NewFakeProvisioner(),
+	}
+	oldProvisioner := app.Provisioner
+	app.Provisioner = &provisioner
+	defer func() {
+		app.Provisioner = oldProvisioner
+	}()
+	err := app.PlatformAdd("wat", nil, nil)
+	c.Assert(err, check.IsNil)
+	dockerfile_url := ""
+	body := fmt.Sprintf("dockerfile=%s", dockerfile_url)
+	request, _ := http.NewRequest("PUT", "/platforms/wat?:name=wat&disabled=false", strings.NewReader(body))
+	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	result := platformUpdate(recorder, request, nil)
+	c.Assert(result, check.IsNil)
+	c.Assert(recorder.Body.String(), check.Equals, "\nOK!\n")
+}
+
+func (p *PlatformSuite) TestPlatformUpdateDisableFalseAndDockerfile(c *check.C) {
+	provisioner := provisiontest.ExtensibleFakeProvisioner{
+		FakeProvisioner: provisiontest.NewFakeProvisioner(),
+	}
+	oldProvisioner := app.Provisioner
+	app.Provisioner = &provisioner
+	defer func() {
+		app.Provisioner = oldProvisioner
+	}()
+	err := app.PlatformAdd("wat", nil, nil)
+	c.Assert(err, check.IsNil)
+	dockerfile_url := "http://localhost/Dockerfile"
+	body := fmt.Sprintf("dockerfile=%s", dockerfile_url)
+	request, _ := http.NewRequest("PUT", "/platforms/wat?:name=wat&disabled=false", strings.NewReader(body))
 	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	result := platformUpdate(recorder, request, nil)

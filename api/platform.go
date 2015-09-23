@@ -30,6 +30,7 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
+//posso dar update com dockerfile e desabilitar ele ao mesmo tempo, tenho que ver como pegar esses dois casos
 func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	name := r.URL.Query().Get(":name")
 	err := r.ParseForm()

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/log"
@@ -17,18 +18,23 @@ import (
 )
 
 type Platform struct {
-	Name string `bson:"_id"`
+	Name     string `bson:"_id"`
+	Disabled bool
 }
 
 // Platforms returns the list of available platforms.
-func Platforms() ([]Platform, error) {
+func Platforms(enabledOnly bool) ([]Platform, error) {
 	var platforms []Platform
 	conn, err := db.Conn()
 	if err != nil {
 		return nil, err
 	}
 	defer conn.Close()
-	err = conn.Platforms().Find(nil).All(&platforms)
+	var query bson.M
+	if enabledOnly {
+		query = bson.M{"disabled": false}
+	}
+	err = conn.Platforms().Find(query).All(&platforms)
 	return platforms, err
 }
 
@@ -98,17 +104,29 @@ func PlatformUpdate(name string, args map[string]string, w io.Writer) error {
 		}
 		return err
 	}
-	err = provisioner.PlatformUpdate(name, args, w)
-	if err != nil {
-		return err
+	if args["dockerfile"] != "" {
+		err = provisioner.PlatformUpdate(name, args, w)
+		if err != nil {
+			return err
+		}
+		var apps []App
+		err = conn.Apps().Find(bson.M{"framework": name}).All(&apps)
+		if err != nil {
+			return err
+		}
+		for _, app := range apps {
+			app.SetUpdatePlatform(true)
+		}
 	}
-	var apps []App
-	err = conn.Apps().Find(bson.M{"framework": name}).All(&apps)
-	if err != nil {
-		return err
-	}
-	for _, app := range apps {
-		app.SetUpdatePlatform(true)
+	if args["disabled"] != "" {
+		disableBool, err := strconv.ParseBool(args["disabled"])
+		if err != nil {
+			return err
+		}
+		err = conn.Platforms().Update(bson.M{"_id": name}, bson.M{"$set": bson.M{"disabled": disableBool}})
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }

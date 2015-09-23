@@ -628,6 +628,59 @@ func (s *S) TestCreateAppReturnsConflictWithProperMessageWhenTheAppAlreadyExist(
 	c.Assert(e.Code, check.Equals, http.StatusConflict)
 }
 
+func (s *S) TestCreateAppWithDisabledPlatformAndAdminUser(c *check.C) {
+	p := app.Platform{Name: "platDis", Disabled: true}
+	s.conn.Platforms().Insert(p)
+	a := app.App{Name: "someapp"}
+	data := `{"name":"someapp","platform":"platDis"}`
+	b := strings.NewReader(data)
+	request, err := http.NewRequest("POST", "/apps", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = createApp(recorder, request, s.admintoken)
+	c.Assert(err, check.IsNil)
+	body, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, check.IsNil)
+	repoURL := "git@" + repositorytest.ServerHost + ":" + a.Name + ".git"
+	var obtained map[string]string
+	expected := map[string]string{
+		"status":         "success",
+		"repository_url": repoURL,
+		"ip":             "someapp.fakerouter.com",
+	}
+	err = json.Unmarshal(body, &obtained)
+	c.Assert(obtained, check.DeepEquals, expected)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var gotApp app.App
+	err = s.conn.Apps().Find(bson.M{"name": "someapp"}).One(&gotApp)
+	c.Assert(err, check.IsNil)
+	c.Assert(gotApp.Teams, check.DeepEquals, []string{s.adminteam.Name})
+	c.Assert(s.provisioner.GetUnits(&gotApp), check.HasLen, 0)
+	action := rectest.Action{
+		Action: "create-app",
+		User:   s.adminuser.Email,
+		Extra:  []interface{}{"app=someapp", "platform=platDis", "plan="},
+	}
+	c.Assert(action, rectest.IsRecorded)
+	_, err = repository.Manager().GetRepository(a.Name)
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestCreateAppWithDisabledPlatformAndNotAdminUser(c *check.C) {
+	p := app.Platform{Name: "platDis", Disabled: true}
+	s.conn.Platforms().Insert(p)
+	data := `{"name":"someapp","platform":"platDis"}`
+	b := strings.NewReader(data)
+	request, err := http.NewRequest("POST", "/apps", b)
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	err = createApp(recorder, request, s.token)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, app.InvalidPlatformError{}.Error())
+}
+
 func (s *S) TestAddUnits(c *check.C) {
 	a := app.App{Name: "armorandsword", Platform: "zend", Teams: []string{s.team.Name}, Quota: quota.Unlimited}
 	err := app.CreateApp(&a, s.user)
@@ -3032,6 +3085,64 @@ func (s *S) TestPlatformList(c *check.C) {
 	want := make([]app.Platform, 1, len(platforms)+1)
 	want[0] = app.Platform{Name: "zend"}
 	want = append(want, platforms...)
+	request, _ := http.NewRequest("GET", "/platforms", nil)
+	recorder := httptest.NewRecorder()
+	err := platformList(recorder, request, s.token)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	var got []app.Platform
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, check.IsNil)
+	c.Assert(got, check.DeepEquals, want)
+	action := rectest.Action{Action: "platform-list", User: s.user.Email}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *S) TestPlatformListAdminList(c *check.C) {
+	platforms := []app.Platform{
+		{Name: "python", Disabled: true},
+		{Name: "java"},
+		{Name: "ruby20", Disabled: true},
+		{Name: "static"},
+	}
+	for _, p := range platforms {
+		s.conn.Platforms().Insert(p)
+		defer s.conn.Platforms().Remove(p)
+	}
+	want := make([]app.Platform, 1, len(platforms)+1)
+	want[0] = app.Platform{Name: "zend"}
+	want = append(want, platforms...)
+	request, _ := http.NewRequest("GET", "/platforms", nil)
+	recorder := httptest.NewRecorder()
+	err := platformList(recorder, request, s.admintoken)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	var got []app.Platform
+	err = json.NewDecoder(recorder.Body).Decode(&got)
+	c.Assert(err, check.IsNil)
+	c.Assert(got, check.DeepEquals, want)
+	action := rectest.Action{Action: "platform-list", User: s.adminuser.Email}
+	c.Assert(action, rectest.IsRecorded)
+}
+
+func (s *S) TestPlatformListUserList(c *check.C) {
+	platforms := []app.Platform{
+		{Name: "python", Disabled: true},
+		{Name: "java", Disabled: false},
+		{Name: "ruby20", Disabled: true},
+		{Name: "static"},
+	}
+	expectedPlatforms := []app.Platform{
+		{Name: "java", Disabled: false},
+		{Name: "static"},
+	}
+	for _, p := range platforms {
+		s.conn.Platforms().Insert(p)
+		defer s.conn.Platforms().Remove(p)
+	}
+	want := make([]app.Platform, 1, len(platforms)+1)
+	want[0] = app.Platform{Name: "zend"}
+	want = append(want, expectedPlatforms...)
 	request, _ := http.NewRequest("GET", "/platforms", nil)
 	recorder := httptest.NewRecorder()
 	err := platformList(recorder, request, s.token)

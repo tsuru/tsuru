@@ -210,6 +210,9 @@ func createApp(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 				}
 			}
 		}
+		if e, ok := err.(app.InvalidPlatformError); ok {
+			return &errors.HTTP{Code: http.StatusNotFound, Message: e.Error()}
+		}
 		return err
 	}
 	repo, _ := repository.Manager().GetRepository(a.Name)
@@ -873,7 +876,7 @@ func platformList(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	rec.Log(u.Email, "platform-list")
-	platforms, err := app.Platforms()
+	platforms, err := app.Platforms(!u.IsAdmin())
 	if err != nil {
 		return err
 	}

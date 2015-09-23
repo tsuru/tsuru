@@ -40,6 +40,7 @@ var (
 	ErrAlreadyHaveAccess = stderr.New("team already have access to this app")
 	ErrNoAccess          = stderr.New("team does not have access to this app")
 	ErrCannotOrphanApp   = stderr.New("cannot revoke access from this team, as it's the unique team with access to the app")
+	ErrDisabledPlatform  = stderr.New("Disabled Platform, only admin users can create applications with the platform")
 )
 
 const (
@@ -214,8 +215,12 @@ func CreateApp(app *App, user *auth.User) error {
 	if len(teams) == 0 {
 		return NoTeamsError{}
 	}
-	if _, err = getPlatform(app.Platform); err != nil {
+	platform, err := getPlatform(app.Platform)
+	if err != nil {
 		return err
+	}
+	if platform.Disabled && !user.IsAdmin() {
+		return InvalidPlatformError{}
 	}
 	var plan *Plan
 	if app.Plan.Name == "" {
@@ -782,26 +787,6 @@ func (app *App) validate() error {
 		return &errors.ValidationError{Message: msg}
 	}
 	return nil
-}
-
-// equalAppNameAndPlatformName check if the app.Name and app.Platform have
-// same name
-func (app *App) equalAppNameAndPlatformName() bool {
-	return app.Name == app.GetPlatform()
-}
-
-// equalToSomePlatformName indicates if app.Name and some Platform are equals
-func (app *App) equalToSomePlatformName() bool {
-	platforms, err := Platforms()
-	if err != nil {
-		return false
-	}
-	for _, platform := range platforms {
-		if app.Name == platform.Name {
-			return true
-		}
-	}
-	return false
 }
 
 // InstanceEnv returns a map of environment variables that belongs to the given

@@ -20,7 +20,6 @@ import (
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/app/bind"
 	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/provision/provisiontest"
@@ -326,6 +325,59 @@ func (s *S) TestCreateAppTeamOwnerTeamNotFound(c *check.C) {
 	err := CreateApp(&app, s.user)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "team not found")
+}
+
+func (s *S) TestCreateAppWithDisabledPlatformAndNotAdminUser(c *check.C) {
+	platform := Platform{Name: "ruby20", Disabled: true}
+	s.conn.Platforms().Insert(platform)
+	a := App{
+		Name:     "appname",
+		Platform: "ruby20",
+	}
+	expectedHost := "localhost"
+	config.Set("host", expectedHost)
+	s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": 1}})
+	defer s.conn.Users().Update(bson.M{"email": s.user.Email}, bson.M{"$set": bson.M{"quota.limit": -1}})
+	config.Set("quota:units-per-app", 3)
+	defer config.Unset("quota:units-per-app")
+	err := CreateApp(&a, s.user)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.ErrorMatches, InvalidPlatformError{}.Error())
+	defer Delete(&a, nil)
+}
+
+func (s *S) TestCreateAppWithDisabledPlatformAndIsAdminUser(c *check.C) {
+	platform := Platform{Name: "ruby20", Disabled: true}
+	s.conn.Platforms().Insert(platform)
+	a := App{
+		Name:     "adminappname",
+		Platform: "ruby20",
+	}
+	expectedHost := "localhost"
+	config.Set("host", expectedHost)
+	s.createAdminUserAndTeam(c)
+	defer s.removeAdminUserAndTeam(c)
+	s.conn.Users().Update(bson.M{"email": s.admin.Email}, bson.M{"$set": bson.M{"quota.limit": 1}})
+	defer s.conn.Users().Update(bson.M{"email": s.admin.Email}, bson.M{"$set": bson.M{"quota.limit": -1}})
+	config.Set("quota:units-per-app", 3)
+	defer config.Unset("quota:units-per-app")
+	err := CreateApp(&a, s.admin)
+	c.Assert(err, check.IsNil)
+	defer Delete(&a, nil)
+	retrievedApp, err := GetByName(a.Name)
+	c.Assert(err, check.IsNil)
+	c.Assert(retrievedApp.Name, check.Equals, a.Name)
+	c.Assert(retrievedApp.Platform, check.Equals, a.Platform)
+	c.Assert(retrievedApp.Teams, check.DeepEquals, []string{s.adminTeam.Name})
+	c.Assert(retrievedApp.Owner, check.Equals, s.admin.Email)
+	env := retrievedApp.InstanceEnv("")
+	c.Assert(env["TSURU_APPNAME"].Value, check.Equals, a.Name)
+	c.Assert(env["TSURU_APPNAME"].Public, check.Equals, false)
+	err = auth.ReserveApp(s.admin)
+	_, ok := err.(*quota.QuotaExceededError)
+	c.Assert(ok, check.Equals, true)
+	_, err = repository.Manager().GetRepository(a.Name)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestCannotCreateAppWithUnknownPlatform(c *check.C) {
@@ -2481,53 +2533,6 @@ func (s *S) TestListReturnsAllAppsWhenUserIsInAdminTeam(c *check.C) {
 	c.Assert(len(apps), Greater, 0)
 	c.Assert(apps[0].Name, check.Equals, "testApp")
 	c.Assert(apps[0].Teams, check.DeepEquals, []string{"notAdmin", "noSuperUser"})
-}
-
-func (s *S) TestReturnTrueIfSameAppNameAndPlatformName(c *check.C) {
-	a := App{
-		Name:     "sameName",
-		Platform: "sameName",
-	}
-	c.Assert(a.equalAppNameAndPlatformName(), check.Equals, true)
-}
-
-func (s *S) TestReturnFalseIfSameAppNameAndPlatformName(c *check.C) {
-	a := App{
-		Name:     "sameName",
-		Platform: "differentName",
-	}
-	c.Assert(a.equalAppNameAndPlatformName(), check.Equals, false)
-}
-
-func (s *S) TestReturnTrueIfAppNameEqualToSomePlatformName(c *check.C) {
-	a := App{Name: "sameName"}
-	platforms := []Platform{
-		{Name: "not"},
-		{Name: "sameName"},
-		{Name: "nothing"},
-	}
-	conn, _ := db.Conn()
-	defer conn.Close()
-	for _, p := range platforms {
-		conn.Platforms().Insert(p)
-		defer conn.Platforms().Remove(p)
-	}
-	c.Assert(a.equalToSomePlatformName(), check.Equals, true)
-}
-
-func (s *S) TestReturnFalseIfAppNameEqualToSomePlatformName(c *check.C) {
-	a := App{Name: "differentName"}
-	platforms := []Platform{
-		{Name: "yyyyy"},
-		{Name: "xxxxx"},
-	}
-	conn, _ := db.Conn()
-	defer conn.Close()
-	for _, p := range platforms {
-		conn.Platforms().Insert(p)
-		defer conn.Platforms().Remove(p)
-	}
-	c.Assert(a.equalToSomePlatformName(), check.Equals, false)
 }
 
 func (s *S) TestGetName(c *check.C) {
