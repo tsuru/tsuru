@@ -28,7 +28,7 @@ func (s *WriterSuite) SetUpSuite(c *check.C) {
 	c.Assert(err, check.IsNil)
 }
 
-func (s *WriterSuite) TearDownSuite(c *check.C) {
+func (s *WriterSuite) SetUpTest(c *check.C) {
 	dbtest.ClearAllCollections(s.conn.Apps().Database)
 }
 
@@ -140,4 +140,43 @@ func (s *WriterSuite) TestLogWriterAsyncCopySlice(c *check.C) {
 		c.Assert(logs[i].Message, check.Equals, "ble")
 		c.Assert(logs[i].Source, check.Equals, "tsuru")
 	}
+}
+
+func (s *WriterSuite) TestLogWriterAsyncWriteClosed(c *check.C) {
+	a := App{Name: "down"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	writer := LogWriter{App: &a}
+	writer.Async()
+	writer.Close()
+	data := []byte("ble")
+	_, err = writer.Write(data)
+	c.Assert(err, check.IsNil)
+	err = writer.Wait(5 * time.Second)
+	c.Assert(err, check.IsNil)
+	instance := App{}
+	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
+	logs, err := instance.LastLogs(1, Applog{})
+	c.Assert(err, check.IsNil)
+	c.Assert(logs, check.HasLen, 0)
+}
+
+func (s *WriterSuite) TestLogWriterWriteClosed(c *check.C) {
+	a := App{Name: "down"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	writer := LogWriter{App: &a}
+	writer.Close()
+	data := []byte("ble")
+	_, err = writer.Write(data)
+	c.Assert(err, check.IsNil)
+	err = writer.Wait(5 * time.Second)
+	c.Assert(err, check.IsNil)
+	instance := App{}
+	err = s.conn.Apps().Find(bson.M{"name": a.Name}).One(&instance)
+	logs, err := instance.LastLogs(1, Applog{})
+	c.Assert(err, check.IsNil)
+	c.Assert(logs, check.HasLen, 0)
 }
