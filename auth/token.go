@@ -7,6 +7,8 @@ package auth
 import (
 	"errors"
 	"strings"
+
+	"github.com/tsuru/tsuru/permission"
 )
 
 type Token interface {
@@ -15,6 +17,7 @@ type Token interface {
 	GetUserName() string
 	IsAppToken() bool
 	User() (*User, error)
+	Permissions() ([]permission.Permission, error)
 }
 
 var ErrInvalidToken = errors.New("Invalid token")
@@ -31,4 +34,15 @@ func ParseToken(header string) (string, error) {
 		return value, nil
 	}
 	return value, ErrInvalidToken
+}
+
+func BaseTokenPermission(t Token) ([]permission.Permission, error) {
+	if t.IsAppToken() {
+		return nil, nil
+	}
+	user, err := t.User()
+	if err != nil {
+		return nil, err
+	}
+	return user.Permissions()
 }

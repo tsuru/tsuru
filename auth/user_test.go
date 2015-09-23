@@ -393,3 +393,28 @@ func (s *S) TestUserRemoveRole(c *check.C) {
 	sort.Sort(roleInstanceList(uDB.Roles))
 	c.Assert(uDB.Roles, check.DeepEquals, expected)
 }
+
+func (s *S) TestUserPermissions(c *check.C) {
+	u := User{Email: "me@tsuru.com", Password: "123"}
+	err := u.Create()
+	c.Assert(err, check.IsNil)
+	perms, err := u.Permissions()
+	c.Assert(err, check.IsNil)
+	c.Assert(perms, check.IsNil)
+	r1, err := permission.NewRole("r1", "app")
+	c.Assert(err, check.IsNil)
+	err = r1.AddPermissions("app.update.env", "app.deploy")
+	c.Assert(err, check.IsNil)
+	err = u.AddRole("r1", "myapp")
+	c.Assert(err, check.IsNil)
+	err = u.AddRole("r1", "myapp2")
+	c.Assert(err, check.IsNil)
+	perms, err = u.Permissions()
+	c.Assert(err, check.IsNil)
+	c.Assert(perms, check.DeepEquals, []permission.Permission{
+		{Scheme: permission.PermAppDeploy, Context: permission.Context{CtxType: permission.CtxApp, Value: "myapp"}},
+		{Scheme: permission.PermAppUpdateEnv, Context: permission.Context{CtxType: permission.CtxApp, Value: "myapp"}},
+		{Scheme: permission.PermAppDeploy, Context: permission.Context{CtxType: permission.CtxApp, Value: "myapp2"}},
+		{Scheme: permission.PermAppUpdateEnv, Context: permission.Context{CtxType: permission.CtxApp, Value: "myapp2"}},
+	})
+}

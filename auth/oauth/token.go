@@ -10,6 +10,7 @@ import (
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/storage"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/permission"
 	"golang.org/x/oauth2"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
@@ -38,6 +39,10 @@ func (t *Token) GetUserName() string {
 
 func (t *Token) GetAppName() string {
 	return ""
+}
+
+func (t *Token) Permissions() ([]permission.Permission, error) {
+	return auth.BaseTokenPermission(t)
 }
 
 func getToken(header string) (*Token, error) {

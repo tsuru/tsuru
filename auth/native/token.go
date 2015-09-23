@@ -15,6 +15,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	tsuruErrors "github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/validation"
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/mgo.v2"
@@ -60,6 +61,10 @@ func (t *Token) GetUserName() string {
 
 func (t *Token) GetAppName() string {
 	return t.AppName
+}
+
+func (t *Token) Permissions() ([]permission.Permission, error) {
+	return auth.BaseTokenPermission(t)
 }
 
 func loadConfig() error {

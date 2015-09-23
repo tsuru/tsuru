@@ -6,6 +6,7 @@ package auth
 
 import (
 	"github.com/tsuru/tsuru/db"
+	"github.com/tsuru/tsuru/permission"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
@@ -33,6 +34,10 @@ func (t *APIToken) GetUserName() string {
 
 func (t *APIToken) GetAppName() string {
 	return ""
+}
+
+func (t *APIToken) Permissions() ([]permission.Permission, error) {
+	return BaseTokenPermission(t)
 }
 
 func getAPIToken(header string) (*APIToken, error) {

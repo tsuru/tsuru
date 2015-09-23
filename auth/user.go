@@ -253,6 +253,18 @@ func (u *User) reload() error {
 	return conn.Users().Find(bson.M{"email": u.Email}).One(u)
 }
 
+func (u *User) Permissions() ([]permission.Permission, error) {
+	var permissions []permission.Permission
+	for _, roleData := range u.Roles {
+		role, err := permission.FindRole(roleData.Name)
+		if err != nil {
+			return nil, err
+		}
+		permissions = append(permissions, role.PermisionsFor(roleData.ContextValue)...)
+	}
+	return permissions, nil
+}
+
 func (u *User) AddRole(roleName string, contextValue string) error {
 	_, err := permission.FindRole(roleName)
 	if err != nil {
