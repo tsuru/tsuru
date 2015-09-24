@@ -5,6 +5,7 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -30,7 +31,6 @@ func platformAdd(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
-//posso dar update com dockerfile e desabilitar ele ao mesmo tempo, tenho que ver como pegar esses dois casos
 func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	name := r.URL.Query().Get(":name")
 	err := r.ParseForm()
@@ -42,12 +42,16 @@ func platformUpdate(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 		args[key] = values[0]
 	}
 	w.Header().Set("Content-Type", "text")
-	writer := io.NewKeepAliveWriter(w, 30*time.Second, "please wait...")
+	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
+	defer keepAliveWriter.Stop()
+	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	err = app.PlatformUpdate(name, args, writer)
 	if err != nil {
-		return err
+		writer.Encode(io.SimpleJsonMessage{Error: err.Error()})
+		writer.Write([]byte("Failed to update platform!\n"))
+		return nil
 	}
-	fmt.Fprintln(w, "\nOK!")
+	writer.Write([]byte("Platform successfully updated!\n"))
 	return nil
 }
 

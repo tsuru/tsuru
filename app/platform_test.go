@@ -6,7 +6,6 @@ package app
 
 import (
 	"errors"
-	//	"fmt"
 
 	"github.com/tsuru/config"
 	"github.com/tsuru/tsuru/db"
@@ -335,7 +334,7 @@ func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithDockerfile(c *check.C)
 	c.Assert(platf.Disabled, check.Equals, false)
 }
 
-func (s *PlatformSuite) TestPlatformUpdateDisableFlaseWithoutDockerfile(c *check.C) {
+func (s *PlatformSuite) TestPlatformUpdateDisableFalseWithoutDockerfile(c *check.C) {
 	provisioner := provisiontest.ExtensibleFakeProvisioner{
 		FakeProvisioner: provisiontest.NewFakeProvisioner(),
 	}

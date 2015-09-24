@@ -1,11 +1,14 @@
-//// Copyright 2015 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 package api
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -14,6 +17,7 @@ import (
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/db/dbtest"
+	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/provision/provisiontest"
 	"gopkg.in/check.v1"
 )
@@ -68,7 +72,11 @@ func (p *PlatformSuite) TestPlatformUpdate(c *check.C) {
 	recorder := httptest.NewRecorder()
 	result := platformUpdate(recorder, request, nil)
 	c.Assert(result, check.IsNil)
-	c.Assert(recorder.Body.String(), check.Equals, "\nOK!\n")
+	b, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, check.IsNil)
+	var msg io.SimpleJsonMessage
+	json.Unmarshal(b, &msg)
+	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 }
 
 func (p *PlatformSuite) TestPlatformUpdateOnlyDisableTrue(c *check.C) {
@@ -89,7 +97,11 @@ func (p *PlatformSuite) TestPlatformUpdateOnlyDisableTrue(c *check.C) {
 	recorder := httptest.NewRecorder()
 	result := platformUpdate(recorder, request, nil)
 	c.Assert(result, check.IsNil)
-	c.Assert(recorder.Body.String(), check.Equals, "\nOK!\n")
+	b, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, check.IsNil)
+	var msg io.SimpleJsonMessage
+	json.Unmarshal(b, &msg)
+	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 }
 
 func (p *PlatformSuite) TestPlatformUpdateDisableTrueAndDockerfile(c *check.C) {
@@ -110,7 +122,11 @@ func (p *PlatformSuite) TestPlatformUpdateDisableTrueAndDockerfile(c *check.C) {
 	recorder := httptest.NewRecorder()
 	result := platformUpdate(recorder, request, nil)
 	c.Assert(result, check.IsNil)
-	c.Assert(recorder.Body.String(), check.Equals, "\nOK!\n")
+	b, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, check.IsNil)
+	var msg io.SimpleJsonMessage
+	json.Unmarshal(b, &msg)
+	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 }
 
 func (p *PlatformSuite) TestPlatformUpdateOnlyDisableFalse(c *check.C) {
@@ -131,7 +147,11 @@ func (p *PlatformSuite) TestPlatformUpdateOnlyDisableFalse(c *check.C) {
 	recorder := httptest.NewRecorder()
 	result := platformUpdate(recorder, request, nil)
 	c.Assert(result, check.IsNil)
-	c.Assert(recorder.Body.String(), check.Equals, "\nOK!\n")
+	b, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, check.IsNil)
+	var msg io.SimpleJsonMessage
+	json.Unmarshal(b, &msg)
+	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 }
 
 func (p *PlatformSuite) TestPlatformUpdateDisableFalseAndDockerfile(c *check.C) {
@@ -152,7 +172,11 @@ func (p *PlatformSuite) TestPlatformUpdateDisableFalseAndDockerfile(c *check.C) 
 	recorder := httptest.NewRecorder()
 	result := platformUpdate(recorder, request, nil)
 	c.Assert(result, check.IsNil)
-	c.Assert(recorder.Body.String(), check.Equals, "\nOK!\n")
+	b, err := ioutil.ReadAll(recorder.Body)
+	c.Assert(err, check.IsNil)
+	var msg io.SimpleJsonMessage
+	json.Unmarshal(b, &msg)
+	c.Assert(errors.New(msg.Error), check.ErrorMatches, "")
 }
 
 func (p *PlatformSuite) TestPlatformRemove(c *check.C) {
