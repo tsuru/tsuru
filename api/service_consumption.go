@@ -67,23 +67,22 @@ func removeServiceInstance(w http.ResponseWriter, r *http.Request, t auth.Token)
 	if unbindAll == "true" {
 		if len(si.Apps) > 0 {
 			for _, appName := range si.Apps {
-				var app *app.App
-				_, app, err = getServiceInstance(si.Name, appName, u)
-				if err != nil {
-					writer.Encode(io.SimpleJsonMessage{Error: err.Error()})
+				_, app, instErr := getServiceInstance(si.Name, appName, u)
+				if instErr != nil {
+					writer.Encode(io.SimpleJsonMessage{Error: instErr.Error()})
 					return nil
 				}
 				fmt.Fprintf(writer, "Unbind app %q ...\n", app.GetName())
-				err = si.UnbindApp(app, writer)
-				if err != nil {
-					writer.Encode(io.SimpleJsonMessage{Error: err.Error()})
+				instErr = si.UnbindApp(app, writer)
+				if instErr != nil {
+					writer.Encode(io.SimpleJsonMessage{Error: instErr.Error()})
 					return nil
 				}
 				fmt.Fprintf(writer, "\nInstance %q is not bound to the app %q anymore.\n", si.Name, app.GetName())
 			}
-			si, err = getServiceInstanceOrError(name, u)
-			if err != nil {
-				return err
+			si, instErr = getServiceInstanceOrError(name, u)
+			if instErr != nil {
+				return instErr
 			}
 		}
 	}
