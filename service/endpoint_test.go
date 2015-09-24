@@ -507,7 +507,7 @@ func (s *S) TestPlans(c *check.C) {
 	c.Assert("Basic dXNlcjphYmNkZQ==", check.Equals, h.r.Header.Get("Authorization"))
 }
 
-func (s *S) TestProxy(c *check.C) {
+func (s *S) TestEndpointProxy(c *check.C) {
 	handlerTest := func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}

@@ -401,6 +401,137 @@ func (s *ProvisionSuite) TestDeleteHandlerReturns403WhenTheServiceHasInstance(c 
 	c.Assert(e, check.ErrorMatches, "^This service cannot be removed because it has instances.\nPlease remove these instances before removing the service.$")
 }
 
+func (s *ProvisionSuite) TestServiceProxy(c *check.C) {
+	var proxyedRequest *http.Request
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxyedRequest = r
+		w.Header().Set("X-Response-Custom", "custom response header")
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte("a message"))
+	}))
+	defer ts.Close()
+	se := service.Service{
+		Name:       "foo",
+		Endpoint:   map[string]string{"production": ts.URL},
+		OwnerTeams: []string{s.team.Name},
+	}
+	err := se.Create()
+	c.Assert(err, check.IsNil)
+	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
+	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
+	err = si.Create()
+	c.Assert(err, check.IsNil)
+	defer service.DeleteInstance(&si)
+	url := fmt.Sprintf("/services/proxy/service/%s?callback=/mypath", se.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	reqAuth := "bearer " + s.token.GetValue()
+	request.Header.Set("Authorization", reqAuth)
+	request.Header.Set("X-Custom", "my request header")
+	m := RunServer(true)
+	recorder := httptest.NewRecorder()
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusCreated)
+	c.Assert(recorder.Header().Get("X-Response-Custom"), check.Equals, "custom response header")
+	c.Assert(recorder.Body.String(), check.Equals, "a message")
+	c.Assert(proxyedRequest, check.NotNil)
+	c.Assert(proxyedRequest.Method, check.Equals, "GET")
+	c.Assert(proxyedRequest.Header.Get("X-Custom"), check.Equals, "my request header")
+	c.Assert(proxyedRequest.Header.Get("Authorization"), check.Not(check.Equals), reqAuth)
+	c.Assert(proxyedRequest.URL.String(), check.Equals, "/mypath")
+}
+
+func (s *ProvisionSuite) TestServiceProxyNoContent(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer ts.Close()
+	se := service.Service{
+		Name:       "foo",
+		Endpoint:   map[string]string{"production": ts.URL},
+		OwnerTeams: []string{s.team.Name},
+	}
+	err := se.Create()
+	c.Assert(err, check.IsNil)
+	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
+	url := fmt.Sprintf("/services/proxy/service/%s?callback=/mypath", se.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+	reqAuth := "bearer " + s.token.GetValue()
+	request.Header.Set("Authorization", reqAuth)
+	m := RunServer(true)
+	recorder := httptest.NewRecorder()
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
+}
+
+func (s *ProvisionSuite) TestServiceProxyError(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+		w.Write([]byte("some error"))
+	}))
+	defer ts.Close()
+	se := service.Service{
+		Name:       "foo",
+		Endpoint:   map[string]string{"production": ts.URL},
+		OwnerTeams: []string{s.team.Name},
+	}
+	err := se.Create()
+	c.Assert(err, check.IsNil)
+	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
+	url := fmt.Sprintf("/services/proxy/service/%s?callback=/mypath", se.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+	reqAuth := "bearer " + s.token.GetValue()
+	request.Header.Set("Authorization", reqAuth)
+	m := RunServer(true)
+	recorder := httptest.NewRecorder()
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusBadGateway)
+	c.Assert(recorder.Body.String(), check.Equals, "some error")
+}
+
+func (s *ProvisionSuite) TestServiceProxyNotFound(c *check.C) {
+	url := "/services/proxy/service/some-service?callback=/mypath"
+	request, err := http.NewRequest("GET", url, nil)
+	c.Assert(err, check.IsNil)
+	reqAuth := "bearer " + s.token.GetValue()
+	request.Header.Set("Authorization", reqAuth)
+	m := RunServer(true)
+	recorder := httptest.NewRecorder()
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
+	c.Assert(recorder.Body.String(), check.Equals, "Service not found\n")
+}
+
+func (s *ProvisionSuite) TestServiceProxyAccessDenied(c *check.C) {
+	var proxyedRequest *http.Request
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxyedRequest = r
+		w.Header().Set("X-Response-Custom", "custom response header")
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte("a message"))
+	}))
+	defer ts.Close()
+	se := service.Service{Name: "foo", Endpoint: map[string]string{"production": ts.URL}}
+	err := se.Create()
+	c.Assert(err, check.IsNil)
+	defer s.conn.Services().Remove(bson.M{"_id": se.Name})
+	si := service.ServiceInstance{Name: "foo-instance", ServiceName: "foo", Teams: []string{s.team.Name}}
+	err = si.Create()
+	c.Assert(err, check.IsNil)
+	defer service.DeleteInstance(&si)
+	url := fmt.Sprintf("/services/proxy/service/%s?callback=/mypath", se.Name)
+	request, err := http.NewRequest("GET", url, nil)
+	reqAuth := "bearer " + s.token.GetValue()
+	request.Header.Set("Authorization", reqAuth)
+	request.Header.Set("X-Custom", "my request header")
+	m := RunServer(true)
+	recorder := httptest.NewRecorder()
+	m.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusForbidden)
+	c.Assert(proxyedRequest, check.IsNil)
+}
+
 func (s *ProvisionSuite) TestGrantServiceAccessToTeam(c *check.C) {
 	t := &auth.Team{Name: "blaaaa"}
 	s.conn.Teams().Insert(t)

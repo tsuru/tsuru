@@ -691,24 +691,6 @@ func (s *InstanceSuite) TestGetServiceInstance(c *check.C) {
 	c.Assert(err, check.Equals, ErrAccessNotAllowed)
 }
 
-func (s *InstanceSuite) TestProxy(c *check.C) {
-	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusNoContent)
-	}))
-	defer ts.Close()
-	srv := Service{Name: "mongodb", Endpoint: map[string]string{"production": ts.URL}}
-	err := s.conn.Services().Insert(&srv)
-	c.Assert(err, check.IsNil)
-	defer s.conn.Services().RemoveId(srv.Name)
-	si := ServiceInstance{Name: "instance", ServiceName: srv.Name}
-	request, err := http.NewRequest("DELETE", "/something", nil)
-	c.Assert(err, check.IsNil)
-	recorder := httptest.NewRecorder()
-	err = Proxy(&si, "/aaa", recorder, request)
-	c.Assert(err, check.IsNil)
-	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
-}
-
 func (s *InstanceSuite) TestGetIdentfier(c *check.C) {
 	srv := ServiceInstance{Name: "mongodb"}
 	identifier := srv.GetIdentifier()

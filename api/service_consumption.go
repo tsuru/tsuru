@@ -284,7 +284,7 @@ func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) 
 	}
 	path := r.URL.Query().Get("callback")
 	rec.Log(u.Email, "service-instance-proxy", siName, path)
-	return service.Proxy(si, path, w, r)
+	return service.Proxy(si.Service(), path, w, r)
 }
 
 func serviceInstanceGrantTeam(w http.ResponseWriter, r *http.Request, t auth.Token) error {

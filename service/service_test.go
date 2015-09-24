@@ -6,6 +6,8 @@ package service
 
 import (
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 
 	"gopkg.in/check.v1"
 	"gopkg.in/mgo.v2/bson"
@@ -275,4 +277,24 @@ func (s *S) TestServiceModelMarshalJSON(c *check.C) {
 	err = json.Unmarshal(data, &result)
 	c.Assert(err, check.IsNil)
 	c.Assert(result, check.DeepEquals, expected)
+}
+
+func (s *S) TestProxy(c *check.C) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer ts.Close()
+	service := Service{
+		Name:     "mongodb",
+		Endpoint: map[string]string{"production": ts.URL},
+	}
+	err := s.conn.Services().Insert(service)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Services().RemoveId(service.Name)
+	request, err := http.NewRequest("DELETE", "/something", nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = Proxy(&service, "/aaa", recorder, request)
+	c.Assert(err, check.IsNil)
+	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }
