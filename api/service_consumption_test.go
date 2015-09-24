@@ -867,7 +867,7 @@ func (s *ConsumptionSuite) TestServiceInstanceProxyError(c *check.C) {
 	err = si.Create()
 	c.Assert(err, check.IsNil)
 	defer service.DeleteInstance(&si)
-	url := fmt.Sprintf("/services/proxy/%s?callback=/mypath", si.Name, si.Name)
+	url := fmt.Sprintf("/services/proxy/%s?callback=/mypath", si.Name)
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	reqAuth := "bearer " + s.token.GetValue()

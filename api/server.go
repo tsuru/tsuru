@@ -104,6 +104,7 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Delete", "/services/instances/permission/{instance}/{team}", authorizationRequiredHandler(serviceInstanceRevokeTeam))
 
 	m.AddAll("/services/proxy/{instance}", authorizationRequiredHandler(serviceInstanceProxy))
+	m.AddAll("/services/proxy/service/{service}", authorizationRequiredHandler(serviceProxy))
 
 	m.Add("Get", "/services", authorizationRequiredHandler(serviceList))
 	m.Add("Post", "/services", authorizationRequiredHandler(serviceCreate))
@@ -113,8 +114,8 @@ func RunServer(dry bool) http.Handler {
 	m.Add("Get", "/services/{name}/plans", authorizationRequiredHandler(servicePlans))
 	m.Add("Get", "/services/{name}/doc", authorizationRequiredHandler(serviceDoc))
 	m.Add("Put", "/services/{name}/doc", authorizationRequiredHandler(serviceAddDoc))
-	m.Add("Put", "/services/{service}/{team}", authorizationRequiredHandler(grantServiceAccess))
-	m.Add("Delete", "/services/{service}/{team}", authorizationRequiredHandler(revokeServiceAccess))
+	m.Add("Put", "/services/{service}/team/{team}", authorizationRequiredHandler(grantServiceAccess))
+	m.Add("Delete", "/services/{service}/team/{team}", authorizationRequiredHandler(revokeServiceAccess))
 
 	m.Add("Delete", "/apps/{app}", authorizationRequiredHandler(appDelete))
 	m.Add("Get", "/apps/{app}", authorizationRequiredHandler(appInfo))

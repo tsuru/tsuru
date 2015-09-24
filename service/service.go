@@ -6,6 +6,7 @@ package service
 
 import (
 	"errors"
+	"net/http"
 	"regexp"
 
 	"github.com/tsuru/tsuru/auth"
@@ -171,4 +172,14 @@ func GetServicesByOwnerTeams(teamKind string, u *auth.User) ([]Service, error) {
 type ServiceModel struct {
 	Service   string   `json:"service"`
 	Instances []string `json:"instances"`
+}
+
+// Proxy is a proxy between tsuru and the service.
+// This method allow customized service methods.
+func Proxy(service *Service, path string, w http.ResponseWriter, r *http.Request) error {
+	endpoint, err := service.getClient("production")
+	if err != nil {
+		return err
+	}
+	return endpoint.Proxy(path, w, r)
 }

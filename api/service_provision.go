@@ -175,6 +175,20 @@ func serviceDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
+func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	serviceName := r.URL.Query().Get(":service")
+	user, err := t.User()
+	if err != nil {
+		return err
+	}
+	se, err := getServiceByOwner(serviceName, user)
+	if err != nil {
+		return err
+	}
+	path := r.URL.Query().Get("callback")
+	return service.Proxy(&se, path, w, r)
+}
+
 func getServiceAndTeam(serviceName string, teamName string, u *auth.User) (*service.Service, *auth.Team, error) {
 	service := &service.Service{Name: serviceName}
 	err := service.Get()
