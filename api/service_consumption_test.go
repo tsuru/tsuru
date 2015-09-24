@@ -973,7 +973,7 @@ func (s *ConsumptionSuite) TestServicePlansHandler(c *check.C) {
 	c.Assert(action, rectest.IsRecorded)
 }
 
-func (s *ConsumptionSuite) TestServiceProxy(c *check.C) {
+func (s *ConsumptionSuite) TestServiceInstanceProxy(c *check.C) {
 	var proxyedRequest *http.Request
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		proxyedRequest = r
@@ -1007,7 +1007,7 @@ func (s *ConsumptionSuite) TestServiceProxy(c *check.C) {
 	c.Assert(proxyedRequest.URL.String(), check.Equals, "/mypath")
 }
 
-func (s *ConsumptionSuite) TestServiceProxyNoContent(c *check.C) {
+func (s *ConsumptionSuite) TestServiceInstanceProxyNoContent(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNoContent)
 	}))
@@ -1024,12 +1024,12 @@ func (s *ConsumptionSuite) TestServiceProxyNoContent(c *check.C) {
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
-	err = serviceProxy(recorder, request, s.token)
+	err = serviceInstanceProxy(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusNoContent)
 }
 
-func (s *ConsumptionSuite) TestServiceProxyError(c *check.C) {
+func (s *ConsumptionSuite) TestServiceInstanceProxyError(c *check.C) {
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadGateway)
 		w.Write([]byte("some error"))
@@ -1047,7 +1047,7 @@ func (s *ConsumptionSuite) TestServiceProxyError(c *check.C) {
 	request, err := http.NewRequest("GET", url, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
-	err = serviceProxy(recorder, request, s.token)
+	err = serviceInstanceProxy(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusBadGateway)
 	c.Assert(recorder.Body.Bytes(), check.DeepEquals, []byte("some error"))

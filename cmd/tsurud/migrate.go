@@ -52,6 +52,10 @@ func (c *migrateCmd) Run(context *cmd.Context, client *cmd.Client) error {
 	if err != nil {
 		return err
 	}
+	err = migration.Register("migrate-service-proxy-actions", c.migrateServiceProxyActions)
+	if err != nil {
+		return err
+	}
 	return migration.Run(context.Stdout, c.dry)
 }
 
@@ -127,6 +131,19 @@ func (c *migrateCmd) setPoolToApps() error {
 		}
 	}
 	return nil
+}
+
+func (c *migrateCmd) migrateServiceProxyActions() error {
+	db, err := db.Conn()
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	_, err = db.UserActions().UpdateAll(
+		bson.M{"action": "service-proxy-status"},
+		bson.M{"$set": bson.M{"action": "service-instance-proxy"}},
+	)
+	return err
 }
 
 func (c *migrateCmd) Flags() *gnuflag.FlagSet {

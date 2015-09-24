@@ -272,7 +272,7 @@ func servicePlans(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return nil
 }
 
-func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+func serviceInstanceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	u, err := t.User()
 	if err != nil {
 		return err
@@ -283,7 +283,7 @@ func serviceProxy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return err
 	}
 	path := r.URL.Query().Get("callback")
-	rec.Log(u.Email, "service-proxy-status", siName, path)
+	rec.Log(u.Email, "service-instance-proxy", siName, path)
 	return service.Proxy(si, path, w, r)
 }
 
