@@ -160,6 +160,9 @@ func GetTeamsNames(teams []Team) []string {
 // CheckUserAccess verifies if the user has access to a list
 // of teams.
 func CheckUserAccess(teamNames []string, u *User) bool {
+	if u.IsAdmin() {
+		return true
+	}
 	q := bson.M{"_id": bson.M{"$in": teamNames}}
 	var teams []Team
 	conn, err := db.Conn()

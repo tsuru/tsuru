@@ -107,12 +107,21 @@ func (s *S) TestCheckUserAccess(c *check.C) {
 	err = u2.Create()
 	c.Assert(err, check.IsNil)
 	defer u2.Delete()
+	u3 := User{Email: "admin@company.com"}
+	err = u3.Create()
+	c.Assert(err, check.IsNil)
+	defer u3.Delete()
 	t := Team{Name: "ledzeppelin", Users: []string{u1.Email}}
 	err = s.conn.Teams().Insert(t)
 	c.Assert(err, check.IsNil)
 	defer s.conn.Teams().Remove(bson.M{"_id": t.Name})
+	adminTeam := Team{Name: "admin", Users: []string{u3.Email}}
+	err = s.conn.Teams().Insert(adminTeam)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Teams().Remove(bson.M{"_id": adminTeam.Name})
 	c.Assert(CheckUserAccess([]string{t.Name}, &u1), check.Equals, true)
 	c.Assert(CheckUserAccess([]string{t.Name}, &u2), check.Equals, false)
+	c.Assert(CheckUserAccess([]string{t.Name}, &u3), check.Equals, true)
 }
 
 func (s *S) TestCheckUserAccessWithMultipleUsersOnMultipleTeams(c *check.C) {
