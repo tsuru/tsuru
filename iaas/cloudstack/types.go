@@ -71,3 +71,10 @@ type ListZonesResponse struct {
 		Count int `json:"count"`
 	} `json:"listzonesresponse"`
 }
+
+type CreateTagsResponse struct {
+	Createtagsresponse struct {
+		Displaytext string `json:"displaytext"`
+		Success     string `json:"success"`
+	} `json:"createtagsresponse"`
+}

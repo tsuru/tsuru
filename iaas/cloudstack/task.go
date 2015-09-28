@@ -6,6 +6,8 @@ package cloudstack
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"github.com/tsuru/monsterqueue"
 	"github.com/tsuru/tsuru/log"
@@ -22,6 +24,11 @@ type machineCreate struct {
 
 type machineDelete struct {
 	iaas *CloudstackIaaS
+}
+
+type cloudstackTag struct {
+	Key   string
+	Value string
 }
 
 func (t *machineCreate) Name() string {
@@ -45,6 +52,36 @@ func (t *machineCreate) Run(job monsterqueue.Job) {
 		}
 		job.Error(err)
 		return
+	}
+	if tags, ok := params["tags"]; ok {
+		var cloudTags []*cloudstackTag
+		tagList := strings.Split(tags.(string), ",")
+		cloudTags = make([]*cloudstackTag, 0, len(tagList))
+		for _, tag := range tagList {
+			if strings.Contains(tag, ":") {
+				parts := strings.SplitN(tag, ":", 2)
+				cloudTags = append(cloudTags, &cloudstackTag{
+					Key:   string(parts[0]),
+					Value: string(parts[1]),
+				})
+			}
+		}
+		if len(cloudTags) > 0 {
+			param := make(map[string]string)
+			param["resourceids"] = vmId
+			param["resourcetype"] = "UserVm"
+			for index, tag := range cloudTags {
+				param["tags["+strconv.Itoa(index+1)+"].key"] = tag.Key
+				param["tags["+strconv.Itoa(index+1)+"].value"] = tag.Value
+			}
+			param["projectId"] = projectId
+			var result CreateTagsResponse
+			err := t.iaas.do("createTags", param, &result)
+			if err != nil {
+				job.Error(err)
+				return
+			}
+		}
 	}
 	notified, _ := job.Success(ip)
 	if !notified {
