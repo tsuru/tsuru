@@ -180,7 +180,7 @@ func (t *targetAdd) Flags() *gnuflag.FlagSet {
 }
 
 func resetTargetList() error {
-	targetsPath := JoinWithUserDir(".tsuru_targets")
+	targetsPath := JoinWithUserDir(".tsuru", "targets")
 	targetsFile, err := filesystem().OpenFile(targetsPath, syscall.O_WRONLY|syscall.O_CREAT|syscall.O_TRUNC, 0600)
 	if err != nil {
 		return err
@@ -199,7 +199,7 @@ func writeOnTargetList(label string, target string) error {
 	if targetExist {
 		return errors.New("Target label provided already exist")
 	}
-	targetsPath := JoinWithUserDir(".tsuru_targets")
+	targetsPath := JoinWithUserDir(".tsuru", "targets")
 	targetsFile, err := filesystem().OpenFile(targetsPath, syscall.O_RDWR|syscall.O_CREAT|syscall.O_APPEND, 0600)
 	if err != nil {
 		return err
@@ -227,7 +227,7 @@ func checkIfTargetLabelExists(label string) (bool, error) {
 
 func getTargets() (map[string]string, error) {
 	var targets = map[string]string{}
-	targetsPath := JoinWithUserDir(".tsuru_targets")
+	targetsPath := JoinWithUserDir(".tsuru", "targets")
 	if f, err := filesystem().Open(targetsPath); err == nil {
 		defer f.Close()
 		if b, err := ioutil.ReadAll(f); err == nil {

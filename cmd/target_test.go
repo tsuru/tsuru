@@ -308,7 +308,7 @@ other	http://other.tsuru.io`
 	f, _ := rfs.Create(JoinWithUserDir(".tsuru_target"))
 	f.Write([]byte("http://tsuru.io"))
 	f.Close()
-	f, _ = rfs.Create(JoinWithUserDir(".tsuru_targets"))
+	f, _ = rfs.Create(JoinWithUserDir(".tsuru", "targets"))
 	f.Write([]byte(content))
 	f.Close()
 	fsystem = rfs
@@ -394,7 +394,7 @@ func (s *S) TestTargetRemove(c *check.C) {
 func (s *S) TestTargetRemoveCurrentTarget(c *check.C) {
 	os.Unsetenv("TSURU_TARGET")
 	rfs := &fstest.RecordingFs{}
-	f, _ := rfs.Create(JoinWithUserDir(".tsuru_targets"))
+	f, _ := rfs.Create(JoinWithUserDir(".tsuru", "targets"))
 	f.Write([]byte("first\thttp://tsuru.io/\ndefault\thttp://tsuru.google.com"))
 	f.Close()
 	f, _ = rfs.Create(JoinWithUserDir(".tsuru_target"))
