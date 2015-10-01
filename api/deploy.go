@@ -101,8 +101,8 @@ func getImage(appName string, img string) (string, error) {
 	}
 	defer conn.Close()
 	var deploy app.DeployData
-	query := conn.Deploys().Find(bson.M{"app": appName, "image": bson.M{"$regex": ".*:" + img + "$"}}).Sort("-timestamp")
-	if err := query.One(&deploy); err != nil {
+	query := bson.M{"app": appName, "image": bson.M{"$regex": ".*:" + img + "$"}}
+	if err := conn.Deploys().Find(query).One(&deploy); err != nil {
 		return "", err
 	}
 	return deploy.Image, nil
@@ -127,6 +127,7 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
 	if !regexp.MustCompile(":v[0-9]+$").MatchString(image) {
 		img, err := getImage(appName, image)
+		//err is not handled because it is treated in funcion app.Deploy()
 		if err == nil {
 			image = img
 		}
