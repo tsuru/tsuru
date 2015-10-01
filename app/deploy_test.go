@@ -153,6 +153,35 @@ func (s *S) TestListAppDeploys(c *check.C) {
 	c.Assert(deploys, check.DeepEquals, expected)
 }
 
+func (s *S) TestListAppDeploysWithImage(c *check.C) {
+	s.conn.Deploys().RemoveAll(nil)
+	a := App{Name: "g1"}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	insert := []interface{}{
+		DeployData{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second), Image: "registry.tsuru.globoi.com/tsuru/app-example:v2"},
+		DeployData{App: "g1", Timestamp: time.Now(), Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1"},
+	}
+	expectedDeploy := []interface{}{
+		DeployData{App: "g1", Timestamp: time.Now().Add(-3600 * time.Second), Image: "v2"},
+		DeployData{App: "g1", Timestamp: time.Now(), Image: "v1"},
+	}
+	s.conn.Deploys().Insert(insert...)
+	defer s.conn.Deploys().RemoveAll(bson.M{"app": a.Name})
+	expected := []DeployData{expectedDeploy[1].(DeployData), expectedDeploy[0].(DeployData)}
+	deploys, err := a.ListDeploys(nil)
+	c.Assert(err, check.IsNil)
+	for i := 0; i < 2; i++ {
+		ts := expected[i].Timestamp
+		expected[i].Timestamp = time.Date(ts.Year(), ts.Month(), ts.Day(), ts.Hour(), ts.Minute(), ts.Second(), 0, time.UTC)
+		ts = deploys[i].Timestamp
+		deploys[i].Timestamp = time.Date(ts.Year(), ts.Month(), ts.Day(), ts.Hour(), ts.Minute(), ts.Second(), 0, time.UTC)
+		expected[i].ID = deploys[i].ID
+	}
+	c.Assert(deploys, check.DeepEquals, expected)
+}
+
 func (s *S) TestListServiceDeploys(c *check.C) {
 	s.conn.Deploys().RemoveAll(nil)
 	srv := service.Service{Name: "mysql"}

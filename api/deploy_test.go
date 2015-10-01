@@ -480,6 +480,40 @@ func (s *DeploySuite) TestDeployListByApp(c *check.C) {
 	c.Assert(result[0].Duration, check.DeepEquals, duration)
 }
 
+func (s *DeploySuite) TestDeployListByAppWithImage(c *check.C) {
+	user, _ := s.token.User()
+	a := app.App{Name: "myblog", Platform: "python", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&a, user)
+	c.Assert(err, check.IsNil)
+	defer app.Delete(&a, nil)
+	defer s.logConn.Logs(a.Name).DropCollection()
+	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
+	duration := time.Since(timestamp)
+	deploys := []app.DeployData{
+		{App: "myblog", Timestamp: timestamp, Duration: duration, Image: "registry.tsuru.globoi.com/tsuru/app-example:v2", CanRollback: true},
+		{App: "yourblog", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
+	}
+	for _, deploy := range deploys {
+		err := s.conn.Deploys().Insert(deploy)
+		c.Assert(err, check.IsNil)
+	}
+	defer s.conn.Deploys().RemoveAll(nil)
+	recorder := httptest.NewRecorder()
+	request, err := http.NewRequest("GET", "/deploys?app=myblog", nil)
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	var result []app.DeployData
+	err = json.Unmarshal(recorder.Body.Bytes(), &result)
+	c.Assert(err, check.IsNil)
+	c.Assert(result, check.HasLen, 1)
+	c.Assert(result[0].Image, check.Equals, "v2")
+	c.Assert(result[0].App, check.Equals, "myblog")
+	c.Assert(result[0].Timestamp.In(time.UTC), check.DeepEquals, timestamp.In(time.UTC))
+	c.Assert(result[0].Duration, check.DeepEquals, duration)
+}
+
 func (s *DeploySuite) TestDeployListAppWithNoDeploys(c *check.C) {
 	user, _ := s.token.User()
 	a := app.App{Name: "myblog", Platform: "python", Teams: []string{s.team.Name}}
@@ -707,7 +741,108 @@ func (s *DeploySuite) TestDeployRollbackHandler(c *check.C) {
 	c.Assert(err, check.IsNil)
 	defer app.Delete(&a, nil)
 	url := fmt.Sprintf("/apps/%s/deploy/rollback", a.Name)
-	request, err := http.NewRequest("POST", url, strings.NewReader("image=my-image-123"))
+	request, err := http.NewRequest("POST", url, strings.NewReader("image=my-image-123:v1"))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Image deploy called\"}\n")
+}
+
+func (s *DeploySuite) TestDeployRollbackHandlerWithCompleteImage(c *check.C) {
+	user, _ := s.token.User()
+	a := app.App{Name: "otherapp", Platform: "python", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&a, user)
+	c.Assert(err, check.IsNil)
+	defer app.Delete(&a, nil)
+	defer s.logConn.Logs(a.Name).DropCollection()
+	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
+	duration := time.Since(timestamp)
+	deploys := []app.DeployData{
+		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "registry.tsuru.globoi.com/tsuru/app-example:v2", CanRollback: true},
+		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
+	}
+	for _, deploy := range deploys {
+		err := s.conn.Deploys().Insert(deploy)
+		c.Assert(err, check.IsNil)
+	}
+	defer s.conn.Deploys().RemoveAll(nil)
+	url := fmt.Sprintf("/apps/%s/deploy/rollback", a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("image=127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1"))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Image deploy called\"}\n")
+}
+
+func (s *DeploySuite) TestDeployRollbackHandlerWithOnlyVersionImage(c *check.C) {
+	user, _ := s.token.User()
+	a := app.App{Name: "otherapp", Platform: "python", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&a, user)
+	c.Assert(err, check.IsNil)
+	defer app.Delete(&a, nil)
+	defer s.logConn.Logs(a.Name).DropCollection()
+	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
+	duration := time.Since(timestamp)
+	deploys := []app.DeployData{
+		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "registry.tsuru.globoi.com/tsuru/app-example:v2", CanRollback: true},
+		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
+	}
+	for _, deploy := range deploys {
+		err := s.conn.Deploys().Insert(deploy)
+		c.Assert(err, check.IsNil)
+	}
+	defer s.conn.Deploys().RemoveAll(nil)
+	url := fmt.Sprintf("/apps/%s/deploy/rollback", a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("image=v1"))
+	c.Assert(err, check.IsNil)
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	request.Header.Set("Authorization", "bearer "+s.token.GetValue())
+	server := RunServer(true)
+	server.ServeHTTP(recorder, request)
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Header().Get("Content-Type"), check.Equals, "application/json")
+	c.Assert(recorder.Code, check.Equals, http.StatusOK)
+	c.Assert(recorder.Body.String(), check.Equals, "{\"Message\":\"Image deploy called\"}\n")
+}
+
+func (s *DeploySuite) TestDeployRollbackHandlerWithInexistVersion(c *check.C) {
+	user, _ := s.token.User()
+	a := app.App{Name: "otherapp", Platform: "python", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&a, user)
+	c.Assert(err, check.IsNil)
+	defer app.Delete(&a, nil)
+	defer s.logConn.Logs(a.Name).DropCollection()
+	b := app.App{Name: "otherapp2", Platform: "python", Teams: []string{s.team.Name}}
+	err = app.CreateApp(&b, user)
+	c.Assert(err, check.IsNil)
+	defer app.Delete(&b, nil)
+	defer s.logConn.Logs(b.Name).DropCollection()
+	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
+	duration := time.Since(timestamp)
+	deploys := []app.DeployData{
+		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "regiv3ry.tsuru.globoi.com/tsuru/app-example:v1", CanRollback: true},
+		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v2", CanRollback: true},
+	}
+	for _, deploy := range deploys {
+		err := s.conn.Deploys().Insert(deploy)
+		c.Assert(err, check.IsNil)
+	}
+	defer s.conn.Deploys().RemoveAll(nil)
+	url := fmt.Sprintf("/apps/%s/deploy/rollback", a.Name)
+	request, err := http.NewRequest("POST", url, strings.NewReader("image=v3"))
 	c.Assert(err, check.IsNil)
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()

@@ -9,15 +9,18 @@ import (
 	"fmt"
 	"mime/multipart"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/tsuru/tsuru/app"
 	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
 	"github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/service"
+	"gopkg.in/mgo.v2/bson"
 )
 
 func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
@@ -91,6 +94,20 @@ func deploy(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	return err
 }
 
+func getImage(appName string, img string) (string, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+	var deploy app.DeployData
+	query := conn.Deploys().Find(bson.M{"app": appName, "image": bson.M{"$regex": ".*:" + img + "$"}}).Sort("-timestamp")
+	if err := query.One(&deploy); err != nil {
+		return "", err
+	}
+	return deploy.Image, nil
+}
+
 func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	appName := r.URL.Query().Get(":appname")
 	instance, err := app.GetByName(appName)
@@ -108,6 +125,12 @@ func deployRollback(w http.ResponseWriter, r *http.Request, t auth.Token) error 
 	keepAliveWriter := io.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()
 	writer := &io.SimpleJsonMessageEncoderWriter{Encoder: json.NewEncoder(keepAliveWriter)}
+	if !regexp.MustCompile(":v[0-9]+$").MatchString(image) {
+		img, err := getImage(appName, image)
+		if err == nil {
+			image = img
+		}
+	}
 	err = app.Deploy(app.DeployOptions{
 		App:          instance,
 		OutputStream: writer,

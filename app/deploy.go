@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"regexp"
 	"time"
 
 	"github.com/tsuru/tsuru/auth"
@@ -131,6 +132,11 @@ func listDeploys(app *App, s *service.Service, u *auth.User, skip, limit int) ([
 	}
 	for i := range list {
 		list[i].CanRollback = validImages.Includes(list[i].Image)
+		r := regexp.MustCompile("v[0-9]+$")
+		if list[i].Image != "" && r.MatchString(list[i].Image) {
+			parts := r.FindAllStringSubmatch(list[i].Image, -1)
+			list[i].Image = parts[0][0]
+		}
 	}
 	return list, err
 }
