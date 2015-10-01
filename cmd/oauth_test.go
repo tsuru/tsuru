@@ -61,7 +61,7 @@ func (s *S) TestCallbackHandler(c *check.C) {
 	c.Assert(<-finish, check.Equals, true)
 	expectedPage := fmt.Sprintf(callbackPage, successMarkup)
 	c.Assert(expectedPage, check.Equals, recorder.Body.String())
-	file, err := rfs.Open(JoinWithUserDir(".tsuru_token"))
+	file, err := rfs.Open(JoinWithUserDir(".tsuru", "token"))
 	c.Assert(err, check.IsNil)
 	data, err := ioutil.ReadAll(file)
 	c.Assert(err, check.IsNil)
