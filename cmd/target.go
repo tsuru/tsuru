@@ -95,7 +95,7 @@ func ReadTarget() (string, error) {
 	if target := os.Getenv("TSURU_TARGET"); target != "" {
 		return target, nil
 	}
-	targetPath := JoinWithUserDir(".tsuru_target")
+	targetPath := JoinWithUserDir(".tsuru", "target")
 	if f, err := filesystem().Open(targetPath); err == nil {
 		defer f.Close()
 		if b, err := ioutil.ReadAll(f); err == nil {
@@ -106,7 +106,7 @@ func ReadTarget() (string, error) {
 }
 
 func deleteTargetFile() {
-	filesystem().Remove(JoinWithUserDir(".tsuru_target"))
+	filesystem().Remove(JoinWithUserDir(".tsuru", "target"))
 }
 
 func GetURL(path string) (string, error) {
@@ -122,7 +122,7 @@ func GetURL(path string) (string, error) {
 }
 
 func writeTarget(t string) error {
-	targetPath := JoinWithUserDir(".tsuru_target")
+	targetPath := JoinWithUserDir(".tsuru", "target")
 	targetFile, err := filesystem().OpenFile(targetPath, syscall.O_WRONLY|syscall.O_CREAT|syscall.O_TRUNC, 0600)
 	if err != nil {
 		return err

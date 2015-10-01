@@ -74,7 +74,7 @@ func (s *S) TestNativeLoginWithoutEmailFromArg(c *check.C) {
 func (s *S) TestNativeLoginShouldNotDependOnTsuruTokenFile(c *check.C) {
 	nativeScheme()
 	rfs := &fstest.RecordingFs{}
-	f, _ := rfs.Create(JoinWithUserDir(".tsuru_target"))
+	f, _ := rfs.Create(JoinWithUserDir(".tsuru", "target"))
 	f.Write([]byte("http://localhost"))
 	f.Close()
 	fsystem = rfs
