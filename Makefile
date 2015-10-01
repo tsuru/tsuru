@@ -10,21 +10,21 @@ define HG_ERROR
 
 FATAL: You need Mercurial (hg) to download tsuru dependencies.
        For more details, please check
-       http://docs.tsuru.io/en/latest/contribute/setting-up-your-tsuru-development-environment.html#installing-git-bzr-and-mercurial
+       http://docs.tsuru.io/en/latest/contributing/vagrant.html
 endef
 
 define GIT_ERROR
 
 FATAL: You need Git to download tsuru dependencies.
        For more details, please check
-       http://docs.tsuru.io/en/latest/contribute/setting-up-your-tsuru-development-environment.html#installing-git-bzr-and-mercurial
+       http://docs.tsuru.io/en/latest/contributing/vagrant.html
 endef
 
 define BZR_ERROR
 
 FATAL: You need Bazaar (bzr) to download tsuru dependencies.
        For more details, please check
-       http://docs.tsuru.io/en/latest/contribute/setting-up-your-tsuru-development-environment.html#installing-git-bzr-and-mercurial
+       http://docs.tsuru.io/en/latest/contributing/vagrant.html
 endef
 
 .PHONY: all check-path get hg git bzr get-code test race
