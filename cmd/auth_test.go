@@ -74,7 +74,7 @@ func (s *S) TestNativeLoginWithoutEmailFromArg(c *check.C) {
 func (s *S) TestNativeLoginShouldNotDependOnTsuruTokenFile(c *check.C) {
 	nativeScheme()
 	rfs := &fstest.RecordingFs{}
-	f, _ := rfs.Create(JoinWithUserDir(".tsuru_target"))
+	f, _ := rfs.Create(JoinWithUserDir(".tsuru", "target"))
 	f.Write([]byte("http://localhost"))
 	f.Close()
 	fsystem = rfs
@@ -127,7 +127,7 @@ func (s *S) TestLogout(c *check.C) {
 	err := command.Run(&context, client)
 	c.Assert(err, check.IsNil)
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
-	c.Assert(rfs.HasAction("remove "+JoinWithUserDir(".tsuru_token")), check.Equals, true)
+	c.Assert(rfs.HasAction("remove "+JoinWithUserDir(".tsuru", "token")), check.Equals, true)
 	c.Assert(called, check.Equals, true)
 }
 
@@ -160,7 +160,7 @@ func (s *S) TestLogoutNoTarget(c *check.C) {
 	err := command.Run(&context, client)
 	c.Assert(err, check.IsNil)
 	c.Assert(manager.stdout.(*bytes.Buffer).String(), check.Equals, expected)
-	c.Assert(rfs.HasAction("remove "+JoinWithUserDir(".tsuru_token")), check.Equals, true)
+	c.Assert(rfs.HasAction("remove "+JoinWithUserDir(".tsuru", "token")), check.Equals, true)
 }
 
 func (s *S) TestLoginGetSchemeCachesResult(c *check.C) {

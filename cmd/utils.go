@@ -31,7 +31,7 @@ func JoinWithUserDir(p ...string) string {
 }
 
 func writeToken(token string) error {
-	tokenPath := JoinWithUserDir(".tsuru_token")
+	tokenPath := JoinWithUserDir(".tsuru", "token")
 	file, err := filesystem().Create(tokenPath)
 	if err != nil {
 		return err
@@ -50,7 +50,7 @@ func ReadToken() (string, error) {
 	if token := os.Getenv("TSURU_TOKEN"); token != "" {
 		return token, nil
 	}
-	tokenPath := JoinWithUserDir(".tsuru_token")
+	tokenPath := JoinWithUserDir(".tsuru", "token")
 	file, err := filesystem().Open(tokenPath)
 	if err != nil {
 		return "", err
