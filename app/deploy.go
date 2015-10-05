@@ -305,3 +305,28 @@ func incrementDeploy(app *App) error {
 		bson.M{"$inc": bson.M{"deploys": 1}},
 	)
 }
+
+func getImage(appName string, img string) (string, error) {
+	conn, err := db.Conn()
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+	var deploy DeployData
+	query := bson.M{"app": appName, "image": bson.M{"$regex": ".*:" + img + "$"}}
+	if err := conn.Deploys().Find(query).One(&deploy); err != nil {
+		return "", err
+	}
+	return deploy.Image, nil
+}
+
+func Rollback(opts DeployOptions) error {
+	if !regexp.MustCompile(":v[0-9]+$").MatchString(opts.Image) {
+		img, err := getImage(opts.App.Name, opts.Image)
+		// err is not handled here because it is handled by Deploy
+		if err == nil {
+			opts.Image = img
+		}
+	}
+	return Deploy(opts)
+}

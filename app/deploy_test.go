@@ -847,3 +847,150 @@ func (s *S) TestMarkDeploysAsRemoved(c *check.C) {
 	c.Assert(allDeploys[0].Image, check.Equals, "myid")
 	c.Assert(allDeploys[0].RemoveDate.IsZero(), check.Equals, false)
 }
+
+func (s *S) TestRollbackWithNameImage(c *check.C) {
+	a := App{
+		Name:     "otherapp",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
+	duration := time.Since(timestamp)
+	deploys := []DeployData{
+		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "registry.tsuru.globoi.com/tsuru/app-example:v2", CanRollback: true},
+		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
+	}
+	for _, deploy := range deploys {
+		err := s.conn.Deploys().Insert(deploy)
+		c.Assert(err, check.IsNil)
+	}
+	defer s.conn.Deploys().RemoveAll(nil)
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	writer := &bytes.Buffer{}
+	err = Rollback(DeployOptions{
+		App:          &a,
+		OutputStream: writer,
+		Image:        "registry.tsuru.globoi.com/tsuru/app-example:v2",
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(writer.String(), check.Equals, "Image deploy called")
+}
+
+func (s *S) TestRollbackWithVersionImage(c *check.C) {
+	a := App{
+		Name:     "otherapp",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
+	duration := time.Since(timestamp)
+	deploys := []DeployData{
+		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "registry.tsuru.globoi.com/tsuru/app-example:v2", CanRollback: true},
+		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
+	}
+	for _, deploy := range deploys {
+		err := s.conn.Deploys().Insert(deploy)
+		c.Assert(err, check.IsNil)
+	}
+	defer s.conn.Deploys().RemoveAll(nil)
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	writer := &bytes.Buffer{}
+	err = Rollback(DeployOptions{
+		App:          &a,
+		OutputStream: writer,
+		Image:        "v2",
+	})
+	c.Assert(err, check.IsNil)
+	c.Assert(writer.String(), check.Equals, "Image deploy called")
+}
+
+func (s *S) TestRollbackWithWrongVersionImage(c *check.C) {
+	a := App{
+		Name:     "otherapp",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
+	duration := time.Since(timestamp)
+	deploys := []DeployData{
+		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "registry.tsuru.globoi.com/tsuru/app-example:v2", CanRollback: true},
+		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
+	}
+	for _, deploy := range deploys {
+		err := s.conn.Deploys().Insert(deploy)
+		c.Assert(err, check.IsNil)
+	}
+	defer s.conn.Deploys().RemoveAll(nil)
+	s.provisioner.Provision(&a)
+	defer s.provisioner.Destroy(&a)
+	writer := &bytes.Buffer{}
+	err = Rollback(DeployOptions{
+		App:          &a,
+		OutputStream: writer,
+		Image:        "v20",
+	})
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestGetImageName(c *check.C) {
+	a := App{
+		Name:     "otherapp",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+	}
+	err := s.conn.Apps().Insert(a)
+	c.Assert(err, check.IsNil)
+	defer s.conn.Apps().Remove(bson.M{"name": a.Name})
+	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
+	duration := time.Since(timestamp)
+	deploys := []DeployData{
+		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "registry.tsuru.globoi.com/tsuru/app-example:v2", CanRollback: true},
+		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
+	}
+	for _, deploy := range deploys {
+		err := s.conn.Deploys().Insert(deploy)
+		c.Assert(err, check.IsNil)
+	}
+	defer s.conn.Deploys().RemoveAll(nil)
+	img, err := getImage("otherapp", "v2")
+	c.Assert(err, check.IsNil)
+	c.Assert(img, check.Equals, deploys[0].Image)
+}
+
+func (s *S) TestGetImageNameInexistDeploy(c *check.C) {
+	apps := []App{
+		{Name: "otherapp", Platform: "zend", Teams: []string{s.team.Name}},
+		{Name: "otherapp2", Platform: "zend", Teams: []string{s.team.Name}},
+	}
+	for _, a := range apps {
+		err := s.conn.Apps().Insert(a)
+		c.Assert(err, check.IsNil)
+	}
+	defer s.conn.Apps().RemoveAll(nil)
+	timestamp := time.Date(2013, time.November, 1, 0, 0, 0, 0, time.Local)
+	duration := time.Since(timestamp)
+	deploys := []DeployData{
+		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "regiv3ry.tsuru.globoi.com/tsuru/app-example:v2", CanRollback: true},
+		{App: "otherapp", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v1", CanRollback: true},
+		{App: "otherapp2", Timestamp: timestamp, Duration: duration, Image: "127.0.0.1:5000/tsuru/app-tsuru-dashboard:v3", CanRollback: true},
+	}
+	for _, deploy := range deploys {
+		err := s.conn.Deploys().Insert(deploy)
+		c.Assert(err, check.IsNil)
+	}
+	defer s.conn.Deploys().RemoveAll(nil)
+	_, err := getImage("otherapp", "v3")
+	c.Assert(err, check.NotNil)
+	c.Assert(err.Error(), check.Equals, "not found")
+}
