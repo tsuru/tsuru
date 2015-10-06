@@ -35,15 +35,13 @@ func (s *S) SetUpTest(c *check.C) {
 	}
 	s.server = httptest.NewServer(&s.handler)
 	s.client = &GalebClient{
-		ApiUrl:            s.server.URL + "/api",
-		Username:          "myusername",
-		Password:          "mypassword",
-		Environment:       "env1",
-		Project:           "proj1",
-		BalancePolicy:     "balance1",
-		RuleType:          "ruletype1",
-		TargetTypeBackend: "targetbackend1",
-		TargetTypePool:    "targetpool1",
+		ApiUrl:        s.server.URL + "/api",
+		Username:      "myusername",
+		Password:      "mypassword",
+		Environment:   "env1",
+		Project:       "proj1",
+		BalancePolicy: "balance1",
+		RuleType:      "ruletype1",
 	}
 }
 
@@ -67,14 +65,11 @@ func (s *S) TestGalebAddBackendPool(c *check.C) {
 		commonPostResponse: commonPostResponse{ID: 0, Name: "myname"},
 		Project:            "proj1",
 		Environment:        "env1",
-		BalancePolicy:      "balance1",
-		TargetType:         "targetpool1",
-		Properties:         BackendPoolProperties{HcPath: "/"},
 	}
 	fullId, err := s.client.AddBackendPool("myname")
 	c.Assert(err, check.IsNil)
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"POST", "GET"})
-	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/target", "/api/target/3"})
+	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/pool", "/api/target/3"})
 	var parsedParams Target
 	err = json.Unmarshal(s.handler.Body[0], &parsedParams)
 	c.Assert(err, check.IsNil)
@@ -88,7 +83,7 @@ func (s *S) TestGalebAddBackendPoolInvalidStatusCode(c *check.C) {
 	s.handler.Content = "invalid content"
 	fullId, err := s.client.AddBackendPool("")
 	c.Assert(err, check.ErrorMatches,
-		"POST /target: invalid response code: 200: invalid content - PARAMS: .+")
+		"POST /pool: invalid response code: 200: invalid content - PARAMS: .+")
 	c.Assert(fullId, check.Equals, "")
 }
 
@@ -97,7 +92,7 @@ func (s *S) TestGalebAddBackendPoolInvalidResponse(c *check.C) {
 	s.handler.Content = "invalid content"
 	fullId, err := s.client.AddBackendPool("")
 	c.Assert(err, check.ErrorMatches,
-		"POST /target: empty location header. PARAMS: .+")
+		"POST /pool: empty location header. PARAMS: .+")
 	c.Assert(fullId, check.Equals, "")
 }
 
@@ -105,9 +100,9 @@ func (s *S) TestGalebAddBackend(c *check.C) {
 	s.handler.ConditionalContent["/api/target/10"] = []string{
 		"200", `{"_status": "OK"}`,
 	}
-	s.handler.ConditionalContent["/api/target/search/findByName?name=mypool"] = `{
+	s.handler.ConditionalContent["/api/pool/search/findByName?name=mypool"] = `{
 		"_embedded": {
-			"target": [
+			"pool": [
 				{
 					"_links": {
 						"self": {
@@ -124,17 +119,14 @@ func (s *S) TestGalebAddBackend(c *check.C) {
 		commonPostResponse: commonPostResponse{ID: 0, Name: "http://10.0.0.1:8080"},
 		Project:            "proj1",
 		Environment:        "env1",
-		BalancePolicy:      "balance1",
-		TargetType:         "targetbackend1",
 		BackendPool:        "http://galeb.somewhere/api/target/9",
-		Properties:         BackendPoolProperties{HcPath: "/"},
 	}
 	url1, _ := url.Parse("http://10.0.0.1:8080")
 	fullId, err := s.client.AddBackend(url1, "mypool")
 	c.Assert(err, check.IsNil)
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "POST", "GET"})
 	c.Assert(s.handler.Url, check.DeepEquals, []string{
-		"/api/target/search/findByName?name=mypool",
+		"/api/pool/search/findByName?name=mypool",
 		"/api/target",
 		"/api/target/10",
 	})
@@ -205,10 +197,10 @@ func (s *S) TestGalebRemoveBackendByID(c *check.C) {
 }
 
 func (s *S) TestGalebRemoveBackendPool(c *check.C) {
-	s.handler.ConditionalContent["/api/target/search/findByName?name=mypool"] = []string{
+	s.handler.ConditionalContent["/api/pool/search/findByName?name=mypool"] = []string{
 		"200", fmt.Sprintf(`{
 		"_embedded": {
-			"target": [
+			"pool": [
 				{
 					"_links": {
 						"self": {
@@ -223,7 +215,7 @@ func (s *S) TestGalebRemoveBackendPool(c *check.C) {
 	err := s.client.RemoveBackendPool("mypool")
 	c.Assert(err, check.IsNil)
 	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "DELETE"})
-	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/target/search/findByName?name=mypool", "/api/target/10"})
+	c.Assert(s.handler.Url, check.DeepEquals, []string{"/api/pool/search/findByName?name=mypool", "/api/target/10"})
 }
 
 func (s *S) TestGalebRemoveVirtualHost(c *check.C) {
@@ -364,21 +356,8 @@ func (s *S) TestGalebSetRuleVirtualHost(c *check.C) {
 }
 
 func (s *S) TestFindTargetsByParent(c *check.C) {
-	s.handler.ConditionalContent["/api/target/search/findByName?name=mypool"] = []string{
-		"200", fmt.Sprintf(`{
-		"_embedded": {
-			"target": [
-				{
-					"_links": {
-						"self": {
-							"href": "%s/target/8"
-						}
-					}
-				}
-			]
-		}
-	}`, s.client.ApiUrl)}
-	s.handler.ConditionalContent["/api/target/8/children?size=999999"] = `{
+	s.handler.ConditionalContent["/api/target/search/findByParentName?name=mypool&size=999999"] = []string{
+		"200", `{
 		"_embedded": {
 			"target": [
 				{
@@ -399,7 +378,7 @@ func (s *S) TestFindTargetsByParent(c *check.C) {
 				}
 			]
 		}
-	}`
+	}`}
 	s.handler.RspCode = http.StatusOK
 	targets, err := s.client.FindTargetsByParent("mypool")
 	c.Assert(err, check.IsNil)
@@ -421,12 +400,11 @@ func (s *S) TestFindTargetsByParent(c *check.C) {
 			},
 		},
 	})
-	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET", "GET"})
+	c.Assert(s.handler.Method, check.DeepEquals, []string{"GET"})
 	c.Assert(s.handler.Url, check.DeepEquals, []string{
-		"/api/target/search/findByName?name=mypool",
-		"/api/target/8/children?size=999999",
+		"/api/target/search/findByParentName?name=mypool&size=999999",
 	})
-	c.Assert(s.handler.Header[1].Get("Content-Type"), check.Equals, "application/json")
+	c.Assert(s.handler.Header[0].Get("Content-Type"), check.Equals, "application/json")
 }
 
 func (s *S) TestFindVirtualHostsByRule(c *check.C) {

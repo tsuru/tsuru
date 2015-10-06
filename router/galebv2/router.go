@@ -48,20 +48,16 @@ func createRouter(prefix string) (router.Router, error) {
 	project, _ := config.GetString(prefix + ":project")
 	balancePolicy, _ := config.GetString(prefix + ":balance-policy")
 	ruleType, _ := config.GetString(prefix + ":rule-type")
-	targetTypeBackend, _ := config.GetString(prefix + ":target-type-backend")
-	targetTypePool, _ := config.GetString(prefix + ":target-type-backend-pool")
 	debug, _ := config.GetBool(prefix + ":debug")
 	client := galebClient.GalebClient{
-		ApiUrl:            apiUrl,
-		Username:          username,
-		Password:          password,
-		Environment:       environment,
-		Project:           project,
-		BalancePolicy:     balancePolicy,
-		RuleType:          ruleType,
-		TargetTypeBackend: targetTypeBackend,
-		TargetTypePool:    targetTypePool,
-		Debug:             debug,
+		ApiUrl:        apiUrl,
+		Username:      username,
+		Password:      password,
+		Environment:   environment,
+		Project:       project,
+		BalancePolicy: balancePolicy,
+		RuleType:      ruleType,
+		Debug:         debug,
 	}
 	r := galebRouter{
 		client: &client,

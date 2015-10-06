@@ -26,16 +26,14 @@ var (
 )
 
 type GalebClient struct {
-	ApiUrl            string
-	Username          string
-	Password          string
-	Environment       string
-	Project           string
-	BalancePolicy     string
-	RuleType          string
-	TargetTypeBackend string
-	TargetTypePool    string
-	Debug             bool
+	ApiUrl        string
+	Username      string
+	Password      string
+	Environment   string
+	Project       string
+	BalancePolicy string
+	RuleType      string
+	Debug         bool
 }
 
 var timeoutHttpClient = &http.Client{
@@ -112,6 +110,15 @@ func (c *GalebClient) fillDefaultTargetValues(params *Target) {
 	if params.Project == "" {
 		params.Project = c.Project
 	}
+}
+
+func (c *GalebClient) fillDefaultPoolValues(params *Pool) {
+	if params.Environment == "" {
+		params.Environment = c.Environment
+	}
+	if params.Project == "" {
+		params.Project = c.Project
+	}
 	if params.BalancePolicy == "" {
 		params.BalancePolicy = c.BalancePolicy
 	}
@@ -148,11 +155,10 @@ func (c *GalebClient) AddVirtualHost(addr string) (string, error) {
 }
 
 func (c *GalebClient) AddBackendPool(name string) (string, error) {
-	var params Target
-	c.fillDefaultTargetValues(&params)
+	var params Pool
+	c.fillDefaultPoolValues(&params)
 	params.Name = name
-	params.TargetType = c.TargetTypePool
-	resource, err := c.doCreateResource("/target", &params)
+	resource, err := c.doCreateResource("/pool", &params)
 	if err != nil {
 		return "", err
 	}
@@ -163,12 +169,11 @@ func (c *GalebClient) AddBackend(backend *url.URL, poolName string) (string, err
 	var params Target
 	c.fillDefaultTargetValues(&params)
 	params.Name = backend.String()
-	poolID, err := c.findItemByName("target", poolName)
+	poolID, err := c.findItemByName("pool", poolName)
 	if err != nil {
 		return "", err
 	}
 	params.BackendPool = poolID
-	params.TargetType = c.TargetTypeBackend
 	resource, err := c.doCreateResource("/target", &params)
 	if err != nil {
 		return "", err
@@ -214,7 +219,7 @@ func (c *GalebClient) RemoveBackendByID(backendID string) error {
 }
 
 func (c *GalebClient) RemoveBackendPool(poolName string) error {
-	id, err := c.findItemByName("target", poolName)
+	id, err := c.findItemByName("pool", poolName)
 	if err != nil {
 		return err
 	}
@@ -260,18 +265,14 @@ func (c *GalebClient) RemoveRuleVirtualHost(ruleName, virtualHostName string) er
 }
 
 func (c *GalebClient) FindTargetsByParent(poolName string) ([]Target, error) {
-	poolId, err := c.findItemByName("target", poolName)
-	if err != nil {
-		return nil, err
-	}
-	path := fmt.Sprintf("%s/children?size=999999", strings.TrimPrefix(poolId, c.ApiUrl))
+	path := fmt.Sprintf("/target/search/findByParentName?name=%s&size=999999", poolName)
 	rsp, err := c.doRequest("GET", path, nil)
 	if err != nil {
 		return nil, err
 	}
 	responseData, _ := ioutil.ReadAll(rsp.Body)
 	if rsp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GET /target/{id}/children: wrong status code: %d. content: %s", rsp.StatusCode, string(responseData))
+		return nil, fmt.Errorf("GET /target/search/findByParentName?name={parentName}: wrong status code: %d. content: %s", rsp.StatusCode, string(responseData))
 	}
 	var rspObj struct {
 		Embedded struct {
@@ -280,7 +281,7 @@ func (c *GalebClient) FindTargetsByParent(poolName string) ([]Target, error) {
 	}
 	err = json.Unmarshal(responseData, &rspObj)
 	if err != nil {
-		return nil, fmt.Errorf("GET /target/{id}/children: unable to parse: %s: %s", string(responseData), err)
+		return nil, fmt.Errorf("GET /target/search/findByParentName?name={parentName}: unable to parse: %s: %s", string(responseData), err)
 	}
 	return rspObj.Embedded.Targets, nil
 }

@@ -29,6 +29,7 @@ func Test(t *testing.T) {
 
 type fakeGalebServer struct {
 	targets      map[string]interface{}
+	pools        map[string]interface{}
 	virtualhosts map[string]interface{}
 	rules        map[string]interface{}
 	items        map[string]map[string]interface{}
@@ -40,17 +41,20 @@ type fakeGalebServer struct {
 func NewFakeGalebServer() (*fakeGalebServer, error) {
 	server := &fakeGalebServer{
 		targets:      make(map[string]interface{}),
+		pools:        make(map[string]interface{}),
 		virtualhosts: make(map[string]interface{}),
 		rules:        make(map[string]interface{}),
 		ruleVh:       make(map[string][]string),
 	}
 	server.items = map[string]map[string]interface{}{
 		"target":      server.targets,
+		"pool":        server.pools,
 		"virtualhost": server.virtualhosts,
 		"rule":        server.rules,
 	}
 	r := mux.NewRouter()
 	r.HandleFunc("/api/target", server.createTarget).Methods("POST")
+	r.HandleFunc("/api/pool", server.createPool).Methods("POST")
 	r.HandleFunc("/api/rule", server.createRule).Methods("POST")
 	r.HandleFunc("/api/virtualhost", server.createVirtualhost).Methods("POST")
 	r.HandleFunc("/api/{item}/{id}", server.findItem).Methods("GET")
@@ -59,7 +63,7 @@ func NewFakeGalebServer() (*fakeGalebServer, error) {
 	r.HandleFunc("/api/rule/{id}/parents", server.addRuleVirtualhost).Methods("PATCH")
 	r.HandleFunc("/api/rule/{id}/parents", server.findVirtualhostByRule).Methods("GET")
 	r.HandleFunc("/api/rule/{id}/parents/{vhid}", server.destroyRuleVirtualhost).Methods("DELETE")
-	r.HandleFunc("/api/target/{id}/children", server.findTargetsByParent).Methods("GET")
+	r.HandleFunc("/api/target/search/findByParentName", server.findTargetsByParent).Methods("GET")
 	server.router = r
 	return server, nil
 }
@@ -109,11 +113,18 @@ func (s *fakeGalebServer) findItemByName(itemName string, wantedName string) []i
 }
 
 func (s *fakeGalebServer) findTargetsByParent(w http.ResponseWriter, r *http.Request) {
-	wantedId := mux.Vars(r)["id"]
+	parentName := r.URL.Query().Get("name")
+	var pool *galebClient.Pool
 	var ret []interface{}
+	for _, item := range s.pools {
+		p := item.(*galebClient.Pool)
+		if p.Name == parentName {
+			pool = p
+		}
+	}
 	for i, item := range s.targets {
 		target := item.(*galebClient.Target)
-		if strings.HasSuffix(target.BackendPool, "/"+wantedId) {
+		if target.BackendPool == pool.FullId() {
 			ret = append(ret, s.targets[i])
 		}
 	}
@@ -149,6 +160,23 @@ func (s *fakeGalebServer) createTarget(w http.ResponseWriter, r *http.Request) {
 	target.Links.Self.Href = fmt.Sprintf("http://%s%s/%d", r.Host, r.URL.String(), target.ID)
 	s.targets[strconv.Itoa(target.ID)] = &target
 	w.Header().Set("Location", target.Links.Self.Href)
+	w.WriteHeader(http.StatusCreated)
+}
+
+func (s *fakeGalebServer) createPool(w http.ResponseWriter, r *http.Request) {
+	var pool galebClient.Pool
+	pool.Status = "OK"
+	json.NewDecoder(r.Body).Decode(&pool)
+	poolsWithName := s.findItemByName("pool", pool.Name)
+	if len(poolsWithName) > 0 {
+		w.WriteHeader(http.StatusConflict)
+		return
+	}
+	s.idCounter++
+	pool.ID = s.idCounter
+	pool.Links.Self.Href = fmt.Sprintf("http://%s%s/%d", r.Host, r.URL.String(), pool.ID)
+	s.pools[strconv.Itoa(pool.ID)] = &pool
+	w.Header().Set("Location", pool.Links.Self.Href)
 	w.WriteHeader(http.StatusCreated)
 }
 
@@ -263,6 +291,7 @@ func init() {
 	suite.TearDownTestFunc = func(c *check.C) {
 		server.Close()
 		c.Check(fakeServer.targets, check.DeepEquals, map[string]interface{}{})
+		c.Check(fakeServer.pools, check.DeepEquals, map[string]interface{}{})
 		c.Check(fakeServer.virtualhosts, check.DeepEquals, map[string]interface{}{})
 		c.Check(fakeServer.rules, check.DeepEquals, map[string]interface{}{})
 		c.Check(fakeServer.ruleVh, check.DeepEquals, map[string][]string{})

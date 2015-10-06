@@ -40,11 +40,16 @@ type BackendPoolProperties struct {
 
 type Target struct {
 	commonPostResponse
+	Project     string `json:"project"`
+	Environment string `json:"environment"`
+	BackendPool string `json:"parent,omitempty"`
+}
+
+type Pool struct {
+	commonPostResponse
 	Project       string                `json:"project"`
 	Environment   string                `json:"environment"`
 	BalancePolicy string                `json:"balancePolicy"`
-	TargetType    string                `json:"targetType"`
-	BackendPool   string                `json:"parent,omitempty"`
 	Properties    BackendPoolProperties `json:"properties,omitempty"`
 }
 
