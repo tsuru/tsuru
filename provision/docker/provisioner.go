@@ -284,7 +284,7 @@ func (p *dockerProvisioner) Restart(a provision.App, process string, w io.Writer
 			toAdd[c.ProcessName] = &containersToAdd{Quantity: 0}
 		}
 		toAdd[c.ProcessName].Quantity++
-		toAdd[c.ProcessName].Status = provision.Status(c.Status)
+		toAdd[c.ProcessName].Status = provision.StatusBuilding
 	}
 	_, err = p.runReplaceUnitsPipeline(writer, a, toAdd, containers, imageId)
 	return err

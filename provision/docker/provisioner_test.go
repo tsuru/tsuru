@@ -102,6 +102,58 @@ func (s *S) TestProvisionerRestart(c *check.C) {
 	c.Assert(dbConts[0].HostPort, check.Equals, expectedPort)
 }
 
+func (s *S) TestProvisionerRestartStoppedContainer(c *check.C) {
+	app := provisiontest.NewFakeApp("almah", "static", 1)
+	customData := map[string]interface{}{
+		"processes": map[string]interface{}{
+			"web":    "python web.py",
+			"worker": "python worker.py",
+		},
+	}
+	cont1, err := s.newContainer(&newContainerOpts{
+		AppName:         app.GetName(),
+		ProcessName:     "web",
+		ImageCustomData: customData,
+		Image:           "tsuru/app-" + app.GetName(),
+	}, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(cont1)
+	cont2, err := s.newContainer(&newContainerOpts{
+		AppName:         app.GetName(),
+		ProcessName:     "worker",
+		ImageCustomData: customData,
+		Image:           "tsuru/app-" + app.GetName(),
+	}, nil)
+	c.Assert(err, check.IsNil)
+	defer s.removeTestContainer(cont2)
+	err = s.p.Stop(app, "")
+	c.Assert(err, check.IsNil)
+	dockerContainer, err := s.p.Cluster().InspectContainer(cont1.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, false)
+	dockerContainer, err = s.p.Cluster().InspectContainer(cont2.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, false)
+	err = s.p.Restart(app, "", nil)
+	c.Assert(err, check.IsNil)
+	dbConts, err := s.p.listAllContainers()
+	c.Assert(err, check.IsNil)
+	c.Assert(dbConts, check.HasLen, 2)
+	c.Assert(dbConts[0].ID, check.Not(check.Equals), cont1.ID)
+	c.Assert(dbConts[0].AppName, check.Equals, app.GetName())
+	c.Assert(dbConts[0].Status, check.Equals, provision.StatusStarting.String())
+	c.Assert(dbConts[1].ID, check.Not(check.Equals), cont1.ID)
+	c.Assert(dbConts[1].AppName, check.Equals, app.GetName())
+	c.Assert(dbConts[1].Status, check.Equals, provision.StatusStarting.String())
+	dockerContainer, err = s.p.Cluster().InspectContainer(dbConts[0].ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(dockerContainer.State.Running, check.Equals, true)
+	expectedIP := dockerContainer.NetworkSettings.IPAddress
+	expectedPort := dockerContainer.NetworkSettings.Ports["8888/tcp"][0].HostPort
+	c.Assert(dbConts[0].IP, check.Equals, expectedIP)
+	c.Assert(dbConts[0].HostPort, check.Equals, expectedPort)
+}
+
 type containerByProcessList []container.Container
 
 func (l containerByProcessList) Len() int           { return len(l) }
