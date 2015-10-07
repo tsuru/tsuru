@@ -288,6 +288,33 @@ platform is to use Java 7, but you can change to Java 8 by running:
 And... done! No need to run another deployment, your application is now running
 with Java 8.
 
+Setting memory for application
+==============================
+
+In the Java platform provided by tsuru, users can use units with diferent plans and each plan may have containers with different amounts of memory. There's an environment variable for defining the max amount of heap memory (in megabytes) that Java should use: ``JAVA_MAX_MEMORY`` ( it's equal ``-Xmx``). The default value for this environment variable is 128 (it can be different according to your `basebuilder <https://github.com/tsuru/basebuilder/blob/master/java/start-tomcat>`_).
+
+.. highlight:: bash
+
+::
+
+    $ tsuru env-set -a helloweb JAVA_MAX_MEMORY=1024
+    ---- Setting 1 new environment variables ----
+
+    ---- Starting 1 new unit ----
+     ---> Started unit o5p1k70289...
+
+    ---- Adding routes to 1 new units ----
+     ---> Added route to unit o5p1k70289
+
+    ---- Removing routes from 1 old units ----
+     ---> Removed route from unit d8a2d14948
+
+    ---- Removing 1 old unit ----
+     ---> Removed old unit 1/1
+
+And... done! No need to run another deployment, your application is now running
+with more memory.
+
 Going further
 =============
 
