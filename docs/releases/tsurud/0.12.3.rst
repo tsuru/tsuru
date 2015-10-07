@@ -18,6 +18,11 @@ Bug fixes
   caused this route to return a 500 error if the request included containers
   with the status ``building`` in tsuru's database.
 
+* Fix error message on: 
+
+  - ``app-change-pool`` when pool doesn`t exist.
+  - ``docker-node-update`` when address doesn`t exist.
+  
 Improvements
 ============
 
@@ -37,3 +42,14 @@ Improvements
   stopped it means that the Attach and Wait operations should have ended. At
   this moment tsuru will resume the deploy process and ignore the output from
   Attach and Wait.
+
+* Commands ``app-deploy-list`` and ``app-deploy-rollback`` support image version 
+
+* command ``service-bind`` doesn`t restart application if a service doesn`t inject any 
+  environment variables.
+
+* Cloudstack service support tags
+
+* Command ``platform-update`` support a ``--enable`` and ``--disable`` 
+  flags to enable or disable the platform. Only admin users can see those disabled 
+  platforms and can create an application with disabled platforms.
