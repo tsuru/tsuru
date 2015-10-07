@@ -11,18 +11,6 @@ Welcome to tsurud 0.12.3!
 tsurud 0.12.3 includes `bug fixes`_  and some `improvements`_ on unstable
 network environments.
 
-Bug fixes
-=========
-
-* Fix bug in ``/units/status`` route that is called by bs containers. The bug
-  caused this route to return a 500 error if the request included containers
-  with the status ``building`` in tsuru's database.
-
-* Fix error message on: 
-
-  - ``app-change-pool`` when pool doesn`t exist.
-  - ``docker-node-update`` when address doesn`t exist.
-  
 Improvements
 ============
 
@@ -43,13 +31,29 @@ Improvements
   this moment tsuru will resume the deploy process and ignore the output from
   Attach and Wait.
 
-* Commands ``app-deploy-list`` and ``app-deploy-rollback`` support image version 
+* Use the KeepAliveWriter across all streaming handlers in the API, so the API
+  is able to cope with small timeouts in the network.
 
-* command ``service-bind`` doesn`t restart application if a service doesn`t inject any 
-  environment variables.
+* Add a service level proxy so service APIs can have management plugins. This
+  proxy endpoint checks the permission of the user as an admin of the service.
+  The other proxy endpoint checks the user permission in the service instance.
 
-* Cloudstack service support tags
+Bug fixes
+=========
 
-* Command ``platform-update`` support a ``--enable`` and ``--disable`` 
-  flags to enable or disable the platform. Only admin users can see those disabled 
-  platforms and can create an application with disabled platforms.
+* Fix bug in ``/units/status`` route that is called by bs containers. The bug
+  caused this route to return a 500 error if the request included containers
+  with the status ``building`` in tsuru's database.
+
+* Fix error message in the docker-node-update handler when it's called with an
+  invalid name (issue `#1207 <https://github.com/tsuru/tsuru/issues/1207>`_).
+
+* Fix bug in Procfile parsing in the API. We used to parse it as YAML, but a
+  Procfile is not really an YAML.
+
+* Properly manage repository permissions in Gandalf after running
+  app-set-team-owner (issue `#1270
+  <https://github.com/tsuru/tsuru/issues/1270>`_).
+
+* Fix quota management for units in applications (issue `#1279
+  <https://github.com/tsuru/tsuru/issues/1279>`_).
