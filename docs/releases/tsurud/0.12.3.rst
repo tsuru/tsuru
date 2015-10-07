@@ -11,13 +11,6 @@ Welcome to tsurud 0.12.3!
 tsurud 0.12.3 includes `bug fixes`_  and some `improvements`_ on unstable
 network environments.
 
-Bug fixes
-=========
-
-* Fix bug in ``/units/status`` route that is called by bs containers. The bug
-  caused this route to return a 500 error if the request included containers
-  with the status ``building`` in tsuru's database.
-
 Improvements
 ============
 
@@ -37,3 +30,10 @@ Improvements
   stopped it means that the Attach and Wait operations should have ended. At
   this moment tsuru will resume the deploy process and ignore the output from
   Attach and Wait.
+
+Bug fixes
+=========
+
+* Fix bug in ``/units/status`` route that is called by bs containers. The bug
+  caused this route to return a 500 error if the request included containers
+  with the status ``building`` in tsuru's database.
