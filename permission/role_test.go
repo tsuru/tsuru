@@ -23,6 +23,15 @@ func (s *S) TestNewRole(c *check.C) {
 	c.Assert(err, check.ErrorMatches, `invalid context type "invalid"`)
 }
 
+func (s *S) TestListRoles(c *check.C) {
+	_, err := NewRole("test", "app")
+	c.Assert(err, check.IsNil)
+	roles, err := ListRoles()
+	c.Assert(err, check.IsNil)
+	expected := []Role{{Name: "test", ContextType: "app", SchemeNames: []string{}}}
+	c.Assert(roles, check.DeepEquals, expected)
+}
+
 func (s *S) TestFindRole(c *check.C) {
 	_, err := NewRole("myrole", "team")
 	c.Assert(err, check.IsNil)

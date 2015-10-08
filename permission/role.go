@@ -22,9 +22,9 @@ var (
 )
 
 type Role struct {
-	Name        string `bson:"_id"`
-	ContextType contextType
-	SchemeNames []string
+	Name        string      `bson:"_id" json:"name"`
+	ContextType contextType `json:"context"`
+	SchemeNames []string    `json:"scheme_names,omitempty"`
 }
 
 func NewRole(name string, ctx string) (Role, error) {
@@ -47,6 +47,17 @@ func NewRole(name string, ctx string) (Role, error) {
 		return Role{}, ErrRoleAlreadyExists
 	}
 	return role, err
+}
+
+func ListRoles() ([]Role, error) {
+	var roles []Role
+	coll, err := rolesCollection()
+	if err != nil {
+		return roles, err
+	}
+	defer coll.Close()
+	err = coll.Find(nil).All(&roles)
+	return roles, err
 }
 
 func FindRole(name string) (Role, error) {
