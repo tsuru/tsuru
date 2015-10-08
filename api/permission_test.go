@@ -2,10 +2,11 @@ package api
 
 import (
 	"bytes"
-	"github.com/tsuru/tsuru/permission"
-	"gopkg.in/check.v1"
 	"net/http"
 	"net/http/httptest"
+
+	"github.com/tsuru/tsuru/permission"
+	"gopkg.in/check.v1"
 )
 
 func (s *S) TestAddRole(c *check.C) {

@@ -2,10 +2,11 @@ package api
 
 import (
 	"encoding/json"
-	"github.com/tsuru/tsuru/auth"
-	"github.com/tsuru/tsuru/permission"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/tsuru/tsuru/auth"
+	"github.com/tsuru/tsuru/permission"
 )
 
 func addRole(w http.ResponseWriter, r *http.Request, t auth.Token) error {
