@@ -44,3 +44,41 @@ func listRoles(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	_, err = w.Write(b)
 	return err
 }
+
+func addPermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	roleName := r.URL.Query().Get(":name")
+	role, err := permission.FindRole(roleName)
+	if err != nil {
+		return err
+	}
+	defer r.Body.Close()
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	var params map[string][]string
+	err = json.Unmarshal(b, &params)
+	if err != nil {
+		return err
+	}
+	return role.AddPermissions(params["permissions"]...)
+}
+
+func removePermissions(w http.ResponseWriter, r *http.Request, t auth.Token) error {
+	roleName := r.URL.Query().Get(":name")
+	role, err := permission.FindRole(roleName)
+	if err != nil {
+		return err
+	}
+	defer r.Body.Close()
+	b, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		return err
+	}
+	var params map[string][]string
+	err = json.Unmarshal(b, &params)
+	if err != nil {
+		return err
+	}
+	return role.RemovePermissions(params["permissions"]...)
+}

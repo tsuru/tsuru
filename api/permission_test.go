@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 
@@ -39,4 +40,32 @@ func (s *S) TestListRoles(c *check.C) {
 	err = listRoles(rec, req, nil)
 	c.Assert(err, check.IsNil)
 	c.Assert(rec.Body.String(), check.Equals, expected)
+}
+
+func (s *S) TestAddPermissionsToARole(c *check.C) {
+	r, err := permission.NewRole("test", "team")
+	c.Assert(err, check.IsNil)
+	defer permission.DestroyRole(r.Name)
+	rec := httptest.NewRecorder()
+	url := fmt.Sprintf("/role/%s/permissions?:name=%s", r.Name, r.Name)
+	b := bytes.NewBufferString(`{"permissions": ["app.update"]}`)
+	req, err := http.NewRequest("POST", url, b)
+	c.Assert(err, check.IsNil)
+	err = addPermissions(rec, req, nil)
+	c.Assert(err, check.IsNil)
+}
+
+func (s *S) TestRemovePermissionsFromRole(c *check.C) {
+	r, err := permission.NewRole("test", "team")
+	c.Assert(err, check.IsNil)
+	defer permission.DestroyRole(r.Name)
+	err = r.AddPermissions("app.update")
+	c.Assert(err, check.IsNil)
+	rec := httptest.NewRecorder()
+	url := fmt.Sprintf("/role/%s/permissions?:name=%s", r.Name, r.Name)
+	b := bytes.NewBufferString(`{"permissions": ["app.update"]}`)
+	req, err := http.NewRequest("DELETE", url, b)
+	c.Assert(err, check.IsNil)
+	err = removePermissions(rec, req, nil)
+	c.Assert(err, check.IsNil)
 }
