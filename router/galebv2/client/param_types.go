@@ -60,7 +60,7 @@ type RuleProperties struct {
 type Rule struct {
 	commonPostResponse
 	RuleType    string         `json:"ruleType,omitempty"`
-	BackendPool string         `json:"target,omitempty"`
+	BackendPool string         `json:"pool,omitempty"`
 	Default     bool           `json:"default,omitempty"`
 	Order       int            `json:"order,omitempty"`
 	Properties  RuleProperties `json:"properties,omitempty"`
