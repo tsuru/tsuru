@@ -72,12 +72,12 @@ func (s *S) TestCheck(c *check.C) {
 			{Scheme: PermAppUpdateEnvUnset, Context: Context{CtxType: CtxGlobal}},
 		},
 	}
-	c.Assert(Check(t, PermAppUpdateEnvSet, Context{CtxType: CtxTeam, Value: "team1"}), check.Equals, true)
-	c.Assert(Check(t, PermAppUpdate, Context{CtxType: CtxTeam, Value: "team1"}), check.Equals, true)
-	c.Assert(Check(t, PermAppDeploy, Context{CtxType: CtxTeam, Value: "team1"}), check.Equals, false)
-	c.Assert(Check(t, PermAppDeploy, Context{CtxType: CtxTeam, Value: "team3"}), check.Equals, true)
-	c.Assert(Check(t, PermAppUpdate, Context{CtxType: CtxTeam, Value: "team2"}), check.Equals, false)
-	c.Assert(Check(t, PermAppUpdateEnvUnset, Context{CtxType: CtxTeam, Value: "team1"}), check.Equals, true)
-	c.Assert(Check(t, PermAppUpdateEnvUnset, Context{CtxType: CtxTeam, Value: "team10"}), check.Equals, true)
-	c.Assert(Check(t, PermAppUpdateEnvUnset), check.Equals, true)
+	c.Assert(Check(t, PermAppUpdateEnvSet.FullName(), Context{CtxType: CtxTeam, Value: "team1"}), check.Equals, true)
+	c.Assert(Check(t, PermAppUpdate.FullName(), Context{CtxType: CtxTeam, Value: "team1"}), check.Equals, true)
+	c.Assert(Check(t, PermAppDeploy.FullName(), Context{CtxType: CtxTeam, Value: "team1"}), check.Equals, false)
+	c.Assert(Check(t, PermAppDeploy.FullName(), Context{CtxType: CtxTeam, Value: "team3"}), check.Equals, true)
+	c.Assert(Check(t, PermAppUpdate.FullName(), Context{CtxType: CtxTeam, Value: "team2"}), check.Equals, false)
+	c.Assert(Check(t, PermAppUpdateEnvUnset.FullName(), Context{CtxType: CtxTeam, Value: "team1"}), check.Equals, true)
+	c.Assert(Check(t, PermAppUpdateEnvUnset.FullName(), Context{CtxType: CtxTeam, Value: "team10"}), check.Equals, true)
+	c.Assert(Check(t, PermAppUpdateEnvUnset.FullName()), check.Equals, true)
 }

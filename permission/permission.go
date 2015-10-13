@@ -5,10 +5,13 @@
 package permission
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 )
+
+var ErrUnauthorized = errors.New("You don't have permission to do this action")
 
 type permissionScheme struct {
 	name     string
@@ -122,11 +125,12 @@ type Token interface {
 	Permissions() ([]Permission, error)
 }
 
-func Check(token Token, scheme *permissionScheme, contexts ...Context) bool {
+func Check(token Token, schemeString string, contexts ...Context) bool {
 	perms, err := token.Permissions()
 	if err != nil {
 		return false
 	}
+	scheme := PermissionRegistry.get(schemeString)
 	for _, perm := range perms {
 		if perm.Scheme.isParent(scheme) {
 			if perm.Context.CtxType == CtxGlobal {
