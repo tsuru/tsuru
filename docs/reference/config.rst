@@ -743,6 +743,26 @@ A url for which the response body will be sent to cloudstack as user-data.
 Defaults to a script which will run `tsuru now installation
 <https://github.com/tsuru/now>`_.
 
+DigitalOcean IaaS
+---------------
+
+iaas:digitalocean:token
++++++++++++++++++++++++
+
+Your token to access
+
+iaas:digitalocean:url
++++++++++++++++++++
+
+The url for the digitalocean api.
+
+iaas:digitalocean:user-data
++++++++++++++++++++++++++
+
+A url for which the response body will be sent to digitalocean as user-data.
+Defaults to a script which will run `tsuru now installation
+<https://github.com/tsuru/now>`_.
+
 .. _config_custom_iaas:
 
 Custom IaaS
@@ -767,7 +787,7 @@ IaaS. As an example, having the configuration below would allow you to call
 .. highlight:: yaml
 
 ::
-    
+
     iaas:
         custom:
             region1_cloudstack:
@@ -775,7 +795,7 @@ IaaS. As an example, having the configuration below would allow you to call
                 url: http://region1.url/
                 secret-key: mysecretkey
         cloudstack:
-            api-key: myapikey    
+            api-key: myapikey
 
 
 Sample file
