@@ -331,7 +331,7 @@ func (s *S) TestDelete(c *check.C) {
 	c.Assert(err, check.NotNil)
 }
 
-func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccesToTheApp(c *check.C) {
+func (s *S) TestDeleteShouldReturnForbiddenIfTheGivenUserDoesNotHaveAccessToTheApp(c *check.C) {
 	myApp := app.App{Name: "app-to-delete", Platform: "zend"}
 	err := s.conn.Apps().Insert(myApp)
 	c.Assert(err, check.IsNil)
