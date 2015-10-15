@@ -59,6 +59,8 @@ func (s *digitaloceanSuite) TestCreateMachine(c *check.C) {
 }
 
 func (s *digitaloceanSuite) TestCreateMachineFailure(c *check.C) {
+	config.Set("iaas:digitalocean:wait-timeout", 1)
+	defer config.Unset("iaas:digitalocean:wait-timeout")
 	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintln(w, `{"droplet": {"id": 1, "status": "active", "networks": {"v4": [], "v6": []}}}`)
 	}))
@@ -73,7 +75,7 @@ func (s *digitaloceanSuite) TestCreateMachineFailure(c *check.C) {
 	}
 	_, err := do.CreateMachine(params)
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Machine created but without network")
+	c.Assert(err.Error(), check.Equals, "timed out waiting for machine network")
 }
 
 func (s *digitaloceanSuite) TestDeleteMachine(c *check.C) {
@@ -100,5 +102,5 @@ func (s *digitaloceanSuite) TestDeleteMachineFailure(c *check.C) {
 	machine := iaas.Machine{Id: "13", CreationParams: map[string]string{"projectid": "projid"}}
 	err := do.DeleteMachine(&machine)
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "Failed to delete machine")
+	c.Assert(err.Error(), check.Equals, "failed to delete machine")
 }

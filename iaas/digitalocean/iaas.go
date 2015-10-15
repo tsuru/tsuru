@@ -5,7 +5,7 @@
 package digitalocean
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -94,25 +94,40 @@ func (i *digitalOceanIaas) CreateMachine(params map[string]string) (*iaas.Machin
 }
 
 func (i *digitalOceanIaas) waitNetworkCreated(droplet *godo.Droplet) (*godo.Droplet, error) {
-	completed := false
-	maxTry := 2
-	for !completed && maxTry != 0 {
-		var err error
-		droplet, _, err = i.client.Droplets.Get(droplet.ID)
-		if err != nil {
-			return nil, err
-		}
-		if len(droplet.Networks.V4) == 0 {
-			maxTry -= 1
-			time.Sleep(5 * time.Second)
-			continue
-		}
-		completed = true
+	rawTimeout, _ := i.base.GetConfigString("wait-timeout")
+	timeout, _ := strconv.Atoi(rawTimeout)
+	if timeout == 0 {
+		timeout = 120
 	}
-	if !completed {
-		return nil, fmt.Errorf("Machine created but without network")
+	quit := make(chan struct{})
+	errs := make(chan error, 1)
+	droplets := make(chan *godo.Droplet, 1)
+	go func() {
+		for {
+			select {
+			case <-quit:
+				return
+			default:
+				droplet, _, err := i.client.Droplets.Get(droplet.ID)
+				if err != nil {
+					errs <- err
+					return
+				}
+				if len(droplet.Networks.V4) > 0 {
+					droplets <- droplet
+					return
+				}
+			}
+		}
+	}()
+	select {
+	case droplet = <-droplets:
+		return droplet, nil
+	case err := <-errs:
+		return nil, err
+	case <-time.After(time.Duration(timeout) * time.Second):
+		return nil, errors.New("timed out waiting for machine network")
 	}
-	return droplet, nil
 }
 
 func (i *digitalOceanIaas) DeleteMachine(m *iaas.Machine) error {
@@ -123,7 +138,7 @@ func (i *digitalOceanIaas) DeleteMachine(m *iaas.Machine) error {
 		return err
 	}
 	if resp.StatusCode != 204 {
-		return fmt.Errorf("Failed to delete machine")
+		return errors.New("failed to delete machine")
 	}
 	return nil
 }
