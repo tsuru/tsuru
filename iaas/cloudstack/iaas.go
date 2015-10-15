@@ -161,7 +161,7 @@ func (i *CloudstackIaaS) CreateMachine(params map[string]string) (*iaas.Machine,
 		paramsCopy[k] = v
 	}
 	if userData != "" {
-		paramsCopy["userdata"] = userData
+		paramsCopy["userdata"] = base64.StdEncoding.EncodeToString([]byte(userData))
 	}
 	var vmStatus DeployVirtualMachineResponse
 	err = i.do("deployVirtualMachine", paramsCopy, &vmStatus)

@@ -1084,6 +1084,27 @@ iaas:cloudstack:wait-timeout
 Number of seconds to wait for the machine to be created. Defaults to 300 (5
 minutes).
 
+DigitalOcean IaaS
+-----------------
+
+iaas:digitalocean:token
++++++++++++++++++++++++
+
+The access token used for communication with the DigitalOcean API.
+
+iaas:digitalocean:url
++++++++++++++++++++++
+
+The URL of the DigitalOcean API. This is optional, and defaults to
+"https://api.digitalocean.com/".
+
+iaas:digitalocean:user-data
++++++++++++++++++++++++++++
+
+A URL for which the response body will be sent to DigitalOcean as user-data.
+Defaults to a script which will run `tsuru now installation
+<https://github.com/tsuru/now>`_.
+
 .. _config_custom_iaas:
 
 Custom IaaS
@@ -1109,7 +1130,7 @@ IaaS. As an example, having the configuration below would allow you to call
 .. highlight:: yaml
 
 ::
-    
+
     iaas:
         custom:
             region1_cloudstack:
@@ -1117,7 +1138,7 @@ IaaS. As an example, having the configuration below would allow you to call
                 url: http://region1.url/
                 secret-key: mysecretkey
         cloudstack:
-            api-key: myapikey    
+            api-key: myapikey
 
 
 Sample file

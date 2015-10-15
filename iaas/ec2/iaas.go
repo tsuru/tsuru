@@ -5,6 +5,7 @@
 package ec2
 
 import (
+	"encoding/base64"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -221,7 +222,7 @@ func (i *EC2IaaS) CreateMachine(params map[string]string) (*iaas.Machine, error)
 	if err != nil {
 		return nil, err
 	}
-	options.UserData = aws.String(userData)
+	options.UserData = aws.String(base64.StdEncoding.EncodeToString([]byte(userData)))
 	if options.ImageId == nil || *options.ImageId == "" {
 		return nil, fmt.Errorf("the parameter %q is required", "imageid")
 	}

@@ -7,7 +7,6 @@
 package iaas
 
 import (
-	"encoding/base64"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -54,12 +53,12 @@ type UserDataIaaS struct {
 }
 
 func (i *UserDataIaaS) ReadUserData() (string, error) {
-	userDataUrl, err := i.NamedIaaS.GetConfigString("user-data")
+	userDataURL, err := i.NamedIaaS.GetConfigString("user-data")
 	var userData string
 	if err != nil {
 		userData = defaultUserData
-	} else if userDataUrl != "" {
-		resp, err := http.Get(userDataUrl)
+	} else if userDataURL != "" {
+		resp, err := http.Get(userDataURL)
 		if err != nil {
 			return "", err
 		}
@@ -73,7 +72,7 @@ func (i *UserDataIaaS) ReadUserData() (string, error) {
 		}
 		userData = string(body)
 	}
-	return base64.StdEncoding.EncodeToString([]byte(userData)), nil
+	return userData, nil
 }
 
 func (i *NamedIaaS) GetConfigString(name string) (string, error) {

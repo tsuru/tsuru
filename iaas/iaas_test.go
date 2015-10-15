@@ -5,7 +5,6 @@
 package iaas
 
 import (
-	"encoding/base64"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -75,7 +74,7 @@ func (s *S) TestReadUserDataDefault(c *check.C) {
 	iaasInst := UserDataIaaS{}
 	userData, err := iaasInst.ReadUserData()
 	c.Assert(err, check.IsNil)
-	c.Assert(userData, check.Equals, base64.StdEncoding.EncodeToString([]byte(defaultUserData)))
+	c.Assert(userData, check.Equals, defaultUserData)
 }
 
 func (s *S) TestReadUserData(c *check.C) {
@@ -88,7 +87,7 @@ func (s *S) TestReadUserData(c *check.C) {
 	defer config.Unset("iaas:x:user-data")
 	userData, err := iaasInst.ReadUserData()
 	c.Assert(err, check.IsNil)
-	c.Assert(userData, check.Equals, base64.StdEncoding.EncodeToString([]byte("abc def ghi")))
+	c.Assert(userData, check.Equals, "abc def ghi")
 }
 
 func (s *S) TestReadUserDataEmpty(c *check.C) {
