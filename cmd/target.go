@@ -228,6 +228,9 @@ func checkIfTargetLabelExists(label string) (bool, error) {
 func getTargets() (map[string]string, error) {
 	var targets = map[string]string{}
 	targetsPath := JoinWithUserDir(".tsuru", "targets")
+	if _, err := os.Stat(JoinWithUserDir(".tsuru")); os.IsNotExist(err) {
+		os.Mkdir(JoinWithUserDir(".tsuru"), 0700)
+	}
 	if f, err := filesystem().Open(targetsPath); err == nil {
 		defer f.Close()
 		if b, err := ioutil.ReadAll(f); err == nil {
