@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/tsuru/tsuru",
-	"GoVersion": "go1.4.2",
+	"GoVersion": "go1.5.1",
 	"Packages": [
 		"./..."
 	],
@@ -64,12 +64,21 @@
 			"Rev": "a13766a8c2572caeb14341b7de158aff2fd00fa9"
 		},
 		{
+			"ImportPath": "github.com/digitalocean/godo",
+			"Comment": "v0.9.0",
+			"Rev": "2a0d64a42bb60a95677748a4d5729af6184330b4"
+		},
+		{
 			"ImportPath": "github.com/fsouza/go-dockerclient",
 			"Rev": "1399676f53e6ccf46e0bf00751b21bed329bc60e"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
 			"Rev": "6628c86d6a89ce7983c7c9b5e98c1df795fbd256"
+		},
+		{
+			"ImportPath": "github.com/google/go-querystring/query",
+			"Rev": "547ef5ac979778feb2f760cdb5f4eae1a2207b86"
 		},
 		{
 			"ImportPath": "github.com/gorilla/context",
@@ -214,6 +223,10 @@
 			"Rev": "bbbcac964e38148a7b43491a83d83b6b584600dc"
 		},
 		{
+			"ImportPath": "github.com/tent/http-link-go",
+			"Rev": "ac974c61c2f990f4115b119354b5e0b47550e888"
+		},
+		{
 			"ImportPath": "github.com/tsuru/commandmocker",
 			"Rev": "be4aec17ebc7264c791bf01709bfd956475d2ee8"
 		},
@@ -234,7 +247,32 @@
 			"Rev": "de8183cd89b0f47a597ebbd53f6b8aa9a2060693"
 		},
 		{
+			"ImportPath": "github.com/tsuru/gandalf/db",
+			"Comment": "0.7.3",
+			"Rev": "62c82eb4151d86b4cba86cbd720af0492d76f84b"
+		},
+		{
+			"ImportPath": "github.com/tsuru/gandalf/fs",
+			"Comment": "0.7.3",
+			"Rev": "62c82eb4151d86b4cba86cbd720af0492d76f84b"
+		},
+		{
 			"ImportPath": "github.com/tsuru/gandalf/gandalftest",
+			"Comment": "0.7.3",
+			"Rev": "62c82eb4151d86b4cba86cbd720af0492d76f84b"
+		},
+		{
+			"ImportPath": "github.com/tsuru/gandalf/multipartzip",
+			"Comment": "0.7.3",
+			"Rev": "62c82eb4151d86b4cba86cbd720af0492d76f84b"
+		},
+		{
+			"ImportPath": "github.com/tsuru/gandalf/repository",
+			"Comment": "0.7.3",
+			"Rev": "62c82eb4151d86b4cba86cbd720af0492d76f84b"
+		},
+		{
+			"ImportPath": "github.com/tsuru/gandalf/user",
 			"Comment": "0.7.3",
 			"Rev": "62c82eb4151d86b4cba86cbd720af0492d76f84b"
 		},
