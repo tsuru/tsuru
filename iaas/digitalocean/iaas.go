@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/digitalocean/godo"
@@ -58,11 +59,22 @@ func (i *digitalOceanIaas) CreateMachine(params map[string]string) (*iaas.Machin
 	if err != nil {
 		return nil, err
 	}
+	var sshKeys []godo.DropletCreateSSHKey
+	if rawSSHKeys, ok := params["ssh_keys"]; ok {
+		for _, key := range strings.Split(rawSSHKeys, ",") {
+			if keyID, err := strconv.Atoi(key); err == nil {
+				sshKeys = append(sshKeys, godo.DropletCreateSSHKey{ID: keyID})
+			} else {
+				sshKeys = append(sshKeys, godo.DropletCreateSSHKey{Fingerprint: key})
+			}
+		}
+	}
 	createRequest := &godo.DropletCreateRequest{
 		Name:     params["name"],
 		Region:   params["region"],
 		Size:     params["size"],
 		Image:    image,
+		SSHKeys:  sshKeys,
 		UserData: userData,
 	}
 	droplet, _, err := i.client.Droplets.Create(createRequest)
@@ -118,11 +130,17 @@ func (i *digitalOceanIaas) DeleteMachine(m *iaas.Machine) error {
 
 func (i *digitalOceanIaas) Describe() string {
 	return `DigitalOcean IaaS required params:
-  name=<name>                Your machine name
-  region=<region>            Chosen region from DigitalOcean
-  size=<size>                Your machine size
+  name=<name>                Name of the droplet
+  region=<region>            Chosen region from DigitalOcean (e.g.: nyc3)
+  size=<size>                Your machine size (e.g.: 512mb)
   image=<image>              The image ID of a public or private image
 
-Further params will also be sent to digitalocean's deployVirtualMachine command.
+There are also some optional parameters:
+
+  ssh_keys=<keys>            Comma separated list of keys. The key can be identified
+                             by its ID or fingerprint.
+			     (e.g.: ssh_keys=5050,2032,07:b9:a1:65:1b,13 will result in
+		             the key IDs 5050, 2032 and 13, along with the fingerprint
+		             07:b9:a1:65:1b)
 `
 }

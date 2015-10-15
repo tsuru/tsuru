@@ -5,6 +5,7 @@
 package digitalocean
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -26,8 +27,11 @@ type digitaloceanSuite struct{}
 var _ = check.Suite(&digitaloceanSuite{})
 
 func (s *digitaloceanSuite) TestCreateMachine(c *check.C) {
+	var createRequest map[string]interface{}
 	fakeServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v2/droplets" {
+			err := json.NewDecoder(r.Body).Decode(&createRequest)
+			c.Assert(err, check.IsNil)
 			fmt.Fprintln(w, `{"droplet": {"id": 1, "status": "new", "networks": {"v4": [], "v6": []}}}`)
 		}
 		if r.URL.Path == "/v2/droplets/1" {
@@ -37,17 +41,21 @@ func (s *digitaloceanSuite) TestCreateMachine(c *check.C) {
 	defer fakeServer.Close()
 	config.Set("iaas:digitalocean:url", fakeServer.URL)
 	do := newDigitalOceanIaas("digitalocean")
-	params := map[string]string{"name": "example.com",
-		"region": "nyc3",
-		"size":   "512mb",
-		"image":  "ubuntu-14-04-x64"}
-
+	params := map[string]string{
+		"name":     "example.com",
+		"region":   "nyc3",
+		"size":     "512mb",
+		"image":    "ubuntu-14-04-x64",
+		"ssh_keys": "5050,2032,07:b9:a1:65:1b,13",
+	}
 	m, err := do.CreateMachine(params)
 	c.Assert(err, check.IsNil)
 	c.Assert(m, check.NotNil)
 	c.Assert(m.Address, check.Equals, "104.131.186.241")
 	c.Assert(m.Id, check.Equals, "1")
 	c.Assert(m.Status, check.Equals, "active")
+	expectedKeys := []interface{}{float64(5050), float64(2032), "07:b9:a1:65:1b", float64(13)}
+	c.Assert(createRequest["ssh_keys"], check.DeepEquals, expectedKeys)
 }
 
 func (s *digitaloceanSuite) TestCreateMachineFailure(c *check.C) {
@@ -57,11 +65,12 @@ func (s *digitaloceanSuite) TestCreateMachineFailure(c *check.C) {
 	defer fakeServer.Close()
 	config.Set("iaas:digitalocean:url", fakeServer.URL)
 	do := newDigitalOceanIaas("digitalocean")
-	params := map[string]string{"name": "example.com",
+	params := map[string]string{
+		"name":   "example.com",
 		"region": "nyc3",
 		"size":   "512mb",
-		"image":  "ubuntu-14-04-x64"}
-
+		"image":  "ubuntu-14-04-x64",
+	}
 	_, err := do.CreateMachine(params)
 	c.Assert(err, check.NotNil)
 	c.Assert(err.Error(), check.Equals, "Machine created but without network")
