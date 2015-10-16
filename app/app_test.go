@@ -778,7 +778,9 @@ func (s *S) TestSetUnitStatusNotFound(c *check.C) {
 	a := App{Name: "appName", Platform: "django"}
 	err := a.SetUnitStatus("someunit", provision.StatusError)
 	c.Assert(err, check.NotNil)
-	c.Assert(err.Error(), check.Equals, "unit not found")
+	e, ok := err.(*provision.UnitNotFoundError)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.ID, check.Equals, "someunit")
 }
 
 func (s *S) TestUpdateUnitsStatus(c *check.C) {
@@ -2830,7 +2832,10 @@ func (s *S) TestAppRegisterUnitInvalidUnit(c *check.C) {
 	s.provisioner.Provision(&a)
 	defer s.provisioner.Destroy(&a)
 	err := a.RegisterUnit("oddity", nil)
-	c.Assert(err, check.Equals, provision.ErrUnitNotFound)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*provision.UnitNotFoundError)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.ID, check.Equals, "oddity")
 }
 
 func (s *S) TestAppValidateTeamOwner(c *check.C) {

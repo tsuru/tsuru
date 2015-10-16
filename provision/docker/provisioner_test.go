@@ -1256,7 +1256,10 @@ func (s *S) TestProvisionSetUnitStatusNoAppName(c *check.C) {
 
 func (s *S) TestProvisionerSetUnitStatusUnitNotFound(c *check.C) {
 	err := s.p.SetUnitStatus(provision.Unit{ID: "mycontainer", AppName: "myapp"}, provision.StatusError)
-	c.Assert(err, check.Equals, provision.ErrUnitNotFound)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*provision.UnitNotFoundError)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.ID, check.Equals, "mycontainer")
 }
 
 func (s *S) TestProvisionerSetUnitStatusBuildingContainer(c *check.C) {

@@ -540,7 +540,10 @@ func (s *S) TestProvisionAddUnitsToHostBackward(c *check.C) {
 	context := action.BWContext{FWResult: []container.Container{cont}, Params: []interface{}{args}}
 	provisionAddUnitsToHost.Backward(context)
 	_, err = s.p.GetContainer(cont.ID)
-	c.Assert(err, check.Equals, provision.ErrUnitNotFound)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*provision.UnitNotFoundError)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.ID, check.Equals, cont.ID)
 }
 
 func (s *S) TestProvisionRemoveOldUnitsName(c *check.C) {

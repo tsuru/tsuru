@@ -19,8 +19,15 @@ import (
 var (
 	ErrInvalidStatus = errors.New("invalid status")
 	ErrEmptyApp      = errors.New("no units for this app")
-	ErrUnitNotFound  = errors.New("unit not found")
 )
+
+type UnitNotFoundError struct {
+	ID string
+}
+
+func (e *UnitNotFoundError) Error() string {
+	return fmt.Sprintf("unit %q not found", e.ID)
+}
 
 type InvalidProcessError struct {
 	Msg string
