@@ -351,7 +351,7 @@ func setUnitStatus(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	err = a.SetUnitStatus(unitName, status)
-	if err == provision.ErrUnitNotFound {
+	if _, ok := err.(*provision.UnitNotFoundError); ok {
 		return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 	}
 	if err == nil {
@@ -1031,7 +1031,7 @@ func registerUnit(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	}
 	err = a.RegisterUnit(hostname, customData)
 	if err != nil {
-		if err == provision.ErrUnitNotFound {
+		if _, ok := err.(*provision.UnitNotFoundError); ok {
 			return &errors.HTTP{Code: http.StatusNotFound, Message: err.Error()}
 		}
 		return err

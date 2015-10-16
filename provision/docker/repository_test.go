@@ -222,7 +222,10 @@ func (s *S) TestGetContainerPartialIdNotFound(c *check.C) {
 	cleanupFunc := s.getContainerCollection("some-app", containerIds...)
 	defer cleanupFunc()
 	_, err := s.p.GetContainer("container-9")
-	c.Assert(err, check.Equals, provision.ErrUnitNotFound)
+	c.Assert(err, check.NotNil)
+	e, ok := err.(*provision.UnitNotFoundError)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(e.ID, check.Equals, "container-9")
 }
 
 func (s *S) TestGetContainerPartialId(c *check.C) {

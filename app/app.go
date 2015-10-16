@@ -483,7 +483,7 @@ func (app *App) SetUnitStatus(unitName string, status provision.Status) error {
 			return Provisioner.SetUnitStatus(unit, status)
 		}
 	}
-	return provision.ErrUnitNotFound
+	return &provision.UnitNotFoundError{ID: unitName}
 }
 
 type UpdateUnitsData struct {
@@ -504,11 +504,9 @@ func UpdateUnitsStatus(units []UpdateUnitsData) ([]UpdateUnitsResult, error) {
 	for i, unitData := range units {
 		unit := provision.Unit{ID: unitData.ID, Name: unitData.Name}
 		err := Provisioner.SetUnitStatus(unit, unitData.Status)
-		result[i] = UpdateUnitsResult{
-			ID:    unitData.ID,
-			Found: err != provision.ErrUnitNotFound,
-		}
-		if err != nil && err != provision.ErrUnitNotFound {
+		_, ok := err.(*provision.UnitNotFoundError)
+		result[i] = UpdateUnitsResult{ID: unitData.ID, Found: !ok}
+		if err != nil && !ok {
 			return nil, err
 		}
 	}
@@ -1455,7 +1453,7 @@ func (app *App) RegisterUnit(unitId string, customData map[string]interface{}) e
 			return Provisioner.RegisterUnit(unit, customData)
 		}
 	}
-	return provision.ErrUnitNotFound
+	return &provision.UnitNotFoundError{ID: unitId}
 }
 
 func (app *App) GetRouter() (string, error) {

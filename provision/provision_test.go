@@ -116,3 +116,8 @@ func (ProvisionSuite) TestUnitGetIp(c *check.C) {
 	u := Unit{Ip: "10.3.3.1"}
 	c.Assert(u.Ip, check.Equals, u.GetIp())
 }
+
+func (ProvisionSuite) TestUnitNotFoundError(c *check.C) {
+	var err error = &UnitNotFoundError{ID: "some unit"}
+	c.Assert(err.Error(), check.Equals, `unit "some unit" not found`)
+}

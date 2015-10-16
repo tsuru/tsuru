@@ -821,7 +821,7 @@ func (p *FakeProvisioner) SetUnitStatus(unit provision.Unit, status provision.St
 		}
 	}
 	if index < 0 {
-		return provision.ErrUnitNotFound
+		return &provision.UnitNotFoundError{ID: unit.ID}
 	}
 	app := p.apps[unit.AppName]
 	app.units[index].Status = status

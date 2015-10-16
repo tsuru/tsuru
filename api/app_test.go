@@ -3270,7 +3270,7 @@ func (s *S) TestRegisterUnitInvalidUnit(c *check.C) {
 	m := RunServer(true)
 	m.ServeHTTP(recorder, request)
 	c.Assert(recorder.Code, check.Equals, http.StatusNotFound)
-	c.Assert(recorder.Body.String(), check.Equals, "unit not found\n")
+	c.Assert(recorder.Body.String(), check.Equals, "unit \"invalid-unit-host\" not found\n")
 }
 
 func (s *S) TestRegisterUnitWithCustomData(c *check.C) {

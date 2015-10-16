@@ -21,14 +21,14 @@ func (p *dockerProvisioner) GetContainer(id string) (*container.Container, error
 	var containers []container.Container
 	coll := p.Collection()
 	defer coll.Close()
-	id = fmt.Sprintf("^%s.*", id)
-	err := coll.Find(bson.M{"id": bson.RegEx{Pattern: id}}).All(&containers)
+	pattern := fmt.Sprintf("^%s.*", id)
+	err := coll.Find(bson.M{"id": bson.RegEx{Pattern: pattern}}).All(&containers)
 	if err != nil {
 		return nil, err
 	}
 	lenContainers := len(containers)
 	if lenContainers == 0 {
-		return nil, provision.ErrUnitNotFound
+		return nil, &provision.UnitNotFoundError{ID: id}
 	}
 	if lenContainers > 1 {
 		return nil, errAmbiguousContainer
@@ -46,7 +46,7 @@ func (p *dockerProvisioner) GetContainerByName(name string) (*container.Containe
 	}
 	lenContainers := len(containers)
 	if lenContainers == 0 {
-		return nil, provision.ErrUnitNotFound
+		return nil, &provision.UnitNotFoundError{ID: name}
 	}
 	if lenContainers > 1 {
 		return nil, errAmbiguousContainer
