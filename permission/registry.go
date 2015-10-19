@@ -38,6 +38,13 @@ func (r *registry) addWithCtx(name string, contextTypes []contextType) *registry
 }
 
 func (r *registry) getSubRegistry(name string) *registry {
+	if name == "" {
+		global := r.get(name)
+		global.contexts = []contextType{CtxGlobal}
+		return &registry{
+			permissionScheme: *global,
+		}
+	}
 	parts := strings.Split(name, ".")
 	children := r.children
 	var parent *registry

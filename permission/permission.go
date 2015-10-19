@@ -132,7 +132,7 @@ func Check(token Token, schemeString string, contexts ...Context) bool {
 	}
 	scheme := PermissionRegistry.get(schemeString)
 	for _, perm := range perms {
-		if perm.Scheme.isParent(scheme) {
+		if perm.Scheme.isParent(scheme) || perm.Scheme.name == "" {
 			if perm.Context.CtxType == CtxGlobal {
 				return true
 			}
