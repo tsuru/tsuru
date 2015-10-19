@@ -23,6 +23,7 @@ import (
 	"github.com/tsuru/tsuru/errors"
 	tsuruIo "github.com/tsuru/tsuru/io"
 	"github.com/tsuru/tsuru/log"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/quota"
 	"github.com/tsuru/tsuru/rec"
@@ -71,6 +72,19 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	a, err := getApp(r.URL.Query().Get(":app"), u, r)
 	if err != nil {
 		return err
+	}
+	teams, err := u.Teams()
+	if err != nil {
+		return err
+	}
+	canDelete := permission.Check(t, "app.delete", []permission.Context{
+		{CtxType: permission.CtxApp, Value: a.Name},
+		{CtxType: permission.CtxTeam, Value: teams},
+		{CtxType: permission.CtxPool, Value: a.Pool},
+		{CtxType: permission.CtxGlobal},
+	}...)
+	if !canDelete {
+		return permission.ErrUnauthorized
 	}
 	keepAliveWriter := tsuruIo.NewKeepAliveWriter(w, 30*time.Second, "")
 	defer keepAliveWriter.Stop()

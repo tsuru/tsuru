@@ -31,6 +31,7 @@ func (s *S) TestRemoveRole(c *check.C) {
 }
 
 func (s *S) TestListRoles(c *check.C) {
+	permission.DestroyRole("admin")
 	_, err := permission.NewRole("test", "app")
 	c.Assert(err, check.IsNil)
 	rec := httptest.NewRecorder()

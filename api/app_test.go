@@ -26,6 +26,7 @@ import (
 	"github.com/tsuru/tsuru/auth"
 	"github.com/tsuru/tsuru/db"
 	"github.com/tsuru/tsuru/errors"
+	"github.com/tsuru/tsuru/permission"
 	"github.com/tsuru/tsuru/provision"
 	"github.com/tsuru/tsuru/queue"
 	"github.com/tsuru/tsuru/quota"
@@ -318,6 +319,13 @@ func (s *S) TestDelete(c *check.C) {
 	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:app="+myApp.Name, nil)
 	c.Assert(err, check.IsNil)
 	recorder := httptest.NewRecorder()
+	role, err := permission.NewRole("deleter", "app")
+	c.Assert(err, check.IsNil)
+	err = role.AddPermissions("app.delete")
+	c.Assert(err, check.IsNil)
+	err = s.user.AddRole("deleter", myApp.Name)
+	c.Assert(err, check.IsNil)
+	defer s.user.RemoveRole("deleter", myApp.Name)
 	err = appDelete(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
@@ -357,6 +365,50 @@ func (s *S) TestDeleteShouldReturnNotFoundIfTheAppDoesNotExist(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Code, check.Equals, http.StatusNotFound)
 	c.Assert(e, check.ErrorMatches, "^App unknown not found.$")
+}
+
+func (s *S) TestDeleteUnauthorized(c *check.C) {
+	myApp := &app.App{
+		Name:     "myapptodelete",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+	}
+	err := app.CreateApp(myApp, s.user)
+	c.Assert(err, check.IsNil)
+	myApp, err = app.GetByName(myApp.Name)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:app="+myApp.Name, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	err = appDelete(recorder, request, s.token)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.Equals, permission.ErrUnauthorized)
+}
+
+func (s *S) TestDeleteAdminAuthorized(c *check.C) {
+	myApp := &app.App{
+		Name:     "myapptodelete",
+		Platform: "zend",
+		Teams:    []string{s.team.Name},
+	}
+	err := app.CreateApp(myApp, s.user)
+	c.Assert(err, check.IsNil)
+	myApp, err = app.GetByName(myApp.Name)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("DELETE", "/apps/"+myApp.Name+"?:app="+myApp.Name, nil)
+	c.Assert(err, check.IsNil)
+	recorder := httptest.NewRecorder()
+	c.Assert(err, check.IsNil)
+	role, err := permission.NewRole("superadmin", "global")
+	c.Assert(err, check.IsNil)
+	err = s.adminuser.AddRole("superadmin", "")
+	c.Assert(err, check.IsNil)
+	err = role.AddPermissions("")
+	c.Assert(err, check.IsNil)
+	defer s.adminuser.RemoveRole("superadmin", "global")
+	defer permission.DestroyRole("superadmin")
+	err = appDelete(recorder, request, s.admintoken)
+	c.Assert(err, check.IsNil)
 }
 
 func (s *S) TestAppInfo(c *check.C) {
