@@ -1,55 +1,73 @@
-// Copyright 2014 tsuru authors. All rights reserved.
+// Copyright 2015 tsuru authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
 package client
 
-type commonResponse struct {
-	Links struct {
-		Self string `json:"self"`
-	} `json:"_links"`
-	Id     int    `json:"id"`
-	Status string `json:"status"`
+const (
+	STATUS_PENDING = "PENDING"
+	STATUS_OK      = "OK"
+)
+
+type hrefData struct {
+	Href string `json:"href"`
 }
 
-func (c commonResponse) FullId() string {
-	return c.Links.Self
+type linkData struct {
+	Self hrefData `json:"self"`
 }
 
-type BackendPoolParams struct {
-	Name              string `json:"name"`
-	Environment       string `json:"environment"`
-	FarmType          string `json:"farmtype"`
-	Plan              string `json:"plan"`
-	Project           string `json:"project"`
-	LoadBalancePolicy string `json:"loadbalancepolicy"`
+type commonPostResponse struct {
+	Links  linkData `json:"_links,omitempty"`
+	ID     int      `json:"ID,omitempty"`
+	Name   string   `json:"name,omitempty"`
+	Status string   `json:"_status,omitempty"`
 }
 
-type BackendParams struct {
-	Ip          string `json:"ip"`
-	Port        int    `json:"port"`
-	BackendPool string `json:"backendpool"`
+func (c commonPostResponse) FullId() string {
+	return c.Links.Self.Href
 }
 
-type RuleParams struct {
-	Name        string `json:"name"`
-	Match       string `json:"match"`
-	BackendPool string `json:"backendpool"`
-	RuleType    string `json:"ruletype"`
+func (c commonPostResponse) GetName() string {
+	return c.Name
+}
+
+type BackendPoolProperties struct {
+	HcPath       string `json:"hcPath"`
+	HcBody       string `json:"hcBody"`
+	HcStatusCode string `json:"hcStatusCode"`
+}
+
+type Target struct {
+	commonPostResponse
 	Project     string `json:"project"`
-}
-
-type VirtualHostParams struct {
-	Name        string `json:"name"`
-	FarmType    string `json:"farmtype"`
-	Plan        string `json:"plan"`
 	Environment string `json:"environment"`
-	Project     string `json:"project"`
-	RuleDefault string `json:"rule_default"`
+	BackendPool string `json:"parent,omitempty"`
 }
 
-type VirtualHostRuleParams struct {
-	Order       int    `json:"order"`
-	VirtualHost string `json:"virtualhost"`
-	Rule        string `json:"rule"`
+type Pool struct {
+	commonPostResponse
+	Project       string                `json:"project"`
+	Environment   string                `json:"environment"`
+	BalancePolicy string                `json:"balancePolicy"`
+	Properties    BackendPoolProperties `json:"properties,omitempty"`
+}
+
+type RuleProperties struct {
+	Match string `json:"match"`
+}
+
+type Rule struct {
+	commonPostResponse
+	RuleType    string         `json:"ruleType,omitempty"`
+	BackendPool string         `json:"pool,omitempty"`
+	Default     bool           `json:"default,omitempty"`
+	Order       int            `json:"order,omitempty"`
+	Properties  RuleProperties `json:"properties,omitempty"`
+}
+
+type VirtualHost struct {
+	commonPostResponse
+	Environment string `json:"environment,omitempty"`
+	Project     string `json:"project,omitempty"`
 }
