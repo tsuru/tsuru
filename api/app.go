@@ -182,6 +182,18 @@ func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
+	teams, err := u.Teams()
+	if err != nil {
+		return err
+	}
+	canRead := permission.Check(t, "app.read", []permission.Context{
+		{CtxType: permission.CtxApp, Value: app.Name},
+		{CtxType: permission.CtxTeam, Value: teams},
+		{CtxType: permission.CtxPool, Value: app.Pool},
+	}...)
+	if !canRead {
+		return permission.ErrUnauthorized
+	}
 	w.Header().Set("Content-Type", "application/json")
 	return json.NewEncoder(w).Encode(&app)
 }

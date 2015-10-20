@@ -421,6 +421,11 @@ func (s *S) TestAppInfo(c *check.C) {
 	request.Header.Set("Content-Type", "application/json")
 	recorder := httptest.NewRecorder()
 	c.Assert(err, check.IsNil)
+	role, err := permission.NewRole("reader", "app")
+	c.Assert(err, check.IsNil)
+	err = role.AddPermissions("app.read")
+	c.Assert(err, check.IsNil)
+	s.user.AddRole("reader", expectedApp.Name)
 	err = appInfo(recorder, request, s.token)
 	c.Assert(err, check.IsNil)
 	c.Assert(recorder.Code, check.Equals, http.StatusOK)
@@ -467,6 +472,25 @@ func (s *S) TestAppInfoReturnsNotFoundWhenAppDoesNotExist(c *check.C) {
 	c.Assert(ok, check.Equals, true)
 	c.Assert(e.Code, check.Equals, http.StatusNotFound)
 	c.Assert(e, check.ErrorMatches, "^App SomeApp not found.$")
+}
+
+func (s *S) TestAppInfoUnauthorized(c *check.C) {
+	config.Set("host", "http://myhost.com")
+	expectedApp := app.App{Name: "new-app", Platform: "zend", Teams: []string{s.team.Name}}
+	err := app.CreateApp(&expectedApp, s.user)
+	c.Assert(err, check.IsNil)
+	request, err := http.NewRequest("GET", "/apps/new-app?:app=new-app", nil)
+	request.Header.Set("Content-Type", "application/json")
+	recorder := httptest.NewRecorder()
+	c.Assert(err, check.IsNil)
+	role, err := permission.NewRole("reader", "app")
+	c.Assert(err, check.IsNil)
+	err = role.AddPermissions("app.read")
+	c.Assert(err, check.IsNil)
+	s.user.AddRole("reader", "notMyApp")
+	err = appInfo(recorder, request, s.token)
+	c.Assert(err, check.NotNil)
+	c.Assert(err, check.Equals, permission.ErrUnauthorized)
 }
 
 func (s *S) TestCreateAppHandler(c *check.C) {
