@@ -299,6 +299,32 @@ func (s *S) TestDeleteAllAppImageNamesRemovesCustomDataWithoutImages(c *check.C)
 	c.Assert(yamlData, check.DeepEquals, provision.TsuruYamlData{})
 }
 
+func (s *S) TestDeleteAllAppImageNamesSimilarApps(c *check.C) {
+	data := map[string]interface{}{"healthcheck": map[string]interface{}{"path": "/test"}}
+	err := appendAppImageName("myapp", "tsuru/app-myapp:v1")
+	c.Assert(err, check.IsNil)
+	err = saveImageCustomData("tsuru/app-myapp:v1", data)
+	c.Assert(err, check.IsNil)
+	err = appendAppImageName("myapp-dev", "tsuru/app-myapp-dev:v1")
+	c.Assert(err, check.IsNil)
+	err = saveImageCustomData("tsuru/app-myapp-dev:v1", data)
+	c.Assert(err, check.IsNil)
+	err = deleteAllAppImageNames("myapp")
+	c.Assert(err, check.IsNil)
+	_, err = listAppImages("myapp")
+	c.Assert(err, check.ErrorMatches, "not found")
+	_, err = listAppImages("myapp-dev")
+	c.Assert(err, check.IsNil)
+	yamlData, err := getImageTsuruYamlData("tsuru/app-myapp:v1")
+	c.Assert(err, check.IsNil)
+	c.Assert(yamlData, check.DeepEquals, provision.TsuruYamlData{})
+	yamlData, err = getImageTsuruYamlData("tsuru/app-myapp-dev:v1")
+	c.Assert(err, check.IsNil)
+	c.Assert(yamlData, check.DeepEquals, provision.TsuruYamlData{
+		Healthcheck: provision.TsuruYamlHealthcheck{Path: "/test"},
+	})
+}
+
 func (s *S) TestPullAppImageNames(c *check.C) {
 	err := appendAppImageName("myapp", "tsuru/app-myapp:v1")
 	c.Assert(err, check.IsNil)

@@ -321,7 +321,9 @@ func deleteAllAppImageNames(appName string) error {
 		return err
 	}
 	defer dataColl.Close()
-	_, err = dataColl.RemoveAll(bson.M{"_id": bson.RegEx{Pattern: appBasicImageName(appName)}})
+	_, err = dataColl.RemoveAll(bson.M{"_id": bson.RegEx{
+		Pattern: appBasicImageName(appName) + `:v\d+$`,
+	}})
 	if err != nil {
 		return err
 	}
