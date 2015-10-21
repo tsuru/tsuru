@@ -90,8 +90,8 @@ func (p *dockerProvisioner) deployPipeline(app provision.App, imageId string, co
 	actions := []*action.Action{
 		&insertEmptyContainerInDB,
 		&createContainer,
-		&startContainer,
 		&updateContainerInDB,
+		&startContainer,
 		&followLogsAndCommit,
 	}
 	pipeline := action.NewPipeline(actions...)
@@ -126,16 +126,16 @@ func (p *dockerProvisioner) start(oldContainer *container.Container, app provisi
 		actions = []*action.Action{
 			&insertEmptyContainerInDB,
 			&createContainer,
-			&stopContainer,
 			&updateContainerInDB,
+			&stopContainer,
 			&setNetworkInfo,
 		}
 	} else {
 		actions = []*action.Action{
 			&insertEmptyContainerInDB,
 			&createContainer,
-			&startContainer,
 			&updateContainerInDB,
+			&startContainer,
 			&setNetworkInfo,
 		}
 	}
