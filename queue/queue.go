@@ -42,10 +42,12 @@ type PubSubFactory interface {
 	Reset()
 }
 
+var factoryInstance = &redisPubSubFactory{}
+
 // Factory returns an instance of the PubSubFactory used in tsuru. Only redis
 // pubsub is available.
 func Factory() (PubSubFactory, error) {
-	return &redisPubSubFactory{}, nil
+	return factoryInstance, nil
 }
 
 type queueInstanceData struct {

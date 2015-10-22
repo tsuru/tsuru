@@ -27,6 +27,11 @@ func (s *S) TestFactory(c *check.C) {
 	c.Assert(err, check.IsNil)
 	_, ok := f.(*redisPubSubFactory)
 	c.Assert(ok, check.Equals, true)
+	f2, err := Factory()
+	c.Assert(err, check.IsNil)
+	_, ok = f2.(*redisPubSubFactory)
+	c.Assert(ok, check.Equals, true)
+	c.Assert(f, check.DeepEquals, f2)
 }
 
 func (s *S) TestFactoryConfigUndefined(c *check.C) {
