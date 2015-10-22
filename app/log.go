@@ -50,6 +50,9 @@ func NewLogListener(a *App, filterLog Applog) (*LogListener, error) {
 			}
 			if (filterLog.Source == "" || filterLog.Source == applog.Source) &&
 				(filterLog.Unit == "" || filterLog.Unit == applog.Unit) {
+				defer func() {
+					recover()
+				}()
 				c <- applog
 			}
 		}
