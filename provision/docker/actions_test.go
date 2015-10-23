@@ -150,6 +150,27 @@ func (s *S) TestCreateContainerBackward(c *check.C) {
 	c.Assert(err, check.FitsTypeOf, &docker.NoSuchContainer{})
 }
 
+func (s *S) TestSetContainerIDName(c *check.C) {
+	c.Assert(setContainerID.Name, check.Equals, "set-container-id")
+}
+
+func (s *S) TestSetContainerIDForward(c *check.C) {
+	cont := container.Container{Name: "myName"}
+	coll := s.p.Collection()
+	defer coll.Close()
+	err := coll.Insert(cont)
+	c.Assert(err, check.IsNil)
+	cont.ID = "cont-id"
+	context := action.FWContext{Previous: cont, Params: []interface{}{runContainerActionsArgs{
+		provisioner: s.p,
+	}}}
+	r, err := setContainerID.Forward(context)
+	c.Assert(r, check.FitsTypeOf, container.Container{})
+	retrieved, err := s.p.GetContainer(cont.ID)
+	c.Assert(err, check.IsNil)
+	c.Assert(retrieved.ID, check.Equals, cont.ID)
+}
+
 func (s *S) TestAddNewRouteName(c *check.C) {
 	c.Assert(addNewRoutes.Name, check.Equals, "add-new-routes")
 }

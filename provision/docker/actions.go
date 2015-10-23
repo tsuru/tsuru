@@ -185,6 +185,24 @@ var createContainer = action.Action{
 	},
 }
 
+var setContainerID = action.Action{
+	Name: "set-container-id",
+	Forward: func(ctx action.FWContext) (action.Result, error) {
+		args := ctx.Params[0].(runContainerActionsArgs)
+		coll := args.provisioner.Collection()
+		defer coll.Close()
+		cont := ctx.Previous.(container.Container)
+		err := coll.Update(bson.M{"name": cont.Name}, bson.M{"$set": bson.M{"id": cont.ID}})
+		if err != nil {
+			log.Errorf("error on setting container ID %s - %s", cont.Name, err)
+			return nil, err
+		}
+		return cont, nil
+	},
+	Backward: func(ctx action.BWContext) {
+	},
+}
+
 var stopContainer = action.Action{
 	Name: "stop-container",
 	Forward: func(ctx action.FWContext) (action.Result, error) {
