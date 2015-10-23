@@ -70,7 +70,7 @@
 		},
 		{
 			"ImportPath": "github.com/fsouza/go-dockerclient",
-			"Rev": "0c270fe398313b06afc3c27124de62c2d6af57b4"
+			"Rev": "64c100a0b566fb3569431b9416eb5a794a322981"
 		},
 		{
 			"ImportPath": "github.com/garyburd/redigo/redis",
