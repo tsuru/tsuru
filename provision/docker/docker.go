@@ -90,6 +90,7 @@ func (p *dockerProvisioner) deployPipeline(app provision.App, imageId string, co
 	actions := []*action.Action{
 		&insertEmptyContainerInDB,
 		&createContainer,
+		&setContainerID,
 		&startContainer,
 		&updateContainerInDB,
 		&followLogsAndCommit,
@@ -126,6 +127,7 @@ func (p *dockerProvisioner) start(oldContainer *container.Container, app provisi
 		actions = []*action.Action{
 			&insertEmptyContainerInDB,
 			&createContainer,
+			&setContainerID,
 			&stopContainer,
 			&updateContainerInDB,
 			&setNetworkInfo,
@@ -134,6 +136,7 @@ func (p *dockerProvisioner) start(oldContainer *container.Container, app provisi
 		actions = []*action.Action{
 			&insertEmptyContainerInDB,
 			&createContainer,
+			&setContainerID,
 			&startContainer,
 			&updateContainerInDB,
 			&setNetworkInfo,
