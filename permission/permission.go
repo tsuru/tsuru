@@ -21,9 +21,21 @@ type permissionScheme struct {
 
 type PermissionSchemeList []*permissionScheme
 
-type Context struct {
-	CtxType contextType
-	Value   interface{}
+type permissionContext struct {
+	ctxType contextType
+	value   string
+}
+
+func Context(t contextType, v string) permissionContext {
+	return permissionContext{ctxType: t, value: v}
+}
+
+func Contexts(t contextType, values []string) []permissionContext {
+	contexts := make([]permissionContext, len(values))
+	for i, v := range values {
+		contexts[i] = permissionContext{ctxType: t, value: v}
+	}
+	return contexts
 }
 
 type contextType string
@@ -118,26 +130,26 @@ func (s *permissionScheme) AllowedContexts() []contextType {
 
 type Permission struct {
 	Scheme  *permissionScheme
-	Context Context
+	Context permissionContext
 }
 
 type Token interface {
 	Permissions() ([]Permission, error)
 }
 
-func Check(token Token, scheme *permissionScheme, contexts ...Context) bool {
+func Check(token Token, scheme *permissionScheme, contexts ...permissionContext) bool {
 	perms, err := token.Permissions()
 	if err != nil {
 		return false
 	}
 	for _, perm := range perms {
 		if perm.Scheme.isParent(scheme) {
-			if perm.Context.CtxType == CtxGlobal {
+			if perm.Context.ctxType == CtxGlobal {
 				return true
 			}
 			for _, ctx := range contexts {
-				if ctx.CtxType == perm.Context.CtxType {
-					if reflect.DeepEqual(ctx.Value, perm.Context.Value) {
+				if ctx.ctxType == perm.Context.ctxType {
+					if reflect.DeepEqual(ctx.value, perm.Context.value) {
 						return true
 					}
 				}

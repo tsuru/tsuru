@@ -139,6 +139,14 @@ func (u *User) Teams() ([]Team, error) {
 	return teams, nil
 }
 
+func (u *User) TeamNames() ([]string, error) {
+	teams, err := u.Teams()
+	if err != nil {
+		return nil, err
+	}
+	return GetTeamsNames(teams), nil
+}
+
 func (u *User) AddKey(key repository.Key, force bool) error {
 	if mngr, ok := repository.Manager().(repository.KeyRepositoryManager); ok {
 		if key.Name == "" {

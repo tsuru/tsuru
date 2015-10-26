@@ -73,16 +73,16 @@ func appDelete(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	teams, err := u.Teams()
+	teams, err := u.TeamNames()
 	if err != nil {
 		return err
 	}
-	canDelete := permission.Check(t, permission.PermAppDelete, []permission.Context{
-		{CtxType: permission.CtxApp, Value: a.Name},
-		{CtxType: permission.CtxTeam, Value: teams},
-		{CtxType: permission.CtxPool, Value: a.Pool},
-		{CtxType: permission.CtxGlobal},
-	}...)
+	canDelete := permission.Check(t, permission.PermAppDelete,
+		append(permission.Contexts(permission.CtxTeam, teams),
+			permission.Context(permission.CtxApp, a.Name),
+			permission.Context(permission.CtxPool, a.Pool),
+		)...,
+	)
 	if !canDelete {
 		return permission.ErrUnauthorized
 	}
@@ -182,15 +182,16 @@ func appInfo(w http.ResponseWriter, r *http.Request, t auth.Token) error {
 	if err != nil {
 		return err
 	}
-	teams, err := u.Teams()
+	teams, err := u.TeamNames()
 	if err != nil {
 		return err
 	}
-	canRead := permission.Check(t, permission.PermAppRead, []permission.Context{
-		{CtxType: permission.CtxApp, Value: app.Name},
-		{CtxType: permission.CtxTeam, Value: teams},
-		{CtxType: permission.CtxPool, Value: app.Pool},
-	}...)
+	canRead := permission.Check(t, permission.PermAppRead,
+		append(permission.Contexts(permission.CtxTeam, teams),
+			permission.Context(permission.CtxApp, app.Name),
+			permission.Context(permission.CtxPool, app.Pool),
+		)...,
+	)
 	if !canRead {
 		return permission.ErrUnauthorized
 	}

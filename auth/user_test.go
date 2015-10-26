@@ -412,9 +412,9 @@ func (s *S) TestUserPermissions(c *check.C) {
 	perms, err = u.Permissions()
 	c.Assert(err, check.IsNil)
 	c.Assert(perms, check.DeepEquals, []permission.Permission{
-		{Scheme: permission.PermAppDeploy, Context: permission.Context{CtxType: permission.CtxApp, Value: "myapp"}},
-		{Scheme: permission.PermAppUpdateEnv, Context: permission.Context{CtxType: permission.CtxApp, Value: "myapp"}},
-		{Scheme: permission.PermAppDeploy, Context: permission.Context{CtxType: permission.CtxApp, Value: "myapp2"}},
-		{Scheme: permission.PermAppUpdateEnv, Context: permission.Context{CtxType: permission.CtxApp, Value: "myapp2"}},
+		{Scheme: permission.PermAppDeploy, Context: permission.Context(permission.CtxApp, "myapp")},
+		{Scheme: permission.PermAppUpdateEnv, Context: permission.Context(permission.CtxApp, "myapp")},
+		{Scheme: permission.PermAppDeploy, Context: permission.Context(permission.CtxApp, "myapp2")},
+		{Scheme: permission.PermAppUpdateEnv, Context: permission.Context(permission.CtxApp, "myapp2")},
 	})
 }

@@ -146,9 +146,9 @@ func (r *Role) PermisionsFor(contextValue string) []Permission {
 		scheme := PermissionRegistry.getSubRegistry(schemeName)
 		permissions[i] = Permission{
 			Scheme: &scheme.permissionScheme,
-			Context: Context{
-				CtxType: r.ContextType,
-				Value:   contextValue,
+			Context: permissionContext{
+				ctxType: r.ContextType,
+				value:   contextValue,
 			},
 		}
 	}

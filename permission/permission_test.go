@@ -67,27 +67,27 @@ func (t *userToken) Permissions() ([]Permission, error) {
 func (s *S) TestCheck(c *check.C) {
 	t := &userToken{
 		permissions: []Permission{
-			{Scheme: PermAppUpdate, Context: Context{CtxType: CtxTeam, Value: "team1"}},
-			{Scheme: PermAppDeploy, Context: Context{CtxType: CtxTeam, Value: "team3"}},
-			{Scheme: PermAppUpdateEnvUnset, Context: Context{CtxType: CtxGlobal}},
+			{Scheme: PermAppUpdate, Context: permissionContext{ctxType: CtxTeam, value: "team1"}},
+			{Scheme: PermAppDeploy, Context: permissionContext{ctxType: CtxTeam, value: "team3"}},
+			{Scheme: PermAppUpdateEnvUnset, Context: permissionContext{ctxType: CtxGlobal}},
 		},
 	}
-	c.Assert(Check(t, PermAppUpdateEnvSet, Context{CtxType: CtxTeam, Value: "team1"}), check.Equals, true)
-	c.Assert(Check(t, PermAppUpdate, Context{CtxType: CtxTeam, Value: "team1"}), check.Equals, true)
-	c.Assert(Check(t, PermAppDeploy, Context{CtxType: CtxTeam, Value: "team1"}), check.Equals, false)
-	c.Assert(Check(t, PermAppDeploy, Context{CtxType: CtxTeam, Value: "team3"}), check.Equals, true)
-	c.Assert(Check(t, PermAppUpdate, Context{CtxType: CtxTeam, Value: "team2"}), check.Equals, false)
-	c.Assert(Check(t, PermAppUpdateEnvUnset, Context{CtxType: CtxTeam, Value: "team1"}), check.Equals, true)
-	c.Assert(Check(t, PermAppUpdateEnvUnset, Context{CtxType: CtxTeam, Value: "team10"}), check.Equals, true)
+	c.Assert(Check(t, PermAppUpdateEnvSet, permissionContext{ctxType: CtxTeam, value: "team1"}), check.Equals, true)
+	c.Assert(Check(t, PermAppUpdate, permissionContext{ctxType: CtxTeam, value: "team1"}), check.Equals, true)
+	c.Assert(Check(t, PermAppDeploy, permissionContext{ctxType: CtxTeam, value: "team1"}), check.Equals, false)
+	c.Assert(Check(t, PermAppDeploy, permissionContext{ctxType: CtxTeam, value: "team3"}), check.Equals, true)
+	c.Assert(Check(t, PermAppUpdate, permissionContext{ctxType: CtxTeam, value: "team2"}), check.Equals, false)
+	c.Assert(Check(t, PermAppUpdateEnvUnset, permissionContext{ctxType: CtxTeam, value: "team1"}), check.Equals, true)
+	c.Assert(Check(t, PermAppUpdateEnvUnset, permissionContext{ctxType: CtxTeam, value: "team10"}), check.Equals, true)
 	c.Assert(Check(t, PermAppUpdateEnvUnset), check.Equals, true)
 }
 
 func (s *S) TestCheckSuperToken(c *check.C) {
 	t := &userToken{
 		permissions: []Permission{
-			{Scheme: PermAll, Context: Context{CtxType: CtxGlobal}},
+			{Scheme: PermAll, Context: permissionContext{ctxType: CtxGlobal}},
 		},
 	}
-	c.Assert(Check(t, PermAppDeploy, Context{CtxType: CtxTeam, Value: "team1"}), check.Equals, true)
+	c.Assert(Check(t, PermAppDeploy, permissionContext{ctxType: CtxTeam, value: "team1"}), check.Equals, true)
 	c.Assert(Check(t, PermAppUpdateEnvUnset), check.Equals, true)
 }
