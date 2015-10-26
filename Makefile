@@ -47,7 +47,7 @@ ifneq ($(subst ~,$(HOME),$(GOPATH))/src/github.com/tsuru/tsuru, $(PWD))
 endif
 	@exit 0
 
-get: hg git bzr get-code godep
+get: hg git bzr godep
 
 hg:
 	$(if $(shell hg), , $(error $(HG_ERROR)))
@@ -57,9 +57,6 @@ git:
 
 bzr:
 	$(if $(shell bzr), , $(error $(BZR_ERROR)))
-
-get-code:
-	go get $(GO_EXTRAFLAGS) -d -t ./... || true
 
 godep:
 	go get $(GO_EXTRAFLAGS) github.com/tools/godep
